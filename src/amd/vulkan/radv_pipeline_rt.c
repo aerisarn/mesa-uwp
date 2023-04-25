@@ -176,6 +176,25 @@ radv_rt_fill_group_info(struct radv_device *device,
    return result;
 }
 
+static void
+radv_rt_fill_stage_info(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                        struct radv_ray_tracing_stage *stages)
+{
+   uint32_t idx;
+   for (idx = 0; idx < pCreateInfo->stageCount; idx++)
+      stages[idx].stage = vk_to_mesa_shader_stage(pCreateInfo->pStages[idx].stage);
+
+   if (pCreateInfo->pLibraryInfo) {
+      for (unsigned i = 0; i < pCreateInfo->pLibraryInfo->libraryCount; ++i) {
+         RADV_FROM_HANDLE(radv_pipeline, pipeline, pCreateInfo->pLibraryInfo->pLibraries[i]);
+         struct radv_ray_tracing_lib_pipeline *library_pipeline =
+            radv_pipeline_to_ray_tracing_lib(pipeline);
+         for (unsigned j = 0; j < library_pipeline->stage_count; ++j)
+            stages[idx++].stage = library_pipeline->stages[j].stage;
+      }
+   }
+}
+
 static VkRayTracingPipelineCreateInfoKHR
 radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo)
 {
@@ -213,7 +232,7 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
             radv_pipeline_to_ray_tracing_lib(pipeline);
 
          for (unsigned j = 0; j < library_pipeline->stage_count; ++j)
-            stages[total_stages + j] = library_pipeline->stages[j];
+            stages[total_stages + j] = library_pipeline->vk_stages[j];
          total_stages += library_pipeline->stage_count;
          total_groups += library_pipeline->group_count;
       }
@@ -378,14 +397,17 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
       goto pipeline_fail;
 
    if (local_create_info.stageCount) {
-      pipeline->stages = radv_copy_shader_stage_create_info(
+      pipeline->vk_stages = radv_copy_shader_stage_create_info(
          device, local_create_info.stageCount, local_create_info.pStages, pipeline->ctx);
-      if (!pipeline->stages) {
+      pipeline->stages =
+         rzalloc_size(pipeline->ctx, sizeof(*pipeline->stages) * local_create_info.stageCount);
+      if (!pipeline->stages || !pipeline->vk_stages) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto pipeline_fail;
       }
 
       pipeline->stage_count = local_create_info.stageCount;
+      radv_rt_fill_stage_info(pCreateInfo, pipeline->stages);
    }
 
    radv_hash_rt_shaders(pipeline->sha1, pCreateInfo, &key, pipeline->groups,

@@ -2313,6 +2313,11 @@ struct radv_ray_tracing_group {
    struct radv_pipeline_shader_stack_size stack_size;
 };
 
+struct radv_ray_tracing_stage {
+   struct vk_pipeline_cache_object *shader;
+   gl_shader_stage stage;
+};
+
 struct radv_ray_tracing_lib_pipeline {
    struct radv_pipeline base;
 
@@ -2320,8 +2325,9 @@ struct radv_ray_tracing_lib_pipeline {
    void *ctx;
 
    unsigned stage_count;
-   VkPipelineShaderStageCreateInfo *stages;
+   VkPipelineShaderStageCreateInfo *vk_stages;
    unsigned group_count;
+   struct radv_ray_tracing_stage *stages;
    uint8_t sha1[SHA1_DIGEST_LENGTH];
    struct radv_ray_tracing_group groups[];
 };
