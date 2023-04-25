@@ -1361,7 +1361,10 @@ pub struct AttrAccess {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFAdd {
     pub dst: Dst,
+
+    #[src_type(F32)]
     pub srcs: [Src; 2],
+
     pub saturate: bool,
     pub rnd_mode: FRndMode,
 }
@@ -1383,7 +1386,10 @@ impl fmt::Display for OpFAdd {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFFma {
     pub dst: Dst,
+
+    #[src_type(F32)]
     pub srcs: [Src; 3],
+
     pub saturate: bool,
     pub rnd_mode: FRndMode,
 }
@@ -1409,7 +1415,11 @@ impl fmt::Display for OpFFma {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFMnMx {
     pub dst: Dst,
+
+    #[src_type(F32)]
     pub srcs: [Src; 2],
+
+    #[src_type(Pred)]
     pub min: Src,
 }
 
@@ -1427,7 +1437,10 @@ impl fmt::Display for OpFMnMx {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFMul {
     pub dst: Dst,
+
+    #[src_type(F32)]
     pub srcs: [Src; 2],
+
     pub saturate: bool,
     pub rnd_mode: FRndMode,
 }
@@ -1450,6 +1463,8 @@ impl fmt::Display for OpFMul {
 pub struct OpFSet {
     pub dst: Dst,
     pub cmp_op: FloatCmpOp,
+
+    #[src_type(F32)]
     pub srcs: [Src; 2],
 }
 
@@ -1468,6 +1483,8 @@ impl fmt::Display for OpFSet {
 pub struct OpFSetP {
     pub dst: Dst,
     pub cmp_op: FloatCmpOp,
+
+    #[src_type(F32)]
     pub srcs: [Src; 2],
     /* TODO: Other predicates? Combine ops? */
 }
@@ -1518,6 +1535,8 @@ impl fmt::Display for MuFuOp {
 pub struct OpMuFu {
     pub dst: Dst,
     pub op: MuFuOp,
+
+    #[src_type(F32)]
     pub src: Src,
 }
 
@@ -1531,6 +1550,8 @@ impl fmt::Display for OpMuFu {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIAbs {
     pub dst: Dst,
+
+    #[src_type(ALU)]
     pub src: Src,
 }
 
@@ -1545,7 +1566,11 @@ impl fmt::Display for OpIAbs {
 pub struct OpIAdd3 {
     pub dst: Dst,
     pub overflow: Dst,
+
+    #[src_type(I32)]
     pub srcs: [Src; 3],
+
+    #[src_type(Pred)]
     pub carry: Src,
 }
 
@@ -1568,7 +1593,10 @@ impl fmt::Display for OpIAdd3 {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIMad {
     pub dst: Dst,
+
+    #[src_type(ALU)]
     pub srcs: [Src; 3],
+
     pub signed: bool,
 }
 
@@ -1586,7 +1614,10 @@ impl fmt::Display for OpIMad {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIMad64 {
     pub dst: Dst,
+
+    #[src_type(ALU)]
     pub srcs: [Src; 3],
+
     pub signed: bool,
 }
 
@@ -1605,7 +1636,11 @@ impl fmt::Display for OpIMad64 {
 pub struct OpIMnMx {
     pub dst: Dst,
     pub cmp_type: IntCmpType,
+
+    #[src_type(ALU)]
     pub srcs: [Src; 2],
+
+    #[src_type(Pred)]
     pub min: Src,
 }
 
@@ -1627,6 +1662,7 @@ pub struct OpISetP {
     pub cmp_op: IntCmpOp,
     pub cmp_type: IntCmpType,
 
+    #[src_type(ALU)]
     pub srcs: [Src; 2],
     /* TODO: Other predicates? Combine ops? */
 }
@@ -1645,7 +1681,10 @@ impl fmt::Display for OpISetP {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpLop3 {
     pub dst: Dst,
+
+    #[src_type(ALU)]
     pub srcs: [Src; 3],
+
     pub op: LogicOp,
 }
 
@@ -1663,9 +1702,16 @@ impl fmt::Display for OpLop3 {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpShf {
     pub dst: Dst,
+
+    #[src_type(GPR)]
     pub low: Src,
+
+    #[src_type(ALU)]
     pub high: Src,
+
+    #[src_type(GPR)]
     pub shift: Src,
+
     pub right: bool,
     pub wrap: bool,
     pub data_type: IntType,
@@ -1699,7 +1745,10 @@ impl fmt::Display for OpShf {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpF2F {
     pub dst: Dst,
+
+    #[src_type(F32)]
     pub src: Src,
+
     pub src_type: FloatType,
     pub dst_type: FloatType,
     pub rnd_mode: FRndMode,
@@ -1724,7 +1773,10 @@ impl fmt::Display for OpF2F {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpF2I {
     pub dst: Dst,
+
+    #[src_type(F32)]
     pub src: Src,
+
     pub src_type: FloatType,
     pub dst_type: IntType,
     pub rnd_mode: FRndMode,
@@ -1744,7 +1796,10 @@ impl fmt::Display for OpF2I {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpI2F {
     pub dst: Dst,
+
+    #[src_type(ALU)]
     pub src: Src,
+
     pub dst_type: FloatType,
     pub src_type: IntType,
     pub rnd_mode: FRndMode,
@@ -1764,7 +1819,10 @@ impl fmt::Display for OpI2F {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpMov {
     pub dst: Dst,
+
+    #[src_type(ALU)]
     pub src: Src,
+
     pub quad_lanes: u8,
 }
 
@@ -1782,7 +1840,11 @@ impl fmt::Display for OpMov {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpSel {
     pub dst: Dst,
+
+    #[src_type(Pred)]
     pub cond: Src,
+
+    #[src_type(ALU)]
     pub srcs: [Src; 2],
 }
 
@@ -1800,7 +1862,10 @@ impl fmt::Display for OpSel {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpPLop3 {
     pub dsts: [Dst; 2],
+
+    #[src_type(Pred)]
     pub srcs: [Src; 3],
+
     pub ops: [LogicOp; 2],
 }
 
@@ -1825,7 +1890,10 @@ impl fmt::Display for OpPLop3 {
 pub struct OpTex {
     pub dsts: [Dst; 2],
     pub resident: Dst,
+
+    #[src_type(SSA)]
     pub srcs: [Src; 2],
+
     pub dim: TexDim,
     pub lod_mode: TexLodMode,
     pub z_cmpr: bool,
@@ -1863,7 +1931,10 @@ impl fmt::Display for OpTex {
 pub struct OpTld {
     pub dsts: [Dst; 2],
     pub resident: Dst,
+
+    #[src_type(SSA)]
     pub srcs: [Src; 2],
+
     pub dim: TexDim,
     pub is_ms: bool,
     pub lod_mode: TexLodMode,
@@ -1901,7 +1972,10 @@ impl fmt::Display for OpTld {
 pub struct OpTld4 {
     pub dsts: [Dst; 2],
     pub resident: Dst,
+
+    #[src_type(SSA)]
     pub srcs: [Src; 2],
+
     pub dim: TexDim,
     pub comp: u8,
     pub offset_mode: Tld4OffsetMode,
@@ -1932,7 +2006,10 @@ impl fmt::Display for OpTld4 {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpTmml {
     pub dsts: [Dst; 2],
+
+    #[src_type(SSA)]
     pub srcs: [Src; 2],
+
     pub dim: TexDim,
     pub mask: u8,
 }
@@ -1952,7 +2029,10 @@ impl fmt::Display for OpTmml {
 pub struct OpTxd {
     pub dsts: [Dst; 2],
     pub resident: Dst,
+
+    #[src_type(SSA)]
     pub srcs: [Src; 2],
+
     pub dim: TexDim,
     pub offset: bool,
     pub mask: u8,
@@ -1981,7 +2061,10 @@ impl fmt::Display for OpTxd {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpTxq {
     pub dsts: [Dst; 2],
+
+    #[src_type(SSA)]
     pub src: Src,
+
     pub query: TexQuery,
     pub mask: u8,
 }
@@ -2006,7 +2089,11 @@ pub struct OpSuLd {
     pub mem_order: MemOrder,
     pub mem_scope: MemScope,
     pub mask: u8,
+
+    #[src_type(GPR)]
     pub handle: Src,
+
+    #[src_type(SSA)]
     pub coord: Src,
 }
 
@@ -2033,8 +2120,14 @@ pub struct OpSuSt {
     pub mem_order: MemOrder,
     pub mem_scope: MemScope,
     pub mask: u8,
+
+    #[src_type(GPR)]
     pub handle: Src,
+
+    #[src_type(SSA)]
     pub coord: Src,
+
+    #[src_type(SSA)]
     pub data: Src,
 }
 
@@ -2057,7 +2150,10 @@ impl fmt::Display for OpSuSt {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpLd {
     pub dst: Dst,
+
+    #[src_type(GPR)]
     pub addr: Src,
+
     pub offset: i32,
     pub access: MemAccess,
 }
@@ -2075,8 +2171,12 @@ impl fmt::Display for OpLd {
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpSt {
+    #[src_type(GPR)]
     pub addr: Src,
+
+    #[src_type(SSA)]
     pub data: Src,
+
     pub offset: i32,
     pub access: MemAccess,
 }
@@ -2095,8 +2195,13 @@ impl fmt::Display for OpSt {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpALd {
     pub dst: Dst,
+
+    #[src_type(GPR)]
     pub vtx: Src,
+
+    #[src_type(GPR)]
     pub offset: Src,
+
     pub access: AttrAccess,
 }
 
@@ -2117,9 +2222,15 @@ impl fmt::Display for OpALd {
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpASt {
+    #[src_type(GPR)]
     pub vtx: Src,
+
+    #[src_type(GPR)]
     pub offset: Src,
+
+    #[src_type(SSA)]
     pub data: Src,
+
     pub access: AttrAccess,
 }
 
@@ -2242,7 +2353,10 @@ impl fmt::Display for OpUndef {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFMov {
     pub dst: Dst,
+
+    #[src_type(F32)]
     pub src: Src,
+
     pub saturate: bool,
 }
 
@@ -2260,7 +2374,10 @@ impl fmt::Display for OpFMov {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpDMov {
     pub dst: Dst,
+
+    #[src_type(F64)]
     pub src: Src,
+
     pub saturate: bool,
 }
 
@@ -2278,6 +2395,8 @@ impl fmt::Display for OpDMov {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIMov {
     pub dst: Dst,
+
+    #[src_type(I32)]
     pub src: Src,
 }
 
