@@ -579,6 +579,14 @@ glXCopyContext(Display * dpy, GLXContext source_user,
 {
    struct glx_context *source = (struct glx_context *) source_user;
    struct glx_context *dest = (struct glx_context *) dest_user;
+
+   /* GLX spec 3.3: If the destination context is current for some thread
+    * then a BadAccess error is generated
+    */
+   if (dest && dest->currentDpy) {
+      __glXSendError(dpy, BadAccess, 0, X_GLXCopyContext, true);
+      return;
+   }
 #ifdef GLX_USE_APPLEGL
    struct glx_context *gc = __glXGetCurrentContext();
    int errorcode;
