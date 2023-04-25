@@ -543,9 +543,8 @@ union sqtt_instruction_trace_data {
    } api_pso_data;
 
    struct {
-      char start[256];
-      char end[256];
-   } user_marker_data;
+      uint32_t mask;
+   } shader_engine_filter;
 };
 
 struct sqtt_file_chunk_api_info {
@@ -561,7 +560,7 @@ struct sqtt_file_chunk_api_info {
    union sqtt_instruction_trace_data instruction_trace_data;
 };
 
-static_assert(sizeof(struct sqtt_file_chunk_api_info) == 1064,
+static_assert(sizeof(struct sqtt_file_chunk_api_info) == 560,
               "sqtt_file_chunk_api_info doesn't match RGP spec");
 
 static void ac_sqtt_fill_api_info(struct sqtt_file_chunk_api_info *chunk)
@@ -569,7 +568,7 @@ static void ac_sqtt_fill_api_info(struct sqtt_file_chunk_api_info *chunk)
    chunk->header.chunk_id.type = SQTT_FILE_CHUNK_TYPE_API_INFO;
    chunk->header.chunk_id.index = 0;
    chunk->header.major_version = 0;
-   chunk->header.minor_version = 1;
+   chunk->header.minor_version = 2;
    chunk->header.size_in_bytes = sizeof(*chunk);
 
    chunk->api_type = SQTT_API_TYPE_VULKAN;
