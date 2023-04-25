@@ -491,7 +491,8 @@ pvr_get_image_format_features2(const struct pvr_format *pvr_format,
 
          if (!vk_format_is_int(vk_format) &&
              !vk_format_is_depth_or_stencil(vk_format) &&
-             first_component_size < 32) {
+             (first_component_size < 32 ||
+              vk_format_is_block_compressed(vk_format))) {
             flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
          }
       } else if (!vk_format_is_block_compressed(vk_format)) {
@@ -517,7 +518,7 @@ pvr_get_image_format_features2(const struct pvr_format *pvr_format,
    if (vk_tiling == VK_IMAGE_TILING_OPTIMAL) {
       if (vk_format_is_color(vk_format) &&
           vk_format_get_nr_components(vk_format) == 1 &&
-          vk_format_get_blocksize(vk_format) == 32 &&
+          vk_format_get_blocksizebits(vk_format) == 32 &&
           vk_format_is_int(vk_format)) {
          flags |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
                   VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT;
@@ -616,7 +617,7 @@ pvr_get_buffer_format_features2(const struct pvr_format *pvr_format)
 
    if (vk_format_is_color(vk_format) &&
        vk_format_get_nr_components(vk_format) == 1 &&
-       vk_format_get_blocksize(vk_format) == 32 &&
+       vk_format_get_blocksizebits(vk_format) == 32 &&
        vk_format_is_int(vk_format)) {
       flags |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT |
                VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_ATOMIC_BIT;
@@ -643,6 +644,11 @@ pvr_get_buffer_format_features2(const struct pvr_format *pvr_format)
    case VK_FORMAT_R32G32B32A32_SFLOAT:
       flags |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT;
       break;
+
+   case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+      flags |= VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT;
+      break;
+
    default:
       break;
    }
