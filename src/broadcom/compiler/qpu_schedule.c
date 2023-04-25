@@ -136,12 +136,14 @@ qpu_inst_is_tlb(const struct v3d_qpu_instr *inst)
         if (inst->type != V3D_QPU_INSTR_TYPE_ALU)
                 return false;
 
-        if (inst->alu.add.magic_write &&
+        if (inst->alu.add.op != V3D_QPU_A_NOP &&
+            inst->alu.add.magic_write &&
             (inst->alu.add.waddr == V3D_QPU_WADDR_TLB ||
              inst->alu.add.waddr == V3D_QPU_WADDR_TLBU))
                 return true;
 
-        if (inst->alu.mul.magic_write &&
+        if (inst->alu.mul.op != V3D_QPU_M_NOP &&
+            inst->alu.mul.magic_write &&
             (inst->alu.mul.waddr == V3D_QPU_WADDR_TLB ||
              inst->alu.mul.waddr == V3D_QPU_WADDR_TLBU))
                 return true;
@@ -1458,14 +1460,16 @@ instruction_latency(const struct v3d_device_info *devinfo,
             after_inst->type != V3D_QPU_INSTR_TYPE_ALU)
                 return latency;
 
-        if (before_inst->alu.add.magic_write) {
+        if (before_inst->alu.add.op != V3D_QPU_A_NOP &&
+            before_inst->alu.add.magic_write) {
                 latency = MAX2(latency,
                                magic_waddr_latency(devinfo,
                                                    before_inst->alu.add.waddr,
                                                    after_inst));
         }
 
-        if (before_inst->alu.mul.magic_write) {
+        if (before_inst->alu.mul.op != V3D_QPU_M_NOP &&
+            before_inst->alu.mul.magic_write) {
                 latency = MAX2(latency,
                                magic_waddr_latency(devinfo,
                                                    before_inst->alu.mul.waddr,
@@ -1588,8 +1592,10 @@ qpu_inst_valid_in_thrend_slot(struct v3d_compile *c,
                         return false;
 
                 /* No writing physical registers at the end. */
-                if (!inst->alu.add.magic_write ||
-                    !inst->alu.mul.magic_write) {
+                bool add_is_nop = inst->alu.add.op == V3D_QPU_A_NOP;
+                bool mul_is_nop = inst->alu.mul.op == V3D_QPU_M_NOP;
+                if ((!add_is_nop && !inst->alu.add.magic_write) ||
+                    (!mul_is_nop && !inst->alu.mul.magic_write)) {
                         return false;
                 }
 
@@ -1604,20 +1610,12 @@ qpu_inst_valid_in_thrend_slot(struct v3d_compile *c,
                 /* RF0-2 might be overwritten during the delay slots by
                  * fragment shader setup.
                  */
-                if (inst->raddr_a < 3 &&
-                    (inst->alu.add.a == V3D_QPU_MUX_A ||
-                     inst->alu.add.b == V3D_QPU_MUX_A ||
-                     inst->alu.mul.a == V3D_QPU_MUX_A ||
-                     inst->alu.mul.b == V3D_QPU_MUX_A)) {
+                if (inst->raddr_a < 3 && v3d_qpu_uses_mux(inst, V3D_QPU_MUX_A))
                         return false;
-                }
 
                 if (inst->raddr_b < 3 &&
                     !inst->sig.small_imm &&
-                    (inst->alu.add.a == V3D_QPU_MUX_B ||
-                     inst->alu.add.b == V3D_QPU_MUX_B ||
-                     inst->alu.mul.a == V3D_QPU_MUX_B ||
-                     inst->alu.mul.b == V3D_QPU_MUX_B)) {
+                    v3d_qpu_uses_mux(inst, V3D_QPU_MUX_B)) {
                         return false;
                 }
         }
