@@ -707,6 +707,32 @@ pvr_mem_layout_spec(const struct pvr_transfer_cmd_surface *surface,
    return VK_SUCCESS;
 }
 
+static uint32_t pvr_get_transfer_pbe_packmode(VkFormat format)
+{
+   uint32_t pbe_pack_mode = pvr_get_pbe_packmode(format);
+   const uint32_t red_width =
+      vk_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_RGB, 0U);
+
+   if (format == VK_FORMAT_A2B10G10R10_UINT_PACK32 ||
+       format == VK_FORMAT_A2R10G10B10_UINT_PACK32) {
+      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_R10B10G10A2);
+   } else if (format == VK_FORMAT_B8G8R8A8_UNORM ||
+              format == VK_FORMAT_R8G8B8A8_UNORM) {
+      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_U8U8U8U8);
+   } else if (format == VK_FORMAT_D16_UNORM) {
+      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_U16);
+   } else if (format == VK_FORMAT_D32_SFLOAT) {
+      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_F32);
+   } else if (format != VK_FORMAT_X8_D24_UNORM_PACK32 && red_width <= 8U &&
+              vk_format_is_normalized(format)) {
+      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_F16F16F16F16);
+   } else if (vk_format_is_srgb(format)) {
+      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_F16F16F16F16);
+   }
+
+   return pbe_pack_mode;
+}
+
 static VkResult
 pvr_pbe_setup_codegen_defaults(const struct pvr_device_info *dev_info,
                                const struct pvr_transfer_cmd *transfer_cmd,
@@ -740,7 +766,7 @@ pvr_pbe_setup_codegen_defaults(const struct pvr_device_info *dev_info,
                                     &surface_params->gamma);
 
    surface_params->is_normalized = vk_format_is_normalized(format);
-   surface_params->pbe_packmode = pvr_get_pbe_packmode(format);
+   surface_params->pbe_packmode = pvr_get_transfer_pbe_packmode(format);
    surface_params->nr_components = vk_format_get_nr_components(format);
 
    result = pvr_mem_layout_spec(dst,
@@ -1008,8 +1034,6 @@ static void pvr_pbe_setup_swizzle(const struct pvr_transfer_cmd *transfer_cmd,
          default:
             break;
          }
-      } else {
-         unreachable("Invalid case in pvr_pbe_setup_swizzle.");
       }
       break;
    }
@@ -2231,25 +2255,11 @@ static VkResult pvr_pack_clear_color(VkFormat format,
 {
    const uint32_t red_width =
       vk_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_RGB, 0U);
-   uint32_t pbe_pack_mode = pvr_get_pbe_packmode(format);
+   uint32_t pbe_pack_mode = pvr_get_transfer_pbe_packmode(format);
    const bool pbe_norm = vk_format_is_normalized(format);
 
    if (pbe_pack_mode == PVRX(PBESTATE_PACKMODE_INVALID))
       return vk_error(NULL, VK_ERROR_FORMAT_NOT_SUPPORTED);
-
-   if (format == VK_FORMAT_A2B10G10R10_UINT_PACK32 ||
-       format == VK_FORMAT_A2R10G10B10_UINT_PACK32) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_R10B10G10A2);
-   } else if (format == VK_FORMAT_B8G8R8A8_UNORM ||
-              format == VK_FORMAT_R8G8B8A8_UNORM) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_U8U8U8U8);
-   } else if (format != VK_FORMAT_D16_UNORM &&
-              format != VK_FORMAT_X8_D24_UNORM_PACK32 && red_width <= 8U &&
-              vk_format_is_normalized(format)) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_F16F16F16F16);
-   } else if (vk_format_is_srgb(format)) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_F16F16F16F16);
-   }
 
    /* Set packed color based on PBE pack mode and PBE norm. */
    switch (pbe_pack_mode) {
