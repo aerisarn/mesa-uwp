@@ -1280,6 +1280,8 @@ RADV driver environment variables
       abort on some suboptimal code generation
    ``force-waitcnt``
       force emitting waitcnt states if there is something to wait for
+   ``force-waitdeps``
+     force emitting waitcnt dependencies for debugging hazards on GFX10+
    ``novn``
       disable value numbering
    ``noopt``
