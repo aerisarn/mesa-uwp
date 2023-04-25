@@ -311,6 +311,11 @@ ac_nir_lower_ps(nir_shader *nir, const ac_nir_lower_ps_options *options);
 
 typedef struct {
    enum amd_gfx_level gfx_level;
+
+   /* If true, round the layer component of the coordinates source to the nearest
+    * integer for all array ops.
+    */
+   bool lower_array_layer_round_even;
 } ac_nir_lower_tex_options;
 
 bool

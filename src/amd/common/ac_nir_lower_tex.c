@@ -159,12 +159,29 @@ prepare_cube_coords(nir_builder *b, nir_tex_instr *tex, nir_ssa_def **coord, nir
 }
 
 static bool
+lower_array_layer_round_even(nir_builder *b, nir_tex_instr *tex, nir_ssa_def **coords)
+{
+   int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   if (coord_index < 0 || nir_tex_instr_src_type(tex, coord_index) != nir_type_float)
+      return false;
+
+   unsigned layer = tex->coord_components - 1;
+   nir_ssa_def *rounded_layer = nir_fround_even(b, nir_channel(b, *coords, layer));
+   *coords = nir_vector_insert_imm(b, *coords, rounded_layer, layer);
+   return true;
+}
+
+static bool
 lower_tex_coords(nir_builder *b, nir_tex_instr *tex, nir_ssa_def **coords,
                  const ac_nir_lower_tex_options *options)
 {
+   bool progress = false;
+   if (options->lower_array_layer_round_even && tex->is_array && tex->op != nir_texop_lod)
+      progress |= lower_array_layer_round_even(b, tex, coords);
+
    if (tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE &&
        !(tex->sampler_dim == GLSL_SAMPLER_DIM_1D && options->gfx_level == GFX9))
-      return false;
+      return progress;
 
    int ddx_idx = nir_tex_instr_src_index(tex, nir_tex_src_ddx);
    int ddy_idx = nir_tex_instr_src_index(tex, nir_tex_src_ddy);
