@@ -98,11 +98,6 @@ static LLVMValueRef si_get_gs_wave_id(struct si_shader_context *ctx)
 
 void si_llvm_gs_build_end(struct si_shader_context *ctx)
 {
-   if (ctx->screen->info.gfx_level >= GFX10)
-      ac_build_waitcnt(&ctx->ac, AC_WAIT_VSTORE);
-
-   ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_NOP | AC_SENDMSG_GS_DONE, si_get_gs_wave_id(ctx));
-
    if (ctx->screen->info.gfx_level >= GFX9)
       ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 }

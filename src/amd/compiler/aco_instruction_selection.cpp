@@ -11421,14 +11421,6 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
 
       visit_cf_list(&ctx, &func->body);
 
-      if (nir->info.stage == MESA_SHADER_GEOMETRY && !ngg_gs) {
-         Builder bld(ctx.program, ctx.block);
-         bld.barrier(aco_opcode::p_barrier,
-                     memory_sync_info(storage_vmem_output, semantic_release, scope_device));
-         bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx.gs_wave_id), -1,
-                  sendmsg_gs_done(false, false, 0));
-      }
-
       if (ctx.stage == fragment_fs && ctx.program->info.ps.has_epilog) {
          create_fs_jump_to_epilog(&ctx);
 

@@ -281,37 +281,6 @@ radv_load_output(struct radv_shader_context *ctx, unsigned index, unsigned chan)
 }
 
 static void
-emit_gs_epilogue(struct radv_shader_context *ctx)
-{
-   if (ctx->ac.gfx_level >= GFX10)
-      ac_build_waitcnt(&ctx->ac, AC_WAIT_VSTORE);
-
-   ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_NOP | AC_SENDMSG_GS_DONE, ctx->gs_wave_id);
-}
-
-static void
-handle_shader_outputs_post(struct ac_shader_abi *abi)
-{
-   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-
-   switch (ctx->stage) {
-   case MESA_SHADER_VERTEX:
-   case MESA_SHADER_TESS_CTRL:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_FRAGMENT:
-      break; /* Lowered in NIR */
-   case MESA_SHADER_GEOMETRY:
-      if (ctx->shader_info->is_ngg)
-         break; /* Lowered in NIR */
-      else
-         emit_gs_epilogue(ctx);
-      break;
-   default:
-      break;
-   }
-}
-
-static void
 ac_llvm_finalize_module(struct radv_shader_context *ctx, LLVMPassManagerRef passmgr)
 {
    LLVMRunPassManager(passmgr, ctx->ac.module);
@@ -522,9 +491,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
       if (!ac_nir_translate(&ctx.ac, &ctx.abi, &args->ac, shaders[shader_idx])) {
          abort();
       }
-
-      if (!gl_shader_stage_is_compute(shaders[shader_idx]->info.stage))
-         handle_shader_outputs_post(&ctx.abi);
 
       if (check_merged_wave_info) {
          LLVMBuildBr(ctx.ac.builder, merge_block);

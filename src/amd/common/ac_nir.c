@@ -1100,6 +1100,18 @@ ac_nir_lower_legacy_gs(nir_shader *nir,
                                           64,
                                           s.vertex_count,
                                           s.primitive_count);
+
+   /* Wait for all stores to finish. */
+   nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_INVOCATION,
+                      .memory_scope = NIR_SCOPE_DEVICE,
+                      .memory_semantics = NIR_MEMORY_RELEASE,
+                      .memory_modes = nir_var_shader_out | nir_var_mem_ssbo |
+                                      nir_var_mem_global | nir_var_image);
+
+   /* Signal that the GS is done. */
+   nir_sendmsg_amd(b, nir_load_gs_wave_id_amd(b),
+                   .base = AC_SENDMSG_GS_OP_NOP | AC_SENDMSG_GS_DONE);
+
    if (progress)
       nir_metadata_preserve(impl, nir_metadata_none);
 }
