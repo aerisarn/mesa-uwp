@@ -995,8 +995,11 @@ lower_legacy_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *in
       }
    }
 
-   /* Keep this instruction to signal vertex emission. */
+   /* Signal vertex emission. */
+   nir_sendmsg_amd(b, nir_load_gs_wave_id_amd(b),
+                   .base = AC_SENDMSG_GS_OP_EMIT | AC_SENDMSG_GS | (stream << 8));
 
+   nir_instr_remove(&intrin->instr);
    return true;
 }
 
@@ -1016,6 +1019,21 @@ lower_legacy_gs_set_vertex_and_primitive_count(nir_builder *b, nir_intrinsic_ins
 }
 
 static bool
+lower_legacy_gs_end_primitive_with_counter(nir_builder *b, nir_intrinsic_instr *intrin,
+                                               lower_legacy_gs_state *s)
+{
+   b->cursor = nir_before_instr(&intrin->instr);
+   const unsigned stream = nir_intrinsic_stream_id(intrin);
+
+   /* Signal primitive emission. */
+   nir_sendmsg_amd(b, nir_load_gs_wave_id_amd(b),
+                   .base = AC_SENDMSG_GS_OP_CUT | AC_SENDMSG_GS | (stream << 8));
+
+   nir_instr_remove(&intrin->instr);
+   return true;
+}
+
+static bool
 lower_legacy_gs_intrinsic(nir_builder *b, nir_instr *instr, void *state)
 {
    lower_legacy_gs_state *s = (lower_legacy_gs_state *) state;
@@ -1029,6 +1047,8 @@ lower_legacy_gs_intrinsic(nir_builder *b, nir_instr *instr, void *state)
       return lower_legacy_gs_store_output(b, intrin, s);
    else if (intrin->intrinsic == nir_intrinsic_emit_vertex_with_counter)
       return lower_legacy_gs_emit_vertex_with_counter(b, intrin, s);
+   else if (intrin->intrinsic == nir_intrinsic_end_primitive_with_counter)
+      return lower_legacy_gs_end_primitive_with_counter(b, intrin, s);
    else if (intrin->intrinsic == nir_intrinsic_set_vertex_and_primitive_count)
       return lower_legacy_gs_set_vertex_and_primitive_count(b, intrin, s);
 
