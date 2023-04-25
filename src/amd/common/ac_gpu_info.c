@@ -940,11 +940,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
 
    info->memory_freq_mhz_effective *= ac_memory_ops_per_clock(info->vram_type);
 
-   /* unified ring */
-   info->has_video_hw.vcn_decode
-                  = (info->family >= CHIP_GFX1100 || info->family == CHIP_GFX940)
-                    ? info->ip[AMD_IP_VCN_UNIFIED].num_queues != 0
-                    : info->ip[AMD_IP_VCN_DEC].num_queues != 0;
    info->has_userptr = true;
    info->has_syncobj = has_syncobj(fd);
    info->has_timeline_syncobj = has_timeline_syncobj(fd);
@@ -1709,9 +1704,9 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    vce_encode = %u\n", info->ip[AMD_IP_VCE].num_queues);
 
    if (info->family >= CHIP_GFX1100 || info->family == CHIP_GFX940)
-      fprintf(f, "    vcn_unified = %u\n", info->has_video_hw.vcn_decode);
+      fprintf(f, "    vcn_unified = %u\n", info->ip[AMD_IP_VCN_UNIFIED].num_queues);
    else {
-      fprintf(f, "    vcn_decode = %u\n", info->has_video_hw.vcn_decode);
+      fprintf(f, "    vcn_decode = %u\n", info->ip[AMD_IP_VCN_DEC].num_queues);
       fprintf(f, "    vcn_encode = %u\n", info->ip[AMD_IP_VCN_ENC].num_queues);
    }
 

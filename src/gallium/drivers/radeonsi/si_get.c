@@ -774,7 +774,9 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
    case PIPE_VIDEO_CAP_SUPPORTED:
       if (codec != PIPE_VIDEO_FORMAT_JPEG &&
           !(sscreen->info.ip[AMD_IP_UVD].num_queues ||
-            sscreen->info.has_video_hw.vcn_decode))
+            ((sscreen->info.family >= CHIP_GFX1100 || sscreen->info.family == CHIP_GFX940) ?
+	      sscreen->info.ip[AMD_IP_VCN_UNIFIED].num_queues :
+	      sscreen->info.ip[AMD_IP_VCN_DEC].num_queues)))
          return false;
       if (QUERYABLE_KERNEL &&
           codec != PIPE_VIDEO_FORMAT_JPEG &&
@@ -1248,7 +1250,9 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
    sscreen->b.query_memory_info = si_query_memory_info;
    sscreen->b.get_disk_shader_cache = si_get_disk_shader_cache;
 
-   if (sscreen->info.ip[AMD_IP_UVD].num_queues || sscreen->info.has_video_hw.vcn_decode ||
+   if (sscreen->info.ip[AMD_IP_UVD].num_queues ||
+       ((sscreen->info.family >= CHIP_GFX1100 || sscreen->info.family == CHIP_GFX940) ?
+	 sscreen->info.ip[AMD_IP_VCN_UNIFIED].num_queues : sscreen->info.ip[AMD_IP_VCN_DEC].num_queues) ||
        sscreen->info.ip[AMD_IP_VCN_JPEG].num_queues || sscreen->info.ip[AMD_IP_VCE].num_queues ||
        sscreen->info.ip[AMD_IP_UVD_ENC].num_queues || sscreen->info.ip[AMD_IP_VCN_ENC].num_queues) {
       sscreen->b.get_video_param = si_get_video_param;
