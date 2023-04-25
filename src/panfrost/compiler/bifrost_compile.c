@@ -2426,9 +2426,6 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
       bi_fma_to(b, sz, dst, s0, s1, bi_negzero());
       break;
 
-   case nir_op_fsub:
-      s1 = bi_neg(s1);
-      FALLTHROUGH;
    case nir_op_fadd:
       bi_fadd_to(b, sz, dst, s0, s1);
       break;
