@@ -43,7 +43,7 @@
 struct radv_physical_device;
 struct radv_device;
 struct radv_pipeline;
-struct radv_ray_tracing_module;
+struct radv_ray_tracing_group;
 struct radv_pipeline_key;
 struct radv_shader_args;
 struct radv_vs_input_state;
@@ -757,7 +757,7 @@ void radv_get_nir_options(struct radv_physical_device *device);
 
 nir_shader *create_rt_shader(struct radv_device *device,
                              const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                             struct radv_ray_tracing_module *groups,
+                             struct radv_ray_tracing_group *groups,
                              const struct radv_pipeline_key *key);
 
 #endif

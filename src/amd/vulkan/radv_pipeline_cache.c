@@ -80,7 +80,7 @@ radv_hash_rt_stages(struct mesa_sha1 *ctx, const VkPipelineShaderStageCreateInfo
 void
 radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                      const struct radv_pipeline_key *key,
-                     const struct radv_ray_tracing_module *groups, uint32_t flags)
+                     const struct radv_ray_tracing_group *groups, uint32_t flags)
 {
    RADV_FROM_HANDLE(radv_pipeline_layout, layout, pCreateInfo->layout);
    struct mesa_sha1 ctx;
@@ -410,7 +410,7 @@ radv_pipeline_cache_search(struct radv_device *device, struct vk_pipeline_cache 
       unsigned num_rt_groups = radv_pipeline_to_ray_tracing(pipeline)->group_count;
       assert(num_rt_groups == pipeline_obj->num_stack_sizes);
       struct radv_pipeline_shader_stack_size *stack_sizes = pipeline_obj->data;
-      struct radv_ray_tracing_module *rt_groups = radv_pipeline_to_ray_tracing(pipeline)->groups;
+      struct radv_ray_tracing_group *rt_groups = radv_pipeline_to_ray_tracing(pipeline)->groups;
       for (unsigned i = 0; i < num_rt_groups; i++)
          rt_groups[i].stack_size = stack_sizes[i];
    }
@@ -473,7 +473,7 @@ radv_pipeline_cache_insert(struct radv_device *device, struct vk_pipeline_cache 
 
    if (pipeline->type == RADV_PIPELINE_RAY_TRACING) {
       struct radv_pipeline_shader_stack_size *stack_sizes = pipeline_obj->data;
-      struct radv_ray_tracing_module *rt_groups = radv_pipeline_to_ray_tracing(pipeline)->groups;
+      struct radv_ray_tracing_group *rt_groups = radv_pipeline_to_ray_tracing(pipeline)->groups;
       for (unsigned i = 0; i < num_rt_groups; i++)
          stack_sizes[i] = rt_groups[i].stack_size;
    }

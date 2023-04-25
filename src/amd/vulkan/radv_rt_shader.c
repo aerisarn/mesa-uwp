@@ -818,7 +818,7 @@ inline_constants(nir_shader *dst, nir_shader *src)
 static void
 insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, nir_ssa_def *idx,
                uint32_t call_idx_base, uint32_t call_idx, unsigned stage_idx,
-               struct radv_ray_tracing_module *groups)
+               struct radv_ray_tracing_group *groups)
 {
    uint32_t workgroup_size = b->shader->info.workgroup_size[0] * b->shader->info.workgroup_size[1] *
                              b->shader->info.workgroup_size[2];
@@ -1189,7 +1189,7 @@ struct traversal_data {
    struct rt_traversal_vars *trav_vars;
    nir_variable *barycentrics;
 
-   struct radv_ray_tracing_module *groups;
+   struct radv_ray_tracing_group *groups;
    const struct radv_pipeline_key *key;
 };
 
@@ -1423,7 +1423,7 @@ load_stack_entry(nir_builder *b, nir_ssa_def *index, const struct radv_ray_trave
 static nir_shader *
 build_traversal_shader(struct radv_device *device,
                        const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                       struct radv_ray_tracing_module *groups, const struct radv_pipeline_key *key)
+                       struct radv_ray_tracing_group *groups, const struct radv_pipeline_key *key)
 {
    /* Create the traversal shader as an intersection shader to prevent validation failures due to
     * invalid variable modes.*/
@@ -1619,7 +1619,7 @@ move_rt_instructions(nir_shader *shader)
 
 nir_shader *
 create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                 struct radv_ray_tracing_module *groups, const struct radv_pipeline_key *key)
+                 struct radv_ray_tracing_group *groups, const struct radv_pipeline_key *key)
 {
    nir_builder b = radv_meta_init_shader(device, MESA_SHADER_RAYGEN, "rt_combined");
    b.shader->info.internal = false;
