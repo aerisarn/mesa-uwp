@@ -394,7 +394,6 @@ depth_layout_string(ir_depth_layout layout);
  */
 struct ir_state_slot {
    gl_state_index16 tokens[STATE_LENGTH];
-   int swizzle;
 };
 
 
