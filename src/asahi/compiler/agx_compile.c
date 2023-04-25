@@ -1004,6 +1004,38 @@ agx_alu_src_index(agx_builder *b, nir_alu_src src)
    return agx_extract_nir_src(b, src.src, channel);
 }
 
+/*
+ * Emit an instruction translating (s0 * s1) + (s2 << s3). Assuming s3 is
+ * constant, this is an imad instruction. If s1 == 1, then this is optimized to
+ * an iadd instruction, which is faster.
+ */
+static agx_instr *
+agx_emit_imadshl_agx(agx_builder *b, nir_alu_instr *alu, agx_index dst,
+                     agx_index s0, agx_index s1, agx_index s2, agx_index s3)
+{
+   /* If the shift is not constant, use a variable shift. This should never
+    * happen in practice but we don't want to constrain the NIR.
+    */
+   unsigned shift;
+   if (!nir_src_is_const(alu->src[3].src)) {
+      s2 = agx_bfi(b, agx_immediate(0), s2, s3, 0);
+      shift = 0;
+   } else {
+      shift = nir_alu_src_as_uint(alu->src[3]);
+   }
+
+   assert(shift <= 4 && "domain restriction on the input NIR");
+
+   /* Emit iadd if possible, else imad */
+   if (nir_src_is_const(alu->src[1].src) &&
+       nir_alu_src_as_uint(alu->src[1]) == 1) {
+
+      return agx_iadd_to(b, dst, s0, s2, shift);
+   } else {
+      return agx_imad_to(b, dst, s0, s1, s2, shift);
+   }
+}
+
 static agx_instr *
 agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 {
@@ -1120,6 +1152,10 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 
    case nir_op_iadd:
       return agx_iadd_to(b, dst, s0, s1, 0);
+   case nir_op_imadshl_agx:
+      return agx_emit_imadshl_agx(b, instr, dst, s0, s1, s2, s3);
+   case nir_op_imsubshl_agx:
+      return agx_emit_imadshl_agx(b, instr, dst, s0, s1, agx_neg(s2), s3);
    case nir_op_isub:
       return agx_iadd_to(b, dst, s0, agx_neg(s1), 0);
    case nir_op_ineg:
