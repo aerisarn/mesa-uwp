@@ -2027,6 +2027,21 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
    NIR_PASS_V(nir, nir_opt_peephole_select, 64, false, true);
 
    NIR_PASS_V(nir, nir_opt_algebraic_late);
+
+   /* Fuse add/sub/multiplies/shifts after running opt_algebraic_late to fuse
+    * isub but before shifts are lowered.
+    */
+   do {
+      progress = false;
+
+      NIR_PASS(progress, nir, nir_opt_dce);
+      NIR_PASS(progress, nir, nir_opt_cse);
+      NIR_PASS(progress, nir, agx_nir_fuse_algebraic_late);
+   } while (progress);
+
+   /* Do remaining lowering late, since this inserts &s for shifts so we want to
+    * do it after fusing constant shifts. Constant folding will clean up.
+    */
    NIR_PASS_V(nir, agx_nir_lower_algebraic_late);
    NIR_PASS_V(nir, nir_opt_constant_folding);
    NIR_PASS_V(nir, nir_opt_combine_barriers, combine_all_barriers, NULL);
