@@ -1460,6 +1460,9 @@ instruction_latency(const struct v3d_device_info *devinfo,
             after_inst->type != V3D_QPU_INSTR_TYPE_ALU)
                 return latency;
 
+        if (v3d_qpu_instr_is_sfu(before_inst))
+                return 2;
+
         if (before_inst->alu.add.op != V3D_QPU_A_NOP &&
             before_inst->alu.add.magic_write) {
                 latency = MAX2(latency,
@@ -1475,9 +1478,6 @@ instruction_latency(const struct v3d_device_info *devinfo,
                                                    before_inst->alu.mul.waddr,
                                                    after_inst));
         }
-
-        if (v3d_qpu_instr_is_sfu(before_inst))
-                return 2;
 
         return latency;
 }
