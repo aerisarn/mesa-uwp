@@ -2866,7 +2866,6 @@ crocus_create_surface(struct pipe_context *ctx,
    psurf->format = tmpl->format;
    psurf->width = tex->width0;
    psurf->height = tex->height0;
-   psurf->texture = tex;
    psurf->u.tex.first_layer = tmpl->u.tex.first_layer;
    psurf->u.tex.last_layer = tmpl->u.tex.last_layer;
    psurf->u.tex.level = tmpl->u.tex.level;
@@ -2954,6 +2953,7 @@ crocus_create_surface(struct pipe_context *ctx,
    assert(view->levels == 1);
 
    /* TODO: compressed pbo uploads aren't working here */
+   pipe_surface_reference(&psurf, NULL);
    return NULL;
 
    uint64_t offset_B = 0;
@@ -2974,8 +2974,10 @@ crocus_create_surface(struct pipe_context *ctx,
        * Return NULL to force the state tracker to take fallback paths.
        */
       // TODO: check if the gen7 check is right, originally gen8
-      if (view->array_len > 1 || GFX_VER == 7)
+      if (view->array_len > 1 || GFX_VER == 7) {
+         pipe_surface_reference(&psurf, NULL);
          return NULL;
+      }
 
       const bool is_3d = res->surf.dim == ISL_SURF_DIM_3D;
       isl_surf_get_image_surf(&screen->isl_dev, &res->surf,
