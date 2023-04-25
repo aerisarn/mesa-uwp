@@ -2725,6 +2725,13 @@ nir_ssa_scalar_resolved(nir_ssa_def *def, unsigned channel)
    return nir_ssa_scalar_chase_movs(nir_get_ssa_scalar(def, channel));
 }
 
+static inline uint64_t
+nir_alu_src_as_uint(nir_alu_src src)
+{
+   assert(src.src.is_ssa && "precondition");
+   nir_ssa_scalar scalar = nir_get_ssa_scalar(src.src.ssa, src.swizzle[0]);
+   return nir_ssa_scalar_as_uint(scalar);
+}
 
 typedef struct {
    bool success;
