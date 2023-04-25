@@ -1284,7 +1284,7 @@ RADV driver environment variables
       disable value numbering
    ``noopt``
       disable various optimizations
-   ``noscheduling``
+   ``nosched``
       disable instructions scheduling
    ``perfinfo``
       print information used to calculate some pipeline statistics
