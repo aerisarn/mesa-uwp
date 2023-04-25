@@ -5471,11 +5471,6 @@ typedef struct nir_lower_tex_options {
     */
    bool lower_invalid_implicit_lod;
 
-   /* If true, round the layer component of the coordinates source to the nearest
-    * integer for all array ops.
-    */
-   bool lower_array_layer_round_even;
-
    /* If true, texture_index (sampler_index) will be zero if a texture_offset
     * (sampler_offset) source is present. This is convenient for backends that
     * support indirect indexing of textures (samplers) but not offsetting it.
