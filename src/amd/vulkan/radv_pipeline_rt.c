@@ -194,29 +194,17 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
       }
    }
    VkPipelineShaderStageCreateInfo *stages = NULL;
-   VkRayTracingShaderGroupCreateInfoKHR *groups = NULL;
    local_create_info.stageCount = total_stages;
    local_create_info.groupCount = total_groups;
    local_create_info.pStages = stages =
       malloc(sizeof(VkPipelineShaderStageCreateInfo) * total_stages);
    if (!local_create_info.pStages)
       return local_create_info;
-   local_create_info.pGroups = groups =
-      malloc(sizeof(VkRayTracingShaderGroupCreateInfoKHR) * total_groups);
-   if (!local_create_info.pGroups) {
-      free((void *)local_create_info.pStages);
-      /* Some compilers throw use-after-free errors despite all callers immediately returning
-       * VK_ERROR_OUT_OF_HOST_MEMORY in this case, circumvent those by setting pStages to NULL */
-      local_create_info.pStages = NULL;
-      return local_create_info;
-   }
 
    total_stages = pCreateInfo->stageCount;
    total_groups = pCreateInfo->groupCount;
    for (unsigned j = 0; j < pCreateInfo->stageCount; ++j)
       stages[j] = pCreateInfo->pStages[j];
-   for (unsigned j = 0; j < pCreateInfo->groupCount; ++j)
-      groups[j] = pCreateInfo->pGroups[j];
 
    if (pCreateInfo->pLibraryInfo) {
       for (unsigned i = 0; i < pCreateInfo->pLibraryInfo->libraryCount; ++i) {
@@ -226,18 +214,6 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
 
          for (unsigned j = 0; j < library_pipeline->stage_count; ++j)
             stages[total_stages + j] = library_pipeline->stages[j];
-         for (unsigned j = 0; j < library_pipeline->group_count; ++j) {
-            VkRayTracingShaderGroupCreateInfoKHR *dst = &groups[total_groups + j];
-            *dst = library_pipeline->group_infos[j];
-            if (dst->generalShader != VK_SHADER_UNUSED_KHR)
-               dst->generalShader += total_stages;
-            if (dst->closestHitShader != VK_SHADER_UNUSED_KHR)
-               dst->closestHitShader += total_stages;
-            if (dst->anyHitShader != VK_SHADER_UNUSED_KHR)
-               dst->anyHitShader += total_stages;
-            if (dst->intersectionShader != VK_SHADER_UNUSED_KHR)
-               dst->intersectionShader += total_stages;
-         }
          total_stages += library_pipeline->stage_count;
          total_groups += library_pipeline->group_count;
       }
@@ -378,7 +354,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
 
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
-   if (!local_create_info.pStages || !local_create_info.pGroups)
+   if (!local_create_info.pStages)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    size_t pipeline_size =
@@ -396,7 +372,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
       radv_generate_pipeline_key(device, &pipeline->base, pCreateInfo->flags);
 
    pipeline->ctx = ralloc_context(NULL);
-
+   pipeline->group_count = local_create_info.groupCount;
    result = radv_rt_fill_group_info(device, pCreateInfo, pipeline->groups);
    if (result != VK_SUCCESS)
       goto pipeline_fail;
@@ -412,17 +388,6 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
       pipeline->stage_count = local_create_info.stageCount;
    }
 
-   if (local_create_info.groupCount) {
-      size_t size = sizeof(VkRayTracingShaderGroupCreateInfoKHR) * local_create_info.groupCount;
-      pipeline->group_count = local_create_info.groupCount;
-      pipeline->group_infos = ralloc_size(pipeline->ctx, size);
-      if (!pipeline->group_infos) {
-         result = VK_ERROR_OUT_OF_HOST_MEMORY;
-         goto pipeline_fail;
-      }
-      memcpy(pipeline->group_infos, local_create_info.pGroups, size);
-   }
-
    radv_hash_rt_shaders(pipeline->sha1, pCreateInfo, &key, pipeline->groups,
                         radv_get_hash_flags(device, keep_statistic_info));
 
@@ -432,7 +397,6 @@ pipeline_fail:
    if (result != VK_SUCCESS)
       radv_pipeline_destroy(device, &pipeline->base, pAllocator);
 fail:
-   free((void *)local_create_info.pGroups);
    free((void *)local_create_info.pStages);
    return result;
 }
@@ -567,7 +531,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
-   if (!local_create_info.pStages || !local_create_info.pGroups)
+   if (!local_create_info.pStages)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    struct vk_shader_module module = {.base.type = VK_OBJECT_TYPE_SHADER_MODULE};
@@ -649,7 +613,6 @@ pipeline_fail:
    if (result != VK_SUCCESS)
       radv_pipeline_destroy(device, &rt_pipeline->base.base, pAllocator);
 fail:
-   free((void *)local_create_info.pGroups);
    free((void *)local_create_info.pStages);
    return result;
 }
