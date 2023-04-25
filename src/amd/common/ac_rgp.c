@@ -44,6 +44,7 @@
 #define SQTT_GPU_NAME_MAX_SIZE 256
 #define SQTT_MAX_NUM_SE        32
 #define SQTT_SA_PER_SE         2
+#define SQTT_ACTIVE_PIXEL_PACKER_MASK_DWORDS 4
 
 enum sqtt_version
 {
@@ -345,10 +346,16 @@ struct sqtt_file_chunk_asic_info {
    uint32_t lds_granularity;
    uint16_t cu_mask[SQTT_MAX_NUM_SE][SQTT_SA_PER_SE];
    char reserved1[128];
+   uint32_t active_pixel_packer_mask[SQTT_ACTIVE_PIXEL_PACKER_MASK_DWORDS];
+   char reserved2[16];
+   uint32_t gl1_cache_size;
+   uint32_t instruction_cache_size;
+   uint32_t scalar_cache_size;
+   uint32_t mall_cache_size;
    char padding[4];
 };
 
-static_assert(sizeof(struct sqtt_file_chunk_asic_info) == 720,
+static_assert(sizeof(struct sqtt_file_chunk_asic_info) == 768,
               "sqtt_file_chunk_asic_info doesn't match RGP spec");
 
 static enum sqtt_gfxip_level ac_gfx_level_to_sqtt_gfxip_level(enum amd_gfx_level gfx_level)
@@ -409,7 +416,7 @@ static void ac_sqtt_fill_asic_info(struct radeon_info *rad_info,
    chunk->header.chunk_id.type = SQTT_FILE_CHUNK_TYPE_ASIC_INFO;
    chunk->header.chunk_id.index = 0;
    chunk->header.major_version = 0;
-   chunk->header.minor_version = 4;
+   chunk->header.minor_version = 5;
    chunk->header.size_in_bytes = sizeof(*chunk);
 
    chunk->flags = 0;
@@ -490,6 +497,11 @@ static void ac_sqtt_fill_asic_info(struct radeon_info *rad_info,
          chunk->cu_mask[se][sa] = rad_info->cu_mask[se][sa];
       }
    }
+
+   chunk->gl1_cache_size = rad_info->l1_cache_size;
+   chunk->instruction_cache_size = rad_info->sqc_inst_cache_size;
+   chunk->scalar_cache_size = rad_info->sqc_scalar_cache_size;
+   chunk->mall_cache_size = rad_info->l3_cache_size_mb * 1024 * 1024;
 }
 
 /**
