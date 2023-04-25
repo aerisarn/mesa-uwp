@@ -710,7 +710,10 @@ vk_common_GetPipelineCacheData(VkDevice _device,
          intptr_t data_size_resv = blob_reserve_uint32(&blob);
          blob_write_bytes(&blob, object->key_data, object->key_size);
 
-         blob_align(&blob, VK_PIPELINE_CACHE_BLOB_ALIGN);
+         if (!blob_align(&blob, VK_PIPELINE_CACHE_BLOB_ALIGN)) {
+            result = VK_INCOMPLETE;
+            break;
+         }
 
          uint32_t data_size;
          if (!vk_pipeline_cache_object_serialize(cache, object,
