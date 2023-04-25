@@ -669,6 +669,12 @@ void pvr_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
    vk_foreach_struct (ext, pFeatures->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES: {
+         VkPhysicalDevicePrivateDataFeatures *pFeature =
+            (VkPhysicalDevicePrivateDataFeatures *)ext;
+         pFeature->privateData = VK_TRUE;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
          VkPhysicalDeviceTimelineSemaphoreFeatures *pFeature =
             (VkPhysicalDeviceTimelineSemaphoreFeatures *)ext;
