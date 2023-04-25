@@ -923,7 +923,7 @@ pvr_copy_image_to_buffer_region(struct pvr_device *device,
             return result;
          }
 
-         transfer_cmd->dst.dev_addr.addr += buffer_slice_size;
+         dst_surface.dev_addr.addr += buffer_slice_size;
 
          if (src_surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED)
             src_surface.z_position += 1.0f;
