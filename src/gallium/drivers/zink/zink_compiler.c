@@ -3186,13 +3186,13 @@ split_blocks(nir_shader *nir)
 }
 
 static void
-zink_shader_dump(void *words, size_t size, const char *file)
+zink_shader_dump(const struct zink_shader *zs, void *words, size_t size, const char *file)
 {
    FILE *fp = fopen(file, "wb");
    if (fp) {
       fwrite(words, 1, size, fp);
       fclose(fp);
-      fprintf(stderr, "wrote '%s'...\n", file);
+      fprintf(stderr, "wrote %s shader '%s'...\n", _mesa_shader_stage_to_string(zs->info.stage), file);
    }
 }
 
@@ -3209,7 +3209,7 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
       char buf[256];
       static int i;
       snprintf(buf, sizeof(buf), "dump%02d.spv", i++);
-      zink_shader_dump(spirv->words, spirv->num_words * sizeof(uint32_t), buf);
+      zink_shader_dump(zs, spirv->words, spirv->num_words * sizeof(uint32_t), buf);
    }
 
    sci.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
