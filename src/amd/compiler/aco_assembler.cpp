@@ -46,10 +46,12 @@ struct asm_context {
    enum amd_gfx_level gfx_level;
    std::vector<std::pair<int, SOPP_instruction*>> branches;
    std::map<unsigned, constaddr_info> constaddrs;
+   std::vector<struct aco_symbol>* symbols;
    const int16_t* opcode;
    // TODO: keep track of branch instructions referring blocks
    // and, when emitting the block, correct the offset in instr
-   asm_context(Program* program_) : program(program_), gfx_level(program->gfx_level)
+   asm_context(Program* program_, std::vector<struct aco_symbol>* symbols_)
+      : program(program_), gfx_level(program->gfx_level), symbols(symbols_)
    {
       if (gfx_level <= GFX7)
          opcode = &instr_info.opcode_gfx7[0];
@@ -136,6 +138,18 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       assert(instr->operands[1].isConstant());
       /* in case it's an inline constant, make it a literal */
       instr->operands[1] = Operand::literal32(instr->operands[1].constantValue());
+   } else if (instr->opcode == aco_opcode::p_load_symbol) {
+      assert(instr->operands[0].isConstant());
+      assert(ctx.symbols);
+
+      struct aco_symbol info;
+      info.id = (enum aco_symbol_id)instr->operands[0].constantValue();
+      info.offset = out.size() + 1;
+      ctx.symbols->push_back(info);
+
+      instr->opcode = aco_opcode::s_mov_b32;
+      /* in case it's an inline constant, make it a literal */
+      instr->operands[0] = Operand::literal32(0);
    }
 
    /* Promote VOP12C to VOP3 if necessary. */
@@ -1036,6 +1050,13 @@ insert_code(asm_context& ctx, std::vector<uint32_t>& out, unsigned insert_before
       if (info.add_literal >= insert_before)
          info.add_literal += insert_count;
    }
+
+   if (ctx.symbols) {
+      for (auto& symbol : *ctx.symbols) {
+         if (symbol.offset >= insert_before)
+            symbol.offset += insert_count;
+      }
+   }
 }
 
 static void
@@ -1171,9 +1192,10 @@ fix_constaddrs(asm_context& ctx, std::vector<uint32_t>& out)
 }
 
 unsigned
-emit_program(Program* program, std::vector<uint32_t>& code)
+emit_program(Program* program, std::vector<uint32_t>& code,
+             std::vector<struct aco_symbol>* symbols)
 {
-   asm_context ctx(program);
+   asm_context ctx(program, symbols);
 
    if (program->stage.hw == HWStage::VS || program->stage.hw == HWStage::FS ||
        program->stage.hw == HWStage::NGG)

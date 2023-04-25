@@ -530,6 +530,7 @@ SOP1 = {
    (  -1,   -1,   -1,   -1,   -1, 0x4d, "s_sendmsg_rtn_b64"),
    # actually a pseudo-instruction. it's lowered to SALU during assembly though, so it's useful to identify it as a SOP1.
    (  -1,   -1,   -1,   -1,   -1,   -1, "p_constaddr_getpc"),
+   (  -1,   -1,   -1,   -1,   -1,   -1, "p_load_symbol"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, gfx11, name, cls) in default_class(SOP1, InstrClass.Salu):
    opcode(name, gfx7, gfx9, gfx10, gfx11, Format.SOP1, cls)
