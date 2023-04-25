@@ -3832,16 +3832,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
                                        nir_intrinsic_io_semantics(instr).high_16bits);
       break;
    }
-   case nir_intrinsic_emit_vertex_with_counter: {
-      unsigned stream = nir_intrinsic_stream_id(instr);
-      LLVMValueRef next_vertex = get_src(ctx, instr->src[0]);
-      ctx->abi->emit_vertex_with_counter(ctx->abi, stream, next_vertex, ctx->abi->outputs);
-      break;
-   }
-   case nir_intrinsic_end_primitive:
-   case nir_intrinsic_end_primitive_with_counter:
-      ctx->abi->emit_primitive(ctx->abi, nir_intrinsic_stream_id(instr));
-      break;
    case nir_intrinsic_sendmsg_amd: {
       unsigned imm = nir_intrinsic_base(instr);
       LLVMValueRef m0_content = get_src(ctx, instr->src[0]);
@@ -4122,22 +4112,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_workgroup_num_input_primitives_amd:
       result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info), 22, 9);
       break;
-   case nir_intrinsic_alloc_vertices_and_primitives_amd: {
-      /* The caller should only call this conditionally for wave 0.
-       *
-       * Send GS Alloc Req message from the first wave of the group to SPI.
-       * Message payload is:
-       * - bits 0..10: vertices in group
-       * - bits 12..22: primitives in group
-       */
-      LLVMValueRef vtx_cnt = get_src(ctx, instr->src[0]);
-      LLVMValueRef prim_cnt = get_src(ctx, instr->src[1]);
-      LLVMValueRef msg = LLVMBuildShl(ctx->ac.builder, prim_cnt,
-                                      LLVMConstInt(ctx->ac.i32, 12, false), "");
-      msg = LLVMBuildOr(ctx->ac.builder, msg, vtx_cnt, "");
-      ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_ALLOC_REQ, msg);
-      break;
-   }
    case nir_intrinsic_overwrite_vs_arguments_amd:
       ctx->abi->vertex_id_replaced = get_src(ctx, instr->src[0]);
       ctx->abi->instance_id_replaced = get_src(ctx, instr->src[1]);

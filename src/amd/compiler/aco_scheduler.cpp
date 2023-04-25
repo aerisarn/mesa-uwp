@@ -424,7 +424,7 @@ bool
 is_done_sendmsg(amd_gfx_level gfx_level, const Instruction* instr)
 {
    if (gfx_level <= GFX10_3 && instr->opcode == aco_opcode::s_sendmsg)
-      return (instr->sopp().imm & sendmsg_id_mask) == _sendmsg_gs_done;
+      return (instr->sopp().imm & sendmsg_id_mask) == sendmsg_gs_done;
    return false;
 }
 

@@ -101,8 +101,8 @@ aco_ptr<Instruction> create_s_mov(Definition dst, Operand src);
 
 enum sendmsg {
    sendmsg_none = 0,
-   _sendmsg_gs = 2, /* gfx6 to gfx10.3 */
-   _sendmsg_gs_done = 3, /* gfx6 to gfx10.3 */
+   sendmsg_gs = 2, /* gfx6 to gfx10.3 */
+   sendmsg_gs_done = 3, /* gfx6 to gfx10.3 */
    sendmsg_hs_tessfactor = 2, /* gfx11+ */
    sendmsg_dealloc_vgprs = 3, /* gfx11+ */
    sendmsg_save_wave = 4, /* gfx8 to gfx10.3 */
@@ -126,20 +126,6 @@ enum sendmsg_rtn {
    sendmsg_rtn_get_tba = 5,
    sendmsg_rtn_mask = 0xff,
 };
-
-inline sendmsg
-sendmsg_gs(bool cut, bool emit, unsigned stream)
-{
-    assert(stream < 4);
-    return (sendmsg)((unsigned)_sendmsg_gs | (cut << 4) | (emit << 5) | (stream << 8));
-}
-
-inline sendmsg
-sendmsg_gs_done(bool cut, bool emit, unsigned stream)
-{
-    assert(stream < 4);
-    return (sendmsg)((unsigned)_sendmsg_gs_done | (cut << 4) | (emit << 5) | (stream << 8));
-}
 
 enum bperm_swiz {
    bperm_b1_sign = 8,

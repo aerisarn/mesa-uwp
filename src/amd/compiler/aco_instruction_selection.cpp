@@ -8998,20 +8998,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       break;
    }
-   case nir_intrinsic_emit_vertex_with_counter: {
-      assert(ctx->stage.hw == HWStage::GS);
-      unsigned stream = nir_intrinsic_stream_id(instr);
-      bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(false, true, stream));
-      break;
-   }
-   case nir_intrinsic_end_primitive_with_counter: {
-      if (ctx->stage.hw != HWStage::NGG) {
-         unsigned stream = nir_intrinsic_stream_id(instr);
-         bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1,
-                  sendmsg_gs(true, false, stream));
-      }
-      break;
-   }
    case nir_intrinsic_sendmsg_amd: {
       unsigned imm = nir_intrinsic_base(instr);
       Temp m0_content = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
@@ -9033,24 +9019,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_is_subgroup_invocation_lt_amd: {
       Temp src = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), lanecount_to_mask(ctx, src));
-      break;
-   }
-   case nir_intrinsic_alloc_vertices_and_primitives_amd: {
-      assert(ctx->stage.hw == HWStage::NGG);
-      Temp num_vertices = get_ssa_temp(ctx, instr->src[0].ssa);
-      Temp num_primitives = get_ssa_temp(ctx, instr->src[1].ssa);
-
-      /* Put the number of vertices and primitives into m0 for the GS_ALLOC_REQ */
-      Temp tmp =
-         bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc),
-                  num_primitives, Operand::c32(12u));
-      tmp = bld.sop2(aco_opcode::s_or_b32, bld.m0(bld.def(s1)), bld.def(s1, scc),
-                     tmp, num_vertices);
-
-      /* Request the SPI to allocate space for the primitives and vertices
-       * that will be exported by the threadgroup.
-       */
-      bld.sopp(aco_opcode::s_sendmsg, bld.m0(tmp), -1, sendmsg_gs_alloc_req);
       break;
    }
    case nir_intrinsic_gds_atomic_add_amd: {
@@ -11410,14 +11378,7 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
             bld.barrier(aco_opcode::p_barrier,
                         memory_sync_info(storage_shared, semantic_acqrel, scope), scope);
          }
-
-         if (ctx.stage == vertex_geometry_gs || ctx.stage == tess_eval_geometry_gs) {
-            ctx.gs_wave_id = bld.pseudo(aco_opcode::p_extract, bld.def(s1, m0), bld.def(s1, scc),
-                                        get_arg(&ctx, args->merged_wave_info), Operand::c32(2u),
-                                        Operand::c32(8u), Operand::zero());
-         }
-      } else if (ctx.stage == geometry_gs)
-         ctx.gs_wave_id = get_arg(&ctx, args->gs_wave_id);
+      }
 
       visit_cf_list(&ctx, &func->body);
 

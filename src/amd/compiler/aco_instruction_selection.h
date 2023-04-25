@@ -91,9 +91,6 @@ struct isel_context {
 
    Temp arg_temps[AC_MAX_ARGS];
 
-   /* GS inputs */
-   Temp gs_wave_id;
-
    /* VS output information */
    bool export_clip_dists;
    unsigned num_clip_distances;
