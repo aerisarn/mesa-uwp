@@ -28,6 +28,13 @@ impl RegFile {
         }
     }
 
+    pub fn is_gpr(&self) -> bool {
+        match self {
+            RegFile::GPR | RegFile::UGPR => true,
+            RegFile::Pred | RegFile::UPred => false,
+        }
+    }
+
     pub fn is_predicate(&self) -> bool {
         match self {
             RegFile::GPR | RegFile::UGPR => false,
@@ -98,6 +105,10 @@ pub trait HasRegFile {
 
     fn is_uniform(&self) -> bool {
         self.file().is_uniform()
+    }
+
+    fn is_gpr(&self) -> bool {
+        self.file().is_gpr()
     }
 
     fn is_predicate(&self) -> bool {
@@ -425,6 +436,15 @@ pub enum SrcRef {
 }
 
 impl SrcRef {
+    pub fn is_alu(&self) -> bool {
+        match self {
+            SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::CBuf(_) => true,
+            SrcRef::SSA(ssa) => ssa.is_gpr(),
+            SrcRef::Reg(reg) => reg.is_gpr(),
+            SrcRef::True | SrcRef::False => false,
+        }
+    }
+
     pub fn is_predicate(&self) -> bool {
         match self {
             SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::CBuf(_) => false,
@@ -725,6 +745,59 @@ impl Src {
             | SrcRef::False
             | SrcRef::Imm32(_)
             | SrcRef::CBuf(_) => false,
+        }
+    }
+
+    pub fn supports_type(&self, src_type: &SrcType) -> bool {
+        match src_type {
+            SrcType::SSA => {
+                if !self.src_mod.is_none() {
+                    return false;
+                }
+
+                match self.src_ref {
+                    SrcRef::SSA(_) | SrcRef::Reg(_) => true,
+                    _ => false,
+                }
+            }
+            SrcType::GPR => {
+                if !self.src_mod.is_none() {
+                    return false;
+                }
+
+                match self.src_ref {
+                    SrcRef::Zero | SrcRef::SSA(_) | SrcRef::Reg(_) => true,
+                    _ => false,
+                }
+            }
+            SrcType::ALU => self.src_mod.is_none() && self.src_ref.is_alu(),
+            SrcType::F32 | SrcType::F64 => {
+                match self.src_mod {
+                    SrcMod::None
+                    | SrcMod::FAbs
+                    | SrcMod::FNeg
+                    | SrcMod::FNegAbs => (),
+                    _ => return false,
+                }
+
+                self.src_ref.is_alu()
+            }
+            SrcType::I32 => {
+                match self.src_mod {
+                    SrcMod::None | SrcMod::INeg => (),
+                    _ => return false,
+                }
+
+                self.src_ref.is_alu()
+            }
+            SrcType::Pred => {
+                match self.src_mod {
+                    SrcMod::None | SrcMod::BNot => (),
+                    _ => return false,
+                }
+
+                self.src_ref.is_predicate()
+            }
         }
     }
 }
