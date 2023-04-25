@@ -1632,11 +1632,11 @@ LLVMValueRef ac_build_ddxy(struct ac_llvm_context *ctx, uint32_t mask, int idx, 
    return ac_build_intrinsic(ctx, name, result_type, &result, 1, 0);
 }
 
-void ac_build_sendmsg(struct ac_llvm_context *ctx, uint32_t msg, LLVMValueRef wave_id)
+void ac_build_sendmsg(struct ac_llvm_context *ctx, uint32_t imm, LLVMValueRef m0_content)
 {
    LLVMValueRef args[2];
-   args[0] = LLVMConstInt(ctx->i32, msg, false);
-   args[1] = wave_id;
+   args[0] = LLVMConstInt(ctx->i32, imm, false);
+   args[1] = m0_content;
    ac_build_intrinsic(ctx, "llvm.amdgcn.s.sendmsg", ctx->voidt, args, 2, 0);
 }
 
