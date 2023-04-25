@@ -30,8 +30,6 @@
 
 # Based on https://github.com/pydata/pydata-sphinx-theme
 
-from packaging.version import Version
-
 from docutils import nodes
 
 import sphinx
@@ -77,10 +75,7 @@ class BootstrapHTML5TranslatorMixin:
         # init the attributes
         atts = {}
 
-        if Version(sphinx.__version__) < Version("4.3"):
-            self._table_row_index = 0
-        else:
-            self._table_row_indices.append(0)
+        self._table_row_indices.append(0)
 
         # get the classes
         classes = [cls.strip(" \t\n") for cls in self.settings.table_style.split(",")]
