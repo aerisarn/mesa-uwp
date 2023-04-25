@@ -69,6 +69,7 @@ double
 _mesa_strtod(const char *s, char **end)
 {
 #if defined(_GNU_SOURCE) && defined(HAVE_STRTOD_L)
+   if (!loc) _mesa_locale_init();
    return strtod_l(s, end, loc);
 #else
    return strtod(s, end);
@@ -84,6 +85,7 @@ float
 _mesa_strtof(const char *s, char **end)
 {
 #if defined(_GNU_SOURCE) && defined(HAVE_STRTOD_L)
+   if (!loc) _mesa_locale_init();
    return strtof_l(s, end, loc);
 #elif defined(HAVE_STRTOF)
    return strtof(s, end);
