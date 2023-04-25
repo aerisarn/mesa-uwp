@@ -475,21 +475,9 @@ compute_rt_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
    for (unsigned i = 0; i < pCreateInfo->groupCount; ++i) {
       non_recursive_size = MAX2(groups[i].stack_size.non_recursive_size, non_recursive_size);
 
-      const VkRayTracingShaderGroupCreateInfoKHR *group_info = &pCreateInfo->pGroups[i];
-      uint32_t shader_id = VK_SHADER_UNUSED_KHR;
+      uint32_t shader_id = groups[i].recursive_shader;
       unsigned size = groups[i].stack_size.recursive_size;
 
-      switch (group_info->type) {
-      case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
-         shader_id = group_info->generalShader;
-         break;
-      case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR:
-      case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR:
-         shader_id = group_info->closestHitShader;
-         break;
-      default:
-         break;
-      }
       if (shader_id == VK_SHADER_UNUSED_KHR)
          continue;
 
