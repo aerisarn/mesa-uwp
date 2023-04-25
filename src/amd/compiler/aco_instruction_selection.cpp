@@ -9012,6 +9012,12 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       }
       break;
    }
+   case nir_intrinsic_sendmsg_amd: {
+      unsigned imm = nir_intrinsic_base(instr);
+      Temp m0_content = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
+      bld.sopp(aco_opcode::s_sendmsg, bld.m0(m0_content), -1, imm);
+      break;
+   }
    case nir_intrinsic_is_subgroup_invocation_lt_amd: {
       Temp src = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), lanecount_to_mask(ctx, src));

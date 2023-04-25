@@ -1478,6 +1478,8 @@ intrinsic("load_cull_small_prim_precision_amd", dest_comp=1, bit_sizes=[32], fla
 intrinsic("load_initial_edgeflags_amd", src_comp=[], dest_comp=1, bit_sizes=[32], indices=[])
 # Allocates export space for vertices and primitives. src[] = {num_vertices, num_primitives}.
 intrinsic("alloc_vertices_and_primitives_amd", src_comp=[1, 1], indices=[])
+# Corresponds to s_sendmsg in the GCN/RDNA ISA, src[] = { m0_content }, BASE = imm
+intrinsic("sendmsg_amd", src_comp=[1], indices=[BASE])
 # Overwrites VS input registers, for use with vertex compaction after culling. src = {vertex_id, instance_id}.
 intrinsic("overwrite_vs_arguments_amd", src_comp=[1, 1], indices=[])
 # Overwrites TES input registers, for use with vertex compaction after culling. src = {tes_u, tes_v, rel_patch_id, patch_id}.

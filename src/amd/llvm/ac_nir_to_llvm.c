@@ -3842,6 +3842,12 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_end_primitive_with_counter:
       ctx->abi->emit_primitive(ctx->abi, nir_intrinsic_stream_id(instr));
       break;
+   case nir_intrinsic_sendmsg_amd: {
+      unsigned imm = nir_intrinsic_base(instr);
+      LLVMValueRef m0_content = get_src(ctx, instr->src[0]);
+      ac_build_sendmsg(&ctx->ac, imm, m0_content);
+      break;
+   }
    case nir_intrinsic_load_tess_coord: {
       LLVMValueRef coord[] = {
          ctx->abi->tes_u_replaced ? ctx->abi->tes_u_replaced : ac_get_arg(&ctx->ac, ctx->args->tes_u),
