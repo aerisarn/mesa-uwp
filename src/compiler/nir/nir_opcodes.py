@@ -1298,6 +1298,14 @@ opcode("extr_agx", 0, tuint32,
     }
 """);
 
+# AGX multiply-shift-add. Corresponds to iadd/isub/imad/imsub instructions.
+# The shift must be <= 4 (domain restriction). For performance, it should be
+# constant.
+opcode("imadshl_agx", 0, tint, [0, 0, 0, 0], [tint, tint, tint, tint], False,
+       "", f"(src0 * src1) + (src2 << src3)")
+opcode("imsubshl_agx", 0, tint, [0, 0, 0, 0], [tint, tint, tint, tint], False,
+       "", f"(src0 * src1) - (src2 << src3)")
+
 # 24b multiply into 32b result (with sign extension)
 binop("imul24", tint32, _2src_commutative + associative,
       "(((int32_t)src0 << 8) >> 8) * (((int32_t)src1 << 8) >> 8)")
