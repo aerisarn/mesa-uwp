@@ -426,6 +426,31 @@ lower_pv_mode_gs_ring_index(nir_builder *b,
                       nir_imm_int(b, state->ring_size));
 }
 
+/* Given the final deref of chain of derefs this function will walk up the chain
+ * until it finds a var deref.
+ *
+ * It will then recreate an identical chain that ends with the provided deref.
+ */
+static nir_deref_instr*
+replicate_derefs(nir_builder *b, nir_deref_instr *old, nir_deref_instr *new)
+{
+   nir_deref_instr *parent = nir_src_as_deref(old->parent);
+   switch(old->deref_type) {
+   case nir_deref_type_var:
+      return new;
+   case nir_deref_type_array:
+      assert(old->arr.index.is_ssa);
+      return nir_build_deref_array(b, replicate_derefs(b, parent, new), old->arr.index.ssa);
+   case nir_deref_type_struct:
+      return nir_build_deref_struct(b, replicate_derefs(b, parent, new), old->strct.index);
+   case nir_deref_type_array_wildcard:
+   case nir_deref_type_ptr_as_array:
+   case nir_deref_type_cast:
+      unreachable("unexpected deref type");
+   }
+   unreachable("impossible deref type");
+}
+
 static bool
 lower_pv_mode_gs_store(nir_builder *b,
                        nir_intrinsic_instr *intrin,
@@ -441,9 +466,11 @@ lower_pv_mode_gs_store(nir_builder *b,
       assert(intrin->src[1].is_ssa);
       nir_ssa_def *pos_counter = nir_load_var(b, state->pos_counter);
       nir_ssa_def *index = lower_pv_mode_gs_ring_index(b, state, pos_counter);
-      nir_store_array_var(b, state->varyings[location],
-                             index, intrin->src[1].ssa,
-                             nir_intrinsic_write_mask(intrin));
+      nir_deref_instr *varying_deref = nir_build_deref_var(b, state->varyings[location]);
+      nir_deref_instr *ring_deref = nir_build_deref_array(b, varying_deref, index);
+      // recreate the chain of deref that lead to the store.
+      nir_deref_instr *new_top_deref = replicate_derefs(b, deref, ring_deref);
+      nir_store_deref(b, new_top_deref, intrin->src[1].ssa, nir_intrinsic_write_mask(intrin));
       nir_instr_remove(&intrin->instr);
       return true;
    }
