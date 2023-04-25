@@ -332,15 +332,6 @@ LLVMValueRef ac_get_thread_id(struct ac_llvm_context *ctx);
 
 LLVMValueRef ac_build_ddxy(struct ac_llvm_context *ctx, uint32_t mask, int idx, LLVMValueRef val);
 
-#define AC_SENDMSG_GS           2
-#define AC_SENDMSG_GS_DONE      3
-#define AC_SENDMSG_GS_ALLOC_REQ 9
-
-#define AC_SENDMSG_GS_OP_NOP      (0 << 4)
-#define AC_SENDMSG_GS_OP_CUT      (1 << 4)
-#define AC_SENDMSG_GS_OP_EMIT     (2 << 4)
-#define AC_SENDMSG_GS_OP_EMIT_CUT (3 << 4)
-
 void ac_build_sendmsg(struct ac_llvm_context *ctx, uint32_t msg, LLVMValueRef wave_id);
 
 LLVMValueRef ac_build_imsb(struct ac_llvm_context *ctx, LLVMValueRef arg, LLVMTypeRef dst_type);
