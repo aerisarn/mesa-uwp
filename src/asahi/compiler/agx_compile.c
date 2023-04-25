@@ -1142,7 +1142,7 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 
    case nir_op_extr_agx:
       return agx_extr_to(b, dst, s0, s1, s2,
-                         nir_src_as_uint(instr->src[3].src));
+                         nir_alu_src_as_uint(instr->src[3]));
 
    case nir_op_bcsel:
       return agx_icmpsel_to(b, dst, s0, i0, s2, s1, AGX_ICOND_UEQ);
