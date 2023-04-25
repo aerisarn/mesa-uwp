@@ -212,31 +212,9 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
          total_groups += library_pipeline->group_count;
       }
    }
-   VkPipelineShaderStageCreateInfo *stages = NULL;
    local_create_info.stageCount = total_stages;
    local_create_info.groupCount = total_groups;
-   local_create_info.pStages = stages =
-      malloc(sizeof(VkPipelineShaderStageCreateInfo) * total_stages);
-   if (!local_create_info.pStages)
-      return local_create_info;
 
-   total_stages = pCreateInfo->stageCount;
-   total_groups = pCreateInfo->groupCount;
-   for (unsigned j = 0; j < pCreateInfo->stageCount; ++j)
-      stages[j] = pCreateInfo->pStages[j];
-
-   if (pCreateInfo->pLibraryInfo) {
-      for (unsigned i = 0; i < pCreateInfo->pLibraryInfo->libraryCount; ++i) {
-         RADV_FROM_HANDLE(radv_pipeline, pipeline, pCreateInfo->pLibraryInfo->pLibraries[i]);
-         struct radv_ray_tracing_lib_pipeline *library_pipeline =
-            radv_pipeline_to_ray_tracing_lib(pipeline);
-
-         for (unsigned j = 0; j < library_pipeline->stage_count; ++j)
-            stages[total_stages + j] = library_pipeline->vk_stages[j];
-         total_stages += library_pipeline->stage_count;
-         total_groups += library_pipeline->group_count;
-      }
-   }
    return local_create_info;
 }
 
@@ -422,17 +400,13 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
 
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
-   if (!local_create_info.pStages)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    size_t pipeline_size =
       sizeof(*pipeline) + local_create_info.groupCount * sizeof(struct radv_ray_tracing_group);
    pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, pipeline_size, 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (!pipeline) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto fail;
-   }
+   if (!pipeline)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_RAY_TRACING_LIB);
 
@@ -446,11 +420,9 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
       goto pipeline_fail;
 
    if (local_create_info.stageCount) {
-      pipeline->vk_stages = radv_copy_shader_stage_create_info(
-         device, local_create_info.stageCount, local_create_info.pStages, pipeline->ctx);
       pipeline->stages =
          rzalloc_size(pipeline->ctx, sizeof(*pipeline->stages) * local_create_info.stageCount);
-      if (!pipeline->stages || !pipeline->vk_stages) {
+      if (!pipeline->stages) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto pipeline_fail;
       }
@@ -470,8 +442,6 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
 pipeline_fail:
    if (result != VK_SUCCESS)
       radv_pipeline_destroy(device, &pipeline->base, pAllocator);
-fail:
-   free((void *)local_create_info.pStages);
    return result;
 }
 
@@ -612,8 +582,6 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
-   if (!local_create_info.pStages)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    struct vk_shader_module module = {.base.type = VK_OBJECT_TYPE_SHADER_MODULE};
 
@@ -631,10 +599,8 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       sizeof(*rt_pipeline) + local_create_info.groupCount * sizeof(struct radv_ray_tracing_group);
    rt_pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, pipeline_size, 8,
                             VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (rt_pipeline == NULL) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto fail;
-   }
+   if (rt_pipeline == NULL)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    radv_pipeline_init(device, &rt_pipeline->base.base, RADV_PIPELINE_RAY_TRACING);
    rt_pipeline->group_count = local_create_info.groupCount;
@@ -711,8 +677,6 @@ shader_fail:
 pipeline_fail:
    if (result != VK_SUCCESS)
       radv_pipeline_destroy(device, &rt_pipeline->base.base, pAllocator);
-fail:
-   free((void *)local_create_info.pStages);
    return result;
 }
 
