@@ -177,6 +177,7 @@ anv_nir_compute_push_layout(nir_shader *nir,
                }
 
                case nir_intrinsic_load_desc_set_address_intel: {
+                  assert(brw_shader_stage_requires_bindless_resources(nir->info.stage));
                   b->cursor = nir_before_instr(&intrin->instr);
                   nir_ssa_def *pc_load = nir_load_uniform(b, 1, 32,
                      nir_imul_imm(b, intrin->src[0].ssa, sizeof(uint32_t)),
