@@ -4936,7 +4936,9 @@ iris_store_fs_state(const struct intel_device_info *devinfo,
        * look useful at the moment.  We might need this in future.
        */
       ps.PositionXYOffsetSelect =
-         wm_prog_data->uses_pos_offset ? POSOFFSET_SAMPLE : POSOFFSET_NONE;
+         brw_wm_prog_data_uses_position_xy_offset(wm_prog_data,
+                                                  0 /* msaa_flags */) ?
+         POSOFFSET_SAMPLE : POSOFFSET_NONE;
 
       if (prog_data->total_scratch) {
          INIT_THREAD_SCRATCH_SIZE(ps);

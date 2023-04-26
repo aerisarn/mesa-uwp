@@ -1535,8 +1535,10 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
       ps.PushConstantEnable         = wm_prog_data->base.nr_params > 0 ||
                                       wm_prog_data->base.ubo_ranges[0].length;
       ps.PositionXYOffsetSelect     =
-           !wm_prog_data->uses_pos_offset ? POSOFFSET_NONE :
-           persample ? POSOFFSET_SAMPLE : POSOFFSET_CENTROID;
+         !brw_wm_prog_data_uses_position_xy_offset(wm_prog_data,
+                                                   pipeline->fs_msaa_flags) ?
+         POSOFFSET_NONE :
+         (persample ? POSOFFSET_SAMPLE : POSOFFSET_CENTROID);
 
       ps.MaximumNumberofThreadsPerPSD = devinfo->max_threads_per_psd - 1;
 
