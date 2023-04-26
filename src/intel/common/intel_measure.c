@@ -225,6 +225,7 @@ intel_measure_init(struct intel_measure_device *device)
 
    device->config = NULL;
    device->frame = 0;
+   device->render_pass_count = 0;
    device->release_batch = NULL;
    pthread_mutex_init(&device->mutex, NULL);
    list_inithead(&device->queued_snapshots);

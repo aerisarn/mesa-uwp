@@ -134,6 +134,7 @@ typedef void (*intel_measure_release_batch_cb)(struct intel_measure_batch *base)
 struct intel_measure_device {
    struct intel_measure_config *config;
    unsigned frame;
+   unsigned render_pass_count;
    intel_measure_release_batch_cb release_batch;
 
    /* Holds the list of (iris/anv)_measure_batch snapshots that have been
