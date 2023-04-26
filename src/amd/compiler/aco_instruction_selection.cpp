@@ -7519,9 +7519,16 @@ get_scratch_resource(isel_context* ctx)
 {
    Builder bld(ctx->program, ctx->block);
    Temp scratch_addr = ctx->program->private_segment_buffer;
-   if (ctx->stage.hw != HWStage::CS)
+   if (!scratch_addr.bytes()) {
+      Temp addr_lo = bld.sop1(aco_opcode::p_load_symbol, bld.def(s1),
+                              Operand::c32(aco_symbol_scratch_addr_lo));
+      Temp addr_hi = bld.sop1(aco_opcode::p_load_symbol, bld.def(s1),
+                              Operand::c32(aco_symbol_scratch_addr_hi));
+      scratch_addr = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), addr_lo, addr_hi);
+   } else if (ctx->stage.hw != HWStage::CS) {
       scratch_addr =
          bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), scratch_addr, Operand::zero());
+   }
 
    uint32_t rsrc_conf =
       S_008F0C_ADD_TID_ENABLE(1) | S_008F0C_INDEX_STRIDE(ctx->program->wave_size == 64 ? 3 : 2);
@@ -11138,22 +11145,25 @@ add_startpgm(struct isel_context* ctx)
       }
    }
 
-   if (ctx->args->ring_offsets.used) {
-      if (ctx->program->gfx_level < GFX9) {
-         /* Stash these in the program so that they can be accessed later when
-          * handling spilling.
-          */
+   if (ctx->program->gfx_level < GFX9) {
+      /* Stash these in the program so that they can be accessed later when
+       * handling spilling.
+       */
+      if (ctx->args->ring_offsets.used)
          ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ring_offsets);
-         ctx->program->scratch_offset = get_arg(ctx, ctx->args->scratch_offset);
 
-      } else if (ctx->program->gfx_level <= GFX10_3 && ctx->program->stage != raytracing_cs) {
-         /* Manually initialize scratch. For RT stages scratch initialization is done in the prolog. */
-         Operand scratch_offset = Operand(get_arg(ctx, ctx->args->scratch_offset));
-         scratch_offset.setLateKill(true);
-         Builder bld(ctx->program, ctx->block);
-         bld.pseudo(aco_opcode::p_init_scratch, bld.def(s2), bld.def(s1, scc),
-                    get_arg(ctx, ctx->args->ring_offsets), scratch_offset);
-      }
+      ctx->program->scratch_offset = get_arg(ctx, ctx->args->scratch_offset);
+   } else if (ctx->program->gfx_level <= GFX10_3 && ctx->program->stage != raytracing_cs) {
+      /* Manually initialize scratch. For RT stages scratch initialization is done in the prolog. */
+      Operand scratch_offset = Operand(get_arg(ctx, ctx->args->scratch_offset));
+      scratch_offset.setLateKill(true);
+
+      Operand scratch_addr = ctx->args->ring_offsets.used ?
+         Operand(get_arg(ctx, ctx->args->ring_offsets)) : Operand(s2);
+
+      Builder bld(ctx->program, ctx->block);
+      bld.pseudo(aco_opcode::p_init_scratch, bld.def(s2), bld.def(s1, scc),
+                 scratch_addr, scratch_offset);
    }
 
    return startpgm;

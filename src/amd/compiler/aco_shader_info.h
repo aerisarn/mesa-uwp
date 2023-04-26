@@ -162,6 +162,8 @@ enum aco_statistic {
 
 enum aco_symbol_id {
    aco_symbol_invalid,
+   aco_symbol_scratch_addr_lo,
+   aco_symbol_scratch_addr_hi,
 };
 
 struct aco_symbol {
