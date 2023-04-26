@@ -1460,6 +1460,8 @@ system_value("prim_xfb_query_enabled_amd", dest_comp=1, bit_sizes=[1])
 # Merged wave info. Bits 0-7 are the ES thread count, 8-15 are the GS thread count, 16-24 is the
 # GS Wave ID, 24-27 is the wave index in the workgroup, and 28-31 is the workgroup size in waves.
 system_value("merged_wave_info_amd", dest_comp=1)
+# Global ID for GS waves on GCN/RDNA legacy GS.
+system_value("gs_wave_id_amd", dest_comp=1)
 # Whether the shader should clamp vertex color outputs to [0, 1].
 system_value("clamp_vertex_color_amd", dest_comp=1, bit_sizes=[1])
 # Whether the shader should cull front facing triangles.

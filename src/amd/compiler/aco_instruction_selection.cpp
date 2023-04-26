@@ -9018,6 +9018,18 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       bld.sopp(aco_opcode::s_sendmsg, bld.m0(m0_content), -1, imm);
       break;
    }
+   case nir_intrinsic_load_gs_wave_id_amd: {
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      if (ctx->args->merged_wave_info.used)
+         bld.pseudo(aco_opcode::p_extract, Definition(dst), bld.def(s1, scc),
+                    get_arg(ctx, ctx->args->merged_wave_info), Operand::c32(2u),
+                    Operand::c32(8u), Operand::zero());
+      else if (ctx->args->gs_wave_id.used)
+         bld.copy(Definition(dst), get_arg(ctx, ctx->args->gs_wave_id));
+      else
+         unreachable("Shader doesn't have GS wave ID.");
+      break;
+   }
    case nir_intrinsic_is_subgroup_invocation_lt_amd: {
       Temp src = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), lanecount_to_mask(ctx, src));

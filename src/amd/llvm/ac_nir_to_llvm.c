@@ -3848,6 +3848,15 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       ac_build_sendmsg(&ctx->ac, imm, m0_content);
       break;
    }
+   case nir_intrinsic_load_gs_wave_id_amd: {
+      if (ctx->args->merged_wave_info.used)
+         result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 16, 8);
+      else if (ctx->args->gs_wave_id.used)
+         result = ac_get_arg(&ctx->ac, ctx->args->gs_wave_id);
+      else
+         unreachable("Shader doesn't have GS wave ID.");
+      break;
+   }
    case nir_intrinsic_load_tess_coord: {
       LLVMValueRef coord[] = {
          ctx->abi->tes_u_replaced ? ctx->abi->tes_u_replaced : ac_get_arg(&ctx->ac, ctx->args->tes_u),
