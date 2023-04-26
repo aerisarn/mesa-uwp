@@ -73,6 +73,8 @@ radv_init_physical_device_decoder(struct radv_physical_device *pdevice)
    else
       pdevice->vid_decode_ip = AMD_IP_VCN_DEC;
 
+   pdevice->vid_addr_gfx_mode = RDECODE_ARRAY_MODE_LINEAR;
+
    switch (pdevice->rad_info.family) {
    case CHIP_VEGA10:
    case CHIP_VEGA12:
@@ -979,6 +981,8 @@ static bool rvcn_dec_message_decode(struct radv_cmd_buffer *cmd_buffer,
         vid->vk.h265.profile_idc == STD_VIDEO_H265_PROFILE_IDC_MAIN_10))
       decode->db_aligned_height = align(frame_info->dstPictureResource.codedExtent.height, 64);
 
+   decode->db_array_mode = device->physical_device->vid_addr_gfx_mode;
+
    decode->dt_pitch = luma->surface.u.gfx9.surf_pitch * luma->surface.blk_w;
    decode->dt_uv_pitch = chroma->surface.u.gfx9.surf_pitch * chroma->surface.blk_w;
 
@@ -989,7 +993,7 @@ static bool rvcn_dec_message_decode(struct radv_cmd_buffer *cmd_buffer,
 
    decode->dt_tiling_mode = 0;
    decode->dt_swizzle_mode = luma->surface.u.gfx9.swizzle_mode;
-   decode->dt_array_mode = RDECODE_ARRAY_MODE_LINEAR;
+   decode->dt_array_mode = device->physical_device->vid_addr_gfx_mode;
    decode->dt_field_mode = vid->interlaced ? 1 : 0;
    decode->dt_surf_tile_config = 0;
    decode->dt_uv_surf_tile_config = 0;
