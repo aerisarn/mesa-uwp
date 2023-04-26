@@ -858,6 +858,29 @@ sqtt_CmdCopyMemoryToAccelerationStructureKHR(VkCommandBuffer commandBuffer,
    EVENT_RT_MARKER(CopyMemoryToAccelerationStructureKHR, commandBuffer, pInfo);
 }
 
+VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdDrawMeshTasksEXT(VkCommandBuffer commandBuffer, uint32_t x, uint32_t y, uint32_t z)
+{
+   EVENT_MARKER(DrawMeshTasksEXT, commandBuffer, x, y, z);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdDrawMeshTasksIndirectEXT(VkCommandBuffer commandBuffer, VkBuffer buffer,
+                                 VkDeviceSize offset, uint32_t drawCount, uint32_t stride)
+{
+   EVENT_MARKER(DrawMeshTasksIndirectEXT, commandBuffer, buffer, offset, drawCount, stride);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+sqtt_CmdDrawMeshTasksIndirectCountEXT(VkCommandBuffer commandBuffer, VkBuffer buffer,
+                                      VkDeviceSize offset, VkBuffer countBuffer,
+                                      VkDeviceSize countBufferOffset, uint32_t maxDrawCount,
+                                      uint32_t stride)
+{
+   EVENT_MARKER(DrawMeshTasksIndirectCountEXT, commandBuffer, buffer, offset, countBuffer,
+                countBufferOffset, maxDrawCount, stride);
+}
+
 #undef EVENT_RT_MARKER_ALIAS
 #undef EVENT_RT_MARKER
 
@@ -1119,10 +1142,12 @@ radv_mesa_to_rgp_shader_stage(struct radv_pipeline *pipeline, gl_shader_stage st
          return RGP_HW_STAGE_GS;
       else
          return RGP_HW_STAGE_VS;
+   case MESA_SHADER_MESH:
    case MESA_SHADER_GEOMETRY:
       return RGP_HW_STAGE_GS;
    case MESA_SHADER_FRAGMENT:
       return RGP_HW_STAGE_PS;
+   case MESA_SHADER_TASK:
    case MESA_SHADER_COMPUTE:
    case MESA_SHADER_RAYGEN:
    case MESA_SHADER_CLOSEST_HIT:
