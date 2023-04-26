@@ -967,6 +967,8 @@ static bool upload_binary_raw(struct si_screen *sscreen, struct si_shader *shade
 
    memcpy(rx_ptr, shader->binary.code_buffer, shader->binary.code_size);
 
+   si_aco_resolve_symbols(shader, rx_ptr, scratch_va);
+
    sscreen->ws->buffer_unmap(sscreen->ws, shader->bo->buf);
    shader->gpu_address = shader->bo->gpu_address;
    return true;

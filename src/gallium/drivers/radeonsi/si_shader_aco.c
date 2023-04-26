@@ -135,3 +135,32 @@ si_aco_compile_shader(struct si_shader *shader,
 
    return true;
 }
+
+void
+si_aco_resolve_symbols(struct si_shader *shader, uint32_t *code, uint64_t scratch_va)
+{
+   const struct aco_symbol *symbols = (struct aco_symbol *)shader->binary.symbols;
+
+   for (int i = 0; i < shader->binary.num_symbols; i++) {
+      uint32_t value = 0;
+
+      switch (symbols[i].id) {
+      case aco_symbol_scratch_addr_lo:
+         value = scratch_va;
+         break;
+      case aco_symbol_scratch_addr_hi:
+         value = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32);
+
+         if (shader->selector->screen->info.gfx_level >= GFX11)
+            value |= S_008F04_SWIZZLE_ENABLE_GFX11(1);
+         else
+            value |= S_008F04_SWIZZLE_ENABLE_GFX6(1);
+         break;
+      default:
+         unreachable("invalid aco symbol");
+         break;
+      }
+
+      code[symbols[i].offset] = value;
+   }
+}

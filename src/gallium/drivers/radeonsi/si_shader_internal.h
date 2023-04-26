@@ -244,5 +244,6 @@ bool si_aco_compile_shader(struct si_shader *shader,
                            struct si_shader_args *args,
                            struct nir_shader *nir,
                            struct util_debug_callback *debug);
+void si_aco_resolve_symbols(struct si_shader *shader, uint32_t *code, uint64_t scratch_va);
 
 #endif
