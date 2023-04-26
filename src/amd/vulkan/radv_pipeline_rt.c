@@ -491,7 +491,6 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    VK_FROM_HANDLE(vk_pipeline_cache, cache, _cache);
    RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
    VkResult result;
-   struct radv_ray_tracing_pipeline *pipeline;
    bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, pCreateInfo->flags);
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
@@ -503,30 +502,24 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
 
-   size_t pipeline_size =
-      sizeof(*pipeline) + local_create_info.groupCount * sizeof(struct radv_ray_tracing_group);
-   pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, pipeline_size, 8,
-                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (pipeline == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+   VK_MULTIALLOC(ma);
+   VK_MULTIALLOC_DECL(&ma, struct radv_ray_tracing_pipeline, pipeline, 1);
+   VK_MULTIALLOC_DECL(&ma, struct radv_ray_tracing_stage, stages, local_create_info.stageCount);
+   VK_MULTIALLOC_DECL(&ma, struct radv_ray_tracing_group, groups, local_create_info.groupCount);
+   if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, pAllocator,
+                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    radv_pipeline_init(device, &pipeline->base.base, RADV_PIPELINE_RAY_TRACING);
-   pipeline->ctx = ralloc_context(NULL);
-
+   pipeline->stage_count = local_create_info.stageCount;
    pipeline->group_count = local_create_info.groupCount;
+   pipeline->stages = stages;
+   pipeline->groups = groups;
+
+   radv_rt_fill_stage_info(pCreateInfo, stages);
    result = radv_rt_fill_group_info(device, pCreateInfo, pipeline->groups);
    if (result != VK_SUCCESS)
       goto done;
-
-   pipeline->stages =
-      rzalloc_size(pipeline->ctx, sizeof(*pipeline->stages) * local_create_info.stageCount);
-   if (!pipeline->stages) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto done;
-   }
-
-   pipeline->stage_count = local_create_info.stageCount;
-   radv_rt_fill_stage_info(pCreateInfo, pipeline->stages);
 
    struct radv_pipeline_key key =
       radv_generate_rt_pipeline_key(device, pipeline, pCreateInfo->flags);
@@ -576,19 +569,15 @@ void
 radv_destroy_ray_tracing_pipeline(struct radv_device *device,
                                   struct radv_ray_tracing_pipeline *pipeline)
 {
-   if (pipeline->stages) {
-      for (unsigned i = 0; i < pipeline->stage_count; i++) {
-         if (pipeline->stages[i].shader)
-            vk_pipeline_cache_object_unref(&device->vk, pipeline->stages[i].shader);
-      }
+   for (unsigned i = 0; i < pipeline->stage_count; i++) {
+      if (pipeline->stages[i].shader)
+         vk_pipeline_cache_object_unref(&device->vk, pipeline->stages[i].shader);
    }
 
    if (pipeline->base.base.shaders[MESA_SHADER_COMPUTE])
       radv_shader_unref(device, pipeline->base.base.shaders[MESA_SHADER_COMPUTE]);
    if (pipeline->base.base.shaders[MESA_SHADER_RAYGEN])
       radv_shader_unref(device, pipeline->base.base.shaders[MESA_SHADER_RAYGEN]);
-
-   ralloc_free(pipeline->ctx);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
