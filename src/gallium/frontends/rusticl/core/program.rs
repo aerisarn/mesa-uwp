@@ -527,14 +527,14 @@ impl Program {
 
         d.log.push_str(&log);
         d.spirv = spirv;
-        if d.spirv.is_some() {
+        if let Some(spirv) = &d.spirv {
             d.bin_type = if lib {
                 CL_PROGRAM_BINARY_TYPE_LIBRARY
             } else {
                 CL_PROGRAM_BINARY_TYPE_EXECUTABLE
             };
             d.status = CL_BUILD_SUCCESS as cl_build_status;
-            let mut kernels = d.spirv.as_ref().unwrap().kernels();
+            let mut kernels = spirv.kernels();
             info.kernels.append(&mut kernels);
             info.build_nirs(self.is_src());
             true
