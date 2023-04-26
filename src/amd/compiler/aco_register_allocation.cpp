@@ -3072,20 +3072,20 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
          /* some instructions need VOP3 encoding if operand/definition is not assigned to VCC */
          bool instr_needs_vop3 =
             !instr->isVOP3() &&
-            ((instr->format == Format::VOPC && !(instr->definitions[0].physReg() == vcc)) ||
-             (instr->opcode == aco_opcode::v_cndmask_b32 &&
-              !(instr->operands[2].physReg() == vcc)) ||
+            ((withoutDPP(instr->format) == Format::VOPC &&
+              instr->definitions[0].physReg() != vcc) ||
+             (instr->opcode == aco_opcode::v_cndmask_b32 && instr->operands[2].physReg() != vcc) ||
              ((instr->opcode == aco_opcode::v_add_co_u32 ||
                instr->opcode == aco_opcode::v_addc_co_u32 ||
                instr->opcode == aco_opcode::v_sub_co_u32 ||
                instr->opcode == aco_opcode::v_subb_co_u32 ||
                instr->opcode == aco_opcode::v_subrev_co_u32 ||
                instr->opcode == aco_opcode::v_subbrev_co_u32) &&
-              !(instr->definitions[1].physReg() == vcc)) ||
+              instr->definitions[1].physReg() != vcc) ||
              ((instr->opcode == aco_opcode::v_addc_co_u32 ||
                instr->opcode == aco_opcode::v_subb_co_u32 ||
                instr->opcode == aco_opcode::v_subbrev_co_u32) &&
-              !(instr->operands[2].physReg() == vcc)));
+              instr->operands[2].physReg() != vcc));
          if (instr_needs_vop3) {
 
             /* if the first operand is a literal, we have to move it to a reg */
