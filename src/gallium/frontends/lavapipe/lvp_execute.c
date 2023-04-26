@@ -1069,22 +1069,31 @@ static void handle_vertex_buffers2(struct vk_cmd_queue_entry *cmd,
    state->vb_dirty = true;
 }
 
-static void handle_set_stage(struct rendering_state *state,
-                             struct lvp_descriptor_set *set,
-                             gl_shader_stage stage,
-                             uint32_t index)
+static void
+handle_set_stage_buffer(struct rendering_state *state,
+                        struct pipe_resource *bo,
+                        size_t offset,
+                        gl_shader_stage stage,
+                        uint32_t index)
 {
-   state->desc_sets[stage == MESA_SHADER_COMPUTE][index] = set;
-
-   state->const_buffer[stage][index].buffer = set->bo;
-   state->const_buffer[stage][index].buffer_offset = 0; 
-   state->const_buffer[stage][index].buffer_size = set->bo->width0;
+   state->const_buffer[stage][index].buffer = bo;
+   state->const_buffer[stage][index].buffer_offset = offset;
+   state->const_buffer[stage][index].buffer_size = bo->width0;
    state->const_buffer[stage][index].user_buffer = NULL;
 
    state->constbuf_dirty[stage] = true;
 
    if (state->num_const_bufs[stage] <= index)
       state->num_const_bufs[stage] = index + 1;
+}
+
+static void handle_set_stage(struct rendering_state *state,
+                             struct lvp_descriptor_set *set,
+                             gl_shader_stage stage,
+                             uint32_t index)
+{
+   state->desc_sets[stage == MESA_SHADER_COMPUTE][index] = set;
+   handle_set_stage_buffer(state, set->bo, 0, stage, index);
 }
 
 static void
