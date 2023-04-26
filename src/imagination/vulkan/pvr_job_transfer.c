@@ -3941,7 +3941,6 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
    struct pvr_transfer_pass *pass = NULL;
    uint32_t flags = transfer_cmd->flags;
    pvr_dev_addr_t stream_base_vaddr;
-   uint32_t prim_hdr_count = 0U;
    uint32_t num_prim_blks = 0U;
    uint32_t prim_blk_size = 0U;
    uint32_t region_arrays_size;
@@ -4318,9 +4317,6 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
 
                was_linked = PVR_HAS_FEATURE(dev_info, ipf_creq_pf);
             }
-
-            if (PVR_HAS_FEATURE(dev_info, ipf_creq_pf))
-               prim_hdr_count++;
 
             if (fill_blit)
                mappings = pass ? pass->sources[source].mappings : &fill_mapping;
