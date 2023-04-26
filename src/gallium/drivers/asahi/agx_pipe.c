@@ -18,6 +18,7 @@
 #include "gallium/auxiliary/renderonly/renderonly.h"
 #include "gallium/auxiliary/util/u_debug_cb.h"
 #include "gallium/auxiliary/util/u_framebuffer.h"
+#include "gallium/auxiliary/util/u_sample_positions.h"
 #include "gallium/auxiliary/util/u_surface.h"
 #include "gallium/auxiliary/util/u_transfer.h"
 #include "gallium/auxiliary/util/u_transfer_helper.h"
@@ -1366,6 +1367,7 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    pctx->buffer_subdata = u_default_buffer_subdata;
    pctx->texture_subdata = u_default_texture_subdata;
    pctx->set_debug_callback = u_default_set_debug_callback;
+   pctx->get_sample_position = u_default_get_sample_position;
    pctx->invalidate_resource = agx_invalidate_resource;
 
    agx_init_state_functions(pctx);
