@@ -256,6 +256,9 @@ nvk_GetDescriptorSetLayoutSupport(VkDevice _device,
    const VkMutableDescriptorTypeCreateInfoEXT *mutable_info =
       vk_find_struct_const(pCreateInfo->pNext,
                            MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT);
+   const VkDescriptorSetLayoutBindingFlagsCreateInfo *binding_flags =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO);
 
    /* Figure out the maximum alignment up-front.  Otherwise, we need to sort
     * the list of descriptors by binding number in order to get the size
@@ -274,10 +277,17 @@ nvk_GetDescriptorSetLayoutSupport(VkDevice _device,
       max_align = MAX2(max_align, align);
    }
 
-   uint32_t buffer_size = 0;
+   uint64_t non_variable_size = 0;
+   uint32_t variable_stride = 0;
+   uint32_t variable_count = 0;
    uint8_t dynamic_buffer_count = 0;
+
    for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
       const VkDescriptorSetLayoutBinding *binding = &pCreateInfo->pBindings[i];
+
+      VkDescriptorBindingFlags flags = 0;
+      if (binding_flags != NULL && binding_flags->bindingCount > 0)
+         flags = binding_flags->pBindingFlags[i];
 
       if (binding->descriptorCount == 0)
          continue;
@@ -303,23 +313,59 @@ nvk_GetDescriptorSetLayoutSupport(VkDevice _device,
          assert(stride <= UINT8_MAX);
          assert(util_is_power_of_two_nonzero(align));
 
-         /* Since we're aligning to the maximum and since this is just a
-          * check for whether or not the max buffer size is big enough, we
-          * keep buffer_size aligned to max_align.
-          */
-         buffer_size += stride * binding->descriptorCount;
-         buffer_size = ALIGN_POT(buffer_size, max_align);
+         if (flags & VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) {
+            /* From the Vulkan 1.3.256 spec:
+             *
+             *    "For the purposes of this command, a variable-sized
+             *    descriptor binding with a descriptorCount of zero is treated
+             *    as if the descriptorCount is one"
+             */
+            variable_count = MAX2(1, binding->descriptorCount);
+            variable_stride = stride;
+         } else {
+            /* Since we're aligning to the maximum and since this is just a
+             * check for whether or not the max buffer size is big enough, we
+             * keep non_variable_size aligned to max_align.
+             */
+            non_variable_size += stride * binding->descriptorCount;
+            non_variable_size = ALIGN_POT(non_variable_size, max_align);
+         }
       }
    }
 
-   pSupport->supported = dynamic_buffer_count <= NVK_MAX_DYNAMIC_BUFFERS;
+   uint64_t buffer_size = non_variable_size;
+   if (variable_stride > 0) {
+      buffer_size += variable_stride * variable_count;
+      buffer_size = ALIGN_POT(buffer_size, max_align);
+   }
+
+   uint32_t max_buffer_size;
    if (pCreateInfo->flags &
-       VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR) {
-      if (buffer_size > NVK_PUSH_DESCRIPTOR_SET_SIZE)
-         pSupport->supported = false;
-   } else {
-      if (buffer_size > NVK_MAX_DESCRIPTOR_SET_SIZE)
-         pSupport->supported = false;
+       VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR)
+      max_buffer_size = NVK_PUSH_DESCRIPTOR_SET_SIZE;
+   else
+      max_buffer_size = NVK_MAX_DESCRIPTOR_SET_SIZE;
+
+   pSupport->supported = dynamic_buffer_count <= NVK_MAX_DYNAMIC_BUFFERS &&
+                         buffer_size <= max_buffer_size;
+
+   vk_foreach_struct(ext, pSupport->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT: {
+         VkDescriptorSetVariableDescriptorCountLayoutSupport *vs = (void *)ext;
+         if (variable_stride > 0) {
+            vs->maxVariableDescriptorCount =
+               (max_buffer_size - non_variable_size) / variable_stride;
+         } else {
+            vs->maxVariableDescriptorCount = 0;
+         }
+         break;
+      }
+
+      default:
+         nvk_debug_ignored_stype(ext->sType);
+         break;
+      }
    }
 }
 
