@@ -8,7 +8,7 @@
 # .gitlab-ci/image-tags.yml tags:
 # KERNEL_ROOTFS_TAG
 
-SKQP_BRANCH=android-cts-11.0_r7
+SKQP_BRANCH=android-cts-12.1_r5
 
 create_gn_args() {
     # gn can be configured to cross-compile skia and its tools
