@@ -812,11 +812,8 @@ radv_get_thread_trace(struct radv_queue *queue, struct ac_thread_trace *thread_t
    struct radeon_info *rad_info = &device->physical_device->rad_info;
 
    if (!ac_sqtt_get_trace(&device->thread_trace, rad_info, thread_trace)) {
-      if (!radv_thread_trace_resize_bo(device)) {
-         fprintf(stderr, "Failed to resize the thread trace buffer.\n");
-         abort();
-      }
-
+      if (!radv_thread_trace_resize_bo(device))
+         fprintf(stderr, "radv: Failed to resize the SQTT buffer.\n");
       return false;
    }
 
