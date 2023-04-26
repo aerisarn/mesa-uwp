@@ -63,25 +63,31 @@ panfrost_create_kms_dumb_buffer_for_resource(struct pipe_resource *rsc,
    };
    struct drm_mode_destroy_dumb destroy_dumb = {0};
 
-   /* Align width to end up with a buffer that's aligned on 64 bytes. */
-
-   struct renderonly_scanout *scanout = CALLOC_STRUCT(renderonly_scanout);
-   if (!scanout)
-      return NULL;
-
    /* create dumb buffer at scanout GPU */
    int err = drmIoctl(ro->kms_fd, DRM_IOCTL_MODE_CREATE_DUMB, &create_dumb);
    if (err < 0) {
       fprintf(stderr, "DRM_IOCTL_MODE_CREATE_DUMB failed: %s\n",
               strerror(errno));
-      goto free_scanout;
+      return NULL;
    }
 
    if (create_dumb.pitch % 64)
       goto free_dumb;
 
+   struct renderonly_scanout *scanout;
+
+   simple_mtx_lock(&ro->bo_map_lock);
+   scanout = util_sparse_array_get(&ro->bo_map, create_dumb.handle);
+   simple_mtx_unlock(&ro->bo_map_lock);
+
+   if (!scanout)
+      goto free_dumb;
+
    scanout->handle = create_dumb.handle;
    scanout->stride = create_dumb.pitch;
+
+   assert(p_atomic_read(&scanout->refcnt) == 0);
+   p_atomic_set(&scanout->refcnt, 1);
 
    if (!out_handle)
       return scanout;
@@ -101,11 +107,8 @@ panfrost_create_kms_dumb_buffer_for_resource(struct pipe_resource *rsc,
    return scanout;
 
 free_dumb:
-   destroy_dumb.handle = scanout->handle;
+   destroy_dumb.handle = create_dumb.handle;
    drmIoctl(ro->kms_fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_dumb);
-
-free_scanout:
-   FREE(scanout);
 
    return NULL;
 }
