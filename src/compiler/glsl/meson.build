@@ -198,7 +198,6 @@ files_libglsl = files(
   'link_varyings.cpp',
   'link_varyings.h',
   'list.h',
-  'lower_blend_equation_advanced.cpp',
   'lower_builtins.cpp',
   'lower_discard.cpp',
   'lower_discard_flow.cpp',
