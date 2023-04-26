@@ -1632,6 +1632,19 @@ void anv_GetPhysicalDeviceFeatures2(
 
 #define MAX_CUSTOM_BORDER_COLORS                   4096
 
+static VkDeviceSize
+anx_get_physical_device_max_heap_size(struct anv_physical_device *pdevice)
+{
+   VkDeviceSize ret = 0;
+
+   for (uint32_t i = 0; i < pdevice->memory.heap_count; i++) {
+      if (pdevice->memory.heaps[i].size > ret)
+         ret = pdevice->memory.heaps[i].size;
+   }
+
+   return ret;
+}
+
 void anv_GetPhysicalDeviceProperties(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceProperties*                 pProperties)
@@ -1643,6 +1656,7 @@ void anv_GetPhysicalDeviceProperties(
    const uint32_t max_textures = UINT16_MAX;
    const uint32_t max_samplers = UINT16_MAX;
    const uint32_t max_images = UINT16_MAX;
+   const VkDeviceSize max_heap_size = anx_get_physical_device_max_heap_size(pdevice);
 
    /* Claim a high per-stage limit since we have bindless. */
    const uint32_t max_per_stage = UINT32_MAX;
@@ -1662,7 +1676,7 @@ void anv_GetPhysicalDeviceProperties(
       .maxImageArrayLayers                      = (1 << 11),
       .maxTexelBufferElements                   = 128 * 1024 * 1024,
       .maxUniformBufferRange                    = pdevice->compiler->indirect_ubos_use_sampler ? (1u << 27) : (1u << 30),
-      .maxStorageBufferRange                    = MIN2(pdevice->isl_dev.max_buffer_size, UINT32_MAX),
+      .maxStorageBufferRange                    = MIN3(pdevice->isl_dev.max_buffer_size, max_heap_size, UINT32_MAX),
       .maxPushConstantsSize                     = MAX_PUSH_CONSTANTS_SIZE,
       .maxMemoryAllocationCount                 = UINT32_MAX,
       .maxSamplerAllocationCount                = 64 * 1024,
