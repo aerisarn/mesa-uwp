@@ -1,35 +1,12 @@
 # Please include a comment with the log message and a testcase triggering each
 # VUID at the bottom of the file.
-khronos_validation.message_id_filter = VUID-vkCmdDrawMultiEXT-colorAttachmentCount-06188,VUID-VkGraphicsPipelineCreateInfo-Geometry-07725,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-vkCmdCopyImage-srcImage-07743,VUID-RuntimeSpirv-Location-06272,VUID-vkCmdDrawMultiEXT-None-02699,VUID-VkPhysicalDeviceProperties2-pNext-pNext,VUID-VkDeviceCreateInfo-pNext-pNext,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-VkShaderModuleCreateInfo-pCode-08740,VUID-RuntimeSpirv-OpEntryPoint-08743
+khronos_validation.message_id_filter = VUID-VkGraphicsPipelineCreateInfo-Geometry-07725,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-vkCmdCopyImage-srcImage-07743,VUID-RuntimeSpirv-Location-06272,VUID-vkCmdDrawMultiEXT-None-02699,VUID-VkPhysicalDeviceProperties2-pNext-pNext,VUID-VkDeviceCreateInfo-pNext-pNext,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-VkShaderModuleCreateInfo-pCode-08740,VUID-RuntimeSpirv-OpEntryPoint-08743
 khronos_validation.report_flags = error
 khronos_validation.debug_action = VK_DBG_LAYER_ACTION_LOG_MSG,VK_DBG_LAYER_ACTION_BREAK
 VK_LAYER_ENABLES=VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT
 khronos_validation.printf_buffer_size = 40960
 khronos_validation.printf_to_stdout = true
 khronos_validation.log_filename = stdout
-
-# caselist of :
-#   dEQP-GLES31.functional.shaders.helper_invocation.value.triangles
-#   dEQP-GLES31.functional.shaders.helper_invocation.value.wide_points_4_samples
-#
-# [VUID-vkCmdDrawMultiEXT-colorAttachmentCount-06188 ] Object 0: handle
-# = 0x56444e83ff20, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID =
-# 0x3d2cdcc3 | vkCmdDrawMultiEXT: Color attachment (0) sample count
-# (VK_SAMPLE_COUNT_4_BIT) must match corresponding
-# VkPipelineMultisampleStateCreateInfo sample count
-# (VK_SAMPLE_COUNT_1_BIT) The Vulkan spec states: If the currently
-# bound pipeline was created without a VkAttachmentSampleCountInfoAMD
-# or VkAttachmentSampleCountInfoNV structure, and the current render
-# pass instance was begun with vkCmdBeginRendering with a
-# VkRenderingInfo::colorAttachmentCount parameter greater than 0, then
-# each element of the VkRenderingInfo::pColorAttachments array with a
-# imageView not equal to VK_NULL_HANDLE must have been created with a
-# sample count equal to the value of
-# VkPipelineMultisampleStateCreateInfo::rasterizationSamples used to
-# create the currently bound graphics pipeline
-# (https://github.com/KhronosGroup/Vulkan-Docs/search?q=)VUID-vkCmdDrawMultiEXT-colorAttachmentCount-06188)
-#
-# https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/5136
 
 # dEQP-GLES31.functional.geometry_shading.emit.points_emit_0_end_1:
 #
