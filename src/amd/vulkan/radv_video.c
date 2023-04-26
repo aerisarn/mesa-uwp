@@ -974,13 +974,10 @@ static bool rvcn_dec_message_decode(struct radv_cmd_buffer *cmd_buffer,
    decode->sc_coeff_size = 0;
 
    decode->sw_ctxt_size = RDECODE_SESSION_CONTEXT_SIZE;
-   decode->db_pitch = align(frame_info->dstPictureResource.codedExtent.width, vid->db_alignment);
 
-   if (device->physical_device->rad_info.family >= CHIP_NAVI21 &&
-       (vid->stream_type == RDECODE_CODEC_H265 &&
-        vid->vk.h265.profile_idc == STD_VIDEO_H265_PROFILE_IDC_MAIN_10))
-      decode->db_aligned_height = align(frame_info->dstPictureResource.codedExtent.height, 64);
-
+   decode->db_pitch = dpb->planes[0].surface.u.gfx9.surf_pitch;
+   decode->db_aligned_height = dpb->planes[0].surface.u.gfx9.surf_height;
+   decode->db_swizzle_mode = dpb->planes[0].surface.u.gfx9.swizzle_mode;
    decode->db_array_mode = device->physical_device->vid_addr_gfx_mode;
 
    decode->dt_pitch = luma->surface.u.gfx9.surf_pitch * luma->surface.blk_w;
