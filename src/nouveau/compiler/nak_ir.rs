@@ -411,7 +411,7 @@ impl fmt::Display for Dst {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum CBuf {
     Binding(u8),
     BindlessSSA(SSAValue),

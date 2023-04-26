@@ -6,30 +6,10 @@
 use crate::nak_ir::*;
 
 use std::collections::HashMap;
-use std::slice;
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-enum CopyType {
-    Raw,
-    Bits,
-    F32,
-    F64H,
-    I32,
-}
-
-#[derive(Clone)]
 struct CopyEntry {
-    typ: CopyType,
+    src_type: SrcType,
     src: Src,
-}
-
-impl CopyEntry {
-    pub fn supports_type(&self, typ: CopyType) -> bool {
-        match self.typ {
-            CopyType::Raw => true,
-            entry_typ => entry_typ == typ,
-        }
-    }
 }
 
 struct CopyPropPass {
@@ -43,128 +23,287 @@ impl CopyPropPass {
         }
     }
 
-    fn add_copy(&mut self, dst: SSAValue, typ: CopyType, src: Src) {
-        match typ {
-            CopyType::Raw => assert!(src.src_mod.is_none()),
-            CopyType::Bits => assert!(src.src_mod.is_bitwise()),
-            CopyType::F32 | CopyType::F64H | CopyType::I32 => {
-                assert!(src.src_mod.is_alu())
-            }
-        }
-        let typ = match src.src_mod {
-            SrcMod::None => CopyType::Raw,
-            SrcMod::FAbs | SrcMod::FNeg | SrcMod::FNegAbs => {
-                assert!(typ == CopyType::F32 || typ == CopyType::F64H);
-                typ
-            }
-            SrcMod::INeg => {
-                assert!(typ == CopyType::I32);
-                typ
-            }
-            SrcMod::BNot => {
-                assert!(typ == CopyType::Bits);
-                typ
-            }
-        };
-        if let Some(ssa) = src.src_ref.as_ssa() {
-            assert!(ssa.comps() == 1);
-        }
-
-        self.ssa_map.insert(dst, CopyEntry { typ: typ, src: src });
+    fn add_copy(&mut self, dst: SSAValue, src_type: SrcType, src: Src) {
+        assert!(src.src_ref.get_reg().is_none());
+        self.ssa_map.insert(
+            dst,
+            CopyEntry {
+                src_type: src_type,
+                src: src,
+            },
+        );
     }
 
-    fn get_copy(&mut self, dst: &SSAValue) -> Option<&CopyEntry> {
+    fn add_fp64_copy(&mut self, dst: &SSARef, src: Src) {
+        assert!(dst.comps() == 2);
+        match src.src_ref {
+            SrcRef::Zero | SrcRef::Imm32(_) => {
+                self.add_copy(dst[0], SrcType::ALU, Src::new_zero());
+                self.add_copy(dst[1], SrcType::F64, src);
+            }
+            SrcRef::CBuf(cb) => {
+                let lo32 = Src::from(SrcRef::CBuf(cb));
+                let hi32 = Src {
+                    src_ref: SrcRef::CBuf(CBufRef {
+                        buf: cb.buf,
+                        offset: cb.offset + 4,
+                    }),
+                    src_mod: src.src_mod,
+                };
+                self.add_copy(dst[0], SrcType::ALU, lo32);
+                self.add_copy(dst[1], SrcType::F64, hi32);
+            }
+            SrcRef::SSA(ssa) => {
+                assert!(ssa.comps() == 2);
+                let lo32 = Src::from(ssa[0]);
+                let hi32 = Src {
+                    src_ref: ssa[1].into(),
+                    src_mod: src.src_mod,
+                };
+                self.add_copy(dst[0], SrcType::ALU, lo32);
+                self.add_copy(dst[1], SrcType::F64, hi32);
+            }
+            _ => (),
+        }
+    }
+
+    fn get_copy(&self, dst: &SSAValue) -> Option<&CopyEntry> {
         self.ssa_map.get(dst)
     }
 
-    fn prop_to_pred(&mut self, pred: &mut Pred, pred_inv: &mut bool) {
-        if let Pred::SSA(src_ssa) = pred {
-            if let Some(entry) = self.get_copy(&src_ssa) {
-                if !entry.supports_type(CopyType::Bits) {
-                    return;
-                }
+    fn prop_to_pred(&self, pred: &mut Pred, pred_inv: &mut bool) {
+        loop {
+            let src_ssa = match &pred {
+                Pred::SSA(ssa) => ssa,
+                _ => return,
+            };
 
-                let copy_ssa = entry.src.src_ref.as_ssa().unwrap();
-                assert!(copy_ssa.comps() == 1 && copy_ssa.is_predicate());
-                *pred = Pred::SSA(copy_ssa[0]);
-                match entry.src.src_mod {
-                    SrcMod::None => (),
-                    SrcMod::BNot => {
-                        *pred_inv = !*pred_inv;
-                    }
-                    _ => panic!("Invalid predicate modifier"),
+            let entry = match self.get_copy(&src_ssa) {
+                Some(e) => e,
+                None => return,
+            };
+
+            match entry.src.src_ref {
+                SrcRef::True => {
+                    *pred = Pred::None;
                 }
+                SrcRef::False => {
+                    *pred = Pred::None;
+                    *pred_inv = !*pred_inv;
+                }
+                SrcRef::SSA(ssa) => {
+                    assert!(ssa.comps() == 1);
+                    *pred = Pred::SSA(ssa[0]);
+                }
+                _ => return,
+            }
+
+            match entry.src.src_mod {
+                SrcMod::None => (),
+                SrcMod::BNot => {
+                    *pred_inv = !*pred_inv;
+                }
+                _ => panic!("Invalid predicate modifier"),
             }
         }
     }
 
-    fn prop_to_src(&mut self, src: &mut Src, src_typ: CopyType) -> bool {
-        if let SrcRef::SSA(src_ssa) = src.src_ref {
-            let mut found_copy = false;
-            let mut copy_mod = src.src_mod;
-            let mut copy_vals = [SSAValue::NONE; 4];
-            for c in 0..src_ssa.comps() {
-                let c_val = &src_ssa[usize::from(c)];
-                if let Some(entry) = self.get_copy(c_val) {
-                    let c_typ = match src_typ {
-                        CopyType::Raw => CopyType::Raw,
-                        CopyType::Bits | CopyType::F32 | CopyType::I32 => {
-                            assert!(src_ssa.comps() == 1);
-                            src_typ
-                        }
-                        CopyType::F64H => {
-                            assert!(src_ssa.comps() == 2);
-                            /* The low bits of a 64-bit value are read raw */
-                            if c == 0 {
-                                CopyType::Raw
-                            } else {
-                                CopyType::F64H
-                            }
-                        }
-                    };
-
-                    if !entry.supports_type(c_typ) {
-                        return false;
-                    }
-
-                    if c_typ != CopyType::Raw {
-                        assert!(c == src_ssa.comps() - 1);
-                        copy_mod = entry.src.src_mod.modify(src.src_mod);
-                    }
-
-                    if let Some(e_ssa) = entry.src.as_ssa() {
-                        assert!(e_ssa.comps() == 1);
-                        found_copy = true;
-                        copy_vals[usize::from(c)] = e_ssa[0];
-                    } else if src_ssa.comps() == 1 {
-                        src.src_mod = copy_mod;
-                        src.src_ref = entry.src.src_ref;
-                        return true;
-                    } else {
-                        return false;
-                    }
-                } else {
-                    copy_vals[usize::from(c)] = *c_val;
-                }
-            }
-
-            if found_copy {
-                let comps = usize::from(src_ssa.comps());
-                let copy_ssa = SSARef::try_from(&copy_vals[..comps]).unwrap();
-                src.src_mod = copy_mod;
-                src.src_ref = copy_ssa.into();
-                return true;
-            }
-        }
-        false
-    }
-
-    fn prop_to_srcs(&mut self, srcs: &mut [Src], src_typ: CopyType) -> bool {
+    fn prop_to_ssa_ref(&self, src_ssa: &mut SSARef) -> bool {
         let mut progress = false;
-        for src in srcs {
-            progress |= self.prop_to_src(src, src_typ);
+
+        for c in 0..src_ssa.comps() {
+            let c_ssa = &mut src_ssa[usize::from(c)];
+            let entry = match self.get_copy(c_ssa) {
+                Some(e) => e,
+                None => continue,
+            };
+
+            if entry.src.src_mod.is_none() {
+                if let SrcRef::SSA(entry_ssa) = entry.src.src_ref {
+                    assert!(entry_ssa.comps() == 1);
+                    *c_ssa = entry_ssa[0];
+                    progress = true;
+                }
+            }
         }
+
         progress
+    }
+
+    fn prop_to_ssa_src(&self, src: &mut Src) {
+        assert!(src.src_mod.is_none());
+        if let SrcRef::SSA(src_ssa) = &mut src.src_ref {
+            loop {
+                if !self.prop_to_ssa_ref(src_ssa) {
+                    break;
+                }
+            }
+        }
+    }
+
+    fn prop_to_gpr_src(&self, src: &mut Src) {
+        loop {
+            let src_ssa = match &mut src.src_ref {
+                SrcRef::SSA(ssa) => {
+                    /* First, try to propagate SSA components */
+                    if self.prop_to_ssa_ref(ssa) {
+                        continue;
+                    }
+                    ssa
+                }
+                _ => return,
+            };
+
+            for c in 0..usize::from(src_ssa.comps()) {
+                let entry = match self.get_copy(&src_ssa[c]) {
+                    Some(e) => e,
+                    None => return,
+                };
+
+                match entry.src.src_ref {
+                    SrcRef::Zero | SrcRef::Imm32(0) => (),
+                    _ => return,
+                }
+            }
+
+            /* If we got here, all the components are zero */
+            src.src_ref = SrcRef::Zero;
+        }
+    }
+
+    fn prop_to_scalar_src(&self, src_type: SrcType, src: &mut Src) {
+        loop {
+            let src_ssa = match &src.src_ref {
+                SrcRef::SSA(ssa) => ssa,
+                _ => return,
+            };
+
+            assert!(src_ssa.comps() == 1);
+            let entry = match self.get_copy(&src_ssa[0]) {
+                Some(e) => e,
+                None => return,
+            };
+
+            /* If there are modifiers, the source types have to match */
+            if !entry.src.src_mod.is_none() && entry.src_type != src_type {
+                return;
+            }
+
+            src.src_ref = entry.src.src_ref;
+            src.src_mod = entry.src.src_mod.modify(src.src_mod);
+        }
+    }
+
+    fn prop_to_f64_src(&self, src: &mut Src) {
+        loop {
+            let src_ssa = match &mut src.src_ref {
+                SrcRef::SSA(ssa) => ssa,
+                _ => return,
+            };
+
+            assert!(src_ssa.comps() == 2);
+
+            /* First, try to propagate the two halves individually.  Source
+             * modifiers only apply to the high 32 bits so we have to reject
+             * any copies with source modifiers in the low bits and apply
+             * source modifiers as needed when propagating the high bits.
+             */
+            let lo_entry_or_none = self.get_copy(&src_ssa[0]);
+            if let Some(lo_entry) = lo_entry_or_none {
+                if !lo_entry.src.src_mod.is_none() {
+                    if let SrcRef::SSA(lo_entry_ssa) = lo_entry.src.src_ref {
+                        src_ssa[0] = lo_entry_ssa[0];
+                        continue;
+                    }
+                }
+            }
+
+            let hi_entry_or_none = self.get_copy(&src_ssa[1]);
+            if let Some(hi_entry) = hi_entry_or_none {
+                if hi_entry.src.src_mod.is_none()
+                    || hi_entry.src_type == SrcType::F64
+                {
+                    if let SrcRef::SSA(hi_entry_ssa) = hi_entry.src.src_ref {
+                        src_ssa[0] = hi_entry_ssa[0];
+                        src.src_mod = hi_entry.src.src_mod.modify(src.src_mod);
+                        continue;
+                    }
+                }
+            }
+
+            let lo_entry = match lo_entry_or_none {
+                Some(e) => e,
+                None => return,
+            };
+
+            let hi_entry = match hi_entry_or_none {
+                Some(e) => e,
+                None => return,
+            };
+
+            if !lo_entry.src.src_mod.is_none() {
+                return;
+            }
+
+            if !hi_entry.src.src_mod.is_none()
+                && hi_entry.src_type != SrcType::F64
+            {
+                return;
+            }
+
+            let new_src_ref = match hi_entry.src.src_ref {
+                SrcRef::Zero => match lo_entry.src.src_ref {
+                    SrcRef::Zero | SrcRef::Imm32(0) => SrcRef::Zero,
+                    _ => return,
+                },
+                SrcRef::Imm32(i) => {
+                    /* 32-bit immediates for f64 srouces are the top 32 bits
+                     * with zero in the lower 32.
+                     */
+                    match lo_entry.src.src_ref {
+                        SrcRef::Zero | SrcRef::Imm32(0) => SrcRef::Imm32(i),
+                        _ => return,
+                    }
+                }
+                SrcRef::CBuf(hi_cb) => match lo_entry.src.src_ref {
+                    SrcRef::CBuf(lo_cb) => {
+                        if hi_cb.buf != lo_cb.buf {
+                            return;
+                        }
+                        if lo_cb.offset % 8 != 0 {
+                            return;
+                        }
+                        if hi_cb.offset != lo_cb.offset + 4 {
+                            return;
+                        }
+                        SrcRef::CBuf(lo_cb)
+                    }
+                    _ => return,
+                },
+                /* SrcRef::SSA is already handled above */
+                _ => return,
+            };
+
+            src.src_ref = new_src_ref;
+            src.src_mod = hi_entry.src.src_mod.modify(src.src_mod);
+        }
+    }
+
+    fn prop_to_src(&self, src_type: SrcType, src: &mut Src) {
+        match src_type {
+            SrcType::SSA => {
+                self.prop_to_ssa_src(src);
+            }
+            SrcType::GPR => {
+                self.prop_to_gpr_src(src);
+            }
+            SrcType::ALU | SrcType::F32 | SrcType::I32 | SrcType::Pred => {
+                self.prop_to_scalar_src(src_type, src);
+            }
+            SrcType::F64 => {
+                self.prop_to_f64_src(src);
+            }
+        }
     }
 
     pub fn run(&mut self, f: &mut Function) {
@@ -175,47 +314,33 @@ impl CopyPropPass {
                         let dst = mov.dst.as_ssa().unwrap();
                         assert!(dst.comps() == 1);
                         if mov.quad_lanes == 0xf {
-                            self.add_copy(dst[0], CopyType::Raw, mov.src);
+                            self.add_copy(dst[0], SrcType::GPR, mov.src);
                         }
                     }
                     Op::FMov(mov) => {
                         let dst = mov.dst.as_ssa().unwrap();
                         assert!(dst.comps() == 1);
                         if !mov.saturate {
-                            self.add_copy(dst[0], CopyType::F32, mov.src);
+                            self.add_copy(dst[0], SrcType::F32, mov.src);
                         }
                     }
                     Op::DMov(mov) => {
                         let dst = mov.dst.as_ssa().unwrap();
                         assert!(dst.comps() == 2);
                         if !mov.saturate {
-                            if let Some(src) = mov.src.src_ref.as_ssa() {
-                                self.add_copy(
-                                    dst[0],
-                                    CopyType::Bits,
-                                    src[0].into(),
-                                );
-                                self.add_copy(
-                                    dst[1],
-                                    CopyType::F64H,
-                                    Src {
-                                        src_ref: src[1].into(),
-                                        src_mod: mov.src.src_mod,
-                                    },
-                                );
-                            }
+                            self.add_fp64_copy(dst, mov.src);
                         }
                     }
                     Op::IMov(mov) => {
                         let dst = mov.dst.as_ssa().unwrap();
                         assert!(dst.comps() == 1);
-                        self.add_copy(dst[0], CopyType::I32, mov.src);
+                        self.add_copy(dst[0], SrcType::I32, mov.src);
                     }
                     Op::ParCopy(pcopy) => {
                         for (src, dst) in pcopy.iter() {
                             let dst = dst.as_ssa().unwrap();
                             assert!(dst.comps() == 1);
-                            self.add_copy(dst[0], CopyType::Raw, *src);
+                            self.add_copy(dst[0], SrcType::GPR, *src);
                         }
                     }
                     _ => (),
@@ -223,52 +348,9 @@ impl CopyPropPass {
 
                 self.prop_to_pred(&mut instr.pred, &mut instr.pred_inv);
 
-                match &mut instr.op {
-                    Op::FAdd(_)
-                    | Op::FFma(_)
-                    | Op::FMnMx(_)
-                    | Op::FMul(_)
-                    | Op::FSet(_) => {
-                        self.prop_to_srcs(instr.srcs_mut(), CopyType::F32);
-                    }
-                    Op::FSetP(op) => {
-                        self.prop_to_srcs(&mut op.srcs, CopyType::F32);
-                        /* TODO Other predicates */
-                    }
-                    Op::IAdd3(op) => {
-                        self.prop_to_srcs(&mut op.srcs, CopyType::I32);
-                        /* Carry doesn't have a negate modifier */
-                        self.prop_to_src(&mut op.carry, CopyType::Raw);
-                    }
-                    Op::ISetP(op) => {
-                        self.prop_to_srcs(&mut op.srcs, CopyType::I32);
-                        /* TODO Other predicates */
-                    }
-                    Op::Lop3(op) => {
-                        if self.prop_to_srcs(&mut op.srcs, CopyType::Bits) {
-                            op.op = LogicOp::new_lut(&|mut x, mut y, mut z| {
-                                if op.srcs[0].src_mod.is_bnot() {
-                                    x = !x;
-                                }
-                                if op.srcs[1].src_mod.is_bnot() {
-                                    y = !y;
-                                }
-                                if op.srcs[2].src_mod.is_bnot() {
-                                    z = !z;
-                                }
-                                op.op.eval(x, y, z)
-                            });
-                            op.srcs[0].src_mod = SrcMod::None;
-                            op.srcs[1].src_mod = SrcMod::None;
-                            op.srcs[2].src_mod = SrcMod::None;
-                        }
-                    }
-                    Op::PLop3(op) => {
-                        self.prop_to_srcs(&mut op.srcs, CopyType::Bits);
-                    }
-                    _ => {
-                        self.prop_to_srcs(instr.srcs_mut(), CopyType::Raw);
-                    }
+                let src_types = instr.src_types();
+                for (i, src) in instr.srcs_mut().iter_mut().enumerate() {
+                    self.prop_to_src(src_types[i], src);
                 }
             }
         }
