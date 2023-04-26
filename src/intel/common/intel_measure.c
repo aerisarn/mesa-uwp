@@ -305,9 +305,9 @@ intel_measure_state_changed(const struct intel_measure_batch *batch,
    }
 
    if (config.flags & INTEL_MEASURE_RENDERPASS) {
-      return ((last_snap->renderpass != batch->renderpass) ||
-              /* compute workloads are always in their own renderpass */
-              (cs != 0));
+      bool new_renderpass = !cs && last_snap->renderpass != batch->renderpass;
+      bool new_compute_block = cs && last_snap->type != INTEL_SNAPSHOT_COMPUTE;
+      return new_renderpass || new_compute_block;
    }
 
    /* remaining comparisons check the state of the render pipeline for
