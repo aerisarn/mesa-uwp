@@ -735,14 +735,14 @@ fn deserialize_nir(
     Some((nir, args, internal_args))
 }
 
-pub fn convert_spirv_to_nir(
-    p: &Program,
+pub(super) fn convert_spirv_to_nir(
+    build: &ProgramBuild,
     name: &str,
     args: &[spirv::SPIRVKernelArg],
     dev: &Arc<Device>,
-) -> (NirShader, Vec<KernelArg>, Vec<InternalKernelArg>, String) {
+) -> (NirShader, Vec<KernelArg>, Vec<InternalKernelArg>) {
     let cache = dev.screen().shader_cache();
-    let key = p.hash_key(dev, name);
+    let key = build.hash_key(dev, name);
 
     let res = if let Some(cache) = &cache {
         cache.get(&mut key.unwrap()).and_then(|entry| {
@@ -753,10 +753,10 @@ pub fn convert_spirv_to_nir(
         None
     };
 
-    let (nir, args, internal_args) = if let Some(res) = res {
+    if let Some(res) = res {
         res
     } else {
-        let mut nir = p.to_nir(name, dev);
+        let mut nir = build.to_nir(name, dev);
 
         /* this is a hack until we support fp16 properly and check for denorms inside
          * vstore/vload_half
@@ -788,9 +788,7 @@ pub fn convert_spirv_to_nir(
         }
 
         (nir, args, internal_args)
-    };
-
-    (nir, args, internal_args, p.attribute_str(name, dev))
+    }
 }
 
 fn extract<'a, const S: usize>(buf: &'a mut &[u8]) -> &'a [u8; S] {
