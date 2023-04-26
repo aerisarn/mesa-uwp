@@ -160,6 +160,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_depth_clip_control                = true,
    .EXT_depth_range_unrestricted          = true,
    .EXT_dynamic_rendering_unused_attachments = true,
+   .EXT_descriptor_buffer                 = true,
    .EXT_extended_dynamic_state            = true,
    .EXT_extended_dynamic_state2           = true,
    .EXT_extended_dynamic_state3           = true,
@@ -372,6 +373,12 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
       .dynamicRendering = true,
       .shaderIntegerDotProduct = true,
       .maintenance4 = true,
+
+      /* VK_EXT_descriptor_buffer */
+      .descriptorBuffer = true,
+      .descriptorBufferCaptureReplay = false,
+      .descriptorBufferPushDescriptors = true,
+      .descriptorBufferImageLayoutIgnored = true,
 
       /* VK_EXT_primitives_generated_query */
       .primitivesGeneratedQuery = true,
@@ -1200,6 +1207,42 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          props->maxMultiDrawCount = 2048;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT: {
+         VkPhysicalDeviceDescriptorBufferPropertiesEXT *props = (VkPhysicalDeviceDescriptorBufferPropertiesEXT *)ext;
+         props->combinedImageSamplerDescriptorSingleArray = VK_TRUE;
+         props->bufferlessPushDescriptors = VK_TRUE;
+         props->descriptorBufferOffsetAlignment = 4;
+         props->maxDescriptorBufferBindings = MAX_SETS;
+         props->maxResourceDescriptorBufferBindings = MAX_SETS;
+         props->maxSamplerDescriptorBufferBindings = MAX_SETS;
+         props->maxEmbeddedImmutableSamplerBindings = MAX_SETS;
+         props->maxEmbeddedImmutableSamplers = 2032;
+         props->bufferCaptureReplayDescriptorDataSize = 0;
+         props->imageCaptureReplayDescriptorDataSize = 0;
+         props->imageViewCaptureReplayDescriptorDataSize = 0;
+         props->samplerCaptureReplayDescriptorDataSize = 0;
+         props->accelerationStructureCaptureReplayDescriptorDataSize = 0;
+         props->samplerDescriptorSize = sizeof(union lp_descriptor);
+         props->combinedImageSamplerDescriptorSize = sizeof(union lp_descriptor);
+         props->sampledImageDescriptorSize = sizeof(union lp_descriptor);
+         props->storageImageDescriptorSize = sizeof(union lp_descriptor);
+         props->uniformTexelBufferDescriptorSize = sizeof(union lp_descriptor);
+         props->robustUniformTexelBufferDescriptorSize = sizeof(union lp_descriptor);
+         props->storageTexelBufferDescriptorSize = sizeof(union lp_descriptor);
+         props->robustStorageTexelBufferDescriptorSize = sizeof(union lp_descriptor);
+         props->uniformBufferDescriptorSize = sizeof(union lp_descriptor);
+         props->robustUniformBufferDescriptorSize = sizeof(union lp_descriptor);
+         props->storageBufferDescriptorSize = sizeof(union lp_descriptor);
+         props->robustStorageBufferDescriptorSize = sizeof(union lp_descriptor);
+         props->inputAttachmentDescriptorSize = sizeof(union lp_descriptor);
+         props->accelerationStructureDescriptorSize = 0;
+         props->maxSamplerDescriptorBufferRange = 1<<27; //spec minimum
+         props->maxResourceDescriptorBufferRange = 1<<27; //spec minimum
+         props->resourceDescriptorBufferAddressSpaceSize = 1<<27; //spec minimum
+         props->samplerDescriptorBufferAddressSpaceSize = 1<<27; //spec minimum
+         props->descriptorBufferAddressSpaceSize = 1<<27; //spec minimum
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES: {
          VkPhysicalDeviceTexelBufferAlignmentProperties *properties =
             (VkPhysicalDeviceTexelBufferAlignmentProperties *)ext;
@@ -1565,6 +1608,9 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    device->null_image_handle = (void *)(uintptr_t)device->queue.ctx->create_image_handle(device->queue.ctx,
       &(struct pipe_image_view){ 0 });
 
+   util_dynarray_init(&device->bda_texture_handles, NULL);
+   util_dynarray_init(&device->bda_image_handles, NULL);
+
    *pDevice = lvp_device_to_handle(device);
 
    return VK_SUCCESS;
@@ -1576,6 +1622,16 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyDevice(
    const VkAllocationCallbacks*                pAllocator)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
+
+   util_dynarray_foreach(&device->bda_texture_handles, struct lp_texture_handle *, handle)
+      device->queue.ctx->delete_texture_handle(device->queue.ctx, (uint64_t)(uintptr_t)*handle);
+
+   util_dynarray_fini(&device->bda_texture_handles);
+
+   util_dynarray_foreach(&device->bda_image_handles, struct lp_texture_handle *, handle)
+      device->queue.ctx->delete_image_handle(device->queue.ctx, (uint64_t)(uintptr_t)*handle);
+
+   util_dynarray_fini(&device->bda_image_handles);
 
    device->queue.ctx->delete_texture_handle(device->queue.ctx, (uint64_t)(uintptr_t)device->null_texture_handle);
    device->queue.ctx->delete_image_handle(device->queue.ctx, (uint64_t)(uintptr_t)device->null_image_handle);

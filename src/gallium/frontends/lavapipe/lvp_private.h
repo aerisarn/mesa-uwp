@@ -202,6 +202,8 @@ struct lvp_device {
 
    struct lp_texture_handle *null_texture_handle;
    struct lp_texture_handle *null_image_handle;
+   struct util_dynarray bda_texture_handles;
+   struct util_dynarray bda_image_handles;
 };
 
 void lvp_device_get_cache_uuid(void *uuid);

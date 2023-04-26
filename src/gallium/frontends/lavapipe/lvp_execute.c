@@ -59,6 +59,14 @@ enum gs_output {
   GS_OUTPUT_LINES,
 };
 
+struct descriptor_buffer_offset {
+   struct lvp_pipeline_layout *layout;
+   uint32_t buffer_index;
+   VkDeviceSize offset;
+
+   const struct lvp_descriptor_set_layout *sampler_layout;
+};
+
 struct lvp_render_attachment {
    struct lvp_image_view *imgv;
    VkResolveModeFlags resolve_mode;
@@ -129,6 +137,9 @@ struct rendering_state {
    struct pipe_resource *index_buffer;
    struct pipe_constant_buffer const_buffer[LVP_SHADER_STAGES][16];
    struct lvp_descriptor_set *desc_sets[2][MAX_SETS];
+   struct pipe_resource *desc_buffers[MAX_SETS];
+   uint8_t *desc_buffer_addrs[MAX_SETS];
+   struct descriptor_buffer_offset desc_buffer_offsets[2][MAX_SETS];
    int num_const_bufs[LVP_SHADER_STAGES];
    int num_vb;
    unsigned start_vb;
@@ -1142,6 +1153,18 @@ handle_descriptor_sets(struct vk_cmd_queue_entry *cmd, struct rendering_state *s
    uint32_t dynamic_offset_index = 0;
 
    for (uint32_t i = 0; i < bds->descriptor_set_count; i++) {
+      if (state->desc_buffers[bds->first_set + i]) {
+         /* always unset descriptor buffers when binding sets */
+         if (bds->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
+               bool changed = state->const_buffer[MESA_SHADER_COMPUTE][bds->first_set + i].buffer == state->desc_buffers[bds->first_set + i];
+               state->constbuf_dirty[MESA_SHADER_COMPUTE] |= changed;
+         } else {
+            lvp_forall_gfx_stage(j) {
+               bool changed = state->const_buffer[j][bds->first_set + i].buffer == state->desc_buffers[bds->first_set + i];
+               state->constbuf_dirty[j] |= changed;
+            }
+         }
+      }
       if (!layout->vk.set_layouts[bds->first_set + i])
          continue;
 
@@ -3891,6 +3914,164 @@ handle_execute_generated_commands(struct vk_cmd_queue_entry *cmd, struct renderi
    state->pctx->buffer_unmap(state->pctx, pmap);
 }
 
+static void
+handle_descriptor_buffers(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
+{
+   const struct vk_cmd_bind_descriptor_buffers_ext *bind = &cmd->u.bind_descriptor_buffers_ext;
+   for (unsigned i = 0; i < bind->buffer_count; i++) {
+      struct pipe_resource *pres = get_buffer_resource(state->pctx, (void *)(uintptr_t)bind->binding_infos[i].address);
+      state->desc_buffer_addrs[i] = (void *)(uintptr_t)bind->binding_infos[i].address;
+      pipe_resource_reference(&state->desc_buffers[i], pres);
+      /* leave only one ref on rendering_state */
+      pipe_resource_reference(&pres, NULL);
+   }
+}
+
+static bool
+descriptor_layouts_equal(const struct lvp_descriptor_set_layout *a, const struct lvp_descriptor_set_layout *b)
+{
+   const uint8_t *pa = (const uint8_t*)a, *pb = (const uint8_t*)b;
+   uint32_t hash_start_offset = sizeof(struct vk_descriptor_set_layout);
+   uint32_t binding_offset = offsetof(struct lvp_descriptor_set_layout, binding);
+   /* base equal */
+   if (memcmp(pa + hash_start_offset, pb + hash_start_offset, binding_offset - hash_start_offset))
+      return false;
+
+   /* bindings equal */
+   if (a->binding_count != b->binding_count)
+      return false;
+   size_t binding_size = a->binding_count * sizeof(struct lvp_descriptor_set_binding_layout);
+   const struct lvp_descriptor_set_binding_layout *la = a->binding;
+   const struct lvp_descriptor_set_binding_layout *lb = b->binding;
+   if (memcmp(la, lb, binding_size)) {
+      for (unsigned i = 0; i < a->binding_count; i++) {
+         if (memcmp(&la[i], &lb[i], offsetof(struct lvp_descriptor_set_binding_layout, immutable_samplers)))
+            return false;
+      }
+   }
+
+   /* immutable sampler equal */
+   if (a->immutable_sampler_count != b->immutable_sampler_count)
+      return false;
+   if (a->immutable_sampler_count) {
+      size_t sampler_size = a->immutable_sampler_count * sizeof(struct lvp_sampler *);
+      if (memcmp(pa + binding_offset + binding_size, pb + binding_offset + binding_size, sampler_size)) {
+         struct lvp_sampler **sa = (struct lvp_sampler **)(pa + binding_offset);
+         struct lvp_sampler **sb = (struct lvp_sampler **)(pb + binding_offset);
+         for (unsigned i = 0; i < a->immutable_sampler_count; i++) {
+            if (memcmp(sa[i], sb[i], sizeof(struct lvp_sampler)))
+               return false;
+         }
+      }
+   }
+   return true;
+}
+
+static void
+check_db_compat(struct rendering_state *state, struct lvp_pipeline_layout *layout, bool is_compute, int first_set, int set_count)
+{
+   bool independent = (layout->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT) > 0;
+   /* handle compatibility rules for unbinding */
+   for (unsigned j = 0; j < ARRAY_SIZE(state->desc_buffers); j++) {
+      struct lvp_pipeline_layout *l2 = state->desc_buffer_offsets[is_compute][j].layout;
+      if ((j >= first_set && j < first_set + set_count) || !l2 || l2 == layout)
+         continue;
+      bool independent_l2 = (l2->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT) > 0;
+      if (independent != independent_l2) {
+         memset(&state->desc_buffer_offsets[is_compute][j], 0, sizeof(state->desc_buffer_offsets[is_compute][j]));
+      } else {
+         if (layout->vk.set_count != l2->vk.set_count) {
+            memset(&state->desc_buffer_offsets[is_compute][j], 0, sizeof(state->desc_buffer_offsets[is_compute][j]));
+         } else {
+            const struct lvp_descriptor_set_layout *a = get_set_layout(layout, j);
+            const struct lvp_descriptor_set_layout *b = get_set_layout(l2, j);
+            if (!!a != !!b || !descriptor_layouts_equal(a, b)) {
+               memset(&state->desc_buffer_offsets[is_compute][j], 0, sizeof(state->desc_buffer_offsets[is_compute][j]));
+            }
+         }
+      }
+   }
+}
+
+static void
+bind_db_samplers(struct rendering_state *state, bool is_compute, unsigned set)
+{
+   const struct lvp_descriptor_set_layout *set_layout = state->desc_buffer_offsets[is_compute][set].sampler_layout;
+   if (!set_layout)
+      return;
+   unsigned buffer_index = state->desc_buffer_offsets[is_compute][set].buffer_index;
+   if (!state->desc_buffer_addrs[buffer_index]) {
+      if (set_layout->immutable_set) {
+         state->desc_sets[is_compute][set] = set_layout->immutable_set;
+         u_foreach_bit(stage, set_layout->shader_stages)
+            handle_set_stage_buffer(state, set_layout->immutable_set->bo, 0, vk_to_mesa_shader_stage(1<<stage), set);
+      }
+      return;
+   }
+   uint8_t *db = state->desc_buffer_addrs[buffer_index] + state->desc_buffer_offsets[is_compute][set].offset;
+   uint8_t did_update = 0;
+   for (uint32_t binding_index = 0; binding_index < set_layout->binding_count; binding_index++) {
+      const struct lvp_descriptor_set_binding_layout *bind_layout = &set_layout->binding[binding_index];
+      if (!bind_layout->immutable_samplers)
+         continue;
+
+      union lp_descriptor *desc = (void*)db;
+      desc += bind_layout->descriptor_index;
+
+      for (uint32_t sampler_index = 0; sampler_index < bind_layout->array_size; sampler_index++) {
+         if (bind_layout->immutable_samplers[sampler_index]) {
+            desc[sampler_index].sampler = bind_layout->immutable_samplers[sampler_index]->sampler;
+            u_foreach_bit(stage, set_layout->shader_stages)
+               did_update |= BITFIELD_BIT(vk_to_mesa_shader_stage(1<<stage));
+         }
+      }
+   }
+   u_foreach_bit(stage, did_update)
+      state->constbuf_dirty[stage] = true;
+}
+
+static void
+handle_descriptor_buffer_embedded_samplers(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
+{
+   const struct vk_cmd_bind_descriptor_buffer_embedded_samplers_ext *bind = &cmd->u.bind_descriptor_buffer_embedded_samplers_ext;
+   LVP_FROM_HANDLE(lvp_pipeline_layout, layout, bind->layout);
+
+   if (!layout->vk.set_layouts[bind->set])
+      return;
+
+   const struct lvp_descriptor_set_layout *set_layout = get_set_layout(layout, bind->set);
+   if (!set_layout->immutable_sampler_count)
+      return;
+   bool is_compute = bind->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
+   check_db_compat(state, layout, is_compute, bind->set, 1);
+
+   state->desc_buffer_offsets[is_compute][bind->set].sampler_layout = set_layout;
+   bind_db_samplers(state, is_compute, bind->set);
+}
+
+static void
+handle_descriptor_buffer_offsets(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
+{
+   struct vk_cmd_set_descriptor_buffer_offsets_ext *dbo = &cmd->u.set_descriptor_buffer_offsets_ext;
+   bool is_compute = dbo->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
+   for (unsigned i = 0; i < dbo->set_count; i++) {
+      LVP_FROM_HANDLE(lvp_pipeline_layout, layout, dbo->layout);
+      check_db_compat(state, layout, is_compute, dbo->first_set, dbo->set_count);
+      unsigned idx = dbo->first_set + i;
+      state->desc_buffer_offsets[is_compute][idx].layout = layout;
+      state->desc_buffer_offsets[is_compute][idx].buffer_index = dbo->buffer_indices[i];
+      state->desc_buffer_offsets[is_compute][idx].offset = dbo->offsets[i];
+      const struct lvp_descriptor_set_layout *set_layout = get_set_layout(layout, idx);
+
+      /* set for all stages */
+      u_foreach_bit(stage, set_layout->shader_stages) {
+         gl_shader_stage pstage = vk_to_mesa_shader_stage(1<<stage);
+         handle_set_stage_buffer(state, state->desc_buffers[dbo->buffer_indices[i]], dbo->offsets[i], pstage, idx);
+      }
+      bind_db_samplers(state, is_compute, idx);
+   }
+}
+
 void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
 {
    struct vk_device_dispatch_table cmd_enqueue_dispatch;
@@ -3980,6 +4161,9 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
    ENQUEUE_CMD(CmdSetEvent2)
    ENQUEUE_CMD(CmdWaitEvents2)
    ENQUEUE_CMD(CmdWriteTimestamp2)
+   ENQUEUE_CMD(CmdBindDescriptorBuffersEXT)
+   ENQUEUE_CMD(CmdSetDescriptorBufferOffsetsEXT)
+   ENQUEUE_CMD(CmdBindDescriptorBufferEmbeddedSamplersEXT)
 
    ENQUEUE_CMD(CmdSetPolygonModeEXT)
    ENQUEUE_CMD(CmdSetTessellationDomainOriginEXT)
@@ -4359,6 +4543,15 @@ static void lvp_execute_cmd_buffer(struct list_head *cmds,
       case VK_CMD_EXECUTE_GENERATED_COMMANDS_NV:
          handle_execute_generated_commands(cmd, state, print_cmds);
          break;
+      case VK_CMD_BIND_DESCRIPTOR_BUFFERS_EXT:
+         handle_descriptor_buffers(cmd, state);
+         break;
+      case VK_CMD_SET_DESCRIPTOR_BUFFER_OFFSETS_EXT:
+         handle_descriptor_buffer_offsets(cmd, state);
+         break;
+      case VK_CMD_BIND_DESCRIPTOR_BUFFER_EMBEDDED_SAMPLERS_EXT:
+         handle_descriptor_buffer_embedded_samplers(cmd, state);
+         break;
       default:
          fprintf(stderr, "Unsupported command %s\n", vk_cmd_queue_type_names[cmd->type]);
          unreachable("Unsupported command");
@@ -4423,6 +4616,9 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
       lvp_descriptor_set_destroy(device, *set);
 
    util_dynarray_fini(&state->push_desc_sets);
+
+   for (unsigned i = 0; i < ARRAY_SIZE(state->desc_buffers); i++)
+      pipe_resource_reference(&state->desc_buffers[i], NULL);
 
    free(state->color_att);
    return VK_SUCCESS;
