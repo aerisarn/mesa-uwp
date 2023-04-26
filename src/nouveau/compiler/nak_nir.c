@@ -348,16 +348,22 @@ nak_nir_lower_fs_inputs(nir_shader *nir)
          if (intrin->intrinsic != nir_intrinsic_load_interpolated_input)
             continue;
 
-         b.cursor = nir_after_instr(&intrin->instr);
+         nir_intrinsic_instr *bary = nir_src_as_intrinsic(intrin->src[0]);
+         if (nir_intrinsic_interp_mode(bary) == INTERP_MODE_SMOOTH) {
+            /* Perspective-correct interpolation requires that we divide by
+             * gl_FragCoord.w.
+             */
+            b.cursor = nir_after_instr(&intrin->instr);
 
-         nir_def *w =
-            nir_load_interpolated_input(&b, 1, 32, intrin->src[0].ssa,
-                                        nir_imm_int(&b, 0), .base = w_addr,
-                                        .dest_type = nir_type_float32);
+            nir_def *w =
+               nir_load_interpolated_input(&b, 1, 32, intrin->src[0].ssa,
+                                           nir_imm_int(&b, 0), .base = w_addr,
+                                           .dest_type = nir_type_float32);
 
-         /* Interpolated inputs need to be divided by .w */
-         nir_def *res = nir_fdiv(&b, &intrin->def, w);
-         nir_def_rewrite_uses_after(&intrin->def, res, res->parent_instr);
+            /* Interpolated inputs need to be divided by .w */
+            nir_def *res = nir_fdiv(&b, &intrin->def, w);
+            nir_def_rewrite_uses_after(&intrin->def, res, res->parent_instr);
+         }
       }
    }
 
