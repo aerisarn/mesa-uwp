@@ -27,6 +27,18 @@
 #include "util/u_math.h"
 #include "util/u_inlines.h"
 
+static void
+lvp_descriptor_set_layout_destroy(struct vk_device *_device, struct vk_descriptor_set_layout *_layout)
+{
+   struct lvp_device *device = container_of(_device, struct lvp_device, vk);
+   struct lvp_descriptor_set_layout *set_layout = (void*)vk_to_lvp_descriptor_set_layout(_layout);
+
+   _layout->ref_cnt = UINT32_MAX;
+   lvp_descriptor_set_destroy(device, set_layout->immutable_set);
+
+   vk_descriptor_set_layout_destroy(_device, _layout);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
     VkDevice                                    _device,
     const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
@@ -164,6 +176,13 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    free(bindings);
 
    set_layout->dynamic_offset_count = dynamic_offset_count;
+
+   if (set_layout->binding_count == set_layout->immutable_sampler_count) {
+      /* create a bindable set with all the immutable samplers */
+      lvp_descriptor_set_create(device, set_layout, &set_layout->immutable_set);
+      vk_descriptor_set_layout_unref(&device->vk, &set_layout->vk);
+      set_layout->vk.destroy = lvp_descriptor_set_layout_destroy;
+   }
 
    *pSetLayout = lvp_descriptor_set_layout_to_handle(set_layout);
 

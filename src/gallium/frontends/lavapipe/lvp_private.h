@@ -313,6 +313,9 @@ struct lvp_descriptor_set_layout {
    /* Number of dynamic offsets used by this descriptor set */
    uint32_t dynamic_offset_count;
 
+   /* if this layout is comprised solely of immutable samplers, this will be a bindable set */
+   struct lvp_descriptor_set *immutable_set;
+
    /* Bindings in this descriptor set */
    struct lvp_descriptor_set_binding_layout binding[0];
 };
