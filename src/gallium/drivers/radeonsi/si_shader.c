@@ -3335,6 +3335,9 @@ void si_shader_binary_clean(struct si_shader_binary *binary)
    free(binary->llvm_ir_string);
    binary->llvm_ir_string = NULL;
 
+   free((void *)binary->symbols);
+   binary->symbols = NULL;
+
    free(binary->uploaded_code);
    binary->uploaded_code = NULL;
    binary->uploaded_code_size = 0;

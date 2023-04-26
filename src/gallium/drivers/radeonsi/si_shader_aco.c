@@ -107,6 +107,14 @@ si_aco_build_shader_binary(void **data, const struct ac_shader_config *config,
       memcpy(shader->binary.llvm_ir_string, llvm_ir_str, llvm_ir_size);
    }
 
+   if (num_symbols) {
+      unsigned symbol_size = num_symbols * sizeof(*symbols);
+      void *data = MALLOC(symbol_size);
+      memcpy(data, symbols, symbol_size);
+      shader->binary.symbols = data;
+      shader->binary.num_symbols = num_symbols;
+   }
+
    shader->config = *config;
 }
 

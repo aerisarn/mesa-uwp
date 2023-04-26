@@ -826,6 +826,9 @@ struct si_shader_binary {
 
    const char *disasm_string;
    size_t disasm_size;
+
+   const unsigned *symbols;
+   unsigned num_symbols;
 };
 
 struct gfx9_gs_info {

@@ -274,13 +274,15 @@ static uint32_t *si_get_shader_binary(struct si_shader *shader)
 
    /* Refuse to allocate overly large buffers and guard against integer
     * overflow. */
-   if (shader->binary.code_size > UINT_MAX / 4 || llvm_ir_size > UINT_MAX / 4)
+   if (shader->binary.code_size > UINT_MAX / 4 || llvm_ir_size > UINT_MAX / 4 ||
+       shader->binary.num_symbols > UINT_MAX / 32)
       return NULL;
 
    unsigned size = sizeof(struct si_shader_blob_head) +
                    align(sizeof(shader->config), 4) +
                    align(sizeof(shader->info), 4) +
                    4 + align(shader->binary.code_size, 4) +
+                   4 + shader->binary.num_symbols * 8 +
                    4 + align(llvm_ir_size, 4);
    uint32_t *buffer = (uint32_t*)CALLOC(1, size);
    if (!buffer)
@@ -296,6 +298,7 @@ static uint32_t *si_get_shader_binary(struct si_shader *shader)
    ptr = write_data(ptr, &shader->config, sizeof(shader->config));
    ptr = write_data(ptr, &shader->info, sizeof(shader->info));
    ptr = write_chunk(ptr, shader->binary.code_buffer, shader->binary.code_size);
+   ptr = write_chunk(ptr, shader->binary.symbols, shader->binary.num_symbols * 8);
    ptr = write_chunk(ptr, shader->binary.llvm_ir_string, llvm_ir_size);
    assert((char *)ptr - (char *)buffer == (ptrdiff_t)size);
 
@@ -322,6 +325,8 @@ static bool si_load_shader_binary(struct si_shader *shader, void *binary)
    ptr = read_data(ptr, &shader->info, sizeof(shader->info));
    ptr = read_chunk(ptr, (void **)&shader->binary.code_buffer, &code_size);
    shader->binary.code_size = code_size;
+   ptr = read_chunk(ptr, (void **)&shader->binary.symbols, &chunk_size);
+   shader->binary.num_symbols = chunk_size / 8;
    ptr = read_chunk(ptr, (void **)&shader->binary.llvm_ir_string, &chunk_size);
 
    if (!shader->is_gs_copy_shader &&
