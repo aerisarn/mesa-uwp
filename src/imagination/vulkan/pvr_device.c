@@ -413,13 +413,12 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
       pdevice->master_path = NULL;
    }
 
-   pdevice->ws = pvr_winsys_create(pdevice->master_fd,
-                                   pdevice->render_fd,
-                                   &pdevice->vk.instance->alloc);
-   if (!pdevice->ws) {
-      result = VK_ERROR_INITIALIZATION_FAILED;
+   result = pvr_winsys_create(pdevice->master_fd,
+                              pdevice->render_fd,
+                              &pdevice->vk.instance->alloc,
+                              &pdevice->ws);
+   if (result != VK_SUCCESS)
       goto err_vk_free_master_path;
-   }
 
    pdevice->vk.supported_sync_types = pdevice->ws->sync_types;
 
@@ -1787,13 +1786,12 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    device->instance = instance;
    device->pdevice = pdevice;
 
-   device->ws = pvr_winsys_create(device->master_fd,
-                                  device->render_fd,
-                                  &device->vk.alloc);
-   if (!device->ws) {
-      result = VK_ERROR_INITIALIZATION_FAILED;
+   result = pvr_winsys_create(device->master_fd,
+                              device->render_fd,
+                              &device->vk.alloc,
+                              &device->ws);
+   if (result != VK_SUCCESS)
       goto err_close_master_fd;
-   }
 
    if (device->ws->features.supports_threaded_submit) {
       /* Queue submission can be blocked if the kernel CCBs become full,

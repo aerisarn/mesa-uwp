@@ -39,9 +39,10 @@ void pvr_winsys_destroy(struct pvr_winsys *ws)
    ws->ops->destroy(ws);
 }
 
-struct pvr_winsys *pvr_winsys_create(int master_fd,
-                                     int render_fd,
-                                     const VkAllocationCallbacks *alloc)
+VkResult pvr_winsys_create(int master_fd,
+                           int render_fd,
+                           const VkAllocationCallbacks *alloc,
+                           struct pvr_winsys **const ws_out)
 {
 #if defined(PVR_SUPPORT_SERVICES_DRIVER)
    drmVersionPtr version;
@@ -49,10 +50,9 @@ struct pvr_winsys *pvr_winsys_create(int master_fd,
 
    version = drmGetVersion(render_fd);
    if (!version) {
-      vk_errorf(NULL,
-                VK_ERROR_INCOMPATIBLE_DRIVER,
-                "Failed to query kernel driver version for device.");
-      return NULL;
+      return vk_errorf(NULL,
+                       VK_ERROR_INCOMPATIBLE_DRIVER,
+                       "Failed to query kernel driver version for device.");
    }
 
    if (strcmp(version->name, "pvr") == 0) {
@@ -61,18 +61,17 @@ struct pvr_winsys *pvr_winsys_create(int master_fd,
       services_driver = false;
    } else {
       drmFreeVersion(version);
-      vk_errorf(
+      return vk_errorf(
          NULL,
          VK_ERROR_INCOMPATIBLE_DRIVER,
          "Device does not use any of the supported pvrsrvkm or powervr kernel driver.");
-      return NULL;
    }
 
    drmFreeVersion(version);
 
    if (services_driver)
-      return pvr_srv_winsys_create(master_fd, render_fd, alloc);
+      return pvr_srv_winsys_create(master_fd, render_fd, alloc, ws_out);
 #endif
 
-   return pvr_drm_winsys_create(master_fd, render_fd, alloc);
+   return pvr_drm_winsys_create(master_fd, render_fd, alloc, ws_out);
 }

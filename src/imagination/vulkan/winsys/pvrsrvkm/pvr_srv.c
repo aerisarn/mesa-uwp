@@ -683,29 +683,30 @@ static bool pvr_is_driver_compatible(int render_fd)
    return true;
 }
 
-struct pvr_winsys *pvr_srv_winsys_create(int master_fd,
-                                         int render_fd,
-                                         const VkAllocationCallbacks *alloc)
+VkResult pvr_srv_winsys_create(int master_fd,
+                               int render_fd,
+                               const VkAllocationCallbacks *alloc,
+                               struct pvr_winsys **const ws_out)
 {
    struct pvr_srv_winsys *srv_ws;
    VkResult result;
    uint64_t bvnc;
 
    if (!pvr_is_driver_compatible(render_fd))
-      return NULL;
+      return VK_ERROR_INCOMPATIBLE_DRIVER;
 
    result = pvr_srv_init_module(render_fd, PVR_SRVKM_MODULE_TYPE_SERVICES);
    if (result != VK_SUCCESS)
-      return NULL;
+      goto err_out;
 
    result = pvr_srv_connection_create(render_fd, &bvnc);
    if (result != VK_SUCCESS)
-      return NULL;
+      goto err_out;
 
    srv_ws =
       vk_zalloc(alloc, sizeof(*srv_ws), 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!srv_ws) {
-      vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+      result = vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto err_pvr_srv_connection_destroy;
    }
 
@@ -736,7 +737,9 @@ struct pvr_winsys *pvr_srv_winsys_create(int master_fd,
    if (result != VK_SUCCESS)
       goto err_pvr_srv_memctx_finish;
 
-   return &srv_ws->base;
+   *ws_out = &srv_ws->base;
+
+   return VK_SUCCESS;
 
 err_pvr_srv_memctx_finish:
    pvr_srv_memctx_finish(srv_ws);
@@ -747,7 +750,8 @@ err_vk_free_srv_ws:
 err_pvr_srv_connection_destroy:
    pvr_srv_connection_destroy(render_fd);
 
-   return NULL;
+err_out:
+   return result;
 }
 
 static VkResult pvr_srv_create_presignaled_sync(struct pvr_device *device,
