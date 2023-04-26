@@ -1766,12 +1766,6 @@ valid_thrsw_sequence(struct v3d_compile *c, struct choose_scoreboard *scoreboard
                      struct qinst *qinst, int instructions_in_sequence,
                      bool is_thrend)
 {
-        /* No emitting our thrsw while the previous thrsw hasn't happened yet. */
-        if (scoreboard->last_thrsw_tick + 3 >
-            scoreboard->tick - instructions_in_sequence) {
-                return false;
-        }
-
         for (int slot = 0; slot < instructions_in_sequence; slot++) {
                 if (!qpu_inst_before_thrsw_valid_in_delay_slot(c, qinst, slot))
                         return false;
@@ -1825,13 +1819,28 @@ emit_thrsw(struct v3d_compile *c,
         /* Find how far back into previous instructions we can put the THRSW. */
         int slots_filled = 0;
         int invalid_sig_count = 0;
+        int invalid_seq_count = 0;
         bool last_thrsw_after_invalid_ok = false;
         struct qinst *merge_inst = NULL;
         vir_for_each_inst_rev(prev_inst, block) {
+                /* No emitting our thrsw while the previous thrsw hasn't
+                 * happened yet.
+                 */
+                if (scoreboard->last_thrsw_tick + 3 >
+                    scoreboard->tick - (slots_filled + 1)) {
+                        break;
+                }
+
+
                 if (!valid_thrsw_sequence(c, scoreboard,
                                           prev_inst, slots_filled + 1,
                                           is_thrend)) {
-                        break;
+                        /* Even if the current sequence isn't valid, we may
+                         * be able to get a valid sequence by trying to move the
+                         * thrsw earlier, so keep going.
+                         */
+                        invalid_seq_count++;
+                        goto cont_block;
                 }
 
                 struct v3d_qpu_sig sig = prev_inst->qpu.sig;
@@ -1858,8 +1867,10 @@ emit_thrsw(struct v3d_compile *c,
                         goto cont_block;
                 }
 
+                /* We can merge the thrsw in this instruction */
                 last_thrsw_after_invalid_ok = false;
                 invalid_sig_count = 0;
+                invalid_seq_count = 0;
                 merge_inst = prev_inst;
 
 cont_block:
@@ -1871,9 +1882,12 @@ cont_block:
          * merge the thrsw in the end, we need to adjust slots filled to match
          * the last valid merge point.
          */
-        assert(invalid_sig_count == 0 || slots_filled >= invalid_sig_count);
+        assert((invalid_sig_count == 0 && invalid_seq_count == 0) ||
+                slots_filled >= invalid_sig_count + invalid_seq_count);
         if (invalid_sig_count > 0)
                 slots_filled -= invalid_sig_count;
+        if (invalid_seq_count > 0)
+                slots_filled -= invalid_seq_count;
 
         bool needs_free = false;
         if (merge_inst) {
