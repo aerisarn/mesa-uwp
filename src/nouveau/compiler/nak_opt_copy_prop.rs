@@ -53,11 +53,15 @@ impl CopyPropPass {
         }
         let typ = match src.src_mod {
             SrcMod::None => CopyType::Raw,
-            SrcMod::Abs | SrcMod::Neg | SrcMod::NegAbs => {
-                assert!(typ != CopyType::Raw && typ != CopyType::Bits);
+            SrcMod::FAbs | SrcMod::FNeg | SrcMod::FNegAbs => {
+                assert!(typ == CopyType::F32 || typ == CopyType::F64H);
                 typ
             }
-            SrcMod::Not => {
+            SrcMod::INeg => {
+                assert!(typ == CopyType::I32);
+                typ
+            }
+            SrcMod::BNot => {
                 assert!(typ == CopyType::Bits);
                 typ
             }
@@ -83,8 +87,12 @@ impl CopyPropPass {
                 let copy_ssa = entry.src.src_ref.as_ssa().unwrap();
                 assert!(copy_ssa.comps() == 1 && copy_ssa.is_predicate());
                 *pred = Pred::SSA(copy_ssa[0]);
-                if entry.src.src_mod.has_not() {
-                    *pred_inv = !*pred_inv;
+                match entry.src.src_mod {
+                    SrcMod::None => (),
+                    SrcMod::BNot => {
+                        *pred_inv = !*pred_inv;
+                    }
+                    _ => panic!("Invalid predicate modifier"),
                 }
             }
         }
@@ -239,13 +247,13 @@ impl CopyPropPass {
                     Op::Lop3(op) => {
                         if self.prop_to_srcs(&mut op.srcs, CopyType::Bits) {
                             op.op = LogicOp::new_lut(&|mut x, mut y, mut z| {
-                                if op.srcs[0].src_mod.has_not() {
+                                if op.srcs[0].src_mod.is_bnot() {
                                     x = !x;
                                 }
-                                if op.srcs[1].src_mod.has_not() {
+                                if op.srcs[1].src_mod.is_bnot() {
                                     y = !y;
                                 }
-                                if op.srcs[2].src_mod.has_not() {
+                                if op.srcs[2].src_mod.is_bnot() {
                                     z = !z;
                                 }
                                 op.op.eval(x, y, z)

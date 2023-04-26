@@ -167,14 +167,14 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_b2f32 => {
                 self.instrs.push(Instr::new(Op::Sel(OpSel {
                     dst: dst,
-                    cond: srcs[0].not(),
+                    cond: srcs[0].bnot(),
                     srcs: [Src::new_zero(), Src::new_imm_u32(0x3f800000)],
                 })));
             }
             nir_op_b2i32 => {
                 self.instrs.push(Instr::new(Op::Sel(OpSel {
                     dst: dst,
-                    cond: srcs[0].not(),
+                    cond: srcs[0].bnot(),
                     srcs: [Src::new_zero(), Src::new_imm_u32(1)],
                 })));
             }
@@ -197,7 +197,7 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_fabs => {
                 self.instrs.push(Instr::new(Op::FMov(OpFMov {
                     dst: dst,
-                    src: srcs[0].abs(),
+                    src: srcs[0].fabs(),
                     saturate: false,
                 })));
             }
@@ -283,7 +283,7 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_fneg => {
                 self.instrs.push(Instr::new(Op::FMov(OpFMov {
                     dst: dst,
-                    src: srcs[0].neg(),
+                    src: srcs[0].fneg(),
                     saturate: false,
                 })));
             }
@@ -345,7 +345,7 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_fadd(
                     dst,
                     gz.into(),
-                    Src::from(lz).neg(),
+                    Src::from(lz).fneg(),
                 ));
             }
             nir_op_fsin => {
@@ -503,7 +503,7 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_ineg => {
                 self.instrs.push(Instr::new(Op::IMov(OpIMov {
                     dst: dst,
-                    src: srcs[0].neg(),
+                    src: srcs[0].ineg(),
                 })));
             }
             nir_op_inot => {

@@ -29,6 +29,30 @@ enum ALUSrc {
     CBuf(ALUCBufRef),
 }
 
+fn src_mod_has_abs(src_mod: SrcMod) -> bool {
+    match src_mod {
+        SrcMod::None | SrcMod::FNeg | SrcMod::INeg => false,
+        SrcMod::FAbs | SrcMod::FNegAbs => true,
+        _ => panic!("Not an ALU source modifier"),
+    }
+}
+
+fn src_mod_has_neg(src_mod: SrcMod) -> bool {
+    match src_mod {
+        SrcMod::None | SrcMod::FAbs => false,
+        SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::INeg => true,
+        _ => panic!("Not an ALU source modifier"),
+    }
+}
+
+fn src_mod_is_bnot(src_mod: SrcMod) -> bool {
+    match src_mod {
+        SrcMod::None => false,
+        SrcMod::BNot => true,
+        _ => panic!("Not an predicate source modifier"),
+    }
+}
+
 impl ALUSrc {
     fn from_nonzero_src(src: &Src) -> ALUSrc {
         match src.src_ref {
@@ -36,8 +60,8 @@ impl ALUSrc {
                 assert!(reg.comps() == 1);
                 let alu_ref = ALURegRef {
                     reg: reg,
-                    abs: src.src_mod.has_abs(),
-                    neg: src.src_mod.has_neg(),
+                    abs: src_mod_has_abs(src.src_mod),
+                    neg: src_mod_has_neg(src.src_mod),
                 };
                 match reg.file() {
                     RegFile::GPR => ALUSrc::Reg(alu_ref),
@@ -52,8 +76,8 @@ impl ALUSrc {
             SrcRef::CBuf(cb) => {
                 let alu_ref = ALUCBufRef {
                     cb: cb,
-                    abs: src.src_mod.has_abs(),
-                    neg: src.src_mod.has_neg(),
+                    abs: src_mod_has_abs(src.src_mod),
+                    neg: src_mod_has_neg(src.src_mod),
                 };
                 ALUSrc::CBuf(alu_ref)
             }
@@ -174,7 +198,7 @@ impl SM75Instr {
             _ => panic!("Not a register"),
         };
         self.set_pred_reg(range, reg);
-        self.set_bit(not_bit, not ^ src.src_mod.has_not());
+        self.set_bit(not_bit, not ^ src_mod_is_bnot(src.src_mod));
     }
 
     fn set_src_cb(&mut self, range: Range<usize>, cb: &CBufRef) {

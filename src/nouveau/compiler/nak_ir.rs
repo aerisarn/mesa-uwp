@@ -517,10 +517,11 @@ impl fmt::Display for SrcRef {
 #[derive(Clone, Copy)]
 pub enum SrcMod {
     None,
-    Abs,
-    Neg,
-    NegAbs,
-    Not,
+    FAbs,
+    FNeg,
+    FNegAbs,
+    INeg,
+    BNot,
 }
 
 impl SrcMod {
@@ -533,65 +534,63 @@ impl SrcMod {
 
     pub fn is_alu(&self) -> bool {
         match self {
-            SrcMod::None | SrcMod::Abs | SrcMod::Neg | SrcMod::NegAbs => true,
-            SrcMod::Not => false,
+            SrcMod::None
+            | SrcMod::FAbs
+            | SrcMod::FNeg
+            | SrcMod::FNegAbs
+            | SrcMod::INeg => true,
+            SrcMod::BNot => false,
         }
     }
 
     pub fn is_bitwise(&self) -> bool {
         match self {
-            SrcMod::None | SrcMod::Not => true,
-            SrcMod::Abs | SrcMod::Neg | SrcMod::NegAbs => false,
+            SrcMod::None | SrcMod::BNot => true,
+            SrcMod::FAbs | SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::INeg => {
+                false
+            }
         }
     }
 
-    pub fn has_neg(&self) -> bool {
-        match self {
-            SrcMod::None | SrcMod::Abs => false,
-            SrcMod::Neg | SrcMod::NegAbs => true,
-            SrcMod::Not => panic!("Not an ALU source modifier"),
-        }
-    }
-
-    pub fn has_abs(&self) -> bool {
-        match self {
-            SrcMod::None | SrcMod::Neg => false,
-            SrcMod::Abs | SrcMod::NegAbs => true,
-            SrcMod::Not => panic!("Not an ALU source modifier"),
-        }
-    }
-
-    pub fn has_not(&self) -> bool {
+    pub fn is_bnot(&self) -> bool {
         match self {
             SrcMod::None => false,
-            SrcMod::Not => true,
-            _ => panic!("Not a boolean source modifier"),
+            SrcMod::BNot => true,
+            _ => panic!("Not a bitwise modifier"),
         }
     }
 
-    pub fn abs(self) -> SrcMod {
+    pub fn fabs(self) -> SrcMod {
         match self {
-            SrcMod::None | SrcMod::Abs | SrcMod::Neg | SrcMod::NegAbs => {
-                SrcMod::Abs
+            SrcMod::None | SrcMod::FAbs | SrcMod::FNeg | SrcMod::FNegAbs => {
+                SrcMod::FAbs
             }
-            SrcMod::Not => panic!("Not an ALU source modifier"),
+            _ => panic!("Not a float source modifier"),
         }
     }
 
-    pub fn neg(self) -> SrcMod {
+    pub fn fneg(self) -> SrcMod {
         match self {
-            SrcMod::None => SrcMod::Neg,
-            SrcMod::Abs => SrcMod::NegAbs,
-            SrcMod::Neg => SrcMod::None,
-            SrcMod::NegAbs => SrcMod::Abs,
-            SrcMod::Not => panic!("Not an ALU source modifier"),
+            SrcMod::None => SrcMod::FNeg,
+            SrcMod::FAbs => SrcMod::FNegAbs,
+            SrcMod::FNeg => SrcMod::None,
+            SrcMod::FNegAbs => SrcMod::FAbs,
+            _ => panic!("Not a float source modifier"),
         }
     }
 
-    pub fn not(self) -> SrcMod {
+    pub fn ineg(self) -> SrcMod {
         match self {
-            SrcMod::None => SrcMod::Not,
-            SrcMod::Not => SrcMod::None,
+            SrcMod::None => SrcMod::INeg,
+            SrcMod::INeg => SrcMod::None,
+            _ => panic!("Not an integer source modifier"),
+        }
+    }
+
+    pub fn bnot(self) -> SrcMod {
+        match self {
+            SrcMod::None => SrcMod::BNot,
+            SrcMod::BNot => SrcMod::None,
             _ => panic!("Not a boolean source modifier"),
         }
     }
@@ -599,10 +598,11 @@ impl SrcMod {
     pub fn modify(self, other: SrcMod) -> SrcMod {
         match other {
             SrcMod::None => self,
-            SrcMod::Abs => self.abs(),
-            SrcMod::Neg => self.neg(),
-            SrcMod::NegAbs => self.abs().neg(),
-            SrcMod::Not => self.not(),
+            SrcMod::FAbs => self.fabs(),
+            SrcMod::FNeg => self.fneg(),
+            SrcMod::FNegAbs => self.fabs().fneg(),
+            SrcMod::INeg => self.ineg(),
+            SrcMod::BNot => self.bnot(),
         }
     }
 }
@@ -646,24 +646,31 @@ impl Src {
         .into()
     }
 
-    pub fn abs(&self) -> Src {
+    pub fn fabs(&self) -> Src {
         Src {
             src_ref: self.src_ref,
-            src_mod: self.src_mod.abs(),
+            src_mod: self.src_mod.fabs(),
         }
     }
 
-    pub fn neg(&self) -> Src {
+    pub fn fneg(&self) -> Src {
         Src {
             src_ref: self.src_ref,
-            src_mod: self.src_mod.neg(),
+            src_mod: self.src_mod.fneg(),
         }
     }
 
-    pub fn not(&self) -> Src {
+    pub fn ineg(&self) -> Src {
         Src {
             src_ref: self.src_ref,
-            src_mod: self.src_mod.not(),
+            src_mod: self.src_mod.ineg(),
+        }
+    }
+
+    pub fn bnot(&self) -> Src {
+        Src {
+            src_ref: self.src_ref,
+            src_mod: self.src_mod.bnot(),
         }
     }
 
@@ -735,10 +742,11 @@ impl fmt::Display for Src {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.src_mod {
             SrcMod::None => write!(f, "{}", self.src_ref),
-            SrcMod::Abs => write!(f, "|{}|", self.src_ref),
-            SrcMod::Neg => write!(f, "-{}", self.src_ref),
-            SrcMod::NegAbs => write!(f, "-|{}|", self.src_ref),
-            SrcMod::Not => write!(f, "!{}", self.src_ref),
+            SrcMod::FAbs => write!(f, "|{}|", self.src_ref),
+            SrcMod::FNeg => write!(f, "-{}", self.src_ref),
+            SrcMod::FNegAbs => write!(f, "-|{}|", self.src_ref),
+            SrcMod::INeg => write!(f, "-{}", self.src_ref),
+            SrcMod::BNot => write!(f, "!{}", self.src_ref),
         }
     }
 }

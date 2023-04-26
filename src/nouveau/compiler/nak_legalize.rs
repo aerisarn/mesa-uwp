@@ -36,7 +36,7 @@ fn src_as_lop_imm(src: &Src) -> Option<bool> {
         }
         _ => return None,
     };
-    Some(x ^ src.src_mod.has_not())
+    Some(x ^ src.src_mod.is_bnot())
 }
 
 fn fold_lop_src(src: &Src, x: &mut u8) {
