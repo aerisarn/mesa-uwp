@@ -30,40 +30,38 @@
 #include "util/os_time.h"
 
 uint64_t
-ac_thread_trace_get_info_offset(unsigned se)
+ac_sqtt_get_info_offset(unsigned se)
 {
-   return sizeof(struct ac_thread_trace_info) * se;
+   return sizeof(struct ac_sqtt_data_info) * se;
 }
 
 uint64_t
-ac_thread_trace_get_data_offset(const struct radeon_info *rad_info,
-                                const struct ac_thread_trace_data *data, unsigned se)
+ac_sqtt_get_data_offset(const struct radeon_info *rad_info, const struct ac_sqtt *data, unsigned se)
 {
    unsigned max_se = rad_info->max_se;
    uint64_t data_offset;
 
-   data_offset = align64(sizeof(struct ac_thread_trace_info) * max_se,
-               1 << SQTT_BUFFER_ALIGN_SHIFT);
+   data_offset = align64(sizeof(struct ac_sqtt_data_info) * max_se, 1 << SQTT_BUFFER_ALIGN_SHIFT);
    data_offset += data->buffer_size * se;
 
    return data_offset;
 }
 
 uint64_t
-ac_thread_trace_get_info_va(uint64_t va, unsigned se)
+ac_sqtt_get_info_va(uint64_t va, unsigned se)
 {
-   return va + ac_thread_trace_get_info_offset(se);
+   return va + ac_sqtt_get_info_offset(se);
 }
 
 uint64_t
-ac_thread_trace_get_data_va(const struct radeon_info *rad_info,
-                            const struct ac_thread_trace_data *data, uint64_t va, unsigned se)
+ac_sqtt_get_data_va(const struct radeon_info *rad_info, const struct ac_sqtt *data, uint64_t va,
+                    unsigned se)
 {
-   return va + ac_thread_trace_get_data_offset(rad_info, data, se);
+   return va + ac_sqtt_get_data_offset(rad_info, data, se);
 }
 
 void
-ac_thread_trace_init(struct ac_thread_trace_data *data)
+ac_sqtt_init(struct ac_sqtt *data)
 {
    list_inithead(&data->rgp_pso_correlation.record);
    simple_mtx_init(&data->rgp_pso_correlation.lock, mtx_plain);
@@ -85,7 +83,7 @@ ac_thread_trace_init(struct ac_thread_trace_data *data)
 }
 
 void
-ac_thread_trace_finish(struct ac_thread_trace_data *data)
+ac_sqtt_finish(struct ac_sqtt *data)
 {
    assert(data->rgp_pso_correlation.record_count == 0);
    simple_mtx_destroy(&data->rgp_pso_correlation.lock);
@@ -107,9 +105,8 @@ ac_thread_trace_finish(struct ac_thread_trace_data *data)
 }
 
 bool
-ac_is_thread_trace_complete(const struct radeon_info *rad_info,
-                            const struct ac_thread_trace_data *data,
-                            const struct ac_thread_trace_info *info)
+ac_is_sqtt_complete(const struct radeon_info *rad_info, const struct ac_sqtt *data,
+                    const struct ac_sqtt_data_info *info)
 {
    if (rad_info->gfx_level >= GFX10) {
       /* GFX10 doesn't have THREAD_TRACE_CNTR but it reports the number of
@@ -131,8 +128,7 @@ ac_is_thread_trace_complete(const struct radeon_info *rad_info,
 }
 
 uint32_t
-ac_get_expected_buffer_size(struct radeon_info *rad_info,
-                            const struct ac_thread_trace_info *info)
+ac_get_expected_buffer_size(struct radeon_info *rad_info, const struct ac_sqtt_data_info *info)
 {
    if (rad_info->gfx_level >= GFX10) {
       uint32_t dropped_cntr_per_se = info->gfx10_dropped_cntr / rad_info->max_se;
@@ -143,10 +139,9 @@ ac_get_expected_buffer_size(struct radeon_info *rad_info,
 }
 
 bool
-ac_sqtt_add_pso_correlation(struct ac_thread_trace_data *thread_trace_data,
-                            uint64_t pipeline_hash)
+ac_sqtt_add_pso_correlation(struct ac_sqtt *sqtt, uint64_t pipeline_hash)
 {
-   struct rgp_pso_correlation *pso_correlation = &thread_trace_data->rgp_pso_correlation;
+   struct rgp_pso_correlation *pso_correlation = &sqtt->rgp_pso_correlation;
    struct rgp_pso_correlation_record *record;
 
    record = malloc(sizeof(struct rgp_pso_correlation_record));
@@ -167,11 +162,10 @@ ac_sqtt_add_pso_correlation(struct ac_thread_trace_data *thread_trace_data,
 }
 
 bool
-ac_sqtt_add_code_object_loader_event(struct ac_thread_trace_data *thread_trace_data,
-                                     uint64_t pipeline_hash,
+ac_sqtt_add_code_object_loader_event(struct ac_sqtt *sqtt, uint64_t pipeline_hash,
                                      uint64_t base_address)
 {
-   struct rgp_loader_events *loader_events = &thread_trace_data->rgp_loader_events;
+   struct rgp_loader_events *loader_events = &sqtt->rgp_loader_events;
    struct rgp_loader_events_record *record;
 
    record = malloc(sizeof(struct rgp_loader_events_record));
@@ -194,10 +188,9 @@ ac_sqtt_add_code_object_loader_event(struct ac_thread_trace_data *thread_trace_d
 }
 
 bool
-ac_sqtt_add_clock_calibration(struct ac_thread_trace_data *thread_trace_data,
-                              uint64_t cpu_timestamp, uint64_t gpu_timestamp)
+ac_sqtt_add_clock_calibration(struct ac_sqtt *sqtt, uint64_t cpu_timestamp, uint64_t gpu_timestamp)
 {
-   struct rgp_clock_calibration *clock_calibration = &thread_trace_data->rgp_clock_calibration;
+   struct rgp_clock_calibration *clock_calibration = &sqtt->rgp_clock_calibration;
    struct rgp_clock_calibration_record *record;
 
    record = malloc(sizeof(struct rgp_clock_calibration_record));
@@ -241,8 +234,7 @@ ac_check_profile_state(const struct radeon_info *info)
 }
 
 union rgp_sqtt_marker_cb_id
-ac_sqtt_get_next_cmdbuf_id(struct ac_thread_trace_data *data,
-                           enum amd_ip_type ip_type)
+ac_sqtt_get_next_cmdbuf_id(struct ac_sqtt *data, enum amd_ip_type ip_type)
 {
    union rgp_sqtt_marker_cb_id cb_id = {0};
 
@@ -264,48 +256,46 @@ ac_sqtt_se_is_disabled(const struct radeon_info *info, unsigned se)
 }
 
 bool
-ac_sqtt_get_trace(struct ac_thread_trace_data *data,
-                  const struct radeon_info *info,
-                  struct ac_thread_trace *thread_trace)
+ac_sqtt_get_trace(struct ac_sqtt *data, const struct radeon_info *info,
+                  struct ac_sqtt_trace *sqtt_trace)
 {
    unsigned max_se = info->max_se;
    void *ptr = data->ptr;
 
-   memset(thread_trace, 0, sizeof(*thread_trace));
+   memset(sqtt_trace, 0, sizeof(*sqtt_trace));
 
    for (unsigned se = 0; se < max_se; se++) {
-      uint64_t info_offset = ac_thread_trace_get_info_offset(se);
-      uint64_t data_offset = ac_thread_trace_get_data_offset(info, data, se);
+      uint64_t info_offset = ac_sqtt_get_info_offset(se);
+      uint64_t data_offset = ac_sqtt_get_data_offset(info, data, se);
       void *info_ptr = (uint8_t *)ptr + info_offset;
       void *data_ptr = (uint8_t *)ptr + data_offset;
-      struct ac_thread_trace_info *trace_info = (struct ac_thread_trace_info *)info_ptr;
-      struct ac_thread_trace_se thread_trace_se = {0};
+      struct ac_sqtt_data_info *trace_info = (struct ac_sqtt_data_info *)info_ptr;
+      struct ac_sqtt_data_se data_se = {0};
       int first_active_cu = ffs(info->cu_mask[se][0]);
 
       if (ac_sqtt_se_is_disabled(info, se))
          continue;
 
-      if (!ac_is_thread_trace_complete(info, data, trace_info))
+      if (!ac_is_sqtt_complete(info, data, trace_info))
          return false;
 
-      thread_trace_se.data_ptr = data_ptr;
-      thread_trace_se.info = *trace_info;
-      thread_trace_se.shader_engine = se;
+      data_se.data_ptr = data_ptr;
+      data_se.info = *trace_info;
+      data_se.shader_engine = se;
 
       /* RGP seems to expect units of WGP on GFX10+. */
-      thread_trace_se.compute_unit =
-         info->gfx_level >= GFX10 ? (first_active_cu / 2) : first_active_cu;
+      data_se.compute_unit = info->gfx_level >= GFX10 ? (first_active_cu / 2) : first_active_cu;
 
-      thread_trace->traces[thread_trace->num_traces] = thread_trace_se;
-      thread_trace->num_traces++;
+      sqtt_trace->traces[sqtt_trace->num_traces] = data_se;
+      sqtt_trace->num_traces++;
    }
 
-   thread_trace->rgp_code_object = &data->rgp_code_object;
-   thread_trace->rgp_loader_events = &data->rgp_loader_events;
-   thread_trace->rgp_pso_correlation = &data->rgp_pso_correlation;
-   thread_trace->rgp_queue_info = &data->rgp_queue_info;
-   thread_trace->rgp_queue_event = &data->rgp_queue_event;
-   thread_trace->rgp_clock_calibration = &data->rgp_clock_calibration;
+   sqtt_trace->rgp_code_object = &data->rgp_code_object;
+   sqtt_trace->rgp_loader_events = &data->rgp_loader_events;
+   sqtt_trace->rgp_pso_correlation = &data->rgp_pso_correlation;
+   sqtt_trace->rgp_queue_info = &data->rgp_queue_info;
+   sqtt_trace->rgp_queue_event = &data->rgp_queue_event;
+   sqtt_trace->rgp_clock_calibration = &data->rgp_clock_calibration;
 
    return true;
 }

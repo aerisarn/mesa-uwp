@@ -209,13 +209,13 @@ static void si_destroy_context(struct pipe_context *context)
    if (sctx->gfx_level >= GFX10 && sctx->has_graphics)
       gfx10_destroy_query(sctx);
 
-   if (sctx->thread_trace) {
+   if (sctx->sqtt) {
       struct si_screen *sscreen = sctx->screen;
       if (sscreen->info.has_stable_pstate && sscreen->b.num_contexts == 1 &&
           !(sctx->context_flags & SI_CONTEXT_FLAG_AUX))
           sscreen->ws->cs_set_pstate(&sctx->gfx_cs, RADEON_CTX_PSTATE_NONE);
 
-      si_destroy_thread_trace(sctx);
+      si_destroy_sqtt(sctx);
    }
 
    pipe_resource_reference(&sctx->esgs_ring, NULL);
@@ -429,7 +429,7 @@ static void si_emit_string_marker(struct pipe_context *ctx, const char *string, 
 
    dd_parse_apitrace_marker(string, len, &sctx->apitrace_call_number);
 
-   if (sctx->thread_trace_enabled)
+   if (sctx->sqtt_enabled)
       si_write_user_event(sctx, &sctx->gfx_cs, UserEventTrigger, string, len);
 
    if (sctx->log)
@@ -896,7 +896,7 @@ static struct pipe_context *si_pipe_create_context(struct pipe_screen *screen, v
                          "detected. Force the GPU into a profiling mode with e.g. "
                          "\"echo profile_peak  > "
                          "/sys/class/drm/card0/device/power_dpm_force_performance_level\"\n");
-      } else if (!si_init_thread_trace((struct si_context *)ctx)) {
+      } else if (!si_init_sqtt((struct si_context *)ctx)) {
          FREE(ctx);
          return NULL;
       }

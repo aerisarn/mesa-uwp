@@ -337,14 +337,13 @@ static void si_bind_compute_state(struct pipe_context *ctx, void *state)
    sctx->compute_shaderbuf_sgprs_dirty = true;
    sctx->compute_image_sgprs_dirty = true;
 
-   if (unlikely((sctx->screen->debug_flags & DBG(SQTT)) && sctx->thread_trace)) {
+   if (unlikely((sctx->screen->debug_flags & DBG(SQTT)) && sctx->sqtt)) {
       uint32_t pipeline_code_hash = _mesa_hash_data_with_seed(
          program->shader.binary.elf_buffer,
          program->shader.binary.elf_size,
          0);
 
-      struct ac_thread_trace_data *thread_trace_data = sctx->thread_trace;
-      if (!si_sqtt_pipeline_is_registered(thread_trace_data, pipeline_code_hash)) {
+      if (!si_sqtt_pipeline_is_registered(sctx->sqtt, pipeline_code_hash)) {
          /* Short lived fake pipeline: we don't need to reupload the compute shaders,
           * as we do for the gfx ones so just create a temp pipeline to be able to
           * call si_sqtt_register_pipeline, and then drop it.
@@ -769,7 +768,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
    if (sctx->gfx_level >= GFX10 && waves_per_threadgroup == 1)
       threadgroups_per_cu = 2;
 
-   if (unlikely(sctx->thread_trace_enabled)) {
+   if (unlikely(sctx->sqtt_enabled)) {
       si_write_event_with_dims_marker(sctx, &sctx->gfx_cs,
                                       info->indirect ? EventCmdDispatchIndirect : EventCmdDispatch,
                                       info->grid[0], info->grid[1], info->grid[2]);
@@ -839,7 +838,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
       radeon_emit(dispatch_initiator);
    }
 
-   if (unlikely(sctx->thread_trace_enabled && sctx->gfx_level >= GFX9)) {
+   if (unlikely(sctx->sqtt_enabled && sctx->gfx_level >= GFX9)) {
       radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(EVENT_TYPE(V_028A90_THREAD_TRACE_MARKER) | EVENT_INDEX(0));
    }

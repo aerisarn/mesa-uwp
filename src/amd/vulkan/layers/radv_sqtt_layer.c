@@ -219,7 +219,7 @@ radv_write_begin_general_api_marker(struct radv_cmd_buffer *cmd_buffer,
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_GENERAL_API;
    marker.api_type = api_type;
 
-   radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+   radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
 }
 
 static void
@@ -232,7 +232,7 @@ radv_write_end_general_api_marker(struct radv_cmd_buffer *cmd_buffer,
    marker.api_type = api_type;
    marker.is_end = 1;
 
-   radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+   radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
 }
 
 static void
@@ -259,7 +259,7 @@ radv_write_event_marker(struct radv_cmd_buffer *cmd_buffer,
    marker.instance_offset_reg_idx = instance_offset_user_data;
    marker.draw_index_reg_idx = draw_index_user_data;
 
-   radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+   radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
 }
 
 static void
@@ -279,7 +279,7 @@ radv_write_event_with_dims_marker(struct radv_cmd_buffer *cmd_buffer,
    marker.thread_y = y;
    marker.thread_z = z;
 
-   radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+   radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
 }
 
 static void
@@ -292,7 +292,7 @@ radv_write_user_event_marker(struct radv_cmd_buffer *cmd_buffer,
       marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_USER_EVENT;
       marker.data_type = type;
 
-      radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+      radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
    } else {
       assert(str != NULL);
       unsigned len = strlen(str);
@@ -306,8 +306,7 @@ radv_write_user_event_marker(struct radv_cmd_buffer *cmd_buffer,
       memcpy(buffer, &marker, sizeof(marker));
       memcpy(buffer + sizeof(marker), str, len);
 
-      radv_emit_thread_trace_userdata(cmd_buffer, buffer,
-                                      sizeof(marker) / 4 + marker.length / 4);
+      radv_emit_sqtt_userdata(cmd_buffer, buffer, sizeof(marker) / 4 + marker.length / 4);
    }
 }
 
@@ -317,14 +316,14 @@ radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    uint64_t device_id = (uintptr_t)cmd_buffer->device;
    struct rgp_sqtt_marker_cb_start marker = {0};
 
-   if (likely(!cmd_buffer->device->thread_trace.bo))
+   if (likely(!cmd_buffer->device->sqtt.bo))
       return;
 
    /* Reserve a command buffer ID for SQTT. */
    enum amd_ip_type ip_type =
       radv_queue_family_to_ring(cmd_buffer->device->physical_device, cmd_buffer->qf);
    union rgp_sqtt_marker_cb_id cb_id =
-      ac_sqtt_get_next_cmdbuf_id(&cmd_buffer->device->thread_trace, ip_type);
+      ac_sqtt_get_next_cmdbuf_id(&cmd_buffer->device->sqtt, ip_type);
    cmd_buffer->sqtt_cb_id = cb_id.all;
 
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_CB_START;
@@ -337,7 +336,7 @@ radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->qf == RADV_QUEUE_GENERAL)
       marker.queue_flags |= VK_QUEUE_GRAPHICS_BIT;
 
-   radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+   radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
 }
 
 void
@@ -346,7 +345,7 @@ radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    uint64_t device_id = (uintptr_t)cmd_buffer->device;
    struct rgp_sqtt_marker_cb_end marker = {0};
 
-   if (likely(!cmd_buffer->device->thread_trace.bo))
+   if (likely(!cmd_buffer->device->sqtt.bo))
       return;
 
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_CB_END;
@@ -354,13 +353,13 @@ radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    marker.device_id_low = device_id;
    marker.device_id_high = device_id >> 32;
 
-   radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+   radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
 }
 
 void
 radv_describe_draw(struct radv_cmd_buffer *cmd_buffer)
 {
-   if (likely(!cmd_buffer->device->thread_trace.bo))
+   if (likely(!cmd_buffer->device->sqtt.bo))
       return;
 
    radv_write_event_marker(cmd_buffer, cmd_buffer->state.current_event_type, UINT_MAX, UINT_MAX,
@@ -370,7 +369,7 @@ radv_describe_draw(struct radv_cmd_buffer *cmd_buffer)
 void
 radv_describe_dispatch(struct radv_cmd_buffer *cmd_buffer, int x, int y, int z)
 {
-   if (likely(!cmd_buffer->device->thread_trace.bo))
+   if (likely(!cmd_buffer->device->sqtt.bo))
       return;
 
    radv_write_event_with_dims_marker(cmd_buffer, cmd_buffer->state.current_event_type, x, y, z);
@@ -408,7 +407,7 @@ radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer)
 {
    struct rgp_sqtt_marker_barrier_end marker = {0};
 
-   if (likely(!cmd_buffer->device->thread_trace.bo) || !cmd_buffer->state.pending_sqtt_barrier_end)
+   if (likely(!cmd_buffer->device->sqtt.bo) || !cmd_buffer->state.pending_sqtt_barrier_end)
       return;
 
    cmd_buffer->state.pending_sqtt_barrier_end = false;
@@ -451,7 +450,7 @@ radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.sqtt_flush_bits & RGP_FLUSH_INVAL_L1)
       marker.inval_gl1 = true;
 
-   radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+   radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
 
    cmd_buffer->state.num_layout_transitions = 0;
 }
@@ -461,7 +460,7 @@ radv_describe_barrier_start(struct radv_cmd_buffer *cmd_buffer, enum rgp_barrier
 {
    struct rgp_sqtt_marker_barrier_start marker = {0};
 
-   if (likely(!cmd_buffer->device->thread_trace.bo))
+   if (likely(!cmd_buffer->device->sqtt.bo))
       return;
 
    radv_describe_barrier_end_delayed(cmd_buffer);
@@ -471,7 +470,7 @@ radv_describe_barrier_start(struct radv_cmd_buffer *cmd_buffer, enum rgp_barrier
    marker.cb_id = cmd_buffer->sqtt_cb_id;
    marker.dword02 = reason;
 
-   radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+   radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
 }
 
 void
@@ -486,7 +485,7 @@ radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
 {
    struct rgp_sqtt_marker_layout_transition marker = {0};
 
-   if (likely(!cmd_buffer->device->thread_trace.bo))
+   if (likely(!cmd_buffer->device->sqtt.bo))
       return;
 
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_LAYOUT_TRANSITION;
@@ -499,7 +498,7 @@ radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
    marker.fmask_color_expand = barrier->layout_transitions.fmask_color_expand;
    marker.init_mask_ram = barrier->layout_transitions.init_mask_ram;
 
-   radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+   radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
 
    cmd_buffer->state.num_layout_transitions++;
 }
@@ -510,7 +509,7 @@ radv_describe_pipeline_bind(struct radv_cmd_buffer *cmd_buffer,
 {
    struct rgp_sqtt_marker_pipeline_bind marker = {0};
 
-   if (likely(!cmd_buffer->device->thread_trace.bo))
+   if (likely(!cmd_buffer->device->sqtt.bo))
       return;
 
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BIND_PIPELINE;
@@ -519,34 +518,34 @@ radv_describe_pipeline_bind(struct radv_cmd_buffer *cmd_buffer,
    marker.api_pso_hash[0] = pipeline->pipeline_hash;
    marker.api_pso_hash[1] = pipeline->pipeline_hash >> 32;
 
-   radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
+   radv_emit_sqtt_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
 }
 
 /* TODO: Improve the way to trigger capture (overlay, etc). */
 static void
-radv_handle_thread_trace(VkQueue _queue)
+radv_handle_sqtt(VkQueue _queue)
 {
    RADV_FROM_HANDLE(radv_queue, queue, _queue);
-   static bool thread_trace_enabled = false;
+   static bool sqtt_enabled = false;
    static uint64_t num_frames = 0;
    bool resize_trigger = false;
 
-   if (thread_trace_enabled) {
-      struct ac_thread_trace thread_trace = {0};
+   if (sqtt_enabled) {
+      struct ac_sqtt_trace sqtt_trace = {0};
 
-      radv_end_thread_trace(queue);
-      thread_trace_enabled = false;
+      radv_end_sqtt(queue);
+      sqtt_enabled = false;
 
       /* TODO: Do something better than this whole sync. */
       queue->device->vk.dispatch_table.QueueWaitIdle(_queue);
 
-      if (radv_get_thread_trace(queue, &thread_trace)) {
+      if (radv_get_sqtt_trace(queue, &sqtt_trace)) {
          struct ac_spm_trace spm_trace;
 
          if (queue->device->spm.bo)
             ac_spm_get_trace(&queue->device->spm, &spm_trace);
 
-         ac_dump_rgp_capture(&queue->device->physical_device->rad_info, &thread_trace,
+         ac_dump_rgp_capture(&queue->device->physical_device->rad_info, &sqtt_trace,
                              queue->device->spm.bo ? &spm_trace : NULL);
       } else {
          /* Trigger a new capture if the driver failed to get
@@ -556,16 +555,15 @@ radv_handle_thread_trace(VkQueue _queue)
       }
 
       /* Clear resources used for this capture. */
-      radv_reset_thread_trace(queue->device);
+      radv_reset_sqtt_trace(queue->device);
    }
 
-   if (!thread_trace_enabled) {
-      bool frame_trigger = num_frames == queue->device->thread_trace.start_frame;
+   if (!sqtt_enabled) {
+      bool frame_trigger = num_frames == queue->device->sqtt.start_frame;
       bool file_trigger = false;
 #ifndef _WIN32
-      if (queue->device->thread_trace.trigger_file &&
-          access(queue->device->thread_trace.trigger_file, W_OK) == 0) {
-         if (unlink(queue->device->thread_trace.trigger_file) == 0) {
+      if (queue->device->sqtt.trigger_file && access(queue->device->sqtt.trigger_file, W_OK) == 0) {
+         if (unlink(queue->device->sqtt.trigger_file) == 0) {
             file_trigger = true;
          } else {
             /* Do not enable tracing if we cannot remove the file,
@@ -585,13 +583,13 @@ radv_handle_thread_trace(VkQueue _queue)
          }
 
          /* Sample CPU/GPU clocks before starting the trace. */
-         if (!radv_thread_trace_sample_clocks(queue->device)) {
+         if (!radv_sqtt_sample_clocks(queue->device)) {
             fprintf(stderr, "radv: Failed to sample clocks\n");
          }
 
-         radv_begin_thread_trace(queue);
-         assert(!thread_trace_enabled);
-         thread_trace_enabled = true;
+         radv_begin_sqtt(queue);
+         assert(!sqtt_enabled);
+         sqtt_enabled = true;
       }
    }
    num_frames++;
@@ -607,7 +605,7 @@ sqtt_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
    if (result != VK_SUCCESS)
       return result;
 
-   radv_handle_thread_trace(_queue);
+   radv_handle_sqtt(_queue);
 
    return VK_SUCCESS;
 }
@@ -1172,8 +1170,8 @@ radv_mesa_to_rgp_shader_stage(struct radv_pipeline *pipeline, gl_shader_stage st
 static VkResult
 radv_add_code_object(struct radv_device *device, struct radv_pipeline *pipeline)
 {
-   struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
-   struct rgp_code_object *code_object = &thread_trace_data->rgp_code_object;
+   struct ac_sqtt *sqtt = &device->sqtt;
+   struct rgp_code_object *code_object = &sqtt->rgp_code_object;
    struct rgp_code_object_record *record;
 
    record = malloc(sizeof(struct rgp_code_object_record));
@@ -1225,7 +1223,7 @@ radv_register_pipeline(struct radv_device *device, struct radv_pipeline *pipelin
    bool result;
    uint64_t base_va = ~0;
 
-   result = ac_sqtt_add_pso_correlation(&device->thread_trace, pipeline->pipeline_hash);
+   result = ac_sqtt_add_pso_correlation(&device->sqtt, pipeline->pipeline_hash);
    if (!result)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -1241,8 +1239,7 @@ radv_register_pipeline(struct radv_device *device, struct radv_pipeline *pipelin
       base_va = MIN2(base_va, va);
    }
 
-   result =
-      ac_sqtt_add_code_object_loader_event(&device->thread_trace, pipeline->pipeline_hash, base_va);
+   result = ac_sqtt_add_code_object_loader_event(&device->sqtt, pipeline->pipeline_hash, base_va);
    if (!result)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -1256,10 +1253,10 @@ radv_register_pipeline(struct radv_device *device, struct radv_pipeline *pipelin
 static void
 radv_unregister_pipeline(struct radv_device *device, struct radv_pipeline *pipeline)
 {
-   struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
-   struct rgp_pso_correlation *pso_correlation = &thread_trace_data->rgp_pso_correlation;
-   struct rgp_loader_events *loader_events = &thread_trace_data->rgp_loader_events;
-   struct rgp_code_object *code_object = &thread_trace_data->rgp_code_object;
+   struct ac_sqtt *sqtt = &device->sqtt;
+   struct rgp_pso_correlation *pso_correlation = &sqtt->rgp_pso_correlation;
+   struct rgp_loader_events *loader_events = &sqtt->rgp_loader_events;
+   struct rgp_code_object *code_object = &sqtt->rgp_code_object;
 
    /* Destroy the PSO correlation record. */
    simple_mtx_lock(&pso_correlation->lock);

@@ -991,22 +991,21 @@ static void ac_sqtt_dump_spm(const struct ac_spm_trace *spm_trace,
 }
 
 #if defined(USE_LIBELF)
-static void ac_sqtt_dump_data(struct radeon_info *rad_info,
-                              struct ac_thread_trace *thread_trace,
-                              const struct ac_spm_trace *spm_trace,
-                              FILE *output)
+static void
+ac_sqtt_dump_data(struct radeon_info *rad_info, struct ac_sqtt_trace *sqtt_trace,
+                  const struct ac_spm_trace *spm_trace, FILE *output)
 {
    struct sqtt_file_chunk_asic_info asic_info = {0};
    struct sqtt_file_chunk_cpu_info cpu_info = {0};
    struct sqtt_file_chunk_api_info api_info = {0};
    struct sqtt_file_header header = {0};
    size_t file_offset = 0;
-   const struct rgp_code_object *rgp_code_object = thread_trace->rgp_code_object;
-   const struct rgp_loader_events *rgp_loader_events = thread_trace->rgp_loader_events;
-   const struct rgp_pso_correlation *rgp_pso_correlation = thread_trace->rgp_pso_correlation;
-   const struct rgp_queue_info *rgp_queue_info = thread_trace->rgp_queue_info;
-   const struct rgp_queue_event *rgp_queue_event = thread_trace->rgp_queue_event;
-   const struct rgp_clock_calibration *rgp_clock_calibration = thread_trace->rgp_clock_calibration;
+   const struct rgp_code_object *rgp_code_object = sqtt_trace->rgp_code_object;
+   const struct rgp_loader_events *rgp_loader_events = sqtt_trace->rgp_loader_events;
+   const struct rgp_pso_correlation *rgp_pso_correlation = sqtt_trace->rgp_pso_correlation;
+   const struct rgp_queue_info *rgp_queue_info = sqtt_trace->rgp_queue_info;
+   const struct rgp_queue_event *rgp_queue_event = sqtt_trace->rgp_queue_event;
+   const struct rgp_clock_calibration *rgp_clock_calibration = sqtt_trace->rgp_clock_calibration;
 
    /* SQTT header file. */
    ac_sqtt_fill_header(&header);
@@ -1145,10 +1144,10 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
       }
    }
 
-   if (thread_trace) {
-      for (unsigned i = 0; i < thread_trace->num_traces; i++) {
-         const struct ac_thread_trace_se *se = &thread_trace->traces[i];
-         const struct ac_thread_trace_info *info = &se->info;
+   if (sqtt_trace) {
+      for (unsigned i = 0; i < sqtt_trace->num_traces; i++) {
+         const struct ac_sqtt_data_se *se = &sqtt_trace->traces[i];
+         const struct ac_sqtt_data_info *info = &se->info;
          struct sqtt_file_chunk_sqtt_desc desc = {0};
          struct sqtt_file_chunk_sqtt_data data = {0};
          uint64_t size = info->cur_offset * 32; /* unit of 32 bytes */
@@ -1175,9 +1174,9 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
 }
 #endif
 
-int ac_dump_rgp_capture(struct radeon_info *info,
-                        struct ac_thread_trace *thread_trace,
-                        const struct ac_spm_trace *spm_trace)
+int
+ac_dump_rgp_capture(struct radeon_info *info, struct ac_sqtt_trace *sqtt_trace,
+                    const struct ac_spm_trace *spm_trace)
 {
 #if !defined(USE_LIBELF)
    return -1;
@@ -1198,7 +1197,7 @@ int ac_dump_rgp_capture(struct radeon_info *info,
    if (!f)
       return -1;
 
-   ac_sqtt_dump_data(info, thread_trace, spm_trace, f);
+   ac_sqtt_dump_data(info, sqtt_trace, spm_trace, f);
 
    fprintf(stderr, "RGP capture saved to '%s'\n", filename);
 

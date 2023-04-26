@@ -387,7 +387,7 @@ VkResult create_drm_physical_device(struct vk_instance *vk_instance, struct _drm
 
 void radv_physical_device_destroy(struct vk_physical_device *vk_device);
 
-bool radv_thread_trace_enabled(void);
+bool radv_sqtt_enabled(void);
 
 struct radv_instance {
    struct vk_instance vk;
@@ -1021,7 +1021,7 @@ struct radv_device {
    struct radv_device_border_color_data border_color_data;
 
    /* Thread trace. */
-   struct ac_thread_trace_data thread_trace;
+   struct ac_sqtt sqtt;
 
    /* Memory trace. */
    struct radv_memory_trace_data memory_trace;
@@ -3071,16 +3071,16 @@ void radv_nir_shader_info_link(struct radv_device *device,
                                const struct radv_pipeline_key *pipeline_key,
                                struct radv_pipeline_stage *stages);
 
-bool radv_thread_trace_init(struct radv_device *device);
-void radv_thread_trace_finish(struct radv_device *device);
-bool radv_begin_thread_trace(struct radv_queue *queue);
-bool radv_end_thread_trace(struct radv_queue *queue);
-bool radv_get_thread_trace(struct radv_queue *queue, struct ac_thread_trace *thread_trace);
-void radv_reset_thread_trace(struct radv_device *device);
-void radv_emit_thread_trace_userdata(struct radv_cmd_buffer *cmd_buffer, const void *data,
-                                     uint32_t num_dwords);
+bool radv_sqtt_init(struct radv_device *device);
+void radv_sqtt_finish(struct radv_device *device);
+bool radv_begin_sqtt(struct radv_queue *queue);
+bool radv_end_sqtt(struct radv_queue *queue);
+bool radv_get_sqtt_trace(struct radv_queue *queue, struct ac_sqtt_trace *sqtt_trace);
+void radv_reset_sqtt_trace(struct radv_device *device);
+void radv_emit_sqtt_userdata(struct radv_cmd_buffer *cmd_buffer, const void *data,
+                             uint32_t num_dwords);
 bool radv_is_instruction_timing_enabled(void);
-bool radv_thread_trace_sample_clocks(struct radv_device *device);
+bool radv_sqtt_sample_clocks(struct radv_device *device);
 
 void radv_emit_inhibit_clockgating(struct radv_device *device, struct radeon_cmdbuf *cs,
                                    bool inhibit);

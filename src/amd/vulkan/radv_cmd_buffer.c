@@ -737,7 +737,7 @@ static void
 radv_cmd_buffer_after_draw(struct radv_cmd_buffer *cmd_buffer, enum radv_cmd_flush_bits flags)
 {
    const struct radv_device *device = cmd_buffer->device;
-   if (unlikely(device->thread_trace.bo)) {
+   if (unlikely(device->sqtt.bo)) {
       radeon_check_space(device->ws, cmd_buffer->cs, 2);
 
       radeon_emit(cmd_buffer->cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
