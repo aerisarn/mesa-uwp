@@ -1027,7 +1027,7 @@ struct radv_device {
    struct radv_memory_trace_data memory_trace;
 
    /* SPM. */
-   struct ac_spm_trace_data spm_trace;
+   struct ac_spm spm;
 
    /* Radeon Raytracing Analyzer trace. */
    struct radv_rra_trace_data rra_trace;

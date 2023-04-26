@@ -90,7 +90,7 @@ struct ac_spm_block_select {
    struct ac_spm_counter_select counters[AC_SPM_MAX_COUNTER_PER_BLOCK];
 };
 
-struct ac_spm_trace_data {
+struct ac_spm {
    /* struct radeon_winsys_bo or struct pb_buffer */
    void *bo;
    void *ptr;
@@ -125,10 +125,9 @@ bool ac_init_spm(const struct radeon_info *info,
                  const struct ac_perfcounters *pc,
                  unsigned num_counters,
                  const struct ac_spm_counter_create_info *counters,
-                 struct ac_spm_trace_data *spm_trace);
-void ac_destroy_spm(struct ac_spm_trace_data *spm_trace);
+                 struct ac_spm *spm);
+void ac_destroy_spm(struct ac_spm *spm);
 
-void ac_spm_get_trace(const struct ac_spm_trace_data *spm,
-                      struct ac_spm_trace *trace);
+void ac_spm_get_trace(const struct ac_spm *spm, struct ac_spm_trace *trace);
 
 #endif

@@ -481,9 +481,9 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
                      sctx->thread_trace->bo,
                      RADEON_USAGE_READWRITE,
                      RADEON_DOMAIN_VRAM);
-   if (sctx->spm_trace.bo)
+   if (sctx->spm.bo)
       ws->cs_add_buffer(cs,
-                        sctx->spm_trace.bo,
+                        sctx->spm.bo,
                         RADEON_USAGE_READWRITE,
                         RADEON_DOMAIN_VRAM);
 
@@ -501,7 +501,7 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
    /* Enable SQG events that collects thread trace data. */
    si_emit_spi_config_cntl(sctx, cs, true);
 
-   if (sctx->spm_trace.bo) {
+   if (sctx->spm.bo) {
       si_pc_emit_spm_reset(cs);
       si_pc_emit_shaders(cs, 0x7f);
       si_emit_spm_setup(sctx, cs);
@@ -509,7 +509,7 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
 
    si_emit_thread_trace_start(sctx, cs, family);
 
-   if (sctx->spm_trace.bo)
+   if (sctx->spm.bo)
       si_pc_emit_spm_start(cs);
 }
 
@@ -538,15 +538,15 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
                      RADEON_USAGE_READWRITE,
                      RADEON_DOMAIN_VRAM);
 
-   if (sctx->spm_trace.bo)
+   if (sctx->spm.bo)
       ws->cs_add_buffer(cs,
-                        sctx->spm_trace.bo,
+                        sctx->spm.bo,
                         RADEON_USAGE_READWRITE,
                         RADEON_DOMAIN_VRAM);
 
    si_cp_dma_wait_for_idle(sctx, cs);
 
-   if (sctx->spm_trace.bo)
+   if (sctx->spm.bo)
       si_pc_emit_spm_stop(cs, sctx->screen->info.never_stop_sq_perf_counters,
                           sctx->screen->info.never_send_perfcounter_stop);
 
@@ -559,7 +559,7 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
 
    si_emit_thread_trace_stop(sctx, cs, family);
 
-   if (sctx->spm_trace.bo)
+   if (sctx->spm.bo)
       si_pc_emit_spm_reset(cs);
 
    /* Restore previous state by disabling SQG events. */
@@ -797,7 +797,7 @@ si_destroy_thread_trace(struct si_context *sctx)
    free(sctx->thread_trace);
    sctx->thread_trace = NULL;
 
-   if (sctx->spm_trace.bo)
+   if (sctx->spm.bo)
       si_spm_finish(sctx);
 }
 
@@ -852,16 +852,16 @@ si_handle_thread_trace(struct si_context *sctx, struct radeon_cmdbuf *rcs)
          struct ac_spm_trace spm_trace;
 
          /* Map the SPM counter buffer */
-         if (sctx->spm_trace.bo) {
-            sctx->spm_trace.ptr = sctx->ws->buffer_map(sctx->ws, sctx->spm_trace.bo,
+         if (sctx->spm.bo) {
+            sctx->spm.ptr = sctx->ws->buffer_map(sctx->ws, sctx->spm.bo,
                                                        NULL, PIPE_MAP_READ | RADEON_MAP_TEMPORARY);
-            ac_spm_get_trace(&sctx->spm_trace, &spm_trace);
+            ac_spm_get_trace(&sctx->spm, &spm_trace);
          }
 
-         ac_dump_rgp_capture(&sctx->screen->info, &thread_trace, sctx->spm_trace.bo ? &spm_trace : NULL);
+         ac_dump_rgp_capture(&sctx->screen->info, &thread_trace, sctx->spm.bo ? &spm_trace : NULL);
 
-         if (sctx->spm_trace.ptr)
-            sctx->ws->buffer_unmap(sctx->ws, sctx->spm_trace.bo);
+         if (sctx->spm.ptr)
+            sctx->ws->buffer_unmap(sctx->ws, sctx->spm.bo);
       } else {
          fprintf(stderr, "Failed to read the trace\n");
       }

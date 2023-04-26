@@ -543,11 +543,11 @@ radv_handle_thread_trace(VkQueue _queue)
       if (radv_get_thread_trace(queue, &thread_trace)) {
          struct ac_spm_trace spm_trace;
 
-         if (queue->device->spm_trace.bo)
-            ac_spm_get_trace(&queue->device->spm_trace, &spm_trace);
+         if (queue->device->spm.bo)
+            ac_spm_get_trace(&queue->device->spm, &spm_trace);
 
          ac_dump_rgp_capture(&queue->device->physical_device->rad_info, &thread_trace,
-                             queue->device->spm_trace.bo ? &spm_trace : NULL);
+                             queue->device->spm.bo ? &spm_trace : NULL);
       } else {
          /* Trigger a new capture if the driver failed to get
           * the trace because the buffer was too small.

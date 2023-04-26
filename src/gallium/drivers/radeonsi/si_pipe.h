@@ -1319,7 +1319,7 @@ struct si_context {
 
    /* SQTT */
    struct ac_thread_trace_data *thread_trace;
-   struct ac_spm_trace_data spm_trace;
+   struct ac_spm spm;
    struct pipe_fence_handle *last_sqtt_fence;
    enum rgp_sqtt_marker_event_type sqtt_next_event;
    bool thread_trace_enabled;

@@ -673,7 +673,7 @@ radv_begin_thread_trace(struct radv_queue *queue)
 
    radv_perfcounter_emit_spm_reset(cs);
 
-   if (device->spm_trace.bo) {
+   if (device->spm.bo) {
       /* Enable all shader stages by default. */
       radv_perfcounter_emit_shaders(cs, 0x7f);
 
@@ -683,7 +683,7 @@ radv_begin_thread_trace(struct radv_queue *queue)
    /* Start SQTT. */
    radv_emit_thread_trace_start(device, cs, family);
 
-   if (device->spm_trace.bo)
+   if (device->spm.bo)
       radv_perfcounter_emit_spm_start(device, cs, family);
 
    result = ws->cs_finalize(cs);
@@ -734,7 +734,7 @@ radv_end_thread_trace(struct radv_queue *queue)
    /* Make sure to wait-for-idle before stopping SQTT. */
    radv_emit_wait_for_idle(device, cs, family);
 
-   if (device->spm_trace.bo)
+   if (device->spm.bo)
       radv_perfcounter_emit_spm_stop(device, cs, family);
 
    /* Stop SQTT. */
