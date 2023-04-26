@@ -112,7 +112,8 @@ struct intel_measure_snapshot {
    enum intel_measure_snapshot_type type;
    unsigned count, event_count;
    const char* event_name;
-   uintptr_t framebuffer, vs, tcs, tes, gs, fs, cs, ms, ts;
+   uint32_t renderpass;
+   uintptr_t vs, tcs, tes, gs, fs, cs, ms, ts;
    /* for vulkan secondary command buffers */
    struct intel_measure_batch *secondary;
 };
@@ -153,7 +154,7 @@ struct intel_measure_batch {
    struct list_head link;
    unsigned index;
    unsigned frame, batch_count, event_count;
-   uintptr_t framebuffer;
+   uint32_t renderpass;
    uint64_t *timestamps;
    struct intel_measure_snapshot snapshots[0];
 };

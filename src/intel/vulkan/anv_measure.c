@@ -164,8 +164,8 @@ anv_measure_start_snapshot(struct anv_cmd_buffer *cmd_buffer,
    snapshot->count = (unsigned) count;
    snapshot->event_count = measure->base.event_count;
    snapshot->event_name = event_name;
-   snapshot->framebuffer = (type == INTEL_SNAPSHOT_COMPUTE) ? 0
-                            : measure->base.framebuffer;
+   snapshot->renderpass = (type == INTEL_SNAPSHOT_COMPUTE) ? 0
+                            : measure->base.renderpass;
 
    if (type == INTEL_SNAPSHOT_COMPUTE && cmd_buffer->state.compute.pipeline) {
       snapshot->cs = (uintptr_t) cmd_buffer->state.compute.pipeline->cs;
@@ -327,7 +327,7 @@ anv_measure_reset(struct anv_cmd_buffer *cmd_buffer)
    assert(cmd_buffer->device != NULL);
 
    measure->base.index = 0;
-   measure->base.framebuffer = 0;
+   measure->base.renderpass = 0;
    measure->base.frame = 0;
    measure->base.event_count = 0;
    list_inithead(&measure->base.link);
@@ -478,7 +478,7 @@ _anv_measure_beginrenderpass(struct anv_cmd_buffer *cmd_buffer)
       measure->base.event_count = 0;
    }
 
-   measure->base.framebuffer =
+   measure->base.renderpass =
       (uintptr_t) p_atomic_inc_return(&measure_device->render_pass_count);
 }
 

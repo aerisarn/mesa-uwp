@@ -213,9 +213,9 @@ intel_measure_init(struct intel_measure_device *device)
       }
 
       if (!config.cpu_measure)
-         fputs("draw_start,draw_end,frame,batch,"
+         fputs("draw_start,draw_end,frame,batch,renderpass,"
                "event_index,event_count,type,count,vs,tcs,tes,"
-               "gs,fs,cs,ms,ts,framebuffer,idle_us,time_us\n",
+               "gs,fs,cs,ms,ts,idle_us,time_us\n",
                config.file);
       else
          fputs("draw_start,frame,batch,event_index,event_count,"
@@ -305,7 +305,7 @@ intel_measure_state_changed(const struct intel_measure_batch *batch,
    }
 
    if (config.flags & INTEL_MEASURE_RENDERPASS) {
-      return ((last_snap->framebuffer != batch->framebuffer) ||
+      return ((last_snap->renderpass != batch->renderpass) ||
               /* compute workloads are always in their own renderpass */
               (cs != 0));
    }
@@ -616,15 +616,15 @@ print_combined_results(struct intel_measure_device *measure_device,
    uint64_t duration_time_ns =
       intel_device_info_timebase_scale(info, duration_ts);
    const struct intel_measure_snapshot *begin = &start_result->snapshot;
-   fprintf(config.file, "%"PRIu64",%"PRIu64",%u,%u,%u,%u,%s,%u,"
-           "0x%"PRIxPTR",0x%"PRIxPTR",0x%"PRIxPTR",0x%"PRIxPTR",0x%"PRIxPTR","
-           "0x%"PRIxPTR",0x%"PRIxPTR",0x%"PRIxPTR",0x%"PRIxPTR",%.3lf,%.3lf\n",
+   fprintf(config.file, "%"PRIu64",%"PRIu64",%u,%u,%u,%u,%u,%s,%u,"
+           "0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,%.3lf,%.3lf\n",
            start_result->start_ts, current_result->end_ts,
            start_result->frame, start_result->batch_count,
-           start_result->event_index, event_count,
+           begin->renderpass, start_result->event_index, event_count,
            begin->event_name, begin->count,
-           begin->vs, begin->tcs, begin->tes, begin->gs, begin->fs, begin->cs,
-           begin->ms, begin->ts, begin->framebuffer,
+           (uint32_t)begin->vs, (uint32_t)begin->tcs, (uint32_t)begin->tes,
+           (uint32_t)begin->gs, (uint32_t)begin->fs, (uint32_t)begin->cs,
+           (uint32_t)begin->ms, (uint32_t)begin->ts,
            (double)duration_idle_ns / 1000.0,
            (double)duration_time_ns / 1000.0);
 }
