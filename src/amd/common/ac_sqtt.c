@@ -107,7 +107,7 @@ ac_thread_trace_finish(struct ac_thread_trace_data *data)
 }
 
 bool
-ac_is_thread_trace_complete(struct radeon_info *rad_info,
+ac_is_thread_trace_complete(const struct radeon_info *rad_info,
                             const struct ac_thread_trace_data *data,
                             const struct ac_thread_trace_info *info)
 {
@@ -261,4 +261,46 @@ ac_sqtt_se_is_disabled(const struct radeon_info *info, unsigned se)
 
    /* No active CU on the SE means it is disabled. */
    return info->cu_mask[se][0] == 0;
+}
+
+bool
+ac_sqtt_get_trace(struct ac_thread_trace_data *data,
+                  const struct radeon_info *info,
+                  struct ac_thread_trace *thread_trace)
+{
+   unsigned max_se = info->max_se;
+   void *ptr = data->ptr;
+
+   memset(thread_trace, 0, sizeof(*thread_trace));
+
+   for (unsigned se = 0; se < max_se; se++) {
+      uint64_t info_offset = ac_thread_trace_get_info_offset(se);
+      uint64_t data_offset = ac_thread_trace_get_data_offset(info, data, se);
+      void *info_ptr = (uint8_t *)ptr + info_offset;
+      void *data_ptr = (uint8_t *)ptr + data_offset;
+      struct ac_thread_trace_info *trace_info = (struct ac_thread_trace_info *)info_ptr;
+      struct ac_thread_trace_se thread_trace_se = {0};
+      int first_active_cu = ffs(info->cu_mask[se][0]);
+
+      if (ac_sqtt_se_is_disabled(info, se))
+         continue;
+
+      if (!ac_is_thread_trace_complete(info, data, trace_info))
+         return false;
+
+      thread_trace_se.data_ptr = data_ptr;
+      thread_trace_se.info = *trace_info;
+      thread_trace_se.shader_engine = se;
+
+      /* RGP seems to expect units of WGP on GFX10+. */
+      thread_trace_se.compute_unit =
+         info->gfx_level >= GFX10 ? (first_active_cu / 2) : first_active_cu;
+
+      thread_trace->traces[thread_trace->num_traces] = thread_trace_se;
+      thread_trace->num_traces++;
+   }
+
+   thread_trace->data = data;
+
+   return true;
 }

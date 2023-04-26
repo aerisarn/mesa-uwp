@@ -810,47 +810,16 @@ radv_get_thread_trace(struct radv_queue *queue, struct ac_thread_trace *thread_t
 {
    struct radv_device *device = queue->device;
    struct radeon_info *rad_info = &device->physical_device->rad_info;
-   unsigned max_se = rad_info->max_se;
-   void *thread_trace_ptr = device->thread_trace.ptr;
 
-   memset(thread_trace, 0, sizeof(*thread_trace));
-
-   for (unsigned se = 0; se < max_se; se++) {
-      uint64_t info_offset = ac_thread_trace_get_info_offset(se);
-      uint64_t data_offset = ac_thread_trace_get_data_offset(rad_info, &device->thread_trace, se);
-      void *info_ptr = (uint8_t *)thread_trace_ptr + info_offset;
-      void *data_ptr = (uint8_t *)thread_trace_ptr + data_offset;
-      struct ac_thread_trace_info *info = (struct ac_thread_trace_info *)info_ptr;
-      struct ac_thread_trace_se thread_trace_se = {0};
-      int first_active_cu = ffs(device->physical_device->rad_info.cu_mask[se][0]);
-
-      if (ac_sqtt_se_is_disabled(rad_info, se))
-         continue;
-
-      if (!ac_is_thread_trace_complete(&device->physical_device->rad_info, &device->thread_trace,
-                                       info)) {
-         if (!radv_thread_trace_resize_bo(device)) {
-            fprintf(stderr, "Failed to resize the thread "
-                            "trace buffer.\n");
-            abort();
-         }
-         return false;
+   if (!ac_sqtt_get_trace(&device->thread_trace, rad_info, thread_trace)) {
+      if (!radv_thread_trace_resize_bo(device)) {
+         fprintf(stderr, "Failed to resize the thread trace buffer.\n");
+         abort();
       }
 
-      thread_trace_se.data_ptr = data_ptr;
-      thread_trace_se.info = *info;
-      thread_trace_se.shader_engine = se;
-
-      /* RGP seems to expect units of WGP on GFX10+. */
-      thread_trace_se.compute_unit = device->physical_device->rad_info.gfx_level >= GFX10
-                                        ? (first_active_cu / 2)
-                                        : first_active_cu;
-
-      thread_trace->traces[thread_trace->num_traces] = thread_trace_se;
-      thread_trace->num_traces++;
+      return false;
    }
 
-   thread_trace->data = &device->thread_trace;
    return true;
 }
 

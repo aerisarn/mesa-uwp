@@ -616,51 +616,36 @@ si_get_thread_trace(struct si_context *sctx,
    if (!sctx->thread_trace->ptr)
       return false;
 
-   void *thread_trace_ptr = sctx->thread_trace->ptr;
+   if (!ac_sqtt_get_trace(sctx->thread_trace, &sctx->screen->info,
+                          thread_trace)) {
+      void *thread_trace_ptr = sctx->thread_trace->ptr;
 
-   for (unsigned se = 0; se < max_se; se++) {
-      uint64_t info_offset = ac_thread_trace_get_info_offset(se);
-      uint64_t data_offset = ac_thread_trace_get_data_offset(&sctx->screen->info, sctx->thread_trace, se);
-      void *info_ptr = thread_trace_ptr + info_offset;
-      void *data_ptr = thread_trace_ptr + data_offset;
-      struct ac_thread_trace_info *info =
-         (struct ac_thread_trace_info *)info_ptr;
+      for (unsigned se = 0; se < max_se; se++) {
+         uint64_t info_offset = ac_thread_trace_get_info_offset(se);
+         void *info_ptr = thread_trace_ptr + info_offset;
+         struct ac_thread_trace_info *info =
+            (struct ac_thread_trace_info *)info_ptr;
 
-      struct ac_thread_trace_se thread_trace_se = {0};
+         if (ac_sqtt_se_is_disabled(&sctx->screen->info, se))
+            continue;
 
-      if (ac_sqtt_se_is_disabled(&sctx->screen->info, se))
-         continue;
+         if (!ac_is_thread_trace_complete(&sctx->screen->info, sctx->thread_trace, info)) {
+            uint32_t expected_size =
+               ac_get_expected_buffer_size(&sctx->screen->info, info);
+            uint32_t available_size = (info->cur_offset * 32) / 1024;
 
-      if (!ac_is_thread_trace_complete(&sctx->screen->info, sctx->thread_trace, info)) {
-         uint32_t expected_size =
-            ac_get_expected_buffer_size(&sctx->screen->info, info);
-         uint32_t available_size = (info->cur_offset * 32) / 1024;
-
-         fprintf(stderr, "Failed to get the thread trace "
-                 "because the buffer is too small. The "
-                 "hardware needs %d KB but the "
-                 "buffer size is %d KB.\n",
-                 expected_size, available_size);
-         fprintf(stderr, "Please update the buffer size with "
-                 "AMD_THREAD_TRACE_BUFFER_SIZE=<size_in_kbytes>\n");
-         return false;
+            fprintf(stderr, "Failed to get the thread trace "
+                    "because the buffer is too small. The "
+                    "hardware needs %d KB but the "
+                    "buffer size is %d KB.\n",
+                    expected_size, available_size);
+            fprintf(stderr, "Please update the buffer size with "
+                    "AMD_THREAD_TRACE_BUFFER_SIZE=<size_in_kbytes>\n");
+            return false;
+         }
       }
-
-      thread_trace_se.data_ptr = data_ptr;
-      thread_trace_se.info = *info;
-      thread_trace_se.shader_engine = se;
-
-      int first_active_cu = ffs(sctx->screen->info.cu_mask[se][0]);
-
-      /* For GFX10+ compute_unit really means WGP */
-      thread_trace_se.compute_unit =
-         sctx->screen->info.gfx_level >= GFX10 ? (first_active_cu / 2) : first_active_cu;
-
-      thread_trace->traces[thread_trace->num_traces] = thread_trace_se;
-      thread_trace->num_traces++;
    }
 
-   thread_trace->data = sctx->thread_trace;
    return true;
 }
 

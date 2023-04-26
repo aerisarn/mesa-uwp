@@ -106,7 +106,7 @@ void
 ac_thread_trace_finish(struct ac_thread_trace_data *data);
 
 bool
-ac_is_thread_trace_complete(struct radeon_info *rad_info,
+ac_is_thread_trace_complete(const struct radeon_info *rad_info,
                             const struct ac_thread_trace_data *data,
                             const struct ac_thread_trace_info *info);
 
@@ -561,5 +561,9 @@ union rgp_sqtt_marker_cb_id ac_sqtt_get_next_cmdbuf_id(struct ac_thread_trace_da
                                                        enum amd_ip_type ip_type);
 
 bool ac_sqtt_se_is_disabled(const struct radeon_info *info, unsigned se);
+
+bool ac_sqtt_get_trace(struct ac_thread_trace_data *data,
+                       const struct radeon_info *info,
+                       struct ac_thread_trace *thread_trace);
 
 #endif
