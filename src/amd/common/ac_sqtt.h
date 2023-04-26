@@ -260,6 +260,10 @@ enum rgp_sqtt_marker_general_api_type
    ApiCmdSetStencilReference = 43,
    ApiCmdDrawIndirectCount = 44,
    ApiCmdDrawIndexedIndirectCount = 45,
+   /* gap */
+   ApiCmdDrawMeshTasksEXT = 47,
+   ApiCmdDrawMeshTasksIndirectCountEXT = 48,
+   ApiCmdDrawMeshTasksIndirectEXT = 49,
    ApiInvalid = 0xffffffff
 };
 
@@ -324,6 +328,10 @@ enum rgp_sqtt_marker_event_type
    EventCmdCopyAccelerationStructureKHR = 34,
    EventCmdCopyAccelerationStructureToMemoryKHR = 35,
    EventCmdCopyMemoryToAccelerationStructureKHR = 36,
+   /* gap */
+   EventCmdDrawMeshTasksEXT = 41,
+   EventCmdDrawMeshTasksIndirectCountEXT = 42,
+   EventCmdDrawMeshTasksIndirectEXT = 43,
    EventInvalid = 0xffffffff
 };
 
