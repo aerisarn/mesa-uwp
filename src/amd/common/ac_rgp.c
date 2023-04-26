@@ -603,9 +603,9 @@ struct sqtt_file_chunk_code_object_database {
 };
 
 static void
-ac_sqtt_fill_code_object(struct rgp_code_object *rgp_code_object,
-                         struct sqtt_file_chunk_code_object_database *chunk,
-                         size_t file_offset, uint32_t chunk_size)
+ac_sqtt_fill_code_object(const struct rgp_code_object *rgp_code_object,
+                         struct sqtt_file_chunk_code_object_database *chunk, size_t file_offset,
+                         uint32_t chunk_size)
 {
    chunk->header.chunk_id.type = SQTT_FILE_CHUNK_TYPE_CODE_OBJECT_DATABASE;
    chunk->header.chunk_id.index = 0;
@@ -635,7 +635,7 @@ struct sqtt_file_chunk_code_object_loader_events {
 };
 
 static void
-ac_sqtt_fill_loader_events(struct rgp_loader_events *rgp_loader_events,
+ac_sqtt_fill_loader_events(const struct rgp_loader_events *rgp_loader_events,
                            struct sqtt_file_chunk_code_object_loader_events *chunk,
                            size_t file_offset)
 {
@@ -667,9 +667,8 @@ struct sqtt_file_chunk_pso_correlation {
 };
 
 static void
-ac_sqtt_fill_pso_correlation(struct rgp_pso_correlation *rgp_pso_correlation,
-                             struct sqtt_file_chunk_pso_correlation *chunk,
-                             size_t file_offset)
+ac_sqtt_fill_pso_correlation(const struct rgp_pso_correlation *rgp_pso_correlation,
+                             struct sqtt_file_chunk_pso_correlation *chunk, size_t file_offset)
 {
    chunk->header.chunk_id.type = SQTT_FILE_CHUNK_TYPE_PSO_CORRELATION;
    chunk->header.chunk_id.index = 0;
@@ -806,8 +805,8 @@ static_assert(sizeof(struct sqtt_queue_event_record) == 56,
 	      "sqtt_queue_event_record doesn't match RGP spec");
 
 static void
-ac_sqtt_fill_queue_event_timings(struct rgp_queue_info *rgp_queue_info,
-                                 struct rgp_queue_event *rgp_queue_event,
+ac_sqtt_fill_queue_event_timings(const struct rgp_queue_info *rgp_queue_info,
+                                 const struct rgp_queue_event *rgp_queue_event,
                                  struct sqtt_file_chunk_queue_event_timings *chunk)
 {
    unsigned queue_info_size =
@@ -997,21 +996,17 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
                               const struct ac_spm_trace *spm_trace,
                               FILE *output)
 {
-   struct ac_thread_trace_data *thread_trace_data = thread_trace->data;
    struct sqtt_file_chunk_asic_info asic_info = {0};
    struct sqtt_file_chunk_cpu_info cpu_info = {0};
    struct sqtt_file_chunk_api_info api_info = {0};
    struct sqtt_file_header header = {0};
    size_t file_offset = 0;
-   struct rgp_code_object *rgp_code_object =
-                                          &thread_trace_data->rgp_code_object;
-   struct rgp_loader_events *rgp_loader_events =
-                                        &thread_trace_data->rgp_loader_events;
-   struct rgp_pso_correlation *rgp_pso_correlation =
-                                      &thread_trace_data->rgp_pso_correlation;
-   struct rgp_queue_info *rgp_queue_info = &thread_trace_data->rgp_queue_info;
-   struct rgp_queue_event *rgp_queue_event = &thread_trace_data->rgp_queue_event;
-   struct rgp_clock_calibration *rgp_clock_calibration = &thread_trace_data->rgp_clock_calibration;
+   const struct rgp_code_object *rgp_code_object = thread_trace->rgp_code_object;
+   const struct rgp_loader_events *rgp_loader_events = thread_trace->rgp_loader_events;
+   const struct rgp_pso_correlation *rgp_pso_correlation = thread_trace->rgp_pso_correlation;
+   const struct rgp_queue_info *rgp_queue_info = thread_trace->rgp_queue_info;
+   const struct rgp_queue_event *rgp_queue_event = thread_trace->rgp_queue_event;
+   const struct rgp_clock_calibration *rgp_clock_calibration = thread_trace->rgp_clock_calibration;
 
    /* SQTT header file. */
    ac_sqtt_fill_header(&header);

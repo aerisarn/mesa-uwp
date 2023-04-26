@@ -300,7 +300,12 @@ ac_sqtt_get_trace(struct ac_thread_trace_data *data,
       thread_trace->num_traces++;
    }
 
-   thread_trace->data = data;
+   thread_trace->rgp_code_object = &data->rgp_code_object;
+   thread_trace->rgp_loader_events = &data->rgp_loader_events;
+   thread_trace->rgp_pso_correlation = &data->rgp_pso_correlation;
+   thread_trace->rgp_queue_info = &data->rgp_queue_info;
+   thread_trace->rgp_queue_event = &data->rgp_queue_event;
+   thread_trace->rgp_clock_calibration = &data->rgp_clock_calibration;
 
    return true;
 }

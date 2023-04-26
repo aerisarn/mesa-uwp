@@ -81,7 +81,13 @@ struct ac_thread_trace_se {
 #define SQTT_MAX_TRACES 6
 
 struct ac_thread_trace {
-   struct ac_thread_trace_data *data;
+   const struct rgp_code_object *rgp_code_object;
+   const struct rgp_loader_events *rgp_loader_events;
+   const struct rgp_pso_correlation *rgp_pso_correlation;
+   const struct rgp_queue_info *rgp_queue_info;
+   const struct rgp_queue_event *rgp_queue_event;
+   const struct rgp_clock_calibration *rgp_clock_calibration;
+
    uint32_t num_traces;
    struct ac_thread_trace_se traces[SQTT_MAX_TRACES];
 };
