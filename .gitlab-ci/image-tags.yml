@@ -1,6 +1,6 @@
 variables:
    DEBIAN_X86_BUILD_BASE_IMAGE: "debian/x86_build-base"
-   DEBIAN_BASE_TAG: "2023-04-16-kernel-6.3"
+   DEBIAN_BASE_TAG: "2023-05-02-virglrenderer-crosvm"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
    DEBIAN_BUILD_TAG: "2023-04-29-mold"
@@ -21,7 +21,7 @@ variables:
 
    ALPINE_X86_BUILD_TAG: "2023-03-20-3.17-bump"
    FEDORA_X86_BUILD_TAG: "2023-04-26-rusticl"
-   KERNEL_ROOTFS_TAG: "2023-04-26-skqp-12.1-r5"
+   KERNEL_ROOTFS_TAG: "2023-05-02-virglrenderer-crosvm"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
    WINDOWS_X64_VS_TAG: "2022-10-20-upgrade-zlib"
