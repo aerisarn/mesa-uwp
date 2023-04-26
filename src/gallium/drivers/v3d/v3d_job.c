@@ -35,6 +35,7 @@
 #include "util/hash_table.h"
 #include "util/ralloc.h"
 #include "util/set.h"
+#include "util/u_prim.h"
 #include "broadcom/clif/clif_dump.h"
 
 void
@@ -466,11 +467,22 @@ v3d_read_and_accumulate_primitive_counters(struct v3d_context *v3d)
         if (v3d_bo_wait(rsc->bo, PIPE_TIMEOUT_INFINITE, "prim-counts")) {
                 uint32_t *map = v3d_bo_map(rsc->bo) + v3d->prim_counts_offset;
                 v3d->tf_prims_generated += map[V3D_PRIM_COUNTS_TF_WRITTEN];
-                /* When we only have a vertex shader we determine the primitive
-                 * count in the CPU so don't update it here again.
+                /* When we only have a vertex shader with no primitive
+                 * restart, we determine the primitive count in the CPU so
+                 * don't update it here again.
                  */
-                if (v3d->prog.gs)
+                if (v3d->prog.gs || v3d->prim_restart) {
                         v3d->prims_generated += map[V3D_PRIM_COUNTS_WRITTEN];
+                        uint8_t prim_mode =
+                                v3d->prog.gs ? v3d->prog.gs->prog_data.gs->out_prim_type
+                                             : v3d->prim_mode;
+                        uint32_t vertices_written =
+                                map[V3D_PRIM_COUNTS_TF_WRITTEN] * u_vertices_per_prim(prim_mode);
+                        for (int i = 0; i < v3d->streamout.num_targets; i++) {
+                                v3d_stream_output_target(v3d->streamout.targets[i])->offset +=
+                                        vertices_written;
+                        }
+                }
         }
 }
 

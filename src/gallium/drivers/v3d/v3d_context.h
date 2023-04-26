@@ -600,6 +600,7 @@ struct v3d_context {
 
         uint32_t tf_prims_generated;
         uint32_t prims_generated;
+        bool prim_restart;
 
         uint32_t n_primitives_generated_queries_in_flight;
 

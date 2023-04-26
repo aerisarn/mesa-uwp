@@ -98,8 +98,6 @@ spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail
 spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
-spec@!opengl 3.1@primitive-restart-xfb flush,Fail
-spec@!opengl 3.1@primitive-restart-xfb generated,Fail
 spec@arb_color_buffer_float@gl_rgba32f-render,Fail
 spec@arb_color_buffer_float@gl_rgba32f-render-fog,Fail
 spec@arb_color_buffer_float@gl_rgba32f-render-sanity,Fail
