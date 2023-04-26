@@ -1153,6 +1153,75 @@ impl SM75Instr {
         }
     }
 
+    fn set_atom_op(&mut self, range: Range<usize>, atom_op: AtomOp) {
+        assert!(range.len() == 4);
+        self.set_field(
+            range,
+            match atom_op {
+                AtomOp::Add => 0_u8,
+                AtomOp::Min => 1_u8,
+                AtomOp::Max => 2_u8,
+                AtomOp::Inc => 3_u8,
+                AtomOp::Dec => 4_u8,
+                AtomOp::And => 5_u8,
+                AtomOp::Or => 6_u8,
+                AtomOp::Xor => 7_u8,
+                AtomOp::Exch => 8_u8,
+            },
+        );
+    }
+
+    fn set_atom_type(&mut self, range: Range<usize>, atom_type: AtomType) {
+        assert!(range.len() == 3);
+        self.set_field(
+            range,
+            match atom_type {
+                AtomType::U32 => 0_u8,
+                AtomType::I32 => 1_u8,
+                AtomType::U64 => 2_u8,
+                AtomType::F32 => 3_u8,
+                AtomType::F16x2 => 4_u8,
+                AtomType::I64 => 5_u8,
+                AtomType::F64 => 6_u8,
+            },
+        );
+    }
+
+    fn encode_atomg(&mut self, op: &OpAtom) {
+        self.set_opcode(0x38a);
+
+        self.set_dst(op.dst);
+        self.set_pred_dst(81..84, Dst::None);
+
+        self.set_reg_src(24..32, op.addr);
+        self.set_reg_src(32..40, op.data);
+        self.set_field(40..64, op.addr_offset);
+
+        self.set_field(
+            72..73,
+            match op.addr_type {
+                MemAddrType::A32 => 0_u8,
+                MemAddrType::A64 => 1_u8,
+            },
+        );
+
+        self.set_atom_type(73..76, op.atom_type);
+        self.set_mem_order_scope(&op.mem_order, &op.mem_scope);
+        self.set_atom_op(87..91, op.atom_op);
+    }
+
+    fn encode_atoms(&mut self, op: &OpAtom) {
+        panic!("Shared atomic ops not yet implemented");
+    }
+
+    fn encode_atom(&mut self, op: &OpAtom) {
+        match op.mem_space {
+            MemSpace::Global => self.encode_atomg(op),
+            MemSpace::Local => panic!("Atomics do not support local"),
+            MemSpace::Shared => self.encode_atoms(op),
+        }
+    }
+
     fn encode_ald(&mut self, op: &OpALd) {
         self.set_opcode(0x321);
 
@@ -1335,6 +1404,7 @@ impl SM75Instr {
             Op::SuSt(op) => si.encode_sust(&op),
             Op::Ld(op) => si.encode_ld(&op),
             Op::St(op) => si.encode_st(&op),
+            Op::Atom(op) => si.encode_atom(&op),
             Op::ALd(op) => si.encode_ald(&op),
             Op::ASt(op) => si.encode_ast(&op),
             Op::Ipa(op) => si.encode_ipa(&op),

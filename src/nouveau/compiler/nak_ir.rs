@@ -1416,6 +1416,87 @@ impl fmt::Display for MemAccess {
     }
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub enum AtomType {
+    F16x2,
+    U32,
+    I32,
+    F32,
+    U64,
+    I64,
+    F64,
+}
+
+impl AtomType {
+    pub fn F(bits: u8) -> AtomType {
+        match bits {
+            16 => panic!("16-bit float atomics not yet supported"),
+            32 => AtomType::F32,
+            64 => AtomType::F64,
+            _ => panic!("Invalid float atomic type"),
+        }
+    }
+
+    pub fn U(bits: u8) -> AtomType {
+        match bits {
+            32 => AtomType::U32,
+            64 => AtomType::U64,
+            _ => panic!("Invalid uint atomic type"),
+        }
+    }
+
+    pub fn I(bits: u8) -> AtomType {
+        match bits {
+            32 => AtomType::I32,
+            64 => AtomType::I64,
+            _ => panic!("Invalid int atomic type"),
+        }
+    }
+}
+
+impl fmt::Display for AtomType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AtomType::F16x2 => write!(f, "F16x2"),
+            AtomType::U32 => write!(f, "U32"),
+            AtomType::I32 => write!(f, "I32"),
+            AtomType::F32 => write!(f, "F32"),
+            AtomType::U64 => write!(f, "U64"),
+            AtomType::I64 => write!(f, "I64"),
+            AtomType::F64 => write!(f, "F64"),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub enum AtomOp {
+    Add,
+    Min,
+    Max,
+    Inc,
+    Dec,
+    And,
+    Or,
+    Xor,
+    Exch,
+}
+
+impl fmt::Display for AtomOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AtomOp::Add => write!(f, "ADD"),
+            AtomOp::Min => write!(f, "MIN"),
+            AtomOp::Max => write!(f, "MAX"),
+            AtomOp::Inc => write!(f, "INC"),
+            AtomOp::Dec => write!(f, "DEC"),
+            AtomOp::And => write!(f, "AND"),
+            AtomOp::Or => write!(f, "OR"),
+            AtomOp::Xor => write!(f, "XOR"),
+            AtomOp::Exch => write!(f, "EXCH"),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum InterpFreq {
     Pass,
@@ -2274,6 +2355,53 @@ impl fmt::Display for OpSt {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpAtom {
+    pub dst: Dst,
+
+    #[src_type(GPR)]
+    pub addr: Src,
+
+    #[src_type(SSA)]
+    pub data: Src,
+
+    pub atom_op: AtomOp,
+    pub atom_type: AtomType,
+
+    pub addr_type: MemAddrType,
+    pub addr_offset: i32,
+
+    pub mem_space: MemSpace,
+    pub mem_order: MemOrder,
+    pub mem_scope: MemScope,
+}
+
+impl fmt::Display for OpAtom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "ATOM.{}.{}.{}.{} {}",
+            self.atom_op,
+            self.atom_type,
+            self.mem_order,
+            self.mem_scope,
+            self.dst
+        )?;
+        write!(f, " [")?;
+        if !self.addr.is_zero() {
+            write!(f, "{}", self.addr)?;
+        }
+        if self.addr_offset > 0 {
+            if !self.addr.is_zero() {
+                write!(f, "+")?;
+            }
+            write!(f, "{:#x}", self.addr_offset)?;
+        }
+        write!(f, "] {}", self.data)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpALd {
     pub dst: Dst,
 
@@ -2752,6 +2880,7 @@ pub enum Op {
     SuSt(OpSuSt),
     Ld(OpLd),
     St(OpSt),
+    Atom(OpAtom),
     ALd(OpALd),
     ASt(OpASt),
     Ipa(OpIpa),
@@ -3219,6 +3348,7 @@ impl Instr {
             Op::ASt(_)
             | Op::SuSt(_)
             | Op::St(_)
+            | Op::Atom(_)
             | Op::MemBar(_)
             | Op::Bra(_)
             | Op::Exit(_)
@@ -3263,6 +3393,7 @@ impl Instr {
             Op::SuSt(_) => None,
             Op::Ld(_) => None,
             Op::St(_) => None,
+            Op::Atom(_) => None,
             Op::MemBar(_) => None,
             Op::Bar(_) => None,
             Op::Bra(_) | Op::Exit(_) => Some(15),

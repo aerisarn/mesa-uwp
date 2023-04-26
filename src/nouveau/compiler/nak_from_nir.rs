@@ -778,6 +778,43 @@ impl<'a> ShaderFromNir<'a> {
         }
     }
 
+    fn get_atomic_type(&self, intrin: &nir_intrinsic_instr) -> AtomType {
+        let bit_size = intrin.def.bit_size();
+        match intrin.atomic_op() {
+            nir_atomic_op_iadd => AtomType::U(bit_size),
+            nir_atomic_op_imin => AtomType::I(bit_size),
+            nir_atomic_op_umin => AtomType::U(bit_size),
+            nir_atomic_op_imax => AtomType::I(bit_size),
+            nir_atomic_op_umax => AtomType::U(bit_size),
+            nir_atomic_op_iand => AtomType::U(bit_size),
+            nir_atomic_op_ior => AtomType::U(bit_size),
+            nir_atomic_op_ixor => AtomType::U(bit_size),
+            nir_atomic_op_xchg => AtomType::U(bit_size),
+            nir_atomic_op_fadd => AtomType::F(bit_size),
+            nir_atomic_op_fmin => AtomType::F(bit_size),
+            nir_atomic_op_fmax => AtomType::F(bit_size),
+            _ => panic!("Unsupported NIR atomic op"),
+        }
+    }
+
+    fn get_atomic_op(&self, intrin: &nir_intrinsic_instr) -> AtomOp {
+        match intrin.atomic_op() {
+            nir_atomic_op_iadd => AtomOp::Add,
+            nir_atomic_op_imin => AtomOp::Min,
+            nir_atomic_op_umin => AtomOp::Min,
+            nir_atomic_op_imax => AtomOp::Max,
+            nir_atomic_op_umax => AtomOp::Max,
+            nir_atomic_op_iand => AtomOp::And,
+            nir_atomic_op_ior => AtomOp::Or,
+            nir_atomic_op_ixor => AtomOp::Xor,
+            nir_atomic_op_xchg => AtomOp::Exch,
+            nir_atomic_op_fadd => AtomOp::Add,
+            nir_atomic_op_fmin => AtomOp::Min,
+            nir_atomic_op_fmax => AtomOp::Max,
+            _ => panic!("Unsupported NIR atomic op"),
+        }
+    }
+
     fn get_image_dim(&mut self, intrin: &nir_intrinsic_instr) -> ImageDim {
         let is_array = intrin.image_array();
         let image_dim = intrin.image_dim();
@@ -855,6 +892,27 @@ impl<'a> ShaderFromNir<'a> {
                     coord: coord,
                     data: data,
                 }));
+            }
+            nir_intrinsic_global_atomic => {
+                let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
+                let data = self.get_src(&srcs[1]);
+                let atom_type = self.get_atomic_type(intrin);
+                let atom_op = self.get_atomic_op(intrin);
+                let dst = self.get_dst(&intrin.def);
+
+                let atom = OpAtom {
+                    dst: dst,
+                    addr: addr,
+                    data: data,
+                    atom_op: atom_op,
+                    atom_type: atom_type,
+                    addr_type: MemAddrType::A64,
+                    addr_offset: offset,
+                    mem_space: MemSpace::Global,
+                    mem_order: MemOrder::Strong,
+                    mem_scope: MemScope::System,
+                };
+                self.instrs.push(atom.into());
             }
             nir_intrinsic_load_barycentric_centroid => (),
             nir_intrinsic_load_barycentric_pixel => (),
