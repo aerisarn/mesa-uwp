@@ -37,24 +37,12 @@
 #include "util/hash_table.h"
 #include "util/set.h"
 
-struct raw_data_object {
-   struct vk_pipeline_cache_object base;
-
-   const void *data;
-   size_t data_size;
-};
-
-static struct raw_data_object *
-raw_data_object_create(struct vk_device *device,
-                       const void *key_data, size_t key_size,
-                       const void *data, size_t data_size);
-
 static bool
-raw_data_object_serialize(struct vk_pipeline_cache_object *object,
-                          struct blob *blob)
+vk_raw_data_cache_object_serialize(struct vk_pipeline_cache_object *object,
+                                   struct blob *blob)
 {
-   struct raw_data_object *data_obj =
-      container_of(object, struct raw_data_object, base);
+   struct vk_raw_data_cache_object *data_obj =
+      container_of(object, struct vk_raw_data_cache_object, base);
 
    blob_write_bytes(blob, data_obj->data, data_obj->data_size);
 
@@ -62,10 +50,10 @@ raw_data_object_serialize(struct vk_pipeline_cache_object *object,
 }
 
 static struct vk_pipeline_cache_object *
-raw_data_object_deserialize(struct vk_pipeline_cache *cache,
-                            const void *key_data,
-                            size_t key_size,
-                            struct blob_reader *blob)
+vk_raw_data_cache_object_deserialize(struct vk_pipeline_cache *cache,
+                                     const void *key_data,
+                                     size_t key_size,
+                                     struct blob_reader *blob)
 {
    /* We consume the entire blob_reader.  Each call to ops->deserialize()
     * happens with a brand new blob reader for error checking anyway so we
@@ -76,36 +64,36 @@ raw_data_object_deserialize(struct vk_pipeline_cache *cache,
    size_t data_size = blob->end - blob->current;
    const void *data = blob_read_bytes(blob, data_size);
 
-   struct raw_data_object *data_obj =
-      raw_data_object_create(cache->base.device, key_data, key_size, data,
-                             data_size);
+   struct vk_raw_data_cache_object *data_obj =
+      vk_raw_data_cache_object_create(cache->base.device, key_data, key_size,
+                                      data, data_size);
 
    return data_obj ? &data_obj->base : NULL;
 }
 
 static void
-raw_data_object_destroy(struct vk_device *device,
-                        struct vk_pipeline_cache_object *object)
+vk_raw_data_cache_object_destroy(struct vk_device *device,
+                                 struct vk_pipeline_cache_object *object)
 {
-   struct raw_data_object *data_obj =
-      container_of(object, struct raw_data_object, base);
+   struct vk_raw_data_cache_object *data_obj =
+      container_of(object, struct vk_raw_data_cache_object, base);
 
    vk_free(&device->alloc, data_obj);
 }
 
-static const struct vk_pipeline_cache_object_ops raw_data_object_ops = {
-   .serialize = raw_data_object_serialize,
-   .deserialize = raw_data_object_deserialize,
-   .destroy = raw_data_object_destroy,
+const struct vk_pipeline_cache_object_ops vk_raw_data_cache_object_ops = {
+   .serialize = vk_raw_data_cache_object_serialize,
+   .deserialize = vk_raw_data_cache_object_deserialize,
+   .destroy = vk_raw_data_cache_object_destroy,
 };
 
-static struct raw_data_object *
-raw_data_object_create(struct vk_device *device,
-                       const void *key_data, size_t key_size,
-                       const void *data, size_t data_size)
+struct vk_raw_data_cache_object *
+vk_raw_data_cache_object_create(struct vk_device *device,
+                                const void *key_data, size_t key_size,
+                                const void *data, size_t data_size)
 {
    VK_MULTIALLOC(ma);
-   VK_MULTIALLOC_DECL(&ma, struct raw_data_object, data_obj, 1);
+   VK_MULTIALLOC_DECL(&ma, struct vk_raw_data_cache_object, data_obj, 1);
    VK_MULTIALLOC_DECL_SIZE(&ma, char, obj_key_data, key_size);
    VK_MULTIALLOC_DECL_SIZE(&ma, char, obj_data, data_size);
 
@@ -114,7 +102,7 @@ raw_data_object_create(struct vk_device *device,
       return NULL;
 
    vk_pipeline_cache_object_init(device, &data_obj->base,
-                                 &raw_data_object_ops,
+                                 &vk_raw_data_cache_object_ops,
                                  obj_key_data, key_size);
    data_obj->data = obj_data;
    data_obj->data_size = data_size;
@@ -234,7 +222,7 @@ vk_pipeline_cache_object_deserialize(struct vk_pipeline_cache *cache,
                                      const struct vk_pipeline_cache_object_ops *ops)
 {
    if (ops == NULL)
-      ops = &raw_data_object_ops;
+      ops = &vk_raw_data_cache_object_ops;
 
    if (unlikely(ops->deserialize == NULL)) {
       vk_logw(VK_LOG_OBJS(cache),
@@ -282,7 +270,7 @@ vk_pipeline_cache_insert_object(struct vk_pipeline_cache *cache,
        struct vk_pipeline_cache_object *found_object = (void *)entry->key;
        if (found_object->ops != object->ops) {
           /* The found object in the cache isn't fully formed. Replace it. */
-          assert(found_object->ops == &raw_data_object_ops);
+          assert(found_object->ops == &vk_raw_data_cache_object_ops);
           assert(found_object->ref_cnt == 1 && object->ref_cnt == 1);
           entry->key = object;
           object = found_object;
@@ -358,12 +346,13 @@ vk_pipeline_cache_lookup_object(struct vk_pipeline_cache *cache,
       return NULL;
    }
 
-   if (object->ops == &raw_data_object_ops && ops != &raw_data_object_ops) {
+   if (object->ops == &vk_raw_data_cache_object_ops &&
+       ops != &vk_raw_data_cache_object_ops) {
       /* The object isn't fully formed yet and we need to deserialize it into
        * a real object before it can be used.
        */
-      struct raw_data_object *data_obj =
-         container_of(object, struct raw_data_object, base);
+      struct vk_raw_data_cache_object *data_obj =
+         container_of(object, struct vk_raw_data_cache_object, base);
 
       struct vk_pipeline_cache_object *real_object =
          vk_pipeline_cache_object_deserialize(cache,
@@ -455,12 +444,13 @@ vk_pipeline_cache_lookup_nir(struct vk_pipeline_cache *cache,
 {
    struct vk_pipeline_cache_object *object =
       vk_pipeline_cache_lookup_object(cache, key_data, key_size,
-                                      &raw_data_object_ops, cache_hit);
+                                      &vk_raw_data_cache_object_ops,
+                                      cache_hit);
    if (object == NULL)
       return NULL;
 
-   struct raw_data_object *data_obj =
-      container_of(object, struct raw_data_object, base);
+   struct vk_raw_data_cache_object *data_obj =
+      container_of(object, struct vk_raw_data_cache_object, base);
 
    struct blob_reader blob;
    blob_reader_init(&blob, data_obj->data, data_obj->data_size);
@@ -491,10 +481,10 @@ vk_pipeline_cache_add_nir(struct vk_pipeline_cache *cache,
       return;
    }
 
-   struct raw_data_object *data_obj =
-      raw_data_object_create(cache->base.device,
-                             key_data, key_size,
-                             blob.data, blob.size);
+   struct vk_raw_data_cache_object *data_obj =
+      vk_raw_data_cache_object_create(cache->base.device,
+                                      key_data, key_size,
+                                      blob.data, blob.size);
    blob_finish(&blob);
 
    struct vk_pipeline_cache_object *cached =
@@ -792,8 +782,8 @@ vk_common_MergePipelineCaches(VkDevice _device,
                                                src_object, &found_in_dst);
          if (found_in_dst) {
             struct vk_pipeline_cache_object *dst_object = (void *)dst_entry->key;
-            if (dst_object->ops == &raw_data_object_ops &&
-                src_object->ops != &raw_data_object_ops) {
+            if (dst_object->ops == &vk_raw_data_cache_object_ops &&
+                src_object->ops != &vk_raw_data_cache_object_ops) {
                /* Even though dst has the object, it only has the blob version
                 * which isn't as useful.  Replace it with the real object.
                 */
