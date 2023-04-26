@@ -230,7 +230,11 @@ agx_create_zsa_state(struct pipe_context *ctx,
 
    so->base = *state;
 
-   /* Z func can be used as-is */
+   /* Handle the enable flag */
+   enum pipe_compare_func depth_func =
+      state->depth_enabled ? state->depth_func : PIPE_FUNC_ALWAYS;
+
+   /* Z func can otherwise be used as-is */
    STATIC_ASSERT((enum agx_zs_func)PIPE_FUNC_NEVER == AGX_ZS_FUNC_NEVER);
    STATIC_ASSERT((enum agx_zs_func)PIPE_FUNC_LESS == AGX_ZS_FUNC_LESS);
    STATIC_ASSERT((enum agx_zs_func)PIPE_FUNC_EQUAL == AGX_ZS_FUNC_EQUAL);
@@ -241,10 +245,7 @@ agx_create_zsa_state(struct pipe_context *ctx,
    STATIC_ASSERT((enum agx_zs_func)PIPE_FUNC_ALWAYS == AGX_ZS_FUNC_ALWAYS);
 
    agx_pack(&so->depth, FRAGMENT_FACE, cfg) {
-      cfg.depth_function = state->depth_enabled
-                              ? ((enum agx_zs_func)state->depth_func)
-                              : AGX_ZS_FUNC_ALWAYS;
-
+      cfg.depth_function = (enum agx_zs_func)depth_func;
       cfg.disable_depth_write = !state->depth_writemask;
    }
 
@@ -257,15 +258,12 @@ agx_create_zsa_state(struct pipe_context *ctx,
       so->back_stencil = so->front_stencil;
    }
 
-   if (state->depth_enabled) {
-      if (state->depth_func != PIPE_FUNC_NEVER &&
-          state->depth_func != PIPE_FUNC_ALWAYS) {
+   if (depth_func != PIPE_FUNC_NEVER && depth_func != PIPE_FUNC_ALWAYS)
+      so->load |= PIPE_CLEAR_DEPTH;
 
-         so->load |= PIPE_CLEAR_DEPTH;
-      }
-
-      if (state->depth_writemask)
-         so->store |= PIPE_CLEAR_DEPTH;
+   if (state->depth_writemask) {
+      so->load |= PIPE_CLEAR_DEPTH;
+      so->store |= PIPE_CLEAR_DEPTH;
    }
 
    if (state->stencil[0].enabled) {
