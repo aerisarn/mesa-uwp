@@ -849,12 +849,16 @@ si_handle_thread_trace(struct si_context *sctx, struct radeon_cmdbuf *rcs)
       /* Wait for SQTT to finish and read back the bo */
       if (sctx->ws->fence_wait(sctx->ws, sctx->last_sqtt_fence, PIPE_TIMEOUT_INFINITE) &&
           si_get_thread_trace(sctx, &thread_trace)) {
+         struct ac_spm_trace spm_trace;
+
          /* Map the SPM counter buffer */
-         if (sctx->spm_trace.bo)
+         if (sctx->spm_trace.bo) {
             sctx->spm_trace.ptr = sctx->ws->buffer_map(sctx->ws, sctx->spm_trace.bo,
                                                        NULL, PIPE_MAP_READ | RADEON_MAP_TEMPORARY);
+            ac_spm_get_trace(&sctx->spm_trace, &spm_trace);
+         }
 
-         ac_dump_rgp_capture(&sctx->screen->info, &thread_trace, sctx->spm_trace.bo ? &sctx->spm_trace : NULL);
+         ac_dump_rgp_capture(&sctx->screen->info, &thread_trace, sctx->spm_trace.bo ? &spm_trace : NULL);
 
          if (sctx->spm_trace.ptr)
             sctx->ws->buffer_unmap(sctx->ws, sctx->spm_trace.bo);

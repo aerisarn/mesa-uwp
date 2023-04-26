@@ -892,7 +892,7 @@ struct sqtt_file_chunk_spm_db {
 static_assert(sizeof(struct sqtt_file_chunk_spm_db) == 32,
               "sqtt_file_chunk_spm_db doesn't match RGP spec");
 
-static void ac_sqtt_fill_spm_db(const struct ac_spm_trace_data *spm_trace,
+static void ac_sqtt_fill_spm_db(const struct ac_spm_trace *spm_trace,
                                 struct sqtt_file_chunk_spm_db *chunk,
                                 uint32_t num_samples,
                                 uint32_t chunk_size)
@@ -909,12 +909,12 @@ static void ac_sqtt_fill_spm_db(const struct ac_spm_trace_data *spm_trace,
    chunk->sample_interval = spm_trace->sample_interval;
 }
 
-static void ac_sqtt_dump_spm(const struct ac_spm_trace_data *spm_trace,
+static void ac_sqtt_dump_spm(const struct ac_spm_trace *spm_trace,
                              size_t file_offset,
                              FILE *output)
 {
-   uint32_t sample_size_in_bytes = ac_spm_get_sample_size(spm_trace);
-   uint32_t num_samples = ac_spm_get_num_samples(spm_trace);
+   uint32_t sample_size_in_bytes = spm_trace->sample_size_in_bytes;
+   uint32_t num_samples = spm_trace->num_samples;
    uint8_t *spm_data_ptr = (uint8_t *)spm_trace->ptr;
    struct sqtt_file_chunk_spm_db spm_db;
    size_t file_spm_db_offset = file_offset;
@@ -983,7 +983,7 @@ static void ac_sqtt_dump_spm(const struct ac_spm_trace_data *spm_trace,
 #if defined(USE_LIBELF)
 static void ac_sqtt_dump_data(struct radeon_info *rad_info,
                               struct ac_thread_trace *thread_trace,
-                              const struct ac_spm_trace_data *spm_trace,
+                              const struct ac_spm_trace *spm_trace,
                               FILE *output)
 {
    struct ac_thread_trace_data *thread_trace_data = thread_trace->data;
@@ -1171,7 +1171,7 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
 
 int ac_dump_rgp_capture(struct radeon_info *info,
                         struct ac_thread_trace *thread_trace,
-                        const struct ac_spm_trace_data *spm_trace)
+                        const struct ac_spm_trace *spm_trace)
 {
 #if !defined(USE_LIBELF)
    return -1;

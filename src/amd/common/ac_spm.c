@@ -342,7 +342,7 @@ void ac_destroy_spm(struct ac_spm_trace_data *spm_trace)
    FREE(spm_trace->counters);
 }
 
-uint32_t ac_spm_get_sample_size(const struct ac_spm_trace_data *spm_trace)
+static uint32_t ac_spm_get_sample_size(const struct ac_spm_trace_data *spm_trace)
 {
    uint32_t sample_size = 0; /* in bytes */
 
@@ -353,7 +353,7 @@ uint32_t ac_spm_get_sample_size(const struct ac_spm_trace_data *spm_trace)
    return sample_size;
 }
 
-uint32_t ac_spm_get_num_samples(const struct ac_spm_trace_data *spm_trace)
+static uint32_t ac_spm_get_num_samples(const struct ac_spm_trace_data *spm_trace)
 {
    uint32_t sample_size = ac_spm_get_sample_size(spm_trace);
    uint32_t *ptr = (uint32_t *)spm_trace->ptr;
@@ -374,4 +374,17 @@ uint32_t ac_spm_get_num_samples(const struct ac_spm_trace_data *spm_trace)
    }
 
    return num_samples;
+}
+
+void ac_spm_get_trace(const struct ac_spm_trace_data *spm,
+                      struct ac_spm_trace *trace)
+{
+   memset(trace, 0, sizeof(*trace));
+
+   trace->ptr = spm->ptr;
+   trace->sample_interval = spm->sample_interval;
+   trace->num_counters = spm->num_counters;
+   trace->counters = spm->counters;
+   trace->sample_size_in_bytes = ac_spm_get_sample_size(spm);
+   trace->num_samples = ac_spm_get_num_samples(spm);
 }

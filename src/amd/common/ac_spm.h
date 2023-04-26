@@ -112,6 +112,15 @@ struct ac_spm_trace_data {
    struct ac_spm_muxsel_line *muxsel_lines[AC_SPM_SEGMENT_TYPE_COUNT];
 };
 
+struct ac_spm_trace {
+   void *ptr;
+   uint16_t sample_interval;
+   unsigned num_counters;
+   struct ac_spm_counter_info *counters;
+   uint32_t sample_size_in_bytes;
+   uint32_t num_samples;
+};
+
 bool ac_init_spm(const struct radeon_info *info,
                  const struct ac_perfcounters *pc,
                  unsigned num_counters,
@@ -119,7 +128,7 @@ bool ac_init_spm(const struct radeon_info *info,
                  struct ac_spm_trace_data *spm_trace);
 void ac_destroy_spm(struct ac_spm_trace_data *spm_trace);
 
-uint32_t ac_spm_get_sample_size(const struct ac_spm_trace_data *spm_trace);
-uint32_t ac_spm_get_num_samples(const struct ac_spm_trace_data *spm_trace);
+void ac_spm_get_trace(const struct ac_spm_trace_data *spm,
+                      struct ac_spm_trace *trace);
 
 #endif
