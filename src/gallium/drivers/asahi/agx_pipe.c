@@ -809,11 +809,11 @@ agx_alloc_staging(struct pipe_screen *screen, struct agx_resource *rsc,
    }
 
    tmpl.last_level = 0;
-   tmpl.bind |= PIPE_BIND_LINEAR;
 
    /* Linear is incompatible with depth/stencil, so we convert */
    tmpl.format = agx_staging_color_format_for_zs(rsc->layout.format);
    tmpl.bind &= ~PIPE_BIND_DEPTH_STENCIL;
+   tmpl.bind |= PIPE_BIND_LINEAR | PIPE_BIND_RENDER_TARGET;
 
    struct pipe_resource *pstaging = screen->resource_create(screen, &tmpl);
    if (!pstaging)
