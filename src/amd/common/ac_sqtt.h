@@ -560,4 +560,6 @@ bool ac_check_profile_state(const struct radeon_info *info);
 union rgp_sqtt_marker_cb_id ac_sqtt_get_next_cmdbuf_id(struct ac_thread_trace_data *data,
                                                        enum amd_ip_type ip_type);
 
+bool ac_sqtt_se_is_disabled(const struct radeon_info *info, unsigned se);
+
 #endif

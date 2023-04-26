@@ -71,18 +71,6 @@ si_thread_trace_init_bo(struct si_context *sctx)
    return true;
 }
 
-static bool
-si_se_is_disabled(struct si_context* sctx, unsigned se)
-{
-   /* FIXME: SQTT only works on SE0 for some unknown reasons. */
-   if (sctx->screen->info.gfx_level == GFX11)
-      return se != 0;
-
-   /* No active CU on the SE means it is disabled. */
-   return sctx->screen->info.cu_mask[se][0] == 0;
-}
-
-
 static void
 si_emit_thread_trace_start(struct si_context* sctx,
                            struct radeon_cmdbuf *cs,
@@ -99,7 +87,7 @@ si_emit_thread_trace_start(struct si_context* sctx,
       uint64_t data_va = ac_thread_trace_get_data_va(&sctx->screen->info, sctx->thread_trace, va, se);
       uint64_t shifted_va = data_va >> SQTT_BUFFER_ALIGN_SHIFT;
 
-      if (si_se_is_disabled(sctx, se))
+      if (ac_sqtt_se_is_disabled(&sctx->screen->info, se))
          continue;
 
       /* Target SEx and SH0. */
@@ -390,7 +378,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
    }
 
    for (unsigned se = 0; se < max_se; se++) {
-      if (si_se_is_disabled(sctx, se))
+      if (ac_sqtt_se_is_disabled(&sctx->screen->info, se))
          continue;
 
       radeon_begin(cs);
@@ -640,7 +628,7 @@ si_get_thread_trace(struct si_context *sctx,
 
       struct ac_thread_trace_se thread_trace_se = {0};
 
-      if (si_se_is_disabled(sctx, se))
+      if (ac_sqtt_se_is_disabled(&sctx->screen->info, se))
          continue;
 
       if (!ac_is_thread_trace_complete(&sctx->screen->info, sctx->thread_trace, info)) {

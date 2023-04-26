@@ -35,17 +35,6 @@ radv_is_instruction_timing_enabled(void)
    return debug_get_bool_option("RADV_THREAD_TRACE_INSTRUCTION_TIMING", true);
 }
 
-static bool
-radv_se_is_disabled(struct radv_device *device, unsigned se)
-{
-   /* FIXME: SQTT only works on SE0 for some unknown reasons. */
-   if (device->physical_device->rad_info.gfx_level == GFX11 && se != 0)
-      return true;
-
-   /* No active CU on the SE means it is disabled. */
-   return device->physical_device->rad_info.cu_mask[se][0] == 0;
-}
-
 static uint32_t
 gfx11_get_thread_trace_ctrl(struct radv_device *device, bool enable)
 {
@@ -102,7 +91,7 @@ radv_emit_thread_trace_start(struct radv_device *device, struct radeon_cmdbuf *c
       uint64_t shifted_va = data_va >> SQTT_BUFFER_ALIGN_SHIFT;
       int first_active_cu = ffs(device->physical_device->rad_info.cu_mask[se][0]);
 
-      if (radv_se_is_disabled(device, se))
+      if (ac_sqtt_se_is_disabled(rad_info, se))
          continue;
 
       /* Target SEx and SH0. */
@@ -353,7 +342,7 @@ radv_emit_thread_trace_stop(struct radv_device *device, struct radeon_cmdbuf *cs
    }
 
    for (unsigned se = 0; se < max_se; se++) {
-      if (radv_se_is_disabled(device, se))
+      if (ac_sqtt_se_is_disabled(&device->physical_device->rad_info, se))
          continue;
 
       /* Target SEi and SH0. */
@@ -835,7 +824,7 @@ radv_get_thread_trace(struct radv_queue *queue, struct ac_thread_trace *thread_t
       struct ac_thread_trace_se thread_trace_se = {0};
       int first_active_cu = ffs(device->physical_device->rad_info.cu_mask[se][0]);
 
-      if (radv_se_is_disabled(device, se))
+      if (ac_sqtt_se_is_disabled(rad_info, se))
          continue;
 
       if (!ac_is_thread_trace_complete(&device->physical_device->rad_info, &device->thread_trace,

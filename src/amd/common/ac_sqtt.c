@@ -251,3 +251,14 @@ ac_sqtt_get_next_cmdbuf_id(struct ac_thread_trace_data *data,
 
    return cb_id;
 }
+
+bool
+ac_sqtt_se_is_disabled(const struct radeon_info *info, unsigned se)
+{
+   /* FIXME: SQTT only works on SE0 for some unknown reasons. */
+   if (info->gfx_level == GFX11)
+      return se != 0;
+
+   /* No active CU on the SE means it is disabled. */
+   return info->cu_mask[se][0] == 0;
+}
