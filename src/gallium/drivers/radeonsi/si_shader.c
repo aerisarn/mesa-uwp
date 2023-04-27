@@ -2266,6 +2266,12 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    if (progress || progress2 || opt_offsets)
       si_nir_late_opts(nir);
 
+   /* aco only accept scalar const, must be done after si_nir_late_opts()
+    * which may generate vec const.
+    */
+   if (shader->use_aco)
+      NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+
    /* This helps LLVM form VMEM clauses and thus get more GPU cache hits.
     * 200 is tuned for Viewperf. It should be done last.
     */
