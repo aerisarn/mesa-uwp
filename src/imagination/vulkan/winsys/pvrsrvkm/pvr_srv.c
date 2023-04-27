@@ -564,7 +564,7 @@ pvr_srv_get_cdm_max_local_mem_size_regs(const struct pvr_device_info *dev_info)
                ROGUE_MAX_PER_KERNEL_LOCAL_MEM_SIZE_REGS);
 }
 
-static int
+static VkResult
 pvr_srv_winsys_device_info_init(struct pvr_winsys *ws,
                                 struct pvr_device_info *dev_info,
                                 struct pvr_device_runtime_info *runtime_info)
@@ -575,12 +575,13 @@ pvr_srv_winsys_device_info_init(struct pvr_winsys *ws,
 
    ret = pvr_device_info_init(dev_info, srv_ws->bvnc);
    if (ret) {
-      mesa_logw("Unsupported BVNC: %u.%u.%u.%u\n",
-                PVR_BVNC_UNPACK_B(srv_ws->bvnc),
-                PVR_BVNC_UNPACK_V(srv_ws->bvnc),
-                PVR_BVNC_UNPACK_N(srv_ws->bvnc),
-                PVR_BVNC_UNPACK_C(srv_ws->bvnc));
-      return ret;
+      return vk_errorf(NULL,
+                       VK_ERROR_INCOMPATIBLE_DRIVER,
+                       "Unsupported BVNC: %u.%u.%u.%u\n",
+                       PVR_BVNC_UNPACK_B(srv_ws->bvnc),
+                       PVR_BVNC_UNPACK_V(srv_ws->bvnc),
+                       PVR_BVNC_UNPACK_N(srv_ws->bvnc),
+                       PVR_BVNC_UNPACK_C(srv_ws->bvnc));
    }
 
    runtime_info->min_free_list_size = pvr_srv_get_min_free_list_size(dev_info);
@@ -600,7 +601,7 @@ pvr_srv_winsys_device_info_init(struct pvr_winsys *ws,
                                           NULL,
                                           &runtime_info->core_count);
       if (result != VK_SUCCESS)
-         return -ENODEV;
+         return result;
    } else {
       runtime_info->core_count = 1;
    }

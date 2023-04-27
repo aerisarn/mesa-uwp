@@ -57,10 +57,10 @@ static VkResult pvr_srv_alloc_display_pmr(struct pvr_srv_winsys *srv_ws,
    int ret;
    int fd;
 
-   ret =
+   result =
       pvr_winsys_helper_display_buffer_create(srv_ws->master_fd, size, &handle);
-   if (ret)
-      return vk_error(NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   if (result != VK_SUCCESS)
+      return result;
 
    ret = drmPrimeHandleToFD(srv_ws->master_fd, handle, O_CLOEXEC, &fd);
    if (ret) {
@@ -361,11 +361,11 @@ void pvr_srv_winsys_buffer_unmap(struct pvr_winsys_bo *bo)
  * used internally only. This also means whoever is using it, must know what
  * they are doing.
  */
-struct pvr_winsys_vma *
-pvr_srv_heap_alloc_reserved(struct pvr_winsys_heap *heap,
-                            const pvr_dev_addr_t reserved_dev_addr,
-                            uint64_t size,
-                            uint64_t alignment)
+VkResult pvr_srv_heap_alloc_reserved(struct pvr_winsys_heap *heap,
+                                     const pvr_dev_addr_t reserved_dev_addr,
+                                     uint64_t size,
+                                     uint64_t alignment,
+                                     struct pvr_winsys_vma **const vma_out)
 {
    struct pvr_srv_winsys_heap *srv_heap = to_pvr_srv_winsys_heap(heap);
    struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(heap->ws);
@@ -386,8 +386,8 @@ pvr_srv_heap_alloc_reserved(struct pvr_winsys_heap *heap,
                       8,
                       VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!srv_vma) {
-      vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
-      return NULL;
+      result = vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto err_out;
    }
 
    /* Just check address is correct and aligned, locking is not required as
@@ -396,8 +396,10 @@ pvr_srv_heap_alloc_reserved(struct pvr_winsys_heap *heap,
    if (reserved_dev_addr.addr < heap->base_addr.addr ||
        reserved_dev_addr.addr + size >
           heap->base_addr.addr + heap->reserved_size ||
-       reserved_dev_addr.addr & ((srv_ws->base.page_size) - 1))
+       reserved_dev_addr.addr & ((srv_ws->base.page_size) - 1)) {
+      result = vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
       goto err_vk_free_srv_vma;
+   }
 
    /* Reserve the virtual range in the MMU and create a mapping structure */
    result = pvr_srv_int_reserve_addr(srv_ws->render_fd,
@@ -415,35 +417,38 @@ pvr_srv_heap_alloc_reserved(struct pvr_winsys_heap *heap,
 
    p_atomic_inc(&srv_heap->base.ref_count);
 
-   return &srv_vma->base;
+   *vma_out = &srv_vma->base;
+
+   return VK_SUCCESS;
 
 err_vk_free_srv_vma:
    vk_free(srv_ws->alloc, srv_vma);
 
-   return NULL;
+err_out:
+   return result;
 }
 
-struct pvr_winsys_vma *pvr_srv_winsys_heap_alloc(struct pvr_winsys_heap *heap,
-                                                 uint64_t size,
-                                                 uint64_t alignment)
+VkResult pvr_srv_winsys_heap_alloc(struct pvr_winsys_heap *heap,
+                                   uint64_t size,
+                                   uint64_t alignment,
+                                   struct pvr_winsys_vma **const vma_out)
 {
    struct pvr_srv_winsys_heap *const srv_heap = to_pvr_srv_winsys_heap(heap);
    struct pvr_srv_winsys *const srv_ws = to_pvr_srv_winsys(heap->ws);
    struct pvr_srv_winsys_vma *srv_vma;
    VkResult result;
-   bool ret;
 
    srv_vma = vk_alloc(srv_ws->alloc,
                       sizeof(*srv_vma),
                       8,
                       VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!srv_vma) {
-      vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
-      return NULL;
+      result = vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto err_out;
    }
 
-   ret = pvr_winsys_helper_heap_alloc(heap, size, alignment, &srv_vma->base);
-   if (!ret)
+   result = pvr_winsys_helper_heap_alloc(heap, size, alignment, &srv_vma->base);
+   if (result != VK_SUCCESS)
       goto err_pvr_srv_free_vma;
 
    /* Reserve the virtual range in the MMU and create a mapping structure. */
@@ -455,7 +460,9 @@ struct pvr_winsys_vma *pvr_srv_winsys_heap_alloc(struct pvr_winsys_heap *heap,
    if (result != VK_SUCCESS)
       goto err_pvr_srv_free_allocation;
 
-   return &srv_vma->base;
+   *vma_out = &srv_vma->base;
+
+   return VK_SUCCESS;
 
 err_pvr_srv_free_allocation:
    pvr_winsys_helper_heap_free(&srv_vma->base);
@@ -463,7 +470,8 @@ err_pvr_srv_free_allocation:
 err_pvr_srv_free_vma:
    vk_free(srv_ws->alloc, srv_vma);
 
-   return NULL;
+err_out:
+   return result;
 }
 
 void pvr_srv_winsys_heap_free(struct pvr_winsys_vma *vma)
@@ -495,10 +503,11 @@ void pvr_srv_winsys_heap_free(struct pvr_winsys_vma *vma)
  * * The offset passed in is unchanged and can be used to calculate the extra
  *   size that needs to be mapped and final device virtual address.
  */
-pvr_dev_addr_t pvr_srv_winsys_vma_map(struct pvr_winsys_vma *vma,
-                                      struct pvr_winsys_bo *bo,
-                                      uint64_t offset,
-                                      uint64_t size)
+VkResult pvr_srv_winsys_vma_map(struct pvr_winsys_vma *vma,
+                                struct pvr_winsys_bo *bo,
+                                uint64_t offset,
+                                uint64_t size,
+                                pvr_dev_addr_t *const dev_addr_out)
 {
    struct pvr_srv_winsys_vma *srv_vma = to_pvr_srv_winsys_vma(vma);
    struct pvr_srv_winsys_bo *srv_bo = to_pvr_srv_winsys_bo(bo);
@@ -519,8 +528,7 @@ pvr_dev_addr_t pvr_srv_winsys_vma_map(struct pvr_winsys_vma *vma,
       /* In case of display buffers, we only support to map whole PMR */
       if (offset != 0 || bo->size != ALIGN_POT(size, srv_ws->base.page_size) ||
           vma->size != bo->size) {
-         vk_error(NULL, VK_ERROR_MEMORY_MAP_FAILED);
-         return PVR_DEV_ADDR_INVALID;
+         return vk_error(NULL, VK_ERROR_MEMORY_MAP_FAILED);
       }
 
       /* Map the requested pmr */
@@ -540,8 +548,7 @@ pvr_dev_addr_t pvr_srv_winsys_vma_map(struct pvr_winsys_vma *vma,
       /* Check if bo and vma can accommodate the given size and offset */
       if (ALIGN_POT(offset + size, vma->heap->page_size) > bo->size ||
           aligned_virt_size > vma->size) {
-         vk_error(NULL, VK_ERROR_MEMORY_MAP_FAILED);
-         return PVR_DEV_ADDR_INVALID;
+         return vk_error(NULL, VK_ERROR_MEMORY_MAP_FAILED);
       }
 
       /* Map the requested pages */
@@ -555,7 +562,7 @@ pvr_dev_addr_t pvr_srv_winsys_vma_map(struct pvr_winsys_vma *vma,
    }
 
    if (result != VK_SUCCESS)
-      return PVR_DEV_ADDR_INVALID;
+      return result;
 
    buffer_acquire(srv_bo);
 
@@ -563,7 +570,10 @@ pvr_dev_addr_t pvr_srv_winsys_vma_map(struct pvr_winsys_vma *vma,
    vma->bo_offset = offset;
    vma->mapped_size = aligned_virt_size;
 
-   return PVR_DEV_ADDR_OFFSET(vma->dev_addr, virt_offset);
+   if (dev_addr_out)
+      *dev_addr_out = PVR_DEV_ADDR_OFFSET(vma->dev_addr, virt_offset);
+
+   return VK_SUCCESS;
 }
 
 void pvr_srv_winsys_vma_unmap(struct pvr_winsys_vma *vma)

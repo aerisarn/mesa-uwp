@@ -24,21 +24,26 @@
 #ifndef PVR_WINSYS_HELPER_H
 #define PVR_WINSYS_HELPER_H
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
+#include <xf86drm.h>
 
 #include "pvr_types.h"
+#include "vk_log.h"
 
 struct pvr_winsys;
 struct pvr_winsys_heap;
 struct pvr_winsys_static_data_offsets;
 struct pvr_winsys_vma;
 
-typedef struct pvr_winsys_vma *(*const heap_alloc_reserved_func)(
+typedef VkResult (*const heap_alloc_reserved_func)(
    struct pvr_winsys_heap *const heap,
    const pvr_dev_addr_t reserved_dev_addr,
    uint64_t size,
-   uint64_t alignment);
+   uint64_t alignment,
+   struct pvr_winsys_vma **vma_out);
 
 int pvr_winsys_helper_display_buffer_create(int master_fd,
                                             uint64_t size,
@@ -47,10 +52,10 @@ int pvr_winsys_helper_display_buffer_destroy(int master_fd, uint32_t handle);
 
 bool pvr_winsys_helper_winsys_heap_finish(struct pvr_winsys_heap *const heap);
 
-bool pvr_winsys_helper_heap_alloc(struct pvr_winsys_heap *const heap,
-                                  uint64_t size,
-                                  uint64_t alignment,
-                                  struct pvr_winsys_vma *const vma);
+VkResult pvr_winsys_helper_heap_alloc(struct pvr_winsys_heap *const heap,
+                                      uint64_t size,
+                                      uint64_t alignment,
+                                      struct pvr_winsys_vma *const vma);
 void pvr_winsys_helper_heap_free(struct pvr_winsys_vma *const vma);
 
 VkResult pvr_winsys_helper_allocate_static_memory(
@@ -72,5 +77,27 @@ pvr_winsys_helper_fill_static_memory(struct pvr_winsys *const ws,
                                      struct pvr_winsys_vma *const general_vma,
                                      struct pvr_winsys_vma *const pds_vma,
                                      struct pvr_winsys_vma *const usc_vma);
+
+#define pvr_ioctlf(fd, request, arg, error, fmt, args...) \
+   ({                                                     \
+      VkResult _result = VK_SUCCESS;                      \
+      int _ret;                                           \
+                                                          \
+      _ret = drmIoctl(fd, request, arg);                  \
+      if (_ret) {                                         \
+         _ret = errno;                                    \
+         _result = vk_errorf(NULL,                        \
+                             error,                       \
+                             fmt " (errno %d: %s)",       \
+                             ##args,                      \
+                             _ret,                        \
+                             strerror(_ret));             \
+      }                                                   \
+                                                          \
+      _result;                                            \
+   })
+
+#define pvr_ioctl(fd, request, arg, error) \
+   pvr_ioctlf(fd, request, arg, error, "ioctl " #request " failed")
 
 #endif /* PVR_WINSYS_HELPER_H */

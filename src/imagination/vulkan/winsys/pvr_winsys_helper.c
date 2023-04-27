@@ -34,33 +34,40 @@
 #include "util/u_atomic.h"
 #include "vk_log.h"
 
-int pvr_winsys_helper_display_buffer_create(int master_fd,
-                                            uint64_t size,
-                                            uint32_t *const handle_out)
+VkResult pvr_winsys_helper_display_buffer_create(int master_fd,
+                                                 uint64_t size,
+                                                 uint32_t *const handle_out)
 {
    struct drm_mode_create_dumb args = {
       .width = size,
       .height = 1,
       .bpp = 8,
    };
-   int ret;
+   VkResult result;
 
-   ret = drmIoctl(master_fd, DRM_IOCTL_MODE_CREATE_DUMB, &args);
-   if (ret)
-      return ret;
+   result = pvr_ioctl(master_fd,
+                      DRM_IOCTL_MODE_CREATE_DUMB,
+                      &args,
+                      VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   if (result != VK_SUCCESS)
+      return result;
 
    *handle_out = args.handle;
 
-   return 0;
+   return VK_SUCCESS;
 }
 
-int pvr_winsys_helper_display_buffer_destroy(int master_fd, uint32_t handle)
+VkResult pvr_winsys_helper_display_buffer_destroy(int master_fd,
+                                                  uint32_t handle)
 {
    struct drm_mode_destroy_dumb args = {
       .handle = handle,
    };
 
-   return drmIoctl(master_fd, DRM_IOCTL_MODE_DESTROY_DUMB, &args);
+   return pvr_ioctl(master_fd,
+                    DRM_IOCTL_MODE_DESTROY_DUMB,
+                    &args,
+                    VK_ERROR_UNKNOWN);
 }
 
 bool pvr_winsys_helper_winsys_heap_finish(struct pvr_winsys_heap *const heap)
@@ -74,10 +81,10 @@ bool pvr_winsys_helper_winsys_heap_finish(struct pvr_winsys_heap *const heap)
    return true;
 }
 
-bool pvr_winsys_helper_heap_alloc(struct pvr_winsys_heap *const heap,
-                                  uint64_t size,
-                                  uint64_t alignment,
-                                  struct pvr_winsys_vma *const vma_out)
+VkResult pvr_winsys_helper_heap_alloc(struct pvr_winsys_heap *const heap,
+                                      uint64_t size,
+                                      uint64_t alignment,
+                                      struct pvr_winsys_vma *const vma_out)
 {
    struct pvr_winsys_vma vma = {
       .heap = heap,
@@ -101,16 +108,14 @@ bool pvr_winsys_helper_heap_alloc(struct pvr_winsys_heap *const heap,
       PVR_DEV_ADDR(util_vma_heap_alloc(&heap->vma_heap, size, heap->page_size));
    pthread_mutex_unlock(&heap->lock);
 
-   if (!vma.dev_addr.addr) {
-      vk_error(NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-      return false;
-   }
+   if (!vma.dev_addr.addr)
+      return vk_error(NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    p_atomic_inc(&heap->ref_count);
 
    *vma_out = vma;
 
-   return true;
+   return VK_SUCCESS;
 }
 
 void pvr_winsys_helper_heap_free(struct pvr_winsys_vma *const vma)
@@ -142,7 +147,6 @@ pvr_buffer_create_and_map(struct pvr_winsys *const ws,
 {
    struct pvr_winsys_vma *vma;
    struct pvr_winsys_bo *bo;
-   pvr_dev_addr_t addr;
    VkResult result;
 
    /* Address should not be NULL, this function is used to allocate and map
@@ -157,19 +161,15 @@ pvr_buffer_create_and_map(struct pvr_winsys *const ws,
                                    PVR_WINSYS_BO_FLAG_CPU_ACCESS,
                                    &bo);
    if (result != VK_SUCCESS)
-      return result;
+      goto err_out;
 
-   vma = heap_alloc_reserved(heap, dev_addr, size, alignment);
-   if (!vma) {
-      result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   result = heap_alloc_reserved(heap, dev_addr, size, alignment, &vma);
+   if (result != VK_SUCCESS)
       goto err_pvr_winsys_buffer_destroy;
-   }
 
-   addr = ws->ops->vma_map(vma, bo, 0, size);
-   if (!addr.addr) {
-      result = VK_ERROR_MEMORY_MAP_FAILED;
+   result = ws->ops->vma_map(vma, bo, 0, size, NULL);
+   if (result != VK_SUCCESS)
       goto err_pvr_winsys_heap_free;
-   }
 
    /* Note this won't destroy bo as its being used by VMA, once vma is
     * unmapped, bo will be destroyed automatically.
@@ -186,6 +186,7 @@ err_pvr_winsys_heap_free:
 err_pvr_winsys_buffer_destroy:
    ws->ops->buffer_destroy(bo);
 
+err_out:
    return result;
 }
 
@@ -223,7 +224,7 @@ VkResult pvr_winsys_helper_allocate_static_memory(
                                       general_heap->page_size,
                                       &general_vma);
    if (result != VK_SUCCESS)
-      return result;
+      goto err_out;
 
    result = pvr_buffer_create_and_map(ws,
                                       heap_alloc_reserved,
@@ -257,6 +258,7 @@ err_pvr_buffer_destroy_and_unmap_pds:
 err_pvr_buffer_destroy_and_unmap_general:
    pvr_buffer_destroy_and_unmap(general_vma);
 
+err_out:
    return result;
 }
 
@@ -320,8 +322,10 @@ pvr_winsys_helper_fill_static_memory(struct pvr_winsys *const ws,
    VkResult result;
 
    general_ptr = ws->ops->buffer_map(general_vma->bo);
-   if (!general_ptr)
-      return VK_ERROR_MEMORY_MAP_FAILED;
+   if (!general_ptr) {
+      result = VK_ERROR_MEMORY_MAP_FAILED;
+      goto err_out;
+   }
 
    pds_ptr = ws->ops->buffer_map(pds_vma->bo);
    if (!pds_ptr) {
@@ -355,5 +359,6 @@ err_pvr_srv_winsys_buffer_unmap_pds:
 err_pvr_srv_winsys_buffer_unmap_general:
    ws->ops->buffer_unmap(general_vma->bo);
 
+err_out:
    return result;
 }

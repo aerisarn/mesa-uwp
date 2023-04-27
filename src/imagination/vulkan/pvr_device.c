@@ -343,7 +343,6 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
    struct vk_physical_device_dispatch_table dispatch_table;
    const char *primary_path;
    VkResult result;
-   int ret;
 
    if (!getenv("PVR_I_WANT_A_BROKEN_VULKAN_DRIVER")) {
       return vk_errorf(instance,
@@ -422,13 +421,11 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
 
    pdevice->vk.supported_sync_types = pdevice->ws->sync_types;
 
-   ret = pdevice->ws->ops->device_info_init(pdevice->ws,
-                                            &pdevice->dev_info,
-                                            &pdevice->dev_runtime_info);
-   if (ret) {
-      result = VK_ERROR_INITIALIZATION_FAILED;
+   result = pdevice->ws->ops->device_info_init(pdevice->ws,
+                                               &pdevice->dev_info,
+                                               &pdevice->dev_runtime_info);
+   if (result != VK_SUCCESS)
       goto err_pvr_winsys_destroy;
-   }
 
    result = pvr_physical_device_init_uuids(pdevice);
    if (result != VK_SUCCESS)
@@ -2284,6 +2281,7 @@ VkResult pvr_bind_memory(struct pvr_device *device,
       size + (offset & (device->heaps.general_heap->page_size - 1));
    struct pvr_winsys_vma *vma;
    pvr_dev_addr_t dev_addr;
+   VkResult result;
 
    /* Valid usage:
     *
@@ -2298,22 +2296,27 @@ VkResult pvr_bind_memory(struct pvr_device *device,
    assert(offset % alignment == 0);
    assert(offset < mem->bo->size);
 
-   vma = device->ws->ops->heap_alloc(device->heaps.general_heap,
-                                     virt_size,
-                                     alignment);
-   if (!vma)
-      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   result = device->ws->ops->heap_alloc(device->heaps.general_heap,
+                                        virt_size,
+                                        alignment,
+                                        &vma);
+   if (result != VK_SUCCESS)
+      goto err_out;
 
-   dev_addr = device->ws->ops->vma_map(vma, mem->bo, offset, size);
-   if (!dev_addr.addr) {
-      device->ws->ops->heap_free(vma);
-      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-   }
+   result = device->ws->ops->vma_map(vma, mem->bo, offset, size, &dev_addr);
+   if (result != VK_SUCCESS)
+      goto err_free_vma;
 
    *dev_addr_out = dev_addr;
    *vma_out = vma;
 
    return VK_SUCCESS;
+
+err_free_vma:
+   device->ws->ops->heap_free(vma);
+
+err_out:
+   return result;
 }
 
 void pvr_unbind_memory(struct pvr_device *device, struct pvr_winsys_vma *vma)
@@ -2491,7 +2494,7 @@ VkResult pvr_CreateBuffer(VkDevice _device,
 
    /* We check against (ULONG_MAX - alignment) to prevent overflow issues */
    if (pCreateInfo->size >= ULONG_MAX - alignment)
-      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    buffer =
       vk_buffer_create(&device->vk, pCreateInfo, pAllocator, sizeof(*buffer));
