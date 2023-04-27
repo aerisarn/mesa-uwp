@@ -90,30 +90,6 @@ The compiler must issue the source argument to slots z, y, and x
  PS - face_gpr.z = SampleMask
       face_gpr.w = SampleID
 */
-#define R600_SHADER_BUFFER_INFO_SEL (512 + R600_BUFFER_INFO_OFFSET / 16)
-static int r600_shader_from_tgsi(struct r600_context *rctx,
-				 struct r600_pipe_shader *pipeshader,
-				 union r600_shader_key key);
-
-static void r600_add_gpr_array(struct r600_shader *ps, int start_gpr,
-                           int size, unsigned comp_mask) {
-
-	if (!size)
-		return;
-
-	if (ps->num_arrays == ps->max_arrays) {
-		ps->max_arrays += 64;
-		ps->arrays = realloc(ps->arrays, ps->max_arrays *
-		                     sizeof(struct r600_shader_array));
-	}
-
-	int n = ps->num_arrays;
-	++ps->num_arrays;
-
-	ps->arrays[n].comp_mask = comp_mask;
-	ps->arrays[n].gpr_start = start_gpr;
-	ps->arrays[n].gpr_count = size;
-}
 
 static void r600_dump_streamout(struct pipe_stream_output_info *so)
 {
