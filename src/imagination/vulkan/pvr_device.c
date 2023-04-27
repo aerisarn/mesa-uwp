@@ -251,15 +251,9 @@ static void pvr_physical_device_finish(struct pvr_physical_device *pdevice)
    if (pdevice->ws)
       pvr_winsys_destroy(pdevice->ws);
 
-   if (pdevice->master_fd >= 0) {
-      vk_free(&pdevice->vk.instance->alloc, pdevice->master_path);
-      close(pdevice->master_fd);
-   }
+   vk_free(&pdevice->vk.instance->alloc, pdevice->render_path);
+   vk_free(&pdevice->vk.instance->alloc, pdevice->primary_path);
 
-   if (pdevice->render_fd >= 0) {
-      vk_free(&pdevice->vk.instance->alloc, pdevice->render_path);
-      close(pdevice->render_fd);
-   }
    vk_physical_device_finish(&pdevice->vk);
 }
 
@@ -338,10 +332,11 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
                                          drmDevicePtr drm_render_device,
                                          drmDevicePtr drm_primary_device)
 {
-   const char *path = drm_render_device->nodes[DRM_NODE_RENDER];
-   struct vk_device_extension_table supported_extensions;
    struct vk_physical_device_dispatch_table dispatch_table;
-   const char *primary_path;
+   struct vk_device_extension_table supported_extensions;
+   struct pvr_winsys *ws;
+   char *primary_path;
+   char *render_path;
    VkResult result;
 
    if (!getenv("PVR_I_WANT_A_BROKEN_VULKAN_DRIVER")) {
@@ -352,6 +347,31 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
                        "PVR_I_WANT_A_BROKEN_VULKAN_DRIVER=1 if you know "
                        "what you're doing.");
    }
+
+   render_path = vk_strdup(&instance->vk.alloc,
+                           drm_render_device->nodes[DRM_NODE_RENDER],
+                           VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!render_path) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto err_out;
+   }
+
+   if (instance->vk.enabled_extensions.KHR_display) {
+      primary_path = vk_strdup(&instance->vk.alloc,
+                               drm_primary_device->nodes[DRM_NODE_PRIMARY],
+                               VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+      if (!primary_path) {
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         goto err_vk_free_render_path;
+      }
+   } else {
+      primary_path = NULL;
+   }
+
+   result =
+      pvr_winsys_create(render_path, primary_path, &instance->vk.alloc, &ws);
+   if (result != VK_SUCCESS)
+      goto err_vk_free_primary_path;
 
    pvr_physical_device_get_supported_extensions(pdevice, &supported_extensions);
 
@@ -371,65 +391,23 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
                                     NULL,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
-      return result;
+      goto err_pvr_winsys_destroy;
 
    pdevice->instance = instance;
+   pdevice->render_path = render_path;
+   pdevice->primary_path = primary_path;
+   pdevice->ws = ws;
+   pdevice->vk.supported_sync_types = ws->sync_types;
 
-   pdevice->render_fd = open(path, O_RDWR | O_CLOEXEC);
-   if (pdevice->render_fd < 0) {
-      result = vk_errorf(instance,
-                         VK_ERROR_INCOMPATIBLE_DRIVER,
-                         "Failed to open device %s",
-                         path);
+   result = ws->ops->device_info_init(ws,
+                                      &pdevice->dev_info,
+                                      &pdevice->dev_runtime_info);
+   if (result != VK_SUCCESS)
       goto err_vk_physical_device_finish;
-   }
-
-   pdevice->render_path = vk_strdup(&pdevice->vk.instance->alloc,
-                                    path,
-                                    VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-   if (!pdevice->render_path) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto err_close_render_fd;
-   }
-
-   if (instance->vk.enabled_extensions.KHR_display) {
-      primary_path = drm_primary_device->nodes[DRM_NODE_PRIMARY];
-
-      pdevice->master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
-   } else {
-      pdevice->master_fd = -1;
-   }
-
-   if (pdevice->master_fd >= 0) {
-      pdevice->master_path = vk_strdup(&pdevice->vk.instance->alloc,
-                                       primary_path,
-                                       VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-      if (!pdevice->master_path) {
-         result = VK_ERROR_OUT_OF_HOST_MEMORY;
-         goto err_close_master_fd;
-      }
-   } else {
-      pdevice->master_path = NULL;
-   }
-
-   result = pvr_winsys_create(pdevice->master_fd,
-                              pdevice->render_fd,
-                              &pdevice->vk.instance->alloc,
-                              &pdevice->ws);
-   if (result != VK_SUCCESS)
-      goto err_vk_free_master_path;
-
-   pdevice->vk.supported_sync_types = pdevice->ws->sync_types;
-
-   result = pdevice->ws->ops->device_info_init(pdevice->ws,
-                                               &pdevice->dev_info,
-                                               &pdevice->dev_runtime_info);
-   if (result != VK_SUCCESS)
-      goto err_pvr_winsys_destroy;
 
    result = pvr_physical_device_init_uuids(pdevice);
    if (result != VK_SUCCESS)
-      goto err_pvr_winsys_destroy;
+      goto err_vk_physical_device_finish;
 
    if (asprintf(&pdevice->name,
                 "Imagination PowerVR %s %s",
@@ -438,7 +416,7 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
       result = vk_errorf(instance,
                          VK_ERROR_OUT_OF_HOST_MEMORY,
                          "Unable to allocate memory to store device name");
-      goto err_pvr_winsys_destroy;
+      goto err_vk_physical_device_finish;
    }
 
    /* Setup available memory heaps and types */
@@ -475,24 +453,19 @@ err_wsi_finish:
 err_free_name:
    free(pdevice->name);
 
-err_pvr_winsys_destroy:
-   pvr_winsys_destroy(pdevice->ws);
-
-err_vk_free_master_path:
-   vk_free(&pdevice->vk.instance->alloc, pdevice->master_path);
-
-err_close_master_fd:
-   if (pdevice->master_fd >= 0)
-      close(pdevice->master_fd);
-
-   vk_free(&pdevice->vk.instance->alloc, pdevice->render_path);
-
-err_close_render_fd:
-   close(pdevice->render_fd);
-
 err_vk_physical_device_finish:
    vk_physical_device_finish(&pdevice->vk);
 
+err_pvr_winsys_destroy:
+   pvr_winsys_destroy(ws);
+
+err_vk_free_primary_path:
+   vk_free(&instance->vk.alloc, primary_path);
+
+err_vk_free_render_path:
+   vk_free(&instance->vk.alloc, render_path);
+
+err_out:
    return result;
 }
 
@@ -1736,17 +1709,27 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    struct pvr_instance *instance = pdevice->instance;
    struct vk_device_dispatch_table dispatch_table;
    struct pvr_device *device;
+   struct pvr_winsys *ws;
    VkResult result;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
 
-   device = vk_alloc2(&pdevice->vk.instance->alloc,
+   result = pvr_winsys_create(pdevice->render_path,
+                              pdevice->primary_path,
+                              pAllocator ? pAllocator : &instance->vk.alloc,
+                              &ws);
+   if (result != VK_SUCCESS)
+      goto err_out;
+
+   device = vk_alloc2(&instance->vk.alloc,
                       pAllocator,
                       sizeof(*device),
                       8,
                       VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-   if (!device)
-      return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   if (!device) {
+      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto err_pvr_winsys_destroy;
+   }
 
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
                                              &pvr_device_entrypoints,
@@ -1764,44 +1747,24 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto err_free_device;
 
-   device->render_fd = open(pdevice->render_path, O_RDWR | O_CLOEXEC);
-   if (device->render_fd < 0) {
-      result = vk_errorf(instance,
-                         VK_ERROR_INITIALIZATION_FAILED,
-                         "Failed to open device %s",
-                         pdevice->render_path);
-      goto err_vk_device_finish;
-   }
-
-   if (pdevice->master_path)
-      device->master_fd = open(pdevice->master_path, O_RDWR | O_CLOEXEC);
-   else
-      device->master_fd = -1;
-
-   vk_device_set_drm_fd(&device->vk, device->render_fd);
-
    device->instance = instance;
    device->pdevice = pdevice;
+   device->ws = ws;
 
-   result = pvr_winsys_create(device->master_fd,
-                              device->render_fd,
-                              &device->vk.alloc,
-                              &device->ws);
-   if (result != VK_SUCCESS)
-      goto err_close_master_fd;
+   vk_device_set_drm_fd(&device->vk, ws->render_fd);
 
-   if (device->ws->features.supports_threaded_submit) {
+   if (ws->features.supports_threaded_submit) {
       /* Queue submission can be blocked if the kernel CCBs become full,
        * so enable threaded submit to not block the submitter.
        */
       vk_device_enable_threaded_submit(&device->vk);
    }
 
-   device->ws->ops->get_heaps_info(device->ws, &device->heaps);
+   ws->ops->get_heaps_info(ws, &device->heaps);
 
    result = pvr_bo_store_create(device);
    if (result != VK_SUCCESS)
-      goto err_pvr_winsys_destroy;
+      goto err_vk_device_finish;
 
    pvr_bo_suballocator_init(&device->suballoc_general,
                             device->heaps.general_heap,
@@ -1938,21 +1901,16 @@ err_dec_device_count:
 
    pvr_bo_store_destroy(device);
 
-err_pvr_winsys_destroy:
-   pvr_winsys_destroy(device->ws);
-
-err_close_master_fd:
-   if (device->master_fd >= 0)
-      close(device->master_fd);
-
-   close(device->render_fd);
-
 err_vk_device_finish:
    vk_device_finish(&device->vk);
 
 err_free_device:
    vk_free(&device->vk.alloc, device);
 
+err_pvr_winsys_destroy:
+   pvr_winsys_destroy(ws);
+
+err_out:
    return result;
 }
 
@@ -1984,13 +1942,7 @@ void pvr_DestroyDevice(VkDevice _device,
    pvr_bo_suballocator_fini(&device->suballoc_general);
    pvr_bo_store_destroy(device);
    pvr_winsys_destroy(device->ws);
-
-   if (device->master_fd >= 0)
-      close(device->master_fd);
-
    p_atomic_dec(&device->instance->active_device_count);
-
-   close(device->render_fd);
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
 }

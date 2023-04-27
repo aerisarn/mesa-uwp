@@ -96,10 +96,8 @@ struct pvr_physical_device {
    struct pvr_instance *instance;
 
    char *name;
-   int master_fd;
-   int render_fd;
-   char *master_path;
    char *render_path;
+   char *primary_path;
 
    struct pvr_winsys *ws;
    struct pvr_device_info dev_info;
@@ -170,9 +168,6 @@ struct pvr_device {
    struct vk_device vk;
    struct pvr_instance *instance;
    struct pvr_physical_device *pdevice;
-
-   int master_fd;
-   int render_fd;
 
    struct pvr_winsys *ws;
    struct pvr_winsys_heaps heaps;

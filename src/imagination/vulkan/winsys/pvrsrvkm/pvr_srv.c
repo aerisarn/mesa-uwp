@@ -144,7 +144,7 @@ static VkResult pvr_srv_heap_init(
    VkResult result;
    uint64_t size;
 
-   result = pvr_srv_get_heap_details(srv_ws->render_fd,
+   result = pvr_srv_get_heap_details(srv_ws->base.render_fd,
                                      heap_idx,
                                      0,
                                      NULL,
@@ -172,7 +172,7 @@ static VkResult pvr_srv_heap_init(
           0);
 
    /* Create server-side counterpart of Device Memory heap */
-   result = pvr_srv_int_heap_create(srv_ws->render_fd,
+   result = pvr_srv_int_heap_create(srv_ws->base.render_fd,
                                     srv_heap->base.base_addr,
                                     srv_heap->base.size,
                                     srv_heap->base.log2_page_size,
@@ -192,7 +192,7 @@ static bool pvr_srv_heap_finish(struct pvr_srv_winsys *srv_ws,
    if (!pvr_winsys_helper_winsys_heap_finish(&srv_heap->base))
       return false;
 
-   pvr_srv_int_heap_destroy(srv_ws->render_fd, srv_heap->server_heap);
+   pvr_srv_int_heap_destroy(srv_ws->base.render_fd, srv_heap->server_heap);
 
    return true;
 }
@@ -222,7 +222,7 @@ static VkResult pvr_srv_memctx_init(struct pvr_srv_winsys *srv_ws)
    uint32_t heap_count;
    VkResult result;
 
-   result = pvr_srv_int_ctx_create(srv_ws->render_fd,
+   result = pvr_srv_int_ctx_create(srv_ws->base.render_fd,
                                    &srv_ws->server_memctx,
                                    &srv_ws->server_memctx_data);
    if (result != VK_SUCCESS)
@@ -231,14 +231,14 @@ static VkResult pvr_srv_memctx_init(struct pvr_srv_winsys *srv_ws)
    os_get_page_size(&srv_ws->base.page_size);
    srv_ws->base.log2_page_size = util_logbase2(srv_ws->base.page_size);
 
-   result = pvr_srv_get_heap_count(srv_ws->render_fd, &heap_count);
+   result = pvr_srv_get_heap_count(srv_ws->base.render_fd, &heap_count);
    if (result != VK_SUCCESS)
       goto err_pvr_srv_int_ctx_destroy;
 
    assert(heap_count > 0);
 
    for (uint32_t i = 0; i < heap_count; i++) {
-      result = pvr_srv_get_heap_details(srv_ws->render_fd,
+      result = pvr_srv_get_heap_details(srv_ws->base.render_fd,
                                         i,
                                         sizeof(heap_name),
                                         heap_name,
@@ -385,7 +385,7 @@ err_pvr_srv_heap_finish_general:
    pvr_srv_heap_finish(srv_ws, &srv_ws->general_heap);
 
 err_pvr_srv_int_ctx_destroy:
-   pvr_srv_int_ctx_destroy(srv_ws->render_fd, srv_ws->server_memctx);
+   pvr_srv_int_ctx_destroy(srv_ws->base.render_fd, srv_ws->server_memctx);
 
    return result;
 }
@@ -426,13 +426,13 @@ static void pvr_srv_memctx_finish(struct pvr_srv_winsys *srv_ws)
       vk_errorf(NULL, VK_ERROR_UNKNOWN, "General heap in use, can not deinit");
    }
 
-   pvr_srv_int_ctx_destroy(srv_ws->render_fd, srv_ws->server_memctx);
+   pvr_srv_int_ctx_destroy(srv_ws->base.render_fd, srv_ws->server_memctx);
 }
 
 static void pvr_srv_winsys_destroy(struct pvr_winsys *ws)
 {
    struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(ws);
-   int fd = srv_ws->render_fd;
+   int fd = ws->render_fd;
 
    if (srv_ws->presignaled_sync) {
       vk_sync_destroy(&srv_ws->presignaled_sync_device->vk,
@@ -441,7 +441,7 @@ static void pvr_srv_winsys_destroy(struct pvr_winsys *ws)
 
    pvr_srv_sync_prim_block_finish(srv_ws);
    pvr_srv_memctx_finish(srv_ws);
-   vk_free(srv_ws->alloc, srv_ws);
+   vk_free(ws->alloc, srv_ws);
    pvr_srv_connection_destroy(fd);
 }
 
@@ -596,7 +596,7 @@ pvr_srv_winsys_device_info_init(struct pvr_winsys *ws,
       pvr_srv_get_cdm_max_local_mem_size_regs(dev_info);
 
    if (PVR_HAS_FEATURE(dev_info, gpu_multicore_support)) {
-      result = pvr_srv_get_multicore_info(srv_ws->render_fd,
+      result = pvr_srv_get_multicore_info(ws->render_fd,
                                           0,
                                           NULL,
                                           &runtime_info->core_count);
@@ -684,8 +684,8 @@ static bool pvr_is_driver_compatible(int render_fd)
    return true;
 }
 
-VkResult pvr_srv_winsys_create(int master_fd,
-                               int render_fd,
+VkResult pvr_srv_winsys_create(const int render_fd,
+                               const int primary_fd,
                                const VkAllocationCallbacks *alloc,
                                struct pvr_winsys **const ws_out)
 {
@@ -712,10 +712,11 @@ VkResult pvr_srv_winsys_create(int master_fd,
    }
 
    srv_ws->base.ops = &srv_winsys_ops;
+   srv_ws->base.render_fd = render_fd;
+   srv_ws->base.primary_fd = primary_fd;
+   srv_ws->base.alloc = alloc;
+
    srv_ws->bvnc = bvnc;
-   srv_ws->master_fd = master_fd;
-   srv_ws->render_fd = render_fd;
-   srv_ws->alloc = alloc;
 
    srv_ws->base.syncobj_type = pvr_srv_sync_type;
    srv_ws->base.sync_types[0] = &srv_ws->base.syncobj_type;
@@ -766,7 +767,7 @@ static VkResult pvr_srv_create_presignaled_sync(struct pvr_device *device,
 
    VkResult result;
 
-   result = pvr_srv_create_timeline(srv_ws->render_fd, &timeline_fd);
+   result = pvr_srv_create_timeline(srv_ws->base.render_fd, &timeline_fd);
    if (result != VK_SUCCESS)
       return result;
 

@@ -70,13 +70,8 @@ struct pvr_srv_winsys_heap {
 struct pvr_srv_winsys {
    struct pvr_winsys base;
 
-   int master_fd;
-   int render_fd;
-
    struct pvr_device *presignaled_sync_device;
    struct pvr_srv_sync *presignaled_sync;
-
-   const VkAllocationCallbacks *alloc;
 
    /* Packed bvnc */
    uint64_t bvnc;

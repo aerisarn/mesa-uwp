@@ -45,10 +45,11 @@ typedef VkResult (*const heap_alloc_reserved_func)(
    uint64_t alignment,
    struct pvr_winsys_vma **vma_out);
 
-int pvr_winsys_helper_display_buffer_create(int master_fd,
-                                            uint64_t size,
-                                            uint32_t *const handle_out);
-int pvr_winsys_helper_display_buffer_destroy(int master_fd, uint32_t handle);
+VkResult pvr_winsys_helper_display_buffer_create(struct pvr_winsys *ws,
+                                                 uint64_t size,
+                                                 uint32_t *const handle_out);
+VkResult pvr_winsys_helper_display_buffer_destroy(struct pvr_winsys *ws,
+                                                  uint32_t handle);
 
 bool pvr_winsys_helper_winsys_heap_finish(struct pvr_winsys_heap *const heap);
 

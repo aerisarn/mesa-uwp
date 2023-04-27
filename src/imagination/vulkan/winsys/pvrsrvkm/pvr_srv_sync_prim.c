@@ -48,7 +48,7 @@ VkResult pvr_srv_sync_prim_block_init(struct pvr_srv_winsys *srv_ws)
    VkResult result;
 
    result =
-      pvr_srv_alloc_sync_primitive_block(srv_ws->render_fd,
+      pvr_srv_alloc_sync_primitive_block(srv_ws->base.render_fd,
                                          &srv_ws->sync_prim_ctx.block_handle,
                                          &sync_block_pmr,
                                          &max_size,
@@ -69,7 +69,7 @@ VkResult pvr_srv_sync_prim_block_init(struct pvr_srv_winsys *srv_ws)
 void pvr_srv_sync_prim_block_finish(struct pvr_srv_winsys *srv_ws)
 {
    util_idalloc_mt_fini(&srv_ws->sync_prim_ctx.allocator);
-   pvr_srv_free_sync_primitive_block(srv_ws->render_fd,
+   pvr_srv_free_sync_primitive_block(srv_ws->base.render_fd,
                                      srv_ws->sync_prim_ctx.block_handle);
    srv_ws->sync_prim_ctx.block_handle = NULL;
 }
@@ -80,7 +80,7 @@ struct pvr_srv_sync_prim *pvr_srv_sync_prim_alloc(struct pvr_srv_winsys *srv_ws)
    struct pvr_srv_sync_prim *sync_prim;
    unsigned id;
 
-   sync_prim = vk_alloc(srv_ws->alloc,
+   sync_prim = vk_alloc(srv_ws->base.alloc,
                         sizeof(*sync_prim),
                         8,
                         VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
@@ -99,7 +99,7 @@ struct pvr_srv_sync_prim *pvr_srv_sync_prim_alloc(struct pvr_srv_winsys *srv_ws)
 
       util_idalloc_free(&srv_ws->sync_prim_ctx.allocator.buf, id);
       simple_mtx_unlock(&srv_ws->sync_prim_ctx.allocator.mutex);
-      vk_free(srv_ws->alloc, sync_prim);
+      vk_free(srv_ws->base.alloc, sync_prim);
 
       vk_errorf(NULL,
                 VK_ERROR_OUT_OF_DEVICE_MEMORY,
@@ -124,7 +124,7 @@ void pvr_srv_sync_prim_free(struct pvr_srv_winsys *srv_ws,
       const uint32_t id = sync_prim->offset / PVR_SRV_SYNC_PRIM_VALUE_SIZE;
       VkResult result;
 
-      result = pvr_srv_set_sync_primitive(srv_ws->render_fd,
+      result = pvr_srv_set_sync_primitive(srv_ws->base.render_fd,
                                           srv_ws->sync_prim_ctx.block_handle,
                                           id,
                                           0);
@@ -136,12 +136,12 @@ void pvr_srv_sync_prim_free(struct pvr_srv_winsys *srv_ws,
          mesa_logw("Failed to free sync prim. "
                    "Some sync prim block space will be lost.");
 
-         vk_free(srv_ws->alloc, sync_prim);
+         vk_free(srv_ws->base.alloc, sync_prim);
          return;
       }
 
       util_idalloc_mt_free(&srv_ws->sync_prim_ctx.allocator, id);
 
-      vk_free(srv_ws->alloc, sync_prim);
+      vk_free(srv_ws->base.alloc, sync_prim);
    }
 }

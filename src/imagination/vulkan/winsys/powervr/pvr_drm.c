@@ -27,8 +27,8 @@
 #include "pvr_private.h"
 #include "pvr_winsys.h"
 
-VkResult pvr_drm_winsys_create(int master_fd,
-                               int render_fd,
+VkResult pvr_drm_winsys_create(const int render_fd,
+                               const int primary_fd,
                                const VkAllocationCallbacks *alloc,
                                struct pvr_winsys **const ws_out)
 {

@@ -58,17 +58,17 @@ static VkResult pvr_srv_alloc_display_pmr(struct pvr_srv_winsys *srv_ws,
    int fd;
 
    result =
-      pvr_winsys_helper_display_buffer_create(srv_ws->master_fd, size, &handle);
+      pvr_winsys_helper_display_buffer_create(&srv_ws->base, size, &handle);
    if (result != VK_SUCCESS)
       return result;
 
-   ret = drmPrimeHandleToFD(srv_ws->master_fd, handle, O_CLOEXEC, &fd);
+   ret = drmPrimeHandleToFD(srv_ws->base.primary_fd, handle, O_CLOEXEC, &fd);
    if (ret) {
       result = vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto err_display_buffer_destroy;
    }
 
-   result = pvr_srv_physmem_import_dmabuf(srv_ws->render_fd,
+   result = pvr_srv_physmem_import_dmabuf(srv_ws->base.render_fd,
                                           fd,
                                           srv_flags,
                                           pmr_out,
@@ -89,7 +89,7 @@ static VkResult pvr_srv_alloc_display_pmr(struct pvr_srv_winsys *srv_ws,
    return VK_SUCCESS;
 
 err_display_buffer_destroy:
-   pvr_winsys_helper_display_buffer_destroy(srv_ws->master_fd, handle);
+   pvr_winsys_helper_display_buffer_destroy(&srv_ws->base, handle);
 
    return result;
 }
@@ -101,20 +101,19 @@ static void buffer_acquire(struct pvr_srv_winsys_bo *srv_bo)
 
 static void buffer_release(struct pvr_srv_winsys_bo *srv_bo)
 {
-   struct pvr_srv_winsys *srv_ws;
+   struct pvr_winsys *ws;
 
    /* If all references were dropped the pmr can be freed and unlocked */
-   if (p_atomic_dec_return(&srv_bo->ref_count) == 0) {
-      srv_ws = to_pvr_srv_winsys(srv_bo->base.ws);
-      pvr_srv_free_pmr(srv_ws->render_fd, srv_bo->pmr);
+   if (p_atomic_dec_return(&srv_bo->ref_count) != 0)
+      return;
 
-      if (srv_bo->is_display_buffer) {
-         pvr_winsys_helper_display_buffer_destroy(srv_ws->master_fd,
-                                                  srv_bo->handle);
-      }
+   ws = srv_bo->base.ws;
+   pvr_srv_free_pmr(ws->render_fd, srv_bo->pmr);
 
-      vk_free(srv_ws->alloc, srv_bo);
-   }
+   if (srv_bo->is_display_buffer)
+      pvr_winsys_helper_display_buffer_destroy(ws, srv_bo->handle);
+
+   vk_free(ws->alloc, srv_bo);
 }
 
 static uint64_t pvr_srv_get_alloc_flags(uint32_t ws_flags)
@@ -168,7 +167,7 @@ VkResult pvr_srv_winsys_buffer_create(struct pvr_winsys *ws,
    alignment = MAX2(alignment, ws->page_size);
    size = ALIGN_POT(size, alignment);
 
-   srv_bo = vk_zalloc(srv_ws->alloc,
+   srv_bo = vk_zalloc(ws->alloc,
                       sizeof(*srv_bo),
                       8,
                       VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
@@ -187,12 +186,12 @@ VkResult pvr_srv_winsys_buffer_create(struct pvr_winsys *ws,
       srv_bo->base.is_imported = true;
    } else {
       result =
-         pvr_srv_alloc_pmr(srv_ws->render_fd,
+         pvr_srv_alloc_pmr(ws->render_fd,
                            size,
                            size,
                            1,
                            1,
-                           srv_ws->base.log2_page_size,
+                           ws->log2_page_size,
                            (srv_flags & PVR_SRV_MEMALLOCFLAGS_PMRFLAGSMASK),
                            getpid(),
                            &srv_bo->pmr);
@@ -212,7 +211,7 @@ VkResult pvr_srv_winsys_buffer_create(struct pvr_winsys *ws,
    return VK_SUCCESS;
 
 err_vk_free_srv_bo:
-   vk_free(srv_ws->alloc, srv_bo);
+   vk_free(ws->alloc, srv_bo);
 
    return result;
 }
@@ -235,20 +234,19 @@ pvr_srv_winsys_buffer_create_from_fd(struct pvr_winsys *ws,
       PVR_SRV_MEMALLOCFLAG_CPU_UNCACHED_WC | PVR_SRV_MEMALLOCFLAG_GPU_READABLE |
       PVR_SRV_MEMALLOCFLAG_GPU_WRITEABLE |
       PVR_SRV_MEMALLOCFLAG_GPU_CACHE_INCOHERENT;
-   struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(ws);
    struct pvr_srv_winsys_bo *srv_bo;
    uint64_t aligment_out;
    uint64_t size_out;
    VkResult result;
 
-   srv_bo = vk_zalloc(srv_ws->alloc,
+   srv_bo = vk_zalloc(ws->alloc,
                       sizeof(*srv_bo),
                       8,
                       VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!srv_bo)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = pvr_srv_physmem_import_dmabuf(srv_ws->render_fd,
+   result = pvr_srv_physmem_import_dmabuf(ws->render_fd,
                                           fd,
                                           srv_flags,
                                           &srv_bo->pmr,
@@ -257,7 +255,7 @@ pvr_srv_winsys_buffer_create_from_fd(struct pvr_winsys *ws,
    if (result != VK_SUCCESS)
       goto err_vk_free_srv_bo;
 
-   assert(aligment_out == srv_ws->base.page_size);
+   assert(aligment_out == ws->page_size);
 
    srv_bo->base.ws = ws;
    srv_bo->base.size = size_out;
@@ -271,7 +269,7 @@ pvr_srv_winsys_buffer_create_from_fd(struct pvr_winsys *ws,
    return VK_SUCCESS;
 
 err_vk_free_srv_bo:
-   vk_free(srv_ws->alloc, srv_bo);
+   vk_free(ws->alloc, srv_bo);
 
    return result;
 }
@@ -287,17 +285,14 @@ VkResult pvr_srv_winsys_buffer_get_fd(struct pvr_winsys_bo *bo,
                                       int *const fd_out)
 {
    struct pvr_srv_winsys_bo *srv_bo = to_pvr_srv_winsys_bo(bo);
-   struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(bo->ws);
+   struct pvr_winsys *ws = bo->ws;
    int ret;
 
    if (!srv_bo->is_display_buffer)
-      return pvr_srv_physmem_export_dmabuf(srv_ws->render_fd,
-                                           srv_bo->pmr,
-                                           fd_out);
+      return pvr_srv_physmem_export_dmabuf(ws->render_fd, srv_bo->pmr, fd_out);
 
    /* For display buffers, export using saved buffer handle */
-   ret =
-      drmPrimeHandleToFD(srv_ws->master_fd, srv_bo->handle, O_CLOEXEC, fd_out);
+   ret = drmPrimeHandleToFD(ws->primary_fd, srv_bo->handle, O_CLOEXEC, fd_out);
    if (ret)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -307,7 +302,7 @@ VkResult pvr_srv_winsys_buffer_get_fd(struct pvr_winsys_bo *bo,
 void *pvr_srv_winsys_buffer_map(struct pvr_winsys_bo *bo)
 {
    struct pvr_srv_winsys_bo *srv_bo = to_pvr_srv_winsys_bo(bo);
-   struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(bo->ws);
+   struct pvr_winsys *ws = bo->ws;
    const int prot =
       (srv_bo->flags & PVR_SRV_MEMALLOCFLAG_CPU_WRITEABLE ? PROT_WRITE : 0) |
       (srv_bo->flags & PVR_SRV_MEMALLOCFLAG_CPU_READABLE ? PROT_READ : 0);
@@ -320,8 +315,8 @@ void *pvr_srv_winsys_buffer_map(struct pvr_winsys_bo *bo)
                   bo->size,
                   prot,
                   MAP_SHARED,
-                  srv_ws->render_fd,
-                  (off_t)srv_bo->pmr << srv_ws->base.log2_page_size);
+                  ws->render_fd,
+                  (off_t)srv_bo->pmr << ws->log2_page_size);
    if (bo->map == MAP_FAILED) {
       bo->map = NULL;
       vk_error(NULL, VK_ERROR_MEMORY_MAP_FAILED);
@@ -368,7 +363,7 @@ VkResult pvr_srv_heap_alloc_reserved(struct pvr_winsys_heap *heap,
                                      struct pvr_winsys_vma **const vma_out)
 {
    struct pvr_srv_winsys_heap *srv_heap = to_pvr_srv_winsys_heap(heap);
-   struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(heap->ws);
+   struct pvr_winsys *ws = heap->ws;
    struct pvr_srv_winsys_vma *srv_vma;
    VkResult result;
 
@@ -381,7 +376,7 @@ VkResult pvr_srv_heap_alloc_reserved(struct pvr_winsys_heap *heap,
    alignment = MAX2(alignment, heap->ws->page_size);
    size = ALIGN_POT(size, alignment);
 
-   srv_vma = vk_alloc(srv_ws->alloc,
+   srv_vma = vk_alloc(ws->alloc,
                       sizeof(*srv_vma),
                       8,
                       VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
@@ -396,13 +391,13 @@ VkResult pvr_srv_heap_alloc_reserved(struct pvr_winsys_heap *heap,
    if (reserved_dev_addr.addr < heap->base_addr.addr ||
        reserved_dev_addr.addr + size >
           heap->base_addr.addr + heap->reserved_size ||
-       reserved_dev_addr.addr & ((srv_ws->base.page_size) - 1)) {
+       reserved_dev_addr.addr & ((ws->page_size) - 1)) {
       result = vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
       goto err_vk_free_srv_vma;
    }
 
    /* Reserve the virtual range in the MMU and create a mapping structure */
-   result = pvr_srv_int_reserve_addr(srv_ws->render_fd,
+   result = pvr_srv_int_reserve_addr(ws->render_fd,
                                      srv_heap->server_heap,
                                      reserved_dev_addr,
                                      size,
@@ -422,7 +417,7 @@ VkResult pvr_srv_heap_alloc_reserved(struct pvr_winsys_heap *heap,
    return VK_SUCCESS;
 
 err_vk_free_srv_vma:
-   vk_free(srv_ws->alloc, srv_vma);
+   vk_free(ws->alloc, srv_vma);
 
 err_out:
    return result;
@@ -438,7 +433,7 @@ VkResult pvr_srv_winsys_heap_alloc(struct pvr_winsys_heap *heap,
    struct pvr_srv_winsys_vma *srv_vma;
    VkResult result;
 
-   srv_vma = vk_alloc(srv_ws->alloc,
+   srv_vma = vk_alloc(srv_ws->base.alloc,
                       sizeof(*srv_vma),
                       8,
                       VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
@@ -452,7 +447,7 @@ VkResult pvr_srv_winsys_heap_alloc(struct pvr_winsys_heap *heap,
       goto err_pvr_srv_free_vma;
 
    /* Reserve the virtual range in the MMU and create a mapping structure. */
-   result = pvr_srv_int_reserve_addr(srv_ws->render_fd,
+   result = pvr_srv_int_reserve_addr(srv_ws->base.render_fd,
                                      srv_heap->server_heap,
                                      srv_vma->base.dev_addr,
                                      srv_vma->base.size,
@@ -468,7 +463,7 @@ err_pvr_srv_free_allocation:
    pvr_winsys_helper_heap_free(&srv_vma->base);
 
 err_pvr_srv_free_vma:
-   vk_free(srv_ws->alloc, srv_vma);
+   vk_free(srv_ws->base.alloc, srv_vma);
 
 err_out:
    return result;
@@ -480,10 +475,10 @@ void pvr_srv_winsys_heap_free(struct pvr_winsys_vma *vma)
    struct pvr_srv_winsys_vma *srv_vma = to_pvr_srv_winsys_vma(vma);
 
    /* A vma with an existing device mapping should not be freed. */
-   assert(!srv_vma->base.bo);
+   assert(!vma->bo);
 
    /* Remove mapping handle and underlying reservation. */
-   pvr_srv_int_unreserve_addr(srv_ws->render_fd, srv_vma->reservation);
+   pvr_srv_int_unreserve_addr(srv_ws->base.render_fd, srv_vma->reservation);
 
    /* Check if we are dealing with reserved address range. */
    if (vma->dev_addr.addr <
@@ -495,7 +490,7 @@ void pvr_srv_winsys_heap_free(struct pvr_winsys_vma *vma)
       pvr_winsys_helper_heap_free(vma);
    }
 
-   vk_free(srv_ws->alloc, srv_vma);
+   vk_free(srv_ws->base.alloc, srv_vma);
 }
 
 /* * We assume the vma has been allocated with extra space to accommodate the
@@ -520,7 +515,7 @@ VkResult pvr_srv_winsys_vma_map(struct pvr_winsys_vma *vma,
    VkResult result;
 
    /* Address should not be mapped already */
-   assert(!srv_vma->base.bo);
+   assert(!vma->bo);
 
    if (srv_bo->is_display_buffer) {
       struct pvr_srv_winsys_heap *srv_heap = to_pvr_srv_winsys_heap(vma->heap);
@@ -532,7 +527,7 @@ VkResult pvr_srv_winsys_vma_map(struct pvr_winsys_vma *vma,
       }
 
       /* Map the requested pmr */
-      result = pvr_srv_int_map_pmr(srv_ws->render_fd,
+      result = pvr_srv_int_map_pmr(srv_ws->base.render_fd,
                                    srv_heap->server_heap,
                                    srv_vma->reservation,
                                    srv_bo->pmr,
@@ -552,7 +547,7 @@ VkResult pvr_srv_winsys_vma_map(struct pvr_winsys_vma *vma,
       }
 
       /* Map the requested pages */
-      result = pvr_srv_int_map_pages(srv_ws->render_fd,
+      result = pvr_srv_int_map_pages(srv_ws->base.render_fd,
                                      srv_vma->reservation,
                                      srv_bo->pmr,
                                      phys_page_count,
@@ -566,7 +561,7 @@ VkResult pvr_srv_winsys_vma_map(struct pvr_winsys_vma *vma,
 
    buffer_acquire(srv_bo);
 
-   vma->bo = &srv_bo->base;
+   vma->bo = bo;
    vma->bo_offset = offset;
    vma->mapped_size = aligned_virt_size;
 
@@ -583,16 +578,16 @@ void pvr_srv_winsys_vma_unmap(struct pvr_winsys_vma *vma)
    struct pvr_srv_winsys_bo *srv_bo;
 
    /* Address should be mapped */
-   assert(srv_vma->base.bo);
+   assert(vma->bo);
 
-   srv_bo = to_pvr_srv_winsys_bo(srv_vma->base.bo);
+   srv_bo = to_pvr_srv_winsys_bo(vma->bo);
 
    if (srv_bo->is_display_buffer) {
       /* Unmap the requested pmr */
-      pvr_srv_int_unmap_pmr(srv_ws->render_fd, srv_vma->mapping);
+      pvr_srv_int_unmap_pmr(srv_ws->base.render_fd, srv_vma->mapping);
    } else {
       /* Unmap requested pages */
-      pvr_srv_int_unmap_pages(srv_ws->render_fd,
+      pvr_srv_int_unmap_pages(srv_ws->base.render_fd,
                               srv_vma->reservation,
                               vma->dev_addr,
                               vma->mapped_size >> srv_ws->base.log2_page_size);
@@ -600,5 +595,5 @@ void pvr_srv_winsys_vma_unmap(struct pvr_winsys_vma *vma)
 
    buffer_release(srv_bo);
 
-   srv_vma->base.bo = NULL;
+   vma->bo = NULL;
 }

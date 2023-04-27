@@ -34,7 +34,7 @@
 #include "util/u_atomic.h"
 #include "vk_log.h"
 
-VkResult pvr_winsys_helper_display_buffer_create(int master_fd,
+VkResult pvr_winsys_helper_display_buffer_create(struct pvr_winsys *const ws,
                                                  uint64_t size,
                                                  uint32_t *const handle_out)
 {
@@ -45,7 +45,7 @@ VkResult pvr_winsys_helper_display_buffer_create(int master_fd,
    };
    VkResult result;
 
-   result = pvr_ioctl(master_fd,
+   result = pvr_ioctl(ws->primary_fd,
                       DRM_IOCTL_MODE_CREATE_DUMB,
                       &args,
                       VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -57,14 +57,14 @@ VkResult pvr_winsys_helper_display_buffer_create(int master_fd,
    return VK_SUCCESS;
 }
 
-VkResult pvr_winsys_helper_display_buffer_destroy(int master_fd,
+VkResult pvr_winsys_helper_display_buffer_destroy(struct pvr_winsys *ws,
                                                   uint32_t handle)
 {
    struct drm_mode_destroy_dumb args = {
       .handle = handle,
    };
 
-   return pvr_ioctl(master_fd,
+   return pvr_ioctl(ws->primary_fd,
                     DRM_IOCTL_MODE_DESTROY_DUMB,
                     &args,
                     VK_ERROR_UNKNOWN);
