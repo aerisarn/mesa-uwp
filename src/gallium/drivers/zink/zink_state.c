@@ -659,7 +659,7 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
    bool half_pixel_center = ctx->rast_state ? ctx->rast_state->base.half_pixel_center : true;
    float line_width = ctx->rast_state ? ctx->rast_state->base.line_width : 1.0;
    ctx->rast_state = cso;
-   ctx->gfx_pipeline_state.multisample = !ctx->rast_state || ctx->rast_state->base.multisample;
+   bool multisample = !ctx->rast_state || ctx->rast_state->base.multisample;
 
    if (ctx->rast_state) {
       if (screen->info.have_EXT_provoking_vertex &&
@@ -710,6 +710,10 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
       if (ctx->rast_state->base.force_persample_interp != force_persample_interp) {
          zink_set_fs_base_key(ctx)->force_persample_interp = ctx->rast_state->base.force_persample_interp;
          ctx->gfx_pipeline_state.dirty = true;
+      }
+      if (ctx->gfx_pipeline_state.multisample != multisample) {
+         ctx->gfx_pipeline_state.multisample = multisample;
+         ctx->gfx_pipeline_state.dirty |= !screen->have_full_ds3;
       }
       ctx->gfx_pipeline_state.force_persample_interp = ctx->rast_state->base.force_persample_interp;
 
