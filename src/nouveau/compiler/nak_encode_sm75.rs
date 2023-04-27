@@ -670,8 +670,7 @@ impl SM75Instr {
         self.set_field(72..80, op.op.lut);
         self.set_bit(80, false); /* .PAND */
         self.set_field(81..84, 7_u32); /* pred */
-        self.set_field(84..87, 7_u32); /* pred */
-        self.set_bit(90, true);
+        self.set_pred_src(87..90, 90, SrcRef::False.into());
     }
 
     fn encode_shf(&mut self, op: &OpShf) {
