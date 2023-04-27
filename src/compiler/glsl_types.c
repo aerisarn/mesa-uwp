@@ -3507,7 +3507,11 @@ glsl_get_cmat_description(const struct glsl_type *t)
 unsigned
 glsl_get_length(const struct glsl_type *t)
 {
-   return glsl_type_is_matrix(t) ? t->matrix_columns : t->length;
+   if (glsl_type_is_matrix(t))
+      return t->matrix_columns;
+   else if (glsl_type_is_vector(t))
+      return t->vector_elements;
+   return t->length;
 }
 
 unsigned
