@@ -480,6 +480,27 @@ can_use_opsel(amd_gfx_level gfx_level, aco_opcode op, int idx)
 }
 
 bool
+can_write_m0(amd_gfx_level gfx_level, const aco_ptr<Instruction>& instr)
+{
+   if (instr->isSALU())
+      return true;
+
+   if (instr->isVALU())
+      return gfx_level >= GFX9;
+
+   switch (instr->opcode) {
+   case aco_opcode::p_parallelcopy:
+   case aco_opcode::p_extract:
+   case aco_opcode::p_insert:
+      return true;
+   case aco_opcode::p_reload:
+      return gfx_level >= GFX9;
+   default:
+      return false;
+   }
+}
+
+bool
 instr_is_16bit(amd_gfx_level gfx_level, aco_opcode op)
 {
    /* partial register writes are GFX9+, only */

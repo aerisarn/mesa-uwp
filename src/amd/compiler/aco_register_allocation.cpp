@@ -55,6 +55,7 @@ struct assignment {
       struct {
          bool assigned : 1;
          bool vcc : 1;
+         bool m0 : 1;
       };
       uint8_t _ = 0;
    };
@@ -1653,6 +1654,11 @@ get_reg(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
       if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, vcc))
          return vcc;
    }
+   if (ctx.assignments[temp.id()].m0) {
+      if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, m0) &&
+          can_write_m0(ctx.program->gfx_level, instr))
+         return m0;
+   }
 
    std::optional<PhysReg> res;
 
@@ -2461,6 +2467,8 @@ get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
             if (!instr->definitions[1].isKill() && instr->operands[0].isTemp() &&
                 instr->operands[1].isFixed() && instr->operands[1].physReg() == exec)
                ctx.assignments[instr->operands[0].tempId()].vcc = true;
+         } else if (instr->opcode == aco_opcode::s_sendmsg) {
+            ctx.assignments[instr->operands[0].tempId()].m0 = true;
          }
 
          /* add operands to live variables */
