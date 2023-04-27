@@ -653,6 +653,7 @@ static VkResult pvr_render_ctx_switch_init(struct pvr_device *device,
    const uint64_t geom_state_bo_flags = PVR_BO_ALLOC_FLAG_GPU_UNCACHED |
                                         PVR_BO_ALLOC_FLAG_CPU_ACCESS;
    VkResult result;
+   uint32_t i;
 
    result = pvr_bo_alloc(device,
                          device->heaps.general_heap,
@@ -672,19 +673,18 @@ static VkResult pvr_render_ctx_switch_init(struct pvr_device *device,
    if (result != VK_SUCCESS)
       goto err_pvr_bo_free_vdm_state_bo;
 
-   for (uint32_t i = 0; i < ARRAY_SIZE(ctx_switch->programs); i++) {
+   for (i = 0; i < ARRAY_SIZE(ctx_switch->programs); i++) {
       result =
          pvr_render_ctx_switch_programs_setup(device, &ctx_switch->programs[i]);
       if (result != VK_SUCCESS)
          goto err_programs_cleanup;
    }
 
-   return result;
+   return VK_SUCCESS;
 
 err_programs_cleanup:
-   for (uint32_t i = 0; i < ARRAY_SIZE(ctx_switch->programs); i++) {
-      pvr_render_ctx_switch_programs_cleanup(device, &ctx_switch->programs[i]);
-   }
+   for (uint32_t j = 0; j < i; j++)
+      pvr_render_ctx_switch_programs_cleanup(device, &ctx_switch->programs[j]);
 
    pvr_bo_free(device, ctx_switch->geom_state_bo);
 
@@ -699,9 +699,8 @@ static void pvr_render_ctx_switch_fini(struct pvr_device *device,
 {
    struct pvr_render_ctx_switch *ctx_switch = &ctx->ctx_switch;
 
-   for (uint32_t i = 0; i < ARRAY_SIZE(ctx_switch->programs); i++) {
+   for (uint32_t i = 0; i < ARRAY_SIZE(ctx_switch->programs); i++)
       pvr_render_ctx_switch_programs_cleanup(device, &ctx_switch->programs[i]);
-   }
 
    pvr_bo_free(device, ctx_switch->geom_state_bo);
    pvr_bo_free(device, ctx_switch->vdm_state_bo);
