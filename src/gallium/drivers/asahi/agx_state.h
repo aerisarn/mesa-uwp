@@ -96,8 +96,12 @@ struct PACKED agx_draw_uniforms {
    };
 };
 
-/* We only push whole elements at a time so we can calculate an upper bound */
-#define AGX_MAX_PUSH_RANGES (1 + PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_ATTRIBS)
+/* In the architecture, there are 512 uniform registers, each 16-bits. In a
+ * theoretical worst case, we could push to all of them. We use a worst-case
+ * maximum because the expression for a tight upper bound is too messy and easy
+ * to go out of sync with the code.
+ */
+#define AGX_MAX_PUSH_RANGES (512)
 
 struct agx_push_range {
    /* Base 16-bit uniform to push to */
