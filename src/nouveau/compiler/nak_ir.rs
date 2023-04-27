@@ -418,13 +418,13 @@ pub enum CBuf {
     BindlessGPR(RegRef),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct CBufRef {
     pub buf: CBuf,
     pub offset: u16,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum SrcRef {
     Zero,
     True,
@@ -971,15 +971,22 @@ impl fmt::Display for IntCmpType {
     }
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct LogicOp {
     pub lut: u8,
 }
 
 impl LogicOp {
+    pub const SRC_MASKS: [u8; 3] = [0xf0, 0xcc, 0xaa];
+
     #[inline]
     pub fn new_lut<F: Fn(u8, u8, u8) -> u8>(f: &F) -> LogicOp {
         LogicOp {
-            lut: f(0xf0, 0xcc, 0xaa),
+            lut: f(
+                LogicOp::SRC_MASKS[0],
+                LogicOp::SRC_MASKS[1],
+                LogicOp::SRC_MASKS[2],
+            ),
         }
     }
 
@@ -987,6 +994,32 @@ impl LogicOp {
         LogicOp {
             lut: if val { !0 } else { 0 },
         }
+    }
+
+    pub fn src_used(&self, src_idx: usize) -> bool {
+        let mask = LogicOp::SRC_MASKS[src_idx];
+        let shift = LogicOp::SRC_MASKS[src_idx].trailing_zeros();
+        self.lut & !mask != (self.lut >> shift) & !mask
+    }
+
+    pub fn fix_src(&mut self, src_idx: usize, val: bool) {
+        let mask = LogicOp::SRC_MASKS[src_idx];
+        let shift = LogicOp::SRC_MASKS[src_idx].trailing_zeros();
+        if val {
+            let t_bits = self.lut & mask;
+            self.lut = t_bits | (t_bits >> shift)
+        } else {
+            let f_bits = self.lut & !mask;
+            self.lut = (f_bits << shift) | f_bits
+        };
+    }
+
+    pub fn invert_src(&mut self, src_idx: usize) {
+        let mask = LogicOp::SRC_MASKS[src_idx];
+        let shift = LogicOp::SRC_MASKS[src_idx].trailing_zeros();
+        let t_bits = self.lut & mask;
+        let f_bits = self.lut & !mask;
+        self.lut = (f_bits << shift) | (t_bits >> shift);
     }
 
     pub fn eval<

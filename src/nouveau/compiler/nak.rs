@@ -15,6 +15,7 @@ mod nak_liveness;
 mod nak_lower_par_copies;
 mod nak_opt_copy_prop;
 mod nak_opt_dce;
+mod nak_opt_lop;
 mod nir;
 mod union_find;
 mod util;
@@ -429,6 +430,11 @@ pub extern "C" fn nak_compile_shader(
     }
 
     s.opt_copy_prop();
+    if DEBUG.print() {
+        println!("NAK IR:\n{}", &s);
+    }
+
+    s.opt_lop();
     if DEBUG.print() {
         println!("NAK IR:\n{}", &s);
     }

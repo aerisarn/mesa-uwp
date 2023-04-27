@@ -310,11 +310,83 @@ impl CopyPropPass {
         for b in &mut f.blocks {
             for instr in &mut b.instrs {
                 match &instr.op {
+                    Op::Lop3(lop) => {
+                        let dst = lop.dst.as_ssa().unwrap();
+                        assert!(dst.comps() == 1);
+                        let dst = dst[0];
+
+                        let op = lop.op;
+                        if op.lut == 0 {
+                            self.add_copy(
+                                dst,
+                                SrcType::ALU,
+                                SrcRef::Zero.into(),
+                            );
+                        } else if op.lut == !0 {
+                            self.add_copy(
+                                dst,
+                                SrcType::ALU,
+                                SrcRef::Imm32(u32::MAX).into(),
+                            );
+                        } else {
+                            for s in 0..3 {
+                                if op.lut == LogicOp::SRC_MASKS[s] {
+                                    self.add_copy(
+                                        dst,
+                                        SrcType::ALU,
+                                        lop.srcs[s],
+                                    );
+                                }
+                            }
+                        }
+                    }
                     Op::Mov(mov) => {
                         let dst = mov.dst.as_ssa().unwrap();
                         assert!(dst.comps() == 1);
                         if mov.quad_lanes == 0xf {
                             self.add_copy(dst[0], SrcType::GPR, mov.src);
+                        }
+                    }
+                    Op::PLop3(lop) => {
+                        for i in 0..2 {
+                            let dst = match lop.dsts[i] {
+                                Dst::SSA(vec) => {
+                                    assert!(vec.comps() == 1);
+                                    vec[0]
+                                }
+                                _ => continue,
+                            };
+
+                            let op = lop.ops[i];
+                            if op.lut == 0 {
+                                self.add_copy(
+                                    dst,
+                                    SrcType::Pred,
+                                    SrcRef::False.into(),
+                                );
+                            } else if op.lut == !0 {
+                                self.add_copy(
+                                    dst,
+                                    SrcType::Pred,
+                                    SrcRef::True.into(),
+                                );
+                            } else {
+                                for s in 0..3 {
+                                    if op.lut == LogicOp::SRC_MASKS[s] {
+                                        self.add_copy(
+                                            dst,
+                                            SrcType::Pred,
+                                            lop.srcs[i],
+                                        );
+                                    } else if op.lut == !LogicOp::SRC_MASKS[s] {
+                                        self.add_copy(
+                                            dst,
+                                            SrcType::Pred,
+                                            lop.srcs[i].bnot(),
+                                        );
+                                    }
+                                }
+                            }
                         }
                     }
                     Op::FMov(mov) => {
