@@ -223,10 +223,7 @@ void
 v3d_create_texture_shader_state_bo(struct v3d_context *v3d,
                                    struct v3d_sampler_view *so)
 {
-        if (v3d->screen->devinfo.ver >= 41)
-                v3d41_create_texture_shader_state_bo(v3d, so);
-        else
-                v3d33_create_texture_shader_state_bo(v3d, so);
+        v3d_X(&v3d->screen->devinfo, create_texture_shader_state_bo)(v3d, so);
 }
 
 void
@@ -374,13 +371,8 @@ v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
         pctx->invalidate_resource = v3d_invalidate_resource;
         pctx->get_sample_position = v3d_get_sample_position;
 
-        if (screen->devinfo.ver >= 41) {
-                v3d41_draw_init(pctx);
-                v3d41_state_init(pctx);
-        } else {
-                v3d33_draw_init(pctx);
-                v3d33_state_init(pctx);
-        }
+        v3d_X(&screen->devinfo, draw_init)(pctx);
+        v3d_X(&screen->devinfo, state_init)(pctx);
         v3d_program_init(pctx);
         v3d_query_init(pctx);
         v3d_resource_context_init(pctx);

@@ -495,17 +495,10 @@ v3d_job_submit(struct v3d_context *v3d, struct v3d_job *job)
         if (job->needs_primitives_generated)
                 v3d_ensure_prim_counts_allocated(v3d);
 
-        if (screen->devinfo.ver >= 41)
-                v3d41_emit_rcl(job);
-        else
-                v3d33_emit_rcl(job);
+        v3d_X(&screen->devinfo, emit_rcl)(job);
 
-        if (cl_offset(&job->bcl) > 0) {
-                if (screen->devinfo.ver >= 41)
-                        v3d41_bcl_epilogue(v3d, job);
-                else
-                        v3d33_bcl_epilogue(v3d, job);
-        }
+        if (cl_offset(&job->bcl) > 0)
+                v3d_X(&screen->devinfo, bcl_epilogue)(v3d, job);
 
         /* While the RCL will implicitly depend on the last RCL to have
          * finished, we also need to block on any previous TFU job we may have

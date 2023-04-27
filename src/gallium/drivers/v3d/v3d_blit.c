@@ -554,7 +554,7 @@ v3d_tlb_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
                 info->mask &= ~PIPE_MASK_S;
         }
 
-        v3d41_start_binning(v3d, job);
+        v3d_X(&v3d->screen->devinfo, start_binning)(v3d, job);
 
         v3d_job_submit(v3d, job);
 

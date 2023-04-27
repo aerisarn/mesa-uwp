@@ -825,6 +825,18 @@ void v3d_disk_cache_store(struct v3d_context *v3d,
                           uint32_t qpu_size);
 #endif /* ENABLE_SHADER_CACHE */
 
+/* Helper to call hw ver specific functions */
+#define v3d_X(devinfo, thing) ({                                \
+        __typeof(&v3d41_##thing) v3d_X_thing;                   \
+        if ((devinfo)->ver >= 41)                               \
+                v3d_X_thing = &v3d41_##thing;                   \
+        else if ((devinfo)->ver >= 33)                          \
+                v3d_X_thing = &v3d33_##thing;                   \
+        else                                                    \
+                unreachable("Unsupported hardware generation"); \
+        v3d_X_thing;                                            \
+})
+
 #ifdef v3dX
 #  include "v3dx_context.h"
 #else

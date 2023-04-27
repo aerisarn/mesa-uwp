@@ -1089,11 +1089,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
          */
         v3d_emit_wait_for_tf_if_needed(v3d, job);
 
-#if V3D_VERSION >= 41
-        v3d41_emit_state(pctx);
-#else
-        v3d33_emit_state(pctx);
-#endif
+        v3dX(emit_state)(pctx);
 
         if (v3d->dirty & (V3D_DIRTY_VTXBUF |
                           V3D_DIRTY_VTXSTATE |
