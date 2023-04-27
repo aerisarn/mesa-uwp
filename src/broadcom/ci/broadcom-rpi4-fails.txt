@@ -103,15 +103,6 @@ spec@!opengl 3.0@bindfragdata-nonexistent-variable,Fail
 spec@!opengl 3.0@clearbuffer-mixed-format,Fail
 spec@!opengl 3.0@getfragdatalocation,Fail
 spec@!opengl 3.0@minmax,Fail
-spec@!opengl 3.0@render-integer,Fail
-spec@!opengl 3.0@render-integer@GL_R8I,Fail
-spec@!opengl 3.0@render-integer@GL_R8UI,Fail
-spec@!opengl 3.0@render-integer@GL_RG8I,Fail
-spec@!opengl 3.0@render-integer@GL_RG8UI,Fail
-spec@!opengl 3.0@render-integer@GL_RGB8I,Fail
-spec@!opengl 3.0@render-integer@GL_RGB8UI,Fail
-spec@!opengl 3.0@render-integer@GL_RGBA8I,Fail
-spec@!opengl 3.0@render-integer@GL_RGBA8UI,Fail
 spec@!opengl 3.0@required-texture-attachment-formats,Fail
 spec@!opengl 3.1@minmax,Fail
 spec@!opengl 3.1@primitive-restart-xfb flush,Fail
