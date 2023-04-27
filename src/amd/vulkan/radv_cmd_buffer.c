@@ -8730,6 +8730,12 @@ radv_emit_db_shader_control(struct radv_cmd_buffer *cmd_buffer)
       } else {
          if (ps->info.ps.pops_is_per_sample)
             db_shader_control |= S_02880C_POPS_OVERLAP_NUM_SAMPLES(util_logbase2(rasterization_samples));
+
+         if (rad_info->has_pops_missed_overlap_bug) {
+            radeon_set_context_reg(cmd_buffer->cs, R_028060_DB_DFSM_CONTROL,
+                                   S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF) |
+                                      S_028060_POPS_DRAIN_PS_ON_OVERLAP(rasterization_samples >= 8));
+         }
       }
    } else if (rad_info->has_export_conflict_bug && rasterization_samples == 1) {
       for (uint32_t i = 0; i < MAX_RTS; i++) {
