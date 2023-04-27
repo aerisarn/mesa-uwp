@@ -535,8 +535,11 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
 
    /* clang-format off */
 
-   VN_SET_CORE_VALUE(vk10_props, limits.sparseAddressSpaceSize, 0);
-   VN_SET_CORE_VALUE(vk10_props, sparseProperties, (VkPhysicalDeviceSparseProperties){ 0 });
+   /* See comment for sparse binding feature disable */
+   if (physical_dev->sparse_binding_disabled) {
+      VN_SET_CORE_VALUE(vk10_props, limits.sparseAddressSpaceSize, 0);
+      VN_SET_CORE_VALUE(vk10_props, sparseProperties, (VkPhysicalDeviceSparseProperties){ 0 });
+   }
 
    if (renderer_version < VK_API_VERSION_1_2) {
       /* Vulkan 1.1 */
@@ -2210,12 +2213,21 @@ vn_GetPhysicalDeviceSparseImageFormatProperties2(
    VkSparseImageFormatProperties2 *pProperties)
 {
 
+   struct vn_physical_device *physical_dev =
+      vn_physical_device_from_handle(physicalDevice);
    /* If VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT is not supported for the given
     * arguments, pPropertyCount will be set to zero upon return, and no data
     * will be written to pProperties.
     */
-   *pPropertyCount = 0;
-   return;
+   if (physical_dev->sparse_binding_disabled) {
+      *pPropertyCount = 0;
+      return;
+   }
+
+   /* TODO per-device cache */
+   vn_call_vkGetPhysicalDeviceSparseImageFormatProperties2(
+      physical_dev->instance, physicalDevice, pFormatInfo, pPropertyCount,
+      pProperties);
 }
 
 void
