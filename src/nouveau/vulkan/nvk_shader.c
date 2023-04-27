@@ -1226,6 +1226,7 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
       shader->num_gprs = MIN2((unsigned)bin->info.num_gprs + 5, 255); //XXX: why?
    else
       shader->num_gprs = MAX2(4, bin->info.num_gprs);
+   shader->num_barriers = bin->info.num_barriers;
    shader->slm_size = bin->info.tls_size;
 
    if (nir->info.stage == MESA_SHADER_COMPUTE) {
