@@ -599,7 +599,7 @@ err_free_usc_store_program_bo:
 err_free_store_load_state_bo:
    pvr_bo_free(device, sr_programs->store_load_state_bo);
 
-   return VK_SUCCESS;
+   return result;
 }
 
 static void pvr_ctx_sr_programs_cleanup(struct pvr_device *device,
