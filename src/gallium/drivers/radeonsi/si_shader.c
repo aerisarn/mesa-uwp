@@ -2138,6 +2138,14 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    if (!sel->screen->info.has_image_opcodes)
       NIR_PASS(progress, nir, ac_nir_lower_image_opcodes);
 
+   /* LLVM does not work well with this, so is handled in llvm backend waterfall. */
+   if (shader->use_aco && sel->info.has_non_uniform_tex_access) {
+      nir_lower_non_uniform_access_options options = {
+         .types = nir_lower_non_uniform_texture_access,
+      };
+      NIR_PASS(progress, nir, nir_lower_non_uniform_access, &options);
+   }
+
    NIR_PASS(progress, nir, si_nir_lower_resource, shader, args);
 
    bool is_last_vgt_stage =
