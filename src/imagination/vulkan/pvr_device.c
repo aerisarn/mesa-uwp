@@ -147,7 +147,6 @@ static const struct vk_instance_extension_table pvr_instance_extensions = {
 };
 
 static void pvr_physical_device_get_supported_extensions(
-   const struct pvr_physical_device *pdevice,
    struct vk_device_extension_table *extensions)
 {
    /* clang-format off */
@@ -373,7 +372,7 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
    if (result != VK_SUCCESS)
       goto err_vk_free_primary_path;
 
-   pvr_physical_device_get_supported_extensions(pdevice, &supported_extensions);
+   pvr_physical_device_get_supported_extensions(&supported_extensions);
 
    vk_physical_device_dispatch_table_from_entrypoints(
       &dispatch_table,
