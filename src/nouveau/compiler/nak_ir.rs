@@ -2310,6 +2310,47 @@ impl fmt::Display for OpSuSt {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpSuAtom {
+    pub dst: Dst,
+    pub resident: Dst,
+
+    pub image_dim: ImageDim,
+
+    pub atom_op: AtomOp,
+    pub atom_type: AtomType,
+
+    pub mem_order: MemOrder,
+    pub mem_scope: MemScope,
+
+    #[src_type(GPR)]
+    pub handle: Src,
+
+    #[src_type(SSA)]
+    pub coord: Src,
+
+    #[src_type(SSA)]
+    pub data: Src,
+}
+
+impl fmt::Display for OpSuAtom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SUATOM.P.{}.{}.{}.{}.{} [{}] {} {}",
+            self.image_dim,
+            self.atom_op,
+            self.atom_type,
+            self.mem_order,
+            self.mem_scope,
+            self.coord,
+            self.data,
+            self.handle,
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpLd {
     pub dst: Dst,
 
@@ -2923,6 +2964,7 @@ pub enum Op {
     Txq(OpTxq),
     SuLd(OpSuLd),
     SuSt(OpSuSt),
+    SuAtom(OpSuAtom),
     Ld(OpLd),
     St(OpSt),
     Atom(OpAtom),
@@ -3393,6 +3435,7 @@ impl Instr {
         match self.op {
             Op::ASt(_)
             | Op::SuSt(_)
+            | Op::SuAtom(_)
             | Op::St(_)
             | Op::Atom(_)
             | Op::AtomCas(_)
@@ -3438,6 +3481,7 @@ impl Instr {
             Op::Txq(_) => None,
             Op::SuLd(_) => None,
             Op::SuSt(_) => None,
+            Op::SuAtom(_) => None,
             Op::Ld(_) => None,
             Op::St(_) => None,
             Op::Atom(_) => None,

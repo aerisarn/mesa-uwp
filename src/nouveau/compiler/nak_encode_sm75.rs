@@ -1035,6 +1035,23 @@ impl SM75Instr {
         self.set_field(72..76, op.mask);
     }
 
+    fn encode_suatom(&mut self, op: &OpSuAtom) {
+        self.set_opcode(0x394);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(24..32, op.coord);
+        self.set_reg_src(32..40, op.data);
+        self.set_reg_src(64..72, op.handle);
+        self.set_pred_dst(81..84, op.resident);
+
+        self.set_image_dim(61..64, op.image_dim);
+        self.set_mem_order_scope(&op.mem_order, &op.mem_scope);
+
+        self.set_bit(72, false); /* .BA */
+        self.set_atom_type(73..76, op.atom_type);
+        self.set_atom_op(87..91, op.atom_op);
+    }
+
     fn set_mem_type(&mut self, range: Range<usize>, mem_type: MemType) {
         assert!(range.len() == 3);
         self.set_field(
@@ -1463,6 +1480,7 @@ impl SM75Instr {
             Op::Txq(op) => si.encode_txq(&op),
             Op::SuLd(op) => si.encode_suld(&op),
             Op::SuSt(op) => si.encode_sust(&op),
+            Op::SuAtom(op) => si.encode_suatom(&op),
             Op::Ld(op) => si.encode_ld(&op),
             Op::St(op) => si.encode_st(&op),
             Op::Atom(op) => si.encode_atom(&op),

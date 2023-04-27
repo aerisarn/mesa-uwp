@@ -860,6 +860,30 @@ impl<'a> ShaderFromNir<'a> {
     fn parse_intrinsic(&mut self, intrin: &nir_intrinsic_instr) {
         let srcs = intrin.srcs_as_slice();
         match intrin.intrinsic {
+            nir_intrinsic_bindless_image_atomic => {
+                let handle = self.get_src(&srcs[0]);
+                let dim = self.get_image_dim(intrin);
+                let coord = self.get_image_coord(intrin, dim);
+                /* let sample = self.get_src(&srcs[2]); */
+                let data = self.get_src(&srcs[3]);
+                let atom_type = self.get_atomic_type(intrin);
+                let atom_op = self.get_atomic_op(intrin);
+                let dst = self.get_dst(&intrin.def);
+
+                let atom = OpSuAtom {
+                    dst: dst,
+                    resident: Dst::None,
+                    handle: handle,
+                    coord: coord,
+                    data: data,
+                    atom_op: atom_op,
+                    atom_type: atom_type,
+                    image_dim: dim,
+                    mem_order: MemOrder::Strong,
+                    mem_scope: MemScope::System,
+                };
+                self.instrs.push(atom.into());
+            }
             nir_intrinsic_bindless_image_load => {
                 let handle = self.get_src(&srcs[0]);
                 let dim = self.get_image_dim(intrin);
