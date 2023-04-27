@@ -108,19 +108,29 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_draw_indirect_count               = true,
       .KHR_driver_properties                 = true,
       .KHR_dynamic_rendering                 = true,
+      .KHR_image_format_list                 = true,
+      .KHR_imageless_framebuffer             = true,
       .KHR_get_memory_requirements2          = true,
       .KHR_maintenance1                      = true,
       .KHR_maintenance2                      = true,
       .KHR_maintenance3                      = true,
       .KHR_multiview                         = true,
       .KHR_relaxed_block_layout              = true,
+      .KHR_sampler_mirror_clamp_to_edge      = true,
+      .KHR_separate_depth_stencil_layouts    = true,
       .KHR_shader_draw_parameters            = true,
       .KHR_shader_float16_int8               = pdev->options4.Native16BitShaderOpsSupported,
+      .KHR_shader_float_controls             = true,
+      .KHR_spirv_1_4                         = true,
       .KHR_storage_buffer_storage_class      = true,
 #ifdef DZN_USE_WSI_PLATFORM
       .KHR_swapchain                         = true,
 #endif
+      .KHR_timeline_semaphore                = true,
+      .KHR_uniform_buffer_standard_layout    = true,
       .EXT_descriptor_indexing               = pdev->shader_model >= D3D_SHADER_MODEL_6_6,
+      .EXT_scalar_block_layout               = true,
+      .EXT_separate_stencil_usage            = true,
       .EXT_shader_subgroup_ballot            = true,
       .EXT_shader_subgroup_vote              = true,
       .EXT_subgroup_size_control             = true,
@@ -1409,7 +1419,7 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       pdev->options4.Native16BitShaderOpsSupported;
    const VkPhysicalDeviceVulkan12Features core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-      .samplerMirrorClampToEdge           = false,
+      .samplerMirrorClampToEdge           = true,
       .drawIndirectCount                  = true,
       .storageBuffer8BitAccess            = support_8bit,
       .uniformAndStorageBuffer8BitAccess  = support_8bit,
@@ -1442,7 +1452,7 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .runtimeDescriptorArray                               = support_descriptor_indexing,
 
       .samplerFilterMinmax                = false,
-      .scalarBlockLayout                  = false,
+      .scalarBlockLayout                  = true,
       .imagelessFramebuffer               = true,
       .uniformBufferStandardLayout        = true,
       .shaderSubgroupExtendedTypes        = true,
@@ -3222,6 +3232,7 @@ dzn_sampler_translate_addr_mode(VkSamplerAddressMode in)
    case VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT: return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
    case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE: return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
    case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER: return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+   case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE: return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
    default: unreachable("Invalid address mode");
    }
 }
