@@ -134,8 +134,6 @@ mmap_calc_flags(struct anv_device *device, struct anv_bo *bo,
    if (!device->info->has_llc &&
        (property_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
       flags |= I915_MMAP_WC;
-   if (bo->map_wc)
-      flags |= I915_MMAP_WC;
    if (!(property_flags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT))
       flags |= I915_MMAP_WC;
 

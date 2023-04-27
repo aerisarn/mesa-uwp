@@ -3229,9 +3229,7 @@ VkResult anv_CreateDevice(
 
    result = anv_device_alloc_bo(device, "workaround", 4096,
                                 ANV_BO_ALLOC_CAPTURE |
-                                ANV_BO_ALLOC_MAPPED |
-                                (device->info->has_local_mem ?
-                                 ANV_BO_ALLOC_WRITE_COMBINE : 0),
+                                ANV_BO_ALLOC_MAPPED,
                                 0 /* explicit_address */,
                                 &device->workaround_bo);
    if (result != VK_SUCCESS)
@@ -3740,14 +3738,6 @@ VkResult anv_AllocateMemory(
 
    if (!mem_heap->is_local_mem)
       alloc_flags |= ANV_BO_ALLOC_NO_LOCAL_MEM;
-
-   /* If the allocated buffer might end up in local memory and it's host
-    * visible and uncached, enable CPU write-combining. It should be faster.
-    */
-   if (mem_heap->is_local_mem &&
-       (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == 0 &&
-       (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
-      alloc_flags |= ANV_BO_ALLOC_WRITE_COMBINE;
 
    if (mem->vk.alloc_flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT)
       alloc_flags |= ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS;
