@@ -140,6 +140,8 @@ void
 si_aco_resolve_symbols(struct si_shader *shader, uint32_t *code, uint64_t scratch_va)
 {
    const struct aco_symbol *symbols = (struct aco_symbol *)shader->binary.symbols;
+   const struct si_shader_selector *sel = shader->selector;
+   const union si_shader_key *key = &shader->key;
 
    for (int i = 0; i < shader->binary.num_symbols; i++) {
       uint32_t value = 0;
@@ -151,10 +153,21 @@ si_aco_resolve_symbols(struct si_shader *shader, uint32_t *code, uint64_t scratc
       case aco_symbol_scratch_addr_hi:
          value = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32);
 
-         if (shader->selector->screen->info.gfx_level >= GFX11)
+         if (sel->screen->info.gfx_level >= GFX11)
             value |= S_008F04_SWIZZLE_ENABLE_GFX11(1);
          else
             value |= S_008F04_SWIZZLE_ENABLE_GFX6(1);
+         break;
+      case aco_symbol_lds_ngg_scratch_base:
+         assert(sel->stage <= MESA_SHADER_GEOMETRY && key->ge.as_ngg);
+         value = shader->gs_info.esgs_ring_size * 4;
+         if (sel->stage == MESA_SHADER_GEOMETRY)
+            value += shader->ngg.ngg_emit_size * 4;
+         value = ALIGN(value, 8);
+         break;
+      case aco_symbol_lds_ngg_gs_out_vertex_base:
+         assert(sel->stage == MESA_SHADER_GEOMETRY && key->ge.as_ngg);
+         value = shader->gs_info.esgs_ring_size * 4;
          break;
       default:
          unreachable("invalid aco symbol");
