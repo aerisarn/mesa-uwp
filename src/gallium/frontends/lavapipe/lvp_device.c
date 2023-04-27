@@ -180,6 +180,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_mesh_shader                       = true,
    .EXT_multisampled_render_to_single_sampled = true,
    .EXT_multi_draw                        = true,
+   .EXT_mutable_descriptor_type           = true,
    .EXT_non_seamless_cube_map             = true,
 #if DETECT_OS_LINUX
    .EXT_pageable_device_local_memory      = true,
@@ -414,6 +415,9 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
 
       /* VK_EXT_multisampled_render_to_single_sampled */
       .multisampledRenderToSingleSampled = true,
+
+      /* VK_EXT_mutable_descriptor_type */
+      .mutableDescriptorType = true,
 
       /* VK_EXT_index_type_uint8 */
       .indexTypeUint8 = true,
