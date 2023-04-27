@@ -60,6 +60,10 @@ impl DeadCodePass {
     }
 
     fn is_instr_live(&self, instr: &Instr) -> bool {
+        if instr.pred.is_none() && instr.pred_inv {
+            return false;
+        }
+
         if !instr.can_eliminate() {
             return true;
         }
