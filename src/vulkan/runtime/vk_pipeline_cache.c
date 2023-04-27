@@ -177,46 +177,6 @@ vk_pipeline_cache_remove_object(struct vk_pipeline_cache *cache,
    vk_pipeline_cache_object_unref(cache->base.device, object);
 }
 
-/* Consumes references to both search and replace and produces a reference */
-static struct vk_pipeline_cache_object *
-vk_pipeline_cache_replace_object(struct vk_pipeline_cache *cache,
-                                 uint32_t hash,
-                                 struct vk_pipeline_cache_object *search,
-                                 struct vk_pipeline_cache_object *replace)
-{
-   assert(object_keys_equal(search, replace));
-
-   vk_pipeline_cache_lock(cache);
-   struct set_entry *entry =
-      _mesa_set_search_pre_hashed(cache->object_cache, hash, search);
-
-   struct vk_pipeline_cache_object *found = NULL;
-   if (entry) {
-      if (entry->key == (const void *)search) {
-         /* Drop the reference owned by the cache */
-         vk_pipeline_cache_object_unref(cache->base.device, search);
-
-         entry->key = vk_pipeline_cache_object_ref(replace);
-      } else {
-         found = vk_pipeline_cache_object_ref((void *)entry->key);
-      }
-   } else {
-      /* I guess the object was purged?  Re-add it to the cache */
-      vk_pipeline_cache_object_ref(replace);
-      _mesa_set_add_pre_hashed(cache->object_cache, hash, replace);
-   }
-   vk_pipeline_cache_unlock(cache);
-
-   vk_pipeline_cache_object_unref(cache->base.device, search);
-
-   if (found) {
-      vk_pipeline_cache_object_unref(cache->base.device, replace);
-      return found;
-   } else {
-      return replace;
-   }
-}
-
 static bool
 vk_pipeline_cache_object_serialize(struct vk_pipeline_cache *cache,
                                    struct vk_pipeline_cache_object *object,
@@ -419,8 +379,8 @@ vk_pipeline_cache_lookup_object(struct vk_pipeline_cache *cache,
          return NULL;
       }
 
-      object = vk_pipeline_cache_replace_object(cache, hash, object,
-                                                real_object);
+      vk_pipeline_cache_object_unref(cache->base.device, object);
+      object = vk_pipeline_cache_insert_object(cache, real_object);
    }
 
    assert(object->ops == ops);
