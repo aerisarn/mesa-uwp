@@ -2320,7 +2320,13 @@ static void si_determine_use_aco(struct si_shader *shader)
    if (!(sel->screen->debug_flags & DBG(USE_ACO)))
       return;
 
-   shader->use_aco = false;
+   switch (sel->stage) {
+   case MESA_SHADER_FRAGMENT:
+      shader->use_aco = shader->is_monolithic;
+      break;
+   default:
+      break;
+   }
 }
 
 /* Generate code for the hardware VS shader stage to go with a geometry shader */
