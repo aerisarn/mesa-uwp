@@ -1765,6 +1765,9 @@ if with_clc
     if dep_llvm.version().version_compare('>= 15.0')
       clang_modules += 'clangSupport'
     endif
+    if dep_llvm.version().version_compare('>= 16.0')
+      clang_modules += 'clangASTMatchers'
+    endif
 
     dep_clang = []
     foreach m : clang_modules
