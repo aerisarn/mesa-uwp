@@ -282,11 +282,9 @@ fedora-release:
   variables:
     BUILDTYPE: "release"
     C_LINK_ARGS: >
-      -Wno-error=array-bounds
       -Wno-error=stringop-overflow
       -Wno-error=stringop-overread
     CPP_LINK_ARGS: >
-      -Wno-error=array-bounds
       -Wno-error=stringop-overflow
       -Wno-error=stringop-overread
     DRI_LOADERS: >
