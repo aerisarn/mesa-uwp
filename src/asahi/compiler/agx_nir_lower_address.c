@@ -20,6 +20,50 @@ struct match {
 };
 
 /*
+ * Try to match a multiplication with an immediate value. This generalizes to
+ * both imul and ishl. If successful, returns true and sets the output
+ * variables. Otherwise, returns false.
+ */
+static bool
+match_imul_imm(nir_ssa_scalar scalar, nir_ssa_scalar *variable, uint32_t *imm)
+{
+   if (!nir_ssa_scalar_is_alu(scalar))
+      return false;
+
+   nir_op op = nir_ssa_scalar_alu_op(scalar);
+   if (op != nir_op_imul && op != nir_op_ishl)
+      return false;
+
+   nir_ssa_scalar inputs[] = {
+      nir_ssa_scalar_chase_alu_src(scalar, 0),
+      nir_ssa_scalar_chase_alu_src(scalar, 1),
+   };
+
+   /* For imul check both operands for an immediate, since imul is commutative.
+    * For ishl, only check the operand on the right.
+    */
+   bool commutes = (op == nir_op_imul);
+
+   for (unsigned i = commutes ? 0 : 1; i < ARRAY_SIZE(inputs); ++i) {
+      if (!nir_ssa_scalar_is_const(inputs[i]))
+         continue;
+
+      *variable = inputs[1 - i];
+
+      uint32_t value = nir_ssa_scalar_as_uint(inputs[i]);
+
+      if (op == nir_op_imul)
+         *imm = value;
+      else
+         *imm = (1 << value);
+
+      return true;
+   }
+
+   return false;
+}
+
+/*
  * Try to rewrite (a << (#b + #c)) + #d as ((a << #b) + #d') << #c,
  * assuming that #d is a multiple of 1 << #c. This takes advantage of
  * the hardware's implicit << #c and avoids a right-shift.
