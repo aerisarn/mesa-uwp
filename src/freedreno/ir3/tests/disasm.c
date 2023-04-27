@@ -489,6 +489,7 @@ main(int argc, char **argv)
       unsigned gen = test->gpu_id / 100;
       if (!compilers[gen]) {
          dev_ids[gen].gpu_id = test->gpu_id;
+         dev_ids[gen].chip_id = 0;
          compilers[gen] = ir3_compiler_create(NULL, &dev_ids[gen],
                                               &(struct ir3_compiler_options){});
       }
