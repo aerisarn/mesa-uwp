@@ -1042,6 +1042,27 @@ impl<'a> ShaderFromNir<'a> {
                     self.instrs.push(OpBar {}.into());
                 }
             }
+            nir_intrinsic_shared_atomic => {
+                let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
+                let data = self.get_src(&srcs[1]);
+                let atom_type = self.get_atomic_type(intrin);
+                let atom_op = self.get_atomic_op(intrin);
+                let dst = self.get_dst(&intrin.def);
+
+                let atom = OpAtom {
+                    dst: dst,
+                    addr: addr,
+                    data: data,
+                    atom_op: atom_op,
+                    atom_type: atom_type,
+                    addr_type: MemAddrType::A32,
+                    addr_offset: offset,
+                    mem_space: MemSpace::Shared,
+                    mem_order: MemOrder::Strong,
+                    mem_scope: MemScope::CTA,
+                };
+                self.instrs.push(atom.into());
+            }
             nir_intrinsic_store_global => {
                 let data = self.get_src(&srcs[0]);
                 let size_B =

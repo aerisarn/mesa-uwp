@@ -1211,7 +1211,20 @@ impl SM75Instr {
     }
 
     fn encode_atoms(&mut self, op: &OpAtom) {
-        panic!("Shared atomic ops not yet implemented");
+        self.set_opcode(0x38c);
+
+        self.set_dst(op.dst);
+
+        self.set_reg_src(24..32, op.addr);
+        self.set_reg_src(32..40, op.data);
+        self.set_field(40..64, op.addr_offset);
+
+        assert!(op.addr_type == MemAddrType::A32);
+        assert!(op.mem_order == MemOrder::Strong);
+        assert!(op.mem_scope == MemScope::CTA);
+
+        self.set_atom_type(73..76, op.atom_type);
+        self.set_atom_op(87..91, op.atom_op);
     }
 
     fn encode_atom(&mut self, op: &OpAtom) {
