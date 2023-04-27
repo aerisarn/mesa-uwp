@@ -14,7 +14,9 @@ blake3_x86_no_simd_defs = ['-DBLAKE3_NO_SSE2', '-DBLAKE3_NO_SSE41', '-DBLAKE3_NO
 if cpu_family == 'x86_64'
   if is_windows
     if is_msvc
-      if add_languages('masm', required : false)
+      # An up-to-date version of Meson, not using the VS backend is needed.
+      # See https://github.com/mesonbuild/meson/issues/11653
+      if meson.backend() == 'ninja' and add_languages('masm', required : false)
         files_blake3 += ['blake3_sse2_x86-64_windows_msvc.masm', 'blake3_sse41_x86-64_windows_msvc.masm', 'blake3_avx2_x86-64_windows_msvc.masm', 'blake3_avx512_x86-64_windows_msvc.masm']
       else
         blake3_defs += blake3_x86_no_simd_defs
