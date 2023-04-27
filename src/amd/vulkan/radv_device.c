@@ -1565,9 +1565,8 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
       cb->cb_color_fmask = cb->cb_color_base;
    }
 
-   ntype = radv_translate_color_numformat(iview->vk.format, desc,
-                                          vk_format_get_first_non_void_channel(iview->vk.format));
-   format = radv_translate_colorformat(iview->vk.format);
+   ntype = ac_get_cb_number_type(desc->format);
+   format = ac_get_cb_format(device->physical_device->rad_info.gfx_level, desc->format);
    assert(format != V_028C70_COLOR_INVALID);
 
    swap = radv_translate_colorswap(iview->vk.format, false);

@@ -1634,101 +1634,6 @@ static void si_emit_db_render_state(struct si_context *sctx)
 /*
  * format translation
  */
-uint32_t si_translate_colorformat(enum amd_gfx_level gfx_level,
-                                  enum pipe_format format)
-{
-   const struct util_format_description *desc = util_format_description(format);
-
-#define HAS_SIZE(x, y, z, w)                                                                       \
-   (desc->channel[0].size == (x) && desc->channel[1].size == (y) &&                                \
-    desc->channel[2].size == (z) && desc->channel[3].size == (w))
-
-   if (format == PIPE_FORMAT_R11G11B10_FLOAT) /* isn't plain */
-      return V_028C70_COLOR_10_11_11;
-
-   if (gfx_level >= GFX10_3 &&
-       format == PIPE_FORMAT_R9G9B9E5_FLOAT) /* isn't plain */
-      return V_028C70_COLOR_5_9_9_9;
-
-   if (desc->layout != UTIL_FORMAT_LAYOUT_PLAIN)
-      return V_028C70_COLOR_INVALID;
-
-   /* hw cannot support mixed formats (except depth/stencil, since
-    * stencil is not written to). */
-   if (desc->is_mixed && desc->colorspace != UTIL_FORMAT_COLORSPACE_ZS)
-      return V_028C70_COLOR_INVALID;
-
-   int first_non_void = util_format_get_first_non_void_channel(format);
-
-   /* Reject SCALED formats because we don't implement them for CB. */
-   if (first_non_void >= 0 && first_non_void <= 3 &&
-       (desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_UNSIGNED ||
-        desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_SIGNED) &&
-       !desc->channel[first_non_void].normalized &&
-       !desc->channel[first_non_void].pure_integer)
-      return V_028C70_COLOR_INVALID;
-
-   switch (desc->nr_channels) {
-   case 1:
-      switch (desc->channel[0].size) {
-      case 8:
-         return V_028C70_COLOR_8;
-      case 16:
-         return V_028C70_COLOR_16;
-      case 32:
-         return V_028C70_COLOR_32;
-      }
-      break;
-   case 2:
-      if (desc->channel[0].size == desc->channel[1].size) {
-         switch (desc->channel[0].size) {
-         case 8:
-            return V_028C70_COLOR_8_8;
-         case 16:
-            return V_028C70_COLOR_16_16;
-         case 32:
-            return V_028C70_COLOR_32_32;
-         }
-      } else if (HAS_SIZE(8, 24, 0, 0)) {
-         return V_028C70_COLOR_24_8;
-      } else if (HAS_SIZE(24, 8, 0, 0)) {
-         return V_028C70_COLOR_8_24;
-      }
-      break;
-   case 3:
-      if (HAS_SIZE(5, 6, 5, 0)) {
-         return V_028C70_COLOR_5_6_5;
-      } else if (HAS_SIZE(32, 8, 24, 0)) {
-         return V_028C70_COLOR_X24_8_32_FLOAT;
-      }
-      break;
-   case 4:
-      if (desc->channel[0].size == desc->channel[1].size &&
-          desc->channel[0].size == desc->channel[2].size &&
-          desc->channel[0].size == desc->channel[3].size) {
-         switch (desc->channel[0].size) {
-         case 4:
-            return V_028C70_COLOR_4_4_4_4;
-         case 8:
-            return V_028C70_COLOR_8_8_8_8;
-         case 16:
-            return V_028C70_COLOR_16_16_16_16;
-         case 32:
-            return V_028C70_COLOR_32_32_32_32;
-         }
-      } else if (HAS_SIZE(5, 5, 5, 1)) {
-         return V_028C70_COLOR_1_5_5_5;
-      } else if (HAS_SIZE(1, 5, 5, 5)) {
-         return V_028C70_COLOR_5_5_5_1;
-      } else if (HAS_SIZE(10, 10, 10, 2)) {
-         return V_028C70_COLOR_2_10_10_10;
-      } else if (HAS_SIZE(2, 10, 10, 10)) {
-         return V_028C70_COLOR_10_10_10_2;
-      }
-      break;
-   }
-   return V_028C70_COLOR_INVALID;
-}
 
 static uint32_t si_colorformat_endian_swap(uint32_t colorformat)
 {
@@ -2368,7 +2273,7 @@ static unsigned si_is_vertex_format_supported(struct pipe_screen *screen, enum p
 static bool si_is_colorbuffer_format_supported(enum amd_gfx_level gfx_level,
                                                enum pipe_format format)
 {
-   return si_translate_colorformat(gfx_level, format) != V_028C70_COLOR_INVALID &&
+   return ac_get_cb_format(gfx_level, format) != V_028C70_COLOR_INVALID &&
           si_translate_colorswap(gfx_level, format, false) != ~0U;
 }
 
@@ -2500,35 +2405,13 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
    struct si_texture *tex = (struct si_texture *)surf->base.texture;
    unsigned format, swap, ntype, endian;
    const struct util_format_description *desc;
-   int firstchan;
    unsigned blend_clamp = 0, blend_bypass = 0;
 
    desc = util_format_description(surf->base.format);
-   firstchan = util_format_get_first_non_void_channel(surf->base.format);
-   if (firstchan == -1 || desc->channel[firstchan].type == UTIL_FORMAT_TYPE_FLOAT) {
-      ntype = V_028C70_NUMBER_FLOAT;
-   } else {
-      ntype = V_028C70_NUMBER_UNORM;
-      if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
-         ntype = V_028C70_NUMBER_SRGB;
-      else if (desc->channel[firstchan].type == UTIL_FORMAT_TYPE_SIGNED) {
-         if (desc->channel[firstchan].pure_integer) {
-            ntype = V_028C70_NUMBER_SINT;
-         } else {
-            assert(desc->channel[firstchan].normalized);
-            ntype = V_028C70_NUMBER_SNORM;
-         }
-      } else if (desc->channel[firstchan].type == UTIL_FORMAT_TYPE_UNSIGNED) {
-         if (desc->channel[firstchan].pure_integer) {
-            ntype = V_028C70_NUMBER_UINT;
-         } else {
-            assert(desc->channel[firstchan].normalized);
-            ntype = V_028C70_NUMBER_UNORM;
-         }
-      }
-   }
 
-   format = si_translate_colorformat(sctx->gfx_level, surf->base.format);
+   ntype = ac_get_cb_number_type(surf->base.format);
+   format = ac_get_cb_format(sctx->gfx_level, surf->base.format);
+
    if (format == V_028C70_COLOR_INVALID) {
       PRINT_ERR("Invalid CB format: %d, disabling CB.\n", surf->base.format);
    }
