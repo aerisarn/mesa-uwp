@@ -698,6 +698,14 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->pos_fixed_pt,
                          SI_PARAM_POS_FIXED_PT);
 
+      if (shader->use_aco) {
+         ac_compact_ps_vgpr_args(&args->ac, shader->config.spi_ps_input_addr);
+
+         /* GFX11 set FLAT_SCRATCH directly instead of using this arg. */
+         if (sel->screen->info.gfx_level < GFX11)
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
+      }
+
       /* Monolithic PS emit prolog and epilog in NIR directly. */
       if (!shader->is_monolithic) {
          /* Color inputs from the prolog. */
