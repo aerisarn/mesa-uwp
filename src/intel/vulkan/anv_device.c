@@ -871,7 +871,6 @@ anv_update_meminfo(struct anv_physical_device *device, int fd)
    device->vram_non_mappable.available = devinfo->mem.vram.unmappable.free;
 }
 
-
 static VkResult
 anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
 {
@@ -913,65 +912,6 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
             .is_local_mem = true,
          };
       }
-
-      device->memory.type_count = 3;
-      device->memory.types[0] = (struct anv_memory_type) {
-         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-         .heapIndex = 0,
-      };
-      device->memory.types[1] = (struct anv_memory_type) {
-         .propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                          VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
-         .heapIndex = 1,
-      };
-      device->memory.types[2] = (struct anv_memory_type) {
-         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-         /* This memory type either comes from heaps[0] if there is only
-          * mappable vram region, or from heaps[2] if there is both mappable &
-          * non-mappable vram regions.
-          */
-         .heapIndex = device->vram_non_mappable.size > 0 ? 2 : 0,
-      };
-   } else if (device->info.has_llc) {
-      device->memory.heap_count = 1;
-      device->memory.heaps[0] = (struct anv_memory_heap) {
-         .size = device->sys.size,
-         .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
-         .is_local_mem = false,
-      };
-
-      /* Big core GPUs share LLC with the CPU and thus one memory type can be
-       * both cached and coherent at the same time.
-       *
-       * But some game engines can't handle single type well
-       * https://gitlab.freedesktop.org/mesa/mesa/-/issues/7360#note_1719438
-       *
-       * The second memory type w/out HOST_CACHED_BIT will get write-combining.
-       * See anv_AllocateMemory()).
-       *
-       * The Intel Vulkan driver for Windows also advertises these memory types.
-       */
-      device->memory.type_count = 3;
-      device->memory.types[0] = (struct anv_memory_type) {
-         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-         .heapIndex = 0,
-      };
-      device->memory.types[1] = (struct anv_memory_type) {
-         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-         .heapIndex = 0,
-      };
-      device->memory.types[2] = (struct anv_memory_type) {
-         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                          VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
-         .heapIndex = 0,
-      };
    } else {
       device->memory.heap_count = 1;
       device->memory.heaps[0] = (struct anv_memory_heap) {
@@ -979,26 +919,20 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
          .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
          .is_local_mem = false,
       };
-
-      /* The spec requires that we expose a host-visible, coherent memory
-       * type, but Atom GPUs don't share LLC. Thus we offer two memory types
-       * to give the application a choice between cached, but not coherent and
-       * coherent but uncached (WC though).
-       */
-      device->memory.type_count = 2;
-      device->memory.types[0] = (struct anv_memory_type) {
-         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                          VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
-         .heapIndex = 0,
-      };
-      device->memory.types[1] = (struct anv_memory_type) {
-         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-         .heapIndex = 0,
-      };
    }
+
+   switch (device->info.kmd_type) {
+   case INTEL_KMD_TYPE_XE:
+      result = anv_xe_physical_device_init_memory_types(device);
+      break;
+   case INTEL_KMD_TYPE_I915:
+   default:
+      result = anv_i915_physical_device_init_memory_types(device);
+      break;
+   }
+
+   if (result != VK_SUCCESS)
+      return result;
 
    for (unsigned i = 0; i < device->memory.type_count; i++) {
       VkMemoryPropertyFlags props = device->memory.types[i].propertyFlags;
