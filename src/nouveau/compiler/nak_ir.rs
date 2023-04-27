@@ -2402,6 +2402,51 @@ impl fmt::Display for OpAtom {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpAtomCas {
+    pub dst: Dst,
+
+    #[src_type(GPR)]
+    pub addr: Src,
+
+    #[src_type(SSA)]
+    pub cmpr: Src,
+
+    #[src_type(SSA)]
+    pub data: Src,
+
+    pub atom_type: AtomType,
+
+    pub addr_type: MemAddrType,
+    pub addr_offset: i32,
+
+    pub mem_space: MemSpace,
+    pub mem_order: MemOrder,
+    pub mem_scope: MemScope,
+}
+
+impl fmt::Display for OpAtomCas {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "ATOM.CAS.{}.{}.{} {}",
+            self.atom_type, self.mem_order, self.mem_scope, self.dst
+        )?;
+        write!(f, " [")?;
+        if !self.addr.is_zero() {
+            write!(f, "{}", self.addr)?;
+        }
+        if self.addr_offset > 0 {
+            if !self.addr.is_zero() {
+                write!(f, "+")?;
+            }
+            write!(f, "+{:#x}", self.addr_offset)?;
+        }
+        write!(f, "] {} {}", self.cmpr, self.data)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpALd {
     pub dst: Dst,
 
@@ -2881,6 +2926,7 @@ pub enum Op {
     Ld(OpLd),
     St(OpSt),
     Atom(OpAtom),
+    AtomCas(OpAtomCas),
     ALd(OpALd),
     ASt(OpASt),
     Ipa(OpIpa),
@@ -3349,6 +3395,7 @@ impl Instr {
             | Op::SuSt(_)
             | Op::St(_)
             | Op::Atom(_)
+            | Op::AtomCas(_)
             | Op::MemBar(_)
             | Op::Bra(_)
             | Op::Exit(_)
@@ -3394,6 +3441,7 @@ impl Instr {
             Op::Ld(_) => None,
             Op::St(_) => None,
             Op::Atom(_) => None,
+            Op::AtomCas(_) => None,
             Op::MemBar(_) => None,
             Op::Bar(_) => None,
             Op::Bra(_) | Op::Exit(_) => Some(15),

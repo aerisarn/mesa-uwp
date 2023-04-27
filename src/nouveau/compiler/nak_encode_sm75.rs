@@ -1210,6 +1210,29 @@ impl SM75Instr {
         self.set_atom_op(87..91, op.atom_op);
     }
 
+    fn encode_atomg_cas(&mut self, op: &OpAtomCas) {
+        self.set_opcode(0x38b);
+
+        self.set_dst(op.dst);
+        self.set_pred_dst(81..84, Dst::None);
+
+        self.set_reg_src(24..32, op.addr);
+        self.set_reg_src(32..40, op.cmpr);
+        self.set_field(40..64, op.addr_offset);
+        self.set_reg_src(64..72, op.data);
+
+        self.set_field(
+            72..73,
+            match op.addr_type {
+                MemAddrType::A32 => 0_u8,
+                MemAddrType::A64 => 1_u8,
+            },
+        );
+
+        self.set_atom_type(73..76, op.atom_type);
+        self.set_mem_order_scope(&op.mem_order, &op.mem_scope);
+    }
+
     fn encode_atoms(&mut self, op: &OpAtom) {
         self.set_opcode(0x38c);
 
@@ -1227,11 +1250,36 @@ impl SM75Instr {
         self.set_atom_op(87..91, op.atom_op);
     }
 
+    fn encode_atoms_cas(&mut self, op: &OpAtomCas) {
+        self.set_opcode(0x38d);
+
+        self.set_dst(op.dst);
+
+        self.set_reg_src(24..32, op.addr);
+        self.set_reg_src(32..40, op.cmpr);
+        self.set_field(40..64, op.addr_offset);
+        self.set_reg_src(64..72, op.data);
+
+        assert!(op.addr_type == MemAddrType::A32);
+        assert!(op.mem_order == MemOrder::Strong);
+        assert!(op.mem_scope == MemScope::CTA);
+
+        self.set_atom_type(73..76, op.atom_type);
+    }
+
     fn encode_atom(&mut self, op: &OpAtom) {
         match op.mem_space {
             MemSpace::Global => self.encode_atomg(op),
             MemSpace::Local => panic!("Atomics do not support local"),
             MemSpace::Shared => self.encode_atoms(op),
+        }
+    }
+
+    fn encode_atom_cas(&mut self, op: &OpAtomCas) {
+        match op.mem_space {
+            MemSpace::Global => self.encode_atomg_cas(op),
+            MemSpace::Local => panic!("Atomics do not support local"),
+            MemSpace::Shared => self.encode_atoms_cas(op),
         }
     }
 
@@ -1418,6 +1466,7 @@ impl SM75Instr {
             Op::Ld(op) => si.encode_ld(&op),
             Op::St(op) => si.encode_st(&op),
             Op::Atom(op) => si.encode_atom(&op),
+            Op::AtomCas(op) => si.encode_atom_cas(&op),
             Op::ALd(op) => si.encode_ald(&op),
             Op::ASt(op) => si.encode_ast(&op),
             Op::Ipa(op) => si.encode_ipa(&op),

@@ -914,6 +914,29 @@ impl<'a> ShaderFromNir<'a> {
                 };
                 self.instrs.push(atom.into());
             }
+            nir_intrinsic_global_atomic_swap => {
+                assert!(intrin.atomic_op() == nir_atomic_op_cmpxchg);
+                let bit_size = intrin.def.bit_size();
+                let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
+                let cmpr = self.get_src(&srcs[1]);
+                let data = self.get_src(&srcs[2]);
+                let atom_type = AtomType::U(bit_size);
+                let dst = self.get_dst(&intrin.def);
+
+                let atom = OpAtomCas {
+                    dst: dst,
+                    addr: addr,
+                    cmpr: cmpr,
+                    data: data,
+                    atom_type: atom_type,
+                    addr_type: MemAddrType::A64,
+                    addr_offset: offset,
+                    mem_space: MemSpace::Global,
+                    mem_order: MemOrder::Strong,
+                    mem_scope: MemScope::System,
+                };
+                self.instrs.push(atom.into());
+            }
             nir_intrinsic_load_barycentric_centroid => (),
             nir_intrinsic_load_barycentric_pixel => (),
             nir_intrinsic_load_barycentric_sample => (),
@@ -1054,6 +1077,29 @@ impl<'a> ShaderFromNir<'a> {
                     addr: addr,
                     data: data,
                     atom_op: atom_op,
+                    atom_type: atom_type,
+                    addr_type: MemAddrType::A32,
+                    addr_offset: offset,
+                    mem_space: MemSpace::Shared,
+                    mem_order: MemOrder::Strong,
+                    mem_scope: MemScope::CTA,
+                };
+                self.instrs.push(atom.into());
+            }
+            nir_intrinsic_shared_atomic_swap => {
+                assert!(intrin.atomic_op() == nir_atomic_op_cmpxchg);
+                let bit_size = intrin.def.bit_size();
+                let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
+                let cmpr = self.get_src(&srcs[1]);
+                let data = self.get_src(&srcs[2]);
+                let atom_type = AtomType::U(bit_size);
+                let dst = self.get_dst(&intrin.def);
+
+                let atom = OpAtomCas {
+                    dst: dst,
+                    addr: addr,
+                    cmpr: cmpr,
+                    data: data,
                     atom_type: atom_type,
                     addr_type: MemAddrType::A32,
                     addr_offset: offset,
