@@ -319,6 +319,15 @@ vk_pipeline_cache_insert_object(struct vk_pipeline_cache *cache,
    struct vk_pipeline_cache_object *result = NULL;
    /* add reference to either the found or inserted object */
    if (found) {
+       struct vk_pipeline_cache_object *found_object = (void *)entry->key;
+       if (found_object->ops != object->ops) {
+          /* The found object in the cache isn't fully formed. Replace it. */
+          assert(found_object->ops == &raw_data_object_ops);
+          assert(found_object->ref_cnt == 1 && object->ref_cnt == 1);
+          entry->key = object;
+          object = found_object;
+       }
+
       result = vk_pipeline_cache_object_ref((void *)entry->key);
    } else {
       result = vk_pipeline_cache_object_ref(object);
