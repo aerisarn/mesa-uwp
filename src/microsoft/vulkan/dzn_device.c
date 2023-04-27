@@ -73,6 +73,7 @@
 
 static const struct vk_instance_extension_table instance_extensions = {
    .KHR_get_physical_device_properties2      = true,
+   .KHR_device_group_creation                = true,
 #ifdef DZN_USE_WSI_PLATFORM
    .KHR_surface                              = true,
    .KHR_get_surface_capabilities2            = true,
@@ -100,8 +101,10 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_16bit_storage                     = pdev->options4.Native16BitShaderOpsSupported,
       .KHR_bind_memory2                      = true,
       .KHR_create_renderpass2                = true,
+      .KHR_dedicated_allocation              = true,
       .KHR_depth_stencil_resolve             = true,
       .KHR_descriptor_update_template        = true,
+      .KHR_device_group                      = true,
       .KHR_draw_indirect_count               = true,
       .KHR_driver_properties                 = true,
       .KHR_dynamic_rendering                 = true,
@@ -110,6 +113,7 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_maintenance2                      = true,
       .KHR_maintenance3                      = true,
       .KHR_multiview                         = true,
+      .KHR_relaxed_block_layout              = true,
       .KHR_shader_draw_parameters            = true,
       .KHR_shader_float16_int8               = pdev->options4.Native16BitShaderOpsSupported,
       .KHR_storage_buffer_storage_class      = true,
