@@ -181,20 +181,31 @@ int main(int argc, char **argv)
          bool progress;
          do {
             progress = false;
-            progress |= nir_opt_dce(nir);
-            progress |= nir_opt_cse(nir);
-            progress |= nir_opt_dead_cf(nir);
-            progress |= nir_lower_vars_to_ssa(nir);
-            progress |= nir_copy_prop(nir);
-            progress |= nir_opt_deref(nir);
-            progress |= nir_opt_constant_folding(nir);
-            progress |= nir_opt_copy_prop_vars(nir);
-            progress |= nir_opt_dead_write_vars(nir);
-            progress |= nir_opt_combine_stores(nir, nir_var_all);
-            progress |= nir_remove_dead_variables(nir, nir_var_function_temp, NULL);
-            progress |= nir_opt_algebraic(nir);
-            progress |= nir_opt_if(nir, 0);
-            progress |= nir_opt_loop_unroll(nir);
+
+            #define OPT(pass, ...) ({                                  \
+               bool this_progress = false;                             \
+               NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);      \
+               if (this_progress)                                      \
+                  progress = true;                                     \
+               this_progress;                                          \
+            })
+
+            OPT(nir_opt_dce);
+            OPT(nir_opt_cse);
+            OPT(nir_opt_dead_cf);
+            OPT(nir_lower_vars_to_ssa);
+            OPT(nir_copy_prop);
+            OPT(nir_opt_deref);
+            OPT(nir_opt_constant_folding);
+            OPT(nir_opt_copy_prop_vars);
+            OPT(nir_opt_dead_write_vars);
+            OPT(nir_opt_combine_stores, nir_var_all);
+            OPT(nir_remove_dead_variables, nir_var_function_temp, NULL);
+            OPT(nir_opt_algebraic);
+            OPT(nir_opt_if, 0);
+            OPT(nir_opt_loop_unroll);
+
+            #undef OPT
          } while (progress);
       }
       nir_print_shader(nir, stdout);
