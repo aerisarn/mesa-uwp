@@ -6112,13 +6112,9 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_pds_drawindirect_program pds_prog = { 0 };
    uint32_t word0;
 
-   /* Draw indirect always has index offset and instance count... */
+   /* Draw indirect always has index offset and instance count. */
    list_hdr->index_offset_present = true;
    list_hdr->index_instance_count_present = true;
-
-   /* ...and requires a zeroed index_base_addr. */
-   list_hdr->index_base_addrmsb = PVR_DEV_ADDR_INVALID;
-   assert(!list_hdr->index_addr_present);
 
    pvr_cmd_pack(VDMCTRL_INDEX_LIST0)(&word0, list_hdr);
 
