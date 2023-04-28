@@ -60,6 +60,7 @@ static void
 si_fill_aco_shader_info(struct si_shader *shader, struct aco_shader_info *info)
 {
    const struct si_shader_selector *sel = shader->selector;
+   const union si_shader_key *key = &shader->key;
 
    info->wave_size = shader->wave_size;
    info->workgroup_size = si_get_max_workgroup_size(shader);
@@ -69,7 +70,17 @@ si_fill_aco_shader_info(struct si_shader *shader, struct aco_shader_info *info)
 
    info->image_2d_view_of_3d = sel->screen->info.gfx_level == GFX9;
 
+   if (sel->stage <= MESA_SHADER_GEOMETRY && key->ge.as_ngg && !key->ge.as_es) {
+      info->is_ngg = true;
+      info->has_ngg_culling = key->ge.opt.ngg_culling;
+      info->has_ngg_early_prim_export = gfx10_ngg_export_prim_early(shader);
+   }
+
    switch (sel->stage) {
+   case MESA_SHADER_VERTEX:
+      info->vs.as_es = key->ge.as_es;
+      info->vs.as_ls = key->ge.as_ls;
+      break;
    case MESA_SHADER_FRAGMENT:
       info->ps.num_interp = si_get_ps_num_interp(shader);
       info->ps.spi_ps_input = shader->config.spi_ps_input_ena;
