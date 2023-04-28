@@ -251,6 +251,10 @@ isl_mocs(const struct isl_device *dev, isl_surf_usage_flags_t usage,
    if (external)
       return dev->mocs.external | mask;
 
+   if (intel_device_info_is_mtl(dev->info) &&
+       (usage & ISL_SURF_USAGE_STREAM_OUT_BIT))
+      return dev->mocs.uncached | mask;
+
    if (dev->info->verx10 == 120 && dev->info->platform != INTEL_PLATFORM_DG1) {
       if (usage & ISL_SURF_USAGE_STAGING_BIT)
          return dev->mocs.internal | mask;
