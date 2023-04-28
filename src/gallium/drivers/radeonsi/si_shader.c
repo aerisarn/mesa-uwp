@@ -390,37 +390,35 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
 
       if (sel->info.base.vs.blit_sgprs_amd) {
          declare_vs_blit_inputs(args, sel->info.base.vs.blit_sgprs_amd);
-
-         /* VGPRs */
-         declare_vs_input_vgprs(args, shader, &num_prolog_vgprs);
-         break;
-      }
-
-      declare_per_stage_desc_pointers(args, shader, true);
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_state_bits);
-
-      if (shader->is_gs_copy_shader) {
-         declare_streamout_params(args, shader);
-         /* VGPRs */
-         declare_vs_input_vgprs(args, shader, &num_prolog_vgprs);
-         break;
-      }
-
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.base_vertex);
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.start_instance);
-      declare_vb_descriptor_input_sgprs(args, shader);
-
-      if (shader->key.ge.as_es) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.es2gs_offset);
-      } else if (shader->key.ge.as_ls) {
-         /* no extra parameters */
       } else {
-         declare_streamout_params(args, shader);
+         declare_per_stage_desc_pointers(args, shader, true);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_state_bits);
+
+         if (shader->is_gs_copy_shader) {
+            declare_streamout_params(args, shader);
+         } else {
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.base_vertex);
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.start_instance);
+            declare_vb_descriptor_input_sgprs(args, shader);
+
+            if (shader->key.ge.as_es) {
+               ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.es2gs_offset);
+            } else if (shader->key.ge.as_ls) {
+               /* no extra parameters */
+            } else {
+               declare_streamout_params(args, shader);
+            }
+         }
       }
+
+      /* GFX11 set FLAT_SCRATCH directly instead of using this arg. */
+      if (shader->use_aco && sel->screen->info.gfx_level < GFX11)
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
 
       /* VGPRs */
       declare_vs_input_vgprs(args, shader, &num_prolog_vgprs);
+
       break;
 
    case MESA_SHADER_TESS_CTRL: /* GFX6-GFX8 */
