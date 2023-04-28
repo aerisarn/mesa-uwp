@@ -1805,7 +1805,7 @@ static LLVMValueRef extract_vector_range(struct ac_llvm_context *ctx, LLVMValueR
 }
 
 static unsigned get_cache_policy(struct ac_nir_context *ctx, enum gl_access_qualifier access,
-                                 bool may_store_unaligned, bool writeonly_memory)
+                                 bool may_store_unaligned)
 {
    unsigned cache_policy = 0;
 
@@ -1814,11 +1814,7 @@ static unsigned get_cache_policy(struct ac_nir_context *ctx, enum gl_access_qual
     * get unaligned stores is through shader images.
     */
    if (((may_store_unaligned && ctx->ac.gfx_level == GFX6) ||
-        /* If this is write-only, don't keep data in L1 to prevent
-         * evicting L1 cache lines that may be needed by other
-         * instructions.
-         */
-        writeonly_memory || access & (ACCESS_COHERENT | ACCESS_VOLATILE))) {
+        access & (ACCESS_COHERENT | ACCESS_VOLATILE))) {
       cache_policy |= ac_glc;
    }
 
@@ -1846,8 +1842,7 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
    int elem_size_bytes = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src_data)) / 8;
    unsigned writemask = nir_intrinsic_write_mask(instr);
    enum gl_access_qualifier access = nir_intrinsic_access(instr);
-   bool writeonly_memory = access & ACCESS_NON_READABLE;
-   unsigned cache_policy = get_cache_policy(ctx, access, false, writeonly_memory);
+   unsigned cache_policy = get_cache_policy(ctx, access, false);
 
    struct waterfall_context wctx;
    LLVMValueRef rsrc_base = enter_waterfall_ssbo(ctx, &wctx, instr, instr->src[1]);
@@ -2101,7 +2096,7 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx, nir_intrinsic_
    int elem_size_bytes = instr->dest.ssa.bit_size / 8;
    int num_components = instr->num_components;
    enum gl_access_qualifier access = nir_intrinsic_access(instr);
-   unsigned cache_policy = get_cache_policy(ctx, access, false, false);
+   unsigned cache_policy = get_cache_policy(ctx, access, false);
 
    LLVMValueRef offset = get_src(ctx, instr->src[1]);
    LLVMValueRef rsrc = ctx->abi->load_ssbo ?
@@ -2512,7 +2507,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
 
    struct ac_image_args args = {0};
 
-   args.cache_policy = get_cache_policy(ctx, access, false, false);
+   args.cache_policy = get_cache_policy(ctx, access, false);
    args.tfe = instr->intrinsic == nir_intrinsic_bindless_image_sparse_load;
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
@@ -2599,10 +2594,8 @@ static void visit_image_store(struct ac_nir_context *ctx, const nir_intrinsic_in
    struct waterfall_context wctx;
    LLVMValueRef dynamic_index = enter_waterfall_image(ctx, &wctx, instr);
 
-   bool writeonly_memory = access & ACCESS_NON_READABLE;
    struct ac_image_args args = {0};
-
-   args.cache_policy = get_cache_policy(ctx, access, true, writeonly_memory);
+   args.cache_policy = get_cache_policy(ctx, access, true);
 
    LLVMValueRef src = get_src(ctx, instr->src[3]);
    if (instr->src[3].ssa->bit_size == 64) {
