@@ -2112,6 +2112,13 @@ void pvr_FreeMemory(VkDevice _device,
    if (!mem)
       return;
 
+   /* From the Vulkan spec (§11.2.13. Freeing Device Memory):
+    *   If a memory object is mapped at the time it is freed, it is implicitly
+    *   unmapped.
+    */
+   if (mem->bo->map)
+      device->ws->ops->buffer_unmap(mem->bo);
+
    device->ws->ops->buffer_destroy(mem->bo);
 
    vk_object_free(&device->vk, pAllocator, mem);
