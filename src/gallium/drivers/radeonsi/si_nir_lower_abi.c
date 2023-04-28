@@ -513,6 +513,12 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
    case nir_intrinsic_load_merged_wave_info_amd:
       replacement = ac_nir_load_arg(b, &args->ac, args->ac.merged_wave_info);
       break;
+   case nir_intrinsic_load_workgroup_num_input_vertices_amd:
+      replacement = ac_nir_unpack_arg(b, &args->ac, args->ac.gs_tg_info, 12, 9);
+      break;
+   case nir_intrinsic_load_workgroup_num_input_primitives_amd:
+      replacement = ac_nir_unpack_arg(b, &args->ac, args->ac.gs_tg_info, 22, 9);
+      break;
    default:
       return false;
    }
