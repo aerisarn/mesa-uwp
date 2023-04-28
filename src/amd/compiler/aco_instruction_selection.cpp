@@ -6290,7 +6290,7 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
    memory_sync_info sync = get_memory_sync_info(instr, storage_image, 0);
    unsigned access = nir_intrinsic_access(instr);
    bool glc = ctx->options->gfx_level == GFX6 ||
-              ((access & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE)) &&
+              ((access & (ACCESS_VOLATILE | ACCESS_COHERENT)) &&
                ctx->program->gfx_level < GFX11);
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
@@ -6581,7 +6581,7 @@ visit_store_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
 
    memory_sync_info sync = get_memory_sync_info(instr, storage_buffer, 0);
    bool glc =
-      (nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE)) &&
+      (nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT)) &&
       ctx->program->gfx_level < GFX11;
 
    unsigned write_count = 0;
@@ -6735,7 +6735,7 @@ visit_store_global(isel_context* ctx, nir_intrinsic_instr* instr)
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    memory_sync_info sync = get_memory_sync_info(instr, storage_buffer, 0);
    bool glc =
-      (nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE)) &&
+      (nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT)) &&
       ctx->program->gfx_level < GFX11;
 
    unsigned write_count = 0;
