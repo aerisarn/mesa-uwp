@@ -377,4 +377,7 @@ uint32_t
 lp_build_nir_sample_key(gl_shader_stage stage, nir_tex_instr *instr);
 
 
+void lp_img_op_from_intrinsic(struct lp_img_params *params, nir_intrinsic_instr *instr);
+
+
 #endif

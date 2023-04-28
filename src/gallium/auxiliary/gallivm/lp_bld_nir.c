@@ -1705,6 +1705,37 @@ lp_translate_atomic_op(nir_atomic_op op)
    }
 }
 
+void
+lp_img_op_from_intrinsic(struct lp_img_params *params, nir_intrinsic_instr *instr)
+{
+   if (instr->intrinsic == nir_intrinsic_image_load ||
+       instr->intrinsic == nir_intrinsic_bindless_image_load) {
+      params->img_op = LP_IMG_LOAD;
+      return;
+   }
+
+   if (instr->intrinsic == nir_intrinsic_image_store ||
+       instr->intrinsic == nir_intrinsic_bindless_image_store) {
+      params->img_op = LP_IMG_STORE;
+      return;
+   }
+
+   if (instr->intrinsic == nir_intrinsic_image_atomic_swap ||
+       instr->intrinsic == nir_intrinsic_bindless_image_atomic_swap) {
+      params->img_op = LP_IMG_ATOMIC_CAS;
+      return;
+   }
+
+   if (instr->intrinsic == nir_intrinsic_image_atomic ||
+       instr->intrinsic == nir_intrinsic_bindless_image_atomic) {
+      params->img_op = LP_IMG_ATOMIC;
+      params->op = lp_translate_atomic_op(nir_intrinsic_atomic_op(instr));
+   } else {
+      params->img_op = -1;
+   }
+}
+
+
 static void
 visit_atomic_image(struct lp_build_nir_context *bld_base,
                    nir_intrinsic_instr *instr,
@@ -1718,9 +1749,6 @@ visit_atomic_image(struct lp_build_nir_context *bld_base,
    LLVMValueRef coords[5];
 
    memset(&params, 0, sizeof(params));
-
-   if (instr->intrinsic != nir_intrinsic_image_atomic_swap)
-      params.op = lp_translate_atomic_op(nir_intrinsic_atomic_op(instr));
 
    params.target = glsl_sampler_to_pipe(nir_intrinsic_image_dim(instr),
                                         nir_intrinsic_image_array(instr));
@@ -1744,6 +1772,9 @@ visit_atomic_image(struct lp_build_nir_context *bld_base,
    }
 
    params.outdata = result;
+
+   lp_img_op_from_intrinsic(&params, instr);
+
    params.img_op =
       (instr->intrinsic == nir_intrinsic_image_atomic_swap)
       ? LP_IMG_ATOMIC_CAS : LP_IMG_ATOMIC;
