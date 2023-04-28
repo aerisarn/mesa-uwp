@@ -195,11 +195,15 @@ impl<'a> ShaderFromNir<'a> {
                 })));
             }
             nir_op_fabs => {
-                self.instrs.push(Instr::new(Op::FMov(OpFMov {
-                    dst: dst,
-                    src: srcs[0].fabs(),
-                    saturate: false,
-                })));
+                self.instrs.push(
+                    OpFAdd {
+                        dst: dst,
+                        srcs: [srcs[0].fabs(), Src::new_zero()],
+                        rnd_mode: FRndMode::NearestEven,
+                        saturate: false,
+                    }
+                    .into(),
+                );
             }
             nir_op_fadd => {
                 self.instrs.push(Instr::new_fadd(dst, srcs[0], srcs[1]));
@@ -281,11 +285,15 @@ impl<'a> ShaderFromNir<'a> {
                 ));
             }
             nir_op_fneg => {
-                self.instrs.push(Instr::new(Op::FMov(OpFMov {
-                    dst: dst,
-                    src: srcs[0].fneg(),
-                    saturate: false,
-                })));
+                self.instrs.push(
+                    OpFAdd {
+                        dst: dst,
+                        srcs: [srcs[0].fneg(), Src::new_zero()],
+                        saturate: false,
+                        rnd_mode: FRndMode::NearestEven,
+                    }
+                    .into(),
+                );
             }
             nir_op_fquantize2f16 => {
                 let tmp = self.alloc_ssa(RegFile::GPR);
@@ -319,11 +327,15 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_mufu(dst, MuFuOp::Rsq, srcs[0]));
             }
             nir_op_fsat => {
-                self.instrs.push(Instr::new(Op::FMov(OpFMov {
-                    dst: dst,
-                    src: srcs[0],
-                    saturate: true,
-                })));
+                self.instrs.push(
+                    OpFAdd {
+                        dst: dst,
+                        srcs: [srcs[0], Src::new_zero()],
+                        saturate: true,
+                        rnd_mode: FRndMode::NearestEven,
+                    }
+                    .into(),
+                );
             }
             nir_op_fsign => {
                 let lz = self.alloc_ssa(RegFile::GPR);
@@ -501,10 +513,13 @@ impl<'a> ShaderFromNir<'a> {
                 })));
             }
             nir_op_ineg => {
-                self.instrs.push(Instr::new(Op::IMov(OpIMov {
-                    dst: dst,
-                    src: srcs[0].ineg(),
-                })));
+                self.instrs.push(
+                    OpINeg {
+                        dst: dst,
+                        src: srcs[0],
+                    }
+                    .into(),
+                );
             }
             nir_op_inot => {
                 self.instrs.push(Instr::new_lop2(

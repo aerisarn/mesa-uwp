@@ -310,6 +310,29 @@ impl CopyPropPass {
         for b in &mut f.blocks {
             for instr in &mut b.instrs {
                 match &instr.op {
+                    Op::FAdd(add) => {
+                        let dst = add.dst.as_ssa().unwrap();
+                        assert!(dst.comps() == 1);
+                        let dst = dst[0];
+
+                        if !add.saturate {
+                            if add.srcs[0].is_zero() {
+                                self.add_copy(dst, SrcType::F32, add.srcs[1]);
+                            } else if add.srcs[1].is_zero() {
+                                self.add_copy(dst, SrcType::F32, add.srcs[0]);
+                            }
+                        }
+                    }
+                    Op::DAdd(add) => {
+                        let dst = add.dst.as_ssa().unwrap();
+                        if !add.saturate {
+                            if add.srcs[0].is_zero() {
+                                self.add_fp64_copy(dst, add.srcs[1]);
+                            } else if add.srcs[1].is_zero() {
+                                self.add_fp64_copy(dst, add.srcs[0]);
+                            }
+                        }
+                    }
                     Op::Lop3(lop) => {
                         let dst = lop.dst.as_ssa().unwrap();
                         assert!(dst.comps() == 1);
@@ -389,24 +412,10 @@ impl CopyPropPass {
                             }
                         }
                     }
-                    Op::FMov(mov) => {
-                        let dst = mov.dst.as_ssa().unwrap();
+                    Op::INeg(neg) => {
+                        let dst = neg.dst.as_ssa().unwrap();
                         assert!(dst.comps() == 1);
-                        if !mov.saturate {
-                            self.add_copy(dst[0], SrcType::F32, mov.src);
-                        }
-                    }
-                    Op::DMov(mov) => {
-                        let dst = mov.dst.as_ssa().unwrap();
-                        assert!(dst.comps() == 2);
-                        if !mov.saturate {
-                            self.add_fp64_copy(dst, mov.src);
-                        }
-                    }
-                    Op::IMov(mov) => {
-                        let dst = mov.dst.as_ssa().unwrap();
-                        assert!(dst.comps() == 1);
-                        self.add_copy(dst[0], SrcType::I32, mov.src);
+                        self.add_copy(dst[0], SrcType::I32, neg.src.ineg());
                     }
                     Op::ParCopy(pcopy) => {
                         for (src, dst) in pcopy.iter() {

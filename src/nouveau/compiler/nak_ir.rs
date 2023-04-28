@@ -1743,6 +1743,31 @@ impl fmt::Display for OpMuFu {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpDAdd {
+    pub dst: Dst,
+
+    #[src_type(F64)]
+    pub srcs: [Src; 2],
+
+    pub saturate: bool,
+    pub rnd_mode: FRndMode,
+}
+
+impl fmt::Display for OpDAdd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "DADD")?;
+        if self.saturate {
+            write!(f, ".SAT")?;
+        }
+        if self.rnd_mode != FRndMode::NearestEven {
+            write!(f, ".{}", self.rnd_mode)?;
+        }
+        write!(f, " {} {{ {}, {} }}", self.dst, self.srcs[0], self.srcs[1],)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIAbs {
     pub dst: Dst,
 
@@ -1753,6 +1778,21 @@ pub struct OpIAbs {
 impl fmt::Display for OpIAbs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "IABS {} {}", self.dst, self.src,)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpINeg {
+    pub dst: Dst,
+
+    #[src_type(ALU)]
+    pub src: Src,
+}
+
+impl fmt::Display for OpINeg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "INEG {} {}", self.dst, self.src,)
     }
 }
 
@@ -2678,63 +2718,6 @@ impl fmt::Display for OpUndef {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
-pub struct OpFMov {
-    pub dst: Dst,
-
-    #[src_type(F32)]
-    pub src: Src,
-
-    pub saturate: bool,
-}
-
-impl fmt::Display for OpFMov {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FMOV")?;
-        if self.saturate {
-            write!(f, ".SAT")?;
-        }
-        write!(f, " {} {}", self.dst, self.src)
-    }
-}
-
-#[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
-pub struct OpDMov {
-    pub dst: Dst,
-
-    #[src_type(F64)]
-    pub src: Src,
-
-    pub saturate: bool,
-}
-
-impl fmt::Display for OpDMov {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DMOV")?;
-        if self.saturate {
-            write!(f, ".SAT")?;
-        }
-        write!(f, " {} {}", self.dst, self.src)
-    }
-}
-
-#[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
-pub struct OpIMov {
-    pub dst: Dst,
-
-    #[src_type(I32)]
-    pub src: Src,
-}
-
-impl fmt::Display for OpIMov {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "IMOV {} {}", self.dst, self.src)
-    }
-}
-
-#[repr(C)]
 #[derive(DstsAsSlice)]
 pub struct OpPhiSrcs {
     pub srcs: Vec<Src>,
@@ -2975,7 +2958,9 @@ pub enum Op {
     MuFu(OpMuFu),
     FSet(OpFSet),
     FSetP(OpFSetP),
+    DAdd(OpDAdd),
     IAbs(OpIAbs),
+    INeg(OpINeg),
     IAdd3(OpIAdd3),
     IMad(OpIMad),
     IMad64(OpIMad64),
@@ -3011,9 +2996,6 @@ pub enum Op {
     Bar(OpBar),
     S2R(OpS2R),
     Undef(OpUndef),
-    FMov(OpFMov),
-    DMov(OpDMov),
-    IMov(OpIMov),
     PhiSrcs(OpPhiSrcs),
     PhiDsts(OpPhiDsts),
     Swap(OpSwap),
@@ -3490,7 +3472,9 @@ impl Instr {
             | Op::FSet(_)
             | Op::FSetP(_)
             | Op::MuFu(_)
+            | Op::DAdd(_)
             | Op::IAbs(_)
+            | Op::INeg(_)
             | Op::IAdd3(_)
             | Op::IMad(_)
             | Op::IMad64(_)
@@ -3523,9 +3507,6 @@ impl Instr {
             Op::Bar(_) => None,
             Op::Bra(_) | Op::Exit(_) => Some(15),
             Op::Undef(_)
-            | Op::FMov(_)
-            | Op::DMov(_)
-            | Op::IMov(_)
             | Op::PhiSrcs(_)
             | Op::PhiDsts(_)
             | Op::Swap(_)
@@ -3683,20 +3664,15 @@ impl Shader {
     pub fn lower_vec_split(&mut self) {
         self.map_instrs(&|instr: Instr, _| -> Vec<Instr> {
             match instr.op {
-                Op::FMov(mov) => {
-                    vec![OpFAdd {
-                        dst: mov.dst,
-                        srcs: [Src::new_zero(), mov.src],
-                        saturate: mov.saturate,
-                        rnd_mode: FRndMode::NearestEven,
-                    }
-                    .into()]
-                }
-                Op::IMov(mov) => {
+                Op::INeg(neg) => {
                     vec![OpIAdd3 {
-                        dst: mov.dst,
+                        dst: neg.dst,
                         overflow: Dst::None,
-                        srcs: [Src::new_zero(), mov.src, Src::new_zero()],
+                        srcs: [
+                            Src::new_zero(),
+                            neg.src.ineg(),
+                            Src::new_zero(),
+                        ],
                         carry: Src::new_imm_bool(false),
                     }
                     .into()]
