@@ -4595,6 +4595,7 @@ void nir_def_rewrite_uses_after(nir_def *def, nir_def *new_ssa,
 
 nir_component_mask_t nir_src_components_read(const nir_src *src);
 nir_component_mask_t nir_def_components_read(const nir_def *def);
+bool nir_def_all_uses_are_fsat(const nir_def *def);
 
 static inline bool
 nir_def_is_unused(nir_def *ssa)

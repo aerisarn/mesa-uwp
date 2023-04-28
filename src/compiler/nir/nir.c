@@ -1636,6 +1636,25 @@ nir_def_components_read(const nir_def *def)
    return read_mask;
 }
 
+bool
+nir_def_all_uses_are_fsat(const nir_def *def)
+{
+   nir_foreach_use(src, def) {
+      if (nir_src_is_if(src))
+         return false;
+
+      nir_instr *use = nir_src_parent_instr(src);
+      if (use->type != nir_instr_type_alu)
+         return false;
+
+      nir_alu_instr *alu = nir_instr_as_alu(use);
+      if (alu->op != nir_op_fsat)
+         return false;
+   }
+
+   return true;
+}
+
 nir_block *
 nir_block_unstructured_next(nir_block *block)
 {
