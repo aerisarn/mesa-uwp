@@ -2340,11 +2340,8 @@ ntq_setup_outputs(struct v3d_compile *c)
                 return;
 
         nir_foreach_shader_out_variable(var, c->s) {
-                unsigned array_len = MAX2(glsl_get_length(var->type), 1);
+                assert(glsl_type_is_vector_or_scalar(var->type));
                 unsigned loc = var->data.driver_location * 4;
-
-                assert(array_len == 1);
-                (void)array_len;
 
                 for (int i = 0; i < 4 - var->data.location_frac; i++) {
                         add_output(c, loc + var->data.location_frac + i,
