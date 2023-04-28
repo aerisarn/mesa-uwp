@@ -184,7 +184,7 @@ emit_so_memcpy(struct anv_batch *batch, struct anv_device *device,
       sob._3DCommandOpcode = 0;
       sob._3DCommandSubOpcode = SO_BUFFER_INDEX_0_CMD;
 #endif
-      sob.MOCS = anv_mocs(device, dst.bo, 0),
+      sob.MOCS = anv_mocs(device, dst.bo, ISL_SURF_USAGE_STREAM_OUT_BIT),
       sob.SurfaceBaseAddress = dst;
 
       sob.SOBufferEnable = true;

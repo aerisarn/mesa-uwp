@@ -3500,7 +3500,8 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
 #endif
 
             if (cmd_buffer->state.xfb_enabled && xfb->buffer && xfb->size != 0) {
-               sob.MOCS = anv_mocs(cmd_buffer->device, xfb->buffer->address.bo, 0);
+               sob.MOCS = anv_mocs(cmd_buffer->device, xfb->buffer->address.bo,
+                                   ISL_SURF_USAGE_STREAM_OUT_BIT);
                sob.SurfaceBaseAddress = anv_address_add(xfb->buffer->address,
                                                         xfb->offset);
                sob.SOBufferEnable = true;
