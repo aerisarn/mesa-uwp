@@ -658,9 +658,8 @@ zink_draw(struct pipe_context *pctx,
          VKCTX(CmdSetLineStippleEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.line_stipple_enable);
    }
    if ((BATCH_CHANGED || ctx->sample_mask_changed) && screen->have_full_ds3) {
-      uint8_t samples = ctx->gfx_pipeline_state.multisample ? ctx->gfx_pipeline_state.rast_samples + 1 : 1;
-      VKCTX(CmdSetRasterizationSamplesEXT)(batch->state->cmdbuf, (VkSampleCountFlagBits)(samples));
-      VKCTX(CmdSetSampleMaskEXT)(batch->state->cmdbuf, (VkSampleCountFlagBits)(samples), &ctx->gfx_pipeline_state.sample_mask);
+      VKCTX(CmdSetRasterizationSamplesEXT)(batch->state->cmdbuf, (VkSampleCountFlagBits)(ctx->gfx_pipeline_state.rast_samples + 1));
+      VKCTX(CmdSetSampleMaskEXT)(batch->state->cmdbuf, (VkSampleCountFlagBits)(ctx->gfx_pipeline_state.rast_samples + 1), &ctx->gfx_pipeline_state.sample_mask);
       ctx->sample_mask_changed = false;
    }
    if ((BATCH_CHANGED || ctx->blend_state_changed) && screen->have_full_ds3) {
