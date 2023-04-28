@@ -88,10 +88,7 @@ struct aco_shader_info {
       bool as_ls;
       bool tcs_in_out_eq;
       uint64_t tcs_temp_only_input_mask;
-      bool use_per_attribute_vb_descs;
-      uint32_t input_slot_usage_mask;
       bool has_prolog;
-      bool dynamic_inputs;
    } vs;
    struct {
       uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
