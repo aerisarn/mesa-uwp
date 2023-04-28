@@ -510,6 +510,9 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = ac_nir_load_arg(b, &args->ac, args->ac.gs_vtx_offset[base]);
       break;
    }
+   case nir_intrinsic_load_merged_wave_info_amd:
+      replacement = ac_nir_load_arg(b, &args->ac, args->ac.merged_wave_info);
+      break;
    default:
       return false;
    }

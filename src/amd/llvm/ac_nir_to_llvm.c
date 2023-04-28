@@ -3208,9 +3208,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_lds_ngg_gs_out_vertex_base_amd:
       result = ctx->abi->intrinsic_load(ctx->abi, instr);
       break;
-   case nir_intrinsic_load_merged_wave_info_amd:
-      result = ac_get_arg(&ctx->ac, ctx->args->merged_wave_info);
-      break;
    case nir_intrinsic_load_ordered_id_amd:
       result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info), 0, 12);
       break;
