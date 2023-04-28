@@ -723,6 +723,8 @@ static uint32_t pvr_get_transfer_pbe_packmode(VkFormat format)
       pbe_pack_mode = PVRX(PBESTATE_PACKMODE_U16);
    } else if (format == VK_FORMAT_D32_SFLOAT) {
       pbe_pack_mode = PVRX(PBESTATE_PACKMODE_F32);
+   } else if (format == VK_FORMAT_S8_UINT) {
+      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_U8);
    } else if (format != VK_FORMAT_X8_D24_UNORM_PACK32 && red_width <= 8U &&
               vk_format_is_normalized(format)) {
       pbe_pack_mode = PVRX(PBESTATE_PACKMODE_F16F16F16F16);
