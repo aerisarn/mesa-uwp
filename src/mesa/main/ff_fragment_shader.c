@@ -341,7 +341,7 @@ struct texenv_fragment_program {
 };
 
 static nir_variable *
-register_state_var(texenv_fragment_program *p,
+register_state_var(struct texenv_fragment_program *p,
                    gl_state_index s0,
                    gl_state_index s1,
                    gl_state_index s2,
@@ -374,7 +374,7 @@ register_state_var(texenv_fragment_program *p,
 }
 
 static nir_ssa_def *
-load_state_var(texenv_fragment_program *p,
+load_state_var(struct texenv_fragment_program *p,
                gl_state_index s0,
                gl_state_index s1,
                gl_state_index s2,
@@ -386,7 +386,7 @@ load_state_var(texenv_fragment_program *p,
 }
 
 static nir_ssa_def *
-load_input(texenv_fragment_program *p, gl_varying_slot slot,
+load_input(struct texenv_fragment_program *p, gl_varying_slot slot,
            const struct glsl_type *type)
 {
    nir_variable *var =
@@ -399,17 +399,15 @@ load_input(texenv_fragment_program *p, gl_varying_slot slot,
 }
 
 static nir_ssa_def *
-get_current_attrib(texenv_fragment_program *p, GLuint attrib)
+get_current_attrib(struct texenv_fragment_program *p, GLuint attrib)
 {
    return load_state_var(p, STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED,
-                         (gl_state_index)attrib,
-                         STATE_NOT_STATE_VAR,
-                         STATE_NOT_STATE_VAR,
+                         attrib, 0, 0,
                          glsl_vec4_type());
 }
 
 static nir_ssa_def *
-get_gl_Color(texenv_fragment_program *p)
+get_gl_Color(struct texenv_fragment_program *p)
 {
    if (p->state->inputs_available & VARYING_BIT_COL0) {
       return load_input(p, VARYING_SLOT_COL0, glsl_vec4_type());
@@ -419,7 +417,7 @@ get_gl_Color(texenv_fragment_program *p)
 }
 
 static nir_ssa_def *
-get_source(texenv_fragment_program *p,
+get_source(struct texenv_fragment_program *p,
            GLuint src, GLuint unit)
 {
    switch (src) {
@@ -438,9 +436,7 @@ get_source(texenv_fragment_program *p,
 
    case TEXENV_SRC_CONSTANT:
       return load_state_var(p, STATE_TEXENV_COLOR,
-                            (gl_state_index)unit,
-                            STATE_NOT_STATE_VAR,
-                            STATE_NOT_STATE_VAR,
+                            unit, 0, 0,
                             glsl_vec4_type());
 
    case TEXENV_SRC_PRIMARY_COLOR:
@@ -466,7 +462,7 @@ get_source(texenv_fragment_program *p,
 }
 
 static nir_ssa_def *
-emit_combine_source(texenv_fragment_program *p,
+emit_combine_source(struct texenv_fragment_program *p,
                     GLuint unit,
                     GLuint source,
                     GLuint operand)
@@ -623,7 +619,7 @@ emit_combine(struct texenv_fragment_program *p,
  * Generate instructions for one texture unit's env/combiner mode.
  */
 static nir_ssa_def *
-emit_texenv(texenv_fragment_program *p, GLuint unit)
+emit_texenv(struct texenv_fragment_program *p, GLuint unit)
 {
    const struct state_key *key = p->state;
    GLboolean rgb_saturate, alpha_saturate;
@@ -743,7 +739,8 @@ emit_texenv(texenv_fragment_program *p, GLuint unit)
 /**
  * Generate instruction for getting a texture source term.
  */
-static void load_texture( texenv_fragment_program *p, GLuint unit )
+static void
+load_texture(struct texenv_fragment_program *p, GLuint unit)
 {
    if (p->src_texture[unit])
       return;
@@ -755,7 +752,7 @@ static void load_texture( texenv_fragment_program *p, GLuint unit )
       texcoord = get_current_attrib(p, VERT_ATTRIB_TEX0 + unit);
    } else {
       texcoord = load_input(p,
-         (gl_varying_slot)(VARYING_SLOT_TEX0 + unit),
+         VARYING_SLOT_TEX0 + unit,
          glsl_vec4_type());
    }
 
@@ -775,7 +772,7 @@ static void load_texture( texenv_fragment_program *p, GLuint unit )
    tex->sampler_index = unit;
 
    tex->sampler_dim =
-      _mesa_texture_index_to_sampler_dim((gl_texture_index)texTarget,
+      _mesa_texture_index_to_sampler_dim(texTarget,
                                          &tex->is_array);
 
    tex->coord_components =
@@ -832,7 +829,7 @@ static void load_texture( texenv_fragment_program *p, GLuint unit )
 }
 
 static void
-load_texenv_source(texenv_fragment_program *p,
+load_texenv_source(struct texenv_fragment_program *p,
                    GLuint src, GLuint unit)
 {
    switch (src) {
@@ -862,7 +859,7 @@ load_texenv_source(texenv_fragment_program *p,
  * Generate instructions for loading all texture source terms.
  */
 static GLboolean
-load_texunit_sources( texenv_fragment_program *p, GLuint unit )
+load_texunit_sources(struct texenv_fragment_program *p, GLuint unit)
 {
    const struct state_key *key = p->state;
    GLuint i;
@@ -886,7 +883,7 @@ load_texunit_sources( texenv_fragment_program *p, GLuint unit )
  * GL_FOG_COORDINATE_EXT is set to GL_FRAGMENT_DEPTH_EXT.
  */
 static nir_ssa_def *
-emit_fog_instructions(texenv_fragment_program *p,
+emit_fog_instructions(struct texenv_fragment_program *p,
                       nir_ssa_def *fragcolor)
 {
    struct state_key *key = p->state;
@@ -900,9 +897,7 @@ emit_fog_instructions(texenv_fragment_program *p,
    nir_ssa_def *fog_alpha = nir_channel(p->b, fragcolor, 3);
 
    oparams = load_state_var(p, STATE_FOG_PARAMS_OPTIMIZED,
-                            STATE_NOT_STATE_VAR,
-                            STATE_NOT_STATE_VAR,
-                            STATE_NOT_STATE_VAR,
+                            0, 0, 0,
                             glsl_vec4_type());
    assert(oparams);
 
@@ -910,9 +905,7 @@ emit_fog_instructions(texenv_fragment_program *p,
    assert(fogcoord);
 
    color = load_state_var(p, STATE_FOG_COLOR,
-                          STATE_NOT_STATE_VAR,
-                          STATE_NOT_STATE_VAR,
-                          STATE_NOT_STATE_VAR,
+                          0, 0, 0,
                           glsl_vec4_type());
    assert(color);
 
@@ -957,7 +950,7 @@ emit_fog_instructions(texenv_fragment_program *p,
 }
 
 static void
-emit_instructions(texenv_fragment_program *p)
+emit_instructions(struct texenv_fragment_program *p)
 {
    struct state_key *key = p->state;
    GLuint unit;
@@ -1024,7 +1017,7 @@ create_new_program(struct state_key *key,
                    struct gl_program *program,
                    const nir_shader_compiler_options *options)
 {
-   texenv_fragment_program p;
+   struct texenv_fragment_program p;
 
    memset(&p, 0, sizeof(p));
    p.state = key;
@@ -1053,8 +1046,6 @@ create_new_program(struct state_key *key,
 
    return s;
 }
-
-extern "C" {
 
 /**
  * Return a fragment program which implements the current
@@ -1100,6 +1091,4 @@ _mesa_get_fixed_func_fragment_program(struct gl_context *ctx)
    }
 
    return prog;
-}
-
 }
