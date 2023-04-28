@@ -128,7 +128,7 @@ VkResult pvr_bo_alloc(struct pvr_device *device,
                       uint64_t alignment,
                       uint64_t flags,
                       struct pvr_bo **const bo_out);
-void *pvr_bo_cpu_map(struct pvr_device *device, struct pvr_bo *bo);
+VkResult pvr_bo_cpu_map(struct pvr_device *device, struct pvr_bo *bo);
 void pvr_bo_cpu_unmap(struct pvr_device *device, struct pvr_bo *bo);
 void pvr_bo_free(struct pvr_device *device, struct pvr_bo *bo);
 
@@ -146,11 +146,11 @@ void pvr_bo_suballoc_free(struct pvr_suballoc_bo *suballoc_bo);
 void *pvr_bo_suballoc_get_map_addr(const struct pvr_suballoc_bo *suballoc_bo);
 
 #if defined(HAVE_VALGRIND)
-void *pvr_bo_cpu_map_unchanged(struct pvr_device *device,
-                               struct pvr_bo *pvr_bo);
+VkResult pvr_bo_cpu_map_unchanged(struct pvr_device *device,
+                                  struct pvr_bo *pvr_bo);
 #else /* defined(HAVE_VALGRIND) */
-static ALWAYS_INLINE void *pvr_bo_cpu_map_unchanged(struct pvr_device *device,
-                                                    struct pvr_bo *pvr_bo)
+static ALWAYS_INLINE VkResult
+pvr_bo_cpu_map_unchanged(struct pvr_device *device, struct pvr_bo *pvr_bo)
 {
    return pvr_bo_cpu_map(device, pvr_bo);
 }

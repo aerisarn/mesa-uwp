@@ -370,14 +370,12 @@ VkResult pvr_bo_alloc(struct pvr_device *device,
       goto err_free_bo;
 
    if (flags & PVR_BO_ALLOC_FLAG_CPU_MAPPED) {
-      void *map = device->ws->ops->buffer_map(pvr_bo->bo);
-      if (!map) {
-         result = VK_ERROR_MEMORY_MAP_FAILED;
+      result = device->ws->ops->buffer_map(pvr_bo->bo);
+      if (result != VK_SUCCESS)
          goto err_buffer_destroy;
-      }
 
       if (flags & PVR_BO_ALLOC_FLAG_ZERO_ON_ALLOC)
-         VG(VALGRIND_MAKE_MEM_DEFINED(map, pvr_bo->bo->size));
+         VG(VALGRIND_MAKE_MEM_DEFINED(pvr_bo->bo->map, pvr_bo->bo->size));
    }
 
    result = device->ws->ops->heap_alloc(heap, size, alignment, &pvr_bo->vma);
@@ -423,7 +421,7 @@ err_out:
  *
  * \sa #pvr_bo_alloc(), #PVR_BO_ALLOC_FLAG_CPU_MAPPED
  */
-void *pvr_bo_cpu_map(struct pvr_device *device, struct pvr_bo *pvr_bo)
+VkResult pvr_bo_cpu_map(struct pvr_device *device, struct pvr_bo *pvr_bo)
 {
    assert(!pvr_bo->bo->map);
 
@@ -706,10 +704,11 @@ void *pvr_bo_suballoc_get_map_addr(const struct pvr_suballoc_bo *suballoc_bo)
 }
 
 #if defined(HAVE_VALGRIND)
-void *pvr_bo_cpu_map_unchanged(struct pvr_device *device, struct pvr_bo *pvr_bo)
+VkResult pvr_bo_cpu_map_unchanged(struct pvr_device *device,
+                                  struct pvr_bo *pvr_bo)
 {
-   void *map = pvr_bo_cpu_map(device, pvr_bo);
-   if (map) {
+   VkResult result = pvr_bo_cpu_map(device, pvr_bo);
+   if (result == VK_SUCCESS) {
       unsigned ret = VALGRIND_SET_VBITS(pvr_bo->bo->map,
                                         pvr_bo->bo->vbits,
                                         pvr_bo->bo->size);
@@ -717,6 +716,6 @@ void *pvr_bo_cpu_map_unchanged(struct pvr_device *device, struct pvr_bo *pvr_bo)
          mesa_loge("Failed to set vbits; expect bad valgrind results.");
    }
 
-   return map;
+   return result;
 }
 #endif /* defined(HAVE_VALGRIND) */

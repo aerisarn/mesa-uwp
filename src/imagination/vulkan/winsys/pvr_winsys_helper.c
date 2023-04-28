@@ -318,33 +318,26 @@ pvr_winsys_helper_fill_static_memory(struct pvr_winsys *const ws,
                                      struct pvr_winsys_vma *const pds_vma,
                                      struct pvr_winsys_vma *const usc_vma)
 {
-   uint8_t *general_ptr, *pds_ptr, *usc_ptr;
    VkResult result;
 
-   general_ptr = ws->ops->buffer_map(general_vma->bo);
-   if (!general_ptr) {
-      result = VK_ERROR_MEMORY_MAP_FAILED;
+   result = ws->ops->buffer_map(general_vma->bo);
+   if (result != VK_SUCCESS)
       goto err_out;
-   }
 
-   pds_ptr = ws->ops->buffer_map(pds_vma->bo);
-   if (!pds_ptr) {
-      result = VK_ERROR_MEMORY_MAP_FAILED;
+   result = ws->ops->buffer_map(pds_vma->bo);
+   if (result != VK_SUCCESS)
       goto err_pvr_srv_winsys_buffer_unmap_general;
-   }
 
-   usc_ptr = ws->ops->buffer_map(usc_vma->bo);
-   if (!usc_ptr) {
-      result = VK_ERROR_MEMORY_MAP_FAILED;
+   result = ws->ops->buffer_map(usc_vma->bo);
+   if (result != VK_SUCCESS)
       goto err_pvr_srv_winsys_buffer_unmap_pds;
-   }
 
-   pvr_setup_static_vdm_sync(pds_ptr,
+   pvr_setup_static_vdm_sync(pds_vma->bo->map,
                              pds_vma->heap->static_data_offsets.vdm_sync,
-                             usc_ptr,
+                             usc_vma->bo->map,
                              usc_vma->heap->static_data_offsets.vdm_sync);
 
-   pvr_setup_static_pixel_event_program(pds_ptr,
+   pvr_setup_static_pixel_event_program(pds_vma->bo->map,
                                         pds_vma->heap->static_data_offsets.eot);
 
    ws->ops->buffer_unmap(usc_vma->bo);

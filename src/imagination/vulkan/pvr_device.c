@@ -2184,7 +2184,7 @@ VkResult pvr_MapMemory(VkDevice _device,
 {
    PVR_FROM_HANDLE(pvr_device, device, _device);
    PVR_FROM_HANDLE(pvr_device_memory, mem, _memory);
-   void *map;
+   VkResult result;
 
    if (!mem) {
       *ppData = NULL;
@@ -2212,11 +2212,11 @@ VkResult pvr_MapMemory(VkDevice _device,
    }
 
    /* Map it all at once */
-   map = device->ws->ops->buffer_map(mem->bo);
-   if (!map)
-      return vk_error(device, VK_ERROR_MEMORY_MAP_FAILED);
+   result = device->ws->ops->buffer_map(mem->bo);
+   if (result != VK_SUCCESS)
+      return result;
 
-   *ppData = map + offset;
+   *ppData = mem->bo->map + offset;
 
    return VK_SUCCESS;
 }

@@ -156,7 +156,7 @@ void pvr_srv_winsys_buffer_destroy(struct pvr_winsys_bo *bo);
 VkResult pvr_srv_winsys_buffer_get_fd(struct pvr_winsys_bo *bo,
                                       int *const fd_out);
 
-void *pvr_srv_winsys_buffer_map(struct pvr_winsys_bo *bo);
+VkResult pvr_srv_winsys_buffer_map(struct pvr_winsys_bo *bo);
 void pvr_srv_winsys_buffer_unmap(struct pvr_winsys_bo *bo);
 
 VkResult pvr_srv_heap_alloc_reserved(struct pvr_winsys_heap *heap,

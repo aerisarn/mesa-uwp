@@ -26,8 +26,11 @@
 
 #include <errno.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/types.h>
 #include <xf86drm.h>
 
 #include "pvr_types.h"
@@ -78,6 +81,43 @@ pvr_winsys_helper_fill_static_memory(struct pvr_winsys *const ws,
                                      struct pvr_winsys_vma *const general_vma,
                                      struct pvr_winsys_vma *const pds_vma,
                                      struct pvr_winsys_vma *const usc_vma);
+
+static inline VkResult pvr_mmap(const size_t len,
+                                const int prot,
+                                const int flags,
+                                const int fd,
+                                const off_t offset,
+                                void **const map_out)
+{
+   void *const map = mmap(NULL, len, prot, flags, fd, offset);
+   if (map == MAP_FAILED) {
+      const int err = errno;
+      return vk_errorf(NULL,
+                       VK_ERROR_MEMORY_MAP_FAILED,
+                       "mmap failed (errno %d: %s)",
+                       err,
+                       strerror(err));
+   }
+
+   *map_out = map;
+
+   return VK_SUCCESS;
+}
+
+static inline VkResult pvr_munmap(void *const addr, const size_t len)
+{
+   const int ret = munmap(addr, len);
+   if (ret) {
+      const int err = errno;
+      return vk_errorf(NULL,
+                       VK_ERROR_UNKNOWN,
+                       "munmap failed (errno %d: %s)",
+                       err,
+                       strerror(err));
+   }
+
+   return VK_SUCCESS;
+}
 
 #define pvr_ioctlf(fd, request, arg, error, fmt, args...) \
    ({                                                     \

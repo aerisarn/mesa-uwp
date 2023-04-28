@@ -299,28 +299,28 @@ VkResult pvr_srv_winsys_buffer_get_fd(struct pvr_winsys_bo *bo,
    return VK_SUCCESS;
 }
 
-void *pvr_srv_winsys_buffer_map(struct pvr_winsys_bo *bo)
+VkResult pvr_srv_winsys_buffer_map(struct pvr_winsys_bo *bo)
 {
    struct pvr_srv_winsys_bo *srv_bo = to_pvr_srv_winsys_bo(bo);
    struct pvr_winsys *ws = bo->ws;
    const int prot =
       (srv_bo->flags & PVR_SRV_MEMALLOCFLAG_CPU_WRITEABLE ? PROT_WRITE : 0) |
       (srv_bo->flags & PVR_SRV_MEMALLOCFLAG_CPU_READABLE ? PROT_READ : 0);
+   VkResult result;
 
    /* assert if memory is already mapped */
    assert(!bo->map);
 
    /* Map the full PMR to CPU space */
-   bo->map = mmap(NULL,
-                  bo->size,
-                  prot,
-                  MAP_SHARED,
-                  ws->render_fd,
-                  (off_t)srv_bo->pmr << ws->log2_page_size);
-   if (bo->map == MAP_FAILED) {
+   result = pvr_mmap(bo->size,
+                     prot,
+                     MAP_SHARED,
+                     ws->render_fd,
+                     (off_t)srv_bo->pmr << ws->log2_page_size,
+                     &bo->map);
+   if (result != VK_SUCCESS) {
       bo->map = NULL;
-      vk_error(NULL, VK_ERROR_MEMORY_MAP_FAILED);
-      return NULL;
+      return result;
    }
 
    VG(VALGRIND_MALLOCLIKE_BLOCK(bo->map,
@@ -331,7 +331,7 @@ void *pvr_srv_winsys_buffer_map(struct pvr_winsys_bo *bo)
 
    buffer_acquire(srv_bo);
 
-   return bo->map;
+   return VK_SUCCESS;
 }
 
 void pvr_srv_winsys_buffer_unmap(struct pvr_winsys_bo *bo)
@@ -344,8 +344,7 @@ void pvr_srv_winsys_buffer_unmap(struct pvr_winsys_bo *bo)
    VG(VALGRIND_FREELIKE_BLOCK(bo->map, 0));
 
    /* Unmap the whole PMR from CPU space */
-   if (munmap(bo->map, bo->size))
-      vk_error(NULL, VK_ERROR_UNKNOWN);
+   pvr_munmap(bo->map, bo->size);
 
    bo->map = NULL;
 
