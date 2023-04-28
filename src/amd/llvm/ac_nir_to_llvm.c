@@ -3729,12 +3729,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_packed_passthrough_primitive_amd:
       result = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[0]);
       break;
-   case nir_intrinsic_load_initial_edgeflags_amd:
-      if (ctx->stage == MESA_SHADER_VERTEX && !ctx->info->vs.blit_sgprs_amd)
-         result = ac_pack_edgeflags_for_export(&ctx->ac, ctx->args);
-      else
-         result = ctx->ac.i32_0;
-      break;
    case nir_intrinsic_is_subgroup_invocation_lt_amd: {
       LLVMValueRef count = LLVMBuildAnd(ctx->ac.builder, get_src(ctx, instr->src[0]),
                                         LLVMConstInt(ctx->ac.i32, 0xff, 0), "");

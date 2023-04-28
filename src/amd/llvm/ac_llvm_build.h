@@ -520,9 +520,6 @@ struct ac_ngg_prim {
    LLVMValueRef passthrough;
 };
 
-LLVMValueRef ac_pack_edgeflags_for_export(struct ac_llvm_context *ctx,
-                                          const struct ac_shader_args *args);
-
 LLVMTypeRef ac_arg_type_to_pointee_type(struct ac_llvm_context *ctx, enum ac_arg_type type);
 
 static inline LLVMValueRef ac_get_arg(struct ac_llvm_context *ctx, struct ac_arg arg)
