@@ -1955,10 +1955,21 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_PIPELINE;
 }
 
+static bool
+radv_get_depth_clip_enable(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   return d->vk.rs.depth_clip_enable == VK_MESA_DEPTH_CLIP_ENABLE_TRUE ||
+          (d->vk.rs.depth_clip_enable == VK_MESA_DEPTH_CLIP_ENABLE_NOT_CLAMP &&
+           !d->vk.rs.depth_clamp_enable);
+}
+
 static enum radv_depth_clamp_mode
 radv_get_depth_clamp_mode(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   bool depth_clip_enable = radv_get_depth_clip_enable(cmd_buffer);
    const struct radv_device *device = cmd_buffer->device;
    enum radv_depth_clamp_mode mode;
 
@@ -1967,7 +1978,7 @@ radv_get_depth_clamp_mode(struct radv_cmd_buffer *cmd_buffer)
       /* For optimal performance, depth clamping should always be enabled except if the application
        * disables clamping explicitly or uses depth values outside of the [0.0, 1.0] range.
        */
-      if (!d->vk.rs.depth_clip_enable ||
+      if (!depth_clip_enable ||
           device->vk.enabled_extensions.EXT_depth_range_unrestricted) {
          mode = RADV_DEPTH_CLAMP_MODE_DISABLED;
       } else {
@@ -2364,11 +2375,12 @@ static void
 radv_emit_clipping(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   bool depth_clip_enable = radv_get_depth_clip_enable(cmd_buffer);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028810_PA_CL_CLIP_CNTL,
                           S_028810_DX_RASTERIZATION_KILL(d->vk.rs.rasterizer_discard_enable) |
-                             S_028810_ZCLIP_NEAR_DISABLE(!d->vk.rs.depth_clip_enable) |
-                             S_028810_ZCLIP_FAR_DISABLE(!d->vk.rs.depth_clip_enable) |
+                             S_028810_ZCLIP_NEAR_DISABLE(!depth_clip_enable) |
+                             S_028810_ZCLIP_FAR_DISABLE(!depth_clip_enable) |
                              S_028810_DX_CLIP_SPACE_DEF(!d->vk.vp.depth_clip_negative_one_to_one) |
                              S_028810_DX_LINEAR_ATTR_CLIP_ENA(1));
 }
@@ -4511,7 +4523,8 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE |
-                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE))
+                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE |
+                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLAMP_ENABLE))
       radv_emit_clipping(cmd_buffer);
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP | RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE |
