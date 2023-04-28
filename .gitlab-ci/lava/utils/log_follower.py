@@ -124,6 +124,7 @@ class LogFollower:
         for log_section in LOG_SECTIONS:
             if new_section := log_section.from_log_line_to_section(line):
                 self.update_section(new_section)
+                break
 
     def detect_kernel_dump_line(self, line: dict[str, Union[str, list]]) -> bool:
         # line["msg"] can be a list[str] when there is a kernel dump
