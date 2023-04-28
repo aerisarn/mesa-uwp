@@ -106,7 +106,7 @@ radv_get_int_debug_option(const char *name, int default_value)
 static bool
 radv_spm_trace_enabled()
 {
-   return radv_sqtt_enabled() && debug_get_bool_option("RADV_THREAD_TRACE_CACHE_COUNTERS", false);
+   return radv_sqtt_enabled() && debug_get_bool_option("RADV_THREAD_TRACE_CACHE_COUNTERS", true);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
