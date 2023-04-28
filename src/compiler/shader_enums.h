@@ -977,12 +977,27 @@ enum gl_frag_stencil_layout
 };
 
 /**
- * \brief Buffer access qualifiers
+ * \brief Memory access qualifiers
  */
 enum gl_access_qualifier
 {
+   /**
+    * This means that the memory scope is the current device. It indicates
+    * that reads and writes are coherent with reads and writes from other
+    * shader invocations and other workgroups.
+    */
    ACCESS_COHERENT      = (1 << 0),
+
+   /**
+    * This means non-aliased. It indicates that the accessed address is not
+    * accessible through any other memory resource in the shader.
+    */
    ACCESS_RESTRICT      = (1 << 1),
+
+   /**
+    * The access cannot be eliminated, duplicated, or combined with other
+    * accesses.
+    */
    ACCESS_VOLATILE      = (1 << 2),
 
    /* The memory used by the access/variable is not read. */
