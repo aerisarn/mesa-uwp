@@ -3513,9 +3513,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ac_build_gather_values(&ctx->ac, coord, 3);
       break;
    }
-   case nir_intrinsic_load_gs_vertex_offset_amd:
-      result = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[nir_intrinsic_base(instr)]);
-      break;
    case nir_intrinsic_vote_all: {
       result = ac_build_vote_all(&ctx->ac, get_src(ctx, instr->src[0]));
       break;
