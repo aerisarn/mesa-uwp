@@ -144,6 +144,7 @@ static int r300_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
         case PIPE_CAP_CLIP_HALFZ:
         case PIPE_CAP_ALLOW_MAPPED_BUFFERS_DURING_EXECUTION:
         case PIPE_CAP_LEGACY_MATH_RULES:
+        case PIPE_CAP_TGSI_TEXCOORD:
             return 1;
 
         case PIPE_CAP_TEXTURE_TRANSFER_MODES:

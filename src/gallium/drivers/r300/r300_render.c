@@ -41,6 +41,7 @@
 #include "r300_emit.h"
 #include "r300_reg.h"
 #include "r300_vs.h"
+#include "r300_fs.h"
 
 #include <limits.h>
 
@@ -801,11 +802,13 @@ static void r300_draw_vbo(struct pipe_context* pipe,
         return;
     }
 
-    if (r300->sprite_coord_enable != 0)
+    if (r300->sprite_coord_enable != 0 ||
+        r300_fs(r300)->shader->inputs.pcoord != ATTR_UNUSED) {
         if ((info.mode == MESA_PRIM_POINTS) != r300->is_point) {
             r300->is_point = !r300->is_point;
             r300_mark_atom_dirty(r300, &r300->rs_block_state);
         }
+    }
 
     r300_update_derived_state(r300);
 
@@ -888,11 +891,14 @@ static void r300_swtcl_draw_vbo(struct pipe_context* pipe,
                          info->index_size, ~0);
     }
 
-    if (r300->sprite_coord_enable != 0)
+    if (r300->sprite_coord_enable != 0 ||
+        r300_fs(r300)->shader->inputs.pcoord != ATTR_UNUSED) {
         if ((info->mode == MESA_PRIM_POINTS) != r300->is_point) {
             r300->is_point = !r300->is_point;
             r300_mark_atom_dirty(r300, &r300->rs_block_state);
         }
+    }
+
 
     r300_update_derived_state(r300);
 
