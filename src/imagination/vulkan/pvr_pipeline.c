@@ -1863,6 +1863,7 @@ static void pvr_graphics_pipeline_alloc_vertex_special_vars(
    layout.instance_id_offset = (int16_t)next_free_reg;
    next_free_reg++;
 
+   *num_vertex_input_regs = next_free_reg;
    *special_vars_layout_out = layout;
 }
 
