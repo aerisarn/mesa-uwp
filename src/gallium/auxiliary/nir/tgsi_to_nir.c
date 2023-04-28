@@ -1673,7 +1673,7 @@ get_mem_qualifier(struct tgsi_full_instruction *tgsi_inst)
    if (tgsi_inst->Memory.Qualifier & TGSI_MEMORY_VOLATILE)
       access |= ACCESS_VOLATILE;
    if (tgsi_inst->Memory.Qualifier & TGSI_MEMORY_STREAM_CACHE_POLICY)
-      access |= ACCESS_STREAM_CACHE_POLICY;
+      access |= ACCESS_NON_TEMPORAL;
 
    return access;
 }

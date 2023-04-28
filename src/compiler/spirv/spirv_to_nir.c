@@ -3113,7 +3113,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    vtn_foreach_decoration(b, sampled_val, non_uniform_decoration_cb, &access);
 
    if (operands & SpvImageOperandsNontemporalMask)
-      access |= ACCESS_STREAM_CACHE_POLICY;
+      access |= ACCESS_NON_TEMPORAL;
 
    if (sampler && b->options->force_tex_non_uniform)
       access |= ACCESS_NON_UNIFORM;
@@ -3370,7 +3370,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       if (operands & SpvImageOperandsVolatileTexelMask)
          access |= ACCESS_VOLATILE;
       if (operands & SpvImageOperandsNontemporalMask)
-         access |= ACCESS_STREAM_CACHE_POLICY;
+         access |= ACCESS_NON_TEMPORAL;
 
       break;
    }
@@ -3412,7 +3412,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       if (operands & SpvImageOperandsVolatileTexelMask)
          access |= ACCESS_VOLATILE;
       if (operands & SpvImageOperandsNontemporalMask)
-         access |= ACCESS_STREAM_CACHE_POLICY;
+         access |= ACCESS_NON_TEMPORAL;
 
       break;
    }

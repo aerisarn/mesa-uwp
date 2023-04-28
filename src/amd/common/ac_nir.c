@@ -524,7 +524,7 @@ emit_streamout(nir_builder *b, unsigned stream, nir_xfb_info *info,
       nir_ssa_def *zero = nir_imm_int(b, 0);
       nir_store_buffer_amd(b, data, so_buffers[buffer], so_write_offset[buffer], zero, zero,
                            .base = output->offset, .write_mask = mask,
-                           .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY);
+                           .access = ACCESS_COHERENT | ACCESS_NON_TEMPORAL);
    }
 
    nir_pop_if(b, NULL);
@@ -581,7 +581,7 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
             outputs.data[i][j] =
                nir_load_buffer_amd(&b, 1, 32, gsvs_ring, vtx_offset, zero, zero,
                                    .base = offset,
-                                   .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY);
+                                   .access = ACCESS_COHERENT | ACCESS_NON_TEMPORAL);
 
             /* clamp legacy color output */
             if (i == VARYING_SLOT_COL0 || i == VARYING_SLOT_COL1 ||
@@ -607,7 +607,7 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
             nir_ssa_def *data =
                nir_load_buffer_amd(&b, 1, 32, gsvs_ring, vtx_offset, zero, zero,
                                    .base = offset,
-                                   .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY);
+                                   .access = ACCESS_COHERENT | ACCESS_NON_TEMPORAL);
 
             if (has_lo_16bit)
                outputs.data_16bit_lo[i][j] = nir_unpack_32_2x16_split_x(&b, data);
@@ -944,7 +944,7 @@ lower_legacy_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *in
          nir_ssa_def *data = nir_u2uN(b, output, 32);
 
          nir_store_buffer_amd(b, data, gsvs_ring, voffset, soffset, nir_imm_int(b, 0),
-                              .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY |
+                              .access = ACCESS_COHERENT | ACCESS_NON_TEMPORAL |
                                         ACCESS_IS_SWIZZLED_AMD,
                               .base = base,
                               /* For ACO to not reorder this store around EmitVertex/EndPrimitve */
@@ -988,7 +988,7 @@ lower_legacy_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *in
 
          nir_store_buffer_amd(b, nir_pack_32_2x16_split(b, output_lo, output_hi),
                               gsvs_ring, voffset, soffset, nir_imm_int(b, 0),
-                              .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY |
+                              .access = ACCESS_COHERENT | ACCESS_NON_TEMPORAL |
                                         ACCESS_IS_SWIZZLED_AMD,
                               /* For ACO to not reorder this store around EmitVertex/EndPrimitve */
                               .memory_modes = nir_var_shader_out);

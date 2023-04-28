@@ -202,7 +202,7 @@ emit_access_decorations(struct ntv_context *ctx, nir_variable *var, SpvId var_id
           spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationNonUniform);
           break;
        case ACCESS_CAN_REORDER:
-       case ACCESS_STREAM_CACHE_POLICY:
+       case ACCESS_NON_TEMPORAL:
           /* no equivalent */
           break;
        default:

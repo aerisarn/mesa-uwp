@@ -1822,7 +1822,7 @@ static unsigned get_cache_policy(struct ac_nir_context *ctx, enum gl_access_qual
       cache_policy |= ac_glc;
    }
 
-   if (access & ACCESS_STREAM_CACHE_POLICY)
+   if (access & ACCESS_NON_TEMPORAL)
       cache_policy |= ac_slc | ac_glc;
 
    return cache_policy;
@@ -4005,7 +4005,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       bool swizzled = nir_intrinsic_access(instr) & ACCESS_IS_SWIZZLED_AMD;
       bool reorder = nir_intrinsic_can_reorder(instr);
       bool coherent = nir_intrinsic_access(instr) & ACCESS_COHERENT;
-      bool slc = nir_intrinsic_access(instr) & ACCESS_STREAM_CACHE_POLICY;
+      bool slc = nir_intrinsic_access(instr) & ACCESS_NON_TEMPORAL;
       bool uses_format = nir_intrinsic_access(instr) & ACCESS_USES_FORMAT_AMD;
 
       enum ac_image_cache_policy cache_policy = 0;
