@@ -395,7 +395,8 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
 
          unsigned sxt = (extends && !zext) ? (1 << 10) : 0;
 
-         assert(!I->src[s].neg || s == 1);
+         unsigned negate_src = (I->op == AGX_OPCODE_IMAD) ? 2 : 1;
+         assert(!I->src[s].neg || s == negate_src);
          src_short |= sxt;
       }
 
@@ -408,7 +409,8 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
       extend |= (src_extend << extend_offset);
    }
 
-   if ((I->op == AGX_OPCODE_IMAD || I->op == AGX_OPCODE_IADD) && I->src[1].neg)
+   if ((I->op == AGX_OPCODE_IMAD && I->src[2].neg) ||
+       (I->op == AGX_OPCODE_IADD && I->src[1].neg))
       raw |= (1 << 27);
 
    if (info.immediates & AGX_IMMEDIATE_TRUTH_TABLE) {
