@@ -822,8 +822,7 @@ struct zink_gfx_pipeline_state {
    /* order matches zink_gfx_output_key */
    unsigned force_persample_interp:1;
    uint32_t rast_samples:6;
-   uint32_t multisample: 1;
-   uint32_t min_samples:5;
+   uint32_t min_samples:6;
    uint32_t feedback_loop : 1;
    uint32_t feedback_loop_zs : 1;
    uint32_t rast_attachment_order : 1;
@@ -999,8 +998,7 @@ struct zink_gfx_output_key {
       struct {
          unsigned force_persample_interp:1;
          uint32_t rast_samples:6;
-         uint32_t multisample: 1;
-         uint32_t min_samples:5;
+         uint32_t min_samples:6;
          uint32_t feedback_loop : 1;
          uint32_t feedback_loop_zs : 1;
          uint32_t rast_attachment_order : 1;

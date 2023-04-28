@@ -659,7 +659,6 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
    bool half_pixel_center = ctx->rast_state ? ctx->rast_state->base.half_pixel_center : true;
    float line_width = ctx->rast_state ? ctx->rast_state->base.line_width : 1.0;
    ctx->rast_state = cso;
-   ctx->gfx_pipeline_state.multisample = !ctx->rast_state || ctx->rast_state->base.multisample;
 
    if (ctx->rast_state) {
       if (screen->info.have_EXT_provoking_vertex &&
