@@ -27,6 +27,7 @@
  * spirv_to_nir code.
  */
 
+#include "nir.h"
 #include "spirv/nir_spirv.h"
 
 #include <sys/mman.h>
@@ -69,17 +70,16 @@ static void
 print_usage(char *exec_name, FILE *f)
 {
    fprintf(f,
-"Usage: %s [options] file\n"
-"Options:\n"
-"  -h  --help              Print this help.\n"
-"  -s, --stage <stage>     Specify the shader stage.  Valid stages are:\n"
-"                          vertex, tess-ctrl, tess-eval, geometry, fragment,\n"
-"                          task, mesh, compute, and kernel (OpenCL-style compute).\n"
-"  -e, --entry <name>      Specify the entry-point name.\n"
-"  -g, --opengl            Use OpenGL environment instead of Vulkan for\n"
-"                          graphics stages.\n"
-"  --optimize              Run basic NIR optimizations in the result.\n"
-   , exec_name);
+           "Usage: %s [options] file\n"
+           "Options:\n"
+           "  -h  --help              Print this help.\n"
+           "  -s, --stage <stage>     Specify the shader stage.  Valid stages are:\n"
+           "                          vertex, tess-ctrl, tess-eval, geometry, fragment,\n"
+           "                          task, mesh, compute, and kernel (OpenCL-style compute).\n"
+           "  -e, --entry <name>      Specify the entry-point name.\n"
+           "  -g, --opengl            Use OpenGL environment instead of Vulkan for\n"
+           "                          graphics stages.\n"
+           "  --optimize              Run basic NIR optimizations in the result.\n", exec_name);
 }
 
 int main(int argc, char **argv)
@@ -91,26 +91,23 @@ int main(int argc, char **argv)
    enum nir_spirv_execution_environment env = NIR_SPIRV_VULKAN;
 
    static struct option long_options[] =
-     {
-       {"help",         no_argument, 0, 'h'},
-       {"stage",  required_argument, 0, 's'},
-       {"entry",  required_argument, 0, 'e'},
-       {"opengl",       no_argument, 0, 'g'},
-       {"optimize",     no_argument, 0, 'O'},
-       {0, 0, 0, 0}
-     };
-
-   while ((ch = getopt_long(argc, argv, "hs:e:g", long_options, NULL)) != -1)
-   {
-      switch (ch)
       {
+         {"help",     no_argument,       0, 'h'},
+         {"stage",    required_argument, 0, 's'},
+         {"entry",    required_argument, 0, 'e'},
+         {"opengl",   no_argument,       0, 'g'},
+         {"optimize", no_argument,       0, 'O'},
+         {0, 0,                          0, 0}
+      };
+
+   while ((ch = getopt_long(argc, argv, "hs:e:g", long_options, NULL)) != -1) {
+      switch (ch) {
       case 'h':
          print_usage(argv[0], stdout);
          return 0;
       case 's':
          shader_stage = stage_to_enum(optarg);
-         if (shader_stage == MESA_SHADER_NONE)
-         {
+         if (shader_stage == MESA_SHADER_NONE) {
             fprintf(stderr, "Unknown stage \"%s\"\n", optarg);
             print_usage(argv[0], stderr);
             return 1;
@@ -134,15 +131,13 @@ int main(int argc, char **argv)
 
    const char *filename = argv[optind];
    int fd = open(filename, O_RDONLY);
-   if (fd < 0)
-   {
+   if (fd < 0) {
       fprintf(stderr, "Failed to open %s\n", filename);
       return 1;
    }
 
    off_t len = lseek(fd, 0, SEEK_END);
-   if (len % WORD_SIZE != 0)
-   {
+   if (len % WORD_SIZE != 0) {
       fprintf(stderr, "File length isn't a multiple of the word size\n");
       fprintf(stderr, "Are you sure this is a valid SPIR-V shader?\n");
       close(fd);
@@ -152,8 +147,7 @@ int main(int argc, char **argv)
    size_t word_count = len / WORD_SIZE;
 
    const void *map = mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
-   if (map == MAP_FAILED)
-   {
+   if (map == MAP_FAILED) {
       fprintf(stderr, "Failed to mmap the file: errno=%d, %s\n",
               errno, strerror(errno));
       close(fd);
@@ -190,10 +184,13 @@ int main(int argc, char **argv)
             progress |= nir_opt_dce(nir);
             progress |= nir_opt_cse(nir);
             progress |= nir_opt_dead_cf(nir);
+            progress |= nir_lower_vars_to_ssa(nir);
             progress |= nir_copy_prop(nir);
+            progress |= nir_opt_deref(nir);
             progress |= nir_opt_constant_folding(nir);
             progress |= nir_opt_copy_prop_vars(nir);
             progress |= nir_opt_dead_write_vars(nir);
+            progress |= nir_opt_combine_stores(nir, nir_var_all);
             progress |= nir_remove_dead_variables(nir, nir_var_function_temp, NULL);
             progress |= nir_opt_algebraic(nir);
             progress |= nir_opt_if(nir, 0);
