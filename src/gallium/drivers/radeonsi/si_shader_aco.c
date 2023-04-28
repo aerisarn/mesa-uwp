@@ -46,6 +46,7 @@ si_fill_aco_options(struct si_shader *shader, struct aco_compiler_options *optio
       si_can_dump_shader(sel->screen, sel->stage, SI_DUMP_ASM);
    options->dump_preoptir = si_can_dump_shader(sel->screen, sel->stage, SI_DUMP_INIT_ACO_IR);
    options->record_ir = sel->screen->record_llvm_ir;
+   options->is_opengl = true;
 
    options->load_grid_size_from_user_sgpr = true;
    options->family = sel->screen->info.family;
