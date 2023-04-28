@@ -2454,12 +2454,3 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
               ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)
          ctx->base.bind_gs_state(&ctx->base, NULL);
 }
-
-void
-zink_update_fs_key_single_sample(struct zink_context *ctx)
-{
-   bool single_sample = ctx->rast_state && !ctx->rast_state->base.multisample &&
-                        ctx->gfx_pipeline_state.rast_samples != 0;
-   if (zink_get_fs_base_key(ctx)->single_sample != single_sample)
-      zink_set_fs_base_key(ctx)->single_sample = single_sample;
-}
