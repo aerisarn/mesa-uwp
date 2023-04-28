@@ -185,10 +185,6 @@ static const struct vk_instance_extension_table instance_extensions = {
 };
 
 static void
-get_features(const struct anv_physical_device *pdevice,
-             struct vk_features *features);
-
-static void
 get_device_extensions(const struct anv_physical_device *device,
                       struct vk_device_extension_table *ext)
 {
@@ -379,6 +375,435 @@ get_device_extensions(const struct anv_physical_device *device,
                                                nv_mesh_shading_enabled,
       .VALVE_mutable_descriptor_type         = true,
    };
+}
+
+static void
+get_features(const struct anv_physical_device *pdevice,
+             struct vk_features *features)
+{
+   struct vk_app_info *app_info = &pdevice->instance->vk.app_info;
+
+   /* Just pick one; they're all the same */
+   const bool has_astc_ldr =
+      isl_format_supports_sampling(&pdevice->info,
+                                   ISL_FORMAT_ASTC_LDR_2D_4X4_FLT16);
+
+   const bool rt_enabled = ANV_SUPPORT_RT && pdevice->info.has_ray_tracing;
+
+   const bool mesh_shader =
+      pdevice->vk.supported_extensions.EXT_mesh_shader ||
+      pdevice->vk.supported_extensions.NV_mesh_shader;
+
+   *features = (struct vk_features) {
+      /* Vulkan 1.0 */
+      .robustBufferAccess                       = true,
+      .fullDrawIndexUint32                      = true,
+      .imageCubeArray                           = true,
+      .independentBlend                         = true,
+      .geometryShader                           = true,
+      .tessellationShader                       = true,
+      .sampleRateShading                        = true,
+      .dualSrcBlend                             = true,
+      .logicOp                                  = true,
+      .multiDrawIndirect                        = true,
+      .drawIndirectFirstInstance                = true,
+      .depthClamp                               = true,
+      .depthBiasClamp                           = true,
+      .fillModeNonSolid                         = true,
+      .depthBounds                              = pdevice->info.ver >= 12,
+      .wideLines                                = true,
+      .largePoints                              = true,
+      .alphaToOne                               = true,
+      .multiViewport                            = true,
+      .samplerAnisotropy                        = true,
+      .textureCompressionETC2                   = true,
+      .textureCompressionASTC_LDR               = has_astc_ldr,
+      .textureCompressionBC                     = true,
+      .occlusionQueryPrecise                    = true,
+      .pipelineStatisticsQuery                  = true,
+      /* We can't do image stores in vec4 shaders */
+      .vertexPipelineStoresAndAtomics =
+         pdevice->compiler->scalar_stage[MESA_SHADER_VERTEX] &&
+         pdevice->compiler->scalar_stage[MESA_SHADER_GEOMETRY],
+      .fragmentStoresAndAtomics                 = true,
+      .shaderTessellationAndGeometryPointSize   = true,
+      .shaderImageGatherExtended                = true,
+      .shaderStorageImageExtendedFormats        = true,
+      .shaderStorageImageMultisample            = false,
+      /* Gfx12.5 has all the required format supported in HW for typed
+       * read/writes
+       */
+      .shaderStorageImageReadWithoutFormat      = pdevice->info.verx10 >= 125,
+      .shaderStorageImageWriteWithoutFormat     = true,
+      .shaderUniformBufferArrayDynamicIndexing  = true,
+      .shaderSampledImageArrayDynamicIndexing   = true,
+      .shaderStorageBufferArrayDynamicIndexing  = true,
+      .shaderStorageImageArrayDynamicIndexing   = true,
+      .shaderClipDistance                       = true,
+      .shaderCullDistance                       = true,
+      .shaderFloat64                            = pdevice->info.has_64bit_float,
+      .shaderInt64                              = true,
+      .shaderInt16                              = true,
+      .shaderResourceMinLod                     = true,
+      .variableMultisampleRate                  = true,
+      .inheritedQueries                         = true,
+
+      /* Vulkan 1.1 */
+      .storageBuffer16BitAccess            = !pdevice->instance->no_16bit,
+      .uniformAndStorageBuffer16BitAccess  = !pdevice->instance->no_16bit,
+      .storagePushConstant16               = true,
+      .storageInputOutput16                = false,
+      .multiview                           = true,
+      .multiviewGeometryShader             = true,
+      .multiviewTessellationShader         = true,
+      .variablePointersStorageBuffer       = true,
+      .variablePointers                    = true,
+      .protectedMemory                     = false,
+      .samplerYcbcrConversion              = true,
+      .shaderDrawParameters                = true,
+
+      /* Vulkan 1.2 */
+      .samplerMirrorClampToEdge            = true,
+      .drawIndirectCount                   = true,
+      .storageBuffer8BitAccess             = true,
+      .uniformAndStorageBuffer8BitAccess   = true,
+      .storagePushConstant8                = true,
+      .shaderBufferInt64Atomics            = true,
+      .shaderSharedInt64Atomics            = false,
+      .shaderFloat16                       = !pdevice->instance->no_16bit,
+      .shaderInt8                          = !pdevice->instance->no_16bit,
+
+      .descriptorIndexing                                 = true,
+      .shaderInputAttachmentArrayDynamicIndexing          = false,
+      .shaderUniformTexelBufferArrayDynamicIndexing       = true,
+      .shaderStorageTexelBufferArrayDynamicIndexing       = true,
+      .shaderUniformBufferArrayNonUniformIndexing         = true,
+      .shaderSampledImageArrayNonUniformIndexing          = true,
+      .shaderStorageBufferArrayNonUniformIndexing         = true,
+      .shaderStorageImageArrayNonUniformIndexing          = true,
+      .shaderInputAttachmentArrayNonUniformIndexing       = false,
+      .shaderUniformTexelBufferArrayNonUniformIndexing    = true,
+      .shaderStorageTexelBufferArrayNonUniformIndexing    = true,
+      .descriptorBindingUniformBufferUpdateAfterBind      = true,
+      .descriptorBindingSampledImageUpdateAfterBind       = true,
+      .descriptorBindingStorageImageUpdateAfterBind       = true,
+      .descriptorBindingStorageBufferUpdateAfterBind      = true,
+      .descriptorBindingUniformTexelBufferUpdateAfterBind = true,
+      .descriptorBindingStorageTexelBufferUpdateAfterBind = true,
+      .descriptorBindingUpdateUnusedWhilePending          = true,
+      .descriptorBindingPartiallyBound                    = true,
+      .descriptorBindingVariableDescriptorCount           = true,
+      .runtimeDescriptorArray                             = true,
+
+      .samplerFilterMinmax                 = true,
+      .scalarBlockLayout                   = true,
+      .imagelessFramebuffer                = true,
+      .uniformBufferStandardLayout         = true,
+      .shaderSubgroupExtendedTypes         = true,
+      .separateDepthStencilLayouts         = true,
+      .hostQueryReset                      = true,
+      .timelineSemaphore                   = true,
+      .bufferDeviceAddress                 = true,
+      .bufferDeviceAddressCaptureReplay    = true,
+      .bufferDeviceAddressMultiDevice      = false,
+      .vulkanMemoryModel                   = true,
+      .vulkanMemoryModelDeviceScope        = true,
+      .vulkanMemoryModelAvailabilityVisibilityChains = true,
+      .shaderOutputViewportIndex           = true,
+      .shaderOutputLayer                   = true,
+      .subgroupBroadcastDynamicId          = true,
+
+      /* Vulkan 1.3 */
+      .robustImageAccess = true,
+      .inlineUniformBlock = true,
+      .descriptorBindingInlineUniformBlockUpdateAfterBind = true,
+      .pipelineCreationCacheControl = true,
+      .privateData = true,
+      .shaderDemoteToHelperInvocation = true,
+      .shaderTerminateInvocation = true,
+      .subgroupSizeControl = true,
+      .computeFullSubgroups = true,
+      .synchronization2 = true,
+      .textureCompressionASTC_HDR = false,
+      .shaderZeroInitializeWorkgroupMemory = true,
+      .dynamicRendering = true,
+      .shaderIntegerDotProduct = true,
+      .maintenance4 = true,
+
+      /* VK_EXT_4444_formats */
+      .formatA4R4G4B4 = true,
+      .formatA4B4G4R4 = false,
+
+      /* VK_KHR_acceleration_structure */
+      .accelerationStructure = rt_enabled,
+      .accelerationStructureCaptureReplay = false, /* TODO */
+      .accelerationStructureIndirectBuild = false, /* TODO */
+      .accelerationStructureHostCommands = false,
+      .descriptorBindingAccelerationStructureUpdateAfterBind = rt_enabled,
+
+      /* VK_EXT_border_color_swizzle */
+      .borderColorSwizzle = true,
+      .borderColorSwizzleFromImage = true,
+
+      /* VK_EXT_color_write_enable */
+      .colorWriteEnable = true,
+
+      /* VK_EXT_image_2d_view_of_3d  */
+      .image2DViewOf3D = true,
+      .sampler2DViewOf3D = true,
+
+      /* VK_EXT_image_sliced_view_of_3d */
+      .imageSlicedViewOf3D = true,
+
+      /* VK_NV_compute_shader_derivatives */
+      .computeDerivativeGroupQuads = true,
+      .computeDerivativeGroupLinear = true,
+
+      /* VK_EXT_conditional_rendering */
+      .conditionalRendering = true,
+      .inheritedConditionalRendering = true,
+
+      /* VK_EXT_custom_border_color */
+      .customBorderColors = true,
+      .customBorderColorWithoutFormat = true,
+
+      /* VK_EXT_depth_clamp_zero_one */
+      .depthClampZeroOne = true,
+
+      /* VK_EXT_depth_clip_enable */
+      .depthClipEnable = true,
+
+      /* VK_EXT_fragment_shader_interlock */
+      .fragmentShaderSampleInterlock = true,
+      .fragmentShaderPixelInterlock = true,
+      .fragmentShaderShadingRateInterlock = false,
+
+      /* VK_EXT_global_priority_query */
+      .globalPriorityQuery = true,
+
+      /* VK_EXT_graphics_pipeline_library */
+      .graphicsPipelineLibrary = pdevice->gpl_enabled,
+
+      /* VK_KHR_fragment_shading_rate */
+      .pipelineFragmentShadingRate = true,
+      .primitiveFragmentShadingRate =
+         pdevice->info.has_coarse_pixel_primitive_and_cb,
+      .attachmentFragmentShadingRate =
+         pdevice->info.has_coarse_pixel_primitive_and_cb,
+
+      /* VK_EXT_image_view_min_lod */
+      .minLod = true,
+
+      /* VK_EXT_index_type_uint8 */
+      .indexTypeUint8 = true,
+
+      /* VK_EXT_line_rasterization */
+      /* Rectangular lines must use the strict algorithm, which is not
+       * supported for wide lines prior to ICL.  See rasterization_mode for
+       * details and how the HW states are programmed.
+       */
+      .rectangularLines = pdevice->info.ver >= 10,
+      .bresenhamLines = true,
+      /* Support for Smooth lines with MSAA was removed on gfx11.  From the
+       * BSpec section "Multisample ModesState" table for "AA Line Support
+       * Requirements":
+       *
+       *    GFX10:BUG:######## 	NUM_MULTISAMPLES == 1
+       *
+       * Fortunately, this isn't a case most people care about.
+       */
+      .smoothLines = pdevice->info.ver < 10,
+      .stippledRectangularLines = false,
+      .stippledBresenhamLines = true,
+      .stippledSmoothLines = false,
+
+      /* VK_NV_mesh_shader */
+      .taskShaderNV = mesh_shader,
+      .meshShaderNV = mesh_shader,
+
+      /* VK_EXT_mesh_shader */
+      .taskShader = mesh_shader,
+      .meshShader = mesh_shader,
+      .multiviewMeshShader = false,
+      .primitiveFragmentShadingRateMeshShader = mesh_shader,
+      .meshShaderQueries = false,
+
+      /* VK_EXT_mutable_descriptor_type */
+      .mutableDescriptorType = true,
+
+      /* VK_KHR_performance_query */
+      .performanceCounterQueryPools = true,
+      /* HW only supports a single configuration at a time. */
+      .performanceCounterMultipleQueryPools = false,
+
+      /* VK_KHR_pipeline_executable_properties */
+      .pipelineExecutableInfo = true,
+
+      /* VK_EXT_primitives_generated_query */
+      .primitivesGeneratedQuery = true,
+      .primitivesGeneratedQueryWithRasterizerDiscard = false,
+      .primitivesGeneratedQueryWithNonZeroStreams = false,
+
+      /* VK_EXT_pipeline_library_group_handles */
+      .pipelineLibraryGroupHandles = true,
+
+      /* VK_EXT_provoking_vertex */
+      .provokingVertexLast = true,
+      .transformFeedbackPreservesProvokingVertex = true,
+
+      /* VK_KHR_ray_query */
+      .rayQuery = rt_enabled,
+
+      /* VK_KHR_ray_tracing_maintenance1 */
+      .rayTracingMaintenance1 = rt_enabled,
+      .rayTracingPipelineTraceRaysIndirect2 = rt_enabled,
+
+      /* VK_KHR_ray_tracing_pipeline */
+      .rayTracingPipeline = rt_enabled,
+      .rayTracingPipelineShaderGroupHandleCaptureReplay = false,
+      .rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false,
+      .rayTracingPipelineTraceRaysIndirect = rt_enabled,
+      .rayTraversalPrimitiveCulling = rt_enabled,
+
+      /* VK_EXT_robustness2 */
+      .robustBufferAccess2 = true,
+      .robustImageAccess2 = true,
+      .nullDescriptor = true,
+
+      /* VK_EXT_shader_atomic_float */
+      .shaderBufferFloat32Atomics =    true,
+      .shaderBufferFloat32AtomicAdd =  pdevice->info.has_lsc,
+      .shaderBufferFloat64Atomics =
+         pdevice->info.has_64bit_float && pdevice->info.has_lsc,
+      .shaderBufferFloat64AtomicAdd =  false,
+      .shaderSharedFloat32Atomics =    true,
+      .shaderSharedFloat32AtomicAdd =  false,
+      .shaderSharedFloat64Atomics =    false,
+      .shaderSharedFloat64AtomicAdd =  false,
+      .shaderImageFloat32Atomics =     true,
+      .shaderImageFloat32AtomicAdd =   false,
+      .sparseImageFloat32Atomics =     false,
+      .sparseImageFloat32AtomicAdd =   false,
+
+      /* VK_EXT_shader_atomic_float2 */
+      .shaderBufferFloat16Atomics      = pdevice->info.has_lsc,
+      .shaderBufferFloat16AtomicAdd    = false,
+      .shaderBufferFloat16AtomicMinMax = pdevice->info.has_lsc,
+      .shaderBufferFloat32AtomicMinMax = true,
+      .shaderBufferFloat64AtomicMinMax =
+         pdevice->info.has_64bit_float && pdevice->info.has_lsc,
+      .shaderSharedFloat16Atomics      = pdevice->info.has_lsc,
+      .shaderSharedFloat16AtomicAdd    = false,
+      .shaderSharedFloat16AtomicMinMax = pdevice->info.has_lsc,
+      .shaderSharedFloat32AtomicMinMax = true,
+      .shaderSharedFloat64AtomicMinMax = false,
+      .shaderImageFloat32AtomicMinMax  = false,
+      .sparseImageFloat32AtomicMinMax  = false,
+
+      /* VK_KHR_shader_clock */
+      .shaderSubgroupClock = true,
+      .shaderDeviceClock = false,
+
+      /* VK_INTEL_shader_integer_functions2 */
+      .shaderIntegerFunctions2 = true,
+
+      /* VK_EXT_shader_module_identifier */
+      .shaderModuleIdentifier = true,
+
+      /* VK_KHR_shader_subgroup_uniform_control_flow */
+      .shaderSubgroupUniformControlFlow = true,
+
+      /* VK_EXT_texel_buffer_alignment */
+      .texelBufferAlignment = true,
+
+      /* VK_EXT_transform_feedback */
+      .transformFeedback = true,
+      .geometryStreams = true,
+
+      /* VK_EXT_vertex_attribute_divisor */
+      .vertexAttributeInstanceRateDivisor = true,
+      .vertexAttributeInstanceRateZeroDivisor = true,
+
+      /* VK_KHR_workgroup_memory_explicit_layout */
+      .workgroupMemoryExplicitLayout = true,
+      .workgroupMemoryExplicitLayoutScalarBlockLayout = true,
+      .workgroupMemoryExplicitLayout8BitAccess = true,
+      .workgroupMemoryExplicitLayout16BitAccess = true,
+
+      /* VK_EXT_ycbcr_image_arrays */
+      .ycbcrImageArrays = true,
+
+      /* VK_EXT_extended_dynamic_state */
+      .extendedDynamicState = true,
+
+      /* VK_EXT_extended_dynamic_state2 */
+      .extendedDynamicState2 = true,
+      .extendedDynamicState2LogicOp = true,
+      .extendedDynamicState2PatchControlPoints = false,
+
+      /* VK_EXT_extended_dynamic_state3 */
+      .extendedDynamicState3PolygonMode = true,
+      .extendedDynamicState3TessellationDomainOrigin = true,
+      .extendedDynamicState3RasterizationStream = true,
+      .extendedDynamicState3LineStippleEnable = true,
+      .extendedDynamicState3LineRasterizationMode = true,
+      .extendedDynamicState3LogicOpEnable = true,
+      .extendedDynamicState3AlphaToOneEnable = true,
+      .extendedDynamicState3DepthClipEnable = true,
+      .extendedDynamicState3DepthClampEnable = true,
+      .extendedDynamicState3DepthClipNegativeOneToOne = true,
+      .extendedDynamicState3ProvokingVertexMode = true,
+      .extendedDynamicState3ColorBlendEnable = true,
+      .extendedDynamicState3ColorWriteMask = true,
+      .extendedDynamicState3ColorBlendEquation = true,
+      .extendedDynamicState3SampleLocationsEnable = true,
+      .extendedDynamicState3SampleMask = true,
+
+      .extendedDynamicState3RasterizationSamples = false,
+      .extendedDynamicState3AlphaToCoverageEnable = false,
+      .extendedDynamicState3ConservativeRasterizationMode = false,
+      .extendedDynamicState3ExtraPrimitiveOverestimationSize = false,
+      .extendedDynamicState3ViewportWScalingEnable = false,
+      .extendedDynamicState3ViewportSwizzle = false,
+      .extendedDynamicState3ShadingRateImageEnable = false,
+      .extendedDynamicState3CoverageToColorEnable = false,
+      .extendedDynamicState3CoverageToColorLocation = false,
+      .extendedDynamicState3CoverageModulationMode = false,
+      .extendedDynamicState3CoverageModulationTableEnable = false,
+      .extendedDynamicState3CoverageModulationTable = false,
+      .extendedDynamicState3CoverageReductionMode = false,
+      .extendedDynamicState3RepresentativeFragmentTestEnable = false,
+      .extendedDynamicState3ColorBlendAdvanced = false,
+
+      /* VK_EXT_multi_draw */
+      .multiDraw = true,
+
+      /* VK_EXT_non_seamless_cube_map */
+      .nonSeamlessCubeMap = true,
+
+      /* VK_EXT_primitive_topology_list_restart */
+      .primitiveTopologyListRestart = true,
+      .primitiveTopologyPatchListRestart = true,
+
+      /* VK_EXT_depth_clip_control */
+      .depthClipControl = true,
+
+      /* VK_KHR_present_id */
+      .presentId = pdevice->vk.supported_extensions.KHR_present_id,
+
+      /* VK_KHR_present_wait */
+      .presentWait = pdevice->vk.supported_extensions.KHR_present_wait,
+
+      /* VK_EXT_vertex_input_dynamic_state */
+      .vertexInputDynamicState = true,
+   };
+
+   /* The new DOOM and Wolfenstein games require depthBounds without
+    * checking for it.  They seem to run fine without it so just claim it's
+    * there and accept the consequences.
+    */
+   if (app_info->engine_name && strcmp(app_info->engine_name, "idTech") == 0)
+      features->depthBounds = true;
 }
 
 static uint64_t
@@ -1197,433 +1622,6 @@ void anv_DestroyInstance(
 
    vk_instance_finish(&instance->vk);
    vk_free(&instance->vk.alloc, instance);
-}
-
-static void
-get_features(const struct anv_physical_device *pdevice,
-             struct vk_features *features)
-{
-   struct vk_app_info *app_info = &pdevice->instance->vk.app_info;
-
-   /* Just pick one; they're all the same */
-   const bool has_astc_ldr =
-      isl_format_supports_sampling(&pdevice->info,
-                                   ISL_FORMAT_ASTC_LDR_2D_4X4_FLT16);
-
-   const bool rt_enabled = ANV_SUPPORT_RT && pdevice->info.has_ray_tracing;
-
-   const bool mesh_shader =
-      pdevice->vk.supported_extensions.EXT_mesh_shader ||
-      pdevice->vk.supported_extensions.NV_mesh_shader;
-
-   *features = (struct vk_features) {
-      /* Vulkan 1.0 */
-      .robustBufferAccess                       = true,
-      .fullDrawIndexUint32                      = true,
-      .imageCubeArray                           = true,
-      .independentBlend                         = true,
-      .geometryShader                           = true,
-      .tessellationShader                       = true,
-      .sampleRateShading                        = true,
-      .dualSrcBlend                             = true,
-      .logicOp                                  = true,
-      .multiDrawIndirect                        = true,
-      .drawIndirectFirstInstance                = true,
-      .depthClamp                               = true,
-      .depthBiasClamp                           = true,
-      .fillModeNonSolid                         = true,
-      .depthBounds                              = pdevice->info.ver >= 12,
-      .wideLines                                = true,
-      .largePoints                              = true,
-      .alphaToOne                               = true,
-      .multiViewport                            = true,
-      .samplerAnisotropy                        = true,
-      .textureCompressionETC2                   = true,
-      .textureCompressionASTC_LDR               = has_astc_ldr,
-      .textureCompressionBC                     = true,
-      .occlusionQueryPrecise                    = true,
-      .pipelineStatisticsQuery                  = true,
-      /* We can't do image stores in vec4 shaders */
-      .vertexPipelineStoresAndAtomics =
-         pdevice->compiler->scalar_stage[MESA_SHADER_VERTEX] &&
-         pdevice->compiler->scalar_stage[MESA_SHADER_GEOMETRY],
-      .fragmentStoresAndAtomics                 = true,
-      .shaderTessellationAndGeometryPointSize   = true,
-      .shaderImageGatherExtended                = true,
-      .shaderStorageImageExtendedFormats        = true,
-      .shaderStorageImageMultisample            = false,
-      /* Gfx12.5 has all the required format supported in HW for typed
-       * read/writes
-       */
-      .shaderStorageImageReadWithoutFormat      = pdevice->info.verx10 >= 125,
-      .shaderStorageImageWriteWithoutFormat     = true,
-      .shaderUniformBufferArrayDynamicIndexing  = true,
-      .shaderSampledImageArrayDynamicIndexing   = true,
-      .shaderStorageBufferArrayDynamicIndexing  = true,
-      .shaderStorageImageArrayDynamicIndexing   = true,
-      .shaderClipDistance                       = true,
-      .shaderCullDistance                       = true,
-      .shaderFloat64                            = pdevice->info.has_64bit_float,
-      .shaderInt64                              = true,
-      .shaderInt16                              = true,
-      .shaderResourceMinLod                     = true,
-      .variableMultisampleRate                  = true,
-      .inheritedQueries                         = true,
-
-      /* Vulkan 1.1 */
-      .storageBuffer16BitAccess            = !pdevice->instance->no_16bit,
-      .uniformAndStorageBuffer16BitAccess  = !pdevice->instance->no_16bit,
-      .storagePushConstant16               = true,
-      .storageInputOutput16                = false,
-      .multiview                           = true,
-      .multiviewGeometryShader             = true,
-      .multiviewTessellationShader         = true,
-      .variablePointersStorageBuffer       = true,
-      .variablePointers                    = true,
-      .protectedMemory                     = false,
-      .samplerYcbcrConversion              = true,
-      .shaderDrawParameters                = true,
-
-      /* Vulkan 1.2 */
-      .samplerMirrorClampToEdge            = true,
-      .drawIndirectCount                   = true,
-      .storageBuffer8BitAccess             = true,
-      .uniformAndStorageBuffer8BitAccess   = true,
-      .storagePushConstant8                = true,
-      .shaderBufferInt64Atomics            = true,
-      .shaderSharedInt64Atomics            = false,
-      .shaderFloat16                       = !pdevice->instance->no_16bit,
-      .shaderInt8                          = !pdevice->instance->no_16bit,
-
-      .descriptorIndexing                                 = true,
-      .shaderInputAttachmentArrayDynamicIndexing          = false,
-      .shaderUniformTexelBufferArrayDynamicIndexing       = true,
-      .shaderStorageTexelBufferArrayDynamicIndexing       = true,
-      .shaderUniformBufferArrayNonUniformIndexing         = true,
-      .shaderSampledImageArrayNonUniformIndexing          = true,
-      .shaderStorageBufferArrayNonUniformIndexing         = true,
-      .shaderStorageImageArrayNonUniformIndexing          = true,
-      .shaderInputAttachmentArrayNonUniformIndexing       = false,
-      .shaderUniformTexelBufferArrayNonUniformIndexing    = true,
-      .shaderStorageTexelBufferArrayNonUniformIndexing    = true,
-      .descriptorBindingUniformBufferUpdateAfterBind      = true,
-      .descriptorBindingSampledImageUpdateAfterBind       = true,
-      .descriptorBindingStorageImageUpdateAfterBind       = true,
-      .descriptorBindingStorageBufferUpdateAfterBind      = true,
-      .descriptorBindingUniformTexelBufferUpdateAfterBind = true,
-      .descriptorBindingStorageTexelBufferUpdateAfterBind = true,
-      .descriptorBindingUpdateUnusedWhilePending          = true,
-      .descriptorBindingPartiallyBound                    = true,
-      .descriptorBindingVariableDescriptorCount           = true,
-      .runtimeDescriptorArray                             = true,
-
-      .samplerFilterMinmax                 = true,
-      .scalarBlockLayout                   = true,
-      .imagelessFramebuffer                = true,
-      .uniformBufferStandardLayout         = true,
-      .shaderSubgroupExtendedTypes         = true,
-      .separateDepthStencilLayouts         = true,
-      .hostQueryReset                      = true,
-      .timelineSemaphore                   = true,
-      .bufferDeviceAddress                 = true,
-      .bufferDeviceAddressCaptureReplay    = true,
-      .bufferDeviceAddressMultiDevice      = false,
-      .vulkanMemoryModel                   = true,
-      .vulkanMemoryModelDeviceScope        = true,
-      .vulkanMemoryModelAvailabilityVisibilityChains = true,
-      .shaderOutputViewportIndex           = true,
-      .shaderOutputLayer                   = true,
-      .subgroupBroadcastDynamicId          = true,
-
-      /* Vulkan 1.3 */
-      .robustImageAccess = true,
-      .inlineUniformBlock = true,
-      .descriptorBindingInlineUniformBlockUpdateAfterBind = true,
-      .pipelineCreationCacheControl = true,
-      .privateData = true,
-      .shaderDemoteToHelperInvocation = true,
-      .shaderTerminateInvocation = true,
-      .subgroupSizeControl = true,
-      .computeFullSubgroups = true,
-      .synchronization2 = true,
-      .textureCompressionASTC_HDR = false,
-      .shaderZeroInitializeWorkgroupMemory = true,
-      .dynamicRendering = true,
-      .shaderIntegerDotProduct = true,
-      .maintenance4 = true,
-
-      /* VK_EXT_4444_formats */
-      .formatA4R4G4B4 = true,
-      .formatA4B4G4R4 = false,
-
-      /* VK_KHR_acceleration_structure */
-      .accelerationStructure = rt_enabled,
-      .accelerationStructureCaptureReplay = false, /* TODO */
-      .accelerationStructureIndirectBuild = false, /* TODO */
-      .accelerationStructureHostCommands = false,
-      .descriptorBindingAccelerationStructureUpdateAfterBind = rt_enabled,
-
-      /* VK_EXT_border_color_swizzle */
-      .borderColorSwizzle = true,
-      .borderColorSwizzleFromImage = true,
-
-      /* VK_EXT_color_write_enable */
-      .colorWriteEnable = true,
-
-      /* VK_EXT_image_2d_view_of_3d  */
-      .image2DViewOf3D = true,
-      .sampler2DViewOf3D = true,
-
-      /* VK_EXT_image_sliced_view_of_3d */
-      .imageSlicedViewOf3D = true,
-
-      /* VK_NV_compute_shader_derivatives */
-      .computeDerivativeGroupQuads = true,
-      .computeDerivativeGroupLinear = true,
-
-      /* VK_EXT_conditional_rendering */
-      .conditionalRendering = true,
-      .inheritedConditionalRendering = true,
-
-      /* VK_EXT_custom_border_color */
-      .customBorderColors = true,
-      .customBorderColorWithoutFormat = true,
-
-      /* VK_EXT_depth_clamp_zero_one */
-      .depthClampZeroOne = true,
-
-      /* VK_EXT_depth_clip_enable */
-      .depthClipEnable = true,
-
-      /* VK_EXT_fragment_shader_interlock */
-      .fragmentShaderSampleInterlock = true,
-      .fragmentShaderPixelInterlock = true,
-      .fragmentShaderShadingRateInterlock = false,
-
-      /* VK_EXT_global_priority_query */
-      .globalPriorityQuery = true,
-      .graphicsPipelineLibrary = pdevice->gpl_enabled,
-
-      /* VK_KHR_fragment_shading_rate */
-      .pipelineFragmentShadingRate = true,
-      .primitiveFragmentShadingRate =
-         pdevice->info.has_coarse_pixel_primitive_and_cb,
-      .attachmentFragmentShadingRate =
-         pdevice->info.has_coarse_pixel_primitive_and_cb,
-
-      /* VK_EXT_image_view_min_lod */
-      .minLod = true,
-
-      /* VK_EXT_index_type_uint8 */
-      .indexTypeUint8 = true,
-
-      /* VK_EXT_line_rasterization */
-      /* Rectangular lines must use the strict algorithm, which is not
-       * supported for wide lines prior to ICL.  See rasterization_mode for
-       * details and how the HW states are programmed.
-       */
-      .rectangularLines = pdevice->info.ver >= 10,
-      .bresenhamLines = true,
-      /* Support for Smooth lines with MSAA was removed on gfx11.  From the
-       * BSpec section "Multisample ModesState" table for "AA Line Support
-       * Requirements":
-       *
-       *    GFX10:BUG:######## 	NUM_MULTISAMPLES == 1
-       *
-       * Fortunately, this isn't a case most people care about.
-       */
-      .smoothLines = pdevice->info.ver < 10,
-      .stippledRectangularLines = false,
-      .stippledBresenhamLines = true,
-      .stippledSmoothLines = false,
-
-      /* VK_NV_mesh_shader */
-      .taskShaderNV = mesh_shader,
-      .meshShaderNV = mesh_shader,
-
-      /* VK_EXT_mesh_shader */
-      .taskShader = mesh_shader,
-      .meshShader = mesh_shader,
-      .multiviewMeshShader = false,
-      .primitiveFragmentShadingRateMeshShader = mesh_shader,
-      .meshShaderQueries = false,
-
-      /* VK_EXT_mutable_descriptor_type */
-      .mutableDescriptorType = true,
-
-      /* VK_KHR_performance_query */
-      .performanceCounterQueryPools = true,
-      /* HW only supports a single configuration at a time. */
-      .performanceCounterMultipleQueryPools = false,
-
-      /* VK_KHR_pipeline_executable_properties */
-      .pipelineExecutableInfo = true,
-
-      /* VK_EXT_primitives_generated_query */
-      .primitivesGeneratedQuery = true,
-      .primitivesGeneratedQueryWithRasterizerDiscard = false,
-      .primitivesGeneratedQueryWithNonZeroStreams = false,
-
-      /* VK_EXT_pipeline_library_group_handles */
-      .pipelineLibraryGroupHandles = true,
-
-      /* VK_EXT_provoking_vertex */
-      .provokingVertexLast = true,
-      .transformFeedbackPreservesProvokingVertex = true,
-
-      /* VK_KHR_ray_query */
-      .rayQuery = rt_enabled,
-
-      /* VK_KHR_ray_tracing_maintenance1 */
-      .rayTracingMaintenance1 = rt_enabled,
-      .rayTracingPipelineTraceRaysIndirect2 = rt_enabled,
-
-      /* VK_KHR_ray_tracing_pipeline */
-      .rayTracingPipeline = rt_enabled,
-      .rayTracingPipelineShaderGroupHandleCaptureReplay = false,
-      .rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false,
-      .rayTracingPipelineTraceRaysIndirect = rt_enabled,
-      .rayTraversalPrimitiveCulling = rt_enabled,
-
-      /* VK_EXT_robustness2 */
-      .robustBufferAccess2 = true,
-      .robustImageAccess2 = true,
-      .nullDescriptor = true,
-
-      /* VK_EXT_shader_atomic_float */
-      .shaderBufferFloat32Atomics =    true,
-      .shaderBufferFloat32AtomicAdd =  pdevice->info.has_lsc,
-      .shaderBufferFloat64Atomics =
-         pdevice->info.has_64bit_float && pdevice->info.has_lsc,
-      .shaderBufferFloat64AtomicAdd =  false,
-      .shaderSharedFloat32Atomics =    true,
-      .shaderSharedFloat32AtomicAdd =  false,
-      .shaderSharedFloat64Atomics =    false,
-      .shaderSharedFloat64AtomicAdd =  false,
-      .shaderImageFloat32Atomics =     true,
-      .shaderImageFloat32AtomicAdd =   false,
-      .sparseImageFloat32Atomics =     false,
-      .sparseImageFloat32AtomicAdd =   false,
-
-      /* VK_EXT_shader_atomic_float2 */
-      .shaderBufferFloat16Atomics      = pdevice->info.has_lsc,
-      .shaderBufferFloat16AtomicAdd    = false,
-      .shaderBufferFloat16AtomicMinMax = pdevice->info.has_lsc,
-      .shaderBufferFloat32AtomicMinMax = true,
-      .shaderBufferFloat64AtomicMinMax =
-         pdevice->info.has_64bit_float && pdevice->info.has_lsc,
-      .shaderSharedFloat16Atomics      = pdevice->info.has_lsc,
-      .shaderSharedFloat16AtomicAdd    = false,
-      .shaderSharedFloat16AtomicMinMax = pdevice->info.has_lsc,
-      .shaderSharedFloat32AtomicMinMax = true,
-      .shaderSharedFloat64AtomicMinMax = false,
-      .shaderImageFloat32AtomicMinMax  = false,
-      .sparseImageFloat32AtomicMinMax  = false,
-
-      /* VK_KHR_shader_clock */
-      .shaderSubgroupClock = true,
-      .shaderDeviceClock = false,
-
-      /* VK_INTEL_shader_integer_functions2 */
-      .shaderIntegerFunctions2 = true,
-
-      /* VK_EXT_shader_module_identifier */
-      .shaderModuleIdentifier = true,
-
-      /* VK_KHR_shader_subgroup_uniform_control_flow */
-      .shaderSubgroupUniformControlFlow = true,
-
-      /* VK_EXT_texel_buffer_alignment */
-      .texelBufferAlignment = true,
-
-      /* VK_EXT_transform_feedback */
-      .transformFeedback = true,
-      .geometryStreams = true,
-
-      /* VK_EXT_vertex_attribute_divisor */
-      .vertexAttributeInstanceRateDivisor = true,
-      .vertexAttributeInstanceRateZeroDivisor = true,
-
-      /* VK_KHR_workgroup_memory_explicit_layout */
-      .workgroupMemoryExplicitLayout = true,
-      .workgroupMemoryExplicitLayoutScalarBlockLayout = true,
-      .workgroupMemoryExplicitLayout8BitAccess = true,
-      .workgroupMemoryExplicitLayout16BitAccess = true,
-
-      /* VK_EXT_ycbcr_image_arrays */
-      .ycbcrImageArrays = true,
-
-      /* VK_EXT_extended_dynamic_state */
-      .extendedDynamicState = true,
-
-      /* VK_EXT_extended_dynamic_state2 */
-      .extendedDynamicState2 = true,
-      .extendedDynamicState2LogicOp = true,
-      .extendedDynamicState2PatchControlPoints = false,
-
-      /* VK_EXT_extended_dynamic_state3 */
-      .extendedDynamicState3PolygonMode = true,
-      .extendedDynamicState3TessellationDomainOrigin = true,
-      .extendedDynamicState3RasterizationStream = true,
-      .extendedDynamicState3LineStippleEnable = true,
-      .extendedDynamicState3LineRasterizationMode = true,
-      .extendedDynamicState3LogicOpEnable = true,
-      .extendedDynamicState3AlphaToOneEnable = true,
-      .extendedDynamicState3DepthClipEnable = true,
-      .extendedDynamicState3DepthClampEnable = true,
-      .extendedDynamicState3DepthClipNegativeOneToOne = true,
-      .extendedDynamicState3ProvokingVertexMode = true,
-      .extendedDynamicState3ColorBlendEnable = true,
-      .extendedDynamicState3ColorWriteMask = true,
-      .extendedDynamicState3ColorBlendEquation = true,
-      .extendedDynamicState3SampleLocationsEnable = true,
-      .extendedDynamicState3SampleMask = true,
-
-      .extendedDynamicState3RasterizationSamples = false,
-      .extendedDynamicState3AlphaToCoverageEnable = false,
-      .extendedDynamicState3ConservativeRasterizationMode = false,
-      .extendedDynamicState3ExtraPrimitiveOverestimationSize = false,
-      .extendedDynamicState3ViewportWScalingEnable = false,
-      .extendedDynamicState3ViewportSwizzle = false,
-      .extendedDynamicState3ShadingRateImageEnable = false,
-      .extendedDynamicState3CoverageToColorEnable = false,
-      .extendedDynamicState3CoverageToColorLocation = false,
-      .extendedDynamicState3CoverageModulationMode = false,
-      .extendedDynamicState3CoverageModulationTableEnable = false,
-      .extendedDynamicState3CoverageModulationTable = false,
-      .extendedDynamicState3CoverageReductionMode = false,
-      .extendedDynamicState3RepresentativeFragmentTestEnable = false,
-      .extendedDynamicState3ColorBlendAdvanced = false,
-
-      /* VK_EXT_multi_draw */
-      .multiDraw = true,
-
-      /* VK_EXT_non_seamless_cube_map */
-      .nonSeamlessCubeMap = true,
-
-      /* VK_EXT_primitive_topology_list_restart */
-      .primitiveTopologyListRestart = true,
-      .primitiveTopologyPatchListRestart = true,
-
-      /* VK_EXT_depth_clip_control */
-      .depthClipControl = true,
-
-      /* VK_KHR_present_id */
-      .presentId = pdevice->vk.supported_extensions.KHR_present_id,
-
-      /* VK_KHR_present_wait */
-      .presentWait = pdevice->vk.supported_extensions.KHR_present_wait,
-
-      /* VK_EXT_vertex_input_dynamic_state */
-      .vertexInputDynamicState = true,
-   };
-
-   /* The new DOOM and Wolfenstein games require depthBounds without
-    * checking for it.  They seem to run fine without it so just claim it's
-    * there and accept the consequences.
-    */
-   if (app_info->engine_name && strcmp(app_info->engine_name, "idTech") == 0)
-      features->depthBounds = true;
 }
 
 #define MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BUFFERS   64
