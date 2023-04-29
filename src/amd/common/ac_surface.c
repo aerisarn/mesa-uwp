@@ -634,6 +634,47 @@ static int surf_config_sanity(const struct ac_surf_config *config, unsigned flag
    return 0;
 }
 
+static unsigned bpe_to_format(struct radeon_surf *surf)
+{
+   /* The format must be set correctly for the allocation of compressed
+    * textures to work. In other cases, setting the bpp is sufficient.
+    */
+   if (surf->blk_w == 4 && surf->blk_h == 4) {
+      switch (surf->bpe) {
+      case 8:
+         return ADDR_FMT_BC1;
+      case 16:
+         return ADDR_FMT_BC3;
+      default:
+         unreachable("invalid compressed bpe");
+      }
+   } else {
+      switch (surf->bpe) {
+      case 1:
+         assert(!(surf->flags & RADEON_SURF_ZBUFFER));
+         return ADDR_FMT_8;
+      case 2:
+         assert(surf->flags & RADEON_SURF_ZBUFFER || !(surf->flags & RADEON_SURF_SBUFFER));
+         return ADDR_FMT_16;
+      case 4:
+         assert(surf->flags & RADEON_SURF_ZBUFFER || !(surf->flags & RADEON_SURF_SBUFFER));
+         return ADDR_FMT_32;
+      case 8:
+         assert(!(surf->flags & RADEON_SURF_Z_OR_SBUFFER));
+         return ADDR_FMT_32_32;
+      case 12:
+         assert(!(surf->flags & RADEON_SURF_Z_OR_SBUFFER));
+         return ADDR_FMT_32_32_32;
+      case 16:
+         assert(!(surf->flags & RADEON_SURF_Z_OR_SBUFFER));
+         return ADDR_FMT_32_32_32_32;
+      default:
+         unreachable("invalid bpe");
+      }
+   }
+   return ADDR_FMT_INVALID;
+}
+
 /* The addrlib pitch alignment is forced to this number for all chips to support interop
  * between any 2 chips.
  */
@@ -1082,23 +1123,9 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
       assert(0);
    }
 
-   /* The format must be set correctly for the allocation of compressed
-    * textures to work. In other cases, setting the bpp is sufficient.
-    */
-   if (compressed) {
-      switch (surf->bpe) {
-      case 8:
-         AddrSurfInfoIn.format = ADDR_FMT_BC1;
-         break;
-      case 16:
-         AddrSurfInfoIn.format = ADDR_FMT_BC3;
-         break;
-      default:
-         assert(0);
-      }
-   } else {
+   AddrSurfInfoIn.format = bpe_to_format(surf);
+   if (!compressed)
       AddrDccIn.bpp = AddrSurfInfoIn.bpp = surf->bpe * 8;
-   }
 
    AddrDccIn.numSamples = AddrSurfInfoIn.numSamples = MAX2(1, config->info.samples);
    AddrSurfInfoIn.tileIndex = -1;
@@ -1278,6 +1305,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
    if (surf->flags & RADEON_SURF_SBUFFER) {
       AddrSurfInfoIn.tileIndex = stencil_tile_idx;
       AddrSurfInfoIn.bpp = 8;
+      AddrSurfInfoIn.format = ADDR_FMT_8;
       AddrSurfInfoIn.flags.depth = 0;
       AddrSurfInfoIn.flags.stencil = 1;
       AddrSurfInfoIn.flags.tcCompatible = 0;
@@ -2168,50 +2196,9 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
 
    compressed = surf->blk_w == 4 && surf->blk_h == 4;
 
-   /* The format must be set correctly for the allocation of compressed
-    * textures to work. In other cases, setting the bpp is sufficient. */
-   if (compressed) {
-      switch (surf->bpe) {
-      case 8:
-         AddrSurfInfoIn.format = ADDR_FMT_BC1;
-         break;
-      case 16:
-         AddrSurfInfoIn.format = ADDR_FMT_BC3;
-         break;
-      default:
-         assert(0);
-      }
-   } else {
-      switch (surf->bpe) {
-      case 1:
-         assert(!(surf->flags & RADEON_SURF_ZBUFFER));
-         AddrSurfInfoIn.format = ADDR_FMT_8;
-         break;
-      case 2:
-         assert(surf->flags & RADEON_SURF_ZBUFFER || !(surf->flags & RADEON_SURF_SBUFFER));
-         AddrSurfInfoIn.format = ADDR_FMT_16;
-         break;
-      case 4:
-         assert(surf->flags & RADEON_SURF_ZBUFFER || !(surf->flags & RADEON_SURF_SBUFFER));
-         AddrSurfInfoIn.format = ADDR_FMT_32;
-         break;
-      case 8:
-         assert(!(surf->flags & RADEON_SURF_Z_OR_SBUFFER));
-         AddrSurfInfoIn.format = ADDR_FMT_32_32;
-         break;
-      case 12:
-         assert(!(surf->flags & RADEON_SURF_Z_OR_SBUFFER));
-         AddrSurfInfoIn.format = ADDR_FMT_32_32_32;
-         break;
-      case 16:
-         assert(!(surf->flags & RADEON_SURF_Z_OR_SBUFFER));
-         AddrSurfInfoIn.format = ADDR_FMT_32_32_32_32;
-         break;
-      default:
-         assert(0);
-      }
+   AddrSurfInfoIn.format = bpe_to_format(surf);
+   if (!compressed)
       AddrSurfInfoIn.bpp = surf->bpe * 8;
-   }
 
    bool is_color_surface = !(surf->flags & RADEON_SURF_Z_OR_SBUFFER);
    AddrSurfInfoIn.flags.color = is_color_surface && !(surf->flags & RADEON_SURF_NO_RENDER_TARGET);
