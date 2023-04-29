@@ -162,6 +162,127 @@ panvk_get_device_extensions(const struct panvk_physical_device *device,
    };
 }
 
+static void
+panvk_get_features(const struct panvk_physical_device *device,
+                   struct vk_features *features)
+{
+   *features = (struct vk_features){
+      /* Vulkan 1.0 */
+      .robustBufferAccess = true,
+      .fullDrawIndexUint32 = true,
+      .independentBlend = true,
+      .logicOp = true,
+      .wideLines = true,
+      .largePoints = true,
+      .textureCompressionETC2 = true,
+      .textureCompressionASTC_LDR = true,
+      .shaderUniformBufferArrayDynamicIndexing = true,
+      .shaderSampledImageArrayDynamicIndexing = true,
+      .shaderStorageBufferArrayDynamicIndexing = true,
+      .shaderStorageImageArrayDynamicIndexing = true,
+
+      /* Vulkan 1.1 */
+      .storageBuffer16BitAccess = false,
+      .uniformAndStorageBuffer16BitAccess = false,
+      .storagePushConstant16 = false,
+      .storageInputOutput16 = false,
+      .multiview = false,
+      .multiviewGeometryShader = false,
+      .multiviewTessellationShader = false,
+      .variablePointersStorageBuffer = true,
+      .variablePointers = true,
+      .protectedMemory = false,
+      .samplerYcbcrConversion = false,
+      .shaderDrawParameters = false,
+
+      /* Vulkan 1.2 */
+      .samplerMirrorClampToEdge = false,
+      .drawIndirectCount = false,
+      .storageBuffer8BitAccess = false,
+      .uniformAndStorageBuffer8BitAccess = false,
+      .storagePushConstant8 = false,
+      .shaderBufferInt64Atomics = false,
+      .shaderSharedInt64Atomics = false,
+      .shaderFloat16 = false,
+      .shaderInt8 = false,
+
+      .descriptorIndexing = false,
+      .shaderInputAttachmentArrayDynamicIndexing = false,
+      .shaderUniformTexelBufferArrayDynamicIndexing = false,
+      .shaderStorageTexelBufferArrayDynamicIndexing = false,
+      .shaderUniformBufferArrayNonUniformIndexing = false,
+      .shaderSampledImageArrayNonUniformIndexing = false,
+      .shaderStorageBufferArrayNonUniformIndexing = false,
+      .shaderStorageImageArrayNonUniformIndexing = false,
+      .shaderInputAttachmentArrayNonUniformIndexing = false,
+      .shaderUniformTexelBufferArrayNonUniformIndexing = false,
+      .shaderStorageTexelBufferArrayNonUniformIndexing = false,
+      .descriptorBindingUniformBufferUpdateAfterBind = false,
+      .descriptorBindingSampledImageUpdateAfterBind = false,
+      .descriptorBindingStorageImageUpdateAfterBind = false,
+      .descriptorBindingStorageBufferUpdateAfterBind = false,
+      .descriptorBindingUniformTexelBufferUpdateAfterBind = false,
+      .descriptorBindingStorageTexelBufferUpdateAfterBind = false,
+      .descriptorBindingUpdateUnusedWhilePending = false,
+      .descriptorBindingPartiallyBound = false,
+      .descriptorBindingVariableDescriptorCount = false,
+      .runtimeDescriptorArray = false,
+
+      .samplerFilterMinmax = false,
+      .scalarBlockLayout = false,
+      .imagelessFramebuffer = false,
+      .uniformBufferStandardLayout = false,
+      .shaderSubgroupExtendedTypes = false,
+      .separateDepthStencilLayouts = false,
+      .hostQueryReset = false,
+      .timelineSemaphore = false,
+      .bufferDeviceAddress = false,
+      .bufferDeviceAddressCaptureReplay = false,
+      .bufferDeviceAddressMultiDevice = false,
+      .vulkanMemoryModel = false,
+      .vulkanMemoryModelDeviceScope = false,
+      .vulkanMemoryModelAvailabilityVisibilityChains = false,
+      .shaderOutputViewportIndex = false,
+      .shaderOutputLayer = false,
+      .subgroupBroadcastDynamicId = false,
+
+      /* Vulkan 1.3 */
+      .robustImageAccess = false,
+      .inlineUniformBlock = false,
+      .descriptorBindingInlineUniformBlockUpdateAfterBind = false,
+      .pipelineCreationCacheControl = false,
+      .privateData = true,
+      .shaderDemoteToHelperInvocation = false,
+      .shaderTerminateInvocation = false,
+      .subgroupSizeControl = false,
+      .computeFullSubgroups = false,
+      .synchronization2 = true,
+      .textureCompressionASTC_HDR = false,
+      .shaderZeroInitializeWorkgroupMemory = false,
+      .dynamicRendering = false,
+      .shaderIntegerDotProduct = false,
+      .maintenance4 = false,
+
+      /* VK_EXT_index_type_uint8 */
+      .indexTypeUint8 = true,
+
+      /* VK_EXT_vertex_attribute_divisor */
+      .vertexAttributeInstanceRateDivisor = true,
+      .vertexAttributeInstanceRateZeroDivisor = true,
+
+      /* VK_EXT_depth_clip_enable */
+      .depthClipEnable = true,
+
+      /* VK_EXT_4444_formats */
+      .formatA4R4G4B4 = true,
+      .formatA4B4G4R4 = true,
+
+      /* VK_EXT_custom_border_color */
+      .customBorderColors = true,
+      .customBorderColorWithoutFormat = true,
+   };
+}
+
 VkResult panvk_physical_device_try_create(struct vk_instance *vk_instance,
                                           struct _drmDevice *drm_device,
                                           struct vk_physical_device **out);
@@ -293,16 +414,18 @@ panvk_physical_device_init(struct panvk_physical_device *device,
    struct vk_device_extension_table supported_extensions;
    panvk_get_device_extensions(device, &supported_extensions);
 
+   struct vk_features supported_features;
+   panvk_get_features(device, &supported_features);
+
    struct vk_physical_device_dispatch_table dispatch_table;
    vk_physical_device_dispatch_table_from_entrypoints(
       &dispatch_table, &panvk_physical_device_entrypoints, true);
    vk_physical_device_dispatch_table_from_entrypoints(
       &dispatch_table, &wsi_physical_device_entrypoints, false);
 
-   result = vk_physical_device_init(&device->vk, &instance->vk,
-                                    &supported_extensions,
-                                    NULL,
-                                    &dispatch_table);
+   result =
+      vk_physical_device_init(&device->vk, &instance->vk, &supported_extensions,
+                              &supported_features, &dispatch_table);
 
    if (result != VK_SUCCESS) {
       vk_error(instance, result);
@@ -405,129 +528,6 @@ panvk_physical_device_try_create(struct vk_instance *vk_instance,
 
    *out = &device->vk;
    return VK_SUCCESS;
-}
-
-void
-panvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
-                                 VkPhysicalDeviceFeatures2 *pFeatures)
-{
-   struct vk_features features = {
-      /* Vulkan 1.0 */
-      .robustBufferAccess = true,
-      .fullDrawIndexUint32 = true,
-      .independentBlend = true,
-      .logicOp = true,
-      .wideLines = true,
-      .largePoints = true,
-      .textureCompressionETC2 = true,
-      .textureCompressionASTC_LDR = true,
-      .shaderUniformBufferArrayDynamicIndexing = true,
-      .shaderSampledImageArrayDynamicIndexing = true,
-      .shaderStorageBufferArrayDynamicIndexing = true,
-      .shaderStorageImageArrayDynamicIndexing = true,
-
-      /* Vulkan 1.1 */
-      .storageBuffer16BitAccess = false,
-      .uniformAndStorageBuffer16BitAccess = false,
-      .storagePushConstant16 = false,
-      .storageInputOutput16 = false,
-      .multiview = false,
-      .multiviewGeometryShader = false,
-      .multiviewTessellationShader = false,
-      .variablePointersStorageBuffer = true,
-      .variablePointers = true,
-      .protectedMemory = false,
-      .samplerYcbcrConversion = false,
-      .shaderDrawParameters = false,
-
-      /* Vulkan 1.2 */
-      .samplerMirrorClampToEdge = false,
-      .drawIndirectCount = false,
-      .storageBuffer8BitAccess = false,
-      .uniformAndStorageBuffer8BitAccess = false,
-      .storagePushConstant8 = false,
-      .shaderBufferInt64Atomics = false,
-      .shaderSharedInt64Atomics = false,
-      .shaderFloat16 = false,
-      .shaderInt8 = false,
-
-      .descriptorIndexing = false,
-      .shaderInputAttachmentArrayDynamicIndexing = false,
-      .shaderUniformTexelBufferArrayDynamicIndexing = false,
-      .shaderStorageTexelBufferArrayDynamicIndexing = false,
-      .shaderUniformBufferArrayNonUniformIndexing = false,
-      .shaderSampledImageArrayNonUniformIndexing = false,
-      .shaderStorageBufferArrayNonUniformIndexing = false,
-      .shaderStorageImageArrayNonUniformIndexing = false,
-      .shaderInputAttachmentArrayNonUniformIndexing = false,
-      .shaderUniformTexelBufferArrayNonUniformIndexing = false,
-      .shaderStorageTexelBufferArrayNonUniformIndexing = false,
-      .descriptorBindingUniformBufferUpdateAfterBind = false,
-      .descriptorBindingSampledImageUpdateAfterBind = false,
-      .descriptorBindingStorageImageUpdateAfterBind = false,
-      .descriptorBindingStorageBufferUpdateAfterBind = false,
-      .descriptorBindingUniformTexelBufferUpdateAfterBind = false,
-      .descriptorBindingStorageTexelBufferUpdateAfterBind = false,
-      .descriptorBindingUpdateUnusedWhilePending = false,
-      .descriptorBindingPartiallyBound = false,
-      .descriptorBindingVariableDescriptorCount = false,
-      .runtimeDescriptorArray = false,
-
-      .samplerFilterMinmax = false,
-      .scalarBlockLayout = false,
-      .imagelessFramebuffer = false,
-      .uniformBufferStandardLayout = false,
-      .shaderSubgroupExtendedTypes = false,
-      .separateDepthStencilLayouts = false,
-      .hostQueryReset = false,
-      .timelineSemaphore = false,
-      .bufferDeviceAddress = false,
-      .bufferDeviceAddressCaptureReplay = false,
-      .bufferDeviceAddressMultiDevice = false,
-      .vulkanMemoryModel = false,
-      .vulkanMemoryModelDeviceScope = false,
-      .vulkanMemoryModelAvailabilityVisibilityChains = false,
-      .shaderOutputViewportIndex = false,
-      .shaderOutputLayer = false,
-      .subgroupBroadcastDynamicId = false,
-
-      /* Vulkan 1.3 */
-      .robustImageAccess = false,
-      .inlineUniformBlock = false,
-      .descriptorBindingInlineUniformBlockUpdateAfterBind = false,
-      .pipelineCreationCacheControl = false,
-      .privateData = true,
-      .shaderDemoteToHelperInvocation = false,
-      .shaderTerminateInvocation = false,
-      .subgroupSizeControl = false,
-      .computeFullSubgroups = false,
-      .synchronization2 = true,
-      .textureCompressionASTC_HDR = false,
-      .shaderZeroInitializeWorkgroupMemory = false,
-      .dynamicRendering = false,
-      .shaderIntegerDotProduct = false,
-      .maintenance4 = false,
-
-      /* VK_EXT_index_type_uint8 */
-      .indexTypeUint8 = true,
-
-      /* VK_EXT_vertex_attribute_divisor */
-      .vertexAttributeInstanceRateDivisor = true,
-      .vertexAttributeInstanceRateZeroDivisor = true,
-
-      /* VK_EXT_depth_clip_enable */
-      .depthClipEnable = true,
-
-      /* VK_EXT_4444_formats */
-      .formatA4R4G4B4 = true,
-      .formatA4B4G4R4 = true,
-
-      /* VK_EXT_custom_border_color */
-      .customBorderColors = true,
-      .customBorderColorWithoutFormat = true,
-   };
-
-   vk_get_physical_device_features(pFeatures, &features);
 }
 
 void
