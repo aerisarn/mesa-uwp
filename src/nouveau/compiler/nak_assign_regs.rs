@@ -10,7 +10,7 @@ use crate::nak_ir::*;
 use crate::nak_liveness::{BlockLiveness, Liveness};
 use crate::util::NextMultipleOf;
 
-use std::cmp::{max, Ordering};
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 struct KillSet {
@@ -35,19 +35,6 @@ impl KillSet {
         if self.set.insert(ssa) {
             self.vec.push(ssa);
         }
-    }
-
-    pub fn contains(&self, ssa: &SSAValue) -> bool {
-        self.set.contains(ssa)
-    }
-
-    pub fn contains_all(&self, slice: &[SSAValue]) -> bool {
-        for ssa in slice {
-            if !self.contains(ssa) {
-                return false;
-            }
-        }
-        true
     }
 
     pub fn iter(&self) -> std::slice::Iter<'_, SSAValue> {
@@ -241,12 +228,6 @@ impl RegFileAllocation {
         reg
     }
 
-    pub fn free_ssa_ref(&mut self, ssa_ref: SSARef) {
-        for ssa in ssa_ref.iter() {
-            self.free_ssa(*ssa);
-        }
-    }
-
     pub fn free_killed(&mut self, killed: &KillSet) {
         for ssa in killed.iter() {
             if ssa.file() == self.file {
@@ -278,32 +259,12 @@ impl RegFileAllocation {
         RegRef::new(self.file, reg, ssa.comps())
     }
 
-    pub fn try_assign_vec_reg(
-        &mut self,
-        ssa: SSARef,
-        reg: u8,
-    ) -> Option<RegRef> {
-        if ssa.file() != self.file() {
-            return None;
-        }
-        if !self.is_reg_in_bounds(reg, ssa.comps()) {
-            return None;
-        }
-        for c in 0..ssa.comps() {
-            if self.used.get((reg + c).into()) {
-                return None;
-            }
-        }
-        Some(self.assign_vec_reg(ssa, reg))
-    }
-
     pub fn try_find_unused_reg_range(
         &self,
         start_reg: u8,
         comps: u8,
     ) -> Option<u8> {
         assert!(comps > 0);
-        let comps_mask = u32::MAX >> (32 - comps);
         let align = comps.next_power_of_two();
 
         let mut next_reg = start_reg;
@@ -396,8 +357,6 @@ impl RegFileAllocation {
                 None => return None,
             }
         }
-
-        None
     }
 
     pub fn try_find_unpinned_reg_near_ssa(&self, ssa: SSARef) -> Option<u8> {
@@ -734,7 +693,6 @@ fn instr_assign_regs_file(
 #[derive(Clone)]
 struct RegAllocation {
     files: [RegFileAllocation; 4],
-    phi_ssa: HashMap<u32, SSARef>,
 }
 
 impl RegAllocation {
@@ -746,7 +704,6 @@ impl RegAllocation {
                 RegFileAllocation::new(RegFile::Pred, sm),
                 RegFileAllocation::new(RegFile::UPred, sm),
             ],
-            phi_ssa: HashMap::new(),
         }
     }
 
@@ -770,10 +727,6 @@ impl RegAllocation {
 
     pub fn free_ssa(&mut self, ssa: SSAValue) {
         self.file_mut(ssa.file()).free_ssa(ssa);
-    }
-
-    pub fn free_ssa_ref(&mut self, ssa: SSARef) {
-        self.file_mut(ssa.file()).free_ssa_ref(ssa);
     }
 
     pub fn free_killed(&mut self, killed: &KillSet) {

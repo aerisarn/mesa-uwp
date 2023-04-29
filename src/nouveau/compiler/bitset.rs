@@ -26,6 +26,7 @@ impl BitSet {
         }
     }
 
+    #[allow(dead_code)]
     pub fn reserve(&mut self, bits: usize) {
         self.reserve_words(bits.div_ceil(32));
     }
@@ -46,6 +47,7 @@ impl BitSet {
         }
     }
 
+    #[allow(dead_code)]
     pub fn next_set(&self, start: usize) -> Option<usize> {
         if start >= self.words.len() * 32 {
             return None;
@@ -64,6 +66,7 @@ impl BitSet {
         None
     }
 
+    #[allow(dead_code)]
     pub fn next_unset(&self, start: usize) -> usize {
         if start >= self.words.len() * 32 {
             return start;
@@ -98,14 +101,6 @@ impl BitSet {
         let exists = self.words[w] & (1_u32 << b) != 0;
         self.words[w] &= !(1_u32 << b);
         exists
-    }
-
-    pub fn words(&self) -> &[u32] {
-        &self.words
-    }
-
-    pub fn words_mut(&mut self) -> &mut [u32] {
-        &mut self.words
     }
 
     pub fn union_with(&mut self, other: &BitSet) -> bool {

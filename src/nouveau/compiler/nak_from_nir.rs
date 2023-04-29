@@ -4,11 +4,9 @@
  */
 
 #![allow(non_upper_case_globals)]
-#![allow(unstable_name_collisions)]
 
 use crate::nak_ir::*;
 use crate::nir::*;
-use crate::util::DivCeil;
 
 use nak_bindings::*;
 
@@ -64,7 +62,7 @@ impl<'a> ShaderFromNir<'a> {
                 (RegFile::GPR, comps)
             };
             let mut vec = Vec::new();
-            for i in 0..comps {
+            for _ in 0..comps {
                 vec.push(self.func.as_mut().unwrap().ssa_alloc.alloc(file))
             }
             vec
@@ -654,7 +652,7 @@ impl<'a> ShaderFromNir<'a> {
         }
     }
 
-    fn parse_jump(&mut self, jump: &nir_jump_instr) {
+    fn parse_jump(&mut self, _jump: &nir_jump_instr) {
         /* Nothing to do */
     }
 

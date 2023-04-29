@@ -276,7 +276,7 @@ impl SM75Instr {
         neg_bit: usize,
         cb: &ALUCBufRef,
     ) {
-        self.set_src_cb(38..59, &cb.cb);
+        self.set_src_cb(range, &cb.cb);
         self.set_bit(abs_bit, cb.abs);
         self.set_bit(neg_bit, cb.neg);
     }
@@ -1396,7 +1396,7 @@ impl SM75Instr {
         self.set_field(87..90, 0x7_u8); /* TODO: Pred? */
     }
 
-    fn encode_exit(&mut self, op: &OpExit) {
+    fn encode_exit(&mut self, _op: &OpExit) {
         self.set_opcode(0x94d);
 
         /* ./.KEEPREFCOUNT/.PREEMPTED/.INVALID3 */
@@ -1406,7 +1406,7 @@ impl SM75Instr {
         self.set_field(90..91, false); /* NOT */
     }
 
-    fn encode_bar(&mut self, op: &OpBar) {
+    fn encode_bar(&mut self, _op: &OpBar) {
         self.set_opcode(0x31d);
 
         /* src0 == src1 */

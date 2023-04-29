@@ -6,7 +6,6 @@
 use std::cell::UnsafeCell;
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::ptr::NonNull;
 
 #[derive(Clone, Copy)]
 struct Node<K> {

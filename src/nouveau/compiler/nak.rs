@@ -17,7 +17,6 @@ mod nak_opt_copy_prop;
 mod nak_opt_dce;
 mod nak_opt_lop;
 mod nir;
-mod union_find;
 mod util;
 
 use crate::nir::NirShader;
@@ -88,7 +87,7 @@ pub extern "C" fn nak_should_print_nir() -> bool {
     DEBUG.print()
 }
 
-fn nir_options(dev: &nv_device_info) -> nir_shader_compiler_options {
+fn nir_options(_dev: &nv_device_info) -> nir_shader_compiler_options {
     let mut op: nir_shader_compiler_options = unsafe { std::mem::zeroed() };
 
     op.lower_fdiv = true;
@@ -181,7 +180,7 @@ impl ShaderBin {
 #[no_mangle]
 pub extern "C" fn nak_shader_bin_destroy(bin: *mut nak_shader_bin) {
     unsafe {
-        Box::from_raw(bin as *mut ShaderBin);
+        _ = Box::from_raw(bin as *mut ShaderBin);
     };
 }
 
@@ -348,8 +347,6 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
         /* TODO: Non-perspective */
         let mut imap_g = hdr_view.subset_mut(192..447);
 
-        let nir_ir = BitView::new(&nir.info.inputs_read);
-        let input0: usize = VARYING_SLOT_VAR0.try_into().unwrap();
         for var in nir.iter_variables() {
             if var.data.mode() != nir_var_shader_in {
                 continue;

@@ -3,10 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#![allow(unstable_name_collisions)]
-
 use crate::nak_ir::*;
-use crate::util::NextMultipleOf;
 use crate::{GetDebugFlags, DEBUG};
 
 use std::cmp::max;
@@ -323,7 +320,7 @@ impl Shader {
         for f in &mut self.functions {
             for b in &mut f.blocks.iter_mut().rev() {
                 let mut wt = 0_u8;
-                for (i, instr) in &mut b.instrs.iter_mut().enumerate() {
+                for instr in &mut b.instrs {
                     if instr.is_barrier() {
                         instr.deps.set_yield(true);
                     } else if instr.is_branch() {

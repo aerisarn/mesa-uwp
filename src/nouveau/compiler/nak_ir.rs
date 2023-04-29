@@ -137,6 +137,7 @@ impl SSAValue {
         self.packed & 0x3fffffff
     }
 
+    #[allow(dead_code)]
     pub fn is_none(&self) -> bool {
         self.packed == 0
     }
@@ -281,10 +282,6 @@ impl SSAValueAllocator {
         SSAValueAllocator { count: 0 }
     }
 
-    pub fn count(&self) -> u32 {
-        self.count
-    }
-
     pub fn alloc(&mut self, file: RegFile) -> SSAValue {
         self.count += 1;
         SSAValue::new(file, self.count)
@@ -332,14 +329,6 @@ impl RegRef {
 
     pub fn comps(&self) -> u8 {
         (((self.packed >> 8) & 0x7) + 1).try_into().unwrap()
-    }
-
-    pub fn as_comp(&self, comp: u8) -> Option<RegRef> {
-        if comp < self.comps() {
-            Some(RegRef::new(self.file(), self.base_idx() + comp, 1))
-        } else {
-            None
-        }
     }
 }
 
@@ -552,26 +541,6 @@ impl SrcMod {
         }
     }
 
-    pub fn is_alu(&self) -> bool {
-        match self {
-            SrcMod::None
-            | SrcMod::FAbs
-            | SrcMod::FNeg
-            | SrcMod::FNegAbs
-            | SrcMod::INeg => true,
-            SrcMod::BNot => false,
-        }
-    }
-
-    pub fn is_bitwise(&self) -> bool {
-        match self {
-            SrcMod::None | SrcMod::BNot => true,
-            SrcMod::FAbs | SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::INeg => {
-                false
-            }
-        }
-    }
-
     pub fn is_bnot(&self) -> bool {
         match self {
             SrcMod::None => false,
@@ -710,6 +679,7 @@ impl Src {
         self.src_ref.iter_ssa()
     }
 
+    #[allow(dead_code)]
     pub fn is_uniform(&self) -> bool {
         match self.src_ref {
             SrcRef::Zero
@@ -748,6 +718,7 @@ impl Src {
         }
     }
 
+    #[allow(dead_code)]
     pub fn supports_type(&self, src_type: &SrcType) -> bool {
         match src_type {
             SrcType::SSA => {
@@ -865,6 +836,7 @@ pub enum PredSetOp {
     XorNot,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum FloatCmpOp {
     OrdEq,
@@ -1100,6 +1072,7 @@ impl fmt::Display for FloatType {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum FRndMode {
     NearestEven,
@@ -1184,6 +1157,7 @@ impl fmt::Display for Tld4OffsetMode {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum TexQuery {
     Dimension,
@@ -1380,6 +1354,7 @@ impl fmt::Display for MemType {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemOrder {
     Weak,
@@ -1395,6 +1370,7 @@ impl fmt::Display for MemOrder {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemScope {
     CTA,
@@ -1449,6 +1425,7 @@ impl fmt::Display for MemAccess {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum AtomType {
     F16x2,
@@ -1501,6 +1478,7 @@ impl fmt::Display for AtomType {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum AtomOp {
     Add,
@@ -1530,6 +1508,7 @@ impl fmt::Display for AtomOp {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum InterpFreq {
     Pass,
@@ -1537,6 +1516,7 @@ pub enum InterpFreq {
     State,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum InterpLoc {
     Default,
@@ -1694,6 +1674,7 @@ impl fmt::Display for OpFSetP {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum MuFuOp {
     Cos,
@@ -2732,6 +2713,7 @@ impl OpPhiSrcs {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         assert!(self.ids.len() == self.srcs.len());
         self.ids.is_empty()
@@ -2792,6 +2774,7 @@ impl OpPhiDsts {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         assert!(self.ids.len() == self.dsts.len());
         self.ids.is_empty()
@@ -3010,6 +2993,7 @@ pub enum Pred {
 }
 
 impl Pred {
+    #[allow(dead_code)]
     pub fn as_reg(&self) -> Option<&RegRef> {
         match self {
             Pred::Reg(r) => Some(r),
@@ -3017,6 +3001,7 @@ impl Pred {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_ssa(&self) -> Option<&SSAValue> {
         match self {
             Pred::SSA(r) => Some(r),
@@ -3123,7 +3108,8 @@ impl InstrDeps {
         self.wt_bar_mask |= bar_mask;
     }
 
-    pub fn add_reuse_bar(&mut self, idx: u8) {
+    #[allow(dead_code)]
+    pub fn add_reuse(&mut self, idx: u8) {
         assert!(idx < 6);
         self.reuse_mask |= 1_u8 << idx;
     }
@@ -3484,7 +3470,6 @@ impl Instr {
             | Op::ISetP(_)
             | Op::Shf(_) => Some(6),
             Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::Mov(_) => Some(15),
-            Op::MuFu(_) => None,
             Op::Sel(_) => Some(15),
             Op::S2R(_) => None,
             Op::ALd(_) => None,
@@ -3606,15 +3591,13 @@ impl fmt::Display for BasicBlock {
 }
 
 pub struct Function {
-    id: u32,
     pub ssa_alloc: SSAValueAllocator,
     pub blocks: Vec<BasicBlock>,
 }
 
 impl Function {
-    pub fn new(id: u32) -> Function {
+    pub fn new(_id: u32) -> Function {
         Function {
-            id: id,
             ssa_alloc: SSAValueAllocator::new(),
             blocks: Vec::new(),
         }

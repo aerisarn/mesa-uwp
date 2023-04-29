@@ -118,7 +118,7 @@ fn derive_as_slice(
                             quote! { SrcType::DEFAULT, }
                         };
 
-                        for i in 0..ty_count {
+                        for _ in 0..ty_count {
                             src_types.extend(src_type.clone());
                         }
                     }

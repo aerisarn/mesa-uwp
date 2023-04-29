@@ -74,10 +74,12 @@ impl BlockLiveness {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_live_in(&self, val: &SSAValue) -> bool {
         self.live_in.get(val.idx().try_into().unwrap())
     }
 
+    #[allow(dead_code)]
     pub fn is_live_out(&self, val: &SSAValue) -> bool {
         self.live_out.get(val.idx().try_into().unwrap())
     }
@@ -138,7 +140,7 @@ impl Liveness {
         let mut to_do = true;
         while to_do {
             to_do = false;
-            for (i, b) in func.blocks.iter().enumerate() {
+            for b in &func.blocks {
                 let bl = l.blocks.get_mut(&b.id).unwrap();
 
                 /* Compute live-out */

@@ -191,9 +191,6 @@ impl<'a> LegalizeInstr<'a> {
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
                 self.mov_src_if_not_reg(src2, RegFile::GPR);
             }
-            Op::St(op) => {
-                self.mov_src_if_not_reg(&mut op.data, RegFile::GPR);
-            }
             Op::ALd(_) | Op::ASt(_) | Op::Ld(_) | Op::St(_) => {
                 for src in instr.srcs_mut() {
                     self.mov_src_if_not_reg(src, RegFile::GPR);
