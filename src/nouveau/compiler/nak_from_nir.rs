@@ -13,7 +13,7 @@ use crate::util::DivCeil;
 use nak_bindings::*;
 
 use std::cmp::min;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 struct ShaderFromNir<'a> {
     nir: &'a nir_shader,
@@ -25,6 +25,7 @@ struct ShaderFromNir<'a> {
     ssa_map: HashMap<u32, Vec<SSAValue>>,
     num_phis: u32,
     phi_map: HashMap<(u32, u8), u32>,
+    saturated: HashSet<*const nir_def>,
 }
 
 impl<'a> ShaderFromNir<'a> {
@@ -45,6 +46,7 @@ impl<'a> ShaderFromNir<'a> {
             ssa_map: HashMap::new(),
             num_phis: 0,
             phi_map: HashMap::new(),
+            saturated: HashSet::new(),
         }
     }
 
@@ -115,6 +117,19 @@ impl<'a> ShaderFromNir<'a> {
             self.num_phis += 1;
             id
         })
+    }
+
+    fn try_saturate_alu_dst(&mut self, def: &nir_def) -> bool {
+        if def.all_uses_are_fsat() {
+            self.saturated.insert(def as *const _);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn alu_src_is_saturated(&self, src: &nir_alu_src) -> bool {
+        self.saturated.get(&(src.as_def() as *const _)).is_some()
     }
 
     fn parse_alu(&mut self, alu: &nir_alu_instr) {
@@ -206,7 +221,13 @@ impl<'a> ShaderFromNir<'a> {
                 );
             }
             nir_op_fadd => {
-                self.instrs.push(Instr::new_fadd(dst, srcs[0], srcs[1]));
+                let fadd = OpFAdd {
+                    dst: dst,
+                    srcs: [srcs[0], srcs[1]],
+                    saturate: self.try_saturate_alu_dst(&alu.def),
+                    rnd_mode: FRndMode::NearestEven,
+                };
+                self.instrs.push(fadd.into());
             }
             nir_op_fcos => {
                 let frac_1_2pi = 1.0 / (2.0 * std::f32::consts::PI);
@@ -232,12 +253,13 @@ impl<'a> ShaderFromNir<'a> {
                     .push(Instr::new_mufu(dst, MuFuOp::Exp2, srcs[0]));
             }
             nir_op_ffma => {
-                self.instrs.push(Instr::new(Op::FFma(OpFFma {
+                let ffma = OpFFma {
                     dst: dst,
                     srcs: [srcs[0], srcs[1], srcs[2]],
-                    saturate: false,
+                    saturate: self.try_saturate_alu_dst(&alu.def),
                     rnd_mode: FRndMode::NearestEven,
-                })));
+                };
+                self.instrs.push(ffma.into());
             }
             nir_op_fge => {
                 self.instrs.push(Instr::new_fsetp(
@@ -274,7 +296,13 @@ impl<'a> ShaderFromNir<'a> {
                 })));
             }
             nir_op_fmul => {
-                self.instrs.push(Instr::new_fmul(dst, srcs[0], srcs[1]));
+                let fmul = OpFMul {
+                    dst: dst,
+                    srcs: [srcs[0], srcs[1]],
+                    saturate: self.try_saturate_alu_dst(&alu.def),
+                    rnd_mode: FRndMode::NearestEven,
+                };
+                self.instrs.push(fmul.into());
             }
             nir_op_fneu => {
                 self.instrs.push(Instr::new_fsetp(
@@ -327,15 +355,17 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_mufu(dst, MuFuOp::Rsq, srcs[0]));
             }
             nir_op_fsat => {
-                self.instrs.push(
-                    OpFAdd {
+                if self.alu_src_is_saturated(&alu.srcs_as_slice()[0]) {
+                    self.instrs.push(Instr::new_mov(dst, srcs[0]));
+                } else {
+                    let fsat = OpFAdd {
                         dst: dst,
                         srcs: [srcs[0], Src::new_zero()],
                         saturate: true,
                         rnd_mode: FRndMode::NearestEven,
-                    }
-                    .into(),
-                );
+                    };
+                    self.instrs.push(fsat.into());
+                }
             }
             nir_op_fsign => {
                 let lz = self.alloc_ssa(RegFile::GPR);
