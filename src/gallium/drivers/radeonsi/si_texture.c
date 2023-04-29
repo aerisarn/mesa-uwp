@@ -226,9 +226,7 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
       /* Shared textures must always set up DCC. If it's not present, it will be disabled by
        * si_get_opaque_metadata later.
        */
-      if (!is_imported &&
-          (sscreen->debug_flags & DBG(NO_DCC) ||
-           (ptex->bind & PIPE_BIND_SCANOUT && sscreen->debug_flags & DBG(NO_DISPLAY_DCC))))
+      if (!is_imported && sscreen->debug_flags & DBG(NO_DCC))
          flags |= RADEON_SURF_DISABLE_DCC;
 
       /* R9G9B9E5 isn't supported for rendering by older generations. */

@@ -1159,6 +1159,11 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->debug_flags |= debug_get_flags_option("AMD_DEBUG", radeonsi_debug_options, 0);
    test_flags = debug_get_flags_option("AMD_TEST", test_options, 0);
 
+   if (sscreen->debug_flags & DBG(NO_DISPLAY_DCC)) {
+      sscreen->info.use_display_dcc_unaligned = false;
+      sscreen->info.use_display_dcc_with_retile_blit = false;
+   }
+
    if (sscreen->debug_flags & DBG(NO_GFX))
       sscreen->info.has_graphics = false;
 
