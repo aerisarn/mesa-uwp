@@ -61,6 +61,7 @@ static int amdgpu_surface_sanity(const struct pipe_resource *tex)
 }
 
 static int amdgpu_surface_init(struct radeon_winsys *rws,
+                               const struct radeon_info *info,
                                const struct pipe_resource *tex,
                                uint64_t flags, unsigned bpe,
                                enum radeon_surf_mode mode,
@@ -103,7 +104,8 @@ static int amdgpu_surface_init(struct radeon_winsys *rws,
    if (flags & RADEON_SURF_Z_OR_SBUFFER)
       config.info.surf_index = NULL;
 
-   return ac_compute_surface(ws->addrlib, &ws->info, &config, mode, surf);
+   /* Use radeon_info from the driver, not the winsys. The driver is allowed to change it. */
+   return ac_compute_surface(ws->addrlib, info, &config, mode, surf);
 }
 
 void amdgpu_surface_init_functions(struct amdgpu_screen_winsys *ws)

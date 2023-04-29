@@ -313,7 +313,8 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
 
    surface->modifier = modifier;
 
-   r = sscreen->ws->surface_init(sscreen->ws, ptex, flags, bpe, array_mode, surface);
+   r = sscreen->ws->surface_init(sscreen->ws, &sscreen->info, ptex, flags, bpe, array_mode,
+                                 surface);
    if (r) {
       return r;
    }

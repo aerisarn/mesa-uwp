@@ -343,6 +343,7 @@ static void si_compute_htile(const struct radeon_info *info,
 }
 
 static int radeon_winsys_surface_init(struct radeon_winsys *rws,
+                                      const struct radeon_info *info,
                                       const struct pipe_resource *tex,
                                       uint64_t flags, unsigned bpe,
                                       enum radeon_surf_mode mode,
@@ -391,7 +392,7 @@ static int radeon_winsys_surface_init(struct radeon_winsys *rws,
          return -1;
       }
 
-      if (radeon_winsys_surface_init(rws, &templ, fmask_flags, bpe,
+      if (radeon_winsys_surface_init(rws, info, &templ, fmask_flags, bpe,
                                      RADEON_SURF_MODE_2D, &fmask)) {
          fprintf(stderr, "Got error in surface_init while allocating FMASK.\n");
          return -1;
