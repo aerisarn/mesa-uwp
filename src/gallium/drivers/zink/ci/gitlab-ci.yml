@@ -137,9 +137,9 @@ zink-tu-a618-traces-performance:
     # a618 tag starts with cbg-1 (not cbg-0) for some reason
     LAVA_TAGS: "cbg-1"
 
-zink-freedreno-a630-traces:
+.zink-freedreno-a630-traces:
   extends:
-    - a630-traces
+    - .a630-traces
     - .zink-turnip-rules
     - .zink-trace-test
   variables:
