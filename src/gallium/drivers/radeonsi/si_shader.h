@@ -136,8 +136,6 @@ struct si_context;
 #define SI_MAX_VS_OUTPUTS 40
 #define SI_USER_CLIP_PLANE_MASK  0x3F
 
-#define SI_NGG_PRIM_EDGE_FLAG_BITS ((1 << 9) | (1 << 19) | (1 << 29))
-
 #define SI_PS_INPUT_CNTL_0000          (S_028644_OFFSET(0x20) | S_028644_DEFAULT_VAL(0))
 #define SI_PS_INPUT_CNTL_0001          (S_028644_OFFSET(0x20) | S_028644_DEFAULT_VAL(3))
 #define SI_PS_INPUT_CNTL_UNUSED        SI_PS_INPUT_CNTL_0000
@@ -242,7 +240,7 @@ enum
  */
 /* bit gap */
 #define VS_STATE_LS_OUT_VERTEX_SIZE__SHIFT   24
-#define VS_STATE_LS_OUT_VERTEX_SIZE__MASK    0xff /* max 32 * 4 + 1 */
+#define VS_STATE_LS_OUT_VERTEX_SIZE__MASK    0xff /* max 32 * 4 + 1 (to reduce LDS bank conflicts) */
 
 /* These fields are only set in current_gs_state in si_context, and they are accessible
  * in the shader via vs_state_bits in legacy GS, the GS copy shader, and any NGG shader.
@@ -901,7 +899,7 @@ struct si_shader {
 
    struct gfx9_gs_info gs_info;
 
-   /* For save precompute context registers values. */
+   /* Precomputed register values. */
    union {
       struct {
          unsigned vgt_gsvs_ring_offset_1;
