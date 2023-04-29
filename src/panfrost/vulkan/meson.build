@@ -48,7 +48,6 @@ libpanvk_files = files(
   'panvk_private.h',
   'panvk_query.c',
   'panvk_shader.c',
-  'panvk_util.c',
   'panvk_wsi.c',
 ) + [vk_cmd_enqueue_entrypoints[0], vk_common_entrypoints[0]]
 

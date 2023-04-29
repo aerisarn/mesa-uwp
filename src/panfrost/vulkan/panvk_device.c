@@ -344,7 +344,7 @@ panvk_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       parse_debug_string(getenv("PANVK_DEBUG"), panvk_debug_options);
 
    if (instance->debug_flags & PANVK_DEBUG_STARTUP)
-      panvk_logi("Created an instance");
+      vk_logi(VK_LOG_NO_OBJS(instance), "Created an instance");
 
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
@@ -409,7 +409,7 @@ panvk_physical_device_init(struct panvk_physical_device *device,
    drmFreeVersion(version);
 
    if (instance->debug_flags & PANVK_DEBUG_STARTUP)
-      panvk_logi("Found compatible device '%s'.", path);
+      vk_logi(VK_LOG_NO_OBJS(instance), "Found compatible device '%s'.", path);
 
    struct vk_device_extension_table supported_extensions;
    panvk_get_device_extensions(device, &supported_extensions);
