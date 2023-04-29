@@ -188,7 +188,7 @@ impl Shader {
         self.map_instrs(&|instr, _| -> Vec<Instr> {
             match instr.op {
                 Op::ParCopy(pc) => {
-                    assert!(instr.pred.is_none());
+                    assert!(instr.pred.is_true());
                     lower_par_copy(pc)
                 }
                 _ => vec![instr],

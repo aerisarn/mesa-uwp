@@ -2991,17 +2991,17 @@ pub enum Op {
     FSOut(OpFSOut),
 }
 
-pub enum Pred {
+pub enum PredRef {
     None,
     SSA(SSAValue),
     Reg(RegRef),
 }
 
-impl Pred {
+impl PredRef {
     #[allow(dead_code)]
     pub fn as_reg(&self) -> Option<&RegRef> {
         match self {
-            Pred::Reg(r) => Some(r),
+            PredRef::Reg(r) => Some(r),
             _ => None,
         }
     }
@@ -3009,39 +3009,71 @@ impl Pred {
     #[allow(dead_code)]
     pub fn as_ssa(&self) -> Option<&SSAValue> {
         match self {
-            Pred::SSA(r) => Some(r),
+            PredRef::SSA(r) => Some(r),
             _ => None,
         }
     }
 
     pub fn is_none(&self) -> bool {
         match self {
-            Pred::None => true,
+            PredRef::None => true,
             _ => false,
         }
     }
 }
 
-impl From<RegRef> for Pred {
-    fn from(reg: RegRef) -> Pred {
-        Pred::Reg(reg)
+impl From<RegRef> for PredRef {
+    fn from(reg: RegRef) -> PredRef {
+        PredRef::Reg(reg)
     }
 }
 
-impl From<SSAValue> for Pred {
-    fn from(ssa: SSAValue) -> Pred {
-        Pred::SSA(ssa)
+impl From<SSAValue> for PredRef {
+    fn from(ssa: SSAValue) -> PredRef {
+        PredRef::SSA(ssa)
+    }
+}
+
+impl fmt::Display for PredRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PredRef::None => write!(f, "PT"),
+            PredRef::SSA(ssa) => ssa.fmt(f),
+            PredRef::Reg(reg) => reg.fmt(f),
+        }
+    }
+}
+
+pub struct Pred {
+    pub pred_ref: PredRef,
+    pub pred_inv: bool,
+}
+
+impl Pred {
+    pub fn is_true(&self) -> bool {
+        self.pred_ref.is_none() && !self.pred_inv
+    }
+
+    pub fn is_false(&self) -> bool {
+        self.pred_ref.is_none() && self.pred_inv
+    }
+}
+
+impl<T: Into<PredRef>> From<T> for Pred {
+    fn from(p: T) -> Self {
+        Pred {
+            pred_ref: p.into(),
+            pred_inv: false,
+        }
     }
 }
 
 impl fmt::Display for Pred {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Pred::None => (),
-            Pred::SSA(s) => s.fmt(f)?,
-            Pred::Reg(r) => r.fmt(f)?,
+        if self.pred_inv {
+            write!(f, "!")?;
         }
-        Ok(())
+        self.pred_ref.fmt(f)
     }
 }
 
@@ -3141,7 +3173,6 @@ impl fmt::Display for InstrDeps {
 
 pub struct Instr {
     pub pred: Pred,
-    pub pred_inv: bool,
     pub op: Op,
     pub deps: InstrDeps,
 }
@@ -3150,8 +3181,7 @@ impl Instr {
     pub fn new(op: impl Into<Op>) -> Instr {
         Instr {
             op: op.into(),
-            pred: Pred::None,
-            pred_inv: false,
+            pred: PredRef::None.into(),
             deps: InstrDeps::new(),
         }
     }
@@ -3514,12 +3544,8 @@ impl Instr {
 
 impl fmt::Display for Instr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if !self.pred.is_none() {
-            if self.pred_inv {
-                write!(f, "@!{} ", self.pred)?;
-            } else {
-                write!(f, "@{} ", self.pred)?;
-            }
+        if !self.pred.is_true() {
+            write!(f, "@{} ", self.pred)?;
         }
         write!(f, "{} {}", self.op, self.deps)
     }
@@ -3582,7 +3608,7 @@ impl BasicBlock {
 
     pub fn falls_through(&self) -> bool {
         if let Some(i) = self.branch() {
-            !i.pred.is_none()
+            !i.pred.is_true()
         } else {
             true
         }

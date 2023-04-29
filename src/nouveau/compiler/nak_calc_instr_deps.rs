@@ -331,7 +331,9 @@ impl Shader {
                             instr.deps.set_wr_bar(0);
                             wt |= 1 << 0;
                         }
-                        if !instr.pred.is_none() || instr.srcs().len() > 0 {
+                        if !instr.pred.pred_ref.is_none()
+                            || instr.srcs().len() > 0
+                        {
                             instr.deps.set_rd_bar(1);
                             wt |= 1 << 1;
                         }

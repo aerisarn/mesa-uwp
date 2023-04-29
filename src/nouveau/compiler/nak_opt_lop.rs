@@ -33,7 +33,7 @@ impl LopPass {
         let mut use_counts = HashMap::new();
         for b in &f.blocks {
             for instr in &b.instrs {
-                if let Pred::SSA(ssa) = instr.pred {
+                if let PredRef::SSA(ssa) = instr.pred.pred_ref {
                     use_counts.entry(ssa).and_modify(|e| *e += 1).or_insert(1);
                 }
 

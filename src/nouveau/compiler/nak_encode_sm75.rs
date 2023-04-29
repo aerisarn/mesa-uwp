@@ -228,17 +228,17 @@ impl SM75Instr {
         self.set_field(0..12, opcode);
     }
 
-    fn set_pred(&mut self, pred: &Pred, pred_inv: bool) {
-        assert!(!pred.is_none() || !pred_inv);
+    fn set_pred(&mut self, pred: &Pred) {
+        assert!(!pred.is_false());
         self.set_pred_reg(
             12..15,
-            match pred {
-                Pred::None => RegRef::zero(RegFile::Pred, 1),
-                Pred::Reg(reg) => *reg,
-                Pred::SSA(_) => panic!("SSA values must be lowered"),
+            match pred.pred_ref {
+                PredRef::None => RegRef::zero(RegFile::Pred, 1),
+                PredRef::Reg(reg) => reg,
+                PredRef::SSA(_) => panic!("SSA values must be lowered"),
             },
         );
-        self.set_bit(15, pred_inv);
+        self.set_bit(15, pred.pred_inv);
     }
 
     fn set_dst(&mut self, dst: Dst) {
@@ -1507,7 +1507,7 @@ impl SM75Instr {
             _ => panic!("Unhandled instruction"),
         }
 
-        si.set_pred(&instr.pred, instr.pred_inv);
+        si.set_pred(&instr.pred);
         si.set_instr_deps(&instr.deps);
 
         si.inst

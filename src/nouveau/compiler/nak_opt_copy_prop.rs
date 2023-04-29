@@ -71,10 +71,10 @@ impl CopyPropPass {
         self.ssa_map.get(dst)
     }
 
-    fn prop_to_pred(&self, pred: &mut Pred, pred_inv: &mut bool) {
+    fn prop_to_pred(&self, pred: &mut Pred) {
         loop {
-            let src_ssa = match &pred {
-                Pred::SSA(ssa) => ssa,
+            let src_ssa = match &pred.pred_ref {
+                PredRef::SSA(ssa) => ssa,
                 _ => return,
             };
 
@@ -85,15 +85,15 @@ impl CopyPropPass {
 
             match entry.src.src_ref {
                 SrcRef::True => {
-                    *pred = Pred::None;
+                    pred.pred_ref = PredRef::None;
                 }
                 SrcRef::False => {
-                    *pred = Pred::None;
-                    *pred_inv = !*pred_inv;
+                    pred.pred_ref = PredRef::None;
+                    pred.pred_inv = !pred.pred_inv;
                 }
                 SrcRef::SSA(ssa) => {
                     assert!(ssa.comps() == 1);
-                    *pred = Pred::SSA(ssa[0]);
+                    pred.pred_ref = PredRef::SSA(ssa[0]);
                 }
                 _ => return,
             }
@@ -101,7 +101,7 @@ impl CopyPropPass {
             match entry.src.src_mod {
                 SrcMod::None => (),
                 SrcMod::BNot => {
-                    *pred_inv = !*pred_inv;
+                    pred.pred_inv = !pred.pred_inv;
                 }
                 _ => panic!("Invalid predicate modifier"),
             }
@@ -427,7 +427,7 @@ impl CopyPropPass {
                     _ => (),
                 }
 
-                self.prop_to_pred(&mut instr.pred, &mut instr.pred_inv);
+                self.prop_to_pred(&mut instr.pred);
 
                 let src_types = instr.src_types();
                 for (i, src) in instr.srcs_mut().iter_mut().enumerate() {

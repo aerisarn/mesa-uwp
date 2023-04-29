@@ -60,7 +60,7 @@ impl DeadCodePass {
     }
 
     fn is_instr_live(&self, instr: &Instr) -> bool {
-        if instr.pred.is_none() && instr.pred_inv {
+        if instr.pred.is_false() {
             return false;
         }
 
@@ -80,7 +80,7 @@ impl DeadCodePass {
     fn mark_instr(&mut self, instr: &Instr) {
         match &instr.op {
             Op::PhiSrcs(phi) => {
-                assert!(instr.pred.is_none());
+                assert!(instr.pred.is_true());
                 for (id, src) in phi.iter() {
                     if self.is_phi_live(*id) {
                         self.mark_src_live(src);
@@ -90,7 +90,7 @@ impl DeadCodePass {
                 }
             }
             Op::PhiDsts(phi) => {
-                assert!(instr.pred.is_none());
+                assert!(instr.pred.is_true());
                 for (id, dst) in phi.iter() {
                     if self.is_dst_live(dst) {
                         self.mark_phi_live(*id);
@@ -100,7 +100,7 @@ impl DeadCodePass {
                 }
             }
             Op::ParCopy(pcopy) => {
-                assert!(instr.pred.is_none());
+                assert!(instr.pred.is_true());
                 for (src, dst) in pcopy.iter() {
                     if self.is_dst_live(dst) {
                         self.mark_src_live(src);
@@ -111,7 +111,7 @@ impl DeadCodePass {
             }
             _ => {
                 if self.is_instr_live(instr) {
-                    if let Pred::SSA(ssa) = &instr.pred {
+                    if let PredRef::SSA(ssa) = &instr.pred.pred_ref {
                         self.mark_ssa_live(ssa);
                     }
 

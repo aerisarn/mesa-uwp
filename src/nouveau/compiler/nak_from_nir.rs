@@ -1382,7 +1382,7 @@ impl<'a> ShaderFromNir<'a> {
         let if_bra = self.blocks.last_mut().unwrap().branch_mut().unwrap();
         if_bra.pred = cond.into();
         /* This is the branch to jump to the else */
-        if_bra.pred_inv = true;
+        if_bra.pred.pred_inv = true;
 
         self.parse_cf_list(ni.iter_then_list());
         self.parse_cf_list(ni.iter_else_list());

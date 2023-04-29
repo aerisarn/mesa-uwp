@@ -509,9 +509,9 @@ fn instr_remap_srcs_file(
     pcopy: &mut OpParCopy,
     ra: &mut RegFileAllocation,
 ) {
-    if let Pred::SSA(pred) = instr.pred {
+    if let PredRef::SSA(pred) = instr.pred.pred_ref {
         if pred.file() == ra.file() {
-            instr.pred = ra.get_scalar(pred).into();
+            instr.pred.pred_ref = ra.get_scalar(pred).into();
         }
     }
 
@@ -787,7 +787,7 @@ impl AssignRegsBlock {
                 None
             }
             Op::PhiDsts(phi) => {
-                assert!(instr.pred.is_none());
+                assert!(instr.pred.is_true());
 
                 for (id, dst) in phi.iter() {
                     if let Dst::SSA(ssa) = dst {
@@ -836,7 +836,7 @@ impl AssignRegsBlock {
         for (ip, instr) in b.instrs.drain(..).enumerate() {
             /* Build up the kill set */
             killed.clear();
-            if let Pred::SSA(ssa) = &instr.pred {
+            if let PredRef::SSA(ssa) = &instr.pred.pred_ref {
                 if !bl.is_live_after(ssa, ip) {
                     killed.insert(*ssa);
                 }

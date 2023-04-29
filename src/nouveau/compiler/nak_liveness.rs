@@ -42,7 +42,7 @@ impl BlockLiveness {
 
     fn add_live_block(&mut self, block: &BasicBlock) {
         for (ip, instr) in block.instrs.iter().enumerate() {
-            if let Pred::SSA(val) = &instr.pred {
+            if let PredRef::SSA(val) = &instr.pred.pred_ref {
                 self.add_use(val, ip);
             }
 
