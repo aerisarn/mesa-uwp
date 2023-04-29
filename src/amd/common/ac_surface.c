@@ -239,7 +239,8 @@ bool ac_is_modifier_supported(const struct radeon_info *info,
       if (!options->dcc)
          return false;
 
-      if (ac_modifier_has_dcc_retile(modifier) && !options->dcc_retile)
+      if (ac_modifier_has_dcc_retile(modifier) &&
+          (!info->use_display_dcc_with_retile_blit || !options->dcc_retile))
          return false;
    }
 
