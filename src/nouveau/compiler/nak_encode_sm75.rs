@@ -484,6 +484,18 @@ impl SM75Instr {
         self.set_field(87..90, 0x7_u8); /* TODO: src predicate */
     }
 
+    fn set_pred_set_op(&mut self, range: Range<usize>, op: PredSetOp) {
+        assert!(range.len() == 2);
+        self.set_field(
+            range,
+            match op {
+                PredSetOp::And => 0_u8,
+                PredSetOp::Or => 1_u8,
+                PredSetOp::Xor => 2_u8,
+            },
+        );
+    }
+
     fn encode_fsetp(&mut self, op: &OpFSetP) {
         self.encode_alu(
             0x00b,
@@ -493,14 +505,14 @@ impl SM75Instr {
             ALUSrc::None,
         );
 
-        self.set_field(74..76, 0_u32); /* pred combine op */
+        self.set_pred_set_op(74..76, op.set_op);
         self.set_float_cmp_op(76..80, op.cmp_op);
         self.set_bit(80, false); /* TODO: Denorm mode */
 
         self.set_pred_dst(81..84, op.dst);
         self.set_pred_dst(84..87, Dst::None); /* dst1 */
 
-        self.set_pred_src(87..90, 90, SrcRef::True.into());
+        self.set_pred_src(87..90, 90, op.accum);
     }
 
     fn encode_mufu(&mut self, op: &OpMuFu) {
@@ -649,13 +661,13 @@ impl SM75Instr {
                 IntCmpType::I32 => 1_u32,
             },
         );
-        self.set_field(74..76, 0_u32); /* pred combine op */
+        self.set_pred_set_op(74..76, op.set_op);
         self.set_int_cmp_op(76..79, op.cmp_op);
 
         self.set_pred_dst(81..84, op.dst);
         self.set_pred_dst(84..87, Dst::None); /* dst1 */
 
-        self.set_pred_src(87..90, 90, SrcRef::True.into());
+        self.set_pred_src(87..90, 90, op.accum);
     }
 
     fn encode_lop3(&mut self, op: &OpLop3) {

@@ -826,14 +826,12 @@ pub trait DstsAsSlice {
     fn dsts_as_mut_slice(&mut self) -> &mut [Dst];
 }
 
+#[allow(dead_code)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum PredSetOp {
-    Set,
     And,
     Or,
     Xor,
-    AndNot,
-    OrNot,
-    XorNot,
 }
 
 #[allow(dead_code)]
@@ -1657,11 +1655,15 @@ impl fmt::Display for OpFSet {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFSetP {
     pub dst: Dst,
+
+    pub set_op: PredSetOp,
     pub cmp_op: FloatCmpOp,
 
     #[src_type(F32)]
     pub srcs: [Src; 2],
-    /* TODO: Other predicates? Combine ops? */
+
+    #[src_type(Pred)]
+    pub accum: Src,
 }
 
 impl fmt::Display for OpFSetP {
@@ -1875,12 +1877,15 @@ impl fmt::Display for OpIMnMx {
 pub struct OpISetP {
     pub dst: Dst,
 
+    pub set_op: PredSetOp,
     pub cmp_op: IntCmpOp,
     pub cmp_type: IntCmpType,
 
     #[src_type(ALU)]
     pub srcs: [Src; 2],
-    /* TODO: Other predicates? Combine ops? */
+
+    #[src_type(Pred)]
+    pub accum: Src,
 }
 
 impl fmt::Display for OpISetP {
@@ -3183,8 +3188,10 @@ impl Instr {
     pub fn new_fsetp(dst: Dst, cmp_op: FloatCmpOp, x: Src, y: Src) -> Instr {
         OpFSetP {
             dst: dst,
+            set_op: PredSetOp::And,
             cmp_op: cmp_op,
             srcs: [x, y],
+            accum: SrcRef::True.into(),
         }
         .into()
     }
@@ -3239,9 +3246,11 @@ impl Instr {
     ) -> Instr {
         OpISetP {
             dst: dst,
+            set_op: PredSetOp::And,
             cmp_op: cmp_op,
             cmp_type: cmp_type,
             srcs: [x, y],
+            accum: SrcRef::True.into(),
         }
         .into()
     }
