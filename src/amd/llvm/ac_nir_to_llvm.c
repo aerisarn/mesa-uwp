@@ -2700,46 +2700,30 @@ static void emit_demote(struct ac_nir_context *ctx, const nir_intrinsic_instr *i
    }
 }
 
-static LLVMValueRef visit_load_local_invocation_index(struct ac_nir_context *ctx)
-{
-   if (ctx->args->tcs_wave_id.used) {
-      return ac_build_imad(&ctx->ac,
-                           ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->tcs_wave_id), 0, 3),
-                           LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, 0),
-                           ac_get_thread_id(&ctx->ac));
-   } else if (ctx->abi->vs_rel_patch_id) {
-      return ctx->abi->vs_rel_patch_id;
-   } else if (ctx->args->merged_wave_info.used) {
-      /* Thread ID in threadgroup in merged ESGS. */
-      LLVMValueRef wave_id = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 24, 4);
-      LLVMValueRef wave_size = LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, false);
-      LLVMValueRef threads_before = LLVMBuildMul(ctx->ac.builder, wave_id, wave_size, "");
-      return LLVMBuildAdd(ctx->ac.builder, threads_before, ac_get_thread_id(&ctx->ac), "");
-   }
-
-   LLVMValueRef result;
-   LLVMValueRef thread_id = ac_get_thread_id(&ctx->ac);
-   result = LLVMBuildAnd(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args->tg_size),
-                         LLVMConstInt(ctx->ac.i32, 0xfc0, false), "");
-
-   if (ctx->ac.wave_size == 32)
-      result = LLVMBuildLShr(ctx->ac.builder, result, LLVMConstInt(ctx->ac.i32, 1, false), "");
-
-   return LLVMBuildAdd(ctx->ac.builder, result, thread_id, "");
-}
-
 static LLVMValueRef visit_load_subgroup_id(struct ac_nir_context *ctx)
 {
    if (ctx->stage == MESA_SHADER_COMPUTE) {
-      LLVMValueRef result;
-      result = LLVMBuildAnd(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args->tg_size),
-                            LLVMConstInt(ctx->ac.i32, 0xfc0, false), "");
-      return LLVMBuildLShr(ctx->ac.builder, result, LLVMConstInt(ctx->ac.i32, 6, false), "");
+      if (ctx->ac.gfx_level >= GFX10_3)
+         return ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->tg_size), 20, 5);
+      else
+         return ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->tg_size), 6, 6);
+   } else if (ctx->args->tcs_wave_id.used) {
+      return ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->tcs_wave_id), 0, 3);
    } else if (ctx->args->merged_wave_info.used) {
       return ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 24, 4);
    } else {
-      return LLVMConstInt(ctx->ac.i32, 0, false);
+      return ctx->ac.i32_0;
    }
+}
+
+static LLVMValueRef visit_load_local_invocation_index(struct ac_nir_context *ctx)
+{
+   if (ctx->abi->vs_rel_patch_id)
+      return ctx->abi->vs_rel_patch_id;
+
+   return ac_build_imad(&ctx->ac, visit_load_subgroup_id(ctx),
+                        LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, 0),
+                        ac_get_thread_id(&ctx->ac));
 }
 
 static LLVMValueRef visit_load_num_subgroups(struct ac_nir_context *ctx)
