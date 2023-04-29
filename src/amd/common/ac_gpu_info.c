@@ -1277,10 +1277,15 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
                                   info->family == CHIP_RENOIR)) ||
        info->gfx_level >= GFX10_3) {
       /* GFX10+ requires retiling in all cases. */
-      if (info->max_render_backends == 1 && info->gfx_level == GFX9)
+      if (info->max_render_backends == 1 && info->gfx_level == GFX9) {
          info->use_display_dcc_unaligned = true;
-      else
-         info->use_display_dcc_with_retile_blit = true;
+      } else {
+         /* Displayable DCC with retiling is known to increase power consumption on Raphael
+          * and Mendocino, so disable it on the smallest APUs. We need a proof that
+          * displayable DCC doesn't regress bigger chips in the same way.
+          */
+         info->use_display_dcc_with_retile_blit = info->num_cu > 4;
+      }
    }
 
    info->has_stable_pstate = info->drm_minor >= 45;
