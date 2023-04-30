@@ -33,11 +33,6 @@ spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=2,Fail
-spec@!opengl 1.1@getteximage-depth,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT16,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT24,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT32,Fail
 spec@!opengl 1.1@getteximage-formats,Fail
 spec@!opengl 1.1@linestipple,Fail
 spec@!opengl 1.1@linestipple@Factor 2x,Fail
@@ -330,18 +325,6 @@ spec@ext_framebuffer_multisample@interpolation 2 centroid-edges,Fail
 spec@ext_framebuffer_multisample@interpolation 4 centroid-edges,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Fail
-spec@ext_gpu_shader4@execution@texelfetch@fs-texelfetch-isampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetch@fs-texelfetch-sampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetch@fs-texelfetch-usampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetch@vs-texelfetch-isampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetch@vs-texelfetch-sampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetch@vs-texelfetch-usampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@fs-texelfetch-isampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@fs-texelfetch-sampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@fs-texelfetch-usampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@vs-texelfetch-isampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@vs-texelfetch-sampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@vs-texelfetch-usampler1darray,Fail
 spec@ext_gpu_shader4@tex-miplevel-selection gpu4texture() 1darray,Fail
 spec@ext_gpu_shader4@tex-miplevel-selection gpu4texture() 1darrayshadow,Fail
 spec@ext_gpu_shader4@tex-miplevel-selection gpu4texture() cubeshadow,Fail
@@ -384,8 +367,6 @@ spec@ext_packed_depth_stencil@texwrap formats offset@GL_DEPTH24_STENCIL8- NPOT,F
 spec@ext_packed_depth_stencil@texwrap formats,Fail
 spec@ext_packed_depth_stencil@texwrap formats@GL_DEPTH24_STENCIL8- NPOT,Fail
 spec@ext_packed_float@query-rgba-signed-components,Fail
-spec@ext_texture_array@fbo-generatemipmap-array rgb9_e5,Fail
-spec@ext_texture_array@fbo-generatemipmap-array,Fail
 spec@ext_texture_integer@fbo-blending,Fail
 spec@ext_texture_integer@getteximage-clamping gl_arb_texture_rg,Fail
 spec@ext_texture_integer@getteximage-clamping,Fail
@@ -448,38 +429,6 @@ spec@glsl-1.30@built-in constants,Fail
 spec@glsl-1.30@built-in constants@gl_MaxDrawBuffers,Fail
 spec@glsl-1.30@execution@clipping@fs-clip-distance-interpolated,Crash
 spec@glsl-1.30@execution@clipping@vs-clip-distance-primitives,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegradoffset 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegradoffset 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelodoffset 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelodoffset 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset(bias) 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset(bias) 1darrayshadow,Fail
-spec@glsl-1.30@execution@texelfetch fs sampler1darray 1x281-501x281,Fail
-spec@glsl-1.30@execution@texelfetch fs sampler1darray 1x71-501x71,Fail
-spec@glsl-1.30@execution@texelfetch fs sampler1darray 281x1-281x281,Fail
-spec@glsl-1.30@execution@texelfetch fs sampler1darray 71x1-71x281,Fail
-spec@glsl-1.30@execution@texelfetch@fs-texelfetch-isampler1darray,Fail
-spec@glsl-1.30@execution@texelfetch@fs-texelfetch-sampler1darray,Fail
-spec@glsl-1.30@execution@texelfetch@fs-texelfetch-usampler1darray,Fail
-spec@glsl-1.30@execution@texelfetch@vs-texelfetch-isampler1darray,Fail
-spec@glsl-1.30@execution@texelfetch@vs-texelfetch-sampler1darray,Fail
-spec@glsl-1.30@execution@texelfetch@vs-texelfetch-usampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@fs-texelfetch-isampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@fs-texelfetch-sampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@fs-texelfetch-usampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@vs-texelfetch-isampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@vs-texelfetch-sampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@vs-texelfetch-usampler1darray,Fail
 spec@glsl-1.40@built-in constants,Fail
 spec@glsl-1.40@built-in constants@gl_MaxDrawBuffers,Fail
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
