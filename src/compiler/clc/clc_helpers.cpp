@@ -744,6 +744,7 @@ clc_free_kernels_info(const struct clc_kernel_info *kernels,
             free((void *)kernels[i].args[j].name);
             free((void *)kernels[i].args[j].type_name);
          }
+         free((void *)kernels[i].args);
       }
       free((void *)kernels[i].name);
    }
