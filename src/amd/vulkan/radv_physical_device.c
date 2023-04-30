@@ -913,7 +913,7 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice,
 
       /* VK_KHR_ray_tracing_pipeline */
       .rayTracingPipeline = true,
-      .rayTracingPipelineShaderGroupHandleCaptureReplay = true,
+      .rayTracingPipelineShaderGroupHandleCaptureReplay = false,
       .rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false,
       .rayTracingPipelineTraceRaysIndirect = true,
       .rayTraversalPrimitiveCulling = true,
