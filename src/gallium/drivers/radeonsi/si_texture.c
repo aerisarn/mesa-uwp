@@ -931,6 +931,64 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    tex->is_depth = util_format_has_depth(util_format_description(tex->buffer.b.b.format));
    tex->surface = *surface;
 
+   if (!ac_surface_override_offset_stride(&sscreen->info, &tex->surface,
+                                          tex->buffer.b.b.last_level + 1,
+                                          offset, pitch_in_bytes / tex->surface.bpe))
+      goto error;
+
+   if (plane0) {
+      /* The buffer is shared with the first plane. */
+      resource->bo_size = plane0->buffer.bo_size;
+      resource->bo_alignment_log2 = plane0->buffer.bo_alignment_log2;
+      resource->flags = plane0->buffer.flags;
+      resource->domains = plane0->buffer.domains;
+      resource->memory_usage_kb = plane0->buffer.memory_usage_kb;
+
+      radeon_bo_reference(sscreen->ws, &resource->buf, plane0->buffer.buf);
+      resource->gpu_address = plane0->buffer.gpu_address;
+   } else if (!(surface->flags & RADEON_SURF_IMPORTED)) {
+      if (base->flags & PIPE_RESOURCE_FLAG_SPARSE)
+         resource->b.b.flags |= PIPE_RESOURCE_FLAG_UNMAPPABLE;
+      if (base->bind & PIPE_BIND_PRIME_BLIT_DST)
+         resource->b.b.flags |= SI_RESOURCE_FLAG_GL2_BYPASS;
+
+      /* Create the backing buffer. */
+      si_init_resource_fields(sscreen, resource, alloc_size, alignment);
+
+      if (!si_alloc_resource(sscreen, resource))
+         goto error;
+   } else {
+      resource->buf = imported_buf;
+      resource->gpu_address = sscreen->ws->buffer_get_virtual_address(resource->buf);
+      resource->bo_size = imported_buf->size;
+      resource->bo_alignment_log2 = imported_buf->alignment_log2;
+      resource->domains = sscreen->ws->buffer_get_initial_domain(resource->buf);
+      resource->memory_usage_kb = MAX2(1, resource->bo_size / 1024);
+      if (sscreen->ws->buffer_get_flags)
+         resource->flags = sscreen->ws->buffer_get_flags(resource->buf);
+   }
+
+   if (sscreen->debug_flags & DBG(VM)) {
+      fprintf(stderr,
+              "VM start=0x%" PRIX64 "  end=0x%" PRIX64
+              " | Texture %ix%ix%i, %i levels, %i samples, %s | Flags: ",
+              tex->buffer.gpu_address, tex->buffer.gpu_address + tex->buffer.buf->size,
+              base->width0, base->height0, util_num_layers(base, 0), base->last_level + 1,
+              base->nr_samples ? base->nr_samples : 1, util_format_short_name(base->format));
+      si_res_print_flags(tex->buffer.flags);
+      fprintf(stderr, "\n");
+   }
+
+   if (sscreen->debug_flags & DBG(TEX)) {
+      puts("Texture:");
+      struct u_log_context log;
+      u_log_context_init(&log);
+      si_print_texture_info(sscreen, tex, &log);
+      u_log_new_page_print(&log, stdout);
+      fflush(stdout);
+      u_log_context_destroy(&log);
+   }
+
    /* Use 1.0 as the default clear value to get optimal ZRANGE_PRECISION if we don't
     * get a fast clear.
     */
@@ -968,11 +1026,6 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    /* Applies to GCN. */
    tex->last_msaa_resolve_target_micro_mode = tex->surface.micro_tile_mode;
 
-   if (!ac_surface_override_offset_stride(&sscreen->info, &tex->surface,
-                                     tex->buffer.b.b.last_level + 1,
-                                          offset, pitch_in_bytes / tex->surface.bpe))
-      goto error;
-
    if (tex->is_depth) {
       tex->htile_stencil_disabled = !tex->surface.has_stencil;
 
@@ -1005,38 +1058,6 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
          tex->cb_color_info |= S_028C70_FAST_CLEAR(1);
          tex->cmask_buffer = &tex->buffer;
       }
-   }
-
-   if (plane0) {
-      /* The buffer is shared with the first plane. */
-      resource->bo_size = plane0->buffer.bo_size;
-      resource->bo_alignment_log2 = plane0->buffer.bo_alignment_log2;
-      resource->flags = plane0->buffer.flags;
-      resource->domains = plane0->buffer.domains;
-      resource->memory_usage_kb = plane0->buffer.memory_usage_kb;
-
-      radeon_bo_reference(sscreen->ws, &resource->buf, plane0->buffer.buf);
-      resource->gpu_address = plane0->buffer.gpu_address;
-   } else if (!(surface->flags & RADEON_SURF_IMPORTED)) {
-      if (base->flags & PIPE_RESOURCE_FLAG_SPARSE)
-         resource->b.b.flags |= PIPE_RESOURCE_FLAG_UNMAPPABLE;
-      if (base->bind & PIPE_BIND_PRIME_BLIT_DST)
-         resource->b.b.flags |= SI_RESOURCE_FLAG_GL2_BYPASS;
-
-      /* Create the backing buffer. */
-      si_init_resource_fields(sscreen, resource, alloc_size, alignment);
-
-      if (!si_alloc_resource(sscreen, resource))
-         goto error;
-   } else {
-      resource->buf = imported_buf;
-      resource->gpu_address = sscreen->ws->buffer_get_virtual_address(resource->buf);
-      resource->bo_size = imported_buf->size;
-      resource->bo_alignment_log2 = imported_buf->alignment_log2;
-      resource->domains = sscreen->ws->buffer_get_initial_domain(resource->buf);
-      resource->memory_usage_kb = MAX2(1, resource->bo_size / 1024);
-      if (sscreen->ws->buffer_get_flags)
-         resource->flags = sscreen->ws->buffer_get_flags(resource->buf);
    }
 
    /* Prepare metadata clears.  */
@@ -1133,27 +1154,6 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
 
    /* Initialize the CMASK base register value. */
    tex->cmask_base_address_reg = (tex->buffer.gpu_address + tex->surface.cmask_offset) >> 8;
-
-   if (sscreen->debug_flags & DBG(VM)) {
-      fprintf(stderr,
-              "VM start=0x%" PRIX64 "  end=0x%" PRIX64
-              " | Texture %ix%ix%i, %i levels, %i samples, %s | Flags: ",
-              tex->buffer.gpu_address, tex->buffer.gpu_address + tex->buffer.buf->size,
-              base->width0, base->height0, util_num_layers(base, 0), base->last_level + 1,
-              base->nr_samples ? base->nr_samples : 1, util_format_short_name(base->format));
-      si_res_print_flags(tex->buffer.flags);
-      fprintf(stderr, "\n");
-   }
-
-   if (sscreen->debug_flags & DBG(TEX)) {
-      puts("Texture:");
-      struct u_log_context log;
-      u_log_context_init(&log);
-      si_print_texture_info(sscreen, tex, &log);
-      u_log_new_page_print(&log, stdout);
-      fflush(stdout);
-      u_log_context_destroy(&log);
-   }
 
    return tex;
 
