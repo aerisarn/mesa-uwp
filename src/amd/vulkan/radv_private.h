@@ -840,6 +840,7 @@ struct radv_queue {
    struct radeon_winsys_bo *gang_sem_bo;
 
    uint64_t last_shader_upload_seq;
+   bool sqtt_present;
 };
 
 int radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
@@ -946,6 +947,14 @@ enum radv_buffer_robustness {
    RADV_BUFFER_ROBUSTNESS_2, /* robustBufferAccess2 */
 };
 
+struct radv_sqtt_timestamp {
+   uint8_t *map;
+   unsigned offset;
+   uint64_t size;
+   struct radeon_winsys_bo *bo;
+   struct list_head list;
+};
+
 struct radv_device {
    struct vk_device vk;
 
@@ -1048,6 +1057,14 @@ struct radv_device {
    struct ac_sqtt sqtt;
    bool sqtt_enabled;
    bool sqtt_triggered;
+
+   /* SQTT timestamps for queue events. */
+   simple_mtx_t sqtt_timestamp_mtx;
+   struct radv_sqtt_timestamp sqtt_timestamp;
+
+   /* SQTT timed cmd buffers. */
+   simple_mtx_t sqtt_command_pool_mtx;
+   struct vk_command_pool *sqtt_command_pool[2];
 
    /* Memory trace. */
    struct radv_memory_trace_data memory_trace;
@@ -3096,10 +3113,18 @@ bool radv_get_sqtt_trace(struct radv_queue *queue, struct ac_sqtt_trace *sqtt_tr
 void radv_reset_sqtt_trace(struct radv_device *device);
 void radv_emit_sqtt_userdata(const struct radv_cmd_buffer *cmd_buffer, const void *data, uint32_t num_dwords);
 bool radv_is_instruction_timing_enabled(void);
+bool radv_sqtt_queue_events_enabled(void);
 bool radv_sqtt_sample_clocks(struct radv_device *device);
 
 void radv_emit_inhibit_clockgating(const struct radv_device *device, struct radeon_cmdbuf *cs, bool inhibit);
 void radv_emit_spi_config_cntl(const struct radv_device *device, struct radeon_cmdbuf *cs, bool enable);
+
+VkResult radv_sqtt_get_timed_cmdbuf(struct radv_queue *queue, struct radeon_winsys_bo *timestamp_bo,
+                                    uint32_t timestamp_offset, VkPipelineStageFlags2 timestamp_stage,
+                                    VkCommandBuffer *pcmdbuf);
+
+VkResult radv_sqtt_acquire_gpu_timestamp(struct radv_device *device, struct radeon_winsys_bo **gpu_timestamp_bo,
+                                         uint32_t *gpu_timestamp_offset, void **gpu_timestamp_ptr);
 
 void radv_rra_trace_init(struct radv_device *device);
 

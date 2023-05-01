@@ -1362,6 +1362,10 @@ RADV driver environment variables
 
    enable/disable SQTT/RGP instruction timing (enabled by default)
 
+.. envvar:: RADV_THREAD_TRACE_QUEUE_EVENTS
+
+   enable/disable SQTT/RGP queue events (enabled by default)
+
 .. envvar:: RADV_RRA_TRACE_VALIDATE
 
    enable validation of captured acceleration structures. Can be

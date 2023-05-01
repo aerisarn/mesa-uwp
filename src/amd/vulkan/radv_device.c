@@ -1014,9 +1014,10 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
 
       fprintf(stderr,
               "radv: Thread trace support is enabled (initial buffer size: %u MiB, "
-              "instruction timing: %s, cache counters: %s).\n",
+              "instruction timing: %s, cache counters: %s, queue events: %s).\n",
               device->sqtt.buffer_size / (1024 * 1024), radv_is_instruction_timing_enabled() ? "enabled" : "disabled",
-              radv_spm_trace_enabled(device->instance) ? "enabled" : "disabled");
+              radv_spm_trace_enabled(device->instance) ? "enabled" : "disabled",
+              radv_sqtt_queue_events_enabled() ? "enabled" : "disabled");
 
       if (radv_spm_trace_enabled(device->instance)) {
          if (device->physical_device->rad_info.gfx_level >= GFX10) {
