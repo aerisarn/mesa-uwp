@@ -1090,8 +1090,8 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
        *
        * For MCS, (2) is never an issue because we don't support multisampled
        * storage images.  In theory, issue (1) is a problem with MCS but we've
-       * never seen it in the wild.  For 4x and 16x, all bit patters could, in
-       * theory, be interpreted as something but we don't know that all bit
+       * never seen it in the wild.  For 4x and 16x, all bit patterns could,
+       * in theory, be interpreted as something but we don't know that all bit
        * patterns are actually valid.  For 2x and 8x, you could easily end up
        * with the MCS referring to an invalid plane because not all bits of
        * the MCS value are actually used.  Even though we've never seen issues
@@ -1133,12 +1133,6 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
             }
          }
       } else {
-         if (image->vk.samples == 4 || image->vk.samples == 16) {
-            anv_perf_warn(VK_LOG_OBJS(&image->vk.base),
-                          "Doing a potentially unnecessary fast-clear to "
-                          "define an MCS buffer.");
-         }
-
          /* If will_full_fast_clear is set, the caller promises to fast-clear
           * the largest portion of the specified range as it can.
           */
