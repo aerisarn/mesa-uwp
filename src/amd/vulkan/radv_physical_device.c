@@ -412,6 +412,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_maintenance2 = true,
       .KHR_maintenance3 = true,
       .KHR_maintenance4 = true,
+      .KHR_maintenance5 = true,
       .KHR_map_memory2 = true,
       .KHR_multiview = true,
       .KHR_performance_query = radv_perf_query_supported(device),
@@ -1028,6 +1029,9 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
 
       /* VK_EXT_pipeline_robustness */
       .pipelineRobustness = true,
+
+      /* VK_KHR_maintenance5 */
+      .maintenance5 = true,
    };
 }
 
@@ -1835,6 +1839,16 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice, VkPhysicalDev
          properties->defaultRobustnessUniformBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_EXT;
          properties->defaultRobustnessVertexInputs = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT;
          properties->defaultRobustnessImages = VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_2_EXT;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR: {
+         VkPhysicalDeviceMaintenance5PropertiesKHR *properties = (VkPhysicalDeviceMaintenance5PropertiesKHR *)ext;
+         properties->earlyFragmentMultisampleCoverageAfterSampleCounting = false;
+         properties->earlyFragmentSampleMaskTestBeforeSampleCounting = false;
+         properties->depthStencilSwizzleOneSupport = false;
+         properties->polygonModePointSize = true;
+         properties->nonStrictSinglePixelWideLinesUseParallelogram = false;
+         properties->nonStrictWideLinesUseParallelogram = false;
          break;
       }
       default:
