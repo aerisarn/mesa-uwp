@@ -40,7 +40,7 @@
     BM_DTB: /baremetal-files/apq8016-sbc.dtb
     GPU_VERSION: freedreno-a307
 
-.a306_gl:
+a306_gl:
   extends:
     - .baremetal-deqp-test
     - .a306-test
@@ -75,7 +75,7 @@ a306_piglit_shader:
     PIGLIT_PROFILES: quick_shader
     FDO_CI_CONCURRENT: 6
 
-.a306-traces:
+a306-traces:
   extends:
     - .google-freedreno-test-traces
     - .a306-test
@@ -94,7 +94,7 @@ a306_piglit_shader:
   tags:
     - google-freedreno-db820c
 
-.a530_gl:
+a530_gl:
   extends:
     - .baremetal-deqp-test
     - .a530-test
@@ -126,7 +126,7 @@ a306_piglit_shader:
   variables:
     PIGLIT_PROFILES: quick_gl
 
-.a530-traces:
+a530-traces:
   extends:
     - .google-freedreno-test-traces
     - .a530-test
@@ -298,7 +298,7 @@ a660_gl:
   tags:
     - google-freedreno-cheza-long
 
-.a630_gl:
+a630_gl:
   extends:
     - .baremetal-deqp-test
     - .a630-test
@@ -308,7 +308,7 @@ a660_gl:
 
 # Run dEQP EGL window system tests separately with the window systems available.
 # X11 takes over the screen, wayland is run headless.
-.a630_egl:
+a630_egl:
   extends:
     - .baremetal-deqp-test
     - .a630-test
@@ -318,7 +318,7 @@ a660_gl:
     HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a630-egl
 
-.a630_gles_asan:
+a630_gles_asan:
   extends:
     - .baremetal-deqp-test
     - .a630-test
@@ -330,7 +330,7 @@ a660_gl:
     FDO_CI_CONCURRENT: 2 # We get OOMkills if we go too wide with asan enabled
     GPU_VERSION: freedreno-a630-asan
 
-.a630_skqp:
+a630_skqp:
   extends:
     - .baremetal-deqp-test
     - .a630-test
@@ -340,7 +340,7 @@ a660_gl:
     HWCI_START_XORG: 1
     DEQP_SUITE: freedreno-a630-skqp
 
-.a630_vk:
+a630_vk:
   extends:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
@@ -348,14 +348,14 @@ a660_gl:
   variables:
     DEQP_SUITE: freedreno-a630-vk
 
-.a630_vk_full:
+a630_vk_full:
   # We use a longer timeout (3 hour job) to keep the parallel down so that we
   # don't lock up too many runners for a long time when a dev is testing full VK
   # status.  The full runs are restricted to just 2 runners to keep from
   # blocking up normal merges, so going more parallel doesn't make any sense.
   timeout: 3h
   extends:
-    - .a630_vk
+    - a630_vk
     - .a630-full
     - .turnip-manual-rules
   parallel: 2
@@ -363,7 +363,7 @@ a660_gl:
     DEQP_SUITE: freedreno-a630-vk-full
     TEST_PHASE_TIMEOUT: 180
 
-.a630_vk_asan:
+a630_vk_asan:
   extends:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
@@ -374,7 +374,7 @@ a660_gl:
     FDO_CI_CONCURRENT: 2 # We get OOMkills if we go too wide with asan enabled
     GPU_VERSION: freedreno-a630-asan
 
-.a630_piglit:
+a630_piglit:
   extends:
     - .baremetal-deqp-test
     - .a630-test
@@ -384,7 +384,7 @@ a660_gl:
     HWCI_START_XORG: 1
     DEQP_SUITE: freedreno-a630-piglit
 
-.a630-traces:
+a630-traces:
   extends:
     - .google-freedreno-test-traces
     - .a630-test
@@ -397,18 +397,18 @@ a660_gl:
     MESA_GL_VERSION_OVERRIDE: "4.6"
     PIGLIT_REPLAY_EXTRA_ARGS: "--download-caching-proxy-url=http://10.42.0.1:8888/cache/?uri="
 
-.a630-traces-restricted:
+a630-traces-restricted:
   extends:
-    - .a630-traces
+    - a630-traces
     - .freedreno-rules-restricted
   variables:
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/restricted-traces-freedreno.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: "--download-caching-proxy-url=http://10.42.0.1:8888/cache/?uri= --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_bucket=mesa-tracie-private --jwt-file=${CI_JOB_JWT_FILE}"
   allow_failure: true
 
-.a630-traces-performance:
+a630-traces-performance:
   extends:
-    - .a630-traces
+    - a630-traces
     - .freedreno-rules-performance
   variables:
     PIGLIT_REPLAY_SUBCOMMAND: "profile"
