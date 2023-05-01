@@ -1384,11 +1384,13 @@ radv_GetQueryPoolResults(VkDevice _device, VkQueryPool queryPool, uint32_t first
           *	u64 PrimitiveStorageNeeded;
           * }
           */
-         available = 1;
-         for (int j = 0; j < 4; j++) {
-            if (!(p_atomic_read(src64 + j) & 0x8000000000000000UL))
-               available = 0;
-         }
+         do {
+            available = 1;
+            for (int j = 0; j < 4; j++) {
+               if (!(p_atomic_read(src64 + j) & 0x8000000000000000UL))
+                  available = 0;
+            }
+         } while (!available && (flags & VK_QUERY_RESULT_WAIT_BIT));
 
          if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT))
             result = VK_NOT_READY;
@@ -1423,11 +1425,13 @@ radv_GetQueryPoolResults(VkDevice _device, VkQueryPool queryPool, uint32_t first
           *	u64 PrimitiveStorageNeeded;
           * }
           */
-         available = 1;
-         if (!(p_atomic_read(src64 + 0) & 0x8000000000000000UL) ||
-             !(p_atomic_read(src64 + 2) & 0x8000000000000000UL)) {
-            available = 0;
-         }
+         do {
+            available = 1;
+            if (!(p_atomic_read(src64 + 0) & 0x8000000000000000UL) ||
+                !(p_atomic_read(src64 + 2) & 0x8000000000000000UL)) {
+               available = 0;
+            }
+         } while (!available && (flags & VK_QUERY_RESULT_WAIT_BIT));
 
          if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT))
             result = VK_NOT_READY;
