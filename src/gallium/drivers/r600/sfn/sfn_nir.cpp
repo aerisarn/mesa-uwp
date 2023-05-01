@@ -1084,6 +1084,11 @@ r600_shader_from_nir(struct r600_context *rctx,
       return -1;
    }
 
+
+   if (sh->info.stage == MESA_SHADER_FRAGMENT)
+      pipeshader->shader.ps_conservative_z =
+            sh->info.fs.depth_layout = sh->info.fs.depth_layout;
+
    if (sh->info.stage == MESA_SHADER_GEOMETRY) {
       r600::sfn_log << r600::SfnLog::shader_info
                     << "Geometry shader, create copy shader\n";
