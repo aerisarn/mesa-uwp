@@ -2139,7 +2139,7 @@ lp_build_sample_aniso(struct lp_build_sample_context *bld,
    scaling = lp_build_int_to_float(&bld->levelf_bld, scaling);
    scaling = lp_build_rcp(&bld->levelf_bld, scaling);
 
-   if (bld->num_lods != length) {
+   if (bld->levelf_bld.type.length != length) {
       if (bld->levelf_bld.type.length == 1) {
          scaling = lp_build_broadcast_scalar(coord_bld,
                                              scaling);
