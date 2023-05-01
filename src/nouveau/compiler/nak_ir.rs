@@ -3241,6 +3241,10 @@ impl Instr {
         }
     }
 
+    pub fn new_boxed(op: impl Into<Op>) -> Box<Self> {
+        Box::new(Instr::new(op))
+    }
+
     pub fn new_fadd(dst: Dst, x: Src, y: Src) -> Instr {
         OpFAdd {
             dst: dst,
@@ -3615,7 +3619,7 @@ impl<T: Into<Op>> From<T> for Instr {
 
 pub struct BasicBlock {
     pub id: u32,
-    pub instrs: Vec<Instr>,
+    pub instrs: Vec<Box<Instr>>,
 }
 
 impl BasicBlock {
@@ -3626,7 +3630,9 @@ impl BasicBlock {
         }
     }
 
-    pub fn map_instrs<F: Fn(Instr, &mut SSAValueAllocator) -> Vec<Instr>>(
+    pub fn map_instrs<
+        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> Vec<Box<Instr>>,
+    >(
         &mut self,
         map: &F,
         ssa_alloc: &mut SSAValueAllocator,
@@ -3694,7 +3700,9 @@ impl Function {
         }
     }
 
-    pub fn map_instrs<F: Fn(Instr, &mut SSAValueAllocator) -> Vec<Instr>>(
+    pub fn map_instrs<
+        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> Vec<Box<Instr>>,
+    >(
         &mut self,
         map: &F,
     ) {
@@ -3726,7 +3734,9 @@ impl Shader {
         }
     }
 
-    pub fn map_instrs<F: Fn(Instr, &mut SSAValueAllocator) -> Vec<Instr>>(
+    pub fn map_instrs<
+        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> Vec<Box<Instr>>,
+    >(
         &mut self,
         map: &F,
     ) {
@@ -3736,10 +3746,10 @@ impl Shader {
     }
 
     pub fn lower_vec_split(&mut self) {
-        self.map_instrs(&|instr: Instr, _| -> Vec<Instr> {
+        self.map_instrs(&|instr: Box<Instr>, _| -> Vec<Box<Instr>> {
             match instr.op {
                 Op::INeg(neg) => {
-                    vec![OpIAdd3 {
+                    vec![Instr::new_boxed(OpIAdd3 {
                         dst: neg.dst,
                         overflow: Dst::None,
                         srcs: [
@@ -3748,8 +3758,7 @@ impl Shader {
                             Src::new_zero(),
                         ],
                         carry: Src::new_imm_bool(false),
-                    }
-                    .into()]
+                    })]
                 }
                 Op::FSOut(out) => {
                     let mut pcopy = OpParCopy::new();
@@ -3759,7 +3768,7 @@ impl Shader {
                         pcopy.srcs.push(*src);
                         pcopy.dsts.push(dst.into());
                     }
-                    vec![pcopy.into()]
+                    vec![Instr::new_boxed(pcopy)]
                 }
                 _ => vec![instr],
             }
@@ -3767,7 +3776,7 @@ impl Shader {
     }
 
     pub fn lower_swap(&mut self) {
-        self.map_instrs(&|instr: Instr, _| -> Vec<Instr> {
+        self.map_instrs(&|instr: Box<Instr>, _| -> Vec<Box<Instr>> {
             match instr.op {
                 Op::Swap(swap) => {
                     let x = *swap.dsts[0].as_reg().unwrap();
@@ -3783,20 +3792,19 @@ impl Shader {
                     if x == y {
                         Vec::new()
                     } else if x.is_predicate() {
-                        vec![OpPLop3 {
+                        vec![Instr::new_boxed(OpPLop3 {
                             dsts: [x.into(), y.into()],
                             srcs: [x.into(), y.into(), Src::new_imm_bool(true)],
                             ops: [
                                 LogicOp::new_lut(&|_, y, _| y),
                                 LogicOp::new_lut(&|x, _, _| x),
                             ],
-                        }
-                        .into()]
+                        })]
                     } else {
                         vec![
-                            Instr::new_xor(x.into(), x.into(), y.into()),
-                            Instr::new_xor(y.into(), x.into(), y.into()),
-                            Instr::new_xor(x.into(), x.into(), y.into()),
+                            Instr::new_xor(x.into(), x.into(), y.into()).into(),
+                            Instr::new_xor(y.into(), x.into(), y.into()).into(),
+                            Instr::new_xor(x.into(), x.into(), y.into()).into(),
                         ]
                     }
                 }
@@ -3806,7 +3814,7 @@ impl Shader {
     }
 
     pub fn lower_mov_predicate(&mut self) {
-        self.map_instrs(&|instr: Instr, _| -> Vec<Instr> {
+        self.map_instrs(&|instr: Box<Instr>, _| -> Vec<Box<Instr>> {
             match &instr.op {
                 Op::Mov(mov) => {
                     assert!(mov.src.src_mod.is_none());
@@ -3818,7 +3826,8 @@ impl Shader {
                                 IntCmpOp::Eq,
                                 Src::new_zero(),
                                 Src::new_zero(),
-                            )]
+                            )
+                            .into()]
                         }
                         SrcRef::False => {
                             vec![Instr::new_isetp(
@@ -3827,7 +3836,8 @@ impl Shader {
                                 IntCmpOp::Ne,
                                 Src::new_zero(),
                                 Src::new_zero(),
-                            )]
+                            )
+                            .into()]
                         }
                         SrcRef::Reg(reg) => {
                             if reg.is_predicate() {
@@ -3837,7 +3847,8 @@ impl Shader {
                                     mov.src,
                                     Src::new_imm_bool(true),
                                     Src::new_imm_bool(true),
-                                )]
+                                )
+                                .into()]
                             } else {
                                 vec![instr]
                             }

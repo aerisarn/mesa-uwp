@@ -9,7 +9,7 @@ use std::collections::{HashMap, HashSet};
 
 struct LegalizeInstr<'a> {
     ssa_alloc: &'a mut SSAValueAllocator,
-    instrs: Vec<Instr>,
+    instrs: Vec<Box<Instr>>,
 }
 
 fn src_is_reg(src: &Src) -> bool {
@@ -56,7 +56,7 @@ impl<'a> LegalizeInstr<'a> {
     pub fn mov_src(&mut self, src: &mut Src, file: RegFile) {
         let val = self.ssa_alloc.alloc(file);
         self.instrs
-            .push(Instr::new_mov(val.into(), src.src_ref.into()));
+            .push(Instr::new_mov(val.into(), src.src_ref.into()).into());
         src.src_ref = val.into();
     }
 
@@ -72,7 +72,7 @@ impl<'a> LegalizeInstr<'a> {
         }
     }
 
-    pub fn map(&mut self, mut instr: Instr) -> Vec<Instr> {
+    pub fn map(&mut self, mut instr: Box<Instr>) -> Vec<Box<Instr>> {
         match &mut instr.op {
             Op::FAdd(op) => {
                 let [ref mut src0, ref mut src1] = op.srcs;
@@ -293,7 +293,7 @@ impl<'a> LegalizeInstr<'a> {
         }
 
         if !pcopy.is_empty() {
-            self.instrs.push(Instr::new(Op::ParCopy(pcopy)));
+            self.instrs.push(Instr::new_boxed(Op::ParCopy(pcopy)));
         }
 
         self.instrs.push(instr);
@@ -303,7 +303,7 @@ impl<'a> LegalizeInstr<'a> {
 
 impl Shader {
     pub fn legalize(&mut self) {
-        self.map_instrs(&|instr, ssa_alloc| -> Vec<Instr> {
+        self.map_instrs(&|instr, ssa_alloc| -> Vec<Box<Instr>> {
             LegalizeInstr::new(ssa_alloc).map(instr)
         });
     }

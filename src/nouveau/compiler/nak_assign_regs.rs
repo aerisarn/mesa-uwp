@@ -757,12 +757,12 @@ impl AssignRegsBlock {
 
     fn assign_regs_instr(
         &mut self,
-        mut instr: Instr,
+        mut instr: Box<Instr>,
         ip: usize,
         sum: &SSAUseMap,
         killed: &KillSet,
         pcopy: &mut OpParCopy,
-    ) -> Option<Instr> {
+    ) -> Option<Box<Instr>> {
         match &instr.op {
             Op::Undef(undef) => {
                 if let Dst::SSA(ssa) = undef.dst {
@@ -855,7 +855,7 @@ impl AssignRegsBlock {
                 self.assign_regs_instr(instr, ip, &sum, &killed, &mut pcopy);
 
             if !pcopy.is_empty() {
-                instrs.push(pcopy.into());
+                instrs.push(Instr::new_boxed(pcopy));
             }
 
             if let Some(instr) = instr {
@@ -891,9 +891,9 @@ impl AssignRegsBlock {
         }
 
         if b.branch().is_some() {
-            b.instrs.insert(b.instrs.len() - 1, pcopy.into());
+            b.instrs.insert(b.instrs.len() - 1, Instr::new_boxed(pcopy));
         } else {
-            b.instrs.push(pcopy.into());
+            b.instrs.push(Instr::new_boxed(pcopy));
         };
     }
 }

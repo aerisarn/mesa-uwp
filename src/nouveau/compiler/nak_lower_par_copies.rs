@@ -60,7 +60,7 @@ impl CopyGraph {
     }
 }
 
-fn lower_par_copy(pc: OpParCopy) -> Vec<Instr> {
+fn lower_par_copy(pc: OpParCopy) -> Vec<Box<Instr>> {
     let mut graph = CopyGraph::new();
     let mut vals = Vec::new();
     let mut reg_to_idx = HashMap::new();
@@ -123,7 +123,7 @@ fn lower_par_copy(pc: OpParCopy) -> Vec<Instr> {
         if let Some(src_idx) = graph.src(dst_idx) {
             let dst = *vals[dst_idx].as_reg().unwrap();
             let src = vals[src_idx];
-            instrs.push(Instr::new_mov(dst.into(), src.into()));
+            instrs.push(Instr::new_mov(dst.into(), src.into()).into());
             if graph.del_edge(dst_idx, src_idx) {
                 ready.push(src_idx);
             }
@@ -162,10 +162,13 @@ fn lower_par_copy(pc: OpParCopy) -> Vec<Instr> {
                 /* We're part of a cycle so j also has a source */
                 let k = graph.src(j).unwrap();
 
-                instrs.push(Instr::new_swap(
-                    *vals[j].as_reg().unwrap(),
-                    *vals[k].as_reg().unwrap(),
-                ));
+                instrs.push(
+                    Instr::new_swap(
+                        *vals[j].as_reg().unwrap(),
+                        *vals[k].as_reg().unwrap(),
+                    )
+                    .into(),
+                );
 
                 graph.del_edge(i, j);
                 graph.del_edge(j, k);
@@ -185,7 +188,7 @@ fn lower_par_copy(pc: OpParCopy) -> Vec<Instr> {
 
 impl Shader {
     pub fn lower_par_copies(&mut self) {
-        self.map_instrs(&|instr, _| -> Vec<Instr> {
+        self.map_instrs(&|instr, _| -> Vec<Box<Instr>> {
             match instr.op {
                 Op::ParCopy(pc) => {
                     assert!(instr.pred.is_true());
