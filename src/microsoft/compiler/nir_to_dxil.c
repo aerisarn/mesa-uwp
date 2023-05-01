@@ -2718,11 +2718,20 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_fdiv:
       if (alu->dest.dest.ssa.bit_size == 64)
          ctx->mod.feats.dx11_1_double_extensions = 1;
-      FALLTHROUGH;
-   case nir_op_idiv:
       return emit_binop(ctx, alu, DXIL_BINOP_SDIV, src[0], src[1]);
 
-   case nir_op_udiv: return emit_binop(ctx, alu, DXIL_BINOP_UDIV, src[0], src[1]);
+   case nir_op_idiv:
+   case nir_op_udiv:
+      if (nir_src_is_const(alu->src[1].src)) {
+         /* It's illegal to emit a literal divide by 0 in DXIL */
+         nir_ssa_scalar divisor = nir_ssa_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->dest.dest.ssa, 0), 1);
+         if (nir_ssa_scalar_as_int(divisor) == 0) {
+            store_alu_dest(ctx, alu, 0, dxil_module_get_int_const(&ctx->mod, 0, nir_dest_bit_size(alu->dest.dest)));
+            return true;
+         }
+      }
+      return emit_binop(ctx, alu, alu->op == nir_op_idiv ? DXIL_BINOP_SDIV : DXIL_BINOP_UDIV, src[0], src[1]);
+
    case nir_op_irem: return emit_binop(ctx, alu, DXIL_BINOP_SREM, src[0], src[1]);
    case nir_op_imod: return emit_binop(ctx, alu, DXIL_BINOP_UREM, src[0], src[1]);
    case nir_op_umod: return emit_binop(ctx, alu, DXIL_BINOP_UREM, src[0], src[1]);
