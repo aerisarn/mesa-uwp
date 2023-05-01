@@ -129,6 +129,34 @@ shared_var_info(const struct glsl_type* type, unsigned* size, unsigned* align)
    *align = comp_size;
 }
 
+static void
+temp_var_info(const struct glsl_type* type, unsigned* size, unsigned* align)
+{
+   uint32_t base_size, base_align;
+   switch (glsl_get_base_type(type)) {
+   case GLSL_TYPE_ARRAY:
+      temp_var_info(glsl_get_array_element(type), &base_size, align);
+      *size = base_size * glsl_array_size(type);
+      break;
+   case GLSL_TYPE_STRUCT:
+   case GLSL_TYPE_INTERFACE:
+      *size = 0;
+      *align = 0;
+      for (uint32_t i = 0; i < glsl_get_length(type); ++i) {
+         temp_var_info(glsl_get_struct_field(type, i), &base_size, &base_align);
+         *size = ALIGN_POT(*size, base_align) + base_size;
+         *align = MAX2(*align, base_align);
+      }
+      break;
+   default:
+      glsl_get_natural_size_align_bytes(type, &base_size, &base_align);
+
+      *align = MAX2(base_align, 4);
+      *size = ALIGN_POT(base_size, *align);
+      break;
+   }
+}
+
 static nir_variable *
 add_runtime_data_var(nir_shader *nir, unsigned desc_set, unsigned binding)
 {
@@ -1037,6 +1065,8 @@ dxil_spirv_nir_passes(nir_shader *nir,
                  shared_var_info);
    }
    NIR_PASS_V(nir, dxil_nir_split_unaligned_loads_stores, nir_var_mem_shared);
+   NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp | nir_var_shader_temp,
+              256 /* arbitrary */, temp_var_info);
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared,
       nir_address_format_32bit_offset);
 
