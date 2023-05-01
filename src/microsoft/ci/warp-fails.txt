@@ -239,12 +239,6 @@ dEQP-VK.glsl.loops.generic.do_while_uniform_iterations.basic_highp_float_fragmen
 dEQP-VK.glsl.loops.generic.do_while_uniform_iterations.basic_highp_float_vertex,Fail
 dEQP-VK.glsl.loops.generic.do_while_uniform_iterations.basic_mediump_float_fragment,Fail
 dEQP-VK.glsl.loops.generic.do_while_uniform_iterations.basic_mediump_float_vertex,Fail
-dEQP-VK.glsl.loops.special.do_while_constant_iterations.dowhile_trap_fragment,Fail
-dEQP-VK.glsl.loops.special.do_while_constant_iterations.dowhile_trap_vertex,Fail
-dEQP-VK.glsl.loops.special.do_while_constant_iterations.nested_sequence_fragment,Fail
-dEQP-VK.glsl.loops.special.do_while_constant_iterations.nested_sequence_vertex,Fail
-dEQP-VK.glsl.loops.special.do_while_constant_iterations.sequence_fragment,Fail
-dEQP-VK.glsl.loops.special.do_while_constant_iterations.sequence_vertex,Fail
 dEQP-VK.glsl.loops.special.do_while_dynamic_iterations.dowhile_trap_fragment,Fail
 dEQP-VK.glsl.loops.special.do_while_dynamic_iterations.dowhile_trap_vertex,Fail
 dEQP-VK.glsl.loops.special.do_while_dynamic_iterations.nested_sequence_fragment,Fail
