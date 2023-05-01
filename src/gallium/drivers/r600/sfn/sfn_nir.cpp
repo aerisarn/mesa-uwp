@@ -1084,6 +1084,10 @@ r600_shader_from_nir(struct r600_context *rctx,
       return -1;
    }
 
+   if (sh->info.stage == MESA_SHADER_VERTEX) {
+      pipeshader->shader.vs_position_window_space =
+            sh->info.vs.window_space_position;
+   }
 
    if (sh->info.stage == MESA_SHADER_FRAGMENT)
       pipeshader->shader.ps_conservative_z =
