@@ -992,11 +992,11 @@ struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
       goto error;
    }
 
-   if (sscreen->info.gfx_level >= GFX11)
+   if (sscreen->info.vcn_ip_version >= VCN_4_0_0)
       radeon_enc_4_0_init(enc);
-   else if (sscreen->info.family >= CHIP_NAVI21)
+   else if (sscreen->info.vcn_ip_version >= VCN_3_0_0)
       radeon_enc_3_0_init(enc);
-   else if (sscreen->info.family >= CHIP_RENOIR)
+   else if (sscreen->info.vcn_ip_version >= VCN_2_0_0)
       radeon_enc_2_0_init(enc);
    else
       radeon_enc_1_2_init(enc);

@@ -519,6 +519,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    sctx->ws = sscreen->ws;
    sctx->family = sscreen->info.family;
    sctx->gfx_level = sscreen->info.gfx_level;
+   sctx->vcn_ip_ver = sscreen->info.vcn_ip_version;
 
    if (sctx->gfx_level == GFX7 || sctx->gfx_level == GFX8 || sctx->gfx_level == GFX9) {
       sctx->eop_bug_scratch = si_aligned_buffer_create(
@@ -710,7 +711,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
 
    /* Initialize multimedia functions. */
    if (sscreen->info.ip[AMD_IP_UVD].num_queues ||
-       ((sscreen->info.family >= CHIP_GFX1100 || sscreen->info.family == CHIP_GFX940) ?
+       ((sscreen->info.vcn_ip_version >= VCN_4_0_0) ?
 	 sscreen->info.ip[AMD_IP_VCN_UNIFIED].num_queues : sscreen->info.ip[AMD_IP_VCN_DEC].num_queues) ||
        sscreen->info.ip[AMD_IP_VCN_JPEG].num_queues || sscreen->info.ip[AMD_IP_VCE].num_queues ||
        sscreen->info.ip[AMD_IP_UVD_ENC].num_queues || sscreen->info.ip[AMD_IP_VCN_ENC].num_queues) {

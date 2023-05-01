@@ -1083,6 +1083,7 @@ struct si_context {
 
    /* video context */
    bool vcn_has_ctx;
+   enum vcn_version vcn_ip_ver;
 
    /* shader information */
    uint64_t ps_inputs_read_or_disabled;
