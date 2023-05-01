@@ -686,6 +686,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       if (info->drm_minor >= 48 && ip_info.ip_discovery_version) {
          info->ip[ip_type].ver_major = (ip_info.ip_discovery_version >> 16) & 0xff;
          info->ip[ip_type].ver_minor = (ip_info.ip_discovery_version >> 8) & 0xff;
+         info->ip[ip_type].ver_rev = ip_info.ip_discovery_version & 0xff;
       } else {
          info->ip[ip_type].ver_major = ip_info.hw_ip_version_major;
          info->ip[ip_type].ver_minor = ip_info.hw_ip_version_minor;
@@ -901,6 +902,78 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       fprintf(stderr, "amdgpu: Unknown gfx version: %u.%u\n",
               info->ip[AMD_IP_GFX].ver_major, info->ip[AMD_IP_GFX].ver_minor);
       return false;
+   }
+
+#define VCN_IP_VERSION(mj, mn, rv) (((mj) << 16) | ((mn) << 8) | (rv))
+
+   for (unsigned i = AMD_IP_VCN_DEC; i <= AMD_IP_VCN_JPEG; ++i) {
+      if (!info->ip[i].num_queues)
+         continue;
+
+      switch(VCN_IP_VERSION(info->ip[i].ver_major,
+                            info->ip[i].ver_minor,
+                            info->ip[i].ver_rev)) {
+      case VCN_IP_VERSION(1, 0, 0):
+         info->vcn_ip_version = VCN_1_0_0;
+         break;
+      case VCN_IP_VERSION(1, 0, 1):
+         info->vcn_ip_version = VCN_1_0_1;
+         break;
+      case VCN_IP_VERSION(2, 0, 0):
+         info->vcn_ip_version = VCN_2_0_0;
+         break;
+      case VCN_IP_VERSION(2, 0, 2):
+         info->vcn_ip_version = VCN_2_0_2;
+         break;
+      case VCN_IP_VERSION(2, 0, 3):
+         info->vcn_ip_version = VCN_2_0_3;
+         break;
+      case VCN_IP_VERSION(2, 2, 0):
+         info->vcn_ip_version = VCN_2_2_0;
+         break;
+      case VCN_IP_VERSION(2, 5, 0):
+         info->vcn_ip_version = VCN_2_5_0;
+         break;
+      case VCN_IP_VERSION(2, 6, 0):
+         info->vcn_ip_version = VCN_2_6_0;
+         break;
+      case VCN_IP_VERSION(3, 0, 0):
+         /* Navi24 version need to be revised if it fallbacks to the older way
+	  * with default version as 3.0.0, since Navi24 has different feature
+	  * sets from other VCN3 family */
+         info->vcn_ip_version = (info->family != CHIP_NAVI24) ? VCN_3_0_0 : VCN_3_0_33;
+         break;
+      case VCN_IP_VERSION(3, 0, 2):
+         info->vcn_ip_version = VCN_3_0_2;
+         break;
+      case VCN_IP_VERSION(3, 0, 16):
+         info->vcn_ip_version = VCN_3_0_16;
+         break;
+      case VCN_IP_VERSION(3, 0, 33):
+         info->vcn_ip_version = VCN_3_0_33;
+         break;
+      case VCN_IP_VERSION(3, 1, 1):
+         info->vcn_ip_version = VCN_3_1_1;
+         break;
+      case VCN_IP_VERSION(3, 1, 2):
+         info->vcn_ip_version = VCN_3_1_2;
+         break;
+      case VCN_IP_VERSION(4, 0, 0):
+         info->vcn_ip_version = VCN_4_0_0;
+         break;
+      case VCN_IP_VERSION(4, 0, 2):
+         info->vcn_ip_version = VCN_4_0_2;
+         break;
+      case VCN_IP_VERSION(4, 0, 3):
+         info->vcn_ip_version = VCN_4_0_3;
+         break;
+      case VCN_IP_VERSION(4, 0, 4):
+         info->vcn_ip_version = VCN_4_0_4;
+         break;
+      default:
+         info->vcn_ip_version = VCN_UNKNOWN;
+      }
+      break;
    }
 
    info->family_id = device_info.family;
