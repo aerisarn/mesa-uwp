@@ -539,7 +539,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_xcb_surface                                    DONE (anv, dzn, lvp, radv, tu, v3dv, vn)
   VK_KHR_xlib_surface                                   DONE (anv, dzn, lvp, radv, tu, v3dv, vn)
   VK_EXT_acquire_xlib_display                           DONE (anv, lvp, radv, tu)
-  VK_EXT_attachment_feedback_loop_dynamic_state         DONE (radv)
+  VK_EXT_attachment_feedback_loop_dynamic_state         DONE (lvp, radv)
   VK_EXT_attachment_feedback_loop_layout                DONE (lvp, radv, tu, v3dv)
   VK_EXT_border_color_swizzle                           DONE (anv, lvp, tu, radv/gfx10+, v3dv)
   VK_EXT_buffer_device_address                          DONE (anv/gen8+, radv)

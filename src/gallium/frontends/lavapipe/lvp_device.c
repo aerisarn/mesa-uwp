@@ -147,6 +147,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .ARM_rasterization_order_attachment_access = true,
    .EXT_4444_formats                      = true,
    .EXT_attachment_feedback_loop_layout   = true,
+   .EXT_attachment_feedback_loop_dynamic_state = true,
    .EXT_border_color_swizzle              = true,
    .EXT_calibrated_timestamps             = true,
    .EXT_color_write_enable                = true,
@@ -851,6 +852,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceDepthClipControlFeaturesEXT *features =
             (VkPhysicalDeviceDepthClipControlFeaturesEXT *)ext;
          features->depthClipControl = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_DYNAMIC_STATE_FEATURES_EXT: {
+         VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT *features =
+            (VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT *)ext;
+         features->attachmentFeedbackLoopDynamicState = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT: {

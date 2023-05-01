@@ -4204,6 +4204,7 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
    ENQUEUE_CMD(CmdSetShadingRateImageEnableNV)
    ENQUEUE_CMD(CmdSetViewportSwizzleNV)
    ENQUEUE_CMD(CmdSetViewportWScalingEnableNV)
+   ENQUEUE_CMD(CmdSetAttachmentFeedbackLoopEnableEXT)
 
 #undef ENQUEUE_CMD
 }
@@ -4521,6 +4522,8 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          break;
       case VK_CMD_BIND_SHADERS_EXT:
          handle_shaders(cmd, state);
+         break;
+      case VK_CMD_SET_ATTACHMENT_FEEDBACK_LOOP_ENABLE_EXT:
          break;
       default:
          fprintf(stderr, "Unsupported command %s\n", vk_cmd_queue_type_names[cmd->type]);
