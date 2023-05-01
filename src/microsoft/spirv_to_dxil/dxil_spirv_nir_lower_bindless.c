@@ -57,7 +57,8 @@ load_vulkan_ssbo(nir_builder *b, unsigned buf_idx,
                         nir_channel(b, descriptor, 0),
                         offset,
                         .align_mul = num_comps * 4,
-                        .align_offset = 0);
+                        .align_offset = 0,
+                        .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
 }
 
 static nir_ssa_def *
