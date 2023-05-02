@@ -871,18 +871,14 @@ setup_registers_and_variables(struct ptn_compile *c)
       if (c->ctx->Const.GLSLFragCoordIsSysVal &&
           shader->info.stage == MESA_SHADER_FRAGMENT &&
           i == VARYING_SLOT_POS) {
-         nir_variable *var = nir_variable_create(shader, nir_var_system_value, glsl_vec4_type(),
-                                                 "frag_coord");
-         var->data.location = SYSTEM_VALUE_FRAG_COORD;
-         c->input_vars[i] = var;
+         c->input_vars[i] = nir_create_variable_with_location(shader, nir_var_system_value,
+                                                              SYSTEM_VALUE_FRAG_COORD, glsl_vec4_type());
          continue;
       }
 
       nir_variable *var =
-         nir_variable_create(shader, nir_var_shader_in, glsl_vec4_type(),
-                             ralloc_asprintf(shader, "in_%d", i));
-      var->data.location = i;
-      var->data.index = 0;
+          nir_create_variable_with_location(shader, nir_var_shader_in,
+                                            i, glsl_vec4_type());
 
       if (c->prog->Target == GL_FRAGMENT_PROGRAM_ARB) {
          if (i == VARYING_SLOT_FOGC) {
@@ -918,13 +914,8 @@ setup_registers_and_variables(struct ptn_compile *c)
    /* Create system value variables */
    int i;
    BITSET_FOREACH_SET(i, c->prog->info.system_values_read, SYSTEM_VALUE_MAX) {
-      nir_variable *var =
-         nir_variable_create(shader, nir_var_system_value, glsl_vec4_type(),
-                             ralloc_asprintf(shader, "sv_%d", i));
-      var->data.location = i;
-      var->data.index = 0;
-
-      c->sysval_vars[i] = var;
+      c->sysval_vars[i] = nir_create_variable_with_location(b->shader, nir_var_system_value,
+                                                            i, glsl_vec4_type());
    }
 
    /* Create output registers and variables. */

@@ -37,7 +37,6 @@ typedef struct {
       nir_variable *front;        /* COLn */
       nir_variable *back;         /* BFCn */
    } colors[MAX_COLORS];
-   nir_variable *face;
    int colors_count;
 } lower_2side_state;
 
@@ -51,34 +50,11 @@ static nir_variable *
 create_input(nir_shader *shader, gl_varying_slot slot,
              enum glsl_interp_mode interpolation)
 {
-   nir_variable *var = nir_variable_create(shader, nir_var_shader_in,
-                                           glsl_vec4_type(), NULL);
+   nir_variable *var = nir_create_variable_with_location(shader, nir_var_shader_in,
+                                                         slot, glsl_vec4_type());
 
-   var->data.driver_location = shader->num_inputs++;
-   var->name = ralloc_asprintf(var, "in_%d", var->data.driver_location);
    var->data.index = 0;
-   var->data.location = slot;
    var->data.interpolation = interpolation;
-
-   return var;
-}
-
-static nir_variable *
-create_face_input(nir_shader *shader)
-{
-   nir_variable *var =
-      nir_find_variable_with_location(shader, nir_var_shader_in,
-                                      VARYING_SLOT_FACE);
-
-   if (var == NULL) {
-      var = nir_variable_create(shader, nir_var_shader_in,
-                                glsl_bool_type(), "gl_FrontFacing");
-
-      var->data.driver_location = shader->num_inputs++;
-      var->data.index = 0;
-      var->data.location = VARYING_SLOT_FACE;
-      var->data.interpolation = INTERP_MODE_FLAT;
-   }
 
    return var;
 }
@@ -122,9 +98,6 @@ setup_inputs(lower_2side_state *state)
             state->shader, slot,
             state->colors[i].front->data.interpolation);
    }
-
-   if (!state->face_sysval)
-      state->face = create_face_input(state->shader);
 
    return 0;
 }
@@ -174,8 +147,12 @@ nir_lower_two_sided_color_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_ssa_def *face;
    if (state->face_sysval)
       face = nir_load_front_face(b, 1);
-   else
-      face = nir_load_var(b, state->face);
+   else {
+      nir_variable *var = nir_get_variable_with_location(b->shader, nir_var_shader_in,
+                                                         VARYING_SLOT_FACE, glsl_bool_type());
+      var->data.interpolation = INTERP_MODE_FLAT;
+      face = nir_load_var(b, var);
+   }
 
    nir_ssa_def *front, *back;
    if (intr->intrinsic == nir_intrinsic_load_deref) {

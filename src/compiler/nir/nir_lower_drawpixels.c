@@ -41,26 +41,8 @@ static nir_ssa_def *
 get_texcoord(nir_builder *b, lower_drawpixels_state *state)
 {
    if (state->texcoord == NULL) {
-      nir_variable *texcoord = NULL;
-
-      /* find gl_TexCoord, if it exists: */
-      nir_foreach_shader_in_variable(var, state->shader) {
-         if (var->data.location == VARYING_SLOT_TEX0) {
-            texcoord = var;
-            break;
-         }
-      }
-
-      /* otherwise create it: */
-      if (texcoord == NULL) {
-         texcoord = nir_variable_create(state->shader,
-                                        nir_var_shader_in,
-                                        glsl_vec4_type(),
-                                        "gl_TexCoord");
-         texcoord->data.location = VARYING_SLOT_TEX0;
-      }
-
-      state->texcoord = texcoord;
+      state->texcoord = nir_get_variable_with_location(state->shader, nir_var_shader_in,
+                                                       VARYING_SLOT_TEX0, glsl_vec4_type());
    }
    return nir_load_var(b, state->texcoord);
 }

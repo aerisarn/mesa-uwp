@@ -50,16 +50,9 @@ typedef struct {
 static nir_ssa_def *
 load_frag_coord(nir_builder *b)
 {
-   nir_foreach_shader_in_variable(var, b->shader) {
-      if (var->data.location == VARYING_SLOT_POS)
-         return nir_load_var(b, var);
-   }
-
-   nir_variable *pos = nir_variable_create(b->shader, nir_var_shader_in,
-                                           glsl_vec4_type(), NULL);
-   pos->data.location = VARYING_SLOT_POS;
+   nir_variable *pos = nir_get_variable_with_location(b->shader, nir_var_shader_in,
+                                                      VARYING_SLOT_POS, glsl_vec4_type());
    pos->data.interpolation = INTERP_MODE_NOPERSPECTIVE;
-   pos->data.driver_location = b->shader->num_inputs++;
    return nir_load_var(b, pos);
 }
 

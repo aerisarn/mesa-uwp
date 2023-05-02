@@ -50,14 +50,9 @@ load_frag_coord(nir_builder *b, nir_deref_instr *deref,
       return frag_coord;
    }
 
-   nir_variable *pos =
-      nir_find_variable_with_location(b->shader, nir_var_shader_in,
-                                      VARYING_SLOT_POS);
-   if (pos == NULL) {
-      pos = nir_variable_create(b->shader, nir_var_shader_in,
-                                glsl_vec4_type(), NULL);
-      pos->data.location = VARYING_SLOT_POS;
-   }
+   nir_variable *pos = nir_get_variable_with_location(b->shader, nir_var_shader_in,
+                                                      VARYING_SLOT_POS, glsl_vec4_type());
+
    /**
     * From Vulkan spec:
     *   "The OriginLowerLeft execution mode must not be used; fragment entry
@@ -82,16 +77,9 @@ load_layer_id(nir_builder *b, const nir_input_attachment_options *options)
 
    gl_varying_slot slot = options->use_view_id_for_layer ?
       VARYING_SLOT_VIEW_INDEX : VARYING_SLOT_LAYER;
-   nir_variable *layer_id =
-      nir_find_variable_with_location(b->shader, nir_var_shader_in, slot);
-
-   if (layer_id == NULL) {
-      layer_id = nir_variable_create(b->shader, nir_var_shader_in,
-                                     glsl_int_type(), NULL);
-      layer_id->data.location = slot;
-      layer_id->data.interpolation = INTERP_MODE_FLAT;
-      layer_id->data.driver_location = b->shader->num_inputs++;
-   }
+   nir_variable *layer_id = nir_get_variable_with_location(b->shader, nir_var_shader_in,
+                                                           slot, glsl_int_type());
+   layer_id->data.interpolation = INTERP_MODE_FLAT;
 
    return nir_load_var(b, layer_id);
 }

@@ -55,9 +55,8 @@ lower_impl(nir_function_impl *impl,
     * and only emit that one for xfb
     */
    if (!out || out->data.explicit_location) {
-      new_out = nir_variable_create(shader, nir_var_shader_out,
-                                    glsl_float_type(), "gl_PointSizeMESA");
-      new_out->data.location = VARYING_SLOT_PSIZ;
+      new_out = nir_create_variable_with_location(shader, nir_var_shader_out,
+                                                  VARYING_SLOT_PSIZ, glsl_float_type());
    }
 
 

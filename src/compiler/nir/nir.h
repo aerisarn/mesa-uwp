@@ -4044,6 +4044,19 @@ nir_variable *nir_local_variable_create(nir_function_impl *impl,
                                         const struct glsl_type *type,
                                         const char *name);
 
+/* Gets the variable for the given mode and location, creating it (with the given
+ * type) if necessary.
+ */
+nir_variable *
+nir_get_variable_with_location(nir_shader *shader, nir_variable_mode mode, int location,
+                               const struct glsl_type *type);
+
+/* Creates a variable for the given mode and location.
+ */
+nir_variable *
+nir_create_variable_with_location(nir_shader *shader, nir_variable_mode mode, int location,
+                                  const struct glsl_type *type);
+
 nir_variable *nir_find_variable_with_location(nir_shader *shader,
                                               nir_variable_mode mode,
                                               unsigned location);
