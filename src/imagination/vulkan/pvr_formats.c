@@ -501,7 +501,7 @@ pvr_get_image_format_features2(const struct pvr_format *pvr_format,
       }
    }
 
-   if (pvr_get_pbe_accum_format(vk_format) != ROGUE_PBESTATE_PACKMODE_INVALID) {
+   if (pvr_get_pbe_accum_format(vk_format) != PVR_PBE_ACCUM_FORMAT_INVALID) {
       if (vk_format_is_color(vk_format)) {
          flags |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
                   VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
@@ -509,10 +509,10 @@ pvr_get_image_format_features2(const struct pvr_format *pvr_format,
          if (!vk_format_is_int(vk_format)) {
             flags |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT;
          }
-      } else if (vk_format_is_depth_or_stencil(vk_format)) {
-         flags |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT |
-                  VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
       }
+   } else if (vk_format_is_depth_or_stencil(vk_format)) {
+      flags |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT |
+               VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
    }
 
    if (vk_tiling == VK_IMAGE_TILING_OPTIMAL) {
