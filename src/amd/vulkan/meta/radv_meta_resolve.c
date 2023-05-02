@@ -271,13 +271,13 @@ image_hw_resolve_compat(const struct radv_device *device, struct radv_image *src
 
 static void
 radv_pick_resolve_method_images(struct radv_device *device, struct radv_image *src_image,
-                                VkFormat src_format, struct radv_image *dest_image,
-                                unsigned dest_level, VkImageLayout dest_image_layout,
+                                VkFormat src_format, struct radv_image *dst_image,
+                                unsigned dst_level, VkImageLayout dst_image_layout,
                                 struct radv_cmd_buffer *cmd_buffer,
                                 enum radv_resolve_method *method)
 
 {
-   uint32_t queue_mask = radv_image_queue_family_mask(dest_image, cmd_buffer->qf,
+   uint32_t queue_mask = radv_image_queue_family_mask(dst_image, cmd_buffer->qf,
                                                       cmd_buffer->qf);
 
    if (vk_format_is_color(src_format)) {
@@ -286,10 +286,10 @@ radv_pick_resolve_method_images(struct radv_device *device, struct radv_image *s
        * re-initialize it after resolving using compute.
        * TODO: Add support for layered and int to the fragment path.
        */
-      if (radv_layout_dcc_compressed(device, dest_image, dest_level, dest_image_layout,
+      if (radv_layout_dcc_compressed(device, dst_image, dst_level, dst_image_layout,
                                      queue_mask)) {
          *method = RESOLVE_FRAGMENT;
-      } else if (!image_hw_resolve_compat(device, src_image, dest_image)) {
+      } else if (!image_hw_resolve_compat(device, src_image, dst_image)) {
          /* The micro tile mode only needs to match for the HW
           * resolve path which is the default path for non-DCC
           * resolves.
@@ -301,11 +301,11 @@ radv_pick_resolve_method_images(struct radv_device *device, struct radv_image *s
          *method = RESOLVE_COMPUTE;
       else if (vk_format_is_int(src_format))
          *method = RESOLVE_COMPUTE;
-      else if (src_image->info.array_size > 1 || dest_image->info.array_size > 1)
+      else if (src_image->info.array_size > 1 || dst_image->info.array_size > 1)
          *method = RESOLVE_COMPUTE;
    } else {
-      if (src_image->info.array_size > 1 || dest_image->info.array_size > 1 ||
-          (dest_image->planes[0].surface.flags & RADEON_SURF_NO_RENDER_TARGET))
+      if (src_image->info.array_size > 1 || dst_image->info.array_size > 1 ||
+          (dst_image->planes[0].surface.flags & RADEON_SURF_NO_RENDER_TARGET))
          *method = RESOLVE_COMPUTE;
       else
          *method = RESOLVE_FRAGMENT;
