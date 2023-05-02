@@ -254,6 +254,12 @@ nir_lower_non_uniform_access_impl(nir_function_impl *impl,
                   progress = true;
                break;
 
+            case nir_intrinsic_get_ssbo_size:
+               if ((options->types & nir_lower_non_uniform_get_ssbo_size) &&
+                   lower_non_uniform_access_intrin(options, &b, intrin, 0))
+                  progress = true;
+               break;
+
             case nir_intrinsic_image_load:
             case nir_intrinsic_image_sparse_load:
             case nir_intrinsic_image_store:

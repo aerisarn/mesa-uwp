@@ -171,6 +171,10 @@ nir_has_non_uniform_access_impl(nir_function_impl *impl, enum nir_lower_non_unif
                if ((types & nir_lower_non_uniform_image_access) &&
                     has_non_uniform_access_intrin(intrin))
                   return true;
+            } else if (intrin->intrinsic == nir_intrinsic_get_ssbo_size) {
+               if ((types & nir_lower_non_uniform_get_ssbo_size) &&
+                   has_non_uniform_access_intrin(intrin))
+                  return true;
             } else {
                /* Nothing to do */
             }
