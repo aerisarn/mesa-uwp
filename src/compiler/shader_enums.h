@@ -304,7 +304,7 @@ const char *gl_vert_attrib_name(gl_vert_attrib attrib);
  * - vertResults (in prog_print.c's arb_output_attrib_string())
  * - fragAttribs (in prog_print.c's arb_input_attrib_string())
  * - _mesa_varying_slot_in_fs()
- * - _mesa_varying_slot_name_for_stage()
+ * - gl_varying_slot_name_for_stage()
  */
 typedef enum
 {
