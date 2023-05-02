@@ -499,6 +499,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
       .EXT_display_control = true,
 #endif
+      .EXT_dynamic_rendering_unused_attachments = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
       .EXT_extended_dynamic_state3 = true,
@@ -1030,6 +1031,9 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice,
 
       /* VK_EXT_attachment_feedback_loop_dynamic_state */
       .attachmentFeedbackLoopDynamicState = true,
+
+      /* VK_EXT_dynamic_rendering_unused_attachments */
+      .dynamicRenderingUnusedAttachments = true,
    };
 }
 
