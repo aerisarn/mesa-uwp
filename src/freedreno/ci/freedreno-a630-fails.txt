@@ -355,18 +355,6 @@ SRGBReadWritePixels,Fail
 spec@!opengl 1.1@line-smooth-stipple,Fail
 
 # New CTS failures in 1.3.5.0
-dEQP-VK.api.buffer_marker.graphics.default_mem.bottom_of_pipe.memory_dep.buffer_copy_offset_24,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.bottom_of_pipe.memory_dep.dispatch_offset_24,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.bottom_of_pipe.memory_dep.draw_offset_24,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.bottom_of_pipe.overwrite.64_offset_24,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.bottom_of_pipe.sequential.64_offset_16,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.bottom_of_pipe.sequential.65536_offset_1024,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.top_of_pipe.memory_dep.buffer_copy_offset_24,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.top_of_pipe.memory_dep.dispatch_offset_24,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.top_of_pipe.memory_dep.draw_offset_24,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.top_of_pipe.overwrite.64_offset_24,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.top_of_pipe.sequential.64_offset_16,Fail
-dEQP-VK.api.buffer_marker.graphics.default_mem.top_of_pipe.sequential.65536_offset_1024,Fail
 dEQP-VK.binding_model.descriptor_buffer.multiple.compute_comp_buffers1_sets1,Crash
 dEQP-VK.binding_model.descriptor_buffer.multiple.compute_comp_buffers1_sets3_imm_samplers,Crash
 dEQP-VK.binding_model.descriptor_buffer.multiple.compute_comp_buffers1_sets3,Crash

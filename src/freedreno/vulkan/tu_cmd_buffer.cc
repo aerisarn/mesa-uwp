@@ -6223,7 +6223,7 @@ tu_CmdWriteBufferMarker2AMD(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_buffer, buffer, dstBuffer);
 
-   uint64_t va = buffer->bo->iova + dstOffset;
+   uint64_t va = buffer->iova + dstOffset;
 
    struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;
    struct tu_cache_state *cache =
