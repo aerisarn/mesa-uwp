@@ -728,7 +728,17 @@ pvr_load_op_constants_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
       }
    }
 
-   has_depth_load = load_op->clears_loads_state.rt_load_mask != 0;
+   has_depth_load = false;
+   for (uint32_t i = 0;
+        i < ARRAY_SIZE(load_op->clears_loads_state.dest_vk_format);
+        i++) {
+      if (load_op->clears_loads_state.dest_vk_format[i] ==
+          VK_FORMAT_D32_SFLOAT) {
+         has_depth_load = true;
+         break;
+      }
+   }
+
    has_depth_clear = load_op->clears_loads_state.depth_clear_to_reg != -1;
 
    assert(!(has_depth_clear && has_depth_load));
