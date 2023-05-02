@@ -22,10 +22,19 @@
 
 from mako.template import Template
 import sys
+import argparse
 from enum import Enum
 
 def max_bitfield_val(high, low, shift):
     return ((1 << (high - low)) - 1) << shift
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-p', '--import-path', required=True)
+args = parser.parse_args()
+sys.path.insert(0, args.import_path)
+
+from a6xx import *
 
 
 class CHIP(Enum):
@@ -131,7 +140,10 @@ class A6xxGPUInfo(GPUInfo):
        into distinct sub-generations.  The template parameter avoids
        duplication of parameters that are unique to the sub-generation.
     """
-    def __init__(self, chip, template, num_ccu, tile_align_w, tile_align_h, num_vsc_pipes, cs_shared_mem_size, wave_granularity, fibers_per_sp, magic_regs):
+    def __init__(self, chip, template, num_ccu,
+                 tile_align_w, tile_align_h, num_vsc_pipes,
+                 cs_shared_mem_size, wave_granularity, fibers_per_sp,
+                 magic_regs, raw_magic_regs = None):
         super().__init__(chip, gmem_align_w = 16, gmem_align_h = 4,
                          tile_align_w = tile_align_w,
                          tile_align_h = tile_align_h,
@@ -150,6 +162,9 @@ class A6xxGPUInfo(GPUInfo):
 
         for name, val in magic_regs.items():
             setattr(self.a6xx.magic, name, val)
+
+        if raw_magic_regs:
+            self.a6xx.magic_raw = [[int(r[0]), r[1]] for r in raw_magic_regs]
 
         # Things that earlier gens have and later gens remove, provide
         # defaults here and let them be overridden by sub-gen template:
@@ -172,6 +187,10 @@ class A6xxGPUInfo(GPUInfo):
             if name == "magic": # handled above
                 continue
             setattr(self.a6xx, name, val)
+
+    def __str__(self):
+     return super(A6xxGPUInfo, self).__str__().replace('[', '{').replace("]", "}")
+
 
 # a2xx is really two sub-generations, a20x and a22x, but we don't currently
 # capture that in the device-info tables

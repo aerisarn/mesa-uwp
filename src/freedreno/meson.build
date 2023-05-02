@@ -40,8 +40,8 @@ prog_gzip = find_program('gzip', required: false)
 install_fd_decode_tools = dep_libxml2.found() and prog_gzip.found() and \
   with_tools.contains('freedreno')
 
-subdir('common')
 subdir('registers')
+subdir('common')
 subdir('isa')
 subdir('drm')
 subdir('ir2')

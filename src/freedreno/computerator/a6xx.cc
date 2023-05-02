@@ -131,6 +131,15 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
    OUT_PKT4(ring, REG_A6XX_SP_FLOAT_CNTL, 1);
    OUT_RING(ring, 0);
 
+   for (size_t i = 0; i < ARRAY_SIZE(a6xx_backend->info->a6xx.magic_raw); i++) {
+      auto magic_reg = a6xx_backend->info->a6xx.magic_raw[i];
+      if (!magic_reg.reg)
+         break;
+
+      OUT_PKT4(ring, magic_reg.reg, 1);
+      OUT_RING(ring, magic_reg.value);
+   }
+
    OUT_REG(ring, HLSQ_INVALIDATE_CMD(CHIP,
       .vs_state = true,
       .hs_state = true,

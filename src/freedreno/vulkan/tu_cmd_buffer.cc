@@ -1044,6 +1044,15 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_regs(cs, rb_ccu_cntl(dev, phys_dev->ccu_offset_bypass));
    cmd->state.ccu_state = TU_CMD_CCU_SYSMEM;
+
+   for (size_t i = 0; i < ARRAY_SIZE(phys_dev->info->a6xx.magic_raw); i++) {
+      auto magic_reg = phys_dev->info->a6xx.magic_raw[i];
+      if (!magic_reg.reg)
+         break;
+
+      tu_cs_emit_write_reg(cs, magic_reg.reg, magic_reg.value);
+   }
+
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_DBG_ECO_CNTL,
                         phys_dev->info->a6xx.magic.RB_DBG_ECO_CNTL);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_FLOAT_CNTL, 0);
