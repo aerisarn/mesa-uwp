@@ -386,6 +386,7 @@ add_node(struct v3d_compile *c, uint32_t temp, uint8_t class_bits)
         c->nodes.info[node].priority = 0;
         c->nodes.info[node].is_ldunif_dst = false;
         c->nodes.info[node].is_program_end = false;
+        c->nodes.info[node].unused = false;
 }
 
 /* The spill offset for this thread takes a bit of setup, so do it once at
@@ -918,6 +919,12 @@ v3d_ra_select_rf(struct v3d_ra_select_callback_data *v3d_ra,
                  BITSET_WORD *regs,
                  unsigned int *out)
 {
+        /* If this node is for an unused temp, ignore. */
+        if (v3d_ra->nodes->info[node].unused) {
+                *out = 0;
+                return true;
+        }
+
         /* In V3D 7.x, try to assign rf0 to temps used as ldunif's dst
          * so we can avoid turning them into ldunifrf (which uses the
          * cond field to encode the dst and would prevent merge with
@@ -1331,6 +1338,7 @@ v3d_register_allocate(struct v3d_compile *c)
         for (uint32_t i = 0; i < num_ra_nodes; i++) {
                 c->nodes.info[i].is_ldunif_dst = false;
                 c->nodes.info[i].is_program_end = false;
+                c->nodes.info[i].unused = false;
                 c->nodes.info[i].priority = 0;
                 c->nodes.info[i].class_bits = 0;
                 if (c->devinfo->has_accumulators && i < ACC_COUNT) {
@@ -1396,6 +1404,12 @@ v3d_register_allocate(struct v3d_compile *c)
 
         /* Add register interferences based on liveness data */
         for (uint32_t i = 0; i < c->num_temps; i++) {
+                /* And while we are here, let's also flag nodes for
+                 * unused temps.
+                 */
+                if (c->temp_start[i] > c->temp_end[i])
+                        c->nodes.info[temp_to_node(c, i)].unused = true;
+
                 for (uint32_t j = i + 1; j < c->num_temps; j++) {
                         if (interferes(c->temp_start[i], c->temp_end[i],
                                        c->temp_start[j], c->temp_end[j])) {

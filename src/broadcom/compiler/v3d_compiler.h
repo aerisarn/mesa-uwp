@@ -606,6 +606,7 @@ struct v3d_ra_node_info {
                 uint32_t priority;
                 uint8_t class_bits;
                 bool is_program_end;
+                bool unused;
 
                 /* V3D 7.x */
                 bool is_ldunif_dst;
