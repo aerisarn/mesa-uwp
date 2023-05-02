@@ -162,6 +162,28 @@ vk_common_GetImageDrmFormatModifierPropertiesEXT(UNUSED VkDevice device,
 }
 #endif
 
+VKAPI_ATTR void VKAPI_CALL
+vk_common_GetImageSubresourceLayout(VkDevice _device, VkImage _image,
+                                    const VkImageSubresource *pSubresource,
+                                    VkSubresourceLayout *pLayout)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+
+   const VkImageSubresource2KHR subresource = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2_KHR,
+      .imageSubresource = *pSubresource,
+   };
+
+   VkSubresourceLayout2KHR layout = {
+      .sType = VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2_KHR
+   };
+
+   device->dispatch_table.GetImageSubresourceLayout2KHR(_device, _image,
+                                                        &subresource, &layout);
+
+   *pLayout = layout.subresourceLayout;
+}
+
 void
 vk_image_set_format(struct vk_image *image, VkFormat format)
 {
