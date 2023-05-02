@@ -2798,13 +2798,6 @@ unsigned radv_image_queue_family_mask(const struct radv_image *image,
                                       enum radv_queue_family family,
                                       enum radv_queue_family queue_family);
 
-static inline uint32_t
-radv_get_levelCount(const struct radv_image *image, const VkImageSubresourceRange *range)
-{
-   return range->levelCount == VK_REMAINING_MIP_LEVELS ? image->info.levels - range->baseMipLevel
-                                                       : range->levelCount;
-}
-
 bool radv_image_is_renderable(struct radv_device *device, struct radv_image *image);
 
 struct radeon_bo_metadata;

@@ -492,7 +492,7 @@ radv_process_depth_stencil(struct radv_cmd_buffer *cmd_buffer, struct radv_image
                                     });
    }
 
-   for (uint32_t l = 0; l < radv_get_levelCount(image, subresourceRange); ++l) {
+   for (uint32_t l = 0; l < vk_image_subresource_level_count(&image->vk, subresourceRange); ++l) {
 
       /* Do not decompress levels without HTILE. */
       if (!radv_htile_enabled(image, subresourceRange->baseMipLevel + l))
@@ -543,7 +543,7 @@ radv_expand_depth_stencil_compute(struct radv_cmd_buffer *cmd_buffer, struct rad
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                         device->meta_state.expand_depth_stencil_compute_pipeline);
 
-   for (uint32_t l = 0; l < radv_get_levelCount(image, subresourceRange); l++) {
+   for (uint32_t l = 0; l < vk_image_subresource_level_count(&image->vk, subresourceRange); l++) {
       uint32_t width, height;
 
       /* Do not decompress levels without HTILE. */

@@ -2984,7 +2984,7 @@ radv_set_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image
                            VkClearDepthStencilValue ds_clear_value, VkImageAspectFlags aspects)
 {
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   uint32_t level_count = radv_get_levelCount(image, range);
+   uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
 
    if (aspects == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
       uint64_t va = radv_get_ds_clear_value_va(image, range->baseMipLevel);
@@ -3036,7 +3036,7 @@ radv_set_tc_compat_zrange_metadata(struct radv_cmd_buffer *cmd_buffer, struct ra
       return;
 
    uint64_t va = radv_get_tc_compat_zrange_va(image, range->baseMipLevel);
-   uint32_t level_count = radv_get_levelCount(image, range);
+   uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
 
    radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + level_count, cmd_buffer->state.predicating));
    radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
@@ -3156,7 +3156,7 @@ radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
 
    uint64_t pred_val = value;
    uint64_t va = radv_image_get_fce_pred_va(image, range->baseMipLevel);
-   uint32_t level_count = radv_get_levelCount(image, range);
+   uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
    uint32_t count = 2 * level_count;
 
    ASSERTED unsigned cdw_max =
@@ -3188,7 +3188,7 @@ radv_update_dcc_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
 
    uint64_t pred_val = value;
    uint64_t va = radv_image_get_dcc_pred_va(image, range->baseMipLevel);
-   uint32_t level_count = radv_get_levelCount(image, range);
+   uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
    uint32_t count = 2 * level_count;
 
    assert(radv_dcc_enabled(image, range->baseMipLevel));
@@ -3244,7 +3244,7 @@ radv_set_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_im
                               const VkImageSubresourceRange *range, uint32_t color_values[2])
 {
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   uint32_t level_count = radv_get_levelCount(image, range);
+   uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
    uint32_t count = 2 * level_count;
 
    assert(radv_image_has_cmask(image) || radv_dcc_enabled(image, range->baseMipLevel));
