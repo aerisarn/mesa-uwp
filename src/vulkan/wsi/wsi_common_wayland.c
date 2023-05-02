@@ -51,6 +51,7 @@
 #include <util/u_vector.h>
 #include <util/u_dynarray.h>
 #include <util/anon_file.h>
+#include <util/os_time.h>
 
 #ifdef MAJOR_IN_MKDEV
 #include <sys/mkdev.h>
@@ -1596,19 +1597,18 @@ wsi_wl_swapchain_wait_for_present(struct wsi_swapchain *wsi_chain,
 {
    struct wsi_wl_swapchain *chain = (struct wsi_wl_swapchain *)wsi_chain;
    struct wl_display *wl_display = chain->wsi_wl_surface->display->wl_display;
-   struct timespec start_time, end_time;
-   struct timespec rel_timeout;
+   struct timespec end_time;
    int wl_fd = wl_display_get_fd(wl_display);
    VkResult ret;
    int err;
 
-   timespec_from_nsec(&rel_timeout, timeout);
+   uint64_t atimeout;
+   if (timeout == 0 || timeout == UINT64_MAX)
+      atimeout = timeout;
+   else
+      atimeout = os_time_get_absolute_timeout(timeout);
 
-   /* pthread_mutex_timedlock uses CLOCK_REALTIME, most of the time;
-    * there is no way to check if it uses this or the clock that time()
-    * uses (?!), so we just guess. */
-   clock_gettime(CLOCK_REALTIME, &start_time);
-   timespec_add(&end_time, &rel_timeout, &start_time);
+   timespec_from_nsec(&end_time, atimeout);
 
    /* Need to observe that the swapchain semaphore has been unsignalled,
     * as this is guaranteed when a present is complete. */
@@ -1624,10 +1624,14 @@ wsi_wl_swapchain_wait_for_present(struct wsi_swapchain *wsi_chain,
       return VK_SUCCESS;
    }
 
-   err = pthread_mutex_timedlock(&chain->present_ids.lock, &end_time);
-   if (err == ETIMEDOUT)
-      return VK_TIMEOUT;
-   else if (err != 0)
+   /* PresentWait can be called concurrently.
+    * If there is contention on this mutex, it means there is currently a dispatcher in flight holding the lock.
+    * The lock is only held while there is forward progress processing events from Wayland,
+    * so there should be no problem locking without timeout.
+    * We would like to be able to support timeout = 0 to query the current max_completed count.
+    * A timedlock with no timeout can be problematic in that scenario. */
+   err = pthread_mutex_lock(&chain->present_ids.lock);
+   if (err != 0)
       return VK_ERROR_OUT_OF_DATE_KHR;
 
    if (chain->present_ids.max_completed >= present_id) {
@@ -1690,9 +1694,8 @@ wsi_wl_swapchain_wait_for_present(struct wsi_swapchain *wsi_chain,
 
       /* Check for timeout, and relinquish the dispatch to another thread
        * if we're over our budget. */
-      struct timespec current_time;
-      clock_gettime(CLOCK_REALTIME, &current_time);
-      if (timespec_after(&current_time, &end_time)) {
+      uint64_t current_time_nsec = os_time_get_nano();
+      if (current_time_nsec > atimeout) {
          ret = VK_TIMEOUT;
          goto relinquish_dispatch;
       }
@@ -1719,6 +1722,8 @@ wsi_wl_swapchain_wait_for_present(struct wsi_swapchain *wsi_chain,
          .fd = wl_fd,
          .events = POLLIN
       };
+      struct timespec current_time, rel_timeout;
+      timespec_from_nsec(&current_time, current_time_nsec);
       timespec_sub(&rel_timeout, &end_time, &current_time);
       ret = ppoll(&pollfd, 1, &rel_timeout, NULL);
 
@@ -2260,13 +2265,9 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->drm_modifiers = drm_modifiers;
 
    if (chain->wsi_wl_surface->display->wp_presentation_notwrapped) {
+      if (!wsi_init_pthread_cond_monotonic(&chain->present_ids.list_advanced))
+         goto fail;
       pthread_mutex_init(&chain->present_ids.lock, NULL);
-
-      pthread_condattr_t condattr;
-      pthread_condattr_init(&condattr);
-      pthread_condattr_setclock(&condattr, CLOCK_REALTIME);
-      pthread_cond_init(&chain->present_ids.list_advanced, &condattr);
-      pthread_condattr_destroy(&condattr);
 
       wl_list_init(&chain->present_ids.outstanding_list);
       chain->present_ids.queue =
