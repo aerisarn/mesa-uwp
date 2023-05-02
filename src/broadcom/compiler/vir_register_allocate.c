@@ -385,6 +385,7 @@ add_node(struct v3d_compile *c, uint32_t temp, uint8_t class_bits)
         c->nodes.info[node].class_bits = class_bits;
         c->nodes.info[node].priority = 0;
         c->nodes.info[node].is_ldunif_dst = false;
+        c->nodes.info[node].is_program_end = false;
 }
 
 /* The spill offset for this thread takes a bit of setup, so do it once at
@@ -929,6 +930,17 @@ v3d_ra_select_rf(struct v3d_ra_select_callback_data *v3d_ra,
                 return true;
         }
 
+        /* The last 3 instructions in a shader can't use some specific registers
+         * (usually early rf registers, depends on v3d version) so try to
+         * avoid allocating these to registers used by the last instructions
+         * in the shader.
+         */
+        const uint32_t safe_rf_start = v3d_ra->devinfo->ver <= 42 ? 3 : 4;
+        if (v3d_ra->nodes->info[node].is_program_end &&
+            v3d_ra->next_phys < safe_rf_start) {
+                v3d_ra->next_phys = safe_rf_start;
+        }
+
         for (int i = 0; i < PHYS_COUNT; i++) {
                 int phys_off = (v3d_ra->next_phys + i) % PHYS_COUNT;
                 int phys = v3d_ra->phys_index + phys_off;
@@ -1218,6 +1230,44 @@ update_graph_and_reg_classes_for_inst(struct v3d_compile *c,
         }
 }
 
+static void
+flag_program_end_nodes(struct v3d_compile *c)
+{
+        /* Only look for registers used in this many instructions */
+        uint32_t last_set_count = 6;
+
+        struct qblock *last_block = vir_exit_block(c);
+        list_for_each_entry_rev(struct qinst, inst, &last_block->instructions, link) {
+                if (inst->qpu.type != V3D_QPU_INSTR_TYPE_ALU)
+                        continue;
+
+                int num_src = v3d_qpu_add_op_num_src(inst->qpu.alu.add.op);
+                for (int i = 0; i < num_src; i++) {
+                        if (inst->src[i].file == QFILE_TEMP) {
+                                int node = temp_to_node(c, inst->src[i].index);
+                                c->nodes.info[node].is_program_end = true;
+                        }
+                }
+
+                num_src = v3d_qpu_mul_op_num_src(inst->qpu.alu.mul.op);
+                for (int i = 0; i < num_src; i++) {
+                       if (inst->src[i].file == QFILE_TEMP) {
+                                int node = temp_to_node(c, inst->src[i].index);
+                                c->nodes.info[node].is_program_end = true;
+
+                        }
+                }
+
+                if (inst->dst.file == QFILE_TEMP) {
+                        int node = temp_to_node(c, inst->dst.index);
+                        c->nodes.info[node].is_program_end = true;
+                }
+
+                if (--last_set_count == 0)
+                        break;
+        }
+}
+
 /**
  * Returns a mapping from QFILE_TEMP indices to struct qpu_regs.
  *
@@ -1280,17 +1330,16 @@ v3d_register_allocate(struct v3d_compile *c)
          */
         for (uint32_t i = 0; i < num_ra_nodes; i++) {
                 c->nodes.info[i].is_ldunif_dst = false;
+                c->nodes.info[i].is_program_end = false;
+                c->nodes.info[i].priority = 0;
+                c->nodes.info[i].class_bits = 0;
                 if (c->devinfo->has_accumulators && i < ACC_COUNT) {
                         acc_nodes[i] = i;
                         ra_set_node_reg(c->g, acc_nodes[i], ACC_INDEX + i);
-                        c->nodes.info[i].priority = 0;
-                        c->nodes.info[i].class_bits = 0;
                 } else if (!c->devinfo->has_accumulators &&
                            i < ARRAY_SIZE(implicit_rf_nodes)) {
                         implicit_rf_nodes[i] = i;
                         ra_set_node_reg(c->g, implicit_rf_nodes[i], phys_index + i);
-                        c->nodes.info[i].priority = 0;
-                        c->nodes.info[i].class_bits = 0;
                 } else {
                         uint32_t t = node_to_temp(c, i);
                         c->nodes.info[i].priority =
@@ -1326,6 +1375,18 @@ v3d_register_allocate(struct v3d_compile *c)
                                                       implicit_rf_nodes,
                                                       last_ldvary_ip, inst);
         }
+
+        /* Flag the nodes that are used in the last instructions of the program
+         * (there are some registers that cannot be used in the last 3
+         * instructions). We only do this for fragment shaders, because the idea
+         * is that by avoiding this conflict we may be able to emit the last
+         * thread switch earlier in some cases, however, in non-fragment shaders
+         * this won't happen because the last instructions are always VPM stores
+         * with a small immediate, which conflicts with other signals,
+         * preventing us from ever moving the thrsw earlier.
+         */
+        if (c->s->info.stage == MESA_SHADER_FRAGMENT)
+                flag_program_end_nodes(c);
 
         /* Set the register classes for all our temporaries in the graph */
         for (uint32_t i = 0; i < c->num_temps; i++) {
