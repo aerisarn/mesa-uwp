@@ -238,6 +238,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(vk.dr.enable, RADV_DYNAMIC_DISCARD_RECTANGLE_ENABLE);
    RADV_CMP_COPY(vk.dr.mode, RADV_DYNAMIC_DISCARD_RECTANGLE_MODE);
 
+   RADV_CMP_COPY(feedback_loop_aspects, RADV_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE);
+
 #undef RADV_CMP_COPY
 
    cmd_buffer->state.dirty |= dest_mask;
@@ -1902,6 +1904,10 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
           cmd_buffer->state.emitted_graphics_pipeline->rast_prim != pipeline->rast_prim)
 
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
+
+      if (cmd_buffer->state.emitted_graphics_pipeline->db_shader_control !=
+          pipeline->db_shader_control)
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
    }
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
@@ -4450,6 +4456,31 @@ radv_emit_line_rasterization_mode(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_attachment_feedback_loop_enable(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   unsigned db_shader_control = pipeline->db_shader_control;
+   const bool uses_ds_feedback_loop =
+      !!(d->feedback_loop_aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+   unsigned z_order;
+
+   /* When a depth/stencil attachment is used inside feedback loops, use LATE_Z to make sure shader
+    * invocations read the correct value.
+    */
+   if (!uses_ds_feedback_loop && (ps->info.ps.early_fragment_test || !ps->info.ps.writes_memory)) {
+      z_order = V_02880C_EARLY_Z_THEN_LATE_Z;
+   } else {
+      z_order = V_02880C_LATE_Z;
+   }
+
+   db_shader_control |= S_02880C_Z_ORDER(z_order);
+
+   radeon_set_context_reg(cmd_buffer->cs, R_02880C_DB_SHADER_CONTROL, db_shader_control);
+}
+
+static void
 radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    const uint64_t states =
@@ -4581,6 +4612,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
                  RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
                  RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))
       radv_emit_msaa_state(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE)
+      radv_emit_attachment_feedback_loop_enable(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -7522,6 +7556,18 @@ radv_CmdSetDiscardRectangleModeEXT(VkCommandBuffer commandBuffer,
    state->dynamic.vk.dr.mode = discardRectangleMode;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE_MODE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetAttachmentFeedbackLoopEnableEXT(VkCommandBuffer commandBuffer,
+                                           VkImageAspectFlags aspectMask)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.feedback_loop_aspects = aspectMask;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
 }
 
 VKAPI_ATTR void VKAPI_CALL

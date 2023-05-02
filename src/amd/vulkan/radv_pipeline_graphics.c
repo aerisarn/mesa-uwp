@@ -58,10 +58,6 @@ struct radv_blend_state {
    uint32_t cb_shader_mask;
 };
 
-struct radv_depth_stencil_state {
-   uint32_t db_shader_control;
-};
-
 static bool
 radv_is_static_vrs_enabled(const struct radv_graphics_pipeline *pipeline,
                            const struct vk_graphics_pipeline_state *state)
@@ -540,6 +536,8 @@ radv_dynamic_state_mask(VkDynamicState state)
       return RADV_DYNAMIC_DISCARD_RECTANGLE_ENABLE;
    case VK_DYNAMIC_STATE_DISCARD_RECTANGLE_MODE_EXT:
       return RADV_DYNAMIC_DISCARD_RECTANGLE_MODE;
+   case VK_DYNAMIC_STATE_ATTACHMENT_FEEDBACK_LOOP_ENABLE_EXT:
+      return RADV_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -894,9 +892,32 @@ radv_pipeline_init_input_assembly_state(const struct radv_device *device,
    pipeline->ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(device, pipeline);
 }
 
+static bool
+radv_pipeline_uses_ds_feedback_loop(const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                    const struct vk_graphics_pipeline_state *state)
+{
+   VK_FROM_HANDLE(vk_render_pass, render_pass, state->rp->render_pass);
+
+   if (render_pass) {
+      uint32_t subpass_idx = state->rp->subpass;
+      struct vk_subpass *subpass = &render_pass->subpasses[subpass_idx];
+      struct vk_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
+
+      for (uint32_t i = 0; i < subpass->input_count; i++) {
+         if (ds_att && ds_att->attachment == subpass->input_attachments[i].attachment) {
+            return true;
+         }
+      }
+   }
+
+   return (pCreateInfo->flags &
+           VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) != 0;
+}
+
 static void
 radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
-                                 const struct vk_graphics_pipeline_state *state)
+                                 const struct vk_graphics_pipeline_state *state,
+                                 const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    uint64_t needed_states = radv_pipeline_needed_dynamic_state(pipeline, state);
    struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
@@ -1180,50 +1201,25 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->vk.dr.mode = state->dr->mode;
    }
 
-   pipeline->dynamic_state.mask = states;
-}
+   if (states & RADV_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE) {
+      bool uses_ds_feedback_loop = radv_pipeline_uses_ds_feedback_loop(pCreateInfo, state);
 
-static bool
-radv_pipeline_uses_ds_feedback_loop(const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                    const struct vk_graphics_pipeline_state *state)
-{
-   VK_FROM_HANDLE(vk_render_pass, render_pass, state->rp->render_pass);
-
-   if (render_pass) {
-      uint32_t subpass_idx = state->rp->subpass;
-      struct vk_subpass *subpass = &render_pass->subpasses[subpass_idx];
-      struct vk_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
-
-      for (uint32_t i = 0; i < subpass->input_count; i++) {
-         if (ds_att && ds_att->attachment == subpass->input_attachments[i].attachment) {
-            return true;
-         }
-      }
+      dynamic->feedback_loop_aspects =
+         uses_ds_feedback_loop ? (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)
+                               : VK_IMAGE_ASPECT_NONE;
    }
 
-   return (pCreateInfo->flags &
-           VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) != 0;
+   pipeline->dynamic_state.mask = states;
 }
 
 static uint32_t
 radv_compute_db_shader_control(const struct radv_device *device,
                                const struct radv_graphics_pipeline *pipeline,
-                               const struct vk_graphics_pipeline_state *state,
-                               const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                               const struct vk_graphics_pipeline_state *state)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
-   bool uses_ds_feedback_loop = radv_pipeline_uses_ds_feedback_loop(pCreateInfo, state);
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    unsigned conservative_z_export = V_02880C_EXPORT_ANY_Z;
-   unsigned z_order;
-
-   /* When a depth/stencil attachment is used inside feedback loops, use LATE_Z to make sure shader
-    * invocations read the correct value.
-    */
-   if (!uses_ds_feedback_loop && (ps->info.ps.early_fragment_test || !ps->info.ps.writes_memory))
-      z_order = V_02880C_EARLY_Z_THEN_LATE_Z;
-   else
-      z_order = V_02880C_LATE_Z;
 
    if (ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_GREATER)
       conservative_z_export = V_02880C_EXPORT_GREATER_THAN_Z;
@@ -1247,7 +1243,7 @@ radv_compute_db_shader_control(const struct radv_device *device,
           S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(ps->info.ps.writes_stencil) |
           S_02880C_KILL_ENABLE(!!ps->info.ps.can_discard) |
           S_02880C_MASK_EXPORT_ENABLE(mask_export_enable) |
-          S_02880C_CONSERVATIVE_Z_EXPORT(conservative_z_export) | S_02880C_Z_ORDER(z_order) |
+          S_02880C_CONSERVATIVE_Z_EXPORT(conservative_z_export) |
           S_02880C_DEPTH_BEFORE_SHADER(ps->info.ps.early_fragment_test) |
           S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(ps->info.ps.post_depth_coverage) |
           S_02880C_EXEC_ON_HIER_FAIL(ps->info.ps.writes_memory) |
@@ -1255,20 +1251,6 @@ radv_compute_db_shader_control(const struct radv_device *device,
           S_02880C_DUAL_QUAD_DISABLE(disable_rbplus) |
           S_02880C_OVERRIDE_INTRINSIC_RATE_ENABLE(export_conflict_wa) |
           S_02880C_OVERRIDE_INTRINSIC_RATE(export_conflict_wa ? 2 : 0);
-}
-
-static struct radv_depth_stencil_state
-radv_pipeline_init_depth_stencil_state(const struct radv_device *device,
-                                       struct radv_graphics_pipeline *pipeline,
-                                       const struct vk_graphics_pipeline_state *state,
-                                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   struct radv_depth_stencil_state ds_state = {0};
-
-   ds_state.db_shader_control =
-      radv_compute_db_shader_control(device, pipeline, state, pCreateInfo);
-
-   return ds_state;
 }
 
 static void
@@ -2899,13 +2881,6 @@ done:
 }
 
 static void
-radv_pipeline_emit_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
-                                       const struct radv_depth_stencil_state *ds_state)
-{
-   radeon_set_context_reg(ctx_cs, R_02880C_DB_SHADER_CONTROL, ds_state->db_shader_control);
-}
-
-static void
 radv_pipeline_emit_blend_state(struct radeon_cmdbuf *ctx_cs,
                                const struct radv_graphics_pipeline *pipeline,
                                const struct radv_blend_state *blend)
@@ -3738,9 +3713,7 @@ gfx103_pipeline_emit_vrs_state(const struct radv_device *device, struct radeon_c
 
 static void
 radv_pipeline_emit_pm4(const struct radv_device *device, struct radv_graphics_pipeline *pipeline,
-                       const struct radv_blend_state *blend,
-                       const struct radv_depth_stencil_state *ds_state,
-                       uint32_t vgt_gs_out_prim_type,
+                       const struct radv_blend_state *blend, uint32_t vgt_gs_out_prim_type,
                        const struct vk_graphics_pipeline_state *state)
 
 {
@@ -3755,7 +3728,6 @@ radv_pipeline_emit_pm4(const struct radv_device *device, struct radv_graphics_pi
    cs->buf = malloc(4 * (cs->max_dw + ctx_cs->max_dw));
    ctx_cs->buf = cs->buf + cs->max_dw;
 
-   radv_pipeline_emit_depth_stencil_state(ctx_cs, ds_state);
    radv_pipeline_emit_blend_state(ctx_cs, pipeline, blend);
    radv_pipeline_emit_vgt_gs_mode(device, ctx_cs, pipeline);
 
@@ -4087,10 +4059,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
       radv_pipeline_init_input_assembly_state(device, pipeline);
-   radv_pipeline_init_dynamic_state(pipeline, &state);
-
-   struct radv_depth_stencil_state ds_state =
-      radv_pipeline_init_depth_stencil_state(device, pipeline, &state, pCreateInfo);
+   radv_pipeline_init_dynamic_state(pipeline, &state, pCreateInfo);
 
    if (device->physical_device->rad_info.gfx_level >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, &state);
@@ -4162,6 +4131,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    pipeline->base.push_constant_size = pipeline_layout.push_constant_size;
    pipeline->base.dynamic_offset_count = pipeline_layout.dynamic_offset_count;
+   pipeline->db_shader_control = radv_compute_db_shader_control(device, pipeline, &state);
 
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       if (pipeline->base.shaders[i]) {
@@ -4179,7 +4149,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       radv_pipeline_init_extra(pipeline, extra, &blend, &state, &vgt_gs_out_prim_type);
    }
 
-   radv_pipeline_emit_pm4(device, pipeline, &blend, &ds_state, vgt_gs_out_prim_type, &state);
+   radv_pipeline_emit_pm4(device, pipeline, &blend, vgt_gs_out_prim_type, &state);
 
    radv_pipeline_layout_finish(device, &pipeline_layout);
    return result;

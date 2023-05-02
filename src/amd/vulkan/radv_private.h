@@ -1278,7 +1278,8 @@ enum radv_dynamic_state_bits {
    RADV_DYNAMIC_COLOR_BLEND_EQUATION = 1ull << 45,
    RADV_DYNAMIC_DISCARD_RECTANGLE_ENABLE = 1ull << 46,
    RADV_DYNAMIC_DISCARD_RECTANGLE_MODE = 1ull << 47,
-   RADV_DYNAMIC_ALL = (1ull << 48) - 1,
+   RADV_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE = 1ull << 48,
+   RADV_DYNAMIC_ALL = (1ull << 49) - 1,
 };
 
 enum radv_cmd_dirty_bits {
@@ -1332,16 +1333,17 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_EQUATION = 1ull << 45,
    RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE_ENABLE = 1ull << 46,
    RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE_MODE = 1ull << 47,
-   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 48) - 1,
-   RADV_CMD_DIRTY_PIPELINE = 1ull << 48,
-   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 49,
-   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 50,
-   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 51,
-   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 52,
-   RADV_CMD_DIRTY_GUARDBAND = 1ull << 53,
-   RADV_CMD_DIRTY_RBPLUS = 1ull << 54,
-   RADV_CMD_DIRTY_NGG_QUERY = 1ull << 55,
-   RADV_CMD_DIRTY_OCCLUSION_QUERY = 1ull << 56,
+   RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE = 1ull << 48,
+   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 49) - 1,
+   RADV_CMD_DIRTY_PIPELINE = 1ull << 49,
+   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 50,
+   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 51,
+   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 52,
+   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 53,
+   RADV_CMD_DIRTY_GUARDBAND = 1ull << 54,
+   RADV_CMD_DIRTY_RBPLUS = 1ull << 55,
+   RADV_CMD_DIRTY_NGG_QUERY = 1ull << 56,
+   RADV_CMD_DIRTY_OCCLUSION_QUERY = 1ull << 57,
 };
 
 enum radv_cmd_flush_bits {
@@ -1447,6 +1449,8 @@ struct radv_dynamic_state {
    } hw_vp;
 
    struct radv_sample_locations_state sample_location;
+
+   VkImageAspectFlags feedback_loop_aspects;
 };
 
 const char *radv_get_debug_option_name(int id);
@@ -2270,6 +2274,7 @@ struct radv_graphics_pipeline {
    uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
    uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
    uint32_t db_render_control;
+   uint32_t db_shader_control;
 
    /* Last pre-PS API stage */
    gl_shader_stage last_vgt_api_stage;
