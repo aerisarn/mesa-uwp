@@ -816,7 +816,7 @@ static void build_lighting( struct tnl_program *p )
 {
    const GLboolean twoside = p->state->light_twoside;
    const GLboolean separate = p->state->separate_specular;
-   GLuint nr_lights = 0, count = 0;
+   GLuint nr_lights = 0;
    nir_ssa_def *lit = NULL;
    nir_ssa_def *dots = nir_imm_zero(p->b, 4, 32);
    nir_ssa_def *normal = get_transformed_normal(p);
@@ -941,7 +941,6 @@ static void build_lighting( struct tnl_program *p )
          nir_ssa_def *att = NULL, *VPpli = NULL;
          nir_ssa_def *dist = NULL;
 
-         count++;
          if (p->state->unit[i].light_eyepos3_is_zero) {
             VPpli = load_state_var(p, STATE_LIGHT_POSITION_NORMALIZED,
                                    i, 0, 0,
