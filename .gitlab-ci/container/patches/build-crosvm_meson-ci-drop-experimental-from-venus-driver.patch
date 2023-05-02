@@ -1,0 +1,100 @@
+From 289f7ab6723d5ebdde043db2239976284a0d9884 Mon Sep 17 00:00:00 2001
+From: Yiwei Zhang <zzyiwei@chromium.org>
+Date: Fri, 7 Apr 2023 23:20:51 -0700
+Subject: [PATCH 2/2] meson/ci: drop experimental from venus driver
+
+Signed-off-by: Yiwei Zhang <zzyiwei@chromium.org>
+---
+ .gitlab-ci.yml            | 2 +-
+ .gitlab-ci/meson/build.sh | 2 +-
+ ci/run_tests.sh           | 2 +-
+ meson.build               | 4 ++--
+ meson_options.txt         | 4 ++--
+ 5 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/.gitlab-ci.yml b/.gitlab-ci.yml
+index 7da65b2b..00693f01 100644
+--- a/.gitlab-ci.yml
++++ b/.gitlab-ci.yml
+@@ -112,7 +112,7 @@ debian/mingw32-x86_64:
+     MESA_IMAGE_PATH: ${DEBIAN_X86_BUILD_MINGW_IMAGE_PATH}
+     MESA_IMAGE_TAG: ${DEBIAN_BUILD_MINGW_TAG}
+     EXTRA_OPTION: >
+-      --cross-file=.gitlab-ci/x86_64-w64-mingw32 -Dplatforms= -Dtests=false -Drender-server=false -Dvenus-experimental=false
++      --cross-file=.gitlab-ci/x86_64-w64-mingw32 -Dplatforms= -Dtests=false -Drender-server=false -Dvenus=false
+   script:
+     - git clone --depth 1 https://github.com/anholt/libepoxy.git && pushd libepoxy && meson setup _build --cross-file=../.gitlab-ci/x86_64-w64-mingw32 -Dprefix=/usr/x86_64-w64-mingw32 && meson install -C _build && popd
+     - .gitlab-ci/meson/build.sh
+diff --git a/.gitlab-ci/meson/build.sh b/.gitlab-ci/meson/build.sh
+index 5af1cd8a..079d28c8 100755
+--- a/.gitlab-ci/meson/build.sh
++++ b/.gitlab-ci/meson/build.sh
+@@ -73,7 +73,7 @@ meson setup _build --native-file=native.file \
+     -D tests=true \
+     -D render-server=true \
+     -D render-server-worker=process \
+-    -D venus-experimental=true \
++    -D venus=true \
+     --fatal-meson-warnings \
+     ${EXTRA_OPTION} && \
+ pushd _build && \
+diff --git a/ci/run_tests.sh b/ci/run_tests.sh
+index f9aa5afa..6f9d3421 100755
+--- a/ci/run_tests.sh
++++ b/ci/run_tests.sh
+@@ -69,7 +69,7 @@ run_setup()
+    fi
+ 
+    if [ "x$use_venus" = "x1" ]; then
+-       export VENUS=-Dvenus-experimental=true
++       export VENUS=-Dvenus=true
+    fi
+ 
+    pwd | grep virglrenderer >/dev/null || pushd /virglrenderer && pushd $(pwd)
+diff --git a/meson.build b/meson.build
+index 49b76033..67c93c09 100644
+--- a/meson.build
++++ b/meson.build
+@@ -68,7 +68,7 @@ add_project_arguments(cc.get_supported_arguments(flags), language : 'c')
+ prog_python = import('python').find_installation('python3')
+ 
+ not_found = dependency('', required: false)
+-libdrm_dep = dependency('libdrm', version : '>=2.4.50', required: get_option('drm').enabled() or get_option('venus-experimental'))
++libdrm_dep = dependency('libdrm', version : '>=2.4.50', required: get_option('drm').enabled() or get_option('venus'))
+ gbm_dep = not_found
+ thread_dep = dependency('threads')
+ epoxy_dep = dependency('epoxy', version: '>= 1.5.4')
+@@ -253,7 +253,7 @@ if with_check_gl_errors
+    conf_data.set('CHECK_GL_ERRORS', 1)
+ endif
+ 
+-with_venus = get_option('venus-experimental')
++with_venus = get_option('venus')
+ with_render_server = with_venus
+ with_render_server_worker = get_option('render-server-worker')
+ render_server_install_dir = get_option('prefix') / get_option('libexecdir')
+diff --git a/meson_options.txt b/meson_options.txt
+index e147ee18..e1cb3d4c 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -39,7 +39,7 @@ option(
+ )
+ 
+ option(
+-  'venus-experimental',
++  'venus',
+   type : 'boolean',
+   value : 'false',
+   description : 'enable support for venus'
+@@ -77,7 +77,7 @@ option(
+   'render-server',
+   type : 'boolean',
+   value : 'false',
+-  description : 'DEPRECATED: render server is enabled by venus-experimental automatically'
++  description : 'DEPRECATED: render server is enabled by venus automatically'
+ )
+ 
+ option(
+-- 
+2.40.1.495.gc816e09b53d-goog
+
