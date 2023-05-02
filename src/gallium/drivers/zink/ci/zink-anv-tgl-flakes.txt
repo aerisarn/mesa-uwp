@@ -19,6 +19,9 @@ dEQP-EGL.functional.color_clears.*_window
 # MESA: error: ZINK: vkQueueSubmit failed (VK_ERROR_DEVICE_LOST)
 dEQP-EGL.functional.render.*_window
 
+# ../../src/xcb_in.c:746: xcb_request_check: Assertion `!reply' failed.
+glx@glx-make-current
+
 # Expected 15 15 15, observed 0 0 0
 glx@glx-multithread-texture
 

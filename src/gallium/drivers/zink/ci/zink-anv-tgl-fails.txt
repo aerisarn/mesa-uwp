@@ -661,6 +661,9 @@ spec@egl_khr_surfaceless_context@viewport,Fail
 
 spec@egl_mesa_configless_context@basic,Fail
 
+spec@ext_external_objects@vk-image-overwrite,Fail
+spec@ext_external_objects@vk-image-overwrite@RGB 10 A2 UINT optimal: Failed to initialize OpenGL FBO/RBO,Fail
+
 # Fails across most drivers, but it's a silly test.
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
 
