@@ -121,9 +121,13 @@ static void pvr_device_setup_graphics_static_clear_ppp_templates(
       template->config.pds_state = NULL;
 
       template->config.region_clip0 = CS_HEADER(TA_REGION_CLIP0);
-      template->config.region_clip0.mode = PVRX(TA_REGION_CLIP_MODE_NONE);
+      template->config.region_clip0.mode = PVRX(TA_REGION_CLIP_MODE_OUTSIDE);
+      template->config.region_clip0.left = 0;
+      template->config.region_clip0.right = PVRX(TA_REGION_CLIP_MAX);
 
       template->config.region_clip1 = CS_HEADER(TA_REGION_CLIP1);
+      template->config.region_clip1.top = 0;
+      template->config.region_clip1.bottom = PVRX(TA_REGION_CLIP_MAX);
 
       template->config.output_sel = CS_HEADER(TA_OUTPUT_SEL);
       template->config.output_sel.vtxsize = 4;
