@@ -624,7 +624,8 @@ try_reassign_split_vector(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
       /* Check if the operand is written by p_split_vector. */
       Instruction* split_vec = ctx.get(op_instr_idx);
-      if (split_vec->opcode != aco_opcode::p_split_vector)
+      if (split_vec->opcode != aco_opcode::p_split_vector &&
+          split_vec->opcode != aco_opcode::p_extract_vector)
          continue;
 
       Operand& split_op = split_vec->operands[0];
@@ -645,6 +646,10 @@ try_reassign_split_vector(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
          continue;
 
       PhysReg reg = split_op.physReg();
+      if (split_vec->opcode == aco_opcode::p_extract_vector) {
+         reg =
+            reg.advance(split_vec->definitions[0].bytes() * split_vec->operands[1].constantValue());
+      }
       for (Definition& def : split_vec->definitions) {
          if (def.getTemp() != op.getTemp()) {
             reg = reg.advance(def.bytes());
