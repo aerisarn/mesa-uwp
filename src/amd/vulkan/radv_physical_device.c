@@ -481,6 +481,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_workgroup_memory_explicit_layout = true,
       .KHR_zero_initialize_workgroup_memory = true,
       .EXT_4444_formats = true,
+      .EXT_attachment_feedback_loop_dynamic_state = true,
       .EXT_attachment_feedback_loop_layout = true,
       .EXT_border_color_swizzle = device->rad_info.gfx_level >= GFX10,
       .EXT_buffer_device_address = true,
@@ -1290,6 +1291,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
 #endif
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_DYNAMIC_STATE_FEATURES_EXT: {
+         VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT *features =
+            (VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT *)ext;
+         features->attachmentFeedbackLoopDynamicState = true;
+         break;
+      }
       default:
          break;
       }
