@@ -485,10 +485,13 @@ VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
                   .height = rogue_get_param_vf_max_y(dev_info) }
    };
 
+   const uint32_t vdm_state_size_in_dw =
+      pvr_clear_vdm_state_get_size_in_dw(dev_info, 1);
    struct pvr_device_static_clear_state *state = &device->static_clear_state;
    const uint32_t cache_line_size = rogue_get_slc_cache_line_size(dev_info);
-   struct util_dynarray passthrough_vert_shader;
    struct pvr_pds_vertex_shader_program pds_program;
+   struct util_dynarray passthrough_vert_shader;
+   uint32_t *state_buffer;
    VkResult result;
 
    if (PVR_HAS_FEATURE(dev_info, gs_rta_support)) {
@@ -548,6 +551,15 @@ VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
 
    assert(pds_program.code_size <= state->pds.code_size);
 
+   state_buffer = vk_alloc(&device->vk.alloc,
+                           PVR_DW_TO_BYTES(vdm_state_size_in_dw * 2),
+                           8,
+                           VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (state_buffer == NULL) {
+      result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto err_free_pds_program;
+   }
+
    /* TODO: The difference between the large and normal words is only the last
     * word. The value is 3 or 4 depending on the amount of indices. Should we
     * dedup this?
@@ -568,7 +580,9 @@ VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
                             3,
                             4 * sizeof(uint32_t),
                             1,
-                            state->vdm_words);
+                            state_buffer);
+   state->vdm_words = state_buffer;
+   state_buffer += vdm_state_size_in_dw;
 
    pvr_pack_clear_vdm_state(&device->pdevice->dev_info,
                             &state->pds,
@@ -576,13 +590,18 @@ VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
                             4,
                             4 * sizeof(uint32_t),
                             1,
-                            state->large_clear_vdm_words);
+                            state_buffer);
+   state->large_clear_vdm_words = state_buffer;
 
    result = pvr_device_init_clear_attachment_programs(device);
    if (result != VK_SUCCESS)
-      goto err_free_pds_program;
+      goto err_free_vdm_state;
 
    return VK_SUCCESS;
+
+err_free_vdm_state:
+   /* Cast away the const :( */
+   vk_free(&device->vk.alloc, (void *)state->vdm_words);
 
 err_free_pds_program:
    pvr_bo_suballoc_free(state->pds.pvr_bo);
@@ -604,6 +623,12 @@ void pvr_device_finish_graphics_static_clear_state(struct pvr_device *device)
    struct pvr_device_static_clear_state *state = &device->static_clear_state;
 
    pvr_device_finish_clear_attachment_programs(device);
+
+   /* Don't free `large_clear_vdm_words` since it was allocated together with
+    * `vdm_words`.
+    */
+   /* Cast away the const :( */
+   vk_free(&device->vk.alloc, (void *)state->vdm_words);
 
    pvr_bo_suballoc_free(state->pds.pvr_bo);
    pvr_bo_suballoc_free(state->vertices_bo);
@@ -834,14 +859,19 @@ VkResult pvr_pds_clear_rta_vertex_shader_program_create_and_upload_code(
    return VK_SUCCESS;
 }
 
-void pvr_pack_clear_vdm_state(
-   const struct pvr_device_info *const dev_info,
-   const struct pvr_pds_upload *const program,
-   uint32_t temps,
-   uint32_t index_count,
-   uint32_t vs_output_size_in_bytes,
-   uint32_t layer_count,
-   uint32_t state_buffer[const static PVR_CLEAR_VDM_STATE_DWORD_COUNT])
+/**
+ * Pack VDM control stream words for clear.
+ *
+ * The size of the `state_buffer` provided is expected to point to a buffer of
+ * size equal to what is returned by `pvr_clear_vdm_state_get_size_in_dw()`.
+ */
+void pvr_pack_clear_vdm_state(const struct pvr_device_info *const dev_info,
+                              const struct pvr_pds_upload *const program,
+                              uint32_t temps,
+                              uint32_t index_count,
+                              uint32_t vs_output_size_in_bytes,
+                              uint32_t layer_count,
+                              uint32_t *const state_buffer)
 {
    const uint32_t vs_output_size =
       DIV_ROUND_UP(vs_output_size_in_bytes,
@@ -925,5 +955,6 @@ void pvr_pack_clear_vdm_state(
       stream += pvr_cmd_length(VDMCTRL_INDEX_LIST3);
    }
 
-   assert((uint64_t)(stream - state_buffer) <= PVR_CLEAR_VDM_STATE_DWORD_COUNT);
+   assert((uint64_t)(stream - state_buffer) ==
+          pvr_clear_vdm_state_get_size_in_dw(dev_info, layer_count));
 }

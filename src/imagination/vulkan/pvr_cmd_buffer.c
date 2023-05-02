@@ -2750,25 +2750,27 @@ pvr_is_large_clear_required(const struct pvr_cmd_buffer *const cmd_buffer)
 static void pvr_emit_clear_words(struct pvr_cmd_buffer *const cmd_buffer,
                                  struct pvr_sub_cmd_gfx *const sub_cmd)
 {
-   struct pvr_csb *csb = &sub_cmd->control_stream;
    struct pvr_device *device = cmd_buffer->device;
+   struct pvr_csb *csb = &sub_cmd->control_stream;
+   uint32_t vdm_state_size_in_dw;
+   const uint32_t *vdm_state;
    uint32_t *stream;
 
-   stream = pvr_csb_alloc_dwords(csb, PVR_CLEAR_VDM_STATE_DWORD_COUNT);
+   vdm_state_size_in_dw =
+      pvr_clear_vdm_state_get_size_in_dw(&device->pdevice->dev_info, 1);
+
+   stream = pvr_csb_alloc_dwords(csb, vdm_state_size_in_dw);
    if (!stream) {
       cmd_buffer->state.status = VK_ERROR_OUT_OF_HOST_MEMORY;
       return;
    }
 
-   if (pvr_is_large_clear_required(cmd_buffer)) {
-      memcpy(stream,
-             device->static_clear_state.large_clear_vdm_words,
-             sizeof(device->static_clear_state.large_clear_vdm_words));
-   } else {
-      memcpy(stream,
-             device->static_clear_state.vdm_words,
-             sizeof(device->static_clear_state.vdm_words));
-   }
+   if (pvr_is_large_clear_required(cmd_buffer))
+      vdm_state = device->static_clear_state.large_clear_vdm_words;
+   else
+      vdm_state = device->static_clear_state.vdm_words;
+
+   memcpy(stream, vdm_state, PVR_DW_TO_BYTES(vdm_state_size_in_dw));
 }
 
 static VkResult pvr_cs_write_load_op(struct pvr_cmd_buffer *cmd_buffer,
@@ -7086,13 +7088,6 @@ static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
    list_add(&ppp_bo->link, &cmd_buffer->bo_list);
 
    /* Emit VDM state. */
-
-   static_assert(sizeof(device->static_clear_state.large_clear_vdm_words) >=
-                    PVR_DW_TO_BYTES(PVR_CLEAR_VDM_STATE_DWORD_COUNT),
-                 "Large clear VDM control stream word length mismatch");
-   static_assert(sizeof(device->static_clear_state.vdm_words) ==
-                    PVR_DW_TO_BYTES(PVR_CLEAR_VDM_STATE_DWORD_COUNT),
-                 "Clear VDM control stream word length mismatch");
 
    pvr_emit_clear_words(cmd_buffer, sub_cmd);
 

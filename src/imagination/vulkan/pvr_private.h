@@ -237,8 +237,8 @@ struct pvr_device {
       struct pvr_static_clear_ppp_template
          ppp_templates[PVR_STATIC_CLEAR_VARIANT_COUNT];
 
-      uint32_t vdm_words[PVR_CLEAR_VDM_STATE_DWORD_COUNT];
-      uint32_t large_clear_vdm_words[PVR_CLEAR_VDM_STATE_DWORD_COUNT];
+      const uint32_t *vdm_words;
+      const uint32_t *large_clear_vdm_words;
 
       struct pvr_suballoc_bo *usc_clear_attachment_programs;
       struct pvr_suballoc_bo *pds_clear_attachment_programs;

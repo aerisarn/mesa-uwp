@@ -1947,6 +1947,7 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
          struct pvr_pds_upload pds_program_data_upload;
          const VkClearRect *clear_rect = &rects[j];
          struct pvr_suballoc_bo *vertices_bo;
+         uint32_t vdm_cs_size_in_dw;
          uint32_t *vdm_cs_buffer;
          VkResult result;
 
@@ -2025,8 +2026,12 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
          pds_program_upload.data_offset = pds_program_data_upload.data_offset;
          pds_program_upload.data_size = pds_program_data_upload.data_size;
 
-         vdm_cs_buffer = pvr_csb_alloc_dwords(&sub_cmd->control_stream,
-                                              PVR_CLEAR_VDM_STATE_DWORD_COUNT);
+         vdm_cs_size_in_dw =
+            pvr_clear_vdm_state_get_size_in_dw(dev_info,
+                                               clear_rect->layerCount);
+
+         vdm_cs_buffer =
+            pvr_csb_alloc_dwords(&sub_cmd->control_stream, vdm_cs_size_in_dw);
          if (!vdm_cs_buffer) {
             result = vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
             cmd_buffer->state.status = result;
