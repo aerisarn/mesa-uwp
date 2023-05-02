@@ -820,6 +820,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       struct mesa_sha1 pipeline_hash_ctx;
 
       _mesa_sha1_init(&pipeline_hash_ctx);
+      _mesa_sha1_update(&pipeline_hash_ctx, &device->bindless, sizeof(device->bindless));
       _mesa_sha1_update(&pipeline_hash_ctx, attribs_hash, sizeof(attribs_hash));
       _mesa_sha1_update(&pipeline_hash_ctx, &yz_flip_mode, sizeof(yz_flip_mode));
       _mesa_sha1_update(&pipeline_hash_ctx, &y_flip_mask, sizeof(y_flip_mask));
@@ -866,6 +867,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
       if (cache) {
          _mesa_sha1_init(&nir_hash_ctx);
+         _mesa_sha1_update(&nir_hash_ctx, &device->bindless, sizeof(device->bindless));
          if (stage != MESA_SHADER_FRAGMENT) {
             _mesa_sha1_update(&nir_hash_ctx, &lower_view_index, sizeof(lower_view_index));
             _mesa_sha1_update(&nir_hash_ctx, &force_sample_rate_shading, sizeof(force_sample_rate_shading));
@@ -2427,6 +2429,7 @@ dzn_compute_pipeline_compile_shader(struct dzn_device *device,
 
       _mesa_sha1_init(&pipeline_hash_ctx);
       vk_pipeline_hash_shader_stage(&info->stage, NULL, spirv_hash);
+      _mesa_sha1_update(&pipeline_hash_ctx, &device->bindless, sizeof(device->bindless));
       _mesa_sha1_update(&pipeline_hash_ctx, &subgroup_enum, sizeof(subgroup_enum));
       _mesa_sha1_update(&pipeline_hash_ctx, spirv_hash, sizeof(spirv_hash));
       _mesa_sha1_update(&pipeline_hash_ctx, layout->stages[MESA_SHADER_COMPUTE].hash,
@@ -2444,6 +2447,7 @@ dzn_compute_pipeline_compile_shader(struct dzn_device *device,
    if (cache) {
       struct mesa_sha1 nir_hash_ctx;
       _mesa_sha1_init(&nir_hash_ctx);
+      _mesa_sha1_update(&nir_hash_ctx, &device->bindless, sizeof(device->bindless));
       _mesa_sha1_update(&nir_hash_ctx, &subgroup_enum, sizeof(subgroup_enum));
       _mesa_sha1_update(&nir_hash_ctx, spirv_hash, sizeof(spirv_hash));
       _mesa_sha1_final(&nir_hash_ctx, nir_hash);
