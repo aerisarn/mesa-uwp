@@ -859,8 +859,10 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
       if (cache) {
          _mesa_sha1_init(&nir_hash_ctx);
-         if (stage != MESA_SHADER_FRAGMENT)
+         if (stage != MESA_SHADER_FRAGMENT) {
             _mesa_sha1_update(&nir_hash_ctx, &lower_view_index, sizeof(lower_view_index));
+            _mesa_sha1_update(&nir_hash_ctx, &force_sample_rate_shading, sizeof(force_sample_rate_shading));
+         }
          if (stage == MESA_SHADER_VERTEX)
             _mesa_sha1_update(&nir_hash_ctx, attribs_hash, sizeof(attribs_hash));
          if (stage == last_raster_stage) {
