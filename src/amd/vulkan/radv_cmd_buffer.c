@@ -5896,7 +5896,7 @@ radv_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer, uint32_t firstBinding,
 
       cmd_buffer->vertex_binding_buffers[idx] = buffer;
       vb[idx].offset = pOffsets[i];
-      vb[idx].size = size;
+      vb[idx].size = buffer ? vk_buffer_range(&buffer->vk, pOffsets[i], size) : size;
       vb[idx].stride = stride;
 
       uint32_t bit = BITFIELD_BIT(idx);
