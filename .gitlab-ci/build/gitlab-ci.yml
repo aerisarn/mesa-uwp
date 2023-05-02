@@ -110,6 +110,8 @@ debian-testing-asan:
     ARTIFACTS_DEBUG_SYMBOLS: 1
 
 debian-testing-msan:
+  # https://github.com/google/sanitizers/wiki/MemorySanitizerLibcxxHowTo
+  # msan cannot fully work until it's used together with msan libc
   extends:
     - debian-clang
   variables:
@@ -122,9 +124,8 @@ debian-testing-msan:
     # Don't run all the tests yet:
     # GLSL has some issues in sexpression reading.
     # gtest has issues in its test initialization.
-    MESON_TEST_ARGS: "--suite glcpp --suite gallium  --suite format"
-    # Freedreno dropped because freedreno tools fail at msan.
-    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus"
+    MESON_TEST_ARGS: "--suite glcpp --suite format"
+    GALLIUM_DRIVERS: "freedreno,iris,nouveau,kmsro,r300,r600,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus"
     VULKAN_DRIVERS: intel,amd,broadcom,virtio
 
 .debian-cl-testing:
