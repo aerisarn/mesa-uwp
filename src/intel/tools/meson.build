@@ -179,6 +179,18 @@ if with_tools.contains('intel-ui')
     cpp_args : ['-fpermissive', '-Wno-parentheses'],
     install : true
   )
+
+  intel_hang_viewer = executable(
+    'intel_hang_viewer',
+    files('intel_hang_viewer.cpp', 'aubinator_viewer_decoder.cpp'),
+    dependencies : [idep_mesautil, dep_zlib, dep_dl, dep_thread, dep_m, libintel_imgui_gtk_dep],
+    include_directories : [inc_include, inc_src, inc_intel],
+    link_with : [libintel_common, libintel_compiler, libintel_dev],
+    c_args : [no_override_init_args],
+    gnu_symbol_visibility : 'hidden',
+    cpp_args : ['-fpermissive', '-Wno-parentheses'],
+    install : true
+  )
 endif
 
 bison_command = []

@@ -23,6 +23,10 @@
 #ifndef INTEL_HANG_DUMP_H
 #define INTEL_HANG_DUMP_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 /**
@@ -110,5 +114,9 @@ union intel_hang_dump_block_all {
    struct intel_hang_dump_block_exec     exec;
    struct intel_hang_dump_block_hw_image hw_img;
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INTEL_HANG_DUMP_H */
