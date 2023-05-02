@@ -1142,13 +1142,6 @@ static bool
 need_custom_buffer_descriptor(struct dzn_device *device, const struct dzn_buffer_desc *info,
                               struct dzn_buffer_desc *out_desc)
 {
-   uint64_t upper_bound = info->range == VK_WHOLE_SIZE ?
-      info->buffer->size :
-      info->offset + info->range;
-   /* Addressing the whole buffer, no custom descriptor needed. */
-   if (upper_bound == info->buffer->size)
-      return false;
-
    *out_desc = *info;
    uint32_t upper_bound_default_descriptor;
    uint32_t size_align, offset_align;
@@ -1158,18 +1151,26 @@ need_custom_buffer_descriptor(struct dzn_device *device, const struct dzn_buffer
       out_desc->type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
       FALLTHROUGH;
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      upper_bound_default_descriptor = D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * sizeof(float) * 4;
+      upper_bound_default_descriptor =
+         MIN2(D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * sizeof(float) * 4, info->buffer->size);
       size_align = offset_align = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
       break;
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
       out_desc->type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
       FALLTHROUGH;
    default:
-      upper_bound_default_descriptor = UINT32_MAX;
+      upper_bound_default_descriptor = MIN2(UINT32_MAX, info->buffer->size);
       offset_align = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
       size_align = 4;
       break;
    }
+
+   uint64_t upper_bound = info->range == VK_WHOLE_SIZE ?
+      info->buffer->size :
+      info->offset + info->range;
+   /* Addressing the whole buffer, no custom descriptor needed. */
+   if (upper_bound == upper_bound_default_descriptor)
+      return false;
 
    out_desc->range = ALIGN_POT(upper_bound, size_align);
    if (out_desc->range <= upper_bound_default_descriptor) {
