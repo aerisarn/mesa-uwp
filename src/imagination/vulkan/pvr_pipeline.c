@@ -896,6 +896,9 @@ static void pvr_pds_descriptor_program_destroy(
    const struct VkAllocationCallbacks *const allocator,
    struct pvr_stage_allocation_descriptor_state *const descriptor_state)
 {
+   if (!descriptor_state)
+      return;
+
    pvr_bo_free(device, descriptor_state->pds_code.pvr_bo);
    vk_free2(&device->vk.alloc, allocator, descriptor_state->pds_info.entries);
    pvr_bo_free(device, descriptor_state->static_consts);
@@ -2067,64 +2070,83 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    if (result != VK_SUCCESS)
       goto err_free_build_context;
 
-   if (pvr_has_hard_coded_shaders(&device->pdevice->dev_info) &&
-       pvr_hard_code_graphics_get_flags(&device->pdevice->dev_info) &
-          BITFIELD_BIT(MESA_SHADER_FRAGMENT)) {
-      pvr_hard_code_graphics_fragment_state(
-         &device->pdevice->dev_info,
-         hard_code_pipeline_n,
-         &gfx_pipeline->shader_state.fragment);
-   } else {
-      pvr_fragment_state_init(gfx_pipeline,
-                              &ctx->common_data[MESA_SHADER_FRAGMENT]);
+   if (ctx->nir[MESA_SHADER_FRAGMENT]) {
+      if (pvr_has_hard_coded_shaders(&device->pdevice->dev_info) &&
+          pvr_hard_code_graphics_get_flags(&device->pdevice->dev_info) &
+             BITFIELD_BIT(MESA_SHADER_FRAGMENT)) {
+         pvr_hard_code_graphics_fragment_state(
+            &device->pdevice->dev_info,
+            hard_code_pipeline_n,
+            &gfx_pipeline->shader_state.fragment);
+      } else {
+         pvr_fragment_state_init(gfx_pipeline,
+                                 &ctx->common_data[MESA_SHADER_FRAGMENT]);
 
-      if (!old_path) {
-         struct pvr_fragment_shader_state *fragment_state =
-            &gfx_pipeline->shader_state.fragment;
+         if (!old_path) {
+            struct pvr_fragment_shader_state *fragment_state =
+               &gfx_pipeline->shader_state.fragment;
 
-         /* FIXME: For now we just overwrite it but the compiler shouldn't be
-          * returning the sh count since the driver is in charge of allocating
-          * them.
-          */
-         fragment_state->stage_state.const_shared_reg_count =
-            sh_count[PVR_STAGE_ALLOCATION_FRAGMENT];
+            /* FIXME: For now we just overwrite it but the compiler shouldn't be
+             * returning the sh count since the driver is in charge of
+             * allocating them.
+             */
+            fragment_state->stage_state.const_shared_reg_count =
+               sh_count[PVR_STAGE_ALLOCATION_FRAGMENT];
+         }
       }
+
+      result = pvr_gpu_upload_usc(
+         device,
+         util_dynarray_begin(&ctx->binary[MESA_SHADER_FRAGMENT]),
+         ctx->binary[MESA_SHADER_FRAGMENT].size,
+         cache_line_size,
+         &gfx_pipeline->shader_state.fragment.bo);
+      if (result != VK_SUCCESS)
+         goto err_free_vertex_bo;
+
+      /* TODO: powervr has an optimization where it attempts to recompile
+       * shaders. See PipelineCompileNoISPFeedbackFragmentStage. Unimplemented
+       * since in our case the optimization doesn't happen.
+       */
+
+      result = pvr_pds_coeff_program_create_and_upload(
+         device,
+         allocator,
+         ctx->stage_data.fs.iterator_args.fpu_iterators,
+         ctx->stage_data.fs.iterator_args.num_fpu_iterators,
+         ctx->stage_data.fs.iterator_args.destination,
+         &gfx_pipeline->shader_state.fragment.pds_coeff_program);
+      if (result != VK_SUCCESS)
+         goto err_free_fragment_bo;
+
+      result = pvr_pds_fragment_program_create_and_upload(
+         device,
+         allocator,
+         gfx_pipeline->shader_state.fragment.bo,
+         ctx->common_data[MESA_SHADER_FRAGMENT].temps,
+         ctx->stage_data.fs.msaa_mode,
+         ctx->stage_data.fs.phas,
+         &gfx_pipeline->shader_state.fragment.pds_fragment_program);
+      if (result != VK_SUCCESS)
+         goto err_free_coeff_program;
+
+      /* FIXME: For now we pass in the same explicit_const_usage since it
+       * contains all invalid entries. Fix this by hooking it up to the
+       * compiler.
+       */
+      result = pvr_pds_descriptor_program_create_and_upload(
+         device,
+         allocator,
+         &ctx->common_data[MESA_SHADER_FRAGMENT].compile_time_consts_data,
+         &ctx->common_data[MESA_SHADER_FRAGMENT].ubo_data,
+         &frag_explicit_const_usage,
+         layout,
+         PVR_STAGE_ALLOCATION_FRAGMENT,
+         sh_reg_layout_frag,
+         &gfx_pipeline->shader_state.fragment.descriptor_state);
+      if (result != VK_SUCCESS)
+         goto err_free_frag_program;
    }
-
-   result = pvr_gpu_upload_usc(
-      device,
-      util_dynarray_begin(&ctx->binary[MESA_SHADER_FRAGMENT]),
-      ctx->binary[MESA_SHADER_FRAGMENT].size,
-      cache_line_size,
-      &gfx_pipeline->shader_state.fragment.bo);
-   if (result != VK_SUCCESS)
-      goto err_free_vertex_bo;
-
-   /* TODO: powervr has an optimization where it attempts to recompile shaders.
-    * See PipelineCompileNoISPFeedbackFragmentStage. Unimplemented since in our
-    * case the optimization doesn't happen.
-    */
-
-   result = pvr_pds_coeff_program_create_and_upload(
-      device,
-      allocator,
-      ctx->stage_data.fs.iterator_args.fpu_iterators,
-      ctx->stage_data.fs.iterator_args.num_fpu_iterators,
-      ctx->stage_data.fs.iterator_args.destination,
-      &gfx_pipeline->shader_state.fragment.pds_coeff_program);
-   if (result != VK_SUCCESS)
-      goto err_free_fragment_bo;
-
-   result = pvr_pds_fragment_program_create_and_upload(
-      device,
-      allocator,
-      gfx_pipeline->shader_state.fragment.bo,
-      ctx->common_data[MESA_SHADER_FRAGMENT].temps,
-      ctx->stage_data.fs.msaa_mode,
-      ctx->stage_data.fs.phas,
-      &gfx_pipeline->shader_state.fragment.pds_fragment_program);
-   if (result != VK_SUCCESS)
-      goto err_free_coeff_program;
 
    result = pvr_pds_vertex_attrib_programs_create_and_upload(
       device,
@@ -2137,7 +2159,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       &special_vars_layout,
       &gfx_pipeline->shader_state.vertex.pds_attrib_programs);
    if (result != VK_SUCCESS)
-      goto err_free_frag_program;
+      goto err_free_vertex_descriptor_program;
 
    result = pvr_pds_descriptor_program_create_and_upload(
       device,
@@ -2159,33 +2181,12 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    /* assert(pvr_pds_descriptor_program_variables.temp_buff_total_size == 0); */
    /* TODO: Implement spilling with the above. */
 
-   /* FIXME: For now we pass in the same explicit_const_usage since it contains
-    * all invalid entries. Fix this by hooking it up to the compiler.
-    */
-   result = pvr_pds_descriptor_program_create_and_upload(
-      device,
-      allocator,
-      &ctx->common_data[MESA_SHADER_FRAGMENT].compile_time_consts_data,
-      &ctx->common_data[MESA_SHADER_FRAGMENT].ubo_data,
-      &frag_explicit_const_usage,
-      layout,
-      PVR_STAGE_ALLOCATION_FRAGMENT,
-      sh_reg_layout_frag,
-      &gfx_pipeline->shader_state.fragment.descriptor_state);
-   if (result != VK_SUCCESS)
-      goto err_free_vertex_descriptor_program;
-
    ralloc_free(ctx);
 
    hard_code_pipeline_n++;
 
    return VK_SUCCESS;
 
-err_free_vertex_descriptor_program:
-   pvr_pds_descriptor_program_destroy(
-      device,
-      allocator,
-      &gfx_pipeline->shader_state.vertex.descriptor_state);
 err_free_vertex_attrib_program:
    for (uint32_t i = 0;
         i < ARRAY_SIZE(gfx_pipeline->shader_state.vertex.pds_attrib_programs);
@@ -2195,6 +2196,11 @@ err_free_vertex_attrib_program:
 
       pvr_pds_vertex_attrib_program_destroy(device, allocator, attrib_program);
    }
+err_free_vertex_descriptor_program:
+   pvr_pds_descriptor_program_destroy(
+      device,
+      allocator,
+      &gfx_pipeline->shader_state.vertex.descriptor_state);
 err_free_frag_program:
    pvr_bo_free(device,
                gfx_pipeline->shader_state.fragment.pds_fragment_program.pvr_bo);
