@@ -1053,9 +1053,9 @@ impl Kernel {
                 .map(|s| ctx.create_sampler_state(s))
                 .collect();
 
-            for (res, offset) in resource_info.clone() {
+            for (res, offset) in &resource_info {
                 resources.push(res);
-                globals.push(unsafe { input.as_mut_ptr().add(offset) }.cast());
+                globals.push(unsafe { input.as_mut_ptr().add(*offset) }.cast());
             }
 
             if let Some(printf_buf) = &printf_buf {
