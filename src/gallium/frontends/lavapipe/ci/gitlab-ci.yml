@@ -9,12 +9,11 @@
     DEQP_EXPECTED_RENDERER: llvmpipe
     LVP_POISON_MEMORY: "1"
 
-.lavapipe:
-  tags:
-    - mesa-swrast
+lavapipe:
   variables:
     DEQP_SUITE: lvp
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
+    DEQP_FRACTION: 10
   stage: software-renderer
   extends:
     - .deqp-test-vk
