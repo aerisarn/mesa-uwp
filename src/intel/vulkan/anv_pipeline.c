@@ -525,8 +525,16 @@ populate_mesh_prog_key(const struct anv_device *device,
 static uint32_t
 rp_color_mask(const struct vk_render_pass_state *rp)
 {
-   return (rp != NULL && rp->attachment_aspects != VK_IMAGE_ASPECT_METADATA_BIT) ?
-      ((1u << rp->color_attachment_count) - 1) : ((1u << MAX_RTS) - 1);
+   if (rp == NULL || rp->attachment_aspects == VK_IMAGE_ASPECT_METADATA_BIT)
+      return ((1u << MAX_RTS) - 1);
+
+   uint32_t color_mask = 0;
+   for (uint32_t i = 0; i < rp->color_attachment_count; i++) {
+      if (rp->color_attachment_formats[i] != VK_FORMAT_UNDEFINED)
+         color_mask |= BITFIELD_BIT(i);
+   }
+
+   return color_mask;
 }
 
 static void
