@@ -1021,14 +1021,32 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
           *
           *    ld2dms_w   si  mcs0 mcs1 mcs2  mcs3  u  v  r
           */
-         if (devinfo->verx10 >= 125 && op == SHADER_OPCODE_TXF_CMS_W)
-            num_mcs_components = 4;
-         else if (op == SHADER_OPCODE_TXF_CMS_W)
+         if (op == SHADER_OPCODE_TXF_CMS_W)
             num_mcs_components = 2;
 
          for (unsigned i = 0; i < num_mcs_components; ++i) {
-            bld.MOV(retype(sources[length++], payload_unsigned_type),
-                    mcs.file == IMM ? mcs : offset(mcs, bld, i));
+            /* Sampler always writes 4/8 register worth of data but for ld_mcs
+             * only valid data is in first two register. So with 16-bit
+             * payload, we need to split 2-32bit register into 4-16-bit
+             * payload.
+             *
+             * From the Gfx12HP BSpec: Render Engine - 3D and GPGPU Programs -
+             * Shared Functions - 3D Sampler - Messages - Message Format:
+             *
+             *    ld2dms_w   si  mcs0 mcs1 mcs2  mcs3  u  v  r
+             */
+            if (devinfo->verx10 >= 125 && op == SHADER_OPCODE_TXF_CMS_W) {
+               fs_reg tmp = offset(mcs, bld, i);
+               bld.MOV(retype(sources[length++], payload_unsigned_type),
+                       mcs.file == IMM ? mcs :
+                       subscript(tmp, payload_unsigned_type, 0));
+               bld.MOV(retype(sources[length++], payload_unsigned_type),
+                       mcs.file == IMM ? mcs :
+                       subscript(tmp, payload_unsigned_type, 1));
+            } else {
+               bld.MOV(retype(sources[length++], payload_unsigned_type),
+                       mcs.file == IMM ? mcs : offset(mcs, bld, i));
+            }
          }
       }
 
