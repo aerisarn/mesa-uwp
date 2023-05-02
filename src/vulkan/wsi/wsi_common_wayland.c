@@ -2118,7 +2118,17 @@ wsi_wl_swapchain_chain_free(struct wsi_wl_swapchain *chain,
 
    if (chain->present_ids.wp_presentation) {
       assert(!chain->present_ids.dispatch_in_progress);
-      assert(wl_list_empty(&chain->present_ids.outstanding_list));
+
+      /* In VK_EXT_swapchain_maintenance1 there is no requirement to wait for all present IDs to be complete.
+       * Waiting for the swapchain fence is enough.
+       * Just clean up anything user did not wait for. */
+      struct wsi_wl_present_id *id, *tmp;
+      wl_list_for_each_safe(id, tmp, &chain->present_ids.outstanding_list, link) {
+         wp_presentation_feedback_destroy(id->feedback);
+         wl_list_remove(&id->link);
+         vk_free(id->alloc, id);
+      }
+
       wl_proxy_wrapper_destroy(chain->present_ids.wp_presentation);
       pthread_cond_destroy(&chain->present_ids.list_advanced);
       pthread_mutex_destroy(&chain->present_ids.lock);
