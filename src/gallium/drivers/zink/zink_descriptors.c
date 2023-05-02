@@ -752,8 +752,7 @@ zink_descriptor_shader_init(struct zink_screen *screen, struct zink_shader *shad
       if (shader->bindless)
          dsl[screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS]] = screen->bindless_layout;
    }
-   if (num_bindings)
-      shader->precompile.layout = zink_pipeline_layout_create(screen, dsl, num_dsl, false, VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT);
+   shader->precompile.layout = zink_pipeline_layout_create(screen, dsl, num_dsl, false, VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT);
 }
 
 void
