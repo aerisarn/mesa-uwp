@@ -2202,11 +2202,11 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    switch (image->vk.image_type) {
    case VK_IMAGE_TYPE_1D:
    case VK_IMAGE_TYPE_2D:
-      assert(range->baseArrayLayer + radv_get_layerCount(image, range) - 1 <=
+      assert(range->baseArrayLayer + vk_image_subresource_layer_count(&image->vk, range) - 1 <=
              image->info.array_size);
       break;
    case VK_IMAGE_TYPE_3D:
-      assert(range->baseArrayLayer + radv_get_layerCount(image, range) - 1 <=
+      assert(range->baseArrayLayer + vk_image_subresource_layer_count(&image->vk, range) - 1 <=
              radv_minify(image->info.depth, range->baseMipLevel));
       break;
    default:

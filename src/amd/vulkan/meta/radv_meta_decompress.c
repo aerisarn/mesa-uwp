@@ -515,7 +515,7 @@ radv_process_depth_stencil(struct radv_cmd_buffer *cmd_buffer, struct radv_image
                             .extent = {width, height},
                          });
 
-      for (uint32_t s = 0; s < radv_get_layerCount(image, subresourceRange); s++) {
+      for (uint32_t s = 0; s < vk_image_subresource_layer_count(&image->vk, subresourceRange); s++) {
          radv_process_depth_image_layer(cmd_buffer, image, subresourceRange, l, s);
       }
    }
@@ -553,7 +553,7 @@ radv_expand_depth_stencil_compute(struct radv_cmd_buffer *cmd_buffer, struct rad
       width = radv_minify(image->info.width, subresourceRange->baseMipLevel + l);
       height = radv_minify(image->info.height, subresourceRange->baseMipLevel + l);
 
-      for (uint32_t s = 0; s < radv_get_layerCount(image, subresourceRange); s++) {
+      for (uint32_t s = 0; s < vk_image_subresource_layer_count(&image->vk, subresourceRange); s++) {
          radv_image_view_init(
             &load_iview, cmd_buffer->device,
             &(VkImageViewCreateInfo){
