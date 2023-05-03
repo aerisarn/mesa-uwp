@@ -29,7 +29,6 @@
 #include "util/hash_table.h"
 #include "util/u_upload_mgr.h"
 #include "tgsi/tgsi_dump.h"
-#include "tgsi/tgsi_parse.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "nir/tgsi_to_nir.h"
