@@ -268,6 +268,14 @@ bo_create_internal(struct zink_screen *screen,
    if (screen->info.have_KHR_buffer_device_address)
       pNext = &ai;
 
+   VkMemoryPriorityAllocateInfoEXT prio = {
+      VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT,
+      pNext,
+      (flags & ZINK_ALLOC_NO_SUBALLOC) ? 1.0 : 0.5,
+   };
+   if (screen->info.have_EXT_memory_priority)
+      pNext = &prio;
+
    VkMemoryAllocateInfo mai;
    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
    mai.pNext = pNext;
