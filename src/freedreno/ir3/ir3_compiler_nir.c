@@ -1587,6 +1587,7 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
     */
 
    mesa_scope exec_scope = nir_intrinsic_execution_scope(intr);
+   mesa_scope mem_scope = nir_intrinsic_memory_scope(intr);
    nir_variable_mode modes = nir_intrinsic_memory_modes(intr);
    /* loads/stores are always cache-coherent so we can filter out
     * available/visible.
@@ -1652,6 +1653,24 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
       /* make sure barrier doesn't get DCE'd */
       array_insert(b, b->keeps, barrier);
+
+      if (ctx->compiler->gen >= 7 && mem_scope > SCOPE_WORKGROUP &&
+          modes & (nir_var_mem_ssbo | nir_var_image) &&
+          semantics & NIR_MEMORY_ACQUIRE) {
+         /* "r + l" is not enough to synchronize reads with writes from other
+          * workgroups, we can disable them since they are useless here.
+          */
+         barrier->cat7.r = false;
+         barrier->cat7.l = false;
+
+         struct ir3_instruction *ccinv = ir3_CCINV(b);
+         /* A7XX TODO: ccinv should just stick to the barrier,
+          * the barrier class/conflict introduces unnecessary waits.
+          */
+         ccinv->barrier_class = barrier->barrier_class;
+         ccinv->barrier_conflict = barrier->barrier_conflict;
+         array_insert(b, b->keeps, ccinv);
+      }
    }
 
    if (exec_scope >= SCOPE_WORKGROUP) {
