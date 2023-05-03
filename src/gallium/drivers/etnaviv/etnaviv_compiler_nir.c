@@ -40,7 +40,6 @@
 #include "util/register_allocate.h"
 #include "compiler/nir/nir_builder.h"
 
-#include "tgsi/tgsi_strings.h"
 #include "util/compiler.h"
 #include "util/half_float.h"
 
