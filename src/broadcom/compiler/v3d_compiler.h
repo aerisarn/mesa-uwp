@@ -715,6 +715,11 @@ struct v3d_compile {
         bool disable_constant_ubo_load_sorting;
         bool sorted_any_ubo_loads;
 
+        /* Moves UBO/SSBO loads right before their first user (nir_opt_move).
+         * This can reduce register pressure.
+         */
+        bool move_buffer_loads;
+
         /* Emits ldunif for each new uniform, even if the uniform was already
          * emitted in the same block. Useful to compile shaders with high
          * register pressure or to disable the optimization during uniform
