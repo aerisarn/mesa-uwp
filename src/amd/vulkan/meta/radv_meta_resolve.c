@@ -347,8 +347,8 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
 
    radv_meta_save(&saved_state, cmd_buffer, RADV_META_SAVE_GRAPHICS_PIPELINE);
 
-   assert(src_image->info.samples > 1);
-   assert(dst_image->info.samples == 1);
+   assert(src_image->vk.samples > 1);
+   assert(dst_image->vk.samples == 1);
 
    unsigned fs_key = radv_format_meta_fs_key(device, dst_image->vk.format);
 

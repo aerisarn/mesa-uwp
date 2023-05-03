@@ -2792,7 +2792,7 @@ radv_image_get_iterate256(struct radv_device *device, struct radv_image *image)
    return device->physical_device->rad_info.gfx_level >= GFX10 &&
           (image->vk.usage &
            (VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&
-          radv_image_is_tc_compat_htile(image) && image->info.samples > 1;
+          radv_image_is_tc_compat_htile(image) && image->vk.samples > 1;
 }
 
 unsigned radv_image_queue_family_mask(const struct radv_image *image,

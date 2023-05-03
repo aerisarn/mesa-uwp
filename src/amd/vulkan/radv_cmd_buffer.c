@@ -10185,7 +10185,7 @@ radv_init_fmask(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                 const VkImageSubresourceRange *range)
 {
    static const uint32_t fmask_clear_values[4] = {0x00000000, 0x02020202, 0xE4E4E4E4, 0x76543210};
-   uint32_t log2_samples = util_logbase2(image->info.samples);
+   uint32_t log2_samples = util_logbase2(image->vk.samples);
    uint32_t value = fmask_clear_values[log2_samples];
    struct radv_barrier_data barrier = {0};
 
@@ -10270,7 +10270,7 @@ radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_i
          }
       } else {
          static const uint32_t cmask_clear_values[4] = {0xffffffff, 0xdddddddd, 0xeeeeeeee, 0xffffffff};
-         uint32_t log2_samples = util_logbase2(image->info.samples);
+         uint32_t log2_samples = util_logbase2(image->vk.samples);
 
          value = cmask_clear_values[log2_samples];
       }

@@ -99,7 +99,7 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
    /* The Vulkan 1.0 spec says "dstImage must have a sample count equal to
     * VK_SAMPLE_COUNT_1_BIT."
     */
-   assert(image->info.samples == 1);
+   assert(image->vk.samples == 1);
 
    cs = cmd_buffer->qf == RADV_QUEUE_COMPUTE ||
         !radv_image_is_renderable(cmd_buffer->device, image);
@@ -367,7 +367,7 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
     *    vkCmdCopyImage can be used to copy image data between multisample
     *    images, but both images must have the same number of samples.
     */
-   assert(src_image->info.samples == dst_image->info.samples);
+   assert(src_image->vk.samples == dst_image->vk.samples);
 
    cs = cmd_buffer->qf == RADV_QUEUE_COMPUTE ||
         !radv_image_is_renderable(cmd_buffer->device, dst_image);

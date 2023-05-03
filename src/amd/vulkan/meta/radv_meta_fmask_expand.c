@@ -78,7 +78,7 @@ radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer, struct radv_
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_meta_saved_state saved_state;
-   const uint32_t samples = image->info.samples;
+   const uint32_t samples = image->vk.samples;
    const uint32_t samples_log2 = ffs(samples) - 1;
    unsigned layer_count = vk_image_subresource_layer_count(&image->vk, subresourceRange);
    struct radv_image_view iview;

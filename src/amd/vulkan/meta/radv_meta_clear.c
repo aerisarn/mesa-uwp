@@ -332,7 +332,7 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *cl
     * the render pass because it's likely a secondary command buffer.
     */
    if (color_att->iview) {
-      samples = color_att->iview->image->info.samples;
+      samples = color_att->iview->image->vk.samples;
       format = color_att->iview->vk.format;
    } else {
       samples = render->max_samples;
@@ -579,7 +579,7 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachm
     */
    struct radv_image_view *iview = render->ds_att.iview;
    if (iview) {
-      samples = iview->image->info.samples;
+      samples = iview->image->vk.samples;
    } else {
       assert(render->ds_att.format != VK_FORMAT_UNDEFINED);
       samples = render->max_samples;
@@ -1214,7 +1214,7 @@ radv_get_cmask_fast_clear_value(const struct radv_image *image)
     */
    if (radv_image_has_dcc(image)) {
       /* DCC fast clear with MSAA should clear CMASK to 0xC. */
-      return image->info.samples > 1 ? 0xcccccccc : 0xffffffff;
+      return image->vk.samples > 1 ? 0xcccccccc : 0xffffffff;
    }
 
    return value;
@@ -1321,7 +1321,7 @@ radv_clear_dcc_comp_to_single(struct radv_cmd_buffer *cmd_buffer,
    unsigned bytes_per_pixel = vk_format_get_blocksize(image->vk.format);
    unsigned layer_count = vk_image_subresource_layer_count(&image->vk, range);
    struct radv_meta_saved_state saved_state;
-   bool is_msaa = image->info.samples > 1;
+   bool is_msaa = image->vk.samples > 1;
    struct radv_image_view iview;
    VkFormat format;
 

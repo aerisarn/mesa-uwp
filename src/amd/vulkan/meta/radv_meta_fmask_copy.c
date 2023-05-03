@@ -286,7 +286,7 @@ radv_fmask_copy(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_surf
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_image_view src_iview, dst_iview;
-   uint32_t samples = src->image->info.samples;
+   uint32_t samples = src->image->vk.samples;
    uint32_t samples_log2 = ffs(samples) - 1;
 
    VkResult result = radv_device_init_meta_fmask_copy_state_internal(device, samples_log2);

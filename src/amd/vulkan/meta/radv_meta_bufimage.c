@@ -1665,7 +1665,7 @@ radv_meta_image_to_image_cs(struct radv_cmd_buffer *cmd_buffer, struct radv_meta
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_image_view src_view, dst_view;
-   uint32_t samples = src->image->info.samples;
+   uint32_t samples = src->image->vk.samples;
    uint32_t samples_log2 = ffs(samples) - 1;
 
    if (src->format == VK_FORMAT_R32G32B32_UINT || src->format == VK_FORMAT_R32G32B32_SINT ||
@@ -1803,7 +1803,7 @@ radv_meta_clear_image_cs(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_bl
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_image_view dst_iview;
-   uint32_t samples = dst->image->info.samples;
+   uint32_t samples = dst->image->vk.samples;
    uint32_t samples_log2 = ffs(samples) - 1;
 
    if (dst->format == VK_FORMAT_R32G32B32_UINT || dst->format == VK_FORMAT_R32G32B32_SINT ||

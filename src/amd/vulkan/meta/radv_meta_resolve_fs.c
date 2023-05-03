@@ -582,7 +582,7 @@ radv_get_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_image_
 {
    struct radv_device *device = cmd_buffer->device;
    unsigned fs_key = radv_format_meta_fs_key(cmd_buffer->device, dst_iview->vk.format);
-   const uint32_t samples = src_iview->image->info.samples;
+   const uint32_t samples = src_iview->image->vk.samples;
    const uint32_t samples_log2 = ffs(samples) - 1;
    VkPipeline *pipeline;
 
@@ -657,7 +657,7 @@ emit_depth_stencil_resolve(struct radv_cmd_buffer *cmd_buffer, struct radv_image
                            VkResolveModeFlagBits resolve_mode)
 {
    struct radv_device *device = cmd_buffer->device;
-   const uint32_t samples = src_iview->image->info.samples;
+   const uint32_t samples = src_iview->image->vk.samples;
    const uint32_t samples_log2 = ffs(samples) - 1;
    VkPipeline *pipeline;
 

@@ -130,7 +130,7 @@ radv_image_use_fast_clear_for_image_early(const struct radv_device *device,
    if (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS)
       return true;
 
-   if (image->info.samples <= 1 && image->info.width * image->info.height <= 512 * 512) {
+   if (image->vk.samples <= 1 && image->info.width * image->info.height <= 512 * 512) {
       /* Do not enable CMASK or DCC for small surfaces where the cost
        * of the eliminate pass can be higher than the benefit of fast
        * clear. RadeonSI does this, but the image threshold is
@@ -343,7 +343,7 @@ radv_image_use_dcc_predication(const struct radv_device *device, const struct ra
 static inline bool
 radv_use_fmask_for_image(const struct radv_device *device, const struct radv_image *image)
 {
-   return device->physical_device->use_fmask && image->info.samples > 1 &&
+   return device->physical_device->use_fmask && image->vk.samples > 1 &&
           ((image->vk.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) ||
            (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS));
 }
@@ -385,7 +385,7 @@ radv_use_tc_compat_cmask_for_image(struct radv_device *device, struct radv_image
 
    /* GFX9 has issues when sample count is greater than 2 */
    if (device->physical_device->rad_info.gfx_level == GFX9 &&
-       image->info.samples > 2)
+       image->vk.samples > 2)
       return false;
 
    if (device->instance->debug_flags & RADV_DEBUG_NO_TC_COMPAT_CMASK)
@@ -1049,7 +1049,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
       assert(image->vk.image_type == VK_IMAGE_TYPE_3D);
       type = V_008F1C_SQ_RSRC_IMG_3D;
    } else {
-      type = radv_tex_dim(image->vk.image_type, view_type, image->vk.array_layers, image->info.samples,
+      type = radv_tex_dim(image->vk.image_type, view_type, image->vk.array_layers, image->vk.samples,
                           is_storage_image, device->physical_device->rad_info.gfx_level == GFX9);
    }
 
@@ -1071,8 +1071,8 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
               S_00A00C_DST_SEL_Y(radv_map_swizzle(swizzle[1])) |
               S_00A00C_DST_SEL_Z(radv_map_swizzle(swizzle[2])) |
               S_00A00C_DST_SEL_W(radv_map_swizzle(swizzle[3])) |
-              S_00A00C_BASE_LEVEL(image->info.samples > 1 ? 0 : first_level) |
-              S_00A00C_LAST_LEVEL(image->info.samples > 1 ? util_logbase2(image->info.samples)
+              S_00A00C_BASE_LEVEL(image->vk.samples > 1 ? 0 : first_level) |
+              S_00A00C_LAST_LEVEL(image->vk.samples > 1 ? util_logbase2(image->vk.samples)
                                                           : last_level) |
               S_00A00C_BC_SWIZZLE(gfx9_border_color_swizzle(desc)) | S_00A00C_TYPE(type);
    /* Depth is the the last accessible layer on gfx9+. The hw doesn't need
@@ -1111,7 +1111,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
    }
 
    unsigned max_mip =
-      image->info.samples > 1 ? util_logbase2(image->info.samples) : image->vk.mip_levels - 1;
+      image->vk.samples > 1 ? util_logbase2(image->vk.samples) : image->vk.mip_levels - 1;
    if (nbc_view && nbc_view->valid)
       max_mip = nbc_view->num_levels - 1;
 
@@ -1147,7 +1147,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
 
          va = gpu_address + image->bindings[0].offset + image->planes[0].surface.fmask_offset;
 
-         switch (image->info.samples) {
+         switch (image->vk.samples) {
          case 2:
             format = V_008F0C_GFX10_FORMAT_FMASK8_S2_F2;
             break;
@@ -1247,7 +1247,7 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
       assert(image->vk.image_type == VK_IMAGE_TYPE_3D);
       type = V_008F1C_SQ_RSRC_IMG_3D;
    } else {
-      type = radv_tex_dim(image->vk.image_type, view_type, image->vk.array_layers, image->info.samples,
+      type = radv_tex_dim(image->vk.image_type, view_type, image->vk.array_layers, image->vk.samples,
                           is_storage_image, device->physical_device->rad_info.gfx_level == GFX9);
    }
 
@@ -1269,8 +1269,8 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
                S_008F1C_DST_SEL_Y(radv_map_swizzle(swizzle[1])) |
                S_008F1C_DST_SEL_Z(radv_map_swizzle(swizzle[2])) |
                S_008F1C_DST_SEL_W(radv_map_swizzle(swizzle[3])) |
-               S_008F1C_BASE_LEVEL(image->info.samples > 1 ? 0 : first_level) |
-               S_008F1C_LAST_LEVEL(image->info.samples > 1 ? util_logbase2(image->info.samples)
+               S_008F1C_BASE_LEVEL(image->vk.samples > 1 ? 0 : first_level) |
+               S_008F1C_LAST_LEVEL(image->vk.samples > 1 ? util_logbase2(image->vk.samples)
                                                            : last_level) |
                S_008F1C_TYPE(type));
    state[4] = 0;
@@ -1290,7 +1290,7 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
          state[4] |= S_008F20_DEPTH(last_layer);
 
       state[4] |= S_008F20_BC_SWIZZLE(bc_swizzle);
-      state[5] |= S_008F24_MAX_MIP(image->info.samples > 1 ? util_logbase2(image->info.samples)
+      state[5] |= S_008F24_MAX_MIP(image->vk.samples > 1 ? util_logbase2(image->vk.samples)
                                                            : image->vk.mip_levels - 1);
    } else {
       state[3] |= S_008F1C_POW2_PAD(image->vk.mip_levels > 1);
@@ -1305,7 +1305,7 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
          /* The last dword is unused by hw. The shader uses it to clear
           * bits in the first dword of sampler state.
           */
-         if (device->physical_device->rad_info.gfx_level <= GFX7 && image->info.samples <= 1) {
+         if (device->physical_device->rad_info.gfx_level <= GFX7 && image->vk.samples <= 1) {
             if (first_level == last_level)
                state[7] = C_008F30_MAX_ANISO_RATIO;
             else
@@ -1327,7 +1327,7 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
 
          if (device->physical_device->rad_info.gfx_level == GFX9) {
             fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK;
-            switch (image->info.samples) {
+            switch (image->vk.samples) {
             case 2:
                num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_2_2;
                break;
@@ -1341,7 +1341,7 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
                unreachable("invalid nr_samples");
             }
          } else {
-            switch (image->info.samples) {
+            switch (image->vk.samples) {
             case 2:
                fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK8_S2_F2;
                break;
@@ -1556,7 +1556,7 @@ static bool
 radv_image_is_pipe_misaligned(const struct radv_device *device, const struct radv_image *image)
 {
    struct radeon_info *rad_info = &device->physical_device->rad_info;
-   int log2_samples = util_logbase2(image->info.samples);
+   int log2_samples = util_logbase2(image->vk.samples);
 
    assert(rad_info->gfx_level >= GFX10);
 
@@ -1607,7 +1607,7 @@ radv_image_is_l2_coherent(const struct radv_device *device, const struct radv_im
       return !device->physical_device->rad_info.tcc_rb_non_coherent &&
              !radv_image_is_pipe_misaligned(device, image);
    } else if (device->physical_device->rad_info.gfx_level == GFX9) {
-      if (image->info.samples == 1 &&
+      if (image->vk.samples == 1 &&
           (image->vk.usage &
            (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
           !vk_format_has_stencil(image->vk.format)) {

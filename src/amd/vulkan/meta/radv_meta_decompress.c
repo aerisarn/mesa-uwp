@@ -358,7 +358,7 @@ radv_get_depth_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_image *i
                         const VkImageSubresourceRange *subresourceRange, enum radv_depth_op op)
 {
    struct radv_meta_state *state = &cmd_buffer->device->meta_state;
-   uint32_t samples = image->info.samples;
+   uint32_t samples = image->vk.samples;
    uint32_t samples_log2 = ffs(samples) - 1;
    VkPipeline *pipeline;
 
