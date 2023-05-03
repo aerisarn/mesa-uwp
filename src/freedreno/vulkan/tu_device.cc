@@ -1579,6 +1579,7 @@ tu_queue_init(struct tu_device *device,
       return result;
 
    queue->device = device;
+   queue->priority = priority;
    queue->vk.driver_submit = tu_queue_submit;
 
    int ret = tu_drm_submitqueue_new(device, priority, &queue->msm_queue_id);

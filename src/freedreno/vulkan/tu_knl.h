@@ -40,6 +40,14 @@ enum tu_timeline_sync_state {
 
 struct tu_bo {
    uint32_t gem_handle;
+#ifdef TU_HAS_VIRTIO
+   /* Between the guest UMD and host native-ctx shim/proxy, guest kernel
+    * assigned res_id is used instead of host gem handle.  This allows
+    * the guest to run ahead of the host without having to wait for
+    * response from the host when buffers are allocated.
+    */
+   uint32_t res_id;
+#endif
    uint64_t size;
    uint64_t iova;
    void *map;
@@ -81,6 +89,9 @@ struct tu_knl {
 struct tu_zombie_vma {
    int fence;
    uint32_t gem_handle;
+#ifdef TU_HAS_VIRTIO
+   uint32_t res_id;
+#endif
    uint64_t iova;
    uint64_t size;
 };
@@ -105,6 +116,8 @@ static inline VkResult
 tu_bo_init_new(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
                enum tu_bo_alloc_flags flags, const char *name)
 {
+   // TODO don't mark everything with HOST_VISIBLE !!! Anything that
+   // never gets CPU access should not have this bit set
    return tu_bo_init_new_explicit_iova(
       dev, out_bo, size, 0,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
@@ -143,6 +156,9 @@ struct _drmVersion;
 VkResult tu_knl_drm_msm_load(struct tu_instance *instance,
                              int fd, struct _drmVersion *version,
                              struct tu_physical_device **out);
+VkResult tu_knl_drm_virtio_load(struct tu_instance *instance,
+                                int fd, struct _drmVersion *version,
+                                struct tu_physical_device **out);
 
 VkResult
 tu_enumerate_devices(struct vk_instance *vk_instance);
