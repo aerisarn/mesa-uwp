@@ -448,6 +448,8 @@ static const struct test {
    INSTR_6XX(f0420000_00000000, "(sy)bar.g"),
    INSTR_6XX(e1080000_00000000, "sleep.l"),
    INSTR_6XX(e2080000_00000000, "dccln.all"),
+   /* dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_local.buffer.guard_local.buffer.comp */
+   INSTR_7XX(e2d20000_00000000, "ccinv"),
 
    INSTR_7XX(e3c20000_00000000, "lock"),
    INSTR_7XX(fbc21000_00000000, "(sy)(ss)(jp)lock"),
