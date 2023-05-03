@@ -10,7 +10,6 @@
 #include "si_pipe.h"
 #include "si_shader_internal.h"
 #include "sid.h"
-#include "tgsi/tgsi_from_mesa.h"
 #include "util/u_memory.h"
 #include "util/u_prim.h"
 

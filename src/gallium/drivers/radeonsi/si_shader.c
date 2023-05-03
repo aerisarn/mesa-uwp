@@ -14,7 +14,6 @@
 #include "si_shader_internal.h"
 #include "sid.h"
 #include "tgsi/tgsi_from_mesa.h"
-#include "tgsi/tgsi_strings.h"
 #include "util/u_memory.h"
 #include "util/mesa-sha1.h"
 #include "util/ralloc.h"
