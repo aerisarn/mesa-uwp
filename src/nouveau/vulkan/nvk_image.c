@@ -65,6 +65,7 @@ nvk_get_image_format_features(struct nvk_physical_device *pdev,
 
    if (nil_format_supports_storage(&pdev->info, p_format)) {
       features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
+                  VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
                   VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
    }
 

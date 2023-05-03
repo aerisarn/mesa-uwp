@@ -374,7 +374,7 @@ nvk_get_device_features(const struct nv_device_info *dev,
       .shaderImageGatherExtended = true,
       .shaderStorageImageExtendedFormats = true,
       /* TODO: shaderStorageImageMultisample */
-      /* TODO: shaderStorageImageReadWithoutFormat */
+      .shaderStorageImageReadWithoutFormat = true,
       .shaderStorageImageWriteWithoutFormat = true,
       .shaderUniformBufferArrayDynamicIndexing = true,
       .shaderSampledImageArrayDynamicIndexing = true,
