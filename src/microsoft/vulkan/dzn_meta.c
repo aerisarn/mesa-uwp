@@ -79,7 +79,7 @@ dzn_meta_compile_shader(struct dzn_device *device, nir_shader *nir,
 
    if ((instance->debug_flags & DZN_DEBUG_DXIL) &&
        (instance->debug_flags & DZN_DEBUG_INTERNAL) &&
-       !res) {
+       !res && !(instance->debug_flags & DZN_DEBUG_EXPERIMENTAL)) {
       fprintf(stderr,
             "== VALIDATION ERROR =============================================\n"
             "%s\n"
@@ -87,7 +87,7 @@ dzn_meta_compile_shader(struct dzn_device *device, nir_shader *nir,
             err ? err : "unknown");
       ralloc_free(err);
    }
-   assert(res);
+   assert(res || (instance->debug_flags & DZN_DEBUG_EXPERIMENTAL));
 #endif
 
    void *data;

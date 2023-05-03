@@ -186,6 +186,7 @@ static const struct debug_control dzn_debug_options[] = {
    { "redirects", DZN_DEBUG_REDIRECTS },
    { "bindless", DZN_DEBUG_BINDLESS },
    { "nobindless", DZN_DEBUG_NO_BINDLESS },
+   { "experimental", DZN_DEBUG_EXPERIMENTAL },
    { NULL, 0 }
 };
 
@@ -1806,8 +1807,10 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
 
    bool missing_validator = false;
 #ifdef _WIN32
-   instance->dxil_validator = dxil_create_validator(NULL);
-   missing_validator = !instance->dxil_validator;
+   if ((instance->debug_flags & DZN_DEBUG_EXPERIMENTAL) == 0) {
+      instance->dxil_validator = dxil_create_validator(NULL);
+      missing_validator = !instance->dxil_validator;
+   }
 #endif
 
    if (missing_validator) {

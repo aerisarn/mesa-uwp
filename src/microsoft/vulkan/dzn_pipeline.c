@@ -450,7 +450,7 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
       }
    }
 
-   if (!res) {
+   if (!res && !(instance->debug_flags & DZN_DEBUG_EXPERIMENTAL)) {
       if (err) {
          mesa_loge(
                "== VALIDATION ERROR =============================================\n"
