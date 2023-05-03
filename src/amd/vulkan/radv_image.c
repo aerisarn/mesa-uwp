@@ -1508,7 +1508,7 @@ radv_image_alloc_single_sample_cmask(const struct radv_device *device,
        (image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT))
       return;
 
-   assert(image->info.storage_samples == 1);
+   assert(image->vk.samples == 1);
 
    surf->cmask_offset = align64(surf->total_size, 1ull << surf->cmask_alignment_log2);
    surf->total_size = surf->cmask_offset + surf->cmask_size;
@@ -1762,7 +1762,7 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
 
       if (create_info.bo_metadata && !mod_info &&
           !ac_surface_apply_umd_metadata(&device->physical_device->rad_info,
-                                         &image->planes[plane].surface, image_info.storage_samples,
+                                         &image->planes[plane].surface, image->vk.samples,
                                          image->vk.mip_levels, create_info.bo_metadata->size_metadata,
                                          create_info.bo_metadata->metadata))
          return VK_ERROR_INVALID_EXTERNAL_HANDLE;

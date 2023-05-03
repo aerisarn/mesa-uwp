@@ -586,7 +586,7 @@ radv_rmv_log_image_create(struct radv_device *device, const VkImageCreateInfo *c
    token.image.tiling = create_info->tiling;
    token.image.alignment_log2 = util_logbase2(image->alignment);
    token.image.log2_samples = util_logbase2(image->info.samples);
-   token.image.log2_storage_samples = util_logbase2(image->info.storage_samples);
+   token.image.log2_storage_samples = util_logbase2(image->vk.samples);
    token.image.metadata_alignment_log2 = image->planes[0].surface.meta_alignment_log2;
    token.image.image_alignment_log2 = image->planes[0].surface.alignment_log2;
    token.image.size = image->size;
