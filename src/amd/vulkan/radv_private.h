@@ -2515,8 +2515,6 @@ struct radv_image_binding {
 struct radv_image {
    struct vk_image vk;
 
-   struct ac_surf_info info;
-
    VkDeviceSize size;
    uint32_t alignment;
 
@@ -2549,6 +2547,9 @@ struct radv_image {
    bool disjoint;
    struct radv_image_plane planes[0];
 };
+
+struct ac_surf_info radv_get_ac_surf_info(struct radv_device *device,
+                                          const struct radv_image *image);
 
 /* Whether the image has a htile  that is known consistent with the contents of
  * the image and is allowed to be in compressed form.

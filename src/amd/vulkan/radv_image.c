@@ -539,7 +539,7 @@ radv_patch_image_from_extra_info(struct radv_device *device, struct radv_image *
          if (device->instance->debug_flags & RADV_DEBUG_NO_DISPLAY_DCC)
             image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC;
 
-         image->info.surf_index = NULL;
+         image_info->surf_index = NULL;
       }
 
       if (create_info->prime_blit_src && device->physical_device->rad_info.gfx_level == GFX9) {
@@ -1721,6 +1721,31 @@ radv_image_reset_layout(const struct radv_physical_device *pdev, struct radv_ima
    }
 }
 
+struct ac_surf_info
+radv_get_ac_surf_info(struct radv_device *device, const struct radv_image *image)
+{
+   struct ac_surf_info info;
+
+   memset(&info, 0, sizeof(info));
+
+   info.width = image->vk.extent.width;
+   info.height = image->vk.extent.height;
+   info.depth = image->vk.extent.depth;
+   info.samples = image->vk.samples;
+   info.storage_samples = image->vk.samples;
+   info.array_size = image->vk.array_layers;
+   info.levels = image->vk.mip_levels;
+   info.num_channels = vk_format_get_nr_components(image->vk.format);
+
+   if (!vk_format_is_depth_or_stencil(image->vk.format) && !image->shareable &&
+       !(image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_ALIASED_BIT) &&
+       image->vk.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      info.surf_index = &device->image_mrt_offset_counter;
+   }
+
+   return info;
+}
+
 VkResult
 radv_image_create_layout(struct radv_device *device, struct radv_image_create_info create_info,
                          const struct VkImageDrmFormatModifierExplicitCreateInfoEXT *mod_info,
@@ -1730,7 +1755,7 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
     * common internal case. */
    create_info.vk_info = NULL;
 
-   struct ac_surf_info image_info = image->info;
+   struct ac_surf_info image_info = radv_get_ac_surf_info(device, image);
    VkResult result = radv_patch_image_from_extra_info(device, image, &create_info, &image_info);
    if (result != VK_SUCCESS)
       return result;
@@ -1939,15 +1964,6 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
 
    vk_image_init(&device->vk, &image->vk, pCreateInfo);
 
-   image->info.width = pCreateInfo->extent.width;
-   image->info.height = pCreateInfo->extent.height;
-   image->info.depth = pCreateInfo->extent.depth;
-   image->info.samples = pCreateInfo->samples;
-   image->info.storage_samples = pCreateInfo->samples;
-   image->info.array_size = pCreateInfo->arrayLayers;
-   image->info.levels = pCreateInfo->mipLevels;
-   image->info.num_channels = vk_format_get_nr_components(format);
-
    image->plane_count = vk_format_get_plane_count(format);
    image->disjoint = image->plane_count > 1 && pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT;
 
@@ -1966,11 +1982,6 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
       vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
 
    image->shareable = external_info;
-   if (!vk_format_is_depth_or_stencil(format) && !image->shareable &&
-       !(image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_ALIASED_BIT) &&
-       pCreateInfo->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
-      image->info.surf_index = &device->image_mrt_offset_counter;
-   }
 
    if (mod_list)
       modifier = radv_select_modifier(device, format, mod_list);
@@ -2030,15 +2041,16 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
 }
 
 static inline void
-compute_non_block_compressed_view(const struct radv_device *device,
+compute_non_block_compressed_view(struct radv_device *device,
                                   const struct radv_image_view *iview,
                                   struct ac_surf_nbc_view *nbc_view)
 {
    const struct radv_image *image = iview->image;
    const struct radeon_surf *surf = &image->planes[0].surface;
    struct ac_addrlib *addrlib = device->ws->get_addrlib(device->ws);
+   struct ac_surf_info surf_info = radv_get_ac_surf_info(device, image);
 
-   ac_surface_compute_nbc_view(addrlib, &device->physical_device->rad_info, surf, &image->info,
+   ac_surface_compute_nbc_view(addrlib, &device->physical_device->rad_info, surf, &surf_info,
                                iview->vk.base_mip_level, iview->vk.base_array_layer, nbc_view);
 }
 

@@ -1235,9 +1235,10 @@ fixup_gfx9_cs_copy(struct radv_cmd_buffer *cmd_buffer,
    const unsigned mip_level = img_bsurf->level;
    const struct radv_image *image = img_bsurf->image;
    const struct radeon_surf *surf = &image->planes[0].surface;
-   const struct radv_device *device = cmd_buffer->device;
+   struct radv_device *device = cmd_buffer->device;
    const struct radeon_info *rad_info = &device->physical_device->rad_info;
    struct ac_addrlib *addrlib = device->ws->get_addrlib(device->ws);
+   struct ac_surf_info surf_info = radv_get_ac_surf_info(device, image);
 
    /* GFX10 will use a different workaround unless this is not a 2D image */
    if (rad_info->gfx_level < GFX9 ||
@@ -1283,7 +1284,7 @@ fixup_gfx9_cs_copy(struct radv_cmd_buffer *cmd_buffer,
       uint32_t x = (coordY < hw_mip_extent.height) ? hw_mip_extent.width : 0;
       for (; x < mip_extent.width; x++) {
          uint32_t coordX = x + mip_offset.x;
-         uint64_t addr = ac_surface_addr_from_coord(addrlib, rad_info, surf, &image->info,
+         uint64_t addr = ac_surface_addr_from_coord(addrlib, rad_info, surf, &surf_info,
                                                     mip_level, coordX, coordY, img_bsurf->layer,
                                                     image->vk.image_type == VK_IMAGE_TYPE_3D);
          struct radeon_winsys_bo *img_bo = image->bindings[0].bo;
