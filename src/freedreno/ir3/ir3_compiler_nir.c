@@ -1359,7 +1359,11 @@ get_image_ssbo_samp_tex_src(struct ir3_context *ctx, nir_src *src, bool image)
             info.base = info.tex_base;
          } else {
             info.base = info.tex_base;
-            info.a1_val = info.tex_idx << 3;
+            if (ctx->compiler->gen <= 6) {
+               info.a1_val = info.tex_idx << 3;
+            } else {
+               info.a1_val = info.samp_idx << 3;
+            }
             info.flags |= IR3_INSTR_A1EN;
          }
          info.samp_tex = NULL;
@@ -2819,7 +2823,12 @@ get_tex_samp_tex_src(struct ir3_context *ctx, nir_tex_instr *tex)
             info.base = info.tex_base;
          } else {
             info.base = info.tex_base;
-            info.a1_val = info.tex_idx << 3 | info.samp_base;
+            if (ctx->compiler->gen <= 6) {
+               info.a1_val = info.tex_idx << 3 | info.samp_base;
+            } else {
+               info.a1_val = info.samp_idx << 3 | info.samp_base;
+            }
+
             info.flags |= IR3_INSTR_A1EN;
          }
          info.samp_tex = NULL;
