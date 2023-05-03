@@ -123,6 +123,8 @@ EXTENSIONS = [
               alias="driver",
               properties=True),
     Extension("VK_EXT_memory_budget"),
+    Extension("VK_EXT_memory_priority", alias="memprio", features=True),
+    Extension("VK_EXT_pageable_device_local_memory", alias="mempage", features=True),
     Extension("VK_KHR_draw_indirect_count"),
     Extension("VK_EXT_shader_object", alias="shobj", features=True, properties=True),
     Extension("VK_EXT_attachment_feedback_loop_layout",
