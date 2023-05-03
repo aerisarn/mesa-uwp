@@ -572,11 +572,12 @@ nvk_get_device_features(const struct nv_device_info *dev,
    };
 }
 
-static VkResult
-nvk_physical_device_try_create(struct nvk_instance *instance,
+VkResult
+nvk_create_drm_physical_device(struct vk_instance *_instance,
                                drmDevicePtr drm_device,
-                               struct nvk_physical_device **device_out)
+                               struct vk_physical_device **device_out)
 {
+   struct nvk_instance *instance = (struct nvk_instance *)_instance;
    VkResult result;
 
    if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)) ||
@@ -666,7 +667,7 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    if (result != VK_SUCCESS)
       goto fail_init;
 
-   *device_out = device;
+   *device_out = &device->vk;
 
    return VK_SUCCESS;
 
@@ -688,20 +689,6 @@ nvk_physical_device_destroy(struct vk_physical_device *vk_device)
    nouveau_ws_device_destroy(device->dev);
    vk_physical_device_finish(&device->vk);
    vk_free(&device->instance->vk.alloc, device);
-}
-
-VkResult nvk_create_drm_physical_device(struct vk_instance *vk_instance,
-                                        struct _drmDevice *device,
-                                        struct vk_physical_device **out)
-{
-   if (!(device->available_nodes & (1 << DRM_NODE_RENDER)) ||
-       device->bustype != DRM_BUS_PCI ||
-       device->deviceinfo.pci->vendor_id != NVIDIA_VENDOR_ID)
-      return VK_ERROR_INCOMPATIBLE_DRIVER;
-
-   return nvk_physical_device_try_create((struct nvk_instance *)vk_instance,
-                                         device,
-                                         (struct nvk_physical_device **)out);
 }
 
 VKAPI_ATTR void VKAPI_CALL
