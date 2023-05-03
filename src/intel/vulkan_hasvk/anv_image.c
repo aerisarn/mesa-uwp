@@ -1998,8 +1998,6 @@ anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
          break;
 
       case ISL_AUX_USAGE_MCS:
-         if (!anv_can_sample_mcs_with_clear(devinfo, image))
-            clear_supported = false;
          break;
 
       default:

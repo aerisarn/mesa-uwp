@@ -3458,31 +3458,6 @@ anv_can_sample_with_hiz(const struct intel_device_info * const devinfo,
    return image->vk.samples == 1;
 }
 
-/* Returns true if an MCS-enabled buffer can be sampled from. */
-static inline bool
-anv_can_sample_mcs_with_clear(const struct intel_device_info * const devinfo,
-                              const struct anv_image *image)
-{
-   assert(image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-   const uint32_t plane =
-      anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_COLOR_BIT);
-
-   assert(isl_aux_usage_has_mcs(image->planes[plane].aux_usage));
-
-   const struct anv_surface *anv_surf = &image->planes[plane].primary_surface;
-
-   /* On TGL, the sampler has an issue with some 8 and 16bpp MSAA fast clears.
-    * See HSD 1707282275, wa_14013111325. Due to the use of
-    * format-reinterpretation, a simplified workaround is implemented.
-    */
-   if (devinfo->ver >= 12 &&
-       isl_format_get_layout(anv_surf->isl.format)->bpb <= 16) {
-      return false;
-   }
-
-   return true;
-}
-
 void
 anv_cmd_buffer_mark_image_written(struct anv_cmd_buffer *cmd_buffer,
                                   const struct anv_image *image,
