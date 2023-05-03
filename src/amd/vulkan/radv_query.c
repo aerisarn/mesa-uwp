@@ -2145,7 +2145,7 @@ radv_CmdWriteTimestamp2(VkCommandBuffer commandBuffer, VkPipelineStageFlags2 sta
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cs, pool->bo);
 
-   emit_query_flush(cmd_buffer, pool);
+   si_emit_cache_flush(cmd_buffer);
 
    int num_queries = 1;
    if (cmd_buffer->state.render.view_mask)
