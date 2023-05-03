@@ -102,7 +102,6 @@ spec@!opengl 3.0@bindfragdata-link-error,Fail
 spec@!opengl 3.0@bindfragdata-nonexistent-variable,Fail
 spec@!opengl 3.0@clearbuffer-mixed-format,Fail
 spec@!opengl 3.0@getfragdatalocation,Fail
-spec@!opengl 3.0@gl-3.0-texture-integer,Fail
 spec@!opengl 3.0@minmax,Fail
 spec@!opengl 3.0@render-integer,Fail
 spec@!opengl 3.0@render-integer@GL_R8I,Fail
@@ -494,9 +493,6 @@ spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
 # driver/GLES uses seamless cubemap texturing.
 spec@!opengl 3.0@sampler-cube-shadow,Fail
 spec@arb_texture_cube_map_array@arb_texture_cube_map_array-sampler-cube-array-shadow,Fail
-
-# https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/800
-spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 
 # Precision differences between expected and obtained; works if
 # exporting V3D_DEBUG=tmu32.
