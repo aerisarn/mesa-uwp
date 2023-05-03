@@ -427,8 +427,6 @@ enum TexTarget
 
 enum ImgFormat
 {
-   FMT_NONE,
-
    FMT_RGBA32F,
    FMT_RGBA16F,
    FMT_RG32F,
