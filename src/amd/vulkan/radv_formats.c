@@ -1977,7 +1977,7 @@ radv_GetImageSparseMemoryRequirements2(VkDevice _device,
                                           &req->memoryRequirements.formatProperties);
       req->memoryRequirements.imageMipTailFirstLod = image->planes[0].surface.first_mip_tail_level;
 
-      if (req->memoryRequirements.imageMipTailFirstLod < image->info.levels) {
+      if (req->memoryRequirements.imageMipTailFirstLod < image->vk.mip_levels) {
          if (device->physical_device->rad_info.gfx_level >= GFX9) {
             /* The tail is always a single tile per layer. */
             req->memoryRequirements.imageMipTailSize = 65536;

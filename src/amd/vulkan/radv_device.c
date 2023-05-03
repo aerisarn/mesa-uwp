@@ -1672,7 +1672,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
          vk_format_get_plane_width(iview->image->vk.format, iview->plane_id, iview->extent.width);
       unsigned height =
          vk_format_get_plane_height(iview->image->vk.format, iview->plane_id, iview->extent.height);
-      unsigned max_mip = iview->image->info.levels - 1;
+      unsigned max_mip = iview->image->vk.mip_levels - 1;
 
       if (device->physical_device->rad_info.gfx_level >= GFX10) {
          unsigned base_level = iview->vk.base_mip_level;
@@ -1830,7 +1830,7 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
       ds->db_z_info = S_028038_FORMAT(format) |
                       S_028038_NUM_SAMPLES(util_logbase2(iview->image->info.samples)) |
                       S_028038_SW_MODE(surf->u.gfx9.swizzle_mode) |
-                      S_028038_MAXMIP(iview->image->info.levels - 1) |
+                      S_028038_MAXMIP(iview->image->vk.mip_levels - 1) |
                       S_028038_ZRANGE_PRECISION(1) |
                       S_028040_ITERATE_256(device->physical_device->rad_info.gfx_level >= GFX11);
       ds->db_stencil_info = S_02803C_FORMAT(stencil_format) |

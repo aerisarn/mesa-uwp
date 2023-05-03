@@ -362,7 +362,7 @@ radv_use_htile_for_image(const struct radv_device *device, const struct radv_ima
 
    /* Stencil texturing with HTILE doesn't work with mipmapping on Navi10-14. */
    if (device->physical_device->rad_info.gfx_level == GFX10 &&
-       image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT && image->info.levels > 1)
+       image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT && image->vk.mip_levels > 1)
       return false;
 
    /* Do not enable HTILE for very small images because it seems less performant but make sure it's
@@ -373,7 +373,7 @@ radv_use_htile_for_image(const struct radv_device *device, const struct radv_ima
        !(gfx_level == GFX10_3 && device->attachment_vrs_enabled))
       return false;
 
-   return (image->info.levels == 1 || use_htile_for_mips) && !image->shareable;
+   return (image->vk.mip_levels == 1 || use_htile_for_mips) && !image->shareable;
 }
 
 static bool
@@ -1111,7 +1111,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
    }
 
    unsigned max_mip =
-      image->info.samples > 1 ? util_logbase2(image->info.samples) : image->info.levels - 1;
+      image->info.samples > 1 ? util_logbase2(image->info.samples) : image->vk.mip_levels - 1;
    if (nbc_view && nbc_view->valid)
       max_mip = nbc_view->num_levels - 1;
 
@@ -1291,9 +1291,9 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
 
       state[4] |= S_008F20_BC_SWIZZLE(bc_swizzle);
       state[5] |= S_008F24_MAX_MIP(image->info.samples > 1 ? util_logbase2(image->info.samples)
-                                                           : image->info.levels - 1);
+                                                           : image->vk.mip_levels - 1);
    } else {
-      state[3] |= S_008F1C_POW2_PAD(image->info.levels > 1);
+      state[3] |= S_008F1C_POW2_PAD(image->vk.mip_levels > 1);
       state[4] |= S_008F20_DEPTH(depth - 1);
       state[5] |= S_008F24_LAST_ARRAY(last_layer);
    }
@@ -1438,7 +1438,7 @@ radv_query_opaque_metadata(struct radv_device *device, struct radv_image *image,
    assert(image->plane_count == 1);
 
    radv_make_texture_descriptor(device, image, false, (VkImageViewType)image->vk.image_type,
-                                image->vk.format, &fixedmapping, 0, image->info.levels - 1, 0,
+                                image->vk.format, &fixedmapping, 0, image->vk.mip_levels - 1, 0,
                                 image->info.array_size - 1, image->info.width, image->info.height,
                                 image->info.depth, 0.0f, desc, NULL, 0, NULL, NULL);
 
@@ -1447,7 +1447,7 @@ radv_query_opaque_metadata(struct radv_device *device, struct radv_image *image,
                                   desc, NULL);
 
    ac_surface_compute_umd_metadata(&device->physical_device->rad_info, &image->planes[0].surface,
-                                   image->info.levels, desc, &md->size_metadata, md->metadata,
+                                   image->vk.mip_levels, desc, &md->size_metadata, md->metadata,
                                    device->instance->debug_flags & RADV_DEBUG_EXTRA_MD);
 }
 
@@ -1495,14 +1495,14 @@ radv_image_override_offset_stride(struct radv_device *device, struct radv_image 
                                   uint64_t offset, uint32_t stride)
 {
    ac_surface_override_offset_stride(&device->physical_device->rad_info, &image->planes[0].surface,
-                                     image->info.levels, offset, stride);
+                                     image->vk.mip_levels, offset, stride);
 }
 
 static void
 radv_image_alloc_single_sample_cmask(const struct radv_device *device,
                                      const struct radv_image *image, struct radeon_surf *surf)
 {
-   if (!surf->cmask_size || surf->cmask_offset || surf->bpe > 8 || image->info.levels > 1 ||
+   if (!surf->cmask_size || surf->cmask_offset || surf->bpe > 8 || image->vk.mip_levels > 1 ||
        image->info.depth > 1 || radv_image_has_dcc(image) ||
        !radv_image_use_fast_clear_for_image(device, image) ||
        (image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT))
@@ -1524,18 +1524,18 @@ radv_image_alloc_values(const struct radv_device *device, struct radv_image *ima
 
    if (radv_image_has_cmask(image) || (radv_image_has_dcc(image) && !image->support_comp_to_single)) {
       image->fce_pred_offset = image->size;
-      image->size += 8 * image->info.levels;
+      image->size += 8 * image->vk.mip_levels;
    }
 
    if (radv_image_use_dcc_predication(device, image)) {
       image->dcc_pred_offset = image->size;
-      image->size += 8 * image->info.levels;
+      image->size += 8 * image->vk.mip_levels;
    }
 
    if ((radv_image_has_dcc(image) && !image->support_comp_to_single) ||
        radv_image_has_cmask(image) || radv_image_has_htile(image)) {
       image->clear_value_offset = image->size;
-      image->size += 8 * image->info.levels;
+      image->size += 8 * image->vk.mip_levels;
    }
 
    if (radv_image_is_tc_compat_htile(image) &&
@@ -1545,7 +1545,7 @@ radv_image_alloc_values(const struct radv_device *device, struct radv_image *ima
        * fast depth clears to 0.0f.
        */
       image->tc_compat_zrange_offset = image->size;
-      image->size += image->info.levels * 4;
+      image->size += image->vk.mip_levels * 4;
    }
 }
 
@@ -1763,7 +1763,7 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
       if (create_info.bo_metadata && !mod_info &&
           !ac_surface_apply_umd_metadata(&device->physical_device->rad_info,
                                          &image->planes[plane].surface, image_info.storage_samples,
-                                         image_info.levels, create_info.bo_metadata->size_metadata,
+                                         image->vk.mip_levels, create_info.bo_metadata->size_metadata,
                                          create_info.bo_metadata->metadata))
          return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
@@ -1785,7 +1785,7 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
       }
 
       if (!ac_surface_override_offset_stride(&device->physical_device->rad_info,
-                                             &image->planes[plane].surface, image->info.levels,
+                                             &image->planes[plane].surface, image->vk.mip_levels,
                                              offset, stride))
          return VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT;
 
@@ -1853,7 +1853,7 @@ radv_image_print_info(struct radv_device *device, struct radv_image *image)
            "width=%" PRIu32 ", height=%" PRIu32 ", depth=%" PRIu32 ", "
            "array_size=%" PRIu32 ", levels=%" PRIu32 "\n",
            image->size, image->alignment, image->info.width, image->info.height, image->info.depth,
-           image->info.array_size, image->info.levels);
+           image->info.array_size, image->vk.mip_levels);
    for (unsigned i = 0; i < image->plane_count; ++i) {
       const struct radv_image_plane *plane = &image->planes[i];
       const struct radeon_surf *surf = &plane->surface;
