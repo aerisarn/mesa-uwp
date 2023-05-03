@@ -416,7 +416,8 @@ pvr_pbe_src_format_normal(VkFormat src_format,
       bool is_float = true;
 
       if (!vk_format_is_float(src_format) &&
-          !vk_format_is_normalized(src_format)) {
+          !vk_format_is_normalized(src_format) &&
+          !vk_format_is_block_compressed(src_format)) {
          return vk_error(NULL, VK_ERROR_FORMAT_NOT_SUPPORTED);
       }
 
