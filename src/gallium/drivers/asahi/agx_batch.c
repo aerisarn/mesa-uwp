@@ -112,6 +112,7 @@ agx_batch_init(struct agx_context *ctx,
    batch->clear = 0;
    batch->draw = 0;
    batch->load = 0;
+   batch->resolve = 0;
    batch->clear_depth = 0;
    batch->clear_stencil = 0;
    batch->varyings = 0;
