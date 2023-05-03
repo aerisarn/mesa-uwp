@@ -4492,6 +4492,75 @@ dzn_get_resolve_mode(VkResolveModeFlags mode)
 }
 
 static void
+dzn_cmd_buffer_resolve_rendering_attachment_via_blit(struct dzn_cmd_buffer *cmdbuf,
+                                                     const struct dzn_rendering_attachment *att,
+                                                     VkImageAspectFlagBits aspect,
+                                                     const VkImageSubresourceRange *src_range,
+                                                     const VkImageSubresourceRange *dst_range)
+{
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   uint32_t desc_count = util_bitcount(aspect) * src_range->levelCount * src_range->layerCount;
+
+   struct dzn_descriptor_heap *heap;
+   uint32_t heap_slot;
+   VkResult result =
+      dzn_descriptor_heap_pool_alloc_slots(&cmdbuf->cbv_srv_uav_pool, device,
+                                           desc_count, &heap, &heap_slot);
+   if (result != VK_SUCCESS) {
+      vk_command_buffer_set_error(&cmdbuf->vk, result);
+      return;
+   }
+
+   if (heap != cmdbuf->state.heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]) {
+      ID3D12DescriptorHeap *const heaps[] = { heap->heap };
+      cmdbuf->state.heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] = heap;
+      ID3D12GraphicsCommandList1_SetDescriptorHeaps(cmdbuf->cmdlist, ARRAY_SIZE(heaps), heaps);
+   }
+
+   ID3D12GraphicsCommandList1_IASetPrimitiveTopology(cmdbuf->cmdlist, D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+   VkImageResolve2 region = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2,
+      .srcSubresource = {
+         .aspectMask = aspect,
+         .baseArrayLayer = src_range->baseArrayLayer,
+         .layerCount = src_range->layerCount,
+      },
+      .dstSubresource = {
+         .aspectMask = aspect,
+         .baseArrayLayer = dst_range->baseArrayLayer,
+         .layerCount = dst_range->layerCount,
+      },
+   };
+   VkResolveImageInfo2 resolve_info = {
+      .sType = VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2,
+      .srcImage = vk_image_to_handle(att->iview->vk.image),
+      .dstImage = vk_image_to_handle(att->resolve.iview->vk.image),
+      .srcImageLayout = att->layout,
+      .dstImageLayout = att->resolve.layout,
+      .regionCount = 1,
+      .pRegions = &region
+   };
+   for (uint32_t level = 0; level < src_range->levelCount; ++level) {
+      region.srcSubresource.mipLevel = level + src_range->baseMipLevel;
+      region.dstSubresource.mipLevel = level + dst_range->baseMipLevel;
+      region.extent = (VkExtent3D){
+         u_minify(att->iview->vk.image->extent.width, region.srcSubresource.mipLevel),
+         u_minify(att->iview->vk.image->extent.height, region.srcSubresource.mipLevel),
+         u_minify(att->iview->vk.image->extent.depth, region.srcSubresource.mipLevel),
+      };
+      dzn_cmd_buffer_resolve_region(cmdbuf, &resolve_info, att->resolve.mode, heap, &heap_slot, 0);
+   }
+
+   cmdbuf->state.pipeline = NULL;
+   cmdbuf->state.dirty |= DZN_CMD_DIRTY_VIEWPORTS | DZN_CMD_DIRTY_SCISSORS;
+   if (cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].pipeline) {
+      cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |=
+         DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
+   }
+}
+
+static void
 dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
                                             const struct dzn_rendering_attachment *att,
                                             VkImageAspectFlagBits aspect)
@@ -4506,8 +4575,6 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
    struct dzn_physical_device *pdev =
       container_of(device->vk.physical, struct dzn_physical_device, vk);
 
-   VkImageLayout src_layout = att->layout;
-   VkImageLayout dst_layout = att->resolve.layout;
    struct dzn_image *src_img = container_of(src->vk.image, struct dzn_image, vk);
    struct dzn_image *dst_img = container_of(dst->vk.image, struct dzn_image, vk);
 
@@ -4534,6 +4601,18 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       dst_range.baseArrayLayer = 0;
       dst_range.layerCount = 1;
    }
+
+   if (att->resolve.mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT ||
+       /* D3D resolve API can't go from (e.g.) D32S8X24 to D32 */
+       src->vk.view_format != dst->vk.view_format ||
+       (att->resolve.mode != VK_RESOLVE_MODE_AVERAGE_BIT &&
+        pdev->options2.ProgrammableSamplePositionsTier == D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED)) {
+      dzn_cmd_buffer_resolve_rendering_attachment_via_blit(cmdbuf, att, aspect, &src_range, &dst_range);
+      return;
+   }
+
+   VkImageLayout src_layout = att->layout;
+   VkImageLayout dst_layout = att->resolve.layout;
 
    D3D12_RESOURCE_STATES src_state = dzn_image_layout_to_state(src_img, src_layout, aspect, cmdbuf->type);
    D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(dst_img, dst_layout, aspect, cmdbuf->type);
