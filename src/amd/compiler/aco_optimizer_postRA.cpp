@@ -657,6 +657,11 @@ try_reassign_split_vector(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (op.regClass() == s2 && reg.reg() % 2 != 0)
             break;
 
+         /* Sub dword operands might need updates to SDWA/opsel,
+          * but we only track full register writes at the moment.
+          */
+         assert(op.physReg().byte() == reg.byte());
+
          /* If there is only one use (left), recolor the split_vector definition */
          if (ctx.uses[op.tempId()] == 1)
             def.setFixed(reg);
