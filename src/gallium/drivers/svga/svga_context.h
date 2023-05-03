@@ -36,8 +36,6 @@
 #include "util/u_blitter.h"
 #include "util/list.h"
 
-#include "tgsi/tgsi_scan.h"
-
 #include "svga_screen.h"
 #include "svga_state.h"
 #include "svga_winsys.h"

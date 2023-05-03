@@ -30,6 +30,7 @@
 #include "svga_context.h"
 #include "svga_streamout.h"
 #include "compiler/shader_enums.h"
+#include "tgsi/tgsi_scan.h"
 
 
 /**

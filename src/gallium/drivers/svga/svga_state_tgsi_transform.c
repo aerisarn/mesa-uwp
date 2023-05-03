@@ -27,12 +27,10 @@
 #include "util/u_memory.h"
 #include "util/u_bitmask.h"
 #include "util/u_simple_shaders.h"
-#include "tgsi/tgsi_ureg.h"
 #include "tgsi/tgsi_point_sprite.h"
 #include "tgsi/tgsi_dynamic_indexing.h"
 #include "tgsi/tgsi_vpos.h"
 #include "tgsi/tgsi_dump.h"
-#include "tgsi/tgsi_info.h"
 
 #include "svga_context.h"
 #include "svga_shader.h"

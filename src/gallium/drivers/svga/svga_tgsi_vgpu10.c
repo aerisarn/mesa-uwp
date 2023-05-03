@@ -35,7 +35,6 @@
 #include "pipe/p_compiler.h"
 #include "pipe/p_shader_tokens.h"
 #include "pipe/p_defines.h"
-#include "tgsi/tgsi_build.h"
 #include "tgsi/tgsi_dump.h"
 #include "tgsi/tgsi_info.h"
 #include "tgsi/tgsi_parse.h"
