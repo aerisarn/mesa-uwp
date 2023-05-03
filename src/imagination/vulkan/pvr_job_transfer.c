@@ -785,7 +785,6 @@ pvr_pbe_setup_codegen_defaults(const struct pvr_device_info *dev_info,
       return result;
 
    surface_params->z_only_render = false;
-   surface_params->gamma = PVR_PBE_GAMMA_NONE;
    surface_params->depth = dst->depth;
    surface_params->down_scale = state->down_scale;
 
