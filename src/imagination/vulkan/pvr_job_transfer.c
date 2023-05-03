@@ -325,7 +325,8 @@ pvr_pbe_src_format_normal(VkFormat src_format,
                           bool dont_force_pbe,
                           enum pvr_transfer_pbe_pixel_src *src_format_out)
 {
-   bool dst_signed = vk_format_is_sint(dst_format);
+   bool dst_signed = vk_format_is_sint(dst_format) ||
+                     vk_format_is_snorm(dst_format);
 
    if (vk_format_is_int(dst_format)) {
       uint32_t red_width;
