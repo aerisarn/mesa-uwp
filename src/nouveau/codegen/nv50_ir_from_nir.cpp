@@ -2301,6 +2301,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          mask = 0x8;
          FALLTHROUGH;
       case nir_intrinsic_image_samples:
+         argCount = 0; /* No coordinates */
          ty = TYPE_U32;
          bindless = op == nir_intrinsic_bindless_image_samples;
          mask = 0x8;
@@ -2308,6 +2309,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       case nir_intrinsic_bindless_image_size:
       case nir_intrinsic_image_size:
          assert(nir_src_as_uint(insn->src[1]) == 0);
+         argCount = 0; /* No coordinates */
          ty = TYPE_U32;
          bindless = op == nir_intrinsic_bindless_image_size;
          break;
