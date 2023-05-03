@@ -210,9 +210,11 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
 
          if (writer == batch) {
             assert(bo->writer_syncobj == batch->syncobj);
-            bo->writer_syncobj = 0;
             agx_writer_remove(ctx, handle);
          }
+
+         if (bo->writer_syncobj == batch->syncobj)
+            bo->writer_syncobj = 0;
 
          agx_bo_unreference(agx_lookup_bo(dev, handle));
       }
