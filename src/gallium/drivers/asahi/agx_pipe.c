@@ -1353,6 +1353,13 @@ agx_invalidate_resource(struct pipe_context *pctx,
    }
 }
 
+static void
+agx_memory_barrier(struct pipe_context *pctx, unsigned flags)
+{
+   /* Be conservative for now, we can try to optimize this more later */
+   agx_flush_all(agx_context(pctx), "Memory barrier");
+}
+
 static struct pipe_context *
 agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 {
@@ -1394,6 +1401,7 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    pctx->set_debug_callback = u_default_set_debug_callback;
    pctx->get_sample_position = u_default_get_sample_position;
    pctx->invalidate_resource = agx_invalidate_resource;
+   pctx->memory_barrier = agx_memory_barrier;
 
    agx_init_state_functions(pctx);
    agx_init_query_functions(pctx);
