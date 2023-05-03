@@ -191,7 +191,7 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
 
    int fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0)
-      goto out_err;
+      goto out_open;
 
    ver = drmGetVersion(fd);
    if (!ver)
@@ -275,6 +275,7 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
 out_err:
    if (ver)
       drmFreeVersion(ver);
+out_open:
    FREE(device);
    close(fd);
    return NULL;
