@@ -30,8 +30,6 @@
 #include "lvp_conv.h"
 
 #include "pipe/p_shader_tokens.h"
-#include "tgsi/tgsi_text.h"
-#include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_from_mesa.h"
 
 #include "util/format/u_format.h"

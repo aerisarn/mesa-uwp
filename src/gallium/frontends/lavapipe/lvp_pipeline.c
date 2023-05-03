@@ -33,7 +33,6 @@
 #include "lvp_lower_vulkan_resource.h"
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
-#include "tgsi/tgsi_from_mesa.h"
 #include "nir/nir_xfb_info.h"
 
 #define SPIR_V_MAGIC_NUMBER 0x07230203
