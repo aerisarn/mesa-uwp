@@ -289,8 +289,10 @@ llvm_middle_end_prepare(struct draw_pt_middle_end *middle,
    const enum pipe_prim_type out_prim =
       gs ? gs->output_primitive : tes ? get_tes_output_prim(tes) :
       u_assembled_prim(in_prim);
-   unsigned point_clip = draw->rasterizer->fill_front == PIPE_POLYGON_MODE_POINT ||
-                         out_prim == PIPE_PRIM_POINTS;
+   unsigned point_line_clip = draw->rasterizer->fill_front == PIPE_POLYGON_MODE_POINT ||
+                              draw->rasterizer->fill_front == PIPE_POLYGON_MODE_LINE ||
+                              out_prim == PIPE_PRIM_POINTS ||
+                              u_reduced_prim(out_prim) == PIPE_PRIM_LINES;
 
    fpme->input_prim = in_prim;
    fpme->opt = opt;
@@ -299,8 +301,8 @@ llvm_middle_end_prepare(struct draw_pt_middle_end *middle,
                            draw->clip_xy,
                            draw->clip_z,
                            draw->clip_user,
-                           point_clip ? draw->guard_band_points_lines_xy :
-                                        draw->guard_band_xy,
+                           point_line_clip ? draw->guard_band_points_lines_xy :
+                                             draw->guard_band_xy,
                            draw->bypass_viewport,
                            draw->rasterizer->clip_halfz,
                            (draw->vs.edgeflag_output ? TRUE : FALSE));
