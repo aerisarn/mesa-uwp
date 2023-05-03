@@ -301,10 +301,10 @@ radv_pick_resolve_method_images(struct radv_device *device, struct radv_image *s
          *method = RESOLVE_COMPUTE;
       else if (vk_format_is_int(src_format))
          *method = RESOLVE_COMPUTE;
-      else if (src_image->info.array_size > 1 || dst_image->info.array_size > 1)
+      else if (src_image->vk.array_layers > 1 || dst_image->vk.array_layers > 1)
          *method = RESOLVE_COMPUTE;
    } else {
-      if (src_image->info.array_size > 1 || dst_image->info.array_size > 1 ||
+      if (src_image->vk.array_layers > 1 || dst_image->vk.array_layers > 1 ||
           (dst_image->planes[0].surface.flags & RADEON_SURF_NO_RENDER_TARGET))
          *method = RESOLVE_COMPUTE;
       else

@@ -358,7 +358,7 @@ radv_use_htile_for_image(const struct radv_device *device, const struct radv_ima
     * - Enable on other gens.
     */
    bool use_htile_for_mips =
-      image->info.array_size == 1 && device->physical_device->rad_info.gfx_level >= GFX10;
+      image->vk.array_layers == 1 && device->physical_device->rad_info.gfx_level >= GFX10;
 
    /* Stencil texturing with HTILE doesn't work with mipmapping on Navi10-14. */
    if (device->physical_device->rad_info.gfx_level == GFX10 &&
@@ -1049,18 +1049,18 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
       assert(image->vk.image_type == VK_IMAGE_TYPE_3D);
       type = V_008F1C_SQ_RSRC_IMG_3D;
    } else {
-      type = radv_tex_dim(image->vk.image_type, view_type, image->info.array_size, image->info.samples,
+      type = radv_tex_dim(image->vk.image_type, view_type, image->vk.array_layers, image->info.samples,
                           is_storage_image, device->physical_device->rad_info.gfx_level == GFX9);
    }
 
    if (type == V_008F1C_SQ_RSRC_IMG_1D_ARRAY) {
       height = 1;
-      depth = image->info.array_size;
+      depth = image->vk.array_layers;
    } else if (type == V_008F1C_SQ_RSRC_IMG_2D_ARRAY || type == V_008F1C_SQ_RSRC_IMG_2D_MSAA_ARRAY) {
       if (view_type != VK_IMAGE_VIEW_TYPE_3D)
-         depth = image->info.array_size;
+         depth = image->vk.array_layers;
    } else if (type == V_008F1C_SQ_RSRC_IMG_CUBE)
-      depth = image->info.array_size / 6;
+      depth = image->vk.array_layers / 6;
 
    state[0] = 0;
    state[1] = S_00A004_FORMAT(img_format) |
@@ -1171,7 +1171,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
             S_00A00C_DST_SEL_Z(V_008F1C_SQ_SEL_X) | S_00A00C_DST_SEL_W(V_008F1C_SQ_SEL_X) |
             S_00A00C_SW_MODE(image->planes[0].surface.u.gfx9.color.fmask_swizzle_mode) |
             S_00A00C_TYPE(
-               radv_tex_dim(image->vk.image_type, view_type, image->info.array_size, 0, false, false));
+               radv_tex_dim(image->vk.image_type, view_type, image->vk.array_layers, 0, false, false));
          fmask_state[4] = S_00A010_DEPTH(last_layer) | S_00A010_BASE_ARRAY(first_layer);
          fmask_state[5] = 0;
          fmask_state[6] = S_00A018_META_PIPE_ALIGNED(1);
@@ -1247,18 +1247,18 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
       assert(image->vk.image_type == VK_IMAGE_TYPE_3D);
       type = V_008F1C_SQ_RSRC_IMG_3D;
    } else {
-      type = radv_tex_dim(image->vk.image_type, view_type, image->info.array_size, image->info.samples,
+      type = radv_tex_dim(image->vk.image_type, view_type, image->vk.array_layers, image->info.samples,
                           is_storage_image, device->physical_device->rad_info.gfx_level == GFX9);
    }
 
    if (type == V_008F1C_SQ_RSRC_IMG_1D_ARRAY) {
       height = 1;
-      depth = image->info.array_size;
+      depth = image->vk.array_layers;
    } else if (type == V_008F1C_SQ_RSRC_IMG_2D_ARRAY || type == V_008F1C_SQ_RSRC_IMG_2D_MSAA_ARRAY) {
       if (view_type != VK_IMAGE_VIEW_TYPE_3D)
-         depth = image->info.array_size;
+         depth = image->vk.array_layers;
    } else if (type == V_008F1C_SQ_RSRC_IMG_CUBE)
-      depth = image->info.array_size / 6;
+      depth = image->vk.array_layers / 6;
 
    state[0] = 0;
    state[1] = (S_008F14_MIN_LOD(radv_float_to_ufixed(CLAMP(min_lod, 0, 15), 8)) |
@@ -1367,7 +1367,7 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
             S_008F1C_DST_SEL_X(V_008F1C_SQ_SEL_X) | S_008F1C_DST_SEL_Y(V_008F1C_SQ_SEL_X) |
             S_008F1C_DST_SEL_Z(V_008F1C_SQ_SEL_X) | S_008F1C_DST_SEL_W(V_008F1C_SQ_SEL_X) |
             S_008F1C_TYPE(
-               radv_tex_dim(image->vk.image_type, view_type, image->info.array_size, 0, false, false));
+               radv_tex_dim(image->vk.image_type, view_type, image->vk.array_layers, 0, false, false));
          fmask_state[4] = 0;
          fmask_state[5] = S_008F24_BASE_ARRAY(first_layer);
          fmask_state[6] = 0;
@@ -1439,7 +1439,7 @@ radv_query_opaque_metadata(struct radv_device *device, struct radv_image *image,
 
    radv_make_texture_descriptor(device, image, false, (VkImageViewType)image->vk.image_type,
                                 image->vk.format, &fixedmapping, 0, image->vk.mip_levels - 1, 0,
-                                image->info.array_size - 1, image->info.width, image->info.height,
+                                image->vk.array_layers - 1, image->info.width, image->info.height,
                                 image->info.depth, 0.0f, desc, NULL, 0, NULL, NULL);
 
    si_set_mutable_tex_desc_fields(device, image, &image->planes[0].surface.u.legacy.level[0], 0, 0,
@@ -1568,7 +1568,7 @@ radv_image_is_pipe_misaligned(const struct radv_device *device, const struct rad
       if (rad_info->gfx_level >= GFX10_3) {
          log2_bpp_and_samples = log2_bpp + log2_samples;
       } else {
-         if (vk_format_has_depth(image->vk.format) && image->info.array_size >= 8) {
+         if (vk_format_has_depth(image->vk.format) && image->vk.array_layers >= 8) {
             log2_bpp = 2;
          }
 
@@ -1853,7 +1853,7 @@ radv_image_print_info(struct radv_device *device, struct radv_image *image)
            "width=%" PRIu32 ", height=%" PRIu32 ", depth=%" PRIu32 ", "
            "array_size=%" PRIu32 ", levels=%" PRIu32 "\n",
            image->size, image->alignment, image->info.width, image->info.height, image->info.depth,
-           image->info.array_size, image->vk.mip_levels);
+           image->vk.array_layers, image->vk.mip_levels);
    for (unsigned i = 0; i < image->plane_count; ++i) {
       const struct radv_image_plane *plane = &image->planes[i];
       const struct radeon_surf *surf = &plane->surface;
@@ -2166,7 +2166,7 @@ radv_image_view_can_fast_clear(const struct radv_device *device,
       return false;
 
    /* Only fast clear if all layers are bound. */
-   if (iview->vk.base_array_layer > 0 || iview->vk.layer_count != image->info.array_size)
+   if (iview->vk.base_array_layer > 0 || iview->vk.layer_count != image->vk.array_layers)
       return false;
 
    /* Only fast clear if the view covers the whole image. */
@@ -2203,7 +2203,7 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    case VK_IMAGE_TYPE_1D:
    case VK_IMAGE_TYPE_2D:
       assert(range->baseArrayLayer + vk_image_subresource_layer_count(&image->vk, range) - 1 <=
-             image->info.array_size);
+             image->vk.array_layers);
       break;
    case VK_IMAGE_TYPE_3D:
       assert(range->baseArrayLayer + vk_image_subresource_layer_count(&image->vk, range) - 1 <=

@@ -185,7 +185,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
    struct radv_buffer buffer;
 
    assert(image->vk.image_type == VK_IMAGE_TYPE_2D);
-   assert(image->info.array_size == 1 && image->vk.mip_levels == 1);
+   assert(image->vk.array_layers == 1 && image->vk.mip_levels == 1);
 
    struct radv_cmd_state *state = &cmd_buffer->state;
 

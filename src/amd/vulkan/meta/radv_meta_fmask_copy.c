@@ -248,7 +248,7 @@ radv_can_use_fmask_copy(struct radv_cmd_buffer *cmd_buffer,
       return false;
 
    /* TODO: Add support for layers. */
-   if (src_image->info.array_size != 1 || dst_image->info.array_size != 1)
+   if (src_image->vk.array_layers != 1 || dst_image->vk.array_layers != 1)
       return false;
 
    /* Source/destination images must have FMASK. */

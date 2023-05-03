@@ -1667,7 +1667,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    if (device->physical_device->rad_info.gfx_level >= GFX9) {
       unsigned mip0_depth = iview->image->vk.image_type == VK_IMAGE_TYPE_3D
                                ? (iview->extent.depth - 1)
-                               : (iview->image->info.array_size - 1);
+                               : (iview->image->vk.array_layers - 1);
       unsigned width =
          vk_format_get_plane_width(iview->image->vk.format, iview->plane_id, iview->extent.width);
       unsigned height =

@@ -793,12 +793,12 @@ radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer, const struct radv_
        clear_rect->rect.extent.height != iview->image->info.height)
       return false;
 
-   if (view_mask && (iview->image->info.array_size >= 32 ||
-                     (1u << iview->image->info.array_size) - 1u != view_mask))
+   if (view_mask && (iview->image->vk.array_layers >= 32 ||
+                     (1u << iview->image->vk.array_layers) - 1u != view_mask))
       return false;
    if (!view_mask && clear_rect->baseArrayLayer != 0)
       return false;
-   if (!view_mask && clear_rect->layerCount != iview->image->info.array_size)
+   if (!view_mask && clear_rect->layerCount != iview->image->vk.array_layers)
       return false;
 
    if (cmd_buffer->device->vk.enabled_extensions.EXT_depth_range_unrestricted &&
@@ -1731,12 +1731,12 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_
        clear_rect->rect.extent.height != iview->image->info.height)
       return false;
 
-   if (view_mask && (iview->image->info.array_size >= 32 ||
-                     (1u << iview->image->info.array_size) - 1u != view_mask))
+   if (view_mask && (iview->image->vk.array_layers >= 32 ||
+                     (1u << iview->image->vk.array_layers) - 1u != view_mask))
       return false;
    if (!view_mask && clear_rect->baseArrayLayer != 0)
       return false;
-   if (!view_mask && clear_rect->layerCount != iview->image->info.array_size)
+   if (!view_mask && clear_rect->layerCount != iview->image->vk.array_layers)
       return false;
 
    /* DCC */

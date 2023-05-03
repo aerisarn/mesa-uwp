@@ -571,7 +571,7 @@ radv_process_color_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
    }
 
    if (radv_dcc_enabled(image, subresourceRange->baseMipLevel) &&
-       (image->info.array_size != vk_image_subresource_layer_count(&image->vk, subresourceRange) ||
+       (image->vk.array_layers != vk_image_subresource_layer_count(&image->vk, subresourceRange) ||
         subresourceRange->baseArrayLayer != 0)) {
       /* Only use predication if the image has DCC with mipmaps or
        * if the range of layers covers the whole image because the
