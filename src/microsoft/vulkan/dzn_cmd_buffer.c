@@ -2774,7 +2774,8 @@ dzn_cmd_buffer_blit_set_pipeline(struct dzn_cmd_buffer *cmdbuf,
                                  const struct dzn_image *src,
                                  const struct dzn_image *dst,
                                  VkImageAspectFlagBits aspect,
-                                 VkFilter filter, bool resolve)
+                                 VkFilter filter,
+                                 enum dzn_blit_resolve_mode resolve_mode)
 {
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    struct dzn_physical_device *pdev = container_of(device->vk.physical, struct dzn_physical_device, vk);
@@ -2800,7 +2801,7 @@ dzn_cmd_buffer_blit_set_pipeline(struct dzn_cmd_buffer *cmdbuf,
                                 src->vk.image_type == VK_IMAGE_TYPE_2D && src->vk.samples > 1 ? GLSL_SAMPLER_DIM_MS :
                                 GLSL_SAMPLER_DIM_3D),
       .src_is_array = src->vk.array_layers > 1,
-      .resolve = resolve,
+      .resolve_mode = resolve_mode,
       .linear_filter = filter == VK_FILTER_LINEAR,
       .padding = 0,
    };
@@ -2951,7 +2952,7 @@ dzn_cmd_buffer_blit_region(struct dzn_cmd_buffer *cmdbuf,
 
    dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
       D3D12_BARRIER_LAYOUT restore_dst_layout = D3D12_BARRIER_LAYOUT_COMMON;
-      dzn_cmd_buffer_blit_set_pipeline(cmdbuf, src, dst, aspect, info->filter, false);
+      dzn_cmd_buffer_blit_set_pipeline(cmdbuf, src, dst, aspect, info->filter, dzn_blit_resolve_none);
       dzn_cmd_buffer_blit_issue_barriers(cmdbuf,
                                          src, info->srcImageLayout, &region->srcSubresource,
                                          dst, info->dstImageLayout, &region->dstSubresource,
@@ -3011,9 +3012,22 @@ dzn_cmd_buffer_blit_region(struct dzn_cmd_buffer *cmdbuf,
    }
 }
 
+static enum dzn_blit_resolve_mode
+get_blit_resolve_mode(VkResolveModeFlagBits mode)
+{
+   switch (mode) {
+   case VK_RESOLVE_MODE_AVERAGE_BIT: return dzn_blit_resolve_average;
+   case VK_RESOLVE_MODE_MIN_BIT: return dzn_blit_resolve_min;
+   case VK_RESOLVE_MODE_MAX_BIT: return dzn_blit_resolve_max;
+   case VK_RESOLVE_MODE_SAMPLE_ZERO_BIT: return dzn_blit_resolve_sample_zero;
+   default: unreachable("Unexpected resolve mode");
+   }
+}
+
 static void
 dzn_cmd_buffer_resolve_region(struct dzn_cmd_buffer *cmdbuf,
                               const VkResolveImageInfo2 *info,
+                              VkResolveModeFlags mode,
                               struct dzn_descriptor_heap *heap,
                               uint32_t *heap_slot,
                               uint32_t r)
@@ -3025,7 +3039,7 @@ dzn_cmd_buffer_resolve_region(struct dzn_cmd_buffer *cmdbuf,
 
    dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
       D3D12_BARRIER_LAYOUT restore_dst_layout = D3D12_BARRIER_LAYOUT_COMMON;
-      dzn_cmd_buffer_blit_set_pipeline(cmdbuf, src, dst, aspect, VK_FILTER_NEAREST, true);
+      dzn_cmd_buffer_blit_set_pipeline(cmdbuf, src, dst, aspect, VK_FILTER_NEAREST, get_blit_resolve_mode(mode));
       dzn_cmd_buffer_blit_issue_barriers(cmdbuf,
                                          src, info->srcImageLayout, &region->srcSubresource,
                                          dst, info->dstImageLayout, &region->dstSubresource,
@@ -4263,7 +4277,7 @@ dzn_CmdResolveImage2(VkCommandBuffer commandBuffer,
    ID3D12GraphicsCommandList1_IASetPrimitiveTopology(cmdbuf->cmdlist, D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
    for (uint32_t r = 0; r < info->regionCount; r++)
-      dzn_cmd_buffer_resolve_region(cmdbuf, info, heap, &heap_slot, r);
+      dzn_cmd_buffer_resolve_region(cmdbuf, info, VK_RESOLVE_MODE_AVERAGE_BIT, heap, &heap_slot, r);
 
    cmdbuf->state.pipeline = NULL;
    cmdbuf->state.dirty |= DZN_CMD_DIRTY_VIEWPORTS | DZN_CMD_DIRTY_SCISSORS;

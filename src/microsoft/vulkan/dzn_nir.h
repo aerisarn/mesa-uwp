@@ -137,6 +137,13 @@ dzn_nir_triangle_fan_rewrite_index_shader(uint8_t old_index_size);
 nir_shader *
 dzn_nir_triangle_fan_prim_restart_rewrite_index_shader(uint8_t old_index_size);
 
+enum dzn_blit_resolve_mode {
+   dzn_blit_resolve_none,
+   dzn_blit_resolve_average,
+   dzn_blit_resolve_min,
+   dzn_blit_resolve_max,
+   dzn_blit_resolve_sample_zero,
+};
 struct dzn_nir_blit_info {
    union {
       struct {
@@ -145,8 +152,8 @@ struct dzn_nir_blit_info {
          uint32_t out_type : 4;
          uint32_t sampler_dim : 4;
          uint32_t src_is_array : 1;
-         uint32_t resolve : 1;
-         uint32_t padding : 12;
+         uint32_t resolve_mode : 3;
+         uint32_t padding : 10;
       };
       const uint32_t hash_key;
    };

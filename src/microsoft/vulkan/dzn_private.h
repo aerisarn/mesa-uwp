@@ -150,9 +150,9 @@ struct dzn_meta_blit_key {
          uint32_t out_type : 4;
          uint32_t sampler_dim : 4;
          uint32_t src_is_array : 1;
-         uint32_t resolve : 1;
+         uint32_t resolve_mode : 3;
          uint32_t linear_filter : 1;
-         uint32_t padding : 11;
+         uint32_t padding : 9;
       };
       const uint64_t u64;
    };
