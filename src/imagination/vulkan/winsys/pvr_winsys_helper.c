@@ -63,67 +63,6 @@ int pvr_winsys_helper_display_buffer_destroy(int master_fd, uint32_t handle)
    return drmIoctl(master_fd, DRM_IOCTL_MODE_DESTROY_DUMB, &args);
 }
 
-/* reserved_size can be 0 when no reserved area is needed. reserved_address must
- * be 0 if reserved_size is 0.
- */
-VkResult pvr_winsys_helper_winsys_heap_init(
-   struct pvr_winsys *const ws,
-   pvr_dev_addr_t base_address,
-   uint64_t size,
-   pvr_dev_addr_t reserved_address,
-   uint64_t reserved_size,
-   uint32_t log2_page_size,
-   const struct pvr_winsys_static_data_offsets *const static_data_offsets,
-   struct pvr_winsys_heap *const heap)
-{
-   const bool reserved_area_bottom_of_heap = reserved_address.addr ==
-                                             base_address.addr;
-   const pvr_dev_addr_t vma_heap_begin_addr =
-      reserved_area_bottom_of_heap
-         ? PVR_DEV_ADDR_OFFSET(base_address, reserved_size)
-         : base_address;
-   const uint64_t vma_heap_size = size - reserved_size;
-
-   assert(base_address.addr);
-   assert(reserved_size <= size);
-
-   /* As per the reserved_base powervr-km uapi documentation the reserved
-    * region can only be at the beginning of the heap or at the end.
-    * reserved_address is 0 if there is no reserved region.
-    * pvrsrv-km doesn't explicitly provide this info and it's assumed that it's
-    * always at the beginning.
-    */
-   assert(reserved_area_bottom_of_heap ||
-          reserved_address.addr + reserved_size == base_address.addr + size ||
-          (!reserved_address.addr && !reserved_size));
-
-   heap->ws = ws;
-   heap->base_addr = base_address;
-   heap->reserved_addr = reserved_address;
-
-   heap->size = size;
-   heap->reserved_size = reserved_size;
-
-   heap->page_size = 1 << log2_page_size;
-   heap->log2_page_size = log2_page_size;
-
-   util_vma_heap_init(&heap->vma_heap, vma_heap_begin_addr.addr, vma_heap_size);
-
-   heap->vma_heap.alloc_high = false;
-
-   /* It's expected that the heap destroy function to be the last thing that's
-    * called, so we start the ref_count at 0.
-    */
-   p_atomic_set(&heap->ref_count, 0);
-
-   if (pthread_mutex_init(&heap->lock, NULL))
-      return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
-
-   heap->static_data_offsets = *static_data_offsets;
-
-   return VK_SUCCESS;
-}
-
 bool pvr_winsys_helper_winsys_heap_finish(struct pvr_winsys_heap *const heap)
 {
    if (p_atomic_read(&heap->ref_count) != 0)

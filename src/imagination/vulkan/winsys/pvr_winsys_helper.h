@@ -45,15 +45,6 @@ int pvr_winsys_helper_display_buffer_create(int master_fd,
                                             uint32_t *const handle_out);
 int pvr_winsys_helper_display_buffer_destroy(int master_fd, uint32_t handle);
 
-VkResult pvr_winsys_helper_winsys_heap_init(
-   struct pvr_winsys *const ws,
-   pvr_dev_addr_t base_address,
-   uint64_t size,
-   pvr_dev_addr_t reserved_address,
-   uint64_t reserved_size,
-   uint32_t log2_page_size,
-   const struct pvr_winsys_static_data_offsets *const static_data_offsets,
-   struct pvr_winsys_heap *const heap);
 bool pvr_winsys_helper_winsys_heap_finish(struct pvr_winsys_heap *const heap);
 
 bool pvr_winsys_helper_heap_alloc(struct pvr_winsys_heap *const heap,
