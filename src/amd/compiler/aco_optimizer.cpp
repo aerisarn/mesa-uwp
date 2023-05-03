@@ -128,9 +128,9 @@ enum Label {
 };
 
 static constexpr uint64_t instr_usedef_labels =
-   label_vec | label_mul | label_mad | label_add_sub | label_vop3p | label_bitwise |
-   label_uniform_bitwise | label_minmax | label_vopc | label_usedef | label_extract | label_dpp16 |
-   label_dpp8 | label_f2f32 | label_subgroup_invocation;
+   label_vec | label_mul | label_add_sub | label_vop3p | label_bitwise | label_uniform_bitwise |
+   label_minmax | label_vopc | label_usedef | label_extract | label_dpp16 | label_dpp8 |
+   label_f2f32 | label_subgroup_invocation;
 static constexpr uint64_t instr_mod_labels =
    label_omod2 | label_omod4 | label_omod5 | label_clamp | label_insert | label_f2f16;
 
@@ -139,7 +139,7 @@ static constexpr uint64_t temp_labels = label_abs | label_neg | label_temp | lab
                                         label_uniform_bool | label_scc_invert | label_b2i |
                                         label_fcanonicalize;
 static constexpr uint32_t val_labels =
-   label_constant_32bit | label_constant_64bit | label_constant_16bit | label_literal;
+   label_constant_32bit | label_constant_64bit | label_constant_16bit | label_literal | label_mad;
 
 static_assert((instr_labels & temp_labels) == 0, "labels cannot intersect");
 static_assert((instr_labels & val_labels) == 0, "labels cannot intersect");
@@ -288,11 +288,10 @@ struct ssa_info {
 
    bool is_temp() { return label & label_temp; }
 
-   void set_mad(Instruction* mad, uint32_t mad_info_idx)
+   void set_mad(uint32_t mad_info_idx)
    {
       add_label(label_mad);
-      mad->pass_flags = mad_info_idx;
-      instr = mad;
+      val = mad_info_idx;
    }
 
    bool is_mad() { return label & label_mad; }
@@ -4375,7 +4374,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
          /* mark this ssa_def to be re-checked for profitability and literals */
          ctx.mad_infos.emplace_back(std::move(add_instr), mul_instr->definitions[0].tempId());
-         ctx.info[instr->definitions[0].tempId()].set_mad(instr.get(), ctx.mad_infos.size() - 1);
+         ctx.info[instr->definitions[0].tempId()].set_mad(ctx.mad_infos.size() - 1);
          return;
       }
    }
@@ -4498,7 +4497,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
        * select_instruction() using mad_info::add_instr.
        */
       ctx.mad_infos.emplace_back(nullptr, 0);
-      ctx.info[instr->definitions[0].tempId()].set_mad(instr.get(), ctx.mad_infos.size() - 1);
+      ctx.info[instr->definitions[0].tempId()].set_mad(ctx.mad_infos.size() - 1);
    } else {
       aco_opcode min, max, min3, max3, med3, minmax;
       bool some_gfx9_only;
@@ -4638,7 +4637,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
    mad_info* mad_info = NULL;
    if (!instr->definitions.empty() && ctx.info[instr->definitions[0].tempId()].is_mad()) {
-      mad_info = &ctx.mad_infos[ctx.info[instr->definitions[0].tempId()].instr->pass_flags];
+      mad_info = &ctx.mad_infos[ctx.info[instr->definitions[0].tempId()].val];
       /* re-check mad instructions */
       if (ctx.uses[mad_info->mul_temp_id] && mad_info->add_instr) {
          ctx.uses[mad_info->mul_temp_id]++;
@@ -5075,7 +5074,7 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
    /* apply literals on MAD */
    if (!instr->definitions.empty() && ctx.info[instr->definitions[0].tempId()].is_mad()) {
-      mad_info* info = &ctx.mad_infos[ctx.info[instr->definitions[0].tempId()].instr->pass_flags];
+      mad_info* info = &ctx.mad_infos[ctx.info[instr->definitions[0].tempId()].val];
       const bool madak = (info->literal_mask & 0b100);
       bool has_dead_literal = false;
       u_foreach_bit (i, info->literal_mask | info->fp16_mask)
