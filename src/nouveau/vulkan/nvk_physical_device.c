@@ -580,10 +580,32 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    struct nvk_instance *instance = (struct nvk_instance *)_instance;
    VkResult result;
 
-   if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)) ||
-       drm_device->bustype != DRM_BUS_PCI ||
-       drm_device->deviceinfo.pci->vendor_id != NVIDIA_VENDOR_ID)
+   if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)))
       return VK_ERROR_INCOMPATIBLE_DRIVER;
+
+   switch (drm_device->bustype) {
+   case DRM_BUS_PCI:
+      if (drm_device->deviceinfo.pci->vendor_id != NVIDIA_VENDOR_ID)
+         return VK_ERROR_INCOMPATIBLE_DRIVER;
+      break;
+
+   case DRM_BUS_PLATFORM: {
+      const char *compat_prefix = "nvidia,";
+      bool found = false;
+      for (int i = 0; drm_device->deviceinfo.platform->compatible[i] != NULL; i++) {
+         if (strncmp(drm_device->deviceinfo.platform->compatible[0], compat_prefix, strlen(compat_prefix)) == 0) {
+            found = true;
+            break;
+         }
+      }
+      if (!found)
+         return VK_ERROR_INCOMPATIBLE_DRIVER;
+      break;
+   }
+
+   default:
+      return VK_ERROR_INCOMPATIBLE_DRIVER;
+   }
 
    struct nouveau_ws_device *ndev = nouveau_ws_device_new(drm_device);
    if (!ndev)
