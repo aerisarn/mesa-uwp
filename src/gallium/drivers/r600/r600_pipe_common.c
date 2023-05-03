@@ -27,7 +27,6 @@
 #include "r600_pipe_common.h"
 #include "r600_cs.h"
 #include "evergreen_compute.h"
-#include "tgsi/tgsi_parse.h"
 #include "util/list.h"
 #include "util/u_draw_quad.h"
 #include "util/u_memory.h"

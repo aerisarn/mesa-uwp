@@ -33,7 +33,6 @@
 #include "sb/sb_public.h"
 
 #include "pipe/p_shader_tokens.h"
-#include "tgsi/tgsi_info.h"
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_scan.h"
 #include "tgsi/tgsi_dump.h"
