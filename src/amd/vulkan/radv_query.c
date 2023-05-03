@@ -2145,6 +2145,11 @@ radv_CmdWriteTimestamp2(VkCommandBuffer commandBuffer, VkPipelineStageFlags2 sta
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cs, pool->bo);
 
+   if (cmd_buffer->device->instance->flush_before_timestamp_write) {
+      /* Make sure previously launched waves have finished */
+      cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
+   }
+   
    si_emit_cache_flush(cmd_buffer);
 
    int num_queries = 1;
