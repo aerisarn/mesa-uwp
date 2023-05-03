@@ -41,7 +41,6 @@
 #include "util/slab.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_blitter.h"
-#include "tgsi/tgsi_text.h"
 
 #include "virgl_encode.h"
 #include "virgl_context.h"
