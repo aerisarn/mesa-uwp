@@ -3565,8 +3565,8 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
          va = radv_buffer_get_va(vrs_image->bindings[0].bo) + vrs_image->bindings[0].offset;
          va |= vrs_image->planes[0].surface.tile_swizzle << 8;
 
-         xmax = vrs_image->info.width - 1;
-         ymax = vrs_image->info.height - 1;
+         xmax = vrs_image->vk.extent.width - 1;
+         ymax = vrs_image->vk.extent.height - 1;
       }
 
       radeon_set_context_reg_seq(cmd_buffer->cs, R_0283F0_PA_SC_VRS_RATE_BASE, 3);
@@ -7889,8 +7889,8 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
 
          radv_buffer_init(&htile_buffer, cmd_buffer->device, ds_image->bindings[0].bo, htile_size, htile_offset);
 
-         assert(render->area.offset.x + render->area.extent.width <= ds_image->info.width &&
-                render->area.offset.x + render->area.extent.height <= ds_image->info.height);
+         assert(render->area.offset.x + render->area.extent.width <= ds_image->vk.extent.width &&
+                render->area.offset.x + render->area.extent.height <= ds_image->vk.extent.height);
 
          /* Copy the VRS rates to the HTILE buffer. */
          radv_copy_vrs_htile(cmd_buffer, render->vrs_att.iview->image, &render->area, ds_image,
@@ -7903,14 +7903,14 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
           */
          struct radv_image *ds_image = radv_cmd_buffer_get_vrs_image(cmd_buffer);
 
-         if (ds_image && render->area.offset.x < ds_image->info.width &&
-                         render->area.offset.y < ds_image->info.height) {
+         if (ds_image && render->area.offset.x < ds_image->vk.extent.width &&
+                         render->area.offset.y < ds_image->vk.extent.height) {
             /* HTILE buffer */
             struct radv_buffer *htile_buffer = cmd_buffer->device->vrs.buffer;
 
             VkRect2D area = render->area;
-            area.extent.width = MIN2(area.extent.width, ds_image->info.width - area.offset.x);
-            area.extent.height = MIN2(area.extent.height, ds_image->info.height - area.offset.y);
+            area.extent.width = MIN2(area.extent.width, ds_image->vk.extent.width - area.offset.x);
+            area.extent.height = MIN2(area.extent.height, ds_image->vk.extent.height - area.offset.y);
 
             /* Copy the VRS rates to the HTILE buffer. */
             radv_copy_vrs_htile(cmd_buffer, render->vrs_att.iview->image, &area, ds_image,

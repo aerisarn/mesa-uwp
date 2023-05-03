@@ -789,8 +789,8 @@ radv_can_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       return false;
 
    if (clear_rect->rect.offset.x || clear_rect->rect.offset.y ||
-       clear_rect->rect.extent.width != iview->image->info.width ||
-       clear_rect->rect.extent.height != iview->image->info.height)
+       clear_rect->rect.extent.width != iview->image->vk.extent.width ||
+       clear_rect->rect.extent.height != iview->image->vk.extent.height)
       return false;
 
    if (view_mask && (iview->image->vk.array_layers >= 32 ||
@@ -1361,8 +1361,8 @@ radv_clear_dcc_comp_to_single(struct radv_cmd_buffer *cmd_buffer,
       if (!radv_dcc_enabled(image, range->baseMipLevel + l))
          continue;
 
-      width = radv_minify(image->info.width, range->baseMipLevel + l);
-      height = radv_minify(image->info.height, range->baseMipLevel + l);
+      width = radv_minify(image->vk.extent.width, range->baseMipLevel + l);
+      height = radv_minify(image->vk.extent.height, range->baseMipLevel + l);
 
       radv_image_view_init(
          &iview, cmd_buffer->device,
@@ -1727,8 +1727,8 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       return false;
 
    if (clear_rect->rect.offset.x || clear_rect->rect.offset.y ||
-       clear_rect->rect.extent.width != iview->image->info.width ||
-       clear_rect->rect.extent.height != iview->image->info.height)
+       clear_rect->rect.extent.width != iview->image->vk.extent.width ||
+       clear_rect->rect.extent.height != iview->image->vk.extent.height)
       return false;
 
    if (view_mask && (iview->image->vk.array_layers >= 32 ||
@@ -2024,8 +2024,8 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
                        const VkClearValue *clear_val)
 {
    struct radv_image_view iview;
-   uint32_t width = radv_minify(image->info.width, range->baseMipLevel + level);
-   uint32_t height = radv_minify(image->info.height, range->baseMipLevel + level);
+   uint32_t width = radv_minify(image->vk.extent.width, range->baseMipLevel + level);
+   uint32_t height = radv_minify(image->vk.extent.height, range->baseMipLevel + level);
 
    radv_image_view_init(&iview, cmd_buffer->device,
                         &(VkImageViewCreateInfo){
@@ -2126,8 +2126,8 @@ radv_fast_clear_range(struct radv_cmd_buffer *cmd_buffer, struct radv_image *ima
             .offset = {0, 0},
             .extent =
                {
-                  radv_minify(image->info.width, range->baseMipLevel),
-                  radv_minify(image->info.height, range->baseMipLevel),
+                  radv_minify(image->vk.extent.width, range->baseMipLevel),
+                  radv_minify(image->vk.extent.height, range->baseMipLevel),
                },
          },
       .baseArrayLayer = range->baseArrayLayer,
@@ -2219,9 +2219,8 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
 
       for (uint32_t l = 0; l < vk_image_subresource_level_count(&image->vk, range); ++l) {
          const uint32_t layer_count = image->vk.image_type == VK_IMAGE_TYPE_3D
-                                         ? radv_minify(image->info.depth, range->baseMipLevel + l)
+                                         ? radv_minify(image->vk.extent.depth, range->baseMipLevel + l)
                                          : vk_image_subresource_layer_count(&image->vk, range);
-
          if (cs) {
             for (uint32_t s = 0; s < layer_count; ++s) {
                struct radv_meta_blit2d_surf surf;

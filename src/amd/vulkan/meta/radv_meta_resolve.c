@@ -549,9 +549,9 @@ radv_CmdResolveImage2(VkCommandBuffer commandBuffer,
           pResolveImageInfo->pRegions[0].dstOffset.y || pResolveImageInfo->pRegions[0].dstOffset.z)
          resolve_method = RESOLVE_COMPUTE;
 
-      if (pResolveImageInfo->pRegions[0].extent.width != src_image->info.width ||
-          pResolveImageInfo->pRegions[0].extent.height != src_image->info.height ||
-          pResolveImageInfo->pRegions[0].extent.depth != src_image->info.depth)
+      if (pResolveImageInfo->pRegions[0].extent.width != src_image->vk.extent.width ||
+          pResolveImageInfo->pRegions[0].extent.height != src_image->vk.extent.height ||
+          pResolveImageInfo->pRegions[0].extent.depth != src_image->vk.extent.depth)
          resolve_method = RESOLVE_COMPUTE;
    } else
       resolve_method = RESOLVE_COMPUTE;

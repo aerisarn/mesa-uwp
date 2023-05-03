@@ -1760,8 +1760,8 @@ radv_initialise_vrs_surface(struct radv_image *image, struct radv_buffer *htile_
                    S_028038_TILE_SURFACE_ENABLE(1);
    ds->db_stencil_info = S_02803C_FORMAT(V_028044_STENCIL_INVALID);
 
-   ds->db_depth_size = S_02801C_X_MAX(image->info.width - 1) |
-                       S_02801C_Y_MAX(image->info.height - 1);
+   ds->db_depth_size = S_02801C_X_MAX(image->vk.extent.width - 1) |
+                       S_02801C_Y_MAX(image->vk.extent.height - 1);
 
    ds->db_htile_data_base = radv_buffer_get_va(htile_buffer->bo) >> 8;
    ds->db_htile_surface = S_028ABC_FULL_CACHE(1) | S_028ABC_PIPE_ALIGNED(1) |
@@ -1843,8 +1843,8 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
       }
 
       ds->db_depth_view |= S_028008_MIPID(level);
-      ds->db_depth_size = S_02801C_X_MAX(iview->image->info.width - 1) |
-                          S_02801C_Y_MAX(iview->image->info.height - 1);
+      ds->db_depth_size = S_02801C_X_MAX(iview->image->vk.extent.width - 1) |
+                          S_02801C_Y_MAX(iview->image->vk.extent.height - 1);
 
       if (radv_htile_enabled(iview->image, level)) {
          ds->db_z_info |= S_028038_TILE_SURFACE_ENABLE(1);

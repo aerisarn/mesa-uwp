@@ -240,8 +240,8 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
       /* RADV_QUEUE_TRANSFER should only be used for the prime blit */
       assert(!region->imageOffset.x && !region->imageOffset.y && !region->imageOffset.z);
       assert(image->vk.image_type == VK_IMAGE_TYPE_2D);
-      assert(image->info.width == region->imageExtent.width);
-      assert(image->info.height == region->imageExtent.height);
+      assert(image->vk.extent.width == region->imageExtent.width);
+      assert(image->vk.extent.height == region->imageExtent.height);
       ASSERTED bool res = radv_sdma_copy_image(device, cs, image, buffer, region);
       assert(res);
       radv_cs_add_buffer(device->ws, cs, image->bindings[0].bo);
@@ -390,9 +390,9 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
       if (radv_layout_is_htile_compressed(cmd_buffer->device, dst_image, dst_image_layout,
                                           queue_mask) &&
           (region->dstOffset.x || region->dstOffset.y || region->dstOffset.z ||
-           region->extent.width != dst_image->info.width ||
-           region->extent.height != dst_image->info.height ||
-           region->extent.depth != dst_image->info.depth)) {
+           region->extent.width != dst_image->vk.extent.width ||
+           region->extent.height != dst_image->vk.extent.height ||
+           region->extent.depth != dst_image->vk.extent.depth)) {
          u_foreach_bit(i, region->dstSubresource.aspectMask) {
             unsigned aspect_mask = 1u << i;
             radv_expand_depth_stencil(cmd_buffer, dst_image,

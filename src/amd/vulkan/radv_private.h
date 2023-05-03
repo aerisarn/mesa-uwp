@@ -2906,8 +2906,8 @@ void radv_buffer_view_finish(struct radv_buffer_view *view);
 static inline bool
 radv_image_extent_compare(const struct radv_image *image, const VkExtent3D *extent)
 {
-   if (extent->width != image->info.width || extent->height != image->info.height ||
-       extent->depth != image->info.depth)
+   if (extent->width != image->vk.extent.width || extent->height != image->vk.extent.height ||
+       extent->depth != image->vk.extent.depth)
       return false;
    return true;
 }

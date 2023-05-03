@@ -646,9 +646,9 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
        radv_layout_dcc_compressed(cmd_buffer->device, dst_image, region->dstSubresource.mipLevel,
                                   dst_image_layout, queue_mask) &&
        (region->dstOffset.x || region->dstOffset.y || region->dstOffset.z ||
-        region->extent.width != dst_image->info.width ||
-        region->extent.height != dst_image->info.height ||
-        region->extent.depth != dst_image->info.depth)) {
+        region->extent.width != dst_image->vk.extent.width ||
+        region->extent.height != dst_image->vk.extent.height ||
+        region->extent.depth != dst_image->vk.extent.depth)) {
       radv_decompress_dcc(cmd_buffer, dst_image,
                           &(VkImageSubresourceRange){
                              .aspectMask = region->dstSubresource.aspectMask,

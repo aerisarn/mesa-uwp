@@ -1766,7 +1766,7 @@ radv_meta_clear_image_cs_r32g32b32(struct radv_cmd_buffer *cmd_buffer,
                          device->meta_state.cleari_r32g32b32.img_p_layout,
                          VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, push_constants);
 
-   radv_unaligned_dispatch(cmd_buffer, dst->image->info.width, dst->image->info.height, 1);
+   radv_unaligned_dispatch(cmd_buffer, dst->image->vk.extent.width, dst->image->vk.extent.height, 1);
 
    radv_buffer_view_finish(&dst_view);
    radv_DestroyBuffer(radv_device_to_handle(device), buffer, NULL);
@@ -1834,7 +1834,7 @@ radv_meta_clear_image_cs(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_bl
                          device->meta_state.cleari.img_p_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 20,
                          push_constants);
 
-   radv_unaligned_dispatch(cmd_buffer, dst->image->info.width, dst->image->info.height, 1);
+   radv_unaligned_dispatch(cmd_buffer, dst->image->vk.extent.width, dst->image->vk.extent.height, 1);
 
    radv_image_view_finish(&dst_iview);
 }

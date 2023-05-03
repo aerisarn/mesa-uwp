@@ -130,7 +130,7 @@ radv_image_use_fast_clear_for_image_early(const struct radv_device *device,
    if (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS)
       return true;
 
-   if (image->vk.samples <= 1 && image->info.width * image->info.height <= 512 * 512) {
+   if (image->vk.samples <= 1 && image->vk.extent.width * image->vk.extent.height <= 512 * 512) {
       /* Do not enable CMASK or DCC for small surfaces where the cost
        * of the eliminate pass can be higher than the benefit of fast
        * clear. RadeonSI does this, but the image threshold is
@@ -368,7 +368,7 @@ radv_use_htile_for_image(const struct radv_device *device, const struct radv_ima
    /* Do not enable HTILE for very small images because it seems less performant but make sure it's
     * allowed with VRS attachments because we need HTILE on GFX10.3.
     */
-   if (image->info.width * image->info.height < 8 * 8 &&
+   if (image->vk.extent.width * image->vk.extent.height < 8 * 8 &&
        !(device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS) &&
        !(gfx_level == GFX10_3 && device->attachment_vrs_enabled))
       return false;
@@ -463,8 +463,8 @@ radv_patch_image_dimensions(struct radv_device *device, struct radv_image *image
                             const struct radv_image_create_info *create_info,
                             struct ac_surf_info *image_info)
 {
-   unsigned width = image->info.width;
-   unsigned height = image->info.height;
+   unsigned width = image->vk.extent.width;
+   unsigned height = image->vk.extent.height;
 
    /*
     * minigbm sometimes allocates bigger images which is going to result in
@@ -486,16 +486,16 @@ radv_patch_image_dimensions(struct radv_device *device, struct radv_image *image
       }
    }
 
-   if (image->info.width == width && image->info.height == height)
+   if (image->vk.extent.width == width && image->vk.extent.height == height)
       return VK_SUCCESS;
 
-   if (width < image->info.width || height < image->info.height) {
+   if (width < image->vk.extent.width || height < image->vk.extent.height) {
       fprintf(stderr,
               "The imported image has smaller dimensions than the internal\n"
               "dimensions. Using it is going to fail badly, so we reject\n"
               "this import.\n"
               "(internal dimensions: %d x %d, external dimensions: %d x %d)\n",
-              image->info.width, image->info.height, width, height);
+              image->vk.extent.width, image->vk.extent.height, width, height);
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
    } else if (device->physical_device->rad_info.gfx_level >= GFX10) {
       fprintf(stderr,
@@ -503,7 +503,7 @@ radv_patch_image_dimensions(struct radv_device *device, struct radv_image *image
               "As GFX10 has no separate stride fields we cannot cope with\n"
               "an inconsistency in width and will fail this import.\n"
               "(internal dimensions: %d x %d, external dimensions: %d x %d)\n",
-              image->info.width, image->info.height, width, height);
+              image->vk.extent.width, image->vk.extent.height, width, height);
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
    } else {
       fprintf(stderr,
@@ -511,7 +511,7 @@ radv_patch_image_dimensions(struct radv_device *device, struct radv_image *image
               "As GFX10 has no separate stride fields we cannot cope with\n"
               "an inconsistency and would fail on GFX10.\n"
               "(internal dimensions: %d x %d, external dimensions: %d x %d)\n",
-              image->info.width, image->info.height, width, height);
+              image->vk.extent.width, image->vk.extent.height, width, height);
    }
    image_info->width = width;
    image_info->height = height;
@@ -1439,8 +1439,8 @@ radv_query_opaque_metadata(struct radv_device *device, struct radv_image *image,
 
    radv_make_texture_descriptor(device, image, false, (VkImageViewType)image->vk.image_type,
                                 image->vk.format, &fixedmapping, 0, image->vk.mip_levels - 1, 0,
-                                image->vk.array_layers - 1, image->info.width, image->info.height,
-                                image->info.depth, 0.0f, desc, NULL, 0, NULL, NULL);
+                                image->vk.array_layers - 1, image->vk.extent.width, image->vk.extent.height,
+                                image->vk.extent.depth, 0.0f, desc, NULL, 0, NULL, NULL);
 
    si_set_mutable_tex_desc_fields(device, image, &image->planes[0].surface.u.legacy.level[0], 0, 0,
                                   0, image->planes[0].surface.blk_w, false, false, false, false,
@@ -1503,7 +1503,7 @@ radv_image_alloc_single_sample_cmask(const struct radv_device *device,
                                      const struct radv_image *image, struct radeon_surf *surf)
 {
    if (!surf->cmask_size || surf->cmask_offset || surf->bpe > 8 || image->vk.mip_levels > 1 ||
-       image->info.depth > 1 || radv_image_has_dcc(image) ||
+       image->vk.extent.depth > 1 || radv_image_has_dcc(image) ||
        !radv_image_use_fast_clear_for_image(device, image) ||
        (image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT))
       return;
@@ -1852,7 +1852,7 @@ radv_image_print_info(struct radv_device *device, struct radv_image *image)
            "  Info: size=%" PRIu64 ", alignment=%" PRIu32 ", "
            "width=%" PRIu32 ", height=%" PRIu32 ", depth=%" PRIu32 ", "
            "array_size=%" PRIu32 ", levels=%" PRIu32 "\n",
-           image->size, image->alignment, image->info.width, image->info.height, image->info.depth,
+           image->size, image->alignment, image->vk.extent.width, image->vk.extent.height, image->vk.extent.depth,
            image->vk.array_layers, image->vk.mip_levels);
    for (unsigned i = 0; i < image->plane_count; ++i) {
       const struct radv_image_plane *plane = &image->planes[i];
@@ -2207,7 +2207,7 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
       break;
    case VK_IMAGE_TYPE_3D:
       assert(range->baseArrayLayer + vk_image_subresource_layer_count(&image->vk, range) - 1 <=
-             radv_minify(image->info.depth, range->baseMipLevel));
+             radv_minify(image->vk.extent.depth, range->baseMipLevel));
       break;
    default:
       unreachable("bad VkImageType");
@@ -2253,9 +2253,9 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
 
    if (device->physical_device->rad_info.gfx_level >= GFX9) {
       iview->extent = (VkExtent3D){
-         .width = image->info.width,
-         .height = image->info.height,
-         .depth = image->info.depth,
+         .width = image->vk.extent.width,
+         .height = image->vk.extent.height,
+         .depth = image->vk.extent.depth,
       };
    } else {
       iview->extent = iview->vk.extent;
@@ -2306,8 +2306,8 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
             iview->extent.width = iview->image->planes[0].surface.u.gfx9.base_mip_width;
             iview->extent.height = iview->image->planes[0].surface.u.gfx9.base_mip_height;
          } else {
-            unsigned lvl_width = radv_minify(image->info.width, range->baseMipLevel);
-            unsigned lvl_height = radv_minify(image->info.height, range->baseMipLevel);
+            unsigned lvl_width = radv_minify(image->vk.extent.width, range->baseMipLevel);
+            unsigned lvl_height = radv_minify(image->vk.extent.height, range->baseMipLevel);
 
             lvl_width = round_up_u32(lvl_width * view_bw, img_bw);
             lvl_height = round_up_u32(lvl_height * view_bh, img_bh);
@@ -2608,7 +2608,7 @@ radv_GetImageSubresourceLayout(VkDevice _device, VkImage _image,
       pLayout->depthPitch = surface->u.gfx9.surf_slice_size;
       pLayout->size = surface->u.gfx9.surf_slice_size;
       if (image->vk.image_type == VK_IMAGE_TYPE_3D)
-         pLayout->size *= u_minify(image->info.depth, level);
+         pLayout->size *= u_minify(image->vk.extent.depth, level);
    } else {
       pLayout->offset = (uint64_t)surface->u.legacy.level[level].offset_256B * 256 +
                         (uint64_t)surface->u.legacy.level[level].slice_size_dw * 4 * layer;
@@ -2617,7 +2617,7 @@ radv_GetImageSubresourceLayout(VkDevice _device, VkImage _image,
       pLayout->depthPitch = (uint64_t)surface->u.legacy.level[level].slice_size_dw * 4;
       pLayout->size = (uint64_t)surface->u.legacy.level[level].slice_size_dw * 4;
       if (image->vk.image_type == VK_IMAGE_TYPE_3D)
-         pLayout->size *= u_minify(image->info.depth, level);
+         pLayout->size *= u_minify(image->vk.extent.depth, level);
    }
 }
 
