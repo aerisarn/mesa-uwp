@@ -96,7 +96,16 @@ nvk_heap_grow_locked(struct nvk_device *dev, struct nvk_heap *heap)
          assert(heap->bo_count == 1);
          struct nouveau_ws_bo *old_bo = heap->bos[0].bo;
 
-         uint32_t push_dw[10];
+         assert(util_is_power_of_two_nonzero(heap->total_size));
+         assert(heap->total_size >= NVK_HEAP_MIN_SIZE);
+         assert(heap->total_size <= old_bo->size);
+         assert(heap->total_size < new_bo_size);
+
+         unsigned line_bytes = MIN2(heap->total_size, 1 << 17);
+         assert(heap->total_size % line_bytes == 0);
+         unsigned line_count = heap->total_size / line_bytes;
+
+         uint32_t push_dw[12];
          struct nv_push push;
          nv_push_init(&push, push_dw, ARRAY_SIZE(push_dw));
          struct nv_push *p = &push;
@@ -106,18 +115,10 @@ nvk_heap_grow_locked(struct nvk_device *dev, struct nvk_heap *heap)
          P_NV90B5_OFFSET_IN_LOWER(p, old_bo->offset & 0xffffffff);
          P_NV90B5_OFFSET_OUT_UPPER(p, new_bo->offset >> 32);
          P_NV90B5_OFFSET_OUT_LOWER(p, new_bo->offset & 0xffffffff);
-
-         assert(util_is_power_of_two_nonzero(heap->total_size));
-         assert(heap->total_size >= NVK_HEAP_MIN_SIZE);
-         assert(heap->total_size <= old_bo->size);
-         assert(heap->total_size < new_bo_size);
-
-         unsigned line_bytes = MIN2(heap->total_size, 1 << 17);
-         assert(heap->total_size % line_bytes == 0);
-
-         P_MTHD(p, NV90B5, LINE_LENGTH_IN);
+         P_NV90B5_PITCH_IN(p, line_bytes);
+         P_NV90B5_PITCH_OUT(p, line_bytes);
          P_NV90B5_LINE_LENGTH_IN(p, line_bytes);
-         P_NV90B5_LINE_COUNT(p, heap->total_size / line_bytes);
+         P_NV90B5_LINE_COUNT(p, line_count);
 
          P_IMMD(p, NV90B5, LAUNCH_DMA, {
             .data_transfer_type = DATA_TRANSFER_TYPE_NON_PIPELINED,
