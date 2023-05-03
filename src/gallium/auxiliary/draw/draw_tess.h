@@ -29,6 +29,8 @@
 #include "draw_context.h"
 #include "draw_private.h"
 
+#include "tgsi/tgsi_scan.h"
+
 struct draw_context;
 #ifdef DRAW_LLVM_AVAILABLE
 

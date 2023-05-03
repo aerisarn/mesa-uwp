@@ -44,8 +44,6 @@
 #include "pipe/p_state.h"
 #include "pipe/p_defines.h"
 
-#include "tgsi/tgsi_scan.h"
-
 #include "draw_vertex_header.h"
 
 #ifdef DRAW_LLVM_AVAILABLE

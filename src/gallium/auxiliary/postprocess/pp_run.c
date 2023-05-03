@@ -34,6 +34,7 @@
 #include "util/u_sampler.h"
 
 #include "tgsi/tgsi_parse.h"
+#include "tgsi/tgsi_text.h"
 
 
 void
