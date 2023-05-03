@@ -2965,6 +2965,10 @@ VkResult anv_CreateDevice(
       vk_device_dispatch_table_from_entrypoints(&dispatch_table, &doom64_device_entrypoints, true);
       override_initial_entrypoints = false;
    }
+#ifdef ANDROID
+   vk_device_dispatch_table_from_entrypoints(&dispatch_table, &android_device_entrypoints, true);
+   override_initial_entrypoints = false;
+#endif
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
       anv_genX(&physical_device->info, device_entrypoints),
       override_initial_entrypoints);
