@@ -36,8 +36,6 @@
 #include "nir/nir_draw_helpers.h"
 #include "nir/tgsi_to_nir.h"
 #include "compiler/nir/nir_builder.h"
-#include "tgsi/tgsi_from_mesa.h"
-#include "tgsi/tgsi_ureg.h"
 
 #include "util/hash_table.h"
 #include "util/u_memory.h"
@@ -46,11 +44,6 @@
 #include "util/u_dl.h"
 
 #include <dxguids/dxguids.h>
-
-extern "C" {
-#include "tgsi/tgsi_parse.h"
-#include "tgsi/tgsi_point_sprite.h"
-}
 
 #ifdef _WIN32
 #include "dxil_validator.h"
