@@ -4563,7 +4563,8 @@ dzn_cmd_buffer_resolve_rendering_attachment_via_blit(struct dzn_cmd_buffer *cmdb
 static void
 dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
                                             const struct dzn_rendering_attachment *att,
-                                            VkImageAspectFlagBits aspect)
+                                            VkImageAspectFlagBits aspect,
+                                            bool force_blit_resolve)
 {
    struct dzn_image_view *src = att->iview;
    struct dzn_image_view *dst = att->resolve.iview;
@@ -4602,7 +4603,8 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       dst_range.layerCount = 1;
    }
 
-   if (att->resolve.mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT ||
+   if (force_blit_resolve ||
+       att->resolve.mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT ||
        /* D3D resolve API can't go from (e.g.) D32S8X24 to D32 */
        src->vk.view_format != dst->vk.view_format ||
        (att->resolve.mode != VK_RESOLVE_MODE_AVERAGE_BIT &&
@@ -4923,15 +4925,20 @@ dzn_CmdEndRendering(VkCommandBuffer commandBuffer)
       for (uint32_t i = 0; i < cmdbuf->state.render.attachments.color_count; i++) {
          dzn_cmd_buffer_resolve_rendering_attachment(cmdbuf,
                                                      &cmdbuf->state.render.attachments.colors[i],
-                                                     VK_IMAGE_ASPECT_COLOR_BIT);
+                                                     VK_IMAGE_ASPECT_COLOR_BIT, false);
       }
 
+      bool separate_stencil_resolve =
+         cmdbuf->state.render.attachments.depth.resolve.mode !=
+         cmdbuf->state.render.attachments.stencil.resolve.mode;
       dzn_cmd_buffer_resolve_rendering_attachment(cmdbuf,
                                                   &cmdbuf->state.render.attachments.depth,
-                                                  VK_IMAGE_ASPECT_DEPTH_BIT);
+                                                  VK_IMAGE_ASPECT_DEPTH_BIT,
+                                                  separate_stencil_resolve);
       dzn_cmd_buffer_resolve_rendering_attachment(cmdbuf,
                                                   &cmdbuf->state.render.attachments.stencil,
-                                                  VK_IMAGE_ASPECT_STENCIL_BIT);
+                                                  VK_IMAGE_ASPECT_STENCIL_BIT,
+                                                  separate_stencil_resolve);
    }
 
    memset(&cmdbuf->state.render, 0, sizeof(cmdbuf->state.render));
