@@ -11,7 +11,6 @@
 #include "zink_surface.h"
 #include "zink_inlines.h"
 
-#include "tgsi/tgsi_from_mesa.h"
 #include "util/hash_table.h"
 #include "util/u_cpu_detect.h"
 #include "util/u_debug.h"

@@ -40,7 +40,6 @@
 
 #include "nir/tgsi_to_nir.h"
 #include "tgsi/tgsi_dump.h"
-#include "tgsi/tgsi_from_mesa.h"
 
 #include "util/u_memory.h"
 
