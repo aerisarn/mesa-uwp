@@ -29,8 +29,6 @@
 #include "r300_reg.h"
 
 #include "tgsi/tgsi_dump.h"
-#include "tgsi/tgsi_parse.h"
-#include "tgsi/tgsi_ureg.h"
 
 #include "compiler/radeon_compiler.h"
 
