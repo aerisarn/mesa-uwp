@@ -567,6 +567,16 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
                             S_028760_ALPHA_SRC_OPT(srcA_opt) | S_028760_ALPHA_DST_OPT(dstA_opt) |
                             S_028760_ALPHA_COMB_FCN(si_translate_blend_opt_function(eqA));
 
+      /* Alpha-to-coverage with blending enabled, depth writes enabled, and having no MRTZ export
+       * should disable SX blend optimizations.
+       *
+       * TODO: Add a piglit test for this. It should fail on gfx11 without this.
+       */
+      if (sctx->gfx_level >= GFX11 && state->alpha_to_coverage && i == 0) {
+         sx_mrt_blend_opt[0] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_NONE) |
+                               S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_NONE);
+      }
+
       /* Set blend state. */
       blend_cntl |= S_028780_ENABLE(1);
       blend_cntl |= S_028780_COLOR_COMB_FCN(si_translate_blend_function(eqRGB));
