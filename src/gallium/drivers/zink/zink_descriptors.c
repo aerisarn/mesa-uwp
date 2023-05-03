@@ -1469,8 +1469,10 @@ zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state
 
    if (bs->dd.db_xfer)
       pipe_buffer_unmap(&bs->ctx->base, bs->dd.db_xfer);
+   bs->dd.db_xfer = NULL;
    if (bs->dd.db)
       screen->base.resource_destroy(&screen->base, &bs->dd.db->base.b);
+   bs->dd.db = NULL;
    bs->dd.db_bound = false;
    bs->dd.db_offset = 0;
    memset(bs->dd.cur_db_offset, 0, sizeof(bs->dd.cur_db_offset));
