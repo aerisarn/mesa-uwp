@@ -684,6 +684,11 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (screen->device_lost)
       return;
 
+   if (ctx->tc) {
+      set_foreach(&bs->active_queries, entry)
+         zink_query_sync(ctx, (void*)entry->key);
+   }
+
    if (screen->threaded_submit) {
       util_queue_add_job(&screen->flush_queue, bs, &bs->flush_completed,
                          submit_queue, post_submit, 0);
