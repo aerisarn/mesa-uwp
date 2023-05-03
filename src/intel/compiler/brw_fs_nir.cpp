@@ -1370,8 +1370,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       fs_reg dest = result;
 
       const uint32_t bit_size =  nir_src_bit_size(instr->src[0].src);
-      if (bit_size != 32)
+      if (bit_size != 32) {
          dest = bld.vgrf(op[0].type, 1);
+         bld.UNDEF(dest);
+      }
 
       bld.CMP(dest, op[0], op[1], brw_cmod_for_nir_comparison(instr->op));
 
@@ -1398,8 +1400,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       fs_reg dest = result;
 
       const uint32_t bit_size = type_sz(op[0].type) * 8;
-      if (bit_size != 32)
+      if (bit_size != 32) {
          dest = bld.vgrf(op[0].type, 1);
+         bld.UNDEF(dest);
+      }
 
       bld.CMP(dest, op[0], op[1],
               brw_cmod_for_nir_comparison(instr->op));
