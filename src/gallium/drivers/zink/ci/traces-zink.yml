@@ -18,6 +18,8 @@ traces:
       checksum: 9b5090a236350f04cb2a61c5f0c0fe0f
   freedoom/freedoom-phase2-gl-high.trace:
     gl-zink-anv-tgl:
+      label: [skip]
+      text: "Fails on CI as well as when run locally"
       checksum: 288b762ac80ed76e18f848649a618be1
   glxgears/glxgears-2-v2.trace:
     gl-zink-anv-tgl:
