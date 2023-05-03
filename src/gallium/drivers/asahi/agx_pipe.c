@@ -1403,6 +1403,9 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    pctx->invalidate_resource = agx_invalidate_resource;
    pctx->memory_barrier = agx_memory_barrier;
 
+   pctx->create_fence_fd = agx_create_fence_fd;
+   pctx->fence_server_sync = agx_fence_server_sync;
+
    agx_init_state_functions(pctx);
    agx_init_query_functions(pctx);
    agx_init_streamout_functions(pctx);
