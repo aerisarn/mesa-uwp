@@ -3663,7 +3663,7 @@ pvr_cmd_buffer_upload_desc_set_table(struct pvr_cmd_buffer *const cmd_buffer,
    for (uint32_t set = 0; set < ARRAY_SIZE(bound_desc_sets); set++)
       bound_desc_sets[set] = ~0;
 
-   assert(util_last_bit(desc_state->valid_mask) < ARRAY_SIZE(bound_desc_sets));
+   assert(util_last_bit(desc_state->valid_mask) <= ARRAY_SIZE(bound_desc_sets));
    for (uint32_t set = 0; set < util_last_bit(desc_state->valid_mask); set++) {
       const struct pvr_descriptor_set *desc_set;
 
