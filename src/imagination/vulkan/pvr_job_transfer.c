@@ -1201,12 +1201,14 @@ static VkResult pvr_pbe_setup(const struct pvr_transfer_cmd *transfer_cmd,
       uint32_t *pbe_words;
 
       /* Ensure the access into the pbe_wordx_mrty is made within its bounds. */
-      assert(i * ROGUE_NUM_PBESTATE_REG_WORDS <
+      assert(i * ROGUE_NUM_PBESTATE_REG_WORDS_FOR_TRANSFER <
              ARRAY_SIZE(state->regs.pbe_wordx_mrty));
       /* Ensure the access into pbe_setup_words is made within its bounds. */
       assert(i * ROGUE_NUM_PBESTATE_STATE_WORDS < ARRAY_SIZE(pbe_setup_words));
 
-      pbe_regs = &state->regs.pbe_wordx_mrty[i * ROGUE_NUM_PBESTATE_REG_WORDS];
+      pbe_regs =
+         &state->regs
+             .pbe_wordx_mrty[i * ROGUE_NUM_PBESTATE_REG_WORDS_FOR_TRANSFER];
       pbe_words = &pbe_setup_words[i * ROGUE_NUM_PBESTATE_STATE_WORDS];
 
       if (PVR_HAS_ERN(dev_info, 42064))
