@@ -312,10 +312,12 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    if (radv_pipeline_needs_dynamic_ps_epilog(pipeline))
       return blend;
 
-   if (ps->info.ps.has_epilog) {
-      spi_shader_col_format = pipeline->ps_epilog->spi_shader_col_format;
-   } else {
-      spi_shader_col_format = ps->info.ps.spi_shader_col_format;
+   if (ps) {
+      if (ps->info.ps.has_epilog) {
+         spi_shader_col_format = pipeline->ps_epilog->spi_shader_col_format;
+      } else {
+         spi_shader_col_format = ps->info.ps.spi_shader_col_format;
+      }
    }
 
    blend.cb_shader_mask = ac_get_cb_shader_mask(spi_shader_col_format);
@@ -621,7 +623,8 @@ radv_compute_ia_multi_vgt_param_helpers(const struct radv_device *device,
    struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param = {0};
 
    ia_multi_vgt_param.ia_switch_on_eoi = false;
-   if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.prim_id_input)
+   if (pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
+       pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.prim_id_input)
       ia_multi_vgt_param.ia_switch_on_eoi = true;
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) &&
        pipeline->base.shaders[MESA_SHADER_GEOMETRY]->info.uses_prim_id)
@@ -1203,9 +1206,9 @@ radv_compute_db_shader_control(const struct radv_device *device,
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    unsigned conservative_z_export = V_02880C_EXPORT_ANY_Z;
 
-   if (ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_GREATER)
+   if (ps && ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_GREATER)
       conservative_z_export = V_02880C_EXPORT_GREATER_THAN_Z;
-   else if (ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_LESS)
+   else if (ps && ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_LESS)
       conservative_z_export = V_02880C_EXPORT_LESS_THAN_Z;
 
    bool disable_rbplus = pdevice->rad_info.has_rbplus && !pdevice->rad_info.rbplus_allowed;
@@ -1214,22 +1217,22 @@ radv_compute_db_shader_control(const struct radv_device *device,
     * but this appears to break Project Cars (DXVK). See
     * https://bugs.freedesktop.org/show_bug.cgi?id=109401
     */
-   bool mask_export_enable = ps->info.ps.writes_sample_mask;
+   bool mask_export_enable = ps && ps->info.ps.writes_sample_mask;
 
    bool export_conflict_wa = device->physical_device->rad_info.has_export_conflict_bug &&
                              radv_pipeline_is_blend_enabled(pipeline, state->cb) &&
                              (!state->ms || state->ms->rasterization_samples <= 1 ||
                               (pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZATION_SAMPLES));
 
-   return S_02880C_Z_EXPORT_ENABLE(ps->info.ps.writes_z) |
-          S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(ps->info.ps.writes_stencil) |
-          S_02880C_KILL_ENABLE(!!ps->info.ps.can_discard) |
+   return S_02880C_Z_EXPORT_ENABLE(ps && ps->info.ps.writes_z) |
+          S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(ps && ps->info.ps.writes_stencil) |
+          S_02880C_KILL_ENABLE(ps && ps->info.ps.can_discard) |
           S_02880C_MASK_EXPORT_ENABLE(mask_export_enable) |
           S_02880C_CONSERVATIVE_Z_EXPORT(conservative_z_export) |
-          S_02880C_DEPTH_BEFORE_SHADER(ps->info.ps.early_fragment_test) |
-          S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(ps->info.ps.post_depth_coverage) |
-          S_02880C_EXEC_ON_HIER_FAIL(ps->info.ps.writes_memory) |
-          S_02880C_EXEC_ON_NOOP(ps->info.ps.writes_memory) |
+          S_02880C_DEPTH_BEFORE_SHADER(ps && ps->info.ps.early_fragment_test) |
+          S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(ps && ps->info.ps.post_depth_coverage) |
+          S_02880C_EXEC_ON_HIER_FAIL(ps && ps->info.ps.writes_memory) |
+          S_02880C_EXEC_ON_NOOP(ps && ps->info.ps.writes_memory) |
           S_02880C_DUAL_QUAD_DISABLE(disable_rbplus) |
           S_02880C_OVERRIDE_INTRINSIC_RATE_ENABLE(export_conflict_wa) |
           S_02880C_OVERRIDE_INTRINSIC_RATE(export_conflict_wa ? 2 : 0);
@@ -2869,7 +2872,7 @@ radv_pipeline_emit_blend_state(struct radeon_cmdbuf *ctx_cs,
 {
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
 
-   if (ps->info.ps.has_epilog)
+   if (ps && ps->info.ps.has_epilog)
       return;
 
    radeon_set_context_reg(ctx_cs, R_028714_SPI_SHADER_COL_FORMAT, blend->spi_shader_col_format);
@@ -3458,7 +3461,6 @@ radv_emit_ps_inputs(const struct radv_device *device, struct radeon_cmdbuf *ctx_
 
    input_mask_to_ps_inputs(outinfo, ps, ps->info.ps.input_per_primitive_mask, ps_input_cntl,
                            &ps_offset, gfx11plus);
-
    if (ps_offset) {
       radeon_set_context_reg_seq(ctx_cs, R_028644_SPI_PS_INPUT_CNTL_0, ps_offset);
       for (unsigned i = 0; i < ps_offset; i++) {
@@ -3643,7 +3645,7 @@ gfx103_pipeline_vrs_coarse_shading(const struct radv_device *device,
    if (device->instance->debug_flags & RADV_DEBUG_NO_VRS_FLAT_SHADING)
       return false;
 
-   if (!ps->info.ps.allow_flat_shading)
+   if (ps && !ps->info.ps.allow_flat_shading)
       return false;
 
    return true;
@@ -3746,8 +3748,11 @@ radv_pipeline_emit_pm4(const struct radv_device *device, struct radv_graphics_pi
       radv_emit_geometry_shader(device, ctx_cs, cs, gs, es, pipeline->base.gs_copy_shader);
    }
 
-   radv_emit_fragment_shader(device, ctx_cs, cs, ps);
-   radv_emit_ps_inputs(device, ctx_cs, last_vgt_shader, ps);
+   if (ps) {
+      radv_emit_fragment_shader(device, ctx_cs, cs, ps);
+      radv_emit_ps_inputs(device, ctx_cs, last_vgt_shader, ps);
+   }
+
    radv_pipeline_emit_vgt_vertex_reuse(device, ctx_cs, pipeline);
    radv_pipeline_emit_vgt_shader_config(device, ctx_cs, pipeline);
    radv_pipeline_emit_vgt_gs_out(device, ctx_cs, pipeline, vgt_gs_out_prim_type);
@@ -4049,7 +4054,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->col_format_non_compacted = blend.spi_shader_col_format;
 
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-   bool enable_mrt_compaction = !ps->info.ps.has_epilog && !ps->info.ps.mrt0_is_dual_src;
+   bool enable_mrt_compaction = ps && !ps->info.ps.has_epilog && !ps->info.ps.mrt0_is_dual_src;
    if (enable_mrt_compaction) {
       blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
 
@@ -4079,10 +4084,10 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
     * GFX11 requires one color output, otherwise the DCC decompression does nothing.
     */
    pipeline->need_null_export_workaround =
-      (device->physical_device->rad_info.gfx_level <= GFX9 || ps->info.ps.can_discard ||
+      (device->physical_device->rad_info.gfx_level <= GFX9 || (ps && ps->info.ps.can_discard) ||
        (extra && extra->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS_GFX11 &&
         device->physical_device->rad_info.gfx_level >= GFX11)) &&
-      !ps->info.ps.writes_z && !ps->info.ps.writes_stencil && !ps->info.ps.writes_sample_mask;
+      ps && !ps->info.ps.writes_z && !ps->info.ps.writes_stencil && !ps->info.ps.writes_sample_mask;
    if (pipeline->need_null_export_workaround && !blend.spi_shader_col_format) {
       blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
       pipeline->col_format_non_compacted = V_028714_SPI_SHADER_32_R;
