@@ -118,7 +118,7 @@ anv_physical_device_init_va_ranges(struct anv_physical_device *device)
     * located at an address with the lower 32bits at 0.
     */
    address = align64(address, _4Gb);
-   address = va_add(&device->va.instruction_state_pool, address, _1Gb);
+   address = va_add(&device->va.instruction_state_pool, address, 2 * _1Gb);
 
    /* Whatever we have left we split in 2 for app allocations client-visible &
     * non-client-visible.
