@@ -882,7 +882,7 @@ dzn_GetImageMemoryRequirements2(VkDevice _device,
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
          VkMemoryDedicatedRequirements *requirements =
             (VkMemoryDedicatedRequirements *)ext;
-         requirements->requiresDedicatedAllocation = false;
+         requirements->requiresDedicatedAllocation = image->vk.external_handle_types != 0;
          requirements->prefersDedicatedAllocation = requirements->requiresDedicatedAllocation ||
             image->vk.tiling == VK_IMAGE_TILING_OPTIMAL;
          break;
@@ -911,7 +911,8 @@ dzn_GetImageMemoryRequirements2(VkDevice _device,
       .size = info.SizeInBytes,
       .alignment = info.Alignment,
       .memoryTypeBits =
-         dzn_physical_device_get_mem_type_mask_for_resource(pdev, &image->desc),
+         dzn_physical_device_get_mem_type_mask_for_resource(pdev, &image->desc,
+                                                            image->vk.external_handle_types != 0),
    };
 
    /*

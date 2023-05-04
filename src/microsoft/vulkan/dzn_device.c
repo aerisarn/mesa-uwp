@@ -71,6 +71,13 @@
 
 #define MAX_TIER2_MEMORY_TYPES 3
 
+const VkExternalMemoryHandleTypeFlags opaque_external_flag =
+#ifdef _WIN32
+   VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+#else
+   VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+#endif
+
 static const struct vk_instance_extension_table instance_extensions = {
    .KHR_get_physical_device_properties2      = true,
    .KHR_device_group_creation                = true,
@@ -108,6 +115,10 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_draw_indirect_count               = true,
       .KHR_driver_properties                 = true,
       .KHR_dynamic_rendering                 = true,
+      .KHR_external_memory                   = true,
+#ifdef _WIN32
+      .KHR_external_memory_win32             = true,
+#endif
       .KHR_image_format_list                 = true,
       .KHR_imageless_framebuffer             = true,
       .KHR_get_memory_requirements2          = true,
@@ -580,6 +591,11 @@ dzn_physical_device_init_memory(struct dzn_physical_device *pdev)
       mem->memoryHeaps[0].flags |= VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
       mem->memoryTypes[0].propertyFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
       mem->memoryTypes[1].propertyFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+      /* Get one non-CPU-accessible memory type for shared resources to use */
+      mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType){
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+         .heapIndex = 0,
+      };
    }
 
    assert(mem->memoryTypeCount <= MAX_TIER2_MEMORY_TYPES);
@@ -621,21 +637,26 @@ dzn_physical_device_get_heap_flags_for_mem_type(const struct dzn_physical_device
 
 uint32_t
 dzn_physical_device_get_mem_type_mask_for_resource(const struct dzn_physical_device *pdev,
-                                                   const D3D12_RESOURCE_DESC *desc)
+                                                   const D3D12_RESOURCE_DESC *desc,
+                                                   bool shared)
 {
-   if (pdev->options.ResourceHeapTier > D3D12_RESOURCE_HEAP_TIER_1)
+   if (pdev->options.ResourceHeapTier > D3D12_RESOURCE_HEAP_TIER_1 && !shared)
       return (1u << pdev->memory.memoryTypeCount) - 1;
 
-   D3D12_HEAP_FLAGS deny_flag;
-   if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
-      deny_flag = D3D12_HEAP_FLAG_DENY_BUFFERS;
-   else if (desc->Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
-      deny_flag = D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES;
-   else
-      deny_flag = D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;
+   D3D12_HEAP_FLAGS deny_flag = D3D12_HEAP_FLAG_NONE;
+   if (pdev->options.ResourceHeapTier <= D3D12_RESOURCE_HEAP_TIER_1) {
+      if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+         deny_flag = D3D12_HEAP_FLAG_DENY_BUFFERS;
+      else if (desc->Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
+         deny_flag = D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES;
+      else
+         deny_flag = D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;
+   }
 
    uint32_t mask = 0;
    for (unsigned i = 0; i < pdev->memory.memoryTypeCount; ++i) {
+      if (shared && (pdev->memory.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+         continue;
       if ((pdev->heap_flags_for_mem_type[i] & deny_flag) == D3D12_HEAP_FLAG_NONE)
          mask |= (1 << i);
    }
@@ -936,9 +957,50 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
       }
    }
 
-   /* TODO: support image import */
-   if (external_info && external_info->handleType != 0)
-      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+   if (external_info && external_info->handleType != 0) {
+      const VkExternalMemoryHandleTypeFlags d3d12_resource_handle_types =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT | opaque_external_flag;
+      const VkExternalMemoryHandleTypeFlags d3d11_texture_handle_types =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT | d3d12_resource_handle_types;
+      const VkExternalMemoryFeatureFlags import_export_feature_flags =
+         VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT | VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+      const VkExternalMemoryFeatureFlags dedicated_feature_flags =
+         VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT | import_export_feature_flags;
+
+      switch (external_info->handleType) {
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT:
+         external_props->externalMemoryProperties.compatibleHandleTypes = d3d11_texture_handle_types;
+         external_props->externalMemoryProperties.exportFromImportedHandleTypes = d3d11_texture_handle_types;
+         external_props->externalMemoryProperties.externalMemoryFeatures = dedicated_feature_flags;
+         break;
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT:
+         external_props->externalMemoryProperties.compatibleHandleTypes = d3d12_resource_handle_types;
+         external_props->externalMemoryProperties.exportFromImportedHandleTypes = d3d12_resource_handle_types;
+         external_props->externalMemoryProperties.externalMemoryFeatures = dedicated_feature_flags;
+         break;
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT:
+         external_props->externalMemoryProperties.compatibleHandleTypes =
+            external_props->externalMemoryProperties.exportFromImportedHandleTypes =
+            VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT | opaque_external_flag;
+         external_props->externalMemoryProperties.externalMemoryFeatures = import_export_feature_flags;
+         break;
+#ifdef _WIN32
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT:
+#else
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+#endif
+         external_props->externalMemoryProperties.compatibleHandleTypes = d3d11_texture_handle_types;
+         external_props->externalMemoryProperties.exportFromImportedHandleTypes = d3d11_texture_handle_types;
+         external_props->externalMemoryProperties.externalMemoryFeatures = import_export_feature_flags;
+         break;
+      default:
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+      }
+
+      /* Linear textures not supported, but there's nothing else we can deduce from just a handle type */
+      if (info->tiling != VK_IMAGE_TILING_OPTIMAL)
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+   }
 
    if (info->tiling != VK_IMAGE_TILING_OPTIMAL &&
        (usage & ~(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)))
@@ -1143,10 +1205,38 @@ dzn_GetPhysicalDeviceExternalBufferProperties(VkPhysicalDevice physicalDevice,
                                               const VkPhysicalDeviceExternalBufferInfo *pExternalBufferInfo,
                                               VkExternalBufferProperties *pExternalBufferProperties)
 {
-   pExternalBufferProperties->externalMemoryProperties =
-      (VkExternalMemoryProperties) {
-         .compatibleHandleTypes = (VkExternalMemoryHandleTypeFlags)pExternalBufferInfo->handleType,
-      };
+   const VkExternalMemoryHandleTypeFlags d3d12_resource_handle_types =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT | opaque_external_flag;
+   const VkExternalMemoryFeatureFlags import_export_feature_flags =
+      VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT | VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+   const VkExternalMemoryFeatureFlags dedicated_feature_flags =
+      VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT | import_export_feature_flags;
+   switch (pExternalBufferInfo->handleType) {
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT:
+      pExternalBufferProperties->externalMemoryProperties.compatibleHandleTypes = d3d12_resource_handle_types;
+      pExternalBufferProperties->externalMemoryProperties.exportFromImportedHandleTypes = d3d12_resource_handle_types;
+      pExternalBufferProperties->externalMemoryProperties.externalMemoryFeatures = dedicated_feature_flags;
+      break;
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT:
+      pExternalBufferProperties->externalMemoryProperties.compatibleHandleTypes =
+         pExternalBufferProperties->externalMemoryProperties.exportFromImportedHandleTypes =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT | opaque_external_flag;
+      pExternalBufferProperties->externalMemoryProperties.externalMemoryFeatures = import_export_feature_flags;
+      break;
+#ifdef _WIN32
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT:
+#else
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+#endif
+      pExternalBufferProperties->externalMemoryProperties.compatibleHandleTypes =
+         pExternalBufferProperties->externalMemoryProperties.exportFromImportedHandleTypes =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT | d3d12_resource_handle_types;
+      pExternalBufferProperties->externalMemoryProperties.externalMemoryFeatures = import_export_feature_flags;
+      break;
+   default:
+      pExternalBufferProperties->externalMemoryProperties = (VkExternalMemoryProperties){ 0 };
+      break;
+   }
 }
 
 VkResult
@@ -2562,8 +2652,36 @@ dzn_device_memory_destroy(struct dzn_device_memory *mem,
    if (mem->dedicated_res)
       ID3D12Resource_Release(mem->dedicated_res);
 
+#ifdef _WIN32
+   if (mem->export_handle)
+      CloseHandle(mem->export_handle);
+#else
+   if ((intptr_t)mem->export_handle >= 0)
+      close((int)(intptr_t)mem->export_handle);
+#endif
+
    vk_object_base_finish(&mem->base);
    vk_free2(&device->vk.alloc, pAllocator, mem);
+}
+
+static D3D12_HEAP_PROPERTIES
+deduce_heap_properties_from_memory(struct dzn_physical_device *pdevice,
+                                   const VkMemoryType *mem_type)
+{
+   D3D12_HEAP_PROPERTIES properties = { .Type = D3D12_HEAP_TYPE_CUSTOM };
+   properties.MemoryPoolPreference =
+      ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) &&
+       !pdevice->architecture.UMA) ?
+      D3D12_MEMORY_POOL_L1 : D3D12_MEMORY_POOL_L0;
+   if ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) ||
+       ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && pdevice->architecture.CacheCoherentUMA)) {
+      properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+   } else if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+      properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE;
+   } else {
+      properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE;
+   }
+   return properties;
 }
 
 static VkResult
@@ -2578,16 +2696,63 @@ dzn_device_memory_create(struct dzn_device *device,
    const struct dzn_buffer *buffer = NULL;
    const struct dzn_image *image = NULL;
 
+   VkExternalMemoryHandleTypeFlags export_flags = 0;
+   HANDLE import_handle = NULL;
+   bool imported_from_d3d11 = false;
+#ifdef _WIN32
+   const wchar_t *import_name = NULL;
+   const VkExportMemoryWin32HandleInfoKHR *win32_export = NULL;
+#endif
    vk_foreach_struct_const(ext, pAllocateInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
-         UNUSED const VkExportMemoryAllocateInfo *exp =
+         const VkExportMemoryAllocateInfo *exp =
             (const VkExportMemoryAllocateInfo *)ext;
 
-         // TODO: support export
-         assert(exp->handleTypes == 0);
+         export_flags = exp->handleTypes;
          break;
       }
+#ifdef _WIN32
+      case VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR: {
+         const VkImportMemoryWin32HandleInfoKHR *imp =
+            (const VkImportMemoryWin32HandleInfoKHR *)ext;
+         switch (imp->handleType) {
+         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT:
+            imported_from_d3d11 = true;
+            FALLTHROUGH;
+         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT:
+         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT:
+         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT:
+            break;
+         default:
+            return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+         }
+         import_handle = imp->handle;
+         import_name = imp->name;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_KHR:
+         win32_export = (const VkExportMemoryWin32HandleInfoKHR *)ext;
+         break;
+#else
+      case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR: {
+         const VkImportMemoryFdInfoKHR *imp =
+            (const VkImportMemoryFdInfoKHR *)ext;
+         switch (imp->handleType) {
+         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT:
+            imported_from_d3d11 = true;
+            FALLTHROUGH;
+         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT:
+         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT:
+            break;
+         default:
+            return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+         }
+         import_handle = (HANDLE)(intptr_t)imp->handle;
+         break;
+      }
+#endif
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: {
          const VkMemoryDedicatedAllocateInfo *dedicated =
            (const VkMemoryDedicatedAllocateInfo *)ext;
@@ -2626,6 +2791,17 @@ dzn_device_memory_create(struct dzn_device *device,
    if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
       image = NULL;
 
+   VkExternalMemoryHandleTypeFlags valid_flags =
+      opaque_external_flag |
+      (buffer || image ?
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT :
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT);
+   if (image && imported_from_d3d11)
+      valid_flags |= VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT;
+
+   if (export_flags & ~valid_flags)
+      return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+
    struct dzn_device_memory *mem =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*mem), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -2633,6 +2809,9 @@ dzn_device_memory_create(struct dzn_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY);
+#ifndef _WIN32
+   mem->export_handle = (HANDLE)(intptr_t)-1;
+#endif
 
    /* The Vulkan 1.0.33 spec says "allocationSize must be greater than 0". */
    assert(pAllocateInfo->allocationSize > 0);
@@ -2643,21 +2822,78 @@ dzn_device_memory_create(struct dzn_device *device,
    if (!image && !buffer)
       heap_desc.Flags =
          dzn_physical_device_get_heap_flags_for_mem_type(pdevice, pAllocateInfo->memoryTypeIndex);
-   heap_desc.Properties.Type = D3D12_HEAP_TYPE_CUSTOM;
-   heap_desc.Properties.MemoryPoolPreference =
-      ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) &&
-       !pdevice->architecture.UMA) ?
-      D3D12_MEMORY_POOL_L1 : D3D12_MEMORY_POOL_L0;
-   if ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) ||
-       ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && pdevice->architecture.CacheCoherentUMA)) {
-      heap_desc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
-   } else if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-      heap_desc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE;
-   } else {
-      heap_desc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE;
+   heap_desc.Properties = deduce_heap_properties_from_memory(pdevice, mem_type);
+   if (export_flags) {
+      heap_desc.Flags |= D3D12_HEAP_FLAG_SHARED;
+      assert(heap_desc.Properties.CPUPageProperty == D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE);
    }
 
-   if (image) {
+   VkResult error = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
+#ifdef _WIN32
+   HANDLE handle_from_name = NULL;
+   if (import_name) {
+      if (FAILED(ID3D12Device_OpenSharedHandleByName(device->dev, import_name, GENERIC_ALL, &handle_from_name))) {
+         error = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+         goto cleanup;
+      }
+      import_handle = handle_from_name;
+   }
+#endif
+
+   if (import_handle) {
+      error = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      if (image || buffer) {
+         if (FAILED(ID3D12Device_OpenSharedHandle(device->dev, import_handle, &IID_ID3D12Resource, (void **)&mem->dedicated_res)))
+            goto cleanup;
+
+         /* Verify compatibility */
+         D3D12_RESOURCE_DESC desc = dzn_ID3D12Resource_GetDesc(mem->dedicated_res);
+         D3D12_HEAP_PROPERTIES opened_props = { 0 };
+         D3D12_HEAP_FLAGS opened_flags = 0;
+         ID3D12Resource_GetHeapProperties(mem->dedicated_res, &opened_props, &opened_flags);
+         if (opened_props.Type != D3D12_HEAP_TYPE_CUSTOM)
+            opened_props = dzn_ID3D12Device4_GetCustomHeapProperties(device->dev, 0, opened_props.Type);
+
+         /* Don't validate format, cast lists aren't reflectable so it could be valid */
+         if (image) {
+            if (desc.Dimension != image->desc.Dimension ||
+                desc.MipLevels != image->desc.MipLevels ||
+                desc.Width != image->desc.Width ||
+                desc.Height != image->desc.Height ||
+                desc.DepthOrArraySize != image->desc.DepthOrArraySize ||
+                (image->desc.Flags & ~desc.Flags) ||
+                desc.SampleDesc.Count != image->desc.SampleDesc.Count)
+               goto cleanup;
+         } else if (desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+                    desc.Width != buffer->desc.Width ||
+                    buffer->desc.Flags & ~(desc.Flags))
+            goto cleanup;
+         if (opened_props.CPUPageProperty != heap_desc.Properties.CPUPageProperty ||
+             opened_props.MemoryPoolPreference != heap_desc.Properties.MemoryPoolPreference)
+            goto cleanup;
+         if ((heap_desc.Flags & D3D12_HEAP_FLAG_DENY_BUFFERS) && desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+            goto cleanup;
+         if ((heap_desc.Flags & D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES) && (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET))
+            goto cleanup;
+         else if ((heap_desc.Flags & D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES) && !(desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET))
+            goto cleanup;
+      } else {
+         if (FAILED(ID3D12Device_OpenSharedHandle(device->dev, import_handle, &IID_ID3D12Heap, (void **)&mem->heap)))
+            goto cleanup;
+
+         D3D12_HEAP_DESC desc = dzn_ID3D12Heap_GetDesc(mem->heap);
+         if (desc.Properties.Type != D3D12_HEAP_TYPE_CUSTOM)
+            desc.Properties = dzn_ID3D12Device4_GetCustomHeapProperties(device->dev, 0, desc.Properties.Type);
+
+         if (desc.Alignment < heap_desc.Alignment ||
+             desc.SizeInBytes < heap_desc.SizeInBytes ||
+             (heap_desc.Flags & ~desc.Flags) ||
+             desc.Properties.CPUPageProperty != heap_desc.Properties.CPUPageProperty ||
+             desc.Properties.MemoryPoolPreference != heap_desc.Properties.MemoryPoolPreference)
+            goto cleanup;
+      }
+   } else if (image) {
       if (device->dev10 && image->castable_format_count > 0) {
          D3D12_RESOURCE_DESC1 desc = {
             .Dimension = image->desc.Dimension,
@@ -2678,36 +2914,28 @@ dzn_device_memory_create(struct dzn_device *device,
                                                             image->castable_format_count,
                                                             image->castable_formats,
                                                             &IID_ID3D12Resource,
-                                                            (void **)&mem->dedicated_res))) {
-            dzn_device_memory_destroy(mem, pAllocator);
-            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-         }
+                                                            (void **)&mem->dedicated_res)))
+            goto cleanup;
       } else if (FAILED(ID3D12Device1_CreateCommittedResource(device->dev, &heap_desc.Properties,
                                                               heap_desc.Flags, &image->desc,
                                                               D3D12_RESOURCE_STATE_COMMON,
                                                               NULL,
                                                               &IID_ID3D12Resource,
-                                                              (void **)&mem->dedicated_res))) {
-         dzn_device_memory_destroy(mem, pAllocator);
-         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-      }
+                                                              (void **)&mem->dedicated_res)))
+         goto cleanup;
    } else if (buffer) {
       if (FAILED(ID3D12Device1_CreateCommittedResource(device->dev, &heap_desc.Properties,
                                                        heap_desc.Flags, &buffer->desc,
                                                        D3D12_RESOURCE_STATE_COMMON,
                                                        NULL,
                                                        &IID_ID3D12Resource,
-                                                       (void **)&mem->dedicated_res))) {
-         dzn_device_memory_destroy(mem, pAllocator);
-         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-      }
+                                                       (void **)&mem->dedicated_res)))
+         goto cleanup;
    } else {
       if (FAILED(ID3D12Device1_CreateHeap(device->dev, &heap_desc,
                                           &IID_ID3D12Heap,
-                                          (void **)&mem->heap))) {
-         dzn_device_memory_destroy(mem, pAllocator);
-         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-      }
+                                          (void **)&mem->heap)))
+         goto cleanup;
    }
 
    if ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) &&
@@ -2734,15 +2962,38 @@ dzn_device_memory_create(struct dzn_device *device,
                                                          NULL,
                                                          &IID_ID3D12Resource,
                                                          (void **)&mem->map_res);
-         if (FAILED(hr)) {
-            dzn_device_memory_destroy(mem, pAllocator);
-            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-         }
+         if (FAILED(hr))
+            goto cleanup;
       }
+   }
+
+   if (export_flags) {
+      error = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      ID3D12DeviceChild *shareable = mem->heap ? (void *)mem->heap : (void *)mem->dedicated_res;
+#ifdef _WIN32
+      const SECURITY_ATTRIBUTES *pAttributes = win32_export ? win32_export->pAttributes : NULL;
+      DWORD dwAccess = win32_export ? win32_export->dwAccess : GENERIC_ALL;
+      const wchar_t *name = win32_export ? win32_export->name : NULL;
+#else
+      const SECURITY_ATTRIBUTES *pAttributes = NULL;
+      DWORD dwAccess = GENERIC_ALL;
+      const wchar_t *name = NULL;
+#endif
+      if (FAILED(ID3D12Device_CreateSharedHandle(device->dev, shareable, pAttributes,
+                                                 dwAccess, name, &mem->export_handle)))
+         goto cleanup;
    }
 
    *out = dzn_device_memory_to_handle(mem);
    return VK_SUCCESS;
+
+cleanup:
+#ifdef _WIN32
+   if (handle_from_name)
+      CloseHandle(handle_from_name);
+#endif
+   dzn_device_memory_destroy(mem, pAllocator);
+   return vk_error(device, error);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -2939,6 +3190,11 @@ dzn_buffer_create(struct dzn_device *device,
    if (device->bindless)
       mtx_init(&buf->bindless_view_lock, mtx_plain);
 
+   const VkExternalMemoryBufferCreateInfo *external_info =
+      vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_MEMORY_BUFFER_CREATE_INFO);
+   if (external_info && external_info->handleTypes != 0)
+      buf->shared = true;
+
    *out = dzn_buffer_to_handle(buf);
    return VK_SUCCESS;
 }
@@ -3089,7 +3345,7 @@ dzn_GetBufferMemoryRequirements2(VkDevice dev,
    pMemoryRequirements->memoryRequirements.size = size;
    pMemoryRequirements->memoryRequirements.alignment = alignment;
    pMemoryRequirements->memoryRequirements.memoryTypeBits =
-      dzn_physical_device_get_mem_type_mask_for_resource(pdev, &buffer->desc);
+      dzn_physical_device_get_mem_type_mask_for_resource(pdev, &buffer->desc, buffer->shared);
 
    vk_foreach_struct(ext, pMemoryRequirements->pNext) {
       switch (ext->sType) {
@@ -3537,3 +3793,94 @@ dzn_GetDeviceMemoryOpaqueCaptureAddress(VkDevice device,
 {
    return 0;
 }
+
+#ifdef _WIN32
+VKAPI_ATTR VkResult VKAPI_CALL
+dzn_GetMemoryWin32HandleKHR(VkDevice device,
+                            const VkMemoryGetWin32HandleInfoKHR *pGetWin32HandleInfo,
+                            HANDLE *pHandle)
+{
+   VK_FROM_HANDLE(dzn_device_memory, mem, pGetWin32HandleInfo->memory);
+   if (!mem->export_handle)
+      return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+
+   switch (pGetWin32HandleInfo->handleType) {
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT:
+      if (!DuplicateHandle(GetCurrentProcess(), mem->export_handle, GetCurrentProcess(), pHandle,
+                           0, FALSE, DUPLICATE_SAME_ACCESS))
+         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return VK_SUCCESS;
+   default:
+      return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+   }
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+dzn_GetMemoryWin32HandlePropertiesKHR(VkDevice _device,
+                                      VkExternalMemoryHandleTypeFlagBits handleType,
+                                      HANDLE handle,
+                                      VkMemoryWin32HandlePropertiesKHR *pMemoryWin32HandleProperties)
+{
+   VK_FROM_HANDLE(dzn_device, device, _device);
+   IUnknown *opened_object;
+   if (FAILED(ID3D12Device_OpenSharedHandle(device->dev, handle, &IID_IUnknown, (void **)&opened_object)))
+      return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+
+   VkResult result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   ID3D12Resource *res = NULL;
+   ID3D12Heap *heap = NULL;
+   struct dzn_physical_device *pdev = container_of(device->vk.physical, struct dzn_physical_device, vk);
+
+   switch (handleType) {
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT:
+      (void)IUnknown_QueryInterface(opened_object, &IID_ID3D12Resource, (void **)&res);
+      (void)IUnknown_QueryInterface(opened_object, &IID_ID3D12Heap, (void **)&heap);
+      break;
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT:
+      (void)IUnknown_QueryInterface(opened_object, &IID_ID3D12Resource, (void **)&res);
+      break;
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT:
+      (void)IUnknown_QueryInterface(opened_object, &IID_ID3D12Heap, (void **)&heap);
+      break;
+   default:
+      goto cleanup;
+   }
+   if (!res && !heap)
+      goto cleanup;
+
+   D3D12_HEAP_DESC heap_desc;
+   if (res)
+      ID3D12Resource_GetHeapProperties(res, &heap_desc.Properties, &heap_desc.Flags);
+   else
+      heap_desc = dzn_ID3D12Heap_GetDesc(heap);
+   if (heap_desc.Properties.Type != D3D12_HEAP_TYPE_CUSTOM)
+      heap_desc.Properties = dzn_ID3D12Device4_GetCustomHeapProperties(device->dev, 0, heap_desc.Properties.Type);
+
+   for (uint32_t i = 0; i < pdev->memory.memoryTypeCount; ++i) {
+      const VkMemoryType *mem_type = &pdev->memory.memoryTypes[i];
+      D3D12_HEAP_PROPERTIES required_props = deduce_heap_properties_from_memory(pdev, mem_type);
+      if (heap_desc.Properties.CPUPageProperty != required_props.CPUPageProperty ||
+          heap_desc.Properties.MemoryPoolPreference != required_props.MemoryPoolPreference)
+         continue;
+
+      D3D12_HEAP_FLAGS required_flags = dzn_physical_device_get_heap_flags_for_mem_type(pdev, i);
+      if ((heap_desc.Flags & required_flags) != required_flags)
+         continue;
+
+      pMemoryWin32HandleProperties->memoryTypeBits |= (1 << i);
+   }
+   result = VK_SUCCESS;
+
+cleanup:
+   IUnknown_Release(opened_object);
+   if (res)
+      ID3D12Resource_Release(res);
+   if (heap)
+      ID3D12Heap_Release(heap);
+   return result;
+}
+#endif

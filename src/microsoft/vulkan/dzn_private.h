@@ -233,7 +233,8 @@ dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
 
 uint32_t
 dzn_physical_device_get_mem_type_mask_for_resource(const struct dzn_physical_device *pdev,
-                                                   const D3D12_RESOURCE_DESC *desc);
+                                                   const D3D12_RESOURCE_DESC *desc,
+                                                   bool shared);
 
 enum dxil_shader_model
 dzn_get_shader_model(const struct dzn_physical_device *pdev);
@@ -342,6 +343,9 @@ struct dzn_device_memory {
 
    VkDeviceSize map_size;
    void *map;
+
+   /* If the resource is exportable, this is the pre-created handle for that */
+   HANDLE export_handle;
 };
 
 enum dzn_cmd_bindpoint_dirty {
@@ -1135,6 +1139,7 @@ struct dzn_buffer {
 
    VkBufferCreateFlags create_flags;
    VkBufferUsageFlags usage;
+   bool shared;
 
    D3D12_BARRIER_ACCESS valid_access;
    D3D12_GPU_VIRTUAL_ADDRESS gpuva;
