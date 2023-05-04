@@ -4904,7 +4904,7 @@ bool nir_lower_io(nir_shader *shader,
 
 bool nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode modes);
 bool nir_lower_color_inputs(nir_shader *nir);
-void nir_lower_io_passes(nir_shader *nir);
+void nir_lower_io_passes(nir_shader *nir, bool renumber_vs_inputs);
 bool nir_io_add_intrinsic_xfb_info(nir_shader *nir);
 
 bool

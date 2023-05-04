@@ -1081,7 +1081,7 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
     * This depends on st_nir_assign_varying_locations.
     */
    if (nir->options->lower_io_variables) {
-      nir_lower_io_passes(nir);
+      nir_lower_io_passes(nir, false);
       NIR_PASS_V(nir, nir_remove_dead_variables,
                  nir_var_shader_in | nir_var_shader_out, NULL);
    }

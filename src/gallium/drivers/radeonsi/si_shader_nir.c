@@ -437,7 +437,7 @@ char *si_finalize_nir(struct pipe_screen *screen, void *nirptr)
    struct si_screen *sscreen = (struct si_screen *)screen;
    struct nir_shader *nir = (struct nir_shader *)nirptr;
 
-   nir_lower_io_passes(nir);
+   nir_lower_io_passes(nir, false);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_in | nir_var_shader_out, NULL);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)

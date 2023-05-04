@@ -3045,9 +3045,16 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
 /**
  * This runs all compiler passes needed to lower IO, lower indirect IO access,
  * set transform feedback info in IO intrinsics, and clean up the IR.
+ *
+ * \param renumber_vs_inputs
+ *    Set to true if holes between VS inputs should be removed, which is safe
+ *    to do in any shader linker that can handle that. Set to false if you want
+ *    to keep holes between VS inputs, which is recommended to do in gallium
+ *    drivers so as not to break the mapping of vertex elements to VS inputs
+ *    expected by gallium frontends.
  */
 void
-nir_lower_io_passes(nir_shader *nir)
+nir_lower_io_passes(nir_shader *nir, bool renumber_vs_inputs)
 {
    if (!nir->options->lower_io_variables ||
        nir->info.stage == MESA_SHADER_COMPUTE)
@@ -3089,7 +3096,9 @@ nir_lower_io_passes(nir_shader *nir)
     * This kind of canonicalizes all bases.
     */
    NIR_PASS_V(nir, nir_recompute_io_bases,
-              nir_var_shader_in | nir_var_shader_out);
+              (nir->info.stage != MESA_SHADER_VERTEX ||
+               renumber_vs_inputs ? nir_var_shader_in : 0) |
+              nir_var_shader_out);
 
    /* nir_io_add_const_offset_to_base needs actual constants. */
    NIR_PASS_V(nir, nir_opt_constant_folding);
