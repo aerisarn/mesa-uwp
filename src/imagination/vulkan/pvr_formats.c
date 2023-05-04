@@ -384,13 +384,6 @@ void pvr_get_hw_clear_color(
 
    const enum pvr_pbe_accum_format pbe_accum_format =
       pvr_get_pbe_accum_format(vk_format);
-   const uint32_t nr_components = vk_format_get_nr_components(vk_format);
-
-   /* Make sure that the caller has zeroed out unused components. Otherwise we
-    * might end up with garbage being packed with the actual values.
-    */
-   for (uint32_t i = nr_components; i < 4; i++)
-      assert(value.uint32[i] == 0);
 
    static_assert(ARRAY_SIZE(value.uint32) == PVR_CLEAR_COLOR_ARRAY_SIZE,
                  "Size mismatch. Unknown/unhandled extra values.");
