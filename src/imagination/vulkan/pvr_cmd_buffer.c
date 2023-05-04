@@ -182,7 +182,6 @@ static void pvr_cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
    memset(&cmd_buffer->scissor_words, 0, sizeof(cmd_buffer->scissor_words));
 
    cmd_buffer->usage_flags = 0;
-   cmd_buffer->state.status = VK_SUCCESS;
 }
 
 static void pvr_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
@@ -228,8 +227,6 @@ static VkResult pvr_cmd_buffer_create(struct pvr_device *device,
    util_dynarray_init(&cmd_buffer->scissor_array, NULL);
    util_dynarray_init(&cmd_buffer->deferred_csb_commands, NULL);
    util_dynarray_init(&cmd_buffer->deferred_clears, NULL);
-
-   cmd_buffer->state.status = VK_SUCCESS;
 
    list_inithead(&cmd_buffer->sub_cmds);
    list_inithead(&cmd_buffer->bo_list);
@@ -393,10 +390,8 @@ pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
                            size,
                            cache_line_size,
                            &suballoc_bo);
-   if (result != VK_SUCCESS) {
-      cmd_buffer->state.status = result;
-      return result;
-   }
+   if (result != VK_SUCCESS)
+      return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
    list_add(&suballoc_bo->link, &cmd_buffer->bo_list);
 
@@ -422,10 +417,8 @@ pvr_cmd_buffer_upload_usc(struct pvr_cmd_buffer *const cmd_buffer,
 
    result =
       pvr_gpu_upload_usc(device, code, code_size, code_alignment, &suballoc_bo);
-   if (result != VK_SUCCESS) {
-      cmd_buffer->state.status = result;
-      return result;
-   }
+   if (result != VK_SUCCESS)
+      return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
    list_add(&suballoc_bo->link, &cmd_buffer->bo_list);
 
@@ -456,10 +449,8 @@ VkResult pvr_cmd_buffer_upload_pds(struct pvr_cmd_buffer *const cmd_buffer,
                                code_alignment,
                                min_alignment,
                                pds_upload_out);
-   if (result != VK_SUCCESS) {
-      cmd_buffer->state.status = result;
-      return result;
-   }
+   if (result != VK_SUCCESS)
+      return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
    list_add(&pds_upload_out->pvr_bo->link, &cmd_buffer->bo_list);
 
@@ -1763,10 +1754,8 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
                                                    data,
                                                    query_indices_size,
                                                    &query_bo);
-            if (result != VK_SUCCESS) {
-               state->status = result;
-               return result;
-            }
+            if (result != VK_SUCCESS)
+               return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
             query_pool = gfx_sub_cmd->query_pool;
          }
@@ -1778,10 +1767,8 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
 
       if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
          result = pvr_csb_emit_return(&gfx_sub_cmd->control_stream);
-         if (result != VK_SUCCESS) {
-            state->status = result;
-            return result;
-         }
+         if (result != VK_SUCCESS)
+            return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
          break;
       }
@@ -1795,41 +1782,31 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
        */
 
       result = pvr_cmd_buffer_upload_tables(device, cmd_buffer, gfx_sub_cmd);
-      if (result != VK_SUCCESS) {
-         state->status = result;
-         return result;
-      }
+      if (result != VK_SUCCESS)
+         return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
       if (pvr_sub_cmd_gfx_requires_split_submit(gfx_sub_cmd)) {
          result = pvr_sub_cmd_gfx_build_terminate_ctrl_stream(device,
                                                               cmd_buffer,
                                                               gfx_sub_cmd);
-         if (result != VK_SUCCESS) {
-            state->status = result;
-            return result;
-         }
+         if (result != VK_SUCCESS)
+            return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
       }
 
       result = pvr_cmd_buffer_emit_ppp_state(cmd_buffer,
                                              &gfx_sub_cmd->control_stream);
-      if (result != VK_SUCCESS) {
-         state->status = result;
-         return result;
-      }
+      if (result != VK_SUCCESS)
+         return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
       result = pvr_csb_emit_terminate(&gfx_sub_cmd->control_stream);
-      if (result != VK_SUCCESS) {
-         state->status = result;
-         return result;
-      }
+      if (result != VK_SUCCESS)
+         return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
       result = pvr_sub_cmd_gfx_job_init(&device->pdevice->dev_info,
                                         cmd_buffer,
                                         gfx_sub_cmd);
-      if (result != VK_SUCCESS) {
-         state->status = result;
-         return result;
-      }
+      if (result != VK_SUCCESS)
+         return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
       break;
    }
@@ -1841,10 +1818,8 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
       pvr_compute_generate_fence(cmd_buffer, compute_sub_cmd, true);
 
       result = pvr_csb_emit_terminate(&compute_sub_cmd->control_stream);
-      if (result != VK_SUCCESS) {
-         state->status = result;
-         return result;
-      }
+      if (result != VK_SUCCESS)
+         return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
       pvr_sub_cmd_compute_job_init(device->pdevice,
                                    cmd_buffer,
@@ -1877,10 +1852,8 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
     */
    if (sub_cmd->type == PVR_SUB_CMD_TYPE_GRAPHICS) {
       result = pvr_cmd_buffer_process_deferred_clears(cmd_buffer);
-      if (result != VK_SUCCESS) {
-         state->status = result;
-         return result;
-      }
+      if (result != VK_SUCCESS)
+         return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
    }
 
    if (query_pool) {
@@ -2010,8 +1983,8 @@ VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
    VkResult result;
 
    /* Check the current status of the buffer. */
-   if (state->status != VK_SUCCESS)
-      return state->status;
+   if (vk_command_buffer_has_error(&cmd_buffer->vk))
+      return vk_command_buffer_get_record_result(&cmd_buffer->vk);
 
    pvr_cmd_buffer_update_barriers(cmd_buffer, type);
 
@@ -2033,8 +2006,8 @@ VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
                        8,
                        VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!sub_cmd) {
-      state->status = vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-      return state->status;
+      return vk_command_buffer_set_error(&cmd_buffer->vk,
+                                         VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    sub_cmd->type = type;
@@ -2124,10 +2097,8 @@ VkResult pvr_cmd_buffer_alloc_mem(struct pvr_cmd_buffer *cmd_buffer,
 
    result =
       pvr_bo_suballoc(allocator, size, cache_line_size, false, &suballoc_bo);
-   if (result != VK_SUCCESS) {
-      cmd_buffer->state.status = result;
-      return result;
-   }
+   if (result != VK_SUCCESS)
+      return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
    list_add(&suballoc_bo->link, &cmd_buffer->bo_list);
 
@@ -2441,9 +2412,8 @@ pvr_cmd_buffer_setup_attachments(struct pvr_cmd_buffer *cmd_buffer,
                 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!info->attachments) {
-      /* Propagate VK_ERROR_OUT_OF_HOST_MEMORY to vkEndCommandBuffer */
-      state->status = vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-      return state->status;
+      return vk_command_buffer_set_error(&cmd_buffer->vk,
+                                         VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    for (uint32_t i = 0; i < pass->attachment_count; i++)
@@ -2703,8 +2673,8 @@ pvr_cmd_buffer_set_clear_values(struct pvr_cmd_buffer *cmd_buffer,
                    8,
                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
       if (!state->render_pass_info.clear_values) {
-         state->status = vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-         return state->status;
+         return vk_command_buffer_set_error(&cmd_buffer->vk,
+                                            VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
       memcpy(state->render_pass_info.clear_values,
@@ -2761,7 +2731,7 @@ static void pvr_emit_clear_words(struct pvr_cmd_buffer *const cmd_buffer,
 
    stream = pvr_csb_alloc_dwords(csb, vdm_state_size_in_dw);
    if (!stream) {
-      cmd_buffer->state.status = VK_ERROR_OUT_OF_HOST_MEMORY;
+      pvr_cmd_buffer_set_error_unwarned(cmd_buffer, csb->status);
       return;
    }
 
@@ -2889,10 +2859,11 @@ void pvr_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    if (result != VK_SUCCESS)
       return;
 
-   state->status =
-      pvr_init_render_targets(cmd_buffer->device, pass, framebuffer);
-   if (state->status != VK_SUCCESS)
+   result = pvr_init_render_targets(cmd_buffer->device, pass, framebuffer);
+   if (result != VK_SUCCESS) {
+      pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
       return;
+   }
 
    result = pvr_cmd_buffer_set_clear_values(cmd_buffer, pRenderPassBeginInfo);
    if (result != VK_SUCCESS)
@@ -5566,8 +5537,8 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
 
          uint32_t *vdm_state = pvr_csb_alloc_dwords(control_stream, num_dwords);
          if (!vdm_state) {
-            cmd_buffer->state.status = pvr_csb_get_status(control_stream);
-            return cmd_buffer->state.status;
+            result = pvr_csb_get_status(control_stream);
+            return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
          }
 
          cmd = (struct pvr_deferred_cs_command){
@@ -6791,9 +6762,8 @@ static VkResult pvr_execute_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
                 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!primary_sub_cmd) {
-      cmd_buffer->state.status =
-         vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-      return cmd_buffer->state.status;
+      return vk_command_buffer_set_error(&cmd_buffer->vk,
+                                         VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    primary_sub_cmd->type = sec_sub_cmd->type;
@@ -6899,10 +6869,8 @@ pvr_execute_graphics_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
 
          result = pvr_csb_copy(&primary_sub_cmd->gfx.control_stream,
                                &sec_sub_cmd->gfx.control_stream);
-         if (result != VK_SUCCESS) {
-            cmd_buffer->state.status = result;
-            return cmd_buffer->state.status;
-         }
+         if (result != VK_SUCCESS)
+            return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
       } else {
          result = pvr_execute_deferred_cmd_buffer(cmd_buffer, sec_cmd_buffer);
          if (result != VK_SUCCESS)
@@ -7575,8 +7543,7 @@ void pvr_CmdWaitEvents2(VkCommandBuffer commandBuffer,
    if (!vk_multialloc_alloc(&ma,
                             &cmd_buffer->vk.pool->alloc,
                             VK_SYSTEM_ALLOCATION_SCOPE_OBJECT)) {
-      cmd_buffer->state.status =
-         vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
+      vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return;
    }
 
@@ -7634,8 +7601,8 @@ VkResult pvr_EndCommandBuffer(VkCommandBuffer commandBuffer)
     */
    assert(cmd_buffer->vk.state == MESA_VK_COMMAND_BUFFER_STATE_RECORDING);
 
-   if (state->status != VK_SUCCESS)
-      return state->status;
+   if (vk_command_buffer_has_error(&cmd_buffer->vk))
+      return vk_command_buffer_get_record_result(&cmd_buffer->vk);
 
    /* TODO: We should be freeing all the resources, allocated for recording,
     * here.

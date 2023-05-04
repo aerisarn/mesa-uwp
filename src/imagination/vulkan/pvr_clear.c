@@ -750,9 +750,8 @@ VkResult pvr_pds_clear_vertex_shader_program_create_and_upload_data(
    if (!staging_buffer) {
       *pds_upload_out = (struct pvr_pds_upload){ 0 };
 
-      result = vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-      cmd_buffer->state.status = result;
-      return result;
+      return vk_command_buffer_set_error(&cmd_buffer->vk,
+                                         VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    pvr_pds_vertex_shader(program,
@@ -774,8 +773,7 @@ VkResult pvr_pds_clear_vertex_shader_program_create_and_upload_data(
 
       *pds_upload_out = (struct pvr_pds_upload){ 0 };
 
-      cmd_buffer->state.status = result;
-      return result;
+      return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
    }
 
    vk_free(&cmd_buffer->device->vk.alloc, staging_buffer);
@@ -826,9 +824,8 @@ VkResult pvr_pds_clear_rta_vertex_shader_program_create_and_upload_code(
    if (!staging_buffer) {
       *pds_upload_out = (struct pvr_pds_upload){ 0 };
 
-      result = vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-      cmd_buffer->state.status = result;
-      return result;
+      return vk_command_buffer_set_error(&cmd_buffer->vk,
+                                         VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    pvr_pds_vertex_shader(program,
@@ -850,8 +847,7 @@ VkResult pvr_pds_clear_rta_vertex_shader_program_create_and_upload_code(
 
       *pds_upload_out = (struct pvr_pds_upload){ 0 };
 
-      cmd_buffer->state.status = result;
-      return result;
+      return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
    }
 
    vk_free(&cmd_buffer->device->vk.alloc, staging_buffer);

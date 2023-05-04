@@ -681,8 +681,6 @@ struct pvr_cmd_buffer_draw_state {
 };
 
 struct pvr_cmd_buffer_state {
-   VkResult status;
-
    /* Pipeline binding. */
    const struct pvr_graphics_pipeline *gfx_pipeline;
 
@@ -1359,6 +1357,24 @@ static inline bool pvr_sub_cmd_gfx_requires_split_submit(
    return sub_cmd->job.run_frag && sub_cmd->framebuffer->layers > 1;
 }
 
+/* This function is intended to be used when the error being set has been
+ * returned from a function call, i.e. the error happened further down the
+ * stack. `vk_command_buffer_set_error()` should be used at the point an error
+ * occurs, i.e. VK_ERROR_* is being passed in.
+ * This ensures we only ever get the error printed once.
+ */
+static inline VkResult
+pvr_cmd_buffer_set_error_unwarned(struct pvr_cmd_buffer *cmd_buffer,
+                                  VkResult error)
+{
+   assert(error != VK_SUCCESS);
+
+   if (cmd_buffer->vk.record_result == VK_SUCCESS)
+      cmd_buffer->vk.record_result = error;
+
+   return error;
+}
+
 VkResult pvr_pds_fragment_program_create_and_upload(
    struct pvr_device *device,
    const VkAllocationCallbacks *allocator,
@@ -1530,18 +1546,20 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_render_pass,
 #define pvr_debug_ignored_stype(sType) \
    mesa_logd("%s: ignored VkStructureType %u\n", __func__, (sType))
 
-/* Debug helper macros. */
 #define PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer)                  \
    do {                                                                      \
       struct pvr_cmd_buffer *const _cmd_buffer = (cmd_buffer);               \
+      const VkResult _record_result =                                        \
+         vk_command_buffer_get_record_result(&_cmd_buffer->vk);              \
+                                                                             \
       if (_cmd_buffer->vk.state != MESA_VK_COMMAND_BUFFER_STATE_RECORDING) { \
          vk_errorf(_cmd_buffer,                                              \
                    VK_ERROR_OUT_OF_DEVICE_MEMORY,                            \
                    "Command buffer is not in recording state");              \
          return;                                                             \
-      } else if (_cmd_buffer->state.status < VK_SUCCESS) {                   \
+      } else if (_record_result < VK_SUCCESS) {                              \
          vk_errorf(_cmd_buffer,                                              \
-                   _cmd_buffer->state.status,                                \
+                   _record_result,                                           \
                    "Skipping function as command buffer has "                \
                    "previous build error");                                  \
          return;                                                             \

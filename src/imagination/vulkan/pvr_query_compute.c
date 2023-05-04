@@ -561,8 +561,8 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
                            8,
                            VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!const_buffer) {
-      cmd_buffer->state.status = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-      return cmd_buffer->state.status;
+      return vk_command_buffer_set_error(&cmd_buffer->vk,
+                                         VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    /* clang-format off */
@@ -592,8 +592,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
                                   &image_sampler_state[image_sampler_idx][0]);
       if (result != VK_SUCCESS) {
          vk_free(&cmd_buffer->vk.pool->alloc, const_buffer);
-         cmd_buffer->state.status = result;
-         return result;
+         return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
       }
 
       image_sampler_idx++;
@@ -609,8 +608,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
                                   &image_sampler_state[image_sampler_idx][0]);
       if (result != VK_SUCCESS) {
          vk_free(&cmd_buffer->vk.pool->alloc, const_buffer);
-         cmd_buffer->state.status = result;
-         return result;
+         return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
       }
 
       image_sampler_idx++;
@@ -645,9 +643,8 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
       if (!image_sampler_state) {
          vk_free(&cmd_buffer->vk.pool->alloc, const_buffer);
 
-         cmd_buffer->state.status =
-            vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-         return cmd_buffer->state.status;
+         return vk_command_buffer_set_error(&cmd_buffer->vk,
+                                            VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
 #define SAMPLER_ARR_2D(_arr, _i, _j) \
@@ -671,8 +668,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
          &SAMPLER_ARR_2D(image_sampler_state, image_sampler_idx, 0));
       if (result != VK_SUCCESS) {
          vk_free(&cmd_buffer->vk.pool->alloc, const_buffer);
-         cmd_buffer->state.status = result;
-         return result;
+         return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
       }
 
       image_sampler_idx++;
@@ -689,8 +685,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
             &SAMPLER_ARR_2D(image_sampler_state, image_sampler_idx, 0));
          if (result != VK_SUCCESS) {
             vk_free(&cmd_buffer->vk.pool->alloc, const_buffer);
-            cmd_buffer->state.status = result;
-            return result;
+            return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
          }
 
          image_sampler_idx++;
@@ -745,9 +740,8 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
       if (!image_sampler_state) {
          vk_free(&cmd_buffer->vk.pool->alloc, const_buffer);
 
-         cmd_buffer->state.status =
-            vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-         return cmd_buffer->state.status;
+         return vk_command_buffer_set_error(&cmd_buffer->vk,
+                                            VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
       memcpy(&SAMPLER_ARR_2D(image_sampler_state, image_sampler_idx, 0),
@@ -769,8 +763,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
             &SAMPLER_ARR_2D(image_sampler_state, image_sampler_idx, 0));
          if (result != VK_SUCCESS) {
             vk_free(&cmd_buffer->vk.pool->alloc, const_buffer);
-            cmd_buffer->state.status = result;
-            return result;
+            return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
          }
 
          image_sampler_idx++;
@@ -787,8 +780,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
          &SAMPLER_ARR_2D(image_sampler_state, image_sampler_idx, 0));
       if (result != VK_SUCCESS) {
          vk_free(&cmd_buffer->vk.pool->alloc, const_buffer);
-         cmd_buffer->state.status = result;
-         return result;
+         return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
       }
 
       image_sampler_idx++;

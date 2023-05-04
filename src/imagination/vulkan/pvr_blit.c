@@ -58,8 +58,7 @@ pvr_transfer_cmd_alloc(struct pvr_cmd_buffer *cmd_buffer)
                             8U,
                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!transfer_cmd) {
-      cmd_buffer->state.status =
-         vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
+      vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return NULL;
    }
 
@@ -1638,8 +1637,7 @@ static VkResult pvr_clear_color_attachment_static(
       list_del(&const_shareds_buffer->link);
       pvr_bo_suballoc_free(const_shareds_buffer);
 
-      cmd_buffer->state.status = result;
-      return result;
+      return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
    }
 
    list_add(&pvr_bo->link, &cmd_buffer->bo_list);
@@ -1687,9 +1685,8 @@ static VkResult pvr_add_deferred_rta_clear(struct pvr_cmd_buffer *cmd_buffer,
                                           struct pvr_transfer_cmd,
                                           rect->layerCount);
    if (!transfer_cmd_list) {
-      cmd_buffer->state.status =
-         vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-      return cmd_buffer->state.status;
+      return vk_command_buffer_set_error(&cmd_buffer->vk,
+                                         VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    /* From the Vulkan 1.3.229 spec VUID-VkClearAttachment-aspectMask-00019:
@@ -1922,7 +1919,7 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
                                              &template,
                                              &pvr_bo);
          if (result != VK_SUCCESS) {
-            cmd_buffer->state.status = result;
+            pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
             return;
          }
 
@@ -2002,7 +1999,7 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
                                             depth,
                                             &vertices_bo);
          if (result != VK_SUCCESS) {
-            cmd_buffer->state.status = result;
+            pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
             return;
          }
 
@@ -2020,7 +2017,7 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
                      base_array_layer,
                      &pds_program_code_upload);
                if (result != VK_SUCCESS) {
-                  cmd_buffer->state.status = result;
+                  pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
                   return;
                }
 
@@ -2063,8 +2060,8 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
          vdm_cs_buffer =
             pvr_csb_alloc_dwords(&sub_cmd->control_stream, vdm_cs_size_in_dw);
          if (!vdm_cs_buffer) {
-            result = vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
-            cmd_buffer->state.status = result;
+            pvr_cmd_buffer_set_error_unwarned(cmd_buffer,
+                                              sub_cmd->control_stream.status);
             return;
          }
 
