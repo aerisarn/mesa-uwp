@@ -2596,6 +2596,29 @@ init_driver_workarounds(struct zink_screen *screen)
    }
 }
 
+static void
+init_optimal_keys(struct zink_screen *screen)
+{
+   screen->optimal_keys = !screen->need_decompose_attrs &&
+                          screen->info.have_EXT_non_seamless_cube_map &&
+                          screen->info.have_EXT_provoking_vertex &&
+                          !screen->driconf.inline_uniforms &&
+                          !screen->driver_workarounds.no_linestipple &&
+                          !screen->driver_workarounds.no_linesmooth &&
+                          !screen->driver_workarounds.no_hw_gl_point &&
+                          !screen->driver_workarounds.lower_robustImageAccess2 &&
+                          !screen->driconf.emulate_point_smooth &&
+                          !screen->driver_workarounds.needs_zs_shader_swizzle;
+   if (!screen->optimal_keys)
+      screen->info.have_EXT_graphics_pipeline_library = false;
+
+   /* EXT_shader_object can't yet be used for feedback loop, so this must be per-app enabled */
+   if (!screen->driconf.zink_shader_object_enable)
+      screen->info.have_EXT_shader_object = false;
+   if (screen->info.have_EXT_shader_object)
+      screen->have_full_ds3 = true;
+}
+
 static struct disk_cache *
 zink_get_disk_shader_cache(struct pipe_screen *_screen)
 {
@@ -3094,24 +3117,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    simple_mtx_init(&screen->copy_context_lock, mtx_plain);
 
-   screen->optimal_keys = !screen->need_decompose_attrs &&
-                          screen->info.have_EXT_non_seamless_cube_map &&
-                          screen->info.have_EXT_provoking_vertex &&
-                          !screen->driconf.inline_uniforms &&
-                          !screen->driver_workarounds.no_linestipple &&
-                          !screen->driver_workarounds.no_linesmooth &&
-                          !screen->driver_workarounds.no_hw_gl_point &&
-                          !screen->driver_workarounds.lower_robustImageAccess2 &&
-                          !screen->driconf.emulate_point_smooth &&
-                          !screen->driver_workarounds.needs_zs_shader_swizzle;
-   if (!screen->optimal_keys)
-      screen->info.have_EXT_graphics_pipeline_library = false;
-
-   /* EXT_shader_object can't yet be used for feedback loop, so this must be per-app enabled */
-   if (!screen->driconf.zink_shader_object_enable)
-      screen->info.have_EXT_shader_object = false;
-   if (screen->info.have_EXT_shader_object)
-      screen->have_full_ds3 = true;
+   init_optimal_keys(screen);
 
    screen->screen_id = p_atomic_inc_return(&num_screens);
    zink_tracing = screen->instance_info.have_EXT_debug_utils &&
