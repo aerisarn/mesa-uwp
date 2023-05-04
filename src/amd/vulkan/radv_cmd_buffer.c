@@ -2563,13 +2563,14 @@ radv_emit_conservative_rast_mode(struct radv_cmd_buffer *cmd_buffer)
 
       if (d->vk.rs.conservative_mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
          const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
+         const bool uses_inner_coverage = ps && ps->info.ps.reads_fully_covered;
 
          pa_sc_conservative_rast = S_028C4C_PREZ_AA_MASK_ENABLE(1) | S_028C4C_POSTZ_AA_MASK_ENABLE(1) |
                                    S_028C4C_CENTROID_SAMPLE_OVERRIDE(1);
 
          /* Inner coverage requires underestimate conservative rasterization. */
          if (d->vk.rs.conservative_mode == VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT &&
-             !ps->info.ps.reads_fully_covered) {
+             !uses_inner_coverage) {
             pa_sc_conservative_rast |= S_028C4C_OVER_RAST_ENABLE(1) |
                                        S_028C4C_UNDER_RAST_SAMPLE_SELECT(1) |
                                        S_028C4C_PBB_UNCERTAINTY_REGION_ENABLE(1);
@@ -2637,7 +2638,7 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
    }
 
    if (pdevice->rad_info.gfx_level >= GFX10_3 &&
-       (cmd_buffer->state.ms.sample_shading_enable || ps->info.ps.reads_sample_mask_in)) {
+       (cmd_buffer->state.ms.sample_shading_enable || (ps && ps->info.ps.reads_sample_mask_in))) {
       /* Make sure sample shading is enabled even if only MSAA1x is used because the SAMPLE_ITER
        * combiner is in passthrough mode if PS_ITER_SAMPLE is 0, and it uses the per-draw rate. The
        * default VRS rate when sample shading is enabled is 1x1.
@@ -2677,11 +2678,13 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
    radeon_set_context_reg(cmd_buffer->cs, R_028A4C_PA_SC_MODE_CNTL_1, pa_sc_mode_cntl_1);
 
    /* Pass the number of samples to the fragment shader because it might be needed. */
-   const struct radv_userdata_info *loc =
-      radv_get_user_sgpr(cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT], AC_UD_PS_NUM_SAMPLES);
-   if (loc->sgpr_idx != -1) {
-      uint32_t base_reg = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.user_data_0;
-      radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, rasterization_samples);
+   if (cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]) {
+      const struct radv_userdata_info *loc =
+         radv_get_user_sgpr(cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT], AC_UD_PS_NUM_SAMPLES);
+      if (loc->sgpr_idx != -1) {
+         uint32_t base_reg = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.user_data_0;
+         radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, rasterization_samples);
+      }
    }
 }
 
@@ -4433,7 +4436,7 @@ radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
                          S_028BE0_COVERED_CENTROID_IS_CENTER(pdevice->rad_info.gfx_level >= GFX10_3);
    }
 
-   pa_sc_aa_config |= S_028BE0_COVERAGE_TO_SHADER_SELECT(ps->info.ps.reads_fully_covered);
+   pa_sc_aa_config |= S_028BE0_COVERAGE_TO_SHADER_SELECT(ps && ps->info.ps.reads_fully_covered);
 
    /* On GFX11, DB_Z_INFO.NUM_SAMPLES should always match MSAA_EXPOSED_SAMPLES. It affects VRS,
     * occlusion queries and Primitive Ordered Pixel Shading if depth and stencil are not bound.
@@ -4485,7 +4488,7 @@ radv_emit_attachment_feedback_loop_enable(struct radv_cmd_buffer *cmd_buffer)
    /* When a depth/stencil attachment is used inside feedback loops, use LATE_Z to make sure shader
     * invocations read the correct value.
     */
-   if (!uses_ds_feedback_loop && (ps->info.ps.early_fragment_test || !ps->info.ps.writes_memory)) {
+   if (!uses_ds_feedback_loop && ps && (ps->info.ps.early_fragment_test || !ps->info.ps.writes_memory)) {
       z_order = V_02880C_EARLY_Z_THEN_LATE_Z;
    } else {
       z_order = V_02880C_LATE_Z;
@@ -9031,7 +9034,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    struct radv_shader_part *ps_epilog = NULL;
    bool late_scissor_emission;
 
-   if (cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog) {
+   if (cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT] &&
+       cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog) {
       if (cmd_buffer->state.graphics_pipeline->ps_epilog) {
          ps_epilog = cmd_buffer->state.graphics_pipeline->ps_epilog;
       } else if ((cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline ||
