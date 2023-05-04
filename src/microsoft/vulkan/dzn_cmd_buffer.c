@@ -1134,23 +1134,6 @@ dzn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
       const VkImageSubresourceRange *range = &ibarrier->subresourceRange;
       VK_FROM_HANDLE(dzn_image, image, ibarrier->image);
 
-      if (image->mem->swapchain_res != image->res) {
-         /* We use placed resource's simple model, in which only one resource
-          * pointing to a given heap is active at a given time. To make the
-          * resource active we need to add an aliasing barrier.
-          */
-         D3D12_RESOURCE_BARRIER aliasing_barrier = {
-            .Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING,
-            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            .Aliasing = {
-               .pResourceBefore = NULL,
-               .pResourceAfter = image->res,
-            },
-         };
-
-         ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &aliasing_barrier);
-      }
-
       VkImageLayout old_layout = ibarrier->oldLayout;
       VkImageLayout new_layout = ibarrier->newLayout;
       if ((image->vk.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&

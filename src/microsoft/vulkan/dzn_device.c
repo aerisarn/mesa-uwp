@@ -2559,8 +2559,8 @@ dzn_device_memory_destroy(struct dzn_device_memory *mem,
    if (mem->heap)
       ID3D12Heap_Release(mem->heap);
 
-   if (mem->swapchain_res)
-      ID3D12Resource_Release(mem->swapchain_res);
+   if (mem->dedicated_res)
+      ID3D12Resource_Release(mem->dedicated_res);
 
    vk_object_base_finish(&mem->base);
    vk_free2(&device->vk.alloc, pAllocator, mem);
@@ -2574,19 +2574,6 @@ dzn_device_memory_create(struct dzn_device *device,
 {
    struct dzn_physical_device *pdevice =
       container_of(device->vk.physical, struct dzn_physical_device, vk);
-
-   struct dzn_device_memory *mem =
-      vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*mem), 8,
-                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (!mem)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_object_base_init(&device->vk, &mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY);
-
-   /* The Vulkan 1.0.33 spec says "allocationSize must be greater than 0". */
-   assert(pAllocateInfo->allocationSize > 0);
-
-   mem->size = pAllocateInfo->allocationSize;
 
    const struct dzn_buffer *buffer = NULL;
    const struct dzn_image *image = NULL;
@@ -2636,12 +2623,26 @@ dzn_device_memory_create(struct dzn_device *device,
          D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
    }
 
-   heap_desc.SizeInBytes = ALIGN_POT(heap_desc.SizeInBytes, heap_desc.Alignment);
-   heap_desc.Flags =
-      dzn_physical_device_get_heap_flags_for_mem_type(pdevice,
-                                                      pAllocateInfo->memoryTypeIndex);
+   if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+      image = NULL;
 
-   /* TODO: Unsure about this logic??? */
+   struct dzn_device_memory *mem =
+      vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*mem), 8,
+                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!mem)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   vk_object_base_init(&device->vk, &mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY);
+
+   /* The Vulkan 1.0.33 spec says "allocationSize must be greater than 0". */
+   assert(pAllocateInfo->allocationSize > 0);
+
+   mem->size = pAllocateInfo->allocationSize;
+
+   heap_desc.SizeInBytes = ALIGN_POT(heap_desc.SizeInBytes, heap_desc.Alignment);
+   if (!image && !buffer)
+      heap_desc.Flags =
+         dzn_physical_device_get_heap_flags_for_mem_type(pdevice, pAllocateInfo->memoryTypeIndex);
    heap_desc.Properties.Type = D3D12_HEAP_TYPE_CUSTOM;
    heap_desc.Properties.MemoryPoolPreference =
       ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) &&
@@ -2656,35 +2657,87 @@ dzn_device_memory_create(struct dzn_device *device,
       heap_desc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE;
    }
 
-   if (FAILED(ID3D12Device1_CreateHeap(device->dev, &heap_desc,
-                                       &IID_ID3D12Heap,
-                                       (void **)&mem->heap))) {
-      dzn_device_memory_destroy(mem, pAllocator);
-      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   if (image) {
+      if (device->dev10 && image->castable_format_count > 0) {
+         D3D12_RESOURCE_DESC1 desc = {
+            .Dimension = image->desc.Dimension,
+            .Alignment = image->desc.Alignment,
+            .Width = image->desc.Width,
+            .Height = image->desc.Height,
+            .DepthOrArraySize = image->desc.DepthOrArraySize,
+            .MipLevels = image->desc.MipLevels,
+            .Format = image->desc.Format,
+            .SampleDesc = image->desc.SampleDesc,
+            .Layout = image->desc.Layout,
+            .Flags = image->desc.Flags,
+         };
+         if (FAILED(ID3D12Device10_CreateCommittedResource3(device->dev10, &heap_desc.Properties,
+                                                            heap_desc.Flags, &desc,
+                                                            D3D12_BARRIER_LAYOUT_COMMON,
+                                                            NULL, NULL,
+                                                            image->castable_format_count,
+                                                            image->castable_formats,
+                                                            &IID_ID3D12Resource,
+                                                            (void **)&mem->dedicated_res))) {
+            dzn_device_memory_destroy(mem, pAllocator);
+            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
+      } else if (FAILED(ID3D12Device1_CreateCommittedResource(device->dev, &heap_desc.Properties,
+                                                              heap_desc.Flags, &image->desc,
+                                                              D3D12_RESOURCE_STATE_COMMON,
+                                                              NULL,
+                                                              &IID_ID3D12Resource,
+                                                              (void **)&mem->dedicated_res))) {
+         dzn_device_memory_destroy(mem, pAllocator);
+         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      }
+   } else if (buffer) {
+      if (FAILED(ID3D12Device1_CreateCommittedResource(device->dev, &heap_desc.Properties,
+                                                       heap_desc.Flags, &buffer->desc,
+                                                       D3D12_RESOURCE_STATE_COMMON,
+                                                       NULL,
+                                                       &IID_ID3D12Resource,
+                                                       (void **)&mem->dedicated_res))) {
+         dzn_device_memory_destroy(mem, pAllocator);
+         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      }
+   } else {
+      if (FAILED(ID3D12Device1_CreateHeap(device->dev, &heap_desc,
+                                          &IID_ID3D12Heap,
+                                          (void **)&mem->heap))) {
+         dzn_device_memory_destroy(mem, pAllocator);
+         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      }
    }
 
    if ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) &&
        !(heap_desc.Flags & D3D12_HEAP_FLAG_DENY_BUFFERS)){
-      D3D12_RESOURCE_DESC res_desc = { 0 };
-      res_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-      res_desc.Format = DXGI_FORMAT_UNKNOWN;
-      res_desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-      res_desc.Width = heap_desc.SizeInBytes;
-      res_desc.Height = 1;
-      res_desc.DepthOrArraySize = 1;
-      res_desc.MipLevels = 1;
-      res_desc.SampleDesc.Count = 1;
-      res_desc.SampleDesc.Quality = 0;
-      res_desc.Flags = D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-      res_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-      HRESULT hr = ID3D12Device1_CreatePlacedResource(device->dev, mem->heap, 0, &res_desc,
-                                                      D3D12_RESOURCE_STATE_COMMON,
-                                                      NULL,
-                                                      &IID_ID3D12Resource,
-                                                      (void **)&mem->map_res);
-      if (FAILED(hr)) {
-         dzn_device_memory_destroy(mem, pAllocator);
-         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      assert(!image);
+      if (buffer) {
+         mem->map_res = mem->dedicated_res;
+         ID3D12Resource_AddRef(mem->map_res);
+      } else {
+         D3D12_RESOURCE_DESC res_desc = { 0 };
+         res_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+         res_desc.Format = DXGI_FORMAT_UNKNOWN;
+         res_desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+         res_desc.Width = heap_desc.SizeInBytes;
+         res_desc.Height = 1;
+         res_desc.DepthOrArraySize = 1;
+         res_desc.MipLevels = 1;
+         res_desc.SampleDesc.Count = 1;
+         res_desc.SampleDesc.Quality = 0;
+         res_desc.Flags = D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+         res_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+         HRESULT hr = ID3D12Device1_CreatePlacedResource(device->dev, mem->heap, 0, &res_desc,
+                                                         D3D12_RESOURCE_STATE_COMMON,
+                                                         NULL,
+                                                         &IID_ID3D12Resource,
+                                                         (void **)&mem->map_res);
+         if (FAILED(hr)) {
+            dzn_device_memory_destroy(mem, pAllocator);
+            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
       }
    }
 
@@ -3025,7 +3078,6 @@ dzn_GetBufferMemoryRequirements2(VkDevice dev,
    struct dzn_physical_device *pdev =
       container_of(device->vk.physical, struct dzn_physical_device, vk);
 
-   /* uh, this is grossly over-estimating things */
    uint32_t alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
    VkDeviceSize size = buffer->size;
 
@@ -3044,9 +3096,8 @@ dzn_GetBufferMemoryRequirements2(VkDevice dev,
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
          VkMemoryDedicatedRequirements *requirements =
             (VkMemoryDedicatedRequirements *)ext;
-         /* TODO: figure out dedicated allocations */
-         requirements->prefersDedicatedAllocation = false;
          requirements->requiresDedicatedAllocation = false;
+         requirements->prefersDedicatedAllocation = false;
          break;
       }
 
@@ -3055,13 +3106,6 @@ dzn_GetBufferMemoryRequirements2(VkDevice dev,
          break;
       }
    }
-
-#if 0
-   D3D12_RESOURCE_ALLOCATION_INFO GetResourceAllocationInfo(
-      UINT                      visibleMask,
-      UINT                      numResourceDescs,
-      const D3D12_RESOURCE_DESC *pResourceDescs);
-#endif
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -3077,14 +3121,21 @@ dzn_BindBufferMemory2(VkDevice _device,
       VK_FROM_HANDLE(dzn_device_memory, mem, pBindInfos[i].memory);
       VK_FROM_HANDLE(dzn_buffer, buffer, pBindInfos[i].buffer);
 
-      if (FAILED(ID3D12Device1_CreatePlacedResource(device->dev, mem->heap,
-                                                   pBindInfos[i].memoryOffset,
-                                                   &buffer->desc,
-                                                   D3D12_RESOURCE_STATE_COMMON,
-                                                   NULL,
-                                                   &IID_ID3D12Resource,
-                                                   (void **)&buffer->res)))
-         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      if (mem->dedicated_res) {
+         assert(pBindInfos[i].memoryOffset == 0 &&
+                buffer->size == mem->size);
+         buffer->res = mem->dedicated_res;
+         ID3D12Resource_AddRef(buffer->res);
+      } else {
+         if (FAILED(ID3D12Device1_CreatePlacedResource(device->dev, mem->heap,
+                                                       pBindInfos[i].memoryOffset,
+                                                       &buffer->desc,
+                                                       D3D12_RESOURCE_STATE_COMMON,
+                                                       NULL,
+                                                       &IID_ID3D12Resource,
+                                                       (void **)&buffer->res)))
+            return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
 
       buffer->gpuva = ID3D12Resource_GetGPUVirtualAddress(buffer->res);
 

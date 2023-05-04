@@ -329,10 +329,10 @@ struct dzn_device_memory {
 
    struct list_head link;
 
-   /* Swapchain image resource, NULL if the memory is not backed by
-    * a DXGI swapchain.
+   /* Dedicated image/buffer resource. Can be used for import (e.g. from a swapchain)
+    * or just from a dedicated allocation request.
     */
-   ID3D12Resource *swapchain_res;
+   ID3D12Resource *dedicated_res;
 
    ID3D12Heap *heap;
    VkDeviceSize size;
@@ -1040,7 +1040,6 @@ struct dzn_image {
    D3D12_RESOURCE_DESC desc;
    ID3D12Resource *res;
    struct dzn_device_memory *mem;
-   VkDeviceSize mem_offset;
    uint32_t castable_format_count;
    const DXGI_FORMAT *castable_formats;
 
