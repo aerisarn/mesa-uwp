@@ -10,8 +10,9 @@ traces:
       checksum: acf06d1e321e1f3f1e2819c25656c6c3
   unigine/heaven-scene1-low-d3d9.trace-dxgi:
     vk-radv-raven:
-      label: [no-perf]
+      label: [no-perf, skip]
       checksum: e7631312bf602e9c0de94320441d83c7
+      text: "flaky, starting from around https://mesa.pages.freedesktop.org/-/mesa/-/jobs/40335547/"
   unigine/tropics-d3d9.trace-dxgi:
     vk-radv-raven:
       label: [no-perf, slow, skip]
