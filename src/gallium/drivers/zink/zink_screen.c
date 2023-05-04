@@ -2536,6 +2536,10 @@ init_driver_workarounds(struct zink_screen *screen)
    default:
       break;
    }
+   /* use same mechanics if dynamic state is supported */
+   screen->driver_workarounds.always_feedback_loop |= screen->info.have_EXT_attachment_feedback_loop_dynamic_state;
+   screen->driver_workarounds.always_feedback_loop_zs |= screen->info.have_EXT_attachment_feedback_loop_dynamic_state;
+
    /* these drivers cannot handle OOB gl_Layer values, and therefore need clamping in shader.
     * TODO: Vulkan extension that details whether vulkan driver can handle OOB layer values
     */
