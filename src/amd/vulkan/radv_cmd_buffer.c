@@ -4242,6 +4242,12 @@ radv_emit_color_blend(struct radv_cmd_buffer *cmd_buffer)
                                   S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_NONE);
          }
       }
+
+      /* Disable RB+ blend optimizations on GFX11 when alpha-to-coverage is enabled. */
+      if (gfx_level >= GFX11 && d->vk.ms.alpha_to_coverage_enable) {
+         sx_mrt_blend_opt[0] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_NONE) |
+                               S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_NONE);
+      }
    }
 
    radeon_set_context_reg_seq(cmd_buffer->cs, R_028780_CB_BLEND0_CONTROL, MAX_RTS);
@@ -4558,7 +4564,8 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE |
                  RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK |
-                 RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_EQUATION))
+                 RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_EQUATION |
+                 RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE))
       radv_emit_color_blend(cmd_buffer);
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE)
