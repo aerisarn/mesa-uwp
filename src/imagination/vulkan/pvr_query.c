@@ -115,6 +115,9 @@ void pvr_DestroyQueryPool(VkDevice _device,
    PVR_FROM_HANDLE(pvr_query_pool, pool, queryPool);
    PVR_FROM_HANDLE(pvr_device, device, _device);
 
+   if (!pool)
+      return;
+
    pvr_bo_free(device, pool->availability_buffer);
    pvr_bo_free(device, pool->result_buffer);
 

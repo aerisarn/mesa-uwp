@@ -675,6 +675,9 @@ void pvr_DestroyDescriptorSetLayout(VkDevice _device,
    PVR_FROM_HANDLE(pvr_descriptor_set_layout, layout, _set_layout);
    PVR_FROM_HANDLE(pvr_device, device, _device);
 
+   if (!layout)
+      return;
+
    pvr_descriptor_set_layout_free(device, pAllocator, layout);
 }
 
@@ -1030,6 +1033,9 @@ void pvr_DestroyPipelineLayout(VkDevice _device,
 {
    PVR_FROM_HANDLE(pvr_device, device, _device);
    PVR_FROM_HANDLE(pvr_pipeline_layout, layout, _pipelineLayout);
+
+   if (!layout)
+      return;
 
    vk_object_free(&device->vk, pAllocator, layout);
 }

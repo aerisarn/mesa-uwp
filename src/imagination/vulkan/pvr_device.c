@@ -1960,6 +1960,9 @@ void pvr_DestroyDevice(VkDevice _device,
 {
    PVR_FROM_HANDLE(pvr_device, device, _device);
 
+   if (!device)
+      return;
+
    pvr_robustness_buffer_finish(device);
    pvr_spm_finish_scratch_buffer_store(device);
    pvr_queues_destroy(device);
