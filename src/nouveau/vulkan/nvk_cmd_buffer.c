@@ -158,7 +158,7 @@ nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
    /* TODO: The new uAPI should just take addresses */
    struct nouveau_ws_bo *bo = buffer->mem->bo;
    uint64_t bo_offset = nvk_buffer_address(buffer, offset) - bo->offset;
-   assert(bo_offset < NVC0_IB_ENTRY_1_NO_PREFETCH);
+   assert(range < NVC0_IB_ENTRY_1_NO_PREFETCH);
 
    struct nvk_cmd_push push = {
       .bo = bo,
