@@ -2613,7 +2613,7 @@ init_optimal_keys(struct zink_screen *screen)
       screen->info.have_EXT_graphics_pipeline_library = false;
 
    /* EXT_shader_object can't yet be used for feedback loop, so this must be per-app enabled */
-   if (!screen->driconf.zink_shader_object_enable)
+   if (!screen->driconf.zink_shader_object_enable || !screen->optimal_keys)
       screen->info.have_EXT_shader_object = false;
    if (screen->info.have_EXT_shader_object)
       screen->have_full_ds3 = true;
