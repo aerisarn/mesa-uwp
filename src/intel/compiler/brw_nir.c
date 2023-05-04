@@ -1639,6 +1639,9 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_lower_alu_to_scalar, NULL, NULL);
 
    while (OPT(nir_opt_algebraic_distribute_src_mods)) {
+      if (is_scalar)
+         OPT(nir_opt_constant_folding);
+
       OPT(nir_copy_prop);
       OPT(nir_opt_dce);
       OPT(nir_opt_cse);
