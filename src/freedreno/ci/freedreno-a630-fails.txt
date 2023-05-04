@@ -418,7 +418,6 @@ dEQP-VK.transform_feedback.simple.lines_or_triangles_line_strip_1,Fail
 dEQP-VK.transform_feedback.simple.lines_or_triangles_line_strip_3,Fail
 dEQP-VK.transform_feedback.simple.lines_or_triangles_triangle_strip_1,Fail
 dEQP-VK.transform_feedback.simple.lines_or_triangles_triangle_strip_3,Fail
-gmem-dEQP-VK.api.buffer_marker.graphics.default_mem.top_of_pipe.overwrite.64_offset_24,Fail
 gmem-dEQP-VK.binding_model.descriptor_buffer.multiple.compute_comp_buffers1_sets3,Crash
 gmem-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_geom_buffers3_sets1,Crash
 gmem-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_miss_buffers1_sets1,Crash
