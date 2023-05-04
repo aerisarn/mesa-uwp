@@ -267,8 +267,7 @@ struct pvr_descriptor_set_layout_binding {
    VkDescriptorType type;
 
    /* "M" in layout(set = N, binding = M)
-    * Can be used to index bindings in the descriptor_set_layout. Not the
-    * original user specified binding number as those might be non-contiguous.
+    * Can be used to index bindings in the descriptor_set_layout.
     */
    uint32_t binding_number;
 

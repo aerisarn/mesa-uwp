@@ -511,10 +511,7 @@ VkResult pvr_CreateDescriptorSetLayout(
       uint8_t shader_stages = 0;
 
       internal_binding->type = binding->descriptorType;
-      /* The binding_numbers can be non-contiguous so we ignore the user
-       * specified binding numbers and make them contiguous ourselves.
-       */
-      internal_binding->binding_number = bind_num;
+      internal_binding->binding_number = binding->binding;
 
       /* From Vulkan spec 1.2.189:
        *
