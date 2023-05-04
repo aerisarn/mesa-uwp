@@ -50,8 +50,6 @@ struct vk_physical_device {
    /** Instance which is the parent of this physical device */
    struct vk_instance *instance;
 
-   struct vk_features supported_features;
-
    /** Table of all supported device extensions
     *
     * This table is initialized from the `supported_extensions` parameter
@@ -63,6 +61,18 @@ struct vk_physical_device {
     * device setup work has already been done.
     */
    struct vk_device_extension_table supported_extensions;
+
+   /** Table of all supported features
+    *
+    * This table is initialized from the `supported_features` parameter
+    * passed to `vk_physical_device_init()` if not `NULL`.  If a `NULL`
+    * features table is passed, all features are initialized to false and
+    * it's the responsibility of the driver to populate the table.  This may
+    * be useful if the driver's physical device initialization order is such
+    * that feature support cannot be determined until significant physical
+    * device setup work has already been done.
+    */
+   struct vk_features supported_features;
 
    /** Physical-device-level dispatch table */
    struct vk_physical_device_dispatch_table dispatch_table;
