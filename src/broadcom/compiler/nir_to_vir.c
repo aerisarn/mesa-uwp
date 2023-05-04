@@ -2097,7 +2097,7 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
                 NIR_PASS(progress, s, nir_opt_dead_cf);
                 NIR_PASS(progress, s, nir_opt_cse);
                 NIR_PASS(progress, s, nir_opt_peephole_select, 0, false, false);
-                NIR_PASS(progress, s, nir_opt_peephole_select, 8, true, true);
+                NIR_PASS(progress, s, nir_opt_peephole_select, 24, true, true);
                 NIR_PASS(progress, s, nir_opt_algebraic);
                 NIR_PASS(progress, s, nir_opt_constant_folding);
 
