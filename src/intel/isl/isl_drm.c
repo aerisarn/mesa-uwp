@@ -219,6 +219,14 @@ isl_drm_modifier_get_score(const struct intel_device_info *devinfo,
          return 0;
 
       return 3;
+   case I915_FORMAT_MOD_4_TILED_DG2_RC_CCS:
+      if (!intel_device_info_is_dg2(devinfo))
+         return 0;
+
+      if (INTEL_DEBUG(DEBUG_NO_CCS))
+         return 0;
+
+      return 4;
    }
 }
 
