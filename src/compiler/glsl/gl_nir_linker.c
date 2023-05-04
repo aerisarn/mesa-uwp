@@ -1298,7 +1298,8 @@ gl_nir_link_glsl(const struct gl_constants *consts,
             .can_remove_var = can_remove_uniform,
          };
          nir_remove_dead_variables(shader->Program->nir,
-                                   nir_var_uniform | nir_var_image,
+                                   nir_var_uniform | nir_var_image |
+                                   nir_var_mem_ubo | nir_var_mem_ssbo,
                                    &opts);
       }
    }
