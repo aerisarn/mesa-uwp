@@ -862,6 +862,10 @@ lp_build_reduce_filter_3d(struct lp_build_context *bld,
                           LLVMValueRef *v111,
                           LLVMValueRef *out);
 
+struct lp_type
+lp_build_texel_type(struct lp_type texel_type,
+                    const struct util_format_description *format_desc);
+
 const float *lp_build_sample_aniso_filter_table(void);
 #ifdef __cplusplus
 }

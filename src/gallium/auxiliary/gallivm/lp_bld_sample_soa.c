@@ -3255,7 +3255,7 @@ lp_build_sample_nop(struct gallivm_state *gallivm,
 }
 
 
-static struct lp_type
+struct lp_type
 lp_build_texel_type(struct lp_type texel_type,
                     const struct util_format_description *format_desc)
 {
