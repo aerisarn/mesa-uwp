@@ -444,6 +444,7 @@ a618-traces-performance:
     DTB: sm8350-hdk
     GPU_VERSION: freedreno-a660
     RUNNER_TAG: mesa-ci-x86-64-lava-sm8350-hdk
+    VK_DRIVER: freedreno
 
 a660_gl:
   extends:
@@ -453,6 +454,26 @@ a660_gl:
   parallel: 2
   variables:
     DEQP_SUITE: freedreno-a660
+
+a660_vk:
+  extends:
+    - .lava-test-deqp:arm64
+    - .collabora-turnip-rules
+    - .lava-sm8350-hdk
+  parallel: 5
+  variables:
+    DEQP_SUITE: freedreno-a660-vk
+    DEQP_FRACTION: 2
+
+a660_vk_full:
+  extends:
+    - a660_vk
+    - .collabora-turnip-manual-rules
+  parallel: 3
+  timeout: 3h
+  variables:
+    DEQP_SUITE: freedreno-a660-vk-full
+    JOB_TIMEOUT: 180
 
 # 6 devices (2023-07-06)
 .a630-test:
