@@ -7595,14 +7595,8 @@ VkResult pvr_EndCommandBuffer(VkCommandBuffer commandBuffer)
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
    VkResult result;
 
-   /* From the Vulkan 1.0 spec:
-    *
-    * CommandBuffer must be in the recording state.
-    */
-   assert(cmd_buffer->vk.state == MESA_VK_COMMAND_BUFFER_STATE_RECORDING);
-
    if (vk_command_buffer_has_error(&cmd_buffer->vk))
-      return vk_command_buffer_get_record_result(&cmd_buffer->vk);
+      return vk_command_buffer_end(&cmd_buffer->vk);
 
    /* TODO: We should be freeing all the resources, allocated for recording,
     * here.
@@ -7611,7 +7605,7 @@ VkResult pvr_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    result = pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
    if (result != VK_SUCCESS)
-      return result;
+      pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
    return vk_command_buffer_end(&cmd_buffer->vk);
 }
