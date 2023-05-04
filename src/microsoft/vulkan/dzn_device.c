@@ -118,6 +118,8 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_external_memory                   = true,
 #ifdef _WIN32
       .KHR_external_memory_win32             = true,
+#else
+      .KHR_external_memory_fd                = true,
 #endif
       .KHR_image_format_list                 = true,
       .KHR_imageless_framebuffer             = true,
@@ -2739,9 +2741,6 @@ dzn_device_memory_create(struct dzn_device *device,
          const VkImportMemoryFdInfoKHR *imp =
             (const VkImportMemoryFdInfoKHR *)ext;
          switch (imp->handleType) {
-         case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT:
-            imported_from_d3d11 = true;
-            FALLTHROUGH;
          case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
          case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT:
          case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT:
@@ -2749,7 +2748,7 @@ dzn_device_memory_create(struct dzn_device *device,
          default:
             return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
          }
-         import_handle = (HANDLE)(intptr_t)imp->handle;
+         import_handle = (HANDLE)(intptr_t)imp->fd;
          break;
       }
 #endif
@@ -3817,13 +3816,45 @@ dzn_GetMemoryWin32HandleKHR(VkDevice device,
       return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
    }
 }
+#else
+VKAPI_ATTR VkResult VKAPI_CALL
+dzn_GetMemoryFdKHR(VkDevice device,
+                   const VkMemoryGetFdInfoKHR *pGetFdInfo,
+                   int *pFd)
+{
+   VK_FROM_HANDLE(dzn_device_memory, mem, pGetFdInfo->memory);
+   if (!mem->export_handle)
+      return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
+   switch (pGetFdInfo->handleType) {
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT:
+      *pFd = (int)(intptr_t)mem->export_handle;
+      mem->export_handle = (HANDLE)(intptr_t)-1;
+      return VK_SUCCESS;
+   default:
+      return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+   }
+}
+#endif
+
+#ifdef _WIN32
 VKAPI_ATTR VkResult VKAPI_CALL
 dzn_GetMemoryWin32HandlePropertiesKHR(VkDevice _device,
                                       VkExternalMemoryHandleTypeFlagBits handleType,
                                       HANDLE handle,
-                                      VkMemoryWin32HandlePropertiesKHR *pMemoryWin32HandleProperties)
+                                      VkMemoryWin32HandlePropertiesKHR *pProperties)
 {
+#else
+VKAPI_ATTR VkResult VKAPI_CALL
+dzn_GetMemoryFdPropertiesKHR(VkDevice _device,
+                             VkExternalMemoryHandleTypeFlagBits handleType,
+                             int fd,
+                             VkMemoryFdPropertiesKHR *pProperties)
+{
+   HANDLE handle = (HANDLE)(intptr_t)fd;
+#endif
    VK_FROM_HANDLE(dzn_device, device, _device);
    IUnknown *opened_object;
    if (FAILED(ID3D12Device_OpenSharedHandle(device->dev, handle, &IID_IUnknown, (void **)&opened_object)))
@@ -3871,7 +3902,7 @@ dzn_GetMemoryWin32HandlePropertiesKHR(VkDevice _device,
       if ((heap_desc.Flags & required_flags) != required_flags)
          continue;
 
-      pMemoryWin32HandleProperties->memoryTypeBits |= (1 << i);
+      pProperties->memoryTypeBits |= (1 << i);
    }
    result = VK_SUCCESS;
 
@@ -3883,4 +3914,3 @@ cleanup:
       ID3D12Heap_Release(heap);
    return result;
 }
-#endif
