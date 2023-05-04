@@ -93,6 +93,7 @@ zink_debug_options[] = {
    { "map", ZINK_DEBUG_MAP, "Track amount of mapped VRAM" },
    { "flushsync", ZINK_DEBUG_FLUSHSYNC, "Force synchronous flushes/presents" },
    { "noshobj", ZINK_DEBUG_NOSHOBJ, "Disable EXT_shader_object" },
+   { "optimal_keys", ZINK_DEBUG_OPTIMAL_KEYS, "Debug/use optimal_keys" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -2609,6 +2610,32 @@ init_optimal_keys(struct zink_screen *screen)
                           !screen->driver_workarounds.lower_robustImageAccess2 &&
                           !screen->driconf.emulate_point_smooth &&
                           !screen->driver_workarounds.needs_zs_shader_swizzle;
+   if (!screen->optimal_keys && zink_debug & ZINK_DEBUG_OPTIMAL_KEYS) {
+      fprintf(stderr, "The following criteria are preventing optimal_keys enablement:");
+      if (screen->need_decompose_attrs)
+         fprintf(stderr, "missing vertex attribute formats\n");
+      if (screen->driconf.inline_uniforms)
+         fprintf(stderr, "uniform inlining must be disabled (set ZINK_INLINE_UNIFORMS=0 in your env)\n");
+      CHECK_OR_PRINT(have_EXT_line_rasterization);
+      CHECK_OR_PRINT(line_rast_feats.stippledBresenhamLines);
+      CHECK_OR_PRINT(feats.features.geometryShader);
+      CHECK_OR_PRINT(feats.features.sampleRateShading);
+      CHECK_OR_PRINT(have_EXT_non_seamless_cube_map);
+      CHECK_OR_PRINT(have_EXT_provoking_vertex);
+      if (screen->driver_workarounds.no_linesmooth)
+         fprintf(stderr, "driver does not support smooth lines\n");
+      if (screen->driver_workarounds.no_hw_gl_point)
+         fprintf(stderr, "driver does not support hardware GL_POINT\n");
+      CHECK_OR_PRINT(rb2_feats.robustImageAccess2);
+      CHECK_OR_PRINT(feats.features.robustBufferAccess);
+      CHECK_OR_PRINT(rb_image_feats.robustImageAccess);
+      if (screen->driconf.emulate_point_smooth)
+         fprintf(stderr, "smooth point emulation is enabled\n");
+      if (screen->driver_workarounds.needs_zs_shader_swizzle)
+         fprintf(stderr, "Z/S shader swizzle workaround is enabled\n");
+      mesa_logw("zink: force-enabling optimal_keys despite missing features. Good luck!");
+      screen->optimal_keys = true;
+   }
    if (!screen->optimal_keys)
       screen->info.have_EXT_graphics_pipeline_library = false;
 

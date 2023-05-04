@@ -309,6 +309,8 @@ variable:
     Force synchronous flushes/presents
   ``noshobj``
     Disable EXT_shader_object
+  ``optimal_keys``
+    Debug/use optimal_keys
 
 Vulkan Validation Layers
 ^^^^^^^^^^^^^^^^^^^^^^^^
