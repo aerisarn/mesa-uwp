@@ -37,6 +37,12 @@
 #include "util/hash_table.h"
 #include "util/set.h"
 
+#define vk_pipeline_cache_log(cache, ...)                                      \
+   if (cache->internal)                                                        \
+      vk_logw(VK_LOG_OBJS(cache->base.device), __VA_ARGS__);                   \
+   else                                                                        \
+      vk_logw(VK_LOG_OBJS(cache), __VA_ARGS__)
+
 static bool
 vk_raw_data_cache_object_serialize(struct vk_pipeline_cache_object *object,
                                    struct blob *blob)
@@ -191,21 +197,19 @@ vk_pipeline_cache_object_serialize(struct vk_pipeline_cache *cache,
    }
 
    if (!object->ops->serialize(object, blob)) {
-      vk_logw(VK_LOG_OBJS(cache),
-              "Failed to serialize pipeline cache object");
+      vk_pipeline_cache_log(cache, "Failed to serialize pipeline cache object");
       return false;
    }
 
    size_t size = blob->size - start;
    if (size > UINT32_MAX) {
-      vk_logw(VK_LOG_OBJS(cache),
-              "Skipping giant (4 GiB or larger) object");
+      vk_pipeline_cache_log(cache, "Skipping giant (4 GiB or larger) object");
       return false;
    }
 
    if (blob->out_of_memory) {
-      vk_logw(VK_LOG_OBJS(cache),
-              "Insufficient memory for pipeline cache data");
+      vk_pipeline_cache_log(cache,
+                            "Insufficient memory for pipeline cache data");
       return false;
    }
 
@@ -225,8 +229,8 @@ vk_pipeline_cache_object_deserialize(struct vk_pipeline_cache *cache,
       ops = &vk_raw_data_cache_object_ops;
 
    if (unlikely(ops->deserialize == NULL)) {
-      vk_logw(VK_LOG_OBJS(cache),
-              "Pipeline cache object cannot be deserialized");
+      vk_pipeline_cache_log(cache,
+                            "Pipeline cache object cannot be deserialized");
       return NULL;
    }
 
@@ -361,8 +365,8 @@ vk_pipeline_cache_lookup_object(struct vk_pipeline_cache *cache,
                                               data_obj->data,
                                               data_obj->data_size, ops);
       if (real_object == NULL) {
-         vk_logw(VK_LOG_OBJS(cache),
-           "Deserializing pipeline cache object failed");
+         vk_pipeline_cache_log(cache,
+                               "Deserializing pipeline cache object failed");
 
          vk_pipeline_cache_remove_object(cache, hash, object);
          return NULL;
@@ -476,7 +480,7 @@ vk_pipeline_cache_add_nir(struct vk_pipeline_cache *cache,
 
    nir_serialize(&blob, nir, false);
    if (blob.out_of_memory) {
-      vk_logw(VK_LOG_OBJS(cache), "Ran out of memory serializing NIR shader");
+      vk_pipeline_cache_log(cache, "Ran out of memory serializing NIR shader");
       blob_finish(&blob);
       return;
    }
@@ -557,8 +561,7 @@ vk_pipeline_cache_load(struct vk_pipeline_cache *cache,
                                                     data, data_size, ops);
 
       if (object == NULL) {
-         vk_logw(VK_LOG_OBJS(cache),
-                 "Failed to load pipeline cache object");
+         vk_pipeline_cache_log(cache, "Failed to load pipeline cache object");
          continue;
       }
 
@@ -587,6 +590,7 @@ vk_pipeline_cache_create(struct vk_device *device,
       return NULL;
 
    cache->flags = pCreateInfo->flags;
+   cache->internal = info->internal;
 
    struct VkPhysicalDeviceProperties pdevice_props;
    device->physical->dispatch_table.GetPhysicalDeviceProperties(

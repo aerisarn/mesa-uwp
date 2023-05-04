@@ -163,6 +163,9 @@ struct vk_pipeline_cache {
    /** Protects object_cache */
    simple_mtx_t lock;
 
+   /* Whether this cache is created by the driver. */
+   bool internal;
+
    struct set *object_cache;
 };
 
@@ -178,6 +181,8 @@ struct vk_pipeline_cache_create_info {
 
    /** If true, ignore VK_ENABLE_PIPELINE_CACHE and enable anyway */
    bool force_enable;
+
+   bool internal;
 };
 
 struct vk_pipeline_cache *

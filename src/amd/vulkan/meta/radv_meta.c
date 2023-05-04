@@ -339,10 +339,13 @@ radv_load_meta_pipeline(struct radv_device *device)
    void *data = NULL;
    bool ret = false;
    int fd = -1;
-   VkResult result = VK_SUCCESS;
 
    VkPipelineCacheCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,
+   };
+   struct vk_pipeline_cache_create_info info = {
+      .pCreateInfo = &create_info,
+      .internal = true,
    };
 
    if (!radv_builtin_cache_path(path))
@@ -363,9 +366,10 @@ radv_load_meta_pipeline(struct radv_device *device)
    create_info.pInitialData = data;
 
 fail:
-   result = vk_common_CreatePipelineCache(radv_device_to_handle(device), &create_info, NULL,
-                                          &device->meta_state.cache);
-   if (result == VK_SUCCESS) {
+   device->meta_state.cache =
+      vk_pipeline_cache_to_handle(vk_pipeline_cache_create(&device->vk, &info, NULL));
+
+   if (device->meta_state.cache) {
       device->meta_state.initial_cache_entries = num_cache_entries(device->meta_state.cache);
       ret = device->meta_state.initial_cache_entries > 0;
    }

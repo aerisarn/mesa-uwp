@@ -2956,7 +2956,9 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_trivial_batch_bo_and_scratch_pool;
 
-   struct vk_pipeline_cache_create_info pcc_info = { };
+   struct vk_pipeline_cache_create_info pcc_info = {
+      .internal = true,
+   };
    device->default_pipeline_cache =
       vk_pipeline_cache_create(&device->vk, &pcc_info, NULL);
    if (!device->default_pipeline_cache) {
