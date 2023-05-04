@@ -452,6 +452,12 @@ struct intel_device_info
       } sram, vram;
    } mem;
 
+   struct {
+      uint8_t coherent;
+      uint8_t scanout;
+      uint8_t writeback;
+   } pat;
+
    BITSET_DECLARE(workarounds, INTEL_WA_NUM);
    /** @} */
 };
