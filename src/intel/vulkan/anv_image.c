@@ -1198,10 +1198,10 @@ add_all_surfaces_explicit_layout(
 
    /* We support a restricted set of images with modifiers.
     *
-    * With aux usage,
+    * With aux usage on platforms without flat-CCS,
     * - Format plane count must be 1.
     * - Memory plane count must be 2.
-    * Without aux usage,
+    * Otherwise,
     * - Each format plane must map to a distint memory plane.
     *
     * For the other cases, currently there is no way to properly map memory
@@ -1213,7 +1213,7 @@ add_all_surfaces_explicit_layout(
    else
       assert(!(image->vk.aspects & ~VK_IMAGE_ASPECT_PLANES_BITS_ANV));
 
-   if (mod_has_aux)
+   if (mod_has_aux && !devinfo->has_flat_ccs)
       assert(image->n_planes == 1 && mod_plane_count == 2);
    else
       assert(image->n_planes == mod_plane_count);
@@ -1253,7 +1253,15 @@ add_all_surfaces_explicit_layout(
          return result;
 
       if (mod_has_aux) {
-         const VkSubresourceLayout *aux_layout = &drm_info->pPlaneLayouts[1];
+         assert(!isl_drm_modifier_get_info(
+                  drm_info->drmFormatModifier)->supports_clear_color);
+
+         const VkSubresourceLayout flat_ccs_layout = {
+            .offset = ANV_OFFSET_IMPLICIT,
+         };
+         const VkSubresourceLayout *aux_layout = devinfo->has_flat_ccs ?
+            &flat_ccs_layout : &drm_info->pPlaneLayouts[1];
+
          result = add_aux_surface_if_supported(device, image, plane,
                                                format_plane,
                                                format_list_info,
@@ -1262,6 +1270,8 @@ add_all_surfaces_explicit_layout(
                                                isl_extra_usage_flags);
          if (result != VK_SUCCESS)
             return result;
+
+         assert(isl_aux_usage_has_ccs(image->planes[plane].aux_usage));
       }
    }
 
