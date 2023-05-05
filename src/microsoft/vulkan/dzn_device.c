@@ -901,9 +901,7 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
    const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
    VkExternalImageFormatProperties *external_props = NULL;
 
-   *properties = (VkImageFormatProperties2) {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,
-   };
+   properties->imageFormatProperties = (VkImageFormatProperties) { 0 };
 
    VkImageUsageFlags usage = info->usage;
 
