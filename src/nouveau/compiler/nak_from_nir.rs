@@ -782,7 +782,7 @@ impl<'a> ShaderFromNir<'a> {
                     dim: dim,
                     mask: mask,
                 })));
-            } else if tex.op == nir_texop_txf {
+            } else if tex.op == nir_texop_txf || tex.op == nir_texop_txf_ms {
                 assert!(offset_mode != Tld4OffsetMode::PerPx);
                 self.instrs.push(Instr::new(Op::Tld(OpTld {
                     dsts: dsts,
@@ -790,7 +790,7 @@ impl<'a> ShaderFromNir<'a> {
                     srcs: srcs,
                     dim: dim,
                     lod_mode: lod_mode,
-                    is_ms: false,
+                    is_ms: tex.op == nir_texop_txf_ms,
                     offset: offset_mode == Tld4OffsetMode::AddOffI,
                     mask: mask,
                 })));

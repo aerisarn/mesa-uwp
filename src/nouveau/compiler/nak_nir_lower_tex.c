@@ -54,7 +54,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex, const struct nak_compiler *nak)
           *
           * TODO: Use F2I.U32.RNE
           */
-         if (tex->op != nir_texop_txf)
+         if (tex->op != nir_texop_txf && tex->op != nir_texop_txf_ms)
             arr_idx = nir_f2u32(b, nir_fadd_imm(b, arr_idx, 0.5));
 
          arr_idx = nir_umin(b, arr_idx, nir_imm_int(b, UINT16_MAX));
@@ -62,7 +62,11 @@ lower_tex(nir_builder *b, nir_tex_instr *tex, const struct nak_compiler *nak)
    }
 
    enum nak_nir_lod_mode lod_mode = NAK_NIR_LOD_MODE_AUTO;
-   if (lod != NULL) {
+   if (tex->op == nir_texop_txf_ms) {
+      /* Multisampled textures do not have miplevels */
+      lod_mode = NAK_NIR_LOD_MODE_ZERO;
+      lod = NULL; /* We don't need this */
+   } else if (lod != NULL) {
       nir_scalar lod_s = { .def = lod, .comp = 0 };
       if (nir_scalar_is_const(lod_s) &&
           nir_scalar_as_uint(lod_s) == 0) {
