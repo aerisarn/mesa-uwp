@@ -1622,9 +1622,8 @@ visit_load_image(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef coord_val = get_src(bld_base, instr->src[1]);
    LLVMValueRef coords[5];
-   struct lp_img_params params;
+   struct lp_img_params params = { 0 };
 
-   memset(&params, 0, sizeof(params));
    params.target = glsl_sampler_to_pipe(nir_intrinsic_image_dim(instr),
                                         nir_intrinsic_image_array(instr));
    for (unsigned i = 0; i < 4; i++)
@@ -1656,9 +1655,8 @@ visit_store_image(struct lp_build_nir_context *bld_base,
    LLVMValueRef coord_val = get_src(bld_base, instr->src[1]);
    LLVMValueRef in_val = get_src(bld_base, instr->src[3]);
    LLVMValueRef coords[5];
-   struct lp_img_params params;
+   struct lp_img_params params = { 0 };
 
-   memset(&params, 0, sizeof(params));
    params.target = glsl_sampler_to_pipe(nir_intrinsic_image_dim(instr), nir_intrinsic_image_array(instr));
    for (unsigned i = 0; i < 4; i++)
       coords[i] = LLVMBuildExtractValue(builder, coord_val, i, "");
@@ -1743,12 +1741,10 @@ visit_atomic_image(struct lp_build_nir_context *bld_base,
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
-   struct lp_img_params params;
+   struct lp_img_params params = { 0 };
    LLVMValueRef coord_val = get_src(bld_base, instr->src[1]);
    LLVMValueRef in_val = get_src(bld_base, instr->src[3]);
    LLVMValueRef coords[5];
-
-   memset(&params, 0, sizeof(params));
 
    params.target = glsl_sampler_to_pipe(nir_intrinsic_image_dim(instr),
                                         nir_intrinsic_image_array(instr));
@@ -2418,7 +2414,7 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
    LLVMValueRef coords[5];
    LLVMValueRef offsets[3] = { NULL };
    LLVMValueRef explicit_lod = NULL, ms_index = NULL;
-   struct lp_sampler_params params;
+   struct lp_sampler_params params = { 0 };
    struct lp_derivatives derivs;
    nir_deref_instr *texture_deref_instr = NULL;
    nir_deref_instr *sampler_deref_instr = NULL;
@@ -2426,7 +2422,6 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
    LLVMValueRef texel[NIR_MAX_VEC_COMPONENTS];
    LLVMValueRef coord_undef = LLVMGetUndef(bld_base->base.vec_type);
    unsigned coord_vals = is_aos(bld_base) ? 1 : instr->coord_components;
-   memset(&params, 0, sizeof(params));
 
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
