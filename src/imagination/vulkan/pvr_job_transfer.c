@@ -889,10 +889,10 @@ pvr_pbe_setup_modify_defaults(const struct pvr_transfer_cmd_surface *dst,
 
    render_params->min_x_clip = (uint32_t)clip_rect->offset.x;
    render_params->max_x_clip =
-      (uint32_t)clip_rect->offset.x + clip_rect->extent.width;
+      (uint32_t)clip_rect->offset.x + clip_rect->extent.width - 1U;
    render_params->min_y_clip = (uint32_t)clip_rect->offset.y;
    render_params->max_y_clip =
-      (uint32_t)clip_rect->offset.y + clip_rect->extent.height;
+      (uint32_t)clip_rect->offset.y + clip_rect->extent.height - 1U;
 
    return VK_SUCCESS;
 }
