@@ -566,6 +566,14 @@ read_data_file(FILE *file)
          if (matched == 2)
             acthd = ((uint64_t)reg << 32) | reg2;
 
+         matched = sscanf(line, "  ACTHD_LDW: 0x%08x\n", &reg);
+         if (matched == 1)
+            acthd = reg;
+
+         matched = sscanf(line, "  ACTHD_UDW: 0x%08x\n", &reg);
+         if (matched == 1)
+            acthd |= (uint64_t)reg << 32;
+
          matched = sscanf(line, "  PGTBL_ER: 0x%08x\n", &reg);
          if (matched == 1 && reg)
             print_pgtbl_err(reg, &devinfo);
