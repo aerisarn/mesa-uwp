@@ -197,6 +197,7 @@ static VkResult pvr_pbe_src_format_pick_depth(
 
    switch (src_format) {
    case VK_FORMAT_D24_UNORM_S8_UINT:
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
       *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_DMRG_D24S8_D24S8;
       break;
 
