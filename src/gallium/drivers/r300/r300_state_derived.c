@@ -648,11 +648,11 @@ static uint32_t r300_get_border_color(enum pipe_format format,
                                       const float border[4],
                                       boolean is_r500)
 {
-    const struct util_format_description *desc;
+    const struct util_format_description *desc = util_format_description(format);
     float border_swizzled[4] = {0};
     union util_color uc = {0};
 
-    desc = util_format_description(format);
+    assume(desc);
 
     /* Do depth formats first. */
     if (util_format_is_depth_or_stencil(format)) {
