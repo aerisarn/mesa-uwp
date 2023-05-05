@@ -94,6 +94,7 @@ zink_debug_options[] = {
    { "flushsync", ZINK_DEBUG_FLUSHSYNC, "Force synchronous flushes/presents" },
    { "noshobj", ZINK_DEBUG_NOSHOBJ, "Disable EXT_shader_object" },
    { "optimal_keys", ZINK_DEBUG_OPTIMAL_KEYS, "Debug/use optimal_keys" },
+   { "noopt", ZINK_DEBUG_NOOPT, "Disable async optimized pipeline compiles" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -2593,6 +2594,8 @@ init_driver_workarounds(struct zink_screen *screen)
       screen->driver_workarounds.disable_optimized_compile = true;
       break;
    default:
+      if (zink_debug & ZINK_DEBUG_NOOPT)
+         screen->driver_workarounds.disable_optimized_compile = true;
       break;
    }
 }
