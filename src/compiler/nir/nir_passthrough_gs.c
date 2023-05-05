@@ -186,6 +186,11 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
    nir_foreach_shader_out_variable(var, prev_stage) {
       assert(!var->data.patch);
 
+      /* input vars can't be created for those */
+      if (var->data.location == VARYING_SLOT_LAYER ||
+          var->data.location == VARYING_SLOT_VIEW_INDEX)
+         continue;
+
       char name[100];
       if (var->name)
          snprintf(name, sizeof(name), "in_%s", var->name);
