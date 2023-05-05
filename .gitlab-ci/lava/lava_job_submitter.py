@@ -37,7 +37,7 @@ from lava.utils import (
     LogSectionType,
     call_proxy,
     fatal_err,
-    generate_lava_yaml_payload,
+    generate_lava_job_definition,
     hide_sensitive_data,
     print_log,
     setup_lava_proxy,
@@ -399,9 +399,7 @@ class LAVAJobSubmitter(PathResolver):
             minutes=self.job_timeout_min
         )
 
-        job_definition_stream = StringIO()
-        lava_yaml.dump(generate_lava_yaml_payload(self), job_definition_stream)
-        job_definition = job_definition_stream.getvalue()
+        job_definition = generate_lava_job_definition(self)
 
         if self.dump_yaml:
             self.dump_job_definition(job_definition)
