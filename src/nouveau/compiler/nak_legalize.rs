@@ -66,12 +66,6 @@ impl<'a> LegalizeInstr<'a> {
         }
     }
 
-    pub fn mov_src_if_not_ssa(&mut self, src: &mut Src, file: RegFile) {
-        if src.as_ssa().is_none() {
-            self.mov_src(src, file);
-        }
-    }
-
     pub fn swap_srcs_if_not_reg(&mut self, x: &mut Src, y: &mut Src) {
         if !src_is_reg(x) && src_is_reg(y) {
             std::mem::swap(x, y);
@@ -91,9 +85,22 @@ impl<'a> LegalizeInstr<'a> {
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
                 self.mov_src_if_not_reg(src2, RegFile::GPR);
             }
+            Op::FMnMx(op) => {
+                let [ref mut src0, ref mut src1] = op.srcs;
+                self.swap_srcs_if_not_reg(src0, src1);
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
+            }
             Op::FMul(op) => {
                 let [ref mut src0, ref mut src1] = op.srcs;
                 self.swap_srcs_if_not_reg(src0, src1);
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
+            }
+            Op::FSet(op) => {
+                let [ref mut src0, ref mut src1] = op.srcs;
+                if !src_is_reg(src0) && src_is_reg(src1) {
+                    std::mem::swap(src0, src1);
+                    op.cmp_op = op.cmp_op.flip();
+                }
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
             }
             Op::FSetP(op) => {
@@ -104,6 +111,13 @@ impl<'a> LegalizeInstr<'a> {
                 }
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
             }
+            Op::MuFu(_) => (), /* Nothing to do */
+            Op::DAdd(op) => {
+                let [ref mut src0, ref mut src1] = op.srcs;
+                self.swap_srcs_if_not_reg(src0, src1);
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
+            }
+            Op::IAbs(_) | Op::INeg(_) => (), /* Nothing to do */
             Op::IAdd3(op) => {
                 let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
                 self.swap_srcs_if_not_reg(src0, src1);
@@ -116,6 +130,17 @@ impl<'a> LegalizeInstr<'a> {
                 self.swap_srcs_if_not_reg(src0, src1);
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
                 self.mov_src_if_not_reg(src2, RegFile::GPR);
+            }
+            Op::IMad64(op) => {
+                let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
+                self.swap_srcs_if_not_reg(src0, src1);
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
+                self.mov_src_if_not_reg(src2, RegFile::GPR);
+            }
+            Op::IMnMx(op) => {
+                let [ref mut src0, ref mut src1] = op.srcs;
+                self.swap_srcs_if_not_reg(src0, src1);
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
             }
             Op::ISetP(op) => {
                 let [ref mut src0, ref mut src1] = op.srcs;
@@ -157,6 +182,15 @@ impl<'a> LegalizeInstr<'a> {
                 self.mov_src_if_not_reg(&mut op.low, RegFile::GPR);
                 self.mov_src_if_not_reg(&mut op.high, RegFile::GPR);
             }
+            Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::Mov(_) => (),
+            Op::Sel(op) => {
+                let [ref mut src0, ref mut src1] = op.srcs;
+                if !src_is_reg(src0) && src_is_reg(src1) {
+                    std::mem::swap(src0, src1);
+                    op.cond.src_mod = op.cond.src_mod.bnot();
+                }
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
+            }
             Op::PLop3(op) => {
                 /* Fold constants if we can */
                 for lop in &mut op.ops {
@@ -191,24 +225,30 @@ impl<'a> LegalizeInstr<'a> {
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
                 self.mov_src_if_not_reg(src2, RegFile::GPR);
             }
-            Op::ALd(_) | Op::ASt(_) | Op::Ld(_) | Op::St(_) => {
-                for src in instr.srcs_mut() {
-                    self.mov_src_if_not_reg(src, RegFile::GPR);
+            _ => {
+                let src_types = instr.src_types();
+                for (i, src) in instr.srcs_mut().iter_mut().enumerate() {
+                    match src_types[i] {
+                        SrcType::SSA => {
+                            if src.as_ssa().is_none() {
+                                self.mov_src(src, RegFile::GPR);
+                            }
+                        }
+                        SrcType::GPR => {
+                            self.mov_src_if_not_reg(src, RegFile::GPR);
+                        }
+                        SrcType::ALU
+                        | SrcType::F32
+                        | SrcType::F64
+                        | SrcType::I32 => {
+                            panic!("ALU srcs must be legalized explicitly");
+                        }
+                        SrcType::Pred => {
+                            panic!("Predicates must be legalized explicitly");
+                        }
+                    }
                 }
             }
-            Op::Tex(_)
-            | Op::Tld(_)
-            | Op::Tld4(_)
-            | Op::Tmml(_)
-            | Op::Txd(_)
-            | Op::Txq(_)
-            | Op::SuLd(_)
-            | Op::SuSt(_) => {
-                for src in instr.srcs_mut() {
-                    self.mov_src_if_not_ssa(src, RegFile::GPR);
-                }
-            }
-            _ => (),
         }
 
         let mut vec_src_map: HashMap<SSARef, SSARef> = HashMap::new();
