@@ -1267,6 +1267,7 @@ struct dzn_event {
 struct dzn_sync {
    struct vk_sync vk;
    ID3D12Fence *fence;
+   HANDLE export_handle;
 };
 
 extern const struct vk_sync_type dzn_sync_type;
