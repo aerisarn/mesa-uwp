@@ -192,16 +192,12 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
       else
          snprintf(name, sizeof(name), "in_%d", var->data.driver_location);
 
-      nir_variable *in = nir_variable_create(nir, nir_var_shader_in,
-                                             glsl_array_type(var->type,
-                                                             array_size_for_prim(primitive_type),
-                                                             false),
-                                             name);
-      in->data.location = var->data.location;
-      in->data.location_frac = var->data.location_frac;
-      in->data.driver_location = var->data.driver_location;
-      in->data.interpolation = var->data.interpolation;
-      in->data.compact = var->data.compact;
+      nir_variable *in = nir_variable_clone(var, nir);
+      ralloc_free(in->name);
+      in->name = ralloc_strdup(in, name);
+      in->type = glsl_array_type(var->type, 4, false);
+      in->data.mode = nir_var_shader_in;
+      nir_shader_add_variable(nir, in);
 
       in_vars[num_inputs++] = in;
 
@@ -217,19 +213,11 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
       else
          snprintf(name, sizeof(name), "out_%d", var->data.driver_location);
 
-      nir_variable *out = nir_variable_create(nir, nir_var_shader_out,
-                                              var->type, name);
-      out->data.location = var->data.location;
-      out->data.location_frac = var->data.location_frac;
-      out->data.driver_location = var->data.driver_location;
-      out->data.interpolation = var->data.interpolation;
-      out->data.compact = var->data.compact;
-      out->data.is_xfb = var->data.is_xfb;
-      out->data.is_xfb_only = var->data.is_xfb_only;
-      out->data.explicit_xfb_buffer = var->data.explicit_xfb_buffer;
-      out->data.explicit_xfb_stride = var->data.explicit_xfb_stride;
-      out->data.xfb = var->data.xfb;
-      out->data.offset = var->data.offset;
+      nir_variable *out = nir_variable_clone(var, nir);
+      ralloc_free(out->name);
+      out->name = ralloc_strdup(out, name);
+      out->data.mode = nir_var_shader_out;
+      nir_shader_add_variable(nir, out);
 
       out_vars[num_outputs++] = out;
    }
