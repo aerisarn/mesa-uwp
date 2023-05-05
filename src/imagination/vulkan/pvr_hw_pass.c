@@ -821,6 +821,9 @@ pvr_copy_storage_details(struct pvr_renderpass_context *ctx,
       input_subpass->color_count + input_subpass->input_count;
    VkResult result;
 
+   if (max_rts == 0)
+      return VK_SUCCESS;
+
    hw_subpass->setup.mrt_resources =
       vk_zalloc(ctx->allocator,
                 sizeof(hw_subpass->setup.mrt_resources[0U]) * max_rts,
@@ -846,6 +849,9 @@ pvr_copy_storage_details(struct pvr_renderpass_context *ctx,
    }
 
    hw_subpass->setup.num_render_targets = input_subpass->color_count;
+
+   if (input_subpass->input_count == 0)
+      return VK_SUCCESS;
 
    /* For this subpass's input attachments. */
    hw_subpass->input_access = vk_alloc(ctx->allocator,
