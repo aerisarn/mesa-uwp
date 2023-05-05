@@ -433,8 +433,6 @@ panvk_physical_device_init(struct panvk_physical_device *device,
    }
 
    device->instance = instance;
-   assert(strlen(path) < ARRAY_SIZE(device->path));
-   strncpy(device->path, path, ARRAY_SIZE(device->path));
 
    if (instance->vk.enabled_extensions.KHR_display) {
       master_fd = open(drm_device->nodes[DRM_NODE_PRIMARY], O_RDWR | O_CLOEXEC);
