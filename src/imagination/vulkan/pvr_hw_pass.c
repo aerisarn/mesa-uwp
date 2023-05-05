@@ -2495,9 +2495,8 @@ VkResult pvr_create_renderpass_hwsetup(
                      __typeof__(*subpass_map),
                      pass->subpass_count);
 
-   if (!vk_multialloc_zalloc(&ma, alloc, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT)) {
+   if (!vk_multialloc_zalloc(&ma, alloc, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-   }
 
    hw_setup->surface_allocate = surface_allocate;
    hw_setup->subpass_map = subpass_map;
@@ -2516,6 +2515,7 @@ VkResult pvr_create_renderpass_hwsetup(
    if (!vk_multialloc_zalloc(&ma_ctx,
                              alloc,
                              VK_SYSTEM_ALLOCATION_SCOPE_COMMAND)) {
+      vk_free(alloc, hw_setup);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 

@@ -674,15 +674,15 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
                                             pass,
                                             hw_render,
                                             &load_op);
+         if (result != VK_SUCCESS)
+            goto err_load_op_destroy;
+
+         result =
+            pvr_generate_load_op_shader(device, pAllocator, hw_render, load_op);
          if (result != VK_SUCCESS) {
             vk_free2(&device->vk.alloc, pAllocator, load_op);
             goto err_load_op_destroy;
          }
-
-         result =
-            pvr_generate_load_op_shader(device, pAllocator, hw_render, load_op);
-         if (result != VK_SUCCESS)
-            goto err_load_op_destroy;
 
          hw_render->load_op = load_op;
       }
