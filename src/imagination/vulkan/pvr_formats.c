@@ -66,15 +66,15 @@
       .supported = true,                                        \
    }
 
-#define FORMAT_DEPTH_STENCIL(vk, combined_fmt, d_fmt, s_fmt) \
-   [VK_FORMAT_##vk] = {                                      \
-      .vk_format = VK_FORMAT_##vk,                           \
-      .tex_format = ROGUE_TEXSTATE_FORMAT_##combined_fmt,    \
-      .depth_tex_format = ROGUE_TEXSTATE_FORMAT_##d_fmt,     \
-      .stencil_tex_format = ROGUE_TEXSTATE_FORMAT_##s_fmt,   \
-      .pbe_packmode = ROGUE_PBESTATE_PACKMODE_INVALID,       \
-      .pbe_accum_format = PVR_PBE_ACCUM_FORMAT_INVALID,      \
-      .supported = true,                                     \
+#define FORMAT_DEPTH_STENCIL(vk, combined_fmt, d_fmt, s_fmt)  \
+   [VK_FORMAT_##vk] = {                                       \
+      .vk_format = VK_FORMAT_##vk,                            \
+      .tex_format = ROGUE_TEXSTATE_FORMAT_##combined_fmt,     \
+      .depth_tex_format = ROGUE_TEXSTATE_FORMAT_##d_fmt,      \
+      .stencil_tex_format = ROGUE_TEXSTATE_FORMAT_##s_fmt,    \
+      .pbe_packmode = ROGUE_PBESTATE_PACKMODE_##combined_fmt, \
+      .pbe_accum_format = PVR_PBE_ACCUM_FORMAT_INVALID,       \
+      .supported = true,                                      \
    }
 
 struct pvr_format {
