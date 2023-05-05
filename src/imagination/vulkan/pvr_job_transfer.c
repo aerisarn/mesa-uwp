@@ -217,12 +217,16 @@ static VkResult pvr_pbe_src_format_pick_stencil(
    const VkFormat dst_format,
    enum pvr_transfer_pbe_pixel_src *const src_format_out)
 {
-   if (src_format != VK_FORMAT_D24_UNORM_S8_UINT ||
+   if ((src_format != VK_FORMAT_D24_UNORM_S8_UINT &&
+        src_format != VK_FORMAT_S8_UINT) ||
        dst_format != VK_FORMAT_D24_UNORM_S8_UINT) {
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
    }
 
-   *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_D24S8_D24S8;
+   if (src_format == VK_FORMAT_S8_UINT)
+      *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_S8_D24S8;
+   else
+      *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_SMRG_D24S8_D24S8;
 
    return VK_SUCCESS;
 }
@@ -710,34 +714,6 @@ pvr_mem_layout_spec(const struct pvr_transfer_cmd_surface *surface,
    return VK_SUCCESS;
 }
 
-static uint32_t pvr_get_transfer_pbe_packmode(VkFormat format)
-{
-   uint32_t pbe_pack_mode = pvr_get_pbe_packmode(format);
-   const uint32_t red_width =
-      vk_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_RGB, 0U);
-
-   if (format == VK_FORMAT_A2B10G10R10_UINT_PACK32 ||
-       format == VK_FORMAT_A2R10G10B10_UINT_PACK32) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_R10B10G10A2);
-   } else if (format == VK_FORMAT_B8G8R8A8_UNORM ||
-              format == VK_FORMAT_R8G8B8A8_UNORM) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_U8U8U8U8);
-   } else if (format == VK_FORMAT_D16_UNORM) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_U16);
-   } else if (format == VK_FORMAT_D32_SFLOAT) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_F32);
-   } else if (format == VK_FORMAT_S8_UINT) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_U8);
-   } else if (format != VK_FORMAT_X8_D24_UNORM_PACK32 && red_width <= 8U &&
-              vk_format_is_normalized(format)) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_F16F16F16F16);
-   } else if (vk_format_is_srgb(format)) {
-      pbe_pack_mode = PVRX(PBESTATE_PACKMODE_F16F16F16F16);
-   }
-
-   return pbe_pack_mode;
-}
-
 static VkResult
 pvr_pbe_setup_codegen_defaults(const struct pvr_device_info *dev_info,
                                const struct pvr_transfer_cmd *transfer_cmd,
@@ -771,7 +747,7 @@ pvr_pbe_setup_codegen_defaults(const struct pvr_device_info *dev_info,
                                     &surface_params->gamma);
 
    surface_params->is_normalized = vk_format_is_normalized(format);
-   surface_params->pbe_packmode = pvr_get_transfer_pbe_packmode(format);
+   surface_params->pbe_packmode = pvr_get_pbe_packmode(format);
    surface_params->nr_components = vk_format_get_nr_components(format);
 
    result = pvr_mem_layout_spec(dst,
@@ -970,7 +946,11 @@ static void pvr_pbe_setup_swizzle(const struct pvr_transfer_cmd *transfer_cmd,
    switch (dst->vk_format) {
    case VK_FORMAT_X8_D24_UNORM_PACK32:
    case VK_FORMAT_D24_UNORM_S8_UINT:
-      unreachable("Handle depth stencil format swizzle.");
+   case VK_FORMAT_S8_UINT:
+      surf_params->swizzle[0U] = PIPE_SWIZZLE_X;
+      surf_params->swizzle[1U] = PIPE_SWIZZLE_0;
+      surf_params->swizzle[2U] = PIPE_SWIZZLE_0;
+      surf_params->swizzle[3U] = PIPE_SWIZZLE_0;
       break;
 
    default: {
@@ -1611,6 +1591,13 @@ static inline VkResult pvr_image_state_set_codegen_defaults(
    memcpy(info.swizzle,
           pvr_get_format_swizzle(info.format),
           sizeof(info.swizzle));
+
+   if (surface->vk_format == VK_FORMAT_S8_UINT) {
+      info.swizzle[0U] = PIPE_SWIZZLE_X;
+      info.swizzle[1U] = PIPE_SWIZZLE_0;
+      info.swizzle[2U] = PIPE_SWIZZLE_0;
+      info.swizzle[3U] = PIPE_SWIZZLE_0;
+   }
 
    if (info.extent.depth > 0U)
       info.type = VK_IMAGE_VIEW_TYPE_3D;
@@ -2259,7 +2246,7 @@ static VkResult pvr_pack_clear_color(VkFormat format,
 {
    const uint32_t red_width =
       vk_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_RGB, 0U);
-   uint32_t pbe_pack_mode = pvr_get_transfer_pbe_packmode(format);
+   uint32_t pbe_pack_mode = pvr_get_pbe_packmode(format);
    const bool pbe_norm = vk_format_is_normalized(format);
 
    if (pbe_pack_mode == PVRX(PBESTATE_PACKMODE_INVALID))
