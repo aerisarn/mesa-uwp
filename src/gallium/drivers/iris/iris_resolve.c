@@ -1054,7 +1054,7 @@ iris_can_sample_mcs_with_clear(const struct intel_device_info *devinfo,
     * See HSD 1707282275, wa_14013111325. Due to the use of
     * format-reinterpretation, a simplified workaround is implemented.
     */
-   if (devinfo->ver >= 12 &&
+   if (intel_needs_workaround(devinfo, 14013111325) &&
        isl_format_get_layout(res->surf.format)->bpb <= 16) {
       return false;
    }
