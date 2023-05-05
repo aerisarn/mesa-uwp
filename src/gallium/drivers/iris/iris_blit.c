@@ -562,6 +562,76 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    iris_dirty_for_history(ice, (struct iris_resource *)info->dst.resource);
 }
 
+static enum isl_aux_usage
+copy_region_aux_usage(struct iris_context *ice,
+                      const struct iris_batch *batch,
+                      struct iris_resource *res,
+                      enum isl_format view_format,
+                      unsigned level,
+                      bool is_dest)
+{
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   const struct intel_device_info *devinfo = screen->devinfo;
+
+   if (batch->name == IRIS_BATCH_RENDER) {
+      if (is_dest) {
+         return iris_resource_render_aux_usage(ice, res, view_format, level,
+                                               false);
+      } else {
+         return iris_resource_texture_aux_usage(ice, res, view_format, level,
+                                                1);
+      }
+   } else {
+      assert(batch->name == IRIS_BATCH_BLITTER);
+
+      if (is_dest) {
+
+         /* We only blit to images created with PIPE_BIND_PRIME_BLIT_DST.
+          * These are only created with dri3_alloc_render_buffer. That
+          * function also makes them linear, so they lack compression.
+          *
+          * Note: this code block could be substituted with the one below, but
+          * this setup clarifies that no additional handling of FCV is
+          * necessary.
+          */
+         assert(res->base.b.bind & PIPE_BIND_PRIME_BLIT_DST);
+         assert(res->surf.tiling == ISL_TILING_LINEAR);
+         assert(res->aux.usage == ISL_AUX_USAGE_NONE);
+
+         return ISL_AUX_USAGE_NONE;
+      } else {
+         return devinfo->verx10 >= 125 ? res->aux.usage : ISL_AUX_USAGE_NONE;
+      }
+   }
+}
+
+static void
+prepare_copy_region(struct iris_context *ice,
+                    const struct iris_batch *batch,
+                    struct iris_resource *res,
+                    enum isl_format view_format,
+                    uint32_t level,
+                    uint32_t start_layer, uint32_t layer_count,
+                    enum isl_aux_usage aux_usage,
+                    bool is_dest)
+{
+   if (batch->name == IRIS_BATCH_RENDER) {
+      if (is_dest) {
+         iris_resource_prepare_render(ice, res, view_format, level,
+                                      start_layer, layer_count, aux_usage);
+      } else {
+         iris_resource_prepare_texture(ice, res, view_format, level, 1,
+                                       start_layer, layer_count);
+      }
+   } else {
+      assert(batch->name == IRIS_BATCH_BLITTER);
+      iris_resource_prepare_access(ice, res, level, 1,
+                                   start_layer, layer_count, aux_usage,
+                                   isl_aux_usage_has_fast_clears(aux_usage) &&
+                                   clear_color_is_fully_zero(res));
+   }
+}
+
 static void
 get_copy_region_aux_settings(struct iris_context *ice,
                              const struct iris_batch *batch,
@@ -686,12 +756,10 @@ iris_copy_region(struct blorp_context *blorp,
    blorp_copy_get_formats(&screen->isl_dev, &src_res->surf, &dst_res->surf,
                           &src_fmt, &dst_fmt);
 
-   enum isl_aux_usage src_aux_usage, dst_aux_usage;
-   bool src_clear_supported, dst_clear_supported;
-   get_copy_region_aux_settings(ice, batch, src_res, src_level,
-                                &src_aux_usage, &src_clear_supported, false);
-   get_copy_region_aux_settings(ice, batch, dst_res, dst_level,
-                                &dst_aux_usage, &dst_clear_supported, true);
+   enum isl_aux_usage src_aux_usage =
+      copy_region_aux_usage(ice, batch, src_res, src_fmt, src_level, false);
+   enum isl_aux_usage dst_aux_usage =
+      copy_region_aux_usage(ice, batch, dst_res, dst_fmt, dst_level, true);
 
    if (iris_batch_references(batch, src_res->bo))
       tex_cache_flush_hack(batch, src_fmt, src_res->surf.format);
@@ -730,12 +798,10 @@ iris_copy_region(struct blorp_context *blorp,
    } else {
       // XXX: what about one surface being a buffer and not the other?
 
-      iris_resource_prepare_access(ice, src_res, src_level, 1,
-                                   src_box->z, src_box->depth,
-                                   src_aux_usage, src_clear_supported);
-      iris_resource_prepare_access(ice, dst_res, dst_level, 1,
-                                   dstz, src_box->depth,
-                                   dst_aux_usage, dst_clear_supported);
+      prepare_copy_region(ice, batch, src_res, src_fmt, src_level,
+                          src_box->z, src_box->depth, src_aux_usage, false);
+      prepare_copy_region(ice, batch, dst_res, dst_fmt, dst_level,
+                          dstz, src_box->depth, dst_aux_usage, true);
 
       iris_emit_buffer_barrier_for(batch, src_res->bo,
                                    IRIS_DOMAIN_SAMPLER_READ);
