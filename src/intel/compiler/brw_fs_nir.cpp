@@ -4554,8 +4554,16 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
    case nir_intrinsic_load_reloc_const_intel: {
       uint32_t id = nir_intrinsic_param_idx(instr);
-      bld.emit(SHADER_OPCODE_MOV_RELOC_IMM,
-               dest, brw_imm_ud(id));
+
+      /* Emit the reloc in the smallest SIMD size to limit register usage. */
+      const fs_builder ubld = bld.exec_all().group(1, 0);
+      fs_reg small_dest = ubld.vgrf(dest.type);
+      ubld.UNDEF(small_dest);
+      ubld.exec_all().group(1, 0).emit(SHADER_OPCODE_MOV_RELOC_IMM,
+                                       small_dest, brw_imm_ud(id));
+
+      /* Copy propagation will get rid of this MOV. */
+      bld.MOV(dest, component(small_dest, 0));
       break;
    }
 
