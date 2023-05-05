@@ -116,10 +116,13 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_driver_properties                 = true,
       .KHR_dynamic_rendering                 = true,
       .KHR_external_memory                   = true,
+      .KHR_external_semaphore                = true,
 #ifdef _WIN32
       .KHR_external_memory_win32             = true,
+      .KHR_external_semaphore_win32          = true,
 #else
       .KHR_external_memory_fd                = true,
+      .KHR_external_semaphore_fd             = true,
 #endif
       .KHR_image_format_list                 = true,
       .KHR_imageless_framebuffer             = true,
