@@ -178,8 +178,8 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
 
    bool handle_flat = nir->info.gs.output_primitive == SHADER_PRIM_LINE_STRIP &&
                       nir->info.gs.output_primitive != original_our_prim;
-   nir_variable *in_vars[VARYING_SLOT_MAX];
-   nir_variable *out_vars[VARYING_SLOT_MAX];
+   nir_variable *in_vars[VARYING_SLOT_MAX * 4];
+   nir_variable *out_vars[VARYING_SLOT_MAX * 4];
    unsigned num_inputs = 0, num_outputs = 0;
 
    /* Create input/output variables. */
