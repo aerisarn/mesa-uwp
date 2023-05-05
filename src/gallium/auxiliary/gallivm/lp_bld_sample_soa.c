@@ -63,6 +63,7 @@
 #include "lp_bld_pack.h"
 #include "lp_bld_intr.h"
 #include "lp_bld_misc.h"
+#include "lp_bld_jit_types.h"
 
 
 /**
@@ -3956,8 +3957,6 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
 
 
 #define USE_TEX_FUNC_CALL 1
-
-#define LP_MAX_TEX_FUNC_ARGS 32
 
 static inline void
 get_target_info(enum pipe_texture_target target,

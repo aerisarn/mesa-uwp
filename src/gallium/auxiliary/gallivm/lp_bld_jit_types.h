@@ -203,5 +203,7 @@ union lp_descriptor {
    struct lp_jit_buffer buffer;
 };
 
+#define LP_MAX_TEX_FUNC_ARGS 32
+
 #endif
 
