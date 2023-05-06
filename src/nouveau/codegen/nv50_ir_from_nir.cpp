@@ -276,6 +276,12 @@ Converter::getDType(nir_intrinsic_instr *insn)
       isFloat = true;
       isSigned = false;
       break;
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_global_atomic_imax:
+   case nir_intrinsic_global_atomic_imin:
+   case nir_intrinsic_image_atomic_imax:
+   case nir_intrinsic_image_atomic_imin:
    case nir_intrinsic_shared_atomic_imax:
    case nir_intrinsic_shared_atomic_imin:
    case nir_intrinsic_ssbo_atomic_imax:
