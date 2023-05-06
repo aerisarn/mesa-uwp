@@ -1,4 +1,5 @@
 use std::ops::Add;
+use std::ops::Div;
 use std::ops::Rem;
 use std::ops::Sub;
 
@@ -32,6 +33,19 @@ where
     } else {
         val + (a - tmp)
     }
+}
+
+pub fn div_round_up<T>(a: T, b: T) -> T
+where
+    T: Copy,
+    T: Add<Output = T>,
+    T: Div<Output = T>,
+    T: Sub<Output = T>,
+{
+    #[allow(clippy::eq_op)]
+    let one = b / b;
+
+    (a + b - one) / b
 }
 
 pub struct SetBitIndices<T> {
