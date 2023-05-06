@@ -44,10 +44,7 @@ impl CopyPropPass {
             SrcRef::CBuf(cb) => {
                 let lo32 = Src::from(SrcRef::CBuf(cb));
                 let hi32 = Src {
-                    src_ref: SrcRef::CBuf(CBufRef {
-                        buf: cb.buf,
-                        offset: cb.offset + 4,
-                    }),
+                    src_ref: SrcRef::CBuf(cb.offset(4)),
                     src_mod: src.src_mod,
                 };
                 self.add_copy(dst[0], SrcType::ALU, lo32);

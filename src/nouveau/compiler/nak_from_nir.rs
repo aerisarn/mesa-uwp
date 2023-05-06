@@ -1095,21 +1095,21 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_intrinsic_load_ubo => {
                 let idx = srcs[0];
-                let offset = srcs[1];
-                let dst = *self.get_dst(&intrin.def).as_ssa().unwrap();
-                if let Some(imm_idx) = idx.as_uint() {
-                    let imm_idx = u8::try_from(imm_idx).unwrap();
-                    if let Some(imm_offset) = offset.as_uint() {
-                        let imm_offset = u16::try_from(imm_offset).unwrap();
+                let (off, off_imm) = self.get_io_addr_offset(&srcs[1], 16);
+                let dst = self.get_dst(&intrin.def);
+                if let Some(idx_imm) = idx.as_uint() {
+                    let cb = CBufRef {
+                        buf: CBuf::Binding(idx_imm.try_into().unwrap()),
+                        offset: off_imm.try_into().unwrap(),
+                    };
+                    if off.is_zero() {
                         let mut pcopy = OpParCopy::new();
-                        for (i, dst) in dst.iter().enumerate() {
-                            let src = Src::new_cbuf(
-                                imm_idx,
-                                imm_offset + u16::try_from(i).unwrap() * 4,
-                            );
-                            pcopy.push(src, (*dst).into());
+                        let vec_dst = *dst.as_ssa().unwrap();
+                        for (i, dst) in vec_dst.iter().enumerate() {
+                            let i = u16::try_from(i).unwrap();
+                            pcopy.push(cb.offset(i * 4).into(), (*dst).into());
                         }
-                        self.instrs.push(Instr::new(Op::ParCopy(pcopy)));
+                        self.instrs.push(pcopy.into());
                     } else {
                         panic!("Indirect UBO offsets not yet supported");
                     }

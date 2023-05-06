@@ -407,10 +407,35 @@ pub enum CBuf {
     BindlessGPR(RegRef),
 }
 
+impl fmt::Display for CBuf {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CBuf::Binding(idx) => write!(f, "c[{:#x}]", idx),
+            CBuf::BindlessSSA(v) => write!(f, "cx[{}]", v),
+            CBuf::BindlessGPR(r) => write!(f, "cx[{}]", r),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct CBufRef {
     pub buf: CBuf,
     pub offset: u16,
+}
+
+impl CBufRef {
+    pub fn offset(self, offset: u16) -> CBufRef {
+        CBufRef {
+            buf: self.buf,
+            offset: self.offset + offset,
+        }
+    }
+}
+
+impl fmt::Display for CBufRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}[{:#x}]", self.buf, self.offset)
+    }
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -489,6 +514,12 @@ impl SrcRef {
     }
 }
 
+impl From<CBufRef> for SrcRef {
+    fn from(cb: CBufRef) -> SrcRef {
+        SrcRef::CBuf(cb)
+    }
+}
+
 impl From<RegRef> for SrcRef {
     fn from(reg: RegRef) -> SrcRef {
         SrcRef::Reg(reg)
@@ -504,22 +535,14 @@ impl<T: Into<SSARef>> From<T> for SrcRef {
 impl fmt::Display for SrcRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SrcRef::Zero => write!(f, "ZERO")?,
-            SrcRef::True => write!(f, "TRUE")?,
-            SrcRef::False => write!(f, "FALSE")?,
-            SrcRef::Imm32(u) => write!(f, "{:#x}", u)?,
-            SrcRef::CBuf(r) => {
-                match r.buf {
-                    CBuf::Binding(idx) => write!(f, "c[{:#x}]", idx)?,
-                    CBuf::BindlessSSA(v) => write!(f, "cx[{}]", v)?,
-                    CBuf::BindlessGPR(r) => write!(f, "cx[{}]", r)?,
-                }
-                write!(f, "[{:#x}]", r.offset)?;
-            }
-            SrcRef::SSA(v) => v.fmt(f)?,
-            SrcRef::Reg(r) => r.fmt(f)?,
+            SrcRef::Zero => write!(f, "ZERO"),
+            SrcRef::True => write!(f, "TRUE"),
+            SrcRef::False => write!(f, "FALSE"),
+            SrcRef::Imm32(u) => write!(f, "{:#x}", u),
+            SrcRef::CBuf(c) => c.fmt(f),
+            SrcRef::SSA(v) => v.fmt(f),
+            SrcRef::Reg(r) => r.fmt(f),
         }
-        Ok(())
     }
 }
 
