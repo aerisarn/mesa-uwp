@@ -480,22 +480,23 @@ can_use_opsel(amd_gfx_level gfx_level, aco_opcode op, int idx)
 }
 
 bool
-can_write_m0(amd_gfx_level gfx_level, const aco_ptr<Instruction>& instr)
+can_write_m0(const aco_ptr<Instruction>& instr)
 {
    if (instr->isSALU())
       return true;
 
+   /* VALU can't write m0 on any GPU generations. */
    if (instr->isVALU())
-      return gfx_level >= GFX9;
+      return false;
 
    switch (instr->opcode) {
    case aco_opcode::p_parallelcopy:
    case aco_opcode::p_extract:
    case aco_opcode::p_insert:
+      /* These pseudo instructions are implemented with SALU when writing m0. */
       return true;
-   case aco_opcode::p_reload:
-      return gfx_level >= GFX9;
    default:
+      /* Assume that no other instructions can write m0. */
       return false;
    }
 }

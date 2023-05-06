@@ -1656,7 +1656,7 @@ get_reg(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
    }
    if (ctx.assignments[temp.id()].m0) {
       if (get_reg_specified(ctx, reg_file, temp.regClass(), instr, m0) &&
-          can_write_m0(ctx.program->gfx_level, instr))
+          can_write_m0(instr))
          return m0;
    }
 
