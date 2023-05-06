@@ -614,6 +614,7 @@
       when: on_success
     - changes: &radeon_vcn_file_list
       - src/gallium/frontends/va/**/*
+      - src/gallium/targets/va/**/*
       when: on_success
 
 .i915g-rules:
