@@ -1033,6 +1033,7 @@ static int r600_get_compute_param(struct pipe_screen *screen,
 		}
 		return sizeof(uint32_t);
 	case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
+	case PIPE_COMPUTE_CAP_MAX_SUBGROUPS:
 		break; /* unused */
 	case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
 		if (ret) {

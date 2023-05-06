@@ -620,6 +620,9 @@ iris_get_compute_param(struct pipe_screen *pscreen,
    case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
       RET((uint32_t []) { BRW_SUBGROUP_SIZE });
 
+   case PIPE_COMPUTE_CAP_MAX_SUBGROUPS:
+      RET((uint32_t []) { devinfo->max_cs_workgroup_threads });
+
    case PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE:
    case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
       RET((uint64_t []) { 1 << 30 }); /* TODO */

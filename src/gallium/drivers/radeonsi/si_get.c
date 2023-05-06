@@ -1102,6 +1102,21 @@ static int si_get_compute_param(struct pipe_screen *screen, enum pipe_shader_ir 
       return sizeof(uint32_t);
    case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
       break; /* unused */
+   case PIPE_COMPUTE_CAP_MAX_SUBGROUPS: {
+      if (ret) {
+         uint32_t *max_subgroups = ret;
+         unsigned threads = get_max_threads_per_block(sscreen, ir_type);
+         unsigned subgroup_size;
+
+         if (sscreen->debug_flags & DBG(W64_CS) || sscreen->info.gfx_level < GFX10)
+            subgroup_size = 64;
+         else
+            subgroup_size = 32;
+
+         *max_subgroups = threads / subgroup_size;
+      }
+      return sizeof(uint32_t);
+   }
    case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
       if (ret) {
          uint32_t *subgroup_size = ret;

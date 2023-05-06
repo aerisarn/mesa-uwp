@@ -601,6 +601,7 @@ crocus_get_compute_param(struct pipe_screen *pscreen,
    case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
    case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
    case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE:
+   case PIPE_COMPUTE_CAP_MAX_SUBGROUPS:
 
       // XXX: I think these are for Clover...
       return 0;

@@ -798,6 +798,10 @@ pipe_screen::get_compute_param.
   clock in MHz. Value type: ``uint32_t``
 * ``PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS``: Maximum number of compute units
   Value type: ``uint32_t``
+* ``PIPE_COMPUTE_CAP_MAX_SUBGROUPS``: The max amount of subgroups there can be
+  inside a block. Non 0 indicates support for OpenCL subgroups including
+  implementing ``get_compute_state_subgroup_size`` if multiple subgroup sizes
+  are supported.
 * ``PIPE_COMPUTE_CAP_IMAGES_SUPPORTED``: Whether images are supported
   non-zero means yes, zero means no. Value type: ``uint32_t``
 * ``PIPE_COMPUTE_CAP_SUBGROUP_SIZE``: The size of a basic execution unit in
