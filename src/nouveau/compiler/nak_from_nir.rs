@@ -177,18 +177,28 @@ impl<'a> ShaderFromNir<'a> {
         let dst = self.get_dst(&alu.def);
 
         match alu.op {
+            nir_op_b2b1 => {
+                assert!(alu.get_src(0).bit_size() > 1);
+                self.instrs.push(Instr::new_isetp(
+                    dst,
+                    IntCmpType::I32,
+                    IntCmpOp::Ne,
+                    srcs[0],
+                    Src::new_zero(),
+                ));
+            }
+            nir_op_b2b32 | nir_op_b2i32 => {
+                self.instrs.push(Instr::new(Op::Sel(OpSel {
+                    dst: dst,
+                    cond: srcs[0].bnot(),
+                    srcs: [Src::new_zero(), Src::new_imm_u32(1)],
+                })));
+            }
             nir_op_b2f32 => {
                 self.instrs.push(Instr::new(Op::Sel(OpSel {
                     dst: dst,
                     cond: srcs[0].bnot(),
                     srcs: [Src::new_zero(), Src::new_imm_u32(0x3f800000)],
-                })));
-            }
-            nir_op_b2i32 => {
-                self.instrs.push(Instr::new(Op::Sel(OpSel {
-                    dst: dst,
-                    cond: srcs[0].bnot(),
-                    srcs: [Src::new_zero(), Src::new_imm_u32(1)],
                 })));
             }
             nir_op_bcsel => {
