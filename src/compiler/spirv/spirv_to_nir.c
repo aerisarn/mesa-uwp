@@ -4762,8 +4762,6 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          /* Missing :
           *   - SpvOpGetKernelLocalSizeForSubgroupCount
           *   - SpvOpGetKernelMaxNumSubgroups
-          *   - SpvExecutionModeSubgroupsPerWorkgroup
-          *   - SpvExecutionModeSubgroupsPerWorkgroupId
           */
          vtn_warn("Not fully supported capability: %s",
                   spirv_capability_to_string(cap));
@@ -5442,6 +5440,7 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
 
    case SpvExecutionModeLocalSizeId:
    case SpvExecutionModeLocalSizeHintId:
+   case SpvExecutionModeSubgroupsPerWorkgroupId:
       /* Handled later by vtn_handle_execution_mode_id(). */
       break;
 
@@ -5449,6 +5448,11 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       vtn_assert(b->shader->info.stage == MESA_SHADER_KERNEL);
       vtn_assert(b->shader->info.subgroup_size == SUBGROUP_SIZE_VARYING);
       b->shader->info.subgroup_size = mode->operands[0];
+      break;
+
+   case SpvExecutionModeSubgroupsPerWorkgroup:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_KERNEL);
+      b->shader->info.num_subgroups = mode->operands[0];
       break;
 
    case SpvExecutionModeSubgroupUniformControlFlowKHR:
@@ -5523,6 +5527,11 @@ vtn_handle_execution_mode_id(struct vtn_builder *b, struct vtn_value *entry_poin
       b->shader->info.cs.workgroup_size_hint[0] = vtn_constant_uint(b, mode->operands[0]);
       b->shader->info.cs.workgroup_size_hint[1] = vtn_constant_uint(b, mode->operands[1]);
       b->shader->info.cs.workgroup_size_hint[2] = vtn_constant_uint(b, mode->operands[2]);
+      break;
+
+   case SpvExecutionModeSubgroupsPerWorkgroupId:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_KERNEL);
+      b->shader->info.num_subgroups = vtn_constant_uint(b, mode->operands[0]);
       break;
 
    default:
