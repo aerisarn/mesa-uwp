@@ -37,6 +37,9 @@ macro_rules! compute_param_impl {
             fn compute_param(&self, cap: pipe_compute_cap) -> $ty {
                 let size = self.compute_param_wrapped(cap, ptr::null_mut());
                 let mut d = [0; size_of::<$ty>()];
+                if size == 0 {
+                    return Default::default();
+                }
                 assert_eq!(size as usize, d.len());
                 self.compute_param_wrapped(cap, d.as_mut_ptr().cast());
                 <$ty>::from_ne_bytes(d)
