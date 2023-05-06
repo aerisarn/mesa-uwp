@@ -518,8 +518,10 @@ nak_mem_access_size_align(nir_intrinsic_op intrin,
       bytes_pow2 = 1 << (util_last_bit(bytes) - 1);
    }
 
-   const unsigned chunk_bytes = MIN3(bytes_pow2, align, 16);
+   unsigned chunk_bytes = MIN3(bytes_pow2, align, 16);
    assert(util_is_power_of_two_nonzero(chunk_bytes));
+   if (intrin == nir_intrinsic_load_ubo)
+      chunk_bytes = MIN2(chunk_bytes, 8);
 
    if (chunk_bytes < 4) {
       return (nir_mem_access_size_align) {
@@ -562,7 +564,7 @@ nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
    }
 
    nir_lower_mem_access_bit_sizes_options mem_bit_size_options = {
-      .modes = nir_var_mem_generic,
+      .modes = nir_var_mem_ubo | nir_var_mem_generic,
       .callback = nak_mem_access_size_align,
    };
    OPT(nir, nir_lower_mem_access_bit_sizes, &mem_bit_size_options);

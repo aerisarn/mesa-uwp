@@ -2455,6 +2455,37 @@ impl fmt::Display for OpLd {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpLdc {
+    pub dst: Dst,
+
+    #[src_type(ALU)]
+    pub cb: Src,
+
+    #[src_type(GPR)]
+    pub offset: Src,
+
+    pub mem_type: MemType,
+}
+
+impl fmt::Display for OpLdc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let SrcRef::CBuf(cb) = self.cb.src_ref else {
+            panic!("Not a cbuf");
+        };
+        write!(f, "LDC.{} {} {}[", self.mem_type, self.dst, cb.buf)?;
+        if self.offset.is_zero() {
+            write!(f, "+{:#x}", cb.offset)?;
+        } else if cb.offset == 0 {
+            write!(f, "{}", self.offset)?;
+        } else {
+            write!(f, "{}+{:#x}", self.offset, cb.offset)?;
+        }
+        write!(f, "]")
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpSt {
     #[src_type(GPR)]
     pub addr: Src,
@@ -2995,6 +3026,7 @@ pub enum Op {
     SuSt(OpSuSt),
     SuAtom(OpSuAtom),
     Ld(OpLd),
+    Ldc(OpLdc),
     St(OpSt),
     Atom(OpAtom),
     AtomCas(OpAtomCas),
@@ -3547,6 +3579,7 @@ impl Instr {
             Op::SuSt(_) => None,
             Op::SuAtom(_) => None,
             Op::Ld(_) => None,
+            Op::Ldc(_) => None,
             Op::St(_) => None,
             Op::Atom(_) => None,
             Op::AtomCas(_) => None,

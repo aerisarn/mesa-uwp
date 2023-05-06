@@ -1136,6 +1136,19 @@ impl SM75Instr {
         }
     }
 
+    fn encode_ldc(&mut self, op: &OpLdc) {
+        self.encode_alu(
+            0x182,
+            Some(op.dst),
+            ALUSrc::from_src(&op.offset),
+            ALUSrc::from_src(&op.cb),
+            ALUSrc::None,
+        );
+
+        self.set_mem_type(73..76, op.mem_type);
+        self.set_field(78..80, 0_u8); /* subop */
+    }
+
     fn encode_stg(&mut self, op: &OpSt) {
         self.set_opcode(0x385);
 
@@ -1493,6 +1506,7 @@ impl SM75Instr {
             Op::SuSt(op) => si.encode_sust(&op),
             Op::SuAtom(op) => si.encode_suatom(&op),
             Op::Ld(op) => si.encode_ld(&op),
+            Op::Ldc(op) => si.encode_ldc(&op),
             Op::St(op) => si.encode_st(&op),
             Op::Atom(op) => si.encode_atom(&op),
             Op::AtomCas(op) => si.encode_atom_cas(&op),

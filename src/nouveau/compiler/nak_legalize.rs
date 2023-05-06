@@ -225,6 +225,7 @@ impl<'a> LegalizeInstr<'a> {
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
                 self.mov_src_if_not_reg(src2, RegFile::GPR);
             }
+            Op::Ldc(_) => (), /* Nothing to do */
             _ => {
                 let src_types = instr.src_types();
                 for (i, src) in instr.srcs_mut().iter_mut().enumerate() {

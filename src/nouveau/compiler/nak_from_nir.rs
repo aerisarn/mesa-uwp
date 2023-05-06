@@ -1094,6 +1094,8 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_s2r(dst, idx));
             }
             nir_intrinsic_load_ubo => {
+                let size_B =
+                    (intrin.def.bit_size() / 8) * intrin.def.num_components();
                 let idx = srcs[0];
                 let (off, off_imm) = self.get_io_addr_offset(&srcs[1], 16);
                 let dst = self.get_dst(&intrin.def);
@@ -1111,7 +1113,15 @@ impl<'a> ShaderFromNir<'a> {
                         }
                         self.instrs.push(pcopy.into());
                     } else {
-                        panic!("Indirect UBO offsets not yet supported");
+                        self.instrs.push(
+                            OpLdc {
+                                dst: dst,
+                                cb: cb.into(),
+                                offset: off,
+                                mem_type: MemType::from_size(size_B, false),
+                            }
+                            .into(),
+                        );
                     }
                 } else {
                     panic!("Indirect UBO indices not yet supported");
