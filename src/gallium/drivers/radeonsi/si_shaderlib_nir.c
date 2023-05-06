@@ -291,13 +291,13 @@ static nir_ssa_def *convert_linear_to_srgb(nir_builder *b, nir_ssa_def *input)
 
    nir_ssa_def *ltvals[3];
    for (unsigned i = 0; i < 3; i++)
-      ltvals[i] = nir_fmul(b, nir_channel(b, input, i), nir_imm_float(b, 12.92));
+      ltvals[i] = nir_fmul_imm(b, nir_channel(b, input, i), 12.92);
 
    nir_ssa_def *gtvals[3];
 
    for (unsigned i = 0; i < 3; i++) {
       gtvals[i] = nir_fpow(b, nir_channel(b, input, i), nir_imm_float(b, 1.0/2.4));
-      gtvals[i] = nir_fmul(b, gtvals[i], nir_imm_float(b, 1.055));
+      gtvals[i] = nir_fmul_imm(b, gtvals[i], 1.055);
       gtvals[i] = nir_fsub(b, gtvals[i], nir_imm_float(b, 0.055));
    }
 

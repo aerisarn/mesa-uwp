@@ -564,12 +564,8 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
             res = res ? nir_fadd(&b, res, &tex->dest.ssa) : &tex->dest.ssa;
          }
 
-         if (base_type == nir_type_float) {
-            unsigned type_sz =
-               nir_alu_type_get_type_size(key->surfaces[i].type);
-            res = nir_fmul(&b, res,
-                           nir_imm_floatN_t(&b, 1.0f / nsamples, type_sz));
-         }
+         if (base_type == nir_type_float)
+            res = nir_fmul_imm(&b, res, 1.0f / nsamples);
       } else {
          nir_tex_instr *tex = nir_tex_instr_create(b.shader, ms ? 3 : 1);
 

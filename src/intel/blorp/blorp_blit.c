@@ -704,8 +704,8 @@ blorp_nir_combine_samples(nir_builder *b, struct brw_blorp_blit_vars *v,
 
    if (filter == BLORP_FILTER_AVERAGE) {
       assert(dst_type == nir_type_float);
-      texture_data[0] = nir_fmul(b, texture_data[0],
-                                 nir_imm_float(b, 1.0 / tex_samples));
+      texture_data[0] = nir_fmul_imm(b, texture_data[0],
+                                     1.0 / tex_samples);
    }
 
    nir_store_var(b, color, texture_data[0], 0xf);
@@ -1005,7 +1005,7 @@ convert_color(struct nir_builder *b, nir_ssa_def *color,
        */
       unsigned factor = (1 << 24) - 1;
       value = nir_fsat(b, nir_channel(b, color, 0));
-      value = nir_f2i32(b, nir_fmul(b, value, nir_imm_float(b, factor)));
+      value = nir_f2i32(b, nir_fmul_imm(b, value, factor));
    } else if (key->dst_format == ISL_FORMAT_L8_UNORM_SRGB) {
       value = nir_format_linear_to_srgb(b, nir_channel(b, color, 0));
    } else if (key->dst_format == ISL_FORMAT_R8G8B8_UNORM_SRGB) {

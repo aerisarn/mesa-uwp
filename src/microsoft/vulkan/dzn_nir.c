@@ -723,10 +723,8 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
          res = res ? nir_build_alu2(&b, resolve_op, res, &tex->dest.ssa) : &tex->dest.ssa;
       }
 
-      if (resolve_mode == dzn_blit_resolve_average) {
-         unsigned type_sz = nir_alu_type_get_type_size(nir_out_type);
-         res = nir_fmul(&b, res, nir_imm_floatN_t(&b, 1.0f / nsamples, type_sz));
-      }
+      if (resolve_mode == dzn_blit_resolve_average)
+         res = nir_fmul_imm(&b, res, 1.0f / nsamples);
    } else {
       nir_tex_instr *tex =
          nir_tex_instr_create(b.shader, ms ? 4 : 3);

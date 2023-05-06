@@ -84,7 +84,7 @@ nir_nextafter(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
       }
 
       /* Flush denorm to zero to avoid returning a denorm when condeq is true. */
-      x = nir_fmul(b, x, nir_imm_floatN_t(b, 1.0, x->bit_size));
+      x = nir_fmul_imm(b, x, 1.0);
    }
 
    /* beware of: +/-0.0 - 1 == NaN */

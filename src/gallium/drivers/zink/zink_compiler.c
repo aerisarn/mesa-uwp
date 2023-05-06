@@ -340,13 +340,13 @@ lower_gl_point_gs_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_ssa_def *w_delta = nir_fdiv(b, point_size, nir_channel(b, vp_scale, 0));
    w_delta = nir_fmul(b, w_delta, nir_channel(b, point_pos, 3));
    // halt_w_delta = w_delta / 2
-   nir_ssa_def *half_w_delta = nir_fmul(b, w_delta, nir_imm_float(b, 0.5));
+   nir_ssa_def *half_w_delta = nir_fmul_imm(b, w_delta, 0.5);
 
    // h_delta = gl_point_size / height_viewport_size_scale * gl_Position.w
    nir_ssa_def *h_delta = nir_fdiv(b, point_size, nir_channel(b, vp_scale, 1));
    h_delta = nir_fmul(b, h_delta, nir_channel(b, point_pos, 3));
    // halt_h_delta = h_delta / 2
-   nir_ssa_def *half_h_delta = nir_fmul(b, h_delta, nir_imm_float(b, 0.5));
+   nir_ssa_def *half_h_delta = nir_fmul_imm(b, h_delta, 0.5);
 
    nir_ssa_def *point_dir[4][2] = {
       { nir_imm_float(b, -1), nir_imm_float(b, -1) },

@@ -353,7 +353,7 @@ lower_cube_coords(nir_builder *b, nir_ssa_def *coord, bool is_array)
    coords.arz = nir_fabs(b, coords.rz);
    coords.array = NULL;
    if (is_array)
-      coords.array = nir_fmul(b, nir_channel(b, coord, 3), nir_imm_float(b, 6.0f));
+      coords.array = nir_fmul_imm(b, nir_channel(b, coord, 3), 6.0f);
 
    nir_ssa_def *use_face_x = nir_iand(b,
                                       nir_fge(b, coords.arx, coords.ary),

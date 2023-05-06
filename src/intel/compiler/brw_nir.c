@@ -504,8 +504,7 @@ lower_barycentric_at_offset(nir_builder *b, nir_instr *instr, void *data)
    assert(intrin->src[0].ssa);
    nir_ssa_def *offset =
       nir_imin(b, nir_imm_int(b, 7),
-               nir_f2i32(b, nir_fmul(b, nir_imm_float(b, 16),
-                                     intrin->src[0].ssa)));
+               nir_f2i32(b, nir_fmul_imm(b, intrin->src[0].ssa, 16)));
 
    nir_instr_rewrite_src(instr, &intrin->src[0], nir_src_for_ssa(offset));
 
