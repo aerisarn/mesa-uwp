@@ -2514,6 +2514,34 @@ iris_get_compute_state_info(struct pipe_context *ctx, void *state,
    }
 }
 
+static uint32_t
+iris_get_compute_state_subgroup_size(struct pipe_context *ctx, void *state,
+                                     const uint32_t block[3])
+{
+   struct iris_context *ice = (void *) ctx;
+   struct iris_screen *screen = (void *) ctx->screen;
+   struct u_upload_mgr *uploader = ice->shaders.uploader_driver;
+   const struct intel_device_info *devinfo = screen->devinfo;
+   struct iris_uncompiled_shader *ish = state;
+
+   struct iris_cs_prog_key key = { KEY_INIT(base) };
+   screen->vtbl.populate_cs_key(ice, &key);
+
+   bool added;
+   struct iris_compiled_shader *shader =
+      find_or_add_variant(screen, ish, IRIS_CACHE_CS, &key,
+                          sizeof(key), &added);
+
+   if (added && !iris_disk_cache_retrieve(screen, uploader, ish, shader,
+                                          &key, sizeof(key))) {
+      iris_compile_cs(screen, uploader, &ice->dbg, ish, shader);
+   }
+
+   struct brw_cs_prog_data *cs_prog_data = (void *) shader->prog_data;
+
+   return brw_cs_get_dispatch_info(devinfo, cs_prog_data, block).simd_size;
+}
+
 static void
 iris_compile_shader(void *_job, UNUSED void *_gdata, UNUSED int thread_index)
 {
@@ -2981,4 +3009,5 @@ iris_init_program_functions(struct pipe_context *ctx)
    ctx->bind_compute_state = iris_bind_cs_state;
 
    ctx->get_compute_state_info = iris_get_compute_state_info;
+   ctx->get_compute_state_subgroup_size = iris_get_compute_state_subgroup_size;
 }
