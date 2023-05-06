@@ -946,6 +946,9 @@ struct pipe_context {
    void (*get_compute_state_info)(struct pipe_context *, void *,
                                   struct pipe_compute_state_object_info *);
 
+   uint32_t (*get_compute_state_subgroup_size)(struct pipe_context *, void *,
+                                               const uint32_t block[3]);
+
    /**
     * Bind an array of shader resources that will be used by the
     * compute program.  Any resources that were previously bound to
