@@ -447,7 +447,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateInstance(
                              pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(pAllocator, instance);
-      return vk_error(instance, result);
+      return vk_error(NULL, result);
    }
 
    instance->apiVersion = LVP_API_VERSION;
