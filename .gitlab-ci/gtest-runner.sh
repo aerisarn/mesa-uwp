@@ -1,12 +1,12 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 set -ex
 
-INSTALL=`pwd`/install
+INSTALL=$PWD/install
 
 # Set up the driver environment.
-export LD_LIBRARY_PATH=`pwd`/install/lib/
-export LIBVA_DRIVERS_PATH=`pwd`/install/lib/dri/
+export LD_LIBRARY_PATH=$INSTALL/lib/
+export LIBVA_DRIVERS_PATH=$INSTALL/lib/dri/
 # libva spams driver open info by default, and that happens per testcase.
 export LIBVA_MESSAGING_LEVEL=1
 
@@ -15,7 +15,7 @@ if [ -e "$INSTALL/$GPU_VERSION-fails.txt" ]; then
 fi
 
 # Default to an empty known flakes file if it doesn't exist.
-touch $INSTALL/$GPU_VERSION-flakes.txt
+touch "$INSTALL/$GPU_VERSION-flakes.txt"
 
 if [ -n "$GALLIUM_DRIVER" ] && [ -e "$INSTALL/$GALLIUM_DRIVER-skips.txt" ]; then
     GTEST_SKIPS="$GTEST_SKIPS --skips $INSTALL/$GALLIUM_DRIVER-skips.txt"
