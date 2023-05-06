@@ -15,6 +15,7 @@ use mesa_rust::pipe::resource::*;
 use mesa_rust::pipe::screen::*;
 use mesa_rust::pipe::transfer::*;
 use mesa_rust_gen::*;
+use mesa_rust_util::math::SetBitIndices;
 use mesa_rust_util::static_assert;
 use rusticl_opencl_gen::*;
 
@@ -845,11 +846,15 @@ impl Device {
         &self.screen
     }
 
-    pub fn subgroups(&self) -> u32 {
-        ComputeParam::<u32>::compute_param(
+    pub fn subgroup_sizes(&self) -> Vec<usize> {
+        let subgroup_size = ComputeParam::<u32>::compute_param(
             self.screen.as_ref(),
             pipe_compute_cap::PIPE_COMPUTE_CAP_SUBGROUP_SIZE,
-        )
+        );
+
+        SetBitIndices::from_msb(subgroup_size)
+            .map(|bit| 1 << bit)
+            .collect()
     }
 
     pub fn svm_supported(&self) -> bool {
