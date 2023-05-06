@@ -877,6 +877,17 @@ program: ``bind_sampler_states`` may be used to set up texture
 samplers for the compute stage and ``set_sampler_views`` may
 be used to bind a number of sampler views to it.
 
+Compute kernel queries
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. _get_compute_state_info:
+
+get_compute_state_info
+%%%%%%%%%%%%%%%%%%%%%%
+
+This function allows frontends to query kernel information defined inside
+``pipe_compute_state_object_info``.
+
 Mipmap generation
 ^^^^^^^^^^^^^^^^^
 
