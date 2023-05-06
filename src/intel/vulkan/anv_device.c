@@ -1314,7 +1314,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
    if (device->gtt_size < (4ULL << 30 /* GiB */)) {
       vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                "GTT size too small: 0x%016"PRIu64, device->gtt_size);
+                "GTT size too small: 0x%016"PRIx64, device->gtt_size);
       goto fail_base;
    }
 
