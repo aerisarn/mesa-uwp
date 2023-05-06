@@ -417,7 +417,6 @@ spec@glsl-1.20@execution@fs-underflow-mul-compare-zero,Fail
 spec@glsl-1.30@built-in constants,Fail
 spec@glsl-1.30@built-in constants@gl_MaxDrawBuffers,Fail
 spec@glsl-1.30@execution@clipping@fs-clip-distance-interpolated,Crash
-spec@glsl-1.30@execution@clipping@vs-clip-distance-primitives,Fail
 spec@glsl-1.40@built-in constants,Fail
 spec@glsl-1.40@built-in constants@gl_MaxDrawBuffers,Fail
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
