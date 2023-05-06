@@ -300,6 +300,7 @@ nvk_get_device_extensions(const struct nv_device_info *dev,
       .KHR_separate_depth_stencil_layouts = true,
       .KHR_shader_draw_parameters = true,
       .KHR_shader_non_semantic_info = true,
+      .KHR_spirv_1_4 = true,
       .KHR_storage_buffer_storage_class = true,
 #ifdef NVK_USE_WSI_PLATFORM
       .KHR_swapchain = true,
