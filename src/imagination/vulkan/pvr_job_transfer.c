@@ -75,7 +75,6 @@ struct pvr_transfer_wa_source {
    uint32_t mapping_count;
    struct pvr_rect_mapping mappings[PVR_TRANSFER_MAX_CUSTOM_MAPPINGS];
    bool extend_height;
-   bool byte_unwind;
 };
 
 struct pvr_transfer_pass {
@@ -99,7 +98,6 @@ struct pvr_transfer_custom_mapping {
    struct pvr_transfer_pass passes[PVR_TRANSFER_MAX_PASSES];
    uint32_t max_clip_rects;
    int32_t max_clip_size;
-   uint32_t byte_unwind_src;
 };
 
 struct pvr_transfer_3d_iteration {
@@ -2771,7 +2769,6 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
 
       state->shader_props.iterated = false;
 
-      state->shader_props.layer_props.byte_unwind = 0U;
       state->shader_props.layer_props.sample =
          transfer_cmd->sources[0].surface.mem_layout ==
          PVR_MEMLAYOUT_3DTWIDDLED;
@@ -4144,36 +4141,6 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
 
             memset(shader_props, 0U, sizeof(*shader_props));
 
-            if (state->custom_mapping.byte_unwind_src > 0U &&
-                state->custom_mapping.passes[0U].sources[source].byte_unwind) {
-               switch (vk_format_get_blocksize(transfer_cmd->dst.vk_format)) {
-               case 16:
-                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK16;
-                  break;
-               case 32:
-                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK32;
-                  break;
-               case 48:
-                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK48;
-                  break;
-               case 64:
-                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK64;
-                  break;
-               case 96:
-                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK96;
-                  break;
-               case 128:
-                  pbe_src_format = PVR_TRANSFER_PBE_PIXEL_SRC_MASK128;
-                  break;
-               default:
-                  unreachable("pixel width not valid");
-                  break;
-               }
-
-               layer->byte_unwind = state->custom_mapping.byte_unwind_src;
-               read_bgnd = true;
-            }
-
             layer->pbe_format = pbe_src_format;
             layer->sample =
                (src->surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED);
@@ -4636,31 +4603,6 @@ static bool pvr_texel_unwind(uint32_t bpp,
    return true;
 }
 
-static bool pvr_byte_unwind(uint32_t bpp,
-                            pvr_dev_addr_t dev_addr,
-                            bool is_input,
-                            uint32_t *byte_unwind_out)
-{
-   uint32_t byte_unwind = 0U;
-
-   for (uint32_t i = 0U; i < 16U; i++) {
-      if (pvr_is_surface_aligned(dev_addr, is_input, bpp)) {
-         break;
-      } else {
-         if (i == 15U) {
-            return false;
-         } else {
-            dev_addr.addr -= 1U;
-            byte_unwind++;
-         }
-      }
-   }
-
-   *byte_unwind_out = byte_unwind;
-
-   return true;
-}
-
 static bool pvr_is_identity_mapping(const struct pvr_rect_mapping *mapping)
 {
    return (mapping->src_rect.offset.x == mapping->dst_rect.offset.x &&
@@ -4721,7 +4663,6 @@ pvr_create_source(struct pvr_transfer_pass *pass,
    src = &pass->sources[pass->source_count];
    src->mapping_count = 0U;
    src->extend_height = extend_height;
-   src->byte_unwind = false;
 
    pass->source_count++;
 
@@ -5192,7 +5133,6 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
    custom_mapping->texel_unwind_dst = 0U;
    custom_mapping->texel_extend_src = 1U;
    custom_mapping->texel_extend_dst = 1U;
-   custom_mapping->byte_unwind_src = 0U;
    custom_mapping->pass_count = 0U;
 
    if (transfer_cmd->source_count > 1)
@@ -5243,13 +5183,6 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
                                 &custom_mapping->texel_unwind_src);
       }
 
-      if (!ret && dst_bpp != 24U) {
-         ret = pvr_byte_unwind(src_bpp,
-                               src->surface.dev_addr,
-                               true,
-                               &custom_mapping->byte_unwind_src);
-      }
-
       if (!ret) {
          custom_mapping->texel_extend_src = dst_bpp / 8U;
          custom_mapping->texel_extend_dst = custom_mapping->texel_extend_src;
@@ -5297,8 +5230,7 @@ pvr_get_custom_mapping(const struct pvr_device_info *dev_info,
          transfer_cmd->dst.stride * custom_mapping->texel_extend_dst);
    }
 
-   if (custom_mapping->byte_unwind_src > 0U ||
-       custom_mapping->texel_unwind_src > 0U ||
+   if (custom_mapping->texel_unwind_src > 0U ||
        custom_mapping->texel_unwind_dst > 0U || custom_mapping->double_stride) {
       struct pvr_transfer_wa_source *wa_src;
       struct pvr_rect_mapping *mapping;
