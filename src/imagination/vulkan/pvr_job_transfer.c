@@ -701,9 +701,7 @@ pvr_mem_layout_spec(const struct pvr_transfer_cmd_surface *surface,
 
    case PVR_MEMLAYOUT_TWIDDLED:
    case PVR_MEMLAYOUT_3DTWIDDLED:
-      if (surface->stride != 0U)
-         mesa_logi("Ignoring stride value for twiddled/tiled surface!");
-
+      /* Ignoring stride value for twiddled/tiled surface. */
       *stride_out = *width_out;
       break;
 
