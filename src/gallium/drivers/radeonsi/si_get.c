@@ -1117,10 +1117,15 @@ static int si_get_compute_param(struct pipe_screen *screen, enum pipe_shader_ir 
       }
       return sizeof(uint32_t);
    }
-   case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
+   case PIPE_COMPUTE_CAP_SUBGROUP_SIZES:
       if (ret) {
          uint32_t *subgroup_size = ret;
-         *subgroup_size = si_determine_wave_size(sscreen, NULL);
+         if (sscreen->debug_flags & DBG(W32_CS))
+            *subgroup_size = 32;
+         else if (sscreen->debug_flags & DBG(W64_CS))
+            *subgroup_size = 64;
+         else
+            *subgroup_size = sscreen->info.gfx_level < GFX10 ? 64 : 64 | 32;
       }
       return sizeof(uint32_t);
    case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:

@@ -849,7 +849,7 @@ impl Device {
     pub fn subgroup_sizes(&self) -> Vec<usize> {
         let subgroup_size = ComputeParam::<u32>::compute_param(
             self.screen.as_ref(),
-            pipe_compute_cap::PIPE_COMPUTE_CAP_SUBGROUP_SIZE,
+            pipe_compute_cap::PIPE_COMPUTE_CAP_SUBGROUP_SIZES,
         );
 
         SetBitIndices::from_msb(subgroup_size)

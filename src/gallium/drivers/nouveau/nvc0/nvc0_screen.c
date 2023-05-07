@@ -556,7 +556,7 @@ nvc0_screen_get_compute_param(struct pipe_screen *pscreen,
       RET((uint64_t []) { 512 << 10 });
    case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE: /* c[], arbitrary limit */
       RET((uint64_t []) { 4096 });
-   case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
+   case PIPE_COMPUTE_CAP_SUBGROUP_SIZES:
       RET((uint32_t []) { 32 });
    case PIPE_COMPUTE_CAP_MAX_SUBGROUPS:
       RET((uint32_t []) { 0 });

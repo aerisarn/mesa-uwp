@@ -531,7 +531,7 @@ llvmpipe_get_compute_param(struct pipe_screen *_screen,
       return sizeof(uint32_t);
    case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:
       return 0;
-   case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
+   case PIPE_COMPUTE_CAP_SUBGROUP_SIZES:
       if (ret) {
          uint32_t *subgroup_size = ret;
          *subgroup_size = lp_native_vector_width / 32;
