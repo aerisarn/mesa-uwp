@@ -6,6 +6,10 @@ INSTALL=$PWD/install
 
 # Set up the driver environment.
 export LD_LIBRARY_PATH=$INSTALL/lib/
+
+RESULTS="$PWD/${GTEST_RESULTS_DIR:-results}"
+mkdir -p "$RESULTS"
+
 export LIBVA_DRIVERS_PATH=$INSTALL/lib/dri/
 # libva spams driver open info by default, and that happens per testcase.
 export LIBVA_MESSAGING_LEVEL=1
@@ -34,7 +38,7 @@ set +e
 gtest-runner \
     run \
     --gtest $GTEST \
-    --output ${GTEST_RESULTS_DIR:-results} \
+    --output ${RESULTS} \
     --jobs ${FDO_CI_CONCURRENT:-4} \
     $GTEST_SKIPS \
     --flakes $INSTALL/$GPU_VERSION-flakes.txt \
