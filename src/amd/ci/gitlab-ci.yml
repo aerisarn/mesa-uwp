@@ -180,6 +180,13 @@ radeonsi-raven-va:amd64:
     # https://github.com/google/googletest/issues/3614 would probably help.
     GTEST_FRACTION: 2
 
+radeonsi-raven-va-full:amd64:
+  extends:
+    - radeonsi-raven-va:amd64
+    - .radeonsi-vaapi-manual-rules
+  variables:
+    GTEST_FRACTION: null
+
 ############### Valve Infra
 .test-radv:
   variables:
