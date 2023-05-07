@@ -564,10 +564,6 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
       if (flags & RADEON_FLAG_GL2_BYPASS)
          vm_flags |= AMDGPU_VM_MTYPE_UC;
 
-      if (flags & RADEON_FLAG_MALL_NOALLOC &&
-          ws->info.drm_minor >= 47)
-         vm_flags |= AMDGPU_VM_PAGE_NOALLOC;
-
       r = amdgpu_bo_va_op_raw(ws->dev, buf_handle, 0, size, va, vm_flags,
 			   AMDGPU_VA_OP_MAP);
       if (r)
