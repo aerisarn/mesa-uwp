@@ -101,7 +101,7 @@ crosvm --no-syslog run \
     --gpu "${CROSVM_GPU_ARGS}" --gpu-render-server "path=/usr/local/libexec/virgl_render_server" \
     -m "${CROSVM_MEMORY:-4096}" -c "${CROSVM_CPU:-2}" --disable-sandbox \
     --shared-dir /:my_root:type=fs:writeback=true:timeout=60:cache=always \
-    --host-ip "192.168.30.1" --netmask "255.255.255.0" --mac "AA:BB:CC:00:00:12" \
+    --net "host-ip=192.168.30.1,netmask=255.255.255.0,mac=AA:BB:CC:00:00:12" \
     -s $VM_SOCKET \
     --cid ${VSOCK_CID} -p "${CROSVM_KERN_ARGS}" \
     /lava-files/${KERNEL_IMAGE_NAME:-bzImage} > ${VM_TEMP_DIR}/crosvm 2>&1
