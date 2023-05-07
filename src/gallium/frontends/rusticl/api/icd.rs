@@ -465,7 +465,7 @@ extern "C" fn cl_get_kernel_sub_group_info(
     param_value_size_ret: *mut usize,
 ) -> cl_int {
     match kernel.get_info_obj(
-        (device, input_value_size, input_value),
+        (device, input_value_size, input_value, param_value_size),
         param_name,
         param_value_size,
         param_value,

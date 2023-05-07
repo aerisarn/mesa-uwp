@@ -171,7 +171,11 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE => cl_prop::<cl_ulong>(dev.const_max_size()),
             CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE => cl_prop::<usize>(0),
             CL_DEVICE_MAX_MEM_ALLOC_SIZE => cl_prop::<cl_ulong>(dev.max_mem_alloc()),
-            CL_DEVICE_MAX_NUM_SUB_GROUPS => cl_prop::<cl_uint>(0),
+            CL_DEVICE_MAX_NUM_SUB_GROUPS => cl_prop::<cl_uint>(if dev.subgroups_supported() {
+                dev.max_subgroups()
+            } else {
+                0
+            }),
             CL_DEVICE_MAX_ON_DEVICE_EVENTS => cl_prop::<cl_uint>(0),
             CL_DEVICE_MAX_ON_DEVICE_QUEUES => cl_prop::<cl_uint>(0),
             CL_DEVICE_MAX_PARAMETER_SIZE => cl_prop::<usize>(dev.param_max_size()),
@@ -274,6 +278,13 @@ impl CLInfo<cl_device_info> for cl_device_id {
                 (CL_FP_ROUND_TO_NEAREST | CL_FP_INF_NAN) as cl_device_fp_config,
             ),
             CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS => cl_prop::<bool>(false),
+            CL_DEVICE_SUB_GROUP_SIZES_INTEL => {
+                cl_prop::<Vec<usize>>(if dev.subgroups_supported() {
+                    dev.subgroup_sizes()
+                } else {
+                    vec![0; 1]
+                })
+            }
             CL_DEVICE_SVM_CAPABILITIES | CL_DEVICE_SVM_CAPABILITIES_ARM => {
                 cl_prop::<cl_device_svm_capabilities>(
                     if dev.svm_supported() {

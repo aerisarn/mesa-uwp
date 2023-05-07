@@ -82,6 +82,7 @@ pub trait HelperContextWrapper {
     fn create_compute_state(&self, nir: &NirShader, static_local_mem: u32) -> *mut c_void;
     fn delete_compute_state(&self, cso: *mut c_void);
     fn compute_state_info(&self, state: *mut c_void) -> pipe_compute_state_object_info;
+    fn compute_state_subgroup_size(&self, state: *mut c_void, block: &[u32; 3]) -> u32;
 
     fn unmap(&self, tx: PipeTransfer);
 }
@@ -168,6 +169,10 @@ impl<'a> HelperContextWrapper for HelperContext<'a> {
 
     fn compute_state_info(&self, state: *mut c_void) -> pipe_compute_state_object_info {
         self.lock.compute_state_info(state)
+    }
+
+    fn compute_state_subgroup_size(&self, state: *mut c_void, block: &[u32; 3]) -> u32 {
+        self.lock.compute_state_subgroup_size(state, block)
     }
 
     fn unmap(&self, tx: PipeTransfer) {
@@ -572,6 +577,12 @@ impl Device {
             add_ext(1, 0, 0, "cl_khr_device_uuid");
         }
 
+        if self.subgroups_supported() {
+            // requires CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS
+            //add_ext(1, 0, 0, "cl_khr_subgroups");
+            add_feat(1, 0, 0, "__opencl_c_subgroups");
+        }
+
         if self.svm_supported() {
             add_ext(1, 0, 0, "cl_arm_shared_virtual_memory");
         }
@@ -857,6 +868,22 @@ impl Device {
             .collect()
     }
 
+    pub fn max_subgroups(&self) -> u32 {
+        ComputeParam::<u32>::compute_param(
+            self.screen.as_ref(),
+            pipe_compute_cap::PIPE_COMPUTE_CAP_MAX_SUBGROUPS,
+        )
+    }
+
+    pub fn subgroups_supported(&self) -> bool {
+        let subgroup_sizes = self.subgroup_sizes().len();
+
+        // we need to be able to query a CSO for subgroup sizes if multiple sub group sizes are
+        // supported, doing it without shareable shaders isn't practical
+        self.max_subgroups() > 0
+            && (subgroup_sizes == 1 || (subgroup_sizes > 1 && self.shareable_shaders()))
+    }
+
     pub fn svm_supported(&self) -> bool {
         self.screen.param(pipe_cap::PIPE_CAP_SYSTEM_SVM) == 1
     }
@@ -905,7 +932,7 @@ impl Device {
             images_write_3d: self.image_3d_write_supported(),
             integer_dot_product: true,
             intel_subgroups: false,
-            subgroups: false,
+            subgroups: self.subgroups_supported(),
             subgroups_ifp: false,
         }
     }

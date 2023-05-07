@@ -335,6 +335,8 @@ pub struct Kernel {
     pub values: Vec<RefCell<Option<KernelArgValue>>>,
     pub work_group_size: [usize; 3],
     pub build: Arc<NirKernelBuild>,
+    pub subgroup_size: usize,
+    pub num_subgroups: usize,
     dev_state: Arc<KernelDevState>,
 }
 
@@ -813,6 +815,8 @@ impl Kernel {
             prog: prog,
             name: name,
             work_group_size: work_group_size,
+            subgroup_size: nir.subgroup_size() as usize,
+            num_subgroups: nir.num_subgroups() as usize,
             values: values,
             dev_state: KernelDevState::new(nirs),
             build: nir_kernel_build,
@@ -1208,6 +1212,42 @@ impl Kernel {
     pub fn has_svm_devs(&self) -> bool {
         self.prog.devs.iter().any(|dev| dev.svm_supported())
     }
+
+    pub fn subgroup_sizes(&self, dev: &Device) -> Vec<usize> {
+        SetBitIndices::from_msb(self.dev_state.get(dev).info.simd_sizes)
+            .map(|bit| 1 << bit)
+            .collect()
+    }
+
+    pub fn subgroups_for_block(&self, dev: &Device, block: &[usize]) -> usize {
+        let subgroup_size = self.subgroup_size_for_block(dev, block);
+        if subgroup_size == 0 {
+            return 0;
+        }
+
+        let threads = block.iter().product();
+        div_round_up(threads, subgroup_size)
+    }
+
+    pub fn subgroup_size_for_block(&self, dev: &Device, block: &[usize]) -> usize {
+        let subgroup_sizes = self.subgroup_sizes(dev);
+        if subgroup_sizes.is_empty() {
+            return 0;
+        }
+
+        if subgroup_sizes.len() == 1 {
+            return subgroup_sizes[0];
+        }
+
+        let block = [
+            *block.get(0).unwrap_or(&1) as u32,
+            *block.get(1).unwrap_or(&1) as u32,
+            *block.get(2).unwrap_or(&1) as u32,
+        ];
+
+        dev.helper_ctx()
+            .compute_state_subgroup_size(self.dev_state.get(dev).cso, &block) as usize
+    }
 }
 
 impl Clone for Kernel {
@@ -1219,6 +1259,8 @@ impl Clone for Kernel {
             values: self.values.clone(),
             work_group_size: self.work_group_size,
             build: self.build.clone(),
+            subgroup_size: self.subgroup_size,
+            num_subgroups: self.num_subgroups,
             dev_state: self.dev_state.clone(),
         }
     }

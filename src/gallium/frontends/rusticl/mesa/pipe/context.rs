@@ -327,6 +327,16 @@ impl PipeContext {
         info
     }
 
+    pub fn compute_state_subgroup_size(&self, state: *mut c_void, block: &[u32; 3]) -> u32 {
+        unsafe {
+            if let Some(cb) = self.pipe.as_ref().get_compute_state_subgroup_size {
+                cb(self.pipe.as_ptr(), state, block)
+            } else {
+                0
+            }
+        }
+    }
+
     pub fn create_sampler_state(&self, state: &pipe_sampler_state) -> *mut c_void {
         unsafe { self.pipe.as_ref().create_sampler_state.unwrap()(self.pipe.as_ptr(), state) }
     }
