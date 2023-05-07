@@ -730,6 +730,12 @@ pvr_get_image_format_properties(struct pvr_physical_device *pdevice,
          result = vk_error(pdevice, VK_ERROR_FORMAT_NOT_SUPPORTED);
          goto err_unsupported_format;
       }
+
+      /* Block compressed with 3D layout not supported */
+      if (vk_format_is_block_compressed(info->format)) {
+         result = vk_error(pdevice, VK_ERROR_FORMAT_NOT_SUPPORTED);
+         goto err_unsupported_format;
+      }
    }
 
    if (info->usage & render_usage) {
