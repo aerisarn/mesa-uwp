@@ -116,6 +116,8 @@ static unsigned si_blit_dbcb_copy(struct si_context *sctx, struct si_texture *sr
    unsigned layer, sample, checked_last_layer, max_layer;
    unsigned fully_copied_levels = 0;
 
+   assert(sctx->gfx_level < GFX11);
+
    if (planes & PIPE_MASK_Z)
       sctx->dbcb_depth_copy_enabled = true;
    if (planes & PIPE_MASK_S)
@@ -550,6 +552,8 @@ static void si_decompress_color_texture(struct si_context *sctx, struct si_textu
                                         unsigned first_level, unsigned last_level,
                                         bool need_fmask_expand)
 {
+   assert(sctx->gfx_level < GFX11);
+
    /* CMASK or DCC can be discarded and we can still end up here. */
    if (!tex->cmask_buffer && !tex->surface.fmask_size &&
        !vi_dcc_enabled(tex, first_level))
@@ -565,6 +569,8 @@ static void si_decompress_sampler_color_textures(struct si_context *sctx,
 {
    unsigned i;
    unsigned mask = textures->needs_color_decompress_mask;
+
+   assert(sctx->gfx_level < GFX11);
 
    while (mask) {
       struct pipe_sampler_view *view;
@@ -586,6 +592,8 @@ static void si_decompress_image_color_textures(struct si_context *sctx, struct s
 {
    unsigned i;
    unsigned mask = images->needs_color_decompress_mask;
+
+   assert(sctx->gfx_level < GFX11);
 
    while (mask) {
       const struct pipe_image_view *view;
@@ -738,8 +746,10 @@ static void si_check_render_feedback(struct si_context *sctx)
    sctx->need_check_render_feedback = false;
 }
 
-static void si_decompress_resident_textures(struct si_context *sctx)
+static void si_decompress_resident_color_textures(struct si_context *sctx)
 {
+   assert(sctx->gfx_level < GFX11);
+
    util_dynarray_foreach (&sctx->resident_tex_needs_color_decompress, struct si_texture_handle *,
                           tex_handle) {
       struct pipe_sampler_view *view = (*tex_handle)->view;
@@ -748,7 +758,10 @@ static void si_decompress_resident_textures(struct si_context *sctx)
       si_decompress_color_texture(sctx, tex, view->u.tex.first_level, view->u.tex.last_level,
                                   false);
    }
+}
 
+static void si_decompress_resident_depth_textures(struct si_context *sctx)
+{
    util_dynarray_foreach (&sctx->resident_tex_needs_depth_decompress, struct si_texture_handle *,
                           tex_handle) {
       struct pipe_sampler_view *view = (*tex_handle)->view;
@@ -763,6 +776,8 @@ static void si_decompress_resident_textures(struct si_context *sctx)
 
 static void si_decompress_resident_images(struct si_context *sctx)
 {
+   assert(sctx->gfx_level < GFX11);
+
    util_dynarray_foreach (&sctx->resident_img_needs_color_decompress, struct si_image_handle *,
                           img_handle) {
       struct pipe_image_view *view = &(*img_handle)->view;
@@ -773,7 +788,7 @@ static void si_decompress_resident_images(struct si_context *sctx)
    }
 }
 
-void si_decompress_textures(struct si_context *sctx, unsigned shader_mask)
+void gfx6_decompress_textures(struct si_context *sctx, unsigned shader_mask)
 {
    unsigned compressed_colortex_counter, mask;
    bool need_flush = false;
@@ -815,8 +830,10 @@ void si_decompress_textures(struct si_context *sctx, unsigned shader_mask)
    }
 
    if (shader_mask & u_bit_consecutive(0, SI_NUM_GRAPHICS_SHADERS)) {
-      if (sctx->uses_bindless_samplers)
-         si_decompress_resident_textures(sctx);
+      if (sctx->uses_bindless_samplers) {
+         si_decompress_resident_color_textures(sctx);
+         si_decompress_resident_depth_textures(sctx);
+      }
       if (sctx->uses_bindless_images)
          si_decompress_resident_images(sctx);
 
@@ -828,10 +845,36 @@ void si_decompress_textures(struct si_context *sctx, unsigned shader_mask)
 
       si_check_render_feedback(sctx);
    } else if (shader_mask & (1 << PIPE_SHADER_COMPUTE)) {
-      if (sctx->cs_shader_state.program->sel.info.uses_bindless_samplers)
-         si_decompress_resident_textures(sctx);
+      if (sctx->cs_shader_state.program->sel.info.uses_bindless_samplers) {
+         si_decompress_resident_color_textures(sctx);
+         si_decompress_resident_depth_textures(sctx);
+      }
       if (sctx->cs_shader_state.program->sel.info.uses_bindless_images)
          si_decompress_resident_images(sctx);
+   }
+}
+
+void gfx11_decompress_textures(struct si_context *sctx, unsigned shader_mask)
+{
+   if (sctx->blitter_running)
+      return;
+
+   /* Decompress depth textures if needed. */
+   unsigned mask = sctx->shader_needs_decompress_mask & shader_mask;
+   u_foreach_bit(i, mask) {
+      assert(sctx->samplers[i].needs_depth_decompress_mask);
+      si_decompress_sampler_depth_textures(sctx, &sctx->samplers[i]);
+   }
+
+   /* Decompress bindless depth textures and disable DCC for render feedback. */
+   if (shader_mask & u_bit_consecutive(0, SI_NUM_GRAPHICS_SHADERS)) {
+      if (sctx->uses_bindless_samplers)
+         si_decompress_resident_depth_textures(sctx);
+
+      si_check_render_feedback(sctx);
+   } else if (shader_mask & (1 << PIPE_SHADER_COMPUTE)) {
+      if (sctx->cs_shader_state.program->sel.info.uses_bindless_samplers)
+         si_decompress_resident_depth_textures(sctx);
    }
 }
 

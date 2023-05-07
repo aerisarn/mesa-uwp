@@ -496,7 +496,9 @@ static void si_set_sampler_view_desc(struct si_context *sctx, struct si_sampler_
 
 static bool color_needs_decompression(struct si_texture *tex)
 {
-   if (tex->is_depth)
+   struct si_screen *sscreen = (struct si_screen *)tex->buffer.b.b.screen;
+
+   if (sscreen->info.gfx_level >= GFX11 || tex->is_depth)
       return false;
 
    return tex->surface.fmask_size ||
@@ -1640,6 +1642,8 @@ static void si_resident_handles_update_needs_color_decompress(struct si_context 
  */
 void si_update_needs_color_decompress_masks(struct si_context *sctx)
 {
+   assert(sctx->gfx_level < GFX11);
+
    for (int i = 0; i < SI_NUM_SHADERS; ++i) {
       si_samplers_update_needs_color_decompress_mask(&sctx->samplers[i]);
       si_images_update_needs_color_decompress_mask(&sctx->images[i]);

@@ -898,7 +898,10 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
                                        sctx->framebuffer.all_DCC_pipe_aligned);
       }
 
-      si_decompress_textures(sctx, 1 << PIPE_SHADER_COMPUTE);
+      if (sctx->gfx_level < GFX11)
+         gfx6_decompress_textures(sctx, 1 << PIPE_SHADER_COMPUTE);
+      else
+         gfx11_decompress_textures(sctx, 1 << PIPE_SHADER_COMPUTE);
    }
 
    /* Add buffer sizes for memory checking in need_cs_space. */
