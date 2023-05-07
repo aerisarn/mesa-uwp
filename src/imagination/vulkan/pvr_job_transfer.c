@@ -4887,20 +4887,22 @@ static void pvr_unwind_rects(uint32_t width,
 
          mappings[new_mapping] = mappings[i];
 
-         new_rect->extent.width =
-            (new_rect->extent.width + new_rect->offset.x) - split_point;
+         rect->extent.width = split_point - rect->offset.x;
          new_rect->offset.x = split_point;
 
          if (input) {
-            mappings[i].dst_rect.extent.width -= new_rect->extent.width;
+            mappings[i].dst_rect.extent.width -=
+               new_rect->extent.width - split_point;
             mappings[new_mapping].dst_rect.offset.x =
                mappings[i].dst_rect.offset.x +
                mappings[i].dst_rect.extent.width;
          } else {
-            mappings[i].src_rect.extent.width -= new_rect->extent.width;
+            mappings[i].src_rect.extent.width -=
+               new_rect->extent.width - split_point;
             mappings[new_mapping].src_rect.offset.x =
                mappings[i].src_rect.offset.x +
                mappings[i].src_rect.extent.width;
+            mappings[new_mapping].src_rect.extent.width = texel_unwind;
          }
 
          rect->offset.x += texel_unwind;
@@ -4909,6 +4911,7 @@ static void pvr_unwind_rects(uint32_t width,
          new_rect->offset.x =
             (int32_t)texel_unwind - (int32_t)width + new_rect->offset.x;
          new_rect->offset.y++;
+         new_rect->extent.width = texel_unwind - width + new_rect->extent.width;
 
          new_mappings++;
       }
