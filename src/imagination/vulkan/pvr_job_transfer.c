@@ -1443,7 +1443,9 @@ static void pvr_uv_space(const struct pvr_device_info *dev_info,
                     (src_rect->offset.y * dst_y1 !=
                      src_y1 * dst_rect->offset.y) ||
                     (src_rect->extent.width != dst_rect->extent.width) ||
-                    (src_rect->extent.height != dst_rect->extent.height)) {
+                    (src_rect->extent.height != dst_rect->extent.height) ||
+                    transfer_cmd->sources[0U].mappings[0U].flip_x ||
+                    transfer_cmd->sources[0U].mappings[0U].flip_y) {
             layer->layer_floats = PVR_INT_COORD_SET_FLOATS_4;
          } else {
             layer->layer_floats = PVR_INT_COORD_SET_FLOATS_0;
@@ -1798,17 +1800,27 @@ pvr_dma_texture_floats(const struct pvr_transfer_cmd *transfer_cmd,
          float offset = 0.0f;
          float tmp;
 
-         dst_x = dst_rect.extent.width;
-         dst_y = dst_rect.extent.height;
+         dst_x = mapping->flip_x ? -(int32_t)dst_rect.extent.width
+                                 : dst_rect.extent.width;
+         dst_y = mapping->flip_y ? -(int32_t)dst_rect.extent.height
+                                 : dst_rect.extent.height;
          src_x = src_rect.extent.width;
          src_y = src_rect.extent.height;
 
          nums[0U] = src_x;
          denom[0U] = dst_x;
-         consts[0U] = src_rect.offset.x * dst_x - src_x * dst_rect.offset.x;
+         consts[0U] =
+            mapping->flip_x
+               ? src_rect.offset.x * dst_x -
+                    src_x * (dst_rect.offset.x + dst_rect.extent.width)
+               : src_rect.offset.x * dst_x - src_x * dst_rect.offset.x;
          nums[1U] = src_y;
          denom[1U] = dst_y;
-         consts[1U] = src_rect.offset.y * dst_y - src_y * dst_rect.offset.y;
+         consts[1U] =
+            mapping->flip_y
+               ? src_rect.offset.y * dst_y -
+                    src_y * (dst_rect.offset.y + dst_rect.extent.height)
+               : src_rect.offset.y * dst_y - src_y * dst_rect.offset.y;
 
          for (uint32_t i = 0U; i < 2U; i++) {
             tmp = (float)(nums[i]) / (float)(denom[i]);

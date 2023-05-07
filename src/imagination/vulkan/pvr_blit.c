@@ -206,15 +206,34 @@ void pvr_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
          region->srcOffsets[1].x - region->srcOffsets[0].x;
       const uint32_t src_height =
          region->srcOffsets[1].y - region->srcOffsets[0].y;
-      const uint32_t dst_width =
-         region->dstOffsets[1].x - region->dstOffsets[0].x;
-      const uint32_t dst_height =
-         region->dstOffsets[1].y - region->dstOffsets[0].y;
+      uint32_t dst_width;
+      uint32_t dst_height;
 
       float initial_depth_offset;
       VkExtent3D src_extent;
       VkExtent3D dst_extent;
+      VkOffset3D dst_offset = region->dstOffsets[0];
       float z_slice_stride;
+      bool flip_x;
+      bool flip_y;
+
+      if (region->dstOffsets[1].x > region->dstOffsets[0].x) {
+         dst_width = region->dstOffsets[1].x - region->dstOffsets[0].x;
+         flip_x = false;
+      } else {
+         dst_width = region->dstOffsets[0].x - region->dstOffsets[1].x;
+         flip_x = true;
+         dst_offset.x = region->dstOffsets[1].x;
+      }
+
+      if (region->dstOffsets[1].y > region->dstOffsets[0].y) {
+         dst_height = region->dstOffsets[1].y - region->dstOffsets[0].y;
+         flip_y = false;
+      } else {
+         dst_height = region->dstOffsets[0].y - region->dstOffsets[1].y;
+         flip_y = true;
+         dst_offset.y = region->dstOffsets[1].y;
+      }
 
       /* If any of the extent regions is zero, then reject the blit and
        * continue.
@@ -311,7 +330,7 @@ void pvr_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
                                     dst,
                                     region->dstSubresource.baseArrayLayer + j,
                                     region->dstSubresource.mipLevel,
-                                    &region->dstOffsets[0],
+                                    &dst_offset,
                                     &dst_extent,
                                     min_dst_z,
                                     dst->vk.format,
@@ -328,6 +347,8 @@ void pvr_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
 
             transfer_cmd->sources[0].mappings[0].src_rect = src_rect;
             transfer_cmd->sources[0].mappings[0].dst_rect = dst_rect;
+            transfer_cmd->sources[0].mappings[0].flip_x = flip_x;
+            transfer_cmd->sources[0].mappings[0].flip_y = flip_y;
             transfer_cmd->sources[0].mapping_count++;
 
             transfer_cmd->sources[0].surface = src_surface;

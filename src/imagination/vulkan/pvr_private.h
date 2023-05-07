@@ -394,6 +394,8 @@ struct pvr_transfer_cmd_surface {
 struct pvr_rect_mapping {
    VkRect2D src_rect;
    VkRect2D dst_rect;
+   bool flip_x;
+   bool flip_y;
 };
 
 /* Describes an Alpha-Transparency configuration - for Transfer Queue Use. */
