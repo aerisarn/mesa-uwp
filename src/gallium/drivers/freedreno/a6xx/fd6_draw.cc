@@ -422,19 +422,6 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
 }
 
 static bool
-is_z32(enum pipe_format format)
-{
-   switch (format) {
-   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-   case PIPE_FORMAT_Z32_UNORM:
-   case PIPE_FORMAT_Z32_FLOAT:
-      return true;
-   default:
-      return false;
-   }
-}
-
-static bool
 do_lrz_clear(struct fd_context *ctx, enum fd_buffer_mask buffers)
 {
    struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
@@ -444,8 +431,7 @@ do_lrz_clear(struct fd_context *ctx, enum fd_buffer_mask buffers)
 
    struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
 
-   return (buffers & FD_BUFFER_DEPTH) &&
-         zsbuf->lrz && !is_z32(pfb->zsbuf->format);
+   return (buffers & FD_BUFFER_DEPTH) && zsbuf->lrz;
 }
 
 static bool
