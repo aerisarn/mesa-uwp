@@ -908,6 +908,9 @@ build_addr_iadd_imm(nir_builder *b, nir_ssa_def *addr,
                     nir_variable_mode modes,
                     int64_t offset)
 {
+   if (!offset)
+      return addr;
+
    return build_addr_iadd(b, addr, addr_format, modes,
                              nir_imm_intN_t(b, offset,
                                             addr_get_offset_bit_size(addr, addr_format)));
