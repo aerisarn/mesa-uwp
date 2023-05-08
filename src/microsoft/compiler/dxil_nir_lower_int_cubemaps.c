@@ -110,7 +110,7 @@ static nir_ssa_def *
 evaluate_face_x(nir_builder *b, coord_t *coord)
 {
    nir_ssa_def *sign = nir_fsign(b, coord->rx);
-   nir_ssa_def *positive = nir_fge(b, coord->rx, nir_imm_float(b, 0.0));
+   nir_ssa_def *positive = nir_fge_imm(b, coord->rx, 0.0);
    nir_ssa_def *ima = nir_fdiv(b, nir_imm_float(b, -0.5), coord->arx);
 
    nir_ssa_def *x = nir_fadd_imm(b, nir_fmul(b, nir_fmul(b, sign, ima), coord->rz), 0.5);
@@ -129,7 +129,7 @@ static nir_ssa_def *
 evaluate_face_y(nir_builder *b, coord_t *coord)
 {
    nir_ssa_def *sign = nir_fsign(b, coord->ry);
-   nir_ssa_def *positive = nir_fge(b, coord->ry, nir_imm_float(b, 0.0));
+   nir_ssa_def *positive = nir_fge_imm(b, coord->ry, 0.0);
    nir_ssa_def *ima = nir_fdiv(b, nir_imm_float(b, 0.5), coord->ary);
 
    nir_ssa_def *x = nir_fadd_imm(b, nir_fmul(b, ima, coord->rx), 0.5);
@@ -148,7 +148,7 @@ static nir_ssa_def *
 evaluate_face_z(nir_builder *b, coord_t *coord)
 {
    nir_ssa_def *sign = nir_fsign(b, coord->rz);
-   nir_ssa_def *positive = nir_fge(b, coord->rz, nir_imm_float(b, 0.0));
+   nir_ssa_def *positive = nir_fge_imm(b, coord->rz, 0.0);
    nir_ssa_def *ima = nir_fdiv(b, nir_imm_float(b, -0.5), coord->arz);
 
    nir_ssa_def *x = nir_fadd_imm(b, nir_fmul(b, nir_fmul(b, sign, ima), nir_fneg(b, coord->rx)), 0.5);

@@ -419,7 +419,7 @@ nir_f2fN(nir_builder *b, nir_ssa_def *src, unsigned bit_size)
 static inline nir_ssa_def *
 nir_i2b(nir_builder *b, nir_ssa_def *src)
 {
-   return nir_ine(b, src, nir_imm_intN_t(b, 0, src->bit_size));
+   return nir_ine_imm(b, src, 0);
 }
 
 static inline nir_ssa_def *
@@ -621,7 +621,7 @@ _nir_select_from_array_helper(nir_builder *b, nir_ssa_def **arr,
       return arr[start];
    } else {
       unsigned mid = start + (end - start) / 2;
-      return nir_bcsel(b, nir_ilt(b, idx, nir_imm_intN_t(b, mid, idx->bit_size)),
+      return nir_bcsel(b, nir_ilt_imm(b, idx, mid),
                        _nir_select_from_array_helper(b, arr, idx, start, mid),
                        _nir_select_from_array_helper(b, arr, idx, mid, end));
    }

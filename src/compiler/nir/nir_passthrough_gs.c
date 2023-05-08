@@ -274,7 +274,7 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
       nir_emit_vertex(&b, 0);
       if (emulate_edgeflags) {
          nir_ssa_def *edge_value = nir_channel(&b, nir_load_array_var_imm(&b, edge_var, idx), 0);
-         nir_if *edge_if = nir_push_if(&b, nir_fneu(&b, edge_value, nir_imm_float(&b, 1.0)));
+         nir_if *edge_if = nir_push_if(&b, nir_fneu_imm(&b, edge_value, 1.0));
          nir_end_primitive(&b, 0);
          nir_pop_if(&b, edge_if);
       }

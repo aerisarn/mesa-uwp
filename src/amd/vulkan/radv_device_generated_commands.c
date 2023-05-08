@@ -587,7 +587,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
             nir_ssa_def *update = nir_iand(&b, push_const_mask, nir_ishl(&b, nir_imm_int64(&b, 1), cur_idx));
             update = nir_bcsel(
-               &b, nir_ult(&b, cur_idx, nir_imm_int(&b, 64 /* bits in push_const_mask */)), update,
+               &b, nir_ult_imm(&b, cur_idx, 64 /* bits in push_const_mask */), update,
                nir_imm_int64(&b, 0));
 
             nir_push_if(&b, nir_ine_imm(&b, update, 0));
@@ -664,7 +664,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
                {
                   nir_ssa_def *cur_idx = nir_load_var(&b, idx);
                   nir_push_if(&b,
-                              nir_uge(&b, cur_idx, nir_imm_int(&b, 64 /* bits in inline_mask */)));
+                              nir_uge_imm(&b, cur_idx, 64 /* bits in inline_mask */));
                   {
                      nir_jump(&b, nir_jump_break);
                   }
@@ -682,7 +682,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
                   nir_ssa_def *update = nir_iand(&b, push_const_mask, nir_ishl(&b, nir_imm_int64(&b, 1), cur_idx));
                   update = nir_bcsel(
-                     &b, nir_ult(&b, cur_idx, nir_imm_int(&b, 64 /* bits in push_const_mask */)),
+                     &b, nir_ult_imm(&b, cur_idx, 64 /* bits in push_const_mask */),
                      update, nir_imm_int64(&b, 0));
 
                   nir_push_if(&b, nir_ine_imm(&b, update, 0));

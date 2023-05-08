@@ -235,7 +235,7 @@ lower_uint_color_write(nir_builder *b, struct nir_instr *instr, bool is_signed)
    nir_ssa_def *def = is_signed ? nir_format_float_to_snorm(b, col, bits) :
                                   nir_format_float_to_unorm(b, col, bits);
    if (is_signed)
-      def = nir_bcsel(b, nir_ilt(b, def, nir_imm_int(b, 0)),
+      def = nir_bcsel(b, nir_ilt_imm(b, def, 0),
                       nir_iadd(b, def, nir_imm_int(b, 1 << NUM_BITS)),
                       def);
    nir_instr_rewrite_src(&intr->instr, intr->src + 1, nir_src_for_ssa(def));

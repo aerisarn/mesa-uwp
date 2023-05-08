@@ -247,7 +247,7 @@ emit_arith_inst(struct st_translate *t,
 
    case GL_CND0_ATI:
       return nir_bcsel(t->b,
-                       nir_fge(t->b, src[2], nir_imm_vec4_float(t->b, 0.0)),
+                       nir_fge_imm(t->b, src[2], 0.0),
                        src[0],
                        src[1]);
 

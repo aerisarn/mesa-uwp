@@ -87,8 +87,7 @@ nir_lower_pstipple_block(nir_block *block,
 
    switch (state->bool_type) {
    case nir_type_bool1:
-      condition = nir_fneu(b, nir_channel(b, &tex->dest.ssa, 3),
-                           nir_imm_floatN_t(b, 0.0, tex->dest.ssa.bit_size));
+      condition = nir_fneu_imm(b, nir_channel(b, &tex->dest.ssa, 3), 0.0);
       break;
    case nir_type_bool32:
       condition = nir_fneu32(b, nir_channel(b, &tex->dest.ssa, 3),

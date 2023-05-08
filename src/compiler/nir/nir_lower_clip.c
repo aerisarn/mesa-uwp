@@ -452,7 +452,7 @@ lower_clip_fs(nir_function_impl *impl, unsigned ucp_enables,
    for (int plane = 0; plane < MAX_CLIP_PLANES; plane++) {
       if (ucp_enables & (1 << plane)) {
          nir_ssa_def *this_cond =
-            nir_flt(&b, clipdist[plane], nir_imm_float(&b, 0.0));
+            nir_flt_imm(&b, clipdist[plane], 0.0);
 
          cond = cond ? nir_ior(&b, cond, this_cond) : this_cond;
       }

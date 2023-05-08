@@ -95,15 +95,12 @@ rewrite_emit_vertex(nir_intrinsic_instr *intrin, struct state *state)
    else
       count_per_primitive = nir_ssa_undef(b, 1, 32);
 
-   nir_ssa_def *max_vertices =
-      nir_imm_int(b, b->shader->info.gs.vertices_out);
-
    /* Create: if (vertex_count < max_vertices) and insert it.
     *
     * The new if statement needs to be hooked up to the control flow graph
     * before we start inserting instructions into it.
     */
-   nir_push_if(b, nir_ilt(b, count, max_vertices));
+   nir_push_if(b, nir_ilt_imm(b, count, b->shader->info.gs.vertices_out));
 
    nir_emit_vertex_with_counter(b, count, count_per_primitive, stream);
 
@@ -172,7 +169,7 @@ overwrite_incomplete_primitives(struct state *state, unsigned stream)
 
    /* See if the current primitive is a incomplete */
    nir_ssa_def *is_inc_prim =
-      nir_ilt(b, vtxcnt_per_primitive, nir_imm_int(b, outprim_min_vertices));
+      nir_ilt_imm(b, vtxcnt_per_primitive, outprim_min_vertices);
 
    /* Number of vertices in the incomplete primitive */
    nir_ssa_def *num_inc_vtx =

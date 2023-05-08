@@ -285,8 +285,7 @@ nir_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x)
     * 24-bit representation.
     */
    const double huge_val = bit_size >= 32 ? 1e18 : 16384;
-   nir_ssa_def *huge = nir_imm_floatN_t(b,  huge_val, bit_size);
-   nir_ssa_def *scale = nir_bcsel(b, nir_fge(b, nir_fabs(b, t), huge),
+   nir_ssa_def *scale = nir_bcsel(b, nir_fge_imm(b, nir_fabs(b, t), huge_val),
                                   nir_imm_floatN_t(b, 0.25, bit_size), one);
    nir_ssa_def *rcp_scaled_t = nir_frcp(b, nir_fmul(b, t, scale));
    nir_ssa_def *s_over_t = nir_fmul(b, nir_fmul(b, s, scale), rcp_scaled_t);

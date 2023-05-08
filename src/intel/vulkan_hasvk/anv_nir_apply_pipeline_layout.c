@@ -1102,7 +1102,7 @@ build_def_array_select(nir_builder *b, nir_ssa_def **srcs, nir_ssa_def *idx,
       return srcs[start];
    } else {
       unsigned mid = start + (end - start) / 2;
-      return nir_bcsel(b, nir_ilt(b, idx, nir_imm_int(b, mid)),
+      return nir_bcsel(b, nir_ilt_imm(b, idx, mid),
                        build_def_array_select(b, srcs, idx, start, mid),
                        build_def_array_select(b, srcs, idx, mid, end));
    }

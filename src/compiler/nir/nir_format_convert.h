@@ -40,7 +40,7 @@ static inline nir_ssa_def *
 nir_shift(nir_builder *b, nir_ssa_def *value, nir_ssa_def *left_shift)
 {
    return nir_bcsel(b,
-                    nir_ige(b, left_shift, nir_imm_int(b, 0)),
+                    nir_ige_imm(b, left_shift, 0),
                     nir_ishl(b, value, left_shift),
                     nir_ushr(b, value, nir_ineg(b, left_shift)));
 }
@@ -307,7 +307,7 @@ nir_format_linear_to_srgb(nir_builder *b, nir_ssa_def *c)
                                       1.055f),
                       -0.055f);
 
-   return nir_fsat(b, nir_bcsel(b, nir_flt(b, c, nir_imm_float(b, 0.0031308f)),
+   return nir_fsat(b, nir_bcsel(b, nir_flt_imm(b, c, 0.0031308f),
                                    linear, curved));
 }
 

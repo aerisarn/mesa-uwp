@@ -198,10 +198,10 @@ ufN_to_float(nir_builder *b, nir_ssa_def *src, unsigned exp_bits, unsigned mant_
    denormal = nir_iadd(b, denormal, nir_ishl_imm(b, tmp, 23));
 
    /* Select the final result. */
-   nir_ssa_def *cond = nir_uge(b, src, nir_imm_int(b, ((1ULL << exp_bits) - 1) << mant_bits));
+   nir_ssa_def *cond = nir_uge_imm(b, src, ((1ULL << exp_bits) - 1) << mant_bits);
    nir_ssa_def *result = nir_bcsel(b, cond, naninf, normal);
 
-   cond = nir_uge(b, src, nir_imm_int(b, 1ULL << mant_bits));
+   cond = nir_uge_imm(b, src, 1ULL << mant_bits);
    result = nir_bcsel(b, cond, result, denormal);
 
    cond = nir_ine_imm(b, src, 0);

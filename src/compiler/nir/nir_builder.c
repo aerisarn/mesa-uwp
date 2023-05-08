@@ -633,7 +633,7 @@ nir_gen_rect_vertices(nir_builder *b, nir_ssa_def *z, nir_ssa_def *w)
     * channel 1 is vertex_id & 1 ?  1.0 : -1.0
     */
 
-   nir_ssa_def *c0cmp = nir_ilt(b, vertex_id, nir_imm_int(b, 2));
+   nir_ssa_def *c0cmp = nir_ilt_imm(b, vertex_id, 2);
    nir_ssa_def *c1cmp = nir_test_mask(b, vertex_id, 1);
 
    nir_ssa_def *comp[4];

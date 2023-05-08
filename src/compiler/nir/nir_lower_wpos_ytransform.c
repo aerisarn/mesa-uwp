@@ -63,7 +63,7 @@ get_transform(lower_wpos_ytransform_state *state)
 static nir_ssa_def *
 nir_cmp(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1, nir_ssa_def *src2)
 {
-   return nir_bcsel(b, nir_flt(b, src0, nir_imm_float(b, 0.0)), src1, src2);
+   return nir_bcsel(b, nir_flt_imm(b, src0, 0.0), src1, src2);
 }
 
 /* see emit_wpos_adjustment() in st_mesa_to_tgsi.c */

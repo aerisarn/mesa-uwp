@@ -684,8 +684,7 @@ brw_nir_initialize_mue(nir_shader *nir,
       /* Zero "remaining" primitive headers starting from the last one covered
        * by the loop above + workgroup_size.
        */
-      nir_ssa_def *cmp = nir_ilt(&b, local_invocation_index,
-                                     nir_imm_int(&b, remaining));
+      nir_ssa_def *cmp = nir_ilt_imm(&b, local_invocation_index, remaining);
       nir_if *if_stmt = nir_push_if(&b, cmp);
       {
          nir_ssa_def *prim = nir_iadd_imm(&b, local_invocation_index,

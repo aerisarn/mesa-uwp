@@ -1337,7 +1337,7 @@ nir_lower_lod_zero_width(nir_builder *b, nir_tex_instr *tex)
       nir_ssa_def *fwidth = nir_fadd(b, nir_fabs(b, dfdx), nir_fabs(b, dfdy));
 
       /* Check if the sum is 0. */
-      is_zero = nir_iand(b, is_zero, nir_feq(b, fwidth, nir_imm_float(b, 0.0)));
+      is_zero = nir_iand(b, is_zero, nir_feq_imm(b, fwidth, 0.0));
    }
 
    /* Replace the raw LOD by -FLT_MAX if the sum is 0 for all coordinates. */

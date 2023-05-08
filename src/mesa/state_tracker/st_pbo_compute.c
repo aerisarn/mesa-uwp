@@ -289,9 +289,9 @@ init_pbo_shader_data(nir_builder *b, struct pbo_shader_data *sd, unsigned coord_
                                    nir_bcsel(b,
                                              nir_ieq_imm(b, sd->bits1, 8),
                                              nir_bcsel(b,
-                                                       nir_uge(b, sd->channels, nir_imm_int(b, 2)),
+                                                       nir_uge_imm(b, sd->channels, 2),
                                                        nir_bcsel(b,
-                                                                 nir_uge(b, sd->channels, nir_imm_int(b, 3)),
+                                                                 nir_uge_imm(b, sd->channels, 3),
                                                                  nir_bcsel(b,
                                                                            nir_ieq_imm(b, sd->channels, 4),
                                                                            nir_ball(b, nir_ieq_imm(b, sd->bits, 8)),
@@ -363,7 +363,7 @@ get_buffer_offset(nir_builder *b, nir_ssa_def *coord, struct pbo_shader_data *sd
                + (skipimages + img) * bytes_per_image;
  */
    nir_ssa_def *bytes_per_row = nir_imul(b, nir_channel(b, sd->range, 0), sd->blocksize);
-   bytes_per_row = nir_bcsel(b, nir_ult(b, sd->alignment, nir_imm_int(b, 2)),
+   bytes_per_row = nir_bcsel(b, nir_ult_imm(b, sd->alignment, 2),
                              bytes_per_row,
                              nir_iand(b,
                                       nir_isub(b, nir_iadd(b, bytes_per_row, sd->alignment), nir_imm_int(b, 1)),
@@ -390,7 +390,7 @@ write_ssbo(nir_builder *b, nir_ssa_def *pixel, nir_ssa_def *buffer_offset)
 static void
 write_conversion(nir_builder *b, nir_ssa_def *pixel, nir_ssa_def *buffer_offset, struct pbo_shader_data *sd)
 {
-   nir_push_if(b, nir_ilt(b, sd->dst_bit_size, nir_imm_int(b, 32)));
+   nir_push_if(b, nir_ilt_imm(b, sd->dst_bit_size, 32));
       nir_push_if(b, nir_ieq_imm(b, sd->dst_bit_size, 16));
          write_ssbo(b, nir_u2u16(b, pixel), buffer_offset);
       nir_push_else(b, NULL);
@@ -487,7 +487,7 @@ check_for_weird_packing(nir_builder *b, struct pbo_shader_data *sd, unsigned com
    nir_ssa_def *c = nir_channel(b, sd->bits, component - 1);
 
    return nir_bcsel(b,
-                    nir_ige(b, sd->channels, nir_imm_int(b, component)),
+                    nir_ige_imm(b, sd->channels, component),
                     nir_ior(b,
                             nir_ine(b, c, sd->bits1),
                             nir_ine_imm(b, nir_imod(b, c, nir_imm_int(b, 8)), 0)),

@@ -1057,9 +1057,9 @@ ttn_lit(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 
       ttn_move_dest_masked(b, dest,
                            nir_bcsel(b,
-                                     nir_flt(b,
-                                             ttn_channel(b, src[0], X),
-                                             nir_imm_float(b, 0.0)),
+                                     nir_flt_imm(b,
+                                                 ttn_channel(b, src[0], X),
+                                                 0.0),
                                      nir_imm_float(b, 0.0),
                                      pow),
                            TGSI_WRITEMASK_Z);
@@ -1112,7 +1112,7 @@ static void
 ttn_cmp(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 {
    ttn_move_dest(b, dest, nir_bcsel(b,
-                                    nir_flt(b, src[0], nir_imm_float(b, 0.0)),
+                                    nir_flt_imm(b, src[0], 0.0),
                                     src[1], src[2]));
 }
 
@@ -1142,7 +1142,7 @@ ttn_kill_if(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 {
    /* flt must be exact, because NaN shouldn't discard. (apps rely on this) */
    b->exact = true;
-   nir_ssa_def *cmp = nir_bany(b, nir_flt(b, src[0], nir_imm_float(b, 0.0)));
+   nir_ssa_def *cmp = nir_bany(b, nir_flt_imm(b, src[0], 0.0));
    b->exact = false;
 
    nir_discard_if(b, cmp);
@@ -2142,11 +2142,11 @@ ttn_emit_instruction(struct ttn_compile *c)
       break;
 
    case TGSI_OPCODE_IF:
-      nir_push_if(b, nir_fneu(b, nir_channel(b, src[0], 0), nir_imm_float(b, 0.0)));
+      nir_push_if(b, nir_fneu_imm(b, nir_channel(b, src[0], 0), 0.0));
       break;
 
    case TGSI_OPCODE_UIF:
-      nir_push_if(b, nir_ine(b, nir_channel(b, src[0], 0), nir_imm_int(b, 0)));
+      nir_push_if(b, nir_ine_imm(b, nir_channel(b, src[0], 0), 0));
       break;
 
    case TGSI_OPCODE_ELSE:

@@ -1806,11 +1806,11 @@ lower_fquantize2f16(struct nir_builder *b, nir_instr *instr, void *data)
       nir_ssa_for_src(b, alu->src[0].src, nir_src_num_components(alu->src[0].src));
 
    nir_ssa_def *neg_inf_cond =
-      nir_flt(b, src, nir_imm_float(b, -65504.0f));
+      nir_flt_imm(b, src, -65504.0f);
    nir_ssa_def *pos_inf_cond =
       nir_flt(b, nir_imm_float(b, 65504.0f), src);
    nir_ssa_def *zero_cond =
-      nir_flt(b, nir_fabs(b, src), nir_imm_float(b, ldexpf(1.0, -14)));
+      nir_flt_imm(b, nir_fabs(b, src), ldexpf(1.0, -14));
    nir_ssa_def *zero = nir_iand_imm(b, src, 1 << 31);
    nir_ssa_def *round = nir_iand_imm(b, src, ~BITFIELD_MASK(13));
 

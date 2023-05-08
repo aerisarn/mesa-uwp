@@ -260,7 +260,7 @@ emit_shared_to_payload_copy(nir_builder *b,
    if (remaining_vec4_copies > 0) {
       assert(remaining_vec4_copies < invocations);
 
-      nir_ssa_def *cmp = nir_ilt(b, invocation_index, nir_imm_int(b, remaining_vec4_copies));
+      nir_ssa_def *cmp = nir_ilt_imm(b, invocation_index, remaining_vec4_copies);
       nir_if *if_stmt = nir_push_if(b, cmp);
       {
          copy_shared_to_payload(b, vec4size / 4, addr, base_shared_addr, off);

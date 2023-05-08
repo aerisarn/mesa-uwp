@@ -3330,7 +3330,7 @@ gen_tex_coords(nir_builder *b)
     */
 
    nir_ssa_def *one = nir_imm_int(b, 1);
-   nir_ssa_def *c0cmp = nir_ilt(b, vertex_id, nir_imm_int(b, 2));
+   nir_ssa_def *c0cmp = nir_ilt_imm(b, vertex_id, 2);
    nir_ssa_def *c1cmp = nir_ieq(b, nir_iand(b, vertex_id, one), one);
 
    nir_ssa_def *comp[4];

@@ -655,7 +655,7 @@ emit_store_ngg_nogs_es_primitive_id(nir_builder *b, lower_ngg_nogs_state *s)
 static void
 add_clipdist_bit(nir_builder *b, nir_ssa_def *dist, unsigned index, nir_variable *mask)
 {
-   nir_ssa_def *is_neg = nir_flt(b, dist, nir_imm_float(b, 0));
+   nir_ssa_def *is_neg = nir_flt_imm(b, dist, 0);
    nir_ssa_def *neg_mask = nir_ishl_imm(b, nir_b2i32(b, is_neg), index);
    neg_mask = nir_ior(b, neg_mask, nir_load_var(b, mask));
    nir_store_var(b, mask, neg_mask, 1);
@@ -2616,7 +2616,7 @@ ngg_gs_clear_primflags(nir_builder *b, nir_ssa_def *num_vertices, unsigned strea
    nir_loop *loop = nir_push_loop(b);
    {
       nir_ssa_def *current_clear_primflag_idx = nir_load_var(b, s->current_clear_primflag_idx_var);
-      nir_if *if_break = nir_push_if(b, nir_uge(b, current_clear_primflag_idx, nir_imm_int(b, b->shader->info.gs.vertices_out)));
+      nir_if *if_break = nir_push_if(b, nir_uge_imm(b, current_clear_primflag_idx, b->shader->info.gs.vertices_out));
       {
          nir_jump(b, nir_jump_break);
       }
@@ -2819,7 +2819,7 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
          ? nir_ishl_imm(b, nir_b2i32(b, nir_inot(b, nir_load_cull_any_enabled_amd(b))), 2)
          : nir_imm_int(b, 0b100);
 
-   nir_ssa_def *completes_prim = nir_ige(b, current_vtx_per_prim, nir_imm_int(b, s->num_vertices_per_primitive - 1));
+   nir_ssa_def *completes_prim = nir_ige_imm(b, current_vtx_per_prim, s->num_vertices_per_primitive - 1);
    nir_ssa_def *complete_flag = nir_b2i32(b, completes_prim);
 
    nir_ssa_def *prim_flag = nir_ior(b, vertex_live_flag, complete_flag);
@@ -4489,7 +4489,7 @@ handle_smaller_ms_api_workgroup(nir_builder *b,
                             .memory_modes = nir_var_shader_out | nir_var_mem_shared);
    }
 
-   nir_ssa_def *has_api_ms_invocation = nir_ult(b, invocation_index, nir_imm_int(b, s->api_workgroup_size));
+   nir_ssa_def *has_api_ms_invocation = nir_ult_imm(b, invocation_index, s->api_workgroup_size);
    nir_if *if_has_api_ms_invocation = nir_push_if(b, has_api_ms_invocation);
    {
       nir_cf_reinsert(&extracted, b->cursor);

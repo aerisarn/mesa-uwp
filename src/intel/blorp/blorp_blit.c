@@ -839,7 +839,7 @@ blorp_nir_manual_blend_bilinear(nir_builder *b, nir_ssa_def *pos,
                                           nir_imm_int(b, 2))),
                      nir_imm_int(b, 0xf));
 
-         sample = nir_bcsel(b, nir_ilt(b, sample, nir_imm_int(b, 8)),
+         sample = nir_bcsel(b, nir_ilt_imm(b, sample, 8),
                             sample_low, sample_high);
       }
       nir_ssa_def *pos_ms = nir_vec3(b, nir_channel(b, sample_coords_int, 0),

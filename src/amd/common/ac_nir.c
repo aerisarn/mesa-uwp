@@ -174,7 +174,7 @@ ac_nir_export_position(nir_builder *b,
       } else if (force_vrs) {
          /* If Pos.W != 1 (typical for non-GUI elements), use coarse shading. */
          nir_ssa_def *pos_w = nir_channel(b, pos, 3);
-         nir_ssa_def *cond = nir_fneu(b, pos_w, nir_imm_float(b, 1));
+         nir_ssa_def *cond = nir_fneu_imm(b, pos_w, 1);
          rates = nir_bcsel(b, cond, nir_load_force_vrs_rates_amd(b), nir_imm_int(b, 0));
       }
 

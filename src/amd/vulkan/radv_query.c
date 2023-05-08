@@ -154,7 +154,7 @@ build_occlusion_query_shader(struct radv_device *device)
          nir_ssa_def *load = nir_load_ssbo(&b, 1, 32, src_buf, load_offset, .align_mul = 4,
                                            .access = ACCESS_COHERENT);
 
-         nir_push_if(&b, nir_ige(&b, load, nir_imm_int(&b, 0x80000000)));
+         nir_push_if(&b, nir_ige_imm(&b, load, 0x80000000));
          {
             nir_jump(&b, nir_jump_break);
          }
@@ -183,8 +183,8 @@ build_occlusion_query_shader(struct radv_device *device)
    nir_store_var(&b, start, nir_channel(&b, load, 0), 0x1);
    nir_store_var(&b, end, nir_channel(&b, load, 1), 0x1);
 
-   nir_ssa_def *start_done = nir_ilt(&b, nir_load_var(&b, start), nir_imm_int64(&b, 0));
-   nir_ssa_def *end_done = nir_ilt(&b, nir_load_var(&b, end), nir_imm_int64(&b, 0));
+   nir_ssa_def *start_done = nir_ilt_imm(&b, nir_load_var(&b, start), 0);
+   nir_ssa_def *end_done = nir_ilt_imm(&b, nir_load_var(&b, end), 0);
 
    nir_push_if(&b, nir_iand(&b, start_done, end_done));
 
