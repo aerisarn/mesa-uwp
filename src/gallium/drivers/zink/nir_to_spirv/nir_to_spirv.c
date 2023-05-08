@@ -4165,9 +4165,14 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                                  load, coord, emit_uint_const(ctx, 32, tex->component),
                                                  lod, sample, const_offset, offset, dref, tex->is_sparse);
          actual_dest_type = dest_type;
-      } else
+      } else {
+         assert(tex->op == nir_texop_txf_ms || !sample);
+         bool is_ms;
+         type_to_dim(glsl_get_sampler_dim(glsl_without_array(var->type)), &is_ms);
+         assert(is_ms || !sample);
          result = spirv_builder_emit_image_fetch(&ctx->builder, actual_dest_type,
                                                  image, coord, lod, sample, const_offset, offset, tex->is_sparse);
+      }
    } else {
       if (tex->op == nir_texop_txl)
          min_lod = 0;
