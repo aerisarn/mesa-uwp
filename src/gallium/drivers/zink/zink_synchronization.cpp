@@ -542,11 +542,11 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
       res->obj->unordered_access_stage = VK_PIPELINE_STAGE_NONE;
       res->obj->ordered_access_is_copied = false;
    }
-   /* unordered barriers can be skipped if either:
-    * - there is no current-batch unordered access
-    * - the unordered access is not write access
+   /* unordered barriers can be skipped when:
+    * - there is no current-batch unordered access AND previous batch usage is not write access
+    * - there is current-batch unordered access AND the unordered access is not write access
     */
-   bool can_skip_unordered = !unordered ? false : (!unordered_usage_matches || !zink_resource_access_is_write(res->obj->unordered_access));
+   bool can_skip_unordered = !unordered ? false : !zink_resource_access_is_write(!unordered_usage_matches ? res->obj->access : res->obj->unordered_access);
    /* ordered barriers can be skipped if both:
     * - there is no current access
     * - there is no current-batch unordered access
