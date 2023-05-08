@@ -797,7 +797,11 @@ struct zink_shader {
       } non_fs;
 
       struct {
-         uint32_t legacy_shadow_mask; //is_new_style_shadow is false for these
+         /* Bitmask of textures that have shadow sampling result components
+          * other than RED accessed. This is a subset of !is_new_style_shadow
+          * (GLSL <1.30, ARB_fp) shadow sampling usage.
+          */
+         uint32_t legacy_shadow_mask;
          nir_variable *fbfetch; //for fs output
       } fs;
    };
