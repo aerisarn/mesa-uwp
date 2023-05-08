@@ -3498,9 +3498,21 @@ lower_zs_swizzle_tex_instr(nir_builder *b, nir_instr *instr, void *data)
    return true;
 }
 
+/* Applies in-shader swizzles when necessary for depth/shadow sampling.
+ *
+ * SPIRV only has new-style (scalar result) shadow sampling, so to emulate
+ * !is_new_style_shadow (vec4 result) shadow sampling we lower to a
+ * new-style-shadow sample, and apply GL_DEPTH_TEXTURE_MODE swizzles in the NIR
+ * shader to expand out to vec4.  Since this depends on sampler state, it's a
+ * draw-time shader recompile to do so.
+ *
+ * We may also need to apply shader swizzles for
+ * driver_workarounds.needs_zs_shader_swizzle.
+ */
 static bool
 lower_zs_swizzle_tex(nir_shader *nir, const void *swizzle, bool shadow_only)
 {
+   /* We don't use nir_lower_tex to do our swizzling, because of this base_sampler_id. */
    unsigned base_sampler_id = gl_shader_stage_is_compute(nir->info.stage) ? 0 : PIPE_MAX_SAMPLERS * nir->info.stage;
    struct lower_zs_swizzle_state state = {shadow_only, base_sampler_id, swizzle};
    return nir_shader_instructions_pass(nir, lower_zs_swizzle_tex_instr, nir_metadata_dominance | nir_metadata_block_index, (void*)&state);

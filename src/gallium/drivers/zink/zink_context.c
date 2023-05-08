@@ -1062,21 +1062,28 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       ivci = create_ivci(screen, res, &templ, state->target);
       ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;
       ivci.subresourceRange.aspectMask = sampler_aspect_from_format(state->format);
-      bool shadow_needs_shader_swizzle = false;
+      bool red_depth_sampler_view = false;
       /* samplers for stencil aspects of packed formats need to always use stencil swizzle */
       if (ivci.subresourceRange.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
          ivci.components.r = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_r));
          ivci.components.g = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_g));
          ivci.components.b = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_b));
          ivci.components.a = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_a));
+
+         /* If we're sampling depth and we might need to do shader rewrites for
+          * legacy shadow sampling, then set up an extra image view that just
+          * returns the red (depth) component, so you can always have the shadow
+          * result available in the red component for the in-shader swizzling.
+          * (Or if we have PVR's needs_zs_shader_swizzle and are sampling ONE
+          * value for stencil, which also uses that view).
+          */
          if (ivci.subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT ||
              zink_screen(ctx->base.screen)->driver_workarounds.needs_zs_shader_swizzle) {
             VkComponentSwizzle *swizzle = (VkComponentSwizzle*)&ivci.components;
             for (unsigned i = 0; i < 4; i++) {
-               /* these require shader rewrites to correctly emulate */
                if (swizzle[i] == VK_COMPONENT_SWIZZLE_ONE ||
                    (swizzle[i] == VK_COMPONENT_SWIZZLE_ZERO && ivci.subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT))
-                  shadow_needs_shader_swizzle = true;
+                  red_depth_sampler_view = true;
             }
             /* this is the data that will be used in shader rewrites */
             sampler_view->swizzle.s[0] = clamp_zs_swizzle(sampler_view->base.swizzle_r);
@@ -1139,7 +1146,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       if (!screen->info.have_EXT_non_seamless_cube_map && viewtype_is_cube(&sampler_view->image_view->ivci)) {
          ivci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
          sampler_view->cube_array = (struct zink_surface*)zink_get_surface(ctx, pres, &templ, &ivci);
-      } else if (shadow_needs_shader_swizzle) {
+      } else if (red_depth_sampler_view) {
          /* there is only one component, and real swizzling can't be done here,
           * so ensure the shader gets the sampled data
           */
