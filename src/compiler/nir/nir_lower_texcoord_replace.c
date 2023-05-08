@@ -72,6 +72,7 @@ nir_lower_texcoord_replace_impl(nir_function_impl *impl,
    if (point_coord_is_sysval) {
       new_coord = nir_load_system_value(&b, nir_intrinsic_load_point_coord,
                                         0, 2, 32);
+      BITSET_SET(b.shader->info.system_values_read, SYSTEM_VALUE_POINT_COORD);
    } else {
       /* find or create pntc */
       nir_variable *pntc = nir_get_variable_with_location(b.shader, nir_var_shader_in,
