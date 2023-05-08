@@ -91,7 +91,7 @@ static nir_ssa_def *load_ssbo_desc(nir_builder *b, nir_src *index,
 
    nir_ssa_def *addr = ac_nir_load_arg(b, &s->args->ac, s->args->const_and_shader_buffers);
    nir_ssa_def *slot = clamp_index(b, index->ssa, sel->info.base.num_ssbos);
-   slot = nir_isub(b, nir_imm_int(b, SI_NUM_SHADER_BUFFERS - 1), slot);
+   slot = nir_isub_imm(b, SI_NUM_SHADER_BUFFERS - 1, slot);
 
    nir_ssa_def *offset = nir_ishl_imm(b, slot, 4);
    return nir_load_smem_amd(b, 4, addr, offset);
@@ -235,7 +235,7 @@ static nir_ssa_def *load_deref_image_desc(nir_builder *b, nir_deref_instr *deref
       if (desc_type == AC_DESC_FMASK)
          index = nir_iadd_imm(b, index, SI_NUM_IMAGES);
 
-      index = nir_isub(b, nir_imm_int(b, SI_NUM_IMAGE_SLOTS - 1), index);
+      index = nir_isub_imm(b, SI_NUM_IMAGE_SLOTS - 1, index);
 
       nir_ssa_def *list = ac_nir_load_arg(b, &s->args->ac, s->args->samplers_and_images);
       desc = load_image_desc(b, list, index, desc_type, !is_load, s);

@@ -759,7 +759,7 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
          nir_ssa_def *z;
 
          if (state->topology == IR3_TESS_TRIANGLES)
-            z = nir_fsub(b, nir_fsub(b, nir_imm_float(b, 1.0f), y), x);
+            z = nir_fsub(b, nir_fsub_imm(b, 1.0f, y), x);
          else
             z = nir_imm_float(b, 0.0f);
 

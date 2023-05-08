@@ -668,7 +668,7 @@ r600_lower_tess_coord_impl(nir_builder *b, UNUSED nir_instr *instr, void *_optio
       return nir_vec3(b,
                       tc_x,
                       tc_y,
-                      nir_fsub(b, nir_imm_float(b, 1.0), nir_fadd(b, tc_x, tc_y)));
+                      nir_fsub_imm(b, 1.0, nir_fadd(b, tc_x, tc_y)));
    else
       return nir_vec3(b, tc_x, tc_y, nir_imm_float(b, 0.0));
 }

@@ -919,7 +919,7 @@ extract_unorm_2xrgb10a2_component_to_4xunorm16(nir_builder *b,
                                           BITFIELD_MASK(30));
         nir_ssa_def *finalword0 = nir_ushr(b, word0, shiftw0);
         nir_ssa_def *word1 = nir_channel(b, value, 1);
-        nir_ssa_def *shiftw0tow1 = nir_isub(b, nir_imm_int(b, 30), shiftw0);
+        nir_ssa_def *shiftw0tow1 = nir_isub_imm(b, 30, shiftw0);
         nir_ssa_def *word1toword0 =  nir_ishl(b, word1, shiftw0tow1);
         finalword0 = nir_ior(b, finalword0, word1toword0);
         nir_ssa_def *finalword1 = nir_ushr(b, word1, shiftw0);

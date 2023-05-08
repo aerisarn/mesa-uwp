@@ -205,7 +205,7 @@ prepare_argument(struct st_translate *t, const struct atifs_instruction *inst,
    t->temps[MAX_NUM_FRAGMENT_REGISTERS_ATI + argId] = src;
 
    if (srcReg->argMod & GL_COMP_BIT_ATI)
-      src = nir_fsub(t->b, nir_imm_vec4_float(t->b, 1.0), src);
+      src = nir_fsub_imm(t->b, 1.0, src);
    if (srcReg->argMod & GL_BIAS_BIT_ATI)
       src = nir_fadd_imm(t->b, src, -0.5);
    if (srcReg->argMod & GL_2X_BIT_ATI)

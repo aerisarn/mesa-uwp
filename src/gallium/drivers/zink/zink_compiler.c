@@ -3484,7 +3484,7 @@ invert_point_coord_instr(nir_builder *b, nir_instr *instr, void *data)
       return false;
    b->cursor = nir_after_instr(instr);
    nir_ssa_def *def = nir_vec2(b, nir_channel(b, &intr->dest.ssa, 0),
-                                  nir_fsub(b, nir_imm_float(b, 1.0), nir_channel(b, &intr->dest.ssa, 1)));
+                                  nir_fsub_imm(b, 1.0, nir_channel(b, &intr->dest.ssa, 1)));
    nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, def, def->parent_instr);
    return true;
 }

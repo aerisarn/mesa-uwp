@@ -473,7 +473,7 @@ emit_combine_source(struct texenv_fragment_program *p,
 
    switch (operand) {
    case TEXENV_OPR_ONE_MINUS_COLOR:
-      return nir_fsub(p->b, nir_imm_float(p->b, 1.0), src);
+      return nir_fsub_imm(p->b, 1.0, src);
 
    case TEXENV_OPR_ALPHA:
       return src->num_components == 1 ? src : nir_channel(p->b, src, 3);
@@ -482,7 +482,7 @@ emit_combine_source(struct texenv_fragment_program *p,
       nir_ssa_def *scalar =
          src->num_components == 1 ? src : nir_channel(p->b, src, 3);
 
-      return nir_fsub(p->b, nir_imm_float(p->b, 1.0), scalar);
+      return nir_fsub_imm(p->b, 1.0, scalar);
    }
 
    case TEXENV_OPR_COLOR:
