@@ -163,6 +163,7 @@ files_libnir = files(
   'nir_lower_goto_ifs.c',
   'nir_lower_gs_intrinsics.c',
   'nir_lower_helper_writes.c',
+  'nir_lower_legacy_atomics.c',
   'nir_lower_load_const_to_scalar.c',
   'nir_lower_locals_to_regs.c',
   'nir_lower_idiv.c',
