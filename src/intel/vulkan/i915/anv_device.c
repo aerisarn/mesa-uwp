@@ -150,7 +150,7 @@ anv_i915_device_setup_context(struct anv_device *device,
          for (uint32_t j = 0; j < queueCreateInfo->queueCount; j++)
             engine_classes[engine_count++] = queue_family->engine_class;
       }
-      if (!intel_gem_create_context_engines(device->fd,
+      if (!intel_gem_create_context_engines(device->fd, 0 /* flags */,
                                             physical_device->engine_info,
                                             engine_count, engine_classes,
                                             (uint32_t *)&device->context_id))
