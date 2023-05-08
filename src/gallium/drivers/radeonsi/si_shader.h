@@ -1035,7 +1035,7 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
                               struct si_shader *shader, struct util_debug_callback *debug);
 void si_shader_destroy(struct si_shader *shader);
 unsigned si_shader_io_get_unique_index_patch(unsigned semantic);
-unsigned si_shader_io_get_unique_index(unsigned semantic, bool is_varying);
+unsigned si_shader_io_get_unique_index(unsigned semantic);
 bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader,
                              uint64_t scratch_va);
 bool si_can_dump_shader(struct si_screen *sscreen, gl_shader_stage stage,

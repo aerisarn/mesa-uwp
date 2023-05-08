@@ -231,7 +231,7 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMType
    ubyte semantic = info->input[driver_location].semantic;
    /* Load the TCS input from a VGPR. */
    unsigned func_param = ctx->args->ac.tcs_rel_ids.arg_index + 1 +
-      si_shader_io_get_unique_index(semantic, false) * 4;
+      si_shader_io_get_unique_index(semantic) * 4;
 
    LLVMValueRef value[4];
    for (unsigned i = component; i < component + num_components; i++) {
@@ -541,7 +541,7 @@ void si_llvm_ls_build_end(struct si_shader_context *ctx)
    if (shader->key.ge.opt.same_patch_vertices) {
       for (unsigned i = 0; i < info->num_outputs; i++) {
          unsigned semantic = info->output_semantic[i];
-         int param = si_shader_io_get_unique_index(semantic, false);
+         int param = si_shader_io_get_unique_index(semantic);
 
          for (unsigned chan = 0; chan < 4; chan++) {
             if (!(info->output_usagemask[i] & (1 << chan)))

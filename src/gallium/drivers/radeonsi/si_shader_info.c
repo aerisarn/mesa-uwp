@@ -748,14 +748,14 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
             info->patch_outputs_written |= 1ull << si_shader_io_get_unique_index_patch(semantic);
          } else if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
                     semantic != VARYING_SLOT_EDGE) {
-            info->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic, false);
+            info->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic);
 
             /* Ignore outputs that are not passed from VS to PS. */
             if (semantic != VARYING_SLOT_POS &&
                 semantic != VARYING_SLOT_PSIZ &&
                 semantic != VARYING_SLOT_CLIP_VERTEX) {
                info->outputs_written_before_ps |= 1ull
-                                                  << si_shader_io_get_unique_index(semantic, true);
+                                                  << si_shader_io_get_unique_index(semantic);
             }
          }
       }
@@ -813,7 +813,7 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
 
          if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
              semantic != VARYING_SLOT_PNTC) {
-            info->inputs_read |= 1ull << si_shader_io_get_unique_index(semantic, true);
+            info->inputs_read |= 1ull << si_shader_io_get_unique_index(semantic);
          }
       }
 

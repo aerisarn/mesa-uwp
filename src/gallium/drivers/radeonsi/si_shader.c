@@ -84,7 +84,7 @@ unsigned si_shader_io_get_unique_index_patch(unsigned semantic)
  * less than 64, so that a 64-bit bitmask of used inputs or outputs can be
  * calculated.
  */
-unsigned si_shader_io_get_unique_index(unsigned semantic, bool is_varying)
+unsigned si_shader_io_get_unique_index(unsigned semantic)
 {
    switch (semantic) {
    case VARYING_SLOT_POS:
@@ -107,16 +107,9 @@ unsigned si_shader_io_get_unique_index(unsigned semantic, bool is_varying)
    case VARYING_SLOT_COL1:
       return SI_UNIQUE_SLOT_COL1;
    case VARYING_SLOT_BFC0:
-      /* If it's a varying, COLOR and BCOLOR alias. */
-      if (is_varying)
-         return SI_UNIQUE_SLOT_COL0;
-      else
-         return SI_UNIQUE_SLOT_BFC0;
+      return SI_UNIQUE_SLOT_BFC0;
    case VARYING_SLOT_BFC1:
-      if (is_varying)
-         return SI_UNIQUE_SLOT_COL1;
-      else
-         return SI_UNIQUE_SLOT_BFC1;
+      return SI_UNIQUE_SLOT_BFC1;
    case VARYING_SLOT_TEX0:
    case VARYING_SLOT_TEX1:
    case VARYING_SLOT_TEX2:
@@ -1546,7 +1539,7 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
 
          if (nir_slot_is_varying(sem.location) &&
              key->ge.opt.kill_outputs &
-             (1ull << si_shader_io_get_unique_index(sem.location, true))) {
+             (1ull << si_shader_io_get_unique_index(sem.location))) {
             nir_remove_varying(intr, MESA_SHADER_FRAGMENT);
             progress = true;
          }
@@ -1637,7 +1630,7 @@ static unsigned si_map_io_driver_location(unsigned semantic)
        semantic == VARYING_SLOT_TESS_LEVEL_OUTER)
       return si_shader_io_get_unique_index_patch(semantic);
 
-   return si_shader_io_get_unique_index(semantic, false);
+   return si_shader_io_get_unique_index(semantic);
 }
 
 static bool si_lower_io_to_mem(struct si_shader *shader, nir_shader *nir,

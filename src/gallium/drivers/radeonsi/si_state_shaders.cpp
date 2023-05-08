@@ -2125,7 +2125,21 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
                     (!ps_colormask && !ps_modifies_zs && !ps->info.base.writes_memory);
    }
 
-   sctx->ps_inputs_read_or_disabled = ps_disabled ? 0 : ps->info.inputs_read;
+   if (ps_disabled) {
+      sctx->ps_inputs_read_or_disabled = 0;
+   } else {
+      uint64_t inputs_read = ps->info.inputs_read;
+
+      if (sctx->shader.ps.key.ps.part.prolog.color_two_side) {
+         if (inputs_read & BITFIELD64_BIT(SI_UNIQUE_SLOT_COL0))
+            inputs_read |= BITFIELD64_BIT(SI_UNIQUE_SLOT_BFC0);
+
+         if (inputs_read & BITFIELD64_BIT(SI_UNIQUE_SLOT_COL1))
+            inputs_read |= BITFIELD64_BIT(SI_UNIQUE_SLOT_BFC1);
+      }
+
+      sctx->ps_inputs_read_or_disabled = inputs_read;
+   }
 }
 
 static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_selector *vs,
@@ -3037,7 +3051,7 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
                 semantic != VARYING_SLOT_PSIZ &&
                 semantic != VARYING_SLOT_CLIP_VERTEX &&
                 semantic != VARYING_SLOT_EDGE) {
-               id = si_shader_io_get_unique_index(semantic, true);
+               id = si_shader_io_get_unique_index(semantic);
                sel->info.outputs_written_before_ps &= ~(1ull << id);
             }
          }
