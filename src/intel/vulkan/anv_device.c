@@ -192,6 +192,12 @@ get_device_extensions(const struct anv_physical_device *device,
       (device->sync_syncobj_type.features & VK_SYNC_FEATURE_CPU_WAIT) != 0;
 
    const bool rt_enabled = ANV_SUPPORT_RT && device->info.has_ray_tracing;
+
+   /* We are seeing hangs on other workloads when something using mesh
+    * shaders runs at the same time, so it's disabled by default.
+    */
+   const bool mesh_shader_enabled = device->info.has_mesh_shading &&
+      debug_get_bool_option("ANV_MESH_SHADER", false);
    const bool nv_mesh_shading_enabled =
       debug_get_bool_option("ANV_EXPERIMENTAL_NV_MESH_SHADER", false);
 
@@ -326,7 +332,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_memory_budget                     = (!device->info.has_local_mem ||
                                                 device->vram_mappable.available > 0) &&
                                                device->sys.available,
-      .EXT_mesh_shader                       = device->info.has_mesh_shading,
+      .EXT_mesh_shader                       = mesh_shader_enabled,
       .EXT_mutable_descriptor_type           = true,
       .EXT_non_seamless_cube_map             = true,
       .EXT_pci_bus_info                      = true,
@@ -372,7 +378,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .INTEL_shader_integer_functions2       = true,
       .EXT_multi_draw                        = true,
       .NV_compute_shader_derivatives         = true,
-      .NV_mesh_shader                        = device->info.has_mesh_shading &&
+      .NV_mesh_shader                        = mesh_shader_enabled &&
                                                nv_mesh_shading_enabled,
       .VALVE_mutable_descriptor_type         = true,
    };
