@@ -1542,9 +1542,10 @@ zink_set_shader_buffers(struct pipe_context *pctx,
    ctx->writable_ssbos[p_stage] |= writable_bitmask << start_slot;
 
    for (unsigned i = 0; i < count; i++) {
-      struct pipe_shader_buffer *ssbo = &ctx->ssbos[p_stage][start_slot + i];
+      unsigned slot = start_slot + i;
+      struct pipe_shader_buffer *ssbo = &ctx->ssbos[p_stage][slot];
       struct zink_resource *res = ssbo->buffer ? zink_resource(ssbo->buffer) : NULL;
-      bool was_writable = old_writable_mask & BITFIELD64_BIT(start_slot + i);
+      bool was_writable = old_writable_mask & BITFIELD64_BIT(slot);
       if (buffers && buffers[i].buffer) {
          struct zink_resource *new_res = zink_resource(buffers[i].buffer);
          if (new_res != res) {
@@ -1555,7 +1556,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
             update_res_bind_count(ctx, new_res, p_stage == MESA_SHADER_COMPUTE, false);
          }
          VkAccessFlags access = VK_ACCESS_SHADER_READ_BIT;
-         if (ctx->writable_ssbos[p_stage] & BITFIELD64_BIT(start_slot + i)) {
+         if (ctx->writable_ssbos[p_stage] & BITFIELD64_BIT(slot)) {
             new_res->write_bind_count[p_stage == MESA_SHADER_COMPUTE]++;
             access |= VK_ACCESS_SHADER_WRITE_BIT;
          }
@@ -1569,8 +1570,8 @@ zink_set_shader_buffers(struct pipe_context *pctx,
                                       new_res->gfx_barrier);
          zink_batch_resource_usage_set(&ctx->batch, new_res, access & VK_ACCESS_SHADER_WRITE_BIT, true);
          update = true;
-         max_slot = MAX2(max_slot, start_slot + i);
-         update_descriptor_state_ssbo(ctx, p_stage, start_slot + i, new_res);
+         max_slot = MAX2(max_slot, slot);
+         update_descriptor_state_ssbo(ctx, p_stage, slot, new_res);
          if (zink_resource_access_is_write(access))
             new_res->obj->unordered_write = false;
          new_res->obj->unordered_read = false;
@@ -1581,7 +1582,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          ssbo->buffer_size = 0;
          if (res) {
             unbind_ssbo(ctx, res, p_stage, i, was_writable);
-            update_descriptor_state_ssbo(ctx, p_stage, start_slot + i, NULL);
+            update_descriptor_state_ssbo(ctx, p_stage, slot, NULL);
          }
          pipe_resource_reference(&ssbo->buffer, NULL);
       }
