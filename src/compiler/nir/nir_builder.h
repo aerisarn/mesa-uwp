@@ -795,6 +795,12 @@ nir_fadd_imm(nir_builder *build, nir_ssa_def *x, double y)
 }
 
 static inline nir_ssa_def *
+nir_fsub_imm(nir_builder *build, double x, nir_ssa_def *y)
+{
+   return nir_fsub(build, nir_imm_floatN_t(build, x, y->bit_size), y);
+}
+
+static inline nir_ssa_def *
 nir_fmul_imm(nir_builder *build, nir_ssa_def *x, double y)
 {
    return nir_fmul(build, x, nir_imm_floatN_t(build, y, x->bit_size));
