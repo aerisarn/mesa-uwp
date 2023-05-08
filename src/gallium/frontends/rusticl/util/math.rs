@@ -33,3 +33,27 @@ where
         val + (a - tmp)
     }
 }
+
+pub struct SetBitIndices<T> {
+    val: T,
+}
+
+impl<T> SetBitIndices<T> {
+    pub fn from_msb(val: T) -> Self {
+        Self { val: val }
+    }
+}
+
+impl Iterator for SetBitIndices<u32> {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.val == 0 {
+            None
+        } else {
+            let pos = u32::BITS - self.val.leading_zeros() - 1;
+            self.val ^= 1 << pos;
+            Some(pos)
+        }
+    }
+}
