@@ -710,42 +710,23 @@ agx_load_compute_dimension(agx_builder *b, agx_index dst,
 }
 
 static enum agx_atomic_opc
-translate_atomic_opcode(nir_intrinsic_op op)
+translate_atomic_opcode(nir_atomic_op op)
 {
+   /* clang-format off */
    switch (op) {
-   case nir_intrinsic_global_atomic_add:
-   case nir_intrinsic_shared_atomic_add:
-      return AGX_ATOMIC_OPC_ADD;
-   case nir_intrinsic_global_atomic_imin:
-   case nir_intrinsic_shared_atomic_imin:
-      return AGX_ATOMIC_OPC_IMIN;
-   case nir_intrinsic_global_atomic_umin:
-   case nir_intrinsic_shared_atomic_umin:
-      return AGX_ATOMIC_OPC_UMIN;
-   case nir_intrinsic_global_atomic_imax:
-   case nir_intrinsic_shared_atomic_imax:
-      return AGX_ATOMIC_OPC_IMAX;
-   case nir_intrinsic_global_atomic_umax:
-   case nir_intrinsic_shared_atomic_umax:
-      return AGX_ATOMIC_OPC_UMAX;
-   case nir_intrinsic_global_atomic_and:
-   case nir_intrinsic_shared_atomic_and:
-      return AGX_ATOMIC_OPC_AND;
-   case nir_intrinsic_global_atomic_or:
-   case nir_intrinsic_shared_atomic_or:
-      return AGX_ATOMIC_OPC_OR;
-   case nir_intrinsic_global_atomic_xor:
-   case nir_intrinsic_shared_atomic_xor:
-      return AGX_ATOMIC_OPC_XOR;
-   case nir_intrinsic_global_atomic_exchange:
-   case nir_intrinsic_shared_atomic_exchange:
-      return AGX_ATOMIC_OPC_XCHG;
-   case nir_intrinsic_global_atomic_comp_swap:
-   case nir_intrinsic_shared_atomic_comp_swap:
-      return AGX_ATOMIC_OPC_CMPXCHG;
-   default:
-      unreachable("unknown atomic intrinsic");
+   case nir_atomic_op_iadd:    return AGX_ATOMIC_OPC_ADD;
+   case nir_atomic_op_imin:    return AGX_ATOMIC_OPC_IMIN;
+   case nir_atomic_op_umin:    return AGX_ATOMIC_OPC_UMIN;
+   case nir_atomic_op_imax:    return AGX_ATOMIC_OPC_IMAX;
+   case nir_atomic_op_umax:    return AGX_ATOMIC_OPC_UMAX;
+   case nir_atomic_op_iand:    return AGX_ATOMIC_OPC_AND;
+   case nir_atomic_op_ior:     return AGX_ATOMIC_OPC_OR;
+   case nir_atomic_op_ixor:    return AGX_ATOMIC_OPC_XOR;
+   case nir_atomic_op_xchg:    return AGX_ATOMIC_OPC_XCHG;
+   case nir_atomic_op_cmpxchg: return AGX_ATOMIC_OPC_CMPXCHG;
+   default: unreachable("unknown atomic opcode");
    }
+   /* clang-format on */
 }
 
 /*
@@ -767,7 +748,8 @@ static void
 agx_emit_atomic(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr,
                 bool local)
 {
-   enum agx_atomic_opc op = translate_atomic_opcode(instr->intrinsic);
+   enum agx_atomic_opc op =
+      translate_atomic_opcode(nir_intrinsic_atomic_op(instr));
    agx_index base =
       local ? agx_local_base(instr->src[0]) : agx_src_index(&instr->src[0]);
    agx_index value = agx_src_index(&instr->src[1]);
@@ -868,29 +850,13 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       agx_emit_local_load(b, dst, instr);
       return NULL;
 
-   case nir_intrinsic_global_atomic_add:
-   case nir_intrinsic_global_atomic_imin:
-   case nir_intrinsic_global_atomic_umin:
-   case nir_intrinsic_global_atomic_imax:
-   case nir_intrinsic_global_atomic_umax:
-   case nir_intrinsic_global_atomic_and:
-   case nir_intrinsic_global_atomic_or:
-   case nir_intrinsic_global_atomic_xor:
-   case nir_intrinsic_global_atomic_exchange:
-   case nir_intrinsic_global_atomic_comp_swap:
+   case nir_intrinsic_global_atomic:
+   case nir_intrinsic_global_atomic_swap:
       agx_emit_atomic(b, dst, instr, false);
       return NULL;
 
-   case nir_intrinsic_shared_atomic_add:
-   case nir_intrinsic_shared_atomic_imin:
-   case nir_intrinsic_shared_atomic_umin:
-   case nir_intrinsic_shared_atomic_imax:
-   case nir_intrinsic_shared_atomic_umax:
-   case nir_intrinsic_shared_atomic_and:
-   case nir_intrinsic_shared_atomic_or:
-   case nir_intrinsic_shared_atomic_xor:
-   case nir_intrinsic_shared_atomic_exchange:
-   case nir_intrinsic_shared_atomic_comp_swap:
+   case nir_intrinsic_shared_atomic:
+   case nir_intrinsic_shared_atomic_swap:
       agx_emit_atomic(b, dst, instr, true);
       return NULL;
 
@@ -2055,6 +2021,7 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
    NIR_PASS_V(nir, nir_opt_cse);
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+   NIR_PASS_V(nir, nir_lower_legacy_atomics);
 
    /* Cleanup optimizations */
    nir_move_options move_all = nir_move_const_undef | nir_move_load_ubo |
