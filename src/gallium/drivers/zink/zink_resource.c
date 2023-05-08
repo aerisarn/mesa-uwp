@@ -1946,8 +1946,10 @@ zink_buffer_map(struct pipe_context *pctx,
               (((usage & PIPE_MAP_READ) && !(usage & PIPE_MAP_PERSISTENT) &&
                ((res->obj->bo->base.placement & VK_STAGING_RAM) != VK_STAGING_RAM)) ||
               !res->obj->host_visible)) {
+      /* the above conditional catches uncached reads and non-HV writes */
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC)));
-      if (!res->obj->host_visible || res->base.b.flags & PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY) {
+      /* any read, non-HV write, or unmappable that reaches this point needs staging */
+      if ((usage & PIPE_MAP_READ) || !res->obj->host_visible || res->base.b.flags & PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY) {
 overwrite:
          trans->offset = box->x % screen->info.props.limits.minMemoryMapAlignment;
          trans->staging_res = pipe_buffer_create(&screen->base, PIPE_BIND_LINEAR, PIPE_USAGE_STAGING, box->width + trans->offset);
