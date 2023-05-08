@@ -616,9 +616,10 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
       }
       if (attrib_list[i].type == VAConfigAttribEncPackedHeaders) {
          if (config->entrypoint != PIPE_VIDEO_ENTRYPOINT_ENCODE ||
-             (((attrib_list[i].value != 1) || u_reduce_video_profile(ProfileToPipe(profile))
+             (((attrib_list[i].value != 0)) &&
+              ((attrib_list[i].value != 1) || u_reduce_video_profile(ProfileToPipe(profile))
                != PIPE_VIDEO_FORMAT_HEVC) &&
-               ((attrib_list[i].value != 3) || u_reduce_video_profile(ProfileToPipe(profile))
+              ((attrib_list[i].value != 3) || u_reduce_video_profile(ProfileToPipe(profile))
                != PIPE_VIDEO_FORMAT_AV1))) {
             FREE(config);
             return VA_STATUS_ERROR_INVALID_VALUE;
