@@ -313,6 +313,8 @@ variable:
     Debug/use optimal_keys
   ``noopt``
     Disable async optimized pipeline compiles
+  ``nobgc``
+    Disable all async pipeline compiles
 
 Vulkan Validation Layers
 ^^^^^^^^^^^^^^^^^^^^^^^^

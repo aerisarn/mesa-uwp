@@ -224,6 +224,7 @@ enum zink_debug {
    ZINK_DEBUG_NOSHOBJ = (1<<13),
    ZINK_DEBUG_OPTIMAL_KEYS = (1<<14),
    ZINK_DEBUG_NOOPT = (1<<15),
+   ZINK_DEBUG_NOBGC = (1<<16),
 };
 
 enum zink_pv_emulation_primitive {

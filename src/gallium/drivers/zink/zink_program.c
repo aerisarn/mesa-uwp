@@ -813,8 +813,15 @@ zink_gfx_program_compile_queue(struct zink_context *ctx, struct zink_gfx_pipelin
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (screen->driver_workarounds.disable_optimized_compile)
       return;
-   util_queue_add_job(&screen->cache_get_thread, pc_entry, &pc_entry->fence,
-                      pc_entry->prog->base.uses_shobj ? optimized_shobj_compile_job : optimized_compile_job, NULL, 0);
+   if (zink_debug & ZINK_DEBUG_NOBGC) {
+      if (pc_entry->prog->base.uses_shobj)
+         optimized_shobj_compile_job(pc_entry, screen, 0);
+      else
+         optimized_compile_job(pc_entry, screen, 0);
+   } else {
+      util_queue_add_job(&screen->cache_get_thread, pc_entry, &pc_entry->fence,
+                         pc_entry->prog->base.uses_shobj ? optimized_shobj_compile_job : optimized_compile_job, NULL, 0);
+   }
 }
 
 static void
@@ -2129,7 +2136,10 @@ zink_link_gfx_shader(struct pipe_context *pctx, void **shaders)
    } else {
       if (zink_screen(pctx->screen)->info.have_EXT_shader_object)
          prog->base.uses_shobj = !BITSET_TEST(zshaders[MESA_SHADER_FRAGMENT]->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN);
-      util_queue_add_job(&zink_screen(pctx->screen)->cache_get_thread, prog, &prog->base.cache_fence, precompile_job, NULL, 0);
+      if (zink_debug & ZINK_DEBUG_NOBGC)
+         precompile_job(prog, pctx->screen, 0);
+      else
+         util_queue_add_job(&zink_screen(pctx->screen)->cache_get_thread, prog, &prog->base.cache_fence, precompile_job, NULL, 0);
    }
 }
 
@@ -2161,8 +2171,12 @@ zink_create_gfx_shader_state(struct pipe_context *pctx, const struct pipe_shader
        (screen->info.have_EXT_graphics_pipeline_library && (nir->info.stage == MESA_SHADER_FRAGMENT || nir->info.stage == MESA_SHADER_VERTEX)))) {
       struct zink_shader *zs = ret;
       /* sample shading can't precompile */
-      if (nir->info.stage != MESA_SHADER_FRAGMENT || !nir->info.fs.uses_sample_shading)
-         util_queue_add_job(&screen->cache_get_thread, zs, &zs->precompile.fence, precompile_separate_shader_job, NULL, 0);
+      if (nir->info.stage != MESA_SHADER_FRAGMENT || !nir->info.fs.uses_sample_shading) {
+         if (zink_debug & ZINK_DEBUG_NOBGC)
+            precompile_separate_shader_job(zs, screen, 0);
+         else
+            util_queue_add_job(&screen->cache_get_thread, zs, &zs->precompile.fence, precompile_separate_shader_job, NULL, 0);
+      }
    }
    ralloc_free(nir);
 

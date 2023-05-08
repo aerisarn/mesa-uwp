@@ -95,6 +95,7 @@ zink_debug_options[] = {
    { "noshobj", ZINK_DEBUG_NOSHOBJ, "Disable EXT_shader_object" },
    { "optimal_keys", ZINK_DEBUG_OPTIMAL_KEYS, "Debug/use optimal_keys" },
    { "noopt", ZINK_DEBUG_NOOPT, "Disable async optimized pipeline compiles" },
+   { "nobgc", ZINK_DEBUG_NOBGC, "Disable all async pipeline compiles" },
    DEBUG_NAMED_VALUE_END
 };
 
