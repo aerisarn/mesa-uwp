@@ -241,7 +241,8 @@ vlVaCreateContext(VADriverContextP ctx, VAConfigID config_id, int picture_width,
    vlVaContext *context;
    vlVaConfig *config;
    int is_vpp;
-   int max_supported_width,max_supported_height;
+   int min_supported_width, min_supported_height;
+   int max_supported_width, max_supported_height;
 
    if (!ctx)
       return VA_STATUS_ERROR_INVALID_CONTEXT;
@@ -271,6 +272,12 @@ vlVaCreateContext(VADriverContextP ctx, VAConfigID config_id, int picture_width,
       context->decoder = NULL;
    } else {
       if (config->entrypoint != PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
+         min_supported_width = drv->vscreen->pscreen->get_video_param(drv->vscreen->pscreen,
+                        config->profile, config->entrypoint,
+                        PIPE_VIDEO_CAP_MIN_WIDTH);
+         min_supported_height = drv->vscreen->pscreen->get_video_param(drv->vscreen->pscreen,
+                        config->profile, config->entrypoint,
+                        PIPE_VIDEO_CAP_MIN_HEIGHT);
          max_supported_width = drv->vscreen->pscreen->get_video_param(drv->vscreen->pscreen,
                         config->profile, config->entrypoint,
                         PIPE_VIDEO_CAP_MAX_WIDTH);
@@ -278,7 +285,8 @@ vlVaCreateContext(VADriverContextP ctx, VAConfigID config_id, int picture_width,
                         config->profile, config->entrypoint,
                         PIPE_VIDEO_CAP_MAX_HEIGHT);
 
-         if (picture_width > max_supported_width || picture_height > max_supported_height) {
+         if (picture_width < min_supported_width || picture_height < min_supported_height ||
+             picture_width > max_supported_width || picture_height > max_supported_height) {
             FREE(context);
             return VA_STATUS_ERROR_RESOLUTION_NOT_SUPPORTED;
          }
