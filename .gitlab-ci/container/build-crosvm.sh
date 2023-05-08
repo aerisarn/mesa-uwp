@@ -3,8 +3,6 @@
 
 set -ex
 
-SCRIPT_DIR="$(pwd)"
-
 git config --global user.email "mesa@example.com"
 git config --global user.name "Mesa CI"
 
@@ -14,13 +12,11 @@ pushd /platform/crosvm
 git checkout "$CROSVM_VERSION"
 git submodule update --init
 
-VIRGLRENDERER_VERSION=0856ef1ee4e596a8b5e86c06ed5c71e390c3b3ea
+VIRGLRENDERER_VERSION=5290e941f2a9123de453fd8e62a445abf50cc7b2
 rm -rf third_party/virglrenderer
 git clone --single-branch -b master --no-checkout https://gitlab.freedesktop.org/virgl/virglrenderer.git third_party/virglrenderer
 pushd third_party/virglrenderer
 git checkout "$VIRGLRENDERER_VERSION"
-# Apply all virglrenderer venus-protocol 1.0 release patches for MESA CI
-git am "$SCRIPT_DIR"/.gitlab-ci/container/patches/build-crosvm_*.patch
 meson build/ -Drender-server-worker=process -Dvenus=true $EXTRA_MESON_ARGS
 ninja -C build install
 popd
