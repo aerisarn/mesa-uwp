@@ -210,9 +210,10 @@ radv_rt_fill_stage_info(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
          struct radv_ray_tracing_pipeline *library_pipeline =
             radv_pipeline_to_ray_tracing(pipeline);
          for (unsigned j = 0; j < library_pipeline->stage_count; ++j) {
+            stages[idx].shader = vk_pipeline_cache_object_ref(library_pipeline->stages[j].shader);
             stages[idx].stage = library_pipeline->stages[j].stage;
+            stages[idx].stack_size = library_pipeline->stages[j].stack_size;
             memcpy(stages[idx].sha1, library_pipeline->stages[j].sha1, SHA1_DIGEST_LENGTH);
-
             idx++;
          }
       }
@@ -367,9 +368,7 @@ radv_rt_precompile_shaders(struct radv_device *device, struct vk_pipeline_cache 
                            const struct radv_pipeline_key *key,
                            struct radv_ray_tracing_stage *stages)
 {
-   uint32_t idx;
-
-   for (idx = 0; idx < pCreateInfo->stageCount; idx++) {
+   for (uint32_t idx = 0; idx < pCreateInfo->stageCount; idx++) {
       int64_t stage_start = os_time_get_nano();
       struct radv_pipeline_stage stage;
       radv_pipeline_stage_init(&pCreateInfo->pStages[idx], &stage, stages[idx].stage);
@@ -406,17 +405,6 @@ radv_rt_precompile_shaders(struct radv_device *device, struct vk_pipeline_cache 
          assert(idx < creation_feedback->pipelineStageCreationFeedbackCount);
          stage.feedback.duration = os_time_get_nano() - stage_start;
          creation_feedback->pPipelineStageCreationFeedbacks[idx] = stage.feedback;
-      }
-   }
-
-   /* reference library shaders */
-   if (pCreateInfo->pLibraryInfo) {
-      for (unsigned i = 0; i < pCreateInfo->pLibraryInfo->libraryCount; ++i) {
-         RADV_FROM_HANDLE(radv_pipeline, pipeline, pCreateInfo->pLibraryInfo->pLibraries[i]);
-         struct radv_ray_tracing_pipeline *library = radv_pipeline_to_ray_tracing(pipeline);
-
-         for (unsigned j = 0; j < library->stage_count; ++j)
-            stages[idx++].shader = vk_pipeline_cache_object_ref(library->stages[j].shader);
       }
    }
 
