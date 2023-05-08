@@ -85,10 +85,9 @@
  *   Name             Location
  *
  *   POSITION         0
- *   PSIZE            1
- *   CLIPDIST0..1     2..3
- *   CULLDIST0..1     (not implemented)
- *   GENERIC0..31     4..35
+ *   VAR0..31         1..32
+ *   CLIP_DIST0..1    49..50
+ *   PSIZ             51
  *
  * For example, a shader only writing GENERIC0 has the output stride of 5.
  *
@@ -315,6 +314,47 @@ enum si_shader_dump_type {
    SI_DUMP_ACO_IR,         /* final ACO IR */
    SI_DUMP_ASM,            /* final asm shaders */
    SI_DUMP_ALWAYS,
+};
+
+enum {
+   SI_UNIQUE_SLOT_POS = 0,
+
+   /* Since some shader stages use the highest used IO index
+    * to determine the size to allocate for inputs/outputs
+    * (in LDS, tess and GS rings). VARn should be placed right
+    * after POSITION to make that size as small as possible.
+    */
+   SI_UNIQUE_SLOT_VAR0 = 1, /* 0..31 */
+
+   /* Put 16-bit GLES varyings after 32-bit varyings. They can use the same indices as
+    * legacy desktop GL varyings because they are mutually exclusive.
+    */
+   SI_UNIQUE_SLOT_VAR0_16BIT = 33, /* 0..15 */
+
+   /* Legacy GL-only varyings can alias GLES-only 16-bit varyings. */
+   SI_UNIQUE_SLOT_FOGC = 33,
+   SI_UNIQUE_SLOT_COL0,
+   SI_UNIQUE_SLOT_COL1,
+   SI_UNIQUE_SLOT_BFC0,
+   SI_UNIQUE_SLOT_BFC1,
+   SI_UNIQUE_SLOT_TEX0,
+   SI_UNIQUE_SLOT_TEX1,
+   SI_UNIQUE_SLOT_TEX2,
+   SI_UNIQUE_SLOT_TEX3,
+   SI_UNIQUE_SLOT_TEX4,
+   SI_UNIQUE_SLOT_TEX5,
+   SI_UNIQUE_SLOT_TEX6,
+   SI_UNIQUE_SLOT_TEX7,
+   SI_UNIQUE_SLOT_CLIP_VERTEX,
+
+   /* Varyings present in both GLES and desktop GL must start at 49 after 16-bit varyings. */
+   SI_UNIQUE_SLOT_CLIP_DIST0 = 49,
+   SI_UNIQUE_SLOT_CLIP_DIST1,
+   SI_UNIQUE_SLOT_PSIZ,
+   /* These can't be written by LS, HS, and ES. */
+   SI_UNIQUE_SLOT_LAYER,
+   SI_UNIQUE_SLOT_VIEWPORT,
+   SI_UNIQUE_SLOT_PRIMITIVE_ID,
 };
 
 /**
