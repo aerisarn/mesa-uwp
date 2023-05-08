@@ -234,7 +234,7 @@ VkResult genX(CreateQueryPool)(
    if (pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR) {
       pool->khr_perf_preamble_stride = 32;
       pool->khr_perf_preambles_offset = size;
-      size += pool->n_passes * pool->khr_perf_preamble_stride;
+      size += (uint64_t)pool->n_passes * pool->khr_perf_preamble_stride;
    }
 
    result = anv_device_alloc_bo(device, "query-pool", size,
