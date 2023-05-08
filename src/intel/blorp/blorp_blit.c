@@ -2911,7 +2911,8 @@ blorp_copy(struct blorp_batch *batch,
           params.src.aux_usage == ISL_AUX_USAGE_GFX12_CCS_E ||
           params.src.aux_usage == ISL_AUX_USAGE_STC_CCS);
 
-   if (isl_aux_usage_has_hiz(params.src.aux_usage)) {
+   if ((params.src.surf.usage & ISL_SURF_USAGE_DEPTH_BIT) &&
+       isl_dev->info->ver >= 8) {
       /* In order to use HiZ, we have to use the real format for the source.
        * Depth <-> Color copies are not allowed.
        */
