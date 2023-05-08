@@ -129,7 +129,6 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       VKSCR(DestroySampler)(screen->dev, *samp, NULL);
    }
    util_dynarray_clear(&bs->zombie_samplers);
-   util_dynarray_clear(&bs->persistent_resources);
 
    zink_batch_descriptor_reset(screen, bs);
 
@@ -335,7 +334,6 @@ create_batch_state(struct zink_context *ctx)
    util_dynarray_init(&bs->wait_semaphore_stages, NULL);
    util_dynarray_init(&bs->zombie_samplers, NULL);
    util_dynarray_init(&bs->dead_framebuffers, NULL);
-   util_dynarray_init(&bs->persistent_resources, NULL);
    util_dynarray_init(&bs->unref_resources, NULL);
    util_dynarray_init(&bs->acquires, NULL);
    util_dynarray_init(&bs->acquire_flags, NULL);
@@ -599,16 +597,6 @@ submit_queue(void *data, void *gdata, int thread_index)
          bs->is_device_lost = true;
          goto end;
       }
-   }
-
-   while (util_dynarray_contains(&bs->persistent_resources, struct zink_resource_object*)) {
-      struct zink_resource_object *obj = util_dynarray_pop(&bs->persistent_resources, struct zink_resource_object*);
-       VkMappedMemoryRange range = zink_resource_init_mem_range(screen, obj, 0, obj->size);
-
-       result = VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range);
-       if (result != VK_SUCCESS) {
-          mesa_loge("ZINK: vkFlushMappedMemoryRanges failed (%s)", vk_Result_to_str(result));
-       }
    }
 
    simple_mtx_lock(&screen->queue_lock);
