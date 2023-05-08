@@ -599,7 +599,10 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
             config->rc = PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE;
          else if (attrib_list[i].value == VA_RC_CQP)
             config->rc = PIPE_H2645_ENC_RATE_CONTROL_METHOD_DISABLE;
-         else if (attrib_list[i].value == VA_RC_QVBR)
+         else if (attrib_list[i].value == VA_RC_QVBR &&
+                     (pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+                        PIPE_VIDEO_ENTRYPOINT_ENCODE,
+                        PIPE_VIDEO_CAP_ENC_RATE_CONTROL_QVBR) > 0))
             config->rc = PIPE_H2645_ENC_RATE_CONTROL_METHOD_QUALITY_VARIABLE;
          else {
             FREE(config);
