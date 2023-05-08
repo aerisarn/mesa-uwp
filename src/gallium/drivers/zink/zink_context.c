@@ -1549,8 +1549,8 @@ zink_set_shader_buffers(struct pipe_context *pctx,
       if (buffers && buffers[i].buffer) {
          struct zink_resource *new_res = zink_resource(buffers[i].buffer);
          if (new_res != res) {
-            unbind_ssbo(ctx, res, p_stage, i, was_writable);
-            new_res->ssbo_bind_mask[p_stage] |= BITFIELD_BIT(i);
+            unbind_ssbo(ctx, res, p_stage, slot, was_writable);
+            new_res->ssbo_bind_mask[p_stage] |= BITFIELD_BIT(slot);
             new_res->ssbo_bind_count[p_stage == MESA_SHADER_COMPUTE]++;
             new_res->gfx_barrier |= zink_pipeline_flags_from_pipe_stage(p_stage);
             update_res_bind_count(ctx, new_res, p_stage == MESA_SHADER_COMPUTE, false);
@@ -1581,7 +1581,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          ssbo->buffer_offset = 0;
          ssbo->buffer_size = 0;
          if (res) {
-            unbind_ssbo(ctx, res, p_stage, i, was_writable);
+            unbind_ssbo(ctx, res, p_stage, slot, was_writable);
             update_descriptor_state_ssbo(ctx, p_stage, slot, NULL);
          }
          pipe_resource_reference(&ssbo->buffer, NULL);
