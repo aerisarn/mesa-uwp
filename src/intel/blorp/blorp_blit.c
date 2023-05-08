@@ -2925,6 +2925,12 @@ blorp_copy(struct blorp_batch *batch,
        */
       params.src.view.format = params.dst.surf.format;
       params.dst.view.format = params.dst.surf.format;
+   } else if (isl_surf_usage_is_depth(params.src.surf.usage) ||
+              isl_surf_usage_is_depth(params.dst.surf.usage)) {
+      assert(src_fmtl->bpb == dst_fmtl->bpb);
+      params.src.view.format =
+      params.dst.view.format =
+         get_copy_format_for_bpb(isl_dev, dst_fmtl->bpb);
    } else if (params.dst.aux_usage == ISL_AUX_USAGE_CCS_E ||
               params.dst.aux_usage == ISL_AUX_USAGE_GFX12_CCS_E) {
       params.dst.view.format = get_ccs_compatible_copy_format(dst_fmtl);
