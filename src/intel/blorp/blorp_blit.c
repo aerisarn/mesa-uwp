@@ -2849,6 +2849,61 @@ blorp_copy_supports_compute(struct blorp_context *blorp,
 }
 
 void
+blorp_copy_get_formats(const struct isl_device *isl_dev,
+                       const struct isl_surf *src_surf,
+                       const struct isl_surf *dst_surf,
+                       enum isl_format *src_view_format,
+                       enum isl_format *dst_view_format)
+{
+   const struct isl_format_layout *src_fmtl =
+      isl_format_get_layout(src_surf->format);
+   const struct isl_format_layout *dst_fmtl =
+      isl_format_get_layout(dst_surf->format);
+
+   if (ISL_GFX_VER(isl_dev) >= 8 &&
+       isl_surf_usage_is_depth(src_surf->usage)) {
+      /* In order to use HiZ, we have to use the real format for the source.
+       * Depth <-> Color copies are not allowed.
+       */
+      *src_view_format = src_surf->format;
+      *dst_view_format = src_surf->format;
+   } else if (ISL_GFX_VER(isl_dev) >= 7 &&
+              isl_surf_usage_is_depth(dst_surf->usage)) {
+      /* On Gfx7 and higher, we use actual depth writes for blits into depth
+       * buffers so we need the real format.
+       */
+      *src_view_format = dst_surf->format;
+      *dst_view_format = dst_surf->format;
+   } else if (isl_surf_usage_is_depth(src_surf->usage) ||
+              isl_surf_usage_is_depth(dst_surf->usage)) {
+      assert(src_fmtl->bpb == dst_fmtl->bpb);
+      *src_view_format =
+      *dst_view_format =
+         get_copy_format_for_bpb(isl_dev, dst_fmtl->bpb);
+   } else if (isl_format_supports_ccs_e(isl_dev->info, dst_surf->format)) {
+      *dst_view_format = get_ccs_compatible_copy_format(dst_fmtl);
+      if (isl_format_supports_ccs_e(isl_dev->info, src_surf->format)) {
+         *src_view_format = get_ccs_compatible_copy_format(src_fmtl);
+      } else if (src_fmtl->bpb == dst_fmtl->bpb) {
+         *src_view_format = *dst_view_format;
+      } else {
+         *src_view_format = get_copy_format_for_bpb(isl_dev, src_fmtl->bpb);
+      }
+   } else if (isl_format_supports_ccs_e(isl_dev->info, src_surf->format)) {
+      *src_view_format = get_ccs_compatible_copy_format(src_fmtl);
+      if (src_fmtl->bpb == dst_fmtl->bpb) {
+         *dst_view_format = *src_view_format;
+      } else {
+         *dst_view_format = get_copy_format_for_bpb(isl_dev, dst_fmtl->bpb);
+      }
+   } else {
+      *dst_view_format = get_copy_format_for_bpb(isl_dev, dst_fmtl->bpb);
+      *src_view_format = get_copy_format_for_bpb(isl_dev, src_fmtl->bpb);
+   }
+}
+
+
+void
 blorp_copy(struct blorp_batch *batch,
            const struct blorp_surf *src_surf,
            unsigned src_level, unsigned src_layer,
@@ -2911,48 +2966,8 @@ blorp_copy(struct blorp_batch *batch,
           params.src.aux_usage == ISL_AUX_USAGE_GFX12_CCS_E ||
           params.src.aux_usage == ISL_AUX_USAGE_STC_CCS);
 
-   if ((params.src.surf.usage & ISL_SURF_USAGE_DEPTH_BIT) &&
-       isl_dev->info->ver >= 8) {
-      /* In order to use HiZ, we have to use the real format for the source.
-       * Depth <-> Color copies are not allowed.
-       */
-      params.src.view.format = params.src.surf.format;
-      params.dst.view.format = params.src.surf.format;
-   } else if ((params.dst.surf.usage & ISL_SURF_USAGE_DEPTH_BIT) &&
-              isl_dev->info->ver >= 7) {
-      /* On Gfx7 and higher, we use actual depth writes for blits into depth
-       * buffers so we need the real format.
-       */
-      params.src.view.format = params.dst.surf.format;
-      params.dst.view.format = params.dst.surf.format;
-   } else if (isl_surf_usage_is_depth(params.src.surf.usage) ||
-              isl_surf_usage_is_depth(params.dst.surf.usage)) {
-      assert(src_fmtl->bpb == dst_fmtl->bpb);
-      params.src.view.format =
-      params.dst.view.format =
-         get_copy_format_for_bpb(isl_dev, dst_fmtl->bpb);
-   } else if (isl_format_supports_ccs_e(devinfo, params.dst.surf.format)) {
-      params.dst.view.format = get_ccs_compatible_copy_format(dst_fmtl);
-      if (isl_format_supports_ccs_e(devinfo, params.src.surf.format)) {
-         params.src.view.format = get_ccs_compatible_copy_format(src_fmtl);
-      } else if (src_fmtl->bpb == dst_fmtl->bpb) {
-         params.src.view.format = params.dst.view.format;
-      } else {
-         params.src.view.format =
-            get_copy_format_for_bpb(isl_dev, src_fmtl->bpb);
-      }
-   } else if (isl_format_supports_ccs_e(devinfo, params.src.surf.format)) {
-      params.src.view.format = get_ccs_compatible_copy_format(src_fmtl);
-      if (src_fmtl->bpb == dst_fmtl->bpb) {
-         params.dst.view.format = params.src.view.format;
-      } else {
-         params.dst.view.format =
-            get_copy_format_for_bpb(isl_dev, dst_fmtl->bpb);
-      }
-   } else {
-      params.dst.view.format = get_copy_format_for_bpb(isl_dev, dst_fmtl->bpb);
-      params.src.view.format = get_copy_format_for_bpb(isl_dev, src_fmtl->bpb);
-   }
+   blorp_copy_get_formats(isl_dev, &params.src.surf, &params.dst.surf,
+                          &params.src.view.format, &params.dst.view.format);
 
    if (params.src.view.format != params.dst.view.format) {
       enum isl_format src_cast_format = params.src.view.format;
