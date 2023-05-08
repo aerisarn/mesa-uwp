@@ -552,6 +552,8 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
     * - there is no current-batch unordered access
     */
    bool can_skip_ordered = unordered ? false : (!res->obj->access && !unordered_usage_matches);
+   if (zink_debug & ZINK_DEBUG_NOREORDER)
+      can_skip_unordered = can_skip_ordered = false;
 
    if (!can_skip_unordered && !can_skip_ordered) {
       VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
