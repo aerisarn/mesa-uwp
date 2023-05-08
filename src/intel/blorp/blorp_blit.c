@@ -2931,11 +2931,9 @@ blorp_copy(struct blorp_batch *batch,
       params.src.view.format =
       params.dst.view.format =
          get_copy_format_for_bpb(isl_dev, dst_fmtl->bpb);
-   } else if (params.dst.aux_usage == ISL_AUX_USAGE_CCS_E ||
-              params.dst.aux_usage == ISL_AUX_USAGE_GFX12_CCS_E) {
+   } else if (isl_format_supports_ccs_e(devinfo, params.dst.surf.format)) {
       params.dst.view.format = get_ccs_compatible_copy_format(dst_fmtl);
-      if (params.src.aux_usage == ISL_AUX_USAGE_CCS_E ||
-          params.src.aux_usage == ISL_AUX_USAGE_GFX12_CCS_E) {
+      if (isl_format_supports_ccs_e(devinfo, params.src.surf.format)) {
          params.src.view.format = get_ccs_compatible_copy_format(src_fmtl);
       } else if (src_fmtl->bpb == dst_fmtl->bpb) {
          params.src.view.format = params.dst.view.format;
@@ -2943,8 +2941,7 @@ blorp_copy(struct blorp_batch *batch,
          params.src.view.format =
             get_copy_format_for_bpb(isl_dev, src_fmtl->bpb);
       }
-   } else if (params.src.aux_usage == ISL_AUX_USAGE_CCS_E ||
-              params.src.aux_usage == ISL_AUX_USAGE_GFX12_CCS_E) {
+   } else if (isl_format_supports_ccs_e(devinfo, params.src.surf.format)) {
       params.src.view.format = get_ccs_compatible_copy_format(src_fmtl);
       if (src_fmtl->bpb == dst_fmtl->bpb) {
          params.dst.view.format = params.src.view.format;
