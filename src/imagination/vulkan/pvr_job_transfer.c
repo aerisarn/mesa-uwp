@@ -5661,7 +5661,7 @@ static bool pvr_validate_source_addr(pvr_dev_addr_t addr)
       return false;
    }
 
-   if (addr.addr & TEXSTATE_STRIDE_IMAGE_WORD1_TEXADDR_MASK)
+   if (addr.addr & ~TEXSTATE_STRIDE_IMAGE_WORD1_TEXADDR_MASK)
       return false;
 
    return true;
