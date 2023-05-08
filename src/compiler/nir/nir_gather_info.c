@@ -409,6 +409,8 @@ nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr)
    case nir_intrinsic_image_deref_store_raw_intel:
    case nir_intrinsic_image_store:
    case nir_intrinsic_image_store_raw_intel:
+   case nir_intrinsic_ssbo_atomic:
+   case nir_intrinsic_ssbo_atomic_swap:
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_add_ir3:
    case nir_intrinsic_ssbo_atomic_and:

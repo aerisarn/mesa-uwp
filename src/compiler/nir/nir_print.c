@@ -953,6 +953,32 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          break;
       }
 
+      case NIR_INTRINSIC_ATOMIC_OP: {
+         nir_atomic_op atomic_op = nir_intrinsic_atomic_op(instr);
+         fprintf(fp, "atomic_op=");
+         print_raw = false;
+
+         switch (atomic_op) {
+         case nir_atomic_op_iadd:     fprintf(fp, "iadd"); break;
+         case nir_atomic_op_imin:     fprintf(fp, "imin"); break;
+         case nir_atomic_op_umin:     fprintf(fp, "umin"); break;
+         case nir_atomic_op_imax:     fprintf(fp, "imax"); break;
+         case nir_atomic_op_umax:     fprintf(fp, "umax"); break;
+         case nir_atomic_op_iand:     fprintf(fp, "iand"); break;
+         case nir_atomic_op_ior:      fprintf(fp, "ior"); break;
+         case nir_atomic_op_ixor:     fprintf(fp, "ixor"); break;
+         case nir_atomic_op_xchg:     fprintf(fp, "xchg"); break;
+         case nir_atomic_op_fadd:     fprintf(fp, "fadd"); break;
+         case nir_atomic_op_fmin:     fprintf(fp, "fmin"); break;
+         case nir_atomic_op_fmax:     fprintf(fp, "fmax"); break;
+         case nir_atomic_op_cmpxchg:  fprintf(fp, "cmpxchg"); break;
+         case nir_atomic_op_fcmpxchg: fprintf(fp, "fcmpxchg"); break;
+         case nir_atomic_op_inc_wrap: fprintf(fp, "inc_wrap"); break;
+         case nir_atomic_op_dec_wrap: fprintf(fp, "dec_wrap"); break;
+         }
+         break;
+      }
+
       case NIR_INTRINSIC_IMAGE_DIM: {
          static const char *dim_name[] = {
             [GLSL_SAMPLER_DIM_1D] = "1D",
