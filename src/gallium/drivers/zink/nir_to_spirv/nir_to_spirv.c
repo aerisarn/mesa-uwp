@@ -790,7 +790,6 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
    else if (ctx->stage == MESA_SHADER_FRAGMENT) {
       switch (var->data.location) {
       HANDLE_EMIT_BUILTIN(POS, FragCoord);
-      HANDLE_EMIT_BUILTIN(PNTC, PointCoord);
       HANDLE_EMIT_BUILTIN(LAYER, Layer);
       HANDLE_EMIT_BUILTIN(PRIMITIVE_ID, PrimitiveId);
       HANDLE_EMIT_BUILTIN(CLIP_DIST0, ClipDistance);

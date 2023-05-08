@@ -2559,7 +2559,6 @@ assign_producer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reser
    switch (slot) {
    case -1:
    case VARYING_SLOT_POS:
-   case VARYING_SLOT_PNTC:
    case VARYING_SLOT_PSIZ:
    case VARYING_SLOT_LAYER:
    case VARYING_SLOT_PRIMITIVE_ID:
@@ -2610,7 +2609,6 @@ assign_consumer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reser
    unsigned slot = var->data.location;
    switch (slot) {
    case VARYING_SLOT_POS:
-   case VARYING_SLOT_PNTC:
    case VARYING_SLOT_PSIZ:
    case VARYING_SLOT_LAYER:
    case VARYING_SLOT_PRIMITIVE_ID:
@@ -3486,10 +3484,7 @@ invert_point_coord_instr(nir_builder *b, nir_instr *instr, void *data)
    if (instr->type != nir_instr_type_intrinsic)
       return false;
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_load_deref)
-      return false;
-   nir_variable *deref_var = nir_intrinsic_get_var(intr, 0);
-   if (deref_var->data.location != VARYING_SLOT_PNTC)
+   if (intr->intrinsic != nir_intrinsic_load_point_coord)
       return false;
    b->cursor = nir_after_instr(instr);
    nir_ssa_def *def = nir_vec2(b, nir_channel(b, &intr->dest.ssa, 0),
@@ -3501,7 +3496,7 @@ invert_point_coord_instr(nir_builder *b, nir_instr *instr, void *data)
 static bool
 invert_point_coord(nir_shader *nir)
 {
-   if (!(nir->info.inputs_read & BITFIELD64_BIT(VARYING_SLOT_PNTC)))
+   if (!BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_POINT_COORD))
       return false;
    return nir_shader_instructions_pass(nir, invert_point_coord_instr, nir_metadata_dominance, NULL);
 }
@@ -3654,7 +3649,7 @@ zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shad
             NIR_PASS_V(nir, lower_dual_blend);
          }
          if (zink_fs_key_base(key)->coord_replace_bits)
-            NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key_base(key)->coord_replace_bits, false, false);
+            NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key_base(key)->coord_replace_bits, true, false);
          if (zink_fs_key_base(key)->point_coord_yinvert)
             NIR_PASS_V(nir, invert_point_coord);
          if (zink_fs_key_base(key)->force_persample_interp || zink_fs_key_base(key)->fbfetch_ms) {
