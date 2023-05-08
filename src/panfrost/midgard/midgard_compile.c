@@ -1350,24 +1350,14 @@ emit_atomic(compiler_context *ctx, nir_intrinsic_instr *instr, bool is_shared,
    unsigned bitsize = nir_src_bit_size(instr->src[val_src]);
    emit_explicit_constant(ctx, val);
 
-   midgard_instruction ins = {.type = TAG_LOAD_STORE_4,
-                              .mask = 0xF,
-                              .dest = dest,
-                              .src =
-                                 {
-                                    ~0,
-                                    ~0,
-                                    ~0,
-                                    val,
-                                 },
-                              .src_types =
-                                 {
-                                    0,
-                                    0,
-                                    0,
-                                    type | bitsize,
-                                 },
-                              .op = op};
+   midgard_instruction ins = {
+      .type = TAG_LOAD_STORE_4,
+      .mask = 0xF,
+      .dest = dest,
+      .src = {~0, ~0, ~0, val},
+      .src_types = {0, 0, 0, type | bitsize},
+      .op = op,
+   };
 
    nir_src *src_offset = nir_get_io_offset_src(instr);
 
