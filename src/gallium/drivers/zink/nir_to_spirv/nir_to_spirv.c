@@ -1222,11 +1222,15 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, SpvId image_type)
 
    _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
    if (is_sampler) {
-      if (var->data.descriptor_set == ctx->bindless_set_idx)
+      if (var->data.descriptor_set == ctx->bindless_set_idx) {
+         assert(!ctx->bindless_samplers[index]);
          ctx->bindless_samplers[index] = var_id;
-      else
+      } else {
+         assert(!ctx->samplers[index]);
          ctx->samplers[index] = var_id;
+      }
    } else {
+      assert(!ctx->images[index]);
       ctx->images[index] = var_id;
       emit_access_decorations(ctx, var, var_id);
    }
