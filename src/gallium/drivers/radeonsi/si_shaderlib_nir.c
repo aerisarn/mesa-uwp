@@ -8,6 +8,8 @@
 #include "ac_surface.h"
 #include "si_pipe.h"
 
+#include "nir_format_convert.h"
+
 static void *create_shader_state(struct si_context *sctx, nir_shader *nir)
 {
    sctx->b.screen->finalize_nir(sctx->b.screen, (void*)nir);
@@ -285,25 +287,10 @@ static nir_ssa_def *convert_linear_to_srgb(nir_builder *b, nir_ssa_def *input)
    /* There are small precision differences compared to CB, so the gfx blit will return slightly
     * different results.
     */
-   nir_ssa_def *cmp[3];
-   for (unsigned i = 0; i < 3; i++)
-      cmp[i] = nir_flt(b, nir_channel(b, input, i), nir_imm_float(b, 0.0031308));
-
-   nir_ssa_def *ltvals[3];
-   for (unsigned i = 0; i < 3; i++)
-      ltvals[i] = nir_fmul_imm(b, nir_channel(b, input, i), 12.92);
-
-   nir_ssa_def *gtvals[3];
-
-   for (unsigned i = 0; i < 3; i++) {
-      gtvals[i] = nir_fpow(b, nir_channel(b, input, i), nir_imm_float(b, 1.0/2.4));
-      gtvals[i] = nir_fmul_imm(b, gtvals[i], 1.055);
-      gtvals[i] = nir_fadd_imm(b, gtvals[i], -0.055);
-   }
 
    nir_ssa_def *comp[4];
    for (unsigned i = 0; i < 3; i++)
-      comp[i] = nir_bcsel(b, cmp[i], ltvals[i], gtvals[i]);
+      comp[i] = nir_format_linear_to_srgb(b, nir_channel(b, input, i));
    comp[3] = nir_channel(b, input, 3);
 
    return nir_vec(b, comp, 4);
