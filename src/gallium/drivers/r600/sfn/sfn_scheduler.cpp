@@ -1166,7 +1166,7 @@ public:
          need_extra_group = true;
 
       if (value.addr() && last_direct_array_write.find(entry) !=
-          last_indirect_array_write.end()) {
+          last_direct_array_write.end()) {
          need_extra_group = true;
       }
    }
