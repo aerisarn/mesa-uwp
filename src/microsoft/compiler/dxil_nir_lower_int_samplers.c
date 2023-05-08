@@ -128,7 +128,7 @@ static void
 wrap_clamp_to_edge(nir_builder *b, wrap_result_t *wrap_params, nir_ssa_def *size)
 {
    /* clamp(coord, 0, size - 1) */
-   wrap_params->coords = nir_fmin(b, nir_fsub(b, size, nir_imm_float(b, 1.0f)),
+   wrap_params->coords = nir_fmin(b, nir_fadd_imm(b, size, -1.0f),
                                   nir_fmax(b, wrap_params->coords, nir_imm_float(b, 0.0f)));
 }
 
@@ -157,14 +157,14 @@ wrap_mirror_repeat(nir_builder *b, wrap_result_t *wrap_params, nir_ssa_def *size
    nir_ssa_def *coord_mod2size = nir_fmod(b, wrap_params->coords, nir_fmul_imm(b, size, 2.0f));
    nir_instr_as_alu(coord_mod2size->parent_instr)->exact = true;
    nir_ssa_def *a = nir_fsub(b, coord_mod2size, size);
-   wrap_params->coords = nir_fsub(b, nir_fsub(b, size, nir_imm_float(b, 1.0f)), mirror(b, a));
+   wrap_params->coords = nir_fsub(b, nir_fadd_imm(b, size, -1.0f), mirror(b, a));
 }
 
 static void
 wrap_mirror_clamp_to_edge(nir_builder *b, wrap_result_t *wrap_params, nir_ssa_def *size)
 {
    /* clamp(mirror(coord), 0, size - 1) */
-   wrap_params->coords = nir_fmin(b, nir_fsub(b, size, nir_imm_float(b, 1.0f)),
+   wrap_params->coords = nir_fmin(b, nir_fadd_imm(b, size, -1.0f),
                                   nir_fmax(b, mirror(b, wrap_params->coords), nir_imm_float(b, 0.0f)));
 }
 

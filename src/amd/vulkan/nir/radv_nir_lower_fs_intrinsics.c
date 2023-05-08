@@ -114,7 +114,7 @@ radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *
                      nir_load_sample_positions_amd(&b, 32, intrin->src[0].ssa, num_samples);
 
                   /* sample_pos -= 0.5 */
-                  sample_pos = nir_fsub(&b, sample_pos, nir_imm_float(&b, 0.5f));
+                  sample_pos = nir_fadd_imm(&b, sample_pos, -0.5f);
 
                   res2 = nir_load_barycentric_at_offset(
                      &b, 32, sample_pos, .interp_mode = nir_intrinsic_interp_mode(intrin));
@@ -131,7 +131,7 @@ radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *
                      nir_load_sample_positions_amd(&b, 32, intrin->src[0].ssa, num_samples);
 
                   /* sample_pos -= 0.5 */
-                  sample_pos = nir_fsub(&b, sample_pos, nir_imm_float(&b, 0.5f));
+                  sample_pos = nir_fadd_imm(&b, sample_pos, -0.5f);
 
                   new_dest = nir_load_barycentric_at_offset(
                      &b, 32, sample_pos, .interp_mode = nir_intrinsic_interp_mode(intrin));

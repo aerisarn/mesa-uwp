@@ -380,7 +380,7 @@ lower_floor(nir_builder *b, nir_ssa_def *src)
    return nir_bcsel(b,
                     nir_ior(b, positive, nir_feq(b, src, tr)),
                     tr,
-                    nir_fsub(b, tr, nir_imm_double(b, 1.0)));
+                    nir_fadd_imm(b, tr, -1.0));
 }
 
 static nir_ssa_def *

@@ -119,10 +119,10 @@ vc4_nir_get_vattr_channel_vpm(struct vc4_compile *c,
                 if (chan->type == UTIL_FORMAT_TYPE_SIGNED) {
                         temp = nir_ixor(b, vpm, nir_imm_int(b, 0x80808080));
                         if (chan->normalized) {
-                                return nir_fsub(b, nir_fmul_imm(b,
-                                                                vc4_nir_unpack_8f(b, temp, swiz),
-                                                                2.0),
-                                                nir_imm_float(b, 1.0));
+                                return nir_fadd_imm(b, nir_fmul_imm(b,
+                                                                    vc4_nir_unpack_8f(b, temp, swiz),
+                                                                    2.0),
+                                                    -1.0);
                         } else {
                                 return nir_fadd_imm(b,
                                                     nir_i2f32(b,

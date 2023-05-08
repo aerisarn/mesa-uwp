@@ -48,7 +48,7 @@ radv_meta_build_resolve_srgb_conversion(nir_builder *b, nir_ssa_def *input)
    for (i = 0; i < 3; i++) {
       gtvals[i] = nir_fpow(b, nir_channel(b, input, i), nir_imm_float(b, 1.0 / 2.4));
       gtvals[i] = nir_fmul_imm(b, gtvals[i], 1.055);
-      gtvals[i] = nir_fsub(b, gtvals[i], nir_imm_float(b, 0.055));
+      gtvals[i] = nir_fadd_imm(b, gtvals[i], -0.055);
    }
 
    nir_ssa_def *comp[4];

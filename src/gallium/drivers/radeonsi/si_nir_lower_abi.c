@@ -436,7 +436,7 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
          nir_ssa_def *buf = si_nir_load_internal_binding(b, args, SI_PS_CONST_SAMPLE_POSITIONS, 4);
          nir_ssa_def *sample_pos = nir_load_ubo(b, 2, 32, buf, offset, .range = ~0);
 
-         sample_pos = nir_fsub(b, sample_pos, nir_imm_float(b, 0.5));
+         sample_pos = nir_fadd_imm(b, sample_pos, -0.5);
 
          replacement = nir_load_barycentric_at_offset(b, 32, sample_pos, .interp_mode = mode);
       }
