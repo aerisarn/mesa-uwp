@@ -118,7 +118,7 @@ LowerSinCos::lower(nir_instr *instr)
 
    auto normalized =
       m_gxf_level != R600
-         ? nir_fadd(b, fract, nir_imm_float(b, -0.5))
+         ? nir_fadd_imm(b, fract, -0.5)
          : nir_ffma(b, fract, nir_imm_float(b, 2.0f * M_PI), nir_imm_float(b, -M_PI));
 
    if (alu->op == nir_op_fsin)

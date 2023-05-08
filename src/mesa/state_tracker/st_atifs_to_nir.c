@@ -207,7 +207,7 @@ prepare_argument(struct st_translate *t, const struct atifs_instruction *inst,
    if (srcReg->argMod & GL_COMP_BIT_ATI)
       src = nir_fsub(t->b, nir_imm_vec4_float(t->b, 1.0), src);
    if (srcReg->argMod & GL_BIAS_BIT_ATI)
-      src = nir_fadd(t->b, src, nir_imm_vec4_float(t->b, -0.5));
+      src = nir_fadd_imm(t->b, src, -0.5);
    if (srcReg->argMod & GL_2X_BIT_ATI)
       src = nir_fadd(t->b, src, src);
    if (srcReg->argMod & GL_NEGATE_BIT_ATI)

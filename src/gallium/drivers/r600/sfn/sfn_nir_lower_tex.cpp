@@ -65,15 +65,15 @@ lower_coord_shift_unnormalized(nir_builder *b, nir_tex_instr *tex)
    int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
    nir_ssa_def *corr = nullptr;
    if (unlikely(tex->array_is_lowered_cube)) {
-      auto corr2 = nir_fadd(b,
-                            nir_channels(b, tex->src[coord_index].src.ssa, 3),
-                            nir_imm_float(b, -0.5f));
+      auto corr2 = nir_fadd_imm(b,
+                                nir_channels(b, tex->src[coord_index].src.ssa, 3),
+                                -0.5f);
       corr = nir_vec3(b,
                       nir_channel(b, corr2, 0),
                       nir_channel(b, corr2, 1),
                       nir_channel(b, tex->src[coord_index].src.ssa, 2));
    } else {
-      corr = nir_fadd(b, tex->src[coord_index].src.ssa, nir_imm_float(b, -0.5f));
+      corr = nir_fadd_imm(b, tex->src[coord_index].src.ssa, -0.5f);
    }
    nir_instr_rewrite_src(&tex->instr, &tex->src[coord_index].src, nir_src_for_ssa(corr));
    return true;

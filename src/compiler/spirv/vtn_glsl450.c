@@ -569,7 +569,7 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
    case GLSLstd450Atanh: {
       nir_ssa_def *one = nir_imm_floatN_t(nb, 1.0, src[0]->bit_size);
       dest->def =
-         nir_fmul_imm(nb, nir_flog(nb, nir_fdiv(nb, nir_fadd(nb, src[0], one),
+         nir_fmul_imm(nb, nir_flog(nb, nir_fdiv(nb, nir_fadd_imm(nb, src[0], 1.0),
                                        nir_fsub(nb, one, src[0]))),
                           0.5f);
       break;

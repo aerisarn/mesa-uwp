@@ -124,11 +124,11 @@ vc4_nir_get_vattr_channel_vpm(struct vc4_compile *c,
                                                                 2.0),
                                                 nir_imm_float(b, 1.0));
                         } else {
-                                return nir_fadd(b,
-                                                nir_i2f32(b,
-                                                          vc4_nir_unpack_8i(b, temp,
-                                                                            swiz)),
-                                                nir_imm_float(b, -128.0));
+                                return nir_fadd_imm(b,
+                                                    nir_i2f32(b,
+                                                              vc4_nir_unpack_8i(b, temp,
+                                                                                swiz)),
+                                                    -128.0);
                         }
                 } else {
                         if (chan->normalized) {

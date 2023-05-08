@@ -733,7 +733,7 @@ blorp_nir_manual_blend_bilinear(nir_builder *b, nir_ssa_def *pos,
    /* Adjust coordinates so that integers represent pixel centers rather
     * than pixel edges.
     */
-   pos_xy = nir_fadd(b, pos_xy, nir_imm_float(b, -0.5));
+   pos_xy = nir_fadd_imm(b, pos_xy, -0.5);
    /* Clamp the X, Y texture coordinates to properly handle the sampling of
     * texels on texture edges.
     */
@@ -1390,9 +1390,9 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp,
           */
          assert(key->src_coords_normalized);
          assert(key->filter == BLORP_FILTER_AVERAGE);
-         src_pos = nir_fadd(&b,
-                            nir_i2f32(&b, src_pos),
-                            nir_imm_float(&b, 0.5f));
+         src_pos = nir_fadd_imm(&b,
+                                nir_i2f32(&b, src_pos),
+                                0.5f);
          color = blorp_nir_tex(&b, &v, key, src_pos);
       } else {
          /* Gfx7+ hardware doesn't automatically blend. */
