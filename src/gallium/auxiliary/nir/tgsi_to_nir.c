@@ -2663,6 +2663,9 @@ ttn_finalize_nir(struct ttn_compile *c, struct pipe_screen *screen)
    if (nir->options->lower_uniforms_to_ubo)
       NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, false, !c->cap_integers);
 
+   if (nir->options->lower_int64_options)
+      NIR_PASS_V(nir, nir_lower_int64);
+
    if (!c->cap_samplers_as_deref)
       NIR_PASS_V(nir, nir_lower_samplers);
 
