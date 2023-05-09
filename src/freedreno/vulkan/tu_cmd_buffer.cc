@@ -718,15 +718,16 @@ tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits vk_samples,
 static void
 tu6_update_msaa(struct tu_cmd_buffer *cmd)
 {
-   struct tu_cs cs;
+   VkSampleCountFlagBits samples =
+      cmd->vk.dynamic_graphics_state.ms.rasterization_samples;;
 
-   cmd->state.msaa = tu_cs_draw_state(&cmd->sub_cs, &cs, 9);
-   tu6_emit_msaa(&cs, cmd->vk.dynamic_graphics_state.ms.rasterization_samples,
-                 cmd->state.msaa_disable);
-   if (!(cmd->state.dirty & TU_CMD_DIRTY_DRAW_STATE)) {
-      tu_cs_emit_pkt7(&cmd->draw_cs, CP_SET_DRAW_STATE, 3);
-      tu_cs_emit_draw_state(&cmd->draw_cs, TU_DRAW_STATE_MSAA, cmd->state.msaa);
-   }
+   /* The samples may not be set by the pipeline or dynamically if raster
+    * discard is enabled. We can set any valid value, but don't set the
+    * default invalid value of 0.
+    */
+   if (samples == 0)
+      samples = VK_SAMPLE_COUNT_1_BIT;
+   tu6_emit_msaa(&cmd->draw_cs, samples, cmd->state.msaa_disable);
 }
 
 static void
@@ -1585,6 +1586,12 @@ tu_emit_renderpass_begin(struct tu_cmd_buffer *cmd)
     */
    if (cmd->state.pass->has_fdm)
       cmd->state.dirty |= TU_CMD_DIRTY_FDM;
+
+   /* We need to re-emit MSAA at the beginning of every renderpass because it
+    * isn't part of a draw state that gets automatically re-emitted.
+    */
+   BITSET_SET(cmd->vk.dynamic_graphics_state.dirty,
+              MESA_VK_DYNAMIC_MS_RASTERIZATION_SAMPLES);
 }
 
 template <chip CHIP>
@@ -4703,7 +4710,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_PARAMS, cmd->state.fs_params);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_LRZ_AND_DEPTH_PLANE, cmd->state.lrz_and_depth_plane_state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_MSAA, cmd->state.msaa);
 
       for (uint32_t i = 0; i < ARRAY_SIZE(cmd->state.dynamic_state); i++) {
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i,
