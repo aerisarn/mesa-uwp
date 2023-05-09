@@ -346,6 +346,38 @@ get_uvec_type(struct ntv_context *ctx, unsigned bit_size, unsigned num_component
    return uint_type;
 }
 
+static SpvId
+get_alu_type(struct ntv_context *ctx, nir_alu_type type, unsigned num_components, unsigned bit_size)
+{
+   if (bit_size == 1)
+      return get_bvec_type(ctx, num_components);
+
+   switch (nir_alu_type_get_base_type(type)) {
+   case nir_type_bool:
+      unreachable("bool should have bit-size 1");
+
+   case nir_type_int:
+   case nir_type_int8:
+   case nir_type_int16:
+   case nir_type_int64:
+      return get_ivec_type(ctx, bit_size, num_components);
+
+   case nir_type_uint:
+   case nir_type_uint8:
+   case nir_type_uint16:
+   case nir_type_uint64:
+      return get_uvec_type(ctx, bit_size, num_components);
+
+   case nir_type_float:
+   case nir_type_float16:
+   case nir_type_float64:
+      return get_fvec_type(ctx, bit_size, num_components);
+
+   default:
+      unreachable("unsupported nir_alu_type");
+   }
+}
+
 static SpvStorageClass
 get_storage_class(struct nir_variable *var)
 {
@@ -1960,38 +1992,6 @@ store_alu_result(struct ntv_context *ctx, nir_alu_instr *alu, SpvId result, bool
    assert(!alu->dest.saturate);
    store_dest(ctx, &alu->dest.dest, result,
               force_float ? nir_type_float : nir_op_infos[alu->op].output_type);
-}
-
-static SpvId
-get_alu_type(struct ntv_context *ctx, nir_alu_type type, unsigned num_components, unsigned bit_size)
-{
-   if (bit_size == 1)
-      return get_bvec_type(ctx, num_components);
-
-   switch (nir_alu_type_get_base_type(type)) {
-   case nir_type_bool:
-      unreachable("bool should have bit-size 1");
-
-   case nir_type_int:
-   case nir_type_int8:
-   case nir_type_int16:
-   case nir_type_int64:
-      return get_ivec_type(ctx, bit_size, num_components);
-
-   case nir_type_uint:
-   case nir_type_uint8:
-   case nir_type_uint16:
-   case nir_type_uint64:
-      return get_uvec_type(ctx, bit_size, num_components);
-
-   case nir_type_float:
-   case nir_type_float16:
-   case nir_type_float64:
-      return get_fvec_type(ctx, bit_size, num_components);
-
-   default:
-      unreachable("unsupported nir_alu_type");
-   }
 }
 
 static SpvId
