@@ -1024,6 +1024,9 @@ dxil_spirv_nir_passes(nir_shader *nir,
       NIR_PASS_V(nir, nir_lower_discard_or_demote, nir->info.use_legacy_math_rules);
 
       NIR_PASS_V(nir, dxil_nir_lower_discard_and_terminate);
+      /* Remove single-source phis now that returns have been inserted, otherwise
+       * lowering returns might not behave correctly. */
+      NIR_PASS_V(nir, nir_opt_remove_phis);
       NIR_PASS_V(nir, nir_lower_returns);
       NIR_PASS_V(nir, dxil_nir_lower_sample_pos);
       NIR_PASS_V(nir, nir_lower_fragcoord_wtrans);
