@@ -19,7 +19,7 @@
   variables:
     BM_BOOTFS: /boot/raspberrypi_armhf
 
-vc4-rpi3-gl:armhf:
+.vc4-rpi3-gl:armhf:
   extends:
     - .broadcom-test:armhf
     - .vc4-rules
