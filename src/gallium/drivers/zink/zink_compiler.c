@@ -3760,7 +3760,7 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
    unsigned offsets[4];
    zink_descriptor_shader_get_binding_offsets(zs, offsets);
    nir_foreach_variable_with_modes(var, nir, nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_uniform | nir_var_image) {
-      if (var->data.bindless)
+      if (var->data.descriptor_set == screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS])
          continue;
       var->data.descriptor_set = set;
       switch (var->data.mode) {
