@@ -4744,6 +4744,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
 
    /* emit a block only for the variable declarations */
    start_block(&ctx, spirv_builder_new_id(&ctx.builder));
+   spirv_builder_begin_local_vars(&ctx.builder);
    foreach_list_typed(nir_register, reg, node, &entry->registers) {
       SpvId type = get_vec_from_bit_size(&ctx, reg->bit_size, reg->num_components);
       SpvId pointer_type = spirv_builder_type_pointer(&ctx.builder,
