@@ -2550,7 +2550,7 @@ emit_load_shared(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    if (num_components > 1)
       result = spirv_builder_emit_composite_construct(&ctx->builder, dest_type, constituents, num_components);
    else
-      result = bitcast_to_uvec(ctx, constituents[0], bit_size, num_components);
+      result = constituents[0];
    store_dest(ctx, &intr->dest, result, nir_type_uint);
 }
 
@@ -2603,7 +2603,7 @@ emit_load_scratch(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    if (num_components > 1)
       result = spirv_builder_emit_composite_construct(&ctx->builder, dest_type, constituents, num_components);
    else
-      result = bitcast_to_uvec(ctx, constituents[0], bit_size, num_components);
+      result = constituents[0];
    store_dest(ctx, &intr->dest, result, nir_type_uint);
 }
 
