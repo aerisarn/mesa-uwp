@@ -121,7 +121,8 @@ struct intel_measure_snapshot {
 struct intel_measure_buffered_result {
    struct intel_measure_snapshot snapshot;
    uint64_t start_ts, end_ts, idle_duration;
-   unsigned frame, batch_count, event_index;
+   unsigned frame, batch_count, event_index, primary_renderpass;
+;
 };
 
 struct intel_measure_ringbuffer {
@@ -154,7 +155,7 @@ struct intel_measure_batch {
    struct list_head link;
    unsigned index;
    unsigned frame, batch_count, event_count;
-   uint32_t renderpass;
+   uint32_t renderpass, primary_renderpass;
    uint64_t *timestamps;
    struct intel_measure_snapshot snapshots[0];
 };
