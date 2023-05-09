@@ -4557,15 +4557,15 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
     */
    bool no_per_view_viewport = pipeline_contains_all_shader_state(pipeline) &&
       !pipeline->program.per_view_viewport;
-   DRAW_STATE_COND(viewport, VK_DYNAMIC_STATE_VIEWPORT, no_per_view_viewport,
+   DRAW_STATE_COND(viewport, TU_DYNAMIC_STATE_VIEWPORT, no_per_view_viewport,
                    builder->graphics_state.vp);
-   DRAW_STATE_COND(scissor, VK_DYNAMIC_STATE_SCISSOR, no_per_view_viewport,
+   DRAW_STATE_COND(scissor, TU_DYNAMIC_STATE_SCISSOR, no_per_view_viewport,
               builder->graphics_state.vp);
    DRAW_STATE(sample_locations,
               TU_DYNAMIC_STATE_SAMPLE_LOCATIONS,
               builder->graphics_state.ms->sample_locations_enable,
               builder->graphics_state.ms->sample_locations);
-   DRAW_STATE(depth_bias, VK_DYNAMIC_STATE_DEPTH_BIAS,
+   DRAW_STATE(depth_bias, TU_DYNAMIC_STATE_DEPTH_BIAS,
               builder->graphics_state.rs);
    bool attachments_valid =
       builder->graphics_state.rp &&
@@ -4601,7 +4601,7 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
    if (EMIT_STATE(bandwidth, attachments_valid))
       tu_calc_bandwidth(&pipeline->bandwidth, cb,
                         builder->graphics_state.rp);
-   DRAW_STATE(blend_constants, VK_DYNAMIC_STATE_BLEND_CONSTANTS, cb);
+   DRAW_STATE(blend_constants, TU_DYNAMIC_STATE_BLEND_CONSTANTS, cb);
    if (attachments_valid &&
        !(builder->graphics_state.rp->attachment_aspects &
          VK_IMAGE_ASPECT_COLOR_BIT)) {
@@ -4628,15 +4628,15 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
                    builder->graphics_state.ds,
                    builder->graphics_state.rp,
                    builder->graphics_state.rs);
-   DRAW_STATE(depth_bounds, VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+   DRAW_STATE(depth_bounds, TU_DYNAMIC_STATE_DEPTH_BOUNDS,
               builder->graphics_state.ds);
-   DRAW_STATE(depth_bounds, VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+   DRAW_STATE(depth_bounds, TU_DYNAMIC_STATE_DEPTH_BOUNDS,
               builder->graphics_state.ds);
-   DRAW_STATE(stencil_compare_mask, VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+   DRAW_STATE(stencil_compare_mask, TU_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
               builder->graphics_state.ds);
-   DRAW_STATE(stencil_write_mask, VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+   DRAW_STATE(stencil_write_mask, TU_DYNAMIC_STATE_STENCIL_WRITE_MASK,
               builder->graphics_state.ds);
-   DRAW_STATE(stencil_reference, VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+   DRAW_STATE(stencil_reference, TU_DYNAMIC_STATE_STENCIL_REFERENCE,
               builder->graphics_state.ds);
    DRAW_STATE_COND(patch_control_points,
                    TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS,
@@ -4772,15 +4772,15 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
 #undef tu6_emit_vertex_stride
 #undef tu6_vertex_stride_size
 
-   DRAW_STATE_FDM(viewport, VK_DYNAMIC_STATE_VIEWPORT,
+   DRAW_STATE_FDM(viewport, TU_DYNAMIC_STATE_VIEWPORT,
                   &cmd->vk.dynamic_graphics_state.vp);
-   DRAW_STATE_FDM(scissor, VK_DYNAMIC_STATE_SCISSOR,
+   DRAW_STATE_FDM(scissor, TU_DYNAMIC_STATE_SCISSOR,
                   &cmd->vk.dynamic_graphics_state.vp);
    DRAW_STATE(sample_locations,
               TU_DYNAMIC_STATE_SAMPLE_LOCATIONS,
               cmd->vk.dynamic_graphics_state.ms.sample_locations_enable,
               cmd->vk.dynamic_graphics_state.ms.sample_locations);
-   DRAW_STATE(depth_bias, VK_DYNAMIC_STATE_DEPTH_BIAS,
+   DRAW_STATE(depth_bias, TU_DYNAMIC_STATE_DEPTH_BIAS,
               &cmd->vk.dynamic_graphics_state.rs);
    DRAW_STATE(blend, TU_DYNAMIC_STATE_BLEND,
               &cmd->vk.dynamic_graphics_state.cb,
@@ -4816,13 +4816,13 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
                    &cmd->vk.dynamic_graphics_state.ds,
                    &cmd->state.vk_rp,
                    &cmd->vk.dynamic_graphics_state.rs);
-   DRAW_STATE(depth_bounds, VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+   DRAW_STATE(depth_bounds, TU_DYNAMIC_STATE_DEPTH_BOUNDS,
               &cmd->vk.dynamic_graphics_state.ds);
-   DRAW_STATE(stencil_compare_mask, VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+   DRAW_STATE(stencil_compare_mask, TU_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
               &cmd->vk.dynamic_graphics_state.ds);
-   DRAW_STATE(stencil_write_mask, VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+   DRAW_STATE(stencil_write_mask, TU_DYNAMIC_STATE_STENCIL_WRITE_MASK,
               &cmd->vk.dynamic_graphics_state.ds);
-   DRAW_STATE(stencil_reference, VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+   DRAW_STATE(stencil_reference, TU_DYNAMIC_STATE_STENCIL_REFERENCE,
               &cmd->vk.dynamic_graphics_state.ds);
    DRAW_STATE_COND(patch_control_points,
                    TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS,
