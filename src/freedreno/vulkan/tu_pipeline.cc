@@ -4233,6 +4233,8 @@ static const enum mesa_vk_dynamic_graphics_state tu_rast_state[] = {
    MESA_VK_DYNAMIC_RS_FRONT_FACE,
    MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE,
    MESA_VK_DYNAMIC_RS_LINE_MODE,
+   MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE,
+   MESA_VK_DYNAMIC_RS_RASTERIZATION_STREAM,
    MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE,
 };
 
@@ -4245,9 +4247,9 @@ tu6_rast_size(struct tu_device *dev,
               bool per_view_viewport)
 {
    if (CHIP == A6XX) {
-      return 11 + (dev->physical_device->info->a6xx.has_shading_rate ? 8 : 0);
+      return 15 + (dev->physical_device->info->a6xx.has_shading_rate ? 8 : 0);
    } else {
-      return 13;
+      return 15;
    }
 }
 
@@ -4297,6 +4299,14 @@ tu6_emit_rast(struct tu_cs *cs,
                      A7XX_VPC_POLYGON_MODE2(polygon_mode));
    }
 
+   tu_cs_emit_regs(cs, PC_RASTER_CNTL(CHIP,
+      .stream = rs->rasterization_stream,
+      .discard = rs->rasterizer_discard_enable));
+   if (CHIP == A6XX) {
+      tu_cs_emit_regs(cs, A6XX_VPC_UNKNOWN_9107(
+         .raster_discard = rs->rasterizer_discard_enable));
+   }
+
    /* move to hw ctx init? */
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_SU_POINT_MINMAX(.min = 1.0f / 16.0f, .max = 4092.0f),
@@ -4307,33 +4317,6 @@ tu6_emit_rast(struct tu_cs *cs,
       tu_cs_emit_regs(cs, A6XX_RB_UNKNOWN_8A10());
       tu_cs_emit_regs(cs, A6XX_RB_UNKNOWN_8A20());
       tu_cs_emit_regs(cs, A6XX_RB_UNKNOWN_8A30());
-   }
-}
-
-static const enum mesa_vk_dynamic_graphics_state tu_pc_raster_cntl_state[] = {
-   MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE,
-   MESA_VK_DYNAMIC_RS_RASTERIZATION_STREAM,
-};
-
-template <chip CHIP>
-static unsigned
-tu6_pc_raster_cntl_size(struct tu_device *dev,
-                        const struct vk_rasterization_state *rs)
-{
-   return CHIP == A6XX ? 4 : 2;
-}
-
-template <chip CHIP>
-static void
-tu6_emit_pc_raster_cntl(struct tu_cs *cs,
-                        const struct vk_rasterization_state *rs)
-{
-   tu_cs_emit_regs(cs, PC_RASTER_CNTL(CHIP,
-      .stream = rs->rasterization_stream,
-      .discard = rs->rasterizer_discard_enable));
-   if (CHIP == A6XX) {
-      tu_cs_emit_regs(cs, A6XX_VPC_UNKNOWN_9107(
-         .raster_discard = rs->rasterizer_discard_enable));
    }
 }
 
@@ -4640,8 +4623,6 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
                    builder->graphics_state.vp,
                    builder->graphics_state.rp->view_mask != 0,
                    pipeline->program.per_view_viewport);
-   DRAW_STATE(pc_raster_cntl, TU_DYNAMIC_STATE_PC_RASTER_CNTL,
-              builder->graphics_state.rs);
    DRAW_STATE_COND(ds, TU_DYNAMIC_STATE_DS,
                    attachments_valid,
                    builder->graphics_state.ds,
@@ -4830,8 +4811,6 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
                    &cmd->vk.dynamic_graphics_state.vp,
                    cmd->state.vk_rp.view_mask != 0,
                    cmd->state.per_view_viewport);
-   DRAW_STATE(pc_raster_cntl, TU_DYNAMIC_STATE_PC_RASTER_CNTL,
-              &cmd->vk.dynamic_graphics_state.rs);
    DRAW_STATE_COND(ds, TU_DYNAMIC_STATE_DS,
                    cmd->state.dirty & TU_CMD_DIRTY_SUBPASS,
                    &cmd->vk.dynamic_graphics_state.ds,
