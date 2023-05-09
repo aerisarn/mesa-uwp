@@ -1138,12 +1138,33 @@ iris_resource_prepare_texture(struct iris_context *ice,
 
    bool clear_supported = isl_aux_usage_has_fast_clears(aux_usage);
 
-   /* Clear color is specified as ints or floats and the conversion is done by
-    * the sampler.  If we have a texture view, we would have to perform the
-    * clear color conversion manually.  Just disable clear color.
+   /* On gfx8-9, the clear color is specified as ints or floats and the
+    * conversion is done by the sampler.  If we have a texture view, we would
+    * have to perform the clear color conversion manually.  Just disable clear
+    * color.
     */
-   if (!formats_are_fast_clear_compatible(res->surf.format, view_format))
+   if (devinfo->ver <= 9 &&
+       !formats_are_fast_clear_compatible(res->surf.format, view_format)) {
       clear_supported = false;
+   }
+
+   /* On gfx11+, the sampler reads clear values stored in pixel form.  The
+    * location the sampler reads from is dependent on the bits-per-channel of
+    * the format.  Specifically, a pixel is read from the Raw Clear Color
+    * fields if the format is 32bpc.  Otherwise, it's read from the Converted
+    * Clear Color fields.  To avoid modifying the clear color, disable it if
+    * the new format points the sampler to an incompatible location.
+    *
+    * Note: although hardware looks at the bits-per-channel of the format, we
+    * only need to check the red channel's size here.  In the scope of formats
+    * supporting fast-clears, all 32bpc formats have 32-bit red channels and
+    * vice-versa.
+    */
+   if (devinfo->ver >= 11 &&
+       isl_format_get_layout(res->surf.format)->channels.r.bits != 32 &&
+       isl_format_get_layout(view_format)->channels.r.bits == 32) {
+      clear_supported = false;
+   }
 
    if (isl_aux_usage_has_mcs(aux_usage) &&
        !iris_can_sample_mcs_with_clear(devinfo, res)) {
