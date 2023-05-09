@@ -187,7 +187,7 @@ struct st_fp_variant_key
    /* bitmask of sampler units; PIPE_CAP_GL_CLAMP */
    uint32_t gl_clamp[3];
 
-   /* bitmask of texture depth units; */
+   /* bitmask of shadow samplers with depth textures in them for ARB programs; */
    GLbitfield depth_textures;
 };
 
