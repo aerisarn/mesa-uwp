@@ -1781,7 +1781,7 @@ zink_descriptors_update_bindless(struct zink_context *ctx)
             if (is_buffer) {
                size_t size = i ? screen->info.db_props.robustStorageTexelBufferDescriptorSize : screen->info.db_props.robustUniformTexelBufferDescriptorSize;
                info.type = i ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-               info.data.pSampler = (void*)&ctx->di.bindless[i].db.buffer_infos[handle];
+               info.data.pSampler = (void*)&ctx->di.bindless[i].db.buffer_infos[handle - ZINK_MAX_BINDLESS_HANDLES];
                VKSCR(GetDescriptorEXT)(screen->dev, &info, size, ctx->dd.db.bindless_db_map + ctx->dd.db.bindless_db_offsets[binding] + handle * size);
             } else {
                info.type = i ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
