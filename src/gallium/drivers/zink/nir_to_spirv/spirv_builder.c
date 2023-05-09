@@ -32,6 +32,7 @@
 #include "util/hash_table.h"
 #define XXH_INLINE_ALL
 #include "util/xxhash.h"
+#include "vk_util.h"
 
 #include <stdbool.h>
 #include <inttypes.h>
@@ -1729,7 +1730,6 @@ spirv_builder_get_words(struct spirv_builder *b, uint32_t *words,
       &b->debug_names,
       &b->decorations,
       &b->types_const_defs,
-      &b->instructions
    };
 
    for (int i = 0; i < ARRAY_SIZE(buffers); ++i) {
@@ -1742,6 +1742,8 @@ spirv_builder_get_words(struct spirv_builder *b, uint32_t *words,
              buffer->num_words * sizeof(uint32_t));
       written += buffer->num_words;
    }
+   typed_memcpy(&words[written], b->instructions.words, b->instructions.num_words);
+   written += b->instructions.num_words;
 
    assert(written == spirv_builder_get_num_words(b));
    return written;
