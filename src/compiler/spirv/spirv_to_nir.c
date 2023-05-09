@@ -367,7 +367,7 @@ vtn_push_ssa_value(struct vtn_builder *b, uint32_t value_id,
 
    /* See vtn_create_ssa_value */
    vtn_fail_if(ssa->type != glsl_get_bare_type(type->type),
-               "Type mismatch for SPIR-V SSA value");
+               "Type mismatch for SPIR-V value %%%u", value_id);
 
    struct vtn_value *val;
    if (type->base_type == vtn_base_type_pointer) {
