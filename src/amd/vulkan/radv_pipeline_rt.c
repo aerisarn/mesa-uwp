@@ -442,7 +442,7 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
    VkPipelineShaderStageCreateInfo stage = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
       .pNext = NULL,
-      .stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
+      .stage = VK_SHADER_STAGE_INTERSECTION_BIT_KHR,
       .module = vk_shader_module_to_handle(&module),
       .pName = "main",
    };
@@ -684,7 +684,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    pipeline->base.base.shaders[MESA_SHADER_COMPUTE] = radv_create_rt_prolog(device);
 
    combine_config(&pipeline->base.base.shaders[MESA_SHADER_COMPUTE]->config,
-                  &pipeline->base.base.shaders[MESA_SHADER_RAYGEN]->config);
+                  &pipeline->base.base.shaders[MESA_SHADER_INTERSECTION]->config);
 
    postprocess_rt_config(&pipeline->base.base.shaders[MESA_SHADER_COMPUTE]->config,
                          device->physical_device->rad_info.gfx_level,
@@ -716,8 +716,8 @@ radv_destroy_ray_tracing_pipeline(struct radv_device *device,
 
    if (pipeline->base.base.shaders[MESA_SHADER_COMPUTE])
       radv_shader_unref(device, pipeline->base.base.shaders[MESA_SHADER_COMPUTE]);
-   if (pipeline->base.base.shaders[MESA_SHADER_RAYGEN])
-      radv_shader_unref(device, pipeline->base.base.shaders[MESA_SHADER_RAYGEN]);
+   if (pipeline->base.base.shaders[MESA_SHADER_INTERSECTION])
+      radv_shader_unref(device, pipeline->base.base.shaders[MESA_SHADER_INTERSECTION]);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
