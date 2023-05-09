@@ -610,14 +610,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
          result = ac_build_canonicalize(&ctx->ac, result, instr->dest.dest.ssa.bit_size);
       }
       break;
-   case nir_op_ineg:
-      if (instr->no_unsigned_wrap)
-         result = LLVMBuildNUWNeg(ctx->ac.builder, src[0], "");
-      else if (instr->no_signed_wrap)
-         result = LLVMBuildNSWNeg(ctx->ac.builder, src[0], "");
-      else
-         result = LLVMBuildNeg(ctx->ac.builder, src[0], "");
-      break;
    case nir_op_inot:
       result = LLVMBuildNot(ctx->ac.builder, src[0], "");
       break;
