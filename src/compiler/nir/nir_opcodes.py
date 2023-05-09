@@ -33,7 +33,8 @@ class Opcode(object):
    NOTE: this must be kept in sync with nir_op_info
    """
    def __init__(self, name, output_size, output_type, input_sizes,
-                input_types, is_conversion, algebraic_properties, const_expr):
+                input_types, is_conversion, algebraic_properties, const_expr,
+                description):
       """Parameters:
 
       - name is the name of the opcode (prepend nir_op_ for the enum name)
@@ -44,6 +45,7 @@ class Opcode(object):
         prepended before each entry
       - const_expr is an expression or series of statements that computes the
         constant value of the opcode given the constant values of its inputs.
+      - Optional description of the opcode for documentation.
 
       Constant expressions are formed from the variables src0, src1, ...,
       src(N-1), where N is the number of arguments.  The output of the
@@ -89,6 +91,7 @@ class Opcode(object):
       self.is_conversion = is_conversion
       self.algebraic_properties = algebraic_properties
       self.const_expr = const_expr
+      self.description = description
 
 # helper variables for strings
 tfloat = "float"
@@ -152,25 +155,25 @@ selection = "selection "
 opcodes = {}
 
 def opcode(name, output_size, output_type, input_sizes, input_types,
-           is_conversion, algebraic_properties, const_expr):
+           is_conversion, algebraic_properties, const_expr, description = ""):
    assert name not in opcodes
    opcodes[name] = Opcode(name, output_size, output_type, input_sizes,
                           input_types, is_conversion, algebraic_properties,
-                          const_expr)
+                          const_expr, description)
 
-def unop_convert(name, out_type, in_type, const_expr):
-   opcode(name, 0, out_type, [0], [in_type], False, "", const_expr)
+def unop_convert(name, out_type, in_type, const_expr, description = ""):
+   opcode(name, 0, out_type, [0], [in_type], False, "", const_expr, description)
 
-def unop(name, ty, const_expr):
-   opcode(name, 0, ty, [0], [ty], False, "", const_expr)
+def unop(name, ty, const_expr, description = ""):
+   opcode(name, 0, ty, [0], [ty], False, "", const_expr, description)
 
 def unop_horiz(name, output_size, output_type, input_size, input_type,
-               const_expr):
+               const_expr, description = ""):
    opcode(name, output_size, output_type, [input_size], [input_type],
-          False, "", const_expr)
+          False, "", const_expr, description)
 
 def unop_reduce(name, output_size, output_type, input_type, prereduce_expr,
-                reduce_expr, final_expr):
+                reduce_expr, final_expr, description = ""):
    def prereduce(src):
       return "(" + prereduce_expr.format(src=src) + ")"
    def final(src):
@@ -182,14 +185,15 @@ def unop_reduce(name, output_size, output_type, input_type, prereduce_expr,
    src2 = prereduce("src0.z")
    src3 = prereduce("src0.w")
    unop_horiz(name + "2", output_size, output_type, 2, input_type,
-              final(reduce_(src0, src1)))
+              final(reduce_(src0, src1)), description)
    unop_horiz(name + "3", output_size, output_type, 3, input_type,
-              final(reduce_(reduce_(src0, src1), src2)))
+              final(reduce_(reduce_(src0, src1), src2)), description)
    unop_horiz(name + "4", output_size, output_type, 4, input_type,
-              final(reduce_(reduce_(src0, src1), reduce_(src2, src3))))
+              final(reduce_(reduce_(src0, src1), reduce_(src2, src3))),
+              description)
 
-def unop_numeric_convert(name, out_type, in_type, const_expr):
-   opcode(name, 0, out_type, [0], [in_type], True, "", const_expr)
+def unop_numeric_convert(name, out_type, in_type, const_expr, description = ""):
+   opcode(name, 0, out_type, [0], [in_type], True, "", const_expr, description)
 
 unop("mov", tuint, "src0")
 
@@ -559,38 +563,38 @@ if (src0.z < 0 && absZ >= absX && absZ >= absY) dst.x = 5;
 # Sum of vector components
 unop_reduce("fsum", 1, tfloat, tfloat, "{src}", "{src0} + {src1}", "{src}")
 
-def binop_convert(name, out_type, in_type, alg_props, const_expr):
+def binop_convert(name, out_type, in_type, alg_props, const_expr, description=""):
    opcode(name, 0, out_type, [0, 0], [in_type, in_type],
-          False, alg_props, const_expr)
+          False, alg_props, const_expr, description)
 
-def binop(name, ty, alg_props, const_expr):
-   binop_convert(name, ty, ty, alg_props, const_expr)
+def binop(name, ty, alg_props, const_expr, description = ""):
+   binop_convert(name, ty, ty, alg_props, const_expr, description)
 
-def binop_compare(name, ty, alg_props, const_expr):
-   binop_convert(name, tbool1, ty, alg_props, const_expr)
+def binop_compare(name, ty, alg_props, const_expr, description = ""):
+   binop_convert(name, tbool1, ty, alg_props, const_expr, description)
 
-def binop_compare8(name, ty, alg_props, const_expr):
-   binop_convert(name, tbool8, ty, alg_props, const_expr)
+def binop_compare8(name, ty, alg_props, const_expr, description = ""):
+   binop_convert(name, tbool8, ty, alg_props, const_expr, description)
 
-def binop_compare16(name, ty, alg_props, const_expr):
-   binop_convert(name, tbool16, ty, alg_props, const_expr)
+def binop_compare16(name, ty, alg_props, const_expr, description = ""):
+   binop_convert(name, tbool16, ty, alg_props, const_expr, description)
 
-def binop_compare32(name, ty, alg_props, const_expr):
-   binop_convert(name, tbool32, ty, alg_props, const_expr)
+def binop_compare32(name, ty, alg_props, const_expr, description = ""):
+   binop_convert(name, tbool32, ty, alg_props, const_expr, description)
 
-def binop_compare_all_sizes(name, ty, alg_props, const_expr):
-   binop_compare(name, ty, alg_props, const_expr)
-   binop_compare8(name + "8", ty, alg_props, const_expr)
-   binop_compare16(name + "16", ty, alg_props, const_expr)
-   binop_compare32(name + "32", ty, alg_props, const_expr)
+def binop_compare_all_sizes(name, ty, alg_props, const_expr, description = ""):
+   binop_compare(name, ty, alg_props, const_expr, description)
+   binop_compare8(name + "8", ty, alg_props, const_expr, description)
+   binop_compare16(name + "16", ty, alg_props, const_expr, description)
+   binop_compare32(name + "32", ty, alg_props, const_expr, description)
 
 def binop_horiz(name, out_size, out_type, src1_size, src1_type, src2_size,
-                src2_type, const_expr):
+                src2_type, const_expr, description = ""):
    opcode(name, out_size, out_type, [src1_size, src2_size], [src1_type, src2_type],
-          False, "", const_expr)
+          False, "", const_expr, description)
 
 def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
-                 reduce_expr, final_expr, suffix=""):
+                 reduce_expr, final_expr, suffix="", description = ""):
    def final(src):
       return final_expr.format(src= "(" + src + ")")
    def reduce_(src0, src1):
@@ -605,24 +609,26 @@ def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
    for size in [2, 4, 8, 16]:
       opcode(name + str(size) + suffix, output_size, output_type,
              [size, size], [src_type, src_type], False, _2src_commutative,
-             final(pairwise_reduce(0, size)))
+             final(pairwise_reduce(0, size)), description)
    opcode(name + "3" + suffix, output_size, output_type,
           [3, 3], [src_type, src_type], False, _2src_commutative,
-          final(reduce_(reduce_(srcs[2], srcs[1]), srcs[0])))
+          final(reduce_(reduce_(srcs[2], srcs[1]), srcs[0])), description)
    opcode(name + "5" + suffix, output_size, output_type,
           [5, 5], [src_type, src_type], False, _2src_commutative,
-          final(reduce_(srcs[4], reduce_(reduce_(srcs[3], srcs[2]), reduce_(srcs[1], srcs[0])))))
+          final(reduce_(srcs[4], reduce_(reduce_(srcs[3], srcs[2]),
+                                         reduce_(srcs[1], srcs[0])))),
+          description)
 
 def binop_reduce_all_sizes(name, output_size, src_type, prereduce_expr,
-                           reduce_expr, final_expr):
+                           reduce_expr, final_expr, description = ""):
    binop_reduce(name, output_size, tbool1, src_type,
-                prereduce_expr, reduce_expr, final_expr)
+                prereduce_expr, reduce_expr, final_expr, description)
    binop_reduce("b8" + name[1:], output_size, tbool8, src_type,
-                prereduce_expr, reduce_expr, final_expr)
+                prereduce_expr, reduce_expr, final_expr, description)
    binop_reduce("b16" + name[1:], output_size, tbool16, src_type,
-                prereduce_expr, reduce_expr, final_expr)
+                prereduce_expr, reduce_expr, final_expr, description)
    binop_reduce("b32" + name[1:], output_size, tbool32, src_type,
-                prereduce_expr, reduce_expr, final_expr)
+                prereduce_expr, reduce_expr, final_expr, description)
 
 binop("fadd", tfloat, _2src_commutative + associative,"""
 if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
@@ -961,12 +967,14 @@ binop("insert_u8", tuint, "", "(src0 & 0xff) << (src1 * 8)")
 binop("insert_u16", tuint, "", "(src0 & 0xffff) << (src1 * 16)")
 
 
-def triop(name, ty, alg_props, const_expr):
-   opcode(name, 0, ty, [0, 0, 0], [ty, ty, ty], False, alg_props, const_expr)
-def triop_horiz(name, output_size, src1_size, src2_size, src3_size, const_expr):
+def triop(name, ty, alg_props, const_expr, description = ""):
+   opcode(name, 0, ty, [0, 0, 0], [ty, ty, ty], False, alg_props, const_expr,
+          description)
+def triop_horiz(name, output_size, src1_size, src2_size, src3_size, const_expr,
+                description = ""):
    opcode(name, output_size, tuint,
    [src1_size, src2_size, src3_size],
-   [tuint, tuint, tuint], False, "", const_expr)
+   [tuint, tuint, tuint], False, "", const_expr, description)
 
 triop("ffma", tfloat, _2src_commutative, """
 if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
