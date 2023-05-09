@@ -21,7 +21,6 @@ enum tu_dynamic_state
 {
    /* re-use VK_DYNAMIC_STATE_ enums for non-extended dynamic states */
    TU_DYNAMIC_STATE_SAMPLE_LOCATIONS = VK_DYNAMIC_STATE_STENCIL_REFERENCE + 1,
-   TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE,
    TU_DYNAMIC_STATE_DS,
    TU_DYNAMIC_STATE_VB_STRIDE,
    TU_DYNAMIC_STATE_PC_RASTER_CNTL,
@@ -233,6 +232,12 @@ struct tu_graphics_pipeline {
    struct tu_pipeline base;
 
    struct vk_dynamic_graphics_state dynamic_state;
+
+   /* Only used if the sample locations are static but the enable is dynamic.
+    * Otherwise we should be able to precompile the draw state.
+    */
+   struct vk_sample_locations_state sample_locations;
+
    bool feedback_loop_color, feedback_loop_ds;
    bool feedback_loop_may_involve_textures;
    bool has_fdm;

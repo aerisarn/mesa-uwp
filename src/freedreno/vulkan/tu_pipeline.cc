@@ -3903,20 +3903,23 @@ tu6_emit_scissor_fdm(struct tu_cs *cs, struct tu_cmd_buffer *cmd,
    tu_create_fdm_bin_patchpoint(cmd, cs, size, fdm_apply_scissors, state);
 }
 
-static const enum mesa_vk_dynamic_graphics_state tu_sample_locations_enable_state[] = {
+static const enum mesa_vk_dynamic_graphics_state tu_sample_locations_state[] = {
    MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS_ENABLE,
+   MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS,
 };
 
 template <chip CHIP>
 static unsigned
-tu6_sample_locations_enable_size(struct tu_device *dev, bool enable)
+tu6_sample_locations_size(struct tu_device *dev, bool enable,
+                          const struct vk_sample_locations_state *samp_loc)
 {
-   return 6;
+   return 6 + (enable ? 6 : 0);
 }
 
 template <chip CHIP>
 void
-tu6_emit_sample_locations_enable(struct tu_cs *cs, bool enable)
+tu6_emit_sample_locations(struct tu_cs *cs, bool enable,
+                          const struct vk_sample_locations_state *samp_loc)
 {
    uint32_t sample_config =
       COND(enable, A6XX_RB_SAMPLE_CONFIG_LOCATION_ENABLE);
@@ -3929,28 +3932,8 @@ tu6_emit_sample_locations_enable(struct tu_cs *cs, bool enable)
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_TP_SAMPLE_CONFIG, 1);
    tu_cs_emit(cs, sample_config);
-}
 
-static const enum mesa_vk_dynamic_graphics_state tu_sample_locations_state[] = {
-   MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS,
-};
-
-template <chip CHIP>
-static unsigned
-tu6_sample_locations_size(struct tu_device *dev,
-                          const struct vk_sample_locations_state *samp_loc)
-{
-   return 6;
-}
-
-template <chip CHIP>
-void
-tu6_emit_sample_locations(struct tu_cs *cs, const struct vk_sample_locations_state *samp_loc)
-{
-   /* Return if it hasn't been set yet in the dynamic case or the struct is
-    * NULL in the static case (because sample locations aren't enabled)
-    */
-   if (!samp_loc || samp_loc->grid_size.width == 0)
+   if (!enable)
       return;
 
    assert(samp_loc->grid_size.width == 1);
@@ -4595,11 +4578,9 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
                    builder->graphics_state.vp);
    DRAW_STATE_COND(scissor, VK_DYNAMIC_STATE_SCISSOR, no_per_view_viewport,
               builder->graphics_state.vp);
-   DRAW_STATE(sample_locations_enable,
-              TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE,
-              builder->graphics_state.ms->sample_locations_enable);
    DRAW_STATE(sample_locations,
               TU_DYNAMIC_STATE_SAMPLE_LOCATIONS,
+              builder->graphics_state.ms->sample_locations_enable,
               builder->graphics_state.ms->sample_locations);
    DRAW_STATE(depth_bias, VK_DYNAMIC_STATE_DEPTH_BIAS,
               builder->graphics_state.rs);
@@ -4814,11 +4795,9 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
                   &cmd->vk.dynamic_graphics_state.vp);
    DRAW_STATE_FDM(scissor, VK_DYNAMIC_STATE_SCISSOR,
                   &cmd->vk.dynamic_graphics_state.vp);
-   DRAW_STATE(sample_locations_enable,
-              TU_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE,
-              cmd->vk.dynamic_graphics_state.ms.sample_locations_enable);
    DRAW_STATE(sample_locations,
               TU_DYNAMIC_STATE_SAMPLE_LOCATIONS,
+              cmd->vk.dynamic_graphics_state.ms.sample_locations_enable,
               cmd->vk.dynamic_graphics_state.ms.sample_locations);
    DRAW_STATE(depth_bias, VK_DYNAMIC_STATE_DEPTH_BIAS,
               &cmd->vk.dynamic_graphics_state.rs);
@@ -5206,6 +5185,8 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    } else {
       struct tu_graphics_pipeline *gfx_pipeline =
          tu_pipeline_to_graphics(*pipeline);
+      gfx_pipeline->dynamic_state.ms.sample_locations =
+         &gfx_pipeline->sample_locations;
       vk_dynamic_graphics_state_fill(&gfx_pipeline->dynamic_state,
                                      &builder->graphics_state);
       gfx_pipeline->feedback_loop_color =
