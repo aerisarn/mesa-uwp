@@ -5634,7 +5634,7 @@ vtn_handle_select(struct vtn_builder *b, SpvOp opcode,
 
    vtn_fail_if(obj1_val->type != res_val->type ||
                obj2_val->type != res_val->type,
-               "Object types must match the result type in OpSelect");
+               "Object types must match the result type in OpSelect (%%%u = %%%u ? %%%u : %%%u)", w[2], w[3], w[4], w[5]);
 
    vtn_fail_if((cond_val->type->base_type != vtn_base_type_scalar &&
                 cond_val->type->base_type != vtn_base_type_vector) ||
