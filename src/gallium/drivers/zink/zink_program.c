@@ -657,8 +657,10 @@ update_gfx_shader_module_optimal(struct zink_context *ctx, struct zink_gfx_progr
    if (screen->info.have_EXT_graphics_pipeline_library)
       util_queue_fence_wait(&prog->base.cache_fence);
    struct zink_shader_module *zm = get_shader_module_for_stage_optimal(ctx, screen, prog->shaders[pstage], prog, pstage, &ctx->gfx_pipeline_state);
-   if (!zm)
+   if (!zm) {
       zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[pstage], prog, pstage, &ctx->gfx_pipeline_state);
+      perf_debug(ctx, "zink[gfx_compile]: %s shader variant required\n", _mesa_shader_stage_to_string(pstage));
+   }
 
    bool changed = prog->objs[pstage].mod != zm->obj.mod;
    prog->objs[pstage] = zm->obj;
@@ -742,6 +744,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
          if (!prog->is_separable) {
             zink_screen_get_pipeline_cache(screen, &prog->base, false);
+            perf_debug(ctx, "zink[gfx_compile]: new program created (probably legacy GL features in use)\n");
             generate_gfx_program_modules_optimal(ctx, screen, prog, &ctx->gfx_pipeline_state);
          }
       }
@@ -759,6 +762,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
          if (!ZINK_SHADER_KEY_OPTIMAL_IS_DEFAULT(ctx->gfx_pipeline_state.optimal_key)) {
             util_queue_fence_wait(&prog->base.cache_fence);
             /* shader variants can't be handled by separable programs: sync and compile */
+            perf_debug(ctx, "zink[gfx_compile]: non-default shader variant required with separate shader object program\n");
             struct hash_table *ht = &ctx->program_cache[zink_program_cache_stages(ctx->shader_stages)];
             const uint32_t hash = ctx->gfx_hash;
             simple_mtx_lock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
