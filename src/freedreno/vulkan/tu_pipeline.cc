@@ -1444,27 +1444,15 @@ tu6_emit_vpc(struct tu_cs *cs,
    if (hs) {
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
       tu_cs_emit(cs, hs->tess.tcs_vertices_out);
-
-      tu6_emit_link_map(cs, vs, hs, SB6_HS_SHADER);
-      tu6_emit_link_map(cs, hs, ds, SB6_DS_SHADER);
    }
 
 
    if (gs) {
-      uint32_t vertices_out, invocations, vec4_size;
-      uint32_t prev_stage_output_size = ds ? ds->output_size : vs->output_size;
+      uint32_t vertices_out, invocations;
 
-      if (hs) {
-         tu6_emit_link_map(cs, ds, gs, SB6_GS_SHADER);
-      } else {
-         tu6_emit_link_map(cs, vs, gs, SB6_GS_SHADER);
-      }
       vertices_out = gs->gs.vertices_out - 1;
       enum a6xx_tess_output output = primitive_to_tess((enum mesa_prim) gs->gs.output_primitive);
       invocations = gs->gs.invocations - 1;
-      /* Size of per-primitive alloction in ldlw memory in vec4s. */
-      vec4_size = gs->gs.vertices_in *
-                  DIV_ROUND_UP(prev_stage_output_size, 4);
 
       uint32_t primitive_cntl =
          A6XX_PC_PRIMITIVE_CNTL_5(.gs_vertices_out = vertices_out,
@@ -1474,24 +1462,10 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_5, 1);
       tu_cs_emit(cs, primitive_cntl);
 
-      if (CHIP == A6XX) {
-         tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_PARAM, 1);
-         tu_cs_emit(cs, 0xff);
-
-         tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
-         tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_6_STRIDE_IN_VPC(vec4_size));
-      } else {
+      if (CHIP >= A7XX) {
          tu_cs_emit_pkt4(cs, REG_A7XX_VPC_PRIMITIVE_CNTL_5, 1);
          tu_cs_emit(cs, primitive_cntl);
       }
-
-      uint32_t prim_size = prev_stage_output_size;
-      if (prim_size > 64)
-         prim_size = 64;
-      else if (prim_size == 64)
-         prim_size = 63;
-      tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_PRIM_SIZE, 1);
-      tu_cs_emit(cs, prim_size);
    }
 
    tu6_emit_vpc_varying_modes(cs, fs, last_shader);
@@ -1920,6 +1894,57 @@ tu6_emit_program_config(struct tu_cs *cs,
       gl_shader_stage stage = (gl_shader_stage) stage_idx;
       tu6_emit_xs_config<CHIP>(cs, stage, builder->variants[stage]);
    }
+
+   for (size_t stage_idx = MESA_SHADER_VERTEX;
+        stage_idx < ARRAY_SIZE(builder->shader_iova); stage_idx++) {
+      gl_shader_stage stage = (gl_shader_stage) stage_idx;
+      tu6_emit_dynamic_offset(cs, builder->variants[stage], builder);
+   }
+
+   const struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
+   const struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
+   const struct ir3_shader_variant *ds = builder->variants[MESA_SHADER_TESS_EVAL];
+   const struct ir3_shader_variant *gs = builder->variants[MESA_SHADER_GEOMETRY];
+   const struct ir3_shader_variant *fs = builder->variants[MESA_SHADER_FRAGMENT];
+
+   if (hs) {
+      tu6_emit_link_map(cs, vs, hs, SB6_HS_SHADER);
+      tu6_emit_link_map(cs, hs, ds, SB6_DS_SHADER);
+   }
+
+   if (gs) {
+      if (hs) {
+         tu6_emit_link_map(cs, ds, gs, SB6_GS_SHADER);
+      } else {
+         tu6_emit_link_map(cs, vs, gs, SB6_GS_SHADER);
+      }
+
+      uint32_t prev_stage_output_size = ds ? ds->output_size : vs->output_size;
+
+      if (CHIP == A6XX) {
+         tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_PARAM, 1);
+         tu_cs_emit(cs, 0xff);
+
+         /* Size of per-primitive alloction in ldlw memory in vec4s. */
+         uint32_t vec4_size = gs->gs.vertices_in *
+                              DIV_ROUND_UP(prev_stage_output_size, 4);
+
+         tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
+         tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_6_STRIDE_IN_VPC(vec4_size));
+      }
+
+      uint32_t prim_size = prev_stage_output_size;
+      if (prim_size > 64)
+         prim_size = 64;
+      else if (prim_size == 64)
+         prim_size = 63;
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_PRIM_SIZE, 1);
+      tu_cs_emit(cs, prim_size);
+   }
+
+   if (gs || hs) {
+      tu6_emit_geom_tess_consts(cs, vs, hs, ds, gs);
+   }
 }
 
 template <chip CHIP>
@@ -1944,7 +1969,6 @@ tu6_emit_program(struct tu_cs *cs,
    if (binning_pass && !gs) {
       vs = bs;
       tu6_emit_xs<CHIP>(cs, stage, bs, &builder->pvtmem, builder->binning_vs_iova);
-      tu6_emit_dynamic_offset(cs, bs, builder);
       stage = (gl_shader_stage) (stage + 1);
    }
 
@@ -1956,7 +1980,6 @@ tu6_emit_program(struct tu_cs *cs,
          fs = xs = NULL;
 
       tu6_emit_xs<CHIP>(cs, stage, xs, &builder->pvtmem, builder->shader_iova[stage]);
-      tu6_emit_dynamic_offset(cs, xs, builder);
    }
 
    uint32_t multiview_views = util_logbase2(builder->graphics_state.rp->view_mask) + 1;
@@ -2018,10 +2041,6 @@ tu6_emit_program(struct tu_cs *cs,
       struct ir3_shader_variant dummy_variant = {};
       tu6_emit_fs_inputs<CHIP>(cs, &dummy_variant);
       tu6_emit_fs_outputs(cs, &dummy_variant, NULL);
-   }
-
-   if (gs || hs) {
-      tu6_emit_geom_tess_consts(cs, vs, hs, ds, gs);
    }
 }
 
