@@ -161,7 +161,8 @@ static uint32_t pvr_transfer_frag_shader_key(
    hash |= 1;
 
    shift_hash(hash, 3U);
-   hash |= shader_props->alpha_type;
+   /* alpha type none */
+   hash |= 0;
 
 #undef shift_hash
 

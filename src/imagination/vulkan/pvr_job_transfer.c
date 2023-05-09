@@ -1459,15 +1459,14 @@ static void pvr_uv_space(const struct pvr_device_info *dev_info,
 }
 
 static uint32_t pvr_int_pbe_pixel_num_sampler_and_image_states(
-   enum pvr_transfer_pbe_pixel_src pbe_format,
-   uint32_t alpha_type)
+   enum pvr_transfer_pbe_pixel_src pbe_format)
 {
    switch (pbe_format) {
    case PVR_TRANSFER_PBE_PIXEL_SRC_Y_UV_INTERLEAVED:
    case PVR_TRANSFER_PBE_PIXEL_SRC_Y_U_V:
       return 1U;
    default:
-      return pvr_pbe_pixel_num_loads(pbe_format, alpha_type);
+      return pvr_pbe_pixel_num_loads(pbe_format);
    }
 }
 
@@ -1663,9 +1662,7 @@ pvr_sampler_image_state(struct pvr_transfer_ctx *ctx,
       for (uint32_t source = 0; source < transfer_cmd->source_count; source++) {
          struct pvr_tq_layer_properties *layer =
             &state->shader_props.layer_props;
-         uint32_t max_load =
-            pvr_pbe_pixel_num_loads(layer->pbe_format,
-                                    state->shader_props.alpha_type);
+         uint32_t max_load = pvr_pbe_pixel_num_loads(layer->pbe_format);
 
          for (uint32_t load = 0U; load < max_load; load++) {
             const struct pvr_transfer_cmd_surface *surface;
@@ -1685,11 +1682,7 @@ pvr_sampler_image_state(struct pvr_transfer_ctx *ctx,
             case PVR_TRANSFER_PBE_PIXEL_SRC_F16_U8:
                if (load > 0U) {
                   surface = &transfer_cmd->dst;
-
-                  if (state->shader_props.alpha_type != PVR_ALPHA_NONE)
-                     filter = PVR_FILTER_POINT;
-                  else
-                     filter = transfer_cmd->sources[source].filter;
+                  filter = transfer_cmd->sources[source].filter;
                } else {
                   surface = &transfer_cmd->sources[source].surface;
                   filter = state->filter[source];
@@ -1709,8 +1702,7 @@ pvr_sampler_image_state(struct pvr_transfer_ctx *ctx,
             }
 
             if (load < pvr_int_pbe_pixel_num_sampler_and_image_states(
-                          layer->pbe_format,
-                          state->shader_props.alpha_type)) {
+                          layer->pbe_format)) {
                const struct pvr_device_info *dev_info =
                   &transfer_cmd->cmd_buffer->device->pdevice->dev_info;
 
@@ -1756,17 +1748,6 @@ static inline uint32_t pvr_dynamic_const_reg_advance(
    assert(state->dynamic_const_reg_ptr < sh_reg_layout->dynamic_consts.count);
 
    return offset + state->dynamic_const_reg_ptr++;
-}
-
-static inline void
-pvr_dma_global_alpha(const struct pvr_transfer_alpha *alpha,
-                     struct pvr_transfer_3d_state *state,
-                     const struct pvr_tq_frag_sh_reg_layout *sh_reg_layout,
-                     uint32_t *mem_ptr)
-{
-   float global = (float)alpha->global / 255.0f;
-
-   mem_ptr[pvr_dynamic_const_reg_advance(sh_reg_layout, state)] = fui(global);
 }
 
 /** Scales coefficients for sampling. (non normalized). */
@@ -2779,15 +2760,6 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
 
       state->shader_props.pick_component =
          pvr_pick_component_needed(&state->custom_mapping);
-      state->shader_props.alpha_type = transfer_cmd->blit.alpha.type;
-
-      if (state->shader_props.alpha_type != PVR_ALPHA_NONE &&
-          (state->shader_props.layer_props.pbe_format !=
-              PVR_TRANSFER_PBE_PIXEL_SRC_F16F16 &&
-           state->shader_props.layer_props.pbe_format !=
-              PVR_TRANSFER_PBE_PIXEL_SRC_F16_U8)) {
-         return vk_error(device, VK_ERROR_FORMAT_NOT_SUPPORTED);
-      }
 
       if (state->filter[0] == PVR_FILTER_LINEAR &&
           pvr_requires_usc_linear_filter(
@@ -2848,15 +2820,6 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
                                        dma_space);
       if (result != VK_SUCCESS)
          return result;
-
-      if (state->shader_props.alpha_type == PVR_ALPHA_GLOBAL ||
-          state->shader_props.alpha_type ==
-             PVR_ALPHA_PREMUL_SOURCE_WITH_GLOBAL) {
-         pvr_dma_global_alpha(&transfer_cmd->blit.alpha,
-                              state,
-                              sh_reg_layout,
-                              dma_space);
-      }
 
       pvr_dma_texture_floats(transfer_cmd, state, sh_reg_layout, dma_space);
 
@@ -4515,8 +4478,6 @@ static VkResult pvr_3d_clip_blit(struct pvr_transfer_ctx *ctx,
       ~(PVR_TRANSFER_CMD_FLAGS_FAST2D | PVR_TRANSFER_CMD_FLAGS_FILL |
         PVR_TRANSFER_CMD_FLAGS_DSMERGE | PVR_TRANSFER_CMD_FLAGS_PICKD);
 
-   memset(&bg_cmd.blit, 0U, sizeof(bg_cmd.blit));
-
    bg_cmd.source_count = state->custom_mapping.pass_count > 0U ? 0 : 1;
    if (bg_cmd.source_count > 0) {
       struct pvr_transfer_cmd_source *src = &bg_cmd.sources[0];
@@ -5474,11 +5435,7 @@ static VkResult pvr_reroute_to_clip(struct pvr_transfer_ctx *ctx,
                                     uint32_t pass_idx,
                                     bool *finished_out)
 {
-   const struct pvr_transfer_blit *blit = &transfer_cmd->blit;
    struct pvr_transfer_cmd clip_transfer_cmd;
-
-   if (blit->alpha.type != PVR_ALPHA_NONE)
-      return vk_error(ctx->device, VK_ERROR_FORMAT_NOT_SUPPORTED);
 
    clip_transfer_cmd = *transfer_cmd;
    clip_transfer_cmd.flags |= PVR_TRANSFER_CMD_FLAGS_FAST2D;
@@ -5506,7 +5463,6 @@ static VkResult pvr_3d_copy_blit(struct pvr_transfer_ctx *ctx,
    const struct pvr_device_info *const dev_info =
       &ctx->device->pdevice->dev_info;
 
-   const struct pvr_transfer_blit *blit = &transfer_cmd->blit;
    struct pvr_transfer_3d_state *state = &prep_data->state;
    struct pvr_transfer_cmd *active_cmd = transfer_cmd;
    struct pvr_transfer_cmd int_cmd;
@@ -5528,8 +5484,7 @@ static VkResult pvr_3d_copy_blit(struct pvr_transfer_ctx *ctx,
       if (src->surface.vk_format == transfer_cmd->dst.vk_format &&
           state->filter[0] == PVR_FILTER_POINT &&
           src->surface.sample_count <= transfer_cmd->dst.sample_count &&
-          (transfer_cmd->flags & PVR_TRANSFER_CMD_FLAGS_DSMERGE) == 0U &&
-          transfer_cmd->blit.alpha.type == PVR_ALPHA_NONE) {
+          (transfer_cmd->flags & PVR_TRANSFER_CMD_FLAGS_DSMERGE) == 0U) {
          uint32_t bpp;
 
          int_cmd = *transfer_cmd;
@@ -5582,9 +5537,6 @@ static VkResult pvr_3d_copy_blit(struct pvr_transfer_ctx *ctx,
 
    if (state->custom_mapping.pass_count > 0U) {
       struct pvr_transfer_pass *pass = &state->custom_mapping.passes[pass_idx];
-
-      if (blit->alpha.type != PVR_ALPHA_NONE)
-         return vk_error(ctx->device, VK_ERROR_FORMAT_NOT_SUPPORTED);
 
       if (active_cmd != &int_cmd) {
          int_cmd = *active_cmd;

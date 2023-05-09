@@ -1038,20 +1038,8 @@ bool pvr_format_is_pbe_downscalable(VkFormat vk_format)
    }
 }
 
-uint32_t pvr_pbe_pixel_num_loads(enum pvr_transfer_pbe_pixel_src pbe_format,
-                                 uint32_t alpha_type)
+uint32_t pvr_pbe_pixel_num_loads(enum pvr_transfer_pbe_pixel_src pbe_format)
 {
-   switch (alpha_type) {
-   default:
-   case PVR_ALPHA_NONE:
-      break;
-   case PVR_ALPHA_SOURCE:
-   case PVR_ALPHA_PREMUL_SOURCE:
-   case PVR_ALPHA_PREMUL_SOURCE_WITH_GLOBAL:
-   case PVR_ALPHA_GLOBAL:
-      return 2U;
-   }
-
    switch (pbe_format) {
    case PVR_TRANSFER_PBE_PIXEL_SRC_UU8888:
    case PVR_TRANSFER_PBE_PIXEL_SRC_US8888:

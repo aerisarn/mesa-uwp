@@ -398,44 +398,6 @@ struct pvr_rect_mapping {
    bool flip_y;
 };
 
-/* Describes an Alpha-Transparency configuration - for Transfer Queue Use. */
-struct pvr_transfer_alpha {
-   enum pvr_alpha_type type;
-   /* Global alpha value. */
-   uint32_t global;
-
-   /* Custom blend op for rgb. */
-   uint32_t custom_rgb;
-   /* Custom blend op for alpha. */
-   uint32_t custom_alpha;
-   /* Custom global alpha value for alpha output. */
-   uint32_t global2;
-   /* Custom multiplication of global and source alpha. */
-   bool glob_src_mul;
-   /* Custom zero source alpha transparency stage. */
-   bool zero_src_a_trans;
-
-   /* Enable argb1555 alpha components. */
-   bool alpha_components;
-   /* Source alpha value when argb1555 alpha bit is 0. */
-   uint32_t component0;
-   /* Source alpha value when argb1555 alpha bit is 1. */
-   uint32_t component1;
-};
-
-struct pvr_transfer_blit {
-   /* 16 bit rop4 (ie two 8 bit rop3's). */
-   uint32_t rop_code;
-
-   /* Color key mask. */
-   uint32_t color_mask;
-
-   /* Alpha blend. */
-   struct pvr_transfer_alpha alpha;
-
-   VkOffset2D offset;
-};
-
 struct pvr_transfer_cmd_source {
    struct pvr_transfer_cmd_surface surface;
 
@@ -472,8 +434,6 @@ struct pvr_transfer_cmd {
    struct pvr_transfer_cmd_surface dst;
 
    VkRect2D scissor;
-
-   struct pvr_transfer_blit blit;
 
    /* Pointer to cmd buffer this transfer cmd belongs to. This is mainly used
     * to link buffer objects allocated during job submission into
