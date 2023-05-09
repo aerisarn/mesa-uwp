@@ -267,7 +267,6 @@ clang-format:
     INSTALL_TARBALL: "./artifacts/${INSTALL_TARBALL_NAME}"
     CI_B2C_ARTIFACTS: "./artifacts/b2c"
     CI_COMMON_SCRIPTS: "./artifacts/ci-common"
-    GENERATE_ENV_SCRIPT: "${CI_COMMON_SCRIPTS}/generate-env.sh"
     B2C_JOB_TEMPLATE: "${CI_B2C_ARTIFACTS}/b2c.yml.jinja2.jinja2"
     JOB_FOLDER: "job_folder"
 
