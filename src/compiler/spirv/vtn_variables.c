@@ -2266,10 +2266,10 @@ vtn_assert_types_equal(struct vtn_builder *b, SpvOp opcode,
       return;
    }
 
-   vtn_fail("Source and destination types of %s do not match: %s vs. %s",
+   vtn_fail("Source and destination types of %s do not match: %s (%%%u) vs. %s (%%%u)",
             spirv_op_to_string(opcode),
-            glsl_get_type_name(dst_type->type),
-            glsl_get_type_name(src_type->type));
+            glsl_get_type_name(dst_type->type), dst_type->id,
+            glsl_get_type_name(src_type->type), src_type->id);
 }
 
 static nir_ssa_def *
