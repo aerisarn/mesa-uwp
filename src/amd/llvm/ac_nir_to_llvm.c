@@ -1994,6 +1994,47 @@ static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx, LLVMValue
    }
 }
 
+static const char *
+translate_atomic_op_str(nir_atomic_op op)
+{
+   switch (op) {
+   case nir_atomic_op_iadd:     return "add";
+   case nir_atomic_op_imin:     return "smin";
+   case nir_atomic_op_umin:     return "umin";
+   case nir_atomic_op_imax:     return "smax";
+   case nir_atomic_op_umax:     return "umax";
+   case nir_atomic_op_iand:     return "and";
+   case nir_atomic_op_ior:      return "or";
+   case nir_atomic_op_ixor:     return "xor";
+   case nir_atomic_op_fadd:     return "fadd";
+   case nir_atomic_op_fmin:     return "fmin";
+   case nir_atomic_op_fmax:     return "fmax";
+   case nir_atomic_op_xchg:     return "swap";
+   case nir_atomic_op_cmpxchg:  return "cmpswap";
+   case nir_atomic_op_inc_wrap: return "inc";
+   case nir_atomic_op_dec_wrap: return "dec";
+   default: abort();
+   }
+}
+
+static LLVMAtomicRMWBinOp
+translate_atomic_op(nir_atomic_op op)
+{
+   switch (op) {
+   case nir_atomic_op_iadd: return LLVMAtomicRMWBinOpAdd;
+   case nir_atomic_op_xchg: return LLVMAtomicRMWBinOpXchg;
+   case nir_atomic_op_iand: return LLVMAtomicRMWBinOpAnd;
+   case nir_atomic_op_ior:  return LLVMAtomicRMWBinOpOr;
+   case nir_atomic_op_ixor: return LLVMAtomicRMWBinOpXor;
+   case nir_atomic_op_umin: return LLVMAtomicRMWBinOpUMin;
+   case nir_atomic_op_umax: return LLVMAtomicRMWBinOpUMax;
+   case nir_atomic_op_imin: return LLVMAtomicRMWBinOpMin;
+   case nir_atomic_op_imax: return LLVMAtomicRMWBinOpMax;
+   case nir_atomic_op_fadd: return LLVMAtomicRMWBinOpFAdd;
+   default: unreachable("Unexpected atomic");
+   }
+}
+
 static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
    if (ctx->ac.postponed_kill) {
@@ -2001,8 +2042,11 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
       ac_build_ifcc(&ctx->ac, cond, 7001);
    }
 
+   nir_atomic_op nir_op = nir_intrinsic_atomic_op(instr);
+   const char *op = translate_atomic_op_str(nir_op);
+   bool is_float = nir_atomic_op_type(nir_op) == nir_type_float;
+
    LLVMTypeRef return_type = LLVMTypeOf(get_src(ctx, instr->src[2]));
-   const char *op;
    char name[64], type[8];
    LLVMValueRef params[6], descriptor;
    LLVMValueRef result;
@@ -2011,65 +2055,19 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
    struct waterfall_context wctx;
    LLVMValueRef rsrc_base = enter_waterfall_ssbo(ctx, &wctx, instr, instr->src[0]);
 
-   switch (instr->intrinsic) {
-   case nir_intrinsic_ssbo_atomic_add:
-      op = "add";
-      break;
-   case nir_intrinsic_ssbo_atomic_imin:
-      op = "smin";
-      break;
-   case nir_intrinsic_ssbo_atomic_umin:
-      op = "umin";
-      break;
-   case nir_intrinsic_ssbo_atomic_imax:
-      op = "smax";
-      break;
-   case nir_intrinsic_ssbo_atomic_umax:
-      op = "umax";
-      break;
-   case nir_intrinsic_ssbo_atomic_and:
-      op = "and";
-      break;
-   case nir_intrinsic_ssbo_atomic_or:
-      op = "or";
-      break;
-   case nir_intrinsic_ssbo_atomic_xor:
-      op = "xor";
-      break;
-   case nir_intrinsic_ssbo_atomic_exchange:
-      op = "swap";
-      break;
-   case nir_intrinsic_ssbo_atomic_comp_swap:
-      op = "cmpswap";
-      break;
-   case nir_intrinsic_ssbo_atomic_fadd:
-      op = "fadd";
-      break;
-   case nir_intrinsic_ssbo_atomic_fmin:
-      op = "fmin";
-      break;
-   case nir_intrinsic_ssbo_atomic_fmax:
-      op = "fmax";
-      break;
-   default:
-      abort();
-   }
-
    descriptor = ctx->abi->load_ssbo ?
       ctx->abi->load_ssbo(ctx->abi, rsrc_base, true, false) : rsrc_base;
 
-   if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap && return_type == ctx->ac.i64) {
+   if (instr->intrinsic == nir_intrinsic_ssbo_atomic_swap && return_type == ctx->ac.i64) {
       result = emit_ssbo_comp_swap_64(ctx, descriptor, get_src(ctx, instr->src[1]),
                                       get_src(ctx, instr->src[2]), get_src(ctx, instr->src[3]), false);
    } else {
       LLVMValueRef data = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
 
-      if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
+      if (instr->intrinsic == nir_intrinsic_ssbo_atomic_swap) {
          params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[3]), 0);
       }
-      if (instr->intrinsic == nir_intrinsic_ssbo_atomic_fadd ||
-          instr->intrinsic == nir_intrinsic_ssbo_atomic_fmin ||
-          instr->intrinsic == nir_intrinsic_ssbo_atomic_fmax) {
+      if (is_float) {
          data = ac_to_float(&ctx->ac, data);
          return_type = LLVMTypeOf(data);
       }
@@ -2084,9 +2082,7 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
 
       result = ac_build_intrinsic(&ctx->ac, name, return_type, params, arg_count, 0);
 
-      if (instr->intrinsic == nir_intrinsic_ssbo_atomic_fadd ||
-          instr->intrinsic == nir_intrinsic_ssbo_atomic_fmin ||
-          instr->intrinsic == nir_intrinsic_ssbo_atomic_fmax) {
+      if (is_float) {
          result = ac_to_integer(&ctx->ac, result);
       }
    }
@@ -2250,47 +2246,20 @@ static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
    /* use "singlethread" sync scope to implement relaxed ordering */
    const char *sync_scope = "singlethread-one-as";
 
-   if (instr->intrinsic == nir_intrinsic_global_atomic_fadd ||
-       instr->intrinsic == nir_intrinsic_global_atomic_fmin ||
-       instr->intrinsic == nir_intrinsic_global_atomic_fmax ||
-       instr->intrinsic == nir_intrinsic_global_atomic_fadd_amd ||
-       instr->intrinsic == nir_intrinsic_global_atomic_fmin_amd ||
-       instr->intrinsic == nir_intrinsic_global_atomic_fmax_amd) {
-      data = ac_to_float(&ctx->ac, data);
-   }
+   nir_atomic_op nir_op = nir_intrinsic_atomic_op(instr);
+   bool is_float = nir_atomic_op_type(nir_op) == nir_type_float;
 
    LLVMTypeRef data_type = LLVMTypeOf(data);
 
    LLVMValueRef addr = get_global_address(ctx, instr, data_type);
 
-   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap ||
-       instr->intrinsic == nir_intrinsic_global_atomic_comp_swap_amd) {
+   if (instr->intrinsic == nir_intrinsic_global_atomic_swap ||
+       instr->intrinsic == nir_intrinsic_global_atomic_swap_amd) {
       LLVMValueRef data1 = get_src(ctx, instr->src[2]);
       result = ac_build_atomic_cmp_xchg(&ctx->ac, addr, data, data1, sync_scope);
       result = LLVMBuildExtractValue(ctx->ac.builder, result, 0, "");
-   } else if (instr->intrinsic == nir_intrinsic_global_atomic_fadd ||
-              instr->intrinsic == nir_intrinsic_global_atomic_fmin ||
-              instr->intrinsic == nir_intrinsic_global_atomic_fmax ||
-              instr->intrinsic == nir_intrinsic_global_atomic_fadd_amd ||
-              instr->intrinsic == nir_intrinsic_global_atomic_fmin_amd ||
-              instr->intrinsic == nir_intrinsic_global_atomic_fmax_amd) {
-      const char *op = NULL;
-      switch (instr->intrinsic) {
-      case nir_intrinsic_global_atomic_fadd:
-      case nir_intrinsic_global_atomic_fadd_amd:
-         op = "fadd";
-         break;
-      case nir_intrinsic_global_atomic_fmin:
-      case nir_intrinsic_global_atomic_fmin_amd:
-         op = "fmin";
-         break;
-      case nir_intrinsic_global_atomic_fmax:
-      case nir_intrinsic_global_atomic_fmax_amd:
-         op = "fmax";
-         break;
-      default:
-         break;
-      }
+   } else if (is_float) {
+      const char *op = translate_atomic_op_str(nir_op);
       char name[64], type[8];
       LLVMValueRef params[2];
       int arg_count = 0;
@@ -2304,47 +2273,7 @@ static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
       result = ac_build_intrinsic(&ctx->ac, name, data_type, params, arg_count, 0);
       result = ac_to_integer(&ctx->ac, result);
    } else {
-      switch (instr->intrinsic) {
-      case nir_intrinsic_global_atomic_add:
-      case nir_intrinsic_global_atomic_add_amd:
-         op = LLVMAtomicRMWBinOpAdd;
-         break;
-      case nir_intrinsic_global_atomic_umin:
-      case nir_intrinsic_global_atomic_umin_amd:
-         op = LLVMAtomicRMWBinOpUMin;
-         break;
-      case nir_intrinsic_global_atomic_umax:
-      case nir_intrinsic_global_atomic_umax_amd:
-         op = LLVMAtomicRMWBinOpUMax;
-         break;
-      case nir_intrinsic_global_atomic_imin:
-      case nir_intrinsic_global_atomic_imin_amd:
-         op = LLVMAtomicRMWBinOpMin;
-         break;
-      case nir_intrinsic_global_atomic_imax:
-      case nir_intrinsic_global_atomic_imax_amd:
-         op = LLVMAtomicRMWBinOpMax;
-         break;
-      case nir_intrinsic_global_atomic_and:
-      case nir_intrinsic_global_atomic_and_amd:
-         op = LLVMAtomicRMWBinOpAnd;
-         break;
-      case nir_intrinsic_global_atomic_or:
-      case nir_intrinsic_global_atomic_or_amd:
-         op = LLVMAtomicRMWBinOpOr;
-         break;
-      case nir_intrinsic_global_atomic_xor:
-      case nir_intrinsic_global_atomic_xor_amd:
-         op = LLVMAtomicRMWBinOpXor;
-         break;
-      case nir_intrinsic_global_atomic_exchange:
-      case nir_intrinsic_global_atomic_exchange_amd:
-         op = LLVMAtomicRMWBinOpXchg;
-         break;
-      default:
-         unreachable("Invalid global atomic operation");
-      }
-
+      op = translate_atomic_op(nir_op);
       result = ac_build_atomic_rmw(&ctx->ac, op, addr, ac_to_integer(&ctx->ac, data), sync_scope);
    }
 
@@ -2727,8 +2656,9 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
    LLVMValueRef params[7];
    int param_count = 0;
 
-   bool cmpswap = instr->intrinsic == nir_intrinsic_bindless_image_atomic_comp_swap;
-   const char *atomic_name;
+   nir_atomic_op op = nir_intrinsic_atomic_op(instr);
+   bool cmpswap = op == nir_atomic_op_cmpxchg;
+   const char *atomic_name = translate_atomic_op_str(op);
    char intrinsic_name[64];
    enum ac_atomic_op atomic_subop;
    ASSERTED int length;
@@ -2739,67 +2669,50 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
    struct waterfall_context wctx;
    LLVMValueRef dynamic_index = enter_waterfall_image(ctx, &wctx, instr);
 
-   switch (instr->intrinsic) {
-   case nir_intrinsic_bindless_image_atomic_add:
-      atomic_name = "add";
+   switch (op) {
+   case nir_atomic_op_iadd:
       atomic_subop = ac_atomic_add;
       break;
-   case nir_intrinsic_bindless_image_atomic_imin:
-      atomic_name = "smin";
+   case nir_atomic_op_imin:
       atomic_subop = ac_atomic_smin;
       break;
-   case nir_intrinsic_bindless_image_atomic_umin:
-      atomic_name = "umin";
+   case nir_atomic_op_umin:
       atomic_subop = ac_atomic_umin;
       break;
-   case nir_intrinsic_bindless_image_atomic_imax:
-      atomic_name = "smax";
+   case nir_atomic_op_imax:
       atomic_subop = ac_atomic_smax;
       break;
-   case nir_intrinsic_bindless_image_atomic_umax:
-      atomic_name = "umax";
+   case nir_atomic_op_umax:
       atomic_subop = ac_atomic_umax;
       break;
-   case nir_intrinsic_bindless_image_atomic_and:
-      atomic_name = "and";
+   case nir_atomic_op_iand:
       atomic_subop = ac_atomic_and;
       break;
-   case nir_intrinsic_bindless_image_atomic_or:
-      atomic_name = "or";
+   case nir_atomic_op_ior:
       atomic_subop = ac_atomic_or;
       break;
-   case nir_intrinsic_bindless_image_atomic_xor:
-      atomic_name = "xor";
+   case nir_atomic_op_ixor:
       atomic_subop = ac_atomic_xor;
       break;
-   case nir_intrinsic_bindless_image_atomic_exchange:
-      atomic_name = "swap";
+   case nir_atomic_op_xchg:
       atomic_subop = ac_atomic_swap;
       break;
-   case nir_intrinsic_bindless_image_atomic_comp_swap:
-      atomic_name = "cmpswap";
+   case nir_atomic_op_cmpxchg:
       atomic_subop = 0; /* not used */
       break;
-   case nir_intrinsic_bindless_image_atomic_inc_wrap: {
-      atomic_name = "inc";
+   case nir_atomic_op_inc_wrap:
       atomic_subop = ac_atomic_inc_wrap;
       break;
-   }
-   case nir_intrinsic_bindless_image_atomic_dec_wrap:
-      atomic_name = "dec";
+   case nir_atomic_op_dec_wrap:
       atomic_subop = ac_atomic_dec_wrap;
       break;
-   case nir_intrinsic_bindless_image_atomic_fadd:
-   case nir_intrinsic_image_deref_atomic_fadd:
-      atomic_name = "fadd";
+   case nir_atomic_op_fadd:
       atomic_subop = ac_atomic_fmin; /* Non-buffer fadd atomics are not supported. */
       break;
-   case nir_intrinsic_bindless_image_atomic_fmin:
-      atomic_name = "fmin";
+   case nir_atomic_op_fmin:
       atomic_subop = ac_atomic_fmin;
       break;
-   case nir_intrinsic_bindless_image_atomic_fmax:
-      atomic_name = "fmax";
+   case nir_atomic_op_fmax:
       atomic_subop = ac_atomic_fmax;
       break;
    default:
@@ -3083,16 +2996,16 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
 
    LLVMValueRef result;
    LLVMValueRef src = get_src(ctx, instr->src[src_idx]);
+   nir_atomic_op nir_op = nir_intrinsic_atomic_op(instr);
 
    const char *sync_scope = "workgroup-one-as";
 
-   if (instr->intrinsic == nir_intrinsic_shared_atomic_comp_swap) {
+   if (nir_op == nir_atomic_op_cmpxchg) {
       LLVMValueRef src1 = get_src(ctx, instr->src[src_idx + 1]);
       result = ac_build_atomic_cmp_xchg(&ctx->ac, ptr, src, src1, sync_scope);
       result = LLVMBuildExtractValue(ctx->ac.builder, result, 0, "");
-   } else if (instr->intrinsic == nir_intrinsic_shared_atomic_fmin ||
-              instr->intrinsic == nir_intrinsic_shared_atomic_fmax) {
-      const char *op = instr->intrinsic == nir_intrinsic_shared_atomic_fmin ? "fmin" : "fmax";
+   } else if (nir_op == nir_atomic_op_fmin || nir_op == nir_atomic_op_fmax) {
+      const char *op = translate_atomic_op_str(nir_op);
       char name[64], type[8];
       LLVMValueRef params[5];
       LLVMTypeRef src_type;
@@ -3113,45 +3026,10 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
       result = ac_build_intrinsic(&ctx->ac, name, src_type, params, arg_count, 0);
       result = ac_to_integer(&ctx->ac, result);
    } else {
-      LLVMAtomicRMWBinOp op;
-      switch (instr->intrinsic) {
-      case nir_intrinsic_shared_atomic_add:
-         op = LLVMAtomicRMWBinOpAdd;
-         break;
-      case nir_intrinsic_shared_atomic_umin:
-         op = LLVMAtomicRMWBinOpUMin;
-         break;
-      case nir_intrinsic_shared_atomic_umax:
-         op = LLVMAtomicRMWBinOpUMax;
-         break;
-      case nir_intrinsic_shared_atomic_imin:
-         op = LLVMAtomicRMWBinOpMin;
-         break;
-      case nir_intrinsic_shared_atomic_imax:
-         op = LLVMAtomicRMWBinOpMax;
-         break;
-      case nir_intrinsic_shared_atomic_and:
-         op = LLVMAtomicRMWBinOpAnd;
-         break;
-      case nir_intrinsic_shared_atomic_or:
-         op = LLVMAtomicRMWBinOpOr;
-         break;
-      case nir_intrinsic_shared_atomic_xor:
-         op = LLVMAtomicRMWBinOpXor;
-         break;
-      case nir_intrinsic_shared_atomic_exchange:
-         op = LLVMAtomicRMWBinOpXchg;
-         break;
-      case nir_intrinsic_shared_atomic_fadd:
-         op = LLVMAtomicRMWBinOpFAdd;
-         break;
-      default:
-         return NULL;
-      }
-
+      LLVMAtomicRMWBinOp op = translate_atomic_op(nir_op);
       LLVMValueRef val;
 
-      if (instr->intrinsic == nir_intrinsic_shared_atomic_fadd) {
+      if (nir_op == nir_atomic_op_fadd) {
          val = ac_to_float(&ctx->ac, src);
       } else {
          val = ac_to_integer(&ctx->ac, src);
@@ -3159,7 +3037,7 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
 
       result = ac_build_atomic_rmw(&ctx->ac, op, ptr, val, sync_scope);
 
-      if (instr->intrinsic == nir_intrinsic_shared_atomic_fadd) {
+      if (nir_op == nir_atomic_op_fadd) {
          result = ac_to_integer(&ctx->ac, result);
       }
    }
@@ -3613,47 +3491,14 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_store_global_amd:
       visit_store_global(ctx, instr);
       break;
-   case nir_intrinsic_global_atomic_add:
-   case nir_intrinsic_global_atomic_imin:
-   case nir_intrinsic_global_atomic_umin:
-   case nir_intrinsic_global_atomic_imax:
-   case nir_intrinsic_global_atomic_umax:
-   case nir_intrinsic_global_atomic_and:
-   case nir_intrinsic_global_atomic_or:
-   case nir_intrinsic_global_atomic_xor:
-   case nir_intrinsic_global_atomic_exchange:
-   case nir_intrinsic_global_atomic_comp_swap:
-   case nir_intrinsic_global_atomic_fadd:
-   case nir_intrinsic_global_atomic_fmin:
-   case nir_intrinsic_global_atomic_fmax:
-   case nir_intrinsic_global_atomic_add_amd:
-   case nir_intrinsic_global_atomic_imin_amd:
-   case nir_intrinsic_global_atomic_umin_amd:
-   case nir_intrinsic_global_atomic_imax_amd:
-   case nir_intrinsic_global_atomic_umax_amd:
-   case nir_intrinsic_global_atomic_and_amd:
-   case nir_intrinsic_global_atomic_or_amd:
-   case nir_intrinsic_global_atomic_xor_amd:
-   case nir_intrinsic_global_atomic_exchange_amd:
-   case nir_intrinsic_global_atomic_comp_swap_amd:
-   case nir_intrinsic_global_atomic_fadd_amd:
-   case nir_intrinsic_global_atomic_fmin_amd:
-   case nir_intrinsic_global_atomic_fmax_amd:
+   case nir_intrinsic_global_atomic:
+   case nir_intrinsic_global_atomic_swap:
+   case nir_intrinsic_global_atomic_amd:
+   case nir_intrinsic_global_atomic_swap_amd:
       result = visit_global_atomic(ctx, instr);
       break;
-   case nir_intrinsic_ssbo_atomic_add:
-   case nir_intrinsic_ssbo_atomic_imin:
-   case nir_intrinsic_ssbo_atomic_umin:
-   case nir_intrinsic_ssbo_atomic_imax:
-   case nir_intrinsic_ssbo_atomic_umax:
-   case nir_intrinsic_ssbo_atomic_and:
-   case nir_intrinsic_ssbo_atomic_or:
-   case nir_intrinsic_ssbo_atomic_xor:
-   case nir_intrinsic_ssbo_atomic_exchange:
-   case nir_intrinsic_ssbo_atomic_comp_swap:
-   case nir_intrinsic_ssbo_atomic_fadd:
-   case nir_intrinsic_ssbo_atomic_fmin:
-   case nir_intrinsic_ssbo_atomic_fmax:
+   case nir_intrinsic_ssbo_atomic:
+   case nir_intrinsic_ssbo_atomic_swap:
       result = visit_atomic_ssbo(ctx, instr);
       break;
    case nir_intrinsic_load_ubo:
@@ -3695,21 +3540,8 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_bindless_image_store:
       visit_image_store(ctx, instr);
       break;
-   case nir_intrinsic_bindless_image_atomic_add:
-   case nir_intrinsic_bindless_image_atomic_imin:
-   case nir_intrinsic_bindless_image_atomic_umin:
-   case nir_intrinsic_bindless_image_atomic_imax:
-   case nir_intrinsic_bindless_image_atomic_umax:
-   case nir_intrinsic_bindless_image_atomic_and:
-   case nir_intrinsic_bindless_image_atomic_or:
-   case nir_intrinsic_bindless_image_atomic_xor:
-   case nir_intrinsic_bindless_image_atomic_exchange:
-   case nir_intrinsic_bindless_image_atomic_comp_swap:
-   case nir_intrinsic_bindless_image_atomic_inc_wrap:
-   case nir_intrinsic_bindless_image_atomic_dec_wrap:
-   case nir_intrinsic_bindless_image_atomic_fadd:
-   case nir_intrinsic_bindless_image_atomic_fmin:
-   case nir_intrinsic_bindless_image_atomic_fmax:
+   case nir_intrinsic_bindless_image_atomic:
+   case nir_intrinsic_bindless_image_atomic_swap:
       result = visit_image_atomic(ctx, instr);
       break;
    case nir_intrinsic_shader_clock:
@@ -3768,19 +3600,8 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = get_src(ctx, instr->src[0]);
       ac_build_optimization_barrier(&ctx->ac, &result, false);
       break;
-   case nir_intrinsic_shared_atomic_add:
-   case nir_intrinsic_shared_atomic_imin:
-   case nir_intrinsic_shared_atomic_umin:
-   case nir_intrinsic_shared_atomic_imax:
-   case nir_intrinsic_shared_atomic_umax:
-   case nir_intrinsic_shared_atomic_and:
-   case nir_intrinsic_shared_atomic_or:
-   case nir_intrinsic_shared_atomic_xor:
-   case nir_intrinsic_shared_atomic_exchange:
-   case nir_intrinsic_shared_atomic_comp_swap:
-   case nir_intrinsic_shared_atomic_fadd:
-   case nir_intrinsic_shared_atomic_fmin:
-   case nir_intrinsic_shared_atomic_fmax: {
+   case nir_intrinsic_shared_atomic:
+   case nir_intrinsic_shared_atomic_swap: {
       LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], 0);
       result = visit_var_atomic(ctx, instr, ptr, 1);
       break;
@@ -5022,6 +4843,11 @@ bool ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
 {
    struct ac_nir_context ctx = {0};
    struct nir_function *func;
+
+   /* Temporary stop-gap until legacy atomics are removed. This happens here
+    * instead of the driver since it's needed by both radeonsi and radv.
+    */
+   NIR_PASS_V(nir, nir_lower_legacy_atomics);
 
    ctx.ac = *ac;
    ctx.abi = abi;
