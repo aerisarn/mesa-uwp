@@ -51,7 +51,6 @@ struct zink_resource;
 struct zink_vertex_elements_state;
 
 #define perf_debug(ctx, ...) do {                      \
-   mesa_logw(__VA_ARGS__);                         \
    util_debug_message(&ctx->dbg, PERF_INFO, __VA_ARGS__); \
 } while(0)
 

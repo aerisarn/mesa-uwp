@@ -2407,6 +2407,7 @@ zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, 
    util_dynarray_append(&res->obj->copies[level], struct pipe_box, *box);
    if (!res->copies_warned && util_dynarray_num_elements(&res->obj->copies[level], struct pipe_box) > 100) {
       perf_debug(ctx, "zink: PERF WARNING! > 100 copy boxes detected for %p\n", res);
+      mesa_logw("zink: PERF WARNING! > 100 copy boxes detected for %p\n", res);
       res->copies_warned = true;
    }
    res->obj->copies_valid = true;
