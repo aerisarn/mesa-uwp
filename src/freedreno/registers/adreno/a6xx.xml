@@ -2940,8 +2940,9 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x9805" name="PC_POWER_CNTL" low="0" high="2" usage="rp_blit"/>
 
-	<!-- probably a mirror of VFD_CONTROL_6 -->
-	<reg32 offset="0x9806" name="PC_PRIMID_PASSTHRU" pos="0" type="boolean" usage="rp_blit"/>
+	<reg32 offset="0x9806" name="PC_PS_CNTL" usage="rp_blit">
+		<bitfield name="PRIMITIVEIDEN" pos="0" type="boolean"/>
+	</reg32>
 
 	<!-- New in a6xx gen3+ -->
 	<reg32 offset="0x9808" name="PC_SO_STREAM_CNTL" usage="rp_blit">
@@ -3122,11 +3123,9 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="0xa006" name="VFD_CONTROL_6" usage="rp_blit">
 		<!--
-			True if gl_PrimitiveID is read via the FS and there is
-			no matching write from the GS, and therefore it needs to
-			be passed through via fixed-function logic.
+			True if gl_PrimitiveID is read via the FS
 		-->
-		<bitfield name="PRIMID_PASSTHRU" pos="0" type="boolean"/>
+		<bitfield name="PRIMID4PSEN" pos="0" type="boolean"/>
 	</reg32>
 
 	<reg32 offset="0xa007" name="VFD_MODE_CNTL" usage="cmd">
