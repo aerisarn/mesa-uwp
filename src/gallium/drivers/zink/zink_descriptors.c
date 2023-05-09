@@ -1257,6 +1257,22 @@ zink_descriptors_update_masked(struct zink_context *ctx, bool is_compute, uint8_
    }
 }
 
+static void
+bind_bindless_db(struct zink_context *ctx, struct zink_program *pg)
+{
+   struct zink_batch_state *bs = ctx->batch.state;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   unsigned index = 1;
+   VkDeviceSize offset = 0;
+   VKCTX(CmdSetDescriptorBufferOffsetsEXT)(bs->cmdbuf,
+                                           pg->is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                           pg->layout,
+                                           screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS], 1,
+                                           &index,
+                                           &offset);
+   ctx->dd.bindless_bound = true;
+}
+
 /* entrypoint for all descriptor updating:
  * - update push set
  * - generate masks for updating other sets
@@ -1284,6 +1300,8 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
          ctx->dd.state_changed[is_compute] = BITFIELD_MASK(ZINK_DESCRIPTOR_TYPE_UNIFORMS);
          ctx->dd.push_state_changed[is_compute] = true;
          update_separable(ctx, pg);
+         if (pg->dd.bindless)
+            bind_bindless_db(ctx, pg);
          return;
       }
    }
@@ -1404,14 +1422,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
    /* bindless descriptors are context-based and get updated elsewhere */
    if (pg->dd.bindless && unlikely(!ctx->dd.bindless_bound)) {
       if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
-         unsigned index = 1;
-         VkDeviceSize offset = 0;
-         VKCTX(CmdSetDescriptorBufferOffsetsEXT)(bs->cmdbuf,
-                                                 is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                                 pg->layout,
-                                                 screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS], 1,
-                                                 &index,
-                                                 &offset);
+         bind_bindless_db(ctx, pg);
       } else {
          VKCTX(CmdBindDescriptorSets)(ctx->batch.state->cmdbuf, is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     pg->layout, screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS], 1, &ctx->dd.t.bindless_set,
