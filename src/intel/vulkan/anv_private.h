@@ -865,7 +865,6 @@ struct anv_physical_device {
     struct intel_device_info                      info;
 
     bool                                        video_decode_enabled;
-    bool                                        gpl_enabled;
 
     struct brw_compiler *                       compiler;
     struct isl_device                           isl_dev;

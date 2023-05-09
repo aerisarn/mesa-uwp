@@ -430,10 +430,10 @@ on Windows.
 Intel driver environment variables
 ----------------------------------------------------
 
-.. envvar:: ANV_GPL
+.. envvar:: ANV_NO_GPL
 
    If set to 1, true, or yes, then VK_EXT_graphics_pipeline_library
-   will be exposed, which may be incompatible with mesh shaders.
+   will be disabled.
 
 .. envvar:: INTEL_BLACKHOLE_DEFAULT
 
