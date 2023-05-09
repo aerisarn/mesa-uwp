@@ -841,7 +841,7 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
                           const struct ir3_shader_variant *hs,
                           const struct ir3_shader_variant *ds,
                           const struct ir3_shader_variant *gs,
-                          bool primid_passthru)
+                          const struct ir3_shader_variant *fs)
 {
    const uint32_t vertexid_regid =
          ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
@@ -896,7 +896,7 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
    tu_cs_emit(cs, 0x000000fc); /* VFD_CONTROL_4 */
    tu_cs_emit(cs, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gsheader_regid) |
                   0xfc00); /* VFD_CONTROL_5 */
-   tu_cs_emit(cs, COND(primid_passthru, A6XX_VFD_CONTROL_6_PRIMID4PSEN)); /* VFD_CONTROL_6 */
+   tu_cs_emit(cs, COND(fs && fs->reads_primid, A6XX_VFD_CONTROL_6_PRIMID4PSEN)); /* VFD_CONTROL_6 */
 }
 
 static void
@@ -1280,11 +1280,7 @@ tu6_emit_vpc(struct tu_cs *cs,
    if (last_shader->stream_output.num_outputs)
       ir3_link_stream_out(&linkage, last_shader);
 
-   /* We do this after linking shaders in order to know whether PrimID
-    * passthrough needs to be enabled.
-    */
-   bool primid_passthru = linkage.primid_loc != 0xff;
-   tu6_emit_vs_system_values(cs, vs, hs, ds, gs, primid_passthru);
+   tu6_emit_vs_system_values(cs, vs, hs, ds, gs, fs);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VAR_DISABLE(0), 4);
    tu_cs_emit(cs, ~linkage.varmask[0]);
@@ -1437,7 +1433,7 @@ tu6_emit_vpc(struct tu_cs *cs,
    tu_cs_emit(cs, CONDREG(layer_regid, A6XX_GRAS_GS_LAYER_CNTL_WRITES_LAYER) |
                   CONDREG(view_regid, A6XX_GRAS_GS_LAYER_CNTL_WRITES_VIEW));
 
-   tu_cs_emit_regs(cs, A6XX_PC_PS_CNTL(.primitiveiden = primid_passthru));
+   tu_cs_emit_regs(cs, A6XX_PC_PS_CNTL(.primitiveiden = fs && fs->reads_primid));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_CNTL_0, 1);
    tu_cs_emit(cs, A6XX_VPC_CNTL_0_NUMNONPOSVAR(fs ? fs->total_in : 0) |

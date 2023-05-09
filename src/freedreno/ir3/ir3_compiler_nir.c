@@ -3991,6 +3991,9 @@ setup_input(struct ir3_context *ctx, nir_intrinsic_instr *intr)
          unsigned idx = (n * 4) + i + frac;
          ctx->last_dst[i] = create_frag_input(ctx, coord, idx);
       }
+
+      if (slot == VARYING_SLOT_PRIMITIVE_ID)
+         so->reads_primid = true;
    } else {
       struct ir3_instruction *input = NULL;
 

@@ -622,7 +622,6 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
     */
    ir3_link_shaders(&l, last_shader, do_streamout ? state->fs : fs, true);
 
-   bool primid_passthru = l.primid_loc != 0xff;
    clip0_loc = l.clip0_loc;
    clip1_loc = l.clip1_loc;
 
@@ -1141,7 +1140,7 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
    if (fs->instrlen)
       fd6_emit_shader(ctx, ring, fs);
 
-   OUT_REG(ring, A6XX_PC_PS_CNTL(.primitiveiden = primid_passthru));
+   OUT_REG(ring, A6XX_PC_PS_CNTL(.primitiveiden = fs->reads_primid));
 
    uint32_t non_sysval_input_count = 0;
    for (uint32_t i = 0; i < vs->inputs_count; i++)
@@ -1175,7 +1174,7 @@ setup_stateobj(struct fd_screen *screen, struct fd_ringbuffer *ring,
    OUT_RING(ring, 0x000000fc); /* VFD_CONTROL_4 */
    OUT_RING(ring, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gs_header_regid) |
                      0xfc00); /* VFD_CONTROL_5 */
-   OUT_RING(ring, COND(primid_passthru,
+   OUT_RING(ring, COND(fs->reads_primid,
                        A6XX_VFD_CONTROL_6_PRIMID4PSEN)); /* VFD_CONTROL_6 */
 
    if (!binning_pass)

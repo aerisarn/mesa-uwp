@@ -650,6 +650,7 @@ struct ir3_shader_variant {
       bool half       : 1;
       bool flat       : 1;
    } inputs[32 + 2]; /* +POSITION +FACE */
+   bool reads_primid;
 
    /* sum of input components (scalar).  For frag shaders, it only counts
     * the varying inputs:
@@ -1120,7 +1121,7 @@ ir3_link_shaders(struct ir3_shader_linkage *l,
 
       k = ir3_find_output(vs, (gl_varying_slot)fs->inputs[j].slot);
 
-      if (k < 0 && fs->inputs[j].slot == VARYING_SLOT_PRIMITIVE_ID) {
+      if (fs->inputs[j].slot == VARYING_SLOT_PRIMITIVE_ID) {
          l->primid_loc = fs->inputs[j].inloc;
       }
 
