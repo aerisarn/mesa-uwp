@@ -1157,6 +1157,7 @@ apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info&
       mad->operands[1] = instr->operands[1];
       mad->operands[2] = Operand::zero();
       mad->valu().opsel[idx] = sel.offset();
+      mad->pass_flags = instr->pass_flags;
       instr.reset(mad);
    } else if (can_use_SDWA(ctx.program->gfx_level, instr, true) &&
               (tmp.type() == RegType::vgpr || ctx.program->gfx_level >= GFX9)) {
@@ -2272,6 +2273,7 @@ combine_ordering_test(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    new_instr->operands[0] = copy_operand(ctx, Operand(op[0]));
    new_instr->operands[1] = copy_operand(ctx, Operand(op[1]));
    new_instr->definitions[0] = instr->definitions[0];
+   new_instr->pass_flags = instr->pass_flags;
 
    decrease_uses(ctx, op_instr[0]);
    decrease_uses(ctx, op_instr[1]);
@@ -2343,6 +2345,7 @@ combine_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    new_instr->operands[0] = copy_operand(ctx, cmp->operands[0]);
    new_instr->operands[1] = copy_operand(ctx, cmp->operands[1]);
    new_instr->definitions[0] = instr->definitions[0];
+   new_instr->pass_flags = instr->pass_flags;
 
    decrease_uses(ctx, nan_test);
    decrease_uses(ctx, cmp);
@@ -2533,6 +2536,7 @@ combine_constant_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    new_instr->operands[0] = copy_operand(ctx, cmp->operands[0]);
    new_instr->operands[1] = copy_operand(ctx, cmp->operands[1]);
    new_instr->definitions[0] = instr->definitions[0];
+   new_instr->pass_flags = instr->pass_flags;
 
    decrease_uses(ctx, nan_test);
    decrease_uses(ctx, cmp);
@@ -2659,6 +2663,7 @@ create_vop3_for_op3(opt_ctx& ctx, aco_opcode opcode, aco_ptr<Instruction>& instr
    new_instr->operands[1] = operands[1];
    new_instr->operands[2] = operands[2];
    new_instr->definitions[0] = instr->definitions[0];
+   new_instr->pass_flags = instr->pass_flags;
    ctx.info[instr->definitions[0].tempId()].label = 0;
 
    instr.reset(new_instr);
@@ -3139,6 +3144,7 @@ combine_add_sub_b2i(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode new_op
          new_instr->operands[0] = Operand::zero();
          new_instr->operands[1] = instr->operands[!i];
          new_instr->operands[2] = Operand(ctx.info[instr->operands[i].tempId()].temp);
+         new_instr->pass_flags = instr->pass_flags;
          instr = std::move(new_instr);
          ctx.info[instr->definitions[0].tempId()].set_add_sub(instr.get());
          return true;
@@ -3166,6 +3172,7 @@ combine_add_bcnt(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          new_instr->operands[0] = op_instr->operands[0];
          new_instr->operands[1] = instr->operands[!i];
          new_instr->definitions[0] = instr->definitions[0];
+         new_instr->pass_flags = instr->pass_flags;
          instr = std::move(new_instr);
          ctx.info[instr->definitions[0].tempId()].label = 0;
 
@@ -3636,6 +3643,7 @@ combine_and_subbrev(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          new_instr->operands[1] = instr->operands[!i];
          new_instr->operands[2] = copy_operand(ctx, op_instr->operands[2]);
          new_instr->definitions[0] = instr->definitions[0];
+         new_instr->pass_flags = instr->pass_flags;
          instr = std::move(new_instr);
          decrease_uses(ctx, op_instr);
          ctx.info[instr->definitions[0].tempId()].label = 0;
@@ -3703,6 +3711,7 @@ combine_add_lshl(opt_ctx& ctx, aco_ptr<Instruction>& instr, bool is_sub)
          for (unsigned op_idx = 0; op_idx < 3; ++op_idx)
             new_instr->operands[op_idx] = ops[op_idx];
          new_instr->definitions[0] = instr->definitions[0];
+         new_instr->pass_flags = instr->pass_flags;
          instr = std::move(new_instr);
          ctx.info[instr->definitions[0].tempId()].label = 0;
          return true;
@@ -3873,6 +3882,7 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       fma->neg_lo[1] = fma->neg_lo[1] ^ vop3p->neg_lo[1 - add_op_idx];
       fma->neg_hi[1] = fma->neg_hi[1] ^ vop3p->neg_hi[1 - add_op_idx];
       fma->definitions[0] = instr->definitions[0];
+      fma->pass_flags = instr->pass_flags;
       instr = std::move(fma);
       ctx.info[instr->definitions[0].tempId()].set_vop3p(instr.get());
       return;
@@ -3932,6 +3942,7 @@ to_mad_mix(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    }
    vop3p->definitions[0] = instr->definitions[0];
    vop3p->clamp = instr->valu().clamp;
+   vop3p->pass_flags = instr->pass_flags;
    instr = std::move(vop3p);
 
    ctx.info[instr->definitions[0].tempId()].label &= label_f2f16 | label_clamp | label_mul;
@@ -4163,10 +4174,12 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       Definition def = instr->definitions[0];
       bool is_neg = ctx.info[instr->definitions[0].tempId()].is_neg();
       bool is_abs = ctx.info[instr->definitions[0].tempId()].is_abs();
+      uint32_t pass_flags = instr->pass_flags;
       Format format = mul_instr->format == Format::VOP2 ? asVOP3(Format::VOP2) : mul_instr->format;
       instr.reset(create_instruction<VALU_instruction>(mul_instr->opcode, format,
                                                        mul_instr->operands.size(), 1));
       std::copy(mul_instr->operands.cbegin(), mul_instr->operands.cend(), instr->operands.begin());
+      instr->pass_flags = pass_flags;
       instr->definitions[0] = def;
       VALU_instruction& new_mul = instr->valu();
       VALU_instruction& mul = mul_instr->valu();
@@ -4369,6 +4382,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          mad->definitions[0] = add_instr->definitions[0];
          mad->definitions[0].setPrecise(add_instr->definitions[0].isPrecise() ||
                                         mul_instr->definitions[0].isPrecise());
+         mad->pass_flags = add_instr->pass_flags;
 
          instr = std::move(mad);
 
@@ -4396,6 +4410,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             new_instr->operands[1] = instr->operands[!i];
             new_instr->operands[2] = Operand(ctx.info[instr->operands[i].tempId()].temp);
             new_instr->definitions[0] = instr->definitions[0];
+            new_instr->pass_flags = instr->pass_flags;
             instr = std::move(new_instr);
             ctx.info[instr->definitions[0].tempId()].label = 0;
             return;
