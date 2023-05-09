@@ -377,16 +377,10 @@ radv_rt_precompile_shaders(struct radv_device *device, struct vk_pipeline_cache 
       radv_hash_shaders(shader_sha1, &stage, 1, NULL, key, radv_get_hash_flags(device, false));
 
       /* lookup the stage in cache */
-      bool found_in_application_cache = false;
-      stages[idx].shader =
-         radv_pipeline_cache_search_nir(device, cache, shader_sha1, &found_in_application_cache);
+      stages[idx].shader = radv_pipeline_cache_search_nir(device, cache, shader_sha1);
 
-      if (stages[idx].shader) {
-         if (found_in_application_cache)
-            stage.feedback.flags |=
-               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
+      if (stages[idx].shader)
          goto feedback;
-      }
 
       if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
          return VK_PIPELINE_COMPILE_REQUIRED;

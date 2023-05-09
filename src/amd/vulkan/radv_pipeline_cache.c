@@ -507,7 +507,7 @@ radv_ray_tracing_pipeline_cache_search(struct radv_device *device, struct vk_pip
          pipeline->stages[i].shader = &radv_shader_ref(pipeline_obj->shaders[idx++])->base;
       } else if (is_library) {
          pipeline->stages[i].shader =
-            radv_pipeline_cache_search_nir(device, cache, pipeline->stages[i].sha1, NULL);
+            radv_pipeline_cache_search_nir(device, cache, pipeline->stages[i].sha1);
          complete &= pipeline->stages[i].shader != NULL;
       }
    }
@@ -573,20 +573,16 @@ radv_ray_tracing_pipeline_cache_insert(struct radv_device *device, struct vk_pip
 
 struct vk_pipeline_cache_object *
 radv_pipeline_cache_search_nir(struct radv_device *device, struct vk_pipeline_cache *cache,
-                               const uint8_t *sha1, bool *found_in_application_cache)
+                               const uint8_t *sha1)
 {
-   *found_in_application_cache = false;
-
    if (radv_is_cache_disabled(device))
       return NULL;
 
-   if (!cache) {
+   if (!cache)
       cache = device->mem_cache;
-      found_in_application_cache = NULL;
-   }
 
-   return vk_pipeline_cache_lookup_object(
-      cache, sha1, SHA1_DIGEST_LENGTH, &vk_raw_data_cache_object_ops, found_in_application_cache);
+   return vk_pipeline_cache_lookup_object(cache, sha1, SHA1_DIGEST_LENGTH,
+                                          &vk_raw_data_cache_object_ops, NULL);
 }
 
 struct nir_shader *
