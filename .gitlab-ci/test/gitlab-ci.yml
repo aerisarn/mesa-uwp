@@ -335,7 +335,6 @@ clang-format:
       set +x
       "$CI_COMMON_SCRIPTS"/generate-env.sh > ${JOB_FOLDER}/set-job-env-vars.sh
       echo "export SCRIPTS_DIR=./install" >> ${JOB_FOLDER}/set-job-env-vars.sh
-      chmod +x ${JOB_FOLDER}/set-job-env-vars.sh
       echo "Variables passed through:"
       cat ${JOB_FOLDER}/set-job-env-vars.sh
       echo "export CI_JOB_JWT=${CI_JOB_JWT}" >> ${JOB_FOLDER}/set-job-env-vars.sh
