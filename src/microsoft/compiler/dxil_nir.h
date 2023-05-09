@@ -85,6 +85,9 @@ bool dxil_nir_split_unaligned_loads_stores(nir_shader *shader, nir_variable_mode
 bool dxil_nir_lower_unsupported_subgroup_scan(nir_shader *s);
 bool dxil_nir_forward_front_face(nir_shader *s);
 
+struct dxil_module;
+bool dxil_nir_analyze_io_dependencies(struct dxil_module *mod, nir_shader *s);
+
 #ifdef __cplusplus
 }
 #endif

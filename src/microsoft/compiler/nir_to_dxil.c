@@ -1960,6 +1960,34 @@ emit_metadata(struct ntd_context *ctx)
                                        &dx_resources, 1);
    }
 
+   if (ctx->mod.minor_version >= 2 &&
+       dxil_nir_analyze_io_dependencies(&ctx->mod, ctx->shader)) {
+      const struct dxil_type *i32_type = dxil_module_get_int_type(&ctx->mod, 32);
+      if (!i32_type)
+         return false;
+
+      const struct dxil_type *array_type = dxil_module_get_array_type(&ctx->mod, i32_type, ctx->mod.serialized_dependency_table_size);
+      if (!array_type)
+         return false;
+
+      const struct dxil_value **array_entries = malloc(sizeof(const struct value *) * ctx->mod.serialized_dependency_table_size);
+      if (!array_entries)
+         return false;
+
+      for (uint32_t i = 0; i < ctx->mod.serialized_dependency_table_size; ++i)
+         array_entries[i] = dxil_module_get_int32_const(&ctx->mod, ctx->mod.serialized_dependency_table[i]);
+      const struct dxil_value *array_val = dxil_module_get_array_const(&ctx->mod, array_type, array_entries);
+      free((void *)array_entries);
+
+      const struct dxil_mdnode *view_id_state_val = dxil_get_metadata_value(&ctx->mod, array_type, array_val);
+      if (!view_id_state_val)
+         return false;
+
+      const struct dxil_mdnode *view_id_state_node = dxil_get_metadata_node(&ctx->mod, &view_id_state_val, 1);
+
+      dxil_add_metadata_named_node(&ctx->mod, "dx.viewIdState", &view_id_state_node, 1);
+   }
+
    const struct dxil_mdnode *dx_type_annotations[] = { main_type_annotation };
    return dxil_add_metadata_named_node(&ctx->mod, "dx.typeAnnotations",
                                        dx_type_annotations,
