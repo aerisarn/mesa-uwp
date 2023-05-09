@@ -190,7 +190,6 @@ radeonsi-raven-piglit-quick_shader:amd64:
     # size getting too big. Since it's not feasible right now
     # to fix these shaders in the CTS, instead, ignore warnings from
     # the code generator.
-    MESA_SPIRV_LOG_LEVEL: error
     ACO_DEBUG: validateir,validatera
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
     B2C_JOB_VOLUME_EXCLUSIONS: "*.shader_cache,install/*,*/install/*,*/vkd3d-proton.cache*,vkd3d-proton.cache*,*.qpa"
