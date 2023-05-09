@@ -116,9 +116,6 @@ struct pvr_physical_device {
 struct pvr_instance {
    struct vk_instance vk;
 
-   int physical_devices_count;
-   struct pvr_physical_device physical_device;
-
    uint32_t active_device_count;
 };
 

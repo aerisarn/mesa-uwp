@@ -92,11 +92,6 @@
 
 #define PVR_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
 
-#define DEF_DRIVER(str_name)                        \
-   {                                                \
-      .name = str_name, .len = sizeof(str_name) - 1 \
-   }
-
 /* Amount of padding required for VkBuffers to ensure we don't read beyond
  * a page boundary.
  */
@@ -114,24 +109,26 @@
 #define PVR_SUBALLOCATOR_USC_SIZE (128 * 1024)
 #define PVR_SUBALLOCATOR_VIS_TEST_SIZE (128 * 1024)
 
-struct pvr_drm_device_info {
-   const char *name;
-   size_t len;
+struct pvr_drm_device_config {
+   struct pvr_drm_device_info {
+      const char *name;
+      size_t len;
+   } render, display;
 };
 
-/* This is the list of supported DRM display drivers. */
-static const struct pvr_drm_device_info pvr_display_devices[] = {
-   DEF_DRIVER("mediatek-drm"),
-   DEF_DRIVER("ti,am65x-dss"),
+#define DEF_CONFIG(render_, display_)                               \
+   {                                                                \
+      .render = { .name = render_, .len = sizeof(render_) - 1 },    \
+      .display = { .name = display_, .len = sizeof(display_) - 1 }, \
+   }
+
+/* This is the list of supported DRM render/display driver configs. */
+static const struct pvr_drm_device_config pvr_drm_configs[] = {
+   DEF_CONFIG("mediatek,mt8173-gpu", "mediatek-drm"),
+   DEF_CONFIG("ti,am62-gpu", "ti,am65x-dss"),
 };
 
-/* This is the list of supported DRM render drivers. */
-static const struct pvr_drm_device_info pvr_render_devices[] = {
-   DEF_DRIVER("mediatek,mt8173-gpu"),
-   DEF_DRIVER("ti,am62-gpu"),
-};
-
-#undef DEF_DRIVER
+#undef DEF_CONFIG
 
 static const struct vk_instance_extension_table pvr_instance_extensions = {
 #if defined(VK_USE_PLATFORM_DISPLAY_KHR)
@@ -182,58 +179,11 @@ pvr_EnumerateInstanceExtensionProperties(const char *pLayerName,
                                                      pProperties);
 }
 
-VkResult pvr_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
-                            const VkAllocationCallbacks *pAllocator,
-                            VkInstance *pInstance)
+static void pvr_physical_device_destroy(struct vk_physical_device *vk_pdevice)
 {
-   struct vk_instance_dispatch_table dispatch_table;
-   struct pvr_instance *instance;
-   VkResult result;
+   struct pvr_physical_device *pdevice =
+      container_of(vk_pdevice, struct pvr_physical_device, vk);
 
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
-
-   if (!pAllocator)
-      pAllocator = vk_default_allocator();
-
-   instance = vk_alloc(pAllocator,
-                       sizeof(*instance),
-                       8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-   if (!instance)
-      return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
-                                               &pvr_instance_entrypoints,
-                                               true);
-
-   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
-                                               &wsi_instance_entrypoints,
-                                               false);
-
-   result = vk_instance_init(&instance->vk,
-                             &pvr_instance_extensions,
-                             &dispatch_table,
-                             pCreateInfo,
-                             pAllocator);
-   if (result != VK_SUCCESS) {
-      vk_free(pAllocator, instance);
-      return result;
-   }
-
-   pvr_process_debug_variable();
-
-   instance->physical_devices_count = -1;
-   instance->active_device_count = 0;
-
-   VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
-
-   *pInstance = pvr_instance_to_handle(instance);
-
-   return VK_SUCCESS;
-}
-
-static void pvr_physical_device_finish(struct pvr_physical_device *pdevice)
-{
    /* Be careful here. The device might not have been initialized. This can
     * happen since initialization is done in vkEnumeratePhysicalDevices() but
     * finish is done in vkDestroyInstance(). Make sure that you check for NULL
@@ -254,6 +204,8 @@ static void pvr_physical_device_finish(struct pvr_physical_device *pdevice)
    vk_free(&pdevice->vk.instance->alloc, pdevice->display_path);
 
    vk_physical_device_finish(&pdevice->vk);
+
+   vk_free(&pdevice->vk.instance->alloc, pdevice);
 }
 
 void pvr_DestroyInstance(VkInstance _instance,
@@ -263,9 +215,6 @@ void pvr_DestroyInstance(VkInstance _instance,
 
    if (!instance)
       return;
-
-   if (instance->physical_devices_count > 0)
-      pvr_physical_device_finish(&instance->physical_device);
 
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
 
@@ -468,130 +417,224 @@ err_out:
    return result;
 }
 
-static bool pvr_drm_device_is_supported(drmDevicePtr drm_dev, int node_type)
+static VkResult pvr_get_drm_devices(void *const obj,
+                                    drmDevicePtr *const devices,
+                                    const int max_devices,
+                                    int *const num_devices_out)
 {
-   char **compat = drm_dev->deviceinfo.platform->compatible;
-
-   if (!(drm_dev->available_nodes & BITFIELD_BIT(node_type))) {
-      assert(node_type == DRM_NODE_RENDER || node_type == DRM_NODE_PRIMARY);
-      return false;
+   int ret = drmGetDevices2(0, devices, max_devices);
+   if (ret < 0) {
+      return vk_errorf(obj,
+                       VK_ERROR_INITIALIZATION_FAILED,
+                       "Failed to enumerate drm devices (errno %d: %s)",
+                       -ret,
+                       strerror(-ret));
    }
 
-   if (node_type == DRM_NODE_RENDER) {
-      while (*compat) {
-         for (size_t i = 0U; i < ARRAY_SIZE(pvr_render_devices); i++) {
-            const char *const name = pvr_render_devices[i].name;
-            const size_t len = pvr_render_devices[i].len;
+   if (num_devices_out)
+      *num_devices_out = ret;
 
-            if (strncmp(*compat, name, len) == 0)
-               return true;
-         }
-
-         compat++;
-      }
-
-      return false;
-   } else if (node_type == DRM_NODE_PRIMARY) {
-      while (*compat) {
-         for (size_t i = 0U; i < ARRAY_SIZE(pvr_display_devices); i++) {
-            const char *const name = pvr_display_devices[i].name;
-            const size_t len = pvr_display_devices[i].len;
-
-            if (strncmp(*compat, name, len) == 0)
-               return true;
-         }
-
-         compat++;
-      }
-
-      return false;
-   }
-
-   unreachable("Incorrect node_type.");
+   return VK_SUCCESS;
 }
 
-static VkResult pvr_enumerate_devices(struct pvr_instance *instance)
+static bool
+pvr_drm_device_compatible(const struct pvr_drm_device_info *const info,
+                          drmDevice *const drm_dev)
 {
-   /* FIXME: It should be possible to query the number of devices via
-    * drmGetDevices2 by passing in NULL for the 'devices' parameter. However,
-    * this was broken by libdrm commit
-    * 8cb12a2528d795c45bba5f03b3486b4040fb0f45, so, until this is fixed in
-    * upstream, hard-code the maximum number of devices.
-    */
+   char **const compatible = drm_dev->deviceinfo.platform->compatible;
+
+   for (char **compat = compatible; *compat; compat++) {
+      if (strncmp(*compat, info->name, info->len) == 0)
+         return true;
+   }
+
+   return false;
+}
+
+static const struct pvr_drm_device_config *
+pvr_drm_device_get_config(drmDevice *const drm_dev)
+{
+   for (size_t i = 0U; i < ARRAY_SIZE(pvr_drm_configs); i++) {
+      if (pvr_drm_device_compatible(&pvr_drm_configs[i].render, drm_dev))
+         return &pvr_drm_configs[i];
+   }
+
+   return NULL;
+}
+
+static VkResult
+pvr_physical_device_enumerate(struct vk_instance *const vk_instance)
+{
+   struct pvr_instance *const instance =
+      container_of(vk_instance, struct pvr_instance, vk);
+
+   const struct pvr_drm_device_config *config = NULL;
+
    drmDevicePtr drm_display_device = NULL;
    drmDevicePtr drm_render_device = NULL;
-   drmDevicePtr drm_devices[8];
-   int max_drm_devices;
+   struct pvr_physical_device *pdevice;
+   drmDevicePtr *drm_devices;
+   int num_drm_devices = 0;
    VkResult result;
 
-   instance->physical_devices_count = 0;
+   result = pvr_get_drm_devices(instance, NULL, 0, &num_drm_devices);
+   if (result != VK_SUCCESS)
+      goto out;
 
-   max_drm_devices = drmGetDevices2(0, drm_devices, ARRAY_SIZE(drm_devices));
-   if (max_drm_devices < 1)
-      return VK_SUCCESS;
+   if (num_drm_devices == 0) {
+      result = VK_SUCCESS;
+      goto out;
+   }
 
-   for (unsigned i = 0; i < (unsigned)max_drm_devices; i++) {
-      if (drm_devices[i]->bustype != DRM_BUS_PLATFORM)
+   drm_devices = vk_alloc(&vk_instance->alloc,
+                          sizeof(*drm_devices) * num_drm_devices,
+                          8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!drm_devices) {
+      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto out;
+   }
+
+   result = pvr_get_drm_devices(instance, drm_devices, num_drm_devices, NULL);
+   if (result != VK_SUCCESS)
+      goto out_free_drm_device_ptrs;
+
+   /* First search for our render node... */
+   for (int i = 0; i < num_drm_devices; i++) {
+      drmDevice *const drm_dev = drm_devices[i];
+
+      if (drm_dev->bustype != DRM_BUS_PLATFORM)
          continue;
 
-      if (pvr_drm_device_is_supported(drm_devices[i], DRM_NODE_RENDER)) {
-         drm_render_device = drm_devices[i];
+      if (!(drm_dev->available_nodes & BITFIELD_BIT(DRM_NODE_RENDER)))
+         continue;
 
-         mesa_logd("Found compatible render device '%s'.",
-                   drm_render_device->nodes[DRM_NODE_RENDER]);
-      } else if (pvr_drm_device_is_supported(drm_devices[i],
-                                             DRM_NODE_PRIMARY)) {
-         drm_display_device = drm_devices[i];
-
-         mesa_logd("Found compatible display device '%s'.",
-                   drm_display_device->nodes[DRM_NODE_PRIMARY]);
+      config = pvr_drm_device_get_config(drm_dev);
+      if (config) {
+         drm_render_device = drm_dev;
+         break;
       }
    }
 
-   if (drm_render_device && drm_display_device) {
-      result = pvr_physical_device_init(&instance->physical_device,
-                                        instance,
-                                        drm_render_device,
-                                        drm_display_device);
-      if (result == VK_SUCCESS)
-         instance->physical_devices_count = 1;
-      else if (result == VK_ERROR_INCOMPATIBLE_DRIVER)
-         result = VK_SUCCESS;
-   } else {
+   if (!config) {
       result = VK_SUCCESS;
+      goto out_free_drm_devices;
    }
 
-   drmFreeDevices(drm_devices, max_drm_devices);
+   mesa_logd("Found compatible render device '%s'.",
+             drm_render_device->nodes[DRM_NODE_RENDER]);
 
+   /* ...then find the compatible display node. */
+   for (int i = 0; i < num_drm_devices; i++) {
+      drmDevice *const drm_dev = drm_devices[i];
+
+      if (!(drm_dev->available_nodes & BITFIELD_BIT(DRM_NODE_PRIMARY)))
+         continue;
+
+      if (pvr_drm_device_compatible(&config->display, drm_dev)) {
+         drm_display_device = drm_dev;
+         break;
+      }
+   }
+
+   if (!drm_display_device) {
+      mesa_loge("Render device '%s' has no compatible display device.",
+                drm_render_device->nodes[DRM_NODE_RENDER]);
+      result = VK_SUCCESS;
+      goto out_free_drm_devices;
+   }
+
+   mesa_logd("Found compatible display device '%s'.",
+             drm_display_device->nodes[DRM_NODE_PRIMARY]);
+
+   pdevice = vk_alloc(&vk_instance->alloc,
+                      sizeof(*pdevice),
+                      8,
+                      VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!pdevice) {
+      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto out_free_drm_devices;
+   }
+
+   result = pvr_physical_device_init(pdevice,
+                                     instance,
+                                     drm_render_device,
+                                     drm_display_device);
+   if (result != VK_SUCCESS) {
+      if (result == VK_ERROR_INCOMPATIBLE_DRIVER)
+         result = VK_SUCCESS;
+
+      goto err_free_pdevice;
+   }
+
+   list_add(&pdevice->vk.link, &vk_instance->physical_devices.list);
+
+   result = VK_SUCCESS;
+   goto out_free_drm_devices;
+
+err_free_pdevice:
+   vk_free(&vk_instance->alloc, pdevice);
+
+out_free_drm_devices:
+   drmFreeDevices(drm_devices, num_drm_devices);
+
+out_free_drm_device_ptrs:
+   vk_free(&vk_instance->alloc, drm_devices);
+
+out:
    return result;
 }
 
-VkResult pvr_EnumeratePhysicalDevices(VkInstance _instance,
-                                      uint32_t *pPhysicalDeviceCount,
-                                      VkPhysicalDevice *pPhysicalDevices)
+VkResult pvr_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
+                            const VkAllocationCallbacks *pAllocator,
+                            VkInstance *pInstance)
 {
-   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice,
-                          out,
-                          pPhysicalDevices,
-                          pPhysicalDeviceCount);
-   PVR_FROM_HANDLE(pvr_instance, instance, _instance);
+   struct vk_instance_dispatch_table dispatch_table;
+   struct pvr_instance *instance;
    VkResult result;
 
-   if (instance->physical_devices_count < 0) {
-      result = pvr_enumerate_devices(instance);
-      if (result != VK_SUCCESS)
-         return result;
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
+
+   if (!pAllocator)
+      pAllocator = vk_default_allocator();
+
+   instance = vk_alloc(pAllocator,
+                       sizeof(*instance),
+                       8,
+                       VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!instance)
+      return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
+                                               &pvr_instance_entrypoints,
+                                               true);
+
+   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
+                                               &wsi_instance_entrypoints,
+                                               false);
+
+   result = vk_instance_init(&instance->vk,
+                             &pvr_instance_extensions,
+                             &dispatch_table,
+                             pCreateInfo,
+                             pAllocator);
+   if (result != VK_SUCCESS) {
+      vk_free(pAllocator, instance);
+      return result;
    }
 
-   if (instance->physical_devices_count == 0)
-      return VK_SUCCESS;
+   pvr_process_debug_variable();
 
-   assert(instance->physical_devices_count == 1);
-   vk_outarray_append_typed (VkPhysicalDevice, &out, p) {
-      *p = pvr_physical_device_to_handle(&instance->physical_device);
-   }
+   instance->active_device_count = 0;
 
-   return vk_outarray_status(&out);
+   instance->vk.physical_devices.enumerate = pvr_physical_device_enumerate;
+   instance->vk.physical_devices.destroy = pvr_physical_device_destroy;
+
+   VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
+
+   *pInstance = pvr_instance_to_handle(instance);
+
+   return VK_SUCCESS;
 }
 
 void pvr_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
