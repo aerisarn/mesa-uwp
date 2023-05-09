@@ -4321,31 +4321,26 @@ tu6_emit_rast(struct tu_cs *cs,
 }
 
 static const enum mesa_vk_dynamic_graphics_state tu_ds_state[] = {
-   MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE,
-   MESA_VK_DYNAMIC_DS_DEPTH_WRITE_ENABLE,
-   MESA_VK_DYNAMIC_DS_DEPTH_COMPARE_OP,
-   MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_ENABLE,
    MESA_VK_DYNAMIC_DS_STENCIL_TEST_ENABLE,
    MESA_VK_DYNAMIC_DS_STENCIL_OP,
-   MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE,
+   MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK,
+   MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK,
+   MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE,
+   MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_BOUNDS,
 };
 
 template <chip CHIP>
 static unsigned
 tu6_ds_size(struct tu_device *dev,
-            const struct vk_depth_stencil_state *ds,
-            const struct vk_render_pass_state *rp,
-            const struct vk_rasterization_state *rs)
+                 const struct vk_depth_stencil_state *ds)
 {
-   return 4;
+   return 11;
 }
 
 template <chip CHIP>
 static void
 tu6_emit_ds(struct tu_cs *cs,
-            const struct vk_depth_stencil_state *ds,
-            const struct vk_render_pass_state *rp,
-            const struct vk_rasterization_state *rs)
+            const struct vk_depth_stencil_state *ds)
 {
    tu_cs_emit_regs(cs, A6XX_RB_STENCIL_CONTROL(
       .stencil_enable = ds->stencil.test_enable,
@@ -4360,6 +4355,48 @@ tu6_emit_ds(struct tu_cs *cs,
       .zpass_bf = tu6_stencil_op((VkStencilOp)ds->stencil.back.op.pass),
       .zfail_bf = tu6_stencil_op((VkStencilOp)ds->stencil.back.op.depth_fail)));
 
+   tu_cs_emit_regs(cs, A6XX_RB_STENCILMASK(
+      .mask = ds->stencil.front.compare_mask,
+      .bfmask = ds->stencil.back.compare_mask));
+
+   tu_cs_emit_regs(cs, A6XX_RB_STENCILWRMASK(
+      .wrmask = ds->stencil.front.write_mask,
+      .bfwrmask = ds->stencil.back.write_mask));
+
+   tu_cs_emit_regs(cs, A6XX_RB_STENCILREF(
+      .ref = ds->stencil.front.reference,
+      .bfref = ds->stencil.back.reference));
+
+   tu_cs_emit_regs(cs,
+                   A6XX_RB_Z_BOUNDS_MIN(ds->depth.bounds_test.min),
+                   A6XX_RB_Z_BOUNDS_MAX(ds->depth.bounds_test.max));
+}
+
+static const enum mesa_vk_dynamic_graphics_state tu_rb_depth_cntl_state[] = {
+   MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE,
+   MESA_VK_DYNAMIC_DS_DEPTH_WRITE_ENABLE,
+   MESA_VK_DYNAMIC_DS_DEPTH_COMPARE_OP,
+   MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_ENABLE,
+   MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE,
+};
+
+template <chip CHIP>
+static unsigned
+tu6_rb_depth_cntl_size(struct tu_device *dev,
+                       const struct vk_depth_stencil_state *ds,
+                       const struct vk_render_pass_state *rp,
+                       const struct vk_rasterization_state *rs)
+{
+   return 2;
+}
+
+template <chip CHIP>
+static void
+tu6_emit_rb_depth_cntl(struct tu_cs *cs,
+                       const struct vk_depth_stencil_state *ds,
+                       const struct vk_render_pass_state *rp,
+                       const struct vk_rasterization_state *rs)
+{
    if (rp->attachment_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
       bool depth_test = ds->depth.test_enable;
       enum adreno_compare_func zfunc = tu6_compare_func(ds->depth.compare_op);
@@ -4388,94 +4425,6 @@ tu6_emit_ds(struct tu_cs *cs,
    } else {
       tu_cs_emit_regs(cs, A6XX_RB_DEPTH_CNTL());
    }
-}
-
-static const enum mesa_vk_dynamic_graphics_state tu_depth_bounds_state[] = {
-   MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_BOUNDS,
-};
-
-template <chip CHIP>
-static unsigned
-tu6_depth_bounds_size(struct tu_device *dev,
-                      const struct vk_depth_stencil_state *ds)
-{
-   return 3;
-}
-
-template <chip CHIP>
-static void
-tu6_emit_depth_bounds(struct tu_cs *cs,
-                      const struct vk_depth_stencil_state *ds)
-{
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_Z_BOUNDS_MIN(ds->depth.bounds_test.min),
-                   A6XX_RB_Z_BOUNDS_MAX(ds->depth.bounds_test.max));
-}
-
-static const enum mesa_vk_dynamic_graphics_state tu_stencil_compare_mask_state[] = {
-   MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK,
-};
-
-template <chip CHIP>
-static unsigned
-tu6_stencil_compare_mask_size(struct tu_device *dev,
-                              const struct vk_depth_stencil_state *ds)
-{
-   return 2;
-}
-
-template <chip CHIP>
-static void
-tu6_emit_stencil_compare_mask(struct tu_cs *cs,
-                              const struct vk_depth_stencil_state *ds)
-{
-   tu_cs_emit_regs(cs, A6XX_RB_STENCILMASK(
-      .mask = ds->stencil.front.compare_mask,
-      .bfmask = ds->stencil.back.compare_mask));
-}
-
-static const enum mesa_vk_dynamic_graphics_state tu_stencil_write_mask_state[] = {
-   MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK,
-};
-
-template <chip CHIP>
-static unsigned
-tu6_stencil_write_mask_size(struct tu_device *dev,
-                            const struct vk_depth_stencil_state *ds)
-{
-   return 2;
-}
-
-template <chip CHIP>
-static void
-tu6_emit_stencil_write_mask(struct tu_cs *cs,
-                            const struct vk_depth_stencil_state *ds)
-{
-   tu_cs_emit_regs(cs, A6XX_RB_STENCILWRMASK(
-      .wrmask = ds->stencil.front.write_mask,
-      .bfwrmask = ds->stencil.back.write_mask));
-}
-
-static const enum mesa_vk_dynamic_graphics_state tu_stencil_reference_state[] = {
-   MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE,
-};
-
-template <chip CHIP>
-static unsigned
-tu6_stencil_reference_size(struct tu_device *dev,
-                           const struct vk_depth_stencil_state *ds)
-{
-   return 2;
-}
-
-template <chip CHIP>
-static void
-tu6_emit_stencil_reference(struct tu_cs *cs,
-                           const struct vk_depth_stencil_state *ds)
-{
-   tu_cs_emit_regs(cs, A6XX_RB_STENCILREF(
-      .ref = ds->stencil.front.reference,
-      .bfref = ds->stencil.back.reference));
 }
 
 static inline bool
@@ -4623,21 +4572,13 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
                    builder->graphics_state.vp,
                    builder->graphics_state.rp->view_mask != 0,
                    pipeline->program.per_view_viewport);
-   DRAW_STATE_COND(ds, TU_DYNAMIC_STATE_DS,
+   DRAW_STATE(ds, TU_DYNAMIC_STATE_DS,
+              builder->graphics_state.ds);
+   DRAW_STATE_COND(rb_depth_cntl, TU_DYNAMIC_STATE_RB_DEPTH_CNTL,
                    attachments_valid,
                    builder->graphics_state.ds,
                    builder->graphics_state.rp,
                    builder->graphics_state.rs);
-   DRAW_STATE(depth_bounds, TU_DYNAMIC_STATE_DEPTH_BOUNDS,
-              builder->graphics_state.ds);
-   DRAW_STATE(depth_bounds, TU_DYNAMIC_STATE_DEPTH_BOUNDS,
-              builder->graphics_state.ds);
-   DRAW_STATE(stencil_compare_mask, TU_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
-              builder->graphics_state.ds);
-   DRAW_STATE(stencil_write_mask, TU_DYNAMIC_STATE_STENCIL_WRITE_MASK,
-              builder->graphics_state.ds);
-   DRAW_STATE(stencil_reference, TU_DYNAMIC_STATE_STENCIL_REFERENCE,
-              builder->graphics_state.ds);
    DRAW_STATE_COND(patch_control_points,
                    TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS,
                    pipeline_contains_all_shader_state(pipeline),
@@ -4811,19 +4752,13 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
                    &cmd->vk.dynamic_graphics_state.vp,
                    cmd->state.vk_rp.view_mask != 0,
                    cmd->state.per_view_viewport);
-   DRAW_STATE_COND(ds, TU_DYNAMIC_STATE_DS,
+   DRAW_STATE(ds, TU_DYNAMIC_STATE_DS,
+              &cmd->vk.dynamic_graphics_state.ds);
+   DRAW_STATE_COND(rb_depth_cntl, TU_DYNAMIC_STATE_RB_DEPTH_CNTL,
                    cmd->state.dirty & TU_CMD_DIRTY_SUBPASS,
                    &cmd->vk.dynamic_graphics_state.ds,
                    &cmd->state.vk_rp,
                    &cmd->vk.dynamic_graphics_state.rs);
-   DRAW_STATE(depth_bounds, TU_DYNAMIC_STATE_DEPTH_BOUNDS,
-              &cmd->vk.dynamic_graphics_state.ds);
-   DRAW_STATE(stencil_compare_mask, TU_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
-              &cmd->vk.dynamic_graphics_state.ds);
-   DRAW_STATE(stencil_write_mask, TU_DYNAMIC_STATE_STENCIL_WRITE_MASK,
-              &cmd->vk.dynamic_graphics_state.ds);
-   DRAW_STATE(stencil_reference, TU_DYNAMIC_STATE_STENCIL_REFERENCE,
-              &cmd->vk.dynamic_graphics_state.ds);
    DRAW_STATE_COND(patch_control_points,
                    TU_DYNAMIC_STATE_PATCH_CONTROL_POINTS,
                    cmd->state.dirty & TU_CMD_DIRTY_PIPELINE,
