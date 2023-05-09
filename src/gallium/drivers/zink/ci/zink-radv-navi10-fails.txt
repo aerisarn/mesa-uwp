@@ -332,8 +332,6 @@ spec@!opengl 1.1@line-smooth-stipple,Fail
 KHR-GL46.polygon_offset_clamp.PolygonOffsetClampMinMax,Fail
 KHR-GL46.polygon_offset_clamp.PolygonOffsetClampZeroInfinity,Fail
 
-spec@arb_query_buffer_object@qbo@query-GL_PRIMITIVES_GENERATED-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT64_ARB,Fail
-
 # Should be fixed in the next glcts release (according to zmike)
 KHR-GL46.multi_bind.dispatch_bind_image_textures,Fail
 
@@ -360,7 +358,6 @@ spec@arb_color_buffer_float@gl_rgba8-render,Fail
 spec@arb_color_buffer_float@gl_rgba8-render-sanity,Fail
 spec@arb_color_buffer_float@gl_rgba8_snorm-render,Fail
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity,Fail
-spec@arb_copy_image@arb_copy_image-targets gl_texture_3d 32 32 17 gl_texture_1d 32 1 1 11 23 7 5 0 0 14 1 1,Crash
 spec@arb_depth_buffer_float@fbo-clear-formats stencil,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil@GL_DEPTH32F_STENCIL8,Fail
 spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-drawpixels-float-and-ushort,Fail
