@@ -1896,8 +1896,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP |
                                     RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE;
 
-      if (cmd_buffer->state.emitted_graphics_pipeline->ms.sample_shading_enable != pipeline->ms.sample_shading_enable ||
-          cmd_buffer->state.emitted_graphics_pipeline->ms.min_sample_shading != pipeline->ms.min_sample_shading ||
+      if (cmd_buffer->state.emitted_graphics_pipeline->ms.min_sample_shading != pipeline->ms.min_sample_shading ||
           cmd_buffer->state.emitted_graphics_pipeline->uses_out_of_order_rast != pipeline->uses_out_of_order_rast ||
           cmd_buffer->state.emitted_graphics_pipeline->uses_vrs_attachment != pipeline->uses_vrs_attachment ||
           cmd_buffer->state.emitted_graphics_pipeline->db_render_control != pipeline->db_render_control ||
@@ -1905,13 +1904,15 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
 
+      if (cmd_buffer->state.emitted_graphics_pipeline->ms.sample_shading_enable != pipeline->ms.sample_shading_enable) {
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
+         if (device->physical_device->rad_info.gfx_level >= GFX10_3)
+            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
+      }
+
       if (cmd_buffer->state.emitted_graphics_pipeline->db_shader_control !=
           pipeline->db_shader_control)
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
-
-      if (cmd_buffer->state.emitted_graphics_pipeline->vrs.pa_cl_vrs_cntl !=
-          pipeline->vrs.pa_cl_vrs_cntl)
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
    }
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
@@ -2303,13 +2304,13 @@ radv_emit_stencil_control(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    uint32_t rate_x = MIN2(2, d->vk.fsr.fragment_size.width) - 1;
    uint32_t rate_y = MIN2(2, d->vk.fsr.fragment_size.height) - 1;
-   uint32_t pa_cl_vrs_cntl = pipeline->vrs.pa_cl_vrs_cntl;
    uint32_t pipeline_comb_mode = d->vk.fsr.combiner_ops[0];
    uint32_t htile_comb_mode = d->vk.fsr.combiner_ops[1];
+   uint32_t pa_cl_vrs_cntl = 0;
 
    assert(cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10_3);
 
@@ -2344,6 +2345,16 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
    /* Emit per-draw VRS rate which is the first combiner. */
    radeon_set_uconfig_reg(cmd_buffer->cs, R_03098C_GE_VRS_RATE,
                           S_03098C_RATE_X(rate_x) | S_03098C_RATE_Y(rate_y));
+
+   /* Disable VRS and use the rates from PS_ITER_SAMPLES if:
+    *
+    * 1) sample shading is enabled or per-sample interpolation is used by the fragment shader
+    * 2) the fragment shader reads gl_SampleMaskIn because the 16-bit sample coverage mask isn't
+    *    enough for MSAA8x and 2x2 coarse shading isn't enough.
+    */
+   if (cmd_buffer->state.ms.sample_shading_enable || ps->info.ps.reads_sample_mask_in) {
+      pa_cl_vrs_cntl |= S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_SC_VRS_COMB_MODE_OVERRIDE);
+   }
 
    /* VERTEX_RATE_COMBINER_MODE controls the combiner mode between the
     * draw rate and the vertex rate.
@@ -6612,11 +6623,18 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
 
    if (gfx_level >= GFX10_3 &&
        previous_ps && previous_ps->info.ps.reads_sample_mask_in != ps->info.ps.reads_sample_mask_in)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
+                                 RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
+
+   if (cmd_buffer->state.ms.sample_shading_enable != ps->info.ps.uses_sample_shading) {
+      cmd_buffer->state.ms.sample_shading_enable = ps->info.ps.uses_sample_shading;
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
 
-   if (cmd_buffer->state.ms.sample_shading_enable != ps->info.ps.uses_sample_shading ||
-       cmd_buffer->state.ms.min_sample_shading != min_sample_shading) {
-      cmd_buffer->state.ms.sample_shading_enable = ps->info.ps.uses_sample_shading;
+      if (gfx_level >= GFX10_3)
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
+   }
+
+   if (cmd_buffer->state.ms.min_sample_shading != min_sample_shading) {
       cmd_buffer->state.ms.min_sample_shading = min_sample_shading;
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
    }

@@ -374,29 +374,6 @@ radv_pipeline_init_multisample_state(const struct radv_device *device,
    ms->uses_user_sample_locations = state->ms && state->ms->sample_locations_enable;
 }
 
-static void
-gfx103_pipeline_init_vrs_state(struct radv_graphics_pipeline *pipeline,
-                               const struct vk_graphics_pipeline_state *state)
-{
-   struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-   struct radv_vrs_state *vrs = &pipeline->vrs;
-
-   if ((state->ms && state->ms->sample_shading_enable) || ps->info.ps.uses_sample_shading ||
-       ps->info.ps.reads_sample_mask_in) {
-      /* Disable VRS and use the rates from PS_ITER_SAMPLES if:
-       *
-       * 1) sample shading is enabled or per-sample interpolation is
-       *    used by the fragment shader
-       * 2) the fragment shader reads gl_SampleMaskIn because the
-       *    16-bit sample coverage mask isn't enough for MSAA8x and
-       *    2x2 coarse shading isn't enough.
-       */
-      vrs->pa_cl_vrs_cntl = S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_SC_VRS_COMB_MODE_OVERRIDE);
-   } else {
-      vrs->pa_cl_vrs_cntl = S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_SC_VRS_COMB_MODE_PASSTHRU);
-   }
-}
-
 static uint32_t
 si_conv_tess_prim_to_gs_out(enum tess_primitive_mode prim)
 {
@@ -4060,9 +4037,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
       radv_pipeline_init_input_assembly_state(device, pipeline);
    radv_pipeline_init_dynamic_state(pipeline, &state, pCreateInfo);
-
-   if (device->physical_device->rad_info.gfx_level >= GFX10_3)
-      gfx103_pipeline_init_vrs_state(pipeline, &state);
 
    struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state);
 

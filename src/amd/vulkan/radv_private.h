@@ -2159,10 +2159,6 @@ enum {
 extern const VkFormat radv_fs_key_format_exemplars[NUM_META_FS_KEYS];
 unsigned radv_format_meta_fs_key(struct radv_device *device, VkFormat format);
 
-struct radv_vrs_state {
-   uint32_t pa_cl_vrs_cntl;
-};
-
 struct radv_prim_vertex_count {
    uint8_t min;
    uint8_t incr;
@@ -2260,7 +2256,6 @@ struct radv_graphics_pipeline {
    struct radv_vs_input_state vs_input_state;
 
    struct radv_multisample_state ms;
-   struct radv_vrs_state vrs;
    struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
    uint32_t binding_stride[MAX_VBS];
    uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
