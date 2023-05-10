@@ -257,8 +257,8 @@ struct pvr_device {
    } static_clear_state;
 
    struct {
-      struct pvr_bo *usc_programs;
-      struct pvr_bo *pds_programs;
+      struct pvr_suballoc_bo *usc_programs;
+      struct pvr_suballoc_bo *pds_programs;
 
       struct pvr_spm_per_load_program_state {
          pvr_dev_addr_t pds_pixel_program_offset;
