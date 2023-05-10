@@ -741,6 +741,9 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
       radv_optimize_nir(nir, false);
    }
 
+   /* Temporary stopgap until legacy atomics are removed in the core */
+   NIR_PASS_V(nir, nir_lower_legacy_atomics);
+
 
    return nir;
 }

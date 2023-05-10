@@ -6389,6 +6389,92 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 void
+translate_buffer_image_atomic_op(const nir_atomic_op op,
+                                 aco_opcode *buf_op, aco_opcode *buf_op64,
+                                 aco_opcode *image_op)
+{
+   switch (op) {
+   case nir_atomic_op_iadd:
+      *buf_op = aco_opcode::buffer_atomic_add;
+      *buf_op64 = aco_opcode::buffer_atomic_add_x2;
+      *image_op = aco_opcode::image_atomic_add;
+      break;
+   case nir_atomic_op_umin:
+      *buf_op = aco_opcode::buffer_atomic_umin;
+      *buf_op64 = aco_opcode::buffer_atomic_umin_x2;
+      *image_op = aco_opcode::image_atomic_umin;
+      break;
+   case nir_atomic_op_imin:
+      *buf_op = aco_opcode::buffer_atomic_smin;
+      *buf_op64 = aco_opcode::buffer_atomic_smin_x2;
+      *image_op = aco_opcode::image_atomic_smin;
+      break;
+   case nir_atomic_op_umax:
+      *buf_op = aco_opcode::buffer_atomic_umax;
+      *buf_op64 = aco_opcode::buffer_atomic_umax_x2;
+      *image_op = aco_opcode::image_atomic_umax;
+      break;
+   case nir_atomic_op_imax:
+      *buf_op = aco_opcode::buffer_atomic_smax;
+      *buf_op64 = aco_opcode::buffer_atomic_smax_x2;
+      *image_op = aco_opcode::image_atomic_smax;
+      break;
+   case nir_atomic_op_iand:
+      *buf_op = aco_opcode::buffer_atomic_and;
+      *buf_op64 = aco_opcode::buffer_atomic_and_x2;
+      *image_op = aco_opcode::image_atomic_and;
+      break;
+   case nir_atomic_op_ior:
+      *buf_op = aco_opcode::buffer_atomic_or;
+      *buf_op64 = aco_opcode::buffer_atomic_or_x2;
+      *image_op = aco_opcode::image_atomic_or;
+      break;
+   case nir_atomic_op_ixor:
+      *buf_op = aco_opcode::buffer_atomic_xor;
+      *buf_op64 = aco_opcode::buffer_atomic_xor_x2;
+      *image_op = aco_opcode::image_atomic_xor;
+      break;
+   case nir_atomic_op_xchg:
+      *buf_op = aco_opcode::buffer_atomic_swap;
+      *buf_op64 = aco_opcode::buffer_atomic_swap_x2;
+      *image_op = aco_opcode::image_atomic_swap;
+      break;
+   case nir_atomic_op_cmpxchg:
+      *buf_op = aco_opcode::buffer_atomic_cmpswap;
+      *buf_op64 = aco_opcode::buffer_atomic_cmpswap_x2;
+      *image_op = aco_opcode::image_atomic_cmpswap;
+      break;
+   case nir_atomic_op_inc_wrap:
+      *buf_op = aco_opcode::buffer_atomic_inc;
+      *buf_op64 = aco_opcode::buffer_atomic_inc_x2;
+      *image_op = aco_opcode::image_atomic_inc;
+      break;
+   case nir_atomic_op_dec_wrap:
+      *buf_op = aco_opcode::buffer_atomic_dec;
+      *buf_op64 = aco_opcode::buffer_atomic_dec_x2;
+      *image_op = aco_opcode::image_atomic_dec;
+      break;
+   case nir_atomic_op_fadd:
+      *buf_op = aco_opcode::buffer_atomic_add_f32;
+      *buf_op64 = aco_opcode::num_opcodes;
+      *image_op = aco_opcode::num_opcodes;
+      break;
+   case nir_atomic_op_fmin:
+      *buf_op = aco_opcode::buffer_atomic_fmin;
+      *buf_op64 = aco_opcode::buffer_atomic_fmin_x2;
+      *image_op = aco_opcode::image_atomic_fmin;
+      break;
+   case nir_atomic_op_fmax:
+      *buf_op = aco_opcode::buffer_atomic_fmax;
+      *buf_op64 = aco_opcode::buffer_atomic_fmax_x2;
+      *image_op = aco_opcode::image_atomic_fmax;
+      break;
+   default:
+      unreachable("unsupported atomic operation");
+   }
+}
+
+void
 visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
@@ -6396,96 +6482,19 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    bool is_array = nir_intrinsic_image_array(instr);
    Builder bld(ctx->program, ctx->block);
 
+   const nir_atomic_op op = nir_intrinsic_atomic_op(instr);
+   const bool cmpswap = op == nir_atomic_op_cmpxchg;
+
+   aco_opcode buf_op, buf_op64, image_op;
+   translate_buffer_image_atomic_op(op, &buf_op, &buf_op64, &image_op);
+
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[3].ssa));
-   bool cmpswap = instr->intrinsic == nir_intrinsic_bindless_image_atomic_comp_swap;
    bool is_64bit = data.bytes() == 8;
    assert((data.bytes() == 4 || data.bytes() == 8) && "only 32/64-bit image atomics implemented.");
 
    if (cmpswap)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(is_64bit ? v4 : v2),
                         get_ssa_temp(ctx, instr->src[4].ssa), data);
-
-   aco_opcode buf_op, buf_op64, image_op;
-   switch (instr->intrinsic) {
-   case nir_intrinsic_bindless_image_atomic_add:
-      buf_op = aco_opcode::buffer_atomic_add;
-      buf_op64 = aco_opcode::buffer_atomic_add_x2;
-      image_op = aco_opcode::image_atomic_add;
-      break;
-   case nir_intrinsic_bindless_image_atomic_umin:
-      buf_op = aco_opcode::buffer_atomic_umin;
-      buf_op64 = aco_opcode::buffer_atomic_umin_x2;
-      image_op = aco_opcode::image_atomic_umin;
-      break;
-   case nir_intrinsic_bindless_image_atomic_imin:
-      buf_op = aco_opcode::buffer_atomic_smin;
-      buf_op64 = aco_opcode::buffer_atomic_smin_x2;
-      image_op = aco_opcode::image_atomic_smin;
-      break;
-   case nir_intrinsic_bindless_image_atomic_umax:
-      buf_op = aco_opcode::buffer_atomic_umax;
-      buf_op64 = aco_opcode::buffer_atomic_umax_x2;
-      image_op = aco_opcode::image_atomic_umax;
-      break;
-   case nir_intrinsic_bindless_image_atomic_imax:
-      buf_op = aco_opcode::buffer_atomic_smax;
-      buf_op64 = aco_opcode::buffer_atomic_smax_x2;
-      image_op = aco_opcode::image_atomic_smax;
-      break;
-   case nir_intrinsic_bindless_image_atomic_and:
-      buf_op = aco_opcode::buffer_atomic_and;
-      buf_op64 = aco_opcode::buffer_atomic_and_x2;
-      image_op = aco_opcode::image_atomic_and;
-      break;
-   case nir_intrinsic_bindless_image_atomic_or:
-      buf_op = aco_opcode::buffer_atomic_or;
-      buf_op64 = aco_opcode::buffer_atomic_or_x2;
-      image_op = aco_opcode::image_atomic_or;
-      break;
-   case nir_intrinsic_bindless_image_atomic_xor:
-      buf_op = aco_opcode::buffer_atomic_xor;
-      buf_op64 = aco_opcode::buffer_atomic_xor_x2;
-      image_op = aco_opcode::image_atomic_xor;
-      break;
-   case nir_intrinsic_bindless_image_atomic_exchange:
-      buf_op = aco_opcode::buffer_atomic_swap;
-      buf_op64 = aco_opcode::buffer_atomic_swap_x2;
-      image_op = aco_opcode::image_atomic_swap;
-      break;
-   case nir_intrinsic_bindless_image_atomic_comp_swap:
-      buf_op = aco_opcode::buffer_atomic_cmpswap;
-      buf_op64 = aco_opcode::buffer_atomic_cmpswap_x2;
-      image_op = aco_opcode::image_atomic_cmpswap;
-      break;
-   case nir_intrinsic_bindless_image_atomic_inc_wrap:
-      buf_op = aco_opcode::buffer_atomic_inc;
-      buf_op64 = aco_opcode::buffer_atomic_inc_x2;
-      image_op = aco_opcode::image_atomic_inc;
-      break;
-   case nir_intrinsic_bindless_image_atomic_dec_wrap:
-      buf_op = aco_opcode::buffer_atomic_dec;
-      buf_op64 = aco_opcode::buffer_atomic_dec_x2;
-      image_op = aco_opcode::image_atomic_dec;
-      break;
-   case nir_intrinsic_bindless_image_atomic_fadd:
-      buf_op = aco_opcode::buffer_atomic_add_f32;
-      buf_op64 = aco_opcode::num_opcodes;
-      image_op = aco_opcode::num_opcodes;
-      break;
-   case nir_intrinsic_bindless_image_atomic_fmin:
-      buf_op = aco_opcode::buffer_atomic_fmin;
-      buf_op64 = aco_opcode::buffer_atomic_fmin_x2;
-      image_op = aco_opcode::image_atomic_fmin;
-      break;
-   case nir_intrinsic_bindless_image_atomic_fmax:
-      buf_op = aco_opcode::buffer_atomic_fmax;
-      buf_op64 = aco_opcode::buffer_atomic_fmax_x2;
-      image_op = aco_opcode::image_atomic_fmax;
-      break;
-   default:
-      unreachable("visit_image_atomic should only be called with "
-                  "nir_intrinsic_bindless_image_atomic_* instructions.");
-   }
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    memory_sync_info sync = get_memory_sync_info(instr, storage_image, semantic_atomicrmw);
@@ -6613,7 +6622,12 @@ visit_atomic_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
    Builder bld(ctx->program, ctx->block);
    bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[2].ssa));
-   bool cmpswap = instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap;
+
+   const nir_atomic_op nir_op = nir_intrinsic_atomic_op(instr);
+   const bool cmpswap = nir_op == nir_atomic_op_cmpxchg;
+
+   aco_opcode op32, op64, image_op;
+   translate_buffer_image_atomic_op(nir_op, &op32, &op64, &image_op);
 
    if (cmpswap)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, data.size() * 2),
@@ -6621,67 +6635,8 @@ visit_atomic_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
 
    Temp offset = get_ssa_temp(ctx, instr->src[1].ssa);
    Temp rsrc = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
-
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
-   aco_opcode op32, op64;
-   switch (instr->intrinsic) {
-   case nir_intrinsic_ssbo_atomic_add:
-      op32 = aco_opcode::buffer_atomic_add;
-      op64 = aco_opcode::buffer_atomic_add_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_imin:
-      op32 = aco_opcode::buffer_atomic_smin;
-      op64 = aco_opcode::buffer_atomic_smin_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_umin:
-      op32 = aco_opcode::buffer_atomic_umin;
-      op64 = aco_opcode::buffer_atomic_umin_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_imax:
-      op32 = aco_opcode::buffer_atomic_smax;
-      op64 = aco_opcode::buffer_atomic_smax_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_umax:
-      op32 = aco_opcode::buffer_atomic_umax;
-      op64 = aco_opcode::buffer_atomic_umax_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_and:
-      op32 = aco_opcode::buffer_atomic_and;
-      op64 = aco_opcode::buffer_atomic_and_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_or:
-      op32 = aco_opcode::buffer_atomic_or;
-      op64 = aco_opcode::buffer_atomic_or_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_xor:
-      op32 = aco_opcode::buffer_atomic_xor;
-      op64 = aco_opcode::buffer_atomic_xor_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_exchange:
-      op32 = aco_opcode::buffer_atomic_swap;
-      op64 = aco_opcode::buffer_atomic_swap_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_comp_swap:
-      op32 = aco_opcode::buffer_atomic_cmpswap;
-      op64 = aco_opcode::buffer_atomic_cmpswap_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_fadd:
-      op32 = aco_opcode::buffer_atomic_add_f32;
-      op64 = aco_opcode::num_opcodes;
-      break;
-   case nir_intrinsic_ssbo_atomic_fmin:
-      op32 = aco_opcode::buffer_atomic_fmin;
-      op64 = aco_opcode::buffer_atomic_fmin_x2;
-      break;
-   case nir_intrinsic_ssbo_atomic_fmax:
-      op32 = aco_opcode::buffer_atomic_fmax;
-      op64 = aco_opcode::buffer_atomic_fmax_x2;
-      break;
-   default:
-      unreachable(
-         "visit_atomic_ssbo should only be called with nir_intrinsic_ssbo_atomic_* instructions.");
-   }
    aco_opcode op = instr->dest.ssa.bit_size == 32 ? op32 : op64;
    aco_ptr<MUBUF_instruction> mubuf{
       create_instruction<MUBUF_instruction>(op, Format::MUBUF, 4, return_previous ? 1 : 0)};
@@ -6870,7 +6825,9 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    Builder bld(ctx->program, ctx->block);
    bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
-   bool cmpswap = instr->intrinsic == nir_intrinsic_global_atomic_comp_swap_amd;
+
+   const nir_atomic_op nir_op = nir_intrinsic_atomic_op(instr);
+   const bool cmpswap = nir_op == nir_atomic_op_cmpxchg;
 
    if (cmpswap)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, data.size() * 2),
@@ -6887,62 +6844,61 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
 
    if (ctx->options->gfx_level >= GFX7) {
       bool global = ctx->options->gfx_level >= GFX9;
-      switch (instr->intrinsic) {
-      case nir_intrinsic_global_atomic_add_amd:
+      switch (nir_op) {
+      case nir_atomic_op_iadd:
          op32 = global ? aco_opcode::global_atomic_add : aco_opcode::flat_atomic_add;
          op64 = global ? aco_opcode::global_atomic_add_x2 : aco_opcode::flat_atomic_add_x2;
          break;
-      case nir_intrinsic_global_atomic_imin_amd:
+      case nir_atomic_op_imin:
          op32 = global ? aco_opcode::global_atomic_smin : aco_opcode::flat_atomic_smin;
          op64 = global ? aco_opcode::global_atomic_smin_x2 : aco_opcode::flat_atomic_smin_x2;
          break;
-      case nir_intrinsic_global_atomic_umin_amd:
+      case nir_atomic_op_umin:
          op32 = global ? aco_opcode::global_atomic_umin : aco_opcode::flat_atomic_umin;
          op64 = global ? aco_opcode::global_atomic_umin_x2 : aco_opcode::flat_atomic_umin_x2;
          break;
-      case nir_intrinsic_global_atomic_imax_amd:
+      case nir_atomic_op_imax:
          op32 = global ? aco_opcode::global_atomic_smax : aco_opcode::flat_atomic_smax;
          op64 = global ? aco_opcode::global_atomic_smax_x2 : aco_opcode::flat_atomic_smax_x2;
          break;
-      case nir_intrinsic_global_atomic_umax_amd:
+      case nir_atomic_op_umax:
          op32 = global ? aco_opcode::global_atomic_umax : aco_opcode::flat_atomic_umax;
          op64 = global ? aco_opcode::global_atomic_umax_x2 : aco_opcode::flat_atomic_umax_x2;
          break;
-      case nir_intrinsic_global_atomic_and_amd:
+      case nir_atomic_op_iand:
          op32 = global ? aco_opcode::global_atomic_and : aco_opcode::flat_atomic_and;
          op64 = global ? aco_opcode::global_atomic_and_x2 : aco_opcode::flat_atomic_and_x2;
          break;
-      case nir_intrinsic_global_atomic_or_amd:
+      case nir_atomic_op_ior:
          op32 = global ? aco_opcode::global_atomic_or : aco_opcode::flat_atomic_or;
          op64 = global ? aco_opcode::global_atomic_or_x2 : aco_opcode::flat_atomic_or_x2;
          break;
-      case nir_intrinsic_global_atomic_xor_amd:
+      case nir_atomic_op_ixor:
          op32 = global ? aco_opcode::global_atomic_xor : aco_opcode::flat_atomic_xor;
          op64 = global ? aco_opcode::global_atomic_xor_x2 : aco_opcode::flat_atomic_xor_x2;
          break;
-      case nir_intrinsic_global_atomic_exchange_amd:
+      case nir_atomic_op_xchg:
          op32 = global ? aco_opcode::global_atomic_swap : aco_opcode::flat_atomic_swap;
          op64 = global ? aco_opcode::global_atomic_swap_x2 : aco_opcode::flat_atomic_swap_x2;
          break;
-      case nir_intrinsic_global_atomic_comp_swap_amd:
+      case nir_atomic_op_cmpxchg:
          op32 = global ? aco_opcode::global_atomic_cmpswap : aco_opcode::flat_atomic_cmpswap;
          op64 = global ? aco_opcode::global_atomic_cmpswap_x2 : aco_opcode::flat_atomic_cmpswap_x2;
          break;
-      case nir_intrinsic_global_atomic_fadd_amd:
+      case nir_atomic_op_fadd:
          op32 = global ? aco_opcode::global_atomic_add_f32 : aco_opcode::flat_atomic_add_f32;
          op64 = aco_opcode::num_opcodes;
          break;
-      case nir_intrinsic_global_atomic_fmin_amd:
+      case nir_atomic_op_fmin:
          op32 = global ? aco_opcode::global_atomic_fmin : aco_opcode::flat_atomic_fmin;
          op64 = global ? aco_opcode::global_atomic_fmin_x2 : aco_opcode::flat_atomic_fmin_x2;
          break;
-      case nir_intrinsic_global_atomic_fmax_amd:
+      case nir_atomic_op_fmax:
          op32 = global ? aco_opcode::global_atomic_fmax : aco_opcode::flat_atomic_fmax;
          op64 = global ? aco_opcode::global_atomic_fmax_x2 : aco_opcode::flat_atomic_fmax_x2;
          break;
       default:
-         unreachable("visit_atomic_global should only be called with nir_intrinsic_global_atomic_* "
-                     "instructions.");
+         unreachable("unsupported atomic operation");
       }
 
       aco_opcode op = instr->dest.ssa.bit_size == 32 ? op32 : op64;
@@ -6971,59 +6927,8 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    } else {
       assert(ctx->options->gfx_level == GFX6);
 
-      switch (instr->intrinsic) {
-      case nir_intrinsic_global_atomic_add_amd:
-         op32 = aco_opcode::buffer_atomic_add;
-         op64 = aco_opcode::buffer_atomic_add_x2;
-         break;
-      case nir_intrinsic_global_atomic_imin_amd:
-         op32 = aco_opcode::buffer_atomic_smin;
-         op64 = aco_opcode::buffer_atomic_smin_x2;
-         break;
-      case nir_intrinsic_global_atomic_umin_amd:
-         op32 = aco_opcode::buffer_atomic_umin;
-         op64 = aco_opcode::buffer_atomic_umin_x2;
-         break;
-      case nir_intrinsic_global_atomic_imax_amd:
-         op32 = aco_opcode::buffer_atomic_smax;
-         op64 = aco_opcode::buffer_atomic_smax_x2;
-         break;
-      case nir_intrinsic_global_atomic_umax_amd:
-         op32 = aco_opcode::buffer_atomic_umax;
-         op64 = aco_opcode::buffer_atomic_umax_x2;
-         break;
-      case nir_intrinsic_global_atomic_and_amd:
-         op32 = aco_opcode::buffer_atomic_and;
-         op64 = aco_opcode::buffer_atomic_and_x2;
-         break;
-      case nir_intrinsic_global_atomic_or_amd:
-         op32 = aco_opcode::buffer_atomic_or;
-         op64 = aco_opcode::buffer_atomic_or_x2;
-         break;
-      case nir_intrinsic_global_atomic_xor_amd:
-         op32 = aco_opcode::buffer_atomic_xor;
-         op64 = aco_opcode::buffer_atomic_xor_x2;
-         break;
-      case nir_intrinsic_global_atomic_exchange_amd:
-         op32 = aco_opcode::buffer_atomic_swap;
-         op64 = aco_opcode::buffer_atomic_swap_x2;
-         break;
-      case nir_intrinsic_global_atomic_comp_swap_amd:
-         op32 = aco_opcode::buffer_atomic_cmpswap;
-         op64 = aco_opcode::buffer_atomic_cmpswap_x2;
-         break;
-      case nir_intrinsic_global_atomic_fmin_amd:
-         op32 = aco_opcode::buffer_atomic_fmin;
-         op64 = aco_opcode::buffer_atomic_fmin_x2;
-         break;
-      case nir_intrinsic_global_atomic_fmax_amd:
-         op32 = aco_opcode::buffer_atomic_fmax;
-         op64 = aco_opcode::buffer_atomic_fmax_x2;
-         break;
-      default:
-         unreachable("visit_atomic_global should only be called with nir_intrinsic_global_atomic_* "
-                     "instructions.");
-      }
+      UNUSED aco_opcode image_op;
+      translate_buffer_image_atomic_op(nir_op, &op32, &op64, &image_op);
 
       Temp rsrc = get_gfx6_global_rsrc(bld, addr);
 
@@ -7332,81 +7237,81 @@ visit_shared_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
 
    unsigned num_operands = 3;
    aco_opcode op32, op64, op32_rtn, op64_rtn;
-   switch (instr->intrinsic) {
-   case nir_intrinsic_shared_atomic_add:
+   switch (nir_intrinsic_atomic_op(instr)) {
+   case nir_atomic_op_iadd:
       op32 = aco_opcode::ds_add_u32;
       op64 = aco_opcode::ds_add_u64;
       op32_rtn = aco_opcode::ds_add_rtn_u32;
       op64_rtn = aco_opcode::ds_add_rtn_u64;
       break;
-   case nir_intrinsic_shared_atomic_imin:
+   case nir_atomic_op_imin:
       op32 = aco_opcode::ds_min_i32;
       op64 = aco_opcode::ds_min_i64;
       op32_rtn = aco_opcode::ds_min_rtn_i32;
       op64_rtn = aco_opcode::ds_min_rtn_i64;
       break;
-   case nir_intrinsic_shared_atomic_umin:
+   case nir_atomic_op_umin:
       op32 = aco_opcode::ds_min_u32;
       op64 = aco_opcode::ds_min_u64;
       op32_rtn = aco_opcode::ds_min_rtn_u32;
       op64_rtn = aco_opcode::ds_min_rtn_u64;
       break;
-   case nir_intrinsic_shared_atomic_imax:
+   case nir_atomic_op_imax:
       op32 = aco_opcode::ds_max_i32;
       op64 = aco_opcode::ds_max_i64;
       op32_rtn = aco_opcode::ds_max_rtn_i32;
       op64_rtn = aco_opcode::ds_max_rtn_i64;
       break;
-   case nir_intrinsic_shared_atomic_umax:
+   case nir_atomic_op_umax:
       op32 = aco_opcode::ds_max_u32;
       op64 = aco_opcode::ds_max_u64;
       op32_rtn = aco_opcode::ds_max_rtn_u32;
       op64_rtn = aco_opcode::ds_max_rtn_u64;
       break;
-   case nir_intrinsic_shared_atomic_and:
+   case nir_atomic_op_iand:
       op32 = aco_opcode::ds_and_b32;
       op64 = aco_opcode::ds_and_b64;
       op32_rtn = aco_opcode::ds_and_rtn_b32;
       op64_rtn = aco_opcode::ds_and_rtn_b64;
       break;
-   case nir_intrinsic_shared_atomic_or:
+   case nir_atomic_op_ior:
       op32 = aco_opcode::ds_or_b32;
       op64 = aco_opcode::ds_or_b64;
       op32_rtn = aco_opcode::ds_or_rtn_b32;
       op64_rtn = aco_opcode::ds_or_rtn_b64;
       break;
-   case nir_intrinsic_shared_atomic_xor:
+   case nir_atomic_op_ixor:
       op32 = aco_opcode::ds_xor_b32;
       op64 = aco_opcode::ds_xor_b64;
       op32_rtn = aco_opcode::ds_xor_rtn_b32;
       op64_rtn = aco_opcode::ds_xor_rtn_b64;
       break;
-   case nir_intrinsic_shared_atomic_exchange:
+   case nir_atomic_op_xchg:
       op32 = aco_opcode::ds_write_b32;
       op64 = aco_opcode::ds_write_b64;
       op32_rtn = aco_opcode::ds_wrxchg_rtn_b32;
       op64_rtn = aco_opcode::ds_wrxchg_rtn_b64;
       break;
-   case nir_intrinsic_shared_atomic_comp_swap:
+   case nir_atomic_op_cmpxchg:
       op32 = aco_opcode::ds_cmpst_b32;
       op64 = aco_opcode::ds_cmpst_b64;
       op32_rtn = aco_opcode::ds_cmpst_rtn_b32;
       op64_rtn = aco_opcode::ds_cmpst_rtn_b64;
       num_operands = 4;
       break;
-   case nir_intrinsic_shared_atomic_fadd:
+   case nir_atomic_op_fadd:
       op32 = aco_opcode::ds_add_f32;
       op32_rtn = aco_opcode::ds_add_rtn_f32;
       op64 = aco_opcode::num_opcodes;
       op64_rtn = aco_opcode::num_opcodes;
       break;
-   case nir_intrinsic_shared_atomic_fmin:
+   case nir_atomic_op_fmin:
       op32 = aco_opcode::ds_min_f32;
       op32_rtn = aco_opcode::ds_min_rtn_f32;
       op64 = aco_opcode::ds_min_f64;
       op64_rtn = aco_opcode::ds_min_rtn_f64;
       break;
-   case nir_intrinsic_shared_atomic_fmax:
+   case nir_atomic_op_fmax:
       op32 = aco_opcode::ds_max_f32;
       op32_rtn = aco_opcode::ds_max_rtn_f32;
       op64 = aco_opcode::ds_max_f64;
@@ -8221,39 +8126,15 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_constant: visit_load_constant(ctx, instr); break;
    case nir_intrinsic_load_shared: visit_load_shared(ctx, instr); break;
    case nir_intrinsic_store_shared: visit_store_shared(ctx, instr); break;
-   case nir_intrinsic_shared_atomic_add:
-   case nir_intrinsic_shared_atomic_imin:
-   case nir_intrinsic_shared_atomic_umin:
-   case nir_intrinsic_shared_atomic_imax:
-   case nir_intrinsic_shared_atomic_umax:
-   case nir_intrinsic_shared_atomic_and:
-   case nir_intrinsic_shared_atomic_or:
-   case nir_intrinsic_shared_atomic_xor:
-   case nir_intrinsic_shared_atomic_exchange:
-   case nir_intrinsic_shared_atomic_comp_swap:
-   case nir_intrinsic_shared_atomic_fadd:
-   case nir_intrinsic_shared_atomic_fmin:
-   case nir_intrinsic_shared_atomic_fmax: visit_shared_atomic(ctx, instr); break;
+   case nir_intrinsic_shared_atomic:
+   case nir_intrinsic_shared_atomic_swap: visit_shared_atomic(ctx, instr); break;
    case nir_intrinsic_load_shared2_amd:
    case nir_intrinsic_store_shared2_amd: visit_access_shared2_amd(ctx, instr); break;
    case nir_intrinsic_bindless_image_load:
    case nir_intrinsic_bindless_image_sparse_load: visit_image_load(ctx, instr); break;
    case nir_intrinsic_bindless_image_store: visit_image_store(ctx, instr); break;
-   case nir_intrinsic_bindless_image_atomic_add:
-   case nir_intrinsic_bindless_image_atomic_umin:
-   case nir_intrinsic_bindless_image_atomic_imin:
-   case nir_intrinsic_bindless_image_atomic_umax:
-   case nir_intrinsic_bindless_image_atomic_imax:
-   case nir_intrinsic_bindless_image_atomic_and:
-   case nir_intrinsic_bindless_image_atomic_or:
-   case nir_intrinsic_bindless_image_atomic_xor:
-   case nir_intrinsic_bindless_image_atomic_exchange:
-   case nir_intrinsic_bindless_image_atomic_comp_swap:
-   case nir_intrinsic_bindless_image_atomic_inc_wrap:
-   case nir_intrinsic_bindless_image_atomic_dec_wrap:
-   case nir_intrinsic_bindless_image_atomic_fadd:
-   case nir_intrinsic_bindless_image_atomic_fmin:
-   case nir_intrinsic_bindless_image_atomic_fmax: visit_image_atomic(ctx, instr); break;
+   case nir_intrinsic_bindless_image_atomic:
+   case nir_intrinsic_bindless_image_atomic_swap: visit_image_atomic(ctx, instr); break;
    case nir_intrinsic_load_ssbo: visit_load_ssbo(ctx, instr); break;
    case nir_intrinsic_store_ssbo: visit_store_ssbo(ctx, instr); break;
    case nir_intrinsic_load_typed_buffer_amd:
@@ -8262,32 +8143,10 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_smem_amd: visit_load_smem(ctx, instr); break;
    case nir_intrinsic_load_global_amd: visit_load_global(ctx, instr); break;
    case nir_intrinsic_store_global_amd: visit_store_global(ctx, instr); break;
-   case nir_intrinsic_global_atomic_add_amd:
-   case nir_intrinsic_global_atomic_imin_amd:
-   case nir_intrinsic_global_atomic_umin_amd:
-   case nir_intrinsic_global_atomic_imax_amd:
-   case nir_intrinsic_global_atomic_umax_amd:
-   case nir_intrinsic_global_atomic_and_amd:
-   case nir_intrinsic_global_atomic_or_amd:
-   case nir_intrinsic_global_atomic_xor_amd:
-   case nir_intrinsic_global_atomic_exchange_amd:
-   case nir_intrinsic_global_atomic_comp_swap_amd:
-   case nir_intrinsic_global_atomic_fadd_amd:
-   case nir_intrinsic_global_atomic_fmin_amd:
-   case nir_intrinsic_global_atomic_fmax_amd: visit_global_atomic(ctx, instr); break;
-   case nir_intrinsic_ssbo_atomic_add:
-   case nir_intrinsic_ssbo_atomic_imin:
-   case nir_intrinsic_ssbo_atomic_umin:
-   case nir_intrinsic_ssbo_atomic_imax:
-   case nir_intrinsic_ssbo_atomic_umax:
-   case nir_intrinsic_ssbo_atomic_and:
-   case nir_intrinsic_ssbo_atomic_or:
-   case nir_intrinsic_ssbo_atomic_xor:
-   case nir_intrinsic_ssbo_atomic_exchange:
-   case nir_intrinsic_ssbo_atomic_comp_swap:
-   case nir_intrinsic_ssbo_atomic_fadd:
-   case nir_intrinsic_ssbo_atomic_fmin:
-   case nir_intrinsic_ssbo_atomic_fmax: visit_atomic_ssbo(ctx, instr); break;
+   case nir_intrinsic_global_atomic_amd:
+   case nir_intrinsic_global_atomic_swap_amd: visit_global_atomic(ctx, instr); break;
+   case nir_intrinsic_ssbo_atomic:
+   case nir_intrinsic_ssbo_atomic_swap: visit_atomic_ssbo(ctx, instr); break;
    case nir_intrinsic_load_scratch: visit_load_scratch(ctx, instr); break;
    case nir_intrinsic_store_scratch: visit_store_scratch(ctx, instr); break;
    case nir_intrinsic_scoped_barrier: emit_scoped_barrier(ctx, instr); break;
