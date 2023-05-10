@@ -11,9 +11,11 @@ KHR-Single-GL46.enhanced_layouts.varying_array_components
 KHR-Single-GL46.enhanced_layouts.varying_structure_locations
 KHR-Single-GL46.enhanced_layouts.xfb_override_qualifiers_with_api
 KHR-Single-GL46.enhanced_layouts.xfb_stride
+spec@!opengl 1.1@copypixels-sync
 spec@!opengl 1.1@draw-sync
 spec@arb_compute_shader@local-id-explosion
 spec@arb_gpu_shader_fp64@execution@arb_gpu_shader_fp64-fs-getuniformdv
+spec@arb_gpu_shader_fp64@execution@arb_gpu_shader_fp64-gs-getuniformdv
 spec@arb_gpu_shader_fp64@execution@arb_gpu_shader_fp64-vs-getuniformdv
 spec@ext_texture_array@fbo-depth-array
 spec@ext_texture_lod_bias@lodbias
