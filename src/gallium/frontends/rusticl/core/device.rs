@@ -901,6 +901,7 @@ impl Device {
             integer_dot_product: true,
             intel_subgroups: false,
             subgroups: false,
+            subgroups_ifp: false,
         }
     }
 }
