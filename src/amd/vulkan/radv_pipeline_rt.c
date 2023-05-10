@@ -22,7 +22,6 @@
  */
 
 #include "nir/nir.h"
-#include "nir/nir_control_flow.h"
 
 #include "radv_debug.h"
 #include "radv_private.h"
