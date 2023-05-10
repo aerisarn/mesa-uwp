@@ -165,16 +165,7 @@ lower_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
                    return true;
                 }
                 return false;
-        case nir_intrinsic_ssbo_atomic_add:
-        case nir_intrinsic_ssbo_atomic_imin:
-        case nir_intrinsic_ssbo_atomic_umin:
-        case nir_intrinsic_ssbo_atomic_imax:
-        case nir_intrinsic_ssbo_atomic_umax:
-        case nir_intrinsic_ssbo_atomic_and:
-        case nir_intrinsic_ssbo_atomic_or:
-        case nir_intrinsic_ssbo_atomic_xor:
-        case nir_intrinsic_ssbo_atomic_exchange:
-        case nir_intrinsic_ssbo_atomic_comp_swap:
+        case nir_intrinsic_ssbo_atomic:
                 if (c->key->robust_storage_access) {
                    lower_buffer_atomic(c, b, intr);
                    return true;
@@ -182,16 +173,8 @@ lower_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
                 return false;
         case nir_intrinsic_store_shared:
         case nir_intrinsic_load_shared:
-        case nir_intrinsic_shared_atomic_add:
-        case nir_intrinsic_shared_atomic_imin:
-        case nir_intrinsic_shared_atomic_umin:
-        case nir_intrinsic_shared_atomic_imax:
-        case nir_intrinsic_shared_atomic_umax:
-        case nir_intrinsic_shared_atomic_and:
-        case nir_intrinsic_shared_atomic_or:
-        case nir_intrinsic_shared_atomic_xor:
-        case nir_intrinsic_shared_atomic_exchange:
-        case nir_intrinsic_shared_atomic_comp_swap:
+        case nir_intrinsic_shared_atomic:
+        case nir_intrinsic_shared_atomic_swap:
                 if (robust_shared_enabled) {
                         lower_buffer_shared(c, b, intr);
                         return true;
@@ -295,16 +278,8 @@ lower_image_instr(nir_builder *b, nir_instr *instr, void *_state)
         switch (intr->intrinsic) {
         case nir_intrinsic_image_load:
         case nir_intrinsic_image_store:
-        case nir_intrinsic_image_atomic_add:
-        case nir_intrinsic_image_atomic_imin:
-        case nir_intrinsic_image_atomic_umin:
-        case nir_intrinsic_image_atomic_imax:
-        case nir_intrinsic_image_atomic_umax:
-        case nir_intrinsic_image_atomic_and:
-        case nir_intrinsic_image_atomic_or:
-        case nir_intrinsic_image_atomic_xor:
-        case nir_intrinsic_image_atomic_exchange:
-        case nir_intrinsic_image_atomic_comp_swap:
+        case nir_intrinsic_image_atomic:
+        case nir_intrinsic_image_atomic_swap:
                 lower_image(c, b, intr);
                 return true;
         default:
