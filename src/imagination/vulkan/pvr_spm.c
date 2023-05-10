@@ -597,7 +597,7 @@ static uint64_t pvr_spm_setup_pbe_eight_dword_write(
  */
 static VkResult pvr_pds_pixel_event_program_create_and_upload(
    struct pvr_device *device,
-   const struct pvr_bo *usc_eot_program,
+   const struct pvr_suballoc_bo *usc_eot_program,
    uint32_t usc_temp_count,
    struct pvr_pds_upload *const pds_upload_out)
 {
@@ -607,7 +607,7 @@ static VkResult pvr_pds_pixel_event_program_create_and_upload(
    VkResult result;
 
    pvr_pds_setup_doutu(&program.task_control,
-                       usc_eot_program->vma->dev_addr.addr,
+                       usc_eot_program->dev_addr.addr,
                        usc_temp_count,
                        PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE),
                        false);
@@ -809,7 +809,7 @@ pvr_spm_init_eot_state(struct pvr_device *device,
       usc_temp_count,
       &pds_eot_program);
    if (result != VK_SUCCESS) {
-      pvr_bo_free(device, spm_eot_state->usc_eot_program);
+      pvr_bo_suballoc_free(spm_eot_state->usc_eot_program);
       return result;
    }
 
@@ -824,8 +824,8 @@ pvr_spm_init_eot_state(struct pvr_device *device,
 void pvr_spm_finish_eot_state(struct pvr_device *device,
                               struct pvr_spm_eot_state *spm_eot_state)
 {
-   pvr_bo_free(device, spm_eot_state->pixel_event_program_data_upload);
-   pvr_bo_free(device, spm_eot_state->usc_eot_program);
+   pvr_bo_suballoc_free(spm_eot_state->pixel_event_program_data_upload);
+   pvr_bo_suballoc_free(spm_eot_state->usc_eot_program);
 }
 
 static VkFormat pvr_get_format_from_dword_count(uint32_t dword_count)
@@ -1133,7 +1133,7 @@ err_free_consts_buffer:
 void pvr_spm_finish_bgobj_state(struct pvr_device *device,
                                 struct pvr_spm_bgobj_state *spm_bgobj_state)
 {
-   pvr_bo_free(device, spm_bgobj_state->pds_texture_data_upload);
+   pvr_bo_suballoc_free(spm_bgobj_state->pds_texture_data_upload);
    pvr_bo_free(device, spm_bgobj_state->consts_buffer);
 }
 

@@ -130,22 +130,22 @@ VkResult pvr_emit_ppp_from_template(
 
 void pvr_pds_clear_vertex_shader_program_init_base(
    struct pvr_pds_vertex_shader_program *program,
-   const struct pvr_bo *usc_shader_bo);
+   const struct pvr_suballoc_bo *usc_shader_bo);
 
 VkResult pvr_pds_clear_vertex_shader_program_create_and_upload(
    struct pvr_pds_vertex_shader_program *program,
    struct pvr_device *device,
-   const struct pvr_bo *vertices_bo,
+   const struct pvr_suballoc_bo *vertices_bo,
    struct pvr_pds_upload *const upload_out);
 VkResult pvr_pds_clear_vertex_shader_program_create_and_upload_data(
    struct pvr_pds_vertex_shader_program *program,
    struct pvr_cmd_buffer *cmd_buffer,
-   struct pvr_bo *vertices_bo,
+   struct pvr_suballoc_bo *vertices_bo,
    struct pvr_pds_upload *const pds_upload_out);
 
 void pvr_pds_clear_rta_vertex_shader_program_init_base(
    struct pvr_pds_vertex_shader_program *program,
-   const struct pvr_bo *usc_shader_bo);
+   const struct pvr_suballoc_bo *usc_shader_bo);
 
 /* Each code and data upload function clears the other's fields in the
  * pds_upload_out. So when uploading the code, the data fields will be 0.
@@ -160,7 +160,7 @@ static inline VkResult
 pvr_pds_clear_rta_vertex_shader_program_create_and_upload_data(
    struct pvr_pds_vertex_shader_program *program,
    struct pvr_cmd_buffer *cmd_buffer,
-   struct pvr_bo *vertices_bo,
+   struct pvr_suballoc_bo *vertices_bo,
    struct pvr_pds_upload *const pds_upload_out)
 {
    return pvr_pds_clear_vertex_shader_program_create_and_upload_data(
@@ -182,7 +182,7 @@ void pvr_pack_clear_vdm_state(
 VkResult pvr_clear_vertices_upload(struct pvr_device *device,
                                    const VkRect2D *rect,
                                    float depth,
-                                   struct pvr_bo **const pvr_bo_out);
+                                   struct pvr_suballoc_bo **const pvr_bo_out);
 
 /* TODO: Create pvr_blit.h, rename this, and move it there? */
 /* This is provided by pvr_blit.c instead of the usual pvr_clear.c . */

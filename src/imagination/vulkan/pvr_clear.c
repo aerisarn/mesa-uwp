@@ -459,7 +459,7 @@ pvr_device_finish_clear_attachment_programs(struct pvr_device *device)
 VkResult pvr_clear_vertices_upload(struct pvr_device *device,
                                    const VkRect2D *rect,
                                    float depth,
-                                   struct pvr_bo **const pvr_bo_out)
+                                   struct pvr_suballoc_bo **const pvr_bo_out)
 {
    const float y1 = (float)(rect->offset.y + rect->extent.height);
    const float x1 = (float)(rect->offset.x + rect->extent.width);
@@ -590,16 +590,16 @@ VkResult pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
    return VK_SUCCESS;
 
 err_free_pds_program:
-   pvr_bo_free(device, state->pds.pvr_bo);
+   pvr_bo_suballoc_free(state->pds.pvr_bo);
 
 err_free_vertices_buffer:
-   pvr_bo_free(device, state->vertices_bo);
+   pvr_bo_suballoc_free(state->vertices_bo);
 
 err_free_usc_shader:
-   pvr_bo_free(device, state->usc_vertex_shader_bo);
+   pvr_bo_suballoc_free(state->usc_vertex_shader_bo);
 
 err_free_usc_multi_layer_shader:
-   pvr_bo_free(device, state->usc_multi_layer_vertex_shader_bo);
+   pvr_bo_suballoc_free(state->usc_multi_layer_vertex_shader_bo);
 
    return result;
 }
@@ -610,15 +610,15 @@ void pvr_device_finish_graphics_static_clear_state(struct pvr_device *device)
 
    pvr_device_finish_clear_attachment_programs(device);
 
-   pvr_bo_free(device, state->pds.pvr_bo);
-   pvr_bo_free(device, state->vertices_bo);
-   pvr_bo_free(device, state->usc_vertex_shader_bo);
-   pvr_bo_free(device, state->usc_multi_layer_vertex_shader_bo);
+   pvr_bo_suballoc_free(state->pds.pvr_bo);
+   pvr_bo_suballoc_free(state->vertices_bo);
+   pvr_bo_suballoc_free(state->usc_vertex_shader_bo);
+   pvr_bo_suballoc_free(state->usc_multi_layer_vertex_shader_bo);
 }
 
 void pvr_pds_clear_vertex_shader_program_init_base(
    struct pvr_pds_vertex_shader_program *program,
-   const struct pvr_bo *usc_shader_bo)
+   const struct pvr_suballoc_bo *usc_shader_bo)
 {
    *program = (struct pvr_pds_vertex_shader_program){
       .num_streams = 1,
@@ -640,7 +640,7 @@ void pvr_pds_clear_vertex_shader_program_init_base(
    };
 
    pvr_pds_setup_doutu(&program->usc_task_control,
-                       usc_shader_bo->vma->dev_addr.addr,
+                       usc_shader_bo->dev_addr.addr,
                        0,
                        PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE),
                        false);
@@ -649,7 +649,7 @@ void pvr_pds_clear_vertex_shader_program_init_base(
 VkResult pvr_pds_clear_vertex_shader_program_create_and_upload(
    struct pvr_pds_vertex_shader_program *program,
    struct pvr_device *device,
-   const struct pvr_bo *vertices_bo,
+   const struct pvr_suballoc_bo *vertices_bo,
    struct pvr_pds_upload *const upload_out)
 {
    const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
@@ -657,7 +657,7 @@ VkResult pvr_pds_clear_vertex_shader_program_create_and_upload(
    uint32_t *staging_buffer;
    VkResult result;
 
-   program->streams[0].address = vertices_bo->vma->dev_addr.addr;
+   program->streams[0].address = vertices_bo->dev_addr.addr;
 
    pvr_pds_vertex_shader(program, NULL, PDS_GENERATE_SIZES, dev_info);
 
@@ -709,7 +709,7 @@ err_exit:
 VkResult pvr_pds_clear_vertex_shader_program_create_and_upload_data(
    struct pvr_pds_vertex_shader_program *program,
    struct pvr_cmd_buffer *cmd_buffer,
-   struct pvr_bo *vertices_bo,
+   struct pvr_suballoc_bo *vertices_bo,
    struct pvr_pds_upload *const pds_upload_out)
 {
    struct pvr_device_info *dev_info = &cmd_buffer->device->pdevice->dev_info;
@@ -717,7 +717,7 @@ VkResult pvr_pds_clear_vertex_shader_program_create_and_upload_data(
    uint32_t *staging_buffer;
    VkResult result;
 
-   program->streams[0].address = vertices_bo->vma->dev_addr.addr;
+   program->streams[0].address = vertices_bo->dev_addr.addr;
 
    pvr_pds_vertex_shader(program, NULL, PDS_GENERATE_SIZES, dev_info);
 
@@ -765,7 +765,7 @@ VkResult pvr_pds_clear_vertex_shader_program_create_and_upload_data(
 
 void pvr_pds_clear_rta_vertex_shader_program_init_base(
    struct pvr_pds_vertex_shader_program *program,
-   const struct pvr_bo *usc_shader_bo)
+   const struct pvr_suballoc_bo *usc_shader_bo)
 {
    pvr_pds_clear_vertex_shader_program_init_base(program, usc_shader_bo);
 

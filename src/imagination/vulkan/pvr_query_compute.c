@@ -129,7 +129,7 @@ static void
 pvr_destroy_compute_secondary_prog(struct pvr_device *device,
                                    struct pvr_compute_query_shader *program)
 {
-   pvr_bo_free(device, program->pds_sec_code.pvr_bo);
+   pvr_bo_suballoc_free(program->pds_sec_code.pvr_bo);
    vk_free(&device->vk.alloc, program->info.entries);
 }
 
@@ -159,7 +159,7 @@ static VkResult pvr_create_compute_query_program(
    pvr_init_primary_compute_pds_program(&pds_primary_prog);
 
    pvr_pds_setup_doutu(&pds_primary_prog.usc_task_control,
-                       query_prog->usc_bo->vma->dev_addr.addr,
+                       query_prog->usc_bo->dev_addr.addr,
                        shader_factory_info->temps_required,
                        PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE),
                        false);
@@ -183,10 +183,10 @@ static VkResult pvr_create_compute_query_program(
    return VK_SUCCESS;
 
 err_free_pds_prim_code_bo:
-   pvr_bo_free(device, query_prog->pds_prim_code.pvr_bo);
+   pvr_bo_suballoc_free(query_prog->pds_prim_code.pvr_bo);
 
 err_free_usc_bo:
-   pvr_bo_free(device, query_prog->usc_bo);
+   pvr_bo_suballoc_free(query_prog->usc_bo);
 
    return result;
 }
@@ -260,7 +260,7 @@ static VkResult pvr_write_compute_query_pds_data_section(
          const struct pvr_const_map_entry_doutu_address *const doutu_addr =
             (struct pvr_const_map_entry_doutu_address *)entries;
          const pvr_dev_addr_t exec_addr =
-            PVR_DEV_ADDR_OFFSET(query_prog->pds_sec_code.pvr_bo->vma->dev_addr,
+            PVR_DEV_ADDR_OFFSET(query_prog->pds_sec_code.pvr_bo->dev_addr,
                                 query_prog->pds_sec_code.code_offset);
          uint64_t addr = 0ULL;
 
@@ -337,8 +337,8 @@ pvr_destroy_compute_query_program(struct pvr_device *device,
                                   struct pvr_compute_query_shader *program)
 {
    pvr_destroy_compute_secondary_prog(device, program);
-   pvr_bo_free(device, program->pds_prim_code.pvr_bo);
-   pvr_bo_free(device, program->usc_bo);
+   pvr_bo_suballoc_free(program->pds_prim_code.pvr_bo);
+   pvr_bo_suballoc_free(program->usc_bo);
 }
 
 static VkResult pvr_create_multibuffer_compute_query_program(
@@ -497,7 +497,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_texture_state_info tex_info;
    uint32_t num_query_indices;
    uint32_t *const_buffer;
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *pvr_bo;
    VkResult result;
 
    pvr_csb_pack (&sampler_state[0U], TEXSTATE_SAMPLER, reg) {
@@ -587,7 +587,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
       pvr_init_tex_info(dev_info,
                         &tex_info,
                         num_query_indices,
-                        query_info->availability_write.index_bo->vma->dev_addr);
+                        query_info->availability_write.index_bo->dev_addr);
 
       result = pvr_pack_tex_state(device,
                                   &tex_info,
@@ -837,7 +837,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
       return result;
    }
 
-   pipeline.const_buffer_addr = pvr_bo->vma->dev_addr;
+   pipeline.const_buffer_addr = pvr_bo->dev_addr;
 
    vk_free(&cmd_buffer->vk.pool->alloc, const_buffer);
 

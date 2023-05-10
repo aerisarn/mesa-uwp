@@ -360,10 +360,10 @@ pvr_generate_load_op_shader(struct pvr_device *device,
    return VK_SUCCESS;
 
 err_free_pds_frag_prog:
-   pvr_bo_free(device, load_op->pds_frag_prog.pvr_bo);
+   pvr_bo_suballoc_free(load_op->pds_frag_prog.pvr_bo);
 
 err_free_usc_frag_prog_bo:
-   pvr_bo_free(device, load_op->usc_frag_prog_bo);
+   pvr_bo_suballoc_free(load_op->usc_frag_prog_bo);
 
    return result;
 }
@@ -372,9 +372,9 @@ static void pvr_load_op_destroy(struct pvr_device *device,
                                 const VkAllocationCallbacks *allocator,
                                 struct pvr_load_op *load_op)
 {
-   pvr_bo_free(device, load_op->pds_tex_state_prog.pvr_bo);
-   pvr_bo_free(device, load_op->pds_frag_prog.pvr_bo);
-   pvr_bo_free(device, load_op->usc_frag_prog_bo);
+   pvr_bo_suballoc_free(load_op->pds_tex_state_prog.pvr_bo);
+   pvr_bo_suballoc_free(load_op->pds_frag_prog.pvr_bo);
+   pvr_bo_suballoc_free(load_op->usc_frag_prog_bo);
    vk_free2(&device->vk.alloc, allocator, load_op);
 }
 

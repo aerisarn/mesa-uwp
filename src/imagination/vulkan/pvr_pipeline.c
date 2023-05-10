@@ -136,7 +136,7 @@ static VkResult pvr_pds_coeff_program_create_and_upload(
 VkResult pvr_pds_fragment_program_create_and_upload(
    struct pvr_device *device,
    const VkAllocationCallbacks *allocator,
-   const struct pvr_bo *fragment_shader_bo,
+   const struct pvr_suballoc_bo *fragment_shader_bo,
    uint32_t fragment_temp_count,
    enum rogue_msaa_mode msaa_mode,
    bool has_phase_rate_change,
@@ -156,7 +156,7 @@ VkResult pvr_pds_fragment_program_create_and_upload(
     * allocating the buffer. The size from pvr_pds_kick_usc() is constant.
     */
    pvr_pds_setup_doutu(&program.usc_task_control,
-                       fragment_shader_bo->vma->dev_addr.addr,
+                       fragment_shader_bo->dev_addr.addr,
                        fragment_temp_count,
                        sample_rate,
                        has_phase_rate_change);
@@ -445,7 +445,7 @@ static inline void pvr_pds_vertex_attrib_program_destroy(
    const struct VkAllocationCallbacks *const allocator,
    struct pvr_pds_attrib_program *const program)
 {
-   pvr_bo_free(device, program->program.pvr_bo);
+   pvr_bo_suballoc_free(program->program.pvr_bo);
    vk_free2(&device->vk.alloc, allocator, program->info.entries);
 }
 
@@ -643,7 +643,7 @@ static VkResult pvr_pds_descriptor_program_setup_buffers(
    const struct rogue_ubo_data *ubo_data,
    pvr_pds_descriptor_program_buffer_array_ptr buffers_out_ptr,
    uint32_t *const buffer_count_out,
-   struct pvr_bo **const static_consts_pvr_bo_out)
+   struct pvr_suballoc_bo **const static_consts_pvr_bo_out)
 {
    struct pvr_pds_buffer *const buffers = *buffers_out_ptr;
    uint32_t buffer_count = 0;
@@ -813,7 +813,7 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
                               8,
                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!entries_buffer) {
-      pvr_bo_free(device, descriptor_state->static_consts);
+      pvr_bo_suballoc_free(descriptor_state->static_consts);
 
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
@@ -840,7 +840,7 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
                               8,
                               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!staging_buffer) {
-      pvr_bo_free(device, descriptor_state->static_consts);
+      pvr_bo_suballoc_free(descriptor_state->static_consts);
       vk_free2(&device->vk.alloc, allocator, entries_buffer);
 
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -859,7 +859,7 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
                                8,
                                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!entries_buffer) {
-      pvr_bo_free(device, descriptor_state->static_consts);
+      pvr_bo_suballoc_free(descriptor_state->static_consts);
       vk_free2(&device->vk.alloc, allocator, staging_buffer);
 
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -879,7 +879,7 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
                                16,
                                &descriptor_state->pds_code);
    if (result != VK_SUCCESS) {
-      pvr_bo_free(device, descriptor_state->static_consts);
+      pvr_bo_suballoc_free(descriptor_state->static_consts);
       vk_free2(&device->vk.alloc, allocator, entries_buffer);
       vk_free2(&device->vk.alloc, allocator, staging_buffer);
 
@@ -899,9 +899,9 @@ static void pvr_pds_descriptor_program_destroy(
    if (!descriptor_state)
       return;
 
-   pvr_bo_free(device, descriptor_state->pds_code.pvr_bo);
+   pvr_bo_suballoc_free(descriptor_state->pds_code.pvr_bo);
    vk_free2(&device->vk.alloc, allocator, descriptor_state->pds_info.entries);
-   pvr_bo_free(device, descriptor_state->static_consts);
+   pvr_bo_suballoc_free(descriptor_state->static_consts);
 }
 
 static void pvr_pds_compute_program_setup(
@@ -1029,7 +1029,7 @@ static void pvr_pds_compute_program_destroy(
    struct pvr_pds_info *const pds_info)
 {
    /* We don't allocate an entries buffer so we don't need to free it */
-   pvr_bo_free(device, pds_program->pvr_bo);
+   pvr_bo_suballoc_free(pds_program->pvr_bo);
 }
 
 /* This only uploads the code segment. The data segment will need to be patched
@@ -1119,7 +1119,7 @@ static void pvr_pds_compute_base_workgroup_variant_program_finish(
    const VkAllocationCallbacks *const allocator,
    struct pvr_pds_base_workgroup_program *const state)
 {
-   pvr_bo_free(device, state->code_upload.pvr_bo);
+   pvr_bo_suballoc_free(state->code_upload.pvr_bo);
    vk_free2(&device->vk.alloc, allocator, state->data_section);
 }
 
@@ -1287,7 +1287,7 @@ static VkResult pvr_compute_pipeline_compile(
       work_group_input_regs,
       barrier_coefficient,
       usc_temps,
-      compute_pipeline->shader_state.bo->vma->dev_addr,
+      compute_pipeline->shader_state.bo->dev_addr,
       &compute_pipeline->primary_program,
       &compute_pipeline->primary_program_info);
    if (result != VK_SUCCESS)
@@ -1309,7 +1309,7 @@ static VkResult pvr_compute_pipeline_compile(
          work_group_input_regs,
          barrier_coefficient,
          usc_temps,
-         compute_pipeline->shader_state.bo->vma->dev_addr,
+         compute_pipeline->shader_state.bo->dev_addr,
          &compute_pipeline->primary_base_workgroup_variant_program);
       if (result != VK_SUCCESS)
          goto err_destroy_compute_program;
@@ -1324,10 +1324,10 @@ err_destroy_compute_program:
                                    &compute_pipeline->primary_program_info);
 
 err_free_descriptor_program:
-   pvr_bo_free(device, compute_pipeline->descriptor_state.pds_code.pvr_bo);
+   pvr_bo_suballoc_free(compute_pipeline->descriptor_state.pds_code.pvr_bo);
 
 err_free_shader:
-   pvr_bo_free(device, compute_pipeline->shader_state.bo);
+   pvr_bo_suballoc_free(compute_pipeline->shader_state.bo);
 
    return result;
 }
@@ -1414,7 +1414,7 @@ static void pvr_compute_pipeline_destroy(
    pvr_pds_descriptor_program_destroy(device,
                                       allocator,
                                       &compute_pipeline->descriptor_state);
-   pvr_bo_free(device, compute_pipeline->shader_state.bo);
+   pvr_bo_suballoc_free(compute_pipeline->shader_state.bo);
 
    pvr_pipeline_finish(&compute_pipeline->base);
 
@@ -1478,13 +1478,13 @@ pvr_graphics_pipeline_destroy(struct pvr_device *const device,
       pvr_pds_vertex_attrib_program_destroy(device, allocator, attrib_program);
    }
 
-   pvr_bo_free(device,
-               gfx_pipeline->shader_state.fragment.pds_fragment_program.pvr_bo);
-   pvr_bo_free(device,
-               gfx_pipeline->shader_state.fragment.pds_coeff_program.pvr_bo);
+   pvr_bo_suballoc_free(
+      gfx_pipeline->shader_state.fragment.pds_fragment_program.pvr_bo);
+   pvr_bo_suballoc_free(
+      gfx_pipeline->shader_state.fragment.pds_coeff_program.pvr_bo);
 
-   pvr_bo_free(device, gfx_pipeline->shader_state.fragment.bo);
-   pvr_bo_free(device, gfx_pipeline->shader_state.vertex.bo);
+   pvr_bo_suballoc_free(gfx_pipeline->shader_state.fragment.bo);
+   pvr_bo_suballoc_free(gfx_pipeline->shader_state.vertex.bo);
 
    pvr_pipeline_finish(&gfx_pipeline->base);
 
@@ -2202,15 +2202,15 @@ err_free_vertex_descriptor_program:
       allocator,
       &gfx_pipeline->shader_state.vertex.descriptor_state);
 err_free_frag_program:
-   pvr_bo_free(device,
-               gfx_pipeline->shader_state.fragment.pds_fragment_program.pvr_bo);
+   pvr_bo_suballoc_free(
+      gfx_pipeline->shader_state.fragment.pds_fragment_program.pvr_bo);
 err_free_coeff_program:
-   pvr_bo_free(device,
-               gfx_pipeline->shader_state.fragment.pds_coeff_program.pvr_bo);
+   pvr_bo_suballoc_free(
+      gfx_pipeline->shader_state.fragment.pds_coeff_program.pvr_bo);
 err_free_fragment_bo:
-   pvr_bo_free(device, gfx_pipeline->shader_state.fragment.bo);
+   pvr_bo_suballoc_free(gfx_pipeline->shader_state.fragment.bo);
 err_free_vertex_bo:
-   pvr_bo_free(device, gfx_pipeline->shader_state.vertex.bo);
+   pvr_bo_suballoc_free(gfx_pipeline->shader_state.vertex.bo);
 err_free_build_context:
    ralloc_free(ctx);
    return result;

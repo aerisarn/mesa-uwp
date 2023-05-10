@@ -1196,7 +1196,7 @@ void pvr_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
 {
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
    PVR_FROM_HANDLE(pvr_buffer, dst, dstBuffer);
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *pvr_bo;
    VkResult result;
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
@@ -1206,7 +1206,7 @@ void pvr_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
       return;
 
    pvr_cmd_copy_buffer_region(cmd_buffer,
-                              pvr_bo->vma->dev_addr,
+                              pvr_bo->dev_addr,
                               0,
                               dst->dev_addr,
                               dstOffset,
@@ -1911,7 +1911,7 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
       if (vs_has_rt_id_output) {
          const struct pvr_device_static_clear_state *dev_clear_state =
             &cmd_buffer->device->static_clear_state;
-         const struct pvr_bo *multi_layer_vert_bo =
+         const struct pvr_suballoc_bo *multi_layer_vert_bo =
             dev_clear_state->usc_multi_layer_vertex_shader_bo;
 
          /* We can't use the device's passthrough pds program since it doesn't
@@ -1950,7 +1950,7 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
       for (uint32_t j = 0; j < rect_count; j++) {
          struct pvr_pds_upload pds_program_data_upload;
          const VkClearRect *clear_rect = &rects[j];
-         struct pvr_bo *vertices_bo;
+         struct pvr_suballoc_bo *vertices_bo;
          uint32_t *vdm_cs_buffer;
          VkResult result;
 

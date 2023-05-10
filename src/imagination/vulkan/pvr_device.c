@@ -102,6 +102,16 @@
  */
 #define PVR_BUFFER_MEMORY_PADDING_SIZE 4
 
+/* Default size in bytes used by pvr_CreateDevice() for setting up the
+ * suballoc_general, suballoc_pds and suballoc_usc suballocators.
+ *
+ * TODO: Investigate if a different default size can improve the overall
+ * performance of internal driver allocations.
+ */
+#define PVR_SUBALLOCATOR_GENERAL_SIZE (128 * 1024)
+#define PVR_SUBALLOCATOR_PDS_SIZE (128 * 1024)
+#define PVR_SUBALLOCATOR_USC_SIZE (128 * 1024)
+
 struct pvr_drm_device_info {
    const char *name;
    size_t len;
@@ -1345,7 +1355,7 @@ static VkResult pvr_pds_idfwdf_programs_create_and_upload(
                                   8,
                                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
       if (!staging_buffer) {
-         pvr_bo_free(device, sw_compute_barrier_upload_out->pvr_bo);
+         pvr_bo_suballoc_free(sw_compute_barrier_upload_out->pvr_bo);
 
          return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       }
@@ -1377,7 +1387,7 @@ static VkResult pvr_pds_idfwdf_programs_create_and_upload(
                                upload_out);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, staging_buffer);
-      pvr_bo_free(device, sw_compute_barrier_upload_out->pvr_bo);
+      pvr_bo_suballoc_free(sw_compute_barrier_upload_out->pvr_bo);
 
       return result;
    }
@@ -1510,7 +1520,7 @@ static VkResult pvr_device_init_compute_idfwdf_state(struct pvr_device *device)
    /* Generate and upload PDS programs. */
    result = pvr_pds_idfwdf_programs_create_and_upload(
       device,
-      device->idfwdf_state.usc->vma->dev_addr,
+      device->idfwdf_state.usc->dev_addr,
       usc_shareds,
       usc_temps,
       device->idfwdf_state.shareds_bo->vma->dev_addr,
@@ -1528,18 +1538,18 @@ err_free_store_buffer:
    pvr_bo_free(device, device->idfwdf_state.store_bo);
 
 err_free_usc_program:
-   pvr_bo_free(device, device->idfwdf_state.usc);
+   pvr_bo_suballoc_free(device->idfwdf_state.usc);
 
    return result;
 }
 
 static void pvr_device_finish_compute_idfwdf_state(struct pvr_device *device)
 {
-   pvr_bo_free(device, device->idfwdf_state.pds.pvr_bo);
-   pvr_bo_free(device, device->idfwdf_state.sw_compute_barrier_pds.pvr_bo);
+   pvr_bo_suballoc_free(device->idfwdf_state.pds.pvr_bo);
+   pvr_bo_suballoc_free(device->idfwdf_state.sw_compute_barrier_pds.pvr_bo);
    pvr_bo_free(device, device->idfwdf_state.shareds_bo);
    pvr_bo_free(device, device->idfwdf_state.store_bo);
-   pvr_bo_free(device, device->idfwdf_state.usc);
+   pvr_bo_suballoc_free(device->idfwdf_state.usc);
 }
 
 /* FIXME: We should be calculating the size when we upload the code in
@@ -1582,7 +1592,7 @@ static VkResult pvr_device_init_nop_program(struct pvr_device *device)
 
    /* Setup a PDS program that kicks the static USC program. */
    pvr_pds_setup_doutu(&program.usc_task_control,
-                       device->nop_program.usc->vma->dev_addr.addr,
+                       device->nop_program.usc->dev_addr.addr,
                        0U,
                        PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE),
                        false);
@@ -1623,7 +1633,7 @@ err_free_staging_buffer:
    vk_free(&device->vk.alloc, staging_buffer);
 
 err_free_nop_usc_bo:
-   pvr_bo_free(device, device->nop_program.usc);
+   pvr_bo_suballoc_free(device->nop_program.usc);
 
    return result;
 }
@@ -1796,6 +1806,19 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto err_pvr_winsys_destroy;
 
+   pvr_bo_suballocator_init(&device->suballoc_general,
+                            device->heaps.general_heap,
+                            device,
+                            PVR_SUBALLOCATOR_GENERAL_SIZE);
+   pvr_bo_suballocator_init(&device->suballoc_pds,
+                            device->heaps.pds_heap,
+                            device,
+                            PVR_SUBALLOCATOR_PDS_SIZE);
+   pvr_bo_suballocator_init(&device->suballoc_usc,
+                            device->heaps.usc_heap,
+                            device,
+                            PVR_SUBALLOCATOR_USC_SIZE);
+
    if (p_atomic_inc_return(&instance->active_device_count) >
        PVR_SECONDARY_DEVICE_THRESHOLD) {
       initial_free_list_size = PVR_SECONDARY_DEVICE_FREE_LIST_INITAL_SIZE;
@@ -1887,20 +1910,24 @@ err_pvr_destroy_compute_query_programs:
    pvr_device_destroy_compute_query_programs(device);
 
 err_pvr_free_compute_empty:
-   pvr_bo_free(device, device->pds_compute_empty_program.pvr_bo);
+   pvr_bo_suballoc_free(device->pds_compute_empty_program.pvr_bo);
 
 err_pvr_free_compute_fence:
-   pvr_bo_free(device, device->pds_compute_fence_program.pvr_bo);
+   pvr_bo_suballoc_free(device->pds_compute_fence_program.pvr_bo);
 
 err_pvr_free_nop_program:
-   pvr_bo_free(device, device->nop_program.pds.pvr_bo);
-   pvr_bo_free(device, device->nop_program.usc);
+   pvr_bo_suballoc_free(device->nop_program.pds.pvr_bo);
+   pvr_bo_suballoc_free(device->nop_program.usc);
 
 err_pvr_free_list_destroy:
    pvr_free_list_destroy(device->global_free_list);
 
 err_dec_device_count:
    p_atomic_dec(&device->instance->active_device_count);
+
+   pvr_bo_suballocator_fini(&device->suballoc_usc);
+   pvr_bo_suballocator_fini(&device->suballoc_pds);
+   pvr_bo_suballocator_fini(&device->suballoc_general);
 
    pvr_bo_store_destroy(device);
 
@@ -1935,11 +1962,14 @@ void pvr_DestroyDevice(VkDevice _device,
    pvr_device_finish_graphics_static_clear_state(device);
    pvr_device_finish_compute_idfwdf_state(device);
    pvr_device_destroy_compute_query_programs(device);
-   pvr_bo_free(device, device->pds_compute_empty_program.pvr_bo);
-   pvr_bo_free(device, device->pds_compute_fence_program.pvr_bo);
-   pvr_bo_free(device, device->nop_program.pds.pvr_bo);
-   pvr_bo_free(device, device->nop_program.usc);
+   pvr_bo_suballoc_free(device->pds_compute_empty_program.pvr_bo);
+   pvr_bo_suballoc_free(device->pds_compute_fence_program.pvr_bo);
+   pvr_bo_suballoc_free(device->nop_program.pds.pvr_bo);
+   pvr_bo_suballoc_free(device->nop_program.usc);
    pvr_free_list_destroy(device->global_free_list);
+   pvr_bo_suballocator_fini(&device->suballoc_usc);
+   pvr_bo_suballocator_fini(&device->suballoc_pds);
+   pvr_bo_suballocator_fini(&device->suballoc_general);
    pvr_bo_store_destroy(device);
    pvr_winsys_destroy(device->ws);
 
@@ -2481,26 +2511,32 @@ VkResult pvr_gpu_upload(struct pvr_device *device,
                         const void *data,
                         size_t size,
                         uint64_t alignment,
-                        struct pvr_bo **const pvr_bo_out)
+                        struct pvr_suballoc_bo **const pvr_bo_out)
 {
-   struct pvr_bo *pvr_bo = NULL;
+   struct pvr_suballoc_bo *suballoc_bo = NULL;
+   struct pvr_suballocator *allocator;
    VkResult result;
+   void *map;
 
    assert(size > 0);
 
-   result = pvr_bo_alloc(device,
-                         heap,
-                         size,
-                         alignment,
-                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                         &pvr_bo);
+   if (heap == device->heaps.general_heap)
+      allocator = &device->suballoc_general;
+   else if (heap == device->heaps.pds_heap)
+      allocator = &device->suballoc_pds;
+   else if (heap == device->heaps.usc_heap)
+      allocator = &device->suballoc_usc;
+   else
+      unreachable("Unknown heap type");
+
+   result = pvr_bo_suballoc(allocator, size, alignment, false, &suballoc_bo);
    if (result != VK_SUCCESS)
       return result;
 
-   memcpy(pvr_bo->bo->map, data, size);
-   pvr_bo_cpu_unmap(device, pvr_bo);
+   map = pvr_bo_suballoc_get_map_addr(suballoc_bo);
+   memcpy(map, data, size);
 
-   *pvr_bo_out = pvr_bo;
+   *pvr_bo_out = suballoc_bo;
 
    return VK_SUCCESS;
 }
@@ -2509,10 +2545,11 @@ VkResult pvr_gpu_upload_usc(struct pvr_device *device,
                             const void *code,
                             size_t code_size,
                             uint64_t code_alignment,
-                            struct pvr_bo **const pvr_bo_out)
+                            struct pvr_suballoc_bo **const pvr_bo_out)
 {
-   struct pvr_bo *pvr_bo = NULL;
+   struct pvr_suballoc_bo *suballoc_bo = NULL;
    VkResult result;
+   void *map;
 
    assert(code_size > 0);
 
@@ -2520,19 +2557,18 @@ VkResult pvr_gpu_upload_usc(struct pvr_device *device,
     * instruction to prevent reading off the end of a page into a potentially
     * unallocated page.
     */
-   result = pvr_bo_alloc(device,
-                         device->heaps.usc_heap,
-                         code_size + ROGUE_MAX_INSTR_BYTES,
-                         code_alignment,
-                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                         &pvr_bo);
+   result = pvr_bo_suballoc(&device->suballoc_usc,
+                            code_size + ROGUE_MAX_INSTR_BYTES,
+                            code_alignment,
+                            false,
+                            &suballoc_bo);
    if (result != VK_SUCCESS)
       return result;
 
-   memcpy(pvr_bo->bo->map, code, code_size);
-   pvr_bo_cpu_unmap(device, pvr_bo);
+   map = pvr_bo_suballoc_get_map_addr(suballoc_bo);
+   memcpy(map, code, code_size);
 
-   *pvr_bo_out = pvr_bo;
+   *pvr_bo_out = suballoc_bo;
 
    return VK_SUCCESS;
 }
@@ -2575,27 +2611,27 @@ VkResult pvr_gpu_upload_pds(struct pvr_device *device,
    const uint64_t bo_alignment = MAX2(min_alignment, data_alignment);
    const uint64_t bo_size = (!!code) ? (code_offset + code_aligned_size)
                                      : data_aligned_size;
-   const uint64_t bo_flags = PVR_BO_ALLOC_FLAG_CPU_MAPPED |
-                             PVR_BO_ALLOC_FLAG_ZERO_ON_ALLOC;
    VkResult result;
+   void *map;
 
    assert(code || data);
    assert(!code || (code_size_dwords != 0 && code_alignment != 0));
    assert(!data || (data_size_dwords != 0 && data_alignment != 0));
 
-   result = pvr_bo_alloc(device,
-                         device->heaps.pds_heap,
-                         bo_size,
-                         bo_alignment,
-                         bo_flags,
-                         &pds_upload_out->pvr_bo);
+   result = pvr_bo_suballoc(&device->suballoc_pds,
+                            bo_size,
+                            bo_alignment,
+                            true,
+                            &pds_upload_out->pvr_bo);
    if (result != VK_SUCCESS)
       return result;
 
-   if (data) {
-      memcpy(pds_upload_out->pvr_bo->bo->map, data, data_size);
+   map = pvr_bo_suballoc_get_map_addr(pds_upload_out->pvr_bo);
 
-      pds_upload_out->data_offset = pds_upload_out->pvr_bo->vma->dev_addr.addr -
+   if (data) {
+      memcpy(map, data, data_size);
+
+      pds_upload_out->data_offset = pds_upload_out->pvr_bo->dev_addr.addr -
                                     device->heaps.pds_heap->base_addr.addr;
 
       /* Store data size in dwords. */
@@ -2607,12 +2643,10 @@ VkResult pvr_gpu_upload_pds(struct pvr_device *device,
    }
 
    if (code) {
-      memcpy((uint8_t *)pds_upload_out->pvr_bo->bo->map + code_offset,
-             code,
-             code_size);
+      memcpy((uint8_t *)map + code_offset, code, code_size);
 
       pds_upload_out->code_offset =
-         (pds_upload_out->pvr_bo->vma->dev_addr.addr + code_offset) -
+         (pds_upload_out->pvr_bo->dev_addr.addr + code_offset) -
          device->heaps.pds_heap->base_addr.addr;
 
       /* Store code size in dwords. */
@@ -2622,8 +2656,6 @@ VkResult pvr_gpu_upload_pds(struct pvr_device *device,
       pds_upload_out->code_offset = 0;
       pds_upload_out->code_size = 0;
    }
-
-   pvr_bo_cpu_unmap(device, pds_upload_out->pvr_bo);
 
    return VK_SUCCESS;
 }
@@ -2836,7 +2868,7 @@ err_finish_render_targets:
    pvr_render_targets_fini(framebuffer->render_targets, render_targets_count);
 
 err_free_ppp_state_bo:
-   pvr_bo_free(device, framebuffer->ppp_state_bo);
+   pvr_bo_suballoc_free(framebuffer->ppp_state_bo);
 
 err_free_framebuffer:
    vk_object_base_finish(&framebuffer->base);
@@ -2866,7 +2898,7 @@ void pvr_DestroyFramebuffer(VkDevice _device,
    pvr_spm_scratch_buffer_release(device, framebuffer->scratch_buffer);
    pvr_render_targets_fini(framebuffer->render_targets,
                            framebuffer->render_targets_count);
-   pvr_bo_free(device, framebuffer->ppp_state_bo);
+   pvr_bo_suballoc_free(framebuffer->ppp_state_bo);
    vk_object_base_finish(&framebuffer->base);
    vk_free2(&device->vk.alloc, pAllocator, framebuffer);
 }

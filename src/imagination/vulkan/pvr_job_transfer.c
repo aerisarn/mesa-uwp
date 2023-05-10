@@ -1106,7 +1106,7 @@ static VkResult pvr_pbe_setup_emit(const struct pvr_transfer_cmd *transfer_cmd,
    assert(rt_count <= ARRAY_SIZE(ctx->usc_eot_bos));
    assert(rt_count > 0U);
 
-   addr.addr = ctx->usc_eot_bos[rt_count - 1U]->vma->dev_addr.addr -
+   addr.addr = ctx->usc_eot_bos[rt_count - 1U]->dev_addr.addr -
                device->heaps.usc_heap->base_addr.addr;
 
    pvr_pds_setup_doutu(&program.task_control,

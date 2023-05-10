@@ -97,8 +97,8 @@ static void pvr_cmd_buffer_free_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
          util_dynarray_fini(&sub_cmd->gfx.sec_query_indices);
          pvr_csb_finish(&sub_cmd->gfx.control_stream);
          pvr_bo_free(cmd_buffer->device, sub_cmd->gfx.terminate_ctrl_stream);
-         pvr_bo_free(cmd_buffer->device, sub_cmd->gfx.depth_bias_bo);
-         pvr_bo_free(cmd_buffer->device, sub_cmd->gfx.scissor_bo);
+         pvr_bo_suballoc_free(sub_cmd->gfx.depth_bias_bo);
+         pvr_bo_suballoc_free(sub_cmd->gfx.scissor_bo);
          break;
 
       case PVR_SUB_CMD_TYPE_COMPUTE:
@@ -151,9 +151,12 @@ static void pvr_cmd_buffer_free_resources(struct pvr_cmd_buffer *cmd_buffer)
 
    pvr_cmd_buffer_free_sub_cmds(cmd_buffer);
 
-   list_for_each_entry_safe (struct pvr_bo, bo, &cmd_buffer->bo_list, link) {
-      list_del(&bo->link);
-      pvr_bo_free(cmd_buffer->device, bo);
+   list_for_each_entry_safe (struct pvr_suballoc_bo,
+                             suballoc_bo,
+                             &cmd_buffer->bo_list,
+                             link) {
+      list_del(&suballoc_bo->link);
+      pvr_bo_suballoc_free(suballoc_bo);
    }
 
    util_dynarray_fini(&cmd_buffer->deferred_clears);
@@ -344,7 +347,7 @@ pvr_cmd_buffer_upload_tables(struct pvr_device *device,
    return VK_SUCCESS;
 
 err_free_depth_bias_bo:
-   pvr_bo_free(device, sub_cmd->depth_bias_bo);
+   pvr_bo_suballoc_free(sub_cmd->depth_bias_bo);
    sub_cmd->depth_bias_bo = NULL;
 
    return result;
@@ -361,26 +364,27 @@ pvr_cmd_buffer_emit_ppp_state(const struct pvr_cmd_buffer *const cmd_buffer,
           csb->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED);
 
    pvr_csb_emit (csb, VDMCTRL_PPP_STATE0, state0) {
-      state0.addrmsb = framebuffer->ppp_state_bo->vma->dev_addr;
+      state0.addrmsb = framebuffer->ppp_state_bo->dev_addr;
       state0.word_count = framebuffer->ppp_state_size;
    }
 
    pvr_csb_emit (csb, VDMCTRL_PPP_STATE1, state1) {
-      state1.addrlsb = framebuffer->ppp_state_bo->vma->dev_addr;
+      state1.addrlsb = framebuffer->ppp_state_bo->dev_addr;
    }
 
    return csb->status;
 }
 
-VkResult pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
-                                       const void *const data,
-                                       const size_t size,
-                                       struct pvr_bo **const pvr_bo_out)
+VkResult
+pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
+                              const void *const data,
+                              const size_t size,
+                              struct pvr_suballoc_bo **const pvr_bo_out)
 {
    struct pvr_device *const device = cmd_buffer->device;
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *suballoc_bo;
    VkResult result;
 
    result = pvr_gpu_upload(device,
@@ -388,15 +392,15 @@ VkResult pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
                            data,
                            size,
                            cache_line_size,
-                           &pvr_bo);
+                           &suballoc_bo);
    if (result != VK_SUCCESS) {
       cmd_buffer->state.status = result;
       return result;
    }
 
-   list_add(&pvr_bo->link, &cmd_buffer->bo_list);
+   list_add(&suballoc_bo->link, &cmd_buffer->bo_list);
 
-   *pvr_bo_out = pvr_bo;
+   *pvr_bo_out = suballoc_bo;
 
    return VK_SUCCESS;
 }
@@ -406,26 +410,26 @@ pvr_cmd_buffer_upload_usc(struct pvr_cmd_buffer *const cmd_buffer,
                           const void *const code,
                           const size_t code_size,
                           uint64_t code_alignment,
-                          struct pvr_bo **const pvr_bo_out)
+                          struct pvr_suballoc_bo **const pvr_bo_out)
 {
    struct pvr_device *const device = cmd_buffer->device;
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *suballoc_bo;
    VkResult result;
 
    code_alignment = MAX2(code_alignment, cache_line_size);
 
    result =
-      pvr_gpu_upload_usc(device, code, code_size, code_alignment, &pvr_bo);
+      pvr_gpu_upload_usc(device, code, code_size, code_alignment, &suballoc_bo);
    if (result != VK_SUCCESS) {
       cmd_buffer->state.status = result;
       return result;
    }
 
-   list_add(&pvr_bo->link, &cmd_buffer->bo_list);
+   list_add(&suballoc_bo->link, &cmd_buffer->bo_list);
 
-   *pvr_bo_out = pvr_bo;
+   *pvr_bo_out = suballoc_bo;
 
    return VK_SUCCESS;
 }
@@ -497,8 +501,8 @@ static VkResult pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
       PVR_DW_TO_BYTES(cmd_buffer->device->pixel_event_data_size_in_dwords);
    const VkAllocationCallbacks *const allocator = &cmd_buffer->vk.pool->alloc;
    struct pvr_device *const device = cmd_buffer->device;
+   struct pvr_suballoc_bo *usc_eot_program = NULL;
    struct util_dynarray eot_program_bin;
-   struct pvr_bo *usc_eot_program = NULL;
    uint32_t *staging_buffer;
    uint32_t usc_temp_count;
    VkResult result;
@@ -522,7 +526,7 @@ static VkResult pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
       return result;
 
    pvr_pds_setup_doutu(&pixel_event_program.task_control,
-                       usc_eot_program->vma->dev_addr.addr,
+                       usc_eot_program->dev_addr.addr,
                        usc_temp_count,
                        PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE),
                        false);
@@ -565,7 +569,7 @@ err_free_pixel_event_staging_buffer:
 
 err_free_usc_pixel_program:
    list_del(&usc_eot_program->link);
-   pvr_bo_free(device, usc_eot_program);
+   pvr_bo_suballoc_free(usc_eot_program);
 
    return result;
 }
@@ -666,8 +670,8 @@ pvr_load_op_constants_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
       &hw_render->color_init[0];
    const VkClearValue *clear_value =
       &render_pass_info->clear_values[color_init->index];
+   struct pvr_suballoc_bo *clear_bo;
    uint32_t attachment_count;
-   struct pvr_bo *clear_bo;
    bool has_depth_clear;
    bool has_depth_load;
    VkResult result;
@@ -784,7 +788,7 @@ pvr_load_op_constants_create_and_upload(struct pvr_cmd_buffer *cmd_buffer,
    if (result != VK_SUCCESS)
       return result;
 
-   *addr_out = clear_bo->vma->dev_addr;
+   *addr_out = clear_bo->dev_addr;
 
    return VK_SUCCESS;
 }
@@ -1277,12 +1281,12 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
    job->border_colour_table_addr = PVR_DEV_ADDR_INVALID;
 
    if (sub_cmd->depth_bias_bo)
-      job->depth_bias_table_addr = sub_cmd->depth_bias_bo->vma->dev_addr;
+      job->depth_bias_table_addr = sub_cmd->depth_bias_bo->dev_addr;
    else
       job->depth_bias_table_addr = PVR_DEV_ADDR_INVALID;
 
    if (sub_cmd->scissor_bo)
-      job->scissor_table_addr = sub_cmd->scissor_bo->vma->dev_addr;
+      job->scissor_table_addr = sub_cmd->scissor_bo->dev_addr;
    else
       job->scissor_table_addr = PVR_DEV_ADDR_INVALID;
 
@@ -1718,7 +1722,7 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
    struct pvr_sub_cmd *sub_cmd = state->current_sub_cmd;
    struct pvr_device *device = cmd_buffer->device;
    const struct pvr_query_pool *query_pool = NULL;
-   struct pvr_bo *query_indices_bo = NULL;
+   struct pvr_suballoc_bo *query_bo = NULL;
    size_t query_indices_size = 0;
    VkResult result;
 
@@ -1758,7 +1762,7 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
             result = pvr_cmd_buffer_upload_general(cmd_buffer,
                                                    data,
                                                    query_indices_size,
-                                                   &query_indices_bo);
+                                                   &query_bo);
             if (result != VK_SUCCESS) {
                state->status = result;
                return result;
@@ -1883,7 +1887,7 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
       struct pvr_sub_cmd_event *sub_cmd;
       struct pvr_query_info query_info;
 
-      assert(query_indices_bo);
+      assert(query_bo);
       assert(query_indices_size);
 
       query_info.type = PVR_QUERY_TYPE_AVAILABILITY_WRITE;
@@ -1891,7 +1895,7 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
       /* sizeof(uint32_t) is for the size of single query. */
       query_info.availability_write.num_query_indices =
          query_indices_size / sizeof(uint32_t);
-      query_info.availability_write.index_bo = query_indices_bo;
+      query_info.availability_write.index_bo = query_bo;
 
       query_info.availability_write.num_queries = query_pool->query_count;
       query_info.availability_write.availability_bo =
@@ -3034,7 +3038,7 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
          const struct pvr_const_map_entry_doutu_address *const doutu_addr =
             (struct pvr_const_map_entry_doutu_address *)entries;
          const pvr_dev_addr_t exec_addr =
-            PVR_DEV_ADDR_OFFSET(vertex_state->bo->vma->dev_addr,
+            PVR_DEV_ADDR_OFFSET(vertex_state->bo->dev_addr,
                                 vertex_state->entry_offset);
          uint64_t addr = 0ULL;
 
@@ -3378,7 +3382,7 @@ static VkResult pvr_setup_descriptor_mappings_old(
 
          switch (special_buff_entry->buffer_type) {
          case PVR_BUFFER_TYPE_COMPILE_TIME: {
-            uint64_t addr = descriptor_state->static_consts->vma->dev_addr.addr;
+            uint64_t addr = descriptor_state->static_consts->dev_addr.addr;
 
             PVR_WRITE(qword_buffer,
                       addr,
@@ -3654,8 +3658,8 @@ pvr_cmd_buffer_upload_desc_set_table(struct pvr_cmd_buffer *const cmd_buffer,
 {
    uint64_t bound_desc_sets[PVR_MAX_DESCRIPTOR_SETS];
    const struct pvr_descriptor_state *desc_state;
+   struct pvr_suballoc_bo *suballoc_bo;
    uint32_t dynamic_offset_idx = 0;
-   struct pvr_bo *bo;
    VkResult result;
 
    switch (stage) {
@@ -3722,11 +3726,11 @@ pvr_cmd_buffer_upload_desc_set_table(struct pvr_cmd_buffer *const cmd_buffer,
    result = pvr_cmd_buffer_upload_general(cmd_buffer,
                                           bound_desc_sets,
                                           sizeof(bound_desc_sets),
-                                          &bo);
+                                          &suballoc_bo);
    if (result != VK_SUCCESS)
       return result;
 
-   *addr_out = bo->vma->dev_addr;
+   *addr_out = suballoc_bo->dev_addr;
    return VK_SUCCESS;
 }
 
@@ -3772,7 +3776,7 @@ pvr_process_addr_literal(struct pvr_cmd_buffer *cmd_buffer,
          cmd_buffer->vk.dynamic_graphics_state.cb.blend_constants;
       size_t size =
          sizeof(cmd_buffer->vk.dynamic_graphics_state.cb.blend_constants);
-      struct pvr_bo *blend_consts_bo;
+      struct pvr_suballoc_bo *blend_consts_bo;
 
       result = pvr_cmd_buffer_upload_general(cmd_buffer,
                                              blend_consts,
@@ -3781,7 +3785,7 @@ pvr_process_addr_literal(struct pvr_cmd_buffer *cmd_buffer,
       if (result != VK_SUCCESS)
          return result;
 
-      *addr_out = blend_consts_bo->vma->dev_addr;
+      *addr_out = blend_consts_bo->dev_addr;
 
       break;
    }
@@ -4262,7 +4266,7 @@ static void pvr_compute_update_kernel(
 static VkResult pvr_cmd_upload_push_consts(struct pvr_cmd_buffer *cmd_buffer)
 {
    struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
-   struct pvr_bo *bo;
+   struct pvr_suballoc_bo *suballoc_bo;
    VkResult result;
 
    /* TODO: Here are some possible optimizations/things to consider:
@@ -4292,11 +4296,11 @@ static VkResult pvr_cmd_upload_push_consts(struct pvr_cmd_buffer *cmd_buffer)
    result = pvr_cmd_buffer_upload_general(cmd_buffer,
                                           state->push_constants.data,
                                           sizeof(state->push_constants.data),
-                                          &bo);
+                                          &suballoc_bo);
    if (result != VK_SUCCESS)
       return result;
 
-   cmd_buffer->state.push_constants.dev_addr = bo->vma->dev_addr;
+   cmd_buffer->state.push_constants.dev_addr = suballoc_bo->dev_addr;
    cmd_buffer->state.push_constants.uploaded = true;
 
    return VK_SUCCESS;
@@ -4336,7 +4340,7 @@ static void pvr_cmd_dispatch(
       if (indirect_addr.addr) {
          descriptor_data_offset_out = indirect_addr;
       } else {
-         struct pvr_bo *num_workgroups_bo;
+         struct pvr_suballoc_bo *num_workgroups_bo;
 
          result = pvr_cmd_buffer_upload_general(cmd_buffer,
                                                 workgroup_size,
@@ -4346,7 +4350,7 @@ static void pvr_cmd_dispatch(
          if (result != VK_SUCCESS)
             return;
 
-         descriptor_data_offset_out = num_workgroups_bo->vma->dev_addr;
+         descriptor_data_offset_out = num_workgroups_bo->dev_addr;
       }
 
       result = pvr_setup_descriptor_mappings(
@@ -6701,8 +6705,8 @@ pvr_execute_deferred_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
             prim_db_elems + cmd->dbsc.state.depthbias_index;
          const uint32_t num_dwords =
             pvr_cmd_length(TA_STATE_HEADER) + pvr_cmd_length(TA_STATE_ISPDBSC);
+         struct pvr_suballoc_bo *suballoc_bo;
          uint32_t ppp_state[num_dwords];
-         struct pvr_bo *pvr_bo;
          VkResult result;
 
          pvr_csb_pack (&ppp_state[0], TA_STATE_HEADER, header) {
@@ -6717,17 +6721,17 @@ pvr_execute_deferred_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
          result = pvr_cmd_buffer_upload_general(cmd_buffer,
                                                 &ppp_state[0],
                                                 sizeof(ppp_state),
-                                                &pvr_bo);
+                                                &suballoc_bo);
          if (result != VK_SUCCESS)
             return result;
 
          pvr_csb_pack (&cmd->dbsc.vdm_state[0], VDMCTRL_PPP_STATE0, state) {
             state.word_count = num_dwords;
-            state.addrmsb = pvr_bo->vma->dev_addr;
+            state.addrmsb = suballoc_bo->dev_addr;
          }
 
          pvr_csb_pack (&cmd->dbsc.vdm_state[1], VDMCTRL_PPP_STATE1, state) {
-            state.addrlsb = pvr_bo->vma->dev_addr;
+            state.addrlsb = suballoc_bo->dev_addr;
          }
 
          break;

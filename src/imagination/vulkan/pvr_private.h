@@ -144,7 +144,7 @@ struct pvr_vertex_binding {
 };
 
 struct pvr_pds_upload {
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *pvr_bo;
    /* Offset from the pds heap base address. */
    uint32_t data_offset;
    /* Offset from the pds heap base address. */
@@ -156,7 +156,7 @@ struct pvr_pds_upload {
 };
 
 struct pvr_compute_query_shader {
-   struct pvr_bo *usc_bo;
+   struct pvr_suballoc_bo *usc_bo;
 
    struct pvr_pds_upload pds_prim_code;
    uint32_t primary_data_size_dw;
@@ -200,15 +200,19 @@ struct pvr_device {
    struct pvr_compute_query_shader *copy_results_shaders;
    struct pvr_compute_query_shader *reset_queries_shaders;
 
+   struct pvr_suballocator suballoc_general;
+   struct pvr_suballocator suballoc_pds;
+   struct pvr_suballocator suballoc_usc;
+
    struct {
       struct pvr_pds_upload pds;
-      struct pvr_bo *usc;
+      struct pvr_suballoc_bo *usc;
    } nop_program;
 
    /* Issue Data Fence, Wait for Data Fence state. */
    struct {
       uint32_t usc_shareds;
-      struct pvr_bo *usc;
+      struct pvr_suballoc_bo *usc;
 
       /* Buffer in which the IDF/WDF program performs store ops. */
       struct pvr_bo *store_bo;
@@ -220,11 +224,12 @@ struct pvr_device {
    } idfwdf_state;
 
    struct pvr_device_static_clear_state {
-      struct pvr_bo *usc_vertex_shader_bo;
-      struct pvr_bo *vertices_bo;
+      struct pvr_suballoc_bo *usc_vertex_shader_bo;
+      struct pvr_suballoc_bo *vertices_bo;
       struct pvr_pds_upload pds;
 
-      struct pvr_bo *usc_multi_layer_vertex_shader_bo;
+      /* Only valid if PVR_HAS_FEATURE(dev_info, gs_rta_support). */
+      struct pvr_suballoc_bo *usc_multi_layer_vertex_shader_bo;
 
       struct pvr_static_clear_ppp_base ppp_base;
       /* Indexable using VkImageAspectFlags. */
@@ -479,8 +484,8 @@ struct pvr_sub_cmd_gfx {
 
    struct pvr_render_job job;
 
-   struct pvr_bo *depth_bias_bo;
-   struct pvr_bo *scissor_bo;
+   struct pvr_suballoc_bo *depth_bias_bo;
+   struct pvr_suballoc_bo *scissor_bo;
 
    /* Tracking how the loaded depth/stencil values are being used. */
    enum pvr_depth_stencil_usage depth_usage;
@@ -873,7 +878,7 @@ struct pvr_stage_allocation_descriptor_state {
    struct pvr_pds_info pds_info;
 
    /* Already setup compile time static consts. */
-   struct pvr_bo *static_consts;
+   struct pvr_suballoc_bo *static_consts;
 };
 
 struct pvr_pds_attrib_program {
@@ -910,7 +915,7 @@ struct pvr_pipeline_stage_state {
 
 struct pvr_compute_shader_state {
    /* Pointer to a buffer object that contains the shader binary. */
-   struct pvr_bo *bo;
+   struct pvr_suballoc_bo *bo;
 
    bool uses_atomic_ops;
    bool uses_barrier;
@@ -925,7 +930,7 @@ struct pvr_compute_shader_state {
 
 struct pvr_vertex_shader_state {
    /* Pointer to a buffer object that contains the shader binary. */
-   struct pvr_bo *bo;
+   struct pvr_suballoc_bo *bo;
    uint32_t entry_offset;
 
    /* 2 since we only need STATE_VARYING{0,1} state words. */
@@ -944,7 +949,7 @@ struct pvr_vertex_shader_state {
 
 struct pvr_fragment_shader_state {
    /* Pointer to a buffer object that contains the shader binary. */
-   struct pvr_bo *bo;
+   struct pvr_suballoc_bo *bo;
    uint32_t entry_offset;
 
    struct pvr_pipeline_stage_state stage_state;
@@ -1046,7 +1051,7 @@ struct pvr_query_info {
    union {
       struct {
          uint32_t num_query_indices;
-         struct pvr_bo *index_bo;
+         struct pvr_suballoc_bo *index_bo;
          uint32_t num_queries;
          struct pvr_bo *availability_bo;
       } availability_write;
@@ -1089,7 +1094,7 @@ struct pvr_framebuffer {
    struct pvr_image_view **attachments;
 
    /* Derived and other state. */
-   struct pvr_bo *ppp_state_bo;
+   struct pvr_suballoc_bo *ppp_state_bo;
    /* PPP state size in dwords. */
    size_t ppp_state_size;
 
@@ -1189,7 +1194,7 @@ struct pvr_render_pass {
 struct pvr_load_op {
    bool is_hw_object;
 
-   struct pvr_bo *usc_frag_prog_bo;
+   struct pvr_suballoc_bo *usc_frag_prog_bo;
    uint32_t const_shareds_count;
    uint32_t shareds_dest_offset;
    uint32_t shareds_count;
@@ -1259,13 +1264,12 @@ VkResult pvr_bind_memory(struct pvr_device *device,
                          struct pvr_winsys_vma **const vma_out,
                          pvr_dev_addr_t *const dev_addr_out);
 void pvr_unbind_memory(struct pvr_device *device, struct pvr_winsys_vma *vma);
-
 VkResult pvr_gpu_upload(struct pvr_device *device,
                         struct pvr_winsys_heap *heap,
                         const void *data,
                         size_t size,
                         uint64_t alignment,
-                        struct pvr_bo **const pvr_bo_out);
+                        struct pvr_suballoc_bo **const pvr_bo_out);
 VkResult pvr_gpu_upload_pds(struct pvr_device *device,
                             const uint32_t *data,
                             uint32_t data_size_dwords,
@@ -1275,12 +1279,11 @@ VkResult pvr_gpu_upload_pds(struct pvr_device *device,
                             uint32_t code_alignment,
                             uint64_t min_alignment,
                             struct pvr_pds_upload *const pds_upload_out);
-
 VkResult pvr_gpu_upload_usc(struct pvr_device *device,
                             const void *code,
                             size_t code_size,
                             uint64_t code_alignment,
-                            struct pvr_bo **const pvr_bo_out);
+                            struct pvr_suballoc_bo **const pvr_bo_out);
 
 VkResult pvr_cmd_buffer_add_transfer_cmd(struct pvr_cmd_buffer *cmd_buffer,
                                          struct pvr_transfer_cmd *transfer_cmd);
@@ -1396,7 +1399,7 @@ static inline bool pvr_sub_cmd_gfx_requires_split_submit(
 VkResult pvr_pds_fragment_program_create_and_upload(
    struct pvr_device *device,
    const VkAllocationCallbacks *allocator,
-   const struct pvr_bo *fragment_shader_bo,
+   const struct pvr_suballoc_bo *fragment_shader_bo,
    uint32_t fragment_temp_count,
    enum rogue_msaa_mode msaa_mode,
    bool has_phase_rate_change,
@@ -1413,10 +1416,11 @@ VkResult pvr_device_tile_buffer_ensure_cap(struct pvr_device *device,
                                            uint32_t capacity,
                                            uint32_t size_in_bytes);
 
-VkResult pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
-                                       const void *const data,
-                                       const size_t size,
-                                       struct pvr_bo **const pvr_bo_out);
+VkResult
+pvr_cmd_buffer_upload_general(struct pvr_cmd_buffer *const cmd_buffer,
+                              const void *const data,
+                              const size_t size,
+                              struct pvr_suballoc_bo **const pvr_bo_out);
 VkResult pvr_cmd_buffer_upload_pds(struct pvr_cmd_buffer *const cmd_buffer,
                                    const uint32_t *data,
                                    uint32_t data_size_dwords,

@@ -259,7 +259,7 @@ pvr_render_job_pt_programs_setup(struct pvr_device *device,
    return VK_SUCCESS;
 
 err_free_pds_store_program:
-   pvr_bo_free(device, pt_programs->pds_store_program.pvr_bo);
+   pvr_bo_suballoc_free(pt_programs->pds_store_program.pvr_bo);
 
 err_free_store_resume_state_bo:
    pvr_bo_free(device, pt_programs->store_resume_state_bo);
@@ -271,8 +271,8 @@ static void
 pvr_render_job_pt_programs_cleanup(struct pvr_device *device,
                                    struct rogue_pt_programs *pt_programs)
 {
-   pvr_bo_free(device, pt_programs->pds_resume_program.pvr_bo);
-   pvr_bo_free(device, pt_programs->pds_store_program.pvr_bo);
+   pvr_bo_suballoc_free(pt_programs->pds_resume_program.pvr_bo);
+   pvr_bo_suballoc_free(pt_programs->pds_store_program.pvr_bo);
    pvr_bo_free(device, pt_programs->store_resume_state_bo);
 }
 
@@ -496,7 +496,7 @@ static VkResult pvr_ctx_sr_programs_setup(struct pvr_device *device,
       goto err_free_store_load_state_bo;
 
    usc_store_program_upload_offset =
-      sr_programs->usc.store_program_bo->vma->dev_addr.addr -
+      sr_programs->usc.store_program_bo->dev_addr.addr -
       device->heaps.usc_heap->base_addr.addr;
 
    /* USC state update: SR state load. */
@@ -522,7 +522,7 @@ static VkResult pvr_ctx_sr_programs_setup(struct pvr_device *device,
       goto err_free_usc_store_program_bo;
 
    usc_load_program_upload_offset =
-      sr_programs->usc.load_program_bo->vma->dev_addr.addr -
+      sr_programs->usc.load_program_bo->dev_addr.addr -
       device->heaps.usc_heap->base_addr.addr;
 
    /* FIXME: The number of USC temps should be output alongside
@@ -588,13 +588,13 @@ static VkResult pvr_ctx_sr_programs_setup(struct pvr_device *device,
    return VK_SUCCESS;
 
 err_free_pds_store_program_bo:
-   pvr_bo_free(device, sr_programs->pds.store_program.pvr_bo);
+   pvr_bo_suballoc_free(sr_programs->pds.store_program.pvr_bo);
 
 err_free_usc_load_program_bo:
-   pvr_bo_free(device, sr_programs->usc.load_program_bo);
+   pvr_bo_suballoc_free(sr_programs->usc.load_program_bo);
 
 err_free_usc_store_program_bo:
-   pvr_bo_free(device, sr_programs->usc.store_program_bo);
+   pvr_bo_suballoc_free(sr_programs->usc.store_program_bo);
 
 err_free_store_load_state_bo:
    pvr_bo_free(device, sr_programs->store_load_state_bo);
@@ -605,10 +605,10 @@ err_free_store_load_state_bo:
 static void pvr_ctx_sr_programs_cleanup(struct pvr_device *device,
                                         struct rogue_sr_programs *sr_programs)
 {
-   pvr_bo_free(device, sr_programs->pds.load_program.pvr_bo);
-   pvr_bo_free(device, sr_programs->pds.store_program.pvr_bo);
-   pvr_bo_free(device, sr_programs->usc.load_program_bo);
-   pvr_bo_free(device, sr_programs->usc.store_program_bo);
+   pvr_bo_suballoc_free(sr_programs->pds.load_program.pvr_bo);
+   pvr_bo_suballoc_free(sr_programs->pds.store_program.pvr_bo);
+   pvr_bo_suballoc_free(sr_programs->usc.load_program_bo);
+   pvr_bo_suballoc_free(sr_programs->usc.store_program_bo);
    pvr_bo_free(device, sr_programs->store_load_state_bo);
 }
 
@@ -1165,7 +1165,7 @@ err_fini_reset_cmd:
    pvr_ctx_reset_cmd_fini(device, &ctx->reset_cmd);
 
 err_free_pds_fence_terminate_program:
-   pvr_bo_free(device, ctx->ctx_switch.sr_fence_terminate_program.pvr_bo);
+   pvr_bo_suballoc_free(ctx->ctx_switch.sr_fence_terminate_program.pvr_bo);
 
 err_free_sr_programs:
    for (uint32_t i = 0; i < ARRAY_SIZE(ctx->ctx_switch.sr); ++i)
@@ -1188,7 +1188,7 @@ void pvr_compute_ctx_destroy(struct pvr_compute_ctx *const ctx)
 
    pvr_ctx_reset_cmd_fini(device, &ctx->reset_cmd);
 
-   pvr_bo_free(device, ctx->ctx_switch.sr_fence_terminate_program.pvr_bo);
+   pvr_bo_suballoc_free(ctx->ctx_switch.sr_fence_terminate_program.pvr_bo);
    for (uint32_t i = 0; i < ARRAY_SIZE(ctx->ctx_switch.sr); ++i)
       pvr_ctx_sr_programs_cleanup(device, &ctx->ctx_switch.sr[i]);
 
@@ -1243,7 +1243,7 @@ static VkResult pvr_transfer_eot_shaders_init(struct pvr_device *device,
       util_dynarray_fini(&eot_bin);
       if (result != VK_SUCCESS) {
          for (uint32_t j = 0; j < i; j++)
-            pvr_bo_free(device, ctx->usc_eot_bos[j]);
+            pvr_bo_suballoc_free(ctx->usc_eot_bos[j]);
 
          return result;
       }
@@ -1256,7 +1256,7 @@ static void pvr_transfer_eot_shaders_fini(struct pvr_device *device,
                                           struct pvr_transfer_ctx *ctx)
 {
    for (uint32_t i = 0; i < ARRAY_SIZE(ctx->usc_eot_bos); i++)
-      pvr_bo_free(device, ctx->usc_eot_bos[i]);
+      pvr_bo_suballoc_free(ctx->usc_eot_bos[i]);
 }
 
 static VkResult pvr_transfer_ctx_shaders_init(struct pvr_device *device,
@@ -1349,7 +1349,7 @@ err_free_pds_unitex_bos:
          if (!ctx->pds_unitex_code[i][j].pvr_bo)
             continue;
 
-         pvr_bo_free(device, ctx->pds_unitex_code[i][j].pvr_bo);
+         pvr_bo_suballoc_free(ctx->pds_unitex_code[i][j].pvr_bo);
       }
    }
 
@@ -1376,7 +1376,7 @@ void pvr_transfer_ctx_destroy(struct pvr_transfer_ctx *const ctx)
          if (!ctx->pds_unitex_code[i][j].pvr_bo)
             continue;
 
-         pvr_bo_free(device, ctx->pds_unitex_code[i][j].pvr_bo);
+         pvr_bo_suballoc_free(ctx->pds_unitex_code[i][j].pvr_bo);
       }
    }
 
