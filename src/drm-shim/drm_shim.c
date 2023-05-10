@@ -293,11 +293,8 @@ static bool hide_drm_device_path(const char *path)
    return false;
 }
 
-/* Override libdrm's reading of various sysfs files for device enumeration. */
-PUBLIC FILE *fopen(const char *path, const char *mode)
+static int file_override_open(const char *path)
 {
-   init_shim();
-
    for (int i = 0; i < file_overrides_count; i++) {
       if (strcmp(file_overrides[i].path, path) == 0) {
          int fds[2];
@@ -305,9 +302,21 @@ PUBLIC FILE *fopen(const char *path, const char *mode)
          write(fds[1], file_overrides[i].contents,
                strlen(file_overrides[i].contents));
          close(fds[1]);
-         return fdopen(fds[0], "r");
+         return fds[0];
       }
    }
+
+   return -1;
+}
+
+/* Override libdrm's reading of various sysfs files for device enumeration. */
+PUBLIC FILE *fopen(const char *path, const char *mode)
+{
+   init_shim();
+
+   int fd = file_override_open(path);
+   if (fd >= 0)
+      return fdopen(fd, "r");
 
    return real_fopen(path, mode);
 }
@@ -324,6 +333,10 @@ PUBLIC int open(const char *path, int flags, ...)
    mode_t mode = va_arg(ap, mode_t);
    va_end(ap);
 
+   int fd = file_override_open(path);
+   if (fd >= 0)
+      return fd;
+
    if (hide_drm_device_path(path)) {
       errno = ENOENT;
       return -1;
@@ -332,7 +345,7 @@ PUBLIC int open(const char *path, int flags, ...)
    if (strcmp(path, render_node_path) != 0)
       return real_open(path, flags, mode);
 
-   int fd = real_open("/dev/null", O_RDWR, 0);
+   fd = real_open("/dev/null", O_RDWR, 0);
 
    drm_shim_fd_register(fd, NULL);
 
