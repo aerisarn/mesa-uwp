@@ -1908,6 +1908,10 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
       if (cmd_buffer->state.emitted_graphics_pipeline->db_shader_control !=
           pipeline->db_shader_control)
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
+
+      if (cmd_buffer->state.emitted_graphics_pipeline->vrs.pa_cl_vrs_cntl !=
+          pipeline->vrs.pa_cl_vrs_cntl)
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
    }
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
