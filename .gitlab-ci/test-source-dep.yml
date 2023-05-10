@@ -625,6 +625,21 @@
         *radeon_vcn_file_list
       when: manual
 
+.radeonsi-valve-rules:
+  stage: amd
+  rules:
+    - !reference [.valve-farm-rules, rules]
+    - !reference [.radeonsi-rules, rules]
+
+.radeonsi-valve-manual-rules:
+  stage: amd
+  rules:
+    - !reference [.valve-farm-rules, rules]
+    - !reference [.vulkan-manual-rules, rules]
+    - changes:
+        *radeonsi_file_list
+      when: manual
+
 .i915g-rules:
   stage: intel
   rules:

@@ -394,6 +394,17 @@ vkcts-vangogh-valve:
   variables:
     GPU_VERSION: radv-vangogh-aco
 
+glcts-vangogh-valve:
+  extends:
+    - .b2c-test-gl
+    - .deqp-test-valve
+    - .vangogh-test-valve
+    - .radeonsi-valve-manual-rules
+  timeout: 40m
+  variables:
+    GPU_VERSION: radeonsi-vangogh
+    DEQP_SUITE: radeonsi-vangogh
+
 ############### Fossilize
 radv-fossils:
   extends:
