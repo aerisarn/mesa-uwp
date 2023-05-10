@@ -165,13 +165,10 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
          /* There is no more writer on this context for anything we wrote */
          struct agx_batch *writer = agx_writer_get(ctx, handle);
 
-         if (writer == batch) {
-            assert(bo->writer_syncobj == batch->syncobj);
+         if (writer == batch)
             agx_writer_remove(ctx, handle);
-         }
 
-         if (bo->writer_syncobj == batch->syncobj)
-            bo->writer_syncobj = 0;
+         p_atomic_cmpxchg(&bo->writer_syncobj, batch->syncobj, 0);
 
          agx_bo_unreference(agx_lookup_bo(dev, handle));
       }
@@ -654,7 +651,7 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
 
       /* But any BOs written by active batches are ours */
       assert(writer == batch && "exclusive writer");
-      bo->writer_syncobj = batch->syncobj;
+      p_atomic_set(&bo->writer_syncobj, batch->syncobj);
    }
 
    free(in_syncs);

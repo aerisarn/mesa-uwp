@@ -252,10 +252,11 @@ agx_bo_export(struct agx_bo *bo)
       /* If there is a pending writer to this BO, import it into the buffer
        * for implicit sync.
        */
-      if (bo->writer_syncobj) {
+      uint32_t writer_syncobj = p_atomic_read_relaxed(&bo->writer_syncobj);
+      if (writer_syncobj) {
          int out_sync_fd = -1;
-         int ret = drmSyncobjExportSyncFile(bo->dev->fd, bo->writer_syncobj,
-                                            &out_sync_fd);
+         int ret =
+            drmSyncobjExportSyncFile(bo->dev->fd, writer_syncobj, &out_sync_fd);
          assert(ret >= 0);
          assert(out_sync_fd >= 0);
 
