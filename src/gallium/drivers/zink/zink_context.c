@@ -5066,6 +5066,14 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       struct pipe_depth_stencil_alpha_state dsa = {0};
       void *state = ctx->base.create_depth_stencil_alpha_state(&ctx->base, &dsa);
       ctx->base.bind_depth_stencil_alpha_state(&ctx->base, state);
+
+      struct pipe_blend_state blend = {
+         .rt[0].colormask = 0xF
+      };
+
+      void *blend_state = ctx->base.create_blend_state(&ctx->base, &blend);
+      ctx->base.bind_blend_state(&ctx->base, blend_state);
+
       zink_batch_rp(ctx);
    }
 
