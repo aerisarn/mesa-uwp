@@ -349,7 +349,6 @@ agx_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
       base_cso_changed || (ctx->rast->base.scissor != so->base.scissor) ||
       (ctx->rast->base.offset_tri != so->base.offset_tri);
 
-   ctx->rast = so;
    ctx->dirty |= AGX_DIRTY_RS;
 
    if (scissor_zbias_changed)
@@ -358,6 +357,8 @@ agx_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
    if (base_cso_changed ||
        (ctx->rast->base.sprite_coord_mode != so->base.sprite_coord_mode))
       ctx->dirty |= AGX_DIRTY_SPRITE_COORD_MODE;
+
+   ctx->rast = so;
 }
 
 static enum agx_wrap
