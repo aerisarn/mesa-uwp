@@ -1515,7 +1515,7 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
       break;
    case nir_texop_tex:
       if (ctx->stage != MESA_SHADER_FRAGMENT &&
-          (ctx->stage != MESA_SHADER_COMPUTE ||
+          (!gl_shader_stage_is_compute(ctx->stage) ||
            ctx->info->cs.derivative_group == DERIVATIVE_GROUP_NONE)) {
          assert(!args->lod);
          args->level_zero = true;
@@ -1551,7 +1551,7 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
 
    args->attributes = AC_ATTR_INVARIANT_LOAD;
    bool cs_derivs =
-      ctx->stage == MESA_SHADER_COMPUTE && ctx->info->cs.derivative_group != DERIVATIVE_GROUP_NONE;
+      gl_shader_stage_is_compute(ctx->stage) && ctx->info->cs.derivative_group != DERIVATIVE_GROUP_NONE;
    if (ctx->stage == MESA_SHADER_FRAGMENT || cs_derivs) {
       /* Prevent texture instructions with implicit derivatives from being
        * sinked into branches. */
@@ -2613,7 +2613,7 @@ static void emit_demote(struct ac_nir_context *ctx, const nir_intrinsic_instr *i
 
 static LLVMValueRef visit_load_subgroup_id(struct ac_nir_context *ctx)
 {
-   if (ctx->stage == MESA_SHADER_COMPUTE) {
+   if (gl_shader_stage_is_compute(ctx->stage)) {
       if (ctx->ac.gfx_level >= GFX10_3)
          return ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->tg_size), 20, 5);
       else
@@ -2639,7 +2639,7 @@ static LLVMValueRef visit_load_local_invocation_index(struct ac_nir_context *ctx
 
 static LLVMValueRef visit_load_num_subgroups(struct ac_nir_context *ctx)
 {
-   if (ctx->stage == MESA_SHADER_COMPUTE) {
+   if (gl_shader_stage_is_compute(ctx->stage)) {
       return LLVMBuildAnd(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args->tg_size),
                           LLVMConstInt(ctx->ac.i32, 0x3f, false), "");
    } else if (ctx->args->merged_wave_info.used) {
