@@ -2065,6 +2065,14 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
 void
 agx_batch_init_state(struct agx_batch *batch)
 {
+   if (batch->initialized)
+      return;
+
+   if (batch->key.width == AGX_COMPUTE_BATCH_WIDTH) {
+      batch->initialized = true;
+      return;
+   }
+
    /* Emit state on the batch that we don't change and so don't dirty track */
    uint8_t *out = batch->encoder_current;
    struct agx_ppp_update ppp =
@@ -2089,6 +2097,9 @@ agx_batch_init_state(struct agx_batch *batch)
    agx_ppp_fini(&out, &ppp);
    batch->encoder_current = out;
 
+   /* Mark it as initialized now, since agx_batch_writes() will check this. */
+   batch->initialized = true;
+
    /* Choose a tilebuffer layout given the framebuffer key */
    enum pipe_format formats[PIPE_MAX_COLOR_BUFS] = {0};
    for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
@@ -2100,6 +2111,19 @@ agx_batch_init_state(struct agx_batch *batch)
    batch->tilebuffer_layout = agx_build_tilebuffer_layout(
       formats, batch->key.nr_cbufs,
       util_framebuffer_get_num_samples(&batch->key));
+
+   if (batch->key.zsbuf) {
+      struct agx_resource *rsrc = agx_resource(batch->key.zsbuf->texture);
+      agx_batch_writes(batch, rsrc);
+
+      if (rsrc->separate_stencil)
+         agx_batch_writes(batch, rsrc->separate_stencil);
+   }
+
+   for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
+      if (batch->key.cbufs[i])
+         agx_batch_writes(batch, agx_resource(batch->key.cbufs[i]->texture));
+   }
 }
 
 static enum agx_object_type
@@ -2574,6 +2598,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (ctx->rast->base.rasterizer_discard && !ctx->streamout.key.active)
       return;
 
+   agx_batch_init_state(batch);
+
    /* Dirty track the reduced prim: lines vs points vs triangles */
    enum pipe_prim_type reduced_prim = u_reduced_prim(info->mode);
    if (reduced_prim != batch->reduced_prim)
@@ -2764,6 +2790,13 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 {
    struct agx_context *ctx = agx_context(pipe);
    struct agx_batch *batch = agx_get_compute_batch(ctx);
+
+   agx_batch_init_state(batch);
+
+   /* Consider compute launches as "draws" for the purposes of sanity
+    * checking batch state.
+    */
+   batch->any_draws = true;
 
    /* To implement load_num_workgroups, the number of workgroups needs to be
     * available in GPU memory. This is either the indirect buffer, or just a

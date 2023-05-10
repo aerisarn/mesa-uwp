@@ -117,25 +117,10 @@ agx_batch_init(struct agx_context *ctx,
    batch->clear_stencil = 0;
    batch->varyings = 0;
    batch->any_draws = false;
+   batch->initialized = false;
 
    /* We need to emit prim state at the start. Max collides with all. */
    batch->reduced_prim = PIPE_PRIM_MAX;
-
-   if (batch->key.zsbuf) {
-      struct agx_resource *rsrc = agx_resource(key->zsbuf->texture);
-      agx_batch_writes(batch, rsrc);
-
-      if (rsrc->separate_stencil)
-         agx_batch_writes(batch, rsrc->separate_stencil);
-   }
-
-   for (unsigned i = 0; i < key->nr_cbufs; ++i) {
-      if (key->cbufs[i])
-         agx_batch_writes(batch, agx_resource(key->cbufs[i]->texture));
-   }
-
-   if (key->width != AGX_COMPUTE_BATCH_WIDTH)
-      agx_batch_init_state(batch);
 
    if (!batch->syncobj) {
       int ret = drmSyncobjCreate(dev->fd, 0, &batch->syncobj);
@@ -167,36 +152,8 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
    if (reset) {
       int handle;
       AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) {
-         struct agx_bo *bo = agx_lookup_bo(dev, handle);
-
-         /* Revert the writer to the last submitted batch that writes this BO,
-          * if any.
-          */
-         struct agx_batch *writer = agx_writer_get(ctx, handle);
-
-         if (writer == batch) {
-            int i;
-            assert(bo->writer_syncobj != batch->syncobj);
-            agx_writer_remove(ctx, handle);
-
-            if (bo->writer_syncobj) {
-               struct agx_batch *old_batch = NULL;
-               foreach_submitted(ctx, i) {
-                  old_batch = &ctx->batches.slots[i];
-                  if (old_batch->syncobj == bo->writer_syncobj)
-                     break;
-                  else
-                     old_batch = NULL;
-               }
-               assume(old_batch);
-               batch_debug(batch,
-                           "Resetting writer for BO @ 0x%" PRIx64
-                           " to batch %d (syncobj was %d)",
-                           bo->ptr.gpu, agx_batch_idx(old_batch),
-                           bo->writer_syncobj);
-               agx_writer_add(ctx, agx_batch_idx(old_batch), bo->handle);
-            }
-         }
+         /* We should write no buffers if this is an empty batch */
+         assert(agx_writer_get(ctx, handle) != batch);
 
          agx_bo_unreference(agx_lookup_bo(dev, handle));
       }
@@ -496,6 +453,8 @@ agx_batch_writes(struct agx_batch *batch, struct agx_resource *rsrc)
    struct agx_context *ctx = batch->ctx;
    struct agx_batch *writer = agx_writer_get(ctx, rsrc->bo->handle);
 
+   assert(batch->initialized);
+
    agx_flush_readers_except(ctx, rsrc, batch, "Write from other batch", false);
 
    /* Nothing to do if we're already writing */
@@ -779,6 +738,8 @@ void
 agx_batch_reset(struct agx_context *ctx, struct agx_batch *batch)
 {
    batch_debug(batch, "RESET");
+
+   assert(!batch->initialized);
 
    /* Reset an empty batch. Like submit, but does nothing. */
    agx_batch_mark_submitted(batch);

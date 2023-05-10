@@ -1092,6 +1092,9 @@ agx_clear(struct pipe_context *pctx, unsigned buffers,
          util_framebuffer_get_num_samples(&ctx->framebuffer) > 1);
    }
 
+   if (fastclear)
+      agx_batch_init_state(batch);
+
    batch->clear |= fastclear;
    batch->resolve |= buffers;
    assert((batch->draw & slowclear) == slowclear);
@@ -1199,6 +1202,8 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
       agx_batch_reset(ctx, batch);
       return;
    }
+
+   assert(batch->initialized);
 
    /* Finalize the encoder */
    uint8_t stop[5 + 64] = {0x00, 0x00, 0x00, 0xc0, 0x00};
