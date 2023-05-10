@@ -3726,9 +3726,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       }
       break;
    }
-   case nir_intrinsic_load_packed_passthrough_primitive_amd:
-      result = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[0]);
-      break;
    case nir_intrinsic_is_subgroup_invocation_lt_amd: {
       LLVMValueRef count = LLVMBuildAnd(ctx->ac.builder, get_src(ctx, instr->src[0]),
                                         LLVMConstInt(ctx->ac.i32, 0xff, 0), "");
