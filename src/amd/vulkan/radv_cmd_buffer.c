@@ -3932,10 +3932,10 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
 
 static void
 emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *vs_shader,
-                 const struct radv_shader_part *prolog, bool pipeline_is_dirty)
+                 const struct radv_shader_part *prolog)
 {
    /* no need to re-emit anything in this case */
-   if (cmd_buffer->state.emitted_vs_prolog == prolog && !pipeline_is_dirty)
+   if (cmd_buffer->state.emitted_vs_prolog == prolog)
       return;
 
    enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
@@ -3979,10 +3979,10 @@ emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
 
 static void
 emit_prolog_inputs(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *vs_shader,
-                   uint32_t nontrivial_divisors, bool pipeline_is_dirty)
+                   uint32_t nontrivial_divisors)
 {
    /* no need to re-emit anything in this case */
-   if (!nontrivial_divisors && !pipeline_is_dirty && cmd_buffer->state.emitted_vs_prolog &&
+   if (!nontrivial_divisors && cmd_buffer->state.emitted_vs_prolog &&
        !cmd_buffer->state.emitted_vs_prolog->nontrivial_divisors)
       return;
 
@@ -4028,7 +4028,7 @@ emit_prolog_inputs(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader 
 }
 
 static void
-radv_emit_vertex_input(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
+radv_emit_vertex_input(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_shader *vs_shader =
       radv_get_shader(cmd_buffer->state.shaders, MESA_SHADER_VERTEX);
@@ -4045,8 +4045,8 @@ radv_emit_vertex_input(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirt
       vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return;
    }
-   emit_prolog_regs(cmd_buffer, vs_shader, prolog, pipeline_is_dirty);
-   emit_prolog_inputs(cmd_buffer, vs_shader, nontrivial_divisors, pipeline_is_dirty);
+   emit_prolog_regs(cmd_buffer, vs_shader, prolog);
+   emit_prolog_inputs(cmd_buffer, vs_shader, nontrivial_divisors);
 
    cmd_buffer->shader_upload_seq = MAX2(cmd_buffer->shader_upload_seq, prolog->upload_seq);
 
@@ -4481,7 +4481,7 @@ radv_emit_attachment_feedback_loop_enable(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
+radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 {
    const uint64_t states =
       cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
@@ -4575,7 +4575,7 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
       radv_emit_color_write(cmd_buffer);
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT)
-      radv_emit_vertex_input(cmd_buffer, pipeline_is_dirty);
+      radv_emit_vertex_input(cmd_buffer);
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS)
       radv_emit_patch_control_points(cmd_buffer);
@@ -6765,11 +6765,18 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          }
       }
 
-      /* Re-emit the vertex buffer descriptors because they are really tied to the pipeline. */
       const struct radv_shader *vs =
          radv_get_shader(graphics_pipeline->base.shaders, MESA_SHADER_VERTEX);
-      if (vs && vs->info.vs.vb_desc_usage_mask) {
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
+      if (vs) {
+         /* Re-emit the VS prolog when a new vertex shader is bound. */
+         if (vs->info.vs.has_prolog) {
+            cmd_buffer->state.emitted_vs_prolog = NULL;
+         }
+
+         /* Re-emit the vertex buffer descriptors because they are really tied to the pipeline. */
+         if (vs->info.vs.vb_desc_usage_mask) {
+            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
+         }
       }
 
       if (cmd_buffer->device->physical_device->rad_info.rbplus_allowed &&
@@ -9115,7 +9122,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
       }
    }
 
-   radv_cmd_buffer_flush_dynamic_state(cmd_buffer, pipeline_is_dirty);
+   radv_cmd_buffer_flush_dynamic_state(cmd_buffer);
 
    radv_emit_draw_registers(cmd_buffer, info);
 
