@@ -2486,13 +2486,6 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    u_trace_context_fini(&device->trace_context);
 
-   for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
-      for (unsigned q = 0; q < device->queue_count[i]; q++)
-         tu_queue_finish(&device->queues[i][q]);
-      if (device->queue_count[i])
-         vk_free(&device->vk.alloc, device->queues[i]);
-   }
-
    for (unsigned i = 0; i < ARRAY_SIZE(device->scratch_bos); i++) {
       if (device->scratch_bos[i].initialized)
          tu_bo_finish(device, device->scratch_bos[i].bo);
@@ -2540,6 +2533,13 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    util_sparse_array_finish(&device->bo_map);
    u_rwlock_destroy(&device->dma_bo_lock);
+
+   for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
+      for (unsigned q = 0; q < device->queue_count[i]; q++)
+         tu_queue_finish(&device->queues[i][q]);
+      if (device->queue_count[i])
+         vk_free(&device->vk.alloc, device->queues[i]);
+   }
 
    pthread_cond_destroy(&device->timeline_cond);
    _mesa_hash_table_destroy(device->bo_sizes, NULL);
