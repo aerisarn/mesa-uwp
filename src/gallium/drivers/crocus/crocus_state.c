@@ -6505,9 +6505,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
           * look useful at the moment.  We might need this in future.
           */
          ps.PositionXYOffsetSelect =
-            brw_wm_prog_data_uses_position_xy_offset(wm_prog_data,
-                                                     0 /* msaa_flags */) ?
-            POSOFFSET_SAMPLE : POSOFFSET_NONE;
+            wm_prog_data->uses_pos_offset ? POSOFFSET_SAMPLE : POSOFFSET_NONE;
 
          if (wm_prog_data->base.total_scratch) {
             struct crocus_bo *bo = crocus_get_scratch_space(ice, wm_prog_data->base.total_scratch, MESA_SHADER_FRAGMENT);
@@ -7274,10 +7272,10 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
        * We only require XY sample offsets. So, this recommendation doesn't
        * look useful at the moment. We might need this in future.
        */
-      wm.PositionXYOffsetSelect =
-         brw_wm_prog_data_uses_position_xy_offset(wm_prog_data,
-                                                  0 /* msaa_flags */) ?
-         POSOFFSET_SAMPLE : POSOFFSET_NONE;
+      if (wm_prog_data->uses_pos_offset)
+         wm.PositionXYOffsetSelect = POSOFFSET_SAMPLE;
+      else
+         wm.PositionXYOffsetSelect = POSOFFSET_NONE;
 #endif
          wm.LineStippleEnable = cso->cso.line_stipple_enable;
          wm.PolygonStippleEnable = cso->cso.poly_stipple_enable;
