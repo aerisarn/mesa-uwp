@@ -110,6 +110,12 @@ radv_get_perftest_option_name(int id)
    return radv_perftest_options[id].string;
 }
 
+static const struct debug_control trace_options[] = {
+   {"rgp", RADV_TRACE_MODE_RGP},
+   {"rra", RADV_TRACE_MODE_RRA},
+   {NULL, 0},
+};
+
 // clang-format off
 static const driOptionDescription radv_dri_options[] = {
    DRI_CONF_SECTION_PERFORMANCE
@@ -265,6 +271,8 @@ radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo, const VkAllocationC
       vk_free(pAllocator, instance);
       return vk_error(NULL, result);
    }
+
+   vk_instance_add_driver_trace_modes(&instance->vk, trace_options);
 
    instance->debug_flags = parse_debug_string(getenv("RADV_DEBUG"), radv_debug_options);
    instance->perftest_flags = parse_debug_string(getenv("RADV_PERFTEST"), radv_perftest_options);

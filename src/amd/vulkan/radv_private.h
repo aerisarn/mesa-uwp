@@ -390,6 +390,14 @@ void radv_physical_device_destroy(struct vk_physical_device *vk_device);
 
 bool radv_sqtt_enabled(void);
 
+enum radv_trace_mode {
+   /** Radeon GPU Profiler */
+   RADV_TRACE_MODE_RGP = 1 << VK_TRACE_MODE_COUNT,
+
+   /** Radeon Raytracing Analyzer */
+   RADV_TRACE_MODE_RRA = 1 << (VK_TRACE_MODE_COUNT + 1),
+};
+
 struct radv_instance {
    struct vk_instance vk;
 
