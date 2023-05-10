@@ -404,6 +404,7 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
       container_of(device->vk.physical, struct dzn_physical_device, vk);
    struct nir_to_dxil_options opts = {
       .environment = DXIL_ENVIRONMENT_VULKAN,
+      .lower_int16 = !pdev->options4.Native16BitShaderOpsSupported,
       .shader_model_max = dzn_get_shader_model(pdev),
       .input_clip_size = input_clip_size,
 #ifdef _WIN32
@@ -730,6 +731,8 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
                                       enum pipe_format *vi_conversions,
                                       const VkGraphicsPipelineCreateInfo *info)
 {
+   struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
    const VkPipelineViewportStateCreateInfo *vp_info =
       info->pRasterizationState->rasterizerDiscardEnable ?
       NULL : info->pViewportState;
@@ -854,7 +857,9 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
    }
 
    /* Second step: get NIR shaders for all stages. */
-   nir_shader_compiler_options nir_opts = *dxil_get_nir_compiler_options();
+   nir_shader_compiler_options nir_opts;
+   unsigned supported_bit_sizes = (pdev->options4.Native16BitShaderOpsSupported ? 16 : 0) | 32 | 64;
+   dxil_get_nir_compiler_options(&nir_opts, dzn_get_shader_model(pdev), supported_bit_sizes, supported_bit_sizes);
    nir_opts.lower_base_vertex = true;
    u_foreach_bit(stage, active_stage_mask) {
       struct mesa_sha1 nir_hash_ctx;
@@ -2414,6 +2419,8 @@ dzn_compute_pipeline_compile_shader(struct dzn_device *device,
                                     D3D12_SHADER_BYTECODE *shader,
                                     const VkComputePipelineCreateInfo *info)
 {
+   struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
    uint8_t spirv_hash[SHA1_DIGEST_LENGTH], pipeline_hash[SHA1_DIGEST_LENGTH], nir_hash[SHA1_DIGEST_LENGTH];
    VkResult ret = VK_SUCCESS;
    nir_shader *nir = NULL;
@@ -2452,8 +2459,11 @@ dzn_compute_pipeline_compile_shader(struct dzn_device *device,
       _mesa_sha1_update(&nir_hash_ctx, spirv_hash, sizeof(spirv_hash));
       _mesa_sha1_final(&nir_hash_ctx, nir_hash);
    }
+   nir_shader_compiler_options nir_opts;
+   const unsigned supported_bit_sizes = 16 | 32 | 64;
+   dxil_get_nir_compiler_options(&nir_opts, dzn_get_shader_model(pdev), supported_bit_sizes, supported_bit_sizes);
    struct dzn_nir_options options = {
-      .nir_opts = dxil_get_nir_compiler_options(),
+      .nir_opts = &nir_opts,
       .subgroup_size = subgroup_enum,
    };
    ret = dzn_pipeline_get_nir_shader(device, layout, cache, nir_hash,

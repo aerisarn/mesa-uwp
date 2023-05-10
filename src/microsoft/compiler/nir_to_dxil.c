@@ -154,12 +154,31 @@ nir_options = {
    .max_unroll_iterations = 32, /* arbitrary */
    .force_indirect_unrolling = (nir_var_shader_in | nir_var_shader_out | nir_var_function_temp),
    .lower_device_index_to_zero = true,
+   .linker_ignore_precision = true,
 };
 
 const nir_shader_compiler_options*
-dxil_get_nir_compiler_options(void)
+dxil_get_base_nir_compiler_options(void)
 {
    return &nir_options;
+}
+
+void
+dxil_get_nir_compiler_options(nir_shader_compiler_options *options,
+                              enum dxil_shader_model shader_model_max,
+                              unsigned supported_int_sizes,
+                              unsigned supported_float_sizes)
+{
+   *options = nir_options;
+   if (!(supported_int_sizes & 64)) {
+      options->lower_pack_64_2x32_split = false;
+      options->lower_unpack_64_2x32_split = false;
+      options->lower_int64_options = ~0;
+   }
+   if (!(supported_float_sizes & 64))
+      options->lower_doubles_options = ~0;
+   if ((supported_int_sizes & 16) && (supported_float_sizes & 16))
+      options->support_16bit_alu = true;
 }
 
 static bool
