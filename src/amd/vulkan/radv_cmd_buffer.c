@@ -6737,7 +6737,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       cmd_buffer->state.graphics_pipeline = graphics_pipeline;
 
       cmd_buffer->state.has_nggc = graphics_pipeline->has_ngg_culling;
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE;
       cmd_buffer->push_constant_stages |= graphics_pipeline->active_stages;
 
       /* Prefetch all pipeline shaders at first draw time. */
@@ -6771,6 +6771,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          /* Re-emit the VS prolog when a new vertex shader is bound. */
          if (vs->info.vs.has_prolog) {
             cmd_buffer->state.emitted_vs_prolog = NULL;
+            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT;
          }
 
          /* Re-emit the vertex buffer descriptors because they are really tied to the pipeline. */
