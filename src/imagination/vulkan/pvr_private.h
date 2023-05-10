@@ -240,8 +240,8 @@ struct pvr_device {
       uint32_t vdm_words[PVR_CLEAR_VDM_STATE_DWORD_COUNT];
       uint32_t large_clear_vdm_words[PVR_CLEAR_VDM_STATE_DWORD_COUNT];
 
-      struct pvr_bo *usc_clear_attachment_programs;
-      struct pvr_bo *pds_clear_attachment_programs;
+      struct pvr_suballoc_bo *usc_clear_attachment_programs;
+      struct pvr_suballoc_bo *pds_clear_attachment_programs;
       /* TODO: See if we can use PVR_CLEAR_ATTACHMENT_PROGRAM_COUNT to save some
        * memory.
        */

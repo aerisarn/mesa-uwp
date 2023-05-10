@@ -126,7 +126,7 @@ void pvr_device_finish_graphics_static_clear_state(struct pvr_device *device);
 VkResult pvr_emit_ppp_from_template(
    struct pvr_csb *const csb,
    const struct pvr_static_clear_ppp_template *const template,
-   struct pvr_bo **const pvr_bo_out);
+   struct pvr_suballoc_bo **const pvr_bo_out);
 
 void pvr_pds_clear_vertex_shader_program_init_base(
    struct pvr_pds_vertex_shader_program *program,

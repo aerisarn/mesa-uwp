@@ -152,7 +152,7 @@ static void pvr_device_setup_graphics_static_clear_ppp_templates(
 VkResult pvr_emit_ppp_from_template(
    struct pvr_csb *const csb,
    const struct pvr_static_clear_ppp_template *const template,
-   struct pvr_bo **const pvr_bo_out)
+   struct pvr_suballoc_bo **const pvr_bo_out)
 {
    const uint32_t dword_count =
       pvr_cmd_length(TA_STATE_HEADER) + pvr_cmd_length(TA_STATE_ISPCTL) +
@@ -169,22 +169,21 @@ VkResult pvr_emit_ppp_from_template(
       rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
    const struct pvr_static_clear_ppp_base *const base =
       &device->static_clear_state.ppp_base;
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *pvr_bo;
    uint32_t *stream;
    VkResult result;
 
-   result = pvr_bo_alloc(device,
-                         device->heaps.general_heap,
-                         PVR_DW_TO_BYTES(dword_count),
-                         cache_line_size,
-                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                         &pvr_bo);
+   result = pvr_bo_suballoc(&device->suballoc_general,
+                            PVR_DW_TO_BYTES(dword_count),
+                            cache_line_size,
+                            false,
+                            &pvr_bo);
    if (result != VK_SUCCESS) {
       *pvr_bo_out = NULL;
       return result;
    }
 
-   stream = (uint32_t *)pvr_bo->bo->map;
+   stream = (uint32_t *)pvr_bo_suballoc_get_map_addr(pvr_bo);
 
    pvr_csb_write_value(stream, TA_STATE_HEADER, template->header);
    pvr_csb_write_struct(stream, TA_STATE_ISPCTL, &template->config.ispctl);
@@ -212,18 +211,18 @@ VkResult pvr_emit_ppp_from_template(
    pvr_csb_write_value(stream, TA_STATE_PPP_CTRL, base->ppp_ctrl);
    pvr_csb_write_value(stream, TA_STATE_STREAM_OUT0, base->stream_out0);
 
-   assert((uint64_t)(stream - (uint32_t *)pvr_bo->bo->map) == dword_count);
+   assert((uint64_t)(stream - (uint32_t *)pvr_bo_suballoc_get_map_addr(
+                                 pvr_bo)) == dword_count);
 
-   pvr_bo_cpu_unmap(device, pvr_bo);
    stream = NULL;
 
    pvr_csb_emit (csb, VDMCTRL_PPP_STATE0, state) {
       state.word_count = dword_count;
-      state.addrmsb = pvr_bo->vma->dev_addr;
+      state.addrmsb = pvr_bo->dev_addr;
    }
 
    pvr_csb_emit (csb, VDMCTRL_PPP_STATE1, state) {
-      state.addrlsb = pvr_bo->vma->dev_addr;
+      state.addrlsb = pvr_bo->dev_addr;
    }
 
    *pvr_bo_out = pvr_bo;
@@ -279,19 +278,19 @@ pvr_device_init_clear_attachment_programs(struct pvr_device *device)
       offset_idx++;
    }
 
-   result = pvr_bo_alloc(device,
-                         device->heaps.usc_heap,
-                         alloc_size,
-                         4,
-                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                         &clear_state->usc_clear_attachment_programs);
+   result = pvr_bo_suballoc(&device->suballoc_usc,
+                            alloc_size,
+                            4,
+                            false,
+                            &clear_state->usc_clear_attachment_programs);
    if (result != VK_SUCCESS)
       return result;
 
    usc_upload_offset =
-      clear_state->usc_clear_attachment_programs->vma->dev_addr.addr -
+      clear_state->usc_clear_attachment_programs->dev_addr.addr -
       device->heaps.usc_heap->base_addr.addr;
-   ptr = (uint8_t *)clear_state->usc_clear_attachment_programs->bo->map;
+   ptr = (uint8_t *)pvr_bo_suballoc_get_map_addr(
+      clear_state->usc_clear_attachment_programs);
 
    for (uint32_t i = 0, offset_idx = 0;
         i < ARRAY_SIZE(clear_attachment_collection);
@@ -305,8 +304,6 @@ pvr_device_init_clear_attachment_programs(struct pvr_device *device)
 
       offset_idx++;
    }
-
-   pvr_bo_cpu_unmap(device, clear_state->usc_clear_attachment_programs);
 
    /* Upload PDS programs. */
 
@@ -356,21 +353,21 @@ pvr_device_init_clear_attachment_programs(struct pvr_device *device)
       offset_idx++;
    }
 
-   result = pvr_bo_alloc(device,
-                         device->heaps.pds_heap,
-                         alloc_size,
-                         pds_prog_alignment,
-                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                         &clear_state->pds_clear_attachment_programs);
+   result = pvr_bo_suballoc(&device->suballoc_pds,
+                            alloc_size,
+                            pds_prog_alignment,
+                            false,
+                            &clear_state->pds_clear_attachment_programs);
    if (result != VK_SUCCESS) {
-      pvr_bo_free(device, clear_state->usc_clear_attachment_programs);
+      pvr_bo_suballoc_free(clear_state->usc_clear_attachment_programs);
       return result;
    }
 
    pds_upload_offset =
-      clear_state->pds_clear_attachment_programs->vma->dev_addr.addr -
+      clear_state->pds_clear_attachment_programs->dev_addr.addr -
       device->heaps.pds_heap->base_addr.addr;
-   ptr = clear_state->pds_clear_attachment_programs->bo->map;
+   ptr =
+      pvr_bo_suballoc_get_map_addr(clear_state->pds_clear_attachment_programs);
 
    for (uint32_t i = 0, offset_idx = 0;
         i < ARRAY_SIZE(clear_attachment_collection);
@@ -428,8 +425,6 @@ pvr_device_init_clear_attachment_programs(struct pvr_device *device)
       offset_idx++;
    }
 
-   pvr_bo_cpu_unmap(device, clear_state->pds_clear_attachment_programs);
-
    return VK_SUCCESS;
 }
 
@@ -439,8 +434,8 @@ pvr_device_finish_clear_attachment_programs(struct pvr_device *device)
    struct pvr_device_static_clear_state *clear_state =
       &device->static_clear_state;
 
-   pvr_bo_free(device, clear_state->usc_clear_attachment_programs);
-   pvr_bo_free(device, clear_state->pds_clear_attachment_programs);
+   pvr_bo_suballoc_free(clear_state->usc_clear_attachment_programs);
+   pvr_bo_suballoc_free(clear_state->pds_clear_attachment_programs);
 }
 
 /**

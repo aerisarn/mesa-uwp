@@ -1458,10 +1458,10 @@ static VkResult pvr_clear_color_attachment_static(
    struct pvr_static_clear_ppp_template template;
    struct pvr_suballoc_bo *const_shareds_buffer;
    uint64_t pds_texture_program_addr;
+   struct pvr_suballoc_bo *pvr_bo;
    uint32_t tile_buffer_idx = 0;
    uint32_t out_reg_count;
    uint32_t output_offset;
-   struct pvr_bo *pvr_bo;
    uint32_t program_idx;
    uint32_t *buffer;
    VkResult result;
@@ -1871,7 +1871,7 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
       } else {
          const uint32_t template_idx = attachment->aspectMask;
          struct pvr_static_clear_ppp_template template;
-         struct pvr_bo *pvr_bo;
+         struct pvr_suballoc_bo *pvr_bo;
 
          assert(template_idx < PVR_STATIC_CLEAR_VARIANT_COUNT);
          template =
