@@ -314,14 +314,16 @@ static struct bo_cache_bucket *
 bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size,
                 enum iris_heap heap, unsigned flags)
 {
+   if (flags & BO_ALLOC_PROTECTED)
+      return NULL;
 
-   /* Protected bo needs special handling during allocation.
-    * Exported and scanout bos also need special handling during allocation
-    * in Xe KMD.
-    */
-   if ((flags & BO_ALLOC_PROTECTED) ||
-       ((flags & (BO_ALLOC_SHARED | BO_ALLOC_SCANOUT)) &&
-        bufmgr->devinfo.kmd_type == INTEL_KMD_TYPE_XE))
+   const struct intel_device_info *devinfo = &bufmgr->devinfo;
+   if (devinfo->has_set_pat_uapi &&
+       iris_pat_index_for_bo_flags(devinfo, flags) != devinfo->pat.writeback)
+      return NULL;
+
+   if (devinfo->kmd_type == INTEL_KMD_TYPE_XE &&
+       (flags & (BO_ALLOC_SHARED | BO_ALLOC_SCANOUT)))
       return NULL;
 
    /* Calculating the pages and rounding up to the page size. */
