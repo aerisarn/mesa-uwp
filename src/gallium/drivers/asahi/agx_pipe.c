@@ -424,8 +424,8 @@ agx_compression_allowed(const struct agx_resource *pres)
    assert(!util_format_is_compressed(pres->base.format) &&
           "block-compressed formats are not renderable");
 
-   /* Small textures cannot (should not?) be compressed */
-   if (pres->base.width0 < 16 || pres->base.height0 < 16) {
+   if (!ail_can_compress(pres->base.width0, pres->base.height0,
+                         MAX2(pres->base.nr_samples, 1))) {
       rsrc_debug(pres, "No compression: too small\n");
       return false;
    }
