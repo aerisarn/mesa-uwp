@@ -203,6 +203,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(vk.ms.alpha_to_coverage_enable, RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE);
    RADV_CMP_COPY(vk.ms.sample_mask, RADV_DYNAMIC_SAMPLE_MASK);
    RADV_CMP_COPY(vk.ms.rasterization_samples, RADV_DYNAMIC_RASTERIZATION_SAMPLES);
+   RADV_CMP_COPY(vk.ms.sample_locations_enable, RADV_DYNAMIC_SAMPLE_LOCATIONS_ENABLE);
 
    RADV_CMP_COPY(vk.ds.depth.bounds_test.min, RADV_DYNAMIC_DEPTH_BOUNDS);
    RADV_CMP_COPY(vk.ds.depth.bounds_test.max, RADV_DYNAMIC_DEPTH_BOUNDS);
@@ -1088,7 +1089,7 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
    VkOffset2D sample_locs[4][8]; /* 8 is the max. sample count supported */
    uint64_t centroid_priority;
 
-   if (!d->sample_location.count)
+   if (!d->sample_location.count || !d->vk.ms.sample_locations_enable)
       return;
 
    /* Convert the user sample locations to hardware sample locations. */
@@ -6485,8 +6486,6 @@ radv_bind_multisample_state(struct radv_cmd_buffer *cmd_buffer,
       cmd_buffer->state.ms.sample_shading_enable = true;
       cmd_buffer->state.ms.min_sample_shading = ms->min_sample_shading;
    }
-
-   cmd_buffer->state.ms.uses_user_sample_locations = ms->uses_user_sample_locations;
 }
 
 static void
@@ -7562,6 +7561,17 @@ radv_CmdSetColorBlendEquationEXT(VkCommandBuffer commandBuffer, uint32_t firstAt
    }
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_EQUATION;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetSampleLocationsEnableEXT(VkCommandBuffer commandBuffer, VkBool32 sampleLocationsEnable)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.vk.ms.sample_locations_enable = sampleLocationsEnable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS_ENABLE;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -8953,7 +8963,7 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
    /* Small primitive culling assumes a sample position at (0.5, 0.5)
     * so don't enable it with user sample locations.
     */
-   if (!cmd_buffer->state.ms.uses_user_sample_locations) {
+   if (!d->vk.ms.sample_locations_enable) {
       nggc_settings |= radv_nggc_small_primitives;
 
       /* small_prim_precision = num_samples / 2^subpixel_bits
@@ -9061,7 +9071,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
         (RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_DYNAMIC_CULL_MODE |
          RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE | RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
          RADV_CMD_DIRTY_DYNAMIC_VIEWPORT | RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE |
-         RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES | RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) &&
+         RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES | RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |
+         RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS_ENABLE)) &&
        cmd_buffer->state.has_nggc)
       radv_emit_ngg_culling_state(cmd_buffer);
 

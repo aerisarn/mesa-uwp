@@ -370,8 +370,6 @@ radv_pipeline_init_multisample_state(const struct radv_device *device,
       ms->sample_shading_enable = true;
       ms->min_sample_shading = state->ms->min_sample_shading;
    }
-
-   ms->uses_user_sample_locations = state->ms && state->ms->sample_locations_enable;
 }
 
 static uint32_t
@@ -515,6 +513,8 @@ radv_dynamic_state_mask(VkDynamicState state)
       return RADV_DYNAMIC_DISCARD_RECTANGLE_MODE;
    case VK_DYNAMIC_STATE_ATTACHMENT_FEEDBACK_LOOP_ENABLE_EXT:
       return RADV_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
+   case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE_EXT:
+      return RADV_DYNAMIC_SAMPLE_LOCATIONS_ENABLE;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -590,7 +590,8 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
        !state->dr->rectangle_count)
       states &= ~RADV_DYNAMIC_DISCARD_RECTANGLE;
 
-   if (!state->ms || !state->ms->sample_locations_enable)
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_SAMPLE_LOCATIONS_ENABLE) &&
+       (!state->ms || !state->ms->sample_locations_enable))
       states &= ~RADV_DYNAMIC_SAMPLE_LOCATIONS;
 
    if (!(pipeline->dynamic_states & RADV_DYNAMIC_LINE_STIPPLE_ENABLE) &&
@@ -1039,6 +1040,10 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) {
       dynamic->vk.ms.rasterization_samples = state->ms->rasterization_samples;
+   }
+
+   if (states & RADV_DYNAMIC_SAMPLE_LOCATIONS_ENABLE) {
+      dynamic->vk.ms.sample_locations_enable = state->ms->sample_locations_enable;
    }
 
    if (states & RADV_DYNAMIC_SAMPLE_LOCATIONS) {
