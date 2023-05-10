@@ -1379,7 +1379,11 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       uint8_t colormasks[PIPE_MAX_COLOR_BUFS] = {0};
 
       for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i) {
-         if (agx_tilebuffer_supports_mask(&tib, i)) {
+         /* TODO: Flakes some dEQPs, seems to invoke UB. Revisit later.
+          * dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.77
+          * dEQP-GLES2.functional.fragment_ops.interaction.basic_shader.98
+          */
+         if (0 /* agx_tilebuffer_supports_mask(&tib, i) */) {
             colormasks[i] = key->blend.rt[i].colormask;
             opts.rt[i].colormask = BITFIELD_MASK(4);
          } else {
