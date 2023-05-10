@@ -202,6 +202,7 @@ struct pvr_device {
 
    struct pvr_suballocator suballoc_general;
    struct pvr_suballocator suballoc_pds;
+   struct pvr_suballocator suballoc_transfer;
    struct pvr_suballocator suballoc_usc;
 
    struct {
@@ -704,7 +705,7 @@ struct pvr_deferred_cs_command {
       struct {
          struct pvr_ppp_dbsc state;
 
-         struct pvr_bo *ppp_cs_bo;
+         struct pvr_suballoc_bo *ppp_cs_bo;
          uint32_t patch_offset;
       } dbsc2;
    };
@@ -1292,7 +1293,7 @@ VkResult pvr_cmd_buffer_alloc_mem(struct pvr_cmd_buffer *cmd_buffer,
                                   struct pvr_winsys_heap *heap,
                                   uint64_t size,
                                   uint32_t flags,
-                                  struct pvr_bo **const pvr_bo_out);
+                                  struct pvr_suballoc_bo **const pvr_bo_out);
 
 void pvr_calculate_vertex_cam_size(const struct pvr_device_info *dev_info,
                                    const uint32_t vs_output_size,

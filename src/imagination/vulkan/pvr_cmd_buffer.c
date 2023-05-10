@@ -2100,27 +2100,38 @@ VkResult pvr_cmd_buffer_alloc_mem(struct pvr_cmd_buffer *cmd_buffer,
                                   struct pvr_winsys_heap *heap,
                                   uint64_t size,
                                   uint32_t flags,
-                                  struct pvr_bo **const pvr_bo_out)
+                                  struct pvr_suballoc_bo **const pvr_bo_out)
 {
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&cmd_buffer->device->pdevice->dev_info);
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *suballoc_bo;
+   struct pvr_suballocator *allocator;
    VkResult result;
 
-   result = pvr_bo_alloc(cmd_buffer->device,
-                         heap,
-                         size,
-                         cache_line_size,
-                         flags,
-                         &pvr_bo);
+   /* We assume users to always request bo(s) to be CPU mapped */
+   assert(flags & PVR_BO_ALLOC_FLAG_CPU_MAPPED);
+
+   if (heap == cmd_buffer->device->heaps.general_heap)
+      allocator = &cmd_buffer->device->suballoc_general;
+   else if (heap == cmd_buffer->device->heaps.pds_heap)
+      allocator = &cmd_buffer->device->suballoc_pds;
+   else if (heap == cmd_buffer->device->heaps.transfer_3d_heap)
+      allocator = &cmd_buffer->device->suballoc_transfer;
+   else if (heap == cmd_buffer->device->heaps.usc_heap)
+      allocator = &cmd_buffer->device->suballoc_usc;
+   else
+      unreachable("Unknown heap type");
+
+   result =
+      pvr_bo_suballoc(allocator, size, cache_line_size, false, &suballoc_bo);
    if (result != VK_SUCCESS) {
       cmd_buffer->state.status = result;
       return result;
    }
 
-   list_add(&pvr_bo->link, &cmd_buffer->bo_list);
+   list_add(&suballoc_bo->link, &cmd_buffer->bo_list);
 
-   *pvr_bo_out = pvr_bo;
+   *pvr_bo_out = suballoc_bo;
 
    return VK_SUCCESS;
 }
@@ -2996,10 +3007,10 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
       &gfx_pipeline->shader_state.vertex;
    struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
    const struct pvr_pds_info *const pds_info = state->pds_shader.info;
+   struct pvr_suballoc_bo *pvr_bo;
    const uint8_t *entries;
    uint32_t *dword_buffer;
    uint64_t *qword_buffer;
-   struct pvr_bo *pvr_bo;
    VkResult result;
 
    result =
@@ -3011,8 +3022,8 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
    if (result != VK_SUCCESS)
       return result;
 
-   dword_buffer = (uint32_t *)pvr_bo->bo->map;
-   qword_buffer = (uint64_t *)pvr_bo->bo->map;
+   dword_buffer = (uint32_t *)pvr_bo_suballoc_get_map_addr(pvr_bo);
+   qword_buffer = (uint64_t *)pvr_bo_suballoc_get_map_addr(pvr_bo);
 
    entries = (uint8_t *)pds_info->entries;
 
@@ -3187,10 +3198,8 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
    }
 
    state->pds_vertex_attrib_offset =
-      pvr_bo->vma->dev_addr.addr -
+      pvr_bo->dev_addr.addr -
       cmd_buffer->device->heaps.pds_heap->base_addr.addr;
-
-   pvr_bo_cpu_unmap(cmd_buffer->device, pvr_bo);
 
    return VK_SUCCESS;
 }
@@ -3204,10 +3213,10 @@ static VkResult pvr_setup_descriptor_mappings_old(
 {
    const struct pvr_pds_info *const pds_info = &descriptor_state->pds_info;
    const struct pvr_descriptor_state *desc_state;
+   struct pvr_suballoc_bo *pvr_bo;
    const uint8_t *entries;
    uint32_t *dword_buffer;
    uint64_t *qword_buffer;
-   struct pvr_bo *pvr_bo;
    VkResult result;
 
    if (!pds_info->data_size_in_dwords)
@@ -3222,8 +3231,8 @@ static VkResult pvr_setup_descriptor_mappings_old(
    if (result != VK_SUCCESS)
       return result;
 
-   dword_buffer = (uint32_t *)pvr_bo->bo->map;
-   qword_buffer = (uint64_t *)pvr_bo->bo->map;
+   dword_buffer = (uint32_t *)pvr_bo_suballoc_get_map_addr(pvr_bo);
+   qword_buffer = (uint64_t *)pvr_bo_suballoc_get_map_addr(pvr_bo);
 
    entries = (uint8_t *)pds_info->entries;
 
@@ -3425,10 +3434,8 @@ static VkResult pvr_setup_descriptor_mappings_old(
       }
    }
 
-   pvr_bo_cpu_unmap(cmd_buffer->device, pvr_bo);
-
    *descriptor_data_offset_out =
-      pvr_bo->vma->dev_addr.addr -
+      pvr_bo->dev_addr.addr -
       cmd_buffer->device->heaps.pds_heap->base_addr.addr;
 
    return VK_SUCCESS;
@@ -3509,7 +3516,7 @@ static VkResult pvr_cmd_buffer_upload_patched_desc_set(
    struct pvr_cmd_buffer *cmd_buffer,
    const struct pvr_descriptor_set *desc_set,
    const uint32_t *dynamic_offsets,
-   struct pvr_bo **const bo_out)
+   struct pvr_suballoc_bo **const bo_out)
 {
    const struct pvr_descriptor_set_layout *layout = desc_set->layout;
    const uint64_t normal_desc_set_size =
@@ -3519,8 +3526,8 @@ static VkResult pvr_cmd_buffer_upload_patched_desc_set(
    struct pvr_descriptor_size_info dynamic_uniform_buffer_size_info;
    struct pvr_descriptor_size_info dynamic_storage_buffer_size_info;
    struct pvr_device *device = cmd_buffer->device;
-   struct pvr_bo *patched_desc_set_bo;
-   uint32_t *mem_ptr;
+   struct pvr_suballoc_bo *patched_desc_set_bo;
+   uint32_t *src_mem_ptr, *dst_mem_ptr;
    VkResult result;
 
    assert(desc_set->layout->dynamic_buffer_count > 0);
@@ -3547,9 +3554,10 @@ static VkResult pvr_cmd_buffer_upload_patched_desc_set(
    if (result != VK_SUCCESS)
       return result;
 
-   mem_ptr = (uint32_t *)patched_desc_set_bo->bo->map;
+   src_mem_ptr = (uint32_t *)desc_set->pvr_bo->bo->map;
+   dst_mem_ptr = (uint32_t *)pvr_bo_suballoc_get_map_addr(patched_desc_set_bo);
 
-   memcpy(mem_ptr, desc_set->pvr_bo->bo->map, normal_desc_set_size);
+   memcpy(dst_mem_ptr, src_mem_ptr, normal_desc_set_size);
 
    for (uint32_t i = 0; i < desc_set->layout->binding_count; i++) {
       const struct pvr_descriptor_set_layout_binding *binding =
@@ -3629,17 +3637,16 @@ static VkResult pvr_cmd_buffer_upload_patched_desc_set(
 
             assert(descriptors[desc_idx].type == binding->type);
 
-            memcpy(mem_ptr + primary_offset + size_info->primary * desc_idx,
+            memcpy(dst_mem_ptr + primary_offset + size_info->primary * desc_idx,
                    &addr.addr,
                    PVR_DW_TO_BYTES(size_info->primary));
-            memcpy(mem_ptr + secondary_offset + size_info->secondary * desc_idx,
+            memcpy(dst_mem_ptr + secondary_offset +
+                      size_info->secondary * desc_idx,
                    &range,
                    PVR_DW_TO_BYTES(size_info->secondary));
          }
       }
    }
-
-   pvr_bo_cpu_unmap(device, patched_desc_set_bo);
 
    *bo_out = patched_desc_set_bo;
 
@@ -3702,7 +3709,7 @@ pvr_cmd_buffer_upload_desc_set_table(struct pvr_cmd_buffer *const cmd_buffer,
       desc_set = desc_state->descriptor_sets[set];
 
       if (desc_set->layout->dynamic_buffer_count > 0) {
-         struct pvr_bo *new_desc_set_bo;
+         struct pvr_suballoc_bo *new_desc_set_bo;
 
          assert(dynamic_offset_idx + desc_set->layout->dynamic_buffer_count <=
                 ARRAY_SIZE(desc_state->dynamic_offsets));
@@ -3717,7 +3724,7 @@ pvr_cmd_buffer_upload_desc_set_table(struct pvr_cmd_buffer *const cmd_buffer,
 
          dynamic_offset_idx += desc_set->layout->dynamic_buffer_count;
 
-         bound_desc_sets[set] = new_desc_set_bo->vma->dev_addr.addr;
+         bound_desc_sets[set] = new_desc_set_bo->dev_addr.addr;
       } else {
          bound_desc_sets[set] = desc_set->pvr_bo->vma->dev_addr.addr;
       }
@@ -3806,10 +3813,10 @@ static VkResult pvr_setup_descriptor_mappings_new(
    uint32_t *const descriptor_data_offset_out)
 {
    const struct pvr_pds_info *const pds_info = &descriptor_state->pds_info;
+   struct pvr_suballoc_bo *pvr_bo;
    const uint8_t *entries;
    uint32_t *dword_buffer;
    uint64_t *qword_buffer;
-   struct pvr_bo *pvr_bo;
    VkResult result;
 
    if (!pds_info->data_size_in_dwords)
@@ -3823,8 +3830,8 @@ static VkResult pvr_setup_descriptor_mappings_new(
    if (result != VK_SUCCESS)
       return result;
 
-   dword_buffer = (uint32_t *)pvr_bo->bo->map;
-   qword_buffer = (uint64_t *)pvr_bo->bo->map;
+   dword_buffer = (uint32_t *)pvr_bo_suballoc_get_map_addr(pvr_bo);
+   qword_buffer = (uint64_t *)pvr_bo_suballoc_get_map_addr(pvr_bo);
 
    entries = (uint8_t *)pds_info->entries;
 
@@ -3862,7 +3869,7 @@ static VkResult pvr_setup_descriptor_mappings_new(
             *const addr_literal_buffer_entry =
                (struct pvr_pds_const_map_entry_addr_literal_buffer *)entries;
          struct pvr_device *device = cmd_buffer->device;
-         struct pvr_bo *addr_literal_buffer_bo;
+         struct pvr_suballoc_bo *addr_literal_buffer_bo;
          uint32_t addr_literal_count = 0;
          uint64_t *addr_literal_buffer;
 
@@ -3874,12 +3881,13 @@ static VkResult pvr_setup_descriptor_mappings_new(
          if (result != VK_SUCCESS)
             return result;
 
-         addr_literal_buffer = (uint64_t *)addr_literal_buffer_bo->bo->map;
+         addr_literal_buffer =
+            (uint64_t *)pvr_bo_suballoc_get_map_addr(addr_literal_buffer_bo);
 
          entries += sizeof(*addr_literal_buffer_entry);
 
          PVR_WRITE(qword_buffer,
-                   addr_literal_buffer_bo->vma->dev_addr.addr,
+                   addr_literal_buffer_bo->dev_addr.addr,
                    addr_literal_buffer_entry->const_offset,
                    pds_info->data_size_in_dwords);
 
@@ -3912,7 +3920,6 @@ static VkResult pvr_setup_descriptor_mappings_new(
 
          i += addr_literal_count;
 
-         pvr_bo_cpu_unmap(device, addr_literal_buffer_bo);
          break;
       }
 
@@ -3921,10 +3928,8 @@ static VkResult pvr_setup_descriptor_mappings_new(
       }
    }
 
-   pvr_bo_cpu_unmap(cmd_buffer->device, pvr_bo);
-
    *descriptor_data_offset_out =
-      pvr_bo->vma->dev_addr.addr -
+      pvr_bo->dev_addr.addr -
       cmd_buffer->device->heaps.pds_heap->base_addr.addr;
 
    return VK_SUCCESS;
@@ -5315,7 +5320,7 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
    uint32_t *buffer_ptr = ppp_state_words;
    uint32_t dbsc_patching_offset = 0;
    uint32_t ppp_state_words_count;
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *pvr_bo;
    VkResult result;
 
 #if !defined(NDEBUG)
@@ -5536,18 +5541,18 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
    if (result != VK_SUCCESS)
       return result;
 
-   memcpy(pvr_bo->bo->map,
+   memcpy(pvr_bo_suballoc_get_map_addr(pvr_bo),
           ppp_state_words,
           PVR_DW_TO_BYTES(ppp_state_words_count));
 
    /* Write the VDM state update into the VDM control stream. */
    pvr_csb_emit (control_stream, VDMCTRL_PPP_STATE0, state0) {
       state0.word_count = ppp_state_words_count;
-      state0.addrmsb = pvr_bo->vma->dev_addr;
+      state0.addrmsb = pvr_bo->dev_addr;
    }
 
    pvr_csb_emit (control_stream, VDMCTRL_PPP_STATE1, state1) {
-      state1.addrlsb = pvr_bo->vma->dev_addr;
+      state1.addrlsb = pvr_bo->dev_addr;
    }
 
    if (emit_dbsc && cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
@@ -6160,9 +6165,9 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       const struct pvr_device_info *dev_info =
          &cmd_buffer->device->pdevice->dev_info;
       struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
-      struct pvr_bo *dummy_bo;
+      struct pvr_suballoc_bo *dummy_bo;
+      struct pvr_suballoc_bo *pds_bo;
       uint32_t *dummy_stream;
-      struct pvr_bo *pds_bo;
       uint32_t *pds_base;
       uint32_t pds_size;
       VkResult result;
@@ -6192,7 +6197,7 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       if (result != VK_SUCCESS)
          return result;
 
-      pds_base = pds_bo->bo->map;
+      pds_base = pvr_bo_suballoc_get_map_addr(pds_bo);
       memcpy(pds_base,
              pds_prog.program.code,
              PVR_DW_TO_BYTES(pds_prog.program.code_size_aligned));
@@ -6211,8 +6216,6 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
             dev_info);
       }
 
-      pvr_bo_cpu_unmap(cmd_buffer->device, pds_bo);
-
       /* Write the VDM state update. */
       pvr_csb_emit (csb, VDMCTRL_PDS_STATE0, state0) {
          state0.usc_target = PVRX(VDMCTRL_USC_TARGET_ANY);
@@ -6228,7 +6231,7 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
 
       pvr_csb_emit (csb, VDMCTRL_PDS_STATE1, state1) {
          const uint32_t data_offset =
-            pds_bo->vma->dev_addr.addr +
+            pds_bo->dev_addr.addr +
             PVR_DW_TO_BYTES(pds_prog.program.code_size_aligned) -
             cmd_buffer->device->heaps.pds_heap->base_addr.addr;
 
@@ -6239,7 +6242,7 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
 
       pvr_csb_emit (csb, VDMCTRL_PDS_STATE2, state2) {
          const uint32_t code_offset =
-            pds_bo->vma->dev_addr.addr -
+            pds_bo->dev_addr.addr -
             cmd_buffer->device->heaps.pds_heap->base_addr.addr;
 
          state2.pds_code_addr = PVR_DEV_ADDR(code_offset);
@@ -6260,7 +6263,7 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       if (result != VK_SUCCESS)
          return result;
 
-      dummy_stream = dummy_bo->bo->map;
+      dummy_stream = pvr_bo_suballoc_get_map_addr(dummy_bo);
 
       /* For indexed draw cmds fill in the dummy's header (as it won't change
        * based on the indirect args) and increment by the in-use size of each
@@ -6277,18 +6280,16 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       pvr_csb_pack (dummy_stream, VDMCTRL_STREAM_RETURN, word);
       /* clang-format on */
 
-      pvr_bo_cpu_unmap(cmd_buffer->device, dummy_bo);
-
       /* Stream link to the first dummy which forces the VDM to discard any
        * prefetched (dummy) control stream.
        */
       pvr_csb_emit (csb, VDMCTRL_STREAM_LINK0, link) {
          link.with_return = true;
-         link.link_addrmsb = dummy_bo->vma->dev_addr;
+         link.link_addrmsb = dummy_bo->dev_addr;
       }
 
       pvr_csb_emit (csb, VDMCTRL_STREAM_LINK1, link) {
-         link.link_addrlsb = dummy_bo->vma->dev_addr;
+         link.link_addrlsb = dummy_bo->dev_addr;
       }
 
       /* Point the pds program to the next argument buffer and the next VDM
@@ -6744,9 +6745,10 @@ pvr_execute_deferred_cmd_buffer(struct pvr_cmd_buffer *cmd_buffer,
             prim_db_elems + cmd->dbsc2.state.depthbias_index;
 
          uint32_t *const addr =
-            cmd->dbsc2.ppp_cs_bo->bo->map + cmd->dbsc2.patch_offset;
+            pvr_bo_suballoc_get_map_addr(cmd->dbsc2.ppp_cs_bo) +
+            cmd->dbsc2.patch_offset;
 
-         assert(cmd->dbsc2.ppp_cs_bo->bo->map);
+         assert(pvr_bo_suballoc_get_map_addr(cmd->dbsc2.ppp_cs_bo));
 
          pvr_csb_pack (addr, TA_STATE_ISPDBSC, ispdbsc) {
             ispdbsc.dbindex = db_idx;

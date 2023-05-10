@@ -200,10 +200,10 @@ static VkResult pvr_write_compute_query_pds_data_section(
    struct pvr_private_compute_pipeline *pipeline)
 {
    const struct pvr_pds_info *const info = &query_prog->info;
+   struct pvr_suballoc_bo *pvr_bo;
    const uint8_t *entries;
    uint32_t *dword_buffer;
    uint64_t *qword_buffer;
-   struct pvr_bo *pvr_bo;
    VkResult result;
 
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
@@ -214,8 +214,8 @@ static VkResult pvr_write_compute_query_pds_data_section(
    if (result != VK_SUCCESS)
       return result;
 
-   dword_buffer = (uint32_t *)pvr_bo->bo->map;
-   qword_buffer = (uint64_t *)pvr_bo->bo->map;
+   dword_buffer = (uint32_t *)pvr_bo_suballoc_get_map_addr(pvr_bo);
+   qword_buffer = (uint64_t *)pvr_bo_suballoc_get_map_addr(pvr_bo);
 
    entries = (uint8_t *)info->entries;
 
@@ -302,10 +302,8 @@ static VkResult pvr_write_compute_query_pds_data_section(
    }
 
    pipeline->pds_shared_update_data_offset =
-      pvr_bo->vma->dev_addr.addr -
+      pvr_bo->dev_addr.addr -
       cmd_buffer->device->heaps.pds_heap->base_addr.addr;
-
-   pvr_bo_cpu_unmap(cmd_buffer->device, pvr_bo);
 
    return VK_SUCCESS;
 }

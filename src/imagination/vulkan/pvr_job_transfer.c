@@ -2094,8 +2094,9 @@ pvr_pds_unitex(const struct pvr_device_info *dev_info,
       &ctx->pds_unitex_code[program->num_texture_dma_kicks]
                            [program->num_uniform_dma_kicks];
    struct pvr_transfer_3d_state *state = &prep_data->state;
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *pvr_bo;
    VkResult result;
+   void *map;
 
    /* Uniform program is not used. */
    assert(program->num_uniform_dma_kicks == 0U);
@@ -2128,13 +2129,10 @@ pvr_pds_unitex(const struct pvr_device_info *dev_info,
       return result;
 
    state->tex_state_data_offset =
-      pvr_bo->vma->dev_addr.addr - ctx->device->heaps.pds_heap->base_addr.addr;
+      pvr_bo->dev_addr.addr - ctx->device->heaps.pds_heap->base_addr.addr;
 
-   pvr_pds_generate_pixel_shader_sa_texture_state_data(program,
-                                                       pvr_bo->bo->map,
-                                                       dev_info);
-
-   pvr_bo_cpu_unmap(transfer_cmd->cmd_buffer->device, pvr_bo);
+   map = pvr_bo_suballoc_get_map_addr(pvr_bo);
+   pvr_pds_generate_pixel_shader_sa_texture_state_data(program, map, dev_info);
 
    /* Save the dev_addr and size in the 3D state. */
    state->uni_tex_code_offset = unitex_code->code_offset;
@@ -2761,7 +2759,7 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
       const struct pvr_tq_frag_sh_reg_layout *sh_reg_layout;
       struct pvr_pds_pixel_shader_sa_program unitex_prog = { 0U };
       uint32_t tex_state_dma_size_dw;
-      struct pvr_bo *pvr_bo;
+      struct pvr_suballoc_bo *pvr_bo;
       uint32_t *dma_space;
 
       result = pvr_pbe_src_format(transfer_cmd, state, &state->shader_props);
@@ -2843,7 +2841,7 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
       if (result != VK_SUCCESS)
          return result;
 
-      dma_space = (uint32_t *)pvr_bo->bo->map;
+      dma_space = (uint32_t *)pvr_bo_suballoc_get_map_addr(pvr_bo);
 
       result = pvr_sampler_image_state(ctx,
                                        transfer_cmd,
@@ -2879,7 +2877,7 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
                                unitex_prog.texture_dma_address,
                                state->common_ptr,
                                tex_state_dma_size_dw,
-                               pvr_bo->vma->dev_addr.addr,
+                               pvr_bo->dev_addr.addr,
                                true,
                                dev_info);
 
@@ -2994,7 +2992,7 @@ pvr_pds_coeff_task(struct pvr_transfer_ctx *ctx,
 {
    struct pvr_transfer_3d_state *state = &prep_data->state;
    struct pvr_pds_coeff_loading_program program = { 0U };
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *pvr_bo;
    VkResult result;
 
    program.num_fpu_iterators = 1U;
@@ -3041,9 +3039,10 @@ pvr_pds_coeff_task(struct pvr_transfer_ctx *ctx,
       return result;
 
    state->pds_coeff_task_offset =
-      pvr_bo->vma->dev_addr.addr - ctx->device->heaps.pds_heap->base_addr.addr;
+      pvr_bo->dev_addr.addr - ctx->device->heaps.pds_heap->base_addr.addr;
 
-   pvr_pds_generate_coeff_loading_program(&program, pvr_bo->bo->map);
+   pvr_pds_generate_coeff_loading_program(&program,
+                                          pvr_bo_suballoc_get_map_addr(pvr_bo));
 
    state->coeff_data_size = program.data_size;
    state->pds_temps = program.temps_used;
@@ -3952,13 +3951,13 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
    struct pvr_winsys_transfer_regs *const regs = &state->regs;
    struct pvr_transfer_pass *pass = NULL;
    uint32_t flags = transfer_cmd->flags;
+   struct pvr_suballoc_bo *pvr_cs_bo;
    pvr_dev_addr_t stream_base_vaddr;
    uint32_t num_prim_blks = 0U;
    uint32_t prim_blk_size = 0U;
    uint32_t region_arrays_size;
    uint32_t num_region_arrays;
    uint32_t total_stream_size;
-   struct pvr_bo *pvr_cs_bo;
    bool was_linked = false;
    uint32_t rem_mappings;
    uint32_t num_sources;
@@ -4039,10 +4038,10 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
       return result;
 
    stream_base_vaddr =
-      PVR_DEV_ADDR(pvr_cs_bo->vma->dev_addr.addr -
+      PVR_DEV_ADDR(pvr_cs_bo->dev_addr.addr -
                    ctx->device->heaps.transfer_3d_heap->base_addr.addr);
 
-   cs_ptr = pvr_cs_bo->bo->map;
+   cs_ptr = pvr_bo_suballoc_get_map_addr(pvr_cs_bo);
    blk_cs_ptr = cs_ptr + region_arrays_size / sizeof(uint32_t);
 
    source = 0;
@@ -4119,9 +4118,9 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
             struct pvr_tq_layer_properties *layer = &shader_props->layer_props;
             const struct pvr_tq_frag_sh_reg_layout *sh_reg_layout;
             enum pvr_transfer_pbe_pixel_src pbe_src_format;
+            struct pvr_suballoc_bo *pvr_bo;
             uint32_t tex_state_dma_size;
             pvr_dev_addr_t dev_offset;
-            struct pvr_bo *pvr_bo;
 
             /* Reset the shared register bank ptrs each src implies new texture
              * state (Note that we don't change texture state per prim block).
@@ -4239,7 +4238,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                state->filter[source],
                sh_reg_layout,
                0U,
-               pvr_bo->bo->map);
+               pvr_bo_suballoc_get_map_addr(pvr_bo));
             if (result != VK_SUCCESS)
                return result;
 
@@ -4252,7 +4251,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                sh_reg_layout,
                state,
                0U,
-               pvr_bo->bo->map);
+               pvr_bo_suballoc_get_map_addr(pvr_bo));
             if (result != VK_SUCCESS)
                return result;
 
@@ -4260,16 +4259,20 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                                      unitex_pds_prog.texture_dma_address,
                                      state->common_ptr,
                                      tex_state_dma_size,
-                                     pvr_bo->vma->dev_addr.addr,
+                                     pvr_bo->dev_addr.addr,
                                      true,
                                      dev_info);
 
             state->common_ptr += tex_state_dma_size;
 
-            pvr_write_usc_constants(sh_reg_layout, pvr_bo->bo->map);
+            pvr_write_usc_constants(sh_reg_layout,
+                                    pvr_bo_suballoc_get_map_addr(pvr_bo));
 
-            if (pvr_pick_component_needed(&state->custom_mapping))
-               pvr_dma_texel_unwind(state, sh_reg_layout, pvr_bo->bo->map);
+            if (pvr_pick_component_needed(&state->custom_mapping)) {
+               pvr_dma_texel_unwind(state,
+                                    sh_reg_layout,
+                                    pvr_bo_suballoc_get_map_addr(pvr_bo));
+            }
          }
 
          result = pvr_pds_unitex(dev_info,
@@ -4323,7 +4326,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                }
 
                cs_ptr =
-                  (uint32_t *)pvr_cs_bo->bo->map +
+                  (uint32_t *)pvr_bo_suballoc_get_map_addr(pvr_cs_bo) +
                   num_region_arrays * PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS);
                free_ctrl_stream_words = PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS);
 
@@ -4337,7 +4340,8 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
 
             prim_blk_addr = stream_base_vaddr;
             prim_blk_addr.addr +=
-               (uintptr_t)blk_cs_ptr - (uintptr_t)pvr_cs_bo->bo->map;
+               (uintptr_t)blk_cs_ptr -
+               (uintptr_t)pvr_bo_suballoc_get_map_addr(pvr_cs_bo);
 
             result = pvr_isp_primitive_block(dev_info,
                                              ctx,
@@ -4479,7 +4483,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
 
    pvr_csb_pack (&regs->isp_mtile_base, CR_ISP_MTILE_BASE, reg) {
       reg.addr =
-         PVR_DEV_ADDR(pvr_cs_bo->vma->dev_addr.addr -
+         PVR_DEV_ADDR(pvr_cs_bo->dev_addr.addr -
                       ctx->device->heaps.transfer_3d_heap->base_addr.addr);
    }
 

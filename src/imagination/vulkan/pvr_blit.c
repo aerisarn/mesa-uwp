@@ -1362,10 +1362,10 @@ static VkResult pvr_clear_color_attachment_static_create_consts_buffer(
    const uint32_t clear_color[static const PVR_CLEAR_COLOR_ARRAY_SIZE],
    ASSERTED bool uses_tile_buffer,
    uint32_t tile_buffer_idx,
-   struct pvr_bo **const const_shareds_buffer_out)
+   struct pvr_suballoc_bo **const const_shareds_buffer_out)
 {
    struct pvr_device *device = cmd_buffer->device;
-   struct pvr_bo *const_shareds_buffer;
+   struct pvr_suballoc_bo *const_shareds_buffer;
    struct pvr_bo *tile_buffer;
    uint64_t tile_dev_addr;
    uint32_t *buffer;
@@ -1382,7 +1382,7 @@ static VkResult pvr_clear_color_attachment_static_create_consts_buffer(
    if (result != VK_SUCCESS)
       return result;
 
-   buffer = const_shareds_buffer->bo->map;
+   buffer = pvr_bo_suballoc_get_map_addr(const_shareds_buffer);
 
    for (uint32_t i = 0; i < PVR_CLEAR_ATTACHMENT_CONST_COUNT; i++) {
       uint32_t dest_idx = shader_info->driver_const_location_map[i];
@@ -1428,8 +1428,6 @@ static VkResult pvr_clear_color_attachment_static_create_consts_buffer(
       buffer[static_buff->dst_idx] = static_buff->value;
    }
 
-   pvr_bo_cpu_unmap(device, const_shareds_buffer);
-
    *const_shareds_buffer_out = const_shareds_buffer;
 
    return VK_SUCCESS;
@@ -1456,9 +1454,9 @@ static VkResult pvr_clear_color_attachment_static(
    struct pvr_pds_pixel_shader_sa_program texture_program;
    uint32_t pds_state[PVR_STATIC_CLEAR_PDS_STATE_COUNT];
    const struct pvr_shader_factory_info *shader_info;
+   struct pvr_suballoc_bo *pds_texture_program_bo;
    struct pvr_static_clear_ppp_template template;
-   struct pvr_bo *pds_texture_program_bo;
-   struct pvr_bo *const_shareds_buffer;
+   struct pvr_suballoc_bo *const_shareds_buffer;
    uint64_t pds_texture_program_addr;
    uint32_t tile_buffer_idx = 0;
    uint32_t out_reg_count;
@@ -1500,7 +1498,7 @@ static VkResult pvr_clear_color_attachment_static(
    texture_program = (struct pvr_pds_pixel_shader_sa_program){
       .num_texture_dma_kicks = 1,
       .texture_dma_address = {
-         [0] = const_shareds_buffer->vma->dev_addr.addr,
+         [0] = const_shareds_buffer->dev_addr.addr,
       }
    };
    /* clang-format on */
@@ -1526,21 +1524,19 @@ static VkResult pvr_clear_color_attachment_static(
       &pds_texture_program_bo);
    if (result != VK_SUCCESS) {
       list_del(&const_shareds_buffer->link);
-      pvr_bo_free(device, const_shareds_buffer);
+      pvr_bo_suballoc_free(const_shareds_buffer);
 
       return result;
    }
 
-   buffer = pds_texture_program_bo->bo->map;
-   pds_texture_program_addr = pds_texture_program_bo->vma->dev_addr.addr -
+   buffer = pvr_bo_suballoc_get_map_addr(pds_texture_program_bo);
+   pds_texture_program_addr = pds_texture_program_bo->dev_addr.addr -
                               device->heaps.pds_heap->base_addr.addr;
 
    pvr_pds_generate_pixel_shader_sa_texture_state_data(
       &texture_program,
       buffer,
       &device->pdevice->dev_info);
-
-   pvr_bo_cpu_unmap(device, pds_texture_program_bo);
 
    pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_SHADERBASE],
                  TA_STATE_PDS_SHADERBASE,
@@ -1607,10 +1603,10 @@ static VkResult pvr_clear_color_attachment_static(
       &pvr_bo);
    if (result != VK_SUCCESS) {
       list_del(&pds_texture_program_bo->link);
-      pvr_bo_free(device, pds_texture_program_bo);
+      pvr_bo_suballoc_free(pds_texture_program_bo);
 
       list_del(&const_shareds_buffer->link);
-      pvr_bo_free(device, const_shareds_buffer);
+      pvr_bo_suballoc_free(const_shareds_buffer);
 
       cmd_buffer->state.status = result;
       return result;

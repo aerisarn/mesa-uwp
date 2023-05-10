@@ -581,8 +581,9 @@ VkResult pvr_bo_suballoc(struct pvr_suballocator *allocator,
    if (!suballoc_bo)
       return vk_error(allocator->device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   /* This cache line value is used for all type of allocations (i.e. USC, PDS
-    * and general), so always align them to at least the size of the cache line.
+   /* This cache line value is used for all type of allocations (i.e. USC, PDS,
+    * transfer and general), so always align them to at least the size of the
+    * cache line.
     */
    align = MAX2(align, cache_line_size);
    assert(util_is_power_of_two_nonzero(align));

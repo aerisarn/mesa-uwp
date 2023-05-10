@@ -110,6 +110,7 @@
  */
 #define PVR_SUBALLOCATOR_GENERAL_SIZE (128 * 1024)
 #define PVR_SUBALLOCATOR_PDS_SIZE (128 * 1024)
+#define PVR_SUBALLOCATOR_TRANSFER_SIZE (128 * 1024)
 #define PVR_SUBALLOCATOR_USC_SIZE (128 * 1024)
 
 struct pvr_drm_device_info {
@@ -1814,6 +1815,10 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
                             device->heaps.pds_heap,
                             device,
                             PVR_SUBALLOCATOR_PDS_SIZE);
+   pvr_bo_suballocator_init(&device->suballoc_transfer,
+                            device->heaps.transfer_3d_heap,
+                            device,
+                            PVR_SUBALLOCATOR_TRANSFER_SIZE);
    pvr_bo_suballocator_init(&device->suballoc_usc,
                             device->heaps.usc_heap,
                             device,
@@ -1926,6 +1931,7 @@ err_dec_device_count:
    p_atomic_dec(&device->instance->active_device_count);
 
    pvr_bo_suballocator_fini(&device->suballoc_usc);
+   pvr_bo_suballocator_fini(&device->suballoc_transfer);
    pvr_bo_suballocator_fini(&device->suballoc_pds);
    pvr_bo_suballocator_fini(&device->suballoc_general);
 
@@ -1968,6 +1974,7 @@ void pvr_DestroyDevice(VkDevice _device,
    pvr_bo_suballoc_free(device->nop_program.usc);
    pvr_free_list_destroy(device->global_free_list);
    pvr_bo_suballocator_fini(&device->suballoc_usc);
+   pvr_bo_suballocator_fini(&device->suballoc_transfer);
    pvr_bo_suballocator_fini(&device->suballoc_pds);
    pvr_bo_suballocator_fini(&device->suballoc_general);
    pvr_bo_store_destroy(device);
@@ -2524,6 +2531,8 @@ VkResult pvr_gpu_upload(struct pvr_device *device,
       allocator = &device->suballoc_general;
    else if (heap == device->heaps.pds_heap)
       allocator = &device->suballoc_pds;
+   else if (heap == device->heaps.transfer_3d_heap)
+      allocator = &device->suballoc_transfer;
    else if (heap == device->heaps.usc_heap)
       allocator = &device->suballoc_usc;
    else
@@ -2547,30 +2556,18 @@ VkResult pvr_gpu_upload_usc(struct pvr_device *device,
                             uint64_t code_alignment,
                             struct pvr_suballoc_bo **const pvr_bo_out)
 {
-   struct pvr_suballoc_bo *suballoc_bo = NULL;
-   VkResult result;
-   void *map;
-
    assert(code_size > 0);
 
    /* The USC will prefetch the next instruction, so over allocate by 1
     * instruction to prevent reading off the end of a page into a potentially
     * unallocated page.
     */
-   result = pvr_bo_suballoc(&device->suballoc_usc,
-                            code_size + ROGUE_MAX_INSTR_BYTES,
-                            code_alignment,
-                            false,
-                            &suballoc_bo);
-   if (result != VK_SUCCESS)
-      return result;
-
-   map = pvr_bo_suballoc_get_map_addr(suballoc_bo);
-   memcpy(map, code, code_size);
-
-   *pvr_bo_out = suballoc_bo;
-
-   return VK_SUCCESS;
+   return pvr_gpu_upload(device,
+                         device->heaps.usc_heap,
+                         code,
+                         code_size + ROGUE_MAX_INSTR_BYTES,
+                         code_alignment,
+                         pvr_bo_out);
 }
 
 /**
