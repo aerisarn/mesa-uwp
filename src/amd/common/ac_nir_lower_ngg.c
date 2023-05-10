@@ -1585,7 +1585,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       if_es_thread->control = nir_selection_control_divergent_always_taken;
       {
          nir_ssa_def *accepted = nir_load_shared(b, 1, 8u, es_vertex_lds_addr, .base = lds_es_vertex_accepted, .align_mul = 4u);
-         nir_ssa_def *accepted_bool = nir_ine(b, accepted, nir_imm_intN_t(b, 0, 8));
+         nir_ssa_def *accepted_bool = nir_ine(b, nir_u2u32(b, accepted), nir_imm_int(b, 0));
          nir_store_var(b, s->es_accepted_var, accepted_bool, 0x1u);
       }
       nir_pop_if(b, if_es_thread);
