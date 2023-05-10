@@ -98,6 +98,10 @@ impl SPIRVBin {
                     key.extend_from_slice(h.source.as_bytes());
                 });
 
+                // Safety: clc_optional_features is a struct of bools and contains no padding.
+                // Sadly we can't guarentee this.
+                key.extend(unsafe { as_byte_slice(slice::from_ref(&features)) });
+
                 let mut key = cache.gen_key(&key);
                 if let Some(data) = cache.get(&mut key) {
                     return (Some(Self::from_bin(&data)), String::from(""));
