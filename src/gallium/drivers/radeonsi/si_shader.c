@@ -926,6 +926,20 @@ static bool upload_binary_elf(struct si_screen *sscreen, struct si_shader *shade
    return size >= 0;
 }
 
+static void calculate_needed_lds_size(struct si_screen *sscreen, struct si_shader *shader)
+{
+   if (shader->selector->stage == MESA_SHADER_VERTEX && !shader->key.ge.as_ls) {
+      unsigned size_in_dw = 0;
+      if (shader->key.ge.as_es || shader->key.ge.as_ngg)
+         size_in_dw += shader->gs_info.esgs_ring_size;
+      if (shader->key.ge.as_ngg)
+         size_in_dw += gfx10_ngg_get_scratch_dw_size(shader);
+
+      shader->config.lds_size =
+         DIV_ROUND_UP(size_in_dw * 4, get_lds_granularity(sscreen, shader->selector->stage));
+   }
+}
+
 static bool upload_binary_raw(struct si_screen *sscreen, struct si_shader *shader,
                               uint64_t scratch_va)
 {
@@ -958,6 +972,8 @@ static bool upload_binary_raw(struct si_screen *sscreen, struct si_shader *shade
 
    sscreen->ws->buffer_unmap(sscreen->ws, shader->bo->buf);
    shader->gpu_address = shader->bo->gpu_address;
+
+   calculate_needed_lds_size(sscreen, shader);
    return true;
 }
 
