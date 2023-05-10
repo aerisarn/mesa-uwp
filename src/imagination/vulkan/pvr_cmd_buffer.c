@@ -3356,7 +3356,7 @@ static VkResult pvr_setup_descriptor_mappings_old(
 
          descriptor_set = desc_state->descriptor_sets[desc_set_num];
 
-         desc_set_addr = descriptor_set->pvr_bo->vma->dev_addr;
+         desc_set_addr = descriptor_set->pvr_bo->dev_addr;
 
          if (desc_set_entry->primary) {
             desc_portion_offset =
@@ -3554,7 +3554,7 @@ static VkResult pvr_cmd_buffer_upload_patched_desc_set(
    if (result != VK_SUCCESS)
       return result;
 
-   src_mem_ptr = (uint32_t *)desc_set->pvr_bo->bo->map;
+   src_mem_ptr = (uint32_t *)pvr_bo_suballoc_get_map_addr(desc_set->pvr_bo);
    dst_mem_ptr = (uint32_t *)pvr_bo_suballoc_get_map_addr(patched_desc_set_bo);
 
    memcpy(dst_mem_ptr, src_mem_ptr, normal_desc_set_size);
@@ -3726,7 +3726,7 @@ pvr_cmd_buffer_upload_desc_set_table(struct pvr_cmd_buffer *const cmd_buffer,
 
          bound_desc_sets[set] = new_desc_set_bo->dev_addr.addr;
       } else {
-         bound_desc_sets[set] = desc_set->pvr_bo->vma->dev_addr.addr;
+         bound_desc_sets[set] = desc_set->pvr_bo->dev_addr.addr;
       }
    }
 

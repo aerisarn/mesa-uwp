@@ -1089,7 +1089,7 @@ static void pvr_free_descriptor_set(struct pvr_device *device,
                                     struct pvr_descriptor_set *set)
 {
    list_del(&set->link);
-   pvr_bo_free(device, set->pvr_bo);
+   pvr_bo_suballoc_free(set->pvr_bo);
    vk_object_free(&device->vk, &pool->alloc, set);
 }
 
@@ -1219,12 +1219,11 @@ pvr_descriptor_set_create(struct pvr_device *device,
                               PVR_MAX_DESCRIPTOR_MEM_SIZE_IN_DWORDS) *
                          sizeof(uint32_t);
 
-      result = pvr_bo_alloc(device,
-                            device->heaps.general_heap,
-                            bo_size,
-                            cache_line_size,
-                            PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                            &set->pvr_bo);
+      result = pvr_bo_suballoc(&device->suballoc_general,
+                               bo_size,
+                               cache_line_size,
+                               false,
+                               &set->pvr_bo);
       if (result != VK_SUCCESS)
          goto err_free_descriptor_set;
    }
@@ -1254,12 +1253,12 @@ pvr_descriptor_set_create(struct pvr_device *device,
                                                  binding,
                                                  stage,
                                                  j);
-            void *map = set->pvr_bo->bo->map;
 
             if (binding->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                offset_in_dwords += 4;
 
-            memcpy((uint8_t *)map + PVR_DW_TO_BYTES(offset_in_dwords),
+            memcpy((uint8_t *)pvr_bo_suballoc_get_map_addr(set->pvr_bo) +
+                      PVR_DW_TO_BYTES(offset_in_dwords),
                    sampler->descriptor.words,
                    sizeof(sampler->descriptor.words));
          }
@@ -1824,7 +1823,7 @@ static void pvr_write_descriptor_set(struct pvr_device *device,
                                      const VkWriteDescriptorSet *write_set)
 {
    PVR_FROM_HANDLE(pvr_descriptor_set, set, write_set->dstSet);
-   uint32_t *map = set->pvr_bo->bo->map;
+   uint32_t *map = pvr_bo_suballoc_get_map_addr(set->pvr_bo);
    const struct pvr_descriptor_set_layout_binding *binding =
       pvr_get_descriptor_binding(set->layout, write_set->dstBinding);
 
@@ -1969,8 +1968,8 @@ static void pvr_copy_descriptor_set(struct pvr_device *device,
       return;
    }
 
-   src_mem_ptr = src_set->pvr_bo->bo->map;
-   dst_mem_ptr = dst_set->pvr_bo->bo->map;
+   src_mem_ptr = pvr_bo_suballoc_get_map_addr(src_set->pvr_bo);
+   dst_mem_ptr = pvr_bo_suballoc_get_map_addr(dst_set->pvr_bo);
 
    /* From the Vulkan 1.3.232 spec VUID-VkCopyDescriptorSet-dstBinding-02632:
     *

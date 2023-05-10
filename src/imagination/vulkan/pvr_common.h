@@ -379,7 +379,7 @@ struct pvr_descriptor_set {
    const struct pvr_descriptor_set_layout *layout;
    const struct pvr_descriptor_pool *pool;
 
-   struct pvr_bo *pvr_bo;
+   struct pvr_suballoc_bo *pvr_bo;
 
    /* Links this descriptor set into pvr_descriptor_pool::descriptor_sets list.
     */
