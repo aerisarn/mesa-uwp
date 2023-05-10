@@ -823,6 +823,7 @@ pvr_copy_image_to_buffer_region(struct pvr_device *device,
                                 const VkBufferImageCopy2 *region)
 {
    const VkImageAspectFlags aspect_mask = region->imageSubresource.aspectMask;
+   enum pipe_format pformat = vk_format_to_pipe_format(image->vk.format);
    VkFormat image_format = pvr_get_copy_format(image->vk.format);
    struct pvr_transfer_cmd_surface dst_surface = { 0 };
    VkImageSubresource sub_resource;
@@ -888,6 +889,14 @@ pvr_copy_image_to_buffer_region(struct pvr_device *device,
 
    dst_rect.extent.width = region->imageExtent.width;
    dst_rect.extent.height = region->imageExtent.height;
+
+   if (util_format_is_compressed(pformat)) {
+      uint32_t block_width = util_format_get_blockwidth(pformat);
+      uint32_t block_height = util_format_get_blockheight(pformat);
+
+      dst_rect.extent.width = MAX2(1U, dst_rect.extent.width / block_width);
+      dst_rect.extent.height = MAX2(1U, dst_rect.extent.height / block_height);
+   }
 
    sub_resource = (VkImageSubresource){
       .aspectMask = region->imageSubresource.aspectMask,
