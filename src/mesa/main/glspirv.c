@@ -329,7 +329,6 @@ _mesa_SpecializeShaderARB(GLuint shader,
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_shader *sh;
-   bool has_entry_point;
    struct nir_spirv_specialization *spec_entries = NULL;
 
    if (!ctx->Extensions.ARB_gl_spirv) {
@@ -384,27 +383,35 @@ _mesa_SpecializeShaderARB(GLuint shader,
       spec_entries[i].defined_on_module = false;
    }
 
-   has_entry_point =
-      gl_spirv_validation((uint32_t *)&spirv_data->SpirVModule->Binary[0],
-                          spirv_data->SpirVModule->Length / 4,
-                          spec_entries, numSpecializationConstants,
-                          sh->Stage, pEntryPoint);
+   enum spirv_verify_result r = spirv_verify_gl_specialization_constants(
+      (uint32_t *)&spirv_data->SpirVModule->Binary[0],
+      spirv_data->SpirVModule->Length / 4,
+      spec_entries, numSpecializationConstants,
+      sh->Stage, pEntryPoint);
 
-   /* See previous spec comment */
-   if (!has_entry_point) {
+   switch (r) {
+   case SPIRV_VERIFY_OK:
+      break;
+   case SPIRV_VERIFY_PARSER_ERROR:
       _mesa_error(ctx, GL_INVALID_VALUE,
-                  "glSpecializeShaderARB(\"%s\" is not a valid entry point"
+                  "glSpecializeShaderARB(failed to parse entry point \"%s\""
                   " for shader)", pEntryPoint);
       goto end;
-   }
-
-   for (unsigned i = 0; i < numSpecializationConstants; ++i) {
-      if (spec_entries[i].defined_on_module == false) {
-         _mesa_error(ctx, GL_INVALID_VALUE,
-                     "glSpecializeShaderARB(constant \"%i\" does not exist "
-                     "in shader)", spec_entries[i].id);
-         goto end;
+   case SPIRV_VERIFY_ENTRY_POINT_NOT_FOUND:
+      _mesa_error(ctx, GL_INVALID_VALUE,
+                  "glSpecializeShaderARB(could not find entry point \"%s\""
+                  " for shader)", pEntryPoint);
+      goto end;
+   case SPIRV_VERIFY_UNKNOWN_SPEC_INDEX:
+      for (unsigned i = 0; i < numSpecializationConstants; ++i) {
+         if (spec_entries[i].defined_on_module == false) {
+            _mesa_error(ctx, GL_INVALID_VALUE,
+                        "glSpecializeShaderARB(constant \"%i\" does not exist "
+                        "in shader)", spec_entries[i].id);
+            break;
+         }
       }
+      goto end;
    }
 
    spirv_data->SpirVEntryPoint = ralloc_strdup(spirv_data, pEntryPoint);
