@@ -1224,8 +1224,19 @@ static void preptypeinfo(struct rnndb *db, struct rnntypeinfo *ti, char *prefix,
 	if (ti->addvariant && ti->type != RNN_TTYPE_ENUM) {
 		rnn_err(db, "%s: addvariant specified on non-enum type %s\n", prefix, ti->name);
 	}
-	for (i = 0; i < ti->bitfieldsnum; i++)
+	for (i = 0; i < ti->bitfieldsnum; i++) {
 		prepbitfield(db,  ti->bitfields[i], prefix, vi);
+		if (ti->bitfields[i]->typeinfo.addvariant) {
+			for (int j = 0; j < i; j++) {
+				if (!ti->bitfields[j]->typeinfo.addvariant) {
+					struct rnnbitfield *t = ti->bitfields[j];
+					ti->bitfields[j] = ti->bitfields[i];
+					ti->bitfields[i] = t;
+					break;
+				}
+			}
+		}
+	}
 	for (i = 0; i < ti->valsnum; i++)
 		prepvalue(db, ti->vals[i], prefix, vi);
 }
