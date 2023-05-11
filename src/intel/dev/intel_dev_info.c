@@ -222,7 +222,12 @@ main(int argc, char *argv[])
    }
 
    if (platform) {
-      int pci_id = intel_device_name_to_pci_device_id(platform);
+      int pci_id;
+
+      if (strstr(platform, "0x") == platform)
+         pci_id = strtol(platform, NULL, 16);
+      else
+         pci_id = intel_device_name_to_pci_device_id(platform);
 
       struct intel_device_info devinfo;
       if (!intel_get_device_info_from_pci_id(pci_id, &devinfo))
