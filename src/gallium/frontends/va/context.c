@@ -382,6 +382,9 @@ vlVaDestroyContext(VADriverContextP ctx, VAContextID context_id)
    if (!ctx)
       return VA_STATUS_ERROR_INVALID_CONTEXT;
 
+   if (context_id == 0)
+      return VA_STATUS_ERROR_INVALID_CONTEXT;
+
    drv = VL_VA_DRIVER(ctx);
    mtx_lock(&drv->mutex);
    context = handle_table_get(drv->htab, context_id);
