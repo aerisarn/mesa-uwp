@@ -173,25 +173,6 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
       return false;
 
 
-   apply_dst_clears(ctx, info, false);
-   zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
-
-   if (src->obj->dt)
-      *needs_present_readback = zink_kopper_acquire_readback(ctx, src);
-
-   struct zink_batch *batch = &ctx->batch;
-   zink_resource_setup_transfer_layouts(ctx, src, dst);
-   VkCommandBuffer cmdbuf = *needs_present_readback ?
-                            ctx->batch.state->cmdbuf :
-                            zink_get_cmdbuf(ctx, src, dst);
-   zink_batch_reference_resource_rw(batch, src, false);
-   zink_batch_reference_resource_rw(batch, dst, true);
-
-   bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "blit_native(%s->%s, %dx%d->%dx%d)",
-                                             util_format_short_name(info->src.format),
-                                             util_format_short_name(info->src.format),
-                                             info->src.box.width, info->src.box.height,
-                                             info->dst.box.width, info->dst.box.height);
    VkImageBlit region = {0};
    region.srcSubresource.aspectMask = src->aspect;
    region.srcSubresource.mipLevel = info->src.level;
@@ -267,6 +248,26 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
       region.dstOffsets[1].z = 1;
    }
    assert(region.dstOffsets[0].z != region.dstOffsets[1].z);
+
+   apply_dst_clears(ctx, info, false);
+   zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
+
+   if (src->obj->dt)
+      *needs_present_readback = zink_kopper_acquire_readback(ctx, src);
+
+   struct zink_batch *batch = &ctx->batch;
+   zink_resource_setup_transfer_layouts(ctx, src, dst);
+   VkCommandBuffer cmdbuf = *needs_present_readback ?
+                            ctx->batch.state->cmdbuf :
+                            zink_get_cmdbuf(ctx, src, dst);
+   zink_batch_reference_resource_rw(batch, src, false);
+   zink_batch_reference_resource_rw(batch, dst, true);
+
+   bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "blit_native(%s->%s, %dx%d->%dx%d)",
+                                             util_format_short_name(info->src.format),
+                                             util_format_short_name(info->src.format),
+                                             info->src.box.width, info->src.box.height,
+                                             info->dst.box.width, info->dst.box.height);
 
    VKCTX(CmdBlitImage)(cmdbuf, src->obj->image, src->layout,
                   dst->obj->image, dst->layout,
