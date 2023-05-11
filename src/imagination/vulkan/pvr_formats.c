@@ -291,6 +291,10 @@ uint32_t pvr_get_pbe_accum_format_size_in_bytes(VkFormat vk_format)
    enum pvr_pbe_accum_format pbe_accum_format;
    uint32_t nr_components;
 
+   /* FIXME: Can we encode this in the format table somehow? */
+   if (vk_format == VK_FORMAT_A2B10G10R10_UINT_PACK32)
+      return 4;
+
    pbe_accum_format = pvr_get_pbe_accum_format(vk_format);
    nr_components = vk_format_get_nr_components(vk_format);
 
