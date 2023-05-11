@@ -186,12 +186,7 @@ lower_phis_to_scalar_block(nir_block *block,
                            struct lower_phis_to_scalar_state *state)
 {
    bool progress = false;
-
-   /* Find the last phi node in the block */
-   nir_phi_instr *last_phi = NULL;
-   nir_foreach_phi(phi, block) {
-      last_phi = phi;
-   }
+   nir_phi_instr *last_phi = nir_block_last_phi_instr(block);
 
    /* We have to handle the phi nodes in their own pass due to the way
     * we're modifying the linked list of instructions.

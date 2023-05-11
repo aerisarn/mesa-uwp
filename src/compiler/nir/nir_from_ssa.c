@@ -376,13 +376,9 @@ get_parallel_copy_at_end_of_block(nir_block *block)
 static bool
 isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
 {
-   nir_instr *last_phi_instr = NULL;
-   nir_foreach_phi(phi, block) {
-      last_phi_instr = &phi->instr;
-   }
-
    /* If we don't have any phis, then there's nothing for us to do. */
-   if (last_phi_instr == NULL)
+   nir_phi_instr *last_phi = nir_block_last_phi_instr(block);
+   if (last_phi == NULL)
       return true;
 
    /* If we have phi nodes, we need to create a parallel copy at the
@@ -390,7 +386,7 @@ isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
     */
    nir_parallel_copy_instr *block_pcopy =
       nir_parallel_copy_instr_create(shader);
-   nir_instr_insert_after(last_phi_instr, &block_pcopy->instr);
+   nir_instr_insert_after(&last_phi->instr, &block_pcopy->instr);
 
    nir_foreach_phi(phi, block) {
       assert(phi->dest.is_ssa);
