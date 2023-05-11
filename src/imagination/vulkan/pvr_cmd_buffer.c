@@ -1993,7 +1993,7 @@ static inline bool
 pvr_cmd_uses_deferred_cs_cmds(const struct pvr_cmd_buffer *const cmd_buffer)
 {
    const VkCommandBufferUsageFlags deferred_control_stream_flags =
-      VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT &
+      VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT |
       VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
    return cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
