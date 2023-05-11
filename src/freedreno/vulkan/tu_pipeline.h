@@ -296,16 +296,33 @@ tu6_emit_xs(struct tu_cs *cs,
 
 template <chip CHIP>
 void
+tu6_emit_vs(struct tu_cs *cs, const struct ir3_shader_variant *vs,
+            uint32_t view_mask);
+
+template <chip CHIP>
+void
+tu6_emit_hs(struct tu_cs *cs, const struct ir3_shader_variant *hs);
+
+template <chip CHIP>
+void
+tu6_emit_ds(struct tu_cs *cs, const struct ir3_shader_variant *hs);
+
+template <chip CHIP>
+void
+tu6_emit_gs(struct tu_cs *cs, const struct ir3_shader_variant *hs);
+
+template <chip CHIP>
+void
+tu6_emit_fs(struct tu_cs *cs, const struct ir3_shader_variant *fs);
+
+template <chip CHIP>
+void
 tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *vs,
              const struct ir3_shader_variant *hs,
              const struct ir3_shader_variant *ds,
              const struct ir3_shader_variant *gs,
              const struct ir3_shader_variant *fs);
-
-template <chip CHIP>
-void
-tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs);
 
 void
 tu_fill_render_pass_state(struct vk_render_pass_state *rp,

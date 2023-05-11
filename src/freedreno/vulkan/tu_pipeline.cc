@@ -836,73 +836,9 @@ tu6_emit_vfd_dest(struct tu_cs *cs,
 }
 
 static void
-tu6_emit_vs_system_values(struct tu_cs *cs,
-                          const struct ir3_shader_variant *vs,
-                          const struct ir3_shader_variant *hs,
-                          const struct ir3_shader_variant *ds,
-                          const struct ir3_shader_variant *gs,
-                          const struct ir3_shader_variant *fs)
-{
-   const uint32_t vertexid_regid =
-         ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
-   const uint32_t instanceid_regid =
-         ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
-   const uint32_t tess_coord_x_regid = hs ?
-         ir3_find_sysval_regid(ds, SYSTEM_VALUE_TESS_COORD) :
-         regid(63, 0);
-   const uint32_t tess_coord_y_regid = VALIDREG(tess_coord_x_regid) ?
-         tess_coord_x_regid + 1 :
-         regid(63, 0);
-   const uint32_t hs_rel_patch_regid = hs ?
-         ir3_find_sysval_regid(hs, SYSTEM_VALUE_REL_PATCH_ID_IR3) :
-         regid(63, 0);
-   const uint32_t ds_rel_patch_regid = hs ?
-         ir3_find_sysval_regid(ds, SYSTEM_VALUE_REL_PATCH_ID_IR3) :
-         regid(63, 0);
-   const uint32_t hs_invocation_regid = hs ?
-         ir3_find_sysval_regid(hs, SYSTEM_VALUE_TCS_HEADER_IR3) :
-         regid(63, 0);
-   const uint32_t gs_primitiveid_regid = gs ?
-         ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID) :
-         regid(63, 0);
-   const uint32_t vs_primitiveid_regid = hs ?
-         ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID) :
-         gs_primitiveid_regid;
-   const uint32_t ds_primitiveid_regid = ds ?
-         ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID) :
-         regid(63, 0);
-   const uint32_t gsheader_regid = gs ?
-         ir3_find_sysval_regid(gs, SYSTEM_VALUE_GS_HEADER_IR3) :
-         regid(63, 0);
-
-   /* Note: we currently don't support multiview with tess or GS. If we did,
-    * and the HW actually works, then we'd have to somehow share this across
-    * stages. Note that the blob doesn't support this either.
-    */
-   const uint32_t viewid_regid =
-      ir3_find_sysval_regid(vs, SYSTEM_VALUE_VIEW_INDEX);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_1, 6);
-   tu_cs_emit(cs, A6XX_VFD_CONTROL_1_REGID4VTX(vertexid_regid) |
-                  A6XX_VFD_CONTROL_1_REGID4INST(instanceid_regid) |
-                  A6XX_VFD_CONTROL_1_REGID4PRIMID(vs_primitiveid_regid) |
-                  A6XX_VFD_CONTROL_1_REGID4VIEWID(viewid_regid));
-   tu_cs_emit(cs, A6XX_VFD_CONTROL_2_REGID_HSRELPATCHID(hs_rel_patch_regid) |
-                  A6XX_VFD_CONTROL_2_REGID_INVOCATIONID(hs_invocation_regid));
-   tu_cs_emit(cs, A6XX_VFD_CONTROL_3_REGID_DSRELPATCHID(ds_rel_patch_regid) |
-                  A6XX_VFD_CONTROL_3_REGID_TESSX(tess_coord_x_regid) |
-                  A6XX_VFD_CONTROL_3_REGID_TESSY(tess_coord_y_regid) |
-                  A6XX_VFD_CONTROL_3_REGID_DSPRIMID(ds_primitiveid_regid));
-   tu_cs_emit(cs, 0x000000fc); /* VFD_CONTROL_4 */
-   tu_cs_emit(cs, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gsheader_regid) |
-                  0xfc00); /* VFD_CONTROL_5 */
-   tu_cs_emit(cs, COND(fs && fs->reads_primid, A6XX_VFD_CONTROL_6_PRIMID4PSEN)); /* VFD_CONTROL_6 */
-}
-
-static void
 tu6_setup_streamout(struct tu_cs *cs,
                     const struct ir3_shader_variant *v,
-                    struct ir3_shader_linkage *l)
+                    const struct ir3_shader_linkage *l)
 {
    const struct ir3_stream_output_info *info = &v->stream_output;
    /* Note: 64 here comes from the HW layout of the program RAM. The program
@@ -1280,14 +1216,6 @@ tu6_emit_vpc(struct tu_cs *cs,
    if (last_shader->stream_output.num_outputs)
       ir3_link_stream_out(&linkage, last_shader);
 
-   tu6_emit_vs_system_values(cs, vs, hs, ds, gs, fs);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VAR_DISABLE(0), 4);
-   tu_cs_emit(cs, ~linkage.varmask[0]);
-   tu_cs_emit(cs, ~linkage.varmask[1]);
-   tu_cs_emit(cs, ~linkage.varmask[2]);
-   tu_cs_emit(cs, ~linkage.varmask[3]);
-
    /* a6xx finds position/pointsize at the end */
    const uint32_t pointsize_regid =
       ir3_find_output_regid(last_shader, VARYING_SLOT_PSIZ);
@@ -1433,41 +1361,6 @@ tu6_emit_vpc(struct tu_cs *cs,
    tu_cs_emit(cs, CONDREG(layer_regid, A6XX_GRAS_GS_LAYER_CNTL_WRITES_LAYER) |
                   CONDREG(view_regid, A6XX_GRAS_GS_LAYER_CNTL_WRITES_VIEW));
 
-   tu_cs_emit_regs(cs, A6XX_PC_PS_CNTL(.primitiveiden = fs && fs->reads_primid));
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_CNTL_0, 1);
-   tu_cs_emit(cs, A6XX_VPC_CNTL_0_NUMNONPOSVAR(fs ? fs->total_in : 0) |
-                  COND(fs && fs->total_in, A6XX_VPC_CNTL_0_VARYING) |
-                  A6XX_VPC_CNTL_0_PRIMIDLOC(linkage.primid_loc) |
-                  A6XX_VPC_CNTL_0_VIEWIDLOC(linkage.viewid_loc));
-
-   if (hs) {
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
-      tu_cs_emit(cs, hs->tess.tcs_vertices_out);
-   }
-
-
-   if (gs) {
-      uint32_t vertices_out, invocations;
-
-      vertices_out = gs->gs.vertices_out - 1;
-      enum a6xx_tess_output output = primitive_to_tess((enum mesa_prim) gs->gs.output_primitive);
-      invocations = gs->gs.invocations - 1;
-
-      uint32_t primitive_cntl =
-         A6XX_PC_PRIMITIVE_CNTL_5(.gs_vertices_out = vertices_out,
-                                  .gs_invocations = invocations,
-                                  .gs_output = output,).value;
-
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_5, 1);
-      tu_cs_emit(cs, primitive_cntl);
-
-      if (CHIP >= A7XX) {
-         tu_cs_emit_pkt4(cs, REG_A7XX_VPC_PRIMITIVE_CNTL_5, 1);
-         tu_cs_emit(cs, primitive_cntl);
-      }
-   }
-
    tu6_emit_vpc_varying_modes(cs, fs, last_shader);
 }
 TU_GENX(tu6_emit_vpc);
@@ -1484,7 +1377,7 @@ tu6_tex_opc_to_prefetch_cmd(opc_t tex_opc)
 }
 
 template <chip CHIP>
-void
+static void
 tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 {
    uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid;
@@ -1611,13 +1504,40 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SAMPLE_CNTL, 1);
    tu_cs_emit(cs, COND(sample_shading, A6XX_GRAS_SAMPLE_CNTL_PER_SAMP_MODE));
+
+   uint32_t varmask[4] = { 0 };
+
+   for (int i = ir3_next_varying(fs, -1); i < fs->inputs_count;
+        i = ir3_next_varying(fs, i)) {
+      if (fs->inputs[i].inloc >= fs->total_in)
+         continue;
+
+      unsigned loc = fs->inputs[i].inloc;
+      for (int j = 0; j < util_last_bit(fs->inputs[i].compmask); j++) {
+         uint8_t comploc = loc + j;
+         varmask[comploc / 32] |= 1 << (comploc % 32);
+      }
+   }
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VAR_DISABLE(0), 4);
+   tu_cs_emit(cs, ~varmask[0]);
+   tu_cs_emit(cs, ~varmask[1]);
+   tu_cs_emit(cs, ~varmask[2]);
+   tu_cs_emit(cs, ~varmask[3]);
+
+   unsigned primid_loc = ir3_find_input_loc(fs, VARYING_SLOT_PRIMITIVE_ID);
+   unsigned viewid_loc = ir3_find_input_loc(fs, VARYING_SLOT_VIEW_INDEX);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_CNTL_0, 1);
+   tu_cs_emit(cs, A6XX_VPC_CNTL_0_NUMNONPOSVAR(fs->total_in) |
+                  COND(fs && fs->total_in, A6XX_VPC_CNTL_0_VARYING) |
+                  A6XX_VPC_CNTL_0_PRIMIDLOC(primid_loc) |
+                  A6XX_VPC_CNTL_0_VIEWIDLOC(viewid_loc));
 }
-TU_GENX(tu6_emit_fs_inputs)
 
 static void
 tu6_emit_fs_outputs(struct tu_cs *cs,
-                    const struct ir3_shader_variant *fs,
-                    struct tu_pipeline *pipeline)
+                    const struct ir3_shader_variant *fs)
 {
    uint32_t smask_regid, posz_regid, stencilref_regid;
 
@@ -1669,24 +1589,29 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_RENDER_COMPONENTS(.dword = fs_render_components));
+}
 
-   if (pipeline) {
-      if (fs->has_kill) {
-         pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE;
-      }
-      if (fs->no_earlyz || fs->writes_pos) {
-         pipeline->lrz.lrz_status = TU_LRZ_FORCE_DISABLE_LRZ;
-      }
-      pipeline->lrz.fs.has_kill = fs->has_kill;
-      pipeline->lrz.fs.early_fragment_tests = fs->fs.early_fragment_tests;
-
-      if (!fs->fs.early_fragment_tests &&
-          (fs->no_earlyz || fs->writes_pos || fs->writes_stencilref || fs->writes_smask)) {
-         pipeline->lrz.force_late_z = true;
-      }
-
-      pipeline->lrz.fs.force_early_z = fs->fs.early_fragment_tests;
+static void
+tu_emit_fs_pipeline(const struct ir3_shader_variant *fs,
+                    struct tu_pipeline *pipeline)
+{
+   if (fs->has_kill) {
+      pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE;
    }
+   if (fs->no_earlyz || fs->writes_pos) {
+      pipeline->lrz.lrz_status = TU_LRZ_FORCE_DISABLE_LRZ;
+   }
+   pipeline->lrz.fs.has_kill = fs->has_kill;
+   pipeline->lrz.fs.early_fragment_tests = fs->fs.early_fragment_tests;
+
+   if (!fs->fs.early_fragment_tests &&
+       (fs->no_earlyz || fs->writes_pos || fs->writes_stencilref || fs->writes_smask)) {
+      pipeline->lrz.force_late_z = true;
+   }
+
+   pipeline->lrz.fs.force_early_z = fs->fs.early_fragment_tests;
+
+   pipeline->program.per_samp = fs->per_samp || fs->key.sample_shading;
 }
 
 static void
@@ -1905,7 +1830,6 @@ tu6_emit_program_config(struct tu_cs *cs,
    const struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
    const struct ir3_shader_variant *ds = builder->variants[MESA_SHADER_TESS_EVAL];
    const struct ir3_shader_variant *gs = builder->variants[MESA_SHADER_GEOMETRY];
-   const struct ir3_shader_variant *fs = builder->variants[MESA_SHADER_FRAGMENT];
 
    if (hs) {
       tu6_emit_link_map(cs, vs, hs, SB6_HS_SHADER);
@@ -1922,9 +1846,6 @@ tu6_emit_program_config(struct tu_cs *cs,
       uint32_t prev_stage_output_size = ds ? ds->output_size : vs->output_size;
 
       if (CHIP == A6XX) {
-         tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_PARAM, 1);
-         tu_cs_emit(cs, 0xff);
-
          /* Size of per-primitive alloction in ldlw memory in vec4s. */
          uint32_t vec4_size = gs->gs.vertices_in *
                               DIV_ROUND_UP(prev_stage_output_size, 4);
@@ -1948,6 +1869,193 @@ tu6_emit_program_config(struct tu_cs *cs,
 }
 
 template <chip CHIP>
+void
+tu6_emit_vs(struct tu_cs *cs,
+            const struct ir3_shader_variant *vs,
+            uint32_t view_mask)
+{
+   bool multi_pos_output = vs->multi_pos_output;
+
+   uint32_t multiview_views = util_logbase2(view_mask) + 1;
+   uint32_t multiview_cntl = view_mask ?
+      A6XX_PC_MULTIVIEW_CNTL_ENABLE |
+      A6XX_PC_MULTIVIEW_CNTL_VIEWS(multiview_views) |
+      COND(!multi_pos_output, A6XX_PC_MULTIVIEW_CNTL_DISABLEMULTIPOS)
+      : 0;
+
+   /* Copy what the blob does here. This will emit an extra 0x3f
+    * CP_EVENT_WRITE when multiview is disabled. I'm not exactly sure what
+    * this is working around yet.
+    */
+   if (cs->device->physical_device->info->a6xx.has_cp_reg_write) {
+      tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);
+      tu_cs_emit(cs, CP_REG_WRITE_0_TRACKER(UNK_EVENT_WRITE));
+      tu_cs_emit(cs, REG_A6XX_PC_MULTIVIEW_CNTL);
+   } else {
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_MULTIVIEW_CNTL, 1);
+   }
+   tu_cs_emit(cs, multiview_cntl);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_MULTIVIEW_CNTL, 1);
+   tu_cs_emit(cs, multiview_cntl);
+
+   if (multiview_cntl &&
+       cs->device->physical_device->info->a6xx.supports_multiview_mask) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_MULTIVIEW_MASK, 1);
+      tu_cs_emit(cs, view_mask);
+   }
+
+   if (CHIP >= A7XX) {
+      tu_cs_emit_pkt4(cs, REG_A7XX_VPC_MULTIVIEW_CNTL, 1);
+      tu_cs_emit(cs, multiview_cntl);
+
+      tu_cs_emit_pkt4(cs, REG_A7XX_VPC_MULTIVIEW_MASK, 1);
+      tu_cs_emit(cs, view_mask);
+   }
+
+   tu6_emit_vfd_dest(cs, vs);
+
+   const uint32_t vertexid_regid =
+         ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
+   const uint32_t instanceid_regid =
+         ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
+
+   /* Note: we currently don't support multiview with tess or GS. If we did,
+    * and the HW actually works, then we'd have to somehow share this across
+    * stages. Note that the blob doesn't support this either.
+    */
+   const uint32_t viewid_regid =
+      ir3_find_sysval_regid(vs, SYSTEM_VALUE_VIEW_INDEX);
+
+   const uint32_t vs_primitiveid_regid =
+      ir3_find_sysval_regid(vs, SYSTEM_VALUE_PRIMITIVE_ID);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_1, 1);
+   tu_cs_emit(cs, A6XX_VFD_CONTROL_1_REGID4VTX(vertexid_regid) |
+                  A6XX_VFD_CONTROL_1_REGID4INST(instanceid_regid) |
+                  A6XX_VFD_CONTROL_1_REGID4PRIMID(vs_primitiveid_regid) |
+                  A6XX_VFD_CONTROL_1_REGID4VIEWID(viewid_regid));
+}
+TU_GENX(tu6_emit_vs);
+
+template <chip CHIP>
+void
+tu6_emit_hs(struct tu_cs *cs,
+            const struct ir3_shader_variant *hs)
+{
+   const uint32_t hs_rel_patch_regid = hs ?
+         ir3_find_sysval_regid(hs, SYSTEM_VALUE_REL_PATCH_ID_IR3) :
+         regid(63, 0);
+   const uint32_t hs_invocation_regid = hs ?
+         ir3_find_sysval_regid(hs, SYSTEM_VALUE_TCS_HEADER_IR3) :
+         regid(63, 0);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_2, 1);
+   tu_cs_emit(cs, A6XX_VFD_CONTROL_2_REGID_HSRELPATCHID(hs_rel_patch_regid) |
+                  A6XX_VFD_CONTROL_2_REGID_INVOCATIONID(hs_invocation_regid));
+
+   if (hs) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
+      tu_cs_emit(cs, hs->tess.tcs_vertices_out);
+   }
+}
+TU_GENX(tu6_emit_hs);
+
+template <chip CHIP>
+void
+tu6_emit_ds(struct tu_cs *cs,
+            const struct ir3_shader_variant *ds)
+{
+   const uint32_t ds_rel_patch_regid = ds ?
+         ir3_find_sysval_regid(ds, SYSTEM_VALUE_REL_PATCH_ID_IR3) :
+         regid(63, 0);
+   const uint32_t tess_coord_x_regid = ds ?
+         ir3_find_sysval_regid(ds, SYSTEM_VALUE_TESS_COORD) :
+         regid(63, 0);
+   const uint32_t tess_coord_y_regid = VALIDREG(tess_coord_x_regid) ?
+         tess_coord_x_regid + 1 :
+         regid(63, 0);
+   const uint32_t ds_primitiveid_regid = ds ?
+         ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID) :
+         regid(63, 0);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_3, 2);
+   tu_cs_emit(cs, A6XX_VFD_CONTROL_3_REGID_DSRELPATCHID(ds_rel_patch_regid) |
+                  A6XX_VFD_CONTROL_3_REGID_TESSX(tess_coord_x_regid) |
+                  A6XX_VFD_CONTROL_3_REGID_TESSY(tess_coord_y_regid) |
+                  A6XX_VFD_CONTROL_3_REGID_DSPRIMID(ds_primitiveid_regid));
+   tu_cs_emit(cs, 0x000000fc); /* VFD_CONTROL_4 */
+}
+TU_GENX(tu6_emit_ds);
+
+template <chip CHIP>
+void
+tu6_emit_gs(struct tu_cs *cs,
+            const struct ir3_shader_variant *gs)
+{
+   const uint32_t gsheader_regid = gs ?
+         ir3_find_sysval_regid(gs, SYSTEM_VALUE_GS_HEADER_IR3) :
+         regid(63, 0);
+
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_5, 1);
+   tu_cs_emit(cs, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gsheader_regid) |
+                  0xfc00);
+
+   if (gs) {
+      uint32_t vertices_out, invocations;
+
+      vertices_out = gs->gs.vertices_out - 1;
+      enum a6xx_tess_output output = primitive_to_tess((enum mesa_prim) gs->gs.output_primitive);
+      invocations = gs->gs.invocations - 1;
+
+      uint32_t primitive_cntl =
+         A6XX_PC_PRIMITIVE_CNTL_5(.gs_vertices_out = vertices_out,
+                                  .gs_invocations = invocations,
+                                  .gs_output = output,).value;
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_5, 1);
+      tu_cs_emit(cs, primitive_cntl);
+
+      if (CHIP >= A7XX) {
+         tu_cs_emit_pkt4(cs, REG_A7XX_VPC_PRIMITIVE_CNTL_5, 1);
+         tu_cs_emit(cs, primitive_cntl);
+      } else {
+         tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_PARAM, 1);
+         tu_cs_emit(cs, 0xff);
+      }
+   }
+}
+TU_GENX(tu6_emit_gs);
+
+template <chip CHIP>
+void
+tu6_emit_fs(struct tu_cs *cs,
+            const struct ir3_shader_variant *fs)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_6, 1);
+   tu_cs_emit(cs, COND(fs && fs->reads_primid, A6XX_VFD_CONTROL_6_PRIMID4PSEN));
+
+   tu_cs_emit_regs(cs, A6XX_PC_PS_CNTL(.primitiveiden = fs && fs->reads_primid));
+
+   if (CHIP >= A7XX) {
+      tu_cs_emit_regs(cs, A7XX_HLSQ_UNKNOWN_A9AE(.unk0 = 0x2, .unk8 = 1));
+      tu_cs_emit_regs(cs, A6XX_GRAS_UNKNOWN_8110(0x2));
+      tu_cs_emit_regs(cs, A7XX_HLSQ_FS_UNKNOWN_A9AA(.consts_load_disable = false));
+   }
+
+   if (fs) {
+      tu6_emit_fs_inputs<CHIP>(cs, fs);
+      tu6_emit_fs_outputs(cs, fs);
+   } else {
+      /* TODO: check if these can be skipped if fs is disabled */
+      struct ir3_shader_variant dummy_variant = {};
+      tu6_emit_fs_inputs<CHIP>(cs, &dummy_variant);
+      tu6_emit_fs_outputs(cs, &dummy_variant);
+   }
+}
+TU_GENX(tu6_emit_fs);
+
+template <chip CHIP>
 static void
 tu6_emit_program(struct tu_cs *cs,
                  struct tu_pipeline_builder *builder,
@@ -1961,7 +2069,9 @@ tu6_emit_program(struct tu_cs *cs,
    const struct ir3_shader_variant *gs = builder->variants[MESA_SHADER_GEOMETRY];
    const struct ir3_shader_variant *fs = builder->variants[MESA_SHADER_FRAGMENT];
    gl_shader_stage stage = MESA_SHADER_VERTEX;
-   bool multi_pos_output = vs->multi_pos_output;
+
+   if (binning_pass)
+      fs = NULL;
 
   /* Don't use the binning pass variant when GS is present because we don't
    * support compiling correct binning pass variants with GS.
@@ -1982,66 +2092,15 @@ tu6_emit_program(struct tu_cs *cs,
       tu6_emit_xs<CHIP>(cs, stage, xs, &builder->pvtmem, builder->shader_iova[stage]);
    }
 
-   uint32_t multiview_views = util_logbase2(builder->graphics_state.rp->view_mask) + 1;
-   uint32_t multiview_cntl = builder->graphics_state.rp->view_mask ?
-      A6XX_PC_MULTIVIEW_CNTL_ENABLE |
-      A6XX_PC_MULTIVIEW_CNTL_VIEWS(multiview_views) |
-      COND(!multi_pos_output, A6XX_PC_MULTIVIEW_CNTL_DISABLEMULTIPOS)
-      : 0;
-
-   /* Copy what the blob does here. This will emit an extra 0x3f
-    * CP_EVENT_WRITE when multiview is disabled. I'm not exactly sure what
-    * this is working around yet.
-    */
-   if (builder->device->physical_device->info->a6xx.has_cp_reg_write) {
-      tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);
-      tu_cs_emit(cs, CP_REG_WRITE_0_TRACKER(UNK_EVENT_WRITE));
-      tu_cs_emit(cs, REG_A6XX_PC_MULTIVIEW_CNTL);
-   } else {
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_MULTIVIEW_CNTL, 1);
-   }
-   tu_cs_emit(cs, multiview_cntl);
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_MULTIVIEW_CNTL, 1);
-   tu_cs_emit(cs, multiview_cntl);
-
-   if (multiview_cntl &&
-       builder->device->physical_device->info->a6xx.supports_multiview_mask) {
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_MULTIVIEW_MASK, 1);
-      tu_cs_emit(cs, builder->graphics_state.rp->view_mask);
-   }
-
-   if (CHIP >= A7XX) {
-      tu_cs_emit_pkt4(cs, REG_A7XX_VPC_MULTIVIEW_CNTL, 1);
-      tu_cs_emit(cs, multiview_cntl);
-
-      tu_cs_emit_pkt4(cs, REG_A7XX_VPC_MULTIVIEW_MASK, 1);
-      tu_cs_emit(cs, builder->graphics_state.rp->view_mask);
-   }
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
-   tu_cs_emit(cs, 0);
-
-   tu6_emit_vfd_dest(cs, vs);
-
+   tu6_emit_vs<CHIP>(cs, vs, builder->graphics_state.rp->view_mask);
+   tu6_emit_hs<CHIP>(cs, hs);
+   tu6_emit_ds<CHIP>(cs, ds);
+   tu6_emit_gs<CHIP>(cs, gs);
+   tu6_emit_fs<CHIP>(cs, fs);
    tu6_emit_vpc<CHIP>(cs, vs, hs, ds, gs, fs);
 
-   if (CHIP >= A7XX) {
-      tu_cs_emit_regs(cs, A7XX_HLSQ_UNKNOWN_A9AE(.unk0 = 0x2, .unk8 = 1));
-      tu_cs_emit_regs(cs, A6XX_GRAS_UNKNOWN_8110(0x2));
-      tu_cs_emit_regs(cs, A7XX_HLSQ_FS_UNKNOWN_A9AA(.consts_load_disable = false));
-   }
-
-   if (fs) {
-      tu6_emit_fs_inputs<CHIP>(cs, fs);
-      tu6_emit_fs_outputs(cs, fs, pipeline);
-      pipeline->program.per_samp = fs->per_samp || fs->key.sample_shading;
-   } else {
-      /* TODO: check if these can be skipped if fs is disabled */
-      struct ir3_shader_variant dummy_variant = {};
-      tu6_emit_fs_inputs<CHIP>(cs, &dummy_variant);
-      tu6_emit_fs_outputs(cs, &dummy_variant, NULL);
-   }
+   if (fs)
+      tu_emit_fs_pipeline(fs, pipeline);
 }
 
 static VkResult

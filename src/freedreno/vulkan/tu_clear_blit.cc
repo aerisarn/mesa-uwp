@@ -835,26 +835,6 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
    tu6_emit_xs<CHIP>(cs, MESA_SHADER_FRAGMENT, fs, &pvtmem, fs_iova);
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0());
-   tu_cs_emit_regs(cs, A6XX_VFD_CONTROL_0());
-
-   if (cmd->device->physical_device->info->a6xx.has_cp_reg_write) {
-      /* Copy what the blob does here. This will emit an extra 0x3f
-       * CP_EVENT_WRITE when multiview is disabled. I'm not exactly sure what
-       * this is working around yet.
-       */
-      tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);
-      tu_cs_emit(cs, CP_REG_WRITE_0_TRACKER(UNK_EVENT_WRITE));
-      tu_cs_emit(cs, REG_A6XX_PC_MULTIVIEW_CNTL);
-      tu_cs_emit(cs, 0);
-   } else {
-      tu_cs_emit_regs(cs, A6XX_PC_MULTIVIEW_CNTL());
-   }
-   tu_cs_emit_regs(cs, A6XX_VFD_MULTIVIEW_CNTL());
-
-   if (CHIP >= A7XX) {
-      tu_cs_emit_regs(cs, A7XX_VPC_MULTIVIEW_MASK());
-      tu_cs_emit_regs(cs, A7XX_VPC_MULTIVIEW_CNTL());
-   }
 
    tu6_emit_vpc<CHIP>(cs, vs, NULL, NULL, NULL, fs);
 
@@ -869,7 +849,11 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
    tu_cs_emit_regs(cs, A6XX_VPC_VARYING_INTERP_MODE(0, 0));
    tu_cs_emit_regs(cs, A6XX_VPC_VARYING_PS_REPL_MODE(0, 2 << 2 | 1 << 0));
 
-   tu6_emit_fs_inputs<CHIP>(cs, fs);
+   tu6_emit_vs<CHIP>(cs, vs, 0);
+   tu6_emit_hs<CHIP>(cs, NULL);
+   tu6_emit_ds<CHIP>(cs, NULL);
+   tu6_emit_gs<CHIP>(cs, NULL);
+   tu6_emit_fs<CHIP>(cs, fs);
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_CL_CNTL(
@@ -1447,16 +1431,8 @@ r3d_setup(struct tu_cmd_buffer *cmd,
 
    r3d_common<CHIP>(cmd, cs, !clear, 1, blit_param & R3D_Z_SCALE, samples);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
-   tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(0xfc) |
-                  A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(0xfc) |
-                  0xfc000000);
-   tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(1));
-
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_FS_OUTPUT_CNTL0(),
-                   A6XX_RB_FS_OUTPUT_CNTL1(.mrt = 1));
-
+   tu_cs_emit_regs(cs, A6XX_SP_FS_OUTPUT_CNTL1(.mrt = 1));
+   tu_cs_emit_regs(cs, A6XX_RB_FS_OUTPUT_CNTL1(.mrt = 1));
    tu_cs_emit_regs(cs, A6XX_SP_BLEND_CNTL());
    tu_cs_emit_regs(cs, A6XX_RB_BLEND_CNTL(.sample_mask = 0xffff));
 
@@ -1467,9 +1443,6 @@ r3d_setup(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs, A6XX_RB_STENCILMASK());
    tu_cs_emit_regs(cs, A6XX_RB_STENCILWRMASK());
    tu_cs_emit_regs(cs, A6XX_RB_STENCILREF());
-
-   tu_cs_emit_regs(cs, A6XX_RB_RENDER_COMPONENTS(.rt0 = 0xf));
-   tu_cs_emit_regs(cs, A6XX_SP_FS_RENDER_COMPONENTS(.rt0 = 0xf));
 
    tu_cs_emit_regs(cs, A6XX_SP_FS_MRT_REG(0,
                         .color_format = fmt,
@@ -2854,7 +2827,6 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
                    A6XX_RB_RENDER_COMPONENTS(.dword = clear_components));
 
    tu_cs_emit_regs(cs,
-                   A6XX_RB_FS_OUTPUT_CNTL0(),
                    A6XX_RB_FS_OUTPUT_CNTL1(.mrt = mrt_count));
 
    tu_cs_emit_regs(cs, A6XX_SP_BLEND_CNTL());
