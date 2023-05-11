@@ -1035,6 +1035,29 @@ ir3_next_varying(const struct ir3_shader_variant *so, int i)
    return i;
 }
 
+static inline int
+ir3_find_input(const struct ir3_shader_variant *so, gl_varying_slot slot)
+{
+   int j = -1;
+
+   while (true) {
+      j = ir3_next_varying(so, j);
+
+      if (j >= so->inputs_count)
+         return -1;
+
+      if (so->inputs[j].slot == slot)
+         return j;
+   }
+}
+
+static inline unsigned
+ir3_find_input_loc(const struct ir3_shader_variant *so, gl_varying_slot slot)
+{
+   int var = ir3_find_input(so, slot);
+   return var == -1 ? 0xff : so->inputs[var].inloc;
+}
+
 struct ir3_shader_linkage {
    /* Maximum location either consumed by the fragment shader or produced by
     * the last geometry stage, i.e. the size required for each vertex in the
