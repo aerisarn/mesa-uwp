@@ -121,6 +121,7 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_shader_draw_parameters            = true,
       .KHR_shader_float16_int8               = pdev->options4.Native16BitShaderOpsSupported,
       .KHR_shader_float_controls             = true,
+      .KHR_shader_integer_dot_product        = true,
       .KHR_spirv_1_4                         = true,
       .KHR_storage_buffer_storage_class      = true,
 #ifdef DZN_USE_WSI_PLATFORM
@@ -1499,7 +1500,7 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .textureCompressionASTC_HDR         = false,
       .shaderZeroInitializeWorkgroupMemory = false,
       .dynamicRendering                   = true,
-      .shaderIntegerDotProduct            = false,
+      .shaderIntegerDotProduct            = true,
       .maintenance4                       = false,
    };
 
@@ -1901,6 +1902,10 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .maxComputeWorkgroupSubgroups = D3D12_CS_THREAD_GROUP_MAX_THREADS_PER_GROUP /
          (pdevice->options1.WaveOps ? pdevice->options1.WaveLaneCountMin : 1),
       .requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT,
+      .integerDotProduct4x8BitPackedSignedAccelerated = pdevice->shader_model >= D3D_SHADER_MODEL_6_4,
+      .integerDotProduct4x8BitPackedUnsignedAccelerated = pdevice->shader_model >= D3D_SHADER_MODEL_6_4,
+      .integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = pdevice->shader_model >= D3D_SHADER_MODEL_6_4,
+      .integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated = pdevice->shader_model >= D3D_SHADER_MODEL_6_4,
    };
 
    vk_foreach_struct(ext, pProperties->pNext) {
