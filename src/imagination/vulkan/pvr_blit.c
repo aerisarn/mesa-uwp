@@ -1786,7 +1786,6 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_sub_cmd_gfx *sub_cmd = &cmd_buffer->state.current_sub_cmd->gfx;
    struct pvr_device_info *dev_info = &cmd_buffer->device->pdevice->dev_info;
    struct pvr_render_subpass *sub_pass = &pass->subpasses[hw_pass->index];
-   bool z_replicate = hw_pass->z_replicate != -1;
    uint32_t vs_output_size_in_bytes;
    bool vs_has_rt_id_output;
 
@@ -1868,7 +1867,7 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
                                                     vs_has_rt_id_output);
          if (result != VK_SUCCESS)
             return;
-      } else if (z_replicate &&
+      } else if (hw_pass->z_replicate != -1 &&
                  attachment->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
          const VkClearColorValue clear_color = {
             .float32 = { [0] = attachment->clearValue.depthStencil.depth, },
@@ -1879,7 +1878,6 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
          uint32_t packed_clear_color[PVR_CLEAR_COLOR_ARRAY_SIZE];
          const struct usc_mrt_resource *mrt_resource;
 
-         assert(hw_pass->z_replicate > 0);
          mrt_resource = &hw_pass->setup.mrt_resources[hw_pass->z_replicate];
 
          pvr_get_hw_clear_color(VK_FORMAT_R32_SFLOAT,
