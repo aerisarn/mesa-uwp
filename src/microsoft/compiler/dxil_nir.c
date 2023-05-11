@@ -993,11 +993,7 @@ upcast_phi_impl(nir_function_impl *impl, unsigned min_bit_size)
    bool progress = false;
 
    nir_foreach_block_reverse(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         if (instr->type != nir_instr_type_phi)
-            continue;
-
-         nir_phi_instr *phi = nir_instr_as_phi(instr);
+      nir_foreach_phi_safe(phi, block) {
          assert(phi->dest.is_ssa);
 
          if (phi->dest.ssa.bit_size == 1 ||
