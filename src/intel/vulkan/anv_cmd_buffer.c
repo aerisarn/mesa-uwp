@@ -87,6 +87,33 @@ anv_cmd_state_reset(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->last_compute_walker = NULL;
 }
 
+VkResult
+anv_create_companion_rcs_command_buffer(struct anv_cmd_buffer *cmd_buffer)
+{
+   VkResult result = VK_SUCCESS;
+   pthread_mutex_lock(&cmd_buffer->device->mutex);
+   if (cmd_buffer->companion_rcs_cmd_buffer == NULL) {
+      VK_FROM_HANDLE(vk_command_pool, pool,
+                     cmd_buffer->device->companion_rcs_cmd_pool);
+      assert(pool != NULL);
+
+      struct vk_command_buffer *tmp_cmd_buffer = NULL;
+      result = pool->command_buffer_ops->create(pool, &tmp_cmd_buffer);
+      if (result != VK_SUCCESS) {
+         pthread_mutex_unlock(&cmd_buffer->device->mutex);
+         return result;
+      }
+
+      cmd_buffer->companion_rcs_cmd_buffer =
+         container_of(tmp_cmd_buffer, struct anv_cmd_buffer, vk);
+      cmd_buffer->companion_rcs_cmd_buffer->vk.level = cmd_buffer->vk.level;
+      cmd_buffer->companion_rcs_cmd_buffer->is_companion_rcs_cmd_buffer = true;
+   }
+   pthread_mutex_unlock(&cmd_buffer->device->mutex);
+
+   return result;
+}
+
 static VkResult
 anv_create_cmd_buffer(struct vk_command_pool *pool,
                       struct vk_command_buffer **cmd_buffer_out)
@@ -96,8 +123,8 @@ anv_create_cmd_buffer(struct vk_command_pool *pool,
    struct anv_cmd_buffer *cmd_buffer;
    VkResult result;
 
-   cmd_buffer = vk_alloc(&pool->alloc, sizeof(*cmd_buffer), 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   cmd_buffer = vk_zalloc(&pool->alloc, sizeof(*cmd_buffer), 8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
       return vk_error(pool, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -139,6 +166,8 @@ anv_create_cmd_buffer(struct vk_command_pool *pool,
       goto fail_batch_bo;
 
    cmd_buffer->self_mod_locations = NULL;
+   cmd_buffer->companion_rcs_cmd_buffer = NULL;
+   cmd_buffer->is_companion_rcs_cmd_buffer = false;
 
    cmd_buffer->generation_jump_addr = ANV_NULL_ADDRESS;
    cmd_buffer->generation_return_addr = ANV_NULL_ADDRESS;
@@ -210,6 +239,7 @@ anv_cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
 
    cmd_buffer->usage_flags = 0;
    cmd_buffer->perf_query_pool = NULL;
+   cmd_buffer->is_companion_rcs_cmd_buffer = false;
    anv_cmd_buffer_reset_batch_bo_chain(cmd_buffer);
    anv_cmd_state_reset(cmd_buffer);
 

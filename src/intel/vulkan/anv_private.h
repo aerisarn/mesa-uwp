@@ -1613,7 +1613,26 @@ struct anv_device {
      * initialization).
      */
     BITSET_DECLARE(gfx_dirty_state, ANV_GFX_STATE_MAX);
+
+    /*
+     * Command pool for companion RCS command buffer.
+     */
+    VkCommandPool                               companion_rcs_cmd_pool;
 };
+
+static inline uint32_t
+anv_get_first_render_queue_index(struct anv_physical_device *pdevice)
+{
+   assert(pdevice != NULL);
+
+   for (uint32_t i = 0; i < pdevice->queue.family_count; i++) {
+      if (pdevice->queue.families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+         return i;
+      }
+   }
+
+   unreachable("Graphics capable queue family not found");
+}
 
 static inline struct anv_state
 anv_binding_table_pool_alloc(struct anv_device *device)
@@ -3456,6 +3475,18 @@ struct anv_cmd_buffer {
       struct anv_video_session *vid;
       struct anv_video_session_params *params;
    } video;
+
+   /**
+    * Companion RCS command buffer to support the MSAA operations on compute
+    * queue.
+    */
+   struct anv_cmd_buffer                        *companion_rcs_cmd_buffer;
+
+   /**
+    * Whether this command buffer is a companion command buffer of compute one.
+    */
+   bool                                         is_companion_rcs_cmd_buffer;
+
 };
 
 extern const struct vk_command_buffer_ops anv_cmd_buffer_ops;
@@ -4721,6 +4752,9 @@ anv_cmd_buffer_fill_area(struct anv_cmd_buffer *cmd_buffer,
                          struct anv_address address,
                          VkDeviceSize size,
                          uint32_t data);
+
+VkResult
+anv_create_companion_rcs_command_buffer(struct anv_cmd_buffer *cmd_buffer);
 
 bool
 anv_can_hiz_clear_ds_view(struct anv_device *device,

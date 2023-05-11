@@ -54,6 +54,7 @@
 #include "util/u_string.h"
 #include "util/driconf.h"
 #include "git_sha1.h"
+#include "vk_common_entrypoints.h"
 #include "vk_util.h"
 #include "vk_deferred_operation.h"
 #include "vk_drm_syncobj.h"
@@ -3472,6 +3473,22 @@ VkResult anv_CreateDevice(
                                              4);
    p_atomic_set(&device->draw_call_count, 0);
 
+   /* Create a separate command pool for companion RCS command buffer. */
+   if (device->info->verx10 >= 125) {
+      VkCommandPoolCreateInfo pool_info = {
+         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+         .queueFamilyIndex =
+             anv_get_first_render_queue_index(device->physical),
+      };
+
+      result = vk_common_CreateCommandPool(anv_device_to_handle(device),
+                                           &pool_info, NULL,
+                                           &device->companion_rcs_cmd_pool);
+      if (result != VK_SUCCESS) {
+         goto fail_internal_cache;
+      }
+   }
+
    anv_device_init_blorp(device);
 
    anv_device_init_border_colors(device);
@@ -3610,6 +3627,11 @@ void anv_DestroyDevice(
 
    if (ANV_SUPPORT_RT && device->info->has_ray_tracing)
       anv_device_release_bo(device, device->btd_fifo_bo);
+
+   if (device->info->verx10 >= 125) {
+      vk_common_DestroyCommandPool(anv_device_to_handle(device),
+                                   device->companion_rcs_cmd_pool, NULL);
+   }
 
 #ifdef HAVE_VALGRIND
    /* We only need to free these to prevent valgrind errors.  The backing
