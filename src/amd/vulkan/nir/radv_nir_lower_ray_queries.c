@@ -679,9 +679,6 @@ radv_nir_lower_ray_queries(struct nir_shader *shader, struct radv_device *device
    bool progress = false;
    struct hash_table *query_ht = _mesa_pointer_hash_table_create(NULL);
 
-   /* Run constant folding to collapse expressions that are required to be constant by the spec. */
-   NIR_PASS(progress, shader, nir_opt_constant_folding);
-
    nir_foreach_variable_in_list (var, &shader->variables) {
       if (!var->data.ray_query)
          continue;
