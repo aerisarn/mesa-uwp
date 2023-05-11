@@ -7252,13 +7252,14 @@ static bool pvr_is_stencil_store_load_needed(
 
    hw_render_idx = state->current_sub_cmd->gfx.hw_render_idx;
    hw_render = &pass->hw_setup->renders[hw_render_idx];
+
+   if (hw_render->ds_attach_idx == VK_ATTACHMENT_UNUSED)
+      return false;
+
    attachment = attachments[hw_render->ds_attach_idx];
 
    if (!(vk_src_stage_mask & fragment_test_stages) &&
        vk_dst_stage_mask & VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
-      return false;
-
-   if (hw_render->ds_attach_idx == VK_ATTACHMENT_UNUSED)
       return false;
 
    for (uint32_t i = 0; i < memory_barrier_count; i++) {
