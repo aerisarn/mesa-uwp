@@ -4402,8 +4402,6 @@ zink_resource_copy_region(struct pipe_context *pctx,
       } else
          unreachable("planar formats not yet handled");
 
-      zink_fb_clears_apply_or_discard(ctx, pdst, (struct u_rect){dstx, dstx + src_box->width, dsty, dsty + src_box->height}, false);
-      zink_fb_clears_apply_region(ctx, psrc, zink_rect_from_box(src_box));
 
       region.srcSubresource.aspectMask = src->aspect;
       region.srcSubresource.mipLevel = src_level;
@@ -4471,6 +4469,9 @@ zink_resource_copy_region(struct pipe_context *pctx,
       region.dstOffset.y = dsty;
       region.extent.width = src_box->width;
       region.extent.height = src_box->height;
+
+      zink_fb_clears_apply_or_discard(ctx, pdst, (struct u_rect){dstx, dstx + src_box->width, dsty, dsty + src_box->height}, false);
+      zink_fb_clears_apply_region(ctx, psrc, zink_rect_from_box(src_box));
 
       struct zink_batch *batch = &ctx->batch;
       zink_resource_setup_transfer_layouts(ctx, src, dst);
