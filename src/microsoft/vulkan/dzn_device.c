@@ -401,7 +401,7 @@ dzn_physical_device_create(struct vk_instance *instance,
    /* TODO: something something queue families */
 
    result = dzn_wsi_init(pdev);
-   if (result != VK_SUCCESS) {
+   if (result != VK_SUCCESS || !pdev->dev) {
       list_del(&pdev->vk.link);
       dzn_physical_device_destroy(&pdev->vk);
       return result;
@@ -671,16 +671,17 @@ dzn_physical_device_get_d3d12_dev(struct dzn_physical_device *pdev)
                                       pdev->adapter,
                                       instance->factory,
                                       !instance->dxil_validator);
-
-      if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device10, (void **)&pdev->dev10)))
-         pdev->dev10 = NULL;
-      if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device11, (void **)&pdev->dev11)))
-         pdev->dev11 = NULL;
-      if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device12, (void **)&pdev->dev12)))
-         pdev->dev12 = NULL;
-      dzn_physical_device_cache_caps(pdev);
-      dzn_physical_device_init_memory(pdev);
-      dzn_physical_device_init_uuids(pdev);
+      if (pdev->dev) {
+         if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device10, (void **)&pdev->dev10)))
+            pdev->dev10 = NULL;
+         if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device11, (void **)&pdev->dev11)))
+            pdev->dev11 = NULL;
+         if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device12, (void **)&pdev->dev12)))
+            pdev->dev12 = NULL;
+         dzn_physical_device_cache_caps(pdev);
+         dzn_physical_device_init_memory(pdev);
+         dzn_physical_device_init_uuids(pdev);
+      }   
    }
    mtx_unlock(&pdev->dev_lock);
 
