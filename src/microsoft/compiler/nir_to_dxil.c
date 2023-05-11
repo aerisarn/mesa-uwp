@@ -2740,9 +2740,9 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_vec16:
       return emit_vec(ctx, alu, nir_op_infos[alu->op].num_inputs);
    case nir_op_mov: {
-         assert(nir_dest_num_components(alu->dest.dest) == 1);
-         store_ssa_def(ctx, &alu->dest.dest.ssa, 0, get_src_ssa(ctx,
-                        alu->src->src.ssa, alu->src->swizzle[0]));
+      for (uint32_t i = 0; i < alu->dest.dest.ssa.num_components; ++i)
+         store_ssa_def(ctx, &alu->dest.dest.ssa, i, get_src_ssa(ctx,
+                        alu->src->src.ssa, alu->src->swizzle[i]));
          return true;
       }
    case nir_op_pack_double_2x32_dxil:
@@ -6477,6 +6477,7 @@ optimize_nir(struct nir_shader *s, const struct nir_to_dxil_options *opts)
       NIR_PASS(progress, s, nir_opt_deref);
       NIR_PASS(progress, s, dxil_nir_lower_upcast_phis, opts->lower_int16 ? 32 : 16);
       NIR_PASS(progress, s, nir_lower_64bit_phis);
+      NIR_PASS(progress, s, nir_lower_phis_to_scalar, true);
       NIR_PASS(progress, s, nir_opt_loop_unroll);
       NIR_PASS_V(s, nir_lower_system_values);
    } while (progress);
@@ -6773,6 +6774,10 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
       return false;
 
    NIR_PASS_V(s, dxil_nir_lower_sysval_to_load_input, ctx->system_value);
+   NIR_PASS_V(s, nir_opt_dce);
+
+   /* This needs to be after any copy prop is done to prevent these movs from being erased */
+   NIR_PASS_V(s, dxil_nir_split_phis_and_const_srcs);
    NIR_PASS_V(s, nir_opt_dce);
 
    if (debug_dxil & DXIL_DEBUG_VERBOSE)
