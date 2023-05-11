@@ -561,6 +561,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_swapchain_maintenance1 = true,
 #endif
       .EXT_texel_buffer_alignment = true,
+      .EXT_tooling_info = true,
       .EXT_transform_feedback = true,
       .EXT_vertex_attribute_divisor = true,
       .EXT_vertex_input_dynamic_state =
@@ -2804,6 +2805,76 @@ radv_GetPhysicalDeviceFragmentShadingRatesKHR(
       }
    }
 #undef append_rate
+
+   return vk_outarray_status(&out);
+}
+
+/* VK_EXT_tooling_info */
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_GetPhysicalDeviceToolProperties(VkPhysicalDevice physicalDevice, uint32_t *pToolCount,
+                                     VkPhysicalDeviceToolProperties *pToolProperties)
+{
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceToolProperties, out, pToolProperties, pToolCount);
+   bool rgp_enabled, rmv_enabled, rra_enabled;
+   uint32_t tool_count = 0;
+
+   /* RGP */
+   rgp_enabled = radv_sqtt_enabled();
+   if (rgp_enabled)
+      tool_count++;
+
+   /* RMV */
+   rmv_enabled = vk_memory_trace_enabled();
+   if (rmv_enabled)
+      tool_count++;
+
+   /* RRA */
+   rra_enabled = radv_rra_trace_enabled();
+   if (rra_enabled)
+      tool_count++;
+
+   if (!pToolProperties) {
+      *pToolCount = tool_count;
+      return VK_SUCCESS;
+   }
+
+   if (rgp_enabled) {
+      VkPhysicalDeviceToolProperties tool = {
+         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES,
+         .name = "Radeon GPU Profiler",
+         .version = "1.15",
+         .description = "A ground-breaking low-level optimization tool that provides detailed "
+                        "information on Radeon GPUs.",
+         .purposes = VK_TOOL_PURPOSE_PROFILING_BIT | VK_TOOL_PURPOSE_TRACING_BIT |
+                     /* VK_EXT_debug_marker is only exposed if SQTT is enabled. */
+                     VK_TOOL_PURPOSE_ADDITIONAL_FEATURES_BIT | VK_TOOL_PURPOSE_DEBUG_MARKERS_BIT_EXT,
+      };
+      vk_outarray_append_typed(VkPhysicalDeviceToolProperties, &out, t) *t = tool;
+   }
+
+   if (rmv_enabled) {
+      VkPhysicalDeviceToolProperties tool = {
+         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES,
+         .name = "Radeon Memory Visualizer",
+         .version = "1.6",
+         .description = "A tool to allow you to gain a deep understanding of how your application "
+                        "uses memory for graphics resources.",
+         .purposes = VK_TOOL_PURPOSE_PROFILING_BIT | VK_TOOL_PURPOSE_TRACING_BIT,
+      };
+      vk_outarray_append_typed(VkPhysicalDeviceToolProperties, &out, t) *t = tool;
+   }
+
+   if (rra_enabled) {
+      VkPhysicalDeviceToolProperties tool = {
+         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES,
+         .name = "Radeon Raytracing Analyzer",
+         .version = "1.2",
+         .description = "A tool to investigate the performance of your ray tracing applications and "
+                        "highlight potential bottlenecks.",
+         .purposes = VK_TOOL_PURPOSE_PROFILING_BIT | VK_TOOL_PURPOSE_TRACING_BIT,
+      };
+      vk_outarray_append_typed(VkPhysicalDeviceToolProperties, &out, t) *t = tool;
+   }
 
    return vk_outarray_status(&out);
 }
