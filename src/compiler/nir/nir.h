@@ -2896,6 +2896,22 @@ nir_block_ends_in_break(nir_block *block)
 #define nir_foreach_instr_reverse_safe(instr, block) \
    foreach_list_typed_reverse_safe(nir_instr, instr, node, &(block)->instr_list)
 
+/* Phis come first in the block */
+#define nir_foreach_phi_internal(instr, phi) \
+   if (instr->type != nir_instr_type_phi) \
+      break; \
+   else \
+      for (nir_phi_instr *phi = nir_instr_as_phi(instr); phi != NULL; \
+           phi = NULL)
+
+#define nir_foreach_phi(instr, block) \
+   nir_foreach_instr(nir_foreach_phi_##instr, block) \
+      nir_foreach_phi_internal(nir_foreach_phi_##instr, instr)
+
+#define nir_foreach_phi_safe(instr, block) \
+   nir_foreach_instr_safe(nir_foreach_phi_safe_##instr, block) \
+      nir_foreach_phi_internal(nir_foreach_phi_safe_##instr, instr)
+
 static inline nir_phi_instr *
 nir_block_last_phi_instr(nir_block *block)
 {
