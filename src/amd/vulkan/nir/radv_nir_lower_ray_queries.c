@@ -427,9 +427,8 @@ static nir_ssa_def *
 lower_rq_load(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *instr,
               struct ray_query_vars *vars)
 {
-   assert(nir_src_is_const(instr->src[1]));
-   bool closest = nir_src_as_bool(instr->src[1]);
-   struct ray_query_intersection_vars *intersection = closest ? &vars->closest : &vars->candidate;
+   bool committed = nir_intrinsic_committed(instr);
+   struct ray_query_intersection_vars *intersection = committed ? &vars->closest : &vars->candidate;
 
    uint32_t column = nir_intrinsic_column(instr);
 
@@ -494,7 +493,7 @@ lower_rq_load(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *instr,
       return rq_load_var(b, index, intersection->t);
    case nir_ray_query_value_intersection_type: {
       nir_ssa_def *intersection_type = rq_load_var(b, index, intersection->intersection_type);
-      if (!closest)
+      if (!committed)
          intersection_type = nir_iadd_imm(b, intersection_type, -1);
 
       return intersection_type;

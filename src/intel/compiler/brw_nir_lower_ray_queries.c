@@ -348,7 +348,7 @@ lower_ray_query_intrinsic(nir_builder *b,
    }
 
    case nir_intrinsic_rq_load: {
-      const bool committed = nir_src_as_bool(intrin->src[1]);
+      const bool committed = nir_intrinsic_committed(intrin);
 
       struct brw_nir_rt_mem_ray_defs world_ray_in = {};
       struct brw_nir_rt_mem_ray_defs object_ray_in = {};
