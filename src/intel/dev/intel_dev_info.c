@@ -109,7 +109,7 @@ print_base_devinfo(const struct intel_device_info *devinfo)
       "VS", "HS", "DS", "GS",
    };
    for (unsigned s = 0; s < ARRAY_SIZE(devinfo->urb.min_entries); s++) {
-      fprintf(stderr, "      URB.entries[%s] = [%4u, %4u]\n",
+      fprintf(stdout, "      URB.entries[%s] = [%4u, %4u]\n",
               stage_names[s],
               devinfo->urb.min_entries[s],
               devinfo->urb.max_entries[s]);
