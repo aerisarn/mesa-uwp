@@ -4518,6 +4518,93 @@ mubuf_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigne
 const EmitLoadParameters mubuf_load_params{mubuf_load_callback, true, true, 4096};
 
 Temp
+mubuf_load_format_callback(Builder& bld, const LoadEmitInfo& info, Temp offset,
+                           unsigned bytes_needed, unsigned align_, unsigned const_offset,
+                           Temp dst_hint)
+{
+   Operand vaddr = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
+   Operand soffset = offset.type() == RegType::sgpr ? Operand(offset) : Operand::c32(0);
+
+   if (info.soffset.id()) {
+      if (soffset.isTemp())
+         vaddr = bld.copy(bld.def(v1), soffset);
+      soffset = Operand(info.soffset);
+   }
+
+   if (soffset.isUndefined())
+      soffset = Operand::zero();
+
+   bool offen = !vaddr.isUndefined();
+   bool idxen = info.idx.id();
+
+   if (offen && idxen)
+      vaddr = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), info.idx, vaddr);
+   else if (idxen)
+      vaddr = Operand(info.idx);
+
+   aco_opcode op = aco_opcode::num_opcodes;
+   if (info.component_size == 2) {
+      switch (bytes_needed) {
+      case 2:
+         op = aco_opcode::buffer_load_format_d16_x;
+         break;
+      case 4:
+         op = aco_opcode::buffer_load_format_d16_xy;
+         break;
+      case 6:
+         op = aco_opcode::buffer_load_format_d16_xyz;
+         break;
+      case 8:
+         op = aco_opcode::buffer_load_format_d16_xyzw;
+         break;
+      default:
+         unreachable("invalid buffer load format size");
+         break;
+      }
+   } else {
+      assert(info.component_size == 4);
+      switch (bytes_needed) {
+      case 4:
+         op = aco_opcode::buffer_load_format_x;
+         break;
+      case 8:
+         op = aco_opcode::buffer_load_format_xy;
+         break;
+      case 12:
+         op = aco_opcode::buffer_load_format_xyz;
+         break;
+      case 16:
+         op = aco_opcode::buffer_load_format_xyzw;
+         break;
+      default:
+         unreachable("invalid buffer load format size");
+         break;
+      }
+   }
+
+   aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
+   mubuf->operands[0] = Operand(info.resource);
+   mubuf->operands[1] = vaddr;
+   mubuf->operands[2] = soffset;
+   mubuf->offen = offen;
+   mubuf->idxen = idxen;
+   mubuf->glc = info.glc;
+   mubuf->dlc =
+      info.glc && (bld.program->gfx_level == GFX10 || bld.program->gfx_level == GFX10_3);
+   mubuf->slc = info.slc;
+   mubuf->sync = info.sync;
+   mubuf->offset = const_offset;
+   RegClass rc = RegClass::get(RegType::vgpr, bytes_needed);
+   Temp val = dst_hint.id() && rc == dst_hint.regClass() ? dst_hint : bld.tmp(rc);
+   mubuf->definitions[0] = Definition(val);
+   bld.insert(std::move(mubuf));
+
+   return val;
+}
+
+const EmitLoadParameters mubuf_load_format_params{mubuf_load_format_callback, false, true, 4096};
+
+Temp
 scratch_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigned bytes_needed,
                       unsigned align_, unsigned const_offset, Temp dst_hint)
 {
@@ -7031,15 +7118,23 @@ visit_load_buffer(isel_context* ctx, nir_intrinsic_instr* intrin)
 
       emit_load(ctx, bld, info, mtbuf_load_params);
    } else {
-      const unsigned swizzle_element_size =
-         swizzled ? (ctx->program->gfx_level <= GFX8 ? 4 : 16) : 0;
+      assert(intrin->intrinsic == nir_intrinsic_load_buffer_amd);
 
-      info.component_stride = swizzle_element_size;
-      info.swizzle_component_size = swizzle_element_size ? 4 : 0;
-      info.align_mul = MIN2(elem_size_bytes, 4);
-      info.align_offset = 0;
+      if (nir_intrinsic_access(intrin) & ACCESS_USES_FORMAT_AMD) {
+         assert(!swizzled);
 
-      emit_load(ctx, bld, info, mubuf_load_params);
+         emit_load(ctx, bld, info, mubuf_load_format_params);
+      } else {
+         const unsigned swizzle_element_size =
+            swizzled ? (ctx->program->gfx_level <= GFX8 ? 4 : 16) : 0;
+
+         info.component_stride = swizzle_element_size;
+         info.swizzle_component_size = swizzle_element_size ? 4 : 0;
+         info.align_mul = MIN2(elem_size_bytes, 4);
+         info.align_offset = 0;
+
+         emit_load(ctx, bld, info, mubuf_load_params);
+      }
    }
 }
 
