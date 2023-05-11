@@ -4845,10 +4845,8 @@ static bool visit_block(struct ac_nir_context *ctx, nir_block *block)
       LLVMPositionBuilderBefore(ctx->ac.builder, LLVMGetFirstInstruction(blockref));
    }
 
-   nir_foreach_instr(instr, block) {
-      if (instr->type != nir_instr_type_phi)
-         break;
-      visit_phi(ctx, nir_instr_as_phi(instr));
+   nir_foreach_phi(phi, block) {
+      visit_phi(ctx, phi);
    }
 
    LLVMPositionBuilderAtEnd(ctx->ac.builder, blockref);
