@@ -62,7 +62,7 @@ static VkResult pvr_srv_alloc_display_pmr(struct pvr_srv_winsys *srv_ws,
    if (result != VK_SUCCESS)
       return result;
 
-   ret = drmPrimeHandleToFD(srv_ws->base.primary_fd, handle, O_CLOEXEC, &fd);
+   ret = drmPrimeHandleToFD(srv_ws->base.display_fd, handle, O_CLOEXEC, &fd);
    if (ret) {
       result = vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto err_display_buffer_destroy;
@@ -292,7 +292,7 @@ VkResult pvr_srv_winsys_buffer_get_fd(struct pvr_winsys_bo *bo,
       return pvr_srv_physmem_export_dmabuf(ws->render_fd, srv_bo->pmr, fd_out);
 
    /* For display buffers, export using saved buffer handle */
-   ret = drmPrimeHandleToFD(ws->primary_fd, srv_bo->handle, O_CLOEXEC, fd_out);
+   ret = drmPrimeHandleToFD(ws->display_fd, srv_bo->handle, O_CLOEXEC, fd_out);
    if (ret)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 

@@ -45,7 +45,7 @@ VkResult pvr_winsys_helper_display_buffer_create(struct pvr_winsys *const ws,
    };
    VkResult result;
 
-   result = pvr_ioctl(ws->primary_fd,
+   result = pvr_ioctl(ws->display_fd,
                       DRM_IOCTL_MODE_CREATE_DUMB,
                       &args,
                       VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -64,7 +64,7 @@ VkResult pvr_winsys_helper_display_buffer_destroy(struct pvr_winsys *ws,
       .handle = handle,
    };
 
-   return pvr_ioctl(ws->primary_fd,
+   return pvr_ioctl(ws->display_fd,
                     DRM_IOCTL_MODE_DESTROY_DUMB,
                     &args,
                     VK_ERROR_UNKNOWN);

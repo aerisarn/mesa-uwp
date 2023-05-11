@@ -29,7 +29,7 @@
 #include "pvr_winsys.h"
 
 VkResult pvr_drm_winsys_create(int render_fd,
-                               int primary_fd,
+                               int display_fd,
                                const VkAllocationCallbacks *alloc,
                                struct pvr_winsys **ws_out);
 

@@ -491,7 +491,7 @@ struct pvr_winsys {
    struct vk_sync_timeline_type timeline_syncobj_type;
 
    int render_fd;
-   int primary_fd;
+   int display_fd;
 
    const VkAllocationCallbacks *alloc;
 
@@ -504,7 +504,7 @@ struct pvr_winsys {
 
 void pvr_winsys_destroy(struct pvr_winsys *ws);
 VkResult pvr_winsys_create(const char *render_path,
-                           const char *primary_path,
+                           const char *display_path,
                            const VkAllocationCallbacks *alloc,
                            struct pvr_winsys **ws_out);
 

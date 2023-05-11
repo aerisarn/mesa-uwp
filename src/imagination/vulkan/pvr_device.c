@@ -251,7 +251,7 @@ static void pvr_physical_device_finish(struct pvr_physical_device *pdevice)
       pvr_winsys_destroy(pdevice->ws);
 
    vk_free(&pdevice->vk.instance->alloc, pdevice->render_path);
-   vk_free(&pdevice->vk.instance->alloc, pdevice->primary_path);
+   vk_free(&pdevice->vk.instance->alloc, pdevice->display_path);
 
    vk_physical_device_finish(&pdevice->vk);
 }
@@ -329,12 +329,12 @@ static uint64_t pvr_compute_heap_size(void)
 static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
                                          struct pvr_instance *instance,
                                          drmDevicePtr drm_render_device,
-                                         drmDevicePtr drm_primary_device)
+                                         drmDevicePtr drm_display_device)
 {
    struct vk_physical_device_dispatch_table dispatch_table;
    struct vk_device_extension_table supported_extensions;
    struct pvr_winsys *ws;
-   char *primary_path;
+   char *display_path;
    char *render_path;
    VkResult result;
 
@@ -356,21 +356,21 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
    }
 
    if (instance->vk.enabled_extensions.KHR_display) {
-      primary_path = vk_strdup(&instance->vk.alloc,
-                               drm_primary_device->nodes[DRM_NODE_PRIMARY],
+      display_path = vk_strdup(&instance->vk.alloc,
+                               drm_display_device->nodes[DRM_NODE_PRIMARY],
                                VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-      if (!primary_path) {
+      if (!display_path) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto err_vk_free_render_path;
       }
    } else {
-      primary_path = NULL;
+      display_path = NULL;
    }
 
    result =
-      pvr_winsys_create(render_path, primary_path, &instance->vk.alloc, &ws);
+      pvr_winsys_create(render_path, display_path, &instance->vk.alloc, &ws);
    if (result != VK_SUCCESS)
-      goto err_vk_free_primary_path;
+      goto err_vk_free_display_path;
 
    pvr_physical_device_get_supported_extensions(&supported_extensions);
 
@@ -394,7 +394,7 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
 
    pdevice->instance = instance;
    pdevice->render_path = render_path;
-   pdevice->primary_path = primary_path;
+   pdevice->display_path = display_path;
    pdevice->ws = ws;
    pdevice->vk.supported_sync_types = ws->sync_types;
 
@@ -458,8 +458,8 @@ err_vk_physical_device_finish:
 err_pvr_winsys_destroy:
    pvr_winsys_destroy(ws);
 
-err_vk_free_primary_path:
-   vk_free(&instance->vk.alloc, primary_path);
+err_vk_free_display_path:
+   vk_free(&instance->vk.alloc, display_path);
 
 err_vk_free_render_path:
    vk_free(&instance->vk.alloc, render_path);
@@ -518,7 +518,7 @@ static VkResult pvr_enumerate_devices(struct pvr_instance *instance)
     * 8cb12a2528d795c45bba5f03b3486b4040fb0f45, so, until this is fixed in
     * upstream, hard-code the maximum number of devices.
     */
-   drmDevicePtr drm_primary_device = NULL;
+   drmDevicePtr drm_display_device = NULL;
    drmDevicePtr drm_render_device = NULL;
    drmDevicePtr drm_devices[8];
    int max_drm_devices;
@@ -541,18 +541,18 @@ static VkResult pvr_enumerate_devices(struct pvr_instance *instance)
                    drm_render_device->nodes[DRM_NODE_RENDER]);
       } else if (pvr_drm_device_is_supported(drm_devices[i],
                                              DRM_NODE_PRIMARY)) {
-         drm_primary_device = drm_devices[i];
+         drm_display_device = drm_devices[i];
 
-         mesa_logd("Found compatible primary device '%s'.",
-                   drm_primary_device->nodes[DRM_NODE_PRIMARY]);
+         mesa_logd("Found compatible display device '%s'.",
+                   drm_display_device->nodes[DRM_NODE_PRIMARY]);
       }
    }
 
-   if (drm_render_device && drm_primary_device) {
+   if (drm_render_device && drm_display_device) {
       result = pvr_physical_device_init(&instance->physical_device,
                                         instance,
                                         drm_render_device,
-                                        drm_primary_device);
+                                        drm_display_device);
       if (result == VK_SUCCESS)
          instance->physical_devices_count = 1;
       else if (result == VK_ERROR_INCOMPATIBLE_DRIVER)
@@ -1714,7 +1714,7 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
 
    result = pvr_winsys_create(pdevice->render_path,
-                              pdevice->primary_path,
+                              pdevice->display_path,
                               pAllocator ? pAllocator : &instance->vk.alloc,
                               &ws);
    if (result != VK_SUCCESS)

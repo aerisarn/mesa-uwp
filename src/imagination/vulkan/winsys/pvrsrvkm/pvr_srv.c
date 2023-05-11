@@ -685,7 +685,7 @@ static bool pvr_is_driver_compatible(int render_fd)
 }
 
 VkResult pvr_srv_winsys_create(const int render_fd,
-                               const int primary_fd,
+                               const int display_fd,
                                const VkAllocationCallbacks *alloc,
                                struct pvr_winsys **const ws_out)
 {
@@ -713,7 +713,7 @@ VkResult pvr_srv_winsys_create(const int render_fd,
 
    srv_ws->base.ops = &srv_winsys_ops;
    srv_ws->base.render_fd = render_fd;
-   srv_ws->base.primary_fd = primary_fd;
+   srv_ws->base.display_fd = display_fd;
    srv_ws->base.alloc = alloc;
 
    srv_ws->bvnc = bvnc;
