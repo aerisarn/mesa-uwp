@@ -1212,11 +1212,8 @@ validate_phi_src(nir_phi_instr *instr, nir_block *pred, validate_state *state)
 static void
 validate_phi_srcs(nir_block *block, nir_block *succ, validate_state *state)
 {
-   nir_foreach_instr(instr, succ) {
-      if (instr->type != nir_instr_type_phi)
-         break;
-
-      validate_phi_src(nir_instr_as_phi(instr), block, state);
+   nir_foreach_phi(phi, succ) {
+      validate_phi_src(phi, block, state);
    }
 }
 

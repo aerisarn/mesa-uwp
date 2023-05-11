@@ -2916,12 +2916,9 @@ static inline nir_phi_instr *
 nir_block_last_phi_instr(nir_block *block)
 {
    nir_phi_instr *last_phi = NULL;
-   nir_foreach_instr(instr, block) {
-      if (instr->type == nir_instr_type_phi)
-         last_phi = nir_instr_as_phi(instr);
-      else
-         return last_phi;
-   }
+   nir_foreach_phi(instr, block)
+      last_phi = instr;
+
    return last_phi;
 }
 

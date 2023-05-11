@@ -860,12 +860,7 @@ cf_node_contains_block(nir_cf_node *node, nir_block *block)
 static void
 rewrite_phis_to_pred(nir_block *block, nir_block *pred)
 {
-   nir_foreach_instr(instr, block) {
-      if (instr->type != nir_instr_type_phi)
-         break;
-
-      nir_phi_instr *phi = nir_instr_as_phi(instr);
-
+   nir_foreach_phi(phi, block) {
       ASSERTED bool found = false;
       nir_foreach_phi_src(phi_src, phi) {
          if (phi_src->pred == pred) {

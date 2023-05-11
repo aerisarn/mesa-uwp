@@ -1032,14 +1032,10 @@ visit_if(nir_if *if_stmt, struct divergence_state *state)
    progress |= visit_cf_list(&if_stmt->else_list, &else_state);
 
    /* handle phis after the IF */
-   nir_foreach_instr(instr, nir_cf_node_cf_tree_next(&if_stmt->cf_node)) {
-      if (instr->type != nir_instr_type_phi)
-         break;
-
+   nir_foreach_phi(phi, nir_cf_node_cf_tree_next(&if_stmt->cf_node)) {
       if (state->first_visit)
-         nir_instr_as_phi(instr)->dest.ssa.divergent = false;
-      progress |= visit_if_merge_phi(nir_instr_as_phi(instr),
-                                     if_stmt->condition.ssa->divergent);
+         phi->dest.ssa.divergent = false;
+      progress |= visit_if_merge_phi(phi, if_stmt->condition.ssa->divergent);
    }
 
    /* join loop divergence information from both branch legs */
@@ -1066,11 +1062,7 @@ visit_loop(nir_loop *loop, struct divergence_state *state)
 
    /* handle loop header phis first: we have no knowledge yet about
     * the loop's control flow or any loop-carried sources. */
-   nir_foreach_instr(instr, loop_header) {
-      if (instr->type != nir_instr_type_phi)
-         break;
-
-      nir_phi_instr *phi = nir_instr_as_phi(instr);
+   nir_foreach_phi(phi, loop_header) {
       if (!state->first_visit && phi->dest.ssa.divergent)
          continue;
 
@@ -1096,12 +1088,8 @@ visit_loop(nir_loop *loop, struct divergence_state *state)
       repeat = false;
 
       /* revisit loop header phis to see if something has changed */
-      nir_foreach_instr(instr, loop_header) {
-         if (instr->type != nir_instr_type_phi)
-            break;
-
-         repeat |= visit_loop_header_phi(nir_instr_as_phi(instr),
-                                         loop_preheader,
+      nir_foreach_phi(phi, loop_header) {
+         repeat |= visit_loop_header_phi(phi, loop_preheader,
                                          loop_state.divergent_loop_continue);
       }
 
@@ -1110,14 +1098,10 @@ visit_loop(nir_loop *loop, struct divergence_state *state)
    } while (repeat);
 
    /* handle phis after the loop */
-   nir_foreach_instr(instr, nir_cf_node_cf_tree_next(&loop->cf_node)) {
-      if (instr->type != nir_instr_type_phi)
-         break;
-
+   nir_foreach_phi(phi, nir_cf_node_cf_tree_next(&loop->cf_node)) {
       if (state->first_visit)
-         nir_instr_as_phi(instr)->dest.ssa.divergent = false;
-      progress |= visit_loop_exit_phi(nir_instr_as_phi(instr),
-                                      loop_state.divergent_loop_break);
+         phi->dest.ssa.divergent = false;
+      progress |= visit_loop_exit_phi(phi, loop_state.divergent_loop_break);
    }
 
    loop->divergent = (loop_state.divergent_loop_break || loop_state.divergent_loop_continue);

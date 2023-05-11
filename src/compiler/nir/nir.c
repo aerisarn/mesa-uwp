@@ -1496,11 +1496,7 @@ nir_foreach_phi_src_leaving_block(nir_block *block,
       if (block->successors[i] == NULL)
          continue;
 
-      nir_foreach_instr(instr, block->successors[i]) {
-         if (instr->type != nir_instr_type_phi)
-            break;
-
-         nir_phi_instr *phi = nir_instr_as_phi(instr);
+      nir_foreach_phi(phi, block->successors[i]) {
          nir_foreach_phi_src(phi_src, phi) {
             if (phi_src->pred == block) {
                if (!cb(&phi_src->src, state))

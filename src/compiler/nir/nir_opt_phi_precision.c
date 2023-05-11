@@ -468,12 +468,8 @@ nir_opt_phi_precision(nir_shader *shader)
       nir_builder_init(&b, function->impl);
 
       nir_foreach_block (block, function->impl) {
-         nir_foreach_instr_safe (instr, block) {
-            if (instr->type != nir_instr_type_phi)
-               break;
-
-            progress |= lower_phi(&b, nir_instr_as_phi(instr));
-         }
+         nir_foreach_phi_safe (phi, block)
+            progress |= lower_phi(&b, phi);
       }
 
       if (progress) {
