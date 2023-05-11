@@ -1097,6 +1097,9 @@ struct anv_device {
     /** List of all anv_device_memory objects */
     struct list_head                            memory_objects;
 
+    /** List of anv_image objects with a private binding for implicit CCS */
+    struct list_head                            image_private_objects;
+
     struct anv_bo_pool                          batch_bo_pool;
     struct anv_bo_pool                          utrace_bo_pool;
 
@@ -3747,6 +3750,9 @@ struct anv_image {
    } planes[3];
 
    struct anv_image_memory_range vid_dmv_top_surface;
+
+   /* Link in the anv_device.image_private_objects list */
+   struct list_head link;
 };
 
 static inline bool

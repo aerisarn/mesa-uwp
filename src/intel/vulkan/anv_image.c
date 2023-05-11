@@ -1312,9 +1312,16 @@ alloc_private_binding(struct anv_device *device,
       return VK_SUCCESS;
    }
 
-   return anv_device_alloc_bo(device, "image-binding-private",
-                              binding->memory_range.size, 0, 0,
-                              &binding->address.bo);
+   VkResult result = anv_device_alloc_bo(device, "image-binding-private",
+                                         binding->memory_range.size, 0, 0,
+                                         &binding->address.bo);
+   if (result == VK_SUCCESS) {
+      pthread_mutex_lock(&device->mutex);
+      list_addtail(&image->link, &device->image_private_objects);
+      pthread_mutex_unlock(&device->mutex);
+   }
+
+   return result;
 }
 
 VkResult
@@ -1453,8 +1460,12 @@ anv_image_finish(struct anv_image *image)
    }
 
    struct anv_bo *private_bo = image->bindings[ANV_IMAGE_MEMORY_BINDING_PRIVATE].address.bo;
-   if (private_bo)
+   if (private_bo) {
+      pthread_mutex_lock(&device->mutex);
+      list_del(&image->link);
+      pthread_mutex_unlock(&device->mutex);
       anv_device_release_bo(device, private_bo);
+   }
 
    vk_image_finish(&image->vk);
 }
