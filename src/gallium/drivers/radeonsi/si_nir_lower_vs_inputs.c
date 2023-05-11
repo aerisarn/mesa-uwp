@@ -32,8 +32,7 @@ fast_udiv_nuw(nir_builder *b, nir_ssa_def *num, nir_ssa_def *divisor)
 
    num = nir_ushr(b, num, pre_shift);
    num = nir_iadd_nuw(b, num, increment);
-   num = nir_imul(b, nir_u2u64(b, num), nir_u2u64(b, multiplier));
-   num = nir_unpack_64_2x32_split_y(b, num);
+   num = nir_umul_high(b, num, multiplier);
    return nir_ushr(b, num, post_shift);
 }
 
