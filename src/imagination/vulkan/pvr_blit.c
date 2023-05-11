@@ -1502,7 +1502,7 @@ static VkResult pvr_clear_color_attachment_static(
       tile_buffer_idx = mrt_resource->mem.tile_buffer;
       output_offset = mrt_resource->mem.offset_dw;
    } else {
-      output_offset = mrt_resource->reg.offset;
+      output_offset = mrt_resource->reg.output_reg;
    }
 
    assert(has_eight_output_registers || out_reg_count + output_offset <= 4);
