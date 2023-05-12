@@ -102,7 +102,7 @@ check_resource_for_batch_ref(struct zink_context *ctx, struct zink_resource *res
        * TODO: somehow fix this for perf because it's an extra hash lookup
        */
       if (!res->obj->dt && zink_resource_has_usage(res))
-         zink_batch_reference_resource_rw(&ctx->batch, res, !!res->obj->bo->writes);
+         zink_batch_reference_resource_rw(&ctx->batch, res, !!res->obj->bo->writes.u);
       else
          zink_batch_reference_resource(&ctx->batch, res);
    }

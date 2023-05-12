@@ -549,6 +549,10 @@ struct zink_batch_usage {
    bool unflushed;
 };
 
+struct zink_bo_usage {
+   struct zink_batch_usage *u;
+};
+
 struct zink_batch_obj_list {
    unsigned max_buffers;
    unsigned num_buffers;
@@ -682,8 +686,8 @@ struct zink_bo {
 
    simple_mtx_t lock;
 
-   struct zink_batch_usage *reads;
-   struct zink_batch_usage *writes;
+   struct zink_bo_usage reads;
+   struct zink_bo_usage writes;
 
    struct pb_cache_entry cache_entry[];
 };

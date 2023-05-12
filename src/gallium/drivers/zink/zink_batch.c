@@ -58,8 +58,8 @@ reset_obj(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_r
          /* prune all existing views */
          obj->view_prune_count = util_dynarray_num_elements(&obj->views, VkBufferView);
          /* prune them when the views will definitely not be in use */
-         obj->view_prune_timeline = MAX2(obj->bo->reads ? obj->bo->reads->usage : 0,
-                                         obj->bo->writes ? obj->bo->writes->usage : 0);
+         obj->view_prune_timeline = MAX2(obj->bo->reads.u ? obj->bo->reads.u->usage : 0,
+                                         obj->bo->writes.u ? obj->bo->writes.u->usage : 0);
       }
       simple_mtx_unlock(&obj->view_lock);
    }
