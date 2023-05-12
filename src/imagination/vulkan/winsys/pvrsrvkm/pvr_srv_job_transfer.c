@@ -141,9 +141,9 @@ pvr_srv_transfer_cmd_stream_load(struct rogue_fwif_cmd_transfer *const cmd,
    const uint32_t *stream_ptr = (const uint32_t *)stream;
    struct rogue_fwif_transfer_regs *const regs = &cmd->regs;
    uint32_t main_stream_len =
-      pvr_csb_unpack((uint64_t *)stream_ptr, FW_STREAM_HDR).length;
+      pvr_csb_unpack((uint64_t *)stream_ptr, KMD_STREAM_HDR).length;
 
-   stream_ptr += pvr_cmd_length(FW_STREAM_HDR);
+   stream_ptr += pvr_cmd_length(KMD_STREAM_HDR);
 
    regs->pds_bgnd0_base = *(uint64_t *)stream_ptr;
    stream_ptr += pvr_cmd_length(CR_PDS_BGRND0_BASE);

@@ -147,9 +147,9 @@ pvr_srv_compute_cmd_stream_load(struct rogue_fwif_cmd_compute *const cmd,
    const uint32_t *stream_ptr = (const uint32_t *)stream;
    struct rogue_fwif_cdm_regs *const regs = &cmd->regs;
    uint32_t main_stream_len =
-      pvr_csb_unpack((uint64_t *)stream_ptr, FW_STREAM_HDR).length;
+      pvr_csb_unpack((uint64_t *)stream_ptr, KMD_STREAM_HDR).length;
 
-   stream_ptr += pvr_cmd_length(FW_STREAM_HDR);
+   stream_ptr += pvr_cmd_length(KMD_STREAM_HDR);
 
    regs->tpu_border_colour_table = *(const uint64_t *)stream_ptr;
    stream_ptr += pvr_cmd_length(CR_TPU_BORDER_COLOUR_TABLE_CDM);
@@ -193,10 +193,10 @@ static void pvr_srv_compute_cmd_ext_stream_load(
       (const uint32_t *)((uint8_t *)stream + ext_stream_offset);
    struct rogue_fwif_cdm_regs *const regs = &cmd->regs;
 
-   struct PVRX(FW_STREAM_EXTHDR_COMPUTE0) header0;
+   struct PVRX(KMD_STREAM_EXTHDR_COMPUTE0) header0;
 
-   header0 = pvr_csb_unpack(ext_stream_ptr, FW_STREAM_EXTHDR_COMPUTE0);
-   ext_stream_ptr += pvr_cmd_length(FW_STREAM_EXTHDR_COMPUTE0);
+   header0 = pvr_csb_unpack(ext_stream_ptr, KMD_STREAM_EXTHDR_COMPUTE0);
+   ext_stream_ptr += pvr_cmd_length(KMD_STREAM_EXTHDR_COMPUTE0);
 
    assert(PVR_HAS_QUIRK(dev_info, 49927) == header0.has_brn49927);
    if (header0.has_brn49927) {

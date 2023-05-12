@@ -52,7 +52,7 @@ pvr_submit_info_stream_init(struct pvr_compute_ctx *ctx,
    uint32_t *stream_len_ptr = stream_ptr;
 
    /* Leave space for stream header. */
-   stream_ptr += pvr_cmd_length(FW_STREAM_HDR);
+   stream_ptr += pvr_cmd_length(KMD_STREAM_HDR);
 
    pvr_csb_pack ((uint64_t *)stream_ptr,
                  CR_TPU_BORDER_COLOUR_TABLE_CDM,
@@ -130,7 +130,7 @@ pvr_submit_info_stream_init(struct pvr_compute_ctx *ctx,
       (uint8_t *)stream_ptr - (uint8_t *)submit_info->fw_stream;
    assert(submit_info->fw_stream_len <= ARRAY_SIZE(submit_info->fw_stream));
 
-   pvr_csb_pack ((uint64_t *)stream_len_ptr, FW_STREAM_HDR, value) {
+   pvr_csb_pack ((uint64_t *)stream_len_ptr, KMD_STREAM_HDR, value) {
       value.length = submit_info->fw_stream_len;
    }
 }
@@ -144,15 +144,15 @@ static void pvr_submit_info_ext_stream_init(
 
    uint32_t *stream_ptr = (uint32_t *)submit_info->fw_stream;
    uint32_t main_stream_len =
-      pvr_csb_unpack((uint64_t *)stream_ptr, FW_STREAM_HDR).length;
+      pvr_csb_unpack((uint64_t *)stream_ptr, KMD_STREAM_HDR).length;
    uint32_t *ext_stream_ptr =
       (uint32_t *)((uint8_t *)stream_ptr + main_stream_len);
    uint32_t *header0_ptr;
 
    header0_ptr = ext_stream_ptr;
-   ext_stream_ptr += pvr_cmd_length(FW_STREAM_EXTHDR_COMPUTE0);
+   ext_stream_ptr += pvr_cmd_length(KMD_STREAM_EXTHDR_COMPUTE0);
 
-   pvr_csb_pack (header0_ptr, FW_STREAM_EXTHDR_COMPUTE0, header0) {
+   pvr_csb_pack (header0_ptr, KMD_STREAM_EXTHDR_COMPUTE0, header0) {
       if (PVR_HAS_QUIRK(dev_info, 49927)) {
          header0.has_brn49927 = true;
 
@@ -163,7 +163,7 @@ static void pvr_submit_info_ext_stream_init(
       }
    }
 
-   if ((*header0_ptr & PVRX(FW_STREAM_EXTHDR_DATA_MASK)) != 0) {
+   if ((*header0_ptr & PVRX(KMD_STREAM_EXTHDR_DATA_MASK)) != 0) {
       submit_info->fw_stream_len =
          (uint8_t *)ext_stream_ptr - (uint8_t *)submit_info->fw_stream;
       assert(submit_info->fw_stream_len <= ARRAY_SIZE(submit_info->fw_stream));

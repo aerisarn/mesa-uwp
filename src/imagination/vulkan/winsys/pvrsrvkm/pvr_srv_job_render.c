@@ -643,9 +643,9 @@ pvr_srv_geometry_cmd_stream_load(struct rogue_fwif_cmd_ta *const cmd,
    const uint32_t *stream_ptr = (const uint32_t *)stream;
    struct rogue_fwif_ta_regs *const regs = &cmd->regs;
    uint32_t main_stream_len =
-      pvr_csb_unpack((const uint64_t *)stream_ptr, FW_STREAM_HDR).length;
+      pvr_csb_unpack((const uint64_t *)stream_ptr, KMD_STREAM_HDR).length;
 
-   stream_ptr += pvr_cmd_length(FW_STREAM_HDR);
+   stream_ptr += pvr_cmd_length(KMD_STREAM_HDR);
 
    regs->vdm_ctrl_stream_base = *(const uint64_t *)stream_ptr;
    stream_ptr += pvr_cmd_length(CR_VDM_CTRL_STREAM_BASE);
@@ -682,10 +682,10 @@ static void pvr_srv_geometry_cmd_ext_stream_load(
       (const uint32_t *)((uint8_t *)stream + ext_stream_offset);
    struct rogue_fwif_ta_regs *const regs = &cmd->regs;
 
-   struct PVRX(FW_STREAM_EXTHDR_GEOM0) header0;
+   struct PVRX(KMD_STREAM_EXTHDR_GEOM0) header0;
 
-   header0 = pvr_csb_unpack(ext_stream_ptr, FW_STREAM_EXTHDR_GEOM0);
-   ext_stream_ptr += pvr_cmd_length(FW_STREAM_EXTHDR_GEOM0);
+   header0 = pvr_csb_unpack(ext_stream_ptr, KMD_STREAM_EXTHDR_GEOM0);
+   ext_stream_ptr += pvr_cmd_length(KMD_STREAM_EXTHDR_GEOM0);
 
    assert(PVR_HAS_QUIRK(dev_info, 49927) == header0.has_brn49927);
    if (header0.has_brn49927) {
@@ -745,9 +745,9 @@ pvr_srv_fragment_cmd_stream_load(struct rogue_fwif_cmd_3d *const cmd,
    const uint32_t *stream_ptr = (const uint32_t *)stream;
    struct rogue_fwif_3d_regs *const regs = &cmd->regs;
    uint32_t main_stream_len =
-      pvr_csb_unpack((const uint64_t *)stream_ptr, FW_STREAM_HDR).length;
+      pvr_csb_unpack((const uint64_t *)stream_ptr, KMD_STREAM_HDR).length;
 
-   stream_ptr += pvr_cmd_length(FW_STREAM_HDR);
+   stream_ptr += pvr_cmd_length(KMD_STREAM_HDR);
 
    regs->isp_scissor_base = *(const uint64_t *)stream_ptr;
    stream_ptr += pvr_cmd_length(CR_ISP_SCISSOR_BASE);
@@ -865,10 +865,10 @@ static void pvr_srv_fragment_cmd_ext_stream_load(
       (const uint32_t *)((uint8_t *)stream + ext_stream_offset);
    struct rogue_fwif_3d_regs *const regs = &cmd->regs;
 
-   struct PVRX(FW_STREAM_EXTHDR_FRAG0) header0;
+   struct PVRX(KMD_STREAM_EXTHDR_FRAG0) header0;
 
-   header0 = pvr_csb_unpack(ext_stream_ptr, FW_STREAM_EXTHDR_FRAG0);
-   ext_stream_ptr += pvr_cmd_length(FW_STREAM_EXTHDR_FRAG0);
+   header0 = pvr_csb_unpack(ext_stream_ptr, KMD_STREAM_EXTHDR_FRAG0);
+   ext_stream_ptr += pvr_cmd_length(KMD_STREAM_EXTHDR_FRAG0);
 
    assert(PVR_HAS_QUIRK(dev_info, 49927) == header0.has_brn49927);
    if (header0.has_brn49927) {
