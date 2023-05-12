@@ -205,6 +205,7 @@ static const nir_shader_compiler_options agx_nir_options = {
    .lower_rotate = true,
    .has_isub = true,
    .use_scoped_barrier = true,
+   .support_16bit_alu = true,
    .max_unroll_iterations = 32,
    .lower_uniforms_to_ubo = true,
    .force_indirect_unrolling_sampler = true,
