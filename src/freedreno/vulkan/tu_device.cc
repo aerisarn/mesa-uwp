@@ -2055,9 +2055,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
 
    struct tu6_global *global = NULL;
    uint32_t global_size = sizeof(struct tu6_global);
-   struct vk_pipeline_cache_create_info pcc_info = {
-      .internal = true,
-   };
+   struct vk_pipeline_cache_create_info pcc_info = { };
 
    for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
       const VkDeviceQueueCreateInfo *queue_create =

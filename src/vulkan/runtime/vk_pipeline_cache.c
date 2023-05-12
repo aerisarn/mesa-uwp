@@ -38,9 +38,7 @@
 #include "util/set.h"
 
 #define vk_pipeline_cache_log(cache, ...)                                      \
-   if (cache->internal)                                                        \
-      vk_logw(VK_LOG_OBJS(cache->base.device), __VA_ARGS__);                   \
-   else                                                                        \
+   if (cache->base.client_visible)                                             \
       vk_logw(VK_LOG_OBJS(cache), __VA_ARGS__)
 
 static bool
@@ -590,7 +588,6 @@ vk_pipeline_cache_create(struct vk_device *device,
       return NULL;
 
    cache->flags = pCreateInfo->flags;
-   cache->internal = info->internal;
 
    struct VkPhysicalDeviceProperties pdevice_props;
    device->physical->dispatch_table.GetPhysicalDeviceProperties(
