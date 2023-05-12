@@ -1958,6 +1958,9 @@ struct radv_ps_epilog_key radv_generate_ps_epilog_key(const struct radv_device *
                                                       const struct radv_ps_epilog_state *state,
                                                       bool disable_mrt_compaction);
 
+bool radv_needs_null_export_workaround(const struct radv_device *device,
+                                       const struct radv_shader *ps, unsigned custom_blend_mode);
+
 void radv_cmd_buffer_reset_rendering(struct radv_cmd_buffer *cmd_buffer);
 bool radv_cmd_buffer_upload_alloc_aligned(struct radv_cmd_buffer *cmd_buffer, unsigned size,
                                           unsigned alignment,
@@ -2232,7 +2235,6 @@ struct radv_graphics_pipeline {
    bool uses_drawid;
    bool uses_baseinstance;
 
-   bool need_null_export_workaround;
    /* Whether the pipeline forces per-vertex VRS (GFX10.3+). */
    bool force_vrs_per_vertex;
 

@@ -3957,6 +3957,37 @@ radv_is_fast_linking_enabled(const VkGraphicsPipelineCreateInfo *pCreateInfo)
    return !(pCreateInfo->flags & VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT);
 }
 
+bool
+radv_needs_null_export_workaround(const struct radv_device *device, const struct radv_shader *ps,
+                                  unsigned custom_blend_mode)
+{
+   const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
+
+   if (!ps)
+      return false;
+
+   /* Ensure that some export memory is always allocated, for two reasons:
+    *
+    * 1) Correctness: The hardware ignores the EXEC mask if no export
+    *    memory is allocated, so KILL and alpha test do not work correctly
+    *    without this.
+    * 2) Performance: Every shader needs at least a NULL export, even when
+    *    it writes no color/depth output. The NULL export instruction
+    *    stalls without this setting.
+    *
+    * Don't add this to CB_SHADER_MASK.
+    *
+    * GFX10 supports pixel shaders without exports by setting both the
+    * color and Z formats to SPI_SHADER_ZERO. The hw will skip export
+    * instructions if any are present.
+    *
+    * GFX11 requires one color output, otherwise the DCC decompression does nothing.
+    */
+   return (gfx_level <= GFX9 || ps->info.ps.can_discard ||
+           (custom_blend_mode == V_028808_CB_DCC_DECOMPRESS_GFX11 && gfx_level >= GFX11)) &&
+          !ps->info.ps.writes_z && !ps->info.ps.writes_stencil && !ps->info.ps.writes_sample_mask;
+}
+
 static VkResult
 radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv_device *device,
                             struct vk_pipeline_cache *cache,
@@ -4051,29 +4082,9 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       blend.cb_shader_mask &= ps->info.ps.colors_written;
    }
 
-   /* Ensure that some export memory is always allocated, for two reasons:
-    *
-    * 1) Correctness: The hardware ignores the EXEC mask if no export
-    *    memory is allocated, so KILL and alpha test do not work correctly
-    *    without this.
-    * 2) Performance: Every shader needs at least a NULL export, even when
-    *    it writes no color/depth output. The NULL export instruction
-    *    stalls without this setting.
-    *
-    * Don't add this to CB_SHADER_MASK.
-    *
-    * GFX10 supports pixel shaders without exports by setting both the
-    * color and Z formats to SPI_SHADER_ZERO. The hw will skip export
-    * instructions if any are present.
-    *
-    * GFX11 requires one color output, otherwise the DCC decompression does nothing.
-    */
-   pipeline->need_null_export_workaround =
-      (device->physical_device->rad_info.gfx_level <= GFX9 || (ps && ps->info.ps.can_discard) ||
-       (extra && extra->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS_GFX11 &&
-        device->physical_device->rad_info.gfx_level >= GFX11)) &&
-      ps && !ps->info.ps.writes_z && !ps->info.ps.writes_stencil && !ps->info.ps.writes_sample_mask;
-   if (pipeline->need_null_export_workaround && !blend.spi_shader_col_format) {
+   unsigned custom_blend_mode = extra ? extra->custom_blend_mode : 0;
+   if (radv_needs_null_export_workaround(device, ps, custom_blend_mode) &&
+       !blend.spi_shader_col_format) {
       blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
       pipeline->col_format_non_compacted = V_028714_SPI_SHADER_32_R;
    }

@@ -1842,14 +1842,16 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_ps_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_part *ps_epilog)
 {
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radv_shader *ps_shader = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
+   const struct radv_device *device = cmd_buffer->device;
 
    if (cmd_buffer->state.emitted_ps_epilog == ps_epilog)
       return;
 
    uint32_t col_format = ps_epilog->spi_shader_col_format;
-   if (pipeline->need_null_export_workaround && !col_format)
+   bool need_null_export_workaround =
+      radv_needs_null_export_workaround(device, ps_shader, cmd_buffer->state.custom_blend_mode);
+   if (need_null_export_workaround && !col_format)
       col_format = V_028714_SPI_SHADER_32_R;
    radeon_set_context_reg(cmd_buffer->cs, R_028714_SPI_SHADER_COL_FORMAT, col_format);
    radeon_set_context_reg(cmd_buffer->cs, R_02823C_CB_SHADER_MASK,
@@ -9051,8 +9053,12 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
          }
 
          cmd_buffer->state.col_format_non_compacted = ps_epilog->spi_shader_col_format;
-         if (cmd_buffer->state.graphics_pipeline->need_null_export_workaround &&
-             !cmd_buffer->state.col_format_non_compacted)
+
+         bool need_null_export_workaround = radv_needs_null_export_workaround(
+            device, cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT],
+            cmd_buffer->state.custom_blend_mode);
+
+         if (need_null_export_workaround && !cmd_buffer->state.col_format_non_compacted)
             cmd_buffer->state.col_format_non_compacted = V_028714_SPI_SHADER_32_R;
          if (device->physical_device->rad_info.rbplus_allowed)
             cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
