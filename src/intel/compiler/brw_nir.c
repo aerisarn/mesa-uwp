@@ -982,7 +982,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
    brw_nir_optimize(nir, compiler, is_scalar);
 
    OPT(nir_lower_doubles, opts->softfp64, nir->options->lower_doubles_options);
-   if (OPT(nir_lower_int64)) {
+   if (OPT(nir_lower_int64_float_conversions)) {
       OPT(nir_opt_algebraic);
       OPT(nir_lower_doubles, opts->softfp64,
           nir->options->lower_doubles_options);
