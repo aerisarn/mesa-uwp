@@ -212,6 +212,53 @@ _vtn_fail(struct vtn_builder *b, const char *file, unsigned line,
    vtn_longjmp(b->fail_jump, 1);
 }
 
+const char *
+vtn_value_type_to_string(enum vtn_value_type t)
+{
+#define CASE(typ) case vtn_value_type_##typ: return #typ
+   switch (t) {
+   CASE(invalid);
+   CASE(undef);
+   CASE(string);
+   CASE(decoration_group);
+   CASE(type);
+   CASE(constant);
+   CASE(pointer);
+   CASE(function);
+   CASE(block);
+   CASE(ssa);
+   CASE(extension);
+   CASE(image_pointer);
+   }
+#undef CASE
+   unreachable("unknown value type");
+   return "UNKNOWN";
+}
+
+void
+_vtn_fail_value_type_mismatch(struct vtn_builder *b, uint32_t value_id,
+                              enum vtn_value_type value_type)
+{
+   struct vtn_value *val = vtn_untyped_value(b, value_id);
+   vtn_fail(
+      "SPIR-V id %u is the wrong kind of value: "
+      "expected '%s' but got '%s'",
+      vtn_id_for_value(b, val),
+      vtn_value_type_to_string(value_type),
+      vtn_value_type_to_string(val->value_type));
+}
+
+void _vtn_fail_value_not_pointer(struct vtn_builder *b,
+                                 uint32_t value_id)
+{
+   struct vtn_value *val = vtn_untyped_value(b, value_id);
+   vtn_fail("SPIR-V id %u is the wrong kind of value: "
+            "expected 'pointer' OR null constant but got "
+            "'%s' (%s)", value_id,
+            vtn_value_type_to_string(val->value_type),
+            val->is_null_constant ? "null constant" : "not null constant");
+}
+
 static struct vtn_ssa_value *
 vtn_undef_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
 {

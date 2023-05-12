@@ -136,6 +136,8 @@ enum vtn_value_type {
    vtn_value_type_image_pointer,
 };
 
+const char *vtn_value_type_to_string(enum vtn_value_type t);
+
 struct vtn_case {
    struct list_head link;
 
@@ -746,13 +748,22 @@ vtn_push_value(struct vtn_builder *b, uint32_t value_id,
    return &b->values[value_id];
 }
 
+/* These separated fail functions exist so the helpers like vtn_value()
+ * can be inlined with minimal code size impact.  This allows the failure
+ * handling to have more detailed output without harming callers.
+ */
+
+void _vtn_fail_value_type_mismatch(struct vtn_builder *b, uint32_t value_id,
+                                   enum vtn_value_type value_type);
+void _vtn_fail_value_not_pointer(struct vtn_builder *b, uint32_t value_id);
+
 static inline struct vtn_value *
 vtn_value(struct vtn_builder *b, uint32_t value_id,
           enum vtn_value_type value_type)
 {
    struct vtn_value *val = vtn_untyped_value(b, value_id);
-   vtn_fail_if(val->value_type != value_type,
-               "SPIR-V id %u is the wrong kind of value", value_id);
+   if (unlikely(val->value_type != value_type))
+      _vtn_fail_value_type_mismatch(b, value_id, value_type);
    return val;
 }
 
@@ -760,9 +771,9 @@ static inline struct vtn_value *
 vtn_pointer_value(struct vtn_builder *b, uint32_t value_id)
 {
    struct vtn_value *val = vtn_untyped_value(b, value_id);
-   vtn_fail_if(val->value_type != vtn_value_type_pointer &&
-               !val->is_null_constant,
-               "SPIR-V id %u is the wrong kind of value", value_id);
+   if (unlikely(val->value_type != vtn_value_type_pointer &&
+                !val->is_null_constant))
+      _vtn_fail_value_not_pointer(b, value_id);
    return val;
 }
 
