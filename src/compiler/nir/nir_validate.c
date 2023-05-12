@@ -714,6 +714,44 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
          util_bitcount(nir_intrinsic_memory_modes(instr)) == 1);
       break;
 
+   case nir_intrinsic_image_deref_atomic:
+   case nir_intrinsic_image_deref_atomic_swap:
+   case nir_intrinsic_bindless_image_atomic:
+   case nir_intrinsic_bindless_image_atomic_swap:
+   case nir_intrinsic_image_atomic:
+   case nir_intrinsic_image_atomic_swap: {
+      nir_atomic_op op = nir_intrinsic_atomic_op(instr);
+
+      enum pipe_format format = image_intrin_format(instr);
+      if (format != PIPE_FORMAT_COUNT) {
+         bool allowed = false;
+         bool is_float = (nir_atomic_op_type(op) == nir_type_float);
+
+         switch (format) {
+         case PIPE_FORMAT_R32_FLOAT:
+            allowed = is_float || op == nir_atomic_op_xchg;
+            break;
+         case PIPE_FORMAT_R16_FLOAT:
+         case PIPE_FORMAT_R64_FLOAT:
+            allowed = op == nir_atomic_op_fmin || op == nir_atomic_op_fmax;
+            break;
+         case PIPE_FORMAT_R32_UINT:
+         case PIPE_FORMAT_R32_SINT:
+         case PIPE_FORMAT_R64_UINT:
+         case PIPE_FORMAT_R64_SINT:
+            allowed = !is_float;
+            break;
+         default:
+            break;
+         }
+
+         validate_assert(state, allowed);
+         validate_assert(state, nir_dest_bit_size(instr->dest) ==
+                                util_format_get_blocksizebits(format));
+      }
+      break;
+   }
+
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_image_deref_atomic_imin:
    case nir_intrinsic_image_deref_atomic_umin:
