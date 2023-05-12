@@ -27,14 +27,18 @@
 #include <stdint.h>
 #include <vulkan/vulkan_core.h>
 
+#include "util/u_idalloc.h"
+
 struct pvr_srv_winsys;
 
 struct pvr_srv_sync_prim_ctx {
    /* Sync block used for allocating sync primitives. */
    void *block_handle;
-   uint32_t block_size;
    uint32_t block_fw_addr;
-   uint16_t block_offset;
+
+   struct util_idalloc_mt allocator;
+   /* Top limit for how many sync prims can be allocated from the block. */
+   uint32_t max_count;
 };
 
 struct pvr_srv_sync_prim {
