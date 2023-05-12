@@ -152,6 +152,8 @@ shared_opcode_for_task_payload(nir_intrinsic_op task_payload_op)
 {
    switch (task_payload_op) {
 #define OP(O) case nir_intrinsic_task_payload_##O: return nir_intrinsic_shared_##O;
+   OP(atomic)
+   OP(atomic_swap)
    OP(atomic_exchange)
    OP(atomic_comp_swap)
    OP(atomic_add)
@@ -185,8 +187,14 @@ lower_task_payload_to_shared(nir_builder *b,
     * have the same number of sources and same indices.
     */
    unsigned base = nir_intrinsic_base(intrin);
+   nir_atomic_op atom_op = nir_intrinsic_has_atomic_op(intrin) ?
+                           nir_intrinsic_atomic_op(intrin) : 0;
+
    intrin->intrinsic = shared_opcode_for_task_payload(intrin->intrinsic);
    nir_intrinsic_set_base(intrin, base + s->payload_shared_addr);
+
+   if (nir_intrinsic_has_atomic_op(intrin))
+      nir_intrinsic_set_atomic_op(intrin, atom_op);
 
    return true;
 }
