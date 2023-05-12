@@ -1048,8 +1048,7 @@ struct si_context {
    uint16_t gs_ring_state_dw_offset_tmz;
    bool cs_preamble_has_vgt_flush;
    bool cs_preamble_has_vgt_flush_tmz;
-
-   struct si_pm4_state *vgt_shader_config[SI_NUM_VGT_STAGES_STATES];
+   uint32_t vgt_shader_stages_en;
 
    /* shaders */
    union {

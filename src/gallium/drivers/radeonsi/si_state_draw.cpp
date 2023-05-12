@@ -206,32 +206,42 @@ static bool si_update_shaders(struct si_context *sctx)
    else
       sctx->vs_uses_base_instance = sctx->shader.vs.current->uses_base_instance;
 
-   union si_vgt_stages_key key;
-   key.index = 0;
-
    /* Update VGT_SHADER_STAGES_EN. */
+   uint32_t vgt_stages = 0;
+
    if (HAS_TESS) {
-      key.u.tess = 1;
-      if (GFX_VERSION >= GFX10)
-         key.u.hs_wave32 = sctx->queued.named.hs->wave_size == 32;
-   }
-   if (HAS_GS)
-      key.u.gs = 1;
-   if (NGG) {
-      key.index |= si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ngg.vgt_stages.index;
-   } else if (GFX_VERSION >= GFX10) {
-      if (HAS_GS) {
-         key.u.gs_wave32 = sctx->shader.gs.current->wave_size == 32;
-         key.u.vs_wave32 = sctx->shader.gs.current->gs_copy_shader->wave_size == 32;
-      } else {
-         key.u.vs_wave32 = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->wave_size == 32;
-      }
+      vgt_stages |= S_028B54_LS_EN(V_028B54_LS_STAGE_ON) |
+                    S_028B54_HS_EN(1) |
+                    S_028B54_DYNAMIC_HS(1) |
+                    S_028B54_HS_W32_EN(GFX_VERSION >= GFX10 &&
+                                       sctx->queued.named.hs->wave_size == 32);
    }
 
-   struct si_pm4_state **pm4 = &sctx->vgt_shader_config[key.index];
-   if (unlikely(!*pm4))
-      *pm4 = si_build_vgt_shader_config(sctx->screen, key);
-   si_pm4_bind_state(sctx, vgt_shader_config, *pm4);
+   if (NGG) {
+      vgt_stages |= si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ngg.vgt_shader_stages_en;
+   } else {
+      if (HAS_GS) {
+         /* Legacy GS only supports Wave64. */
+         assert(sctx->shader.gs.current->wave_size == 64);
+
+         vgt_stages |= S_028B54_ES_EN(HAS_TESS ? V_028B54_ES_STAGE_DS : V_028B54_ES_STAGE_REAL) |
+                       S_028B54_GS_EN(1) |
+                       S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER) |
+                       S_028B54_VS_W32_EN(GFX_VERSION >= GFX10 &&
+                                          sctx->shader.gs.current->gs_copy_shader->wave_size == 32);
+      } else if (HAS_TESS) {
+         vgt_stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_DS);
+      }
+
+      vgt_stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(GFX_VERSION >= GFX9 ? 2 : 0) |
+                    S_028B54_VS_W32_EN(!HAS_GS && GFX_VERSION >= GFX10 &&
+                                       si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->wave_size == 32);
+   }
+
+   if (vgt_stages != sctx->vgt_shader_stages_en) {
+      sctx->vgt_shader_stages_en = vgt_stages;
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.vgt_pipeline_state);
+   }
 
    struct si_shader *hw_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current;
 

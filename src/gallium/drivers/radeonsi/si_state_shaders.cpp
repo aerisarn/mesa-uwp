@@ -1510,10 +1510,17 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                                    S_028818_VPORT_Z_SCALE_ENA(1) | S_028818_VPORT_Z_OFFSET_ENA(1);
    }
 
-   shader->ngg.vgt_stages.u.ngg = 1;
-   shader->ngg.vgt_stages.u.streamout = si_shader_uses_streamout(shader);
-   shader->ngg.vgt_stages.u.ngg_passthrough = gfx10_is_ngg_passthrough(shader);
-   shader->ngg.vgt_stages.u.gs_wave32 = shader->wave_size == 32;
+   shader->ngg.vgt_shader_stages_en =
+      S_028B54_ES_EN(es_stage == MESA_SHADER_TESS_EVAL ?
+                        V_028B54_ES_STAGE_DS : V_028B54_ES_STAGE_REAL) |
+      S_028B54_GS_EN(gs_stage == MESA_SHADER_GEOMETRY) |
+      S_028B54_PRIMGEN_EN(1) |
+      S_028B54_PRIMGEN_PASSTHRU_EN(gfx10_is_ngg_passthrough(shader)) |
+      S_028B54_PRIMGEN_PASSTHRU_NO_MSG(gfx10_is_ngg_passthrough(shader) &&
+                                       sscreen->info.family >= CHIP_NAVI23) |
+      S_028B54_NGG_WAVE_ID_EN(si_shader_uses_streamout(shader)) |
+      S_028B54_GS_W32_EN(shader->wave_size == 32) |
+      S_028B54_MAX_PRIMGRP_IN_WAVE(2);
 }
 
 static void si_emit_shader_vs(struct si_context *sctx)
@@ -4154,49 +4161,14 @@ void si_init_tess_factor_ring(struct si_context *sctx)
    si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 }
 
-struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen, union si_vgt_stages_key key)
+static void si_emit_vgt_pipeline_state(struct si_context *sctx)
 {
-   struct si_pm4_state *pm4 = CALLOC_STRUCT(si_pm4_state);
-   uint32_t stages = 0;
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
-   if (key.u.tess) {
-      stages |= S_028B54_LS_EN(V_028B54_LS_STAGE_ON) | S_028B54_HS_EN(1) | S_028B54_DYNAMIC_HS(1);
-
-      if (key.u.gs)
-         stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_DS) | S_028B54_GS_EN(1);
-      else if (key.u.ngg)
-         stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_DS);
-      else
-         stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_DS);
-   } else if (key.u.gs) {
-      stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_REAL) | S_028B54_GS_EN(1);
-   } else if (key.u.ngg) {
-      stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_REAL);
-   }
-
-   if (key.u.ngg) {
-      stages |= S_028B54_PRIMGEN_EN(1) |
-                S_028B54_NGG_WAVE_ID_EN(key.u.streamout) |
-                S_028B54_PRIMGEN_PASSTHRU_EN(key.u.ngg_passthrough) |
-                S_028B54_PRIMGEN_PASSTHRU_NO_MSG(key.u.ngg_passthrough &&
-                                                 screen->info.family >= CHIP_NAVI23);
-   } else if (key.u.gs) {
-      stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
-   }
-
-   if (screen->info.gfx_level >= GFX9)
-      stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(2);
-
-   if (screen->info.gfx_level >= GFX10) {
-      stages |= S_028B54_HS_W32_EN(key.u.hs_wave32) |
-                S_028B54_GS_W32_EN(key.u.gs_wave32) |
-                S_028B54_VS_W32_EN(screen->info.gfx_level < GFX11 && key.u.vs_wave32);
-      /* Legacy GS only supports Wave64. Read it as an implication. */
-      assert(!(key.u.gs && !key.u.ngg) || !key.u.gs_wave32);
-   }
-
-   si_pm4_set_reg(pm4, R_028B54_VGT_SHADER_STAGES_EN, stages);
-   return pm4;
+   radeon_begin(cs);
+   radeon_opt_set_context_reg(sctx, R_028B54_VGT_SHADER_STAGES_EN, SI_TRACKED_VGT_SHADER_STAGES_EN,
+                              sctx->vgt_shader_stages_en);
+   radeon_end_update_context_roll(sctx);
 }
 
 static void si_emit_scratch_state(struct si_context *sctx)
@@ -4328,6 +4300,7 @@ void si_init_screen_live_shader_cache(struct si_screen *sscreen)
 
 void si_init_shader_functions(struct si_context *sctx)
 {
+   sctx->atoms.s.vgt_pipeline_state.emit = si_emit_vgt_pipeline_state;
    sctx->atoms.s.scratch_state.emit = si_emit_scratch_state;
 
    sctx->b.create_vs_state = si_create_shader;

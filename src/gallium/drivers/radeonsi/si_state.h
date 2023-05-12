@@ -166,7 +166,6 @@ union si_state {
       struct si_shader *hs;
       struct si_shader *es;
       struct si_shader *gs;
-      struct si_pm4_state *vgt_shader_config;
       struct si_shader *vs;
       struct si_shader *ps;
       struct si_sqtt_fake_pipeline *sqtt_pipeline;
@@ -181,7 +180,7 @@ union si_state {
 static inline unsigned si_states_that_always_roll_context(void)
 {
    return (SI_STATE_BIT(blend) | SI_STATE_BIT(rasterizer) | SI_STATE_BIT(dsa) |
-           SI_STATE_BIT(poly_offset) | SI_STATE_BIT(vgt_shader_config));
+           SI_STATE_BIT(poly_offset));
 }
 
 union si_state_atoms {
@@ -210,6 +209,7 @@ union si_state_atoms {
       struct si_atom window_rectangles;
       struct si_atom shader_query;
       struct si_atom ngg_cull_state;
+      struct si_atom vgt_pipeline_state;
    } s;
    struct si_atom array[sizeof(struct si_atoms_s) / sizeof(struct si_atom)];
 };
@@ -314,6 +314,7 @@ enum si_tracked_reg
    SI_TRACKED_CB_SHADER_MASK,
    SI_TRACKED_VGT_TF_PARAM,
    SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL,
+   SI_TRACKED_VGT_SHADER_STAGES_EN,
 
    /* Non-context registers: */
    SI_TRACKED_GE_PC_ALLOC,
@@ -543,7 +544,6 @@ struct si_fast_udiv_info32 si_compute_fast_udiv_info32(uint32_t D, unsigned num_
 void si_emit_dpbb_state(struct si_context *sctx);
 
 /* si_state_shaders.cpp */
-struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen, union si_vgt_stages_key key);
 void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
                          unsigned wave_size, unsigned char ir_sha1_cache_key[20]);
 bool si_shader_cache_load_shader(struct si_screen *sscreen, unsigned char ir_sha1_cache_key[20],

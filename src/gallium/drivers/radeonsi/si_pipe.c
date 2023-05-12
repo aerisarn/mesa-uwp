@@ -181,7 +181,6 @@ static void decref_implicit_resource(struct hash_entry *entry)
 static void si_destroy_context(struct pipe_context *context)
 {
    struct si_context *sctx = (struct si_context *)context;
-   int i;
 
    /* Unreference the framebuffer normally to disable related logic
     * properly.
@@ -224,9 +223,6 @@ static void si_destroy_context(struct pipe_context *context)
       si_pm4_free_state(sctx, sctx->cs_preamble_state, ~0);
    if (sctx->cs_preamble_state_tmz)
       si_pm4_free_state(sctx, sctx->cs_preamble_state_tmz, ~0);
-
-   for (i = 0; i < ARRAY_SIZE(sctx->vgt_shader_config); i++)
-      si_pm4_free_state(sctx, sctx->vgt_shader_config[i], SI_STATE_IDX(vgt_shader_config));
 
    if (sctx->fixed_func_tcs_shader_cache) {
       hash_table_foreach(sctx->fixed_func_tcs_shader_cache, entry) {
@@ -1465,7 +1461,6 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    ac_print_shadowed_regs(&sscreen->info);
 
-   STATIC_ASSERT(sizeof(union si_vgt_stages_key) == 1);
    return &sscreen->b;
 }
 
