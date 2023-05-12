@@ -537,6 +537,7 @@ VkResult genX(CreateSampler)(
          anv_get_format(sampler->conversion->state.format)->planes[0].isl_format :
          ISL_FORMAT_UNSUPPORTED;
       const bool isl_format_is_planar_yuv =
+         plane0_isl_format != ISL_FORMAT_UNSUPPORTED &&
          isl_format_is_yuv(plane0_isl_format) &&
          isl_format_is_planar(plane0_isl_format);
 
