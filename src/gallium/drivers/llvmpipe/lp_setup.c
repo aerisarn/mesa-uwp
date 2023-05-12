@@ -994,7 +994,6 @@ lp_setup_is_resource_referenced(const struct lp_setup_context *setup,
 static bool
 try_update_scene_state(struct lp_setup_context *setup)
 {
-   static const float fake_const_buf[4];
    bool new_scene = (setup->fs.stored == NULL);
    struct lp_scene *scene = setup->scene;
 
@@ -1064,56 +1063,8 @@ try_update_scene_state(struct lp_setup_context *setup)
 
    if (setup->dirty & LP_SETUP_NEW_CONSTANTS) {
       for (unsigned i = 0; i < ARRAY_SIZE(setup->constants); ++i) {
-         struct pipe_resource *buffer = setup->constants[i].current.buffer;
-         const unsigned current_size = MIN2(setup->constants[i].current.buffer_size,
-                                            LP_MAX_TGSI_CONST_BUFFER_SIZE);
-         const uint8_t *current_data = NULL;
-
-         STATIC_ASSERT(DATA_BLOCK_SIZE >= LP_MAX_TGSI_CONST_BUFFER_SIZE);
-
-         if (buffer) {
-            /* resource buffer */
-            current_data = (uint8_t *) llvmpipe_resource_data(buffer);
-         } else if (setup->constants[i].current.user_buffer) {
-            /* user-space buffer */
-            current_data = (uint8_t *) setup->constants[i].current.user_buffer;
-         }
-
-         if (current_data && current_size >= sizeof(float)) {
-            current_data += setup->constants[i].current.buffer_offset;
-
-            /* TODO: copy only the actually used constants? */
-
-            if (setup->constants[i].stored_size != current_size ||
-               !setup->constants[i].stored_data ||
-               memcmp(setup->constants[i].stored_data,
-                      current_data,
-                      current_size) != 0) {
-
-               void *stored = lp_scene_alloc(scene, current_size);
-               if (!stored) {
-                  assert(!new_scene);
-                  return false;
-               }
-
-               memcpy(stored,
-                      current_data,
-                      current_size);
-               setup->constants[i].stored_size = current_size;
-               setup->constants[i].stored_data = stored;
-            }
-            setup->fs.current.jit_resources.constants[i].f =
-               setup->constants[i].stored_data;
-         } else {
-            setup->constants[i].stored_size = 0;
-            setup->constants[i].stored_data = NULL;
-            setup->fs.current.jit_resources.constants[i].f = fake_const_buf;
-         }
-
-         const int num_constants =
-            DIV_ROUND_UP(setup->constants[i].stored_size,
-                         lp_get_constant_buffer_stride(scene->pipe->screen));
-         setup->fs.current.jit_resources.constants[i].num_elements = num_constants;
+         lp_jit_buffer_from_pipe_const(&setup->fs.current.jit_resources.constants[i],
+                                       &setup->constants[i].current, setup->pipe->screen);
          setup->dirty |= LP_SETUP_NEW_FS;
       }
    }
