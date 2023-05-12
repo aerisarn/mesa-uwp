@@ -46,6 +46,10 @@ lower_ssbo_op(nir_intrinsic_op op)
    case nir_intrinsic_store_ssbo:
       return nir_intrinsic_store_global;
 
+   case nir_intrinsic_ssbo_atomic:
+      return nir_intrinsic_global_atomic;
+   case nir_intrinsic_ssbo_atomic_swap:
+      return nir_intrinsic_global_atomic_swap;
    case nir_intrinsic_ssbo_atomic_add:
       return nir_intrinsic_global_atomic_add;
    case nir_intrinsic_ssbo_atomic_imin:
@@ -128,6 +132,9 @@ lower_ssbo_instr(nir_builder *b, nir_intrinsic_instr *intr)
    global->num_components = intr->num_components;
    global->src[is_store ? 1 : 0] = nir_src_for_ssa(address);
 
+   if (nir_intrinsic_has_atomic_op(intr))
+      nir_intrinsic_set_atomic_op(global, nir_intrinsic_atomic_op(intr));
+
    if (!is_atomic) {
       nir_intrinsic_set_align_mul(global, nir_intrinsic_align_mul(intr));
       nir_intrinsic_set_align_offset(global, nir_intrinsic_align_offset(intr));
@@ -163,6 +170,8 @@ should_lower_ssbo_instr(const nir_instr *instr)
    switch (intr->intrinsic) {
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_store_ssbo:
+   case nir_intrinsic_ssbo_atomic:
+   case nir_intrinsic_ssbo_atomic_swap:
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
    case nir_intrinsic_ssbo_atomic_umin:
