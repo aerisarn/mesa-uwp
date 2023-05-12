@@ -68,7 +68,7 @@ nv50_blit_get_glsl_sampler_dim(enum pipe_texture_target target)
    }
 }
 
-static inline enum glsl_sampler_dim
+static inline bool
 nv50_blit_is_array(enum pipe_texture_target target) {
    return (target == PIPE_TEXTURE_1D_ARRAY) ||
           (target == PIPE_TEXTURE_2D_ARRAY);
