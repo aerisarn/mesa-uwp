@@ -127,8 +127,10 @@ fi
 
 # Start a little daemon to capture the first devcoredump we encounter.  (They
 # expire after 5 minutes, so we poll for them).
-/capture-devcoredump.sh &
-BACKGROUND_PIDS="$! $BACKGROUND_PIDS"
+if [ -x /capture-devcoredump.sh ]; then
+  /capture-devcoredump.sh &
+  BACKGROUND_PIDS="$! $BACKGROUND_PIDS"
+fi
 
 # If we want Xorg to be running for the test, then we start it up before the
 # HWCI_TEST_SCRIPT because we need to use xinit to start X (otherwise
