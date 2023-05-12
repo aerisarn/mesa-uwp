@@ -101,7 +101,7 @@ check_resource_for_batch_ref(struct zink_context *ctx, struct zink_resource *res
        * - if tracking will be added here, also reapply usage to avoid dangling usage once tracking is removed
        * TODO: somehow fix this for perf because it's an extra hash lookup
        */
-      if (!res->obj->dt && (res->obj->bo->reads || res->obj->bo->writes))
+      if (!res->obj->dt && zink_resource_has_usage(res))
          zink_batch_reference_resource_rw(&ctx->batch, res, !!res->obj->bo->writes);
       else
          zink_batch_reference_resource(&ctx->batch, res);
