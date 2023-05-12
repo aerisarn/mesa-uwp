@@ -662,7 +662,7 @@ radv_is_filter_minmax_format_supported(VkFormat format)
 }
 
 bool
-radv_device_supports_etc(struct radv_physical_device *physical_device)
+radv_device_supports_etc(const struct radv_physical_device *physical_device)
 {
    return physical_device->rad_info.family == CHIP_VEGA10 ||
           physical_device->rad_info.family == CHIP_RAVEN ||
