@@ -44,6 +44,8 @@ get_intrinsic_info(nir_intrinsic_instr *intrin, nir_variable_mode *modes,
       *modes = nir_src_as_deref(intrin->src[0])->modes;
       *writes = true;
       break;
+   case nir_intrinsic_image_deref_atomic:
+   case nir_intrinsic_image_deref_atomic_swap:
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_image_deref_atomic_fadd:
    case nir_intrinsic_image_deref_atomic_umin:
@@ -69,6 +71,8 @@ get_intrinsic_info(nir_intrinsic_instr *intrin, nir_variable_mode *modes,
       *modes = nir_var_mem_ssbo;
       *writes = true;
       break;
+   case nir_intrinsic_ssbo_atomic:
+   case nir_intrinsic_ssbo_atomic_swap:
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
    case nir_intrinsic_ssbo_atomic_umin:
@@ -95,6 +99,8 @@ get_intrinsic_info(nir_intrinsic_instr *intrin, nir_variable_mode *modes,
       *modes = nir_var_mem_global;
       *writes = true;
       break;
+   case nir_intrinsic_global_atomic:
+   case nir_intrinsic_global_atomic_swap:
    case nir_intrinsic_global_atomic_add:
    case nir_intrinsic_global_atomic_imin:
    case nir_intrinsic_global_atomic_umin:
@@ -121,6 +127,8 @@ get_intrinsic_info(nir_intrinsic_instr *intrin, nir_variable_mode *modes,
       *modes = nir_src_as_deref(intrin->src[0])->modes;
       *writes = true;
       break;
+   case nir_intrinsic_deref_atomic:
+   case nir_intrinsic_deref_atomic_swap:
    case nir_intrinsic_deref_atomic_add:
    case nir_intrinsic_deref_atomic_imin:
    case nir_intrinsic_deref_atomic_umin:

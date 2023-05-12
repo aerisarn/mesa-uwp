@@ -55,6 +55,8 @@ shader_writes_to_memory(nir_shader *shader)
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
          switch (intrin->intrinsic) {
+         case nir_intrinsic_deref_atomic:
+         case nir_intrinsic_deref_atomic_swap:
          case nir_intrinsic_deref_atomic_add:
          case nir_intrinsic_deref_atomic_imin:
          case nir_intrinsic_deref_atomic_umin:
@@ -66,6 +68,8 @@ shader_writes_to_memory(nir_shader *shader)
          case nir_intrinsic_deref_atomic_exchange:
          case nir_intrinsic_deref_atomic_comp_swap:
          case nir_intrinsic_store_ssbo:
+         case nir_intrinsic_ssbo_atomic:
+         case nir_intrinsic_ssbo_atomic_swap:
          case nir_intrinsic_ssbo_atomic_add:
          case nir_intrinsic_ssbo_atomic_imin:
          case nir_intrinsic_ssbo_atomic_umin:
@@ -78,6 +82,8 @@ shader_writes_to_memory(nir_shader *shader)
          case nir_intrinsic_ssbo_atomic_comp_swap:
          case nir_intrinsic_store_shared:
          case nir_intrinsic_store_shared2_amd:
+         case nir_intrinsic_shared_atomic:
+         case nir_intrinsic_shared_atomic_swap:
          case nir_intrinsic_shared_atomic_add:
          case nir_intrinsic_shared_atomic_imin:
          case nir_intrinsic_shared_atomic_umin:
@@ -88,6 +94,8 @@ shader_writes_to_memory(nir_shader *shader)
          case nir_intrinsic_shared_atomic_xor:
          case nir_intrinsic_shared_atomic_exchange:
          case nir_intrinsic_shared_atomic_comp_swap:
+         case nir_intrinsic_task_payload_atomic:
+         case nir_intrinsic_task_payload_atomic_swap:
          case nir_intrinsic_task_payload_atomic_add:
          case nir_intrinsic_task_payload_atomic_imin:
          case nir_intrinsic_task_payload_atomic_umin:
@@ -103,6 +111,8 @@ shader_writes_to_memory(nir_shader *shader)
          case nir_intrinsic_task_payload_atomic_fmax:
          case nir_intrinsic_task_payload_atomic_fcomp_swap:
          case nir_intrinsic_image_deref_store:
+         case nir_intrinsic_image_deref_atomic:
+         case nir_intrinsic_image_deref_atomic_swap:
          case nir_intrinsic_image_deref_atomic_add:
          case nir_intrinsic_image_deref_atomic_fadd:
          case nir_intrinsic_image_deref_atomic_umin:

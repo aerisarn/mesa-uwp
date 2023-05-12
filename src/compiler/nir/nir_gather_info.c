@@ -340,6 +340,8 @@ nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr)
    case nir_intrinsic_atomic_counter_exchange_deref:
    case nir_intrinsic_atomic_counter_comp_swap:
    case nir_intrinsic_atomic_counter_comp_swap_deref:
+   case nir_intrinsic_bindless_image_atomic:
+   case nir_intrinsic_bindless_image_atomic_swap:
    case nir_intrinsic_bindless_image_atomic_add:
    case nir_intrinsic_bindless_image_atomic_and:
    case nir_intrinsic_bindless_image_atomic_comp_swap:
@@ -355,6 +357,8 @@ nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr)
    case nir_intrinsic_bindless_image_atomic_xor:
    case nir_intrinsic_bindless_image_store:
    case nir_intrinsic_bindless_image_store_raw_intel:
+   case nir_intrinsic_global_atomic:
+   case nir_intrinsic_global_atomic_swap:
    case nir_intrinsic_global_atomic_add:
    case nir_intrinsic_global_atomic_and:
    case nir_intrinsic_global_atomic_comp_swap:
@@ -371,6 +375,8 @@ nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr)
    case nir_intrinsic_global_atomic_xor:
    case nir_intrinsic_global_atomic_ir3:
    case nir_intrinsic_global_atomic_swap_ir3:
+   case nir_intrinsic_image_atomic:
+   case nir_intrinsic_image_atomic_swap:
    case nir_intrinsic_image_atomic_add:
    case nir_intrinsic_image_atomic_and:
    case nir_intrinsic_image_atomic_comp_swap:
@@ -384,6 +390,8 @@ nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr)
    case nir_intrinsic_image_atomic_umax:
    case nir_intrinsic_image_atomic_umin:
    case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_image_deref_atomic:
+   case nir_intrinsic_image_deref_atomic_swap:
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_image_deref_atomic_and:
    case nir_intrinsic_image_deref_atomic_comp_swap:
@@ -427,6 +435,8 @@ nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr)
       return true;
 
    case nir_intrinsic_store_deref:
+   case nir_intrinsic_deref_atomic:
+   case nir_intrinsic_deref_atomic_swap:
    case nir_intrinsic_deref_atomic_add:
    case nir_intrinsic_deref_atomic_imin:
    case nir_intrinsic_deref_atomic_umin:
@@ -453,6 +463,8 @@ static bool
 intrinsic_is_bindless(nir_intrinsic_instr *instr)
 {
    switch (instr->intrinsic) {
+   case nir_intrinsic_bindless_image_atomic:
+   case nir_intrinsic_bindless_image_atomic_swap:
    case nir_intrinsic_bindless_image_atomic_add:
    case nir_intrinsic_bindless_image_atomic_and:
    case nir_intrinsic_bindless_image_atomic_comp_swap:

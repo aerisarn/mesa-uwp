@@ -142,6 +142,8 @@ lower_intrinsic(lower_state *state, nir_intrinsic_instr *intr)
          lower_large_src(&intr->src[2], state);
       return;
 
+   case nir_intrinsic_ssbo_atomic:
+   case nir_intrinsic_ssbo_atomic_swap:
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
    case nir_intrinsic_ssbo_atomic_umin:
@@ -163,6 +165,8 @@ lower_intrinsic(lower_state *state, nir_intrinsic_instr *intr)
          lower_large_src(&intr->src[1], state);
       return;
 
+   case nir_intrinsic_global_atomic:
+   case nir_intrinsic_global_atomic_swap:
    case nir_intrinsic_global_atomic_add:
    case nir_intrinsic_global_atomic_imin:
    case nir_intrinsic_global_atomic_umin:
@@ -189,6 +193,8 @@ lower_intrinsic(lower_state *state, nir_intrinsic_instr *intr)
       return;
 
    /* These should all be small enough to unconditionally use imul24: */
+   case nir_intrinsic_shared_atomic:
+   case nir_intrinsic_shared_atomic_swap:
    case nir_intrinsic_shared_atomic_add:
    case nir_intrinsic_shared_atomic_imin:
    case nir_intrinsic_shared_atomic_umin:

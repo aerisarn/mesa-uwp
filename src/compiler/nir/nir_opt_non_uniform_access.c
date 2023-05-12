@@ -36,6 +36,8 @@ is_ssbo_intrinsic(nir_intrinsic_instr *intrin)
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_store_ssbo:
+   case nir_intrinsic_ssbo_atomic:
+   case nir_intrinsic_ssbo_atomic_swap:
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
    case nir_intrinsic_ssbo_atomic_umin:
@@ -64,6 +66,8 @@ is_image_intrinsic(nir_intrinsic_instr *intrin)
    case nir_intrinsic_image_load:
    case nir_intrinsic_image_sparse_load:
    case nir_intrinsic_image_store:
+   case nir_intrinsic_image_atomic:
+   case nir_intrinsic_image_atomic_swap:
    case nir_intrinsic_image_atomic_add:
    case nir_intrinsic_image_atomic_imin:
    case nir_intrinsic_image_atomic_umin:
@@ -85,6 +89,8 @@ is_image_intrinsic(nir_intrinsic_instr *intrin)
    case nir_intrinsic_bindless_image_load:
    case nir_intrinsic_bindless_image_sparse_load:
    case nir_intrinsic_bindless_image_store:
+   case nir_intrinsic_bindless_image_atomic:
+   case nir_intrinsic_bindless_image_atomic_swap:
    case nir_intrinsic_bindless_image_atomic_add:
    case nir_intrinsic_bindless_image_atomic_imin:
    case nir_intrinsic_bindless_image_atomic_umin:
@@ -106,6 +112,8 @@ is_image_intrinsic(nir_intrinsic_instr *intrin)
    case nir_intrinsic_image_deref_load:
    case nir_intrinsic_image_deref_sparse_load:
    case nir_intrinsic_image_deref_store:
+   case nir_intrinsic_image_deref_atomic:
+   case nir_intrinsic_image_deref_atomic_swap:
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_image_deref_atomic_umin:
    case nir_intrinsic_image_deref_atomic_imin:

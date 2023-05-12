@@ -568,6 +568,8 @@ nir_lower_mediump_vars(nir_shader *shader, nir_variable_mode modes)
                continue;
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
             switch (intr->intrinsic) {
+            case nir_intrinsic_deref_atomic:
+            case nir_intrinsic_deref_atomic_swap:
             case nir_intrinsic_deref_atomic_add:
             case nir_intrinsic_deref_atomic_imin:
             case nir_intrinsic_deref_atomic_umin:
@@ -1047,6 +1049,8 @@ fold_16bit_tex_image(nir_builder *b, nir_instr *instr, void *params)
          if (options->fold_image_srcs)
             progress |= fold_16bit_image_srcs(b, intrinsic, 3);
          break;
+      case nir_intrinsic_bindless_image_atomic:
+      case nir_intrinsic_bindless_image_atomic_swap:
       case nir_intrinsic_bindless_image_atomic_add:
       case nir_intrinsic_bindless_image_atomic_imin:
       case nir_intrinsic_bindless_image_atomic_umin:
@@ -1062,6 +1066,8 @@ fold_16bit_tex_image(nir_builder *b, nir_instr *instr, void *params)
       case nir_intrinsic_bindless_image_atomic_fmax:
       case nir_intrinsic_bindless_image_atomic_inc_wrap:
       case nir_intrinsic_bindless_image_atomic_dec_wrap:
+      case nir_intrinsic_image_deref_atomic:
+      case nir_intrinsic_image_deref_atomic_swap:
       case nir_intrinsic_image_deref_atomic_add:
       case nir_intrinsic_image_deref_atomic_umin:
       case nir_intrinsic_image_deref_atomic_imin:
@@ -1077,6 +1083,8 @@ fold_16bit_tex_image(nir_builder *b, nir_instr *instr, void *params)
       case nir_intrinsic_image_deref_atomic_fmax:
       case nir_intrinsic_image_deref_atomic_inc_wrap:
       case nir_intrinsic_image_deref_atomic_dec_wrap:
+      case nir_intrinsic_image_atomic:
+      case nir_intrinsic_image_atomic_swap:
       case nir_intrinsic_image_atomic_add:
       case nir_intrinsic_image_atomic_imin:
       case nir_intrinsic_image_atomic_umin:

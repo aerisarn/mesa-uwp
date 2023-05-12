@@ -35,6 +35,8 @@ lower(nir_builder *b, nir_instr *instr, void *data)
    bool *lower_plain_stores = data;
 
    switch (intr->intrinsic) {
+   case nir_intrinsic_global_atomic:
+   case nir_intrinsic_global_atomic_swap:
    case nir_intrinsic_global_atomic_add:
    case nir_intrinsic_global_atomic_and:
    case nir_intrinsic_global_atomic_comp_swap:
@@ -49,6 +51,8 @@ lower(nir_builder *b, nir_instr *instr, void *data)
    case nir_intrinsic_global_atomic_umax:
    case nir_intrinsic_global_atomic_umin:
    case nir_intrinsic_global_atomic_xor:
+   case nir_intrinsic_image_atomic:
+   case nir_intrinsic_image_atomic_swap:
    case nir_intrinsic_image_atomic_add:
    case nir_intrinsic_image_atomic_and:
    case nir_intrinsic_image_atomic_comp_swap:

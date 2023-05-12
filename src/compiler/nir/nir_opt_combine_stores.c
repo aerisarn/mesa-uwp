@@ -402,6 +402,8 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
          break;
       }
 
+      case nir_intrinsic_deref_atomic:
+      case nir_intrinsic_deref_atomic_swap:
       case nir_intrinsic_deref_atomic_add:
       case nir_intrinsic_deref_atomic_imin:
       case nir_intrinsic_deref_atomic_umin:

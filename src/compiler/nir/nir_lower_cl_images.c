@@ -248,6 +248,8 @@ nir_lower_cl_images(nir_shader *shader, bool lower_image_derefs, bool lower_samp
             switch (intrin->intrinsic) {
             case nir_intrinsic_image_deref_load:
             case nir_intrinsic_image_deref_store:
+            case nir_intrinsic_image_deref_atomic:
+            case nir_intrinsic_image_deref_atomic_swap:
             case nir_intrinsic_image_deref_atomic_add:
             case nir_intrinsic_image_deref_atomic_imin:
             case nir_intrinsic_image_deref_atomic_umin:

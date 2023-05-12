@@ -355,6 +355,8 @@ lower_task_intrin(nir_builder *b,
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
    switch (intrin->intrinsic) {
+   case nir_intrinsic_task_payload_atomic:
+   case nir_intrinsic_task_payload_atomic_swap:
    case nir_intrinsic_task_payload_atomic_add:
    case nir_intrinsic_task_payload_atomic_imin:
    case nir_intrinsic_task_payload_atomic_umin:
@@ -395,6 +397,8 @@ requires_payload_in_shared(nir_shader *shader, bool atomics, bool small_types)
 
             nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
             switch (intrin->intrinsic) {
+               case nir_intrinsic_task_payload_atomic:
+               case nir_intrinsic_task_payload_atomic_swap:
                case nir_intrinsic_task_payload_atomic_add:
                case nir_intrinsic_task_payload_atomic_imin:
                case nir_intrinsic_task_payload_atomic_umin:
