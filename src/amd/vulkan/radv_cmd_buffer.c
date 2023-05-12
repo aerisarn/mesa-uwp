@@ -4301,7 +4301,6 @@ radv_cmp_ps_epilog(const void *a_, const void *b_)
 static struct radv_shader_part *
 lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    struct radv_device *device = cmd_buffer->device;
@@ -4338,7 +4337,7 @@ lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
       state.need_src_alpha |= 0x1;
    }
 
-   struct radv_ps_epilog_key key = radv_generate_ps_epilog_key(device, pipeline, &state, true);
+   struct radv_ps_epilog_key key = radv_generate_ps_epilog_key(device, &state, true);
    uint32_t hash = radv_hash_ps_epilog(&key);
 
    u_rwlock_rdlock(&device->ps_epilogs_lock);

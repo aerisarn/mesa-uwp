@@ -1813,7 +1813,6 @@ radv_graphics_pipeline_link(const struct radv_device *device,
 
 struct radv_ps_epilog_key
 radv_generate_ps_epilog_key(const struct radv_device *device,
-                            const struct radv_graphics_pipeline *pipeline,
                             const struct radv_ps_epilog_state *state, bool disable_mrt_compaction)
 {
    unsigned col_format = 0, is_int8 = 0, is_int10 = 0, is_float32 = 0;
@@ -1881,7 +1880,6 @@ radv_generate_ps_epilog_key(const struct radv_device *device,
 
 static struct radv_ps_epilog_key
 radv_pipeline_generate_ps_epilog_key(const struct radv_device *device,
-                                     const struct radv_graphics_pipeline *pipeline,
                                      const struct vk_graphics_pipeline_state *state,
                                      bool disable_mrt_compaction)
 {
@@ -1938,7 +1936,7 @@ radv_pipeline_generate_ps_epilog_key(const struct radv_device *device,
       }
    }
 
-   return radv_generate_ps_epilog_key(device, pipeline, &ps_epilog, disable_mrt_compaction);
+   return radv_generate_ps_epilog_key(device, &ps_epilog, disable_mrt_compaction);
 }
 
 static struct radv_pipeline_key
@@ -2079,7 +2077,7 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device,
        !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT));
 
    key.ps.epilog =
-      radv_pipeline_generate_ps_epilog_key(device, pipeline, state, disable_mrt_compaction);
+      radv_pipeline_generate_ps_epilog_key(device, state, disable_mrt_compaction);
 
    key.dynamic_patch_control_points =
       !!(pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS);

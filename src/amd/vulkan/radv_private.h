@@ -1955,7 +1955,6 @@ struct radv_ps_epilog_state
 };
 
 struct radv_ps_epilog_key radv_generate_ps_epilog_key(const struct radv_device *device,
-                                                      const struct radv_graphics_pipeline *pipeline,
                                                       const struct radv_ps_epilog_state *state,
                                                       bool disable_mrt_compaction);
 
