@@ -1402,9 +1402,9 @@ radv_determine_ngg_settings(struct radv_device *device, struct radv_pipeline_sta
                             const struct radv_pipeline_key *pipeline_key)
 {
    assert(es_stage->stage == MESA_SHADER_VERTEX || es_stage->stage == MESA_SHADER_TESS_EVAL);
-   assert(fs_stage->stage == MESA_SHADER_FRAGMENT);
+   assert(!fs_stage || fs_stage->stage == MESA_SHADER_FRAGMENT);
 
-   uint64_t ps_inputs_read = fs_stage->nir->info.inputs_read;
+   uint64_t ps_inputs_read = fs_stage ? fs_stage->nir->info.inputs_read : 0;
 
    unsigned num_vertices_per_prim = 0;
    if (es_stage->stage == MESA_SHADER_VERTEX) {
@@ -1488,7 +1488,7 @@ radv_link_shaders_info(struct radv_device *device,
          gfx10_get_ngg_query_info(device, producer, gs_stage, pipeline_key);
 
          /* Determine other NGG settings like culling for VS or TES without GS. */
-         if (!gs_stage && consumer) {
+         if (!gs_stage) {
             radv_determine_ngg_settings(device, producer, consumer, pipeline_key);
          }
       } else if (consumer && consumer->stage == MESA_SHADER_GEOMETRY) {
