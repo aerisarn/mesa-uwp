@@ -550,6 +550,7 @@ struct zink_batch_usage {
 };
 
 struct zink_bo_usage {
+   uint32_t submit_count;
    struct zink_batch_usage *u;
 };
 

@@ -145,22 +145,22 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
 static inline bool
 zink_bo_has_unflushed_usage(const struct zink_bo *bo)
 {
-   return zink_batch_usage_is_unflushed(bo->reads.u) ||
-          zink_batch_usage_is_unflushed(bo->writes.u);
+   return (zink_batch_usage_is_unflushed(bo->reads.u) && bo->reads.submit_count == bo->reads.u->submit_count) ||
+          (zink_batch_usage_is_unflushed(bo->writes.u) && bo->writes.submit_count == bo->writes.u->submit_count);
 }
 
 static inline bool
 zink_bo_has_usage(const struct zink_bo *bo)
 {
-   return zink_batch_usage_exists(bo->reads.u) ||
-          zink_batch_usage_exists(bo->writes.u);
+   return (zink_batch_usage_exists(bo->reads.u) && bo->reads.submit_count == bo->reads.u->submit_count) ||
+          (zink_batch_usage_exists(bo->writes.u) && bo->writes.submit_count == bo->writes.u->submit_count);
 }
 
 static inline bool
 zink_bo_usage_matches(const struct zink_bo *bo, const struct zink_batch_state *bs)
 {
-   return zink_batch_usage_matches(bo->reads.u, bs) ||
-          zink_batch_usage_matches(bo->writes.u, bs);
+   return (zink_batch_usage_matches(bo->reads.u, bs) && bo->reads.submit_count == bo->reads.u->submit_count) ||
+          (zink_batch_usage_matches(bo->writes.u, bs) && bo->writes.submit_count == bo->writes.u->submit_count);
 }
 
 static inline bool
@@ -204,10 +204,13 @@ zink_bo_usage_try_wait(struct zink_context *ctx, struct zink_bo *bo, enum zink_r
 static inline void
 zink_bo_usage_set(struct zink_bo *bo, struct zink_batch_state *bs, bool write)
 {
-   if (write)
+   if (write) {
       zink_batch_usage_set(&bo->writes.u, bs);
-   else
+      bo->writes.submit_count = bs->usage.submit_count;
+   } else {
       zink_batch_usage_set(&bo->reads.u, bs);
+      bo->reads.submit_count = bs->usage.submit_count;
+   }
 }
 
 static inline bool
