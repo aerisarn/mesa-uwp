@@ -266,7 +266,7 @@ enum tu_mem_sync_op
    TU_MEM_SYNC_CACHE_FROM_GPU,
 };
 
-void
+static void
 sync_cache_bo(struct tu_device *dev,
               struct tu_bo *bo,
               VkDeviceSize offset,
@@ -788,7 +788,7 @@ tu_sync_cacheline_from_gpu(void const *p __attribute__((unused)))
 #endif
 }
 
-void
+static void
 sync_cache_bo(struct tu_device *dev,
               struct tu_bo *bo,
               VkDeviceSize offset,
@@ -850,20 +850,10 @@ tu_InvalidateMappedMemoryRanges(VkDevice _device,
                      pMemoryRanges);
 }
 
-extern const struct vk_sync_type tu_timeline_sync_type;
-
 static inline bool
-vk_sync_is_tu_timeline_sync(const struct vk_sync *sync)
-{
-   return sync->type == &tu_timeline_sync_type;
-}
-
+vk_sync_is_tu_timeline_sync(const struct vk_sync *sync);
 static struct tu_timeline_sync *
-to_tu_timeline_sync(struct vk_sync *sync)
-{
-   assert(sync->type == &tu_timeline_sync_type);
-   return container_of(sync, struct tu_timeline_sync, base);
-}
+to_tu_timeline_sync(struct vk_sync *sync);
 
 static uint32_t
 tu_syncobj_from_vk_sync(struct vk_sync *sync)
@@ -1436,7 +1426,7 @@ static const struct tu_knl msm_knl_funcs = {
       .queue_submit = msm_queue_submit,
 };
 
-const struct vk_sync_type tu_timeline_sync_type = {
+static const struct vk_sync_type tu_timeline_sync_type = {
    .size = sizeof(struct tu_timeline_sync),
    .features = (enum vk_sync_features)(
       VK_SYNC_FEATURE_BINARY | VK_SYNC_FEATURE_GPU_WAIT |
@@ -1448,6 +1438,19 @@ const struct vk_sync_type tu_timeline_sync_type = {
    .reset = tu_timeline_sync_reset,
    .wait_many = tu_timeline_sync_wait,
 };
+
+static inline bool
+vk_sync_is_tu_timeline_sync(const struct vk_sync *sync)
+{
+   return sync->type == &tu_timeline_sync_type;
+}
+
+static struct tu_timeline_sync *
+to_tu_timeline_sync(struct vk_sync *sync)
+{
+   assert(sync->type == &tu_timeline_sync_type);
+   return container_of(sync, struct tu_timeline_sync, base);
+}
 
 VkResult
 tu_knl_drm_msm_load(struct tu_instance *instance,
