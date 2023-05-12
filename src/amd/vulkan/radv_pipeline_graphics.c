@@ -1299,7 +1299,8 @@ radv_should_export_multiview(const struct radv_pipeline_stage *producer,
     * (with graphics pipeline library), the layer is exported unconditionally.
     */
    return pipeline_key->has_multiview_view_index &&
-          (!consumer || consumer->stage == MESA_SHADER_FRAGMENT) &&
+          ((consumer && consumer->stage == MESA_SHADER_FRAGMENT) ||
+           !(pipeline_key->lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) &&
           !(producer->nir->info.outputs_written & VARYING_BIT_LAYER);
 }
 
