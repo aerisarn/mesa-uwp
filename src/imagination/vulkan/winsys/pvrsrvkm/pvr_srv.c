@@ -39,6 +39,7 @@
 #include "pvr_srv_job_transfer.h"
 #include "pvr_srv_public.h"
 #include "pvr_srv_sync.h"
+#include "pvr_srv_sync_prim.h"
 #include "pvr_srv_job_null.h"
 #include "pvr_types.h"
 #include "pvr_winsys.h"
@@ -46,12 +47,10 @@
 #include "util/log.h"
 #include "util/macros.h"
 #include "util/os_misc.h"
+#include "util/u_atomic.h"
 #include "vk_log.h"
 #include "vk_sync.h"
 #include "vk_sync_timeline.h"
-
-/* Amount of space used to hold sync prim values (in bytes). */
-#define PVR_SRV_SYNC_PRIM_VALUE_SIZE 4U
 
 /* reserved_size can be 0 when no reserved region is needed. reserved_address
  * must be 0 if reserved_size is 0.
@@ -430,27 +429,6 @@ static void pvr_srv_memctx_finish(struct pvr_srv_winsys *srv_ws)
    pvr_srv_int_ctx_destroy(srv_ws->render_fd, srv_ws->server_memctx);
 }
 
-static VkResult pvr_srv_sync_prim_block_init(struct pvr_srv_winsys *srv_ws)
-{
-   /* We don't currently make use of this value, but we're required to provide
-    * a valid pointer to pvr_srv_alloc_sync_primitive_block.
-    */
-   void *sync_block_pmr;
-
-   return pvr_srv_alloc_sync_primitive_block(srv_ws->render_fd,
-                                             &srv_ws->sync_block_handle,
-                                             &sync_block_pmr,
-                                             &srv_ws->sync_block_size,
-                                             &srv_ws->sync_block_fw_addr);
-}
-
-static void pvr_srv_sync_prim_block_finish(struct pvr_srv_winsys *srv_ws)
-{
-   pvr_srv_free_sync_primitive_block(srv_ws->render_fd,
-                                     srv_ws->sync_block_handle);
-   srv_ws->sync_block_handle = NULL;
-}
-
 static void pvr_srv_winsys_destroy(struct pvr_winsys *ws)
 {
    struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(ws);
@@ -770,54 +748,6 @@ err_pvr_srv_connection_destroy:
    pvr_srv_connection_destroy(render_fd);
 
    return NULL;
-}
-
-struct pvr_srv_sync_prim *pvr_srv_sync_prim_alloc(struct pvr_srv_winsys *srv_ws)
-{
-   struct pvr_srv_sync_prim *sync_prim;
-
-   if (p_atomic_read(&srv_ws->sync_block_offset) == srv_ws->sync_block_size) {
-      vk_error(NULL, VK_ERROR_UNKNOWN);
-      return NULL;
-   }
-
-   sync_prim = vk_alloc(srv_ws->alloc,
-                        sizeof(*sync_prim),
-                        8,
-                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-   if (!sync_prim) {
-      vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
-      return NULL;
-   }
-
-   /* p_atomic_add_return() returns the new value rather than the old one, so
-    * we have to subtract PVR_SRV_SYNC_PRIM_VALUE_SIZE to get the old value.
-    */
-   sync_prim->offset = p_atomic_add_return(&srv_ws->sync_block_offset,
-                                           PVR_SRV_SYNC_PRIM_VALUE_SIZE);
-   sync_prim->offset -= PVR_SRV_SYNC_PRIM_VALUE_SIZE;
-   if (sync_prim->offset == srv_ws->sync_block_size) {
-      /* FIXME: need to free offset back to srv_ws->sync_block_offset. */
-      vk_free(srv_ws->alloc, sync_prim);
-
-      vk_error(NULL, VK_ERROR_UNKNOWN);
-
-      return NULL;
-   }
-
-   sync_prim->srv_ws = srv_ws;
-
-   return sync_prim;
-}
-
-/* FIXME: Add support for freeing offsets back to the sync block. */
-void pvr_srv_sync_prim_free(struct pvr_srv_sync_prim *sync_prim)
-{
-   if (sync_prim) {
-      struct pvr_srv_winsys *srv_ws = sync_prim->srv_ws;
-
-      vk_free(srv_ws->alloc, sync_prim);
-   }
 }
 
 static VkResult pvr_srv_create_presignaled_sync(struct pvr_device *device,

@@ -103,6 +103,7 @@ if with_imagination_srv
     'winsys/pvrsrvkm/pvr_srv_job_render.c',
     'winsys/pvrsrvkm/pvr_srv_job_transfer.c',
     'winsys/pvrsrvkm/pvr_srv_sync.c',
+    'winsys/pvrsrvkm/pvr_srv_sync_prim.c',
   )
   pvr_flags += '-DPVR_SUPPORT_SERVICES_DRIVER'
 endif

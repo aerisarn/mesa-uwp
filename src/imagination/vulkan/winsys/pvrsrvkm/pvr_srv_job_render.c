@@ -41,6 +41,7 @@
 #include "pvr_srv_job_common.h"
 #include "pvr_srv_job_render.h"
 #include "pvr_srv_sync.h"
+#include "pvr_srv_sync_prim.h"
 #include "pvr_types.h"
 #include "pvr_winsys.h"
 #include "util/log.h"
@@ -254,7 +255,7 @@ VkResult pvr_srv_render_target_dataset_create(
 
 err_srv_sync_prim_free:
    for (uint32_t i = 0; i < ARRAY_SIZE(srv_rt_dataset->rt_datas); i++) {
-      pvr_srv_sync_prim_free(srv_rt_dataset->rt_datas[i].sync_prim);
+      pvr_srv_sync_prim_free(srv_ws, srv_rt_dataset->rt_datas[i].sync_prim);
 
       if (srv_rt_dataset->rt_datas[i].handle) {
          pvr_srv_rgx_destroy_hwrt_dataset(srv_ws->render_fd,
@@ -276,7 +277,7 @@ void pvr_srv_render_target_dataset_destroy(
       to_pvr_srv_winsys_rt_dataset(rt_dataset);
 
    for (uint32_t i = 0; i < ARRAY_SIZE(srv_rt_dataset->rt_datas); i++) {
-      pvr_srv_sync_prim_free(srv_rt_dataset->rt_datas[i].sync_prim);
+      pvr_srv_sync_prim_free(srv_ws, srv_rt_dataset->rt_datas[i].sync_prim);
 
       if (srv_rt_dataset->rt_datas[i].handle) {
          pvr_srv_rgx_destroy_hwrt_dataset(srv_ws->render_fd,
@@ -754,14 +755,14 @@ VkResult pvr_srv_winsys_render_submit(
                                         NULL,
                                         NULL,
                                         1,
-                                        &sync_prim->srv_ws->sync_block_handle,
+                                        &sync_prim->ctx->block_handle,
                                         &sync_prim->offset,
                                         &sync_prim->value,
                                         0,
                                         NULL,
                                         NULL,
                                         NULL,
-                                        sync_prim->srv_ws->sync_block_handle,
+                                        sync_prim->ctx->block_handle,
                                         sync_prim->offset,
                                         sync_prim->value,
                                         in_geom_fd,
