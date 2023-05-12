@@ -932,6 +932,8 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 
    OPT(nir_lower_frexp);
 
+   OPT(nir_lower_legacy_atomics);
+
    if (is_scalar) {
       OPT(nir_lower_alu_to_scalar, NULL, NULL);
    }
@@ -1897,26 +1899,19 @@ brw_cmod_for_nir_comparison(nir_op op)
 enum lsc_opcode
 lsc_aop_for_nir_intrinsic(const nir_intrinsic_instr *atomic)
 {
-   switch (atomic->intrinsic) {
-#define AOP_CASE(atom) \
-   case nir_intrinsic_image_atomic_##atom:            \
-   case nir_intrinsic_bindless_image_atomic_##atom:   \
-   case nir_intrinsic_ssbo_atomic_##atom:             \
-   case nir_intrinsic_shared_atomic_##atom:           \
-   case nir_intrinsic_global_atomic_##atom
-
-   AOP_CASE(add): {
+   switch (nir_intrinsic_atomic_op(atomic)) {
+   case nir_atomic_op_iadd: {
       unsigned src_idx;
       switch (atomic->intrinsic) {
-      case nir_intrinsic_image_atomic_add:
-      case nir_intrinsic_bindless_image_atomic_add:
+      case nir_intrinsic_image_atomic:
+      case nir_intrinsic_bindless_image_atomic:
          src_idx = 3;
          break;
-      case nir_intrinsic_ssbo_atomic_add:
+      case nir_intrinsic_ssbo_atomic:
          src_idx = 2;
          break;
-      case nir_intrinsic_shared_atomic_add:
-      case nir_intrinsic_global_atomic_add:
+      case nir_intrinsic_shared_atomic:
+      case nir_intrinsic_global_atomic:
          src_idx = 1;
          break;
       default:
@@ -1933,28 +1928,20 @@ lsc_aop_for_nir_intrinsic(const nir_intrinsic_instr *atomic)
       return LSC_OP_ATOMIC_ADD;
    }
 
-   AOP_CASE(imin):         return LSC_OP_ATOMIC_MIN;
-   AOP_CASE(umin):         return LSC_OP_ATOMIC_UMIN;
-   AOP_CASE(imax):         return LSC_OP_ATOMIC_MAX;
-   AOP_CASE(umax):         return LSC_OP_ATOMIC_UMAX;
-   AOP_CASE(and):          return LSC_OP_ATOMIC_AND;
-   AOP_CASE(or):           return LSC_OP_ATOMIC_OR;
-   AOP_CASE(xor):          return LSC_OP_ATOMIC_XOR;
-   AOP_CASE(exchange):     return LSC_OP_ATOMIC_STORE;
-   AOP_CASE(comp_swap):    return LSC_OP_ATOMIC_CMPXCHG;
+   case nir_atomic_op_imin: return LSC_OP_ATOMIC_MIN;
+   case nir_atomic_op_umin: return LSC_OP_ATOMIC_UMIN;
+   case nir_atomic_op_imax: return LSC_OP_ATOMIC_MAX;
+   case nir_atomic_op_umax: return LSC_OP_ATOMIC_UMAX;
+   case nir_atomic_op_iand: return LSC_OP_ATOMIC_AND;
+   case nir_atomic_op_ior:  return LSC_OP_ATOMIC_OR;
+   case nir_atomic_op_ixor: return LSC_OP_ATOMIC_XOR;
+   case nir_atomic_op_xchg: return LSC_OP_ATOMIC_STORE;
+   case nir_atomic_op_cmpxchg: return LSC_OP_ATOMIC_CMPXCHG;
 
-#undef AOP_CASE
-#define AOP_CASE(atom) \
-   case nir_intrinsic_ssbo_atomic_##atom:          \
-   case nir_intrinsic_shared_atomic_##atom:        \
-   case nir_intrinsic_global_atomic_##atom
-
-   AOP_CASE(fmin):         return LSC_OP_ATOMIC_FMIN;
-   AOP_CASE(fmax):         return LSC_OP_ATOMIC_FMAX;
-   AOP_CASE(fcomp_swap):   return LSC_OP_ATOMIC_FCMPXCHG;
-   AOP_CASE(fadd):         return LSC_OP_ATOMIC_FADD;
-
-#undef AOP_CASE
+   case nir_atomic_op_fmin: return LSC_OP_ATOMIC_FMIN;
+   case nir_atomic_op_fmax: return LSC_OP_ATOMIC_FMAX;
+   case nir_atomic_op_fcmpxchg: return LSC_OP_ATOMIC_FCMPXCHG;
+   case nir_atomic_op_fadd: return LSC_OP_ATOMIC_FADD;
 
    default:
       unreachable("Unsupported NIR atomic intrinsic");
