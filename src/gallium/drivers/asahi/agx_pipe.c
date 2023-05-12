@@ -69,6 +69,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"stats",     AGX_DBG_STATS,    "Show command execution statistics"},
    {"resource",  AGX_DBG_RESOURCE, "Log resource operations"},
    {"batch",     AGX_DBG_BATCH,    "Log batches"},
+   {"nowc",      AGX_DBG_NOWC,     "Disable write-combining"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
@@ -554,6 +555,11 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
    if (nresource->base.usage == PIPE_USAGE_STAGING ||
        (nresource->base.flags & PIPE_RESOURCE_FLAG_MAP_COHERENT)) {
 
+      create_flags |= AGX_BO_WRITEBACK;
+   }
+
+   /* Allow disabling write-combine to debug performance issues */
+   if (dev->debug & AGX_DBG_NOWC) {
       create_flags |= AGX_BO_WRITEBACK;
    }
 
