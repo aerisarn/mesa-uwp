@@ -832,7 +832,6 @@ insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, ni
 
    NIR_PASS_V(shader, lower_rt_instructions, &src_vars, call_idx_base);
 
-   NIR_PASS(_, shader, nir_opt_remove_phis);
    NIR_PASS(_, shader, nir_lower_returns);
    NIR_PASS(_, shader, nir_opt_dce);
 
