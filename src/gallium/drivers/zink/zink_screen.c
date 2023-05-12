@@ -2412,6 +2412,9 @@ init_driver_workarounds(struct zink_screen *screen)
    if (screen->info.props.limits.maxBoundDescriptorSets < ZINK_DESCRIPTOR_ALL_TYPES ||
        zink_debug & (ZINK_DEBUG_COMPACT | ZINK_DEBUG_NOSHOBJ))
       screen->info.have_EXT_shader_object = false;
+   /* EXT_vertex_input_dynamic_state is only used with EDS2 and above */
+   if (!screen->info.have_EXT_extended_dynamic_state2)
+      screen->info.have_EXT_vertex_input_dynamic_state = false;
    if (screen->info.line_rast_feats.stippledRectangularLines &&
        screen->info.line_rast_feats.stippledBresenhamLines &&
        screen->info.line_rast_feats.stippledSmoothLines &&
