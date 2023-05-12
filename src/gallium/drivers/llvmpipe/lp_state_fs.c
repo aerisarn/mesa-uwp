@@ -4198,6 +4198,7 @@ llvmpipe_set_constant_buffer(struct pipe_context *pipe,
          debug_printf("Illegal set constant without bind flag\n");
          constants->buffer->bind |= PIPE_BIND_CONSTANT_BUFFER;
       }
+      llvmpipe_flush_resource(pipe, constants->buffer, 0, true, true, false, "set_constant_buffer");
    }
 
    switch (shader) {

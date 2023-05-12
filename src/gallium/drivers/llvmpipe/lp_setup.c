@@ -1065,6 +1065,13 @@ try_update_scene_state(struct lp_setup_context *setup)
       for (unsigned i = 0; i < ARRAY_SIZE(setup->constants); ++i) {
          lp_jit_buffer_from_pipe_const(&setup->fs.current.jit_resources.constants[i],
                                        &setup->constants[i].current, setup->pipe->screen);
+         if (setup->constants[i].current.buffer &&
+             !lp_scene_add_resource_reference(scene,
+                           setup->constants[i].current.buffer,
+                           new_scene, false)) {
+            assert(!new_scene);
+            return false;
+         }
          setup->dirty |= LP_SETUP_NEW_FS;
       }
    }
