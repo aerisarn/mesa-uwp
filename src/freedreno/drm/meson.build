@@ -50,7 +50,6 @@ libfreedreno_drm_msm_files = files(
 libfreedreno_drm_files += libfreedreno_drm_msm_files
 
 libfreedreno_drm_virtio_files = files(
-  'virtio/msm_proto.h',
   'virtio/virtio_bo.c',
   'virtio/virtio_device.c',
   'virtio/virtio_pipe.c',
