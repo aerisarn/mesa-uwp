@@ -542,6 +542,8 @@ struct zink_batch_descriptor_data {
  */
 struct zink_batch_usage {
    uint32_t usage;
+    /* this is a monotonic int used to disambiguate internal fences from their tc fence references */
+   uint32_t submit_count;
    cnd_t flush;
    mtx_t mtx;
    bool unflushed;
@@ -604,9 +606,6 @@ struct zink_batch_state {
    struct zink_batch_descriptor_data dd;
 
    VkDeviceSize resource_size;
-
-    /* this is a monotonic int used to disambiguate internal fences from their tc fence references */
-   unsigned submit_count;
 
    bool is_device_lost;
    bool has_barriers;

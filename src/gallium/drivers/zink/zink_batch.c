@@ -167,7 +167,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    bs->has_barriers = false;
    if (bs->fence.batch_id)
       zink_screen_update_last_finished(screen, bs->fence.batch_id);
-   bs->submit_count++;
+   bs->usage.submit_count++;
    bs->fence.batch_id = 0;
    bs->usage.usage = 0;
    bs->next = NULL;
@@ -608,7 +608,7 @@ submit_queue(void *data, void *gdata, int thread_index)
       bs->is_device_lost = true;
    }
    simple_mtx_unlock(&screen->queue_lock);
-   bs->submit_count++;
+   bs->usage.submit_count++;
 end:
    cnd_broadcast(&bs->usage.flush);
 
