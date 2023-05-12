@@ -1840,13 +1840,12 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_emit_ps_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_part *ps_epilog,
-                          bool pipeline_is_dirty)
+radv_emit_ps_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_part *ps_epilog)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radv_shader *ps_shader = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
 
-   if (cmd_buffer->state.emitted_ps_epilog == ps_epilog && !pipeline_is_dirty)
+   if (cmd_buffer->state.emitted_ps_epilog == ps_epilog)
       return;
 
    uint32_t col_format = ps_epilog->spi_shader_col_format;
@@ -6640,6 +6639,10 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       cmd_buffer->state.ms.min_sample_shading = min_sample_shading;
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
    }
+
+   /* Re-emit the PS epilog when a new fragment shader is bound. */
+   if (ps->info.ps.has_epilog)
+      cmd_buffer->state.emitted_ps_epilog = NULL;
 }
 
 static void
@@ -9027,8 +9030,7 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info,
-                              bool pipeline_is_dirty)
+radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info)
 {
    const struct radv_device *device = cmd_buffer->device;
    struct radv_shader_part *ps_epilog = NULL;
@@ -9090,7 +9092,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
       radv_emit_graphics_pipeline(cmd_buffer);
 
    if (ps_epilog)
-      radv_emit_ps_epilog_state(cmd_buffer, ps_epilog, pipeline_is_dirty);
+      radv_emit_ps_epilog_state(cmd_buffer, ps_epilog);
 
    /* This should be before the cmd_buffer->state.dirty is cleared
     * (excluding RADV_CMD_DIRTY_PIPELINE) and after
@@ -9173,8 +9175,6 @@ ALWAYS_INLINE static bool
 radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info, uint32_t drawCount)
 {
    const bool has_prefetch = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7;
-   const bool pipeline_is_dirty = (cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE) &&
-                                  cmd_buffer->state.graphics_pipeline != cmd_buffer->state.emitted_graphics_pipeline;
 
    ASSERTED const unsigned cdw_max =
       radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4096 + 128 * (drawCount - 1));
@@ -9209,7 +9209,7 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
        * the CUs are idle is very short. (there are only SET_SH
        * packets between the wait and the draw)
        */
-      radv_emit_all_graphics_states(cmd_buffer, info, pipeline_is_dirty);
+      radv_emit_all_graphics_states(cmd_buffer, info);
       si_emit_cache_flush(cmd_buffer);
       /* <-- CUs are idle here --> */
 
@@ -9231,7 +9231,7 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
 
       radv_upload_graphics_shader_descriptors(cmd_buffer);
 
-      radv_emit_all_graphics_states(cmd_buffer, info, pipeline_is_dirty);
+      radv_emit_all_graphics_states(cmd_buffer, info);
    }
 
    radv_describe_draw(cmd_buffer);
@@ -9281,7 +9281,7 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_FRAMEBUFFER)
       radv_emit_fb_mip_change_flush(cmd_buffer);
 
-   radv_emit_all_graphics_states(cmd_buffer, info, pipeline_is_dirty);
+   radv_emit_all_graphics_states(cmd_buffer, info);
    if (task_shader && pipeline_is_dirty) {
       radv_pipeline_emit_hw_cs(pdevice, ace_cs, task_shader);
       radv_pipeline_emit_compute_state(pdevice, ace_cs, task_shader);
