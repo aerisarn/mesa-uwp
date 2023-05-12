@@ -400,6 +400,40 @@ enum dxil_atomic_op {
    DXIL_ATOMIC_EXCHANGE = 8,
 };
 
+static enum dxil_atomic_op
+nir_atomic_to_dxil_atomic(nir_atomic_op op)
+{
+   switch (op) {
+   case nir_atomic_op_iadd: return DXIL_ATOMIC_ADD;
+   case nir_atomic_op_iand: return DXIL_ATOMIC_AND;
+   case nir_atomic_op_ior: return DXIL_ATOMIC_OR;
+   case nir_atomic_op_ixor: return DXIL_ATOMIC_XOR;
+   case nir_atomic_op_imin: return DXIL_ATOMIC_IMIN;
+   case nir_atomic_op_imax: return DXIL_ATOMIC_IMAX;
+   case nir_atomic_op_umin: return DXIL_ATOMIC_UMIN;
+   case nir_atomic_op_umax: return DXIL_ATOMIC_UMAX;
+   case nir_atomic_op_xchg: return DXIL_ATOMIC_EXCHANGE;
+   default: unreachable("Unsupported atomic op");
+   }
+}
+
+static enum dxil_rmw_op
+nir_atomic_to_dxil_rmw(nir_atomic_op op)
+{
+   switch (op) {
+   case nir_atomic_op_iadd: return DXIL_RMWOP_ADD;
+   case nir_atomic_op_iand: return DXIL_RMWOP_AND;
+   case nir_atomic_op_ior: return DXIL_RMWOP_OR;
+   case nir_atomic_op_ixor: return DXIL_RMWOP_XOR;
+   case nir_atomic_op_imin: return DXIL_RMWOP_MIN;
+   case nir_atomic_op_imax: return DXIL_RMWOP_MAX;
+   case nir_atomic_op_umin: return DXIL_RMWOP_UMIN;
+   case nir_atomic_op_umax: return DXIL_RMWOP_UMAX;
+   case nir_atomic_op_xchg: return DXIL_RMWOP_XCHG;
+   default: unreachable("Unsupported atomic op");
+   }
+}
+
 typedef struct {
    unsigned id;
    unsigned binding;
@@ -4276,20 +4310,17 @@ emit_image_load(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
-emit_image_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
-                  enum dxil_atomic_op op)
+emit_image_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   nir_deref_instr *src_as_deref = nir_src_as_deref(intr->src[0]);
-   bool is_bindless = !src_as_deref && !nir_intrinsic_has_range_base(intr);
-   const struct dxil_value *handle = is_bindless ?
+   const struct dxil_value *handle = intr->intrinsic == nir_intrinsic_bindless_image_atomic ?
       create_image_handle(ctx, intr) :
       get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
    if (!handle)
       return false;
 
    bool is_array = false;
-   if (src_as_deref)
-      is_array = glsl_sampler_type_is_array(src_as_deref->type);
+   if (intr->intrinsic == nir_intrinsic_image_deref_atomic)
+      is_array = glsl_sampler_type_is_array(nir_src_as_deref(intr->src[0])->type);
    else
       is_array = nir_intrinsic_image_array(intr);
 
@@ -4298,8 +4329,8 @@ emit_image_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
       return false;
 
    const struct dxil_value *coord[3] = { int32_undef, int32_undef, int32_undef };
-   enum glsl_sampler_dim image_dim = src_as_deref ?
-      glsl_get_sampler_dim(src_as_deref->type) :
+   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_deref_atomic ?
+      glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type) :
       nir_intrinsic_image_dim(intr);
    unsigned num_coords = glsl_get_sampler_dim_coordinate_components(image_dim);
    if (is_array)
@@ -4312,12 +4343,15 @@ emit_image_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
          return false;
    }
 
-   const struct dxil_value *value = get_src(ctx, &intr->src[3], 0, nir_type_uint);
+   nir_atomic_op nir_op = nir_intrinsic_atomic_op(intr);
+   enum dxil_atomic_op dxil_op = nir_atomic_to_dxil_atomic(nir_op);
+   nir_alu_type type = nir_atomic_op_type(nir_op);
+   const struct dxil_value *value = get_src(ctx, &intr->src[3], 0, type);
    if (!value)
       return false;
 
    const struct dxil_value *retval =
-      emit_atomic_binop(ctx, handle, op, coord, value);
+      emit_atomic_binop(ctx, handle, dxil_op, coord, value);
 
    if (!retval)
       return false;
@@ -4329,14 +4363,14 @@ emit_image_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
 static bool
 emit_image_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value *handle = intr->intrinsic == nir_intrinsic_bindless_image_atomic_comp_swap ?
+   const struct dxil_value *handle = intr->intrinsic == nir_intrinsic_bindless_image_atomic_swap ?
       create_image_handle(ctx, intr) :
       get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
    if (!handle)
       return false;
 
    bool is_array = false;
-   if (intr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap)
+   if (intr->intrinsic == nir_intrinsic_image_deref_atomic_swap)
       is_array = glsl_sampler_type_is_array(nir_src_as_deref(intr->src[0])->type);
    else
       is_array = nir_intrinsic_image_array(intr);
@@ -4346,7 +4380,7 @@ emit_image_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    const struct dxil_value *coord[3] = { int32_undef, int32_undef, int32_undef };
-   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap ?
+   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_deref_atomic_swap ?
       glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type) :
       nir_intrinsic_image_dim(intr);
    unsigned num_coords = glsl_get_sampler_dim_coordinate_components(image_dim);
@@ -4465,14 +4499,16 @@ emit_get_ssbo_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
-emit_ssbo_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
-                   enum dxil_atomic_op op)
+emit_ssbo_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
+   nir_atomic_op nir_op = nir_intrinsic_atomic_op(intr);
+   enum dxil_atomic_op dxil_op = nir_atomic_to_dxil_atomic(nir_op);
+   nir_alu_type type = nir_atomic_op_type(nir_op);
    const struct dxil_value* handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_RAW_BUFFER);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
    const struct dxil_value *value =
-      get_src(ctx, &intr->src[2], 0, nir_type_uint);
+      get_src(ctx, &intr->src[2], 0, type);
 
    if (!value || !handle || !offset)
       return false;
@@ -4486,7 +4522,7 @@ emit_ssbo_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
    };
 
    const struct dxil_value *retval =
-      emit_atomic_binop(ctx, handle, op, coord, value);
+      emit_atomic_binop(ctx, handle, dxil_op, coord, value);
 
    if (!retval)
       return false;
@@ -4528,8 +4564,7 @@ emit_ssbo_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
-emit_shared_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
-                   enum dxil_rmw_op op)
+emit_shared_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *zero, *index;
 
@@ -4550,11 +4585,14 @@ emit_shared_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
    if (!ptr)
       return false;
 
-   value = get_src(ctx, &intr->src[1], 0, nir_type_uint);
+   nir_atomic_op nir_op = nir_intrinsic_atomic_op(intr);
+   enum dxil_rmw_op dxil_op = nir_atomic_to_dxil_rmw(nir_op);
+   nir_alu_type type = nir_atomic_op_type(nir_op);
+   value = get_src(ctx, &intr->src[1], 0, type);
    if (!value)
       return false;
 
-   retval = dxil_emit_atomicrmw(&ctx->mod, value, ptr, op, false,
+   retval = dxil_emit_atomicrmw(&ctx->mod, value, ptr, dxil_op, false,
                                 DXIL_ATOMIC_ORDERING_ACQREL,
                                 DXIL_SYNC_SCOPE_CROSSTHREAD);
    if (!retval)
@@ -5033,85 +5071,21 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_group_memory_barrier(ctx, intr);
    case nir_intrinsic_control_barrier:
       return emit_control_barrier(ctx, intr);
-   case nir_intrinsic_ssbo_atomic_add:
-      return emit_ssbo_atomic(ctx, intr, DXIL_ATOMIC_ADD);
-   case nir_intrinsic_ssbo_atomic_imin:
-      return emit_ssbo_atomic(ctx, intr, DXIL_ATOMIC_IMIN);
-   case nir_intrinsic_ssbo_atomic_umin:
-      return emit_ssbo_atomic(ctx, intr, DXIL_ATOMIC_UMIN);
-   case nir_intrinsic_ssbo_atomic_imax:
-      return emit_ssbo_atomic(ctx, intr, DXIL_ATOMIC_IMAX);
-   case nir_intrinsic_ssbo_atomic_umax:
-      return emit_ssbo_atomic(ctx, intr, DXIL_ATOMIC_UMAX);
-   case nir_intrinsic_ssbo_atomic_and:
-      return emit_ssbo_atomic(ctx, intr, DXIL_ATOMIC_AND);
-   case nir_intrinsic_ssbo_atomic_or:
-      return emit_ssbo_atomic(ctx, intr, DXIL_ATOMIC_OR);
-   case nir_intrinsic_ssbo_atomic_xor:
-      return emit_ssbo_atomic(ctx, intr, DXIL_ATOMIC_XOR);
-   case nir_intrinsic_ssbo_atomic_exchange:
-      return emit_ssbo_atomic(ctx, intr, DXIL_ATOMIC_EXCHANGE);
-   case nir_intrinsic_ssbo_atomic_comp_swap:
+   case nir_intrinsic_ssbo_atomic:
+      return emit_ssbo_atomic(ctx, intr);
+   case nir_intrinsic_ssbo_atomic_swap:
       return emit_ssbo_atomic_comp_swap(ctx, intr);
-   case nir_intrinsic_shared_atomic_add_dxil:
-      return emit_shared_atomic(ctx, intr, DXIL_RMWOP_ADD);
-   case nir_intrinsic_shared_atomic_imin_dxil:
-      return emit_shared_atomic(ctx, intr, DXIL_RMWOP_MIN);
-   case nir_intrinsic_shared_atomic_umin_dxil:
-      return emit_shared_atomic(ctx, intr, DXIL_RMWOP_UMIN);
-   case nir_intrinsic_shared_atomic_imax_dxil:
-      return emit_shared_atomic(ctx, intr, DXIL_RMWOP_MAX);
-   case nir_intrinsic_shared_atomic_umax_dxil:
-      return emit_shared_atomic(ctx, intr, DXIL_RMWOP_UMAX);
-   case nir_intrinsic_shared_atomic_and_dxil:
-      return emit_shared_atomic(ctx, intr, DXIL_RMWOP_AND);
-   case nir_intrinsic_shared_atomic_or_dxil:
-      return emit_shared_atomic(ctx, intr, DXIL_RMWOP_OR);
-   case nir_intrinsic_shared_atomic_xor_dxil:
-      return emit_shared_atomic(ctx, intr, DXIL_RMWOP_XOR);
-   case nir_intrinsic_shared_atomic_exchange_dxil:
-      return emit_shared_atomic(ctx, intr, DXIL_RMWOP_XCHG);
-   case nir_intrinsic_shared_atomic_comp_swap_dxil:
+   case nir_intrinsic_shared_atomic_dxil:
+      return emit_shared_atomic(ctx, intr);
+   case nir_intrinsic_shared_atomic_swap_dxil:
       return emit_shared_atomic_comp_swap(ctx, intr);
-   case nir_intrinsic_image_deref_atomic_add:
-   case nir_intrinsic_image_atomic_add:
-   case nir_intrinsic_bindless_image_atomic_add:
-      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_ADD);
-   case nir_intrinsic_image_deref_atomic_imin:
-   case nir_intrinsic_image_atomic_imin:
-   case nir_intrinsic_bindless_image_atomic_imin:
-      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_IMIN);
-   case nir_intrinsic_image_deref_atomic_umin:
-   case nir_intrinsic_image_atomic_umin:
-   case nir_intrinsic_bindless_image_atomic_umin:
-      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_UMIN);
-   case nir_intrinsic_image_deref_atomic_imax:
-   case nir_intrinsic_image_atomic_imax:
-   case nir_intrinsic_bindless_image_atomic_imax:
-      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_IMAX);
-   case nir_intrinsic_image_deref_atomic_umax:
-   case nir_intrinsic_image_atomic_umax:
-   case nir_intrinsic_bindless_image_atomic_umax:
-      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_UMAX);
-   case nir_intrinsic_image_deref_atomic_and:
-   case nir_intrinsic_image_atomic_and:
-   case nir_intrinsic_bindless_image_atomic_and:
-      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_AND);
-   case nir_intrinsic_image_deref_atomic_or:
-   case nir_intrinsic_image_atomic_or:
-   case nir_intrinsic_bindless_image_atomic_or:
-      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_OR);
-   case nir_intrinsic_image_deref_atomic_xor:
-   case nir_intrinsic_image_atomic_xor:
-   case nir_intrinsic_bindless_image_atomic_xor:
-      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_XOR);
-   case nir_intrinsic_image_deref_atomic_exchange:
-   case nir_intrinsic_image_atomic_exchange:
-   case nir_intrinsic_bindless_image_atomic_exchange:
-      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_EXCHANGE);
-   case nir_intrinsic_image_deref_atomic_comp_swap:
-   case nir_intrinsic_image_atomic_comp_swap:
-   case nir_intrinsic_bindless_image_atomic_comp_swap:
+   case nir_intrinsic_image_deref_atomic:
+   case nir_intrinsic_image_atomic:
+   case nir_intrinsic_bindless_image_atomic:
+      return emit_image_atomic(ctx, intr);
+   case nir_intrinsic_image_deref_atomic_swap:
+   case nir_intrinsic_image_atomic_swap:
+   case nir_intrinsic_bindless_image_atomic_swap:
       return emit_image_atomic_comp_swap(ctx, intr);
    case nir_intrinsic_image_store:
    case nir_intrinsic_image_deref_store:
@@ -6256,16 +6230,8 @@ shader_has_shared_ops(struct nir_shader *s)
             switch (intrin->intrinsic) {
             case nir_intrinsic_load_shared_dxil:
             case nir_intrinsic_store_shared_dxil:
-            case nir_intrinsic_shared_atomic_add_dxil:
-            case nir_intrinsic_shared_atomic_and_dxil:
-            case nir_intrinsic_shared_atomic_comp_swap_dxil:
-            case nir_intrinsic_shared_atomic_exchange_dxil:
-            case nir_intrinsic_shared_atomic_imax_dxil:
-            case nir_intrinsic_shared_atomic_imin_dxil:
-            case nir_intrinsic_shared_atomic_or_dxil:
-            case nir_intrinsic_shared_atomic_umax_dxil:
-            case nir_intrinsic_shared_atomic_umin_dxil:
-            case nir_intrinsic_shared_atomic_xor_dxil:
+            case nir_intrinsic_shared_atomic_dxil:
+            case nir_intrinsic_shared_atomic_swap_dxil:
                return true;
             default: break;
             }

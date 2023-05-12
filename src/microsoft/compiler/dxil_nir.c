@@ -758,8 +758,7 @@ dxil_nir_lower_loads_stores_to_dxil(nir_shader *nir,
 }
 
 static bool
-lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr,
-                    nir_intrinsic_op dxil_op)
+lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr)
 {
    b->cursor = nir_before_instr(&intr->instr);
 
@@ -768,16 +767,19 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr,
       nir_iadd(b, intr->src[0].ssa, nir_imm_int(b, nir_intrinsic_base(intr)));
    nir_ssa_def *index = nir_ushr(b, offset, nir_imm_int(b, 2));
 
+   nir_intrinsic_op dxil_op = intr->intrinsic == nir_intrinsic_shared_atomic_swap ?
+      nir_intrinsic_shared_atomic_swap_dxil : nir_intrinsic_shared_atomic_dxil;
    nir_intrinsic_instr *atomic = nir_intrinsic_instr_create(b->shader, dxil_op);
    atomic->src[0] = nir_src_for_ssa(index);
    assert(intr->src[1].is_ssa);
    atomic->src[1] = nir_src_for_ssa(intr->src[1].ssa);
-   if (dxil_op == nir_intrinsic_shared_atomic_comp_swap_dxil) {
+   if (dxil_op == nir_intrinsic_shared_atomic_swap_dxil) {
       assert(intr->src[2].is_ssa);
       atomic->src[2] = nir_src_for_ssa(intr->src[2].ssa);
    }
    atomic->num_components = 0;
    nir_ssa_dest_init(&atomic->instr, &atomic->dest, 1, 32, NULL);
+   nir_intrinsic_set_atomic_op(atomic, nir_intrinsic_atomic_op(intr));
 
    nir_builder_instr_insert(b, &atomic->instr);
    nir_ssa_def_rewrite_uses(&intr->dest.ssa, &atomic->dest.ssa);
@@ -788,7 +790,7 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr,
 bool
 dxil_nir_lower_atomics_to_dxil(nir_shader *nir)
 {
-   bool progress = false;
+   bool progress = nir_lower_legacy_atomics(nir);
 
    foreach_list_typed(nir_function, func, node, &nir->functions) {
       if (!func->is_entrypoint)
@@ -805,25 +807,10 @@ dxil_nir_lower_atomics_to_dxil(nir_shader *nir)
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
             switch (intr->intrinsic) {
-
-#define ATOMIC(op)                                                            \
-  case nir_intrinsic_shared_atomic_##op:                                     \
-     progress |= lower_shared_atomic(&b, intr,                                \
-                                     nir_intrinsic_shared_atomic_##op##_dxil); \
-     break
-
-            ATOMIC(add);
-            ATOMIC(imin);
-            ATOMIC(umin);
-            ATOMIC(imax);
-            ATOMIC(umax);
-            ATOMIC(and);
-            ATOMIC(or);
-            ATOMIC(xor);
-            ATOMIC(exchange);
-            ATOMIC(comp_swap);
-
-#undef ATOMIC
+            case nir_intrinsic_shared_atomic:
+            case nir_intrinsic_shared_atomic_swap:
+               progress |= lower_shared_atomic(&b, intr);
+               break;
             default:
                break;
             }
@@ -2088,7 +2075,8 @@ lower_subgroup_id(nir_builder *b, nir_instr *instr, void *data)
                          .memory_modes = nir_var_mem_shared);
 
       nif = nir_push_if(b, nir_elect(b, 1));
-      nir_ssa_def *subgroup_id_first_thread = nir_deref_atomic_add(b, 32, &counter_deref->dest.ssa, nir_imm_int(b, 1));
+      nir_ssa_def *subgroup_id_first_thread = nir_deref_atomic(b, 32, &counter_deref->dest.ssa, nir_imm_int(b, 1),
+                                                               .atomic_op = nir_atomic_op_iadd);
       nir_store_var(b, subgroup_id_local, subgroup_id_first_thread, 1);
       nir_pop_if(b, nif);
 
