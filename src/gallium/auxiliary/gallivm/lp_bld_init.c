@@ -42,14 +42,14 @@
 
 #include <llvm/Config/llvm-config.h>
 #include <llvm-c/Analysis.h>
-#include <llvm-c/Transforms/Scalar.h>
-#if LLVM_VERSION_MAJOR >= 7
-#include <llvm-c/Transforms/Utils.h>
-#endif
 #include <llvm-c/BitWriter.h>
 #if GALLIVM_USE_NEW_PASS == 1
 #include <llvm-c/Transforms/PassBuilder.h>
 #elif GALLIVM_HAVE_CORO == 1
+#include <llvm-c/Transforms/Scalar.h>
+#if LLVM_VERSION_MAJOR >= 7
+#include <llvm-c/Transforms/Utils.h>
+#endif
 #if LLVM_VERSION_MAJOR <= 8 && (DETECT_ARCH_AARCH64 || DETECT_ARCH_ARM || DETECT_ARCH_S390 || DETECT_ARCH_MIPS64)
 #include <llvm-c/Transforms/IPO.h>
 #endif
