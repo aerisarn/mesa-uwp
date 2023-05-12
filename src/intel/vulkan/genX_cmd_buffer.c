@@ -412,12 +412,16 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
          end_offset_B = MAX2(end_offset_B, slice_end_offset_B);
       }
 
-      /* Aux operates 64K at a time */
-      start_offset_B = ROUND_DOWN_TO(start_offset_B, 64 * 1024);
-      end_offset_B = align64(end_offset_B, 64 * 1024);
+      struct intel_aux_map_context *ctx = cmd_buffer->device->aux_map_ctx;
+      /* It depends on what the purpose you use that figure from AUX module,
+       * alignment, page size of main surface, or actually granularity...
+       */
+      uint64_t main_page_size = intel_aux_map_get_alignment(ctx);
+      start_offset_B = ROUND_DOWN_TO(start_offset_B, main_page_size);
+      end_offset_B = align64(end_offset_B, main_page_size);
 
       for (uint64_t offset = start_offset_B;
-           offset < end_offset_B; offset += 64 * 1024) {
+           offset < end_offset_B; offset += main_page_size) {
          uint64_t address = base_address + offset;
 
          uint64_t aux_entry_addr64, *aux_entry_map;
