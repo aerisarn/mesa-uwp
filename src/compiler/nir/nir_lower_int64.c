@@ -1368,3 +1368,40 @@ nir_lower_int64(nir_shader *shader)
                                         lower_int64_instr,
                                         (void *)shader->options);
 }
+
+static bool
+should_lower_int64_float_conv(const nir_instr *instr, const void *_options)
+{
+   if (instr->type != nir_instr_type_alu)
+      return false;
+
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+
+   switch (alu->op) {
+   case nir_op_i2f64:
+   case nir_op_i2f32:
+   case nir_op_i2f16:
+   case nir_op_u2f64:
+   case nir_op_u2f32:
+   case nir_op_u2f16:
+   case nir_op_f2i64:
+   case nir_op_f2u64:
+      return should_lower_int64_alu_instr(alu, _options);
+   default:
+      return false;
+   }
+}
+
+/**
+ * Like nir_lower_int64(), but only lowers conversions to/from float.
+ *
+ * These operations in particular may affect double-precision lowering,
+ * so it can be useful to run them in tandem with nir_lower_doubles().
+ */
+bool
+nir_lower_int64_float_conversions(nir_shader *shader)
+{
+   return nir_shader_lower_instructions(shader, should_lower_int64_float_conv,
+                                        lower_int64_instr,
+                                        (void *)shader->options);
+}

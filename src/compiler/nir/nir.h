@@ -5679,6 +5679,7 @@ bool nir_split_64bit_vec3_and_vec4(nir_shader *shader);
 
 nir_lower_int64_options nir_lower_int64_op_to_options_mask(nir_op opcode);
 bool nir_lower_int64(nir_shader *shader);
+bool nir_lower_int64_float_conversions(nir_shader *shader);
 
 nir_lower_doubles_options nir_lower_doubles_op_to_options_mask(nir_op opcode);
 bool nir_lower_doubles(nir_shader *shader, const nir_shader *softfp64,
