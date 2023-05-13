@@ -229,101 +229,102 @@ struct si_shader_data {
    uint32_t sh_base[SI_NUM_SHADERS];
 };
 
-/* The list of registers whose emitted values are remembered by si_context. */
+/* Context registers whose values are tracked by si_context. */
 enum si_tracked_context_reg
 {
-   SI_TRACKED_DB_RENDER_CONTROL, /* 2 consecutive registers */
+   /* 2 consecutive registers */
+   SI_TRACKED_DB_RENDER_CONTROL,
    SI_TRACKED_DB_COUNT_CONTROL,
 
-   SI_TRACKED_DB_RENDER_OVERRIDE2,
-   SI_TRACKED_DB_SHADER_CONTROL,
-
-   SI_TRACKED_CB_TARGET_MASK,
-   SI_TRACKED_CB_DCC_CONTROL,
-
-   SI_TRACKED_SX_PS_DOWNCONVERT, /* 3 consecutive registers */
-   SI_TRACKED_SX_BLEND_OPT_EPSILON,
-   SI_TRACKED_SX_BLEND_OPT_CONTROL,
-
-   SI_TRACKED_PA_SC_LINE_CNTL, /* 2 consecutive registers */
+   /* 2 consecutive registers */
+   SI_TRACKED_PA_SC_LINE_CNTL,
    SI_TRACKED_PA_SC_AA_CONFIG,
 
-   SI_TRACKED_DB_EQAA,
-   SI_TRACKED_PA_SC_MODE_CNTL_1,
-
-   SI_TRACKED_PA_SU_PRIM_FILTER_CNTL,
-   SI_TRACKED_PA_SU_SMALL_PRIM_FILTER_CNTL,
-
-   SI_TRACKED_PA_CL_VS_OUT_CNTL,
-   SI_TRACKED_PA_CL_CLIP_CNTL,
-
-   SI_TRACKED_PA_SC_BINNER_CNTL_0,
-
-   SI_TRACKED_DB_PA_SC_VRS_OVERRIDE_CNTL,
-
-   SI_TRACKED_PA_SU_VTX_CNTL, /* 5 consecutive registers */
+   /* 5 consecutive registers */
+   SI_TRACKED_PA_SU_VTX_CNTL,
    SI_TRACKED_PA_CL_GB_VERT_CLIP_ADJ,
    SI_TRACKED_PA_CL_GB_VERT_DISC_ADJ,
    SI_TRACKED_PA_CL_GB_HORZ_CLIP_ADJ,
    SI_TRACKED_PA_CL_GB_HORZ_DISC_ADJ,
 
-   SI_TRACKED_PA_SU_HARDWARE_SCREEN_OFFSET,
-
-   SI_TRACKED_PA_SC_CLIPRECT_RULE,
-
-   SI_TRACKED_PA_SC_LINE_STIPPLE,
-
-   SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,
-
-   SI_TRACKED_VGT_GSVS_RING_OFFSET_1, /* 3 consecutive registers */
-   SI_TRACKED_VGT_GSVS_RING_OFFSET_2,
-   SI_TRACKED_VGT_GSVS_RING_OFFSET_3,
-
-   SI_TRACKED_VGT_GSVS_RING_ITEMSIZE,
-   SI_TRACKED_VGT_GS_MAX_VERT_OUT,
-
-   SI_TRACKED_VGT_GS_VERT_ITEMSIZE, /* 4 consecutive registers */
-   SI_TRACKED_VGT_GS_VERT_ITEMSIZE_1,
-   SI_TRACKED_VGT_GS_VERT_ITEMSIZE_2,
-   SI_TRACKED_VGT_GS_VERT_ITEMSIZE_3,
-
-   SI_TRACKED_VGT_GS_INSTANCE_CNT,
-   SI_TRACKED_VGT_GS_ONCHIP_CNTL,
-   SI_TRACKED_VGT_GS_MAX_PRIMS_PER_SUBGROUP,
-   SI_TRACKED_VGT_GS_MODE,
-   SI_TRACKED_VGT_PRIMITIVEID_EN,
-   SI_TRACKED_VGT_REUSE_OFF,
-   SI_TRACKED_SPI_VS_OUT_CONFIG,
-   SI_TRACKED_PA_CL_VTE_CNTL,
-   SI_TRACKED_PA_CL_NGG_CNTL,
-   SI_TRACKED_GE_MAX_OUTPUT_PER_SUBGROUP,
-   SI_TRACKED_GE_NGG_SUBGRP_CNTL,
-
-   SI_TRACKED_SPI_SHADER_IDX_FORMAT, /* 2 consecutive registers */
+   /* 2 consecutive registers */
+   SI_TRACKED_SPI_SHADER_IDX_FORMAT,
    SI_TRACKED_SPI_SHADER_POS_FORMAT,
 
-   SI_TRACKED_SPI_PS_INPUT_ENA, /* 2 consecutive registers */
-   SI_TRACKED_SPI_PS_INPUT_ADDR,
-
-   SI_TRACKED_SPI_BARYC_CNTL,
-   SI_TRACKED_SPI_PS_IN_CONTROL,
-
-   SI_TRACKED_SPI_SHADER_Z_FORMAT, /* 2 consecutive registers */
+   /* 2 consecutive registers */
+   SI_TRACKED_SPI_SHADER_Z_FORMAT,
    SI_TRACKED_SPI_SHADER_COL_FORMAT,
 
+   SI_TRACKED_SPI_BARYC_CNTL,
+
+   /* 2 consecutive registers */
+   SI_TRACKED_SPI_PS_INPUT_ENA,
+   SI_TRACKED_SPI_PS_INPUT_ADDR,
+
+   SI_TRACKED_DB_EQAA,
+   SI_TRACKED_DB_SHADER_CONTROL,
    SI_TRACKED_CB_SHADER_MASK,
-   SI_TRACKED_VGT_TF_PARAM,
-   SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL,
+   SI_TRACKED_CB_TARGET_MASK,
+   SI_TRACKED_PA_CL_CLIP_CNTL,
+   SI_TRACKED_PA_CL_VS_OUT_CNTL,
+   SI_TRACKED_PA_CL_VTE_CNTL,
+   SI_TRACKED_PA_SC_CLIPRECT_RULE,
+   SI_TRACKED_PA_SC_LINE_STIPPLE,
+   SI_TRACKED_PA_SC_MODE_CNTL_1,
+   SI_TRACKED_PA_SU_HARDWARE_SCREEN_OFFSET,
+   SI_TRACKED_PA_SU_PRIM_FILTER_CNTL,
+   SI_TRACKED_SPI_PS_IN_CONTROL,
+   SI_TRACKED_VGT_GS_INSTANCE_CNT,
+   SI_TRACKED_VGT_GS_MAX_VERT_OUT,
    SI_TRACKED_VGT_SHADER_STAGES_EN,
+   SI_TRACKED_VGT_TF_PARAM,
+   SI_TRACKED_PA_SU_SMALL_PRIM_FILTER_CNTL,  /* GFX8+ */
+   SI_TRACKED_PA_SC_BINNER_CNTL_0,           /* GFX9+ */
+   SI_TRACKED_PA_CL_NGG_CNTL,                /* GFX10+ */
+   SI_TRACKED_GE_MAX_OUTPUT_PER_SUBGROUP,    /* GFX10+ */
+   SI_TRACKED_GE_NGG_SUBGRP_CNTL,            /* GFX10+ */
+   SI_TRACKED_DB_PA_SC_VRS_OVERRIDE_CNTL,    /* GFX10.3+ */
+
+   /* 3 consecutive registers */
+   SI_TRACKED_SX_PS_DOWNCONVERT,             /* GFX8+ */
+   SI_TRACKED_SX_BLEND_OPT_EPSILON,          /* GFX8+ */
+   SI_TRACKED_SX_BLEND_OPT_CONTROL,          /* GFX8+ */
+
+   /* The slots below can be reused by other generations. */
+   SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,        /* GFX6-8 (GFX9+ can reuse this slot) */
+   SI_TRACKED_VGT_REUSE_OFF,                 /* GFX6-8 (GFX9+ can reuse this slot) */
+
+   SI_TRACKED_VGT_GS_MAX_PRIMS_PER_SUBGROUP, /* GFX9-10 - the slots above can be reused */
+   SI_TRACKED_VGT_GS_ONCHIP_CNTL,            /* GFX9-10 - the slots above can be reused */
+
+   SI_TRACKED_VGT_GSVS_RING_ITEMSIZE,        /* GFX6-10 (GFX11+ can reuse this slot) */
+   SI_TRACKED_VGT_GS_MODE,                   /* GFX6-10 (GFX11+ can reuse this slot) */
+   SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL,   /* GFX6-10 (GFX11+ can reuse this slot) */
+
+   /* 3 consecutive registers */
+   SI_TRACKED_VGT_GSVS_RING_OFFSET_1,        /* GFX6-10 (GFX11+ can reuse this slot) */
+   SI_TRACKED_VGT_GSVS_RING_OFFSET_2,        /* GFX6-10 (GFX11+ can reuse this slot) */
+   SI_TRACKED_VGT_GSVS_RING_OFFSET_3,        /* GFX6-10 (GFX11+ can reuse this slot) */
+
+   /* 4 consecutive registers */
+   SI_TRACKED_VGT_GS_VERT_ITEMSIZE,          /* GFX6-10 (GFX11+ can reuse this slot) */
+   SI_TRACKED_VGT_GS_VERT_ITEMSIZE_1,        /* GFX6-10 (GFX11+ can reuse this slot) */
+   SI_TRACKED_VGT_GS_VERT_ITEMSIZE_2,        /* GFX6-10 (GFX11+ can reuse this slot) */
+   SI_TRACKED_VGT_GS_VERT_ITEMSIZE_3,        /* GFX6-10 (GFX11+ can reuse this slot) */
+
+   SI_TRACKED_DB_RENDER_OVERRIDE2,           /* GFX6-xx (TBD) */
+   SI_TRACKED_SPI_VS_OUT_CONFIG,             /* GFX6-xx (TBD) */
+   SI_TRACKED_VGT_PRIMITIVEID_EN,            /* GFX6-xx (TBD) */
+   SI_TRACKED_CB_DCC_CONTROL,                /* GFX8-xx (TBD) */
 
    SI_NUM_TRACKED_CONTEXT_REGS,
 };
 
+/* Non-context registers whose values are tracked by si_context. */
 enum si_tracked_other_reg {
-   /* Non-context registers: */
-   SI_TRACKED_GE_PC_ALLOC,
-   SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
-   SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
+   SI_TRACKED_GE_PC_ALLOC,                   /* GFX10+ */
+   SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,       /* GFX7+ */
+   SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,       /* GFX10+ */
 
    SI_NUM_TRACKED_OTHER_REGS,
 };
