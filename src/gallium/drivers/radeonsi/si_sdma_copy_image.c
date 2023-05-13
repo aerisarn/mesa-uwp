@@ -53,40 +53,6 @@ static unsigned encode_legacy_tile_info(struct si_context *sctx, struct si_textu
 }
 
 static
-bool si_translate_format_to_hw(struct si_context *sctx, enum pipe_format format, unsigned *hw_fmt, unsigned *hw_type)
-{
-   const struct util_format_description *desc = util_format_description(format);
-   *hw_fmt = ac_get_cb_format(sctx->gfx_level, format);
-
-   int firstchan = util_format_get_first_non_void_channel(format);
-   if (firstchan == -1 || desc->channel[firstchan].type == UTIL_FORMAT_TYPE_FLOAT) {
-      *hw_type = V_028C70_NUMBER_FLOAT;
-   } else {
-      *hw_type = V_028C70_NUMBER_UNORM;
-      if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
-         *hw_type = V_028C70_NUMBER_SRGB;
-      else if (desc->channel[firstchan].type == UTIL_FORMAT_TYPE_SIGNED) {
-         if (desc->channel[firstchan].pure_integer) {
-            *hw_type = V_028C70_NUMBER_SINT;
-         } else {
-            assert(desc->channel[firstchan].normalized);
-            *hw_type = V_028C70_NUMBER_SNORM;
-         }
-      } else if (desc->channel[firstchan].type == UTIL_FORMAT_TYPE_UNSIGNED) {
-         if (desc->channel[firstchan].pure_integer) {
-            *hw_type = V_028C70_NUMBER_UINT;
-         } else {
-            assert(desc->channel[firstchan].normalized);
-            *hw_type = V_028C70_NUMBER_UNORM;
-         }
-      } else {
-         return false;
-      }
-   }
-   return true;
-}
-
-static
 bool si_sdma_v4_v5_copy_texture(struct si_context *sctx, struct si_texture *sdst, struct si_texture *ssrc, bool is_v5)
 {
    unsigned bpp = sdst->surface.bpe;
@@ -175,10 +141,9 @@ bool si_sdma_v4_v5_copy_texture(struct si_context *sctx, struct si_texture *sdst
       radeon_emit(0);
 
       if (dcc) {
-         unsigned hw_fmt, hw_type;
+         unsigned hw_fmt = ac_get_cb_format(sctx->gfx_level, tiled->buffer.b.b.format);
+         unsigned hw_type = ac_get_cb_number_type(tiled->buffer.b.b.format);
          uint64_t md_address = tiled_address + tiled->surface.meta_offset;
-
-         si_translate_format_to_hw(sctx, tiled->buffer.b.b.format, &hw_fmt, &hw_type);
 
          /* Add metadata */
          radeon_emit((uint32_t)md_address);
