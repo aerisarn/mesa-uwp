@@ -4720,7 +4720,12 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (!(literal_mask & 0b100) && !(vgpr_mask & 0b100))
             literal_mask = 0;
 
-         if (instr->usesModifiers())
+         /* opsel with GFX11+ is the only modifier supported by fmamk/fmaak*/
+         if (instr->valu().abs || instr->valu().neg || instr->valu().omod || instr->valu().clamp ||
+             (instr->valu().opsel && ctx.program->gfx_level < GFX11))
+            literal_mask = 0;
+
+         if (instr->valu().opsel & ~vgpr_mask)
             literal_mask = 0;
 
          /* We can't use three unique fp16 literals */
@@ -5140,13 +5145,12 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                instr->operands[i] = Operand::literal32(literal);
          }
          if (madak) { /* add literal -> madak */
-            if (!instr->operands[1].isTemp() ||
-                instr->operands[1].getTemp().type() == RegType::sgpr)
-               std::swap(instr->operands[0], instr->operands[1]);
+            if (!instr->operands[1].isOfType(RegType::vgpr))
+               instr->valu().swapOperands(0, 1);
          } else { /* mul literal -> madmk */
             if (!(info->literal_mask & 0b10))
-               std::swap(instr->operands[0], instr->operands[1]);
-            std::swap(instr->operands[1], instr->operands[2]);
+               instr->valu().swapOperands(0, 1);
+            instr->valu().swapOperands(1, 2);
          }
          ctx.instructions.emplace_back(std::move(instr));
          return;
