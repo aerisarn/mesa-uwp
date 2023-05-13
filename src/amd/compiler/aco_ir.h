@@ -303,6 +303,12 @@ withoutDPP(Format format)
    return (Format)((uint32_t)format & ~((uint32_t)Format::DPP16 | (uint32_t)Format::DPP8));
 }
 
+constexpr Format
+withoutVOP3(Format format)
+{
+   return (Format)((uint32_t)format & ~((uint32_t)Format::VOP3));
+}
+
 enum class RegType {
    none = 0,
    sgpr,

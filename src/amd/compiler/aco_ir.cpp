@@ -296,8 +296,7 @@ convert_to_SDWA(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr)
       return NULL;
 
    aco_ptr<Instruction> tmp = std::move(instr);
-   Format format =
-      (Format)(((uint16_t)tmp->format & ~(uint16_t)Format::VOP3) | (uint16_t)Format::SDWA);
+   Format format = asSDWA(withoutVOP3(tmp->format));
    instr.reset(create_instruction<SDWA_instruction>(tmp->opcode, format, tmp->operands.size(),
                                                     tmp->definitions.size()));
    std::copy(tmp->operands.cbegin(), tmp->operands.cend(), instr->operands.begin());
@@ -465,7 +464,7 @@ convert_to_DPP(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr, bool dpp8)
                   instr->operands[2].isOfType(RegType::vgpr) || instr->operands[2].physReg() == vcc;
 
    if (remove_vop3)
-      instr->format = (Format)((uint32_t)instr->format & ~(uint32_t)Format::VOP3);
+      instr->format = withoutVOP3(instr->format);
 
    return tmp;
 }
