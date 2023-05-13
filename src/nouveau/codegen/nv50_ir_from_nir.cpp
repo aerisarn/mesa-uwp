@@ -2340,11 +2340,6 @@ bool
 Converter::visit(nir_jump_instr *insn)
 {
    switch (insn->type) {
-   case nir_jump_return:
-      // TODO: this only works in the main function
-      mkFlow(OP_BRA, exit, CC_ALWAYS, NULL);
-      bb->cfg.attach(&exit->cfg, Graph::Edge::CROSS);
-      break;
    case nir_jump_break:
    case nir_jump_continue: {
       bool isBreak = insn->type == nir_jump_break;
