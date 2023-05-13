@@ -1270,6 +1270,7 @@ struct si_context {
    int num_perfect_occlusion_queries;
    int num_pipeline_stat_queries;
    int num_pipeline_stat_emulated_queries;
+   int num_hw_pipestat_streamout_queries;
    struct list_head active_queries;
    unsigned num_cs_dw_queries_suspend;
    /* Shared buffer for pipeline stats queries implemented with an atomic op */

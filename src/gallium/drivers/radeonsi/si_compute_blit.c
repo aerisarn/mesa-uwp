@@ -159,7 +159,8 @@ static void si_launch_grid_internal(struct si_context *sctx, const struct pipe_g
 
    /* Set settings for driver-internal compute dispatches. */
    sctx->flags &= ~SI_CONTEXT_START_PIPELINE_STATS;
-   sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
+   if (sctx->num_hw_pipestat_streamout_queries)
+      sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
 
    if (!(flags & SI_OP_CS_RENDER_COND_ENABLE))
       sctx->render_cond_enabled = false;
@@ -178,7 +179,9 @@ static void si_launch_grid_internal(struct si_context *sctx, const struct pipe_g
 
    /* Restore default settings. */
    sctx->flags &= ~SI_CONTEXT_STOP_PIPELINE_STATS;
-   sctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
+   if (sctx->num_hw_pipestat_streamout_queries)
+      sctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
+
    sctx->render_cond_enabled = sctx->render_cond;
    sctx->blitter_running = false;
 

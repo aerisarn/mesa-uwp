@@ -377,11 +377,18 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
     *
     * TODO: Do we also need to invalidate CB & DB caches?
     */
-   ctx->flags |= SI_CONTEXT_INV_L2 | SI_CONTEXT_START_PIPELINE_STATS;
+   ctx->flags |= SI_CONTEXT_INV_L2;
    if (ctx->gfx_level < GFX10)
       ctx->flags |= SI_CONTEXT_INV_ICACHE | SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE;
 
-   ctx->pipeline_stats_enabled = -1;
+   /* Disable pipeline stats if there are no active queries. */
+   ctx->flags &= ~SI_CONTEXT_START_PIPELINE_STATS & ~SI_CONTEXT_STOP_PIPELINE_STATS;
+   if (ctx->num_hw_pipestat_streamout_queries)
+      ctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
+   else
+      ctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
+
+   ctx->pipeline_stats_enabled = -1; /* indicate that the current hw state is unknown */
 
    /* We don't know if the last draw used NGG because it can be a different process.
     * When switching NGG->legacy, we need to flush VGT for certain hw generations.

@@ -872,6 +872,32 @@ static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_h
                              RADEON_USAGE_WRITE | RADEON_PRIO_QUERY);
 }
 
+static void si_update_hw_pipeline_stats(struct si_context *sctx, unsigned type, int diff)
+{
+   if (type == PIPE_QUERY_PIPELINE_STATISTICS ||
+       /* All streamout queries: */
+       type == PIPE_QUERY_PRIMITIVES_GENERATED ||
+       type == PIPE_QUERY_PRIMITIVES_EMITTED ||
+       type == PIPE_QUERY_SO_STATISTICS ||
+       type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
+       type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
+      if (type == PIPE_QUERY_PIPELINE_STATISTICS)
+         sctx->num_pipeline_stat_queries += diff;
+
+      /* Increment for pipeline statistics and streamout queries. */
+      sctx->num_hw_pipestat_streamout_queries += diff;
+
+      /* Enable/disable pipeline stats if we have any queries. */
+      if (diff == 1 && sctx->num_hw_pipestat_streamout_queries == 1) {
+         sctx->flags &= ~SI_CONTEXT_STOP_PIPELINE_STATS;
+         sctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
+      } else if (diff == -1 && sctx->num_hw_pipestat_streamout_queries == 0) {
+         sctx->flags &= ~SI_CONTEXT_START_PIPELINE_STATS;
+         sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
+      }
+   }
+}
+
 static void si_query_hw_emit_start(struct si_context *sctx, struct si_query_hw *query)
 {
    uint64_t va;
@@ -889,9 +915,7 @@ static void si_query_hw_emit_start(struct si_context *sctx, struct si_query_hw *
 
    si_update_occlusion_query_state(sctx, query->b.type, 1);
    si_update_prims_generated_query_state(sctx, query->b.type, 1);
-
-   if (query->b.type == PIPE_QUERY_PIPELINE_STATISTICS)
-      sctx->num_pipeline_stat_queries++;
+   si_update_hw_pipeline_stats(sctx, query->b.type, 1);
 
    si_need_gfx_cs_space(sctx, 0);
 
@@ -1010,9 +1034,7 @@ static void si_query_hw_emit_stop(struct si_context *sctx, struct si_query_hw *q
 
    si_update_occlusion_query_state(sctx, query->b.type, -1);
    si_update_prims_generated_query_state(sctx, query->b.type, -1);
-
-   if (query->b.type == PIPE_QUERY_PIPELINE_STATISTICS)
-      sctx->num_pipeline_stat_queries--;
+   si_update_hw_pipeline_stats(sctx, query->b.type, -1);
 }
 
 static void emit_set_predicate(struct si_context *ctx, struct si_resource *buf, uint64_t va,
