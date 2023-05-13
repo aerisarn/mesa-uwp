@@ -1578,48 +1578,23 @@ SpillCodeInserter::assignSlot(const Interval &livei, const unsigned int size)
    SpillSlot slot;
    int32_t offsetBase = stackSize;
    int32_t offset;
-   std::list<SpillSlot>::iterator pos = slots.end(), it = slots.begin();
+   std::list<SpillSlot>::iterator pos = slots.end();
 
    // Later, we compute the address as (offsetBase + tlsBase)
    // tlsBase might not be size-aligned, so we add just enough
    // to give the final address the correct alignment
    offsetBase = align(offsetBase + func->tlsBase, size) - func->tlsBase;
 
-   slot.sym = NULL;
+   offset = offsetBase;
 
-   for (offset = offsetBase; offset < stackSize; offset += size) {
-      const int32_t entryEnd = offset + size;
-      while (it != slots.end() && it->offset < offset)
-         ++it;
-      if (it == slots.end()) // no slots left
-         break;
-      std::list<SpillSlot>::iterator bgn = it;
+   stackSize = offset + size;
+   slot.offset = offset;
+   slot.sym = new_Symbol(func->getProgram(), FILE_MEMORY_LOCAL);
+   offset += func->tlsBase;
+   slot.sym->setAddress(NULL, offset);
+   slot.sym->reg.size = size;
+   slots.insert(pos, slot)->occup.insert(livei);
 
-      while (it != slots.end() && it->offset < entryEnd) {
-         it->occup.print();
-         if (it->occup.overlaps(livei))
-            break;
-         ++it;
-      }
-      if (it == slots.end() || it->offset >= entryEnd) {
-         // fits
-         for (; bgn != slots.end() && bgn->offset < entryEnd; ++bgn) {
-            bgn->occup.insert(livei);
-            if (bgn->size() == size)
-               slot.sym = bgn->sym;
-         }
-         break;
-      }
-   }
-   if (!slot.sym) {
-      stackSize = offset + size;
-      slot.offset = offset;
-      slot.sym = new_Symbol(func->getProgram(), FILE_MEMORY_LOCAL);
-      offset += func->tlsBase;
-      slot.sym->setAddress(NULL, offset);
-      slot.sym->reg.size = size;
-      slots.insert(pos, slot)->occup.insert(livei);
-   }
    return slot.sym;
 }
 
