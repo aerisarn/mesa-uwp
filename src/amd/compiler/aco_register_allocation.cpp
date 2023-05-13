@@ -512,7 +512,7 @@ get_subdword_operand_stride(amd_gfx_level gfx_level, const aco_ptr<Instruction>&
          return rc.bytes();
       if (can_use_opsel(gfx_level, instr->opcode, idx))
          return 2;
-      if (instr->format == Format::VOP3P)
+      if (instr->isVOP3P())
          return 2;
    }
 
