@@ -225,11 +225,6 @@ private:
       inline void splitEdges(BasicBlock *b);
    };
 
-   class ArgumentMovesPass : public Pass {
-   private:
-      virtual bool visit(BasicBlock *);
-   };
-
    class BuildIntervalsPass : public Pass {
    private:
       virtual bool visit(BasicBlock *);
@@ -512,73 +507,6 @@ RegAlloc::PhiMovesPass::visit(BasicBlock *bb)
          pb->insertBefore(pb->getExit(), mov);
       }
       ++j;
-   }
-
-   return true;
-}
-
-bool
-RegAlloc::ArgumentMovesPass::visit(BasicBlock *bb)
-{
-   // Bind function call inputs/outputs to the same physical register
-   // the callee uses, inserting moves as appropriate for the case a
-   // conflict arises.
-   for (Instruction *i = bb->getEntry(); i; i = i->next) {
-      FlowInstruction *cal = i->asFlow();
-      // TODO: Handle indirect calls.
-      // Right now they should only be generated for builtins.
-      if (!cal || cal->op != OP_CALL || cal->builtin || cal->indirect)
-         continue;
-      RegisterSet clobberSet(prog->getTarget());
-
-      // Bind input values.
-      for (int s = cal->indirect ? 1 : 0; cal->srcExists(s); ++s) {
-         const int t = cal->indirect ? (s - 1) : s;
-         LValue *tmp = new_LValue(func, cal->getSrc(s)->asLValue());
-         tmp->reg.data.id = cal->target.fn->ins[t].rep()->reg.data.id;
-
-         Instruction *mov =
-            new_Instruction(func, OP_MOV, typeOfSize(tmp->reg.size));
-         mov->setDef(0, tmp);
-         mov->setSrc(0, cal->getSrc(s));
-         cal->setSrc(s, tmp);
-
-         bb->insertBefore(cal, mov);
-      }
-
-      // Bind output values.
-      for (int d = 0; cal->defExists(d); ++d) {
-         LValue *tmp = new_LValue(func, cal->getDef(d)->asLValue());
-         tmp->reg.data.id = cal->target.fn->outs[d].rep()->reg.data.id;
-
-         Instruction *mov =
-            new_Instruction(func, OP_MOV, typeOfSize(tmp->reg.size));
-         mov->setSrc(0, tmp);
-         mov->setDef(0, cal->getDef(d));
-         cal->setDef(d, tmp);
-
-         bb->insertAfter(cal, mov);
-         clobberSet.occupy(tmp);
-      }
-
-      // Bind clobbered values.
-      for (std::deque<Value *>::iterator it = cal->target.fn->clobbers.begin();
-           it != cal->target.fn->clobbers.end();
-           ++it) {
-         if (clobberSet.testOccupy(*it)) {
-            Value *tmp = new_LValue(func, (*it)->asLValue());
-            tmp->reg.data.id = (*it)->reg.data.id;
-            cal->setDef(cal->defCount(), tmp);
-         }
-      }
-   }
-
-   // Update the clobber set of the function.
-   if (BasicBlock::get(func->cfgExit) == bb) {
-      func->buildDefSets();
-      for (unsigned int i = 0; i < bb->defSet.getSize(); ++i)
-         if (bb->defSet.test(i))
-            func->clobbers.push_back(func->getLValue(i));
    }
 
    return true;
@@ -1913,7 +1841,6 @@ RegAlloc::execFunc()
    MergedDefs mergedDefs;
    InsertConstraintsPass insertConstr;
    PhiMovesPass insertPhiMoves;
-   ArgumentMovesPass insertArgMoves;
    BuildIntervalsPass buildIntervals;
    SpillCodeInserter insertSpills(func, mergedDefs);
 
@@ -1934,10 +1861,6 @@ RegAlloc::execFunc()
       goto out;
 
    ret = insertPhiMoves.run(func);
-   if (!ret)
-      goto out;
-
-   ret = insertArgMoves.run(func);
    if (!ret)
       goto out;
 
