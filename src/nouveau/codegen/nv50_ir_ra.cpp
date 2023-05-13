@@ -337,15 +337,6 @@ private:
    Function *func;
    MergedDefs &mergedDefs;
 
-   struct SpillSlot
-   {
-      Interval occup;
-      std::list<Value *> residents; // needed to recalculate occup
-      Symbol *sym;
-      int32_t offset;
-      inline uint8_t size() const { return sym->reg.size; }
-   };
-   std::list<SpillSlot> slots;
    int32_t stackSize;
    int32_t stackBase;
 
@@ -1575,27 +1566,15 @@ GCRA::cleanup(const bool success)
 Symbol *
 SpillCodeInserter::assignSlot(const Interval &livei, const unsigned int size)
 {
-   SpillSlot slot;
-   int32_t offsetBase = stackSize;
-   int32_t offset;
-   std::list<SpillSlot>::iterator pos = slots.end();
+   int32_t address = align(stackSize + func->tlsBase, size);
 
-   // Later, we compute the address as (offsetBase + tlsBase)
-   // tlsBase might not be size-aligned, so we add just enough
-   // to give the final address the correct alignment
-   offsetBase = align(offsetBase + func->tlsBase, size) - func->tlsBase;
+   Symbol *sym = new_Symbol(func->getProgram(), FILE_MEMORY_LOCAL);
+   sym->setAddress(NULL, address);
+   sym->reg.size = size;
 
-   offset = offsetBase;
+   stackSize = address + size - func->tlsBase;
 
-   stackSize = offset + size;
-   slot.offset = offset;
-   slot.sym = new_Symbol(func->getProgram(), FILE_MEMORY_LOCAL);
-   offset += func->tlsBase;
-   slot.sym->setAddress(NULL, offset);
-   slot.sym->reg.size = size;
-   slots.insert(pos, slot)->occup.insert(livei);
-
-   return slot.sym;
+   return sym;
 }
 
 Value *
@@ -1783,10 +1762,7 @@ SpillCodeInserter::run(const std::list<ValuePair>& lst)
       }
    }
 
-   // TODO: We're not trying to reuse old slots in a potential next iteration.
-   //  We have to update the slots' livei intervals to be able to do that.
    stackBase = stackSize;
-   slots.clear();
    return true;
 }
 
