@@ -691,45 +691,45 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
 
    bool gfx9_plus = options->gfx_level >= GFX9;
    bool ngg = info->is_ngg && options->gfx_level >= GFX10;
-   HWStage hw_stage{};
+   ac_hw_stage hw_stage;
    if (sw_stage == SWStage::VS && info->vs.as_es && !ngg)
-      hw_stage = HWStage::ES;
+      hw_stage = AC_HW_EXPORT_SHADER;
    else if (sw_stage == SWStage::VS && !info->vs.as_ls && !ngg)
-      hw_stage = HWStage::VS;
+      hw_stage = AC_HW_VERTEX_SHADER;
    else if (sw_stage == SWStage::VS && ngg)
-      hw_stage = HWStage::NGG; /* GFX10/NGG: VS without GS uses the HW GS stage */
+      hw_stage = AC_HW_NEXT_GEN_GEOMETRY_SHADER;
    else if (sw_stage == SWStage::GS)
-      hw_stage = HWStage::GS;
+      hw_stage = AC_HW_LEGACY_GEOMETRY_SHADER;
    else if (sw_stage == SWStage::FS)
-      hw_stage = HWStage::FS;
+      hw_stage = AC_HW_PIXEL_SHADER;
    else if (sw_stage == SWStage::CS)
-      hw_stage = HWStage::CS;
+      hw_stage = AC_HW_COMPUTE_SHADER;
    else if (sw_stage == SWStage::TS)
-      hw_stage = HWStage::CS; /* Task shaders are implemented with compute shaders. */
+      hw_stage = AC_HW_COMPUTE_SHADER;
    else if (sw_stage == SWStage::MS)
-      hw_stage = HWStage::NGG; /* Mesh shaders only work on NGG and on GFX10.3+. */
+      hw_stage = AC_HW_NEXT_GEN_GEOMETRY_SHADER;
    else if (sw_stage == SWStage::VS_GS && gfx9_plus && !ngg)
-      hw_stage = HWStage::GS; /* GFX6-9: VS+GS merged into a GS (and GFX10/legacy) */
+      hw_stage = AC_HW_LEGACY_GEOMETRY_SHADER;
    else if (sw_stage == SWStage::VS_GS && ngg)
-      hw_stage = HWStage::NGG; /* GFX10+: VS+GS merged into an NGG GS */
+      hw_stage = AC_HW_NEXT_GEN_GEOMETRY_SHADER;
    else if (sw_stage == SWStage::VS && info->vs.as_ls)
-      hw_stage = HWStage::LS; /* GFX6-8: VS is a Local Shader, when tessellation is used */
+      hw_stage = AC_HW_LOCAL_SHADER;
    else if (sw_stage == SWStage::TCS)
-      hw_stage = HWStage::HS; /* GFX6-8: TCS is a Hull Shader */
+      hw_stage = AC_HW_HULL_SHADER;
    else if (sw_stage == SWStage::VS_TCS)
-      hw_stage = HWStage::HS; /* GFX9-10: VS+TCS merged into a Hull Shader */
+      hw_stage = AC_HW_HULL_SHADER;
    else if (sw_stage == SWStage::TES && !info->tes.as_es && !ngg)
-      hw_stage = HWStage::VS; /* GFX6-9: TES without GS uses the HW VS stage (and GFX10/legacy) */
+      hw_stage = AC_HW_VERTEX_SHADER;
    else if (sw_stage == SWStage::TES && !info->tes.as_es && ngg)
-      hw_stage = HWStage::NGG; /* GFX10/NGG: TES without GS */
+      hw_stage = AC_HW_NEXT_GEN_GEOMETRY_SHADER;
    else if (sw_stage == SWStage::TES && info->tes.as_es && !ngg)
-      hw_stage = HWStage::ES; /* GFX6-8: TES is an Export Shader */
+      hw_stage = AC_HW_EXPORT_SHADER;
    else if (sw_stage == SWStage::TES_GS && gfx9_plus && !ngg)
-      hw_stage = HWStage::GS; /* GFX9: TES+GS merged into a GS (and GFX10/legacy) */
+      hw_stage = AC_HW_LEGACY_GEOMETRY_SHADER;
    else if (sw_stage == SWStage::TES_GS && ngg)
-      hw_stage = HWStage::NGG; /* GFX10+: TES+GS merged into an NGG GS */
+      hw_stage = AC_HW_NEXT_GEN_GEOMETRY_SHADER;
    else if (sw_stage == SWStage::RT)
-      hw_stage = HWStage::CS; /* Raytracing shaders run as CS */
+      hw_stage = AC_HW_COMPUTE_SHADER;
    else
       unreachable("Shader stage not implemented");
 
