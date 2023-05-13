@@ -376,15 +376,17 @@ bool si_sdma_copy_image(struct si_context *sctx, struct si_texture *dst, struct 
    if (!si_prepare_for_sdma_copy(sctx, dst, src))
       return false;
 
-   /* Decompress DCC on older chips */
-   if (vi_dcc_enabled(src, 0) && sctx->gfx_level < GFX10)
-      si_decompress_dcc(sctx, src);
    /* TODO: DCC compression is possible on GFX10+. See si_set_mutable_tex_desc_fields for
     * additional constraints.
-    * For now, the only use-case of SDMA is DRI_PRIME tiled->linear copy, so this is not
-    * implemented. */
+    * For now, the only use-case of SDMA is DRI_PRIME tiled->linear copy, and linear dst
+    * never has DCC.
+    */
    if (vi_dcc_enabled(dst, 0))
       return false;
+
+   /* Decompress DCC on older chips where SDMA can't read it. */
+   if (vi_dcc_enabled(src, 0) && sctx->gfx_level < GFX10)
+      si_decompress_dcc(sctx, src);
 
    /* Always flush the gfx queue to get the winsys to handle the dependencies for us. */
    si_flush_gfx_cs(sctx, 0, NULL);
