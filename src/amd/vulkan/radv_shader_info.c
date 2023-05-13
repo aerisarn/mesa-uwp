@@ -683,7 +683,7 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
       S_02880C_DEPTH_BEFORE_SHADER(info->ps.early_fragment_test) |
       S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(info->ps.post_depth_coverage) |
       S_02880C_EXEC_ON_HIER_FAIL(info->ps.writes_memory) | S_02880C_EXEC_ON_NOOP(info->ps.writes_memory) |
-      S_02880C_DUAL_QUAD_DISABLE(disable_rbplus);
+      S_02880C_DUAL_QUAD_DISABLE(disable_rbplus) | S_02880C_PRIMITIVE_ORDERED_PIXEL_SHADER(info->ps.pops);
 }
 
 static void

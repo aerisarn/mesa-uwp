@@ -6355,7 +6355,8 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
    }
 
-   if (!previous_ps || previous_ps->info.ps.db_shader_control != ps->info.ps.db_shader_control)
+   if (!previous_ps || previous_ps->info.ps.db_shader_control != ps->info.ps.db_shader_control ||
+       previous_ps->info.ps.pops_is_per_sample != ps->info.ps.pops_is_per_sample)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DB_SHADER_CONTROL;
 
    /* Re-emit the PS epilog when a new fragment shader is bound. */
@@ -8696,6 +8697,7 @@ radv_emit_db_shader_control(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    const bool uses_ds_feedback_loop =
       !!(d->feedback_loop_aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+   const unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
 
    uint32_t db_shader_control;
 
@@ -8715,7 +8717,21 @@ radv_emit_db_shader_control(struct radv_cmd_buffer *cmd_buffer)
        (rad_info->gfx_level == GFX6 && d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT))
       db_shader_control = (db_shader_control & C_02880C_Z_ORDER) | S_02880C_Z_ORDER(V_02880C_LATE_Z);
 
-   if (rad_info->has_export_conflict_bug && radv_get_rasterization_samples(cmd_buffer) == 1) {
+   if (ps && ps->info.ps.pops) {
+      /* POPS_OVERLAP_NUM_SAMPLES (OVERRIDE_INTRINSIC_RATE on GFX11, must always be enabled for POPS) controls the
+       * interlock granularity.
+       * PixelInterlock: 1x.
+       * SampleInterlock: MSAA_EXPOSED_SAMPLES (much faster at common edges of adjacent primitives with MSAA).
+       */
+      if (rad_info->gfx_level >= GFX11) {
+         db_shader_control |= S_02880C_OVERRIDE_INTRINSIC_RATE_ENABLE(1);
+         if (ps->info.ps.pops_is_per_sample)
+            db_shader_control |= S_02880C_OVERRIDE_INTRINSIC_RATE(util_logbase2(rasterization_samples));
+      } else {
+         if (ps->info.ps.pops_is_per_sample)
+            db_shader_control |= S_02880C_POPS_OVERLAP_NUM_SAMPLES(util_logbase2(rasterization_samples));
+      }
+   } else if (rad_info->has_export_conflict_bug && rasterization_samples == 1) {
       for (uint32_t i = 0; i < MAX_RTS; i++) {
          if (d->vk.cb.attachments[i].write_mask && d->vk.cb.attachments[i].blend_enable) {
             db_shader_control |= S_02880C_OVERRIDE_INTRINSIC_RATE_ENABLE(1) | S_02880C_OVERRIDE_INTRINSIC_RATE(2);
