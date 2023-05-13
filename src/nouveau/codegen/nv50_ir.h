@@ -1289,8 +1289,6 @@ public:
    uint32_t binPos;
    uint32_t binSize;
 
-   Value *stackPtr;
-
    uint32_t tlsBase; // base address for l[] space (if no stack pointer is used)
    uint32_t tlsSize;
 

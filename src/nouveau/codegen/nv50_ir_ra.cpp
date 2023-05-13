@@ -1580,14 +1580,10 @@ SpillCodeInserter::assignSlot(const Interval &livei, const unsigned int size)
    int32_t offset;
    std::list<SpillSlot>::iterator pos = slots.end(), it = slots.begin();
 
-   if (!func->stackPtr) {
-      // Later, we compute the address as (offsetBase + tlsBase)
-      // tlsBase might not be size-aligned, so we add just enough
-      // to give the final address the correct alignment
-      offsetBase = align(offsetBase + func->tlsBase, size) - func->tlsBase;
-   } else {
-      offsetBase = align(offsetBase, size);
-   }
+   // Later, we compute the address as (offsetBase + tlsBase)
+   // tlsBase might not be size-aligned, so we add just enough
+   // to give the final address the correct alignment
+   offsetBase = align(offsetBase + func->tlsBase, size) - func->tlsBase;
 
    slot.sym = NULL;
 
@@ -1619,8 +1615,7 @@ SpillCodeInserter::assignSlot(const Interval &livei, const unsigned int size)
       stackSize = offset + size;
       slot.offset = offset;
       slot.sym = new_Symbol(func->getProgram(), FILE_MEMORY_LOCAL);
-      if (!func->stackPtr)
-         offset += func->tlsBase;
+      offset += func->tlsBase;
       slot.sym->setAddress(NULL, offset);
       slot.sym->reg.size = size;
       slots.insert(pos, slot)->occup.insert(livei);

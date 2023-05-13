@@ -41,7 +41,6 @@ Function::Function(Program *p, const char *fnName, uint32_t label)
    binPos = 0;
    binSize = 0;
 
-   stackPtr = NULL;
    tlsBase = 0;
    tlsSize = 0;
 
