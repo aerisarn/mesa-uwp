@@ -52,9 +52,11 @@ static unsigned encode_legacy_tile_info(struct si_context *sctx, struct si_textu
           (G_009910_PIPE_CONFIG(tile_mode) << 26);
 }
 
-static
-bool si_sdma_v4_v5_copy_texture(struct si_context *sctx, struct si_texture *sdst, struct si_texture *ssrc, bool is_v5)
+static bool si_sdma_v4_v5_copy_texture(struct si_context *sctx, struct si_texture *sdst,
+                                       struct si_texture *ssrc)
 {
+   bool is_v5 = sctx->gfx_level >= GFX10;
+   bool is_v5_2 = sctx->gfx_level >= GFX10_3;
    unsigned bpp = sdst->surface.bpe;
    uint64_t dst_address = sdst->buffer.gpu_address + sdst->surface.u.gfx9.surf_offset;
    uint64_t src_address = ssrc->buffer.gpu_address + ssrc->surface.u.gfx9.surf_offset;
@@ -72,7 +74,7 @@ bool si_sdma_v4_v5_copy_texture(struct si_context *sctx, struct si_texture *sdst
 
       uint64_t bytes = (uint64_t)src_pitch * copy_height * bpp;
 
-      if (!(bytes < (1u << 22)))
+      if (!(bytes <= (1u << (is_v5_2 ? 30 : 22))))
          return false;
 
       src_address += ssrc->surface.u.gfx9.offset[0];
@@ -110,9 +112,9 @@ bool si_sdma_v4_v5_copy_texture(struct si_context *sctx, struct si_texture *sdst
       linear_address += linear->surface.u.gfx9.offset[0];
 
       /* Check if everything fits into the bitfields */
-      if (!(tiled_width < (1 << 14) && tiled_height < (1 << 14) &&
-            linear_pitch < (1 << 14) && linear_slice_pitch < (1 << 28) &&
-            copy_width < (1 << 14) && copy_height < (1 << 14)))
+      if (!(tiled_width <= (1 << 14) && tiled_height <= (1 << 14) &&
+            linear_pitch <= (1 << 14) && linear_slice_pitch <= (1 << 28) &&
+            copy_width <= (1 << 14) && copy_height <= (1 << 14)))
          return false;
 
       radeon_begin(cs);
@@ -401,7 +403,7 @@ bool si_sdma_copy_image(struct si_context *sctx, struct si_texture *dst, struct 
       case GFX10:
       case GFX10_3:
       case GFX11:
-         if (!si_sdma_v4_v5_copy_texture(sctx, dst, src, sctx->gfx_level >= GFX10))
+         if (!si_sdma_v4_v5_copy_texture(sctx, dst, src))
             return false;
          break;
       default:
