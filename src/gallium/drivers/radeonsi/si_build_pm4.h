@@ -157,11 +157,11 @@
 /* Emit PKT3_SET_CONTEXT_REG if the register value is different. */
 #define radeon_opt_set_context_reg(sctx, offset, reg, val) do { \
    unsigned __value = val; \
-   if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x1) != 0x1 || \
-       sctx->tracked_regs.reg_value[reg] != __value) { \
+   if (((sctx->tracked_regs.context_reg_saved_mask >> (reg)) & 0x1) != 0x1 || \
+       sctx->tracked_regs.context_reg_value[reg] != __value) { \
       radeon_set_context_reg(offset, __value); \
-      sctx->tracked_regs.reg_saved |= 0x1ull << (reg); \
-      sctx->tracked_regs.reg_value[reg] = __value; \
+      sctx->tracked_regs.context_reg_saved_mask |= 0x1ull << (reg); \
+      sctx->tracked_regs.context_reg_value[reg] = __value; \
    } \
 } while (0)
 
@@ -173,15 +173,15 @@
  */
 #define radeon_opt_set_context_reg2(sctx, offset, reg, val1, val2) do { \
    unsigned __value1 = (val1), __value2 = (val2); \
-   if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x3) != 0x3 || \
-       sctx->tracked_regs.reg_value[reg] != __value1 || \
-       sctx->tracked_regs.reg_value[(reg) + 1] != __value2) { \
+   if (((sctx->tracked_regs.context_reg_saved_mask >> (reg)) & 0x3) != 0x3 || \
+       sctx->tracked_regs.context_reg_value[reg] != __value1 || \
+       sctx->tracked_regs.context_reg_value[(reg) + 1] != __value2) { \
       radeon_set_context_reg_seq(offset, 2); \
       radeon_emit(__value1); \
       radeon_emit(__value2); \
-      sctx->tracked_regs.reg_value[reg] = __value1; \
-      sctx->tracked_regs.reg_value[(reg) + 1] = __value2; \
-      sctx->tracked_regs.reg_saved |= 0x3ull << (reg); \
+      sctx->tracked_regs.context_reg_value[reg] = __value1; \
+      sctx->tracked_regs.context_reg_value[(reg) + 1] = __value2; \
+      sctx->tracked_regs.context_reg_saved_mask |= 0x3ull << (reg); \
    } \
 } while (0)
 
@@ -190,18 +190,18 @@
  */
 #define radeon_opt_set_context_reg3(sctx, offset, reg, val1, val2, val3) do { \
    unsigned __value1 = (val1), __value2 = (val2), __value3 = (val3); \
-   if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x7) != 0x7 || \
-       sctx->tracked_regs.reg_value[reg] != __value1 || \
-       sctx->tracked_regs.reg_value[(reg) + 1] != __value2 || \
-       sctx->tracked_regs.reg_value[(reg) + 2] != __value3) { \
+   if (((sctx->tracked_regs.context_reg_saved_mask >> (reg)) & 0x7) != 0x7 || \
+       sctx->tracked_regs.context_reg_value[reg] != __value1 || \
+       sctx->tracked_regs.context_reg_value[(reg) + 1] != __value2 || \
+       sctx->tracked_regs.context_reg_value[(reg) + 2] != __value3) { \
       radeon_set_context_reg_seq(offset, 3); \
       radeon_emit(__value1); \
       radeon_emit(__value2); \
       radeon_emit(__value3); \
-      sctx->tracked_regs.reg_value[reg] = __value1; \
-      sctx->tracked_regs.reg_value[(reg) + 1] = __value2; \
-      sctx->tracked_regs.reg_value[(reg) + 2] = __value3; \
-      sctx->tracked_regs.reg_saved |= 0x7ull << (reg); \
+      sctx->tracked_regs.context_reg_value[reg] = __value1; \
+      sctx->tracked_regs.context_reg_value[(reg) + 1] = __value2; \
+      sctx->tracked_regs.context_reg_value[(reg) + 2] = __value3; \
+      sctx->tracked_regs.context_reg_saved_mask |= 0x7ull << (reg); \
    } \
 } while (0)
 
@@ -210,21 +210,21 @@
  */
 #define radeon_opt_set_context_reg4(sctx, offset, reg, val1, val2, val3, val4) do { \
    unsigned __value1 = (val1), __value2 = (val2), __value3 = (val3), __value4 = (val4); \
-   if (((sctx->tracked_regs.reg_saved >> (reg)) & 0xf) != 0xf || \
-       sctx->tracked_regs.reg_value[reg] != __value1 || \
-       sctx->tracked_regs.reg_value[(reg) + 1] != __value2 || \
-       sctx->tracked_regs.reg_value[(reg) + 2] != __value3 || \
-       sctx->tracked_regs.reg_value[(reg) + 3] != __value4) { \
+   if (((sctx->tracked_regs.context_reg_saved_mask >> (reg)) & 0xf) != 0xf || \
+       sctx->tracked_regs.context_reg_value[reg] != __value1 || \
+       sctx->tracked_regs.context_reg_value[(reg) + 1] != __value2 || \
+       sctx->tracked_regs.context_reg_value[(reg) + 2] != __value3 || \
+       sctx->tracked_regs.context_reg_value[(reg) + 3] != __value4) { \
       radeon_set_context_reg_seq(offset, 4); \
       radeon_emit(__value1); \
       radeon_emit(__value2); \
       radeon_emit(__value3); \
       radeon_emit(__value4); \
-      sctx->tracked_regs.reg_value[reg] = __value1; \
-      sctx->tracked_regs.reg_value[(reg) + 1] = __value2; \
-      sctx->tracked_regs.reg_value[(reg) + 2] = __value3; \
-      sctx->tracked_regs.reg_value[(reg) + 3] = __value4; \
-      sctx->tracked_regs.reg_saved |= 0xfull << (reg); \
+      sctx->tracked_regs.context_reg_value[reg] = __value1; \
+      sctx->tracked_regs.context_reg_value[(reg) + 1] = __value2; \
+      sctx->tracked_regs.context_reg_value[(reg) + 2] = __value3; \
+      sctx->tracked_regs.context_reg_value[(reg) + 3] = __value4; \
+      sctx->tracked_regs.context_reg_saved_mask |= 0xfull << (reg); \
    } \
 } while (0)
 
@@ -233,24 +233,24 @@
  */
 #define radeon_opt_set_context_reg5(sctx, offset, reg, val0, val1, val2, val3, val4) do { \
    unsigned __value0 = (val0), __value1 = (val1), __value2 = (val2), __value3 = (val3), __value4 = (val4); \
-   if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x1f) != 0x1f || \
-       sctx->tracked_regs.reg_value[(reg) + 0] != __value0 || \
-       sctx->tracked_regs.reg_value[(reg) + 1] != __value1 || \
-       sctx->tracked_regs.reg_value[(reg) + 2] != __value2 || \
-       sctx->tracked_regs.reg_value[(reg) + 3] != __value3 || \
-       sctx->tracked_regs.reg_value[(reg) + 4] != __value4) { \
+   if (((sctx->tracked_regs.context_reg_saved_mask >> (reg)) & 0x1f) != 0x1f || \
+       sctx->tracked_regs.context_reg_value[(reg) + 0] != __value0 || \
+       sctx->tracked_regs.context_reg_value[(reg) + 1] != __value1 || \
+       sctx->tracked_regs.context_reg_value[(reg) + 2] != __value2 || \
+       sctx->tracked_regs.context_reg_value[(reg) + 3] != __value3 || \
+       sctx->tracked_regs.context_reg_value[(reg) + 4] != __value4) { \
       radeon_set_context_reg_seq(offset, 5); \
       radeon_emit(__value0); \
       radeon_emit(__value1); \
       radeon_emit(__value2); \
       radeon_emit(__value3); \
       radeon_emit(__value4); \
-      sctx->tracked_regs.reg_value[(reg) + 0] = __value0; \
-      sctx->tracked_regs.reg_value[(reg) + 1] = __value1; \
-      sctx->tracked_regs.reg_value[(reg) + 2] = __value2; \
-      sctx->tracked_regs.reg_value[(reg) + 3] = __value3; \
-      sctx->tracked_regs.reg_value[(reg) + 4] = __value4; \
-      sctx->tracked_regs.reg_saved |= 0x1full << (reg); \
+      sctx->tracked_regs.context_reg_value[(reg) + 0] = __value0; \
+      sctx->tracked_regs.context_reg_value[(reg) + 1] = __value1; \
+      sctx->tracked_regs.context_reg_value[(reg) + 2] = __value2; \
+      sctx->tracked_regs.context_reg_value[(reg) + 3] = __value3; \
+      sctx->tracked_regs.context_reg_value[(reg) + 4] = __value4; \
+      sctx->tracked_regs.context_reg_saved_mask |= 0x1full << (reg); \
    } \
 } while (0)
 
@@ -267,31 +267,31 @@
 
 #define radeon_opt_set_sh_reg(sctx, offset, reg, val) do { \
    unsigned __value = val; \
-   if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x1) != 0x1 || \
-       sctx->tracked_regs.reg_value[reg] != __value) { \
+   if (((sctx->tracked_regs.other_reg_saved_mask >> (reg)) & 0x1) != 0x1 || \
+       sctx->tracked_regs.other_reg_value[reg] != __value) { \
       radeon_set_sh_reg(offset, __value); \
-      sctx->tracked_regs.reg_saved |= BITFIELD64_BIT(reg); \
-      sctx->tracked_regs.reg_value[reg] = __value; \
+      sctx->tracked_regs.other_reg_saved_mask |= BITFIELD64_BIT(reg); \
+      sctx->tracked_regs.other_reg_value[reg] = __value; \
    } \
 } while (0)
 
 #define radeon_opt_set_sh_reg_idx3(sctx, offset, reg, val) do { \
    unsigned __value = val; \
-   if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x1) != 0x1 || \
-       sctx->tracked_regs.reg_value[reg] != __value) { \
+   if (((sctx->tracked_regs.other_reg_saved_mask >> (reg)) & 0x1) != 0x1 || \
+       sctx->tracked_regs.other_reg_value[reg] != __value) { \
       radeon_set_sh_reg_idx3(sctx, offset, __value); \
-      sctx->tracked_regs.reg_saved |= BITFIELD64_BIT(reg); \
-      sctx->tracked_regs.reg_value[reg] = __value; \
+      sctx->tracked_regs.other_reg_saved_mask |= BITFIELD64_BIT(reg); \
+      sctx->tracked_regs.other_reg_value[reg] = __value; \
    } \
 } while (0)
 
 #define radeon_opt_set_uconfig_reg(sctx, offset, reg, val) do { \
    unsigned __value = val; \
-   if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x1) != 0x1 || \
-       sctx->tracked_regs.reg_value[reg] != __value) { \
+   if (((sctx->tracked_regs.other_reg_saved_mask >> (reg)) & 0x1) != 0x1 || \
+       sctx->tracked_regs.other_reg_value[reg] != __value) { \
       radeon_set_uconfig_reg(offset, __value); \
-      sctx->tracked_regs.reg_saved |= 0x1ull << (reg); \
-      sctx->tracked_regs.reg_value[reg] = __value; \
+      sctx->tracked_regs.other_reg_saved_mask |= 0x1ull << (reg); \
+      sctx->tracked_regs.other_reg_value[reg] = __value; \
    } \
 } while (0)
 

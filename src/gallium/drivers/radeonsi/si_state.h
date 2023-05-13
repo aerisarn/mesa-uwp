@@ -230,7 +230,7 @@ struct si_shader_data {
 };
 
 /* The list of registers whose emitted values are remembered by si_context. */
-enum si_tracked_reg
+enum si_tracked_context_reg
 {
    SI_TRACKED_DB_RENDER_CONTROL, /* 2 consecutive registers */
    SI_TRACKED_DB_COUNT_CONTROL,
@@ -316,18 +316,25 @@ enum si_tracked_reg
    SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL,
    SI_TRACKED_VGT_SHADER_STAGES_EN,
 
+   SI_NUM_TRACKED_CONTEXT_REGS,
+};
+
+enum si_tracked_other_reg {
    /* Non-context registers: */
    SI_TRACKED_GE_PC_ALLOC,
    SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
    SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
 
-   SI_NUM_TRACKED_REGS,
+   SI_NUM_TRACKED_OTHER_REGS,
 };
 
 struct si_tracked_regs {
-   uint64_t reg_saved;
-   uint32_t reg_value[SI_NUM_TRACKED_REGS];
+   uint64_t context_reg_saved_mask;
+   uint32_t context_reg_value[SI_NUM_TRACKED_CONTEXT_REGS];
    uint32_t spi_ps_input_cntl[32];
+
+   uint32_t other_reg_saved_mask;
+   uint32_t other_reg_value[SI_NUM_TRACKED_OTHER_REGS];
 };
 
 /* Private read-write buffer slots. */
