@@ -1186,9 +1186,6 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
                                shader->ngg.spi_shader_pos_format);
    radeon_opt_set_context_reg(sctx, R_028818_PA_CL_VTE_CNTL, SI_TRACKED_PA_CL_VTE_CNTL,
                               shader->ngg.pa_cl_vte_cntl);
-   radeon_opt_set_context_reg(sctx, R_028838_PA_CL_NGG_CNTL, SI_TRACKED_PA_CL_NGG_CNTL,
-                              shader->ngg.pa_cl_ngg_cntl);
-
    radeon_end_update_context_roll(sctx);
 
    /* These don't cause a context roll. */
@@ -1397,14 +1394,6 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       S_028B90_ENABLE(gs_num_invocations > 1) |
       S_028B90_CNT(gs_num_invocations) |
       S_028B90_EN_MAX_VERT_OUT_PER_GS_INSTANCE(shader->ngg.max_vert_out_per_gs_instance);
-
-   /* Output hw-generated edge flags if needed and pass them via the prim
-    * export to prevent drawing lines on internal edges of decomposed
-    * primitives (such as quads) with polygon mode = lines.
-    */
-   shader->ngg.pa_cl_ngg_cntl =
-      S_028838_INDEX_BUF_EDGE_FLAG_ENA(gfx10_edgeflags_have_effect(shader)) |
-      S_028838_VERTEX_REUSE_DEPTH(sscreen->info.gfx_level >= GFX10_3 ? 30 : 0);
    shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, shader, true);
 
    if (gs_stage == MESA_SHADER_GEOMETRY) {

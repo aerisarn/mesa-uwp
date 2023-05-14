@@ -949,7 +949,6 @@ struct si_shader {
          unsigned spi_shader_idx_format;
          unsigned spi_shader_pos_format;
          unsigned pa_cl_vte_cntl;
-         unsigned pa_cl_ngg_cntl;
          unsigned vgt_gs_max_vert_out; /* for API GS */
          unsigned ge_pc_alloc;         /* uconfig register */
          unsigned spi_shader_pgm_rsrc3_gs;

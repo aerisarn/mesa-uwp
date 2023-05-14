@@ -1073,6 +1073,13 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                                                    polygon_mode_enabled ||
                                                    rs->perpendicular_end_caps : 0));
 
+   if (sscreen->info.gfx_level >= GFX10) {
+      si_pm4_set_reg(pm4, R_028838_PA_CL_NGG_CNTL,
+                     S_028838_INDEX_BUF_EDGE_FLAG_ENA(rs->polygon_mode_is_points ||
+                                                      rs->polygon_mode_is_lines) |
+                     S_028838_VERTEX_REUSE_DEPTH(sscreen->info.gfx_level >= GFX10_3 ? 30 : 0));
+   }
+
    if (state->bottom_edge_rule) {
       /* OpenGL windows should set this. */
       si_pm4_set_reg(pm4, R_028230_PA_SC_EDGERULE,
