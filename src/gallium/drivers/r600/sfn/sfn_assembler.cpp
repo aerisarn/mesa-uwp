@@ -435,9 +435,6 @@ AssamblerVisitor::emit_alu_op(const AluInstr& ai)
       m_bc->index_loaded[1] = 1;
       m_bc->index_reg[1] = -1;
    }
-
-   m_bc->force_add_cf |=
-      ai.opcode() == op2_kille || ai.opcode() == op2_killne_int;
 }
 
 void
