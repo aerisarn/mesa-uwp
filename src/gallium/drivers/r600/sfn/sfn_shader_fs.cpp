@@ -172,7 +172,7 @@ FragmentShader::process_stage_intrinsic(nir_intrinsic_instr *intr)
                                     value_factory().src(intr->src[0], 0),
                                     value_factory().zero(),
                                     {AluInstr::last}));
-      start_new_block(0);
+
       return true;
    case nir_intrinsic_discard:
       m_uses_discard = true;

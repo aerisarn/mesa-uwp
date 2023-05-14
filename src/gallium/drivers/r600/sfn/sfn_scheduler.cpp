@@ -325,6 +325,7 @@ BlockScheduler::schedule_block(Block& in_block,
    bool have_instr = collect_ready(cir);
 
    m_current_block = new Block(in_block.nesting_depth(), in_block.id());
+   m_current_block->set_instr_flag(Instr::force_cf);
    assert(m_current_block->id() >= 0);
 
    while (have_instr) {
@@ -774,6 +775,10 @@ BlockScheduler::schedule_alu_to_group_vec(AluGroup *group)
          ++i;
          continue;
       }
+
+      // precausion: don't kill while we hae LDS queue reads in the pipeline
+      if ((*i)->is_kill() && m_current_block->lds_group_active())
+         continue;
 
       if (!m_current_block->try_reserve_kcache(**i)) {
          sfn_log << SfnLog::schedule << " failed (kcache)\n";

@@ -49,16 +49,14 @@ AluGroup::add_instruction(AluInstr *instr)
       ASSERTED auto opinfo = alu_ops.find(instr->opcode());
       assert(opinfo->second.can_channel(AluOp::t, s_chip_class));
       if (add_trans_instructions(instr)) {
-         if (instr->is_kill())
-            m_has_kill_op = true;
+         m_has_kill_op |= instr->is_kill();
          return true;
       }
    }
 
    if (add_vec_instructions(instr) && !instr->has_alu_flag(alu_is_trans)) {
       instr->set_parent_group(this);
-      if (instr->is_kill())
-         m_has_kill_op = true;
+      m_has_kill_op |= instr->is_kill();
       return true;
    }
 
@@ -68,8 +66,7 @@ AluGroup::add_instruction(AluInstr *instr)
    if (s_max_slots > 4 && opinfo->second.can_channel(AluOp::t, s_chip_class) &&
        add_trans_instructions(instr)) {
       instr->set_parent_group(this);
-      if (instr->is_kill())
-         m_has_kill_op = true;
+      m_has_kill_op |= instr->is_kill();
       return true;
    }
 
@@ -143,6 +140,8 @@ AluGroup::add_trans_instructions(AluInstr *instr)
          /* We added a vector op in the trans channel, so we have to
           * make sure the corresponding vector channel is used */
          assert(instr->has_alu_flag(alu_is_trans) || m_slots[instr->dest_chan()]);
+
+         m_has_kill_op |= instr->is_kill();
          return true;
       }
    }
@@ -183,12 +182,16 @@ AluGroup::add_vec_instructions(AluInstr *instr)
    int preferred_chan = instr->dest_chan();
    if (!m_slots[preferred_chan]) {
       if (instr->bank_swizzle() != alu_vec_unknown) {
-         if (try_readport(instr, instr->bank_swizzle()))
+         if (try_readport(instr, instr->bank_swizzle())) {
+            m_has_kill_op |= instr->is_kill();
             return true;
+         }
       } else {
          for (AluBankSwizzle i = alu_vec_012; i != alu_vec_unknown; ++i) {
-            if (try_readport(instr, i))
+            if (try_readport(instr, i)) {
+               m_has_kill_op |= instr->is_kill();
                return true;
+            }
          }
       }
    } else {
@@ -218,12 +221,16 @@ AluGroup::add_vec_instructions(AluInstr *instr)
             dest->set_chan(free_chan);
             if (instr->bank_swizzle() != alu_vec_unknown) {
 
-               if (try_readport(instr, instr->bank_swizzle()))
+               if (try_readport(instr, instr->bank_swizzle())) {
+                  m_has_kill_op |= instr->is_kill();
                   return true;
+               }
             } else {
                for (AluBankSwizzle i = alu_vec_012; i != alu_vec_unknown; ++i) {
-                  if (try_readport(instr, i))
+                  if (try_readport(instr, i)) {
+                     m_has_kill_op |= instr->is_kill();
                      return true;
+                  }
                }
             }
          }
