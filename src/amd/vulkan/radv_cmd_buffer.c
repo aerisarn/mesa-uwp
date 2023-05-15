@@ -2382,20 +2382,44 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
    radeon_set_context_reg(cmd_buffer->cs, R_028848_PA_CL_VRS_CNTL, pa_cl_vrs_cntl);
 }
 
+static uint32_t
+radv_get_primitive_reset_index(const struct radv_cmd_buffer *cmd_buffer)
+{
+   const uint32_t index_type = G_028A7C_INDEX_TYPE(cmd_buffer->state.index_type);
+   switch (index_type) {
+   case V_028A7C_VGT_INDEX_8:
+      return 0xffu;
+   case V_028A7C_VGT_INDEX_16:
+      return 0xffffu;
+   case V_028A7C_VGT_INDEX_32:
+      return 0xffffffffu;
+   default:
+      unreachable("invalid index type");
+   }
+}
+
 static void
 radv_emit_primitive_restart_enable(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   const bool en = d->vk.ia.primitive_restart_enable;
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
-      radeon_set_uconfig_reg(cmd_buffer->cs, R_03092C_GE_MULTI_PRIM_IB_RESET_EN,
-                             d->vk.ia.primitive_restart_enable);
+      radeon_set_uconfig_reg(cs, R_03092C_GE_MULTI_PRIM_IB_RESET_EN, en);
    } else if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
-      radeon_set_uconfig_reg(cmd_buffer->cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN,
-                             d->vk.ia.primitive_restart_enable);
+      radeon_set_uconfig_reg(cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN, en);
    } else {
-      radeon_set_context_reg(cmd_buffer->cs, R_028A94_VGT_MULTI_PRIM_IB_RESET_EN,
-                             d->vk.ia.primitive_restart_enable);
+      radeon_set_context_reg(cs, R_028A94_VGT_MULTI_PRIM_IB_RESET_EN, en);
+   }
+
+   if (en) {
+      const uint32_t primitive_reset_index = radv_get_primitive_reset_index(cmd_buffer);
+
+      if (primitive_reset_index != cmd_buffer->state.last_primitive_reset_index) {
+         radeon_set_context_reg(cs, R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, primitive_reset_index);
+         cmd_buffer->state.last_primitive_reset_index = primitive_reset_index;
+      }
    }
 }
 
@@ -5379,22 +5403,6 @@ struct radv_draw_info {
    uint64_t strmout_buffer_offset;
 };
 
-static uint32_t
-radv_get_primitive_reset_index(struct radv_cmd_buffer *cmd_buffer)
-{
-   uint32_t index_type = G_028A7C_INDEX_TYPE(cmd_buffer->state.index_type);
-   switch (index_type) {
-   case V_028A7C_VGT_INDEX_8:
-      return 0xffu;
-   case V_028A7C_VGT_INDEX_16:
-      return 0xffffu;
-   case V_028A7C_VGT_INDEX_32:
-      return 0xffffffffu;
-   default:
-      unreachable("invalid index type");
-   }
-}
-
 static void
 si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_draw,
                            bool indirect_draw, bool count_from_stream_output,
@@ -5480,15 +5488,6 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, const struct radv_d
       si_emit_ia_multi_vgt_param(cmd_buffer, draw_info->instance_count > 1, draw_info->indirect,
                                  !!draw_info->strmout_buffer,
                                  draw_info->indirect ? 0 : draw_info->count);
-   }
-
-   if (state->dynamic.vk.ia.primitive_restart_enable) {
-      uint32_t primitive_reset_index = radv_get_primitive_reset_index(cmd_buffer);
-
-      if (primitive_reset_index != state->last_primitive_reset_index) {
-         radeon_set_context_reg(cs, R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, primitive_reset_index);
-         state->last_primitive_reset_index = primitive_reset_index;
-      }
    }
 
    /* RDNA2 is affected by a hardware bug when instance packing is enabled for adjacent primitive
@@ -6131,8 +6130,13 @@ radv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDevice
    int index_size = radv_get_vgt_index_size(vk_to_index_type(indexType));
    cmd_buffer->state.max_index_count =
       (vk_buffer_range(&index_buffer->vk, offset, VK_WHOLE_SIZE)) / index_size;
-   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_INDEX_BUFFER;
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, index_buffer->bo);
+
+   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_INDEX_BUFFER;
+
+   /* Primitive restart state depends on the index type. */
+   if (cmd_buffer->state.dynamic.vk.ia.primitive_restart_enable)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
 }
 
 static void
