@@ -1916,6 +1916,19 @@ void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx
                                 unsigned data_sel, uint64_t va, uint32_t new_fence,
                                 uint64_t gfx9_eop_bug_va);
 
+struct radv_vgt_shader_key {
+   uint8_t tess : 1;
+   uint8_t gs : 1;
+   uint8_t mesh_scratch_ring : 1;
+   uint8_t mesh : 1;
+   uint8_t ngg_passthrough : 1;
+   uint8_t ngg : 1;       /* gfx10+ */
+   uint8_t streamout : 1; /* only used with NGG */
+   uint8_t hs_wave32 : 1;
+   uint8_t gs_wave32 : 1;
+   uint8_t vs_wave32 : 1;
+};
+
 void radv_cp_wait_mem(struct radeon_cmdbuf *cs, uint32_t op, uint64_t va, uint32_t ref,
                       uint32_t mask);
 void si_cs_emit_cache_flush(struct radeon_winsys *ws, struct radeon_cmdbuf *cs,
