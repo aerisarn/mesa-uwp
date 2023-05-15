@@ -147,7 +147,7 @@ spirv_builder_emit_entry_point(struct spirv_builder *b,
    b->entry_points.words[pos] |= (3 + len + num_interfaces) << 16;
    spirv_buffer_prepare(&b->entry_points, b->mem_ctx, num_interfaces);
    for (int i = 0; i < num_interfaces; ++i)
-        spirv_buffer_emit_word(&b->entry_points, interfaces[i]);
+      spirv_buffer_emit_word(&b->entry_points, interfaces[i]);
 }
 
 uint32_t
