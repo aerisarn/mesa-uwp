@@ -3197,6 +3197,33 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    }
 }
 
+static nir_atomic_op
+translate_atomic_op(SpvOp opcode)
+{
+   switch (opcode) {
+   case SpvOpAtomicExchange:            return nir_atomic_op_xchg;
+   case SpvOpAtomicCompareExchange:     return nir_atomic_op_cmpxchg;
+   case SpvOpAtomicCompareExchangeWeak: return nir_atomic_op_cmpxchg;
+   case SpvOpAtomicIIncrement:          return nir_atomic_op_iadd;
+   case SpvOpAtomicIDecrement:          return nir_atomic_op_iadd;
+   case SpvOpAtomicIAdd:                return nir_atomic_op_iadd;
+   case SpvOpAtomicISub:                return nir_atomic_op_iadd;
+   case SpvOpAtomicSMin:                return nir_atomic_op_imin;
+   case SpvOpAtomicUMin:                return nir_atomic_op_umin;
+   case SpvOpAtomicSMax:                return nir_atomic_op_imax;
+   case SpvOpAtomicUMax:                return nir_atomic_op_umax;
+   case SpvOpAtomicAnd:                 return nir_atomic_op_iand;
+   case SpvOpAtomicOr:                  return nir_atomic_op_ior;
+   case SpvOpAtomicXor:                 return nir_atomic_op_ixor;
+   case SpvOpAtomicFAddEXT:             return nir_atomic_op_fadd;
+   case SpvOpAtomicFMinEXT:             return nir_atomic_op_fmin;
+   case SpvOpAtomicFMaxEXT:             return nir_atomic_op_fmax;
+   case SpvOpAtomicFlagTestAndSet:      return nir_atomic_op_cmpxchg;
+   default:
+      unreachable("Invalid atomic");
+   }
+}
+
 static void
 fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
                            const uint32_t *w, nir_src *src)
@@ -3437,23 +3464,23 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    OP(ImageWrite,                store)
    OP(AtomicLoad,                load)
    OP(AtomicStore,               store)
-   OP(AtomicExchange,            atomic_exchange)
-   OP(AtomicCompareExchange,     atomic_comp_swap)
-   OP(AtomicCompareExchangeWeak, atomic_comp_swap)
-   OP(AtomicIIncrement,          atomic_add)
-   OP(AtomicIDecrement,          atomic_add)
-   OP(AtomicIAdd,                atomic_add)
-   OP(AtomicISub,                atomic_add)
-   OP(AtomicSMin,                atomic_imin)
-   OP(AtomicUMin,                atomic_umin)
-   OP(AtomicSMax,                atomic_imax)
-   OP(AtomicUMax,                atomic_umax)
-   OP(AtomicAnd,                 atomic_and)
-   OP(AtomicOr,                  atomic_or)
-   OP(AtomicXor,                 atomic_xor)
-   OP(AtomicFAddEXT,             atomic_fadd)
-   OP(AtomicFMinEXT,             atomic_fmin)
-   OP(AtomicFMaxEXT,             atomic_fmax)
+   OP(AtomicExchange,            atomic)
+   OP(AtomicCompareExchange,     atomic_swap)
+   OP(AtomicCompareExchangeWeak, atomic_swap)
+   OP(AtomicIIncrement,          atomic)
+   OP(AtomicIDecrement,          atomic)
+   OP(AtomicIAdd,                atomic)
+   OP(AtomicISub,                atomic)
+   OP(AtomicSMin,                atomic)
+   OP(AtomicUMin,                atomic)
+   OP(AtomicSMax,                atomic)
+   OP(AtomicUMax,                atomic)
+   OP(AtomicAnd,                 atomic)
+   OP(AtomicOr,                  atomic)
+   OP(AtomicXor,                 atomic)
+   OP(AtomicFAddEXT,             atomic)
+   OP(AtomicFMinEXT,             atomic)
+   OP(AtomicFMaxEXT,             atomic)
    OP(ImageQueryFormat,          format)
    OP(ImageQueryOrder,           order)
    OP(ImageQuerySamples,         samples)
@@ -3463,6 +3490,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    }
 
    nir_intrinsic_instr *intrin = nir_intrinsic_instr_create(b->shader, op);
+   if (nir_intrinsic_has_atomic_op(intrin))
+      nir_intrinsic_set_atomic_op(intrin, translate_atomic_op(opcode));
 
    intrin->src[0] = nir_src_for_ssa(&image.image->dest.ssa);
    nir_intrinsic_set_image_dim(intrin, glsl_get_sampler_dim(image.image->type));
@@ -3676,24 +3705,24 @@ get_deref_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
    case SpvOpAtomicFlagClear:
    case SpvOpAtomicStore:        return nir_intrinsic_store_deref;
 #define OP(S, N) case SpvOp##S: return nir_intrinsic_deref_##N;
-   OP(AtomicExchange,            atomic_exchange)
-   OP(AtomicCompareExchange,     atomic_comp_swap)
-   OP(AtomicCompareExchangeWeak, atomic_comp_swap)
-   OP(AtomicIIncrement,          atomic_add)
-   OP(AtomicIDecrement,          atomic_add)
-   OP(AtomicIAdd,                atomic_add)
-   OP(AtomicISub,                atomic_add)
-   OP(AtomicSMin,                atomic_imin)
-   OP(AtomicUMin,                atomic_umin)
-   OP(AtomicSMax,                atomic_imax)
-   OP(AtomicUMax,                atomic_umax)
-   OP(AtomicAnd,                 atomic_and)
-   OP(AtomicOr,                  atomic_or)
-   OP(AtomicXor,                 atomic_xor)
-   OP(AtomicFAddEXT,             atomic_fadd)
-   OP(AtomicFMinEXT,             atomic_fmin)
-   OP(AtomicFMaxEXT,             atomic_fmax)
-   OP(AtomicFlagTestAndSet,      atomic_comp_swap)
+   OP(AtomicExchange,            atomic)
+   OP(AtomicCompareExchange,     atomic_swap)
+   OP(AtomicCompareExchangeWeak, atomic_swap)
+   OP(AtomicIIncrement,          atomic)
+   OP(AtomicIDecrement,          atomic)
+   OP(AtomicIAdd,                atomic)
+   OP(AtomicISub,                atomic)
+   OP(AtomicSMin,                atomic)
+   OP(AtomicUMin,                atomic)
+   OP(AtomicSMax,                atomic)
+   OP(AtomicUMax,                atomic)
+   OP(AtomicAnd,                 atomic)
+   OP(AtomicOr,                  atomic)
+   OP(AtomicXor,                 atomic)
+   OP(AtomicFAddEXT,             atomic)
+   OP(AtomicFMinEXT,             atomic)
+   OP(AtomicFMaxEXT,             atomic)
+   OP(AtomicFlagTestAndSet,      atomic_swap)
 #undef OP
    default:
       vtn_fail_with_opcode("Invalid shared atomic", opcode);
@@ -3795,6 +3824,9 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       nir_intrinsic_op op = get_deref_nir_atomic_op(b, opcode);
       atomic = nir_intrinsic_instr_create(b->nb.shader, op);
       atomic->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+
+      if (nir_intrinsic_has_atomic_op(atomic))
+         nir_intrinsic_set_atomic_op(atomic, translate_atomic_op(opcode));
 
       if (ptr->mode != vtn_variable_mode_workgroup)
          access |= ACCESS_COHERENT;
