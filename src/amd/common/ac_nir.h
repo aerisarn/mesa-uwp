@@ -298,6 +298,7 @@ typedef struct {
    /* OpenGL only */
    bool clamp_color;
    bool alpha_to_one;
+   bool kill_samplemask;
    enum pipe_compare_func alpha_func;
    unsigned broadcast_last_cbuf;
 

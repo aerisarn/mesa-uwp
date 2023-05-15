@@ -606,6 +606,7 @@ struct si_ps_epilog_bits {
    unsigned clamp_color : 1;
    unsigned dual_src_blend_swizzle : 1;      /* gfx11+ */
    unsigned rbplus_depth_only_opt:1;
+   unsigned kill_samplemask:1;
 };
 
 union si_shader_part_key {
@@ -966,6 +967,7 @@ struct si_shader {
          unsigned cb_shader_mask;
          unsigned db_shader_control;
          unsigned num_interp;
+         bool writes_samplemask;
       } ps;
    };
 

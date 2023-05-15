@@ -1803,7 +1803,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    /* DB_SHADER_CONTROL */
    shader->ps.db_shader_control = S_02880C_Z_EXPORT_ENABLE(info->writes_z) |
                                   S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(info->writes_stencil) |
-                                  S_02880C_MASK_EXPORT_ENABLE(info->writes_samplemask) |
+                                  S_02880C_MASK_EXPORT_ENABLE(shader->ps.writes_samplemask) |
                                   S_02880C_KILL_ENABLE(si_shader_uses_discard(shader));
 
    switch (info->base.fs.depth_layout) {
@@ -1887,7 +1887,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    shader->ps.spi_ps_input_addr = shader->config.spi_ps_input_addr;
    shader->ps.num_interp = si_get_ps_num_interp(shader);
    shader->ps.spi_shader_z_format =
-      ac_get_spi_shader_z_format(info->writes_z, info->writes_stencil, info->writes_samplemask,
+      ac_get_spi_shader_z_format(info->writes_z, info->writes_stencil, shader->ps.writes_samplemask,
                                  shader->key.ps.part.epilog.alpha_to_coverage_via_mrtz);
 
    /* Ensure that some export memory is always allocated, for two reasons:
@@ -1907,7 +1907,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
     *
     * RB+ depth-only rendering requires SPI_SHADER_32_R.
     */
-   bool has_mrtz = info->writes_z || info->writes_stencil || info->writes_samplemask;
+   bool has_mrtz = info->writes_z || info->writes_stencil || shader->ps.writes_samplemask;
 
    if (!shader->ps.spi_shader_col_format) {
       if (shader->key.ps.part.epilog.rbplus_depth_only_opt) {
@@ -2216,6 +2216,13 @@ void si_ps_key_update_framebuffer_blend_rasterizer(struct si_context *sctx)
    key->ps.part.epilog.alpha_to_coverage_via_mrtz =
       sctx->gfx_level >= GFX11 && alpha_to_coverage &&
       (sel->info.writes_z || sel->info.writes_stencil || sel->info.writes_samplemask);
+
+   /* Remove the gl_SampleMask fragment shader output if MSAA is disabled.
+    * This is required for correctness and it's also an optimization.
+    */
+   key->ps.part.epilog.kill_samplemask = sel->info.writes_samplemask &&
+                                         (sctx->framebuffer.nr_samples <= 1 ||
+                                          !rs->multisample_enable);
 
    /* If alpha-to-coverage isn't exported via MRTZ, set that we need to export alpha
     * through MRT0.

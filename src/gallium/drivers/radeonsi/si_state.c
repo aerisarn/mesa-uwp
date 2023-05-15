@@ -1150,7 +1150,6 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
       rs = (struct si_state_rasterizer *)sctx->discard_rasterizer_state;
 
    if (old_rs->multisample_enable != rs->multisample_enable) {
-      si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
       si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
 
       /* Update the small primitive filter workaround if necessary. */
@@ -1507,7 +1506,6 @@ void si_restore_qbo_state(struct si_context *sctx, struct si_qbo_state *st)
 
 static void si_emit_db_render_state(struct si_context *sctx)
 {
-   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
    unsigned db_shader_control, db_render_control, db_count_control, vrs_override_cntl = 0;
 
    /* DB_RENDER_CONTROL */
@@ -1574,10 +1572,6 @@ static void si_emit_db_render_state(struct si_context *sctx)
    }
 
    db_shader_control = sctx->ps_db_shader_control;
-
-   /* Disable the gl_SampleMask fragment shader output if MSAA is disabled. */
-   if (!rs->multisample_enable)
-      db_shader_control &= C_02880C_MASK_EXPORT_ENABLE;
 
    if (sctx->screen->info.has_export_conflict_bug &&
        sctx->queued.named.blend->blend_enable_4bit &&

@@ -1042,11 +1042,15 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
    struct si_shader_selector *sel = shader->selector;
    struct si_shader_context ctx;
    enum ac_float_mode float_mode = nir->info.stage == MESA_SHADER_KERNEL ? AC_FLOAT_MODE_DEFAULT : AC_FLOAT_MODE_DEFAULT_OPENGL;
+   bool exports_color_null = false;
+   bool exports_mrtz = false;
 
-   bool exports_color_null = sel->info.colors_written;
-   bool exports_mrtz = sel->info.writes_z || sel->info.writes_stencil || sel->info.writes_samplemask;
-   if (!exports_mrtz && !exports_color_null)
-      exports_color_null = si_shader_uses_discard(shader) || sscreen->info.gfx_level < GFX10;
+   if (sel->stage == MESA_SHADER_FRAGMENT) {
+      exports_color_null = sel->info.colors_written;
+      exports_mrtz = sel->info.writes_z || sel->info.writes_stencil || shader->ps.writes_samplemask;
+      if (!exports_mrtz && !exports_color_null)
+         exports_color_null = si_shader_uses_discard(shader) || sscreen->info.gfx_level < GFX10;
+   }
 
    si_llvm_context_init(&ctx, sscreen, compiler, shader->wave_size, exports_color_null, exports_mrtz,
                         float_mode);

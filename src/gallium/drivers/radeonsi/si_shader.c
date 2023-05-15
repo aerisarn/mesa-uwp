@@ -704,7 +704,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
          num_returns =
             num_return_sgprs + util_bitcount(shader->selector->info.colors_written) * 4 +
             shader->selector->info.writes_z + shader->selector->info.writes_stencil +
-            shader->selector->info.writes_samplemask + 1 /* SampleMaskIn */;
+            shader->ps.writes_samplemask + 1 /* SampleMaskIn */;
 
          for (i = 0; i < num_return_sgprs; i++)
             ac_add_return(&args->ac, AC_ARG_SGPR);
@@ -1149,7 +1149,7 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
       num_outputs = util_bitcount(shader->selector->info.colors_written) +
                     (shader->selector->info.writes_z ||
                      shader->selector->info.writes_stencil ||
-                     shader->selector->info.writes_samplemask);
+                     shader->ps.writes_samplemask);
    }
 
    util_debug_message(debug, SHADER_INFO,
@@ -1394,6 +1394,8 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       fprintf(f, "  epilog.alpha_to_coverage_via_mrtz = %u\n", key->ps.part.epilog.alpha_to_coverage_via_mrtz);
       fprintf(f, "  epilog.clamp_color = %u\n", key->ps.part.epilog.clamp_color);
       fprintf(f, "  epilog.dual_src_blend_swizzle = %u\n", key->ps.part.epilog.dual_src_blend_swizzle);
+      fprintf(f, "  epilog.rbplus_depth_only_opt = %u\n", key->ps.part.epilog.rbplus_depth_only_opt);
+      fprintf(f, "  epilog.kill_samplemask = %u\n", key->ps.part.epilog.kill_samplemask);
       fprintf(f, "  mono.poly_line_smoothing = %u\n", key->ps.mono.poly_line_smoothing);
       fprintf(f, "  mono.point_smoothing = %u\n", key->ps.mono.point_smoothing);
       fprintf(f, "  mono.interpolate_at_sample_force_center = %u\n",
@@ -2232,6 +2234,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
          .alpha_to_one = key->ps.part.epilog.alpha_to_one,
          .alpha_func = key->ps.part.epilog.alpha_func,
          .broadcast_last_cbuf = key->ps.part.epilog.last_cbuf,
+         .kill_samplemask = key->ps.part.epilog.kill_samplemask,
 
          .bc_optimize_for_persp = key->ps.part.prolog.bc_optimize_for_persp,
          .bc_optimize_for_linear = key->ps.part.prolog.bc_optimize_for_linear,
@@ -3076,7 +3079,8 @@ void si_get_ps_epilog_key(struct si_shader *shader, union si_shader_part_key *ke
    key->ps_epilog.color_types = info->output_color_types;
    key->ps_epilog.writes_z = info->writes_z;
    key->ps_epilog.writes_stencil = info->writes_stencil;
-   key->ps_epilog.writes_samplemask = info->writes_samplemask;
+   key->ps_epilog.writes_samplemask = info->writes_samplemask &&
+                                      !shader->key.ps.part.epilog.kill_samplemask;
    key->ps_epilog.states = shader->key.ps.part.epilog;
 }
 
@@ -3152,6 +3156,11 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
 {
    struct si_shader_selector *sel = shader->selector;
    struct si_shader *mainp = *si_get_main_shader_part(sel, &shader->key);
+
+   if (sel->stage == MESA_SHADER_FRAGMENT) {
+      shader->ps.writes_samplemask = sel->info.writes_samplemask &&
+                                     !shader->key.ps.part.epilog.kill_samplemask;
+   }
 
    /* LS, ES, VS are compiled on demand if the main part hasn't been
     * compiled for that stage.

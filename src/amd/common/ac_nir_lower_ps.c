@@ -348,6 +348,8 @@ emit_ps_color_clamp_and_alpha_test(nir_builder *b, lower_ps_state *s)
 static void
 emit_ps_mrtz_export(nir_builder *b, lower_ps_state *s)
 {
+   uint64_t outputs_written = b->shader->info.outputs_written;
+
    nir_ssa_def *mrtz_alpha = NULL;
    if (s->options->alpha_to_coverage_via_mrtz) {
       mrtz_alpha = s->outputs[FRAG_RESULT_COLOR][3] ?
@@ -359,11 +361,15 @@ emit_ps_mrtz_export(nir_builder *b, lower_ps_state *s)
    nir_ssa_def *stencil = s->outputs[FRAG_RESULT_STENCIL][0];
    nir_ssa_def *sample_mask = s->outputs[FRAG_RESULT_SAMPLE_MASK][0];
 
+   if (s->options->kill_samplemask) {
+      sample_mask = NULL;
+      outputs_written &= ~BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
+   }
+
    /* skip mrtz export if no one has written to any of them */
    if (!depth && !stencil && !sample_mask && !mrtz_alpha)
       return;
 
-   uint64_t outputs_written = b->shader->info.outputs_written;
    /* use outputs_written to determine export format as we use it to set
     * R_028710_SPI_SHADER_Z_FORMAT instead of relying on the real store output,
     * because store output may be optimized out.
