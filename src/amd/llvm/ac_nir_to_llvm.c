@@ -4698,11 +4698,6 @@ bool ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
    struct ac_nir_context ctx = {0};
    struct nir_function *func;
 
-   /* Temporary stop-gap until legacy atomics are removed. This happens here
-    * instead of the driver since it's needed by both radeonsi and radv.
-    */
-   NIR_PASS_V(nir, nir_lower_legacy_atomics);
-
    ctx.ac = *ac;
    ctx.abi = abi;
    ctx.args = args;
