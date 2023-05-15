@@ -7,7 +7,8 @@ specifications follow.
 -  `MESA_agp_offset.spec <specs/OLD/MESA_agp_offset.spec>`__ (obsolete)
 -  `MESA_copy_sub_buffer.spec <specs/MESA_copy_sub_buffer.spec>`__
 -  `MESA_drm_image.spec <specs/MESA_drm_image.spec>`__
--  `MESA_multithread_makecurrent.spec <specs/MESA_multithread_makecurrent.spec>`__
+-  `MESA_multithread_makecurrent.spec <specs/OLD/MESA_multithread_makecurrent.spec>`__
+   (obsolete)
 -  `MESA_packed_depth_stencil.spec <specs/OLD/MESA_packed_depth_stencil.spec>`__
    (obsolete)
 -  `MESA_pack_invert.spec <specs/MESA_pack_invert.spec>`__

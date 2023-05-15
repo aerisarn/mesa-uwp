@@ -12,7 +12,7 @@ Contact
 
 Status
 
-    Not shipping.
+    Obsolete.
 
 Version
 
