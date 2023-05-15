@@ -8826,7 +8826,8 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
 #endif
 #if GFX_VERx10 >= 125
       pc.UntypedDataPortCacheFlushEnable =
-         (flags & PIPE_CONTROL_UNTYPED_DATAPORT_CACHE_FLUSH) &&
+         (flags & (PIPE_CONTROL_UNTYPED_DATAPORT_CACHE_FLUSH |
+                   PIPE_CONTROL_FLUSH_HDC)) &&
          IS_COMPUTE_PIPELINE(batch);
       pc.HDCPipelineFlushEnable |= pc.UntypedDataPortCacheFlushEnable;
       pc.CCSFlushEnable |= flags & PIPE_CONTROL_CCS_CACHE_FLUSH;
