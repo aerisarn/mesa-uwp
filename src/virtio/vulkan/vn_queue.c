@@ -1003,7 +1003,6 @@ vn_queue_bind_sparse_submit_batch(struct vn_queue_submission *submit,
    const VkBindSparseInfo *sparse_info = &submit->sparse_batches[batch_index];
    const VkSemaphore *signal_sem = sparse_info->pSignalSemaphores;
    uint32_t signal_sem_count = sparse_info->signalSemaphoreCount;
-   uint32_t sem_feedback_count = 0;
    VkResult result;
 
    struct vn_queue_submission sparse_batch = {
@@ -1012,13 +1011,6 @@ vn_queue_bind_sparse_submit_batch(struct vn_queue_submission *submit,
       .batch_count = 1,
       .fence_handle = VK_NULL_HANDLE,
    };
-
-   for (uint32_t i = 0; i < signal_sem_count; i++) {
-      struct vn_semaphore *sem =
-         vn_semaphore_from_handle(sparse_info->pSignalSemaphores[i]);
-      if (sem->feedback.slot)
-         sem_feedback_count++;
-   }
 
    /* lazily create sparse semaphore */
    if (queue->sparse_semaphore == VK_NULL_HANDLE) {
