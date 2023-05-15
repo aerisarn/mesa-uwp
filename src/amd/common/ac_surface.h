@@ -440,6 +440,7 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
                        const struct ac_surf_config *config, enum radeon_surf_mode mode,
                        struct radeon_surf *surf);
 void ac_surface_zero_dcc_fields(struct radeon_surf *surf);
+unsigned ac_pipe_config_to_num_pipes(unsigned pipe_config);
 
 void ac_surface_apply_bo_metadata(const struct radeon_info *info, struct radeon_surf *surf,
                                   uint64_t tiling_flags, enum radeon_surf_mode *mode);

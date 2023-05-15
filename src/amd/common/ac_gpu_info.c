@@ -26,6 +26,7 @@
 #include "ac_gpu_info.h"
 #include "ac_shader_util.h"
 #include "ac_debug.h"
+#include "ac_surface.h"
 
 #include "addrlib/src/amdgpu_asic_addr.h"
 #include "sid.h"
@@ -349,52 +350,6 @@ static const char *amdgpu_get_marketing_name(amdgpu_device_handle dev)
 #endif
 
 #define CIK_TILE_MODE_COLOR_2D 14
-
-#define CIK__GB_TILE_MODE__PIPE_CONFIG(x)           (((x) >> 6) & 0x1f)
-#define CIK__PIPE_CONFIG__ADDR_SURF_P2              0
-#define CIK__PIPE_CONFIG__ADDR_SURF_P4_8x16         4
-#define CIK__PIPE_CONFIG__ADDR_SURF_P4_16x16        5
-#define CIK__PIPE_CONFIG__ADDR_SURF_P4_16x32        6
-#define CIK__PIPE_CONFIG__ADDR_SURF_P4_32x32        7
-#define CIK__PIPE_CONFIG__ADDR_SURF_P8_16x16_8x16   8
-#define CIK__PIPE_CONFIG__ADDR_SURF_P8_16x32_8x16   9
-#define CIK__PIPE_CONFIG__ADDR_SURF_P8_32x32_8x16   10
-#define CIK__PIPE_CONFIG__ADDR_SURF_P8_16x32_16x16  11
-#define CIK__PIPE_CONFIG__ADDR_SURF_P8_32x32_16x16  12
-#define CIK__PIPE_CONFIG__ADDR_SURF_P8_32x32_16x32  13
-#define CIK__PIPE_CONFIG__ADDR_SURF_P8_32x64_32x32  14
-#define CIK__PIPE_CONFIG__ADDR_SURF_P16_32X32_8X16  16
-#define CIK__PIPE_CONFIG__ADDR_SURF_P16_32X32_16X16 17
-
-static unsigned cik_get_num_tile_pipes(struct amdgpu_gpu_info *info)
-{
-   unsigned mode2d = info->gb_tile_mode[CIK_TILE_MODE_COLOR_2D];
-
-   switch (CIK__GB_TILE_MODE__PIPE_CONFIG(mode2d)) {
-   case CIK__PIPE_CONFIG__ADDR_SURF_P2:
-      return 2;
-   case CIK__PIPE_CONFIG__ADDR_SURF_P4_8x16:
-   case CIK__PIPE_CONFIG__ADDR_SURF_P4_16x16:
-   case CIK__PIPE_CONFIG__ADDR_SURF_P4_16x32:
-   case CIK__PIPE_CONFIG__ADDR_SURF_P4_32x32:
-      return 4;
-   case CIK__PIPE_CONFIG__ADDR_SURF_P8_16x16_8x16:
-   case CIK__PIPE_CONFIG__ADDR_SURF_P8_16x32_8x16:
-   case CIK__PIPE_CONFIG__ADDR_SURF_P8_32x32_8x16:
-   case CIK__PIPE_CONFIG__ADDR_SURF_P8_16x32_16x16:
-   case CIK__PIPE_CONFIG__ADDR_SURF_P8_32x32_16x16:
-   case CIK__PIPE_CONFIG__ADDR_SURF_P8_32x32_16x32:
-   case CIK__PIPE_CONFIG__ADDR_SURF_P8_32x64_32x32:
-      return 8;
-   case CIK__PIPE_CONFIG__ADDR_SURF_P16_32X32_8X16:
-   case CIK__PIPE_CONFIG__ADDR_SURF_P16_32X32_16X16:
-      return 16;
-   default:
-      fprintf(stderr, "Invalid GFX7 pipe configuration, assuming P2\n");
-      assert(!"this should never occur");
-      return 2;
-   }
-}
 
 static bool has_syncobj(int fd)
 {
@@ -1129,7 +1084,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       info->num_tile_pipes = 1 << G_0098F8_NUM_PIPES(info->gb_addr_config);
       info->pipe_interleave_bytes = 256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(info->gb_addr_config);
    } else {
-      info->num_tile_pipes = cik_get_num_tile_pipes(&amdinfo);
+      unsigned pipe_config = G_009910_PIPE_CONFIG(amdinfo.gb_tile_mode[CIK_TILE_MODE_COLOR_2D]);
+      info->num_tile_pipes = ac_pipe_config_to_num_pipes(pipe_config);
       info->pipe_interleave_bytes = 256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX6(info->gb_addr_config);
    }
    info->r600_has_virtual_memory = true;

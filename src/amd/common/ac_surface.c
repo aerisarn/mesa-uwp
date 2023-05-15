@@ -96,6 +96,32 @@ struct ac_addrlib {
    simple_mtx_t lock;
 };
 
+unsigned ac_pipe_config_to_num_pipes(unsigned pipe_config)
+{
+   switch (pipe_config) {
+   case V_009910_ADDR_SURF_P2:
+      return 2;
+   case V_009910_ADDR_SURF_P4_8x16:
+   case V_009910_ADDR_SURF_P4_16x16:
+   case V_009910_ADDR_SURF_P4_16x32:
+   case V_009910_ADDR_SURF_P4_32x32:
+      return 4;
+   case V_009910_ADDR_SURF_P8_16x16_8x16:
+   case V_009910_ADDR_SURF_P8_16x32_8x16:
+   case V_009910_ADDR_SURF_P8_32x32_8x16:
+   case V_009910_ADDR_SURF_P8_16x32_16x16:
+   case V_009910_ADDR_SURF_P8_32x32_16x16:
+   case V_009910_ADDR_SURF_P8_32x32_16x32:
+   case V_009910_ADDR_SURF_P8_32x64_32x32:
+      return 8;
+   case V_009910_ADDR_SURF_P16_32x32_8x16:
+   case V_009910_ADDR_SURF_P16_32x32_16x16:
+      return 16;
+   default:
+      unreachable("invalid pipe_config");
+   }
+}
+
 bool ac_modifier_has_dcc(uint64_t modifier)
 {
    return IS_AMD_FMT_MOD(modifier) && AMD_FMT_MOD_GET(DCC, modifier);
