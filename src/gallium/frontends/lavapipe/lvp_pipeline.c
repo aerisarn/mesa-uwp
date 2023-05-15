@@ -185,33 +185,12 @@ scan_intrinsic(struct lvp_shader *shader, struct lvp_pipeline_layout *layout, ni
    case nir_intrinsic_image_deref_store:
       set_image_access(shader, layout, nir, instr, false, true);
       break;
-   case nir_intrinsic_image_deref_atomic_add:
-   case nir_intrinsic_image_deref_atomic_imin:
-   case nir_intrinsic_image_deref_atomic_umin:
-   case nir_intrinsic_image_deref_atomic_imax:
-   case nir_intrinsic_image_deref_atomic_umax:
-   case nir_intrinsic_image_deref_atomic_and:
-   case nir_intrinsic_image_deref_atomic_or:
-   case nir_intrinsic_image_deref_atomic_xor:
-   case nir_intrinsic_image_deref_atomic_exchange:
-   case nir_intrinsic_image_deref_atomic_comp_swap:
-   case nir_intrinsic_image_deref_atomic_fadd:
+   case nir_intrinsic_image_deref_atomic:
+   case nir_intrinsic_image_deref_atomic_swap:
       set_image_access(shader, layout, nir, instr, true, true);
       break;
-   case nir_intrinsic_deref_atomic_add:
-   case nir_intrinsic_deref_atomic_and:
-   case nir_intrinsic_deref_atomic_comp_swap:
-   case nir_intrinsic_deref_atomic_exchange:
-   case nir_intrinsic_deref_atomic_fadd:
-   case nir_intrinsic_deref_atomic_fcomp_swap:
-   case nir_intrinsic_deref_atomic_fmax:
-   case nir_intrinsic_deref_atomic_fmin:
-   case nir_intrinsic_deref_atomic_imax:
-   case nir_intrinsic_deref_atomic_imin:
-   case nir_intrinsic_deref_atomic_or:
-   case nir_intrinsic_deref_atomic_umax:
-   case nir_intrinsic_deref_atomic_umin:
-   case nir_intrinsic_deref_atomic_xor:
+   case nir_intrinsic_deref_atomic:
+   case nir_intrinsic_deref_atomic_swap:
    case nir_intrinsic_store_deref:
       set_buffer_access(shader, layout, nir, instr);
       break;
@@ -485,6 +464,7 @@ lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader 
    NIR_PASS_V(nir, nir_remove_dead_variables,
               nir_var_uniform | nir_var_image, NULL);
 
+   NIR_PASS_V(nir, nir_lower_legacy_atomics);
    scan_pipeline_info(shader, layout, nir);
 
    optimize(nir);
