@@ -1777,7 +1777,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
        */
       surf->u.gfx9.surf_slice_size =
          MAX2(surf->u.gfx9.surf_slice_size,
-              surf->u.gfx9.surf_pitch * out.height * surf->bpe * surf->blk_w);
+              (uint64_t)surf->u.gfx9.surf_pitch * out.height * surf->bpe * surf->blk_w);
       surf->surf_size = surf->u.gfx9.surf_slice_size * in->numSlices;
 
       int alignment = 256 / surf->bpe;
