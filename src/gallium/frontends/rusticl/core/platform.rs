@@ -26,11 +26,12 @@ pub struct PlatformFeatures {
 
 static PLATFORM_ENV_ONCE: Once = Once::new();
 static PLATFORM_ONCE: Once = Once::new();
-pub static PLATFORM_EXTENSIONS: [cl_name_version; 2] = [
+pub static PLATFORM_EXTENSIONS: [cl_name_version; 3] = [
+    mk_cl_version_ext(1, 0, 0, "cl_khr_byte_addressable_store"),
     mk_cl_version_ext(1, 0, 0, "cl_khr_icd"),
     mk_cl_version_ext(1, 0, 0, "cl_khr_il_program"),
 ];
-pub static PLATFORM_EXTENSION_STR: &str = "cl_khr_icd cl_khr_il_program";
+pub static PLATFORM_EXTENSION_STR: &str = "cl_khr_byte_addressable_store cl_khr_icd cl_khr_il_program";
 
 static mut PLATFORM: Platform = Platform {
     dispatch: &DISPATCH,
