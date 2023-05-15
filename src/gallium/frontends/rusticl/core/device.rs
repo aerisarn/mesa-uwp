@@ -22,6 +22,7 @@ use std::cmp::min;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::env;
+use std::ffi::CString;
 use std::os::raw::*;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -37,6 +38,7 @@ pub struct Device {
     pub embedded: bool,
     pub extension_string: String,
     pub extensions: Vec<cl_name_version>,
+    pub spirv_extensions: Vec<CString>,
     pub clc_features: Vec<cl_name_version>,
     pub formats: HashMap<cl_image_format, HashMap<cl_mem_object_type, cl_mem_flags>>,
     pub lib_clc: NirShader,
@@ -194,6 +196,7 @@ impl Device {
             embedded: false,
             extension_string: String::from(""),
             extensions: Vec::new(),
+            spirv_extensions: Vec::new(),
             clc_features: Vec::new(),
             formats: HashMap::new(),
             lib_clc: lib_clc?,
@@ -474,6 +477,7 @@ impl Device {
         let mut exts_str: Vec<String> = Vec::new();
         let mut exts = PLATFORM_EXTENSIONS.to_vec();
         let mut feats = Vec::new();
+        let mut spirv_exts = Vec::new();
         let mut add_ext = |major, minor, patch, ext: &str| {
             exts.push(mk_cl_version_ext(major, minor, patch, ext));
             exts_str.push(ext.to_owned());
@@ -481,12 +485,16 @@ impl Device {
         let mut add_feat = |major, minor, patch, feat: &str| {
             feats.push(mk_cl_version_ext(major, minor, patch, feat));
         };
+        let mut add_spirv = |ext: &str| {
+            spirv_exts.push(CString::new(ext).unwrap());
+        };
 
         // add extensions all drivers support for now
         add_ext(1, 0, 0, "cl_khr_global_int32_base_atomics");
         add_ext(1, 0, 0, "cl_khr_global_int32_extended_atomics");
         add_ext(1, 0, 0, "cl_khr_local_int32_base_atomics");
         add_ext(1, 0, 0, "cl_khr_local_int32_extended_atomics");
+        add_spirv("SPV_KHR_float_controls");
 
         if self.doubles_supported() {
             add_ext(1, 0, 0, "cl_khr_fp64");
@@ -529,6 +537,7 @@ impl Device {
         self.extensions = exts;
         self.clc_features = feats;
         self.extension_string = format!("{} {}", PLATFORM_EXTENSION_STR, exts_str.join(" "));
+        self.spirv_extensions = spirv_exts;
     }
 
     fn shader_param(&self, cap: pipe_shader_cap) -> i32 {

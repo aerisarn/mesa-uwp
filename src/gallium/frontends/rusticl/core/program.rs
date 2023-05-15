@@ -564,6 +564,7 @@ impl Program {
                     headers,
                     get_disk_cache(),
                     dev.cl_features(),
+                    &dev.spirv_extensions,
                     dev.address_bits(),
                 )
             }
