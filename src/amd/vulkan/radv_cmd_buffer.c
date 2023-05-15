@@ -2313,6 +2313,16 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   /* When per-vertex VRS is forced and the dynamic fragment shading rate is a no-op, ignore
+    * it. This is needed for vkd3d-proton because it always declares per-draw VRS as dynamic.
+    */
+   if (cmd_buffer->device->force_vrs != RADV_FORCE_VRS_1x1 &&
+       d->vk.fsr.fragment_size.width == 1 && d->vk.fsr.fragment_size.height == 1 &&
+       d->vk.fsr.combiner_ops[0] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR &&
+       d->vk.fsr.combiner_ops[1] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR)
+      return;
+
    uint32_t rate_x = MIN2(2, d->vk.fsr.fragment_size.width) - 1;
    uint32_t rate_y = MIN2(2, d->vk.fsr.fragment_size.height) - 1;
    uint32_t pipeline_comb_mode = d->vk.fsr.combiner_ops[0];
@@ -9147,22 +9157,6 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
        */
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
          cmd_buffer->state.last_index_type = -1;
-      }
-   }
-
-   if (cmd_buffer->device->force_vrs != RADV_FORCE_VRS_1x1) {
-      struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-      uint64_t dynamic_states =
-         cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
-
-      if ((dynamic_states & RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE) &&
-          d->vk.fsr.fragment_size.width == 1 && d->vk.fsr.fragment_size.height == 1 &&
-          d->vk.fsr.combiner_ops[0] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR &&
-          d->vk.fsr.combiner_ops[1] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR) {
-         /* When per-vertex VRS is forced and the dynamic fragment shading rate is a no-op, ignore
-          * it. This is needed for vkd3d-proton because it always declares per-draw VRS as dynamic.
-          */
-         cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
       }
    }
 
