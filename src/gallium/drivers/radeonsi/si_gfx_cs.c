@@ -265,7 +265,6 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    ctx->tracked_regs.context_reg_value[SI_TRACKED_PA_SC_LINE_STIPPLE] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_PA_SC_MODE_CNTL_1] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_PA_SU_HARDWARE_SCREEN_OFFSET] = 0;
-   ctx->tracked_regs.context_reg_value[SI_TRACKED_PA_SU_PRIM_FILTER_CNTL] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_SPI_PS_IN_CONTROL] = 0x2;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GS_INSTANCE_CNT] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GS_MAX_VERT_OUT] = 0;

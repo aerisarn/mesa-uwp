@@ -3594,14 +3594,6 @@ static void si_emit_msaa_sample_locs(struct si_context *sctx)
       radeon_opt_set_context_reg(sctx, R_028830_PA_SU_SMALL_PRIM_FILTER_CNTL,
                                  SI_TRACKED_PA_SU_SMALL_PRIM_FILTER_CNTL, small_prim_filter_cntl);
    }
-
-   /* The exclusion bits can be set to improve rasterization efficiency
-    * if no sample lies on the pixel boundary (-8 sample offset).
-    */
-   bool exclusion = sctx->gfx_level >= GFX7 && (!rs->multisample_enable || nr_samples != 16);
-   radeon_opt_set_context_reg(
-      sctx, R_02882C_PA_SU_PRIM_FILTER_CNTL, SI_TRACKED_PA_SU_PRIM_FILTER_CNTL,
-      S_02882C_XMAX_RIGHT_EXCLUSION(exclusion) | S_02882C_YMAX_BOTTOM_EXCLUSION(exclusion));
    radeon_end();
 }
 
@@ -3744,7 +3736,7 @@ static void si_emit_msaa_config(struct si_context *sctx)
          4, /* 2x MSAA */
          6, /* 4x MSAA */
          7, /* 8x MSAA */
-         8, /* 16x MSAA */
+         7, /* 16x MSAA */
       };
       unsigned log_samples = util_logbase2(coverage_samples);
 
@@ -5755,6 +5747,11 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_008A60_PA_SU_LINE_STIPPLE_VALUE, 0);
       si_pm4_set_reg(pm4, R_008B10_PA_SC_LINE_STIPPLE_STATE, 0);
    }
+
+   /* If any sample location uses the -8 coordinate, the EXCLUSION fields should be set to 0. */
+   si_pm4_set_reg(pm4, R_02882C_PA_SU_PRIM_FILTER_CNTL,
+                  S_02882C_XMAX_RIGHT_EXCLUSION(sctx->gfx_level >= GFX7) |
+                  S_02882C_YMAX_BOTTOM_EXCLUSION(sctx->gfx_level >= GFX7));
 
    if (sctx->gfx_level <= GFX7 || !has_clear_state) {
       if (sctx->gfx_level < GFX11) {

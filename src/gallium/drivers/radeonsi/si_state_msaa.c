@@ -97,7 +97,11 @@ static const uint32_t sample_locs_16x[] = {
    FILL_SREG(-5, -2, 5, 3, -2, 6, 3, -5),
    FILL_SREG(-4, -6, 1, 1, -6, 4, 7, -4),
    FILL_SREG(-1, -3, 6, 7, -3, 2, 0, -7),
-   FILL_SREG(-7, -8, 2, 5, -8, 0, 4, -1),
+   /* We use -7 where DX sample locations want -8, which allows us to make
+    * the PA_SU_PRIM_FILTER_CNTL register immutable. That's a quality compromise
+    * for underused 16x EQAA.
+    */
+   FILL_SREG(-7, -7 /* DX uses -8 */, 2, 5, -7 /* DX uses -8 */, 0, 4, -1),
 };
 static const uint64_t centroid_priority_16x = 0xc97e64b231d0fa85ull;
 
