@@ -232,7 +232,7 @@ void si_init_msaa_functions(struct si_context *sctx)
 {
    int i;
 
-   sctx->atoms.s.msaa_sample_locs.emit = si_emit_sample_locations;
+   sctx->atoms.s.sample_locations.emit = si_emit_sample_locations;
    sctx->b.get_sample_position = si_get_sample_position;
 
    si_get_sample_position(&sctx->b, 1, 0, sctx->sample_positions.x1[0]);

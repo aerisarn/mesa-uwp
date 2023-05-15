@@ -292,7 +292,7 @@ static bool si_update_shaders(struct si_context *sctx)
          si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
 
       if (sctx->framebuffer.nr_samples <= 1)
-         si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_sample_locs);
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.sample_locations);
    }
 
    if (GFX_VERSION >= GFX9 && unlikely(sctx->sqtt)) {

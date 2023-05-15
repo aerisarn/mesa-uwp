@@ -487,7 +487,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
       if (!has_clear_state || ctx->clip_state_any_nonzeros)
          si_mark_atom_dirty(ctx, &ctx->atoms.s.clip_state);
       ctx->sample_locs_num_samples = 0;
-      si_mark_atom_dirty(ctx, &ctx->atoms.s.msaa_sample_locs);
+      si_mark_atom_dirty(ctx, &ctx->atoms.s.sample_locations);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.msaa_config);
       /* CLEAR_STATE sets 0xffff. */
       if (!has_clear_state || ctx->sample_mask != 0xffff)

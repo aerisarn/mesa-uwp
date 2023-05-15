@@ -190,7 +190,7 @@ union si_state_atoms {
       struct si_atom streamout_begin;
       struct si_atom streamout_enable; /* must be after streamout_begin */
       struct si_atom framebuffer;
-      struct si_atom msaa_sample_locs;
+      struct si_atom sample_locations;
       struct si_atom db_render_state;
       struct si_atom dpbb_state;
       struct si_atom msaa_config;
@@ -220,7 +220,7 @@ union si_state_atoms {
 static inline unsigned si_atoms_that_always_roll_context(void)
 {
    return (SI_ATOM_BIT(streamout_begin) | SI_ATOM_BIT(streamout_enable) | SI_ATOM_BIT(framebuffer) |
-           SI_ATOM_BIT(msaa_sample_locs) | SI_ATOM_BIT(sample_mask) | SI_ATOM_BIT(blend_color) |
+           SI_ATOM_BIT(sample_locations) | SI_ATOM_BIT(sample_mask) | SI_ATOM_BIT(blend_color) |
            SI_ATOM_BIT(clip_state) | SI_ATOM_BIT(scissors) | SI_ATOM_BIT(viewports) |
            SI_ATOM_BIT(stencil_ref) | SI_ATOM_BIT(scratch_state) | SI_ATOM_BIT(window_rectangles));
 }

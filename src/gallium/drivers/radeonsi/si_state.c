@@ -1161,7 +1161,7 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
 
       /* Update the small primitive filter workaround if necessary. */
       if (sctx->screen->info.has_small_prim_filter_sample_loc_bug && sctx->framebuffer.nr_samples > 1)
-         si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_sample_locs);
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.sample_locations);
 
       /* NGG cull state uses multisample_enable. */
       if (sctx->screen->use_ngg_culling)
@@ -3068,7 +3068,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
       constbuf.buffer_size = sctx->framebuffer.nr_samples * 2 * 4;
       si_set_internal_const_buffer(sctx, SI_PS_CONST_SAMPLE_POSITIONS, &constbuf);
 
-      si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_sample_locs);
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.sample_locations);
    }
 
    si_ps_key_update_framebuffer(sctx);
