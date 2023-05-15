@@ -71,8 +71,7 @@ case nir_intrinsic_##op: {\
 }
 #define LOAD(mode, op, res, base, deref) INFO(mode, load_##op, false, res, base, deref, -1)
 #define STORE(mode, op, res, base, deref, val) INFO(mode, store_##op, false, res, base, deref, val)
-#define ATOMIC(mode, type, op, res, base, deref, val) INFO(mode, type##_atomic_##op, true, res, base, deref, val)
-#define NEW_ATOMIC(mode, type, res, base, deref, val) \
+#define ATOMIC(mode, type, res, base, deref, val) \
    INFO(mode, type##_atomic, true, res, base, deref, val) \
    INFO(mode, type##_atomic_swap, true, res, base, deref, val) \
 
@@ -88,11 +87,11 @@ case nir_intrinsic_##op: {\
    STORE(nir_var_mem_global, global, -1, 1, -1, 0)
    LOAD(nir_var_mem_task_payload, task_payload, -1, 0, -1)
    STORE(nir_var_mem_task_payload, task_payload, -1, 1, -1, 0)
-   NEW_ATOMIC(nir_var_mem_ssbo, ssbo, 0, 1, -1, 2)
-   NEW_ATOMIC(0, deref, -1, -1, 0, 1)
-   NEW_ATOMIC(nir_var_mem_shared, shared, -1, 0, -1, 1)
-   NEW_ATOMIC(nir_var_mem_global, global, -1, 0, -1, 1)
-   NEW_ATOMIC(nir_var_mem_task_payload, task_payload, -1, 0, -1, 1)
+   ATOMIC(nir_var_mem_ssbo, ssbo, 0, 1, -1, 2)
+   ATOMIC(0, deref, -1, -1, 0, 1)
+   ATOMIC(nir_var_mem_shared, shared, -1, 0, -1, 1)
+   ATOMIC(nir_var_mem_global, global, -1, 0, -1, 1)
+   ATOMIC(nir_var_mem_task_payload, task_payload, -1, 0, -1, 1)
    LOAD(nir_var_shader_temp, stack, -1, -1, -1)
    STORE(nir_var_shader_temp, stack, -1, -1, -1, 0)
    LOAD(nir_var_mem_ssbo, ssbo_uniform_block_intel, 0, 1, -1)
