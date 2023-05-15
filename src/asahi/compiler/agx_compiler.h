@@ -358,6 +358,11 @@ typedef struct agx_block {
    /* Register allocation */
    BITSET_DECLARE(regs_out, AGX_NUM_REGS);
 
+   /* Is this block a loop header? If not, all of its predecessors precede it in
+    * source order.
+    */
+   bool loop_header;
+
    /* Offset of the block in the emitted binary */
    off_t offset;
 

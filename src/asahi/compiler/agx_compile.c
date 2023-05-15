@@ -1738,6 +1738,7 @@ emit_loop(agx_context *ctx, nir_loop *nloop)
 
    /* Emit the body */
    ctx->after_block = ctx->continue_block;
+   ctx->after_block->loop_header = true;
    agx_block *start_block = emit_cf_list(ctx, &nloop->body);
 
    /* Fix up the nesting counter via an always true while_icmp, and branch back
