@@ -204,6 +204,7 @@ struct pvr_device {
    struct pvr_suballocator suballoc_pds;
    struct pvr_suballocator suballoc_transfer;
    struct pvr_suballocator suballoc_usc;
+   struct pvr_suballocator suballoc_vis_test;
 
    struct {
       struct pvr_pds_upload pds;
@@ -982,8 +983,8 @@ struct pvr_query_pool {
 
    uint32_t query_count;
 
-   struct pvr_bo *result_buffer;
-   struct pvr_bo *availability_buffer;
+   struct pvr_suballoc_bo *result_buffer;
+   struct pvr_suballoc_bo *availability_buffer;
 };
 
 struct pvr_private_compute_pipeline {
@@ -1014,7 +1015,7 @@ struct pvr_query_info {
          uint32_t num_query_indices;
          struct pvr_suballoc_bo *index_bo;
          uint32_t num_queries;
-         struct pvr_bo *availability_bo;
+         struct pvr_suballoc_bo *availability_bo;
       } availability_write;
 
       struct {

@@ -112,6 +112,7 @@
 #define PVR_SUBALLOCATOR_PDS_SIZE (128 * 1024)
 #define PVR_SUBALLOCATOR_TRANSFER_SIZE (128 * 1024)
 #define PVR_SUBALLOCATOR_USC_SIZE (128 * 1024)
+#define PVR_SUBALLOCATOR_VIS_TEST_SIZE (128 * 1024)
 
 struct pvr_drm_device_info {
    const char *name;
@@ -1823,6 +1824,10 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
                             device->heaps.usc_heap,
                             device,
                             PVR_SUBALLOCATOR_USC_SIZE);
+   pvr_bo_suballocator_init(&device->suballoc_vis_test,
+                            device->heaps.vis_test_heap,
+                            device,
+                            PVR_SUBALLOCATOR_VIS_TEST_SIZE);
 
    if (p_atomic_inc_return(&instance->active_device_count) >
        PVR_SECONDARY_DEVICE_THRESHOLD) {
@@ -1930,6 +1935,7 @@ err_pvr_free_list_destroy:
 err_dec_device_count:
    p_atomic_dec(&device->instance->active_device_count);
 
+   pvr_bo_suballocator_fini(&device->suballoc_vis_test);
    pvr_bo_suballocator_fini(&device->suballoc_usc);
    pvr_bo_suballocator_fini(&device->suballoc_transfer);
    pvr_bo_suballocator_fini(&device->suballoc_pds);
@@ -1976,6 +1982,7 @@ void pvr_DestroyDevice(VkDevice _device,
    pvr_bo_suballoc_free(device->nop_program.pds.pvr_bo);
    pvr_bo_suballoc_free(device->nop_program.usc);
    pvr_free_list_destroy(device->global_free_list);
+   pvr_bo_suballocator_fini(&device->suballoc_vis_test);
    pvr_bo_suballocator_fini(&device->suballoc_usc);
    pvr_bo_suballocator_fini(&device->suballoc_transfer);
    pvr_bo_suballocator_fini(&device->suballoc_pds);

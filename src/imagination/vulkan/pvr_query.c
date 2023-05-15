@@ -77,21 +77,19 @@ VkResult pvr_CreateQueryPool(VkDevice _device,
     */
    alloc_size = (uint64_t)pool->result_stride * core_count;
 
-   result = pvr_bo_alloc(device,
-                         device->heaps.vis_test_heap,
-                         alloc_size,
-                         PVRX(CR_ISP_OCLQRY_BASE_ADDR_ALIGNMENT),
-                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                         &pool->result_buffer);
+   result = pvr_bo_suballoc(&device->suballoc_vis_test,
+                            alloc_size,
+                            PVRX(CR_ISP_OCLQRY_BASE_ADDR_ALIGNMENT),
+                            false,
+                            &pool->result_buffer);
    if (result != VK_SUCCESS)
       goto err_free_pool;
 
-   result = pvr_bo_alloc(device,
-                         device->heaps.general_heap,
-                         query_size,
-                         sizeof(uint32_t),
-                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                         &pool->availability_buffer);
+   result = pvr_bo_suballoc(&device->suballoc_general,
+                            query_size,
+                            sizeof(uint32_t),
+                            false,
+                            &pool->availability_buffer);
    if (result != VK_SUCCESS)
       goto err_free_result_buffer;
 
@@ -100,7 +98,7 @@ VkResult pvr_CreateQueryPool(VkDevice _device,
    return VK_SUCCESS;
 
 err_free_result_buffer:
-   pvr_bo_free(device, pool->result_buffer);
+   pvr_bo_suballoc_free(pool->result_buffer);
 
 err_free_pool:
    vk_object_free(&device->vk, pAllocator, pool);
@@ -118,8 +116,8 @@ void pvr_DestroyQueryPool(VkDevice _device,
    if (!pool)
       return;
 
-   pvr_bo_free(device, pool->availability_buffer);
-   pvr_bo_free(device, pool->result_buffer);
+   pvr_bo_suballoc_free(pool->availability_buffer);
+   pvr_bo_suballoc_free(pool->result_buffer);
 
    vk_object_free(&device->vk, pAllocator, pool);
 }
@@ -133,7 +131,8 @@ void pvr_DestroyQueryPool(VkDevice _device,
 static inline bool pvr_query_is_available(const struct pvr_query_pool *pool,
                                           uint32_t query_idx)
 {
-   volatile uint32_t *available = pool->availability_buffer->bo->map;
+   volatile uint32_t *available =
+      pvr_bo_suballoc_get_map_addr(pool->availability_buffer);
    return !!available[query_idx];
 }
 
@@ -199,9 +198,11 @@ VkResult pvr_GetQueryPoolResults(VkDevice _device,
 {
    PVR_FROM_HANDLE(pvr_query_pool, pool, queryPool);
    PVR_FROM_HANDLE(pvr_device, device, _device);
+   VG(volatile uint32_t *available =
+         pvr_bo_suballoc_get_map_addr(pool->availability_buffer));
+   volatile uint32_t *query_results =
+      pvr_bo_suballoc_get_map_addr(pool->result_buffer);
    const uint32_t core_count = device->pdevice->dev_runtime_info.core_count;
-   VG(volatile uint32_t *available = pool->availability_buffer->bo->map);
-   volatile uint32_t *query_results = pool->result_buffer->bo->map;
    uint8_t *data = (uint8_t *)pData;
    VkResult result = VK_SUCCESS;
 

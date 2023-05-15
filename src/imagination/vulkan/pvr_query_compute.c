@@ -601,7 +601,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
          dev_info,
          &tex_info,
          query_info->availability_write.num_queries,
-         query_info->availability_write.availability_bo->vma->dev_addr);
+         query_info->availability_write.availability_bo->dev_addr);
 
       result = pvr_pack_tex_state(device,
                                   &tex_info,
@@ -657,8 +657,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
 
       offset = query_info->copy_query_results.first_query * sizeof(uint32_t);
 
-      addr =
-         PVR_DEV_ADDR_OFFSET(pool->availability_buffer->vma->dev_addr, offset);
+      addr = PVR_DEV_ADDR_OFFSET(pool->availability_buffer->dev_addr, offset);
 
       pvr_init_tex_info(dev_info, &tex_info, num_query_indices, addr);
 
@@ -674,7 +673,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
       image_sampler_idx++;
 
       for (uint32_t i = 0; i < buffer_count; i++) {
-         addr = PVR_DEV_ADDR_OFFSET(pool->result_buffer->vma->dev_addr,
+         addr = PVR_DEV_ADDR_OFFSET(pool->result_buffer->dev_addr,
                                     offset + i * pool->result_stride);
 
          pvr_init_tex_info(dev_info, &tex_info, num_query_indices, addr);
@@ -752,7 +751,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
       offset = query_info->reset_query_pool.first_query * sizeof(uint32_t);
 
       for (uint32_t i = 0; i < buffer_count; i++) {
-         addr = PVR_DEV_ADDR_OFFSET(pool->result_buffer->vma->dev_addr,
+         addr = PVR_DEV_ADDR_OFFSET(pool->result_buffer->dev_addr,
                                     offset + i * pool->result_stride);
 
          pvr_init_tex_info(dev_info, &tex_info, num_query_indices, addr);
@@ -769,8 +768,7 @@ VkResult pvr_add_query_program(struct pvr_cmd_buffer *cmd_buffer,
          image_sampler_idx++;
       }
 
-      addr =
-         PVR_DEV_ADDR_OFFSET(pool->availability_buffer->vma->dev_addr, offset);
+      addr = PVR_DEV_ADDR_OFFSET(pool->availability_buffer->dev_addr, offset);
 
       pvr_init_tex_info(dev_info, &tex_info, num_query_indices, addr);
 
