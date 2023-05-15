@@ -157,8 +157,9 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
 
    for (uint32_t i = 0; i < bind->bindCount; ++i) {
       struct radv_device_memory *mem = NULL;
-      uint32_t offset, pitch, depth_pitch;
-      uint32_t mem_offset = bind->pBinds[i].memoryOffset;
+      uint64_t offset, depth_pitch;
+      uint32_t pitch;
+      uint64_t mem_offset = bind->pBinds[i].memoryOffset;
       const uint32_t layer = bind->pBinds[i].subresource.arrayLayer;
       const uint32_t level = bind->pBinds[i].subresource.mipLevel;
 
@@ -186,8 +187,8 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
       }
 
       offset += bind_offset.z * depth_pitch +
-                (bind_offset.y * pitch * surface->prt_tile_depth +
-                 bind_offset.x * surface->prt_tile_height * surface->prt_tile_depth) *
+                ((uint64_t)bind_offset.y * pitch * surface->prt_tile_depth +
+                 (uint64_t)bind_offset.x * surface->prt_tile_height * surface->prt_tile_depth) *
                    bs;
 
       uint32_t aligned_extent_width = ALIGN(bind_extent.width, surface->prt_tile_width);
@@ -197,10 +198,10 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
       bool whole_subres =
          (bind_extent.height <= surface->prt_tile_height || aligned_extent_width == pitch) &&
          (bind_extent.depth <= surface->prt_tile_depth ||
-          aligned_extent_width * aligned_extent_height * bs == depth_pitch);
+          (uint64_t)aligned_extent_width * aligned_extent_height * bs == depth_pitch);
 
       if (whole_subres) {
-         uint32_t size = aligned_extent_width * aligned_extent_height * aligned_extent_depth * bs;
+         uint64_t size = (uint64_t)aligned_extent_width * aligned_extent_height * aligned_extent_depth * bs;
          result = device->ws->buffer_virtual_bind(device->ws, image->bindings[0].bo, offset, size,
                                                   mem ? mem->bo : NULL, mem_offset);
          if (result != VK_SUCCESS)
@@ -214,14 +215,14 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
       } else {
          uint32_t img_y_increment = pitch * bs * surface->prt_tile_depth;
          uint32_t mem_y_increment = aligned_extent_width * bs * surface->prt_tile_depth;
-         uint32_t mem_z_increment = aligned_extent_width * aligned_extent_height * bs;
-         uint32_t size = mem_y_increment * surface->prt_tile_height;
+         uint64_t mem_z_increment = (uint64_t)aligned_extent_width * aligned_extent_height * bs;
+         uint64_t size = mem_y_increment * surface->prt_tile_height;
          for (unsigned z = 0; z < bind_extent.depth;
               z += surface->prt_tile_depth, offset += depth_pitch * surface->prt_tile_depth) {
             for (unsigned y = 0; y < bind_extent.height; y += surface->prt_tile_height) {
                result = device->ws->buffer_virtual_bind(
-                  device->ws, image->bindings[0].bo, offset + img_y_increment * y, size,
-                  mem ? mem->bo : NULL, mem_offset + mem_y_increment * y + mem_z_increment * z);
+                  device->ws, image->bindings[0].bo, offset + (uint64_t)img_y_increment * y, size,
+                  mem ? mem->bo : NULL, mem_offset + (uint64_t)mem_y_increment * y + mem_z_increment * z);
                if (result != VK_SUCCESS)
                   return result;
 
