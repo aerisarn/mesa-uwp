@@ -2021,7 +2021,6 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
    NIR_PASS_V(nir, nir_opt_cse);
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
-   NIR_PASS_V(nir, nir_lower_legacy_atomics);
 
    /* Cleanup optimizations */
    nir_move_options move_all = nir_move_const_undef | nir_move_load_ubo |
@@ -2381,6 +2380,7 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
    NIR_PASS_V(nir, nir_opt_sink, move_all);
    NIR_PASS_V(nir, nir_opt_move, move_all);
    NIR_PASS_V(nir, agx_nir_lower_ubo);
+   NIR_PASS_V(nir, nir_lower_legacy_atomics);
    NIR_PASS_V(nir, agx_nir_lower_shared_bitsize);
 }
 
