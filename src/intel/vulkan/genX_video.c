@@ -128,6 +128,7 @@ anv_h265_decode_video(struct anv_cmd_buffer *cmd_buffer,
 
    struct vk_video_h265_reference ref_slots[2][8] = { 0 };
    uint8_t dpb_idx[ANV_VIDEO_H265_MAX_NUM_REF_FRAME] = { 0,};
+   bool is_10bit = sps->bit_depth_chroma_minus8 || sps->bit_depth_luma_minus8;
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_FLUSH_DW), flush) {
       flush.VideoPipelineCacheInvalidate = 1;
@@ -166,7 +167,7 @@ anv_h265_decode_video(struct anv_cmd_buffer *cmd_buffer,
    anv_batch_emit(&cmd_buffer->batch, GENX(HCP_SURFACE_STATE), ss) {
       ss.SurfacePitch = img->planes[0].primary_surface.isl.row_pitch_B - 1;
       ss.SurfaceID = HCP_CurrentDecodedPicture;
-      ss.SurfaceFormat = PLANAR_420_8;
+      ss.SurfaceFormat = is_10bit ? P010 : PLANAR_420_8;
 
       ss.YOffsetforUCb = img->planes[1].primary_surface.memory_range.offset /
          img->planes[0].primary_surface.isl.row_pitch_B;
