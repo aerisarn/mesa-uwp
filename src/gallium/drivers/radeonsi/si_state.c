@@ -3558,14 +3558,13 @@ static void si_emit_msaa_sample_locs(struct si_context *sctx)
    if (nr_samples <= 1 && sctx->smoothing_enabled)
       nr_samples = SI_NUM_SMOOTH_AA_SAMPLES;
 
-   /* On Polaris, the small primitive filter uses the sample locations
-    * even when MSAA is off, so we need to make sure they're set to 0.
+   /* Always set MSAA sample locations even with 1x MSAA for simplicity.
     *
-    * GFX10 uses sample locations unconditionally, so they always need
-    * to be set up.
+    * The only chips that don't need to set them for 1x MSAA are GFX6-8 except Polaris,
+    * but there is no benefit in not resetting them to 0 when changing framebuffers from MSAA
+    * to non-MSAA.
     */
-   if ((nr_samples >= 2 || has_msaa_sample_loc_bug || sctx->gfx_level >= GFX10) &&
-       nr_samples != sctx->sample_locs_num_samples) {
+   if (nr_samples != sctx->sample_locs_num_samples) {
       sctx->sample_locs_num_samples = nr_samples;
       si_emit_sample_locations(cs, nr_samples);
    }
