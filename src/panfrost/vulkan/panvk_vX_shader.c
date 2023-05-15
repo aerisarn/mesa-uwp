@@ -314,6 +314,7 @@ panvk_per_arch(shader_create)(struct panvk_device *dev, gl_shader_stage stage,
       .lower_invalid_implicit_lod = true,
    };
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
+   NIR_PASS_V(nir, nir_lower_legacy_atomics);
 
    NIR_PASS_V(nir, panvk_per_arch(nir_lower_descriptors), dev, layout,
               &shader->has_img_access);
