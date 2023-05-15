@@ -1708,9 +1708,6 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
    assert(pipeline->shared_data &&
           pipeline->shared_data->maps[p_stage->stage]);
 
-   /* Temporary stopgap until legacy atomics are removed in core */
-   NIR_PASS_V(p_stage->nir, nir_lower_legacy_atomics);
-
    NIR_PASS_V(p_stage->nir, nir_vk_lower_ycbcr_tex,
               lookup_ycbcr_conversion, layout);
 

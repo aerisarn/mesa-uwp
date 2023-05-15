@@ -3856,8 +3856,6 @@ const void *nir_to_tgsi_options(struct nir_shader *s,
       source_mods |= nir_lower_fabs_source_mods;
    NIR_PASS_V(s, nir_lower_to_source_mods, source_mods);
 
-   NIR_PASS_V(s, nir_lower_legacy_atomics);
-
    NIR_PASS_V(s, nir_convert_from_ssa, true);
    NIR_PASS_V(s, nir_lower_vec_to_movs, ntt_vec_to_mov_writemask_cb, NULL);
 

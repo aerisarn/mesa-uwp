@@ -395,8 +395,6 @@ midgard_preprocess_nir(nir_shader *nir, unsigned gpu_id)
    if (quirks & MIDGARD_BROKEN_LOD)
       NIR_PASS_V(nir, midgard_nir_lod_errata);
 
-   NIR_PASS_V(nir, nir_lower_legacy_atomics);
-
    /* Midgard image ops coordinates are 16-bit instead of 32-bit */
    NIR_PASS_V(nir, midgard_nir_lower_image_bitsize);
 

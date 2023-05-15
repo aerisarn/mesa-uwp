@@ -932,8 +932,6 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 
    OPT(nir_lower_frexp);
 
-   OPT(nir_lower_legacy_atomics);
-
    if (is_scalar) {
       OPT(nir_lower_alu_to_scalar, NULL, NULL);
    }

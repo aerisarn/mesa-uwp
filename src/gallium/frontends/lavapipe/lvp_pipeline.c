@@ -464,7 +464,6 @@ lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader 
    NIR_PASS_V(nir, nir_remove_dead_variables,
               nir_var_uniform | nir_var_image, NULL);
 
-   NIR_PASS_V(nir, nir_lower_legacy_atomics);
    scan_pipeline_info(shader, layout, nir);
 
    optimize(nir);

@@ -2380,7 +2380,6 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
    NIR_PASS_V(nir, nir_opt_sink, move_all);
    NIR_PASS_V(nir, nir_opt_move, move_all);
    NIR_PASS_V(nir, agx_nir_lower_ubo);
-   NIR_PASS_V(nir, nir_lower_legacy_atomics);
    NIR_PASS_V(nir, agx_nir_lower_shared_bitsize);
 }
 

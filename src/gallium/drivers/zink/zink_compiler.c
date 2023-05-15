@@ -4874,9 +4874,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_fragcolor,
          nir->info.fs.color_is_dual_source ? 1 : 8);
 
-   /* Temporary stop gap until glsl-to-nir produces unified atomics */
-   NIR_PASS_V(nir, nir_lower_legacy_atomics);
-
    NIR_PASS_V(nir, lower_64bit_vertex_attribs);
    bool needs_size = analyze_io(ret, nir);
    NIR_PASS_V(nir, unbreak_bos, ret, needs_size);

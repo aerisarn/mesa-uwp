@@ -381,9 +381,6 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 
    OPT_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
-   /* Temporary stopgap until the core is transitioned to unified atomics */
-   OPT_V(s, nir_lower_legacy_atomics);
-
    if (ir3_shader_debug & IR3_DBG_DISASM) {
       mesa_logi("----------------------");
       nir_log_shaderi(s);

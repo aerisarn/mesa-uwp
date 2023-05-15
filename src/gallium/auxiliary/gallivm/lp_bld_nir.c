@@ -2668,7 +2668,6 @@ bool lp_build_nir_llvm(struct lp_build_nir_context *bld_base,
    nir_lower_locals_to_regs(nir);
    nir_remove_dead_derefs(nir);
    nir_remove_dead_variables(nir, nir_var_function_temp, NULL);
-   nir_lower_legacy_atomics(nir);
 
    if (is_aos(bld_base)) {
       nir_move_vec_src_uses_to_dest(nir);

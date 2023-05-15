@@ -790,7 +790,7 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr)
 bool
 dxil_nir_lower_atomics_to_dxil(nir_shader *nir)
 {
-   bool progress = nir_lower_legacy_atomics(nir);
+   bool progress = false;
 
    foreach_list_typed(nir_function, func, node, &nir->functions) {
       if (!func->is_entrypoint)

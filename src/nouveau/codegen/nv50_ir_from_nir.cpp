@@ -3206,7 +3206,6 @@ Converter::run()
               type_size, (nir_lower_io_options)0);
 
    NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
-   NIR_PASS_V(nir, nir_lower_legacy_atomics);
 
    struct nir_lower_tex_options tex_options = {};
    tex_options.lower_txp = ~0;

@@ -617,9 +617,6 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
 static void
 v3d_lower_nir(struct v3d_compile *c)
 {
-        /* FIXME: drop once GLSL/SPIR-V produce the new intrinsics. */
-        NIR_PASS(_, c->s, nir_lower_legacy_atomics);
-
         struct nir_lower_tex_options tex_options = {
                 .lower_txd = true,
                 .lower_tg4_broadcom_swizzle = true,

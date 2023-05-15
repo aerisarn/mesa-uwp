@@ -1070,9 +1070,6 @@ tu_shader_create(struct tu_device *dev,
          nir->info.stage == MESA_SHADER_GEOMETRY)
       tu_gather_xfb_info(nir, &so_info);
 
-   /* Temporary stopgap until legacy atomics are removed */
-   NIR_PASS_V(nir, nir_lower_legacy_atomics);
-
    NIR_PASS_V(nir, tu_lower_io, dev, shader, layout);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));

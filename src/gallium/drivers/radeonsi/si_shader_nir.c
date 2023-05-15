@@ -375,9 +375,6 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
       si_late_optimize_16bit_samplers(sscreen, nir);
 
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
-
-   /* Temporary stopgap until legacy atomics are removed in the core */
-   NIR_PASS_V(nir, nir_lower_legacy_atomics);
 }
 
 static bool si_mark_divergent_texture_non_uniform(struct nir_shader *nir)
