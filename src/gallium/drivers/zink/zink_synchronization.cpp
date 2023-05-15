@@ -268,9 +268,18 @@ VkCommandBuffer
 zink_get_cmdbuf(struct zink_context *ctx, struct zink_resource *src, struct zink_resource *dst)
 {
    bool unordered_exec = (zink_debug & ZINK_DEBUG_NOREORDER) == 0;
-   if (src)
+   /* TODO: figure out how to link up unordered layout -> ordered layout and delete these two conditionals */
+   if (src && !src->obj->is_buffer) {
+      if (zink_resource_usage_is_unflushed(src) && !src->obj->unordered_read && !src->obj->unordered_write)
+         unordered_exec = false;
+   }
+   if (dst && !dst->obj->is_buffer) {
+      if (zink_resource_usage_is_unflushed(dst) && !dst->obj->unordered_read && !dst->obj->unordered_write)
+         unordered_exec = false;
+   }
+   if (src && unordered_exec)
       unordered_exec &= unordered_res_exec(ctx, src, false);
-   if (dst)
+   if (dst && unordered_exec)
       unordered_exec &= unordered_res_exec(ctx, dst, true);
    if (src)
       src->obj->unordered_read = unordered_exec;
