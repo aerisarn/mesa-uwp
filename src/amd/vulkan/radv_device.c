@@ -1674,6 +1674,24 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
             S_028C74_MIP0_DEPTH(mip0_depth) | S_028C74_RESOURCE_TYPE(surf->u.gfx9.resource_type);
       }
 
+      /* GFX10.3+ can set a custom pitch for 1D and 2D non-array, but it must be a multiple
+       * of 256B. Only set it for 2D linear for multi-GPU interop.
+       *
+       * We set the pitch in MIP0_WIDTH.
+       */
+      if (device->physical_device->rad_info.gfx_level &&
+          iview->image->vk.image_type == VK_IMAGE_TYPE_2D &&
+          iview->image->vk.array_layers == 1 &&
+          plane->surface.is_linear) {
+         assert((plane->surface.u.gfx9.surf_pitch * plane->surface.bpe) % 256 == 0);
+
+         width = plane->surface.u.gfx9.surf_pitch;
+
+         /* Subsampled images have the pitch in the units of blocks. */
+         if (plane->surface.blk_w == 2)
+            width *= 2;
+      }
+
       cb->cb_color_attrib2 = S_028C68_MIP0_WIDTH(width - 1) | S_028C68_MIP0_HEIGHT(height - 1) |
                              S_028C68_MAX_MIP(max_mip);
    }
