@@ -5905,7 +5905,7 @@ vtn_handle_ray_query_intrinsic(struct vtn_builder *b, SpvOp opcode,
       ray_query_load_intrinsic_create(b, opcode, w,
                                       vtn_ssa_value(b, w[3])->def,
                                       /* Committed value is ignored for these */
-                                      nir_imm_bool(&b->nb, false));
+                                      false);
       break;
 
    default:
