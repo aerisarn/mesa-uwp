@@ -11,7 +11,7 @@ impl CLInfo<cl_platform_info> for cl_platform_id {
         self.get_ref()?;
         Ok(match q {
             // TODO spirv
-            CL_PLATFORM_EXTENSIONS => cl_prop("cl_khr_icd cl_khr_il_program"),
+            CL_PLATFORM_EXTENSIONS => cl_prop(PLATFORM_EXTENSION_STR),
             CL_PLATFORM_EXTENSIONS_WITH_VERSION => {
                 cl_prop::<Vec<cl_name_version>>(PLATFORM_EXTENSIONS.to_vec())
             }

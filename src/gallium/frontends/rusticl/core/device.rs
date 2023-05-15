@@ -472,7 +472,7 @@ impl Device {
 
     fn fill_extensions(&mut self) {
         let mut exts_str: Vec<String> = Vec::new();
-        let mut exts = Vec::new();
+        let mut exts = PLATFORM_EXTENSIONS.to_vec();
         let mut feats = Vec::new();
         let mut add_ext = |major, minor, patch, ext: &str, feat: &str| {
             if !ext.is_empty() {
@@ -489,7 +489,6 @@ impl Device {
         add_ext(1, 0, 0, "cl_khr_byte_addressable_store", "");
         add_ext(1, 0, 0, "cl_khr_global_int32_base_atomics", "");
         add_ext(1, 0, 0, "cl_khr_global_int32_extended_atomics", "");
-        add_ext(1, 0, 0, "cl_khr_il_program", "");
         add_ext(1, 0, 0, "cl_khr_local_int32_base_atomics", "");
         add_ext(1, 0, 0, "cl_khr_local_int32_extended_atomics", "");
 
@@ -535,7 +534,7 @@ impl Device {
 
         self.extensions = exts;
         self.clc_features = feats;
-        self.extension_string = exts_str.join(" ");
+        self.extension_string = format!("{} {}", PLATFORM_EXTENSION_STR, exts_str.join(" "));
     }
 
     fn shader_param(&self, cap: pipe_shader_cap) -> i32 {
