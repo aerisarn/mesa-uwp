@@ -4,7 +4,7 @@ Mesa Extensions
 A number of extensions have been developed especially for Mesa. The
 specifications follow.
 
--  `MESA_agp_offset.spec <specs/OLD/MESA_agp_offset.spec>`__
+-  `MESA_agp_offset.spec <specs/OLD/MESA_agp_offset.spec>`__ (obsolete)
 -  `MESA_copy_sub_buffer.spec <specs/MESA_copy_sub_buffer.spec>`__
 -  `MESA_drm_image.spec <specs/MESA_drm_image.spec>`__
 -  `MESA_multithread_makecurrent.spec <specs/MESA_multithread_makecurrent.spec>`__
@@ -18,6 +18,7 @@ specifications follow.
 -  `MESA_resize_buffers.spec <specs/OLD/MESA_resize_buffers.spec>`__
    (obsolete)
 -  `MESA_set_3dfx_mode.spec <specs/OLD/MESA_set_3dfx_mode.spec>`__
+   (obsolete)
 -  `MESA_shader_debug.spec <specs/MESA_shader_debug.spec>`__
 -  `MESA_sprite_point.spec <specs/OLD/MESA_sprite_point.spec>`__
    (obsolete)
