@@ -27,7 +27,8 @@ specifications follow.
 -  `MESA_swap_control.spec <specs/MESA_swap_control.spec>`__
 -  `MESA_swap_frame_usage.spec <specs/OLD/MESA_swap_frame_usage.spec>`__
    (obsolete)
--  `MESA_texture_array.spec <specs/MESA_texture_array.spec>`__
+-  `MESA_texture_array.spec <specs/OLD/MESA_texture_array.spec>`__
+   (obsolete)
 -  `MESA_texture_signed_rgba.spec <specs/MESA_texture_signed_rgba.spec>`__
 -  `MESA_trace.spec <specs/OLD/MESA_trace.spec>`__ (obsolete)
 -  `MESA_window_pos.spec <specs/MESA_window_pos.spec>`__
