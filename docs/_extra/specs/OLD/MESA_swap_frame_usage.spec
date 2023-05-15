@@ -12,7 +12,7 @@ Contact
 
 Status
 
-    Deployed in DRI drivers post-XFree86 4.3.
+    Obsolete.
 
 Version
 
