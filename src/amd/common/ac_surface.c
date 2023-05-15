@@ -2944,35 +2944,89 @@ void ac_surface_compute_umd_metadata(const struct radeon_info *info, struct rade
    }
 }
 
-static uint32_t ac_surface_get_gfx9_pitch_align(struct radeon_surf *surf)
+static uint32_t ac_surface_get_pitch_align(const struct radeon_info *info,
+                                           const struct radeon_surf *surf)
 {
-   if (surf->u.gfx9.swizzle_mode == ADDR_SW_LINEAR)
-      return 256 / surf->bpe;
+   if (surf->is_linear) {
+      switch (info->gfx_level) {
+      case GFX6:
+      case GFX7:
+      case GFX8:
+         return MAX2(8, 64 / surf->bpe);
 
-   if (surf->u.gfx9.resource_type == RADEON_RESOURCE_3D)
-      return 1; /* TODO */
+      case GFX9:
+      case GFX10:
+      case GFX10_3:
+      case GFX11:
+         return 256 / surf->bpe;
 
-   unsigned bpe_shift = util_logbase2(surf->bpe) / 2;
-   switch(surf->u.gfx9.swizzle_mode & ~3) {
-   case ADDR_SW_LINEAR: /* 256B block. */
-      return 16 >> bpe_shift;
-   case ADDR_SW_4KB_Z:
-   case ADDR_SW_4KB_Z_X:
-      return 64 >> bpe_shift;
-   case ADDR_SW_64KB_Z:
-   case ADDR_SW_64KB_Z_T:
-   case ADDR_SW_64KB_Z_X:
-      return 256 >> bpe_shift;
-   case ADDR_SW_256KB_Z_X:
-      return 512 >> bpe_shift;
-   default:
-      return 1; /* TODO */
+      default:
+         unreachable("unhandled gfx_level");
+      }
+   }
+
+   if (info->gfx_level >= GFX9) {
+      if (surf->u.gfx9.resource_type == RADEON_RESOURCE_3D)
+         return 1u << 31; /* reject 3D textures by returning an impossible alignment */
+
+      unsigned bpe_log2 = util_logbase2(surf->bpe);
+      unsigned block_size_log2;
+
+      switch((surf->u.gfx9.swizzle_mode & ~3) + 3) {
+      case ADDR_SW_256B_R:
+         block_size_log2 = 8;
+         break;
+      case ADDR_SW_4KB_R:
+      case ADDR_SW_4KB_R_X:
+         block_size_log2 = 12;
+         break;
+      case ADDR_SW_64KB_R:
+      case ADDR_SW_64KB_R_T:
+      case ADDR_SW_64KB_R_X:
+         block_size_log2 = 16;
+         break;
+      case ADDR_SW_256KB_R_X:
+         block_size_log2 = 18;
+         break;
+      default:
+         unreachable("unhandled swizzle mode");
+      }
+
+      if (info->gfx_level >= GFX10) {
+         return 1 << (((block_size_log2 - bpe_log2) + 1) / 2);
+      } else {
+         static unsigned block_256B_width[] = {16, 16, 8, 8, 4};
+         return block_256B_width[bpe_log2] << ((block_size_log2 - 8) / 2);
+      }
+   } else {
+      unsigned mode;
+
+      if ((surf->flags & RADEON_SURF_Z_OR_SBUFFER) == RADEON_SURF_SBUFFER)
+         mode = surf->u.legacy.zs.stencil_level[0].mode;
+      else
+         mode = surf->u.legacy.level[0].mode;
+
+      /* Note that display usage requires an alignment of 32 pixels (see AdjustPitchAlignment),
+       * which is not checked here.
+       */
+      switch (mode) {
+      case RADEON_SURF_MODE_1D:
+         return 8;
+      case RADEON_SURF_MODE_2D:
+         return 8 * surf->u.legacy.bankw * surf->u.legacy.mtilea *
+                ac_pipe_config_to_num_pipes(surf->u.legacy.pipe_config);
+      default:
+         unreachable("unhandled surf mode");
+      }
    }
 }
 
 bool ac_surface_override_offset_stride(const struct radeon_info *info, struct radeon_surf *surf,
                                        unsigned num_mipmap_levels, uint64_t offset, unsigned pitch)
 {
+   if ((ac_surface_get_pitch_align(info, surf) - 1) & pitch)
+      return false;
+
    /*
     * GFX10 and newer don't support custom strides. Furthermore, for
     * multiple miplevels or compression data we'd really need to rerun
@@ -2986,9 +3040,6 @@ bool ac_surface_override_offset_stride(const struct radeon_info *info, struct ra
    if (info->gfx_level >= GFX9) {
       if (pitch) {
          if (surf->u.gfx9.surf_pitch != pitch && require_equal_pitch)
-            return false;
-
-         if ((ac_surface_get_gfx9_pitch_align(surf) - 1) & pitch)
             return false;
 
          if (pitch != surf->u.gfx9.surf_pitch) {
