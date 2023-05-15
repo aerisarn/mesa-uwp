@@ -714,7 +714,7 @@ struct pvr_cmd_buffer_state {
    /* Array size of barriers_needed is based on number of sync pipeline
     * stages.
     */
-   uint32_t barriers_needed[4];
+   uint32_t barriers_needed[PVR_NUM_SYNC_PIPELINE_STAGES];
 
    struct pvr_descriptor_state gfx_desc_state;
    struct pvr_descriptor_state compute_desc_state;

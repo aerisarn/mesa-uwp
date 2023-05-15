@@ -146,9 +146,9 @@ static inline bool pvr_query_is_available(const struct pvr_query_pool *pool,
  * device.
  */
 /* TODO: Handle device loss scenario properly. */
-static bool pvr_wait_for_available(struct pvr_device *device,
-                                   const struct pvr_query_pool *pool,
-                                   uint32_t query_idx)
+static VkResult pvr_wait_for_available(struct pvr_device *device,
+                                       const struct pvr_query_pool *pool,
+                                       uint32_t query_idx)
 {
    const uint64_t abs_timeout =
       os_time_get_absolute_timeout(PVR_WAIT_TIMEOUT * NSEC_PER_SEC);

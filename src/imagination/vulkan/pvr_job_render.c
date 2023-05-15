@@ -1380,7 +1380,13 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    stream_ptr += pvr_cmd_length(CR_ISP_DBIAS_BASE);
 
    pvr_csb_pack ((uint64_t *)stream_ptr, CR_ISP_OCLQRY_BASE, value) {
-      value.addr = PVR_DEV_ADDR_INVALID;
+      const struct pvr_sub_cmd_gfx *sub_cmd =
+         container_of(job, const struct pvr_sub_cmd_gfx, job);
+
+      if (sub_cmd->query_pool)
+         value.addr = sub_cmd->query_pool->result_buffer->dev_addr;
+      else
+         value.addr = PVR_DEV_ADDR_INVALID;
    }
    stream_ptr += pvr_cmd_length(CR_ISP_OCLQRY_BASE);
 
