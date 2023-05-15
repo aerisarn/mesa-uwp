@@ -950,6 +950,11 @@ v3d_ra_select_rf(struct v3d_ra_select_callback_data *v3d_ra,
 
         for (int i = 0; i < PHYS_COUNT; i++) {
                 int phys_off = (v3d_ra->next_phys + i) % PHYS_COUNT;
+
+                /* Try to keep rf0 available for ldunif in 7.x (see above). */
+                if (v3d_ra->devinfo->ver >= 71 && phys_off == 0)
+                        continue;
+
                 int phys = v3d_ra->phys_index + phys_off;
 
                 if (BITSET_TEST(regs, phys)) {
@@ -957,6 +962,14 @@ v3d_ra_select_rf(struct v3d_ra_select_callback_data *v3d_ra,
                         *out = phys;
                         return true;
                 }
+        }
+
+        /* If we couldn't allocate, do try to assign rf0 if it is available. */
+        if (v3d_ra->devinfo->ver >= 71 &&
+            BITSET_TEST(regs, v3d_ra->phys_index)) {
+                v3d_ra->next_phys = 1;
+                *out = v3d_ra->phys_index;
+                return true;
         }
 
         return false;
