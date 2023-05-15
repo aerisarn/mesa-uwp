@@ -590,7 +590,7 @@ get_features(const struct anv_physical_device *pdevice,
 
       /* VK_EXT_graphics_pipeline_library */
       .graphicsPipelineLibrary =
-         pdevice->vk.supported_features.graphicsPipelineLibrary,
+         pdevice->vk.supported_extensions.EXT_graphics_pipeline_library,
 
       /* VK_KHR_fragment_shading_rate */
       .pipelineFragmentShadingRate = true,
