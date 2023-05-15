@@ -13,7 +13,6 @@ use std::sync::Once;
 #[repr(C)]
 pub struct Platform {
     dispatch: &'static cl_icd_dispatch,
-    pub extensions: [cl_name_version; 2],
     pub devs: Vec<Arc<Device>>,
 }
 
@@ -27,13 +26,13 @@ pub struct PlatformFeatures {
 
 static PLATFORM_ENV_ONCE: Once = Once::new();
 static PLATFORM_ONCE: Once = Once::new();
+pub static PLATFORM_EXTENSIONS: [cl_name_version; 2] = [
+    mk_cl_version_ext(1, 0, 0, "cl_khr_icd"),
+    mk_cl_version_ext(1, 0, 0, "cl_khr_il_program"),
+];
 
 static mut PLATFORM: Platform = Platform {
     dispatch: &DISPATCH,
-    extensions: [
-        mk_cl_version_ext(1, 0, 0, "cl_khr_icd"),
-        mk_cl_version_ext(1, 0, 0, "cl_khr_il_program"),
-    ],
     devs: Vec::new(),
 };
 static mut PLATFORM_DBG: PlatformDebug = PlatformDebug { program: false };
