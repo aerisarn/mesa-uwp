@@ -118,7 +118,8 @@ debian/i386_build:
     - debian/i386_build
 
 # Debian based x86-mingw cross main build image
-debian/x86_build-mingw:
+# FIXME: Until gets fixed on Debian 12, disabled.
+.debian/x86_build-mingw:
   extends:
     - .use-debian/x86_build-base
   variables:
@@ -132,7 +133,7 @@ debian/x86_build-mingw:
     MESA_IMAGE_PATH: ${DEBIAN_X86_BUILD_MINGW_IMAGE_PATH}
     MESA_IMAGE_TAG: *debian-x86_build_mingw
   needs:
-    - debian/x86_build-mingw
+    - .debian/x86_build-mingw
 
 # Debian based ppc64el cross-build image
 debian/ppc64el_build:
