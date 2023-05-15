@@ -289,18 +289,8 @@ static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
       break;
    }
    case nir_intrinsic_load_ssbo:
-   case nir_intrinsic_ssbo_atomic_add:
-   case nir_intrinsic_ssbo_atomic_imin:
-   case nir_intrinsic_ssbo_atomic_umin:
-   case nir_intrinsic_ssbo_atomic_fmin:
-   case nir_intrinsic_ssbo_atomic_imax:
-   case nir_intrinsic_ssbo_atomic_umax:
-   case nir_intrinsic_ssbo_atomic_fmax:
-   case nir_intrinsic_ssbo_atomic_and:
-   case nir_intrinsic_ssbo_atomic_or:
-   case nir_intrinsic_ssbo_atomic_xor:
-   case nir_intrinsic_ssbo_atomic_exchange:
-   case nir_intrinsic_ssbo_atomic_comp_swap: {
+   case nir_intrinsic_ssbo_atomic:
+   case nir_intrinsic_ssbo_atomic_swap: {
       assert(!(nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM));
 
       nir_ssa_def *desc = load_ssbo_desc(b, &intrin->src[0], s);
@@ -327,21 +317,8 @@ static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
    case nir_intrinsic_image_deref_sparse_load:
    case nir_intrinsic_image_deref_fragment_mask_load_amd:
    case nir_intrinsic_image_deref_store:
-   case nir_intrinsic_image_deref_atomic_add:
-   case nir_intrinsic_image_deref_atomic_imin:
-   case nir_intrinsic_image_deref_atomic_umin:
-   case nir_intrinsic_image_deref_atomic_fmin:
-   case nir_intrinsic_image_deref_atomic_imax:
-   case nir_intrinsic_image_deref_atomic_umax:
-   case nir_intrinsic_image_deref_atomic_fmax:
-   case nir_intrinsic_image_deref_atomic_and:
-   case nir_intrinsic_image_deref_atomic_or:
-   case nir_intrinsic_image_deref_atomic_xor:
-   case nir_intrinsic_image_deref_atomic_exchange:
-   case nir_intrinsic_image_deref_atomic_comp_swap:
-   case nir_intrinsic_image_deref_atomic_fadd:
-   case nir_intrinsic_image_deref_atomic_inc_wrap:
-   case nir_intrinsic_image_deref_atomic_dec_wrap:
+   case nir_intrinsic_image_deref_atomic:
+   case nir_intrinsic_image_deref_atomic_swap:
    case nir_intrinsic_image_deref_descriptor_amd: {
       assert(!(nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM));
 
@@ -377,21 +354,8 @@ static bool lower_resource_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
    case nir_intrinsic_bindless_image_sparse_load:
    case nir_intrinsic_bindless_image_fragment_mask_load_amd:
    case nir_intrinsic_bindless_image_store:
-   case nir_intrinsic_bindless_image_atomic_add:
-   case nir_intrinsic_bindless_image_atomic_imin:
-   case nir_intrinsic_bindless_image_atomic_umin:
-   case nir_intrinsic_bindless_image_atomic_fmin:
-   case nir_intrinsic_bindless_image_atomic_imax:
-   case nir_intrinsic_bindless_image_atomic_umax:
-   case nir_intrinsic_bindless_image_atomic_fmax:
-   case nir_intrinsic_bindless_image_atomic_and:
-   case nir_intrinsic_bindless_image_atomic_or:
-   case nir_intrinsic_bindless_image_atomic_xor:
-   case nir_intrinsic_bindless_image_atomic_exchange:
-   case nir_intrinsic_bindless_image_atomic_comp_swap:
-   case nir_intrinsic_bindless_image_atomic_fadd:
-   case nir_intrinsic_bindless_image_atomic_inc_wrap:
-   case nir_intrinsic_bindless_image_atomic_dec_wrap: {
+   case nir_intrinsic_bindless_image_atomic:
+   case nir_intrinsic_bindless_image_atomic_swap: {
       assert(!(nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM));
 
       enum ac_descriptor_type desc_type;
