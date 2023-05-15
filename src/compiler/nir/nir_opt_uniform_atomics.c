@@ -72,49 +72,6 @@ parse_atomic_op(nir_intrinsic_instr *intr, unsigned *offset_src,
                 unsigned *data_src, unsigned *offset2_src)
 {
    switch (intr->intrinsic) {
-   /* Legacy atomics */
-   #define OP_NOIMG(intrin, alu) \
-   case nir_intrinsic_ssbo_atomic_##intrin: \
-      *offset_src = 1; \
-      *data_src = 2; \
-      *offset2_src = *offset_src; \
-      return nir_op_##alu; \
-   case nir_intrinsic_shared_atomic_##intrin: \
-   case nir_intrinsic_global_atomic_##intrin: \
-   case nir_intrinsic_deref_atomic_##intrin: \
-      *offset_src = 0; \
-      *data_src = 1; \
-      *offset2_src = *offset_src; \
-      return nir_op_##alu; \
-   case nir_intrinsic_global_atomic_##intrin##_amd: \
-      *offset_src = 0; \
-      *data_src = 1; \
-      *offset2_src = 2; \
-      return nir_op_##alu;
-   #define OP(intrin, alu) \
-   OP_NOIMG(intrin, alu) \
-   case nir_intrinsic_image_deref_atomic_##intrin: \
-   case nir_intrinsic_image_atomic_##intrin: \
-   case nir_intrinsic_bindless_image_atomic_##intrin: \
-      *offset_src = 1; \
-      *data_src = 3; \
-      *offset2_src = *offset_src; \
-      return nir_op_##alu;
-   OP(add, iadd)
-   OP(imin, imin)
-   OP(umin, umin)
-   OP(imax, imax)
-   OP(umax, umax)
-   OP(and, iand)
-   OP(or, ior)
-   OP(xor, ixor)
-   OP(fadd, fadd)
-   OP_NOIMG(fmin, fmin)
-   OP_NOIMG(fmax, fmax)
-   #undef OP_NOIMG
-   #undef OP
-
-   /* Unified atomics */
    case nir_intrinsic_ssbo_atomic:
       *offset_src = 1;
       *data_src = 2;
