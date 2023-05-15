@@ -3545,54 +3545,6 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
    sctx->framebuffer.dirty_zsbuf = false;
 }
 
-static void si_emit_msaa_sample_locs(struct si_context *sctx)
-{
-   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
-   unsigned nr_samples = sctx->framebuffer.nr_samples;
-
-   /* Smoothing (only possible with nr_samples == 1) uses the same
-    * sample locations as the MSAA it simulates.
-    */
-   if (nr_samples <= 1 && sctx->smoothing_enabled)
-      nr_samples = SI_NUM_SMOOTH_AA_SAMPLES;
-
-   /* Always set MSAA sample locations even with 1x MSAA for simplicity.
-    *
-    * The only chips that don't need to set them for 1x MSAA are GFX6-8 except Polaris,
-    * but there is no benefit in not resetting them to 0 when changing framebuffers from MSAA
-    * to non-MSAA.
-    */
-   if (nr_samples != sctx->sample_locs_num_samples) {
-      sctx->sample_locs_num_samples = nr_samples;
-      si_emit_sample_locations(cs, nr_samples);
-   }
-
-   if (sctx->screen->info.has_small_prim_filter_sample_loc_bug) {
-      /* For hardware with the sample location bug, the problem is that in order to use the small
-       * primitive filter, we need to explicitly set the sample locations to 0. But the DB doesn't
-       * properly process the change of sample locations without a flush, and so we can end up
-       * with incorrect Z values.
-       *
-       * Instead of doing a flush, just disable the small primitive filter when MSAA is
-       * force-disabled.
-       *
-       * The alternative of setting sample locations to 0 would require a DB flush to avoid
-       * Z errors, see https://bugs.freedesktop.org/show_bug.cgi?id=96908
-       */
-      bool small_prim_filter_enable = sctx->framebuffer.nr_samples <= 1 || rs->multisample_enable;
-      assert(sctx->family >= CHIP_POLARIS10);
-
-      radeon_begin(cs);
-      radeon_opt_set_context_reg(sctx, R_028830_PA_SU_SMALL_PRIM_FILTER_CNTL,
-                                 SI_TRACKED_PA_SU_SMALL_PRIM_FILTER_CNTL,
-                                 S_028830_SMALL_PRIM_FILTER_ENABLE(small_prim_filter_enable) |
-                                 /* Small line culling doesn't work on Polaris10-12. */
-                                 S_028830_LINE_FILTER_DISABLE(sctx->family <= CHIP_POLARIS12));
-      radeon_end();
-   }
-}
-
 static bool si_out_of_order_rasterization(struct si_context *sctx)
 {
    struct si_state_blend *blend = sctx->queued.named.blend;
@@ -5448,7 +5400,6 @@ void si_init_state_compute_functions(struct si_context *sctx)
 void si_init_state_functions(struct si_context *sctx)
 {
    sctx->atoms.s.framebuffer.emit = si_emit_framebuffer_state;
-   sctx->atoms.s.msaa_sample_locs.emit = si_emit_msaa_sample_locs;
    sctx->atoms.s.db_render_state.emit = si_emit_db_render_state;
    sctx->atoms.s.dpbb_state.emit = si_emit_dpbb_state;
    sctx->atoms.s.msaa_config.emit = si_emit_msaa_config;
