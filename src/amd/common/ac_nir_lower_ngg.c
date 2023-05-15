@@ -4517,7 +4517,9 @@ handle_smaller_ms_api_workgroup(nir_builder *b,
          /* One invocation in each API wave decrements the number of API waves in flight. */
          nir_if *if_elected_again = nir_push_if(b, nir_elect(b, 1));
          {
-            nir_shared_atomic_add(b, 32, zero, nir_imm_int(b, -1u), .base = api_waves_in_flight_addr);
+            nir_shared_atomic(b, 32, zero, nir_imm_int(b, -1u),
+                              .base = api_waves_in_flight_addr,
+                              .atomic_op = nir_atomic_op_iadd);
          }
          nir_pop_if(b, if_elected_again);
 
