@@ -43,7 +43,7 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_device *device, struct radeon_c
    /* Linear -> linear sub-window copy. */
    if (image->planes[0].surface.is_linear) {
       ASSERTED unsigned cdw_max = radeon_check_space(device->ws, cs, 7);
-      unsigned bytes = src_pitch * copy_height * bpp;
+      uint64_t bytes = (uint64_t)src_pitch * copy_height * bpp;
 
       if (!(bytes < (1u << 22)))
          return false;
@@ -68,7 +68,7 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_device *device, struct radeon_c
       unsigned tiled_width = copy_width;
       unsigned tiled_height = copy_height;
       unsigned linear_pitch = region->bufferRowLength;
-      unsigned linear_slice_pitch = region->bufferRowLength * copy_height;
+      uint64_t linear_slice_pitch = (uint64_t)region->bufferRowLength * copy_height;
       uint64_t tiled_address = src_address;
       uint64_t linear_address = dst_address;
       bool is_v5 = device->physical_device->rad_info.gfx_level >= GFX10;
