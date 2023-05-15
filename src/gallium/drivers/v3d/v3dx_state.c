@@ -888,7 +888,8 @@ v3d_setup_texture_shader_state_from_buffer(struct V3DX(TEXTURE_SHADER_STATE) *te
 }
 
 static void
-v3d_setup_texture_shader_state(struct V3DX(TEXTURE_SHADER_STATE) *tex,
+v3d_setup_texture_shader_state(const struct v3d_device_info *devinfo,
+                               struct V3DX(TEXTURE_SHADER_STATE) *tex,
                                struct pipe_resource *prsc,
                                int base_level, int last_level,
                                int first_layer, int last_layer,
@@ -948,15 +949,22 @@ v3d_setup_texture_shader_state(struct V3DX(TEXTURE_SHADER_STATE) *tex,
 
         tex->texture_base_pointer = cl_address(NULL, base_offset);
 #endif
+
+        tex->array_stride_64_byte_aligned = rsc->cube_map_stride / 64;
+
 #if V3D_VERSION >= 71
         tex->chroma_offset_x = 1;
         tex->chroma_offset_y = 1;
         /* See comment in XML field definition for rationale of the shifts */
         tex->texture_base_pointer_cb = base_offset >> 6;
         tex->texture_base_pointer_cr = base_offset >> 6;
-#endif
 
-        tex->array_stride_64_byte_aligned = rsc->cube_map_stride / 64;
+        /* V3D 7.1.5 has array stride start at bit 33 instead of bit 32 to
+         * make room for the RB swap bit.
+         */
+        if (devinfo->rev >= 5)
+                tex->array_stride_64_byte_aligned <<= 1;
+#endif
 
         /* Since other platform devices may produce UIF images even
          * when they're not big enough for V3D to assume they're UIF,
@@ -1005,7 +1013,8 @@ v3dX(create_texture_shader_state_bo)(struct v3d_context *v3d,
 
         v3dx_pack(map, TEXTURE_SHADER_STATE, tex) {
                 if (prsc->target != PIPE_BUFFER) {
-                        v3d_setup_texture_shader_state(&tex, prsc,
+                        v3d_setup_texture_shader_state(&v3d->screen->devinfo,
+                                                       &tex, prsc,
                                                        cso->u.tex.first_level,
                                                        cso->u.tex.last_level,
                                                        cso->u.tex.first_layer,
@@ -1441,7 +1450,8 @@ v3d_create_image_view_texture_shader_state(struct v3d_context *v3d,
 
         v3dx_pack(map, TEXTURE_SHADER_STATE, tex) {
                 if (prsc->target != PIPE_BUFFER) {
-                        v3d_setup_texture_shader_state(&tex, prsc,
+                        v3d_setup_texture_shader_state(&v3d->screen->devinfo,
+                                                       &tex, prsc,
                                                        iview->base.u.tex.level,
                                                        iview->base.u.tex.level,
                                                        iview->base.u.tex.first_layer,

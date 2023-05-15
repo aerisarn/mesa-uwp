@@ -118,6 +118,13 @@ pack_texture_shader_state_helper(struct v3dv_device *device,
 #endif
 #if V3D_VERSION >= 71
          tex.transfer_func = is_srgb ? TRANSFER_FUNC_SRGB : TRANSFER_FUNC_NONE;
+
+         /* V3D 7.1.5 has array stride starting one bit later than previous
+          * V3D versions to make room for the new RB swap bit, but we don't
+          * handle that in the CLE parser.
+          */
+         if (device->devinfo.rev >= 5)
+            tex.array_stride_64_byte_aligned <<= 1;
 #endif
 
          /* At this point we don't have the job. That's the reason the first
