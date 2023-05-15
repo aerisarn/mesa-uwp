@@ -663,27 +663,11 @@ Shader::scan_instruction(nir_instr *instr)
 
    // handle unhandled instructions
    switch (intr->intrinsic) {
-   case nir_intrinsic_ssbo_atomic_add:
-   case nir_intrinsic_ssbo_atomic_comp_swap:
-   case nir_intrinsic_ssbo_atomic_or:
-   case nir_intrinsic_ssbo_atomic_xor:
-   case nir_intrinsic_ssbo_atomic_imax:
-   case nir_intrinsic_ssbo_atomic_imin:
-   case nir_intrinsic_ssbo_atomic_umax:
-   case nir_intrinsic_ssbo_atomic_umin:
-   case nir_intrinsic_ssbo_atomic_and:
-   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic:
+   case nir_intrinsic_ssbo_atomic_swap:
    case nir_intrinsic_image_load:
-   case nir_intrinsic_image_atomic_add:
-   case nir_intrinsic_image_atomic_and:
-   case nir_intrinsic_image_atomic_or:
-   case nir_intrinsic_image_atomic_xor:
-   case nir_intrinsic_image_atomic_exchange:
-   case nir_intrinsic_image_atomic_comp_swap:
-   case nir_intrinsic_image_atomic_umin:
-   case nir_intrinsic_image_atomic_umax:
-   case nir_intrinsic_image_atomic_imin:
-   case nir_intrinsic_image_atomic_imax:
+   case nir_intrinsic_image_atomic:
+   case nir_intrinsic_image_atomic_swap:
       m_flags.set(sh_needs_sbo_ret_address);
       FALLTHROUGH;
    case nir_intrinsic_image_store:
@@ -907,16 +891,8 @@ Shader::process_intrinsic(nir_intrinsic_instr *intr)
    case nir_intrinsic_memory_barrier:
       return emit_wait_ack();
 
-   case nir_intrinsic_shared_atomic_add:
-   case nir_intrinsic_shared_atomic_and:
-   case nir_intrinsic_shared_atomic_or:
-   case nir_intrinsic_shared_atomic_imax:
-   case nir_intrinsic_shared_atomic_umax:
-   case nir_intrinsic_shared_atomic_imin:
-   case nir_intrinsic_shared_atomic_umin:
-   case nir_intrinsic_shared_atomic_xor:
-   case nir_intrinsic_shared_atomic_exchange:
-   case nir_intrinsic_shared_atomic_comp_swap:
+   case nir_intrinsic_shared_atomic:
+   case nir_intrinsic_shared_atomic_swap:
       return emit_atomic_local_shared(intr);
    case nir_intrinsic_shader_clock:
       return emit_shader_clock(intr);
@@ -927,31 +903,31 @@ Shader::process_intrinsic(nir_intrinsic_instr *intr)
 }
 
 static ESDOp
-lds_op_from_intrinsic(nir_intrinsic_op op, bool ret)
+lds_op_from_intrinsic(nir_atomic_op op, bool ret)
 {
    switch (op) {
-   case nir_intrinsic_shared_atomic_add:
+   case nir_atomic_op_iadd:
       return ret ? LDS_ADD_RET : LDS_ADD;
-   case nir_intrinsic_shared_atomic_and:
+   case nir_atomic_op_iand:
       return ret ? LDS_AND_RET : LDS_AND;
-   case nir_intrinsic_shared_atomic_or:
+   case nir_atomic_op_ior:
       return ret ? LDS_OR_RET : LDS_OR;
-   case nir_intrinsic_shared_atomic_imax:
+   case nir_atomic_op_imax:
       return ret ? LDS_MAX_INT_RET : LDS_MAX_INT;
-   case nir_intrinsic_shared_atomic_umax:
+   case nir_atomic_op_umax:
       return ret ? LDS_MAX_UINT_RET : LDS_MAX_UINT;
-   case nir_intrinsic_shared_atomic_imin:
+   case nir_atomic_op_imin:
       return ret ? LDS_MIN_INT_RET : LDS_MIN_INT;
-   case nir_intrinsic_shared_atomic_umin:
+   case nir_atomic_op_umin:
       return ret ? LDS_MIN_UINT_RET : LDS_MIN_UINT;
-   case nir_intrinsic_shared_atomic_xor:
+   case nir_atomic_op_ixor:
       return ret ? LDS_XOR_RET : LDS_XOR;
-   case nir_intrinsic_shared_atomic_exchange:
+   case nir_atomic_op_xchg:
       return LDS_XCHG_RET;
-   case nir_intrinsic_shared_atomic_comp_swap:
+   case nir_atomic_op_cmpxchg:
       return LDS_CMP_XCHG_RET;
    default:
-      unreachable("Unsupported shared atomic opcode");
+      unreachable("Unsupported shared atomic_op opcode");
    }
 }
 
@@ -977,14 +953,14 @@ Shader::emit_atomic_local_shared(nir_intrinsic_instr *instr)
 
    auto dest_value = uses_retval ? vf.dest(instr->dest, 0, pin_free) : nullptr;
 
-   auto op = lds_op_from_intrinsic(instr->intrinsic, uses_retval);
+   auto op = lds_op_from_intrinsic(nir_intrinsic_atomic_op(instr), uses_retval);
 
    auto address = vf.src(instr->src[0], 0);
 
    AluInstr::SrcValues src;
    src.push_back(vf.src(instr->src[1], 0));
 
-   if (unlikely(instr->intrinsic == nir_intrinsic_shared_atomic_comp_swap))
+   if (unlikely(instr->intrinsic == nir_intrinsic_shared_atomic_swap))
       src.push_back(vf.src(instr->src[2], 0));
    emit_instruction(new LDSAtomicInstr(op, dest_value, address, src));
    return true;

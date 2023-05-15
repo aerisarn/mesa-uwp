@@ -443,88 +443,60 @@ RatInstr::do_print(std::ostream& os) const
 }
 
 static RatInstr::ERatOp
-get_rat_opcode(const nir_intrinsic_op opcode, pipe_format format)
+get_rat_opcode(const nir_atomic_op opcode)
 {
    switch (opcode) {
-   case nir_intrinsic_image_load:
-      return RatInstr::NOP_RTN;
-   case nir_intrinsic_ssbo_atomic_add:
-   case nir_intrinsic_image_atomic_add:
+   case nir_atomic_op_iadd:
       return RatInstr::ADD_RTN;
-   case nir_intrinsic_ssbo_atomic_and:
-   case nir_intrinsic_image_atomic_and:
+   case nir_atomic_op_iand:
       return RatInstr::AND_RTN;
-   case nir_intrinsic_ssbo_atomic_or:
-   case nir_intrinsic_image_atomic_or:
+   case nir_atomic_op_ior:
       return RatInstr::OR_RTN;
-   case nir_intrinsic_ssbo_atomic_imin:
-   case nir_intrinsic_image_atomic_imin:
+   case nir_atomic_op_imin:
       return RatInstr::MIN_INT_RTN;
-   case nir_intrinsic_ssbo_atomic_imax:
-   case nir_intrinsic_image_atomic_imax:
+   case nir_atomic_op_imax:
       return RatInstr::MAX_INT_RTN;
-   case nir_intrinsic_ssbo_atomic_umin:
-   case nir_intrinsic_image_atomic_umin:
+   case nir_atomic_op_umin:
       return RatInstr::MIN_UINT_RTN;
-   case nir_intrinsic_ssbo_atomic_umax:
-   case nir_intrinsic_image_atomic_umax:
+   case nir_atomic_op_umax:
       return RatInstr::MAX_UINT_RTN;
-   case nir_intrinsic_ssbo_atomic_xor:
-   case nir_intrinsic_image_atomic_xor:
+   case nir_atomic_op_ixor:
       return RatInstr::XOR_RTN;
-   case nir_intrinsic_ssbo_atomic_comp_swap:
-   case nir_intrinsic_image_atomic_comp_swap:
-      if (util_format_is_float(format))
-         return RatInstr::CMPXCHG_FLT_RTN;
-      else
-         return RatInstr::CMPXCHG_INT_RTN;
-   case nir_intrinsic_ssbo_atomic_exchange:
-   case nir_intrinsic_image_atomic_exchange:
+   case nir_atomic_op_cmpxchg:
+      return RatInstr::CMPXCHG_INT_RTN;
+   case nir_atomic_op_xchg:
       return RatInstr::XCHG_RTN;
    default:
-      unreachable("Unsupported WO RAT instruction");
+      unreachable("Unsupported atomic");
    }
 }
 
 static RatInstr::ERatOp
-get_rat_opcode_wo(const nir_intrinsic_op opcode, pipe_format format)
+get_rat_opcode_wo(const nir_atomic_op opcode)
 {
    switch (opcode) {
-   case nir_intrinsic_ssbo_atomic_add:
-   case nir_intrinsic_image_atomic_add:
+   case nir_atomic_op_iadd:
       return RatInstr::ADD;
-   case nir_intrinsic_ssbo_atomic_and:
-   case nir_intrinsic_image_atomic_and:
+   case nir_atomic_op_iand:
       return RatInstr::AND;
-   case nir_intrinsic_ssbo_atomic_or:
-   case nir_intrinsic_image_atomic_or:
+   case nir_atomic_op_ior:
       return RatInstr::OR;
-   case nir_intrinsic_ssbo_atomic_imin:
-   case nir_intrinsic_image_atomic_imin:
+   case nir_atomic_op_imin:
       return RatInstr::MIN_INT;
-   case nir_intrinsic_ssbo_atomic_imax:
-   case nir_intrinsic_image_atomic_imax:
+   case nir_atomic_op_imax:
       return RatInstr::MAX_INT;
-   case nir_intrinsic_ssbo_atomic_umin:
-   case nir_intrinsic_image_atomic_umin:
+   case nir_atomic_op_umin:
       return RatInstr::MIN_UINT;
-   case nir_intrinsic_ssbo_atomic_umax:
-   case nir_intrinsic_image_atomic_umax:
+   case nir_atomic_op_umax:
       return RatInstr::MAX_UINT;
-   case nir_intrinsic_ssbo_atomic_xor:
-   case nir_intrinsic_image_atomic_xor:
+   case nir_atomic_op_ixor:
       return RatInstr::XOR;
-   case nir_intrinsic_ssbo_atomic_comp_swap:
-   case nir_intrinsic_image_atomic_comp_swap:
-      if (util_format_is_float(format))
-         return RatInstr::CMPXCHG_FLT;
-      else
-         return RatInstr::CMPXCHG_INT;
-   case nir_intrinsic_ssbo_atomic_exchange:
-   case nir_intrinsic_image_atomic_exchange:
+   case nir_atomic_op_cmpxchg:
+      return RatInstr::CMPXCHG_INT;
+   case nir_atomic_op_xchg:
       return RatInstr::XCHG_RTN;
    default:
-      unreachable("Unsupported WO RAT instruction");
+      unreachable("Unsupported atomic");
    }
 }
 
@@ -536,30 +508,14 @@ RatInstr::emit(nir_intrinsic_instr *intr, Shader& shader)
       return emit_ssbo_load(intr, shader);
    case nir_intrinsic_store_ssbo:
       return emit_ssbo_store(intr, shader);
-   case nir_intrinsic_ssbo_atomic_add:
-   case nir_intrinsic_ssbo_atomic_comp_swap:
-   case nir_intrinsic_ssbo_atomic_or:
-   case nir_intrinsic_ssbo_atomic_xor:
-   case nir_intrinsic_ssbo_atomic_imax:
-   case nir_intrinsic_ssbo_atomic_imin:
-   case nir_intrinsic_ssbo_atomic_umax:
-   case nir_intrinsic_ssbo_atomic_umin:
-   case nir_intrinsic_ssbo_atomic_and:
-   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic:
+   case nir_intrinsic_ssbo_atomic_swap:
       return emit_ssbo_atomic_op(intr, shader);
    case nir_intrinsic_image_store:
       return emit_image_store(intr, shader);
    case nir_intrinsic_image_load:
-   case nir_intrinsic_image_atomic_add:
-   case nir_intrinsic_image_atomic_and:
-   case nir_intrinsic_image_atomic_or:
-   case nir_intrinsic_image_atomic_xor:
-   case nir_intrinsic_image_atomic_exchange:
-   case nir_intrinsic_image_atomic_comp_swap:
-   case nir_intrinsic_image_atomic_umin:
-   case nir_intrinsic_image_atomic_umax:
-   case nir_intrinsic_image_atomic_imin:
-   case nir_intrinsic_image_atomic_imax:
+   case nir_intrinsic_image_atomic:
+   case nir_intrinsic_image_atomic_swap:
       return emit_image_load_or_atomic(intr, shader);
    case nir_intrinsic_image_size:
       return emit_image_size(intr, shader);
@@ -662,8 +618,8 @@ RatInstr::emit_ssbo_atomic_op(nir_intrinsic_instr *intr, Shader& shader)
    }
 
    bool read_result = !intr->dest.is_ssa || !list_is_empty(&intr->dest.ssa.uses);
-   auto opcode = read_result ? get_rat_opcode(intr->intrinsic, PIPE_FORMAT_R32_UINT)
-                             : get_rat_opcode_wo(intr->intrinsic, PIPE_FORMAT_R32_UINT);
+   auto opcode = read_result ? get_rat_opcode(nir_intrinsic_atomic_op(intr))
+                             : get_rat_opcode_wo(nir_intrinsic_atomic_op(intr));
 
    auto coord_orig = vf.src(intr->src[1], 0);
    auto coord = vf.temp_register(0);
@@ -676,7 +632,7 @@ RatInstr::emit_ssbo_atomic_op(nir_intrinsic_instr *intr, Shader& shader)
    shader.emit_instruction(
       new AluInstr(op1_mov, data_vec4[1], shader.rat_return_address(), AluInstr::write));
 
-   if (intr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
+   if (intr->intrinsic == nir_intrinsic_ssbo_atomic_swap) {
       shader.emit_instruction(
          new AluInstr(op1_mov, data_vec4[0], vf.src(intr->src[3], 0), AluInstr::write));
       shader.emit_instruction(
@@ -799,8 +755,10 @@ RatInstr::emit_image_load_or_atomic(nir_intrinsic_instr *intrin, Shader& shader)
    }
 
    bool read_result = !intrin->dest.is_ssa || !list_is_empty(&intrin->dest.ssa.uses);
-   auto opcode = read_result ? get_rat_opcode(intrin->intrinsic, PIPE_FORMAT_R32_UINT)
-                             : get_rat_opcode_wo(intrin->intrinsic, PIPE_FORMAT_R32_UINT);
+   bool image_load = (intrin->intrinsic == nir_intrinsic_image_load);
+   auto opcode = image_load  ? RatInstr::NOP_RTN :
+                 read_result ? get_rat_opcode(nir_intrinsic_atomic_op(intrin))
+                             : get_rat_opcode_wo(nir_intrinsic_atomic_op(intrin));
 
    auto coord_orig = vf.src_vec4(intrin->src[1], pin_chan);
    auto coord = vf.temp_vec4(pin_chgr);
@@ -821,7 +779,7 @@ RatInstr::emit_image_load_or_atomic(nir_intrinsic_instr *intrin, Shader& shader)
    shader.emit_instruction(
       new AluInstr(op1_mov, data_vec4[1], shader.rat_return_address(), AluInstr::write));
 
-   if (intrin->intrinsic == nir_intrinsic_image_atomic_comp_swap) {
+   if (intrin->intrinsic == nir_intrinsic_image_atomic_swap) {
       shader.emit_instruction(
          new AluInstr(op1_mov, data_vec4[0], vf.src(intrin->src[4], 0), AluInstr::write));
       shader.emit_instruction(
