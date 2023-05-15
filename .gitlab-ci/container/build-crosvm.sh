@@ -21,6 +21,8 @@ meson setup build/ -D libdir=lib -D render-server-worker=process -D venus=true $
 meson install -C build
 popd
 
+cargo update -p pkg-config@0.3.26 --precise 0.3.27
+
 RUSTFLAGS='-L native=/usr/local/lib' cargo install \
   bindgen-cli \
   -j ${FDO_CI_CONCURRENT:-4} \
