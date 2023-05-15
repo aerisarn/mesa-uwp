@@ -438,7 +438,8 @@ void ac_surface_compute_umd_metadata(const struct radeon_info *info, struct rade
                                      bool include_tool_md);
 
 bool ac_surface_override_offset_stride(const struct radeon_info *info, struct radeon_surf *surf,
-                                       unsigned num_mipmap_levels, uint64_t offset, unsigned pitch);
+                                       unsigned num_layers, unsigned num_mipmap_levels,
+                                       uint64_t offset, unsigned pitch);
 
 struct ac_modifier_options {
 	bool dcc; /* Whether to allow DCC. */

@@ -932,6 +932,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    tex->surface = *surface;
 
    if (!ac_surface_override_offset_stride(&sscreen->info, &tex->surface,
+                                          tex->buffer.b.b.array_size,
                                           tex->buffer.b.b.last_level + 1,
                                           offset, pitch_in_bytes / tex->surface.bpe))
       goto error;

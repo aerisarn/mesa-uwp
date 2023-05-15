@@ -1515,7 +1515,7 @@ radv_image_override_offset_stride(struct radv_device *device, struct radv_image 
                                   uint64_t offset, uint32_t stride)
 {
    ac_surface_override_offset_stride(&device->physical_device->rad_info, &image->planes[0].surface,
-                                     image->vk.mip_levels, offset, stride);
+                                     image->vk.array_layers, image->vk.mip_levels, offset, stride);
 }
 
 static void
@@ -1845,7 +1845,8 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
       }
 
       if (!ac_surface_override_offset_stride(&device->physical_device->rad_info,
-                                             &image->planes[plane].surface, image->vk.mip_levels,
+                                             &image->planes[plane].surface,
+                                             image->vk.array_layers, image->vk.mip_levels,
                                              offset, stride))
          return VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT;
 

@@ -2995,20 +2995,21 @@ static uint32_t ac_surface_get_pitch_align(const struct radeon_info *info,
 }
 
 bool ac_surface_override_offset_stride(const struct radeon_info *info, struct radeon_surf *surf,
-                                       unsigned num_mipmap_levels, uint64_t offset, unsigned pitch)
+                                       unsigned num_layers, unsigned num_mipmap_levels,
+                                       uint64_t offset, unsigned pitch)
 {
    if ((ac_surface_get_pitch_align(info, surf) - 1) & pitch)
       return false;
 
-   /*
-    * GFX10 and newer don't support custom strides. Furthermore, for
-    * multiple miplevels or compression data we'd really need to rerun
-    * addrlib to update all the fields in the surface. That, however, is a
-    * software limitation and could be relaxed later.
+   /* Require an equal pitch with metadata (DCC), mipmapping, non-linear layout (that could be
+    * relaxed), or when the chip is GFX10, which is the only generation that can't override
+    * the pitch.
     */
    bool require_equal_pitch = surf->surf_size != surf->total_size ||
+                              num_layers != 1 ||
                               num_mipmap_levels != 1 ||
-                              info->gfx_level >= GFX10;
+                              !surf->is_linear ||
+                              info->gfx_level == GFX10;
 
    if (info->gfx_level >= GFX9) {
       if (pitch) {
