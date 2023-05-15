@@ -2468,13 +2468,33 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
                          S_028C70_ROUND_MODE(round_mode) |
                          S_028C70_NUMBER_TYPE(ntype);
 
+   unsigned width0 = surf->width0;
+
+   /* GFX10.3+ can set a custom pitch for 1D and 2D non-array, but it must be a multiple
+    * of 256B. Only set it for 2D linear for multi-GPU interop.
+    *
+    * We set the pitch in MIP0_WIDTH.
+    */
+   if (sctx->gfx_level >= GFX10_3 &&
+       (tex->buffer.b.b.target == PIPE_TEXTURE_2D ||
+        tex->buffer.b.b.target == PIPE_TEXTURE_RECT) &&
+       tex->surface.is_linear) {
+      assert((tex->surface.u.gfx9.surf_pitch * tex->surface.bpe) % 256 == 0);
+
+      width0 = tex->surface.u.gfx9.surf_pitch;
+
+      /* Subsampled images have the pitch in the units of blocks. */
+      if (tex->surface.blk_w == 2)
+         width0 *= 2;
+   }
+
    if (sctx->gfx_level >= GFX10) {
       /* Gfx10-11. */
       surf->cb_color_view = S_028C6C_SLICE_START(surf->base.u.tex.first_layer) |
                             S_028C6C_SLICE_MAX_GFX10(surf->base.u.tex.last_layer) |
                             S_028C6C_MIP_LEVEL_GFX10(surf->base.u.tex.level);
       surf->cb_color_attrib = 0;
-      surf->cb_color_attrib2 = S_028C68_MIP0_WIDTH(surf->width0 - 1) |
+      surf->cb_color_attrib2 = S_028C68_MIP0_WIDTH(width0 - 1) |
                                S_028C68_MIP0_HEIGHT(surf->height0 - 1) |
                                S_028C68_MAX_MIP(tex->buffer.b.b.last_level);
       surf->cb_color_attrib3 = S_028EE0_MIP0_DEPTH(util_max_layer(&tex->buffer.b.b, 0)) |
