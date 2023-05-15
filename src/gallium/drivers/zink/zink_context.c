@@ -4373,8 +4373,16 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
       }
       zink_cmd_debug_marker_end(ctx, cmdbuf, marker);
    }
-   if (needs_present_readback)
+   if (needs_present_readback) {
+      if (buf2img) {
+         img->obj->unordered_write = false;
+         buf->obj->unordered_read = false;
+      } else {
+         img->obj->unordered_read = false;
+         buf->obj->unordered_write = false;
+      }
       zink_kopper_present_readback(ctx, img);
+   }
 
    if (ctx->oom_flush && !ctx->batch.in_rp && !ctx->unordered_blitting)
       flush_batch(ctx, false);

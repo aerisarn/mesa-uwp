@@ -459,8 +459,11 @@ zink_blit(struct pipe_context *pctx,
    }
    ctx->unordered_blitting = false;
 end:
-   if (needs_present_readback)
+   if (needs_present_readback) {
+      src->obj->unordered_read = false;
+      dst->obj->unordered_write = false;
       zink_kopper_present_readback(ctx, src);
+   }
 }
 
 /* similar to radeonsi */
