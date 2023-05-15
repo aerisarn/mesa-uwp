@@ -288,6 +288,8 @@ static void scan_instruction(const struct nir_shader *nir,
       case nir_intrinsic_image_store:
          info->writes_memory = true;
          break;
+      case nir_intrinsic_bindless_image_atomic:
+      case nir_intrinsic_bindless_image_atomic_swap:
       case nir_intrinsic_bindless_image_atomic_add:
       case nir_intrinsic_bindless_image_atomic_imin:
       case nir_intrinsic_bindless_image_atomic_imax:
@@ -307,6 +309,8 @@ static void scan_instruction(const struct nir_shader *nir,
 
          info->writes_memory = true;
          break;
+      case nir_intrinsic_image_deref_atomic:
+      case nir_intrinsic_image_deref_atomic_swap:
       case nir_intrinsic_image_deref_atomic_add:
       case nir_intrinsic_image_deref_atomic_imin:
       case nir_intrinsic_image_deref_atomic_imax:
@@ -317,6 +321,8 @@ static void scan_instruction(const struct nir_shader *nir,
       case nir_intrinsic_image_deref_atomic_xor:
       case nir_intrinsic_image_deref_atomic_exchange:
       case nir_intrinsic_image_deref_atomic_comp_swap:
+      case nir_intrinsic_image_atomic:
+      case nir_intrinsic_image_atomic_swap:
       case nir_intrinsic_image_atomic_add:
       case nir_intrinsic_image_atomic_imin:
       case nir_intrinsic_image_atomic_imax:
@@ -330,6 +336,8 @@ static void scan_instruction(const struct nir_shader *nir,
          info->writes_memory = true;
          break;
       case nir_intrinsic_store_ssbo:
+      case nir_intrinsic_ssbo_atomic:
+      case nir_intrinsic_ssbo_atomic_swap:
       case nir_intrinsic_ssbo_atomic_add:
       case nir_intrinsic_ssbo_atomic_imin:
       case nir_intrinsic_ssbo_atomic_umin:
