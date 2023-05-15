@@ -652,29 +652,10 @@ def image(name, src_comp=[], extra_indices=[], **kwargs):
 image("load", src_comp=[4, 1, 1], extra_indices=[DEST_TYPE], dest_comp=0, flags=[CAN_ELIMINATE])
 image("sparse_load", src_comp=[4, 1, 1], extra_indices=[DEST_TYPE], dest_comp=0, flags=[CAN_ELIMINATE])
 image("store", src_comp=[4, 1, 0, 1], extra_indices=[SRC_TYPE])
-
-# New style atomics
 image("atomic",  src_comp=[4, 1, 1], dest_comp=1, extra_indices=[ATOMIC_OP])
 image("atomic_swap", src_comp=[4, 1, 1, 1], dest_comp=1, extra_indices=[ATOMIC_OP])
-
-# Old style atomics
-image("atomic_add",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_imin",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_umin",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_imax",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_umax",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_and",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_or",   src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_xor",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_exchange",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_comp_swap", src_comp=[4, 1, 1, 1], dest_comp=1)
-image("atomic_fadd",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_fmin",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_fmax",  src_comp=[4, 1, 1], dest_comp=1)
 image("size",    dest_comp=0, src_comp=[1], flags=[CAN_ELIMINATE, CAN_REORDER])
 image("samples", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
-image("atomic_inc_wrap",  src_comp=[4, 1, 1], dest_comp=1)
-image("atomic_dec_wrap",  src_comp=[4, 1, 1], dest_comp=1)
 # This returns true if all samples within the pixel have equal color values.
 image("samples_identical", dest_comp=1, src_comp=[4], flags=[CAN_ELIMINATE])
 # Non-uniform access is not lowered for image_descriptor_amd.
@@ -763,47 +744,23 @@ intrinsic("load_vulkan_descriptor", src_comp=[-1], dest_comp=0,
 # IR3 global operations take 32b vec2 as memory address. IR3 doesn't support
 # float atomics.
 
-def memory_atomic_data1(name, extra_indices = []):
-    intrinsic("deref_atomic" + name,  src_comp=[-1, 1], dest_comp=1, indices=[ACCESS] + extra_indices)
-    intrinsic("ssbo_atomic" + name,  src_comp=[-1, 1, 1], dest_comp=1, indices=[ACCESS] + extra_indices)
-    intrinsic("shared_atomic" + name,  src_comp=[1, 1], dest_comp=1, indices=[BASE] + extra_indices)
-    intrinsic("task_payload_atomic" + name,  src_comp=[1, 1], dest_comp=1, indices=[BASE] + extra_indices)
-    intrinsic("global_atomic" + name,  src_comp=[1, 1], dest_comp=1, indices=extra_indices)
-    intrinsic("global_atomic" + name + "_2x32",  src_comp=[2, 1], dest_comp=1, indices=extra_indices)
-    intrinsic("global_atomic" + name + "_amd",  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE] + extra_indices)
-    if not name.startswith('f'):
-        intrinsic("global_atomic" + name + "_ir3",  src_comp=[2, 1], dest_comp=1, indices=[BASE] + extra_indices)
+intrinsic("deref_atomic",  src_comp=[-1, 1], dest_comp=1, indices=[ACCESS, ATOMIC_OP])
+intrinsic("ssbo_atomic",  src_comp=[-1, 1, 1], dest_comp=1, indices=[ACCESS, ATOMIC_OP])
+intrinsic("shared_atomic",  src_comp=[1, 1], dest_comp=1, indices=[BASE, ATOMIC_OP])
+intrinsic("task_payload_atomic",  src_comp=[1, 1], dest_comp=1, indices=[BASE, ATOMIC_OP])
+intrinsic("global_atomic",  src_comp=[1, 1], dest_comp=1, indices=[ATOMIC_OP])
+intrinsic("global_atomic_2x32",  src_comp=[2, 1], dest_comp=1, indices=[ATOMIC_OP])
+intrinsic("global_atomic_amd",  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE, ATOMIC_OP])
+intrinsic("global_atomic_ir3",  src_comp=[2, 1], dest_comp=1, indices=[BASE, ATOMIC_OP])
 
-def memory_atomic_data2(name, extra_indices = []):
-    intrinsic("deref_atomic" + name,  src_comp=[-1, 1, 1], dest_comp=1, indices=[ACCESS] + extra_indices)
-    intrinsic("ssbo_atomic" + name,  src_comp=[-1, 1, 1, 1], dest_comp=1, indices=[ACCESS] + extra_indices)
-    intrinsic("shared_atomic" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE] + extra_indices)
-    intrinsic("task_payload_atomic" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE] + extra_indices)
-    intrinsic("global_atomic" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=extra_indices)
-    intrinsic("global_atomic" + name + "_2x32",  src_comp=[2, 1, 1], dest_comp=1, indices=extra_indices)
-    intrinsic("global_atomic" + name + "_amd",  src_comp=[1, 1, 1, 1], dest_comp=1, indices=[BASE] + extra_indices)
-    if not name.startswith('f'):
-        intrinsic("global_atomic" + name + "_ir3",  src_comp=[2, 1, 1], dest_comp=1, indices=[BASE] + extra_indices)
-
-# Old style (separate) atomics
-memory_atomic_data1("_add")
-memory_atomic_data1("_imin")
-memory_atomic_data1("_umin")
-memory_atomic_data1("_imax")
-memory_atomic_data1("_umax")
-memory_atomic_data1("_and")
-memory_atomic_data1("_or")
-memory_atomic_data1("_xor")
-memory_atomic_data1("_exchange")
-memory_atomic_data1("_fadd")
-memory_atomic_data1("_fmin")
-memory_atomic_data1("_fmax")
-memory_atomic_data2("_comp_swap")
-memory_atomic_data2("_fcomp_swap")
-
-# New style (unified) atomics
-memory_atomic_data1("", extra_indices=[ATOMIC_OP])
-memory_atomic_data2("_swap", extra_indices=[ATOMIC_OP])
+intrinsic("deref_atomic_swap",  src_comp=[-1, 1, 1], dest_comp=1, indices=[ACCESS, ATOMIC_OP])
+intrinsic("ssbo_atomic_swap",  src_comp=[-1, 1, 1, 1], dest_comp=1, indices=[ACCESS, ATOMIC_OP])
+intrinsic("shared_atomic_swap",  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE, ATOMIC_OP])
+intrinsic("task_payload_atomic_swap",  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE, ATOMIC_OP])
+intrinsic("global_atomic_swap",  src_comp=[1, 1, 1], dest_comp=1, indices=[ATOMIC_OP])
+intrinsic("global_atomic_swap_2x32",  src_comp=[2, 1, 1], dest_comp=1, indices=[ATOMIC_OP])
+intrinsic("global_atomic_swap_amd",  src_comp=[1, 1, 1, 1], dest_comp=1, indices=[BASE, ATOMIC_OP])
+intrinsic("global_atomic_swap_ir3",  src_comp=[2, 1, 1], dest_comp=1, indices=[BASE, ATOMIC_OP])
 
 def system_value(name, dest_comp, indices=[], bit_sizes=[32]):
     intrinsic("load_" + name, [], dest_comp, indices,
