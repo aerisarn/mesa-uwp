@@ -525,6 +525,10 @@ impl Device {
             }
         }
 
+        if self.pci_info().is_some() {
+            add_ext(1, 0, 0, "cl_khr_pci_bus_info", "");
+        }
+
         if self.svm_supported() {
             add_ext(1, 0, 0, "cl_arm_shared_virtual_memory", "");
         }
@@ -743,6 +747,24 @@ impl Device {
 
     pub fn printf_buffer_size(&self) -> usize {
         1024 * 1024
+    }
+
+    pub fn pci_info(&self) -> Option<cl_device_pci_bus_info_khr> {
+        if self.screen.device_type() != pipe_loader_device_type::PIPE_LOADER_DEVICE_PCI {
+            return None;
+        }
+
+        let pci_domain = self.screen.param(pipe_cap::PIPE_CAP_PCI_GROUP) as cl_uint;
+        let pci_bus = self.screen.param(pipe_cap::PIPE_CAP_PCI_BUS) as cl_uint;
+        let pci_device = self.screen.param(pipe_cap::PIPE_CAP_PCI_DEVICE) as cl_uint;
+        let pci_function = self.screen.param(pipe_cap::PIPE_CAP_PCI_FUNCTION) as cl_uint;
+
+        Some(cl_device_pci_bus_info_khr {
+            pci_domain,
+            pci_bus,
+            pci_device,
+            pci_function,
+        })
     }
 
     pub fn screen(&self) -> &Arc<PipeScreen> {

@@ -124,6 +124,7 @@ cl_prop_for_type!(cl_ulong);
 cl_prop_for_type!(isize);
 cl_prop_for_type!(usize);
 
+cl_prop_for_struct!(cl_device_pci_bus_info_khr);
 cl_prop_for_struct!(cl_image_format);
 cl_prop_for_struct!(cl_name_version);
 
