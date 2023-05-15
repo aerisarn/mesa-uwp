@@ -93,6 +93,9 @@ static int amdgpu_surface_init(struct radeon_winsys *rws,
                   tex->target == PIPE_TEXTURE_1D_ARRAY;
    config.is_3d = tex->target == PIPE_TEXTURE_3D;
    config.is_cube = tex->target == PIPE_TEXTURE_CUBE;
+   config.is_array = tex->target == PIPE_TEXTURE_1D_ARRAY ||
+                     tex->target == PIPE_TEXTURE_2D_ARRAY ||
+                     tex->target == PIPE_TEXTURE_CUBE_ARRAY;
 
    /* Use different surface counters for color and FMASK, so that MSAA MRTs
     * always use consecutive surface indices when FMASK is allocated between

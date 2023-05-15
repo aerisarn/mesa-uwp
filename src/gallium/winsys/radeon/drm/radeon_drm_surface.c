@@ -425,6 +425,9 @@ static int radeon_winsys_surface_init(struct radeon_winsys *rws,
       config.info.array_size = tex->array_size;
       config.is_3d = !!(tex->target == PIPE_TEXTURE_3D);
       config.is_cube = !!(tex->target == PIPE_TEXTURE_CUBE);
+      config.is_array = tex->target == PIPE_TEXTURE_1D_ARRAY ||
+                        tex->target == PIPE_TEXTURE_2D_ARRAY ||
+                        tex->target == PIPE_TEXTURE_CUBE_ARRAY;
 
       si_compute_cmask(&ws->info, &config, surf_ws);
    }

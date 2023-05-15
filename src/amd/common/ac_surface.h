@@ -419,6 +419,7 @@ struct ac_surf_config {
    unsigned is_1d : 1;
    unsigned is_3d : 1;
    unsigned is_cube : 1;
+   unsigned is_array : 1;
 };
 
 /* Output parameters for ac_surface_compute_nbc_view */
