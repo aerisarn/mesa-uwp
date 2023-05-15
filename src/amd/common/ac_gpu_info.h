@@ -94,7 +94,7 @@ struct radeon_info {
    bool cpdma_prefetch_writes_memory;
    bool has_gfx9_scissor_bug;
    bool has_tc_compat_zrange_bug;
-   bool has_msaa_sample_loc_bug;
+   bool has_small_prim_filter_sample_loc_bug;
    bool has_ls_vgpr_init_bug;
    bool has_zero_index_buffer_bug;
    bool has_image_load_dcc_bug;

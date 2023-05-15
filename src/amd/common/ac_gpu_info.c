@@ -1144,7 +1144,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
 
    info->has_tc_compat_zrange_bug = info->gfx_level >= GFX8 && info->gfx_level <= GFX9;
 
-   info->has_msaa_sample_loc_bug =
+   info->has_small_prim_filter_sample_loc_bug =
       (info->family >= CHIP_POLARIS10 && info->family <= CHIP_POLARIS12) ||
       info->family == CHIP_VEGA10 || info->family == CHIP_RAVEN;
 
@@ -1659,7 +1659,7 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
    fprintf(f, "    cpdma_prefetch_writes_memory = %u\n", info->cpdma_prefetch_writes_memory);
    fprintf(f, "    has_gfx9_scissor_bug = %i\n", info->has_gfx9_scissor_bug);
    fprintf(f, "    has_tc_compat_zrange_bug = %i\n", info->has_tc_compat_zrange_bug);
-   fprintf(f, "    has_msaa_sample_loc_bug = %i\n", info->has_msaa_sample_loc_bug);
+   fprintf(f, "    has_small_prim_filter_sample_loc_bug = %i\n", info->has_small_prim_filter_sample_loc_bug);
    fprintf(f, "    has_ls_vgpr_init_bug = %i\n", info->has_ls_vgpr_init_bug);
    fprintf(f, "    has_32bit_predication = %i\n", info->has_32bit_predication);
    fprintf(f, "    has_3d_cube_border_color_mipmap = %i\n", info->has_3d_cube_border_color_mipmap);

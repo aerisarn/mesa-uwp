@@ -1144,7 +1144,7 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
 
       /* Update the small primitive filter workaround if necessary. */
-      if (sctx->screen->info.has_msaa_sample_loc_bug && sctx->framebuffer.nr_samples > 1)
+      if (sctx->screen->info.has_small_prim_filter_sample_loc_bug && sctx->framebuffer.nr_samples > 1)
          si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_sample_locs);
 
       /* NGG cull state uses multisample_enable. */
@@ -3635,7 +3635,7 @@ static void si_emit_msaa_sample_locs(struct si_context *sctx)
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
    unsigned nr_samples = sctx->framebuffer.nr_samples;
-   bool has_msaa_sample_loc_bug = sctx->screen->info.has_msaa_sample_loc_bug;
+   bool has_msaa_sample_loc_bug = sctx->screen->info.has_small_prim_filter_sample_loc_bug;
 
    /* Smoothing (only possible with nr_samples == 1) uses the same
     * sample locations as the MSAA it simulates.
