@@ -654,6 +654,11 @@ static int surf_config_sanity(const struct ac_surf_config *config, unsigned flag
    return 0;
 }
 
+/* The addrlib pitch alignment is forced to this number for all chips to support interop
+ * between any 2 chips.
+ */
+#define LINEAR_PITCH_ALIGNMENT 256
+
 static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *config,
                               struct radeon_surf *surf, bool is_stencil, unsigned level,
                               bool compressed, ADDR_COMPUTE_SURFACE_INFO_INPUT *AddrSurfInfoIn,
@@ -671,12 +676,10 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
    AddrSurfInfoIn->width = u_minify(config->info.width, level);
    AddrSurfInfoIn->height = u_minify(config->info.height, level);
 
-   /* Make GFX6 linear surfaces compatible with GFX9 for hybrid graphics,
-    * because GFX9 needs linear alignment of 256 bytes.
-    */
+   /* Make GFX6 linear surfaces compatible with all chips for multi-GPU interop. */
    if (config->info.levels == 1 && AddrSurfInfoIn->tileMode == ADDR_TM_LINEAR_ALIGNED &&
        AddrSurfInfoIn->bpp && util_is_power_of_two_or_zero(AddrSurfInfoIn->bpp)) {
-      unsigned alignment = 256 / (AddrSurfInfoIn->bpp / 8);
+      unsigned alignment = LINEAR_PITCH_ALIGNMENT / surf->bpe;
 
       AddrSurfInfoIn->width = align(AddrSurfInfoIn->width, alignment);
    }
@@ -1793,7 +1796,8 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
    if (!compressed && surf->blk_w > 1 && out.pitch == out.pixelPitch &&
        surf->u.gfx9.swizzle_mode == ADDR_SW_LINEAR) {
       /* Adjust surf_pitch to be in elements units not in pixels */
-      surf->u.gfx9.surf_pitch = align(surf->u.gfx9.surf_pitch / surf->blk_w, 256 / surf->bpe);
+      surf->u.gfx9.surf_pitch = align(surf->u.gfx9.surf_pitch / surf->blk_w,
+                                      LINEAR_PITCH_ALIGNMENT / surf->bpe);
       surf->u.gfx9.epitch =
          MAX2(surf->u.gfx9.epitch, surf->u.gfx9.surf_pitch * surf->blk_w - 1);
       /* The surface is really a surf->bpe bytes per pixel surface even if we
@@ -1806,7 +1810,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
               (uint64_t)surf->u.gfx9.surf_pitch * out.height * surf->bpe * surf->blk_w);
       surf->surf_size = surf->u.gfx9.surf_slice_size * in->numSlices;
 
-      int alignment = 256 / surf->bpe;
+      int alignment = LINEAR_PITCH_ALIGNMENT / surf->bpe;
       for (unsigned i = 0; i < in->numMipLevels; i++) {
          surf->u.gfx9.offset[i] = mip_info[i].offset;
          /* Adjust pitch like we did for surf_pitch */
