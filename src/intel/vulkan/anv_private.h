@@ -1037,6 +1037,7 @@ struct anv_instance {
     float                                       lower_depth_range_rate;
     unsigned                                    generated_indirect_threshold;
     unsigned                                    query_clear_with_blorp_threshold;
+    unsigned                                    force_vk_vendor;
 
     /* HW workarounds */
     bool                                        no_16bit;

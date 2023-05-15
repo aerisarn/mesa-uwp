@@ -85,6 +85,7 @@ static const driOptionDescription anv_dri_options[] = {
       DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST(false)
       DRI_CONF_LIMIT_TRIG_INPUT_RANGE(false)
       DRI_CONF_ANV_MESH_CONV_PRIM_ATTRS_TO_VERT_ATTRS(-2)
+      DRI_CONF_FORCE_VK_VENDOR(0)
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_QUALITY
@@ -1500,6 +1501,8 @@ anv_init_dri_options(struct anv_instance *instance)
             driQueryOptioni(&instance->dri_options, "generated_indirect_threshold");
     instance->query_clear_with_blorp_threshold =
        driQueryOptioni(&instance->dri_options, "query_clear_with_blorp_threshold");
+    instance->force_vk_vendor =
+       driQueryOptioni(&instance->dri_options, "force_vk_vendor");
 }
 
 VkResult anv_CreateInstance(
@@ -1749,6 +1752,8 @@ void anv_GetPhysicalDeviceProperties(
       .sparseProperties = {0}, /* Broadwell doesn't do sparse. */
    };
 
+   if (unlikely(pdevice->instance->force_vk_vendor))
+      pProperties->vendorID = pdevice->instance->force_vk_vendor;
    snprintf(pProperties->deviceName, sizeof(pProperties->deviceName),
             "%s", pdevice->info.name);
    memcpy(pProperties->pipelineCacheUUID,
