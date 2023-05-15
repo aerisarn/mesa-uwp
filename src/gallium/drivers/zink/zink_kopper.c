@@ -867,6 +867,9 @@ zink_kopper_present_readback(struct zink_context *ctx, struct zink_resource *res
 
    zink_kopper_present_queue(screen, res);
    error = VKSCR(QueueWaitIdle)(screen->queue);
+   simple_mtx_lock(&screen->semaphores_lock);
+   util_dynarray_append(&screen->semaphores, VkSemaphore, acquire);
+   simple_mtx_unlock(&screen->semaphores_lock);
    return zink_screen_handle_vkresult(screen, error);
 }
 
