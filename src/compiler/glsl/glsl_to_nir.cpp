@@ -1168,68 +1168,6 @@ nir_visitor::visit(ir_call *ir)
             ? nir_intrinsic_scoped_barrier
             : nir_intrinsic_memory_barrier_shared;
          break;
-      case ir_intrinsic_shared_load:
-         op = nir_intrinsic_load_shared;
-         break;
-      case ir_intrinsic_shared_store:
-         op = nir_intrinsic_store_shared;
-         break;
-      case ir_intrinsic_shared_atomic_add:
-         op = nir_intrinsic_shared_atomic;
-         atomic_op = ir->return_deref->type->is_integer_32_64()
-            ? nir_atomic_op_iadd
-            : nir_atomic_op_fadd;
-         break;
-      case ir_intrinsic_shared_atomic_and:
-         op = nir_intrinsic_shared_atomic;
-         atomic_op = nir_atomic_op_iand;
-         break;
-      case ir_intrinsic_shared_atomic_or:
-         op = nir_intrinsic_shared_atomic;
-         atomic_op = nir_atomic_op_ior;
-         break;
-      case ir_intrinsic_shared_atomic_xor:
-         op = nir_intrinsic_shared_atomic;
-         atomic_op = nir_atomic_op_ixor;
-         break;
-      case ir_intrinsic_shared_atomic_min:
-         assert(ir->return_deref);
-         op = nir_intrinsic_shared_atomic;
-         if (ir->return_deref->type == glsl_type::int_type ||
-             ir->return_deref->type == glsl_type::int64_t_type)
-            atomic_op = nir_atomic_op_imin;
-         else if (ir->return_deref->type == glsl_type::uint_type ||
-                  ir->return_deref->type == glsl_type::uint64_t_type)
-            atomic_op = nir_atomic_op_umin;
-         else if (ir->return_deref->type == glsl_type::float_type)
-            atomic_op = nir_atomic_op_fmin;
-         else
-            unreachable("Invalid type");
-         break;
-      case ir_intrinsic_shared_atomic_max:
-         assert(ir->return_deref);
-         op = nir_intrinsic_shared_atomic;
-         if (ir->return_deref->type == glsl_type::int_type ||
-             ir->return_deref->type == glsl_type::int64_t_type)
-            atomic_op = nir_atomic_op_imax;
-         else if (ir->return_deref->type == glsl_type::uint_type ||
-                  ir->return_deref->type == glsl_type::uint64_t_type)
-            atomic_op = nir_atomic_op_umax;
-         else if (ir->return_deref->type == glsl_type::float_type)
-            atomic_op = nir_atomic_op_fmax;
-         else
-            unreachable("Invalid type");
-         break;
-      case ir_intrinsic_shared_atomic_exchange:
-         op = nir_intrinsic_shared_atomic;
-         atomic_op = nir_atomic_op_xchg;
-         break;
-      case ir_intrinsic_shared_atomic_comp_swap:
-         op = nir_intrinsic_shared_atomic_swap;
-         atomic_op = ir->return_deref->type->is_integer_32_64()
-            ? nir_atomic_op_cmpxchg
-            : nir_atomic_op_fcmpxchg;
-         break;
       case ir_intrinsic_vote_any:
          op = nir_intrinsic_vote_any;
          break;
@@ -1617,39 +1555,6 @@ nir_visitor::visit(ir_call *ir)
          instr->num_components = val->type->vector_elements;
          intrinsic_set_std430_align(instr, val->type);
 
-         nir_builder_instr_insert(&b, &instr->instr);
-         break;
-      }
-      case nir_intrinsic_shared_atomic:
-      case nir_intrinsic_shared_atomic_swap: {
-         int param_count = ir->actual_parameters.length();
-         assert(param_count == 2 || param_count == 3);
-
-         /* Offset */
-         exec_node *param = ir->actual_parameters.get_head();
-         ir_instruction *inst = (ir_instruction *) param;
-         instr->src[0] = nir_src_for_ssa(evaluate_rvalue(inst->as_rvalue()));
-
-         /* data1 parameter (this is always present) */
-         param = param->get_next();
-         inst = (ir_instruction *) param;
-         instr->src[1] = nir_src_for_ssa(evaluate_rvalue(inst->as_rvalue()));
-
-         /* data2 parameter (only with atomic_comp_swap) */
-         if (param_count == 3) {
-            assert(op == nir_intrinsic_shared_atomic_swap);
-            param = param->get_next();
-            inst = (ir_instruction *) param;
-            instr->src[2] =
-               nir_src_for_ssa(evaluate_rvalue(inst->as_rvalue()));
-         }
-
-         /* Atomic result */
-         assert(ir->return_deref);
-         unsigned bit_size = glsl_get_bit_size(ir->return_deref->type);
-         nir_ssa_dest_init(&instr->instr, &instr->dest,
-                           ir->return_deref->type->vector_elements, bit_size);
-         nir_intrinsic_set_atomic_op(instr, atomic_op);
          nir_builder_instr_insert(&b, &instr->instr);
          break;
       }
