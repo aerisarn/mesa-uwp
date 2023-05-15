@@ -9147,18 +9147,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_GUARDBAND)
       radv_emit_guardband_state(cmd_buffer);
 
-   if (info->indexed) {
-      if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_INDEX_BUFFER)
-         radv_emit_index_buffer(cmd_buffer, info->indirect);
-   } else {
-      /* On GFX7 and later, non-indexed draws overwrite VGT_INDEX_TYPE,
-       * so the state must be re-emitted before the next indexed
-       * draw.
-       */
-      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
-         cmd_buffer->state.last_index_type = -1;
-      }
-   }
+   if (info->indexed && cmd_buffer->state.dirty & RADV_CMD_DIRTY_INDEX_BUFFER)
+      radv_emit_index_buffer(cmd_buffer, info->indirect);
 
    radv_cmd_buffer_flush_dynamic_state(cmd_buffer);
 
@@ -9188,6 +9178,14 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
       /* Handle count == 0. */
       if (unlikely(!info->count && !info->strmout_buffer))
          return false;
+   }
+
+   if (!info->indexed && cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
+      /* On GFX7 and later, non-indexed draws overwrite VGT_INDEX_TYPE,
+       * so the state must be re-emitted before the next indexed
+       * draw.
+       */
+      cmd_buffer->state.last_index_type = -1;
    }
 
    /* Need to apply this workaround early as it can set flush flags. */
@@ -9315,6 +9313,8 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
 
    assert(cmd_buffer->cs->cdw <= cdw_max);
    assert(!ace_cs || ace_cs->cdw <= ace_cdw_max);
+
+   cmd_buffer->state.last_index_type = -1;
 
    return true;
 }
