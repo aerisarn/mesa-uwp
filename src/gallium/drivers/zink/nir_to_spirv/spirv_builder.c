@@ -1732,8 +1732,9 @@ spirv_builder_get_words(struct spirv_builder *b, uint32_t *words,
       if (buffer == &b->exec_modes && *tcs_vertices_out_word > 0)
          *tcs_vertices_out_word += written;
 
-      for (int j = 0; j < buffer->num_words; ++j)
-         words[written++] = buffer->words[j];
+      memcpy(words + written, buffer->words,
+             buffer->num_words * sizeof(uint32_t));
+      written += buffer->num_words;
    }
 
    assert(written == spirv_builder_get_num_words(b));
