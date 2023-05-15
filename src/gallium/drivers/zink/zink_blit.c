@@ -395,6 +395,7 @@ zink_blit(struct pipe_context *pctx,
 
    ctx->unordered_blitting = !(info->render_condition_enable && ctx->render_condition_active) &&
                              zink_screen(ctx->base.screen)->info.have_KHR_dynamic_rendering &&
+                             !needs_present_readback &&
                              zink_get_cmdbuf(ctx, src, dst) == ctx->batch.state->barrier_cmdbuf;
    VkCommandBuffer cmdbuf = ctx->batch.state->cmdbuf;
    VkPipeline pipeline = ctx->gfx_pipeline_state.pipeline;
