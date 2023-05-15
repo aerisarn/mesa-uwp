@@ -1726,16 +1726,14 @@ spirv_builder_get_words(struct spirv_builder *b, uint32_t *words,
       &b->instructions
    };
 
-   bool find_tcs_vertices_out = *tcs_vertices_out_word > 0;
    for (int i = 0; i < ARRAY_SIZE(buffers); ++i) {
       const struct spirv_buffer *buffer = buffers[i];
-      for (int j = 0; j < buffer->num_words; ++j) {
-         if (find_tcs_vertices_out && buffer == &b->exec_modes && *tcs_vertices_out_word == j) {
-            *tcs_vertices_out_word = written;
-            find_tcs_vertices_out = false;
-         }
+
+      if (buffer == &b->exec_modes && *tcs_vertices_out_word > 0)
+         *tcs_vertices_out_word += written;
+
+      for (int j = 0; j < buffer->num_words; ++j)
          words[written++] = buffer->words[j];
-      }
    }
 
    assert(written == spirv_builder_get_num_words(b));
