@@ -50,6 +50,7 @@ vk_to_v3d_compare_func[] = {
 };
 
 static union pipe_color_union encode_border_color(
+   const struct v3dv_device *device,
    const VkSamplerCustomBorderColorCreateInfoEXT *bc_info)
 {
    const struct util_format_description *desc =
@@ -76,12 +77,28 @@ static union pipe_color_union encode_border_color(
     * colors so we need to fix up the swizzle manually for this case.
     */
    uint8_t swizzle[4];
-   if (v3dv_format_swizzle_needs_reverse(format->planes[0].swizzle) &&
+   const bool v3d_has_reverse_swap_rb_bits =
+      v3dv_texture_shader_state_has_rb_swap_reverse_bits(device);
+   if (!v3d_has_reverse_swap_rb_bits &&
+       v3dv_format_swizzle_needs_reverse(format->planes[0].swizzle) &&
        v3dv_format_swizzle_needs_rb_swap(format->planes[0].swizzle)) {
       swizzle[0] = PIPE_SWIZZLE_W;
       swizzle[1] = PIPE_SWIZZLE_X;
       swizzle[2] = PIPE_SWIZZLE_Y;
       swizzle[3] = PIPE_SWIZZLE_Z;
+   }
+   /* In v3d 7.x we no longer have a reverse flag for the border color. Instead
+    * we have to use the new reverse and swap_r/b flags in the texture shader
+    * state which will apply the format swizzle automatically when sampling
+    * the border color too and we should not apply it manually here.
+    */
+   else if (v3d_has_reverse_swap_rb_bits &&
+            (v3dv_format_swizzle_needs_rb_swap(format->planes[0].swizzle) ||
+             v3dv_format_swizzle_needs_reverse(format->planes[0].swizzle))) {
+      swizzle[0] = PIPE_SWIZZLE_X;
+      swizzle[1] = PIPE_SWIZZLE_Y;
+      swizzle[2] = PIPE_SWIZZLE_Z;
+      swizzle[3] = PIPE_SWIZZLE_W;
    } else {
       memcpy(swizzle, format->planes[0].swizzle, sizeof (swizzle));
    }
@@ -179,7 +196,8 @@ static union pipe_color_union encode_border_color(
 }
 
 void
-v3dX(pack_sampler_state)(struct v3dv_sampler *sampler,
+v3dX(pack_sampler_state)(const struct v3dv_device *device,
+                         struct v3dv_sampler *sampler,
                          const VkSamplerCreateInfo *pCreateInfo,
                          const VkSamplerCustomBorderColorCreateInfoEXT *bc_info)
 {
@@ -221,7 +239,7 @@ v3dX(pack_sampler_state)(struct v3dv_sampler *sampler,
       s.border_color_mode = border_color_mode;
 
       if (s.border_color_mode == V3D_BORDER_COLOR_FOLLOWS) {
-         union pipe_color_union border = encode_border_color(bc_info);
+         union pipe_color_union border = encode_border_color(device, bc_info);
 
          s.border_color_word_0 = border.ui[0];
          s.border_color_word_1 = border.ui[1];

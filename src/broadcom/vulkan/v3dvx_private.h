@@ -131,7 +131,8 @@ v3dX(get_hw_clear_color)(const VkClearColorValue *color,
 /* Used at v3dv_device */
 
 void
-v3dX(pack_sampler_state)(struct v3dv_sampler *sampler,
+v3dX(pack_sampler_state)(const struct v3dv_device *device,
+                         struct v3dv_sampler *sampler,
                          const VkSamplerCreateInfo *pCreateInfo,
                          const VkSamplerCustomBorderColorCreateInfoEXT *bc_info);
 

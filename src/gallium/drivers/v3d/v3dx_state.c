@@ -959,12 +959,6 @@ v3d_setup_texture_shader_state(const struct v3d_device_info *devinfo,
         /* See comment in XML field definition for rationale of the shifts */
         tex->texture_base_pointer_cb = base_offset >> 6;
         tex->texture_base_pointer_cr = base_offset >> 6;
-
-        /* V3D 7.1.5 has array stride start at bit 33 instead of bit 32 to
-         * make room for the RB swap bit.
-         */
-        if (devinfo->rev >= 5)
-                tex->array_stride_64_byte_aligned <<= 1;
 #endif
 
         /* Since other platform devices may produce UIF images even

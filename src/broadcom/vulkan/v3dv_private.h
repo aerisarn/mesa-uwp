@@ -785,6 +785,8 @@ struct v3dv_image_view {
 
    const struct v3dv_format *format;
 
+   uint8_t view_swizzle[4];
+
    uint8_t plane_count;
    struct {
       uint8_t image_plane;
@@ -795,8 +797,8 @@ struct v3dv_image_view {
       uint32_t internal_type;
       uint32_t offset;
 
-      /* Precomputed (composed from createinfo->components and formar swizzle)
-       * swizzles to pass in to the shader key.
+      /* Precomputed swizzle (composed from the view swizzle and the format
+       * swizzle).
        *
        * This could be also included on the descriptor bo, but the shader state
        * packet doesn't need it on a bo, so we can just avoid a memory copy
@@ -2331,6 +2333,13 @@ struct v3dv_pipeline {
                         MAX_VERTEX_ATTRIBS];
    uint8_t stencil_cfg[2][V3DV_STENCIL_CFG_LENGTH];
 };
+
+static inline bool
+v3dv_texture_shader_state_has_rb_swap_reverse_bits(const struct v3dv_device *device)
+{
+   return device->devinfo.ver > 71 ||
+          (device->devinfo.ver == 71 && device->devinfo.rev >= 5);
+}
 
 static inline VkPipelineBindPoint
 v3dv_pipeline_get_binding_point(struct v3dv_pipeline *pipeline)
