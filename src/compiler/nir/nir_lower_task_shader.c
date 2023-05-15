@@ -151,24 +151,10 @@ static nir_intrinsic_op
 shared_opcode_for_task_payload(nir_intrinsic_op task_payload_op)
 {
    switch (task_payload_op) {
-#define OP(O) case nir_intrinsic_task_payload_##O: return nir_intrinsic_shared_##O;
-   OP(atomic)
-   OP(atomic_swap)
-   OP(atomic_exchange)
-   OP(atomic_comp_swap)
-   OP(atomic_add)
-   OP(atomic_imin)
-   OP(atomic_umin)
-   OP(atomic_imax)
-   OP(atomic_umax)
-   OP(atomic_and)
-   OP(atomic_or)
-   OP(atomic_xor)
-   OP(atomic_fadd)
-   OP(atomic_fmin)
-   OP(atomic_fmax)
-   OP(atomic_fcomp_swap)
-#undef OP
+   case nir_intrinsic_task_payload_atomic:
+      return nir_intrinsic_shared_atomic;
+   case nir_intrinsic_task_payload_atomic_swap:
+      return nir_intrinsic_shared_atomic_swap;
    case nir_intrinsic_load_task_payload:
       return nir_intrinsic_load_shared;
    case nir_intrinsic_store_task_payload:
@@ -365,20 +351,6 @@ lower_task_intrin(nir_builder *b,
    switch (intrin->intrinsic) {
    case nir_intrinsic_task_payload_atomic:
    case nir_intrinsic_task_payload_atomic_swap:
-   case nir_intrinsic_task_payload_atomic_add:
-   case nir_intrinsic_task_payload_atomic_imin:
-   case nir_intrinsic_task_payload_atomic_umin:
-   case nir_intrinsic_task_payload_atomic_imax:
-   case nir_intrinsic_task_payload_atomic_umax:
-   case nir_intrinsic_task_payload_atomic_and:
-   case nir_intrinsic_task_payload_atomic_or:
-   case nir_intrinsic_task_payload_atomic_xor:
-   case nir_intrinsic_task_payload_atomic_exchange:
-   case nir_intrinsic_task_payload_atomic_comp_swap:
-   case nir_intrinsic_task_payload_atomic_fadd:
-   case nir_intrinsic_task_payload_atomic_fmin:
-   case nir_intrinsic_task_payload_atomic_fmax:
-   case nir_intrinsic_task_payload_atomic_fcomp_swap:
    case nir_intrinsic_store_task_payload:
    case nir_intrinsic_load_task_payload:
       if (s->payload_in_shared)
@@ -407,20 +379,6 @@ requires_payload_in_shared(nir_shader *shader, bool atomics, bool small_types)
             switch (intrin->intrinsic) {
                case nir_intrinsic_task_payload_atomic:
                case nir_intrinsic_task_payload_atomic_swap:
-               case nir_intrinsic_task_payload_atomic_add:
-               case nir_intrinsic_task_payload_atomic_imin:
-               case nir_intrinsic_task_payload_atomic_umin:
-               case nir_intrinsic_task_payload_atomic_imax:
-               case nir_intrinsic_task_payload_atomic_umax:
-               case nir_intrinsic_task_payload_atomic_and:
-               case nir_intrinsic_task_payload_atomic_or:
-               case nir_intrinsic_task_payload_atomic_xor:
-               case nir_intrinsic_task_payload_atomic_exchange:
-               case nir_intrinsic_task_payload_atomic_comp_swap:
-               case nir_intrinsic_task_payload_atomic_fadd:
-               case nir_intrinsic_task_payload_atomic_fmin:
-               case nir_intrinsic_task_payload_atomic_fmax:
-               case nir_intrinsic_task_payload_atomic_fcomp_swap:
                   if (atomics)
                      return true;
                   break;
