@@ -698,3 +698,6 @@ spec@!opengl 1.0@depth-clear-precision-check,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail
 
 spec@!opengl 1.1@line-smooth-stipple,Fail
+
+# fails since CI uprev to Debian 12
+spec@arb_viewport_array@display-list,Fail
