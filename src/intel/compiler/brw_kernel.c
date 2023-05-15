@@ -63,7 +63,7 @@ builder_init_new_impl(nir_builder *b, nir_function *func)
 }
 
 static void
-implement_atomic_builtin(nir_function *func, nir_intrinsic_op op,
+implement_atomic_builtin(nir_function *func, nir_atomic_op atomic_op,
                          enum glsl_base_type data_base_type,
                          nir_variable_mode mode)
 {
@@ -75,12 +75,12 @@ implement_atomic_builtin(nir_function *func, nir_intrinsic_op op,
    unsigned p = 0;
 
    nir_deref_instr *ret = NULL;
-   if (nir_intrinsic_infos[op].has_dest) {
-      ret = nir_build_deref_cast(&b, nir_load_param(&b, p++),
-                                 nir_var_function_temp, data_type, 0);
-   }
+   ret = nir_build_deref_cast(&b, nir_load_param(&b, p++),
+                              nir_var_function_temp, data_type, 0);
 
+   nir_intrinsic_op op = nir_intrinsic_deref_atomic;
    nir_intrinsic_instr *atomic = nir_intrinsic_instr_create(b.shader, op);
+   nir_intrinsic_set_atomic_op(atomic, atomic_op);
 
    for (unsigned i = 0; i < nir_intrinsic_infos[op].num_srcs; i++) {
       nir_ssa_def *src = nir_load_param(&b, p++);
@@ -92,15 +92,11 @@ implement_atomic_builtin(nir_function *func, nir_intrinsic_op op,
       atomic->src[i] = nir_src_for_ssa(src);
    }
 
-   if (nir_intrinsic_infos[op].has_dest) {
-      nir_ssa_dest_init_for_type(&atomic->instr, &atomic->dest,
-                                 data_type, NULL);
-   }
+   nir_ssa_dest_init_for_type(&atomic->instr, &atomic->dest,
+         data_type, NULL);
 
    nir_builder_instr_insert(&b, &atomic->instr);
-
-   if (nir_intrinsic_infos[op].has_dest)
-      nir_store_deref(&b, ret, &atomic->dest.ssa, ~0);
+   nir_store_deref(&b, ret, &atomic->dest.ssa, ~0);
 }
 
 static void
@@ -132,22 +128,22 @@ implement_intel_builtins(nir_shader *nir)
    nir_foreach_function(func, nir) {
       if (strcmp(func->name, "_Z10atomic_minPU3AS1Vff") == 0) {
          /* float atom_min(__global float volatile *p, float val) */
-         implement_atomic_builtin(func, nir_intrinsic_deref_atomic_fmin,
+         implement_atomic_builtin(func, nir_atomic_op_fmin,
                                   GLSL_TYPE_FLOAT, nir_var_mem_global);
          progress = true;
       } else if (strcmp(func->name, "_Z10atomic_maxPU3AS1Vff") == 0) {
          /* float atom_max(__global float volatile *p, float val) */
-         implement_atomic_builtin(func, nir_intrinsic_deref_atomic_fmax,
+         implement_atomic_builtin(func, nir_atomic_op_fmax,
                                   GLSL_TYPE_FLOAT, nir_var_mem_global);
          progress = true;
       } else if (strcmp(func->name, "_Z10atomic_minPU3AS3Vff") == 0) {
          /* float atomic_min(__shared float volatile *, float) */
-         implement_atomic_builtin(func, nir_intrinsic_deref_atomic_fmin,
+         implement_atomic_builtin(func, nir_atomic_op_fmin,
                                   GLSL_TYPE_FLOAT, nir_var_mem_shared);
          progress = true;
       } else if (strcmp(func->name, "_Z10atomic_maxPU3AS3Vff") == 0) {
          /* float atomic_max(__shared float volatile *, float) */
-         implement_atomic_builtin(func, nir_intrinsic_deref_atomic_fmax,
+         implement_atomic_builtin(func, nir_atomic_op_fmax,
                                   GLSL_TYPE_FLOAT, nir_var_mem_shared);
          progress = true;
       } else if (strcmp(func->name, "intel_sub_group_ballot") == 0) {
