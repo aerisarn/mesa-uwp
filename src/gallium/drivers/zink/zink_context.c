@@ -150,10 +150,6 @@ zink_context_destroy(struct pipe_context *pctx)
 
    zink_descriptors_deinit_bindless(ctx);
 
-   if (ctx->batch.state) {
-      zink_clear_batch_state(ctx, ctx->batch.state);
-      zink_batch_state_destroy(screen, ctx->batch.state);
-   }
    struct zink_batch_state *bs = ctx->batch_states;
    while (bs) {
       struct zink_batch_state *bs_next = bs->next;
@@ -167,6 +163,10 @@ zink_context_destroy(struct pipe_context *pctx)
       zink_clear_batch_state(ctx, bs);
       zink_batch_state_destroy(screen, bs);
       bs = bs_next;
+   }
+   if (ctx->batch.state) {
+      zink_clear_batch_state(ctx, ctx->batch.state);
+      zink_batch_state_destroy(screen, ctx->batch.state);
    }
 
    for (unsigned i = 0; i < 2; i++) {
