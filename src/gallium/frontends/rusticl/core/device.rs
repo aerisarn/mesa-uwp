@@ -474,61 +474,56 @@ impl Device {
         let mut exts_str: Vec<String> = Vec::new();
         let mut exts = PLATFORM_EXTENSIONS.to_vec();
         let mut feats = Vec::new();
-        let mut add_ext = |major, minor, patch, ext: &str, feat: &str| {
-            if !ext.is_empty() {
-                exts.push(mk_cl_version_ext(major, minor, patch, ext));
-                exts_str.push(ext.to_owned());
-            }
-
-            if !feat.is_empty() {
-                feats.push(mk_cl_version_ext(major, minor, patch, feat));
-            }
+        let mut add_ext = |major, minor, patch, ext: &str| {
+            exts.push(mk_cl_version_ext(major, minor, patch, ext));
+            exts_str.push(ext.to_owned());
+        };
+        let mut add_feat = |major, minor, patch, feat: &str| {
+            feats.push(mk_cl_version_ext(major, minor, patch, feat));
         };
 
         // add extensions all drivers support for now
-        add_ext(1, 0, 0, "cl_khr_global_int32_base_atomics", "");
-        add_ext(1, 0, 0, "cl_khr_global_int32_extended_atomics", "");
-        add_ext(1, 0, 0, "cl_khr_local_int32_base_atomics", "");
-        add_ext(1, 0, 0, "cl_khr_local_int32_extended_atomics", "");
+        add_ext(1, 0, 0, "cl_khr_global_int32_base_atomics");
+        add_ext(1, 0, 0, "cl_khr_global_int32_extended_atomics");
+        add_ext(1, 0, 0, "cl_khr_local_int32_base_atomics");
+        add_ext(1, 0, 0, "cl_khr_local_int32_extended_atomics");
 
         if self.doubles_supported() {
-            add_ext(1, 0, 0, "cl_khr_fp64", "__opencl_c_fp64");
+            add_ext(1, 0, 0, "cl_khr_fp64");
+            add_feat(1, 0, 0, "__opencl_c_fp64");
         }
 
         if self.long_supported() {
-            let ext = if self.embedded { "cles_khr_int64" } else { "" };
+            if self.embedded {
+                add_ext(1, 0, 0, "cles_khr_int64");
+            };
 
-            add_ext(1, 0, 0, ext, "__opencl_c_int64");
+            add_feat(1, 0, 0, "__opencl_c_int64");
         }
 
         if self.image_supported() {
-            add_ext(1, 0, 0, "", "__opencl_c_images");
+            add_feat(1, 0, 0, "__opencl_c_images");
 
             if self.image2d_from_buffer_supported() {
-                add_ext(1, 0, 0, "cl_khr_image2d_from_buffer", "");
+                add_ext(1, 0, 0, "cl_khr_image2d_from_buffer");
             }
 
             if self.image_read_write_supported() {
-                add_ext(1, 0, 0, "", "__opencl_c_read_write_images");
+                add_feat(1, 0, 0, "__opencl_c_read_write_images");
             }
 
             if self.image_3d_write_supported() {
-                add_ext(
-                    1,
-                    0,
-                    0,
-                    "cl_khr_3d_image_writes",
-                    "__opencl_c_3d_image_writes",
-                );
+                add_ext(1, 0, 0, "cl_khr_3d_image_writes");
+                add_feat(1, 0, 0, "__opencl_c_3d_image_writes");
             }
         }
 
         if self.pci_info().is_some() {
-            add_ext(1, 0, 0, "cl_khr_pci_bus_info", "");
+            add_ext(1, 0, 0, "cl_khr_pci_bus_info");
         }
 
         if self.svm_supported() {
-            add_ext(1, 0, 0, "cl_arm_shared_virtual_memory", "");
+            add_ext(1, 0, 0, "cl_arm_shared_virtual_memory");
         }
 
         self.extensions = exts;
