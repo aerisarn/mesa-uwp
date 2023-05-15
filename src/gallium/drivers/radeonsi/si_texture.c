@@ -1370,7 +1370,7 @@ bool si_texture_commit(struct si_context *ctx, struct si_resource *res, unsigned
 
    unsigned row_pitch = surface->u.gfx9.prt_level_pitch[level] *
       surface->prt_tile_height * surface->prt_tile_depth * blks * samples;
-   unsigned depth_pitch = surface->u.gfx9.surf_slice_size * surface->prt_tile_depth;
+   uint64_t depth_pitch = surface->u.gfx9.surf_slice_size * surface->prt_tile_depth;
 
    unsigned x = box->x / surface->prt_tile_width;
    unsigned y = box->y / surface->prt_tile_height;
@@ -1383,16 +1383,16 @@ bool si_texture_commit(struct si_context *ctx, struct si_resource *res, unsigned
    /* Align to tile block base, for levels in mip tail whose offset is inside
     * a tile block.
     */
-   unsigned level_base = ROUND_DOWN_TO(surface->u.gfx9.prt_level_offset[level],
+   uint64_t level_base = ROUND_DOWN_TO(surface->u.gfx9.prt_level_offset[level],
                                        RADEON_SPARSE_PAGE_SIZE);
-   unsigned commit_base = level_base +
-      x * RADEON_SPARSE_PAGE_SIZE + y * row_pitch + z * depth_pitch;
+   uint64_t commit_base = level_base +
+      x * RADEON_SPARSE_PAGE_SIZE + y * (uint64_t)row_pitch + z * depth_pitch;
 
-   unsigned size = w * RADEON_SPARSE_PAGE_SIZE;
+   uint64_t size = (uint64_t)w * RADEON_SPARSE_PAGE_SIZE;
    for (int i = 0; i < d; i++) {
-      unsigned base = commit_base + i * depth_pitch;
+      uint64_t base = commit_base + i * depth_pitch;
       for (int j = 0; j < h; j++) {
-         unsigned offset = base + j * row_pitch;
+         uint64_t offset = base + j * row_pitch;
          if (!ctx->ws->buffer_commit(ctx->ws, res->buf, offset, size, commit))
             return false;
       }
