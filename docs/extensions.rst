@@ -20,7 +20,8 @@ specifications follow.
    (obsolete)
 -  `MESA_set_3dfx_mode.spec <specs/OLD/MESA_set_3dfx_mode.spec>`__
    (obsolete)
--  `MESA_shader_debug.spec <specs/MESA_shader_debug.spec>`__
+-  `MESA_shader_debug.spec <specs/OLD/MESA_shader_debug.spec>`__
+   (obsolete)
 -  `MESA_sprite_point.spec <specs/OLD/MESA_sprite_point.spec>`__
    (obsolete)
 -  `MESA_swap_control.spec <specs/MESA_swap_control.spec>`__
