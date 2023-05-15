@@ -1560,6 +1560,9 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
        */
       if (current_pipeline != GPGPU) {
          flush_bits &= ~ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT;
+      } else {
+         if (flush_bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT)
+            flush_bits |= ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT;
       }
 
       if (flush_bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT)
