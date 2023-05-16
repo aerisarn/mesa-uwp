@@ -138,9 +138,11 @@ anv_create_cmd_buffer(struct vk_command_pool *pool,
 
    cmd_buffer->generation_jump_addr = ANV_NULL_ADDRESS;
    cmd_buffer->generation_return_addr = ANV_NULL_ADDRESS;
-   cmd_buffer->generation_bt_state = ANV_STATE_NULL;
 
    cmd_buffer->last_compute_walker = NULL;
+
+   memset(&cmd_buffer->generation_shader_state, 0,
+          sizeof(cmd_buffer->generation_shader_state));
 
    anv_cmd_state_init(cmd_buffer);
 
@@ -207,9 +209,11 @@ anv_cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
    anv_cmd_buffer_reset_batch_bo_chain(cmd_buffer);
    anv_cmd_state_reset(cmd_buffer);
 
+   memset(&cmd_buffer->generation_shader_state, 0,
+          sizeof(cmd_buffer->generation_shader_state));
+
    cmd_buffer->generation_jump_addr = ANV_NULL_ADDRESS;
    cmd_buffer->generation_return_addr = ANV_NULL_ADDRESS;
-   cmd_buffer->generation_bt_state = ANV_STATE_NULL;
 
    anv_state_stream_finish(&cmd_buffer->surface_state_stream);
    anv_state_stream_init(&cmd_buffer->surface_state_stream,

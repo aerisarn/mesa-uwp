@@ -2669,6 +2669,23 @@ anv_gfx8_9_vb_cache_range_needs_workaround(struct anv_vb_cache_range *bound,
    return (dirty->end - dirty->start) > (1ull << 32);
 }
 
+/**
+ * State tracking for simple internal shaders
+ */
+struct anv_simple_shader {
+   /* The command buffer associated with this emission */
+   struct anv_cmd_buffer *cmd_buffer;
+   /* Where to emit the commands (can be different from cmd_buffer->batch) */
+   struct anv_batch *batch;
+   /* Shader to use */
+   struct anv_shader_bin *kernel;
+   /**/
+   const struct intel_l3_config *l3_config;
+
+   /* Managed by the simpler shader helper*/
+   struct anv_state bt_state;
+};
+
 /** State tracking for particular pipeline bind point
  *
  * This struct is the base struct for anv_cmd_graphics_state and
@@ -2986,17 +3003,17 @@ struct anv_cmd_buffer {
     */
    struct anv_address                           generation_return_addr;
 
-   /**
-    * Binding table allocation for generation shaders (only used on Gfx9).
-    */
-   struct anv_state                             generation_bt_state;
-
    /** List of anv_batch_bo used for generation
     *
     * We have to keep this separated of the anv_cmd_buffer::batch_bos that is
     * used for a chaining optimization.
     */
    struct list_head                             generation_batch_bos;
+
+   /**
+    * State tracking of the generation shader.
+    */
+   struct anv_simple_shader                     generation_shader_state;
 
    /**
     * A vector of anv_bo pointers for chunks of memory used by the command
