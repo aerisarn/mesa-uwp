@@ -433,6 +433,11 @@ struct pvr_transfer_cmd {
     * cmd_buffer::bo_list head.
     */
    struct pvr_cmd_buffer *cmd_buffer;
+
+   /* Deferred RTA clears are allocated from pvr_cmd_buffer->deferred_clears and
+    * cannot be freed directly.
+    */
+   bool is_deferred_clear;
 };
 
 struct pvr_sub_cmd_gfx {

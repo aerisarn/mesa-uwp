@@ -112,7 +112,8 @@ static void pvr_cmd_buffer_free_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
                                    &sub_cmd->transfer.transfer_cmds,
                                    link) {
             list_del(&transfer_cmd->link);
-            vk_free(&cmd_buffer->vk.pool->alloc, transfer_cmd);
+            if (!transfer_cmd->is_deferred_clear)
+               vk_free(&cmd_buffer->vk.pool->alloc, transfer_cmd);
          }
          break;
 

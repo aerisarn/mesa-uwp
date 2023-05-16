@@ -1734,6 +1734,7 @@ static VkResult pvr_add_deferred_rta_clear(struct pvr_cmd_buffer *cmd_buffer,
       *transfer_cmd = (struct pvr_transfer_cmd){
          .flags = PVR_TRANSFER_CMD_FLAGS_FILL,
          .cmd_buffer = cmd_buffer,
+         .is_deferred_clear = true,
       };
 
       if (attachment->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
