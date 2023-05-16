@@ -133,18 +133,14 @@ get_variable(nir_builder *b, nir_deref_path *path,
       }
    }
 
+   nir_variable *var = nir_find_state_variable(shader, tokens);
+   if (var)
+      return var;
+
    char *name = _mesa_program_state_string(tokens);
 
-   nir_foreach_uniform_variable(var, shader) {
-      if (strcmp(var->name, name) == 0) {
-         free(name);
-         return var;
-      }
-   }
-
    /* variable doesn't exist yet, so create it: */
-   nir_variable *var =
-      nir_variable_create(shader, nir_var_uniform, glsl_vec4_type(), name);
+   var = nir_variable_create(shader, nir_var_uniform, glsl_vec4_type(), name);
 
    var->num_state_slots = 1;
    var->state_slots = rzalloc_array(var, nir_state_slot, 1);
