@@ -42,7 +42,7 @@ _mesa_insert_mvp_code(struct gl_context *ctx, struct gl_program *vprog);
 
 extern void
 _mesa_append_fog_code(struct gl_context *ctx, struct gl_program *fprog,
-                      GLenum fog_mode, GLboolean saturate);
+                      enum gl_fog_mode fog_mode, GLboolean saturate);
 
 #ifdef __cplusplus
 }

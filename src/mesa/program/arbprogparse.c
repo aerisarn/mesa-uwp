@@ -133,15 +133,11 @@ _mesa_parse_arb_fragment_program(struct gl_context* ctx, GLenum target,
     * there's no hardware that wants to do fog in a discrete stage separate
     * from the fragment shader.
     */
-   if (state.option.Fog != OPTION_NONE) {
-      static const GLenum fog_modes[4] = {
-	 GL_NONE, GL_EXP, GL_EXP2, GL_LINEAR
-      };
-
+   if (state.option.Fog != FOG_NONE) {
       /* XXX: we should somehow recompile this to remove clamping if disabled
        * On the ATI driver, this is unclampled if fragment clamping is disabled
        */
-      _mesa_append_fog_code(ctx, program, fog_modes[state.option.Fog], GL_TRUE);
+      _mesa_append_fog_code(ctx, program, state.option.Fog, GL_TRUE);
    }
 
 #if DEBUG_FP

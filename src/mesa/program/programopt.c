@@ -234,7 +234,7 @@ _mesa_insert_mvp_code(struct gl_context *ctx, struct gl_program *vprog)
  *
  * \param ctx      The GL context
  * \param fprog    Fragment program that fog instructions will be appended to.
- * \param fog_mode Fog mode.  One of \c GL_EXP, \c GL_EXP2, or \c GL_LINEAR.
+ * \param fog_mode Fog mode.  One of \c FOG_EXP, \c FOG_EXP2, or \c FOG_LINEAR.
  * \param saturate True if writes to color outputs should be clamped to [0, 1]
  *
  * \note
@@ -245,7 +245,7 @@ _mesa_insert_mvp_code(struct gl_context *ctx, struct gl_program *vprog)
  */
 void
 _mesa_append_fog_code(struct gl_context *ctx, struct gl_program *fprog,
-                      GLenum fog_mode, GLboolean saturate)
+                      enum gl_fog_mode fog_mode, GLboolean saturate)
 {
    static const gl_state_index16 fogPStateOpt[STATE_LENGTH]
       = { STATE_FOG_PARAMS_OPTIMIZED, 0, 0 };
@@ -258,7 +258,7 @@ _mesa_append_fog_code(struct gl_context *ctx, struct gl_program *fprog,
    GLint fogPRefOpt, fogColorRef; /* state references */
    GLuint colorTemp, fogFactorTemp; /* temporary registerss */
 
-   if (fog_mode == GL_NONE) {
+   if (fog_mode == FOG_NONE) {
       _mesa_problem(ctx, "_mesa_append_fog_code() called for fragment program"
                     " with fog_mode == GL_NONE");
       return;
@@ -313,7 +313,7 @@ _mesa_append_fog_code(struct gl_context *ctx, struct gl_program *fprog,
 
    /* emit instructions to compute fog blending factor */
    /* this is always clamped to [0, 1] regardless of fragment clamping */
-   if (fog_mode == GL_LINEAR) {
+   if (fog_mode == FOG_LINEAR) {
       /* MAD fogFactorTemp.x, fragment.fogcoord.x, fogPRefOpt.x, fogPRefOpt.y; */
       inst->Opcode = OPCODE_MAD;
       inst->DstReg.File = PROGRAM_TEMPORARY;
@@ -332,7 +332,7 @@ _mesa_append_fog_code(struct gl_context *ctx, struct gl_program *fprog,
       inst++;
    }
    else {
-      assert(fog_mode == GL_EXP || fog_mode == GL_EXP2);
+      assert(fog_mode == FOG_EXP || fog_mode == FOG_EXP2);
       /* fogPRefOpt.z = d/ln(2), fogPRefOpt.w = d/sqrt(ln(2) */
       /* EXP: MUL fogFactorTemp.x, fogPRefOpt.z, fragment.fogcoord.x; */
       /* EXP2: MUL fogFactorTemp.x, fogPRefOpt.w, fragment.fogcoord.x; */
@@ -343,12 +343,12 @@ _mesa_append_fog_code(struct gl_context *ctx, struct gl_program *fprog,
       inst->SrcReg[0].File = PROGRAM_STATE_VAR;
       inst->SrcReg[0].Index = fogPRefOpt;
       inst->SrcReg[0].Swizzle
-         = (fog_mode == GL_EXP) ? SWIZZLE_ZZZZ : SWIZZLE_WWWW;
+         = (fog_mode == FOG_EXP) ? SWIZZLE_ZZZZ : SWIZZLE_WWWW;
       inst->SrcReg[1].File = PROGRAM_INPUT;
       inst->SrcReg[1].Index = VARYING_SLOT_FOGC;
       inst->SrcReg[1].Swizzle = SWIZZLE_XXXX;
       inst++;
-      if (fog_mode == GL_EXP2) {
+      if (fog_mode == FOG_EXP2) {
          /* MUL fogFactorTemp.x, fogFactorTemp.x, fogFactorTemp.x; */
          inst->Opcode = OPCODE_MUL;
          inst->DstReg.File = PROGRAM_TEMPORARY;
