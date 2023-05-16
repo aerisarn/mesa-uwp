@@ -46,8 +46,6 @@ quiet() {
 
 SANITY_MESA_VERSION_CMD="vulkaninfo | tee /tmp/version.txt | grep \"Mesa $MESA_VERSION\(\s\|$\)\""
 
-HANG_DETECTION_CMD="/parallel-deqp-runner/build/bin/hang-detection"
-
 RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $SANITY_MESA_VERSION_CMD"
 
 set +e
@@ -67,7 +65,7 @@ fi
 VKD3D_PROTON_TESTSUITE_CMD="/vkd3d-proton-tests/x64/bin/d3d12 >$RESULTS/vkd3d-proton.log"
 
 quiet printf "%s\n" "Running vkd3d-proton testsuite..."
-RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $HANG_DETECTION_CMD $VKD3D_PROTON_TESTSUITE_CMD"
+RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $VKD3D_PROTON_TESTSUITE_CMD"
 
 set +e
 eval $RUN_CMD
