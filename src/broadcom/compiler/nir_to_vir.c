@@ -3819,6 +3819,25 @@ ntq_activate_execute_for_block(struct v3d_compile *c)
         vir_MOV_cond(c, V3D_QPU_COND_IFA, c->execute, vir_uniform_ui(c, 0));
 }
 
+static bool
+is_cheap_block(nir_block *block)
+{
+        int32_t cost = 3;
+        nir_foreach_instr(instr, block) {
+                switch (instr->type) {
+                case nir_instr_type_alu:
+                case nir_instr_type_ssa_undef:
+                case nir_instr_type_load_const:
+                        if (--cost <= 0)
+                                return false;
+                break;
+                default:
+                        return false;
+                }
+        }
+        return true;
+}
+
 static void
 ntq_emit_uniform_if(struct v3d_compile *c, nir_if *if_stmt)
 {
@@ -3963,12 +3982,16 @@ ntq_emit_nonuniform_if(struct v3d_compile *c, nir_if *if_stmt)
                      c->execute,
                      vir_uniform_ui(c, else_block->index));
 
-        /* Jump to ELSE if nothing is active for THEN, otherwise fall
-         * through.
+        /* Jump to ELSE if nothing is active for THEN (unless THEN block is
+         * so small it won't pay off), otherwise fall through.
          */
-        vir_set_pf(c, vir_MOV_dest(c, vir_nop_reg(), c->execute), V3D_QPU_PF_PUSHZ);
-        vir_BRANCH(c, V3D_QPU_BRANCH_COND_ALLNA);
-        vir_link_blocks(c->cur_block, else_block);
+        bool is_cheap = exec_list_is_singular(&if_stmt->then_list) &&
+                        is_cheap_block(nir_if_first_then_block(if_stmt));
+        if (!is_cheap) {
+                vir_set_pf(c, vir_MOV_dest(c, vir_nop_reg(), c->execute), V3D_QPU_PF_PUSHZ);
+                vir_BRANCH(c, V3D_QPU_BRANCH_COND_ALLNA);
+                vir_link_blocks(c->cur_block, else_block);
+        }
         vir_link_blocks(c->cur_block, then_block);
 
         /* Process the THEN block. */
@@ -3985,13 +4008,19 @@ ntq_emit_nonuniform_if(struct v3d_compile *c, nir_if *if_stmt)
                 vir_MOV_cond(c, V3D_QPU_COND_IFA, c->execute,
                              vir_uniform_ui(c, after_block->index));
 
-                /* If everything points at ENDIF, then jump there immediately. */
-                vir_set_pf(c, vir_XOR_dest(c, vir_nop_reg(),
-                                        c->execute,
-                                        vir_uniform_ui(c, after_block->index)),
-                           V3D_QPU_PF_PUSHZ);
-                vir_BRANCH(c, V3D_QPU_BRANCH_COND_ALLA);
-                vir_link_blocks(c->cur_block, after_block);
+                /* If everything points at ENDIF, then jump there immediately
+                 * (unless ELSE block is so small it won't pay off).
+                 */
+                bool is_cheap = exec_list_is_singular(&if_stmt->else_list) &&
+                                is_cheap_block(nir_else_block);
+                if (!is_cheap) {
+                        vir_set_pf(c, vir_XOR_dest(c, vir_nop_reg(),
+                                                   c->execute,
+                                                   vir_uniform_ui(c, after_block->index)),
+                                   V3D_QPU_PF_PUSHZ);
+                        vir_BRANCH(c, V3D_QPU_BRANCH_COND_ALLA);
+                        vir_link_blocks(c->cur_block, after_block);
+                }
                 vir_link_blocks(c->cur_block, else_block);
 
                 vir_set_emit_block(c, else_block);
