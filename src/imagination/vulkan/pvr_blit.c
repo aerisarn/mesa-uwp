@@ -1733,14 +1733,6 @@ static VkResult pvr_add_deferred_rta_clear(struct pvr_cmd_buffer *cmd_buffer,
        */
       *transfer_cmd = (struct pvr_transfer_cmd){
          .flags = PVR_TRANSFER_CMD_FLAGS_FILL,
-         .source_count = 1,
-         .sources = {
-            [0] = {
-               .filter = PVR_FILTER_POINT,
-               .resolve_op = PVR_RESOLVE_BLEND,
-               .addr_mode = PVRX(TEXSTATE_ADDRMODE_CLAMP_TO_EDGE),
-            },
-         },
          .cmd_buffer = cmd_buffer,
       };
 
@@ -1757,7 +1749,7 @@ static VkResult pvr_add_deferred_rta_clear(struct pvr_cmd_buffer *cmd_buffer,
       }
 
       pvr_setup_transfer_surface(cmd_buffer->device,
-                                 &transfer_cmd->sources[0].surface,
+                                 &transfer_cmd->dst,
                                  &transfer_cmd->scissor,
                                  image,
                                  base_layer + i,
