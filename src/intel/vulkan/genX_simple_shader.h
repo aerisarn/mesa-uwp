@@ -305,7 +305,14 @@ genX(emit_simpler_shader_init_fragment)(struct anv_simple_shader *state)
 static void
 genX(emit_simpler_shader_init_compute)(struct anv_simple_shader *state)
 {
-   unreachable("TODO");
+   assert(state->cmd_buffer->state.current_pipeline == GPGPU);
+
+#if GFX_VERx10 >= 125
+   struct anv_shader_bin *cs_bin = state->kernel;
+   const struct brw_cs_prog_data *prog_data =
+      (const struct brw_cs_prog_data *) cs_bin->prog_data;
+   genX(cmd_buffer_ensure_cfe_state)(state->cmd_buffer, prog_data->base.total_scratch);
+#endif
 }
 
 static void
@@ -328,7 +335,12 @@ genX(simple_shader_alloc_push)(struct anv_simple_shader *state, uint32_t size)
                                                 size,
                                                 ANV_UBO_ALIGNMENT);
    } else {
-      unreachable("TODO");
+#if GFX_VERx10 >= 125
+      return anv_state_stream_alloc(&state->cmd_buffer->general_state_stream,
+                                    size, 64);
+#else
+      return anv_cmd_buffer_alloc_dynamic_state(state->cmd_buffer, size, 64);
+#endif
    }
 }
 
@@ -341,7 +353,15 @@ genX(simple_shader_push_state_address)(struct anv_simple_shader *state,
          &state->cmd_buffer->device->dynamic_state_pool,
          push_state);
    } else {
-      unreachable("TODO");
+#if GFX_VERx10 >= 125
+      return anv_state_pool_state_address(
+         &state->cmd_buffer->device->general_state_pool,
+         push_state);
+#else
+      return anv_state_pool_state_address(
+         &state->cmd_buffer->device->dynamic_state_pool,
+         push_state);
+#endif
    }
 }
 
@@ -438,7 +458,137 @@ genX(emit_simple_shader_dispatch)(struct anv_simple_shader *state,
          prim.InstanceCount            = 1;
       }
    } else {
-      unreachable("TODO");
+      const struct intel_device_info *devinfo = device->info;
+      const struct brw_cs_prog_data *prog_data =
+         (const struct brw_cs_prog_data *) state->kernel->prog_data;
+      const struct brw_cs_dispatch_info dispatch =
+         brw_cs_get_dispatch_info(devinfo, prog_data, NULL);
+
+#if GFX_VERx10 >= 125
+      anv_batch_emit(batch, GENX(COMPUTE_WALKER), cw) {
+         cw.SIMDSize                       = dispatch.simd_size / 16;
+         cw.IndirectDataStartAddress       = push_state.offset;
+         cw.IndirectDataLength             = push_state.alloc_size;
+         cw.LocalXMaximum                  = prog_data->local_size[0] - 1;
+         cw.LocalYMaximum                  = prog_data->local_size[1] - 1;
+         cw.LocalZMaximum                  = prog_data->local_size[2] - 1;
+         cw.ThreadGroupIDXDimension        = DIV_ROUND_UP(num_threads,
+                                                          dispatch.simd_size);
+         cw.ThreadGroupIDYDimension        = 1;
+         cw.ThreadGroupIDZDimension        = 1;
+         cw.ExecutionMask                  = dispatch.right_mask;
+         cw.PostSync.MOCS                  = anv_mocs(device, NULL, 0);
+
+         cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
+            .KernelStartPointer                = state->kernel->kernel.offset +
+                                                 brw_cs_prog_data_prog_offset(prog_data,
+                                                                              dispatch.simd_size),
+            .SamplerStatePointer               = 0,
+            .BindingTablePointer               = 0,
+            .BindingTableEntryCount            = 0,
+            .NumberofThreadsinGPGPUThreadGroup = dispatch.threads,
+            .SharedLocalMemorySize             = encode_slm_size(GFX_VER,
+                                                                 prog_data->base.total_shared),
+            .NumberOfBarriers                  = prog_data->uses_barrier,
+         };
+      }
+#else
+      const uint32_t vfe_curbe_allocation =
+         ALIGN(prog_data->push.per_thread.regs * dispatch.threads +
+               prog_data->push.cross_thread.regs, 2);
+
+      /* From the Sky Lake PRM Vol 2a, MEDIA_VFE_STATE:
+       *
+       *    "A stalling PIPE_CONTROL is required before MEDIA_VFE_STATE unless
+       *     the only bits that are changed are scoreboard related: Scoreboard
+       *     Enable, Scoreboard Type, Scoreboard Mask, Scoreboard * Delta. For
+       *     these scoreboard related states, a MEDIA_STATE_FLUSH is
+       *     sufficient."
+       */
+      genX(emit_apply_pipe_flushes)(batch, device, GPGPU, ANV_PIPE_CS_STALL_BIT,
+                                    &state->cmd_buffer->state.pending_query_bits);
+
+      anv_batch_emit(batch, GENX(MEDIA_VFE_STATE), vfe) {
+         vfe.StackSize              = 0;
+         vfe.MaximumNumberofThreads =
+            devinfo->max_cs_threads * devinfo->subslice_total - 1;
+         vfe.NumberofURBEntries     = 2;
+#if GFX_VER < 11
+         vfe.ResetGatewayTimer      = true;
+#endif
+         vfe.URBEntryAllocationSize = 2;
+         vfe.CURBEAllocationSize    = vfe_curbe_allocation;
+
+         if (prog_data->base.total_scratch) {
+            /* Broadwell's Per Thread Scratch Space is in the range [0, 11]
+             * where 0 = 1k, 1 = 2k, 2 = 4k, ..., 11 = 2M.
+             */
+            vfe.PerThreadScratchSpace =
+               ffs(prog_data->base.total_scratch) - 11;
+            vfe.ScratchSpaceBasePointer =
+               (struct anv_address) {
+               .bo = anv_scratch_pool_alloc(device,
+                                            &device->scratch_pool,
+                                            MESA_SHADER_COMPUTE,
+                                            prog_data->base.total_scratch),
+               .offset = 0,
+            };
+         }
+      }
+      struct anv_state iface_desc_state =
+         anv_cmd_buffer_alloc_dynamic_state(state->cmd_buffer,
+                                            GENX(INTERFACE_DESCRIPTOR_DATA_length) * 4,
+                                            64);
+      struct GENX(INTERFACE_DESCRIPTOR_DATA) iface_desc = {
+         .KernelStartPointer                    = state->kernel->kernel.offset +
+                                                  brw_cs_prog_data_prog_offset(prog_data,
+                                                                               dispatch.simd_size),
+
+         .SamplerCount                          = 0,
+         .BindingTableEntryCount                = 0,
+         .BarrierEnable                         = prog_data->uses_barrier,
+         .SharedLocalMemorySize                 = encode_slm_size(GFX_VER,
+                                                                  prog_data->base.total_shared),
+
+         .ConstantURBEntryReadOffset            = 0,
+         .ConstantURBEntryReadLength            = prog_data->push.per_thread.regs,
+         .CrossThreadConstantDataReadLength     = prog_data->push.cross_thread.regs,
+#if GFX_VER >= 12
+         /* TODO: Check if we are missing workarounds and enable mid-thread
+          * preemption.
+          *
+          * We still have issues with mid-thread preemption (it was already
+          * disabled by the kernel on gfx11, due to missing workarounds). It's
+          * possible that we are just missing some workarounds, and could
+          * enable it later, but for now let's disable it to fix a GPU in
+          * compute in Car Chase (and possibly more).
+          */
+         .ThreadPreemptionDisable               = true,
+#endif
+         .NumberofThreadsinGPGPUThreadGroup     = dispatch.threads,
+      };
+      GENX(INTERFACE_DESCRIPTOR_DATA_pack)(batch, iface_desc_state.map, &iface_desc);
+      anv_batch_emit(batch, GENX(MEDIA_INTERFACE_DESCRIPTOR_LOAD), mid) {
+         mid.InterfaceDescriptorTotalLength        = iface_desc_state.alloc_size;
+         mid.InterfaceDescriptorDataStartAddress   = iface_desc_state.offset;
+      }
+      anv_batch_emit(batch, GENX(MEDIA_CURBE_LOAD), curbe) {
+         curbe.CURBEDataStartAddress = push_state.offset;
+         curbe.CURBETotalDataLength  = push_state.alloc_size;
+      }
+      anv_batch_emit(batch, GENX(GPGPU_WALKER), ggw) {
+         ggw.SIMDSize                     = dispatch.simd_size / 16;
+         ggw.ThreadDepthCounterMaximum    = 0;
+         ggw.ThreadHeightCounterMaximum   = 0;
+         ggw.ThreadWidthCounterMaximum    = dispatch.threads - 1;
+         ggw.ThreadGroupIDXDimension      = DIV_ROUND_UP(num_threads,
+                                                         dispatch.simd_size);
+         ggw.ThreadGroupIDYDimension      = 1;
+         ggw.ThreadGroupIDZDimension      = 1;
+         ggw.RightExecutionMask           = dispatch.right_mask;
+         ggw.BottomExecutionMask          = 0xffffffff;
+      }
+#endif
    }
 }
 
