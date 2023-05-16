@@ -460,6 +460,14 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement = nir_ilt(b, prim_mask, nir_imm_int(b, 0));
       break;
    }
+   case nir_intrinsic_load_poly_line_smooth_enabled:
+      if (s->pl_key->dynamic_line_rast_mode) {
+         replacement = nir_ieq_imm(b, ac_nir_load_arg(b, &s->args->ac, s->args->ps_line_rast_mode),
+                                   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT);
+      } else {
+         replacement = nir_imm_bool(b, s->pl_key->ps.line_smooth_enabled);
+      }
+      break;
    default:
       progress = false;
       break;
