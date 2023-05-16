@@ -991,7 +991,7 @@ propagate_constants_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr, ssa_info& i
       assert(const_lo_opsel == false && const_hi_opsel == false);
 
       /* const_lo == -const_hi */
-      if (!instr_info.can_use_input_modifiers[(int)instr->opcode])
+      if (!can_use_input_modifiers(ctx.program->gfx_level, instr->opcode, i))
          return;
 
       instr->operands[i] = Operand::c16(const_lo.constantValue() & 0x7FFF);
@@ -1214,7 +1214,7 @@ does_fp_op_flush_denorms(opt_ctx& ctx, aco_opcode op)
 }
 
 bool
-can_eliminate_fcanonicalize(opt_ctx& ctx, aco_ptr<Instruction>& instr, Temp tmp)
+can_eliminate_fcanonicalize(opt_ctx& ctx, aco_ptr<Instruction>& instr, Temp tmp, unsigned idx)
 {
    float_mode* fp = &ctx.fp_mode;
    if (ctx.info[tmp.id()].is_canonicalized() ||
@@ -1222,7 +1222,8 @@ can_eliminate_fcanonicalize(opt_ctx& ctx, aco_ptr<Instruction>& instr, Temp tmp)
       return true;
 
    aco_opcode op = instr->opcode;
-   return instr_info.can_use_input_modifiers[(int)op] && does_fp_op_flush_denorms(ctx, op);
+   return can_use_input_modifiers(ctx.program->gfx_level, instr->opcode, idx) &&
+          does_fp_op_flush_denorms(ctx, op);
 }
 
 bool
@@ -1252,10 +1253,10 @@ can_eliminate_and_exec(opt_ctx& ctx, Temp tmp, unsigned pass_flags)
 }
 
 bool
-is_copy_label(opt_ctx& ctx, aco_ptr<Instruction>& instr, ssa_info& info)
+is_copy_label(opt_ctx& ctx, aco_ptr<Instruction>& instr, ssa_info& info, unsigned idx)
 {
    return info.is_temp() ||
-          (info.is_fcanonicalize() && can_eliminate_fcanonicalize(ctx, instr, info.temp));
+          (info.is_fcanonicalize() && can_eliminate_fcanonicalize(ctx, instr, info.temp, idx));
 }
 
 bool
@@ -1346,7 +1347,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
       /* VALU: propagate neg, abs & inline constants */
       else if (instr->isVALU()) {
-         if (is_copy_label(ctx, instr, info) && info.temp.type() == RegType::vgpr &&
+         if (is_copy_label(ctx, instr, info, i) && info.temp.type() == RegType::vgpr &&
              valu_can_accept_vgpr(instr, i)) {
             instr->operands[i].setTemp(info.temp);
             info = ctx.info[info.temp.id()];
@@ -1363,7 +1364,8 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
           * operand size */
          unsigned can_use_mod =
             instr->opcode != aco_opcode::v_cndmask_b32 || instr->operands[i].getTemp().bytes() == 4;
-         can_use_mod = can_use_mod && instr_info.can_use_input_modifiers[(int)instr->opcode];
+         can_use_mod =
+            can_use_mod && can_use_input_modifiers(ctx.program->gfx_level, instr->opcode, i);
 
          if (instr->isSDWA())
             can_use_mod = can_use_mod && instr->sdwa().sel[i].size() == 4;
@@ -1380,7 +1382,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             instr->opcode = i ? aco_opcode::v_sub_f16 : aco_opcode::v_subrev_f16;
             instr->operands[i].setTemp(info.temp);
          } else if (info.is_neg() && can_use_mod && mod_bitsize_compat &&
-                    can_eliminate_fcanonicalize(ctx, instr, info.temp)) {
+                    can_eliminate_fcanonicalize(ctx, instr, info.temp, i)) {
             if (!instr->isDPP() && !instr->isSDWA())
                instr->format = asVOP3(instr->format);
             instr->operands[i].setTemp(info.temp);
@@ -1388,7 +1390,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                instr->valu().neg[i] = true;
          }
          if (info.is_abs() && can_use_mod && mod_bitsize_compat &&
-             can_eliminate_fcanonicalize(ctx, instr, info.temp)) {
+             can_eliminate_fcanonicalize(ctx, instr, info.temp, i)) {
             if (!instr->isDPP() && !instr->isSDWA())
                instr->format = asVOP3(instr->format);
             instr->operands[i] = Operand(info.temp);
@@ -3365,7 +3367,7 @@ apply_sgprs(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             sgpr_ids[!!sgpr_ids[0]] = instr->operands[i].tempId();
       }
       ssa_info& info = ctx.info[instr->operands[i].tempId()];
-      if (is_copy_label(ctx, instr, info) && info.temp.type() == RegType::sgpr)
+      if (is_copy_label(ctx, instr, info, i) && info.temp.type() == RegType::sgpr)
          operand_mask |= 1u << i;
       if (info.is_extract() && info.instr->operands[0].getTemp().type() == RegType::sgpr)
          operand_mask |= 1u << i;
@@ -3745,48 +3747,48 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    }
 
    /* check for fneg modifiers */
-   if (instr_info.can_use_input_modifiers[(int)instr->opcode]) {
-      for (unsigned i = 0; i < instr->operands.size(); i++) {
-         Operand& op = instr->operands[i];
-         if (!op.isTemp())
+   for (unsigned i = 0; i < instr->operands.size(); i++) {
+      if (!can_use_input_modifiers(ctx.program->gfx_level, instr->opcode, i))
+         continue;
+      Operand& op = instr->operands[i];
+      if (!op.isTemp())
+         continue;
+
+      ssa_info& info = ctx.info[op.tempId()];
+      if (info.is_vop3p() && info.instr->opcode == aco_opcode::v_pk_mul_f16 &&
+          info.instr->operands[1].constantEquals(0x3C00)) {
+
+         VALU_instruction* fneg = &info.instr->valu();
+
+         if (fneg->opsel_lo[1] || fneg->opsel_hi[1])
             continue;
 
-         ssa_info& info = ctx.info[op.tempId()];
-         if (info.is_vop3p() && info.instr->opcode == aco_opcode::v_pk_mul_f16 &&
-             info.instr->operands[1].constantEquals(0x3C00)) {
+         Operand ops[3];
+         for (unsigned j = 0; j < instr->operands.size(); j++)
+            ops[j] = instr->operands[j];
+         ops[i] = info.instr->operands[0];
+         if (!check_vop3_operands(ctx, instr->operands.size(), ops))
+            continue;
 
-            VALU_instruction* fneg = &info.instr->valu();
+         if (fneg->clamp)
+            continue;
+         instr->operands[i] = fneg->operands[0];
 
-            if (fneg->opsel_lo[1] || fneg->opsel_hi[1])
-               continue;
+         /* opsel_lo/hi is either 0 or 1:
+          * if 0 - pick selection from fneg->lo
+          * if 1 - pick selection from fneg->hi
+          */
+         bool opsel_lo = vop3p->opsel_lo[i];
+         bool opsel_hi = vop3p->opsel_hi[i];
+         bool neg_lo = fneg->neg_lo[0] ^ fneg->neg_lo[1];
+         bool neg_hi = fneg->neg_hi[0] ^ fneg->neg_hi[1];
+         vop3p->neg_lo[i] ^= opsel_lo ? neg_hi : neg_lo;
+         vop3p->neg_hi[i] ^= opsel_hi ? neg_hi : neg_lo;
+         vop3p->opsel_lo[i] ^= opsel_lo ? !fneg->opsel_hi[0] : fneg->opsel_lo[0];
+         vop3p->opsel_hi[i] ^= opsel_hi ? !fneg->opsel_hi[0] : fneg->opsel_lo[0];
 
-            Operand ops[3];
-            for (unsigned j = 0; j < instr->operands.size(); j++)
-               ops[j] = instr->operands[j];
-            ops[i] = info.instr->operands[0];
-            if (!check_vop3_operands(ctx, instr->operands.size(), ops))
-               continue;
-
-            if (fneg->clamp)
-               continue;
-            instr->operands[i] = fneg->operands[0];
-
-            /* opsel_lo/hi is either 0 or 1:
-             * if 0 - pick selection from fneg->lo
-             * if 1 - pick selection from fneg->hi
-             */
-            bool opsel_lo = vop3p->opsel_lo[i];
-            bool opsel_hi = vop3p->opsel_hi[i];
-            bool neg_lo = fneg->neg_lo[0] ^ fneg->neg_lo[1];
-            bool neg_hi = fneg->neg_hi[0] ^ fneg->neg_hi[1];
-            vop3p->neg_lo[i] ^= opsel_lo ? neg_hi : neg_lo;
-            vop3p->neg_hi[i] ^= opsel_hi ? neg_hi : neg_lo;
-            vop3p->opsel_lo[i] ^= opsel_lo ? !fneg->opsel_hi[0] : fneg->opsel_lo[0];
-            vop3p->opsel_hi[i] ^= opsel_hi ? !fneg->opsel_hi[0] : fneg->opsel_lo[0];
-
-            if (--ctx.uses[fneg->definitions[0].tempId()])
-               ctx.uses[fneg->operands[0].tempId()]++;
-         }
+         if (--ctx.uses[fneg->definitions[0].tempId()])
+            ctx.uses[fneg->operands[0].tempId()]++;
       }
    }
 
@@ -4823,7 +4825,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             continue;
 
          bool dpp8 = info.is_dpp8();
-         bool input_mods = instr_info.can_use_input_modifiers[(int)instr->opcode] &&
+         bool input_mods = can_use_input_modifiers(ctx.program->gfx_level, instr->opcode, 0) &&
                            get_operand_size(instr, 0) == 32;
          bool mov_uses_mods = info.instr->valu().neg[0] || info.instr->valu().abs[0];
          if (((dpp8 && ctx.program->gfx_level < GFX11) || !input_mods) && mov_uses_mods)
