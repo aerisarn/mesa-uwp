@@ -9035,14 +9035,22 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          aco_opcode::p_create_vector, Format::PSEUDO, instr->num_components, 1)};
       unsigned write_mask = nir_intrinsic_write_mask(instr);
 
+      bool use_gds_registers =
+         ctx->options->gfx_level >= GFX11 && ctx->options->is_opengl;
+
       for (unsigned i = 0; i < instr->num_components; i++) {
          if (write_mask & (1 << i)) {
             Temp chan_counter = emit_extract_vector(ctx, counter, i, v1);
 
-            m = bld.m0((Temp)bld.copy(bld.def(s1, m0), Operand::c32(0x100u)));
+            if (use_gds_registers) {
+               ds_instr = bld.ds(aco_opcode::ds_add_gs_reg_rtn, bld.def(v1),
+                                 Operand(), chan_counter, i * 4, 0u, true);
+            } else {
+               m = bld.m0((Temp)bld.copy(bld.def(s1, m0), Operand::c32(0x100u)));
 
-            ds_instr = bld.ds(aco_opcode::ds_add_rtn_u32, bld.def(v1),
-                              gds_base, chan_counter, m, i * 4, 0u, true);
+               ds_instr = bld.ds(aco_opcode::ds_add_rtn_u32, bld.def(v1),
+                                 gds_base, chan_counter, m, i * 4, 0u, true);
+            }
             ds_instr->ds().sync = memory_sync_info(storage_gds, semantic_atomicrmw);
 
             vec->operands[i] = Operand(ds_instr->definitions[0].getTemp());

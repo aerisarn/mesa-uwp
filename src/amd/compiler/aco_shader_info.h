@@ -134,6 +134,7 @@ struct aco_compiler_options {
    bool optimisations_disabled;
    uint8_t enable_mrt_output_nan_fixup;
    bool wgp_mode;
+   bool is_opengl;
    enum radeon_family family;
    enum amd_gfx_level gfx_level;
    uint32_t address32_hi;
