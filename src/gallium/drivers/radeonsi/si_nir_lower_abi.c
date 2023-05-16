@@ -401,7 +401,8 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       unsigned offset = si_query_pipestat_end_dw_offset(sel->screen, index) * 4;
 
       nir_ssa_def *count = intrin->src[0].ssa;
-      nir_buffer_atomic_add_amd(b, 32, buf, count, .base = offset);
+      nir_ssbo_atomic(b, 32, buf, nir_imm_int(b, offset), count,
+                      .atomic_op = nir_atomic_op_iadd);
       break;
    }
    case nir_intrinsic_atomic_add_gen_prim_count_amd:
@@ -414,7 +415,8 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
          offsetof(struct gfx10_sh_query_buffer_mem, stream[stream].emitted_primitives);
 
       nir_ssa_def *prim_count = intrin->src[0].ssa;
-      nir_buffer_atomic_add_amd(b, 32, buf, prim_count, .base = offset);
+      nir_ssbo_atomic(b, 32, buf, nir_imm_int(b, offset), prim_count,
+                      .atomic_op = nir_atomic_op_iadd);
       break;
    }
    case nir_intrinsic_load_ring_attr_amd:
