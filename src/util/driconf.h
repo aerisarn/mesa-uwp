@@ -678,7 +678,11 @@
 
 #define DRI_CONF_ANV_QUERY_CLEAR_WITH_BLORP_THRESHOLD(def) \
    DRI_CONF_OPT_I(query_clear_with_blorp_threshold, def, 0, INT32_MAX, \
-                  "Indirect threshold count above which we start generating commands")
+                  "Query threshold count above which query buffers are cleared with blorp")
+
+#define DRI_CONF_ANV_QUERY_COPY_WITH_SHADER_THRESHOLD(def) \
+   DRI_CONF_OPT_I(query_copy_with_shader_threshold, def, 0, INT32_MAX, \
+                  "Query threshold count above which query copies are executed with a shader")
 
 #define DRI_CONF_ANV_FORCE_INDIRECT_DESCRIPTORS(def) \
    DRI_CONF_OPT_B(force_indirect_descriptors, def, \
