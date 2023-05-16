@@ -3396,17 +3396,8 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_demote_if:
       emit_demote(ctx, instr);
       break;
-   case nir_intrinsic_memory_barrier:
-   case nir_intrinsic_group_memory_barrier:
-      ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE);
-      break;
    case nir_intrinsic_memory_barrier_buffer:
-   case nir_intrinsic_memory_barrier_image:
       ac_build_waitcnt(&ctx->ac, AC_WAIT_VLOAD | AC_WAIT_VSTORE);
-      break;
-   case nir_intrinsic_memory_barrier_shared:
-   case nir_intrinsic_memory_barrier_tcs_patch:
-      ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
       break;
    case nir_intrinsic_scoped_barrier: {
       assert(!(nir_intrinsic_memory_semantics(instr) &
@@ -3427,14 +3418,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          ac_build_s_barrier(&ctx->ac, ctx->stage);
       break;
    }
-   case nir_intrinsic_control_barrier:
-      /* If output patches are wholly in one wave, we don't need a barrier. */
-      if (ctx->stage == MESA_SHADER_TESS_CTRL &&
-          ctx->ac.wave_size % ctx->info->tess.tcs_vertices_out == 0)
-         break;
-
-      ac_build_s_barrier(&ctx->ac, ctx->stage);
-      break;
    case nir_intrinsic_optimization_barrier_vgpr_amd:
       result = get_src(ctx, instr->src[0]);
       ac_build_optimization_barrier(&ctx->ac, &result, false);
