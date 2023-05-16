@@ -3749,6 +3749,8 @@ radv_flush_occlusion_query_state(struct radv_cmd_buffer *cmd_buffer)
 
       cmd_buffer->state.last_db_count_control = db_count_control;
    }
+
+   cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_OCCLUSION_QUERY;
 }
 
 unsigned
@@ -5273,6 +5275,8 @@ radv_flush_ngg_query_state(struct radv_cmd_buffer *cmd_buffer)
       radv_get_user_sgpr(last_vgt_shader, AC_UD_NGG_QUERY_STATE);
    enum radv_ngg_query_state ngg_query_state = radv_ngg_query_none;
    uint32_t base_reg;
+
+   cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_NGG_QUERY;
 
    if (loc->sgpr_idx == -1)
       return;
@@ -9088,15 +9092,11 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_RBPLUS)
       radv_emit_rbplus_state(cmd_buffer);
 
-   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_NGG_QUERY) {
-      cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_NGG_QUERY;
+   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_NGG_QUERY)
       radv_flush_ngg_query_state(cmd_buffer);
-   }
 
-   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_OCCLUSION_QUERY) {
+   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_OCCLUSION_QUERY)
       radv_flush_occlusion_query_state(cmd_buffer);
-      cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_OCCLUSION_QUERY;
-   }
 
    if ((cmd_buffer->state.dirty &
         (RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_DYNAMIC_CULL_MODE |
