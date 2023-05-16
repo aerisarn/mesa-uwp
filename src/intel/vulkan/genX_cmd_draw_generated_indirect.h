@@ -32,7 +32,7 @@
 #include "common/intel_genX_state.h"
 
 #include "anv_private.h"
-#include "anv_generated_indirect_draws.h"
+#include "anv_internal_kernels.h"
 #include "genX_simple_shader.h"
 
 /* This is a maximum number of items a fragment shader can generate due to the
@@ -149,8 +149,8 @@ genX(cmd_buffer_emit_indirect_generated_draws_init)(struct anv_cmd_buffer *cmd_b
    *state = (struct anv_simple_shader) {
       .cmd_buffer = cmd_buffer,
       .batch      = &cmd_buffer->generation_batch,
-      .kernel     = device->generated_draw_kernel,
-      .l3_config  = device->generated_draw_l3_config,
+      .kernel     = device->internal_kernels[ANV_INTERNAL_KERNEL_GENERATED_DRAWS],
+      .l3_config  = device->internal_kernels_l3_config,
    };
 
    genX(emit_simple_shader_init)(state);

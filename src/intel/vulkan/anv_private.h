@@ -1113,6 +1113,25 @@ anv_device_upload_nir(struct anv_device *device,
 void
 anv_load_fp64_shader(struct anv_device *device);
 
+enum anv_internal_kernel_name {
+   ANV_INTERNAL_KERNEL_GENERATED_DRAWS,
+
+   ANV_INTERNAL_KERNEL_COUNT,
+};
+
+struct anv_internal_kernel_bind_map {
+   uint32_t num_bindings;
+   struct {
+      /* Whether this binding is provided through push constants */
+      bool     push_constant;
+
+      /* When not provided by push constants, this is offset at which the
+       * 64bit address of the binding is located in the push constant data.
+       */
+      uint32_t address_offset;
+   } bindings[5];
+};
+
 enum anv_rt_bvh_build_method {
    ANV_BVH_BUILD_METHOD_TRIVIAL,
    ANV_BVH_BUILD_METHOD_NEW_SAH,
@@ -1240,8 +1259,8 @@ struct anv_device {
      * Generates direct draw calls out of indirect parameters. Used to
      * workaround slowness with indirect draw calls.
      */
-    struct anv_shader_bin                      *generated_draw_kernel;
-    const struct intel_l3_config               *generated_draw_l3_config;
+    struct anv_shader_bin                      *internal_kernels[ANV_INTERNAL_KERNEL_COUNT];
+    const struct intel_l3_config               *internal_kernels_l3_config;
 
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
@@ -4598,10 +4617,8 @@ struct anv_memcpy_state {
    struct anv_vb_cache_range vb_dirty;
 };
 
-VkResult
-anv_device_init_generated_indirect_draws(struct anv_device *device);
-void
-anv_device_finish_generated_indirect_draws(struct anv_device *device);
+VkResult anv_device_init_internal_kernels(struct anv_device *device);
+void anv_device_finish_internal_kernels(struct anv_device *device);
 
 /* This structure is used in 2 scenarios :
  *

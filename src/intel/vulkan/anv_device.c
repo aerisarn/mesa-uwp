@@ -3423,7 +3423,7 @@ VkResult anv_CreateDevice(
 
    anv_device_init_border_colors(device);
 
-   anv_device_init_generated_indirect_draws(device);
+   anv_device_init_internal_kernels(device);
 
    anv_device_perf_init(device);
 
@@ -3518,7 +3518,7 @@ void anv_DestroyDevice(
 
    anv_device_finish_rt_shaders(device);
 
-   anv_device_finish_generated_indirect_draws(device);
+   anv_device_finish_internal_kernels(device);
 
    vk_pipeline_cache_destroy(device->internal_cache, NULL);
    vk_pipeline_cache_destroy(device->default_pipeline_cache, NULL);
