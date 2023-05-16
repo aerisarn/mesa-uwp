@@ -1323,6 +1323,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
          nir_lower_imul64 | nir_lower_imul_high64 | nir_lower_imul_2x32_64 |
          nir_lower_divmod64 | nir_lower_minmax64 | nir_lower_iabs64 |
          nir_lower_iadd_sat64,
+      .use_scoped_barrier = true,
    };
    sscreen->nir_options = nir_options;
 }
