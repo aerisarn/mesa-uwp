@@ -19,7 +19,7 @@
 #include "vn_physical_device.h"
 #include "vn_renderer.h"
 
-#define VN_INSTANCE_RING_SIZE (64 * 1024)
+#define VN_INSTANCE_RING_SIZE (128 * 1024)
 #define VN_INSTANCE_RING_DIRECT_THRESHOLD (VN_INSTANCE_RING_SIZE / 16)
 
 /*
