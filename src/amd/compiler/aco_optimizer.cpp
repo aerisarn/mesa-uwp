@@ -527,7 +527,10 @@ can_use_VOP3(opt_ctx& ctx, const aco_ptr<Instruction>& instr)
    if (instr->operands.size() && instr->operands[0].isLiteral() && ctx.program->gfx_level < GFX10)
       return false;
 
-   if (instr->isDPP() || instr->isSDWA())
+   if (instr->isSDWA())
+      return false;
+
+   if (instr->isDPP() && ctx.program->gfx_level < GFX11)
       return false;
 
    return instr->opcode != aco_opcode::v_madmk_f32 && instr->opcode != aco_opcode::v_madak_f32 &&
@@ -1404,7 +1407,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          }
 
          if (info.is_constant(bits) && alu_can_accept_constant(instr, i) &&
-             (!instr->isSDWA() || ctx.program->gfx_level >= GFX9)) {
+             (!instr->isSDWA() || ctx.program->gfx_level >= GFX9) && (!instr->isDPP() || i != 1)) {
             Operand op = get_constant_op(ctx, info, bits);
             perfwarn(ctx.program, instr->opcode == aco_opcode::v_cndmask_b32 && i == 2,
                      "v_cndmask_b32 with a constant selector", instr.get());
@@ -3413,6 +3416,9 @@ apply_sgprs(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (sgpr_idx == 0)
          instr->format = withoutDPP(instr->format);
 
+      if (sgpr_idx == 1 && instr->isDPP())
+         continue;
+
       if (sgpr_idx == 0 || instr->isVOP3() || instr->isSDWA() || instr->isVOP3P() ||
           info.is_extract()) {
          /* can_apply_extract() checks SGPR encoding restrictions */
@@ -4866,8 +4872,8 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    unsigned literal_uses = UINT32_MAX;
    Operand literal(s1);
    unsigned num_operands = 1;
-   if (instr->isSALU() ||
-       (ctx.program->gfx_level >= GFX10 && (can_use_VOP3(ctx, instr) || instr->isVOP3P())))
+   if (instr->isSALU() || (ctx.program->gfx_level >= GFX10 &&
+                           (can_use_VOP3(ctx, instr) || instr->isVOP3P()) && !instr->isDPP()))
       num_operands = instr->operands.size();
    /* catch VOP2 with a 3rd SGPR operand (e.g. v_cndmask_b32, v_addc_co_u32) */
    else if (instr->isVALU() && instr->operands.size() >= 3)
