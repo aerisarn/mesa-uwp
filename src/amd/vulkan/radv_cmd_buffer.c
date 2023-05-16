@@ -2354,7 +2354,7 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
     * 2) the fragment shader reads gl_SampleMaskIn because the 16-bit sample coverage mask isn't
     *    enough for MSAA8x and 2x2 coarse shading isn't enough.
     */
-   if (cmd_buffer->state.ms.sample_shading_enable || ps->info.ps.reads_sample_mask_in) {
+   if (cmd_buffer->state.ms.sample_shading_enable || (ps && ps->info.ps.reads_sample_mask_in)) {
       pa_cl_vrs_cntl |= S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_SC_VRS_COMB_MODE_OVERRIDE);
    }
 
