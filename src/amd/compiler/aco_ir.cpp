@@ -781,6 +781,24 @@ get_reduction_identity(ReduceOp op, unsigned idx)
    return 0;
 }
 
+unsigned
+get_operand_size(aco_ptr<Instruction>& instr, unsigned index)
+{
+   if (instr->isPseudo())
+      return instr->operands[index].bytes() * 8u;
+   else if (instr->opcode == aco_opcode::v_mad_u64_u32 ||
+            instr->opcode == aco_opcode::v_mad_i64_i32)
+      return index == 2 ? 64 : 32;
+   else if (instr->opcode == aco_opcode::v_fma_mix_f32 ||
+            instr->opcode == aco_opcode::v_fma_mixlo_f16 ||
+            instr->opcode == aco_opcode::v_fma_mixhi_f16)
+      return instr->valu().opsel_hi[index] ? 16 : 32;
+   else if (instr->isVALU() || instr->isSALU())
+      return instr_info.operand_size[(int)instr->opcode];
+   else
+      return 0;
+}
+
 bool
 needs_exec_mask(const Instruction* instr)
 {

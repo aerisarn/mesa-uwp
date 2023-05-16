@@ -1853,6 +1853,8 @@ uint32_t get_reduction_identity(ReduceOp op, unsigned idx);
 
 unsigned get_mimg_nsa_dwords(const Instruction* instr);
 
+unsigned get_operand_size(aco_ptr<Instruction>& instr, unsigned index);
+
 bool should_form_clause(const Instruction* a, const Instruction* b);
 
 enum block_kind {

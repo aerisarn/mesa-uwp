@@ -900,23 +900,6 @@ smem_combine(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       skip_smem_offset_align(ctx, &instr->smem());
 }
 
-unsigned
-get_operand_size(aco_ptr<Instruction>& instr, unsigned index)
-{
-   if (instr->isPseudo())
-      return instr->operands[index].bytes() * 8u;
-   else if (instr->opcode == aco_opcode::v_mad_u64_u32 ||
-            instr->opcode == aco_opcode::v_mad_i64_i32)
-      return index == 2 ? 64 : 32;
-   else if (instr->opcode == aco_opcode::v_fma_mix_f32 ||
-            instr->opcode == aco_opcode::v_fma_mixlo_f16)
-      return instr->valu().opsel_hi & (1u << index) ? 16 : 32;
-   else if (instr->isVALU() || instr->isSALU())
-      return instr_info.operand_size[(int)instr->opcode];
-   else
-      return 0;
-}
-
 Operand
 get_constant_op(opt_ctx& ctx, ssa_info info, uint32_t bits)
 {
@@ -4841,7 +4824,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
          bool dpp8 = info.is_dpp8();
          bool input_mods = instr_info.can_use_input_modifiers[(int)instr->opcode] &&
-                           instr_info.operand_size[(int)instr->opcode] == 32;
+                           get_operand_size(instr, 0) == 32;
          bool mov_uses_mods = info.instr->valu().neg[0] || info.instr->valu().abs[0];
          if (((dpp8 && ctx.program->gfx_level < GFX11) || !input_mods) && mov_uses_mods)
             continue;
