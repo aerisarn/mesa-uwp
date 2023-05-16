@@ -1737,9 +1737,9 @@ static VkResult pvr_add_deferred_rta_clear(struct pvr_cmd_buffer *cmd_buffer,
       };
 
       if (attachment->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
-         for (uint32_t i = 0; i < ARRAY_SIZE(transfer_cmd->clear_color); i++) {
-            transfer_cmd->clear_color[i].ui =
-               attachment->clearValue.color.uint32[i];
+         for (uint32_t j = 0; j < ARRAY_SIZE(transfer_cmd->clear_color); j++) {
+            transfer_cmd->clear_color[j].ui =
+               attachment->clearValue.color.uint32[j];
          }
       } else {
          transfer_cmd->clear_color[0].f =
