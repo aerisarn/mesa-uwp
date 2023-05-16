@@ -1786,14 +1786,6 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
       if (result != VK_SUCCESS)
          return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
 
-      if (pvr_sub_cmd_gfx_requires_split_submit(gfx_sub_cmd)) {
-         result = pvr_sub_cmd_gfx_build_terminate_ctrl_stream(device,
-                                                              cmd_buffer,
-                                                              gfx_sub_cmd);
-         if (result != VK_SUCCESS)
-            return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
-      }
-
       result = pvr_cmd_buffer_emit_ppp_state(cmd_buffer,
                                              &gfx_sub_cmd->control_stream);
       if (result != VK_SUCCESS)
@@ -1808,6 +1800,14 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
                                         gfx_sub_cmd);
       if (result != VK_SUCCESS)
          return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
+
+      if (pvr_sub_cmd_gfx_requires_split_submit(gfx_sub_cmd)) {
+         result = pvr_sub_cmd_gfx_build_terminate_ctrl_stream(device,
+                                                              cmd_buffer,
+                                                              gfx_sub_cmd);
+         if (result != VK_SUCCESS)
+            return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
+      }
 
       break;
    }
