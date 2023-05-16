@@ -1693,8 +1693,6 @@ radv_initialise_vrs_surface(struct radv_image *image, struct radv_buffer *htile_
    assert(image->vk.format == VK_FORMAT_D16_UNORM);
    memset(ds, 0, sizeof(*ds));
 
-   ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-16);
-
    ds->db_z_info = S_028038_FORMAT(V_028040_Z_16) | S_028038_SW_MODE(surf->u.gfx9.swizzle_mode) |
                    S_028038_ZRANGE_PRECISION(1) | S_028038_TILE_SURFACE_ENABLE(1);
    ds->db_stencil_info = S_02803C_FORMAT(V_028044_STENCIL_INVALID);
@@ -1720,25 +1718,6 @@ radv_initialise_ds_surface(const struct radv_device *device, struct radv_ds_buff
    assert(vk_format_get_plane_count(iview->image->vk.format) == 1);
 
    memset(ds, 0, sizeof(*ds));
-   if (!device->instance->absolute_depth_bias) {
-      switch (iview->image->vk.format) {
-      case VK_FORMAT_D24_UNORM_S8_UINT:
-      case VK_FORMAT_X8_D24_UNORM_PACK32:
-         ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-24);
-         break;
-      case VK_FORMAT_D16_UNORM:
-      case VK_FORMAT_D16_UNORM_S8_UINT:
-         ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-16);
-         break;
-      case VK_FORMAT_D32_SFLOAT:
-      case VK_FORMAT_D32_SFLOAT_S8_UINT:
-         ds->pa_su_poly_offset_db_fmt_cntl =
-            S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-23) | S_028B78_POLY_OFFSET_DB_IS_FLOAT_FMT(1);
-         break;
-      default:
-         break;
-      }
-   }
 
    format = radv_translate_dbformat(iview->image->vk.format);
    stencil_format = surf->has_stencil ? V_028044_STENCIL_8 : V_028044_STENCIL_INVALID;

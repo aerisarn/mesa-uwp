@@ -180,6 +180,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(vk.rs.depth_bias.constant, RADV_DYNAMIC_DEPTH_BIAS);
    RADV_CMP_COPY(vk.rs.depth_bias.clamp, RADV_DYNAMIC_DEPTH_BIAS);
    RADV_CMP_COPY(vk.rs.depth_bias.slope, RADV_DYNAMIC_DEPTH_BIAS);
+   RADV_CMP_COPY(vk.rs.depth_bias.representation, RADV_DYNAMIC_DEPTH_BIAS);
    RADV_CMP_COPY(vk.rs.line.stipple.factor, RADV_DYNAMIC_LINE_STIPPLE);
    RADV_CMP_COPY(vk.rs.line.stipple.pattern, RADV_DYNAMIC_LINE_STIPPLE);
    RADV_CMP_COPY(vk.rs.cull_mode, RADV_DYNAMIC_CULL_MODE);
@@ -2080,8 +2081,31 @@ radv_emit_depth_bounds(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_depth_bias(struct radv_cmd_buffer *cmd_buffer)
 {
+   const struct radv_device *device = cmd_buffer->device;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   struct radv_rendering_state *render = &cmd_buffer->state.render;
    unsigned slope = fui(d->vk.rs.depth_bias.slope * 16.0f);
+   unsigned pa_su_poly_offset_db_fmt_cntl = 0;
+
+   if (render->ds_att.iview && vk_format_has_depth(render->ds_att.iview->image->vk.format) &&
+       d->vk.rs.depth_bias.representation != VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT &&
+       !device->instance->absolute_depth_bias) {
+      const struct radv_image_view *iview = render->ds_att.iview;
+      VkFormat format = vk_format_depth_only(iview->image->vk.format);
+
+      if (format == VK_FORMAT_D16_UNORM) {
+         pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-16);
+      } else {
+         assert(format == VK_FORMAT_D32_SFLOAT);
+         if (d->vk.rs.depth_bias.representation ==
+             VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT) {
+            pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-24);
+         } else {
+            pa_su_poly_offset_db_fmt_cntl =
+               S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-23) | S_028B78_POLY_OFFSET_DB_IS_FLOAT_FMT(1);
+         }
+      }
+   }
 
    radeon_set_context_reg_seq(cmd_buffer->cs, R_028B7C_PA_SU_POLY_OFFSET_CLAMP, 5);
    radeon_emit(cmd_buffer->cs, fui(d->vk.rs.depth_bias.clamp));    /* CLAMP */
@@ -2089,6 +2113,8 @@ radv_emit_depth_bias(struct radv_cmd_buffer *cmd_buffer)
    radeon_emit(cmd_buffer->cs, fui(d->vk.rs.depth_bias.constant)); /* FRONT OFFSET */
    radeon_emit(cmd_buffer->cs, slope);                             /* BACK SCALE */
    radeon_emit(cmd_buffer->cs, fui(d->vk.rs.depth_bias.constant)); /* BACK OFFSET */
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028B78_PA_SU_POLY_OFFSET_DB_FMT_CNTL, pa_su_poly_offset_db_fmt_cntl);
 }
 
 static void
@@ -2872,8 +2898,6 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_buffer_
 
    /* Update the ZRANGE_PRECISION value for the TC-compat bug. */
    radv_update_zrange_precision(cmd_buffer, ds, iview, layout, true);
-
-   radeon_set_context_reg(cmd_buffer->cs, R_028B78_PA_SU_POLY_OFFSET_DB_FMT_CNTL, ds->pa_su_poly_offset_db_fmt_cntl);
 }
 
 static void
@@ -6655,20 +6679,6 @@ radv_CmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth)
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdSetDepthBias(VkCommandBuffer commandBuffer, float depthBiasConstantFactor, float depthBiasClamp,
-                     float depthBiasSlopeFactor)
-{
-   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   struct radv_cmd_state *state = &cmd_buffer->state;
-
-   state->dynamic.vk.rs.depth_bias.constant = depthBiasConstantFactor;
-   state->dynamic.vk.rs.depth_bias.clamp = depthBiasClamp;
-   state->dynamic.vk.rs.depth_bias.slope = depthBiasSlopeFactor;
-
-   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
-}
-
-VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetBlendConstants(VkCommandBuffer commandBuffer, const float blendConstants[4])
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -7339,6 +7349,24 @@ radv_CmdSetAttachmentFeedbackLoopEnableEXT(VkCommandBuffer commandBuffer, VkImag
 }
 
 VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetDepthBias2EXT(VkCommandBuffer commandBuffer, const VkDepthBiasInfoEXT *pDepthBiasInfo)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   const VkDepthBiasRepresentationInfoEXT *dbr_info =
+      vk_find_struct_const(pDepthBiasInfo->pNext, DEPTH_BIAS_REPRESENTATION_INFO_EXT);
+
+   state->dynamic.vk.rs.depth_bias.constant = pDepthBiasInfo->depthBiasConstantFactor;
+   state->dynamic.vk.rs.depth_bias.clamp = pDepthBiasInfo->depthBiasClamp;
+   state->dynamic.vk.rs.depth_bias.slope = pDepthBiasInfo->depthBiasSlopeFactor;
+   state->dynamic.vk.rs.depth_bias.representation =
+      dbr_info ? dbr_info->depthBiasRepresentation : VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
+}
+
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCount, const VkCommandBuffer *pCmdBuffers)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, primary, commandBuffer);
@@ -7676,6 +7704,8 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
 
    if (cmd_buffer->device->physical_device->rad_info.rbplus_allowed)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
+
+   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
 
    if (render->vrs_att.iview && cmd_buffer->device->physical_device->rad_info.gfx_level == GFX10_3) {
       if (render->ds_att.iview) {

@@ -943,6 +943,7 @@ radv_pipeline_init_dynamic_state(const struct radv_device *device, struct radv_g
       dynamic->vk.rs.depth_bias.constant = state->rs->depth_bias.constant;
       dynamic->vk.rs.depth_bias.clamp = state->rs->depth_bias.clamp;
       dynamic->vk.rs.depth_bias.slope = state->rs->depth_bias.slope;
+      dynamic->vk.rs.depth_bias.representation = state->rs->depth_bias.representation;
    }
 
    if (states & RADV_DYNAMIC_CULL_MODE) {

@@ -1495,7 +1495,6 @@ struct radv_ds_buffer_info {
    uint32_t db_depth_size;
    uint32_t db_depth_slice;
    uint32_t db_htile_surface;
-   uint32_t pa_su_poly_offset_db_fmt_cntl;
    uint32_t db_z_info2;       /* GFX9 only */
    uint32_t db_stencil_info2; /* GFX9 only */
    uint32_t db_render_override2;
