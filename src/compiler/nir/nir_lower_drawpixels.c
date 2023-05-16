@@ -47,27 +47,12 @@ get_texcoord(nir_builder *b, lower_drawpixels_state *state)
    return nir_load_var(b, state->texcoord);
 }
 
-static nir_variable *
-create_uniform(nir_shader *shader, const char *name,
-               const gl_state_index16 state_tokens[STATE_LENGTH])
-{
-   nir_variable *var = nir_variable_create(shader,
-                                           nir_var_uniform,
-                                           glsl_vec4_type(),
-                                           name);
-   var->num_state_slots = 1;
-   var->state_slots = ralloc_array(var, nir_state_slot, 1);
-   memcpy(var->state_slots[0].tokens, state_tokens,
-          sizeof(var->state_slots[0].tokens));
-   return var;
-}
-
 static nir_ssa_def *
 get_scale(nir_builder *b, lower_drawpixels_state *state)
 {
    if (state->scale == NULL) {
-      state->scale = create_uniform(state->shader, "gl_PTscale",
-                                    state->options->scale_state_tokens);
+      state->scale = nir_state_variable_create(state->shader, glsl_vec4_type(), "gl_PTscale",
+                                               state->options->scale_state_tokens);
    }
    return nir_load_var(b, state->scale);
 }
@@ -76,8 +61,8 @@ static nir_ssa_def *
 get_bias(nir_builder *b, lower_drawpixels_state *state)
 {
    if (state->bias == NULL) {
-      state->bias = create_uniform(state->shader, "gl_PTbias",
-                                   state->options->bias_state_tokens);
+      state->bias = nir_state_variable_create(state->shader, glsl_vec4_type(), "gl_PTbias",
+                                              state->options->bias_state_tokens);
    }
    return nir_load_var(b, state->bias);
 }
@@ -86,9 +71,9 @@ static nir_ssa_def *
 get_texcoord_const(nir_builder *b, lower_drawpixels_state *state)
 {
    if (state->texcoord_const == NULL) {
-      state->texcoord_const = create_uniform(state->shader,
-                                   "gl_MultiTexCoord0",
-                                   state->options->texcoord_state_tokens);
+      state->texcoord_const = nir_state_variable_create(state->shader, glsl_vec4_type(),
+                                                        "gl_MultiTexCoord0",
+                                                        state->options->texcoord_state_tokens);
    }
    return nir_load_var(b, state->texcoord_const);
 }

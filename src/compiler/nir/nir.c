@@ -324,6 +324,21 @@ nir_local_variable_create(nir_function_impl *impl,
 }
 
 nir_variable *
+nir_state_variable_create(nir_shader *shader,
+                          const struct glsl_type *type,
+                          const char *name,
+                          const gl_state_index16 tokens[STATE_LENGTH])
+{
+   nir_variable *var = nir_variable_create(shader, nir_var_uniform, type, name);
+   var->num_state_slots = 1;
+   var->state_slots = rzalloc_array(var, nir_state_slot, 1);
+   memcpy(var->state_slots[0].tokens, tokens,
+          sizeof(var->state_slots[0].tokens));
+   shader->num_uniforms++;
+   return var;
+}
+
+nir_variable *
 nir_create_variable_with_location(nir_shader *shader, nir_variable_mode mode, int location,
                                   const struct glsl_type *type)
 {

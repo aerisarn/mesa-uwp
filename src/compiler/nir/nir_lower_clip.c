@@ -227,16 +227,9 @@ get_ucp(nir_builder *b, int plane,
    if (clipplane_state_tokens) {
       char tmp[100];
       snprintf(tmp, ARRAY_SIZE(tmp), "gl_ClipPlane%dMESA", plane);
-      nir_variable *var = nir_variable_create(b->shader,
-                                              nir_var_uniform,
-                                              glsl_vec4_type(),
-                                              tmp);
-
-      var->num_state_slots = 1;
-      var->state_slots = ralloc_array(var, nir_state_slot, 1);
-      memcpy(var->state_slots[0].tokens,
-             clipplane_state_tokens[plane],
-             sizeof(var->state_slots[0].tokens));
+      nir_variable *var = nir_state_variable_create(b->shader,
+                                                    glsl_vec4_type(),
+                                                    tmp, clipplane_state_tokens[plane]);
       return nir_load_var(b, var);
    } else
       return nir_load_user_clip_plane(b, plane);

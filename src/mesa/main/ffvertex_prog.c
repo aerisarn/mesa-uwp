@@ -46,6 +46,7 @@
 #include "util/bitscan.h"
 
 #include "state_tracker/st_program.h"
+#include "state_tracker/st_nir.h"
 
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_builtin_builder.h"
@@ -310,20 +311,9 @@ register_state_var(struct tnl_program *p,
    if (var)
       return var;
 
-   int loc = _mesa_add_state_reference(p->state_params, tokens);
+   var = st_nir_state_variable_create(p->b->shader, type, tokens);
+   var->data.driver_location = _mesa_add_state_reference(p->state_params, tokens);
 
-   char *name = _mesa_program_state_string(tokens);
-   var = nir_variable_create(p->b->shader, nir_var_uniform, type,
-                             name);
-   free(name);
-
-   var->num_state_slots = 1;
-   var->state_slots = ralloc_array(var, nir_state_slot, 1);
-   var->data.driver_location = loc;
-   memcpy(var->state_slots[0].tokens, tokens,
-          sizeof(var->state_slots[0].tokens));
-
-   p->b->shader->num_uniforms++;
    return var;
 }
 

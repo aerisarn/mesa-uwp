@@ -48,15 +48,11 @@ get_transform(lower_wpos_ytransform_state *state)
       /* NOTE: name must be prefixed w/ "gl_" to trigger slot based
        * special handling in uniform setup:
        */
-      nir_variable *var = nir_variable_create(state->shader,
-                                              nir_var_uniform,
-                                              glsl_vec4_type(),
-                                              "gl_FbWposYTransform");
+      nir_variable *var = nir_state_variable_create(state->shader,
+                                                    glsl_vec4_type(),
+                                                    "gl_FbWposYTransform",
+                                                    state->options->state_tokens);
 
-      var->num_state_slots = 1;
-      var->state_slots = ralloc_array(var, nir_state_slot, 1);
-      memcpy(var->state_slots[0].tokens, state->options->state_tokens,
-             sizeof(var->state_slots[0].tokens));
       var->data.how_declared = nir_var_hidden;
       state->transform = var;
    }

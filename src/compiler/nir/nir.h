@@ -4056,6 +4056,13 @@ nir_variable *nir_local_variable_create(nir_function_impl *impl,
                                         const struct glsl_type *type,
                                         const char *name);
 
+/** Creates a uniform builtin state variable. */
+nir_variable *
+nir_state_variable_create(nir_shader *shader,
+                          const struct glsl_type *type,
+                          const char *name,
+                          const gl_state_index16 tokens[STATE_LENGTH]);
+
 /* Gets the variable for the given mode and location, creating it (with the given
  * type) if necessary.
  */
