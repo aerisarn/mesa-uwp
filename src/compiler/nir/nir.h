@@ -859,7 +859,7 @@ typedef struct nir_register {
    unsigned num_components; /** < number of vector components */
    unsigned num_array_elems; /** < size of array (0 for no array) */
 
-   /* The bit-size of each channel; must be one of 8, 16, 32, or 64 */
+   /* The bit-size of each channel; must be one of 1, 8, 16, 32, or 64 */
    uint8_t bit_size;
 
    /**
@@ -954,7 +954,7 @@ typedef struct nir_ssa_def {
 
    uint8_t num_components;
 
-   /* The bit-size of each channel; must be one of 8, 16, 32, or 64 */
+   /* The bit-size of each channel; must be one of 1, 8, 16, 32, or 64 */
    uint8_t bit_size;
 
    /**
