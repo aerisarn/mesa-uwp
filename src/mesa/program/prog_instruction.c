@@ -61,22 +61,6 @@ _mesa_init_instructions(struct prog_instruction *inst, GLuint count)
 
 
 /**
- * Copy an array of program instructions.
- * \param dest  pointer to destination.
- * \param src  pointer to source.
- * \param n  number of instructions to copy.
- * \return pointer to destination.
- */
-struct prog_instruction *
-_mesa_copy_instructions(struct prog_instruction *dest,
-                        const struct prog_instruction *src, GLuint n)
-{
-   memcpy(dest, src, n * sizeof(struct prog_instruction));
-   return dest;
-}
-
-
-/**
  * Basic info about each instruction
  */
 struct instruction_info
