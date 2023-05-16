@@ -2415,6 +2415,9 @@ init_driver_workarounds(struct zink_screen *screen)
    /* EDS2 is only used with EDS1 */
    if (!screen->info.have_EXT_extended_dynamic_state)
       screen->info.have_EXT_extended_dynamic_state2 = false;
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
+      /* this completely breaks xfb somehow */
+      screen->info.have_EXT_extended_dynamic_state2 = false;
    /* EDS3 is only used with EDS2 */
    if (!screen->info.have_EXT_extended_dynamic_state2)
       screen->info.have_EXT_extended_dynamic_state3 = false;
@@ -2455,9 +2458,6 @@ init_driver_workarounds(struct zink_screen *screen)
                                                          screen->info.gpl_props.graphicsPipelineLibraryFastLinking ||
                                                          screen->is_cpu);
    screen->driver_workarounds.broken_l4a4 = screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY;
-   if (screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
-      /* this completely breaks xfb somehow */
-      screen->info.have_EXT_extended_dynamic_state2 = false;
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_TURNIP) {
       /* performance */
       screen->info.border_color_feats.customBorderColorWithoutFormat = VK_FALSE;
