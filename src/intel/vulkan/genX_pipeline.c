@@ -1872,8 +1872,8 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
 #if GFX_VERx10 >= 125
       const struct anv_device *device = pipeline->base.base.device;
       /* Disable Mesh. */
-      if (device->physical->vk.supported_extensions.NV_mesh_shader ||
-          device->physical->vk.supported_extensions.EXT_mesh_shader) {
+      if (device->vk.enabled_extensions.NV_mesh_shader ||
+          device->vk.enabled_extensions.EXT_mesh_shader) {
          struct anv_batch *batch = &pipeline->base.base.batch;
 
          anv_batch_emit(batch, GENX(3DSTATE_MESH_CONTROL), zero);
