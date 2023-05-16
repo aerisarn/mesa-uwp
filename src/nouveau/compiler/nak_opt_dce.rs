@@ -125,7 +125,7 @@ impl DeadCodePass {
         }
     }
 
-    fn map_instr(&self, mut instr: Box<Instr>) -> Vec<Box<Instr>> {
+    fn map_instr(&self, mut instr: Box<Instr>) -> MappedInstrs {
         let is_live = match &mut instr.op {
             Op::PhiSrcs(phi) => {
                 assert!(phi.ids.len() == phi.srcs.len());
@@ -170,9 +170,9 @@ impl DeadCodePass {
         };
 
         if is_live {
-            vec![instr]
+            MappedInstrs::One(instr)
         } else {
-            Vec::new()
+            MappedInstrs::None
         }
     }
 

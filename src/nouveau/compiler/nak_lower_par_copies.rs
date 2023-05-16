@@ -60,7 +60,7 @@ impl CopyGraph {
     }
 }
 
-fn lower_par_copy(pc: OpParCopy) -> Vec<Box<Instr>> {
+fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
     let mut graph = CopyGraph::new();
     let mut vals = Vec::new();
     let mut reg_to_idx = HashMap::new();
@@ -183,18 +183,18 @@ fn lower_par_copy(pc: OpParCopy) -> Vec<Box<Instr>> {
         }
     }
 
-    instrs
+    MappedInstrs::Many(instrs)
 }
 
 impl Shader {
     pub fn lower_par_copies(&mut self) {
-        self.map_instrs(&|instr, _| -> Vec<Box<Instr>> {
+        self.map_instrs(&|instr, _| -> MappedInstrs {
             match instr.op {
                 Op::ParCopy(pc) => {
                     assert!(instr.pred.is_true());
                     lower_par_copy(pc)
                 }
-                _ => vec![instr],
+                _ => MappedInstrs::One(instr),
             }
         });
     }

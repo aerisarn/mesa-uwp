@@ -3617,6 +3617,15 @@ impl<T: Into<Op>> From<T> for Instr {
     }
 }
 
+/// The result of map() done on a Box<Instr>. A Vec is only allocated if the
+/// mapping results in multiple instructions. This helps to reduce the amount of
+/// Vec's allocated in the optimization passes.
+pub enum MappedInstrs {
+    None,
+    One(Box<Instr>),
+    Many(Vec<Box<Instr>>),
+}
+
 pub struct BasicBlock {
     pub id: u32,
     pub instrs: Vec<Box<Instr>>,
@@ -3631,7 +3640,7 @@ impl BasicBlock {
     }
 
     pub fn map_instrs<
-        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> Vec<Box<Instr>>,
+        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
     >(
         &mut self,
         map: &F,
@@ -3639,7 +3648,15 @@ impl BasicBlock {
     ) {
         let mut instrs = Vec::new();
         for i in self.instrs.drain(..) {
-            instrs.append(&mut map(i, ssa_alloc));
+            match map(i, ssa_alloc) {
+                MappedInstrs::None => (),
+                MappedInstrs::One(i) => {
+                    instrs.push(i);
+                }
+                MappedInstrs::Many(mut v) => {
+                    instrs.append(&mut v);
+                }
+            }
         }
         self.instrs = instrs;
     }
@@ -3701,7 +3718,7 @@ impl Function {
     }
 
     pub fn map_instrs<
-        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> Vec<Box<Instr>>,
+        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
     >(
         &mut self,
         map: &F,
@@ -3735,7 +3752,7 @@ impl Shader {
     }
 
     pub fn map_instrs<
-        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> Vec<Box<Instr>>,
+        F: Fn(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
     >(
         &mut self,
         map: &F,
@@ -3746,20 +3763,14 @@ impl Shader {
     }
 
     pub fn lower_vec_split(&mut self) {
-        self.map_instrs(&|instr: Box<Instr>, _| -> Vec<Box<Instr>> {
+        self.map_instrs(&|instr: Box<Instr>, _| -> MappedInstrs {
             match instr.op {
-                Op::INeg(neg) => {
-                    vec![Instr::new_boxed(OpIAdd3 {
-                        dst: neg.dst,
-                        overflow: Dst::None,
-                        srcs: [
-                            Src::new_zero(),
-                            neg.src.ineg(),
-                            Src::new_zero(),
-                        ],
-                        carry: Src::new_imm_bool(false),
-                    })]
-                }
+                Op::INeg(neg) => MappedInstrs::One(Instr::new_boxed(OpIAdd3 {
+                    dst: neg.dst,
+                    overflow: Dst::None,
+                    srcs: [Src::new_zero(), neg.src.ineg(), Src::new_zero()],
+                    carry: Src::new_imm_bool(false),
+                })),
                 Op::FSOut(out) => {
                     let mut pcopy = OpParCopy::new();
                     for (i, src) in out.srcs.iter().enumerate() {
@@ -3768,15 +3779,15 @@ impl Shader {
                         pcopy.srcs.push(*src);
                         pcopy.dsts.push(dst.into());
                     }
-                    vec![Instr::new_boxed(pcopy)]
+                    MappedInstrs::One(Instr::new_boxed(pcopy))
                 }
-                _ => vec![instr],
+                _ => MappedInstrs::One(instr),
             }
         })
     }
 
     pub fn lower_swap(&mut self) {
-        self.map_instrs(&|instr: Box<Instr>, _| -> Vec<Box<Instr>> {
+        self.map_instrs(&|instr: Box<Instr>, _| -> MappedInstrs {
             match instr.op {
                 Op::Swap(swap) => {
                     let x = *swap.dsts[0].as_reg().unwrap();
@@ -3790,73 +3801,75 @@ impl Shader {
                     assert!(*swap.srcs[1].src_ref.as_reg().unwrap() == x);
 
                     if x == y {
-                        Vec::new()
+                        MappedInstrs::None
                     } else if x.is_predicate() {
-                        vec![Instr::new_boxed(OpPLop3 {
+                        MappedInstrs::One(Instr::new_boxed(OpPLop3 {
                             dsts: [x.into(), y.into()],
                             srcs: [x.into(), y.into(), Src::new_imm_bool(true)],
                             ops: [
                                 LogicOp::new_lut(&|_, y, _| y),
                                 LogicOp::new_lut(&|x, _, _| x),
                             ],
-                        })]
+                        }))
                     } else {
-                        vec![
+                        MappedInstrs::Many(vec![
                             Instr::new_xor(x.into(), x.into(), y.into()).into(),
                             Instr::new_xor(y.into(), x.into(), y.into()).into(),
                             Instr::new_xor(x.into(), x.into(), y.into()).into(),
-                        ]
+                        ])
                     }
                 }
-                _ => vec![instr],
+                _ => MappedInstrs::One(instr),
             }
         })
     }
 
     pub fn lower_mov_predicate(&mut self) {
-        self.map_instrs(&|instr: Box<Instr>, _| -> Vec<Box<Instr>> {
+        self.map_instrs(&|instr: Box<Instr>, _| -> MappedInstrs {
             match &instr.op {
                 Op::Mov(mov) => {
                     assert!(mov.src.src_mod.is_none());
                     match mov.src.src_ref {
-                        SrcRef::True => {
-                            vec![Instr::new_isetp(
+                        SrcRef::True => MappedInstrs::One(
+                            Instr::new_isetp(
                                 mov.dst,
                                 IntCmpType::I32,
                                 IntCmpOp::Eq,
                                 Src::new_zero(),
                                 Src::new_zero(),
                             )
-                            .into()]
-                        }
-                        SrcRef::False => {
-                            vec![Instr::new_isetp(
+                            .into(),
+                        ),
+                        SrcRef::False => MappedInstrs::One(
+                            Instr::new_isetp(
                                 mov.dst,
                                 IntCmpType::I32,
                                 IntCmpOp::Ne,
                                 Src::new_zero(),
                                 Src::new_zero(),
                             )
-                            .into()]
-                        }
+                            .into(),
+                        ),
                         SrcRef::Reg(reg) => {
                             if reg.is_predicate() {
-                                vec![Instr::new_plop3(
-                                    mov.dst,
-                                    LogicOp::new_lut(&|x, _, _| x),
-                                    mov.src,
-                                    Src::new_imm_bool(true),
-                                    Src::new_imm_bool(true),
+                                MappedInstrs::One(
+                                    Instr::new_plop3(
+                                        mov.dst,
+                                        LogicOp::new_lut(&|x, _, _| x),
+                                        mov.src,
+                                        Src::new_imm_bool(true),
+                                        Src::new_imm_bool(true),
+                                    )
+                                    .into(),
                                 )
-                                .into()]
                             } else {
-                                vec![instr]
+                                MappedInstrs::One(instr)
                             }
                         }
-                        _ => vec![instr],
+                        _ => MappedInstrs::One(instr),
                     }
                 }
-                _ => vec![instr],
+                _ => MappedInstrs::One(instr),
             }
         })
     }

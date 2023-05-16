@@ -72,7 +72,7 @@ impl<'a> LegalizeInstr<'a> {
         }
     }
 
-    pub fn map(&mut self, mut instr: Box<Instr>) -> Vec<Box<Instr>> {
+    pub fn map(&mut self, mut instr: Box<Instr>) -> MappedInstrs {
         match &mut instr.op {
             Op::FAdd(op) => {
                 let [ref mut src0, ref mut src1] = op.srcs;
@@ -297,13 +297,13 @@ impl<'a> LegalizeInstr<'a> {
         }
 
         self.instrs.push(instr);
-        std::mem::replace(&mut self.instrs, Vec::new())
+        MappedInstrs::Many(std::mem::replace(&mut self.instrs, Vec::new()))
     }
 }
 
 impl Shader {
     pub fn legalize(&mut self) {
-        self.map_instrs(&|instr, ssa_alloc| -> Vec<Box<Instr>> {
+        self.map_instrs(&|instr, ssa_alloc| -> MappedInstrs {
             LegalizeInstr::new(ssa_alloc).map(instr)
         });
     }
