@@ -1175,7 +1175,6 @@ pvr_sub_cmd_gfx_align_ds_subtiles(struct pvr_cmd_buffer *const cmd_buffer,
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                      cmd_buffer->device->heaps.general_heap,
                                      buffer_size,
-                                     0,
                                      &buffer);
    if (result != VK_SUCCESS)
       return result;
@@ -2315,7 +2314,6 @@ VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
 VkResult pvr_cmd_buffer_alloc_mem(struct pvr_cmd_buffer *cmd_buffer,
                                   struct pvr_winsys_heap *heap,
                                   uint64_t size,
-                                  uint32_t flags,
                                   struct pvr_suballoc_bo **const pvr_bo_out)
 {
    const uint32_t cache_line_size =
@@ -2323,9 +2321,6 @@ VkResult pvr_cmd_buffer_alloc_mem(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_suballoc_bo *suballoc_bo;
    struct pvr_suballocator *allocator;
    VkResult result;
-
-   /* We assume users to always request bo(s) to be CPU mapped */
-   assert(flags & PVR_BO_ALLOC_FLAG_CPU_MAPPED);
 
    if (heap == cmd_buffer->device->heaps.general_heap)
       allocator = &cmd_buffer->device->suballoc_general;
@@ -3233,7 +3228,6 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
       pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                cmd_buffer->device->heaps.pds_heap,
                                PVR_DW_TO_BYTES(pds_info->data_size_in_dwords),
-                               PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                &pvr_bo);
    if (result != VK_SUCCESS)
       return result;
@@ -3442,7 +3436,6 @@ static VkResult pvr_setup_descriptor_mappings_old(
       pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                cmd_buffer->device->heaps.pds_heap,
                                PVR_DW_TO_BYTES(pds_info->data_size_in_dwords),
-                               PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                &pvr_bo);
    if (result != VK_SUCCESS)
       return result;
@@ -3765,7 +3758,6 @@ static VkResult pvr_cmd_buffer_upload_patched_desc_set(
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                      cmd_buffer->device->heaps.general_heap,
                                      normal_desc_set_size + dynamic_descs_size,
-                                     PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                      &patched_desc_set_bo);
    if (result != VK_SUCCESS)
       return result;
@@ -4038,11 +4030,11 @@ static VkResult pvr_setup_descriptor_mappings_new(
    if (!pds_info->data_size_in_dwords)
       return VK_SUCCESS;
 
-   result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
-                                     cmd_buffer->device->heaps.pds_heap,
-                                     PVR_DW_TO_BYTES(pds_info->data_size_in_dwords),
-                                     PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                                     &pvr_bo);
+   result =
+      pvr_cmd_buffer_alloc_mem(cmd_buffer,
+                               cmd_buffer->device->heaps.pds_heap,
+                               PVR_DW_TO_BYTES(pds_info->data_size_in_dwords),
+                               &pvr_bo);
    if (result != VK_SUCCESS)
       return result;
 
@@ -4092,7 +4084,6 @@ static VkResult pvr_setup_descriptor_mappings_new(
          result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                            device->heaps.general_heap,
                                            addr_literal_buffer_entry->size,
-                                           PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                            &addr_literal_buffer_bo);
          if (result != VK_SUCCESS)
             return result;
@@ -5752,7 +5743,6 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                      cmd_buffer->device->heaps.general_heap,
                                      PVR_DW_TO_BYTES(ppp_state_words_count),
-                                     PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                      &pvr_bo);
    if (result != VK_SUCCESS)
       return result;
@@ -6392,7 +6382,6 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                         cmd_buffer->device->heaps.general_heap,
                                         DUMMY_VDM_CONTROL_STREAM_BLOCK_SIZE,
-                                        PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                         &dummy_bo);
       if (result != VK_SUCCESS)
          return result;
@@ -6418,7 +6407,6 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                         cmd_buffer->device->heaps.pds_heap,
                                         pds_size,
-                                        PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                         &pds_bo);
       if (result != VK_SUCCESS)
          return result;

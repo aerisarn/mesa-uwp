@@ -1506,7 +1506,6 @@ static VkResult pvr_clear_color_attachment_static_create_consts_buffer(
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                      device->heaps.general_heap,
                                      shader_info->const_shared_regs,
-                                     PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                      &const_shareds_buffer);
    if (result != VK_SUCCESS)
       return result;
@@ -1649,7 +1648,6 @@ static VkResult pvr_clear_color_attachment_static(
       cmd_buffer,
       device->heaps.pds_heap,
       clear_attachment_program->texture_program_data_size,
-      PVR_BO_ALLOC_FLAG_CPU_MAPPED,
       &pds_texture_program_bo);
    if (result != VK_SUCCESS) {
       list_del(&const_shareds_buffer->link);

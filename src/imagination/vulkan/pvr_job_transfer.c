@@ -2106,7 +2106,6 @@ pvr_pds_unitex(const struct pvr_device_info *dev_info,
       pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
                                ctx->device->heaps.pds_heap,
                                PVR_DW_TO_BYTES(state->tex_state_data_size),
-                               PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                &pvr_bo);
    if (result != VK_SUCCESS)
       return result;
@@ -2812,7 +2811,6 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
       result = pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
                                         device->heaps.general_heap,
                                         PVR_DW_TO_BYTES(tex_state_dma_size_dw),
-                                        PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                         &pvr_bo);
       if (result != VK_SUCCESS)
          return result;
@@ -3000,7 +2998,6 @@ pvr_pds_coeff_task(struct pvr_transfer_ctx *ctx,
       transfer_cmd->cmd_buffer,
       ctx->device->heaps.pds_heap,
       PVR_DW_TO_BYTES(program.data_size + program.code_size),
-      PVR_BO_ALLOC_FLAG_CPU_MAPPED,
       &pvr_bo);
    if (result != VK_SUCCESS)
       return result;
@@ -3999,7 +3996,6 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
    result = pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
                                      ctx->device->heaps.transfer_3d_heap,
                                      total_stream_size,
-                                     PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                      &pvr_cs_bo);
    if (result != VK_SUCCESS)
       return result;
@@ -4164,7 +4160,6 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
             result = pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
                                               ctx->device->heaps.general_heap,
                                               tex_state_dma_size << 2U,
-                                              PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                               &pvr_bo);
             if (result != VK_SUCCESS)
                return result;
