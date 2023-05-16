@@ -143,6 +143,14 @@ genX(cmd_buffer_emit_generate_draws_pipeline)(struct anv_cmd_buffer *cmd_buffer)
    anv_batch_emit(batch, GENX(3DSTATE_TE), te);
    anv_batch_emit(batch, GENX(3DSTATE_DS), DS);
 
+#if GFX_VERx10 >= 125
+   if (device->vk.enabled_extensions.NV_mesh_shader ||
+       device->vk.enabled_extensions.EXT_mesh_shader) {
+      anv_batch_emit(batch, GENX(3DSTATE_MESH_CONTROL), mesh);
+      anv_batch_emit(batch, GENX(3DSTATE_TASK_CONTROL), task);
+   }
+#endif
+
    anv_batch_emit(batch, GENX(3DSTATE_STREAMOUT), so);
 
    anv_batch_emit(batch, GENX(3DSTATE_GS), gs);
