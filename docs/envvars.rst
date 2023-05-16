@@ -898,6 +898,8 @@ Clover environment variables
    allows specifying additional linker options. Specified options are
    appended after the options set by the OpenCL program in
    ``clLinkProgram``.
+   
+.. _rusticl-env-var:
 
 Rusticl environment variables
 -----------------------------
