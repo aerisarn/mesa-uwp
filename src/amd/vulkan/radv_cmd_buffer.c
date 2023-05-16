@@ -663,6 +663,8 @@ radv_flush_gfx2ace_semaphore(struct radv_cmd_buffer *cmd_buffer)
          return false;
    }
 
+   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 12);
+
    /* GFX writes a value to the semaphore which ACE can wait for.*/
    si_cs_emit_write_event_eop(
       cmd_buffer->cs, cmd_buffer->device->physical_device->rad_info.gfx_level,
@@ -671,6 +673,9 @@ radv_flush_gfx2ace_semaphore(struct radv_cmd_buffer *cmd_buffer)
       cmd_buffer->ace_internal.sem.gfx2ace_value, cmd_buffer->gfx9_eop_bug_va);
 
    cmd_buffer->ace_internal.sem.emitted_gfx2ace_value = cmd_buffer->ace_internal.sem.gfx2ace_value;
+
+   assert(cmd_buffer->cs->cdw <= cdw_max);
+
    return true;
 }
 
