@@ -1823,6 +1823,7 @@ is_dead(const std::vector<uint16_t>& uses, const Instruction* instr)
    return !(get_sync_info(instr).semantics & (semantic_volatile | semantic_acqrel));
 }
 
+bool can_use_input_modifiers(amd_gfx_level gfx_level, aco_opcode op, int idx);
 bool can_use_opsel(amd_gfx_level gfx_level, aco_opcode op, int idx);
 bool instr_is_16bit(amd_gfx_level gfx_level, aco_opcode op);
 uint8_t get_gfx11_true16_mask(aco_opcode op);

@@ -470,6 +470,19 @@ convert_to_DPP(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr, bool dpp8)
 }
 
 bool
+can_use_input_modifiers(amd_gfx_level gfx_level, aco_opcode op, int idx)
+{
+   if (op == aco_opcode::v_mov_b32)
+      return gfx_level >= GFX10;
+
+   if (op == aco_opcode::v_ldexp_f16 || op == aco_opcode::v_ldexp_f32 ||
+       op == aco_opcode::v_ldexp_f64)
+      return idx == 0;
+
+   return instr_info.can_use_input_modifiers[(int)op];
+}
+
+bool
 can_use_opsel(amd_gfx_level gfx_level, aco_opcode op, int idx)
 {
    /* opsel is only GFX9+ */
