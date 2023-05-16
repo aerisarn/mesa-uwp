@@ -294,6 +294,24 @@ index("unsigned", "resource_block_intel")
 # Various flags describing the resource access
 index("nir_resource_data_intel", "resource_access_intel")
 
+# Register metadata
+# number of vector components
+index("unsigned", "num_components")
+# size of array (0 for no array)
+index("unsigned", "num_array_elems")
+# The bit-size of each channel; must be one of 1, 8, 16, 32, or 64
+index("unsigned", "bit_size")
+# True if this register may have different values in different SIMD invocations
+# of the shader.
+index("bool", "divergent")
+
+# On a register load, floating-point absolute value/negate loaded value.
+index("bool", "legacy_fabs")
+index("bool", "legacy_fneg")
+
+# On a register store, floating-point saturate the stored value.
+index("bool", "legacy_fsat")
+
 intrinsic("nop", flags=[CAN_ELIMINATE])
 
 intrinsic("convert_alu_types", dest_comp=0, src_comp=[0],
@@ -307,6 +325,33 @@ intrinsic("load_deref", dest_comp=0, src_comp=[-1],
 intrinsic("store_deref", src_comp=[-1, 0], indices=[WRITE_MASK, ACCESS])
 intrinsic("copy_deref", src_comp=[-1, -1], indices=[DST_ACCESS, SRC_ACCESS])
 intrinsic("memcpy_deref", src_comp=[-1, -1, 1], indices=[DST_ACCESS, SRC_ACCESS])
+
+# Returns an opaque handle representing a register indexed by BASE. The
+# logically def-use list of a register is given by the use list of this handle.
+# The shape of the underlying register is given by the indices, the handle
+# itself is always a 32-bit scalar.
+intrinsic("decl_reg", dest_comp=1,
+          indices=[NUM_COMPONENTS, NUM_ARRAY_ELEMS, BIT_SIZE, DIVERGENT],
+          flags=[CAN_ELIMINATE])
+
+# Load a register given as the source directly with base offset BASE.
+intrinsic("load_reg", dest_comp=0, src_comp=[1],
+          indices=[BASE, LEGACY_FABS, LEGACY_FNEG], flags=[CAN_ELIMINATE])
+
+# Load a register given as first source indirectly with base offset BASE and
+# indirect offset as second source.
+intrinsic("load_reg_indirect", dest_comp=0, src_comp=[1, 1],
+          indices=[BASE, LEGACY_FABS, LEGACY_FNEG], flags=[CAN_ELIMINATE])
+
+# Store the value in the first source to a register given as the second source
+# directly with base offset BASE.
+intrinsic("store_reg", src_comp=[0, 1],
+          indices=[BASE, WRITE_MASK, LEGACY_FSAT])
+
+# Store the value in the first source to a register given as the second
+# source indirectly with base offset BASE and indirect offset as third source.
+intrinsic("store_reg_indirect", src_comp=[0, 1, 1],
+          indices=[BASE, WRITE_MASK, LEGACY_FSAT])
 
 # Interpolation of input.  The interp_deref_at* intrinsics are similar to the
 # load_var intrinsic acting on a shader input except that they interpolate the

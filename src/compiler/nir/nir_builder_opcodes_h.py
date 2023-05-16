@@ -226,6 +226,9 @@ build_prefixed_intrinsics = [
    "load_global_constant",
    "store_global",
 
+   "load_reg",
+   "store_reg",
+
    "deref_mode_is",
 ]
 

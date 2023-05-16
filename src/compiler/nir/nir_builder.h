@@ -1687,6 +1687,48 @@ nir_load_param(nir_builder *build, uint32_t param_idx)
    return nir_build_load_param(build, param->num_components, param->bit_size, param_idx);
 }
 
+#undef nir_decl_reg
+static inline nir_ssa_def *
+nir_decl_reg(nir_builder *b, unsigned num_components, unsigned bit_size,
+             unsigned num_array_elems)
+{
+   nir_intrinsic_instr *decl =
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_decl_reg);
+   nir_intrinsic_set_num_components(decl, num_components);
+   nir_intrinsic_set_bit_size(decl, bit_size);
+   nir_intrinsic_set_num_array_elems(decl, num_array_elems);
+   nir_ssa_dest_init(&decl->instr, &decl->dest, 1, 32);
+
+   nir_instr_insert(nir_before_cf_list(&b->impl->body), &decl->instr);
+
+   return &decl->dest.ssa;
+}
+
+#undef nir_load_reg
+static inline nir_ssa_def *
+nir_load_reg(nir_builder *b, nir_ssa_def *reg)
+{
+   nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
+   unsigned num_components = nir_intrinsic_num_components(decl);
+   unsigned bit_size = nir_intrinsic_bit_size(decl);
+
+   return nir_build_load_reg(b, num_components, bit_size, reg);
+}
+
+#undef nir_store_reg
+static inline void
+nir_store_reg(nir_builder *b, nir_ssa_def *value, nir_ssa_def *reg)
+{
+   ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
+   ASSERTED unsigned num_components = nir_intrinsic_num_components(decl);
+   ASSERTED unsigned bit_size = nir_intrinsic_bit_size(decl);
+
+   assert(value->num_components == num_components);
+   assert(value->bit_size == bit_size);
+
+   nir_build_store_reg(b, value, reg);
+}
+
 static inline nir_tex_src
 nir_tex_src_for_ssa(nir_tex_src_type src_type, nir_ssa_def *def)
 {

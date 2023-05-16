@@ -6249,6 +6249,16 @@ bool nir_mod_analysis(nir_ssa_scalar val, nir_alu_type val_type, unsigned div, u
 bool
 nir_remove_tex_shadow(nir_shader *shader, unsigned textures_bitmask);
 
+static inline nir_intrinsic_instr *
+nir_reg_get_decl(nir_ssa_def *reg)
+{
+   assert(reg->parent_instr->type == nir_instr_type_intrinsic);
+   nir_intrinsic_instr *decl = nir_instr_as_intrinsic(reg->parent_instr);
+   assert(decl->intrinsic == nir_intrinsic_decl_reg);
+
+   return decl;
+}
+
 #include "nir_inline_helpers.h"
 
 #ifdef __cplusplus
