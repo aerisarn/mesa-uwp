@@ -419,8 +419,6 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
    /* Translate to NIR */
    nir_shader *nir = prog_to_nir(st->ctx, prog, options);
 
-   st_prog_to_nir_postprocess(st, nir, prog);
-
    return nir;
 }
 
@@ -606,8 +604,7 @@ st_translate_vertex_program(struct st_context *st,
    if (prog->arb.Instructions)
       prog->nir = st_translate_prog_to_nir(st, prog,
                                            MESA_SHADER_VERTEX);
-   else
-      st_prog_to_nir_postprocess(st, prog->nir, prog);
+   st_prog_to_nir_postprocess(st, prog->nir, prog);
    prog->info = prog->nir->info;
 
    st_prepare_vertex_program(prog);
@@ -873,8 +870,7 @@ st_translate_fragment_program(struct st_context *st,
       if (prog->arb.Instructions)
          prog->nir = st_translate_prog_to_nir(st, prog,
                                              MESA_SHADER_FRAGMENT);
-      else
-         st_prog_to_nir_postprocess(st, prog->nir, prog);
+      st_prog_to_nir_postprocess(st, prog->nir, prog);
       prog->info = prog->nir->info;
    }
 
