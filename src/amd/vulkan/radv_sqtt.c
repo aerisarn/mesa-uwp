@@ -36,7 +36,7 @@ radv_is_instruction_timing_enabled(void)
 }
 
 static uint32_t
-gfx11_get_sqtt_ctrl(struct radv_device *device, bool enable)
+gfx11_get_sqtt_ctrl(const struct radv_device *device, bool enable)
 {
    return S_0367B0_MODE(enable) | S_0367B0_HIWATER(5) | S_0367B0_UTIL_TIMER(1) |
           S_0367B0_RT_FREQ(2) | /* 4096 clk */
@@ -45,7 +45,7 @@ gfx11_get_sqtt_ctrl(struct radv_device *device, bool enable)
 }
 
 static uint32_t
-gfx10_get_sqtt_ctrl(struct radv_device *device, bool enable)
+gfx10_get_sqtt_ctrl(const struct radv_device *device, bool enable)
 {
    uint32_t sqtt_ctrl = S_008D1C_MODE(enable) | S_008D1C_HIWATER(5) | S_008D1C_UTIL_TIMER(1) |
                         S_008D1C_RT_FREQ(2) | /* 4096 clk */
@@ -63,7 +63,7 @@ gfx10_get_sqtt_ctrl(struct radv_device *device, bool enable)
 }
 
 static void
-radv_emit_wait_for_idle(struct radv_device *device, struct radeon_cmdbuf *cs, int family)
+radv_emit_wait_for_idle(const struct radv_device *device, struct radeon_cmdbuf *cs, int family)
 {
    enum rgp_flush_bits sqtt_flush_bits = 0;
    si_cs_emit_cache_flush(
@@ -78,11 +78,11 @@ radv_emit_wait_for_idle(struct radv_device *device, struct radeon_cmdbuf *cs, in
 }
 
 static void
-radv_emit_sqtt_start(struct radv_device *device, struct radeon_cmdbuf *cs,
+radv_emit_sqtt_start(const struct radv_device *device, struct radeon_cmdbuf *cs,
                      enum radv_queue_family qf)
 {
    uint32_t shifted_size = device->sqtt.buffer_size >> SQTT_BUFFER_ALIGN_SHIFT;
-   struct radeon_info *rad_info = &device->physical_device->rad_info;
+   const struct radeon_info *rad_info = &device->physical_device->rad_info;
    unsigned max_se = rad_info->max_se;
 
    for (unsigned se = 0; se < max_se; se++) {
@@ -260,7 +260,7 @@ static const uint32_t gfx11_sqtt_info_regs[] = {
    R_0367E8_SQ_THREAD_TRACE_DROPPED_CNTR,
 };
 static void
-radv_copy_sqtt_info_regs(struct radv_device *device, struct radeon_cmdbuf *cs, unsigned se_index)
+radv_copy_sqtt_info_regs(const struct radv_device *device, struct radeon_cmdbuf *cs, unsigned se_index)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
    const uint32_t *sqtt_info_regs = NULL;
@@ -317,7 +317,7 @@ radv_copy_sqtt_info_regs(struct radv_device *device, struct radeon_cmdbuf *cs, u
 }
 
 static void
-radv_emit_sqtt_stop(struct radv_device *device, struct radeon_cmdbuf *cs, enum radv_queue_family qf)
+radv_emit_sqtt_stop(const struct radv_device *device, struct radeon_cmdbuf *cs, enum radv_queue_family qf)
 {
    unsigned max_se = device->physical_device->rad_info.max_se;
 
@@ -423,7 +423,7 @@ radv_emit_sqtt_stop(struct radv_device *device, struct radeon_cmdbuf *cs, enum r
 }
 
 void
-radv_emit_sqtt_userdata(struct radv_cmd_buffer *cmd_buffer, const void *data, uint32_t num_dwords)
+radv_emit_sqtt_userdata(const struct radv_cmd_buffer *cmd_buffer, const void *data, uint32_t num_dwords)
 {
    struct radv_device *device = cmd_buffer->device;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
@@ -452,7 +452,7 @@ radv_emit_sqtt_userdata(struct radv_cmd_buffer *cmd_buffer, const void *data, ui
 }
 
 void
-radv_emit_spi_config_cntl(struct radv_device *device, struct radeon_cmdbuf *cs, bool enable)
+radv_emit_spi_config_cntl(const struct radv_device *device, struct radeon_cmdbuf *cs, bool enable)
 {
    if (device->physical_device->rad_info.gfx_level >= GFX9) {
       uint32_t spi_config_cntl =
@@ -472,7 +472,7 @@ radv_emit_spi_config_cntl(struct radv_device *device, struct radeon_cmdbuf *cs, 
 }
 
 void
-radv_emit_inhibit_clockgating(struct radv_device *device, struct radeon_cmdbuf *cs, bool inhibit)
+radv_emit_inhibit_clockgating(const struct radv_device *device, struct radeon_cmdbuf *cs, bool inhibit)
 {
    if (device->physical_device->rad_info.gfx_level >= GFX11)
       return; /* not needed */
@@ -807,7 +807,7 @@ bool
 radv_get_sqtt_trace(struct radv_queue *queue, struct ac_sqtt_trace *sqtt_trace)
 {
    struct radv_device *device = queue->device;
-   struct radeon_info *rad_info = &device->physical_device->rad_info;
+   const struct radeon_info *rad_info = &device->physical_device->rad_info;
 
    if (!ac_sqtt_get_trace(&device->sqtt, rad_info, sqtt_trace)) {
       if (!radv_sqtt_resize_bo(device))

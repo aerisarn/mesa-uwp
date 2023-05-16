@@ -1699,7 +1699,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
 }
 
 static unsigned
-radv_calc_decompress_on_z_planes(struct radv_device *device, struct radv_image_view *iview)
+radv_calc_decompress_on_z_planes(const struct radv_device *device, struct radv_image_view *iview)
 {
    unsigned max_zplanes = 0;
 
@@ -1769,7 +1769,7 @@ radv_initialise_vrs_surface(struct radv_image *image, struct radv_buffer *htile_
 }
 
 void
-radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_info *ds,
+radv_initialise_ds_surface(const struct radv_device *device, struct radv_ds_buffer_info *ds,
                            struct radv_image_view *iview)
 {
    unsigned level = iview->vk.base_mip_level;
@@ -1901,7 +1901,7 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
          ds->db_z_info |= S_028040_NUM_SAMPLES(util_logbase2(iview->image->vk.samples));
 
       if (device->physical_device->rad_info.gfx_level >= GFX7) {
-         struct radeon_info *info = &device->physical_device->rad_info;
+         const struct radeon_info *info = &device->physical_device->rad_info;
          unsigned tiling_index = surf->u.legacy.tiling_index[level];
          unsigned stencil_index = surf->u.legacy.zs.stencil_tiling_index[level];
          unsigned macro_index = surf->u.legacy.macro_tile_index;

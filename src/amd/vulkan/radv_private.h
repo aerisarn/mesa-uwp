@@ -378,7 +378,7 @@ struct radv_physical_device {
    uint32_t vid_addr_gfx_mode;
 };
 
-uint32_t radv_find_memory_index(struct radv_physical_device *pdevice, VkMemoryPropertyFlags flags);
+uint32_t radv_find_memory_index(const struct radv_physical_device *pdevice, VkMemoryPropertyFlags flags);
 
 VkResult create_null_physical_device(struct vk_instance *vk_instance);
 
@@ -765,7 +765,7 @@ vk_queue_to_radv(const struct radv_physical_device *phys_dev, int queue_family_i
    return phys_dev->vk_queue_to_radv[queue_family_index];
 }
 
-enum amd_ip_type radv_queue_family_to_ring(struct radv_physical_device *physical_device,
+enum amd_ip_type radv_queue_family_to_ring(const struct radv_physical_device *physical_device,
                                          enum radv_queue_family f);
 
 static inline bool
@@ -1502,7 +1502,7 @@ struct radv_ds_buffer_info {
 
 void radv_initialise_color_surface(struct radv_device *device, struct radv_color_buffer_info *cb,
                                    struct radv_image_view *iview);
-void radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_info *ds,
+void radv_initialise_ds_surface(const struct radv_device *device, struct radv_ds_buffer_info *ds,
                                 struct radv_image_view *iview);
 void radv_initialise_vrs_surface(struct radv_image *image, struct radv_buffer *htile_buffer,
                                  struct radv_ds_buffer_info *ds);
@@ -2473,7 +2473,7 @@ uint32_t radv_translate_tex_numformat(VkFormat format, const struct util_format_
                                       int first_non_void);
 bool radv_format_pack_clear_color(VkFormat format, uint32_t clear_vals[2],
                                   VkClearColorValue *value);
-bool radv_is_storage_image_format_supported(struct radv_physical_device *physical_device,
+bool radv_is_storage_image_format_supported(const struct radv_physical_device *physical_device,
                                             VkFormat format);
 bool radv_is_colorbuffer_format_supported(const struct radv_physical_device *pdevice,
                                           VkFormat format, bool *blendable);
@@ -2772,7 +2772,7 @@ radv_get_htile_initial_value(const struct radv_device *device, const struct radv
 }
 
 static inline bool
-radv_image_get_iterate256(struct radv_device *device, struct radv_image *image)
+radv_image_get_iterate256(const struct radv_device *device, struct radv_image *image)
 {
    /* ITERATE_256 is required for depth or stencil MSAA images that are TC-compatible HTILE. */
    return device->physical_device->rad_info.gfx_level >= GFX10 &&
@@ -2785,7 +2785,7 @@ unsigned radv_image_queue_family_mask(const struct radv_image *image,
                                       enum radv_queue_family family,
                                       enum radv_queue_family queue_family);
 
-bool radv_image_is_renderable(struct radv_device *device, struct radv_image *image);
+bool radv_image_is_renderable(const struct radv_device *device, const struct radv_image *image);
 
 struct radeon_bo_metadata;
 void radv_init_metadata(struct radv_device *device, struct radv_image *image,
@@ -3066,14 +3066,14 @@ bool radv_begin_sqtt(struct radv_queue *queue);
 bool radv_end_sqtt(struct radv_queue *queue);
 bool radv_get_sqtt_trace(struct radv_queue *queue, struct ac_sqtt_trace *sqtt_trace);
 void radv_reset_sqtt_trace(struct radv_device *device);
-void radv_emit_sqtt_userdata(struct radv_cmd_buffer *cmd_buffer, const void *data,
+void radv_emit_sqtt_userdata(const struct radv_cmd_buffer *cmd_buffer, const void *data,
                              uint32_t num_dwords);
 bool radv_is_instruction_timing_enabled(void);
 bool radv_sqtt_sample_clocks(struct radv_device *device);
 
-void radv_emit_inhibit_clockgating(struct radv_device *device, struct radeon_cmdbuf *cs,
+void radv_emit_inhibit_clockgating(const struct radv_device *device, struct radeon_cmdbuf *cs,
                                    bool inhibit);
-void radv_emit_spi_config_cntl(struct radv_device *device, struct radeon_cmdbuf *cs, bool enable);
+void radv_emit_spi_config_cntl(const struct radv_device *device, struct radeon_cmdbuf *cs, bool enable);
 
 int radv_rra_trace_frame(void);
 char *radv_rra_trace_trigger_file(void);
@@ -3125,7 +3125,7 @@ void radv_rmv_log_event_create(struct radv_device *device, VkEvent event, VkEven
                                bool is_internal);
 void radv_rmv_log_resource_destroy(struct radv_device *device, uint64_t handle);
 void radv_rmv_log_submit(struct radv_device *device, enum amd_ip_type type);
-void radv_rmv_fill_device_info(struct radv_physical_device *device,
+void radv_rmv_fill_device_info(const struct radv_physical_device *device,
                                struct vk_rmv_device_info *info);
 void radv_rmv_collect_trace_events(struct radv_device *device);
 void radv_memory_trace_finish(struct radv_device *device);
@@ -3618,7 +3618,7 @@ radv_is_streamout_enabled(struct radv_cmd_buffer *cmd_buffer)
  * placed here as it needs queue + device structs.
  */
 static inline enum amd_ip_type
-radv_queue_ring(struct radv_queue *queue)
+radv_queue_ring(const struct radv_queue *queue)
 {
    return radv_queue_family_to_ring(queue->device->physical_device, queue->state.qf);
 }

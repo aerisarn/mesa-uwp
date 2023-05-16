@@ -646,7 +646,7 @@ radv_emit_graphics_scratch(struct radv_device *device, struct radeon_cmdbuf *cs,
                            uint32_t size_per_wave, uint32_t waves,
                            struct radeon_winsys_bo *scratch_bo)
 {
-   struct radeon_info *info = &device->physical_device->rad_info;
+   const struct radeon_info *info = &device->physical_device->rad_info;
 
    if (!scratch_bo)
       return;
@@ -675,7 +675,7 @@ radv_emit_compute_scratch(struct radv_device *device, struct radeon_cmdbuf *cs,
                           uint32_t size_per_wave, uint32_t waves,
                           struct radeon_winsys_bo *compute_scratch_bo)
 {
-   struct radeon_info *info = &device->physical_device->rad_info;
+   const struct radeon_info *info = &device->physical_device->rad_info;
    uint64_t scratch_va;
    uint32_t rsrc1;
 

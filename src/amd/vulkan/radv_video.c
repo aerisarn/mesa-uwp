@@ -367,7 +367,7 @@ radv_GetPhysicalDeviceVideoCapabilitiesKHR(VkPhysicalDevice physicalDevice,
                                            VkVideoCapabilitiesKHR *pCapabilities)
 {
    RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
-   struct video_codec_cap *cap = NULL;
+   const struct video_codec_cap *cap = NULL;
 
    switch (pVideoProfile->videoCodecOperation) {
    case VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR:
@@ -1773,7 +1773,7 @@ radv_vcn_decode_video(struct radv_cmd_buffer *cmd_buffer,
                                 &ptr);
    msg_bo = cmd_buffer->upload.upload_bo;
 
-   uint32_t slice_offset;	  
+   uint32_t slice_offset;
    rvcn_dec_message_decode(cmd_buffer, vid, params, ptr, it_ptr, &slice_offset, frame_info);
    rvcn_dec_message_feedback(fb_ptr);
    send_cmd(cmd_buffer, RDECODE_CMD_SESSION_CONTEXT_BUFFER, vid->sessionctx.mem->bo, vid->sessionctx.offset);

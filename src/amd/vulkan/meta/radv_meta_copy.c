@@ -69,7 +69,7 @@ blit_surf_for_image_level_layer(struct radv_image *image, VkImageLayout layout,
 }
 
 bool
-radv_image_is_renderable(struct radv_device *device, struct radv_image *image)
+radv_image_is_renderable(const struct radv_device *device, const struct radv_image *image)
 {
    if (image->vk.format == VK_FORMAT_R32G32B32_UINT ||
        image->vk.format == VK_FORMAT_R32G32B32_SINT ||

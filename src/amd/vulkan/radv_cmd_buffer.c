@@ -265,7 +265,7 @@ radv_cmd_buffer_uses_mec(struct radv_cmd_buffer *cmd_buffer)
 }
 
 enum amd_ip_type
-radv_queue_family_to_ring(struct radv_physical_device *physical_device,
+radv_queue_family_to_ring(const struct radv_physical_device *physical_device,
                           enum radv_queue_family f)
 {
    switch (f) {
@@ -515,7 +515,7 @@ radv_cmd_buffer_upload_alloc_aligned(struct radv_cmd_buffer *cmd_buffer, unsigne
 {
    assert(size % 4 == 0);
 
-   struct radeon_info *rad_info = &cmd_buffer->device->physical_device->rad_info;
+   const struct radeon_info *rad_info = &cmd_buffer->device->physical_device->rad_info;
 
    /* Align to the scalar cache line size if it results in this allocation
     * being placed in less of them.
@@ -5395,11 +5395,11 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dr
                            bool indirect_draw, bool count_from_stream_output,
                            uint32_t draw_vertex_count)
 {
-   struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
+   const struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
    struct radv_cmd_state *state = &cmd_buffer->state;
-   unsigned patch_control_points = state->dynamic.vk.ts.patch_control_points;
-   unsigned topology = state->dynamic.vk.ia.primitive_topology;
-   bool prim_restart_enable = state->dynamic.vk.ia.primitive_restart_enable;
+   const unsigned patch_control_points = state->dynamic.vk.ts.patch_control_points;
+   const unsigned topology = state->dynamic.vk.ia.primitive_topology;
+   const bool prim_restart_enable = state->dynamic.vk.ia.primitive_restart_enable;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    unsigned ia_multi_vgt_param;
 
@@ -5462,7 +5462,7 @@ gfx10_emit_ge_cntl(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *draw_info)
 {
-   struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
+   const struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
    struct radv_cmd_state *state = &cmd_buffer->state;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint32_t topology = state->dynamic.vk.ia.primitive_topology;

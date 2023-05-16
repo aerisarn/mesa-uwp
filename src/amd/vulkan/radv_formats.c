@@ -529,7 +529,7 @@ radv_is_atomic_format_supported(VkFormat format)
 }
 
 bool
-radv_is_storage_image_format_supported(struct radv_physical_device *physical_device,
+radv_is_storage_image_format_supported(const struct radv_physical_device *physical_device,
                                        VkFormat format)
 {
    const struct util_format_description *desc = vk_format_description(format);

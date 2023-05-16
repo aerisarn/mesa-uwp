@@ -154,7 +154,7 @@ radv_get_driver_uuid(void *uuid)
 }
 
 static void
-radv_get_device_uuid(struct radeon_info *info, void *uuid)
+radv_get_device_uuid(const struct radeon_info *info, void *uuid)
 {
    ac_compute_device_uuid(info, uuid, VK_UUID_SIZE);
 }
@@ -370,9 +370,9 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
 }
 
 uint32_t
-radv_find_memory_index(struct radv_physical_device *pdevice, VkMemoryPropertyFlags flags)
+radv_find_memory_index(const struct radv_physical_device *pdevice, VkMemoryPropertyFlags flags)
 {
-   VkPhysicalDeviceMemoryProperties *mem_properties = &pdevice->memory_properties;
+   const VkPhysicalDeviceMemoryProperties *mem_properties = &pdevice->memory_properties;
    for (uint32_t i = 0; i < mem_properties->memoryTypeCount; ++i) {
       if (mem_properties->memoryTypes[i].propertyFlags == flags) {
          return i;

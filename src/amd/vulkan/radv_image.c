@@ -1555,7 +1555,7 @@ radv_image_alloc_values(const struct radv_device *device, struct radv_image *ima
 static bool
 radv_image_is_pipe_misaligned(const struct radv_device *device, const struct radv_image *image)
 {
-   struct radeon_info *rad_info = &device->physical_device->rad_info;
+   const struct radeon_info *rad_info = &device->physical_device->rad_info;
    int log2_samples = util_logbase2(image->vk.samples);
 
    assert(rad_info->gfx_level >= GFX10);
