@@ -478,6 +478,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_conservative_rasterization = device->rad_info.gfx_level >= GFX9,
       .EXT_custom_border_color = true,
       .EXT_debug_marker = radv_sqtt_enabled(),
+      .EXT_depth_bias_control = true,
       .EXT_depth_clip_control = true,
       .EXT_depth_clip_enable = true,
       .EXT_depth_range_unrestricted = true,
@@ -1014,6 +1015,12 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
 
       /* VK_KHR_fragment_shader_barycentric */
       .fragmentShaderBarycentric = true,
+
+      /* VK_EXT_depth_bias_control */
+      .depthBiasControl = true,
+      .leastRepresentableValueForceUnormRepresentation = true,
+      .floatRepresentation = true,
+      .depthBiasExact = true,
    };
 }
 
