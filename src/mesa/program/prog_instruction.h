@@ -139,10 +139,6 @@ enum prog_opcode {
    OPCODE_MIN,       /*   X        X       X       X         X   */
    OPCODE_MOV,       /*   X        X       X       X         X   */
    OPCODE_MUL,       /*   X        X       X       X         X   */
-   OPCODE_NOISE1,    /*                                      X   */
-   OPCODE_NOISE2,    /*                                      X   */
-   OPCODE_NOISE3,    /*                                      X   */
-   OPCODE_NOISE4,    /*                                      X   */
    OPCODE_POW,       /*   X        X               X         X   */
    OPCODE_RCP,       /*   X        X       X       X         X   */
    OPCODE_RSQ,       /*   X        X       X       X         X   */
@@ -158,7 +154,6 @@ enum prog_opcode {
    OPCODE_TXD,       /*                            X         X   */
    OPCODE_TXL,       /*                    3       2         X   */
    OPCODE_TXP,       /*            X                         X   */
-   OPCODE_TRUNC,     /*                                      X   */
    OPCODE_XPD,       /*   X        X                             */
    MAX_OPCODE
 };

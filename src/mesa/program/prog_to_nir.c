@@ -665,7 +665,6 @@ static const nir_op op_trans[MAX_OPCODE] = {
    [OPCODE_SUB] = nir_op_fsub,
    [OPCODE_SWZ] = 0,
    [OPCODE_TEX] = 0,
-   [OPCODE_TRUNC] = nir_op_ftrunc,
    [OPCODE_TXB] = 0,
    [OPCODE_TXD] = 0,
    [OPCODE_TXL] = 0,

@@ -104,10 +104,6 @@ static const struct instruction_info InstInfo[MAX_OPCODE] = {
    { OPCODE_MIN,    "MIN",     2, 1 },
    { OPCODE_MOV,    "MOV",     1, 1 },
    { OPCODE_MUL,    "MUL",     2, 1 },
-   { OPCODE_NOISE1, "NOISE1",  1, 1 },
-   { OPCODE_NOISE2, "NOISE2",  1, 1 },
-   { OPCODE_NOISE3, "NOISE3",  1, 1 },
-   { OPCODE_NOISE4, "NOISE4",  1, 1 },
    { OPCODE_POW,    "POW",     2, 1 },
    { OPCODE_RCP,    "RCP",     1, 1 },
    { OPCODE_RSQ,    "RSQ",     1, 1 },
@@ -123,7 +119,6 @@ static const struct instruction_info InstInfo[MAX_OPCODE] = {
    { OPCODE_TXD,    "TXD",     3, 1 },
    { OPCODE_TXL,    "TXL",     1, 1 },
    { OPCODE_TXP,    "TXP",     1, 1 },
-   { OPCODE_TRUNC,  "TRUNC",   1, 1 },
    { OPCODE_XPD,    "XPD",     2, 1 }
 };
 
