@@ -1201,6 +1201,8 @@ pvr_sub_cmd_gfx_align_ds_subtiles(struct pvr_cmd_buffer *const cmd_buffer,
    };
 
    if (ds->load) {
+      cmd_buffer->state.current_sub_cmd = NULL;
+
       result =
          pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_TRANSFER);
       if (result != VK_SUCCESS)
@@ -1226,9 +1228,13 @@ pvr_sub_cmd_gfx_align_ds_subtiles(struct pvr_cmd_buffer *const cmd_buffer,
        */
       list_move_to(&cmd_buffer->state.current_sub_cmd->link,
                    &prev_sub_cmd->link);
+
+      cmd_buffer->state.current_sub_cmd = prev_sub_cmd;
    }
 
    if (ds->store) {
+      cmd_buffer->state.current_sub_cmd = NULL;
+
       result =
          pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_TRANSFER);
       if (result != VK_SUCCESS)
@@ -1249,6 +1255,8 @@ pvr_sub_cmd_gfx_align_ds_subtiles(struct pvr_cmd_buffer *const cmd_buffer,
       result = pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
       if (result != VK_SUCCESS)
          return result;
+
+      cmd_buffer->state.current_sub_cmd = prev_sub_cmd;
    }
 
    /* Finally, patch up the target graphics sub_cmd to use the correctly-strided
