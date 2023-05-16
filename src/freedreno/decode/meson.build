@@ -70,6 +70,14 @@ if dep_libarchive.found()
     build_by_default: false,
   )
 
+  replay_flags = []
+  replay_deps = []
+  if freedreno_kmds.contains('kgsl')
+    replay_flags += '-DFD_REPLAY_KGSL'
+  else
+    replay_deps += dep_libdrm
+  endif
+
   replay = executable(
     'replay',
     [
@@ -80,11 +88,9 @@ if dep_libarchive.found()
       inc_include,
       inc_src,
     ],
-    c_args : [no_override_init_args],
+    c_args : [no_override_init_args, replay_flags],
     gnu_symbol_visibility: 'hidden',
-    dependencies: [
-      dep_libdrm,
-    ],
+    dependencies: replay_deps,
     link_with: [
       libfreedreno_cffdec,
       libfreedreno_io,
