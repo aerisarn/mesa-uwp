@@ -1350,6 +1350,18 @@ bool combine_all_memory_barriers(nir_intrinsic_instr *a,
                                  nir_intrinsic_instr *b,
                                  void *data)
 {
+   /* Combine control barriers with identical memory semantics. This prevents
+    * the second barrier generating a spurious, identical fence message as the
+    * first barrier.
+    */
+   if (nir_intrinsic_memory_modes(a) == nir_intrinsic_memory_modes(b) &&
+       nir_intrinsic_memory_semantics(a) == nir_intrinsic_memory_semantics(b) &&
+       nir_intrinsic_memory_scope(a) == nir_intrinsic_memory_scope(b)) {
+      nir_intrinsic_set_execution_scope(a, MAX2(nir_intrinsic_execution_scope(a),
+                                                nir_intrinsic_execution_scope(b)));
+      return true;
+   }
+
    /* Only combine pure memory barriers */
    if ((nir_intrinsic_execution_scope(a) != SCOPE_NONE) ||
        (nir_intrinsic_execution_scope(b) != SCOPE_NONE))
