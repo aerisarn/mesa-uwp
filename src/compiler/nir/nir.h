@@ -970,8 +970,6 @@ typedef struct {
    nir_register *reg;
    struct nir_src *indirect; /** < NULL for no indirect offset */
    unsigned base_offset;
-
-   /* TODO use-def chain goes here */
 } nir_reg_src;
 
 typedef struct {
@@ -981,8 +979,6 @@ typedef struct {
    nir_register *reg;
    struct nir_src *indirect; /** < NULL for no indirect offset */
    unsigned base_offset;
-
-   /* TODO def-use chain goes here */
 } nir_reg_dest;
 
 struct nir_if;
