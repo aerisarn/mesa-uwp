@@ -1452,22 +1452,17 @@ anv_device_alloc_bo(struct anv_device *device,
       anv_bo_alloc_flags_to_bo_flags(device, alloc_flags);
    assert(bo_flags == (bo_flags & ANV_BO_CACHE_SUPPORTED_FLAGS));
 
-   /* The kernel is going to give us whole pages anyway */
+   /* The kernel is going to give us whole pages anyway. And we
+    * also need 4KB alignment for 1MB AUX buffer that follows
+    * the main region. The 4KB also covers 64KB AUX granularity
+    * that has 256B AUX mapping to the main.
+    */
    size = align64(size, 4096);
 
    uint64_t ccs_size = 0;
    if (device->info->has_aux_map && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS)) {
       uint64_t aux_ratio =
          intel_aux_get_main_to_aux_ratio(device->aux_map_ctx);
-
-      /* Aligning main the size up to the next multiple of main AUX CCS
-       * alignment requirement is wasteful, especially on MTL where the
-       * alignment is 1Mb. Instead align to the ratio of compression (1/256)
-       * which is also the requirement for the L1 aux-data address in the
-       * AUX-TT tables.
-       */
-      size = align64(size, aux_ratio);
-
       /* See anv_bo::_ccs_size */
       ccs_size = align64(DIV_ROUND_UP(size, aux_ratio), 4096);
    }
