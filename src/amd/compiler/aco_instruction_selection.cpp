@@ -9072,9 +9072,31 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       emit_split_vector(ctx, dst, instr->num_components);
       break;
    }
-   case nir_intrinsic_xfb_counter_sub_amd:
-      /* TODO: implement this */
+   case nir_intrinsic_xfb_counter_sub_amd: {
+      bool use_gds_registers =
+         ctx->options->gfx_level >= GFX11 && ctx->options->is_opengl;
+
+      unsigned write_mask = nir_intrinsic_write_mask(instr);
+      Temp counter = get_ssa_temp(ctx, instr->src[0].ssa);
+      Temp gds_base = bld.copy(bld.def(v1), Operand::c32(0u));
+
+      u_foreach_bit(i, write_mask) {
+         Temp chan_counter = emit_extract_vector(ctx, counter, i, v1);
+         Instruction *ds_instr;
+
+         if (use_gds_registers) {
+            ds_instr = bld.ds(aco_opcode::ds_sub_gs_reg_rtn, bld.def(v1),
+                              Operand(), chan_counter, i * 4, 0u, true);
+         } else {
+            Operand m = bld.m0((Temp)bld.copy(bld.def(s1, m0), Operand::c32(0x100u)));
+
+            ds_instr = bld.ds(aco_opcode::ds_sub_rtn_u32, bld.def(v1),
+                              gds_base, chan_counter, m, i * 4, 0u, true);
+         }
+         ds_instr->ds().sync = memory_sync_info(storage_gds, semantic_atomicrmw);
+      }
       break;
+   }
    case nir_intrinsic_memory_barrier_buffer: {
       wait_imm wait;
       wait.lgkm = 0;
