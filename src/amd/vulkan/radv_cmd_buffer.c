@@ -3689,7 +3689,7 @@ radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer, bool indirect)
+radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    struct radv_cmd_state *state = &cmd_buffer->state;
@@ -3697,11 +3697,6 @@ radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer, bool indirect)
    /* With indirect generated commands the index buffer bind may be part of the
     * indirect command buffer, in which case the app may not have bound any yet. */
    if (state->index_type < 0)
-      return;
-
-   /* For the direct indexed draws we use DRAW_INDEX_2, which includes
-    * the index_va and max_index_count already. */
-   if (!indirect)
       return;
 
    if (state->max_index_count ||
@@ -9136,8 +9131,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_GUARDBAND)
       radv_emit_guardband_state(cmd_buffer);
 
-   if (info->indexed && cmd_buffer->state.dirty & RADV_CMD_DIRTY_INDEX_BUFFER)
-      radv_emit_index_buffer(cmd_buffer, info->indirect);
+   if (info->indexed && info->indirect && cmd_buffer->state.dirty & RADV_CMD_DIRTY_INDEX_BUFFER)
+      radv_emit_index_buffer(cmd_buffer);
 
    radv_cmd_buffer_flush_dynamic_state(cmd_buffer);
 
