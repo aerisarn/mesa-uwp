@@ -32,9 +32,6 @@
 #include "st_atifs_to_nir.h"
 #include "compiler/nir/nir_builder.h"
 
-#define FOG_PARAMS_UNIFORM (MAX_NUM_FRAGMENT_CONSTANTS_ATI + 0)
-#define FOG_COLOR_UNIFORM (MAX_NUM_FRAGMENT_CONSTANTS_ATI + 1)
-
 /**
  * Intermediate state used during shader translation.
  */
@@ -119,8 +116,7 @@ load_input(struct st_translate *t, gl_varying_slot slot)
 {
    if (!t->inputs[slot]) {
       nir_variable *var = nir_create_variable_with_location(t->b->shader, nir_var_shader_in, slot,
-                                                            slot == VARYING_SLOT_FOGC ?
-                                                            glsl_float_type() : glsl_vec4_type());
+                                                            glsl_vec4_type());
       var->data.interpolation = INTERP_MODE_NONE;
 
       t->inputs[slot] = nir_load_var(t->b, var);
@@ -418,8 +414,7 @@ compile_instruction(struct st_translate *t,
 }
 
 
-/* Creates the uniform variable referencing the ATI_fragment_shader constants
- * plus the optimized fog state.
+/* Creates the uniform variable referencing the ATI_fragment_shader constants.
  */
 static void
 st_atifs_setup_uniforms(struct st_translate *t, struct gl_program *program)
@@ -475,51 +470,8 @@ st_translate_atifs_program(struct ati_fragment_shader *atifs,
       }
    }
 
-   if (t->regs_written[atifs->NumPasses-1][0]) {
-      nir_ssa_def *color = t->temps[0];
-
-      if (key->fog) {
-         nir_ssa_def *fogc = load_input(t, VARYING_SLOT_FOGC);
-
-         nir_ssa_def *params = atifs_load_uniform(t, FOG_PARAMS_UNIFORM);
-
-         /* compute the 1 component fog factor f */
-         nir_ssa_def *f = NULL;
-         if (key->fog == FOG_LINEAR) {
-            f = nir_ffma(t->b, fogc,
-                         nir_channel(t->b, params, 0),
-                         nir_channel(t->b, params, 1));
-         } else if (key->fog == FOG_EXP) {
-            /* EXP formula: f = exp(-dens * z)
-             * with optimized parameters:
-             *    f = MUL(fogcoord, oparams.z); f= EX2(-f)
-             */
-            f = nir_fmul(t->b, fogc, nir_channel(t->b, params, 2));
-            f = nir_fexp2(t->b, nir_fneg(t->b, f));
-         } else if (key->fog == FOG_EXP2) {
-            /* EXP2 formula: f = exp(-(dens * z)^2)
-             * with optimized parameters:
-             *    f = MUL(fogcoord, oparams.w); f=MUL(f, f); f= EX2(-f)
-             */
-            f = nir_fmul(t->b, fogc, nir_channel(t->b, params, 3));
-            f = nir_fmul(t->b, f, f);
-            f = nir_fexp2(t->b, nir_fneg(t->b, f));
-         }
-         f = nir_fsat(t->b, f);
-
-         nir_ssa_def *fog_color = nir_flrp(t->b,
-                                           atifs_load_uniform(t, FOG_COLOR_UNIFORM),
-                                           color,
-                                           f);
-         color = nir_vec4(t->b,
-                          nir_channel(t->b, fog_color, 0),
-                          nir_channel(t->b, fog_color, 1),
-                          nir_channel(t->b, fog_color, 2),
-                          nir_channel(t->b, color, 3));
-      }
-
-      nir_store_var(t->b, t->fragcolor, color, 0xf);
-   }
+   if (t->regs_written[atifs->NumPasses-1][0])
+      nir_store_var(t->b, t->fragcolor, t->temps[0], 0xf);
 
    return b.shader;
 }
@@ -535,11 +487,6 @@ st_init_atifs_prog(struct gl_context *ctx, struct gl_program *prog)
    struct ati_fragment_shader *atifs = prog->ati_fs;
 
    unsigned pass, i, r, optype, arg;
-
-   static const gl_state_index16 fog_params_state[STATE_LENGTH] =
-      {STATE_FOG_PARAMS_OPTIMIZED, 0, 0};
-   static const gl_state_index16 fog_color[STATE_LENGTH] =
-      {STATE_FOG_COLOR, 0, 0, 0};
 
    prog->info.inputs_read = 0;
    prog->info.outputs_written = BITFIELD64_BIT(FRAG_RESULT_COLOR);
@@ -587,17 +534,13 @@ st_init_atifs_prog(struct gl_context *ctx, struct gl_program *prog)
          }
       }
    }
+
    /* we may need fog */
    prog->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_FOGC);
 
-   /* we always have the ATI_fs constants, and the fog params */
+   /* we always have the ATI_fs constants */
    for (i = 0; i < MAX_NUM_FRAGMENT_CONSTANTS_ATI; i++) {
       _mesa_add_parameter(prog->Parameters, PROGRAM_UNIFORM,
                           NULL, 4, GL_FLOAT, NULL, NULL, true);
    }
-   ASSERTED uint32_t ref;
-   ref = _mesa_add_state_reference(prog->Parameters, fog_params_state);
-   assert(ref == FOG_PARAMS_UNIFORM);
-   ref = _mesa_add_state_reference(prog->Parameters, fog_color);
-   assert(ref == FOG_COLOR_UNIFORM);
 }

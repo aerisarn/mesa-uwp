@@ -53,6 +53,7 @@
 #include "tgsi/tgsi_dump.h"
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_ureg.h"
+#include "nir_builder.h"
 #include "nir/nir_to_tgsi.h"
 
 #include "util/u_memory.h"
@@ -925,6 +926,17 @@ st_create_fp_variant(struct st_context *st,
    state.type = PIPE_SHADER_IR_NIR;
 
    bool finalize = false;
+
+   if (fp->ati_fs) {
+      if (key->fog) {
+         NIR_PASS_V(state.ir.nir, st_nir_lower_fog, key->fog, fp->Parameters);
+         NIR_PASS_V(state.ir.nir, nir_lower_io_to_temporaries,
+            nir_shader_get_entrypoint(state.ir.nir),
+            true, false);
+         nir_lower_global_vars_to_local(state.ir.nir);
+      }
+      finalize = true;
+   }
 
    if (key->clamp_color) {
       NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
