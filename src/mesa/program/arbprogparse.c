@@ -56,7 +56,6 @@ having three separate program parameter arrays.
 
 #include "main/context.h"
 #include "arbprogparse.h"
-#include "programopt.h"
 #include "prog_parameter.h"
 #include "prog_statevars.h"
 #include "prog_instruction.h"

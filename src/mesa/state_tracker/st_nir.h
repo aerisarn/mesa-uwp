@@ -89,6 +89,8 @@ st_nir_state_variable_create(struct nir_shader *shader,
 
 bool st_nir_lower_fog(struct nir_shader *s, enum gl_fog_mode fog_mode,
                       struct gl_program_parameter_list *paramList);
+bool st_nir_lower_position_invariant(struct nir_shader *s, bool aos,
+                                     struct gl_program_parameter_list *paramList);
 
 #ifdef __cplusplus
 }

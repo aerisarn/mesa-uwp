@@ -38,7 +38,6 @@
 #include "program/prog_parameter.h"
 #include "program/prog_print.h"
 #include "program/prog_to_nir.h"
-#include "program/programopt.h"
 
 #include "compiler/glsl/gl_nir.h"
 #include "compiler/glsl/gl_nir_linker.h"
@@ -585,10 +584,6 @@ static bool
 st_translate_vertex_program(struct st_context *st,
                             struct gl_program *prog)
 {
-   /* ARB_vp: */
-   if (prog->arb.IsPositionInvariant)
-      _mesa_insert_mvp_code(st->ctx, prog);
-
    /* This determines which states will be updated when the assembly
       * shader is bound.
       */
