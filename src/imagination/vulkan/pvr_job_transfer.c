@@ -974,8 +974,10 @@ static void pvr_pbe_setup_swizzle(const struct pvr_transfer_cmd *transfer_cmd,
       }
 
       if (vk_format_is_normalized(dst->vk_format)) {
-         if (color_fill && (dst->vk_format == VK_FORMAT_B8G8R8A8_UNORM ||
-                            dst->vk_format == VK_FORMAT_R8G8B8A8_UNORM)) {
+         if (color_fill &&
+             (dst->vk_format == VK_FORMAT_B8G8R8A8_UNORM ||
+              dst->vk_format == VK_FORMAT_R8G8B8A8_UNORM ||
+              dst->vk_format == VK_FORMAT_A8B8G8R8_UNORM_PACK32)) {
             surf_params->source_format =
                PVRX(PBESTATE_SOURCE_FORMAT_8_PER_CHANNEL);
          } else if (state->shader_props.layer_props.pbe_format ==
@@ -2244,9 +2246,6 @@ static VkResult pvr_pack_clear_color(VkFormat format,
    /* Set packed color based on PBE pack mode and PBE norm. */
    switch (pbe_pack_mode) {
    case PVRX(PBESTATE_PACKMODE_U8U8U8U8):
-   case PVRX(PBESTATE_PACKMODE_A1R5G5B5):
-   case PVRX(PBESTATE_PACKMODE_R5G5B5A1):
-   case PVRX(PBESTATE_PACKMODE_A4R4G4B4):
    case PVRX(PBESTATE_PACKMODE_A8R3G3B2):
       if (pbe_norm) {
          pkd_color[0] = pvr_float_to_ufixed(color[0].f, 8) & 0xFFU;
@@ -2265,10 +2264,10 @@ static VkResult pvr_pack_clear_color(VkFormat format,
    case PVRX(PBESTATE_PACKMODE_X8U8S8S8):
    case PVRX(PBESTATE_PACKMODE_X8S8S8U8):
       if (pbe_norm) {
-         pkd_color[0] = pvr_float_to_sfixed(color[0].f, 8) & 0xFFU;
-         pkd_color[0] |= (pvr_float_to_sfixed(color[1].f, 8) & 0xFFU) << 8;
-         pkd_color[0] |= (pvr_float_to_sfixed(color[2].f, 8) & 0xFFU) << 16;
-         pkd_color[0] |= (pvr_float_to_sfixed(color[3].f, 8) & 0xFFU) << 24;
+         pkd_color[0] = (uint32_t)pvr_float_to_f16(color[0].f, false);
+         pkd_color[0] |= (uint32_t)pvr_float_to_f16(color[1].f, false) << 16;
+         pkd_color[1] = (uint32_t)pvr_float_to_f16(color[2].f, false);
+         pkd_color[1] |= (uint32_t)pvr_float_to_f16(color[3].f, false) << 16;
       } else {
          pkd_color[0] = color[0].ui & 0xFFU;
          pkd_color[0] |= (color[1].ui & 0xFFU) << 8;
@@ -2309,6 +2308,10 @@ static VkResult pvr_pack_clear_color(VkFormat format,
    case PVRX(PBESTATE_PACKMODE_ARGBV16_XR10):
    case PVRX(PBESTATE_PACKMODE_F16F16F16F16):
    case PVRX(PBESTATE_PACKMODE_A2R10B10G10):
+   case PVRX(PBESTATE_PACKMODE_A4R4G4B4):
+   case PVRX(PBESTATE_PACKMODE_A1R5G5B5):
+   case PVRX(PBESTATE_PACKMODE_R5G5B5A1):
+   case PVRX(PBESTATE_PACKMODE_R5G6B5):
       if (red_width > 0) {
          pkd_color[0] = (uint32_t)pvr_float_to_f16(color[0].f, false);
          pkd_color[0] |= (uint32_t)pvr_float_to_f16(color[1].f, false) << 16;
@@ -2367,7 +2370,6 @@ static VkResult pvr_pack_clear_color(VkFormat format,
       break;
 
    case PVRX(PBESTATE_PACKMODE_U8U8U8):
-   case PVRX(PBESTATE_PACKMODE_R5G6B5):
    case PVRX(PBESTATE_PACKMODE_R5SG5SB6):
       if (pbe_norm) {
          pkd_color[0] = pvr_float_to_ufixed(color[0].f, 8) & 0xFFU;
@@ -2449,8 +2451,8 @@ static VkResult pvr_pack_clear_color(VkFormat format,
 
    case PVRX(PBESTATE_PACKMODE_U8U8):
       if (pbe_norm) {
-         pkd_color[0] = pvr_float_to_ufixed(color[0].f, 8) & 0xFFU;
-         pkd_color[0] |= (pvr_float_to_ufixed(color[1].f, 8) & 0xFFU) << 8;
+         pkd_color[0] = (uint32_t)pvr_float_to_f16(color[0].f, false);
+         pkd_color[0] |= (uint32_t)pvr_float_to_f16(color[1].f, false) << 16;
       } else {
          pkd_color[0] = color[0].ui & 0xFFU;
          pkd_color[0] |= (color[1].ui & 0xFFU) << 8;
@@ -2459,10 +2461,8 @@ static VkResult pvr_pack_clear_color(VkFormat format,
 
    case PVRX(PBESTATE_PACKMODE_S8S8):
       if (pbe_norm) {
-         pkd_color[0] = pvr_float_to_sfixed(color[0].f, 8) & 0xFFU;
-         pkd_color[0] |= (pvr_float_to_sfixed(color[1].f, 8) & 0xFFU) << 8;
-         pkd_color[0] |= (pvr_float_to_sfixed(color[2].f, 8) & 0xFFU) << 16;
-         pkd_color[0] |= (pvr_float_to_sfixed(color[3].f, 8) & 0xFFU) << 24;
+         pkd_color[0] = (uint32_t)pvr_float_to_f16(color[0].f, false);
+         pkd_color[0] |= (uint32_t)pvr_float_to_f16(color[1].f, false) << 16;
       } else {
          pkd_color[0] = color[0].ui & 0xFFU;
          pkd_color[0] |= (color[1].ui & 0xFFU) << 8;
@@ -2525,7 +2525,7 @@ static VkResult pvr_pack_clear_color(VkFormat format,
       if (format == VK_FORMAT_S8_UINT)
          pkd_color[0] = color[1].ui & 0xFFU;
       else if (pbe_norm)
-         pkd_color[0] = pvr_float_to_ufixed(color[0].f, 8) & 0xFFU;
+         pkd_color[0] = (uint32_t)pvr_float_to_f16(color[0].f, false);
       else
          pkd_color[0] = color[0].ui & 0xFFU;
 
@@ -2533,7 +2533,7 @@ static VkResult pvr_pack_clear_color(VkFormat format,
 
    case PVRX(PBESTATE_PACKMODE_S8):
       if (pbe_norm)
-         pkd_color[0] = pvr_float_to_sfixed(color[0].f, 8) & 0xFFU;
+         pkd_color[0] = (uint32_t)pvr_float_to_f16(color[0].f, false);
       else
          pkd_color[0] = color[0].ui & 0xFFU;
       break;
@@ -2563,6 +2563,11 @@ static VkResult pvr_pack_clear_color(VkFormat format,
       } else if (format == VK_FORMAT_D24_UNORM_S8_UINT) {
          pkd_color[0] = pvr_float_to_ufixed(color[0].f, 24) & 0xFFFFFFU;
          pkd_color[0] |= (color[1].ui & 0xFFU) << 24;
+      } else if (format == VK_FORMAT_A2B10G10R10_UINT_PACK32) {
+         pkd_color[0] = color[0].ui & 0x3FFU;
+         pkd_color[0] |= (color[1].ui & 0x3FFU) << 10;
+         pkd_color[0] |= (color[2].ui & 0x3FFU) << 20;
+         pkd_color[0] |= (color[3].ui & 0x3U) << 30;
       } else {
          pkd_color[0] = color[0].ui;
       }
