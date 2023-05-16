@@ -396,7 +396,6 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
    pdevice->render_path = render_path;
    pdevice->display_path = display_path;
    pdevice->ws = ws;
-   pdevice->vk.supported_sync_types = ws->sync_types;
 
    result = ws->ops->device_info_init(ws,
                                       &pdevice->dev_info,
@@ -425,6 +424,8 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
       goto err_pvr_winsys_destroy;
+
+   pdevice->vk.supported_sync_types = ws->sync_types;
 
    result = pvr_physical_device_init_uuids(pdevice);
    if (result != VK_SUCCESS)
