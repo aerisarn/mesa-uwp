@@ -6003,6 +6003,12 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_028620_PA_RATE_CNTL,
                      S_028620_VERTEX_RATE(2) | S_028620_PRIM_RATE(1));
 
+      /* This is changed by draws for indexed draws, but we need to set DISABLE_FOR_AUTO_INDEX
+       * here, which disables primitive restart for all non-indexed draws, so that those draws
+       * won't have to set this state.
+       */
+      si_pm4_set_reg(pm4, R_03092C_GE_MULTI_PRIM_IB_RESET_EN, S_03092C_DISABLE_FOR_AUTO_INDEX(1));
+
       uint64_t rb_mask = BITFIELD64_MASK(sctx->screen->info.max_render_backends);
 
       si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 2, 0));
