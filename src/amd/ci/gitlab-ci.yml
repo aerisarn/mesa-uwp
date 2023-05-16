@@ -430,7 +430,7 @@ radv-fossils:
   extends:
     - .b2c-test-radv-vk
   variables:
-    B2C_JOB_SUCCESS_REGEX: 'SUCCESS: No changes found!\r$'
+    B2C_JOB_SUCCESS_REGEX: 'vkd3d-proton execution: SUCCESS\r$'
     HWCI_TEST_SCRIPT: ./install/vkd3d-proton/run.sh
 
 .vkd3d-kabini-valve:
