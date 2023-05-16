@@ -4543,14 +4543,8 @@ radv_emit_attachment_feedback_loop_enable(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
+radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const uint64_t states)
 {
-   const uint64_t states =
-      cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
-
-   if (!states)
-      return;
-
    if (states & (RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_ENABLE |
                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE |
@@ -9134,7 +9128,10 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    if (info->indexed && info->indirect && cmd_buffer->state.dirty & RADV_CMD_DIRTY_INDEX_BUFFER)
       radv_emit_index_buffer(cmd_buffer);
 
-   radv_cmd_buffer_flush_dynamic_state(cmd_buffer);
+   const uint64_t dynamic_states =
+      cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
+   if (dynamic_states)
+      radv_cmd_buffer_flush_dynamic_state(cmd_buffer, dynamic_states);
 
    radv_emit_draw_registers(cmd_buffer, info);
 
