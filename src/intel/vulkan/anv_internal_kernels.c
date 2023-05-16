@@ -35,6 +35,8 @@
 
 #include "shaders/gfx9_generated_draws_spv.h"
 #include "shaders/gfx11_generated_draws_spv.h"
+#include "shaders/query_copy_compute_spv.h"
+#include "shaders/query_copy_fragment_spv.h"
 
 static bool
 lower_vulkan_descriptors_instr(nir_builder *b, nir_instr *instr, void *cb_data)
@@ -107,6 +109,47 @@ lower_vulkan_descriptors(nir_shader *shader,
                                        (void *)bind_map);
 }
 
+static bool
+lower_base_workgroup_id(nir_builder *b, nir_instr *instr, UNUSED void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   if (intrin->intrinsic != nir_intrinsic_load_base_workgroup_id)
+      return false;
+
+   b->cursor = nir_instr_remove(&intrin->instr);
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_imm_zero(b, 3, 32));
+   return true;
+}
+
+static bool
+lower_load_ubo_to_uniforms(nir_builder *b, nir_instr *instr, void *cb_data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_load_ubo)
+      return false;
+
+   b->cursor = nir_instr_remove(instr);
+
+   nir_ssa_def_rewrite_uses(
+      &intrin->dest.ssa,
+      nir_load_uniform(b,
+                       intrin->dest.ssa.num_components,
+                       intrin->dest.ssa.bit_size,
+                       intrin->src[1].ssa,
+                       .base = 0,
+                       .range = intrin->dest.ssa.num_components *
+                                intrin->dest.ssa.bit_size / 8));
+
+   return true;
+}
+
 static struct anv_shader_bin *
 compile_upload_spirv(struct anv_device *device,
                      gl_shader_stage stage,
@@ -160,6 +203,15 @@ compile_upload_spirv(struct anv_device *device,
                     .use_fragcoord_sysval = true,
                     .use_layer_id_sysval = true,
                  });
+   } else {
+      nir_lower_compute_system_values_options options = {
+         .has_base_workgroup_id = true,
+         .lower_cs_local_id_to_index = true,
+         .lower_workgroup_id_to_index = true,
+      };
+      NIR_PASS_V(nir, nir_lower_compute_system_values, &options);
+      NIR_PASS_V(nir, nir_shader_instructions_pass, lower_base_workgroup_id,
+                 nir_metadata_block_index | nir_metadata_dominance, NULL);
    }
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
@@ -184,6 +236,15 @@ compile_upload_spirv(struct anv_device *device,
    NIR_PASS_V(nir, nir_copy_prop);
    NIR_PASS_V(nir, nir_opt_constant_folding);
    NIR_PASS_V(nir, nir_opt_dce);
+
+   if (stage == MESA_SHADER_COMPUTE) {
+      NIR_PASS_V(nir, nir_shader_instructions_pass,
+                 lower_load_ubo_to_uniforms,
+                 nir_metadata_block_index | nir_metadata_dominance,
+                 NULL);
+      NIR_PASS_V(nir, brw_nir_lower_cs_intrinsics);
+      nir->num_uniforms = bind_map->push_data_size;
+   }
 
    union brw_any_prog_key key;
    memset(&key, 0, sizeof(key));
@@ -320,6 +381,61 @@ anv_device_init_internal_kernels(struct anv_device *device)
                   .push_constant = true,
                },
             },
+            .push_data_size = sizeof(struct anv_generated_indirect_params),
+         },
+      },
+      [ANV_INTERNAL_KERNEL_COPY_QUERY_RESULTS_COMPUTE] = {
+         .key        = {
+            .name    = "anv-copy-query-compute",
+         },
+         .stage      = MESA_SHADER_COMPUTE,
+         .spirv_data = query_copy_compute_spv_source,
+         .spirv_size = ARRAY_SIZE(query_copy_compute_spv_source),
+         .send_count = device->info->verx10 >= 125 ?
+                       9 /* 4 loads + 4 stores + 1 EOT */ :
+                       8 /* 3 loads + 4 stores + 1 EOT */,
+         .bind_map   = {
+            .num_bindings = 3,
+            .bindings     = {
+               {
+                  .address_offset = offsetof(struct anv_query_copy_params,
+                                             query_data_addr),
+               },
+               {
+                  .address_offset = offsetof(struct anv_query_copy_params,
+                                             destination_addr),
+               },
+               {
+                  .push_constant = true,
+               },
+            },
+            .push_data_size = sizeof(struct anv_query_copy_params),
+         },
+      },
+      [ANV_INTERNAL_KERNEL_COPY_QUERY_RESULTS_FRAGMENT] = {
+         .key        = {
+            .name    = "anv-copy-query-fragment",
+         },
+         .stage      = MESA_SHADER_FRAGMENT,
+         .spirv_data = query_copy_fragment_spv_source,
+         .spirv_size = ARRAY_SIZE(query_copy_fragment_spv_source),
+         .send_count = 8 /* 3 loads + 4 stores + 1 EOT */,
+         .bind_map   = {
+            .num_bindings = 3,
+            .bindings     = {
+               {
+                  .address_offset = offsetof(struct anv_query_copy_params,
+                                             query_data_addr),
+               },
+               {
+                  .address_offset = offsetof(struct anv_query_copy_params,
+                                             destination_addr),
+               },
+               {
+                  .push_constant = true,
+               },
+            },
+            .push_data_size = sizeof(struct anv_query_copy_params),
          },
       },
    };

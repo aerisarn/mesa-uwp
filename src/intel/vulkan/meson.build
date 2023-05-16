@@ -116,7 +116,7 @@ foreach g : [['90', ['gfx8_cmd_buffer.c']],
   _gfx_ver = g[0]
   libanv_per_hw_ver_libs += static_library(
     'anv_per_hw_ver@0@'.format(_gfx_ver),
-    [anv_per_hw_ver_files, g[1], anv_entrypoints[0], generated_draws_spvs, ],
+    [anv_per_hw_ver_files, g[1], anv_entrypoints[0], anv_internal_spvs, ],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler, inc_intel,
     ],
@@ -220,7 +220,7 @@ libanv_common = static_library(
   [
     libanv_files, anv_entrypoints, sha1_h,
     gen_xml_pack, float64_spv_h,
-    generated_draws_spvs,
+    anv_internal_spvs,
   ],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,

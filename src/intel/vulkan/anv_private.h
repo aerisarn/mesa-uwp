@@ -1115,6 +1115,8 @@ anv_load_fp64_shader(struct anv_device *device);
 
 enum anv_internal_kernel_name {
    ANV_INTERNAL_KERNEL_GENERATED_DRAWS,
+   ANV_INTERNAL_KERNEL_COPY_QUERY_RESULTS_COMPUTE,
+   ANV_INTERNAL_KERNEL_COPY_QUERY_RESULTS_FRAGMENT,
 
    ANV_INTERNAL_KERNEL_COUNT,
 };
@@ -1130,6 +1132,7 @@ struct anv_internal_kernel_bind_map {
        */
       uint32_t address_offset;
    } bindings[5];
+   uint32_t push_data_size;
 };
 
 enum anv_rt_bvh_build_method {
