@@ -188,7 +188,7 @@ struct rgp_clock_calibration {
    simple_mtx_t lock;
 };
 
-int ac_dump_rgp_capture(struct radeon_info *info, struct ac_sqtt_trace *sqtt_trace,
+int ac_dump_rgp_capture(const struct radeon_info *info, struct ac_sqtt_trace *sqtt_trace,
                         const struct ac_spm_trace *spm_trace);
 
 void

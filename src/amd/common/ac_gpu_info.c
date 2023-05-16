@@ -1612,7 +1612,7 @@ void ac_compute_driver_uuid(char *uuid, size_t size)
    strncpy(uuid, amd_uuid, size);
 }
 
-void ac_compute_device_uuid(struct radeon_info *info, char *uuid, size_t size)
+void ac_compute_device_uuid(const struct radeon_info *info, char *uuid, size_t size)
 {
    uint32_t *uint_uuid = (uint32_t *)uuid;
 
@@ -1634,7 +1634,7 @@ void ac_compute_device_uuid(struct radeon_info *info, char *uuid, size_t size)
    uint_uuid[3] = info->pci.func;
 }
 
-void ac_print_gpu_info(struct radeon_info *info, FILE *f)
+void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
 {
    fprintf(f, "Device info:\n");
    fprintf(f, "    name = %s\n", info->name);
@@ -1933,7 +1933,7 @@ int ac_get_gs_table_depth(enum amd_gfx_level gfx_level, enum radeon_family famil
    }
 }
 
-void ac_get_raster_config(struct radeon_info *info, uint32_t *raster_config_p,
+void ac_get_raster_config(const struct radeon_info *info, uint32_t *raster_config_p,
                           uint32_t *raster_config_1_p, uint32_t *se_tile_repeat_p)
 {
    unsigned raster_config, raster_config_1, se_tile_repeat;
@@ -2022,7 +2022,7 @@ void ac_get_raster_config(struct radeon_info *info, uint32_t *raster_config_p,
       *se_tile_repeat_p = se_tile_repeat;
 }
 
-void ac_get_harvested_configs(struct radeon_info *info, unsigned raster_config,
+void ac_get_harvested_configs(const struct radeon_info *info, unsigned raster_config,
                               unsigned *cik_raster_config_1_p, unsigned *raster_config_se)
 {
    unsigned sh_per_se = MAX2(info->max_sa_per_se, 1);
@@ -2155,7 +2155,7 @@ ac_get_compute_resource_limits(const struct radeon_info *info, unsigned waves_pe
    return compute_resource_limits;
 }
 
-void ac_get_hs_info(struct radeon_info *info,
+void ac_get_hs_info(const struct radeon_info *info,
                     struct ac_hs_info *hs)
 {
    bool double_offchip_buffers = info->gfx_level >= GFX7 &&
@@ -2270,7 +2270,7 @@ static uint16_t get_task_num_entries(enum radeon_family fam)
    }
 }
 
-void ac_get_task_info(struct radeon_info *info,
+void ac_get_task_info(const struct radeon_info *info,
                       struct ac_task_info *task_info)
 {
    const uint16_t num_entries = get_task_num_entries(info->family);
