@@ -36,6 +36,7 @@
 #include "prog_parameter.h"
 #include "prog_print.h"
 #include "program.h"
+#include "state_tracker/st_nir.h"
 
 /**
  * \file prog_to_nir.c
@@ -1030,6 +1031,10 @@ prog_to_nir(const struct gl_context *ctx, const struct gl_program *prog,
    s->info.separate_shader = true;
    s->info.io_lowered = false;
    s->info.internal = false;
+
+   /* Add OPTION ARB_fog_exp code */
+   if (prog->arb.Fog)
+      NIR_PASS_V(s, st_nir_lower_fog, prog->arb.Fog, prog->Parameters);
 
 fail:
    if (c->error) {

@@ -89,7 +89,7 @@ st_nir_lower_fog_instr(nir_builder *b, nir_instr *instr, void *_state)
       return false;
 
    int loc = nir_intrinsic_io_semantics(intr).location;
-   if (loc != FRAG_RESULT_COLOR)
+   if (loc != FRAG_RESULT_COLOR && loc != FRAG_RESULT_DATA0)
       return false;
 
    b->cursor = nir_before_instr(instr);
@@ -121,10 +121,22 @@ st_nir_lower_fog(nir_shader *s, enum gl_fog_mode fog_mode, struct gl_program_par
                                    &state);
    } else {
       nir_variable *color_var = nir_find_variable_with_location(s, nir_var_shader_out, FRAG_RESULT_COLOR);
+      if (!color_var) {
+         color_var = nir_find_variable_with_location(s, nir_var_shader_out, FRAG_RESULT_DATA0);
+         /* Fog result would be undefined if we had no output color (in ARB_fragment_program) */
+         if (!color_var)
+            return false;
+      }
 
       nir_builder b;
       nir_builder_init(&b, nir_shader_get_entrypoint(s));
       b.cursor = nir_after_block(nir_impl_last_block(b.impl));
+
+      /* Note: while ARB_fragment_program plus ARB_draw_buffers allows an array
+       * of result colors, prog_to_nir generates separate vars per slot so we
+       * don't have to handle that.  Fog only applies to the first color result.
+       */
+      assert(!glsl_type_is_array(color_var->type));
 
       nir_ssa_def *color = nir_load_var(&b, color_var);
       color = fog_result(&b, color, fog_mode, paramList);

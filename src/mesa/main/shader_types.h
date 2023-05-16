@@ -685,6 +685,9 @@ struct gl_program
           * programs.
           */
          GLboolean IsPositionInvariant;
+
+         /** Used by ARB_fp programs, enum gl_fog_mode */
+         unsigned Fog;
       } arb;
    };
 };
