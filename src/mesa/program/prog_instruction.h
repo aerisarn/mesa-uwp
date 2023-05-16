@@ -115,12 +115,7 @@ enum prog_opcode {
    OPCODE_ABS,       /*   X        X       1.1               X   */
    OPCODE_ADD,       /*   X        X       X       X         X   */
    OPCODE_ARL,       /*   X                X                 X   */
-   OPCODE_BGNLOOP,   /*                                     opt  */
-   OPCODE_BGNSUB,    /*                                     opt  */
-   OPCODE_BRK,       /*                    2                opt  */
-   OPCODE_CAL,       /*                    2       2        opt  */
    OPCODE_CMP,       /*            X                         X   */
-   OPCODE_CONT,      /*                                     opt  */
    OPCODE_COS,       /*            X       2       X         X   */
    OPCODE_DDX,       /*                            X         X   */
    OPCODE_DDY,       /*                            X         X   */
@@ -129,16 +124,11 @@ enum prog_opcode {
    OPCODE_DP4,       /*   X        X       X       X         X   */
    OPCODE_DPH,       /*   X        X       1.1                   */
    OPCODE_DST,       /*   X        X       X       X             */
-   OPCODE_ELSE,      /*                                     opt  */
    OPCODE_END,       /*   X        X       X       X        opt  */
-   OPCODE_ENDIF,     /*                                     opt  */
-   OPCODE_ENDLOOP,   /*                                     opt  */
-   OPCODE_ENDSUB,    /*                                     opt  */
    OPCODE_EX2,       /*   X        X       2       X         X   */
    OPCODE_EXP,       /*   X                X                     */
    OPCODE_FLR,       /*   X        X       2       X         X   */
    OPCODE_FRC,       /*   X        X       2       X         X   */
-   OPCODE_IF,        /*                                     opt  */
    OPCODE_KIL,       /*            X                         X   */
    OPCODE_LG2,       /*   X        X       2       X         X   */
    OPCODE_LIT,       /*   X        X       X       X             */
@@ -155,7 +145,6 @@ enum prog_opcode {
    OPCODE_NOISE4,    /*                                      X   */
    OPCODE_POW,       /*   X        X               X         X   */
    OPCODE_RCP,       /*   X        X       X       X         X   */
-   OPCODE_RET,       /*                    2       2        opt  */
    OPCODE_RSQ,       /*   X        X       X       X         X   */
    OPCODE_SCS,       /*            X                         X   */
    OPCODE_SGE,       /*   X        X       X       X         X   */
@@ -245,15 +234,6 @@ struct prog_instruction
    /** True if tex instruction should do shadow comparison */
    GLuint TexShadow:1;
    /*@}*/
-
-   /**
-    * For BRA and CAL instructions, the location to jump to.
-    * For BGNLOOP, points to ENDLOOP (and vice-versa).
-    * For BRK, points to ENDLOOP
-    * For IF, points to ELSE or ENDIF.
-    * For ELSE, points to ENDIF.
-    */
-   GLint BranchTarget;
 };
 
 
