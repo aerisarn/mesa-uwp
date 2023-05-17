@@ -1835,6 +1835,7 @@ cs_exec_fn(void *init_data, int iter_idx, struct lp_cs_local_mem *lmem)
 
 static void
 fill_grid_size(struct pipe_context *pipe,
+               int idx,
                const struct pipe_grid_info *info,
                uint32_t grid_size[3])
 {
@@ -1847,7 +1848,7 @@ fill_grid_size(struct pipe_context *pipe,
       return;
    }
    params = pipe_buffer_map_range(pipe, info->indirect,
-                                  info->indirect_offset,
+                                  (info->indirect_stride * idx) + info->indirect_offset,
                                   3 * sizeof(uint32_t),
                                   PIPE_MAP_READ,
                                   &transfer);
@@ -1877,7 +1878,7 @@ llvmpipe_launch_grid(struct pipe_context *pipe,
 
    llvmpipe_cs_update_derived(llvmpipe, info->input);
 
-   fill_grid_size(pipe, info, job_info.grid_size);
+   fill_grid_size(pipe, 0, info, job_info.grid_size);
 
    job_info.grid_base[0] = info->grid_base[0];
    job_info.grid_base[1] = info->grid_base[1];
