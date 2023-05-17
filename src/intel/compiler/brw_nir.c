@@ -1441,10 +1441,10 @@ get_mem_access_size_align(nir_intrinsic_op intrin, uint8_t bytes,
 static void
 brw_vectorize_lower_mem_access(nir_shader *nir,
                                const struct brw_compiler *compiler,
-                               bool is_scalar,
                                bool robust_buffer_access)
 {
    bool progress = false;
+   const bool is_scalar = compiler->scalar_stage[nir->info.stage];
 
    if (is_scalar) {
       nir_load_store_vectorize_options options = {
@@ -1569,8 +1569,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
       brw_nir_optimize(nir, compiler);
    }
 
-   brw_vectorize_lower_mem_access(nir, compiler, is_scalar,
-                                  robust_buffer_access);
+   brw_vectorize_lower_mem_access(nir, compiler, robust_buffer_access);
 
    if (OPT(nir_lower_int64))
       brw_nir_optimize(nir, compiler);
