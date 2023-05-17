@@ -680,4 +680,17 @@ draw_llvm_set_mapped_image(struct draw_context *draw,
                            uint32_t img_stride,
                            uint32_t num_samples,
                            uint32_t sample_stride);
+
+void
+draw_store_aos_array(struct gallivm_state *gallivm,
+                     struct lp_type soa_type,
+                     LLVMTypeRef io_type,
+                     LLVMValueRef io_ptr,
+                     LLVMValueRef *indices,
+                     LLVMValueRef* aos,
+                     int attrib,
+                     LLVMValueRef clipmask,
+                     boolean need_edgeflag,
+                     bool per_prim);
+
 #endif
