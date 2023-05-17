@@ -327,7 +327,7 @@ brw_compile_task(const struct brw_compiler *compiler,
       NIR_PASS(_, shader, brw_nir_lower_load_uniforms);
       NIR_PASS(_, shader, brw_nir_lower_simd, dispatch_width);
 
-      brw_postprocess_nir(shader, compiler, true /* is_scalar */, debug_enabled,
+      brw_postprocess_nir(shader, compiler, debug_enabled,
                           key->base.robust_buffer_access);
 
       brw_nir_adjust_payload(shader, compiler);
@@ -1036,7 +1036,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
 
       NIR_PASS(_, shader, brw_nir_lower_simd, dispatch_width);
 
-      brw_postprocess_nir(shader, compiler, true /* is_scalar */, debug_enabled,
+      brw_postprocess_nir(shader, compiler, debug_enabled,
                           key->base.robust_buffer_access);
 
       brw_nir_adjust_payload(shader, compiler);

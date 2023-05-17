@@ -616,7 +616,7 @@ brw_compile_gs(const struct brw_compiler *compiler,
    brw_nir_apply_key(nir, compiler, &key->base, 8, is_scalar);
    brw_nir_lower_vue_inputs(nir, &c.input_vue_map);
    brw_nir_lower_vue_outputs(nir);
-   brw_postprocess_nir(nir, compiler, is_scalar, debug_enabled,
+   brw_postprocess_nir(nir, compiler, debug_enabled,
                        key->base.robust_buffer_access);
 
    prog_data->base.clip_distance_mask =

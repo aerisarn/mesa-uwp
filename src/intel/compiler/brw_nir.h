@@ -148,7 +148,6 @@ bool brw_nir_lower_mem_access_bit_sizes(nir_shader *shader,
 
 void brw_postprocess_nir(nir_shader *nir,
                          const struct brw_compiler *compiler,
-                         bool is_scalar,
                          bool debug_enabled,
                          bool robust_buffer_access);
 
@@ -200,8 +199,7 @@ bool brw_nir_blockify_uniform_loads(nir_shader *shader,
                                     const struct intel_device_info *devinfo);
 
 void brw_nir_optimize(nir_shader *nir,
-                      const struct brw_compiler *compiler,
-                      bool is_scalar);
+                      const struct brw_compiler *compiler);
 
 nir_shader *brw_nir_create_passthrough_tcs(void *mem_ctx,
                                            const struct brw_compiler *compiler,
