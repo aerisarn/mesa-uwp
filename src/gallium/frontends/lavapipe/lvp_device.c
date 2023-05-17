@@ -1218,7 +1218,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceMemoryProperties(
 
    pMemoryProperties->memoryHeapCount = 1;
    pMemoryProperties->memoryHeaps[0] = (VkMemoryHeap) {
-      .size = 2ULL*1024*1024*1024,
+      .size = 3ULL*1024*1024*1024,
       .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
    };
 }
