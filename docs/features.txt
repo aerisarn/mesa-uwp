@@ -917,7 +917,7 @@ Rusticl extensions that are not part of any OpenCL version:
   cl_khr_device_uuid                                    DONE (iris, llvmpipe, radeonsi)
   cl_khr_egl_event                                      not started
   cl_khr_egl_image                                      not started
-  cl_khr_expect_assume                                  in progress
+  cl_khr_expect_assume                                  in progress (hints are ignored)
   cl_khr_extended_async_copies                          not started
   cl_khr_extended_bit_ops                               in progress
   cl_khr_fp16                                           in progress (llvmpipe, radeonsi, Available with environment variable RUSTICL_FEATURES=fp16)

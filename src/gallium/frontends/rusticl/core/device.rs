@@ -541,6 +541,7 @@ impl Device {
         add_ext(1, 0, 0, "cl_khr_local_int32_base_atomics");
         add_ext(1, 0, 0, "cl_khr_local_int32_extended_atomics");
 
+        add_spirv("SPV_KHR_expect_assume");
         add_spirv("SPV_KHR_float_controls");
         add_spirv("SPV_KHR_integer_dot_product");
         add_spirv("SPV_KHR_no_integer_wrap_decoration");
