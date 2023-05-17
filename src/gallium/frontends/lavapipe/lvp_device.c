@@ -1216,11 +1216,16 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceMemoryProperties(
       .heapIndex = 0,
    };
 
+   VkDeviceSize low_size = 3ULL*1024*1024*1024;
+   VkDeviceSize total_size;
+   os_get_total_physical_memory(&total_size);
    pMemoryProperties->memoryHeapCount = 1;
    pMemoryProperties->memoryHeaps[0] = (VkMemoryHeap) {
-      .size = 3ULL*1024*1024*1024,
+      .size = low_size,
       .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
    };
+   if (sizeof(void*) > sizeof(uint32_t))
+      pMemoryProperties->memoryHeaps[0].size = total_size;
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceMemoryProperties2(
