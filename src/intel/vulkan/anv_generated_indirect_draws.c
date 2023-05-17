@@ -177,11 +177,9 @@ compile_upload_spirv(struct anv_device *device,
    nir->info.internal = true;
 
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-   NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, nir_opt_cse);
    NIR_PASS_V(nir, nir_opt_gcm, true);
    NIR_PASS_V(nir, nir_opt_peephole_select, 1, false, false);
-   NIR_PASS_V(nir, nir_opt_dce);
 
    NIR_PASS_V(nir, nir_lower_variable_initializers, ~0);
 
@@ -213,7 +211,6 @@ compile_upload_spirv(struct anv_device *device,
    NIR_PASS_V(nir, nir_opt_load_store_vectorize, &options);
 
    NIR_PASS_V(nir, lower_vulkan_descriptors);
-   NIR_PASS_V(nir, nir_opt_dce);
 
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo,
               nir_address_format_32bit_index_offset);
