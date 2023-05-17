@@ -831,8 +831,8 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
    tu6_emit_xs_config<CHIP>(cs, MESA_SHADER_FRAGMENT, fs);
 
    struct tu_pvtmem_config pvtmem = {};
-   tu6_emit_xs<CHIP>(cs, MESA_SHADER_VERTEX, vs, &pvtmem, vs_iova);
-   tu6_emit_xs<CHIP>(cs, MESA_SHADER_FRAGMENT, fs, &pvtmem, fs_iova);
+   tu6_emit_xs(cs, MESA_SHADER_VERTEX, vs, &pvtmem, vs_iova);
+   tu6_emit_xs(cs, MESA_SHADER_FRAGMENT, fs, &pvtmem, fs_iova);
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0());
 

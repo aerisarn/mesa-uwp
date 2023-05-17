@@ -633,7 +633,9 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
 {
    uint32_t enable_mask;
    switch (id) {
-   case TU_DRAW_STATE_PROGRAM:
+   case TU_DRAW_STATE_VS:
+   case TU_DRAW_STATE_FS:
+   case TU_DRAW_STATE_VPC:
    /* The blob seems to not enable this (DESC_SETS_LOAD) for binning, even
     * when resources would actually be used in the binning shader.
     * Presumably the overhead of prefetching the resources isn't
@@ -643,7 +645,8 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
       enable_mask = CP_SET_DRAW_STATE__0_GMEM |
                     CP_SET_DRAW_STATE__0_SYSMEM;
       break;
-   case TU_DRAW_STATE_PROGRAM_BINNING:
+   case TU_DRAW_STATE_VS_BINNING:
+   case TU_DRAW_STATE_GS_BINNING:
       enable_mask = CP_SET_DRAW_STATE__0_BINNING;
       break;
    case TU_DRAW_STATE_INPUT_ATTACHMENTS_GMEM:
@@ -679,11 +682,25 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
     * the firmware would ignore and we wouldn't pre-load the new
     * descriptors. Set the DIRTY bit to avoid this optimization.
     *
+    * We set the dirty bit for shader draw states because they contain
+    * CP_LOAD_STATE packets that are invalidated by the PROGRAM_CONFIG draw
+    * state, so if PROGRAM_CONFIG changes but one of the shaders stays the
+    * same then we still need to re-emit everything. The GLES blob which
+    * implements separate shader draw states does the same thing.
+    *
     * We also need to set this bit for draw states which may be patched by the
     * GPU, because their underlying memory may change between setting the draw
     * state.
     */
-   if (id == TU_DRAW_STATE_DESC_SETS_LOAD || state.writeable)
+   if (id == TU_DRAW_STATE_DESC_SETS_LOAD ||
+       id == TU_DRAW_STATE_VS ||
+       id == TU_DRAW_STATE_VS_BINNING ||
+       id == TU_DRAW_STATE_HS ||
+       id == TU_DRAW_STATE_DS ||
+       id == TU_DRAW_STATE_GS ||
+       id == TU_DRAW_STATE_GS_BINNING ||
+       id == TU_DRAW_STATE_FS ||
+       state.writeable)
       enable_mask |= CP_SET_DRAW_STATE__0_DIRTY;
 
    tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(state.size) |
@@ -2940,7 +2957,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
       cmd->state.compute_pipeline = tu_pipeline_to_compute(pipeline);
-      tu_cs_emit_state_ib(&cmd->cs, pipeline->program.state);
+      tu_cs_emit_state_ib(&cmd->cs,
+                          pipeline->shaders[MESA_SHADER_COMPUTE]->state);
       return;
    }
 
@@ -3002,10 +3020,16 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    if (!(cmd->state.dirty & TU_CMD_DIRTY_DRAW_STATE)) {
       uint32_t mask = pipeline->set_state_mask;
 
-      tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (5 + util_bitcount(mask)));
+      tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (11 + util_bitcount(mask)));
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_CONFIG, pipeline->program.config_state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM, pipeline->program.state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_BINNING, pipeline->program.binning_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS, pipeline->program.vs_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_BINNING, pipeline->program.vs_binning_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_HS, pipeline->program.hs_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DS, pipeline->program.ds_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_GS, pipeline->program.gs_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_GS_BINNING, pipeline->program.gs_binning_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS, pipeline->program.fs_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VPC, pipeline->program.vpc_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_SYSMEM, pipeline->prim_order.state_sysmem);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_GMEM, pipeline->prim_order.state_gmem);
 
@@ -4509,7 +4533,7 @@ tu6_emit_fs_params(struct tu_cmd_buffer *cmd)
    tu_cs_emit(&cs, 0);
 
    STATIC_ASSERT(IR3_DP_FS_FRAG_INVOCATION_COUNT == IR3_DP_FS_DYNAMIC);
-   tu_cs_emit(&cs, pipeline->base.program.per_samp ?
+   tu_cs_emit(&cs, pipeline->base.fs.per_samp ?
               cmd->vk.dynamic_graphics_state.ms.rasterization_samples : 1);
    tu_cs_emit(&cs, 0);
    tu_cs_emit(&cs, 0);
@@ -4699,8 +4723,14 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (TU_DRAW_STATE_COUNT - 2));
 
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_CONFIG, pipeline->program.config_state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM, pipeline->program.state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PROGRAM_BINNING, pipeline->program.binning_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS, pipeline->program.vs_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_BINNING, pipeline->program.vs_binning_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_HS, pipeline->program.hs_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DS, pipeline->program.ds_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_GS, pipeline->program.gs_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_GS_BINNING, pipeline->program.gs_binning_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS, pipeline->program.fs_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VPC, pipeline->program.vpc_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_SYSMEM, pipeline->prim_order.state_sysmem);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_PRIM_MODE_GMEM, pipeline->prim_order.state_gmem);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_CONST, cmd->state.shader_const);
@@ -5377,7 +5407,8 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
     * could be overwritten by reg stomping in a renderpass or blit.
     */
    if (cmd->device->dbg_renderpass_stomp_cs) {
-      tu_cs_emit_state_ib(&cmd->cs, cmd->state.compute_pipeline->base.program.state);
+      tu_cs_emit_state_ib(&cmd->cs,
+                          cmd->state.compute_pipeline->base.shaders[MESA_SHADER_COMPUTE]->state);
    }
 
    /* There appears to be a HW bug where in some rare circumstances it appears

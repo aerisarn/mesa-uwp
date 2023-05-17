@@ -58,18 +58,6 @@ struct tu_bandwidth
    bool valid;
 };
 
-struct tu_compiled_shaders
-{
-   struct vk_pipeline_cache_object base;
-
-   struct tu_const_state const_state[MESA_SHADER_STAGES];
-   uint8_t active_desc_sets;
-
-   const struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
-
-   const struct ir3_shader_variant *safe_const_variants[MESA_SHADER_STAGES];
-};
-
 struct tu_nir_shaders
 {
    struct vk_pipeline_cache_object base;
@@ -80,7 +68,6 @@ struct tu_nir_shaders
    nir_shader *nir[MESA_SHADER_STAGES];
 };
 
-extern const struct vk_pipeline_cache_object_ops tu_shaders_ops;
 extern const struct vk_pipeline_cache_object_ops tu_nir_shaders_ops;
 
 static bool inline
@@ -125,9 +112,6 @@ struct tu_pipeline
    struct tu_cs cs;
    struct tu_suballoc_bo bo;
 
-   /* Separate BO for private memory since it should GPU writable */
-   struct tu_bo *pvtmem_bo;
-
    VkShaderStageFlags active_stages;
    uint32_t active_desc_sets;
 
@@ -169,21 +153,30 @@ struct tu_pipeline
 
    struct tu_push_constant_range shared_consts;
 
+   struct tu_shader *shaders[MESA_SHADER_STAGES];
+
+   struct {
+      bool per_samp;
+   } fs;
+
    struct
    {
       struct tu_draw_state config_state;
-      struct tu_draw_state state;
-      struct tu_draw_state binning_state;
-
-      struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
+      struct tu_draw_state vs_state, vs_binning_state;
+      struct tu_draw_state hs_state;
+      struct tu_draw_state ds_state;
+      struct tu_draw_state gs_state, gs_binning_state;
+      struct tu_draw_state vpc_state;
+      struct tu_draw_state fs_state;
 
       uint32_t vs_param_stride;
       uint32_t hs_param_stride;
       uint32_t hs_param_dwords;
       uint32_t hs_vertices_out;
 
+      struct tu_program_descriptor_linkage link[MESA_SHADER_STAGES];
+
       bool per_view_viewport;
-      bool per_samp;
 
       enum a6xx_tess_output tess_output_upper_left, tess_output_lower_left;
       enum a6xx_tess_spacing tess_spacing;
@@ -207,18 +200,10 @@ struct tu_graphics_lib_pipeline {
    /* For vk_graphics_pipeline_state */
    void *state_data;
 
-   /* compiled_shaders only contains variants compiled by this pipeline, and
-    * it owns them, so when it is freed they disappear.  Similarly,
-    * nir_shaders owns the link-time NIR. shaders points to the shaders from
-    * this pipeline and all libraries included in it, for convenience.
-    */
-   struct tu_compiled_shaders *compiled_shaders;
    struct tu_nir_shaders *nir_shaders;
    struct {
       nir_shader *nir;
       struct tu_shader_key key;
-      struct tu_const_state const_state;
-      const struct ir3_shader_variant *variant, *safe_const_variant;
    } shaders[MESA_SHADER_FRAGMENT + 1];
 
    struct ir3_shader_key ir3_key;
@@ -288,32 +273,7 @@ tu6_emit_xs_config(struct tu_cs *cs,
 
 template <chip CHIP>
 void
-tu6_emit_xs(struct tu_cs *cs,
-            gl_shader_stage stage,
-            const struct ir3_shader_variant *xs,
-            const struct tu_pvtmem_config *pvtmem,
-            uint64_t binary_iova);
-
-template <chip CHIP>
-void
-tu6_emit_vs(struct tu_cs *cs, const struct ir3_shader_variant *vs,
-            uint32_t view_mask);
-
-template <chip CHIP>
-void
-tu6_emit_hs(struct tu_cs *cs, const struct ir3_shader_variant *hs);
-
-template <chip CHIP>
-void
-tu6_emit_ds(struct tu_cs *cs, const struct ir3_shader_variant *hs);
-
-template <chip CHIP>
-void
-tu6_emit_gs(struct tu_cs *cs, const struct ir3_shader_variant *hs);
-
-template <chip CHIP>
-void
-tu6_emit_fs(struct tu_cs *cs, const struct ir3_shader_variant *fs);
+tu6_emit_shared_consts_enable(struct tu_cs *cs, bool shared_consts_enable);
 
 template <chip CHIP>
 void

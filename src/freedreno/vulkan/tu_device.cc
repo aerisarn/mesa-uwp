@@ -579,7 +579,7 @@ tu_get_features(struct tu_physical_device *pdevice,
 }
 
 static const struct vk_pipeline_cache_object_ops *const cache_import_ops[] = {
-   &tu_shaders_ops,
+   &tu_shader_ops,
    &tu_nir_shaders_ops,
    NULL,
 };
