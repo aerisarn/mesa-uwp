@@ -2092,6 +2092,7 @@ x11_image_init(VkDevice device_h, struct x11_swapchain *chain,
                struct x11_image *image)
 {
    xcb_void_cookie_t cookie;
+   xcb_generic_error_t *error = NULL;
    VkResult result;
    uint32_t bpp = 32;
    int fence_fd;
@@ -2186,7 +2187,11 @@ x11_image_init(VkDevice device_h, struct x11_swapchain *chain,
                                              chain->depth, bpp, fd);
    }
 
-   xcb_discard_reply(chain->conn, cookie.sequence);
+   error = xcb_request_check(chain->conn, cookie);
+   if (error != NULL) {
+      free(error);
+      goto fail_image;
+   }
 
 out_fence:
    fence_fd = xshmfence_alloc_shm();
@@ -2216,6 +2221,7 @@ fail_pixmap:
    cookie = xcb_free_pixmap(chain->conn, image->pixmap);
    xcb_discard_reply(chain->conn, cookie.sequence);
 
+fail_image:
    wsi_destroy_image(&chain->base, &image->base);
 
    return VK_ERROR_INITIALIZATION_FAILED;
