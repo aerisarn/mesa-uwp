@@ -37,26 +37,6 @@ namespace r600 {
 
 AluGroup::AluGroup() { std::fill(m_slots.begin(), m_slots.end(), nullptr); }
 
-static bool
-is_kill(EAluOp op)
-{
-   switch (op) {
-   case op2_kille:
-   case op2_kille_int:
-   case op2_killne:
-   case op2_killne_int:
-   case op2_killge:
-   case op2_killge_int:
-   case op2_killge_uint:
-   case op2_killgt:
-   case op2_killgt_int:
-   case op2_killgt_uint:
-      return true;
-   default:
-      return false;
-   }
-}
-
 bool
 AluGroup::add_instruction(AluInstr *instr)
 {
@@ -69,7 +49,7 @@ AluGroup::add_instruction(AluInstr *instr)
       ASSERTED auto opinfo = alu_ops.find(instr->opcode());
       assert(opinfo->second.can_channel(AluOp::t, s_chip_class));
       if (add_trans_instructions(instr)) {
-         if (is_kill(instr->opcode()))
+         if (instr->is_kill())
             m_has_kill_op = true;
          return true;
       }
@@ -77,7 +57,7 @@ AluGroup::add_instruction(AluInstr *instr)
 
    if (add_vec_instructions(instr) && !instr->has_alu_flag(alu_is_trans)) {
       instr->set_parent_group(this);
-      if (!instr->has_alu_flag(alu_is_lds) && is_kill(instr->opcode()))
+      if (instr->is_kill())
          m_has_kill_op = true;
       return true;
    }
@@ -88,7 +68,7 @@ AluGroup::add_instruction(AluInstr *instr)
    if (s_max_slots > 4 && opinfo->second.can_channel(AluOp::t, s_chip_class) &&
        add_trans_instructions(instr)) {
       instr->set_parent_group(this);
-      if (is_kill(instr->opcode()))
+      if (instr->is_kill())
          m_has_kill_op = true;
       return true;
    }
@@ -237,6 +217,7 @@ AluGroup::add_vec_instructions(AluInstr *instr)
             sfn_log << SfnLog::schedule << "V: Try force channel " << free_chan << "\n";
             dest->set_chan(free_chan);
             if (instr->bank_swizzle() != alu_vec_unknown) {
+
                if (try_readport(instr, instr->bank_swizzle()))
                   return true;
             } else {

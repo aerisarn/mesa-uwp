@@ -32,6 +32,7 @@
 #include "nir_intrinsics_indices.h"
 #include "sfn_debug.h"
 #include "sfn_instr.h"
+#include "sfn_instr_alu.h"
 #include "sfn_instr_alugroup.h"
 #include "sfn_instr_controlflow.h"
 #include "sfn_instr_export.h"

@@ -1281,6 +1281,28 @@ AluInstrVisitor::visit(IfInstr *instr)
    instr->predicate()->accept(*this);
 }
 
+bool AluInstr::is_kill() const
+{
+   if (has_alu_flag(alu_is_lds))
+      return false;
+
+   switch (m_opcode) {
+   case op2_kille:
+   case op2_kille_int:
+   case op2_killne:
+   case op2_killne_int:
+   case op2_killge:
+   case op2_killge_int:
+   case op2_killge_uint:
+   case op2_killgt:
+   case op2_killgt_int:
+   case op2_killgt_uint:
+      return true;
+   default:
+      return false;
+   }
+}
+
 static bool
 emit_alu_b2x(const nir_alu_instr& alu, AluInlineConstants mask, Shader& shader);
 
