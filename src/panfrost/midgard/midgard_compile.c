@@ -253,7 +253,7 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
          nir_intrinsic_set_align(shared_load, compsz / 8, 0);
          nir_intrinsic_set_base(shared_load, nir_intrinsic_base(intr));
          nir_ssa_dest_init(&shared_load->instr, &shared_load->dest,
-                           shared_load->num_components, compsz, NULL);
+                           shared_load->num_components, compsz);
          nir_builder_instr_insert(b, &shared_load->instr);
          load = &shared_load->dest.ssa;
       }

@@ -1160,7 +1160,7 @@ split_64bit_subgroup_op(nir_builder *b, const nir_intrinsic_instr *intrin)
              sizeof(intrin->const_index));
 
       nir_ssa_dest_init(&split->instr, &split->dest,
-                        intrin->dest.ssa.num_components, 32, NULL);
+                        intrin->dest.ssa.num_components, 32);
       nir_builder_instr_insert(b, &split->instr);
 
       res[i] = &split->dest.ssa;
@@ -1176,7 +1176,7 @@ build_vote_ieq(nir_builder *b, nir_ssa_def *x)
       nir_intrinsic_instr_create(b->shader, nir_intrinsic_vote_ieq);
    vote->src[0] = nir_src_for_ssa(x);
    vote->num_components = x->num_components;
-   nir_ssa_dest_init(&vote->instr, &vote->dest, 1, 1, NULL);
+   nir_ssa_dest_init(&vote->instr, &vote->dest, 1, 1);
    nir_builder_instr_insert(b, &vote->instr);
    return &vote->dest.ssa;
 }
@@ -1200,8 +1200,8 @@ build_scan_intrinsic(nir_builder *b, nir_intrinsic_op scan_op,
    nir_intrinsic_set_reduction_op(scan, reduction_op);
    if (scan_op == nir_intrinsic_reduce)
       nir_intrinsic_set_cluster_size(scan, cluster_size);
-   nir_ssa_dest_init(&scan->instr, &scan->dest,
-                     val->num_components, val->bit_size, NULL);
+   nir_ssa_dest_init(&scan->instr, &scan->dest, val->num_components,
+                     val->bit_size);
    nir_builder_instr_insert(b, &scan->instr);
    return &scan->dest.ssa;
 }

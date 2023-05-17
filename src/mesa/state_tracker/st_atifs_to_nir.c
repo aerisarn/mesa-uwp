@@ -372,7 +372,7 @@ compile_setupinst(struct st_translate *t,
          nir_src_for_ssa(nir_channels(t->b, coord,
                                     (1 << tex->coord_components) - 1));
 
-      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
       nir_builder_instr_insert(t->b, &tex->instr);
 
       t->temps[r] = &tex->dest.ssa;

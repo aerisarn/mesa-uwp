@@ -407,7 +407,7 @@ lower_load_vec32(nir_builder *b, nir_ssa_def *index, unsigned num_comps, nir_ssa
 
       load->num_components = 1;
       load->src[0] = nir_src_for_ssa(nir_iadd(b, index, nir_imm_int(b, i)));
-      nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, NULL);
+      nir_ssa_dest_init(&load->instr, &load->dest, 1, 32);
       nir_builder_instr_insert(b, &load->instr);
       comps[i] = &load->dest.ssa;
    }
@@ -778,7 +778,7 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr)
       atomic->src[2] = nir_src_for_ssa(intr->src[2].ssa);
    }
    atomic->num_components = 0;
-   nir_ssa_dest_init(&atomic->instr, &atomic->dest, 1, 32, NULL);
+   nir_ssa_dest_init(&atomic->instr, &atomic->dest, 1, 32);
    nir_intrinsic_set_atomic_op(atomic, nir_intrinsic_atomic_op(intr));
 
    nir_builder_instr_insert(b, &atomic->instr);
@@ -959,8 +959,8 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
       nir_phi_instr_add_src(lowered, src->pred, nir_src_for_ssa(cast));
    }
 
-   nir_ssa_dest_init(&lowered->instr, &lowered->dest,
-                     num_components, new_bit_size, NULL);
+   nir_ssa_dest_init(&lowered->instr, &lowered->dest, num_components,
+                     new_bit_size);
 
    b->cursor = nir_before_instr(&phi->instr);
    nir_builder_instr_insert(b, &lowered->instr);

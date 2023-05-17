@@ -134,7 +134,7 @@ sample_via_nir(nir_builder *b, nir_variable *texcoord,
       nir_src_for_ssa(nir_channels(b, nir_load_var(b, texcoord),
                                    (1 << tex->coord_components) - 1));
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
    return nir_channel(b, &tex->dest.ssa, 0);
 }

@@ -334,7 +334,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                }
 
                load->num_components = 1;
-               nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, NULL);
+               nir_ssa_dest_init(&load->instr, &load->dest, 1, 32);
                nir_builder_instr_insert(&b, &load->instr);
 
                nir_ssa_def_rewrite_uses(&intrin->dest.ssa,

@@ -224,7 +224,7 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
       assert(intrinsic->dest.is_ssa);
       nir_ssa_def *dest = &intrinsic->dest.ssa;
       nir_ssa_dest_init(&new_intrinsic->instr, &new_intrinsic->dest,
-                        dest->num_components, dest->bit_size, NULL);
+                        dest->num_components, dest->bit_size);
       new_dest = &new_intrinsic->dest.ssa;
    }
 

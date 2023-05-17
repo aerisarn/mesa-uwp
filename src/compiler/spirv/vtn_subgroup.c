@@ -97,7 +97,7 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
       nir_intrinsic_instr *ballot =
          nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_ballot);
       ballot->src[0] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[3 + has_scope]));
-      nir_ssa_dest_init(&ballot->instr, &ballot->dest, 4, 32, NULL);
+      nir_ssa_dest_init(&ballot->instr, &ballot->dest, 4, 32);
       ballot->num_components = 4;
       nir_builder_instr_insert(&b->nb, &ballot->instr);
       vtn_push_nir_ssa(b, w[2], &ballot->dest.ssa);

@@ -227,8 +227,7 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
    nir_phi_instr *new_phi = nir_phi_instr_create(b->shader);
    nir_ssa_dest_init(&new_phi->instr, &new_phi->dest,
                      phi->dest.ssa.num_components,
-                     nir_alu_type_get_type_size(nir_op_infos[op].output_type),
-                     NULL);
+                     nir_alu_type_get_type_size(nir_op_infos[op].output_type));
 
    /* Push the conversion into the new phi sources: */
    nir_foreach_phi_src (src, phi) {
@@ -379,8 +378,7 @@ try_move_widening_src(nir_builder *b, nir_phi_instr *phi)
    /* construct replacement phi instruction: */
    nir_phi_instr *new_phi = nir_phi_instr_create(b->shader);
    nir_ssa_dest_init(&new_phi->instr, &new_phi->dest,
-                     phi->dest.ssa.num_components,
-                     bit_size, NULL);
+                     phi->dest.ssa.num_components, bit_size);
 
    /* Remove the widening conversions from the phi sources: */
    nir_foreach_phi_src (src, phi) {

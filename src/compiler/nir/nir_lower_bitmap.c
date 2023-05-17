@@ -88,7 +88,7 @@ lower_bitmap(nir_shader *shader, nir_builder *b,
       nir_src_for_ssa(nir_channels(b, texcoord,
                                    (1 << tex->coord_components) - 1));
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
 
    /* kill if tex != 0.0.. take .x or .w channel according to format: */

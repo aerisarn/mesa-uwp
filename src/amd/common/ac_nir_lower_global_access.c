@@ -116,8 +116,9 @@ process_instr(nir_builder *b, nir_instr *instr, void *_)
    new_intrin->num_components = intrin->num_components;
 
    if (op != nir_intrinsic_store_global_amd)
-      nir_ssa_dest_init(&new_intrin->instr, &new_intrin->dest, intrin->dest.ssa.num_components,
-                        intrin->dest.ssa.bit_size, NULL);
+      nir_ssa_dest_init(&new_intrin->instr, &new_intrin->dest,
+                        intrin->dest.ssa.num_components,
+                        intrin->dest.ssa.bit_size);
 
    unsigned num_src = nir_intrinsic_infos[intrin->intrinsic].num_srcs;
    for (unsigned i = 0; i < num_src; i++)

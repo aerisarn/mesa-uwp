@@ -404,7 +404,7 @@ bias_for_tex(nir_builder *b, nir_tex_instr *tex)
    query->op = nir_texop_lod_bias_agx;
    query->dest_type = nir_type_float16;
 
-   nir_ssa_dest_init(instr, &query->dest, 1, 16, NULL);
+   nir_ssa_dest_init(instr, &query->dest, 1, 16);
    return &query->dest.ssa;
 }
 

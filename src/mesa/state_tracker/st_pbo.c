@@ -527,7 +527,7 @@ create_fs(struct st_context *st, bool download,
    tex->src[1].src = nir_src_for_ssa(&tex_deref->dest.ssa);
    tex->src[2].src_type = nir_tex_src_coord;
    tex->src[2].src = nir_src_for_ssa(texcoord);
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
    nir_ssa_def *result = &tex->dest.ssa;
 

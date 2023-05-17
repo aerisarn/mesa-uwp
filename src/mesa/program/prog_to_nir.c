@@ -225,7 +225,7 @@ ptn_get_src(struct ptn_compile *c, const struct prog_src_register *prog_src)
          } else {
             assert(swizzle != SWIZZLE_NIL);
             nir_alu_instr *mov = nir_alu_instr_create(b->shader, nir_op_mov);
-            nir_ssa_dest_init(&mov->instr, &mov->dest.dest, 1, 32, NULL);
+            nir_ssa_dest_init(&mov->instr, &mov->dest.dest, 1, 32);
             mov->dest.write_mask = 0x1;
             mov->src[0] = src;
             mov->src[0].swizzle[0] = swizzle;
@@ -617,7 +617,7 @@ ptn_tex(struct ptn_compile *c, nir_alu_dest dest, nir_ssa_def **src,
 
    assert(src_number == num_srcs);
 
-   nir_ssa_dest_init(&instr->instr, &instr->dest, 4, 32, NULL);
+   nir_ssa_dest_init(&instr->instr, &instr->dest, 4, 32);
    nir_builder_instr_insert(b, &instr->instr);
 
    /* Resolve the writemask on the texture op. */

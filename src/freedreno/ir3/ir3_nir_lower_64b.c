@@ -146,7 +146,7 @@ lower_64b_intrinsics(nir_builder *b, nir_instr *instr, void *unused)
          load->num_components = 2;
          load->src[offset_src_idx] = nir_src_for_ssa(off);
 
-         nir_ssa_dest_init(&load->instr, &load->dest, 2, 32, NULL);
+         nir_ssa_dest_init(&load->instr, &load->dest, 2, 32);
          nir_builder_instr_insert(b, &load->instr);
 
          components[i] = nir_pack_64_2x32(b, &load->dest.ssa);

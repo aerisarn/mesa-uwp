@@ -141,7 +141,8 @@ try_lower_input_load(nir_builder *b, nir_intrinsic_instr *load,
 
    tex->texture_non_uniform = nir_intrinsic_access(load) & ACCESS_NON_UNIFORM;
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, nir_tex_instr_dest_size(tex), 32, NULL);
+   nir_ssa_dest_init(&tex->instr, &tex->dest, nir_tex_instr_dest_size(tex),
+                     32);
    nir_builder_instr_insert(b, &tex->instr);
 
    if (tex->is_sparse) {

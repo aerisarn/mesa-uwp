@@ -717,7 +717,7 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
          tex->src[3].src_type = nir_tex_src_texture_deref;
          tex->src[3].src = nir_src_for_ssa(&tex_deref->dest.ssa);
 
-         nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+         nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
 
          nir_builder_instr_insert(&b, &tex->instr);
          res = res ? nir_build_alu2(&b, resolve_op, res, &tex->dest.ssa) : &tex->dest.ssa;
@@ -769,7 +769,7 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
          tex->src[2].src = nir_src_for_ssa(&sampler_deref->dest.ssa);
       }
 
-      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
       nir_builder_instr_insert(&b, &tex->instr);
       res = &tex->dest.ssa;
    }

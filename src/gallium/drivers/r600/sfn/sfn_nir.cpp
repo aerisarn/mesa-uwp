@@ -550,7 +550,8 @@ r600_lower_shared_io_impl(nir_function *func)
                nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_local_shared_r600);
             load->num_components = nir_dest_num_components(op->dest);
             load->src[0] = nir_src_for_ssa(addr);
-            nir_ssa_dest_init(&load->instr, &load->dest, load->num_components, 32, NULL);
+            nir_ssa_dest_init(&load->instr, &load->dest, load->num_components,
+                              32);
             nir_ssa_def_rewrite_uses(&op->dest.ssa, &load->dest.ssa);
             nir_builder_instr_insert(&b, &load->instr);
          } else {
@@ -601,11 +602,9 @@ r600_lower_fs_pos_input_impl(nir_builder *b, nir_instr *instr, void *_options)
    (void)_options;
    auto old_ir = nir_instr_as_intrinsic(instr);
    auto load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_input);
-   nir_ssa_dest_init(&load->instr,
-                     &load->dest,
+   nir_ssa_dest_init(&load->instr, &load->dest,
                      old_ir->dest.ssa.num_components,
-                     old_ir->dest.ssa.bit_size,
-                     NULL);
+                     old_ir->dest.ssa.bit_size);
    nir_intrinsic_set_io_semantics(load, nir_intrinsic_io_semantics(old_ir));
 
    nir_intrinsic_set_base(load, nir_intrinsic_base(old_ir));

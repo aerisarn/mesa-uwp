@@ -766,7 +766,7 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
       }
       load->src[srcn++] = nir_src_for_ssa(offset);
 
-      nir_ssa_dest_init(&load->instr, &load->dest, 4, 32, NULL);
+      nir_ssa_dest_init(&load->instr, &load->dest, 4, 32);
       nir_builder_instr_insert(b, &load->instr);
 
       src = nir_src_for_ssa(&load->dest.ssa);
@@ -1574,8 +1574,7 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
    assert(src_number == instr->num_srcs);
 
    nir_ssa_dest_init(&instr->instr, &instr->dest,
-		     nir_tex_instr_dest_size(instr),
-		     32, NULL);
+                     nir_tex_instr_dest_size(instr), 32);
    nir_builder_instr_insert(b, &instr->instr);
 
    /* Resolve the writemask on the texture op. */
@@ -1635,11 +1634,11 @@ ttn_txq(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
    txs->src[1].src = nir_src_for_ssa(ttn_channel(b, src[0], X));
    txs->src[1].src_type = nir_tex_src_lod;
 
-   nir_ssa_dest_init(&txs->instr, &txs->dest,
-		     nir_tex_instr_dest_size(txs), 32, NULL);
+   nir_ssa_dest_init(&txs->instr, &txs->dest, nir_tex_instr_dest_size(txs),
+                     32);
    nir_builder_instr_insert(b, &txs->instr);
 
-   nir_ssa_dest_init(&qlv->instr, &qlv->dest, 1, 32, NULL);
+   nir_ssa_dest_init(&qlv->instr, &qlv->dest, 1, 32);
    nir_builder_instr_insert(b, &qlv->instr);
 
    ttn_move_dest_masked(b, dest, &txs->dest.ssa, TGSI_WRITEMASK_XYZ);
@@ -1797,7 +1796,7 @@ ttn_mem(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 
    if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_LOAD) {
       nir_ssa_dest_init(&instr->instr, &instr->dest, instr->num_components,
-                        32, NULL);
+                        32);
       nir_builder_instr_insert(b, &instr->instr);
       ttn_move_dest(b, dest, &instr->dest.ssa);
    } else {

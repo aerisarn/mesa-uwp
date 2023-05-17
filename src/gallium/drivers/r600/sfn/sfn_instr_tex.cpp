@@ -1112,7 +1112,7 @@ LowerTexToBackend::lower_txf_ms(nir_tex_instr *tex)
    }
 
    auto fetch_sample = nir_instr_as_tex(nir_instr_clone(b->shader, &tex->instr));
-   nir_ssa_dest_init(&fetch_sample->instr, &fetch_sample->dest, 4, 32, "sample_index");
+   nir_ssa_dest_init(&fetch_sample->instr, &fetch_sample->dest, 4, 32);
 
    int used_coord_mask = 0;
    nir_ssa_def *backend1 = prep_src(new_coord, used_coord_mask);

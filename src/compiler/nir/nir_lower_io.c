@@ -327,8 +327,7 @@ emit_load(struct lower_io_state *state,
       load->src[0] = nir_src_for_ssa(offset);
    }
 
-   nir_ssa_dest_init(&load->instr, &load->dest,
-                     num_components, bit_size, NULL);
+   nir_ssa_dest_init(&load->instr, &load->dest, num_components, bit_size);
    nir_builder_instr_insert(b, &load->instr);
 
    return &load->dest.ssa;
@@ -549,7 +548,7 @@ lower_interpolate_at(nir_intrinsic_instr *intrin, struct lower_io_state *state,
    nir_intrinsic_instr *bary_setup =
       nir_intrinsic_instr_create(state->builder.shader, bary_op);
 
-   nir_ssa_dest_init(&bary_setup->instr, &bary_setup->dest, 2, 32, NULL);
+   nir_ssa_dest_init(&bary_setup->instr, &bary_setup->dest, 2, 32);
    nir_intrinsic_set_interp_mode(bary_setup, var->data.interpolation);
 
    if (intrin->intrinsic == nir_intrinsic_interp_deref_at_sample ||
@@ -1476,8 +1475,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
 
    assert(intrin->dest.is_ssa);
    load->num_components = num_components;
-   nir_ssa_dest_init(&load->instr, &load->dest, num_components,
-                     bit_size, NULL);
+   nir_ssa_dest_init(&load->instr, &load->dest, num_components, bit_size);
 
    assert(bit_size % 8 == 0);
 
@@ -1784,8 +1782,8 @@ build_explicit_io_atomic(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_intrinsic_set_access(atomic, nir_intrinsic_access(intrin));
 
    assert(intrin->dest.ssa.num_components == 1);
-   nir_ssa_dest_init(&atomic->instr, &atomic->dest,
-                     1, intrin->dest.ssa.bit_size, NULL);
+   nir_ssa_dest_init(&atomic->instr, &atomic->dest, 1,
+                     intrin->dest.ssa.bit_size);
 
    assert(atomic->dest.ssa.bit_size % 8 == 0);
 

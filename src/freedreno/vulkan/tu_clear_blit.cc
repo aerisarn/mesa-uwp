@@ -623,7 +623,7 @@ build_blit_fs_shader(bool zscale)
    tex->src[0].src = nir_src_for_ssa(nir_load_var(b, in_coords));
    tex->coord_components = coord_components;
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
 
    nir_store_var(b, out_color, &tex->dest.ssa, 0xf);
@@ -682,7 +682,7 @@ build_ms_copy_fs_shader(void)
    tex->src[1].src_type = nir_tex_src_ms_index;
    tex->src[1].src = nir_src_for_ssa(nir_load_sample_id(b));
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
 
    nir_store_var(b, out_color, &tex->dest.ssa, 0xf);

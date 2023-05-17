@@ -3195,7 +3195,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    instr->dest_type = dest_type;
 
    nir_ssa_dest_init(&instr->instr, &instr->dest,
-                     nir_tex_instr_dest_size(instr), 32, NULL);
+                     nir_tex_instr_dest_size(instr), 32);
 
    vtn_assert(glsl_get_vector_elements(ret_type->type) ==
               nir_tex_instr_result_size(instr));
@@ -3676,8 +3676,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
          bit_size = MIN2(bit_size, 32);
 
       nir_ssa_dest_init(&intrin->instr, &intrin->dest,
-                        nir_intrinsic_dest_components(intrin),
-                        bit_size, NULL);
+                        nir_intrinsic_dest_components(intrin), bit_size);
 
       nir_builder_instr_insert(&b->nb, &intrin->instr);
 
@@ -3942,12 +3941,11 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
 
       if (opcode == SpvOpAtomicFlagTestAndSet) {
          /* map atomic flag to a 32-bit atomic integer. */
-         nir_ssa_dest_init(&atomic->instr, &atomic->dest,
-                           1, 32, NULL);
+         nir_ssa_dest_init(&atomic->instr, &atomic->dest, 1, 32);
       } else {
          nir_ssa_dest_init(&atomic->instr, &atomic->dest,
                            glsl_get_vector_elements(type->type),
-                           glsl_get_bit_size(type->type), NULL);
+                           glsl_get_bit_size(type->type));
 
          vtn_push_nir_ssa(b, w[2], &atomic->dest.ssa);
       }
@@ -3967,8 +3965,7 @@ create_vec(struct vtn_builder *b, unsigned num_components, unsigned bit_size)
 {
    nir_op op = nir_op_vec(num_components);
    nir_alu_instr *vec = nir_alu_instr_create(b->shader, op);
-   nir_ssa_dest_init(&vec->instr, &vec->dest.dest, num_components,
-                     bit_size, NULL);
+   nir_ssa_dest_init(&vec->instr, &vec->dest.dest, num_components, bit_size);
    vec->dest.write_mask = (1 << num_components) - 1;
 
    return vec;
@@ -5761,7 +5758,7 @@ vtn_handle_ray_intrinsic(struct vtn_builder *b, SpvOp opcode,
                                           nir_intrinsic_report_ray_intersection);
       intrin->src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[3])->def);
       intrin->src[1] = nir_src_for_ssa(vtn_ssa_value(b, w[4])->def);
-      nir_ssa_dest_init(&intrin->instr, &intrin->dest, 1, 1, NULL);
+      nir_ssa_dest_init(&intrin->instr, &intrin->dest, 1, 1);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
       vtn_push_nir_ssa(b, w[2], &intrin->dest.ssa);
       break;

@@ -44,7 +44,7 @@ rewrite_offset(nir_builder *b,
         nir_intrinsic_instr *size =
                 nir_intrinsic_instr_create(b->shader, buffer_size_op);
         size->src[0] = nir_src_for_ssa(nir_imm_int(b, buffer_idx));
-        nir_ssa_dest_init(&size->instr, &size->dest, 1, 32, NULL);
+        nir_ssa_dest_init(&size->instr, &size->dest, 1, 32);
         nir_builder_instr_insert(b, &size->instr);
 
         /* Compute the maximum offset being accessed and if it is
@@ -204,8 +204,7 @@ lower_image(struct v3d_compile *c,
         size_inst->src[1] = nir_src_for_ssa(nir_imm_int(b, 0));
         nir_intrinsic_set_image_array(size_inst, is_array);
         size_inst->num_components = num_coords;
-        nir_ssa_dest_init(&size_inst->instr, &size_inst->dest,
-                          num_coords, 32, NULL);
+        nir_ssa_dest_init(&size_inst->instr, &size_inst->dest, num_coords, 32);
         nir_ssa_def *size = &size_inst->dest.ssa;
         nir_builder_instr_insert(b, &size_inst->instr);
 

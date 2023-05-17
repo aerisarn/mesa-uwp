@@ -114,7 +114,7 @@ implement_sub_group_ballot_builtin(nir_function *func)
       nir_intrinsic_instr_create(b.shader, nir_intrinsic_ballot);
    ballot->src[0] = nir_src_for_ssa(cond);
    ballot->num_components = 1;
-   nir_ssa_dest_init(&ballot->instr, &ballot->dest, 1, 32, NULL);
+   nir_ssa_dest_init(&ballot->instr, &ballot->dest, 1, 32);
    nir_builder_instr_insert(&b, &ballot->instr);
 
    nir_store_deref(&b, ret, &ballot->dest.ssa, ~0);
@@ -189,7 +189,7 @@ lower_kernel_intrinsics(nir_shader *nir)
             nir_intrinsic_set_range(load, nir->num_uniforms);
             nir_ssa_dest_init(&load->instr, &load->dest,
                               intrin->dest.ssa.num_components,
-                              intrin->dest.ssa.bit_size, NULL);
+                              intrin->dest.ssa.bit_size);
             nir_builder_instr_insert(&b, &load->instr);
 
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa, &load->dest.ssa);
@@ -217,7 +217,7 @@ lower_kernel_intrinsics(nir_shader *nir)
             nir_intrinsic_set_base(load, kernel_sysvals_start +
                offsetof(struct brw_kernel_sysvals, num_work_groups));
             nir_intrinsic_set_range(load, 3 * 4);
-            nir_ssa_dest_init(&load->instr, &load->dest, 3, 32, NULL);
+            nir_ssa_dest_init(&load->instr, &load->dest, 3, 32);
             nir_builder_instr_insert(&b, &load->instr);
 
             /* We may need to do a bit-size cast here */

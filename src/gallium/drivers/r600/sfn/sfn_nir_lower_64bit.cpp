@@ -249,9 +249,9 @@ class LowerSplit64op : public NirLowerInstruction {
          auto phi_lo = nir_phi_instr_create(b->shader);
          auto phi_hi = nir_phi_instr_create(b->shader);
          nir_ssa_dest_init(
-            &phi_lo->instr, &phi_lo->dest, phi->dest.ssa.num_components * 2, 32, "");
+            &phi_lo->instr, &phi_lo->dest, phi->dest.ssa.num_components * 2, 32);
          nir_ssa_dest_init(
-            &phi_hi->instr, &phi_hi->dest, phi->dest.ssa.num_components * 2, 32, "");
+            &phi_hi->instr, &phi_hi->dest, phi->dest.ssa.num_components * 2, 32);
          nir_foreach_phi_src(s, phi)
          {
             auto lo = nir_unpack_32_2x16_split_x(b, nir_ssa_for_src(b, s->src, 1));
@@ -590,7 +590,7 @@ LowerSplit64BitVar::split_double_load_uniform(nir_intrinsic_instr *intr)
    nir_intrinsic_set_range(load2, nir_intrinsic_range(intr));
    load2->num_components = second_components;
 
-   nir_ssa_dest_init(&load2->instr, &load2->dest, second_components, 64, nullptr);
+   nir_ssa_dest_init(&load2->instr, &load2->dest, second_components, 64);
    nir_builder_instr_insert(b, &load2->instr);
 
    intr->dest.ssa.num_components = intr->num_components = 2;
@@ -618,7 +618,7 @@ LowerSplit64BitVar::split_double_load_ssbo(nir_intrinsic_instr *intr)
    auto new_src0 = nir_src_for_ssa(nir_iadd_imm(b, intr->src[0].ssa, 1));
    nir_instr_rewrite_src(&load2->instr, &load2->src[0], new_src0);
    load2->num_components = second_components;
-   nir_ssa_dest_init(&load2->instr, &load2->dest, second_components, 64, nullptr);
+   nir_ssa_dest_init(&load2->instr, &load2->dest, second_components, 64);
 
    nir_intrinsic_set_dest_type(load2, nir_intrinsic_dest_type(intr));
    nir_builder_instr_insert(b, &load2->instr);
@@ -644,7 +644,7 @@ LowerSplit64BitVar::split_double_load_ubo(nir_intrinsic_instr *intr)
 
    load2->num_components = second_components;
 
-   nir_ssa_dest_init(&load2->instr, &load2->dest, second_components, 64, nullptr);
+   nir_ssa_dest_init(&load2->instr, &load2->dest, second_components, 64);
    nir_builder_instr_insert(b, &load2->instr);
 
    intr->dest.ssa.num_components = intr->num_components = 2;

@@ -1799,8 +1799,7 @@ nir_ssa_def_init(nir_instr *instr, nir_ssa_def *def,
 /* note: does *not* take ownership of 'name' */
 void
 nir_ssa_dest_init(nir_instr *instr, nir_dest *dest,
-                 unsigned num_components, unsigned bit_size,
-                 const char *name)
+                 unsigned num_components, unsigned bit_size)
 {
    dest->is_ssa = true;
    nir_ssa_def_init(instr, &dest->ssa, num_components, bit_size);

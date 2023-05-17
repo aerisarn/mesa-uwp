@@ -136,7 +136,7 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
       nir_src_for_ssa(nir_channels(b, texcoord,
                                    (1 << tex->coord_components) - 1));
 
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
    def = &tex->dest.ssa;
 
@@ -176,7 +176,7 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
       tex->src[2].src_type = nir_tex_src_coord;
       tex->src[2].src = nir_src_for_ssa(nir_channels(b, def, 0x3));
 
-      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
       nir_builder_instr_insert(b, &tex->instr);
       def_xy = &tex->dest.ssa;
 
@@ -190,7 +190,7 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
       tex->src[0].src_type = nir_tex_src_coord;
       tex->src[0].src = nir_src_for_ssa(nir_channels(b, def, 0xc));
 
-      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
       nir_builder_instr_insert(b, &tex->instr);
       def_zw = &tex->dest.ssa;
 
