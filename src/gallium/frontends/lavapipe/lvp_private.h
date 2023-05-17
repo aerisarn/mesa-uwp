@@ -208,6 +208,7 @@ struct lvp_device_memory {
    struct pipe_memory_allocation *pmem;
    uint32_t                                     type_index;
    VkDeviceSize                                 map_size;
+   VkDeviceSize                                 size;
    void *                                       map;
    enum lvp_device_memory_type memory_type;
    int                                          backed_fd;

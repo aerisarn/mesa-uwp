@@ -1590,6 +1590,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
 
    mem->memory_type = LVP_DEVICE_MEMORY_TYPE_DEFAULT;
    mem->backed_fd = -1;
+   mem->size = pAllocateInfo->allocationSize;
 
    if (host_ptr_info) {
       mem->pmem = host_ptr_info->pHostPointer;
