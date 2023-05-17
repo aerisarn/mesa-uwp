@@ -70,6 +70,26 @@ struct draw_so_target {
 };
 
 
+struct draw_vertex_info {
+   struct vertex_header *verts;
+   unsigned vertex_size;
+   unsigned stride;
+   unsigned count;
+};
+
+struct draw_prim_info {
+   boolean linear;
+   unsigned start;
+
+   const ushort *elts;
+   unsigned count;
+
+   enum mesa_prim prim;
+   unsigned flags;
+   unsigned *primitive_lengths;
+   unsigned primitive_count;
+};
+
 struct draw_context *draw_create(struct pipe_context *pipe);
 
 #ifdef DRAW_LLVM_AVAILABLE
