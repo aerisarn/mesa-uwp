@@ -2793,6 +2793,11 @@ lp_build_opt_nir(struct nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
    NIR_PASS_V(nir, nir_lower_frexp);
 
+   if (nir->info.stage == MESA_SHADER_TASK) {
+      nir_lower_task_shader_options ts_opts = { 0 };
+      NIR_PASS_V(nir, nir_lower_task_shader, ts_opts);
+   }
+
    NIR_PASS_V(nir, nir_lower_flrp, 16|32|64, true);
    NIR_PASS_V(nir, nir_lower_fp16_casts, nir_lower_fp16_all);
    do {
