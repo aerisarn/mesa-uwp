@@ -23,6 +23,8 @@
 
 #include "anv_private.h"
 
+#include "vk_nir.h"
+
 #include "compiler/brw_compiler.h"
 #include "compiler/brw_nir.h"
 #include "compiler/spirv/nir_spirv.h"
@@ -166,27 +168,15 @@ compile_upload_spirv(struct anv_device *device,
       device->physical->compiler->nir_options[MESA_SHADER_FRAGMENT];
 
    nir_shader* nir =
-      spirv_to_nir(spirv_source, spirv_source_size,
-                   NULL, 0, MESA_SHADER_FRAGMENT, "main",
-                   &spirv_options, nir_options);
+      vk_spirv_to_nir(&device->vk, spirv_source, spirv_source_size * 4,
+                      MESA_SHADER_FRAGMENT, "main", 0, NULL, &spirv_options,
+                      nir_options, NULL);
 
    assert(nir != NULL);
 
    nir->info.internal = true;
 
-   nir_validate_shader(nir, "after spirv_to_nir");
-   nir_validate_ssa_dominance(nir, "after spirv_to_nir");
-
-   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
-   NIR_PASS_V(nir, nir_lower_returns);
-   NIR_PASS_V(nir, nir_inline_functions);
-   NIR_PASS_V(nir, nir_opt_deref);
-
-   /* Pick off the single entrypoint that we want */
-   nir_remove_non_entrypoints(nir);
-
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-   NIR_PASS_V(nir, nir_copy_prop);
    NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, nir_opt_cse);
    NIR_PASS_V(nir, nir_opt_gcm, true);
