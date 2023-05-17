@@ -65,9 +65,9 @@ struct tu_compiled_shaders
    struct tu_const_state const_state[MESA_SHADER_STAGES];
    uint8_t active_desc_sets;
 
-   struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
+   const struct ir3_shader_variant *variants[MESA_SHADER_STAGES];
 
-   struct ir3_shader_variant *safe_const_variants[MESA_SHADER_STAGES];
+   const struct ir3_shader_variant *safe_const_variants[MESA_SHADER_STAGES];
 };
 
 struct tu_nir_shaders
@@ -218,7 +218,7 @@ struct tu_graphics_lib_pipeline {
       nir_shader *nir;
       struct tu_shader_key key;
       struct tu_const_state const_state;
-      struct ir3_shader_variant *variant, *safe_const_variant;
+      const struct ir3_shader_variant *variant, *safe_const_variant;
    } shaders[MESA_SHADER_FRAGMENT + 1];
 
    struct ir3_shader_key ir3_key;

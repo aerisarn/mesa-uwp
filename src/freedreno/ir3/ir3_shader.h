@@ -965,7 +965,7 @@ struct ir3_shader *
 ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
                     const struct ir3_shader_options *options,
                     struct ir3_stream_output_info *stream_output);
-uint32_t ir3_trim_constlen(struct ir3_shader_variant **variants,
+uint32_t ir3_trim_constlen(const struct ir3_shader_variant **variants,
                            const struct ir3_compiler *compiler);
 struct ir3_shader *
 ir3_shader_passthrough_tcs(struct ir3_shader *vs, unsigned patch_vertices);

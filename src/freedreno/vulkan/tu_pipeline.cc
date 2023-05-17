@@ -252,8 +252,8 @@ struct tu_pipeline_builder
    struct tu_compiled_shaders *compiled_shaders;
 
    struct tu_const_state const_state[MESA_SHADER_FRAGMENT + 1];
-   struct ir3_shader_variant *variants[MESA_SHADER_FRAGMENT + 1];
-   struct ir3_shader_variant *binning_variant;
+   const struct ir3_shader_variant *variants[MESA_SHADER_FRAGMENT + 1];
+   const struct ir3_shader_variant *binning_variant;
    uint64_t shader_iova[MESA_SHADER_FRAGMENT + 1];
    uint64_t binning_vs_iova;
 
@@ -2214,7 +2214,7 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
                         struct tu_pipeline *pipeline,
                         struct tu_pipeline_layout *layout,
                         struct tu_pipeline_builder *builder,
-                        struct ir3_shader_variant *compute)
+                        const struct ir3_shader_variant *compute)
 {
    uint32_t size = 1024;
 
@@ -2241,7 +2241,7 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
 
          builder->additional_cs_reserve_size = 0;
          for (unsigned i = 0; i < ARRAY_SIZE(builder->variants); i++) {
-            struct ir3_shader_variant *variant = builder->variants[i];
+            const struct ir3_shader_variant *variant = builder->variants[i];
             if (variant) {
                builder->additional_cs_reserve_size +=
                   tu_xs_get_additional_cs_size_dwords(variant);
@@ -2393,7 +2393,8 @@ tu_upload_variant(struct tu_pipeline *pipeline,
 }
 
 static void
-tu_append_executable(struct tu_pipeline *pipeline, struct ir3_shader_variant *variant,
+tu_append_executable(struct tu_pipeline *pipeline,\
+                     const struct ir3_shader_variant *variant,
                      char *nir_from_spirv)
 {
    struct tu_pipeline_executable exe = {
@@ -2598,10 +2599,10 @@ tu_shaders_destroy(struct vk_device *device,
       container_of(object, struct tu_compiled_shaders, base);
 
    for (unsigned i = 0; i < ARRAY_SIZE(shaders->variants); i++)
-      ralloc_free(shaders->variants[i]);
+      ralloc_free((void *)shaders->variants[i]);
 
    for (unsigned i = 0; i < ARRAY_SIZE(shaders->safe_const_variants); i++)
-      ralloc_free(shaders->safe_const_variants[i]);
+      ralloc_free((void *)shaders->safe_const_variants[i]);
 
    vk_pipeline_cache_object_finish(&shaders->base);
    vk_free(&device->alloc, shaders);
@@ -2874,7 +2875,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    nir_shader *post_link_nir[ARRAY_SIZE(nir)] = { NULL };
    struct tu_shader *shaders[ARRAY_SIZE(nir)] = { NULL };
    char *nir_initial_disasm[ARRAY_SIZE(stage_infos)] = { NULL };
-   struct ir3_shader_variant *safe_const_variants[ARRAY_SIZE(nir)] = { NULL };
+   const struct ir3_shader_variant *safe_const_variants[ARRAY_SIZE(nir)] = { NULL };
    struct tu_shader *last_shader = NULL;
 
    uint32_t desc_sets = 0;
@@ -3132,7 +3133,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       if (safe_constlens & (1 << stage)) {
          int64_t stage_start = os_time_get_nano();
 
-         ralloc_free(compiled_shaders->variants[stage]);
+         ralloc_free((void *)compiled_shaders->variants[stage]);
          compiled_shaders->variants[stage] =
             ir3_shader_create_variant(shaders[stage]->ir3_shader, &ir3_key,
                                       executable_info);
@@ -3253,10 +3254,10 @@ done:;
    }
 
    if (pipeline_contains_all_shader_state(pipeline)) {
-      struct ir3_shader_variant *vs =
+      const struct ir3_shader_variant *vs =
          builder->variants[MESA_SHADER_VERTEX];
 
-      struct ir3_shader_variant *variant;
+      const struct ir3_shader_variant *variant;
       if (!vs->stream_output.num_outputs && ir3_has_binning_vs(&vs->key)) {
          tu_append_executable(pipeline, vs->binning, NULL);
          variant = vs->binning;
@@ -3448,7 +3449,7 @@ tu_pipeline_builder_parse_layout(struct tu_pipeline_builder *builder,
 static void
 tu_pipeline_set_linkage(struct tu_program_descriptor_linkage *link,
                         struct tu_const_state *const_state,
-                        struct ir3_shader_variant *v)
+                        const struct ir3_shader_variant *v)
 {
    link->const_state = *ir3_const_state(v);
    link->tu_const_state = *const_state;
@@ -3494,10 +3495,10 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
                               builder->variants[i]);
    }
 
-   struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
-   struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
-   struct ir3_shader_variant *ds = builder->variants[MESA_SHADER_TESS_EVAL];
-   struct ir3_shader_variant *gs = builder->variants[MESA_SHADER_GEOMETRY];
+   const struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
+   const struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
+   const struct ir3_shader_variant *ds = builder->variants[MESA_SHADER_TESS_EVAL];
+   const struct ir3_shader_variant *gs = builder->variants[MESA_SHADER_GEOMETRY];
    if (hs) {
       pipeline->program.vs_param_stride = vs->output_size;
       pipeline->program.hs_param_stride = hs->output_size;
@@ -3549,7 +3550,7 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
       }
    }
 
-   struct ir3_shader_variant *last_shader;
+   const struct ir3_shader_variant *last_shader;
    if (gs)
       last_shader = gs;
    else if (ds)
@@ -5476,7 +5477,7 @@ tu_compute_pipeline_create(VkDevice device,
    TU_FROM_HANDLE(tu_pipeline_layout, layout, pCreateInfo->layout);
    const VkPipelineShaderStageCreateInfo *stage_info = &pCreateInfo->stage;
    VkResult result;
-   struct ir3_shader_variant *v = NULL;
+   const struct ir3_shader_variant *v = NULL;
    uint32_t additional_reserve_size = 0;
    uint64_t shader_iova = 0;
 

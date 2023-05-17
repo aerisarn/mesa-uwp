@@ -285,7 +285,7 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
 }
 
 static uint32_t
-sp_xs_config(struct ir3_shader_variant *v)
+sp_xs_config(const struct ir3_shader_variant *v)
 {
    if (!v)
       return 0;
@@ -1312,10 +1312,12 @@ emit_interp_state(struct fd_ringbuffer *ring, const struct fd6_program_state *st
 
 template <chip CHIP>
 static struct ir3_program_state *
-fd6_program_create(void *data, struct ir3_shader_variant *bs,
-                   struct ir3_shader_variant *vs, struct ir3_shader_variant *hs,
-                   struct ir3_shader_variant *ds, struct ir3_shader_variant *gs,
-                   struct ir3_shader_variant *fs,
+fd6_program_create(void *data, const struct ir3_shader_variant *bs,
+                   const struct ir3_shader_variant *vs, 
+                   const struct ir3_shader_variant *hs,
+                   const struct ir3_shader_variant *ds, 
+                   const struct ir3_shader_variant *gs,
+                   const struct ir3_shader_variant *fs,
                    const struct ir3_cache_key *key) in_dt
 {
    struct fd_context *ctx = fd_context((struct pipe_context *)data);

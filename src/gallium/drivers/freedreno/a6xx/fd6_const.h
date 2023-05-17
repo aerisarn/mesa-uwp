@@ -28,7 +28,7 @@
 #include "fd6_emit.h"
 
 struct fd_ringbuffer *fd6_build_tess_consts(struct fd6_emit *emit) assert_dt;
-unsigned fd6_user_consts_cmdstream_size(struct ir3_shader_variant *v);
+unsigned fd6_user_consts_cmdstream_size(const struct ir3_shader_variant *v);
 
 template <fd6_pipeline_type PIPELINE>
 struct fd_ringbuffer *fd6_build_user_consts(struct fd6_emit *emit) assert_dt;
