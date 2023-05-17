@@ -129,7 +129,19 @@ void
 llvmpipe_update_setup(struct llvmpipe_context *lp);
 
 void
+llvmpipe_update_task_shader(struct llvmpipe_context *lp);
+
+void
+llvmpipe_update_mesh_shader(struct llvmpipe_context *lp);
+
+void
 llvmpipe_update_derived_clear(struct llvmpipe_context *llvmpipe);
+
+void
+llvmpipe_task_update_derived(struct llvmpipe_context *llvmpipe);
+
+void
+llvmpipe_mesh_update_derived(struct llvmpipe_context *llvmpipe);
 
 void
 llvmpipe_update_derived(struct llvmpipe_context *llvmpipe);

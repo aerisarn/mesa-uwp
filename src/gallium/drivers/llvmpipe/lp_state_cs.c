@@ -1625,6 +1625,15 @@ lp_csctx_create(struct pipe_context *pipe)
    return csctx;
 }
 
+void
+llvmpipe_update_task_shader(struct llvmpipe_context *lp)
+{
+   if (!lp->tss)
+      return;
+   struct lp_compute_shader_variant *variant = llvmpipe_update_cs_variant(lp, PIPE_SHADER_TASK, lp->tss);
+   lp_cs_ctx_set_cs_variant(lp->task_ctx, variant);
+}
+
 static void *
 llvmpipe_create_ts_state(struct pipe_context *pipe,
                            const struct pipe_shader_state *templ)
@@ -1658,6 +1667,7 @@ llvmpipe_bind_ts_state(struct pipe_context *pipe, void *_task)
       return;
 
    llvmpipe->tss = (struct lp_compute_shader *)_task;
+   llvmpipe->dirty |= LP_NEW_TASK;
 }
 
 static void
@@ -1682,6 +1692,15 @@ llvmpipe_init_task_funcs(struct llvmpipe_context *llvmpipe)
    llvmpipe->pipe.create_ts_state = llvmpipe_create_ts_state;
    llvmpipe->pipe.bind_ts_state   = llvmpipe_bind_ts_state;
    llvmpipe->pipe.delete_ts_state = llvmpipe_delete_ts_state;
+}
+
+void
+llvmpipe_update_mesh_shader(struct llvmpipe_context *lp)
+{
+   if (!lp->mhs)
+      return;
+   struct lp_compute_shader_variant *variant = llvmpipe_update_cs_variant(lp, PIPE_SHADER_MESH, lp->mhs);
+   lp_cs_ctx_set_cs_variant(lp->mesh_ctx, variant);
 }
 
 static void *
@@ -1726,6 +1745,7 @@ llvmpipe_bind_ms_state(struct pipe_context *pipe, void *_mesh)
    llvmpipe->mhs = (struct lp_compute_shader *)_mesh;
 
    draw_bind_mesh_shader(llvmpipe->draw, _mesh ? llvmpipe->mhs->draw_mesh_data : NULL);
+   llvmpipe->dirty |= LP_NEW_MESH;
 }
 
 
@@ -1754,4 +1774,76 @@ llvmpipe_init_mesh_funcs(struct llvmpipe_context *llvmpipe)
    llvmpipe->pipe.create_ms_state = llvmpipe_create_ms_state;
    llvmpipe->pipe.bind_ms_state   = llvmpipe_bind_ms_state;
    llvmpipe->pipe.delete_ms_state = llvmpipe_delete_ms_state;
+}
+
+void
+llvmpipe_task_update_derived(struct llvmpipe_context *llvmpipe)
+{
+   if (llvmpipe->dirty & LP_NEW_TASK_CONSTANTS) {
+      lp_csctx_set_cs_constants(llvmpipe->task_ctx,
+                                ARRAY_SIZE(llvmpipe->constants[PIPE_SHADER_TASK]),
+                                llvmpipe->constants[PIPE_SHADER_TASK]);
+      update_csctx_consts(llvmpipe, llvmpipe->task_ctx);
+   }
+
+   if (llvmpipe->dirty & LP_NEW_TASK_SSBOS) {
+      lp_csctx_set_cs_ssbos(llvmpipe->task_ctx,
+                            ARRAY_SIZE(llvmpipe->ssbos[PIPE_SHADER_TASK]),
+                            llvmpipe->ssbos[PIPE_SHADER_TASK]);
+      update_csctx_ssbo(llvmpipe, llvmpipe->task_ctx);
+   }
+
+   if (llvmpipe->dirty & LP_NEW_TASK_SAMPLER_VIEW)
+      lp_csctx_set_sampler_views(llvmpipe->task_ctx,
+                                 llvmpipe->num_sampler_views[PIPE_SHADER_TASK],
+                                 llvmpipe->sampler_views[PIPE_SHADER_TASK]);
+
+   if (llvmpipe->dirty & LP_NEW_TASK_SAMPLER)
+      lp_csctx_set_sampler_state(llvmpipe->task_ctx,
+                                 llvmpipe->num_samplers[PIPE_SHADER_TASK],
+                                 llvmpipe->samplers[PIPE_SHADER_TASK]);
+
+   if (llvmpipe->dirty & LP_NEW_TASK_IMAGES)
+      lp_csctx_set_cs_images(llvmpipe->task_ctx,
+                              ARRAY_SIZE(llvmpipe->images[PIPE_SHADER_TASK]),
+                              llvmpipe->images[PIPE_SHADER_TASK]);
+
+   struct lp_cs_context *csctx = llvmpipe->task_ctx;
+   csctx->cs.current.jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
+}
+
+void
+llvmpipe_mesh_update_derived(struct llvmpipe_context *llvmpipe)
+{
+   if (llvmpipe->dirty & LP_NEW_MESH_CONSTANTS) {
+      lp_csctx_set_cs_constants(llvmpipe->mesh_ctx,
+                                ARRAY_SIZE(llvmpipe->constants[PIPE_SHADER_MESH]),
+                                llvmpipe->constants[PIPE_SHADER_MESH]);
+      update_csctx_consts(llvmpipe, llvmpipe->mesh_ctx);
+   }
+
+   if (llvmpipe->dirty & LP_NEW_MESH_SSBOS) {
+      lp_csctx_set_cs_ssbos(llvmpipe->mesh_ctx,
+                            ARRAY_SIZE(llvmpipe->ssbos[PIPE_SHADER_MESH]),
+                            llvmpipe->ssbos[PIPE_SHADER_MESH]);
+      update_csctx_ssbo(llvmpipe, llvmpipe->mesh_ctx);
+   }
+
+   if (llvmpipe->dirty & LP_NEW_MESH_SAMPLER_VIEW)
+      lp_csctx_set_sampler_views(llvmpipe->mesh_ctx,
+                                 llvmpipe->num_sampler_views[PIPE_SHADER_MESH],
+                                 llvmpipe->sampler_views[PIPE_SHADER_MESH]);
+
+   if (llvmpipe->dirty & LP_NEW_MESH_SAMPLER)
+      lp_csctx_set_sampler_state(llvmpipe->mesh_ctx,
+                                 llvmpipe->num_samplers[PIPE_SHADER_MESH],
+                                 llvmpipe->samplers[PIPE_SHADER_MESH]);
+
+   if (llvmpipe->dirty & LP_NEW_MESH_IMAGES)
+      lp_csctx_set_cs_images(llvmpipe->mesh_ctx,
+                              ARRAY_SIZE(llvmpipe->images[PIPE_SHADER_MESH]),
+                              llvmpipe->images[PIPE_SHADER_MESH]);
+
+   struct lp_cs_context *csctx = llvmpipe->mesh_ctx;
+   csctx->cs.current.jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
 }
