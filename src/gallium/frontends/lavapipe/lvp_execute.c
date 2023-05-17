@@ -1024,12 +1024,14 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    }
 
    if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VI_BINDING_STRIDES)) {
-      u_foreach_bit(b, ps->vi->bindings_valid)
-         state->vb[b].stride = ps->vi->bindings[b].stride;
-      state->vb_dirty = true;
+      if (ps->vi) {
+         u_foreach_bit(b, ps->vi->bindings_valid)
+            state->vb[b].stride = ps->vi->bindings[b].stride;
+         state->vb_dirty = true;
+      }
    }
 
-   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VI)) {
+   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VI) && ps->vi) {
       u_foreach_bit(a, ps->vi->attributes_valid) {
          uint32_t b = ps->vi->attributes[a].binding;
          state->velem.velems[a].src_offset = ps->vi->attributes[a].offset;
@@ -1056,11 +1058,11 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->ve_dirty = true;
    }
 
-   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY)) {
+   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY) && ps->ia) {
       state->info.mode = vk_conv_topology(ps->ia->primitive_topology);
       state->rs_dirty = true;
    }
-   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE))
+   if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE) && ps->ia)
       state->info.primitive_restart = ps->ia->primitive_restart_enable;
 
    if (ps->ts && !BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS)) {
