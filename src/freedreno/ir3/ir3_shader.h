@@ -910,10 +910,8 @@ ir3_const_state(const struct ir3_shader_variant *v)
    return v->const_state;
 }
 
-/* Given a variant, calculate the maximum constlen it can have.
- */
 static inline unsigned
-ir3_max_const(const struct ir3_shader_variant *v)
+_ir3_max_const(const struct ir3_shader_variant *v, bool safe_constlen)
 {
    const struct ir3_compiler *compiler = v->compiler;
    bool shared_consts_enable = ir3_const_state(v)->shared_consts_enable;
@@ -935,13 +933,30 @@ ir3_max_const(const struct ir3_shader_variant *v)
    if ((v->type == MESA_SHADER_COMPUTE) ||
        (v->type == MESA_SHADER_KERNEL)) {
       return compiler->max_const_compute - shared_consts_size;
-   } else if (v->key.safe_constlen) {
+   } else if (safe_constlen) {
       return compiler->max_const_safe - safe_shared_consts_size;
    } else if (v->type == MESA_SHADER_FRAGMENT) {
       return compiler->max_const_frag - shared_consts_size;
    } else {
       return compiler->max_const_geom - shared_consts_size_geom;
    }
+}
+
+/* Given a variant, calculate the maximum constlen it can have.
+ */
+static inline unsigned
+ir3_max_const(const struct ir3_shader_variant *v)
+{
+   return _ir3_max_const(v, v->key.safe_constlen);
+}
+
+/* Return true if a variant may need to be recompiled due to exceeding the
+ * maximum "safe" constlen.
+ */
+static inline bool
+ir3_exceeds_safe_constlen(const struct ir3_shader_variant *v)
+{
+   return v->constlen > _ir3_max_const(v, true);
 }
 
 void *ir3_shader_assemble(struct ir3_shader_variant *v);
