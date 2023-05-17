@@ -86,6 +86,7 @@ debian-testing:
       -D spirv-to-dxil=true
       -D valgrind=disabled
       -D perfetto=true
+      -D tools=drm-shim
     MINIO_ARTIFACT_NAME: mesa-amd64
     LLVM_VERSION: "13"
   script:
