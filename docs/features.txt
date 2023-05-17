@@ -574,7 +574,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_index_type_uint8                               DONE (anv, lvp, panvk, radv/gfx8+, v3dv, tu, vn)
   VK_EXT_line_rasterization                             DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_EXT_load_store_op_none                             DONE (anv, radv, tu, v3dv, vn)
-  VK_EXT_memory_budget                                  DONE (anv, radv, tu, v3dv, vn)
+  VK_EXT_memory_budget                                  DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_EXT_memory_priority                                DONE (radv)
   VK_EXT_mesh_shader                                    DONE (anv/gfx12.5+, radv)
   VK_EXT_multi_draw                                     DONE (anv, lvp, radv, tu, vn)

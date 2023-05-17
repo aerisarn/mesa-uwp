@@ -166,6 +166,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_image_robustness                  = true,
    .EXT_index_type_uint8                  = true,
    .EXT_inline_uniform_block              = true,
+   .EXT_memory_budget                     = true,
    .EXT_multisampled_render_to_single_sampled = true,
    .EXT_multi_draw                        = true,
    .EXT_non_seamless_cube_map             = true,
@@ -1169,6 +1170,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          /* this is basically unsupported */
          lvp_device_get_cache_uuid(props->shaderBinaryUUID);
          props->shaderBinaryVersion = 1;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
+         VkPhysicalDeviceMemoryBudgetPropertiesEXT *props = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)ext;
+         os_get_total_physical_memory(&props->heapBudget[0]);
+         os_get_available_system_memory(&props->heapUsage[0]);
+         props->heapUsage[0] = props->heapBudget[0] - props->heapUsage[0];
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
