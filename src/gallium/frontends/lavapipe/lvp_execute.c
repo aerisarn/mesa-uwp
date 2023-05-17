@@ -380,6 +380,12 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
    case MESA_SHADER_GEOMETRY:
       state->pctx->bind_gs_state(state->pctx, shader_state);
       break;
+   case MESA_SHADER_TASK:
+      state->pctx->bind_ts_state(state->pctx, shader_state);
+      break;
+   case MESA_SHADER_MESH:
+      state->pctx->bind_ms_state(state->pctx, shader_state);
+      break;
    case MESA_SHADER_FRAGMENT:
       state->pctx->bind_fs_state(state->pctx, shader_state);
       state->noop_fs_bound = false;
@@ -740,6 +746,24 @@ handle_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
          if (!dynamic_tess_origin)
             state->tess_ccw = false;
          break;
+      case VK_SHADER_STAGE_TASK_BIT_EXT:
+         state->inlines_dirty[MESA_SHADER_TASK] = state->shaders[MESA_SHADER_TASK]->inlines.can_inline;
+         state->dispatch_info.block[0] = state->shaders[MESA_SHADER_TASK]->pipeline_nir->nir->info.workgroup_size[0];
+         state->dispatch_info.block[1] = state->shaders[MESA_SHADER_TASK]->pipeline_nir->nir->info.workgroup_size[1];
+         state->dispatch_info.block[2] = state->shaders[MESA_SHADER_TASK]->pipeline_nir->nir->info.workgroup_size[2];
+         if (!state->shaders[MESA_SHADER_TASK]->inlines.can_inline)
+            state->pctx->bind_ts_state(state->pctx, state->shaders[MESA_SHADER_TASK]->shader_cso);
+         break;
+      case VK_SHADER_STAGE_MESH_BIT_EXT:
+         state->inlines_dirty[MESA_SHADER_MESH] = state->shaders[MESA_SHADER_MESH]->inlines.can_inline;
+         if (!(shader_stages & VK_SHADER_STAGE_TASK_BIT_EXT)) {
+            state->dispatch_info.block[0] = state->shaders[MESA_SHADER_MESH]->pipeline_nir->nir->info.workgroup_size[0];
+            state->dispatch_info.block[1] = state->shaders[MESA_SHADER_MESH]->pipeline_nir->nir->info.workgroup_size[1];
+            state->dispatch_info.block[2] = state->shaders[MESA_SHADER_MESH]->pipeline_nir->nir->info.workgroup_size[2];
+         }
+         if (!state->shaders[MESA_SHADER_MESH]->inlines.can_inline)
+            state->pctx->bind_ms_state(state->pctx, state->shaders[MESA_SHADER_MESH]->shader_cso);
+         break;
       default:
          assert(0);
          break;
@@ -778,6 +802,14 @@ unbind_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
          if (state->shaders[MESA_SHADER_VERTEX])
             state->pctx->bind_vs_state(state->pctx, NULL);
          break;
+      case MESA_SHADER_TASK:
+         if (state->shaders[MESA_SHADER_TASK])
+            state->pctx->bind_ts_state(state->pctx, NULL);
+         break;
+      case MESA_SHADER_MESH:
+         if (state->shaders[MESA_SHADER_MESH])
+            state->pctx->bind_ms_state(state->pctx, NULL);
+         break;
       default:
          unreachable("what stage is this?!");
       }
@@ -805,7 +837,11 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
    lvp_pipeline_shaders_compile(pipeline);
    bool dynamic_tess_origin = BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN);
-   unbind_graphics_stages(state, (~pipeline->graphics_state.shader_stages) & VK_SHADER_STAGE_ALL_GRAPHICS);
+   unbind_graphics_stages(state,
+                          (~pipeline->graphics_state.shader_stages) &
+                          (VK_SHADER_STAGE_ALL_GRAPHICS |
+                           VK_SHADER_STAGE_TASK_BIT_EXT |
+                           VK_SHADER_STAGE_MESH_BIT_EXT));
    lvp_forall_gfx_stage(sh) {
       if (pipeline->graphics_state.shader_stages & mesa_to_vk_shader_stage(sh))
          state->shaders[sh] = &pipeline->shaders[sh];
@@ -1442,6 +1478,12 @@ static void handle_descriptor_sets(struct vk_cmd_queue_entry *cmd,
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
          handle_set_stage(state, &dyn_info, set, MESA_SHADER_FRAGMENT, MESA_SHADER_FRAGMENT);
+
+      if (set->layout->shader_stages & VK_SHADER_STAGE_TASK_BIT_EXT)
+         handle_set_stage(state, &dyn_info, set, MESA_SHADER_TASK, MESA_SHADER_TASK);
+
+      if (set->layout->shader_stages & VK_SHADER_STAGE_MESH_BIT_EXT)
+         handle_set_stage(state, &dyn_info, set, MESA_SHADER_MESH, MESA_SHADER_MESH);
 
       increment_dyn_info(&dyn_info, layout->vk.set_layouts[bds->first_set + i], true);
    }
@@ -2842,12 +2884,16 @@ static void handle_push_constants(struct vk_cmd_queue_entry *cmd,
    state->pcbuf_dirty[MESA_SHADER_TESS_CTRL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) > 0;
    state->pcbuf_dirty[MESA_SHADER_TESS_EVAL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) > 0;
    state->pcbuf_dirty[MESA_SHADER_COMPUTE] |= (stage_flags & VK_SHADER_STAGE_COMPUTE_BIT) > 0;
+   state->pcbuf_dirty[MESA_SHADER_TASK] |= (stage_flags & VK_SHADER_STAGE_TASK_BIT_EXT) > 0;
+   state->pcbuf_dirty[MESA_SHADER_MESH] |= (stage_flags & VK_SHADER_STAGE_MESH_BIT_EXT) > 0;
    state->inlines_dirty[MESA_SHADER_VERTEX] |= (stage_flags & VK_SHADER_STAGE_VERTEX_BIT) > 0;
    state->inlines_dirty[MESA_SHADER_FRAGMENT] |= (stage_flags & VK_SHADER_STAGE_FRAGMENT_BIT) > 0;
    state->inlines_dirty[MESA_SHADER_GEOMETRY] |= (stage_flags & VK_SHADER_STAGE_GEOMETRY_BIT) > 0;
    state->inlines_dirty[MESA_SHADER_TESS_CTRL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) > 0;
    state->inlines_dirty[MESA_SHADER_TESS_EVAL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) > 0;
    state->inlines_dirty[MESA_SHADER_COMPUTE] |= (stage_flags & VK_SHADER_STAGE_COMPUTE_BIT) > 0;
+   state->inlines_dirty[MESA_SHADER_TASK] |= (stage_flags & VK_SHADER_STAGE_TASK_BIT_EXT) > 0;
+   state->inlines_dirty[MESA_SHADER_MESH] |= (stage_flags & VK_SHADER_STAGE_MESH_BIT_EXT) > 0;
 }
 
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
@@ -3468,6 +3514,16 @@ static void handle_push_descriptor_set_generic(struct vk_cmd_push_descriptor_set
          if (layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
             handle_descriptor(state, &dyn_info, binding,
                               MESA_SHADER_TESS_EVAL, MESA_SHADER_TESS_EVAL,
+                              j, desc->descriptor_type,
+                              info);
+         if (layout->shader_stages & VK_SHADER_STAGE_TASK_BIT_EXT)
+            handle_descriptor(state, &dyn_info, binding,
+                              MESA_SHADER_TASK, MESA_SHADER_TASK,
+                              j, desc->descriptor_type,
+                              info);
+         if (layout->shader_stages & VK_SHADER_STAGE_MESH_BIT_EXT)
+            handle_descriptor(state, &dyn_info, binding,
+                              MESA_SHADER_MESH, MESA_SHADER_MESH,
                               j, desc->descriptor_type,
                               info);
       }

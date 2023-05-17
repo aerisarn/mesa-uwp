@@ -192,6 +192,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
       VK_SHADER_STAGE_GEOMETRY_BIT,
       VK_SHADER_STAGE_FRAGMENT_BIT,
       VK_SHADER_STAGE_COMPUTE_BIT,
+      VK_SHADER_STAGE_TASK_BIT_EXT,
+      VK_SHADER_STAGE_MESH_BIT_EXT,
    };
    lvp_forall_stage(i) {
       uint16_t const_buffer_count = 0;
@@ -256,6 +258,8 @@ lvp_pipeline_layout_create(struct lvp_device *device,
       VK_SHADER_STAGE_GEOMETRY_BIT,
       VK_SHADER_STAGE_FRAGMENT_BIT,
       VK_SHADER_STAGE_COMPUTE_BIT,
+      VK_SHADER_STAGE_TASK_BIT_EXT,
+      VK_SHADER_STAGE_MESH_BIT_EXT,
    };
 
    lvp_forall_stage(i) {

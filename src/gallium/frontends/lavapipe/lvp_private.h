@@ -113,7 +113,7 @@ void __lvp_finishme(const char *file, int line, const char *format, ...)
       return; \
    } while (0)
 
-#define LVP_SHADER_STAGES MESA_SHADER_STAGES
+#define LVP_SHADER_STAGES (MESA_SHADER_MESH + 1)
 #define LVP_STAGE_MASK BITFIELD_MASK(LVP_SHADER_STAGES)
 #define LVP_STAGE_MASK_GFX (BITFIELD_MASK(LVP_SHADER_STAGES) & ~BITFIELD_BIT(MESA_SHADER_COMPUTE))
 
