@@ -38,7 +38,6 @@ struct st_fp_variant_key;
 
 nir_shader *
 st_translate_atifs_program(struct ati_fragment_shader *atifs,
-                           const struct st_fp_variant_key *key,
                            struct gl_program *program,
                            const nir_shader_compiler_options *options);
 

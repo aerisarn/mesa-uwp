@@ -38,7 +38,6 @@
 struct st_translate {
    nir_builder *b;
    struct ati_fragment_shader *atifs;
-   const struct st_fp_variant_key *key;
 
    nir_ssa_def *temps[MAX_PROGRAM_TEMPS];
 
@@ -433,7 +432,6 @@ st_atifs_setup_uniforms(struct st_translate *t, struct gl_program *program)
  */
 nir_shader *
 st_translate_atifs_program(struct ati_fragment_shader *atifs,
-                           const struct st_fp_variant_key *key,
                            struct gl_program *program,
                            const nir_shader_compiler_options *options)
 {
@@ -442,7 +440,6 @@ st_translate_atifs_program(struct ati_fragment_shader *atifs,
    struct st_translate translate = {
       .atifs = atifs,
       .b = &b,
-      .key = key,
    };
    struct st_translate *t = &translate;
 
@@ -540,57 +537,24 @@ st_init_atifs_prog(struct gl_context *ctx, struct gl_program *prog)
    /* we know this is st_fragment_program, because of st_new_ati_fs() */
    struct ati_fragment_shader *atifs = prog->ati_fs;
 
-   unsigned pass, i, r, optype, arg;
+   unsigned pass, i, r;
 
-   prog->info.inputs_read = 0;
-   prog->info.outputs_written = BITFIELD64_BIT(FRAG_RESULT_COLOR);
    prog->SamplersUsed = 0;
    prog->Parameters = _mesa_new_parameter_list();
 
-   /* fill in inputs_read, SamplersUsed, TexturesUsed */
+   /* fill in SamplersUsed, TexturesUsed */
    for (pass = 0; pass < atifs->NumPasses; pass++) {
       for (r = 0; r < MAX_NUM_FRAGMENT_REGISTERS_ATI; r++) {
          struct atifs_setupinst *texinst = &atifs->SetupInst[pass][r];
-         GLuint pass_tex = texinst->src;
 
          if (texinst->Opcode == ATI_FRAGMENT_SHADER_SAMPLE_OP) {
-            /* mark which texcoords are used */
-            prog->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_TEX0 + pass_tex - GL_TEXTURE0_ARB);
             /* by default there is 1:1 mapping between samplers and textures */
             prog->SamplersUsed |= (1 << r);
             /* the target is unknown here, it will be fixed in the draw call */
             prog->TexturesUsed[r] = TEXTURE_2D_BIT;
-         } else if (texinst->Opcode == ATI_FRAGMENT_SHADER_PASS_OP) {
-            if (pass_tex >= GL_TEXTURE0_ARB && pass_tex <= GL_TEXTURE7_ARB) {
-               prog->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_TEX0 + pass_tex - GL_TEXTURE0_ARB);
-            }
          }
       }
    }
-   for (pass = 0; pass < atifs->NumPasses; pass++) {
-      for (i = 0; i < atifs->numArithInstr[pass]; i++) {
-         struct atifs_instruction *inst = &atifs->Instructions[pass][i];
-
-         for (optype = 0; optype < 2; optype++) { /* color, alpha */
-            if (inst->Opcode[optype]) {
-               for (arg = 0; arg < inst->ArgCount[optype]; arg++) {
-                  GLint index = inst->SrcReg[optype][arg].Index;
-                  if (index == GL_PRIMARY_COLOR_EXT) {
-                     prog->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_COL0);
-                  } else if (index == GL_SECONDARY_INTERPOLATOR_ATI) {
-                     /* note: ATI_fragment_shader.txt never specifies what
-                      * GL_SECONDARY_INTERPOLATOR_ATI is, swrast uses
-                      * VARYING_SLOT_COL1 for this input */
-                     prog->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_COL1);
-                  }
-               }
-            }
-         }
-      }
-   }
-
-   /* we may need fog */
-   prog->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_FOGC);
 
    /* we always have the ATI_fs constants */
    for (i = 0; i < MAX_NUM_FRAGMENT_CONSTANTS_ATI; i++) {

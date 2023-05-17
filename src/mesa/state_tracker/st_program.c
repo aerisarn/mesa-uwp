@@ -856,22 +856,35 @@ st_translate_fragment_program(struct st_context *st,
                                   ST_NEW_FS_SAMPLERS;
    }
 
-   /* Translate to NIR.  ATI_fs translates at variant time. */
-   if (!prog->ati_fs) {
-      if (prog->nir && prog->arb.Instructions)
-         ralloc_free(prog->nir);
+   /* Translate to NIR. */
+   if (prog->nir && prog->arb.Instructions)
+      ralloc_free(prog->nir);
 
-      if (prog->serialized_nir) {
-         free(prog->serialized_nir);
-         prog->serialized_nir = NULL;
-      }
+   if (prog->serialized_nir) {
+      free(prog->serialized_nir);
+      prog->serialized_nir = NULL;
+   }
 
-      prog->state.type = PIPE_SHADER_IR_NIR;
-      if (prog->arb.Instructions)
-         prog->nir = st_translate_prog_to_nir(st, prog,
-                                             MESA_SHADER_FRAGMENT);
-      st_prog_to_nir_postprocess(st, prog->nir, prog);
-      prog->info = prog->nir->info;
+   prog->state.type = PIPE_SHADER_IR_NIR;
+   if (prog->arb.Instructions) {
+      prog->nir = st_translate_prog_to_nir(st, prog,
+                                          MESA_SHADER_FRAGMENT);
+   } else if (prog->ati_fs) {
+      const struct nir_shader_compiler_options *options =
+         st_get_nir_compiler_options(st, MESA_SHADER_FRAGMENT);
+
+      assert(!prog->nir);
+      prog->nir = st_translate_atifs_program(prog->ati_fs, prog, options);
+   }
+   st_prog_to_nir_postprocess(st, prog->nir, prog);
+
+   prog->info = prog->nir->info;
+   if (prog->ati_fs) {
+      /* ATI_fs will lower fixed function fog at variant time, after the FF vertex
+       * prog has been generated.  So we have to always declare a read of FOGC so
+       * that FF vp feeds it to us just in case.
+       */
+      prog->info.inputs_read |= VARYING_BIT_FOGC;
    }
 
    return true;
@@ -902,18 +915,7 @@ st_create_fp_variant(struct st_context *st,
    /* Translate ATI_fs to NIR at variant time because that's when we have the
     * texture types.
     */
-   if (fp->ati_fs) {
-      const struct nir_shader_compiler_options *options =
-         st_get_nir_compiler_options(st, MESA_SHADER_FRAGMENT);
-
-      nir_shader *s = st_translate_atifs_program(fp->ati_fs, key, fp, options);
-
-      st_prog_to_nir_postprocess(st, s, fp);
-
-      state.ir.nir = s;
-   } else {
-      state.ir.nir = get_nir_shader(st, fp);
-   }
+   state.ir.nir = get_nir_shader(st, fp);
    state.type = PIPE_SHADER_IR_NIR;
 
    bool finalize = false;
