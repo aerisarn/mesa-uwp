@@ -26,6 +26,6 @@ to
 Further names follow the `CHIP_*` enum values. By default, the `CHIP_RENOIR`
 device is exposed.
 
-To add a new device, `amdgpu_noop_drm_shim.c` needs to be modified.
+To add a new device, `amdgpu_devices.c` needs to be modified.
 `amdgpu_dump_states` can be used to dump the relevant states from a real
 device.
