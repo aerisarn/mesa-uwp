@@ -365,7 +365,6 @@ private:
 
    class InstructionChain : public InstrVisitor {
    public:
-      void visit(AluInstr *instr) override { (void)instr; }
       void visit(AluGroup *instr) override { (void)instr; }
       void visit(TexInstr *instr) override { (void)instr; }
       void visit(ExportInstr *instr) override { (void)instr; }
@@ -380,6 +379,7 @@ private:
       void visit(LDSAtomicInstr *instr) override { (void)instr; }
       void visit(LDSReadInstr *instr) override { (void)instr; }
 
+      void visit(AluInstr *instr) override;
       void visit(ScratchIOInstr *instr) override;
       void visit(GDSInstr *instr) override;
       void visit(RatInstr *instr) override;
@@ -390,6 +390,7 @@ private:
       Instr *last_scratch_instr{nullptr};
       Instr *last_gds_instr{nullptr};
       Instr *last_ssbo_instr{nullptr};
+      Instr *last_kill_instr{nullptr};
       bool prepare_mem_barrier{false};
    };
 

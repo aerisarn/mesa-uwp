@@ -1159,6 +1159,21 @@ Shader::emit_wait_ack()
    return true;
 }
 
+void Shader::InstructionChain::visit(AluInstr *instr)
+{
+   if (instr->is_kill()) {
+      last_kill_instr = instr;
+
+      // these instructions have side effects, they should
+      // not be re-order with kill
+      if (last_gds_instr)
+         instr->add_required_instr(last_gds_instr);
+
+      if (last_ssbo_instr)
+         instr->add_required_instr(last_ssbo_instr);
+   }
+}
+
 void
 Shader::InstructionChain::visit(ScratchIOInstr *instr)
 {
@@ -1173,6 +1188,9 @@ Shader::InstructionChain::visit(GDSInstr *instr)
    for (auto& loop : this_shader->m_loops) {
       loop->set_instr_flag(flag);
    }
+   if (last_kill_instr)
+      instr->add_required_instr(last_kill_instr);
+
 }
 
 void
@@ -1189,6 +1207,9 @@ Shader::InstructionChain::visit(RatInstr *instr)
 
    if (this_shader->m_current_block->inc_rat_emitted() > 15)
       this_shader->start_new_block(0);
+
+   if (last_kill_instr)
+      instr->add_required_instr(last_kill_instr);
 }
 
 void
