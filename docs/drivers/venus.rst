@@ -57,7 +57,9 @@ build virglrenderer with Venus support and to start the vtest server,
     $ cd virglrenderer
     $ meson out -Dvenus=true
     $ ninja -C out
-    $ ./out/vtest/virgl_test_server --venus
+    $ meson devenv -C out
+    $ ./vtest/virgl_test_server --venus
+    $ exit
 
 In another shell,
 
