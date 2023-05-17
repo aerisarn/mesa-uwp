@@ -51,9 +51,12 @@
 #include "util/mesa-sha1.h"
 #include "nir_serialize.h"
 
+#include "draw/draw_context.h"
 
 /** Fragment shader number (for debugging) */
 static unsigned cs_no = 0;
+static unsigned task_no = 0;
+static unsigned mesh_no = 0;
 
 struct lp_cs_job_info {
    unsigned grid_size[3];
@@ -1620,4 +1623,135 @@ lp_csctx_create(struct pipe_context *pipe)
 
    csctx->pipe = pipe;
    return csctx;
+}
+
+static void *
+llvmpipe_create_ts_state(struct pipe_context *pipe,
+                           const struct pipe_shader_state *templ)
+{
+   struct lp_compute_shader *shader = CALLOC_STRUCT(lp_compute_shader);
+   if (!shader)
+      return NULL;
+
+   shader->no = task_no++;
+   shader->base.type = templ->type;
+
+   shader->base.ir.nir = templ->ir.nir;
+   shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.shared_size;
+   nir_tgsi_scan_shader(shader->base.ir.nir, &shader->info.base, false);
+   list_inithead(&shader->variants.list);
+
+   int nr_samplers = shader->info.base.file_max[TGSI_FILE_SAMPLER] + 1;
+   int nr_sampler_views = shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
+   int nr_images = shader->info.base.file_max[TGSI_FILE_IMAGE] + 1;
+   shader->variant_key_size = lp_cs_variant_key_size(MAX2(nr_samplers, nr_sampler_views), nr_images);
+   return shader;
+}
+
+
+static void
+llvmpipe_bind_ts_state(struct pipe_context *pipe, void *_task)
+{
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+
+   if (llvmpipe->tss == _task)
+      return;
+
+   llvmpipe->tss = (struct lp_compute_shader *)_task;
+}
+
+static void
+llvmpipe_delete_ts_state(struct pipe_context *pipe, void *_task)
+{
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+   struct lp_compute_shader *shader = _task;
+   struct lp_cs_variant_list_item *li, *next;
+
+   /* Delete all the variants */
+   LIST_FOR_EACH_ENTRY_SAFE(li, next, &shader->variants.list, list) {
+      llvmpipe_remove_cs_shader_variant(llvmpipe, li->base);
+   }
+   if (shader->base.ir.nir)
+      ralloc_free(shader->base.ir.nir);
+   FREE(shader);
+}
+
+void
+llvmpipe_init_task_funcs(struct llvmpipe_context *llvmpipe)
+{
+   llvmpipe->pipe.create_ts_state = llvmpipe_create_ts_state;
+   llvmpipe->pipe.bind_ts_state   = llvmpipe_bind_ts_state;
+   llvmpipe->pipe.delete_ts_state = llvmpipe_delete_ts_state;
+}
+
+static void *
+llvmpipe_create_ms_state(struct pipe_context *pipe,
+                           const struct pipe_shader_state *templ)
+{
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+   struct lp_compute_shader *shader = CALLOC_STRUCT(lp_compute_shader);
+   if (!shader)
+      return NULL;
+
+   shader->no = mesh_no++;
+   shader->base.type = templ->type;
+
+   shader->base.ir.nir = templ->ir.nir;
+   shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.shared_size;
+   nir_tgsi_scan_shader(shader->base.ir.nir, &shader->info.base, false);
+   list_inithead(&shader->variants.list);
+
+   shader->draw_mesh_data = draw_create_mesh_shader(llvmpipe->draw, templ);
+   if (shader->draw_mesh_data == NULL) {
+      FREE(shader);
+      return NULL;
+   }
+
+   int nr_samplers = shader->info.base.file_max[TGSI_FILE_SAMPLER] + 1;
+   int nr_sampler_views = shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
+   int nr_images = shader->info.base.file_max[TGSI_FILE_IMAGE] + 1;
+   shader->variant_key_size = lp_cs_variant_key_size(MAX2(nr_samplers, nr_sampler_views), nr_images);
+   return shader;
+}
+
+
+static void
+llvmpipe_bind_ms_state(struct pipe_context *pipe, void *_mesh)
+{
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+
+   if (llvmpipe->mhs == _mesh)
+      return;
+
+   llvmpipe->mhs = (struct lp_compute_shader *)_mesh;
+
+   draw_bind_mesh_shader(llvmpipe->draw, _mesh ? llvmpipe->mhs->draw_mesh_data : NULL);
+}
+
+
+static void
+llvmpipe_delete_ms_state(struct pipe_context *pipe, void *_mesh)
+{
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+   struct lp_compute_shader *shader = _mesh;
+   struct lp_cs_variant_list_item *li, *next;
+
+   /* Delete all the variants */
+   LIST_FOR_EACH_ENTRY_SAFE(li, next, &shader->variants.list, list) {
+      llvmpipe_remove_cs_shader_variant(llvmpipe, li->base);
+   }
+
+   draw_delete_mesh_shader(llvmpipe->draw, shader->draw_mesh_data);
+   if (shader->base.ir.nir)
+      ralloc_free(shader->base.ir.nir);
+
+   FREE(shader);
+}
+
+void
+llvmpipe_init_mesh_funcs(struct llvmpipe_context *llvmpipe)
+{
+   llvmpipe->pipe.create_ms_state = llvmpipe_create_ms_state;
+   llvmpipe->pipe.bind_ms_state   = llvmpipe_bind_ms_state;
+   llvmpipe->pipe.delete_ms_state = llvmpipe_delete_ms_state;
 }

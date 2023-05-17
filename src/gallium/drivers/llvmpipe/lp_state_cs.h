@@ -110,6 +110,7 @@ struct lp_compute_shader {
 
    struct lp_tgsi_info info;
 
+   struct draw_mesh_shader *draw_mesh_data;
    uint32_t req_local_mem;
 
    /* For debugging/profiling purposes */

@@ -153,6 +153,12 @@ void
 llvmpipe_init_tess_funcs(struct llvmpipe_context *llvmpipe);
 
 void
+llvmpipe_init_task_funcs(struct llvmpipe_context *llvmpipe);
+
+void
+llvmpipe_init_mesh_funcs(struct llvmpipe_context *llvmpipe);
+
+void
 llvmpipe_init_rasterizer_funcs(struct llvmpipe_context *llvmpipe);
 
 void

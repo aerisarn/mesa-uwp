@@ -74,6 +74,9 @@ struct llvmpipe_context {
    const struct lp_velems_state *velems;
    const struct lp_so_state *so;
 
+   struct lp_compute_shader *tss;
+   struct lp_compute_shader *mhs;
+
    /** Other rendering state */
    unsigned sample_mask;
    unsigned min_samples;
@@ -170,6 +173,9 @@ struct llvmpipe_context {
    unsigned nr_cs_variants;
    unsigned nr_cs_instrs;
    struct lp_cs_context *csctx;
+
+   struct lp_cs_context *task_ctx;
+   struct lp_cs_context *mesh_ctx;
 
    /** Conditional query object and mode */
    struct pipe_query *render_cond_query;
