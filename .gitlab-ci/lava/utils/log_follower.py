@@ -293,5 +293,18 @@ def fatal_err(msg, exception=None):
     sys.exit(1)
 
 
-def hide_sensitive_data(yaml_data: str, hide_tag: str ="HIDEME"):
-    return "".join(line for line in yaml_data.splitlines(True) if hide_tag not in line)
+def hide_sensitive_data(yaml_data: str, start_hide: str = "HIDE_START", end_hide: str = "HIDE_END") -> str:
+    skip_line = False
+    dump_data: list[str] = []
+    for line in yaml_data.splitlines(True):
+        if start_hide in line:
+            skip_line = True
+        elif end_hide in line:
+            skip_line = False
+
+        if skip_line:
+            continue
+
+        dump_data.append(line)
+
+    return "".join(dump_data)

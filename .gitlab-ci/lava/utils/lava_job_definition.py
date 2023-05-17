@@ -127,9 +127,9 @@ def artifact_download_steps(args):
     if args.jwt_file:
         with open(args.jwt_file) as jwt_file:
             download_steps += [
-                "set +x",
-                f'echo -n "{jwt_file.read()}" > "{args.jwt_file}" # HIDEME',
-                "set -x",
+                "set +x  # HIDE_START",
+                f'echo -n "{jwt_file.read()}" > "{args.jwt_file}"',
+                "set -x  # HIDE_END",
                 f'echo "export CI_JOB_JWT_FILE={args.jwt_file}" >> /set-job-env-vars.sh',
             ]
     else:

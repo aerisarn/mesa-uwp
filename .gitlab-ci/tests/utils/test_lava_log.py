@@ -153,29 +153,29 @@ SENSITIVE_DATA_SCENARIOS = {
     "no sensitive data tagged": (
         ["bla  bla", "mytoken: asdkfjsde1341=="],
         ["bla  bla", "mytoken: asdkfjsde1341=="],
-        "HIDEME",
+        ["HIDEME"],
     ),
     "sensitive data tagged": (
         ["bla  bla", "mytoken: asdkfjsde1341== # HIDEME"],
         ["bla  bla"],
-        "HIDEME",
+        ["HIDEME"],
     ),
     "sensitive data tagged with custom word": (
-        ["bla  bla", "mytoken: asdkfjsde1341== # DELETETHISLINE", "third line"],
-        ["bla  bla", "third line"],
-        "DELETETHISLINE",
+        ["bla  bla", "mytoken: asdkfjsde1341== # DELETETHISLINE", "third line # NOTANYMORE"],
+        ["bla  bla", "third line # NOTANYMORE"],
+        ["DELETETHISLINE", "NOTANYMORE"],
     ),
 }
 
 
 @pytest.mark.parametrize(
-    "input, expectation, tag",
+    "input, expectation, tags",
     SENSITIVE_DATA_SCENARIOS.values(),
     ids=SENSITIVE_DATA_SCENARIOS.keys(),
 )
-def test_hide_sensitive_data(input, expectation, tag):
+def test_hide_sensitive_data(input, expectation, tags):
     yaml_data = yaml_dump(input)
-    yaml_result = hide_sensitive_data(yaml_data, tag)
+    yaml_result = hide_sensitive_data(yaml_data, *tags)
     result = lava_yaml.load(yaml_result)
 
     assert result == expectation
