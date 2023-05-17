@@ -339,11 +339,12 @@ compile_setupinst(struct st_translate *t,
    if (texinst->Opcode == ATI_FRAGMENT_SHADER_SAMPLE_OP) {
       nir_variable *tex_var = t->samplers[r];
       if (!tex_var) {
-         bool is_array;
-         enum glsl_sampler_dim sampler_dim =
-             _mesa_texture_index_to_sampler_dim(t->key->texture_index[r], &is_array);
+         /* The actual sampler dim will be determined at draw time and lowered
+          * by st_nir_update_atifs_samplers. Setting it to 3D for now means we
+          * don't optimize out coordinate channels we may need later.
+          */
          const struct glsl_type *sampler_type =
-             glsl_sampler_type(sampler_dim, false, false, GLSL_TYPE_FLOAT);
+             glsl_sampler_type(GLSL_SAMPLER_DIM_3D, false, false, GLSL_TYPE_FLOAT);
 
          tex_var = nir_variable_create(t->b->shader, nir_var_uniform, sampler_type, "tex");
          tex_var->data.binding = r;
@@ -476,6 +477,59 @@ st_translate_atifs_program(struct ati_fragment_shader *atifs,
    return b.shader;
 }
 
+static bool
+st_nir_lower_atifs_samplers_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   const uint8_t *texture_index = data;
+
+   /* Can't just do this in tex handling below, as llvmpipe leaves dead code
+    * derefs around.
+    */
+   if (instr->type == nir_instr_type_deref) {
+      nir_deref_instr *deref = nir_instr_as_deref(instr);
+      nir_variable *var = nir_deref_instr_get_variable(deref);
+      if (glsl_type_is_sampler(var->type))
+         deref->type = var->type;
+   }
+
+   if (instr->type != nir_instr_type_tex)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+
+   nir_tex_instr *tex = nir_instr_as_tex(instr);
+
+   unsigned unit;
+   int sampler_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
+   if (sampler_src_idx >= 0) {
+      nir_deref_instr *deref = nir_src_as_deref(tex->src[sampler_src_idx].src);
+      nir_variable *var = nir_deref_instr_get_variable(deref);
+      unit = var->data.binding;
+   } else {
+      unit = tex->sampler_index;
+   }
+
+   bool is_array;
+   tex->sampler_dim =
+       _mesa_texture_index_to_sampler_dim(texture_index[unit], &is_array);
+
+   int coords_idx = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   assert(coords_idx >= 0);
+   int coord_components =
+       glsl_get_sampler_dim_coordinate_components(tex->sampler_dim);
+   /* Trim unused coords, or append undefs as necessary (if someone
+    * accidentally enables a cube array).
+    */
+   if (coord_components != tex->coord_components) {
+      nir_ssa_def *coords = nir_ssa_for_src(b, tex->src[coords_idx].src, tex->coord_components);
+      nir_instr_rewrite_src_ssa(instr, &tex->src[coords_idx].src,
+                                nir_resize_vector(b, coords, coord_components));
+      tex->coord_components = coord_components;
+   }
+
+   return true;
+}
+
 /**
  * Called in ProgramStringNotify, we need to fill the metadata of the
  * gl_program attached to the ati_fragment_shader
@@ -543,4 +597,25 @@ st_init_atifs_prog(struct gl_context *ctx, struct gl_program *prog)
       _mesa_add_parameter(prog->Parameters, PROGRAM_UNIFORM,
                           NULL, 4, GL_FLOAT, NULL, NULL, true);
    }
+}
+
+/**
+ * Rewrites sampler dimensions and coordinate components for the currently
+ * active texture unit at draw time.
+ */
+bool
+st_nir_lower_atifs_samplers(struct nir_shader *s, const uint8_t *texture_index)
+{
+   nir_foreach_uniform_variable(var, s) {
+      if (!glsl_type_is_sampler(var->type))
+         continue;
+      bool is_array;
+      enum glsl_sampler_dim sampler_dim =
+          _mesa_texture_index_to_sampler_dim(texture_index[var->data.binding], &is_array);
+      var->type = glsl_sampler_type(sampler_dim, false, is_array, GLSL_TYPE_FLOAT);
+   }
+
+   return nir_shader_instructions_pass(s, st_nir_lower_atifs_samplers_instr,\
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance, (void *)texture_index);
 }

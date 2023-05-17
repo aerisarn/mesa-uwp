@@ -926,6 +926,9 @@ st_create_fp_variant(struct st_context *st,
             true, false);
          nir_lower_global_vars_to_local(state.ir.nir);
       }
+
+      NIR_PASS_V(state.ir.nir, st_nir_lower_atifs_samplers, key->texture_index);
+
       finalize = true;
    }
 
