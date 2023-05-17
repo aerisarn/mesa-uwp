@@ -80,7 +80,7 @@ vtn_handle_amd_shader_ballot_instruction(struct vtn_builder *b, SpvOp ext_opcode
 
    const struct glsl_type *dest_type = vtn_get_type(b, w[1])->type;
    nir_intrinsic_instr *intrin = nir_intrinsic_instr_create(b->nb.shader, op);
-   nir_ssa_dest_init_for_type(&intrin->instr, &intrin->dest, dest_type, NULL);
+   nir_ssa_dest_init_for_type(&intrin->instr, &intrin->dest, dest_type);
    if (nir_intrinsic_infos[op].src_components[0] == 0)
       intrin->num_components = intrin->dest.ssa.num_components;
 

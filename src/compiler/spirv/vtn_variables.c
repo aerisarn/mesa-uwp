@@ -2802,8 +2802,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          nir_intrinsic_instr_create(b->nb.shader,
                                     nir_intrinsic_load_deref_block_intel);
       load->src[0] = nir_src_for_ssa(&src->dest.ssa);
-      nir_ssa_dest_init_for_type(&load->instr, &load->dest,
-                                 res_type->type, NULL);
+      nir_ssa_dest_init_for_type(&load->instr, &load->dest, res_type->type);
       load->num_components = load->dest.ssa.num_components;
       nir_builder_instr_insert(&b->nb, &load->instr);
 

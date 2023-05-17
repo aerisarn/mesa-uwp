@@ -4455,8 +4455,7 @@ void nir_ssa_def_init(nir_instr *instr, nir_ssa_def *def,
                       unsigned num_components, unsigned bit_size);
 static inline void
 nir_ssa_dest_init_for_type(nir_instr *instr, nir_dest *dest,
-                           const struct glsl_type *type,
-                           const char *name)
+                           const struct glsl_type *type)
 {
    assert(glsl_type_is_vector_or_scalar(type));
    nir_ssa_dest_init(instr, dest, glsl_get_components(type),

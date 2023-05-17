@@ -173,8 +173,7 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
          nir_intrinsic_op op =
             nir_intrinsic_from_system_value(var->data.location);
          nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, op);
-         nir_ssa_dest_init_for_type(&load->instr, &load->dest,
-                                    var->type, NULL);
+         nir_ssa_dest_init_for_type(&load->instr, &load->dest, var->type);
          load->num_components = load->dest.ssa.num_components;
          nir_builder_instr_insert(b, &load->instr);
          return &load->dest.ssa;

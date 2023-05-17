@@ -92,8 +92,7 @@ implement_atomic_builtin(nir_function *func, nir_atomic_op atomic_op,
       atomic->src[i] = nir_src_for_ssa(src);
    }
 
-   nir_ssa_dest_init_for_type(&atomic->instr, &atomic->dest,
-         data_type, NULL);
+   nir_ssa_dest_init_for_type(&atomic->instr, &atomic->dest, data_type);
 
    nir_builder_instr_insert(&b, &atomic->instr);
    nir_store_deref(&b, ret, &atomic->dest.ssa, ~0);
