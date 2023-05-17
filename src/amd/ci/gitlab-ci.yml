@@ -404,25 +404,25 @@ radv-fossils:
     - .fossilize-test
   script:
     # Pitcairn (GFX6)
-    - export RADV_FORCE_FAMILY="PITCAIRN"
+    - export AMDGPU_GPU_ID="PITCAIRN"
     - ./install/fossilize-runner.sh
     # Bonaire (GFX7)
-    - export RADV_FORCE_FAMILY="BONAIRE"
+    - export AMDGPU_GPU_ID="BONAIRE"
     - ./install/fossilize-runner.sh
     # Polaris10 (GFX8)
-    - export RADV_FORCE_FAMILY="POLARIS10"
+    - export AMDGPU_GPU_ID="POLARIS10"
     - ./install/fossilize-runner.sh
     # Vega10 (GFX9)
-    - export RADV_FORCE_FAMILY="VEGA10"
+    - export AMDGPU_GPU_ID="VEGA10"
     - ./install/fossilize-runner.sh
     # Navi10 (GFX10)
-    - export RADV_FORCE_FAMILY="NAVI10"
+    - export AMDGPU_GPU_ID="NAVI10"
     - ./install/fossilize-runner.sh
     # Navi21 (GFX10_3)
-    - export RADV_FORCE_FAMILY="NAVI21"
+    - export AMDGPU_GPU_ID="NAVI21"
     - ./install/fossilize-runner.sh
     # RDNA3 (GFX11)
-    - export RADV_FORCE_FAMILY="GFX1100"
+    - export AMDGPU_GPU_ID="GFX1100"
     - ./install/fossilize-runner.sh
 
 ############### vkd3d-proton
