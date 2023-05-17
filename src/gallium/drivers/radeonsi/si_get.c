@@ -753,15 +753,12 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
 	      sscreen->info.ip[AMD_IP_VCN_UNIFIED].num_queues :
 	      sscreen->info.ip[AMD_IP_VCN_DEC].num_queues)))
          return false;
-      if (QUERYABLE_KERNEL &&
-          codec != PIPE_VIDEO_FORMAT_JPEG &&
-          codec != PIPE_VIDEO_FORMAT_HEVC &&
-          !(sscreen->info.family == CHIP_POLARIS10 ||
-            sscreen->info.family == CHIP_POLARIS11))
-         return KERNEL_DEC_CAP(codec, valid);
       if (codec < PIPE_VIDEO_FORMAT_MPEG4_AVC &&
           sscreen->info.vcn_ip_version >= VCN_3_0_33)
          return false;
+      if (QUERYABLE_KERNEL &&
+          sscreen->info.vcn_ip_version >= VCN_1_0_0)
+         return KERNEL_DEC_CAP(codec, valid);
 
       switch (codec) {
       case PIPE_VIDEO_FORMAT_MPEG12:
