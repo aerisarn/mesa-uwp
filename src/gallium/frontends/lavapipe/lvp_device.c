@@ -177,6 +177,9 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_multisampled_render_to_single_sampled = true,
    .EXT_multi_draw                        = true,
    .EXT_non_seamless_cube_map             = true,
+#if DETECT_OS_LINUX
+   .EXT_pageable_device_local_memory      = true,
+#endif
    .EXT_pipeline_creation_feedback        = true,
    .EXT_pipeline_creation_cache_control   = true,
    .EXT_post_depth_coverage               = true,
@@ -543,6 +546,9 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
 
       /* VK_EXT_memory_priority */
       .memoryPriority = true,
+
+      /* VK_EXT_pageable_device_local_memory */
+      .pageableDeviceLocalMemory = true,
    };
 }
 
@@ -1524,6 +1530,34 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_EnumerateDeviceLayerProperties(
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
+static void
+set_mem_priority(struct lvp_device_memory *mem, int priority)
+{
+#if DETECT_OS_LINUX
+   if (priority) {
+      int advice = 0;
+#ifdef MADV_COLD
+      if (priority < 0)
+         advice |= MADV_COLD;
+#endif
+      if (priority > 0)
+         advice |= MADV_WILLNEED;
+      if (advice)
+         madvise(mem->pmem, mem->size, advice);
+   }
+#endif
+}
+
+static int
+get_mem_priority(float priority)
+{
+   if (priority < 0.3)
+      return -1;
+   if (priority < 0.6)
+      return 0;
+   return priority = 1;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
    VkDevice                                    _device,
    const VkMemoryAllocateInfo*                 pAllocateInfo,
@@ -1561,12 +1595,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
          break;
       case VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT: {
          VkMemoryPriorityAllocateInfoEXT *prio = (VkMemoryPriorityAllocateInfoEXT*)ext;
-         if (prio->priority < 0.3)
-            priority = -1;
-         else if (prio->priority < 0.6)
-            priority = 0;
-         else
-            priority = 1;
+         priority = get_mem_priority(prio->priority);
          break;
       }
       default:
@@ -1633,19 +1662,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
       if (device->poison_mem)
          /* this is a value that will definitely break things */
          memset(mem->pmem, UINT8_MAX / 2 + 1, pAllocateInfo->allocationSize);
-#if DETECT_OS_LINUX
-      if (priority) {
-         int advice = 0;
-#ifdef MADV_COLD
-         if (priority < 0)
-            advice |= MADV_COLD;
-#endif
-         if (priority > 0)
-            advice |= MADV_WILLNEED;
-         if (advice)
-            madvise(mem->pmem, pAllocateInfo->allocationSize, advice);
-      }
-#endif
+      set_mem_priority(mem, priority);
    }
 
    mem->type_index = pAllocateInfo->memoryTypeIndex;
@@ -2324,4 +2341,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceGroupPeerMemoryFeaturesKHR(
     VkPeerMemoryFeatureFlags *pPeerMemoryFeatures)
 {
    *pPeerMemoryFeatures = 0;
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_SetDeviceMemoryPriorityEXT(
+    VkDevice                                    _device,
+    VkDeviceMemory                              _memory,
+    float                                       priority)
+{
+   LVP_FROM_HANDLE(lvp_device_memory, mem, _memory);
+   set_mem_priority(mem, get_mem_priority(priority));
 }
