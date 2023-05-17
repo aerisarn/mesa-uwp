@@ -49,6 +49,7 @@ struct lp_fragment_shader_variant;
 struct lp_compute_shader_variant;
 struct lp_rast_state;
 struct llvmpipe_screen;
+struct vertex_header;
 
 struct lp_jit_viewport
 {
@@ -374,6 +375,8 @@ typedef void
                   uint32_t grid_size_y,
                   uint32_t grid_size_z,
                   uint32_t work_dim,
+                  uint32_t draw_id,
+                  struct vertex_header *io, /* mesh shader only */
                   struct lp_jit_cs_thread_data *thread_data);
 
 void
