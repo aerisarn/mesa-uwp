@@ -1206,7 +1206,7 @@ ssbo_base_pointer(struct lp_build_nir_context *bld_base,
 static LLVMValueRef
 mem_access_base_pointer(struct lp_build_nir_context *bld_base,
                         struct lp_build_context *mem_bld,
-                        unsigned bit_size,
+                        unsigned bit_size, bool payload,
                         LLVMValueRef index, LLVMValueRef invocation, LLVMValueRef *bounds)
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
@@ -1216,7 +1216,14 @@ mem_access_base_pointer(struct lp_build_nir_context *bld_base,
    if (index) {
       ptr = ssbo_base_pointer(bld_base, bit_size, index, invocation, bounds);
    } else {
-      ptr = bld->shared_ptr;
+      if (payload) {
+         ptr = bld->payload_ptr;
+         ptr = LLVMBuildPtrToInt(gallivm->builder, ptr, bld_base->int64_bld.elem_type, "");
+         ptr = LLVMBuildAdd(gallivm->builder, ptr, lp_build_const_int64(gallivm, 12), "");
+         ptr = LLVMBuildIntToPtr(gallivm->builder, ptr, LLVMPointerType(LLVMInt32TypeInContext(gallivm->context), 0), "");
+      }
+      else
+         ptr = bld->shared_ptr;
       *bounds = NULL;
    }
 
@@ -1231,6 +1238,7 @@ static void emit_load_mem(struct lp_build_nir_context *bld_base,
                           unsigned nc,
                           unsigned bit_size,
                           bool index_and_offset_are_uniform,
+                          bool payload,
                           LLVMValueRef index,
                           LLVMValueRef offset,
                           LLVMValueRef outval[NIR_MAX_VEC_COMPONENTS])
@@ -1255,7 +1263,7 @@ static void emit_load_mem(struct lp_build_nir_context *bld_base,
    if (index_and_offset_are_uniform && (invocation_0_must_be_active(bld_base) || index)) {
       LLVMValueRef ssbo_limit;
       LLVMValueRef first_active = first_active_invocation(bld_base);
-      LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, load_bld, bit_size, index,
+      LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, load_bld, bit_size, payload, index,
                                                      first_active, &ssbo_limit);
 
       offset = LLVMBuildExtractElement(gallivm->builder, offset, first_active, "");
@@ -1302,7 +1310,7 @@ static void emit_load_mem(struct lp_build_nir_context *bld_base,
    lp_build_if(&exec_ifthen, gallivm, loop_cond);
 
    LLVMValueRef ssbo_limit;
-   LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, load_bld, bit_size, index,
+   LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, load_bld, bit_size, payload, index,
                                                   loop_state.counter, &ssbo_limit);
 
    for (unsigned c = 0; c < nc; c++) {
@@ -1345,6 +1353,7 @@ static void emit_store_mem(struct lp_build_nir_context *bld_base,
                            unsigned nc,
                            unsigned bit_size,
                            bool index_and_offset_are_uniform,
+                           bool payload,
                            LLVMValueRef index,
                            LLVMValueRef offset,
                            LLVMValueRef dst)
@@ -1366,7 +1375,7 @@ static void emit_store_mem(struct lp_build_nir_context *bld_base,
     */
    if (index_and_offset_are_uniform && invocation_0_must_be_active(bld_base)) {
       LLVMValueRef ssbo_limit;
-      LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, store_bld, bit_size, index,
+      LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, store_bld, bit_size, payload, index,
                                                      lp_build_const_int32(gallivm, 0), &ssbo_limit);
 
       offset = LLVMBuildExtractElement(gallivm->builder, offset, lp_build_const_int32(gallivm, 0), "");
@@ -1407,7 +1416,7 @@ static void emit_store_mem(struct lp_build_nir_context *bld_base,
    lp_build_if(&exec_ifthen, gallivm, loop_cond);
 
    LLVMValueRef ssbo_limit;
-   LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, store_bld, bit_size, index,
+   LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, store_bld, bit_size, payload, index,
                                                   loop_state.counter, &ssbo_limit);
 
    for (unsigned c = 0; c < nc; c++) {
@@ -1444,6 +1453,7 @@ static void emit_store_mem(struct lp_build_nir_context *bld_base,
 static void emit_atomic_mem(struct lp_build_nir_context *bld_base,
                             nir_atomic_op nir_op,
                             uint32_t bit_size,
+                            bool payload,
                             LLVMValueRef index, LLVMValueRef offset,
                             LLVMValueRef val, LLVMValueRef val2,
                             LLVMValueRef *result)
@@ -1471,7 +1481,7 @@ static void emit_atomic_mem(struct lp_build_nir_context *bld_base,
    lp_build_if(&exec_ifthen, gallivm, loop_cond);
 
    LLVMValueRef ssbo_limit;
-   LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, atomic_bld, bit_size, index,
+   LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, atomic_bld, bit_size, payload, index,
                                                   loop_state.counter, &ssbo_limit);
 
    LLVMValueRef do_fetch = lp_build_const_int32(gallivm, -1);
@@ -2743,6 +2753,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.aniso_filter_table = params->aniso_filter_table;
    bld.image = params->image;
    bld.shared_ptr = params->shared_ptr;
+   bld.payload_ptr = params->payload_ptr;
    bld.coro = params->coro;
    bld.kernel_args_ptr = params->kernel_args;
    bld.indirects = 0;

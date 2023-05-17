@@ -1557,7 +1557,7 @@ visit_load_ssbo(struct lp_build_nir_context *bld_base,
       nir_src_is_always_uniform(instr->src[1]);
    bld_base->load_mem(bld_base, nir_dest_num_components(instr->dest),
                       nir_dest_bit_size(instr->dest),
-                      index_and_offset_are_uniform, idx, offset, result);
+                      index_and_offset_are_uniform, false, idx, offset, result);
 }
 
 
@@ -1576,7 +1576,7 @@ visit_store_ssbo(struct lp_build_nir_context *bld_base,
    int nc = nir_src_num_components(instr->src[0]);
    int bitsize = nir_src_bit_size(instr->src[0]);
    bld_base->store_mem(bld_base, writemask, nc, bitsize,
-                       index_and_offset_are_uniform, idx, offset, val);
+                       index_and_offset_are_uniform, false, idx, offset, val);
 }
 
 
@@ -1606,7 +1606,7 @@ visit_ssbo_atomic(struct lp_build_nir_context *bld_base,
    if (instr->intrinsic == nir_intrinsic_ssbo_atomic_swap)
       val2 = get_src(bld_base, instr->src[3]);
 
-   bld_base->atomic_mem(bld_base, nir_intrinsic_atomic_op(instr), bitsize, idx,
+   bld_base->atomic_mem(bld_base, nir_intrinsic_atomic_op(instr), bitsize, false, idx,
                         offset, val, val2, &result[0]);
 }
 
@@ -1802,7 +1802,7 @@ visit_shared_load(struct lp_build_nir_context *bld_base,
    bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
    bld_base->load_mem(bld_base, nir_dest_num_components(instr->dest),
                       nir_dest_bit_size(instr->dest),
-                      offset_is_uniform, NULL, offset, result);
+                      offset_is_uniform, false, NULL, offset, result);
 }
 
 
@@ -1817,7 +1817,7 @@ visit_shared_store(struct lp_build_nir_context *bld_base,
    int nc = nir_src_num_components(instr->src[0]);
    int bitsize = nir_src_bit_size(instr->src[0]);
    bld_base->store_mem(bld_base, writemask, nc, bitsize,
-                       offset_is_uniform, NULL, offset, val);
+                       offset_is_uniform, false, NULL, offset, val);
 }
 
 
@@ -1833,7 +1833,7 @@ visit_shared_atomic(struct lp_build_nir_context *bld_base,
    if (instr->intrinsic == nir_intrinsic_shared_atomic_swap)
       val2 = get_src(bld_base, instr->src[2]);
 
-   bld_base->atomic_mem(bld_base, nir_intrinsic_atomic_op(instr), bitsize, NULL,
+   bld_base->atomic_mem(bld_base, nir_intrinsic_atomic_op(instr), bitsize, false, NULL,
                         offset, val, val2, &result[0]);
 }
 
@@ -1993,6 +1993,47 @@ visit_store_scratch(struct lp_build_nir_context *bld_base,
    bld_base->store_scratch(bld_base, writemask, nc, bitsize, offset, val);
 }
 
+static void
+visit_payload_load(struct lp_build_nir_context *bld_base,
+                  nir_intrinsic_instr *instr,
+                  LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
+{
+   LLVMValueRef offset = get_src(bld_base, instr->src[0]);
+   bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
+   bld_base->load_mem(bld_base, nir_dest_num_components(instr->dest),
+                      nir_dest_bit_size(instr->dest),
+                      offset_is_uniform, true, NULL, offset, result);
+}
+
+static void
+visit_payload_store(struct lp_build_nir_context *bld_base,
+                    nir_intrinsic_instr *instr)
+{
+   LLVMValueRef val = get_src(bld_base, instr->src[0]);
+   LLVMValueRef offset = get_src(bld_base, instr->src[1]);
+   bool offset_is_uniform = nir_src_is_always_uniform(instr->src[1]);
+   int writemask = instr->const_index[1];
+   int nc = nir_src_num_components(instr->src[0]);
+   int bitsize = nir_src_bit_size(instr->src[0]);
+   bld_base->store_mem(bld_base, writemask, nc, bitsize,
+                       offset_is_uniform, true, NULL, offset, val);
+}
+
+static void
+visit_payload_atomic(struct lp_build_nir_context *bld_base,
+                     nir_intrinsic_instr *instr,
+                     LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
+{
+   LLVMValueRef offset = get_src(bld_base, instr->src[0]);
+   LLVMValueRef val = get_src(bld_base, instr->src[1]);
+   LLVMValueRef val2 = NULL;
+   int bitsize = nir_src_bit_size(instr->src[1]);
+   if (instr->intrinsic == nir_intrinsic_task_payload_atomic_swap)
+      val2 = get_src(bld_base, instr->src[2]);
+
+   bld_base->atomic_mem(bld_base, nir_intrinsic_atomic_op(instr), bitsize, true, NULL,
+                        offset, val, val2, &result[0]);
+}
 
 static void
 visit_intrinsic(struct lp_build_nir_context *bld_base,
@@ -2162,6 +2203,16 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
       break;
    case nir_intrinsic_shader_clock:
       bld_base->clock(bld_base, result);
+      break;
+   case nir_intrinsic_load_task_payload:
+      visit_payload_load(bld_base, instr, result);
+      break;
+   case nir_intrinsic_store_task_payload:
+      visit_payload_store(bld_base, instr);
+      break;
+   case nir_intrinsic_task_payload_atomic:
+   case nir_intrinsic_task_payload_atomic_swap:
+      visit_payload_atomic(bld_base, instr, result);
       break;
    default:
       fprintf(stderr, "Unsupported intrinsic: ");
