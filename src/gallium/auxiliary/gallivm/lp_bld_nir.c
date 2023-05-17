@@ -2218,6 +2218,11 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_task_payload_atomic_swap:
       visit_payload_atomic(bld_base, instr, result);
       break;
+   case nir_intrinsic_set_vertex_and_primitive_count:
+      bld_base->set_vertex_and_primitive_count(bld_base,
+                                               get_src(bld_base, instr->src[0]),
+                                               get_src(bld_base, instr->src[1]));
+      break;
    default:
       fprintf(stderr, "Unsupported intrinsic: ");
       nir_print_instr(&instr->instr, stderr);

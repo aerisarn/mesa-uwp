@@ -231,6 +231,9 @@ struct lp_build_nir_context
                      unsigned const_index,
                      LLVMValueRef indir_index,
                      LLVMValueRef offsets[2], LLVMValueRef dst[4]);
+   void (*set_vertex_and_primitive_count)(struct lp_build_nir_context *bld_base,
+                                               LLVMValueRef vert_count,
+                                               LLVMValueRef prim_count);
    void (*launch_mesh_workgroups)(struct lp_build_nir_context *bld_base,
                                   LLVMValueRef launch_grid);
 //   LLVMValueRef main_function
@@ -270,6 +273,8 @@ struct lp_build_nir_soa_context
    const struct lp_build_tcs_iface *tcs_iface;
    const struct lp_build_tes_iface *tes_iface;
    const struct lp_build_fs_iface *fs_iface;
+   const struct lp_build_mesh_iface *mesh_iface;
+
    LLVMValueRef emitted_prims_vec_ptr[PIPE_MAX_VERTEX_STREAMS];
    LLVMValueRef total_emitted_vertices_vec_ptr[PIPE_MAX_VERTEX_STREAMS];
    LLVMValueRef emitted_vertices_vec_ptr[PIPE_MAX_VERTEX_STREAMS];

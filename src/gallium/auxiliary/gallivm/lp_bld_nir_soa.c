@@ -2518,6 +2518,24 @@ emit_interp_at(struct lp_build_nir_context *bld_base,
 }
 
 static void
+emit_set_vertex_and_primitive_count(struct lp_build_nir_context *bld_base,
+                                    LLVMValueRef vert_count,
+                                    LLVMValueRef prim_count)
+{
+   struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   assert(bld->mesh_iface);
+   LLVMValueRef idx = first_active_invocation(bld_base);
+
+   LLVMValueRef vcount = LLVMBuildExtractElement(gallivm->builder,
+                                                 vert_count, idx, "");
+   LLVMValueRef pcount = LLVMBuildExtractElement(gallivm->builder,
+                                                 prim_count, idx, "");
+
+   bld->mesh_iface->emit_vertex_and_primitive_count(bld->mesh_iface, &bld_base->base, vcount, pcount);
+}
+
+static void
 emit_launch_mesh_workgroups(struct lp_build_nir_context *bld_base,
                             LLVMValueRef launch_grid)
 {
@@ -2765,6 +2783,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.store_scratch = emit_store_scratch;
    bld.bld_base.load_const = emit_load_const;
    bld.bld_base.clock = emit_clock;
+   bld.bld_base.set_vertex_and_primitive_count = emit_set_vertex_and_primitive_count;
    bld.bld_base.launch_mesh_workgroups = emit_launch_mesh_workgroups;
 
    bld.mask = params->mask;
@@ -2793,6 +2812,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.tcs_iface = params->tcs_iface;
    bld.tes_iface = params->tes_iface;
    bld.fs_iface = params->fs_iface;
+   bld.mesh_iface = params->mesh_iface;
    if (bld.gs_iface) {
       struct lp_build_context *uint_bld = &bld.bld_base.uint_bld;
 
