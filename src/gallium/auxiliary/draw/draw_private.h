@@ -356,6 +356,13 @@ struct draw_context
       struct draw_fragment_shader *fragment_shader;
    } fs;
 
+   struct {
+      struct draw_mesh_shader *mesh_shader;
+      uint num_ms_outputs;  /**< convenience, from geometry_shader */
+      uint position_output;
+      uint clipvertex_output;
+   } ms;
+
    /** Stream output (vertex feedback) state */
    struct {
       struct draw_so_target *targets[PIPE_MAX_SO_BUFFERS];

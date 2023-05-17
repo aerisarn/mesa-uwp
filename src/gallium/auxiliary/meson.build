@@ -34,6 +34,8 @@ files_libgallium = files(
   'draw/draw_gs.c',
   'draw/draw_gs.h',
   'draw/draw_gs_tmp.h',
+  'draw/draw_mesh.c',
+  'draw/draw_mesh.h',
   'draw/draw_pipe_aaline.c',
   'draw/draw_pipe_aapoint.c',
   'draw/draw_pipe.c',
