@@ -2205,11 +2205,13 @@ enum anv_pipe_bits {
  * based on PIPE_CONTROL emissions.
  */
 enum anv_query_bits {
-   ANV_QUERY_RENDER_TARGET_WRITES_RT_FLUSH      = (1 << 0),
+   ANV_QUERY_WRITES_RT_FLUSH      = (1 << 0),
 
-   ANV_QUERY_RENDER_TARGET_WRITES_TILE_FLUSH    = (1 << 1),
+   ANV_QUERY_WRITES_TILE_FLUSH    = (1 << 1),
 
-   ANV_QUERY_RENDER_TARGET_WRITES_CS_STALL      = (1 << 2),
+   ANV_QUERY_WRITES_CS_STALL      = (1 << 2),
+
+   ANV_QUERY_WRITES_DATA_FLUSH    = (1 << 3),
 };
 
 /* Things we need to flush before accessing query data using the command
@@ -2224,17 +2226,24 @@ enum anv_query_bits {
  */
 #define ANV_QUERY_RENDER_TARGET_WRITES_PENDING_BITS(devinfo) \
    (((devinfo->verx10 >= 120 && \
-      devinfo->verx10 < 125) ? ANV_QUERY_RENDER_TARGET_WRITES_TILE_FLUSH : 0) | \
-   ANV_QUERY_RENDER_TARGET_WRITES_RT_FLUSH | \
-   ANV_QUERY_RENDER_TARGET_WRITES_CS_STALL)
+      devinfo->verx10 < 125) ? ANV_QUERY_WRITES_TILE_FLUSH : 0) | \
+   ANV_QUERY_WRITES_RT_FLUSH | \
+   ANV_QUERY_WRITES_CS_STALL)
+#define ANV_QUERY_COMPUTE_WRITES_PENDING_BITS \
+   (ANV_QUERY_WRITES_DATA_FLUSH | \
+    ANV_QUERY_WRITES_CS_STALL)
 
 #define ANV_PIPE_QUERY_BITS(pending_query_bits) ( \
-   ((pending_query_bits & ANV_QUERY_RENDER_TARGET_WRITES_RT_FLUSH) ?   \
+   ((pending_query_bits & ANV_QUERY_WRITES_RT_FLUSH) ?   \
     ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT : 0) | \
-   ((pending_query_bits & ANV_QUERY_RENDER_TARGET_WRITES_TILE_FLUSH) ?   \
+   ((pending_query_bits & ANV_QUERY_WRITES_TILE_FLUSH) ?   \
     ANV_PIPE_TILE_CACHE_FLUSH_BIT : 0) | \
-   ((pending_query_bits & ANV_QUERY_RENDER_TARGET_WRITES_CS_STALL) ?   \
-    ANV_PIPE_CS_STALL_BIT : 0))
+   ((pending_query_bits & ANV_QUERY_WRITES_CS_STALL) ?   \
+    ANV_PIPE_CS_STALL_BIT : 0) | \
+   ((pending_query_bits & ANV_QUERY_WRITES_DATA_FLUSH) ?  \
+    (ANV_PIPE_DATA_CACHE_FLUSH_BIT | \
+     ANV_PIPE_HDC_PIPELINE_FLUSH_BIT | \
+     ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT) : 0))
 
 #define ANV_PIPE_FLUSH_BITS ( \
    ANV_PIPE_DEPTH_CACHE_FLUSH_BIT | \

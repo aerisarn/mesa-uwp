@@ -1631,16 +1631,22 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
        */
       if (query_bits != NULL) {
          if (bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT)
-            *query_bits &= ~ANV_QUERY_RENDER_TARGET_WRITES_RT_FLUSH;
+            *query_bits &= ~ANV_QUERY_WRITES_RT_FLUSH;
 
          if (bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT)
-            *query_bits &= ~ANV_QUERY_RENDER_TARGET_WRITES_TILE_FLUSH;
+            *query_bits &= ~ANV_QUERY_WRITES_TILE_FLUSH;
+
+         if ((bits & ANV_PIPE_DATA_CACHE_FLUSH_BIT) &&
+             (bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT) &&
+             (bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT))
+            *query_bits &= ~ANV_QUERY_WRITES_TILE_FLUSH;
 
          /* Once RT/TILE have been flushed, we can consider the CS_STALL flush */
-         if ((*query_bits & (ANV_QUERY_RENDER_TARGET_WRITES_TILE_FLUSH |
-                             ANV_QUERY_RENDER_TARGET_WRITES_RT_FLUSH)) == 0 &&
+         if ((*query_bits & (ANV_QUERY_WRITES_TILE_FLUSH |
+                             ANV_QUERY_WRITES_RT_FLUSH |
+                             ANV_QUERY_WRITES_DATA_FLUSH)) == 0 &&
              (bits & (ANV_PIPE_END_OF_PIPE_SYNC_BIT | ANV_PIPE_CS_STALL_BIT)))
-            *query_bits &= ~ANV_QUERY_RENDER_TARGET_WRITES_CS_STALL;
+            *query_bits &= ~ANV_QUERY_WRITES_CS_STALL;
       }
 
       bits &= ~(ANV_PIPE_FLUSH_BITS | ANV_PIPE_STALL_BITS |
