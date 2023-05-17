@@ -262,7 +262,7 @@ struct pvr_device {
       } load_program[PVR_SPM_LOAD_PROGRAM_COUNT];
    } spm_load_state;
 
-   struct {
+   struct pvr_device_tile_buffer_state {
       simple_mtx_t mtx;
 
 #define PVR_MAX_TILE_BUFFER_COUNT 7U

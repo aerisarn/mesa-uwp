@@ -1684,45 +1684,46 @@ VkResult pvr_device_tile_buffer_ensure_cap(struct pvr_device *device,
                                            uint32_t capacity,
                                            uint32_t size_in_bytes)
 {
+   struct pvr_device_tile_buffer_state *tile_buffer_state =
+      &device->tile_buffer_state;
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
-   uint32_t offset;
    VkResult result;
 
-   simple_mtx_lock(&device->tile_buffer_state.mtx);
-
-   offset = device->tile_buffer_state.buffer_count;
+   simple_mtx_lock(&tile_buffer_state->mtx);
 
    /* Clamping in release and asserting in debug. */
-   assert(capacity <= ARRAY_SIZE(device->tile_buffer_state.buffers));
-   capacity = MIN2(capacity, ARRAY_SIZE(device->tile_buffer_state.buffers));
+   assert(capacity <= ARRAY_SIZE(tile_buffer_state->buffers));
+   capacity = CLAMP(capacity,
+                    tile_buffer_state->buffer_count,
+                    ARRAY_SIZE(tile_buffer_state->buffers));
 
    /* TODO: Implement bo multialloc? To reduce the amount of syscalls and
     * allocations.
     */
-   for (uint32_t i = 0; i < (capacity - offset); i++) {
+   for (uint32_t i = tile_buffer_state->buffer_count; i < capacity; i++) {
       result = pvr_bo_alloc(device,
                             device->heaps.general_heap,
                             size_in_bytes,
                             cache_line_size,
                             0,
-                            &device->tile_buffer_state.buffers[offset + i]);
+                            &tile_buffer_state->buffers[i]);
       if (result != VK_SUCCESS) {
-         for (uint32_t j = 0; j < i; j++)
-            pvr_bo_free(device, device->tile_buffer_state.buffers[offset + j]);
+         for (uint32_t j = tile_buffer_state->buffer_count; j < i; j++)
+            pvr_bo_free(device, tile_buffer_state->buffers[j]);
 
          goto err_release_lock;
       }
    }
 
-   device->tile_buffer_state.buffer_count = capacity;
+   tile_buffer_state->buffer_count = capacity;
 
-   simple_mtx_unlock(&device->tile_buffer_state.mtx);
+   simple_mtx_unlock(&tile_buffer_state->mtx);
 
    return VK_SUCCESS;
 
 err_release_lock:
-   simple_mtx_unlock(&device->tile_buffer_state.mtx);
+   simple_mtx_unlock(&tile_buffer_state->mtx);
 
    return result;
 }
