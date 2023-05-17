@@ -45,6 +45,10 @@
 #include "nir.h"
 #include "nir_builder.h"
 
+#if DETECT_OS_LINUX
+#include <sys/mman.h>
+#endif
+
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
     defined(VK_USE_PLATFORM_WIN32_KHR) || \
     defined(VK_USE_PLATFORM_XCB_KHR) || \
@@ -167,6 +171,9 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_index_type_uint8                  = true,
    .EXT_inline_uniform_block              = true,
    .EXT_memory_budget                     = true,
+#if DETECT_OS_LINUX
+   .EXT_memory_priority                   = true,
+#endif
    .EXT_multisampled_render_to_single_sampled = true,
    .EXT_multi_draw                        = true,
    .EXT_non_seamless_cube_map             = true,
@@ -533,6 +540,9 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
       .shaderSharedFloat64AtomicMinMax = false,
       .shaderImageFloat32AtomicMinMax  = LLVM_VERSION_MAJOR >= 15,
       .sparseImageFloat32AtomicMinMax  = false,
+
+      /* VK_EXT_memory_priority */
+      .memoryPriority = true,
    };
 }
 
@@ -1527,6 +1537,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
    const VkImportMemoryHostPointerInfoEXT *host_ptr_info = NULL;
    VkResult error = VK_ERROR_OUT_OF_DEVICE_MEMORY;
    assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
+   int priority = 0;
 
    if (pAllocateInfo->allocationSize == 0) {
       /* Apparently, this is allowed */
@@ -1548,6 +1559,16 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
          import_info = (VkImportMemoryFdInfoKHR*)ext;
          assert(import_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
          break;
+      case VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT: {
+         VkMemoryPriorityAllocateInfoEXT *prio = (VkMemoryPriorityAllocateInfoEXT*)ext;
+         if (prio->priority < 0.3)
+            priority = -1;
+         else if (prio->priority < 0.6)
+            priority = 0;
+         else
+            priority = 1;
+         break;
+      }
       default:
          break;
       }
@@ -1611,6 +1632,19 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
       if (device->poison_mem)
          /* this is a value that will definitely break things */
          memset(mem->pmem, UINT8_MAX / 2 + 1, pAllocateInfo->allocationSize);
+#if DETECT_OS_LINUX
+      if (priority) {
+         int advice = 0;
+#ifdef MADV_COLD
+         if (priority < 0)
+            advice |= MADV_COLD;
+#endif
+         if (priority > 0)
+            advice |= MADV_WILLNEED;
+         if (advice)
+            madvise(mem->pmem, pAllocateInfo->allocationSize, advice);
+      }
+#endif
    }
 
    mem->type_index = pAllocateInfo->memoryTypeIndex;
