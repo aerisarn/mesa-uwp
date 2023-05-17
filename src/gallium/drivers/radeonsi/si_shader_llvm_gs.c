@@ -76,47 +76,6 @@ void si_llvm_gs_build_end(struct si_shader_context *ctx)
       ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 }
 
-void si_preload_esgs_ring(struct si_shader_context *ctx)
-{
-   LLVMBuilderRef builder = ctx->ac.builder;
-
-   if (ctx->screen->info.gfx_level <= GFX8) {
-      LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, SI_RING_ESGS, 0);
-
-      ctx->esgs_ring = ac_build_load_to_sgpr(&ctx->ac,
-         ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings), offset);
-
-      if (ctx->stage != MESA_SHADER_GEOMETRY) {
-         LLVMValueRef desc1 = LLVMBuildExtractElement(builder, ctx->esgs_ring, ctx->ac.i32_1, "");
-         LLVMValueRef desc3 = LLVMBuildExtractElement(builder, ctx->esgs_ring,
-                                                      LLVMConstInt(ctx->ac.i32, 3, 0), "");
-         desc1 = LLVMBuildOr(builder, desc1, LLVMConstInt(ctx->ac.i32,
-                                                          S_008F04_SWIZZLE_ENABLE_GFX6(1), 0), "");
-         desc3 = LLVMBuildOr(builder, desc3, LLVMConstInt(ctx->ac.i32,
-                                                          S_008F0C_ELEMENT_SIZE(1) |
-                                                          S_008F0C_INDEX_STRIDE(3) |
-                                                          S_008F0C_ADD_TID_ENABLE(1), 0), "");
-
-         /* If MUBUF && ADD_TID_ENABLE, DATA_FORMAT means STRIDE[14:17] on gfx8-9, so set 0. */
-         if (ctx->screen->info.gfx_level == GFX8) {
-            desc3 = LLVMBuildAnd(builder, desc3,
-                                 LLVMConstInt(ctx->ac.i32, C_008F0C_DATA_FORMAT, 0), "");
-         }
-
-         ctx->esgs_ring = LLVMBuildInsertElement(builder, ctx->esgs_ring, desc1, ctx->ac.i32_1, "");
-         ctx->esgs_ring = LLVMBuildInsertElement(builder, ctx->esgs_ring, desc3,
-                                                 LLVMConstInt(ctx->ac.i32, 3, 0), "");
-      }
-   } else {
-      /* Declare the ESGS ring as an explicit LDS symbol. */
-      si_llvm_declare_esgs_ring(ctx);
-      ctx->ac.lds = (struct ac_llvm_pointer) {
-         .value = ctx->esgs_ring,
-         .pointee_type = LLVMArrayType(ctx->ac.i32, 0),
-      };
-   }
-}
-
 void si_preload_gs_rings(struct si_shader_context *ctx)
 {
    if (ctx->ac.gfx_level >= GFX11)

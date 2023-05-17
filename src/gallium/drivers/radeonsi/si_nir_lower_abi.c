@@ -16,6 +16,8 @@
 struct lower_abi_state {
    struct si_shader *shader;
    struct si_shader_args *args;
+
+   nir_ssa_def *esgs_ring;
 };
 
 #define GET_FIELD_NIR(field) \
@@ -189,6 +191,44 @@ static nir_ssa_def *build_tess_factor_ring_desc(nir_builder *b, struct si_screen
    };
 
    return nir_vec(b, comp, 4);
+}
+
+static nir_ssa_def *build_esgs_ring_desc(nir_builder *b, enum amd_gfx_level gfx_level,
+                                         struct si_shader_args *args)
+{
+   nir_ssa_def *desc = si_nir_load_internal_binding(b, args, SI_RING_ESGS, 4);
+
+   if (b->shader->info.stage == MESA_SHADER_GEOMETRY)
+      return desc;
+
+   nir_ssa_def *vec[4];
+   for (int i = 0; i < 4; i++)
+      vec[i] = nir_channel(b, desc, i);
+
+   vec[1] = nir_ior_imm(b, vec[1], S_008F04_SWIZZLE_ENABLE_GFX6(1));
+   vec[3] = nir_ior_imm(b, vec[3],
+                        S_008F0C_ELEMENT_SIZE(1) |
+                        S_008F0C_INDEX_STRIDE(3) |
+                        S_008F0C_ADD_TID_ENABLE(1));
+
+   /* If MUBUF && ADD_TID_ENABLE, DATA_FORMAT means STRIDE[14:17] on gfx8-9, so set 0. */
+   if (gfx_level == GFX8)
+      vec[3] = nir_iand_imm(b, vec[3], C_008F0C_DATA_FORMAT);
+
+   return nir_vec(b, vec, 4);
+}
+
+static void preload_reusable_variables(nir_builder *b, struct lower_abi_state *s)
+{
+   const struct si_shader_selector *sel = s->shader->selector;
+   const union si_shader_key *key = &s->shader->key;
+
+   b->cursor = nir_before_cf_list(&b->impl->body);
+
+   if (sel->screen->info.gfx_level <= GFX8 && sel->stage <= MESA_SHADER_GEOMETRY &&
+       (key->ge.as_es || sel->stage == MESA_SHADER_GEOMETRY)) {
+      s->esgs_ring = build_esgs_ring_desc(b, sel->screen->info.gfx_level, s->args);
+   }
 }
 
 static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_state *s)
@@ -540,6 +580,10 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
    case nir_intrinsic_load_ordered_id_amd:
       replacement = ac_nir_unpack_arg(b, &args->ac, args->ac.gs_tg_info, 0, 12);
       break;
+   case nir_intrinsic_load_ring_esgs_amd:
+      assert(s->esgs_ring);
+      replacement = s->esgs_ring;
+      break;
    default:
       return false;
    }
@@ -609,6 +653,8 @@ bool si_nir_lower_abi(nir_shader *nir, struct si_shader *shader, struct si_shade
 
    nir_builder b;
    nir_builder_init(&b, impl);
+
+   preload_reusable_variables(&b, &state);
 
    bool progress = false;
    nir_foreach_block_safe(block, impl) {
