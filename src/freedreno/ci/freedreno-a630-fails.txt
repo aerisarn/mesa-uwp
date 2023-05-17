@@ -374,57 +374,6 @@ SRGBReadWritePixels,Fail
 spec@!opengl 1.1@line-smooth-stipple,Fail
 
 # New CTS failures in 1.3.5.0
-dEQP-VK.binding_model.descriptor_buffer.multiple.compute_comp_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.compute_comp_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.compute_comp_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.compute_comp_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_ahit_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_ahit_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_ahit_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_ahit_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_call_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_call_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_call_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_call_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_chit_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_chit_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_chit_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_chit_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_comp_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_comp_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_comp_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_comp_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_geom_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_geom_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_geom_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_geom_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_miss_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_miss_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_miss_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_miss_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_rgen_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_rgen_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_rgen_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_rgen_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_sect_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_sect_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_sect_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_sect_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_tesc_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_tesc_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_tesc_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_tesc_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_tese_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_tese_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_tese_buffers1_sets3,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_tese_buffers3_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_vert_buffers1_sets1,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_vert_buffers1_sets3_imm_samplers,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_vert_buffers3_sets1,Crash
 dEQP-VK.pipeline.fast_linked_library.misc.interpolate_at_sample_no_sample_shading,Crash
 dEQP-VK.pipeline.fast_linked_library.misc.unused_shader_stages_include_geom,Crash
 dEQP-VK.pipeline.fast_linked_library.misc.unused_shader_stages_include_tess_include_geom,Crash
@@ -438,10 +387,6 @@ dEQP-VK.transform_feedback.simple.lines_or_triangles_line_strip_1,Fail
 dEQP-VK.transform_feedback.simple.lines_or_triangles_line_strip_3,Fail
 dEQP-VK.transform_feedback.simple.lines_or_triangles_triangle_strip_1,Fail
 dEQP-VK.transform_feedback.simple.lines_or_triangles_triangle_strip_3,Fail
-gmem-dEQP-VK.binding_model.descriptor_buffer.multiple.compute_comp_buffers1_sets3,Crash
-gmem-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_geom_buffers3_sets1,Crash
-gmem-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_miss_buffers1_sets1,Crash
-gmem-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_tese_buffers1_sets3,Crash
 gmem-dEQP-VK.pipeline.fast_linked_library.misc.unused_shader_stages_include_geom,Crash
 gmem-dEQP-VK.transform_feedback.simple.lines_or_triangles_triangle_strip_1,Fail
 spec@arb_vertex_attrib_64bit@execution@unused-sub-dvec4-01,Crash
@@ -451,3 +396,14 @@ dynamic-dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d32_s
 
 # since Debian 12 (bookworm) uprev
 dEQP-VK.api.driver_properties.conformance_version,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/9049
+dEQP-VK.api.device_init.create_instance_device_intentional_alloc_fail.basic,Crash
+dEQP-VK.api.object_management.alloc_callback_fail.device_group,Crash
+dEQP-VK.api.object_management.alloc_callback_fail.device,Crash
+dEQP-VK.api.object_management.multithreaded_per_thread_resources.descriptor_pool_free_descriptor_set,Crash
+dEQP-VK.api.object_management.multithreaded_per_thread_resources.descriptor_pool,Crash
+dEQP-VK.api.object_management.multithreaded_per_thread_resources.event,Crash
+dEQP-VK.api.object_management.multithreaded_shared_resources.descriptor_pool,Crash
+dEQP-VK.api.object_management.multithreaded_shared_resources.event,Crash
+dEQP-VK.binding_model.descriptor_buffer.basic.limits,Fail
