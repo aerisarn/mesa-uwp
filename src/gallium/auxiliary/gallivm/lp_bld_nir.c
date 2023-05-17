@@ -2204,6 +2204,10 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_shader_clock:
       bld_base->clock(bld_base, result);
       break;
+   case nir_intrinsic_launch_mesh_workgroups:
+      bld_base->launch_mesh_workgroups(bld_base,
+                                       get_src(bld_base, instr->src[0]));
+      break;
    case nir_intrinsic_load_task_payload:
       visit_payload_load(bld_base, instr, result);
       break;

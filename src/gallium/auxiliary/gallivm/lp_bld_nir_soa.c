@@ -2517,6 +2517,34 @@ emit_interp_at(struct lp_build_nir_context *bld_base,
    }
 }
 
+static void
+emit_launch_mesh_workgroups(struct lp_build_nir_context *bld_base,
+                            LLVMValueRef launch_grid)
+{
+   struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMTypeRef vec_type = LLVMArrayType(LLVMInt32TypeInContext(gallivm->context), 3);
+
+   LLVMValueRef local_invoc_idx = get_local_invocation_index(bld);
+
+   vec_type = LLVMPointerType(vec_type, 0);
+
+   local_invoc_idx = LLVMBuildExtractElement(gallivm->builder, local_invoc_idx, lp_build_const_int32(gallivm, 0), "");
+   LLVMValueRef if_cond = LLVMBuildICmp(gallivm->builder, LLVMIntEQ, local_invoc_idx, lp_build_const_int32(gallivm, 0), "");
+   struct lp_build_if_state ifthen;
+   lp_build_if(&ifthen, gallivm, if_cond);
+   LLVMValueRef ptr = bld->payload_ptr;
+   ptr = LLVMBuildPtrToInt(gallivm->builder, ptr, bld_base->int64_bld.elem_type, "");
+   for (unsigned i = 0; i < 3; i++) {
+      LLVMValueRef lg = LLVMBuildExtractValue(gallivm->builder, launch_grid, i, "");
+      lg = LLVMBuildExtractElement(gallivm->builder, lg, lp_build_const_int32(gallivm, 0), "");
+      LLVMValueRef this_ptr = LLVMBuildIntToPtr(gallivm->builder, ptr, LLVMPointerType(LLVMInt32TypeInContext(gallivm->context), 0), "");
+      LLVMBuildStore(gallivm->builder, lg, this_ptr);
+      ptr = LLVMBuildAdd(gallivm->builder, ptr, lp_build_const_int64(gallivm, 4), "");
+   }
+   lp_build_endif(&ifthen);
+}
+
 static LLVMValueRef get_scratch_thread_offsets(struct gallivm_state *gallivm,
                                                struct lp_type type,
                                                unsigned scratch_size)
@@ -2737,6 +2765,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.store_scratch = emit_store_scratch;
    bld.bld_base.load_const = emit_load_const;
    bld.bld_base.clock = emit_clock;
+   bld.bld_base.launch_mesh_workgroups = emit_launch_mesh_workgroups;
 
    bld.mask = params->mask;
    bld.inputs = params->inputs;

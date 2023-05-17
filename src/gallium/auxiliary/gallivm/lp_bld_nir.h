@@ -231,6 +231,8 @@ struct lp_build_nir_context
                      unsigned const_index,
                      LLVMValueRef indir_index,
                      LLVMValueRef offsets[2], LLVMValueRef dst[4]);
+   void (*launch_mesh_workgroups)(struct lp_build_nir_context *bld_base,
+                                  LLVMValueRef launch_grid);
 //   LLVMValueRef main_function
 };
 
