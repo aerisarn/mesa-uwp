@@ -366,6 +366,11 @@ void draw_vbo(struct draw_context *draw,
               unsigned num_draws,
               uint8_t patch_vertices);
 
+void
+draw_mesh(struct draw_context *draw,
+          struct draw_vertex_info *vert_info,
+          struct draw_prim_info *prim_info);
+
 
 /*******************************************************************************
  * Driver backend interface

@@ -206,8 +206,10 @@ draw_pt_init(struct draw_context *draw)
       return FALSE;
 
 #ifdef DRAW_LLVM_AVAILABLE
-   if (draw->llvm)
+   if (draw->llvm) {
       draw->pt.middle.llvm = draw_pt_fetch_pipeline_or_emit_llvm(draw);
+      draw->pt.middle.mesh = draw_pt_mesh_pipeline_or_emit(draw);
+   }
 #endif
 
    return TRUE;
@@ -217,6 +219,11 @@ draw_pt_init(struct draw_context *draw)
 void
 draw_pt_destroy(struct draw_context *draw)
 {
+   if (draw->pt.middle.mesh) {
+      draw->pt.middle.mesh->destroy(draw->pt.middle.mesh);
+      draw->pt.middle.mesh = NULL;
+   }
+
    if (draw->pt.middle.llvm) {
       draw->pt.middle.llvm->destroy(draw->pt.middle.llvm);
       draw->pt.middle.llvm = NULL;
@@ -624,4 +631,17 @@ draw_vbo(struct draw_context *draw,
       draw->render->pipeline_statistics(draw->render, &draw->statistics);
    }
    util_fpstate_set(fpstate);
+}
+
+/* to be called after a mesh shader is run */
+void
+draw_mesh(struct draw_context *draw,
+          struct draw_vertex_info *vert_info,
+          struct draw_prim_info *prim_info)
+{
+   struct draw_pt_middle_end *middle = draw->pt.middle.mesh;
+
+   middle->prepare(middle, 0, 0, NULL);
+
+   draw_mesh_middle_end_run(middle, vert_info, prim_info);
 }

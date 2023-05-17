@@ -177,6 +177,7 @@ struct draw_context
          struct draw_pt_middle_end *fetch_shade_emit;
          struct draw_pt_middle_end *general;
          struct draw_pt_middle_end *llvm;
+         struct draw_pt_middle_end *mesh;
       } middle;
 
       struct {

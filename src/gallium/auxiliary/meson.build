@@ -67,6 +67,7 @@ files_libgallium = files(
   'draw/draw_pt_fetch.c',
   'draw/draw_pt_fetch_shade_emit.c',
   'draw/draw_pt_fetch_shade_pipeline.c',
+  'draw/draw_pt_mesh_pipeline.c',
   'draw/draw_pt.h',
   'draw/draw_pt_post_vs.c',
   'draw/draw_pt_so_emit.c',
