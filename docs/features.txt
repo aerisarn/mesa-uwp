@@ -567,7 +567,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_global_priority                                DONE (anv, radv, tu)
   VK_EXT_global_priority_query                          DONE (anv, radv, tu)
   VK_EXT_graphics_pipeline_library                      DONE (lvp, radv, tu)
-  VK_EXT_image_2d_view_of_3d                            DONE (anv, radv, tu, lvp)
+  VK_EXT_image_2d_view_of_3d                            DONE (anv, radv, tu, lvp, vn)
   VK_EXT_image_drm_format_modifier                      DONE (anv, radv/gfx9+, tu, v3dv, vn)
   VK_EXT_image_sliced_view_of_3d                        DONE (anv, radv/gfx10+)
   VK_EXT_image_view_min_lod                             DONE (anv, radv, tu, vn)
