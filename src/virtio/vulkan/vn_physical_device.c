@@ -1497,7 +1497,7 @@ enumerate_physical_devices(struct vn_instance *instance,
    VkPhysicalDevice *handles = NULL;
    VkResult result;
 
-   uint32_t count;
+   uint32_t count = 0;
    result = vn_call_vkEnumeratePhysicalDevices(
       instance, vn_instance_to_handle(instance), &count, NULL);
    if (result != VK_SUCCESS || !count)
