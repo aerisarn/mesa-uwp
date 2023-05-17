@@ -7463,7 +7463,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
    const struct intel_device_info *devinfo = compiler->devinfo;
    const unsigned max_subgroup_size = compiler->devinfo->ver >= 6 ? 32 : 16;
 
-   brw_nir_apply_key(nir, compiler, &key->base, max_subgroup_size, true);
+   brw_nir_apply_key(nir, compiler, &key->base, max_subgroup_size);
    brw_nir_lower_fs_inputs(nir, devinfo, key);
    brw_nir_lower_fs_outputs(nir);
 
@@ -7841,7 +7841,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
 
       nir_shader *shader = nir_shader_clone(mem_ctx, nir);
       brw_nir_apply_key(shader, compiler, &key->base,
-                        dispatch_width, true /* is_scalar */);
+                        dispatch_width);
 
       NIR_PASS(_, shader, brw_nir_lower_simd, dispatch_width);
 
@@ -7967,7 +7967,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
                                     shader->scratch_size);
 
    const unsigned max_dispatch_width = 16;
-   brw_nir_apply_key(shader, compiler, &key->base, max_dispatch_width, true);
+   brw_nir_apply_key(shader, compiler, &key->base, max_dispatch_width);
    brw_postprocess_nir(shader, compiler, debug_enabled,
                        key->base.robust_buffer_access);
 

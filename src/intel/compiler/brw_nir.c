@@ -1824,8 +1824,7 @@ void
 brw_nir_apply_key(nir_shader *nir,
                   const struct brw_compiler *compiler,
                   const struct brw_base_prog_key *key,
-                  unsigned max_subgroup_size,
-                  bool is_scalar)
+                  unsigned max_subgroup_size)
 {
    bool progress = false;
 

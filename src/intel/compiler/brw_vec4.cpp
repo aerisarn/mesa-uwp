@@ -2552,7 +2552,7 @@ brw_compile_vs(const struct brw_compiler *compiler,
    prog_data->base.base.total_scratch = 0;
 
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_VERTEX];
-   brw_nir_apply_key(nir, compiler, &key->base, 8, is_scalar);
+   brw_nir_apply_key(nir, compiler, &key->base, 8);
 
    const unsigned *assembly = NULL;
 
