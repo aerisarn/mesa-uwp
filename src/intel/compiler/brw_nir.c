@@ -914,10 +914,7 @@ lower_xehp_tg4_offset_filter(const nir_instr *instr, UNUSED const void *data)
  *
  * This is intended to be called more-or-less directly after you get the
  * shader out of GLSL or some other source.  While it is geared towards i965,
- * it is not at all generator-specific except for the is_scalar flag.  Even
- * there, it is safe to call with is_scalar = false for a shader that is
- * intended for the FS backend as long as nir_optimize is called again with
- * is_scalar = true to scalarize everything prior to code gen.
+ * it is not at all generator-specific.
  */
 void
 brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
