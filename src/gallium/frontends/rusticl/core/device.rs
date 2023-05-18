@@ -492,9 +492,19 @@ impl Device {
         // add extensions all drivers support for now
         add_ext(1, 0, 0, "cl_khr_global_int32_base_atomics");
         add_ext(1, 0, 0, "cl_khr_global_int32_extended_atomics");
+        add_ext(2, 0, 0, "cl_khr_integer_dot_product");
+        add_feat(
+            2,
+            0,
+            0,
+            "__opencl_c_integer_dot_product_input_4x8bit_packed",
+        );
+        add_feat(2, 0, 0, "__opencl_c_integer_dot_product_input_4x8bit");
         add_ext(1, 0, 0, "cl_khr_local_int32_base_atomics");
         add_ext(1, 0, 0, "cl_khr_local_int32_extended_atomics");
+
         add_spirv("SPV_KHR_float_controls");
+        add_spirv("SPV_KHR_integer_dot_product");
 
         if self.doubles_supported() {
             add_ext(1, 0, 0, "cl_khr_fp64");
@@ -596,13 +606,33 @@ impl Device {
         self.screen.param(pipe_cap::PIPE_CAP_DOUBLES) == 1
     }
 
-    pub fn doubles_is_softfp(&self) -> bool {
-        let nir_options = self
-            .screen
-            .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE);
+    pub fn get_nir_options(&self) -> nir_shader_compiler_options {
+        unsafe {
+            *self
+                .screen
+                .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE)
+        }
+    }
 
+    pub fn sdot_4x8_supported(&self) -> bool {
+        self.get_nir_options().has_sdot_4x8
+    }
+
+    pub fn udot_4x8_supported(&self) -> bool {
+        self.get_nir_options().has_udot_4x8
+    }
+
+    pub fn sudot_4x8_supported(&self) -> bool {
+        self.get_nir_options().has_sudot_4x8
+    }
+
+    pub fn pack_32_4x8_supported(&self) -> bool {
+        self.get_nir_options().has_pack_32_4x8
+    }
+
+    pub fn doubles_is_softfp(&self) -> bool {
         bit_check(
-            unsafe { *nir_options }.lower_doubles_options as u32,
+            self.get_nir_options().lower_doubles_options as u32,
             nir_lower_doubles_options::nir_lower_fp64_full_software as u32,
         )
     }
@@ -822,6 +852,7 @@ impl Device {
             images: self.image_supported(),
             images_read_write: self.image_read_write_supported(),
             images_write_3d: self.image_3d_write_supported(),
+            integer_dot_product: true,
             intel_subgroups: false,
             subgroups: false,
         }
