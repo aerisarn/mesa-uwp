@@ -413,6 +413,14 @@ dxil_module_get_array_const(struct dxil_module *m, const struct dxil_type *type,
                             const struct dxil_value **values);
 
 const struct dxil_value *
+dxil_module_get_vector_const(struct dxil_module *m, const struct dxil_type *type,
+                             const struct dxil_value **values);
+
+const struct dxil_value *
+dxil_module_get_struct_const(struct dxil_module *m, const struct dxil_type *type,
+                             const struct dxil_value **values);
+
+const struct dxil_value *
 dxil_module_get_undef(struct dxil_module *m, const struct dxil_type *type);
 
 const struct dxil_value *

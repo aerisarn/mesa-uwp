@@ -1808,6 +1808,33 @@ dxil_module_get_array_const(struct dxil_module *m, const struct dxil_type *type,
 }
 
 const struct dxil_value *
+dxil_module_get_vector_const(struct dxil_module *m, const struct dxil_type *type,
+                            const struct dxil_value **values)
+{
+   assert(type->type == TYPE_VECTOR);
+   unsigned int num_values = type->array_or_vector_def.num_elems;
+
+   struct dxil_const *c;
+   LIST_FOR_EACH_ENTRY(c, &m->const_list, head) {
+      if (c->value.type != type || c->undef)
+         continue;
+
+      if (!memcmp(c->vector_values, values, sizeof(*values) * num_values))
+         return &c->value;
+   }
+
+   c = create_const(m, type, false);
+   if (!c)
+      return NULL;
+   void *tmp =
+      ralloc_array(m->ralloc_ctx, struct dxil_value *, num_values);
+   memcpy(tmp, values, sizeof(*values) * num_values);
+   c->vector_values = tmp;
+
+   return &c->value;
+}
+
+const struct dxil_value *
 dxil_module_get_undef(struct dxil_module *m, const struct dxil_type *type)
 {
    assert(type != NULL);
@@ -1825,8 +1852,8 @@ dxil_module_get_undef(struct dxil_module *m, const struct dxil_type *type)
    return c ? &c->value : NULL;
 }
 
-static const struct dxil_value *
-get_struct_const(struct dxil_module *m, const struct dxil_type *type,
+const struct dxil_value *
+dxil_module_get_struct_const(struct dxil_module *m, const struct dxil_type *type,
                  const struct dxil_value **values)
 {
    assert(type->type == TYPE_STRUCT);
@@ -1874,7 +1901,7 @@ dxil_module_get_res_bind_const(struct dxil_module *m,
    if (!values[0] || !values[1] || !values[2] || !values[3])
       return NULL;
 
-   return get_struct_const(m, type, values);
+   return dxil_module_get_struct_const(m, type, values);
 }
 
 static uint32_t
@@ -2030,7 +2057,7 @@ dxil_module_get_res_props_const(struct dxil_module *m,
    if (!values[0] || !values[1])
       return NULL;
 
-   return get_struct_const(m, type, values);
+   return dxil_module_get_struct_const(m, type, values);
 }
 
 static enum dxil_component_type
@@ -2067,7 +2094,7 @@ dxil_module_get_srv_res_props_const(struct dxil_module *m,
    if (!values[0] || !values[1])
       return NULL;
 
-   return get_struct_const(m, type, values);
+   return dxil_module_get_struct_const(m, type, values);
 }
 
 const struct dxil_value *
@@ -2087,7 +2114,7 @@ dxil_module_get_sampler_res_props_const(struct dxil_module *m,
    if (!values[0] || !values[1])
       return NULL;
 
-   return get_struct_const(m, type, values);
+   return dxil_module_get_struct_const(m, type, values);
 }
 
 static nir_alu_type
@@ -2138,7 +2165,7 @@ dxil_module_get_uav_res_props_const(struct dxil_module *m,
    if (!values[0] || !values[1])
       return NULL;
 
-   return get_struct_const(m, type, values);
+   return dxil_module_get_struct_const(m, type, values);
 }
 
 const struct dxil_value *
@@ -2168,7 +2195,7 @@ dxil_module_get_buffer_res_props_const(struct dxil_module *m,
    if (!values[0] || !values[1])
       return NULL;
 
-   return get_struct_const(m, type, values);
+   return dxil_module_get_struct_const(m, type, values);
 }
 
 enum dxil_module_code {
