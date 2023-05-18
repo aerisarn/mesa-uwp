@@ -5309,7 +5309,7 @@ pvr_setup_fragment_state_pointers(struct pvr_cmd_buffer *const cmd_buffer,
                    PVRX(TA_STATE_PDS_SIZEINFO1_USC_VARYINGSIZE_UNIT_SIZE));
 
    const uint32_t pds_temp_size =
-      DIV_ROUND_UP(fragment_state->temps_count,
+      DIV_ROUND_UP(fragment_state->pds_temps_count,
                    PVRX(TA_STATE_PDS_SIZEINFO1_PDS_TEMPSIZE_UNIT_SIZE));
 
    const uint32_t usc_shared_size =

@@ -848,7 +848,7 @@ struct pvr_pds_attrib_program {
 struct pvr_pipeline_stage_state {
    uint32_t const_shared_reg_count;
    uint32_t const_shared_reg_offset;
-   uint32_t temps_count;
+   uint32_t pds_temps_count;
 
    uint32_t coefficient_size;
 

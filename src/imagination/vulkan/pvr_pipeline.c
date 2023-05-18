@@ -1514,7 +1514,7 @@ pvr_vertex_state_init(struct pvr_graphics_pipeline *gfx_pipeline,
     */
    vertex_state->stage_state.const_shared_reg_count = common_data->shareds;
    vertex_state->stage_state.const_shared_reg_offset = 0;
-   vertex_state->stage_state.temps_count = common_data->temps;
+   vertex_state->stage_state.pds_temps_count = common_data->temps;
    vertex_state->stage_state.coefficient_size = common_data->coeffs;
    vertex_state->stage_state.uses_atomic_ops = false;
    vertex_state->stage_state.uses_texture_rw = false;
@@ -1561,7 +1561,7 @@ pvr_fragment_state_init(struct pvr_graphics_pipeline *gfx_pipeline,
     */
    fragment_state->stage_state.const_shared_reg_count = 0;
    fragment_state->stage_state.const_shared_reg_offset = 0;
-   fragment_state->stage_state.temps_count = common_data->temps;
+   fragment_state->stage_state.pds_temps_count = common_data->temps;
    fragment_state->stage_state.coefficient_size = common_data->coeffs;
    fragment_state->stage_state.uses_atomic_ops = false;
    fragment_state->stage_state.uses_texture_rw = false;
