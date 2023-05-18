@@ -395,6 +395,9 @@ typedef struct nir_constant {
     */
    nir_const_value values[NIR_MAX_VEC_COMPONENTS];
 
+   /* Indicates all the values are 0s which can enable some optimizations */
+   bool is_null_constant;
+
    /* we could get this from the var->type but makes clone *much* easier to
     * not have to care about the type.
     */

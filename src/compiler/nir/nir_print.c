@@ -714,9 +714,13 @@ print_var_decl(nir_variable *var, print_state *state)
    }
 
    if (var->constant_initializer) {
-      fprintf(fp, " = { ");
-      print_constant(var->constant_initializer, var->type, state);
-      fprintf(fp, " }");
+      if (var->constant_initializer->is_null_constant) {
+         fprintf(fp, " = null");
+      } else {
+         fprintf(fp, " = { ");
+         print_constant(var->constant_initializer, var->type, state);
+         fprintf(fp, " }");
+      }
    }
    if (glsl_type_is_sampler(var->type) && var->data.sampler.is_inline_sampler) {
       fprintf(fp, " = { %s, %s, %s }",
