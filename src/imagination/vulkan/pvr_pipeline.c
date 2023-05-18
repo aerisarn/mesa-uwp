@@ -1331,7 +1331,9 @@ err_destroy_compute_program:
                                    &compute_pipeline->primary_program_info);
 
 err_free_descriptor_program:
-   pvr_bo_suballoc_free(compute_pipeline->descriptor_state.pds_code.pvr_bo);
+   pvr_pds_descriptor_program_destroy(device,
+                                      allocator,
+                                      &compute_pipeline->descriptor_state);
 
 err_free_shader:
    pvr_bo_suballoc_free(compute_pipeline->shader_state.bo);
