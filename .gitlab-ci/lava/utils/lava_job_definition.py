@@ -19,6 +19,22 @@ NUMBER_OF_ATTEMPTS_LAVA_BOOT = int(getenv("LAVA_NUMBER_OF_ATTEMPTS_LAVA_BOOT", 3
 JOB_PRIORITY = int(getenv("LAVA_JOB_PRIORITY", 75))
 
 
+def has_ssh_support(job_submitter: "LAVAJobSubmitter") -> bool:
+    force_uart = bool(getenv("LAVA_FORCE_UART", False))
+
+    if force_uart:
+        return False
+
+    # Only Collabora's farm supports to run docker container as a LAVA actions,
+    # which is required to follow the job in a SSH section
+    current_farm = get_lava_farm()
+
+    # SSH job definition still needs to add support for fastboot.
+    job_uses_fastboot: bool = job_submitter.boot_method == "fastboot"
+
+    return current_farm == LavaFarm.COLLABORA and not job_uses_fastboot
+
+
 def generate_lava_yaml_payload(job_submitter: "LAVAJobSubmitter") -> dict[str, Any]:
     """
     Bridge function to use the supported job definition depending on some Mesa
@@ -35,14 +51,7 @@ def generate_lava_yaml_payload(job_submitter: "LAVAJobSubmitter") -> dict[str, A
         generate_lava_yaml_payload as uart_lava_yaml,
     )
 
-    # Only Collabora's farm supports to run docker container as a LAVA actions,
-    # which is required to follow the job in a SSH section
-    current_farm = get_lava_farm()
-
-    # SSH job definition still needs to add support for fastboot.
-    job_uses_fastboot: bool = job_submitter.boot_method == "fastboot"
-
-    if current_farm == LavaFarm.COLLABORA and not job_uses_fastboot:
+    if has_ssh_support(job_submitter):
         return ssh_lava_yaml(job_submitter)
 
     return uart_lava_yaml(job_submitter)
