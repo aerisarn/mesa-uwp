@@ -2889,10 +2889,10 @@ cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
       if (gfx->render_area.extent.width > 0 &&
           gfx->render_area.extent.height > 0) {
          x_min = MAX2(x_min, gfx->render_area.offset.x);
-         x_max = MIN2(x_min, gfx->render_area.offset.x +
+         x_max = MIN2(x_max, gfx->render_area.offset.x +
                              gfx->render_area.extent.width);
          y_min = MAX2(y_min, gfx->render_area.offset.y);
-         y_max = MIN2(y_min, gfx->render_area.offset.y +
+         y_max = MIN2(y_max, gfx->render_area.offset.y +
                              gfx->render_area.extent.height);
       }
 
@@ -2912,9 +2912,9 @@ cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
       if (i < dyn->vp.scissor_count) {
          const VkRect2D *scissor = &dyn->vp.scissors[i];
          x_min = MAX2(x_min, scissor->offset.x);
-         x_max = MIN2(x_min, scissor->offset.x + scissor->extent.width);
+         x_max = MIN2(x_max, scissor->offset.x + scissor->extent.width);
          y_min = MAX2(y_min, scissor->offset.y);
-         y_max = MIN2(y_min, scissor->offset.y + scissor->extent.height);
+         y_max = MIN2(y_max, scissor->offset.y + scissor->extent.height);
       }
 
       /* Only bother calculating the guardband if our known render area is
