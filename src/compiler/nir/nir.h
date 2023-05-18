@@ -6249,6 +6249,9 @@ bool nir_mod_analysis(nir_ssa_scalar val, nir_alu_type val_type, unsigned div, u
 bool
 nir_remove_tex_shadow(nir_shader *shader, unsigned textures_bitmask);
 
+void
+nir_trivialize_registers(nir_shader *s);
+
 static inline nir_intrinsic_instr *
 nir_reg_get_decl(nir_ssa_def *reg)
 {
