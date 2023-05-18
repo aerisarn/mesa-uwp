@@ -2166,7 +2166,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       &special_vars_layout,
       &gfx_pipeline->shader_state.vertex.pds_attrib_programs);
    if (result != VK_SUCCESS)
-      goto err_free_vertex_descriptor_program;
+      goto err_free_frag_descriptor_program;
 
    result = pvr_pds_descriptor_program_create_and_upload(
       device,
@@ -2203,11 +2203,11 @@ err_free_vertex_attrib_program:
 
       pvr_pds_vertex_attrib_program_destroy(device, allocator, attrib_program);
    }
-err_free_vertex_descriptor_program:
+err_free_frag_descriptor_program:
    pvr_pds_descriptor_program_destroy(
       device,
       allocator,
-      &gfx_pipeline->shader_state.vertex.descriptor_state);
+      &gfx_pipeline->shader_state.fragment.descriptor_state);
 err_free_frag_program:
    pvr_bo_suballoc_free(
       gfx_pipeline->shader_state.fragment.pds_fragment_program.pvr_bo);
