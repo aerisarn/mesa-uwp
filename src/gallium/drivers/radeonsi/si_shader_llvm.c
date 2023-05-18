@@ -1125,7 +1125,10 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          si_llvm_dispose(&ctx);
          return false;
       }
-      shader->info.uses_instanceid |= prev_shader.selector->info.uses_instanceid;
+
+      shader->info.uses_instanceid |=
+         prev_shader.selector->info.uses_instanceid || prev_shader.info.uses_instanceid;
+
       parts[0] = ctx.main_fn;
 
       /* Preserve main arguments. */
