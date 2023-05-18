@@ -541,7 +541,7 @@ VkResult pvr_CreateDescriptorSetLayout(
             for (uint32_t j = 0; j < binding->descriptorCount; j++) {
                PVR_FROM_HANDLE(pvr_sampler,
                                sampler,
-                               bindings->pImmutableSamplers[j]);
+                               binding->pImmutableSamplers[j]);
                const uint32_t next = j + layout->immutable_sampler_count;
 
                layout->immutable_samplers[next] = sampler;
