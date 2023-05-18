@@ -391,7 +391,6 @@ fn opt_nir(nir: &mut NirShader, dev: &Device) {
         progress |= nir.pass0(nir_lower_var_copies);
         progress |= nir.pass0(nir_lower_vars_to_ssa);
         nir.pass0(nir_lower_alu);
-        nir.pass0(nir_lower_pack);
         progress |= nir.pass0(nir_opt_phi_precision);
         progress |= nir.pass0(nir_opt_algebraic);
         progress |= nir.pass1(
