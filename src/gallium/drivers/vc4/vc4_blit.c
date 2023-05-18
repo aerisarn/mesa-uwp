@@ -57,13 +57,19 @@ vc4_tile_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
         int tile_width = msaa ? 32 : 64;
         int tile_height = msaa ? 32 : 64;
 
-        if (util_format_is_depth_or_stencil(info->dst.resource->format))
+        if (!info->mask)
                 return;
+
+        bool is_color_blit = info->mask & PIPE_MASK_RGBA;
+        bool is_depth_blit = info->mask & PIPE_MASK_Z;
+        bool is_stencil_blit = info->mask & PIPE_MASK_S;
+
+        /* Either we receive a depth/stencil blit, or color blit, but not both.
+         */
+        assert ((is_color_blit && !(is_depth_blit || is_stencil_blit)) ||
+                (!is_color_blit && (is_depth_blit || is_stencil_blit)));
 
         if (info->scissor_enable)
-                return;
-
-        if ((info->mask & PIPE_MASK_RGBA) == 0)
                 return;
 
         if (info->dst.box.x != info->src.box.x ||
@@ -74,6 +80,14 @@ vc4_tile_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
             info->dst.box.depth != 1) {
                 return;
         }
+
+        if (is_color_blit &&
+            util_format_is_depth_or_stencil(info->dst.format))
+                return;
+
+        if ((is_depth_blit || is_stencil_blit) &&
+            !util_format_is_depth_or_stencil(info->dst.format))
+                return;
 
         int dst_surface_width = u_minify(info->dst.resource->width0,
                                          info->dst.level);
@@ -133,8 +147,14 @@ vc4_tile_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
 
         vc4_flush_jobs_reading_resource(vc4, info->src.resource);
 
-        struct vc4_job *job = vc4_get_job(vc4, dst_surf, NULL);
-        pipe_surface_reference(&job->color_read, src_surf);
+        struct vc4_job *job;
+        if (is_color_blit) {
+                job = vc4_get_job(vc4, dst_surf, NULL);
+                pipe_surface_reference(&job->color_read, src_surf);
+        } else {
+                job = vc4_get_job(vc4, NULL, dst_surf);
+                pipe_surface_reference(&job->zs_read, src_surf);
+        }
 
         job->draw_min_x = info->dst.box.x;
         job->draw_min_y = info->dst.box.y;
@@ -147,14 +167,26 @@ vc4_tile_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
         job->tile_height = tile_height;
         job->msaa = msaa;
         job->needs_flush = true;
-        job->resolve |= PIPE_CLEAR_COLOR;
+
+        if (is_color_blit) {
+                job->resolve |= PIPE_CLEAR_COLOR;
+                info->mask &= ~PIPE_MASK_RGBA;
+        }
+
+        if (is_depth_blit) {
+                job->resolve |= PIPE_CLEAR_DEPTH;
+                info->mask &= ~PIPE_MASK_Z;
+        }
+
+        if (is_stencil_blit) {
+                job->resolve |= PIPE_CLEAR_STENCIL;
+                info->mask &= ~PIPE_MASK_S;
+        }
 
         vc4_job_submit(vc4, job);
 
         pipe_surface_reference(&dst_surf, NULL);
         pipe_surface_reference(&src_surf, NULL);
-
-        info->mask &= ~PIPE_MASK_RGBA;
 }
 
 void

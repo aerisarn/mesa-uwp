@@ -937,8 +937,6 @@ spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl
 spec@arb_framebuffer_object@fbo-attachments-blit-scaled-linear,Fail
 spec@arb_framebuffer_object@fbo-blit-stretch,Fail
 spec@arb_framebuffer_object@fbo-mipmap-copypix,Fail
-spec@arb_framebuffer_object@framebuffer-blit-levels draw stencil,Fail
-spec@arb_framebuffer_object@framebuffer-blit-levels read stencil,Fail
 spec@arb_framebuffer_object@mixed-buffer-sizes,Fail
 spec@arb_framebuffer_object@same-attachment-tex2d-depth_stencil,Fail
 spec@arb_framebuffer_srgb@arb_framebuffer_srgb-srgb_conformance,Fail
@@ -992,38 +990,12 @@ spec@ext_framebuffer_multisample@clip-and-scissor-blit 2 msaa,Fail
 spec@ext_framebuffer_multisample@clip-and-scissor-blit 4 msaa,Fail
 spec@ext_framebuffer_multisample@interpolation 2 centroid-edges,Fail
 spec@ext_framebuffer_multisample@interpolation 4 centroid-edges,Fail
-spec@ext_framebuffer_multisample@multisample-blit 2 depth,Crash
-spec@ext_framebuffer_multisample@multisample-blit 2 stencil,Fail
-spec@ext_framebuffer_multisample@multisample-blit 4 depth,Crash
-spec@ext_framebuffer_multisample@multisample-blit 4 stencil,Fail
-spec@ext_framebuffer_multisample@no-color 2 depth combined,Crash
-spec@ext_framebuffer_multisample@no-color 2 depth-computed combined,Crash
-spec@ext_framebuffer_multisample@no-color 2 depth-computed single,Crash
-spec@ext_framebuffer_multisample@no-color 2 depth single,Crash
-spec@ext_framebuffer_multisample@no-color 2 stencil combined,Fail
-spec@ext_framebuffer_multisample@no-color 2 stencil single,Fail
-spec@ext_framebuffer_multisample@no-color 4 depth combined,Crash
-spec@ext_framebuffer_multisample@no-color 4 depth-computed combined,Crash
-spec@ext_framebuffer_multisample@no-color 4 depth-computed single,Crash
-spec@ext_framebuffer_multisample@no-color 4 depth single,Crash
-spec@ext_framebuffer_multisample@no-color 4 stencil combined,Fail
-spec@ext_framebuffer_multisample@no-color 4 stencil single,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 2 color,Fail
-spec@ext_framebuffer_multisample@sample-alpha-to-coverage 2 depth,Crash
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 4 color,Fail
-spec@ext_framebuffer_multisample@sample-alpha-to-coverage 4 depth,Crash
 spec@ext_framebuffer_multisample@sample-coverage 2 inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 2 non-inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 4 inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 4 non-inverted,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 2 color msaa,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 2 depth downsample,Crash
-spec@ext_framebuffer_multisample@unaligned-blit 2 depth msaa,Crash
-spec@ext_framebuffer_multisample@unaligned-blit 2 depth upsample,Crash
-spec@ext_framebuffer_multisample@unaligned-blit 4 color msaa,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 4 depth downsample,Crash
-spec@ext_framebuffer_multisample@unaligned-blit 4 depth msaa,Crash
-spec@ext_framebuffer_multisample@unaligned-blit 4 depth upsample,Crash
 spec@ext_framebuffer_multisample@upsample 2 stencil,Fail
 spec@ext_framebuffer_multisample@upsample 4 stencil,Fail
 
@@ -1211,6 +1183,17 @@ spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail
 
 spec@!opengl 1.1@line-smooth-stipple,Fail
 spec@glsl-1.10@execution@variable-indexing@vs-output-array-vec2-index-wr-no-unroll,Fail
+
+spec@ext_framebuffer_multisample@multisample-blit 2 depth,Fail
+spec@ext_framebuffer_multisample@multisample-blit 4 depth,Fail
+spec@ext_framebuffer_multisample@no-color 2 depth combined,Fail
+spec@ext_framebuffer_multisample@no-color 2 depth-computed combined,Fail
+spec@ext_framebuffer_multisample@no-color 4 depth combined,Fail
+spec@ext_framebuffer_multisample@no-color 4 depth-computed combined,Fail
+spec@ext_framebuffer_multisample@unaligned-blit 2 depth msaa,Fail
+spec@ext_framebuffer_multisample@unaligned-blit 2 stencil msaa,Fail
+spec@ext_framebuffer_multisample@unaligned-blit 4 depth msaa,Fail
+spec@ext_framebuffer_multisample@unaligned-blit 4 stencil msaa,Fail
 
 # since Debian 12 (bookworm) uprev
 shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Crash
