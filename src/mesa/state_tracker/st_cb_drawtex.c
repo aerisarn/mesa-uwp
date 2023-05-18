@@ -43,8 +43,7 @@ struct cached_shader
    void *handle;
 
    uint num_attribs;
-   uint semantic_names[2 + MAX_TEXTURE_UNITS];
-   uint semantic_indexes[2 + MAX_TEXTURE_UNITS];
+   gl_varying_slot slots[2 + MAX_TEXTURE_UNITS];
 };
 
 #define MAX_SHADERS (2 * MAX_TEXTURE_UNITS)
@@ -58,42 +57,25 @@ static struct cached_shader CachedShaders[MAX_SHADERS];
 static GLuint NumCachedShaders = 0;
 
 static gl_vert_attrib
-semantic_to_vert_attrib(unsigned semantic)
+slot_to_vert_attrib(gl_varying_slot slot)
 {
-   switch (semantic) {
-   case TGSI_SEMANTIC_POSITION:
+   switch (slot) {
+   case VARYING_SLOT_POS:
       return VERT_ATTRIB_POS;
-   case TGSI_SEMANTIC_COLOR:
+   case VARYING_SLOT_COL0:
       return VERT_ATTRIB_COLOR0;
-   case TGSI_SEMANTIC_GENERIC:
-   case TGSI_SEMANTIC_TEXCOORD:
+   case VARYING_SLOT_VAR0:
+   case VARYING_SLOT_TEX0:
       return VERT_ATTRIB_GENERIC0;
    default:
-      unreachable("unhandled semantic");
-   }
-}
-
-static gl_varying_slot
-semantic_to_varying_slot(unsigned semantic)
-{
-   switch (semantic) {
-   case TGSI_SEMANTIC_POSITION:
-      return VARYING_SLOT_POS;
-   case TGSI_SEMANTIC_COLOR:
-      return VARYING_SLOT_COL0;
-   case TGSI_SEMANTIC_GENERIC:
-   case TGSI_SEMANTIC_TEXCOORD:
-      return VARYING_SLOT_TEX0;
-   default:
-      unreachable("unhandled semantic");
+      unreachable("unhandled slot");
    }
 }
 
 static void *
 lookup_shader(struct st_context *st,
               uint num_attribs,
-              const enum tgsi_semantic *semantic_names,
-              const uint *semantic_indexes)
+              const gl_varying_slot *slots)
 {
    GLuint i, j;
 
@@ -102,8 +84,7 @@ lookup_shader(struct st_context *st,
       if (CachedShaders[i].num_attribs == num_attribs) {
          GLboolean match = GL_TRUE;
          for (j = 0; j < num_attribs; j++) {
-            if (semantic_names[j] != CachedShaders[i].semantic_names[j] ||
-                semantic_indexes[j] != CachedShaders[i].semantic_indexes[j]) {
+            if (slots[j] != CachedShaders[i].slots[j]) {
                match = GL_FALSE;
                break;
             }
@@ -119,24 +100,20 @@ lookup_shader(struct st_context *st,
    }
 
    CachedShaders[i].num_attribs = num_attribs;
-   for (j = 0; j < num_attribs; j++) {
-      CachedShaders[i].semantic_names[j] = semantic_names[j];
-      CachedShaders[i].semantic_indexes[j] = semantic_indexes[j];
-   }
+   for (j = 0; j < num_attribs; j++)
+      CachedShaders[i].slots[j] = slots[j];
 
    unsigned inputs[2 + MAX_TEXTURE_UNITS];
-   unsigned outputs[2 + MAX_TEXTURE_UNITS];
 
    for (int j = 0; j < num_attribs; j++) {
-      inputs[j] = semantic_to_vert_attrib(semantic_names[j]);
-      outputs[j] = semantic_to_varying_slot(semantic_names[j]);
+      inputs[j] = slot_to_vert_attrib(slots[j]);
    }
 
    CachedShaders[i].handle =
       st_nir_make_passthrough_shader(st, "st/drawtex VS",
                                        MESA_SHADER_VERTEX,
                                        num_attribs, inputs,
-                                       outputs, NULL, 0);
+                                       slots, NULL, 0);
 
    NumCachedShaders++;
 
@@ -154,8 +131,7 @@ st_DrawTex(struct gl_context *ctx, GLfloat x, GLfloat y, GLfloat z,
    struct pipe_resource *vbuffer = NULL;
    GLuint i, numTexCoords, numAttribs;
    GLboolean emitColor;
-   enum tgsi_semantic semantic_names[2 + MAX_TEXTURE_UNITS];
-   uint semantic_indexes[2 + MAX_TEXTURE_UNITS];
+   gl_varying_slot slots[2 + MAX_TEXTURE_UNITS];
    struct cso_velems_state velems;
    unsigned offset;
 
@@ -223,8 +199,7 @@ st_DrawTex(struct gl_context *ctx, GLfloat x, GLfloat y, GLfloat z,
          SET_ATTRIB(2, 0, clip_x1, clip_y1, z, 1.0f);   /* upper right */
          SET_ATTRIB(3, 0, clip_x0, clip_y1, z, 1.0f);   /* upper left */
 
-         semantic_names[0] = TGSI_SEMANTIC_POSITION;
-         semantic_indexes[0] = 0;
+         slots[0] = VARYING_SLOT_POS;
       }
 
       /* colors */
@@ -234,8 +209,7 @@ st_DrawTex(struct gl_context *ctx, GLfloat x, GLfloat y, GLfloat z,
          SET_ATTRIB(1, 1, c[0], c[1], c[2], c[3]);
          SET_ATTRIB(2, 1, c[0], c[1], c[2], c[3]);
          SET_ATTRIB(3, 1, c[0], c[1], c[2], c[3]);
-         semantic_names[1] = TGSI_SEMANTIC_COLOR;
-         semantic_indexes[1] = 0;
+         slots[1] = VARYING_SLOT_COL0;
          tex_attr = 2;
       }
       else {
@@ -261,10 +235,8 @@ st_DrawTex(struct gl_context *ctx, GLfloat x, GLfloat y, GLfloat z,
             SET_ATTRIB(2, tex_attr, s1, t1, 0.0f, 1.0f);  /* upper right */
             SET_ATTRIB(3, tex_attr, s0, t1, 0.0f, 1.0f);  /* upper left */
 
-            semantic_names[tex_attr] = st->needs_texcoord_semantic ?
-               TGSI_SEMANTIC_TEXCOORD : TGSI_SEMANTIC_GENERIC;
-            /* XXX: should this use semantic index i instead of 0 ? */
-            semantic_indexes[tex_attr] = 0;
+            slots[tex_attr] = st->needs_texcoord_semantic ?
+               VARYING_SLOT_TEX0 : VARYING_SLOT_VAR0;
 
             tex_attr++;
          }
@@ -284,8 +256,7 @@ st_DrawTex(struct gl_context *ctx, GLfloat x, GLfloat y, GLfloat z,
                         CSO_BIT_VERTEX_ELEMENTS));
 
    {
-      void *vs = lookup_shader(st, numAttribs,
-                               semantic_names, semantic_indexes);
+      void *vs = lookup_shader(st, numAttribs, slots);
       cso_set_vertex_shader_handle(cso, vs);
    }
    cso_set_tessctrl_shader_handle(cso, NULL);

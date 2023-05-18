@@ -130,7 +130,7 @@ make_nir_clear_vertex_shader(struct st_context *st, bool layered)
       VERT_ATTRIB_POS,
       SYSTEM_VALUE_INSTANCE_ID,
    };
-   unsigned outputs[] = {
+   gl_varying_slot outputs[] = {
       VARYING_SLOT_POS,
       VARYING_SLOT_LAYER
    };

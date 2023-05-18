@@ -314,7 +314,7 @@ st_make_passthrough_vertex_shader(struct st_context *st)
 
    unsigned inputs[] =
       {  VERT_ATTRIB_POS, VERT_ATTRIB_COLOR0, VERT_ATTRIB_GENERIC0 };
-   unsigned outputs[] =
+   gl_varying_slot outputs[] =
       { VARYING_SLOT_POS,  VARYING_SLOT_COL0,    VARYING_SLOT_TEX0 };
 
    st->passthrough_vs =
