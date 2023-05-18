@@ -70,7 +70,7 @@ WAIT_FOR_DEVICE_POLLING_TIME_SEC = int(
 # the final details.
 WAIT_FOR_LAVA_POST_PROCESSING_SEC = int(getenv("LAVA_WAIT_LAVA_POST_PROCESSING_SEC", 5))
 WAIT_FOR_LAVA_POST_PROCESSING_RETRIES = int(
-    getenv("LAVA_WAIT_LAVA_POST_PROCESSING_RETRIES", 3)
+    getenv("LAVA_WAIT_LAVA_POST_PROCESSING_RETRIES", 6)
 )
 
 # How many seconds to wait between log output LAVA RPC calls.
@@ -80,6 +80,7 @@ LOG_POLLING_TIME_SEC = int(getenv("LAVA_LOG_POLLING_TIME_SEC", 5))
 NUMBER_OF_RETRIES_TIMEOUT_DETECTION = int(
     getenv("LAVA_NUMBER_OF_RETRIES_TIMEOUT_DETECTION", 2)
 )
+
 
 def raise_exception_from_metadata(metadata: dict, job_id: int) -> None:
     """
@@ -138,10 +139,11 @@ def show_final_job_data(job, colour=f"{CONSOLE_LOG['BOLD']}{CONSOLE_LOG['FG_GREE
 
         if not job.is_post_processed():
             waited_for_sec: int = (
-                WAIT_FOR_LAVA_POST_PROCESSING_RETRIES * WAIT_FOR_DEVICE_POLLING_TIME_SEC
+                WAIT_FOR_LAVA_POST_PROCESSING_RETRIES
+                * WAIT_FOR_LAVA_POST_PROCESSING_SEC
             )
             print_log(
-                f"Waited for {waited_for_sec} seconds"
+                f"Waited for {waited_for_sec} seconds "
                 "for LAVA to post-process the job, it haven't finished yet. "
                 "Dumping it's info anyway"
             )
@@ -476,6 +478,7 @@ class LAVAJobSubmitter(PathResolver):
 
         if last_attempt_job.status != "pass":
             raise SystemExit(1)
+
 
 class StructuredLoggerWrapper:
     def __init__(self, submitter: LAVAJobSubmitter) -> None:
