@@ -255,11 +255,10 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_ALPHA_TEST:
-      /* nvc0 has fixed function alpha test support, but nv50 doesn't.  The TGSI
-       * backend emits the conditional discard code against a driver-uploaded
-       * uniform, but with NIR we can have the st emit it for us.
+      /* nvc0 has fixed function alpha test support, but nv50 doesn't.  If we
+       * don't have it, then the frontend will lower it for us.
        */
-      return class_3d >= NVC0_3D_CLASS || !screen->prefer_nir;
+      return class_3d >= NVC0_3D_CLASS;
 
    case PIPE_CAP_TEXTURE_TRANSFER_MODES:
       return PIPE_TEXTURE_TRANSFER_BLIT;
@@ -316,8 +315,6 @@ nv50_screen_get_shader_param(struct pipe_screen *pscreen,
                              enum pipe_shader_type shader,
                              enum pipe_shader_cap param)
 {
-   const struct nouveau_screen *screen = nouveau_screen(pscreen);
-
    switch (shader) {
    case PIPE_SHADER_VERTEX:
    case PIPE_SHADER_GEOMETRY:
@@ -377,12 +374,9 @@ nv50_screen_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
       return shader == PIPE_SHADER_COMPUTE ? NV50_MAX_GLOBALS - 1 : 0;
    case PIPE_SHADER_CAP_PREFERRED_IR:
-      return screen->prefer_nir ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
+      return PIPE_SHADER_IR_NIR;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
-      if (screen->prefer_nir)
-         return 1 << PIPE_SHADER_IR_NIR;
-      else
-         return (1 << PIPE_SHADER_IR_TGSI) | (1 << PIPE_SHADER_IR_NIR);
+      return 1 << PIPE_SHADER_IR_NIR;
    case PIPE_SHADER_CAP_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
@@ -854,9 +848,8 @@ nv50_screen_get_compiler_options(struct pipe_screen *pscreen,
                                  enum pipe_shader_ir ir,
                                  enum pipe_shader_type shader)
 {
-   struct nouveau_screen *screen = nouveau_screen(pscreen);
    if (ir == PIPE_SHADER_IR_NIR)
-      return nv50_ir_nir_shader_compiler_options(NVISA_G80_CHIPSET, shader, screen->prefer_nir);
+      return nv50_ir_nir_shader_compiler_options(NVISA_G80_CHIPSET, shader);
    return NULL;
 }
 

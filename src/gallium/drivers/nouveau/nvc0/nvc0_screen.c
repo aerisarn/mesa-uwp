@@ -329,11 +329,10 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SYSTEM_SVM:
       return screen->has_svm ? 1 : 0;
 
-   /* caps has to be turned on with nir */
    case PIPE_CAP_GL_SPIRV:
    case PIPE_CAP_GL_SPIRV_VARIABLE_POINTERS:
    case PIPE_CAP_INT64_DIVMOD:
-      return screen->prefer_nir ? 1 : 0;
+      return 1;
 
    /* nir related caps */
    case PIPE_CAP_NIR_IMAGES_AS_DEREF:
@@ -397,11 +396,9 @@ nvc0_screen_get_shader_param(struct pipe_screen *pscreen,
 
    switch (param) {
    case PIPE_SHADER_CAP_PREFERRED_IR:
-      return screen->prefer_nir ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
+      return PIPE_SHADER_IR_NIR;
    case PIPE_SHADER_CAP_SUPPORTED_IRS: {
       uint32_t irs = 1 << PIPE_SHADER_IR_NIR;
-      if (!screen->prefer_nir && class_3d < GV100_3D_CLASS)
-         irs |= 1 << PIPE_SHADER_IR_TGSI;
       if (screen->force_enable_cl)
          irs |= 1 << PIPE_SHADER_IR_NIR_SERIALIZED;
       return irs;
@@ -946,8 +943,7 @@ nvc0_screen_get_compiler_options(struct pipe_screen *pscreen,
 {
    struct nvc0_screen *screen = nvc0_screen(pscreen);
    if (ir == PIPE_SHADER_IR_NIR)
-      return nv50_ir_nir_shader_compiler_options(screen->base.device->chipset,
-                                                 shader, screen->base.prefer_nir);
+      return nv50_ir_nir_shader_compiler_options(screen->base.device->chipset, shader);
    return NULL;
 }
 
