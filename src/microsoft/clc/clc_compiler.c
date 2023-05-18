@@ -731,6 +731,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
          NIR_PASS(progress, nir, nir_opt_remove_phis);
          NIR_PASS(progress, nir, nir_opt_peephole_select, 8, true, true);
          NIR_PASS(progress, nir, nir_lower_vec3_to_vec4, nir_var_mem_generic | nir_var_uniform);
+         NIR_PASS(progress, nir, nir_opt_memcpy);
       } while (progress);
    }
 
@@ -745,10 +746,6 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    // necessarily removed all temp variables (e.g. the printf struct itself) at this point, so we'll rerun this later
    assert(nir->scratch_size == 0);
    NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_function_temp, glsl_get_cl_type_size_align);
-
-   // Lower memcpy
-   NIR_PASS_V(nir, nir_opt_memcpy);
-   NIR_PASS_V(nir, nir_lower_memcpy);
 
    nir_lower_printf_options printf_options = {
       .treat_doubles_as_floats = true,
@@ -765,15 +762,6 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
       metadata->printf.infos[i].arg_sizes = malloc(nir->printf_info[i].num_args * sizeof(unsigned));
       memcpy(metadata->printf.infos[i].arg_sizes, nir->printf_info[i].arg_sizes, nir->printf_info[i].num_args * sizeof(unsigned));
    }
-
-   // copy propagate to prepare for lower_explicit_io
-   NIR_PASS_V(nir, nir_split_var_copies);
-   NIR_PASS_V(nir, nir_opt_copy_prop_vars);
-   NIR_PASS_V(nir, nir_lower_var_copies);
-   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-   NIR_PASS_V(nir, nir_lower_alu);
-   NIR_PASS_V(nir, nir_opt_dce);
-   NIR_PASS_V(nir, nir_opt_deref);
 
    // For uniforms (kernel inputs, minus images), run this before adjusting variable list via image/sampler lowering
    NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_uniform, glsl_get_cl_type_size_align);
@@ -877,6 +865,25 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
               nir_var_mem_shared | nir_var_function_temp | nir_var_mem_global | nir_var_mem_constant,
               glsl_get_cl_type_size_align);
+
+   // Lower memcpy - needs to wait until types are sized
+   {
+      bool progress;
+      do {
+         progress = false;
+         NIR_PASS(progress, nir, nir_opt_memcpy);
+         NIR_PASS(progress, nir, nir_copy_prop);
+         NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
+         NIR_PASS(progress, nir, nir_opt_deref);
+         NIR_PASS(progress, nir, nir_opt_dce);
+         NIR_PASS(progress, nir, nir_split_var_copies);
+         NIR_PASS(progress, nir, nir_lower_var_copies);
+         NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
+         NIR_PASS(progress, nir, nir_opt_constant_folding);
+         NIR_PASS(progress, nir, nir_opt_cse);
+      } while (progress);
+   }
+   NIR_PASS_V(nir, nir_lower_memcpy);
 
    NIR_PASS_V(nir, dxil_nir_lower_ubo_to_temp);
    NIR_PASS_V(nir, clc_lower_constant_to_ssbo, out_dxil->kernel, &uav_id);
