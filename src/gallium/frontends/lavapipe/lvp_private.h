@@ -176,7 +176,7 @@ struct lvp_queue {
    struct pipe_fence_handle *last_fence;
    void *state;
    struct util_dynarray pipeline_destroys;
-   simple_mtx_t pipeline_lock;
+   simple_mtx_t lock;
 };
 
 struct lvp_pipeline_cache {

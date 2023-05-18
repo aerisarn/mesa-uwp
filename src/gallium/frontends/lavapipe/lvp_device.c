@@ -1407,11 +1407,11 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
 static void
 destroy_pipelines(struct lvp_queue *queue)
 {
-   simple_mtx_lock(&queue->pipeline_lock);
+   simple_mtx_lock(&queue->lock);
    while (util_dynarray_contains(&queue->pipeline_destroys, struct lvp_pipeline*)) {
       lvp_pipeline_destroy(queue->device, util_dynarray_pop(&queue->pipeline_destroys, struct lvp_pipeline*));
    }
-   simple_mtx_unlock(&queue->pipeline_lock);
+   simple_mtx_unlock(&queue->lock);
 }
 
 static VkResult
@@ -1426,12 +1426,16 @@ lvp_queue_submit(struct vk_queue *vk_queue,
    if (result != VK_SUCCESS)
       return result;
 
+   simple_mtx_lock(&queue->lock);
+
    for (uint32_t i = 0; i < submit->command_buffer_count; i++) {
       struct lvp_cmd_buffer *cmd_buffer =
          container_of(submit->command_buffers[i], struct lvp_cmd_buffer, vk);
 
       lvp_execute_cmds(queue->device, queue, cmd_buffer);
    }
+
+   simple_mtx_unlock(&queue->lock);
 
    if (submit->command_buffer_count > 0)
       queue->ctx->flush(queue->ctx, &queue->last_fence, 0);
@@ -1470,7 +1474,7 @@ lvp_queue_init(struct lvp_device *device, struct lvp_queue *queue,
 
    queue->vk.driver_submit = lvp_queue_submit;
 
-   simple_mtx_init(&queue->pipeline_lock, mtx_plain);
+   simple_mtx_init(&queue->lock, mtx_plain);
    util_dynarray_init(&queue->pipeline_destroys, NULL);
 
    return VK_SUCCESS;
@@ -1482,7 +1486,7 @@ lvp_queue_finish(struct lvp_queue *queue)
    vk_queue_finish(&queue->vk);
 
    destroy_pipelines(queue);
-   simple_mtx_destroy(&queue->pipeline_lock);
+   simple_mtx_destroy(&queue->lock);
    util_dynarray_fini(&queue->pipeline_destroys);
 
    u_upload_destroy(queue->uploader);
