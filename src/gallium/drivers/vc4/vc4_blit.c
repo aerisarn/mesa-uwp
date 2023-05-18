@@ -471,6 +471,79 @@ vc4_render_blit(struct pipe_context *ctx, struct pipe_blit_info *info)
         info->mask = 0;
 }
 
+/* Implement stencil and stencil/depth blit by reinterpreting stencil data as
+ * an RGBA8888 texture.
+ */
+static void
+vc4_stencil_blit(struct pipe_context *ctx, struct pipe_blit_info *info)
+{
+        struct vc4_context *vc4 = vc4_context(ctx);
+        struct vc4_resource *src = vc4_resource(info->src.resource);
+        struct vc4_resource *dst = vc4_resource(info->dst.resource);
+        enum pipe_format src_format, dst_format;
+
+        if ((info->mask & PIPE_MASK_S) == 0)
+                return;
+
+        src_format = (info->mask & PIPE_MASK_ZS) ?
+                     PIPE_FORMAT_RGBA8888_UINT :
+                     PIPE_FORMAT_R8_UINT;
+
+        dst_format = (info->mask & PIPE_MASK_ZS) ?
+                     PIPE_FORMAT_RGBA8888_UINT :
+                     PIPE_FORMAT_R8_UINT;
+
+        /* Initialize the surface */
+        struct pipe_surface dst_tmpl = {
+                .u.tex = {
+                        .level = info->dst.level,
+                        .first_layer = info->dst.box.z,
+                        .last_layer = info->dst.box.z,
+                },
+                .format = dst_format,
+        };
+        struct pipe_surface *dst_surf =
+                ctx->create_surface(ctx, &dst->base, &dst_tmpl);
+
+        /* Initialize the sampler view */
+        struct pipe_sampler_view src_tmpl = {
+                .target = (src->base.target == PIPE_TEXTURE_CUBE_ARRAY) ?
+                          PIPE_TEXTURE_2D_ARRAY :
+                          src->base.target,
+                .format = src_format,
+                .u.tex =  {
+                        .first_level = info->src.level,
+                        .last_level = info->src.level,
+                        .first_layer = 0,
+                        .last_layer = (PIPE_TEXTURE_2D ?
+                                       u_minify(src->base.depth0,
+                                                info->src.level) - 1 :
+                                       src->base.array_size - 1),
+                },
+                .swizzle_r = PIPE_SWIZZLE_X,
+                .swizzle_g = PIPE_SWIZZLE_Y,
+                .swizzle_b = PIPE_SWIZZLE_Z,
+                .swizzle_a = PIPE_SWIZZLE_W,
+        };
+        struct pipe_sampler_view *src_view =
+                ctx->create_sampler_view(ctx, &src->base, &src_tmpl);
+
+        vc4_blitter_save(vc4);
+        util_blitter_blit_generic(vc4->blitter, dst_surf, &info->dst.box,
+                                  src_view, &info->src.box,
+                                  src->base.width0, src->base.height0,
+                                  (info->mask & PIPE_MASK_ZS) ?
+                                  PIPE_MASK_RGBA : PIPE_MASK_R,
+                                  PIPE_TEX_FILTER_NEAREST,
+                                  info->scissor_enable ? &info->scissor :  NULL,
+                                  info->alpha_blend, false, 0);
+
+        pipe_surface_reference(&dst_surf, NULL);
+        pipe_sampler_view_reference(&src_view, NULL);
+
+        info->mask &= ~PIPE_MASK_ZS;
+}
+
 /* Optimal hardware path for blitting pixels.
  * Scaling, format conversion, up- and downsampling (resolve) are allowed.
  */
@@ -487,10 +560,7 @@ vc4_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
             util_try_blit_via_copy_region(pctx, &info, false))
                 return;
 
-        if (info.mask & PIPE_MASK_S) {
-                fprintf(stderr, "cannot blit stencil, skipping\n");
-                info.mask &= ~PIPE_MASK_S;
-        }
+        vc4_stencil_blit(pctx, &info);
 
         vc4_render_blit(pctx, &info);
 

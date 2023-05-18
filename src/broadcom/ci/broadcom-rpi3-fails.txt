@@ -929,11 +929,6 @@ spec@arb_fragment_coord_conventions@fp-arb-fragment-coord-conventions-integer,Fa
 spec@arb_fragment_coord_conventions@fp-arb-fragment-coord-conventions-none,Fail
 spec@arb_fragment_program@fp-indirections2,Fail
 spec@arb_fragment_program@minmax,Fail
-spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_depth24_stencil8,Fail
-spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index16,Fail
-spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index1,Fail
-spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index4,Fail
-spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index8,Fail
 spec@arb_framebuffer_object@fbo-attachments-blit-scaled-linear,Fail
 spec@arb_framebuffer_object@fbo-blit-stretch,Fail
 spec@arb_framebuffer_object@fbo-mipmap-copypix,Fail
@@ -996,15 +991,9 @@ spec@ext_framebuffer_multisample@sample-coverage 2 inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 2 non-inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 4 inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 4 non-inverted,Fail
-spec@ext_framebuffer_multisample@upsample 2 stencil,Fail
-spec@ext_framebuffer_multisample@upsample 4 stencil,Fail
 
 spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 spec@ext_framebuffer_object@fbo-depth-sample-compare,Fail
-spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index1-blit,Fail
-spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index16-blit,Fail
-spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index4-blit,Fail
-spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index8-blit,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p010,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p012,Fail
@@ -1018,7 +1007,6 @@ spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y416,Fail
 spec@ext_occlusion_query_boolean@any-samples,Fail
 spec@ext_packed_depth_stencil@depth_stencil texture,Fail
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-clear,Fail
-spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-blit,Fail
 spec@ext_packed_depth_stencil@texwrap formats,Fail
 spec@ext_packed_depth_stencil@texwrap formats@GL_DEPTH24_STENCIL8,Fail
 spec@ext_packed_depth_stencil@texwrap formats@GL_DEPTH24_STENCIL8- NPOT,Fail
