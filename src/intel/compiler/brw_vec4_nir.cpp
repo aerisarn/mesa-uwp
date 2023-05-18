@@ -407,7 +407,6 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       unsigned load_offset = nir_src_as_uint(instr->src[0]);
 
       dest = get_nir_dest(instr->dest);
-      dest.writemask = brw_writemask_for_size(instr->num_components);
 
       src = src_reg(ATTR, nir_intrinsic_base(instr) + load_offset,
                     glsl_type::uvec4_type);
@@ -1065,7 +1064,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    nir_alu_type dst_type = (nir_alu_type) (nir_op_infos[instr->op].output_type |
                                            nir_dest_bit_size(instr->dest.dest));
    dst_reg dst = get_nir_dest(instr->dest.dest, dst_type);
-   dst.writemask = instr->dest.write_mask;
+   dst.writemask &= instr->dest.write_mask;
 
    assert(!instr->dest.saturate);
 
