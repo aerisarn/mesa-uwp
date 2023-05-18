@@ -1185,6 +1185,33 @@ anv_cmd_buffer_chain_command_buffers(struct anv_cmd_buffer **cmd_buffers,
    anv_cmd_buffer_record_end_submit(cmd_buffers[num_cmd_buffers - 1]);
 }
 
+static void
+anv_print_batch(struct anv_device *device,
+                struct anv_queue *queue,
+                struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_batch_bo *bbo =
+      list_first_entry(&cmd_buffer->batch_bos, struct anv_batch_bo, link);
+   device->cmd_buffer_being_decoded = cmd_buffer;
+   struct intel_batch_decode_ctx *ctx = queue->decoder;
+
+   if (cmd_buffer->is_companion_rcs_cmd_buffer) {
+      int render_queue_idx =
+         anv_get_first_render_queue_index(device->physical);
+      ctx = &device->decoder[render_queue_idx];
+   }
+
+   if (INTEL_DEBUG(DEBUG_BATCH)) {
+      intel_print_batch(ctx, bbo->bo->map,
+                        bbo->bo->size, bbo->bo->offset, false);
+   }
+   if (INTEL_DEBUG(DEBUG_BATCH_STATS)) {
+      intel_batch_stats(ctx, bbo->bo->map,
+                        bbo->bo->size, bbo->bo->offset, false);
+   }
+   device->cmd_buffer_being_decoded = NULL;
+}
+
 void
 anv_cmd_buffer_exec_batch_debug(struct anv_queue *queue,
                                 uint32_t cmd_buffer_count,
@@ -1224,25 +1251,7 @@ anv_cmd_buffer_exec_batch_debug(struct anv_queue *queue,
             is_companion_rcs_cmd_buffer ?
             cmd_buffers[i]->companion_rcs_cmd_buffer :
             cmd_buffers[i];
-         struct anv_batch_bo *bbo =
-            list_first_entry(&cmd_buffer->batch_bos, struct anv_batch_bo, link);
-         device->cmd_buffer_being_decoded = cmd_buffer;
-         struct intel_batch_decode_ctx *ctx = queue->decoder;
-         if (is_companion_rcs_cmd_buffer) {
-            int render_queue_idx =
-                anv_get_first_render_queue_index(device->physical);
-            ctx = &device->decoder[render_queue_idx];
-         }
-
-         if (INTEL_DEBUG(DEBUG_BATCH)) {
-            intel_print_batch(ctx, bbo->bo->map,
-                              bbo->bo->size, bbo->bo->offset, false);
-         }
-         if (INTEL_DEBUG(DEBUG_BATCH_STATS)) {
-            intel_batch_stats(ctx, bbo->bo->map,
-                              bbo->bo->size, bbo->bo->offset, false);
-         }
-         device->cmd_buffer_being_decoded = NULL;
+         anv_print_batch(device, queue, cmd_buffer);
       }
    } else if (INTEL_DEBUG(DEBUG_BATCH)) {
       intel_print_batch(queue->decoder, device->trivial_batch_bo->map,
