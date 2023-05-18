@@ -4364,7 +4364,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       /* Re-use the destination's slot in the table for the register */
       nir_ssa_values[instr->dest.ssa.index] =
          bld.vgrf(reg_type, num_components);
-      bld.UNDEF(nir_ssa_values[instr->dest.ssa.index]);
       return;
    }
 

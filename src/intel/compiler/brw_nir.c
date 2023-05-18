@@ -1706,7 +1706,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    OPT(nir_copy_prop);
    OPT(nir_opt_dce);
 
-   OPT(nir_lower_locals_to_regs, 32);
+   OPT(nir_lower_locals_to_reg_intrinsics, 32);
 
    if (unlikely(debug_enabled)) {
       /* Re-index SSA defs so we print more sensible numbers. */
@@ -1721,11 +1721,11 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
 
    nir_validate_ssa_dominance(nir, "before nir_convert_from_ssa");
 
-   OPT(nir_convert_from_ssa, true, false);
+   OPT(nir_convert_from_ssa, true, true);
 
    if (!is_scalar) {
       OPT(nir_move_vec_src_uses_to_dest);
-      OPT(nir_lower_vec_to_movs, NULL, NULL);
+      OPT(nir_lower_vec_to_regs, NULL, NULL);
    }
 
    OPT(nir_opt_dce);
@@ -1741,6 +1741,8 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    if (devinfo->ver <= 5)
       brw_nir_analyze_boolean_resolves(nir);
 
+   OPT(nir_opt_dce);
+   nir_trivialize_registers(nir);
    nir_sweep(nir);
 
    if (unlikely(debug_enabled)) {
