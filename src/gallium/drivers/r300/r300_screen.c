@@ -255,8 +255,6 @@ static int r300_get_shader_param(struct pipe_screen *pscreen,
    boolean is_r500 = r300screen->caps.is_r500;
 
    switch (param) {
-    case PIPE_SHADER_CAP_PREFERRED_IR:
-        return PIPE_SHADER_IR_NIR;
     case PIPE_SHADER_CAP_SUPPORTED_IRS:
         return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
     default:

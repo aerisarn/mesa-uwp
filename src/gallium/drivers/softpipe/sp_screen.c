@@ -326,8 +326,6 @@ softpipe_get_shader_param(struct pipe_screen *screen,
    struct softpipe_screen *sp_screen = softpipe_screen(screen);
 
    switch (param) {
-   case PIPE_SHADER_CAP_PREFERRED_IR:
-      return PIPE_SHADER_IR_NIR;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
       return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
    default:

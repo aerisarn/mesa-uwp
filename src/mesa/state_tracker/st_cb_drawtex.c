@@ -95,8 +95,6 @@ lookup_shader(struct st_context *st,
               const enum tgsi_semantic *semantic_names,
               const uint *semantic_indexes)
 {
-   struct pipe_context *pipe = st->pipe;
-   struct pipe_screen *screen = st->screen;
    GLuint i, j;
 
    /* look for existing shader with same attributes */
@@ -126,31 +124,19 @@ lookup_shader(struct st_context *st,
       CachedShaders[i].semantic_indexes[j] = semantic_indexes[j];
    }
 
-   enum pipe_shader_ir preferred_ir =
-      screen->get_shader_param(screen, PIPE_SHADER_VERTEX,
-                               PIPE_SHADER_CAP_PREFERRED_IR);
+   unsigned inputs[2 + MAX_TEXTURE_UNITS];
+   unsigned outputs[2 + MAX_TEXTURE_UNITS];
 
-   if (preferred_ir == PIPE_SHADER_IR_NIR) {
-      unsigned inputs[2 + MAX_TEXTURE_UNITS];
-      unsigned outputs[2 + MAX_TEXTURE_UNITS];
-
-      for (int j = 0; j < num_attribs; j++) {
-         inputs[j] = semantic_to_vert_attrib(semantic_names[j]);
-         outputs[j] = semantic_to_varying_slot(semantic_names[j]);
-      }
-
-      CachedShaders[i].handle =
-         st_nir_make_passthrough_shader(st, "st/drawtex VS",
-                                        MESA_SHADER_VERTEX,
-                                        num_attribs, inputs,
-                                        outputs, NULL, 0);
-   } else {
-      CachedShaders[i].handle =
-         util_make_vertex_passthrough_shader(pipe,
-                                             num_attribs,
-                                             semantic_names,
-                                             semantic_indexes, FALSE);
+   for (int j = 0; j < num_attribs; j++) {
+      inputs[j] = semantic_to_vert_attrib(semantic_names[j]);
+      outputs[j] = semantic_to_varying_slot(semantic_names[j]);
    }
+
+   CachedShaders[i].handle =
+      st_nir_make_passthrough_shader(st, "st/drawtex VS",
+                                       MESA_SHADER_VERTEX,
+                                       num_attribs, inputs,
+                                       outputs, NULL, 0);
 
    NumCachedShaders++;
 

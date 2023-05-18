@@ -49,11 +49,8 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_shader_tokens.h"
 #include "draw/draw_context.h"
-#include "tgsi/tgsi_dump.h"
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_ureg.h"
-#include "nir_builder.h"
-#include "nir/nir_to_tgsi.h"
 
 #include "util/u_memory.h"
 
@@ -503,35 +500,15 @@ struct pipe_shader_state *
 st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state)
 {
    struct pipe_context *pipe = st->pipe;
-   struct pipe_screen *screen = st->screen;
 
    assert(state->type == PIPE_SHADER_IR_NIR);
    nir_shader *nir = state->ir.nir;
    struct shader_info info = nir->info;
    gl_shader_stage stage = nir->info.stage;
-   enum pipe_shader_type sh = pipe_shader_type_from_mesa(stage);
 
    if (ST_DEBUG & DEBUG_PRINT_IR) {
       fprintf(stderr, "NIR before handing off to driver:\n");
       nir_print_shader(nir, stderr);
-   }
-
-   if (PIPE_SHADER_IR_NIR !=
-       screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_PREFERRED_IR)) {
-      /* u_screen.c defaults to images as deref enabled for some reason (which
-       * is what radeonsi wants), but nir-to-tgsi requires lowered images.
-       */
-      if (screen->get_param(screen, PIPE_CAP_NIR_IMAGES_AS_DEREF))
-         NIR_PASS_V(nir, gl_nir_lower_images, false);
-
-      state->type = PIPE_SHADER_IR_TGSI;
-      state->tokens = nir_to_tgsi(nir, screen);
-
-      if (ST_DEBUG & DEBUG_PRINT_IR) {
-         fprintf(stderr, "TGSI for driver after nir-to-tgsi:\n");
-         tgsi_dump(state->tokens, 0);
-         fprintf(stderr, "\n");
-      }
    }
 
    struct pipe_shader_state *shader;

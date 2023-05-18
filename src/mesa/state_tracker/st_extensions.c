@@ -175,8 +175,6 @@ void st_init_limits(struct pipe_screen *screen,
          &c->ShaderCompilerOptions[stage];
       struct gl_program_constants *pc = &c->Program[stage];
 
-      bool prefer_nir = PIPE_SHADER_IR_NIR ==
-         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_PREFERRED_IR);
       if (screen->get_compiler_options)
          options->NirOptions = screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR, sh);
 
@@ -363,21 +361,16 @@ void st_init_limits(struct pipe_screen *screen,
             options->LowerBuiltinVariablesXfb |= VARYING_BIT_PSIZ;
       }
 
-      /* Note: If the driver doesn't prefer NIR, then st_create_nir_shader()
-       * will call nir_to_tgsi, and TGSI doesn't support 16-bit ops.
-       */
-      if (prefer_nir) {
-         options->LowerPrecisionFloat16 =
-            screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16);
-         options->LowerPrecisionDerivatives =
-            screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16_DERIVATIVES);
-         options->LowerPrecisionInt16 =
-            screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_INT16);
-         options->LowerPrecisionConstants =
-            screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_GLSL_16BIT_CONSTS);
-         options->LowerPrecisionFloat16Uniforms =
-            screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16_CONST_BUFFERS);
-      }
+      options->LowerPrecisionFloat16 =
+         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16);
+      options->LowerPrecisionDerivatives =
+         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16_DERIVATIVES);
+      options->LowerPrecisionInt16 =
+         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_INT16);
+      options->LowerPrecisionConstants =
+         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_GLSL_16BIT_CONSTS);
+      options->LowerPrecisionFloat16Uniforms =
+         screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16_CONST_BUFFERS);
    }
 
    c->MaxUserAssignableUniformLocations =
@@ -1840,13 +1833,10 @@ void st_init_extensions(struct pipe_screen *screen,
       screen->get_param(screen, PIPE_CAP_ALLOW_DRAW_OUT_OF_ORDER);
    consts->GLThreadNopCheckFramebufferStatus = options->glthread_nop_check_framebuffer_status;
 
-   bool prefer_nir = PIPE_SHADER_IR_NIR ==
-         screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_PREFERRED_IR);
    const struct nir_shader_compiler_options *nir_options =
       consts->ShaderCompilerOptions[MESA_SHADER_FRAGMENT].NirOptions;
 
-   if (prefer_nir &&
-       screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_INTEGERS) &&
+   if (screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_INTEGERS) &&
        extensions->ARB_stencil_texturing &&
        screen->get_param(screen, PIPE_CAP_DOUBLES) &&
        !(nir_options->lower_doubles_options & nir_lower_fp64_full_software))
