@@ -256,7 +256,7 @@ static int r300_get_shader_param(struct pipe_screen *pscreen,
 
    switch (param) {
     case PIPE_SHADER_CAP_PREFERRED_IR:
-        return (r300screen->debug & DBG_USE_TGSI) ? PIPE_SHADER_IR_TGSI : PIPE_SHADER_IR_NIR;
+        return PIPE_SHADER_IR_NIR;
     case PIPE_SHADER_CAP_SUPPORTED_IRS:
         return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
     default:

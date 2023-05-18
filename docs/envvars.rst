@@ -1615,8 +1615,6 @@ r300 driver environment variables
       Disable hierarchical zbuffer
    ``nocmask``
       Disable AA compression and fast AA clear
-   ``use_tgsi``
-      Request TGSI shaders from the state tracker
    ``notcl``
       Disable hardware accelerated Transform/Clip/Lighting
 

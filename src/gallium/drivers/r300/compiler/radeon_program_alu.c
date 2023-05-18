@@ -1036,43 +1036,6 @@ static void r300_transform_SIN_COS(struct radeon_compiler *c,
 	rc_remove_instruction(inst);
 }
 
-
-/**
- * Transform the trigonometric functions COS and SIN
- * to include pre-scaling by 1/(2*PI) and taking the fractional
- * part, so that the input to COS and SIN is always in the range [0,1).
- *
- * @warning This transformation implicitly changes the semantics of SIN and COS!
- */
-int radeonTransformTrigScale(struct radeon_compiler* c,
-	struct rc_instruction* inst,
-	void* unused)
-{
-	static const float RCP_2PI = 0.15915494309189535;
-	unsigned int temp;
-	unsigned int constant;
-	unsigned int constant_swizzle;
-
-	if (inst->U.I.Opcode != RC_OPCODE_COS &&
-	    inst->U.I.Opcode != RC_OPCODE_SIN)
-		return 0;
-
-	if (!c->needs_trig_input_transform)
-		return 1;
-
-	temp = rc_find_free_temporary(c);
-	constant = rc_constants_add_immediate_scalar(&c->Program.Constants, RCP_2PI, &constant_swizzle);
-
-	emit2(c, inst->Prev, RC_OPCODE_MUL, NULL, dstregtmpmask(temp, RC_MASK_W),
-		swizzle_xxxx(inst->U.I.SrcReg[0]),
-		srcregswz(RC_FILE_CONSTANT, constant, constant_swizzle));
-	emit1(c, inst->Prev, RC_OPCODE_FRC, NULL, dstregtmpmask(temp, RC_MASK_W),
-		srcreg(RC_FILE_TEMPORARY, temp));
-
-	r300_transform_SIN_COS(c, inst, temp);
-	return 1;
-}
-
 /**
  * Replaces DDX/DDY instructions with MOV 0 to avoid using dummy shaders on r300/r400.
  *
