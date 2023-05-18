@@ -49,8 +49,6 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_shader_tokens.h"
 #include "draw/draw_context.h"
-#include "tgsi/tgsi_parse.h"
-#include "tgsi/tgsi_ureg.h"
 
 #include "util/u_memory.h"
 
@@ -321,11 +319,6 @@ st_release_variants(struct st_context *st, struct gl_program *p)
 
    p->variants = NULL;
 
-   if (p->state.tokens) {
-      ureg_free_tokens(p->state.tokens);
-      p->state.tokens = NULL;
-   }
-
    /* Note: Any setup of ->ir.nir that has had pipe->create_*_state called on
     * it has resulted in the driver taking ownership of the NIR.  Those
     * callers should be NULLing out the nir field in any pipe_shader_state
@@ -545,9 +538,6 @@ st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state)
       unreachable("unsupported shader stage");
       return NULL;
    }
-
-   if (state->type == PIPE_SHADER_IR_TGSI)
-      tgsi_free_tokens(state->tokens);
 
    return shader;
 }
