@@ -659,6 +659,341 @@ dxil_nir_lower_constant_to_temp(nir_shader *nir)
 }
 
 static bool
+flatten_var_arrays(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_deref:
+   case nir_intrinsic_store_deref:
+   case nir_intrinsic_deref_atomic:
+   case nir_intrinsic_deref_atomic_swap:
+      break;
+   default:
+      return false;
+   }
+
+   nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+   nir_variable *var = NULL;
+   for (nir_deref_instr *d = deref; d; d = nir_deref_instr_parent(d)) {
+      if (d->deref_type == nir_deref_type_cast)
+         return false;
+      if (d->deref_type == nir_deref_type_var) {
+         var = d->var;
+         if (d->type == var->type)
+            return false;
+      }
+   }
+   if (!var)
+      return false;
+
+   nir_deref_path path;
+   nir_deref_path_init(&path, deref, NULL);
+
+   assert(path.path[0]->deref_type == nir_deref_type_var);
+   b->cursor = nir_before_instr(&path.path[0]->instr);
+   nir_deref_instr *new_var_deref = nir_build_deref_var(b, var);
+   nir_ssa_def *index = NULL;
+   for (unsigned level = 1; path.path[level]; ++level) {
+      nir_deref_instr *arr_deref = path.path[level];
+      assert(arr_deref->deref_type == nir_deref_type_array);
+      b->cursor = nir_before_instr(&arr_deref->instr);
+      nir_ssa_def *stride = nir_imm_int(b, glsl_get_component_slots(arr_deref->type));
+      nir_ssa_def *val = nir_imul(b, arr_deref->arr.index.ssa, stride);
+      if (index) {
+         index = nir_iadd(b, index, val);
+      } else {
+         index = val;
+      }
+   }
+
+   unsigned vector_comps = intr->num_components;
+   if (vector_comps > 1) {
+      b->cursor = nir_before_instr(instr);
+      if (intr->intrinsic == nir_intrinsic_load_deref) {
+         nir_ssa_def *components[NIR_MAX_VEC_COMPONENTS];
+         for (unsigned i = 0; i < vector_comps; ++i) {
+            nir_ssa_def *final_index = index ? nir_iadd_imm(b, index, i) : nir_imm_int(b, i);
+            nir_deref_instr *comp_deref = nir_build_deref_array(b, new_var_deref, final_index);
+            components[i] = nir_load_deref(b, comp_deref);
+         }
+         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_vec(b, components, vector_comps));
+      } else if (intr->intrinsic == nir_intrinsic_store_deref) {
+         for (unsigned i = 0; i < vector_comps; ++i) {
+            if (((1 << i) & nir_intrinsic_write_mask(intr)) == 0)
+               continue;
+            nir_ssa_def *final_index = index ? nir_iadd_imm(b, index, i) : nir_imm_int(b, i);
+            nir_deref_instr *comp_deref = nir_build_deref_array(b, new_var_deref, final_index);
+            nir_store_deref(b, comp_deref, nir_channel(b, intr->src[1].ssa, i), 1);
+         }
+      }
+      nir_instr_remove(instr);
+   } else {
+      nir_src_rewrite_ssa(&intr->src[0], &nir_build_deref_array(b, new_var_deref, index)->dest.ssa);
+   }
+
+   nir_deref_path_finish(&path);
+   return true;
+}
+
+static void
+flatten_constant_initializer(nir_variable *var, nir_constant *src, nir_constant ***dest, unsigned vector_elements)
+{
+   if (src->num_elements == 0) {
+      for (unsigned i = 0; i < vector_elements; ++i) {
+         nir_constant *new_scalar = rzalloc(var, nir_constant);
+         memcpy(&new_scalar->values[0], &src->values[i], sizeof(src->values[0]));
+         new_scalar->is_null_constant = src->values[i].u64 == 0;
+
+         nir_constant **array_entry = (*dest)++;
+         *array_entry = new_scalar;
+      }
+   } else {
+      for (unsigned i = 0; i < src->num_elements; ++i)
+         flatten_constant_initializer(var, src->elements[i], dest, vector_elements);
+   }
+}
+
+static bool
+flatten_var_array_types(nir_variable *var)
+{
+   assert(!glsl_type_is_struct(glsl_without_array(var->type)));
+   const struct glsl_type *matrix_type = glsl_without_array(var->type);
+   if (!glsl_type_is_array_of_arrays(var->type) && glsl_get_components(matrix_type) == 1)
+      return false;
+
+   enum glsl_base_type base_type = glsl_get_base_type(matrix_type);
+   const struct glsl_type *flattened_type = glsl_array_type(glsl_scalar_type(base_type),
+                                                            glsl_get_component_slots(var->type), 0);
+   var->type = flattened_type;
+   if (var->constant_initializer) {
+      nir_constant **new_elements = ralloc_array(var, nir_constant *, glsl_get_length(flattened_type));
+      nir_constant **temp = new_elements;
+      flatten_constant_initializer(var, var->constant_initializer, &temp, glsl_get_vector_elements(matrix_type));
+      var->constant_initializer->num_elements = glsl_get_length(flattened_type);
+      var->constant_initializer->elements = new_elements;
+   }
+   return true;
+}
+
+bool
+dxil_nir_flatten_var_arrays(nir_shader *shader, nir_variable_mode modes)
+{
+   bool progress = false;
+   nir_foreach_variable_with_modes(var, shader, modes & ~nir_var_function_temp)
+      progress |= flatten_var_array_types(var);
+
+   if (modes & nir_var_function_temp) {
+      nir_foreach_function(func, shader) {
+         if (!func->impl)
+            continue;
+         nir_foreach_function_temp_variable(var, func->impl)
+            progress |= flatten_var_array_types(var);
+      }
+   }
+
+   if (!progress)
+      return false;
+
+   nir_shader_instructions_pass(shader, flatten_var_arrays,
+                                nir_metadata_block_index |
+                                   nir_metadata_dominance |
+                                   nir_metadata_loop_analysis,
+                                NULL);
+   nir_remove_dead_derefs(shader);
+   return true;
+}
+
+static bool
+lower_deref_bit_size(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_deref:
+   case nir_intrinsic_store_deref:
+      break;
+   default:
+      /* Atomics can't be smaller than 32-bit */
+      return false;
+   }
+
+   nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+   /* Only interested in full deref chains */
+   if (!var)
+      return false;
+
+   const struct glsl_type *var_scalar_type = glsl_without_array(var->type);
+   if (deref->type == var_scalar_type || !glsl_type_is_scalar(var_scalar_type))
+      return false;
+
+   assert(deref->deref_type == nir_deref_type_var || deref->deref_type == nir_deref_type_array);
+   const struct glsl_type *old_glsl_type = deref->type;
+   nir_alu_type old_type = nir_get_nir_type_for_glsl_type(old_glsl_type);
+   nir_alu_type new_type = nir_get_nir_type_for_glsl_type(var_scalar_type);
+   if (glsl_get_bit_size(old_glsl_type) < glsl_get_bit_size(var_scalar_type)) {
+      deref->type = var_scalar_type;
+      if (intr->intrinsic == nir_intrinsic_load_deref) {
+         intr->dest.ssa.bit_size = glsl_get_bit_size(var_scalar_type);
+         b->cursor = nir_after_instr(instr);
+         nir_ssa_def *downcast = nir_type_convert(b, &intr->dest.ssa, new_type, old_type, nir_rounding_mode_undef);
+         nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, downcast, downcast->parent_instr);
+      }
+      else {
+         b->cursor = nir_before_instr(instr);
+         nir_ssa_def *upcast = nir_type_convert(b, intr->src[1].ssa, old_type, new_type, nir_rounding_mode_undef);
+         nir_src_rewrite_ssa(&intr->src[1], upcast);
+      }
+
+      while (deref->deref_type == nir_deref_type_array) {
+         nir_deref_instr *parent = nir_deref_instr_parent(deref);
+         parent->type = glsl_type_wrap_in_arrays(deref->type, parent->type);
+         deref = parent;
+      }
+   } else {
+      /* Assumed arrays are already flattened */
+      b->cursor = nir_before_instr(&deref->instr);
+      nir_deref_instr *parent = nir_build_deref_var(b, var);
+      if (deref->deref_type == nir_deref_type_array)
+         deref = nir_build_deref_array(b, parent, nir_imul_imm(b, deref->arr.index.ssa, 2));
+      else
+         deref = nir_build_deref_array_imm(b, parent, 0);
+      nir_deref_instr *deref2 = nir_build_deref_array(b, parent,
+                                                      nir_iadd_imm(b, deref->arr.index.ssa, 1));
+      b->cursor = nir_before_instr(instr);
+      if (intr->intrinsic == nir_intrinsic_load_deref) {
+         nir_ssa_def *src1 = nir_load_deref(b, deref);
+         nir_ssa_def *src2 = nir_load_deref(b, deref2);
+         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_pack_64_2x32_split(b, src1, src2));
+      } else {
+         nir_ssa_def *src1 = nir_unpack_64_2x32_split_x(b, intr->src[1].ssa);
+         nir_ssa_def *src2 = nir_unpack_64_2x32_split_y(b, intr->src[1].ssa);
+         nir_store_deref(b, deref, src1, 1);
+         nir_store_deref(b, deref, src2, 1);
+      }
+      nir_instr_remove(instr);
+   }
+   return true;
+}
+
+static bool
+lower_var_bit_size_types(nir_variable *var, unsigned min_bit_size, unsigned max_bit_size)
+{
+   assert(!glsl_type_is_array_of_arrays(var->type) && !glsl_type_is_struct(var->type));
+   const struct glsl_type *type = glsl_without_array(var->type);
+   assert(glsl_type_is_scalar(type));
+   enum glsl_base_type base_type = glsl_get_base_type(type);
+   if (glsl_base_type_get_bit_size(base_type) < min_bit_size) {
+      switch (min_bit_size) {
+      case 16:
+         switch (base_type) {
+         case GLSL_TYPE_BOOL:
+            base_type = GLSL_TYPE_UINT16;
+            for (unsigned i = 0; i < (var->constant_initializer ? var->constant_initializer->num_elements : 0); ++i)
+               var->constant_initializer->elements[i]->values[0].u16 = var->constant_initializer->elements[i]->values[0].b ? 0xffff : 0;
+            break;
+         case GLSL_TYPE_INT8:
+            base_type = GLSL_TYPE_INT16;
+            for (unsigned i = 0; i < (var->constant_initializer ? var->constant_initializer->num_elements : 0); ++i)
+               var->constant_initializer->elements[i]->values[0].i16 = var->constant_initializer->elements[i]->values[0].i8;
+            break;
+         case GLSL_TYPE_UINT8: base_type = GLSL_TYPE_UINT16; break;
+         default: unreachable("Unexpected base type");
+         }
+         break;
+      case 32:
+         switch (base_type) {
+         case GLSL_TYPE_BOOL:
+            base_type = GLSL_TYPE_UINT;
+            for (unsigned i = 0; i < (var->constant_initializer ? var->constant_initializer->num_elements : 0); ++i)
+               var->constant_initializer->elements[i]->values[0].u32 = var->constant_initializer->elements[i]->values[0].b ? 0xffffffff : 0;
+            break;
+         case GLSL_TYPE_INT8:
+            base_type = GLSL_TYPE_INT;
+            for (unsigned i = 0; i < (var->constant_initializer ? var->constant_initializer->num_elements : 0); ++i)
+               var->constant_initializer->elements[i]->values[0].i32 = var->constant_initializer->elements[i]->values[0].i8;
+            break;
+         case GLSL_TYPE_INT16:
+            base_type = GLSL_TYPE_INT;
+            for (unsigned i = 0; i < (var->constant_initializer ? var->constant_initializer->num_elements : 0); ++i)
+               var->constant_initializer->elements[i]->values[0].i32 = var->constant_initializer->elements[i]->values[0].i16;
+            break;
+         case GLSL_TYPE_FLOAT16:
+            base_type = GLSL_TYPE_FLOAT;
+            for (unsigned i = 0; i < (var->constant_initializer ? var->constant_initializer->num_elements : 0); ++i)
+               var->constant_initializer->elements[i]->values[0].f32 = _mesa_half_to_float(var->constant_initializer->elements[i]->values[0].u16);
+            break;
+         case GLSL_TYPE_UINT8: base_type = GLSL_TYPE_UINT; break;
+         case GLSL_TYPE_UINT16: base_type = GLSL_TYPE_UINT; break;
+         default: unreachable("Unexpected base type");
+         }
+         break;
+      default: unreachable("Unexpected min bit size");
+      }
+      var->type = glsl_type_wrap_in_arrays(glsl_scalar_type(base_type), var->type);
+      return true;
+   }
+   if (glsl_base_type_bit_size(base_type) > max_bit_size) {
+      assert(!glsl_type_is_array_of_arrays(var->type));
+      var->type = glsl_array_type(glsl_scalar_type(GLSL_TYPE_UINT),
+                                    glsl_type_is_array(var->type) ? glsl_get_length(var->type) * 2 : 2,
+                                    0);
+      if (var->constant_initializer) {
+         unsigned num_elements = var->constant_initializer->num_elements ?
+            var->constant_initializer->num_elements * 2 : 2;
+         nir_constant **element_arr = ralloc_array(var, nir_constant *, num_elements);
+         nir_constant *elements = rzalloc_array(var, nir_constant, num_elements);
+         for (unsigned i = 0; i < var->constant_initializer->num_elements; ++i) {
+            element_arr[i*2] = &elements[i*2];
+            element_arr[i*2+1] = &elements[i*2+1];
+            const nir_const_value *src = var->constant_initializer->num_elements ?
+               var->constant_initializer->elements[i]->values : var->constant_initializer->values;
+            elements[i*2].values[0].u32 = (uint32_t)src->u64;
+            elements[i*2].is_null_constant = (uint32_t)src->u64 == 0;
+            elements[i*2+1].values[0].u32 = (uint32_t)(src->u64 >> 32);
+            elements[i*2+1].is_null_constant = (uint32_t)(src->u64 >> 32) == 0;
+         }
+         var->constant_initializer->num_elements = num_elements;
+         var->constant_initializer->elements = element_arr;
+      }
+      return true;
+   }
+   return false;
+}
+
+bool
+dxil_nir_lower_var_bit_size(nir_shader *shader, nir_variable_mode modes,
+                            unsigned min_bit_size, unsigned max_bit_size)
+{
+   bool progress = false;
+   nir_foreach_variable_with_modes(var, shader, modes & ~nir_var_function_temp)
+      progress |= lower_var_bit_size_types(var, min_bit_size, max_bit_size);
+
+   if (modes & nir_var_function_temp) {
+      nir_foreach_function(func, shader) {
+         if (!func->impl)
+            continue;
+         nir_foreach_function_temp_variable(var, func->impl)
+            progress |= lower_var_bit_size_types(var, min_bit_size, max_bit_size);
+      }
+   }
+
+   if (!progress)
+      return false;
+
+   nir_shader_instructions_pass(shader, lower_deref_bit_size,
+                                nir_metadata_block_index |
+                                   nir_metadata_dominance |
+                                   nir_metadata_loop_analysis,
+                                NULL);
+   nir_remove_dead_derefs(shader);
+   return true;
+}
+
+static bool
 lower_load_ubo(nir_builder *b, nir_intrinsic_instr *intr)
 {
    assert(intr->dest.is_ssa);
