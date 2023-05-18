@@ -1207,10 +1207,13 @@ found_resume:
    return true;
 }
 
+typedef bool (*wrap_instr_callback)(nir_instr *instr);
+
 static bool
-wrap_jump_instr(nir_builder *b, nir_instr *instr, void *data)
+wrap_instr(nir_builder *b, nir_instr *instr, void *data)
 {
-   if (instr->type != nir_instr_type_jump)
+   wrap_instr_callback callback = data;
+   if (!callback(instr))
       return false;
 
    b->cursor = nir_before_instr(instr);
@@ -1231,16 +1234,22 @@ wrap_jump_instr(nir_builder *b, nir_instr *instr, void *data)
  * do not allow.
  */
 static bool
-wrap_jumps(nir_shader *shader)
+wrap_instrs(nir_shader *shader, wrap_instr_callback callback)
 {
-   return nir_shader_instructions_pass(shader, wrap_jump_instr,
-                                       nir_metadata_none, NULL);
+   return nir_shader_instructions_pass(shader, wrap_instr,
+                                       nir_metadata_none, callback);
+}
+
+static bool
+instr_is_jump(nir_instr *instr)
+{
+   return instr->type == nir_instr_type_jump;
 }
 
 static nir_instr *
 lower_resume(nir_shader *shader, int call_idx)
 {
-   wrap_jumps(shader);
+   wrap_instrs(shader, instr_is_jump);
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    nir_instr *resume_instr = find_resume_instr(impl, call_idx);
@@ -1992,9 +2001,18 @@ nir_lower_shader_calls(nir_shader *shader,
    /* Deref chains contain metadata information that is needed by other passes
     * after this one. If we don't rematerialize the derefs in the blocks where
     * they're used here, the following lowerings will insert phis which can
-    * prevent other passes from chasing deref chains.
+    * prevent other passes from chasing deref chains. Additionally, derefs need
+    * to be rematerialized after shader call instructions to avoid spilling.
     */
-   nir_rematerialize_derefs_in_use_blocks_impl(impl);
+   {
+      bool progress = false;
+      NIR_PASS(progress, shader, wrap_instrs, instr_is_shader_call);
+
+      nir_rematerialize_derefs_in_use_blocks_impl(impl);
+
+      if (progress)
+         NIR_PASS(_, shader, nir_opt_dead_cf); 
+   }
 
    /* Save the start point of the call stack in scratch */
    unsigned start_call_scratch = shader->scratch_size;
