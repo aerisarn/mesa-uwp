@@ -4259,7 +4259,6 @@ lsc_fence_descriptor_for_intrinsic(const struct intel_device_info *devinfo,
          break;
       case SCOPE_WORKGROUP:
          scope = LSC_FENCE_THREADGROUP;
-         flush_type = LSC_FLUSH_TYPE_EVICT;
          break;
       case SCOPE_SHADER_CALL:
       case SCOPE_INVOCATION:
