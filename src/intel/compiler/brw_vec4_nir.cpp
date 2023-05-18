@@ -26,6 +26,9 @@
 #include "brw_vec4_builder.h"
 #include "brw_vec4_surface_builder.h"
 #include "brw_eu.h"
+#include "nir.h"
+#include "nir_intrinsics.h"
+#include "nir_intrinsics_indices.h"
 
 using namespace brw;
 using namespace brw::surface_access;
@@ -194,16 +197,48 @@ dst_reg_for_nir_reg(vec4_visitor *v, nir_register *nir_reg,
    return reg;
 }
 
+static dst_reg
+dst_reg_for_nir_reg_decl(vec4_visitor *v, nir_ssa_def *handle,
+                         unsigned base_offset, nir_src *indirect)
+{
+   nir_intrinsic_instr *decl = nir_reg_get_decl(handle);
+   dst_reg reg = v->nir_ssa_values[handle->index];
+   if (nir_intrinsic_bit_size(decl) == 64)
+      reg.type = BRW_REGISTER_TYPE_DF;
+
+   reg = offset(reg, 8, base_offset);
+   if (indirect) {
+      reg.reladdr =
+         new(v->mem_ctx) src_reg(v->get_nir_src(*indirect,
+                                                BRW_REGISTER_TYPE_D,
+                                                1));
+   }
+   return reg;
+}
+
 dst_reg
 vec4_visitor::get_nir_dest(const nir_dest &dest)
 {
    if (dest.is_ssa) {
-      dst_reg dst =
-         dst_reg(VGRF, alloc.allocate(DIV_ROUND_UP(dest.ssa.bit_size, 32)));
-      if (dest.ssa.bit_size == 64)
-         dst.type = BRW_REGISTER_TYPE_DF;
-      nir_ssa_values[dest.ssa.index] = dst;
-      return dst;
+      nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.ssa);
+      if (!store_reg) {
+         dst_reg dst =
+            dst_reg(VGRF, alloc.allocate(DIV_ROUND_UP(dest.ssa.bit_size, 32)));
+         if (dest.ssa.bit_size == 64)
+            dst.type = BRW_REGISTER_TYPE_DF;
+         nir_ssa_values[dest.ssa.index] = dst;
+         return dst;
+      } else {
+         nir_src *indirect =
+            (store_reg->intrinsic == nir_intrinsic_store_reg_indirect) ?
+            &store_reg->src[2] : NULL;
+
+         dst_reg dst = dst_reg_for_nir_reg_decl(this, store_reg->src[1].ssa,
+                                                nir_intrinsic_base(store_reg),
+                                                indirect);
+         dst.writemask = nir_intrinsic_write_mask(store_reg);
+         return dst;
+      }
    } else {
       return dst_reg_for_nir_reg(this, dest.reg.reg, dest.reg.base_offset,
                                  dest.reg.indirect);
@@ -229,10 +264,19 @@ vec4_visitor::get_nir_src(const nir_src &src, enum brw_reg_type type,
    dst_reg reg;
 
    if (src.is_ssa) {
-      assert(src.ssa != NULL);
-      reg = nir_ssa_values[src.ssa->index];
-   }
-   else {
+      nir_intrinsic_instr *load_reg = nir_load_reg_for_def(src.ssa);
+      if (load_reg) {
+         nir_src *indirect =
+            (load_reg->intrinsic == nir_intrinsic_load_reg_indirect) ?
+            &load_reg->src[1] : NULL;
+
+         reg = dst_reg_for_nir_reg_decl(this, load_reg->src[0].ssa,
+                                              nir_intrinsic_base(load_reg),
+                                              indirect);
+      } else {
+         reg = nir_ssa_values[src.ssa->index];
+      }
+   } else {
       reg = dst_reg_for_nir_reg(this, src.reg.reg, src.reg.base_offset,
                                 src.reg.indirect);
    }
@@ -400,6 +444,27 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    src_reg src;
 
    switch (instr->intrinsic) {
+   case nir_intrinsic_decl_reg: {
+      unsigned bit_size = nir_intrinsic_bit_size(instr);
+      unsigned array_elems = nir_intrinsic_num_array_elems(instr);
+      if (array_elems == 0)
+         array_elems = 1;
+
+      const unsigned num_regs = array_elems * DIV_ROUND_UP(bit_size, 32);
+      dst_reg reg(VGRF, alloc.allocate(num_regs));
+      if (bit_size == 64)
+         reg.type = BRW_REGISTER_TYPE_DF;
+
+      nir_ssa_values[instr->dest.ssa.index] = reg;
+      break;
+   }
+
+   case nir_intrinsic_load_reg:
+   case nir_intrinsic_load_reg_indirect:
+   case nir_intrinsic_store_reg:
+   case nir_intrinsic_store_reg_indirect:
+      /* Nothing to do with these. */
+      break;
 
    case nir_intrinsic_load_input: {
       assert(nir_dest_bit_size(instr->dest) == 32);
