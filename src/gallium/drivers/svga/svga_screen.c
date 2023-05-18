@@ -832,7 +832,6 @@ svga_sm5_get_compute_param(struct pipe_screen *screen,
    uint64_t *iret = (uint64_t *)ret;
 
    assert(sws->have_gl43);
-   assert(ir_type == PIPE_SHADER_IR_TGSI);
 
    switch (param) {
    case PIPE_COMPUTE_CAP_MAX_GRID_SIZE:
