@@ -1977,6 +1977,7 @@ vtn_null_constant(struct vtn_builder *b, struct vtn_type *type)
    switch (type->base_type) {
    case vtn_base_type_scalar:
    case vtn_base_type_vector:
+      c->is_null_constant = true;
       /* Nothing to do here.  It's already initialized to zero */
       break;
 
@@ -2003,6 +2004,7 @@ vtn_null_constant(struct vtn_builder *b, struct vtn_type *type)
    case vtn_base_type_matrix:
    case vtn_base_type_array:
       vtn_assert(type->length > 0);
+      c->is_null_constant = true;
       c->num_elements = type->length;
       c->elements = ralloc_array(b, nir_constant *, c->num_elements);
 
@@ -2012,6 +2014,7 @@ vtn_null_constant(struct vtn_builder *b, struct vtn_type *type)
       break;
 
    case vtn_base_type_struct:
+      c->is_null_constant = true;
       c->num_elements = type->length;
       c->elements = ralloc_array(b, nir_constant *, c->num_elements);
       for (unsigned i = 0; i < c->num_elements; i++)
