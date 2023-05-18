@@ -6196,7 +6196,7 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
          coords.emplace_back(first_layer);
    }
 
-   if (is_ms) {
+   if (is_ms && instr->intrinsic != nir_intrinsic_bindless_image_fragment_mask_load_amd) {
       assert(instr->src[2].ssa->bit_size == (a16 ? 16 : 32));
       coords.emplace_back(get_ssa_temp_tex(ctx, instr->src[2].ssa, a16));
    }
@@ -6323,8 +6323,14 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
    } else {
       std::vector<Temp> coords = get_image_coords(ctx, instr);
 
-      bool level_zero = nir_src_is_const(instr->src[3]) && nir_src_as_uint(instr->src[3]) == 0;
-      aco_opcode opcode = level_zero ? aco_opcode::image_load : aco_opcode::image_load_mip;
+      aco_opcode opcode;
+      if (instr->intrinsic == nir_intrinsic_bindless_image_fragment_mask_load_amd) {
+         opcode = aco_opcode::image_load;
+      } else {
+         bool level_zero =
+            nir_src_is_const(instr->src[3]) && nir_src_as_uint(instr->src[3]) == 0;
+         opcode = level_zero ? aco_opcode::image_load : aco_opcode::image_load_mip;
+      }
 
       Operand vdata = is_sparse ? emit_tfe_init(bld, tmp) : Operand(v1);
       MIMG_instruction* load =
@@ -6332,14 +6338,21 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
       load->glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT) ? 1 : 0;
       load->dlc =
          load->glc && (ctx->options->gfx_level == GFX10 || ctx->options->gfx_level == GFX10_3);
-      load->dim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
       load->a16 = instr->src[1].ssa->bit_size == 16;
       load->d16 = d16;
       load->dmask = dmask;
       load->unrm = true;
-      load->da = should_declare_array(ctx, dim, is_array);
-      load->sync = sync;
       load->tfe = is_sparse;
+
+      if (instr->intrinsic == nir_intrinsic_bindless_image_fragment_mask_load_amd) {
+         load->dim = is_array ? ac_image_2darray : ac_image_2d;
+         load->da = is_array;
+         load->sync = memory_sync_info();
+      } else {
+         load->dim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
+         load->da = should_declare_array(ctx, dim, is_array);
+         load->sync = sync;
+      }
    }
 
    if (is_sparse && instr->dest.ssa.bit_size == 64) {
@@ -8220,6 +8233,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_shared2_amd:
    case nir_intrinsic_store_shared2_amd: visit_access_shared2_amd(ctx, instr); break;
    case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_bindless_image_fragment_mask_load_amd:
    case nir_intrinsic_bindless_image_sparse_load: visit_image_load(ctx, instr); break;
    case nir_intrinsic_bindless_image_store: visit_image_store(ctx, instr); break;
    case nir_intrinsic_bindless_image_atomic:
