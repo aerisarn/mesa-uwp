@@ -6,6 +6,17 @@
   rules:
     - if: &is-scheduled-pipeline '$CI_PIPELINE_SOURCE == "schedule"'
       when: on_success
+  retry: &scheduled-pipeline-retries
+    max: 1
+    # Don't retry on script_failure, job_execution_timeout, runner_unsupported,
+    # stale_schedule, archived_failure, or unmet_prerequisites
+    when:
+      - api_failure
+      - runner_system_failure
+      - scheduler_failure
+      - data_integrity_failure
+      - unknown_failure
+
 
 # Generic rule to not run the job during scheduled pipelines. Jobs that aren't
 # something like a nightly run should include this rule.
@@ -54,6 +65,7 @@
 
 # Same core dependencies for doing manual runs.
 .core-manual-rules:
+  retry: *scheduled-pipeline-retries
   rules:
     # We only want manual jobs to show up when it's not marge's pre-merge CI
     # run, otherwise she'll wait until her timeout.  The exception is
@@ -155,6 +167,7 @@
       when: on_success
 
 .gl-manual-rules:
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.core-manual-rules, rules]
     - changes:
@@ -173,6 +186,7 @@
       when: on_success
 
 .vulkan-manual-rules:
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.core-manual-rules, rules]
     - changes:
@@ -211,6 +225,7 @@
 
 .lavapipe-manual-rules:
   stage: software-renderer
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.vulkan-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
@@ -301,6 +316,7 @@
       when: on_success
 
 .freedreno-common-manual-rules:
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.freedreno-farm-rules, rules]
     - !reference [.core-manual-rules, rules]
@@ -321,6 +337,7 @@
 
 .freedreno-manual-rules:
   stage: freedreno
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.freedreno-common-manual-rules, rules]
     - !reference [.gl-manual-rules, rules]
@@ -339,6 +356,7 @@
 
 .turnip-manual-rules:
   stage: freedreno
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.freedreno-common-manual-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
@@ -360,6 +378,7 @@
 
 .freedreno-rules-performance:
   stage: freedreno
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.performance-rules, rules]
     - !reference [.freedreno-manual-rules, rules]
@@ -387,6 +406,7 @@
 
 .nouveau-manual-rules:
   stage: nouveau
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.anholt-farm-rules, rules]
     - !reference [.gl-manual-rules, rules]
@@ -416,6 +436,7 @@
 
 .panfrost-midgard-manual-rules:
   stage: arm
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-manual-rules, rules]
@@ -448,6 +469,7 @@
 
 .panfrost-bifrost-manual-rules:
   stage: arm
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.collabora-farm-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
@@ -505,6 +527,7 @@
 
 .v3d-manual-rules:
   stage: broadcom
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.igalia-farm-rules, rules]
     - !reference [.gl-manual-rules, rules]
@@ -559,6 +582,7 @@
 
 .radv-valve-manual-rules:
   stage: amd
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.valve-farm-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
@@ -652,6 +676,7 @@
 
 .i915g-manual-rules:
   stage: intel
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.gl-manual-rules, rules]
     - changes:
@@ -670,6 +695,7 @@
 
 .crocus-manual-rules:
   stage: intel
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.gl-manual-rules, rules]
     - changes:
@@ -690,6 +716,7 @@
 
 .iris-manual-rules:
   stage: intel
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-manual-rules, rules]
@@ -702,6 +729,7 @@
 # .performance-rules)
 .iris-rules-performance:
   stage: intel
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.collabora-farm-rules, rules]
     - !reference [.performance-rules, rules]
@@ -729,6 +757,7 @@
 
 .anv-manual-rules:
   stage: intel
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.collabora-farm-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
@@ -747,6 +776,7 @@
 
 .hasvk-manual-rules:
   stage: intel
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.anholt-farm-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
@@ -779,6 +809,7 @@
 
 .virgl-iris-manual-rules:
   stage: layered-backends
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-manual-rules, rules]
@@ -791,6 +822,7 @@
 
 .virgl-iris-rules-performance:
   stage: layered-backends
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.collabora-farm-rules, rules]
     - !reference [.performance-rules, rules]
@@ -817,6 +849,7 @@
       when: on_success
 
 .zink-common-manual-rules:
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.gl-manual-rules, rules]
     - changes:
@@ -837,6 +870,7 @@
 
 .zink-anv-manual-rules:
   stage: layered-backends
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.anv-manual-rules, rules]
     - !reference [.zink-common-manual-rules, rules]
@@ -856,6 +890,7 @@
 
 .zink-turnip-manual-rules:
   stage: layered-backends
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.turnip-manual-rules, rules]
     - !reference [.zink-common-manual-rules, rules]
@@ -868,6 +903,7 @@
 
 .zink-radv-manual-rules:
   stage: layered-backends
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.radv-valve-manual-rules, rules]
     - !reference [.zink-common-manual-rules, rules]
@@ -955,6 +991,7 @@
 
 .etnaviv-manual-rules:
   stage: etnaviv
+  retry: *scheduled-pipeline-retries
   rules:
     - !reference [.gl-manual-rules, rules]
     - changes:
