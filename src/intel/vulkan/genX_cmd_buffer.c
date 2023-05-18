@@ -3685,6 +3685,21 @@ genX(CmdExecuteCommands)(
 
       anv_cmd_buffer_add_secondary(primary, secondary);
 
+      /* Add secondary buffer's RCS command buffer to primary buffer's RCS
+       * command buffer for execution if secondary RCS is valid.
+       */
+      if (secondary->companion_rcs_cmd_buffer != NULL) {
+         if (primary->companion_rcs_cmd_buffer == NULL) {
+            VkResult result = anv_create_companion_rcs_command_buffer(primary);
+            if (result != VK_SUCCESS) {
+               anv_batch_set_error(&primary->batch, result);
+               return;
+            }
+         }
+         anv_cmd_buffer_add_secondary(primary->companion_rcs_cmd_buffer,
+                                      secondary->companion_rcs_cmd_buffer);
+      }
+
       assert(secondary->perf_query_pool == NULL || primary->perf_query_pool == NULL ||
              secondary->perf_query_pool == primary->perf_query_pool);
       if (secondary->perf_query_pool)
