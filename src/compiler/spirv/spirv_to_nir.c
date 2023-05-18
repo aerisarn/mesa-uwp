@@ -4601,6 +4601,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityDotProductInputAll:
       case SpvCapabilityDotProductInput4x8Bit:
       case SpvCapabilityDotProductInput4x8BitPacked:
+      case SpvCapabilityExpectAssumeKHR:
          break;
 
       case SpvCapabilityLinkage:
@@ -6348,6 +6349,14 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpUDotAccSatKHR:
    case SpvOpSUDotAccSatKHR:
       vtn_handle_integer_dot(b, opcode, w, count);
+      break;
+
+   /* TODO: One day, we should probably do something with this information
+    * For now, though, it's safe to implement them as no-ops.
+    * Needed for Rusticl sycl support.
+    */
+   case SpvOpAssumeTrueKHR:
+   case SpvOpExpectKHR:
       break;
 
    case SpvOpBitcast:
