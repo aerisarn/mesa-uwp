@@ -885,7 +885,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    }
    NIR_PASS_V(nir, nir_lower_memcpy);
 
-   NIR_PASS_V(nir, dxil_nir_lower_ubo_to_temp);
+   NIR_PASS_V(nir, dxil_nir_lower_constant_to_temp);
    NIR_PASS_V(nir, clc_lower_constant_to_ssbo, out_dxil->kernel, &uav_id);
    NIR_PASS_V(nir, clc_lower_global_to_ssbo);
 
