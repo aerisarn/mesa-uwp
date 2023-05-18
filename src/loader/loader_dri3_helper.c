@@ -955,6 +955,11 @@ loader_dri3_wait_gl(struct loader_dri3_drawable *draw)
       return;
 
    front = dri3_front_buffer(draw);
+   /* TODO: `front` is not supposed to be NULL here, fix the actual bug
+    * https://gitlab.freedesktop.org/mesa/mesa/-/issues/8982
+    */
+   if (!front)
+      return;
 
    /* In the psc->is_different_gpu case, we update the linear_buffer
     * before updating the real front.
