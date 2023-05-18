@@ -992,9 +992,6 @@ Softpipe driver environment variables
    ``use_llvm``
       the Softpipe driver will try to use LLVM JIT for vertex
       shading processing.
-   ``use_tgsi``
-      if set, the Softpipe driver will ask to directly consume TGSI, instead
-      of NIR.
 
 LLVMpipe driver environment variables
 -------------------------------------
