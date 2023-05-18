@@ -25,6 +25,7 @@
 #define LP_BLD_JIT_TYPES_H
 
 #include "gallivm/lp_bld_limits.h"
+#include "gallivm/lp_bld_sample.h"
 #include "gallivm/lp_bld_struct.h"
 
 struct lp_sampler_dynamic_state;
@@ -188,6 +189,37 @@ void
 lp_build_jit_fill_sampler_dynamic_state(struct lp_sampler_dynamic_state *state);
 void
 lp_build_jit_fill_image_dynamic_state(struct lp_sampler_dynamic_state *state);
+
+LLVMTypeRef lp_build_sample_function_type(struct gallivm_state *gallivm, uint32_t sample_key);
+
+LLVMTypeRef lp_build_size_function_type(struct gallivm_state *gallivm,
+                                        const struct lp_sampler_size_query_params *params);
+
+LLVMTypeRef lp_build_image_function_type(struct gallivm_state *gallivm,
+                                         const struct lp_img_params *params, bool ms);
+
+struct lp_texture_functions {
+   void ***sample_functions;
+   uint32_t sampler_count;
+
+   void **fetch_functions;
+
+   void *size_function;
+   void *samples_function;
+
+   void **image_functions;
+
+   struct lp_static_texture_state state;
+   uint32_t ref_count;
+
+   bool sampled;
+   bool storage;
+};
+
+struct lp_texture_handle {
+   void *functions;
+   uint32_t sampler_index;
+};
 
 union lp_descriptor {
    struct {

@@ -107,6 +107,8 @@ files_llvmpipe = files(
   'lp_tex_sample.h',
   'lp_texture.c',
   'lp_texture.h',
+  'lp_texture_handle.c',
+  'lp_texture_handle.h',
 )
 
 libllvmpipe = static_library(

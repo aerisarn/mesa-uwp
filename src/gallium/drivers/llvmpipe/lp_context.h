@@ -38,6 +38,7 @@
 
 #include "lp_tex_sample.h"
 #include "lp_jit.h"
+#include "lp_texture_handle.h"
 #include "lp_setup.h"
 #include "lp_state_fs.h"
 #include "lp_state_cs.h"
@@ -76,6 +77,8 @@ struct llvmpipe_context {
 
    struct lp_compute_shader *tss;
    struct lp_compute_shader *mhs;
+
+   struct lp_sampler_matrix sampler_matrix;
 
    /** Other rendering state */
    unsigned sample_mask;

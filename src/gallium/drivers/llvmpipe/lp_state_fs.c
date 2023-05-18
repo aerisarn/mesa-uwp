@@ -3965,6 +3965,8 @@ static void *
 llvmpipe_create_fs_state(struct pipe_context *pipe,
                          const struct pipe_shader_state *templ)
 {
+   llvmpipe_register_shader(pipe, templ, false);
+
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
 
    struct lp_fragment_shader *shader = CALLOC_STRUCT(lp_fragment_shader);
@@ -4136,6 +4138,8 @@ llvmpipe_destroy_fs(struct llvmpipe_context *llvmpipe,
 {
    /* Delete draw module's data */
    draw_delete_fragment_shader(llvmpipe->draw, shader->draw_data);
+
+   llvmpipe_register_shader(&llvmpipe->pipe, &shader->base, true);
 
    if (shader->base.ir.nir)
       ralloc_free(shader->base.ir.nir);

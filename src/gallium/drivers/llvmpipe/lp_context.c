@@ -105,6 +105,8 @@ llvmpipe_destroy(struct pipe_context *pipe)
 
    lp_delete_setup_variants(llvmpipe);
 
+   llvmpipe_sampler_matrix_destroy(llvmpipe);
+
 #ifndef USE_GLOBAL_LLVM_CONTEXT
    LLVMContextDispose(llvmpipe->context);
 #endif
@@ -251,6 +253,8 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
    llvmpipe_init_rasterizer_funcs(llvmpipe);
    llvmpipe_init_context_resource_funcs(&llvmpipe->pipe);
    llvmpipe_init_surface_functions(llvmpipe);
+
+   llvmpipe_init_sampler_matrix(llvmpipe);
 
 #ifdef USE_GLOBAL_LLVM_CONTEXT
    llvmpipe->context = LLVMGetGlobalContext();

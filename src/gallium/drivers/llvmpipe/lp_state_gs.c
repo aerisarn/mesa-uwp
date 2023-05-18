@@ -34,6 +34,7 @@
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
 #include "draw/draw_context.h"
+#include "draw/draw_gs.h"
 #include "tgsi/tgsi_dump.h"
 
 
@@ -41,6 +42,8 @@ static void *
 llvmpipe_create_gs_state(struct pipe_context *pipe,
                          const struct pipe_shader_state *templ)
 {
+   llvmpipe_register_shader(pipe, templ, false);
+
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
    struct lp_geometry_shader *state;
 
@@ -102,6 +105,8 @@ llvmpipe_delete_gs_state(struct pipe_context *pipe, void *gs)
    if (!state) {
       return;
    }
+
+   llvmpipe_register_shader(pipe, &state->dgs->state, true);
 
    draw_delete_geometry_shader(llvmpipe->draw, state->dgs);
    FREE(state);

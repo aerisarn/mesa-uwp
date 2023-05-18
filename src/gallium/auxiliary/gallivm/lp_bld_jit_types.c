@@ -651,3 +651,129 @@ lp_build_create_jit_vertex_header_type(struct gallivm_state *gallivm, int data_e
 
    return vertex_header;
 }
+
+LLVMTypeRef
+lp_build_sample_function_type(struct gallivm_state *gallivm, uint32_t sample_key)
+{
+   struct lp_type type;
+   memset(&type, 0, sizeof type);
+   type.floating = true;      /* floating point values */
+   type.sign = true;          /* values are signed */
+   type.norm = false;         /* values are not limited to [0,1] or [-1,1] */
+   type.width = 32;           /* 32-bit float */
+   type.length = MIN2(lp_native_vector_width / 32, 16); /* n*4 elements per vector */
+
+   enum lp_sampler_op_type op_type = (sample_key & LP_SAMPLER_OP_TYPE_MASK) >> LP_SAMPLER_OP_TYPE_SHIFT;
+   enum lp_sampler_lod_control lod_control = (sample_key & LP_SAMPLER_LOD_CONTROL_MASK) >> LP_SAMPLER_LOD_CONTROL_SHIFT;
+
+   LLVMTypeRef arg_types[LP_MAX_TEX_FUNC_ARGS];
+   LLVMTypeRef ret_type;
+   LLVMTypeRef val_type[4];
+   uint32_t num_params = 0;
+
+   LLVMTypeRef coord_type;
+   if (op_type == LP_SAMPLER_OP_FETCH)
+      coord_type = lp_build_vec_type(gallivm, lp_int_type(type));
+   else
+      coord_type = lp_build_vec_type(gallivm, type);
+
+   arg_types[num_params++] = LLVMInt64TypeInContext(gallivm->context);
+   arg_types[num_params++] = LLVMInt64TypeInContext(gallivm->context);
+
+   arg_types[num_params++] = LLVMPointerType(LLVMFloatTypeInContext(gallivm->context), 0);
+
+   for (unsigned i = 0; i < 4; i++)
+      arg_types[num_params++] = coord_type;
+
+   if (sample_key & LP_SAMPLER_SHADOW)
+      arg_types[num_params++] = lp_build_vec_type(gallivm, type);
+
+   if (sample_key & LP_SAMPLER_FETCH_MS)
+      arg_types[num_params++] = lp_build_vec_type(gallivm, lp_uint_type(type));
+
+   if (sample_key & LP_SAMPLER_OFFSETS)
+      for (uint32_t i = 0; i < 3; i++)
+         arg_types[num_params++] = lp_build_int_vec_type(gallivm, type);
+
+   if (lod_control == LP_SAMPLER_LOD_BIAS || lod_control == LP_SAMPLER_LOD_EXPLICIT)
+      arg_types[num_params++] = coord_type;
+
+   val_type[0] = val_type[1] = val_type[2] = val_type[3] = lp_build_vec_type(gallivm, type);
+   ret_type = LLVMStructTypeInContext(gallivm->context, val_type, 4, 0);
+   return LLVMFunctionType(ret_type, arg_types, num_params, false);
+}
+
+LLVMTypeRef
+lp_build_size_function_type(struct gallivm_state *gallivm,
+                            const struct lp_sampler_size_query_params *params)
+{
+   struct lp_type type;
+   memset(&type, 0, sizeof type);
+   type.floating = true;      /* floating point values */
+   type.sign = true;          /* values are signed */
+   type.norm = false;         /* values are not limited to [0,1] or [-1,1] */
+   type.width = 32;           /* 32-bit float */
+   type.length = MIN2(lp_native_vector_width / 32, 16); /* n*4 elements per vector */
+
+   LLVMTypeRef arg_types[LP_MAX_TEX_FUNC_ARGS];
+   LLVMTypeRef ret_type;
+   LLVMTypeRef val_type[4];
+   uint32_t num_params = 0;
+
+   arg_types[num_params++] = LLVMInt64TypeInContext(gallivm->context);
+
+   if (!params->samples_only)
+      arg_types[num_params++] = lp_build_int_vec_type(gallivm, type);
+
+   val_type[0] = val_type[1] = val_type[2] = val_type[3] = lp_build_int_vec_type(gallivm, type);
+   ret_type = LLVMStructTypeInContext(gallivm->context, val_type, 4, 0);
+   return LLVMFunctionType(ret_type, arg_types, num_params, false);
+}
+
+LLVMTypeRef
+lp_build_image_function_type(struct gallivm_state *gallivm,
+                             const struct lp_img_params *params, bool ms)
+{
+   struct lp_type type;
+   memset(&type, 0, sizeof type);
+   type.floating = true;      /* floating point values */
+   type.sign = true;          /* values are signed */
+   type.norm = false;         /* values are not limited to [0,1] or [-1,1] */
+   type.width = 32;           /* 32-bit float */
+   type.length = MIN2(lp_native_vector_width / 32, 16); /* n*4 elements per vector */
+
+   LLVMTypeRef arg_types[LP_MAX_TEX_FUNC_ARGS];
+   LLVMTypeRef ret_type;
+   uint32_t num_params = 0;
+
+   arg_types[num_params++] = LLVMInt64TypeInContext(gallivm->context);
+
+   if (params->img_op != LP_IMG_LOAD)
+      arg_types[num_params++] = lp_build_int_vec_type(gallivm, type);
+
+   for (uint32_t i = 0; i < 3; i++)
+      arg_types[num_params++] = lp_build_vec_type(gallivm, lp_uint_type(type));
+
+   if (ms)
+      arg_types[num_params++] = lp_build_vec_type(gallivm, lp_uint_type(type));
+
+   uint32_t num_inputs = params->img_op != LP_IMG_LOAD ? 4 : 0;
+   if (params->img_op == LP_IMG_ATOMIC_CAS)
+      num_inputs = 8;
+
+   const struct util_format_description *desc = util_format_description(params->format);
+   LLVMTypeRef component_type = lp_build_vec_type(gallivm, lp_build_texel_type(type, desc));
+
+   for (uint32_t i = 0; i < num_inputs; i++)
+      arg_types[num_params++] = component_type;
+
+   if (params->img_op != LP_IMG_STORE) {
+      LLVMTypeRef val_type[4];
+      val_type[0] = val_type[1] = val_type[2] = val_type[3] = component_type;
+      ret_type = LLVMStructTypeInContext(gallivm->context, val_type, 4, 0);
+   } else  {
+      ret_type = LLVMVoidTypeInContext(gallivm->context);
+   }
+
+   return LLVMFunctionType(ret_type, arg_types, num_params, false);
+}
