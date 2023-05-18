@@ -1046,6 +1046,10 @@ iris_image_view_aux_usage(struct iris_context *ice,
    bool uses_atomic_load_store =
       ice->shaders.uncompiled[info->stage]->uses_atomic_load_store;
 
+   /* Prior to GFX12, render compression is not supported for images. */
+   if (devinfo->ver < 12)
+      return ISL_AUX_USAGE_NONE;
+
    /* On GFX12, compressed surfaces supports non-atomic operations. GFX12HP and
     * further, add support for all the operations.
     */
@@ -1059,10 +1063,13 @@ iris_image_view_aux_usage(struct iris_context *ice,
        !iris_has_invalid_primary(res, level, 1, 0, INTEL_REMAINING_LAYERS))
       return ISL_AUX_USAGE_NONE;
 
+   /* The FCV feature is documented to occur on regular render writes. Images
+    * are written to with the DC data port however.
+    */
    if (res->aux.usage == ISL_AUX_USAGE_FCV_CCS_E)
-      return res->aux.usage;
+      return ISL_AUX_USAGE_CCS_E;
 
-   return ISL_AUX_USAGE_NONE;
+   return res->aux.usage;
 }
 
 bool

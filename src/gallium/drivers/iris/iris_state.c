@@ -3071,8 +3071,8 @@ iris_set_shader_images(struct pipe_context *ctx,
          unsigned aux_usages = 1 << ISL_AUX_USAGE_NONE;
 
          /* Gfx12+ supports render compression for images */
-         if (GFX_VER >= 12)
-            aux_usages |= 1 << res->aux.usage;
+         if (GFX_VER >= 12 && isl_aux_usage_has_ccs_e(res->aux.usage))
+            aux_usages |= 1 << ISL_AUX_USAGE_CCS_E;
 
          alloc_surface_states(&iv->surface_state, aux_usages);
          iv->surface_state.bo_address = res->bo->address;
