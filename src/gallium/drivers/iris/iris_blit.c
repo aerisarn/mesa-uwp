@@ -630,6 +630,10 @@ get_copy_region_aux_settings(struct iris_context *ice,
       bool is_zero = clear_color_is_fully_zero(res);
 
       if (batch->name == IRIS_BATCH_BLITTER) {
+
+         /* Compression isn't used for blitter destinations. */
+         assert(!is_dest);
+
          if (devinfo->verx10 >= 125) {
             *out_aux_usage = res->aux.usage;
             *out_clear_supported = is_zero;
