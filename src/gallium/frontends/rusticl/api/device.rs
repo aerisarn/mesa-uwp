@@ -1,4 +1,5 @@
 use crate::api::icd::*;
+use crate::api::types::IdpAccelProps;
 use crate::api::util::*;
 use crate::core::device::*;
 use crate::core::platform::*;
@@ -22,10 +23,13 @@ const SPIRV_SUPPORT: [cl_name_version; 5] = [
     mk_cl_version_ext(1, 3, 0, "SPIR-V"),
     mk_cl_version_ext(1, 4, 0, "SPIR-V"),
 ];
-
+type ClDevIdpAccelProps = cl_device_integer_dot_product_acceleration_properties_khr;
 impl CLInfo<cl_device_info> for cl_device_id {
     fn query(&self, q: cl_device_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let dev = self.get_ref()?;
+
+        // curses you CL_DEVICE_INTEGER_DOT_PRODUCT_ACCELERATION_PROPERTIES_4x8BIT_PACKED_KHR
+        #[allow(non_upper_case_globals)]
         Ok(match q {
             CL_DEVICE_ADDRESS_BITS => cl_prop::<cl_uint>(dev.address_bits()),
             CL_DEVICE_ATOMIC_FENCE_CAPABILITIES => cl_prop::<cl_device_atomic_capabilities>(
@@ -91,6 +95,42 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_IMAGE3D_MAX_HEIGHT => cl_prop::<usize>(dev.image_3d_size()),
             CL_DEVICE_IMAGE3D_MAX_WIDTH => cl_prop::<usize>(dev.image_3d_size()),
             CL_DEVICE_IMAGE3D_MAX_DEPTH => cl_prop::<usize>(dev.image_3d_size()),
+            CL_DEVICE_INTEGER_DOT_PRODUCT_CAPABILITIES_KHR => {
+                cl_prop::<cl_device_integer_dot_product_capabilities_khr>(
+                    (CL_DEVICE_INTEGER_DOT_PRODUCT_INPUT_4x8BIT_PACKED_KHR
+                        | CL_DEVICE_INTEGER_DOT_PRODUCT_INPUT_4x8BIT_KHR)
+                        .into(),
+                )
+            }
+            CL_DEVICE_INTEGER_DOT_PRODUCT_ACCELERATION_PROPERTIES_8BIT_KHR => {
+                cl_prop::<ClDevIdpAccelProps>({
+                    let pack = dev.pack_32_4x8_supported();
+                    let sdot = dev.sdot_4x8_supported() && pack;
+                    let udot = dev.udot_4x8_supported() && pack;
+                    let sudot = dev.sudot_4x8_supported() && pack;
+                    IdpAccelProps::new(
+                        sdot.into(),
+                        udot.into(),
+                        sudot.into(),
+                        sdot.into(),
+                        udot.into(),
+                        sudot.into(),
+                    )
+                })
+            }
+            CL_DEVICE_INTEGER_DOT_PRODUCT_ACCELERATION_PROPERTIES_4x8BIT_PACKED_KHR => {
+                cl_prop::<ClDevIdpAccelProps>({
+                    IdpAccelProps::new(
+                        dev.sdot_4x8_supported().into(),
+                        dev.udot_4x8_supported().into(),
+                        dev.sudot_4x8_supported().into(),
+                        dev.sdot_4x8_supported().into(),
+                        dev.udot_4x8_supported().into(),
+                        dev.sudot_4x8_supported().into(),
+                    )
+                })
+            }
+
             CL_DEVICE_LATEST_CONFORMANCE_VERSION_PASSED => {
                 cl_prop::<&CStr>(dev.screen().cl_cts_version())
             }
