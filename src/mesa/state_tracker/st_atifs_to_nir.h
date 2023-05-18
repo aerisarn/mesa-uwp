@@ -41,10 +41,6 @@ st_translate_atifs_program(struct ati_fragment_shader *atifs,
                            struct gl_program *program,
                            const nir_shader_compiler_options *options);
 
-
-void
-st_init_atifs_prog(struct gl_context *ctx, struct gl_program *prog);
-
 bool st_nir_lower_atifs_samplers(struct nir_shader *s, const uint8_t *texture_index);
 
 #if defined __cplusplus

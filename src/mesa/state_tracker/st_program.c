@@ -1424,13 +1424,6 @@ st_program_string_notify( struct gl_context *ctx,
 
    if (target == GL_FRAGMENT_PROGRAM_ARB ||
        target == GL_FRAGMENT_SHADER_ATI) {
-      if (target == GL_FRAGMENT_SHADER_ATI) {
-         assert(prog->ati_fs);
-         assert(prog->ati_fs->Program == prog);
-
-         st_init_atifs_prog(ctx, prog);
-      }
-
       if (!st_translate_fragment_program(st, prog))
          return false;
    } else if (target == GL_VERTEX_PROGRAM_ARB) {

@@ -528,42 +528,6 @@ st_nir_lower_atifs_samplers_instr(nir_builder *b, nir_instr *instr, void *data)
 }
 
 /**
- * Called in ProgramStringNotify, we need to fill the metadata of the
- * gl_program attached to the ati_fragment_shader
- */
-void
-st_init_atifs_prog(struct gl_context *ctx, struct gl_program *prog)
-{
-   /* we know this is st_fragment_program, because of st_new_ati_fs() */
-   struct ati_fragment_shader *atifs = prog->ati_fs;
-
-   unsigned pass, i, r;
-
-   prog->SamplersUsed = 0;
-   prog->Parameters = _mesa_new_parameter_list();
-
-   /* fill in SamplersUsed, TexturesUsed */
-   for (pass = 0; pass < atifs->NumPasses; pass++) {
-      for (r = 0; r < MAX_NUM_FRAGMENT_REGISTERS_ATI; r++) {
-         struct atifs_setupinst *texinst = &atifs->SetupInst[pass][r];
-
-         if (texinst->Opcode == ATI_FRAGMENT_SHADER_SAMPLE_OP) {
-            /* by default there is 1:1 mapping between samplers and textures */
-            prog->SamplersUsed |= (1 << r);
-            /* the target is unknown here, it will be fixed in the draw call */
-            prog->TexturesUsed[r] = TEXTURE_2D_BIT;
-         }
-      }
-   }
-
-   /* we always have the ATI_fs constants */
-   for (i = 0; i < MAX_NUM_FRAGMENT_CONSTANTS_ATI; i++) {
-      _mesa_add_parameter(prog->Parameters, PROGRAM_UNIFORM,
-                          NULL, 4, GL_FLOAT, NULL, NULL, true);
-   }
-}
-
-/**
  * Rewrites sampler dimensions and coordinate components for the currently
  * active texture unit at draw time.
  */
