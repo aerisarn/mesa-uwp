@@ -26,6 +26,8 @@
 #include "brw_nir.h"
 #include "brw_rt.h"
 #include "brw_eu.h"
+#include "nir.h"
+#include "nir_intrinsics.h"
 #include "nir_search_helpers.h"
 #include "util/u_math.h"
 #include "util/bitscan.h"
@@ -2014,12 +2016,25 @@ fs_visitor::get_nir_src(const nir_src &src)
 {
    fs_reg reg;
    if (src.is_ssa) {
-      if (nir_src_is_undef(src)) {
-         const brw_reg_type reg_type =
-            brw_reg_type_from_bit_size(src.ssa->bit_size, BRW_REGISTER_TYPE_D);
-         reg = bld.vgrf(reg_type, src.ssa->num_components);
+      nir_intrinsic_instr *load_reg = nir_load_reg_for_def(src.ssa);
+      if (!load_reg) {
+         if (nir_src_is_undef(src)) {
+            const brw_reg_type reg_type =
+               brw_reg_type_from_bit_size(src.ssa->bit_size,
+                                          BRW_REGISTER_TYPE_D);
+            reg = bld.vgrf(reg_type, src.ssa->num_components);
+         } else {
+            reg = nir_ssa_values[src.ssa->index];
+         }
       } else {
-         reg = nir_ssa_values[src.ssa->index];
+         nir_intrinsic_instr *decl_reg = nir_reg_get_decl(load_reg->src[0].ssa);
+         const unsigned num_components =
+            nir_intrinsic_num_components(decl_reg);
+         /* We don't handle indirects on locals */
+         assert(nir_intrinsic_base(load_reg) == 0);
+         assert(load_reg->intrinsic != nir_intrinsic_load_reg_indirect);
+         reg = offset(nir_ssa_values[decl_reg->dest.ssa.index], bld,
+                      src.reg.base_offset * num_components);
       }
    } else {
       /* We don't handle indirects on locals */
@@ -2064,15 +2079,28 @@ fs_reg
 fs_visitor::get_nir_dest(const nir_dest &dest)
 {
    if (dest.is_ssa) {
-      const brw_reg_type reg_type =
-         brw_reg_type_from_bit_size(dest.ssa.bit_size,
-                                    dest.ssa.bit_size == 8 ?
-                                    BRW_REGISTER_TYPE_D :
-                                    BRW_REGISTER_TYPE_F);
-      nir_ssa_values[dest.ssa.index] =
-         bld.vgrf(reg_type, dest.ssa.num_components);
-      bld.UNDEF(nir_ssa_values[dest.ssa.index]);
-      return nir_ssa_values[dest.ssa.index];
+      nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.ssa);
+      if (!store_reg) {
+         const brw_reg_type reg_type =
+            brw_reg_type_from_bit_size(dest.ssa.bit_size,
+                                       dest.ssa.bit_size == 8 ?
+                                       BRW_REGISTER_TYPE_D :
+                                       BRW_REGISTER_TYPE_F);
+         nir_ssa_values[dest.ssa.index] =
+            bld.vgrf(reg_type, dest.ssa.num_components);
+         bld.UNDEF(nir_ssa_values[dest.ssa.index]);
+         return nir_ssa_values[dest.ssa.index];
+      } else {
+         nir_intrinsic_instr *decl_reg =
+            nir_reg_get_decl(store_reg->src[1].ssa);
+         const unsigned num_components =
+            nir_intrinsic_num_components(decl_reg);
+         /* We don't handle indirects on locals */
+         assert(nir_intrinsic_base(store_reg) == 0);
+         assert(store_reg->intrinsic != nir_intrinsic_store_reg_indirect);
+         return offset(nir_ssa_values[decl_reg->dest.ssa.index], bld,
+                       dest.reg.base_offset * num_components);
+      }
    } else {
       /* We don't handle indirects on locals */
       assert(dest.reg.indirect == NULL);
@@ -4323,6 +4351,23 @@ lsc_fence_descriptor_for_intrinsic(const struct intel_device_info *devinfo,
 void
 fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr)
 {
+   /* We handle this as a special case */
+   if (instr->intrinsic == nir_intrinsic_decl_reg) {
+      assert(nir_intrinsic_num_array_elems(instr) == 0);
+      unsigned bit_size = nir_intrinsic_bit_size(instr);
+      unsigned num_components = nir_intrinsic_num_components(instr);
+      const brw_reg_type reg_type =
+         brw_reg_type_from_bit_size(bit_size, bit_size == 8 ?
+                                              BRW_REGISTER_TYPE_D :
+                                              BRW_REGISTER_TYPE_F);
+
+      /* Re-use the destination's slot in the table for the register */
+      nir_ssa_values[instr->dest.ssa.index] =
+         bld.vgrf(reg_type, num_components);
+      bld.UNDEF(nir_ssa_values[instr->dest.ssa.index]);
+      return;
+   }
+
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
       dest = get_nir_dest(instr->dest);
@@ -4350,6 +4395,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       }
       nir_ssa_values[instr->dest.ssa.index] =
          nir_ssa_values[instr->src[1].ssa->index];
+      break;
+
+   case nir_intrinsic_load_reg:
+   case nir_intrinsic_store_reg:
+      /* Nothing to do with these. */
       break;
 
    case nir_intrinsic_image_load:
