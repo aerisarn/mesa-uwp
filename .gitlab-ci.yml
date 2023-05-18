@@ -60,6 +60,16 @@ default:
   # https://gitlab.freedesktop.org/mesa/mesa/-/issues/?sort=created_date&state=opened&label_name%5B%5D=CI%20daily
   retry:
     max: 1
+    # Ignore runner_unsupported, stale_schedule, archived_failure, or
+    # unmet_prerequisites
+    when:
+      - api_failure
+      - runner_system_failure
+      - script_failure
+      - job_execution_timeout
+      - scheduler_failure
+      - data_integrity_failure
+      - unknown_failure
 
 include:
   - project: 'freedesktop/ci-templates'
