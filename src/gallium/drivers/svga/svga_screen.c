@@ -536,9 +536,9 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
          return 16;
       case PIPE_SHADER_CAP_PREFERRED_IR:
-         return svgascreen->debug.nir ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
+         return PIPE_SHADER_IR_NIR;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
-         return (1 << PIPE_SHADER_IR_TGSI) | (svgascreen->debug.nir ? (1 << PIPE_SHADER_IR_NIR) : 0);
+         return (1 << PIPE_SHADER_IR_TGSI) | (1 << PIPE_SHADER_IR_NIR);
       case PIPE_SHADER_CAP_DROUND_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
       case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
@@ -600,9 +600,9 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
          return 0;
       case PIPE_SHADER_CAP_PREFERRED_IR:
-         return svgascreen->debug.nir ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
+         return PIPE_SHADER_IR_NIR;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
-         return (1 << PIPE_SHADER_IR_TGSI) | (svgascreen->debug.nir ? (1 << PIPE_SHADER_IR_NIR) : 0);
+         return (1 << PIPE_SHADER_IR_TGSI) | (1 << PIPE_SHADER_IR_NIR);
       case PIPE_SHADER_CAP_DROUND_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
       case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
@@ -712,10 +712,10 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
    case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
       return sws->have_gl43 ? PIPE_MAX_SAMPLERS : SVGA3D_DX_MAX_SAMPLERS;
    case PIPE_SHADER_CAP_PREFERRED_IR:
-         return svgascreen->debug.nir ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
+         return PIPE_SHADER_IR_NIR;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
       if (sws->have_gl43)
-         return (1 << PIPE_SHADER_IR_TGSI) | (svgascreen->debug.nir ? (1 << PIPE_SHADER_IR_NIR) : 0);
+         return (1 << PIPE_SHADER_IR_TGSI) | (1 << PIPE_SHADER_IR_NIR);
       else
          return 0;
    case PIPE_SHADER_CAP_DROUND_SUPPORTED:
@@ -1089,8 +1089,6 @@ svga_screen_create(struct svga_winsys_screen *sws)
       debug_get_bool_option("SVGA_NO_SAMPLER_VIEW", FALSE);
    svgascreen->debug.no_cache_index_buffers =
       debug_get_bool_option("SVGA_NO_CACHE_INDEX_BUFFERS", FALSE);
-   svgascreen->debug.nir =
-      debug_get_bool_option("SVGA_NIR", FALSE);
 
    screen = &svgascreen->screen;
 
