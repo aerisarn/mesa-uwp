@@ -48,8 +48,8 @@ is_tile_unaligned(unsigned size, unsigned tile_size)
         return size & (tile_size - 1);
 }
 
-static bool
-vc4_tile_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
+static void
+vc4_tile_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
 {
         struct vc4_context *vc4 = vc4_context(pctx);
         bool msaa = (info->src.resource->nr_samples > 1 ||
@@ -58,13 +58,13 @@ vc4_tile_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
         int tile_height = msaa ? 32 : 64;
 
         if (util_format_is_depth_or_stencil(info->dst.resource->format))
-                return false;
+                return;
 
         if (info->scissor_enable)
-                return false;
+                return;
 
         if ((info->mask & PIPE_MASK_RGBA) == 0)
-                return false;
+                return;
 
         if (info->dst.box.x != info->src.box.x ||
             info->dst.box.y != info->src.box.y ||
@@ -72,7 +72,7 @@ vc4_tile_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
             info->dst.box.height != info->src.box.height ||
             info->dst.box.depth != info->src.box.depth ||
             info->dst.box.depth != 1) {
-                return false;
+                return;
         }
 
         int dst_surface_width = u_minify(info->dst.resource->width0,
@@ -85,7 +85,7 @@ vc4_tile_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
              info->dst.box.x + info->dst.box.width != dst_surface_width) ||
             (is_tile_unaligned(info->dst.box.height, tile_height) &&
              info->dst.box.y + info->dst.box.height != dst_surface_height)) {
-                return false;
+                return;
         }
 
         /* VC4_PACKET_LOAD_TILE_BUFFER_GENERAL uses the
@@ -109,10 +109,10 @@ vc4_tile_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
                 stride = align(dst_surface_width * rsc->cpp, 16);
 
         if (stride != rsc->slices[info->src.level].stride)
-                return false;
+                return;
 
         if (info->dst.resource->format != info->src.resource->format)
-                return false;
+                return;
 
         if (false) {
                 fprintf(stderr, "RCL blit from %d,%d to %d,%d (%d,%d)\n",
@@ -154,7 +154,7 @@ vc4_tile_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
         pipe_surface_reference(&dst_surf, NULL);
         pipe_surface_reference(&src_surf, NULL);
 
-        return true;
+        info->mask &= ~PIPE_MASK_RGBA;
 }
 
 void
@@ -307,19 +307,23 @@ static void *vc4_get_yuv_fs(struct pipe_context *pctx, int cpp)
    return *cached_shader;
 }
 
-static bool
-vc4_yuv_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
+static void
+vc4_yuv_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
 {
         struct vc4_context *vc4 = vc4_context(pctx);
         struct vc4_resource *src = vc4_resource(info->src.resource);
         struct vc4_resource *dst = vc4_resource(info->dst.resource);
         bool ok;
 
+        if (info->mask & PIPE_MASK_RGBA)
+                return;
+
         if (src->tiled)
-                return false;
+                return;
+
         if (src->base.format != PIPE_FORMAT_R8_UNORM &&
             src->base.format != PIPE_FORMAT_R8G8_UNORM)
-                return false;
+                return;
 
         /* YUV blits always turn raster-order to tiled */
         assert(dst->base.format == src->base.format);
@@ -352,7 +356,7 @@ vc4_yuv_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
         if (!dst_surf) {
                 fprintf(stderr, "Failed to create YUV dst surface\n");
                 util_blitter_unset_running_flag(vc4->blitter);
-                return false;
+                return;
         }
         dst_surf->width = align(dst_surf->width, 8) / 2;
         if (dst->cpp == 1)
@@ -391,7 +395,9 @@ vc4_yuv_blit(struct pipe_context *pctx, const struct pipe_blit_info *info)
 
         pipe_surface_reference(&dst_surf, NULL);
 
-        return true;
+        info->mask &= ~PIPE_MASK_RGBA;
+
+        return;
 
 fallback:
         /* Do an immediate SW fallback, since the render blit path
@@ -400,19 +406,22 @@ fallback:
         ok = util_try_blit_via_copy_region(pctx, info, false);
         assert(ok); (void)ok;
 
-        return true;
+        info->mask &= ~PIPE_MASK_RGBA;
 }
 
-static bool
+static void
 vc4_render_blit(struct pipe_context *ctx, struct pipe_blit_info *info)
 {
         struct vc4_context *vc4 = vc4_context(ctx);
+
+        if (!info->mask)
+                return;
 
         if (!util_blitter_is_blit_supported(vc4->blitter, info)) {
                 fprintf(stderr, "blit unsupported %s -> %s\n",
                     util_format_short_name(info->src.resource->format),
                     util_format_short_name(info->dst.resource->format));
-                return false;
+                return;
         }
 
         /* Enable the scissor, so we get a minimal set of tiles rendered. */
@@ -427,7 +436,7 @@ vc4_render_blit(struct pipe_context *ctx, struct pipe_blit_info *info)
         vc4_blitter_save(vc4);
         util_blitter_blit(vc4->blitter, info);
 
-        return true;
+        info->mask = 0;
 }
 
 /* Optimal hardware path for blitting pixels.
@@ -438,22 +447,21 @@ vc4_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 {
         struct pipe_blit_info info = *blit_info;
 
-        if (vc4_yuv_blit(pctx, blit_info))
-                return;
+        vc4_yuv_blit(pctx, &info);
 
-        if (vc4_tile_blit(pctx, blit_info))
+        vc4_tile_blit(pctx, &info);
+
+        if (info.mask &&
+            util_try_blit_via_copy_region(pctx, &info, false))
                 return;
 
         if (info.mask & PIPE_MASK_S) {
-                if (util_try_blit_via_copy_region(pctx, &info, false))
-                        return;
-
-                info.mask &= ~PIPE_MASK_S;
                 fprintf(stderr, "cannot blit stencil, skipping\n");
+                info.mask &= ~PIPE_MASK_S;
         }
 
-        if (vc4_render_blit(pctx, &info))
-                return;
+        vc4_render_blit(pctx, &info);
 
-        fprintf(stderr, "Unsupported blit\n");
+        if (info.mask)
+                fprintf(stderr, "Unsupported blit\n");
 }
