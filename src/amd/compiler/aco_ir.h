@@ -1402,6 +1402,8 @@ struct VALU_instruction : public Instruction {
       bitfield_array8<uint32_t, 15, 3> opsel_hi; /* VOP3P */
       bitfield_bool<uint32_t, 18> clamp;         /* VOP3, VOP3P, SDWA, VINTERP_inreg */
    };
+
+   void swapOperands(unsigned idx0, unsigned idx1);
 };
 static_assert(sizeof(VALU_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
 
@@ -1717,6 +1719,22 @@ struct Pseudo_reduction_instruction : public Instruction {
 };
 static_assert(sizeof(Pseudo_reduction_instruction) == sizeof(Instruction) + 4,
               "Unexpected padding");
+
+inline void
+VALU_instruction::swapOperands(unsigned idx0, unsigned idx1)
+{
+   if (this->isSDWA() && idx0 != idx1) {
+      assert(idx0 < 2 && idx1 < 2);
+      std::swap(this->sdwa().sel[0], this->sdwa().sel[1]);
+   }
+   assert(idx0 < 3 && idx1 < 3);
+   std::swap(this->operands[idx0], this->operands[idx1]);
+   this->neg[idx0].swap(this->neg[idx1]);
+   this->abs[idx0].swap(this->abs[idx1]);
+   this->opsel[idx0].swap(this->opsel[idx1]);
+   this->opsel_lo[idx0].swap(this->opsel_lo[idx1]);
+   this->opsel_hi[idx0].swap(this->opsel_hi[idx1]);
+}
 
 extern thread_local aco::monotonic_buffer_resource* instruction_buffer;
 

@@ -160,8 +160,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          instr->opcode = aco_opcode::v_fma_f16;
          instr->format = (Format)((uint32_t)instr->format & ~(uint32_t)Format::VOP2);
       } else if (instr->opcode == aco_opcode::v_fmamk_f16) {
-         std::swap(instr->operands[1], instr->operands[2]);
-         instr->valu().opsel[1].swap(instr->valu().opsel[2]);
+         instr->valu().swapOperands(1, 2);
          instr->opcode = aco_opcode::v_fma_f16;
          instr->format = (Format)((uint32_t)instr->format & ~(uint32_t)Format::VOP2);
       }

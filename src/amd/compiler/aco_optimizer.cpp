@@ -1429,9 +1429,8 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                instr->operands[i] = op;
                continue;
             } else if (!instr->isVOP3() && can_swap_operands(instr, &instr->opcode)) {
-               instr->operands[i] = instr->operands[0];
-               instr->operands[0] = op;
-               instr->valu().opsel[0].swap(instr->valu().opsel[i]);
+               instr->operands[i] = op;
+               instr->valu().swapOperands(0, i);
                continue;
             } else if (can_use_VOP3(ctx, instr)) {
                instr->format = asVOP3(instr->format);
@@ -4829,12 +4828,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (i != 0) {
             if (!can_swap_operands(instr, &instr->opcode, 0, i))
                continue;
-            std::swap(instr->operands[0], instr->operands[i]);
-            instr->valu().neg[0].swap(instr->valu().neg[i]);
-            instr->valu().abs[0].swap(instr->valu().abs[i]);
-            instr->valu().opsel[0].swap(instr->valu().opsel[i]);
-            instr->valu().opsel_lo[0].swap(instr->valu().opsel_lo[i]);
-            instr->valu().opsel_hi[0].swap(instr->valu().opsel_hi[i]);
+            instr->valu().swapOperands(0, i);
          }
 
          if (!can_use_DPP(ctx.program->gfx_level, instr, info.is_dpp8()))

@@ -522,12 +522,7 @@ try_combine_dpp(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (i != 0) {
          if (!can_swap_operands(instr, &instr->opcode, 0, i))
             continue;
-         std::swap(instr->operands[0], instr->operands[i]);
-         instr->valu().neg[0].swap(instr->valu().neg[i]);
-         instr->valu().abs[0].swap(instr->valu().abs[i]);
-         instr->valu().opsel[0].swap(instr->valu().opsel[i]);
-         instr->valu().opsel_lo[0].swap(instr->valu().opsel_lo[i]);
-         instr->valu().opsel_hi[0].swap(instr->valu().opsel_hi[i]);
+         instr->valu().swapOperands(0, i);
       }
 
       if (!can_use_DPP(ctx.program->gfx_level, instr, dpp8))
