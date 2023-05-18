@@ -169,7 +169,9 @@ def generate_lava_yaml_payload(args) -> dict[str, Any]:
     # container build
     deploy = {
         "namespace": "dut",
+        "failure_retry": NUMBER_OF_ATTEMPTS_LAVA_BOOT,
         "timeout": {"minutes": 10},
+        "timeouts": {"http-download": {"minutes": 2}},
         "to": "tftp",
         "os": "oe",
         "kernel": {"url": f"{args.kernel_url_prefix}/{args.kernel_image_name}"},
