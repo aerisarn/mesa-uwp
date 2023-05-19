@@ -74,7 +74,7 @@ shader_destroy(struct lvp_device *device, struct lvp_shader *shader)
 void
 lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline)
 {
-   for (unsigned i = 0; i < LVP_SHADER_STAGES; i++)
+   lvp_forall_stage(i)
       shader_destroy(device, &pipeline->shaders[i]);
 
    if (pipeline->layout)
@@ -835,9 +835,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
             pipeline->disable_multisample = p->disable_multisample;
             pipeline->line_rectangular = p->line_rectangular;
             memcpy(pipeline->shaders, p->shaders, sizeof(struct lvp_shader) * 4);
-            for (unsigned i = 0; i < LVP_SHADER_STAGES; i++) {
-               if (i == MESA_SHADER_COMPUTE)
-                  continue;
+            lvp_forall_gfx_stage(i) {
                copy_shader_sanitized(&pipeline->shaders[i], &p->shaders[i]);
             }
          }
@@ -910,8 +908,8 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                 lvp_pipeline_nir_ref(&pipeline->shaders[MESA_SHADER_FRAGMENT].pipeline_nir, p->shaders[MESA_SHADER_FRAGMENT].pipeline_nir);
           }
           if (p->stages & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
-             for (unsigned j = MESA_SHADER_VERTEX; j < LVP_SHADER_STAGES; j++) {
-                if (j == MESA_SHADER_COMPUTE || j == MESA_SHADER_FRAGMENT)
+             lvp_forall_gfx_stage(j) {
+                if (j == MESA_SHADER_FRAGMENT)
                    continue;
                 if (p->shaders[j].pipeline_nir)
                    lvp_pipeline_nir_ref(&pipeline->shaders[j].pipeline_nir, p->shaders[j].pipeline_nir);
