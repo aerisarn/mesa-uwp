@@ -2823,6 +2823,14 @@ zink_batch_rp(struct zink_context *ctx)
       if (ctx->render_condition.query)
          zink_start_conditional_render(ctx);
       zink_clear_framebuffer(ctx, clear_buffers);
+      if (ctx->pipeline_changed[0]) {
+         for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+            if (ctx->fb_state.cbufs[i])
+               zink_batch_reference_resource(&ctx->batch, zink_resource(ctx->fb_state.cbufs[i]->texture));
+         }
+         if (ctx->fb_state.zsbuf)
+            zink_batch_reference_resource(&ctx->batch, zink_resource(ctx->fb_state.zsbuf->texture));
+      }
    }
    /* unable to previously determine that queries didn't split renderpasses: ensure queries start inside renderpass */
    if (!ctx->queries_disabled && maybe_has_query_ends) {
@@ -3095,12 +3103,6 @@ zink_update_descriptor_refs(struct zink_context *ctx, bool compute)
       if (ctx->curr_compute)
          zink_batch_reference_program(batch, &ctx->curr_compute->base);
    } else {
-      for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
-         if (ctx->fb_state.cbufs[i])
-            zink_batch_reference_resource(&ctx->batch, zink_resource(ctx->fb_state.cbufs[i]->texture));
-      }
-      if (ctx->fb_state.zsbuf)
-         zink_batch_reference_resource(&ctx->batch, zink_resource(ctx->fb_state.zsbuf->texture));
       for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++)
          update_resource_refs_for_stage(ctx, i);
       unsigned vertex_buffers_enabled_mask = ctx->gfx_pipeline_state.vertex_buffers_enabled_mask;
