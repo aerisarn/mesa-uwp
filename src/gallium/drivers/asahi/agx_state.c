@@ -1097,10 +1097,9 @@ agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
 
    assert(surf->u.tex.last_layer == layer);
 
-   struct agx_ptr T =
-      agx_pool_alloc_aligned(&batch->pool, AGX_RENDER_TARGET_LENGTH, 256);
+   struct agx_ptr T = agx_pool_alloc_aligned(&batch->pool, AGX_PBE_LENGTH, 256);
 
-   agx_pack(T.cpu, RENDER_TARGET, cfg) {
+   agx_pack(T.cpu, PBE, cfg) {
       cfg.dimension = agx_translate_tex_dim(PIPE_TEXTURE_2D,
                                             util_res_sample_count(&tex->base));
       cfg.layout = agx_translate_layout(tex->layout.tiling);

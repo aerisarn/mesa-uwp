@@ -376,7 +376,7 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
       for (unsigned i = 0; i < temp.count; ++i) {
          agx_unpack(agxdecode_dump_stream, tex, TEXTURE, t);
          DUMP_CL(TEXTURE, tex, "Texture");
-         DUMP_CL(RENDER_TARGET, tex, "Render target");
+         DUMP_CL(PBE, tex, "PBE");
 
          tex += AGX_TEXTURE_LENGTH;
       }

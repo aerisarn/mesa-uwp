@@ -196,7 +196,7 @@
     <value name="4" value="1"/>
   </enum>
 
-  <struct name="Render Target" size="24">
+  <struct name="PBE" size="24">
     <field name="Dimension" size="4" start="0" type="Texture dimension" default="2D"/>
     <field name="Layout" size="2" start="4" type="Layout"/>
     <field name="Channels" size="7" start="6" type="Channels"/>
