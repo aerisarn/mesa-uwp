@@ -503,7 +503,8 @@ pvr_pbe_src_format_normal(VkFormat src_format,
             }
          } else {
             if (dst_format == VK_FORMAT_B8G8R8A8_UNORM ||
-                dst_format == VK_FORMAT_R8G8B8A8_UNORM) {
+                dst_format == VK_FORMAT_R8G8B8A8_UNORM ||
+                dst_format == VK_FORMAT_A8B8G8R8_UNORM_PACK32) {
                *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_F16_U8;
             } else {
                *src_format_out = PVR_TRANSFER_PBE_PIXEL_SRC_F16F16;
