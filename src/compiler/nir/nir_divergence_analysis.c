@@ -370,6 +370,13 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
                      instr->src[1].ssa->divergent;
       break;
 
+   case nir_intrinsic_image_texel_address:
+   case nir_intrinsic_image_deref_texel_address:
+   case nir_intrinsic_bindless_image_texel_address:
+      is_divergent = (instr->src[0].ssa->divergent && (nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM)) ||
+                     instr->src[1].ssa->divergent || instr->src[2].ssa->divergent;
+      break;
+
    case nir_intrinsic_image_load:
    case nir_intrinsic_image_deref_load:
    case nir_intrinsic_bindless_image_load:

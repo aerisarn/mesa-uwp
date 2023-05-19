@@ -659,6 +659,8 @@ image("atomic",  src_comp=[4, 1, 1], dest_comp=1, extra_indices=[ATOMIC_OP])
 image("atomic_swap", src_comp=[4, 1, 1, 1], dest_comp=1, extra_indices=[ATOMIC_OP])
 image("size",    dest_comp=0, src_comp=[1], flags=[CAN_ELIMINATE, CAN_REORDER])
 image("samples", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
+image("texel_address", dest_comp=1, src_comp=[4, 1],
+      flags=[CAN_ELIMINATE, CAN_REORDER])
 # This returns true if all samples within the pixel have equal color values.
 image("samples_identical", dest_comp=1, src_comp=[4], flags=[CAN_ELIMINATE])
 # Non-uniform access is not lowered for image_descriptor_amd.
