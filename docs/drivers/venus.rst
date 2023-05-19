@@ -104,9 +104,7 @@ This is how one might want to start crosvm
        --gpu-render-server path=<path-to-virglrenderer>/out/server/virgl_render_server \
        --display-window-keyboard \
        --display-window-mouse \
-       --host_ip 192.168.0.1 \
-       --netmask 255.255.255.0 \
-       --mac 12:34:56:78:9a:bc \
+       --net "host-ip 192.168.0.1,netmask=255.255.255.0,mac=12:34:56:78:9a:bc" \
        --rwdisk disk.img \
        -p root=/dev/vda1 \
        <path-to-bzImage>
