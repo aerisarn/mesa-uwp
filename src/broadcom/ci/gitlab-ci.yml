@@ -49,7 +49,7 @@ v3d-rpi4-traces:arm64:
   extends:
     - .piglit-traces-test
     - .broadcom-test:arm64
-    - .v3d-manual-rules
+    - .v3d-rules
   variables:
     GPU_VERSION: broadcom-rpi4
     HWCI_KERNEL_MODULES: v3d,vc4
