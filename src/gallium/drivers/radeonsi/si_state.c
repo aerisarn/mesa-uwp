@@ -3512,11 +3512,12 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
       else
          radeon_set_context_reg_seq(R_028040_DB_Z_INFO, 2);
 
-      /* Gfx11 only: DB_Z_INFO.NUM_SAMPLES should always match the framebuffer samples.
-       * It affects VRS and occlusion queries if depth and stencil are not bound.
+      /* Gfx11+: DB_Z_INFO.NUM_SAMPLES should match the framebuffer samples if no Z/S is bound.
+       * It determines the sample count for VRS, primitive-ordered pixel shading, and occlusion
+       * queries.
        */
       radeon_emit(S_028040_FORMAT(V_028040_Z_INVALID) |       /* DB_Z_INFO */
-                  S_028040_NUM_SAMPLES(sctx->gfx_level == GFX11 ? sctx->framebuffer.log_samples : 0));
+                  S_028040_NUM_SAMPLES(sctx->gfx_level >= GFX11 ? sctx->framebuffer.log_samples : 0));
       radeon_emit(S_028044_FORMAT(V_028044_STENCIL_INVALID)); /* DB_STENCIL_INFO */
    }
 
