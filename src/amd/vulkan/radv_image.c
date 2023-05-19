@@ -1735,7 +1735,8 @@ radv_get_ac_surf_info(struct radv_device *device, const struct radv_image *image
    info.num_channels = vk_format_get_nr_components(image->vk.format);
 
    if (!vk_format_is_depth_or_stencil(image->vk.format) && !image->shareable &&
-       !(image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_ALIASED_BIT) &&
+       !(image->vk.create_flags & (VK_IMAGE_CREATE_SPARSE_ALIASED_BIT |
+                                   VK_IMAGE_CREATE_ALIAS_BIT)) &&
        image->vk.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
       info.surf_index = &device->image_mrt_offset_counter;
    }
