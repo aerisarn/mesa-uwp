@@ -528,7 +528,6 @@ struct agx_sampler_view {
 struct agx_screen {
    struct pipe_screen pscreen;
    struct agx_device dev;
-   struct sw_winsys *winsys;
    struct disk_cache *disk_cache;
 };
 
@@ -564,10 +563,6 @@ struct agx_resource {
 
    /* Hardware backing */
    struct agx_bo *bo;
-
-   /* Software backing (XXX) */
-   struct sw_displaytarget *dt;
-   unsigned dt_stride;
 
    struct renderonly_scanout *scanout;
 
