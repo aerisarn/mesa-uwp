@@ -1632,7 +1632,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
 
       if (op == nir_atomic_op_xchg) {
          bi_emit_axchg_to(b, dst, bi_src_index(&instr->src[0]), &instr->src[1],
-                          BI_SEG_WLS);
+                          BI_SEG_NONE);
       } else {
          assert(nir_src_bit_size(instr->src[1]) == 32);
 
