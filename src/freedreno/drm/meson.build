@@ -55,7 +55,6 @@ libfreedreno_drm_virtio_files = files(
   'virtio/virtio_pipe.c',
   'virtio/virtio_priv.h',
   'virtio/virtio_ringbuffer.c',
-  'virtio/virtio_ringbuffer.h',
 )
 if freedreno_kmds.contains('virtio')
   libfreedreno_drm_files += libfreedreno_drm_virtio_files
