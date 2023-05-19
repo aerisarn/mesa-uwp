@@ -665,8 +665,6 @@ bool agx_nir_lower_sysvals(nir_shader *shader,
 bool agx_batch_is_active(struct agx_batch *batch);
 bool agx_batch_is_submitted(struct agx_batch *batch);
 
-uint64_t agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt);
-
 /* Add a BO to a batch. This needs to be amortized O(1) since it's called in
  * hot paths. To achieve this we model BO lists by bit sets */
 

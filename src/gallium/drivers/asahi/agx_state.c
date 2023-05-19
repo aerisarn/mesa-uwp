@@ -1071,26 +1071,43 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
    agx_dirty_all(ctx);
 }
 
-uint64_t
-agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
+/*
+ * To write out render targets, each render target surface is bound as a
+ * writable shader image, written with the end-of-tile program. This helper
+ * constructs the internal pipe_image_view used.
+ */
+static struct pipe_image_view
+image_view_for_surface(struct pipe_surface *surf)
 {
-   struct pipe_surface *surf = batch->key.cbufs[rt];
-   struct agx_resource *tex = agx_resource(surf->texture);
+   return (struct pipe_image_view){
+      .resource = surf->texture,
+      .format = surf->format,
+      .access = PIPE_IMAGE_ACCESS_READ_WRITE,
+      .shader_access = PIPE_IMAGE_ACCESS_READ_WRITE,
+      .u.tex.single_layer_view = true,
+      .u.tex.first_layer = surf->u.tex.first_layer,
+      .u.tex.last_layer = surf->u.tex.last_layer,
+      .u.tex.level = surf->u.tex.level,
+   };
+}
+
+static void
+agx_batch_upload_pbe(struct agx_pbe_packed *out, struct pipe_image_view *view)
+{
+   struct agx_resource *tex = agx_resource(view->resource);
    const struct util_format_description *desc =
-      util_format_description(surf->format);
-   unsigned level = surf->u.tex.level;
-   unsigned layer = surf->u.tex.first_layer;
+      util_format_description(view->format);
+   unsigned level = view->u.tex.level;
+   unsigned layer = view->u.tex.first_layer;
 
-   assert(surf->u.tex.last_layer == layer);
+   assert(view->u.tex.last_layer == layer);
 
-   struct agx_ptr T = agx_pool_alloc_aligned(&batch->pool, AGX_PBE_LENGTH, 256);
-
-   agx_pack(T.cpu, PBE, cfg) {
+   agx_pack(out, PBE, cfg) {
       cfg.dimension = agx_translate_tex_dim(PIPE_TEXTURE_2D,
                                             util_res_sample_count(&tex->base));
       cfg.layout = agx_translate_layout(tex->layout.tiling);
-      cfg.channels = agx_pixel_format[surf->format].channels;
-      cfg.type = agx_pixel_format[surf->format].type;
+      cfg.channels = agx_pixel_format[view->format].channels;
+      cfg.type = agx_pixel_format[view->format].type;
 
       assert(desc->nr_channels >= 1 && desc->nr_channels <= 4);
       cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]) & 3;
@@ -1104,9 +1121,9 @@ agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
       if (desc->nr_channels >= 4)
          cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]) & 3;
 
-      cfg.width = surf->texture->width0;
-      cfg.height = surf->texture->height0;
-      cfg.level = surf->u.tex.level;
+      cfg.width = view->resource->width0;
+      cfg.height = view->resource->height0;
+      cfg.level = level;
       cfg.buffer = agx_map_texture_gpu(tex, layer);
       cfg.unk_mipmapped = tex->mipmapped;
 
@@ -1130,8 +1147,6 @@ agx_batch_upload_pbe(struct agx_batch *batch, unsigned rt)
          cfg.levels = tex->base.last_level + 1;
       }
    };
-
-   return T.gpu;
 }
 
 /* Likewise constant buffers, textures, and samplers are handled in a common
@@ -2114,10 +2129,17 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          assert(batch->uploaded_clear_color[rt] && "set when cleared");
          agx_usc_uniform(&b, 8 * rt, 8, batch->uploaded_clear_color[rt]);
       } else if (key.op[rt] == AGX_META_OP_STORE) {
+         struct pipe_image_view view =
+            image_view_for_surface(batch->key.cbufs[rt]);
+         struct agx_ptr pbe =
+            agx_pool_alloc_aligned(&batch->pool, AGX_PBE_LENGTH, 256);
+
+         agx_batch_upload_pbe(pbe.cpu, &view);
+
          agx_usc_pack(&b, TEXTURE, cfg) {
             cfg.start = rt;
             cfg.count = 1;
-            cfg.buffer = agx_batch_upload_pbe(batch, rt);
+            cfg.buffer = pbe.gpu;
          }
       }
    }
