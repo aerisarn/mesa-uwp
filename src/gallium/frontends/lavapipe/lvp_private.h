@@ -114,7 +114,7 @@ void __lvp_finishme(const char *file, int line, const char *format, ...)
    } while (0)
 
 #define LVP_SHADER_STAGES MESA_SHADER_STAGES
-#define LVP_STAGE_MASK ((1 << LVP_SHADER_STAGES) - 1)
+#define LVP_STAGE_MASK BITFIELD_MASK(LVP_SHADER_STAGES)
 
 #define lvp_foreach_stage(stage, stage_bits)                         \
    for (gl_shader_stage stage,                                       \
