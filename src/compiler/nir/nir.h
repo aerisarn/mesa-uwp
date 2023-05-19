@@ -5527,6 +5527,9 @@ typedef struct nir_lower_image_options {
 bool nir_lower_image(nir_shader *nir,
                      const nir_lower_image_options *options);
 
+bool
+nir_lower_image_atomics_to_global(nir_shader *s);
+
 bool nir_lower_readonly_images_to_tex(nir_shader *shader, bool per_variable);
 
 enum nir_lower_non_uniform_access_type {
