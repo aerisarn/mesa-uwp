@@ -994,9 +994,10 @@ static int si_get_compute_param(struct pipe_screen *screen, enum pipe_shader_ir 
    case PIPE_COMPUTE_CAP_MAX_GRID_SIZE:
       if (ret) {
          uint64_t *grid_size = ret;
+         /* Use this size, so that internal counters don't overflow 64 bits. */
          grid_size[0] = UINT32_MAX;
-         grid_size[1] = UINT32_MAX;
-         grid_size[2] = UINT32_MAX;
+         grid_size[1] = UINT16_MAX;
+         grid_size[2] = UINT16_MAX;
       }
       return 3 * sizeof(uint64_t);
 
