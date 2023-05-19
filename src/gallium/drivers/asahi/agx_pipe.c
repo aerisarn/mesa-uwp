@@ -1076,6 +1076,50 @@ agx_clear(struct pipe_context *pctx, unsigned buffers,
 }
 
 static void
+transition_resource(struct pipe_context *pctx, struct agx_resource *rsrc,
+                    struct pipe_resource *templ)
+{
+   struct agx_resource *new_res =
+      agx_resource(pctx->screen->resource_create(pctx->screen, templ));
+
+   assert(new_res);
+
+   int level;
+   BITSET_FOREACH_SET(level, rsrc->data_valid, PIPE_MAX_TEXTURE_LEVELS) {
+      /* Blit each valid level */
+      struct pipe_blit_info blit = {0};
+
+      u_box_3d(0, 0, 0, rsrc->layout.width_px, rsrc->layout.height_px,
+               rsrc->layout.depth_px, &blit.dst.box);
+      blit.src.box = blit.dst.box;
+
+      blit.dst.resource = &new_res->base;
+      blit.dst.format = new_res->base.format;
+      blit.dst.level = level;
+      blit.src.resource = &rsrc->base;
+      blit.src.format = rsrc->base.format;
+      blit.src.level = level;
+      blit.mask = util_format_get_mask(blit.src.format);
+      blit.filter = PIPE_TEX_FILTER_NEAREST;
+      agx_blit(pctx, &blit);
+   }
+
+   /* Flush the blits out, to make sure the old resource is no longer used */
+   agx_flush_writer(agx_context(pctx), new_res, "flush_resource");
+
+   /* Copy the bind flags and swap the BOs */
+   struct agx_bo *old = rsrc->bo;
+   rsrc->base.bind = new_res->base.bind;
+   rsrc->layout = new_res->layout;
+   rsrc->modifier = new_res->modifier;
+   rsrc->bo = new_res->bo;
+   new_res->bo = old;
+
+   /* Free the new resource, which now owns the old BO */
+   pipe_resource_reference((struct pipe_resource **)&new_res, NULL);
+}
+
+static void
 agx_flush_resource(struct pipe_context *pctx, struct pipe_resource *pres)
 {
    struct agx_resource *rsrc = agx_resource(pres);
@@ -1094,40 +1138,7 @@ agx_flush_resource(struct pipe_context *pctx, struct pipe_resource *pres)
 
       struct pipe_resource templ = *pres;
       templ.bind |= PIPE_BIND_SHARED;
-
-      /* Create a new shareable resource */
-      struct agx_resource *new_res =
-         agx_resource(pctx->screen->resource_create(pctx->screen, &templ));
-
-      assert(new_res);
-
-      /* Blit it over */
-      struct pipe_blit_info blit = {0};
-
-      u_box_3d(0, 0, 0, rsrc->layout.width_px, rsrc->layout.height_px,
-               rsrc->layout.depth_px, &blit.dst.box);
-      blit.src.box = blit.dst.box;
-
-      blit.dst.resource = &new_res->base;
-      blit.dst.format = new_res->base.format;
-      blit.dst.level = 0;
-      blit.src.resource = pres;
-      blit.src.format = pres->format;
-      blit.src.level = 0;
-      blit.mask = util_format_get_mask(blit.src.format);
-      blit.filter = PIPE_TEX_FILTER_NEAREST;
-      agx_blit(pctx, &blit);
-
-      /* Flush the blit out, to make sure the old resource is no longer used */
-      agx_flush_writer(agx_context(pctx), new_res, "flush_resource");
-
-      /* Copy the bind flags and swap the BOs */
-      rsrc->base.bind = new_res->base.bind;
-      rsrc->bo = new_res->bo;
-      new_res->bo = old;
-
-      /* Free the new resource, which now owns the old BO */
-      pipe_resource_reference((struct pipe_resource **)&new_res, NULL);
+      transition_resource(pctx, rsrc, &templ);
    } else {
       /* Otherwise just claim it's already shared */
       pres->bind |= PIPE_BIND_SHARED;
