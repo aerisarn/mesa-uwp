@@ -135,6 +135,16 @@ v3d_setup_plane_slices(struct v3dv_image *image, uint8_t plane,
       level_width = DIV_ROUND_UP(level_width, block_width);
       level_height = DIV_ROUND_UP(level_height, block_height);
 
+      /* Converting to the block size may have made it so the level_width
+       * and level height are no longer a POT for mip levels > 1, therefore
+       * if this is a mip level greater than 1 we set level_width and
+       * level_height to the next power of two
+       */
+      if (i > 1) {
+         level_width = util_next_power_of_two(level_width);
+         level_height = util_next_power_of_two(level_height);
+      }
+
       if (!image->tiled) {
          slice->tiling = V3D_TILING_RASTER;
          if (image->vk.image_type == VK_IMAGE_TYPE_1D)
