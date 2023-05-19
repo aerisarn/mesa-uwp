@@ -2330,6 +2330,8 @@ struct radv_ray_tracing_stage {
    struct vk_pipeline_cache_object *shader;
    gl_shader_stage stage;
    uint32_t stack_size;
+
+   uint8_t sha1[SHA1_DIGEST_LENGTH];
 };
 
 struct radv_ray_tracing_pipeline {
