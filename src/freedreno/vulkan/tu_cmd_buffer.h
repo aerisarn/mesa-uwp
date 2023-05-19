@@ -262,13 +262,6 @@ struct tu_vs_params {
    uint32_t draw_id;
 };
 
-struct tu_primitive_params {
-   bool valid;
-   bool primitive_restart;
-   bool provoking_vtx_last;
-   bool tess_upper_left_domain_origin;
-};
-
 struct tu_tess_params {
    bool valid;
    enum a6xx_tess_output output_upper_left, output_lower_left;
@@ -524,8 +517,6 @@ struct tu_cmd_state
    struct tu_draw_state lrz_and_depth_plane_state;
 
    struct tu_vs_params last_vs_params;
-
-   struct tu_primitive_params last_prim_params;
 
    struct tu_tess_params tess_params;
 

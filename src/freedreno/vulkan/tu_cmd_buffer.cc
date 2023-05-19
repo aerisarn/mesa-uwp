@@ -1922,7 +1922,6 @@ tu_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    u_trace_init(&cmd_buffer->trace, &cmd_buffer->device->trace_context);
 
    cmd_buffer->state.max_vbs_bound = 0;
-   cmd_buffer->state.last_prim_params.valid = false;
 
    cmd_buffer->vsc_initialized = false;
 
@@ -4354,40 +4353,33 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
 
    tu_emit_cache_flush_renderpass(cmd);
 
-   bool primitive_restart_enabled =
-      cmd->vk.dynamic_graphics_state.ia.primitive_restart_enable;
+  if (BITSET_TEST(cmd->vk.dynamic_graphics_state.dirty,
+                  MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE) ||
+      BITSET_TEST(cmd->vk.dynamic_graphics_state.dirty,
+                  MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX)) {
+      bool primitive_restart_enabled =
+         cmd->vk.dynamic_graphics_state.ia.primitive_restart_enable;
 
-   bool primitive_restart = primitive_restart_enabled && indexed;
-   bool provoking_vtx_last =
-      cmd->vk.dynamic_graphics_state.rs.provoking_vertex ==
-      VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
-   bool tess_upper_left_domain_origin =
-      (VkTessellationDomainOrigin)cmd->vk.dynamic_graphics_state.ts.domain_origin ==
-      VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
-
-   struct tu_primitive_params* prim_params = &cmd->state.last_prim_params;
-
-   if (!prim_params->valid ||
-       prim_params->primitive_restart != primitive_restart ||
-       prim_params->provoking_vtx_last != provoking_vtx_last ||
-       prim_params->tess_upper_left_domain_origin !=
-          tess_upper_left_domain_origin) {
+      bool primitive_restart = primitive_restart_enabled && indexed;
+      bool provoking_vtx_last =
+         cmd->vk.dynamic_graphics_state.rs.provoking_vertex ==
+         VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
       tu_cs_emit_regs(
          cs,
          A6XX_PC_PRIMITIVE_CNTL_0(.primitive_restart = primitive_restart,
                                   .provoking_vtx_last = provoking_vtx_last));
-      prim_params->valid = true;
-      prim_params->primitive_restart = primitive_restart;
-      prim_params->provoking_vtx_last = provoking_vtx_last;
-      prim_params->tess_upper_left_domain_origin = tess_upper_left_domain_origin;
-      cmd->state.dirty |= TU_CMD_DIRTY_TESS_PARAMS;
    }
 
    struct tu_tess_params *tess_params = &cmd->state.tess_params;
-   if (cmd->state.dirty & TU_CMD_DIRTY_TESS_PARAMS) {
+   if ((cmd->state.dirty & TU_CMD_DIRTY_TESS_PARAMS) ||
+       BITSET_TEST(cmd->vk.dynamic_graphics_state.dirty,
+                   MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
+      bool tess_upper_left_domain_origin =
+         (VkTessellationDomainOrigin)cmd->vk.dynamic_graphics_state.ts.domain_origin ==
+         VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
       tu_cs_emit_regs(cs, A6XX_PC_TESS_CNTL(
             .spacing = tess_params->spacing,
-            .output = prim_params->tess_upper_left_domain_origin ?
+            .output = tess_upper_left_domain_origin ?
                tess_params->output_upper_left :
                tess_params->output_lower_left));
    }
