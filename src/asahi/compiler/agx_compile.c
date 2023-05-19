@@ -775,6 +775,60 @@ agx_translate_bindless_handle(agx_builder *b, nir_src *handle, agx_index *base)
 }
 
 static agx_instr *
+agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   enum glsl_sampler_dim glsl_dim = nir_intrinsic_image_dim(instr);
+   enum agx_dim dim = agx_tex_dim(glsl_dim, nir_intrinsic_image_array(instr));
+   assert(glsl_dim != GLSL_SAMPLER_DIM_MS && "needs to be lowered");
+
+   agx_index base, index;
+   if (instr->intrinsic == nir_intrinsic_bindless_image_store) {
+      index = agx_translate_bindless_handle(b, &instr->src[0], &base);
+
+      assert(base.size == AGX_SIZE_64);
+      assert(index.size == AGX_SIZE_32);
+   } else {
+      base = agx_zero();
+      index = agx_src_index(&instr->src[0]);
+
+      assert(index.size == AGX_SIZE_16);
+   }
+
+   agx_index coords4 = agx_src_index(&instr->src[1]);
+   agx_index lod = agx_src_index(&instr->src[4]);
+   assert(lod.size == AGX_SIZE_16);
+
+   int coord_components = glsl_get_sampler_dim_coordinate_components(glsl_dim);
+   if (nir_intrinsic_image_array(instr))
+      coord_components++;
+
+   agx_index coord_comps[4] = {};
+   for (unsigned i = 0; i < coord_components; ++i)
+      coord_comps[i] = agx_emit_extract(b, coords4, i);
+
+   agx_index coords = agx_emit_collect(b, coord_components, coord_comps);
+   agx_index data = agx_src_index(&instr->src[3]);
+
+   /* If the image format has less than 4 components, nir_opt_shrink_stores can
+    * shrink the store. But the IR still expects 4 components: pad with undef.
+    */
+   if (nir_src_num_components(instr->src[3]) < 4) {
+      agx_index chan[4] = {agx_null()};
+
+      for (unsigned i = 0; i < 4; ++i) {
+         if (i < nir_src_num_components(instr->src[3]))
+            chan[i] = agx_extract_nir_src(b, instr->src[3], i);
+         else
+            chan[i] = agx_undef(data.size);
+      }
+
+      data = agx_emit_collect(b, 4, chan);
+   }
+
+   return agx_image_write(b, data, coords, lod, base, index, dim);
+}
+
+static agx_instr *
 agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 {
    agx_index dst = nir_intrinsic_infos[instr->intrinsic].has_dest
@@ -892,6 +946,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_store_preamble:
       return agx_emit_store_preamble(b, instr);
+
+   case nir_intrinsic_image_store:
+   case nir_intrinsic_bindless_image_store:
+      return agx_emit_image_store(b, instr);
 
    case nir_intrinsic_block_image_store_agx:
       return agx_emit_block_image_store(b, instr);
