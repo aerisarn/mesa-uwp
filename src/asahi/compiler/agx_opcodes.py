@@ -351,6 +351,11 @@ op("trap", (0x08, 0xFFFF, 2, _), dests = 0, can_eliminate = False)
 op("wait_pix", (0x48, 0xFF, 4, _), dests = 0, imms = [WRITEOUT], can_eliminate = False)
 op("signal_pix", (0x58, 0xFF, 4, _), dests = 0, imms = [WRITEOUT], can_eliminate = False)
 
+# Sources are the data vector, the coordinate vector, the LOD, the bindless
+# table if present (zero for texture state registers), and texture index.
+op("image_write", (0xF1 | (1 << 23) | (9 << 43), 0xFF, 6, 8), dests = 0, srcs = 5, imms
+   = [DIM], can_eliminate = False)
+
 # Sources are the image and the offset within shared memory
 # TODO: Do we need the short encoding?
 op("block_image_store", (0xB1, 0xFF, 10, _), dests = 0, srcs = 2,

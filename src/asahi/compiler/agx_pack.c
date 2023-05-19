@@ -115,6 +115,31 @@ agx_pack_lod(agx_index index, unsigned *lod_mode)
    return index.value;
 }
 
+static unsigned
+agx_pack_pbe_source(agx_index index, bool *flag)
+{
+   assert(index.size == AGX_SIZE_16 || index.size == AGX_SIZE_32);
+   assert_register_is_aligned(index);
+
+   *flag = (index.size == AGX_SIZE_32);
+   return index.value;
+}
+
+static unsigned
+agx_pack_pbe_lod(agx_index index, bool *flag)
+{
+   assert(index.size == AGX_SIZE_16);
+
+   if (index.type == AGX_INDEX_IMMEDIATE)
+      *flag = true;
+   else if (index.type == AGX_INDEX_REGISTER)
+      *flag = false;
+   else
+      unreachable("Invalid PBE LOD type");
+
+   return index.value;
+}
+
 /* Load/stores have their own operands */
 
 static unsigned
@@ -782,6 +807,47 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       memcpy(util_dynarray_grow_bytes(emission, 1, 8), &raw, 8);
       if (L)
          memcpy(util_dynarray_grow_bytes(emission, 1, 4), &extend, 4);
+
+      break;
+   }
+
+   case AGX_OPCODE_IMAGE_WRITE: {
+      bool Ct, Dt, Rt, Cs;
+      unsigned Tt;
+      unsigned U;
+
+      unsigned R = agx_pack_pbe_source(I->src[0], &Rt);
+      unsigned C = agx_pack_sample_coords(I->src[1], &Ct, &Cs);
+      unsigned D = agx_pack_pbe_lod(I->src[2], &Dt);
+      unsigned T = agx_pack_texture(I->src[3], I->src[4], &U, &Tt);
+      bool rtz = false;
+
+      assert(U < (1 << 5));
+      assert(D < (1 << 8));
+      assert(R < (1 << 8));
+      assert(C < (1 << 8));
+      assert(T < (1 << 8));
+      assert(Tt < (1 << 2));
+
+      uint64_t raw = agx_opcodes_info[I->op].encoding.exact |
+                     (Rt ? (1 << 8) : 0) | ((R & BITFIELD_MASK(6)) << 9) |
+                     ((C & BITFIELD_MASK(6)) << 16) | (Ct ? (1 << 22) : 0) |
+                     ((D & BITFIELD_MASK(6)) << 24) | (Dt ? (1u << 31) : 0) |
+                     (((uint64_t)(T & BITFIELD_MASK(6))) << 32) |
+                     (((uint64_t)Tt) << 38) |
+                     (((uint64_t)I->dim & BITFIELD_MASK(3)) << 40) |
+                     (Cs ? (1ull << 47) : 0) | (((uint64_t)U) << 48) |
+                     (rtz ? (1ull << 53) : 0) |
+                     ((I->dim & BITFIELD_BIT(4)) ? (1ull << 55) : 0) |
+                     (((uint64_t)R >> 6) << 56) | (((uint64_t)C >> 6) << 58) |
+                     (((uint64_t)D >> 6) << 60) | (((uint64_t)T >> 6) << 62);
+
+      if (raw >> 48) {
+         raw |= BITFIELD_BIT(15);
+         memcpy(util_dynarray_grow_bytes(emission, 1, 8), &raw, 8);
+      } else {
+         memcpy(util_dynarray_grow_bytes(emission, 1, 6), &raw, 6);
+      }
 
       break;
    }

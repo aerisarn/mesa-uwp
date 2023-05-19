@@ -230,6 +230,14 @@ agx_read_registers(const agx_instr *I, unsigned s)
          return 1;
       }
 
+   case AGX_OPCODE_IMAGE_WRITE:
+      if (s == 0)
+         return 4 * size /* data */;
+      else if (s == 1)
+         return agx_coordinate_registers(I);
+      else
+         return size;
+
    case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
       if (s == 0) {

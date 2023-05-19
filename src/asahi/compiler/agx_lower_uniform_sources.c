@@ -34,6 +34,8 @@ should_lower(enum agx_opcode op, agx_index uniform, unsigned src_index)
       return src_index != 0;
    case AGX_OPCODE_LOCAL_STORE:
       return src_index != 1;
+   case AGX_OPCODE_IMAGE_WRITE:
+      return src_index != 3;
    case AGX_OPCODE_ZS_EMIT:
    case AGX_OPCODE_ST_TILE:
    case AGX_OPCODE_LD_TILE:
