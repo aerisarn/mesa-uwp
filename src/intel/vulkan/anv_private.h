@@ -843,6 +843,7 @@ enum anv_timestamp_capture_type {
     ANV_TIMESTAMP_CAPTURE_TOP_OF_PIPE,
     ANV_TIMESTAMP_CAPTURE_END_OF_PIPE,
     ANV_TIMESTAMP_CAPTURE_AT_CS_STALL,
+    ANV_TIMESTAMP_REWRITE_COMPUTE_WALKER,
 };
 
 struct anv_physical_device {
@@ -962,7 +963,8 @@ struct anv_physical_device {
     int64_t                                     master_minor;
     struct intel_query_engine_info *            engine_info;
 
-    void (*cmd_emit_timestamp)(struct anv_batch *, struct anv_device *, struct anv_address, enum anv_timestamp_capture_type);
+    void (*cmd_emit_timestamp)(struct anv_batch *, struct anv_device *, struct anv_address,
+                               enum anv_timestamp_capture_type, void *);
     struct intel_measure_device                 measure_device;
 };
 
@@ -2847,6 +2849,13 @@ struct anv_cmd_buffer {
     */
    struct u_trace                               trace;
 
+   /** Pointer to the last emitted COMPUTE_WALKER.
+    *
+    * This is used to edit the instruction post emission to replace the "Post
+    * Sync" field for utrace timestamp emission.
+    */
+   void                                        *last_compute_walker;
+
    struct {
       struct anv_video_session *vid;
       struct anv_video_session_params *params;
@@ -4435,6 +4444,11 @@ struct anv_utrace_submit {
 
    /* Buffer of 64bits timestamps (only used for timestamp copies) */
    struct anv_bo *trace_bo;
+
+   /* Last fully read 64bit timestamp (used to rebuild the upper bits of 32bit
+    * timestamps)
+    */
+   uint64_t last_full_timestamp;
 
    /* Memcpy state tracking (only used for timestamp copies) */
    struct anv_memcpy_state memcpy_state;

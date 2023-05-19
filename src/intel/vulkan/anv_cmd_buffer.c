@@ -79,6 +79,8 @@ anv_cmd_state_reset(struct anv_cmd_buffer *cmd_buffer)
 {
    anv_cmd_state_finish(cmd_buffer);
    anv_cmd_state_init(cmd_buffer);
+
+   cmd_buffer->last_compute_walker = NULL;
 }
 
 static VkResult
@@ -135,6 +137,8 @@ anv_create_cmd_buffer(struct vk_command_pool *pool,
    cmd_buffer->generation_jump_addr = ANV_NULL_ADDRESS;
    cmd_buffer->generation_return_addr = ANV_NULL_ADDRESS;
    cmd_buffer->generation_bt_state = ANV_STATE_NULL;
+
+   cmd_buffer->last_compute_walker = NULL;
 
    anv_cmd_state_init(cmd_buffer);
 

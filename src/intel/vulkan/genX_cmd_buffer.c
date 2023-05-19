@@ -5659,37 +5659,42 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
    const struct brw_cs_dispatch_info dispatch =
       brw_cs_get_dispatch_info(devinfo, prog_data, NULL);
 
-   anv_batch_emit(&cmd_buffer->batch, GENX(COMPUTE_WALKER), cw) {
-      cw.IndirectParameterEnable        = indirect;
-      cw.PredicateEnable                = predicate;
-      cw.SIMDSize                       = dispatch.simd_size / 16;
-      cw.IndirectDataStartAddress       = comp_state->push_data.offset;
-      cw.IndirectDataLength             = comp_state->push_data.alloc_size;
-      cw.LocalXMaximum                  = prog_data->local_size[0] - 1;
-      cw.LocalYMaximum                  = prog_data->local_size[1] - 1;
-      cw.LocalZMaximum                  = prog_data->local_size[2] - 1;
-      cw.ThreadGroupIDXDimension        = groupCountX;
-      cw.ThreadGroupIDYDimension        = groupCountY;
-      cw.ThreadGroupIDZDimension        = groupCountZ;
-      cw.ExecutionMask                  = dispatch.right_mask;
-      cw.PostSync.MOCS                  = anv_mocs(pipeline->base.device, NULL, 0);
+   cmd_buffer->last_compute_walker =
+      anv_batch_emitn(
+         &cmd_buffer->batch,
+         GENX(COMPUTE_WALKER_length),
+         GENX(COMPUTE_WALKER),
+         .IndirectParameterEnable        = indirect,
+         .PredicateEnable                = predicate,
+         .SIMDSize                       = dispatch.simd_size / 16,
+         .IndirectDataStartAddress       = comp_state->push_data.offset,
+         .IndirectDataLength             = comp_state->push_data.alloc_size,
+         .LocalXMaximum                  = prog_data->local_size[0] - 1,
+         .LocalYMaximum                  = prog_data->local_size[1] - 1,
+         .LocalZMaximum                  = prog_data->local_size[2] - 1,
+         .ThreadGroupIDXDimension        = groupCountX,
+         .ThreadGroupIDYDimension        = groupCountY,
+         .ThreadGroupIDZDimension        = groupCountZ,
+         .ExecutionMask                  = dispatch.right_mask,
+         .PostSync                       = {
+            .MOCS                        = anv_mocs(pipeline->base.device, NULL, 0),
+         },
 
-      cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
-         .KernelStartPointer = cs_bin->kernel.offset,
-         .SamplerStatePointer =
-            cmd_buffer->state.samplers[MESA_SHADER_COMPUTE].offset,
-         .BindingTablePointer =
-            cmd_buffer->state.binding_tables[MESA_SHADER_COMPUTE].offset,
-         /* Typically set to 0 to avoid prefetching on every thread dispatch. */
-         .BindingTableEntryCount = devinfo->verx10 == 125 ?
-            0 : 1 + MIN2(pipeline->cs->bind_map.surface_count, 30),
-         .NumberofThreadsinGPGPUThreadGroup = dispatch.threads,
-         .SharedLocalMemorySize = encode_slm_size(GFX_VER,
-                                                  prog_data->base.total_shared),
-         .PreferredSLMAllocationSize = preferred_slm_allocation_size(devinfo),
-         .NumberOfBarriers = prog_data->uses_barrier,
-      };
-   }
+         .InterfaceDescriptor            = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
+            .KernelStartPointer                = cs_bin->kernel.offset,
+            .SamplerStatePointer               = cmd_buffer->state.samplers[
+               MESA_SHADER_COMPUTE].offset,
+            .BindingTablePointer               = cmd_buffer->state.binding_tables[
+               MESA_SHADER_COMPUTE].offset,
+            /* Typically set to 0 to avoid prefetching on every thread dispatch. */
+            .BindingTableEntryCount            = devinfo->verx10 == 125 ?
+               0 : 1 + MIN2(pipeline->cs->bind_map.surface_count, 30),
+            .NumberofThreadsinGPGPUThreadGroup = dispatch.threads,
+            .SharedLocalMemorySize             = encode_slm_size(
+               GFX_VER, prog_data->base.total_shared),
+            .PreferredSLMAllocationSize        = preferred_slm_allocation_size(devinfo),
+            .NumberOfBarriers                  = prog_data->uses_barrier,
+         });
 }
 
 #else /* #if GFX_VERx10 >= 125 */
@@ -8067,7 +8072,8 @@ VkResult genX(CmdSetPerformanceStreamMarkerINTEL)(
 void genX(cmd_emit_timestamp)(struct anv_batch *batch,
                               struct anv_device *device,
                               struct anv_address addr,
-                              enum anv_timestamp_capture_type type) {
+                              enum anv_timestamp_capture_type type,
+                              void *data) {
    switch (type) {
    case ANV_TIMESTAMP_CAPTURE_TOP_OF_PIPE: {
       struct mi_builder b;
@@ -8077,6 +8083,7 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
    }
 
    case ANV_TIMESTAMP_CAPTURE_END_OF_PIPE:
+
       anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
          pc.PostSyncOperation   = WriteTimestamp;
          pc.Address             = addr;
@@ -8092,6 +8099,24 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
          anv_debug_dump_pc(pc);
       }
       break;
+
+#if GFX_VERx10 >= 125
+   case ANV_TIMESTAMP_REWRITE_COMPUTE_WALKER: {
+      uint32_t dwords[GENX(COMPUTE_WALKER_length)];
+
+      GENX(COMPUTE_WALKER_pack)(batch, dwords, &(struct GENX(COMPUTE_WALKER)) {
+            .PostSync = (struct GENX(POSTSYNC_DATA)) {
+               .Operation = WriteTimestamp,
+               .DestinationAddress = addr,
+               .MOCS = anv_mocs(device, NULL, 0),
+            },
+         });
+
+      for (uint32_t i = 0; i < ARRAY_SIZE(dwords); i++)
+         ((uint32_t *)data)[i] |= dwords[i];
+      break;
+   }
+#endif
 
    default:
       unreachable("invalid");
