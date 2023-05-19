@@ -542,7 +542,6 @@ dxil_emit_ret_void(struct dxil_module *m);
 
 const struct dxil_value *
 dxil_emit_alloca(struct dxil_module *m, const struct dxil_type *alloc_type,
-                 const struct dxil_type *size_type,
                  const struct dxil_value *size,
                  unsigned int align);
 

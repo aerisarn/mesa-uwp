@@ -976,30 +976,8 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    const struct dxil_nir_lower_loads_stores_options loads_stores_options = {
       .use_16bit_ssbo = false,
    };
-   NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil, &loads_stores_options);
-   NIR_PASS_V(nir, dxil_nir_opt_alu_deref_srcs);
-   NIR_PASS_V(nir, dxil_nir_lower_atomics_to_dxil);
-   NIR_PASS_V(nir, nir_lower_fp16_casts, nir_lower_fp16_all);
-   NIR_PASS_V(nir, nir_lower_convert_alu_types, NULL);
-
-   // Convert pack to pack_split
-   NIR_PASS_V(nir, nir_lower_pack);
-   // Lower pack_split to bit math
-   NIR_PASS_V(nir, nir_opt_algebraic);
-
-   NIR_PASS_V(nir, nir_opt_dce);
-
-   nir_validate_shader(nir, "Validate before feeding NIR to the DXIL compiler");
-   struct nir_to_dxil_options opts = {
-      .interpolate_at_vertex = false,
-      .lower_int16 = (conf && (conf->lower_bit_size & 16) != 0),
-      .disable_math_refactoring = true,
-      .num_kernel_globals = num_global_inputs,
-      .environment = DXIL_ENVIRONMENT_CL,
-      .shader_model_max = conf && conf->max_shader_model ? conf->max_shader_model : SHADER_MODEL_6_2,
-      .validator_version_max = conf ? conf->validator_version : DXIL_VALIDATOR_1_4,
-   };
-
+   
+   /* Now that function-declared local vars have been sized, append args */
    for (unsigned i = 0; i < out_dxil->kernel->num_args; i++) {
       if (out_dxil->kernel->args[i].address_qualifier != CLC_KERNEL_ARG_ADDRESS_LOCAL)
          continue;
@@ -1025,6 +1003,29 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
       metadata->args[i].localptr.sharedmem_offset = nir->info.shared_size;
       nir->info.shared_size += size;
    }
+
+   NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil, &loads_stores_options);
+   NIR_PASS_V(nir, dxil_nir_opt_alu_deref_srcs);
+   NIR_PASS_V(nir, nir_lower_fp16_casts, nir_lower_fp16_all);
+   NIR_PASS_V(nir, nir_lower_convert_alu_types, NULL);
+
+   // Convert pack to pack_split
+   NIR_PASS_V(nir, nir_lower_pack);
+   // Lower pack_split to bit math
+   NIR_PASS_V(nir, nir_opt_algebraic);
+
+   NIR_PASS_V(nir, nir_opt_dce);
+
+   nir_validate_shader(nir, "Validate before feeding NIR to the DXIL compiler");
+   struct nir_to_dxil_options opts = {
+      .interpolate_at_vertex = false,
+      .lower_int16 = (conf && (conf->lower_bit_size & 16) != 0),
+      .disable_math_refactoring = true,
+      .num_kernel_globals = num_global_inputs,
+      .environment = DXIL_ENVIRONMENT_CL,
+      .shader_model_max = conf && conf->max_shader_model ? conf->max_shader_model : SHADER_MODEL_6_2,
+      .validator_version_max = conf ? conf->validator_version : DXIL_VALIDATOR_1_4,
+   };
 
    metadata->local_mem_size = nir->info.shared_size;
    metadata->priv_mem_size = nir->scratch_size;

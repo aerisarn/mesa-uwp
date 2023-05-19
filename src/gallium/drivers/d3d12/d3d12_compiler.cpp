@@ -144,7 +144,6 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    NIR_PASS_V(nir, d3d12_lower_state_vars, shader);
    const struct dxil_nir_lower_loads_stores_options loads_stores_options = {};
    NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil, &loads_stores_options);
-   NIR_PASS_V(nir, dxil_nir_lower_atomics_to_dxil);
    NIR_PASS_V(nir, dxil_nir_lower_double_math);
 
    if (key->stage == PIPE_SHADER_FRAGMENT && key->fs.multisample_disabled)

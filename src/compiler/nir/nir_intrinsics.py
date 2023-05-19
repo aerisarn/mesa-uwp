@@ -1259,24 +1259,8 @@ intrinsic("copy_ubo_to_uniform_ir3", [1, 1], indices=[BASE, RANGE])
 # DXIL specific intrinsics
 # src[] = { value, mask, index, offset }.
 intrinsic("store_ssbo_masked_dxil", [1, 1, 1, 1])
-# src[] = { value, index }.
-intrinsic("store_shared_dxil", [1, 1])
-# src[] = { value, mask, index }.
-intrinsic("store_shared_masked_dxil", [1, 1, 1])
-# src[] = { value, index }.
-intrinsic("store_scratch_dxil", [1, 1])
-# src[] = { index }.
-load("shared_dxil", [1], [], [CAN_ELIMINATE])
-# src[] = { index }.
-load("scratch_dxil", [1], [], [CAN_ELIMINATE])
 # src[] = { index, 16-byte-based-offset }
 load("ubo_dxil", [1, 1], [], [CAN_ELIMINATE, CAN_REORDER])
-
-# DXIL Shared atomic intrinsics
-#
-# src0 is the index in the i32 array for by the shared memory region
-intrinsic("shared_atomic_dxil",  src_comp=[1, 1], dest_comp=1, indices=[ATOMIC_OP])
-intrinsic("shared_atomic_swap_dxil", src_comp=[1, 1, 1], dest_comp=1, indices=[ATOMIC_OP])
 
 # Intrinsics used by the Midgard/Bifrost blend pipeline. These are defined
 # within a blend shader to read/write the raw value from the tile buffer,

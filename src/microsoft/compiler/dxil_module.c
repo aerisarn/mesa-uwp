@@ -3372,11 +3372,10 @@ dxil_emit_extractval(struct dxil_module *m, const struct dxil_value *src,
 
 const struct dxil_value *
 dxil_emit_alloca(struct dxil_module *m, const struct dxil_type *alloc_type,
-                 const struct dxil_type *size_type,
                  const struct dxil_value *size,
                  unsigned int align)
 {
-   assert(size_type && size_type->type == TYPE_INTEGER);
+   assert(size->type->type == TYPE_INTEGER);
 
    const struct dxil_type *return_type =
       dxil_module_get_pointer_type(m, alloc_type);
@@ -3388,7 +3387,7 @@ dxil_emit_alloca(struct dxil_module *m, const struct dxil_type *alloc_type,
       return NULL;
 
    instr->alloca.alloc_type = alloc_type;
-   instr->alloca.size_type = size_type;
+   instr->alloca.size_type = size->type;
    instr->alloca.size = size;
    instr->alloca.align = util_logbase2(align) + 1;
    assert(instr->alloca.align < (1 << 5));

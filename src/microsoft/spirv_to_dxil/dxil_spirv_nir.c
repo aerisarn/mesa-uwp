@@ -1075,7 +1075,6 @@ dxil_spirv_nir_passes(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared,
       nir_address_format_32bit_offset);
 
-   NIR_PASS_V(nir, dxil_nir_lower_atomics_to_dxil);
    NIR_PASS_V(nir, dxil_nir_lower_int_cubemaps, false);
 
    NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
