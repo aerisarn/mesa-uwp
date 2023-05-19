@@ -2056,15 +2056,15 @@ vk_common_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer,
 
       const uint32_t b = desc->binding;
       bindings_valid |= BITFIELD_BIT(b);
-      SET_DYN_VALUE(dyn, VI, vi->bindings[b].stride, desc->stride);
-      SET_DYN_VALUE(dyn, VI, vi->bindings[b].input_rate, desc->inputRate);
-      SET_DYN_VALUE(dyn, VI, vi->bindings[b].divisor, desc->divisor);
+      dyn->vi->bindings[b].stride = desc->stride;
+      dyn->vi->bindings[b].input_rate = desc->inputRate;
+      dyn->vi->bindings[b].divisor = desc->divisor;
 
       /* Also set bindings_strides in case a driver is keying off that */
-      SET_DYN_VALUE(dyn, VI_BINDING_STRIDES,
-                    vi_binding_strides[b], desc->stride);
+      dyn->vi_binding_strides[b] = desc->stride;
    }
-   SET_DYN_VALUE(dyn, VI, vi->bindings_valid, bindings_valid);
+
+   dyn->vi->bindings_valid = bindings_valid;
    SET_DYN_VALUE(dyn, VI_BINDINGS_VALID, vi_bindings_valid, bindings_valid);
 
    uint32_t attributes_valid = 0;
@@ -2078,11 +2078,16 @@ vk_common_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer,
 
       const uint32_t a = desc->location;
       attributes_valid |= BITFIELD_BIT(a);
-      SET_DYN_VALUE(dyn, VI, vi->attributes[a].binding, desc->binding);
-      SET_DYN_VALUE(dyn, VI, vi->attributes[a].format, desc->format);
-      SET_DYN_VALUE(dyn, VI, vi->attributes[a].offset, desc->offset);
+      dyn->vi->attributes[a].binding = desc->binding;
+      dyn->vi->attributes[a].format = desc->format;
+      dyn->vi->attributes[a].offset = desc->offset;
    }
-   SET_DYN_VALUE(dyn, VI, vi->attributes_valid, attributes_valid);
+   dyn->vi->attributes_valid = attributes_valid;
+
+   BITSET_SET(dyn->set, MESA_VK_DYNAMIC_VI);
+   BITSET_SET(dyn->set, MESA_VK_DYNAMIC_VI_BINDING_STRIDES);
+   BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_VI);
+   BITSET_SET(dyn->dirty, MESA_VK_DYNAMIC_VI_BINDING_STRIDES);
 }
 
 void
