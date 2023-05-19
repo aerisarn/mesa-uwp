@@ -546,6 +546,7 @@ struct pipe_image_view
          unsigned first_layer:16;     /**< first layer to use for array textures */
          unsigned last_layer:16;      /**< last layer to use for array textures */
          unsigned level:8;            /**< mipmap level to use */
+         bool single_layer_view;      /**< single layer view of array */
       } tex;
       struct {
          unsigned offset;   /**< offset in bytes */
