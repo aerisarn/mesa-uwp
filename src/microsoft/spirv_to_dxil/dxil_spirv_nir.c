@@ -60,7 +60,7 @@ spirv_to_nir_options = {
    },
    .ubo_addr_format = nir_address_format_32bit_index_offset,
    .ssbo_addr_format = nir_address_format_32bit_index_offset,
-   .shared_addr_format = nir_address_format_32bit_offset,
+   .shared_addr_format = nir_address_format_logical,
 
    .min_ubo_alignment = 256, /* D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT */
    .min_ssbo_alignment = 16, /* D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT */
@@ -1065,15 +1065,17 @@ dxil_spirv_nir_passes(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo | nir_var_mem_ssbo,
               nir_address_format_32bit_index_offset);
 
-   if (!nir->info.shared_memory_explicit_layout) {
+   if (nir->info.shared_memory_explicit_layout) {
       NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_mem_shared,
                  shared_var_info);
+      NIR_PASS_V(nir, dxil_nir_split_unaligned_loads_stores, nir_var_mem_shared);
+      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared, nir_address_format_32bit_offset);
+   } else {
+      NIR_PASS_V(nir, nir_split_struct_vars, nir_var_mem_shared);
+      NIR_PASS_V(nir, dxil_nir_flatten_var_arrays, nir_var_mem_shared);
+      NIR_PASS_V(nir, dxil_nir_lower_var_bit_size, nir_var_mem_shared,
+                 conf->shader_model_max >= SHADER_MODEL_6_2 ? 16 : 32, 64);
    }
-   NIR_PASS_V(nir, dxil_nir_split_unaligned_loads_stores, nir_var_mem_shared);
-   NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp | nir_var_shader_temp,
-              256 /* arbitrary */, temp_var_info);
-   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared,
-      nir_address_format_32bit_offset);
 
    NIR_PASS_V(nir, dxil_nir_lower_int_cubemaps, false);
 
@@ -1130,6 +1132,12 @@ dxil_spirv_nir_passes(nir_shader *nir,
          NIR_PASS(progress, nir, nir_opt_algebraic);
       } while (progress);
    }
+
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+   NIR_PASS_V(nir, nir_split_struct_vars, nir_var_function_temp);
+   NIR_PASS_V(nir, dxil_nir_flatten_var_arrays, nir_var_function_temp);
+   NIR_PASS_V(nir, dxil_nir_lower_var_bit_size, nir_var_function_temp,
+              conf->shader_model_max >= SHADER_MODEL_6_2 ? 16 : 32, 64);
 
    NIR_PASS_V(nir, nir_lower_doubles, NULL, nir->options->lower_doubles_options);
 
