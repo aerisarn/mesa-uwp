@@ -3244,10 +3244,10 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
    if (info->gfx_level >= GFX9) {
       fprintf(out,
               "    Surf: size=%" PRIu64 ", slice_size=%" PRIu64 ", "
-              "alignment=%u, swmode=%u, epitch=%u, pitch=%u, blk_w=%u, "
+              "alignment=%u, swmode=%u, tile_swizzle=%u, epitch=%u, pitch=%u, blk_w=%u, "
               "blk_h=%u, bpe=%u, flags=0x%"PRIx64"\n",
               surf->surf_size, surf->u.gfx9.surf_slice_size,
-              1 << surf->surf_alignment_log2, surf->u.gfx9.swizzle_mode,
+              1 << surf->surf_alignment_log2, surf->u.gfx9.swizzle_mode, surf->tile_swizzle,
               surf->u.gfx9.epitch, surf->u.gfx9.surf_pitch,
               surf->blk_w, surf->blk_h, surf->bpe, surf->flags);
 
