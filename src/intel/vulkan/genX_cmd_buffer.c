@@ -3509,12 +3509,9 @@ emit_isp_disable(struct anv_cmd_buffer *cmd_buffer)
    }
 }
 
-VkResult
-genX(EndCommandBuffer)(
-    VkCommandBuffer                             commandBuffer)
+static VkResult
+end_command_buffer(struct anv_cmd_buffer *cmd_buffer)
 {
-   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-
    if (anv_batch_has_error(&cmd_buffer->batch))
       return cmd_buffer->batch.status;
 
@@ -3563,6 +3560,15 @@ genX(EndCommandBuffer)(
    anv_cmd_buffer_end_batch_buffer(cmd_buffer);
 
    return VK_SUCCESS;
+}
+
+VkResult
+genX(EndCommandBuffer)(
+    VkCommandBuffer                             commandBuffer)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   return end_command_buffer(cmd_buffer);
 }
 
 static void

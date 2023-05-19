@@ -198,11 +198,8 @@ anv_create_cmd_buffer(struct vk_command_pool *pool,
 }
 
 static void
-anv_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
+destroy_cmd_buffer(struct anv_cmd_buffer *cmd_buffer)
 {
-   struct anv_cmd_buffer *cmd_buffer =
-      container_of(vk_cmd_buffer, struct anv_cmd_buffer, vk);
-
    u_trace_fini(&cmd_buffer->trace);
 
    anv_measure_destroy(cmd_buffer);
@@ -228,13 +225,19 @@ anv_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
    vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer);
 }
 
-void
-anv_cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
-                     UNUSED VkCommandBufferResetFlags flags)
+static void
+anv_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
 {
    struct anv_cmd_buffer *cmd_buffer =
       container_of(vk_cmd_buffer, struct anv_cmd_buffer, vk);
 
+   destroy_cmd_buffer(cmd_buffer);
+}
+
+static void
+reset_cmd_buffer(struct anv_cmd_buffer *cmd_buffer,
+                 UNUSED VkCommandBufferResetFlags flags)
+{
    vk_command_buffer_reset(&cmd_buffer->vk);
 
    cmd_buffer->usage_flags = 0;
@@ -274,6 +277,16 @@ anv_cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
 
    u_trace_fini(&cmd_buffer->trace);
    u_trace_init(&cmd_buffer->trace, &cmd_buffer->device->ds.trace_context);
+}
+
+void
+anv_cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
+                     UNUSED VkCommandBufferResetFlags flags)
+{
+   struct anv_cmd_buffer *cmd_buffer =
+      container_of(vk_cmd_buffer, struct anv_cmd_buffer, vk);
+
+   reset_cmd_buffer(cmd_buffer, flags);
 }
 
 const struct vk_command_buffer_ops anv_cmd_buffer_ops = {
