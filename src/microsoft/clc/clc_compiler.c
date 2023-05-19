@@ -478,8 +478,11 @@ clc_lower_constant_to_ssbo(nir_shader *nir,
 }
 
 static void
-clc_lower_global_to_ssbo(nir_shader *nir)
+clc_change_variable_mode(nir_shader *nir, nir_variable_mode from, nir_variable_mode to)
 {
+   nir_foreach_variable_with_modes(var, nir, from)
+      var->data.mode = to;
+
    nir_foreach_function(func, nir) {
       if (!func->is_entrypoint)
          continue;
@@ -493,10 +496,10 @@ clc_lower_global_to_ssbo(nir_shader *nir)
 
             nir_deref_instr *deref = nir_instr_as_deref(instr);
 
-            if (deref->modes != nir_var_mem_global)
+            if (deref->modes != from)
                continue;
 
-            deref->modes = nir_var_mem_ssbo;
+            deref->modes = to;
          }
       }
    }
@@ -897,7 +900,8 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    nir->info.cs.ptr_size = 64;
 
    NIR_PASS_V(nir, clc_lower_constant_to_ssbo, out_dxil->kernel, &uav_id);
-   NIR_PASS_V(nir, clc_lower_global_to_ssbo);
+   NIR_PASS_V(nir, clc_change_variable_mode, nir_var_shader_temp, nir_var_mem_constant);
+   NIR_PASS_V(nir, clc_change_variable_mode, nir_var_mem_global, nir_var_mem_ssbo);
 
    bool has_printf = false;
    NIR_PASS(has_printf, nir, clc_lower_printf_base, uav_id);
@@ -905,7 +909,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
 
    NIR_PASS_V(nir, dxil_nir_lower_deref_ssbo);
 
-   NIR_PASS_V(nir, dxil_nir_split_unaligned_loads_stores, nir_var_all & ~nir_var_shader_temp);
+   NIR_PASS_V(nir, dxil_nir_split_unaligned_loads_stores, nir_var_all & ~nir_var_mem_constant);
 
    assert(nir->info.cs.ptr_size == 64);
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ssbo,

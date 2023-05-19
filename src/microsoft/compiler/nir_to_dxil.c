@@ -1500,14 +1500,14 @@ static bool
 emit_global_consts(struct ntd_context *ctx)
 {
    uint32_t index = 0;
-   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_temp) {
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_constant) {
       assert(var->constant_initializer);
       var->data.driver_location = index++;
    }
 
    ctx->consts = ralloc_array(ctx->ralloc_ctx, const struct dxil_value *, index);
 
-   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_temp) {
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_constant) {
       if (!var->name)
          var->name = ralloc_asprintf(var, "const_%d", var->data.driver_location);
 
@@ -6751,7 +6751,7 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    optimize_nir(s, opts);
 
    NIR_PASS_V(s, nir_remove_dead_variables,
-              nir_var_function_temp | nir_var_shader_temp, NULL);
+              nir_var_function_temp | nir_var_mem_constant, NULL);
 
    if (!allocate_sysvalues(ctx))
       return false;
