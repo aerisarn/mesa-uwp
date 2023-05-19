@@ -35,19 +35,25 @@ assert_register_is_aligned(agx_index reg)
 
 /* Texturing has its own operands */
 static unsigned
-agx_pack_sample_coords(agx_index index, bool *flag)
+agx_pack_sample_coords(agx_index index, bool *flag, bool *is_16)
 {
-   /* TODO: how to encode 16-bit coords? */
+   /* TODO: Do we have a use case for 16-bit coords? */
    assert(index.size == AGX_SIZE_32);
    assert(index.value < 0x100);
 
+   *is_16 = false;
    *flag = index.discard;
    return index.value;
 }
 
 static unsigned
-agx_pack_texture(agx_index index, unsigned *flag)
+agx_pack_texture(agx_index base, agx_index index, unsigned *packed_base,
+                 unsigned *flag)
 {
+   assert(base.type == AGX_INDEX_IMMEDIATE && base.value == 0 &&
+          "TODO: bindless");
+   *packed_base = 0;
+
    if (index.type == AGX_INDEX_REGISTER) {
       assert(index.size == AGX_SIZE_16);
       *flag = 1;
@@ -735,18 +741,18 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       assert(I->mask != 0);
       assert(I->format <= 0x10);
 
-      bool Rt, Ct, St;
+      bool Rt, Ct, St, Cs;
       unsigned Tt;
+      unsigned U;
       enum agx_lod_mode lod_mode = I->lod_mode;
 
       unsigned R = agx_pack_memory_reg(I->dest[0], &Rt);
-      unsigned C = agx_pack_sample_coords(I->src[0], &Ct);
-      unsigned T = agx_pack_texture(I->src[2], &Tt);
+      unsigned C = agx_pack_sample_coords(I->src[0], &Ct, &Cs);
+      unsigned T = agx_pack_texture(agx_zero(), I->src[2], &U, &Tt);
       unsigned S = agx_pack_sampler(I->src[3], &St);
       unsigned O = agx_pack_sample_compare_offset(I->src[4]);
       unsigned D = agx_pack_lod(I->src[1], &lod_mode);
 
-      unsigned U = 0; // TODO: what is sampler ureg?
       unsigned q1 = I->shadow;
       unsigned q2 = 0;   // XXX
       unsigned q3 = 12;  // XXX
@@ -787,7 +793,8 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       unsigned Tt = 0;
       assert(Tt < 0x4);
 
-      unsigned T = agx_pack_texture(I->src[0], &Tt);
+      UNUSED unsigned U;
+      unsigned T = agx_pack_texture(agx_zero(), I->src[0], &U, &Tt);
       assert(T < 0x100);
 
       agx_index offset = I->src[1];
