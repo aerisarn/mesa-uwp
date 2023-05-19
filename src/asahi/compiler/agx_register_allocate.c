@@ -72,6 +72,38 @@ agx_split_width(const agx_instr *I)
    return width;
 }
 
+/*
+ * Return number of registers required for coordinates for a
+ * texture/image instruction. We handle layer + sample index as 32-bit even when
+ * only the lower 16-bits are present.
+ */
+static unsigned
+agx_coordinate_registers(const agx_instr *I)
+{
+   switch (I->dim) {
+   case AGX_DIM_1D:
+      return 2 * 1;
+   case AGX_DIM_1D_ARRAY:
+      return 2 * 2;
+   case AGX_DIM_2D:
+      return 2 * 2;
+   case AGX_DIM_2D_ARRAY:
+      return 2 * 3;
+   case AGX_DIM_2D_MS:
+      return 2 * 3;
+   case AGX_DIM_3D:
+      return 2 * 3;
+   case AGX_DIM_CUBE:
+      return 2 * 3;
+   case AGX_DIM_CUBE_ARRAY:
+      return 2 * 4;
+   case AGX_DIM_2D_MS_ARRAY:
+      return 2 * 3;
+   }
+
+   unreachable("Invalid texture dimension");
+}
+
 unsigned
 agx_read_registers(const agx_instr *I, unsigned s)
 {
@@ -106,31 +138,7 @@ agx_read_registers(const agx_instr *I, unsigned s)
    case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
       if (s == 0) {
-         /* Coordinates. We handle layer + sample index as 32-bit even when only
-          * the lower 16-bits are present.
-          */
-         switch (I->dim) {
-         case AGX_DIM_1D:
-            return 2 * 1;
-         case AGX_DIM_1D_ARRAY:
-            return 2 * 2;
-         case AGX_DIM_2D:
-            return 2 * 2;
-         case AGX_DIM_2D_ARRAY:
-            return 2 * 3;
-         case AGX_DIM_2D_MS:
-            return 2 * 3;
-         case AGX_DIM_3D:
-            return 2 * 3;
-         case AGX_DIM_CUBE:
-            return 2 * 3;
-         case AGX_DIM_CUBE_ARRAY:
-            return 2 * 4;
-         case AGX_DIM_2D_MS_ARRAY:
-            return 2 * 3;
-         }
-
-         unreachable("Invalid texture dimension");
+         return agx_coordinate_registers(I);
       } else if (s == 1) {
          /* LOD */
          if (I->lod_mode == AGX_LOD_MODE_LOD_GRAD) {
