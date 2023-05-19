@@ -197,6 +197,7 @@ fixup_draw_state(struct fd_context *ctx, struct fd6_emit *emit) assert_dt
    }
 }
 
+template <fd6_pipeline_type PIPELINE>
 static const struct fd6_program_state *
 get_program_state(struct fd_context *ctx, const struct pipe_draw_info *info)
    assert_dt
@@ -218,25 +219,27 @@ get_program_state(struct fd_context *ctx, const struct pipe_draw_info *info)
    key.key.msaa = (ctx->framebuffer.samples > 1);
    key.key.rasterflat = ctx->rasterizer->flatshade;
 
-   if (info->mode == PIPE_PRIM_PATCHES) {
-      struct shader_info *gs_info =
-            ir3_get_shader_info((struct ir3_shader_state *)ctx->prog.gs);
+   if (PIPELINE == HAS_TESS_GS) {
+      if (info->mode == PIPE_PRIM_PATCHES) {
+         struct shader_info *gs_info =
+               ir3_get_shader_info((struct ir3_shader_state *)ctx->prog.gs);
 
-      key.hs = (struct ir3_shader_state *)ctx->prog.hs;
-      key.ds = (struct ir3_shader_state *)ctx->prog.ds;
+         key.hs = (struct ir3_shader_state *)ctx->prog.hs;
+         key.ds = (struct ir3_shader_state *)ctx->prog.ds;
 
-      struct shader_info *ds_info = ir3_get_shader_info(key.ds);
-      key.key.tessellation = ir3_tess_mode(ds_info->tess._primitive_mode);
+         struct shader_info *ds_info = ir3_get_shader_info(key.ds);
+         key.key.tessellation = ir3_tess_mode(ds_info->tess._primitive_mode);
 
-      struct shader_info *fs_info = ir3_get_shader_info(key.fs);
-      key.key.tcs_store_primid =
-         BITSET_TEST(ds_info->system_values_read, SYSTEM_VALUE_PRIMITIVE_ID) ||
-         (gs_info && BITSET_TEST(gs_info->system_values_read, SYSTEM_VALUE_PRIMITIVE_ID)) ||
-         (fs_info && (fs_info->inputs_read & (1ull << VARYING_SLOT_PRIMITIVE_ID)));
-   }
+         struct shader_info *fs_info = ir3_get_shader_info(key.fs);
+         key.key.tcs_store_primid =
+               BITSET_TEST(ds_info->system_values_read, SYSTEM_VALUE_PRIMITIVE_ID) ||
+               (gs_info && BITSET_TEST(gs_info->system_values_read, SYSTEM_VALUE_PRIMITIVE_ID)) ||
+               (fs_info && (fs_info->inputs_read & (1ull << VARYING_SLOT_PRIMITIVE_ID)));
+      }
 
-   if (key.gs) {
-      key.key.has_gs = true;
+      if (key.gs) {
+         key.key.has_gs = true;
+      }
    }
 
    ir3_fixup_shader_state(&ctx->base, &key.key);
@@ -267,7 +270,7 @@ flush_streamout(struct fd_context *ctx, struct fd6_emit *emit)
    }
 }
 
-template <chip CHIP, draw_type DRAW>
+template <chip CHIP, fd6_pipeline_type PIPELINE, draw_type DRAW>
 static void
 draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
           unsigned drawid_offset,
@@ -296,9 +299,13 @@ draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    if (!(ctx->prog.vs && ctx->prog.fs))
       return;
 
-   if ((info->mode == PIPE_PRIM_PATCHES) || ctx->prog.gs) {
-      ctx->gen_dirty |= BIT(FD6_GROUP_PRIMITIVE_PARAMS);
-   } else if (!is_indirect(DRAW)) {
+   if (PIPELINE == HAS_TESS_GS) {
+      if ((info->mode == PIPE_PRIM_PATCHES) || ctx->prog.gs) {
+         ctx->gen_dirty |= BIT(FD6_GROUP_PRIMITIVE_PARAMS);
+      }
+   }
+
+   if ((PIPELINE == NO_TESS_GS) && !is_indirect(DRAW)) {
       fd6_vsc_update_sizes(ctx->batch, info, &draws[0]);
    }
 
@@ -308,7 +315,7 @@ draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
     * Otherwise we can just use the previous prog state.
     */
    if (unlikely(ctx->gen_dirty & BIT(FD6_GROUP_PROG_KEY))) {
-      emit.prog = get_program_state(ctx, info);
+      emit.prog = get_program_state<PIPELINE>(ctx, info);
    } else {
       emit.prog = fd6_ctx->prog;
    }
@@ -323,9 +330,11 @@ draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    emit.dirty_groups = ctx->gen_dirty;
 
    emit.vs = fd6_emit_get_prog(&emit)->vs;
-   emit.hs = fd6_emit_get_prog(&emit)->hs;
-   emit.ds = fd6_emit_get_prog(&emit)->ds;
-   emit.gs = fd6_emit_get_prog(&emit)->gs;
+   if (PIPELINE == HAS_TESS_GS) {
+      emit.hs = fd6_emit_get_prog(&emit)->hs;
+      emit.ds = fd6_emit_get_prog(&emit)->ds;
+      emit.gs = fd6_emit_get_prog(&emit)->gs;
+   }
    emit.fs = fd6_emit_get_prog(&emit)->fs;
 
    if (emit.prog->num_driver_params || fd6_ctx->has_dp_state) {
@@ -364,7 +373,7 @@ draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
       draw0.source_select = DI_SRC_SEL_AUTO_INDEX;
    }
 
-   if (info->mode == PIPE_PRIM_PATCHES) {
+   if ((PIPELINE == HAS_TESS_GS) && (info->mode == PIPE_PRIM_PATCHES)) {
       struct shader_info *ds_info =
             ir3_get_shader_info((struct ir3_shader_state *)ctx->prog.ds);
       unsigned tessellation = ir3_tess_mode(ds_info->tess._primitive_mode);
@@ -413,7 +422,7 @@ draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    }
 
    if (emit.dirty_groups)
-      fd6_emit_3d_state<CHIP>(ring, &emit);
+      fd6_emit_3d_state<CHIP, PIPELINE>(ring, &emit);
 
    /* All known firmware versions do not wait for WFI's with CP_DRAW_AUTO.
     * Plus, for the common case where the counter buffer is written by
@@ -489,7 +498,7 @@ draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
                emit.state.num_groups = 0;
                emit.draw = &draws[i];
                emit.draw_id = info->increment_draw_id ? i : 0;
-               fd6_emit_3d_state<CHIP>(ring, &emit);
+               fd6_emit_3d_state<CHIP, PIPELINE>(ring, &emit);
             }
 
             assert(!index_offset); /* handled by util_draw_multi() */
@@ -509,7 +518,7 @@ draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    fd_context_all_clean(ctx);
 }
 
-template <chip CHIP>
+template <chip CHIP, fd6_pipeline_type PIPELINE>
 static void
 fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
               unsigned drawid_offset,
@@ -522,27 +531,41 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    /* Non-indirect case is where we are more likely to see a high draw rate: */
    if (likely(!indirect)) {
       if (info->index_size) {
-         draw_vbos<CHIP, DRAW_DIRECT_OP_INDEXED>(
+         draw_vbos<CHIP, PIPELINE, DRAW_DIRECT_OP_INDEXED>(
                ctx, info, drawid_offset, NULL, draws, num_draws, index_offset);
       } else {
-         draw_vbos<CHIP, DRAW_DIRECT_OP_NORMAL>(
+         draw_vbos<CHIP, PIPELINE, DRAW_DIRECT_OP_NORMAL>(
                ctx, info, drawid_offset, NULL, draws, num_draws, index_offset);
       }
    } else if (indirect->count_from_stream_output) {
-      draw_vbos<CHIP, DRAW_INDIRECT_OP_XFB>(
+      draw_vbos<CHIP, PIPELINE, DRAW_INDIRECT_OP_XFB>(
             ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
    } else if (indirect->indirect_draw_count && info->index_size) {
-      draw_vbos<CHIP, DRAW_INDIRECT_OP_INDIRECT_COUNT_INDEXED>(
+      draw_vbos<CHIP, PIPELINE, DRAW_INDIRECT_OP_INDIRECT_COUNT_INDEXED>(
             ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
    } else if (indirect->indirect_draw_count) {
-      draw_vbos<CHIP, DRAW_INDIRECT_OP_INDIRECT_COUNT>(
+      draw_vbos<CHIP, PIPELINE, DRAW_INDIRECT_OP_INDIRECT_COUNT>(
             ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
    } else if (info->index_size) {
-      draw_vbos<CHIP, DRAW_INDIRECT_OP_INDEXED>(
+      draw_vbos<CHIP, PIPELINE, DRAW_INDIRECT_OP_INDEXED>(
             ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
    } else {
-      draw_vbos<CHIP, DRAW_INDIRECT_OP_NORMAL>(
+      draw_vbos<CHIP, PIPELINE, DRAW_INDIRECT_OP_NORMAL>(
             ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
+   }
+}
+
+template <chip CHIP>
+static void
+fd6_update_draw(struct fd_context *ctx)
+{
+   const uint32_t gs_tess_stages = BIT(MESA_SHADER_TESS_CTRL) |
+         BIT(MESA_SHADER_TESS_EVAL) | BIT(MESA_SHADER_GEOMETRY);
+
+   if (ctx->bound_shader_stages & gs_tess_stages) {
+      ctx->draw_vbos = fd6_draw_vbos<CHIP, HAS_TESS_GS>;
+   } else {
+      ctx->draw_vbos = fd6_draw_vbos<CHIP, NO_TESS_GS>;
    }
 }
 
@@ -638,7 +661,8 @@ fd6_draw_init(struct pipe_context *pctx)
 {
    struct fd_context *ctx = fd_context(pctx);
    ctx->clear = fd6_clear;
-   ctx->draw_vbos = fd6_draw_vbos<CHIP>;
+   ctx->update_draw = fd6_update_draw<CHIP>;
+   fd6_update_draw<CHIP>(ctx);
 }
 
 /* Teach the compiler about needed variants: */

@@ -578,6 +578,9 @@ struct fd_context {
                  const union pipe_color_union *color, double depth,
                  unsigned stencil) dt;
 
+   /* called to update draw_vbo func after bound shader stages change, etc: */
+   void (*update_draw)(struct fd_context *ctx);
+
    /* compute: */
    void (*launch_grid)(struct fd_context *ctx,
                        const struct pipe_grid_info *info) dt;

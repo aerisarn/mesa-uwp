@@ -535,7 +535,7 @@ build_prim_mode(struct fd6_emit *emit, struct fd_context *ctx, bool gmem)
    return ring;
 }
 
-template <chip CHIP>
+template <chip CHIP, fd6_pipeline_type PIPELINE>
 void
 fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 {
@@ -634,16 +634,18 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          fd6_state_take_group(&emit->state, state, FD6_GROUP_FS_BINDLESS);
          break;
       case FD6_GROUP_CONST:
-         state = fd6_build_user_consts(emit);
+         state = fd6_build_user_consts<PIPELINE>(emit);
          fd6_state_take_group(&emit->state, state, FD6_GROUP_CONST);
          break;
       case FD6_GROUP_DRIVER_PARAMS:
-         state = fd6_build_driver_params(emit);
+         state = fd6_build_driver_params<PIPELINE>(emit);
          fd6_state_take_group(&emit->state, state, FD6_GROUP_DRIVER_PARAMS);
          break;
       case FD6_GROUP_PRIMITIVE_PARAMS:
-         state = fd6_build_tess_consts(emit);
-         fd6_state_take_group(&emit->state, state, FD6_GROUP_PRIMITIVE_PARAMS);
+         if (PIPELINE == HAS_TESS_GS) {
+            state = fd6_build_tess_consts(emit);
+            fd6_state_take_group(&emit->state, state, FD6_GROUP_PRIMITIVE_PARAMS);
+         }
          break;
       case FD6_GROUP_VS_TEX:
          state = tex_state(ctx, PIPE_SHADER_VERTEX);
@@ -687,8 +689,10 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
    fd6_state_emit(&emit->state, ring);
 }
 
-template void fd6_emit_3d_state<A6XX>(struct fd_ringbuffer *ring, struct fd6_emit *emit);
-template void fd6_emit_3d_state<A7XX>(struct fd_ringbuffer *ring, struct fd6_emit *emit);
+template void fd6_emit_3d_state<A6XX, NO_TESS_GS>(struct fd_ringbuffer *ring, struct fd6_emit *emit);
+template void fd6_emit_3d_state<A7XX, NO_TESS_GS>(struct fd_ringbuffer *ring, struct fd6_emit *emit);
+template void fd6_emit_3d_state<A6XX, HAS_TESS_GS>(struct fd_ringbuffer *ring, struct fd6_emit *emit);
+template void fd6_emit_3d_state<A7XX, HAS_TESS_GS>(struct fd_ringbuffer *ring, struct fd6_emit *emit);
 
 template <chip CHIP>
 void
