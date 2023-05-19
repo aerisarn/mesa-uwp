@@ -68,72 +68,6 @@ load_comps_to_vec(nir_builder *b, unsigned src_bit_size,
 }
 
 static nir_ssa_def *
-build_load_ptr_dxil(nir_builder *b, nir_deref_instr *deref, nir_ssa_def *idx)
-{
-   return nir_load_ptr_dxil(b, 1, 32, &deref->dest.ssa, idx);
-}
-
-static bool
-lower_load_deref(nir_builder *b, nir_intrinsic_instr *intr)
-{
-   assert(intr->dest.is_ssa);
-
-   b->cursor = nir_before_instr(&intr->instr);
-
-   nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
-   if (!nir_deref_mode_is(deref, nir_var_shader_temp))
-      return false;
-   nir_ssa_def *ptr = nir_u2u32(b, nir_build_deref_offset(b, deref, cl_type_size_align));
-   nir_ssa_def *offset = nir_iand(b, ptr, nir_inot(b, nir_imm_int(b, 3)));
-
-   assert(intr->dest.is_ssa);
-   unsigned num_components = nir_dest_num_components(intr->dest);
-   unsigned bit_size = nir_dest_bit_size(intr->dest);
-   unsigned load_size = MAX2(32, bit_size);
-   unsigned num_bits = num_components * bit_size;
-   nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
-   unsigned comp_idx = 0;
-
-   nir_deref_path path;
-   nir_deref_path_init(&path, deref, NULL);
-   nir_ssa_def *base_idx = nir_ishr(b, offset, nir_imm_int(b, 2 /* log2(32 / 8) */));
-
-   /* Split loads into 32-bit chunks */
-   for (unsigned i = 0; i < num_bits; i += load_size) {
-      unsigned subload_num_bits = MIN2(num_bits - i, load_size);
-      nir_ssa_def *idx = nir_iadd(b, base_idx, nir_imm_int(b, i / 32));
-      nir_ssa_def *vec32 = build_load_ptr_dxil(b, path.path[0], idx);
-
-      if (load_size == 64) {
-         idx = nir_iadd(b, idx, nir_imm_int(b, 1));
-         vec32 = nir_vec2(b, vec32,
-                             build_load_ptr_dxil(b, path.path[0], idx));
-      }
-
-      /* If we have 2 bytes or less to load we need to adjust the u32 value so
-       * we can always extract the LSB.
-       */
-      if (subload_num_bits <= 16) {
-         nir_ssa_def *shift = nir_imul(b, nir_iand(b, ptr, nir_imm_int(b, 3)),
-                                          nir_imm_int(b, 8));
-         vec32 = nir_ushr(b, vec32, shift);
-      }
-
-      /* And now comes the pack/unpack step to match the original type. */
-      nir_ssa_def *temp_vec = nir_extract_bits(b, &vec32, 1, 0, subload_num_bits / bit_size, bit_size);
-      for (unsigned comp = 0; comp < subload_num_bits / bit_size; ++comp, ++comp_idx)
-         comps[comp_idx] = nir_channel(b, temp_vec, comp);
-   }
-
-   nir_deref_path_finish(&path);
-   assert(comp_idx == num_components);
-   nir_ssa_def *result = nir_vec(b, comps, num_components);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
-   nir_instr_remove(&intr->instr);
-   return true;
-}
-
-static nir_ssa_def *
 ubo_load_select_32b_comps(nir_builder *b, nir_ssa_def *vec32,
                           nir_ssa_def *offset, unsigned alignment)
 {
@@ -612,12 +546,6 @@ dxil_nir_lower_constant_to_temp(nir_shader *nir)
       /* Change the variable mode. */
       var->data.mode = nir_var_shader_temp;
 
-      /* Make sure the variable has a name.
-       * DXIL variables must have names.
-       */
-      if (!var->name)
-         var->name = ralloc_asprintf(nir, "global_%d", exec_list_length(&nir->variables));
-
       progress = true;
    }
 
@@ -1034,9 +962,6 @@ dxil_nir_lower_loads_stores_to_dxil(nir_shader *nir,
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
             switch (intr->intrinsic) {
-            case nir_intrinsic_load_deref:
-               progress |= lower_load_deref(&b, intr);
-               break;
             case nir_intrinsic_load_shared:
             case nir_intrinsic_load_scratch:
                progress |= lower_32b_offset_load(&b, intr);

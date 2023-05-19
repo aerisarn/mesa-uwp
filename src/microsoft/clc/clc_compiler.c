@@ -885,7 +885,17 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    }
    NIR_PASS_V(nir, nir_lower_memcpy);
 
+   // Attempt to preserve derefs to constants by moving them to shader_temp
    NIR_PASS_V(nir, dxil_nir_lower_constant_to_temp);
+   // While inserting new var derefs for our "logical" addressing mode, temporarily
+   // switch the pointer size to 32-bit.
+   nir->info.cs.ptr_size = 32;
+   NIR_PASS_V(nir, nir_split_struct_vars, nir_var_shader_temp);
+   NIR_PASS_V(nir, dxil_nir_flatten_var_arrays, nir_var_shader_temp);
+   NIR_PASS_V(nir, dxil_nir_lower_var_bit_size, nir_var_shader_temp,
+              (supported_int_sizes & 16) ? 16 : 32, (supported_int_sizes & 64) ? 64 : 32);
+   nir->info.cs.ptr_size = 64;
+
    NIR_PASS_V(nir, clc_lower_constant_to_ssbo, out_dxil->kernel, &uav_id);
    NIR_PASS_V(nir, clc_lower_global_to_ssbo);
 
@@ -895,7 +905,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
 
    NIR_PASS_V(nir, dxil_nir_lower_deref_ssbo);
 
-   NIR_PASS_V(nir, dxil_nir_split_unaligned_loads_stores, nir_var_all);
+   NIR_PASS_V(nir, dxil_nir_split_unaligned_loads_stores, nir_var_all & ~nir_var_shader_temp);
 
    assert(nir->info.cs.ptr_size == 64);
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ssbo,
