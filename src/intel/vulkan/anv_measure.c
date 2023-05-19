@@ -38,23 +38,6 @@ struct anv_measure_batch {
 void
 anv_measure_device_init(struct anv_physical_device *device)
 {
-   switch (device->info.verx10) {
-   case 125:
-      device->cmd_emit_timestamp = &gfx125_cmd_emit_timestamp;
-      break;
-   case 120:
-      device->cmd_emit_timestamp = &gfx12_cmd_emit_timestamp;
-      break;
-   case 110:
-      device->cmd_emit_timestamp = &gfx11_cmd_emit_timestamp;
-      break;
-   case 90:
-      device->cmd_emit_timestamp = &gfx9_cmd_emit_timestamp;
-      break;
-   default:
-      assert(false);
-   }
-
    /* initialise list of measure structures that await rendering */
    struct intel_measure_device *measure_device = &device->measure_device;
    intel_measure_init(measure_device);

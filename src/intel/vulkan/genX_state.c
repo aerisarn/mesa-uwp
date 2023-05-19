@@ -554,6 +554,8 @@ genX(init_physical_device_state)(ASSERTED struct anv_physical_device *pdevice)
    genX(grl_load_rt_uuid)(pdevice->rt_uuid);
    pdevice->max_grl_scratch_size = genX(grl_max_scratch_size)();
 #endif
+
+   pdevice->cmd_emit_timestamp = genX(cmd_emit_timestamp);
 }
 
 VkResult
