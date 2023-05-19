@@ -47,6 +47,35 @@
 
 #include "fd6_pack.h"
 
+enum draw_type {
+   DRAW_DIRECT_OP_NORMAL,
+   DRAW_DIRECT_OP_INDEXED,
+   DRAW_INDIRECT_OP_XFB,
+   DRAW_INDIRECT_OP_INDIRECT_COUNT_INDEXED,
+   DRAW_INDIRECT_OP_INDIRECT_COUNT,
+   DRAW_INDIRECT_OP_INDEXED,
+   DRAW_INDIRECT_OP_NORMAL,
+};
+
+static inline bool
+is_indirect(enum draw_type type)
+{
+   return type >= DRAW_INDIRECT_OP_XFB;
+}
+
+static inline bool
+is_indexed(enum draw_type type)
+{
+   switch (type) {
+   case DRAW_DIRECT_OP_INDEXED:
+   case DRAW_INDIRECT_OP_INDIRECT_COUNT_INDEXED:
+   case DRAW_INDIRECT_OP_INDEXED:
+      return true;
+   default:
+      return false;
+   }
+}
+
 static void
 draw_emit_xfb(struct fd_ringbuffer *ring, struct CP_DRAW_INDX_OFFSET_0 *draw0,
               const struct pipe_draw_info *info,
@@ -55,13 +84,6 @@ draw_emit_xfb(struct fd_ringbuffer *ring, struct CP_DRAW_INDX_OFFSET_0 *draw0,
    struct fd_stream_output_target *target =
       fd_stream_output_target(indirect->count_from_stream_output);
    struct fd_resource *offset = fd_resource(target->offset_buf);
-
-   /* All known firmware versions do not wait for WFI's with CP_DRAW_AUTO.
-    * Plus, for the common case where the counter buffer is written by
-    * vkCmdEndTransformFeedback, we need to wait for the CP_WAIT_MEM_WRITES to
-    * complete which means we need a WAIT_FOR_ME anyway.
-    */
-   OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
 
    OUT_PKT7(ring, CP_DRAW_AUTO, 6);
    OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
@@ -73,6 +95,7 @@ draw_emit_xfb(struct fd_ringbuffer *ring, struct CP_DRAW_INDX_OFFSET_0 *draw0,
    OUT_RING(ring, target->stride);
 }
 
+template <draw_type DRAW>
 static void
 draw_emit_indirect(struct fd_context *ctx,
                    struct fd_ringbuffer *ring,
@@ -83,11 +106,7 @@ draw_emit_indirect(struct fd_context *ctx,
 {
    struct fd_resource *ind = fd_resource(indirect->buffer);
 
-   if (indirect->indirect_draw_count && info->index_size) {
-      //On some firmwares CP_DRAW_INDIRECT_MULTI waits for WFIs before
-      //reading the draw parameters but after reading the count, so commands
-      //that use indirect draw count need a WFM anyway.
-      OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
+   if (DRAW == DRAW_INDIRECT_OP_INDIRECT_COUNT_INDEXED) {
       OUT_PKT7(ring, CP_DRAW_INDIRECT_MULTI, 11);
       OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
       OUT_RING(ring,
@@ -102,7 +121,7 @@ draw_emit_indirect(struct fd_context *ctx,
       OUT_RELOC(ring, ind->bo, indirect->offset, 0, 0);
       OUT_RELOC(ring, count_buf->bo, indirect->indirect_draw_count_offset, 0, 0);
       OUT_RING(ring, indirect->stride);
-   } else if (info->index_size) {
+   } else if (DRAW == DRAW_INDIRECT_OP_INDEXED) {
       OUT_PKT7(ring, CP_DRAW_INDIRECT_MULTI, 9);
       OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
       OUT_RING(ring,
@@ -117,8 +136,7 @@ draw_emit_indirect(struct fd_context *ctx,
       OUT_RING(ring, max_indices);
       OUT_RELOC(ring, ind->bo, indirect->offset, 0, 0);
       OUT_RING(ring, indirect->stride);
-   }  else if(indirect->indirect_draw_count) {
-      OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
+   }  else if(DRAW == DRAW_INDIRECT_OP_INDIRECT_COUNT) {
       OUT_PKT7(ring, CP_DRAW_INDIRECT_MULTI, 8);
       OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
       OUT_RING(ring,
@@ -129,7 +147,7 @@ draw_emit_indirect(struct fd_context *ctx,
       OUT_RELOC(ring, ind->bo, indirect->offset, 0, 0);
       OUT_RELOC(ring, count_buf->bo, indirect->indirect_draw_count_offset, 0, 0);
       OUT_RING(ring, indirect->stride);
-   } else {
+   } else if (DRAW == DRAW_INDIRECT_OP_NORMAL) {
       OUT_PKT7(ring, CP_DRAW_INDIRECT_MULTI, 6);
       OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
       OUT_RING(ring,
@@ -141,12 +159,13 @@ draw_emit_indirect(struct fd_context *ctx,
    }
 }
 
+template <draw_type DRAW>
 static void
 draw_emit(struct fd_ringbuffer *ring, struct CP_DRAW_INDX_OFFSET_0 *draw0,
           const struct pipe_draw_info *info,
           const struct pipe_draw_start_count_bias *draw, unsigned index_offset)
 {
-   if (info->index_size) {
+   if (DRAW == DRAW_DIRECT_OP_INDEXED) {
       assert(!info->has_user_indices);
 
       struct pipe_resource *idx_buffer = info->index.resource;
@@ -160,7 +179,7 @@ draw_emit(struct fd_ringbuffer *ring, struct CP_DRAW_INDX_OFFSET_0 *draw0,
               A5XX_CP_DRAW_INDX_OFFSET_INDX_BASE(fd_resource(idx_buffer)->bo,
                                                  index_offset),
               A5XX_CP_DRAW_INDX_OFFSET_6(.max_indices = max_indices));
-   } else {
+   } else if (DRAW == DRAW_DIRECT_OP_NORMAL) {
       OUT_PKT(ring, CP_DRAW_INDX_OFFSET, pack_CP_DRAW_INDX_OFFSET_0(*draw0),
               CP_DRAW_INDX_OFFSET_1(.num_instances = info->instance_count),
               CP_DRAW_INDX_OFFSET_2(.num_indices = draw->count));
@@ -248,14 +267,14 @@ flush_streamout(struct fd_context *ctx, struct fd6_emit *emit)
    }
 }
 
-template <chip CHIP>
+template <chip CHIP, draw_type DRAW>
 static void
-fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
-              unsigned drawid_offset,
-              const struct pipe_draw_indirect_info *indirect,
-              const struct pipe_draw_start_count_bias *draws,
-              unsigned num_draws,
-              unsigned index_offset)
+draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
+          unsigned drawid_offset,
+          const struct pipe_draw_indirect_info *indirect,
+          const struct pipe_draw_start_count_bias *draws,
+          unsigned num_draws,
+          unsigned index_offset)
    assert_dt
 {
    struct fd6_context *fd6_ctx = fd6_context(ctx);
@@ -268,7 +287,7 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    emit.rasterflat = ctx->rasterizer->flatshade;
    emit.sprite_coord_enable = ctx->rasterizer->sprite_coord_enable;
    emit.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode;
-   emit.primitive_restart = info->primitive_restart && info->index_size;
+   emit.primitive_restart = info->primitive_restart && is_indexed(DRAW);
    emit.state.num_groups = 0;
    emit.streamout_mask = 0;
    emit.prog = NULL;
@@ -279,7 +298,7 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
 
    if ((info->mode == PIPE_PRIM_PATCHES) || ctx->prog.gs) {
       ctx->gen_dirty |= BIT(FD6_GROUP_PRIMITIVE_PARAMS);
-   } else if (!indirect) {
+   } else if (!is_indirect(DRAW)) {
       fd6_vsc_update_sizes(ctx->batch, info, &draws[0]);
    }
 
@@ -334,9 +353,11 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
       .gs_enable = !!ctx->prog.gs,
    };
 
-   if (indirect && indirect->count_from_stream_output) {
+   if (DRAW == DRAW_INDIRECT_OP_XFB) {
       draw0.source_select = DI_SRC_SEL_AUTO_XFB;
-   } else if (info->index_size) {
+   } else if (DRAW == DRAW_DIRECT_OP_INDEXED ||
+              DRAW == DRAW_INDIRECT_OP_INDIRECT_COUNT_INDEXED ||
+              DRAW == DRAW_INDIRECT_OP_INDEXED) {
       draw0.source_select = DI_SRC_SEL_DMA;
       draw0.index_size = fd4_size2indextype(info->index_size);
    } else {
@@ -370,7 +391,7 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
       ctx->batch->tessellation = true;
    }
 
-   uint32_t index_start = info->index_size ? draws[0].index_bias : draws[0].start;
+   uint32_t index_start = is_indexed(DRAW) ? draws[0].index_bias : draws[0].start;
    if (ctx->last.dirty || (ctx->last.index_start != index_start)) {
       OUT_PKT4(ring, REG_A6XX_VFD_INDEX_OFFSET, 1);
       OUT_RING(ring, index_start); /* VFD_INDEX_OFFSET */
@@ -394,6 +415,20 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    if (emit.dirty_groups)
       fd6_emit_3d_state<CHIP>(ring, &emit);
 
+   /* All known firmware versions do not wait for WFI's with CP_DRAW_AUTO.
+    * Plus, for the common case where the counter buffer is written by
+    * vkCmdEndTransformFeedback, we need to wait for the CP_WAIT_MEM_WRITES to
+    * complete which means we need a WAIT_FOR_ME anyway.
+    *
+    * Also, on some firmwares CP_DRAW_INDIRECT_MULTI waits for WFIs before
+    * reading the draw parameters but after reading the count, so commands
+    * that use indirect draw count need a WFM anyway.
+    */
+   if (DRAW == DRAW_INDIRECT_OP_XFB ||
+       DRAW == DRAW_INDIRECT_OP_INDIRECT_COUNT_INDEXED ||
+       DRAW == DRAW_INDIRECT_OP_INDIRECT_COUNT)
+      ctx->batch->barrier |= FD6_WAIT_FOR_ME;
+
    if (ctx->batch->barrier)
       fd6_barrier_flush(ctx->batch);
 
@@ -405,9 +440,9 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
     */
    emit_marker6(ring, 7);
 
-   if (indirect) {
+   if (is_indirect(DRAW)) {
       assert(num_draws == 1);  /* only >1 for direct draws */
-      if (indirect->count_from_stream_output) {
+      if (DRAW == DRAW_INDIRECT_OP_XFB) {
          draw_emit_xfb(ring, &draw0, info, indirect);
       } else {
          const struct ir3_const_state *const_state = ir3_const_state(emit.vs);
@@ -417,10 +452,10 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
          if (dst_offset_dp > emit.vs->constlen)
             dst_offset_dp = 0;
 
-         draw_emit_indirect(ctx, ring, &draw0, info, indirect, index_offset, dst_offset_dp);
+         draw_emit_indirect<DRAW>(ctx, ring, &draw0, info, indirect, index_offset, dst_offset_dp);
       }
    } else {
-      draw_emit(ring, &draw0, info, &draws[0], index_offset);
+      draw_emit<DRAW>(ring, &draw0, info, &draws[0], index_offset);
 
       if (unlikely(num_draws > 1)) {
 
@@ -443,7 +478,7 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
 
             fd6_vsc_update_sizes(ctx->batch, info, &draws[i]);
 
-            uint32_t index_start = info->index_size ? draws[i].index_bias : draws[i].start;
+            uint32_t index_start = is_indexed(DRAW) ? draws[i].index_bias : draws[i].start;
             if (last_index_start != index_start) {
                OUT_PKT4(ring, REG_A6XX_VFD_INDEX_OFFSET, 1);
                OUT_RING(ring, index_start); /* VFD_INDEX_OFFSET */
@@ -459,7 +494,7 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
 
             assert(!index_offset); /* handled by util_draw_multi() */
 
-            draw_emit(ring, &draw0, info, &draws[i], 0);
+            draw_emit<DRAW>(ring, &draw0, info, &draws[i], 0);
          }
 
          ctx->last.index_start = last_index_start;
@@ -472,6 +507,43 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    flush_streamout(ctx, &emit);
 
    fd_context_all_clean(ctx);
+}
+
+template <chip CHIP>
+static void
+fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
+              unsigned drawid_offset,
+              const struct pipe_draw_indirect_info *indirect,
+              const struct pipe_draw_start_count_bias *draws,
+              unsigned num_draws,
+              unsigned index_offset)
+   assert_dt
+{
+   /* Non-indirect case is where we are more likely to see a high draw rate: */
+   if (likely(!indirect)) {
+      if (info->index_size) {
+         draw_vbos<CHIP, DRAW_DIRECT_OP_INDEXED>(
+               ctx, info, drawid_offset, NULL, draws, num_draws, index_offset);
+      } else {
+         draw_vbos<CHIP, DRAW_DIRECT_OP_NORMAL>(
+               ctx, info, drawid_offset, NULL, draws, num_draws, index_offset);
+      }
+   } else if (indirect->count_from_stream_output) {
+      draw_vbos<CHIP, DRAW_INDIRECT_OP_XFB>(
+            ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
+   } else if (indirect->indirect_draw_count && info->index_size) {
+      draw_vbos<CHIP, DRAW_INDIRECT_OP_INDIRECT_COUNT_INDEXED>(
+            ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
+   } else if (indirect->indirect_draw_count) {
+      draw_vbos<CHIP, DRAW_INDIRECT_OP_INDIRECT_COUNT>(
+            ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
+   } else if (info->index_size) {
+      draw_vbos<CHIP, DRAW_INDIRECT_OP_INDEXED>(
+            ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
+   } else {
+      draw_vbos<CHIP, DRAW_INDIRECT_OP_NORMAL>(
+            ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
+   }
 }
 
 static bool
