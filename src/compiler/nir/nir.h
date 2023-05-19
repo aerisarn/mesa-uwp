@@ -1811,6 +1811,7 @@ bool nir_deref_instr_is_known_out_of_bounds(nir_deref_instr *instr);
 typedef enum {
    nir_deref_instr_has_complex_use_allow_memcpy_src = (1 << 0),
    nir_deref_instr_has_complex_use_allow_memcpy_dst = (1 << 1),
+   nir_deref_instr_has_complex_use_allow_atomics = (1 << 2),
 } nir_deref_instr_has_complex_use_options;
 
 bool nir_deref_instr_has_complex_use(nir_deref_instr *instr,
