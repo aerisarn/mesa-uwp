@@ -738,8 +738,12 @@ struct iris_context {
    struct intel_perf_context *perf_ctx;
 
    /** Frame number for u_trace */
-   uint32_t tracing_begin_frame;
-   uint32_t tracing_end_frame;
+   struct {
+      uint32_t begin_frame;
+      uint32_t end_frame;
+      uint64_t last_full_timestamp;
+      void    *last_compute_walker;
+   } utrace;
 
    /** Frame number for debug prints */
    uint32_t frame;

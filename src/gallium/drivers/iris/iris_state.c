@@ -635,6 +635,31 @@ iris_copy_mem_mem(struct iris_batch *batch,
 }
 
 static void
+iris_rewrite_compute_walker_pc(struct iris_batch *batch,
+                               uint32_t *walker,
+                               struct iris_bo *bo,
+                               uint32_t offset)
+{
+#if GFX_VERx10 >= 125
+   struct iris_screen *screen = batch->screen;
+   struct iris_address addr = rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE);
+
+   uint32_t dwords[GENX(COMPUTE_WALKER_length)];
+
+   _iris_pack_command(batch, GENX(COMPUTE_WALKER), dwords, cw) {
+      cw.PostSync.Operation          = WriteTimestamp;
+      cw.PostSync.DestinationAddress = addr;
+      cw.PostSync.MOCS               = iris_mocs(NULL, &screen->isl_dev, 0);
+   }
+
+   for (uint32_t i = 0; i < GENX(COMPUTE_WALKER_length); i++)
+      walker[i] |= dwords[i];
+#else
+   unreachable("Unsupported");
+#endif
+}
+
+static void
 emit_pipeline_select(struct iris_batch *batch, uint32_t pipeline)
 {
 #if GFX_VER >= 8 && GFX_VER < 10
@@ -7628,7 +7653,10 @@ iris_upload_compute_walker(struct iris_context *ice,
 
    iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_COMPUTE, NULL, NULL, NULL);
 
-   iris_emit_cmd(batch, GENX(COMPUTE_WALKER), cw) {
+   ice->utrace.last_compute_walker =
+      iris_emit_dwords(batch, GENX(COMPUTE_WALKER_length));
+   _iris_pack_command(batch, GENX(COMPUTE_WALKER),
+                      ice->utrace.last_compute_walker, cw) {
       cw.IndirectParameterEnable        = grid->indirect;
       cw.SIMDSize                       = dispatch.simd_size / 16;
       cw.LocalXMaximum                  = grid->block[0] - 1;
@@ -8901,6 +8929,7 @@ genX(init_screen_state)(struct iris_screen *screen)
    screen->vtbl.update_binder_address = iris_update_binder_address;
    screen->vtbl.upload_compute_state = iris_upload_compute_state;
    screen->vtbl.emit_raw_pipe_control = iris_emit_raw_pipe_control;
+   screen->vtbl.rewrite_compute_walker_pc = iris_rewrite_compute_walker_pc;
    screen->vtbl.emit_mi_report_perf_count = iris_emit_mi_report_perf_count;
    screen->vtbl.rebind_buffer = iris_rebind_buffer;
    screen->vtbl.load_register_reg32 = iris_load_register_reg32;

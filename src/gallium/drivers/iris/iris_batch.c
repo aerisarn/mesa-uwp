@@ -551,9 +551,9 @@ void iris_batch_maybe_begin_frame(struct iris_batch *batch)
 {
    struct iris_context *ice = batch->ice;
 
-   if (ice->tracing_begin_frame != ice->frame) {
+   if (ice->utrace.begin_frame != ice->frame) {
       trace_intel_begin_frame(&batch->trace, batch);
-      ice->tracing_begin_frame = ice->tracing_end_frame = ice->frame;
+      ice->utrace.begin_frame = ice->utrace.end_frame = ice->frame;
    }
 }
 
@@ -656,9 +656,9 @@ iris_finish_batch(struct iris_batch *batch)
    trace_intel_end_batch(&batch->trace, batch->name);
 
    struct iris_context *ice = batch->ice;
-   if (ice->tracing_end_frame != ice->frame) {
-      trace_intel_end_frame(&batch->trace, batch, ice->tracing_end_frame);
-      ice->tracing_end_frame = ice->frame;
+   if (ice->utrace.end_frame != ice->frame) {
+      trace_intel_end_frame(&batch->trace, batch, ice->utrace.end_frame);
+      ice->utrace.end_frame = ice->frame;
    }
 
    /* Emit MI_BATCH_BUFFER_END to finish our batch. */
