@@ -4848,6 +4848,7 @@ static void pvr_unwind_rects(uint32_t width,
          VkRect2D *new_rect = input ? &mappings[new_mapping].src_rect
                                     : &mappings[new_mapping].dst_rect;
          uint32_t split_point = width - texel_unwind;
+         uint32_t split_width;
 
          assert(new_mapping < ARRAY_SIZE(pass->sources[0].mappings));
 
@@ -4856,28 +4857,28 @@ static void pvr_unwind_rects(uint32_t width,
          rect->extent.width = split_point - rect->offset.x;
          new_rect->offset.x = split_point;
 
+         split_width = (rect->offset.x + new_rect->extent.width) - split_point;
+
          if (input) {
-            mappings[i].dst_rect.extent.width -=
-               new_rect->extent.width - split_point;
+            mappings[i].dst_rect.extent.width -= split_width;
             mappings[new_mapping].dst_rect.offset.x =
                mappings[i].dst_rect.offset.x +
                mappings[i].dst_rect.extent.width;
+            mappings[new_mapping].dst_rect.extent.width = split_width;
          } else {
-            mappings[i].src_rect.extent.width -=
-               new_rect->extent.width - split_point;
+            mappings[i].src_rect.extent.width -= split_width;
             mappings[new_mapping].src_rect.offset.x =
                mappings[i].src_rect.offset.x +
                mappings[i].src_rect.extent.width;
-            mappings[new_mapping].src_rect.extent.width = texel_unwind;
+            mappings[new_mapping].src_rect.extent.width = split_width;
          }
 
          rect->offset.x += texel_unwind;
          rect->extent.width = width - rect->offset.x;
 
-         new_rect->offset.x =
-            (int32_t)texel_unwind - (int32_t)width + new_rect->offset.x;
+         new_rect->offset.x += (int32_t)texel_unwind - (int32_t)width;
          new_rect->offset.y++;
-         new_rect->extent.width = texel_unwind - width + new_rect->extent.width;
+         new_rect->extent.width += (int32_t)texel_unwind - (int32_t)width;
 
          new_mappings++;
       }
