@@ -72,6 +72,16 @@ agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
          continue;
       }
 
+      /* Images writeable with pixel granularity are incompatible with
+       * compression. Decompress if necessary.
+       */
+      struct agx_resource *rsrc = agx_resource(image->resource);
+      if (rsrc->layout.tiling == AIL_TILING_TWIDDLED_COMPRESSED &&
+          (image->shader_access & PIPE_IMAGE_ACCESS_WRITE)) {
+
+         agx_decompress(ctx, rsrc, "Shader image");
+      }
+
       /* FIXME: Decompress here once we have texture compression */
       util_copy_image_view(&ctx->stage[shader].images[start_slot + i], image);
    }

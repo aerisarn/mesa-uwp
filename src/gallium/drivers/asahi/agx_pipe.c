@@ -1119,6 +1119,19 @@ transition_resource(struct pipe_context *pctx, struct agx_resource *rsrc,
    pipe_resource_reference((struct pipe_resource **)&new_res, NULL);
 }
 
+void
+agx_decompress(struct agx_context *ctx, struct agx_resource *rsrc,
+               const char *reason)
+{
+   assert(rsrc->layout.tiling == AIL_TILING_TWIDDLED_COMPRESSED);
+   perf_debug_ctx(ctx, "Decompressing resource due to %s", reason);
+
+   struct pipe_resource templ = rsrc->base;
+   assert(!(templ.bind & PIPE_BIND_SHADER_IMAGE) && "currently compressed");
+   templ.bind |= PIPE_BIND_SHADER_IMAGE /* forces off compression */;
+   transition_resource(&ctx->base, rsrc, &templ);
+}
+
 static void
 agx_flush_resource(struct pipe_context *pctx, struct pipe_resource *pres)
 {

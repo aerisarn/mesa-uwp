@@ -634,6 +634,9 @@ agx_map_texture_gpu(struct agx_resource *rsrc, unsigned z)
           (uint64_t)ail_get_layer_offset_B(&rsrc->layout, z);
 }
 
+void agx_decompress(struct agx_context *ctx, struct agx_resource *rsrc,
+                    const char *reason);
+
 struct agx_transfer {
    struct pipe_transfer base;
    void *map;
