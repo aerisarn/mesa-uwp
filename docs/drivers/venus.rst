@@ -56,7 +56,7 @@ build virglrenderer with Venus support and to start the vtest server,
     $ git clone https://gitlab.freedesktop.org/virgl/virglrenderer.git
     $ cd virglrenderer
     $ meson out -Dvenus=true
-    $ ninja -C out
+    $ meson compile -C out
     $ meson devenv -C out
     $ ./vtest/virgl_test_server --venus
     $ exit
@@ -133,7 +133,7 @@ To build minigbm and to enable minigbm support in virglrenderer,
  $ CFLAGS=-DDRV_<I915-or-your-driver> OUT=out DESTDIR=out/install make install
  $ cd ../virglrenderer
  $ meson configure out -Dminigbm_allocation=true
- $ ninja -C out
+ $ meson compile -C out
 
 Make sure a host Wayland compositor is running.  Replace
 ``--display-window-keyboard --display-window-mouse`` by
@@ -146,7 +146,7 @@ In the guest, build and start sommelier, the special Wayland compositor,
  $ git clone https://chromium.googlesource.com/chromiumos/platform2
  $ cd platform2/vm_tools/sommelier
  $ meson out -Dxwayland_path=/usr/bin/Xwayland -Dxwayland_gl_driver_path=/usr/lib/dri
- $ ninja -C out
+ $ meson compile -C out
  $ sudo chmod 777 /dev/wl0
  $ ./out/sommelier -X --glamor
        --xwayland-gl-driver-path=<path-to-locally-built-gl-driver> \
