@@ -95,6 +95,26 @@ draw_emit_xfb(struct fd_ringbuffer *ring, struct CP_DRAW_INDX_OFFSET_0 *draw0,
    OUT_RING(ring, target->stride);
 }
 
+static inline unsigned
+max_indices(const struct pipe_draw_info *info, unsigned index_offset)
+{
+   struct pipe_resource *idx = info->index.resource;
+
+   assert((info->index_size == 1) ||
+          (info->index_size == 2) ||
+          (info->index_size == 4));
+
+   /* Conceptually we divide by the index_size.  But if we had
+    * log2(index_size) we could convert that into a right-shift
+    * instead.  Conveniently the index_size will only be 1, 2,
+    * or 4.  And dividing by two (right-shift by one) gives us
+    * the same answer for those three values.  So instead of
+    * divide we can do two right-shifts.
+    */
+   unsigned index_size_shift = info->index_size >> 1;
+   return (idx->width0 - index_offset) >> index_size_shift;
+}
+
 template <draw_type DRAW>
 static void
 draw_emit_indirect(struct fd_context *ctx,
@@ -114,10 +134,9 @@ draw_emit_indirect(struct fd_context *ctx,
          | A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(driver_param)));
       struct fd_resource *count_buf = fd_resource(indirect->indirect_draw_count);
       struct pipe_resource *idx = info->index.resource;
-      unsigned max_indices = (idx->width0 - index_offset) / info->index_size;
       OUT_RING(ring, indirect->draw_count);
       OUT_RELOC(ring, fd_resource(idx)->bo, index_offset, 0, 0);
-      OUT_RING(ring, max_indices);
+      OUT_RING(ring, max_indices(info, index_offset));
       OUT_RELOC(ring, ind->bo, indirect->offset, 0, 0);
       OUT_RELOC(ring, count_buf->bo, indirect->indirect_draw_count_offset, 0, 0);
       OUT_RING(ring, indirect->stride);
@@ -128,12 +147,11 @@ draw_emit_indirect(struct fd_context *ctx,
          (A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_INDEXED)
          | A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(driver_param)));
       struct pipe_resource *idx = info->index.resource;
-      unsigned max_indices = (idx->width0 - index_offset) / info->index_size;
       OUT_RING(ring, indirect->draw_count);
       //index va
       OUT_RELOC(ring, fd_resource(idx)->bo, index_offset, 0, 0);
       //max indices
-      OUT_RING(ring, max_indices);
+      OUT_RING(ring, max_indices(info, index_offset));
       OUT_RELOC(ring, ind->bo, indirect->offset, 0, 0);
       OUT_RING(ring, indirect->stride);
    }  else if(DRAW == DRAW_INDIRECT_OP_INDIRECT_COUNT) {
@@ -169,8 +187,6 @@ draw_emit(struct fd_ringbuffer *ring, struct CP_DRAW_INDX_OFFSET_0 *draw0,
       assert(!info->has_user_indices);
 
       struct pipe_resource *idx_buffer = info->index.resource;
-      unsigned max_indices =
-         (idx_buffer->width0 - index_offset) / info->index_size;
 
       OUT_PKT(ring, CP_DRAW_INDX_OFFSET, pack_CP_DRAW_INDX_OFFSET_0(*draw0),
               CP_DRAW_INDX_OFFSET_1(.num_instances = info->instance_count),
@@ -178,7 +194,7 @@ draw_emit(struct fd_ringbuffer *ring, struct CP_DRAW_INDX_OFFSET_0 *draw0,
               CP_DRAW_INDX_OFFSET_3(.first_indx = draw->start),
               A5XX_CP_DRAW_INDX_OFFSET_INDX_BASE(fd_resource(idx_buffer)->bo,
                                                  index_offset),
-              A5XX_CP_DRAW_INDX_OFFSET_6(.max_indices = max_indices));
+              A5XX_CP_DRAW_INDX_OFFSET_6(.max_indices = max_indices(info, index_offset)));
    } else if (DRAW == DRAW_DIRECT_OP_NORMAL) {
       OUT_PKT(ring, CP_DRAW_INDX_OFFSET, pack_CP_DRAW_INDX_OFFSET_0(*draw0),
               CP_DRAW_INDX_OFFSET_1(.num_instances = info->instance_count),
