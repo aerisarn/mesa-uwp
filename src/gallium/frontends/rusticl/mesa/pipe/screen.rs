@@ -11,6 +11,8 @@ use mesa_rust_util::string::*;
 use std::convert::TryInto;
 use std::ffi::CStr;
 use std::mem::size_of;
+use std::os::raw::c_char;
+use std::os::raw::c_uchar;
 use std::os::raw::c_void;
 use std::ptr;
 use std::sync::Arc;
@@ -20,6 +22,9 @@ pub struct PipeScreen {
     ldev: PipeLoaderDevice,
     screen: *mut pipe_screen,
 }
+
+const UUID_SIZE: usize = PIPE_UUID_SIZE as usize;
+const LUID_SIZE: usize = PIPE_LUID_SIZE as usize;
 
 // until we have a better solution
 pub trait ComputeParam<T> {
@@ -229,6 +234,28 @@ impl PipeScreen {
         }
     }
 
+    pub fn device_node_mask(&self) -> Option<u32> {
+        unsafe { Some((*self.screen).get_device_node_mask?(self.screen)) }
+    }
+
+    pub fn device_uuid(&self) -> Option<[c_uchar; UUID_SIZE]> {
+        let mut uuid = [0; UUID_SIZE];
+        let ptr = uuid.as_mut_ptr();
+        unsafe {
+            (*self.screen).get_device_uuid?(self.screen, ptr.cast());
+        }
+
+        Some(uuid)
+    }
+
+    pub fn device_luid(&self) -> Option<[c_uchar; LUID_SIZE]> {
+        let mut luid = [0; LUID_SIZE];
+        let ptr = luid.as_mut_ptr();
+        unsafe { (*self.screen).get_device_luid?(self.screen, ptr.cast()) }
+
+        Some(luid)
+    }
+
     pub fn device_vendor(&self) -> String {
         unsafe {
             let s = *self.screen;
@@ -238,6 +265,16 @@ impl PipeScreen {
 
     pub fn device_type(&self) -> pipe_loader_device_type {
         unsafe { *self.ldev.ldev }.type_
+    }
+
+    pub fn driver_uuid(&self) -> Option<[c_char; UUID_SIZE]> {
+        let mut uuid = [0; UUID_SIZE];
+        let ptr = uuid.as_mut_ptr();
+        unsafe {
+            (*self.screen).get_driver_uuid?(self.screen, ptr.cast());
+        }
+
+        Some(uuid)
     }
 
     pub fn cl_cts_version(&self) -> &CStr {
