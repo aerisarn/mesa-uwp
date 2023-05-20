@@ -56,8 +56,7 @@ typedef void *drmDevicePtr;
 bool
 radv_sqtt_enabled(void)
 {
-   return radv_get_int_debug_option("RADV_THREAD_TRACE", -1) >= 0 ||
-          getenv("RADV_THREAD_TRACE_TRIGGER");
+   return debug_get_num_option("RADV_THREAD_TRACE", -1) >= 0 || getenv("RADV_THREAD_TRACE_TRIGGER");
 }
 
 static bool

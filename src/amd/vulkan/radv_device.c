@@ -81,28 +81,6 @@ typedef void *drmDevicePtr;
 #include "ac_llvm_util.h"
 #endif
 
-int
-radv_get_int_debug_option(const char *name, int default_value)
-{
-   const char *str;
-   int result;
-
-   str = getenv(name);
-   if (!str) {
-      result = default_value;
-   } else {
-      char *endptr;
-
-      result = strtol(str, &endptr, 0);
-      if (str == endptr) {
-         /* No digits founs. */
-         result = default_value;
-      }
-   }
-
-   return result;
-}
-
 static bool
 radv_spm_trace_enabled()
 {
@@ -1057,7 +1035,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    if (!device->mem_cache)
       goto fail_meta;
 
-   device->force_aniso = MIN2(16, radv_get_int_debug_option("RADV_TEX_ANISO", -1));
+   device->force_aniso = MIN2(16, (int)debug_get_num_option("RADV_TEX_ANISO", -1));
    if (device->force_aniso >= 0) {
       fprintf(stderr, "radv: Forcing anisotropy filter to %ix\n",
               1 << util_logbase2(device->force_aniso));
