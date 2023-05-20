@@ -1,5 +1,5 @@
-#!/bin/sh
-
+#!/usr/bin/env bash
+# shellcheck disable=SC2086 # we want word splitting
 set -e
 
 # If run outside of a deqp-runner invoction (e.g. piglit trace replay), then act
@@ -35,7 +35,7 @@ set_vsock_context() {
     rm -rf $VM_TEMP_DIR
     mkdir $VM_TEMP_DIR || return 1
 
-    VSOCK_CID=$(((CI_JOB_ID & 0x1ffffff) | ((${THREAD} & 0x7f) << 25)))
+    VSOCK_CID=$(((CI_JOB_ID & 0x1ffffff) | ((THREAD & 0x7f) << 25)))
     VSOCK_STDOUT=5001
     VSOCK_STDERR=5002
 
@@ -66,7 +66,7 @@ set_vsock_context || { echo "Could not generate crosvm vsock CID" >&2; exit 1; }
 echo "Variables passed through:"
 SCRIPT_DIR=$(readlink -en "${0%/*}")
 ${SCRIPT_DIR}/common/generate-env.sh | tee ${VM_TEMP_DIR}/crosvm-env.sh
-cp ${SCRIPTS_DIR}/setup-test-env.sh ${VM_TEMP_DIR}/setup-test-env.sh
+cp ${SCRIPT_DIR}/setup-test-env.sh ${VM_TEMP_DIR}/setup-test-env.sh
 
 # Set the crosvm-script as the arguments of the current script
 echo ". ${VM_TEMP_DIR}/setup-test-env.sh" > ${VM_TEMP_DIR}/crosvm-script.sh
