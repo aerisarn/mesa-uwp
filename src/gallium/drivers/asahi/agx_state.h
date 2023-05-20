@@ -34,6 +34,8 @@
 #define agx_msg(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
+#define AGX_NUM_TEXTURE_STATE_REGS 16
+
 struct agx_streamout_target {
    struct pipe_stream_output_target base;
    uint32_t offset;
@@ -95,11 +97,14 @@ enum agx_sysval_table {
 
 /* Root system value table */
 struct PACKED agx_draw_uniforms {
+   /* Pointer to binding table for texture descriptor, or 0 if none. This must
+    * be first so that u0_u1 is always available for lowering binding
+    * tables to bindless access.
+    */
+   uint64_t texture_base;
+
    /* Pointers to the system value tables themselves (for indirection) */
    uint64_t tables[AGX_NUM_SYSVAL_TABLES];
-
-   /* Pointer to binding table for texture descriptor, or 0 if none */
-   uint64_t texture_base;
 
    /* Uniform buffer objects */
    uint64_t ubo_base[PIPE_MAX_CONSTANT_BUFFERS];
@@ -174,6 +179,12 @@ struct agx_uncompiled_shader {
    struct agx_uncompiled_shader_info info;
    struct hash_table *variants;
    bool has_xfb_info;
+
+   /* If set, we need to pass the address of the texture/image table as uniform
+    * u0_u1 due to binding tables that were lowered to be internally bindless
+    * with that base address.
+    */
+   bool internal_bindless;
 
    /* For compute kernels */
    unsigned static_shared_mem;
@@ -659,9 +670,11 @@ agx_transfer(struct pipe_transfer *p)
 uint64_t agx_upload_uniforms(struct agx_batch *batch, uint64_t textures,
                              enum pipe_shader_type stage);
 
-bool agx_nir_lower_sysvals(nir_shader *shader,
+bool agx_nir_lower_sysvals(nir_shader *shader, bool internal_bindless,
                            struct agx_compiled_shader *compiled,
                            unsigned *push_size);
+
+bool agx_nir_lower_bindings(nir_shader *shader, bool *internal_bindless);
 
 bool agx_batch_is_active(struct agx_batch *batch);
 bool agx_batch_is_submitted(struct agx_batch *batch);

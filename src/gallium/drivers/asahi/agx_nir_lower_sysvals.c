@@ -275,6 +275,29 @@ lay_out_table(struct agx_compiled_shader *shader, struct table_state *state,
    return uniform;
 }
 
+/* Reserve u0_u1 for the texture base if needed for internal bindless operation.
+ * When we have too many textures/images for the available texture state
+ * registers, an early lowering pass in the driver spills some textures/images
+ * out of texture state registers and instead accesses them as bindless
+ * internally. That pass assumes u0_u1 points to the texture descriptors
+ * otherwise bound to texture state registers.
+ */
+static void
+reserve_internal_bindless(struct state *state)
+{
+   struct table_state *table = &state->tables[AGX_SYSVAL_TABLE_ROOT];
+   struct agx_draw_uniforms *u = NULL;
+   const unsigned len_words = sizeof(u->texture_base) / sizeof(uint16_t);
+
+   static_assert(offsetof(struct agx_draw_uniforms, texture_base) == 0, "ABI");
+   static_assert(sizeof(u->texture_base) == 8, "64-bit pointer");
+
+   BITSET_SET_RANGE(table->pushed, 0, len_words - 1);
+
+   for (unsigned i = 0; i < len_words; ++i)
+      table->element_size[i] = len_words;
+}
+
 static unsigned
 lay_out_uniforms(struct agx_compiled_shader *shader, struct state *state)
 {
@@ -301,14 +324,14 @@ lay_out_uniforms(struct agx_compiled_shader *shader, struct state *state)
 }
 
 bool
-agx_nir_lower_sysvals(nir_shader *shader, struct agx_compiled_shader *compiled,
-                      unsigned *push_size)
+agx_nir_lower_sysvals(nir_shader *shader, bool internal_bindless,
+                      struct agx_compiled_shader *compiled, unsigned *push_size)
 {
    bool progress = nir_shader_instructions_pass(
       shader, lower_sysvals, nir_metadata_block_index | nir_metadata_dominance,
       NULL);
 
-   if (!progress) {
+   if (!progress && !internal_bindless) {
       *push_size = 0;
       return false;
    }
@@ -317,6 +340,9 @@ agx_nir_lower_sysvals(nir_shader *shader, struct agx_compiled_shader *compiled,
    nir_shader_instructions_pass(
       shader, record_loads, nir_metadata_block_index | nir_metadata_dominance,
       &state);
+
+   if (internal_bindless)
+      reserve_internal_bindless(&state);
 
    *push_size = lay_out_uniforms(compiled, &state);
 

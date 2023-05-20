@@ -1514,7 +1514,7 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       base_key.vs.outputs_linear_shaded = key_->vs.outputs_linear_shaded;
    }
 
-   NIR_PASS_V(nir, agx_nir_lower_sysvals, compiled,
+   NIR_PASS_V(nir, agx_nir_lower_sysvals, so->internal_bindless, compiled,
               &base_key.reserved_preamble);
 
    agx_compile_shader_nir(nir, &base_key, debug, &binary, &compiled->info);
@@ -1580,6 +1580,11 @@ static void
 agx_shader_initialize(struct agx_uncompiled_shader *so, nir_shader *nir)
 {
    so->type = pipe_shader_type_from_mesa(nir->info.stage);
+
+   /* We need to lower binding tables before calling agx_preprocess_nir, since
+    * that does texture lowering that needs to know the binding model.
+    */
+   NIR_PASS_V(nir, agx_nir_lower_bindings, &so->internal_bindless);
 
    agx_preprocess_nir(nir, true, &so->info);
 
