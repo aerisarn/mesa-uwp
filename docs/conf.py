@@ -21,6 +21,8 @@
 import os
 import sys
 
+from hawkmoth.util import compiler
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -40,6 +42,7 @@ extensions = [
     'bootstrap',
     'breathe',
     'formatting',
+    'hawkmoth',
     'nir',
     'redirects',
     'sphinx.ext.graphviz',
@@ -213,6 +216,25 @@ texinfo_documents = [
 # -- Options for Graphviz -------------------------------------------------
 
 graphviz_output_format = 'svg'
+
+# -- Options for hawkmoth -------------------------------------------------
+
+hawkmoth_root = os.path.abspath('..')
+hawkmoth_clang = [
+  '-Iinclude/',
+  '-Isrc/',
+  '-DHAVE_STRUCT_TIMESPEC',
+  '-DHAVE_PTHREAD',
+  '-DHAVE_ENDIAN_H',
+]
+hawkmoth_clang.extend(compiler.get_include_args())
+
+# helpers for definining parameter direction
+rst_prolog = '''
+.. |in| replace:: **[in]**
+.. |out| replace:: **[out]**
+.. |inout| replace:: **[inout]**
+'''
 
 # -- Options for breathe --------------------------------------------------
 breathe_projects = {

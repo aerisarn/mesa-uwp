@@ -8,8 +8,8 @@
     paths:
     - public/
   script:
-  - apk --no-cache add graphviz doxygen
-  - pip3 install sphinx===5.1.1 breathe===4.34.0 mako===1.2.3
+  - apk --no-cache add graphviz doxygen py3-clang clang-dev musl-dev linux-headers
+  - pip3 install sphinx===5.1.1 breathe===4.34.0 mako===1.2.3 hawkmoth===0.16.0
   - docs/doxygen-wrapper.py --out-dir=docs/doxygen_xml
   - sphinx-build -W -b $BUILDER docs public
 
