@@ -756,6 +756,24 @@ agx_emit_local_store(agx_builder *b, nir_intrinsic_instr *instr)
    agx_local_store(b, value, base, index, format, mask);
 }
 
+/*
+ * In the hardware, bindless texture sources are specified as a 64-bit uniform
+ * base address summed with a 32-bit register index. In NIR, we model this as a
+ * vec2, where the first source is the (constant) uniform register number and
+ * the second source is the (dynamic) byte offset.
+ */
+static agx_index
+agx_translate_bindless_handle(agx_builder *b, nir_src *handle, agx_index *base)
+{
+   nir_ssa_scalar base_scalar = nir_ssa_scalar_resolved(handle->ssa, 0);
+   assert(nir_ssa_scalar_is_const(base_scalar) && "base must be constant");
+
+   unsigned base_uint = nir_ssa_scalar_as_uint(base_scalar);
+   *base = agx_uniform(base_uint, AGX_SIZE_64);
+
+   return agx_emit_extract(b, agx_src_index(handle), 1);
+}
+
 static agx_instr *
 agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 {
@@ -1376,6 +1394,11 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          break;
       case nir_tex_src_sampler_offset:
          sampler = index;
+         break;
+
+      case nir_tex_src_texture_handle:
+         texture =
+            agx_translate_bindless_handle(b, &instr->src[i].src, &bindless);
          break;
 
       case nir_tex_src_ddx: {
