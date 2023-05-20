@@ -247,15 +247,16 @@ op("fcmpsel",
       encoding_32 = (0x02, 0x7F, 8, 10),
       srcs = 4, imms = [FCOND])
 
-# sources are coordinates, LOD, texture, sampler, shadow/offset
+# sources are coordinates, LOD, texture bindless base (zero for texture state
+# registers), texture, sampler, shadow/offset
 # TODO: anything else?
 op("texture_sample",
       encoding_32 = (0x31, 0x7F, 8, 10), # XXX WRONG SIZE
-      srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET, SHADOW,
+      srcs = 6, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET, SHADOW,
 								GATHER])
 op("texture_load",
       encoding_32 = (0x71, 0x7F, 8, 10), # XXX WRONG SIZE
-      srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET])
+      srcs = 6, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET])
 
 # sources are base, index
 op("device_load",

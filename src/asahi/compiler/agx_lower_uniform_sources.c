@@ -24,7 +24,7 @@ should_lower(enum agx_opcode op, agx_index uniform, unsigned src_index)
    switch (op) {
    case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
-      return src_index != 1;
+      return src_index != 1 && src_index != 2;
    case AGX_OPCODE_DEVICE_LOAD:
       return src_index != 0 || high;
    case AGX_OPCODE_DEVICE_STORE:

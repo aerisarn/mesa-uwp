@@ -1335,7 +1335,8 @@ agx_gather_for_nir(nir_tex_instr *tex)
 static void
 agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 {
-   agx_index coords = agx_null(), texture = agx_immediate(instr->texture_index),
+   agx_index coords = agx_null(), bindless = agx_immediate(0),
+             texture = agx_immediate(instr->texture_index),
              sampler = agx_immediate(instr->sampler_index),
              lod = agx_immediate(0), compare = agx_null(),
              packed_offset = agx_null();
@@ -1432,7 +1433,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    agx_index tmp = agx_temp(b->shader, dst.size);
 
    agx_instr *I = agx_texture_sample_to(
-      b, tmp, coords, lod, texture, sampler, compare_offset,
+      b, tmp, coords, lod, bindless, texture, sampler, compare_offset,
       agx_tex_dim(instr->sampler_dim, instr->is_array),
       agx_lod_mode_for_nir(instr->op), mask, 0, !agx_is_null(packed_offset),
       !agx_is_null(compare), agx_gather_for_nir(instr));

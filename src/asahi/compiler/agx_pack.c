@@ -773,9 +773,9 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
 
       unsigned R = agx_pack_memory_reg(I->dest[0], &Rt);
       unsigned C = agx_pack_sample_coords(I->src[0], &Ct, &Cs);
-      unsigned T = agx_pack_texture(agx_zero(), I->src[2], &U, &Tt);
-      unsigned S = agx_pack_sampler(I->src[3], &St);
-      unsigned O = agx_pack_sample_compare_offset(I->src[4]);
+      unsigned T = agx_pack_texture(I->src[2], I->src[3], &U, &Tt);
+      unsigned S = agx_pack_sampler(I->src[4], &St);
+      unsigned O = agx_pack_sample_compare_offset(I->src[5]);
       unsigned D = agx_pack_lod(I->src[1], &lod_mode);
 
       unsigned q1 = I->shadow;

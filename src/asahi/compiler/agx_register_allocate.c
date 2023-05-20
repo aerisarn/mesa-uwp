@@ -264,7 +264,7 @@ agx_read_registers(const agx_instr *I, unsigned s)
          } else {
             return 1;
          }
-      } else if (s == 4) {
+      } else if (s == 5) {
          /* Compare/offset */
          return 2 * ((!!I->shadow) + (!!I->offset));
       } else {
