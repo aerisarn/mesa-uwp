@@ -498,6 +498,12 @@ fd_batch_add_resource(struct fd_batch *batch, struct fd_resource *rsc)
 
    _mesa_set_add_pre_hashed(batch->resources, rsc->hash, rsc);
    rsc->track->batch_mask |= (1 << batch->idx);
+
+   fd_ringbuffer_attach_bo(batch->draw, rsc->bo);
+   if (unlikely(rsc->b.b.next)) {
+      struct fd_resource *n = fd_resource(rsc->b.b.next);
+      fd_ringbuffer_attach_bo(batch->draw, n->bo);
+   }
 }
 
 void

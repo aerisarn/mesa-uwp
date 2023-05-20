@@ -255,6 +255,7 @@ emit_lrz(struct fd_batch *batch, struct fd_batch_subpass *subpass)
    OUT_REG(ring, A6XX_GRAS_LRZ_BUFFER_BASE(.bo = subpass->lrz),
            A6XX_GRAS_LRZ_BUFFER_PITCH(.pitch = zsbuf->lrz_pitch),
            A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE());
+   fd_ringbuffer_attach_bo(ring, subpass->lrz);
 }
 
 /* Emit any needed lrz clears to the prologue cmds
@@ -568,6 +569,9 @@ update_vsc_pipe(struct fd_batch *batch)
       ring, A6XX_VSC_DRAW_STRM_ADDRESS(.bo = fd6_ctx->vsc_draw_strm),
       A6XX_VSC_DRAW_STRM_PITCH(.dword = fd6_ctx->vsc_draw_strm_pitch),
       A6XX_VSC_DRAW_STRM_LIMIT(.dword = fd6_ctx->vsc_draw_strm_pitch - 64));
+
+   fd_ringbuffer_attach_bo(ring, fd6_ctx->vsc_draw_strm);
+   fd_ringbuffer_attach_bo(ring, fd6_ctx->vsc_prim_strm);
 }
 
 /*
@@ -712,6 +716,9 @@ emit_common_fini(struct fd_batch *batch)
 
    if (!result)
       return;
+
+   // TODO attach directly to submit:
+   fd_ringbuffer_attach_bo(ring, at->results_mem);
 
    OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_CONTROL, 1);
    OUT_RING(ring, A6XX_RB_SAMPLE_COUNT_CONTROL_COPY);
