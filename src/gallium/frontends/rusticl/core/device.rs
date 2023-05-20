@@ -15,6 +15,7 @@ use mesa_rust::pipe::resource::*;
 use mesa_rust::pipe::screen::*;
 use mesa_rust::pipe::transfer::*;
 use mesa_rust_gen::*;
+use mesa_rust_util::static_assert;
 use rusticl_opencl_gen::*;
 
 use std::cmp::max;
@@ -538,6 +539,13 @@ impl Device {
 
         if self.pci_info().is_some() {
             add_ext(1, 0, 0, "cl_khr_pci_bus_info");
+        }
+
+        if self.screen().device_uuid().is_some() && self.screen().driver_uuid().is_some() {
+            static_assert!(PIPE_UUID_SIZE == CL_UUID_SIZE_KHR);
+            static_assert!(PIPE_LUID_SIZE == CL_LUID_SIZE_KHR);
+
+            add_ext(1, 0, 0, "cl_khr_device_uuid");
         }
 
         if self.svm_supported() {
