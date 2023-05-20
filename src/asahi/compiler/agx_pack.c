@@ -50,16 +50,28 @@ static unsigned
 agx_pack_texture(agx_index base, agx_index index, unsigned *packed_base,
                  unsigned *flag)
 {
-   assert(base.type == AGX_INDEX_IMMEDIATE && base.value == 0 &&
-          "TODO: bindless");
-   *packed_base = 0;
+   if (base.type == AGX_INDEX_IMMEDIATE) {
+      assert(base.value == 0);
 
-   if (index.type == AGX_INDEX_REGISTER) {
-      assert(index.size == AGX_SIZE_16);
-      *flag = 1;
+      /* Texture state registers */
+      *packed_base = 0;
+
+      if (index.type == AGX_INDEX_REGISTER) {
+         assert(index.size == AGX_SIZE_16);
+         *flag = 1;
+      } else {
+         assert(index.type == AGX_INDEX_IMMEDIATE);
+         *flag = 0;
+      }
    } else {
-      assert(index.type == AGX_INDEX_IMMEDIATE);
-      *flag = 0;
+      assert(base.type == AGX_INDEX_UNIFORM);
+      assert(base.size == AGX_SIZE_64);
+      assert((base.value & 3) == 0);
+      assert(index.size == AGX_SIZE_32);
+
+      /* Bindless */
+      *packed_base = base.value >> 2;
+      *flag = 3;
    }
 
    return index.value;
