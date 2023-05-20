@@ -106,4 +106,5 @@ dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_clamp
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_repeat
 dEQP-VK.ubo.random.all_out_of_order_offsets.45
 dEQP-VK.ssbo.layout.3_level_array.std430.mat4
+dEQP-VK.ssbo.layout.3_level_array.std140.column_major_mat4
 dEQP-VK.ssbo.layout.3_level_unsized_array.std430.row_major_mat4
