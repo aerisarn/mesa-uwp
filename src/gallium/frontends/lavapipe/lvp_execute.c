@@ -323,11 +323,11 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
          /* not enough change; don't inline further */
          shader->inlines.can_inline = 0;
          ralloc_free(nir);
-         shader->shader_cso = lvp_shader_compile(state->device, shader, nir_shader_clone(NULL, shader->pipeline_nir->nir));
+         shader->shader_cso = lvp_shader_compile(state->device, shader, nir_shader_clone(NULL, shader->pipeline_nir->nir), true);
          _mesa_set_remove(&shader->inlines.variants, entry);
          shader_state = shader->shader_cso;
       } else {
-         shader_state = lvp_shader_compile(state->device, shader, nir);
+         shader_state = lvp_shader_compile(state->device, shader, nir, true);
          struct lvp_inline_variant *variant = mem_dup(&v, sizeof(v));
          variant->cso = shader_state;
          entry->key = variant;
@@ -721,7 +721,7 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
                                      struct rendering_state *state)
 {
    const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
-   lvp_pipeline_shaders_compile(pipeline);
+   lvp_pipeline_shaders_compile(pipeline, true);
    bool dynamic_tess_origin = BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN);
    unbind_graphics_stages(state,
                           (~pipeline->graphics_state.shader_stages) &

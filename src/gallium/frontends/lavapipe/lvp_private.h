@@ -479,7 +479,7 @@ struct lvp_pipeline {
 };
 
 void
-lvp_pipeline_shaders_compile(struct lvp_pipeline *pipeline);
+lvp_pipeline_shaders_compile(struct lvp_pipeline *pipeline, bool locked);
 
 struct lvp_event {
    struct vk_object_base base;
@@ -651,14 +651,12 @@ queue_thread_noop(void *data, void *gdata, int thread_index);
 
 void
 lvp_shader_optimize(nir_shader *nir);
-void *
-lvp_shader_compile_stage(struct lvp_device *device, struct lvp_shader *shader, nir_shader *nir);
 bool
 lvp_find_inlinable_uniforms(struct lvp_shader *shader, nir_shader *nir);
 void
 lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint32_t *uniform_values, uint32_t ubo);
 void *
-lvp_shader_compile(struct lvp_device *device, struct lvp_shader *shader, nir_shader *nir);
+lvp_shader_compile(struct lvp_device *device, struct lvp_shader *shader, nir_shader *nir, bool locked);
 enum vk_cmd_type
 lvp_nv_dgc_token_to_cmd_type(const VkIndirectCommandsLayoutTokenNV *token);
 #ifdef __cplusplus
