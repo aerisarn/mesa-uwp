@@ -70,16 +70,13 @@ agx_txs(nir_builder *b, nir_tex_instr *tex)
       nir_extr_agx(b, w0, w1, nir_imm_int(b, 28), nir_imm_int(b, 14));
 
    /* Height minus 1: bits [42, 56) */
-   nir_ssa_def *height_m1 =
-      nir_iand_imm(b, nir_ushr_imm(b, w1, 42 - 32), BITFIELD_MASK(14));
+   nir_ssa_def *height_m1 = nir_ubitfield_extract_imm(b, w1, 42 - 32, 14);
 
    /* Depth minus 1: bits [110, 124) */
-   nir_ssa_def *depth_m1 =
-      nir_iand_imm(b, nir_ushr_imm(b, w3, 110 - 96), BITFIELD_MASK(14));
+   nir_ssa_def *depth_m1 = nir_ubitfield_extract_imm(b, w3, 110 - 96, 14);
 
    /* First level: bits [56, 60) */
-   nir_ssa_def *lod =
-      nir_iand_imm(b, nir_ushr_imm(b, w1, 56 - 32), BITFIELD_MASK(4));
+   nir_ssa_def *lod = nir_ubitfield_extract_imm(b, w1, 56 - 32, 4);
 
    /* Add LOD offset to first level to get the interesting LOD */
    int lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_lod);
@@ -96,8 +93,7 @@ agx_txs(nir_builder *b, nir_tex_instr *tex)
        * TODO: Optimize this, since linear 2D arrays aren't needed for APIs and
        * this just gets used internally for blits.
        */
-      nir_ssa_def *layout =
-         nir_iand_imm(b, nir_ushr_imm(b, w0, 4), BITFIELD_MASK(2));
+      nir_ssa_def *layout = nir_ubitfield_extract_imm(b, w0, 4, 2);
 
       /* Get the 2 bytes after the first 128-bit descriptor */
       nir_ssa_def *extension =
@@ -171,8 +167,7 @@ format_is_rgb32(nir_builder *b, nir_tex_instr *tex)
 {
    nir_ssa_def *ptr = texture_descriptor_ptr(b, tex);
    nir_ssa_def *desc = nir_load_global_constant(b, ptr, 8, 1, 32);
-   nir_ssa_def *channels =
-      nir_iand_imm(b, nir_ushr_imm(b, desc, 6), BITFIELD_MASK(7));
+   nir_ssa_def *channels = nir_ubitfield_extract_imm(b, desc, 6, 7);
 
    return nir_ieq_imm(b, channels, AGX_FORMAT_RGB32_EMULATED);
 }
