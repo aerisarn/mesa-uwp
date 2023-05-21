@@ -938,6 +938,12 @@ nir_ubfe_imm(nir_builder *build, nir_ssa_def *x, uint32_t offset, uint32_t size)
 }
 
 static inline nir_ssa_def *
+nir_ubitfield_extract_imm(nir_builder *build, nir_ssa_def *x, uint32_t offset, uint32_t size)
+{
+   return nir_ubitfield_extract(build, x, nir_imm_int(build, offset), nir_imm_int(build, size));
+}
+
+static inline nir_ssa_def *
 nir_fclamp(nir_builder *b,
            nir_ssa_def *x, nir_ssa_def *min_val, nir_ssa_def *max_val)
 {
