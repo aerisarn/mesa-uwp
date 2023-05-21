@@ -1966,6 +1966,7 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
          progress = false;
 
          NIR_PASS(progress, nir, nir_opt_algebraic);
+         NIR_PASS(progress, nir, nir_opt_constant_folding);
          NIR_PASS(progress, nir, nir_opt_dce);
       } while (progress);
    }
