@@ -188,7 +188,6 @@ static const nir_shader_compiler_options agx_nir_options = {
    .lower_flrp32 = true,
    .lower_fpow = true,
    .lower_fmod = true,
-   .lower_bitfield_extract_to_shifts = true,
    .lower_bitfield_insert_to_shifts = true,
    .lower_ifind_msb = true,
    .lower_find_lsb = true,

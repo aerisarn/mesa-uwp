@@ -1137,6 +1137,17 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       return agx_extr_to(b, dst, s0, s1, s2,
                          nir_alu_src_as_uint(instr->src[3]));
 
+   case nir_op_ubitfield_extract: {
+      unsigned m = nir_alu_src_as_uint(instr->src[2]);
+      assert(m != 0 && "should've been optimized");
+
+      /* Disable masking if the whole thing is used */
+      if (m >= 32)
+         m = 0;
+
+      return agx_bfeil_to(b, dst, i0, s0, s1, m);
+   }
+
    case nir_op_bcsel:
       return agx_icmpsel_to(b, dst, s0, i0, s2, s1, AGX_ICOND_UEQ);
 
