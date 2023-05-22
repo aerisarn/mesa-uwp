@@ -2562,18 +2562,30 @@ VkResult pvr_gpu_upload_usc(struct pvr_device *device,
                             uint64_t code_alignment,
                             struct pvr_suballoc_bo **const pvr_bo_out)
 {
+   struct pvr_suballoc_bo *suballoc_bo = NULL;
+   VkResult result;
+   void *map;
+
    assert(code_size > 0);
 
    /* The USC will prefetch the next instruction, so over allocate by 1
     * instruction to prevent reading off the end of a page into a potentially
     * unallocated page.
     */
-   return pvr_gpu_upload(device,
-                         device->heaps.usc_heap,
-                         code,
-                         code_size + ROGUE_MAX_INSTR_BYTES,
-                         code_alignment,
-                         pvr_bo_out);
+   result = pvr_bo_suballoc(&device->suballoc_usc,
+                            code_size + ROGUE_MAX_INSTR_BYTES,
+                            code_alignment,
+                            false,
+                            &suballoc_bo);
+   if (result != VK_SUCCESS)
+      return result;
+
+   map = pvr_bo_suballoc_get_map_addr(suballoc_bo);
+   memcpy(map, code, code_size);
+
+   *pvr_bo_out = suballoc_bo;
+
+   return VK_SUCCESS;
 }
 
 /**
