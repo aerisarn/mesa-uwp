@@ -6259,6 +6259,105 @@ nir_reg_get_decl(nir_ssa_def *reg)
    return decl;
 }
 
+static inline nir_intrinsic_instr *
+nir_next_decl_reg(nir_intrinsic_instr *prev, nir_function_impl *impl)
+{
+   nir_instr *start;
+   if (prev != NULL)
+      start = nir_instr_next(&prev->instr);
+   else if (impl != NULL)
+      start = nir_block_first_instr(nir_start_block(impl));
+   else
+      return NULL;
+
+   for (nir_instr *instr = start; instr; instr = nir_instr_next(instr)) {
+      if (instr->type != nir_instr_type_intrinsic)
+         continue;
+
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+      if (intrin->intrinsic == nir_intrinsic_decl_reg)
+         return intrin;
+   }
+
+   return NULL;
+}
+
+#define nir_foreach_reg_decl(reg, impl)                              \
+   for (nir_intrinsic_instr *reg = nir_next_decl_reg(NULL, impl);    \
+        reg; reg = nir_next_decl_reg(reg, NULL))
+
+#define nir_foreach_reg_decl_safe(reg, impl)                         \
+   for (nir_intrinsic_instr *reg = nir_next_decl_reg(NULL, impl),    \
+                            *next_ = nir_next_decl_reg(reg, NULL);   \
+        reg; reg = next_, next_ = nir_next_decl_reg(next_, NULL))
+
+static inline bool
+nir_is_load_reg(nir_intrinsic_instr *intr)
+{
+   return intr->intrinsic == nir_intrinsic_load_reg ||
+          intr->intrinsic == nir_intrinsic_load_reg_indirect;
+}
+
+static inline bool
+nir_is_store_reg(nir_intrinsic_instr *intr)
+{
+   return intr->intrinsic == nir_intrinsic_store_reg ||
+          intr->intrinsic == nir_intrinsic_store_reg_indirect;
+}
+
+#define nir_foreach_reg_load(load, reg)                                        \
+   assert(reg->intrinsic == nir_intrinsic_decl_reg);                           \
+                                                                               \
+   nir_foreach_use(load, &reg->dest.ssa)                                       \
+      if (nir_is_load_reg(nir_instr_as_intrinsic(load->parent_instr)))
+
+#define nir_foreach_reg_store(store, reg)                                      \
+   assert(reg->intrinsic == nir_intrinsic_decl_reg);                           \
+                                                                               \
+   nir_foreach_use(store, &reg->dest.ssa)                                      \
+      if (nir_is_store_reg(nir_instr_as_intrinsic(store->parent_instr)))
+
+static inline nir_intrinsic_instr *
+nir_load_reg_for_def(const nir_ssa_def *def)
+{
+   if (def->parent_instr->type != nir_instr_type_intrinsic)
+      return NULL;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(def->parent_instr);
+   if (!nir_is_load_reg(intr))
+      return NULL;
+
+   return intr;
+}
+
+static inline nir_intrinsic_instr *
+nir_store_reg_for_def(const nir_ssa_def *def)
+{
+   /* Look for the trivial store: single use of our destination by a
+    * store_register intrinsic.
+    */
+   if (!list_is_singular(&def->uses))
+      return NULL;
+
+   nir_src *src = list_first_entry(&def->uses, nir_src, use_link);
+   if (src->is_if)
+      return NULL;
+
+   nir_instr *parent = src->parent_instr;
+   if (parent->type != nir_instr_type_intrinsic)
+      return NULL;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(parent);
+   if (!nir_is_store_reg(intr))
+      return NULL;
+
+   /* The first value is data. Third is indirect index, ignore that one. */
+   if (&intr->src[0] != src)
+      return NULL;
+
+   return intr;
+}
+
 #include "nir_inline_helpers.h"
 
 #ifdef __cplusplus
