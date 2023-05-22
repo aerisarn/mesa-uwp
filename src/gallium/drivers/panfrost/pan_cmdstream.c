@@ -670,6 +670,7 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx, mali_ptr *blend_shaders,
       cfg.stencil_mask_misc.alpha_to_coverage = alpha_to_coverage;
       cfg.depth_units = rast->offset_units * 2.0f;
       cfg.depth_factor = rast->offset_scale;
+      cfg.depth_bias_clamp = rast->offset_clamp;
 
       bool back_enab = zsa->base.stencil[1].enabled;
       cfg.stencil_front.reference_value = ctx->stencil_ref.ref_value[0];
@@ -3931,9 +3932,6 @@ panfrost_create_rasterizer_state(struct pipe_context *pctx,
    struct panfrost_rasterizer *so = CALLOC_STRUCT(panfrost_rasterizer);
 
    so->base = *cso;
-
-   /* Gauranteed with the core GL call, so don't expose ARB_polygon_offset */
-   assert(cso->offset_clamp == 0.0);
 
 #if PAN_ARCH <= 7
    pan_pack(&so->multisample, MULTISAMPLE_MISC, cfg) {
