@@ -135,10 +135,10 @@ clc_nir_lower_system_values(nir_shader *nir, nir_variable *var)
                progress |= lower_load_work_dim(&b, intr, var);
                break;
             case nir_intrinsic_load_num_workgroups:
-               lower_load_num_workgroups(&b, intr, var);
+               progress |= lower_load_num_workgroups(&b, intr, var);
                break;
             case nir_intrinsic_load_base_workgroup_id:
-               lower_load_base_workgroup_id(&b, intr, var);
+               progress |= lower_load_base_workgroup_id(&b, intr, var);
                break;
             default: break;
             }
