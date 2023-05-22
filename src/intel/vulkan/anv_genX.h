@@ -246,3 +246,10 @@ genX(emit_breakpoint)(struct anv_batch *batch,
    if (INTEL_DEBUG(DEBUG_DRAW_BKP))
       genX(batch_emit_breakpoint)(batch, device, emit_before_draw);
 }
+
+struct anv_state
+genX(cmd_buffer_begin_companion_rcs_syncpoint)(struct anv_cmd_buffer *cmd_buffer);
+
+void
+genX(cmd_buffer_end_companion_rcs_syncpoint)(struct anv_cmd_buffer *cmd_buffer,
+                                             struct anv_state syncpoint);

@@ -22,6 +22,7 @@
  */
 
 #include "anv_private.h"
+#include "genxml/gen8_pack.h"
 
 static bool
 lookup_blorp_shader(struct blorp_batch *batch,
@@ -371,6 +372,38 @@ copy_image(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
+static struct anv_state
+record_main_rcs_cmd_buffer_done(struct anv_cmd_buffer *cmd_buffer)
+{
+   const struct intel_device_info *info = cmd_buffer->device->info;
+
+   if (cmd_buffer->companion_rcs_cmd_buffer == NULL) {
+      anv_create_companion_rcs_command_buffer(cmd_buffer);
+      /* Re-emit the aux table register in every command buffer.  This way we're
+       * ensured that we have the table even if this command buffer doesn't
+       * initialize any images.
+       */
+      if (cmd_buffer->device->info->has_aux_map) {
+         assert(cmd_buffer->companion_rcs_cmd_buffer != NULL);
+         anv_add_pending_pipe_bits(cmd_buffer->companion_rcs_cmd_buffer,
+                                   ANV_PIPE_AUX_TABLE_INVALIDATE_BIT,
+                                   "new cmd buffer with aux-tt");
+      }
+   }
+
+   assert(cmd_buffer->companion_rcs_cmd_buffer != NULL);
+   return anv_genX(info, cmd_buffer_begin_companion_rcs_syncpoint)(cmd_buffer);
+}
+
+static void
+end_main_rcs_cmd_buffer_done(struct anv_cmd_buffer *cmd_buffer,
+                             struct anv_state syncpoint)
+{
+   const struct intel_device_info *info = cmd_buffer->device->info;
+   anv_genX(info, cmd_buffer_end_companion_rcs_syncpoint)(cmd_buffer,
+                                                          syncpoint);
+}
+
 void anv_CmdCopyImage2(
     VkCommandBuffer                             commandBuffer,
     const VkCopyImageInfo2*                     pCopyImageInfo)
@@ -378,6 +411,17 @@ void anv_CmdCopyImage2(
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_image, src_image, pCopyImageInfo->srcImage);
    ANV_FROM_HANDLE(anv_image, dst_image, pCopyImageInfo->dstImage);
+
+   struct anv_cmd_buffer *main_cmd_buffer = cmd_buffer;
+   UNUSED struct anv_state rcs_done = ANV_STATE_NULL;;
+
+   if (cmd_buffer->device->info->verx10 >= 125 &&
+       dst_image->vk.samples > 1 &&
+       (anv_cmd_buffer_is_blitter_queue(main_cmd_buffer) ||
+        anv_cmd_buffer_is_compute_queue(main_cmd_buffer))) {
+      rcs_done = record_main_rcs_cmd_buffer_done(cmd_buffer);
+      cmd_buffer = cmd_buffer->companion_rcs_cmd_buffer;
+   }
 
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
@@ -390,6 +434,9 @@ void anv_CmdCopyImage2(
    }
 
    anv_blorp_batch_finish(&batch);
+
+   if (rcs_done.alloc_size)
+      end_main_rcs_cmd_buffer_done(main_cmd_buffer, rcs_done);
 }
 
 static enum isl_format
@@ -974,6 +1021,17 @@ void anv_CmdClearColorImage(
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_image, image, _image);
 
+   struct anv_cmd_buffer *main_cmd_buffer = cmd_buffer;
+   UNUSED struct anv_state rcs_done = ANV_STATE_NULL;
+
+   if (cmd_buffer->device->info->verx10 >= 125 &&
+       image->vk.samples > 1 &&
+       (anv_cmd_buffer_is_blitter_queue(main_cmd_buffer) ||
+        anv_cmd_buffer_is_compute_queue(main_cmd_buffer))) {
+      rcs_done = record_main_rcs_cmd_buffer_done(cmd_buffer);
+      cmd_buffer = cmd_buffer->companion_rcs_cmd_buffer;
+   }
+
    struct blorp_batch batch;
    anv_blorp_batch_init(cmd_buffer, &batch, 0);
 
@@ -1023,6 +1081,9 @@ void anv_CmdClearColorImage(
    }
 
    anv_blorp_batch_finish(&batch);
+
+   if (rcs_done.alloc_size)
+      end_main_rcs_cmd_buffer_done(main_cmd_buffer, rcs_done);
 }
 
 void anv_CmdClearDepthStencilImage(

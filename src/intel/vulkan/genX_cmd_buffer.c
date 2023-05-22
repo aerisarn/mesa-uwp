@@ -7961,3 +7961,111 @@ genX(batch_emit_dummy_post_sync_op)(struct anv_batch *batch,
 
    }
 }
+
+struct anv_state
+genX(cmd_buffer_begin_companion_rcs_syncpoint)(
+      struct anv_cmd_buffer   *cmd_buffer)
+{
+#if GFX_VERx10 >= 125
+   const struct intel_device_info *info = cmd_buffer->device->info;
+   struct anv_state syncpoint =
+      anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, 2 * sizeof(uint32_t), 4);
+   struct anv_address xcs_wait_addr =
+      anv_state_pool_state_address(&cmd_buffer->device->dynamic_state_pool,
+                                   syncpoint);
+   struct anv_address rcs_wait_addr = anv_address_add(xcs_wait_addr, 4);
+
+   /* Reset the sync point */
+   memset(syncpoint.map, 0, 2 * sizeof(uint32_t));
+
+   struct mi_builder b;
+
+   /* On CCS:
+    *    - flush all caches & invalidate
+    *    - unblock RCS
+    *    - wait on RCS to complete
+    *    - clear the value we waited on
+    */
+
+   if (anv_cmd_buffer_is_compute_queue(cmd_buffer)) {
+      anv_add_pending_pipe_bits(cmd_buffer, ANV_PIPE_FLUSH_BITS |
+                                            ANV_PIPE_INVALIDATE_BITS |
+                                            ANV_PIPE_STALL_BITS,
+                                "post main cmd buffer invalidate");
+      genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+   } else if (anv_cmd_buffer_is_blitter_queue(cmd_buffer)) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(MI_FLUSH_DW), fd) {
+         fd.FlushCCS = true; /* Maybe handle Flush LLC */
+      }
+   }
+
+   {
+      mi_builder_init(&b, info, &cmd_buffer->batch);
+      mi_store(&b, mi_mem32(rcs_wait_addr), mi_imm(0x1));
+      anv_batch_emit(&cmd_buffer->batch, GENX(MI_SEMAPHORE_WAIT), sem) {
+         sem.WaitMode            = PollingMode;
+         sem.CompareOperation    = COMPARE_SAD_EQUAL_SDD;
+         sem.SemaphoreDataDword  = 0x1;
+         sem.SemaphoreAddress    = xcs_wait_addr;
+      }
+      /* Make sure to reset the semaphore in case the command buffer is run
+       * multiple times.
+       */
+      mi_store(&b, mi_mem32(xcs_wait_addr), mi_imm(0x0));
+   }
+
+   /* On RCS:
+    *    - wait on CCS signal
+    *    - clear the value we waited on
+    */
+   {
+      mi_builder_init(&b, info, &cmd_buffer->companion_rcs_cmd_buffer->batch);
+      anv_batch_emit(&cmd_buffer->companion_rcs_cmd_buffer->batch,
+                     GENX(MI_SEMAPHORE_WAIT),
+                     sem) {
+         sem.WaitMode            = PollingMode;
+         sem.CompareOperation    = COMPARE_SAD_EQUAL_SDD;
+         sem.SemaphoreDataDword  = 0x1;
+         sem.SemaphoreAddress    = rcs_wait_addr;
+      }
+      /* Make sure to reset the semaphore in case the command buffer is run
+       * multiple times.
+       */
+      mi_store(&b, mi_mem32(rcs_wait_addr), mi_imm(0x0));
+   }
+
+   return syncpoint;
+#else
+   unreachable("Not implemented");
+#endif
+}
+
+void
+genX(cmd_buffer_end_companion_rcs_syncpoint)(struct anv_cmd_buffer *cmd_buffer,
+                                             struct anv_state syncpoint)
+{
+#if GFX_VERx10 >= 125
+   struct anv_address xcs_wait_addr =
+      anv_state_pool_state_address(&cmd_buffer->device->dynamic_state_pool,
+                                   syncpoint);
+
+   struct mi_builder b;
+
+   /* On RCS:
+    *    - flush all caches & invalidate
+    *    - unblock the CCS
+    */
+   anv_add_pending_pipe_bits(cmd_buffer->companion_rcs_cmd_buffer,
+                             ANV_PIPE_FLUSH_BITS |
+                             ANV_PIPE_INVALIDATE_BITS |
+                             ANV_PIPE_STALL_BITS,
+                             "post rcs flush");
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer->companion_rcs_cmd_buffer);
+
+   mi_builder_init(&b, cmd_buffer->device->info,
+                   &cmd_buffer->companion_rcs_cmd_buffer->batch);
+   mi_store(&b, mi_mem32(xcs_wait_addr), mi_imm(0x1));
+#else
+   unreachable("Not implemented");
+#endif
+}
