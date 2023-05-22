@@ -3462,7 +3462,7 @@ emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       emit_raw_bufferload_call(ctx, handle, coord,
                                overload,
                                nir_intrinsic_dest_components(intr),
-                               nir_intrinsic_align(intr)) :
+                               nir_dest_bit_size(intr->dest) / 8) :
       emit_bufferload_call(ctx, handle, coord, overload);
    if (!load)
       return false;
@@ -3527,7 +3527,7 @@ emit_store_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    return ctx->mod.minor_version >= 2 ?
-      emit_raw_bufferstore_call(ctx, handle, coord, value, write_mask, overload, nir_intrinsic_align(intr)) :
+      emit_raw_bufferstore_call(ctx, handle, coord, value, write_mask, overload, intr->src[0].ssa->bit_size / 8) :
       emit_bufferstore_call(ctx, handle, coord, value, write_mask, overload);
 }
 
