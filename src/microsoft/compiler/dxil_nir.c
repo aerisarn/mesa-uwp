@@ -67,89 +67,6 @@ load_comps_to_vec(nir_builder *b, unsigned src_bit_size,
    return nir_vec(b, dst_comps, num_dst_comps);
 }
 
-static nir_ssa_def *
-ubo_load_select_32b_comps(nir_builder *b, nir_ssa_def *vec32,
-                          nir_ssa_def *offset, unsigned alignment)
-{
-   assert(alignment >= 16 || alignment == 8 ||
-          alignment == 4 || alignment == 2 ||
-          alignment == 1);
-   assert(vec32->num_components == 4);
-
-   if (alignment > 8)
-      return vec32;
-
-   nir_ssa_def *comps[4];
-   nir_ssa_def *cond;
-
-   for (unsigned i = 0; i < 4; i++)
-      comps[i] = nir_channel(b, vec32, i);
-
-   /* If we have 8bytes alignment or less, select which half the vec4 should
-    * be used.
-    */
-   cond = nir_ine(b, nir_iand(b, offset, nir_imm_int(b, 0x8)),
-                                 nir_imm_int(b, 0));
-
-   comps[0] = nir_bcsel(b, cond, comps[2], comps[0]);
-   comps[1] = nir_bcsel(b, cond, comps[3], comps[1]);
-
-   if (alignment == 8)
-      return nir_vec(b, comps, 2);
-
-   /* 4 byte align or less needed, select which of the 32bit component should be
-    * used and return it. The sub-32bit split is handled in nir_extract_bits().
-    */
-   cond = nir_ine(b, nir_iand(b, offset, nir_imm_int(b, 0x4)),
-                                 nir_imm_int(b, 0));
-   return nir_bcsel(b, cond, comps[1], comps[0]);
-}
-
-nir_ssa_def *
-build_load_ubo_dxil(nir_builder *b, nir_ssa_def *buffer,
-                    nir_ssa_def *offset, unsigned num_components,
-                    unsigned bit_size, unsigned alignment)
-{
-   nir_ssa_def *idx = nir_ushr(b, offset, nir_imm_int(b, 4));
-   nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
-   unsigned num_bits = num_components * bit_size;
-   unsigned comp_idx = 0;
-
-   /* We need to split loads in 16byte chunks because that's the
-    * granularity of cBufferLoadLegacy().
-    */
-   for (unsigned i = 0; i < num_bits; i += (16 * 8)) {
-      /* For each 16byte chunk (or smaller) we generate a 32bit ubo vec
-       * load.
-       */
-      unsigned subload_num_bits = MIN2(num_bits - i, 16 * 8);
-      nir_ssa_def *vec32 =
-         nir_load_ubo_dxil(b, 4, 32, buffer, nir_iadd(b, idx, nir_imm_int(b, i / (16 * 8))));
-
-      /* First re-arrange the vec32 to account for intra 16-byte offset. */
-      assert(subload_num_bits / 8 <= alignment);
-      vec32 = ubo_load_select_32b_comps(b, vec32, offset, alignment);
-
-      /* If we have 2 bytes or less to load we need to adjust the u32 value so
-       * we can always extract the LSB.
-       */
-      if (alignment <= 2) {
-         nir_ssa_def *shift = nir_imul(b, nir_iand(b, offset,
-                                                      nir_imm_int(b, 3)),
-                                          nir_imm_int(b, 8));
-         vec32 = nir_ushr(b, vec32, shift);
-      }
-
-      /* And now comes the pack/unpack step to match the original type. */
-      nir_ssa_def *temp_vec = nir_extract_bits(b, &vec32, 1, 0, subload_num_bits / bit_size, bit_size);
-      for (unsigned comp = 0; comp < subload_num_bits / bit_size; ++comp, ++comp_idx)
-         comps[comp_idx] = nir_channel(b, temp_vec, comp);
-   }
-
-   assert(comp_idx == num_components);
-   return nir_vec(b, comps, num_components);
-}
-
 static bool
 lower_load_ssbo(nir_builder *b, nir_intrinsic_instr *intr, unsigned min_bit_size)
 {
@@ -889,26 +806,6 @@ dxil_nir_lower_var_bit_size(nir_shader *shader, nir_variable_mode modes,
 }
 
 static bool
-lower_load_ubo(nir_builder *b, nir_intrinsic_instr *intr)
-{
-   assert(intr->dest.is_ssa);
-   assert(intr->src[0].is_ssa);
-   assert(intr->src[1].is_ssa);
-
-   b->cursor = nir_before_instr(&intr->instr);
-
-   nir_ssa_def *result =
-      build_load_ubo_dxil(b, intr->src[0].ssa, intr->src[1].ssa,
-                             nir_dest_num_components(intr->dest),
-                             nir_dest_bit_size(intr->dest),
-                             nir_intrinsic_align(intr));
-
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
-   nir_instr_remove(&intr->instr);
-   return true;
-}
-
-static bool
 lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var)
 {
    b->cursor = nir_before_instr(&intr->instr);
@@ -977,9 +874,6 @@ dxil_nir_lower_loads_stores_to_dxil(nir_shader *nir,
                break;
             case nir_intrinsic_load_ssbo:
                progress |= lower_load_ssbo(&b, intr, options->use_16bit_ssbo ? 16 : 32);
-               break;
-            case nir_intrinsic_load_ubo:
-               progress |= lower_load_ubo(&b, intr);
                break;
             case nir_intrinsic_store_shared:
                progress |= lower_32b_offset_store(&b, intr, shared_var);

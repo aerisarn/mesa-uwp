@@ -4843,7 +4843,6 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_atomic_deref(ctx, intr);
    case nir_intrinsic_deref_atomic_swap:
       return emit_atomic_deref_swap(ctx, intr);
-   case nir_intrinsic_load_ubo_dxil:
    case nir_intrinsic_load_ubo_vec4:
       return emit_load_ubo_vec4(ctx, intr);
    case nir_intrinsic_load_primitive_id:
@@ -6188,6 +6187,48 @@ lower_bit_size_callback(const nir_instr* instr, void *data)
    return ret;
 }
 
+static bool
+vectorize_filter(
+   unsigned align_mul,
+   unsigned align_offset,
+   unsigned bit_size,
+   unsigned num_components,
+   nir_intrinsic_instr *low, nir_intrinsic_instr *high,
+   void *data)
+{
+   return util_is_power_of_two_nonzero(num_components);
+}
+
+struct lower_mem_bit_sizes_data {
+   const nir_shader_compiler_options *nir_options;
+   const struct nir_to_dxil_options *dxil_options;
+};
+
+static nir_mem_access_size_align
+lower_mem_access_bit_sizes_cb(nir_intrinsic_op intrin,
+                              uint8_t bytes,
+                              uint8_t bit_size_in,
+                              uint32_t align_mul,
+                              uint32_t align_offset,
+                              bool offset_is_const,
+                              const void *cb_data)
+{
+   const struct lower_mem_bit_sizes_data *data = cb_data;
+   unsigned max_bit_size = data->nir_options->lower_int64_options ? 32 : 64;
+   unsigned min_bit_size = data->dxil_options->lower_int16 ? 32 : 16;
+   unsigned closest_bit_size = MAX2(min_bit_size, MIN2(max_bit_size, bit_size_in));
+   /* UBO loads can be done at whatever (supported) bit size, but require 16 byte
+    * alignment and can load up to 16 bytes per instruction. However this pass requires
+    * loading 16 bytes of data to get 16-byte alignment. We're going to run lower_ubo_vec4
+    * which can deal with unaligned vec4s, so for this pass let's just deal with bit size
+    * and total size restrictions. */
+   return (nir_mem_access_size_align) {
+      .align = closest_bit_size / 8,
+      .bit_size = closest_bit_size,
+      .num_components = DIV_ROUND_UP(MIN2(bytes, 16) * 8, closest_bit_size),
+   };
+}
+
 static void
 optimize_nir(struct nir_shader *s, const struct nir_to_dxil_options *opts)
 {
@@ -6222,6 +6263,7 @@ optimize_nir(struct nir_shader *s, const struct nir_to_dxil_options *opts)
       NIR_PASS(progress, s, nir_lower_64bit_phis);
       NIR_PASS(progress, s, nir_lower_phis_to_scalar, true);
       NIR_PASS(progress, s, nir_opt_loop_unroll);
+      NIR_PASS(progress, s, nir_lower_pack);
       NIR_PASS_V(s, nir_lower_system_values);
    } while (progress);
 
@@ -6488,10 +6530,34 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    NIR_PASS_V(s, nir_lower_flrp, 16 | 32 | 64, true);
    NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out, type_size_vec4, nir_lower_io_lower_64bit_to_32);
    NIR_PASS_V(s, dxil_nir_ensure_position_writes);
-   NIR_PASS_V(s, nir_lower_pack);
    NIR_PASS_V(s, dxil_nir_lower_system_values);
    NIR_PASS_V(s, nir_lower_io_to_scalar, nir_var_shader_in | nir_var_system_value | nir_var_shader_out);
 
+   /* Do a round of optimization to try to vectorize loads/stores. Otherwise the addresses used for loads
+    * might be too opaque for the pass to see that they're next to each other. */
+   optimize_nir(s, opts);
+
+   /* Vectorize UBO accesses aggressively. This can help increase alignment to enable us to do better
+    * chunking of loads and stores after lowering bit sizes. Ignore load/store size limitations here, we'll
+    * address them with lower_mem_access_bit_sizes */
+   nir_load_store_vectorize_options vectorize_opts = {
+      .callback = vectorize_filter,
+      .modes = nir_var_mem_ubo,
+   };
+   NIR_PASS_V(s, nir_opt_load_store_vectorize, &vectorize_opts);
+
+   /* Now that they're bloated to the max, address bit size restrictions and overall size limitations for
+    * a single load/store op. */
+   struct lower_mem_bit_sizes_data mem_size_data = { s->options, opts };
+   nir_lower_mem_access_bit_sizes_options mem_size_options = {
+      .modes = nir_var_mem_ubo,
+      .callback = lower_mem_access_bit_sizes_cb,
+      .cb_data = &mem_size_data
+   };
+   NIR_PASS_V(s, nir_lower_mem_access_bit_sizes, &mem_size_options);
+
+   /* Lastly, conver byte-address UBO loads to vec-addressed. This pass can also deal with selecting sub-
+    * components from the load and dealing with vec-straddling loads. */
    NIR_PASS_V(s, nir_lower_ubo_vec4);
 
    if (opts->shader_model_max < SHADER_MODEL_6_6) {
