@@ -343,6 +343,7 @@ v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
         struct v3d_screen *screen = v3d_screen(pscreen);
         struct v3d_context *v3d;
+        struct v3d_device_info *devinfo = &screen->devinfo;
 
         /* Prevent dumping of the shaders built during context setup. */
         uint32_t saved_shaderdb_flag = v3d_mesa_debug & V3D_DEBUG_SHADERDB;
@@ -371,8 +372,8 @@ v3d_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
         pctx->invalidate_resource = v3d_invalidate_resource;
         pctx->get_sample_position = v3d_get_sample_position;
 
-        v3d_X(&screen->devinfo, draw_init)(pctx);
-        v3d_X(&screen->devinfo, state_init)(pctx);
+        v3d_X(devinfo, draw_init)(pctx);
+        v3d_X(devinfo, state_init)(pctx);
         v3d_program_init(pctx);
         v3d_query_init(pctx);
         v3d_resource_context_init(pctx);
