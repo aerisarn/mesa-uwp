@@ -1256,10 +1256,6 @@ store("uniform_ir3", [], indices=[BASE])
 # vec4's.
 intrinsic("copy_ubo_to_uniform_ir3", [1, 1], indices=[BASE, RANGE])
 
-# DXIL specific intrinsics
-# src[] = { value, mask, index, offset }.
-intrinsic("store_ssbo_masked_dxil", [1, 1, 1, 1])
-
 # Intrinsics used by the Midgard/Bifrost blend pipeline. These are defined
 # within a blend shader to read/write the raw value from the tile buffer,
 # without applying any format conversion in the process. If the shader needs

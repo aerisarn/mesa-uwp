@@ -1048,7 +1048,6 @@ dxil_spirv_nir_passes(nir_shader *nir,
    }
 
    NIR_PASS_V(nir, nir_opt_deref);
-   NIR_PASS_V(nir, dxil_nir_split_unaligned_loads_stores, nir_var_mem_ssbo);
 
    if (conf->inferred_read_only_images_as_srvs) {
       const nir_opt_access_options opt_access_options = {

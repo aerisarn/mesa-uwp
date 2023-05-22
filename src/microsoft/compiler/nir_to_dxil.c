@@ -3532,32 +3532,6 @@ emit_store_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
-emit_store_ssbo_masked(struct ntd_context *ctx, nir_intrinsic_instr *intr)
-{
-   const struct dxil_value *value =
-      get_src(ctx, &intr->src[0], 0, nir_type_uint);
-   const struct dxil_value *mask =
-      get_src(ctx, &intr->src[1], 0, nir_type_uint);
-   const struct dxil_value* handle = get_resource_handle(ctx, &intr->src[2], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_RAW_BUFFER);
-   const struct dxil_value *offset =
-      get_src(ctx, &intr->src[3], 0, nir_type_uint);
-   if (!value || !mask || !handle || !offset)
-      return false;
-
-   const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
-   if (!int32_undef)
-      return false;
-
-   const struct dxil_value *coord[3] = {
-      offset, int32_undef, int32_undef
-   };
-
-   return
-      emit_atomic_binop(ctx, handle, DXIL_ATOMIC_AND, coord, mask) != NULL &&
-      emit_atomic_binop(ctx, handle, DXIL_ATOMIC_OR, coord, value) != NULL;
-}
-
-static bool
 emit_load_ubo_vec4(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_CBV, DXIL_RESOURCE_KIND_CBUFFER);
@@ -4833,8 +4807,6 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_load_ssbo(ctx, intr);
    case nir_intrinsic_store_ssbo:
       return emit_store_ssbo(ctx, intr);
-   case nir_intrinsic_store_ssbo_masked_dxil:
-      return emit_store_ssbo_masked(ctx, intr);
    case nir_intrinsic_load_deref:
       return emit_load_deref(ctx, intr);
    case nir_intrinsic_store_deref:
@@ -6217,18 +6189,49 @@ lower_mem_access_bit_sizes_cb(nir_intrinsic_op intrin,
                               const void *cb_data)
 {
    const struct lower_mem_bit_sizes_data *data = cb_data;
-   unsigned max_bit_size = data->nir_options->lower_int64_options ? 32 : 64;
+   unsigned max_bit_size = 32;
    unsigned min_bit_size = data->dxil_options->lower_int16 ? 32 : 16;
    unsigned closest_bit_size = MAX2(min_bit_size, MIN2(max_bit_size, bit_size_in));
-   /* UBO loads can be done at whatever (supported) bit size, but require 16 byte
-    * alignment and can load up to 16 bytes per instruction. However this pass requires
-    * loading 16 bytes of data to get 16-byte alignment. We're going to run lower_ubo_vec4
-    * which can deal with unaligned vec4s, so for this pass let's just deal with bit size
-    * and total size restrictions. */
+   if (intrin == nir_intrinsic_load_ubo) {
+      /* UBO loads can be done at whatever (supported) bit size, but require 16 byte
+       * alignment and can load up to 16 bytes per instruction. However this pass requires
+       * loading 16 bytes of data to get 16-byte alignment. We're going to run lower_ubo_vec4
+       * which can deal with unaligned vec4s, so for this pass let's just deal with bit size
+       * and total size restrictions. */
+      return (nir_mem_access_size_align) {
+         .align = closest_bit_size / 8,
+         .bit_size = closest_bit_size,
+         .num_components = DIV_ROUND_UP(MIN2(bytes, 16) * 8, closest_bit_size),
+      };
+   }
+
+   assert(intrin == nir_intrinsic_load_ssbo || intrin == nir_intrinsic_store_ssbo);
+   uint32_t align = nir_combined_align(align_mul, align_offset);
+   if (align < min_bit_size / 8) {
+      /* Unaligned load/store, use the minimum bit size, up to 4 components */
+      unsigned ideal_num_components = intrin == nir_intrinsic_load_ssbo ?
+         DIV_ROUND_UP(bytes * 8, min_bit_size) :
+         (bytes * 8 / min_bit_size);
+      return (nir_mem_access_size_align) {
+         .align = min_bit_size / 8,
+         .bit_size = min_bit_size,
+         .num_components = MIN2(4, ideal_num_components),
+      };
+   }
+
+   /* Increase/decrease bit size to try to get closer to the requested byte size/align */
+   unsigned bit_size = closest_bit_size;
+   unsigned target = MIN2(bytes, align);
+   while (target < bit_size / 8 && bit_size > min_bit_size)
+      bit_size /= 2;
+   while (target > bit_size / 8 * 4 && bit_size < max_bit_size)
+      bit_size *= 2;
+
+   /* This is the best we can do */
    return (nir_mem_access_size_align) {
-      .align = closest_bit_size / 8,
-      .bit_size = closest_bit_size,
-      .num_components = DIV_ROUND_UP(MIN2(bytes, 16) * 8, closest_bit_size),
+      .align = bit_size / 8,
+      .bit_size = bit_size,
+      .num_components = MIN2(4, DIV_ROUND_UP(bytes * 8, bit_size)),
    };
 }
 
@@ -6540,12 +6543,12 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
     * might be too opaque for the pass to see that they're next to each other. */
    optimize_nir(s, opts);
 
-   /* Vectorize UBO accesses aggressively. This can help increase alignment to enable us to do better
+   /* Vectorize UBO/SSBO accesses aggressively. This can help increase alignment to enable us to do better
     * chunking of loads and stores after lowering bit sizes. Ignore load/store size limitations here, we'll
     * address them with lower_mem_access_bit_sizes */
    nir_load_store_vectorize_options vectorize_opts = {
       .callback = vectorize_filter,
-      .modes = nir_var_mem_ubo,
+      .modes = nir_var_mem_ubo | nir_var_mem_ssbo,
    };
    NIR_PASS_V(s, nir_opt_load_store_vectorize, &vectorize_opts);
 
@@ -6553,8 +6556,9 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
     * a single load/store op. */
    struct lower_mem_bit_sizes_data mem_size_data = { s->options, opts };
    nir_lower_mem_access_bit_sizes_options mem_size_options = {
-      .modes = nir_var_mem_ubo,
+      .modes = nir_var_mem_ubo | nir_var_mem_ssbo,
       .callback = lower_mem_access_bit_sizes_cb,
+      .may_lower_unaligned_stores_to_atomics = true,
       .cb_data = &mem_size_data
    };
    NIR_PASS_V(s, nir_lower_mem_access_bit_sizes, &mem_size_options);
