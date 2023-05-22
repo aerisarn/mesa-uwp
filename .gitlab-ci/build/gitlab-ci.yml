@@ -209,6 +209,8 @@ debian-release:
   variables:
     LLVM_VERSION: 15
     UNWIND: "enabled"
+    C_ARGS: >
+      -Wno-error=stringop-overread
     DRI_LOADERS: >
       -D glx=dri
       -D gbm=enabled
@@ -483,6 +485,7 @@ debian-arm64-release:
     C_ARGS: >
       -Wno-error=array-bounds
       -Wno-error=stringop-truncation
+      -Wno-error=stringop-overread
   script:
     - .gitlab-ci/meson/build.sh
     - 'if [ -n "$MESA_CI_PERFORMANCE_ENABLED" ]; then .gitlab-ci/prepare-artifacts.sh; fi'
