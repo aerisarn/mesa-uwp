@@ -5948,7 +5948,7 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
    cmd_buffer->state.last_index_type = -1;
    cmd_buffer->state.last_num_instances = -1;
-   cmd_buffer->state.last_vertex_offset = -1;
+   cmd_buffer->state.last_vertex_offset_valid = false;
    cmd_buffer->state.last_first_instance = -1;
    cmd_buffer->state.last_drawid = -1;
    cmd_buffer->state.last_subpass_color_count = MAX_RTS;
@@ -6578,7 +6578,7 @@ radv_bind_pre_rast_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
 
       /* Re-emit some vertex states because the SGPR idx can be different. */
       cmd_buffer->state.last_first_instance = -1;
-      cmd_buffer->state.last_vertex_offset = -1;
+      cmd_buffer->state.last_vertex_offset_valid = false;
       cmd_buffer->state.last_drawid = -1;
    }
 
@@ -7816,7 +7816,7 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
 
    primary->state.last_first_instance = -1;
    primary->state.last_drawid = -1;
-   primary->state.last_vertex_offset = -1;
+   primary->state.last_vertex_offset_valid = false;
    primary->state.last_db_count_control = -1;
 }
 
@@ -8222,7 +8222,7 @@ radv_cs_emit_indirect_draw_packet(struct radv_cmd_buffer *cmd_buffer, bool index
    cmd_buffer->state.last_first_instance = -1;
    cmd_buffer->state.last_num_instances = -1;
    cmd_buffer->state.last_drawid = -1;
-   cmd_buffer->state.last_vertex_offset = -1;
+   cmd_buffer->state.last_vertex_offset_valid = false;
 
    vertex_offset_reg = (base_reg - SI_SH_REG_OFFSET) >> 2;
    if (cmd_buffer->state.uses_baseinstance)
@@ -8268,7 +8268,7 @@ radv_cs_emit_indirect_mesh_draw_packet(struct radv_cmd_buffer *cmd_buffer, uint3
    cmd_buffer->state.last_first_instance = -1;
    cmd_buffer->state.last_num_instances = -1;
    cmd_buffer->state.last_drawid = -1;
-   cmd_buffer->state.last_vertex_offset = -1;
+   cmd_buffer->state.last_vertex_offset_valid = false;
 
    uint32_t xyz_dim_reg = (base_reg - SI_SH_REG_OFFSET) >> 2;
    uint32_t draw_id_reg = (base_reg + 12 - SI_SH_REG_OFFSET) >> 2;
@@ -8414,6 +8414,7 @@ radv_emit_userdata_vertex_internal(struct radv_cmd_buffer *cmd_buffer,
    radeon_set_sh_reg_seq(cs, state->vtx_base_sgpr, state->vtx_emit_num);
 
    radeon_emit(cs, vertex_offset);
+   state->last_vertex_offset_valid = true;
    state->last_vertex_offset = vertex_offset;
    if (uses_drawid) {
       radeon_emit(cs, 0);
@@ -8433,7 +8434,7 @@ radv_emit_userdata_vertex(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    const bool uses_baseinstance = state->uses_baseinstance;
    const bool uses_drawid = state->uses_drawid;
 
-   if (vertex_offset != state->last_vertex_offset ||
+   if (!state->last_vertex_offset_valid || vertex_offset != state->last_vertex_offset ||
        (uses_drawid && 0 != state->last_drawid) ||
        (uses_baseinstance && info->first_instance != state->last_first_instance))
       radv_emit_userdata_vertex_internal(cmd_buffer, info, vertex_offset);
@@ -8446,6 +8447,7 @@ radv_emit_userdata_vertex_drawid(struct radv_cmd_buffer *cmd_buffer, uint32_t ve
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    radeon_set_sh_reg_seq(cs, state->vtx_base_sgpr, 1 + !!drawid);
    radeon_emit(cs, vertex_offset);
+   state->last_vertex_offset_valid = true;
    state->last_vertex_offset = vertex_offset;
    if (drawid)
       radeon_emit(cs, drawid);
@@ -8572,6 +8574,7 @@ radv_emit_draw_packets_indexed(struct radv_cmd_buffer *cmd_buffer,
                radv_handle_zero_index_buffer_bug(cmd_buffer, &index_va, &remaining_indexes);
 
             if (i > 0) {
+               assert(state->last_vertex_offset_valid);
                if (state->last_vertex_offset != draw->vertexOffset)
                   radv_emit_userdata_vertex_drawid(cmd_buffer, draw->vertexOffset, i);
                else
@@ -8686,6 +8689,7 @@ radv_emit_direct_draw_packets(struct radv_cmd_buffer *cmd_buffer, const struct r
    }
    if (drawCount > 1) {
        struct radv_cmd_state *state = &cmd_buffer->state;
+       assert(state->last_vertex_offset_valid);
        state->last_vertex_offset = last_start;
        if (uses_drawid)
            state->last_drawid = drawCount - 1;
@@ -9707,7 +9711,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
 
    cmd_buffer->state.last_index_type = -1;
    cmd_buffer->state.last_num_instances = -1;
-   cmd_buffer->state.last_vertex_offset = -1;
+   cmd_buffer->state.last_vertex_offset_valid = false;
    cmd_buffer->state.last_first_instance = -1;
    cmd_buffer->state.last_drawid = -1;
 
