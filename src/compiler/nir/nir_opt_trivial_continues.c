@@ -126,7 +126,7 @@ nir_opt_trivial_continues(nir_shader *shader)
          nir_metadata_preserve(impl, nir_metadata_none);
 
          /* If that made progress, we're no longer really in SSA form. */
-         nir_lower_regs_to_ssa_impl(impl);
+         nir_lower_reg_intrinsics_to_ssa_impl(impl);
          progress = true;
       } else {
          nir_metadata_preserve(impl, nir_metadata_all);

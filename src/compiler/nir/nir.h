@@ -5989,6 +5989,10 @@ void nir_divergence_analysis(nir_shader *shader);
 bool nir_update_instr_divergence(nir_shader *shader, nir_instr *instr);
 bool nir_has_divergent_loop(nir_shader *shader);
 
+void
+nir_rewrite_uses_to_load_reg(struct nir_builder *b, nir_ssa_def *old,
+                             nir_ssa_def *reg);
+
 /* If phi_webs_only is true, only convert SSA values involved in phi nodes to
  * registers.  If false, convert all values (even those not involved in a phi
  * node) to registers.  If reg_intrinsics is true, it will use

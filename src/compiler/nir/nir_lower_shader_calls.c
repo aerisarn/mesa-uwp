@@ -1261,6 +1261,7 @@ lower_resume(nir_shader *shader, int call_idx)
        * of all those pesky registers we just added.
        */
       NIR_PASS_V(shader, nir_lower_regs_to_ssa);
+      NIR_PASS_V(shader, nir_lower_reg_intrinsics_to_ssa);
    }
 
    /* Re-index nir_ssa_def::index.  We don't care about actual liveness in

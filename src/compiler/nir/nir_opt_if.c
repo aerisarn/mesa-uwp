@@ -806,9 +806,9 @@ opt_if_loop_last_continue(nir_loop *loop, bool aggressive_last_continue)
    else
       nir_cf_reinsert(&tmp, nir_after_cf_list(&nif->then_list));
 
-   /* In order to avoid running nir_lower_regs_to_ssa_impl() every time an if
-    * opt makes progress we leave nir_opt_trivial_continues() to remove the
-    * continue now that the end of the loop has been simplified.
+   /* In order to avoid running nir_lower_reg_intrinsics_to_ssa_impl() every
+    * time an if opt makes progress we leave nir_opt_trivial_continues() to
+    * remove the continue now that the end of the loop has been simplified.
     */
 
    return true;
@@ -1700,7 +1700,7 @@ nir_opt_if(nir_shader *shader, nir_opt_if_options options)
           * need to convert registers back into SSA defs and clean up SSA defs
           * that don't dominate their uses.
           */
-         nir_lower_regs_to_ssa_impl(impl);
+         nir_lower_reg_intrinsics_to_ssa_impl(impl);
       }
 
       if (preserve) {

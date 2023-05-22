@@ -23,6 +23,7 @@
 
 #include "nir.h"
 #include "nir_builder.h"
+#include "nir_builder_opcodes.h"
 #include "nir_vla.h"
 
 /*
@@ -525,6 +526,44 @@ create_reg_for_ssa_def(nir_ssa_def *def, nir_function_impl *impl)
    return reg;
 }
 
+static nir_ssa_def *
+decl_reg_for_ssa_def(nir_builder *b, nir_ssa_def *def)
+{
+   return nir_decl_reg(b, def->num_components, def->bit_size, 0);
+}
+
+void
+nir_rewrite_uses_to_load_reg(nir_builder *b, nir_ssa_def *old,
+                             nir_ssa_def *reg)
+{
+   nir_foreach_use_including_if_safe(use, old) {
+      b->cursor = nir_before_src(use);
+
+      /* If the immediate preceding instruction is a load_reg from the same
+       * register, use it instead of creating a new load_reg. This helps when
+       * a register is referenced in multiple sources in the same instruction,
+       * which otherwise would turn into piles of unnecessary moves.
+       */
+      nir_ssa_def *load = NULL;
+      if (b->cursor.option == nir_cursor_before_instr) {
+          nir_instr *prev = nir_instr_prev(b->cursor.instr);
+
+          if (prev != NULL && prev->type == nir_instr_type_intrinsic) {
+             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(prev);
+             if (intr->intrinsic == nir_intrinsic_load_reg &&
+                 intr->src[0].ssa == reg &&
+                 nir_intrinsic_base(intr) == 0)
+                load = &intr->dest.ssa;
+          }
+      }
+
+      if (load == NULL)
+         load = nir_load_reg(b, reg);
+
+      nir_src_rewrite_ssa(use, load);
+   }
+}
+
 static bool
 rewrite_ssa_def(nir_ssa_def *def, void *void_state)
 {
@@ -921,7 +960,7 @@ nir_convert_from_ssa(nir_shader *shader,
 
 
 static void
-place_phi_read(nir_builder *b, nir_register *reg,
+place_phi_read(nir_builder *b, nir_ssa_def *reg,
                nir_ssa_def *def, nir_block *block, struct set *visited_blocks)
 {
   /* Search already visited blocks to avoid back edges in tree */
@@ -952,7 +991,7 @@ place_phi_read(nir_builder *b, nir_register *reg,
    }
 
    b->cursor = nir_after_block_before_jump(block);
-   nir_store_register(b, reg, def, ~0);
+   nir_store_reg(b, def, reg);
 }
 
 /** Lower all of the phi nodes in a block to movs to and from a register
@@ -994,24 +1033,17 @@ nir_lower_phis_to_regs_block(nir_block *block)
    bool progress = false;
    nir_foreach_phi_safe(phi, block) {
       assert(phi->dest.is_ssa);
-      nir_register *reg = create_reg_for_ssa_def(&phi->dest.ssa, b.impl);
+      nir_ssa_def *reg = decl_reg_for_ssa_def(&b, &phi->dest.ssa);
 
       b.cursor = nir_after_instr(&phi->instr);
-      nir_ssa_def *def = nir_load_register(&b, reg);
-
-      nir_ssa_def_rewrite_uses(&phi->dest.ssa, def);
+      nir_ssa_def_rewrite_uses(&phi->dest.ssa, nir_load_reg(&b, reg));
 
       nir_foreach_phi_src(src, phi) {
-         if (src->src.is_ssa) {
-            _mesa_set_add(visited_blocks, src->src.ssa->parent_instr->block);
-            place_phi_read(&b, reg, src->src.ssa, src->pred, visited_blocks);
-            _mesa_set_clear(visited_blocks, NULL);
-         } else {
-            b.cursor = nir_after_block_before_jump(src->pred);
-            nir_ssa_def *src_ssa =
-               nir_ssa_for_src(&b, src->src, phi->dest.ssa.num_components);
-            nir_store_register(&b, reg, src_ssa, ~0);
-         }
+         assert(src->src.is_ssa);
+
+         _mesa_set_add(visited_blocks, src->src.ssa->parent_instr->block);
+         place_phi_read(&b, reg, src->src.ssa, src->pred, visited_blocks);
+         _mesa_set_clear(visited_blocks, NULL);
       }
 
       nir_instr_remove(&phi->instr);
@@ -1037,14 +1069,14 @@ dest_replace_ssa_with_reg(nir_dest *dest, void *void_state)
    if (!dest->is_ssa)
       return true;
 
-   nir_register *reg = create_reg_for_ssa_def(&dest->ssa, state->impl);
+   nir_builder b;
+   nir_builder_init(&b, state->impl);
 
-   nir_ssa_def_rewrite_uses_src(&dest->ssa, nir_src_for_reg(reg));
+   nir_ssa_def *reg = decl_reg_for_ssa_def(&b, &dest->ssa);
+   nir_rewrite_uses_to_load_reg(&b, &dest->ssa, reg);
 
-   nir_instr *instr = dest->ssa.parent_instr;
-   *dest = nir_dest_for_reg(reg);
-   dest->reg.parent_instr = instr;
-   list_addtail(&dest->reg.def_link, &reg->defs);
+   b.cursor = nir_after_instr(dest->ssa.parent_instr);
+   nir_store_reg(&b, &dest->ssa, reg);
 
    state->progress = true;
 
@@ -1066,6 +1098,22 @@ ssa_def_is_local_to_block(nir_ssa_def *def, UNUSED void *state)
    return true;
 }
 
+static bool
+instr_is_load_new_reg(nir_instr *instr, unsigned old_num_ssa)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
+   if (load->intrinsic != nir_intrinsic_load_reg)
+      return false;
+
+   assert(load->src[0].is_ssa);
+   nir_ssa_def *reg = load->src[0].ssa;
+
+   return reg->index >= old_num_ssa;
+}
+
 /** Lower all of the SSA defs in a block to registers
  *
  * This performs the very simple operation of blindly replacing all of the SSA
@@ -1077,30 +1125,37 @@ bool
 nir_lower_ssa_defs_to_regs_block(nir_block *block)
 {
    nir_function_impl *impl = nir_cf_node_get_function(&block->cf_node);
-   nir_shader *shader = impl->function->shader;
+   nir_builder b = nir_builder_create(impl);
 
    struct ssa_def_to_reg_state state = {
       .impl = impl,
       .progress = false,
    };
 
-   nir_foreach_instr(instr, block) {
+   /* Save off the current number of SSA defs so we can detect which regs
+    * we've added vs. regs that were already there.
+    */
+   const unsigned num_ssa = impl->ssa_alloc;
+
+   nir_foreach_instr_safe(instr, block) {
       if (instr->type == nir_instr_type_ssa_undef) {
          /* Undefs are just a read of something never written. */
          nir_ssa_undef_instr *undef = nir_instr_as_ssa_undef(instr);
-         nir_register *reg = create_reg_for_ssa_def(&undef->def, state.impl);
-         nir_ssa_def_rewrite_uses_src(&undef->def, nir_src_for_reg(reg));
+         nir_ssa_def *reg = decl_reg_for_ssa_def(&b, &undef->def);
+         nir_rewrite_uses_to_load_reg(&b, &undef->def, reg);
       } else if (instr->type == nir_instr_type_load_const) {
-         /* Constant loads are SSA-only, we need to insert a move */
          nir_load_const_instr *load = nir_instr_as_load_const(instr);
-         nir_register *reg = create_reg_for_ssa_def(&load->def, state.impl);
-         nir_ssa_def_rewrite_uses_src(&load->def, nir_src_for_reg(reg));
+         nir_ssa_def *reg = decl_reg_for_ssa_def(&b, &load->def);
+         nir_rewrite_uses_to_load_reg(&b, &load->def, reg);
 
-         nir_alu_instr *mov = nir_alu_instr_create(shader, nir_op_mov);
-         mov->src[0].src = nir_src_for_ssa(&load->def);
-         mov->dest.dest = nir_dest_for_reg(reg);
-         mov->dest.write_mask = (1 << reg->num_components) - 1;
-         nir_instr_insert(nir_after_instr(&load->instr), &mov->instr);
+         b.cursor = nir_after_instr(instr);
+         nir_store_reg(&b, &load->def, reg);
+      } else if (instr_is_load_new_reg(instr, num_ssa)) {
+         /* Calls to nir_rewrite_uses_to_load_reg() may place new load_reg
+          * intrinsics in this block with new SSA destinations.  To avoid
+          * infinite recursion, we don't want to lower any newly placed
+          * load_reg instructions to yet anoter load/store_reg.
+          */
       } else if (nir_foreach_ssa_def(instr, ssa_def_is_local_to_block, NULL)) {
          /* If the SSA def produced by this instruction is only in the block
           * in which it is defined and is not used by ifs or phis, then we

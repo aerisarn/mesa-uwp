@@ -1142,7 +1142,7 @@ nir_opt_loop_unroll_impl(nir_function_impl *impl,
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_none);
-      nir_lower_regs_to_ssa_impl(impl);
+      nir_lower_reg_intrinsics_to_ssa_impl(impl);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }

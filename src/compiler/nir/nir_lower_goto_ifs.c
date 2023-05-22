@@ -975,7 +975,7 @@ nir_lower_goto_ifs_impl(nir_function_impl *impl)
    nir_metadata_preserve(impl, nir_metadata_none);
 
    nir_repair_ssa_impl(impl);
-   nir_lower_regs_to_ssa_impl(impl);
+   nir_lower_reg_intrinsics_to_ssa_impl(impl);
 
    return true;
 }

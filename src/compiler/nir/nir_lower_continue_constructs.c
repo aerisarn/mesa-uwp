@@ -144,7 +144,7 @@ lower_continue_constructs_impl(nir_function_impl *impl)
       nir_metadata_preserve(impl, nir_metadata_none);
 
       /* Merge the Phis from Header and Continue Target */
-      nir_lower_regs_to_ssa_impl(impl);
+      nir_lower_reg_intrinsics_to_ssa_impl(impl);
 
       /* Re-inserting the Continue Target at the beginning of the loop
        * violates the dominance property if instructions in the continue
