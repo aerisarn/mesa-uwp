@@ -6168,9 +6168,12 @@ lower_bit_size_callback(const nir_instr* instr, void *data)
 {
    if (instr->type != nir_instr_type_alu)
       return 0;
-   const nir_alu_instr *alu = nir_instr_as_alu(instr);
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
 
    if (nir_op_infos[alu->op].is_conversion)
+      return 0;
+
+   if (nir_alu_instr_is_copy(alu))
       return 0;
 
    unsigned num_inputs = nir_op_infos[alu->op].num_inputs;
