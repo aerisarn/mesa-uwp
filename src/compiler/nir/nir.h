@@ -5115,6 +5115,7 @@ typedef nir_mem_access_size_align
 typedef struct {
    nir_lower_mem_access_bit_sizes_cb callback;
    nir_variable_mode modes;
+   bool may_lower_unaligned_stores_to_atomics;
    void *cb_data;
 } nir_lower_mem_access_bit_sizes_options;
 
