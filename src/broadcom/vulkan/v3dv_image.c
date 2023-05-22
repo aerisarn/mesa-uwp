@@ -122,6 +122,9 @@ v3d_setup_plane_slices(struct v3dv_image *image, uint8_t plane,
          level_height = u_minify(pot_height, i);
       }
 
+      slice->width = level_width;
+      slice->height = level_height;
+
       if (i < 1)
          level_depth = u_minify(depth, i);
       else
