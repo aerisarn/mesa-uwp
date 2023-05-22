@@ -760,10 +760,6 @@ uint8_t v3d_get_tex_return_channels(const struct v3d_device_info *devinfo,
                                     enum pipe_format f);
 const uint8_t *v3d_get_format_swizzle(const struct v3d_device_info *devinfo,
                                       enum pipe_format f);
-void v3d_get_internal_type_bpp_for_output_format(const struct v3d_device_info *devinfo,
-                                                 uint32_t format,
-                                                 uint32_t *type,
-                                                 uint32_t *bpp);
 bool v3d_format_supports_tlb_msaa_resolve(const struct v3d_device_info *devinfo,
                                           enum pipe_format f);
 

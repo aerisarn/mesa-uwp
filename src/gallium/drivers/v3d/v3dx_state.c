@@ -1019,10 +1019,9 @@ v3dX(create_texture_shader_state_bo)(struct v3d_context *v3d,
                                 v3d_get_rt_format(&screen->devinfo, cso->format);
                         uint32_t internal_type;
                         uint32_t internal_bpp;
-                        v3d_get_internal_type_bpp_for_output_format(&screen->devinfo,
-                                                                    output_image_format,
-                                                                    &internal_type,
-                                                                    &internal_bpp);
+                        v3dX(get_internal_type_bpp_for_output_format)(output_image_format,
+                                                                      &internal_type,
+                                                                      &internal_bpp);
 
                         switch (internal_type) {
                         case V3D_INTERNAL_TYPE_8:
