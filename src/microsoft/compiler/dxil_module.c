@@ -705,12 +705,12 @@ const struct dxil_type *
 dxil_module_get_cbuf_ret_type(struct dxil_module *mod, enum overload_type overload)
 {
    const struct dxil_type *overload_type = dxil_get_overload_type(mod, overload);
-   const struct dxil_type *fields[4] = { overload_type, overload_type, overload_type, overload_type };
+   const struct dxil_type *fields[8] = { overload_type, overload_type, overload_type, overload_type,
+                                         overload_type, overload_type, overload_type, overload_type };
    unsigned num_fields;
 
    char name[64];
-   snprintf(name, sizeof(name), "dx.types.CBufRet.%s", dxil_overload_suffix(overload));
-
+   const char *additional = "";
    switch (overload) {
    case DXIL_I32:
    case DXIL_F32:
@@ -720,9 +720,15 @@ dxil_module_get_cbuf_ret_type(struct dxil_module *mod, enum overload_type overlo
    case DXIL_F64:
       num_fields = 2;
       break;
+   case DXIL_I16:
+   case DXIL_F16:
+      num_fields = 8;
+      additional = ".8";
+      break;
    default:
       unreachable("unexpected overload type");
    }
+   snprintf(name, sizeof(name), "dx.types.CBufRet.%s%s", dxil_overload_suffix(overload), additional);
 
    return dxil_module_get_struct_type(mod, name, fields, num_fields);
 }

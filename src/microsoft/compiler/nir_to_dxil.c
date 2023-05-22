@@ -126,6 +126,7 @@ nir_options = {
    .lower_pack_unorm_2x16 = true,
    .lower_pack_64_2x32_split = true,
    .lower_pack_32_2x16_split = true,
+   .lower_pack_64_4x16 = true,
    .lower_unpack_64_2x32_split = true,
    .lower_unpack_32_2x16_split = true,
    .lower_unpack_half_2x16 = true,
@@ -3557,47 +3558,9 @@ emit_store_ssbo_masked(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
-emit_load_ubo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+emit_load_ubo_vec4(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value* handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_CBV, DXIL_RESOURCE_KIND_CBUFFER);
-   if (!handle)
-      return false;
-
-   const struct dxil_value *offset;
-   nir_const_value *const_offset = nir_src_as_const_value(intr->src[1]);
-   if (const_offset) {
-      offset = dxil_module_get_int32_const(&ctx->mod, const_offset->i32 >> 4);
-   } else {
-      const struct dxil_value *offset_src = get_src(ctx, &intr->src[1], 0, nir_type_uint);
-      const struct dxil_value *c4 = dxil_module_get_int32_const(&ctx->mod, 4);
-      if (!offset_src || !c4)
-         return false;
-
-      offset = dxil_emit_binop(&ctx->mod, DXIL_BINOP_ASHR, offset_src, c4, 0);
-   }
-
-   enum overload_type overload = get_ambiguous_overload_alu_type(ctx, intr, nir_type_float);
-   const struct dxil_value *agg = load_ubo(ctx, handle, offset, overload);
-
-   if (!agg)
-      return false;
-
-   for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
-      const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, agg, i);
-      store_dest(ctx, &intr->dest, i, retval);
-   }
-   if (nir_dest_bit_size(intr->dest) == 16)
-      ctx->mod.feats.native_low_precision = true;
-   return true;
-}
-
-static bool
-emit_load_ubo_dxil(struct ntd_context *ctx, nir_intrinsic_instr *intr)
-{
-   assert(nir_dest_num_components(intr->dest) <= 4);
-   assert(nir_dest_bit_size(intr->dest) == 32);
-
-   const struct dxil_value* handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_CBV, DXIL_RESOURCE_KIND_CBUFFER);
+   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_CBV, DXIL_RESOURCE_KIND_CBUFFER);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
 
@@ -3609,9 +3572,11 @@ emit_load_ubo_dxil(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!agg)
       return false;
 
+   unsigned first_component = nir_intrinsic_has_component(intr) ?
+      nir_intrinsic_component(intr) : 0;
    for (unsigned i = 0; i < nir_dest_num_components(intr->dest); i++)
       store_dest(ctx, &intr->dest, i,
-                 dxil_emit_extractval(&ctx->mod, agg, i));
+                 dxil_emit_extractval(&ctx->mod, agg, i + first_component));
 
    if (nir_dest_bit_size(intr->dest) == 16)
       ctx->mod.feats.native_low_precision = true;
@@ -4878,10 +4843,9 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_atomic_deref(ctx, intr);
    case nir_intrinsic_deref_atomic_swap:
       return emit_atomic_deref_swap(ctx, intr);
-   case nir_intrinsic_load_ubo:
-      return emit_load_ubo(ctx, intr);
    case nir_intrinsic_load_ubo_dxil:
-      return emit_load_ubo_dxil(ctx, intr);
+   case nir_intrinsic_load_ubo_vec4:
+      return emit_load_ubo_vec4(ctx, intr);
    case nir_intrinsic_load_primitive_id:
       return emit_load_unary_external_function(ctx, intr, "dx.op.primitiveID",
                                                DXIL_INTR_PRIMITIVE_ID, nir_type_int);
@@ -6527,6 +6491,9 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    NIR_PASS_V(s, nir_lower_pack);
    NIR_PASS_V(s, dxil_nir_lower_system_values);
    NIR_PASS_V(s, nir_lower_io_to_scalar, nir_var_shader_in | nir_var_system_value | nir_var_shader_out);
+
+   NIR_PASS_V(s, nir_lower_ubo_vec4);
+
    if (opts->shader_model_max < SHADER_MODEL_6_6) {
       /* In a later pass, load_helper_invocation will be lowered to sample mask based fallback,
        * so both load- and is- will be emulated eventually.
