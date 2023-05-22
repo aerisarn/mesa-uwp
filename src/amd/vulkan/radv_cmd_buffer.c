@@ -4557,6 +4557,12 @@ radv_emit_attachment_feedback_loop_enable(struct radv_cmd_buffer *cmd_buffer)
       z_order = V_02880C_LATE_Z;
    }
 
+   /* Bug workaround for smoothing (overrasterization) on GFX6. */
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX6 &&
+       d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT) {
+      z_order = V_02880C_LATE_Z;
+   }
+
    db_shader_control |= S_02880C_Z_ORDER(z_order);
 
    radeon_set_context_reg(cmd_buffer->cs, R_02880C_DB_SHADER_CONTROL, db_shader_control);
@@ -4689,7 +4695,8 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const ui
                  RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))
       radv_emit_msaa_state(cmd_buffer);
 
-   if (states & RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE)
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE |
+                 RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))
       radv_emit_attachment_feedback_loop_enable(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
