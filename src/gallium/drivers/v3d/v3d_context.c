@@ -220,13 +220,6 @@ v3d_flag_dirty_sampler_state(struct v3d_context *v3d,
 }
 
 void
-v3d_create_texture_shader_state_bo(struct v3d_context *v3d,
-                                   struct v3d_sampler_view *so)
-{
-        v3d_X(&v3d->screen->devinfo, create_texture_shader_state_bo)(v3d, so);
-}
-
-void
 v3d_get_tile_buffer_size(bool is_msaa,
                          bool double_buffer,
                          uint32_t nr_cbufs,

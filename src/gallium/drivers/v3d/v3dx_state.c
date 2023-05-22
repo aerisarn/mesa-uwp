@@ -1202,7 +1202,7 @@ v3d_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *prsc,
                 pipe_resource_reference(&so->texture, prsc);
         }
 
-        v3d_create_texture_shader_state_bo(v3d, so);
+        v3dX(create_texture_shader_state_bo)(v3d, so);
 
         return &so->base;
 }
@@ -1253,7 +1253,7 @@ v3d_set_sampler_views(struct pipe_context *pctx,
                                 v3d_sampler_view(stage_tex->textures[i]);
                         struct v3d_resource *rsc = v3d_resource(so->texture);
                         if (so->serial_id != rsc->serial_id)
-                                v3d_create_texture_shader_state_bo(v3d, so);
+                                v3dX(create_texture_shader_state_bo)(v3d, so);
                 }
         }
 

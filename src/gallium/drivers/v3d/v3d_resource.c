@@ -161,8 +161,10 @@ rebind_sampler_views(struct v3d_context *v3d,
 
                         struct v3d_sampler_view *sview =
                                 v3d_sampler_view(psview);
+                        struct v3d_device_info *devinfo =
+                                &v3d->screen->devinfo;
 
-                        v3d_create_texture_shader_state_bo(v3d, sview);
+                        v3d_X(devinfo, create_texture_shader_state_bo)(v3d, sview);
 
                         v3d_flag_dirty_sampler_state(v3d, st);
                 }
