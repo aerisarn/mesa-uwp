@@ -5106,6 +5106,7 @@ typedef struct {
 typedef nir_mem_access_size_align
    (*nir_lower_mem_access_bit_sizes_cb)(nir_intrinsic_op intrin,
                                         uint8_t bytes,
+                                        uint8_t bit_size,
                                         uint32_t align_mul,
                                         uint32_t align_offset,
                                         bool offset_is_const,

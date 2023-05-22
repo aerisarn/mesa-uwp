@@ -89,7 +89,7 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_mem_access_size_align requested =
       mem_access_size_align_cb(intrin->intrinsic, bytes_read,
-                               align_mul, whole_align_offset,
+                               bit_size, align_mul, whole_align_offset,
                                offset_is_const, cb_data);
 
    assert(util_is_power_of_two_nonzero(align_mul));
@@ -112,7 +112,7 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
       const uint32_t chunk_align =
          nir_combined_align(align_mul, chunk_align_offset);
       requested = mem_access_size_align_cb(intrin->intrinsic, bytes_left,
-                                           align_mul, chunk_align_offset,
+                                           bit_size, align_mul, chunk_align_offset,
                                            offset_is_const, cb_data);
 
       unsigned chunk_bytes;
@@ -253,7 +253,7 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_mem_access_size_align requested =
       mem_access_size_align_cb(intrin->intrinsic, bytes_written,
-                               align_mul, whole_align_offset,
+                               bit_size, align_mul, whole_align_offset,
                                offset_is_const, cb_data);
 
    assert(util_is_power_of_two_nonzero(align_mul));
@@ -289,7 +289,7 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
          (whole_align_offset + chunk_start) % align_mul;
 
       requested = mem_access_size_align_cb(intrin->intrinsic, max_chunk_bytes,
-                                           align_mul, chunk_align_offset,
+                                           bit_size, align_mul, chunk_align_offset,
                                            offset_is_const, cb_data);
 
       const uint32_t chunk_bytes =

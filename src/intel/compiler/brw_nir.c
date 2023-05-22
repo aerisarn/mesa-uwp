@@ -1368,7 +1368,7 @@ bool combine_all_memory_barriers(nir_intrinsic_instr *a,
 
 static nir_mem_access_size_align
 get_mem_access_size_align(nir_intrinsic_op intrin, uint8_t bytes,
-                          uint32_t align_mul, uint32_t align_offset,
+                          uint8_t bit_size, uint32_t align_mul, uint32_t align_offset,
                           bool offset_is_const, const void *cb_data)
 {
    const uint32_t align = nir_combined_align(align_mul, align_offset);
