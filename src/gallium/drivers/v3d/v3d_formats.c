@@ -136,14 +136,6 @@ v3d_get_internal_type_bpp_for_output_format(const struct v3d_device_info *devinf
 }
 
 bool
-v3d_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
-                            uint32_t tex_format,
-                            bool for_mipmap)
-{
-        return v3d_X(devinfo, tfu_supports_tex_format)(tex_format, for_mipmap);
-}
-
-bool
 v3d_format_supports_tlb_msaa_resolve(const struct v3d_device_info *devinfo,
                                      enum pipe_format f)
 {

@@ -260,8 +260,9 @@ v3d_tfu(struct pipe_context *pctx,
         }
 
         uint32_t tex_format = v3d_get_tex_format(&screen->devinfo, pformat);
+        struct v3d_device_info *devinfo = &screen->devinfo;
 
-        if (!v3d_tfu_supports_tex_format(&screen->devinfo, tex_format, for_mipmap)) {
+        if (!v3d_X(devinfo, tfu_supports_tex_format)(tex_format, for_mipmap)) {
                 assert(for_mipmap);
                 return false;
         }
