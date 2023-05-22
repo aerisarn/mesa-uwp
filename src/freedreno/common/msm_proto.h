@@ -55,6 +55,11 @@ struct msm_shmem {
     * lost.
     */
    uint32_t async_error;
+
+   /**
+    * Counter that is incremented on global fault (see MSM_PARAM_FAULTS)
+    */
+   uint32_t global_faults;
 };
 
 #define DEFINE_CAST(parent, child)                                             \
@@ -98,10 +103,17 @@ struct msm_ccmd_rsp {
    uint32_t len;
 };
 
+#ifdef __cplusplus
+#define MSM_CCMD(_cmd, _len) {                      \
+       .cmd = MSM_CCMD_##_cmd,                      \
+       .len = (_len),                               \
+   }
+#else
 #define MSM_CCMD(_cmd, _len) (struct msm_ccmd_req){ \
        .cmd = MSM_CCMD_##_cmd,                      \
        .len = (_len),                               \
    }
+#endif
 
 /*
  * MSM_CCMD_NOP
@@ -226,14 +238,6 @@ DEFINE_CAST(msm_ccmd_req, msm_ccmd_gem_set_name_req)
  * kernel side (ugg).. need to come up with a better story for fencing.
  * We probably need to sort something out for that to handle syncobjs.
  *
- * Note that the bo handles referenced are the host handles, so that
- * they can be directly passed to the host kernel without translation.
- *
- * TODO we can pack the payload tighter (and enforce no-relocs) if we
- * defined our own structs, at the cost of host userspace having to
- * do a bit more work.  Is it worth it?  It could probably be done
- * without extra overhead in guest userspace..
- *
  * No response.
  */
 struct msm_ccmd_gem_submit_req {
@@ -245,16 +249,17 @@ struct msm_ccmd_gem_submit_req {
    uint32_t nr_cmds;
 
    /**
-    * What userspace expects the next seqno fence to be.  To avoid having
-    * to wait for host, the guest tracks what it expects to be the next
-    * returned seqno fence.  This is passed to guest just for error
-    * checking.
+    * The fence "seqno" assigned by the guest userspace.  The host SUBMIT
+    * ioctl uses the MSM_SUBMIT_FENCE_SN_IN flag to let the guest assign
+    * the sequence #, to avoid the guest needing to wait for a response
+    * from the host.
     */
    uint32_t fence;
 
    /**
     * Payload is first an array of 'struct drm_msm_gem_submit_bo' of
-    * length determined by nr_bos (note that handles are host handles),
+    * length determined by nr_bos (note that handles are guest resource
+    * ids which are translated to host GEM handles by the host VMM),
     * followed by an array of 'struct drm_msm_gem_submit_cmd' of length
     * determined by nr_cmds
     */
@@ -276,7 +281,7 @@ struct msm_ccmd_gem_upload_req {
    uint32_t pad;
    uint32_t off;
 
-   /* Note: packet size aligned to 4 bytes, so the string name may
+   /* Note: packet size aligned to 4 bytes, so the payload may
     * be shorter than the packet header indicates.
     */
    uint32_t len;
