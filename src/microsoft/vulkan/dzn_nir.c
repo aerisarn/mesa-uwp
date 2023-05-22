@@ -829,10 +829,12 @@ load_dynamic_depth_bias(nir_builder *b, struct dzn_nir_point_gs_info *info)
       nir_address_format_bit_size(ubo_format),
       index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-   return build_load_ubo_dxil(
-      b, nir_channel(b, load_desc, 0),
+   return nir_build_load_ubo(
+      b, 1, 32,
+      nir_channel(b, load_desc, 0),
       nir_imm_int(b, offset),
-      1, 32, 4);
+      .align_mul = 256,
+      .align_offset = offset);
 }
 
 nir_shader *

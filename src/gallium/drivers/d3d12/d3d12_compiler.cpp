@@ -138,7 +138,6 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
          NIR_PASS_V(nir, nir_lower_clip_halfz);
       NIR_PASS_V(nir, d3d12_lower_yflip);
    }
-   NIR_PASS_V(nir, nir_lower_packed_ubo_loads);
    NIR_PASS_V(nir, d3d12_lower_load_draw_params);
    NIR_PASS_V(nir, d3d12_lower_load_patch_vertices_in);
    NIR_PASS_V(nir, d3d12_lower_state_vars, shader);
