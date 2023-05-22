@@ -434,16 +434,8 @@ parse_delay_alu(wait_ctx& ctx, alu_delay_info& delay, Instruction* instr)
          delay.salu_cycles = imm[i] - (uint32_t)alu_delay_wait::SALU_CYCLE_1 + 1;
    }
 
-   for (std::pair<const PhysReg, wait_entry>& e : ctx.gpr_map) {
-      wait_entry& entry = e.second;
-
-      if (delay.valu_instrs <= entry.delay.valu_instrs)
-         delay.valu_cycles = std::max(delay.valu_cycles, entry.delay.valu_cycles);
-      if (delay.trans_instrs <= entry.delay.trans_instrs)
-         delay.trans_cycles = std::max(delay.trans_cycles, entry.delay.trans_cycles);
-      if (delay.salu_cycles <= entry.delay.salu_cycles)
-         delay.salu_cycles = std::max(delay.salu_cycles, entry.delay.salu_cycles);
-   }
+   delay.valu_cycles = instr->pass_flags & 0xffff;
+   delay.trans_cycles = instr->pass_flags >> 16;
 
    return true;
 }
@@ -981,6 +973,7 @@ emit_delay_alu(wait_ctx& ctx, std::vector<aco_ptr<Instruction>>& instructions,
       create_instruction<SOPP_instruction>(aco_opcode::s_delay_alu, Format::SOPP, 0, 0);
    inst->imm = imm;
    inst->block = -1;
+   inst->pass_flags = (delay.valu_cycles | (delay.trans_cycles << 16));
    instructions.emplace_back(inst);
    delay = alu_delay_info();
 }
