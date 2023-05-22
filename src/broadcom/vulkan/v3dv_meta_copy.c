@@ -1539,11 +1539,13 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    else
       height = region->bufferImageHeight;
 
-   uint8_t plane =
+   const uint8_t plane =
       v3dv_plane_from_aspect(region->imageSubresource.aspectMask);
 
-   if (width != image->planes[plane].width ||
-       height != image->planes[plane].height)
+   const uint32_t mip_level = region->imageSubresource.mipLevel;
+   const struct v3d_resource_slice *slice = &image->planes[plane].slices[mip_level];
+
+   if (width != slice->width || height != slice->height)
       return false;
 
    /* Handle region semantics for compressed images */
@@ -1565,9 +1567,6 @@ copy_buffer_to_image_tfu(struct v3dv_cmd_buffer *cmd_buffer,
    /* We only use single-plane formats with the TFU */
    assert(format->plane_count == 1);
    const struct v3dv_format_plane *format_plane = &format->planes[0];
-
-   const uint32_t mip_level = region->imageSubresource.mipLevel;
-   const struct v3d_resource_slice *slice = &image->planes[plane].slices[mip_level];
 
    uint32_t num_layers;
    if (image->vk.image_type != VK_IMAGE_TYPE_3D)
