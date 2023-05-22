@@ -495,11 +495,12 @@ force_waitcnt(wait_ctx& ctx, wait_imm& imm)
 void
 update_alu(wait_ctx& ctx, bool is_valu, bool is_trans, bool clear, int cycles)
 {
-   for (std::pair<const PhysReg, wait_entry>& e : ctx.gpr_map) {
-      wait_entry& entry = e.second;
+   std::map<PhysReg, wait_entry>::iterator it = ctx.gpr_map.begin();
+   while (it != ctx.gpr_map.end()) {
+      wait_entry& entry = it->second;
 
       if (clear) {
-         entry.delay = alu_delay_info();
+         entry.remove_counter(counter_alu);
       } else {
          entry.delay.valu_instrs += is_valu ? 1 : 0;
          entry.delay.trans_instrs += is_trans ? 1 : 0;
@@ -508,7 +509,14 @@ update_alu(wait_ctx& ctx, bool is_valu, bool is_trans, bool clear, int cycles)
          entry.delay.trans_cycles -= cycles;
 
          entry.delay.fixup();
+         if (it->second.delay.empty())
+            entry.remove_counter(counter_alu);
       }
+
+      if (!entry.counters)
+         it = ctx.gpr_map.erase(it);
+      else
+         it++;
    }
 }
 
@@ -992,9 +1000,9 @@ handle_block(Program* program, Block& block, wait_ctx& ctx)
       memory_sync_info sync_info = get_sync_info(instr.get());
       kill(queued_imm, queued_delay, instr.get(), ctx, sync_info);
 
-      gen(instr.get(), ctx);
       if (program->gfx_level >= GFX11)
          gen_alu(instr.get(), ctx);
+      gen(instr.get(), ctx);
 
       if (instr->format != Format::PSEUDO_BARRIER && !is_wait && !is_delay_alu) {
          if (instr->isVINTERP_INREG() && queued_imm.exp != wait_imm::unset_counter) {
