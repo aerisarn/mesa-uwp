@@ -59,8 +59,8 @@ struct tu_knl {
    int (*device_get_gpu_timestamp)(struct tu_device *dev, uint64_t *ts);
    int (*device_get_suspend_count)(struct tu_device *dev, uint64_t *suspend_count);
    VkResult (*device_check_status)(struct tu_device *dev);
-   int (*submitqueue_new)(const struct tu_device *dev, int priority, uint32_t *queue_id);
-   void (*submitqueue_close)(const struct tu_device *dev, uint32_t queue_id);
+   int (*submitqueue_new)(struct tu_device *dev, int priority, uint32_t *queue_id);
+   void (*submitqueue_close)(struct tu_device *dev, uint32_t queue_id);
    VkResult (*bo_init)(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
                        uint64_t client_iova, VkMemoryPropertyFlags mem_property,
                        enum tu_bo_alloc_flags flags, const char *name);
@@ -172,12 +172,12 @@ VkResult
 tu_device_check_status(struct vk_device *vk_device);
 
 int
-tu_drm_submitqueue_new(const struct tu_device *dev,
+tu_drm_submitqueue_new(struct tu_device *dev,
                        int priority,
                        uint32_t *queue_id);
 
 void
-tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
+tu_drm_submitqueue_close(struct tu_device *dev, uint32_t queue_id);
 
 VkResult
 tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit);

@@ -206,7 +206,7 @@ msm_device_check_status(struct tu_device *device)
 }
 
 static int
-msm_submitqueue_new(const struct tu_device *dev,
+msm_submitqueue_new(struct tu_device *dev,
                     int priority,
                     uint32_t *queue_id)
 {
@@ -227,7 +227,7 @@ msm_submitqueue_new(const struct tu_device *dev,
 }
 
 static void
-msm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
+msm_submitqueue_close(struct tu_device *dev, uint32_t queue_id)
 {
    drmCommandWrite(dev->fd, DRM_MSM_SUBMITQUEUE_CLOSE,
                    &queue_id, sizeof(uint32_t));

@@ -105,7 +105,7 @@ tu_device_check_status(struct vk_device *vk_device)
 }
 
 int
-tu_drm_submitqueue_new(const struct tu_device *dev,
+tu_drm_submitqueue_new(struct tu_device *dev,
                        int priority,
                        uint32_t *queue_id)
 {
@@ -113,7 +113,7 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
 }
 
 void
-tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
+tu_drm_submitqueue_close(struct tu_device *dev, uint32_t queue_id)
 {
    dev->instance->knl->submitqueue_close(dev, queue_id);
 }
