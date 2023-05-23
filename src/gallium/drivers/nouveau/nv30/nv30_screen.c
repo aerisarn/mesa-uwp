@@ -490,6 +490,7 @@ static const nir_shader_compiler_options nv30_base_compiler_options = {
    .no_integers = true,
 
    .use_interpolated_input_intrinsics = true,
+   .use_scoped_barrier = true,
 };
 
 static const void *

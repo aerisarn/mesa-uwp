@@ -752,7 +752,8 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
    .lower_vector_cmp = true,                                                  \
    .lower_cs_local_index_to_id = true,                                        \
    .max_unroll_iterations = 32,                                               \
-   .use_interpolated_input_intrinsics = true
+   .use_interpolated_input_intrinsics = true,                                 \
+   .use_scoped_barrier = true
 
 #define VGPU10_OPTIONS                                                        \
    .lower_doubles_options = nir_lower_dfloor,                                 \
