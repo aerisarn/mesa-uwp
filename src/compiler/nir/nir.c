@@ -1785,7 +1785,6 @@ nir_instr_rewrite_dest(nir_instr *instr, nir_dest *dest, nir_dest new_dest)
       src_add_all_uses(dest->reg.indirect, instr, NULL);
 }
 
-/* note: does *not* take ownership of 'name' */
 void
 nir_ssa_def_init(nir_instr *instr, nir_ssa_def *def,
                  unsigned num_components,
@@ -1809,7 +1808,6 @@ nir_ssa_def_init(nir_instr *instr, nir_ssa_def *def,
    }
 }
 
-/* note: does *not* take ownership of 'name' */
 void
 nir_ssa_dest_init(nir_instr *instr, nir_dest *dest,
                  unsigned num_components, unsigned bit_size)
