@@ -950,7 +950,7 @@ place_phi_read(nir_builder *b, nir_register *reg,
    }
 
    b->cursor = nir_after_block_before_jump(block);
-   nir_store_reg(b, reg, def, ~0);
+   nir_store_register(b, reg, def, ~0);
 }
 
 /** Lower all of the phi nodes in a block to movs to and from a register
@@ -995,7 +995,7 @@ nir_lower_phis_to_regs_block(nir_block *block)
       nir_register *reg = create_reg_for_ssa_def(&phi->dest.ssa, b.impl);
 
       b.cursor = nir_after_instr(&phi->instr);
-      nir_ssa_def *def = nir_load_reg(&b, reg);
+      nir_ssa_def *def = nir_load_register(&b, reg);
 
       nir_ssa_def_rewrite_uses(&phi->dest.ssa, def);
 
@@ -1008,7 +1008,7 @@ nir_lower_phis_to_regs_block(nir_block *block)
             b.cursor = nir_after_block_before_jump(src->pred);
             nir_ssa_def *src_ssa =
                nir_ssa_for_src(&b, src->src, phi->dest.ssa.num_components);
-            nir_store_reg(&b, reg, src_ssa, ~0);
+            nir_store_register(&b, reg, src_ssa, ~0);
          }
       }
 

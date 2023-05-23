@@ -182,7 +182,7 @@ ptn_get_src(struct ptn_compile *c, const struct prog_src_register *prog_src)
 
          nir_ssa_def *index = nir_imm_int(b, prog_src->Index);
          if (prog_src->RelAddr)
-            index = nir_iadd(b, index, nir_load_reg(b, c->addr_reg));
+            index = nir_iadd(b, index, nir_load_register(b, c->addr_reg));
          deref = nir_build_deref_array(b, deref, nir_channel(b, index, 0));
 
          src.src = nir_src_for_ssa(nir_load_deref(b, deref));
@@ -836,7 +836,7 @@ ptn_add_output_stores(struct ptn_compile *c)
    nir_builder *b = &c->build;
 
    nir_foreach_shader_out_variable(var, b->shader) {
-      nir_ssa_def *src = nir_load_reg(b, c->output_regs[var->data.location]);
+      nir_ssa_def *src = nir_load_register(b, c->output_regs[var->data.location]);
       if (c->prog->Target == GL_FRAGMENT_PROGRAM_ARB &&
           var->data.location == FRAG_RESULT_DEPTH) {
          /* result.depth has this strange convention of being the .z component of

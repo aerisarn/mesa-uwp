@@ -1475,14 +1475,14 @@ nir_build_deref_follower(nir_builder *b, nir_deref_instr *parent,
 }
 
 static inline nir_ssa_def *
-nir_load_reg(nir_builder *build, nir_register *reg)
+nir_load_register(nir_builder *build, nir_register *reg)
 {
    return nir_ssa_for_src(build, nir_src_for_reg(reg), reg->num_components);
 }
 
 static inline void
-nir_store_reg(nir_builder *build, nir_register *reg,
-              nir_ssa_def *def, nir_component_mask_t write_mask)
+nir_store_register(nir_builder *build, nir_register *reg,
+                   nir_ssa_def *def, nir_component_mask_t write_mask)
 {
    assert(reg->num_components == def->num_components);
    assert(reg->bit_size == def->bit_size);

@@ -859,11 +859,11 @@ duplicate_loop_bodies(nir_function_impl *impl, nir_instr *resume_instr)
 
          /* Initialize resume to true */
          b.cursor = nir_before_cf_list(&impl->body);
-         nir_store_reg(&b, resume_reg, nir_imm_true(&b), 1);
+         nir_store_register(&b, resume_reg, nir_imm_true(&b), 1);
 
          /* Set resume to false right after the resume instruction */
          b.cursor = nir_after_instr(resume_instr);
-         nir_store_reg(&b, resume_reg, nir_imm_false(&b), 1);
+         nir_store_register(&b, resume_reg, nir_imm_false(&b), 1);
       }
 
       /* Before we go any further, make sure that everything which exits the
