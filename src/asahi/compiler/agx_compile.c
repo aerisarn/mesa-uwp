@@ -1935,18 +1935,6 @@ agx_optimize_loop_nir(nir_shader *nir)
    } while (progress);
 }
 
-static bool
-combine_all_barriers(nir_intrinsic_instr *a, nir_intrinsic_instr *b, void *_)
-{
-   nir_intrinsic_set_memory_modes(
-      a, nir_intrinsic_memory_modes(a) | nir_intrinsic_memory_modes(b));
-   nir_intrinsic_set_memory_semantics(
-      a, nir_intrinsic_memory_semantics(a) | nir_intrinsic_memory_semantics(b));
-   nir_intrinsic_set_memory_scope(
-      a, MAX2(nir_intrinsic_memory_scope(a), nir_intrinsic_memory_scope(b)));
-   return true;
-}
-
 static void
 agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
 {
@@ -2010,7 +1998,7 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
     */
    NIR_PASS_V(nir, agx_nir_lower_algebraic_late);
    NIR_PASS_V(nir, nir_opt_constant_folding);
-   NIR_PASS_V(nir, nir_opt_combine_barriers, combine_all_barriers, NULL);
+   NIR_PASS_V(nir, nir_opt_combine_barriers, NULL, NULL);
 
    /* Must run after uses are fixed but before a last round of copyprop + DCE */
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
