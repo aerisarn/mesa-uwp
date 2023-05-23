@@ -419,6 +419,8 @@ fd6_sampler_view_update(struct fd_context *ctx,
       fdl6_buffer_view_init(so->descriptor, cso->format, swiz, iova, size);
    } else {
       struct fdl_view_args args = {
+         .chip = A6XX,
+
          /* Using relocs for addresses still */
          .iova = 0,
 

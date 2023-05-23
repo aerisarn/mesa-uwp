@@ -1708,6 +1708,7 @@ tu6_dirty_lrz_fc(struct tu_cmd_buffer *cmd,
 }
 TU_GENX(tu6_dirty_lrz_fc);
 
+template<chip CHIP>
 static void
 tu_image_view_copy_blit(struct fdl6_view *iview,
                         struct tu_image *image,
@@ -1728,6 +1729,7 @@ tu_image_view_copy_blit(struct fdl6_view *iview,
       &image->layout[tu6_plane_index(image->vk.format, aspect_mask)];
 
    const struct fdl_view_args args = {
+      .chip = CHIP,
       .iova = image->iova,
       .base_miplevel = subres->mipLevel,
       .level_count = 1,
@@ -1742,6 +1744,7 @@ tu_image_view_copy_blit(struct fdl6_view *iview,
    fdl6_view_init(iview, &layout, &args, false);
 }
 
+template<chip CHIP>
 static void
 tu_image_view_copy(struct fdl6_view *iview,
                    struct tu_image *image,
@@ -1749,9 +1752,10 @@ tu_image_view_copy(struct fdl6_view *iview,
                    const VkImageSubresourceLayers *subres,
                    uint32_t layer)
 {
-   tu_image_view_copy_blit(iview, image, format, subres, layer, false);
+   tu_image_view_copy_blit<CHIP>(iview, image, format, subres, layer, false);
 }
 
+template<chip CHIP>
 static void
 tu_image_view_blit(struct fdl6_view *iview,
                    struct tu_image *image,
@@ -1761,7 +1765,7 @@ tu_image_view_blit(struct fdl6_view *iview,
    enum pipe_format format =
       tu6_plane_format(image->vk.format, tu6_plane_index(image->vk.format,
                                                          subres->aspectMask));
-   tu_image_view_copy_blit(iview, image, format, subres, layer, false);
+   tu_image_view_copy_blit<CHIP>(iview, image, format, subres, layer, false);
 }
 
 template <chip CHIP>
@@ -1867,15 +1871,16 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
    }
 
    struct fdl6_view dst, src;
-   tu_image_view_blit(&dst, dst_image, &info->dstSubresource,
-                      MIN2(info->dstOffsets[0].z, info->dstOffsets[1].z));
+   tu_image_view_blit<CHIP>(
+      &dst, dst_image, &info->dstSubresource,
+      MIN2(info->dstOffsets[0].z, info->dstOffsets[1].z));
 
    if (z_scale) {
-      tu_image_view_copy_blit(&src, src_image, src_format,
-                              &info->srcSubresource, 0, true);
+      tu_image_view_copy_blit<CHIP>(&src, src_image, src_format,
+                                    &info->srcSubresource, 0, true);
       ops->src(cmd, cs, &src, 0, filter, dst_format);
    } else {
-      tu_image_view_blit(&src, src_image, &info->srcSubresource, info->srcOffsets[0].z);
+      tu_image_view_blit<CHIP>(&src, src_image, &info->srcSubresource, info->srcOffsets[0].z);
    }
 
    for (uint32_t i = 0; i < layers; i++) {
@@ -1994,7 +1999,8 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
               (VkSampleCountFlagBits) dst_image->layout[0].nr_samples);
 
    struct fdl6_view dst;
-   tu_image_view_copy(&dst, dst_image, dst_format, &info->imageSubresource, offset.z);
+   tu_image_view_copy<CHIP>(&dst, dst_image, dst_format,
+                            &info->imageSubresource, offset.z);
 
    for (uint32_t i = 0; i < layers; i++) {
       ops->dst(cs, &dst, i, src_format);
@@ -2077,7 +2083,8 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
               VK_SAMPLE_COUNT_1_BIT);
 
    struct fdl6_view src;
-   tu_image_view_copy(&src, src_image, src_format, &info->imageSubresource, offset.z);
+   tu_image_view_copy<CHIP>(&src, src_image, src_format,
+                            &info->imageSubresource, offset.z);
 
    for (uint32_t i = 0; i < layers; i++) {
       ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST, dst_format);
@@ -2232,8 +2239,8 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
    struct fdl6_view dst, src;
 
    if (use_staging_blit) {
-      tu_image_view_copy(&dst, dst_image, dst_format, &info->dstSubresource, dst_offset.z);
-      tu_image_view_copy(&src, src_image, src_format, &info->srcSubresource, src_offset.z);
+      tu_image_view_copy<CHIP>(&dst, dst_image, dst_format, &info->dstSubresource, dst_offset.z);
+      tu_image_view_copy<CHIP>(&src, src_image, src_format, &info->srcSubresource, src_offset.z);
 
       struct fdl_layout staging_layout = { 0 };
       VkOffset3D staging_offset = { 0 };
@@ -2264,6 +2271,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       struct fdl6_view staging;
       const struct fdl_layout *staging_layout_ptr = &staging_layout;
       const struct fdl_view_args copy_to_args = {
+         .chip = CHIP,
          .iova = staging_bo->iova,
          .base_miplevel = 0,
          .level_count = info->srcSubresource.layerCount,
@@ -2293,6 +2301,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       tu_cs_emit_wfi(cs);
 
       const struct fdl_view_args copy_from_args = {
+         .chip = CHIP,
          .iova = staging_bo->iova,
          .base_miplevel = 0,
          .level_count = info->srcSubresource.layerCount,
@@ -2315,8 +2324,8 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
          ops->run(cmd, cs);
       }
    } else {
-      tu_image_view_copy(&dst, dst_image, format, &info->dstSubresource, dst_offset.z);
-      tu_image_view_copy(&src, src_image, format, &info->srcSubresource, src_offset.z);
+      tu_image_view_copy<CHIP>(&dst, dst_image, format, &info->dstSubresource, dst_offset.z);
+      tu_image_view_copy<CHIP>(&src, src_image, format, &info->srcSubresource, src_offset.z);
 
       ops->setup(cmd, cs, format, format, info->dstSubresource.aspectMask,
                  0, false, dst_image->layout[0].ubwc,
@@ -2510,8 +2519,8 @@ tu_CmdResolveImage2KHR(VkCommandBuffer commandBuffer,
       coords(ops, cs, info->dstOffset, info->srcOffset, info->extent);
 
       struct fdl6_view dst, src;
-      tu_image_view_blit(&dst, dst_image, &info->dstSubresource, info->dstOffset.z);
-      tu_image_view_blit(&src, src_image, &info->srcSubresource, info->srcOffset.z);
+      tu_image_view_blit<CHIP>(&dst, dst_image, &info->dstSubresource, info->dstOffset.z);
+      tu_image_view_blit<CHIP>(&src, src_image, &info->srcSubresource, info->srcOffset.z);
 
       for (uint32_t i = 0; i < layers; i++) {
          ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST, dst_format);
@@ -2667,7 +2676,7 @@ clear_image(struct tu_cmd_buffer *cmd,
          .baseArrayLayer = range->baseArrayLayer,
          .layerCount = 1,
       };
-      tu_image_view_copy_blit(&dst, image, format, &subresource, 0, false);
+      tu_image_view_copy_blit<CHIP>(&dst, image, format, &subresource, 0, false);
 
       for (uint32_t i = 0; i < layer_count; i++) {
          ops->dst(cs, &dst, i, format);
