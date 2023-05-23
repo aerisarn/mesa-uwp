@@ -1601,9 +1601,9 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
                                               NIR_MEMORY_RELEASE);
 
    if (ctx->so->type == MESA_SHADER_TESS_CTRL) {
-      /* Remove mode corresponding to nir_intrinsic_memory_barrier_tcs_patch,
-       * because hull shaders dispatch 32 wide so an entire patch will
-       * always fit in a single warp and execute in lock-step.
+      /* Remove mode corresponding to TCS patch barriers because hull shaders
+       * dispatch 32 wide so an entire patch will always fit in a single warp
+       * and execute in lock-step.
        *
        * TODO: memory barrier also tells us not to reorder stores, this
        * information is lost here (backend doesn't reorder stores so we
