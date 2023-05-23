@@ -321,3 +321,25 @@ anv_i915_device_check_status(struct vk_device *vk_device)
 
    return VK_SUCCESS;
 }
+
+bool
+anv_i915_device_destroy_vm(struct anv_device *device)
+{
+   struct drm_i915_gem_vm_control destroy = {
+      .vm_id = device->vm_id,
+   };
+
+   return intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_VM_DESTROY, &destroy) == 0;
+}
+
+VkResult
+anv_i915_device_setup_vm(struct anv_device *device)
+{
+   struct drm_i915_gem_vm_control create = {};
+   if (intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_VM_CREATE, &create))
+      return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                       "vm creation failed");
+
+   device->vm_id = create.vm_id;
+   return VK_SUCCESS;
+}
