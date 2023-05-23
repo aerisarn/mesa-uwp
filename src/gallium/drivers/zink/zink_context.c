@@ -3622,7 +3622,7 @@ zink_flush(struct pipe_context *pctx,
                 check_device_lost(ctx);
           }
        }
-       if (ctx->tc && !screen->driver_workarounds.track_renderpasses)
+       if (ctx->tc && !ctx->track_renderpasses)
          tc_driver_internal_flush_notify(ctx->tc);
    } else {
       fence = &batch->state->fence;
