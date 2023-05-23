@@ -74,6 +74,25 @@ _mesa_spirv_shader_binary(struct gl_context *ctx,
    struct gl_spirv_module *module;
    struct gl_shader_spirv_data *spirv_data;
 
+   /* From OpenGL 4.6 Core spec, "7.2 Shader Binaries" :
+    *
+    * "An INVALID_VALUE error is generated if the data pointed to by binary
+    *  does not match the specified binaryformat."
+    *
+    * However, the ARB_gl_spirv spec, under issue #16 says:
+    *
+    * "ShaderBinary is expected to form an association between the SPIR-V
+    *  module and likely would not parse the module as would be required to
+    *  detect unsupported capabilities or other validation failures."
+    *
+    * Which specifies little to no validation requirements. Nevertheless, the
+    * two small checks below seem reasonable.
+    */
+   if (!binary || (length % 4) != 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "glShaderBinary");
+      return;
+   }
+
    module = malloc(sizeof(*module) + length);
    if (!module) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glShaderBinary");
