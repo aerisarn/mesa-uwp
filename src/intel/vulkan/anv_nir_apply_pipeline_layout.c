@@ -213,6 +213,7 @@ get_used_bindings(UNUSED nir_builder *_b, nir_instr *instr, void *_state)
       case nir_intrinsic_image_deref_load_param_intel:
       case nir_intrinsic_image_deref_load_raw_intel:
       case nir_intrinsic_image_deref_store_raw_intel:
+      case nir_intrinsic_image_deref_sparse_load:
          add_deref_src_binding(state, intrin->src[0]);
          break;
 
@@ -1714,6 +1715,7 @@ apply_pipeline_layout(nir_builder *b, nir_instr *instr, void *_state)
       case nir_intrinsic_image_deref_load_param_intel:
       case nir_intrinsic_image_deref_load_raw_intel:
       case nir_intrinsic_image_deref_store_raw_intel:
+      case nir_intrinsic_image_deref_sparse_load:
          return lower_image_intrinsic(b, intrin, state);
       case nir_intrinsic_image_deref_size:
          return lower_image_size_intrinsic(b, intrin, state);
