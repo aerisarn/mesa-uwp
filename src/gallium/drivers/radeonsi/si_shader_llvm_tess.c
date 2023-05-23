@@ -212,12 +212,6 @@ static LLVMValueRef get_tess_ring_descriptor(struct si_shader_context *ctx, enum
    return ac_build_gather_values(&ctx->ac, desc, 4);
 }
 
-void si_llvm_preload_tess_rings(struct si_shader_context *ctx)
-{
-   ctx->tess_offchip_ring = get_tess_ring_descriptor(
-      ctx, ctx->stage == MESA_SHADER_TESS_CTRL ? TESS_OFFCHIP_RING_TCS : TESS_OFFCHIP_RING_TES);
-}
-
 static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMTypeRef type,
                                              LLVMValueRef vertex_index, LLVMValueRef param_index,
                                              unsigned driver_location, unsigned component,

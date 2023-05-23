@@ -98,7 +98,6 @@ struct si_shader_context {
 
    /* Preloaded descriptors. */
    LLVMValueRef gsvs_ring[4];
-   LLVMValueRef tess_offchip_ring;
    LLVMValueRef instance_divisor_constbuf;
 
    LLVMValueRef gs_ngg_emit;
@@ -200,7 +199,6 @@ void si_llvm_gs_build_end(struct si_shader_context *ctx);
 
 /* si_shader_llvm_tess.c */
 LLVMValueRef si_get_rel_patch_id(struct si_shader_context *ctx);
-void si_llvm_preload_tess_rings(struct si_shader_context *ctx);
 void si_llvm_ls_build_end(struct si_shader_context *ctx);
 void si_llvm_build_tcs_epilog(struct si_shader_context *ctx, union si_shader_part_key *key,
                               bool separate_epilog);

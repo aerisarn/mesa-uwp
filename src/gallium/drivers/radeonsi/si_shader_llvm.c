@@ -671,9 +671,6 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
    switch (intrin->intrinsic) {
-   case nir_intrinsic_load_ring_tess_offchip_amd:
-      return ctx->tess_offchip_ring;
-
    case nir_intrinsic_load_tess_rel_patch_id_amd:
       return si_get_rel_patch_id(ctx);
 
@@ -779,11 +776,6 @@ static bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shade
 
    case MESA_SHADER_TESS_CTRL:
       si_llvm_init_tcs_callbacks(ctx);
-      si_llvm_preload_tess_rings(ctx);
-      break;
-
-   case MESA_SHADER_TESS_EVAL:
-      si_llvm_preload_tess_rings(ctx);
       break;
 
    case MESA_SHADER_GEOMETRY:

@@ -18,6 +18,7 @@ struct lower_abi_state {
    struct si_shader_args *args;
 
    nir_ssa_def *esgs_ring;
+   nir_ssa_def *tess_offchip_ring;
 };
 
 #define GET_FIELD_NIR(field) \
@@ -157,13 +158,18 @@ fetch_framebuffer(nir_builder *b, struct si_shader_args *args,
                                   .access = ACCESS_CAN_REORDER);
 }
 
-static nir_ssa_def *build_tess_factor_ring_desc(nir_builder *b, struct si_screen *screen,
-                                                struct si_shader_args *args)
+static nir_ssa_def *build_tess_ring_desc(nir_builder *b, struct si_screen *screen,
+                                         struct si_shader_args *args)
 {
-   nir_ssa_def *addr = ac_nir_load_arg(b, &args->ac, args->tcs_out_lds_layout);
-   /* TCS only receives high 13 bits of the address. */
-   addr = nir_iand_imm(b, addr, 0xfff80000);
-   addr = nir_iadd_imm(b, addr, screen->hs.tess_offchip_ring_size);
+   nir_ssa_def *addr;
+   if (b->shader->info.stage == MESA_SHADER_TESS_CTRL) {
+      addr = ac_nir_load_arg(b, &args->ac, args->tcs_out_lds_layout);
+      /* TCS only receives high 13 bits of the address. */
+      addr = nir_iand_imm(b, addr, 0xfff80000);
+   } else {
+      assert(b->shader->info.stage == MESA_SHADER_TESS_EVAL);
+      addr = ac_nir_load_arg(b, &args->ac, args->tes_offchip_addr);
+   }
 
    uint32_t rsrc3 =
       S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
@@ -229,6 +235,9 @@ static void preload_reusable_variables(nir_builder *b, struct lower_abi_state *s
        (key->ge.as_es || sel->stage == MESA_SHADER_GEOMETRY)) {
       s->esgs_ring = build_esgs_ring_desc(b, sel->screen->info.gfx_level, s->args);
    }
+
+   if (sel->stage == MESA_SHADER_TESS_CTRL || sel->stage == MESA_SHADER_TESS_EVAL)
+      s->tess_offchip_ring = build_tess_ring_desc(b, sel->screen, s->args);
 }
 
 static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_state *s)
@@ -496,9 +505,13 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = fetch_framebuffer(b, args, sel, key);
       break;
    }
-   case nir_intrinsic_load_ring_tess_factors_amd:
-      replacement = build_tess_factor_ring_desc(b, sel->screen, args);
+   case nir_intrinsic_load_ring_tess_factors_amd: {
+      assert(s->tess_offchip_ring);
+      nir_ssa_def *addr = nir_channel(b, s->tess_offchip_ring, 0);
+      addr = nir_iadd_imm(b, addr, sel->screen->hs.tess_offchip_ring_size);
+      replacement = nir_vector_insert_imm(b, s->tess_offchip_ring, addr, 0);
       break;
+   }
    case nir_intrinsic_load_ring_tess_factors_offset_amd:
       replacement = ac_nir_load_arg(b, &args->ac, args->ac.tcs_factor_offset);
       break;
@@ -606,6 +619,10 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
          assert(stage == MESA_SHADER_TESS_EVAL);
          replacement = ac_nir_load_arg(b, &args->ac, args->ac.tes_rel_patch_id);
       }
+      break;
+   case nir_intrinsic_load_ring_tess_offchip_amd:
+      assert(s->tess_offchip_ring);
+      replacement = s->tess_offchip_ring;
       break;
    default:
       return false;
