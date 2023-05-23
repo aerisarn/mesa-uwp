@@ -35,8 +35,6 @@ is_memory_barrier_tcs_patch(const nir_intrinsic_instr *intr)
       assert(nir_intrinsic_memory_modes(intr) == nir_var_shader_out);
       assert(nir_intrinsic_memory_scope(intr) == NIR_SCOPE_WORKGROUP);
       return true;
-   } else if (intr->intrinsic == nir_intrinsic_memory_barrier_tcs_patch) {
-      return true;
    } else {
       return false;
    }
@@ -51,8 +49,7 @@ remove_hs_intrinsics(nir_function_impl *impl)
             continue;
          nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
          if (intr->intrinsic != nir_intrinsic_store_output &&
-             !is_memory_barrier_tcs_patch(intr) &&
-             intr->intrinsic != nir_intrinsic_control_barrier)
+             !is_memory_barrier_tcs_patch(intr))
             continue;
          nir_instr_remove(instr);
       }
@@ -265,7 +262,6 @@ dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func)
             break;
          }
          case nir_intrinsic_scoped_barrier:
-         case nir_intrinsic_memory_barrier_tcs_patch:
             if (!is_memory_barrier_tcs_patch(intr))
                break;
 

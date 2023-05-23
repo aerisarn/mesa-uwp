@@ -3062,45 +3062,6 @@ emit_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       nir_intrinsic_memory_scope(intr));
 }
 
-/* Memory barrier for UAVs (buffers/images) at cross-workgroup scope */
-static bool
-emit_memory_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
-{
-   return emit_barrier_impl(ctx,
-      nir_var_mem_global,
-      NIR_SCOPE_NONE,
-      NIR_SCOPE_DEVICE);
-}
-
-/* Memory barrier for TGSM */
-static bool
-emit_memory_barrier_shared(struct ntd_context *ctx, nir_intrinsic_instr *intr)
-{
-   return emit_barrier_impl(ctx,
-      nir_var_mem_shared,
-      NIR_SCOPE_NONE,
-      NIR_SCOPE_WORKGROUP);
-}
-
-/* Memory barrier for all intra-workgroup memory accesses (UAVs and TGSM) */
-static bool
-emit_group_memory_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
-{
-   return emit_barrier_impl(ctx,
-      nir_var_mem_shared | nir_var_mem_global,
-      NIR_SCOPE_NONE,
-      NIR_SCOPE_WORKGROUP);
-}
-
-static bool
-emit_control_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
-{
-   return emit_barrier_impl(ctx,
-      nir_var_mem_shared,
-      NIR_SCOPE_WORKGROUP,
-      NIR_SCOPE_NONE);
-}
-
 static bool
 emit_load_global_invocation_id(struct ntd_context *ctx,
                                     nir_intrinsic_instr *intr)
@@ -5063,17 +5024,6 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_end_primitive(ctx, intr);
    case nir_intrinsic_scoped_barrier:
       return emit_barrier(ctx, intr);
-   case nir_intrinsic_memory_barrier:
-   case nir_intrinsic_memory_barrier_buffer:
-   case nir_intrinsic_memory_barrier_image:
-   case nir_intrinsic_memory_barrier_atomic_counter:
-      return emit_memory_barrier(ctx, intr);
-   case nir_intrinsic_memory_barrier_shared:
-      return emit_memory_barrier_shared(ctx, intr);
-   case nir_intrinsic_group_memory_barrier:
-      return emit_group_memory_barrier(ctx, intr);
-   case nir_intrinsic_control_barrier:
-      return emit_control_barrier(ctx, intr);
    case nir_intrinsic_ssbo_atomic:
       return emit_ssbo_atomic(ctx, intr);
    case nir_intrinsic_ssbo_atomic_swap:
