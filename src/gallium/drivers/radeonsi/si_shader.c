@@ -919,7 +919,8 @@ static bool upload_binary_elf(struct si_screen *sscreen, struct si_shader *shade
 
 static void calculate_needed_lds_size(struct si_screen *sscreen, struct si_shader *shader)
 {
-   if (shader->selector->stage == MESA_SHADER_VERTEX && !shader->key.ge.as_ls) {
+   if ((shader->selector->stage == MESA_SHADER_VERTEX && !shader->key.ge.as_ls) ||
+       shader->selector->stage == MESA_SHADER_TESS_EVAL) {
       unsigned size_in_dw = 0;
       if (shader->key.ge.as_es || shader->key.ge.as_ngg)
          size_in_dw += shader->gs_info.esgs_ring_size;
