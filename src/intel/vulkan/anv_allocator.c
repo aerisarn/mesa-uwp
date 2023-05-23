@@ -1409,9 +1409,11 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
 
    uint32_t align = device->physical->info.mem_alignment;
 
-   /* Gen12 CCS surface addresses need to be 64K aligned. */
-   if (device->info->ver >= 12 && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
-      align = MAX2(64 * 1024, align);
+   /* If we're using the AUX map, make sure we follow the required
+    * alignment.
+    */
+   if (device->info->has_aux_map && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
+      align = MAX2(intel_aux_map_get_alignment(device->aux_map_ctx), align);
 
    if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
       bo->has_fixed_address = true;
@@ -1450,14 +1452,18 @@ anv_device_alloc_bo(struct anv_device *device,
 
    uint64_t ccs_size = 0;
    if (device->info->has_aux_map && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS)) {
-      /* Align the size up to the next multiple of 64K so we don't have any
-       * AUX-TT entries pointing from a 64K page to itself.
-       */
-      size = align64(size, 64 * 1024);
-
-      /* See anv_bo::_ccs_size */
       uint64_t aux_ratio =
          intel_aux_get_main_to_aux_ratio(device->aux_map_ctx);
+
+      /* Aligning main the size up to the next multiple of main AUX CCS
+       * alignment requirement is wasteful, especially on MTL where the
+       * alignment is 1Mb. Instead align to the ratio of compression (1/256)
+       * which is also the requirement for the L1 aux-data address in the
+       * AUX-TT tables.
+       */
+      size = align64(size, aux_ratio);
+
+      /* See anv_bo::_ccs_size */
       ccs_size = align64(DIV_ROUND_UP(size, aux_ratio), 4096);
    }
 
