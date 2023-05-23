@@ -1377,6 +1377,7 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .has_isub = true,
       .has_txs = true,
       .lower_mul_2x32_64 = true,
+      .use_scoped_barrier = true,
       .support_16bit_alu = true, /* not quite what it sounds like */
       .max_unroll_iterations = 0,
    };

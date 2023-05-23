@@ -3527,6 +3527,40 @@ emit_is_helper_invocation(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
+emit_barrier(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   SpvScope scope = get_scope(nir_intrinsic_execution_scope(intr));
+   SpvScope mem_scope = get_scope(nir_intrinsic_memory_scope(intr));
+   SpvMemorySemanticsMask semantics = 0;
+
+   if (nir_intrinsic_memory_scope(intr) != NIR_SCOPE_NONE) {
+      nir_variable_mode modes = nir_intrinsic_memory_modes(intr);
+
+      if (modes & nir_var_image)
+         semantics |= SpvMemorySemanticsImageMemoryMask;
+
+      if (modes & nir_var_mem_shared)
+         semantics |= SpvMemorySemanticsWorkgroupMemoryMask;
+
+      if (modes & (nir_var_mem_ssbo | nir_var_mem_global))
+         semantics |= SpvMemorySemanticsUniformMemoryMask;
+
+      if (modes & nir_var_mem_global)
+         semantics |= SpvMemorySemanticsCrossWorkgroupMemoryMask;
+
+      if (modes & (nir_var_shader_out | nir_var_mem_task_payload))
+         semantics |= SpvMemorySemanticsOutputMemoryMask;
+
+      semantics |= SpvMemorySemanticsAcquireReleaseMask;
+   }
+
+   if (nir_intrinsic_execution_scope(intr) != NIR_SCOPE_NONE)
+      spirv_builder_emit_control_barrier(&ctx->builder, scope, mem_scope, semantics);
+   else
+      spirv_builder_emit_memory_barrier(&ctx->builder, mem_scope, semantics);
+}
+
+static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
@@ -3638,64 +3672,14 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                           SpvBuiltInTessCoord, nir_type_float);
       break;
 
-   case nir_intrinsic_memory_barrier_tcs_patch:
-      /* handled by subsequent nir_intrinsic_control_barrier */
-      break;
-
-   case nir_intrinsic_memory_barrier:
-      spirv_builder_emit_memory_barrier(&ctx->builder,
-                                        ctx->sinfo->have_vulkan_memory_model ? SpvScopeQueueFamily : SpvScopeDevice,
-                                        SpvMemorySemanticsImageMemoryMask |
-                                        SpvMemorySemanticsUniformMemoryMask |
-                                        SpvMemorySemanticsWorkgroupMemoryMask |
-                                        SpvMemorySemanticsAtomicCounterMemoryMask |
-                                        SpvMemorySemanticsAcquireReleaseMask);
-      break;
-
-   case nir_intrinsic_memory_barrier_image:
-      spirv_builder_emit_memory_barrier(&ctx->builder, SpvScopeDevice,
-                                        SpvMemorySemanticsImageMemoryMask |
-                                        SpvMemorySemanticsAcquireReleaseMask);
-      break;
-
-   case nir_intrinsic_group_memory_barrier:
-      spirv_builder_emit_memory_barrier(&ctx->builder, SpvScopeWorkgroup,
-                                        SpvMemorySemanticsImageMemoryMask |
-                                        SpvMemorySemanticsUniformMemoryMask |
-                                        SpvMemorySemanticsWorkgroupMemoryMask |
-                                        SpvMemorySemanticsAtomicCounterMemoryMask |
-                                        SpvMemorySemanticsAcquireReleaseMask);
-      break;
-
-   case nir_intrinsic_memory_barrier_shared:
-      spirv_builder_emit_memory_barrier(&ctx->builder, SpvScopeWorkgroup,
-                                        SpvMemorySemanticsWorkgroupMemoryMask |
-                                        SpvMemorySemanticsAcquireReleaseMask);
-      break;
-
-   case nir_intrinsic_control_barrier:
-      if (gl_shader_stage_is_compute(ctx->stage))
-         spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup,
-                                            SpvScopeWorkgroup,
-                                            SpvMemorySemanticsWorkgroupMemoryMask | SpvMemorySemanticsAcquireReleaseMask);
-      else if (ctx->sinfo->have_vulkan_memory_model)
-         spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup,
-                                            SpvScopeWorkgroup,
-                                            SpvMemorySemanticsOutputMemoryMask | SpvMemorySemanticsAcquireReleaseMask);
-      else
-         spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup, SpvScopeInvocation, 0);
+   case nir_intrinsic_scoped_barrier:
+      emit_barrier(ctx, intr);
       break;
 
    case nir_intrinsic_interp_deref_at_centroid:
    case nir_intrinsic_interp_deref_at_sample:
    case nir_intrinsic_interp_deref_at_offset:
       emit_interpolate(ctx, intr);
-      break;
-
-   case nir_intrinsic_memory_barrier_buffer:
-      spirv_builder_emit_memory_barrier(&ctx->builder, SpvScopeDevice,
-                                        SpvMemorySemanticsUniformMemoryMask |
-                                        SpvMemorySemanticsAcquireReleaseMask);
       break;
 
    case nir_intrinsic_deref_atomic:
