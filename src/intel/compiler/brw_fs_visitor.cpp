@@ -49,6 +49,7 @@ fs_visitor::emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
    srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = texture_handle;
    srcs[TEX_LOGICAL_SRC_COORD_COMPONENTS] = brw_imm_d(components);
    srcs[TEX_LOGICAL_SRC_GRAD_COMPONENTS] = brw_imm_d(0);
+   srcs[TEX_LOGICAL_SRC_RESIDENCY] = brw_imm_d(0);
 
    fs_inst *inst = bld.emit(SHADER_OPCODE_TXF_MCS_LOGICAL, dest, srcs,
                             ARRAY_SIZE(srcs));

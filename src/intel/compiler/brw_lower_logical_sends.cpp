@@ -806,7 +806,8 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
                                 const fs_reg &tg4_offset,
                                 unsigned payload_type_bit_size,
                                 unsigned coord_components,
-                                unsigned grad_components)
+                                unsigned grad_components,
+                                bool residency)
 {
    const brw_compiler *compiler = bld.shader->compiler;
    const intel_device_info *devinfo = bld.shader->devinfo;
@@ -830,7 +831,8 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
        inst->offset != 0 || inst->eot ||
        op == SHADER_OPCODE_SAMPLEINFO ||
        sampler_handle.file != BAD_FILE ||
-       is_high_sampler(devinfo, sampler)) {
+       is_high_sampler(devinfo, sampler) ||
+       residency) {
       /* For general texture offsets (no txf workaround), we need a header to
        * put them in.
        *
@@ -847,11 +849,15 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
        * and we have an explicit header, we need to set up the sampler
        * writemask.  It's reversed from normal: 1 means "don't write".
        */
-      if (!inst->eot && regs_written(inst) != 4 * reg_width) {
-         assert(regs_written(inst) % reg_width == 0);
-         unsigned mask = ~((1 << (regs_written(inst) / reg_width)) - 1) & 0xf;
+      unsigned reg_count = regs_written(inst) - residency;
+      if (!inst->eot && reg_count < 4 * reg_width) {
+         assert(reg_count % reg_width == 0);
+         unsigned mask = ~((1 << (reg_count / reg_width)) - 1) & 0xf;
          inst->offset |= mask << 12;
       }
+
+      if (residency)
+         inst->offset |= 1 << 23; /* g0.2 bit23 : Pixel Null Mask Enable */
 
       /* Build the actual header */
       const fs_builder ubld = bld.exec_all().group(8, 0);
@@ -1301,6 +1307,10 @@ lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
    const unsigned coord_components = inst->src[TEX_LOGICAL_SRC_COORD_COMPONENTS].ud;
    assert(inst->src[TEX_LOGICAL_SRC_GRAD_COMPONENTS].file == IMM);
    const unsigned grad_components = inst->src[TEX_LOGICAL_SRC_GRAD_COMPONENTS].ud;
+   assert(inst->src[TEX_LOGICAL_SRC_RESIDENCY].file == IMM);
+   const bool residency = inst->src[TEX_LOGICAL_SRC_RESIDENCY].ud != 0;
+   /* residency is only supported on Gfx8+ */
+   assert(!residency || devinfo->ver >= 8);
 
    if (devinfo->ver >= 7) {
       const unsigned msg_payload_type_bit_size =
@@ -1316,7 +1326,8 @@ lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
                                       surface_handle, sampler_handle,
                                       tg4_offset,
                                       msg_payload_type_bit_size,
-                                      coord_components, grad_components);
+                                      coord_components, grad_components,
+                                      residency);
    } else if (devinfo->ver >= 5) {
       lower_sampler_logical_send_gfx5(bld, inst, op, coordinate,
                                       shadow_c, lod, lod2, sample_index,

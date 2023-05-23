@@ -3252,6 +3252,7 @@ fs_visitor::emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
    srcs[TEX_LOGICAL_SRC_SAMPLER]          = brw_imm_ud(0);
    srcs[TEX_LOGICAL_SRC_COORD_COMPONENTS] = brw_imm_ud(3);
    srcs[TEX_LOGICAL_SRC_GRAD_COMPONENTS]  = brw_imm_ud(0);
+   srcs[TEX_LOGICAL_SRC_RESIDENCY]        = brw_imm_ud(0);
 
    fs_inst *inst = bld.emit(op, dst, srcs, ARRAY_SIZE(srcs));
    inst->size_written = 4 * inst->dst.component_size(inst->exec_size);
@@ -4500,6 +4501,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       srcs[TEX_LOGICAL_SRC_SAMPLER] = brw_imm_d(0);
       srcs[TEX_LOGICAL_SRC_COORD_COMPONENTS] = brw_imm_d(0);
       srcs[TEX_LOGICAL_SRC_GRAD_COMPONENTS] = brw_imm_d(0);
+      srcs[TEX_LOGICAL_SRC_RESIDENCY] = brw_imm_d(0);
 
       /* Since the image size is always uniform, we can just emit a SIMD8
        * query instruction and splat the result out.
@@ -6446,6 +6448,19 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
 {
    fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
 
+   /* SKL PRMs: Volume 7: 3D-Media-GPGPU:
+    *
+    *    "The Pixel Null Mask field, when enabled via the Pixel Null Mask
+    *     Enable will be incorect for sample_c when applied to a surface with
+    *     64-bit per texel format such as R16G16BA16_UNORM. Pixel Null mask
+    *     Enable may incorrectly report pixels as referencing a Null surface."
+    *
+    * We'll take care of this in NIR.
+    */
+   assert(!instr->is_sparse || srcs[TEX_LOGICAL_SRC_SHADOW_C].file == BAD_FILE);
+
+   srcs[TEX_LOGICAL_SRC_RESIDENCY] = brw_imm_ud(instr->is_sparse);
+
    int lod_components = 0;
 
    /* The hardware requires a LOD for buffer textures */
@@ -6700,7 +6715,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       }
    }
 
-   fs_reg dst = bld.vgrf(brw_type_for_nir_type(devinfo, instr->dest_type), 4);
+   fs_reg dst = bld.vgrf(brw_type_for_nir_type(devinfo, instr->dest_type), 4 + instr->is_sparse);
    fs_inst *inst = bld.emit(opcode, dst, srcs, ARRAY_SIZE(srcs));
    inst->offset = header_bits;
 
@@ -6710,10 +6725,17 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       assert(instr->dest.is_ssa);
       unsigned write_mask = nir_ssa_def_components_read(&instr->dest.ssa);
       assert(write_mask != 0); /* dead code should have been eliminated */
-      inst->size_written = util_last_bit(write_mask) *
-                           inst->dst.component_size(inst->exec_size);
+      if (instr->is_sparse) {
+         inst->size_written = (util_last_bit(write_mask) - 1) *
+                              inst->dst.component_size(inst->exec_size) +
+                              REG_SIZE;
+      } else {
+         inst->size_written = util_last_bit(write_mask) *
+                              inst->dst.component_size(inst->exec_size);
+      }
    } else {
-      inst->size_written = 4 * inst->dst.component_size(inst->exec_size);
+      inst->size_written = 4 * inst->dst.component_size(inst->exec_size) +
+                           (instr->is_sparse ? REG_SIZE : 0);
    }
 
    if (srcs[TEX_LOGICAL_SRC_SHADOW_C].file != BAD_FILE)
@@ -6747,6 +6769,10 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       nir_dest[2] = vgrf(glsl_type::int_type);
       bld.emit_minmax(nir_dest[2], depth, brw_imm_d(1), BRW_CONDITIONAL_GE);
    }
+
+   /* The residency bits are only in the first component. */
+   if (instr->is_sparse)
+      nir_dest[dest_size - 1] = component(offset(dst, bld, dest_size - 1), 0);
 
    bld.LOAD_PAYLOAD(get_nir_dest(instr->dest), nir_dest, dest_size, 0);
 }

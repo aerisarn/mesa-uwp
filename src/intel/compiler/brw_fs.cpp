@@ -720,7 +720,8 @@ fs_inst::components_read(unsigned i) const
    case SHADER_OPCODE_TG4_OFFSET_LOGICAL:
    case SHADER_OPCODE_SAMPLEINFO_LOGICAL:
       assert(src[TEX_LOGICAL_SRC_COORD_COMPONENTS].file == IMM &&
-             src[TEX_LOGICAL_SRC_GRAD_COMPONENTS].file == IMM);
+             src[TEX_LOGICAL_SRC_GRAD_COMPONENTS].file == IMM &&
+             src[TEX_LOGICAL_SRC_RESIDENCY].file == IMM);
       /* Texture coordinates. */
       if (i == TEX_LOGICAL_SRC_COORDINATE)
          return src[TEX_LOGICAL_SRC_COORD_COMPONENTS].ud;
@@ -1082,6 +1083,28 @@ fs_inst::implied_mrf_writes() const
       return mlen;
    default:
       unreachable("not reached");
+   }
+}
+
+bool
+fs_inst::has_sampler_residency() const
+{
+   switch (opcode) {
+   case SHADER_OPCODE_TEX_LOGICAL:
+   case FS_OPCODE_TXB_LOGICAL:
+   case SHADER_OPCODE_TXL_LOGICAL:
+   case SHADER_OPCODE_TXD_LOGICAL:
+   case SHADER_OPCODE_TXF_LOGICAL:
+   case SHADER_OPCODE_TXF_CMS_W_GFX12_LOGICAL:
+   case SHADER_OPCODE_TXF_CMS_W_LOGICAL:
+   case SHADER_OPCODE_TXF_CMS_LOGICAL:
+   case SHADER_OPCODE_TXS_LOGICAL:
+   case SHADER_OPCODE_TG4_OFFSET_LOGICAL:
+   case SHADER_OPCODE_TG4_LOGICAL:
+      assert(src[TEX_LOGICAL_SRC_RESIDENCY].file == IMM);
+      return src[TEX_LOGICAL_SRC_RESIDENCY].ud != 0;
+   default:
+      return false;
    }
 }
 
@@ -5488,46 +5511,68 @@ emit_zip(const fs_builder &lbld_before, const fs_builder &lbld_after,
 
    /* Specified channel group from the destination region. */
    const fs_reg dst = horiz_offset(inst->dst, lbld_after.group() - inst->group);
-   const unsigned dst_size = inst->size_written /
-      inst->dst.component_size(inst->exec_size);
 
-   if (needs_dst_copy(lbld_after, inst)) {
-      const fs_reg tmp = lbld_after.vgrf(inst->dst.type, dst_size);
-
-      if (inst->predicate) {
-         /* Handle predication by copying the original contents of
-          * the destination into the temporary before emitting the
-          * lowered instruction.
-          */
-         const fs_builder gbld_before =
-            lbld_before.group(MIN2(lbld_before.dispatch_width(),
-                                   inst->exec_size), 0);
-         for (unsigned k = 0; k < dst_size; ++k) {
-            gbld_before.MOV(offset(tmp, lbld_before, k),
-                            offset(dst, inst->exec_size, k));
-         }
-      }
-
-      const fs_builder gbld_after =
-         lbld_after.group(MIN2(lbld_after.dispatch_width(),
-                               inst->exec_size), 0);
-      for (unsigned k = 0; k < dst_size; ++k) {
-         /* Use a builder of the right width to perform the copy avoiding
-          * uninitialized data if the lowered execution size is greater than
-          * the original execution size of the instruction.
-          */
-         gbld_after.MOV(offset(dst, inst->exec_size, k),
-                        offset(tmp, lbld_after, k));
-      }
-
-      return tmp;
-
-   } else {
+   if (!needs_dst_copy(lbld_after, inst)) {
       /* No need to allocate a temporary for the lowered instruction, just
        * take the right group of channels from the original region.
        */
       return dst;
    }
+
+   /* Deal with the residency data part later */
+   const unsigned residency_size = inst->has_sampler_residency() ? REG_SIZE : 0;
+   const unsigned dst_size = (inst->size_written - residency_size) /
+      inst->dst.component_size(inst->exec_size);
+
+   const fs_reg tmp = lbld_after.vgrf(inst->dst.type,
+                                      dst_size + inst->has_sampler_residency());
+
+   if (inst->predicate) {
+      /* Handle predication by copying the original contents of the
+       * destination into the temporary before emitting the lowered
+       * instruction.
+       */
+      const fs_builder gbld_before =
+         lbld_before.group(MIN2(lbld_before.dispatch_width(),
+                                inst->exec_size), 0);
+      for (unsigned k = 0; k < dst_size; ++k) {
+         gbld_before.MOV(offset(tmp, lbld_before, k),
+                         offset(dst, inst->exec_size, k));
+      }
+   }
+
+   const fs_builder gbld_after =
+      lbld_after.group(MIN2(lbld_after.dispatch_width(),
+                            inst->exec_size), 0);
+   for (unsigned k = 0; k < dst_size; ++k) {
+      /* Use a builder of the right width to perform the copy avoiding
+       * uninitialized data if the lowered execution size is greater than the
+       * original execution size of the instruction.
+       */
+      gbld_after.MOV(offset(dst, inst->exec_size, k),
+                     offset(tmp, lbld_after, k));
+   }
+
+   if (inst->has_sampler_residency()) {
+      /* Sampler messages with residency need a special attention. In the
+       * first lane of the last component are located the Pixel Null Mask
+       * (bits 0:15) & some upper bits we need to discard (bits 16:31). We
+       * have to build a single 32bit value for the SIMD32 message out of 2
+       * SIMD16 16 bit values.
+       */
+      const fs_builder rbld = gbld_after.exec_all().group(1, 0);
+      fs_reg local_res_reg = component(
+         retype(offset(tmp, lbld_before, dst_size),
+                BRW_REGISTER_TYPE_UW), 0);
+      fs_reg final_res_reg =
+         retype(byte_offset(inst->dst,
+                            inst->size_written - residency_size +
+                            gbld_after.group() / 8),
+                BRW_REGISTER_TYPE_UW);
+      rbld.MOV(final_res_reg, local_res_reg);
+   }
+
+   return tmp;
 }
 
 bool
@@ -5553,7 +5598,10 @@ fs_visitor::lower_simd_width()
           * original or the lowered instruction, whichever is lower.
           */
          const unsigned n = DIV_ROUND_UP(inst->exec_size, lower_width);
-         const unsigned dst_size = inst->size_written /
+         const unsigned residency_size =
+            inst->has_sampler_residency() ? REG_SIZE : 0;
+         const unsigned dst_size =
+            (inst->size_written - residency_size) /
             inst->dst.component_size(inst->exec_size);
 
          assert(!inst->writes_accumulator && !inst->mlen);
@@ -5626,7 +5674,8 @@ fs_visitor::lower_simd_width()
             split_inst.dst = emit_zip(lbld.at(block, inst),
                                       lbld.at(block, after_inst), inst);
             split_inst.size_written =
-               split_inst.dst.component_size(lower_width) * dst_size;
+               split_inst.dst.component_size(lower_width) * dst_size +
+               residency_size;
 
             lbld.at(block, inst->next).emit(split_inst);
          }
