@@ -595,6 +595,18 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       assert(s->esgs_ring);
       replacement = s->esgs_ring;
       break;
+   case nir_intrinsic_load_tess_rel_patch_id_amd:
+      /* LLVM need to replace patch id arg, so have to be done in LLVM backend. */
+      if (!shader->use_aco)
+         return false;
+
+      if (stage == MESA_SHADER_TESS_CTRL) {
+         replacement = ac_nir_unpack_arg(b, &args->ac, args->ac.tcs_rel_ids, 0, 8);
+      } else {
+         assert(stage == MESA_SHADER_TESS_EVAL);
+         replacement = ac_nir_load_arg(b, &args->ac, args->ac.tes_rel_patch_id);
+      }
+      break;
    default:
       return false;
    }
