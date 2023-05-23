@@ -3032,7 +3032,7 @@ zink_evaluate_depth_buffer(struct pipe_context *pctx)
 static void
 sync_flush(struct zink_context *ctx, struct zink_batch_state *bs)
 {
-   if (zink_screen(ctx->base.screen)->threaded)
+   if (zink_screen(ctx->base.screen)->threaded_submit)
       util_queue_fence_wait(&bs->flush_completed);
 }
 
