@@ -35,7 +35,7 @@ variables:
   MICROSOFT_FARM: "online"
   LIMA_FARM: "online"
   IGALIA_FARM: "online"
-  ANHOLT_FARM: "online"
+  ANHOLT_FARM: "offline"
   VALVE_FARM: "online"
   AUSTRIANCODER_FARM: "online"  # only etnaviv GPUs
 
