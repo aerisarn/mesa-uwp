@@ -512,6 +512,7 @@ v3dX(emit_state)(struct pipe_context *pctx)
                         /* Note: EZ state may update based on the compiled FS,
                          * along with ZSA
                          */
+#if V3D_VERSION <= 42
                         config.early_z_updates_enable =
                                 (job->ez_state != V3D_EZ_DISABLED);
                         if (v3d->zsa->base.depth_enabled) {
@@ -524,6 +525,10 @@ v3dX(emit_state)(struct pipe_context *pctx)
                         } else {
                                 config.depth_test_function = PIPE_FUNC_ALWAYS;
                         }
+#endif
+#if V3D_VERSION >= 71
+                        unreachable("HW generation 71 not supported yet.");
+#endif
 
                         config.stencil_enable =
                                 v3d->zsa->base.stencil[0].enabled;
@@ -564,12 +569,18 @@ v3dX(emit_state)(struct pipe_context *pctx)
         }
 
         if (v3d->dirty & V3D_DIRTY_VIEWPORT) {
+#if V3D_VERSION <= 42
                 cl_emit(&job->bcl, CLIPPER_XY_SCALING, clip) {
                         clip.viewport_half_width_in_1_256th_of_pixel =
                                 v3d->viewport.scale[0] * 256.0f;
                         clip.viewport_half_height_in_1_256th_of_pixel =
                                 v3d->viewport.scale[1] * 256.0f;
                 }
+#endif
+#if V3D_VERSION >= 71
+                unreachable("HW generation 71 not supported yet.");
+#endif
+
 
                 cl_emit(&job->bcl, CLIPPER_Z_SCALE_AND_OFFSET, clip) {
                         clip.viewport_z_offset_zc_to_zs =

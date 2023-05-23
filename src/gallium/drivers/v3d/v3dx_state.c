@@ -989,7 +989,13 @@ v3dX(create_texture_shader_state_bo)(struct v3d_context *v3d,
                                                                    cso->u.buf.size);
                 }
 
+#if V3D_VERSION <= 42
                 tex.srgb = util_format_is_srgb(cso->format);
+#endif
+
+#if V3D_VERSION >= 71
+                unreachable("HW generation 71 not supported yet.");
+#endif
 
 #if V3D_VERSION >= 40
                 tex.swizzle_r = v3d_translate_pipe_swizzle(so->swizzle[0]);
@@ -1039,7 +1045,13 @@ v3dX(create_texture_shader_state_bo)(struct v3d_context *v3d,
                          * shader code if we wanted to read an MSAA sRGB
                          * texture without sRGB decode.
                          */
+#if V3D_VERSION <= 42
                         tex.srgb = false;
+#endif
+#if V3D_VERSION >= 71
+                        unreachable("HW generation 71 not supported yet.");
+#endif
+
                 } else {
                         tex.texture_type = v3d_get_tex_format(&screen->devinfo,
                                                               cso->format);

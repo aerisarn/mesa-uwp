@@ -95,7 +95,11 @@ v3dX(start_binning)(struct v3d_context *v3d, struct v3d_job *job)
 #endif
 
         assert(!job->msaa || !job->double_buffer);
-#if V3D_VERSION >= 40
+#if V3D_VERSION >= 71
+        unreachable("HW generation 71 not supported yet.");
+#endif
+
+#if V3D_VERSION >= 40 && V3D_VERSION <= 42
         cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
                 config.width_in_pixels = job->draw_width;
                 config.height_in_pixels = job->draw_height;
@@ -107,7 +111,8 @@ v3dX(start_binning)(struct v3d_context *v3d, struct v3d_job *job)
 
                 config.maximum_bpp_of_all_render_targets = job->internal_bpp;
         }
-#else /* V3D_VERSION < 40 */
+#endif
+#if V3D_VERSION < 40
         /* "Binning mode lists start with a Tile Binning Mode Configuration
          * item (120)"
          *
@@ -134,7 +139,7 @@ v3dX(start_binning)(struct v3d_context *v3d, struct v3d_job *job)
 
                 config.maximum_bpp_of_all_render_targets = job->internal_bpp;
         }
-#endif /* V3D_VERSION < 40 */
+#endif
 
         /* There's definitely nothing in the VCD cache we want. */
         cl_emit(&job->bcl, FLUSH_VCD_CACHE, bin);
@@ -655,10 +660,15 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                 /* XXX: Use combined input/output size flag in the common
                  * case.
                  */
+#if V3D_VERSION <= 42
                 shader.coordinate_shader_has_separate_input_and_output_vpm_blocks =
                         v3d->prog.cs->prog_data.vs->separate_segments;
                 shader.vertex_shader_has_separate_input_and_output_vpm_blocks =
                         v3d->prog.vs->prog_data.vs->separate_segments;
+#endif
+#if V3D_VERSION >= 71
+                unreachable("HW generation 71 not supported yet.");
+#endif
 
                 shader.coordinate_shader_input_vpm_segment_size =
                         v3d->prog.cs->prog_data.vs->separate_segments ?
@@ -724,9 +734,14 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                 shader.instance_id_read_by_vertex_shader =
                         v3d->prog.vs->prog_data.vs->uses_iid;
 
+#if V3D_VERSION <= 42
                 shader.address_of_default_attribute_values =
                         cl_address(v3d_resource(vtx->defaults)->bo,
                                    vtx->defaults_offset);
+#endif
+#if V3D_VERSION >= 71
+                unreachable("HW generation 71 not supported yet.");
+#endif
         }
 
         bool cs_loaded_any = false;

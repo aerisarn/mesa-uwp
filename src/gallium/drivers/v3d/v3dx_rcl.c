@@ -420,10 +420,16 @@ v3d_rcl_emit_stores(struct v3d_job *job, struct v3d_cl *cl, int layer)
          * clearing Z/S.
          */
         if (job->clear) {
+#if V3D_VERSION <= 42
                 cl_emit(cl, CLEAR_TILE_BUFFERS, clear) {
                         clear.clear_z_stencil_buffer = !job->early_zs_clear;
                         clear.clear_all_render_targets = true;
                 }
+#endif
+#if V3D_VERSION >= 71
+                unreachable("HW generation 71 not supported yet.");
+#endif
+
         }
 #endif /* V3D_VERSION >= 40 */
 }
@@ -484,7 +490,7 @@ v3d_rcl_emit_generic_per_tile_list(struct v3d_job *job, int layer)
         }
 }
 
-#if V3D_VERSION >= 40
+#if V3D_VERSION >= 40 && V3D_VERSION <= 42
 static void
 v3d_setup_render_target(struct v3d_job *job, int cbuf,
                         uint32_t *rt_bpp, uint32_t *rt_type, uint32_t *rt_clamp)
@@ -508,9 +514,9 @@ v3d_setup_render_target(struct v3d_job *job, int cbuf,
         else
                 *rt_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
 }
+#endif
 
-#else /* V3D_VERSION < 40 */
-
+#if V3D_VERSION < 40
 static void
 v3d_emit_z_stencil_config(struct v3d_job *job, struct v3d_surface *surf,
                           struct v3d_resource *rsc, bool is_separate_stencil)
@@ -655,7 +661,8 @@ emit_render_layer(struct v3d_job *job, uint32_t layer)
         cl_emit(&job->rcl, STORE_TILE_BUFFER_GENERAL, store) {
                 store.buffer_to_store = NONE;
         }
-#else
+#endif
+#if V3D_VERSION >= 40 && V3D_VERSION <= 42
         for (int i = 0; i < 2; i++) {
                 if (i > 0)
                         cl_emit(&job->rcl, TILE_COORDINATES, coords);
@@ -672,6 +679,10 @@ emit_render_layer(struct v3d_job *job, uint32_t layer)
                 cl_emit(&job->rcl, END_OF_TILE_MARKER, end);
         }
 #endif
+#if V3D_VERSION >= 71
+        unreachable("HW generation 71 not supported yet.");
+#endif
+
 
         cl_emit(&job->rcl, FLUSH_VCD_CACHE, flush);
 
@@ -774,7 +785,13 @@ v3dX(emit_rcl)(struct v3d_job *job)
                 config.multisample_mode_4x = job->msaa;
                 config.double_buffer_in_non_ms_mode = job->double_buffer;
 
+#if V3D_VERSION <= 42
                 config.maximum_bpp_of_all_render_targets = job->internal_bpp;
+#endif
+#if V3D_VERSION >= 71
+                unreachable("HW generation 71 not supported yet.");
+#endif
+
         }
 
         for (int i = 0; i < job->nr_cbufs; i++) {
@@ -785,7 +802,7 @@ v3dX(emit_rcl)(struct v3d_job *job)
                 struct v3d_resource *rsc = v3d_resource(psurf->texture);
 
                 UNUSED uint32_t config_pad = 0;
-                uint32_t clear_pad = 0;
+                UNUSED uint32_t clear_pad = 0;
 
                 /* XXX: Set the pad for raster. */
                 if (surf->tiling == V3D_TILING_UIF_NO_XOR ||
@@ -818,6 +835,7 @@ v3dX(emit_rcl)(struct v3d_job *job)
                 }
 #endif /* V3D_VERSION < 40 */
 
+#if V3D_VERSION <= 42
                 cl_emit(&job->rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART1,
                         clear) {
                         clear.clear_color_low_32_bits = job->clear_color[i][0];
@@ -846,9 +864,10 @@ v3dX(emit_rcl)(struct v3d_job *job)
                                 clear.render_target_number = i;
                         };
                 }
+#endif
         }
 
-#if V3D_VERSION >= 40
+#if V3D_VERSION >= 40 && V3D_VERSION <= 42
         cl_emit(&job->rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
                 v3d_setup_render_target(job, 0,
                                         &rt.render_target_0_internal_bpp,
@@ -867,6 +886,10 @@ v3dX(emit_rcl)(struct v3d_job *job)
                                         &rt.render_target_3_internal_type,
                                         &rt.render_target_3_clamp);
         }
+#endif
+
+#if V3D_VERSION >= 71
+        unreachable("HW generation 71 not supported yet.");
 #endif
 
 #if V3D_VERSION < 40
