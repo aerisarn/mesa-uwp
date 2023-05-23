@@ -756,7 +756,6 @@ r600_finalize_nir(pipe_screen *screen, void *shader)
 
    nir_shader *nir = (nir_shader *)shader;
 
-   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    const int nir_lower_flrp_mask = 16 | 32 | 64;
 
    NIR_PASS_V(nir, nir_lower_flrp, nir_lower_flrp_mask, false);

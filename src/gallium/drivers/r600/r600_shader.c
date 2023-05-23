@@ -187,7 +187,6 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 			sel->nir = tgsi_to_nir(sel->tokens, ctx->screen, true);
 			/* Lower int64 ops because we have some r600 built-in shaders that use it */
 			if (nir_options->lower_int64_options) {
-				NIR_PASS_V(sel->nir, nir_lower_regs_to_ssa);
 				NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
 				NIR_PASS_V(sel->nir, nir_lower_int64);
 			}

@@ -3194,7 +3194,6 @@ Converter::run()
    /* prepare for IO lowering */
    NIR_PASS_V(nir, nir_lower_flrp, lower_flrp, false);
    NIR_PASS_V(nir, nir_opt_deref);
-   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
    /* codegen assumes vec4 alignment for memory */

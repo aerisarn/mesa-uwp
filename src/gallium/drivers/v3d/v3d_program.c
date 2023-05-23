@@ -313,7 +313,6 @@ v3d_uncompiled_shader_create(struct pipe_context *pctx,
                          type_size, (nir_lower_io_options)0);
         }
 
-        NIR_PASS(_, s, nir_lower_regs_to_ssa);
         NIR_PASS(_, s, nir_normalize_cubemap_coords);
 
         NIR_PASS(_, s, nir_lower_load_const_to_scalar);
