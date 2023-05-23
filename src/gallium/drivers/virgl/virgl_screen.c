@@ -355,6 +355,10 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
        return vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_STRING_MARKER;
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
        return vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_IMPLICIT_MSAA;
+   case PIPE_CAP_DRAW_PARAMETERS:
+      return !!(vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_DRAW_PARAMETERS);
+   case PIPE_CAP_SHADER_GROUP_VOTE:
+      return !!(vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_GROUP_VOTE);
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
       return 1;
    case PIPE_CAP_MAX_CONSTANT_BUFFER_SIZE_UINT:
