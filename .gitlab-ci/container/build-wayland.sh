@@ -3,8 +3,8 @@
 
 set -ex
 
-export LIBWAYLAND_VERSION="1.18.0"
-export WAYLAND_PROTOCOLS_VERSION="1.24"
+export LIBWAYLAND_VERSION="1.21.0"
+export WAYLAND_PROTOCOLS_VERSION="1.31"
 
 git clone https://gitlab.freedesktop.org/wayland/wayland
 cd wayland
