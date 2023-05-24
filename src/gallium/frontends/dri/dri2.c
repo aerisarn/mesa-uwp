@@ -2291,7 +2291,7 @@ dri2_init_screen(struct dri_screen *screen)
    }
 
    if (!pscreen)
-       goto release_pipe;
+       goto fail;
 
    screen->throttle = pscreen->get_param(pscreen, PIPE_CAP_THROTTLE);
 
@@ -2302,7 +2302,7 @@ dri2_init_screen(struct dri_screen *screen)
 
    configs = dri_init_screen_helper(screen, pscreen);
    if (!configs)
-      goto destroy_screen;
+      goto fail;
 
    screen->can_share_buffer = true;
    screen->auto_fake_front = dri_with_format(screen);
@@ -2323,12 +2323,8 @@ dri2_init_screen(struct dri_screen *screen)
 
    return configs;
 
-destroy_screen:
+fail:
    dri_destroy_screen_helper(screen);
-
-release_pipe:
-   if (screen->dev)
-      pipe_loader_release(&screen->dev, 1);
 
    return NULL;
 }
@@ -2353,13 +2349,13 @@ dri_swrast_kms_init_screen(struct dri_screen *screen)
 #endif
 
    if (!pscreen)
-       goto release_pipe;
+       goto fail;
 
    dri2_init_screen_extensions(screen, pscreen, true);
 
    configs = dri_init_screen_helper(screen, pscreen);
    if (!configs)
-      goto destroy_screen;
+      goto fail;
 
    screen->can_share_buffer = false;
    screen->auto_fake_front = dri_with_format(screen);
@@ -2380,12 +2376,8 @@ dri_swrast_kms_init_screen(struct dri_screen *screen)
 
    return configs;
 
-destroy_screen:
+fail:
    dri_destroy_screen_helper(screen);
-
-release_pipe:
-   if (screen->dev)
-      pipe_loader_release(&screen->dev, 1);
 
 #endif // GALLIUM_SOFTPIPE
    return NULL;

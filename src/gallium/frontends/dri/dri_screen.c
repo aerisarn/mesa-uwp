@@ -776,6 +776,11 @@ dri_destroy_screen_helper(struct dri_screen * screen)
    if (screen->base.screen)
       screen->base.screen->destroy(screen->base.screen);
 
+   if (screen->dev) {
+      pipe_loader_release(&screen->dev, 1);
+      screen->dev = NULL;
+   }
+
    mtx_destroy(&screen->opencl_func_mutex);
 }
 
@@ -783,8 +788,6 @@ void
 dri_destroy_screen(struct dri_screen *screen)
 {
    dri_destroy_screen_helper(screen);
-
-   pipe_loader_release(&screen->dev, 1);
 
    free(screen->options.force_gl_vendor);
    free(screen->options.force_gl_renderer);
