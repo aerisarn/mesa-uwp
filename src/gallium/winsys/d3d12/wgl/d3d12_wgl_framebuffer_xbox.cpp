@@ -178,14 +178,21 @@ d3d12_wgl_framebuffer_present(stw_winsys_framebuffer *fb, int interval)
       D3D12XBOX_PRESENT_FLAG_IMMEDIATE :
       D3D12XBOX_PRESENT_FLAG_NONE;
 
-   if (cached_interval != interval) {
+   int clamped_interval = CLAMP(interval, 1, 4); // SetFrameIntervalX only supports values [1,4]
+   if (cached_interval != clamped_interval) {
       framebuffer->screen->dev->SetFrameIntervalX(
          nullptr,
          D3D12XBOX_FRAME_INTERVAL_60_HZ,
-         interval,
+         clamped_interval,
          D3D12XBOX_FRAME_INTERVAL_FLAG_NONE
       );
-      cached_interval = interval;
+      framebuffer->screen->dev->ScheduleFrameEventX(
+         D3D12XBOX_FRAME_EVENT_ORIGIN,
+         0,
+         nullptr,
+         D3D12XBOX_SCHEDULE_FRAME_EVENT_FLAG_NONE
+      );
+      cached_interval = clamped_interval;
    }
 
    framebuffer->screen->cmdqueue->PresentX(1, &planeParams, &presentParams);
