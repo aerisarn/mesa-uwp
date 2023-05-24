@@ -530,18 +530,6 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
       },
    };
 
-   pdev->queue_families[pdev->queue_family_count++] = (struct dzn_queue_family) {
-      .props = {
-         .queueFlags = VK_QUEUE_TRANSFER_BIT,
-         .queueCount = 1,
-         .timestampValidBits = 0,
-         .minImageTransferGranularity = { 0, 0, 0 },
-      },
-      .desc = {
-         .Type = D3D12_COMMAND_LIST_TYPE_COPY,
-      },
-   };
-
    assert(pdev->queue_family_count <= ARRAY_SIZE(pdev->queue_families));
 
    D3D12_COMMAND_QUEUE_DESC queue_desc = {

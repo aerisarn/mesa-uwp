@@ -176,7 +176,7 @@ dzn_meta_blits_get_context(struct dzn_device *device,
                            const struct dzn_meta_blit_key *key);
 
 #define MAX_SYNC_TYPES 3
-#define MAX_QUEUE_FAMILIES 3
+#define MAX_QUEUE_FAMILIES 2
 
 struct dzn_physical_device {
    struct vk_physical_device vk;
