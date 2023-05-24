@@ -84,11 +84,9 @@ make
 popd
 
 git clone https://github.com/microsoft/DirectX-Headers -b v1.610.0 --depth 1
-mkdir -p DirectX-Headers/build
-pushd DirectX-Headers/build
-meson .. --backend=ninja --buildtype=release -Dbuild-test=false
-ninja
-ninja install
+pushd DirectX-Headers
+meson setup build --backend=ninja --buildtype=release -Dbuild-test=false
+meson install -C build
 popd
 rm -rf DirectX-Headers
 

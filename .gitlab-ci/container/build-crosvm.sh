@@ -17,8 +17,8 @@ rm -rf third_party/virglrenderer
 git clone --single-branch -b master --no-checkout https://gitlab.freedesktop.org/virgl/virglrenderer.git third_party/virglrenderer
 pushd third_party/virglrenderer
 git checkout "$VIRGLRENDERER_VERSION"
-meson build/ -Drender-server-worker=process -Dvenus=true $EXTRA_MESON_ARGS
-ninja -C build install
+meson setup build/ -Drender-server-worker=process -Dvenus=true $EXTRA_MESON_ARGS
+meson install -C build
 popd
 
 RUSTFLAGS='-L native=/usr/local/lib' cargo install \

@@ -45,7 +45,7 @@ for arch in \
 
     cd $LIBDRM_VERSION
     rm -rf build-$arch
-    meson build-$arch \
+    meson setup build-$arch \
           --cross-file=/cross_file-$arch.txt \
           --libdir=lib/$arch \
           -Dlibkms=false \
@@ -56,7 +56,7 @@ for arch in \
           -Dintel=false \
           -Dcairo-tests=false \
           -Dvalgrind=false
-    ninja -C build-$arch install
+    meson install -C build-$arch
     cd ..
 done
 
