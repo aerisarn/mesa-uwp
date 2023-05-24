@@ -1726,8 +1726,8 @@ static const struct v3d_compiler_strategy strategies[] = {
         /*8*/  { "disable gcm (2t)",               2, 1, true,  true,  false, false, false, false, -1 },
         /*9*/  { "disable loop unrolling (2t)",    2, 1, true,  true,  true,  false, false, false, -1 },
         /*10*/ { "Move buffer loads (2t)",         2, 1, true,  true,  true,  true,  true,  false, -1 },
-        /*11*/ { "disable TMU pipelining (2t)",    2, 1, true,  true,  true,  true,  true,  false, -1 },
-        /*12*/ { "fallback scheduler",             2, 1, true,  true,  true,  true,  true,  false, -1 }
+        /*11*/ { "disable TMU pipelining (2t)",    2, 1, true,  true,  true,  true,  true,  true,  -1 },
+        /*12*/ { "fallback scheduler",             2, 1, true,  true,  true,  true,  true,  true,  -1 }
 };
 
 /**
