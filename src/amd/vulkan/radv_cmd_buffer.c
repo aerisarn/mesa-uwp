@@ -2312,7 +2312,8 @@ radv_should_force_vrs1x1(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
 
    return pdevice->rad_info.gfx_level >= GFX10_3 &&
-          (cmd_buffer->state.ms.sample_shading_enable || (ps && ps->info.ps.reads_sample_mask_in));
+          (cmd_buffer->state.ms.sample_shading_enable || (ps && ps->info.ps.reads_sample_mask_in &&
+                                                          !ps->info.ps.needs_poly_line_smooth));
 }
 
 static void
