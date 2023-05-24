@@ -1213,8 +1213,8 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       region->srcOffset.z,
    };
    const VkOffset3D src_end = {
-      src_start.x + region->extent.width * src_scale_w,
-      src_start.y + region->extent.height * src_scale_h,
+      src_start.x + align(region->extent.width, src_block_w) * src_scale_w,
+      src_start.y + align(region->extent.height, src_block_h) * src_scale_h,
       src_start.z + region->extent.depth,
    };
 
@@ -1224,8 +1224,8 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
       region->dstOffset.z,
    };
    const VkOffset3D dst_end = {
-      dst_start.x + region->extent.width * src_scale_w,
-      dst_start.y + region->extent.height * src_scale_h,
+      dst_start.x + align(region->extent.width, src_block_w) * src_scale_w,
+      dst_start.y + align(region->extent.height, src_block_h) * src_scale_h,
       dst_start.z + region->extent.depth,
    };
 
