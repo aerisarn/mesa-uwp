@@ -2305,10 +2305,19 @@ radv_emit_stencil_control(struct radv_cmd_buffer *cmd_buffer)
          S_02842C_STENCILZFAIL_BF(si_translate_stencil_op(d->vk.ds.stencil.back.op.depth_fail)));
 }
 
+static bool
+radv_should_force_vrs1x1(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
+   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
+
+   return pdevice->rad_info.gfx_level >= GFX10_3 &&
+          (cmd_buffer->state.ms.sample_shading_enable || (ps && ps->info.ps.reads_sample_mask_in));
+}
+
 static void
 radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    /* When per-vertex VRS is forced and the dynamic fragment shading rate is a no-op, ignore
@@ -2366,7 +2375,7 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
     * 2) the fragment shader reads gl_SampleMaskIn because the 16-bit sample coverage mask isn't
     *    enough for MSAA8x and 2x2 coarse shading isn't enough.
     */
-   if (cmd_buffer->state.ms.sample_shading_enable || (ps && ps->info.ps.reads_sample_mask_in)) {
+   if (radv_should_force_vrs1x1(cmd_buffer)) {
       pa_cl_vrs_cntl |= S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_SC_VRS_COMB_MODE_OVERRIDE);
    }
 
@@ -2665,7 +2674,6 @@ static void
 radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
-   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
    unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
    unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
@@ -2695,8 +2703,7 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
       pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(1);
    }
 
-   if (pdevice->rad_info.gfx_level >= GFX10_3 &&
-       (cmd_buffer->state.ms.sample_shading_enable || (ps && ps->info.ps.reads_sample_mask_in))) {
+   if (radv_should_force_vrs1x1(cmd_buffer)) {
       /* Make sure sample shading is enabled even if only MSAA1x is used because the SAMPLE_ITER
        * combiner is in passthrough mode if PS_ITER_SAMPLE is 0, and it uses the per-draw rate. The
        * default VRS rate when sample shading is enabled is 1x1.
