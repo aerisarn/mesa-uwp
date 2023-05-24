@@ -28,6 +28,12 @@
 
 #include "d3d12_common.h"
 
+#ifdef _GAMING_XBOX
+typedef D3D12_DEPTH_STENCIL_DESC1 d3d12_depth_stencil_desc_type;
+#else
+typedef D3D12_DEPTH_STENCIL_DESC2 d3d12_depth_stencil_desc_type;
+#endif
+
 struct d3d12_context;
 struct d3d12_root_signature;
 
@@ -52,7 +58,7 @@ struct d3d12_blend_state {
 };
 
 struct d3d12_depth_stencil_alpha_state {
-   D3D12_DEPTH_STENCIL_DESC2 desc;
+   d3d12_depth_stencil_desc_type desc;
    bool backface_enabled;
 };
 

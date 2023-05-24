@@ -21,12 +21,21 @@
  * IN THE SOFTWARE.
  */
 
+#ifdef _GAMING_XBOX
+#ifdef _GAMING_XBOX_SCARLETT
+#include <d3dx12_xs.h>
+#else
+#include <d3dx12_x.h>
+#endif
+#endif
 
 #include "d3d12_pipeline_state.h"
 #include "d3d12_compiler.h"
 #include "d3d12_context.h"
 #include "d3d12_screen.h"
+#ifndef _GAMING_XBOX
 #include <directx/d3dx12_pipeline_state_stream.h>
+#endif
 
 #include "util/hash_table.h"
 #include "util/set.h"
@@ -278,7 +287,7 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
    if (state->has_float_rtv)
       blend_state.RenderTarget[0].LogicOpEnable = FALSE;
 
-   (D3D12_DEPTH_STENCIL_DESC2&)pso_desc.DepthStencilState = state->zsa->desc;
+   (d3d12_depth_stencil_desc_type&)pso_desc.DepthStencilState = state->zsa->desc;
    pso_desc.SampleMask = state->sample_mask;
 
    D3D12_RASTERIZER_DESC& rast = (D3D12_RASTERIZER_DESC&)pso_desc.RasterizerState;
@@ -316,11 +325,14 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
          rast.ForcedSampleCount = 1;
          pso_desc.DSVFormat = DXGI_FORMAT_UNKNOWN;
       }
-   } else if (state->samples > 1 &&
+   }
+#ifndef _GAMING_XBOX
+   else if (state->samples > 1 &&
               !(screen->opts19.SupportedSampleCountsWithNoOutputs & (1 << state->samples))) {
       samples.Count = 1;
       rast.ForcedSampleCount = state->samples;
    }
+#endif
    samples.Quality = 0;
 
    pso_desc.NodeMask = 0;

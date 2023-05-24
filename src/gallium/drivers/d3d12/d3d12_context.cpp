@@ -62,6 +62,12 @@
 #include "dxil_validator.h"
 #endif
 
+#ifdef _GAMING_XBOX
+typedef D3D12_DEPTH_STENCILOP_DESC d3d12_depth_stencil_op_desc_type;
+#else
+typedef D3D12_DEPTH_STENCILOP_DESC1 d3d12_depth_stencil_op_desc_type;
+#endif
+
 static void
 d3d12_context_destroy(struct pipe_context *pctx)
 {
@@ -428,16 +434,18 @@ stencil_op(enum pipe_stencil_op op)
    unreachable("unexpected op");
 }
 
-static D3D12_DEPTH_STENCILOP_DESC1
+static d3d12_depth_stencil_op_desc_type
 stencil_op_state(const struct pipe_stencil_state *src)
 {
-   D3D12_DEPTH_STENCILOP_DESC1 ret;
+   d3d12_depth_stencil_op_desc_type ret;
    ret.StencilFailOp = stencil_op((pipe_stencil_op) src->fail_op);
    ret.StencilPassOp = stencil_op((pipe_stencil_op) src->zpass_op);
    ret.StencilDepthFailOp = stencil_op((pipe_stencil_op) src->zfail_op);
    ret.StencilFunc = compare_op((pipe_compare_func) src->func);
+#ifndef _GAMING_XBOX
    ret.StencilReadMask = src->valuemask;
    ret.StencilWriteMask = src->writemask;
+#endif
    return ret;
 }
 
@@ -469,15 +477,17 @@ d3d12_create_depth_stencil_alpha_state(struct pipe_context *pctx,
    }
 
    if (depth_stencil_alpha->stencil[1].enabled) {
-      struct d3d12_screen* screen = d3d12_screen(pctx->screen);
-
       dsa->backface_enabled = true;
       dsa->desc.BackFace = stencil_op_state(depth_stencil_alpha->stencil + 1);
+
+#ifndef _GAMING_XBOX
+      struct d3d12_screen *screen = d3d12_screen(pctx->screen);
 
       if (!screen->opts14.IndependentFrontAndBackStencilRefMaskSupported) {
          dsa->desc.BackFace.StencilReadMask = dsa->desc.FrontFace.StencilReadMask;
          dsa->desc.BackFace.StencilWriteMask = dsa->desc.FrontFace.StencilWriteMask;
       }
+#endif
    }
    else {
       dsa->desc.BackFace = dsa->desc.FrontFace;
