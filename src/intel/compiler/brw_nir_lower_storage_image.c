@@ -362,7 +362,8 @@ expand_vec:
 static bool
 lower_image_load_instr(nir_builder *b,
                        const struct intel_device_info *devinfo,
-                       nir_intrinsic_instr *intrin)
+                       nir_intrinsic_instr *intrin,
+                       bool sparse)
 {
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
    nir_variable *var = nir_deref_instr_get_variable(deref);
@@ -376,7 +377,8 @@ lower_image_load_instr(nir_builder *b,
    if (isl_has_matching_typed_storage_image_format(devinfo, image_fmt)) {
       const enum isl_format lower_fmt =
          isl_lower_storage_image_format(devinfo, image_fmt);
-      const unsigned dest_components = intrin->num_components;
+      const unsigned dest_components =
+         sparse ? (intrin->num_components - 1) : intrin->num_components;
 
       /* Use an undef to hold the uses of the load while we do the color
        * conversion.
@@ -394,9 +396,30 @@ lower_image_load_instr(nir_builder *b,
                                                   image_fmt, lower_fmt,
                                                   dest_components);
 
+      if (sparse) {
+         /* Put the sparse component back on the original instruction */
+         intrin->num_components++;
+         intrin->dest.ssa.num_components = intrin->num_components;
+
+         /* Carry over the sparse component without modifying it with the
+          * converted color.
+          */
+         nir_ssa_def *sparse_color[NIR_MAX_VEC_COMPONENTS];
+         for (unsigned i = 0; i < dest_components; i++)
+            sparse_color[i] = nir_channel(b, color, i);
+         sparse_color[dest_components] =
+            nir_channel(b, &intrin->dest.ssa, intrin->num_components - 1);
+         color = nir_vec(b, sparse_color, dest_components + 1);
+      }
+
       nir_ssa_def_rewrite_uses(placeholder, color);
       nir_instr_remove(placeholder->parent_instr);
    } else {
+      /* This code part is only useful prior to Gfx9, we do not have plans to
+       * enable sparse there.
+       */
+      assert(!sparse);
+
       const struct isl_format_layout *image_fmtl =
          isl_format_get_layout(image_fmt);
       /* We have a matching typed format for everything 32b and below */
@@ -691,7 +714,12 @@ brw_nir_lower_storage_image_instr(nir_builder *b,
    switch (intrin->intrinsic) {
    case nir_intrinsic_image_deref_load:
       if (opts->lower_loads)
-         return lower_image_load_instr(b, opts->devinfo, intrin);
+         return lower_image_load_instr(b, opts->devinfo, intrin, false);
+      return false;
+
+   case nir_intrinsic_image_deref_sparse_load:
+      if (opts->lower_loads)
+         return lower_image_load_instr(b, opts->devinfo, intrin, true);
       return false;
 
    case nir_intrinsic_image_deref_store:
