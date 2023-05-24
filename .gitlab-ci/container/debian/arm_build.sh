@@ -18,6 +18,7 @@ STABLE_EPHEMERAL=" \
 apt-get -y install \
 	${EXTRA_LOCAL_PACKAGES} \
 	${STABLE_EPHEMERAL} \
+	android-libext4-utils \
 	autoconf \
 	automake \
 	bc \
@@ -64,10 +65,6 @@ apt-get -y install \
 	xz-utils \
 	zlib1g-dev \
 	zstd
-
-# Not available anymore in bullseye
-apt-get install -y --no-remove -t buster \
-        android-sdk-ext4-utils
 
 pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@ffe4d1b10aab7534489f0c4bbc4c5899df17d3f2
 
