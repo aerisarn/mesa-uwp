@@ -2304,9 +2304,9 @@ dzn_descriptor_set_copy(struct dzn_device *device,
             }
 
             if (dzn_descriptor_type_depends_on_shader_usage(src_type, device->bindless)) {
-               src_heap_offset = dst_set->heap_offsets[type] +
+               src_heap_offset = src_set->heap_offsets[type] +
                   dzn_descriptor_set_ptr_get_heap_offset(src_set->layout, type, &src_ptr, true, device->bindless);
-               dst_heap_offset = src_set->heap_offsets[type] +
+               dst_heap_offset = dst_set->heap_offsets[type] +
                   dzn_descriptor_set_ptr_get_heap_offset(dst_set->layout, type, &dst_ptr, true, device->bindless);
                assert(src_heap_offset != ~0);
                assert(dst_heap_offset != ~0);
