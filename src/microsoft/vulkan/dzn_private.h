@@ -1240,6 +1240,7 @@ enum dzn_debug_flags {
    DZN_DEBUG_DEBUGGER = 1 << 8,
    DZN_DEBUG_REDIRECTS = 1 << 9,
    DZN_DEBUG_BINDLESS = 1 << 10,
+   DZN_DEBUG_NO_BINDLESS = 1 << 11,
 };
 
 struct dzn_instance {

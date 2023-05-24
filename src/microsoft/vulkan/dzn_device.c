@@ -181,6 +181,7 @@ static const struct debug_control dzn_debug_options[] = {
    { "debugger", DZN_DEBUG_DEBUGGER },
    { "redirects", DZN_DEBUG_REDIRECTS },
    { "bindless", DZN_DEBUG_BINDLESS },
+   { "nobindless", DZN_DEBUG_NO_BINDLESS },
    { NULL, 0 }
 };
 
@@ -428,6 +429,8 @@ dzn_physical_device_create(struct vk_instance *instance,
    if (driQueryOptionb(&dzn_instance->dri_options, "dzn_enable_8bit_loads_stores") &&
        pdev->options4.Native16BitShaderOpsSupported)
       pdev->vk.supported_extensions.KHR_8bit_storage = true;
+   if (dzn_instance->debug_flags & DZN_DEBUG_NO_BINDLESS)
+      pdev->vk.supported_extensions.EXT_descriptor_indexing = false;
 
    return VK_SUCCESS;
 }
@@ -1522,7 +1525,8 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .shaderDrawParameters               = true,
    };
 
-   bool support_descriptor_indexing = pdev->shader_model >= D3D_SHADER_MODEL_6_6;
+   bool support_descriptor_indexing = pdev->shader_model >= D3D_SHADER_MODEL_6_6 &&
+      !(instance->debug_flags & DZN_DEBUG_NO_BINDLESS);
    bool support_8bit = driQueryOptionb(&instance->dri_options, "dzn_enable_8bit_loads_stores") &&
       pdev->options4.Native16BitShaderOpsSupported;
    const VkPhysicalDeviceVulkan12Features core_1_2 = {
