@@ -229,7 +229,6 @@ GL 4.6, GLSL 4.60 -- all DONE: radeonsi, zink
 
   GL_ARB_gl_spirv                                       DONE (freedreno, i965/gen7+, llvmpipe)
   GL_ARB_indirect_parameters                            DONE (freedreno/a6xx+, i965/gen7+, nvc0, llvmpipe, virgl, d3d12)
-
   GL_ARB_pipeline_statistics_query                      DONE (i965, nvc0, r600, llvmpipe, softpipe, virgl)
   GL_ARB_polygon_offset_clamp                           DONE (freedreno, i965, nv50, nvc0, r600, llvmpipe, v3d, virgl, panfrost)
   GL_ARB_shader_atomic_counter_ops                      DONE (freedreno/a5xx+, i965/gen7+, nvc0, r600, llvmpipe, softpipe, virgl, v3d)
