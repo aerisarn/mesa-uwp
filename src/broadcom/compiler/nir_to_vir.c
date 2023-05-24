@@ -3505,54 +3505,45 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
         }
 
-        case nir_intrinsic_memory_barrier:
-        case nir_intrinsic_memory_barrier_buffer:
-        case nir_intrinsic_memory_barrier_image:
-        case nir_intrinsic_memory_barrier_shared:
-        case nir_intrinsic_memory_barrier_tcs_patch:
-        case nir_intrinsic_group_memory_barrier:
-                /* We don't do any instruction scheduling of these NIR
-                 * instructions between each other, so we just need to make
-                 * sure that the TMU operations before the barrier are flushed
+        case nir_intrinsic_scoped_barrier:
+                /* Ensure that the TMU operations before the barrier are flushed
                  * before the ones after the barrier.
                  */
                 ntq_flush_tmu(c);
-                break;
 
-        case nir_intrinsic_control_barrier:
-                /* Emit a TSY op to get all invocations in the workgroup
-                 * (actually supergroup) to block until the last invocation
-                 * reaches the TSY op.
-                 */
-                ntq_flush_tmu(c);
+                if (nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE) {
+                        /* Ensure we flag the use of the control barrier. NIR's
+                         * gather info pass usually takes care of this, but that
+                         * requires that we call that pass after any other pass
+                         * may emit a control barrier, so this is safer.
+                         */
+                        c->s->info.uses_control_barrier = true;
 
-                /* Ensure we flag the use of the control barrier. NIR's
-                 * gather info pass usually takes care of this, but that
-                 * requires that we call that pass after any other pass
-                 * may emit a control barrier, so this is safer.
-                 */
-                c->s->info.uses_control_barrier = true;
+                        /* Emit a TSY op to get all invocations in the workgroup
+                         * (actually supergroup) to block until the last
+                         * invocation reaches the TSY op.
+                         */
+                        if (c->devinfo->ver >= 42) {
+                                vir_BARRIERID_dest(c, vir_reg(QFILE_MAGIC,
+                                                              V3D_QPU_WADDR_SYNCB));
+                        } else {
+                                struct qinst *sync =
+                                        vir_BARRIERID_dest(c,
+                                                           vir_reg(QFILE_MAGIC,
+                                                                   V3D_QPU_WADDR_SYNCU));
+                                sync->uniform =
+                                        vir_get_uniform_index(c, QUNIFORM_CONSTANT,
+                                                              0xffffff00 |
+                                                              V3D_TSY_WAIT_INC_CHECK);
 
-                if (c->devinfo->ver >= 42) {
-                        vir_BARRIERID_dest(c, vir_reg(QFILE_MAGIC,
-                                                      V3D_QPU_WADDR_SYNCB));
-                } else {
-                        struct qinst *sync =
-                                vir_BARRIERID_dest(c,
-                                                   vir_reg(QFILE_MAGIC,
-                                                           V3D_QPU_WADDR_SYNCU));
-                        sync->uniform =
-                                vir_get_uniform_index(c, QUNIFORM_CONSTANT,
-                                                      0xffffff00 |
-                                                      V3D_TSY_WAIT_INC_CHECK);
+                        }
 
+                        /* The blocking of a TSY op only happens at the next
+                         * thread switch. No texturing may be outstanding at the
+                         * time of a TSY blocking operation.
+                         */
+                        vir_emit_thrsw(c);
                 }
-
-                /* The blocking of a TSY op only happens at the next thread
-                 * switch.  No texturing may be outstanding at the time of a
-                 * TSY blocking operation.
-                 */
-                vir_emit_thrsw(c);
                 break;
 
         case nir_intrinsic_load_num_workgroups:
