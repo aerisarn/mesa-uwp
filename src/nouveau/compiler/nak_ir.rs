@@ -5,6 +5,9 @@
 
 extern crate nak_ir_proc;
 
+pub use crate::nak_builder::{
+    Builder, InstrBuilder, SSABuilder, SSAInstrBuilder,
+};
 use nak_ir_proc::*;
 use std::fmt;
 use std::iter::Zip;
@@ -648,14 +651,6 @@ impl Src {
 
     pub fn new_imm_bool(b: bool) -> Src {
         Src::from(if b { SrcRef::True } else { SrcRef::False })
-    }
-
-    pub fn new_cbuf(idx: u8, offset: u16) -> Src {
-        SrcRef::CBuf(CBufRef {
-            buf: CBuf::Binding(idx),
-            offset: offset,
-        })
-        .into()
     }
 
     pub fn fabs(&self) -> Src {
@@ -3046,6 +3041,7 @@ pub enum Op {
     FSOut(OpFSOut),
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum PredRef {
     None,
     SSA(SSAValue),
@@ -3099,6 +3095,7 @@ impl fmt::Display for PredRef {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Pred {
     pub pred_ref: PredRef,
     pub pred_inv: bool,
@@ -3245,87 +3242,6 @@ impl Instr {
         Box::new(Instr::new(op))
     }
 
-    pub fn new_fadd(dst: Dst, x: Src, y: Src) -> Instr {
-        OpFAdd {
-            dst: dst,
-            srcs: [x, y],
-            saturate: false,
-            rnd_mode: FRndMode::NearestEven,
-        }
-        .into()
-    }
-
-    pub fn new_fmul(dst: Dst, x: Src, y: Src) -> Instr {
-        OpFMul {
-            dst: dst,
-            srcs: [x, y],
-            saturate: false,
-            rnd_mode: FRndMode::NearestEven,
-        }
-        .into()
-    }
-
-    pub fn new_fset(dst: Dst, cmp_op: FloatCmpOp, x: Src, y: Src) -> Instr {
-        OpFSet {
-            dst: dst,
-            cmp_op: cmp_op,
-            srcs: [x, y],
-        }
-        .into()
-    }
-
-    pub fn new_fsetp(dst: Dst, cmp_op: FloatCmpOp, x: Src, y: Src) -> Instr {
-        OpFSetP {
-            dst: dst,
-            set_op: PredSetOp::And,
-            cmp_op: cmp_op,
-            srcs: [x, y],
-            accum: SrcRef::True.into(),
-        }
-        .into()
-    }
-
-    pub fn new_mufu(dst: Dst, op: MuFuOp, src: Src) -> Instr {
-        OpMuFu {
-            dst: dst,
-            op: op,
-            src: src,
-        }
-        .into()
-    }
-
-    pub fn new_iadd(dst: Dst, x: Src, y: Src) -> Instr {
-        OpIAdd3 {
-            dst: dst,
-            overflow: Dst::None,
-            srcs: [Src::new_zero(), x, y],
-            carry: Src::new_imm_bool(false),
-        }
-        .into()
-    }
-
-    pub fn new_i2f(dst: Dst, src: Src) -> Instr {
-        OpI2F {
-            dst: dst,
-            src: src,
-            dst_type: FloatType::F32,
-            src_type: IntType::I32,
-            rnd_mode: FRndMode::NearestEven,
-        }
-        .into()
-    }
-
-    pub fn new_u2f(dst: Dst, src: Src) -> Instr {
-        OpI2F {
-            dst: dst,
-            src: src,
-            dst_type: FloatType::F32,
-            src_type: IntType::U32,
-            rnd_mode: FRndMode::NearestEven,
-        }
-        .into()
-    }
-
     pub fn new_isetp(
         dst: Dst,
         cmp_type: IntCmpType,
@@ -3387,15 +3303,6 @@ impl Instr {
         .into()
     }
 
-    pub fn new_sel(dst: Dst, sel: Src, x: Src, y: Src) -> Instr {
-        OpSel {
-            dst: dst,
-            cond: sel,
-            srcs: [x, y],
-        }
-        .into()
-    }
-
     pub fn new_plop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
         assert!(x.is_predicate() && y.is_predicate() && z.is_predicate());
         OpPLop3 {
@@ -3406,92 +3313,11 @@ impl Instr {
         .into()
     }
 
-    pub fn new_ld(
-        dst: Dst,
-        access: MemAccess,
-        addr: Src,
-        offset: i32,
-    ) -> Instr {
-        OpLd {
-            dst: dst,
-            addr: addr,
-            offset: offset,
-            access: access,
-        }
-        .into()
-    }
-
-    pub fn new_st(
-        access: MemAccess,
-        addr: Src,
-        offset: i32,
-        data: Src,
-    ) -> Instr {
-        OpSt {
-            addr: addr,
-            data: data,
-            offset: offset,
-            access: access,
-        }
-        .into()
-    }
-
-    pub fn new_ald(dst: Dst, attr_addr: u16, vtx: Src, offset: Src) -> Instr {
-        OpALd {
-            dst: dst,
-            vtx: vtx,
-            offset: offset,
-            access: AttrAccess {
-                addr: attr_addr,
-                comps: dst.as_ssa().unwrap().comps(),
-                patch: false,
-                out_load: false,
-                flags: 0,
-            },
-        }
-        .into()
-    }
-
-    pub fn new_ast(attr_addr: u16, data: Src, vtx: Src, offset: Src) -> Instr {
-        OpASt {
-            vtx: vtx,
-            offset: offset,
-            data: data,
-            access: AttrAccess {
-                addr: attr_addr,
-                comps: data.src_ref.as_ssa().unwrap().comps(),
-                patch: false,
-                out_load: false,
-                flags: 0,
-            },
-        }
-        .into()
-    }
-
-    pub fn new_bra(block: u32) -> Instr {
-        OpBra { target: block }.into()
-    }
-
-    pub fn new_exit() -> Instr {
-        OpExit {}.into()
-    }
-
-    pub fn new_s2r(dst: Dst, idx: u8) -> Instr {
-        OpS2R { dst: dst, idx: idx }.into()
-    }
-
     pub fn new_swap(x: RegRef, y: RegRef) -> Instr {
         assert!(x.file() == y.file());
         OpSwap {
             dsts: [x.into(), y.into()],
             srcs: [y.into(), x.into()],
-        }
-        .into()
-    }
-
-    pub fn new_fs_out(srcs: &[Src]) -> Instr {
-        OpFSOut {
-            srcs: srcs.to_vec(),
         }
         .into()
     }
@@ -3624,6 +3450,25 @@ pub enum MappedInstrs {
     None,
     One(Box<Instr>),
     Many(Vec<Box<Instr>>),
+}
+
+impl MappedInstrs {
+    pub fn push(&mut self, i: Box<Instr>) {
+        match self {
+            MappedInstrs::None => {
+                *self = MappedInstrs::One(i);
+            }
+            MappedInstrs::One(_) => {
+                *self = match std::mem::replace(self, MappedInstrs::None) {
+                    MappedInstrs::One(o) => MappedInstrs::Many(vec![o, i]),
+                    _ => panic!("Not a One"),
+                };
+            }
+            MappedInstrs::Many(v) => {
+                v.push(i);
+            }
+        }
+    }
 }
 
 pub struct BasicBlock {

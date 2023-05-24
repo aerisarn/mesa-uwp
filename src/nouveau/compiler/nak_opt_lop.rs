@@ -99,9 +99,8 @@ impl LopPass {
                 _ => return,
             };
 
-            let entry = match self.ssa_lop.get(&ssa) {
-                Some(e) => e,
-                None => return,
+            let Some(entry) = self.ssa_lop.get(&ssa) else {
+                return;
             };
 
             let entry_use_count = *self.use_counts.get(&ssa).unwrap();

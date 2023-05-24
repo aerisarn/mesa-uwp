@@ -6,6 +6,7 @@
 mod bitset;
 mod bitview;
 mod nak_assign_regs;
+mod nak_builder;
 mod nak_calc_instr_deps;
 mod nak_encode_sm75;
 mod nak_from_nir;

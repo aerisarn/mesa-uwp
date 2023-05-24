@@ -272,9 +272,8 @@ impl RegFileAllocation {
             let reg = self.used.next_unset(next_reg.into());
 
             /* Ensure we're properly aligned */
-            let reg = match u8::try_from(reg.next_multiple_of(align.into())) {
-                Ok(r) => r,
-                Err(_) => return None,
+            let Ok(reg) = u8::try_from(reg.next_multiple_of(align.into())) else {
+                return None;
             };
 
             if !self.is_reg_in_bounds(reg, comps) {
