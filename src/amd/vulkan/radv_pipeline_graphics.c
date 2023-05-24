@@ -2119,7 +2119,13 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device,
    }
 
    if (device->smooth_lines) {
-      if (pipeline->dynamic_states & RADV_DYNAMIC_LINE_RASTERIZATION_MODE) {
+      /* For GPL, when the fragment shader is compiled without any pre-rasterization information,
+       * ensure the line rasterization mode is considered dynamic because we can't know if it's
+       * going to draw lines or not.
+       */
+      if (pipeline->dynamic_states & RADV_DYNAMIC_LINE_RASTERIZATION_MODE ||
+          ((lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+           !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT))) {
          key.dynamic_line_rast_mode = true;
       } else {
          key.ps.line_smooth_enabled =
