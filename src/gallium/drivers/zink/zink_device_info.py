@@ -84,6 +84,7 @@ EXTENSIONS = [
     Extension("VK_KHR_buffer_device_address",
               alias="bda",
               features=True),
+    Extension("VK_EXT_external_memory_host", alias="ext_host_mem", properties=True),
     Extension("VK_EXT_queue_family_foreign"),
     Extension("VK_KHR_swapchain_mutable_format"),
     Extension("VK_EXT_provoking_vertex",

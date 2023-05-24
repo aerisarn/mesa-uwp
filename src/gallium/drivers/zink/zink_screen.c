@@ -551,6 +551,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.have_KHR_external_semaphore_fd || screen->info.have_KHR_external_semaphore_win32;
    case PIPE_CAP_NATIVE_FENCE_FD:
       return screen->instance_info.have_KHR_external_semaphore_capabilities && screen->info.have_KHR_external_semaphore_fd;
+   case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
+      return screen->info.have_EXT_external_memory_host;
 
    case PIPE_CAP_SURFACE_REINTERPRET_BLOCKS:
       return screen->info.have_vulkan11 || screen->info.have_KHR_maintenance2;
