@@ -101,7 +101,7 @@ impl DeadCodePass {
             }
             Op::ParCopy(pcopy) => {
                 assert!(instr.pred.is_true());
-                for (src, dst) in pcopy.iter() {
+                for (dst, src) in pcopy.iter() {
                     if self.is_dst_live(dst) {
                         self.mark_src_live(src);
                     } else {

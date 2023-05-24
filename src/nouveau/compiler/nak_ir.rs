@@ -2911,12 +2911,12 @@ impl OpParCopy {
         self.srcs.is_empty()
     }
 
-    pub fn iter(&self) -> Zip<slice::Iter<'_, Src>, slice::Iter<'_, Dst>> {
+    pub fn iter(&self) -> Zip<slice::Iter<'_, Dst>, slice::Iter<'_, Src>> {
         assert!(self.srcs.len() == self.dsts.len());
-        self.srcs.iter().zip(&self.dsts)
+        self.dsts.iter().zip(&self.srcs)
     }
 
-    pub fn push(&mut self, src: Src, dst: Dst) {
+    pub fn push(&mut self, dst: Dst, src: Src) {
         assert!(self.srcs.len() == self.dsts.len());
         self.srcs.push(src);
         self.dsts.push(dst);

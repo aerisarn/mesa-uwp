@@ -280,7 +280,7 @@ impl<'a> LegalizeInstr<'a> {
                      */
                     if vec_comps.get(&ssa).is_some() {
                         let copy = self.ssa_alloc.alloc(ssa.file());
-                        pcopy.push(ssa.into(), copy.into());
+                        pcopy.push(copy.into(), ssa.into());
                         new_vec[usize::from(c)] = copy;
                     } else {
                         vec_comps.insert(ssa);

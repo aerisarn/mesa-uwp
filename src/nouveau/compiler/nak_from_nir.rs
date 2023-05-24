@@ -640,8 +640,8 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_pack_64_2x32_split => {
                 let dst_ssa = dst.as_ssa().unwrap();
                 let mut pcopy = OpParCopy::new();
-                pcopy.push(srcs[0], dst_ssa[0].into());
-                pcopy.push(srcs[1], dst_ssa[1].into());
+                pcopy.push(dst_ssa[0].into(), srcs[0]);
+                pcopy.push(dst_ssa[1].into(), srcs[1]);
                 self.instrs.push(Instr::new_boxed(Op::ParCopy(pcopy)));
             }
             nir_op_u2f32 => {
@@ -1158,7 +1158,7 @@ impl<'a> ShaderFromNir<'a> {
                         let vec_dst = *dst.as_ssa().unwrap();
                         for (i, dst) in vec_dst.iter().enumerate() {
                             let i = u16::try_from(i).unwrap();
-                            pcopy.push(cb.offset(i * 4).into(), (*dst).into());
+                            pcopy.push((*dst).into(), cb.offset(i * 4).into());
                         }
                         self.instrs.push(Instr::new_boxed(Op::ParCopy(pcopy)));
                     } else {
