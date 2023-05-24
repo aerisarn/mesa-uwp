@@ -769,12 +769,14 @@ dri_get_param(struct pipe_frontend_screen *fscreen,
 }
 
 void
-dri_destroy_screen_helper(struct dri_screen * screen)
+dri_release_screen(struct dri_screen * screen)
 {
    st_screen_destroy(&screen->base);
 
-   if (screen->base.screen)
+   if (screen->base.screen) {
       screen->base.screen->destroy(screen->base.screen);
+      screen->base.screen = NULL;
+   }
 
    if (screen->dev) {
       pipe_loader_release(&screen->dev, 1);
@@ -787,7 +789,7 @@ dri_destroy_screen_helper(struct dri_screen * screen)
 void
 dri_destroy_screen(struct dri_screen *screen)
 {
-   dri_destroy_screen_helper(screen);
+   dri_release_screen(screen);
 
    free(screen->options.force_gl_vendor);
    free(screen->options.force_gl_renderer);

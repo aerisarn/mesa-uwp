@@ -168,7 +168,7 @@ kopper_init_screen(struct dri_screen *screen)
 
    return configs;
 fail:
-   dri_destroy_screen_helper(screen);
+   dri_release_screen(screen);
    return NULL;
 }
 

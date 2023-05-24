@@ -223,7 +223,7 @@ dri_init_screen_helper(struct dri_screen *screen,
                        struct pipe_screen *pscreen);
 
 void
-dri_destroy_screen_helper(struct dri_screen * screen);
+dri_release_screen(struct dri_screen * screen);
 
 void
 dri_destroy_screen(struct dri_screen *screen);
