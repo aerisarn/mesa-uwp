@@ -3,6 +3,7 @@ glx@glx_arb_sync_control@waitformsc
 spec@arb_timer_query@timestamp-get
 spec@arb_shader_image_load_store@coherency
 spec@!opengl 1.0@rasterpos
+spec@!opengl 1.1@depthstencil-default_fb-copypixels samples=6
 
 # need to handle non-fbfetch feedback loops
 spec@arb_texture_barrier@arb_texture_barrier-blending-in-shader*
@@ -52,6 +53,7 @@ KHR-GL46.packed_pixels.varied_rectangle.rg8ui
 
 # Hard to tell when this was introduced, but it is definitely a flake
 spec@arb_copy_image@arb_copy_image-targets .* 32 32 1 gl_texture_1d 32 1 1 11 23 0 5 0 0 14 1 1
+spec@arb_copy_image@arb_copy_image-targets .* 32 32 6 gl_texture_1d 32 1 1 11 23 3 5 0 0 14 1 1
 
 # Regression introduced between a6d4139e59bf0aab66f09b321d1690d28c50a67f and 1ba2460e615b4f11e96366fe00d92fe0ab18f332
 KHR-GL46.constant_expressions.*_tess_eval
