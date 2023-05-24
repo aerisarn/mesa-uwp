@@ -1914,6 +1914,9 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 fprintf(stderr, "Failed to compile %s prog %d/%d "
                         "with any strategy.\n",
                         vir_get_stage_name(c), c->program_id, c->variant_id);
+
+                vir_compile_destroy(c);
+                return NULL;
         }
 
         struct v3d_prog_data *prog_data;
