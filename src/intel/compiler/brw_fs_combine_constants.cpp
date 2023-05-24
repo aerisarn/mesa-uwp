@@ -376,7 +376,7 @@ can_promote_src_as_imm(const struct intel_device_info *devinfo, fs_inst *inst,
       }
       break;
    }
-   case BRW_REGISTER_TYPE_W: {
+   case BRW_REGISTER_TYPE_D: {
       int16_t w;
       if (representable_as_w(inst->src[src_idx].d, &w)) {
          inst->src[src_idx] = brw_imm_w(w);
@@ -384,7 +384,7 @@ can_promote_src_as_imm(const struct intel_device_info *devinfo, fs_inst *inst,
       }
       break;
    }
-   case BRW_REGISTER_TYPE_UW: {
+   case BRW_REGISTER_TYPE_UD: {
       uint16_t uw;
       if (representable_as_uw(inst->src[src_idx].ud, &uw)) {
          inst->src[src_idx] = brw_imm_uw(uw);
@@ -392,6 +392,11 @@ can_promote_src_as_imm(const struct intel_device_info *devinfo, fs_inst *inst,
       }
       break;
    }
+   case BRW_REGISTER_TYPE_W:
+   case BRW_REGISTER_TYPE_UW:
+   case BRW_REGISTER_TYPE_HF:
+      can_promote = true;
+      break;
    default:
       break;
    }
