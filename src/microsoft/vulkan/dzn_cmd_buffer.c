@@ -3216,7 +3216,7 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
                                                         primary_is_writable, &bdesc);
 
                   if (pipeline->sets[s].dynamic_buffer_heap_offsets[o].alt != ~0) {
-                     assert(!primary_is_writable);
+                     assert(primary_is_writable);
                      desc_heap_offset = pipeline->sets[s].dynamic_buffer_heap_offsets[o].alt;
                      dzn_descriptor_heap_write_buffer_desc(device, dst_heap,
                                                            dst_heap_offset + set_heap_offset + desc_heap_offset,
