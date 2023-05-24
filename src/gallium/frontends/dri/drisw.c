@@ -560,14 +560,14 @@ drisw_init_screen(struct dri_screen *screen)
 #endif
    if (!success)
       success = pipe_loader_sw_probe_dri(&screen->dev, lf);
-   if (success) {
+
+   if (success)
       pscreen = pipe_loader_create_screen(screen->dev);
-      dri_init_options(screen);
-   }
 
    if (!pscreen)
       goto fail;
 
+   dri_init_options(screen);
    configs = dri_init_screen_helper(screen, pscreen);
    if (!configs)
       goto fail;

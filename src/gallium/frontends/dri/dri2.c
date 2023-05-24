@@ -2285,14 +2285,13 @@ dri2_init_screen(struct dri_screen *screen)
 
    (void) mtx_init(&screen->opencl_func_mutex, mtx_plain);
 
-   if (pipe_loader_drm_probe_fd(&screen->dev, screen->fd)) {
+   if (pipe_loader_drm_probe_fd(&screen->dev, screen->fd))
       pscreen = pipe_loader_create_screen(screen->dev);
-      dri_init_options(screen);
-   }
 
    if (!pscreen)
        goto fail;
 
+   dri_init_options(screen);
    screen->throttle = pscreen->get_param(pscreen, PIPE_CAP_THROTTLE);
 
    dri2_init_screen_extensions(screen, pscreen, false);
@@ -2342,15 +2341,14 @@ dri_swrast_kms_init_screen(struct dri_screen *screen)
    struct pipe_screen *pscreen = NULL;
 
 #ifdef HAVE_DRISW_KMS
-   if (pipe_loader_sw_probe_kms(&screen->dev, screen->fd)) {
+   if (pipe_loader_sw_probe_kms(&screen->dev, screen->fd))
       pscreen = pipe_loader_create_screen(screen->dev);
-      dri_init_options(screen);
-   }
 #endif
 
    if (!pscreen)
        goto fail;
 
+   dri_init_options(screen);
    dri2_init_screen_extensions(screen, pscreen, true);
 
    configs = dri_init_screen_helper(screen, pscreen);

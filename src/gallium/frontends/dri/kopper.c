@@ -130,14 +130,14 @@ kopper_init_screen(struct dri_screen *screen)
       success = pipe_loader_drm_probe_fd(&screen->dev, screen->fd);
    else
       success = pipe_loader_vk_probe_dri(&screen->dev, NULL);
-   if (success) {
+
+   if (success)
       pscreen = pipe_loader_create_screen(screen->dev);
-      dri_init_options(screen);
-   }
 
    if (!pscreen)
       goto fail;
 
+   dri_init_options(screen);
    screen->unwrapped_screen = trace_screen_unwrap(pscreen);
 
    configs = dri_init_screen_helper(screen, pscreen);
