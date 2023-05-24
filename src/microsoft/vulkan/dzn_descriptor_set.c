@@ -421,8 +421,9 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
          if (is_dynamic) {
             range->OffsetInDescriptorsFromTableStart =
                set_layout->dynamic_buffers.range_offset +
-               set_layout->dynamic_buffers.count;
+               set_layout->dynamic_buffers.desc_count;
             set_layout->dynamic_buffers.count += range->NumDescriptors;
+            set_layout->dynamic_buffers.desc_count += range->NumDescriptors;
          } else {
             range->OffsetInDescriptorsFromTableStart = set_layout->range_desc_count[type];
             if (!binfos[binding].variable_size)
@@ -440,7 +441,8 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
          if (is_dynamic) {
             range->OffsetInDescriptorsFromTableStart =
                set_layout->dynamic_buffers.range_offset +
-               set_layout->dynamic_buffers.count;
+               set_layout->dynamic_buffers.desc_count;
+            set_layout->dynamic_buffers.desc_count += range->NumDescriptors;
          } else {
             range->OffsetInDescriptorsFromTableStart = set_layout->range_desc_count[type];
             set_layout->range_desc_count[type] += range->NumDescriptors;
@@ -679,7 +681,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
       }
 
       if (!device->bindless)
-         layout->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += set_layout->dynamic_buffers.count;
+         layout->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += set_layout->dynamic_buffers.desc_count;
 
       dynamic_buffer_base += set_layout->dynamic_buffers.count;
       for (uint32_t o = 0, elem = 0; o < set_layout->dynamic_buffers.count; o++, elem++) {
