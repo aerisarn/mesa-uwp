@@ -835,6 +835,8 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
             pipeline->line_rectangular = p->line_rectangular;
             memcpy(pipeline->shaders, p->shaders, sizeof(struct lvp_shader) * 4);
             lvp_forall_gfx_stage(i) {
+               if (i == MESA_SHADER_FRAGMENT)
+                  continue;
                copy_shader_sanitized(&pipeline->shaders[i], &p->shaders[i]);
             }
          }
