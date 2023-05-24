@@ -2896,8 +2896,7 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_buffer_
           cmd_buffer->device, image, layout,
           radv_image_queue_family_mask(image, cmd_buffer->qf,
                                        cmd_buffer->qf))) {
-      db_z_info &= C_028040_TILE_SURFACE_ENABLE;
-      db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(1);
+      db_render_control |= S_028000_DEPTH_COMPRESS_DISABLE(1) | S_028000_STENCIL_COMPRESS_DISABLE(1);
    }
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX10_3 &&
