@@ -22,6 +22,7 @@
  *
  */
 
+#include "aco_builder.h"
 #include "aco_ir.h"
 
 #include "common/sid.h"
@@ -165,21 +166,6 @@ struct alu_delay_info {
    {
       return valu_instrs == valu_nop && trans_instrs == trans_nop && salu_cycles == 0;
    }
-};
-
-enum class alu_delay_wait {
-   NO_DEP,
-   VALU_DEP_1,
-   VALU_DEP_2,
-   VALU_DEP_3,
-   VALU_DEP_4,
-   TRANS32_DEP_1,
-   TRANS32_DEP_2,
-   TRANS32_DEP_3,
-   FMA_ACCUM_CYCLE_1,
-   SALU_CYCLE_1,
-   SALU_CYCLE_2,
-   SALU_CYCLE_3
 };
 
 uint8_t
