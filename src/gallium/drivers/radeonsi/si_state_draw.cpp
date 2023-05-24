@@ -1226,12 +1226,33 @@ static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
    }
 }
 
-ALWAYS_INLINE
-static bool si_prim_restart_index_changed(struct si_context *sctx, bool primitive_restart,
-                                          unsigned restart_index)
+template <amd_gfx_level GFX_VERSION> ALWAYS_INLINE
+static bool si_prim_restart_index_changed(struct si_context *sctx, unsigned index_size,
+                                          bool primitive_restart, unsigned restart_index)
 {
-   return primitive_restart && (restart_index != sctx->last_restart_index ||
-                                sctx->last_restart_index == SI_RESTART_INDEX_UNKNOWN);
+   if (!primitive_restart)
+      return false;
+
+   if (sctx->last_restart_index == SI_RESTART_INDEX_UNKNOWN)
+      return true;
+
+   /* GFX8+ only compares the index type number of bits of the restart index, so the unused bits
+    * are "don't care".
+    *
+    * Summary of restart index comparator behavior:
+    * - GFX6-7: Compare all bits.
+    * - GFX8: Only compare index type bits.
+    * - GFX9+: If MATCH_ALL_BITS, compare all bits, else only compare index type bits.
+    */
+   if (GFX_VERSION >= GFX8) {
+      /* This masking eliminates no-op 0xffffffff -> 0xffff restart index changes that cause
+       * unnecessary context rolls when switching the index type.
+       */
+      unsigned index_mask = BITFIELD_MASK(index_size * 8);
+      return (restart_index & index_mask) != (sctx->last_restart_index & index_mask);
+   } else {
+      return restart_index != sctx->last_restart_index;
+   }
 }
 
 template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS,
@@ -1376,7 +1397,8 @@ static void si_emit_draw_registers(struct si_context *sctx,
                                    S_03092C_DISABLE_FOR_AUTO_INDEX(1));
             sctx->last_primitive_restart_en = primitive_restart;
          }
-         if (si_prim_restart_index_changed(sctx, primitive_restart, restart_index)) {
+         if (si_prim_restart_index_changed<GFX_VERSION>(sctx, index_size, primitive_restart,
+                                                        restart_index)) {
             radeon_set_context_reg(R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, restart_index);
             sctx->last_restart_index = restart_index;
          }
@@ -1389,7 +1411,8 @@ static void si_emit_draw_registers(struct si_context *sctx,
             radeon_set_context_reg(R_028A94_VGT_MULTI_PRIM_IB_RESET_EN, primitive_restart);
          sctx->last_primitive_restart_en = primitive_restart;
       }
-      if (si_prim_restart_index_changed(sctx, primitive_restart, restart_index)) {
+      if (si_prim_restart_index_changed<GFX_VERSION>(sctx, index_size, primitive_restart,
+                                                     restart_index)) {
          radeon_set_context_reg(R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, restart_index);
          sctx->last_restart_index = restart_index;
          if (GFX_VERSION == GFX9)
