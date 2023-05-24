@@ -675,16 +675,6 @@ struct vk_render_pass_state {
    /** VkPipelineRenderingCreateInfo::viewMask */
    uint32_t view_mask;
 
-   /** Render pass flags from VkGraphicsPipelineCreateInfo::flags
-    *
-    * For drivers which use vk_render_pass, this will also include flags
-    * generated based on subpass self-dependencies and fragment density map.
-    */
-   VkPipelineCreateFlags2KHR pipeline_flags;
-
-   /* True if any feedback loops only involve input attachments. */
-   bool feedback_loop_input_only;
-
    /** VkPipelineRenderingCreateInfo::colorAttachmentCount */
    uint8_t color_attachment_count;
 
@@ -858,6 +848,23 @@ struct vk_graphics_pipeline_state {
 
    VkShaderStageFlags shader_stages;
 
+   /** Flags from VkGraphicsPipelineCreateInfo::flags that are considered part
+    * of a stage and need to be merged when linking libraries.
+    *
+    * For drivers which use vk_render_pass, this will also include flags
+    * generated based on subpass self-dependencies and fragment density map.
+    */
+   VkPipelineCreateFlags2KHR pipeline_flags;
+
+   /* True if there are feedback loops that do not involve input attachments
+    * managed by the driver. This is set to true by the runtime if there
+    * are loops indicated by a pipeline flag (which may involve any image
+    * rather than only input attachments under the control of the driver) or
+    * there was no driver-provided render pass info struct (because input
+    * attachments for emulated renderpasses cannot be managed by the driver).
+    */
+   bool feedback_loop_not_input_only;
+
    /** Vertex input state */
    const struct vk_vertex_input_state *vi;
 
@@ -922,6 +929,10 @@ struct vk_graphics_pipeline_state {
  *                            passes itself.  This should be NULL for drivers
  *                            that use the common render pass infrastructure
  *                            built on top of dynamic rendering.
+ * :param driver_rp_flags: |in| Pipeline create flags implied by the
+ *                              renderpass or subpass if the driver implements
+ *                              render passes itself.  This is only used if
+ *                              driver_rp is non-NULL.
  * :param  all:         |in|  The vk_graphics_pipeline_all_state to use to
  *                            back any newly needed states.  If NULL, newly
  *                            needed states will be dynamically allocated
@@ -938,7 +949,8 @@ VkResult
 vk_graphics_pipeline_state_fill(const struct vk_device *device,
                                 struct vk_graphics_pipeline_state *state,
                                 const VkGraphicsPipelineCreateInfo *info,
-                                const struct vk_render_pass_state *rp_info,
+                                const struct vk_render_pass_state *driver_rp,
+                                VkPipelineCreateFlags2KHR driver_rp_flags,
                                 struct vk_graphics_pipeline_all_state *all,
                                 const VkAllocationCallbacks *alloc,
                                 VkSystemAllocationScope scope,

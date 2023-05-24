@@ -5,6 +5,7 @@
 #include "vk_common_entrypoints.h"
 #include "vk_device.h"
 #include "vk_log.h"
+#include "vk_pipeline.h"
 #include "vk_render_pass.h"
 #include "vk_standard_sample_locations.h"
 #include "vk_util.h"
@@ -1032,11 +1033,11 @@ vk_render_pass_state_is_complete(const struct vk_render_pass_state *rp)
 }
 
 static void
-vk_render_pass_state_init(struct vk_render_pass_state *rp,
-                          const struct vk_render_pass_state *old_rp,
-                          const struct vk_render_pass_state *driver_rp,
-                          const VkGraphicsPipelineCreateInfo *info,
-                          VkGraphicsPipelineLibraryFlagsEXT lib)
+vk_pipeline_flags_init(struct vk_graphics_pipeline_state *state,
+                       VkPipelineCreateFlags2KHR driver_rp_flags,
+                       bool has_driver_rp,
+                       const VkGraphicsPipelineCreateInfo *info,
+                       VkGraphicsPipelineLibraryFlagsEXT lib)
 {
    VkPipelineCreateFlags2KHR valid_pipeline_flags = 0;
    if (lib & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
@@ -1049,22 +1050,43 @@ vk_render_pass_state_init(struct vk_render_pass_state *rp,
          VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
          VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
    }
-   const VkPipelineCreateFlags2KHR pipeline_flags =
-      (driver_rp ? driver_rp->pipeline_flags :
+   const VkPipelineCreateFlags2KHR renderpass_flags =
+      (has_driver_rp ? driver_rp_flags :
        vk_get_pipeline_rendering_flags(info)) & valid_pipeline_flags;
 
+   const VkPipelineCreateFlags2KHR pipeline_flags =
+      vk_graphics_pipeline_create_flags(info) & valid_pipeline_flags;
+
+   bool pipeline_feedback_loop = pipeline_flags &
+      (VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
+       VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
+
+   bool renderpass_feedback_loop = renderpass_flags &
+      (VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
+       VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
+
+   state->pipeline_flags |= renderpass_flags | pipeline_flags;
+   state->feedback_loop_not_input_only |=
+      pipeline_feedback_loop || (!has_driver_rp && renderpass_feedback_loop);
+}
+
+static void
+vk_render_pass_state_init(struct vk_render_pass_state *rp,
+                          const struct vk_render_pass_state *old_rp,
+                          const struct vk_render_pass_state *driver_rp,
+                          const VkGraphicsPipelineCreateInfo *info,
+                          VkGraphicsPipelineLibraryFlagsEXT lib)
+{
    /* If we already have render pass state and it has attachment info, then
     * it's complete and we don't need a new one.  The one caveat here is that
     * we may need to add in some rendering flags.
     */
    if (old_rp != NULL && vk_render_pass_state_is_complete(old_rp)) {
       *rp = *old_rp;
-      rp->pipeline_flags |= pipeline_flags;
       return;
    }
 
    *rp = (struct vk_render_pass_state) {
-      .pipeline_flags = pipeline_flags,
       .depth_attachment_format = VK_FORMAT_UNDEFINED,
       .stencil_attachment_format = VK_FORMAT_UNDEFINED,
    };
@@ -1228,6 +1250,7 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
                                 struct vk_graphics_pipeline_state *state,
                                 const VkGraphicsPipelineCreateInfo *info,
                                 const struct vk_render_pass_state *driver_rp,
+                                VkPipelineCreateFlags2KHR driver_rp_flags,
                                 struct vk_graphics_pipeline_all_state *all,
                                 const VkAllocationCallbacks *alloc,
                                 VkSystemAllocationScope scope,
@@ -1358,6 +1381,11 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
           !vk_render_pass_state_is_complete(state->rp) &&
           vk_render_pass_state_is_complete(&rp))
          state->rp = NULL;
+   }
+
+   if (lib & (VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT |
+              VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
+      vk_pipeline_flags_init(state, driver_rp_flags, !!driver_rp, info, lib);
    }
 
    if (lib & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
@@ -1599,6 +1627,9 @@ vk_graphics_pipeline_state_merge(struct vk_graphics_pipeline_state *dst,
 
    dst->shader_stages |= src->shader_stages;
 
+   dst->pipeline_flags |= src->pipeline_flags;
+   dst->feedback_loop_not_input_only |= src->feedback_loop_not_input_only;
+
    /* Render pass state needs special care because a render pass state may be
     * incomplete (view mask only).  See vk_render_pass_state_init().
     */
@@ -1689,6 +1720,10 @@ vk_graphics_pipeline_state_copy(const struct vk_device *device,
    BITSET_COPY(state->dynamic, old_state->dynamic);
 
 #undef COPY_STATE_IF_NEEDED
+
+   state->pipeline_flags = old_state->pipeline_flags;
+   state->feedback_loop_not_input_only =
+      old_state->feedback_loop_not_input_only;
 
    vk_graphics_pipeline_state_validate(state);
    return VK_SUCCESS;

@@ -298,7 +298,7 @@ radv_pipeline_uses_vrs_attachment(const struct radv_graphics_pipeline *pipeline,
 {
    VkPipelineCreateFlags2KHR create_flags = pipeline->base.create_flags;
    if (state->rp)
-      create_flags |= state->rp->pipeline_flags;
+      create_flags |= state->pipeline_flags;
 
    return (create_flags & VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR) != 0;
 }
@@ -697,7 +697,7 @@ radv_pipeline_import_graphics_info(struct radv_device *device, struct radv_graph
       pipeline->active_stages |= sinfo->stage;
    }
 
-   result = vk_graphics_pipeline_state_fill(&device->vk, state, pCreateInfo, NULL, NULL, NULL,
+   result = vk_graphics_pipeline_state_fill(&device->vk, state, pCreateInfo, NULL, 0, NULL, NULL,
                                             VK_SYSTEM_ALLOCATION_SCOPE_OBJECT, &pipeline->state_data);
    if (result != VK_SUCCESS)
       return result;
@@ -821,7 +821,7 @@ radv_pipeline_uses_ds_feedback_loop(const struct radv_graphics_pipeline *pipelin
 {
    VkPipelineCreateFlags2KHR create_flags = pipeline->base.create_flags;
    if (state->rp)
-      create_flags |= state->rp->pipeline_flags;
+      create_flags |= state->pipeline_flags;
 
    return (create_flags & VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) != 0;
 }

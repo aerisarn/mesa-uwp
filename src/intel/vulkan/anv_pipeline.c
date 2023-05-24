@@ -3050,7 +3050,8 @@ anv_graphics_lib_pipeline_create(struct anv_device *device,
 
    result = vk_graphics_pipeline_state_fill(&device->vk,
                                             &pipeline->state, pCreateInfo,
-                                            NULL /* sp_info */,
+                                            NULL /* driver_rp */,
+                                            0 /* driver_rp_flags */,
                                             &pipeline->all_state, NULL, 0, NULL);
    if (result != VK_SUCCESS) {
       anv_pipeline_finish(&pipeline->base.base, device);
@@ -3166,7 +3167,8 @@ anv_graphics_pipeline_create(struct anv_device *device,
    }
 
    result = vk_graphics_pipeline_state_fill(&device->vk, &state, pCreateInfo,
-                                            NULL /* sp_info */,
+                                            NULL /* driver_rp */,
+                                            0 /* driver_rp_flags */,
                                             &all, NULL, 0, NULL);
    if (result != VK_SUCCESS) {
       anv_pipeline_finish(&pipeline->base.base, device);

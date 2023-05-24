@@ -44,11 +44,11 @@ emit_pipeline_rs_state(struct nv_push *p,
 static void
 nvk_populate_fs_key(struct nvk_fs_key *key,
                     const struct vk_multisample_state *ms,
-                    const struct vk_render_pass_state *rp)
+                    const struct vk_graphics_pipeline_state *state)
 {
    memset(key, 0, sizeof(*key));
 
-   if (rp->pipeline_flags &
+   if (state->pipeline_flags &
        VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
       key->zs_self_dep = true;
 
@@ -321,7 +321,7 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
    struct vk_graphics_pipeline_all_state all;
    struct vk_graphics_pipeline_state state = {};
    result = vk_graphics_pipeline_state_fill(&dev->vk, &state, pCreateInfo,
-                                            NULL, &all, NULL, 0, NULL);
+                                            NULL, 0, &all, NULL, 0, NULL);
    assert(result == VK_SUCCESS);
 
    nir_shader *nir[MESA_SHADER_STAGES] = {};
@@ -358,7 +358,7 @@ nvk_graphics_pipeline_create(struct nvk_device *dev,
 
       struct nvk_fs_key fs_key_tmp, *fs_key = NULL;
       if (stage == MESA_SHADER_FRAGMENT) {
-         nvk_populate_fs_key(&fs_key_tmp, state.ms, state.rp);
+         nvk_populate_fs_key(&fs_key_tmp, state.ms, &state);
          fs_key = &fs_key_tmp;
       }
 

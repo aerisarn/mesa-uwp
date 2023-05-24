@@ -3774,7 +3774,7 @@ tu_pipeline_builder_parse_rasterization_order(
        * setting the SINGLE_PRIM_MODE field to the same value that the blob does
        * for advanced_blend in sysmem mode if a feedback loop is detected.
        */
-      if (builder->graphics_state.rp->pipeline_flags &
+      if (builder->graphics_state.pipeline_flags &
           (VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
            VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)) {
          sysmem_prim_mode = FLUSH_PER_OVERLAP_AND_OVERWRITE;
@@ -3966,15 +3966,13 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
       vk_dynamic_graphics_state_fill(&gfx_pipeline->dynamic_state,
                                      &builder->graphics_state);
       gfx_pipeline->feedback_loop_color =
-         (builder->graphics_state.rp->pipeline_flags &
+         (builder->graphics_state.pipeline_flags &
           VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
       gfx_pipeline->feedback_loop_ds =
-         (builder->graphics_state.rp->pipeline_flags &
+         (builder->graphics_state.pipeline_flags &
           VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
       gfx_pipeline->feedback_loop_may_involve_textures =
-         (gfx_pipeline->feedback_loop_color ||
-          gfx_pipeline->feedback_loop_ds) &&
-         !builder->graphics_state.rp->feedback_loop_input_only;
+         builder->graphics_state.feedback_loop_not_input_only;
    }
 
    return VK_SUCCESS;
@@ -3993,7 +3991,6 @@ tu_fill_render_pass_state(struct vk_render_pass_state *rp,
 {
    rp->view_mask = subpass->multiview_mask;
    rp->color_attachment_count = subpass->color_count;
-   rp->pipeline_flags = 0;
 
    const uint32_t a = subpass->depth_stencil_attachment.attachment;
    rp->depth_attachment_format = VK_FORMAT_UNDEFINED;
@@ -4094,6 +4091,7 @@ tu_pipeline_builder_init_graphics(
 
    struct vk_render_pass_state rp_state = {};
    const struct vk_render_pass_state *driver_rp = NULL;
+   VkPipelineCreateFlags2KHR rp_flags = 0;
 
    builder->unscaled_input_fragcoord = 0;
 
@@ -4114,8 +4112,6 @@ tu_pipeline_builder_init_graphics(
 
       tu_fill_render_pass_state(&rp_state, pass, subpass);
 
-      rp_state.feedback_loop_input_only = true;
-
       for (unsigned i = 0; i < subpass->input_count; i++) {
          /* Input attachments stored in GMEM must be loaded with unscaled
           * FragCoord.
@@ -4124,29 +4120,18 @@ tu_pipeline_builder_init_graphics(
             builder->unscaled_input_fragcoord |= 1u << i;
       }
 
-      /* Feedback loop flags can come from either the user (in which case they
-       * may involve textures) or from the driver (in which case they don't).
-       */
-      VkPipelineCreateFlags feedback_flags = builder->create_flags &
-         (VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
-          VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
-      if (feedback_flags) {
-         rp_state.feedback_loop_input_only = false;
-         rp_state.pipeline_flags |= feedback_flags;
-      }
-
       if (subpass->feedback_loop_color) {
-         rp_state.pipeline_flags |=
+         rp_flags |=
             VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
       }
 
       if (subpass->feedback_loop_ds) {
-         rp_state.pipeline_flags |=
+         rp_flags |=
             VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
       }
 
       if (pass->fragment_density_map.attachment != VK_ATTACHMENT_UNUSED) {
-         rp_state.pipeline_flags |=
+         rp_flags |=
             VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
       }
 
@@ -4166,12 +4151,13 @@ tu_pipeline_builder_init_graphics(
                                    &builder->graphics_state,
                                    builder->create_info,
                                    driver_rp,
+                                   rp_flags,
                                    &builder->all_state,
                                    NULL, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT,
                                    NULL);
 
    if (builder->graphics_state.rp) {
-      builder->fragment_density_map = (builder->graphics_state.rp->pipeline_flags &
+      builder->fragment_density_map = (builder->graphics_state.pipeline_flags &
          VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT) ||
          TU_DEBUG(FDM);
    }

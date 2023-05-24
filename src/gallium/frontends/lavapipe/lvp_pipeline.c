@@ -853,7 +853,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
 
    result = vk_graphics_pipeline_state_fill(&device->vk,
                                             &pipeline->graphics_state,
-                                            pCreateInfo, NULL, NULL, NULL,
+                                            pCreateInfo, NULL, 0, NULL, NULL,
                                             VK_SYSTEM_ALLOCATION_SCOPE_OBJECT,
                                             &pipeline->state_data);
    if (result != VK_SUCCESS)
