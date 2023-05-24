@@ -407,6 +407,14 @@ v3d_get_compiled_shader(struct v3d_context *v3d,
                                         v3d_shader_debug_output,
                                         v3d,
                                         program_id, variant_id, &shader_size);
+
+                /* qpu_insts being NULL can happen if the register allocation
+                 * failed. At this point we can't really trigger an OpenGL API
+                 * error, as the final compilation could happen on the draw
+                 * call. So let's at least assert, so debug builds finish at
+                 * this point.
+                 */
+                assert(qpu_insts);
                 ralloc_steal(shader, shader->prog_data.base);
 
                 if (shader_size) {
