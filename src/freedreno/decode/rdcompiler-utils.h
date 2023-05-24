@@ -110,7 +110,7 @@ struct rd_section {
 static struct cmdstream *
 cs_alloc(struct replay_context *ctx, uint32_t size)
 {
-   struct cmdstream *cs = calloc(1, sizeof(struct cmdstream));
+   struct cmdstream *cs = (struct cmdstream *) calloc(1, sizeof(struct cmdstream));
    cs->mem = (uint32_t *)calloc(1, size);
    cs->total_size = size / sizeof(uint32_t);
    cs->cur = 0;
@@ -129,7 +129,8 @@ rd_write_cs_buffer(FILE *out, struct cmdstream *cs)
    if (cs->cur == 0)
       return;
 
-   const uint32_t packet[] = {(uint32_t)cs->iova, cs->cur * sizeof(uint32_t),
+   const uint32_t packet[] = {(uint32_t)cs->iova,
+                              (uint32_t)(cs->cur * sizeof(uint32_t)),
                               (uint32_t)(cs->iova >> 32)};
    struct rd_section section_address = {.type = RD_GPUADDR,
                                         .size = sizeof(packet)};
@@ -137,7 +138,7 @@ rd_write_cs_buffer(FILE *out, struct cmdstream *cs)
    fwrite(packet, sizeof(packet), 1, out);
 
    struct rd_section section_contents = {.type = RD_BUFFER_CONTENTS,
-                                         .size = cs->cur * sizeof(uint32_t)};
+                                         .size = uint32_t(cs->cur * sizeof(uint32_t))};
 
    fwrite(&section_contents, sizeof(section_contents), 1, out);
    fwrite(cs->mem, sizeof(uint32_t), cs->cur, out);
@@ -222,8 +223,9 @@ replay_context_init(struct replay_context *ctx, struct fd_dev_id *dev_id,
    ctx->state_cs = cs_alloc(ctx, 2 * 1024 * 1024);
    ctx->shader_cs = cs_alloc(ctx, 8 * 1024 * 1024);
 
+   struct ir3_compiler_options options{};
    ctx->compiler =
-      ir3_compiler_create(NULL, dev_id, &(struct ir3_compiler_options){});
+      ir3_compiler_create(NULL, dev_id, &options);
    ctx->compiled_shaders = _mesa_hash_table_u64_create(ctx->mem_ctx);
 }
 
@@ -271,7 +273,7 @@ upload_shader(struct replay_context *ctx, uint64_t id, const char *source)
 static void
 emit_shader_iova(struct replay_context *ctx, struct cmdstream *cs, uint64_t id)
 {
-   uint64_t *shader_iova =
+   uint64_t *shader_iova = (uint64_t *)
       _mesa_hash_table_u64_search(ctx->compiled_shaders, id);
    pkt_qw(cs, *shader_iova);
 }
