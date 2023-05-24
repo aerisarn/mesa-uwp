@@ -216,8 +216,8 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_boxed(Op::F2I(OpF2I {
                     dst: dst,
                     src: srcs[0],
-                    src_type: FloatType::from_bytes(src_bits / 8),
-                    dst_type: IntType::from_bytes(dst_bits / 8, dst_is_signed),
+                    src_type: FloatType::from_bits(src_bits),
+                    dst_type: IntType::from_bits(dst_bits, dst_is_signed),
                     rnd_mode: FRndMode::Zero,
                 })));
             }

@@ -717,10 +717,10 @@ impl SM75Instr {
             ALUSrc::from_src(&op.src.into()),
             ALUSrc::None,
         );
-        self.set_field(75..77, op.dst_type.bytes().ilog2());
+        self.set_field(75..77, (op.dst_type.bits() / 8).ilog2());
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_bit(80, op.ftz);
-        self.set_field(84..86, op.src_type.bytes().ilog2());
+        self.set_field(84..86, (op.src_type.bits() / 8).ilog2());
     }
 
     fn encode_f2i(&mut self, op: &OpF2I) {
@@ -732,12 +732,12 @@ impl SM75Instr {
             ALUSrc::None,
         );
         self.set_bit(72, op.dst_type.is_signed());
-        self.set_field(75..77, op.dst_type.bytes().ilog2());
+        self.set_field(75..77, (op.dst_type.bits() / 8).ilog2());
         self.set_bit(77, false); /* NTZ */
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_bit(80, false); /* FTZ */
         self.set_bit(81, false); /* DNZ */
-        self.set_field(84..86, op.src_type.bytes().ilog2());
+        self.set_field(84..86, (op.src_type.bits() / 8).ilog2());
     }
 
     fn encode_i2f(&mut self, op: &OpI2F) {
@@ -751,9 +751,9 @@ impl SM75Instr {
 
         self.set_field(60..62, 0_u8); /* TODO: subop */
         self.set_bit(74, op.src_type.is_signed());
-        self.set_field(75..77, op.dst_type.bytes().trailing_zeros());
+        self.set_field(75..77, (op.dst_type.bits() / 8).ilog2());
         self.set_rnd_mode(78..80, op.rnd_mode);
-        self.set_field(84..86, op.src_type.bytes().trailing_zeros());
+        self.set_field(84..86, (op.src_type.bits() / 8).ilog2());
     }
 
     fn encode_mov(&mut self, op: &OpMov) {

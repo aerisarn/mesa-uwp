@@ -1065,20 +1065,20 @@ pub enum FloatType {
 }
 
 impl FloatType {
-    pub fn from_bytes(bytes: usize) -> FloatType {
+    pub fn from_bits(bytes: usize) -> FloatType {
         match bytes {
-            2 => FloatType::F16,
-            4 => FloatType::F32,
-            8 => FloatType::F64,
+            16 => FloatType::F16,
+            32 => FloatType::F32,
+            64 => FloatType::F64,
             _ => panic!("Invalid float type size"),
         }
     }
 
-    pub fn bytes(&self) -> usize {
+    pub fn bits(&self) -> usize {
         match self {
-            FloatType::F16 => 2,
-            FloatType::F32 => 4,
-            FloatType::F64 => 8,
+            FloatType::F16 => 16,
+            FloatType::F32 => 32,
+            FloatType::F64 => 64,
         }
     }
 }
@@ -1244,30 +1244,30 @@ pub enum IntType {
 }
 
 impl IntType {
-    pub fn from_bytes(bytes: usize, is_signed: bool) -> IntType {
-        match bytes {
-            1 => {
+    pub fn from_bits(bits: usize, is_signed: bool) -> IntType {
+        match bits {
+            8 => {
                 if is_signed {
                     IntType::I8
                 } else {
                     IntType::U8
                 }
             }
-            2 => {
+            16 => {
                 if is_signed {
                     IntType::I16
                 } else {
                     IntType::U16
                 }
             }
-            4 => {
+            32 => {
                 if is_signed {
                     IntType::I32
                 } else {
                     IntType::U32
                 }
             }
-            8 => {
+            64 => {
                 if is_signed {
                     IntType::I64
                 } else {
@@ -1285,12 +1285,12 @@ impl IntType {
         }
     }
 
-    pub fn bytes(&self) -> usize {
+    pub fn bits(&self) -> usize {
         match self {
-            IntType::U8 | IntType::I8 => 1,
-            IntType::U16 | IntType::I16 => 2,
-            IntType::U32 | IntType::I32 => 4,
-            IntType::U64 | IntType::I64 => 8,
+            IntType::U8 | IntType::I8 => 8,
+            IntType::U16 | IntType::I16 => 16,
+            IntType::U32 | IntType::I32 => 32,
+            IntType::U64 | IntType::I64 => 64,
         }
     }
 }
