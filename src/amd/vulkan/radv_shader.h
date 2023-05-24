@@ -330,6 +330,7 @@ struct radv_shader_info {
    struct {
       bool uses_sample_shading;
       bool needs_sample_positions;
+      bool needs_poly_line_smooth;
       bool writes_memory;
       bool writes_z;
       bool writes_stencil;

@@ -231,6 +231,9 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
    case nir_intrinsic_bvh64_intersect_ray_amd:
       info->cs.uses_rt = true;
       break;
+   case nir_intrinsic_load_poly_line_smooth_enabled:
+      info->ps.needs_poly_line_smooth = true;
+      break;
    default:
       break;
    }
