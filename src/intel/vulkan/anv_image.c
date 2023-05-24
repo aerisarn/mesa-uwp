@@ -345,7 +345,7 @@ can_fast_clear_with_non_zero_color(const struct intel_device_info *devinfo,
       return false;
 
    /* On TGL (< C0), if a block of fragment shader outputs match the surface's
-    * clear color, the HW may convert them to fast-clears (see HSD 14010672564).
+    * clear color, the HW may convert them to fast-clears (see HSD 1607794140).
     * This can lead to rendering corruptions if not handled properly. We
     * restrict the clear color to zero to avoid issues that can occur with:
     *     - Texture view rendering (including blorp_copy calls)
@@ -757,7 +757,7 @@ add_aux_surface_if_supported(struct anv_device *device,
                                        image->vk.format, image->vk.tiling,
                                        image->vk.usage, fmt_list)) {
          image->planes[plane].aux_usage =
-            intel_needs_workaround(device->info, 14010672564) ?
+            intel_needs_workaround(device->info, 1607794140) ?
                ISL_AUX_USAGE_GFX12_CCS_E :
                ISL_AUX_USAGE_CCS_E;
       } else if (device->info->ver >= 12) {

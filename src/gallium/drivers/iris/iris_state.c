@@ -4862,9 +4862,9 @@ iris_store_tes_state(const struct intel_device_info *devinfo,
       te.MaximumTessellationFactorNotOdd = 64.0;
 #if GFX_VERx10 >= 125
       STATIC_ASSERT(TEDMODE_OFF == 0);
-      if (intel_needs_workaround(devinfo, 14015297576)) {
+      if (intel_needs_workaround(devinfo, 14015055625)) {
          te.TessellationDistributionMode = TEDMODE_OFF;
-      } else if (intel_needs_workaround(devinfo, 22012785325)) {
+      } else if (intel_needs_workaround(devinfo, 22012699309)) {
          te.TessellationDistributionMode = TEDMODE_RR_STRICT;
       } else {
          te.TessellationDistributionMode = TEDMODE_RR_FREE;
@@ -6133,24 +6133,24 @@ iris_preemption_streamout_wa(struct iris_context *ice,
 }
 
 static void
-shader_program_needs_wa_14015297576(struct iris_context *ice,
+shader_program_needs_wa_14015055625(struct iris_context *ice,
                                     struct iris_batch *batch,
                                     const struct brw_stage_prog_data *prog_data,
                                     gl_shader_stage stage,
-                                    bool *program_needs_wa_14015297576)
+                                    bool *program_needs_wa_14015055625)
 {
-   if (!intel_needs_workaround(batch->screen->devinfo, 14015297576))
+   if (!intel_needs_workaround(batch->screen->devinfo, 14015055625))
       return;
 
    switch (stage) {
    case MESA_SHADER_TESS_CTRL: {
       struct brw_tcs_prog_data *tcs_prog_data = (void *) prog_data;
-      *program_needs_wa_14015297576 |= tcs_prog_data->include_primitive_id;
+      *program_needs_wa_14015055625 |= tcs_prog_data->include_primitive_id;
       break;
    }
    case MESA_SHADER_TESS_EVAL: {
       struct brw_tes_prog_data *tes_prog_data = (void *) prog_data;
-      *program_needs_wa_14015297576 |= tes_prog_data->include_primitive_id;
+      *program_needs_wa_14015055625 |= tes_prog_data->include_primitive_id;
       break;
    }
    default:
@@ -6162,7 +6162,7 @@ shader_program_needs_wa_14015297576(struct iris_context *ice,
    const struct brw_gs_prog_data *gs_prog_data =
       gs_shader ? (void *) gs_shader->prog_data : NULL;
 
-   *program_needs_wa_14015297576 |=
+   *program_needs_wa_14015055625 |=
       gs_prog_data && gs_prog_data->include_primitive_id;
 }
 
@@ -6508,14 +6508,14 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
-   bool program_needs_wa_14015297576 = false;
+   bool program_needs_wa_14015055625 = false;
 
-   /* Check if FS stage will use primitive ID overrides for Wa_14015297576. */
+   /* Check if FS stage will use primitive ID overrides for Wa_14015055625. */
    const struct brw_vue_map *last_vue_map =
       &brw_vue_prog_data(ice->shaders.last_vue_shader->prog_data)->vue_map;
    if ((wm_prog_data->inputs & VARYING_BIT_PRIMITIVE_ID) &&
        last_vue_map->varying_to_slot[VARYING_SLOT_PRIMITIVE_ID] == -1) {
-      program_needs_wa_14015297576 = true;
+      program_needs_wa_14015055625 = true;
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
@@ -6532,8 +6532,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          uint32_t scratch_addr =
             pin_scratch_space(ice, batch, prog_data, stage);
 
-         shader_program_needs_wa_14015297576(ice, batch, prog_data, stage,
-                                             &program_needs_wa_14015297576);
+         shader_program_needs_wa_14015055625(ice, batch, prog_data, stage,
+                                             &program_needs_wa_14015055625);
 
          if (stage == MESA_SHADER_FRAGMENT) {
             UNUSED struct iris_rasterizer_state *cso = ice->state.cso_rast;
@@ -6592,15 +6592,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             iris_emit_merge(batch, shader_psx, psx_state,
                             GENX(3DSTATE_PS_EXTRA_length));
          } else if (stage == MESA_SHADER_TESS_EVAL &&
-                    intel_needs_workaround(batch->screen->devinfo, 14015297576) &&
-                    !program_needs_wa_14015297576) {
-            /* This program doesn't require Wa_14015297576, so we can enable
+                    intel_needs_workaround(batch->screen->devinfo, 14015055625) &&
+                    !program_needs_wa_14015055625) {
+            /* This program doesn't require Wa_14015055625, so we can enable
              * a Tessellation Distribution Mode.
              */
 #if GFX_VERx10 >= 125
             uint32_t te_state[GENX(3DSTATE_TE_length)] = { 0 };
             iris_pack_command(GENX(3DSTATE_TE), te_state, te) {
-               if (intel_needs_workaround(batch->screen->devinfo, 22012785325))
+               if (intel_needs_workaround(batch->screen->devinfo, 22012699309))
                   te.TessellationDistributionMode = TEDMODE_RR_STRICT;
                else
                   te.TessellationDistributionMode = TEDMODE_RR_FREE;
@@ -7415,11 +7415,11 @@ iris_upload_render_state(struct iris_context *ice,
       batch->contains_draw_with_next_seqno = true;
    }
 
-   /* Wa_1409433168 - Send HS state for every primitive on gfx11.
+   /* Wa_1306463417 - Send HS state for every primitive on gfx11.
     * Wa_16011107343 (same for gfx12)
     * We implement this by setting TCS dirty on each draw.
     */
-   if ((INTEL_NEEDS_WA_1409433168 || INTEL_NEEDS_WA_16011107343) &&
+   if ((INTEL_NEEDS_WA_1306463417 || INTEL_NEEDS_WA_16011107343) &&
        ice->shaders.prog[MESA_SHADER_TESS_CTRL]) {
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_TCS;
    }

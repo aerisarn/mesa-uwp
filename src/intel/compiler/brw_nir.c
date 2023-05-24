@@ -1101,7 +1101,7 @@ brw_nir_zero_inputs(nir_shader *shader, uint64_t *zero_inputs)
          nir_metadata_block_index | nir_metadata_dominance, zero_inputs);
 }
 
-/* Code for Wa_14015590813 may have created input/output variables beyond
+/* Code for Wa_18019110168 may have created input/output variables beyond
  * VARYING_SLOT_MAX and removed uses of variables below VARYING_SLOT_MAX.
  * Clean it up, so they all stay below VARYING_SLOT_MAX.
  */
@@ -1138,7 +1138,7 @@ brw_mesh_compact_io(nir_shader *mesh, nir_shader *frag)
    if (!compact)
       return;
 
-   /* The rest of this function should be hit only for Wa_14015590813. */
+   /* The rest of this function should be hit only for Wa_18019110168. */
 
    nir_foreach_shader_out_variable(var, mesh) {
       gl_varying_slot location = var->data.location;

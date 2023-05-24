@@ -1373,7 +1373,7 @@ intel_device_info_init_common(int pci_id,
 static void
 intel_device_info_apply_workarounds(struct intel_device_info *devinfo)
 {
-   if (intel_needs_workaround(devinfo, 22012575642))
+   if (intel_needs_workaround(devinfo, 18012660806))
       devinfo->urb.max_entries[MESA_SHADER_GEOMETRY] = 1536;
 
    /* Fixes issues with:
