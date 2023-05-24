@@ -1512,6 +1512,7 @@ struct radv_ds_buffer_info {
    uint32_t db_z_info2;       /* GFX9 only */
    uint32_t db_stencil_info2; /* GFX9 only */
    uint32_t db_render_override2;
+   uint32_t db_render_control;
 };
 
 void radv_initialise_color_surface(struct radv_device *device, struct radv_color_buffer_info *cb,

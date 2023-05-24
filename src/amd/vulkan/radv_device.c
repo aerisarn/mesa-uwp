@@ -1883,6 +1883,10 @@ radv_initialise_ds_surface(const struct radv_device *device, struct radv_ds_buff
             ds->db_htile_surface |= S_028ABC_VRS_HTILE_ENCODING(V_028ABC_VRS_HTILE_4BIT_ENCODING);
          }
       }
+
+      if (device->physical_device->rad_info.gfx_level >= GFX11) {
+         radv_gfx11_set_db_render_control(device, iview->image->vk.samples, &ds->db_render_control);
+      }
    } else {
       const struct legacy_surf_level *level_info = &surf->u.legacy.level[level];
 
