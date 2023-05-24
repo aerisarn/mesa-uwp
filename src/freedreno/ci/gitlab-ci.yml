@@ -218,8 +218,7 @@ a618_gl:
     HWCI_START_XORG: 1
     DEQP_SUITE: freedreno-a618-skqp
 
-# FIXME: this job runs gles2 deqp, rename or fix!
-.a618_piglit:  # FIXME disabled due to device outage
+.a618_piglit_gles2:  # FIXME disabled due to device outage
   extends:
     - .piglit-test
     - .lava-piglit:arm64
