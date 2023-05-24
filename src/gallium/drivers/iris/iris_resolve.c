@@ -406,8 +406,18 @@ flush_previous_aux_mode(struct iris_batch *batch,
     * isn't 100% resilient to format changes.  However, to date, we have never
     * observed GPU hangs or even corruption to be associated with switching the
     * format, only the aux usage.  So we let that slide for now.
+    *
+    * We haven't seen issues on gfx12 hardware when switching between
+    * FCV_CCS_E and plain CCS_E. A switch could indicate a transition in
+    * accessing data through a different cache domain. The flushes and
+    * invalidates that come from the cache tracker and memory barrier
+    * functions seem to be enough to handle this. Treat the two as equivalent
+    * to avoid extra cache flushing.
     */
-   void *v_aux_usage = (void *) (uintptr_t) aux_usage;
+   void *v_aux_usage = (void *) (uintptr_t)
+      (aux_usage == ISL_AUX_USAGE_FCV_CCS_E ?
+       ISL_AUX_USAGE_CCS_E : aux_usage);
+
    struct hash_entry *entry =
       _mesa_hash_table_search_pre_hashed(batch->bo_aux_modes, bo->hash, bo);
    if (!entry) {
