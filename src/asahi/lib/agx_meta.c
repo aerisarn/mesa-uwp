@@ -49,6 +49,7 @@ build_background_op(nir_builder *b, enum agx_meta_op op, unsigned rt,
       if (msaa) {
          tex->src[1] =
             nir_tex_src_for_ssa(nir_tex_src_ms_index, nir_load_sample_id(b));
+         b->shader->info.fs.uses_sample_shading = true;
       }
 
       tex->coord_components = 2;
