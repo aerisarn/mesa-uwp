@@ -232,6 +232,7 @@ anv_i915_device_setup_context(struct anv_device *device,
       if (!intel_gem_create_context_engines(device->fd, 0 /* flags */,
                                             physical_device->engine_info,
                                             engine_count, engine_classes,
+                                            0 /* vm_id */,
                                             (uint32_t *)&device->context_id))
          result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
                             "kernel context creation failed");
