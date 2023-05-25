@@ -879,6 +879,15 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_discard:
       return agx_emit_discard(b);
 
+   case nir_intrinsic_sample_mask_agx: {
+      assert(stage == MESA_SHADER_FRAGMENT);
+      b->shader->out->writes_sample_mask = true;
+
+      agx_wait_pix(b, 0x0001);
+      return agx_sample_mask(b, agx_src_index(&instr->src[0]),
+                             agx_src_index(&instr->src[1]));
+   }
+
    case nir_intrinsic_load_back_face_agx:
       return agx_get_sr_to(b, dst, AGX_SR_BACKFACING);
 
