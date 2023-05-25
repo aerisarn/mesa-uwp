@@ -3001,3 +3001,110 @@ TEST_P(validation_test, gfx11_no_byte_src_1_2)
       clear_instructions(p);
    }
 }
+
+TEST_P(validation_test, add3_source_types)
+{
+   static const struct {
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      enum brw_reg_type src2_type;
+      bool expected_result;
+   } inst[] = {
+#define INST(dst_type, src0_type, src1_type, src2_type, expected_result)  \
+      {                                                                   \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         BRW_REGISTER_TYPE_##src2_type,                                   \
+         expected_result,                                                 \
+      }
+
+      INST( F,  F,  F,  F, false),
+      INST(HF, HF, HF, HF, false),
+      INST( B,  B,  B,  B, false),
+      INST(UB, UB, UB, UB, false),
+
+      INST( W,  W,  W,  W, true),
+      INST(UW, UW, UW, UW, true),
+      INST( D,  D,  D,  D, true),
+      INST(UD, UD, UD, UD, true),
+
+      INST( W,  D,  W,  W, true),
+      INST(UW, UW, UD, UW, true),
+      INST( D,  D,  W,  D, true),
+      INST(UD, UD, UD, UW, true),
+#undef INST
+   };
+
+
+   if (devinfo.verx10 < 125)
+      return;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
+      brw_ADD3(p,
+               retype(g0, inst[i].dst_type),
+               retype(g0, inst[i].src0_type),
+               retype(g0, inst[i].src1_type),
+               retype(g0, inst[i].src2_type));
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
+TEST_P(validation_test, add3_immediate_types)
+{
+   static const struct {
+      enum brw_reg_type reg_type;
+      enum brw_reg_type imm_type;
+      unsigned imm_src;
+      bool expected_result;
+   } inst[] = {
+#define INST(reg_type, imm_type, imm_src, expected_result)                \
+      {                                                                   \
+         BRW_REGISTER_TYPE_##reg_type,                                    \
+         BRW_REGISTER_TYPE_##imm_type,                                    \
+         imm_src,                                                         \
+         expected_result,                                                 \
+      }
+
+      INST( W,  W,  0, true),
+      INST( W,  W,  2, true),
+      INST(UW, UW,  0, true),
+      INST(UW, UW,  2, true),
+      INST( D,  W,  0, true),
+      INST(UD,  W,  2, true),
+      INST( D, UW,  0, true),
+      INST(UW, UW,  2, true),
+
+      INST( W,  D,  0, false),
+      INST( W,  D,  2, false),
+      INST(UW, UD,  0, false),
+      INST(UW, UD,  2, false),
+      INST( D,  D,  0, false),
+      INST(UD,  D,  2, false),
+      INST( D, UD,  0, false),
+      INST(UW, UD,  2, false),
+#undef INST
+   };
+
+
+   if (devinfo.verx10 < 125)
+      return;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
+      brw_ADD3(p,
+               retype(g0, inst[i].reg_type),
+               inst[i].imm_src == 0 ? retype(brw_imm_d(0x1234), inst[i].imm_type)
+                                    : retype(g0, inst[i].reg_type),
+               retype(g0, inst[i].reg_type),
+               inst[i].imm_src == 2 ? retype(brw_imm_d(0x2143), inst[i].imm_type)
+                                    : retype(g0, inst[i].reg_type));
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
