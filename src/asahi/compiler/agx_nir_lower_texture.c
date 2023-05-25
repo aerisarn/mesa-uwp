@@ -490,6 +490,59 @@ legalize_image_lod(nir_builder *b, nir_instr *instr, UNUSED void *data)
    return true;
 }
 
+static nir_ssa_def *
+txs_for_image(nir_builder *b, nir_intrinsic_instr *intr,
+              unsigned num_components, unsigned bit_size)
+{
+   bool bindless = intr->intrinsic == nir_intrinsic_bindless_image_size;
+
+   nir_tex_instr *tex = nir_tex_instr_create(b->shader, 1 + (int)bindless);
+   tex->op = nir_texop_txs;
+   tex->is_array = nir_intrinsic_image_array(intr);
+   tex->dest_type = nir_type_uint32;
+   tex->sampler_dim = nir_intrinsic_image_dim(intr);
+
+   unsigned s = 0;
+   tex->src[s++] = nir_tex_src_for_ssa(nir_tex_src_lod, intr->src[1].ssa);
+
+   if (bindless) {
+      tex->src[s++] =
+         nir_tex_src_for_ssa(nir_tex_src_texture_handle, intr->src[0].ssa);
+   } else if (nir_src_is_const(intr->src[0])) {
+      tex->texture_index = nir_src_as_uint(intr->src[0]);
+   } else {
+      tex->src[s++] =
+         nir_tex_src_for_ssa(nir_tex_src_texture_offset, intr->src[0].ssa);
+   }
+
+   nir_ssa_dest_init(&tex->instr, &tex->dest, num_components, bit_size);
+   nir_builder_instr_insert(b, &tex->instr);
+   return &tex->dest.ssa;
+}
+
+static bool
+lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   b->cursor = nir_before_instr(instr);
+
+   switch (intr->intrinsic) {
+   case nir_intrinsic_image_size:
+   case nir_intrinsic_bindless_image_size:
+      nir_ssa_def_rewrite_uses(
+         &intr->dest.ssa,
+         txs_for_image(b, intr, nir_dest_num_components(intr->dest),
+                       nir_dest_bit_size(intr->dest)));
+      return true;
+
+   default:
+      return false;
+   }
+}
+
 bool
 agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
 {
@@ -526,6 +579,8 @@ agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
    }
 
    NIR_PASS(progress, s, nir_shader_instructions_pass, legalize_image_lod,
+            nir_metadata_block_index | nir_metadata_dominance, NULL);
+   NIR_PASS(progress, s, nir_shader_instructions_pass, lower_images,
             nir_metadata_block_index | nir_metadata_dominance, NULL);
    NIR_PASS(progress, s, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
