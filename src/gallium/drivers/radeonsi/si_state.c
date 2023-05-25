@@ -5917,7 +5917,7 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
    si_pm4_set_reg(pm4, R_00B524_SPI_SHADER_PGM_HI_LS,
                   S_00B524_MEM_BASE(sscreen->info.address32_hi >> 8));
 
-   /* Context registers (CLEAR_STATE doesn't restore some of these correctly - TODO: re-test) */
+   /* Context registers. */
    if (sctx->gfx_level < GFX11) {
       si_pm4_set_reg(pm4, R_028038_DB_DFSM_CONTROL,
                      S_028038_PUNCHOUT_MODE(V_028038_FORCE_OFF) |
@@ -5934,10 +5934,6 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
    si_pm4_set_reg(pm4, R_028080_TA_BC_BASE_ADDR, border_color_va >> 8);
    si_pm4_set_reg(pm4, R_028084_TA_BC_BASE_ADDR_HI, S_028084_ADDRESS(border_color_va >> 40));
 
-   si_pm4_set_reg(pm4, R_028240_PA_SC_GENERIC_SCISSOR_TL, S_028240_WINDOW_OFFSET_DISABLE(1));
-   si_pm4_set_reg(pm4, R_028244_PA_SC_GENERIC_SCISSOR_BR,
-                  S_028244_BR_X(16384) | S_028244_BR_Y(16384));
-
    si_pm4_set_reg(pm4, R_028410_CB_RMI_GL2_CACHE_CONTROL,
                   (sctx->gfx_level >= GFX11 ?
                       S_028410_DCC_WR_POLICY_GFX11(meta_write_policy) |
@@ -5952,7 +5948,6 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
                       S_028410_FMASK_RD_POLICY(V_028410_CACHE_NOA_GFX10) |
                       S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_GFX10)) |
                   S_028410_DCC_RD_POLICY(meta_read_policy));
-   si_pm4_set_reg(pm4, R_028428_CB_COVERAGE_OUT_CONTROL, 0);
 
    if (sctx->gfx_level >= GFX11)
       si_pm4_set_reg(pm4, R_028620_PA_RATE_CNTL, S_028620_VERTEX_RATE(2) | S_028620_PRIM_RATE(1));
@@ -5981,7 +5976,6 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
    }
 
    si_pm4_set_reg(pm4, R_028A18_VGT_HOS_MAX_TESS_LEVEL, fui(64));
-   si_pm4_set_reg(pm4, R_028A98_VGT_DRAW_PAYLOAD_CNTL, 0);
    si_pm4_set_reg(pm4, R_028AAC_VGT_ESGS_RING_ITEMSIZE, 1);
    si_pm4_set_reg(pm4, R_028B50_VGT_TESS_DISTRIBUTION,
                   sctx->gfx_level >= GFX11 ?
@@ -6000,8 +5994,6 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
    si_pm4_set_reg(pm4, R_028C48_PA_SC_BINNER_CNTL_1,
                   S_028C48_MAX_ALLOC_COUNT(sscreen->info.pbb_max_alloc_count - 1) |
                   S_028C48_MAX_PRIM_PER_BATCH(1023));
-   si_pm4_set_reg(pm4, R_028C4C_PA_SC_CONSERVATIVE_RASTERIZATION_CNTL,
-                  S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1));
    /* Break up a pixel wave if it contains deallocs for more than
     * half the parameter cache.
     *
@@ -6013,8 +6005,6 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
     */
    si_pm4_set_reg(pm4, R_028C50_PA_SC_NGG_MODE_CNTL,
                   S_028C50_MAX_DEALLOCS_IN_WAVE(sctx->gfx_level >= GFX11 ? 16 : 512));
-   if (sctx->gfx_level >= GFX11)
-      si_pm4_set_reg(pm4, R_028C54_PA_SC_BINNER_CNTL_2, 0);
    if (sctx->gfx_level < GFX11)
       si_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14); /* Reuse for legacy (non-NGG) only. */
 
