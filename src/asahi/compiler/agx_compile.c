@@ -814,7 +814,6 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    switch (instr->intrinsic) {
    case nir_intrinsic_load_barycentric_pixel:
    case nir_intrinsic_load_barycentric_centroid:
-   case nir_intrinsic_load_barycentric_sample:
    case nir_intrinsic_load_barycentric_at_sample:
    case nir_intrinsic_load_barycentric_at_offset:
       /* handled later via load_vary */
@@ -946,6 +945,11 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
       return NULL;
    }
+
+   case nir_intrinsic_load_barycentric_sample:
+   case nir_intrinsic_load_sample_id:
+   case nir_intrinsic_load_sample_pos:
+      unreachable("Sample shading should have been lowered");
 
    default:
       fprintf(stderr, "Unhandled intrinsic %s\n",
