@@ -365,6 +365,25 @@ agx_emit_load_vary_flat(agx_builder *b, agx_index dest,
    agx_emit_collect_to(b, dest, components, dests);
 }
 
+static enum agx_interpolation
+agx_interp_for_bary(nir_intrinsic_instr *bary, agx_index *sample_index)
+{
+   switch (bary->intrinsic) {
+   case nir_intrinsic_load_barycentric_pixel:
+      return AGX_INTERPOLATION_CENTER;
+
+   case nir_intrinsic_load_barycentric_centroid:
+      return AGX_INTERPOLATION_CENTROID;
+
+   case nir_intrinsic_load_barycentric_at_sample:
+      *sample_index = agx_src_index(&bary->src[0]);
+      return AGX_INTERPOLATION_SAMPLE;
+
+   default:
+      unreachable("should have been lowered");
+   }
+}
+
 static void
 agx_emit_load_vary(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
 {
@@ -373,11 +392,8 @@ agx_emit_load_vary(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
 
    assert(components >= 1 && components <= 4);
 
-   /* TODO: Interpolation modes */
-   assert(bary != NULL);
-   assert(bary->intrinsic == nir_intrinsic_load_barycentric_pixel);
-   enum agx_interpolation interp = AGX_INTERPOLATION_CENTER;
    agx_index sample_index = agx_zero();
+   enum agx_interpolation interp = agx_interp_for_bary(bary, &sample_index);
 
    bool perspective =
       nir_intrinsic_interp_mode(bary) != INTERP_MODE_NOPERSPECTIVE;
