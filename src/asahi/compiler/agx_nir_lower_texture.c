@@ -457,6 +457,39 @@ lower_sampler_bias(nir_builder *b, nir_instr *instr, UNUSED void *data)
    }
 }
 
+static bool
+legalize_image_lod(nir_builder *b, nir_instr *instr, UNUSED void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   nir_src *src;
+
+#define CASE(op, idx)                                                          \
+   case nir_intrinsic_##op:                                                    \
+   case nir_intrinsic_bindless_##op:                                           \
+      src = &intr->src[idx];                                                   \
+      break;
+
+   switch (intr->intrinsic) {
+      CASE(image_load, 3)
+      CASE(image_store, 4)
+      CASE(image_size, 1)
+   default:
+      return false;
+   }
+
+#undef CASE
+
+   if (src->ssa->bit_size == 16)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+   nir_src_rewrite_ssa(src, nir_i2i16(b, src->ssa));
+   return true;
+}
+
 bool
 agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
 {
@@ -492,6 +525,8 @@ agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
                nir_metadata_block_index | nir_metadata_dominance, NULL);
    }
 
+   NIR_PASS(progress, s, nir_shader_instructions_pass, legalize_image_lod,
+            nir_metadata_block_index | nir_metadata_dominance, NULL);
    NIR_PASS(progress, s, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
    /* Lower texture sources after legalizing types (as the lowering depends on
