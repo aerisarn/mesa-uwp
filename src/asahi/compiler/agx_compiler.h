@@ -793,7 +793,6 @@ void agx_emit_parallel_copies(agx_builder *b, struct agx_copy *copies,
 void agx_compute_liveness(agx_context *ctx);
 void agx_liveness_ins_update(BITSET_WORD *live, agx_instr *I);
 
-bool agx_nir_lower_discard_zs_emit(nir_shader *s);
 bool agx_nir_lower_sample_mask(nir_shader *s, unsigned nr_samples);
 bool agx_nir_lower_texture(nir_shader *s, bool support_lod_bias);
 bool agx_nir_opt_preamble(nir_shader *s, unsigned *preamble_size);

@@ -173,6 +173,8 @@ struct agx_shader_key {
 
 void agx_preprocess_nir(nir_shader *nir, bool support_lod_bias);
 
+bool agx_nir_lower_discard_zs_emit(nir_shader *s);
+
 void agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
                             struct util_debug_callback *debug,
                             struct util_dynarray *binary,

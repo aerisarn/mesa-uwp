@@ -1401,6 +1401,16 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
          }
       }
 
+      /* Clip plane lowering creates discard instructions, so run that before
+       * lowering discards.
+       */
+      if (key->clip_plane_enable) {
+         NIR_PASS_V(nir, nir_lower_clip_fs, key->clip_plane_enable, false);
+      }
+
+      /* Discards must be lowering before lowering MSAA to handle discards */
+      NIR_PASS_V(nir, agx_nir_lower_discard_zs_emit);
+
       NIR_PASS_V(nir, nir_lower_blend, &opts);
       NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib, colormasks,
                  &force_translucent);
@@ -1409,10 +1419,6 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
          NIR_PASS_V(nir, nir_lower_texcoord_replace_late,
                     key->sprite_coord_enable,
                     false /* point coord is sysval */);
-      }
-
-      if (key->clip_plane_enable) {
-         NIR_PASS_V(nir, nir_lower_clip_fs, key->clip_plane_enable, false);
       }
    }
 

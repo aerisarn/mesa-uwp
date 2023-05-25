@@ -2375,11 +2375,6 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 
    out->nr_bindful_textures = BITSET_LAST_BIT(nir->info.textures_used);
 
-   /* Late clip plane lowering created discards */
-   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, agx_nir_lower_discard_zs_emit);
-   }
-
    /* Late sysval lowering creates large loads. Load lowering creates unpacks */
    NIR_PASS_V(nir, nir_lower_mem_access_bit_sizes,
               nir_var_mem_ssbo | nir_var_mem_constant |
