@@ -402,6 +402,7 @@ radv-fossils:
     - .test-radv
     - .fossilize-test
   script:
+    - export LD_PRELOAD=$PWD/install/lib/libamdgpu_noop_drm_shim.so
     # Pitcairn (GFX6)
     - export AMDGPU_GPU_ID="PITCAIRN"
     - ./install/fossilize-runner.sh

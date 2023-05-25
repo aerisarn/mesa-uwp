@@ -12,7 +12,6 @@ INSTALL=$PWD/install
 # Set up the driver environment.
 export LD_LIBRARY_PATH="$INSTALL/lib/"
 export VK_ICD_FILENAMES="$INSTALL/share/vulkan/icd.d/${VK_DRIVER}_icd.x86_64.json"
-export LD_PRELOAD="$INSTALL/lib/libamdgpu_noop_drm_shim.so"
 
 # To store Fossilize logs on failure.
 RESULTS="$PWD/results"
