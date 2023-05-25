@@ -1404,6 +1404,9 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    assert(!ret);
    ctx->syncobj = ctx->dummy_syncobj;
 
+   /* By default all samples are enabled */
+   ctx->sample_mask = ~0;
+
    return pctx;
 }
 

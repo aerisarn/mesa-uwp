@@ -861,7 +861,16 @@ static void
 agx_set_sample_mask(struct pipe_context *pipe, unsigned sample_mask)
 {
    struct agx_context *ctx = agx_context(pipe);
-   ctx->sample_mask = sample_mask;
+
+   /* Optimization: At most MSAA 4x supported, so normalize to avoid pointless
+    * dirtying switching between e.g. 0xFFFF and 0xFFFFFFFF masks.
+    */
+   unsigned new_mask = sample_mask & BITFIELD_MASK(4);
+
+   if (ctx->sample_mask != new_mask) {
+      ctx->sample_mask = new_mask;
+      ctx->dirty |= AGX_DIRTY_SAMPLE_MASK;
+   }
 }
 
 static void
@@ -2279,7 +2288,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       .output_select = IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG),
       .varying_word_0 = IS_DIRTY(VS_PROG),
       .cull = IS_DIRTY(RS),
-      .fragment_shader = IS_DIRTY(FS) || varyings_dirty,
+      .fragment_shader =
+         IS_DIRTY(FS) || varyings_dirty || IS_DIRTY(SAMPLE_MASK),
       .occlusion_query = IS_DIRTY(QUERY),
       .output_size = IS_DIRTY(VS_PROG),
    };

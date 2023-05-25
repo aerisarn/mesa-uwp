@@ -123,6 +123,9 @@ struct PACKED agx_draw_uniforms {
       struct {
          /* Blend constant if any */
          float blend_constant[4];
+
+         /* glSampleMask */
+         uint16_t sample_mask;
       } fs;
    };
 };
@@ -311,6 +314,7 @@ enum agx_dirty {
    AGX_DIRTY_BLEND = BITFIELD_BIT(12),
    AGX_DIRTY_QUERY = BITFIELD_BIT(13),
    AGX_DIRTY_XFB = BITFIELD_BIT(14),
+   AGX_DIRTY_SAMPLE_MASK = BITFIELD_BIT(15),
 };
 
 /* Maximum number of in-progress + under-construction GPU batches.
