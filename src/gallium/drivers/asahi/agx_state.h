@@ -124,6 +124,9 @@ struct PACKED agx_draw_uniforms {
          /* Blend constant if any */
          float blend_constant[4];
 
+         /* Value of the ppp_multisamplectl control register */
+         uint32_t ppp_multisamplectl;
+
          /* glSampleMask */
          uint16_t sample_mask;
       } fs;
@@ -226,6 +229,11 @@ struct agx_batch {
 
    /* Current varyings linkage structures */
    uint32_t varyings;
+
+   /* Value of the multisample control register, containing sample positions in
+    * each byte (x in low nibble, y in high nibble).
+    */
+   uint32_t ppp_multisamplectl;
 
    /* Resource list requirements, represented as a bit set indexed by BO
     * handles (GEM handles on Linux, or IOGPU's equivalent on macOS)

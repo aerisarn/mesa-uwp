@@ -105,6 +105,8 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
       return load_sysval_root(b, 1, 32, &u->fs.blend_constant[3]);
    case nir_intrinsic_load_api_sample_mask_agx:
       return load_sysval_root(b, 1, 16, &u->fs.sample_mask);
+   case nir_intrinsic_load_sample_positions_agx:
+      return load_sysval_root(b, 1, 32, &u->fs.ppp_multisamplectl);
    case nir_intrinsic_load_ssbo_address:
       return load_sysval_indirect(b, 1, 64, AGX_SYSVAL_TABLE_ROOT,
                                   &u->ssbo_base, intr->src[0].ssa);

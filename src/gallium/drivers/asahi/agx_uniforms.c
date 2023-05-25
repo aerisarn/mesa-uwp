@@ -102,6 +102,7 @@ agx_upload_uniforms(struct agx_batch *batch, uint64_t textures,
              sizeof(ctx->blend_color));
 
       uniforms.fs.sample_mask = ctx->sample_mask;
+      uniforms.fs.ppp_multisamplectl = batch->ppp_multisamplectl;
    }
 
    memcpy(root_ptr.cpu, &uniforms, sizeof(uniforms));

@@ -2071,6 +2071,26 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
    return agx_usc_fini(&b);
 }
 
+/*
+ * Return the standard sample positions, packed into a 32-bit word with fixed
+ * point nibbles for each x/y component of the (at most 4) samples. This is
+ * suitable for programming the PPP_MULTISAMPLECTL control register.
+ */
+static uint32_t
+agx_default_sample_positions(unsigned nr_samples)
+{
+   switch (nr_samples) {
+   case 1:
+      return 0x88;
+   case 2:
+      return 0x44cc;
+   case 4:
+      return 0xeaa26e26;
+   default:
+      unreachable("Invalid sample count");
+   }
+}
+
 void
 agx_batch_init_state(struct agx_batch *batch)
 {
@@ -2133,6 +2153,10 @@ agx_batch_init_state(struct agx_batch *batch)
       if (batch->key.cbufs[i])
          agx_batch_writes(batch, agx_resource(batch->key.cbufs[i]->texture));
    }
+
+   /* Set up standard sample positions */
+   batch->ppp_multisamplectl =
+      agx_default_sample_positions(batch->tilebuffer_layout.nr_samples);
 }
 
 static enum agx_object_type
