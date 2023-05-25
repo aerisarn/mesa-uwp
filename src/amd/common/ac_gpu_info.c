@@ -1025,6 +1025,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_sparse_vm_mappings = info->gfx_level >= GFX7;
    info->has_scheduled_fence_dependency = info->drm_minor >= 28;
    info->has_gang_submit = info->drm_minor >= 49;
+   info->has_gpuvm_fault_query = info->drm_minor >= 55;
    /* WARNING: Register shadowing decreases performance by up to 50% on GFX11 with current FW. */
    info->register_shadowing_required = device_info.ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION &&
                                        info->gfx_level < GFX11;
@@ -1814,6 +1815,7 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
    fprintf(f, "    has_stable_pstate = %u\n", info->has_stable_pstate);
    fprintf(f, "    has_scheduled_fence_dependency = %u\n", info->has_scheduled_fence_dependency);
    fprintf(f, "    has_gang_submit = %u\n", info->has_gang_submit);
+   fprintf(f, "    has_gpuvm_fault_query = %u\n", info->has_gpuvm_fault_query);
    fprintf(f, "    register_shadowing_required = %u\n", info->register_shadowing_required);
    fprintf(f, "    has_fw_based_shadowing = %u\n", info->has_fw_based_shadowing);
    if (info->has_fw_based_shadowing) {
