@@ -2684,7 +2684,7 @@ zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_sh
    if (consumer->info.stage != MESA_SHADER_FRAGMENT) {
       /* remove injected pointsize from all but the last vertex stage */
       nir_variable *var = nir_find_variable_with_location(producer, nir_var_shader_out, VARYING_SLOT_PSIZ);
-      if (var && !var->data.explicit_location) {
+      if (var && !var->data.explicit_location && !nir_find_variable_with_location(consumer, nir_var_shader_in, VARYING_SLOT_PSIZ)) {
          var->data.mode = nir_var_shader_temp;
          nir_fixup_deref_modes(producer);
          NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_temp, NULL);
