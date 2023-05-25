@@ -3526,6 +3526,13 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                  */
                 ntq_flush_tmu(c);
 
+                /* Ensure we flag the use of the control barrier. NIR's
+                 * gather info pass usually takes care of this, but that
+                 * requires that we call that pass after any other pass
+                 * may emit a control barrier, so this is safer.
+                 */
+                c->s->info.uses_control_barrier = true;
+
                 if (c->devinfo->ver >= 42) {
                         vir_BARRIERID_dest(c, vir_reg(QFILE_MAGIC,
                                                       V3D_QPU_WADDR_SYNCB));
