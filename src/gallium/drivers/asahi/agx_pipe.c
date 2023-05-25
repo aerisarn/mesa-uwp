@@ -1470,9 +1470,8 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FBFETCH:
    case PIPE_CAP_FBFETCH_COHERENT:
       return 8;
-
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
-      return 0;
+      return 1;
 
    case PIPE_CAP_OCCLUSION_QUERY:
    case PIPE_CAP_GENERATE_MIPMAP:
@@ -1508,7 +1507,11 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
+      return 1;
    case PIPE_CAP_SAMPLE_SHADING:
+      /* TODO: sample shading */
+      return 0;
+
    case PIPE_CAP_IMAGE_LOAD_FORMATTED:
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
    case PIPE_CAP_COMPUTE:
@@ -1534,9 +1537,9 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return is_deqp ? 330 : 130;
+      return is_deqp ? 330 : 140;
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
-      return is_deqp ? 320 : 120;
+      return is_deqp ? 310 : 300;
 
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       return 16;
@@ -1851,10 +1854,7 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
           target == PIPE_TEXTURE_3D || target == PIPE_TEXTURE_CUBE ||
           target == PIPE_TEXTURE_CUBE_ARRAY);
 
-   bool is_deqp = agx_device(pscreen)->debug & AGX_DBG_DEQP;
-
-   if (sample_count > 1 &&
-       (!is_deqp || (sample_count != 4 && sample_count != 2)))
+   if (sample_count > 1 && sample_count != 4 && sample_count != 2)
       return false;
 
    if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
