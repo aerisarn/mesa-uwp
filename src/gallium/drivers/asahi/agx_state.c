@@ -1567,6 +1567,21 @@ agx_get_shader_variant(struct agx_screen *screen,
    return compiled;
 }
 
+static void
+agx_shader_initialize(struct agx_uncompiled_shader *so, nir_shader *nir)
+{
+   so->type = pipe_shader_type_from_mesa(nir->info.stage);
+
+   struct blob blob;
+   blob_init(&blob);
+   nir_serialize(&blob, nir, true);
+   _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
+   blob_finish(&blob);
+
+   so->nir = nir;
+   agx_preprocess_nir(nir, true, &so->info);
+}
+
 static void *
 agx_create_shader_state(struct pipe_context *pctx,
                         const struct pipe_shader_state *cso)
@@ -1597,16 +1612,7 @@ agx_create_shader_state(struct pipe_context *pctx,
                                              asahi_fs_shader_key_equal);
    }
 
-   so->type = pipe_shader_type_from_mesa(nir->info.stage);
-
-   struct blob blob;
-   blob_init(&blob);
-   nir_serialize(&blob, nir, true);
-   _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
-   blob_finish(&blob);
-
-   so->nir = nir;
-   agx_preprocess_nir(nir, true, &so->info);
+   agx_shader_initialize(so, nir);
 
    /* For shader-db, precompile a shader with a default key. This could be
     * improved but hopefully this is acceptable for now.
@@ -1674,16 +1680,7 @@ agx_create_compute_state(struct pipe_context *pctx,
    assert(cso->ir_type == PIPE_SHADER_IR_NIR && "TGSI kernels unsupported");
    nir_shader *nir = (void *)cso->prog;
 
-   so->type = pipe_shader_type_from_mesa(nir->info.stage);
-
-   struct blob blob;
-   blob_init(&blob);
-   nir_serialize(&blob, nir, true);
-   _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
-   blob_finish(&blob);
-
-   so->nir = nir;
-   agx_preprocess_nir(nir, true, &so->info);
+   agx_shader_initialize(so, nir);
    agx_get_shader_variant(agx_screen(pctx->screen), so, &pctx->debug, &key);
 
    /* We're done with the NIR, throw it away */
