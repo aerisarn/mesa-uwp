@@ -18,10 +18,21 @@
 static nir_ssa_def *
 texture_descriptor_ptr(nir_builder *b, nir_tex_instr *tex)
 {
-   /* For bindless, we store the descriptor pointer in the texture handle */
+   /* Bindless handles are a vec2, where the first source is the (constant)
+    * uniform register number and the second source is the byte offset.
+    */
    int handle_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
-   if (handle_idx >= 0)
-      return tex->src[handle_idx].src.ssa;
+   if (handle_idx >= 0) {
+      nir_ssa_def *vec = tex->src[handle_idx].src.ssa;
+
+      nir_ssa_scalar uniform = nir_ssa_scalar_resolved(vec, 0);
+      unsigned uniform_idx = nir_ssa_scalar_as_uint(uniform);
+
+      nir_ssa_def *base = nir_load_preamble(b, 1, 64, uniform_idx);
+      nir_ssa_def *offset = nir_u2u64(b, nir_channel(b, vec, 1));
+
+      return nir_iadd(b, base, offset);
+   }
 
    /* For non-bindless, compute from the texture index */
    nir_ssa_def *offs;
