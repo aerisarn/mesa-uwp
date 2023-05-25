@@ -1400,53 +1400,57 @@ emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
 
    const struct brw_gs_prog_data *gs_prog_data = get_gs_prog_data(pipeline);
 
-   anv_batch_emit(batch, GENX(3DSTATE_GS), gs) {
-      gs.Enable                  = true;
-      gs.StatisticsEnable        = true;
-      gs.KernelStartPointer      = gs_bin->kernel.offset;
-      gs.DispatchMode            = gs_prog_data->base.dispatch_mode;
+   struct GENX(3DSTATE_GS) gs = {
+      GENX(3DSTATE_GS_header),
+   };
 
-      gs.SingleProgramFlow       = false;
-      gs.VectorMaskEnable        = false;
-      /* Wa_1606682166 */
-      gs.SamplerCount            = GFX_VER == 11 ? 0 : get_sampler_count(gs_bin);
-      gs.BindingTableEntryCount  = gs_bin->bind_map.surface_count;
-      gs.IncludeVertexHandles    = gs_prog_data->base.include_vue_handles;
-      gs.IncludePrimitiveID      = gs_prog_data->include_primitive_id;
+   gs.Enable                  = true;
+   gs.StatisticsEnable        = true;
+   gs.KernelStartPointer      = gs_bin->kernel.offset;
+   gs.DispatchMode            = gs_prog_data->base.dispatch_mode;
 
-      gs.MaximumNumberofThreads = devinfo->max_gs_threads - 1;
+   gs.SingleProgramFlow       = false;
+   gs.VectorMaskEnable        = false;
+   /* Wa_1606682166 */
+   gs.SamplerCount            = GFX_VER == 11 ? 0 : get_sampler_count(gs_bin);
+   gs.BindingTableEntryCount  = gs_bin->bind_map.surface_count;
+   gs.IncludeVertexHandles    = gs_prog_data->base.include_vue_handles;
+   gs.IncludePrimitiveID      = gs_prog_data->include_primitive_id;
 
-      gs.OutputVertexSize        = gs_prog_data->output_vertex_size_hwords * 2 - 1;
-      gs.OutputTopology          = gs_prog_data->output_topology;
-      gs.ControlDataFormat       = gs_prog_data->control_data_format;
-      gs.ControlDataHeaderSize   = gs_prog_data->control_data_header_size_hwords;
-      gs.InstanceControl         = MAX2(gs_prog_data->invocations, 1) - 1;
-      gs.ReorderMode             = TRAILING;
+   gs.MaximumNumberofThreads = devinfo->max_gs_threads - 1;
 
-      gs.ExpectedVertexCount     = gs_prog_data->vertices_in;
-      gs.StaticOutput            = gs_prog_data->static_vertex_count >= 0;
-      gs.StaticOutputVertexCount = gs_prog_data->static_vertex_count >= 0 ?
-                                   gs_prog_data->static_vertex_count : 0;
+   gs.OutputVertexSize        = gs_prog_data->output_vertex_size_hwords * 2 - 1;
+   gs.OutputTopology          = gs_prog_data->output_topology;
+   gs.ControlDataFormat       = gs_prog_data->control_data_format;
+   gs.ControlDataHeaderSize   = gs_prog_data->control_data_header_size_hwords;
+   gs.InstanceControl         = MAX2(gs_prog_data->invocations, 1) - 1;
+   gs.ReorderMode             = LEADING;
 
-      gs.VertexURBEntryReadOffset = 0;
-      gs.VertexURBEntryReadLength = gs_prog_data->base.urb_read_length;
-      gs.DispatchGRFStartRegisterForURBData =
-         gs_prog_data->base.base.dispatch_grf_start_reg;
+   gs.ExpectedVertexCount     = gs_prog_data->vertices_in;
+   gs.StaticOutput            = gs_prog_data->static_vertex_count >= 0;
+   gs.StaticOutputVertexCount = gs_prog_data->static_vertex_count >= 0 ?
+      gs_prog_data->static_vertex_count : 0;
 
-      gs.UserClipDistanceClipTestEnableBitmask =
-         gs_prog_data->base.clip_distance_mask;
-      gs.UserClipDistanceCullTestEnableBitmask =
-         gs_prog_data->base.cull_distance_mask;
+   gs.VertexURBEntryReadOffset = 0;
+   gs.VertexURBEntryReadLength = gs_prog_data->base.urb_read_length;
+   gs.DispatchGRFStartRegisterForURBData =
+      gs_prog_data->base.base.dispatch_grf_start_reg;
+
+   gs.UserClipDistanceClipTestEnableBitmask =
+      gs_prog_data->base.clip_distance_mask;
+   gs.UserClipDistanceCullTestEnableBitmask =
+      gs_prog_data->base.cull_distance_mask;
 
 #if GFX_VERx10 >= 125
-      gs.ScratchSpaceBuffer =
-         get_scratch_surf(&pipeline->base.base, MESA_SHADER_GEOMETRY, gs_bin);
+   gs.ScratchSpaceBuffer =
+      get_scratch_surf(&pipeline->base.base, MESA_SHADER_GEOMETRY, gs_bin);
 #else
-      gs.PerThreadScratchSpace   = get_scratch_space(gs_bin);
-      gs.ScratchSpaceBasePointer =
-         get_scratch_address(&pipeline->base.base, MESA_SHADER_GEOMETRY, gs_bin);
+   gs.PerThreadScratchSpace   = get_scratch_space(gs_bin);
+   gs.ScratchSpaceBasePointer =
+      get_scratch_address(&pipeline->base.base, MESA_SHADER_GEOMETRY, gs_bin);
 #endif
-   }
+
+   GENX(3DSTATE_GS_pack)(&pipeline->base.base.batch, pipeline->gfx8.gs, &gs);
 }
 
 static bool

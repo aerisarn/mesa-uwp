@@ -3365,6 +3365,38 @@ genX(emit_ds)(struct anv_cmd_buffer *cmd_buffer)
 }
 
 ALWAYS_INLINE static void
+genX(emit_gs)(struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY))
+      return;
+
+   uint32_t dwords[GENX(3DSTATE_GS_length)];
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd_buffer->vk.dynamic_graphics_state;
+
+   struct GENX(3DSTATE_GS) gs = {
+      GENX(3DSTATE_GS_header),
+   };
+
+   switch (dyn->rs.provoking_vertex) {
+   case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
+      gs.ReorderMode = LEADING;
+      break;
+
+   case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
+      gs.ReorderMode = TRAILING;
+      break;
+
+   default:
+      unreachable("Invalid provoking vertex mode");
+   }
+
+   GENX(3DSTATE_GS_pack)(NULL, dwords, &gs);
+   anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx8.gs);
+}
+
+ALWAYS_INLINE static void
 genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
@@ -3493,6 +3525,11 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE ||
        (INTEL_NEEDS_WA_1306463417 || INTEL_NEEDS_WA_16011107343)) {
       genX(emit_hs)(cmd_buffer);
+   }
+
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX)) {
+      genX(emit_gs)(cmd_buffer);
    }
 
    if (!cmd_buffer->state.gfx.dirty && !descriptors_dirty &&
