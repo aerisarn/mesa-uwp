@@ -136,14 +136,12 @@ can_remat_instr(nir_instr *instr, struct sized_bitset *remat)
     *   - Derefs which are either complete or casts of any of the above
     *
     * Because this pass rewrites things in-order and phis are always turned
-    * into register writes, We can use "is it SSA?" to answer the question
-    * "can my source be re-materialized?".
+    * into register writes, we can use "is it SSA?" to answer the question
+    * "can my source be re-materialized?". Register writes happen via
+    * non-rematerializable intrinsics.
     */
    switch (instr->type) {
    case nir_instr_type_alu:
-      if (!nir_instr_as_alu(instr)->dest.dest.is_ssa)
-         return false;
-
       return nir_foreach_src(instr, src_is_in_bitset, remat);
 
    case nir_instr_type_deref:
@@ -228,9 +226,6 @@ struct add_instr_data {
 static bool
 add_src_instr(nir_src *src, void *state)
 {
-   if (!src->is_ssa)
-      return false;
-
    struct add_instr_data *data = state;
    if (BITSET_TEST(data->remat->set, src->ssa->index))
       return true;
@@ -837,7 +832,7 @@ find_resume_instr(nir_function_impl *impl, unsigned call_idx)
 static bool
 duplicate_loop_bodies(nir_function_impl *impl, nir_instr *resume_instr)
 {
-   nir_register *resume_reg = NULL;
+   nir_ssa_def *resume_reg = NULL;
    for (nir_cf_node *node = resume_instr->block->cf_node.parent;
         node->type != nir_cf_node_function; node = node->parent) {
       if (node->type != nir_cf_node_loop)
@@ -846,24 +841,24 @@ duplicate_loop_bodies(nir_function_impl *impl, nir_instr *resume_instr)
       nir_loop *loop = nir_cf_node_as_loop(node);
       assert(!nir_loop_has_continue_construct(loop));
 
+      nir_builder b = nir_builder_create(impl);
+
       if (resume_reg == NULL) {
          /* We only create resume_reg if we encounter a loop.  This way we can
-          * avoid re-validating the shader and calling ssa_to_regs in the case
-          * where it's just if-ladders.
+          * avoid re-validating the shader and calling ssa_to_reg_intrinsics in
+          * the case where it's just if-ladders.
           */
-         resume_reg = nir_local_reg_create(impl);
-         resume_reg->num_components = 1;
-         resume_reg->bit_size = 1;
+         resume_reg = nir_decl_reg(&b, 1, 1, 0);
 
-         nir_builder b = nir_builder_create(impl);
-
-         /* Initialize resume to true */
-         b.cursor = nir_before_cf_list(&impl->body);
-         nir_store_register(&b, resume_reg, nir_imm_true(&b), 1);
+         /* Initialize resume to true at the start of the shader, right after
+          * the register is declared at the start.
+          */
+         b.cursor = nir_after_instr(resume_reg->parent_instr);
+         nir_store_reg(&b, nir_imm_true(&b), resume_reg);
 
          /* Set resume to false right after the resume instruction */
          b.cursor = nir_after_instr(resume_instr);
-         nir_store_register(&b, resume_reg, nir_imm_false(&b), 1);
+         nir_store_reg(&b, nir_imm_false(&b), resume_reg);
       }
 
       /* Before we go any further, make sure that everything which exits the
@@ -880,7 +875,8 @@ duplicate_loop_bodies(nir_function_impl *impl, nir_instr *resume_instr)
       nir_cf_list_extract(&cf_list, &loop->body);
 
       nir_if *_if = nir_if_create(impl->function->shader);
-      _if->condition = nir_src_for_reg(resume_reg);
+      b.cursor = nir_after_cf_list(&loop->body);
+      _if->condition = nir_src_for_ssa(nir_load_reg(&b, resume_reg));
       nir_cf_node_insert(nir_after_cf_list(&loop->body), &_if->cf_node);
 
       nir_cf_list clone;
@@ -1257,10 +1253,9 @@ lower_resume(nir_shader *shader, int call_idx)
    if (duplicate_loop_bodies(impl, resume_instr)) {
       nir_validate_shader(shader, "after duplicate_loop_bodies in "
                                   "nir_lower_shader_calls");
-      /* If we duplicated the bodies of any loops, run regs_to_ssa to get rid
-       * of all those pesky registers we just added.
+      /* If we duplicated the bodies of any loops, run reg_intrinsics_to_ssa to
+       * get rid of all those pesky registers we just added.
        */
-      NIR_PASS_V(shader, nir_lower_regs_to_ssa);
       NIR_PASS_V(shader, nir_lower_reg_intrinsics_to_ssa);
    }
 
