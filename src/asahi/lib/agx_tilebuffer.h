@@ -60,6 +60,8 @@ struct agx_msaa_state {
 bool agx_nir_lower_monolithic_msaa(struct nir_shader *shader,
                                    struct agx_msaa_state *state);
 
+bool agx_nir_lower_sample_intrinsics(struct nir_shader *shader);
+
 void agx_usc_tilebuffer(struct agx_usc_builder *b,
                         struct agx_tilebuffer_layout *tib);
 
