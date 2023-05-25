@@ -2450,6 +2450,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
           "then the specialized shader is compiled");
 
    out->nr_bindful_textures = BITSET_LAST_BIT(nir->info.textures_used);
+   out->nr_bindful_images = BITSET_LAST_BIT(nir->info.images_used);
 
    /* If required, tag writes will be enabled by instruction selection */
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
