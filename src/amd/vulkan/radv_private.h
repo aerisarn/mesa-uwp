@@ -376,6 +376,8 @@ struct radv_physical_device {
    } vid_dec_reg;
    enum amd_ip_type vid_decode_ip;
    uint32_t vid_addr_gfx_mode;
+   uint32_t stream_handle_base;
+   uint32_t stream_handle_counter;
 };
 
 uint32_t radv_find_memory_index(const struct radv_physical_device *pdevice, VkMemoryPropertyFlags flags);

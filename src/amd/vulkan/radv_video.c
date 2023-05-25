@@ -97,17 +97,12 @@ radv_vcn_sq_tail(struct radeon_cmdbuf *cs,
 }
 
 /* generate an stream handle */
-static unsigned si_vid_alloc_stream_handle()
+static
+unsigned si_vid_alloc_stream_handle(struct radv_physical_device *pdevice)
 {
-   static unsigned counter = 0;
-   unsigned stream_handle = 0;
-   unsigned pid = getpid();
-   int i;
+   unsigned stream_handle = pdevice->stream_handle_base;
 
-   for (i = 0; i < 32; ++i)
-      stream_handle |= ((pid >> i) & 1) << (31 - i);
-
-   stream_handle ^= ++counter;
+   stream_handle ^= ++pdevice->stream_handle_counter;
    return stream_handle;
 }
 
@@ -121,6 +116,11 @@ radv_init_physical_device_decoder(struct radv_physical_device *pdevice)
       pdevice->vid_decode_ip = AMD_IP_UVD;
    else
       pdevice->vid_decode_ip = AMD_IP_VCN_DEC;
+
+   pdevice->stream_handle_counter = 0;
+   pdevice->stream_handle_base = 0;
+
+   pdevice->stream_handle_base = util_bitreverse(getpid());
 
    pdevice->vid_addr_gfx_mode = RDECODE_ARRAY_MODE_LINEAR;
 
@@ -297,7 +297,7 @@ radv_CreateVideoSessionKHR(VkDevice _device,
       return VK_ERROR_FEATURE_NOT_PRESENT;
    }
 
-   vid->stream_handle = si_vid_alloc_stream_handle();
+   vid->stream_handle = si_vid_alloc_stream_handle(device->physical_device);
    vid->dbg_frame_cnt = 0;
    vid->db_alignment = (device->physical_device->rad_info.family >= CHIP_RENOIR &&
                         vid->vk.max_coded.width > 32 &&
