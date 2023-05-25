@@ -404,26 +404,26 @@ radv-fossils:
   script:
     - export LD_PRELOAD=$PWD/install/lib/libamdgpu_noop_drm_shim.so
     # Pitcairn (GFX6)
-    - export AMDGPU_GPU_ID="PITCAIRN"
-    - ./install/fossilize-runner.sh
+    - AMDGPU_GPU_ID="PITCAIRN"
+      ./install/fossilize-runner.sh
     # Bonaire (GFX7)
-    - export AMDGPU_GPU_ID="BONAIRE"
-    - ./install/fossilize-runner.sh
+    - AMDGPU_GPU_ID="BONAIRE"
+      ./install/fossilize-runner.sh
     # Polaris10 (GFX8)
-    - export AMDGPU_GPU_ID="POLARIS10"
-    - ./install/fossilize-runner.sh
+    - AMDGPU_GPU_ID="POLARIS10"
+      ./install/fossilize-runner.sh
     # Vega10 (GFX9)
-    - export AMDGPU_GPU_ID="VEGA10"
-    - ./install/fossilize-runner.sh
+    - AMDGPU_GPU_ID="VEGA10"
+      ./install/fossilize-runner.sh
     # Navi10 (GFX10)
-    - export AMDGPU_GPU_ID="NAVI10"
-    - ./install/fossilize-runner.sh
+    - AMDGPU_GPU_ID="NAVI10"
+      ./install/fossilize-runner.sh
     # Navi21 (GFX10_3)
-    - export AMDGPU_GPU_ID="NAVI21"
-    - ./install/fossilize-runner.sh
+    - AMDGPU_GPU_ID="NAVI21"
+      ./install/fossilize-runner.sh
     # RDNA3 (GFX11)
-    - export AMDGPU_GPU_ID="GFX1100"
-    - ./install/fossilize-runner.sh
+    - AMDGPU_GPU_ID="GFX1100"
+      ./install/fossilize-runner.sh
 
 ############### vkd3d-proton
 .vkd3d-test-valve:
