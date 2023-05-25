@@ -75,6 +75,7 @@ agx_build_background_shader(struct agx_meta_cache *cache,
 
    struct agx_shader_key compiler_key = {
       .fs.ignore_tib_dependencies = true,
+      .fs.nr_samples = key->tib.nr_samples,
    };
 
    for (unsigned rt = 0; rt < ARRAY_SIZE(key->op); ++rt) {

@@ -419,26 +419,6 @@ agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
                       agx_src_index(&instr->src[0]));
 }
 
-static void
-agx_write_sample_mask_1(agx_builder *b)
-{
-   if (b->shader->nir->info.fs.uses_discard && !b->shader->did_sample_mask) {
-      /* If the shader uses discard, the sample mask must be written by the
-       * shader on all execution paths. If we've reached the end of the shader,
-       * we are therefore still active and need to write a full sample mask.
-       * TODO: interactions with MSAA and gl_SampleMask writes
-       */
-      agx_sample_mask(b, agx_immediate(0xFF), agx_immediate(1));
-      agx_signal_pix(b, 1);
-      b->shader->did_sample_mask = true;
-
-      assert(!(b->shader->nir->info.outputs_written &
-               (BITFIELD64_BIT(FRAG_RESULT_DEPTH) |
-                BITFIELD64_BIT(FRAG_RESULT_STENCIL))) &&
-             "incompatible");
-   }
-}
-
 static agx_instr *
 agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
 {
@@ -450,8 +430,6 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
    } else {
       agx_wait_pix(b, 0x000C);
    }
-
-   agx_write_sample_mask_1(b);
 
    /* Compact the registers according to the mask */
    agx_index compacted[4] = {agx_null()};
@@ -499,7 +477,6 @@ agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
     * maybe rename this flag to something more general.
     */
    b->shader->out->writes_sample_mask = true;
-   assert(!b->shader->did_sample_mask && "incompatible");
 
    return agx_zs_emit(b, agx_src_index(&instr->src[0]), zs, base);
 }
@@ -670,26 +647,6 @@ agx_emit_load_frag_coord(agx_builder *b, agx_index dst,
    }
 
    agx_emit_collect_to(b, dst, 4, dests);
-}
-
-/*
- * Demoting a helper invocation is logically equivalent to zeroing the sample
- * mask. Metal implement discard as such.
- *
- * XXX: Actually, Metal's "discard" is a demote, and what is implemented here
- * is a demote. There might be a better way to implement this to get correct
- * helper invocation semantics. For now, I'm kicking the can down the road.
- */
-static agx_instr *
-agx_emit_discard(agx_builder *b)
-{
-   assert(!b->shader->key->fs.ignore_tib_dependencies && "invalid usage");
-   agx_wait_pix(b, 0x0001);
-   b->shader->did_writeout = true;
-
-   b->shader->out->writes_sample_mask = true;
-   agx_sample_mask(b, agx_immediate(0xFF), agx_immediate(0));
-   return agx_signal_pix(b, 1);
 }
 
 static agx_instr *
@@ -875,9 +832,6 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_frag_coord:
       agx_emit_load_frag_coord(b, dst, instr);
       return NULL;
-
-   case nir_intrinsic_discard:
-      return agx_emit_discard(b);
 
    case nir_intrinsic_sample_mask_agx: {
       assert(stage == MESA_SHADER_FRAGMENT);
@@ -2202,10 +2156,6 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
     */
    agx_block *last_block = list_last_entry(&ctx->blocks, agx_block, link);
    agx_builder _b = agx_init_builder(ctx, agx_after_block(last_block));
-
-   if (ctx->stage == MESA_SHADER_FRAGMENT && !impl->function->is_preamble)
-      agx_write_sample_mask_1(&_b);
-
    agx_logical_end(&_b);
    agx_stop(&_b);
 
@@ -2427,7 +2377,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 
    /* Late clip plane lowering created discards */
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, agx_nir_lower_zs_emit);
+      NIR_PASS_V(nir, agx_nir_lower_discard_zs_emit);
    }
 
    /* Late sysval lowering creates large loads. Load lowering creates unpacks */
@@ -2455,10 +2405,16 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    out->push_count = key->reserved_preamble;
    agx_optimize_nir(nir, &out->push_count);
 
-   /* Implement conditional discard with real control flow like Metal */
-   NIR_PASS_V(nir, nir_lower_discard_if,
-              (nir_lower_discard_if_to_cf | nir_lower_demote_if_to_cf |
-               nir_lower_terminate_if_to_cf));
+   /* Create sample_mask instructions late, since NIR's scheduling is not aware
+    * of the ordering requirements between sample_mask and pixel stores.
+    *
+    * Note: when epilogs are used, special handling is required since the sample
+    * count is dynamic when the main fragment shader is compiled.
+    */
+   if (key->fs.nr_samples) {
+      assert(nir->info.stage == MESA_SHADER_FRAGMENT);
+      NIR_PASS_V(nir, agx_nir_lower_sample_mask, key->fs.nr_samples);
+   }
 
    /* Must be last since NIR passes can remap driver_location freely */
    if (nir->info.stage == MESA_SHADER_VERTEX)

@@ -1418,6 +1418,9 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
 
    struct agx_shader_key base_key = {0};
 
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      base_key.fs.nr_samples = 1;
+
    NIR_PASS_V(nir, agx_nir_lower_sysvals, compiled,
               &base_key.reserved_preamble);
 

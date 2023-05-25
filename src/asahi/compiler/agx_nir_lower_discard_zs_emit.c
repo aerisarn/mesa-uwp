@@ -12,7 +12,7 @@
 #define BASE_S      2
 
 static bool
-lower(nir_function_impl *impl, nir_block *block)
+lower_zs_emit(nir_function_impl *impl, nir_block *block)
 {
    nir_intrinsic_instr *zs_emit = NULL;
    bool progress = false;
@@ -72,7 +72,7 @@ lower(nir_function_impl *impl, nir_block *block)
 }
 
 static bool
-lower_discard_to_z(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_discard(nir_builder *b, nir_instr *instr, UNUSED void *data)
 {
    if (instr->type != nir_instr_type_intrinsic)
       return false;
@@ -84,33 +84,41 @@ lower_discard_to_z(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    b->cursor = nir_before_instr(instr);
 
-   if (intr->intrinsic == nir_intrinsic_discard_if)
-      nir_push_if(b, intr->src[0].ssa);
-
-   bool stencil_written =
-      b->shader->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
-
-   nir_store_zs_agx(b, nir_imm_intN_t(b, ALL_SAMPLES, 16),
-                    nir_imm_float(b, NAN),
-                    stencil_written ? nir_imm_intN_t(b, 0, 16)
-                                    : nir_ssa_undef(b, 1, 16) /* stencil */,
-                    .base = BASE_Z | (stencil_written ? BASE_S : 0));
+   nir_ssa_def *all_samples = nir_imm_intN_t(b, ALL_SAMPLES, 16);
+   nir_ssa_def *no_samples = nir_imm_intN_t(b, 0, 16);
 
    if (intr->intrinsic == nir_intrinsic_discard_if)
-      nir_push_else(b, NULL);
+      no_samples = nir_bcsel(b, intr->src[0].ssa, no_samples, all_samples);
+
+   /* This will get lowered later to zs_emit if needed */
+   nir_sample_mask_agx(b, all_samples, no_samples);
+   b->shader->info.fs.uses_discard = false;
+   b->shader->info.outputs_written |= BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
 
    nir_instr_remove(instr);
    return true;
 }
 
-bool
+static bool
+agx_nir_lower_discard(nir_shader *s)
+{
+   if (!s->info.fs.uses_discard)
+      return false;
+
+   return nir_shader_instructions_pass(
+      s, lower_discard, nir_metadata_block_index | nir_metadata_dominance,
+      NULL);
+}
+
+static bool
 agx_nir_lower_zs_emit(nir_shader *s)
 {
-   bool any_progress = false;
-
+   /* If depth/stencil isn't written, there's nothing to lower */
    if (!(s->info.outputs_written & (BITFIELD64_BIT(FRAG_RESULT_STENCIL) |
                                     BITFIELD64_BIT(FRAG_RESULT_DEPTH))))
       return false;
+
+   bool any_progress = false;
 
    nir_foreach_function(function, s) {
       if (!function->impl)
@@ -119,7 +127,7 @@ agx_nir_lower_zs_emit(nir_shader *s)
       bool progress = false;
 
       nir_foreach_block(block, function->impl) {
-         progress |= lower(function->impl, block);
+         progress |= lower_zs_emit(function->impl, block);
       }
 
       if (progress) {
@@ -132,9 +140,17 @@ agx_nir_lower_zs_emit(nir_shader *s)
       any_progress |= progress;
    }
 
-   any_progress |= nir_shader_instructions_pass(
-      s, lower_discard_to_z, nir_metadata_block_index | nir_metadata_dominance,
-      NULL);
-   s->info.fs.uses_discard = false;
    return any_progress;
+}
+
+bool
+agx_nir_lower_discard_zs_emit(nir_shader *s)
+{
+   bool progress = false;
+
+   /* Lower depth/stencil writes before discard so the interaction works */
+   progress |= agx_nir_lower_zs_emit(s);
+   progress |= agx_nir_lower_discard(s);
+
+   return progress;
 }

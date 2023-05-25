@@ -153,6 +153,13 @@ struct agx_fs_shader_key {
     * tilebuffer loads (including blending).
     */
    bool ignore_tib_dependencies;
+
+   /* In a monolithic fragment shader or in a fragment epilogue, the number of
+    * samples in the tilebuffer. In a non-monolithic fragment shader, leave
+    * zero. This is used for the correct lowering of sample_mask instructions,
+    * to ensure that all samples are written out. Can be set conservatively.
+    */
+   unsigned nr_samples;
 };
 
 struct agx_shader_key {
