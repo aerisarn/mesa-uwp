@@ -292,7 +292,7 @@ op("wait", (0x38, 0xFF, 2, _), dests = 0,
 
 op("get_sr", (0x72, 0x7F | L, 4, _), dests = 1, imms = [SR])
 
-op("sample_mask", (0x7fc1, 0xffff, 6, _), dests = 0, srcs = 1, can_eliminate = False)
+op("sample_mask", (0x7fc1, 0xffff, 6, _), dests = 0, srcs = 2, can_eliminate = False)
 
 # Sources: sample mask, combined depth/stencil
 op("zs_emit", (0x41, 0xFF | L, 4, _), dests = 0, srcs = 2,

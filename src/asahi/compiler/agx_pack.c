@@ -502,9 +502,10 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
    }
 
    case AGX_OPCODE_SAMPLE_MASK: {
-      unsigned S = agx_pack_sample_mask_src(I->src[0]);
-      unsigned T = 0xFF;
-      bool Tt = true /* immediate */;
+      unsigned S = agx_pack_sample_mask_src(I->src[1]);
+      unsigned T = I->src[0].value;
+      bool Tt = I->src[0].type == AGX_INDEX_IMMEDIATE;
+      assert(Tt || I->src[0].type == AGX_INDEX_REGISTER);
       uint32_t raw = 0xc1 | (Tt ? BITFIELD_BIT(8) : 0) |
                      ((T & BITFIELD_MASK(6)) << 9) | ((S & 0xff) << 16) |
                      ((T >> 6) << 24) | ((S >> 8) << 26);
