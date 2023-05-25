@@ -21,6 +21,49 @@ pub trait Builder {
             pred: pred,
         }
     }
+
+    fn lop2_to(&mut self, dst: Dst, op: LogicOp, x: Src, y: Src) {
+        /* Only uses x and y */
+        assert!(!op.src_used(2));
+
+        let is_predicate = match dst {
+            Dst::None => panic!("No LOP destination"),
+            Dst::SSA(ssa) => ssa.is_predicate(),
+            Dst::Reg(reg) => reg.is_predicate(),
+        };
+        assert!(x.is_predicate() == is_predicate);
+        assert!(y.is_predicate() == is_predicate);
+
+        if is_predicate {
+            self.push_op(OpPLop3 {
+                dsts: [dst.into(), Dst::None],
+                srcs: [x, y, Src::new_imm_bool(true)],
+                ops: [op, LogicOp::new_const(false)],
+            });
+        } else {
+            self.push_op(OpLop3 {
+                dst: dst.into(),
+                srcs: [x, y, Src::new_zero()],
+                op: op,
+            });
+        }
+    }
+
+    fn mov_to(&mut self, dst: Dst, src: Src) {
+        self.push_op(OpMov {
+            dst: dst,
+            src: src,
+            quad_lanes: 0xf,
+        });
+    }
+
+    fn swap(&mut self, x: RegRef, y: RegRef) {
+        assert!(x.file() == y.file());
+        self.push_op(OpSwap {
+            dsts: [x.into(), y.into()],
+            srcs: [y.into(), x.into()],
+        });
+    }
 }
 
 pub trait SSABuilder: Builder {
@@ -119,36 +162,19 @@ pub trait SSABuilder: Builder {
     }
 
     fn lop2(&mut self, op: LogicOp, x: Src, y: Src) -> SSARef {
-        /* Only uses x and y */
-        assert!(op.eval(0x5, 0x3, 0x0) == op.eval(0x5, 0x3, 0xf));
-        assert!(x.is_predicate() == y.is_predicate());
-        if x.is_predicate() {
-            let dst = self.alloc_ssa(RegFile::Pred, 1);
-            self.push_op(OpPLop3 {
-                dsts: [dst.into(), Dst::None],
-                srcs: [x, y, Src::new_imm_bool(true)],
-                ops: [op, LogicOp::new_const(false)],
-            });
-            dst
+        let dst = if x.is_predicate() {
+            self.alloc_ssa(RegFile::Pred, 1)
         } else {
-            let dst = self.alloc_ssa(RegFile::GPR, 1);
-            self.push_op(OpLop3 {
-                dst: dst.into(),
-                srcs: [x, y, Src::new_zero()],
-                op: op,
-            });
-            dst
-        }
+            self.alloc_ssa(RegFile::GPR, 1)
+        };
+        self.lop2_to(dst.into(), op, x, y);
+        dst
     }
 
     fn mov(&mut self, src: Src) -> SSARef {
         assert!(!src.is_predicate());
         let dst = self.alloc_ssa(RegFile::GPR, 1);
-        self.push_op(OpMov {
-            dst: dst.into(),
-            src: src,
-            quad_lanes: 0xf,
-        });
+        self.mov_to(dst.into(), src);
         dst
     }
 

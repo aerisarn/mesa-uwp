@@ -110,7 +110,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
         }
     }
 
-    let mut instrs = Vec::new();
+    let mut b = InstrBuilder::new();
 
     let mut ready = Vec::new();
     for i in 0..pc.dsts.len() {
@@ -123,7 +123,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
         if let Some(src_idx) = graph.src(dst_idx) {
             let dst = *vals[dst_idx].as_reg().unwrap();
             let src = vals[src_idx];
-            instrs.push(Instr::new_mov(dst.into(), src.into()).into());
+            b.mov_to(dst.into(), src.into());
             if graph.del_edge(dst_idx, src_idx) {
                 ready.push(src_idx);
             }
@@ -161,15 +161,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
             if let Some(j) = graph.src(i) {
                 /* We're part of a cycle so j also has a source */
                 let k = graph.src(j).unwrap();
-
-                instrs.push(
-                    Instr::new_swap(
-                        *vals[j].as_reg().unwrap(),
-                        *vals[k].as_reg().unwrap(),
-                    )
-                    .into(),
-                );
-
+                b.swap(*vals[j].as_reg().unwrap(), *vals[k].as_reg().unwrap());
                 graph.del_edge(i, j);
                 graph.del_edge(j, k);
                 if i != k {
@@ -183,7 +175,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
         }
     }
 
-    MappedInstrs::Many(instrs)
+    b.as_mapped_instrs()
 }
 
 impl Shader {

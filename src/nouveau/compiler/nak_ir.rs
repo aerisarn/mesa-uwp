@@ -3242,82 +3242,11 @@ impl Instr {
         Box::new(Instr::new(op))
     }
 
-    pub fn new_isetp(
-        dst: Dst,
-        cmp_type: IntCmpType,
-        cmp_op: IntCmpOp,
-        x: Src,
-        y: Src,
-    ) -> Instr {
-        OpISetP {
-            dst: dst,
-            set_op: PredSetOp::And,
-            cmp_op: cmp_op,
-            cmp_type: cmp_type,
-            srcs: [x, y],
-            accum: SrcRef::True.into(),
-        }
-        .into()
-    }
-
-    pub fn new_lop2(dst: Dst, op: LogicOp, x: Src, y: Src) -> Instr {
-        /* Only uses x and y */
-        assert!(op.eval(0x5, 0x3, 0x0) == op.eval(0x5, 0x3, 0xf));
-
-        let is_predicate = match dst {
-            Dst::None => panic!("No LOP destination"),
-            Dst::SSA(ssa) => ssa.is_predicate(),
-            Dst::Reg(reg) => reg.is_predicate(),
-        };
-        assert!(x.src_ref.is_predicate() == is_predicate);
-        assert!(x.src_ref.is_predicate() == is_predicate);
-
-        if is_predicate {
-            OpPLop3 {
-                dsts: [dst, Dst::None],
-                srcs: [x, y, Src::new_imm_bool(true)],
-                ops: [op, LogicOp::new_const(false)],
-            }
-            .into()
-        } else {
-            OpLop3 {
-                dst: dst,
-                srcs: [x, y, Src::new_zero()],
-                op: op,
-            }
-            .into()
-        }
-    }
-
-    pub fn new_xor(dst: Dst, x: Src, y: Src) -> Instr {
-        let xor_lop = LogicOp::new_lut(&|x, y, _| x ^ y);
-        Instr::new_lop2(dst, xor_lop, x, y)
-    }
-
     pub fn new_mov(dst: Dst, src: Src) -> Instr {
         OpMov {
             dst: dst,
             src: src,
             quad_lanes: 0xf,
-        }
-        .into()
-    }
-
-    pub fn new_plop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
-        assert!(x.is_predicate() && y.is_predicate() && z.is_predicate());
-        OpPLop3 {
-            dsts: [dst, Dst::None],
-            srcs: [x, y, z],
-            ops: [op, LogicOp::new_const(false)],
-        }
-        .into()
-    }
-
-    pub fn new_swap(x: RegRef, y: RegRef) -> Instr {
-        assert!(x.file() == y.file());
-        OpSwap {
-            dsts: [x.into(), y.into()],
-            srcs: [y.into(), x.into()],
         }
         .into()
     }
@@ -3645,24 +3574,25 @@ impl Shader {
                     assert!(swap.srcs[1].src_mod.is_none());
                     assert!(*swap.srcs[1].src_ref.as_reg().unwrap() == x);
 
+                    let mut b = InstrBuilder::new();
                     if x == y {
-                        MappedInstrs::None
+                        /* Nothing to do */
                     } else if x.is_predicate() {
-                        MappedInstrs::One(Instr::new_boxed(OpPLop3 {
+                        b.push_op(OpPLop3 {
                             dsts: [x.into(), y.into()],
                             srcs: [x.into(), y.into(), Src::new_imm_bool(true)],
                             ops: [
                                 LogicOp::new_lut(&|_, y, _| y),
                                 LogicOp::new_lut(&|x, _, _| x),
                             ],
-                        }))
+                        })
                     } else {
-                        MappedInstrs::Many(vec![
-                            Instr::new_xor(x.into(), x.into(), y.into()).into(),
-                            Instr::new_xor(y.into(), x.into(), y.into()).into(),
-                            Instr::new_xor(x.into(), x.into(), y.into()).into(),
-                        ])
+                        let xor = LogicOp::new_lut(&|x, y, _| x ^ y);
+                        b.lop2_to(x.into(), xor, x.into(), y.into());
+                        b.lop2_to(y.into(), xor, x.into(), y.into());
+                        b.lop2_to(x.into(), xor, x.into(), y.into());
                     }
+                    b.as_mapped_instrs()
                 }
                 _ => MappedInstrs::One(instr),
             }
@@ -3675,38 +3605,36 @@ impl Shader {
                 Op::Mov(mov) => {
                     assert!(mov.src.src_mod.is_none());
                     match mov.src.src_ref {
-                        SrcRef::True => MappedInstrs::One(
-                            Instr::new_isetp(
+                        SrcRef::True => {
+                            let mut b = InstrBuilder::new();
+                            b.lop2_to(
                                 mov.dst,
-                                IntCmpType::I32,
-                                IntCmpOp::Eq,
-                                Src::new_zero(),
-                                Src::new_zero(),
-                            )
-                            .into(),
-                        ),
-                        SrcRef::False => MappedInstrs::One(
-                            Instr::new_isetp(
+                                LogicOp::new_const(true),
+                                Src::new_imm_bool(true),
+                                Src::new_imm_bool(true),
+                            );
+                            b.as_mapped_instrs()
+                        }
+                        SrcRef::False => {
+                            let mut b = InstrBuilder::new();
+                            b.lop2_to(
                                 mov.dst,
-                                IntCmpType::I32,
-                                IntCmpOp::Ne,
-                                Src::new_zero(),
-                                Src::new_zero(),
-                            )
-                            .into(),
-                        ),
+                                LogicOp::new_const(false),
+                                Src::new_imm_bool(true),
+                                Src::new_imm_bool(true),
+                            );
+                            b.as_mapped_instrs()
+                        }
                         SrcRef::Reg(reg) => {
                             if reg.is_predicate() {
-                                MappedInstrs::One(
-                                    Instr::new_plop3(
-                                        mov.dst,
-                                        LogicOp::new_lut(&|x, _, _| x),
-                                        mov.src,
-                                        Src::new_imm_bool(true),
-                                        Src::new_imm_bool(true),
-                                    )
-                                    .into(),
-                                )
+                                let mut b = InstrBuilder::new();
+                                b.lop2_to(
+                                    mov.dst,
+                                    LogicOp::new_lut(&|x, _, _| x),
+                                    mov.src,
+                                    Src::new_imm_bool(true),
+                                );
+                                b.as_mapped_instrs()
                             } else {
                                 MappedInstrs::One(instr)
                             }
