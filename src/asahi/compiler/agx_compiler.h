@@ -305,6 +305,9 @@ typedef struct {
    bool shadow            : 1;
    enum agx_gather gather : 3;
 
+   /* TODO: Handle iter ops more efficient */
+   enum agx_interpolation interpolation : 2;
+
    /* Final st_vary op */
    bool last : 1;
 

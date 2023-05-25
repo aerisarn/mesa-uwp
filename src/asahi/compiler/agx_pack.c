@@ -547,14 +547,28 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       assert(cf_I < 0x100);
       assert(cf_J < 0x100);
 
+      enum agx_interpolation interp = I->interpolation;
+      agx_index sample_index = flat ? agx_null() : I->src[perspective ? 2 : 1];
+
+      /* Fix up the interpolation enum to distinguish the sample index source */
+      if (interp == AGX_INTERPOLATION_SAMPLE) {
+         if (sample_index.type == AGX_INDEX_REGISTER)
+            interp = AGX_INTERPOLATION_SAMPLE_REGISTER;
+         else
+            assert(sample_index.type == AGX_INDEX_IMMEDIATE);
+      } else {
+         sample_index = agx_zero();
+      }
+
       bool kill = false; // TODO: optimize
 
       uint64_t raw =
          0x21 | (flat ? (1 << 7) : 0) | (perspective ? (1 << 6) : 0) |
          ((D & 0xFF) << 7) | (1ull << 15) | /* XXX */
          ((cf_I & BITFIELD_MASK(6)) << 16) | ((cf_J & BITFIELD_MASK(6)) << 24) |
-         (((uint64_t)channels) << 30) | (!flat ? (1ull << 46) : 0) | /* XXX */
-         (kill ? (1ull << 52) : 0) |                                 /* XXX */
+         (((uint64_t)channels) << 30) | (((uint64_t)sample_index.value) << 32) |
+         (!flat ? (1ull << 46) : 0) |                             /* XXX */
+         (((uint64_t)interp) << 48) | (kill ? (1ull << 52) : 0) | /* XXX */
          (((uint64_t)(D >> 8)) << 56) | ((uint64_t)(cf_I >> 6) << 58) |
          ((uint64_t)(cf_J >> 6) << 60);
 

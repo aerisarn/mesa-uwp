@@ -376,6 +376,8 @@ agx_emit_load_vary(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    /* TODO: Interpolation modes */
    assert(bary != NULL);
    assert(bary->intrinsic == nir_intrinsic_load_barycentric_pixel);
+   enum agx_interpolation interp = AGX_INTERPOLATION_CENTER;
+   agx_index sample_index = agx_zero();
 
    bool perspective =
       nir_intrinsic_interp_mode(bary) != INTERP_MODE_NOPERSPECTIVE;
@@ -395,9 +397,9 @@ agx_emit_load_vary(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    /* For perspective interpolation, we project (multiply by 1/W) */
    if (perspective) {
       agx_index J = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 3, 1);
-      agx_iterproj_to(b, dest, I, J, components);
+      agx_iterproj_to(b, dest, I, J, sample_index, components, interp);
    } else {
-      agx_iter_to(b, dest, I, components);
+      agx_iter_to(b, dest, I, sample_index, components, interp);
    }
 
    agx_emit_cached_split(b, dest, components);
@@ -644,7 +646,7 @@ agx_emit_load_frag_coord(agx_builder *b, agx_index dst,
             agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, i, 1);
 
          dests[i] = fp32;
-         agx_iter_to(b, fp32, cf, 1);
+         agx_iter_to(b, fp32, cf, agx_zero(), 1, AGX_INTERPOLATION_CENTER);
       }
    }
 
