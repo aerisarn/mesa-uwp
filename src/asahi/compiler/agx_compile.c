@@ -2405,7 +2405,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
          out->depth_layout = layout;
    }
 
-   out->nr_bindful_textures = nir->info.num_textures;
+   out->nr_bindful_textures = BITSET_LAST_BIT(nir->info.textures_used);
 
    /* Late clip plane lowering created discards */
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
