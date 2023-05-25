@@ -1980,7 +1980,7 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    if (nr_textures) {
       agx_usc_pack(&b, TEXTURE, cfg) {
          cfg.start = 0;
-         cfg.count = nr_textures;
+         cfg.count = MIN2(nr_textures, AGX_NUM_TEXTURE_STATE_REGS);
          cfg.buffer = T_tex.gpu;
       }
    }
