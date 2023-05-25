@@ -32,6 +32,7 @@
 #include "ac_uvd_dec.h"
 
 #include "radv_cs.h"
+#include "radv_debug.h"
 
 #define NUM_H264_REFS 17
 #define NUM_H265_REFS 8
@@ -43,6 +44,15 @@
 
 /* Not 100% sure this isn't too much but works */
 #define VID_DEFAULT_ALIGNMENT 256
+
+static bool
+radv_enable_tier2(struct radv_physical_device *pdevice)
+{
+   if (pdevice->rad_info.family >= CHIP_NAVI21 &&
+       !(pdevice->instance->debug_flags & RADV_DEBUG_VIDEO_ARRAY_PATH))
+      return true;
+   return false;
+}
 
 static bool
 radv_vid_buffer_upload_alloc(struct radv_cmd_buffer *cmd_buffer, unsigned size,
@@ -285,12 +295,12 @@ radv_CreateVideoSessionKHR(VkDevice _device,
    switch (vid->vk.op) {
    case VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR:
       vid->stream_type = RDECODE_CODEC_H264_PERF;
-      if (device->physical_device->rad_info.family >= CHIP_NAVI21)
+      if (radv_enable_tier2(device->physical_device))
          vid->dpb_type = DPB_DYNAMIC_TIER_2;
       break;
    case VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR:
       vid->stream_type = RDECODE_CODEC_H265;
-      if (device->physical_device->rad_info.family >= CHIP_NAVI21)
+      if (radv_enable_tier2(device->physical_device))
          vid->dpb_type = DPB_DYNAMIC_TIER_2;
       break;
    default:
@@ -406,7 +416,7 @@ radv_GetPhysicalDeviceVideoCapabilitiesKHR(VkPhysicalDevice physicalDevice,
       pCapabilities->maxActiveReferencePictures = NUM_H264_REFS;
 
       /* for h264 on navi21+ separate dpb images should work */
-      if (pdevice->rad_info.family >= CHIP_NAVI21)
+      if (radv_enable_tier2(pdevice))
          pCapabilities->flags |= VK_VIDEO_CAPABILITY_SEPARATE_REFERENCE_IMAGES_BIT_KHR;
       ext->fieldOffsetGranularity.x = 0;
       ext->fieldOffsetGranularity.y = 0;
@@ -421,7 +431,7 @@ radv_GetPhysicalDeviceVideoCapabilitiesKHR(VkPhysicalDevice physicalDevice,
       pCapabilities->maxDpbSlots = NUM_H264_REFS;
       pCapabilities->maxActiveReferencePictures = NUM_H265_REFS;
       /* for h265 on navi21+ separate dpb images should work */
-      if (pdevice->rad_info.family >= CHIP_NAVI21)
+      if (radv_enable_tier2(pdevice))
          pCapabilities->flags |= VK_VIDEO_CAPABILITY_SEPARATE_REFERENCE_IMAGES_BIT_KHR;
       ext->maxLevelIdc = 51;
       strcpy(pCapabilities->stdHeaderVersion.extensionName, VK_STD_VULKAN_VIDEO_CODEC_H265_DECODE_EXTENSION_NAME);
