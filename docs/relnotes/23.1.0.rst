@@ -1,4 +1,4 @@
-Mesa 23.1.0 Release Notes / 2023-05-23
+Mesa 23.1.0 Release Notes / 2023-05-10
 ======================================
 
 Mesa 23.1.0 is a new development release. People who are concerned
