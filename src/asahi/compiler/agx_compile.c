@@ -462,6 +462,7 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
    agx_index collected = agx_emit_collect(b, compact_count, compacted);
 
    b->shader->did_writeout = true;
+   b->shader->out->tag_write_disable = false;
    return agx_st_tile(b, collected, agx_src_index(&instr->src[1]),
                       agx_format_for_pipe(nir_intrinsic_format(instr)),
                       nir_intrinsic_write_mask(instr),
@@ -2370,30 +2371,11 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
           "agx_preprocess_nir is called first, then the shader is specalized,"
           "then the specialized shader is compiled");
 
-   if (nir->info.stage == MESA_SHADER_VERTEX) {
-      out->writes_psiz =
-         nir->info.outputs_written & BITFIELD_BIT(VARYING_SLOT_PSIZ);
-   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      /* This is refined after emitting the program */
-      out->tag_write_disable =
-         !(nir->info.outputs_written >> FRAG_RESULT_DATA0);
-
-      out->disable_tri_merging = nir->info.fs.needs_all_helper_invocations ||
-                                 nir->info.fs.needs_quad_helper_invocations ||
-                                 nir->info.writes_memory;
-
-      /* Report a canonical depth layout */
-      enum gl_frag_depth_layout layout = nir->info.fs.depth_layout;
-
-      if (!(nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)))
-         out->depth_layout = FRAG_DEPTH_LAYOUT_UNCHANGED;
-      else if (layout == FRAG_DEPTH_LAYOUT_NONE)
-         out->depth_layout = FRAG_DEPTH_LAYOUT_ANY;
-      else
-         out->depth_layout = layout;
-   }
-
    out->nr_bindful_textures = BITSET_LAST_BIT(nir->info.textures_used);
+
+   /* If required, tag writes will be enabled by instruction selection */
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      out->tag_write_disable = true;
 
    /* Late sysval lowering creates large loads. Load lowering creates unpacks */
    NIR_PASS_V(nir, nir_lower_mem_access_bit_sizes,
@@ -2455,7 +2437,27 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       }
    }
 
-   /* Writing the sample mask requires tag writes */
-   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
+      out->writes_psiz =
+         nir->info.outputs_written & BITFIELD_BIT(VARYING_SLOT_PSIZ);
+   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      out->disable_tri_merging = nir->info.fs.needs_all_helper_invocations ||
+                                 nir->info.fs.needs_quad_helper_invocations ||
+                                 nir->info.writes_memory;
+
+      /* Writing the sample mask requires tag writes */
       out->tag_write_disable &= !out->writes_sample_mask;
+
+      /* Report a canonical depth layout. This happens at the end because the
+       * sample mask lowering affects it.
+       */
+      enum gl_frag_depth_layout layout = nir->info.fs.depth_layout;
+
+      if (!(nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)))
+         out->depth_layout = FRAG_DEPTH_LAYOUT_UNCHANGED;
+      else if (layout == FRAG_DEPTH_LAYOUT_NONE)
+         out->depth_layout = FRAG_DEPTH_LAYOUT_ANY;
+      else
+         out->depth_layout = layout;
+   }
 }
