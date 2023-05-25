@@ -50,6 +50,18 @@ v3d_get_slot_for_driver_location(nir_shader *s, uint32_t driver_location)
                 if (var->data.driver_location == driver_location) {
                         return var->data.location;
                 }
+
+                /* For compact arrays, we have more than one location to
+                 * check.
+                 */
+                if (var->data.compact) {
+                        assert(glsl_type_is_array(var->type));
+                        for (int i = 0; i < DIV_ROUND_UP(glsl_array_size(var->type), 4); i++) {
+                                if ((var->data.driver_location + i) == driver_location) {
+                                        return var->data.location;
+                                }
+                        }
+                }
         }
 
         return -1;
