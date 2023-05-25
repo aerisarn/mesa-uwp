@@ -1505,10 +1505,10 @@ static bool ruvd_dec_message_decode(struct radv_device *device,
    switch (vid->vk.op) {
    case VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR: {
       msg->body.decode.codec.h264 = get_uvd_h264_msg(vid, params, frame_info,
-						     slice_offset,
-						     &msg->body.decode.width_in_samples,
-						     &msg->body.decode.height_in_samples,
-						     it_ptr);
+                                                     slice_offset,
+                                                     &msg->body.decode.width_in_samples,
+                                                     &msg->body.decode.height_in_samples,
+                                                     it_ptr);
       break;
    }
    case VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR: {
