@@ -24,6 +24,9 @@ spec@!opengl 1.1@longprim
 spec@!opengl 1.1@streaming-texture-leak
 tex3d-maxsize
 
+# Takes absurdly long, sometimes flaking due to the 60s timeout
+glx@glx-make-current
+
 # These Piglits cause crashes, at least when run with PAN_MESA_DEBUG=sync. For
 # many, the crashes are due to faults. Although Piglits are nominally
 # process-isolated, faults can leak across processes to subpar recovery, meaning
