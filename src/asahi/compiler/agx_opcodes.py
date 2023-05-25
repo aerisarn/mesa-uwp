@@ -134,6 +134,7 @@ SR = enum("sr", {
    80: 'thread_position_in_grid.x',
    81: 'thread_position_in_grid.y',
    82: 'thread_position_in_grid.z',
+   124: 'input_sample_mask',
    144: 'opfifo_cmd',
    146: 'opfifo_data_l',
    147: 'opfifo_data_h',
