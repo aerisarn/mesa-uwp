@@ -1241,7 +1241,9 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
 
       /* input vars can't be created for those */
       if (var->data.location == VARYING_SLOT_LAYER ||
-          var->data.location == VARYING_SLOT_VIEW_INDEX)
+          var->data.location == VARYING_SLOT_VIEW_INDEX ||
+          /* psiz not needed for quads */
+          var->data.location == VARYING_SLOT_PSIZ)
          continue;
 
       char name[100];
