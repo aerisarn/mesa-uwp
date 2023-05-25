@@ -2896,7 +2896,7 @@ static void handle_push_constants(struct vk_cmd_queue_entry *cmd,
    state->inlines_dirty[MESA_SHADER_MESH] |= (stage_flags & VK_SHADER_STAGE_MESH_BIT_EXT) > 0;
 }
 
-static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
+static void lvp_execute_cmd_buffer(struct list_head *cmds,
                                    struct rendering_state *state, bool print_cmds);
 
 static void handle_execute_commands(struct vk_cmd_queue_entry *cmd,
@@ -2904,7 +2904,7 @@ static void handle_execute_commands(struct vk_cmd_queue_entry *cmd,
 {
    for (unsigned i = 0; i < cmd->u.execute_commands.command_buffer_count; i++) {
       LVP_FROM_HANDLE(lvp_cmd_buffer, secondary_buf, cmd->u.execute_commands.command_buffers[i]);
-      lvp_execute_cmd_buffer(secondary_buf, state, print_cmds);
+      lvp_execute_cmd_buffer(&secondary_buf->vk.cmd_queue.cmds, state, print_cmds);
    }
 }
 
@@ -4308,14 +4308,14 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
 #undef ENQUEUE_CMD
 }
 
-static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
+static void lvp_execute_cmd_buffer(struct list_head *cmds,
                                    struct rendering_state *state, bool print_cmds)
 {
    struct vk_cmd_queue_entry *cmd;
    bool first = true;
    bool did_flush = false;
 
-   LIST_FOR_EACH_ENTRY(cmd, &cmd_buffer->vk.cmd_queue.cmds, cmd_link) {
+   LIST_FOR_EACH_ENTRY(cmd, cmds, cmd_link) {
       if (print_cmds)
          fprintf(stderr, "%s\n", vk_cmd_queue_type_names[cmd->type]);
       switch (cmd->type) {
@@ -4437,7 +4437,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          /* skip flushes since every cmdbuf does a flush
             after iterating its cmds and so this is redundant
           */
-         if (first || did_flush || cmd->cmd_link.next == &cmd_buffer->vk.cmd_queue.cmds)
+         if (first || did_flush || cmd->cmd_link.next == cmds)
             continue;
          handle_pipeline_barrier(cmd, state);
          did_flush = true;
@@ -4683,7 +4683,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
          state->cso_ss_ptr[s][i] = &state->ss[s][i];
    }
    /* create a gallium context */
-   lvp_execute_cmd_buffer(cmd_buffer, state, device->print_cmds);
+   lvp_execute_cmd_buffer(&cmd_buffer->vk.cmd_queue.cmds, state, device->print_cmds);
 
    state->start_vb = -1;
    state->num_vb = 0;
