@@ -2404,8 +2404,10 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       out->writes_psiz =
          nir->info.outputs_written & BITFIELD_BIT(VARYING_SLOT_PSIZ);
    } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      /* This is refined after emitting the program */
       out->tag_write_disable =
          !(nir->info.outputs_written >> FRAG_RESULT_DATA0);
+
       out->disable_tri_merging = nir->info.fs.needs_all_helper_invocations ||
                                  nir->info.fs.needs_quad_helper_invocations ||
                                  nir->info.writes_memory;
@@ -2481,4 +2483,8 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
          unreachable("General functions not yet supported");
       }
    }
+
+   /* Writing the sample mask requires tag writes */
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      out->tag_write_disable &= !out->writes_sample_mask;
 }
