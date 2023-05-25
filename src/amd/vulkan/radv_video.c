@@ -476,7 +476,7 @@ radv_GetPhysicalDeviceVideoFormatPropertiesKHR(VkPhysicalDevice physicalDevice,
        (VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   *pVideoFormatPropertyCount = 1;
+   *pVideoFormatPropertyCount = 0;
 
    bool need_10bit = false;
    const struct VkVideoProfileListInfoKHR *prof_list = (struct VkVideoProfileListInfoKHR *)
