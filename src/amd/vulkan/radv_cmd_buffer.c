@@ -3005,6 +3005,29 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_buffer_
                           ds->pa_su_poly_offset_db_fmt_cntl);
 }
 
+static void
+radv_emit_null_ds_state(struct radv_cmd_buffer *cmd_buffer)
+{
+   const enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
+   unsigned num_samples = 0;
+
+   /* On GFX11, DB_Z_INFO.NUM_SAMPLES should always match MSAA_EXPOSED_SAMPLES. It affects VRS,
+    * occlusion queries and Primitive Ordered Pixel Shading if depth and stencil are not bound.
+    */
+   if (gfx_level == GFX11) {
+      num_samples = util_logbase2(radv_get_rasterization_samples(cmd_buffer));
+   }
+
+   if (gfx_level == GFX9) {
+      radeon_set_context_reg_seq(cmd_buffer->cs, R_028038_DB_Z_INFO, 2);
+   } else {
+      radeon_set_context_reg_seq(cmd_buffer->cs, R_028040_DB_Z_INFO, 2);
+   }
+
+   radeon_emit(cmd_buffer->cs,
+               S_028040_FORMAT(V_028040_Z_INVALID) | S_028040_NUM_SAMPLES(num_samples));
+   radeon_emit(cmd_buffer->cs, S_028044_FORMAT(V_028044_STENCIL_INVALID));
+}
 /**
  * Update the fast clear depth/stencil values if the image is bound as a
  * depth/stencil buffer.
@@ -3604,22 +3627,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 
       radv_image_view_finish(&iview);
    } else {
-      unsigned num_samples = 0;
-
-      /* On GFX11, DB_Z_INFO.NUM_SAMPLES should always match MSAA_EXPOSED_SAMPLES. It affects VRS,
-       * occlusion queries and Primitive Ordered Pixel Shading if depth and stencil are not bound.
-       */
-      if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX11)
-         num_samples = util_logbase2(radv_get_rasterization_samples(cmd_buffer));
-
-      if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX9)
-         radeon_set_context_reg_seq(cmd_buffer->cs, R_028038_DB_Z_INFO, 2);
-      else
-         radeon_set_context_reg_seq(cmd_buffer->cs, R_028040_DB_Z_INFO, 2);
-
-      radeon_emit(cmd_buffer->cs, S_028040_FORMAT(V_028040_Z_INVALID) |       /* DB_Z_INFO */
-                                  S_028040_NUM_SAMPLES(num_samples));
-      radeon_emit(cmd_buffer->cs, S_028044_FORMAT(V_028044_STENCIL_INVALID)); /* DB_STENCIL_INFO */
+      radv_emit_null_ds_state(cmd_buffer);
    }
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
