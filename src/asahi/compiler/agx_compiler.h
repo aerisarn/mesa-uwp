@@ -296,9 +296,6 @@ typedef struct {
    /* For local access */
    enum agx_format format;
 
-   /* For load varying */
-   bool perspective : 1;
-
    /* Invert icond/fcond */
    bool invert_cond : 1;
 
@@ -325,7 +322,7 @@ typedef struct {
    bool saturate : 1;
    unsigned mask : 4;
 
-   unsigned padding : 8;
+   unsigned padding : 9;
 } agx_instr;
 
 static inline void

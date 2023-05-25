@@ -388,16 +388,18 @@ agx_emit_load_vary(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
              nir_component_mask(components) &&
           "iter does not handle write-after-write hazards");
 
-   /* For perspective interpolation, we need W */
-   agx_index J =
-      !perspective ? agx_zero()
-                   : agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 3, 1);
-
    agx_index I = agx_get_cf(b->shader, true, perspective,
                             sem.location + nir_src_as_uint(*offset),
                             nir_intrinsic_component(instr), components);
 
-   agx_iter_to(b, dest, I, J, components, perspective);
+   /* For perspective interpolation, we project (multiply by 1/W) */
+   if (perspective) {
+      agx_index J = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, 3, 1);
+      agx_iterproj_to(b, dest, I, J, components);
+   } else {
+      agx_iter_to(b, dest, I, components);
+   }
+
    agx_emit_cached_split(b, dest, components);
 }
 
@@ -642,7 +644,7 @@ agx_emit_load_frag_coord(agx_builder *b, agx_index dst,
             agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, i, 1);
 
          dests[i] = fp32;
-         agx_iter_to(b, fp32, cf, agx_null(), 1, false);
+         agx_iter_to(b, fp32, cf, 1);
       }
    }
 

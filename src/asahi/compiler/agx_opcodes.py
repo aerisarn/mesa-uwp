@@ -108,7 +108,6 @@ INVERT_COND = immediate("invert_cond")
 NEST = immediate("nest")
 TARGET = immediate("target", "agx_block *")
 ZS = immediate("zs")
-PERSPECTIVE = immediate("perspective", "bool")
 SR = enum("sr", {
    0:  'threadgroup_position_in_grid.x',
    1:  'threadgroup_position_in_grid.y',
@@ -328,7 +327,8 @@ for is_float in [False, True]:
 
 op("bitop", (0x7E, 0x7F, 6, _), srcs = 2, imms = [TRUTH_TABLE])
 op("convert", (0x3E | L, 0x7F | L | (0x3 << 38), 6, _), srcs = 2, imms = [ROUND]) 
-op("iter", (0x21, 0xBF, 8, _), srcs = 2, imms = [CHANNELS, PERSPECTIVE])
+op("iter", (0x21, 0xBF, 8, _), srcs = 1, imms = [CHANNELS])
+op("iterproj", (0x21, 0xBF, 8, _), srcs = 2, imms = [CHANNELS])
 op("ldcf", (0xA1, 0xBF, 8, _), srcs = 1, imms = [CHANNELS])
 op("st_vary", None, dests = 0, srcs = 2, can_eliminate = False)
 op("no_varyings", (0x80000051, 0xFFFFFFFF, 4, _), dests = 0, can_eliminate = False)
