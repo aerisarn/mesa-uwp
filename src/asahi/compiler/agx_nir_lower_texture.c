@@ -16,37 +16,45 @@
 #define AGX_LAYOUT_LINEAR         0x0
 
 static nir_ssa_def *
-texture_descriptor_ptr(nir_builder *b, nir_tex_instr *tex)
+texture_descriptor_ptr_for_handle(nir_builder *b, nir_ssa_def *handle)
 {
    /* Bindless handles are a vec2, where the first source is the (constant)
     * uniform register number and the second source is the byte offset.
     */
+   nir_ssa_scalar uniform = nir_ssa_scalar_resolved(handle, 0);
+   unsigned uniform_idx = nir_ssa_scalar_as_uint(uniform);
+
+   nir_ssa_def *base = nir_load_preamble(b, 1, 64, uniform_idx);
+   nir_ssa_def *offset = nir_u2u64(b, nir_channel(b, handle, 1));
+
+   return nir_iadd(b, base, offset);
+}
+
+static nir_ssa_def *
+texture_descriptor_ptr_for_index(nir_builder *b, nir_ssa_def *index)
+{
+   return nir_iadd(
+      b, nir_load_texture_base_agx(b),
+      nir_u2u64(b, nir_imul_imm(b, index, AGX_TEXTURE_DESC_STRIDE)));
+}
+
+static nir_ssa_def *
+texture_descriptor_ptr(nir_builder *b, nir_tex_instr *tex)
+{
    int handle_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
-   if (handle_idx >= 0) {
-      nir_ssa_def *vec = tex->src[handle_idx].src.ssa;
-
-      nir_ssa_scalar uniform = nir_ssa_scalar_resolved(vec, 0);
-      unsigned uniform_idx = nir_ssa_scalar_as_uint(uniform);
-
-      nir_ssa_def *base = nir_load_preamble(b, 1, 64, uniform_idx);
-      nir_ssa_def *offset = nir_u2u64(b, nir_channel(b, vec, 1));
-
-      return nir_iadd(b, base, offset);
-   }
+   if (handle_idx >= 0)
+      return texture_descriptor_ptr_for_handle(b, tex->src[handle_idx].src.ssa);
 
    /* For non-bindless, compute from the texture index */
-   nir_ssa_def *offs;
+   nir_ssa_def *index;
 
    int offs_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_offset);
-   if (offs_idx >= 0) {
-      nir_ssa_def *offset_src = tex->src[offs_idx].src.ssa;
-      offs = nir_imul_imm(b, offset_src, AGX_TEXTURE_DESC_STRIDE);
-   } else {
-      unsigned base_B = tex->texture_index * AGX_TEXTURE_DESC_STRIDE;
-      offs = nir_imm_int(b, base_B);
-   }
+   if (offs_idx >= 0)
+      index = tex->src[offs_idx].src.ssa;
+   else
+      index = nir_imm_int(b, tex->texture_index);
 
-   return nir_iadd(b, nir_load_texture_base_agx(b), nir_u2u64(b, offs));
+   return texture_descriptor_ptr_for_index(b, index);
 }
 
 /* Implement txs for buffer textures. There is no mipmapping to worry about, so
