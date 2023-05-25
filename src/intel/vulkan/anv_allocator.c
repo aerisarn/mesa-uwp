@@ -1411,6 +1411,15 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
    if (device->info->has_aux_map && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
       align = MAX2(intel_aux_map_get_alignment(device->aux_map_ctx), align);
 
+   /* Opportunistically align addresses to 2Mb when above 1Mb. We do this
+    * because this gives an opportunity for the kernel to use Transparent Huge
+    * Pages (the 2MB page table layout) for faster memory access.
+    *
+    * Only available on ICL+.
+    */
+   if (device->info->ver >= 11 && (bo->size + bo->_ccs_size) >= 1 * 1024 * 1024)
+      align = MAX2(2 * 1024 * 1024, align);
+
    if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
       bo->has_fixed_address = true;
       bo->offset = explicit_address;
