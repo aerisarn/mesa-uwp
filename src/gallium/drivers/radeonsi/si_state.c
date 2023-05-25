@@ -5580,15 +5580,6 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
    si_pm4_set_reg(pm4, R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0, compute_cu_en);
    si_pm4_set_reg(pm4, R_00B85C_COMPUTE_STATIC_THREAD_MGMT_SE1, compute_cu_en);
 
-   if (sctx->gfx_level == GFX6) {
-      /* This register has been moved to R_00CD20_COMPUTE_MAX_WAVE_ID and is now per pipe,
-       * so it should be handled in the kernel if we want to use something other than
-       * the default value.
-       * TODO: This should be: (number of compute units) * 4 * (waves per simd) - 1
-       */
-      si_pm4_set_reg(pm4, R_00B82C_COMPUTE_MAX_WAVE_ID, 0x190 /* Default value */);
-   }
-
    if (sctx->gfx_level >= GFX7) {
       si_pm4_set_reg(pm4, R_00B864_COMPUTE_STATIC_THREAD_MGMT_SE2, compute_cu_en);
       si_pm4_set_reg(pm4, R_00B868_COMPUTE_STATIC_THREAD_MGMT_SE3, compute_cu_en);
