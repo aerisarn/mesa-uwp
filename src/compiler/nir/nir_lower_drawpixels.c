@@ -112,14 +112,14 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
    tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
    tex->coord_components = 2;
    tex->dest_type = nir_type_float32;
-   tex->src[0].src_type = nir_tex_src_texture_deref;
-   tex->src[0].src = nir_src_for_ssa(&tex_deref->dest.ssa);
-   tex->src[1].src_type = nir_tex_src_sampler_deref;
-   tex->src[1].src = nir_src_for_ssa(&tex_deref->dest.ssa);
-   tex->src[2].src_type = nir_tex_src_coord;
-   tex->src[2].src =
-      nir_src_for_ssa(nir_channels(b, texcoord,
-                                   (1 << tex->coord_components) - 1));
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                     &tex_deref->dest.ssa);
+   tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
+                                     &tex_deref->dest.ssa);
+   tex->src[2] =
+      nir_tex_src_for_ssa(nir_tex_src_coord,
+                          nir_channels(b, texcoord,
+                                      (1 << tex->coord_components) - 1));
 
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
    nir_builder_instr_insert(b, &tex->instr);
@@ -154,12 +154,12 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
       tex->sampler_index = state->options->pixelmap_sampler;
       tex->texture_index = state->options->pixelmap_sampler;
       tex->dest_type = nir_type_float32;
-      tex->src[0].src_type = nir_tex_src_texture_deref;
-      tex->src[0].src = nir_src_for_ssa(&pixelmap_deref->dest.ssa);
-      tex->src[1].src_type = nir_tex_src_sampler_deref;
-      tex->src[1].src = nir_src_for_ssa(&pixelmap_deref->dest.ssa);
-      tex->src[2].src_type = nir_tex_src_coord;
-      tex->src[2].src = nir_src_for_ssa(nir_channels(b, def, 0x3));
+      tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                        &pixelmap_deref->dest.ssa);
+      tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
+                                        &pixelmap_deref->dest.ssa);
+      tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_coord,
+                                        nir_channels(b, def, 0x3));
 
       nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
       nir_builder_instr_insert(b, &tex->instr);
@@ -172,8 +172,8 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
       tex->coord_components = 2;
       tex->sampler_index = state->options->pixelmap_sampler;
       tex->dest_type = nir_type_float32;
-      tex->src[0].src_type = nir_tex_src_coord;
-      tex->src[0].src = nir_src_for_ssa(nir_channels(b, def, 0xc));
+      tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord,
+                                        nir_channels(b, def, 0xc));
 
       nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
       nir_builder_instr_insert(b, &tex->instr);

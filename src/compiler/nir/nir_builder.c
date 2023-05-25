@@ -257,16 +257,12 @@ nir_build_tex_deref_instr(nir_builder *build, nir_texop op,
    }
 
    unsigned src_idx = 0;
-   tex->src[src_idx++] = (nir_tex_src) {
-      .src_type = nir_tex_src_texture_deref,
-      .src = nir_src_for_ssa(&texture->dest.ssa),
-   };
+   tex->src[src_idx++] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                             &texture->dest.ssa);
    if (sampler != NULL) {
       assert(glsl_type_is_sampler(sampler->type));
-      tex->src[src_idx++] = (nir_tex_src) {
-         .src_type = nir_tex_src_sampler_deref,
-         .src = nir_src_for_ssa(&sampler->dest.ssa),
-      };
+      tex->src[src_idx++] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
+                                                &sampler->dest.ssa);
    }
    for (unsigned i = 0; i < num_extra_srcs; i++) {
       switch (extra_srcs[i].src_type) {

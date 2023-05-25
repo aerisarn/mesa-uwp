@@ -1641,14 +1641,20 @@ nir_load_param(nir_builder *build, uint32_t param_idx)
    return nir_build_load_param(build, param->num_components, param->bit_size, param_idx);
 }
 
+static inline nir_tex_src
+nir_tex_src_for_ssa(nir_tex_src_type src_type, nir_ssa_def *def)
+{
+   nir_tex_src src;
+   src.src = nir_src_for_ssa(def);
+   src.src_type = src_type;
+   return src;
+}
+
 static inline nir_ssa_def *
 nir_tex_deref(nir_builder *b, nir_deref_instr *t, nir_deref_instr *s,
               nir_ssa_def *coord)
 {
-   nir_tex_src srcs[] = {{
-      nir_src_for_ssa(coord),
-      nir_tex_src_coord,
-   }};
+   nir_tex_src srcs[] = {nir_tex_src_for_ssa(nir_tex_src_coord, coord)};
 
    return nir_build_tex_deref_instr(b, nir_texop_tex, t, s,
                                     ARRAY_SIZE(srcs), srcs);
@@ -1658,13 +1664,10 @@ static inline nir_ssa_def *
 nir_txl_deref(nir_builder *b, nir_deref_instr *t, nir_deref_instr *s,
               nir_ssa_def *coord, nir_ssa_def *lod)
 {
-   nir_tex_src srcs[] = {{
-      nir_src_for_ssa(coord),
-      nir_tex_src_coord,
-   }, {
-      nir_src_for_ssa(lod),
-      nir_tex_src_lod,
-   }};
+   nir_tex_src srcs[] = {
+      nir_tex_src_for_ssa(nir_tex_src_coord, coord),
+      nir_tex_src_for_ssa(nir_tex_src_lod, lod),
+   };
 
    return nir_build_tex_deref_instr(b, nir_texop_txl, t, s,
                                     ARRAY_SIZE(srcs), srcs);
@@ -1684,9 +1687,7 @@ nir_txf_deref(nir_builder *b, nir_deref_instr *t,
    nir_tex_src srcs[2];
    unsigned num_srcs = 0;
 
-   srcs[num_srcs].src_type = nir_tex_src_coord;
-   srcs[num_srcs].src = nir_src_for_ssa(coord);
-   num_srcs++;
+   srcs[num_srcs++] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
 
    if (lod == NULL) {
       switch (glsl_get_sampler_dim(t->type)) {
@@ -1701,11 +1702,8 @@ nir_txf_deref(nir_builder *b, nir_deref_instr *t,
       }
    }
 
-   if (lod != NULL) {
-      srcs[num_srcs].src_type = nir_tex_src_lod;
-      srcs[num_srcs].src = nir_src_for_ssa(lod);
-      num_srcs++;
-   }
+   if (lod != NULL)
+      srcs[num_srcs++] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
    return nir_build_tex_deref_instr(b, nir_texop_txf, t, NULL,
                                     num_srcs, srcs);
@@ -1715,13 +1713,10 @@ static inline nir_ssa_def *
 nir_txf_ms_deref(nir_builder *b, nir_deref_instr *t,
                  nir_ssa_def *coord, nir_ssa_def *ms_index)
 {
-   nir_tex_src srcs[] = {{
-      nir_src_for_ssa(coord),
-      nir_tex_src_coord,
-   }, {
-      nir_src_for_ssa(ms_index),
-      nir_tex_src_ms_index,
-   }};
+   nir_tex_src srcs[] = {
+      nir_tex_src_for_ssa(nir_tex_src_coord, coord),
+      nir_tex_src_for_ssa(nir_tex_src_ms_index, ms_index),
+   };
 
    return nir_build_tex_deref_instr(b, nir_texop_txf_ms, t, NULL,
                                     ARRAY_SIZE(srcs), srcs);
@@ -1731,10 +1726,7 @@ static inline nir_ssa_def *
 nir_samples_identical_deref(nir_builder *b, nir_deref_instr *t,
                             nir_ssa_def *coord)
 {
-   nir_tex_src srcs[] = {{
-      nir_src_for_ssa(coord),
-      nir_tex_src_coord,
-   }};
+   nir_tex_src srcs[] = {nir_tex_src_for_ssa(nir_tex_src_coord, coord)};
 
    return nir_build_tex_deref_instr(b, nir_texop_samples_identical, t, NULL,
                                     ARRAY_SIZE(srcs), srcs);
