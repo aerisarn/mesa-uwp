@@ -1521,6 +1521,8 @@ void radv_initialise_ds_surface(const struct radv_device *device, struct radv_ds
 void radv_initialise_vrs_surface(struct radv_image *image, struct radv_buffer *htile_buffer,
                                  struct radv_ds_buffer_info *ds);
 
+void radv_gfx11_set_db_render_control(const struct radv_device *device, unsigned num_samples,
+                                      unsigned *db_render_control);
 /**
  * Attachment state when recording a renderpass instance.
  *

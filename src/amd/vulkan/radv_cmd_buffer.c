@@ -2701,29 +2701,7 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
    }
 
    if (pdevice->rad_info.gfx_level >= GFX11) {
-      unsigned num_samples = render->max_samples;
-      unsigned max_allowed_tiles_in_wave = 0;
-
-      if (pdevice->rad_info.has_dedicated_vram) {
-         if (num_samples == 8)
-            max_allowed_tiles_in_wave = 7;
-         else if (num_samples == 4)
-            max_allowed_tiles_in_wave = 14;
-      } else {
-         if (num_samples == 8)
-            max_allowed_tiles_in_wave = 8;
-      }
-
-      /* TODO: We may want to disable this workaround for future chips. */
-      if (num_samples >= 4) {
-         if (max_allowed_tiles_in_wave)
-            max_allowed_tiles_in_wave--;
-         else
-            max_allowed_tiles_in_wave = 15;
-      }
-
-      db_render_control |= S_028000_OREO_MODE(V_028000_OMODE_O_THEN_B) |
-                           S_028000_MAX_ALLOWED_TILES_IN_WAVE(max_allowed_tiles_in_wave);
+      radv_gfx11_set_db_render_control(cmd_buffer->device, render->max_samples, &db_render_control);
    }
 
    radeon_set_context_reg(cmd_buffer->cs, R_028000_DB_RENDER_CONTROL, db_render_control);
@@ -3009,6 +2987,7 @@ static void
 radv_emit_null_ds_state(struct radv_cmd_buffer *cmd_buffer)
 {
    const enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
+   unsigned db_render_control = 0;
    unsigned num_samples = 0;
 
    /* On GFX11, DB_Z_INFO.NUM_SAMPLES should always match MSAA_EXPOSED_SAMPLES. It affects VRS,
@@ -3016,6 +2995,7 @@ radv_emit_null_ds_state(struct radv_cmd_buffer *cmd_buffer)
     */
    if (gfx_level == GFX11) {
       num_samples = util_logbase2(radv_get_rasterization_samples(cmd_buffer));
+      radv_gfx11_set_db_render_control(cmd_buffer->device, 1, &db_render_control);
    }
 
    if (gfx_level == GFX9) {
@@ -3027,6 +3007,11 @@ radv_emit_null_ds_state(struct radv_cmd_buffer *cmd_buffer)
    radeon_emit(cmd_buffer->cs,
                S_028040_FORMAT(V_028040_Z_INVALID) | S_028040_NUM_SAMPLES(num_samples));
    radeon_emit(cmd_buffer->cs, S_028044_FORMAT(V_028044_STENCIL_INVALID));
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028000_DB_RENDER_CONTROL, db_render_control);
+   radeon_set_context_reg(cmd_buffer->cs, R_028010_DB_RENDER_OVERRIDE2,
+                          S_028010_CENTROID_COMPUTATION_MODE(gfx_level >= GFX10_3));
+
 }
 /**
  * Update the fast clear depth/stencil values if the image is bound as a
