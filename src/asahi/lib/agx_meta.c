@@ -18,8 +18,11 @@ agx_compile_meta_shader(struct agx_meta_cache *cache, nir_shader *shader,
    util_dynarray_init(&binary, NULL);
 
    agx_preprocess_nir(shader, false);
-   if (tib)
+   if (tib) {
       agx_nir_lower_tilebuffer(shader, tib, NULL, NULL);
+      agx_nir_lower_monolithic_msaa(
+         shader, &(struct agx_msaa_state){.nr_samples = tib->nr_samples});
+   }
 
    struct agx_meta_shader *res = rzalloc(cache->ht, struct agx_meta_shader);
    agx_compile_shader_nir(shader, key, NULL, &binary, &res->info);

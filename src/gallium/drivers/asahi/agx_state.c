@@ -117,8 +117,8 @@ agx_create_blend_state(struct pipe_context *ctx,
 {
    struct agx_blend *so = CALLOC_STRUCT(agx_blend);
 
-   assert(!state->alpha_to_coverage);
-   assert(!state->alpha_to_one);
+   so->alpha_to_coverage = state->alpha_to_coverage;
+   so->alpha_to_one = state->alpha_to_one;
 
    if (state->logicop_enable) {
       so->logicop_enable = true;
@@ -1365,8 +1365,8 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
    } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       struct asahi_fs_shader_key *key = &key_->fs;
 
-      struct agx_tilebuffer_layout tib =
-         agx_build_tilebuffer_layout(key->rt_formats, key->nr_cbufs, 1);
+      struct agx_tilebuffer_layout tib = agx_build_tilebuffer_layout(
+         key->rt_formats, key->nr_cbufs, key->nr_samples);
 
       nir_lower_blend_options opts = {
          .scalar_blend_const = true,
@@ -1411,9 +1411,23 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       /* Discards must be lowering before lowering MSAA to handle discards */
       NIR_PASS_V(nir, agx_nir_lower_discard_zs_emit);
 
+      /* Alpha-to-coverage must be lowered before alpha-to-one */
+      if (key->blend.alpha_to_coverage)
+         NIR_PASS_V(nir, agx_nir_lower_alpha_to_coverage, tib.nr_samples);
+
+      /* Alpha-to-one must be lowered before blending */
+      if (key->blend.alpha_to_one)
+         NIR_PASS_V(nir, agx_nir_lower_alpha_to_one);
+
       NIR_PASS_V(nir, nir_lower_blend, &opts);
       NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib, colormasks,
                  &force_translucent);
+      NIR_PASS_V(nir, agx_nir_lower_sample_intrinsics);
+      NIR_PASS_V(nir, agx_nir_lower_monolithic_msaa,
+                 &(struct agx_msaa_state){
+                    .nr_samples = tib.nr_samples,
+                    .api_sample_mask = key->api_sample_mask,
+                 });
 
       if (key->sprite_coord_enable) {
          NIR_PASS_V(nir, nir_lower_texcoord_replace_late,
@@ -1425,7 +1439,7 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
    struct agx_shader_key base_key = {0};
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
-      base_key.fs.nr_samples = 1;
+      base_key.fs.nr_samples = key_->fs.nr_samples;
 
    NIR_PASS_V(nir, agx_nir_lower_sysvals, compiled,
               &base_key.reserved_preamble);
@@ -1551,6 +1565,7 @@ agx_create_shader_state(struct pipe_context *pctx,
       }
       case MESA_SHADER_FRAGMENT:
          key.fs.nr_cbufs = 1;
+         key.fs.nr_samples = 1;
          for (unsigned i = 0; i < key.fs.nr_cbufs; ++i) {
             key.fs.rt_formats[i] = PIPE_FORMAT_R8G8B8A8_UNORM;
             key.fs.blend.rt[i].colormask = 0xF;
@@ -1675,13 +1690,24 @@ agx_update_fs(struct agx_batch *batch)
     * batch->key: implicitly dirties everything, no explicit check
     * rast: RS
     * blend: BLEND
+    * sample_mask: SAMPLE_MASK
     */
-   if (!(ctx->dirty & (AGX_DIRTY_FS_PROG | AGX_DIRTY_RS | AGX_DIRTY_BLEND)))
+   if (!(ctx->dirty & (AGX_DIRTY_FS_PROG | AGX_DIRTY_RS | AGX_DIRTY_BLEND |
+                       AGX_DIRTY_SAMPLE_MASK)))
       return false;
+
+   unsigned nr_samples = util_framebuffer_get_num_samples(&batch->key);
+   bool msaa = ctx->rast->base.multisample;
 
    struct asahi_fs_shader_key key = {
       .nr_cbufs = batch->key.nr_cbufs,
       .clip_plane_enable = ctx->rast->base.clip_plane_enable,
+      .nr_samples = nr_samples,
+      .multisample = msaa,
+
+      /* Only lower sample mask if at least one sample is masked out */
+      .api_sample_mask =
+         msaa && (~ctx->sample_mask & BITFIELD_MASK(nr_samples)),
    };
 
    if (batch->reduced_prim == MESA_PRIM_POINTS)
@@ -1694,6 +1720,10 @@ agx_update_fs(struct agx_batch *batch)
    }
 
    memcpy(&key.blend, ctx->blend, sizeof(key.blend));
+
+   /* Normalize key */
+   if (!key.multisample)
+      key.blend.alpha_to_coverage = false;
 
    return agx_update_shader(ctx, &ctx->fs, PIPE_SHADER_FRAGMENT,
                             (union asahi_shader_key *)&key);

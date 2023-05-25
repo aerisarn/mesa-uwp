@@ -278,6 +278,8 @@ struct agx_blend {
 
    /* PIPE_CLEAR_* bitmask corresponding to this blend state */
    uint32_t store;
+
+   bool alpha_to_coverage, alpha_to_one;
 };
 
 struct asahi_vs_shader_key {
@@ -292,7 +294,14 @@ struct asahi_fs_shader_key {
    /* From rasterizer state, to lower point sprites */
    uint16_t sprite_coord_enable;
 
+   /* Set if glSampleMask() is used with a mask other than all-1s. If not, we
+    * don't want to emit lowering code for it, since it would disable early-Z.
+    */
+   bool api_sample_mask;
+
    uint8_t clip_plane_enable;
+   uint8_t nr_samples;
+   bool multisample;
    enum pipe_format rt_formats[PIPE_MAX_COLOR_BUFS];
 };
 
