@@ -966,38 +966,6 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch)
    return T.gpu;
 }
 
-/*
- * Emit Valhall descriptors for shader images. Unlike previous generations,
- * Valhall does not have a special descriptor for images. Standard texture
- * descriptors are used. The binding is different in Gallium, however, so we
- * translate.
- */
-static struct pipe_sampler_view
-panfrost_pipe_image_to_sampler_view(struct pipe_image_view *v)
-{
-   struct pipe_sampler_view out = {.format = v->format,
-                                   .texture = v->resource,
-                                   .target = v->resource->target,
-                                   .swizzle_r = PIPE_SWIZZLE_X,
-                                   .swizzle_g = PIPE_SWIZZLE_Y,
-                                   .swizzle_b = PIPE_SWIZZLE_Z,
-                                   .swizzle_a = PIPE_SWIZZLE_W};
-
-   if (out.target == PIPE_BUFFER) {
-      out.u.buf.offset = v->u.buf.offset;
-      out.u.buf.size = v->u.buf.size;
-   } else {
-      out.u.tex.first_layer = v->u.tex.first_layer;
-      out.u.tex.last_layer = v->u.tex.last_layer;
-
-      /* Single level only */
-      out.u.tex.first_level = v->u.tex.level;
-      out.u.tex.last_level = v->u.tex.level;
-   }
-
-   return out;
-}
-
 static void panfrost_update_sampler_view(struct panfrost_sampler_view *view,
                                          struct pipe_context *pctx);
 
@@ -1027,8 +995,9 @@ panfrost_emit_images(struct panfrost_batch *batch, enum pipe_shader_type stage)
        * allocating a long-lived descriptor.
        */
       struct panfrost_sampler_view view = {
-         .base = panfrost_pipe_image_to_sampler_view(image),
-         .pool = &batch->pool};
+         .base = util_image_to_sampler_view(image),
+         .pool = &batch->pool,
+      };
 
       /* If we specify a cube map, the hardware internally treat it as
        * a 2D array. Since cube maps as images can confuse our common
