@@ -1170,7 +1170,7 @@ static bool rvcn_dec_message_decode(struct radv_cmd_buffer *cmd_buffer,
    }
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, dpb->bindings[0].bo);
-   addr = radv_buffer_get_va(dpb->bindings[0].bo);
+   addr = radv_buffer_get_va(dpb->bindings[0].bo) + dpb->bindings[0].offset;
 
    dynamic_dpb_t2->dpbCurrLo = addr;
    dynamic_dpb_t2->dpbCurrHi = addr >> 32;
