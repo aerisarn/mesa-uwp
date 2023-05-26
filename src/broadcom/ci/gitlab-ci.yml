@@ -12,16 +12,16 @@
   variables:
     BM_BOOTFS: /boot/raspberrypi_arm64
 
-.broadcom-test:armhf:
+.broadcom-test:arm32:
   extends:
     - .broadcom-test
-    - .baremetal-test-armhf
+    - .baremetal-test-arm32
   variables:
     BM_BOOTFS: /boot/raspberrypi_armhf
 
-vc4-rpi3-gl:armhf:
+vc4-rpi3-gl:arm32:
   extends:
-    - .broadcom-test:armhf
+    - .broadcom-test:arm32
     - .vc4-rules
   tags:
     - igalia-rpi3
@@ -32,9 +32,9 @@ vc4-rpi3-gl:armhf:
     DEQP_SUITE: broadcom-rpi3
     HWCI_START_WESTON: 1
 
-v3d-rpi4-gl:armhf:
+v3d-rpi4-gl:arm32:
   extends:
-    - .broadcom-test:armhf
+    - .broadcom-test:arm32
     - .v3d-rules
   tags:
     - igalia-rpi4

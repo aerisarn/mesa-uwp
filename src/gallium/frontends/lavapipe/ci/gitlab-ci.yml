@@ -30,7 +30,7 @@ lavapipe-vk-asan:
     # Don't batch the tests into caselists while we're leaky.
     DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.8:libdlclose-skip.so --tests-per-group 1"
   needs:
-    - debian/x86_test-vk
+    - debian/x86_64_test-vk
     - debian-testing-asan
 
 lavapipe-traces:

@@ -114,11 +114,11 @@
     - debian/arm64_test
     - debian-arm64-release
 
-.piglit-performance:amd64:
+.piglit-performance:x86_64:
   extends:
     - .piglit-performance-base
   needs:
-    - kernel+rootfs_amd64
+    - kernel+rootfs_x86_64
     - debian-release
 
 # Mesa source file dependencies that may impact any GL driver test job.
@@ -697,9 +697,9 @@
   allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
   variables:
     LAVA_JOB_PRIORITY: 40
-    MINIO_ARTIFACT_NAME: "mesa-amd64-release"
+    MINIO_ARTIFACT_NAME: "mesa-x86_64-release"
   needs:
-    - kernel+rootfs_amd64
+    - kernel+rootfs_x86_64
     - debian-release
 
 .anv-rules:
@@ -789,9 +789,9 @@
   allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
   variables:
     LAVA_JOB_PRIORITY: 40
-    MINIO_ARTIFACT_NAME: "mesa-amd64-release"
+    MINIO_ARTIFACT_NAME: "mesa-x86_64-release"
   needs:
-    - kernel+rootfs_amd64
+    - kernel+rootfs_x86_64
     - debian-release
 
 .zink-common-rules:

@@ -33,5 +33,5 @@ softpipe-asan-gles31:
     DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.8"
   extends: .softpipe-deqp-test
   needs:
-    - debian/x86_test-gl
+    - debian/x86_64_test-gl
     - debian-testing-asan

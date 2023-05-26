@@ -49,7 +49,7 @@
 .meson-build:
   extends:
     - .build-linux
-    - .use-debian/x86_build
+    - .use-debian/x86_64_build
   stage: build-x86_64
   variables:
     LLVM_VERSION: 15
@@ -59,7 +59,7 @@
 .meson-build_mingw:
   extends:
     - .build-linux
-    - .use-debian/x86_build_mingw
+    - .use-debian/x86_64_build_mingw
     - .use-wine
   stage: build-x86_64
   script:
@@ -244,7 +244,7 @@ debian-release:
 alpine-build-testing:
   extends:
     - .meson-build
-    - .use-alpine/x86_build
+    - .use-alpine/x86_64_build
   stage: build-x86_64
   variables:
     BUILDTYPE: "release"
@@ -282,7 +282,7 @@ alpine-build-testing:
 fedora-release:
   extends:
     - .meson-build
-    - .use-fedora/x86_build
+    - .use-fedora/x86_64_build
   variables:
     BUILDTYPE: "release"
     C_LINK_ARGS: >
@@ -406,9 +406,9 @@ debian-android:
 .meson-arm:
   extends:
     - .meson-cross
-    - .use-debian/arm_build
+    - .use-debian/arm64_build
   needs:
-    - debian/arm_build
+    - debian/arm64_build
   variables:
     VULKAN_DRIVERS: freedreno,broadcom
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,swrast,tegra,v3d,vc4,zink"
@@ -416,7 +416,7 @@ debian-android:
   tags:
     - aarch64
 
-debian-armhf:
+debian-arm32:
   extends:
     - .meson-arm
     - .ci-deqp-artifacts
@@ -425,7 +425,7 @@ debian-armhf:
     EXTRA_OPTION: >
       -D llvm=disabled
       -D valgrind=disabled
-    MINIO_ARTIFACT_NAME: mesa-armhf
+    MINIO_ARTIFACT_NAME: mesa-arm32
     # The strip command segfaults, failing to strip the binary and leaving
     # tempfiles in our artifacts.
     ARTIFACTS_DEBUG_SYMBOLS: 1
@@ -636,10 +636,10 @@ debian-vulkan:
       -D intel-clc=disabled
       -D imagination-srv=true
 
-debian-i386:
+debian-x86_32:
   extends:
     - .meson-cross
-    - .use-debian/i386_build
+    - .use-debian/x86_32_build
   variables:
     CROSS: i386
     VULKAN_DRIVERS: intel,amd,swrast,virtio

@@ -22,7 +22,7 @@ rustfmt:
   interruptible: true
   stage: lint
   extends:
-    - .use-debian/x86_build
+    - .use-debian/x86_64_build
     - .lint-rustfmt-rules
   variables:
     GIT_STRATEGY: fetch
@@ -35,7 +35,7 @@ clang-format:
   interruptible: true
   stage: lint
   extends:
-    - .use-debian/x86_build
+    - .use-debian/x86_64_build
     - .lint-clang-format-rules
   variables:
     GIT_STRATEGY: fetch
@@ -51,30 +51,30 @@ clang-format:
 .test-gl:
   extends:
     - .test
-    - .use-debian/x86_test-gl
+    - .use-debian/x86_64_test-gl
   needs:
-    - debian/x86_test-gl
+    - debian/x86_64_test-gl
     - debian-testing
 
 .test-vk:
   extends:
     - .test
-    - .use-debian/x86_test-vk
+    - .use-debian/x86_64_test-vk
   needs:
     - debian-testing
-    - debian/x86_test-vk
+    - debian/x86_64_test-vk
 
 .test-cl:
   extends:
     - .test
-    - .use-debian/x86_test-gl
+    - .use-debian/x86_64_test-gl
   needs:
-    - debian/x86_test-gl
+    - debian/x86_64_test-gl
 
 .test-android:
   extends:
     - .test
-    - .use-debian/x86_test-android
+    - .use-debian/x86_64_test-android
   variables:
     MINIO_ARTIFACT_NAME: mesa-x86_64-android
   needs:
@@ -82,7 +82,7 @@ clang-format:
       artifacts: true  # On the host we want the Linux build
     - job: debian-android
       artifacts: false  # The Android build will be downloaded later
-    - job: debian/x86_test-android
+    - job: debian/x86_64_test-android
       artifacts: false
   timeout: 20m
   script:
@@ -185,16 +185,16 @@ clang-format:
       junit: results/junit.xml
 
 # ARM testing of bare-metal boards attached to an x86 gitlab-runner system
-.baremetal-test-armhf:
+.baremetal-test-arm32:
   extends:
     - .baremetal-test
-    - .use-debian/armhf_test
+    - .use-debian/arm32_test
   variables:
     BM_ROOTFS: /rootfs-armhf
-    MINIO_ARTIFACT_NAME: mesa-armhf
+    MINIO_ARTIFACT_NAME: mesa-arm32
   needs:
-    - debian/armhf_test
-    - job: debian-armhf
+    - debian/arm32_test
+    - job: debian-arm32
       artifacts: false
 
 # ARM64 testing of bare-metal boards attached to an x86 gitlab-runner system
@@ -234,7 +234,7 @@ clang-format:
   # image:, but the integration is not possible for the current
   # use-case. Within this job, two containers are managed. 1) the
   # gitlab runner container from which the job is submitted to the
-  # DUT, and 2) the test container (e.g. debian/x86_test-vk) within
+  # DUT, and 2) the test container (e.g. debian/x86_64_test-vk) within
   # which the test cases will run on the DUT. Since ci-templates and
   # the associated image setting macros in this file rely on variables
   # like FDO_DISTRIBUTION_TAG for *the* image, there is no way to
@@ -372,16 +372,16 @@ clang-format:
 
 .b2c-test-vk:
   extends:
-    - .use-debian/x86_test-vk
+    - .use-debian/x86_64_test-vk
     - .b2c-test
   needs:
-    - debian/x86_test-vk
+    - debian/x86_64_test-vk
     - debian-testing
 
 .b2c-test-gl:
   extends:
-    - .use-debian/x86_test-gl
+    - .use-debian/x86_64_test-gl
     - .b2c-test
   needs:
-    - debian/x86_test-gl
+    - debian/x86_64_test-gl
     - debian-testing

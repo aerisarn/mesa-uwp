@@ -9,5 +9,5 @@ apt-get install -y --no-remove \
         g++-mingw-w64-i686 \
         g++-mingw-w64-x86-64
 
-. .gitlab-ci/container/debian/x86_build-mingw-patch.sh
-. .gitlab-ci/container/debian/x86_build-mingw-source-deps.sh
+. .gitlab-ci/container/debian/x86_64_build-mingw-patch.sh
+. .gitlab-ci/container/debian/x86_64_build-mingw-source-deps.sh

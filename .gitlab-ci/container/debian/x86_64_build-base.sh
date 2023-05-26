@@ -81,7 +81,7 @@ pip3 install --break-system-packages git+http://gitlab.freedesktop.org/freedeskt
 
 . .gitlab-ci/container/build-rust.sh
 
-. .gitlab-ci/container/debian/x86_build-base-wine.sh
+. .gitlab-ci/container/debian/x86_64_build-base-wine.sh
 
 ############### Uninstall ephemeral packages
 
