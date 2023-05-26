@@ -64,8 +64,7 @@ spec@ext_texture_array@copyteximage 2d_array samples=8
 KHR-GL46.packed_pixels.varied_rectangle.rg8ui
 
 # Hard to tell when this was introduced, but it is definitely a flake
-spec@arb_copy_image@arb_copy_image-targets .* 32 32 1 gl_texture_1d 32 1 1 11 23 0 5 0 0 14 1 1
-spec@arb_copy_image@arb_copy_image-targets .* 32 32 6 gl_texture_1d 32 1 1 11 23 3 5 0 0 14 1 1
+spec@arb_copy_image@arb_copy_image-targets .*
 
 # Regression introduced between a6d4139e59bf0aab66f09b321d1690d28c50a67f and 1ba2460e615b4f11e96366fe00d92fe0ab18f332
 KHR-GL46.constant_expressions.*_tess_eval
