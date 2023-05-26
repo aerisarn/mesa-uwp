@@ -1749,7 +1749,8 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
           * overrides during pipeline creation. */
          properties->maxGraphicsShaderGroupCount = 0;
 
-         properties->maxIndirectSequenceCount = UINT32_MAX;
+         /* MSB reserved for signalling indirect count enablement. */
+         properties->maxIndirectSequenceCount = UINT32_MAX >> 1;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT: {
