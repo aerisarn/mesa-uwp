@@ -161,7 +161,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_maintenance2 = true,
       .KHR_maintenance3 = true,
       .KHR_maintenance4 = true,
-      .KHR_multiview = device->info->a6xx.has_hw_multiview,
+      .KHR_multiview = TU_DEBUG(NOCONFORM) ? true : device->info->a6xx.has_hw_multiview,
       .KHR_performance_query = TU_DEBUG(PERFC),
       .KHR_pipeline_executable_properties = true,
       .KHR_pipeline_library = true,
@@ -258,7 +258,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_module_identifier = true,
       .EXT_shader_stencil_export = true,
-      .EXT_shader_viewport_index_layer = device->info->a6xx.has_hw_multiview,
+      .EXT_shader_viewport_index_layer = TU_DEBUG(NOCONFORM) ? true : device->info->a6xx.has_hw_multiview,
       .EXT_subgroup_size_control = true,
       .EXT_texel_buffer_alignment = true,
       .EXT_tooling_info = true,
@@ -302,7 +302,7 @@ tu_get_features(struct tu_physical_device *pdevice,
    features->wideLines = false;
    features->largePoints = true;
    features->alphaToOne = true;
-   features->multiViewport = pdevice->info->a6xx.has_hw_multiview;
+   features->multiViewport = true;
    features->samplerAnisotropy = true;
    features->textureCompressionETC2 = true;
    features->textureCompressionASTC_LDR = true;
@@ -335,7 +335,7 @@ tu_get_features(struct tu_physical_device *pdevice,
    features->uniformAndStorageBuffer16BitAccess  = false;
    features->storagePushConstant16               = false;
    features->storageInputOutput16                = false;
-   features->multiview                           = pdevice->info->a6xx.has_hw_multiview;
+   features->multiview                           = true;
    features->multiviewGeometryShader             = false;
    features->multiviewTessellationShader         = false;
    features->variablePointersStorageBuffer       = true;
@@ -871,7 +871,7 @@ tu_get_physical_device_properties_1_1(struct tu_physical_device *pdevice,
 
    p->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
    p->maxMultiviewViewCount =
-      pdevice->info->a6xx.has_hw_multiview ? MAX_VIEWPORTS : 1;
+      (pdevice->info->a6xx.has_hw_multiview || TU_DEBUG(NOCONFORM)) ? MAX_VIEWPORTS : 1;
    p->maxMultiviewInstanceIndex = INT_MAX;
    p->protectedNoFault = false;
    /* Our largest descriptors are 2 texture descriptors, or a texture and
@@ -1106,7 +1106,8 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .maxDrawIndirectCount = UINT32_MAX,
       .maxSamplerLodBias = 4095.0 / 256.0, /* [-16, 15.99609375] */
       .maxSamplerAnisotropy = 16,
-      .maxViewports = pdevice->info->a6xx.has_hw_multiview ? MAX_VIEWPORTS : 1,
+      .maxViewports =
+         (pdevice->info->a6xx.has_hw_multiview || TU_DEBUG(NOCONFORM)) ? MAX_VIEWPORTS : 1,
       .maxViewportDimensions = { MAX_VIEWPORT_SIZE, MAX_VIEWPORT_SIZE },
       .viewportBoundsRange = { INT16_MIN, INT16_MAX },
       .viewportSubPixelBits = 8,
@@ -1153,7 +1154,9 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    };
 
    pProperties->properties = (VkPhysicalDeviceProperties) {
-      .apiVersion = TU_API_VERSION,
+      .apiVersion =
+         (pdevice->info->a6xx.has_hw_multiview || TU_DEBUG(NOCONFORM)) ?
+            TU_API_VERSION : VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
       .driverVersion = vk_get_driver_version(),
       .vendorID = 0x5143,
       .deviceID = pdevice->dev_id.chip_id,
