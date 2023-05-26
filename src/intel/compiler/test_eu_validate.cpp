@@ -1317,17 +1317,8 @@ TEST_P(validation_test, half_float_conversion)
       bool expected_result_bdw;
       bool expected_result_chv_gfx9;
    } inst[] = {
-#define INST_C(dst_type, src_type, dst_stride, dst_subnr, expected_result)  \
-      {                                                                     \
-         BRW_REGISTER_TYPE_##dst_type,                                      \
-         BRW_REGISTER_TYPE_##src_type,                                      \
-         BRW_HORIZONTAL_STRIDE_##dst_stride,                                \
-         dst_subnr,                                                         \
-         expected_result,                                                   \
-         expected_result,                                                   \
-      }
-#define INST_S(dst_type, src_type, dst_stride, dst_subnr,                   \
-               expected_result_bdw, expected_result_chv_gfx9)               \
+#define INST(dst_type, src_type, dst_stride, dst_subnr,                     \
+             expected_result_bdw, expected_result_chv_gfx9)                 \
       {                                                                     \
          BRW_REGISTER_TYPE_##dst_type,                                      \
          BRW_REGISTER_TYPE_##src_type,                                      \
@@ -1338,54 +1329,53 @@ TEST_P(validation_test, half_float_conversion)
       }
 
       /* MOV to half-float destination */
-      INST_C(HF,  B, 1, 0, false),
-      INST_C(HF,  W, 1, 0, false),
-      INST_C(HF, HF, 1, 0, true),
-      INST_C(HF, HF, 1, 2, true),
-      INST_C(HF,  D, 1, 0, false),
-      INST_S(HF,  F, 1, 0, false, true),
-      INST_C(HF,  Q, 1, 0, false),
-      INST_C(HF,  B, 2, 0, true),
-      INST_C(HF,  B, 2, 2, false),
-      INST_C(HF,  W, 2, 0, true),
-      INST_C(HF,  W, 2, 2, false),
-      INST_C(HF, HF, 2, 0, true),
-      INST_C(HF, HF, 2, 2, true),
-      INST_C(HF,  D, 2, 0, true),
-      INST_C(HF,  D, 2, 2, false),
-      INST_C(HF,  F, 2, 0, true),
-      INST_S(HF,  F, 2, 2, false, true),
-      INST_C(HF,  Q, 2, 0, false),
-      INST_C(HF, DF, 2, 0, false),
-      INST_C(HF,  B, 4, 0, false),
-      INST_C(HF,  W, 4, 0, false),
-      INST_C(HF, HF, 4, 0, true),
-      INST_C(HF, HF, 4, 2, true),
-      INST_C(HF,  D, 4, 0, false),
-      INST_C(HF,  F, 4, 0, false),
-      INST_C(HF,  Q, 4, 0, false),
-      INST_C(HF, DF, 4, 0, false),
+      INST(HF,  B, 1, 0, false, false),
+      INST(HF,  W, 1, 0, false, false),
+      INST(HF, HF, 1, 0, true,  true),
+      INST(HF, HF, 1, 2, true,  true),
+      INST(HF,  D, 1, 0, false, false),
+      INST(HF,  F, 1, 0, false, true),
+      INST(HF,  Q, 1, 0, false, false),
+      INST(HF,  B, 2, 0, true,  true),
+      INST(HF,  B, 2, 2, false, false),
+      INST(HF,  W, 2, 0, true,  true),
+      INST(HF,  W, 2, 2, false, false),
+      INST(HF, HF, 2, 0, true,  true),
+      INST(HF, HF, 2, 2, true,  true),
+      INST(HF,  D, 2, 0, true,  true),
+      INST(HF,  D, 2, 2, false, false),
+      INST(HF,  F, 2, 0, true,  true),
+      INST(HF,  F, 2, 2, false, true),
+      INST(HF,  Q, 2, 0, false, false),
+      INST(HF, DF, 2, 0, false, false),
+      INST(HF,  B, 4, 0, false, false),
+      INST(HF,  W, 4, 0, false, false),
+      INST(HF, HF, 4, 0, true,  true),
+      INST(HF, HF, 4, 2, true,  true),
+      INST(HF,  D, 4, 0, false, false),
+      INST(HF,  F, 4, 0, false, false),
+      INST(HF,  Q, 4, 0, false, false),
+      INST(HF, DF, 4, 0, false, false),
 
       /* MOV from half-float source */
-      INST_C( B, HF, 1, 0, false),
-      INST_C( W, HF, 1, 0, false),
-      INST_C( D, HF, 1, 0, true),
-      INST_C( D, HF, 1, 4, true),
-      INST_C( F, HF, 1, 0, true),
-      INST_C( F, HF, 1, 4, true),
-      INST_C( Q, HF, 1, 0, false),
-      INST_C(DF, HF, 1, 0, false),
-      INST_C( B, HF, 2, 0, false),
-      INST_C( W, HF, 2, 0, true),
-      INST_C( W, HF, 2, 2, false),
-      INST_C( D, HF, 2, 0, false),
-      INST_C( F, HF, 2, 0, true),
-      INST_C( B, HF, 4, 0, true),
-      INST_C( B, HF, 4, 1, false),
-      INST_C( W, HF, 4, 0, false),
+      INST( B, HF, 1, 0, false, false),
+      INST( W, HF, 1, 0, false, false),
+      INST( D, HF, 1, 0, true,  true),
+      INST( D, HF, 1, 4, true,  true),
+      INST( F, HF, 1, 0, true,  true),
+      INST( F, HF, 1, 4, true,  true),
+      INST( Q, HF, 1, 0, false, false),
+      INST(DF, HF, 1, 0, false, false),
+      INST( B, HF, 2, 0, false, false),
+      INST( W, HF, 2, 0, true,  true),
+      INST( W, HF, 2, 2, false, false),
+      INST( D, HF, 2, 0, false, false),
+      INST( F, HF, 2, 0, true,  true),
+      INST( B, HF, 4, 0, true,  true),
+      INST( B, HF, 4, 1, false, false),
+      INST( W, HF, 4, 0, false, false),
 
-#undef INST_C
-#undef INST_S
+#undef INST
    };
 
    if (devinfo.ver < 8)
