@@ -499,29 +499,27 @@ make_array_type(void *lin_ctx, const glsl_type *element_type, unsigned length,
     */
    t->gl_type = element_type->gl_type;
 
-   /* Allow a maximum of 10 characters for the array size.  This is enough
-    * for 32-bits of ~0.  The extra 3 are for the '[', ']', and terminating
-    * NUL.
+   const char *element_name = element_type->name;
+   char *n;
+   if (length == 0)
+      n = linear_asprintf(lin_ctx, "%s[]", element_name);
+   else
+      n = linear_asprintf(lin_ctx, "%s[%u]", element_name, length);
+
+   /* Flip the dimensions for a multidimensional array.  The type of
+    * an array of 4 elements of type int[...] is written as int[4][...].
     */
-   const unsigned name_length = strlen(element_type->name) + 10 + 3;
+   const char *pos = strchr(element_name, '[');
+   if (pos) {
+      char *base = n + (pos - element_name);
+      const unsigned element_part = strlen(pos);
+      const unsigned array_part = strlen(base) - element_part;
 
-   char *const n = (char *) linear_zalloc_child(lin_ctx, name_length);
+      /* Move the outer array dimension to the front. */
+      memmove(base, base + element_part, array_part);
 
-   if (t->length == 0)
-      snprintf(n, name_length, "%s[]", element_type->name);
-   else {
-      /* insert outermost dimensions in the correct spot
-       * otherwise the dimension order will be backwards
-       */
-      const char *pos = strchr(element_type->name, '[');
-      if (pos) {
-         int idx = pos - element_type->name;
-         snprintf(n, idx+1, "%s", element_type->name);
-         snprintf(n + idx, name_length - idx, "[%u]%s",
-                       length, element_type->name + idx);
-      } else {
-         snprintf(n, name_length, "%s[%u]", element_type->name, length);
-      }
+      /* Rewrite the element array dimensions from the element name string. */
+      memcpy(base + array_part, pos, element_part);
    }
 
    t->name = n;
