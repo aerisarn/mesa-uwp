@@ -1058,4 +1058,6 @@
       - src/**/.clang-format
       - src/**/asahi/**/*
       - src/**/panfrost/**/*
+      - src/amd/vulkan/**/*
+      - src/amd/compiler/**/*
       when: on_success

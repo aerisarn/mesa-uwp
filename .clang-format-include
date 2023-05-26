@@ -3,3 +3,5 @@
 
 src/**/asahi/**/*
 src/**/panfrost/**/*
+src/amd/vulkan/**/*
+src/amd/compiler/**/*
