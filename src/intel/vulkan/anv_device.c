@@ -1383,7 +1383,8 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->master_fd = master_fd;
 
    device->engine_info = intel_engine_get_info(fd, device->info.kmd_type);
-   device->info.has_compute_engine = intel_engines_count(device->engine_info,
+   device->info.has_compute_engine = device->engine_info &&
+                                     intel_engines_count(device->engine_info,
                                                          INTEL_ENGINE_CLASS_COMPUTE);
    anv_physical_device_init_queue_families(device);
 
