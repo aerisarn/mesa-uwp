@@ -182,13 +182,12 @@ enum radv_ud_index {
    AC_UD_MAX_UD = AC_UD_CS_MAX_UD,
 };
 
-#define SET_SGPR_FIELD(field, value) \
-   (((unsigned)(value) & field##__MASK) << field##__SHIFT)
+#define SET_SGPR_FIELD(field, value) (((unsigned)(value)&field##__MASK) << field##__SHIFT)
 
-#define TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS__SHIFT   0
-#define TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS__MASK    0x3f
-#define TCS_OFFCHIP_LAYOUT_NUM_PATCHES__SHIFT            6
-#define TCS_OFFCHIP_LAYOUT_NUM_PATCHES__MASK             0xff
+#define TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS__SHIFT 0
+#define TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS__MASK  0x3f
+#define TCS_OFFCHIP_LAYOUT_NUM_PATCHES__SHIFT          6
+#define TCS_OFFCHIP_LAYOUT_NUM_PATCHES__MASK           0xff
 
 #define PS_STATE_NUM_SAMPLES__SHIFT    0
 #define PS_STATE_NUM_SAMPLES__MASK     0xf
@@ -196,8 +195,8 @@ enum radv_ud_index {
 #define PS_STATE_LINE_RAST_MODE__MASK  0x3
 #define PS_STATE_PS_ITER_MASK__SHIFT   6
 #define PS_STATE_PS_ITER_MASK__MASK    0xffff
-#define PS_STATE_RAST_PRIM__SHIFT 22
-#define PS_STATE_RAST_PRIM__MASK  0x3
+#define PS_STATE_RAST_PRIM__SHIFT      22
+#define PS_STATE_RAST_PRIM__MASK       0x3
 
 struct radv_streamout_info {
    uint16_t num_outputs;
@@ -476,8 +475,7 @@ struct radv_shader_binary_legacy {
     * where the +2 is for 0 of the ir strings. */
    uint8_t data[0];
 };
-static_assert(sizeof(struct radv_shader_binary_legacy) ==
-                 offsetof(struct radv_shader_binary_legacy, data),
+static_assert(sizeof(struct radv_shader_binary_legacy) == offsetof(struct radv_shader_binary_legacy, data),
               "Unexpected padding");
 
 struct radv_shader_binary_rtld {
@@ -574,13 +572,11 @@ struct radv_pipeline_stage;
 void radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively);
 void radv_optimize_nir_algebraic(nir_shader *shader, bool opt_offsets);
 
-void radv_postprocess_nir(struct radv_device *device,
-                          const struct radv_pipeline_layout *pipeline_layout,
+void radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layout *pipeline_layout,
                           const struct radv_pipeline_key *pipeline_key, unsigned last_vgt_api_stage,
                           struct radv_pipeline_stage *stage);
 
-nir_shader *radv_parse_rt_stage(struct radv_device *device,
-                                const VkPipelineShaderStageCreateInfo *sinfo,
+nir_shader *radv_parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *sinfo,
                                 const struct radv_pipeline_key *key);
 
 void radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
@@ -589,10 +585,8 @@ void radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateI
 
 struct radv_pipeline_stage;
 
-nir_shader *radv_shader_spirv_to_nir(struct radv_device *device,
-                                     const struct radv_pipeline_stage *stage,
-                                     const struct radv_pipeline_key *key,
-                                     bool is_internal);
+nir_shader *radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_stage *stage,
+                                     const struct radv_pipeline_key *key, bool is_internal);
 
 void radv_init_shader_arenas(struct radv_device *device);
 void radv_destroy_shader_arenas(struct radv_device *device);
@@ -601,53 +595,42 @@ void radv_destroy_shader_upload_queue(struct radv_device *device);
 
 struct radv_shader_args;
 
-struct radv_shader *radv_shader_create(struct radv_device *device,
-                                       const struct radv_shader_binary *binary);
+struct radv_shader *radv_shader_create(struct radv_device *device, const struct radv_shader_binary *binary);
 
-struct radv_shader *radv_shader_create_cached(struct radv_device *device,
-                                              struct vk_pipeline_cache *cache,
+struct radv_shader *radv_shader_create_cached(struct radv_device *device, struct vk_pipeline_cache *cache,
                                               const struct radv_shader_binary *binary);
 
-struct radv_shader *
-radv_shader_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
-                       struct radv_pipeline_stage *stage, struct nir_shader *const *shaders,
-                       int shader_count, const struct radv_pipeline_key *key, bool keep_shader_info,
-                       bool keep_statistic_info, struct radv_shader_binary **binary_out);
+struct radv_shader *radv_shader_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
+                                           struct radv_pipeline_stage *stage, struct nir_shader *const *shaders,
+                                           int shader_count, const struct radv_pipeline_key *key, bool keep_shader_info,
+                                           bool keep_statistic_info, struct radv_shader_binary **binary_out);
 
 VkResult radv_shader_wait_for_upload(struct radv_device *device, uint64_t seq);
 
-struct radv_shader_dma_submission *
-radv_shader_dma_pop_submission(struct radv_device *device);
+struct radv_shader_dma_submission *radv_shader_dma_pop_submission(struct radv_device *device);
 
-void radv_shader_dma_push_submission(struct radv_device *device,
-                                     struct radv_shader_dma_submission *submission,
+void radv_shader_dma_push_submission(struct radv_device *device, struct radv_shader_dma_submission *submission,
                                      uint64_t seq);
 
-struct radv_shader_dma_submission *radv_shader_dma_get_submission(struct radv_device *device,
-                                                                  struct radeon_winsys_bo *bo,
-                                                                  uint64_t va, uint64_t size);
+struct radv_shader_dma_submission *
+radv_shader_dma_get_submission(struct radv_device *device, struct radeon_winsys_bo *bo, uint64_t va, uint64_t size);
 
-bool radv_shader_dma_submit(struct radv_device *device,
-                            struct radv_shader_dma_submission *submission,
+bool radv_shader_dma_submit(struct radv_device *device, struct radv_shader_dma_submission *submission,
                             uint64_t *upload_seq_out);
 
-union radv_shader_arena_block *radv_alloc_shader_memory(struct radv_device *device, uint32_t size,
-                                                        void *ptr);
+union radv_shader_arena_block *radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr);
 void radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_block *alloc);
 
 struct radv_shader *radv_create_trap_handler_shader(struct radv_device *device);
 
 struct radv_shader *radv_create_rt_prolog(struct radv_device *device);
 
-struct radv_shader_part *radv_shader_part_create(struct radv_device *device,
-                                                 struct radv_shader_part_binary *binary,
+struct radv_shader_part *radv_shader_part_create(struct radv_device *device, struct radv_shader_part_binary *binary,
                                                  unsigned wave_size);
 
-struct radv_shader_part *radv_create_vs_prolog(struct radv_device *device,
-                                               const struct radv_vs_prolog_key *key);
+struct radv_shader_part *radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_key *key);
 
-struct radv_shader_part *radv_create_ps_epilog(struct radv_device *device,
-                                               const struct radv_ps_epilog_key *key,
+struct radv_shader_part *radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_key *key,
                                                struct radv_shader_part_binary **binary_out);
 
 void radv_shader_part_destroy(struct radv_device *device, struct radv_shader_part *shader_part);
@@ -655,20 +638,18 @@ void radv_shader_part_destroy(struct radv_device *device, struct radv_shader_par
 uint64_t radv_shader_get_va(const struct radv_shader *shader);
 struct radv_shader *radv_find_shader(struct radv_device *device, uint64_t pc);
 
-unsigned radv_get_max_waves(const struct radv_device *device, struct radv_shader *shader,
-                            gl_shader_stage stage);
+unsigned radv_get_max_waves(const struct radv_device *device, struct radv_shader *shader, gl_shader_stage stage);
 
 const char *radv_get_shader_name(const struct radv_shader_info *info, gl_shader_stage stage);
 
-unsigned radv_compute_spi_ps_input(const struct radv_pipeline_key *pipeline_key,
-                                   const struct radv_shader_info *info);
+unsigned radv_compute_spi_ps_input(const struct radv_pipeline_key *pipeline_key, const struct radv_shader_info *info);
 
 bool radv_can_dump_shader(struct radv_device *device, nir_shader *nir, bool meta_shader);
 
 bool radv_can_dump_shader_stats(struct radv_device *device, nir_shader *nir);
 
-VkResult radv_dump_shader_stats(struct radv_device *device, struct radv_pipeline *pipeline,
-                                struct radv_shader *shader, gl_shader_stage stage, FILE *output);
+VkResult radv_dump_shader_stats(struct radv_device *device, struct radv_pipeline *pipeline, struct radv_shader *shader,
+                                gl_shader_stage stage, FILE *output);
 
 extern const struct vk_pipeline_cache_object_ops radv_shader_ops;
 
@@ -714,9 +695,8 @@ get_tcs_input_vertex_stride(unsigned tcs_num_inputs)
 }
 
 static inline unsigned
-calculate_tess_lds_size(enum amd_gfx_level gfx_level, unsigned tcs_num_input_vertices,
-                        unsigned tcs_num_output_vertices, unsigned tcs_num_inputs,
-                        unsigned tcs_num_patches, unsigned tcs_num_outputs,
+calculate_tess_lds_size(enum amd_gfx_level gfx_level, unsigned tcs_num_input_vertices, unsigned tcs_num_output_vertices,
+                        unsigned tcs_num_inputs, unsigned tcs_num_patches, unsigned tcs_num_outputs,
                         unsigned tcs_num_patch_outputs)
 {
    unsigned input_vertex_size = get_tcs_input_vertex_stride(tcs_num_inputs);
@@ -743,9 +723,8 @@ calculate_tess_lds_size(enum amd_gfx_level gfx_level, unsigned tcs_num_input_ver
 }
 
 static inline unsigned
-get_tcs_num_patches(unsigned tcs_num_input_vertices, unsigned tcs_num_output_vertices,
-                    unsigned tcs_num_inputs, unsigned tcs_num_outputs,
-                    unsigned tcs_num_patch_outputs, unsigned tess_offchip_block_dw_size,
+get_tcs_num_patches(unsigned tcs_num_input_vertices, unsigned tcs_num_output_vertices, unsigned tcs_num_inputs,
+                    unsigned tcs_num_outputs, unsigned tcs_num_patch_outputs, unsigned tess_offchip_block_dw_size,
                     enum amd_gfx_level gfx_level, enum radeon_family family)
 {
    uint32_t input_vertex_size = get_tcs_input_vertex_stride(tcs_num_inputs);
@@ -793,14 +772,12 @@ get_tcs_num_patches(unsigned tcs_num_input_vertices, unsigned tcs_num_output_ver
 void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_stage,
                     const struct radv_pipeline_key *pl_key);
 
-bool radv_consider_culling(const struct radv_physical_device *pdevice, struct nir_shader *nir,
-                           uint64_t ps_inputs_read, unsigned num_vertices_per_primitive,
-                           const struct radv_shader_info *info);
+bool radv_consider_culling(const struct radv_physical_device *pdevice, struct nir_shader *nir, uint64_t ps_inputs_read,
+                           unsigned num_vertices_per_primitive, const struct radv_shader_info *info);
 
 void radv_get_nir_options(struct radv_physical_device *device);
 
-nir_shader *radv_build_traversal_shader(struct radv_device *device,
-                                        struct radv_ray_tracing_pipeline *pipeline,
+nir_shader *radv_build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_pipeline *pipeline,
                                         const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                                         const struct radv_pipeline_key *key);
 

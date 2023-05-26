@@ -114,8 +114,7 @@ radv_amdgpu_winsys_query_value(struct radeon_winsys *rws, enum radeon_value_id v
       amdgpu_query_heap_info(ws->dev, AMDGPU_GEM_DOMAIN_VRAM, 0, &heap);
       return heap.heap_usage;
    case RADEON_VRAM_VIS_USAGE:
-      amdgpu_query_heap_info(ws->dev, AMDGPU_GEM_DOMAIN_VRAM, AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED,
-                             &heap);
+      amdgpu_query_heap_info(ws->dev, AMDGPU_GEM_DOMAIN_VRAM, AMDGPU_GEM_CREATE_CPU_ACCESS_REQUIRED, &heap);
       return heap.heap_usage;
    case RADEON_GTT_USAGE:
       amdgpu_query_heap_info(ws->dev, AMDGPU_GEM_DOMAIN_GTT, 0, &heap);
@@ -137,8 +136,7 @@ radv_amdgpu_winsys_query_value(struct radeon_winsys *rws, enum radeon_value_id v
 }
 
 static bool
-radv_amdgpu_winsys_read_registers(struct radeon_winsys *rws, unsigned reg_offset,
-                                  unsigned num_registers, uint32_t *out)
+radv_amdgpu_winsys_read_registers(struct radeon_winsys *rws, unsigned reg_offset, unsigned num_registers, uint32_t *out)
 {
    struct radv_amdgpu_winsys *ws = (struct radv_amdgpu_winsys *)rws;
 
@@ -240,8 +238,7 @@ radv_amdgpu_winsys_create(int fd, uint64_t debug_flags, uint64_t perftest_flags,
       /* Check that options don't differ from the existing winsys. */
       if (((debug_flags & RADV_DEBUG_ALL_BOS) && !ws->debug_all_bos) ||
           ((debug_flags & RADV_DEBUG_HANG) && !ws->debug_log_bos) ||
-          ((debug_flags & RADV_DEBUG_NO_IBS) && ws->use_ib_bos) ||
-          (perftest_flags != ws->perftest)) {
+          ((debug_flags & RADV_DEBUG_NO_IBS) && ws->use_ib_bos) || (perftest_flags != ws->perftest)) {
          fprintf(stderr, "radv/amdgpu: Found options that differ from the existing winsys.\n");
          return NULL;
       }
