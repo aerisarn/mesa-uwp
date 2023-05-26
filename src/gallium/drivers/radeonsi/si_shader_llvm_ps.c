@@ -687,15 +687,8 @@ void si_llvm_build_ps_prolog(struct si_shader_context *ctx, union si_shader_part
     * entire pixel/fragment, so mask bits out based on the sample ID.
     */
    if (key->ps_prolog.states.samplemask_log_ps_iter) {
-      /* The bit pattern matches that used by fixed function fragment
-       * processing. */
-      static const uint16_t ps_iter_masks[] = {
-         0xffff, /* not used */
-         0x5555, 0x1111, 0x0101, 0x0001,
-      };
-      assert(key->ps_prolog.states.samplemask_log_ps_iter < ARRAY_SIZE(ps_iter_masks));
-
-      uint32_t ps_iter_mask = ps_iter_masks[key->ps_prolog.states.samplemask_log_ps_iter];
+      uint32_t ps_iter_mask =
+         ac_get_ps_iter_mask(1 << key->ps_prolog.states.samplemask_log_ps_iter);
       LLVMValueRef sampleid = si_unpack_param(ctx, ancillary, 8, 4);
       LLVMValueRef samplemask = ac_get_arg(&ctx->ac, param_sample_mask);
 

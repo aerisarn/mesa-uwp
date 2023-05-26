@@ -678,6 +678,22 @@ unsigned ac_get_fs_input_vgpr_cnt(const struct ac_shader_config *config,
    return num_input_vgprs;
 }
 
+uint16_t ac_get_ps_iter_mask(unsigned ps_iter_samples)
+{
+   /* The bit pattern matches that used by fixed function fragment
+    * processing.
+    */
+   switch (ps_iter_samples) {
+   case 1: return 0xffff;
+   case 2: return 0x5555;
+   case 4: return 0x1111;
+   case 8: return 0x0101;
+   case 16: return 0x0001;
+   default:
+      unreachable("invalid sample count");
+   }
+}
+
 void ac_choose_spi_color_formats(unsigned format, unsigned swap, unsigned ntype,
                                  bool is_depth, bool use_rbplus,
                                  struct ac_spi_color_formats *formats)

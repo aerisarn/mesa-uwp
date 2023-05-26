@@ -2242,7 +2242,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
          .force_linear_sample_interp = key->ps.part.prolog.force_linear_sample_interp,
          .force_persp_center_interp = key->ps.part.prolog.force_persp_center_interp,
          .force_linear_center_interp = key->ps.part.prolog.force_linear_center_interp,
-         .samplemask_log_ps_iter = key->ps.part.prolog.samplemask_log_ps_iter,
+         .ps_iter_samples = 1 << key->ps.part.prolog.samplemask_log_ps_iter,
       };
 
       NIR_PASS_V(nir, ac_nir_lower_ps, &options);

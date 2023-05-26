@@ -173,6 +173,8 @@ unsigned ac_get_fs_input_vgpr_cnt(const struct ac_shader_config *config,
                                   signed char *face_vgpr_index, signed char *ancillary_vgpr_index,
                                   signed char *sample_coverage_vgpr_index_ptr);
 
+uint16_t ac_get_ps_iter_mask(unsigned ps_iter_samples);
+
 void ac_choose_spi_color_formats(unsigned format, unsigned swap, unsigned ntype,
                                  bool is_depth, bool use_rbplus,
                                  struct ac_spi_color_formats *formats);

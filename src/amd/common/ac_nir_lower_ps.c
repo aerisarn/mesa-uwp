@@ -248,16 +248,7 @@ lower_ps_load_sample_mask_in(nir_builder *b, nir_intrinsic_instr *intrin, lower_
 
    b->cursor = nir_before_instr(&intrin->instr);
 
-   /* The bit pattern matches that used by fixed function fragment
-    * processing.
-    */
-   static const uint16_t ps_iter_masks[] = {
-      0xffff, /* not used */
-      0x5555, 0x1111, 0x0101, 0x0001,
-   };
-   assert(s->options->samplemask_log_ps_iter < ARRAY_SIZE(ps_iter_masks));
-   uint32_t ps_iter_mask = ps_iter_masks[s->options->samplemask_log_ps_iter];
-
+   uint32_t ps_iter_mask = ac_get_ps_iter_mask(s->options->ps_iter_samples);
    nir_ssa_def *sampleid = nir_load_sample_id(b);
    nir_ssa_def *submask = nir_ishl(b, nir_imm_int(b, ps_iter_mask), sampleid);
 
@@ -290,7 +281,7 @@ lower_ps_intrinsic(nir_builder *b, nir_instr *instr, void *state)
          return lower_ps_load_barycentric(b, intrin, s);
       break;
    case nir_intrinsic_load_sample_mask_in:
-      if (s->options->samplemask_log_ps_iter)
+      if (s->options->ps_iter_samples > 1)
          return lower_ps_load_sample_mask_in(b, intrin, s);
       break;
    default:
