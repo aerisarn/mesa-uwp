@@ -950,7 +950,7 @@ static void build_lighting( struct tnl_program *p )
           */
          nir_ssa_def *dot = nir_fdot3(p->b, normal, VPpli);
          if (p->state->material_shininess_is_zero) {
-            dots = nir_vec4(p->b, dot, dot, dot, dot);
+            dots = nir_replicate(p->b, dot, 4);
          } else {
             dots = nir_vector_insert_imm(p->b, dots, dot, 0);
             dot = nir_fdot3(p->b, normal, half);

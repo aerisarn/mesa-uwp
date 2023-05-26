@@ -790,7 +790,7 @@ lower_pntc_read(nir_builder *b, nir_instr *instr, void *data)
    else
       pos = nir_interp_deref_at_offset(b, 4, 32,
                                        &nir_build_deref_var(b, pos_var)->dest.ssa,
-                                       nir_vec2(b, nir_imm_float(b, 0), nir_imm_float(b, 0)));
+                                       nir_replicate(b, nir_imm_float(b, 0), 2));
 
    nir_ssa_def *pntc = nir_fadd_imm(b,
                                     nir_fsub(b, nir_channels(b, pos, 0x3), nir_channels(b, point_center, 0x3)),

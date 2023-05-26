@@ -447,7 +447,7 @@ build_tfb_query_shader(struct radv_device *device)
       nir_local_variable_create(b.impl, glsl_vector_type(GLSL_TYPE_UINT64, 2), "result");
    nir_variable *available = nir_local_variable_create(b.impl, glsl_bool_type(), "available");
 
-   nir_store_var(&b, result, nir_vec2(&b, nir_imm_int64(&b, 0), nir_imm_int64(&b, 0)), 0x3);
+   nir_store_var(&b, result, nir_replicate(&b, nir_imm_int64(&b, 0), 2), 0x3);
    nir_store_var(&b, available, nir_imm_false(&b), 0x1);
 
    nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 4);

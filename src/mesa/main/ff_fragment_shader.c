@@ -540,7 +540,7 @@ smear(nir_builder *b, nir_ssa_def *val)
    if (val->num_components != 1)
       return val;
 
-   return nir_vec4(b, val, val, val, val);
+   return nir_replicate(b, val, 4);
 }
 
 static nir_ssa_def *

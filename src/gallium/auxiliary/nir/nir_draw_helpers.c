@@ -218,7 +218,7 @@ lower_aaline_instr(nir_builder *b, nir_instr *instr, void *data)
 
       // vec2 a = vec2((uvec2(pattern) >> p) & uvec2(1u));
       nir_ssa_def *a = nir_i2f32(b,
-         nir_iand(b, nir_ishr(b, nir_vec2(b, pattern, pattern), p),
+         nir_iand(b, nir_ishr(b, nir_replicate(b, pattern, 2), p),
                   nir_imm_ivec2(b, 1, 1)));
 
       // float cov = mix(a.x, a.y, t);
