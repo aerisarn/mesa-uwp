@@ -689,6 +689,7 @@ glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
       char name[128];
       snprintf(name, sizeof(name), "%sx%ua%uB%s", bare_type->name,
                explicit_stride, explicit_alignment, row_major ? "RM" : "");
+      const uint32_t name_hash = _mesa_hash_string(name);
 
       simple_mtx_lock(&glsl_type::hash_mutex);
       assert(glsl_type_users > 0);
@@ -700,7 +701,7 @@ glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
       }
 
       const struct hash_entry *entry =
-         _mesa_hash_table_search(explicit_matrix_types, name);
+         _mesa_hash_table_search_pre_hashed(explicit_matrix_types, name_hash, name);
       if (entry == NULL) {
          const glsl_type *t = new glsl_type(bare_type->gl_type,
                                             (glsl_base_type)base_type,
@@ -708,8 +709,8 @@ glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
                                             explicit_stride, row_major,
                                             explicit_alignment);
 
-         entry = _mesa_hash_table_insert(explicit_matrix_types,
-                                         t->name, (void *)t);
+         entry = _mesa_hash_table_insert_pre_hashed(explicit_matrix_types,
+                                                    name_hash, t->name, (void *)t);
       }
 
       auto t = (const glsl_type *) entry->data;
@@ -1242,6 +1243,7 @@ glsl_type::get_array_instance(const glsl_type *element,
    char key[128];
    snprintf(key, sizeof(key), "%p[%u]x%uB", (void *) element, array_size,
             explicit_stride);
+   const uint32_t key_hash = _mesa_hash_string(key);
 
    simple_mtx_lock(&glsl_type::hash_mutex);
    assert(glsl_type_users > 0);
@@ -1251,13 +1253,13 @@ glsl_type::get_array_instance(const glsl_type *element,
                                             _mesa_key_string_equal);
    }
 
-   const struct hash_entry *entry = _mesa_hash_table_search(array_types, key);
+   const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(array_types, key_hash, key);
    if (entry == NULL) {
       const glsl_type *t = new glsl_type(element, array_size, explicit_stride);
 
-      entry = _mesa_hash_table_insert(array_types,
-                                      strdup(key),
-                                      (void *) t);
+      entry = _mesa_hash_table_insert_pre_hashed(array_types, key_hash,
+                                                 strdup(key),
+                                                 (void *) t);
    }
 
    auto t = (const glsl_type *) entry->data;
@@ -1452,6 +1454,7 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
                                bool packed, unsigned explicit_alignment)
 {
    const glsl_type key(fields, num_fields, name, packed, explicit_alignment);
+   const uint32_t key_hash = record_key_hash(&key);
 
    simple_mtx_lock(&glsl_type::hash_mutex);
    assert(glsl_type_users > 0);
@@ -1461,13 +1464,13 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
                                              record_key_compare);
    }
 
-   const struct hash_entry *entry = _mesa_hash_table_search(struct_types,
-                                                            &key);
+   const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(struct_types,
+                                                                       key_hash, &key);
    if (entry == NULL) {
       const glsl_type *t = new glsl_type(fields, num_fields, name, packed,
                                          explicit_alignment);
 
-      entry = _mesa_hash_table_insert(struct_types, t, (void *) t);
+      entry = _mesa_hash_table_insert_pre_hashed(struct_types, key_hash, t, (void *) t);
    }
 
    auto t = (const glsl_type *) entry->data;
@@ -1491,6 +1494,7 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
                                   const char *block_name)
 {
    const glsl_type key(fields, num_fields, packing, row_major, block_name);
+   const uint32_t key_hash = record_key_hash(&key);
 
    simple_mtx_lock(&glsl_type::hash_mutex);
    assert(glsl_type_users > 0);
@@ -1500,13 +1504,13 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
                                                 record_key_compare);
    }
 
-   const struct hash_entry *entry = _mesa_hash_table_search(interface_types,
-                                                            &key);
+   const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(interface_types,
+                                                                       key_hash, &key);
    if (entry == NULL) {
       const glsl_type *t = new glsl_type(fields, num_fields,
                                          packing, row_major, block_name);
 
-      entry = _mesa_hash_table_insert(interface_types, t, (void *) t);
+      entry = _mesa_hash_table_insert_pre_hashed(interface_types, key_hash, t, (void *) t);
    }
 
    auto t = (const glsl_type *) entry->data;
@@ -1522,6 +1526,8 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
 const glsl_type *
 glsl_type::get_subroutine_instance(const char *subroutine_name)
 {
+   const uint32_t key_hash = _mesa_hash_string(subroutine_name);
+
    simple_mtx_lock(&glsl_type::hash_mutex);
    assert(glsl_type_users > 0);
 
@@ -1530,12 +1536,12 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
                                                  _mesa_key_string_equal);
    }
 
-   const struct hash_entry *entry = _mesa_hash_table_search(subroutine_types,
-                                                            subroutine_name);
+   const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(subroutine_types,
+                                                                       key_hash, subroutine_name);
    if (entry == NULL) {
       const glsl_type *t = new glsl_type(subroutine_name);
 
-      entry = _mesa_hash_table_insert(subroutine_types, t->name, (void *) t);
+      entry = _mesa_hash_table_insert_pre_hashed(subroutine_types, key_hash, t->name, (void *) t);
    }
 
    auto t = (const glsl_type *) entry->data;
@@ -1576,6 +1582,7 @@ glsl_type::get_function_instance(const glsl_type *return_type,
                                  unsigned num_params)
 {
    const glsl_type key(return_type, params, num_params);
+   const uint32_t key_hash = record_key_hash(&key);
 
    simple_mtx_lock(&glsl_type::hash_mutex);
    assert(glsl_type_users > 0);
@@ -1585,11 +1592,11 @@ glsl_type::get_function_instance(const glsl_type *return_type,
                                                function_key_compare);
    }
 
-   struct hash_entry *entry = _mesa_hash_table_search(function_types, &key);
+   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(function_types, key_hash, &key);
    if (entry == NULL) {
       const glsl_type *t = new glsl_type(return_type, params, num_params);
 
-      entry = _mesa_hash_table_insert(function_types, t, (void *) t);
+      entry = _mesa_hash_table_insert_pre_hashed(function_types, key_hash, t, (void *) t);
    }
 
    auto t = (const glsl_type *)entry->data;
