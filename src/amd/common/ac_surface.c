@@ -3543,6 +3543,8 @@ unsigned ac_get_cb_format(enum amd_gfx_level gfx_level, enum pipe_format format)
          return V_028C70_COLOR_16;
       case 32:
          return V_028C70_COLOR_32;
+      case 64:
+         return V_028C70_COLOR_32_32;
       }
       break;
    case 2:
