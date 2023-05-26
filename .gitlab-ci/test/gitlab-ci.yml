@@ -42,9 +42,10 @@ clang-format:
     LLVM_VERSION: 15
   script:
     - shopt -s globstar
-    - clang-format-${LLVM_VERSION:?} --Werror --dry-run
+    - clang-format-${LLVM_VERSION:?} --Werror -i
       src/**/asahi/**/*.{h,c,cpp}
       src/**/panfrost/**/*.{h,c,cpp}
+    - git diff --exit-code  # Fails if there are diffs
 
 .test-gl:
   extends:
