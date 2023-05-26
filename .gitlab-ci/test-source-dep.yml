@@ -997,6 +997,7 @@
       - .clang-format
       - .clang-format-include
       - .clang-format-ignore
+      - src/**/.clang-format
       - src/**/asahi/**/*
       - src/**/panfrost/**/*
       when: on_success
