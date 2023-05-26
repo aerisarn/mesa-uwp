@@ -1196,35 +1196,53 @@ glsl_type::get_image_instance(enum glsl_sampler_dim dim,
    unreachable("switch statement above should be complete");
 }
 
+struct PACKED array_key {
+   uintptr_t element;
+   uintptr_t array_size;
+   uintptr_t explicit_stride;
+};
+
+static uint32_t
+hash_array_key(const void *a)
+{
+   return _mesa_hash_data(a, sizeof(struct array_key));
+}
+
+static bool
+compare_array_key(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(struct array_key)) == 0;
+}
+
 const glsl_type *
 glsl_type::get_array_instance(const glsl_type *element,
                               unsigned array_size,
                               unsigned explicit_stride)
 {
-   /* Generate a name using the base type pointer in the key.  This is
-    * done because the name of the base type may not be unique across
-    * shaders.  For example, two shaders may have different record types
-    * named 'foo'.
-    */
-   char key[128];
-   snprintf(key, sizeof(key), "%p[%u]x%uB", (void *) element, array_size,
-            explicit_stride);
-   const uint32_t key_hash = _mesa_hash_string(key);
+   /* Ensure there's no internal padding, to avoid multiple hashes for same key. */
+   STATIC_ASSERT(sizeof(struct array_key) == (3 * sizeof(uintptr_t)));
+
+   struct array_key key = { 0 };
+   key.element = (uintptr_t)element;
+   key.array_size = array_size;
+   key.explicit_stride = explicit_stride;
+
+   const uint32_t key_hash = hash_array_key(&key);
 
    simple_mtx_lock(&glsl_type::hash_mutex);
    assert(glsl_type_users > 0);
 
-   if (array_types == NULL) {
-      array_types = _mesa_hash_table_create(NULL, _mesa_hash_string,
-                                            _mesa_key_string_equal);
-   }
+   if (array_types == NULL)
+      array_types = _mesa_hash_table_create(NULL, hash_array_key, compare_array_key);
 
-   const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(array_types, key_hash, key);
+   const struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(array_types, key_hash, &key);
    if (entry == NULL) {
       const glsl_type *t = new glsl_type(element, array_size, explicit_stride);
+      struct array_key *stored_key = ralloc(t->mem_ctx, struct array_key);
+      memcpy(stored_key, &key, sizeof(key));
 
       entry = _mesa_hash_table_insert_pre_hashed(array_types, key_hash,
-                                                 ralloc_strdup(t->mem_ctx, key),
+                                                 stored_key,
                                                  (void *) t);
    }
 
