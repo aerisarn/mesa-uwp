@@ -30,4 +30,4 @@ variables:
    WINDOWS_X64_BUILD_TAG: "2023-04-13-agility-610"
 
    WINDOWS_X64_TEST_PATH: "windows/x64_test"
-   WINDOWS_X64_TEST_TAG: "2023-05-08-warp-1.0.6"
+   WINDOWS_X64_TEST_TAG: "2023-05-26-warp-1.0.7"
