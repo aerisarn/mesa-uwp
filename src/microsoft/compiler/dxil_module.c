@@ -2122,9 +2122,14 @@ dxil_module_get_uav_res_props_const(struct dxil_module *m,
    dwords[0] = get_basic_srv_uav_res_props_dword(true, false, false /*TODO*/, false,
                                                  dxil_sampler_dim_to_resource_kind(nir_intrinsic_image_dim(intr),
                                                                                    nir_intrinsic_image_array(intr)));
+   unsigned num_comps = intr->num_components ? intr->num_components : 1;
+   if (nir_intrinsic_has_format(intr)) {
+      enum pipe_format format = nir_intrinsic_format(intr);
+      if (format != PIPE_FORMAT_NONE)
+         num_comps = util_format_get_nr_components(format);
+   }
    dwords[1] = get_typed_srv_uav_res_props_dword(comp_type_from_alu_type(alu_type_from_image_intr(intr)),
-                                                 intr->num_components ? intr->num_components : 1,
-                                                 0);
+                                                 num_comps, 0);
 
    const struct dxil_value *values[2] = {
       dxil_module_get_int32_const(m, dwords[0]),

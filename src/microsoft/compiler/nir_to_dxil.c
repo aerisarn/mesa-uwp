@@ -1400,7 +1400,9 @@ emit_uav_var(struct ntd_context *ctx, nir_variable *var, unsigned count)
    enum dxil_resource_kind res_kind = dxil_get_resource_kind(var->type);
    const char *name = var->name;
 
-   return emit_uav(ctx, binding, space, count, comp_type, 4, res_kind, name);
+   return emit_uav(ctx, binding, space, count, comp_type,
+                   util_format_get_nr_components(var->data.image.format),
+                   res_kind, name);
 }
 
 static void
@@ -4268,7 +4270,7 @@ emit_image_load(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       store_dest(ctx, &intr->dest, i, component);
    }
 
-   if (num_components > 1)
+   if (util_format_get_nr_components(nir_intrinsic_format(intr)) > 1)
       ctx->mod.feats.typed_uav_load_additional_formats = true;
 
    return true;
@@ -6726,6 +6728,8 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    /* This needs to be after any copy prop is done to prevent these movs from being erased */
    NIR_PASS_V(s, dxil_nir_move_consts);
    NIR_PASS_V(s, nir_opt_dce);
+
+   NIR_PASS_V(s, dxil_nir_guess_image_formats);
 
    if (debug_dxil & DXIL_DEBUG_VERBOSE)
       nir_print_shader(s, stderr);
