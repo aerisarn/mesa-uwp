@@ -26,7 +26,8 @@
 
 using namespace aco;
 
-static void create_mubuf(Temp desc=Temp(0, s8))
+static void
+create_mubuf(Temp desc = Temp(0, s8))
 {
    Operand desc_op(desc);
    desc_op.setFixed(PhysReg(0));
@@ -34,13 +35,15 @@ static void create_mubuf(Temp desc=Temp(0, s8))
              Operand(PhysReg(256), v1), Operand::zero(), 0, false);
 }
 
-static void create_mubuf_store()
+static void
+create_mubuf_store()
 {
    bld.mubuf(aco_opcode::buffer_store_dword, Operand(PhysReg(0), s4), Operand(PhysReg(256), v1),
              Operand(PhysReg(256), v1), Operand::zero(), 0, false);
 }
 
-static void create_mtbuf(Temp desc=Temp(0, s8))
+static void
+create_mtbuf(Temp desc = Temp(0, s8))
 {
    Operand desc_op(desc);
    desc_op.setFixed(PhysReg(0));
@@ -49,22 +52,25 @@ static void create_mtbuf(Temp desc=Temp(0, s8))
              V_008F0C_BUF_NUM_FORMAT_FLOAT, 0, false);
 }
 
-static void create_flat()
+static void
+create_flat()
 {
-   bld.flat(aco_opcode::flat_load_dword, Definition(PhysReg(256), v1),
-             Operand(PhysReg(256), v2), Operand(s2));
+   bld.flat(aco_opcode::flat_load_dword, Definition(PhysReg(256), v1), Operand(PhysReg(256), v2),
+            Operand(s2));
 }
 
-static void create_global()
+static void
+create_global()
 {
    bld.global(aco_opcode::global_load_dword, Definition(PhysReg(256), v1),
               Operand(PhysReg(256), v2), Operand(s2));
 }
 
-static void create_mimg(bool nsa, Temp desc=Temp(0, s8))
+static void
+create_mimg(bool nsa, Temp desc = Temp(0, s8))
 {
-   aco_ptr<MIMG_instruction> mimg{create_instruction<MIMG_instruction>(
-      aco_opcode::image_sample, Format::MIMG, 5, 1)};
+   aco_ptr<MIMG_instruction> mimg{
+      create_instruction<MIMG_instruction>(aco_opcode::image_sample, Format::MIMG, 5, 1)};
    mimg->definitions[0] = Definition(PhysReg(256), v1);
    mimg->operands[0] = Operand(desc);
    mimg->operands[0].setFixed(PhysReg(0));
@@ -78,13 +84,15 @@ static void create_mimg(bool nsa, Temp desc=Temp(0, s8))
    bld.insert(std::move(mimg));
 }
 
-static void create_smem()
+static void
+create_smem()
 {
    bld.smem(aco_opcode::s_load_dword, Definition(PhysReg(0), s1), Operand(PhysReg(0), s2),
             Operand::zero());
 }
 
-static void create_smem_buffer(Temp desc=Temp(0, s4))
+static void
+create_smem_buffer(Temp desc = Temp(0, s4))
 {
    Operand desc_op(desc);
    desc_op.setFixed(PhysReg(0));

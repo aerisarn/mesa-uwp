@@ -587,8 +587,10 @@ perform_hazard_query(hazard_query* query, Instruction* instr, bool upwards)
    /* don't move non-reorderable instructions */
    if (instr->opcode == aco_opcode::s_memtime || instr->opcode == aco_opcode::s_memrealtime ||
        instr->opcode == aco_opcode::s_setprio || instr->opcode == aco_opcode::s_getreg_b32 ||
-       instr->opcode == aco_opcode::p_init_scratch || instr->opcode == aco_opcode::p_jump_to_epilog ||
-       instr->opcode == aco_opcode::s_sendmsg_rtn_b32 || instr->opcode == aco_opcode::s_sendmsg_rtn_b64)
+       instr->opcode == aco_opcode::p_init_scratch ||
+       instr->opcode == aco_opcode::p_jump_to_epilog ||
+       instr->opcode == aco_opcode::s_sendmsg_rtn_b32 ||
+       instr->opcode == aco_opcode::s_sendmsg_rtn_b64)
       return hazard_fail_unreorderable;
 
    memory_event_set instr_set;
@@ -663,8 +665,7 @@ schedule_SMEM(sched_ctx& ctx, Block* block, std::vector<RegisterDemand>& registe
    int16_t k = 0;
 
    /* don't move s_memtime/s_memrealtime */
-   if (current->opcode == aco_opcode::s_memtime ||
-       current->opcode == aco_opcode::s_memrealtime ||
+   if (current->opcode == aco_opcode::s_memtime || current->opcode == aco_opcode::s_memrealtime ||
        current->opcode == aco_opcode::s_sendmsg_rtn_b32 ||
        current->opcode == aco_opcode::s_sendmsg_rtn_b64)
       return;

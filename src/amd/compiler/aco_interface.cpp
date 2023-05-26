@@ -80,8 +80,7 @@ validate(aco::Program* program)
 }
 
 static std::string
-get_disasm_string(aco::Program* program, std::vector<uint32_t>& code,
-                  unsigned exec_size)
+get_disasm_string(aco::Program* program, std::vector<uint32_t>& code, unsigned exec_size)
 {
    std::string disasm;
 
@@ -111,8 +110,7 @@ get_disasm_string(aco::Program* program, std::vector<uint32_t>& code,
 
 static std::string
 aco_postprocess_shader(const struct aco_compiler_options* options,
-                       const struct aco_shader_info *info,
-                       std::unique_ptr<aco::Program>& program)
+                       const struct aco_shader_info* info, std::unique_ptr<aco::Program>& program)
 {
    std::string llvm_ir;
 
@@ -211,12 +209,9 @@ aco_postprocess_shader(const struct aco_compiler_options* options,
 }
 
 void
-aco_compile_shader(const struct aco_compiler_options* options,
-                   const struct aco_shader_info* info,
+aco_compile_shader(const struct aco_compiler_options* options, const struct aco_shader_info* info,
                    unsigned shader_count, struct nir_shader* const* shaders,
-                   const struct ac_shader_args *args,
-                   aco_callback *build_binary,
-                   void **binary)
+                   const struct ac_shader_args* args, aco_callback* build_binary, void** binary)
 {
    aco::init();
 
@@ -335,13 +330,8 @@ aco_compile_vs_prolog(const struct aco_compiler_options* options,
    if (get_disasm)
       disasm = get_disasm_string(program.get(), code, exec_size);
 
-   (*build_prolog)(binary,
-                   config.num_sgprs,
-                   config.num_vgprs,
-                   code.data(),
-                   code.size(),
-                   disasm.data(),
-                   disasm.size());
+   (*build_prolog)(binary, config.num_sgprs, config.num_vgprs, code.data(), code.size(),
+                   disasm.data(), disasm.size());
 }
 
 void
@@ -377,11 +367,6 @@ aco_compile_ps_epilog(const struct aco_compiler_options* options,
    if (get_disasm)
       disasm = get_disasm_string(program.get(), code, exec_size);
 
-   (*build_epilog)(binary,
-                   config.num_sgprs,
-                   config.num_vgprs,
-                   code.data(),
-                   code.size(),
-                   disasm.data(),
-                   disasm.size());
+   (*build_epilog)(binary, config.num_sgprs, config.num_vgprs, code.data(), code.size(),
+                   disasm.data(), disasm.size());
 }

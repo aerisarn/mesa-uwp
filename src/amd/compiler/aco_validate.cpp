@@ -35,8 +35,8 @@
 namespace aco {
 
 static void
-aco_log(Program* program, enum aco_compiler_debug_level level, const char* prefix,
-        const char* file, unsigned line, const char* fmt, va_list args)
+aco_log(Program* program, enum aco_compiler_debug_level level, const char* prefix, const char* file,
+        unsigned line, const char* fmt, va_list args)
 {
    char* msg;
 
@@ -270,8 +270,7 @@ validate_ir(Program* program)
                                    (instr->opcode == aco_opcode::p_bpermute_gfx11w64 && i == 0) ||
                                    (flat && i == 1) || (instr->isMIMG() && (i == 1 || i == 2)) ||
                                    ((instr->isMUBUF() || instr->isMTBUF()) && i == 1) ||
-                                   (instr->isScratch() && i == 0) ||
-                                   (instr->isDS() && i == 0) ||
+                                   (instr->isScratch() && i == 0) || (instr->isDS() && i == 0) ||
                                    (instr->opcode == aco_opcode::p_init_scratch && i == 0);
                check(can_be_undef, "Undefs can only be used in certain operands", instr.get());
             } else {
@@ -393,7 +392,7 @@ validate_ir(Program* program)
                      "OPSEL_LO set for unsupported instruction format", instr.get());
                check(!instr->valu().opsel_hi || instr->isVOP3P(),
                      "OPSEL_HI set for unsupported instruction format", instr.get());
-               check(!instr->valu().omod || instr->isVOP3() ||instr->isSDWA(),
+               check(!instr->valu().omod || instr->isVOP3() || instr->isSDWA(),
                      "OMOD set for unsupported instruction format", instr.get());
                check(!instr->valu().clamp || instr->isVOP3() || instr->isVOP3P() ||
                         instr->isSDWA() || instr->isVINTERP_INREG(),
@@ -562,7 +561,8 @@ validate_ir(Program* program)
                         instr->definitions[2].regClass().size() == 1,
                      "Third definition of p_dual_src_export_gfx11 must be a v1", instr.get());
                check(instr->definitions[3].regClass() == program->lane_mask,
-                     "Fourth definition of p_dual_src_export_gfx11 must be a lane mask", instr.get());
+                     "Fourth definition of p_dual_src_export_gfx11 must be a lane mask",
+                     instr.get());
                check(instr->definitions[4].physReg() == vcc,
                      "Fifth definition of p_dual_src_export_gfx11 must be vcc", instr.get());
                check(instr->definitions[5].physReg() == scc,
@@ -627,26 +627,28 @@ validate_ir(Program* program)
             check(instr->operands.size() < 4 || instr->operands[3].isOfType(RegType::vgpr),
                   "VMEM write data must be vgpr", instr.get());
 
-            const bool d16 = instr->opcode == aco_opcode::buffer_load_dword || // FIXME: used to spill subdword variables
-                             instr->opcode == aco_opcode::buffer_load_ubyte ||
-                             instr->opcode == aco_opcode::buffer_load_sbyte ||
-                             instr->opcode == aco_opcode::buffer_load_ushort ||
-                             instr->opcode == aco_opcode::buffer_load_sshort ||
-                             instr->opcode == aco_opcode::buffer_load_ubyte_d16 ||
-                             instr->opcode == aco_opcode::buffer_load_ubyte_d16_hi ||
-                             instr->opcode == aco_opcode::buffer_load_sbyte_d16 ||
-                             instr->opcode == aco_opcode::buffer_load_sbyte_d16_hi ||
-                             instr->opcode == aco_opcode::buffer_load_short_d16 ||
-                             instr->opcode == aco_opcode::buffer_load_short_d16_hi ||
-                             instr->opcode == aco_opcode::buffer_load_format_d16_x ||
-                             instr->opcode == aco_opcode::buffer_load_format_d16_hi_x ||
-                             instr->opcode == aco_opcode::buffer_load_format_d16_xy ||
-                             instr->opcode == aco_opcode::buffer_load_format_d16_xyz ||
-                             instr->opcode == aco_opcode::buffer_load_format_d16_xyzw ||
-                             instr->opcode == aco_opcode::tbuffer_load_format_d16_x ||
-                             instr->opcode == aco_opcode::tbuffer_load_format_d16_xy ||
-                             instr->opcode == aco_opcode::tbuffer_load_format_d16_xyz ||
-                             instr->opcode == aco_opcode::tbuffer_load_format_d16_xyzw;
+            const bool d16 =
+               instr->opcode ==
+                  aco_opcode::buffer_load_dword || // FIXME: used to spill subdword variables
+               instr->opcode == aco_opcode::buffer_load_ubyte ||
+               instr->opcode == aco_opcode::buffer_load_sbyte ||
+               instr->opcode == aco_opcode::buffer_load_ushort ||
+               instr->opcode == aco_opcode::buffer_load_sshort ||
+               instr->opcode == aco_opcode::buffer_load_ubyte_d16 ||
+               instr->opcode == aco_opcode::buffer_load_ubyte_d16_hi ||
+               instr->opcode == aco_opcode::buffer_load_sbyte_d16 ||
+               instr->opcode == aco_opcode::buffer_load_sbyte_d16_hi ||
+               instr->opcode == aco_opcode::buffer_load_short_d16 ||
+               instr->opcode == aco_opcode::buffer_load_short_d16_hi ||
+               instr->opcode == aco_opcode::buffer_load_format_d16_x ||
+               instr->opcode == aco_opcode::buffer_load_format_d16_hi_x ||
+               instr->opcode == aco_opcode::buffer_load_format_d16_xy ||
+               instr->opcode == aco_opcode::buffer_load_format_d16_xyz ||
+               instr->opcode == aco_opcode::buffer_load_format_d16_xyzw ||
+               instr->opcode == aco_opcode::tbuffer_load_format_d16_x ||
+               instr->opcode == aco_opcode::tbuffer_load_format_d16_xy ||
+               instr->opcode == aco_opcode::tbuffer_load_format_d16_xyz ||
+               instr->opcode == aco_opcode::tbuffer_load_format_d16_xyzw;
             if (instr->definitions.size()) {
                check(instr->definitions[0].regClass().type() == RegType::vgpr,
                      "VMEM definitions[0] (VDATA) must be VGPR", instr.get());
@@ -763,11 +765,14 @@ validate_ir(Program* program)
             break;
          }
          case Format::LDSDIR: {
-            check(instr->definitions.size() == 1 && instr->definitions[0].regClass() == v1, "LDSDIR must have an v1 definition", instr.get());
+            check(instr->definitions.size() == 1 && instr->definitions[0].regClass() == v1,
+                  "LDSDIR must have an v1 definition", instr.get());
             check(instr->operands.size() == 1, "LDSDIR must have an operand", instr.get());
             if (!instr->operands.empty()) {
-               check(instr->operands[0].regClass() == s1, "LDSDIR must have an s1 operand", instr.get());
-               check(instr->operands[0].isFixed() && instr->operands[0].physReg() == m0, "LDSDIR must have an operand fixed to m0", instr.get());
+               check(instr->operands[0].regClass() == s1, "LDSDIR must have an s1 operand",
+                     instr.get());
+               check(instr->operands[0].isFixed() && instr->operands[0].physReg() == m0,
+                     "LDSDIR must have an operand fixed to m0", instr.get());
             }
             break;
          }

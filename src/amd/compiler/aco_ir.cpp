@@ -98,8 +98,9 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
    program->wave_size = info->wave_size;
    program->lane_mask = program->wave_size == 32 ? s1 : s2;
 
-   program->dev.lds_encoding_granule = gfx_level >= GFX11 && stage == fragment_fs ? 1024 :
-                                       gfx_level >= GFX7 ? 512 : 256;
+   program->dev.lds_encoding_granule = gfx_level >= GFX11 && stage == fragment_fs ? 1024
+                                       : gfx_level >= GFX7                        ? 512
+                                                                                  : 256;
    program->dev.lds_alloc_granule = gfx_level >= GFX10_3 ? 1024 : program->dev.lds_encoding_granule;
 
    /* GFX6: There is 64KB LDS per CU, but a single workgroup can only use 32KB. */

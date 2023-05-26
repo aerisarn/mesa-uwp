@@ -1369,7 +1369,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (instr->isSALU() || instr->isPseudo()) {
          unsigned bits = get_operand_size(instr, i);
          if ((info.is_constant(bits) || (info.is_literal(bits) && instr->isPseudo())) &&
-              alu_can_accept_constant(instr, i)) {
+             alu_can_accept_constant(instr, i)) {
             instr->operands[i] = get_constant_op(ctx, info, bits);
             continue;
          }
@@ -2116,9 +2116,10 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    case aco_opcode::v_mbcnt_hi_u32_b32_e64: {
       if (instr->operands[0].constantEquals(-1) && instr->operands[1].isTemp() &&
           ctx.info[instr->operands[1].tempId()].is_usedef()) {
-         Instruction *usedef_instr = ctx.info[instr->operands[1].tempId()].instr;
+         Instruction* usedef_instr = ctx.info[instr->operands[1].tempId()].instr;
          if (usedef_instr->opcode == aco_opcode::v_mbcnt_lo_u32_b32 &&
-             usedef_instr->operands[0].constantEquals(-1) && usedef_instr->operands[1].constantEquals(0))
+             usedef_instr->operands[0].constantEquals(-1) &&
+             usedef_instr->operands[1].constantEquals(0))
             ctx.info[instr->definitions[0].tempId()].set_subgroup_invocation(instr.get());
       }
       break;
@@ -2370,7 +2371,9 @@ optimize_cmp_subgroup_invocation(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       return false;
 
    /* Find the constant operand or return early if there isn't one. */
-   const int const_op_idx = instr->operands[0].isConstant() ? 0 : instr->operands[1].isConstant() ? 1 : -1;
+   const int const_op_idx = instr->operands[0].isConstant()   ? 0
+                            : instr->operands[1].isConstant() ? 1
+                                                              : -1;
    if (const_op_idx == -1)
       return false;
 
@@ -2413,11 +2416,10 @@ optimize_cmp_subgroup_invocation(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       first_bit = val + 1;
       num_bits = val >= wave_size ? 0 : (wave_size - val - 1);
       break;
-   default:
-      return false;
+   default: return false;
    }
 
-   Instruction *cpy = NULL;
+   Instruction* cpy = NULL;
    const uint64_t mask = BITFIELD64_RANGE(first_bit, num_bits);
    if (wave_size == 64 && mask > 0x7fffffff && mask != -1ull) {
       /* Mask can't be represented as a 64-bit constant or literal, use s_bfm_b64. */
@@ -2426,7 +2428,8 @@ optimize_cmp_subgroup_invocation(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       cpy->operands[1] = Operand::c32(first_bit);
    } else {
       /* Copy mask as a literal constant. */
-      cpy = create_instruction<Pseudo_instruction>(aco_opcode::p_parallelcopy, Format::PSEUDO, 1, 1);
+      cpy =
+         create_instruction<Pseudo_instruction>(aco_opcode::p_parallelcopy, Format::PSEUDO, 1, 1);
       cpy->operands[0] = wave_size == 32 ? Operand::c32((uint32_t)mask) : Operand::c64(mask);
    }
 
@@ -4821,10 +4824,12 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
     */
    if (instr->opcode == aco_opcode::s_and_b32 || instr->opcode == aco_opcode::s_and_b64) {
       if (instr->operands[0].isTemp() && fixed_to_exec(instr->operands[1]) &&
-          ctx.uses[instr->operands[0].tempId()] == 1 && ctx.uses[instr->definitions[1].tempId()] == 0 &&
+          ctx.uses[instr->operands[0].tempId()] == 1 &&
+          ctx.uses[instr->definitions[1].tempId()] == 0 &&
           can_eliminate_and_exec(ctx, instr->operands[0].getTemp(), instr->pass_flags)) {
          ctx.uses[instr->operands[0].tempId()]--;
-         ctx.info[instr->operands[0].tempId()].instr->definitions[0].setTemp(instr->definitions[0].getTemp());
+         ctx.info[instr->operands[0].tempId()].instr->definitions[0].setTemp(
+            instr->definitions[0].getTemp());
          instr.reset();
          return;
       }

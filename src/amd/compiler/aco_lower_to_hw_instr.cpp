@@ -2181,7 +2181,7 @@ lower_image_sample(lower_context* ctx, aco_ptr<Instruction>& instr)
    instr->mimg().strict_wqm = false;
 
    if ((3 + num_vaddr) > instr->operands.size()) {
-      MIMG_instruction *new_instr = create_instruction<MIMG_instruction>(
+      MIMG_instruction* new_instr = create_instruction<MIMG_instruction>(
          instr->opcode, Format::MIMG, 3 + num_vaddr, instr->definitions.size());
       std::copy(instr->definitions.cbegin(), instr->definitions.cend(),
                 new_instr->definitions.begin());
@@ -2346,8 +2346,8 @@ lower_to_hw_instr(Program* program)
                      target =
                         program->has_color_exports ? V_008DFC_SQ_EXP_MRT : V_008DFC_SQ_EXP_MRTZ;
                   if (program->stage == fragment_fs)
-                     bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1),
-                             0, target, false, true, true);
+                     bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1), 0,
+                             target, false, true, true);
                   if (should_dealloc_vgprs)
                      bld.sopp(aco_opcode::s_sendmsg, -1, sendmsg_dealloc_vgprs);
                   bld.sopp(aco_opcode::s_endpgm);
@@ -2518,8 +2518,7 @@ lower_to_hw_instr(Program* program)
                         create_bperm(bld, ext_swiz, dst, Operand::zero());
                      }
                   } else {
-                     SDWA_instruction& sdwa =
-                        bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op)->sdwa();
+                     SDWA_instruction& sdwa = bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op)->sdwa();
                      sdwa.sel[0] = SubdwordSel(bits / 8, offset / 8, signext);
                   }
                }
@@ -2574,7 +2573,8 @@ lower_to_hw_instr(Program* program)
                } else {
                   assert(dst.regClass() == v2b);
                   bld.vop2_sdwa(aco_opcode::v_lshlrev_b32, dst, Operand::c32(offset), op)
-                     ->sdwa().sel[1] = SubdwordSel::ubyte;
+                     ->sdwa()
+                     .sel[1] = SubdwordSel::ubyte;
                }
                break;
             }

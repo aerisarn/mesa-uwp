@@ -633,9 +633,10 @@ BEGIN_TEST(d3d11_derivs.nsa_max)
 
       //~gfx11! v4: %_:v[0-3] = image_sample_c_b_o  s8: undef,  s4: undef,  v1: undef, %_:v[6], %_:v[7], %_:v[8], %_:v[3], %_:v[4-5] 2darray da
 
-      Instruction *instr = bld.mimg(aco_opcode::image_sample_c_b_o, Definition(reg_v0, v4),
-                                    Operand(s8), Operand(s4), Operand(v1), Operand(reg_v0, v6.as_linear()),
-                                    Operand(reg_v6, v1), Operand(reg_v7, v1), Operand(reg_v8, v1));
+      Instruction* instr =
+         bld.mimg(aco_opcode::image_sample_c_b_o, Definition(reg_v0, v4), Operand(s8), Operand(s4),
+                  Operand(v1), Operand(reg_v0, v6.as_linear()), Operand(reg_v6, v1),
+                  Operand(reg_v7, v1), Operand(reg_v8, v1));
       instr->mimg().dim = ac_image_2darray;
       instr->mimg().da = true;
       instr->mimg().strict_wqm = true;

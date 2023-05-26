@@ -94,7 +94,8 @@ struct spill_ctx {
    spill_ctx(const RegisterDemand target_pressure_, Program* program_,
              std::vector<std::vector<RegisterDemand>> register_demand_)
        : target_pressure(target_pressure_), program(program_), memory(),
-         register_demand(std::move(register_demand_)), renames(program->blocks.size(), aco::map<Temp, Temp>(memory)),
+         register_demand(std::move(register_demand_)),
+         renames(program->blocks.size(), aco::map<Temp, Temp>(memory)),
          spills_entry(program->blocks.size(), aco::unordered_map<Temp, uint32_t>(memory)),
          spills_exit(program->blocks.size(), aco::unordered_map<Temp, uint32_t>(memory)),
          processed(program->blocks.size(), false),
@@ -226,10 +227,11 @@ next_uses_per_block(spill_ctx& ctx, unsigned block_idx, uint32_t& worklist)
 
       std::pair<uint32_t, uint32_t> distance{block_idx, 0};
 
-      auto it = instr->definitions[0].isTemp() ? next_use_distances_start.find(instr->definitions[0].getTemp())
-                                               : next_use_distances_start.end();
+      auto it = instr->definitions[0].isTemp()
+                   ? next_use_distances_start.find(instr->definitions[0].getTemp())
+                   : next_use_distances_start.end();
       if (it != next_use_distances_start.end() &&
-         phi_defs.insert(instr->definitions[0].getTemp()).second) {
+          phi_defs.insert(instr->definitions[0].getTemp()).second) {
          distance = it->second;
       }
 
@@ -388,7 +390,7 @@ get_rematerialize_info(spill_ctx& ctx)
 
 void
 update_local_next_uses(spill_ctx& ctx, Block* block,
-                std::vector<std::vector<std::pair<Temp, uint32_t>>>& local_next_uses)
+                       std::vector<std::vector<std::pair<Temp, uint32_t>>>& local_next_uses)
 {
    if (local_next_uses.size() < block->instructions.size()) {
       /* Allocate more next-use-maps. Note that by never reducing the vector size, we enable
@@ -1006,7 +1008,7 @@ add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
                ctx.renames[pred_idx].find(phi->operands[i].getTemp());
             if (it != ctx.renames[pred_idx].end()) {
                phi->operands[i].setTemp(it->second);
-            /* prevent the defining instruction from being DCE'd if it could be rematerialized */
+               /* prevent the defining instruction from being DCE'd if it could be rematerialized */
             } else {
                auto remat_it = ctx.remat.find(phi->operands[i].getTemp());
                if (remat_it != ctx.remat.end()) {
@@ -1407,7 +1409,8 @@ load_scratch_resource(spill_ctx& ctx, Temp& scratch_offset, Block& block,
             continue;
 
          /* find p_logical_end */
-         std::vector<aco_ptr<Instruction>>& prev_instructions = ctx.program->blocks[block_idx].instructions;
+         std::vector<aco_ptr<Instruction>>& prev_instructions =
+            ctx.program->blocks[block_idx].instructions;
          unsigned idx = prev_instructions.size() - 1;
          while (prev_instructions[idx]->opcode != aco_opcode::p_logical_end)
             idx--;
@@ -1422,10 +1425,10 @@ load_scratch_resource(spill_ctx& ctx, Temp& scratch_offset, Block& block,
 
    Temp private_segment_buffer = ctx.program->private_segment_buffer;
    if (!private_segment_buffer.bytes()) {
-      Temp addr_lo = bld.sop1(aco_opcode::p_load_symbol, bld.def(s1),
-                              Operand::c32(aco_symbol_scratch_addr_lo));
-      Temp addr_hi = bld.sop1(aco_opcode::p_load_symbol, bld.def(s1),
-                              Operand::c32(aco_symbol_scratch_addr_hi));
+      Temp addr_lo =
+         bld.sop1(aco_opcode::p_load_symbol, bld.def(s1), Operand::c32(aco_symbol_scratch_addr_lo));
+      Temp addr_hi =
+         bld.sop1(aco_opcode::p_load_symbol, bld.def(s1), Operand::c32(aco_symbol_scratch_addr_hi));
       private_segment_buffer =
          bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), addr_lo, addr_hi);
    } else if (ctx.program->stage.hw != HWStage::CS) {
@@ -1471,8 +1474,7 @@ setup_vgpr_spill_reload(spill_ctx& ctx, Block& block,
       if (ctx.scratch_rsrc == Temp()) {
          int32_t saddr = ctx.program->config->scratch_bytes_per_wave / ctx.program->wave_size -
                          ctx.program->dev.scratch_global_offset_min;
-         ctx.scratch_rsrc =
-            load_scratch_resource(ctx, scratch_offset, block, instructions, saddr);
+         ctx.scratch_rsrc = load_scratch_resource(ctx, scratch_offset, block, instructions, saddr);
       }
    } else {
       bool add_offset_to_sgpr =
