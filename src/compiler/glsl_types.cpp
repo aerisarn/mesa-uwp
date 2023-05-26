@@ -1231,7 +1231,7 @@ glsl_type::get_image_instance(enum glsl_sampler_dim dim,
 }
 
 const glsl_type *
-glsl_type::get_array_instance(const glsl_type *base,
+glsl_type::get_array_instance(const glsl_type *element,
                               unsigned array_size,
                               unsigned explicit_stride)
 {
@@ -1241,7 +1241,7 @@ glsl_type::get_array_instance(const glsl_type *base,
     * named 'foo'.
     */
    char key[128];
-   snprintf(key, sizeof(key), "%p[%u]x%uB", (void *) base, array_size,
+   snprintf(key, sizeof(key), "%p[%u]x%uB", (void *) element, array_size,
             explicit_stride);
 
    simple_mtx_lock(&glsl_type::hash_mutex);
@@ -1254,7 +1254,7 @@ glsl_type::get_array_instance(const glsl_type *base,
 
    const struct hash_entry *entry = _mesa_hash_table_search(array_types, key);
    if (entry == NULL) {
-      const glsl_type *t = new glsl_type(base, array_size, explicit_stride);
+      const glsl_type *t = new glsl_type(element, array_size, explicit_stride);
 
       entry = _mesa_hash_table_insert(array_types,
                                       strdup(key),
@@ -1263,7 +1263,7 @@ glsl_type::get_array_instance(const glsl_type *base,
 
    assert(((glsl_type *) entry->data)->base_type == GLSL_TYPE_ARRAY);
    assert(((glsl_type *) entry->data)->length == array_size);
-   assert(((glsl_type *) entry->data)->fields.array == base);
+   assert(((glsl_type *) entry->data)->fields.array == element);
 
    glsl_type *t = (glsl_type *) entry->data;
 
@@ -1446,7 +1446,6 @@ glsl_type::record_key_hash(const void *a)
 
    return retval;
 }
-
 
 const glsl_type *
 glsl_type::get_struct_instance(const glsl_struct_field *fields,
