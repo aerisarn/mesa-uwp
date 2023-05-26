@@ -42,7 +42,9 @@ clang-format:
     LLVM_VERSION: 15
   script:
     - shopt -s globstar
-    - clang-format-${LLVM_VERSION:?} --Werror --dry-run src/**/{asahi,panfrost}/**/*.{h,c,cpp}
+    - clang-format-${LLVM_VERSION:?} --Werror --dry-run
+      src/**/asahi/**/*.{h,c,cpp}
+      src/**/panfrost/**/*.{h,c,cpp}
 
 .test-gl:
   extends:
