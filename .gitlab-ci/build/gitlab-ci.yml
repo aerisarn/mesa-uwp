@@ -694,6 +694,7 @@ debian-ppc64el:
       -D opencl-spirv=true
       -D microsoft-clc=enabled
       -D static-libclc=all
+      -D opencl-external-clang-headers=disabled
       -D llvm=enabled
       -D gallium-va=enabled
       -D video-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec
