@@ -694,6 +694,19 @@ struct vk_render_pass_state {
    uint8_t depth_stencil_attachment_samples;
 };
 
+static inline VkImageAspectFlags
+vk_pipeline_flags_feedback_loops(VkPipelineCreateFlags2KHR flags)
+{
+   VkImageAspectFlags feedback_loops = 0;
+   if (flags &
+       VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
+      feedback_loops |= VK_IMAGE_ASPECT_COLOR_BIT;
+   if (flags &
+       VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
+      feedback_loops |= VK_IMAGE_ASPECT_DEPTH_BIT;
+   return feedback_loops;
+}
+
 /** Struct representing all dynamic graphics state
  *
  * Before invoking any core functions, the driver must properly populate
