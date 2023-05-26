@@ -124,6 +124,9 @@ get_dynamic_state_groups(BITSET_WORD *dynamic,
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_WRITE_MASKS);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS);
    }
+
+   if (groups & MESA_VK_GRAPHICS_STATE_RENDER_PASS_BIT)
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE);
 }
 
 static enum mesa_vk_graphics_state_groups
@@ -1037,22 +1040,32 @@ vk_pipeline_flags_init(struct vk_graphics_pipeline_state *state,
                        VkPipelineCreateFlags2KHR driver_rp_flags,
                        bool has_driver_rp,
                        const VkGraphicsPipelineCreateInfo *info,
+                       const BITSET_WORD *dynamic,
                        VkGraphicsPipelineLibraryFlagsEXT lib)
 {
    VkPipelineCreateFlags2KHR valid_pipeline_flags = 0;
+   VkPipelineCreateFlags2KHR valid_renderpass_flags = 0;
    if (lib & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
+      valid_renderpass_flags |=
+         VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
+         VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
       valid_pipeline_flags |=
          VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR |
          VK_PIPELINE_CREATE_2_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
    }
    if (lib & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) {
-      valid_pipeline_flags |=
+      valid_renderpass_flags |=
          VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
          VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+      if (!IS_DYNAMIC(ATTACHMENT_FEEDBACK_LOOP_ENABLE)) {
+         valid_pipeline_flags |=
+            VK_PIPELINE_CREATE_2_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT |
+            VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+      }
    }
    const VkPipelineCreateFlags2KHR renderpass_flags =
       (has_driver_rp ? driver_rp_flags :
-       vk_get_pipeline_rendering_flags(info)) & valid_pipeline_flags;
+       vk_get_pipeline_rendering_flags(info)) & valid_renderpass_flags;
 
    const VkPipelineCreateFlags2KHR pipeline_flags =
       vk_graphics_pipeline_create_flags(info) & valid_pipeline_flags;
@@ -1385,7 +1398,7 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
 
    if (lib & (VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT |
               VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
-      vk_pipeline_flags_init(state, driver_rp_flags, !!driver_rp, info, lib);
+      vk_pipeline_flags_init(state, driver_rp_flags, !!driver_rp, info, dynamic, lib);
    }
 
    if (lib & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
@@ -1495,6 +1508,22 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
    /* Filter dynamic state down to just what we're adding */
    BITSET_DECLARE(dynamic_filter, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
    get_dynamic_state_groups(dynamic_filter, needs);
+
+   /* Attachment feedback loop state is part of the renderpass state in mesa
+    * because attachment feedback loops can also come from the render pass,
+    * but in Vulkan it is part of the fragment output interface. The
+    * renderpass state also exists, possibly in an incomplete state, in other
+    * stages for things like the view mask, but it does not contain the
+    * feedback loop flags. In those other stages we have to ignore
+    * VK_DYNAMIC_STATE_ATTACHMENT_FEEDBACK_LOOP_ENABLE_EXT, even though it is
+    * part of a state group that exists in those stages.
+    */
+   if (!(lib &
+         VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
+      BITSET_CLEAR(dynamic_filter,
+                   MESA_VK_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE);
+   }
+
    BITSET_AND(dynamic, dynamic, dynamic_filter);
 
    /* And add it in */
@@ -1826,6 +1855,18 @@ vk_dynamic_graphics_state_fill(struct vk_dynamic_graphics_state *dyn,
 
 #undef INIT_DYNAMIC_STATE
 
+   /* Feedback loop state is weird: implicit feedback loops from the
+    * renderpass and dynamically-enabled feedback loops can in theory both be
+    * enabled independently, so we can't just use one field; instead drivers
+    * have to OR the pipeline state (in vk_render_pass_state::pipeline_flags)
+    * and dynamic state. Due to this it isn't worth tracking
+    * implicit render pass flags vs. pipeline flags in the pipeline state, and
+    * we just combine the two in vk_render_pass_flags_init() and don't bother
+    * setting the dynamic state from the pipeline here, instead just making
+    * sure the dynamic state is reset to 0 when feedback loop state is static.
+    */
+   dyn->feedback_loops = 0;
+
    get_dynamic_state_groups(dyn->set, groups);
 
    /* Vertex input state is always included in a complete pipeline. If p->vi
@@ -2049,6 +2090,8 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
    }
    if (IS_SET_IN_SRC(CB_BLEND_CONSTANTS))
       COPY_ARRAY(CB_BLEND_CONSTANTS, cb.blend_constants, 4);
+
+   COPY_IF_SET(ATTACHMENT_FEEDBACK_LOOP_ENABLE, feedback_loops);
 
 #undef IS_SET_IN_SRC
 #undef MARK_DIRTY
@@ -2360,6 +2403,17 @@ vk_common_CmdSetProvokingVertexModeEXT(VkCommandBuffer commandBuffer,
 
    SET_DYN_VALUE(dyn, RS_PROVOKING_VERTEX,
                  rs.provoking_vertex, provokingVertexMode);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdSetAttachmentFeedbackLoopEnableEXT(VkCommandBuffer commandBuffer,
+                                                VkImageAspectFlags aspectMask)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
+   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
+
+   SET_DYN_VALUE(dyn, ATTACHMENT_FEEDBACK_LOOP_ENABLE,
+                 feedback_loops, aspectMask);
 }
 
 VKAPI_ATTR void VKAPI_CALL
