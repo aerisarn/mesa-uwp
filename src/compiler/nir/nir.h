@@ -5325,8 +5325,6 @@ nir_src *nir_get_shader_call_payload_src(nir_intrinsic_instr *call);
 
 bool nir_is_arrayed_io(const nir_variable *var, gl_shader_stage stage);
 
-bool nir_lower_regs_to_ssa_impl(nir_function_impl *impl);
-bool nir_lower_regs_to_ssa(nir_shader *shader);
 bool nir_lower_reg_intrinsics_to_ssa_impl(nir_function_impl *impl);
 bool nir_lower_reg_intrinsics_to_ssa(nir_shader *shader);
 bool nir_lower_vars_to_ssa(nir_shader *shader);

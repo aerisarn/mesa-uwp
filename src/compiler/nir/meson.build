@@ -198,7 +198,6 @@ files_libnir = files(
   'nir_lower_point_smooth.c',
   'nir_lower_poly_line_smooth.c',
   'nir_lower_printf.c',
-  'nir_lower_regs_to_ssa.c',
   'nir_lower_reg_intrinsics_to_ssa.c',
   'nir_lower_readonly_images_to_tex.c',
   'nir_lower_returns.c',
