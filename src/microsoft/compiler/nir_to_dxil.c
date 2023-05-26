@@ -1292,7 +1292,7 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned count)
       res_kind = dxil_get_resource_kind(var->type);
       res_type = DXIL_RES_SRV_TYPED;
    }
-   const struct dxil_type *res_type_as_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, false /* readwrite */);
+   const struct dxil_type *res_type_as_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, 4, false /* readwrite */);
 
    if (glsl_type_is_array(var->type))
       res_type_as_type = dxil_module_get_array_type(&ctx->mod, res_type_as_type, count);
@@ -1321,7 +1321,7 @@ emit_globals(struct ntd_context *ctx, unsigned size)
       return true;
 
    const struct dxil_type *struct_type = dxil_module_get_res_type(&ctx->mod,
-      DXIL_RESOURCE_KIND_RAW_BUFFER, DXIL_COMP_TYPE_INVALID, true /* readwrite */);
+      DXIL_RESOURCE_KIND_RAW_BUFFER, DXIL_COMP_TYPE_INVALID, 1, true /* readwrite */);
    if (!struct_type)
       return false;
 
@@ -1351,12 +1351,13 @@ emit_globals(struct ntd_context *ctx, unsigned size)
 
 static bool
 emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned count,
-         enum dxil_component_type comp_type, enum dxil_resource_kind res_kind, const char *name)
+         enum dxil_component_type comp_type, unsigned num_comps, enum dxil_resource_kind res_kind,
+         const char *name)
 {
    unsigned id = util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *);
    resource_array_layout layout = { id, binding, count, space };
 
-   const struct dxil_type *res_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, true /* readwrite */);
+   const struct dxil_type *res_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, num_comps, true /* readwrite */);
    res_type = dxil_module_get_array_type(&ctx->mod, res_type, count);
    const struct dxil_mdnode *uav_meta = emit_uav_metadata(&ctx->mod, res_type, name,
                                                           &layout, comp_type, res_kind);
@@ -1399,7 +1400,7 @@ emit_uav_var(struct ntd_context *ctx, nir_variable *var, unsigned count)
    enum dxil_resource_kind res_kind = dxil_get_resource_kind(var->type);
    const char *name = var->name;
 
-   return emit_uav(ctx, binding, space, count, comp_type, res_kind, name);
+   return emit_uav(ctx, binding, space, count, comp_type, 4, res_kind, name);
 }
 
 static void
@@ -6250,7 +6251,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
             if (glsl_type_is_array(var->type))
                count = glsl_get_length(var->type);
             if (!emit_uav(ctx, var->data.binding, var->data.descriptor_set,
-                        count, DXIL_COMP_TYPE_INVALID,
+                        count, DXIL_COMP_TYPE_INVALID, 1,
                         DXIL_RESOURCE_KIND_RAW_BUFFER, var->name))
                return false;
             
@@ -6260,7 +6261,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
       for (unsigned i = 0; i < ctx->shader->info.num_ssbos; ++i) {
          char name[64];
          snprintf(name, sizeof(name), "__ssbo%d", i);
-         if (!emit_uav(ctx, i, 0, 1, DXIL_COMP_TYPE_INVALID,
+         if (!emit_uav(ctx, i, 0, 1, DXIL_COMP_TYPE_INVALID, 1,
                        DXIL_RESOURCE_KIND_RAW_BUFFER, name))
             return false;
       }
@@ -6270,7 +6271,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
        * space 2 will be a single array.
        */
       if (ctx->shader->info.num_ssbos &&
-          !emit_uav(ctx, 0, 2, ctx->shader->info.num_ssbos, DXIL_COMP_TYPE_INVALID,
+          !emit_uav(ctx, 0, 2, ctx->shader->info.num_ssbos, DXIL_COMP_TYPE_INVALID, 1,
                     DXIL_RESOURCE_KIND_RAW_BUFFER, "__ssbo_dynamic"))
          return false;
    }
