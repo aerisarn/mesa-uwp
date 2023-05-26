@@ -15,12 +15,12 @@ variables:
    DEBIAN_X86_64_TEST_ANDROID_IMAGE_PATH: "debian/x86_64_test-android"
 
    DEBIAN_X86_64_TEST_ANDROID_TAG: "2023-06-07-deqp"
-   DEBIAN_X86_64_TEST_GL_TAG: "2023-06-07-deqp"
-   DEBIAN_X86_64_TEST_VK_TAG: "2023-06-07-deqp"
+   DEBIAN_X86_64_TEST_GL_TAG: "2023-07-02-apitrace-lto"
+   DEBIAN_X86_64_TEST_VK_TAG: "2023-07-02-apitrace-lto"
 
    ALPINE_X86_64_BUILD_TAG: "2023-05-01-3.18-bump-1"
    FEDORA_X86_64_BUILD_TAG: "2023-05-05-ccache-on"
-   KERNEL_ROOTFS_TAG: "2023-06-21-virglrenderer"
+   KERNEL_ROOTFS_TAG: "2023-07-02-apitrace-lto"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
    WINDOWS_X64_VS_TAG: "2022-10-20-upgrade-zlib"
