@@ -483,11 +483,11 @@ build_tfb_query_shader(struct radv_device *device)
    /* Pack values. */
    nir_ssa_def *packed64[4];
    packed64[0] =
-      nir_pack_64_2x32(&b, nir_vec2(&b, nir_channel(&b, load1, 0), nir_channel(&b, load1, 1)));
+      nir_pack_64_2x32(&b, nir_trim_vector(&b, load1, 2));
    packed64[1] =
       nir_pack_64_2x32(&b, nir_vec2(&b, nir_channel(&b, load1, 2), nir_channel(&b, load1, 3)));
    packed64[2] =
-      nir_pack_64_2x32(&b, nir_vec2(&b, nir_channel(&b, load2, 0), nir_channel(&b, load2, 1)));
+      nir_pack_64_2x32(&b, nir_trim_vector(&b, load2, 2));
    packed64[3] =
       nir_pack_64_2x32(&b, nir_vec2(&b, nir_channel(&b, load2, 2), nir_channel(&b, load2, 3)));
 
@@ -591,7 +591,7 @@ build_timestamp_query_shader(struct radv_device *device)
    /* Pack the timestamp. */
    nir_ssa_def *timestamp;
    timestamp =
-      nir_pack_64_2x32(&b, nir_vec2(&b, nir_channel(&b, load, 0), nir_channel(&b, load, 1)));
+      nir_pack_64_2x32(&b, nir_trim_vector(&b, load, 2));
 
    /* Check if result is available. */
    nir_ssa_def *result_is_available = nir_i2b(&b, nir_ine_imm(&b, timestamp, TIMESTAMP_NOT_READY));
@@ -723,9 +723,9 @@ build_pg_query_shader(struct radv_device *device)
    /* Pack values. */
    nir_ssa_def *packed64[2];
    packed64[0] =
-      nir_pack_64_2x32(&b, nir_vec2(&b, nir_channel(&b, load1, 0), nir_channel(&b, load1, 1)));
+      nir_pack_64_2x32(&b, nir_trim_vector(&b, load1, 2));
    packed64[1] =
-      nir_pack_64_2x32(&b, nir_vec2(&b, nir_channel(&b, load2, 0), nir_channel(&b, load2, 1)));
+      nir_pack_64_2x32(&b, nir_trim_vector(&b, load2, 2));
 
    /* Compute result. */
    nir_ssa_def *primitive_storage_needed = nir_isub(&b, packed64[1], packed64[0]);
