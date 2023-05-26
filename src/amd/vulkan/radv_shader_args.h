@@ -61,6 +61,7 @@ struct radv_shader_args {
    struct ac_arg ps_epilog_pc;
    struct ac_arg ps_num_samples;
    struct ac_arg ps_line_rast_mode;
+   struct ac_arg ps_iter_mask;
 
    struct ac_arg prolog_inputs;
    struct ac_arg vs_inputs[MAX_VERTEX_ATTRIBS];

@@ -2658,6 +2658,7 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
    unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
+   unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
@@ -2682,13 +2683,9 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
    if (!d->sample_location.count)
       radv_emit_default_sample_locations(cmd_buffer->cs, rasterization_samples);
 
-   if (rasterization_samples > 1) {
-      unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
-
-      if (ps_iter_samples > 1) {
-         spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
-         pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(1);
-      }
+   if (ps_iter_samples > 1) {
+      spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
+      pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(1);
    }
 
    if (pdevice->rad_info.gfx_level >= GFX10_3 &&
@@ -2738,6 +2735,14 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
       if (loc->sgpr_idx != -1) {
          uint32_t base_reg = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.user_data_0;
          radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, rasterization_samples);
+      }
+
+      loc =
+         radv_get_user_sgpr(cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT], AC_UD_PS_ITER_MASK);
+      if (loc->sgpr_idx != -1) {
+         const uint16_t ps_iter_mask = ac_get_ps_iter_mask(ps_iter_samples);
+         uint32_t base_reg = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.user_data_0;
+         radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, ps_iter_mask);
       }
    }
 }

@@ -647,6 +647,10 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
       if (key->dynamic_line_rast_mode)
          add_ud_arg(args, 1, AC_ARG_INT, &args->ps_line_rast_mode, AC_UD_PS_LINE_RAST_MODE);
 
+      if (info->ps.reads_sample_mask_in && (info->ps.uses_sample_shading ||
+                                            key->ps.sample_shading_enable))
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ps_iter_mask, AC_UD_PS_ITER_MASK);
+
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.prim_mask);
       if (args->explicit_scratch_args && gfx_level < GFX11) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
