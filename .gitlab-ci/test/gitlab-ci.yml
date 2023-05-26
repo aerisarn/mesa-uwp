@@ -42,9 +42,10 @@ clang-format:
     LLVM_VERSION: 15
   script:
     - shopt -s globstar
-    - clang-format-${LLVM_VERSION:?} --Werror -i
-      src/**/asahi/**/*.{h,c,cpp}
-      src/**/panfrost/**/*.{h,c,cpp}
+    # We need a meson build dir, but its config doesn't actually matter, so
+    # let's just use the default.
+    - meson setup build
+    - ninja -C build clang-format
     - git diff --color=always --exit-code  # Fails if there are diffs
 
 .test-gl:

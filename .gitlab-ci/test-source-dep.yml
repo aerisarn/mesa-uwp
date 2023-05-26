@@ -994,6 +994,9 @@
    rules:
     - !reference [.core-rules, rules]
     - changes:
+      - .clang-format
+      - .clang-format-include
+      - .clang-format-ignore
       - src/**/asahi/**/*
       - src/**/panfrost/**/*
       when: on_success
