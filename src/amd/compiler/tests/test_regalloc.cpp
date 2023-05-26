@@ -60,7 +60,7 @@ BEGIN_TEST(regalloc.subdword_alloc.reuse_16bit_operands)
    }
 END_TEST
 
-BEGIN_TEST(regalloc.32bit_partial_write)
+BEGIN_TEST(regalloc._32bit_partial_write)
    //>> v1: %_:v[0] = p_startpgm
    if (!setup_cs("v1", GFX10))
       return;

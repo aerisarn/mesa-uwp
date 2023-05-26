@@ -874,7 +874,7 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
          .levelCount = 1,
          .baseArrayLayer = src_base_layer,
          .layerCount = region->srcSubresource.layerCount,
-      }
+      },
    };
 
    VkSampleLocationsInfoEXT sample_loc_info;

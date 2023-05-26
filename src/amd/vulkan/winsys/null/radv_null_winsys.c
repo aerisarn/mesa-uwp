@@ -37,6 +37,7 @@ static const struct {
    uint32_t num_render_backends;
    bool has_dedicated_vram;
 } gpu_info[] = {
+   /* clang-format off */
    [CHIP_TAHITI] = {0x6780, 8, true},
    [CHIP_PITCAIRN] = {0x6800, 8, true},
    [CHIP_VERDE] = {0x6820, 4, true},
@@ -69,6 +70,7 @@ static const struct {
    [CHIP_NAVI22] = {0x73C0, 8, true},
    [CHIP_NAVI23] = {0x73E0, 8, true},
    [CHIP_GFX1100] = {0x744C, 24, true},
+   /* clang-format on */
 };
 
 static void
