@@ -88,7 +88,7 @@ blorp_blit_get_frag_coords(nir_builder *b,
       return nir_vec3(b, nir_channel(b, coord, 0), nir_channel(b, coord, 1),
                       nir_load_sample_id(b));
    } else {
-      return nir_vec2(b, nir_channel(b, coord, 0), nir_channel(b, coord, 1));
+      return nir_trim_vector(b, coord, 2);
    }
 }
 
@@ -738,8 +738,7 @@ blorp_nir_manual_blend_bilinear(nir_builder *b, nir_ssa_def *pos,
     * texels on texture edges.
     */
    pos_xy = nir_fmin(b, nir_fmax(b, pos_xy, nir_imm_float(b, 0.0)),
-                        nir_vec2(b, nir_channel(b, rect_grid, 0),
-                                    nir_channel(b, rect_grid, 1)));
+                        nir_trim_vector(b, rect_grid, 2));
 
    /* Store the fractional parts to be used as bilinear interpolation
     * coefficients.
