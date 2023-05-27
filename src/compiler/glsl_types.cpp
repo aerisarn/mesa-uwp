@@ -749,6 +749,26 @@ glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
    return error_type;
 }
 
+struct PACKED explicit_matrix_key {
+   /* Rows and Columns are implied in the bare type. */
+   uintptr_t bare_type;
+   uintptr_t explicit_stride;
+   uintptr_t explicit_alignment;
+   uintptr_t row_major;
+};
+
+static uint32_t
+hash_explicit_matrix_key(const void *a)
+{
+   return _mesa_hash_data(a, sizeof(struct explicit_matrix_key));
+}
+
+static bool
+compare_explicit_matrix_key(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(struct explicit_matrix_key)) == 0;
+}
+
 const glsl_type *
 glsl_type::get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned int columns,
                                         unsigned int explicit_stride, bool row_major, unsigned int explicit_alignment)
@@ -765,31 +785,44 @@ glsl_type::get_explicit_matrix_instance(unsigned int base_type, unsigned int row
 
    assert(columns > 1 || (rows > 1 && !row_major));
 
-   char name[128];
-   snprintf(name, sizeof(name), "%sx%ua%uB%s", bare_type->name,
-            explicit_stride, explicit_alignment, row_major ? "RM" : "");
-   const uint32_t name_hash = _mesa_hash_string(name);
+   /* Ensure there's no internal padding, to avoid multiple hashes for same key. */
+   STATIC_ASSERT(sizeof(struct explicit_matrix_key) == (4 * sizeof(uintptr_t)));
+
+   struct explicit_matrix_key key = { 0 };
+   key.bare_type = (uintptr_t) bare_type;
+   key.explicit_stride = explicit_stride;
+   key.explicit_alignment = explicit_alignment;
+   key.row_major = row_major;
+
+   const uint32_t key_hash = hash_explicit_matrix_key(&key);
 
    simple_mtx_lock(&glsl_type::hash_mutex);
    assert(glsl_type_users > 0);
 
    if (explicit_matrix_types == NULL) {
       explicit_matrix_types =
-         _mesa_hash_table_create(NULL, _mesa_hash_string,
-                                 _mesa_key_string_equal);
+         _mesa_hash_table_create(NULL, hash_explicit_matrix_key, compare_explicit_matrix_key);
    }
 
    const struct hash_entry *entry =
-      _mesa_hash_table_search_pre_hashed(explicit_matrix_types, name_hash, name);
+      _mesa_hash_table_search_pre_hashed(explicit_matrix_types, key_hash, &key);
    if (entry == NULL) {
+
+      char name[128];
+      snprintf(name, sizeof(name), "%sx%ua%uB%s", bare_type->name,
+               explicit_stride, explicit_alignment, row_major ? "RM" : "");
+
       const glsl_type *t = new glsl_type(bare_type->gl_type,
                                          (glsl_base_type)base_type,
                                          rows, columns, name,
                                          explicit_stride, row_major,
                                          explicit_alignment);
 
+      struct explicit_matrix_key *stored_key = ralloc(t->mem_ctx, struct explicit_matrix_key);
+      memcpy(stored_key, &key, sizeof(key));
+
       entry = _mesa_hash_table_insert_pre_hashed(explicit_matrix_types,
-                                                 name_hash, t->name, (void *)t);
+                                                 key_hash, stored_key, (void *)t);
    }
 
    auto t = (const glsl_type *) entry->data;
