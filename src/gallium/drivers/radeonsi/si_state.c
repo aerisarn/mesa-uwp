@@ -5576,29 +5576,10 @@ static void gfx6_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_
    if (sctx->gfx_level >= GFX7) {
       si_pm4_set_reg(pm4, R_00B864_COMPUTE_STATIC_THREAD_MGMT_SE2, compute_cu_en);
       si_pm4_set_reg(pm4, R_00B868_COMPUTE_STATIC_THREAD_MGMT_SE3, compute_cu_en);
-
-      /* Disable profiling on compute chips. */
-      if (!sscreen->info.has_graphics) {
-         si_pm4_set_reg(pm4, R_00B82C_COMPUTE_PERFCOUNT_ENABLE, 0);
-         si_pm4_set_reg(pm4, R_00B878_COMPUTE_THREAD_TRACE_ENABLE, 0);
-      }
-   }
-
-   if (!sscreen->info.has_graphics && sscreen->info.family >= CHIP_GFX940) {
-      si_pm4_set_reg(pm4, R_00B89C_COMPUTE_TG_CHUNK_SIZE, 0);
-      si_pm4_set_reg(pm4, R_00B8B4_COMPUTE_PGM_RSRC3, 0);
    }
 
    if (sctx->gfx_level >= GFX9)
       si_pm4_set_reg(pm4, R_0301EC_CP_COHER_START_DELAY, 0);
-
-   if (sscreen->info.family == CHIP_MI100 ||
-       sscreen->info.family == CHIP_MI200) {
-      si_pm4_set_reg(pm4, R_00B894_COMPUTE_STATIC_THREAD_MGMT_SE4, compute_cu_en);
-      si_pm4_set_reg(pm4, R_00B898_COMPUTE_STATIC_THREAD_MGMT_SE5, compute_cu_en);
-      si_pm4_set_reg(pm4, R_00B89C_COMPUTE_STATIC_THREAD_MGMT_SE6, compute_cu_en);
-      si_pm4_set_reg(pm4, R_00B8A0_COMPUTE_STATIC_THREAD_MGMT_SE7, compute_cu_en);
-   }
 
    /* Set the pointer to border colors. MI200 doesn't support border colors. */
    if (sctx->gfx_level >= GFX7 && sctx->border_color_buffer) {
@@ -5781,6 +5762,51 @@ static void gfx6_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_
    }
 
 done:
+   sctx->cs_preamble_state = pm4;
+   sctx->cs_preamble_state_tmz = si_pm4_clone(pm4); /* Make a copy of the preamble for TMZ. */
+}
+
+static void cdna_init_compute_preamble_state(struct si_context *sctx)
+{
+   struct si_screen *sscreen = sctx->screen;
+   uint64_t border_color_va =
+      sctx->border_color_buffer ? sctx->border_color_buffer->gpu_address : 0;
+   uint32_t compute_cu_en = S_00B858_SH0_CU_EN(sscreen->info.spi_cu_en) |
+                            S_00B858_SH1_CU_EN(sscreen->info.spi_cu_en);
+
+   struct si_pm4_state *pm4 = si_pm4_create_sized(48);
+   if (!pm4)
+      return;
+
+   /* Compute registers. */
+   /* Disable profiling on compute chips. */
+   si_pm4_set_reg(pm4, R_00B82C_COMPUTE_PERFCOUNT_ENABLE, 0);
+   si_pm4_set_reg(pm4, R_00B834_COMPUTE_PGM_HI, S_00B834_DATA(sctx->screen->info.address32_hi >> 8));
+   si_pm4_set_reg(pm4, R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0, compute_cu_en);
+   si_pm4_set_reg(pm4, R_00B85C_COMPUTE_STATIC_THREAD_MGMT_SE1, compute_cu_en);
+   si_pm4_set_reg(pm4, R_00B864_COMPUTE_STATIC_THREAD_MGMT_SE2, compute_cu_en);
+   si_pm4_set_reg(pm4, R_00B868_COMPUTE_STATIC_THREAD_MGMT_SE3, compute_cu_en);
+   si_pm4_set_reg(pm4, R_00B878_COMPUTE_THREAD_TRACE_ENABLE, 0);
+
+   if (sscreen->info.family >= CHIP_GFX940) {
+      si_pm4_set_reg(pm4, R_00B89C_COMPUTE_TG_CHUNK_SIZE, 0);
+      si_pm4_set_reg(pm4, R_00B8B4_COMPUTE_PGM_RSRC3, 0);
+   } else {
+      si_pm4_set_reg(pm4, R_00B894_COMPUTE_STATIC_THREAD_MGMT_SE4, compute_cu_en);
+      si_pm4_set_reg(pm4, R_00B898_COMPUTE_STATIC_THREAD_MGMT_SE5, compute_cu_en);
+      si_pm4_set_reg(pm4, R_00B89C_COMPUTE_STATIC_THREAD_MGMT_SE6, compute_cu_en);
+      si_pm4_set_reg(pm4, R_00B8A0_COMPUTE_STATIC_THREAD_MGMT_SE7, compute_cu_en);
+   }
+
+   si_pm4_set_reg(pm4, R_0301EC_CP_COHER_START_DELAY, 0);
+
+   /* Set the pointer to border colors. Only MI100 supports border colors. */
+   if (sscreen->info.family == CHIP_MI100) {
+      si_pm4_set_reg(pm4, R_030E00_TA_CS_BC_BASE_ADDR, border_color_va >> 8);
+      si_pm4_set_reg(pm4, R_030E04_TA_CS_BC_BASE_ADDR_HI,
+                     S_030E04_ADDRESS(border_color_va >> 40));
+   }
+
    sctx->cs_preamble_state = pm4;
    sctx->cs_preamble_state_tmz = si_pm4_clone(pm4); /* Make a copy of the preamble for TMZ. */
 }
@@ -6084,7 +6110,9 @@ done:
 
 void si_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 {
-   if (sctx->gfx_level >= GFX10)
+   if (!sctx->screen->info.has_graphics)
+      cdna_init_compute_preamble_state(sctx);
+   else if (sctx->gfx_level >= GFX10)
       gfx10_init_gfx_preamble_state(sctx, uses_reg_shadowing);
    else
       gfx6_init_gfx_preamble_state(sctx, uses_reg_shadowing);
