@@ -363,6 +363,8 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
       case nir_op_ine:
       case nir_op_ult:
       case nir_op_uge:
+      case nir_op_bitz:
+      case nir_op_bitnz:
          return (bit_size == 8 || !(chip >= GFX8 && nir_dest_is_divergent(alu->dest.dest))) ? 32 : 0;
       default:
          return 0;
