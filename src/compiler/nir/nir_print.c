@@ -1093,6 +1093,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          switch (instr->intrinsic) {
          case nir_intrinsic_load_input:
          case nir_intrinsic_load_interpolated_input:
+         case nir_intrinsic_load_per_vertex_input:
             mode = nir_var_shader_in;
             break;
 
