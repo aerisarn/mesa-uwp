@@ -64,7 +64,10 @@ lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
       if (nir_alu_type_get_type_size(type) == 0)
          src = convert_to_bit_size(bld, src, type, bit_size);
 
-      if (i == 1 && (op == nir_op_ishl || op == nir_op_ishr || op == nir_op_ushr)) {
+      if (i == 1 && (op == nir_op_ishl || op == nir_op_ishr || op == nir_op_ushr ||
+                     op == nir_op_bitz || op == nir_op_bitz8 || op == nir_op_bitz16 ||
+                     op == nir_op_bitz32 || op == nir_op_bitnz || op == nir_op_bitnz8 ||
+                     op == nir_op_bitnz16 || op == nir_op_bitnz32)) {
          assert(util_is_power_of_two_nonzero(dst_bit_size));
          src = nir_iand(bld, src, nir_imm_int(bld, dst_bit_size - 1));
       }
