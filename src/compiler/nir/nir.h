@@ -3848,6 +3848,9 @@ typedef struct nir_shader_compiler_options {
    /** Backend supports pack_half_2x16_rtz_split. */
    bool has_pack_half_2x16_rtz;
 
+   /** Backend supports bitz/bitnz. */
+   bool has_bit_test;
+
    /**
     * Is this the Intel vec4 backend?
     *
