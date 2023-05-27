@@ -3227,6 +3227,8 @@ nir_alu_instr_is_comparison(const nir_alu_instr *instr)
    CASE_ALL_SIZES(nir_op_uge)
    CASE_ALL_SIZES(nir_op_ieq)
    CASE_ALL_SIZES(nir_op_ine)
+   CASE_ALL_SIZES(nir_op_bitz)
+   CASE_ALL_SIZES(nir_op_bitnz)
    case nir_op_inot:
       return true;
    default:

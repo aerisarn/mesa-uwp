@@ -571,30 +571,32 @@ if (src0.z < 0 && absZ >= absX && absZ >= absY) dst.x = 5;
 unop_reduce("fsum", 1, tfloat, tfloat, "{src}", "{src0} + {src1}", "{src}",
             description = "Sum of vector components")
 
-def binop_convert(name, out_type, in_type, alg_props, const_expr, description=""):
-   opcode(name, 0, out_type, [0, 0], [in_type, in_type],
+def binop_convert(name, out_type, in_type1, alg_props, const_expr, description="", in_type2=None):
+   if in_type2 is None:
+      in_type2 = in_type1
+   opcode(name, 0, out_type, [0, 0], [in_type1, in_type2],
           False, alg_props, const_expr, description)
 
 def binop(name, ty, alg_props, const_expr, description = ""):
    binop_convert(name, ty, ty, alg_props, const_expr, description)
 
-def binop_compare(name, ty, alg_props, const_expr, description = ""):
-   binop_convert(name, tbool1, ty, alg_props, const_expr, description)
+def binop_compare(name, ty, alg_props, const_expr, description = "", ty2=None):
+   binop_convert(name, tbool1, ty, alg_props, const_expr, description, ty2)
 
-def binop_compare8(name, ty, alg_props, const_expr, description = ""):
-   binop_convert(name, tbool8, ty, alg_props, const_expr, description)
+def binop_compare8(name, ty, alg_props, const_expr, description = "", ty2=None):
+   binop_convert(name, tbool8, ty, alg_props, const_expr, description, ty2)
 
-def binop_compare16(name, ty, alg_props, const_expr, description = ""):
-   binop_convert(name, tbool16, ty, alg_props, const_expr, description)
+def binop_compare16(name, ty, alg_props, const_expr, description = "", ty2=None):
+   binop_convert(name, tbool16, ty, alg_props, const_expr, description, ty2)
 
-def binop_compare32(name, ty, alg_props, const_expr, description = ""):
-   binop_convert(name, tbool32, ty, alg_props, const_expr, description)
+def binop_compare32(name, ty, alg_props, const_expr, description = "", ty2=None):
+   binop_convert(name, tbool32, ty, alg_props, const_expr, description, ty2)
 
-def binop_compare_all_sizes(name, ty, alg_props, const_expr, description = ""):
-   binop_compare(name, ty, alg_props, const_expr, description)
-   binop_compare8(name + "8", ty, alg_props, const_expr, description)
-   binop_compare16(name + "16", ty, alg_props, const_expr, description)
-   binop_compare32(name + "32", ty, alg_props, const_expr, description)
+def binop_compare_all_sizes(name, ty, alg_props, const_expr, description = "", ty2=None):
+   binop_compare(name, ty, alg_props, const_expr, description, ty2)
+   binop_compare8(name + "8", ty, alg_props, const_expr, description, ty2)
+   binop_compare16(name + "16", ty, alg_props, const_expr, description, ty2)
+   binop_compare32(name + "32", ty, alg_props, const_expr, description, ty2)
 
 def binop_horiz(name, out_size, out_type, src1_size, src1_type, src2_size,
                 src2_type, const_expr, description = ""):
@@ -846,6 +848,12 @@ binop_compare_all_sizes("ieq", tint, _2src_commutative, "src0 == src1")
 binop_compare_all_sizes("ine", tint, _2src_commutative, "src0 != src1")
 binop_compare_all_sizes("ult", tuint, "", "src0 < src1")
 binop_compare_all_sizes("uge", tuint, "", "src0 >= src1")
+
+binop_compare_all_sizes("bitnz", tuint, "", "((uint64_t)src0 >> (src1 & (bit_size - 1)) & 0x1) == 0x1",
+   "only uses the least significant bits like SM5 shifts", tuint32)
+
+binop_compare_all_sizes("bitz", tuint, "", "((uint64_t)src0 >> (src1 & (bit_size - 1)) & 0x1) == 0x0",
+   "only uses the least significant bits like SM5 shifts", tuint32)
 
 # integer-aware GLSL-style comparisons that compare floats and ints
 
