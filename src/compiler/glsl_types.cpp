@@ -712,15 +712,14 @@ glsl_type::get_instance(unsigned base_type, unsigned rows, unsigned columns,
                                          t->name, (void *)t);
       }
 
-      assert(((glsl_type *) entry->data)->base_type == base_type);
-      assert(((glsl_type *) entry->data)->vector_elements == rows);
-      assert(((glsl_type *) entry->data)->matrix_columns == columns);
-      assert(((glsl_type *) entry->data)->explicit_stride == explicit_stride);
-      assert(((glsl_type *) entry->data)->explicit_alignment == explicit_alignment);
-
-      const glsl_type *t = (const glsl_type *) entry->data;
-
+      auto t = (const glsl_type *) entry->data;
       simple_mtx_unlock(&glsl_type::hash_mutex);
+
+      assert(t->base_type == base_type);
+      assert(t->vector_elements == rows);
+      assert(t->matrix_columns == columns);
+      assert(t->explicit_stride == explicit_stride);
+      assert(t->explicit_alignment == explicit_alignment);
 
       return t;
    }
@@ -1261,13 +1260,12 @@ glsl_type::get_array_instance(const glsl_type *element,
                                       (void *) t);
    }
 
-   assert(((glsl_type *) entry->data)->base_type == GLSL_TYPE_ARRAY);
-   assert(((glsl_type *) entry->data)->length == array_size);
-   assert(((glsl_type *) entry->data)->fields.array == element);
-
-   glsl_type *t = (glsl_type *) entry->data;
-
+   auto t = (const glsl_type *) entry->data;
    simple_mtx_unlock(&glsl_type::hash_mutex);
+
+   assert(t->base_type == GLSL_TYPE_ARRAY);
+   assert(t->length == array_size);
+   assert(t->fields.array == element);
 
    return t;
 }
@@ -1472,15 +1470,14 @@ glsl_type::get_struct_instance(const glsl_struct_field *fields,
       entry = _mesa_hash_table_insert(struct_types, t, (void *) t);
    }
 
-   assert(((glsl_type *) entry->data)->base_type == GLSL_TYPE_STRUCT);
-   assert(((glsl_type *) entry->data)->length == num_fields);
-   assert(strcmp(((glsl_type *) entry->data)->name, name) == 0);
-   assert(((glsl_type *) entry->data)->packed == packed);
-   assert(((glsl_type *) entry->data)->explicit_alignment == explicit_alignment);
-
-   glsl_type *t = (glsl_type *) entry->data;
-
+   auto t = (const glsl_type *) entry->data;
    simple_mtx_unlock(&glsl_type::hash_mutex);
+
+   assert(t->base_type == GLSL_TYPE_STRUCT);
+   assert(t->length == num_fields);
+   assert(strcmp(t->name, name) == 0);
+   assert(t->packed == packed);
+   assert(t->explicit_alignment == explicit_alignment);
 
    return t;
 }
@@ -1512,13 +1509,12 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
       entry = _mesa_hash_table_insert(interface_types, t, (void *) t);
    }
 
-   assert(((glsl_type *) entry->data)->base_type == GLSL_TYPE_INTERFACE);
-   assert(((glsl_type *) entry->data)->length == num_fields);
-   assert(strcmp(((glsl_type *) entry->data)->name, block_name) == 0);
-
-   glsl_type *t = (glsl_type *) entry->data;
-
+   auto t = (const glsl_type *) entry->data;
    simple_mtx_unlock(&glsl_type::hash_mutex);
+
+   assert(t->base_type == GLSL_TYPE_INTERFACE);
+   assert(t->length == num_fields);
+   assert(strcmp(t->name, block_name) == 0);
 
    return t;
 }
@@ -1542,12 +1538,11 @@ glsl_type::get_subroutine_instance(const char *subroutine_name)
       entry = _mesa_hash_table_insert(subroutine_types, t->name, (void *) t);
    }
 
-   assert(((glsl_type *) entry->data)->base_type == GLSL_TYPE_SUBROUTINE);
-   assert(strcmp(((glsl_type *) entry->data)->name, subroutine_name) == 0);
-
-   glsl_type *t = (glsl_type *) entry->data;
-
+   auto t = (const glsl_type *) entry->data;
    simple_mtx_unlock(&glsl_type::hash_mutex);
+
+   assert(t->base_type == GLSL_TYPE_SUBROUTINE);
+   assert(strcmp(t->name, subroutine_name) == 0);
 
    return t;
 }
@@ -1597,12 +1592,11 @@ glsl_type::get_function_instance(const glsl_type *return_type,
       entry = _mesa_hash_table_insert(function_types, t, (void *) t);
    }
 
-   const glsl_type *t = (const glsl_type *)entry->data;
+   auto t = (const glsl_type *)entry->data;
+   simple_mtx_unlock(&glsl_type::hash_mutex);
 
    assert(t->base_type == GLSL_TYPE_FUNCTION);
    assert(t->length == num_params);
-
-   simple_mtx_unlock(&glsl_type::hash_mutex);
 
    return t;
 }
