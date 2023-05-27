@@ -325,8 +325,6 @@ emit_lrz_clears(struct fd_batch *batch)
       fd6_emit_flushes(batch->ctx, ring,
                        FD6_FLUSH_CCU_COLOR |
                        FD6_INVALIDATE_CACHE);
-
-      fd_wfi(batch, ring);
    }
 }
 
@@ -882,8 +880,6 @@ emit_binning_pass(struct fd_batch *batch) assert_dt
    }
    trace_end_binning_ib(&batch->trace, ring);
 
-   fd_reset_wfi(batch);
-
    OUT_PKT7(ring, CP_SET_DRAW_STATE, 3);
    OUT_RING(ring, CP_SET_DRAW_STATE__0_COUNT(0) |
                      CP_SET_DRAW_STATE__0_DISABLE_ALL_GROUPS |
@@ -987,7 +983,7 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
    OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_LOCAL, 1);
    OUT_RING(ring, 0x1);
 
-   fd_wfi(batch, ring);
+   OUT_WFI5(ring);
    fd6_emit_ccu_cntl(ring, screen, true);
 
    emit_zs<CHIP>(ring, pfb->zsbuf, batch->gmem_state);
@@ -1838,7 +1834,7 @@ fd6_emit_sysmem(struct fd_batch *batch)
          emit_sysmem_clears<CHIP>(batch, subpass);
       }
 
-      fd_wfi(batch, ring);
+      OUT_WFI5(ring);
       fd6_emit_ccu_cntl(ring, screen, false);
 
       struct pipe_framebuffer_state *pfb = &batch->framebuffer;

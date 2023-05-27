@@ -441,7 +441,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
     * themselves.
     */
    if (ctx->dirty & FD_DIRTY_STREAMOUT)
-      fd_wfi(ctx->batch, ring);
+      OUT_WFI5(ring);
 
    ctx->last.streamout_mask = streamout_mask;
    emit->streamout_mask = streamout_mask;

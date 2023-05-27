@@ -220,8 +220,6 @@ timestamp_resume(struct fd_acc_query *aq, struct fd_batch *batch)
             CP_EVENT_WRITE_0_EVENT(RB_DONE_TS) | CP_EVENT_WRITE_0_TIMESTAMP);
    OUT_RELOC(ring, query_sample(aq, start));
    OUT_RING(ring, 0x00000000);
-
-   fd_reset_wfi(batch);
 }
 
 static void
@@ -235,8 +233,7 @@ time_elapsed_pause(struct fd_acc_query *aq, struct fd_batch *batch) assert_dt
    OUT_RELOC(ring, query_sample(aq, stop));
    OUT_RING(ring, 0x00000000);
 
-   fd_reset_wfi(batch);
-   fd_wfi(batch, ring);
+   OUT_WFI5(ring);
 
    /* result += stop - start: */
    OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
@@ -426,7 +423,7 @@ primitives_generated_resume(struct fd_acc_query *aq,
 {
    struct fd_ringbuffer *ring = batch->draw;
 
-   fd_wfi(batch, ring);
+   OUT_WFI5(ring);
 
    OUT_PKT7(ring, CP_REG_TO_MEM, 3);
    OUT_RING(ring, CP_REG_TO_MEM_0_64B | CP_REG_TO_MEM_0_CNT(counter_count * 2) |
@@ -442,7 +439,7 @@ primitives_generated_pause(struct fd_acc_query *aq,
 {
    struct fd_ringbuffer *ring = batch->draw;
 
-   fd_wfi(batch, ring);
+   OUT_WFI5(ring);
 
    /* snapshot the end values: */
    OUT_PKT7(ring, CP_REG_TO_MEM, 3);
@@ -501,7 +498,7 @@ primitives_emitted_resume(struct fd_acc_query *aq,
 {
    struct fd_ringbuffer *ring = batch->draw;
 
-   fd_wfi(batch, ring);
+   OUT_WFI5(ring);
 
    ASSERT_ALIGNED(struct fd6_primitives_sample, start[0], 32);
 
@@ -517,7 +514,7 @@ primitives_emitted_pause(struct fd_acc_query *aq,
 {
    struct fd_ringbuffer *ring = batch->draw;
 
-   fd_wfi(batch, ring);
+   OUT_WFI5(ring);
 
    ASSERT_ALIGNED(struct fd6_primitives_sample, stop[0], 32);
 
@@ -599,7 +596,7 @@ perfcntr_resume(struct fd_acc_query *aq, struct fd_batch *batch) assert_dt
    unsigned counters_per_group[screen->num_perfcntr_groups];
    memset(counters_per_group, 0, sizeof(counters_per_group));
 
-   fd_wfi(batch, ring);
+   OUT_WFI5(ring);
 
    /* configure performance counters for the requested queries: */
    for (unsigned i = 0; i < data->num_query_entries; i++) {
@@ -639,7 +636,7 @@ perfcntr_pause(struct fd_acc_query *aq, struct fd_batch *batch) assert_dt
    unsigned counters_per_group[screen->num_perfcntr_groups];
    memset(counters_per_group, 0, sizeof(counters_per_group));
 
-   fd_wfi(batch, ring);
+   OUT_WFI5(ring);
 
    /* TODO do we need to bother to turn anything off? */
 

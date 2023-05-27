@@ -1084,7 +1084,7 @@ fd6_resolve_tile(struct fd_batch *batch, struct fd_ringbuffer *ring,
    fd6_cache_inv(batch, ring);
 
    /* Wait for CACHE_INVALIDATE to land */
-   fd_wfi(batch, ring);
+   OUT_WFI5(ring);
 
    OUT_PKT7(ring, CP_BLIT, 1);
    OUT_RING(ring, CP_BLIT_0_OP(BLIT_OP_SCALE));

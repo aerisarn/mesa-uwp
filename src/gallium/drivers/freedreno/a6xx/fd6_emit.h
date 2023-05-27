@@ -221,8 +221,6 @@ fd6_event_write(struct fd_batch *batch, struct fd_ringbuffer *ring,
 {
    unsigned seqno = 0;
 
-   fd_reset_wfi(batch);
-
    OUT_PKT7(ring, CP_EVENT_WRITE, timestamp ? 4 : 1);
    OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(evt));
    if (timestamp) {

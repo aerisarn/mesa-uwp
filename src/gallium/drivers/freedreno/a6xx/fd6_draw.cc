@@ -527,7 +527,6 @@ draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    }
 
    emit_marker6(ring, 7);
-   fd_reset_wfi(ctx->batch);
 
    flush_streamout(ctx, &emit);
 
