@@ -1527,22 +1527,20 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
 const glsl_type *
 glsl_type::get_subroutine_instance(const char *subroutine_name)
 {
-   const glsl_type key(subroutine_name);
-
    simple_mtx_lock(&glsl_type::hash_mutex);
    assert(glsl_type_users > 0);
 
    if (subroutine_types == NULL) {
-      subroutine_types = _mesa_hash_table_create(NULL, record_key_hash,
-                                                 record_key_compare);
+      subroutine_types = _mesa_hash_table_create(NULL, _mesa_hash_string,
+                                                 _mesa_key_string_equal);
    }
 
    const struct hash_entry *entry = _mesa_hash_table_search(subroutine_types,
-                                                            &key);
+                                                            subroutine_name);
    if (entry == NULL) {
       const glsl_type *t = new glsl_type(subroutine_name);
 
-      entry = _mesa_hash_table_insert(subroutine_types, t, (void *) t);
+      entry = _mesa_hash_table_insert(subroutine_types, t->name, (void *) t);
    }
 
    assert(((glsl_type *) entry->data)->base_type == GLSL_TYPE_SUBROUTINE);
