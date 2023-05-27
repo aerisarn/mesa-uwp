@@ -22,9 +22,6 @@ KHR-GL45.texture_cube_map_array.color_depth_attachments,Fail
 # new fails with gl45:
 #
 
-# Various limits we cannot or do not support:
-KHR-GL45.limits.max_vertex_streams,Fail
-
 # MESA: warning: sample averaging on fallback z24s8 blit when we shouldn't.
 KHR-GL45.direct_state_access.renderbuffers_storage_multisample,Fail
 

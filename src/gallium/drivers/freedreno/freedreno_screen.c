@@ -473,6 +473,10 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return !is_a5xx(screen);
 
    /* Stream output. */
+   case PIPE_CAP_MAX_VERTEX_STREAMS:
+      if (is_a6xx(screen))  /* has SO + GS */
+         return PIPE_MAX_SO_BUFFERS;
+      return 0;
    case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
       if (is_ir3(screen))
          return PIPE_MAX_SO_BUFFERS;
