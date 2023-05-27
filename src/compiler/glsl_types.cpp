@@ -482,10 +482,6 @@ static void
 hash_free_type_function(struct hash_entry *entry)
 {
    glsl_type *type = (glsl_type *) entry->data;
-
-   if (type->is_array())
-      free((void*)entry->key);
-
    delete type;
 }
 
@@ -1228,7 +1224,7 @@ glsl_type::get_array_instance(const glsl_type *element,
       const glsl_type *t = new glsl_type(element, array_size, explicit_stride);
 
       entry = _mesa_hash_table_insert_pre_hashed(array_types, key_hash,
-                                                 strdup(key),
+                                                 ralloc_strdup(t->mem_ctx, key),
                                                  (void *) t);
    }
 
