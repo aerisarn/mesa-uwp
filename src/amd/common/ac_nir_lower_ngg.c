@@ -407,12 +407,9 @@ pervertex_lds_addr(nir_builder *b, nir_ssa_def *vertex_idx, unsigned per_vtx_byt
 
 static nir_ssa_def *
 emit_pack_ngg_prim_exp_arg(nir_builder *b, unsigned num_vertices_per_primitives,
-                           nir_ssa_def *vertex_indices[3], nir_ssa_def *is_null_prim,
-                           bool use_edgeflags)
+                           nir_ssa_def *vertex_indices[3], nir_ssa_def *is_null_prim)
 {
-   nir_ssa_def *arg = use_edgeflags
-                      ? nir_load_initial_edgeflags_amd(b)
-                      : nir_imm_int(b, 0);
+   nir_ssa_def *arg = nir_load_initial_edgeflags_amd(b);
 
    for (unsigned i = 0; i < num_vertices_per_primitives; ++i) {
       assert(vertex_indices[i]);
@@ -517,8 +514,7 @@ emit_ngg_nogs_prim_exp_arg(nir_builder *b, lower_ngg_nogs_state *s)
       for (unsigned v = 0; v < s->options->num_vertices_per_primitive; ++v)
          vtx_idx[v] = nir_load_var(b, s->gs_vtx_indices_vars[v]);
 
-      return emit_pack_ngg_prim_exp_arg(b, s->options->num_vertices_per_primitive, vtx_idx, NULL,
-                                        s->options->use_edgeflags);
+      return emit_pack_ngg_prim_exp_arg(b, s->options->num_vertices_per_primitive, vtx_idx, NULL);
    }
 }
 
@@ -1042,7 +1038,7 @@ compact_vertices_after_culling(nir_builder *b,
 
       nir_ssa_def *prim_exp_arg =
          emit_pack_ngg_prim_exp_arg(b, s->options->num_vertices_per_primitive,
-                                    exporter_vtx_indices, NULL, s->options->use_edgeflags);
+                                    exporter_vtx_indices, NULL);
       nir_store_var(b, prim_exp_arg_var, prim_exp_arg, 0x1u);
    }
    nir_pop_if(b, if_gs_accepted);
@@ -2933,7 +2929,8 @@ ngg_gs_export_primitives(nir_builder *b, nir_ssa_def *max_num_out_prims, nir_ssa
                                  nir_isub(b, vtx_indices[2], is_odd), vtx_indices[2]);
    }
 
-   nir_ssa_def *arg = emit_pack_ngg_prim_exp_arg(b, s->num_vertices_per_primitive, vtx_indices, is_null_prim, false);
+   nir_ssa_def *arg = emit_pack_ngg_prim_exp_arg(b, s->num_vertices_per_primitive, vtx_indices,
+                                                 is_null_prim);
    ac_nir_export_primitive(b, arg);
    nir_pop_if(b, if_prim_export_thread);
 }
@@ -4388,7 +4385,8 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
          indices[i] = nir_umin(b, indices[i], max_vtx_idx);
       }
 
-      nir_ssa_def *prim_exp_arg = emit_pack_ngg_prim_exp_arg(b, s->vertices_per_prim, indices, cull_flag, false);
+      nir_ssa_def *prim_exp_arg = emit_pack_ngg_prim_exp_arg(b, s->vertices_per_prim, indices,
+                                                             cull_flag);
 
       ms_emit_primitive_export(b, prim_exp_arg, per_primitive_outputs, s);
 

@@ -472,6 +472,9 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
          replacement = nir_imm_bool(b, s->pl_key->ps.line_smooth_enabled);
       }
       break;
+   case nir_intrinsic_load_initial_edgeflags_amd:
+      replacement = nir_imm_int(b, 0);
+      break;
    default:
       progress = false;
       break;
