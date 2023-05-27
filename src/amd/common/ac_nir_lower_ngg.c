@@ -570,7 +570,7 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *s, nir_ssa_def *
                             .memory_semantics = NIR_MEMORY_ACQ_REL,
                             .memory_modes = nir_var_mem_shared);
 
-         unsigned edge_flag_bits = (1u << 9) | (1u << 19) | (1u << 29);
+         unsigned edge_flag_bits = ac_get_all_edge_flag_bits();
          nir_ssa_def *mask = nir_imm_intN_t(b, ~edge_flag_bits, 32);
 
          unsigned edge_flag_offset = 0;

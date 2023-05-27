@@ -224,6 +224,8 @@ enum gl_access_qualifier ac_get_mem_access_flags(const nir_intrinsic_instr *inst
 union ac_hw_cache_flags ac_get_hw_cache_flags(const struct radeon_info *info,
                                               enum gl_access_qualifier access);
 
+unsigned ac_get_all_edge_flag_bits(void);
+
 #ifdef __cplusplus
 }
 #endif

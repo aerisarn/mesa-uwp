@@ -1153,3 +1153,9 @@ union ac_hw_cache_flags ac_get_hw_cache_flags(const struct radeon_info *info,
 
    return result;
 }
+
+unsigned ac_get_all_edge_flag_bits(void)
+{
+   /* This will be extended in the future. */
+   return (1u << 9) | (1u << 19) | (1u << 29);
+}

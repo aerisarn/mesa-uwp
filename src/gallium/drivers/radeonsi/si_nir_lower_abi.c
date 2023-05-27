@@ -562,7 +562,12 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = ac_nir_unpack_arg(b, &args->ac, args->ac.gs_tg_info, 22, 9);
       break;
    case nir_intrinsic_load_initial_edgeflags_amd:
-      if (stage == MESA_SHADER_VERTEX && !sel->info.base.vs.blit_sgprs_amd) {
+      if (shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES ||
+          (shader->selector->stage == MESA_SHADER_VERTEX &&
+           shader->selector->info.base.vs.blit_sgprs_amd)) {
+         /* Line primitives and blits don't need edge flags. */
+         replacement = nir_imm_int(b, 0);
+      } else if (shader->selector->stage == MESA_SHADER_VERTEX) {
          /* Use the following trick to extract the edge flags:
           *   extracted = v_and_b32 gs_invocation_id, 0x700 ; get edge flags at bits 8, 9, 10
           *   shifted = v_mul_u32_u24 extracted, 0x80402u   ; shift the bits: 8->9, 9->19, 10->29
@@ -573,7 +578,11 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
          tmp = nir_imul_imm(b, tmp, 0x80402);
          replacement = nir_iand_imm(b, tmp, 0x20080200);
       } else {
-         replacement = nir_imm_int(b, 0);
+         /* Edge flags are always enabled when polygon mode is enabled, so we always have to
+          * return valid edge flags if the primitive type is not lines and if we are not blitting
+          * because the shader doesn't know when polygon mode is enabled.
+          */
+         replacement = nir_imm_int(b, ac_get_all_edge_flag_bits());
       }
       break;
    case nir_intrinsic_load_packed_passthrough_primitive_amd:
