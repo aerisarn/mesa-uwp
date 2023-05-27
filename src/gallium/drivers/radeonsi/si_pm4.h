@@ -57,6 +57,8 @@ void si_pm4_free_state(struct si_context *sctx, struct si_pm4_state *state, unsi
 
 void si_pm4_emit(struct si_context *sctx, struct si_pm4_state *state);
 void si_pm4_reset_emitted(struct si_context *sctx);
+struct si_pm4_state *si_pm4_create_sized(unsigned max_dw);
+struct si_pm4_state *si_pm4_clone(struct si_pm4_state *orig);
 
 #ifdef __cplusplus
 }

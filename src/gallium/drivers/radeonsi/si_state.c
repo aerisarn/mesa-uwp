@@ -5547,17 +5547,10 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
                             S_00B858_SH1_CU_EN(sscreen->info.spi_cu_en);
    bool has_clear_state = sscreen->info.has_clear_state;
 
-   struct si_cs_preamble {
-      struct si_pm4_state pm4;
-      uint32_t more_pm4[150]; /* Add more space because the preamble is large. */
-   };
-   struct si_pm4_state *pm4 = (struct si_pm4_state *)CALLOC_STRUCT(si_cs_preamble);
-
+   /* We need more space because the preamble is large. */
+   struct si_pm4_state *pm4 = si_pm4_create_sized(214);
    if (!pm4)
       return;
-
-   /* Add all the space that we allocated. */
-   pm4->max_dw = (sizeof(struct si_cs_preamble) - offsetof(struct si_cs_preamble, pm4.pm4)) / 4;
 
    if (sctx->has_graphics && !uses_reg_shadowing) {
       si_pm4_cmd_add(pm4, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
@@ -6032,8 +6025,5 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 
 done:
    sctx->cs_preamble_state = pm4;
-
-   /* Make a copy of the preamble for TMZ. */
-   sctx->cs_preamble_state_tmz = (struct si_pm4_state *)CALLOC_STRUCT(si_cs_preamble);
-   memcpy(sctx->cs_preamble_state_tmz, sctx->cs_preamble_state, sizeof(struct si_cs_preamble));
+   sctx->cs_preamble_state_tmz = si_pm4_clone(pm4); /* Make a copy of the preamble for TMZ. */
 }

@@ -153,3 +153,23 @@ void si_pm4_reset_emitted(struct si_context *sctx)
          sctx->dirty_states |= BITFIELD_BIT(i);
    }
 }
+
+struct si_pm4_state *si_pm4_create_sized(unsigned max_dw)
+{
+   struct si_pm4_state *pm4;
+   unsigned size = sizeof(*pm4) + 4 * (max_dw - ARRAY_SIZE(pm4->pm4));
+
+   pm4 = (struct si_pm4_state *)calloc(1, size);
+   if (pm4)
+      pm4->max_dw = max_dw;
+   return pm4;
+}
+
+struct si_pm4_state *si_pm4_clone(struct si_pm4_state *orig)
+{
+   struct si_pm4_state *pm4 = si_pm4_create_sized(orig->max_dw);
+
+   if (pm4)
+      memcpy(pm4, orig, sizeof(*pm4) + 4 * (pm4->max_dw - ARRAY_SIZE(pm4->pm4)));
+   return pm4;
+}
