@@ -543,6 +543,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return (screen->max_freq > 0) &&
              (is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen));
    case PIPE_CAP_QUERY_BUFFER_OBJECT:
+   case PIPE_CAP_QUERY_SO_OVERFLOW:
       return is_a6xx(screen);
 
    case PIPE_CAP_VENDOR_ID:

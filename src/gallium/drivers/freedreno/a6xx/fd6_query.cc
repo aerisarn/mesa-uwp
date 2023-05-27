@@ -506,6 +506,34 @@ primitives_emitted_resume(struct fd_acc_query *aq,
 }
 
 static void
+accumultate_primitives_emitted(struct fd_acc_query *aq,
+                               struct fd_ringbuffer *ring,
+                               int idx)
+{
+   /* result += stop - start: */
+   OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
+   OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE | CP_MEM_TO_MEM_0_NEG_C | 0x80000000);
+   primitives_reloc(ring, aq, result.emitted);
+   primitives_reloc(ring, aq, result.emitted);
+   primitives_reloc(ring, aq, stop[idx].emitted);
+   primitives_reloc(ring, aq, start[idx].emitted);
+}
+
+static void
+accumultate_primitives_generated(struct fd_acc_query *aq,
+                                 struct fd_ringbuffer *ring,
+                                 int idx)
+{
+   /* result += stop - start: */
+   OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
+   OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE | CP_MEM_TO_MEM_0_NEG_C | 0x80000000);
+   primitives_reloc(ring, aq, result.generated);
+   primitives_reloc(ring, aq, result.generated);
+   primitives_reloc(ring, aq, stop[idx].generated);
+   primitives_reloc(ring, aq, start[idx].generated);
+}
+
+static void
 primitives_emitted_pause(struct fd_acc_query *aq,
                          struct fd_batch *batch) assert_dt
 {
@@ -522,13 +550,18 @@ primitives_emitted_pause(struct fd_acc_query *aq,
 
    fd6_event_write(batch, batch->draw, CACHE_FLUSH_TS, true);
 
-   /* result += stop - start: */
-   OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
-   OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE | CP_MEM_TO_MEM_0_NEG_C | 0x80000000);
-   primitives_reloc(ring, aq, result.emitted);
-   primitives_reloc(ring, aq, result.emitted);
-   primitives_reloc(ring, aq, stop[aq->base.index].emitted);
-   primitives_reloc(ring, aq, start[aq->base.index].emitted);
+   if (aq->provider->query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
+      /* Need results from all channels: */
+      for (int i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
+         accumultate_primitives_emitted(aq, ring, i);
+         accumultate_primitives_generated(aq, ring, i);
+      }
+   } else {
+      accumultate_primitives_emitted(aq, ring, aq->base.index);
+      /* Only need primitives generated counts for the overflow queries: */
+      if (aq->provider->query_type == PIPE_QUERY_SO_OVERFLOW_PREDICATE)
+         accumultate_primitives_generated(aq, ring, aq->base.index);
+   }
 }
 
 static void
@@ -554,6 +587,48 @@ primitives_emitted_result_resource(struct fd_acc_query *aq,
                offsetof(struct fd6_primitives_sample, result.emitted));
 }
 
+static void
+so_overflow_predicate_result(struct fd_acc_query *aq,
+                             struct fd_acc_query_sample *s,
+                             union pipe_query_result *result)
+{
+   struct fd6_primitives_sample *ps = fd6_primitives_sample(s);
+
+   log_counters(ps);
+
+   result->b = ps->result.emitted != ps->result.generated;
+}
+
+static void
+so_overflow_predicate_result_resource(struct fd_acc_query *aq,
+                                      struct fd_ringbuffer *ring,
+                                      enum pipe_query_value_type result_type,
+                                      int index, struct fd_resource *dst,
+                                      unsigned offset)
+{
+   /* result = generated - emitted: */
+   OUT_PKT7(ring, CP_MEM_TO_MEM, 7);
+   OUT_RING(ring, CP_MEM_TO_MEM_0_NEG_B |
+            COND(result_type >= PIPE_QUERY_TYPE_I64, CP_MEM_TO_MEM_0_DOUBLE));
+   OUT_RELOC(ring, dst->bo, offset, 0, 0);
+   primitives_reloc(ring, aq, result.generated);
+   primitives_reloc(ring, aq, result.emitted);
+
+   /* This is a bit awkward, but glcts expects the result to be 1 or 0
+    * rather than non-zero vs zero:
+    */
+   OUT_PKT7(ring, CP_COND_WRITE5, 9);
+   OUT_RING(ring, CP_COND_WRITE5_0_FUNCTION(WRITE_NE) |
+                  CP_COND_WRITE5_0_POLL_MEMORY |
+                  CP_COND_WRITE5_0_WRITE_MEMORY);
+   OUT_RELOC(ring, dst->bo, offset, 0, 0);    /* POLL_ADDR_LO/HI */
+   OUT_RING(ring, CP_COND_WRITE5_3_REF(0));
+   OUT_RING(ring, CP_COND_WRITE5_4_MASK(~0));
+   OUT_RELOC(ring, dst->bo, offset, 0, 0);    /* WRITE_ADDR_LO/HI */
+   OUT_RING(ring, 1);
+   OUT_RING(ring, 0);
+}
+
 static const struct fd_acc_sample_provider primitives_emitted = {
    .query_type = PIPE_QUERY_PRIMITIVES_EMITTED,
    .size = sizeof(struct fd6_primitives_sample),
@@ -561,6 +636,24 @@ static const struct fd_acc_sample_provider primitives_emitted = {
    .pause = primitives_emitted_pause,
    .result = primitives_emitted_result,
    .result_resource = primitives_emitted_result_resource,
+};
+
+static const struct fd_acc_sample_provider so_overflow_any_predicate = {
+   .query_type = PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE,
+   .size = sizeof(struct fd6_primitives_sample),
+   .resume = primitives_emitted_resume,
+   .pause = primitives_emitted_pause,
+   .result = so_overflow_predicate_result,
+   .result_resource = so_overflow_predicate_result_resource,
+};
+
+static const struct fd_acc_sample_provider so_overflow_predicate = {
+   .query_type = PIPE_QUERY_SO_OVERFLOW_PREDICATE,
+   .size = sizeof(struct fd6_primitives_sample),
+   .resume = primitives_emitted_resume,
+   .pause = primitives_emitted_pause,
+   .result = so_overflow_predicate_result,
+   .result_resource = so_overflow_predicate_result_resource,
 };
 
 /*
@@ -781,4 +874,6 @@ fd6_query_context_init(struct pipe_context *pctx) disable_thread_safety_analysis
 
    fd_acc_query_register_provider(pctx, &primitives_generated);
    fd_acc_query_register_provider(pctx, &primitives_emitted);
+   fd_acc_query_register_provider(pctx, &so_overflow_any_predicate);
+   fd_acc_query_register_provider(pctx, &so_overflow_predicate);
 }
