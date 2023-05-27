@@ -38,12 +38,13 @@ v3d-rpi4-gl:armhf:
     - .v3d-rules
   tags:
     - igalia-rpi4
-  parallel: 12
+  parallel: 10
   variables:
     GPU_VERSION: broadcom-rpi4
     HWCI_KERNEL_MODULES: v3d,vc4
     HWCI_START_WESTON: 1
     DEQP_SUITE: broadcom-rpi4
+    DEQP_FRACTION: 2
 
 v3d-rpi4-traces:arm64:
   extends:
@@ -70,7 +71,7 @@ v3dv-rpi4-vk:arm64:
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     DEQP_EXPECTED_RENDERER: "V3D.4.2"
-    DEQP_FRACTION: 8
+    DEQP_FRACTION: 9
     DEQP_VER: vk
     FLAKES_CHANNEL: "#videocore-ci"
     GPU_VERSION: broadcom-rpi4
