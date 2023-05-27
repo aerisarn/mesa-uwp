@@ -1328,6 +1328,10 @@ private:
    friend void glsl_type_singleton_decref(void);
    friend void _mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *);
    /*@}*/
+
+   static const glsl_type *get_explicit_matrix_instance(unsigned int base_type, unsigned int rows, unsigned int columns,
+                                                        unsigned int explicit_stride, bool row_major,
+                                                        unsigned int explicit_alignment);
 };
 
 #undef DECL_TYPE
