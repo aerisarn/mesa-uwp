@@ -1608,21 +1608,16 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
    case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
    case PIPE_CAP_NULL_TEXTURES:
-      return 1;
-
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
-      return 1;
-   case PIPE_CAP_SURFACE_SAMPLE_COUNT:
-      /* TODO: MSRTT */
-   case PIPE_CAP_SAMPLE_SHADING:
-      /* TODO: sample shading */
-      return 0;
-
    case PIPE_CAP_IMAGE_LOAD_FORMATTED:
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
    case PIPE_CAP_COMPUTE:
    case PIPE_CAP_INT64:
-      return is_deqp;
+   case PIPE_CAP_SAMPLE_SHADING:
+      return 1;
+   case PIPE_CAP_SURFACE_SAMPLE_COUNT:
+      /* TODO: MSRTT */
+      return 0;
 
    case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
       return 0;
@@ -1645,7 +1640,7 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
       return is_deqp ? 330 : 140;
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
-      return is_deqp ? 310 : 300;
+      return 320;
 
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       return 16;
@@ -1789,11 +1784,15 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
                      enum pipe_shader_cap param)
 {
    bool is_no16 = agx_device(pscreen)->debug & AGX_DBG_NO16;
-   bool is_deqp = agx_device(pscreen)->debug & AGX_DBG_DEQP;
 
-   if (shader != PIPE_SHADER_VERTEX && shader != PIPE_SHADER_FRAGMENT &&
-       !(shader == PIPE_SHADER_COMPUTE && is_deqp))
-      return 0;
+   switch (shader) {
+   case PIPE_SHADER_VERTEX:
+   case PIPE_SHADER_FRAGMENT:
+   case PIPE_SHADER_COMPUTE:
+      break;
+   default:
+      return false;
+   }
 
    /* Don't allow side effects with vertex processing. The APIs don't require it
     * and it may be problematic on our hardware.
@@ -1864,10 +1863,10 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
       return (1 << PIPE_SHADER_IR_NIR);
 
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
-      return (is_deqp && allow_side_effects) ? PIPE_MAX_SHADER_BUFFERS : 0;
+      return allow_side_effects ? PIPE_MAX_SHADER_BUFFERS : 0;
 
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
-      return (is_deqp && allow_side_effects) ? PIPE_MAX_SHADER_IMAGES : 0;
+      return allow_side_effects ? PIPE_MAX_SHADER_IMAGES : 0;
 
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
@@ -1885,9 +1884,6 @@ static int
 agx_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
                       enum pipe_compute_cap param, void *ret)
 {
-   if (!(agx_device(pscreen)->debug & AGX_DBG_DEQP))
-      return 0;
-
 #define RET(x)                                                                 \
    do {                                                                        \
       if (ret)                                                                 \
