@@ -347,7 +347,7 @@ static const struct fd_acc_sample_provider timestamp = {
 struct PACKED fd6_pipeline_stats_sample {
    struct fd_acc_query_sample base;
 
-   uint64_t start[16], stop[16], result;
+   uint64_t start, stop, result;
 };
 DEFINE_CAST(fd_acc_query_sample, fd6_pipeline_stats_sample);
 
@@ -355,34 +355,98 @@ DEFINE_CAST(fd_acc_query_sample, fd6_pipeline_stats_sample);
    OUT_RELOC(ring, fd_resource((aq)->prsc)->bo,                                \
              __offsetof(struct fd6_pipeline_stats_sample, field), 0, 0);
 
-#ifdef DEBUG_COUNTERS
-static const unsigned counter_count = 10;
-static const unsigned counter_base = REG_A6XX_RBBM_PRIMCTR_0_LO;
-#else
-static const unsigned counter_count = 1;
-static const unsigned counter_base = REG_A6XX_RBBM_PRIMCTR_7_LO;
-#endif
+/* Mapping of counters to pipeline stats:
+ *
+ *   Gallium (PIPE_STAT_QUERY_x) | Vulkan (VK_QUERY_PIPELINE_STATISTIC_x_BIT) | hw counter
+ *   ----------------------------+--------------------------------------------+----------------
+ *   IA_VERTICES                 | INPUT_ASSEMBLY_VERTICES                    | RBBM_PRIMCTR_0
+ *   IA_PRIMITIVES               | INPUT_ASSEMBLY_PRIMITIVES                  | RBBM_PRIMCTR_1
+ *   VS_INVOCATIONS              | VERTEX_SHADER_INVOCATIONS                  | RBBM_PRIMCTR_0
+ *   GS_INVOCATIONS              | GEOMETRY_SHADER_INVOCATIONS                | RBBM_PRIMCTR_5
+ *   GS_PRIMITIVES               | GEOMETRY_SHADER_PRIMITIVES                 | RBBM_PRIMCTR_6
+ *   C_INVOCATIONS               | CLIPPING_INVOCATIONS                       | RBBM_PRIMCTR_7
+ *   C_PRIMITIVES                | CLIPPING_PRIMITIVES                        | RBBM_PRIMCTR_8
+ *   PS_INVOCATIONS              | FRAGMENT_SHADER_INVOCATIONS                | RBBM_PRIMCTR_9
+ *   HS_INVOCATIONS              | TESSELLATION_CONTROL_SHADER_PATCHES        | RBBM_PRIMCTR_2
+ *   DS_INVOCATIONS              | TESSELLATION_EVALUATION_SHADER_INVOCATIONS | RBBM_PRIMCTR_4
+ *   CS_INVOCATIONS              | COMPUTE_SHADER_INVOCATIONS                 | RBBM_PRIMCTR_10
+ *
+ * Note that "Vertices corresponding to incomplete primitives may contribute to the count.",
+ * in our case they do not, so IA_VERTICES and VS_INVOCATIONS are the same thing.
+ */
+
+enum stats_type {
+   STATS_PRIMITIVE,
+   STATS_FRAGMENT,
+   STATS_COMPUTE,
+};
+
+static const struct {
+   enum vgt_event_type start, stop;
+} stats_counter_events[] = {
+      [STATS_PRIMITIVE] = { START_PRIMITIVE_CTRS, STOP_PRIMITIVE_CTRS },
+      [STATS_FRAGMENT]  = { START_FRAGMENT_CTRS,  STOP_FRAGMENT_CTRS },
+      [STATS_COMPUTE]   = { START_COMPUTE_CTRS,   STOP_COMPUTE_CTRS },
+};
+
+static enum stats_type
+get_stats_type(struct fd_acc_query *aq)
+{
+   if (aq->provider->query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
+      return STATS_PRIMITIVE;
+
+   switch (aq->base.index) {
+   case PIPE_STAT_QUERY_PS_INVOCATIONS: return STATS_FRAGMENT;
+   case PIPE_STAT_QUERY_CS_INVOCATIONS: return STATS_COMPUTE;
+   default:
+      return STATS_PRIMITIVE;
+   }
+}
+
+static unsigned
+stats_counter_index(struct fd_acc_query *aq)
+{
+   if (aq->provider->query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
+      return 7;
+
+   switch (aq->base.index) {
+   case PIPE_STAT_QUERY_IA_VERTICES:    return 0;
+   case PIPE_STAT_QUERY_IA_PRIMITIVES:  return 1;
+   case PIPE_STAT_QUERY_VS_INVOCATIONS: return 0;
+   case PIPE_STAT_QUERY_GS_INVOCATIONS: return 5;
+   case PIPE_STAT_QUERY_GS_PRIMITIVES:  return 6;
+   case PIPE_STAT_QUERY_C_INVOCATIONS:  return 7;
+   case PIPE_STAT_QUERY_C_PRIMITIVES:   return 8;
+   case PIPE_STAT_QUERY_PS_INVOCATIONS: return 9;
+   case PIPE_STAT_QUERY_HS_INVOCATIONS: return 2;
+   case PIPE_STAT_QUERY_DS_INVOCATIONS: return 4;
+   case PIPE_STAT_QUERY_CS_INVOCATIONS: return 10;
+   default:
+      return 0;
+   }
+}
 
 static void
-log_pipeline_stats(struct fd6_pipeline_stats_sample *ps)
+log_pipeline_stats(struct fd6_pipeline_stats_sample *ps, unsigned idx)
 {
 #ifdef DEBUG_COUNTERS
    const char *labels[] = {
-      "vs_vertices_in",    "vs_primitives_out",
-      "hs_vertices_in",    "hs_patches_out",
-      "ds_vertices_in",    "ds_primitives_out",
-      "gs_primitives_in",  "gs_primitives_out",
-      "ras_primitives_in", "x",
+      "VS_INVOCATIONS",
+      "IA_PRIMITIVES",
+      "HS_INVOCATIONS",
+      "??",
+      "DS_INVOCATIONS",
+      "GS_INVOCATIONS",
+      "GS_PRIMITIVES",
+      "C_INVOCATIONS",
+      "C_PRIMITIVES",
+      "PS_INVOCATIONS",
+      "CS_INVOCATIONS",
    };
 
    mesa_logd("  counter\t\tstart\t\t\tstop\t\t\tdiff");
-   for (int i = 0; i < ARRAY_SIZE(labels); i++) {
-      int register_idx = i + (counter_base - REG_A6XX_RBBM_PRIMCTR_0_LO) / 2;
-      mesa_logd("  RBBM_PRIMCTR_%d\t0x%016" PRIx64 "\t0x%016" PRIx64 "\t%" PRIi64
-             "\t%s",
-             register_idx, ps->start[i], ps->stop[i],
-             ps->stop[i] - ps->start[i], labels[register_idx]);
-   }
+   mesa_logd("  RBBM_PRIMCTR_%d\t0x%016" PRIx64 "\t0x%016" PRIx64 "\t%" PRIi64 "\t%s",
+             idx, ps->start, ps->stop, ps->stop - ps->start, labels[idx]);
 #endif
 }
 
@@ -391,17 +455,23 @@ pipeline_stats_resume(struct fd_acc_query *aq, struct fd_batch *batch)
    assert_dt
 {
    struct fd_ringbuffer *ring = batch->draw;
+   enum stats_type type = get_stats_type(aq);
+   unsigned idx = stats_counter_index(aq);
+   unsigned reg = REG_A6XX_RBBM_PRIMCTR_0_LO + (2 * idx);
 
    OUT_WFI5(ring);
 
    OUT_PKT7(ring, CP_REG_TO_MEM, 3);
-   OUT_RING(ring, CP_REG_TO_MEM_0_64B | CP_REG_TO_MEM_0_CNT(counter_count * 2) |
-                     CP_REG_TO_MEM_0_REG(counter_base));
+   OUT_RING(ring, CP_REG_TO_MEM_0_64B |
+                  CP_REG_TO_MEM_0_CNT(2) |
+                  CP_REG_TO_MEM_0_REG(reg));
    stats_reloc(ring, aq, start);
 
-   if (!batch->pipeline_stats_queries_active)
-      fd6_event_write(batch, ring, START_PRIMITIVE_CTRS, false);
-   batch->pipeline_stats_queries_active++;
+   assert(type < ARRAY_SIZE(batch->pipeline_stats_queries_active));
+
+   if (!batch->pipeline_stats_queries_active[type])
+      fd6_event_write(batch, ring, stats_counter_events[type].start, false);
+   batch->pipeline_stats_queries_active[type]++;
 }
 
 static void
@@ -409,27 +479,33 @@ pipeline_stats_pause(struct fd_acc_query *aq, struct fd_batch *batch)
    assert_dt
 {
    struct fd_ringbuffer *ring = batch->draw;
+   enum stats_type type = get_stats_type(aq);
+   unsigned idx = stats_counter_index(aq);
+   unsigned reg = REG_A6XX_RBBM_PRIMCTR_0_LO + (2 * idx);
 
    OUT_WFI5(ring);
 
    /* snapshot the end values: */
    OUT_PKT7(ring, CP_REG_TO_MEM, 3);
-   OUT_RING(ring, CP_REG_TO_MEM_0_64B | CP_REG_TO_MEM_0_CNT(counter_count * 2) |
-                     CP_REG_TO_MEM_0_REG(counter_base));
+   OUT_RING(ring, CP_REG_TO_MEM_0_64B |
+                  CP_REG_TO_MEM_0_CNT(2) |
+                  CP_REG_TO_MEM_0_REG(reg));
    stats_reloc(ring, aq, stop);
 
-   assert(batch->pipeline_stats_queries_active > 0);
-   batch->pipeline_stats_queries_active--;
-   if (batch->pipeline_stats_queries_active)
-      fd6_event_write(batch, ring, STOP_PRIMITIVE_CTRS, false);
+   assert(type < ARRAY_SIZE(batch->pipeline_stats_queries_active));
+   assert(batch->pipeline_stats_queries_active[type] > 0);
+
+   batch->pipeline_stats_queries_active[type]--;
+   if (batch->pipeline_stats_queries_active[type])
+      fd6_event_write(batch, ring, stats_counter_events[type].stop, false);
 
    /* result += stop - start: */
    OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
    OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE | CP_MEM_TO_MEM_0_NEG_C | 0x40000000);
    stats_reloc(ring, aq, result);
    stats_reloc(ring, aq, result);
-   stats_reloc(ring, aq, stop[(REG_A6XX_RBBM_PRIMCTR_7_LO - counter_base) / 2])
-   stats_reloc(ring, aq, start[(REG_A6XX_RBBM_PRIMCTR_7_LO - counter_base) / 2]);
+   stats_reloc(ring, aq, stop)
+   stats_reloc(ring, aq, start);
 }
 
 static void
@@ -439,7 +515,7 @@ pipeline_stats_result(struct fd_acc_query *aq,
 {
    struct fd6_pipeline_stats_sample *ps = fd6_pipeline_stats_sample(s);
 
-   log_pipeline_stats(ps);
+   log_pipeline_stats(ps, stats_counter_index(aq));
 
    result->u64 = ps->result;
 }
@@ -457,6 +533,15 @@ pipeline_stats_result_resource(struct fd_acc_query *aq,
 
 static const struct fd_acc_sample_provider primitives_generated = {
    .query_type = PIPE_QUERY_PRIMITIVES_GENERATED,
+   .size = sizeof(struct fd6_pipeline_stats_sample),
+   .resume = pipeline_stats_resume,
+   .pause = pipeline_stats_pause,
+   .result = pipeline_stats_result,
+   .result_resource = pipeline_stats_result_resource,
+};
+
+static const struct fd_acc_sample_provider pipeline_statistics_single = {
+   .query_type = PIPE_QUERY_PIPELINE_STATISTICS_SINGLE,
    .size = sizeof(struct fd6_pipeline_stats_sample),
    .resume = pipeline_stats_resume,
    .pause = pipeline_stats_pause,
@@ -885,6 +970,8 @@ fd6_query_context_init(struct pipe_context *pctx) disable_thread_safety_analysis
    fd_acc_query_register_provider(pctx, &timestamp);
 
    fd_acc_query_register_provider(pctx, &primitives_generated);
+   fd_acc_query_register_provider(pctx, &pipeline_statistics_single);
+
    fd_acc_query_register_provider(pctx, &primitives_emitted);
    fd_acc_query_register_provider(pctx, &so_overflow_any_predicate);
    fd_acc_query_register_provider(pctx, &so_overflow_predicate);

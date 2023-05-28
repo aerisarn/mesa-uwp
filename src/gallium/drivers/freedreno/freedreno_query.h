@@ -135,6 +135,8 @@ pidx(unsigned query_type)
       return 7;
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
       return 8;
+   case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE:
+      return 9;
 
    default:
       return -1;
