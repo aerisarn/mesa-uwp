@@ -730,12 +730,12 @@ agx_emit_atomic(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr,
       translate_atomic_opcode(nir_intrinsic_atomic_op(instr));
    agx_index base =
       local ? agx_local_base(instr->src[0]) : agx_src_index(&instr->src[0]);
-   agx_index value = agx_src_index(&instr->src[1]);
-   agx_index index = agx_zero(); /* TODO: optimize address arithmetic? */
+   agx_index value = agx_src_index(&instr->src[local ? 1 : 2]);
+   agx_index index = local ? agx_zero() : agx_src_index(&instr->src[1]);
 
    /* cmpxchg (only) takes 2 sources, passed in consecutive registers */
    if (op == AGX_ATOMIC_OPC_CMPXCHG) {
-      agx_index value2 = agx_src_index(&instr->src[2]);
+      agx_index value2 = agx_src_index(&instr->src[local ? 2 : 3]);
       value = agx_vec2(b, value2, value);
    }
 
@@ -827,8 +827,8 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       agx_emit_local_load(b, dst, instr);
       return NULL;
 
-   case nir_intrinsic_global_atomic:
-   case nir_intrinsic_global_atomic_swap:
+   case nir_intrinsic_global_atomic_agx:
+   case nir_intrinsic_global_atomic_swap_agx:
       agx_emit_atomic(b, dst, instr, false);
       return NULL;
 

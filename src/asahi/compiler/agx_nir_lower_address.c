@@ -246,6 +246,8 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_global &&
        intr->intrinsic != nir_intrinsic_load_global_constant &&
+       intr->intrinsic != nir_intrinsic_global_atomic &&
+       intr->intrinsic != nir_intrinsic_global_atomic_swap &&
        intr->intrinsic != nir_intrinsic_store_global)
       return false;
 
@@ -309,6 +311,18 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
                                    offset, .access = nir_intrinsic_access(intr),
                                    .base = match.shift, .format = format,
                                    .sign_extend = match.sign_extend);
+   } else if (intr->intrinsic == nir_intrinsic_global_atomic) {
+      offset = nir_ishl_imm(b, offset, match.shift);
+      repl =
+         nir_global_atomic_agx(b, bit_size, new_base, offset, intr->src[1].ssa,
+                               .atomic_op = nir_intrinsic_atomic_op(intr),
+                               .sign_extend = match.sign_extend);
+   } else if (intr->intrinsic == nir_intrinsic_global_atomic_swap) {
+      offset = nir_ishl_imm(b, offset, match.shift);
+      repl = nir_global_atomic_swap_agx(
+         b, bit_size, new_base, offset, intr->src[1].ssa, intr->src[2].ssa,
+         .atomic_op = nir_intrinsic_atomic_op(intr),
+         .sign_extend = match.sign_extend);
    } else {
       nir_store_agx(b, intr->src[0].ssa, new_base, offset,
                     .access = nir_intrinsic_access(intr), .base = match.shift,
