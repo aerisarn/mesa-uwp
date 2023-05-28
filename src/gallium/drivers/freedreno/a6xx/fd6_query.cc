@@ -36,6 +36,12 @@
 #include "fd6_emit.h"
 #include "fd6_query.h"
 
+/* g++ is a picky about offsets that cannot be resolved at compile time, so
+ * roll our own __offsetof()
+ */
+#define __offsetof(type, field)                                                \
+   ({ type _x = {}; ((uint8_t *)&_x.field) - ((uint8_t *)&_x);})
+
 struct PACKED fd6_query_sample {
    struct fd_acc_query_sample base;
 
@@ -338,37 +344,29 @@ static const struct fd_acc_sample_provider timestamp = {
    .result_resource = timestamp_result_resource,
 };
 
-struct PACKED fd6_primitives_sample {
+struct PACKED fd6_pipeline_stats_sample {
    struct fd_acc_query_sample base;
 
-   /* VPC_SO_STREAM_COUNTS dest address must be 32b aligned: */
-   uint64_t pad[3];
-
-   struct {
-      uint64_t emitted, generated;
-   } start[4], stop[4], result;
-
-   uint64_t prim_start[16], prim_stop[16], prim_emitted;
+   uint64_t start[16], stop[16], result;
 };
-DEFINE_CAST(fd_acc_query_sample, fd6_primitives_sample);
+DEFINE_CAST(fd_acc_query_sample, fd6_pipeline_stats_sample);
 
-/* g++ is a picky about offsets that cannot be resolved at compile time, so
- * roll our own __offsetof()
- */
-#define __offsetof(type, field)                                                \
-   ({ type _x = {}; ((uint8_t *)&_x.field) - ((uint8_t *)&_x);})
-
-#define primitives_reloc(ring, aq, field)                                      \
+#define stats_reloc(ring, aq, field)                                           \
    OUT_RELOC(ring, fd_resource((aq)->prsc)->bo,                                \
-             __offsetof(struct fd6_primitives_sample, field), 0, 0);
+             __offsetof(struct fd6_pipeline_stats_sample, field), 0, 0);
 
 #ifdef DEBUG_COUNTERS
 static const unsigned counter_count = 10;
 static const unsigned counter_base = REG_A6XX_RBBM_PRIMCTR_0_LO;
+#else
+static const unsigned counter_count = 1;
+static const unsigned counter_base = REG_A6XX_RBBM_PRIMCTR_7_LO;
+#endif
 
 static void
-log_counters(struct fd6_primitives_sample *ps)
+log_pipeline_stats(struct fd6_pipeline_stats_sample *ps)
 {
+#ifdef DEBUG_COUNTERS
    const char *labels[] = {
       "vs_vertices_in",    "vs_primitives_out",
       "hs_vertices_in",    "hs_patches_out",
@@ -382,10 +380,105 @@ log_counters(struct fd6_primitives_sample *ps)
       int register_idx = i + (counter_base - REG_A6XX_RBBM_PRIMCTR_0_LO) / 2;
       mesa_logd("  RBBM_PRIMCTR_%d\t0x%016" PRIx64 "\t0x%016" PRIx64 "\t%" PRIi64
              "\t%s",
-             register_idx, ps->prim_start[i], ps->prim_stop[i],
-             ps->prim_stop[i] - ps->prim_start[i], labels[register_idx]);
+             register_idx, ps->start[i], ps->stop[i],
+             ps->stop[i] - ps->start[i], labels[register_idx]);
    }
+#endif
+}
 
+static void
+pipeline_stats_resume(struct fd_acc_query *aq, struct fd_batch *batch)
+   assert_dt
+{
+   struct fd_ringbuffer *ring = batch->draw;
+
+   OUT_WFI5(ring);
+
+   OUT_PKT7(ring, CP_REG_TO_MEM, 3);
+   OUT_RING(ring, CP_REG_TO_MEM_0_64B | CP_REG_TO_MEM_0_CNT(counter_count * 2) |
+                     CP_REG_TO_MEM_0_REG(counter_base));
+   stats_reloc(ring, aq, start);
+
+   fd6_event_write(batch, ring, START_PRIMITIVE_CTRS, false);
+}
+
+static void
+pipeline_stats_pause(struct fd_acc_query *aq, struct fd_batch *batch)
+   assert_dt
+{
+   struct fd_ringbuffer *ring = batch->draw;
+
+   OUT_WFI5(ring);
+
+   /* snapshot the end values: */
+   OUT_PKT7(ring, CP_REG_TO_MEM, 3);
+   OUT_RING(ring, CP_REG_TO_MEM_0_64B | CP_REG_TO_MEM_0_CNT(counter_count * 2) |
+                     CP_REG_TO_MEM_0_REG(counter_base));
+   stats_reloc(ring, aq, stop);
+
+   fd6_event_write(batch, ring, STOP_PRIMITIVE_CTRS, false);
+
+   /* result += stop - start: */
+   OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
+   OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE | CP_MEM_TO_MEM_0_NEG_C | 0x40000000);
+   stats_reloc(ring, aq, result);
+   stats_reloc(ring, aq, result);
+   stats_reloc(ring, aq, stop[(REG_A6XX_RBBM_PRIMCTR_7_LO - counter_base) / 2])
+   stats_reloc(ring, aq, start[(REG_A6XX_RBBM_PRIMCTR_7_LO - counter_base) / 2]);
+}
+
+static void
+pipeline_stats_result(struct fd_acc_query *aq,
+                      struct fd_acc_query_sample *s,
+                      union pipe_query_result *result)
+{
+   struct fd6_pipeline_stats_sample *ps = fd6_pipeline_stats_sample(s);
+
+   log_pipeline_stats(ps);
+
+   result->u64 = ps->result;
+}
+
+static void
+pipeline_stats_result_resource(struct fd_acc_query *aq,
+                               struct fd_ringbuffer *ring,
+                               enum pipe_query_value_type result_type,
+                               int index, struct fd_resource *dst,
+                               unsigned offset)
+{
+   copy_result(ring, result_type, dst, offset, fd_resource(aq->prsc),
+               offsetof(struct fd6_pipeline_stats_sample, result));
+}
+
+static const struct fd_acc_sample_provider primitives_generated = {
+   .query_type = PIPE_QUERY_PRIMITIVES_GENERATED,
+   .size = sizeof(struct fd6_pipeline_stats_sample),
+   .resume = pipeline_stats_resume,
+   .pause = pipeline_stats_pause,
+   .result = pipeline_stats_result,
+   .result_resource = pipeline_stats_result_resource,
+};
+
+struct PACKED fd6_primitives_sample {
+   struct fd_acc_query_sample base;
+
+   /* VPC_SO_STREAM_COUNTS dest address must be 32b aligned: */
+   uint64_t pad[3];
+
+   struct {
+      uint64_t emitted, generated;
+   } start[4], stop[4], result;
+};
+DEFINE_CAST(fd_acc_query_sample, fd6_primitives_sample);
+
+#define primitives_reloc(ring, aq, field)                                      \
+   OUT_RELOC(ring, fd_resource((aq)->prsc)->bo,                                \
+             __offsetof(struct fd6_primitives_sample, field), 0, 0);
+
+static void
+log_primitives_sample(struct fd6_primitives_sample *ps)
+{
+#ifdef DEBUG_COUNTERS
    mesa_logd("  so counts");
    for (int i = 0; i < ARRAY_SIZE(ps->start); i++) {
       mesa_logd("  CHANNEL %d emitted\t0x%016" PRIx64 "\t0x%016" PRIx64
@@ -400,94 +493,8 @@ log_counters(struct fd6_primitives_sample *ps)
 
    mesa_logd("generated %" PRIu64 ", emitted %" PRIu64, ps->result.generated,
           ps->result.emitted);
-}
-
-#else
-
-static const unsigned counter_count = 1;
-static const unsigned counter_base = REG_A6XX_RBBM_PRIMCTR_7_LO;
-
-static void
-log_counters(struct fd6_primitives_sample *ps)
-{
-}
-
 #endif
-
-static void
-primitives_generated_resume(struct fd_acc_query *aq,
-                            struct fd_batch *batch) assert_dt
-{
-   struct fd_ringbuffer *ring = batch->draw;
-
-   OUT_WFI5(ring);
-
-   OUT_PKT7(ring, CP_REG_TO_MEM, 3);
-   OUT_RING(ring, CP_REG_TO_MEM_0_64B | CP_REG_TO_MEM_0_CNT(counter_count * 2) |
-                     CP_REG_TO_MEM_0_REG(counter_base));
-   primitives_reloc(ring, aq, prim_start);
-
-   fd6_event_write(batch, ring, START_PRIMITIVE_CTRS, false);
 }
-
-static void
-primitives_generated_pause(struct fd_acc_query *aq,
-                           struct fd_batch *batch) assert_dt
-{
-   struct fd_ringbuffer *ring = batch->draw;
-
-   OUT_WFI5(ring);
-
-   /* snapshot the end values: */
-   OUT_PKT7(ring, CP_REG_TO_MEM, 3);
-   OUT_RING(ring, CP_REG_TO_MEM_0_64B | CP_REG_TO_MEM_0_CNT(counter_count * 2) |
-                     CP_REG_TO_MEM_0_REG(counter_base));
-   primitives_reloc(ring, aq, prim_stop);
-
-   fd6_event_write(batch, ring, STOP_PRIMITIVE_CTRS, false);
-
-   /* result += stop - start: */
-   OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
-   OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE | CP_MEM_TO_MEM_0_NEG_C | 0x40000000);
-   primitives_reloc(ring, aq, result.generated);
-   primitives_reloc(ring, aq, prim_emitted);
-   primitives_reloc(ring, aq,
-                    prim_stop[(REG_A6XX_RBBM_PRIMCTR_7_LO - counter_base) / 2])
-      primitives_reloc(
-         ring, aq, prim_start[(REG_A6XX_RBBM_PRIMCTR_7_LO - counter_base) / 2]);
-}
-
-static void
-primitives_generated_result(struct fd_acc_query *aq,
-                            struct fd_acc_query_sample *s,
-                            union pipe_query_result *result)
-{
-   struct fd6_primitives_sample *ps = fd6_primitives_sample(s);
-
-   log_counters(ps);
-
-   result->u64 = ps->result.generated;
-}
-
-static void
-primitives_generated_result_resource(struct fd_acc_query *aq,
-                                     struct fd_ringbuffer *ring,
-                                     enum pipe_query_value_type result_type,
-                                     int index, struct fd_resource *dst,
-                                     unsigned offset)
-{
-   copy_result(ring, result_type, dst, offset, fd_resource(aq->prsc),
-               offsetof(struct fd6_primitives_sample, result.generated));
-}
-
-static const struct fd_acc_sample_provider primitives_generated = {
-   .query_type = PIPE_QUERY_PRIMITIVES_GENERATED,
-   .size = sizeof(struct fd6_primitives_sample),
-   .resume = primitives_generated_resume,
-   .pause = primitives_generated_pause,
-   .result = primitives_generated_result,
-   .result_resource = primitives_generated_result_resource,
-};
 
 static void
 primitives_emitted_resume(struct fd_acc_query *aq,
@@ -571,7 +578,7 @@ primitives_emitted_result(struct fd_acc_query *aq,
 {
    struct fd6_primitives_sample *ps = fd6_primitives_sample(s);
 
-   log_counters(ps);
+   log_primitives_sample(ps);
 
    result->u64 = ps->result.emitted;
 }
@@ -594,7 +601,7 @@ so_overflow_predicate_result(struct fd_acc_query *aq,
 {
    struct fd6_primitives_sample *ps = fd6_primitives_sample(s);
 
-   log_counters(ps);
+   log_primitives_sample(ps);
 
    result->b = ps->result.emitted != ps->result.generated;
 }
