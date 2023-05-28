@@ -1927,6 +1927,9 @@ agx_optimize_loop_nir(nir_shader *nir)
 static void
 agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
 {
+   /* This runs only once up front since other optimizations don't affect it */
+   NIR_PASS_V(nir, nir_opt_shrink_stores, true);
+
    agx_optimize_loop_nir(nir);
 
    bool progress = false;
