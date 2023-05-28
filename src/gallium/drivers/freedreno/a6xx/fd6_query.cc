@@ -358,9 +358,6 @@ DEFINE_CAST(fd_acc_query_sample, fd6_primitives_sample);
 #define __offsetof(type, field)                                                \
    ({ type _x = {}; ((uint8_t *)&_x.field) - ((uint8_t *)&_x);})
 
-#define primitives_relocw(ring, aq, field)                                     \
-   OUT_RELOC(ring, fd_resource((aq)->prsc)->bo,                                \
-             __offsetof(struct fd6_primitives_sample, field), 0, 0);
 #define primitives_reloc(ring, aq, field)                                      \
    OUT_RELOC(ring, fd_resource((aq)->prsc)->bo,                                \
              __offsetof(struct fd6_primitives_sample, field), 0, 0);
@@ -428,7 +425,7 @@ primitives_generated_resume(struct fd_acc_query *aq,
    OUT_PKT7(ring, CP_REG_TO_MEM, 3);
    OUT_RING(ring, CP_REG_TO_MEM_0_64B | CP_REG_TO_MEM_0_CNT(counter_count * 2) |
                      CP_REG_TO_MEM_0_REG(counter_base));
-   primitives_relocw(ring, aq, prim_start);
+   primitives_reloc(ring, aq, prim_start);
 
    fd6_event_write(batch, ring, START_PRIMITIVE_CTRS, false);
 }
@@ -445,14 +442,14 @@ primitives_generated_pause(struct fd_acc_query *aq,
    OUT_PKT7(ring, CP_REG_TO_MEM, 3);
    OUT_RING(ring, CP_REG_TO_MEM_0_64B | CP_REG_TO_MEM_0_CNT(counter_count * 2) |
                      CP_REG_TO_MEM_0_REG(counter_base));
-   primitives_relocw(ring, aq, prim_stop);
+   primitives_reloc(ring, aq, prim_stop);
 
    fd6_event_write(batch, ring, STOP_PRIMITIVE_CTRS, false);
 
    /* result += stop - start: */
    OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
    OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE | CP_MEM_TO_MEM_0_NEG_C | 0x40000000);
-   primitives_relocw(ring, aq, result.generated);
+   primitives_reloc(ring, aq, result.generated);
    primitives_reloc(ring, aq, prim_emitted);
    primitives_reloc(ring, aq,
                     prim_stop[(REG_A6XX_RBBM_PRIMCTR_7_LO - counter_base) / 2])
@@ -503,7 +500,7 @@ primitives_emitted_resume(struct fd_acc_query *aq,
    ASSERT_ALIGNED(struct fd6_primitives_sample, start[0], 32);
 
    OUT_PKT4(ring, REG_A6XX_VPC_SO_STREAM_COUNTS, 2);
-   primitives_relocw(ring, aq, start[0]);
+   primitives_reloc(ring, aq, start[0]);
 
    fd6_event_write(batch, ring, WRITE_PRIMITIVE_COUNTS, false);
 }
@@ -519,7 +516,7 @@ primitives_emitted_pause(struct fd_acc_query *aq,
    ASSERT_ALIGNED(struct fd6_primitives_sample, stop[0], 32);
 
    OUT_PKT4(ring, REG_A6XX_VPC_SO_STREAM_COUNTS, 2);
-   primitives_relocw(ring, aq, stop[0]);
+   primitives_reloc(ring, aq, stop[0]);
 
    fd6_event_write(batch, ring, WRITE_PRIMITIVE_COUNTS, false);
 
@@ -528,7 +525,7 @@ primitives_emitted_pause(struct fd_acc_query *aq,
    /* result += stop - start: */
    OUT_PKT7(ring, CP_MEM_TO_MEM, 9);
    OUT_RING(ring, CP_MEM_TO_MEM_0_DOUBLE | CP_MEM_TO_MEM_0_NEG_C | 0x80000000);
-   primitives_relocw(ring, aq, result.emitted);
+   primitives_reloc(ring, aq, result.emitted);
    primitives_reloc(ring, aq, result.emitted);
    primitives_reloc(ring, aq, stop[aq->base.index].emitted);
    primitives_reloc(ring, aq, start[aq->base.index].emitted);
