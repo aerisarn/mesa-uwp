@@ -189,9 +189,13 @@ get_l3_list(const struct intel_device_info *devinfo)
       return &icl_l3_list;
 
    case 12:
-      if (intel_device_info_is_dg2(devinfo))
+      if (intel_device_info_is_dg2(devinfo) ||
+          intel_device_info_is_mtl(devinfo)) {
+         /* XXX - Some MTL configs may need special-casing here, but
+          *       we have no way to identify them right now.
+          */
          return &dg2_l3_list;
-      else if (devinfo->platform == INTEL_PLATFORM_DG1 || devinfo->verx10 == 125)
+      } else if (devinfo->platform == INTEL_PLATFORM_DG1 || devinfo->verx10 == 125)
          return &empty_l3_list;
       else
          return &tgl_l3_list;
@@ -341,9 +345,13 @@ intel_get_l3_config(const struct intel_device_info *devinfo,
 static unsigned
 get_l3_way_size(const struct intel_device_info *devinfo)
 {
+   /*  Only MTL N/S/M have an 8KB way size, other MTL configs have 4KB
+    *  ways.  See BSpec 45319.
+    */
    const unsigned way_size_per_bank =
-      (devinfo->ver >= 9 && devinfo->l3_banks == 1) || devinfo->ver >= 11 ?
-      4 : 2;
+      devinfo->platform == INTEL_PLATFORM_MTL_M ? 8 :
+      (devinfo->ver >= 9 && devinfo->l3_banks == 1) || devinfo->ver >= 11 ? 4 :
+      2;
 
    assert(devinfo->l3_banks);
    return way_size_per_bank * devinfo->l3_banks;
