@@ -399,7 +399,9 @@ pipeline_stats_resume(struct fd_acc_query *aq, struct fd_batch *batch)
                      CP_REG_TO_MEM_0_REG(counter_base));
    stats_reloc(ring, aq, start);
 
-   fd6_event_write(batch, ring, START_PRIMITIVE_CTRS, false);
+   if (!batch->pipeline_stats_queries_active)
+      fd6_event_write(batch, ring, START_PRIMITIVE_CTRS, false);
+   batch->pipeline_stats_queries_active++;
 }
 
 static void
@@ -416,7 +418,10 @@ pipeline_stats_pause(struct fd_acc_query *aq, struct fd_batch *batch)
                      CP_REG_TO_MEM_0_REG(counter_base));
    stats_reloc(ring, aq, stop);
 
-   fd6_event_write(batch, ring, STOP_PRIMITIVE_CTRS, false);
+   assert(batch->pipeline_stats_queries_active > 0);
+   batch->pipeline_stats_queries_active--;
+   if (batch->pipeline_stats_queries_active)
+      fd6_event_write(batch, ring, STOP_PRIMITIVE_CTRS, false);
 
    /* result += stop - start: */
    OUT_PKT7(ring, CP_MEM_TO_MEM, 9);

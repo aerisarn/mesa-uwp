@@ -281,6 +281,12 @@ struct fd_batch {
     */
    uint32_t next_sample_offset;
 
+   /* The # of pipeline-stats queries running.  In case of nested
+    * queries using START/STOP_PRIMITIVE_CNTRS, we need to start
+    * only on the first one and stop only on the last one.
+    */
+   uint32_t pipeline_stats_queries_active;
+
    /* cached samples (in case multiple queries need to reference
     * the same sample snapshot)
     */
