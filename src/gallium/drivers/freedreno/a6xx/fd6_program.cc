@@ -244,8 +244,12 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
       prog_count += end - start + 1;
    }
 
+   const bool emit_pc_so_stream_cntl =
+         ctx->screen->info->a6xx.tess_use_shared &&
+         v->type == MESA_SHADER_TESS_EVAL;
+
    unsigned sizedw = 10 + (2 * prog_count);
-   if (ctx->screen->info->a6xx.tess_use_shared)
+   if (emit_pc_so_stream_cntl)
       sizedw += 2;
 
    struct fd_ringbuffer *ring =
@@ -254,11 +258,15 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
    OUT_PKT7(ring, CP_CONTEXT_REG_BUNCH, sizedw);
    OUT_RING(ring, REG_A6XX_VPC_SO_STREAM_CNTL);
    OUT_RING(ring,
-            A6XX_VPC_SO_STREAM_CNTL_STREAM_ENABLE(0x1) |
-               COND(strmout->stride[0] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF0_STREAM(1)) |
-               COND(strmout->stride[1] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF1_STREAM(1)) |
-               COND(strmout->stride[2] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF2_STREAM(1)) |
-               COND(strmout->stride[3] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF3_STREAM(1)));
+            A6XX_VPC_SO_STREAM_CNTL_STREAM_ENABLE(strmout->streams_written) |
+            COND(strmout->stride[0] > 0,
+                 A6XX_VPC_SO_STREAM_CNTL_BUF0_STREAM(1 + strmout->output[0].stream)) |
+            COND(strmout->stride[1] > 0,
+                 A6XX_VPC_SO_STREAM_CNTL_BUF1_STREAM(1 + strmout->output[1].stream)) |
+            COND(strmout->stride[2] > 0,
+                 A6XX_VPC_SO_STREAM_CNTL_BUF2_STREAM(1 + strmout->output[2].stream)) |
+            COND(strmout->stride[3] > 0,
+                 A6XX_VPC_SO_STREAM_CNTL_BUF3_STREAM(1 + strmout->output[3].stream)));
    OUT_RING(ring, REG_A6XX_VPC_SO_BUFFER_STRIDE(0));
    OUT_RING(ring, strmout->stride[0]);
    OUT_RING(ring, REG_A6XX_VPC_SO_BUFFER_STRIDE(1));
@@ -281,7 +289,7 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
       first = false;
    }
 
-   if (ctx->screen->info->a6xx.tess_use_shared) {
+   if (emit_pc_so_stream_cntl) {
       /* Possibly not tess_use_shared related, but the combination of
        * tess + xfb fails some tests if we don't emit this.
        */

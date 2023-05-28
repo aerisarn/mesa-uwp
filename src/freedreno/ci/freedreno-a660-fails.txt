@@ -1,6 +1,3 @@
-# Shader compilation error log: 0:6(1): error: invalid stream specified 1 is larger than MAX_VERTEX_STREAMS - 1
-KHR-GL45.transform_feedback.draw_xfb_stream_instanced_test,Fail
-
 KHR-GL45.direct_state_access.renderbuffers_storage_multisample,Fail
 KHR-GL45.gpu_shader_fp64.fp64.max_uniform_components,Fail
 KHR-GL45.multi_bind.dispatch_bind_image_textures,Fail
