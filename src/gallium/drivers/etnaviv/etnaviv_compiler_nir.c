@@ -763,7 +763,8 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
 
       nir_const_value value[4] = {};
       uint8_t swizzle[4][4] = {};
-      unsigned swiz_max = 0, num_const = 0;
+      unsigned swiz_max = 0, num_different_const_srcs = 0;
+      int first_const = -1;
 
       for (unsigned i = 0; i < info->num_inputs; i++) {
          nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
@@ -776,11 +777,16 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
             swizzle[i][j] = idx;
             swiz_max = MAX2(swiz_max, (unsigned) idx);
          }
-         num_const++;
+
+         if (first_const == -1)
+            first_const = i;
+
+         if (!nir_srcs_equal(alu->src[first_const].src, alu->src[i].src))
+            num_different_const_srcs++;
       }
 
       /* nothing to do */
-      if (num_const <= 1)
+      if (num_different_const_srcs == 0)
          return;
 
       /* resolve with single combined const src */
@@ -801,7 +807,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
       }
 
       /* resolve with movs */
-      num_const = 0;
+      unsigned num_const = 0;
       for (unsigned i = 0; i < info->num_inputs; i++) {
          nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
          if (!cv)
