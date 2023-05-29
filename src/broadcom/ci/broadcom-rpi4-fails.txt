@@ -526,4 +526,6 @@ dEQP-GLES3.functional.texture.specification.teximage2d_pbo.rgba32i_cube,Fail
 # Debian bookworm update (2023-04-27)
 spec@!opengl 1.0@depth-clear-precision-check,Timeout
 
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/4377
 dEQP-VK.wsi.acquire_drm_display.acquire_drm_display_invalid_fd,Fail
+dEQP-VK.wsi.acquire_drm_display.get_drm_display_invalid_fd,Fail

@@ -783,25 +783,23 @@ spec@!opengl 1.1@clipflat@glDrawElements(GL_TRIANGLE_STRIP)- glFrontFace(GL_CW)-
 spec@!opengl 1.1@clipflat@glDrawElements(GL_TRIANGLE_STRIP)- glFrontFace(GL_CW)- glPolygonMode(GL_LINE)- quadrant: right middle PV: FIRST,Fail
 spec@!opengl 1.1@clipflat@glDrawElements(GL_TRIANGLE_STRIP)- glFrontFace(GL_CW)- glPolygonMode(GL_LINE)- quadrant: right top PV: FIRST,Fail
 
+glslparsertest@glsl2@gst-gl-text-download-i420-yv12.frag,Fail
+spec@glsl-1.10@execution@glsl-fs-inline-explosion,Crash
+spec@glsl-1.10@execution@glsl-vs-inline-explosion,Crash
+spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
+
 # fails on arm64, passes on armhf
 spec@arb_depth_buffer_float@depthstencil-render-miplevels 1024 s=z24_s8_d=z32f,Fail
 
 # Crashes in this group are CMA allocation fails
-spec@!opengl 1.1@depthstencil-default_fb-blit samples=2,Crash
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=4,Crash
 spec@!opengl 1.1@depthstencil-default_fb-clear samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-clear samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-clear,Fail
-spec@!opengl 1.1@depthstencil-default_fb-copypixels samples=2,Crash
-spec@!opengl 1.1@depthstencil-default_fb-copypixels samples=4,Crash
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=2,Crash
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=4,Crash
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=2,Crash
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=4,Crash
-spec@!opengl 1.1@depthstencil-default_fb-readpixels-24_8 samples=2,Crash
 spec@!opengl 1.1@depthstencil-default_fb-readpixels-24_8 samples=4,Crash
-spec@!opengl 1.1@depthstencil-default_fb-readpixels-float-and-ushort samples=2,Crash
-spec@!opengl 1.1@depthstencil-default_fb-readpixels-float-and-ushort samples=4,Crash
 
 spec@!opengl 1.1@draw-pixels,Fail
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_line_loop,Fail
@@ -1182,6 +1180,3 @@ spec@ext_framebuffer_multisample@unaligned-blit 2 depth msaa,Fail
 spec@ext_framebuffer_multisample@unaligned-blit 2 stencil msaa,Fail
 spec@ext_framebuffer_multisample@unaligned-blit 4 depth msaa,Fail
 spec@ext_framebuffer_multisample@unaligned-blit 4 stencil msaa,Fail
-
-# since Debian 12 (bookworm) uprev
-shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Crash
