@@ -1747,6 +1747,7 @@ radv_get_ac_surf_info(struct radv_device *device, const struct radv_image *image
 VkResult
 radv_image_create_layout(struct radv_device *device, struct radv_image_create_info create_info,
                          const struct VkImageDrmFormatModifierExplicitCreateInfoEXT *mod_info,
+                         const struct VkVideoProfileListInfoKHR *profile_list,
                          struct radv_image *image)
 {
    /* Clear the pCreateInfo pointer so we catch issues in the delayed case when we test in the
@@ -1761,6 +1762,19 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
    assert(!mod_info || mod_info->drmFormatModifierPlaneCount >= image->plane_count);
 
    radv_image_reset_layout(device->physical_device, image);
+
+   /*
+    * Due to how the decoder works, the user can't supply an oversized image, because if it attempts
+    * to sample it later with a linear filter, it will get garbage after the height it wants,
+    * so we let the user specify the width/height unaligned, and align them preallocation.
+    */
+   if (image->vk.usage & (VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR)) {
+      assert(profile_list);
+      uint32_t width_align, height_align;
+      vk_video_get_profile_alignments(profile_list, &width_align, &height_align);
+      image_info.width = align(image_info.width, width_align);
+      image_info.height = align(image_info.height, height_align);
+   }
 
    unsigned plane_count = radv_get_internal_plane_count(device->physical_device, image->vk.format);
    for (unsigned plane = 0; plane < plane_count; ++plane) {
@@ -1943,6 +1957,8 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
    const struct VkImageDrmFormatModifierExplicitCreateInfoEXT *explicit_mod =
       vk_find_struct_const(pCreateInfo->pNext, IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT);
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
+   const struct VkVideoProfileListInfoKHR *profile_list =
+      vk_find_struct_const(pCreateInfo->pNext, VIDEO_PROFILE_LIST_INFO_KHR);
 
    unsigned plane_count = radv_get_internal_plane_count(device->physical_device, format);
 
@@ -2003,7 +2019,7 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
       return VK_SUCCESS;
    }
 
-   VkResult result = radv_image_create_layout(device, *create_info, explicit_mod, image);
+   VkResult result = radv_image_create_layout(device, *create_info, explicit_mod, profile_list, image);
    if (result != VK_SUCCESS) {
       radv_destroy_image(device, alloc, image);
       return result;
