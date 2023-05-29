@@ -571,6 +571,11 @@ fd_launch_grid(struct pipe_context *pctx,
    fd_batch_reference(&save_batch, ctx->batch);
    fd_batch_reference(&ctx->batch, batch);
 
+   /* NOTE: needs to be before resource_written(batch->query_buf), otherwise
+    * query_buf may not be created yet.
+    */
+   fd_batch_update_queries(batch);
+
    fd_screen_lock(ctx->screen);
 
    /* Mark SSBOs */
@@ -604,6 +609,10 @@ fd_launch_grid(struct pipe_context *pctx,
 
    if (info->indirect)
       resource_read(batch, info->indirect);
+
+   list_for_each_entry (struct fd_acc_query, aq, &ctx->acc_active_queries, node) {
+      resource_written(batch, aq->prsc);
+   }
 
    /* If the saved batch has been flushed during the resource tracking,
     * don't re-install it:
