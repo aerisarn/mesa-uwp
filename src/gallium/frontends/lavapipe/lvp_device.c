@@ -159,6 +159,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_depth_clip_enable                 = true,
    .EXT_depth_clip_control                = true,
    .EXT_depth_range_unrestricted          = true,
+   .EXT_dynamic_rendering_unused_attachments = true,
    .EXT_extended_dynamic_state            = true,
    .EXT_extended_dynamic_state2           = true,
    .EXT_extended_dynamic_state3           = true,
@@ -503,6 +504,9 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
       .extendedDynamicState3CoverageReductionMode = false,
       .extendedDynamicState3RepresentativeFragmentTestEnable = false,
       .extendedDynamicState3ColorBlendAdvanced = false,
+
+      /* VK_EXT_dynamic_rendering_unused_attachments */
+      .dynamicRenderingUnusedAttachments = true,
 
       /* VK_EXT_robustness2 */
       .robustBufferAccess2 = true,
