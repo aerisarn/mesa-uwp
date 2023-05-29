@@ -365,8 +365,18 @@ op("block_image_store", (0xB1, 0xFF, 10, _), dests = 0, srcs = 2,
 # Barriers
 op("threadgroup_barrier", (0x0068, 0xFFFF, 2, _), dests = 0, srcs = 0,
    can_eliminate = False)
-op("memory_barrier", (0x96F5, 0xFFFF, 2, _), dests = 0, srcs = 0,
-   can_eliminate = False)
+
+def memory_barrier(name, a, b, c):
+    op(name, (0xF5 | (a << 10) | (b << 8) | (c << 12), 0xFFFF, 2, _), dests = 0, srcs = 0,
+       can_eliminate = False)
+
+memory_barrier("memory_barrier", 1, 2, 9)
+
+# TODO: Not clear what these individually are. Some might be cache flushes?
+memory_barrier("image_barrier_1", 2, 2, 10)
+memory_barrier("image_barrier_2", 3, 2, 10)
+memory_barrier("image_barrier_3", 2, 1, 10)
+memory_barrier("image_barrier_4", 3, 1, 10)
 
 # Convenient aliases.
 op("mov", _, srcs = 1)

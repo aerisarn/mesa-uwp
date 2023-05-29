@@ -970,6 +970,7 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       assert(!b->shader->is_preamble && "invalid");
 
       bool needs_threadgroup_barrier = false;
+      bool needs_image_barriers = false;
 
       if (nir_intrinsic_execution_scope(instr) != SCOPE_NONE) {
          assert(nir_intrinsic_execution_scope(instr) > SCOPE_SUBGROUP &&
@@ -987,12 +988,23 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
          if (modes & nir_var_mem_shared)
             needs_threadgroup_barrier = true;
 
+         if (modes & nir_var_image) {
+            agx_image_barrier_1(b);
+            agx_image_barrier_2(b);
+            needs_image_barriers = true;
+         }
+
          if (nir_intrinsic_memory_scope(instr) >= SCOPE_WORKGROUP)
             needs_threadgroup_barrier = true;
       }
 
       if (needs_threadgroup_barrier)
          agx_threadgroup_barrier(b);
+
+      if (needs_image_barriers) {
+         agx_image_barrier_3(b);
+         agx_image_barrier_4(b);
+      }
 
       return NULL;
    }
