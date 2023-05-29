@@ -39,6 +39,39 @@
 #include "agx_disk_cache.h"
 
 static void
+agx_legalize_compression(struct agx_context *ctx, struct agx_resource *rsrc,
+                         enum pipe_format format)
+{
+   /* If the resource isn't compressed, we can reinterpret */
+   if (rsrc->layout.tiling != AIL_TILING_TWIDDLED_COMPRESSED)
+      return;
+
+   /* Normalize due to Gallium shenanigans */
+   if (format == PIPE_FORMAT_Z24_UNORM_S8_UINT ||
+       format == PIPE_FORMAT_Z24X8_UNORM)
+      format = PIPE_FORMAT_Z32_FLOAT;
+
+   /* The physical format */
+   enum pipe_format storage = rsrc->layout.format;
+
+   /* sRGB vs linear are always compatible */
+   storage = util_format_linear(storage);
+   format = util_format_linear(format);
+
+   /* If no reinterpretation happens, we don't have to decompress */
+   if (storage == format)
+      return;
+
+   /* Otherwise, decompress. TODO: Reverse-engineer which formats are compatible
+    * and don't need decompression. There are some vague hints in the Metal
+    * documentation:
+    *
+    * https://developer.apple.com/documentation/metal/mtltextureusage/mtltextureusagepixelformatview?language=objc
+    */
+   agx_decompress(ctx, rsrc, "Incompatible formats");
+}
+
+static void
 agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
                       unsigned start_slot, unsigned count,
                       unsigned unbind_num_trailing_slots,
@@ -81,6 +114,11 @@ agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
 
          agx_decompress(ctx, rsrc, "Shader image");
       }
+
+      /* Readable images may be compressed but are still subject to format
+       * reinterpretation rules.
+       */
+      agx_legalize_compression(ctx, rsrc, image->format);
 
       /* FIXME: Decompress here once we have texture compression */
       util_copy_image_view(&ctx->stage[shader].images[start_slot + i], image);
@@ -768,6 +806,8 @@ agx_create_sampler_view(struct pipe_context *pctx,
       }
    }
 
+   agx_legalize_compression(agx_context(pctx), rsrc, format);
+
    /* Save off the resource that we actually use, with the stencil fixed up */
    so->rsrc = rsrc;
    agx_pack_texture(&so->desc, rsrc, format, state, false);
@@ -831,6 +871,9 @@ static struct pipe_surface *
 agx_create_surface(struct pipe_context *ctx, struct pipe_resource *texture,
                    const struct pipe_surface *surf_tmpl)
 {
+   agx_legalize_compression(agx_context(ctx), agx_resource(texture),
+                            surf_tmpl->format);
+
    struct pipe_surface *surface = CALLOC_STRUCT(pipe_surface);
 
    if (!surface)
