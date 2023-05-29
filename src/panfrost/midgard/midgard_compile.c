@@ -480,13 +480,14 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
    NIR_PASS_V(nir, nir_opt_move, move_all);
 
    /* Take us out of SSA */
-   NIR_PASS(progress, nir, nir_convert_from_ssa, true, false);
+   NIR_PASS(progress, nir, nir_convert_from_ssa, true, true);
 
    /* We are a vector architecture; write combine where possible */
    NIR_PASS(progress, nir, nir_move_vec_src_uses_to_dest);
-   NIR_PASS(progress, nir, nir_lower_vec_to_movs, NULL, NULL);
+   NIR_PASS(progress, nir, nir_lower_vec_to_regs, NULL, NULL);
 
    NIR_PASS(progress, nir, nir_opt_dce);
+   NIR_PASS_V(nir, nir_trivialize_registers);
 }
 
 /* Do not actually emit a load; instead, cache the constant for inlining */
@@ -633,8 +634,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       midgard_emit_derivatives(ctx, instr);
       return;
    }
-
-   bool is_ssa = dest->is_ssa;
 
    unsigned nr_components = nir_dest_num_components(*dest);
    unsigned nr_inputs = nir_op_infos[instr->op].num_inputs;
@@ -875,11 +874,12 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
    midgard_instruction ins = {
       .type = TAG_ALU_4,
-      .dest = nir_dest_index(dest),
       .dest_type =
          nir_op_infos[instr->op].output_type | nir_dest_bit_size(*dest),
       .roundmode = roundmode,
    };
+
+   ins.dest = nir_dest_index_with_mask(dest, &ins.mask);
 
    for (unsigned i = nr_inputs; i < ARRAY_SIZE(ins.src); ++i)
       ins.src[i] = ~0;
@@ -919,15 +919,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       if (instr->op == nir_op_fabs)
          ins.src_abs[1] = true;
    }
-
-   ins.mask = mask_of(nr_components);
-
-   /* Apply writemask if non-SSA, keeping in mind that we can't write to
-    * components that don't exist. Note modifier => SSA => !reg => no
-    * writemask, so we don't have to worry about writemasks here.*/
-
-   if (!is_ssa)
-      ins.mask &= instr->dest.write_mask;
 
    ins.op = op;
    ins.outmod = outmod;
@@ -1550,6 +1541,32 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
    unsigned offset = 0, reg;
 
    switch (instr->intrinsic) {
+   case nir_intrinsic_decl_reg:
+   case nir_intrinsic_store_reg:
+      /* Always fully consumed */
+      break;
+
+   case nir_intrinsic_load_reg: {
+      /* NIR guarantees that, for typical isel, this will always be fully
+       * consumed. However, we also do our own nir_ssa_scalar chasing for
+       * address arithmetic, bypassing the source chasing helpers. So we can end
+       * up with unconsumed load_register instructions. Translate them here. 99%
+       * of the time, these moves will be DCE'd away.
+       */
+      assert(instr->src[0].is_ssa);
+      nir_ssa_def *handle = instr->src[0].ssa;
+
+      midgard_instruction ins =
+         v_mov(nir_reg_index(handle), nir_dest_index(&instr->dest));
+
+      ins.dest_type = ins.src_types[1] =
+         nir_type_uint | nir_dest_bit_size(instr->dest);
+
+      ins.mask = BITFIELD_MASK(nir_dest_num_components(instr->dest));
+      emit_mir_instruction(ctx, ins);
+      break;
+   }
+
    case nir_intrinsic_discard_if:
    case nir_intrinsic_discard: {
       bool conditional = instr->intrinsic == nir_intrinsic_discard_if;
