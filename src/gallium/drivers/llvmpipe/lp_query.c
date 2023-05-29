@@ -345,6 +345,9 @@ llvmpipe_get_query_result_resource(struct pipe_context *pipe,
          case PIPE_STAT_QUERY_CS_INVOCATIONS:
             value = pq->stats.cs_invocations;
             break;
+         case PIPE_STAT_QUERY_TS_INVOCATIONS:
+         case PIPE_STAT_QUERY_MS_INVOCATIONS:
+            break;
          }
          break;
       default:
