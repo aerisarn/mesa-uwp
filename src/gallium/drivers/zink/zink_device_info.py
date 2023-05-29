@@ -127,6 +127,7 @@ EXTENSIONS = [
     Extension("VK_EXT_memory_priority", alias="memprio", features=True),
     Extension("VK_EXT_pageable_device_local_memory", alias="mempage", features=True),
     Extension("VK_KHR_draw_indirect_count"),
+    Extension("VK_EXT_dynamic_rendering_unused_attachments", alias="unused", features=True),
     Extension("VK_EXT_shader_object", alias="shobj", features=True, properties=True),
     Extension("VK_EXT_attachment_feedback_loop_layout",
               alias="feedback_loop",

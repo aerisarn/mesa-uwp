@@ -431,11 +431,15 @@
         "gl46_optimal_ext": {
             "extensions": {
                 "VK_EXT_provoking_vertex": 1,
-                "VK_KHR_dynamic_rendering": 1
+                "VK_KHR_dynamic_rendering": 1,
+                "VK_EXT_dynamic_rendering_unused_attachments": 1
             },
             "features": {
                 "VkPhysicalDeviceDynamicRenderingFeaturesKHR": {
                     "dynamicRendering": true
+                },
+                "VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT": {
+                    "dynamicRenderingUnusedAttachments": true
                 }
             }
         },
