@@ -1,4 +1,0 @@
-# timeout on bookworm (buffers32 seems to be usually more than 30s)
-dEQP-VK.binding_model.descriptor_buffer.multiple.compute_comp_buffers32_sets1
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_vert_buffers32_sets1
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers32_sets1
