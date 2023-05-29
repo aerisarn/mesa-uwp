@@ -473,7 +473,6 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
    NIR_PASS_V(nir, nir_opt_move, move_all);
 
    /* Take us out of SSA */
-   NIR_PASS(progress, nir, nir_lower_locals_to_regs);
    NIR_PASS(progress, nir, nir_convert_from_ssa, true);
 
    /* We are a vector architecture; write combine where possible */
