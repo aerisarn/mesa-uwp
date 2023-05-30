@@ -115,6 +115,18 @@ struct ${to_struct_name(c.name)} {
 % endif
 % endfor
 
+struct vk_cmd_queue_entry;
+
+/* this ordering must match vk_cmd_queue_entry */
+struct vk_cmd_queue_entry_base {
+   struct list_head cmd_link;
+   enum vk_cmd_type type;
+   void *driver_data;
+   void (*driver_free_cb)(struct vk_cmd_queue *queue,
+                          struct vk_cmd_queue_entry *cmd);
+};
+
+/* this ordering must match vk_cmd_queue_entry_base */
 struct vk_cmd_queue_entry {
    struct list_head cmd_link;
    enum vk_cmd_type type;
@@ -247,7 +259,11 @@ VkResult vk_enqueue_${to_underscore(c.name)}(struct vk_cmd_queue *queue
 )
 {
    struct vk_cmd_queue_entry *cmd = vk_zalloc(queue->alloc,
-                                              sizeof(*cmd), 8,
+                                              sizeof(struct vk_cmd_queue_entry_base)
+% if len(c.params) > 1:
+                                              + sizeof(struct ${to_struct_name(c.name)})
+% endif
+                                              , 8,
                                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!cmd) return VK_ERROR_OUT_OF_HOST_MEMORY;
 
