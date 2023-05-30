@@ -724,12 +724,37 @@ child_block_empty(const exec_list& list)
    return result;
 }
 
+static bool value_has_non_const_source(VirtualValue *value)
+{
+   auto reg = value->as_register();
+   if (reg) {
+      // Non-ssa registers are probably the result of some control flow
+      // that makes the values non-uniform across the work group
+      if (!reg->has_flag(Register::ssa))
+         return true;
+
+      for (const auto& p : reg->parents()) {
+         auto alu = p->as_alu();
+         if (alu) {
+            for (auto& s : p->as_alu()->sources()) {
+               return value_has_non_const_source(s);
+            }
+         } else {
+            return true;
+         }
+      }
+   }
+   return false;
+}
+
 bool
 Shader::process_if(nir_if *if_stmt)
 {
    SFN_TRACE_FUNC(SfnLog::flow, "IF");
 
    auto value = value_factory().src(if_stmt->condition, 0);
+
+   bool non_const_cond = value_has_non_const_source(value);
 
    EAluOp op = child_block_empty(if_stmt->then_list) ? op2_prede_int :
                                                        op2_pred_setne_int;
@@ -745,6 +770,8 @@ Shader::process_if(nir_if *if_stmt)
 
    IfInstr *ir = new IfInstr(pred);
    emit_instruction(ir);
+   if (non_const_cond)
+      ++m_control_flow_depth;
    start_new_block(1);
 
    if (!child_block_empty(if_stmt->then_list)) {
@@ -774,6 +801,9 @@ Shader::process_if(nir_if *if_stmt)
 
    if (!emit_control_flow(ControlFlowInstr::cf_endif))
       return false;
+
+   if (non_const_cond)
+      --m_control_flow_depth;
 
    return true;
 }
@@ -1268,8 +1298,9 @@ Shader::emit_shader_clock(nir_intrinsic_instr *instr)
 }
 
 bool
-Shader::emit_barrier(nir_intrinsic_instr *intr)
+Shader::emit_group_barrier(nir_intrinsic_instr *intr)
 {
+   assert(m_control_flow_depth == 0);
    (void)intr;
    /* Put barrier into it's own block, so that optimizers and the
     * scheduler don't move code */
