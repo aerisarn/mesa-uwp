@@ -97,6 +97,7 @@ enum vk_cmd_type {
 };
 
 extern const char *vk_cmd_queue_type_names[];
+extern size_t vk_cmd_queue_type_sizes[];
 
 % for c in commands:
 % if len(c.params) <= 1:             # Avoid "error C2016: C requires that a struct or union have at least one member"
@@ -222,6 +223,21 @@ const char *vk_cmd_queue_type_names[] = {
 #ifdef ${c.guard}
 % endif
    "${to_enum_name(c.name)}",
+% if c.guard is not None:
+#endif // ${c.guard}
+% endif
+% endfor
+};
+
+size_t vk_cmd_queue_type_sizes[] = {
+% for c in commands:
+% if c.guard is not None:
+#ifdef ${c.guard}
+% endif
+% if len(c.params) > 1:
+   sizeof(struct ${to_struct_name(c.name)}) +
+% endif
+   sizeof(struct vk_cmd_queue_entry_base),
 % if c.guard is not None:
 #endif // ${c.guard}
 % endif
