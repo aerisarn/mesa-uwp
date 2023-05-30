@@ -476,7 +476,9 @@ radv_GetPhysicalDeviceVideoFormatPropertiesKHR(VkPhysicalDevice physicalDevice,
        (VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR | VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   *pVideoFormatPropertyCount = 0;
+   VK_OUTARRAY_MAKE_TYPED(VkVideoFormatPropertiesKHR, out,
+                          pVideoFormatProperties,
+                          pVideoFormatPropertyCount);
 
    bool need_10bit = false;
    const struct VkVideoProfileListInfoKHR *prof_list = (struct VkVideoProfileListInfoKHR *)
@@ -489,27 +491,22 @@ radv_GetPhysicalDeviceVideoFormatPropertiesKHR(VkPhysicalDevice physicalDevice,
       }
    }
 
-   (*pVideoFormatPropertyCount)++;
-   if (need_10bit)
-      (*pVideoFormatPropertyCount)++;
-
-   if (!pVideoFormatProperties)
-      return VK_SUCCESS;
-
-   int idx = 0;
-   pVideoFormatProperties[idx].format = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
-   pVideoFormatProperties[idx].imageType = VK_IMAGE_TYPE_2D;
-   pVideoFormatProperties[idx].imageTiling = VK_IMAGE_TILING_OPTIMAL;
-   pVideoFormatProperties[idx].imageUsageFlags = pVideoFormatInfo->imageUsage;
-   idx++;
-   if (need_10bit) {
-      pVideoFormatProperties[idx].format = VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16;
-      pVideoFormatProperties[idx].imageType = VK_IMAGE_TYPE_2D;
-      pVideoFormatProperties[idx].imageTiling = VK_IMAGE_TILING_OPTIMAL;
-      pVideoFormatProperties[idx].imageUsageFlags = pVideoFormatInfo->imageUsage;
-      idx++;
+   vk_outarray_append_typed(VkVideoFormatPropertiesKHR, &out, p) {
+      p->format = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
+      p->imageType = VK_IMAGE_TYPE_2D;
+      p->imageTiling = VK_IMAGE_TILING_OPTIMAL;
+      p->imageUsageFlags = pVideoFormatInfo->imageUsage;
    }
-   return VK_SUCCESS;
+
+   if (need_10bit) {
+      vk_outarray_append_typed(VkVideoFormatPropertiesKHR, &out, p) {
+         p->format = VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16;
+         p->imageType = VK_IMAGE_TYPE_2D;
+         p->imageTiling = VK_IMAGE_TILING_OPTIMAL;
+         p->imageUsageFlags = pVideoFormatInfo->imageUsage;
+      }
+   }
+   return vk_outarray_status(&out);
 }
 
 #define RADV_BIND_SESSION_CTX 0
