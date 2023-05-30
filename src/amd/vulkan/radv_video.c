@@ -521,35 +521,29 @@ radv_GetVideoSessionMemoryRequirementsKHR(VkDevice _device,
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_video_session, vid, videoSession);
    uint32_t memory_type_bits = (1u << device->physical_device->memory_properties.memoryTypeCount) - 1;
-   uint32_t num_memory_reqs = 0;
-   int idx = 0;
 
-   if (device->physical_device->rad_info.family >= CHIP_POLARIS10)
-      num_memory_reqs++;
-
-   if (vid->stream_type == RDECODE_CODEC_H264_PERF || vid->stream_type == RDECODE_CODEC_H265)
-      num_memory_reqs++;
-
-   *pMemoryRequirementsCount = num_memory_reqs;
-
-   if (!pMemoryRequirements)
-      return VK_SUCCESS;
+   VK_OUTARRAY_MAKE_TYPED(VkVideoSessionMemoryRequirementsKHR, out,
+                          pMemoryRequirements,
+                          pMemoryRequirementsCount);
 
    /* 1 buffer for session context */
    if (device->physical_device->rad_info.family >= CHIP_POLARIS10) {
-      pMemoryRequirements[idx].memoryBindIndex = RADV_BIND_SESSION_CTX;
-      pMemoryRequirements[idx].memoryRequirements.size = RDECODE_SESSION_CONTEXT_SIZE;
-      pMemoryRequirements[idx].memoryRequirements.alignment = 0;
-      pMemoryRequirements[idx].memoryRequirements.memoryTypeBits = memory_type_bits;
-      idx++;
+      vk_outarray_append_typed(VkVideoSessionMemoryRequirementsKHR, &out, m) {
+         m->memoryBindIndex = RADV_BIND_SESSION_CTX;
+         m->memoryRequirements.size = RDECODE_SESSION_CONTEXT_SIZE;
+         m->memoryRequirements.alignment = 0;
+         m->memoryRequirements.memoryTypeBits = memory_type_bits;
+      }
    }
 
    if (vid->stream_type == RDECODE_CODEC_H264_PERF &&
        device->physical_device->rad_info.family >= CHIP_POLARIS10) {
-      pMemoryRequirements[idx].memoryBindIndex = RADV_BIND_DECODER_CTX;
-      pMemoryRequirements[idx].memoryRequirements.size = align(calc_ctx_size_h264_perf(vid), 4096);
-      pMemoryRequirements[idx].memoryRequirements.alignment = 0;
-      pMemoryRequirements[idx].memoryRequirements.memoryTypeBits = memory_type_bits;
+      vk_outarray_append_typed(VkVideoSessionMemoryRequirementsKHR, &out, m) {
+         m->memoryBindIndex = RADV_BIND_DECODER_CTX;
+         m->memoryRequirements.size = align(calc_ctx_size_h264_perf(vid), 4096);
+         m->memoryRequirements.alignment = 0;
+         m->memoryRequirements.memoryTypeBits = memory_type_bits;
+      }
    }
    if (vid->stream_type == RDECODE_CODEC_H265) {
       uint32_t ctx_size;
@@ -558,12 +552,14 @@ radv_GetVideoSessionMemoryRequirementsKHR(VkDevice _device,
          ctx_size = calc_ctx_size_h265_main10(vid);
       else
          ctx_size = calc_ctx_size_h265_main(vid);
-      pMemoryRequirements[idx].memoryBindIndex = RADV_BIND_DECODER_CTX;
-      pMemoryRequirements[idx].memoryRequirements.size = align(ctx_size, 4096);
-      pMemoryRequirements[idx].memoryRequirements.alignment = 0;
-      pMemoryRequirements[idx].memoryRequirements.memoryTypeBits = memory_type_bits;
+      vk_outarray_append_typed(VkVideoSessionMemoryRequirementsKHR, &out, m) {
+         m->memoryBindIndex = RADV_BIND_DECODER_CTX;
+         m->memoryRequirements.size = align(ctx_size, 4096);
+         m->memoryRequirements.alignment = 0;
+         m->memoryRequirements.memoryTypeBits = memory_type_bits;
+      }
    }
-   return VK_SUCCESS;
+   return vk_outarray_status(&out);
 }
 
 VkResult
