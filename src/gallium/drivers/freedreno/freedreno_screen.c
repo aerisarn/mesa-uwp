@@ -883,11 +883,17 @@ fd_screen_bo_get_handle(struct pipe_screen *pscreen, struct fd_bo *bo,
       if (screen->ro) {
          return renderonly_get_handle(scanout, whandle);
       } else {
-         whandle->handle = fd_bo_handle(bo);
+         uint32_t handle = fd_bo_handle(bo);
+         if (!handle)
+            return false;
+         whandle->handle = handle;
          return true;
       }
    } else if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
-      whandle->handle = fd_bo_dmabuf(bo);
+      int fd = fd_bo_dmabuf(bo);
+      if (fd < 0)
+         return false;
+      whandle->handle = fd;
       return true;
    } else {
       return false;
