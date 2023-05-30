@@ -14,8 +14,10 @@
  * don't otherwise write their depth, forcing a late depth test.
  *
  * For side effects with force early testing forced, the sample mask is written
- * at the *beginning* of the shader (TODO: handle).
+ * at the *beginning* of the shader.
  */
+
+#define ALL_SAMPLES (0xFF)
 
 static void
 insert_z_write(nir_builder *b)
@@ -62,9 +64,26 @@ agx_nir_lower_frag_sidefx(nir_shader *s)
    /* Lower writes from helper invocations with the common pass */
    NIR_PASS_V(s, nir_lower_helper_writes, false);
 
+   bool writes_zs =
+      s->info.outputs_written &
+      (BITFIELD64_BIT(FRAG_RESULT_STENCIL) | BITFIELD64_BIT(FRAG_RESULT_DEPTH));
+
+   /* If the shader wants early fragment tests, trigger an early test at the
+    * beginning of the shader. This lets us use a Passthrough punch type,
+    * instead of Opaque which may result in the shader getting skipped
+    * incorrectly and then the side effects not kicking in.
+    */
+   if (s->info.fs.early_fragment_tests) {
+      assert(!writes_zs && "incompatible");
+      nir_function_impl *impl = nir_shader_get_entrypoint(s);
+      nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
+      nir_sample_mask_agx(&b, nir_imm_intN_t(&b, ALL_SAMPLES, 16),
+                          nir_imm_intN_t(&b, ALL_SAMPLES, 16));
+      return true;
+   }
+
    /* If depth/stencil feedback is already used, we're done */
-   if (s->info.outputs_written & (BITFIELD64_BIT(FRAG_RESULT_STENCIL) |
-                                  BITFIELD64_BIT(FRAG_RESULT_DEPTH)))
+   if (writes_zs)
       return false;
 
    bool done = false;
