@@ -1371,7 +1371,8 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.lower_cs_local_index_to_id = true,
 		.lower_uniforms_to_ubo = true,
 		.lower_image_offset_to_range_base = 1,
-		.vectorize_tess_levels = 1
+		.vectorize_tess_levels = 1,
+		.use_scoped_barrier = 1,
 	};
 
 	rscreen->nir_options = nir_options;

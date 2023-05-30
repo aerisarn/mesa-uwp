@@ -320,6 +320,7 @@ private:
    bool emit_group_barrier(nir_intrinsic_instr *intr);
    bool emit_shader_clock(nir_intrinsic_instr *instr);
    bool emit_wait_ack();
+   bool emit_scoped_barrier(nir_intrinsic_instr *instr);
 
    bool equal_to(const Shader& other) const;
    void finalize();

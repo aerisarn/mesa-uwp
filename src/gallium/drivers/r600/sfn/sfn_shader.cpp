@@ -676,11 +676,12 @@ Shader::scan_instruction(nir_instr *instr)
       m_flags.set(sh_writes_memory);
       m_flags.set(sh_uses_images);
       break;
-   case nir_intrinsic_memory_barrier_image:
-   case nir_intrinsic_memory_barrier_buffer:
-   case nir_intrinsic_memory_barrier:
-   case nir_intrinsic_group_memory_barrier:
-      m_chain_instr.prepare_mem_barrier = true;
+   case nir_intrinsic_scoped_barrier:
+      m_chain_instr.prepare_mem_barrier =
+            (nir_intrinsic_memory_modes(intr) &
+             (nir_var_mem_ssbo | nir_var_mem_global | nir_var_image) &&
+             nir_intrinsic_memory_scope(intr) != NIR_SCOPE_NONE);
+      break;
    default:;
    }
    return true;
@@ -908,20 +909,8 @@ Shader::process_intrinsic(nir_intrinsic_instr *intr)
       return emit_load_tcs_param_base(intr, 0);
    case nir_intrinsic_load_tcs_out_param_base_r600:
       return emit_load_tcs_param_base(intr, 16);
-      // We only emit the group barrier, barriers across work groups
-      // are not yet implemented
-   case nir_intrinsic_control_barrier:
-   case nir_intrinsic_memory_barrier_tcs_patch:
-   case nir_intrinsic_memory_barrier_shared:
-      return emit_barrier(intr);
-   case nir_intrinsic_memory_barrier_atomic_counter:
-      return true;
-   case nir_intrinsic_group_memory_barrier:
-   case nir_intrinsic_memory_barrier_image:
-   case nir_intrinsic_memory_barrier_buffer:
-   case nir_intrinsic_memory_barrier:
-      return emit_wait_ack();
-
+   case nir_intrinsic_scoped_barrier:
+      return emit_scoped_barrier(intr);
    case nir_intrinsic_shared_atomic:
    case nir_intrinsic_shared_atomic_swap:
       return emit_atomic_local_shared(intr);
@@ -1309,6 +1298,31 @@ Shader::emit_group_barrier(nir_intrinsic_instr *intr)
    op->set_alu_flag(alu_last_instr);
    emit_instruction(op);
    start_new_block(0);
+   return true;
+}
+
+bool Shader::emit_scoped_barrier(nir_intrinsic_instr *intr)
+{
+
+   if ((nir_intrinsic_execution_scope(intr) == NIR_SCOPE_WORKGROUP)) {
+      if (!emit_group_barrier(intr))
+         return false;
+   }
+
+   /* We don't check nir_var_mem_shared because we don't emit a real barrier -
+    * for this we need to implement GWS (Global Wave Sync).
+    * Here we just emit a wait_ack - this is no real barrier,
+    * it's just a wait for RAT writes to be finished (if they
+    * are emitted with the _ACK opcode and the `mark` flag set - it
+    * is very likely that WAIT_ACK is also only relevant for this
+    * shader instance). */
+   auto full_barrier_mem_modes = nir_var_mem_ssbo |  nir_var_image | nir_var_mem_global;
+
+   if ((nir_intrinsic_memory_scope(intr) != NIR_SCOPE_NONE) &&
+       (nir_intrinsic_memory_modes(intr) & full_barrier_mem_modes)) {
+      return emit_wait_ack();
+   }
+
    return true;
 }
 
