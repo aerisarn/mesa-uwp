@@ -118,6 +118,9 @@ struct ${to_struct_name(c.name)} {
 struct vk_cmd_queue_entry {
    struct list_head cmd_link;
    enum vk_cmd_type type;
+   void *driver_data;
+   void (*driver_free_cb)(struct vk_cmd_queue *queue,
+                          struct vk_cmd_queue_entry *cmd);
    union {
 % for c in commands:
 % if len(c.params) <= 1:
@@ -132,9 +135,6 @@ struct vk_cmd_queue_entry {
 % endif
 % endfor
    } u;
-   void *driver_data;
-   void (*driver_free_cb)(struct vk_cmd_queue *queue,
-                          struct vk_cmd_queue_entry *cmd);
 };
 
 % for c in commands:
