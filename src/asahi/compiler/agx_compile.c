@@ -907,14 +907,14 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_scoped_barrier: {
       bool needs_threadgroup_barrier = false;
 
-      if (nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE) {
-         assert(nir_intrinsic_execution_scope(instr) > NIR_SCOPE_SUBGROUP &&
+      if (nir_intrinsic_execution_scope(instr) != SCOPE_NONE) {
+         assert(nir_intrinsic_execution_scope(instr) > SCOPE_SUBGROUP &&
                 "todo: subgroup barriers");
 
          needs_threadgroup_barrier = true;
       }
 
-      if (nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE) {
+      if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE) {
          nir_variable_mode modes = nir_intrinsic_memory_modes(instr);
 
          if (modes & nir_var_mem_global)
@@ -923,7 +923,7 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
          if (modes & nir_var_mem_shared)
             needs_threadgroup_barrier = true;
 
-         if (nir_intrinsic_memory_scope(instr) >= NIR_SCOPE_WORKGROUP)
+         if (nir_intrinsic_memory_scope(instr) >= SCOPE_WORKGROUP)
             needs_threadgroup_barrier = true;
       }
 

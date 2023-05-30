@@ -2756,9 +2756,9 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       break;
 
    case nir_intrinsic_scoped_barrier:
-      if (nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
+      if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE)
          nir_emit_intrinsic(bld, instr);
-      if (nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP) {
+      if (nir_intrinsic_execution_scope(instr) == SCOPE_WORKGROUP) {
          if (tcs_prog_data->instances != 1)
             emit_tcs_barrier();
       }
@@ -3684,9 +3684,9 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
    switch (instr->intrinsic) {
    case nir_intrinsic_scoped_barrier:
-      if (nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
+      if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE)
          nir_emit_intrinsic(bld, instr);
-      if (nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP) {
+      if (nir_intrinsic_execution_scope(instr) == SCOPE_WORKGROUP) {
          /* The whole workgroup fits in a single HW thread, so all the
           * invocations are already executed lock-step.  Instead of an actual
           * barrier just emit a scheduling fence, that will generate no code.
@@ -4297,19 +4297,19 @@ lsc_fence_descriptor_for_intrinsic(const struct intel_device_info *devinfo,
 
    if (nir_intrinsic_has_memory_scope(instr)) {
       switch (nir_intrinsic_memory_scope(instr)) {
-      case NIR_SCOPE_DEVICE:
-      case NIR_SCOPE_QUEUE_FAMILY:
+      case SCOPE_DEVICE:
+      case SCOPE_QUEUE_FAMILY:
          scope = LSC_FENCE_TILE;
          flush_type = LSC_FLUSH_TYPE_EVICT;
          break;
-      case NIR_SCOPE_WORKGROUP:
+      case SCOPE_WORKGROUP:
          scope = LSC_FENCE_THREADGROUP;
          flush_type = LSC_FLUSH_TYPE_EVICT;
          break;
-      case NIR_SCOPE_SHADER_CALL:
-      case NIR_SCOPE_INVOCATION:
-      case NIR_SCOPE_SUBGROUP:
-      case NIR_SCOPE_NONE:
+      case SCOPE_SHADER_CALL:
+      case SCOPE_INVOCATION:
+      case SCOPE_SUBGROUP:
+      case SCOPE_NONE:
          break;
       }
    } else {
@@ -4523,7 +4523,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          slm_fence = modes & nir_var_mem_shared;
          tgm_fence = modes & nir_var_image;
          urb_fence = modes & (nir_var_shader_out | nir_var_mem_task_payload);
-         if (nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
+         if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE)
             opcode = SHADER_OPCODE_MEMORY_FENCE;
          break;
       }

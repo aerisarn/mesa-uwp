@@ -531,7 +531,7 @@ const struct glsl_type *
 vtn_type_get_nir_type(struct vtn_builder *b, struct vtn_type *type,
                       enum vtn_variable_mode mode);
 
-nir_scope
+mesa_scope
 vtn_translate_scope(struct vtn_builder *b, SpvScope scope);
 
 struct vtn_image_pointer {

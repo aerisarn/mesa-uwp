@@ -228,9 +228,9 @@ remove_scoped_barriers_impl(nir_builder *b, nir_instr *instr, void *data)
    if (intr->intrinsic != nir_intrinsic_scoped_barrier)
       return false;
    if (data) {
-      if (nir_intrinsic_memory_scope(intr) == NIR_SCOPE_WORKGROUP ||
-          nir_intrinsic_memory_scope(intr) == NIR_SCOPE_DEVICE ||
-          nir_intrinsic_memory_scope(intr) == NIR_SCOPE_QUEUE_FAMILY)
+      if (nir_intrinsic_memory_scope(intr) == SCOPE_WORKGROUP ||
+          nir_intrinsic_memory_scope(intr) == SCOPE_DEVICE ||
+          nir_intrinsic_memory_scope(intr) == SCOPE_QUEUE_FAMILY)
          return false;
    }
    nir_instr_remove(instr);

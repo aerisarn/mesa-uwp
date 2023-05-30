@@ -2345,7 +2345,7 @@ ntt_emit_barrier(struct ntt_compile *c, nir_intrinsic_instr *intr)
 {
    bool compute = gl_shader_stage_is_compute(c->s->info.stage);
 
-   if (nir_intrinsic_memory_scope(intr) != NIR_SCOPE_NONE) {
+   if (nir_intrinsic_memory_scope(intr) != SCOPE_NONE) {
       nir_variable_mode modes = nir_intrinsic_memory_modes(intr);
       unsigned membar = 0;
 
@@ -2368,7 +2368,7 @@ ntt_emit_barrier(struct ntt_compile *c, nir_intrinsic_instr *intr)
        * optimize a bit.
        */
       if (membar && compute &&
-          nir_intrinsic_memory_scope(intr) == NIR_SCOPE_WORKGROUP) {
+          nir_intrinsic_memory_scope(intr) == SCOPE_WORKGROUP) {
 
          membar |= TGSI_MEMBAR_THREAD_GROUP;
       }
@@ -2378,7 +2378,7 @@ ntt_emit_barrier(struct ntt_compile *c, nir_intrinsic_instr *intr)
          ntt_MEMBAR(c, ureg_imm1u(c->ureg, membar));
    }
 
-   if (nir_intrinsic_execution_scope(intr) != NIR_SCOPE_NONE) {
+   if (nir_intrinsic_execution_scope(intr) != SCOPE_NONE) {
       assert(compute || c->s->info.stage == MESA_SHADER_TESS_CTRL);
       ntt_BARRIER(c);
    }

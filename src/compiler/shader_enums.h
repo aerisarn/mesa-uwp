@@ -1376,6 +1376,17 @@ typedef enum
    NUM_TEXTURE_TARGETS
 } gl_texture_index;
 
+/* Ordered from narrower to wider scope. */
+typedef enum {
+   SCOPE_NONE,
+   SCOPE_INVOCATION,
+   SCOPE_SUBGROUP,
+   SCOPE_SHADER_CALL,
+   SCOPE_WORKGROUP,
+   SCOPE_QUEUE_FAMILY,
+   SCOPE_DEVICE,
+} mesa_scope;
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

@@ -680,7 +680,7 @@ Shader::scan_instruction(nir_instr *instr)
       m_chain_instr.prepare_mem_barrier |=
             (nir_intrinsic_memory_modes(intr) &
              (nir_var_mem_ssbo | nir_var_mem_global | nir_var_image) &&
-             nir_intrinsic_memory_scope(intr) != NIR_SCOPE_NONE);
+             nir_intrinsic_memory_scope(intr) != SCOPE_NONE);
       break;
    default:;
    }
@@ -1333,7 +1333,7 @@ Shader::emit_group_barrier(nir_intrinsic_instr *intr)
 bool Shader::emit_scoped_barrier(nir_intrinsic_instr *intr)
 {
 
-   if ((nir_intrinsic_execution_scope(intr) == NIR_SCOPE_WORKGROUP)) {
+   if ((nir_intrinsic_execution_scope(intr) == SCOPE_WORKGROUP)) {
       if (!emit_group_barrier(intr))
          return false;
    }
@@ -1347,7 +1347,7 @@ bool Shader::emit_scoped_barrier(nir_intrinsic_instr *intr)
     * shader instance). */
    auto full_barrier_mem_modes = nir_var_mem_ssbo |  nir_var_image | nir_var_mem_global;
 
-   if ((nir_intrinsic_memory_scope(intr) != NIR_SCOPE_NONE) &&
+   if ((nir_intrinsic_memory_scope(intr) != SCOPE_NONE) &&
        (nir_intrinsic_memory_modes(intr) & full_barrier_mem_modes)) {
       return emit_wait_ack();
    }

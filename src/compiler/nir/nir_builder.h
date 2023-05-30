@@ -1835,11 +1835,11 @@ nir_compare_func(nir_builder *b, enum compare_func func,
 
 static inline void
 nir_scoped_memory_barrier(nir_builder *b,
-                          nir_scope scope,
+                          mesa_scope scope,
                           nir_memory_semantics semantics,
                           nir_variable_mode modes)
 {
-   nir_scoped_barrier(b, NIR_SCOPE_NONE, scope, semantics, modes);
+   nir_scoped_barrier(b, SCOPE_NONE, scope, semantics, modes);
 }
 
 nir_ssa_def *

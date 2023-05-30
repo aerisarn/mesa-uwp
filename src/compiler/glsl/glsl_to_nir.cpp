@@ -1389,23 +1389,23 @@ nir_visitor::visit(ir_call *ir)
           *
           *   https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_gl_spirv.txt
           */
-         nir_scope scope;
+         mesa_scope scope;
          unsigned modes;
          switch (ir->callee->intrinsic_id) {
          case ir_intrinsic_memory_barrier:
-            scope = NIR_SCOPE_DEVICE;
+            scope = SCOPE_DEVICE;
             modes = nir_var_image |
                     nir_var_mem_ssbo |
                     nir_var_mem_shared |
                     nir_var_mem_global;
             break;
          case ir_intrinsic_memory_barrier_buffer:
-            scope = NIR_SCOPE_DEVICE;
+            scope = SCOPE_DEVICE;
             modes = nir_var_mem_ssbo |
                     nir_var_mem_global;
             break;
          case ir_intrinsic_memory_barrier_image:
-            scope = NIR_SCOPE_DEVICE;
+            scope = SCOPE_DEVICE;
             modes = nir_var_image;
             break;
          case ir_intrinsic_memory_barrier_shared:
@@ -1413,11 +1413,11 @@ nir_visitor::visit(ir_call *ir)
              * follow their lead.  Note GL_KHR_vulkan_glsl also does
              * something similar.
              */
-            scope = NIR_SCOPE_DEVICE;
+            scope = SCOPE_DEVICE;
             modes = nir_var_mem_shared;
             break;
          case ir_intrinsic_group_memory_barrier:
-            scope = NIR_SCOPE_WORKGROUP;
+            scope = SCOPE_WORKGROUP;
             modes = nir_var_image |
                     nir_var_mem_ssbo |
                     nir_var_mem_shared |
@@ -1427,7 +1427,7 @@ nir_visitor::visit(ir_call *ir)
             /* There's no nir_var_atomic_counter, but since atomic counters are lowered
              * to SSBOs, we use nir_var_mem_ssbo instead.
              */
-            scope = NIR_SCOPE_DEVICE;
+            scope = SCOPE_DEVICE;
             modes = nir_var_mem_ssbo;
             break;
          default:
@@ -1440,7 +1440,7 @@ nir_visitor::visit(ir_call *ir)
       }
       case nir_intrinsic_shader_clock:
          nir_ssa_dest_init(&instr->instr, &instr->dest, 2, 32);
-         nir_intrinsic_set_memory_scope(instr, NIR_SCOPE_SUBGROUP);
+         nir_intrinsic_set_memory_scope(instr, SCOPE_SUBGROUP);
          nir_builder_instr_insert(&b, &instr->instr);
          break;
       case nir_intrinsic_begin_invocation_interlock:
@@ -2652,10 +2652,10 @@ void
 nir_visitor::visit(ir_barrier *)
 {
    if (shader->info.stage == MESA_SHADER_COMPUTE) {
-      nir_scoped_barrier(&b, NIR_SCOPE_WORKGROUP, NIR_SCOPE_WORKGROUP,
+      nir_scoped_barrier(&b, SCOPE_WORKGROUP, SCOPE_WORKGROUP,
                          NIR_MEMORY_ACQ_REL, nir_var_mem_shared);
    } else if (shader->info.stage == MESA_SHADER_TESS_CTRL) {
-      nir_scoped_barrier(&b, NIR_SCOPE_WORKGROUP, NIR_SCOPE_WORKGROUP,
+      nir_scoped_barrier(&b, SCOPE_WORKGROUP, SCOPE_WORKGROUP,
                          NIR_MEMORY_ACQ_REL, nir_var_shader_out);
    }
 }

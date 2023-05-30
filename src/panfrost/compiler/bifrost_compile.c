@@ -1578,9 +1578,9 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
       break;
 
    case nir_intrinsic_scoped_barrier:
-      if (nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE) {
+      if (nir_intrinsic_execution_scope(instr) != SCOPE_NONE) {
          assert(b->shader->stage != MESA_SHADER_FRAGMENT);
-         assert(nir_intrinsic_execution_scope(instr) > NIR_SCOPE_SUBGROUP &&
+         assert(nir_intrinsic_execution_scope(instr) > SCOPE_SUBGROUP &&
                 "todo: subgroup barriers (different divergence rules)");
          bi_barrier(b);
       }

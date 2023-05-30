@@ -305,9 +305,9 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_scoped_barrier:
-      if (nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
+      if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE)
          vec4_visitor::nir_emit_intrinsic(instr);
-      if (nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP) {
+      if (nir_intrinsic_execution_scope(instr) == SCOPE_WORKGROUP) {
          dst_reg header = dst_reg(this, glsl_type::uvec4_type);
          emit(TCS_OPCODE_CREATE_BARRIER_HEADER, header);
          emit(SHADER_OPCODE_BARRIER, dst_null_ud(), src_reg(header));

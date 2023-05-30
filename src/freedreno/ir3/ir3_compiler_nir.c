@@ -1591,7 +1591,7 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
     * between a5xx and a6xx,
     */
 
-   nir_scope exec_scope = nir_intrinsic_execution_scope(intr);
+   mesa_scope exec_scope = nir_intrinsic_execution_scope(intr);
    nir_variable_mode modes = nir_intrinsic_memory_modes(intr);
    /* loads/stores are always cache-coherent so we can filter out
     * available/visible.
@@ -1659,7 +1659,7 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       array_insert(b, b->keeps, barrier);
    }
 
-   if (exec_scope >= NIR_SCOPE_WORKGROUP) {
+   if (exec_scope >= SCOPE_WORKGROUP) {
       emit_control_barrier(ctx);
    }
 }

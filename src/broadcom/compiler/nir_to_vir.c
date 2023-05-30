@@ -3511,7 +3511,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                  */
                 ntq_flush_tmu(c);
 
-                if (nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE) {
+                if (nir_intrinsic_execution_scope(instr) != SCOPE_NONE) {
                         /* Ensure we flag the use of the control barrier. NIR's
                          * gather info pass usually takes care of this, but that
                          * requires that we call that pass after any other pass

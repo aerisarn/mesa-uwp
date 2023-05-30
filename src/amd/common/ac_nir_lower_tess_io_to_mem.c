@@ -496,13 +496,13 @@ update_hs_scoped_barrier(nir_intrinsic_instr *intrin, lower_tess_io_state *st)
    }
    nir_intrinsic_set_memory_modes(intrin, mem_modes);
 
-   nir_scope exec_scope = nir_intrinsic_execution_scope(intrin);
-   if (exec_scope == NIR_SCOPE_WORKGROUP && st->tcs_out_patch_fits_subgroup)
-      nir_intrinsic_set_execution_scope(intrin, NIR_SCOPE_SUBGROUP);
+   mesa_scope exec_scope = nir_intrinsic_execution_scope(intrin);
+   if (exec_scope == SCOPE_WORKGROUP && st->tcs_out_patch_fits_subgroup)
+      nir_intrinsic_set_execution_scope(intrin, SCOPE_SUBGROUP);
 
-   nir_scope mem_scope = nir_intrinsic_memory_scope(intrin);
-   if (mem_scope == NIR_SCOPE_WORKGROUP && st->tcs_out_patch_fits_subgroup)
-      nir_intrinsic_set_memory_scope(intrin, NIR_SCOPE_SUBGROUP);
+   mesa_scope mem_scope = nir_intrinsic_memory_scope(intrin);
+   if (mem_scope == SCOPE_WORKGROUP && st->tcs_out_patch_fits_subgroup)
+      nir_intrinsic_set_memory_scope(intrin, SCOPE_SUBGROUP);
 }
 
 static nir_ssa_def *
@@ -566,8 +566,8 @@ hs_emit_write_tess_factors(nir_shader *shader,
 
    /* If tess factors are load from LDS, wait previous LDS stores done. */
    if (!st->tcs_pass_tessfactors_by_reg) {
-      nir_scope scope = st->tcs_out_patch_fits_subgroup ?
-         NIR_SCOPE_SUBGROUP : NIR_SCOPE_WORKGROUP;
+      mesa_scope scope = st->tcs_out_patch_fits_subgroup ?
+                        SCOPE_SUBGROUP : SCOPE_WORKGROUP;
 
       nir_scoped_barrier(b, .execution_scope = scope, .memory_scope = scope,
                          .memory_semantics = NIR_MEMORY_ACQ_REL, .memory_modes = nir_var_mem_shared);

@@ -147,7 +147,7 @@ build_occlusion_query_shader(struct radv_device *device)
          const uint32_t rb_avail_offset = 16 * util_last_bit64(enabled_rb_mask) - 4;
 
          /* Prevent the SSBO load to be moved out of the loop. */
-         nir_scoped_memory_barrier(&b, NIR_SCOPE_INVOCATION, NIR_MEMORY_ACQUIRE, nir_var_mem_ssbo);
+         nir_scoped_memory_barrier(&b, SCOPE_INVOCATION, NIR_MEMORY_ACQUIRE, nir_var_mem_ssbo);
 
          nir_ssa_def *load_offset = nir_iadd_imm(&b, input_base, rb_avail_offset);
          nir_ssa_def *load = nir_load_ssbo(&b, 1, 32, src_buf, load_offset, .align_mul = 4, .access = ACCESS_COHERENT);

@@ -246,10 +246,10 @@ index("nir_memory_semantics", "memory_semantics")
 index("nir_variable_mode", "memory_modes")
 
 # Scope of a memory operation
-index("nir_scope", "memory_scope")
+index("mesa_scope", "memory_scope")
 
 # Scope of a control barrier
-index("nir_scope", "execution_scope")
+index("mesa_scope", "execution_scope")
 
 # Semantics of an IO instruction
 index("struct nir_io_semantics", "io_semantics")
@@ -366,7 +366,7 @@ barrier("terminate")
 # Control/Memory barrier with explicit scope.  Follows the semantics of SPIR-V
 # OpMemoryBarrier and OpControlBarrier, used to implement Vulkan Memory Model.
 # Storage that the barrier applies is represented using NIR variable modes.
-# For an OpMemoryBarrier, set EXECUTION_SCOPE to NIR_SCOPE_NONE.
+# For an OpMemoryBarrier, set EXECUTION_SCOPE to SCOPE_NONE.
 intrinsic("scoped_barrier",
           indices=[EXECUTION_SCOPE, MEMORY_SCOPE, MEMORY_SEMANTICS, MEMORY_MODES])
 

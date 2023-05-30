@@ -1323,7 +1323,7 @@ handle_barrier(struct vectorize_ctx *ctx, bool *progress, nir_function_impl *imp
          modes = nir_var_all;
          break;
       case nir_intrinsic_scoped_barrier:
-         if (nir_intrinsic_memory_scope(intrin) == NIR_SCOPE_NONE)
+         if (nir_intrinsic_memory_scope(intrin) == SCOPE_NONE)
             break;
 
          modes = nir_intrinsic_memory_modes(intrin) & (nir_var_mem_ssbo |
@@ -1333,7 +1333,7 @@ handle_barrier(struct vectorize_ctx *ctx, bool *progress, nir_function_impl *imp
          acquire = nir_intrinsic_memory_semantics(intrin) & NIR_MEMORY_ACQUIRE;
          release = nir_intrinsic_memory_semantics(intrin) & NIR_MEMORY_RELEASE;
          switch (nir_intrinsic_memory_scope(intrin)) {
-         case NIR_SCOPE_INVOCATION:
+         case SCOPE_INVOCATION:
             /* a barier should never be required for correctness with these scopes */
             modes = 0;
             break;

@@ -765,10 +765,10 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
 
    case nir_intrinsic_scoped_barrier:
       shader->info.uses_control_barrier |=
-         nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE;
+         nir_intrinsic_execution_scope(instr) != SCOPE_NONE;
 
       shader->info.uses_memory_barrier |=
-         nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE;
+         nir_intrinsic_memory_scope(instr) != SCOPE_NONE;
       break;
 
    case nir_intrinsic_store_zs_agx:

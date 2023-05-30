@@ -7209,16 +7209,16 @@ visit_load_smem(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 sync_scope
-translate_nir_scope(nir_scope scope)
+translate_nir_scope(mesa_scope scope)
 {
    switch (scope) {
-   case NIR_SCOPE_NONE:
-   case NIR_SCOPE_INVOCATION: return scope_invocation;
-   case NIR_SCOPE_SUBGROUP: return scope_subgroup;
-   case NIR_SCOPE_WORKGROUP: return scope_workgroup;
-   case NIR_SCOPE_QUEUE_FAMILY: return scope_queuefamily;
-   case NIR_SCOPE_DEVICE: return scope_device;
-   case NIR_SCOPE_SHADER_CALL: return scope_invocation;
+   case SCOPE_NONE:
+   case SCOPE_INVOCATION: return scope_invocation;
+   case SCOPE_SUBGROUP: return scope_subgroup;
+   case SCOPE_WORKGROUP: return scope_workgroup;
+   case SCOPE_QUEUE_FAMILY: return scope_queuefamily;
+   case SCOPE_DEVICE: return scope_device;
+   case SCOPE_SHADER_CALL: return scope_invocation;
    }
    unreachable("invalid scope");
 }
@@ -8847,17 +8847,17 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    case nir_intrinsic_shader_clock: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      if (nir_intrinsic_memory_scope(instr) == NIR_SCOPE_SUBGROUP &&
+      if (nir_intrinsic_memory_scope(instr) == SCOPE_SUBGROUP &&
           ctx->options->gfx_level >= GFX10_3) {
          /* "((size - 1) << 11) | register" (SHADER_CYCLES is encoded as register 29) */
          Temp clock = bld.sopk(aco_opcode::s_getreg_b32, bld.def(s1), ((20 - 1) << 11) | 29);
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), clock, Operand::zero());
-      } else if (nir_intrinsic_memory_scope(instr) == NIR_SCOPE_DEVICE &&
+      } else if (nir_intrinsic_memory_scope(instr) == SCOPE_DEVICE &&
                  ctx->options->gfx_level >= GFX11) {
          bld.sop1(aco_opcode::s_sendmsg_rtn_b64, Definition(dst),
                   Operand::c32(sendmsg_rtn_get_realtime));
       } else {
-         aco_opcode opcode = nir_intrinsic_memory_scope(instr) == NIR_SCOPE_DEVICE
+         aco_opcode opcode = nir_intrinsic_memory_scope(instr) == SCOPE_DEVICE
                                 ? aco_opcode::s_memrealtime
                                 : aco_opcode::s_memtime;
          bld.smem(opcode, Definition(dst), memory_sync_info(0, semantic_volatile));

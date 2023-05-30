@@ -806,7 +806,7 @@ TEST_F(nir_load_store_vectorize_test, ubo_load_adjacent_memory_barrier)
 {
    create_load(nir_var_mem_ubo, 0, 0, 0x1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQ_REL,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQ_REL,
                              nir_var_mem_ssbo);
 
    create_load(nir_var_mem_ubo, 0, 4, 0x2);
@@ -823,7 +823,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_memory_barrier)
 {
    create_load(nir_var_mem_ssbo, 0, 0, 0x1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQ_REL,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQ_REL,
                              nir_var_mem_ssbo);
 
    create_load(nir_var_mem_ssbo, 0, 4, 0x2);
@@ -842,7 +842,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_memory_barrier)
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_barrier)
 {
    create_load(nir_var_mem_ssbo, 0, 0, 0x1);
-   nir_scoped_barrier(b, NIR_SCOPE_WORKGROUP, NIR_SCOPE_NONE,
+   nir_scoped_barrier(b, SCOPE_WORKGROUP, SCOPE_NONE,
                       (nir_memory_semantics)0, (nir_variable_mode)0);
    create_load(nir_var_mem_ssbo, 0, 4, 0x2);
 
@@ -858,7 +858,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_memory_barrier_shared)
 {
    create_load(nir_var_mem_ssbo, 0, 0, 0x1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_WORKGROUP, NIR_MEMORY_ACQ_REL,
+   nir_scoped_memory_barrier(b, SCOPE_WORKGROUP, NIR_MEMORY_ACQ_REL,
                              nir_var_mem_shared);
 
    create_load(nir_var_mem_ssbo, 0, 4, 0x2);

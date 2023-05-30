@@ -1356,8 +1356,8 @@ bool combine_all_memory_barriers(nir_intrinsic_instr *a,
                                  void *data)
 {
    /* Only combine pure memory barriers */
-   if ((nir_intrinsic_execution_scope(a) != NIR_SCOPE_NONE) ||
-       (nir_intrinsic_execution_scope(b) != NIR_SCOPE_NONE))
+   if ((nir_intrinsic_execution_scope(a) != SCOPE_NONE) ||
+       (nir_intrinsic_execution_scope(b) != SCOPE_NONE))
       return false;
 
    /* Translation to backend IR will get rid of modes we don't care about, so

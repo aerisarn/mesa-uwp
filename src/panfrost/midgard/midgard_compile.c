@@ -2044,11 +2044,11 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       break;
 
    case nir_intrinsic_scoped_barrier:
-      if (nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE) {
+      if (nir_intrinsic_execution_scope(instr) != SCOPE_NONE) {
          schedule_barrier(ctx);
          emit_control_barrier(ctx);
          schedule_barrier(ctx);
-      } else if (nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE) {
+      } else if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE) {
          /* Midgard doesn't seem to want special handling, though we do need to
           * take care when scheduling to avoid incorrect reordering.
           *

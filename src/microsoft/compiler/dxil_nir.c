@@ -1960,8 +1960,8 @@ lower_subgroup_id(nir_builder *b, nir_instr *instr, void *data)
       nir_pop_if(b, nif);
 
       nir_scoped_barrier(b,
-                         .execution_scope = NIR_SCOPE_WORKGROUP,
-                         .memory_scope = NIR_SCOPE_WORKGROUP,
+                         .execution_scope = SCOPE_WORKGROUP,
+                         .memory_scope = SCOPE_WORKGROUP,
                          .memory_semantics = NIR_MEMORY_ACQ_REL,
                          .memory_modes = nir_var_mem_shared);
 

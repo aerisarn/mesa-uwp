@@ -3079,19 +3079,19 @@ load_ubo(struct ntd_context *ctx, const struct dxil_value *handle,
 }
 
 static bool
-emit_barrier_impl(struct ntd_context *ctx, nir_variable_mode modes, nir_scope execution_scope, nir_scope mem_scope)
+emit_barrier_impl(struct ntd_context *ctx, nir_variable_mode modes, mesa_scope execution_scope, mesa_scope mem_scope)
 {
    const struct dxil_value *opcode, *mode;
    const struct dxil_func *func;
    uint32_t flags = 0;
 
-   if (execution_scope == NIR_SCOPE_WORKGROUP)
+   if (execution_scope == SCOPE_WORKGROUP)
       flags |= DXIL_BARRIER_MODE_SYNC_THREAD_GROUP;
 
    bool is_compute = ctx->mod.shader_kind == DXIL_COMPUTE_SHADER;
 
    if (modes & (nir_var_mem_ssbo | nir_var_mem_global | nir_var_image)) {
-      if (mem_scope > NIR_SCOPE_WORKGROUP || !is_compute)
+      if (mem_scope > SCOPE_WORKGROUP || !is_compute)
          flags |= DXIL_BARRIER_MODE_UAV_FENCE_GLOBAL;
       else
          flags |= DXIL_BARRIER_MODE_UAV_FENCE_THREAD_GROUP;

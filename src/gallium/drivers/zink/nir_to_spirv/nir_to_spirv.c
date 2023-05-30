@@ -307,16 +307,16 @@ find_image_type(struct ntv_context *ctx, nir_variable *var)
 }
 
 static SpvScope
-get_scope(nir_scope scope)
+get_scope(mesa_scope scope)
 {
    SpvScope conv[] = {
-      [NIR_SCOPE_NONE] = 0,
-      [NIR_SCOPE_INVOCATION] = SpvScopeInvocation,
-      [NIR_SCOPE_SUBGROUP] = SpvScopeSubgroup,
-      [NIR_SCOPE_SHADER_CALL] = SpvScopeShaderCallKHR,
-      [NIR_SCOPE_WORKGROUP] = SpvScopeWorkgroup,
-      [NIR_SCOPE_QUEUE_FAMILY] = SpvScopeQueueFamily,
-      [NIR_SCOPE_DEVICE] = SpvScopeDevice,
+      [SCOPE_NONE] = 0,
+      [SCOPE_INVOCATION] = SpvScopeInvocation,
+      [SCOPE_SUBGROUP] = SpvScopeSubgroup,
+      [SCOPE_SHADER_CALL] = SpvScopeShaderCallKHR,
+      [SCOPE_WORKGROUP] = SpvScopeWorkgroup,
+      [SCOPE_QUEUE_FAMILY] = SpvScopeQueueFamily,
+      [SCOPE_DEVICE] = SpvScopeDevice,
    };
    return conv[scope];
 }
@@ -3536,7 +3536,7 @@ emit_barrier(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvScope mem_scope = get_scope(nir_intrinsic_memory_scope(intr));
    SpvMemorySemanticsMask semantics = 0;
 
-   if (nir_intrinsic_memory_scope(intr) != NIR_SCOPE_NONE) {
+   if (nir_intrinsic_memory_scope(intr) != SCOPE_NONE) {
       nir_variable_mode modes = nir_intrinsic_memory_modes(intr);
 
       if (modes & nir_var_image)
@@ -3557,7 +3557,7 @@ emit_barrier(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       semantics |= SpvMemorySemanticsAcquireReleaseMask;
    }
 
-   if (nir_intrinsic_execution_scope(intr) != NIR_SCOPE_NONE)
+   if (nir_intrinsic_execution_scope(intr) != SCOPE_NONE)
       spirv_builder_emit_control_barrier(&ctx->builder, scope, mem_scope, semantics);
    else
       spirv_builder_emit_memory_barrier(&ctx->builder, mem_scope, semantics);

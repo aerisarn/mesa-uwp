@@ -1899,16 +1899,6 @@ typedef enum {
    NIR_MEMORY_MAKE_VISIBLE   = 1 << 3,
 } nir_memory_semantics;
 
-typedef enum {
-   NIR_SCOPE_NONE,
-   NIR_SCOPE_INVOCATION,
-   NIR_SCOPE_SUBGROUP,
-   NIR_SCOPE_SHADER_CALL,
-   NIR_SCOPE_WORKGROUP,
-   NIR_SCOPE_QUEUE_FAMILY,
-   NIR_SCOPE_DEVICE,
-} nir_scope;
-
 /**
  * \name NIR intrinsics semantic flags
  *

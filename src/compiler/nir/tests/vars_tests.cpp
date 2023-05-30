@@ -624,7 +624,7 @@ TEST_F(nir_copy_prop_vars_test, memory_barrier_in_two_blocks)
 
    nir_store_var(b, v[2], nir_load_var(b, v[0]), 1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQ_REL,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQ_REL,
                              nir_var_mem_global);
 
    nir_store_var(b, v[3], nir_load_var(b, v[1]), 1);
@@ -644,7 +644,7 @@ TEST_F(nir_redundant_load_vars_test, acquire_barrier_prevents_load_removal)
 
    nir_load_var(b, x[0]);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -662,7 +662,7 @@ TEST_F(nir_redundant_load_vars_test, acquire_barrier_prevents_same_mode_load_rem
    nir_load_var(b, x[0]);
    nir_load_var(b, x[1]);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -684,7 +684,7 @@ TEST_F(nir_redundant_load_vars_test, acquire_barrier_allows_different_mode_load_
    nir_load_var(b, y[0]);
    nir_load_var(b, y[1]);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -721,7 +721,7 @@ TEST_F(nir_redundant_load_vars_test, release_barrier_allows_load_removal)
 
    nir_load_var(b, x[0]);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_RELEASE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_RELEASE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -739,7 +739,7 @@ TEST_F(nir_redundant_load_vars_test, release_barrier_allows_same_mode_load_remov
    nir_load_var(b, x[0]);
    nir_load_var(b, x[1]);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_RELEASE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_RELEASE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -761,7 +761,7 @@ TEST_F(nir_redundant_load_vars_test, release_barrier_allows_different_mode_load_
    nir_load_var(b, y[0]);
    nir_load_var(b, y[1]);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_RELEASE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_RELEASE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -793,7 +793,7 @@ TEST_F(nir_copy_prop_vars_test, acquire_barrier_prevents_propagation)
 
    nir_store_var(b, x[0], nir_imm_int(b, 10), 1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -812,7 +812,7 @@ TEST_F(nir_copy_prop_vars_test, acquire_barrier_prevents_same_mode_propagation)
    nir_store_var(b, x[0], nir_imm_int(b, 10), 1);
    nir_store_var(b, x[1], nir_imm_int(b, 20), 1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -835,7 +835,7 @@ TEST_F(nir_copy_prop_vars_test, acquire_barrier_allows_different_mode_propagatio
    nir_store_var(b, y[0], nir_imm_int(b, 30), 1);
    nir_store_var(b, y[1], nir_imm_int(b, 40), 1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -875,7 +875,7 @@ TEST_F(nir_copy_prop_vars_test, release_barrier_allows_propagation)
 
    nir_store_var(b, x[0], nir_imm_int(b, 10), 1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_RELEASE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_RELEASE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -893,7 +893,7 @@ TEST_F(nir_copy_prop_vars_test, release_barrier_allows_same_mode_propagation)
    nir_store_var(b, x[0], nir_imm_int(b, 10), 1);
    nir_store_var(b, x[1], nir_imm_int(b, 20), 1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_RELEASE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_RELEASE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -916,7 +916,7 @@ TEST_F(nir_copy_prop_vars_test, release_barrier_allows_different_mode_propagatio
    nir_store_var(b, y[0], nir_imm_int(b, 30), 1);
    nir_store_var(b, y[1], nir_imm_int(b, 40), 1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_RELEASE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_RELEASE,
                              nir_var_mem_global);
 
    nir_load_var(b, x[0]);
@@ -949,7 +949,7 @@ TEST_F(nir_copy_prop_vars_test, acquire_barrier_prevents_propagation_from_copy)
 
    nir_copy_var(b, x[1], x[0]);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
                              nir_var_mem_global);
 
    nir_copy_var(b, x[2], x[1]);
@@ -975,7 +975,7 @@ TEST_F(nir_copy_prop_vars_test, acquire_barrier_prevents_propagation_from_copy_t
 
    nir_copy_var(b, y[0], x[0]);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQUIRE,
                              nir_var_mem_global);
 
    nir_copy_var(b, x[1], y[0]);
@@ -1000,7 +1000,7 @@ TEST_F(nir_copy_prop_vars_test, release_barrier_allows_propagation_from_copy)
 
    nir_copy_var(b, x[1], x[0]);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_RELEASE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_RELEASE,
                              nir_var_mem_global);
 
    nir_copy_var(b, x[2], x[1]);
@@ -1026,7 +1026,7 @@ TEST_F(nir_copy_prop_vars_test, release_barrier_allows_propagation_from_copy_to_
 
    nir_copy_var(b, y[0], x[0]);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_RELEASE,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_RELEASE,
                              nir_var_mem_global);
 
    nir_copy_var(b, x[1], y[0]);
@@ -1784,7 +1784,7 @@ TEST_F(nir_dead_write_vars_test, DISABLED_memory_barrier_in_two_blocks)
    /* Because it is before the barrier, this will kill the previous store to that target. */
    nir_store_var(b, v[0], nir_imm_int(b, 3), 1);
 
-   nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_ACQ_REL,
+   nir_scoped_memory_barrier(b, SCOPE_DEVICE, NIR_MEMORY_ACQ_REL,
                              nir_var_mem_global);
 
    nir_store_var(b, v[1], nir_imm_int(b, 4), 1);

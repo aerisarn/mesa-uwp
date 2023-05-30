@@ -2257,25 +2257,25 @@ Converter::visit(nir_intrinsic_instr *insn)
       break;
    }
    case nir_intrinsic_scoped_barrier: {
-      nir_scope exec_scope = nir_intrinsic_execution_scope(insn);
-      nir_scope mem_scope = nir_intrinsic_memory_scope(insn);
+      mesa_scope exec_scope = nir_intrinsic_execution_scope(insn);
+      mesa_scope mem_scope = nir_intrinsic_memory_scope(insn);
       nir_variable_mode modes = nir_intrinsic_memory_modes(insn);
       nir_variable_mode valid_modes =
          nir_var_mem_global | nir_var_image | nir_var_mem_ssbo | nir_var_mem_shared;
 
-      if (mem_scope != NIR_SCOPE_NONE && (modes & valid_modes)) {
+      if (mem_scope != SCOPE_NONE && (modes & valid_modes)) {
 
          Instruction *bar = mkOp(OP_MEMBAR, TYPE_NONE, NULL);
          bar->fixed = 1;
 
-         if (mem_scope >= NIR_SCOPE_QUEUE_FAMILY)
+         if (mem_scope >= SCOPE_QUEUE_FAMILY)
             bar->subOp = NV50_IR_SUBOP_MEMBAR(M, GL);
          else
             bar->subOp = NV50_IR_SUBOP_MEMBAR(M, CTA);
       }
 
-      if (exec_scope != NIR_SCOPE_NONE &&
-          !(exec_scope == NIR_SCOPE_WORKGROUP && nir->info.stage == MESA_SHADER_TESS_CTRL)) {
+      if (exec_scope != SCOPE_NONE &&
+          !(exec_scope == SCOPE_WORKGROUP && nir->info.stage == MESA_SHADER_TESS_CTRL)) {
          Instruction *bar = mkOp2(OP_BAR, TYPE_U32, NULL, mkImm(0), mkImm(0));
          bar->fixed = 1;
          bar->subOp = NV50_IR_SUBOP_BAR_SYNC;

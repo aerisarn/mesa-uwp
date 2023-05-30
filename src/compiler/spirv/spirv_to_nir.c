@@ -2579,7 +2579,7 @@ vtn_mem_semantics_to_nir_var_modes(struct vtn_builder *b,
    return modes;
 }
 
-nir_scope
+mesa_scope
 vtn_translate_scope(struct vtn_builder *b, SpvScope scope)
 {
    switch (scope) {
@@ -2589,25 +2589,25 @@ vtn_translate_scope(struct vtn_builder *b, SpvScope scope)
                   "If the Vulkan memory model is declared and any instruction "
                   "uses Device scope, the VulkanMemoryModelDeviceScope "
                   "capability must be declared.");
-      return NIR_SCOPE_DEVICE;
+      return SCOPE_DEVICE;
 
    case SpvScopeQueueFamily:
       vtn_fail_if(!b->options->caps.vk_memory_model,
                   "To use Queue Family scope, the VulkanMemoryModel capability "
                   "must be declared.");
-      return NIR_SCOPE_QUEUE_FAMILY;
+      return SCOPE_QUEUE_FAMILY;
 
    case SpvScopeWorkgroup:
-      return NIR_SCOPE_WORKGROUP;
+      return SCOPE_WORKGROUP;
 
    case SpvScopeSubgroup:
-      return NIR_SCOPE_SUBGROUP;
+      return SCOPE_SUBGROUP;
 
    case SpvScopeInvocation:
-      return NIR_SCOPE_INVOCATION;
+      return SCOPE_INVOCATION;
 
    case SpvScopeShaderCallKHR:
-      return NIR_SCOPE_SHADER_CALL;
+      return SCOPE_SHADER_CALL;
 
    default:
       vtn_fail("Invalid memory scope");
@@ -2622,12 +2622,12 @@ vtn_emit_scoped_control_barrier(struct vtn_builder *b, SpvScope exec_scope,
    nir_memory_semantics nir_semantics =
       vtn_mem_semantics_to_nir_mem_semantics(b, semantics);
    nir_variable_mode modes = vtn_mem_semantics_to_nir_var_modes(b, semantics);
-   nir_scope nir_exec_scope = vtn_translate_scope(b, exec_scope);
+   mesa_scope nir_exec_scope = vtn_translate_scope(b, exec_scope);
 
    /* Memory semantics is optional for OpControlBarrier. */
-   nir_scope nir_mem_scope;
+   mesa_scope nir_mem_scope;
    if (nir_semantics == 0 || modes == 0)
-      nir_mem_scope = NIR_SCOPE_NONE;
+      nir_mem_scope = SCOPE_NONE;
    else
       nir_mem_scope = vtn_translate_scope(b, mem_scope);
 

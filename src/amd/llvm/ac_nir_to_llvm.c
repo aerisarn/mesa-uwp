@@ -3297,7 +3297,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       if (wait_flags)
          ac_build_waitcnt(&ctx->ac, wait_flags);
 
-      if (nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP)
+      if (nir_intrinsic_execution_scope(instr) == SCOPE_WORKGROUP)
          ac_build_s_barrier(&ctx->ac, ctx->stage);
       break;
    }
