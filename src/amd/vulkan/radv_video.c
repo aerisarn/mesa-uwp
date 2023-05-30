@@ -480,6 +480,7 @@ radv_GetPhysicalDeviceVideoFormatPropertiesKHR(VkPhysicalDevice physicalDevice,
                           pVideoFormatProperties,
                           pVideoFormatPropertyCount);
 
+   bool need_8bit = true;
    bool need_10bit = false;
    const struct VkVideoProfileListInfoKHR *prof_list = (struct VkVideoProfileListInfoKHR *)
       vk_find_struct_const(pVideoFormatInfo->pNext, VIDEO_PROFILE_LIST_INFO_KHR);
@@ -491,13 +492,6 @@ radv_GetPhysicalDeviceVideoFormatPropertiesKHR(VkPhysicalDevice physicalDevice,
       }
    }
 
-   vk_outarray_append_typed(VkVideoFormatPropertiesKHR, &out, p) {
-      p->format = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
-      p->imageType = VK_IMAGE_TYPE_2D;
-      p->imageTiling = VK_IMAGE_TILING_OPTIMAL;
-      p->imageUsageFlags = pVideoFormatInfo->imageUsage;
-   }
-
    if (need_10bit) {
       vk_outarray_append_typed(VkVideoFormatPropertiesKHR, &out, p) {
          p->format = VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16;
@@ -505,7 +499,20 @@ radv_GetPhysicalDeviceVideoFormatPropertiesKHR(VkPhysicalDevice physicalDevice,
          p->imageTiling = VK_IMAGE_TILING_OPTIMAL;
          p->imageUsageFlags = pVideoFormatInfo->imageUsage;
       }
+
+      if (pVideoFormatInfo->imageUsage & (VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR))
+         need_8bit = false;
    }
+
+   if (need_8bit) {
+         vk_outarray_append_typed(VkVideoFormatPropertiesKHR, &out, p) {
+            p->format = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
+            p->imageType = VK_IMAGE_TYPE_2D;
+            p->imageTiling = VK_IMAGE_TILING_OPTIMAL;
+            p->imageUsageFlags = pVideoFormatInfo->imageUsage;
+         }
+   }
+
    return vk_outarray_status(&out);
 }
 
