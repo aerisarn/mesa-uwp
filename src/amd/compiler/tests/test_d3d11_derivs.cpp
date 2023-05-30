@@ -203,7 +203,7 @@ BEGIN_TEST(d3d11_derivs.offset)
    //>> lv3: %wqm = p_start_linear_vgpr (kill)%vec
    //>> BB1
    //>> v1: %offset = p_parallelcopy 0x201
-   //>> v4: %_ = image_sample_o (kill)%_, (kill)%_, v1: undef, %wqm, (kill)%offset 1d
+   //>> v4: %_ = image_sample_o (kill)%_, (kill)%_, v1: undef, %wqm, (kill)%offset 2d
    //>> BB2
    //>> BB6
    //>> p_end_linear_vgpr (kill)%wqm
@@ -333,7 +333,7 @@ BEGIN_TEST(d3d11_derivs.1d_gfx9)
    //>> v2: %vec = p_create_vector (kill)%x, 0.5
    //>> lv2: %wqm = p_start_linear_vgpr (kill)%vec
    //>> BB1
-   //>> v4: %_ = image_sample (kill)%_, (kill)%_, v1: undef, %wqm 1d
+   //>> v4: %_ = image_sample (kill)%_, (kill)%_, v1: undef, %wqm 2d
    //>> BB2
    //>> BB6
    //>> p_end_linear_vgpr (kill)%wqm
@@ -373,7 +373,7 @@ BEGIN_TEST(d3d11_derivs.1d_array_gfx9)
    //>> v3: %vec = p_create_vector (kill)%x, 0.5, (kill)%layer
    //>> lv3: %wqm = p_start_linear_vgpr (kill)%vec
    //>> BB1
-   //>> v4: %_ = image_sample (kill)%_, (kill)%_, v1: undef, %wqm 1d da
+   //>> v4: %_ = image_sample (kill)%_, (kill)%_, v1: undef, %wqm 2darray da
    //>> BB2
    //>> BB6
    //>> p_end_linear_vgpr (kill)%wqm

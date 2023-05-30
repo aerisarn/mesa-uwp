@@ -5989,11 +5989,8 @@ emit_pack_v1(isel_context* ctx, const std::vector<Temp>& unpacked)
 }
 
 static bool
-should_declare_array(isel_context* ctx, enum glsl_sampler_dim sampler_dim, bool is_array)
+should_declare_array(ac_image_dim dim)
 {
-   if (sampler_dim == GLSL_SAMPLER_DIM_BUF)
-      return false;
-   ac_image_dim dim = ac_get_sampler_dim(ctx->options->gfx_level, sampler_dim, is_array);
    return dim == ac_image_cube || dim == ac_image_1darray || dim == ac_image_2darray ||
           dim == ac_image_2darraymsaa;
 }
@@ -6349,8 +6346,9 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
          load->da = is_array;
          load->sync = memory_sync_info();
       } else {
-         load->dim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
-         load->da = should_declare_array(ctx, dim, is_array);
+         ac_image_dim sdim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
+         load->dim = sdim;
+         load->da = should_declare_array(sdim);
          load->sync = sync;
       }
    }
@@ -6472,12 +6470,13 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
       emit_mimg(bld, opcode, Temp(0, v1), resource, Operand(s4), coords, false, Operand(data));
    store->glc = glc;
    store->dlc = false;
-   store->dim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
    store->a16 = instr->src[1].ssa->bit_size == 16;
    store->d16 = d16;
    store->dmask = dmask;
    store->unrm = true;
-   store->da = should_declare_array(ctx, dim, is_array);
+   ac_image_dim sdim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
+   store->dim = sdim;
+   store->da = should_declare_array(sdim);
    store->disable_wqm = true;
    store->sync = sync;
    ctx->program->needs_exact = true;
@@ -6630,11 +6629,12 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
       emit_mimg(bld, image_op, tmp, resource, Operand(s4), coords, false, Operand(data));
    mimg->glc = return_previous;
    mimg->dlc = false; /* Not needed for atomics */
-   mimg->dim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
    mimg->dmask = (1 << data.size()) - 1;
    mimg->a16 = instr->src[1].ssa->bit_size == 16;
    mimg->unrm = true;
-   mimg->da = should_declare_array(ctx, dim, is_array);
+   ac_image_dim sdim = ac_get_image_dim(ctx->options->gfx_level, dim, is_array);
+   mimg->dim = sdim;
+   mimg->da = should_declare_array(sdim);
    mimg->disable_wqm = true;
    mimg->sync = sync;
    ctx->program->needs_exact = true;
@@ -9469,7 +9469,12 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       has_derivs = true;
    }
 
-   bool da = should_declare_array(ctx, instr->sampler_dim, instr->is_array);
+   unsigned dim = 0;
+   bool da = false;
+   if (instr->sampler_dim != GLSL_SAMPLER_DIM_BUF) {
+      dim = ac_get_sampler_dim(ctx->options->gfx_level, instr->sampler_dim, instr->is_array);
+      da = should_declare_array((ac_image_dim)dim);
+   }
 
    /* Build tex instruction */
    unsigned dmask = nir_ssa_def_components_read(&instr->dest.ssa) & 0xf;
@@ -9477,10 +9482,6 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       dmask = u_bit_consecutive(0, util_last_bit(dmask));
    if (instr->is_sparse)
       dmask = MAX2(dmask, 1) | 0x10;
-   unsigned dim =
-      ctx->options->gfx_level >= GFX10 && instr->sampler_dim != GLSL_SAMPLER_DIM_BUF
-         ? ac_get_sampler_dim(ctx->options->gfx_level, instr->sampler_dim, instr->is_array)
-         : 0;
    bool d16 = instr->dest.ssa.bit_size == 16;
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    Temp tmp_dst = dst;
