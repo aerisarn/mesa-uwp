@@ -2458,23 +2458,6 @@ remap_swizzle(VkComponentSwizzle swizzle,
    }
 }
 
-static void *
-anv_surface_get_surface_state_ptr(struct anv_device *device,
-                                  struct anv_surface_state *state)
-{
-   /* Check whether a surface state was allocated and use it. In the indirect
-    * descriptor case, we always have a surface state. In the direct
-    * descriptor case, only attachments have surface states (see
-    * anv_cmd_buffer_init_attachments())
-    */
-   if (state->state.map) {
-      return state->state.map;
-   } else {
-      assert(!device->physical->indirect_descriptors);
-      return state->state_data.data;
-   }
-}
-
 void
 anv_image_fill_surface_state(struct anv_device *device,
                              const struct anv_image *image,
@@ -2881,16 +2864,6 @@ anv_DestroyImageView(VkDevice _device, VkImageView _iview,
    }
 
    vk_image_view_destroy(&device->vk, pAllocator, &iview->vk);
-}
-
-static void *
-anv_buffer_state_get_ptr(struct anv_device *device,
-                         struct anv_buffer_state *state)
-{
-   if (device->physical->indirect_descriptors)
-      return state->state.map;
-   else
-      return state->state_data.data;
 }
 
 static void
