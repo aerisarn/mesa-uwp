@@ -1301,6 +1301,18 @@ struct isl_device {
       uint32_t protected_mask;
    } mocs;
 
+   /* Options to configure by the driver: */
+
+   /**
+    * Write buffer length in the upper dword of the
+    * RENDER_SURFACE_STATE::AuxilliarySurfaceBaseAddress field.
+    *
+    * This field is unused for buffer surfaces so we can reuse it store the
+    * buffer length. This is useful when you want to load a vec4 with (main
+    * address, size).
+    */
+   bool buffer_length_in_aux_addr;
+
    void (*surf_fill_state_s)(const struct isl_device *dev, void *state,
                              const struct isl_surf_fill_state_info *restrict info);
 

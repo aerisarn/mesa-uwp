@@ -289,6 +289,7 @@ isl_device_init(struct isl_device *dev,
    dev->info = info;
    dev->use_separate_stencil = ISL_GFX_VER(dev) >= 6;
    dev->has_bit6_swizzling = info->has_bit6_swizzle;
+   dev->buffer_length_in_aux_addr = false;
 
    /* The ISL_DEV macros may be defined in the CFLAGS, thus hardcoding some
     * device properties at buildtime. Verify that the macros with the device

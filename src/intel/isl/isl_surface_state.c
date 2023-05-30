@@ -968,6 +968,17 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
    s.MOCS = info->mocs;
 #endif
 
+#if GFX_VER >= 9
+   /* Store the buffer size in the upper dword of the AUX surface base
+    * address. Only enabled on Gfx9+ since Gfx8 has an Atom version with only
+    * 32bits of address space.
+    */
+   if (dev->buffer_length_in_aux_addr)
+      s.AuxiliarySurfaceBaseAddress = info->size_B << 32;
+#else
+   assert(!dev->buffer_length_in_aux_addr);
+#endif
+
 #if GFX_VERx10 >= 125
    /* Setting L1 caching policy to Write-back mode. */
    s.L1CacheControl = L1CC_WB;
