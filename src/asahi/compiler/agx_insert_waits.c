@@ -84,6 +84,16 @@ agx_insert_waits_local(agx_context *ctx, agx_block *block)
          }
       }
 
+      /* Check for barriers */
+      if (I->op == AGX_OPCODE_THREADGROUP_BARRIER ||
+          I->op == AGX_OPCODE_MEMORY_BARRIER) {
+
+         for (unsigned slot = 0; slot < ARRAY_SIZE(slots); ++slot) {
+            if (slots[slot].nr_pending)
+               wait_mask |= BITSET_BIT(slot);
+         }
+      }
+
       /* Try to assign a free slot */
       if (instr_is_async(I)) {
          for (unsigned slot = 0; slot < ARRAY_SIZE(slots); ++slot) {
