@@ -563,6 +563,17 @@ impl Program {
             }
             ProgramSourceType::Src(src) => {
                 let args = prepare_options(&options, dev);
+
+                if Platform::dbg().clc {
+                    let src = src.to_string_lossy();
+                    eprintln!("dumping compilation inputs:");
+                    eprintln!("compilation arguments: {args:?}");
+                    if !headers.is_empty() {
+                        eprintln!("headers: {headers:#?}");
+                    }
+                    eprintln!("source code:\n{src}");
+                }
+
                 spirv::SPIRVBin::from_clc(
                     src,
                     &args,

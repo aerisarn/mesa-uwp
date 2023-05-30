@@ -945,6 +945,7 @@ Rusticl environment variables
 
    a comma-separated list of debug channels to enable.
 
+   - ``clc`` dumps all OpenCL C source being compiled
    - ``program`` dumps compilation logs to stderr
 
 .. _clc-env-var:
