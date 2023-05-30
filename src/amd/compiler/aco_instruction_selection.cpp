@@ -1185,8 +1185,12 @@ emit_scaled_op(isel_context* ctx, Builder& bld, Definition dst, Temp val, aco_op
                uint32_t undo)
 {
    /* multiply by 16777216 to handle denormals */
-   Temp is_denormal = bld.vopc(aco_opcode::v_cmp_class_f32, bld.def(bld.lm), as_vgpr(ctx, val),
-                               bld.copy(bld.def(v1), Operand::c32((1u << 7) | (1u << 4))));
+   Temp is_denormal = bld.tmp(bld.lm);
+   VALU_instruction& valu =
+      bld.vopc_e64(aco_opcode::v_cmp_class_f32, Definition(is_denormal), val, Operand::c32(1u << 4))
+         ->valu();
+   valu.neg[0] = true;
+   valu.abs[0] = true;
    Temp scaled = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand::c32(0x4b800000u), val);
    scaled = bld.vop1(op, bld.def(v1), scaled);
    scaled = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand::c32(undo), scaled);
@@ -1301,11 +1305,10 @@ emit_floor_f64(isel_context* ctx, Builder& bld, Definition dst, Temp val)
     * lowered at NIR level for precision reasons). */
    Temp src0 = as_vgpr(ctx, val);
 
-   Temp mask = bld.copy(bld.def(s1), Operand::c32(3u)); /* isnan */
    Temp min_val = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), Operand::c32(-1u),
                              Operand::c32(0x3fefffffu));
 
-   Temp isnan = bld.vopc_e64(aco_opcode::v_cmp_class_f64, bld.def(bld.lm), src0, mask);
+   Temp isnan = bld.vopc(aco_opcode::v_cmp_neq_f64, bld.def(bld.lm), src0, src0);
    Temp fract = bld.vop1(aco_opcode::v_fract_f64, bld.def(v2), src0);
    Temp min = bld.vop3(aco_opcode::v_min_f64, bld.def(v2), fract, min_val);
 
@@ -10616,10 +10619,10 @@ export_fs_mrt_color(isel_context* ctx, const struct mrt_color_export* out,
         out->col_format == V_028714_SPI_SHADER_32_AR || out->col_format == V_028714_SPI_SHADER_32_ABGR ||
         out->col_format == V_028714_SPI_SHADER_FP16_ABGR)) {
       u_foreach_bit(i, out->write_mask) {
-         Temp isnan = bld.vopc(aco_opcode::v_cmp_class_f32, bld.def(bld.lm), values[i],
-                               bld.copy(bld.def(v1), Operand::c32(3u)));
-         values[i] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), values[i],
-                              bld.copy(bld.def(v1), Operand::zero()), isnan);
+         Temp is_not_nan =
+            bld.vopc(aco_opcode::v_cmp_eq_f32, bld.def(bld.lm), values[i], values[i]);
+         values[i] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), Operand::zero(), values[i],
+                              is_not_nan);
       }
    }
 
