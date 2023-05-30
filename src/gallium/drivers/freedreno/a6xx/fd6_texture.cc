@@ -768,7 +768,11 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type)
       if (!tex->textures[i])
          continue;
 
-      state->view_rsc_seqno[i] = fd_resource(tex->textures[i]->texture)->seqno;
+      struct fd_resource *rsc = fd_resource(tex->textures[i]->texture);
+
+      assert(rsc->dirty & FD_DIRTY_TEX);
+
+      state->view_rsc_seqno[i] = rsc->seqno;
    }
 
    state->key = key;
