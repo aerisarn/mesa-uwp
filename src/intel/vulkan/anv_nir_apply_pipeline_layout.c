@@ -348,7 +348,12 @@ build_load_descriptor_mem(nir_builder *b,
  * like anv_address_range_descriptor where all the fields match perfectly the
  * vec4 address format we need to generate for A64 messages. Instead we need
  * to build the vec4 from parsing the RENDER_SURFACE_STATE structure. Easy
- * enough for the surface address, lot less fun for the size.
+ * enough for the surface address, lot less fun for the size where you have to
+ * combine 3 fields scattered over multiple dwords, add one to the total and
+ * do a check against the surface type to deal with the null descriptors.
+ *
+ * Fortunately we can reuse the Auxiliary surface adddress field to stash our
+ * buffer size and just load a vec4.
  */
 static nir_ssa_def *
 build_load_render_surface_state_address(nir_builder *b,
@@ -358,80 +363,13 @@ build_load_render_surface_state_address(nir_builder *b,
 {
    const struct intel_device_info *devinfo = &state->pdevice->info;
 
-   assert(((RENDER_SURFACE_STATE_SurfaceBaseAddress_start(devinfo) +
-            RENDER_SURFACE_STATE_SurfaceBaseAddress_bits(devinfo) - 1) -
-           RENDER_SURFACE_STATE_Width_start(devinfo)) / 8 <= 32);
-
    nir_ssa_def *surface_addr =
       build_load_descriptor_mem(b, desc_addr,
                                 RENDER_SURFACE_STATE_SurfaceBaseAddress_start(devinfo) / 8,
-                                DIV_ROUND_UP(RENDER_SURFACE_STATE_SurfaceBaseAddress_bits(devinfo), 32),
-                                32, state);
+                                4, 32, state);
    nir_ssa_def *addr_ldw = nir_channel(b, surface_addr, 0);
    nir_ssa_def *addr_udw = nir_channel(b, surface_addr, 1);
-
-   /* Take all the RENDER_SURFACE_STATE fields from the beginning of the
-    * structure up to the Depth field.
-    */
-   const uint32_t type_sizes_dwords =
-      DIV_ROUND_UP(RENDER_SURFACE_STATE_Depth_start(devinfo) +
-                   RENDER_SURFACE_STATE_Depth_bits(devinfo), 32);
-   nir_ssa_def *type_sizes =
-      build_load_descriptor_mem(b, desc_addr, 0, type_sizes_dwords, 32, state);
-
-   const unsigned width_start = RENDER_SURFACE_STATE_Width_start(devinfo);
-   /* SKL PRMs, Volume 2d: Command Reference: Structures, RENDER_SURFACE_STATE
-    *
-    *    Width:  "bits [6:0]   of the number of entries in the buffer - 1"
-    *    Height: "bits [20:7]  of the number of entries in the buffer - 1"
-    *    Depth:  "bits [31:21] of the number of entries in the buffer - 1"
-    */
-   const unsigned width_bits = 7;
-   nir_ssa_def *width =
-      nir_iand_imm(b,
-                   nir_ishr_imm(b,
-                                nir_channel(b, type_sizes, width_start / 32),
-                                width_start % 32),
-                   (1u << width_bits) - 1);
-
-   const unsigned height_start = RENDER_SURFACE_STATE_Height_start(devinfo);
-   const unsigned height_bits = RENDER_SURFACE_STATE_Height_bits(devinfo);
-   nir_ssa_def *height =
-      nir_iand_imm(b,
-                   nir_ishr_imm(b,
-                                nir_channel(b, type_sizes, height_start / 32),
-                                height_start % 32),
-                   (1u << height_bits) - 1);
-
-   const unsigned depth_start = RENDER_SURFACE_STATE_Depth_start(devinfo);
-   const unsigned depth_bits = RENDER_SURFACE_STATE_Depth_bits(devinfo);
-   nir_ssa_def *depth =
-      nir_iand_imm(b,
-                   nir_ishr_imm(b,
-                                nir_channel(b, type_sizes, depth_start / 32),
-                                depth_start % 32),
-                   (1u << depth_bits) - 1);
-
-   nir_ssa_def *length = width;
-   length = nir_ior(b, length, nir_ishl_imm(b, height, width_bits));
-   length = nir_ior(b, length, nir_ishl_imm(b, depth, width_bits + height_bits));
-   length = nir_iadd_imm(b, length, 1);
-
-   /* Check the surface type, if it's SURFTYPE_NULL, set the length of the
-    * buffer to 0.
-    */
-   const unsigned type_start = RENDER_SURFACE_STATE_SurfaceType_start(devinfo);
-   const unsigned type_dw = type_start / 32;
-   nir_ssa_def *type =
-      nir_iand_imm(b,
-                   nir_ishr_imm(b,
-                                nir_channel(b, type_sizes, type_dw),
-                                type_start % 32),
-                   (1u << RENDER_SURFACE_STATE_SurfaceType_bits(devinfo)) - 1);
-
-   length = nir_bcsel(b,
-                      nir_ieq_imm(b, type, 7 /* SURFTYPE_NULL */),
-                      nir_imm_int(b, 0), length);
+   nir_ssa_def *length = nir_channel(b, surface_addr, 3);
 
    return nir_vec4(b, addr_ldw, addr_udw, length, nir_imm_int(b, 0));
 }

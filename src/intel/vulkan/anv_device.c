@@ -1375,6 +1375,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->compiler->use_bindless_sampler_offset = !device->indirect_descriptors;
 
    isl_device_init(&device->isl_dev, &device->info);
+   device->isl_dev.buffer_length_in_aux_addr = true;
 
    result = anv_physical_device_init_uuids(device);
    if (result != VK_SUCCESS)
