@@ -1992,6 +1992,14 @@ tu6_emit_program(struct tu_cs *cs,
       tu_cs_emit(cs, builder->graphics_state.rp->view_mask);
    }
 
+   if (CHIP >= A7XX) {
+      tu_cs_emit_pkt4(cs, REG_A7XX_VPC_MULTIVIEW_CNTL, 1);
+      tu_cs_emit(cs, multiview_cntl);
+
+      tu_cs_emit_pkt4(cs, REG_A7XX_VPC_MULTIVIEW_MASK, 1);
+      tu_cs_emit(cs, builder->graphics_state.rp->view_mask);
+   }
+
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
    tu_cs_emit(cs, 0);
 
