@@ -704,6 +704,5 @@ KHR-GL46.polygon_offset_clamp.PolygonOffsetClampMinMax,Fail
 KHR-GL46.polygon_offset_clamp.PolygonOffsetClampZeroInfinity,Fail
 
 # since Debian 12 (bookworm) uprev
-spec@arb_compute_variable_group_size@local-size,Crash
 spec@arb_viewport_array@display-list,Fail
 glx@glx-multi-window-single-context,Fail
