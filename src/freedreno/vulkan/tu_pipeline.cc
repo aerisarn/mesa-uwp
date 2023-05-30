@@ -1470,11 +1470,13 @@ tu6_emit_vpc(struct tu_cs *cs,
       vec4_size = gs->gs.vertices_in *
                   DIV_ROUND_UP(prev_stage_output_size, 4);
 
+      uint32_t primitive_cntl =
+         A6XX_PC_PRIMITIVE_CNTL_5(.gs_vertices_out = vertices_out,
+                                  .gs_invocations = invocations,
+                                  .gs_output = output,).value;
+
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_5, 1);
-      tu_cs_emit(cs,
-            A6XX_PC_PRIMITIVE_CNTL_5_GS_VERTICES_OUT(vertices_out) |
-            A6XX_PC_PRIMITIVE_CNTL_5_GS_OUTPUT(output) |
-            A6XX_PC_PRIMITIVE_CNTL_5_GS_INVOCATIONS(invocations));
+      tu_cs_emit(cs, primitive_cntl);
 
       if (CHIP == A6XX) {
          tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_PARAM, 1);
@@ -1482,6 +1484,9 @@ tu6_emit_vpc(struct tu_cs *cs,
 
          tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
          tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_6_STRIDE_IN_VPC(vec4_size));
+      } else {
+         tu_cs_emit_pkt4(cs, REG_A7XX_VPC_PRIMITIVE_CNTL_5, 1);
+         tu_cs_emit(cs, primitive_cntl);
       }
 
       uint32_t prim_size = prev_stage_output_size;
@@ -4248,7 +4253,11 @@ tu6_rast_size(struct tu_device *dev,
               bool multiview,
               bool per_view_viewport)
 {
-   return 11 + (CHIP == A6XX && dev->physical_device->info->a6xx.has_shading_rate ? 8 : 0);
+   if (CHIP == A6XX) {
+      return 11 + (dev->physical_device->info->a6xx.has_shading_rate ? 8 : 0);
+   } else {
+      return 13;
+   }
 }
 
 template <chip CHIP>
@@ -4291,6 +4300,11 @@ tu6_emit_rast(struct tu_cs *cs,
 
    tu_cs_emit_regs(cs,
                    PC_POLYGON_MODE(CHIP, polygon_mode));
+
+   if (CHIP == A7XX) {
+      tu_cs_emit_regs(cs,
+                     A7XX_VPC_POLYGON_MODE2(polygon_mode));
+   }
 
    /* move to hw ctx init? */
    tu_cs_emit_regs(cs,
