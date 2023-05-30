@@ -504,7 +504,6 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_barycentric_pixel:
                case nir_intrinsic_load_barycentric_model:
                case nir_intrinsic_load_barycentric_centroid:
-               case nir_intrinsic_load_barycentric_at_sample:
                case nir_intrinsic_load_barycentric_at_offset:
                case nir_intrinsic_load_interpolated_input:
                case nir_intrinsic_load_frag_coord:
