@@ -83,13 +83,14 @@ TU_GENX(tu_emit_event_write);
  * tu6_init_hardware() will have WFIed before we started and no other draws
  * could be using the tessfactor address yet since we only emit one per cmdbuf.
  */
+template <chip CHIP>
 static void
 tu6_lazy_emit_tessfactor_addr(struct tu_cmd_buffer *cmd)
 {
    if (cmd->state.tessfactor_addr_set)
       return;
 
-   tu_cs_emit_regs(&cmd->cs, A6XX_PC_TESSFACTOR_ADDR(.qword = cmd->device->tess_bo->iova));
+   tu_cs_emit_regs(&cmd->cs, PC_TESSFACTOR_ADDR(CHIP, .qword = cmd->device->tess_bo->iova));
    /* Updating PC_TESSFACTOR_ADDR could race with the next draw which uses it. */
    cmd->state.cache.flush_bits |= TU_CMD_FLAG_WAIT_FOR_IDLE;
    cmd->state.tessfactor_addr_set = true;
@@ -1904,7 +1905,7 @@ void
 tu_cmd_render(struct tu_cmd_buffer *cmd_buffer)
 {
    if (cmd_buffer->state.rp.has_tess)
-      tu6_lazy_emit_tessfactor_addr(cmd_buffer);
+      tu6_lazy_emit_tessfactor_addr<CHIP>(cmd_buffer);
 
    struct tu_renderpass_result *autotune_result = NULL;
    if (use_sysmem_rendering(cmd_buffer, &autotune_result))
