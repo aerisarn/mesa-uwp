@@ -1073,19 +1073,14 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
       case NIR_INTRINSIC_EXECUTION_SCOPE:
       case NIR_INTRINSIC_MEMORY_SCOPE: {
-         fprintf(fp, "%s=", nir_intrinsic_index_names[idx]);
          mesa_scope scope =
             idx == NIR_INTRINSIC_MEMORY_SCOPE ? nir_intrinsic_memory_scope(instr)
                                               : nir_intrinsic_execution_scope(instr);
-         switch (scope) {
-         case SCOPE_NONE:         fprintf(fp, "NONE");         break;
-         case SCOPE_DEVICE:       fprintf(fp, "DEVICE");       break;
-         case SCOPE_QUEUE_FAMILY: fprintf(fp, "QUEUE_FAMILY"); break;
-         case SCOPE_WORKGROUP:    fprintf(fp, "WORKGROUP");    break;
-         case SCOPE_SHADER_CALL:  fprintf(fp, "SHADER_CALL");  break;
-         case SCOPE_SUBGROUP:     fprintf(fp, "SUBGROUP");     break;
-         case SCOPE_INVOCATION:   fprintf(fp, "INVOCATION");   break;
-         }
+         const char *name = mesa_scope_name(scope);
+         static const char prefix[] = "SCOPE_";
+         if (strncmp(name, prefix, sizeof(prefix) - 1) == 0)
+            name += sizeof(prefix) - 1;
+         fprintf(fp, "%s=%s", nir_intrinsic_index_names[idx], name);
          break;
       }
 
