@@ -701,12 +701,24 @@ radv_shader_part_unref(struct radv_device *device, struct radv_shader_part *shad
 }
 
 static inline unsigned
+get_tcs_input_vertex_stride(unsigned tcs_num_inputs)
+{
+   unsigned stride = tcs_num_inputs * 16;
+
+   /* Add 1 dword to reduce LDS bank conflicts. */
+   if (stride)
+      stride += 4;
+
+   return stride;
+}
+
+static inline unsigned
 calculate_tess_lds_size(enum amd_gfx_level gfx_level, unsigned tcs_num_input_vertices,
                         unsigned tcs_num_output_vertices, unsigned tcs_num_inputs,
                         unsigned tcs_num_patches, unsigned tcs_num_outputs,
                         unsigned tcs_num_patch_outputs)
 {
-   unsigned input_vertex_size = tcs_num_inputs * 16;
+   unsigned input_vertex_size = get_tcs_input_vertex_stride(tcs_num_inputs);
    unsigned output_vertex_size = tcs_num_outputs * 16;
 
    unsigned input_patch_size = tcs_num_input_vertices * input_vertex_size;
@@ -735,7 +747,7 @@ get_tcs_num_patches(unsigned tcs_num_input_vertices, unsigned tcs_num_output_ver
                     unsigned tcs_num_patch_outputs, unsigned tess_offchip_block_dw_size,
                     enum amd_gfx_level gfx_level, enum radeon_family family)
 {
-   uint32_t input_vertex_size = tcs_num_inputs * 16;
+   uint32_t input_vertex_size = get_tcs_input_vertex_stride(tcs_num_inputs);
    uint32_t input_patch_size = tcs_num_input_vertices * input_vertex_size;
    uint32_t output_vertex_size = tcs_num_outputs * 16;
    uint32_t pervertex_output_patch_size = tcs_num_output_vertices * output_vertex_size;

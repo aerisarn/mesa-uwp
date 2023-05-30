@@ -280,7 +280,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_lshs_vertex_stride_amd: {
       unsigned io_num = stage == MESA_SHADER_VERTEX ? s->info->vs.num_linked_outputs
                                                     : s->info->tcs.num_linked_inputs;
-      replacement = nir_imm_int(b, io_num * 16);
+      replacement = nir_imm_int(b, get_tcs_input_vertex_stride(io_num));
       break;
    }
    case nir_intrinsic_load_esgs_vertex_stride_amd: {
