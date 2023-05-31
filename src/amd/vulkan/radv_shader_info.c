@@ -615,7 +615,9 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
    info->ps.spi_shader_col_format = pipeline_key->ps.epilog.spi_shader_col_format;
 
    nir_foreach_shader_in_variable(var, nir) {
-      unsigned attrib_count = glsl_count_attribute_slots(var->type, false);
+      const struct glsl_type *type =
+         var->data.per_vertex ? glsl_get_array_element(var->type) : var->type;
+      unsigned attrib_count = glsl_count_attribute_slots(type, false);
       int idx = var->data.location;
 
       switch (idx) {
@@ -631,7 +633,7 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
          unsigned component_count = var->data.location_frac + glsl_get_length(var->type);
          attrib_count = (component_count + 3) / 4;
       } else {
-         mark_16bit_ps_input(info, var->type, var->data.driver_location);
+         mark_16bit_ps_input(info, type, var->data.driver_location);
       }
 
       uint64_t mask = ((1ull << attrib_count) - 1);
@@ -641,6 +643,8 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
             info->ps.flat_shaded_mask |= mask << var->data.driver_location;
          else if (var->data.interpolation == INTERP_MODE_EXPLICIT)
             info->ps.explicit_shaded_mask |= mask << var->data.driver_location;
+         else if (var->data.per_vertex)
+            info->ps.per_vertex_shaded_mask |= mask << var->data.driver_location;
       }
 
       if (var->data.location >= VARYING_SLOT_VAR0) {
