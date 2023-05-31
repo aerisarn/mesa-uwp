@@ -963,25 +963,29 @@ static rvcn_dec_message_hevc_t get_h265_msg(struct radv_device *device,
    result.num_delta_pocs_ref_rps_idx = h265_pic_info->pStdPictureInfo->NumDeltaPocsOfRefRpsIdx;
    result.curr_poc = h265_pic_info->pStdPictureInfo->PicOrderCntVal;
 
+   uint8_t idxs[16];
    memset(result.poc_list, 0, 16 * sizeof(int));
    memset(result.ref_pic_list, 0x7f, 16);
+   memset(idxs, 0xff, 16);
    for (i = 0; i < frame_info->referenceSlotCount; i++) {
       const struct VkVideoDecodeH265DpbSlotInfoKHR *dpb_slot =
          vk_find_struct_const(frame_info->pReferenceSlots[i].pNext, VIDEO_DECODE_H265_DPB_SLOT_INFO_KHR);
       int idx = frame_info->pReferenceSlots[i].slotIndex;
-      result.poc_list[idx] = dpb_slot->pStdReferenceInfo->PicOrderCntVal;
-      result.ref_pic_list[idx] = idx;
+      result.poc_list[i] = dpb_slot->pStdReferenceInfo->PicOrderCntVal;
+      result.ref_pic_list[i] = idx;
+      idxs[idx] = i;
    }
    result.curr_idx = frame_info->pSetupReferenceSlot->slotIndex;
 
+#define IDXS(x) ((x) == 0xff ? 0xff : idxs[(x)])
    for (i = 0; i < 8; ++i)
-      result.ref_pic_set_st_curr_before[i] = h265_pic_info->pStdPictureInfo->RefPicSetStCurrBefore[i];
+      result.ref_pic_set_st_curr_before[i] = IDXS(h265_pic_info->pStdPictureInfo->RefPicSetStCurrBefore[i]);
 
    for (i = 0; i < 8; ++i)
-      result.ref_pic_set_st_curr_after[i] = h265_pic_info->pStdPictureInfo->RefPicSetStCurrAfter[i];
+      result.ref_pic_set_st_curr_after[i] = IDXS(h265_pic_info->pStdPictureInfo->RefPicSetStCurrAfter[i]);
 
    for (i = 0; i < 8; ++i)
-      result.ref_pic_set_lt_curr[i] = h265_pic_info->pStdPictureInfo->RefPicSetLtCurr[i];
+      result.ref_pic_set_lt_curr[i] = IDXS(h265_pic_info->pStdPictureInfo->RefPicSetLtCurr[i]);
 
    if (sps->flags.sps_scaling_list_data_present_flag) {
       for (i = 0; i < 6; ++i)
@@ -1141,7 +1145,6 @@ static bool rvcn_dec_message_decode(struct radv_cmd_buffer *cmd_buffer,
    }
 
    *slice_offset = 0;
-   bool tier_2_use_slot = false;
    switch (vid->vk.op) {
    case VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR: {
       rvcn_dec_message_avc_t avc = get_h264_msg(vid, params, frame_info, slice_offset, &decode->width_in_samples, &decode->height_in_samples, it_ptr);
@@ -1153,7 +1156,6 @@ static bool rvcn_dec_message_decode(struct radv_cmd_buffer *cmd_buffer,
       rvcn_dec_message_hevc_t hevc = get_h265_msg(device, vid, params, frame_info, it_ptr);
       memcpy(codec, (void *)&hevc, sizeof(rvcn_dec_message_hevc_t));
       index_codec->message_id = RDECODE_MESSAGE_HEVC;
-      tier_2_use_slot = true;
       break;
    }
    default:
@@ -1169,13 +1171,12 @@ static bool rvcn_dec_message_decode(struct radv_cmd_buffer *cmd_buffer,
    for (int i = 0; i < frame_info->referenceSlotCount; i++) {
       struct radv_image_view *f_dpb_iv = radv_image_view_from_handle(frame_info->pReferenceSlots[i].pPictureResource->imageViewBinding);
       struct radv_image *dpb_img = f_dpb_iv->image;
-      int idx = tier_2_use_slot ? frame_info->pReferenceSlots[i].slotIndex : i;
 
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, dpb_img->bindings[0].bo);
       addr = radv_buffer_get_va(dpb_img->bindings[0].bo) + dpb_img->bindings[0].offset;
 
-      dynamic_dpb_t2->dpbAddrLo[idx] = addr;
-      dynamic_dpb_t2->dpbAddrHi[idx] = addr >> 32;
+      dynamic_dpb_t2->dpbAddrLo[i] = addr;
+      dynamic_dpb_t2->dpbAddrHi[i] = addr >> 32;
       ++dynamic_dpb_t2->dpbArraySize;
    }
 
@@ -1416,25 +1417,29 @@ static struct ruvd_h265 get_uvd_h265_msg(struct radv_device *device,
    result.num_delta_pocs_ref_rps_idx = h265_pic_info->pStdPictureInfo->NumDeltaPocsOfRefRpsIdx;
    result.curr_poc = h265_pic_info->pStdPictureInfo->PicOrderCntVal;
 
+   uint8_t idxs[16];
    memset(result.poc_list, 0, 16 * sizeof(int));
    memset(result.ref_pic_list, 0x7f, 16);
+   memset(idxs, 0xff, 16);
    for (i = 0; i < frame_info->referenceSlotCount; i++) {
       const struct VkVideoDecodeH265DpbSlotInfoKHR *dpb_slot =
          vk_find_struct_const(frame_info->pReferenceSlots[i].pNext, VIDEO_DECODE_H265_DPB_SLOT_INFO_KHR);
       int idx = frame_info->pReferenceSlots[i].slotIndex;
-      result.poc_list[idx] = dpb_slot->pStdReferenceInfo->PicOrderCntVal;
-      result.ref_pic_list[idx] = idx;
+      result.poc_list[i] = dpb_slot->pStdReferenceInfo->PicOrderCntVal;
+      result.ref_pic_list[i] = idx;
+      idxs[idx] = i;
    }
    result.curr_idx = frame_info->pSetupReferenceSlot->slotIndex;
 
+#define IDXS(x) ((x) == 0xff ? 0xff : idxs[(x)])
    for (i = 0; i < 8; ++i)
-      result.ref_pic_set_st_curr_before[i] = h265_pic_info->pStdPictureInfo->RefPicSetStCurrBefore[i];
+      result.ref_pic_set_st_curr_before[i] = IDXS(h265_pic_info->pStdPictureInfo->RefPicSetStCurrBefore[i]);
 
    for (i = 0; i < 8; ++i)
-      result.ref_pic_set_st_curr_after[i] = h265_pic_info->pStdPictureInfo->RefPicSetStCurrAfter[i];
+      result.ref_pic_set_st_curr_after[i] = IDXS(h265_pic_info->pStdPictureInfo->RefPicSetStCurrAfter[i]);
 
    for (i = 0; i < 8; ++i)
-      result.ref_pic_set_lt_curr[i] = h265_pic_info->pStdPictureInfo->RefPicSetLtCurr[i];
+      result.ref_pic_set_lt_curr[i] = IDXS(h265_pic_info->pStdPictureInfo->RefPicSetLtCurr[i]);
 
    if (sps->flags.sps_scaling_list_data_present_flag) {
       for (i = 0; i < 6; ++i)
