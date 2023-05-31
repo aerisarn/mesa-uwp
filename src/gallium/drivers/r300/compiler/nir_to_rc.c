@@ -2589,62 +2589,6 @@ nir_to_rc_lower_tex(nir_shader *s)
                                        NULL);
 }
 
-static void
-ntr_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s,
-                    const struct nir_to_rc_options *ntr_options)
-{
-   const struct nir_shader_compiler_options *options = s->options;
-   bool lower_fsqrt =
-      !screen->get_shader_param(screen, pipe_shader_type_from_mesa(s->info.stage),
-                                PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED);
-
-   bool force_indirect_unrolling_sampler =
-      screen->get_param(screen, PIPE_CAP_GLSL_FEATURE_LEVEL) < 400;
-
-   nir_variable_mode no_indirects_mask = ntr_no_indirects_mask(s, screen);
-
-   if (!options->lower_extract_byte ||
-       !options->lower_extract_word ||
-       !options->lower_insert_byte ||
-       !options->lower_insert_word ||
-       !options->lower_fdph ||
-       !options->lower_flrp64 ||
-       !options->lower_fmod ||
-       !options->lower_rotate ||
-       !options->lower_uadd_carry ||
-       !options->lower_usub_borrow ||
-       !options->lower_uadd_sat ||
-       !options->lower_usub_sat ||
-       !options->lower_uniforms_to_ubo ||
-       !options->lower_vector_cmp ||
-       options->lower_fsqrt != lower_fsqrt ||
-       options->force_indirect_unrolling != no_indirects_mask ||
-       force_indirect_unrolling_sampler) {
-      nir_shader_compiler_options *new_options = ralloc(s, nir_shader_compiler_options);
-      *new_options = *s->options;
-
-      new_options->lower_extract_byte = true;
-      new_options->lower_extract_word = true;
-      new_options->lower_insert_byte = true;
-      new_options->lower_insert_word = true;
-      new_options->lower_fdph = true;
-      new_options->lower_flrp64 = true;
-      new_options->lower_fmod = true;
-      new_options->lower_rotate = true;
-      new_options->lower_uadd_carry = true;
-      new_options->lower_usub_borrow = true;
-      new_options->lower_uadd_sat = true;
-      new_options->lower_usub_sat = true;
-      new_options->lower_uniforms_to_ubo = true;
-      new_options->lower_vector_cmp = true;
-      new_options->lower_fsqrt = lower_fsqrt;
-      new_options->force_indirect_unrolling = no_indirects_mask;
-      new_options->force_indirect_unrolling_sampler = force_indirect_unrolling_sampler;
-
-      s->options = new_options;
-   }
-}
-
 /* Lowers texture projectors if we can't do them as TGSI_OPCODE_TXP. */
 static void
 nir_to_rc_lower_txp(nir_shader *s)
@@ -2706,9 +2650,6 @@ const void *nir_to_rc_options(struct nir_shader *s,
    struct ntr_compile *c;
    const void *tgsi_tokens;
    nir_variable_mode no_indirects_mask = ntr_no_indirects_mask(s, screen);
-   const struct nir_shader_compiler_options *original_options = s->options;
-
-   ntr_fix_nir_options(screen, s, options);
 
    /* Lower array indexing on FS inputs.  Since we don't set
     * ureg->supports_any_inout_decl_range, the TGSI input decls will be split to
@@ -2730,7 +2671,7 @@ const void *nir_to_rc_options(struct nir_shader *s,
    nir_to_rc_lower_txp(s);
    NIR_PASS_V(s, nir_to_rc_lower_tex);
 
-   if (!original_options->lower_uniforms_to_ubo) {
+   if (!s->options->lower_uniforms_to_ubo) {
       NIR_PASS_V(s, nir_lower_uniforms_to_ubo,
                  screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS),
                  true);
