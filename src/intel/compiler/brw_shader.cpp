@@ -74,6 +74,7 @@ brw_type_for_base_type(const struct glsl_type *type)
       return BRW_REGISTER_TYPE_Q;
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_ERROR:
+   case GLSL_TYPE_COOPERATIVE_MATRIX:
       unreachable("not reached");
    }
 

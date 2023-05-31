@@ -2755,6 +2755,7 @@ nir_get_nir_type_for_glsl_base_type(enum glsl_base_type base_type)
    case GLSL_TYPE_DOUBLE:  return nir_type_float64;
       /* clang-format on */
 
+   case GLSL_TYPE_COOPERATIVE_MATRIX:
    case GLSL_TYPE_SAMPLER:
    case GLSL_TYPE_TEXTURE:
    case GLSL_TYPE_IMAGE:

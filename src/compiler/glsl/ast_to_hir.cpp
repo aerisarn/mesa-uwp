@@ -1191,6 +1191,9 @@ do_comparison(void *mem_ctx, int operation, ir_rvalue *op0, ir_rvalue *op1)
        * ignores the sampler present in the type.
        */
       break;
+
+   case GLSL_TYPE_COOPERATIVE_MATRIX:
+      unreachable("unsupported base type cooperative matrix");
    }
 
    if (cmp == NULL)

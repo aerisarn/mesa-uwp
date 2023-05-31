@@ -336,6 +336,12 @@ glsl_type_is_array_or_matrix(const struct glsl_type *type)
 }
 
 bool
+glsl_type_is_cmat(const struct glsl_type *type)
+{
+   return type->is_cmat();
+}
+
+bool
 glsl_type_is_struct(const struct glsl_type *type)
 {
    return type->is_struct();
@@ -643,6 +649,12 @@ glsl_array_type(const glsl_type *element, unsigned array_size,
 }
 
 const glsl_type *
+glsl_cmat_type(const glsl_cmat_description *desc)
+{
+   return glsl_type::get_cmat_instance(*desc);
+}
+
+const glsl_type *
 glsl_replace_vector_type(const glsl_type *t, unsigned components)
 {
    if (glsl_type_is_array(t)) {
@@ -857,6 +869,7 @@ glsl_get_natural_size_align_bytes(const struct glsl_type *type,
 
    case GLSL_TYPE_ATOMIC_UINT:
    case GLSL_TYPE_SUBROUTINE:
+   case GLSL_TYPE_COOPERATIVE_MATRIX:
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_ERROR:
       unreachable("type does not have a natural size");
@@ -910,6 +923,7 @@ glsl_get_vec4_size_align_bytes(const struct glsl_type *type,
    case GLSL_TYPE_IMAGE:
    case GLSL_TYPE_ATOMIC_UINT:
    case GLSL_TYPE_SUBROUTINE:
+   case GLSL_TYPE_COOPERATIVE_MATRIX:
    case GLSL_TYPE_VOID:
    case GLSL_TYPE_ERROR:
       unreachable("type does not make sense for glsl_get_vec4_size_align_bytes()");
@@ -1101,4 +1115,18 @@ const struct glsl_type *
 glsl_type_replace_vec3_with_vec4(const struct glsl_type *type)
 {
    return type->replace_vec3_with_vec4();
+}
+
+const struct glsl_type *
+glsl_get_cmat_element(const struct glsl_type *type)
+{
+   assert(type->base_type == GLSL_TYPE_COOPERATIVE_MATRIX);
+   return glsl_type::get_instance(type->cmat_desc.element_type, 1, 1);
+}
+
+const struct glsl_cmat_description *
+glsl_get_cmat_description(const struct glsl_type *type)
+{
+   assert(type->base_type == GLSL_TYPE_COOPERATIVE_MATRIX);
+   return &type->cmat_desc;
 }

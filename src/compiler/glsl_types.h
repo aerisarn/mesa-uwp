@@ -76,6 +76,7 @@ enum glsl_base_type {
    GLSL_TYPE_UINT64,
    GLSL_TYPE_INT64,
    GLSL_TYPE_BOOL,
+   GLSL_TYPE_COOPERATIVE_MATRIX,
    GLSL_TYPE_SAMPLER,
    GLSL_TYPE_TEXTURE,
    GLSL_TYPE_IMAGE,
@@ -167,6 +168,7 @@ glsl_base_type_get_bit_size(const enum glsl_base_type base_type)
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_FLOAT: /* TODO handle mediump */
    case GLSL_TYPE_SUBROUTINE:
+   case GLSL_TYPE_COOPERATIVE_MATRIX:
       return 32;
 
    case GLSL_TYPE_FLOAT16:
@@ -279,6 +281,24 @@ enum {
    GLSL_PRECISION_LOW
 };
 
+enum glsl_cmat_use {
+   GLSL_CMAT_USE_NONE = 0,
+   GLSL_CMAT_USE_A,
+   GLSL_CMAT_USE_B,
+   GLSL_CMAT_USE_ACCUMULATOR,
+};
+
+struct glsl_cmat_description {
+   /* MSVC can't merge bitfields of different types and also sign extend enums,
+    * so use uint8_t for those cases.
+    */
+   uint8_t element_type:5; /* enum glsl_base_type */
+   uint8_t scope:3; /* mesa_scope */
+   uint8_t rows;
+   uint8_t cols;
+   uint8_t use; /* enum glsl_cmat_use */
+};
+
 const char *glsl_get_type_name(const struct glsl_type *type);
 
 struct glsl_type {
@@ -296,6 +316,8 @@ struct glsl_type {
    unsigned sampler_array:1;
    unsigned interface_packing:2;
    unsigned interface_row_major:1;
+
+   struct glsl_cmat_description cmat_desc;
 
    /**
     * For \c GLSL_TYPE_STRUCT this specifies if the struct is packed or not.
@@ -455,6 +477,11 @@ struct glsl_type {
    static const glsl_type *get_array_instance(const glsl_type *element,
                                               unsigned array_size,
                                               unsigned explicit_stride = 0);
+
+   /**
+    * Get the instance of a cooperative matrix type
+    */
+   static const glsl_type *get_cmat_instance(const struct glsl_cmat_description desc);
 
    /**
     * Get the instance of a record type
@@ -929,6 +956,11 @@ struct glsl_type {
    bool is_array_of_arrays() const
    {
       return is_array() && fields.array->is_array();
+   }
+
+   bool is_cmat() const
+   {
+      return base_type == GLSL_TYPE_COOPERATIVE_MATRIX;
    }
 
    /**
