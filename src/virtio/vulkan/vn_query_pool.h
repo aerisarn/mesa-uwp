@@ -13,10 +13,14 @@
 
 #include "vn_common.h"
 
+struct vn_feedback_buffer;
+
 struct vn_query_pool {
    struct vn_object_base base;
 
    VkAllocationCallbacks allocator;
+
+   struct vn_feedback_buffer *feedback;
    uint32_t result_array_size;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_query_pool,

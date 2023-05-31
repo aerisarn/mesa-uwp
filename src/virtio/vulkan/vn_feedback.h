@@ -135,6 +135,19 @@ vn_feedback_event_cmd_record(VkCommandBuffer cmd_handle,
                              VkPipelineStageFlags2 src_stage_mask,
                              VkResult status,
                              bool sync2);
+
+void
+vn_feedback_query_copy_cmd_record(VkCommandBuffer commandBuffer,
+                                  VkQueryPool queryPool,
+                                  uint32_t query,
+                                  uint32_t queryCount);
+
+void
+vn_feedback_query_reset_cmd_record(VkCommandBuffer commandBuffer,
+                                   VkQueryPool queryPool,
+                                   uint32_t query,
+                                   uint32_t queryCount);
+
 VkResult
 vn_feedback_cmd_alloc(VkDevice dev_handle,
                       struct vn_feedback_cmd_pool *pool,
