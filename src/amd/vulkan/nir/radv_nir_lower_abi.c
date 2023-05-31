@@ -30,6 +30,9 @@
 #include "radv_shader.h"
 #include "radv_shader_args.h"
 
+#define GET_SGPR_FIELD_NIR(arg, field) \
+   ac_nir_unpack_arg(b, &s->args->ac, arg, field##__SHIFT, util_bitcount(field##__MASK))
+
 typedef struct {
    enum amd_gfx_level gfx_level;
    const struct radv_shader_args *args;
@@ -97,7 +100,8 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_tcs_num_patches_amd:
       if (s->pl_key->dynamic_patch_control_points) {
          if (stage == MESA_SHADER_TESS_CTRL) {
-            replacement = ac_nir_unpack_arg(b, &s->args->ac, s->args->tcs_offchip_layout, 6, 8);
+            replacement = GET_SGPR_FIELD_NIR(s->args->tcs_offchip_layout,
+                                             TCS_OFFCHIP_LAYOUT_NUM_PATCHES);
          } else {
             replacement = ac_nir_load_arg(b, &s->args->ac, s->args->tes_num_patches);
          }
@@ -162,7 +166,8 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_patch_vertices_in:
       if (stage == MESA_SHADER_TESS_CTRL) {
          if (s->pl_key->dynamic_patch_control_points) {
-            replacement = ac_nir_unpack_arg(b, &s->args->ac, s->args->tcs_offchip_layout, 0, 6);
+            replacement = GET_SGPR_FIELD_NIR(s->args->tcs_offchip_layout,
+                                             TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS);
          } else {
             replacement = nir_imm_int(b, s->pl_key->tcs.tess_input_vertices);
          }
@@ -296,7 +301,8 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
          nir_ssa_def *num_patches;
 
          if (stage == MESA_SHADER_TESS_CTRL) {
-            num_patches = ac_nir_unpack_arg(b, &s->args->ac, s->args->tcs_offchip_layout, 6, 8);
+            num_patches = GET_SGPR_FIELD_NIR(s->args->tcs_offchip_layout,
+                                             TCS_OFFCHIP_LAYOUT_NUM_PATCHES);
          } else {
             num_patches = ac_nir_load_arg(b, &s->args->ac, s->args->tes_num_patches);
          }

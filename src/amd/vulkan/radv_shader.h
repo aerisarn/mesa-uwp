@@ -189,6 +189,14 @@ enum radv_ud_index {
    AC_UD_MAX_UD = AC_UD_CS_MAX_UD,
 };
 
+#define SET_SGPR_FIELD(field, value) \
+   (((unsigned)(value) & field##__MASK) << field##__SHIFT)
+
+#define TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS__SHIFT   0
+#define TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS__MASK    0x3f
+#define TCS_OFFCHIP_LAYOUT_NUM_PATCHES__SHIFT            6
+#define TCS_OFFCHIP_LAYOUT_NUM_PATCHES__MASK             0xff
+
 struct radv_streamout_info {
    uint16_t num_outputs;
    uint16_t strides[MAX_SO_BUFFERS];
