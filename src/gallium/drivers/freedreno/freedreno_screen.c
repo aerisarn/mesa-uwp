@@ -653,6 +653,9 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
       if (has_compute(screen))
          break;
       return 0;
+   case PIPE_SHADER_TASK:
+   case PIPE_SHADER_MESH:
+      return 0;
    default:
       mesa_loge("unknown shader type %d", shader);
       return 0;
