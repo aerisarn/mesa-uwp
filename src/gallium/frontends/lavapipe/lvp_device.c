@@ -1527,6 +1527,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    shstate.type = PIPE_SHADER_IR_NIR;
    shstate.ir.nir = b.shader;
    device->noop_fs = device->queue.ctx->create_fs_state(device->queue.ctx, &shstate);
+   _mesa_hash_table_init(&device->bda, NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   simple_mtx_init(&device->bda_lock, mtx_plain);
 
    *pDevice = lvp_device_to_handle(device);
 
@@ -1544,6 +1546,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyDevice(
 
    if (device->queue.last_fence)
       device->pscreen->fence_reference(device->pscreen, &device->queue.last_fence, NULL);
+   ralloc_free(device->bda.table);
+   simple_mtx_destroy(&device->bda_lock);
+
    lvp_queue_finish(&device->queue);
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);

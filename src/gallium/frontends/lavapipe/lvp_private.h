@@ -191,6 +191,8 @@ struct lvp_device {
    struct lvp_physical_device *physical_device;
    struct pipe_screen *pscreen;
    void *noop_fs;
+   simple_mtx_t bda_lock;
+   struct hash_table bda;
    bool poison_mem;
    bool print_cmds;
 };
