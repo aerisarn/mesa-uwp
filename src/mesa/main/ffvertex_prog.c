@@ -679,6 +679,12 @@ calculate_light_attenuation(struct tnl_program *p,
                                        STATE_ATTENUATION, 0);
       }
 
+      /* dist is the reciprocal of ||VP|| used in the distance
+       * attenuation formula. So need to get the reciprocal of dist first
+       * before applying to the formula.
+       */
+      dist = nir_frcp(p->b, dist);
+
       /* 1, d, d*d */
       nir_ssa_def *tmp = nir_vec3(p->b,
          nir_imm_float(p->b, 1.0f),
