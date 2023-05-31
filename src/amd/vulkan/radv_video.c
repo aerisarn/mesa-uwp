@@ -895,6 +895,11 @@ static rvcn_dec_message_hevc_t get_h265_msg(struct radv_device *device,
    if (device->physical_device->rad_info.family == CHIP_CARRIZO)
       result.sps_info_flags |= 1 << 9;
 
+   if (!h265_pic_info->pStdPictureInfo->flags.short_term_ref_pic_set_sps_flag) {
+      result.sps_info_flags |= 1 << 11;
+   }
+   result.st_rps_bits = h265_pic_info->pStdPictureInfo->NumBitsForSTRefPicSetInSlice;
+
    result.chroma_format = sps->chroma_format_idc;
    result.bit_depth_luma_minus8 = sps->bit_depth_luma_minus8;
    result.bit_depth_chroma_minus8 = sps->bit_depth_chroma_minus8;
