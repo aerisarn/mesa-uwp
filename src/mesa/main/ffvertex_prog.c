@@ -530,24 +530,6 @@ get_transformed_normal(struct tnl_program *p)
    return p->transformed_normal;
 }
 
-static void
-build_hpos(struct tnl_program *p)
-{
-   nir_ssa_def *pos =
-      load_input_vec4(p, VERT_ATTRIB_POS);
-   if (p->mvp_with_dp4) {
-      nir_ssa_def *mvp[4];
-      load_state_mat4(p, mvp, STATE_MVP_MATRIX, 0);
-      pos = emit_matrix_transform_vec4(p->b, mvp, pos);
-   } else {
-      nir_ssa_def *mvp[4];
-      load_state_mat4(p, mvp, STATE_MVP_MATRIX_TRANSPOSE, 0);
-      pos = emit_transpose_matrix_transform_vec4(p->b, mvp, pos);
-   }
-
-   store_output_vec4(p, VARYING_SLOT_POS, pos);
-}
-
 static GLuint material_attrib( GLuint side, GLuint property )
 {
    switch (property) {
@@ -1293,9 +1275,7 @@ static void build_array_pointsize( struct tnl_program *p )
 
 static void build_tnl_program( struct tnl_program *p )
 {
-   /* Emit the program, starting with the modelview, projection transforms:
-    */
-   build_hpos(p);
+   /* Emit the program (except for the MVP transform, which is a separate pass) */
 
    /* Lighting calculations:
     */
@@ -1357,6 +1337,9 @@ create_new_program( const struct state_key *key,
    build_tnl_program( &p );
 
    nir_validate_shader(b.shader, "after generating ff-vertex shader");
+
+   /* Emit the MVP position transformation */
+   NIR_PASS_V(b.shader, st_nir_lower_position_invariant, mvp_with_dp4, p.state_params);
 
    _mesa_add_separate_state_parameters(program, p.state_params);
    _mesa_free_parameter_list(p.state_params);
