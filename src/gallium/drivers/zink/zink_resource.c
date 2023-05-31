@@ -695,7 +695,15 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          }
       }
 
-      VKSCR(GetBufferMemoryRequirements)(screen->dev, obj->buffer, &reqs);
+      if (modifiers_count) {
+         assert(modifiers_count == 3);
+         /* this is the DGC path because there's no other way to pass mem bits and I don't wanna copy/paste everything around */
+         reqs.size = modifiers[0];
+         reqs.alignment = modifiers[1];
+         reqs.memoryTypeBits = modifiers[2];
+      } else {
+         VKSCR(GetBufferMemoryRequirements)(screen->dev, obj->buffer, &reqs);
+      }
       if (templ->usage == PIPE_USAGE_STAGING)
          flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
       else if (templ->usage == PIPE_USAGE_STREAM)
@@ -1266,7 +1274,7 @@ resource_create(struct pipe_screen *pscreen,
           */
          res->base.b.flags |= PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY;
       }
-      if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
+      if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB || zink_debug & ZINK_DEBUG_DGC)
          zink_resource_get_address(screen, res);
    } else {
       if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)

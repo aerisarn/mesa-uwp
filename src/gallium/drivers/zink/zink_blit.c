@@ -74,6 +74,8 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info, bool *
    VkCommandBuffer cmdbuf = *needs_present_readback ?
                             ctx->batch.state->cmdbuf :
                             zink_get_cmdbuf(ctx, src, dst);
+   if (cmdbuf == ctx->batch.state->cmdbuf)
+      zink_flush_dgc_if_enabled(ctx);
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
 
@@ -266,6 +268,8 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
    VkCommandBuffer cmdbuf = *needs_present_readback ?
                             ctx->batch.state->cmdbuf :
                             zink_get_cmdbuf(ctx, src, dst);
+   if (cmdbuf == ctx->batch.state->cmdbuf)
+      zink_flush_dgc_if_enabled(ctx);
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
 
@@ -393,6 +397,7 @@ zink_blit(struct pipe_context *pctx,
    if (whole)
       pctx->invalidate_resource(pctx, info->dst.resource);
 
+   zink_flush_dgc_if_enabled(ctx);
    ctx->unordered_blitting = !(info->render_condition_enable && ctx->render_condition_active) &&
                              zink_screen(ctx->base.screen)->info.have_KHR_dynamic_rendering &&
                              !needs_present_readback &&

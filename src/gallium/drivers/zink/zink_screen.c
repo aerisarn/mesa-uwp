@@ -96,6 +96,7 @@ zink_debug_options[] = {
    { "optimal_keys", ZINK_DEBUG_OPTIMAL_KEYS, "Debug/use optimal_keys" },
    { "noopt", ZINK_DEBUG_NOOPT, "Disable async optimized pipeline compiles" },
    { "nobgc", ZINK_DEBUG_NOBGC, "Disable all async pipeline compiles" },
+   { "dgc", ZINK_DEBUG_DGC, "Use DGC (driver testing only)" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -2665,6 +2666,17 @@ init_optimal_keys(struct zink_screen *screen)
       screen->info.have_EXT_shader_object = false;
    if (screen->info.have_EXT_shader_object)
       screen->have_full_ds3 = true;
+   if (zink_debug & ZINK_DEBUG_DGC) {
+      if (!screen->optimal_keys) {
+         mesa_loge("zink: can't DGC without optimal_keys!");
+         zink_debug &= ~ZINK_DEBUG_DGC;
+      } else {
+         screen->info.have_EXT_multi_draw = false;
+         screen->info.have_EXT_shader_object = false;
+         screen->info.have_EXT_graphics_pipeline_library = false;
+         screen->info.have_EXT_vertex_input_dynamic_state = false;
+      }
+   }
 }
 
 static struct disk_cache *
@@ -2877,6 +2889,12 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       mesa_loge("zink: KHR_timeline_semaphore is required");
       goto fail;
    }
+   if (zink_debug & ZINK_DEBUG_DGC) {
+      if (!screen->info.have_NV_device_generated_commands) {
+         mesa_loge("zink: can't use DGC without NV_device_generated_commands");
+         goto fail;
+      }
+   }
 
    init_driver_workarounds(screen);
 
@@ -3004,7 +3022,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    slab_create_parent(&screen->transfer_pool, sizeof(struct zink_transfer), 16);
 
-   screen->driconf.inline_uniforms = debug_get_bool_option("ZINK_INLINE_UNIFORMS", screen->is_cpu);
+   screen->driconf.inline_uniforms = debug_get_bool_option("ZINK_INLINE_UNIFORMS", screen->is_cpu) && !(zink_debug & ZINK_DEBUG_DGC);
 
    screen->total_video_mem = get_video_mem(screen);
    screen->clamp_video_mem = screen->total_video_mem * 0.8;

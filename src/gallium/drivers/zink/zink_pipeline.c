@@ -43,7 +43,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
                          struct zink_gfx_pipeline_state *state,
                          const uint8_t *binding_map,
                          VkPrimitiveTopology primitive_topology,
-                         bool optimize)
+                         bool optimize,
+                         struct util_dynarray *dgc)
 {
    struct zink_rasterizer_hw_state *hw_rast_state = (void*)&state->dyn_state3;
    VkPipelineVertexInputStateCreateInfo vertex_input_state;
@@ -404,6 +405,27 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    pci.pStages = shader_stages;
    pci.stageCount = num_stages;
+
+   VkGraphicsShaderGroupCreateInfoNV gci = {
+      VK_STRUCTURE_TYPE_GRAPHICS_SHADER_GROUP_CREATE_INFO_NV,
+      NULL,
+      pci.stageCount,
+      pci.pStages,
+      pci.pVertexInputState,
+      pci.pTessellationState
+   };
+   VkGraphicsPipelineShaderGroupsCreateInfoNV dgci = {
+      VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_SHADER_GROUPS_CREATE_INFO_NV,
+      pci.pNext,
+      1,
+      &gci,
+      dgc ? util_dynarray_num_elements(dgc, VkPipeline) : 0,
+      dgc ? dgc->data : NULL
+   };
+   if (zink_debug & ZINK_DEBUG_DGC) {
+      pci.flags |= VK_PIPELINE_CREATE_INDIRECT_BINDABLE_BIT_NV;
+      pci.pNext = &dgci;
+   }
 
    VkPipeline pipeline;
    VkResult result = VKSCR(CreateGraphicsPipelines)(screen->dev, prog->base.pipeline_cache,

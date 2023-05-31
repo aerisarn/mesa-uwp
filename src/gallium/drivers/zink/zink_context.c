@@ -30,6 +30,7 @@
 #include "zink_helpers.h"
 #include "zink_inlines.h"
 #include "zink_kopper.h"
+#include "zink_pipeline.h"
 #include "zink_program.h"
 #include "zink_query.h"
 #include "zink_render_pass.h"
@@ -205,6 +206,18 @@ zink_context_destroy(struct pipe_context *pctx)
       simple_mtx_destroy(&ctx->program_lock[i]);
    _mesa_hash_table_destroy(ctx->render_pass_cache, NULL);
    slab_destroy_child(&ctx->transfer_pool_unsync);
+
+   if (zink_debug & ZINK_DEBUG_DGC) {
+      for (unsigned i = 0; i < ARRAY_SIZE(ctx->dgc.upload); i++)
+         u_upload_destroy(ctx->dgc.upload[i]);
+      for (unsigned i = 0; i < ARRAY_SIZE(ctx->dgc.buffers); i++) {
+         if (!ctx->dgc.buffers[i])
+            continue;
+         struct pipe_resource *pres = &ctx->dgc.buffers[i]->base.b;
+         pipe_resource_reference(&pres, NULL);
+      }
+      util_dynarray_fini(&ctx->dgc.pipelines);
+   }
 
    zink_descriptors_deinit(ctx);
 
@@ -1333,6 +1346,7 @@ zink_set_viewport_states(struct pipe_context *pctx,
       ctx->vp_state.viewport_states[start_slot + i] = state[i];
 
    ctx->vp_state_changed = true;
+   zink_flush_dgc_if_enabled(ctx);
 }
 
 static void
@@ -1345,6 +1359,7 @@ zink_set_scissor_states(struct pipe_context *pctx,
    for (unsigned i = 0; i < num_scissors; i++)
       ctx->vp_state.scissor_states[start_slot + i] = states[i];
    ctx->scissor_changed = true;
+   zink_flush_dgc_if_enabled(ctx);
 }
 
 static void
@@ -2470,6 +2485,7 @@ zink_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices)
          VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, patch_vertices);
       else
          ctx->gfx_pipeline_state.dirty = true;
+      zink_flush_dgc_if_enabled(ctx);
    }
 }
 
@@ -2858,6 +2874,7 @@ zink_batch_no_rp_safe(struct zink_context *ctx)
 {
    if (!ctx->batch.in_rp)
       return;
+   zink_flush_dgc_if_enabled(ctx);
    if (ctx->render_condition.query)
       zink_stop_conditional_render(ctx);
    /* suspend all queries that were started in a renderpass
@@ -3494,6 +3511,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       zink_update_fs_key_samples(ctx);
    if (ctx->gfx_pipeline_state.rast_samples != rast_samples) {
       ctx->sample_locations_changed |= ctx->gfx_pipeline_state.sample_locations_enabled;
+      zink_flush_dgc_if_enabled(ctx);
       if (screen->have_full_ds3)
          ctx->sample_mask_changed = true;
       else
@@ -3516,6 +3534,7 @@ zink_set_blend_color(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    memcpy(ctx->blend_constants, color->color, sizeof(float) * 4);
+   zink_flush_dgc_if_enabled(ctx);
 }
 
 static void
@@ -3523,6 +3542,7 @@ zink_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
 {
    struct zink_context *ctx = zink_context(pctx);
    ctx->gfx_pipeline_state.sample_mask = sample_mask;
+   zink_flush_dgc_if_enabled(ctx);
    if (zink_screen(pctx->screen)->have_full_ds3)
       ctx->sample_mask_changed = true;
    else
@@ -3535,6 +3555,7 @@ zink_set_min_samples(struct pipe_context *pctx, unsigned min_samples)
    struct zink_context *ctx = zink_context(pctx);
    ctx->gfx_pipeline_state.min_samples = min_samples - 1;
    ctx->gfx_pipeline_state.dirty = true;
+   zink_flush_dgc_if_enabled(ctx);
 }
 
 static void
@@ -3549,6 +3570,7 @@ zink_set_sample_locations(struct pipe_context *pctx, size_t size, const uint8_t 
 
    if (locations)
       memcpy(ctx->sample_locations, locations, size);
+   zink_flush_dgc_if_enabled(ctx);
 }
 
 static void
@@ -3975,6 +3997,7 @@ zink_set_stream_output_targets(struct pipe_context *pctx,
       /* TODO: possibly avoid rebinding on resume if resuming from same buffers? */
       ctx->dirty_so_targets = true;
    }
+   zink_flush_dgc_if_enabled(ctx);
 }
 
 void
@@ -4739,6 +4762,197 @@ zink_emit_string_marker(struct pipe_context *pctx,
    free(temp);
 }
 
+VkIndirectCommandsLayoutTokenNV *
+zink_dgc_add_token(struct zink_context *ctx, VkIndirectCommandsTokenTypeNV type, void **mem)
+{
+   size_t size = 0;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   VkIndirectCommandsLayoutTokenNV *ret = util_dynarray_grow(&ctx->dgc.tokens, VkIndirectCommandsLayoutTokenNV, 1);
+   ret->sType = VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_NV;
+   ret->pNext = NULL;
+   ret->tokenType = type;
+   ret->vertexDynamicStride = ctx->gfx_pipeline_state.uses_dynamic_stride;
+   ret->indirectStateFlags = 0;
+   ret->indexTypeCount = 0;
+   switch (type) {
+   case VK_INDIRECT_COMMANDS_TOKEN_TYPE_VERTEX_BUFFER_NV:
+      ret->stream = ZINK_DGC_VBO;
+      size = sizeof(VkBindVertexBufferIndirectCommandNV);
+      break;
+   case VK_INDIRECT_COMMANDS_TOKEN_TYPE_INDEX_BUFFER_NV:
+      ret->stream = ZINK_DGC_IB;
+      size = sizeof(VkBindIndexBufferIndirectCommandNV);
+      break;
+   case VK_INDIRECT_COMMANDS_TOKEN_TYPE_SHADER_GROUP_NV:
+      ret->stream = ZINK_DGC_PSO;
+      size = sizeof(VkBindShaderGroupIndirectCommandNV);
+      break;
+   case VK_INDIRECT_COMMANDS_TOKEN_TYPE_PUSH_CONSTANT_NV:
+      ret->stream = ZINK_DGC_PUSH;
+      ret->pushconstantPipelineLayout = ctx->dgc.last_prog->base.layout;
+      ret->pushconstantShaderStageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+      size = sizeof(float) * 6; //size for full tess level upload every time
+      break;
+   case VK_INDIRECT_COMMANDS_TOKEN_TYPE_DRAW_NV:
+      ret->stream = ZINK_DGC_DRAW;
+      size = sizeof(VkDrawIndirectCommand);
+      break;
+   case VK_INDIRECT_COMMANDS_TOKEN_TYPE_DRAW_INDEXED_NV:
+      ret->stream = ZINK_DGC_DRAW;
+      size = sizeof(VkDrawIndexedIndirectCommand);
+      break;
+   default:
+      unreachable("ack");
+   }
+   struct zink_resource *old = NULL;
+   unsigned stream_count = screen->info.nv_dgc_props.maxIndirectCommandsStreamCount >= ZINK_DGC_MAX ? ZINK_DGC_MAX : 1;
+   if (stream_count == 1)
+      ret->stream = 0;
+   unsigned stream = ret->stream;
+   bool max_exceeded = !ctx->dgc.max_size[stream];
+   ret->offset = ctx->dgc.cur_offsets[stream];
+   if (ctx->dgc.buffers[stream]) {
+      /* detect end of buffer */
+      if (ctx->dgc.bind_offsets[stream] + ctx->dgc.cur_offsets[stream] + size > ctx->dgc.buffers[stream]->base.b.width0) {
+         old = ctx->dgc.buffers[stream];
+         ctx->dgc.buffers[stream] = NULL;
+         max_exceeded = true;
+      }
+   }
+   if (!ctx->dgc.buffers[stream]) {
+      if (max_exceeded)
+         ctx->dgc.max_size[stream] += size * 5;
+      uint8_t *ptr;
+      unsigned offset;
+      u_upload_alloc(ctx->dgc.upload[stream], 0, ctx->dgc.max_size[stream],
+                     screen->info.props.limits.minMemoryMapAlignment, &offset,
+                     (struct pipe_resource **)&ctx->dgc.buffers[stream], (void **)&ptr);
+      size_t cur_size = old ? (ctx->dgc.cur_offsets[stream] - ctx->dgc.bind_offsets[stream]) : 0;
+      if (old) {
+         struct pipe_resource *pold = &old->base.b;
+         /* copy and delete old buffer */
+         zink_batch_reference_resource_rw(&ctx->batch, old, true);
+         memcpy(ptr + offset, ctx->dgc.maps[stream] + ctx->dgc.bind_offsets[stream], cur_size);
+         pipe_resource_reference(&pold, NULL);
+      }
+      ctx->dgc.maps[stream] = ptr;
+      ctx->dgc.bind_offsets[stream] = offset;
+      ctx->dgc.cur_offsets[stream] = cur_size;
+   }
+   *mem = ctx->dgc.maps[stream] + ctx->dgc.cur_offsets[stream];
+   ctx->dgc.cur_offsets[stream] += size;
+   return ret;
+}
+
+void
+zink_flush_dgc(struct zink_context *ctx)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct zink_batch_state *bs = ctx->batch.state;
+   if (!ctx->dgc.valid)
+      return;
+
+   /* tokens should be created as they are used */
+   unsigned num_cmds = util_dynarray_num_elements(&ctx->dgc.tokens, VkIndirectCommandsLayoutTokenNV);
+   assert(num_cmds);
+   VkIndirectCommandsLayoutTokenNV *cmds = ctx->dgc.tokens.data;
+   uint32_t strides[ZINK_DGC_MAX] = {0};
+
+   unsigned stream_count = screen->info.nv_dgc_props.maxIndirectCommandsStreamCount >= ZINK_DGC_MAX ? ZINK_DGC_MAX : 1;
+   VkIndirectCommandsStreamNV streams[ZINK_DGC_MAX];
+   for (unsigned i = 0; i < stream_count; i++) {
+      if (ctx->dgc.buffers[i]) {
+         streams[i].buffer = ctx->dgc.buffers[i]->obj->buffer;
+         streams[i].offset = ctx->dgc.bind_offsets[i];
+      } else {
+         streams[i].buffer = zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
+         streams[i].offset = 0;
+      }
+   }
+   /* this is a stupid pipeline that will never actually be used as anything but a container */
+   VkPipeline pipeline = VK_NULL_HANDLE;
+   if (screen->info.nv_dgc_props.maxGraphicsShaderGroupCount == 1) {
+      /* RADV doesn't support shader pipeline binds, so use this hacky path */
+      pipeline = ctx->gfx_pipeline_state.pipeline;
+   } else {
+      VkPrimitiveTopology vkmode = zink_primitive_topology(ctx->gfx_pipeline_state.gfx_prim_mode);
+      pipeline = zink_create_gfx_pipeline(screen, ctx->dgc.last_prog, ctx->dgc.last_prog->objs, &ctx->gfx_pipeline_state, ctx->gfx_pipeline_state.element_state->binding_map, vkmode, false, &ctx->dgc.pipelines);
+      assert(pipeline);
+      util_dynarray_append(&bs->dgc.pipelines, VkPipeline, pipeline);
+      VKCTX(CmdBindPipelineShaderGroupNV)(bs->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline, 0);
+   }
+   unsigned remaining = num_cmds;
+   for (unsigned i = 0; i < num_cmds; i += screen->info.nv_dgc_props.maxIndirectCommandsTokenCount, remaining -= screen->info.nv_dgc_props.maxIndirectCommandsTokenCount) {
+      VkIndirectCommandsLayoutCreateInfoNV lci = {
+         VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NV,
+         NULL,
+         0,
+         VK_PIPELINE_BIND_POINT_GRAPHICS,
+         MIN2(remaining, screen->info.nv_dgc_props.maxIndirectCommandsTokenCount),
+         cmds + i,
+         stream_count,
+         strides
+      };
+      VkIndirectCommandsLayoutNV iclayout;
+      VkResult res = VKSCR(CreateIndirectCommandsLayoutNV)(screen->dev, &lci, NULL, &iclayout);
+      assert(res == VK_SUCCESS);
+      util_dynarray_append(&bs->dgc.layouts, VkIndirectCommandsLayoutNV, iclayout);
+
+      /* a lot of hacks to set up a preprocess buffer */
+      VkGeneratedCommandsMemoryRequirementsInfoNV info = {
+         VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_NV,
+         NULL,
+         VK_PIPELINE_BIND_POINT_GRAPHICS,
+         pipeline,
+         iclayout,
+         1
+      };
+      VkMemoryRequirements2 reqs = {
+         VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2
+      };
+      VKSCR(GetGeneratedCommandsMemoryRequirementsNV)(screen->dev, &info, &reqs);
+      struct pipe_resource templ = {0};
+      templ.target = PIPE_BUFFER;
+      templ.format = PIPE_FORMAT_R8_UNORM;
+      templ.bind = 0;
+      templ.usage = PIPE_USAGE_IMMUTABLE;
+      templ.flags = 0;
+      templ.width0 = reqs.memoryRequirements.size;
+      templ.height0 = 1;
+      templ.depth0 = 1;
+      templ.array_size = 1;
+      uint64_t params[] = {reqs.memoryRequirements.size, reqs.memoryRequirements.alignment, reqs.memoryRequirements.memoryTypeBits};
+      struct pipe_resource *pres = screen->base.resource_create_with_modifiers(&screen->base, &templ, params, 3);
+      assert(pres);
+      zink_batch_reference_resource_rw(&ctx->batch, zink_resource(pres), true);
+
+      VkGeneratedCommandsInfoNV gen = {
+         VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_NV,
+         NULL,
+         VK_PIPELINE_BIND_POINT_GRAPHICS,
+         pipeline,
+         iclayout,
+         stream_count,
+         streams,
+         1,
+         zink_resource(pres)->obj->buffer,
+         0,
+         pres->width0,
+         VK_NULL_HANDLE,
+         0,
+         VK_NULL_HANDLE,
+         0
+      };
+      VKCTX(CmdExecuteGeneratedCommandsNV)(ctx->batch.state->cmdbuf, VK_FALSE, &gen);
+
+      pipe_resource_reference(&pres, NULL);
+   }
+   util_dynarray_clear(&ctx->dgc.pipelines);
+   util_dynarray_clear(&ctx->dgc.tokens);
+   ctx->dgc.valid = false;
+   ctx->pipeline_changed[0] = true;
+   zink_select_draw_vbo(ctx);
+}
 
 struct pipe_surface *
 zink_get_dummy_pipe_surface(struct zink_context *ctx, int samples_index)
@@ -4906,6 +5120,13 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.const_uploader = u_upload_create_default(&ctx->base);
    for (int i = 0; i < ARRAY_SIZE(ctx->fb_clears); i++)
       util_dynarray_init(&ctx->fb_clears[i].clears, ctx);
+
+   if (zink_debug & ZINK_DEBUG_DGC) {
+      util_dynarray_init(&ctx->dgc.pipelines, ctx);
+      util_dynarray_init(&ctx->dgc.tokens, ctx);
+      for (unsigned i = 0; i < ARRAY_SIZE(ctx->dgc.upload); i++)
+         ctx->dgc.upload[i] = u_upload_create_default(&ctx->base);
+   }
 
    if (!is_copy_only) {
       ctx->blitter = util_blitter_create(&ctx->base);
