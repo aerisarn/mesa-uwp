@@ -1496,6 +1496,12 @@ radv_link_shaders_info(struct radv_device *device,
 
          /* Compute the ESGS item size for VS or TES as ES. */
          producer->info.esgs_itemsize = num_outputs_written * 16;
+
+          /* For the ESGS ring in LDS, add 1 dword to reduce LDS bank
+           * conflicts, i.e. each vertex will start on a different bank.
+           */
+         if (device->physical_device->rad_info.gfx_level >= GFX9 && producer->info.esgs_itemsize)
+            producer->info.esgs_itemsize += 4;
       }
 
       /* Compute NGG info (GFX10+) or GS info. */
