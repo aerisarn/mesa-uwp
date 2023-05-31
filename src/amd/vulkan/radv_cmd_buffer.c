@@ -6640,14 +6640,10 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       cmd_buffer->sample_positions_needed = true;
    }
 
-   /* Re-emit the rasterization samples state because the SGPR idx can be different. */
-   if (radv_get_user_sgpr(ps, AC_UD_PS_NUM_SAMPLES)->sgpr_idx != -1) {
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
-   }
-
-   /* Re-emit the line rasterization mode state because the SGPR idx can be different. */
-   if (radv_get_user_sgpr(ps, AC_UD_PS_LINE_RAST_MODE)->sgpr_idx != -1) {
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE;
+   /* Re-emit the FS state because the SGPR idx can be different. */
+   if (radv_get_user_sgpr(ps, AC_UD_PS_STATE)->sgpr_idx != -1) {
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
+                                 RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE;
    }
 
    /* Re-emit the conservative rasterization mode because inner coverage is different. */
@@ -9071,29 +9067,20 @@ radv_emit_fs_state(struct radv_cmd_buffer *cmd_buffer)
    if (!ps)
       return;
 
-   loc = radv_get_user_sgpr(ps, AC_UD_PS_NUM_SAMPLES);
-   if (loc->sgpr_idx != -1) {
-      const unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
-      const uint32_t base_reg = ps->info.user_data_0;
+   loc = radv_get_user_sgpr(ps, AC_UD_PS_STATE);
+   if (loc->sgpr_idx == -1)
+      return;
+   assert(loc->num_sgprs == 1);
 
-      radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, rasterization_samples);
-   }
+   const unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
+   const unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
+   const uint16_t ps_iter_mask = ac_get_ps_iter_mask(ps_iter_samples);
+   const uint32_t base_reg = ps->info.user_data_0;
+   const unsigned ps_state = SET_SGPR_FIELD(PS_STATE_NUM_SAMPLES, rasterization_samples) |
+                             SET_SGPR_FIELD(PS_STATE_PS_ITER_MASK, ps_iter_mask) |
+                             SET_SGPR_FIELD(PS_STATE_LINE_RAST_MODE, d->vk.rs.line.mode);
 
-   loc = radv_get_user_sgpr(ps, AC_UD_PS_ITER_MASK);
-   if (loc->sgpr_idx != -1) {
-      const unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
-      const uint16_t ps_iter_mask = ac_get_ps_iter_mask(ps_iter_samples);
-      const uint32_t base_reg = ps->info.user_data_0;
-
-      radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, ps_iter_mask);
-   }
-
-   loc = radv_get_user_sgpr(ps, AC_UD_PS_LINE_RAST_MODE);
-   if (loc->sgpr_idx != -1) {
-      const uint32_t base_reg = ps->info.user_data_0;
-
-      radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, d->vk.rs.line.mode);
-   }
+   radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, ps_state);
 }
 
 static void

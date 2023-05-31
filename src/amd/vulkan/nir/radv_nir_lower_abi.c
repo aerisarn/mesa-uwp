@@ -334,7 +334,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    }
    case nir_intrinsic_load_rasterization_samples_amd:
       if (s->pl_key->dynamic_rasterization_samples) {
-         replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ps_num_samples);
+         replacement = GET_SGPR_FIELD_NIR(s->args->ps_state, PS_STATE_NUM_SAMPLES);
       } else {
          replacement = nir_imm_int(b, s->pl_key->ps.num_samples);
       }
@@ -464,8 +464,10 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    }
    case nir_intrinsic_load_poly_line_smooth_enabled:
       if (s->pl_key->dynamic_line_rast_mode) {
-         replacement = nir_ieq_imm(b, ac_nir_load_arg(b, &s->args->ac, s->args->ps_line_rast_mode),
-                                   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT);
+         nir_ssa_def *line_rast_mode =
+            GET_SGPR_FIELD_NIR(s->args->ps_state, PS_STATE_LINE_RAST_MODE);
+         replacement =
+            nir_ieq_imm(b, line_rast_mode, VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT);
       } else {
          replacement = nir_imm_bool(b, s->pl_key->ps.line_smooth_enabled);
       }

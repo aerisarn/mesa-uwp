@@ -168,9 +168,7 @@ enum radv_ud_index {
    AC_UD_VS_PROLOG_INPUTS,
    AC_UD_VS_MAX_UD,
    AC_UD_PS_EPILOG_PC,
-   AC_UD_PS_NUM_SAMPLES,
-   AC_UD_PS_LINE_RAST_MODE,
-   AC_UD_PS_ITER_MASK,
+   AC_UD_PS_STATE,
    AC_UD_PS_MAX_UD,
    AC_UD_CS_GRID_SIZE = AC_UD_SHADER_START,
    AC_UD_CS_SBT_DESCRIPTORS,
@@ -196,6 +194,13 @@ enum radv_ud_index {
 #define TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS__MASK    0x3f
 #define TCS_OFFCHIP_LAYOUT_NUM_PATCHES__SHIFT            6
 #define TCS_OFFCHIP_LAYOUT_NUM_PATCHES__MASK             0xff
+
+#define PS_STATE_NUM_SAMPLES__SHIFT    0
+#define PS_STATE_NUM_SAMPLES__MASK     0xf
+#define PS_STATE_LINE_RAST_MODE__SHIFT 4
+#define PS_STATE_LINE_RAST_MODE__MASK  0x3
+#define PS_STATE_PS_ITER_MASK__SHIFT   6
+#define PS_STATE_PS_ITER_MASK__MASK    0xffff
 
 struct radv_streamout_info {
    uint16_t num_outputs;

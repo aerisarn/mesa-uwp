@@ -56,8 +56,10 @@ radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *
             nir_ssa_def *def = NULL;
             if (info->ps.uses_sample_shading || key->ps.sample_shading_enable) {
                /* gl_SampleMaskIn[0] = (SampleCoverage & (PsIterMask << gl_SampleID)). */
-               nir_ssa_def *ps_iter_mask =
-                  nir_load_scalar_arg_amd(&b, 1, .base = args->ps_iter_mask.arg_index);
+               nir_ssa_def *ps_state =
+                  nir_load_scalar_arg_amd(&b, 1, .base = args->ps_state.arg_index);
+               nir_ssa_def *ps_iter_mask = nir_ubfe_imm(&b, ps_state, PS_STATE_PS_ITER_MASK__SHIFT,
+                                                        util_bitcount(PS_STATE_PS_ITER_MASK__MASK));
                nir_ssa_def *sample_id = nir_load_sample_id(&b);
                def = nir_iand(&b, sample_coverage, nir_ishl(&b, ps_iter_mask, sample_id));
             } else {
