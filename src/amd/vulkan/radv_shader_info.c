@@ -1596,10 +1596,8 @@ radv_nir_shader_info_merge(const struct radv_pipeline_stage *src, struct radv_pi
       dst_info->tes = src_info->tes;
    }
 
-   if (dst->stage == MESA_SHADER_GEOMETRY) {
-      dst_info->is_ngg = src_info->is_ngg;
+   if (dst->stage == MESA_SHADER_GEOMETRY)
       dst_info->gs.es_type = src->stage;
-   }
 }
 
 static const gl_shader_stage graphics_shader_order[] = {

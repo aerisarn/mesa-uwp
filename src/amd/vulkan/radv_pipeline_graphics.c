@@ -2164,6 +2164,13 @@ radv_fill_shader_info_ngg(struct radv_device *device, struct radv_graphics_pipel
          else
             stages[MESA_SHADER_VERTEX].info.is_ngg = false;
       }
+
+      if (stages[MESA_SHADER_GEOMETRY].nir) {
+         if (stages[MESA_SHADER_TESS_CTRL].nir)
+            stages[MESA_SHADER_GEOMETRY].info.is_ngg = stages[MESA_SHADER_TESS_EVAL].info.is_ngg;
+         else
+            stages[MESA_SHADER_GEOMETRY].info.is_ngg = stages[MESA_SHADER_VERTEX].info.is_ngg;
+      }
    }
 }
 
