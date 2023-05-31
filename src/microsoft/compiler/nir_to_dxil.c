@@ -155,6 +155,7 @@ nir_options = {
    .force_indirect_unrolling = (nir_var_shader_in | nir_var_shader_out | nir_var_function_temp),
    .lower_device_index_to_zero = true,
    .linker_ignore_precision = true,
+   .support_16bit_alu = true,
 };
 
 const nir_shader_compiler_options*
@@ -177,8 +178,6 @@ dxil_get_nir_compiler_options(nir_shader_compiler_options *options,
    }
    if (!(supported_float_sizes & 64))
       options->lower_doubles_options = ~0;
-   if ((supported_int_sizes & 16) && (supported_float_sizes & 16))
-      options->support_16bit_alu = true;
    if (shader_model_max >= SHADER_MODEL_6_4) {
       options->has_sdot_4x8 = true;
       options->has_udot_4x8 = true;
