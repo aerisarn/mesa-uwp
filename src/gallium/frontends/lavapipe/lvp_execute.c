@@ -2833,7 +2833,7 @@ static void handle_index_buffer(struct vk_cmd_queue_entry *cmd,
    if (ib->buffer)
       state->index_buffer = lvp_buffer_from_handle(ib->buffer)->bo;
    else
-      state->index_buffer = NULL;
+      state->index_buffer = state->device->zero_buffer;
 
    state->ib_dirty = true;
 }

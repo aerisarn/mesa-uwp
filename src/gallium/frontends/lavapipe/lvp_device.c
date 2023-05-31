@@ -1530,6 +1530,9 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    _mesa_hash_table_init(&device->bda, NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
    simple_mtx_init(&device->bda_lock, mtx_plain);
 
+   uint32_t zero = 0;
+   device->zero_buffer = pipe_buffer_create_with_data(device->queue.ctx, 0, PIPE_USAGE_IMMUTABLE, sizeof(uint32_t), &zero);
+
    *pDevice = lvp_device_to_handle(device);
 
    return VK_SUCCESS;
@@ -1548,6 +1551,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyDevice(
       device->pscreen->fence_reference(device->pscreen, &device->queue.last_fence, NULL);
    ralloc_free(device->bda.table);
    simple_mtx_destroy(&device->bda_lock);
+   pipe_resource_reference(&device->zero_buffer, NULL);
 
    lvp_queue_finish(&device->queue);
    vk_device_finish(&device->vk);

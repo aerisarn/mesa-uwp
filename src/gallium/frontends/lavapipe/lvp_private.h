@@ -193,6 +193,7 @@ struct lvp_device {
    void *noop_fs;
    simple_mtx_t bda_lock;
    struct hash_table bda;
+   struct pipe_resource *zero_buffer; /* for zeroed bda */
    bool poison_mem;
    bool print_cmds;
 };
