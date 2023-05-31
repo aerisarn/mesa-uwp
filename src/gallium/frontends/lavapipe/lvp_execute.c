@@ -1063,8 +1063,11 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE))
       state->info.primitive_restart = ps->ia->primitive_restart_enable;
 
-   if (ps->ts && !BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS))
+   if (ps->ts && !BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS)) {
+      if (state->patch_vertices != ps->ts->patch_control_points)
+         state->pctx->set_patch_vertices(state->pctx, ps->ts->patch_control_points);
       state->patch_vertices = ps->ts->patch_control_points;
+   }
 
    if (ps->vp) {
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT)) {
@@ -2076,7 +2079,6 @@ static void handle_draw(struct vk_cmd_queue_entry *cmd,
    draw.count = cmd->u.draw.vertex_count;
    draw.index_bias = 0;
 
-   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, NULL, &draw, 1);
 }
 
@@ -2098,8 +2100,6 @@ static void handle_draw_multi(struct vk_cmd_queue_entry *cmd,
       draws[i].count = cmd->u.draw_multi_ext.vertex_info[i].vertexCount;
       draws[i].index_bias = 0;
    }
-
-   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
 
    if (cmd->u.draw_multi_indexed_ext.draw_count)
       state->pctx->draw_vbo(state->pctx, &state->info, 0, NULL, draws, cmd->u.draw_multi_ext.draw_count);
@@ -2704,7 +2704,6 @@ static void handle_draw_indexed(struct vk_cmd_queue_entry *cmd,
                                   cmd->u.draw_indexed.first_index);
 
    state->info.index_bias_varies = !cmd->u.draw_indexed.vertex_offset;
-   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, NULL, &draw, 1);
 }
 
@@ -2741,7 +2740,6 @@ static void handle_draw_multi_indexed(struct vk_cmd_queue_entry *cmd,
                                          draws[i].start);
 
    state->info.index_bias_varies = !cmd->u.draw_multi_indexed_ext.vertex_offset;
-   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
 
    if (cmd->u.draw_multi_indexed_ext.draw_count)
       state->pctx->draw_vbo(state->pctx, &state->info, 0, NULL, draws, cmd->u.draw_multi_indexed_ext.draw_count);
@@ -2767,7 +2765,6 @@ static void handle_draw_indirect(struct vk_cmd_queue_entry *cmd,
    state->indirect_info.draw_count = cmd->u.draw_indirect.draw_count;
    state->indirect_info.buffer = lvp_buffer_from_handle(cmd->u.draw_indirect.buffer)->bo;
 
-   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, &state->indirect_info, &draw, 1);
 }
 
@@ -3268,7 +3265,6 @@ static void handle_draw_indirect_count(struct vk_cmd_queue_entry *cmd,
    state->indirect_info.indirect_draw_count_offset = cmd->u.draw_indirect_count.count_buffer_offset;
    state->indirect_info.indirect_draw_count = lvp_buffer_from_handle(cmd->u.draw_indirect_count.count_buffer)->bo;
 
-   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, &state->indirect_info, &draw, 1);
 }
 
@@ -3658,7 +3654,6 @@ static void handle_draw_indirect_byte_count(struct vk_cmd_queue_entry *cmd,
    state->info.index_size = 0;
 
    draw.count /= cmd->u.draw_indirect_byte_count_ext.vertex_stride;
-   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, &state->indirect_info, &draw, 1);
 }
 
@@ -3826,6 +3821,8 @@ static void handle_set_logic_op(struct vk_cmd_queue_entry *cmd,
 static void handle_set_patch_control_points(struct vk_cmd_queue_entry *cmd,
                                             struct rendering_state *state)
 {
+   if (state->patch_vertices != cmd->u.set_patch_control_points_ext.patch_control_points)
+      state->pctx->set_patch_vertices(state->pctx, cmd->u.set_patch_control_points_ext.patch_control_points);
    state->patch_vertices = cmd->u.set_patch_control_points_ext.patch_control_points;
 }
 
