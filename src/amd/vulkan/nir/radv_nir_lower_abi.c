@@ -97,8 +97,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_tcs_num_patches_amd:
       if (s->pl_key->dynamic_patch_control_points) {
          if (stage == MESA_SHADER_TESS_CTRL) {
-            nir_ssa_def *arg = ac_nir_load_arg(b, &s->args->ac, s->args->tcs_offchip_layout);
-            replacement = nir_ubfe_imm(b, arg, 6, 8);
+            replacement = ac_nir_unpack_arg(b, &s->args->ac, s->args->tcs_offchip_layout, 6, 8);
          } else {
             replacement = ac_nir_load_arg(b, &s->args->ac, s->args->tes_num_patches);
          }
@@ -163,8 +162,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_patch_vertices_in:
       if (stage == MESA_SHADER_TESS_CTRL) {
          if (s->pl_key->dynamic_patch_control_points) {
-            nir_ssa_def *arg = ac_nir_load_arg(b, &s->args->ac, s->args->tcs_offchip_layout);
-            replacement = nir_ubfe_imm(b, arg, 0, 6);
+            replacement = ac_nir_unpack_arg(b, &s->args->ac, s->args->tcs_offchip_layout, 0, 6);
          } else {
             replacement = nir_imm_int(b, s->pl_key->tcs.tess_input_vertices);
          }
@@ -298,8 +296,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
          nir_ssa_def *num_patches;
 
          if (stage == MESA_SHADER_TESS_CTRL) {
-            nir_ssa_def *arg = ac_nir_load_arg(b, &s->args->ac, s->args->tcs_offchip_layout);
-            num_patches = nir_ubfe_imm(b, arg, 6, 8);
+            num_patches = ac_nir_unpack_arg(b, &s->args->ac, s->args->tcs_offchip_layout, 6, 8);
          } else {
             num_patches = ac_nir_load_arg(b, &s->args->ac, s->args->tes_num_patches);
          }
@@ -443,8 +440,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       break;
    }
    case nir_intrinsic_load_ordered_id_amd:
-      replacement =
-         nir_ubfe_imm(b, ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_tg_info), 0, 12);
+      replacement = ac_nir_unpack_arg(b, &s->args->ac, s->args->ac.gs_tg_info, 0, 12);
       break;
    case nir_intrinsic_load_force_vrs_rates_amd:
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.force_vrs_rates);
