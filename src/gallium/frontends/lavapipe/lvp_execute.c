@@ -3654,7 +3654,7 @@ static void handle_draw_indirect_byte_count(struct vk_cmd_queue_entry *cmd,
    state->info.index_size = 0;
 
    draw.count /= cmd->u.draw_indirect_byte_count_ext.vertex_stride;
-   state->pctx->draw_vbo(state->pctx, &state->info, 0, &state->indirect_info, &draw, 1);
+   state->pctx->draw_vbo(state->pctx, &state->info, 0, NULL, &draw, 1);
 }
 
 static void handle_begin_conditional_rendering(struct vk_cmd_queue_entry *cmd,
