@@ -194,7 +194,7 @@ TEST_P(nir_serialize_all_but_one_test, alu_two_components_reg_two_swizzle)
    memset(fma_alu->src[1].swizzle, 1, GetParam());
    memset(fma_alu->src[2].swizzle, 1, GetParam());
 
-   ASSERT_TRUE(nir_convert_from_ssa(b->shader, false));
+   ASSERT_TRUE(nir_convert_from_ssa(b->shader, false, false));
 
    fma_alu = get_last_alu(b->shader);
    ASSERT_FALSE(fma_alu->dest.dest.is_ssa);
@@ -223,7 +223,7 @@ TEST_P(nir_serialize_all_but_one_test, alu_full_width_reg_two_swizzle)
    memset(fma_alu->src[1].swizzle, GetParam() - 1, GetParam());
    memset(fma_alu->src[2].swizzle, GetParam() - 1, GetParam());
 
-   ASSERT_TRUE(nir_convert_from_ssa(b->shader, false));
+   ASSERT_TRUE(nir_convert_from_ssa(b->shader, false, false));
 
    fma_alu = get_last_alu(b->shader);
    ASSERT_FALSE(fma_alu->dest.dest.is_ssa);
@@ -251,7 +251,7 @@ TEST_P(nir_serialize_all_but_one_test, alu_two_component_reg_full_src)
    memset(fma_alu->src[1].swizzle, 1, GetParam());
    memset(fma_alu->src[2].swizzle, 1, GetParam());
 
-   ASSERT_TRUE(nir_convert_from_ssa(b->shader, false));
+   ASSERT_TRUE(nir_convert_from_ssa(b->shader, false, false));
 
    fma_alu = get_last_alu(b->shader);
    ASSERT_FALSE(fma_alu->dest.dest.is_ssa);

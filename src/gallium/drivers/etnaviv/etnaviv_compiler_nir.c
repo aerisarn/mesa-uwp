@@ -984,7 +984,7 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
    }
 
    /* call directly to avoid validation (load_const don't pass validation at this point) */
-   nir_convert_from_ssa(shader, true);
+   nir_convert_from_ssa(shader, true, false);
    nir_opt_dce(shader);
 
    etna_ra_assign(c, shader);

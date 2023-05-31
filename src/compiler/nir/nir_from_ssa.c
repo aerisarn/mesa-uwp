@@ -906,7 +906,9 @@ nir_convert_from_ssa_impl(nir_function_impl *impl, bool phi_webs_only)
 }
 
 bool
-nir_convert_from_ssa(nir_shader *shader, bool phi_webs_only)
+nir_convert_from_ssa(nir_shader *shader,
+                     bool phi_webs_only,
+                     bool reg_intrinsics)
 {
    bool progress = false;
 

@@ -2333,7 +2333,7 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
 
         NIR_PASS_V(c->s, nir_lower_bool_to_int32);
 
-        NIR_PASS_V(c->s, nir_convert_from_ssa, true);
+        NIR_PASS_V(c->s, nir_convert_from_ssa, true, false);
 
         if (VC4_DBG(NIR)) {
                 fprintf(stderr, "%s prog %d/%d NIR:\n",

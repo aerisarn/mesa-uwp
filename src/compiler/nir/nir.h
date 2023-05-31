@@ -5991,9 +5991,12 @@ bool nir_has_divergent_loop(nir_shader *shader);
 
 /* If phi_webs_only is true, only convert SSA values involved in phi nodes to
  * registers.  If false, convert all values (even those not involved in a phi
- * node) to registers.
+ * node) to registers.  If reg_intrinsics is true, it will use
+ * decl/load/store_reg intrinsics instead of nir_register.
  */
-bool nir_convert_from_ssa(nir_shader *shader, bool phi_webs_only);
+bool nir_convert_from_ssa(nir_shader *shader,
+                          bool phi_webs_only,
+                          bool reg_intrinsics);
 
 bool nir_lower_phis_to_regs_block(nir_block *block);
 bool nir_lower_ssa_defs_to_regs_block(nir_block *block);
