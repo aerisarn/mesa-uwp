@@ -457,17 +457,14 @@ aggressive_coalesce_parallel_copy(nir_parallel_copy_instr *pcopy,
                                  struct from_ssa_state *state)
 {
    nir_foreach_parallel_copy_entry(entry, pcopy) {
-      if (!entry->src.is_ssa)
-         continue;
+      assert(entry->src.is_ssa);
+      assert(entry->dest.is_ssa);
+      assert(entry->dest.ssa.num_components == entry->src.ssa->num_components);
 
       /* Since load_const instructions are SSA only, we can't replace their
        * destinations with registers and, therefore, can't coalesce them.
        */
       if (entry->src.ssa->parent_instr->type == nir_instr_type_load_const)
-         continue;
-
-      /* Don't try and coalesce these */
-      if (entry->dest.ssa.num_components != entry->src.ssa->num_components)
          continue;
 
       merge_node *src_node = get_merge_node(entry->src.ssa, state);
