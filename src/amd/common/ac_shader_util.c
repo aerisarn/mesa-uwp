@@ -1052,7 +1052,7 @@ enum gl_access_qualifier ac_get_mem_access_flags(const nir_intrinsic_instr *inst
  * "access" must be a result of ac_get_mem_access_flags() with the appropriate ACCESS_TYPE_*
  * flags set.
  */
-union ac_hw_cache_flags ac_get_hw_cache_flags(enum amd_gfx_level gfx_level,
+union ac_hw_cache_flags ac_get_hw_cache_flags(const struct radeon_info *info,
                                               enum gl_access_qualifier access)
 {
    union ac_hw_cache_flags result;
@@ -1066,7 +1066,7 @@ union ac_hw_cache_flags ac_get_hw_cache_flags(enum amd_gfx_level gfx_level,
 
    bool scope_is_device = access & (ACCESS_COHERENT | ACCESS_VOLATILE);
 
-   if (gfx_level >= GFX11) {
+   if (info->gfx_level >= GFX11) {
       /* GFX11 simplified it and exposes what is actually useful.
        *
        * GLC means device scope for loads only. (stores and atomics are always device scope)
@@ -1080,7 +1080,7 @@ union ac_hw_cache_flags ac_get_hw_cache_flags(enum amd_gfx_level gfx_level,
 
       if (access & ACCESS_NON_TEMPORAL && !(access & ACCESS_TYPE_SMEM))
          result.value |= ac_slc;
-   } else if (gfx_level >= GFX10) {
+   } else if (info->gfx_level >= GFX10) {
       /* GFX10-10.3:
        *
        * VMEM and SMEM loads (SMEM only supports the first four):
@@ -1134,7 +1134,7 @@ union ac_hw_cache_flags ac_get_hw_cache_flags(enum amd_gfx_level gfx_level,
        */
       if (scope_is_device && !(access & ACCESS_TYPE_ATOMIC)) {
          /* SMEM doesn't support the device scope on GFX6-7. */
-         assert(gfx_level >= GFX8 || !(access & ACCESS_TYPE_SMEM));
+         assert(info->gfx_level >= GFX8 || !(access & ACCESS_TYPE_SMEM));
          result.value |= ac_glc;
       }
 
@@ -1144,7 +1144,7 @@ union ac_hw_cache_flags ac_get_hw_cache_flags(enum amd_gfx_level gfx_level,
       /* GFX6 has a TC L1 bug causing corruption of 8bit/16bit stores. All store opcodes not
        * aligned to a dword are affected.
        */
-      if (gfx_level == GFX6 && access & ACCESS_MAY_STORE_SUBDWORD)
+      if (info->gfx_level == GFX6 && access & ACCESS_MAY_STORE_SUBDWORD)
          result.value |= ac_glc;
    }
 

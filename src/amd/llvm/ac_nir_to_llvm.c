@@ -1532,7 +1532,7 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
    }
 
    /* MI200 doesn't have image_sample_lz, but image_sample behaves like lz. */
-   if (!ctx->ac.has_3d_cube_border_color_mipmap)
+   if (!ctx->ac.info->has_3d_cube_border_color_mipmap)
       args->level_zero = false;
 
    if (instr->op == nir_texop_tg4 && ctx->ac.gfx_level <= GFX8 &&
@@ -1933,7 +1933,7 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
       }
 
       unsigned cache_flags =
-         ac_get_hw_cache_flags(ctx->ac.gfx_level,
+         ac_get_hw_cache_flags(ctx->ac.info,
 			       ac_get_mem_access_flags(instr) | ACCESS_TYPE_ATOMIC).value;
 
       params[arg_count++] = data;
@@ -2599,7 +2599,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
          LLVMTypeRef data_type = LLVMTypeOf(params[0]);
          char type[8];
          unsigned cache_flags =
-            ac_get_hw_cache_flags(ctx->ac.gfx_level,
+            ac_get_hw_cache_flags(ctx->ac.info,
 				  ac_get_mem_access_flags(instr) | ACCESS_TYPE_ATOMIC).value;
 
          params[param_count++] = ctx->ac.i32_0; /* soffset */
@@ -3665,7 +3665,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
             const unsigned align_mul = nir_intrinsic_align_mul(instr);
             const enum pipe_format format = nir_intrinsic_format(instr);
             const struct ac_vtx_format_info *vtx_info =
-               ac_get_vtx_format_info(ctx->ac.gfx_level, ctx->ac.family, format);
+               ac_get_vtx_format_info(ctx->ac.gfx_level, ctx->ac.info->family, format);
 
             result =
                ac_build_safe_tbuffer_load(&ctx->ac, descriptor, vidx, addr_voffset, addr_soffset,
@@ -4211,7 +4211,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    }
 
    /* Set TRUNC_COORD=0 for textureGather(). */
-   if (instr->op == nir_texop_tg4 && !ctx->abi->conformant_trunc_coord) {
+   if (instr->op == nir_texop_tg4 && !ctx->ac.info->conformant_trunc_coord) {
       LLVMValueRef dword0 = LLVMBuildExtractElement(ctx->ac.builder, args.sampler, ctx->ac.i32_0, "");
       dword0 = LLVMBuildAnd(ctx->ac.builder, dword0, LLVMConstInt(ctx->ac.i32, C_008F30_TRUNC_COORD, 0), "");
       args.sampler = LLVMBuildInsertElement(ctx->ac.builder, args.sampler, dword0, ctx->ac.i32_0, "");

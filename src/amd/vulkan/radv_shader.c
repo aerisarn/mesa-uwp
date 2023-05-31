@@ -2124,18 +2124,13 @@ radv_fill_nir_compiler_options(struct radv_nir_compiler_options *options,
 
    options->robust_buffer_access = device->robust_buffer_access;
    options->wgp_mode = should_use_wgp;
-   options->family = device->physical_device->rad_info.family;
-   options->gfx_level = device->physical_device->rad_info.gfx_level;
-   options->has_3d_cube_border_color_mipmap = device->physical_device->rad_info.has_3d_cube_border_color_mipmap;
-   options->conformant_trunc_coord = device->physical_device->rad_info.conformant_trunc_coord;
+   options->info = &device->physical_device->rad_info;
    options->dump_shader = can_dump_shader;
    options->dump_preoptir =
       options->dump_shader && device->instance->debug_flags & RADV_DEBUG_PREOPTIR;
    options->record_ir = keep_shader_info;
    options->record_stats = keep_statistic_info;
    options->check_ir = device->instance->debug_flags & RADV_DEBUG_CHECKIR;
-   options->address32_hi = device->physical_device->rad_info.address32_hi;
-   options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
 
    if (!is_meta_shader)
       options->enable_mrt_output_nan_fixup = options->key.ps.epilog.enable_mrt_output_nan_fixup;
@@ -2362,7 +2357,7 @@ radv_create_rt_prolog(struct radv_device *device)
 
    radv_declare_shader_args(device, &pipeline_key, &info, MESA_SHADER_COMPUTE, MESA_SHADER_NONE,
                             RADV_SHADER_TYPE_DEFAULT, &in_args);
-   radv_declare_rt_shader_args(options.gfx_level, &out_args);
+   radv_declare_rt_shader_args(options.info->gfx_level, &out_args);
    info.user_sgprs_locs = in_args.user_sgprs_locs;
 
 #ifdef LLVM_AVAILABLE

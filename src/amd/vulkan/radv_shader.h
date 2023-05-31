@@ -133,14 +133,9 @@ struct radv_nir_compiler_options {
    bool record_ir;
    bool record_stats;
    bool check_ir;
-   bool has_ls_vgpr_init_bug;
    uint8_t enable_mrt_output_nan_fixup;
    bool wgp_mode;
-   enum radeon_family family;
-   enum amd_gfx_level gfx_level;
-   uint32_t address32_hi;
-   bool has_3d_cube_border_color_mipmap;
-   bool conformant_trunc_coord;
+   const struct radeon_info *info;
 
    struct {
       void (*func)(void *private_data, enum aco_compiler_debug_level level, const char *message);

@@ -116,8 +116,7 @@ void si_llvm_context_init(struct si_shader_context *ctx, struct si_screen *sscre
    ctx->screen = sscreen;
    ctx->compiler = compiler;
 
-   ac_llvm_context_init(&ctx->ac, compiler, sscreen->info.gfx_level, sscreen->info.family,
-                        sscreen->info.has_3d_cube_border_color_mipmap, float_mode,
+   ac_llvm_context_init(&ctx->ac, compiler, &sscreen->info, float_mode,
                         wave_size, 64, exports_color_null, exports_mrtz);
 }
 
@@ -955,7 +954,6 @@ static bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shade
    ctx->abi.clamp_div_by_zero = ctx->screen->options.clamp_div_by_zero ||
                                 info->options & SI_PROFILE_CLAMP_DIV_BY_ZERO;
    ctx->abi.disable_aniso_single_level = true;
-   ctx->abi.conformant_trunc_coord = ctx->screen->info.conformant_trunc_coord;
 
    bool ls_need_output =
       ctx->stage == MESA_SHADER_VERTEX && shader->key.ge.as_ls &&

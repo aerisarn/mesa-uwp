@@ -221,7 +221,7 @@ ac_ngg_get_scratch_lds_size(gl_shader_stage stage,
 
 enum gl_access_qualifier ac_get_mem_access_flags(const nir_intrinsic_instr *instr);
 
-union ac_hw_cache_flags ac_get_hw_cache_flags(enum amd_gfx_level gfx_level,
+union ac_hw_cache_flags ac_get_hw_cache_flags(const struct radeon_info *info,
                                               enum gl_access_qualifier access);
 
 #ifdef __cplusplus

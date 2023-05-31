@@ -37,6 +37,7 @@ enum
 
 struct ac_llvm_flow;
 struct ac_llvm_compiler;
+struct radeon_info;
 
 struct ac_llvm_flow_state {
    struct ac_llvm_flow *stack;
@@ -129,9 +130,8 @@ struct ac_llvm_context {
    unsigned uniform_md_kind;
    LLVMValueRef empty_md;
 
+   const struct radeon_info *info;
    enum amd_gfx_level gfx_level;
-   enum radeon_family family;
-   bool has_3d_cube_border_color_mipmap;
 
    unsigned wave_size;
    unsigned ballot_mask_bits;
@@ -148,10 +148,9 @@ struct ac_llvm_context {
 };
 
 void ac_llvm_context_init(struct ac_llvm_context *ctx, struct ac_llvm_compiler *compiler,
-                          enum amd_gfx_level gfx_level, enum radeon_family family,
-                          bool has_3d_cube_border_color_mipmap,
-                          enum ac_float_mode float_mode, unsigned wave_size,
-                          unsigned ballot_mask_bits, bool exports_color_null, bool exports_mrtz);
+                          const struct radeon_info *info, enum ac_float_mode float_mode,
+                          unsigned wave_size, unsigned ballot_mask_bits, bool exports_color_null,
+                          bool exports_mrtz);
 
 void ac_llvm_context_dispose(struct ac_llvm_context *ctx);
 

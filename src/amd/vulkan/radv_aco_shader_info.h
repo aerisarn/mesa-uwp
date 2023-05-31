@@ -112,18 +112,18 @@ radv_aco_convert_opts(struct aco_compiler_options *aco_info,
    ASSIGN_FIELD(dump_preoptir);
    ASSIGN_FIELD(record_ir);
    ASSIGN_FIELD(record_stats);
-   ASSIGN_FIELD(has_ls_vgpr_init_bug);
    ASSIGN_FIELD(enable_mrt_output_nan_fixup);
    ASSIGN_FIELD(wgp_mode);
-   ASSIGN_FIELD(family);
-   ASSIGN_FIELD(gfx_level);
-   ASSIGN_FIELD(address32_hi);
    ASSIGN_FIELD(debug.func);
    ASSIGN_FIELD(debug.private_data);
    ASSIGN_FIELD(debug.private_data);
    aco_info->is_opengl = false;
    aco_info->load_grid_size_from_user_sgpr = radv_args->load_grid_size_from_user_sgpr;
    aco_info->optimisations_disabled = radv->key.optimisations_disabled;
+   aco_info->gfx_level = radv->info->gfx_level;
+   aco_info->family = radv->info->family;
+   aco_info->address32_hi = radv->info->address32_hi;
+   aco_info->has_ls_vgpr_init_bug = radv->info->has_ls_vgpr_init_bug;
 }
 #undef ASSIGN_VS_STATE_FIELD
 #undef ASSIGN_VS_STATE_FIELD_CP
