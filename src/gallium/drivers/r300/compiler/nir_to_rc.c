@@ -51,7 +51,6 @@ struct ntr_insn {
    enum pipe_format mem_format;
 
    bool is_tex : 1;
-   bool is_mem : 1;
    bool precise : 1;
 };
 
@@ -1485,9 +1484,6 @@ ntr_shift_by_frac(struct ureg_src src, unsigned frac, unsigned num_components)
 static void
 ntr_emit_load_ubo(struct ntr_compile *c, nir_intrinsic_instr *instr)
 {
-   int bit_size = instr->def.bit_size;
-   assert(bit_size == 32 || instr->num_components <= 2);
-
    struct ureg_src src = ureg_src_register(TGSI_FILE_CONSTANT, 0);
 
    struct ureg_dst addr_temp = ureg_dst_undef();
@@ -1510,38 +1506,22 @@ ntr_emit_load_ubo(struct ntr_compile *c, nir_intrinsic_instr *instr)
                                          c->first_ubo);
    }
 
-   if (instr->intrinsic == nir_intrinsic_load_ubo_vec4) {
-      /* !PIPE_CAP_LOAD_CONSTBUF: Just emit it as a vec4 reference to the const
-       * file.
-       */
-      src.Index = nir_intrinsic_base(instr);
+   /* !PIPE_CAP_LOAD_CONSTBUF: Just emit it as a vec4 reference to the const
+    * file.
+    */
+   src.Index = nir_intrinsic_base(instr);
 
-      if (nir_src_is_const(instr->src[1])) {
-         src.Index += ntr_src_as_uint(c, instr->src[1]);
-      } else {
-         src = ureg_src_indirect(src, ntr_reladdr(c, ntr_get_src(c, instr->src[1]), 0));
-      }
-
-      int start_component = nir_intrinsic_component(instr);
-
-      src = ntr_shift_by_frac(src, start_component,
-                              instr->num_components * bit_size / 32);
-
-      ntr_store(c, &instr->def, src);
+   if (nir_src_is_const(instr->src[1])) {
+      src.Index += ntr_src_as_uint(c, instr->src[1]);
    } else {
-      /* PIPE_CAP_LOAD_CONSTBUF: Not necessarily vec4 aligned, emit a
-       * TGSI_OPCODE_LOAD instruction from the const file.
-       */
-      struct ntr_insn *insn =
-         ntr_insn(c, TGSI_OPCODE_LOAD,
-                  ntr_get_dest(c, &instr->def),
-                  src, ntr_get_src(c, instr->src[1]),
-                  ureg_src_undef(), ureg_src_undef());
-      insn->is_mem = true;
-      insn->tex_target = 0;
-      insn->mem_qualifier = 0;
-      insn->mem_format = 0; /* unused */
+      src = ureg_src_indirect(src, ntr_reladdr(c, ntr_get_src(c, instr->src[1]), 0));
    }
+
+   int start_component = nir_intrinsic_component(instr);
+
+   src = ntr_shift_by_frac(src, start_component, instr->num_components);
+
+   ntr_store(c, &instr->def, src);
 }
 
 static void
@@ -2263,13 +2243,6 @@ ntr_emit_block_ureg(struct ntr_compile *c, struct nir_block *block)
                           insn->tex_offset,
                           num_offsets,
                           insn->src, opcode_info->num_src);
-         } else if (insn->is_mem) {
-            ureg_memory_insn(c->ureg, insn->opcode,
-                             insn->dst, opcode_info->num_dst,
-                             insn->src, opcode_info->num_src,
-                             insn->mem_qualifier,
-                             insn->tex_target,
-                             insn->mem_format);
          } else {
             ureg_insn(c->ureg, insn->opcode,
                      insn->dst, opcode_info->num_dst,
