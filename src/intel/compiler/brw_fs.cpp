@@ -825,6 +825,8 @@ fs_inst::components_read(unsigned i) const
       /* Surface operation source. */
       else if (i == SURFACE_LOGICAL_SRC_DATA)
          return lsc_op_num_data_values(op);
+      else
+         return 1;
    }
    case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
       return (i == 0 ? 2 : 1);
