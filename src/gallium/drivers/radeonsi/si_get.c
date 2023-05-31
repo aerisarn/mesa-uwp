@@ -434,6 +434,10 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
 {
    struct si_screen *sscreen = (struct si_screen *)pscreen;
 
+   if (shader == PIPE_SHADER_MESH ||
+       shader == PIPE_SHADER_TASK)
+      return 0;
+
    switch (param) {
    /* Shader limits. */
    case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
