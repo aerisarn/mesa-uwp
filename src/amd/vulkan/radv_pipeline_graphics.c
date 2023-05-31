@@ -3350,19 +3350,19 @@ radv_emit_mesh_shader(const struct radv_device *device, struct radeon_cmdbuf *ct
 }
 
 static uint32_t
-offset_to_ps_input(uint32_t offset, bool flat_shade, bool explicit, bool float16,
+offset_to_ps_input(uint32_t offset, bool flat_shade, bool explicit, bool per_vertex, bool float16,
                    bool per_prim_gfx11)
 {
    uint32_t ps_input_cntl;
    if (offset <= AC_EXP_PARAM_OFFSET_31) {
       ps_input_cntl = S_028644_OFFSET(offset) | S_028644_PRIM_ATTR(per_prim_gfx11);
-      if (flat_shade || explicit)
+      if (flat_shade || explicit || per_vertex)
          ps_input_cntl |= S_028644_FLAT_SHADE(1);
-      if (explicit) {
+      if (explicit || per_vertex) {
          /* Force parameter cache to be read in passthrough
           * mode.
           */
-         ps_input_cntl |= S_028644_OFFSET(1 << 5);
+         ps_input_cntl |= S_028644_OFFSET(1 << 5) | S_028644_ROTATE_PC_PTR(per_vertex);
       }
       if (float16) {
          ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) | S_028644_ATTR0_VALID(1);
@@ -3393,7 +3393,7 @@ single_slot_to_ps_input(const struct radv_vs_output_info *outinfo, unsigned slot
    }
 
    ps_input_cntl[*ps_offset] =
-      offset_to_ps_input(vs_offset, flat_shade, false, false, per_prim_gfx11);
+      offset_to_ps_input(vs_offset, flat_shade, false, false, false, per_prim_gfx11);
    ++(*ps_offset);
 }
 
@@ -3412,10 +3412,11 @@ input_mask_to_ps_inputs(const struct radv_vs_output_info *outinfo, const struct 
 
       bool flat_shade = !!(ps->info.ps.flat_shaded_mask & (1u << *ps_offset));
       bool explicit = !!(ps->info.ps.explicit_shaded_mask & (1u << *ps_offset));
+      bool per_vertex = !!(ps->info.ps.per_vertex_shaded_mask & (1u << *ps_offset));
       bool float16 = !!(ps->info.ps.float16_shaded_mask & (1u << *ps_offset));
 
       ps_input_cntl[*ps_offset] =
-         offset_to_ps_input(vs_offset, flat_shade, explicit, float16, per_prim_gfx11);
+         offset_to_ps_input(vs_offset, flat_shade, explicit, per_vertex, float16, per_prim_gfx11);
       ++(*ps_offset);
    }
 }
