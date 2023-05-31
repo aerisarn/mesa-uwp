@@ -3932,6 +3932,11 @@ typedef struct nir_shader_compiler_options {
     *  of adding it to the atomic source
     */
    bool lower_atomic_offset_to_range_base;
+
+   /** Don't convert medium-precision casts (e.g. f2fmp) into concrete
+    *  type casts (e.g. f2f16).
+    */
+   bool preserve_mediump;
 } nir_shader_compiler_options;
 
 typedef struct nir_shader {

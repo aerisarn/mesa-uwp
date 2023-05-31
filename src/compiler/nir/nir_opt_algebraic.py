@@ -3124,13 +3124,13 @@ late_optimizations += [
   # Convert *2*mp instructions to concrete *2*16 instructions. At this point
   # any conversions that could have been removed will have been removed in
   # nir_opt_algebraic so any remaining ones are required.
-  (('f2fmp', a), ('f2f16', a)),
-  (('f2imp', a), ('f2i16', a)),
-  (('f2ump', a), ('f2u16', a)),
-  (('i2imp', a), ('i2i16', a)),
-  (('i2fmp', a), ('i2f16', a)),
-  (('i2imp', a), ('u2u16', a)),
-  (('u2fmp', a), ('u2f16', a)),
+  (('f2fmp', a), ('f2f16', a), "!options->preserve_mediump"),
+  (('f2imp', a), ('f2i16', a), "!options->preserve_mediump"),
+  (('f2ump', a), ('f2u16', a), "!options->preserve_mediump"),
+  (('i2imp', a), ('i2i16', a), "!options->preserve_mediump"),
+  (('i2fmp', a), ('i2f16', a), "!options->preserve_mediump"),
+  (('i2imp', a), ('u2u16', a), "!options->preserve_mediump"),
+  (('u2fmp', a), ('u2f16', a), "!options->preserve_mediump"),
   (('fisfinite', a), ('flt', ('fabs', a), float("inf"))),
 
   (('fcsel', ('slt', 0, a), b, c), ('fcsel_gt', a, b, c), "options->has_fused_comp_and_csel"),
