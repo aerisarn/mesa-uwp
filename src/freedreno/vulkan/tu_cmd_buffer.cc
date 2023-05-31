@@ -4583,10 +4583,14 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       bool provoking_vtx_last =
          cmd->vk.dynamic_graphics_state.rs.provoking_vertex ==
          VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
-      tu_cs_emit_regs(
-         cs,
+
+      uint32_t primitive_cntl_0 =
          A6XX_PC_PRIMITIVE_CNTL_0(.primitive_restart = primitive_restart,
-                                  .provoking_vtx_last = provoking_vtx_last));
+                                  .provoking_vtx_last = provoking_vtx_last).value;
+      tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0(.dword = primitive_cntl_0));
+      if (CHIP == A7XX) {
+         tu_cs_emit_regs(cs, A7XX_VPC_PRIMITIVE_CNTL_0(.dword = primitive_cntl_0));
+      }
    }
 
    struct tu_tess_params *tess_params = &cmd->state.tess_params;
