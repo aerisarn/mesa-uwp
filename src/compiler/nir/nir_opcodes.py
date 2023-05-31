@@ -1339,6 +1339,16 @@ opcode("imadshl_agx", 0, tint, [0, 0, 0, 0], [tint, tint, tint, tint], False,
 opcode("imsubshl_agx", 0, tint, [0, 0, 0, 0], [tint, tint, tint, tint], False,
        "", f"(src0 * src1) - (src2 << src3)")
 
+binop_convert("interleave_agx", tuint32, tuint16, "", """
+      dst = 0;
+      for (unsigned bit = 0; bit < 16; bit++) {
+          dst |= (src0 & (1 << bit)) << bit;
+          dst |= (src1 & (1 << bit)) << (bit + 1);
+      }""", description="""
+      Interleave bits of 16-bit integers to calculate a 32-bit integer. This can
+      be used as-is for Morton encoding.
+      """)
+
 # 24b multiply into 32b result (with sign extension)
 binop("imul24", tint32, _2src_commutative + associative,
       "(((int32_t)src0 << 8) >> 8) * (((int32_t)src1 << 8) >> 8)")
