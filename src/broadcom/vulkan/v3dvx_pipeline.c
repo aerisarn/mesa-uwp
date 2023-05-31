@@ -243,6 +243,7 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
        * supported in the driver yet, so in practice we are always enabling Z
        * clipping for now.
        */
+      bool z_clamp_enable = rs_info && rs_info->depthClampEnable;
       bool z_clip_enable = false;
       const VkPipelineRasterizationDepthClipStateCreateInfoEXT *clip_info =
          ds_info ? vk_find_struct_const(ds_info->pNext,
@@ -250,7 +251,7 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
                    NULL;
       if (clip_info)
          z_clip_enable = clip_info->depthClipEnable;
-      else if (!(rs_info && rs_info->depthClampEnable))
+      else if (!z_clamp_enable)
          z_clip_enable = true;
 
       if (z_clip_enable) {
@@ -259,6 +260,8 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
       } else {
          config.z_clipping_mode = V3D_Z_CLIP_MODE_NONE;
       }
+
+      config.z_clamp_mode = z_clamp_enable;
 
       config.depth_bounds_test_enable =
               ds_info && ds_info->depthBoundsTestEnable && has_ds_attachment;
