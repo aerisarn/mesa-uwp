@@ -189,6 +189,15 @@ draw_pt_emit(struct pt_emit *emit,
                   0,
                   hw_verts);
 
+   if (0) {
+      for (unsigned i = 0; i < vertex_count; i++) {
+         debug_printf("\n\n%s vertex %d:\n", __func__, i);
+         draw_dump_emitted_vertex(emit->vinfo,
+                                  (const uint8_t *)hw_verts +
+                                  translate->key.output_stride * i);
+      }
+   }
+
    render->unmap_vertices(render, 0, vertex_count - 1);
 
    for (start = i = 0;
