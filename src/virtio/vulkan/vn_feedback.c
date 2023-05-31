@@ -10,15 +10,6 @@
 #include "vn_physical_device.h"
 #include "vn_queue.h"
 
-/* coherent buffer with bound and mapped memory */
-struct vn_feedback_buffer {
-   VkBuffer buffer;
-   VkDeviceMemory memory;
-   void *data;
-
-   struct list_head head;
-};
-
 static uint32_t
 vn_get_memory_type_index(const VkPhysicalDeviceMemoryProperties *mem_props,
                          uint32_t mem_type_bits,
@@ -35,7 +26,7 @@ vn_get_memory_type_index(const VkPhysicalDeviceMemoryProperties *mem_props,
    return UINT32_MAX;
 }
 
-static VkResult
+VkResult
 vn_feedback_buffer_create(struct vn_device *dev,
                           uint32_t size,
                           const VkAllocationCallbacks *alloc,
@@ -128,7 +119,7 @@ out_free_feedback_buf:
    return result;
 }
 
-static void
+void
 vn_feedback_buffer_destroy(struct vn_device *dev,
                            struct vn_feedback_buffer *feedback_buf,
                            const VkAllocationCallbacks *alloc)
