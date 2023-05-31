@@ -370,7 +370,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
-   if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_EVAL]) {
+   if (objs[MESA_SHADER_TESS_CTRL].mod && objs[MESA_SHADER_TESS_EVAL].mod) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       tci.patchControlPoints = state->dyn_state2.vertices_per_patch;
       pci.pTessellationState = &tci;
@@ -383,7 +383,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkShaderModuleCreateInfo smci[ZINK_GFX_SHADER_COUNT] = {0};
    uint32_t num_stages = 0;
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
-      if (!prog->shaders[i])
+      if (!objs[i].obj)
          continue;
 
       VkPipelineShaderStageCreateInfo stage = {0};
