@@ -64,6 +64,9 @@ spirv_to_nir_options = {
 
    .min_ubo_alignment = 256, /* D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT */
    .min_ssbo_alignment = 16, /* D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT */
+
+   .mediump_16bit_alu = true,
+   .mediump_16bit_derivatives = true,
 };
 
 const struct spirv_to_nir_options*
