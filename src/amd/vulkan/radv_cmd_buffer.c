@@ -9085,10 +9085,12 @@ radv_emit_fs_state(struct radv_cmd_buffer *cmd_buffer)
    const unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
    const unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
    const uint16_t ps_iter_mask = ac_get_ps_iter_mask(ps_iter_samples);
+   const unsigned rast_prim = radv_get_rasterization_prim(cmd_buffer);
    const uint32_t base_reg = ps->info.user_data_0;
    const unsigned ps_state = SET_SGPR_FIELD(PS_STATE_NUM_SAMPLES, rasterization_samples) |
                              SET_SGPR_FIELD(PS_STATE_PS_ITER_MASK, ps_iter_mask) |
-                             SET_SGPR_FIELD(PS_STATE_LINE_RAST_MODE, d->vk.rs.line.mode);
+                             SET_SGPR_FIELD(PS_STATE_LINE_RAST_MODE, d->vk.rs.line.mode) |
+                             SET_SGPR_FIELD(PS_STATE_RAST_PRIM, rast_prim);
 
    radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, ps_state);
 }

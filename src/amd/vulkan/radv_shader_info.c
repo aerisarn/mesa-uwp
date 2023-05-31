@@ -173,6 +173,9 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
    case nir_intrinsic_load_provoking_vtx_amd:
       info->ps.load_provoking_vtx = true;
       break;
+   case nir_intrinsic_load_rasterization_primitive_amd:
+      info->ps.load_rasterization_prim = true;
+      break;
    case nir_intrinsic_load_local_invocation_id:
    case nir_intrinsic_load_workgroup_id: {
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);

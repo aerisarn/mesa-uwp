@@ -360,6 +360,10 @@ radv_ps_needs_state_sgpr(const struct radv_shader_info *info, const struct radv_
        (info->ps.uses_sample_shading || key->ps.sample_shading_enable))
       return true;
 
+   /* For computing barycentrics when the primitive topology is unknown at compile time (GPL). */
+   if (info->ps.load_rasterization_prim && key->unknown_rast_prim)
+      return true;
+
    return false;
 }
 

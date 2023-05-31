@@ -197,6 +197,8 @@ enum radv_ud_index {
 #define PS_STATE_LINE_RAST_MODE__MASK  0x3
 #define PS_STATE_PS_ITER_MASK__SHIFT   6
 #define PS_STATE_PS_ITER_MASK__MASK    0xffff
+#define PS_STATE_RAST_PRIM__SHIFT 22
+#define PS_STATE_RAST_PRIM__MASK  0x3
 
 struct radv_streamout_info {
    uint16_t num_outputs;
@@ -372,6 +374,7 @@ struct radv_shader_info {
       unsigned spi_shader_col_format;
       uint8_t color0_written;
       bool load_provoking_vtx;
+      bool load_rasterization_prim;
    } ps;
    struct {
       bool uses_grid_size;
