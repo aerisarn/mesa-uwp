@@ -434,6 +434,25 @@ static void emit_compute_state(struct rendering_state *state)
    }
 }
 
+static void
+update_min_samples(struct rendering_state *state)
+{
+   state->min_samples = 1;
+   if (state->sample_shading) {
+      state->min_samples = ceil(state->rast_samples * state->min_sample_shading);
+      if (state->min_samples > 1)
+         state->min_samples = state->rast_samples;
+      if (state->min_samples < 1)
+         state->min_samples = 1;
+   }
+   if (state->force_min_sample)
+      state->min_samples = state->rast_samples;
+   if (state->rast_samples != state->framebuffer.samples) {
+      state->framebuffer.samples = state->rast_samples;
+      state->pctx->set_framebuffer_state(state->pctx, &state->framebuffer);
+   }
+}
+
 static void emit_state(struct rendering_state *state)
 {
    if (!state->shaders[MESA_SHADER_FRAGMENT] && !state->noop_fs_bound) {
@@ -498,6 +517,7 @@ static void emit_state(struct rendering_state *state)
    }
 
    if (state->min_samples_dirty) {
+      update_min_samples(state);
       cso_set_min_samples(state->cso, state->min_samples);
       state->min_samples_dirty = false;
    }
@@ -663,21 +683,7 @@ update_samples(struct rendering_state *state, VkSampleCountFlags samples)
    state->rast_samples = samples;
    state->rs_dirty |= state->rs_state.multisample != (samples > 1);
    state->rs_state.multisample = samples > 1;
-   state->min_samples = 1;
-   if (state->sample_shading) {
-      state->min_samples = ceil(samples * state->min_sample_shading);
-      if (state->min_samples > 1)
-         state->min_samples = samples;
-      if (state->min_samples < 1)
-         state->min_samples = 1;
-   }
-   if (state->force_min_sample)
-      state->min_samples = samples;
    state->min_samples_dirty = true;
-   if (samples != state->framebuffer.samples) {
-      state->framebuffer.samples = samples;
-      state->pctx->set_framebuffer_state(state->pctx, &state->framebuffer);
-   }
 }
 
 static void
