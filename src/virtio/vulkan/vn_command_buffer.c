@@ -1804,6 +1804,8 @@ vn_CmdEndQuery(VkCommandBuffer commandBuffer,
                uint32_t query)
 {
    VN_CMD_ENQUEUE(vkCmdEndQuery, commandBuffer, queryPool, query);
+
+   vn_cmd_add_query_feedback(commandBuffer, queryPool, query, 1);
 }
 
 void
@@ -1814,6 +1816,9 @@ vn_CmdResetQueryPool(VkCommandBuffer commandBuffer,
 {
    VN_CMD_ENQUEUE(vkCmdResetQueryPool, commandBuffer, queryPool, firstQuery,
                   queryCount);
+
+   vn_feedback_query_reset_cmd_record(commandBuffer, queryPool, firstQuery,
+                                      queryCount);
 }
 
 void
@@ -1824,6 +1829,8 @@ vn_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
 {
    VN_CMD_ENQUEUE(vkCmdWriteTimestamp, commandBuffer, pipelineStage,
                   queryPool, query);
+
+   vn_cmd_add_query_feedback(commandBuffer, queryPool, query, 1);
 }
 
 void
@@ -1834,6 +1841,8 @@ vn_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
 {
    VN_CMD_ENQUEUE(vkCmdWriteTimestamp2, commandBuffer, stage, queryPool,
                   query);
+
+   vn_cmd_add_query_feedback(commandBuffer, queryPool, query, 1);
 }
 
 void
@@ -2012,6 +2021,8 @@ vn_CmdEndQueryIndexedEXT(VkCommandBuffer commandBuffer,
 {
    VN_CMD_ENQUEUE(vkCmdEndQueryIndexedEXT, commandBuffer, queryPool, query,
                   index);
+
+   vn_cmd_add_query_feedback(commandBuffer, queryPool, query, 1);
 }
 
 void
