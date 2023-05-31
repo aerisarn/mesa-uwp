@@ -17,6 +17,18 @@
  * at the *beginning* of the shader (TODO: handle).
  */
 
+static void
+insert_z_write(nir_builder *b)
+{
+   nir_ssa_def *z = nir_load_frag_coord_zw(b, .component = 2);
+
+   nir_store_output(b, z, nir_imm_int(b, 0),
+                    .io_semantics.location = FRAG_RESULT_DEPTH,
+                    .src_type = nir_type_float32);
+
+   b->shader->info.outputs_written |= BITFIELD64_BIT(FRAG_RESULT_DEPTH);
+}
+
 static bool
 pass(struct nir_builder *b, nir_instr *instr, void *data)
 {
@@ -34,23 +46,7 @@ pass(struct nir_builder *b, nir_instr *instr, void *data)
    *done = true;
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *zero = nir_imm_int(b, 0);
-   nir_ssa_def *pixel = nir_load_barycentric_pixel(b, 32, .interp_mode = 1);
-
-   nir_ssa_def *position =
-      nir_load_interpolated_input(b, 1, 32, pixel, zero, .component = 2 /* Z */,
-                                  .dest_type = nir_type_float32,
-                                  .io_semantics = {
-                                     .location = VARYING_SLOT_POS,
-                                     .num_slots = 1,
-                                  });
-
-   nir_store_output(
-      b, position, zero, .io_semantics.location = FRAG_RESULT_DEPTH,
-      .write_mask = BITFIELD_MASK(1), .src_type = nir_type_float32);
-
-   b->shader->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_POS);
-   b->shader->info.outputs_written |= BITFIELD64_BIT(FRAG_RESULT_DEPTH);
+   insert_z_write(b);
    return true;
 }
 
@@ -72,6 +68,17 @@ agx_nir_lower_frag_sidefx(nir_shader *s)
       return false;
 
    bool done = false;
-   return nir_shader_instructions_pass(
+   nir_shader_instructions_pass(
       s, pass, nir_metadata_block_index | nir_metadata_dominance, &done);
+
+   /* If there's no render targets written, just put the write at the end */
+   if (!done) {
+      nir_function_impl *impl = nir_shader_get_entrypoint(s);
+      nir_builder b =
+         nir_builder_at(nir_after_block(nir_impl_last_block(impl)));
+
+      insert_z_write(&b);
+   }
+
+   return true;
 }
