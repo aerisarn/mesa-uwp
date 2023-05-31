@@ -450,9 +450,4 @@ spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-drawpixels,Fail
 spec@!opengl 1.0@gl-1.0-polygon-line-aa,Fail
 
 # Regression noticed in https://gitlab.freedesktop.org/mesa/mesa/-/pipelines/891104
-spec@arb_compute_variable_group_size@execution@basic-local-size,Crash
-spec@arb_compute_variable_group_size@execution@global-invocation-id,Crash
-spec@arb_compute_variable_group_size@execution@separate-global-id,Crash
-spec@arb_compute_variable_group_size@execution@separate-global-id-2,Crash
-spec@arb_compute_variable_group_size@local-size,Crash
 spec@arb_viewport_array@display-list,Fail

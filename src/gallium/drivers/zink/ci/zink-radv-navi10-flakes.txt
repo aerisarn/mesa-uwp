@@ -68,3 +68,10 @@ spec@arb_copy_image@arb_copy_image-targets .*
 
 # Regression introduced between a6d4139e59bf0aab66f09b321d1690d28c50a67f and 1ba2460e615b4f11e96366fe00d92fe0ab18f332
 KHR-GL46.constant_expressions.*_tess_eval
+
+# noticed in https://gitlab.freedesktop.org/mesa/mesa/-/pipelines/891104
+spec@arb_compute_variable_group_size@execution@basic-local-size
+spec@arb_compute_variable_group_size@execution@global-invocation-id
+spec@arb_compute_variable_group_size@execution@separate-global-id
+spec@arb_compute_variable_group_size@execution@separate-global-id-2
+spec@arb_compute_variable_group_size@local-size
