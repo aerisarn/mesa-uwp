@@ -2730,24 +2730,6 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
    radeon_set_context_reg(cmd_buffer->cs, R_028000_DB_RENDER_CONTROL, db_render_control);
    radeon_set_context_reg(cmd_buffer->cs, R_0286E0_SPI_BARYC_CNTL, spi_baryc_cntl);
    radeon_set_context_reg(cmd_buffer->cs, R_028A4C_PA_SC_MODE_CNTL_1, pa_sc_mode_cntl_1);
-
-   /* Pass the number of samples to the fragment shader because it might be needed. */
-   if (cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]) {
-      const struct radv_userdata_info *loc =
-         radv_get_user_sgpr(cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT], AC_UD_PS_NUM_SAMPLES);
-      if (loc->sgpr_idx != -1) {
-         uint32_t base_reg = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.user_data_0;
-         radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, rasterization_samples);
-      }
-
-      loc =
-         radv_get_user_sgpr(cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT], AC_UD_PS_ITER_MASK);
-      if (loc->sgpr_idx != -1) {
-         const uint16_t ps_iter_mask = ac_get_ps_iter_mask(ps_iter_samples);
-         uint32_t base_reg = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.user_data_0;
-         radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, ps_iter_mask);
-      }
-   }
 }
 
 static void
@@ -4525,7 +4507,6 @@ radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_line_rasterization_mode(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    /* The DX10 diamond test is unnecessary with Vulkan and it decreases line rasterization
@@ -4534,15 +4515,6 @@ radv_emit_line_rasterization_mode(struct radv_cmd_buffer *cmd_buffer)
    radeon_set_context_reg(cmd_buffer->cs, R_028BDC_PA_SC_LINE_CNTL,
                           S_028BDC_PERPENDICULAR_ENDCAP_ENA(
                              d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT));
-
-   if (cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]) {
-      const struct radv_userdata_info *loc = radv_get_user_sgpr(
-         cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT], AC_UD_PS_LINE_RAST_MODE);
-      if (loc->sgpr_idx != -1) {
-         uint32_t base_reg = ps->info.user_data_0;
-         radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, d->vk.rs.line.mode);
-      }
-   }
 }
 
 static void
@@ -9090,6 +9062,41 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_fs_state(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   const struct radv_userdata_info *loc;
+
+   if (!ps)
+      return;
+
+   loc = radv_get_user_sgpr(ps, AC_UD_PS_NUM_SAMPLES);
+   if (loc->sgpr_idx != -1) {
+      const unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
+      const uint32_t base_reg = ps->info.user_data_0;
+
+      radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, rasterization_samples);
+   }
+
+   loc = radv_get_user_sgpr(ps, AC_UD_PS_ITER_MASK);
+   if (loc->sgpr_idx != -1) {
+      const unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
+      const uint16_t ps_iter_mask = ac_get_ps_iter_mask(ps_iter_samples);
+      const uint32_t base_reg = ps->info.user_data_0;
+
+      radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, ps_iter_mask);
+   }
+
+   loc = radv_get_user_sgpr(ps, AC_UD_PS_LINE_RAST_MODE);
+   if (loc->sgpr_idx != -1) {
+      const uint32_t base_reg = ps->info.user_data_0;
+
+      radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, d->vk.rs.line.mode);
+   }
+}
+
+static void
 radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info)
 {
    const struct radv_device *device = cmd_buffer->device;
@@ -9172,8 +9179,13 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 
    const uint64_t dynamic_states =
       cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
-   if (dynamic_states)
+   if (dynamic_states) {
       radv_cmd_buffer_flush_dynamic_state(cmd_buffer, dynamic_states);
+
+      if (dynamic_states & (RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
+                            RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))
+         radv_emit_fs_state(cmd_buffer);
+   }
 
    radv_emit_draw_registers(cmd_buffer, info);
 
