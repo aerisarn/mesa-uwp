@@ -537,7 +537,7 @@ build_hpos(struct tnl_program *p)
       load_input_vec4(p, VERT_ATTRIB_POS);
    if (p->mvp_with_dp4) {
       nir_ssa_def *mvp[4];
-      load_state_mat4(p, mvp, STATE_MODELVIEW_MATRIX, 0);
+      load_state_mat4(p, mvp, STATE_MVP_MATRIX, 0);
       pos = emit_matrix_transform_vec4(p->b, mvp, pos);
    } else {
       nir_ssa_def *mvp[4];
