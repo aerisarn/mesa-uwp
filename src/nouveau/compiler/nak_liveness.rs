@@ -140,7 +140,7 @@ impl Liveness {
         let mut to_do = true;
         while to_do {
             to_do = false;
-            for b in &func.blocks {
+            for b in func.blocks.iter().rev() {
                 let bl = l.blocks.get_mut(&b.id).unwrap();
 
                 /* Compute live-out */
