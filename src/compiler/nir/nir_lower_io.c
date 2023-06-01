@@ -1039,7 +1039,7 @@ addr_to_index(nir_builder *b, nir_ssa_def *addr,
       return nir_unpack_64_2x32_split_y(b, addr);
    case nir_address_format_vec2_index_32bit_offset:
       assert(addr->num_components == 3);
-      return nir_channels(b, addr, 0x3);
+      return nir_trim_vector(b, addr, 2);
    default: unreachable("Invalid address format");
    }
 }
@@ -1111,7 +1111,7 @@ addr_to_global(nir_builder *b, nir_ssa_def *addr,
    case nir_address_format_64bit_global_32bit_offset:
    case nir_address_format_64bit_bounded_global:
       assert(addr->num_components == 4);
-      return nir_iadd(b, nir_pack_64_2x32(b, nir_channels(b, addr, 0x3)),
+      return nir_iadd(b, nir_pack_64_2x32(b, nir_trim_vector(b, addr, 2)),
                          nir_u2u64(b, nir_channel(b, addr, 3)));
 
    case nir_address_format_32bit_index_offset:
@@ -1429,12 +1429,12 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
    if (op == nir_intrinsic_load_global_constant_offset) {
       assert(addr_format == nir_address_format_64bit_global_32bit_offset);
       load->src[0] = nir_src_for_ssa(
-         nir_pack_64_2x32(b, nir_channels(b, addr, 0x3)));
+         nir_pack_64_2x32(b, nir_trim_vector(b, addr, 2)));
       load->src[1] = nir_src_for_ssa(nir_channel(b, addr, 3));
    } else if (op == nir_intrinsic_load_global_constant_bounded) {
       assert(addr_format == nir_address_format_64bit_bounded_global);
       load->src[0] = nir_src_for_ssa(
-         nir_pack_64_2x32(b, nir_channels(b, addr, 0x3)));
+         nir_pack_64_2x32(b, nir_trim_vector(b, addr, 2)));
       load->src[1] = nir_src_for_ssa(nir_channel(b, addr, 3));
       load->src[2] = nir_src_for_ssa(nir_channel(b, addr, 2));
    } else if (addr_format_is_global(addr_format, mode)) {

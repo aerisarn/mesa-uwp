@@ -37,7 +37,7 @@ build_background_op(nir_builder *b, enum agx_meta_op op, unsigned rt,
 {
    if (op == AGX_META_OP_LOAD) {
       nir_ssa_def *fragcoord = nir_load_frag_coord(b);
-      nir_ssa_def *coord = nir_channels(b, fragcoord, 0x3);
+      nir_ssa_def *coord = nir_trim_vector(b, fragcoord, 2);
 
       nir_tex_instr *tex = nir_tex_instr_create(b->shader, msaa ? 2 : 1);
       /* The type doesn't matter as long as it matches the store */

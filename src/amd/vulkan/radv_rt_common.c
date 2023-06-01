@@ -682,7 +682,8 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
 
                nir_store_deref(b, args->vars.top_stack, nir_load_deref(b, args->vars.stack), 1);
                nir_store_deref(b, args->vars.bvh_base,
-                               nir_pack_64_2x32(b, nir_channels(b, instance_data, 0x3)), 1);
+                               nir_pack_64_2x32(b, nir_trim_vector(b, instance_data, 2)),
+                               1);
 
                /* Push the instance root node onto the stack */
                nir_store_deref(b, args->vars.current_node, nir_imm_int(b, RADV_BVH_ROOT_NODE), 0x1);

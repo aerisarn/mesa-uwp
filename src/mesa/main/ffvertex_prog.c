@@ -1052,9 +1052,8 @@ static void build_fog( struct tnl_program *p )
    switch (p->state->fog_distance_mode) {
    case FDM_EYE_RADIAL:
       /* Z = sqrt(Xe*Xe + Ye*Ye + Ze*Ze) */
-      fog = nir_fast_length(p->b, nir_channels(p->b,
-                                               get_eye_position(p),
-                                               0x7));
+      fog = nir_fast_length(p->b,
+                            nir_trim_vector(p->b, get_eye_position(p), 3));
       break;
    case FDM_EYE_PLANE: /* Z = Ze */
       fog = get_eye_position_z(p);

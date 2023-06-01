@@ -321,8 +321,8 @@ handle_cube_gather(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *coord)
    b->cursor = nir_after_instr(coord->parent_instr);
 
    nir_ssa_def *const_05 = nir_imm_float(b, 0.5f);
-   nir_ssa_def *texel_coords = nir_fmul(b, nir_channels(b, coord, 3),
-      nir_i2f32(b, nir_channels(b, tex_size, 3)));
+   nir_ssa_def *texel_coords = nir_fmul(b, nir_trim_vector(b, coord, 2),
+                                        nir_i2f32(b, nir_trim_vector(b, tex_size, 2)));
 
    nir_ssa_def *x_orig = nir_channel(b, texel_coords, 0);
    nir_ssa_def *y_orig = nir_channel(b, texel_coords, 1);
@@ -426,7 +426,7 @@ lower_cube_txs(nir_builder *b, nir_tex_instr *tex)
 {
    b->cursor = nir_after_instr(&tex->instr);
    if (!tex->is_array)
-      return nir_channels(b, &tex->dest.ssa, 3);
+      return nir_trim_vector(b, &tex->dest.ssa, 2);
 
    nir_ssa_def *array_dim = nir_channel(b, &tex->dest.ssa, 2);
    nir_ssa_def *cube_array_dim = nir_idiv(b, array_dim, nir_imm_int(b, 6));
@@ -440,7 +440,7 @@ lower_cube_image_size(nir_builder *b, nir_intrinsic_instr *intr)
 {
    b->cursor = nir_after_instr(&intr->instr);
    if (!nir_intrinsic_image_array(intr))
-      return nir_channels(b, &intr->dest.ssa, 3);
+      return nir_trim_vector(b, &intr->dest.ssa, 2);
 
    nir_ssa_def *array_dim = nir_channel(b, &intr->dest.ssa, 2);
    nir_ssa_def *cube_array_dim = nir_idiv(b, array_dim, nir_imm_int(b, 6));

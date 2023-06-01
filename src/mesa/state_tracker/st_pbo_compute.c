@@ -433,7 +433,7 @@ grab_components(nir_builder *b, nir_ssa_def *pixel, nir_ssa_def *buffer_offset, 
 {
    if (weird_packed) {
       nir_push_if(b, nir_ieq_imm(b, sd->bits1, 32));
-         write_conversion(b, nir_channels(b, pixel, 3), buffer_offset, sd);
+         write_conversion(b, nir_trim_vector(b, pixel, 2), buffer_offset, sd);
       nir_push_else(b, NULL);
          write_conversion(b, nir_channel(b, pixel, 0), buffer_offset, sd);
       nir_pop_if(b, NULL);
@@ -442,12 +442,15 @@ grab_components(nir_builder *b, nir_ssa_def *pixel, nir_ssa_def *buffer_offset, 
          write_conversion(b, nir_channel(b, pixel, 0), buffer_offset, sd);
       nir_push_else(b, NULL);
          nir_push_if(b, nir_ieq_imm(b, sd->channels, 2));
-            write_conversion(b, nir_channels(b, pixel, (1 << 2) - 1), buffer_offset, sd);
+            write_conversion(b, nir_trim_vector(b, pixel, 2), buffer_offset,
+                             sd);
          nir_push_else(b, NULL);
             nir_push_if(b, nir_ieq_imm(b, sd->channels, 3));
-               write_conversion(b, nir_channels(b, pixel, (1 << 3) - 1), buffer_offset, sd);
+               write_conversion(b, nir_trim_vector(b, pixel, 3),
+                                buffer_offset, sd);
             nir_push_else(b, NULL);
-               write_conversion(b, nir_channels(b, pixel, (1 << 4) - 1), buffer_offset, sd);
+               write_conversion(b, nir_trim_vector(b, pixel, 4),
+                                buffer_offset, sd);
             nir_pop_if(b, NULL);
          nir_pop_if(b, NULL);
       nir_pop_if(b, NULL);

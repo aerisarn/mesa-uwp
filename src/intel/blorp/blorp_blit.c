@@ -111,7 +111,7 @@ blorp_blit_get_cs_dst_coords(nir_builder *b,
       coord = nir_isub(b, coord, nir_load_var(b, v->v_dst_offset));
 
    assert(!key->persample_msaa_dispatch);
-   return nir_channels(b, coord, 0x3);
+   return nir_trim_vector(b, coord, 2);
 }
 
 /**
@@ -718,7 +718,7 @@ blorp_nir_manual_blend_bilinear(nir_builder *b, nir_ssa_def *pos,
                                 const struct brw_blorp_blit_prog_key *key,
                                 struct brw_blorp_blit_vars *v)
 {
-   nir_ssa_def *pos_xy = nir_channels(b, pos, 0x3);
+   nir_ssa_def *pos_xy = nir_trim_vector(b, pos, 2);
    nir_ssa_def *rect_grid = nir_load_var(b, v->v_rect_grid);
    nir_ssa_def *scale = nir_imm_vec2(b, key->x_scale, key->y_scale);
 
@@ -1286,7 +1286,7 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp,
     * number 0, because that's the only sample there is.
     */
    if (key->src_samples == 1)
-      src_pos = nir_channels(&b, src_pos, 0x3);
+      src_pos = nir_trim_vector(&b, src_pos, 2);
 
    /* X, Y, and S are now the coordinates of the pixel in the source image
     * that we want to texture from.  Exception: if we are blending, then S is
@@ -1373,7 +1373,7 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp,
       /* Resolves (effecively) use texelFetch, so we need integers and we
        * don't care about the sample index if we got one.
        */
-      src_pos = nir_f2i32(&b, nir_channels(&b, src_pos, 0x3));
+      src_pos = nir_f2i32(&b, nir_trim_vector(&b, src_pos, 2));
 
       if (devinfo->ver == 6) {
          /* Because gfx6 only supports 4x interleved MSAA, we can do all the

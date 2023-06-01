@@ -732,7 +732,8 @@ write_pntc_with_pos(nir_builder *b, nir_instr *instr, void *_data)
                                                              nir_channel(b, load_desc, 0),
                                                              nir_imm_int(b, offset), 4, 32, 16),
                                          0x6);
-   nir_ssa_def *point_center_in_clip = nir_fmul(b, nir_channels(b, pos, 0x3), nir_frcp(b, nir_channel(b, pos, 3)));
+   nir_ssa_def *point_center_in_clip = nir_fmul(b, nir_trim_vector(b, pos, 2),
+                                                nir_frcp(b, nir_channel(b, pos, 3)));
    nir_ssa_def *point_center =
       nir_fmul(b, nir_fadd_imm(b,
                                nir_fmul(b, point_center_in_clip,
@@ -796,7 +797,7 @@ lower_pntc_read(nir_builder *b, nir_instr *instr, void *data)
                                        nir_replicate(b, nir_imm_float(b, 0), 2));
 
    nir_ssa_def *pntc = nir_fadd_imm(b,
-                                    nir_fsub(b, nir_channels(b, pos, 0x3), nir_channels(b, point_center, 0x3)),
+                                    nir_fsub(b, nir_trim_vector(b, pos, 2), nir_trim_vector(b, point_center, 2)),
                                     0.5);
    nir_ssa_def_rewrite_uses_after(point_center, pntc, pntc->parent_instr);
    return true;

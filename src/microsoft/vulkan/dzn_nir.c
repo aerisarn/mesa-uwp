@@ -646,7 +646,7 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
    coord_var->data.location = VARYING_SLOT_TEX0;
    coord_var->data.driver_location = 1;
    nir_ssa_def *coord =
-      nir_channels(&b, nir_load_var(&b, coord_var), (1 << coord_comps) - 1);
+      nir_trim_vector(&b, nir_load_var(&b, coord_var), coord_comps);
 
    uint32_t out_comps =
       (info->loc == FRAG_RESULT_DEPTH || info->loc == FRAG_RESULT_STENCIL) ? 1 : 4;
@@ -771,7 +771,7 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
       res = &tex->dest.ssa;
    }
 
-   nir_store_var(&b, out, nir_channels(&b, res, (1 << out_comps) - 1), 0xf);
+   nir_store_var(&b, out, nir_trim_vector(&b, res, out_comps), 0xf);
 
    return b.shader;
 }

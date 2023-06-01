@@ -390,7 +390,7 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
       if (dstcompsz == 16)
          texel = nir_u2u16(&b, texel);
 
-      texel = nir_channels(&b, texel, (1 << ndstcomps) - 1);
+      texel = nir_trim_vector(&b, texel, ndstcomps);
       outtype = glsl_vector_type(basetype, ndstcomps);
    }
 

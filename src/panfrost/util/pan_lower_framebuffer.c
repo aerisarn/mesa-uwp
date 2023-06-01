@@ -195,7 +195,7 @@ static nir_ssa_def *
 pan_unpack_pure_8(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
 {
    nir_ssa_def *unpacked = nir_unpack_32_4x8(b, nir_channel(b, pack, 0));
-   return nir_channels(b, unpacked, (1 << num_components) - 1);
+   return nir_trim_vector(b, unpacked, num_components);
 }
 
 static nir_ssa_def *
@@ -347,7 +347,7 @@ pan_unpack_r11g11b10(nir_builder *b, nir_ssa_def *v)
 static nir_ssa_def *
 pan_linear_to_srgb(nir_builder *b, nir_ssa_def *linear)
 {
-   nir_ssa_def *rgb = nir_channels(b, linear, 0x7);
+   nir_ssa_def *rgb = nir_trim_vector(b, linear, 3);
 
    /* TODO: fp16 native conversion */
    nir_ssa_def *srgb =

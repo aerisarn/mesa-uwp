@@ -100,7 +100,7 @@ apply_swizzle(struct st_translate *t,
       nir_ssa_def *rcp = nir_frcp(t->b, nir_channel(t->b, src,
                                                     swizzle == GL_SWIZZLE_STR_DR_ATI ? 2 : 3));
 
-      nir_ssa_def *st_mul = nir_fmul(t->b, nir_channels(t->b, src, 0x3), rcp);
+      nir_ssa_def *st_mul = nir_fmul(t->b, nir_trim_vector(t->b, src, 2), rcp);
 
       return nir_vec4(t->b,
                       nir_channel(t->b, st_mul, 0),
@@ -364,7 +364,7 @@ compile_setupinst(struct st_translate *t,
       tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
                                         &tex_deref->dest.ssa);
       tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_coord,
-                                        nir_channels(t->b, coord, (1 << tex->coord_components) - 1));
+                                        nir_trim_vector(t->b, coord, tex->coord_components));
 
       nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
       nir_builder_instr_insert(t->b, &tex->instr);

@@ -168,7 +168,8 @@ create_array_tex_from_cube_tex(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *
 
       array_tex->src[s].src_type = tex->src[i].src_type;
       if (psrc->ssa->num_components != nir_tex_instr_src_size(array_tex, s)) {
-         nir_ssa_def *c = nir_channels(b, psrc->ssa, BITFIELD_MASK(nir_tex_instr_src_size(array_tex, s)));
+         nir_ssa_def *c = nir_trim_vector(b, psrc->ssa,
+                                          nir_tex_instr_src_size(array_tex, s));
          array_tex->src[s].src = nir_src_for_ssa(c);
       } else
          nir_src_copy(&array_tex->src[s].src, psrc, &array_tex->instr);
@@ -310,8 +311,8 @@ handle_cube_gather(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *coord)
    b->cursor = nir_after_instr(coord->parent_instr);
 
    nir_ssa_def *const_05 = nir_imm_float(b, 0.5f);
-   nir_ssa_def *texel_coords = nir_fmul(b, nir_channels(b, coord, 3),
-      nir_i2f32(b, nir_channels(b, tex_size, 3)));
+   nir_ssa_def *texel_coords = nir_fmul(b, nir_trim_vector(b, coord, 2),
+                                        nir_i2f32(b, nir_trim_vector(b, tex_size, 2)));
 
    nir_ssa_def *x_orig = nir_channel(b, texel_coords, 0);
    nir_ssa_def *y_orig = nir_channel(b, texel_coords, 1);
@@ -490,7 +491,7 @@ lower_cube_txs(nir_builder *b, nir_tex_instr *tex)
    nir_ssa_def *size = nir_vec3(b, nir_channel(b, &tex->dest.ssa, 0),
                                    nir_channel(b, &tex->dest.ssa, 1),
                                    cube_array_dim);
-   return nir_channels(b, size, BITFIELD_MASK(num_components));
+   return nir_trim_vector(b, size, num_components);
 }
 
 static nir_ssa_def *

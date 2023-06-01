@@ -699,7 +699,7 @@ get_stencil_resolve_fs(struct d3d12_context *ctx, bool no_flip)
    tex->sampler_dim = GLSL_SAMPLER_DIM_MS;
    tex->op = nir_texop_txf_ms;
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord,
-                                     nir_channels(&b, nir_f2i32(&b, pos_src), 0x3));
+                                     nir_trim_vector(&b, nir_f2i32(&b, pos_src), 2));
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_ms_index, nir_imm_int(&b, 0)); /* just use first sample */
    tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_texture_deref, tex_deref);
    tex->dest_type = nir_type_uint32;

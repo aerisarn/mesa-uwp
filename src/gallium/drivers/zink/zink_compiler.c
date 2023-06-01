@@ -701,7 +701,7 @@ viewport_map(nir_builder *b, nir_ssa_def *vert,
              nir_ssa_def *scale)
 {
    nir_ssa_def *w_recip = nir_frcp(b, nir_channel(b, vert, 3));
-   nir_ssa_def *ndc_point = nir_fmul(b, nir_channels(b, vert, 0x3),
+   nir_ssa_def *ndc_point = nir_fmul(b, nir_trim_vector(b, vert, 2),
                                         w_recip);
    return nir_fmul(b, ndc_point, scale);
 }
@@ -3007,7 +3007,8 @@ lower_64bit_vars_function(nir_shader *shader, nir_function *function, nir_variab
                   for (unsigned i = 0; i < 2; i++, num_components -= 4) {
                      nir_deref_instr *strct = nir_build_deref_struct(&b, deref, i);
                      nir_ssa_def *load = nir_load_deref(&b, strct);
-                     comp[i * 2] = nir_pack_64_2x32(&b, nir_channels(&b, load, BITFIELD_MASK(2)));
+                     comp[i * 2] = nir_pack_64_2x32(&b,
+                                                    nir_trim_vector(&b, load, 2));
                      if (num_components > 2)
                         comp[i * 2 + 1] = nir_pack_64_2x32(&b, nir_channels(&b, load, BITFIELD_RANGE(2, 2)));
                   }

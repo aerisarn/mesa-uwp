@@ -703,15 +703,15 @@ lower_gradient_cube_map(nir_builder *b, nir_tex_instr *tex)
     */
    nir_ssa_def *rcp_Q_z = nir_frcp(b, nir_channel(b, Q, 2));
 
-   nir_ssa_def *Q_xy = nir_channels(b, Q, 0x3);
+   nir_ssa_def *Q_xy = nir_trim_vector(b, Q, 2);
    nir_ssa_def *tmp = nir_fmul(b, Q_xy, rcp_Q_z);
 
-   nir_ssa_def *dQdx_xy = nir_channels(b, dQdx, 0x3);
+   nir_ssa_def *dQdx_xy = nir_trim_vector(b, dQdx, 2);
    nir_ssa_def *dQdx_z = nir_channel(b, dQdx, 2);
    nir_ssa_def *dx =
       nir_fmul(b, rcp_Q_z, nir_fsub(b, dQdx_xy, nir_fmul(b, tmp, dQdx_z)));
 
-   nir_ssa_def *dQdy_xy = nir_channels(b, dQdy, 0x3);
+   nir_ssa_def *dQdy_xy = nir_trim_vector(b, dQdy, 2);
    nir_ssa_def *dQdy_z = nir_channel(b, dQdy, 2);
    nir_ssa_def *dy =
       nir_fmul(b, rcp_Q_z, nir_fsub(b, dQdy_xy, nir_fmul(b, tmp, dQdy_z)));
@@ -1009,7 +1009,7 @@ linearize_srgb_result(nir_builder *b, nir_tex_instr *tex)
    b->cursor = nir_after_instr(&tex->instr);
 
    nir_ssa_def *rgb =
-      nir_format_srgb_to_linear(b, nir_channels(b, &tex->dest.ssa, 0x7));
+      nir_format_srgb_to_linear(b, nir_trim_vector(b, &tex->dest.ssa, 3));
 
    /* alpha is untouched: */
    nir_ssa_def *result = nir_vec4(b,

@@ -139,7 +139,9 @@ build_depth_stencil_resolve_compute_shader(struct radv_device *dev, int samples,
 
    nir_ssa_def *offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
 
-   nir_ssa_def *resolve_coord = nir_iadd(&b, nir_channels(&b, global_id, 0x3), offset);
+   nir_ssa_def *resolve_coord = nir_iadd(&b,
+                                         nir_trim_vector(&b, global_id, 2),
+                                         offset);
 
    nir_ssa_def *img_coord = nir_vec3(&b, nir_channel(&b, resolve_coord, 0),
                                          nir_channel(&b, resolve_coord, 1),

@@ -485,7 +485,7 @@ build_buffer_addr_for_res_index(nir_builder *b,
        * have a sliding window range.
        */
       nir_ssa_def *base_ptr =
-         nir_pack_64_2x32(b, nir_channels(b, desc, 0x3));
+         nir_pack_64_2x32(b, nir_trim_vector(b, desc, 2));
       base_ptr = nir_iadd(b, base_ptr, nir_u2u64(b, dynamic_offset));
       desc = nir_vec4(b, nir_unpack_64_2x32_split_x(b, base_ptr),
                          nir_unpack_64_2x32_split_y(b, base_ptr),

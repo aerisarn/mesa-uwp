@@ -37,7 +37,7 @@ vtn_handle_amd_gcn_shader_instruction(struct vtn_builder *b, SpvOp ext_opcode,
       break;
    case CubeFaceCoordAMD: {
       def = nir_cube_face_coord_amd(&b->nb, vtn_get_nir_ssa(b, w[5]));
-      nir_ssa_def *st = nir_channels(&b->nb, def, 0x3);
+      nir_ssa_def *st = nir_trim_vector(&b->nb, def, 2);
       nir_ssa_def *invma = nir_frcp(&b->nb, nir_channel(&b->nb, def, 2));
       def = nir_ffma_imm2(&b->nb, st, invma, 0.5);
       break;

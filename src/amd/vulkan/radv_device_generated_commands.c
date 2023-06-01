@@ -430,7 +430,8 @@ build_dgc_prepare_shader(struct radv_device *dev)
                nir_ssa_def *stream_data =
                   nir_load_ssbo(&b, 4, 32, stream_buf, stream_offset);
 
-               nir_ssa_def *va = nir_pack_64_2x32(&b, nir_channels(&b, stream_data, 0x3));
+               nir_ssa_def *va = nir_pack_64_2x32(&b,
+                                                  nir_trim_vector(&b, stream_data, 2));
                nir_ssa_def *size = nir_channel(&b, stream_data, 2);
                nir_ssa_def *stride = nir_channel(&b, stream_data, 3);
 
@@ -529,7 +530,8 @@ build_dgc_prepare_shader(struct radv_device *dev)
              */
             nir_ssa_def *num_records = nir_channel(&b, nir_load_var(&b, vbo_data), 2);
             nir_ssa_def *buf_va = nir_iand_imm(
-               &b, nir_pack_64_2x32(&b, nir_channels(&b, nir_load_var(&b, vbo_data), 0x3)),
+               &b,
+               nir_pack_64_2x32(&b, nir_trim_vector(&b, nir_load_var(&b, vbo_data), 2)),
                (1ull << 48) - 1ull);
             nir_push_if(&b,
                         nir_ior(&b, nir_ieq_imm(&b, num_records, 0), nir_ieq_imm(&b, buf_va, 0)));

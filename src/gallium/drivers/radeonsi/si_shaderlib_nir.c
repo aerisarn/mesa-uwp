@@ -199,9 +199,9 @@ void *gfx9_create_clear_dcc_msaa_cs(struct si_context *sctx, struct si_texture *
 
    /* Multiply the coordinates by the DCC block size (they are DCC block coordinates). */
    coord = nir_imul(&b, coord,
-                    nir_channels(&b, nir_imm_ivec4(&b, tex->surface.u.gfx9.color.dcc_block_width,
-                                                   tex->surface.u.gfx9.color.dcc_block_height,
-                                                   tex->surface.u.gfx9.color.dcc_block_depth, 0), 0x7));
+                    nir_imm_ivec3(&b, tex->surface.u.gfx9.color.dcc_block_width,
+                                      tex->surface.u.gfx9.color.dcc_block_height,
+                                      tex->surface.u.gfx9.color.dcc_block_depth));
 
    nir_ssa_def *offset =
       ac_nir_dcc_addr_from_coord(&b, &sctx->screen->info, tex->surface.bpe,
@@ -474,7 +474,7 @@ void *si_create_blit_cs(struct si_context *sctx, const union si_compute_blit_sha
 
    /* Add box.xyz. */
    nir_ssa_def *coord_src = NULL, *coord_dst = NULL;
-   unpack_2x16_signed(&b, nir_channels(&b, nir_load_user_data_amd(&b), 0x7),
+   unpack_2x16_signed(&b, nir_trim_vector(&b, nir_load_user_data_amd(&b), 3),
                       &coord_src, &coord_dst);
    coord_dst = nir_iadd(&b, coord_dst, dst_xyz);
    coord_src = nir_iadd(&b, coord_src, src_xyz);

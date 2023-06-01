@@ -966,7 +966,7 @@ ttn_alu(nir_builder *b, nir_op op, nir_alu_dest dest, unsigned dest_bitsize,
           * two components, and we need to truncate here to avoid creating a
           * vec8 after bitcasting the destination.
           */
-         def = nir_channels(b, def, 0x3);
+         def = nir_trim_vector(b, def, 2);
       }
       def = nir_bitcast_vector(b, def, 32);
    }
