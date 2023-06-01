@@ -235,20 +235,6 @@ ntr_src_as_uint(struct ntr_compile *c, nir_src src)
    return val;
 }
 
-static unsigned
-ntr_64bit_write_mask(unsigned write_mask)
-{
-   return ((write_mask & 1) ? 0x3 : 0) | ((write_mask & 2) ? 0xc : 0);
-}
-
-static struct ureg_src
-ntr_64bit_1f(struct ntr_compile *c)
-{
-   return ureg_imm4u(c->ureg,
-                     0x00000000, 0x3ff00000,
-                     0x00000000, 0x3ff00000);
-}
-
 /* Per-channel masks of def/use within the block, and the per-channel
  * livein/liveout for the block as a whole.
  */
@@ -1537,8 +1523,6 @@ ntr_emit_load_ubo(struct ntr_compile *c, nir_intrinsic_instr *instr)
       }
 
       int start_component = nir_intrinsic_component(instr);
-      if (bit_size == 64)
-         start_component *= 2;
 
       src = ntr_shift_by_frac(src, start_component,
                               instr->num_components * bit_size / 32);
@@ -2461,7 +2445,6 @@ ntr_optimize_nir(struct nir_shader *s, struct pipe_screen *screen,
       progress = false;
 
       NIR_PASS_V(s, nir_lower_vars_to_ssa);
-      NIR_PASS_V(s, nir_split_64bit_vec3_and_vec4);
 
       NIR_PASS(progress, s, nir_copy_prop);
       NIR_PASS(progress, s, nir_opt_algebraic);
@@ -2514,212 +2497,6 @@ ntr_optimize_nir(struct nir_shader *s, struct pipe_screen *screen,
    } while (progress);
 
    NIR_PASS_V(s, nir_lower_var_copies);
-}
-
-/* Scalarizes all 64-bit ALU ops.  Note that we only actually need to
- * scalarize vec3/vec4s, should probably fix that.
- */
-static bool
-scalarize_64bit(const nir_instr *instr, const void *data)
-{
-   const nir_alu_instr *alu = nir_instr_as_alu(instr);
-
-   return (alu->def.bit_size == 64 ||
-           nir_src_bit_size(alu->src[0].src) == 64);
-}
-
-static bool
-nir_to_rc_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
-{
-   b->cursor = nir_after_instr(&instr->instr);
-
-   switch (instr->intrinsic) {
-   case nir_intrinsic_load_ubo:
-   case nir_intrinsic_load_ubo_vec4:
-   case nir_intrinsic_load_ssbo:
-   case nir_intrinsic_load_input:
-   case nir_intrinsic_load_interpolated_input:
-   case nir_intrinsic_load_per_vertex_input:
-   case nir_intrinsic_store_output:
-   case nir_intrinsic_store_per_vertex_output:
-   case nir_intrinsic_store_ssbo:
-      break;
-   default:
-      return false;
-   }
-
-   if (instr->num_components <= 2)
-      return false;
-
-   bool has_dest = nir_intrinsic_infos[instr->intrinsic].has_dest;
-   if (has_dest) {
-      if (instr->def.bit_size != 64)
-         return false;
-   } else  {
-      if (nir_src_bit_size(instr->src[0]) != 64)
-          return false;
-   }
-
-   nir_intrinsic_instr *first =
-      nir_instr_as_intrinsic(nir_instr_clone(b->shader, &instr->instr));
-   nir_intrinsic_instr *second =
-      nir_instr_as_intrinsic(nir_instr_clone(b->shader, &instr->instr));
-
-   switch (instr->intrinsic) {
-   case nir_intrinsic_load_ubo:
-   case nir_intrinsic_load_ubo_vec4:
-   case nir_intrinsic_load_ssbo:
-   case nir_intrinsic_store_ssbo:
-      break;
-
-   default: {
-      nir_io_semantics semantics = nir_intrinsic_io_semantics(second);
-      semantics.location++;
-      semantics.num_slots--;
-      nir_intrinsic_set_io_semantics(second, semantics);
-
-      nir_intrinsic_set_base(second, nir_intrinsic_base(second) + 1);
-      break;
-   }
-   }
-
-   first->num_components = 2;
-   second->num_components -= 2;
-   if (has_dest) {
-      first->def.num_components = 2;
-      second->def.num_components -= 2;
-   }
-
-   nir_builder_instr_insert(b, &first->instr);
-   nir_builder_instr_insert(b, &second->instr);
-
-   if (has_dest) {
-      /* Merge the two loads' results back into a vector. */
-      nir_scalar channels[4] = {
-         nir_get_scalar(&first->def, 0),
-         nir_get_scalar(&first->def, 1),
-         nir_get_scalar(&second->def, 0),
-         nir_get_scalar(&second->def, second->num_components > 1 ? 1 : 0),
-      };
-      nir_def *new = nir_vec_scalars(b, channels, instr->num_components);
-      nir_def_rewrite_uses(&instr->def, new);
-   } else {
-      /* Split the src value across the two stores. */
-      b->cursor = nir_before_instr(&instr->instr);
-
-      nir_def *src0 = instr->src[0].ssa;
-      nir_scalar channels[4] = { 0 };
-      for (int i = 0; i < instr->num_components; i++)
-         channels[i] = nir_get_scalar(src0, i);
-
-      nir_intrinsic_set_write_mask(first, nir_intrinsic_write_mask(instr) & 3);
-      nir_intrinsic_set_write_mask(second, nir_intrinsic_write_mask(instr) >> 2);
-
-      nir_src_rewrite(&first->src[0], nir_vec_scalars(b, channels, 2));
-      nir_src_rewrite(&second->src[0],
-                      nir_vec_scalars(b, &channels[2], second->num_components));
-   }
-
-   int offset_src = -1;
-   uint32_t offset_amount = 16;
-
-   switch (instr->intrinsic) {
-   case nir_intrinsic_load_ssbo:
-   case nir_intrinsic_load_ubo:
-      offset_src = 1;
-      break;
-   case nir_intrinsic_load_ubo_vec4:
-      offset_src = 1;
-      offset_amount = 1;
-      break;
-   case nir_intrinsic_store_ssbo:
-      offset_src = 2;
-      break;
-   default:
-      break;
-   }
-   if (offset_src != -1) {
-      b->cursor = nir_before_instr(&second->instr);
-      nir_def *second_offset =
-         nir_iadd_imm(b, second->src[offset_src].ssa, offset_amount);
-      nir_src_rewrite(&second->src[offset_src], second_offset);
-   }
-
-   /* DCE stores we generated with no writemask (nothing else does this
-    * currently).
-    */
-   if (!has_dest) {
-      if (nir_intrinsic_write_mask(first) == 0)
-         nir_instr_remove(&first->instr);
-      if (nir_intrinsic_write_mask(second) == 0)
-         nir_instr_remove(&second->instr);
-   }
-
-   nir_instr_remove(&instr->instr);
-
-   return true;
-}
-
-static bool
-nir_to_rc_lower_64bit_load_const(nir_builder *b, nir_load_const_instr *instr)
-{
-   int num_components = instr->def.num_components;
-
-   if (instr->def.bit_size != 64 || num_components <= 2)
-      return false;
-
-   b->cursor = nir_before_instr(&instr->instr);
-
-   nir_load_const_instr *first =
-      nir_load_const_instr_create(b->shader, 2, 64);
-   nir_load_const_instr *second =
-      nir_load_const_instr_create(b->shader, num_components - 2, 64);
-
-   first->value[0] = instr->value[0];
-   first->value[1] = instr->value[1];
-   second->value[0] = instr->value[2];
-   if (num_components == 4)
-      second->value[1] = instr->value[3];
-
-   nir_builder_instr_insert(b, &first->instr);
-   nir_builder_instr_insert(b, &second->instr);
-
-   nir_def *channels[4] = {
-      nir_channel(b, &first->def, 0),
-      nir_channel(b, &first->def, 1),
-      nir_channel(b, &second->def, 0),
-      num_components == 4 ? nir_channel(b, &second->def, 1) : NULL,
-   };
-   nir_def *new = nir_vec(b, channels, num_components);
-   nir_def_rewrite_uses(&instr->def, new);
-   nir_instr_remove(&instr->instr);
-
-   return true;
-}
-
-static bool
-nir_to_rc_lower_64bit_to_vec2_instr(nir_builder *b, nir_instr *instr,
-                                      void *data)
-{
-   switch (instr->type) {
-   case nir_instr_type_load_const:
-      return nir_to_rc_lower_64bit_load_const(b, nir_instr_as_load_const(instr));
-
-   case nir_instr_type_intrinsic:
-      return nir_to_rc_lower_64bit_intrinsic(b, nir_instr_as_intrinsic(instr));
-   default:
-      return false;
-   }
-}
-
-static bool
-nir_to_rc_lower_64bit_to_vec2(nir_shader *s)
-{
-   return nir_shader_instructions_pass(s,
-                                       nir_to_rc_lower_64bit_to_vec2_instr,
-                                       nir_metadata_block_index |
-                                       nir_metadata_dominance,
-                                       NULL);
 }
 
 struct ntr_lower_tex_state {
@@ -2868,32 +2645,6 @@ ntr_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s,
    }
 }
 
-static bool
-ntr_lower_atomic_pre_dec_filter(const nir_instr *instr, const void *_data)
-{
-   return (instr->type == nir_instr_type_intrinsic &&
-           nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_atomic_counter_pre_dec);
-}
-
-static nir_def *
-ntr_lower_atomic_pre_dec_lower(nir_builder *b, nir_instr *instr, void *_data)
-{
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
-   nir_def *old_result = &intr->def;
-   intr->intrinsic = nir_intrinsic_atomic_counter_post_dec;
-
-   return nir_iadd_imm(b, old_result, -1);
-}
-
-static bool
-ntr_lower_atomic_pre_dec(nir_shader *s)
-{
-   return nir_shader_lower_instructions(s,
-                                        ntr_lower_atomic_pre_dec_filter,
-                                        ntr_lower_atomic_pre_dec_lower, NULL);
-}
-
 /* Lowers texture projectors if we can't do them as TGSI_OPCODE_TXP. */
 static void
 nir_to_rc_lower_txp(nir_shader *s)
@@ -2931,36 +2682,6 @@ nir_to_rc_lower_txp(nir_shader *s)
     * LOD to be set for query_levels and for non-fragment shaders.
     */
    NIR_PASS_V(s, nir_lower_tex, &lower_tex_options);
-}
-
-static bool
-nir_lower_primid_sysval_to_input_filter(const nir_instr *instr, const void *_data)
-{
-   return (instr->type == nir_instr_type_intrinsic &&
-           nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_primitive_id);
-}
-
-static nir_def *
-nir_lower_primid_sysval_to_input_lower(nir_builder *b, nir_instr *instr, void *data)
-{
-   nir_variable *var = nir_get_variable_with_location(b->shader, nir_var_shader_in,
-                                                      VARYING_SLOT_PRIMITIVE_ID, glsl_uint_type());
-
-   nir_io_semantics semantics = {
-      .location = var->data.location,
-       .num_slots = 1
-   };
-   return nir_load_input(b, 1, 32, nir_imm_int(b, 0),
-                         .base = var->data.driver_location,
-                         .io_semantics = semantics);
-}
-
-static bool
-nir_lower_primid_sysval_to_input(nir_shader *s)
-{
-   return nir_shader_lower_instructions(s,
-                                        nir_lower_primid_sysval_to_input_filter,
-                                        nir_lower_primid_sysval_to_input_lower, NULL);
 }
 
 const void *
@@ -3009,28 +2730,11 @@ const void *nir_to_rc_options(struct nir_shader *s,
    nir_to_rc_lower_txp(s);
    NIR_PASS_V(s, nir_to_rc_lower_tex);
 
-   /* While TGSI can represent PRIMID as either an input or a system value,
-    * glsl-to-tgsi had the GS (not TCS or TES) primid as an input, and drivers
-    * depend on that.
-    */
-   if (s->info.stage == MESA_SHADER_GEOMETRY)
-      NIR_PASS_V(s, nir_lower_primid_sysval_to_input);
-
-   if (s->info.num_abos)
-      NIR_PASS_V(s, ntr_lower_atomic_pre_dec);
-
    if (!original_options->lower_uniforms_to_ubo) {
       NIR_PASS_V(s, nir_lower_uniforms_to_ubo,
                  screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS),
                  true);
    }
-
-   /* Do lowering so we can directly translate f64/i64 NIR ALU ops to TGSI --
-    * TGSI stores up to a vec2 in each slot, so to avoid a whole bunch of op
-    * duplication logic we just make it so that we only see vec2s.
-    */
-   NIR_PASS_V(s, nir_lower_alu_to_scalar, scalarize_64bit, NULL);
-   NIR_PASS_V(s, nir_to_rc_lower_64bit_to_vec2);
 
    if (!screen->get_param(screen, PIPE_CAP_LOAD_CONSTBUF))
       NIR_PASS_V(s, nir_lower_ubo_vec4);
