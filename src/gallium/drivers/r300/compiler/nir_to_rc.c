@@ -1537,22 +1537,6 @@ ntr_emit_load_input(struct ntr_compile *c, nir_intrinsic_instr *instr)
       input = ureg_DECL_vs_input(c->ureg, base);
       for (int i = 1; i < semantics.num_slots; i++)
          ureg_DECL_vs_input(c->ureg, base + i);
-   } else if (c->s->info.stage != MESA_SHADER_FRAGMENT) {
-      unsigned semantic_name, semantic_index;
-      ntr_get_gl_varying_semantic(c, semantics.location,
-                                  &semantic_name, &semantic_index);
-
-      /* XXX: ArrayID is used in r600 gs inputs */
-      uint32_t array_id = 0;
-
-      input = ureg_DECL_input_layout(c->ureg,
-                                     semantic_name,
-                                     semantic_index,
-                                     base,
-                                     u_bit_consecutive(frac,
-                                                       instr->num_components),
-                                     array_id,
-                                     semantics.num_slots);
    } else {
       input = c->input_index_map[base];
    }
