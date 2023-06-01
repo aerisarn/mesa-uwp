@@ -933,7 +933,6 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
    for (unsigned i = 0; i < info->num_indices; i++) {
       unsigned idx = info->indices[i];
-      bool print_raw = true;
       if (i != 0)
          fprintf(fp, ", ");
       switch (idx) {
@@ -956,7 +955,6 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       case NIR_INTRINSIC_ATOMIC_OP: {
          nir_atomic_op atomic_op = nir_intrinsic_atomic_op(instr);
          fprintf(fp, "atomic_op=");
-         print_raw = false;
 
          switch (atomic_op) {
          case nir_atomic_op_iadd:     fprintf(fp, "iadd"); break;
@@ -1251,12 +1249,9 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       default: {
          unsigned off = info->index_map[idx] - 1;
          fprintf(fp, "%s=%d", nir_intrinsic_index_names[idx], instr->const_index[off]);
-         print_raw = false;
          break;
       }
       }
-      if (print_raw)
-         fprintf(fp, " /*%d*/", instr->const_index[i]);
    }
    fprintf(fp, ")");
 
