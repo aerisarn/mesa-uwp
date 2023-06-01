@@ -1832,21 +1832,6 @@ ntr_ureg_dst_indirect(struct ntr_compile *c, struct ureg_dst dst,
    }
 }
 
-static struct ureg_src
-ntr_ureg_src_dimension_indirect(struct ntr_compile *c, struct ureg_src usrc,
-                         nir_src src)
-{
-   if (nir_src_is_const(src)) {
-      return ureg_src_dimension(usrc, ntr_src_as_uint(c, src));
-   }
-   else
-   {
-      return ureg_src_dimension_indirect(usrc,
-                                         ntr_reladdr(c, ntr_get_src(c, src), 1),
-                                         0);
-   }
-}
-
 static struct ureg_dst
 ntr_ureg_dst_dimension_indirect(struct ntr_compile *c, struct ureg_dst udst,
                                 nir_src src)
@@ -1937,292 +1922,6 @@ ntr_emit_load_ubo(struct ntr_compile *c, nir_intrinsic_instr *instr)
    }
 }
 
-static unsigned
-ntr_get_access_qualifier(nir_intrinsic_instr *instr)
-{
-   enum gl_access_qualifier access = nir_intrinsic_access(instr);
-   unsigned qualifier = 0;
-
-   if (access & ACCESS_COHERENT)
-      qualifier |= TGSI_MEMORY_COHERENT;
-   if (access & ACCESS_VOLATILE)
-      qualifier |= TGSI_MEMORY_VOLATILE;
-   if (access & ACCESS_RESTRICT)
-      qualifier |= TGSI_MEMORY_RESTRICT;
-
-   return qualifier;
-}
-
-static unsigned
-ntr_translate_atomic_op(nir_atomic_op op)
-{
-   switch (op) {
-   case nir_atomic_op_iadd: return TGSI_OPCODE_ATOMUADD;
-   case nir_atomic_op_fadd: return TGSI_OPCODE_ATOMFADD;
-   case nir_atomic_op_imin: return TGSI_OPCODE_ATOMIMIN;
-   case nir_atomic_op_imax: return TGSI_OPCODE_ATOMIMAX;
-   case nir_atomic_op_umin: return TGSI_OPCODE_ATOMUMIN;
-   case nir_atomic_op_umax: return TGSI_OPCODE_ATOMUMAX;
-   case nir_atomic_op_iand: return TGSI_OPCODE_ATOMAND;
-   case nir_atomic_op_ixor: return TGSI_OPCODE_ATOMXOR;
-   case nir_atomic_op_ior:  return TGSI_OPCODE_ATOMOR;
-   case nir_atomic_op_xchg: return TGSI_OPCODE_ATOMXCHG;
-   default: unreachable("invalid atomic");
-   }
-}
-
-static void
-ntr_emit_mem(struct ntr_compile *c, nir_intrinsic_instr *instr,
-             nir_variable_mode mode)
-{
-   bool is_store = (instr->intrinsic == nir_intrinsic_store_ssbo ||
-                    instr->intrinsic == nir_intrinsic_store_shared);
-   bool is_load = (instr->intrinsic == nir_intrinsic_atomic_counter_read ||
-                    instr->intrinsic == nir_intrinsic_load_ssbo ||
-                    instr->intrinsic == nir_intrinsic_load_shared);
-   unsigned opcode;
-   struct ureg_src src[4];
-   int num_src = 0;
-   int next_src;
-   struct ureg_dst addr_temp = ureg_dst_undef();
-
-   struct ureg_src memory;
-   switch (mode) {
-   case nir_var_mem_ssbo:
-      memory = ntr_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_BUFFER,
-                                                          c->first_ssbo),
-                                     instr->src[is_store ? 1 : 0], 2);
-      next_src = 1;
-      break;
-   case nir_var_mem_shared:
-      memory = ureg_src_register(TGSI_FILE_MEMORY, 0);
-      next_src = 0;
-      break;
-   case nir_var_uniform: { /* HW atomic buffers */
-      nir_src src = instr->src[0];
-      uint32_t offset = (ntr_extract_const_src_offset(&src) +
-                         nir_intrinsic_range_base(instr)) / 4;
-
-      memory = ureg_src_register(TGSI_FILE_HW_ATOMIC, offset);
-      /* ntr_ureg_src_indirect, except dividing by 4 */
-      if (nir_src_is_const(src)) {
-         memory.Index += nir_src_as_uint(src) / 4;
-      } else {
-         addr_temp = ntr_temp(c);
-         ntr_USHR(c, addr_temp, ntr_get_src(c, src), ureg_imm1i(c->ureg, 2));
-         memory = ureg_src_indirect(memory, ntr_reladdr(c, ureg_src(addr_temp), 2));
-      }
-      memory = ureg_src_dimension(memory, nir_intrinsic_base(instr));
-      next_src = 0;
-      break;
-   }
-
-   default:
-      unreachable("unknown memory type");
-   }
-
-   if (is_store) {
-      src[num_src++] = ntr_get_src(c, instr->src[next_src + 1]); /* offset */
-      src[num_src++] = ntr_get_src(c, instr->src[0]); /* value */
-   } else {
-      src[num_src++] = memory;
-      if (instr->intrinsic != nir_intrinsic_get_ssbo_size) {
-         src[num_src++] = ntr_get_src(c, instr->src[next_src++]); /* offset */
-         switch (instr->intrinsic) {
-         case nir_intrinsic_atomic_counter_inc:
-            src[num_src++] = ureg_imm1i(c->ureg, 1);
-            break;
-         case nir_intrinsic_atomic_counter_post_dec:
-            src[num_src++] = ureg_imm1i(c->ureg, -1);
-            break;
-         default:
-            if (!is_load)
-               src[num_src++] = ntr_get_src(c, instr->src[next_src++]); /* value */
-            break;
-         }
-      }
-   }
-
-
-   switch (instr->intrinsic) {
-   case nir_intrinsic_ssbo_atomic:
-   case nir_intrinsic_shared_atomic:
-      opcode = ntr_translate_atomic_op(nir_intrinsic_atomic_op(instr));
-      break;
-   case nir_intrinsic_atomic_counter_add:
-   case nir_intrinsic_atomic_counter_inc:
-   case nir_intrinsic_atomic_counter_post_dec:
-      opcode = TGSI_OPCODE_ATOMUADD;
-      break;
-   case nir_intrinsic_atomic_counter_min:
-      opcode = TGSI_OPCODE_ATOMIMIN;
-      break;
-   case nir_intrinsic_atomic_counter_max:
-      opcode = TGSI_OPCODE_ATOMIMAX;
-      break;
-   case nir_intrinsic_atomic_counter_and:
-      opcode = TGSI_OPCODE_ATOMAND;
-      break;
-   case nir_intrinsic_atomic_counter_or:
-      opcode = TGSI_OPCODE_ATOMOR;
-      break;
-   case nir_intrinsic_atomic_counter_xor:
-      opcode = TGSI_OPCODE_ATOMXOR;
-      break;
-   case nir_intrinsic_atomic_counter_exchange:
-      opcode = TGSI_OPCODE_ATOMXCHG;
-      break;
-   case nir_intrinsic_atomic_counter_comp_swap:
-   case nir_intrinsic_ssbo_atomic_swap:
-   case nir_intrinsic_shared_atomic_swap:
-      opcode = TGSI_OPCODE_ATOMCAS;
-      src[num_src++] = ntr_get_src(c, instr->src[next_src++]);
-      break;
-   case nir_intrinsic_atomic_counter_read:
-   case nir_intrinsic_load_ssbo:
-   case nir_intrinsic_load_shared:
-      opcode = TGSI_OPCODE_LOAD;
-      break;
-   case nir_intrinsic_store_ssbo:
-   case nir_intrinsic_store_shared:
-      opcode = TGSI_OPCODE_STORE;
-      break;
-   case nir_intrinsic_get_ssbo_size:
-      opcode = TGSI_OPCODE_RESQ;
-      break;
-   default:
-      unreachable("unknown memory op");
-   }
-
-   unsigned qualifier = 0;
-   if (mode == nir_var_mem_ssbo &&
-       instr->intrinsic != nir_intrinsic_get_ssbo_size) {
-      qualifier = ntr_get_access_qualifier(instr);
-   }
-
-   struct ureg_dst dst;
-   if (is_store) {
-      dst = ureg_dst(memory);
-
-      unsigned write_mask = nir_intrinsic_write_mask(instr);
-      if (nir_src_bit_size(instr->src[0]) == 64)
-         write_mask = ntr_64bit_write_mask(write_mask);
-      dst = ureg_writemask(dst, write_mask);
-   } else {
-      dst = ntr_get_dest(c, &instr->def);
-   }
-
-   struct ntr_insn *insn = ntr_insn(c, opcode, dst, src[0], src[1], src[2], src[3]);
-   insn->tex_target = TGSI_TEXTURE_BUFFER;
-   insn->mem_qualifier = qualifier;
-   insn->mem_format = 0; /* unused */
-   insn->is_mem = true;
-}
-
-static void
-ntr_emit_image_load_store(struct ntr_compile *c, nir_intrinsic_instr *instr)
-{
-   unsigned op;
-   struct ureg_src srcs[4];
-   int num_src = 0;
-   enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
-   bool is_array = nir_intrinsic_image_array(instr);
-
-   struct ureg_dst temp = ureg_dst_undef();
-
-   enum tgsi_texture_type target = tgsi_texture_type_from_sampler_dim(dim, is_array, false);
-
-   struct ureg_src resource;
-   switch (instr->intrinsic) {
-   case nir_intrinsic_bindless_image_load:
-   case nir_intrinsic_bindless_image_store:
-   case nir_intrinsic_bindless_image_size:
-   case nir_intrinsic_bindless_image_samples:
-   case nir_intrinsic_bindless_image_atomic:
-   case nir_intrinsic_bindless_image_atomic_swap:
-      resource = ntr_get_src(c, instr->src[0]);
-      break;
-   default:
-      resource = ntr_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_IMAGE, 0),
-                                       instr->src[0], 2);
-      resource.Index += nir_intrinsic_range_base(instr);
-   }
-
-   struct ureg_dst dst;
-   if (instr->intrinsic == nir_intrinsic_image_store ||
-       instr->intrinsic == nir_intrinsic_bindless_image_store) {
-      dst = ureg_dst(resource);
-   } else {
-      srcs[num_src++] = resource;
-      dst = ntr_get_dest(c, &instr->def);
-   }
-   struct ureg_dst opcode_dst = dst;
-
-   if (instr->intrinsic != nir_intrinsic_image_size &&
-       instr->intrinsic != nir_intrinsic_image_samples &&
-       instr->intrinsic != nir_intrinsic_bindless_image_size &&
-       instr->intrinsic != nir_intrinsic_bindless_image_samples) {
-      struct ureg_src coord = ntr_get_src(c, instr->src[1]);
-
-      if (dim == GLSL_SAMPLER_DIM_MS) {
-         temp = ntr_temp(c);
-         ntr_MOV(c, temp, coord);
-         ntr_MOV(c, ureg_writemask(temp, TGSI_WRITEMASK_W),
-                  ureg_scalar(ntr_get_src(c, instr->src[2]), TGSI_SWIZZLE_X));
-         coord = ureg_src(temp);
-      }
-      srcs[num_src++] = coord;
-
-      if (instr->intrinsic != nir_intrinsic_image_load &&
-          instr->intrinsic != nir_intrinsic_bindless_image_load) {
-         srcs[num_src++] = ntr_get_src(c, instr->src[3]); /* data */
-         if (instr->intrinsic == nir_intrinsic_image_atomic_swap ||
-             instr->intrinsic == nir_intrinsic_bindless_image_atomic_swap)
-            srcs[num_src++] = ntr_get_src(c, instr->src[4]); /* data2 */
-      }
-   }
-
-   switch (instr->intrinsic) {
-   case nir_intrinsic_image_load:
-   case nir_intrinsic_bindless_image_load:
-      op = TGSI_OPCODE_LOAD;
-      break;
-   case nir_intrinsic_image_store:
-   case nir_intrinsic_bindless_image_store:
-      op = TGSI_OPCODE_STORE;
-      break;
-   case nir_intrinsic_image_size:
-   case nir_intrinsic_bindless_image_size:
-      op = TGSI_OPCODE_RESQ;
-      break;
-   case nir_intrinsic_image_samples:
-   case nir_intrinsic_bindless_image_samples:
-      op = TGSI_OPCODE_RESQ;
-      opcode_dst = ureg_writemask(ntr_temp(c), TGSI_WRITEMASK_W);
-      break;
-   case nir_intrinsic_image_atomic:
-   case nir_intrinsic_bindless_image_atomic:
-      op = ntr_translate_atomic_op(nir_intrinsic_atomic_op(instr));
-      break;
-   case nir_intrinsic_image_atomic_swap:
-   case nir_intrinsic_bindless_image_atomic_swap:
-      op = TGSI_OPCODE_ATOMCAS;
-      break;
-   default:
-      unreachable("bad op");
-   }
-
-   struct ntr_insn *insn = ntr_insn(c, op, opcode_dst, srcs[0], srcs[1], srcs[2], srcs[3]);
-   insn->tex_target = target;
-   insn->mem_qualifier = ntr_get_access_qualifier(instr);
-   insn->mem_format = nir_intrinsic_format(instr);
-   insn->is_mem = true;
-
-   if (instr->intrinsic == nir_intrinsic_image_samples ||
-       instr->intrinsic == nir_intrinsic_bindless_image_samples)
-      ntr_MOV(c, dst, ureg_scalar(ureg_src(opcode_dst), 3));
-}
-
 static void
 ntr_emit_load_input(struct ntr_compile *c, nir_intrinsic_instr *instr)
 {
@@ -2266,12 +1965,6 @@ ntr_emit_load_input(struct ntr_compile *c, nir_intrinsic_instr *instr)
    switch (instr->intrinsic) {
    case nir_intrinsic_load_input:
       input = ntr_ureg_src_indirect(c, input, instr->src[0], 0);
-      ntr_store(c, &instr->def, input);
-      break;
-
-   case nir_intrinsic_load_per_vertex_input:
-      input = ntr_ureg_src_indirect(c, input, instr->src[1], 0);
-      input = ntr_ureg_src_dimension_indirect(c, input, instr->src[0]);
       ntr_store(c, &instr->def, input);
       break;
 
@@ -2488,36 +2181,11 @@ ntr_emit_intrinsic(struct ntr_compile *c, nir_intrinsic_instr *instr)
       break;
 
       /* Vertex */
-   case nir_intrinsic_load_vertex_id:
-   case nir_intrinsic_load_vertex_id_zero_base:
-   case nir_intrinsic_load_base_vertex:
-   case nir_intrinsic_load_base_instance:
-   case nir_intrinsic_load_instance_id:
    case nir_intrinsic_load_draw_id:
    case nir_intrinsic_load_invocation_id:
    case nir_intrinsic_load_frag_coord:
    case nir_intrinsic_load_point_coord:
    case nir_intrinsic_load_front_face:
-   case nir_intrinsic_load_sample_id:
-   case nir_intrinsic_load_sample_pos:
-   case nir_intrinsic_load_sample_mask_in:
-   case nir_intrinsic_load_helper_invocation:
-   case nir_intrinsic_load_tess_coord:
-   case nir_intrinsic_load_patch_vertices_in:
-   case nir_intrinsic_load_primitive_id:
-   case nir_intrinsic_load_tess_level_outer:
-   case nir_intrinsic_load_tess_level_inner:
-   case nir_intrinsic_load_local_invocation_id:
-   case nir_intrinsic_load_workgroup_id:
-   case nir_intrinsic_load_num_workgroups:
-   case nir_intrinsic_load_workgroup_size:
-   case nir_intrinsic_load_subgroup_size:
-   case nir_intrinsic_load_subgroup_invocation:
-   case nir_intrinsic_load_subgroup_eq_mask:
-   case nir_intrinsic_load_subgroup_ge_mask:
-   case nir_intrinsic_load_subgroup_gt_mask:
-   case nir_intrinsic_load_subgroup_lt_mask:
-   case nir_intrinsic_load_subgroup_le_mask:
       ntr_emit_load_sysval(c, instr);
       break;
 
@@ -2537,10 +2205,6 @@ ntr_emit_intrinsic(struct ntr_compile *c, nir_intrinsic_instr *instr)
       ntr_emit_load_output(c, instr);
       break;
 
-   case nir_intrinsic_demote:
-      ntr_DEMOTE(c);
-      break;
-
    case nir_intrinsic_discard:
       ntr_KILL(c);
       break;
@@ -2558,89 +2222,6 @@ ntr_emit_intrinsic(struct ntr_compile *c, nir_intrinsic_instr *instr)
       }
       break;
    }
-
-   case nir_intrinsic_is_helper_invocation:
-      ntr_READ_HELPER(c, ntr_get_dest(c, &instr->def));
-      break;
-
-   case nir_intrinsic_vote_all:
-      ntr_VOTE_ALL(c, ntr_get_dest(c, &instr->def), ntr_get_src(c,instr->src[0]));
-      return;
-   case nir_intrinsic_vote_any:
-      ntr_VOTE_ANY(c, ntr_get_dest(c, &instr->def), ntr_get_src(c, instr->src[0]));
-      return;
-   case nir_intrinsic_vote_ieq:
-      ntr_VOTE_EQ(c, ntr_get_dest(c, &instr->def), ntr_get_src(c, instr->src[0]));
-      return;
-   case nir_intrinsic_ballot:
-      ntr_BALLOT(c, ntr_get_dest(c, &instr->def), ntr_get_src(c, instr->src[0]));
-      return;
-   case nir_intrinsic_read_first_invocation:
-      ntr_READ_FIRST(c, ntr_get_dest(c, &instr->def), ntr_get_src(c, instr->src[0]));
-      return;
-   case nir_intrinsic_read_invocation:
-      ntr_READ_INVOC(c, ntr_get_dest(c, &instr->def), ntr_get_src(c, instr->src[0]), ntr_get_src(c, instr->src[1]));
-      return;
-
-   case nir_intrinsic_load_ssbo:
-   case nir_intrinsic_store_ssbo:
-   case nir_intrinsic_ssbo_atomic:
-   case nir_intrinsic_ssbo_atomic_swap:
-   case nir_intrinsic_get_ssbo_size:
-      ntr_emit_mem(c, instr, nir_var_mem_ssbo);
-      break;
-
-   case nir_intrinsic_load_shared:
-   case nir_intrinsic_store_shared:
-   case nir_intrinsic_shared_atomic:
-   case nir_intrinsic_shared_atomic_swap:
-      ntr_emit_mem(c, instr, nir_var_mem_shared);
-      break;
-
-   case nir_intrinsic_atomic_counter_read:
-   case nir_intrinsic_atomic_counter_add:
-   case nir_intrinsic_atomic_counter_inc:
-   case nir_intrinsic_atomic_counter_post_dec:
-   case nir_intrinsic_atomic_counter_min:
-   case nir_intrinsic_atomic_counter_max:
-   case nir_intrinsic_atomic_counter_and:
-   case nir_intrinsic_atomic_counter_or:
-   case nir_intrinsic_atomic_counter_xor:
-   case nir_intrinsic_atomic_counter_exchange:
-   case nir_intrinsic_atomic_counter_comp_swap:
-      ntr_emit_mem(c, instr, nir_var_uniform);
-      break;
-   case nir_intrinsic_atomic_counter_pre_dec:
-      unreachable("Should be lowered by ntr_lower_atomic_pre_dec()");
-      break;
-
-   case nir_intrinsic_image_load:
-   case nir_intrinsic_image_store:
-   case nir_intrinsic_image_size:
-   case nir_intrinsic_image_samples:
-   case nir_intrinsic_image_atomic:
-   case nir_intrinsic_image_atomic_swap:
-   case nir_intrinsic_bindless_image_load:
-   case nir_intrinsic_bindless_image_store:
-   case nir_intrinsic_bindless_image_size:
-   case nir_intrinsic_bindless_image_samples:
-   case nir_intrinsic_bindless_image_atomic:
-   case nir_intrinsic_bindless_image_atomic_swap:
-      ntr_emit_image_load_store(c, instr);
-      break;
-
-   case nir_intrinsic_barrier:
-      ntr_emit_barrier(c, instr);
-      break;
-
-   case nir_intrinsic_end_primitive:
-      ntr_ENDPRIM(c, ureg_imm1u(c->ureg, nir_intrinsic_stream_id(instr)));
-      break;
-
-   case nir_intrinsic_emit_vertex:
-      ntr_EMIT(c, ureg_imm1u(c->ureg, nir_intrinsic_stream_id(instr)));
-      break;
-
       /* In TGSI we don't actually generate the barycentric coords, and emit
        * interp intrinsics later.  However, we do need to store the
        * load_barycentric_at_* argument so that we can use it at that point.
@@ -2652,10 +2233,6 @@ ntr_emit_intrinsic(struct ntr_compile *c, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_barycentric_at_sample:
    case nir_intrinsic_load_barycentric_at_offset:
       ntr_store(c, &instr->def, ntr_get_src(c, instr->src[0]));
-      break;
-
-   case nir_intrinsic_shader_clock:
-      ntr_CLOCK(c, ntr_get_dest(c, &instr->def));
       break;
 
    case nir_intrinsic_decl_reg:
