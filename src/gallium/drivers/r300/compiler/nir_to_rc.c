@@ -1439,8 +1439,6 @@ ntr_emit_alu(struct ntr_compile *c, nir_alu_instr *instr)
    struct ureg_src src[4];
    struct ureg_dst dst;
    unsigned i;
-   int dst_64 = instr->def.bit_size == 64;
-   int src_64 = nir_src_bit_size(instr->src[0].src) == 64;
    int num_srcs = nir_op_infos[instr->op].num_inputs;
 
    /* Don't try to translate folded fsat since their source won't be valid */
@@ -1457,132 +1455,38 @@ ntr_emit_alu(struct ntr_compile *c, nir_alu_instr *instr)
 
    dst = ntr_get_alu_dest(c, &instr->def);
 
-   static enum tgsi_opcode op_map[][2] = {
-      [nir_op_mov] = { TGSI_OPCODE_MOV, TGSI_OPCODE_MOV },
+   static enum tgsi_opcode op_map[] = {
+      [nir_op_mov] = TGSI_OPCODE_MOV,
 
-      /* fabs/fneg 32-bit are special-cased below. */
-      [nir_op_fabs] = { 0, TGSI_OPCODE_DABS },
-      [nir_op_fneg] = { 0, TGSI_OPCODE_DNEG },
+      [nir_op_fdot2_replicated] = TGSI_OPCODE_DP2,
+      [nir_op_fdot3_replicated] = TGSI_OPCODE_DP3,
+      [nir_op_fdot4_replicated] = TGSI_OPCODE_DP4,
+      [nir_op_ffloor] = TGSI_OPCODE_FLR,
+      [nir_op_ffract] = TGSI_OPCODE_FRC,
+      [nir_op_fceil] = TGSI_OPCODE_CEIL,
+      [nir_op_fround_even] = TGSI_OPCODE_ROUND,
 
-      [nir_op_fdot2] = { TGSI_OPCODE_DP2 },
-      [nir_op_fdot3] = { TGSI_OPCODE_DP3 },
-      [nir_op_fdot4] = { TGSI_OPCODE_DP4 },
-      [nir_op_fdot2_replicated] = { TGSI_OPCODE_DP2 },
-      [nir_op_fdot3_replicated] = { TGSI_OPCODE_DP3 },
-      [nir_op_fdot4_replicated] = { TGSI_OPCODE_DP4 },
-      [nir_op_ffloor] = { TGSI_OPCODE_FLR, TGSI_OPCODE_DFLR },
-      [nir_op_ffract] = { TGSI_OPCODE_FRC, TGSI_OPCODE_DFRAC },
-      [nir_op_fceil] = { TGSI_OPCODE_CEIL, TGSI_OPCODE_DCEIL },
-      [nir_op_fround_even] = { TGSI_OPCODE_ROUND, TGSI_OPCODE_DROUND },
-      [nir_op_fdiv] = { TGSI_OPCODE_DIV, TGSI_OPCODE_DDIV },
-      [nir_op_idiv] = { TGSI_OPCODE_IDIV, TGSI_OPCODE_I64DIV },
-      [nir_op_udiv] = { TGSI_OPCODE_UDIV, TGSI_OPCODE_U64DIV },
+      [nir_op_slt] = TGSI_OPCODE_SLT,
+      [nir_op_sge] = TGSI_OPCODE_SGE,
+      [nir_op_seq] = TGSI_OPCODE_SEQ,
+      [nir_op_sne] = TGSI_OPCODE_SNE,
 
-      [nir_op_frcp] = { 0, TGSI_OPCODE_DRCP },
-      [nir_op_frsq] = { 0, TGSI_OPCODE_DRSQ },
-      [nir_op_fsqrt] = { 0, TGSI_OPCODE_DSQRT },
+      [nir_op_ftrunc] = TGSI_OPCODE_TRUNC,
+      [nir_op_fddx] = TGSI_OPCODE_DDX,
+      [nir_op_fddy] = TGSI_OPCODE_DDY,
+      [nir_op_fddx_coarse] = TGSI_OPCODE_DDX,
+      [nir_op_fddy_coarse] = TGSI_OPCODE_DDY,
+      [nir_op_fadd] = TGSI_OPCODE_ADD,
+      [nir_op_fmul] = TGSI_OPCODE_MUL,
 
-      /* The conversions will have one combination of src and dst bitsize. */
-      [nir_op_f2f32] = { 0, TGSI_OPCODE_D2F },
-      [nir_op_f2f64] = { TGSI_OPCODE_F2D },
-      [nir_op_i2i64] = { TGSI_OPCODE_I2I64 },
-
-      [nir_op_f2i32] = { TGSI_OPCODE_F2I, TGSI_OPCODE_D2I },
-      [nir_op_f2i64] = { TGSI_OPCODE_F2I64, TGSI_OPCODE_D2I64 },
-      [nir_op_f2u32] = { TGSI_OPCODE_F2U, TGSI_OPCODE_D2U },
-      [nir_op_f2u64] = { TGSI_OPCODE_F2U64, TGSI_OPCODE_D2U64 },
-      [nir_op_i2f32] = { TGSI_OPCODE_I2F, TGSI_OPCODE_I642F },
-      [nir_op_i2f64] = { TGSI_OPCODE_I2D, TGSI_OPCODE_I642D },
-      [nir_op_u2f32] = { TGSI_OPCODE_U2F, TGSI_OPCODE_U642F },
-      [nir_op_u2f64] = { TGSI_OPCODE_U2D, TGSI_OPCODE_U642D },
-
-      [nir_op_slt] = { TGSI_OPCODE_SLT },
-      [nir_op_sge] = { TGSI_OPCODE_SGE },
-      [nir_op_seq] = { TGSI_OPCODE_SEQ },
-      [nir_op_sne] = { TGSI_OPCODE_SNE },
-
-      [nir_op_flt32] = { TGSI_OPCODE_FSLT, TGSI_OPCODE_DSLT },
-      [nir_op_fge32] = { TGSI_OPCODE_FSGE, TGSI_OPCODE_DSGE },
-      [nir_op_feq32] = { TGSI_OPCODE_FSEQ, TGSI_OPCODE_DSEQ },
-      [nir_op_fneu32] = { TGSI_OPCODE_FSNE, TGSI_OPCODE_DSNE },
-
-      [nir_op_ilt32] = { TGSI_OPCODE_ISLT, TGSI_OPCODE_I64SLT },
-      [nir_op_ige32] = { TGSI_OPCODE_ISGE, TGSI_OPCODE_I64SGE },
-      [nir_op_ieq32] = { TGSI_OPCODE_USEQ, TGSI_OPCODE_U64SEQ },
-      [nir_op_ine32] = { TGSI_OPCODE_USNE, TGSI_OPCODE_U64SNE },
-
-      [nir_op_ult32] = { TGSI_OPCODE_USLT, TGSI_OPCODE_U64SLT },
-      [nir_op_uge32] = { TGSI_OPCODE_USGE, TGSI_OPCODE_U64SGE },
-
-      [nir_op_iabs] = { TGSI_OPCODE_IABS, TGSI_OPCODE_I64ABS },
-      [nir_op_ineg] = { TGSI_OPCODE_INEG, TGSI_OPCODE_I64NEG },
-      [nir_op_fsign] = { TGSI_OPCODE_SSG, TGSI_OPCODE_DSSG },
-      [nir_op_isign] = { TGSI_OPCODE_ISSG, TGSI_OPCODE_I64SSG },
-      [nir_op_ftrunc] = { TGSI_OPCODE_TRUNC, TGSI_OPCODE_DTRUNC },
-      [nir_op_fddx] = { TGSI_OPCODE_DDX },
-      [nir_op_fddy] = { TGSI_OPCODE_DDY },
-      [nir_op_fddx_coarse] = { TGSI_OPCODE_DDX },
-      [nir_op_fddy_coarse] = { TGSI_OPCODE_DDY },
-      [nir_op_fddx_fine] = { TGSI_OPCODE_DDX_FINE },
-      [nir_op_fddy_fine] = { TGSI_OPCODE_DDY_FINE },
-      [nir_op_pack_half_2x16] = { TGSI_OPCODE_PK2H },
-      [nir_op_unpack_half_2x16] = { TGSI_OPCODE_UP2H },
-      [nir_op_ibitfield_extract] = { TGSI_OPCODE_IBFE },
-      [nir_op_ubitfield_extract] = { TGSI_OPCODE_UBFE },
-      [nir_op_bitfield_insert] = { TGSI_OPCODE_BFI },
-      [nir_op_bitfield_reverse] = { TGSI_OPCODE_BREV },
-      [nir_op_bit_count] = { TGSI_OPCODE_POPC },
-      [nir_op_ifind_msb] = { TGSI_OPCODE_IMSB },
-      [nir_op_ufind_msb] = { TGSI_OPCODE_UMSB },
-      [nir_op_find_lsb] = { TGSI_OPCODE_LSB },
-      [nir_op_fadd] = { TGSI_OPCODE_ADD, TGSI_OPCODE_DADD },
-      [nir_op_iadd] = { TGSI_OPCODE_UADD, TGSI_OPCODE_U64ADD },
-      [nir_op_fmul] = { TGSI_OPCODE_MUL, TGSI_OPCODE_DMUL },
-      [nir_op_imul] = { TGSI_OPCODE_UMUL, TGSI_OPCODE_U64MUL },
-      [nir_op_imod] = { TGSI_OPCODE_MOD, TGSI_OPCODE_I64MOD },
-      [nir_op_umod] = { TGSI_OPCODE_UMOD, TGSI_OPCODE_U64MOD },
-      [nir_op_imul_high] = { TGSI_OPCODE_IMUL_HI },
-      [nir_op_umul_high] = { TGSI_OPCODE_UMUL_HI },
-      [nir_op_ishl] = { TGSI_OPCODE_SHL, TGSI_OPCODE_U64SHL },
-      [nir_op_ishr] = { TGSI_OPCODE_ISHR, TGSI_OPCODE_I64SHR },
-      [nir_op_ushr] = { TGSI_OPCODE_USHR, TGSI_OPCODE_U64SHR },
-
-      /* These bitwise ops don't care about 32 vs 64 types, so they have the
-       * same TGSI op.
-       */
-      [nir_op_inot] = { TGSI_OPCODE_NOT, TGSI_OPCODE_NOT },
-      [nir_op_iand] = { TGSI_OPCODE_AND, TGSI_OPCODE_AND },
-      [nir_op_ior] = { TGSI_OPCODE_OR, TGSI_OPCODE_OR },
-      [nir_op_ixor] = { TGSI_OPCODE_XOR, TGSI_OPCODE_XOR },
-
-      [nir_op_fmin] = { TGSI_OPCODE_MIN, TGSI_OPCODE_DMIN },
-      [nir_op_imin] = { TGSI_OPCODE_IMIN, TGSI_OPCODE_I64MIN },
-      [nir_op_umin] = { TGSI_OPCODE_UMIN, TGSI_OPCODE_U64MIN },
-      [nir_op_fmax] = { TGSI_OPCODE_MAX, TGSI_OPCODE_DMAX },
-      [nir_op_imax] = { TGSI_OPCODE_IMAX, TGSI_OPCODE_I64MAX },
-      [nir_op_umax] = { TGSI_OPCODE_UMAX, TGSI_OPCODE_U64MAX },
-      [nir_op_ffma] = { TGSI_OPCODE_MAD, TGSI_OPCODE_DMAD },
-      [nir_op_ldexp] = { TGSI_OPCODE_LDEXP, 0 },
+      [nir_op_fmin] = TGSI_OPCODE_MIN,
+      [nir_op_fmax] = TGSI_OPCODE_MAX,
+      [nir_op_ffma] = TGSI_OPCODE_MAD,
    };
 
-   if (src_64 && !dst_64) {
-      if (num_srcs == 2 || nir_op_infos[instr->op].output_type == nir_type_bool32) {
-         /* TGSI's 64 bit compares storing to 32-bit are weird and write .xz instead
-         * of .xy.
-         */
-         assert(!(dst.WriteMask & TGSI_WRITEMASK_YW));
-      } else {
-         /* TGSI 64bit-to-32-bit conversions only generate results in the .xy
-         * channels and will need to get fixed up.
-         */
-        assert(!(dst.WriteMask & TGSI_WRITEMASK_ZW));
-      }
-   }
-
-   bool table_op64 = src_64;
-   if (instr->op < ARRAY_SIZE(op_map) && op_map[instr->op][table_op64] != 0) {
+   if (instr->op < ARRAY_SIZE(op_map) && op_map[instr->op] > 0) {
       /* The normal path for NIR to TGSI ALU op translation */
-      ntr_insn(c, op_map[instr->op][table_op64],
+      ntr_insn(c, op_map[instr->op],
                 dst, src[0], src[1], src[2], src[3]);
    } else {
       /* Special cases for NIR to TGSI ALU op translation. */
@@ -1592,21 +1496,6 @@ ntr_emit_alu(struct ntr_compile *c, nir_alu_instr *instr)
        */
 
       switch (instr->op) {
-      case nir_op_u2u64:
-         ntr_AND(c, dst, ureg_swizzle(src[0],
-                                             TGSI_SWIZZLE_X, TGSI_SWIZZLE_X,
-                                             TGSI_SWIZZLE_Y, TGSI_SWIZZLE_Y),
-                  ureg_imm4u(c->ureg, ~0, 0, ~0, 0));
-         break;
-
-      case nir_op_i2i32:
-      case nir_op_u2u32:
-         assert(src_64);
-         ntr_MOV(c, dst, ureg_swizzle(src[0],
-                                             TGSI_SWIZZLE_X, TGSI_SWIZZLE_Z,
-                                             TGSI_SWIZZLE_X, TGSI_SWIZZLE_X));
-         break;
-
       case nir_op_fabs:
          /* Try to eliminate */
          if (!c->options->lower_fabs && nir_legacy_float_mod_folds(instr))
@@ -1619,12 +1508,7 @@ ntr_emit_alu(struct ntr_compile *c, nir_alu_instr *instr)
          break;
 
       case nir_op_fsat:
-         if (dst_64) {
-            ntr_MIN(c, dst, src[0], ntr_64bit_1f(c));
-            ntr_MAX(c, dst, ureg_src(dst), ureg_imm1u(c->ureg, 0));
-         } else {
-            ntr_MOV(c, ureg_saturate(dst), src[0]);
-         }
+         ntr_MOV(c, ureg_saturate(dst), src[0]);
          break;
 
       case nir_op_fneg:
@@ -1640,52 +1524,19 @@ ntr_emit_alu(struct ntr_compile *c, nir_alu_instr *instr)
           * of src channels to dst.
           */
       case nir_op_frcp:
-         assert(!dst_64);
          ntr_emit_scalar(c, TGSI_OPCODE_RCP, dst, src[0], ureg_src_undef());
          break;
 
       case nir_op_frsq:
-         assert(!dst_64);
          ntr_emit_scalar(c, TGSI_OPCODE_RSQ, dst, src[0], ureg_src_undef());
          break;
 
-      case nir_op_fsqrt:
-         assert(!dst_64);
-         ntr_emit_scalar(c, TGSI_OPCODE_SQRT, dst, src[0], ureg_src_undef());
-         break;
-
       case nir_op_fexp2:
-         assert(!dst_64);
          ntr_emit_scalar(c, TGSI_OPCODE_EX2, dst, src[0], ureg_src_undef());
          break;
 
       case nir_op_flog2:
-         assert(!dst_64);
          ntr_emit_scalar(c, TGSI_OPCODE_LG2, dst, src[0], ureg_src_undef());
-         break;
-
-      case nir_op_b2f32:
-         ntr_AND(c, dst, src[0], ureg_imm1f(c->ureg, 1.0));
-         break;
-
-      case nir_op_b2f64:
-         ntr_AND(c, dst,
-                  ureg_swizzle(src[0],
-                               TGSI_SWIZZLE_X, TGSI_SWIZZLE_X,
-                               TGSI_SWIZZLE_Y, TGSI_SWIZZLE_Y),
-                  ntr_64bit_1f(c));
-         break;
-
-      case nir_op_b2i32:
-         ntr_AND(c, dst, src[0], ureg_imm1u(c->ureg, 1));
-         break;
-
-      case nir_op_b2i64:
-         ntr_AND(c, dst,
-                  ureg_swizzle(src[0],
-                               TGSI_SWIZZLE_X, TGSI_SWIZZLE_X,
-                               TGSI_SWIZZLE_Y, TGSI_SWIZZLE_Y),
-                  ureg_imm4u(c->ureg, 1, 0, 1, 0));
          break;
 
       case nir_op_fsin:
@@ -1697,13 +1548,7 @@ ntr_emit_alu(struct ntr_compile *c, nir_alu_instr *instr)
          break;
 
       case nir_op_fsub:
-         assert(!dst_64);
          ntr_ADD(c, dst, src[0], ureg_negate(src[1]));
-         break;
-
-      case nir_op_isub:
-         assert(!dst_64);
-         ntr_UADD(c, dst, src[0], ureg_negate(src[1]));
          break;
 
       case nir_op_fmod:
@@ -1716,40 +1561,6 @@ ntr_emit_alu(struct ntr_compile *c, nir_alu_instr *instr)
 
       case nir_op_flrp:
          ntr_LRP(c, dst, src[2], src[1], src[0]);
-         break;
-
-      case nir_op_pack_64_2x32_split:
-         ntr_MOV(c, ureg_writemask(dst, TGSI_WRITEMASK_XZ),
-                  ureg_swizzle(src[0],
-                               TGSI_SWIZZLE_X, TGSI_SWIZZLE_X,
-                               TGSI_SWIZZLE_Y, TGSI_SWIZZLE_Y));
-         ntr_MOV(c, ureg_writemask(dst, TGSI_WRITEMASK_YW),
-                  ureg_swizzle(src[1],
-                               TGSI_SWIZZLE_X, TGSI_SWIZZLE_X,
-                               TGSI_SWIZZLE_Y, TGSI_SWIZZLE_Y));
-         break;
-
-      case nir_op_unpack_64_2x32_split_x:
-         ntr_MOV(c, dst, ureg_swizzle(src[0],
-                                             TGSI_SWIZZLE_X, TGSI_SWIZZLE_Z,
-                                             TGSI_SWIZZLE_X, TGSI_SWIZZLE_Z));
-         break;
-
-      case nir_op_unpack_64_2x32_split_y:
-         ntr_MOV(c, dst, ureg_swizzle(src[0],
-                                             TGSI_SWIZZLE_Y, TGSI_SWIZZLE_W,
-                                             TGSI_SWIZZLE_Y, TGSI_SWIZZLE_W));
-         break;
-
-      case nir_op_b32csel:
-         if (nir_src_bit_size(instr->src[1].src) == 64) {
-            ntr_UCMP(c, dst, ureg_swizzle(src[0],
-                                                 TGSI_SWIZZLE_X, TGSI_SWIZZLE_X,
-                                                 TGSI_SWIZZLE_Y, TGSI_SWIZZLE_Y),
-                      src[1], src[2]);
-         } else {
-            ntr_UCMP(c, dst, src[0], src[1], src[2]);
-         }
          break;
 
       case nir_op_fcsel:
@@ -1779,19 +1590,6 @@ ntr_emit_alu(struct ntr_compile *c, nir_alu_instr *instr)
 
          /* Implement this as if !(src0 < 0.0) was identical to src0 >= 0.0. */
          ntr_CMP(c, dst, src[0], src[2], src[1]);
-         break;
-
-      case nir_op_frexp_sig:
-      case nir_op_frexp_exp:
-         unreachable("covered by nir_lower_frexp()");
-         break;
-
-      case nir_op_ldexp:
-         assert(dst_64); /* 32bit handled in table. */
-         ntr_DLDEXP(c, dst, src[0],
-                     ureg_swizzle(src[1],
-                                  TGSI_SWIZZLE_X, TGSI_SWIZZLE_X,
-                                  TGSI_SWIZZLE_Y, TGSI_SWIZZLE_Y));
          break;
 
       case nir_op_vec4:
