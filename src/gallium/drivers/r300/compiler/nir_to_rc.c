@@ -622,33 +622,6 @@ ntr_get_gl_varying_semantic(struct ntr_compile *c, unsigned location,
  * r600 and svga).
  */
 static uint32_t
-ntr_tgsi_usage_mask(unsigned start_component, unsigned num_components,
-                    bool is_64)
-{
-   uint32_t usage_mask =
-      u_bit_consecutive(start_component, num_components);
-
-   if (is_64) {
-      if (start_component >= 2)
-         usage_mask >>= 2;
-
-      uint32_t tgsi_usage_mask = 0;
-
-      if (usage_mask & TGSI_WRITEMASK_X)
-         tgsi_usage_mask |= TGSI_WRITEMASK_XY;
-      if (usage_mask & TGSI_WRITEMASK_Y)
-         tgsi_usage_mask |= TGSI_WRITEMASK_ZW;
-
-      return tgsi_usage_mask;
-   } else {
-      return usage_mask;
-   }
-}
-
-/* TGSI varying declarations have a component usage mask associated (used by
- * r600 and svga).
- */
-static uint32_t
 ntr_tgsi_var_usage_mask(const struct nir_variable *var)
 {
    const struct glsl_type *type_without_array =
@@ -657,8 +630,7 @@ ntr_tgsi_var_usage_mask(const struct nir_variable *var)
    if (num_components == 0) /* structs */
       num_components = 4;
 
-   return ntr_tgsi_usage_mask(var->data.location_frac, num_components,
-                              glsl_type_is_64bit(type_without_array));
+   return u_bit_consecutive(var->data.location_frac, num_components);
 }
 
 static struct ureg_dst
@@ -667,7 +639,6 @@ ntr_output_decl(struct ntr_compile *c, nir_intrinsic_instr *instr, uint32_t *fra
    nir_io_semantics semantics = nir_intrinsic_io_semantics(instr);
    int base = nir_intrinsic_base(instr);
    *frac = nir_intrinsic_component(instr);
-   bool is_64 = nir_src_bit_size(instr->src[0]) == 64;
 
    struct ureg_dst out;
    if (c->s->info.stage == MESA_SHADER_FRAGMENT) {
@@ -694,9 +665,7 @@ ntr_output_decl(struct ntr_compile *c, nir_intrinsic_instr *instr, uint32_t *fra
       ntr_get_gl_varying_semantic(c, semantics.location,
                                   &semantic_name, &semantic_index);
 
-      uint32_t usage_mask = ntr_tgsi_usage_mask(*frac,
-                                                instr->num_components,
-                                                is_64);
+      uint32_t usage_mask = u_bit_consecutive(*frac, instr->num_components);
       uint32_t gs_streams = semantics.gs_streams;
       for (int i = 0; i < 4; i++) {
          if (!(usage_mask & (1 << i)))
@@ -736,13 +705,7 @@ ntr_output_decl(struct ntr_compile *c, nir_intrinsic_instr *instr, uint32_t *fra
    else
       write_mask = ((1 << instr->num_components) - 1) << *frac;
 
-   if (is_64) {
-      write_mask = ntr_64bit_write_mask(write_mask);
-      if (*frac >= 2)
-         write_mask = write_mask << 2;
-   } else {
-      write_mask = write_mask << *frac;
-   }
+   write_mask = write_mask << *frac;
    return ureg_writemask(out, write_mask);
 }
 
@@ -1700,7 +1663,6 @@ ntr_emit_load_input(struct ntr_compile *c, nir_intrinsic_instr *instr)
    unsigned base = nir_intrinsic_base(instr);
    struct ureg_src input;
    nir_io_semantics semantics = nir_intrinsic_io_semantics(instr);
-   bool is_64 = instr->def.bit_size == 64;
 
    if (c->s->info.stage == MESA_SHADER_VERTEX) {
       input = ureg_DECL_vs_input(c->ureg, base);
@@ -1718,17 +1680,13 @@ ntr_emit_load_input(struct ntr_compile *c, nir_intrinsic_instr *instr)
                                      semantic_name,
                                      semantic_index,
                                      base,
-                                     ntr_tgsi_usage_mask(frac,
-                                                         instr->num_components,
-                                                         is_64),
+                                     u_bit_consecutive(frac,
+                                                       instr->num_components),
                                      array_id,
                                      semantics.num_slots);
    } else {
       input = c->input_index_map[base];
    }
-
-   if (is_64)
-      num_components *= 2;
 
    input = ntr_shift_by_frac(input, frac, num_components);
 
