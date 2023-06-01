@@ -1834,11 +1834,10 @@ fix_io_uint_deref_types(struct nir_builder *builder, nir_instr *instr, void *dat
       return false;
 
    nir_deref_instr *deref = nir_instr_as_deref(instr);
-   nir_variable *var =
-      deref->deref_type == nir_deref_type_var ? deref->var : NULL;
+   nir_variable *var = nir_deref_instr_get_variable(deref);
 
    if (var == data) {
-      deref->type = var->type;
+      deref->type = glsl_type_wrap_in_arrays(glsl_uint_type(), deref->type);
       return true;
    }
 
@@ -1851,11 +1850,12 @@ fix_io_uint_type(nir_shader *s, nir_variable_mode modes, int slot)
    nir_variable *fixed_var = NULL;
    nir_foreach_variable_with_modes(var, s, modes) {
       if (var->data.location == slot) {
-         if (var->type == glsl_uint_type())
+         const struct glsl_type *plain_type = glsl_without_array(var->type);
+         if (plain_type == glsl_uint_type())
             return false;
 
-         assert(var->type == glsl_int_type());
-         var->type = glsl_uint_type();
+         assert(plain_type == glsl_int_type());
+         var->type = glsl_type_wrap_in_arrays(glsl_uint_type(), var->type);
          fixed_var = var;
          break;
       }
