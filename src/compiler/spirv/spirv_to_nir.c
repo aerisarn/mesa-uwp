@@ -2690,10 +2690,7 @@ vtn_create_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
 static nir_tex_src
 vtn_tex_src(struct vtn_builder *b, unsigned index, nir_tex_src_type type)
 {
-   nir_tex_src src;
-   src.src = nir_src_for_ssa(vtn_get_nir_ssa(b, index));
-   src.src_type = type;
-   return src;
+   return nir_tex_src_for_ssa(type, vtn_get_nir_ssa(b, index));
 }
 
 static uint32_t

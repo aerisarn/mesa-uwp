@@ -442,8 +442,7 @@ lower_tex_to_txl(nir_builder *b, nir_tex_instr *tex)
    if (bias_idx >= 0)
       lod = nir_fadd(b, lod, nir_ssa_for_src(b, tex->src[bias_idx].src, 1));
    lod = nir_fadd_imm(b, lod, -1.0);
-   txl->src[s].src = nir_src_for_ssa(lod);
-   txl->src[s].src_type = nir_tex_src_lod;
+   txl->src[s] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
    b->cursor = nir_before_instr(&tex->instr);
    nir_ssa_dest_init(&txl->instr, &txl->dest,

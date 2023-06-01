@@ -162,8 +162,7 @@ blorp_create_nir_tex_instr(nir_builder *b, struct brw_blorp_blit_vars *v,
                         nir_load_var(b, v->v_src_z));
    }
 
-   tex->src[0].src_type = nir_tex_src_coord;
-   tex->src[0].src = nir_src_for_ssa(pos);
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, pos);
    tex->coord_components = 3;
 
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
@@ -188,8 +187,7 @@ blorp_nir_tex(nir_builder *b, struct brw_blorp_blit_vars *v,
 
    assert(pos->num_components == 2);
    tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
-   tex->src[1].src_type = nir_tex_src_lod;
-   tex->src[1].src = nir_src_for_ssa(nir_imm_int(b, 0));
+   tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(b, 0));
 
    nir_builder_instr_insert(b, &tex->instr);
 
@@ -204,8 +202,7 @@ blorp_nir_txf(nir_builder *b, struct brw_blorp_blit_vars *v,
       blorp_create_nir_tex_instr(b, v, nir_texop_txf, pos, 2, dst_type);
 
    tex->sampler_dim = GLSL_SAMPLER_DIM_3D;
-   tex->src[1].src_type = nir_tex_src_lod;
-   tex->src[1].src = nir_src_for_ssa(nir_imm_int(b, 0));
+   tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(b, 0));
 
    nir_builder_instr_insert(b, &tex->instr);
 
@@ -232,8 +229,7 @@ blorp_nir_txf_ms(nir_builder *b, struct brw_blorp_blit_vars *v,
    if (!mcs)
       mcs = nir_imm_zero(b, 4, 32);
 
-   tex->src[2].src_type = nir_tex_src_ms_mcs_intel;
-   tex->src[2].src = nir_src_for_ssa(mcs);
+   tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_ms_mcs_intel, mcs);
 
    nir_builder_instr_insert(b, &tex->instr);
 

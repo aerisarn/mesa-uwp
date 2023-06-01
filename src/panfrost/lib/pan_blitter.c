@@ -549,15 +549,15 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
             tex->is_array = key->surfaces[i].array;
             tex->sampler_dim = sampler_dim;
 
-            tex->src[0].src_type = nir_tex_src_coord;
-            tex->src[0].src = nir_src_for_ssa(nir_f2i32(&b, coord));
+            tex->src[0] =
+               nir_tex_src_for_ssa(nir_tex_src_coord, nir_f2i32(&b, coord));
             tex->coord_components = coord_comps;
 
-            tex->src[1].src_type = nir_tex_src_ms_index;
-            tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, s));
+            tex->src[1] =
+               nir_tex_src_for_ssa(nir_tex_src_ms_index, nir_imm_int(&b, s));
 
-            tex->src[2].src_type = nir_tex_src_lod;
-            tex->src[2].src = nir_src_for_ssa(nir_imm_int(&b, 0));
+            tex->src[2] =
+               nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
             nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
             nir_builder_instr_insert(&b, &tex->instr);
 
@@ -577,20 +577,19 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
          if (ms) {
             tex->op = nir_texop_txf_ms;
 
-            tex->src[0].src_type = nir_tex_src_coord;
-            tex->src[0].src = nir_src_for_ssa(nir_f2i32(&b, coord));
+            tex->src[0] =
+               nir_tex_src_for_ssa(nir_tex_src_coord, nir_f2i32(&b, coord));
             tex->coord_components = coord_comps;
 
-            tex->src[1].src_type = nir_tex_src_ms_index;
-            tex->src[1].src = nir_src_for_ssa(nir_load_sample_id(&b));
+            tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_ms_index,
+                                              nir_load_sample_id(&b));
 
-            tex->src[2].src_type = nir_tex_src_lod;
-            tex->src[2].src = nir_src_for_ssa(nir_imm_int(&b, 0));
+            tex->src[2] =
+               nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
          } else {
             tex->op = nir_texop_txl;
 
-            tex->src[0].src_type = nir_tex_src_coord;
-            tex->src[0].src = nir_src_for_ssa(coord);
+            tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
             tex->coord_components = coord_comps;
          }
 

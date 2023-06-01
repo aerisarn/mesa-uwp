@@ -1457,34 +1457,33 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 
    unsigned src_number = 0;
 
-   instr->src[src_number].src = nir_src_for_ssa(&deref->dest.ssa);
-   instr->src[src_number].src_type = nir_tex_src_texture_deref;
+   instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                                &deref->dest.ssa);
    src_number++;
-   instr->src[src_number].src = nir_src_for_ssa(&deref->dest.ssa);
-   instr->src[src_number].src_type = nir_tex_src_sampler_deref;
+   instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
+                                                &deref->dest.ssa);
    src_number++;
 
-   instr->src[src_number].src =
-      nir_src_for_ssa(nir_swizzle(b, src[0], SWIZ(X, Y, Z, W),
-                                  instr->coord_components));
-   instr->src[src_number].src_type = nir_tex_src_coord;
+   instr->src[src_number] =
+      nir_tex_src_for_ssa(nir_tex_src_coord,
+                          nir_trim_vector(b, src[0], instr->coord_components));
    src_number++;
 
    if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXP) {
-      instr->src[src_number].src = nir_src_for_ssa(ttn_channel(b, src[0], W));
-      instr->src[src_number].src_type = nir_tex_src_projector;
+      instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_projector,
+                                                   ttn_channel(b, src[0], W));
       src_number++;
    }
 
    if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXB) {
-      instr->src[src_number].src = nir_src_for_ssa(ttn_channel(b, src[0], W));
-      instr->src[src_number].src_type = nir_tex_src_bias;
+      instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_bias,
+                                                   ttn_channel(b, src[0], W));
       src_number++;
    }
 
    if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXB2) {
-      instr->src[src_number].src = nir_src_for_ssa(ttn_channel(b, src[1], X));
-      instr->src[src_number].src_type = nir_tex_src_bias;
+      instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_bias,
+                                                   ttn_channel(b, src[1], X));
       src_number++;
    }
 
@@ -1499,16 +1498,16 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
    }
 
    if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXL2) {
-      instr->src[src_number].src = nir_src_for_ssa(ttn_channel(b, src[1], X));
-      instr->src[src_number].src_type = nir_tex_src_lod;
+      instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                                   ttn_channel(b, src[1], X));
       src_number++;
    }
 
    if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXF ||
        tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXF_LZ) {
       if (op == nir_texop_txf_ms) {
-         instr->src[src_number].src = nir_src_for_ssa(ttn_channel(b, src[0], W));
-         instr->src[src_number].src_type = nir_tex_src_ms_index;
+         instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_ms_index,
+                                                      ttn_channel(b, src[0], W));
       } else {
          if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXF_LZ)
             instr->src[src_number].src = nir_src_for_ssa(nir_imm_int(b, 0));
@@ -1520,15 +1519,13 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
    }
 
    if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXD) {
-      instr->src[src_number].src_type = nir_tex_src_ddx;
-      instr->src[src_number].src =
-         nir_src_for_ssa(nir_swizzle(b, src[1], SWIZ(X, Y, Z, W),
-				     nir_tex_instr_src_size(instr, src_number)));
+      instr->src[src_number] =
+         nir_tex_src_for_ssa(nir_tex_src_ddx,
+               nir_trim_vector(b, src[1], nir_tex_instr_src_size(instr, src_number)));
       src_number++;
-      instr->src[src_number].src_type = nir_tex_src_ddy;
-      instr->src[src_number].src =
-         nir_src_for_ssa(nir_swizzle(b, src[2], SWIZ(X, Y, Z, W),
-				     nir_tex_instr_src_size(instr, src_number)));
+      instr->src[src_number] =
+         nir_tex_src_for_ssa(nir_tex_src_ddy,
+               nir_trim_vector(b, src[2], nir_tex_instr_src_size(instr, src_number)));
       src_number++;
    }
 
@@ -1564,9 +1561,8 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       src.swizzle[2] = tex_offset->SwizzleZ;
       src.swizzle[3] = TGSI_SWIZZLE_W;
 
-      instr->src[src_number].src_type = nir_tex_src_offset;
-      instr->src[src_number].src = nir_src_for_ssa(
-         nir_mov_alu(b, src, nir_tex_instr_src_size(instr, src_number)));
+      instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_offset,
+                                                   nir_mov_alu(b, src, nir_tex_instr_src_size(instr, src_number)));
       src_number++;
    }
 
@@ -1624,15 +1620,15 @@ ttn_txq(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 
    nir_deref_instr *deref = nir_build_deref_var(b, var);
 
-   txs->src[0].src = nir_src_for_ssa(&deref->dest.ssa);
-   txs->src[0].src_type = nir_tex_src_texture_deref;
+   txs->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                     &deref->dest.ssa);
 
-   qlv->src[0].src = nir_src_for_ssa(&deref->dest.ssa);
-   qlv->src[0].src_type = nir_tex_src_texture_deref;
+   qlv->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                     &deref->dest.ssa);
 
    /* lod: */
-   txs->src[1].src = nir_src_for_ssa(ttn_channel(b, src[0], X));
-   txs->src[1].src_type = nir_tex_src_lod;
+   txs->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                     ttn_channel(b, src[0], X));
 
    nir_ssa_dest_init(&txs->instr, &txs->dest, nir_tex_instr_dest_size(txs),
                      32);

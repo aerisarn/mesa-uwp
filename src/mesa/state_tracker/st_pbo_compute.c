@@ -678,10 +678,8 @@ create_conversion_shader(struct st_context *st, enum pipe_texture_target target,
    txf->coord_components = coord_components;
    txf->texture_index = 0;
    txf->sampler_index = 0;
-   txf->src[0].src_type = nir_tex_src_coord;
-   txf->src[0].src = nir_src_for_ssa(coord);
-   txf->src[1].src_type = nir_tex_src_lod;
-   txf->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
+   txf->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
+   txf->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
    txf->src[2].src_type = nir_tex_src_texture_deref;
    nir_deref_instr *sampler_deref = nir_build_deref_var(&b, sampler);
    txf->src[2].src = nir_src_for_ssa(&sampler_deref->dest.ssa);

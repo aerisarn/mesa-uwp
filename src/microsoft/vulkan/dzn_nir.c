@@ -704,18 +704,18 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
          tex->is_array = info->src_is_array;
          tex->sampler_dim = info->sampler_dim;
 
-         tex->src[0].src_type = nir_tex_src_coord;
-         tex->src[0].src = nir_src_for_ssa(nir_f2i32(&b, coord));
+         tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord,
+                                           nir_f2i32(&b, coord));
          tex->coord_components = coord_comps;
 
-         tex->src[1].src_type = nir_tex_src_ms_index;
-         tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, s));
+         tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_ms_index,
+                                           nir_imm_int(&b, s));
 
-         tex->src[2].src_type = nir_tex_src_lod;
-         tex->src[2].src = nir_src_for_ssa(nir_imm_int(&b, 0));
+         tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                           nir_imm_int(&b, 0));
 
-         tex->src[3].src_type = nir_tex_src_texture_deref;
-         tex->src[3].src = nir_src_for_ssa(&tex_deref->dest.ssa);
+         tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                           &tex_deref->dest.ssa);
 
          nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
 
@@ -736,18 +736,18 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
       if (ms) {
          tex->op = nir_texop_txf_ms;
 
-         tex->src[0].src_type = nir_tex_src_coord;
-         tex->src[0].src = nir_src_for_ssa(nir_f2i32(&b, coord));
+         tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord,
+                                           nir_f2i32(&b, coord));
          tex->coord_components = coord_comps;
 
-         tex->src[1].src_type = nir_tex_src_ms_index;
-         tex->src[1].src = nir_src_for_ssa(nir_load_sample_id(&b));
+         tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_ms_index,
+                                           nir_load_sample_id(&b));
 
-         tex->src[2].src_type = nir_tex_src_lod;
-         tex->src[2].src = nir_src_for_ssa(nir_imm_int(&b, 0));
+         tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                           nir_imm_int(&b, 0));
 
-         tex->src[3].src_type = nir_tex_src_texture_deref;
-         tex->src[3].src = nir_src_for_ssa(&tex_deref->dest.ssa);
+         tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                           &tex_deref->dest.ssa);
       } else {
          nir_variable *sampler_var =
             nir_variable_create(b.shader, nir_var_uniform, glsl_bare_sampler_type(), "sampler");
@@ -756,15 +756,14 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
          tex->op = nir_texop_tex;
          tex->sampler_index = 0;
 
-         tex->src[0].src_type = nir_tex_src_coord;
-         tex->src[0].src = nir_src_for_ssa(coord);
+         tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
          tex->coord_components = coord_comps;
 
-         tex->src[1].src_type = nir_tex_src_texture_deref;
-         tex->src[1].src = nir_src_for_ssa(&tex_deref->dest.ssa);
+         tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                           &tex_deref->dest.ssa);
 
-         tex->src[2].src_type = nir_tex_src_sampler_deref;
-         tex->src[2].src = nir_src_for_ssa(&sampler_deref->dest.ssa);
+         tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
+                                           &sampler_deref->dest.ssa);
       }
 
       nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);

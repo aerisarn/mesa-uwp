@@ -799,26 +799,24 @@ load_texture(struct texenv_fragment_program *p, GLuint unit)
    }
 
    nir_deref_instr *deref = nir_build_deref_var(p->b, var);
-   tex->src[0].src = nir_src_for_ssa(&deref->dest.ssa);
-   tex->src[0].src_type = nir_tex_src_texture_deref;
-   tex->src[1].src = nir_src_for_ssa(&deref->dest.ssa);
-   tex->src[1].src_type = nir_tex_src_sampler_deref;
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                     &deref->dest.ssa);
+   tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
+                                     &deref->dest.ssa);
 
    nir_ssa_def *src2 =
       nir_channels(p->b, texcoord,
                    nir_component_mask(tex->coord_components));
-   tex->src[2].src_type = nir_tex_src_coord;
-   tex->src[2].src = nir_src_for_ssa(src2);
+   tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_coord, src2);
 
-   tex->src[3].src_type = nir_tex_src_projector;
-   tex->src[3].src = nir_src_for_ssa(nir_channel(p->b, texcoord, 3));
+   tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_projector,
+                                     nir_channel(p->b, texcoord, 3));
 
    if (p->state->unit[unit].shadow) {
       tex->is_shadow = true;
       nir_ssa_def *src4 =
          nir_channel(p->b, texcoord, tex->coord_components);
-      tex->src[4].src_type = nir_tex_src_comparator;
-      tex->src[4].src = nir_src_for_ssa(src4);
+      tex->src[4] = nir_tex_src_for_ssa(nir_tex_src_comparator, src4);
    }
 
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);

@@ -77,8 +77,7 @@ nir_lower_pstipple_block(nir_block *block,
    tex->dest_type = nir_type_float32;
    tex->texture_index = state->stip_tex->data.binding;
    tex->sampler_index = state->stip_tex->data.binding;
-   tex->src[0].src_type = nir_tex_src_coord;
-   tex->src[0].src = nir_src_for_ssa(texcoord);
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, texcoord);
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
 
    nir_builder_instr_insert(b, &tex->instr);

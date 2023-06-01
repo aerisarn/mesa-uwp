@@ -44,12 +44,11 @@ build_background_op(nir_builder *b, enum agx_meta_op op, unsigned rt,
       tex->dest_type = nir_type_uint32;
       tex->sampler_dim = msaa ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
       tex->op = nir_texop_tex;
-      tex->src[0].src_type = nir_tex_src_coord;
-      tex->src[0].src = nir_src_for_ssa(coord);
+      tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
 
       if (msaa) {
-         tex->src[1].src_type = nir_tex_src_ms_index;
-         tex->src[1].src = nir_src_for_ssa(nir_load_sample_id(b));
+         tex->src[1] =
+            nir_tex_src_for_ssa(nir_tex_src_ms_index, nir_load_sample_id(b));
       }
 
       tex->coord_components = 2;

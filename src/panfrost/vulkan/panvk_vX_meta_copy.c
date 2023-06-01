@@ -326,13 +326,12 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
       unreachable("Invalid texture dimension");
    }
 
-   tex->src[0].src_type = nir_tex_src_coord;
-   tex->src[0].src = nir_src_for_ssa(coord);
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
    tex->coord_components = texdim + texisarray;
 
    if (is_ms) {
-      tex->src[1].src_type = nir_tex_src_ms_index;
-      tex->src[1].src = nir_src_for_ssa(nir_load_sample_id(&b));
+      tex->src[1] =
+         nir_tex_src_for_ssa(nir_tex_src_ms_index, nir_load_sample_id(&b));
    }
 
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4,
@@ -1358,8 +1357,7 @@ panvk_meta_copy_img2buf_shader(struct panfrost_device *pdev,
       unreachable("Invalid texture dimension");
    }
 
-   tex->src[0].src_type = nir_tex_src_coord;
-   tex->src[0].src = nir_src_for_ssa(imgcoords);
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, imgcoords);
    tex->coord_components = texdim + texisarray;
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4,
                      nir_alu_type_get_type_size(tex->dest_type));

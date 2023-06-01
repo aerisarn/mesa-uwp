@@ -575,34 +575,33 @@ ptn_tex(struct ptn_compile *c, nir_alu_dest dest, nir_ssa_def **src,
 
    unsigned src_number = 0;
 
-   instr->src[src_number].src = nir_src_for_ssa(&deref->dest.ssa);
-   instr->src[src_number].src_type = nir_tex_src_texture_deref;
+   instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_texture_deref,
+                                                &deref->dest.ssa);
    src_number++;
-   instr->src[src_number].src = nir_src_for_ssa(&deref->dest.ssa);
-   instr->src[src_number].src_type = nir_tex_src_sampler_deref;
+   instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref,
+                                                &deref->dest.ssa);
    src_number++;
 
-   instr->src[src_number].src =
-      nir_src_for_ssa(nir_swizzle(b, src[0], SWIZ(X, Y, Z, W),
-                                  instr->coord_components));
-   instr->src[src_number].src_type = nir_tex_src_coord;
+   instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_coord,
+                                                nir_trim_vector(b, src[0],
+                                                                instr->coord_components));
    src_number++;
 
    if (prog_inst->Opcode == OPCODE_TXP) {
-      instr->src[src_number].src = nir_src_for_ssa(ptn_channel(b, src[0], W));
-      instr->src[src_number].src_type = nir_tex_src_projector;
+      instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_projector,
+                                                   ptn_channel(b, src[0], W));
       src_number++;
    }
 
    if (prog_inst->Opcode == OPCODE_TXB) {
-      instr->src[src_number].src = nir_src_for_ssa(ptn_channel(b, src[0], W));
-      instr->src[src_number].src_type = nir_tex_src_bias;
+      instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_bias,
+                                                   ptn_channel(b, src[0], W));
       src_number++;
    }
 
    if (prog_inst->Opcode == OPCODE_TXL) {
-      instr->src[src_number].src = nir_src_for_ssa(ptn_channel(b, src[0], W));
-      instr->src[src_number].src_type = nir_tex_src_lod;
+      instr->src[src_number] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                                   ptn_channel(b, src[0], W));
       src_number++;
    }
 
