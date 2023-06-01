@@ -1200,13 +1200,6 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          props->shaderBinaryVersion = 1;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
-         VkPhysicalDeviceMemoryBudgetPropertiesEXT *props = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)ext;
-         os_get_total_physical_memory(&props->heapBudget[0]);
-         os_get_available_system_memory(&props->heapUsage[0]);
-         props->heapUsage[0] = props->heapBudget[0] - props->heapUsage[0];
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
          VkPhysicalDeviceRobustness2PropertiesEXT *props =
             (VkPhysicalDeviceRobustness2PropertiesEXT *)ext;
@@ -1315,6 +1308,14 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceMemoryProperties2(
 {
    lvp_GetPhysicalDeviceMemoryProperties(physicalDevice,
                                          &pMemoryProperties->memoryProperties);
+   VkPhysicalDeviceMemoryBudgetPropertiesEXT *props = vk_find_struct(pMemoryProperties, PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT);
+   if (props) {
+      props->heapBudget[0] = pMemoryProperties->memoryProperties.memoryHeaps[0].size;
+      os_get_available_system_memory(&props->heapUsage[0]);
+      props->heapUsage[0] = props->heapBudget[0] - props->heapUsage[0];
+      memset(&props->heapBudget[1], 0, sizeof(props->heapBudget[0]) * (VK_MAX_MEMORY_HEAPS - 1));
+      memset(&props->heapUsage[1], 0, sizeof(props->heapUsage[0]) * (VK_MAX_MEMORY_HEAPS - 1));
+   }
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
