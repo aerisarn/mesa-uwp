@@ -197,7 +197,7 @@ const __DRIbackgroundCallableExtension background_callable_extension = {
 };
 
 const __DRIuseInvalidateExtension use_invalidate = {
-   .base = { __DRI_USE_INVALIDATE, 1 }
+   .base = { __DRI_USE_INVALIDATE, 1 },
 };
 
 static void
@@ -3197,7 +3197,7 @@ dri2_bind_wayland_display_wl(_EGLDisplay *disp, struct wl_display *wl_dpy)
       .authenticate = (int(*)(void *, uint32_t)) dri2_dpy->vtbl->authenticate,
       .reference_buffer = dri2_wl_reference_buffer,
       .release_buffer = dri2_wl_release_buffer,
-      .is_format_supported = dri2_wl_is_format_supported
+      .is_format_supported = dri2_wl_is_format_supported,
    };
    int flags = 0;
    char *device_name;

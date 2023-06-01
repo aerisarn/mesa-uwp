@@ -1316,7 +1316,7 @@ droid_add_configs_for_visuals(_EGLDisplay *disp)
            EGL_NATIVE_VISUAL_TYPE, visuals[i].format,
            EGL_FRAMEBUFFER_TARGET_ANDROID, EGL_TRUE,
            EGL_RECORDABLE_ANDROID, EGL_TRUE,
-           EGL_NONE
+           EGL_NONE,
          };
 
          struct dri2_egl_config *dri2_conf =

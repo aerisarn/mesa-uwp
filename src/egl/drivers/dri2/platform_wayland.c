@@ -266,7 +266,7 @@ wl_buffer_release(void *data, struct wl_buffer *buffer)
 }
 
 static const struct wl_buffer_listener wl_buffer_listener = {
-   .release = wl_buffer_release
+   .release = wl_buffer_release,
 };
 
 static void
@@ -1836,7 +1836,7 @@ static const struct wl_drm_listener drm_listener = {
    .device = drm_handle_device,
    .format = drm_handle_format,
    .authenticated = drm_handle_authenticated,
-   .capabilities = drm_handle_capabilities
+   .capabilities = drm_handle_capabilities,
 };
 
 static void
@@ -2031,7 +2031,7 @@ registry_handle_global_remove(void *data, struct wl_registry *registry,
 
 static const struct wl_registry_listener registry_listener_drm = {
    .global = registry_handle_global_drm,
-   .global_remove = registry_handle_global_remove
+   .global_remove = registry_handle_global_remove,
 };
 
 static void
@@ -2688,7 +2688,7 @@ shm_handle_format(void *data, struct wl_shm *shm, uint32_t format)
 }
 
 static const struct wl_shm_listener shm_listener = {
-   .format = shm_handle_format
+   .format = shm_handle_format,
 };
 
 static void
@@ -2707,7 +2707,7 @@ registry_handle_global_swrast(void *data, struct wl_registry *registry,
 
 static const struct wl_registry_listener registry_listener_swrast = {
    .global = registry_handle_global_swrast,
-   .global_remove = registry_handle_global_remove
+   .global_remove = registry_handle_global_remove,
 };
 
 static const struct dri2_egl_display_vtbl dri2_wl_swrast_display_vtbl = {

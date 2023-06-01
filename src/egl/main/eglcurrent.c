@@ -40,7 +40,7 @@
 #include "eglglobals.h"
 
 static __THREAD_INITIAL_EXEC _EGLThreadInfo _egl_TLS = {
-   .inited = false
+   .inited = false,
 };
 
 static void

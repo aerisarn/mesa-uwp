@@ -811,7 +811,7 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
             const EGLint config_attrs[] = {
                     EGL_NATIVE_VISUAL_ID,    visuals[i].visual_id,
                     EGL_NATIVE_VISUAL_TYPE,  visuals[i]._class,
-                    EGL_NONE
+                    EGL_NONE,
             };
 
             int rgba_shifts[4] = {

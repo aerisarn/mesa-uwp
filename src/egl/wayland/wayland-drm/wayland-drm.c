@@ -193,7 +193,7 @@ static const struct wl_drm_interface drm_interface = {
 	drm_authenticate,
 	drm_create_buffer,
         drm_create_planar_buffer,
-        drm_create_prime_buffer
+        drm_create_prime_buffer,
 };
 
 static void
