@@ -201,11 +201,11 @@ struct _egl_display
 
    /* options that affect how the driver initializes the display */
    struct {
-      EGLBoolean Zink; /**< Use kopper only */
+      EGLBoolean Zink;          /**< Use kopper only */
       EGLBoolean ForceSoftware; /**< Use software path only */
       EGLBoolean GalliumHud;    /**< Using gallium hud, disable buffer age */
-      EGLAttrib *Attribs;     /**< Platform-specific options */
-      int fd; /**< platform device specific, local fd */
+      EGLAttrib *Attribs;       /**< Platform-specific options */
+      int fd;                   /**< Platform device specific, local fd */
    } Options;
 
    /* these fields are set by the driver during init */
