@@ -161,6 +161,9 @@ ForEachMacros:
 
   - nir_foreach_src
 
+# egl
+  - egl_relax
+
 # vulkan
   - vk_foreach_queue
   - vk_foreach_queue_safe
