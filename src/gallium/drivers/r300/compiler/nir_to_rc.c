@@ -108,9 +108,6 @@ struct ntr_compile {
    uint64_t centroid_inputs;
 
    uint32_t first_ubo;
-   uint32_t first_ssbo;
-
-   struct ureg_src images[PIPE_MAX_SHADER_IMAGES];
 };
 
 static struct ureg_dst
@@ -914,31 +911,10 @@ ntr_setup_uniforms(struct ntr_compile *c)
                target, ret_type, ret_type, ret_type, ret_type);
             ureg_DECL_sampler(c->ureg, var->data.binding + i);
          }
-      } else if (glsl_contains_atomic(var->type)) {
-         uint32_t offset = var->data.offset / 4;
-         uint32_t size = glsl_atomic_size(var->type) / 4;
-         ureg_DECL_hw_atomic(c->ureg, offset, offset + size - 1, var->data.binding, 0);
-      }
 
       /* lower_uniforms_to_ubo lowered non-sampler uniforms to UBOs, so CB0
        * size declaration happens with other UBOs below.
        */
-   }
-
-   nir_foreach_image_variable(var, c->s) {
-      int image_count = glsl_type_get_image_count(var->type);
-      const struct glsl_type *itype = glsl_without_array(var->type);
-      enum tgsi_texture_type tex_type =
-            tgsi_texture_type_from_sampler_dim(glsl_get_sampler_dim(itype),
-                                               glsl_sampler_type_is_array(itype), false);
-
-      for (int i = 0; i < image_count; i++) {
-         c->images[var->data.binding] = ureg_DECL_image(c->ureg,
-                                                        var->data.binding + i,
-                                                        tex_type,
-                                                        var->data.image.format,
-                                                        !(var->data.access & ACCESS_NON_WRITEABLE),
-                                                        false);
       }
    }
 
@@ -954,43 +930,13 @@ ntr_setup_uniforms(struct ntr_compile *c)
          c->first_ubo = MIN2(c->first_ubo, ubo);
 
       unsigned size = glsl_get_explicit_size(var->interface_type, false);
-
-      int array_size = 1;
-      if (glsl_type_is_interface(glsl_without_array(var->type)))
-         array_size = MAX2(1, glsl_get_aoa_size(var->type));
-
-      for (int i = 0; i < array_size; i++) {
-         /* Even if multiple NIR variables are in the same uniform block, their
-          * explicit size is the size of the block.
-          */
-         if (ubo_sizes[ubo + i])
-            assert(ubo_sizes[ubo + i] == size);
-
-         ubo_sizes[ubo + i] = size;
-      }
+      ubo_sizes[ubo] = size;
    }
 
    for (int i = 0; i < ARRAY_SIZE(ubo_sizes); i++) {
       if (ubo_sizes[i])
          ureg_DECL_constant2D(c->ureg, 0, DIV_ROUND_UP(ubo_sizes[i], 16) - 1, i);
    }
-
-   if (c->options->lower_ssbo_bindings) {
-      c->first_ssbo = 255;
-      nir_foreach_variable_with_modes(var, c->s, nir_var_mem_ssbo) {
-         if (c->first_ssbo > var->data.binding)
-            c->first_ssbo = var->data.binding;
-      }
-   } else
-      c->first_ssbo = 0;
-
-   /* XXX: nv50 uses the atomic flag to set caching for (lowered) atomic
-    * counters
-    */
-   bool atomic = false;
-   for (int i = 0; i < c->s->info.num_ssbos; ++i)
-      ureg_DECL_buffer(c->ureg, c->first_ssbo + i, atomic);
-
 }
 
 static void
