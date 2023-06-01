@@ -87,7 +87,15 @@
 #define PVR_GLOBAL_FREE_LIST_GROW_THRESHOLD 13U
 
 #if defined(VK_USE_PLATFORM_DISPLAY_KHR)
-#   define PVR_USE_WSI_PLATFORM
+#   define PVR_USE_WSI_PLATFORM_DISPLAY true
+#else
+#   define PVR_USE_WSI_PLATFORM_DISPLAY false
+#endif
+
+#if PVR_USE_WSI_PLATFORM_DISPLAY
+#   define PVR_USE_WSI_PLATFORM true
+#else
+#   define PVR_USE_WSI_PLATFORM false
 #endif
 
 #define PVR_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
@@ -131,14 +139,10 @@ static const struct pvr_drm_device_config pvr_drm_configs[] = {
 #undef DEF_CONFIG
 
 static const struct vk_instance_extension_table pvr_instance_extensions = {
-#if defined(VK_USE_PLATFORM_DISPLAY_KHR)
-   .KHR_display = true,
-#endif
+   .KHR_display = PVR_USE_WSI_PLATFORM_DISPLAY,
    .KHR_external_memory_capabilities = true,
    .KHR_get_physical_device_properties2 = true,
-#if defined(PVR_USE_WSI_PLATFORM)
-   .KHR_surface = true,
-#endif
+   .KHR_surface = PVR_USE_WSI_PLATFORM,
    .EXT_debug_report = true,
    .EXT_debug_utils = true,
 };
@@ -150,10 +154,8 @@ static void pvr_physical_device_get_supported_extensions(
    *extensions = (struct vk_device_extension_table){
       .KHR_external_memory = true,
       .KHR_external_memory_fd = true,
+      .KHR_swapchain = PVR_USE_WSI_PLATFORM,
       .KHR_timeline_semaphore = true,
-#if defined(PVR_USE_WSI_PLATFORM)
-      .KHR_swapchain = true,
-#endif
       .EXT_external_memory_dma_buf = true,
       .EXT_private_data = true,
    };
