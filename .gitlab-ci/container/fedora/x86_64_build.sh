@@ -1,77 +1,78 @@
-#!/bin/bash
-# shellcheck disable=SC2086 # we want word splitting
-
+#!/usr/bin/env bash
+# shellcheck disable=SC1091
 set -e
 set -o xtrace
 
 
-EPHEMERAL="
+EPHEMERAL=(
         autoconf
         automake
         bzip2
         cmake
         git
         libtool
-        pkgconfig(epoxy)
-        pkgconfig(gbm)
-        pkgconfig(openssl)
+        "pkgconfig(epoxy)"
+        "pkgconfig(gbm)"
+        "pkgconfig(openssl)"
         unzip
         xz
-        "
+)
 
-dnf install -y --setopt=install_weak_deps=False \
-    bindgen \
-    bison \
-    clang-devel \
-    flex \
-    gcc \
-    gcc-c++ \
-    gettext \
-    glslang \
-    kernel-headers \
-    llvm-devel \
-    meson \
-    "pkgconfig(LLVMSPIRVLib)" \
-    "pkgconfig(SPIRV-Tools)" \
-    "pkgconfig(dri2proto)" \
-    "pkgconfig(expat)" \
-    "pkgconfig(glproto)" \
-    "pkgconfig(libclc)" \
-    "pkgconfig(libelf)" \
-    "pkgconfig(libglvnd)" \
-    "pkgconfig(libomxil-bellagio)" \
-    "pkgconfig(libselinux)" \
-    "pkgconfig(libva)" \
-    "pkgconfig(pciaccess)" \
-    "pkgconfig(vdpau)" \
-    "pkgconfig(vulkan)" \
-    "pkgconfig(x11)" \
-    "pkgconfig(x11-xcb)" \
-    "pkgconfig(xcb)" \
-    "pkgconfig(xcb-dri2)" \
-    "pkgconfig(xcb-dri3)" \
-    "pkgconfig(xcb-glx)" \
-    "pkgconfig(xcb-present)" \
-    "pkgconfig(xcb-randr)" \
-    "pkgconfig(xcb-sync)" \
-    "pkgconfig(xcb-xfixes)" \
-    "pkgconfig(xdamage)" \
-    "pkgconfig(xext)" \
-    "pkgconfig(xfixes)" \
-    "pkgconfig(xrandr)" \
-    "pkgconfig(xshmfence)" \
-    "pkgconfig(xxf86vm)" \
-    "pkgconfig(zlib)" \
-    procps-ng \
-    python-unversioned-command \
-    python3-devel \
-    python3-mako \
-    python3-ply \
-    rust-packaging \
-    vulkan-headers \
-    spirv-tools-devel \
-    spirv-llvm-translator-devel \
-    $EPHEMERAL
+DEPS=(
+    bindgen
+    bison
+    clang-devel
+    flex
+    gcc
+    gcc-c++
+    gettext
+    glslang
+    kernel-headers
+    llvm-devel
+    meson
+    "pkgconfig(LLVMSPIRVLib)"
+    "pkgconfig(SPIRV-Tools)"
+    "pkgconfig(dri2proto)"
+    "pkgconfig(expat)"
+    "pkgconfig(glproto)"
+    "pkgconfig(libclc)"
+    "pkgconfig(libelf)"
+    "pkgconfig(libglvnd)"
+    "pkgconfig(libomxil-bellagio)"
+    "pkgconfig(libselinux)"
+    "pkgconfig(libva)"
+    "pkgconfig(pciaccess)"
+    "pkgconfig(vdpau)"
+    "pkgconfig(vulkan)"
+    "pkgconfig(x11)"
+    "pkgconfig(x11-xcb)"
+    "pkgconfig(xcb)"
+    "pkgconfig(xcb-dri2)"
+    "pkgconfig(xcb-dri3)"
+    "pkgconfig(xcb-glx)"
+    "pkgconfig(xcb-present)"
+    "pkgconfig(xcb-randr)"
+    "pkgconfig(xcb-sync)"
+    "pkgconfig(xcb-xfixes)"
+    "pkgconfig(xdamage)"
+    "pkgconfig(xext)"
+    "pkgconfig(xfixes)"
+    "pkgconfig(xrandr)"
+    "pkgconfig(xshmfence)"
+    "pkgconfig(xxf86vm)"
+    "pkgconfig(zlib)"
+    procps-ng
+    python-unversioned-command
+    python3-devel
+    python3-mako
+    python3-ply
+    rust-packaging
+    vulkan-headers
+    spirv-tools-devel
+    spirv-llvm-translator-devel
+)
+
+dnf install -y --setopt=install_weak_deps=False "${DEPS[@]}" "${EPHEMERAL[@]}"
 
 
 . .gitlab-ci/container/container_pre_build.sh
@@ -104,6 +105,6 @@ popd
 
 ############### Uninstall the build software
 
-dnf remove -y $EPHEMERAL
+dnf remove -y "${EPHEMERAL[@]}"
 
 . .gitlab-ci/container/container_post_build.sh

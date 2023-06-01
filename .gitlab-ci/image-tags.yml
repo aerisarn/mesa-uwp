@@ -20,7 +20,7 @@ variables:
    DEBIAN_X86_64_TEST_VK_TAG: "2023-05-25-vkd3d-proton"
 
    ALPINE_X86_64_BUILD_TAG: "2023-05-01-3.18-bump-1"
-   FEDORA_X86_64_BUILD_TAG: "2023-04-26-rusticl"
+   FEDORA_X86_64_BUILD_TAG: "2023-05-05-ccache-on"
    KERNEL_ROOTFS_TAG: "2023-05-31-vvl"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
