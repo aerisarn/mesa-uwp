@@ -249,7 +249,7 @@ clang-format:
     B2C_KERNEL_URL: 'https://gitlab.freedesktop.org/mupuf/valve-infra/-/package_files/519/download'  # Linux 6.1
     B2C_INITRAMFS_URL: 'https://gitlab.freedesktop.org/mupuf/boot2container/-/releases/v0.9.10/downloads/initramfs.linux_amd64.cpio.xz'
     B2C_JOB_SUCCESS_REGEX: '\[.*\]: Execution is over, pipeline status: 0\r$'
-    B2C_JOB_WARN_REGEX: '\*ERROR\* ring .* timeout, but soft recovered'
+    B2C_JOB_WARN_REGEX: '\*ERROR\* ring .* timeout'
     B2C_LOG_LEVEL: 6
     B2C_POWEROFF_DELAY: 15
     B2C_SESSION_END_REGEX: '^.*It''s now safe to turn off your computer\r$'
