@@ -31,7 +31,7 @@
         section_end ccache_before
       fi
   after_script:
-    - if test -x /usr/bin/ccache; then ccache --show-stats | grep "cache hit rate"; fi
+    - if test -x /usr/bin/ccache; then ccache --show-stats | grep "Hits:"; fi
     - !reference [default, after_script]
 
 .build-windows:
