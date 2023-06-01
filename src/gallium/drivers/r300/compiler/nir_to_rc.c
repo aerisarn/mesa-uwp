@@ -629,18 +629,6 @@ ntr_try_store_in_tgsi_output_with_use(struct ntr_compile *c,
 {
    *dst = ureg_dst_undef();
 
-   switch (c->s->info.stage) {
-   case MESA_SHADER_FRAGMENT:
-   case MESA_SHADER_VERTEX:
-      break;
-   default:
-      /* tgsi_exec (at least) requires that output stores happen per vertex
-       * emitted, you don't get to reuse a previous output value for the next
-       * vertex.
-       */
-      return false;
-   }
-
    if (src->is_if)
       return false;
 
