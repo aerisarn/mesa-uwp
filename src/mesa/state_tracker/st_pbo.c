@@ -299,17 +299,18 @@ st_pbo_create_vs(struct st_context *st)
    nir_variable *out_pos = nir_create_variable_with_location(b.shader, nir_var_shader_out,
                                                              VARYING_SLOT_POS, vec4);
 
-   nir_copy_var(&b, out_pos, in_pos);
+   if (!st->pbo.use_gs)
+      nir_copy_var(&b, out_pos, in_pos);
 
    if (st->pbo.layers) {
       nir_variable *instance_id = nir_create_variable_with_location(b.shader, nir_var_system_value,
                                                                     SYSTEM_VALUE_INSTANCE_ID, glsl_int_type());
 
       if (st->pbo.use_gs) {
-         unsigned swiz_x[4] = {0, 0, 0, 0};
          nir_store_var(&b, out_pos,
-                       nir_swizzle(&b, nir_i2f32(&b, nir_load_var(&b, instance_id)), swiz_x, 4),
-                       (1 << 2));
+                       nir_vector_insert_imm(&b, nir_load_var(&b, in_pos),
+                                             nir_i2f32(&b, nir_load_var(&b, instance_id)), 2),
+                       0xf);
       } else {
          nir_variable *out_layer = nir_create_variable_with_location(b.shader, nir_var_shader_out,
                                                                      VARYING_SLOT_LAYER, glsl_int_type());
