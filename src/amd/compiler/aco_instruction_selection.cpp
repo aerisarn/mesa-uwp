@@ -9128,7 +9128,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       if (target == V_008DFC_SQ_EXP_POS || target <= V_008DFC_SQ_EXP_NULL)
          ctx->block->kind |= block_kind_export_end;
 
-      if (target <= V_008DFC_SQ_EXP_NULL)
+      if (target < V_008DFC_SQ_EXP_MRTZ)
          ctx->program->has_color_exports = true;
 
       aco_ptr<Export_instruction> exp{
