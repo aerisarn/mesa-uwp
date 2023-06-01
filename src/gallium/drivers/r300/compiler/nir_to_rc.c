@@ -2449,46 +2449,13 @@ type_size(const struct glsl_type *type, bool bindless)
    return glsl_count_attribute_slots(type, false);
 }
 
-/* Allow vectorizing of ALU instructions, but avoid vectorizing past what we
- * can handle for 64-bit values in TGSI.
+/* Allow vectorizing of ALU instructions.
  */
 static uint8_t
 ntr_should_vectorize_instr(const nir_instr *instr, const void *data)
 {
    if (instr->type != nir_instr_type_alu)
       return 0;
-
-   nir_alu_instr *alu = nir_instr_as_alu(instr);
-
-   switch (alu->op) {
-   case nir_op_ibitfield_extract:
-   case nir_op_ubitfield_extract:
-   case nir_op_bitfield_insert:
-      /* virglrenderer only looks at the .x channel of the offset/bits operands
-       * when translating to GLSL.  tgsi.rst doesn't seem to require scalar
-       * offset/bits operands.
-       *
-       * https://gitlab.freedesktop.org/virgl/virglrenderer/-/issues/195
-       */
-      return 1;
-
-   default:
-      break;
-   }
-
-   int src_bit_size = nir_src_bit_size(alu->src[0].src);
-   int dst_bit_size = alu->def.bit_size;
-
-   if (src_bit_size == 64 || dst_bit_size == 64) {
-      /* Avoid vectorizing 64-bit instructions at all.  Despite tgsi.rst
-       * claiming support, virglrenderer generates bad shaders on the host when
-       * presented with them.  Maybe we can make virgl avoid tickling the
-       * virglrenderer bugs, but given that glsl-to-TGSI didn't generate vector
-       * 64-bit instrs in the first place, I don't see much reason to care about
-       * this.
-       */
-      return 1;
-   }
 
    return 4;
 }
