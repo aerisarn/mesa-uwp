@@ -111,6 +111,19 @@ lower_query_size(nir_builder *b, nir_ssa_def *desc, nir_src *lod,
       }
    }
 
+   /* On GFX10.3+, DEPTH contains the pitch if the type is 1D, 2D, or 2D_MSAA. We only program
+    * the pitch for 2D. We need to set depth and last_array to 0 in that case.
+    */
+   if (gfx_level >= GFX10_3 && (has_depth || is_array)) {
+      nir_ssa_def *type = get_field(b, desc, 3, ~C_00A00C_TYPE);
+      nir_ssa_def *is_2d = nir_ieq(b, type, nir_imm_int(b, V_008F1C_SQ_RSRC_IMG_2D));
+
+      if (has_depth)
+         depth = nir_bcsel(b, is_2d, nir_imm_int(b, 0), depth);
+      if (is_array)
+         last_array = nir_bcsel(b, is_2d, nir_imm_int(b, 0), last_array);
+   }
+
    /* All values are off by 1. */
    if (has_width)
       width = nir_iadd_imm(b, width, 1);
