@@ -17,12 +17,20 @@
 #include "vn_device_memory.h"
 #include "vn_feedback.h"
 
+struct vn_device_memory_report {
+   PFN_vkDeviceMemoryReportCallbackEXT callback;
+   void *data;
+};
+
 struct vn_device {
    struct vn_device_base base;
 
    struct vn_instance *instance;
    struct vn_physical_device *physical_device;
    struct vn_renderer *renderer;
+
+   struct vn_device_memory_report *memory_reports;
+   uint32_t memory_report_count;
 
    /* unique queue family indices in which to create the device queues */
    uint32_t *queue_families;
