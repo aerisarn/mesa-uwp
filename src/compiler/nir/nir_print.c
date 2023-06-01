@@ -1060,6 +1060,8 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       case NIR_INTRINSIC_MEMORY_MODES: {
          fprintf(fp, "mem_modes=");
          unsigned int modes = nir_intrinsic_memory_modes(instr);
+         if (modes == 0)
+            fputc('0', fp);
          while (modes) {
             nir_variable_mode m = u_bit_scan(&modes);
             fprintf(fp, "%s%s", get_variable_mode_str(1 << m, true), modes ? "|" : "");
@@ -1229,6 +1231,8 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       case NIR_INTRINSIC_RESOURCE_ACCESS_INTEL: {
          fprintf(fp, "resource_intel=");
          unsigned int modes = nir_intrinsic_resource_access_intel(instr);
+         if (modes == 0)
+            fputc('0', fp);
          while (modes) {
             nir_resource_data_intel i = 1u << u_bit_scan(&modes);
             switch (i) {
