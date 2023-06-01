@@ -122,7 +122,7 @@ enum dxil_resource_kind dxil_get_resource_kind(const struct glsl_type *type)
    unreachable("unexpected glsl type");
 }
 
-enum dxil_input_primitive dxil_get_input_primitive(enum shader_prim primitive)
+enum dxil_input_primitive dxil_get_input_primitive(unsigned primitive)
 {
    switch (primitive) {
    case SHADER_PRIM_POINTS:
@@ -140,7 +140,7 @@ enum dxil_input_primitive dxil_get_input_primitive(enum shader_prim primitive)
    }
 }
 
-enum dxil_primitive_topology dxil_get_primitive_topology(enum shader_prim topology)
+enum dxil_primitive_topology dxil_get_primitive_topology(unsigned topology)
 {
    switch (topology) {
    case SHADER_PRIM_POINTS:
