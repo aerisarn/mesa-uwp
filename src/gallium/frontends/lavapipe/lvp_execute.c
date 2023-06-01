@@ -483,7 +483,7 @@ static void emit_state(struct rendering_state *state)
       bool ms = state->rs_state.multisample;
       if (state->disable_multisample &&
           (state->gs_output_lines == GS_OUTPUT_LINES ||
-           (!state->shaders[MESA_SHADER_GEOMETRY] && u_reduced_prim(state->info.mode) == PIPE_PRIM_LINES)))
+           (!state->shaders[MESA_SHADER_GEOMETRY] && u_reduced_prim(state->info.mode) == MESA_PRIM_LINES)))
          state->rs_state.multisample = false;
       assert(offsetof(struct pipe_rasterizer_state, offset_clamp) - offsetof(struct pipe_rasterizer_state, offset_units) == sizeof(float) * 2);
       if (state->depth_bias.enabled) {
@@ -717,7 +717,7 @@ handle_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
          state->inlines_dirty[MESA_SHADER_GEOMETRY] = state->shaders[MESA_SHADER_GEOMETRY]->inlines.can_inline;
          if (!state->shaders[MESA_SHADER_GEOMETRY]->inlines.can_inline)
             state->pctx->bind_gs_state(state->pctx, state->shaders[MESA_SHADER_GEOMETRY]->shader_cso);
-         state->gs_output_lines = state->shaders[MESA_SHADER_GEOMETRY]->pipeline_nir->nir->info.gs.output_primitive == SHADER_PRIM_LINES ? GS_OUTPUT_LINES : GS_OUTPUT_NOT_LINES;
+         state->gs_output_lines = state->shaders[MESA_SHADER_GEOMETRY]->pipeline_nir->nir->info.gs.output_primitive == MESA_PRIM_LINES ? GS_OUTPUT_LINES : GS_OUTPUT_NOT_LINES;
          break;
       case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
          state->inlines_dirty[MESA_SHADER_TESS_CTRL] = state->shaders[MESA_SHADER_TESS_CTRL]->inlines.can_inline;

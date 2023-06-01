@@ -3665,7 +3665,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
             LLVMValueRef idx = LLVMBuildAdd(builder, lp_loop.counter, lp_build_const_int32(gallivm, j), "");
             LLVMValueRef tc_val;
             if (i == 2) {
-               if (variant->shader->base.prim_mode == PIPE_PRIM_TRIANGLES) {
+               if (variant->shader->base.prim_mode == MESA_PRIM_TRIANGLES) {
                   tc_val = lp_build_const_float(gallivm, 1.0);
                   tc_val = LLVMBuildFSub(builder, tc_val, lp_build_pointer_get2(builder, flt_type, tess_coord[0], idx), "");
                   tc_val = LLVMBuildFSub(builder, tc_val, lp_build_pointer_get2(builder, flt_type, tess_coord[1], idx), "");

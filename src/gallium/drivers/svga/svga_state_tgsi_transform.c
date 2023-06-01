@@ -449,7 +449,7 @@ update_tgsi_transform(struct svga_context *svga, uint64_t dirty)
       transform_dynamic_indexing(svga, &tes->base);
    }
 
-   if (svga->curr.reduced_prim == PIPE_PRIM_POINTS) {
+   if (svga->curr.reduced_prim == MESA_PRIM_POINTS) {
       /* If the current prim type is POINTS and the current geometry shader
        * emits wide points, transform the shader to emulate wide points using
        * quads. NOTE: we don't do emulation of wide points in GS when

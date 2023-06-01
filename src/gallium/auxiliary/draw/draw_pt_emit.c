@@ -51,7 +51,7 @@ struct pt_emit {
 
 void
 draw_pt_emit_prepare(struct pt_emit *emit,
-                     enum pipe_prim_type prim,
+                     enum mesa_prim prim,
                      unsigned *max_vertices)
 {
    struct draw_context *draw = emit->draw;

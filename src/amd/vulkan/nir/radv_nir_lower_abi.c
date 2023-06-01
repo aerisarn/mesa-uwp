@@ -428,13 +428,13 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       } else {
          assert(stage == MESA_SHADER_GEOMETRY);
          switch (s->info->gs.output_prim) {
-         case SHADER_PRIM_POINTS:
+         case MESA_PRIM_POINTS:
             num_vertices = 1;
             break;
-         case SHADER_PRIM_LINE_STRIP:
+         case MESA_PRIM_LINE_STRIP:
             num_vertices = 2;
             break;
-         case SHADER_PRIM_TRIANGLE_STRIP:
+         case MESA_PRIM_TRIANGLE_STRIP:
             num_vertices = 3;
             break;
          default:

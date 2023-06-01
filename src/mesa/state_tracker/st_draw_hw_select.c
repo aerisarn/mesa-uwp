@@ -617,7 +617,7 @@ hw_select_create_gs(struct st_context *st, union state_key state)
    nir->info.inputs_read = VARYING_BIT_POS;
    nir->num_uniforms = DIV_ROUND_UP(sizeof(struct geometry_constant), (4 * sizeof(float)));
    nir->info.num_ssbos = 1;
-   nir->info.gs.output_primitive = SHADER_PRIM_POINTS;
+   nir->info.gs.output_primitive = MESA_PRIM_POINTS;
    nir->info.gs.vertices_out = 1;
    nir->info.gs.invocations = 1;
    nir->info.gs.active_stream_mask = 1;
@@ -629,23 +629,23 @@ hw_select_create_gs(struct st_context *st, union state_key state)
 
    switch (state.primitive) {
    case HW_SELECT_PRIM_POINTS:
-      nir->info.gs.input_primitive = SHADER_PRIM_POINTS;
+      nir->info.gs.input_primitive = MESA_PRIM_POINTS;
       nir->info.gs.vertices_in = 1;
       build_point_nir_shader(&b, state, packed);
       break;
    case HW_SELECT_PRIM_LINES:
-      nir->info.gs.input_primitive = SHADER_PRIM_LINES;
+      nir->info.gs.input_primitive = MESA_PRIM_LINES;
       nir->info.gs.vertices_in = 2;
       build_line_nir_shader(&b, state, packed);
       break;
    case HW_SELECT_PRIM_TRIANGLES:
-      nir->info.gs.input_primitive = SHADER_PRIM_TRIANGLES;
+      nir->info.gs.input_primitive = MESA_PRIM_TRIANGLES;
       nir->info.gs.vertices_in = 3;
       build_planar_primitive_nir_shader(&b, state, packed);
       break;
    case HW_SELECT_PRIM_QUADS:
       /* geometry shader has no quad primitive, use lines_adjacency instead */
-      nir->info.gs.input_primitive = SHADER_PRIM_LINES_ADJACENCY;
+      nir->info.gs.input_primitive = MESA_PRIM_LINES_ADJACENCY;
       nir->info.gs.vertices_in = 4;
       build_planar_primitive_nir_shader(&b, state, packed);
       break;

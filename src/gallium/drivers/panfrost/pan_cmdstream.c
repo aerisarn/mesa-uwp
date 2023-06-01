@@ -2695,11 +2695,11 @@ emit_fragment_job(struct panfrost_batch *batch, const struct pan_fb_info *pfb)
 }
 
 #define DEFINE_CASE(c)                                                         \
-   case PIPE_PRIM_##c:                                                         \
+   case MESA_PRIM_##c:                                                         \
       return MALI_DRAW_MODE_##c;
 
 static uint8_t
-pan_draw_mode(enum pipe_prim_type mode)
+pan_draw_mode(enum mesa_prim mode)
 {
    switch (mode) {
       DEFINE_CASE(POINTS);
@@ -2991,8 +2991,8 @@ panfrost_emit_primitive(struct panfrost_context *ctx,
    UNUSED struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
 
    bool lines =
-      (info->mode == PIPE_PRIM_LINES || info->mode == PIPE_PRIM_LINE_LOOP ||
-       info->mode == PIPE_PRIM_LINE_STRIP);
+      (info->mode == MESA_PRIM_LINES || info->mode == MESA_PRIM_LINE_LOOP ||
+       info->mode == MESA_PRIM_LINE_STRIP);
 
    pan_pack(out, PRIMITIVE, cfg) {
       cfg.draw_mode = pan_draw_mode(info->mode);
@@ -3118,12 +3118,12 @@ panfrost_emit_shader(struct panfrost_batch *batch,
 
 static void
 panfrost_emit_draw(void *out, struct panfrost_batch *batch, bool fs_required,
-                   enum pipe_prim_type prim, mali_ptr pos, mali_ptr fs_vary,
+                   enum mesa_prim prim, mali_ptr pos, mali_ptr fs_vary,
                    mali_ptr varyings)
 {
    struct panfrost_context *ctx = batch->ctx;
    struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
-   bool polygon = (prim == PIPE_PRIM_TRIANGLES);
+   bool polygon = (prim == MESA_PRIM_TRIANGLES);
 
    pan_pack(out, DRAW, cfg) {
       /*
@@ -3261,7 +3261,7 @@ panfrost_emit_draw(void *out, struct panfrost_batch *batch, bool fs_required,
        * be set to 0 and the provoking vertex is selected with the
        * PRIMITIVE.first_provoking_vertex field.
        */
-      if (prim == PIPE_PRIM_LINES) {
+      if (prim == MESA_PRIM_LINES) {
          /* The logic is inverted across arches. */
          cfg.flat_shading_vertex = rast->flatshade_first ^ (PAN_ARCH <= 5);
       }
@@ -3324,7 +3324,7 @@ panfrost_emit_malloc_vertex(struct panfrost_batch *batch,
           pan_size(SCISSOR));
 
    panfrost_emit_primitive_size(
-      ctx, info->mode == PIPE_PRIM_POINTS, 0,
+      ctx, info->mode == MESA_PRIM_POINTS, 0,
       pan_section_ptr(job, MALLOC_VERTEX_JOB, PRIMITIVE_SIZE));
 
    pan_section_pack(job, MALLOC_VERTEX_JOB, INDICES, cfg) {
@@ -3339,7 +3339,7 @@ panfrost_emit_malloc_vertex(struct panfrost_batch *batch,
       mali_ptr vs_ptr = batch->rsd[PIPE_SHADER_VERTEX];
 
       /* IDVS/triangle vertex shader */
-      if (vs_ptr && info->mode != PIPE_PRIM_POINTS)
+      if (vs_ptr && info->mode != MESA_PRIM_POINTS)
          vs_ptr += pan_size(SHADER_PROGRAM);
 
       panfrost_emit_shader(batch, &cfg, PIPE_SHADER_VERTEX, vs_ptr,
@@ -3381,7 +3381,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                            pan_section_ptr(job, TILER_JOB, PRIMITIVE));
 
    void *prim_size = pan_section_ptr(job, TILER_JOB, PRIMITIVE_SIZE);
-   enum pipe_prim_type prim = u_reduced_prim(info->mode);
+   enum mesa_prim prim = u_reduced_prim(info->mode);
 
 #if PAN_ARCH >= 6
    pan_section_pack(job, TILER_JOB, TILER, cfg) {
@@ -3395,7 +3395,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
    panfrost_emit_draw(pan_section_ptr(job, TILER_JOB, DRAW), batch, true, prim,
                       pos, fs_vary, varyings);
 
-   panfrost_emit_primitive_size(ctx, prim == PIPE_PRIM_POINTS, psiz, prim_size);
+   panfrost_emit_primitive_size(ctx, prim == MESA_PRIM_POINTS, psiz, prim_size);
 }
 #endif
 
@@ -3518,8 +3518,8 @@ panfrost_direct_draw(struct panfrost_batch *batch,
     * framebuffers, because all dirty flags are set there.
     */
    if ((ctx->dirty & PAN_DIRTY_RASTERIZER) ||
-       ((ctx->active_prim == PIPE_PRIM_POINTS) ^
-        (info->mode == PIPE_PRIM_POINTS))) {
+       ((ctx->active_prim == MESA_PRIM_POINTS) ^
+        (info->mode == MESA_PRIM_POINTS))) {
 
       ctx->active_prim = info->mode;
       panfrost_update_shader_variant(ctx, PIPE_SHADER_FRAGMENT);
@@ -3617,7 +3617,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 
    panfrost_emit_varying_descriptor(
       batch, ctx->padded_count * ctx->instance_count, &vs_vary, &fs_vary,
-      &varyings, NULL, &pos, &psiz, info->mode == PIPE_PRIM_POINTS);
+      &varyings, NULL, &pos, &psiz, info->mode == MESA_PRIM_POINTS);
 
    mali_ptr attribs, attrib_bufs;
    attribs = panfrost_emit_vertex_data(batch, &attrib_bufs);
@@ -3729,7 +3729,7 @@ panfrost_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    if (unlikely(batch->scoreboard.job_index > 10000))
       batch = panfrost_get_fresh_batch_for_fbo(ctx, "Too many draws");
 
-   bool points = (info->mode == PIPE_PRIM_POINTS);
+   bool points = (info->mode == MESA_PRIM_POINTS);
 
    if (unlikely(!panfrost_compatible_batch_state(batch, points))) {
       batch = panfrost_get_fresh_batch_for_fbo(ctx, "State change");

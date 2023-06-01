@@ -794,7 +794,7 @@ struct zink_shader {
    union {
       struct {
          struct zink_shader *generated_tcs; // a generated shader that this shader "owns"; only valid in the tes stage
-         struct zink_shader *generated_gs[PIPE_PRIM_MAX][ZINK_PRIM_MAX]; // generated shaders that this shader "owns"
+         struct zink_shader *generated_gs[MESA_PRIM_COUNT][ZINK_PRIM_MAX]; // generated shaders that this shader "owns"
          struct zink_shader *parent; // for a generated gs this points to the shader that "owns" it
 
          bool is_generated; // if this is a driver-created shader (e.g., tcs)
@@ -874,7 +874,7 @@ struct zink_gfx_pipeline_state {
    struct zink_vertex_elements_hw_state *element_state;
    struct zink_zs_swizzle_key *shadow;
    bool sample_locations_enabled;
-   enum pipe_prim_type shader_rast_prim, rast_prim; /* reduced type or max for unknown */
+   enum mesa_prim shader_rast_prim, rast_prim; /* reduced type or max for unknown */
    union {
       struct {
          struct zink_shader_key key[5];
@@ -890,7 +890,7 @@ struct zink_gfx_pipeline_state {
    VkFormat rendering_formats[PIPE_MAX_COLOR_BUFS];
    VkPipelineRenderingCreateInfo rendering_info;
    VkPipeline pipeline;
-   enum pipe_prim_type gfx_prim_mode; //pending mode
+   enum mesa_prim gfx_prim_mode; //pending mode
 };
 
 struct zink_compute_pipeline_state {

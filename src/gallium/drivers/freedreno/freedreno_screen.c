@@ -1186,7 +1186,7 @@ fd_screen_create(int fd,
    /* fdN_screen_init() should set this: */
    assert(screen->primtypes);
    screen->primtypes_mask = 0;
-   for (unsigned i = 0; i <= PIPE_PRIM_MAX; i++)
+   for (unsigned i = 0; i <= MESA_PRIM_COUNT; i++)
       if (screen->primtypes[i])
          screen->primtypes_mask |= (1 << i);
 

@@ -1301,7 +1301,7 @@ draw_will_inject_frontface(const struct draw_context *draw)
    unsigned reduced_prim = u_reduced_prim(draw->pt.prim);
    const struct pipe_rasterizer_state *rast = draw->rasterizer;
 
-   if (reduced_prim != PIPE_PRIM_TRIANGLES) {
+   if (reduced_prim != MESA_PRIM_TRIANGLES) {
       return FALSE;
    }
 

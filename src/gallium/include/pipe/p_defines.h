@@ -559,28 +559,6 @@ enum pipe_resource_usage {
 };
 
 /**
- * Primitive types:
- */
-enum PACKED pipe_prim_type {
-   PIPE_PRIM_POINTS,
-   PIPE_PRIM_LINES,
-   PIPE_PRIM_LINE_LOOP,
-   PIPE_PRIM_LINE_STRIP,
-   PIPE_PRIM_TRIANGLES,
-   PIPE_PRIM_TRIANGLE_STRIP,
-   PIPE_PRIM_TRIANGLE_FAN,
-   PIPE_PRIM_QUADS,
-   PIPE_PRIM_QUAD_STRIP,
-   PIPE_PRIM_POLYGON,
-   PIPE_PRIM_LINES_ADJACENCY,
-   PIPE_PRIM_LINE_STRIP_ADJACENCY,
-   PIPE_PRIM_TRIANGLES_ADJACENCY,
-   PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY,
-   PIPE_PRIM_PATCHES,
-   PIPE_PRIM_MAX,
-};
-
-/**
  * Tessellator spacing types
  */
 enum pipe_tess_spacing {

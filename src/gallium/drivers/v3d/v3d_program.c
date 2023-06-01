@@ -570,9 +570,9 @@ v3d_update_compiled_fs(struct v3d_context *v3d, uint8_t prim_mode)
         v3d_setup_shared_key(v3d, &key->base, &v3d->tex[PIPE_SHADER_FRAGMENT]);
         key->base.shader_state = v3d->prog.bind_fs;
         key->base.ucp_enables = v3d->rasterizer->base.clip_plane_enable;
-        key->is_points = (prim_mode == PIPE_PRIM_POINTS);
-        key->is_lines = (prim_mode >= PIPE_PRIM_LINES &&
-                         prim_mode <= PIPE_PRIM_LINE_STRIP);
+        key->is_points = (prim_mode == MESA_PRIM_POINTS);
+        key->is_lines = (prim_mode >= MESA_PRIM_LINES &&
+                         prim_mode <= MESA_PRIM_LINE_STRIP);
         key->line_smoothing = (key->is_lines &&
                                v3d_line_smoothing_enabled(v3d));
         key->has_gs = v3d->prog.bind_gs != NULL;
@@ -698,7 +698,7 @@ v3d_update_compiled_gs(struct v3d_context *v3d, uint8_t prim_mode)
                sizeof(key->used_outputs));
 
         key->per_vertex_point_size =
-                (prim_mode == PIPE_PRIM_POINTS &&
+                (prim_mode == MESA_PRIM_POINTS &&
                  v3d->rasterizer->base.point_size_per_vertex);
 
         struct v3d_compiled_shader *gs =
@@ -777,7 +777,7 @@ v3d_update_compiled_vs(struct v3d_context *v3d, uint8_t prim_mode)
         }
 
         key->per_vertex_point_size =
-                (prim_mode == PIPE_PRIM_POINTS &&
+                (prim_mode == MESA_PRIM_POINTS &&
                  v3d->rasterizer->base.point_size_per_vertex);
 
         nir_shader *s = v3d->prog.bind_vs->base.ir.nir;

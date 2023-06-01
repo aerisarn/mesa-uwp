@@ -164,7 +164,7 @@ struct draw_context
    struct {
       /* Current active frontend */
       struct draw_pt_front_end *frontend;
-      enum pipe_prim_type prim;
+      enum mesa_prim prim;
       unsigned opt;     /**< bitmask of PT_x flags */
       unsigned eltSize; /* saved eltSize for flushing */
       unsigned viewid; /* saved viewid for flushing */
@@ -441,7 +441,7 @@ struct draw_prim_info {
    const ushort *elts;
    unsigned count;
 
-   enum pipe_prim_type prim;
+   enum mesa_prim prim;
    unsigned flags;
    unsigned *primitive_lengths;
    unsigned primitive_count;

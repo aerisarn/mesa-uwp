@@ -1326,7 +1326,7 @@ Converter::parseNIR()
       info_out->prop.tp.domain = u_tess_prim_from_shader(nir->info.tess._primitive_mode);
       info_out->prop.tp.outputPatchSize = nir->info.tess.tcs_vertices_out;
       info_out->prop.tp.outputPrim =
-         nir->info.tess.point_mode ? PIPE_PRIM_POINTS : PIPE_PRIM_TRIANGLES;
+         nir->info.tess.point_mode ? MESA_PRIM_POINTS : MESA_PRIM_TRIANGLES;
       info_out->prop.tp.partitioning = (nir->info.tess.spacing + 1) % 3;
       info_out->prop.tp.winding = !nir->info.tess.ccw;
       break;

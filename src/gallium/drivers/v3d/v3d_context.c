@@ -128,7 +128,7 @@ v3d_update_primitive_counters(struct v3d_context *v3d)
         if (prims_before == prims_after)
                 return;
 
-        enum pipe_prim_type prim_type = u_base_prim_type(v3d->prim_mode);
+        enum mesa_prim prim_type = u_base_prim_type(v3d->prim_mode);
         uint32_t num_verts = u_vertices_for_prims(prim_type,
                                                   prims_after - prims_before);
         for (int i = 0; i < v3d->streamout.num_targets; i++) {

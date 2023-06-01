@@ -236,7 +236,7 @@ get_program_state(struct fd_context *ctx, const struct pipe_draw_info *info)
    key.key.rasterflat = ctx->rasterizer->flatshade;
 
    if (PIPELINE == HAS_TESS_GS) {
-      if (info->mode == PIPE_PRIM_PATCHES) {
+      if (info->mode == MESA_PRIM_PATCHES) {
          struct shader_info *gs_info =
                ir3_get_shader_info((struct ir3_shader_state *)ctx->prog.gs);
 
@@ -316,7 +316,7 @@ draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
       return;
 
    if (PIPELINE == HAS_TESS_GS) {
-      if ((info->mode == PIPE_PRIM_PATCHES) || ctx->prog.gs) {
+      if ((info->mode == MESA_PRIM_PATCHES) || ctx->prog.gs) {
          ctx->gen_dirty |= BIT(FD6_GROUP_PRIMITIVE_PARAMS);
       }
    }
@@ -389,7 +389,7 @@ draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
       draw0.source_select = DI_SRC_SEL_AUTO_INDEX;
    }
 
-   if ((PIPELINE == HAS_TESS_GS) && (info->mode == PIPE_PRIM_PATCHES)) {
+   if ((PIPELINE == HAS_TESS_GS) && (info->mode == MESA_PRIM_PATCHES)) {
       struct shader_info *ds_info =
             ir3_get_shader_info((struct ir3_shader_state *)ctx->prog.ds);
       unsigned tessellation = ir3_tess_mode(ds_info->tess._primitive_mode);

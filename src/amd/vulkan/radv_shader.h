@@ -405,7 +405,7 @@ struct radv_shader_info {
       bool tes_reads_tess_factors : 1;
    } tcs;
    struct {
-      enum shader_prim output_prim;
+      enum mesa_prim output_prim;
       bool needs_ms_scratch_ring;
       bool has_task; /* If mesh shader is used together with a task shader. */
    } ms;

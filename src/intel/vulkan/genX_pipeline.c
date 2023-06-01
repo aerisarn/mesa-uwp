@@ -602,11 +602,11 @@ genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
 {
    if (anv_pipeline_is_mesh(pipeline)) {
       switch (get_mesh_prog_data(pipeline)->primitive_type) {
-      case SHADER_PRIM_POINTS:
+      case MESA_PRIM_POINTS:
          return VK_POLYGON_MODE_POINT;
-      case SHADER_PRIM_LINES:
+      case MESA_PRIM_LINES:
          return VK_POLYGON_MODE_LINE;
-      case SHADER_PRIM_TRIANGLES:
+      case MESA_PRIM_TRIANGLES:
          return polygon_mode;
       default:
          unreachable("invalid primitive type for mesh");
@@ -1782,8 +1782,8 @@ emit_mesh_state(struct anv_graphics_pipeline *pipeline)
       brw_cs_get_dispatch_info(devinfo, &mesh_prog_data->base, NULL);
 
    const unsigned output_topology =
-      mesh_prog_data->primitive_type == SHADER_PRIM_POINTS ? OUTPUT_POINT :
-      mesh_prog_data->primitive_type == SHADER_PRIM_LINES  ? OUTPUT_LINE :
+      mesh_prog_data->primitive_type == MESA_PRIM_POINTS ? OUTPUT_POINT :
+      mesh_prog_data->primitive_type == MESA_PRIM_LINES  ? OUTPUT_LINE :
                                                              OUTPUT_TRI;
 
    uint32_t index_format;

@@ -1005,13 +1005,13 @@ tu6_emit_link_map(struct tu_cs *cs,
 }
 
 static enum a6xx_tess_output
-primitive_to_tess(enum shader_prim primitive) {
+primitive_to_tess(enum mesa_prim primitive) {
    switch (primitive) {
-   case SHADER_PRIM_POINTS:
+   case MESA_PRIM_POINTS:
       return TESS_POINTS;
-   case SHADER_PRIM_LINE_STRIP:
+   case MESA_PRIM_LINE_STRIP:
       return TESS_LINES;
-   case SHADER_PRIM_TRIANGLE_STRIP:
+   case MESA_PRIM_TRIANGLE_STRIP:
       return TESS_CW_TRIS;
    default:
       unreachable("");
@@ -1440,7 +1440,7 @@ tu6_emit_vpc(struct tu_cs *cs,
          tu6_emit_link_map(cs, vs, gs, SB6_GS_SHADER);
       }
       vertices_out = gs->gs.vertices_out - 1;
-      enum a6xx_tess_output output = primitive_to_tess((enum shader_prim) gs->gs.output_primitive);
+      enum a6xx_tess_output output = primitive_to_tess((enum mesa_prim) gs->gs.output_primitive);
       invocations = gs->gs.invocations - 1;
       /* Size of per-primitive alloction in ldlw memory in vec4s. */
       vec4_size = gs->gs.vertices_in *

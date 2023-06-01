@@ -2279,7 +2279,7 @@ struct v3dv_pipeline {
    } va[MAX_VERTEX_ATTRIBS];
    uint32_t va_count;
 
-   enum pipe_prim_type topology;
+   enum mesa_prim topology;
 
    struct v3dv_pipeline_shared_data *shared_data;
 

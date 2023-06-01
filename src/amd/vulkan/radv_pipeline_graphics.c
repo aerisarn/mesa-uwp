@@ -392,17 +392,17 @@ static uint32_t
 si_conv_gl_prim_to_gs_out(unsigned gl_prim)
 {
    switch (gl_prim) {
-   case SHADER_PRIM_POINTS:
+   case MESA_PRIM_POINTS:
       return V_028A6C_POINTLIST;
-   case SHADER_PRIM_LINES:
-   case SHADER_PRIM_LINE_STRIP:
-   case SHADER_PRIM_LINES_ADJACENCY:
+   case MESA_PRIM_LINES:
+   case MESA_PRIM_LINE_STRIP:
+   case MESA_PRIM_LINES_ADJACENCY:
       return V_028A6C_LINESTRIP;
 
-   case SHADER_PRIM_TRIANGLES:
-   case SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY:
-   case SHADER_PRIM_TRIANGLE_STRIP:
-   case SHADER_PRIM_QUADS:
+   case MESA_PRIM_TRIANGLES:
+   case MESA_PRIM_TRIANGLE_STRIP_ADJACENCY:
+   case MESA_PRIM_TRIANGLE_STRIP:
+   case MESA_PRIM_QUADS:
       return V_028A6C_TRISTRIP;
    default:
       assert(0);
@@ -1321,9 +1321,9 @@ radv_remove_point_size(const struct radv_pipeline_key *pipeline_key, nir_shader 
    if (consumer->info.stage == MESA_SHADER_FRAGMENT &&
        ((producer->info.stage == MESA_SHADER_TESS_EVAL && producer->info.tess.point_mode) ||
         (producer->info.stage == MESA_SHADER_GEOMETRY &&
-         producer->info.gs.output_primitive == SHADER_PRIM_POINTS) ||
+         producer->info.gs.output_primitive == MESA_PRIM_POINTS) ||
         (producer->info.stage == MESA_SHADER_MESH &&
-         producer->info.mesh.primitive_type == SHADER_PRIM_POINTS)))
+         producer->info.mesh.primitive_type == MESA_PRIM_POINTS)))
       return;
 
    nir_variable *var =

@@ -886,12 +886,12 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       num_vertices_per_prim = nir->info.gs.vertices_in;
    } else if (nir->info.stage == MESA_SHADER_MESH) {
-      if (nir->info.mesh.primitive_type == SHADER_PRIM_POINTS)
+      if (nir->info.mesh.primitive_type == MESA_PRIM_POINTS)
          num_vertices_per_prim = 1;
-      else if (nir->info.mesh.primitive_type == SHADER_PRIM_LINES)
+      else if (nir->info.mesh.primitive_type == MESA_PRIM_LINES)
          num_vertices_per_prim = 2;
       else
-         assert(nir->info.mesh.primitive_type == SHADER_PRIM_TRIANGLES);
+         assert(nir->info.mesh.primitive_type == MESA_PRIM_TRIANGLES);
    } else {
       unreachable("NGG needs to be VS, TES or GS.");
    }

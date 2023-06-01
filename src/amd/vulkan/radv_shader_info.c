@@ -1010,8 +1010,8 @@ radv_get_legacy_gs_info(const struct radv_device *device, struct radv_pipeline_s
    struct radv_legacy_gs_info *out = &gs_stage->info.gs_ring_info;
 
    const unsigned gs_num_invocations = MAX2(gs_info->gs.invocations, 1);
-   const bool uses_adjacency = gs_info->gs.input_prim == SHADER_PRIM_LINES_ADJACENCY ||
-                               gs_info->gs.input_prim == SHADER_PRIM_TRIANGLES_ADJACENCY;
+   const bool uses_adjacency = gs_info->gs.input_prim == MESA_PRIM_LINES_ADJACENCY ||
+                               gs_info->gs.input_prim == MESA_PRIM_TRIANGLES_ADJACENCY;
 
    /* All these are in dwords: */
    /* We can't allow using the whole LDS, because GS waves compete with
@@ -1150,13 +1150,13 @@ radv_get_pre_rast_input_topology(const struct radv_pipeline_stage *es_stage,
 
    if (es_stage->stage == MESA_SHADER_TESS_EVAL) {
       if (es_stage->nir->info.tess.point_mode)
-         return SHADER_PRIM_POINTS;
+         return MESA_PRIM_POINTS;
       if (es_stage->nir->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
-         return SHADER_PRIM_LINES;
-      return SHADER_PRIM_TRIANGLES;
+         return MESA_PRIM_LINES;
+      return MESA_PRIM_TRIANGLES;
    }
 
-   return SHADER_PRIM_TRIANGLES;
+   return MESA_PRIM_TRIANGLES;
 }
 
 static void
@@ -1173,8 +1173,8 @@ gfx10_get_ngg_info(const struct radv_device *device, struct radv_pipeline_stage 
    const unsigned gs_num_invocations = gs_stage ? MAX2(gs_info->gs.invocations, 1) : 1;
 
    const unsigned input_prim = radv_get_pre_rast_input_topology(es_stage, gs_stage);
-   const bool uses_adjacency = input_prim == SHADER_PRIM_LINES_ADJACENCY ||
-                               input_prim == SHADER_PRIM_TRIANGLES_ADJACENCY;
+   const bool uses_adjacency = input_prim == MESA_PRIM_LINES_ADJACENCY ||
+                               input_prim == MESA_PRIM_TRIANGLES_ADJACENCY;
 
    /* All these are in dwords: */
    /* We can't allow using the whole LDS, because GS waves compete with

@@ -150,14 +150,14 @@ overwrite_incomplete_primitives(struct state *state, unsigned stream)
    assert(state->count_vtx_per_prim);
 
    nir_builder *b = state->builder;
-   enum shader_prim outprim = b->shader->info.gs.output_primitive;
+   enum mesa_prim outprim = b->shader->info.gs.output_primitive;
    unsigned outprim_min_vertices;
 
-   if (outprim == SHADER_PRIM_POINTS)
+   if (outprim == MESA_PRIM_POINTS)
       outprim_min_vertices = 1;
-   else if (outprim == SHADER_PRIM_LINE_STRIP)
+   else if (outprim == MESA_PRIM_LINE_STRIP)
       outprim_min_vertices = 2;
-   else if (outprim == SHADER_PRIM_TRIANGLE_STRIP)
+   else if (outprim == MESA_PRIM_TRIANGLE_STRIP)
       outprim_min_vertices = 3;
    else
       unreachable("Invalid GS output primitive type.");
@@ -373,7 +373,7 @@ nir_lower_gs_intrinsics(nir_shader *shader, nir_lower_gs_intrinsics_flags option
       overwrite_incomplete ||
       (options & nir_lower_gs_intrinsics_count_vertices_per_primitive);
 
-   bool is_points = shader->info.gs.output_primitive == SHADER_PRIM_POINTS;
+   bool is_points = shader->info.gs.output_primitive == MESA_PRIM_POINTS;
    /* points are always complete primitives with a single vertex, so these are
     * not needed when primitive is points.
     */

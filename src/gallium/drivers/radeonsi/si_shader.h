@@ -524,7 +524,7 @@ struct si_shader_selector {
    ubyte cs_images_num_sgprs;
    ubyte cs_num_images_in_user_sgprs;
    unsigned ngg_cull_vert_threshold; /* UINT32_MAX = disabled */
-   enum pipe_prim_type rast_prim;
+   enum mesa_prim rast_prim;
 
    /* GS parameters. */
    bool tess_turns_off_ngg;

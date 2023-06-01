@@ -1050,13 +1050,13 @@ ac_nir_lower_legacy_gs(nir_shader *nir,
 
    unsigned num_vertices_per_primitive = 0;
    switch (nir->info.gs.output_primitive) {
-   case SHADER_PRIM_POINTS:
+   case MESA_PRIM_POINTS:
       num_vertices_per_primitive = 1;
       break;
-   case SHADER_PRIM_LINE_STRIP:
+   case MESA_PRIM_LINE_STRIP:
       num_vertices_per_primitive = 2;
       break;
-   case SHADER_PRIM_TRIANGLE_STRIP:
+   case MESA_PRIM_TRIANGLE_STRIP:
       num_vertices_per_primitive = 3;
       break;
    default:

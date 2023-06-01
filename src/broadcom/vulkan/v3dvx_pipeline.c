@@ -384,7 +384,7 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
 
       if (!pipeline->has_gs) {
          shader.point_size_in_shaded_vertex_data =
-            pipeline->topology == PIPE_PRIM_POINTS;
+            pipeline->topology == MESA_PRIM_POINTS;
       } else {
          struct v3d_gs_prog_data *prog_data_gs =
             pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY]->prog_data.gs;

@@ -4804,7 +4804,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->compute_pipeline_state.dirty = true;
    ctx->fb_changed = ctx->rp_changed = true;
    ctx->sample_mask_changed = true;
-   ctx->gfx_pipeline_state.gfx_prim_mode = PIPE_PRIM_MAX;
+   ctx->gfx_pipeline_state.gfx_prim_mode = MESA_PRIM_COUNT;
 
    zink_init_draw_functions(ctx, screen);
    zink_init_grid_functions(ctx);

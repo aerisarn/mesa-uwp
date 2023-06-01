@@ -277,7 +277,7 @@ update_draw_stats(struct fd_context *ctx, const struct pipe_draw_info *info,
        * so keep the count accurate for non-patch geometry.
        */
       unsigned prims = 0;
-      if ((info->mode != PIPE_PRIM_PATCHES) && (info->mode != PIPE_PRIM_MAX)) {
+      if ((info->mode != MESA_PRIM_PATCHES) && (info->mode != MESA_PRIM_COUNT)) {
          for (unsigned i = 0; i < num_draws; i++) {
             prims += u_reduced_prims_for_vertices(info->mode, draws[i].count);
          }
@@ -287,7 +287,7 @@ update_draw_stats(struct fd_context *ctx, const struct pipe_draw_info *info,
 
       if (ctx->streamout.num_targets > 0) {
          /* Clip the prims we're writing to the size of the SO buffers. */
-         enum pipe_prim_type tf_prim = u_decomposed_prim(info->mode);
+         enum mesa_prim tf_prim = u_decomposed_prim(info->mode);
          unsigned verts_written = u_vertices_for_prims(tf_prim, prims);
          unsigned remaining_vert_space =
             ctx->streamout.max_tf_vtx - ctx->streamout.verts_written;

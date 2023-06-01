@@ -3403,11 +3403,11 @@ ac_nir_lower_ngg_gs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
    if (!state.output_compile_time_known)
       state.current_clear_primflag_idx_var = nir_local_variable_create(impl, glsl_uint_type(), "current_clear_primflag_idx");
 
-   if (shader->info.gs.output_primitive == SHADER_PRIM_POINTS)
+   if (shader->info.gs.output_primitive == MESA_PRIM_POINTS)
       state.num_vertices_per_primitive = 1;
-   else if (shader->info.gs.output_primitive == SHADER_PRIM_LINE_STRIP)
+   else if (shader->info.gs.output_primitive == MESA_PRIM_LINE_STRIP)
       state.num_vertices_per_primitive = 2;
-   else if (shader->info.gs.output_primitive == SHADER_PRIM_TRIANGLE_STRIP)
+   else if (shader->info.gs.output_primitive == MESA_PRIM_TRIANGLE_STRIP)
       state.num_vertices_per_primitive = 3;
    else
       unreachable("Invalid GS output primitive.");

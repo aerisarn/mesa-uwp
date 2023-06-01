@@ -160,7 +160,7 @@ struct fd_screen {
 #define FD6_TESS_BO_SIZE (FD6_TESS_FACTOR_SIZE + FD6_TESS_PARAM_SIZE)
    struct fd_bo *tess_bo;
 
-   /* table with PIPE_PRIM_MAX+1 entries mapping PIPE_PRIM_x to
+   /* table with MESA_PRIM_COUNT+1 entries mapping MESA_PRIM_x to
     * DI_PT_x value to use for draw initiator.  There are some
     * slight differences between generation.
     *

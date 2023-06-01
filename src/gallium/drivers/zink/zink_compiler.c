@@ -382,7 +382,7 @@ lower_gl_point_gs(nir_shader *shader)
    struct lower_gl_point_state state;
    nir_builder b;
 
-   shader->info.gs.output_primitive = SHADER_PRIM_TRIANGLE_STRIP;
+   shader->info.gs.output_primitive = MESA_PRIM_TRIANGLE_STRIP;
    shader->info.gs.vertices_out *= 4;
 
    // Gets the gl_Position in and out
@@ -618,14 +618,14 @@ lower_pv_mode_gs_instr(nir_builder *b, nir_instr *instr, void *data)
 }
 
 static unsigned int
-lower_pv_mode_vertices_for_prim(enum shader_prim prim)
+lower_pv_mode_vertices_for_prim(enum mesa_prim prim)
 {
    switch (prim) {
-   case SHADER_PRIM_POINTS:
+   case MESA_PRIM_POINTS:
       return 1;
-   case SHADER_PRIM_LINE_STRIP:
+   case MESA_PRIM_LINE_STRIP:
       return 2;
-   case SHADER_PRIM_TRIANGLE_STRIP:
+   case MESA_PRIM_TRIANGLE_STRIP:
       return 3;
    default:
       unreachable("unsupported primitive for gs output");
@@ -1127,7 +1127,7 @@ lower_line_smooth_gs(nir_shader *shader)
    nir_store_var(&b, state.pos_counter, nir_imm_int(&b, 0), 1);
 
    shader->info.gs.vertices_out = 8 * shader->info.gs.vertices_out;
-   shader->info.gs.output_primitive = SHADER_PRIM_TRIANGLE_STRIP;
+   shader->info.gs.output_primitive = MESA_PRIM_TRIANGLE_STRIP;
 
    return nir_shader_instructions_pass(shader, lower_line_smooth_gs_instr,
                                        nir_metadata_dominance, &state);
@@ -1225,8 +1225,8 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
                                                   "filled quad gs");
 
    nir_shader *nir = b.shader;
-   nir->info.gs.input_primitive = SHADER_PRIM_LINES_ADJACENCY;
-   nir->info.gs.output_primitive = SHADER_PRIM_TRIANGLE_STRIP;
+   nir->info.gs.input_primitive = MESA_PRIM_LINES_ADJACENCY;
+   nir->info.gs.output_primitive = MESA_PRIM_TRIANGLE_STRIP;
    nir->info.gs.vertices_in = 4;
    nir->info.gs.vertices_out = 6;
    nir->info.gs.invocations = 1;

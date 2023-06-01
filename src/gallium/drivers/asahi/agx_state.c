@@ -1666,7 +1666,7 @@ agx_update_fs(struct agx_batch *batch)
       .clip_plane_enable = ctx->rast->base.clip_plane_enable,
    };
 
-   if (batch->reduced_prim == PIPE_PRIM_POINTS)
+   if (batch->reduced_prim == MESA_PRIM_POINTS)
       key.sprite_coord_enable = ctx->rast->base.sprite_coord_enable;
 
    for (unsigned i = 0; i < key.nr_cbufs; ++i) {
@@ -2420,26 +2420,26 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
 }
 
 static enum agx_primitive
-agx_primitive_for_pipe(enum pipe_prim_type mode)
+agx_primitive_for_pipe(enum mesa_prim mode)
 {
    switch (mode) {
-   case PIPE_PRIM_POINTS:
+   case MESA_PRIM_POINTS:
       return AGX_PRIMITIVE_POINTS;
-   case PIPE_PRIM_LINES:
+   case MESA_PRIM_LINES:
       return AGX_PRIMITIVE_LINES;
-   case PIPE_PRIM_LINE_STRIP:
+   case MESA_PRIM_LINE_STRIP:
       return AGX_PRIMITIVE_LINE_STRIP;
-   case PIPE_PRIM_LINE_LOOP:
+   case MESA_PRIM_LINE_LOOP:
       return AGX_PRIMITIVE_LINE_LOOP;
-   case PIPE_PRIM_TRIANGLES:
+   case MESA_PRIM_TRIANGLES:
       return AGX_PRIMITIVE_TRIANGLES;
-   case PIPE_PRIM_TRIANGLE_STRIP:
+   case MESA_PRIM_TRIANGLE_STRIP:
       return AGX_PRIMITIVE_TRIANGLE_STRIP;
-   case PIPE_PRIM_TRIANGLE_FAN:
+   case MESA_PRIM_TRIANGLE_FAN:
       return AGX_PRIMITIVE_TRIANGLE_FAN;
-   case PIPE_PRIM_QUADS:
+   case MESA_PRIM_QUADS:
       return AGX_PRIMITIVE_QUADS;
-   case PIPE_PRIM_QUAD_STRIP:
+   case MESA_PRIM_QUAD_STRIP:
       return AGX_PRIMITIVE_QUAD_STRIP;
    default:
       unreachable("todo: other primitive types");
@@ -2601,7 +2601,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    agx_batch_init_state(batch);
 
    /* Dirty track the reduced prim: lines vs points vs triangles */
-   enum pipe_prim_type reduced_prim = u_reduced_prim(info->mode);
+   enum mesa_prim reduced_prim = u_reduced_prim(info->mode);
    if (reduced_prim != batch->reduced_prim)
       ctx->dirty |= AGX_DIRTY_PRIM;
    batch->reduced_prim = reduced_prim;
@@ -2650,8 +2650,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
          AGX_INDEX_LIST_START_LENGTH + AGX_INDEX_LIST_BUFFER_SIZE_LENGTH);
 
    uint8_t *out = agx_encode_state(batch, batch->encoder_current,
-                                   reduced_prim == PIPE_PRIM_LINES,
-                                   reduced_prim == PIPE_PRIM_POINTS);
+                                   reduced_prim == MESA_PRIM_LINES,
+                                   reduced_prim == MESA_PRIM_POINTS);
 
    enum agx_primitive prim = agx_primitive_for_pipe(info->mode);
    if (idx_size) {

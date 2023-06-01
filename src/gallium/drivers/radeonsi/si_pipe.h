@@ -25,7 +25,7 @@ extern "C" {
 #define SI_NOT_QUERY          0xffffffff
 
 /* special primitive types */
-#define SI_PRIM_RECTANGLE_LIST PIPE_PRIM_MAX
+#define SI_PRIM_RECTANGLE_LIST MESA_PRIM_COUNT
 
 /* The base vertex and primitive restart can be any number, but we must pick
  * one which will mean "unknown" for the purpose of state tracking and
@@ -1165,7 +1165,7 @@ struct si_context {
    unsigned current_gs_state; /* only GS and NGG bits */
    unsigned last_vs_state;
    unsigned last_gs_state;
-   enum pipe_prim_type current_rast_prim; /* primitive type after TES, GS */
+   enum mesa_prim current_rast_prim; /* primitive type after TES, GS */
    unsigned gs_out_prim;
 
    struct si_small_prim_cull_info last_small_prim_cull_info;
@@ -1931,14 +1931,14 @@ static inline unsigned si_get_total_colormask(struct si_context *sctx)
 }
 
 #define UTIL_ALL_PRIM_LINE_MODES                                                                   \
-   ((1 << PIPE_PRIM_LINES) | (1 << PIPE_PRIM_LINE_LOOP) | (1 << PIPE_PRIM_LINE_STRIP) |            \
-    (1 << PIPE_PRIM_LINES_ADJACENCY) | (1 << PIPE_PRIM_LINE_STRIP_ADJACENCY))
+   ((1 << MESA_PRIM_LINES) | (1 << MESA_PRIM_LINE_LOOP) | (1 << MESA_PRIM_LINE_STRIP) |            \
+    (1 << MESA_PRIM_LINES_ADJACENCY) | (1 << MESA_PRIM_LINE_STRIP_ADJACENCY))
 
 #define UTIL_ALL_PRIM_TRIANGLE_MODES \
-   ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP) | \
-    (1 << PIPE_PRIM_TRIANGLE_FAN) | (1 << PIPE_PRIM_QUADS) | (1 << PIPE_PRIM_QUAD_STRIP) | \
-    (1 << PIPE_PRIM_POLYGON) | (1 << PIPE_PRIM_TRIANGLES_ADJACENCY) | \
-    (1 << PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY))
+   ((1 << MESA_PRIM_TRIANGLES) | (1 << MESA_PRIM_TRIANGLE_STRIP) | \
+    (1 << MESA_PRIM_TRIANGLE_FAN) | (1 << MESA_PRIM_QUADS) | (1 << MESA_PRIM_QUAD_STRIP) | \
+    (1 << MESA_PRIM_POLYGON) | (1 << MESA_PRIM_TRIANGLES_ADJACENCY) | \
+    (1 << MESA_PRIM_TRIANGLE_STRIP_ADJACENCY))
 
 static inline bool util_prim_is_lines(unsigned prim)
 {
@@ -1947,7 +1947,7 @@ static inline bool util_prim_is_lines(unsigned prim)
 
 static inline bool util_prim_is_points_or_lines(unsigned prim)
 {
-   return ((1 << prim) & (UTIL_ALL_PRIM_LINE_MODES | (1 << PIPE_PRIM_POINTS))) != 0;
+   return ((1 << prim) & (UTIL_ALL_PRIM_LINE_MODES | (1 << MESA_PRIM_POINTS))) != 0;
 }
 
 static inline bool util_rast_prim_is_triangles(unsigned prim)
@@ -2134,12 +2134,12 @@ si_update_ngg_prim_state_sgpr(struct si_context *sctx, struct si_shader *hw_vs, 
  * It's expected that hw_vs and ngg are inline constants in draw_vbo after optimizations.
  */
 static inline void
-si_set_rasterized_prim(struct si_context *sctx, enum pipe_prim_type rast_prim,
+si_set_rasterized_prim(struct si_context *sctx, enum mesa_prim rast_prim,
                        struct si_shader *hw_vs, bool ngg)
 {
    if (rast_prim != sctx->current_rast_prim) {
       bool is_rect = rast_prim == SI_PRIM_RECTANGLE_LIST;
-      bool is_points = rast_prim == PIPE_PRIM_POINTS;
+      bool is_points = rast_prim == MESA_PRIM_POINTS;
       bool is_lines = util_prim_is_lines(rast_prim);
       bool is_triangles = util_rast_prim_is_triangles(rast_prim);
 

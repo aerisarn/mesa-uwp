@@ -4506,30 +4506,30 @@ tess_primitive_mode_from_spv_execution_mode(struct vtn_builder *b,
    }
 }
 
-static enum shader_prim
+static enum mesa_prim
 primitive_from_spv_execution_mode(struct vtn_builder *b,
                                   SpvExecutionMode mode)
 {
    switch (mode) {
    case SpvExecutionModeInputPoints:
    case SpvExecutionModeOutputPoints:
-      return SHADER_PRIM_POINTS;
+      return MESA_PRIM_POINTS;
    case SpvExecutionModeInputLines:
    case SpvExecutionModeOutputLinesNV:
-      return SHADER_PRIM_LINES;
+      return MESA_PRIM_LINES;
    case SpvExecutionModeInputLinesAdjacency:
-      return SHADER_PRIM_LINES_ADJACENCY;
+      return MESA_PRIM_LINES_ADJACENCY;
    case SpvExecutionModeTriangles:
    case SpvExecutionModeOutputTrianglesNV:
-      return SHADER_PRIM_TRIANGLES;
+      return MESA_PRIM_TRIANGLES;
    case SpvExecutionModeInputTrianglesAdjacency:
-      return SHADER_PRIM_TRIANGLES_ADJACENCY;
+      return MESA_PRIM_TRIANGLES_ADJACENCY;
    case SpvExecutionModeQuads:
-      return SHADER_PRIM_QUADS;
+      return MESA_PRIM_QUADS;
    case SpvExecutionModeOutputLineStrip:
-      return SHADER_PRIM_LINE_STRIP;
+      return MESA_PRIM_LINE_STRIP;
    case SpvExecutionModeOutputTriangleStrip:
-      return SHADER_PRIM_TRIANGLE_STRIP;
+      return MESA_PRIM_TRIANGLE_STRIP;
    default:
       vtn_fail("Invalid primitive type: %s (%u)",
                spirv_executionmode_to_string(mode), mode);

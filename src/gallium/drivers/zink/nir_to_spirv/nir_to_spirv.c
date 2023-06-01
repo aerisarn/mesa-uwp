@@ -4529,31 +4529,31 @@ emit_cf_list(struct ntv_context *ctx, struct exec_list *list)
 }
 
 static SpvExecutionMode
-get_input_prim_type_mode(enum shader_prim type)
+get_input_prim_type_mode(enum mesa_prim type)
 {
    switch (type) {
-   case SHADER_PRIM_POINTS:
+   case MESA_PRIM_POINTS:
       return SpvExecutionModeInputPoints;
-   case SHADER_PRIM_LINES:
-   case SHADER_PRIM_LINE_LOOP:
-   case SHADER_PRIM_LINE_STRIP:
+   case MESA_PRIM_LINES:
+   case MESA_PRIM_LINE_LOOP:
+   case MESA_PRIM_LINE_STRIP:
       return SpvExecutionModeInputLines;
-   case SHADER_PRIM_TRIANGLE_STRIP:
-   case SHADER_PRIM_TRIANGLES:
-   case SHADER_PRIM_TRIANGLE_FAN:
+   case MESA_PRIM_TRIANGLE_STRIP:
+   case MESA_PRIM_TRIANGLES:
+   case MESA_PRIM_TRIANGLE_FAN:
       return SpvExecutionModeTriangles;
-   case SHADER_PRIM_QUADS:
-   case SHADER_PRIM_QUAD_STRIP:
+   case MESA_PRIM_QUADS:
+   case MESA_PRIM_QUAD_STRIP:
       return SpvExecutionModeQuads;
       break;
-   case SHADER_PRIM_POLYGON:
+   case MESA_PRIM_POLYGON:
       unreachable("handle polygons in gs");
       break;
-   case SHADER_PRIM_LINES_ADJACENCY:
-   case SHADER_PRIM_LINE_STRIP_ADJACENCY:
+   case MESA_PRIM_LINES_ADJACENCY:
+   case MESA_PRIM_LINE_STRIP_ADJACENCY:
       return SpvExecutionModeInputLinesAdjacency;
-   case SHADER_PRIM_TRIANGLES_ADJACENCY:
-   case SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY:
+   case MESA_PRIM_TRIANGLES_ADJACENCY:
+   case MESA_PRIM_TRIANGLE_STRIP_ADJACENCY:
       return SpvExecutionModeInputTrianglesAdjacency;
       break;
    default:
@@ -4565,34 +4565,34 @@ get_input_prim_type_mode(enum shader_prim type)
    return 0;
 }
 static SpvExecutionMode
-get_output_prim_type_mode(enum shader_prim type)
+get_output_prim_type_mode(enum mesa_prim type)
 {
    switch (type) {
-   case SHADER_PRIM_POINTS:
+   case MESA_PRIM_POINTS:
       return SpvExecutionModeOutputPoints;
-   case SHADER_PRIM_LINES:
-   case SHADER_PRIM_LINE_LOOP:
-      unreachable("SHADER_PRIM_LINES/LINE_LOOP passed as gs output");
+   case MESA_PRIM_LINES:
+   case MESA_PRIM_LINE_LOOP:
+      unreachable("MESA_PRIM_LINES/LINE_LOOP passed as gs output");
       break;
-   case SHADER_PRIM_LINE_STRIP:
+   case MESA_PRIM_LINE_STRIP:
       return SpvExecutionModeOutputLineStrip;
-   case SHADER_PRIM_TRIANGLE_STRIP:
+   case MESA_PRIM_TRIANGLE_STRIP:
       return SpvExecutionModeOutputTriangleStrip;
-   case SHADER_PRIM_TRIANGLES:
-   case SHADER_PRIM_TRIANGLE_FAN: //FIXME: not sure if right for output
+   case MESA_PRIM_TRIANGLES:
+   case MESA_PRIM_TRIANGLE_FAN: //FIXME: not sure if right for output
       return SpvExecutionModeTriangles;
-   case SHADER_PRIM_QUADS:
-   case SHADER_PRIM_QUAD_STRIP:
+   case MESA_PRIM_QUADS:
+   case MESA_PRIM_QUAD_STRIP:
       return SpvExecutionModeQuads;
-   case SHADER_PRIM_POLYGON:
+   case MESA_PRIM_POLYGON:
       unreachable("handle polygons in gs");
       break;
-   case SHADER_PRIM_LINES_ADJACENCY:
-   case SHADER_PRIM_LINE_STRIP_ADJACENCY:
+   case MESA_PRIM_LINES_ADJACENCY:
+   case MESA_PRIM_LINE_STRIP_ADJACENCY:
       unreachable("handle line adjacency in gs");
       break;
-   case SHADER_PRIM_TRIANGLES_ADJACENCY:
-   case SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY:
+   case MESA_PRIM_TRIANGLES_ADJACENCY:
+   case MESA_PRIM_TRIANGLE_STRIP_ADJACENCY:
       unreachable("handle triangle adjacency in gs");
       break;
    default:

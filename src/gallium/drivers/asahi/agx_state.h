@@ -56,7 +56,7 @@ struct agx_xfb_key {
    uint8_t index_size;
 
    /* The primitive mode for unrolling the vertex ID */
-   enum pipe_prim_type mode;
+   enum mesa_prim mode;
 
    /* Use first vertex as the provoking vertex for flat shading */
    bool flatshade_first;
@@ -219,7 +219,7 @@ struct agx_batch {
    unsigned clear_stencil;
 
    /* Whether we're drawing points, lines, or triangles */
-   enum pipe_prim_type reduced_prim;
+   enum mesa_prim reduced_prim;
 
    /* Current varyings linkage structures */
    uint32_t varyings;

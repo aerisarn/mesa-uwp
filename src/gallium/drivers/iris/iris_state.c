@@ -184,27 +184,27 @@ UNUSED static void pipe_asserts()
 }
 
 static unsigned
-translate_prim_type(enum pipe_prim_type prim, uint8_t verts_per_patch)
+translate_prim_type(enum mesa_prim prim, uint8_t verts_per_patch)
 {
    static const unsigned map[] = {
-      [PIPE_PRIM_POINTS]                   = _3DPRIM_POINTLIST,
-      [PIPE_PRIM_LINES]                    = _3DPRIM_LINELIST,
-      [PIPE_PRIM_LINE_LOOP]                = _3DPRIM_LINELOOP,
-      [PIPE_PRIM_LINE_STRIP]               = _3DPRIM_LINESTRIP,
-      [PIPE_PRIM_TRIANGLES]                = _3DPRIM_TRILIST,
-      [PIPE_PRIM_TRIANGLE_STRIP]           = _3DPRIM_TRISTRIP,
-      [PIPE_PRIM_TRIANGLE_FAN]             = _3DPRIM_TRIFAN,
-      [PIPE_PRIM_QUADS]                    = _3DPRIM_QUADLIST,
-      [PIPE_PRIM_QUAD_STRIP]               = _3DPRIM_QUADSTRIP,
-      [PIPE_PRIM_POLYGON]                  = _3DPRIM_POLYGON,
-      [PIPE_PRIM_LINES_ADJACENCY]          = _3DPRIM_LINELIST_ADJ,
-      [PIPE_PRIM_LINE_STRIP_ADJACENCY]     = _3DPRIM_LINESTRIP_ADJ,
-      [PIPE_PRIM_TRIANGLES_ADJACENCY]      = _3DPRIM_TRILIST_ADJ,
-      [PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
-      [PIPE_PRIM_PATCHES]                  = _3DPRIM_PATCHLIST_1 - 1,
+      [MESA_PRIM_POINTS]                   = _3DPRIM_POINTLIST,
+      [MESA_PRIM_LINES]                    = _3DPRIM_LINELIST,
+      [MESA_PRIM_LINE_LOOP]                = _3DPRIM_LINELOOP,
+      [MESA_PRIM_LINE_STRIP]               = _3DPRIM_LINESTRIP,
+      [MESA_PRIM_TRIANGLES]                = _3DPRIM_TRILIST,
+      [MESA_PRIM_TRIANGLE_STRIP]           = _3DPRIM_TRISTRIP,
+      [MESA_PRIM_TRIANGLE_FAN]             = _3DPRIM_TRIFAN,
+      [MESA_PRIM_QUADS]                    = _3DPRIM_QUADLIST,
+      [MESA_PRIM_QUAD_STRIP]               = _3DPRIM_QUADSTRIP,
+      [MESA_PRIM_POLYGON]                  = _3DPRIM_POLYGON,
+      [MESA_PRIM_LINES_ADJACENCY]          = _3DPRIM_LINELIST_ADJ,
+      [MESA_PRIM_LINE_STRIP_ADJACENCY]     = _3DPRIM_LINESTRIP_ADJ,
+      [MESA_PRIM_TRIANGLES_ADJACENCY]      = _3DPRIM_TRILIST_ADJ,
+      [MESA_PRIM_TRIANGLE_STRIP_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
+      [MESA_PRIM_PATCHES]                  = _3DPRIM_PATCHLIST_1 - 1,
    };
 
-   return map[prim] + (prim == PIPE_PRIM_PATCHES ? verts_per_patch : 0);
+   return map[prim] + (prim == MESA_PRIM_PATCHES ? verts_per_patch : 0);
 }
 
 static unsigned
@@ -4520,7 +4520,7 @@ iris_is_drawing_points(const struct iris_context *ice)
          (void *) ice->shaders.prog[MESA_SHADER_TESS_EVAL]->prog_data;
       return tes_data->output_topology == BRW_TESS_OUTPUT_TOPOLOGY_POINT;
    } else {
-      return ice->state.prim_mode == PIPE_PRIM_POINTS;
+      return ice->state.prim_mode == MESA_PRIM_POINTS;
    }
 }
 
@@ -7353,15 +7353,15 @@ flush_vbos(struct iris_context *ice, struct iris_batch *batch)
 }
 
 static bool
-point_or_line_list(enum pipe_prim_type prim_type)
+point_or_line_list(enum mesa_prim prim_type)
 {
    switch (prim_type) {
-   case PIPE_PRIM_POINTS:
-   case PIPE_PRIM_LINES:
-   case PIPE_PRIM_LINE_STRIP:
-   case PIPE_PRIM_LINES_ADJACENCY:
-   case PIPE_PRIM_LINE_STRIP_ADJACENCY:
-   case PIPE_PRIM_LINE_LOOP:
+   case MESA_PRIM_POINTS:
+   case MESA_PRIM_LINES:
+   case MESA_PRIM_LINE_STRIP:
+   case MESA_PRIM_LINES_ADJACENCY:
+   case MESA_PRIM_LINE_STRIP_ADJACENCY:
+   case MESA_PRIM_LINE_LOOP:
       return true;
    default:
       return false;
@@ -8767,7 +8767,7 @@ gfx9_toggle_preemption(struct iris_context *ice,
     *    "WA: Disable mid-draw preemption when draw-call is a linestrip_adj
     *     and GS is enabled."
     */
-   if (draw->mode == PIPE_PRIM_LINE_STRIP_ADJACENCY &&
+   if (draw->mode == MESA_PRIM_LINE_STRIP_ADJACENCY &&
        ice->shaders.prog[MESA_SHADER_GEOMETRY])
       object_preemption = false;
 
@@ -8780,7 +8780,7 @@ gfx9_toggle_preemption(struct iris_context *ice,
     *
     *     WA: Disable mid-draw preemption when draw-call has a tri-fan."
     */
-   if (draw->mode == PIPE_PRIM_TRIANGLE_FAN)
+   if (draw->mode == MESA_PRIM_TRIANGLE_FAN)
       object_preemption = false;
 
    /* WaDisableMidObjectPreemptionForLineLoop
@@ -8790,7 +8790,7 @@ gfx9_toggle_preemption(struct iris_context *ice,
     *     WA: Disable mid-draw preemption when the draw uses a lineloop
     *     topology."
     */
-   if (draw->mode == PIPE_PRIM_LINE_LOOP)
+   if (draw->mode == MESA_PRIM_LINE_LOOP)
       object_preemption = false;
 
    /* WA#0798
@@ -9036,7 +9036,7 @@ genX(init_state)(struct iris_context *ice)
 
    ice->state.sample_mask = 0xffff;
    ice->state.num_viewports = 1;
-   ice->state.prim_mode = PIPE_PRIM_MAX;
+   ice->state.prim_mode = MESA_PRIM_COUNT;
    ice->state.genx = calloc(1, sizeof(struct iris_genx_state));
    ice->draw.derived_params.drawid = -1;
 

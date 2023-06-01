@@ -65,7 +65,7 @@ struct draw_vertex_info;
  */
 struct draw_pt_front_end {
    void (*prepare)(struct draw_pt_front_end *,
-                   enum pipe_prim_type prim,
+                   enum mesa_prim prim,
                    struct draw_pt_middle_end *,
                    unsigned opt);
 
@@ -89,7 +89,7 @@ struct draw_pt_front_end {
  */
 struct draw_pt_middle_end {
    void (*prepare)(struct draw_pt_middle_end *,
-                   enum pipe_prim_type prim,
+                   enum mesa_prim prim,
                    unsigned opt,
                    unsigned *max_vertices);
 
@@ -161,7 +161,7 @@ struct pt_emit;
 
 void
 draw_pt_emit_prepare(struct pt_emit *emit,
-                     enum pipe_prim_type prim,
+                     enum mesa_prim prim,
                      unsigned *max_vertices);
 
 void
@@ -263,7 +263,7 @@ draw_pt_post_vs_destroy(struct pt_post_vs *pvs);
  * Utils:
  */
 void
-draw_pt_split_prim(enum pipe_prim_type prim, unsigned *first, unsigned *incr);
+draw_pt_split_prim(enum mesa_prim prim, unsigned *first, unsigned *incr);
 
 unsigned
 draw_pt_trim_count(unsigned count, unsigned first, unsigned incr);

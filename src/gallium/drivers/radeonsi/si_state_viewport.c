@@ -344,7 +344,7 @@ static void si_emit_guardband(struct si_context *ctx)
        * conservative about when to discard them entirely. */
       float pixels;
 
-      if (ctx->current_rast_prim == PIPE_PRIM_POINTS)
+      if (ctx->current_rast_prim == MESA_PRIM_POINTS)
          pixels = rs->max_point_size;
       else
          pixels = rs->line_width;

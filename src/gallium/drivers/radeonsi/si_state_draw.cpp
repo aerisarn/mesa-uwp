@@ -459,21 +459,21 @@ ALWAYS_INLINE
 static unsigned si_conv_pipe_prim(unsigned mode)
 {
    static const unsigned prim_conv[] = {
-      [PIPE_PRIM_POINTS] = V_008958_DI_PT_POINTLIST,
-      [PIPE_PRIM_LINES] = V_008958_DI_PT_LINELIST,
-      [PIPE_PRIM_LINE_LOOP] = V_008958_DI_PT_LINELOOP,
-      [PIPE_PRIM_LINE_STRIP] = V_008958_DI_PT_LINESTRIP,
-      [PIPE_PRIM_TRIANGLES] = V_008958_DI_PT_TRILIST,
-      [PIPE_PRIM_TRIANGLE_STRIP] = V_008958_DI_PT_TRISTRIP,
-      [PIPE_PRIM_TRIANGLE_FAN] = V_008958_DI_PT_TRIFAN,
-      [PIPE_PRIM_QUADS] = V_008958_DI_PT_QUADLIST,
-      [PIPE_PRIM_QUAD_STRIP] = V_008958_DI_PT_QUADSTRIP,
-      [PIPE_PRIM_POLYGON] = V_008958_DI_PT_POLYGON,
-      [PIPE_PRIM_LINES_ADJACENCY] = V_008958_DI_PT_LINELIST_ADJ,
-      [PIPE_PRIM_LINE_STRIP_ADJACENCY] = V_008958_DI_PT_LINESTRIP_ADJ,
-      [PIPE_PRIM_TRIANGLES_ADJACENCY] = V_008958_DI_PT_TRILIST_ADJ,
-      [PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY] = V_008958_DI_PT_TRISTRIP_ADJ,
-      [PIPE_PRIM_PATCHES] = V_008958_DI_PT_PATCH,
+      [MESA_PRIM_POINTS] = V_008958_DI_PT_POINTLIST,
+      [MESA_PRIM_LINES] = V_008958_DI_PT_LINELIST,
+      [MESA_PRIM_LINE_LOOP] = V_008958_DI_PT_LINELOOP,
+      [MESA_PRIM_LINE_STRIP] = V_008958_DI_PT_LINESTRIP,
+      [MESA_PRIM_TRIANGLES] = V_008958_DI_PT_TRILIST,
+      [MESA_PRIM_TRIANGLE_STRIP] = V_008958_DI_PT_TRISTRIP,
+      [MESA_PRIM_TRIANGLE_FAN] = V_008958_DI_PT_TRIFAN,
+      [MESA_PRIM_QUADS] = V_008958_DI_PT_QUADLIST,
+      [MESA_PRIM_QUAD_STRIP] = V_008958_DI_PT_QUADSTRIP,
+      [MESA_PRIM_POLYGON] = V_008958_DI_PT_POLYGON,
+      [MESA_PRIM_LINES_ADJACENCY] = V_008958_DI_PT_LINELIST_ADJ,
+      [MESA_PRIM_LINE_STRIP_ADJACENCY] = V_008958_DI_PT_LINESTRIP_ADJ,
+      [MESA_PRIM_TRIANGLES_ADJACENCY] = V_008958_DI_PT_TRILIST_ADJ,
+      [MESA_PRIM_TRIANGLE_STRIP_ADJACENCY] = V_008958_DI_PT_TRISTRIP_ADJ,
+      [MESA_PRIM_PATCHES] = V_008958_DI_PT_PATCH,
       [SI_PRIM_RECTANGLE_LIST] = V_008958_DI_PT_RECTLIST};
    assert(mode < ARRAY_SIZE(prim_conv));
    return prim_conv[mode];
@@ -862,13 +862,13 @@ static void si_emit_derived_tess_state(struct si_context *sctx)
    }
 }
 
-static unsigned si_num_prims_for_vertices(enum pipe_prim_type prim,
+static unsigned si_num_prims_for_vertices(enum mesa_prim prim,
                                           unsigned count, unsigned vertices_per_patch)
 {
    switch (prim) {
-   case PIPE_PRIM_PATCHES:
+   case MESA_PRIM_PATCHES:
       return count / vertices_per_patch;
-   case PIPE_PRIM_POLYGON:
+   case MESA_PRIM_POLYGON:
       /* It's a triangle fan with different edge flags. */
       return count >= 3 ? count - 2 : 0;
    case SI_PRIM_RECTANGLE_LIST:
@@ -926,13 +926,13 @@ static unsigned si_get_init_multi_vgt_param(struct si_screen *sscreen, union si_
        * Polaris supports primitive restart with WD_SWITCH_ON_EOP=0
        * for points, line strips, and tri strips.
        */
-      if (sscreen->info.max_se <= 2 || key->u.prim == PIPE_PRIM_POLYGON ||
-          key->u.prim == PIPE_PRIM_LINE_LOOP || key->u.prim == PIPE_PRIM_TRIANGLE_FAN ||
-          key->u.prim == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY ||
+      if (sscreen->info.max_se <= 2 || key->u.prim == MESA_PRIM_POLYGON ||
+          key->u.prim == MESA_PRIM_LINE_LOOP || key->u.prim == MESA_PRIM_TRIANGLE_FAN ||
+          key->u.prim == MESA_PRIM_TRIANGLE_STRIP_ADJACENCY ||
           (key->u.primitive_restart &&
            (sscreen->info.family < CHIP_POLARIS10 ||
-            (key->u.prim != PIPE_PRIM_POINTS && key->u.prim != PIPE_PRIM_LINE_STRIP &&
-             key->u.prim != PIPE_PRIM_TRIANGLE_STRIP))) ||
+            (key->u.prim != MESA_PRIM_POINTS && key->u.prim != MESA_PRIM_LINE_STRIP &&
+             key->u.prim != MESA_PRIM_TRIANGLE_STRIP))) ||
           key->u.count_from_stream_output)
          wd_switch_on_eop = true;
 
@@ -1032,7 +1032,7 @@ static bool si_is_line_stipple_enabled(struct si_context *sctx)
 {
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
-   return rs->line_stipple_enable && sctx->current_rast_prim != PIPE_PRIM_POINTS &&
+   return rs->line_stipple_enable && sctx->current_rast_prim != MESA_PRIM_POINTS &&
           (rs->polygon_mode_is_lines || util_prim_is_lines(sctx->current_rast_prim));
 }
 
@@ -1043,7 +1043,7 @@ enum si_is_draw_vertex_state {
 
 template <si_is_draw_vertex_state IS_DRAW_VERTEX_STATE> ALWAYS_INLINE
 static bool num_instanced_prims_less_than(const struct pipe_draw_indirect_info *indirect,
-                                          enum pipe_prim_type prim,
+                                          enum mesa_prim prim,
                                           unsigned min_vertex_count,
                                           unsigned instance_count,
                                           unsigned num_prims,
@@ -1065,7 +1065,7 @@ template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS,
           si_is_draw_vertex_state IS_DRAW_VERTEX_STATE> ALWAYS_INLINE
 static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
                                           const struct pipe_draw_indirect_info *indirect,
-                                          enum pipe_prim_type prim, unsigned num_patches,
+                                          enum mesa_prim prim, unsigned num_patches,
                                           unsigned instance_count, bool primitive_restart,
                                           unsigned min_vertex_count)
 {
@@ -1129,9 +1129,9 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
       /* For lines, reset the stipple pattern at each primitive. Otherwise,
        * reset the stipple pattern at each packet (line strips, line loops).
        */
-      enum pipe_prim_type rast_prim = sctx->current_rast_prim;
-      bool reset_per_prim = rast_prim == PIPE_PRIM_LINES ||
-                            rast_prim == PIPE_PRIM_LINES_ADJACENCY;
+      enum mesa_prim rast_prim = sctx->current_rast_prim;
+      bool reset_per_prim = rast_prim == MESA_PRIM_LINES ||
+                            rast_prim == MESA_PRIM_LINES_ADJACENCY;
       /* 0 = no reset, 1 = reset per prim, 2 = reset per packet */
       unsigned value =
          rs->pa_sc_line_stipple | S_028A0C_AUTO_RESET_CNTL(reset_per_prim ? 1 : 2);
@@ -1228,7 +1228,7 @@ template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS,
           si_is_draw_vertex_state IS_DRAW_VERTEX_STATE> ALWAYS_INLINE
 static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
                                        const struct pipe_draw_indirect_info *indirect,
-                                       enum pipe_prim_type prim, unsigned num_patches,
+                                       enum mesa_prim prim, unsigned num_patches,
                                        unsigned instance_count, bool primitive_restart,
                                        unsigned min_vertex_count)
 {
@@ -1322,7 +1322,7 @@ template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_
           si_is_draw_vertex_state IS_DRAW_VERTEX_STATE> ALWAYS_INLINE
 static void si_emit_draw_registers(struct si_context *sctx,
                                    const struct pipe_draw_indirect_info *indirect,
-                                   enum pipe_prim_type prim, unsigned index_size,
+                                   enum mesa_prim prim, unsigned index_size,
                                    unsigned instance_count, bool primitive_restart,
                                    unsigned restart_index, unsigned min_vertex_count)
 {
@@ -1460,10 +1460,10 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       if (sctx->num_pipeline_stat_queries &&
           sctx->shader.gs.cso == NULL &&
           (instance_count > 1 || indirect) &&
-          (1 << info->mode) & (1 << PIPE_PRIM_LINES_ADJACENCY |
-                               1 << PIPE_PRIM_LINE_STRIP_ADJACENCY |
-                               1 << PIPE_PRIM_TRIANGLES_ADJACENCY |
-                               1 << PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY)) {
+          (1 << info->mode) & (1 << MESA_PRIM_LINES_ADJACENCY |
+                               1 << MESA_PRIM_LINE_STRIP_ADJACENCY |
+                               1 << MESA_PRIM_TRIANGLES_ADJACENCY |
+                               1 << MESA_PRIM_TRIANGLE_STRIP_ADJACENCY)) {
          disable_instance_packing = true;
       }
    }
@@ -2173,12 +2173,12 @@ static void si_draw(struct pipe_context *ctx,
    if (unlikely(!vs ||
                 (!IS_DRAW_VERTEX_STATE && sctx->num_vertex_elements < vs->info.num_vs_inputs) ||
                 (IS_DRAW_VERTEX_STATE && vstate->velems.count < vs->info.num_vs_inputs) ||
-                !sctx->shader.ps.cso || (HAS_TESS != (info->mode == PIPE_PRIM_PATCHES)))) {
+                !sctx->shader.ps.cso || (HAS_TESS != (info->mode == MESA_PRIM_PATCHES)))) {
       assert(0);
       return;
    }
 
-   enum pipe_prim_type prim = HAS_TESS ? PIPE_PRIM_PATCHES : (enum pipe_prim_type)info->mode;
+   enum mesa_prim prim = HAS_TESS ? MESA_PRIM_PATCHES : (enum mesa_prim)info->mode;
 
    if (GFX_VERSION <= GFX9 && HAS_GS) {
       /* Determine whether the GS triangle strip adjacency fix should
@@ -2187,7 +2187,7 @@ static void si_draw(struct pipe_context *ctx,
        * restart occurs after an odd number of triangles.
        */
       bool gs_tri_strip_adj_fix =
-         !HAS_TESS && prim == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
+         !HAS_TESS && prim == MESA_PRIM_TRIANGLE_STRIP_ADJACENCY;
 
       if (gs_tri_strip_adj_fix != sctx->shader.gs.key.ge.mono.u.gs_tri_strip_adj_fix) {
          sctx->shader.gs.key.ge.mono.u.gs_tri_strip_adj_fix = gs_tri_strip_adj_fix;
@@ -2285,10 +2285,10 @@ static void si_draw(struct pipe_context *ctx,
     * current_rast_prim for this draw_vbo call.
     */
    if (!HAS_GS && !HAS_TESS) {
-      enum pipe_prim_type rast_prim;
+      enum mesa_prim rast_prim;
 
       if (util_rast_prim_is_triangles(prim)) {
-         rast_prim = PIPE_PRIM_TRIANGLES;
+         rast_prim = MESA_PRIM_TRIANGLES;
       } else {
          /* Only possibilities, POINTS, LINE*, RECTANGLES */
          rast_prim = prim;

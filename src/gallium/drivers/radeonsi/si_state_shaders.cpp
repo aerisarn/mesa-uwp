@@ -830,7 +830,7 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
    unsigned gs_num_invocations = MAX2(gs->info.base.gs.invocations, 1);
    unsigned input_prim = gs->info.base.gs.input_primitive;
    bool uses_adjacency =
-      input_prim >= PIPE_PRIM_LINES_ADJACENCY && input_prim <= PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
+      input_prim >= MESA_PRIM_LINES_ADJACENCY && input_prim <= MESA_PRIM_TRIANGLE_STRIP_ADJACENCY;
 
    /* All these are in dwords: */
    /* We can't allow using the whole LDS, because GS waves compete with
@@ -1057,7 +1057,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
          gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID. */
       else if (sel->info.uses_primid)
          gs_vgpr_comp_cnt = 2; /* VGPR2 contains PrimitiveID. */
-      else if (input_prim >= PIPE_PRIM_TRIANGLES)
+      else if (input_prim >= MESA_PRIM_TRIANGLES)
          gs_vgpr_comp_cnt = 1; /* VGPR1 contains offsets 2, 3 */
       else
          gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
@@ -1256,16 +1256,16 @@ unsigned si_get_input_prim(const struct si_shader_selector *gs, const union si_s
 
    if (gs->stage == MESA_SHADER_TESS_EVAL) {
       if (gs->info.base.tess.point_mode)
-         return PIPE_PRIM_POINTS;
+         return MESA_PRIM_POINTS;
       if (gs->info.base.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
-         return PIPE_PRIM_LINES;
-      return PIPE_PRIM_TRIANGLES;
+         return MESA_PRIM_LINES;
+      return MESA_PRIM_TRIANGLES;
    }
 
    if (key->ge.opt.ngg_culling & SI_NGG_CULL_LINES)
-      return PIPE_PRIM_LINES;
+      return MESA_PRIM_LINES;
 
-   return PIPE_PRIM_TRIANGLES; /* worst case for all callers */
+   return MESA_PRIM_TRIANGLES; /* worst case for all callers */
 }
 
 static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel,
@@ -1361,7 +1361,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    else if ((gs_stage == MESA_SHADER_GEOMETRY && gs_info->uses_primid) ||
             (gs_stage == MESA_SHADER_VERTEX && shader->key.ge.mono.u.vs_export_prim_id))
       gs_vgpr_comp_cnt = 2; /* VGPR2 contains PrimitiveID. */
-   else if (input_prim >= PIPE_PRIM_TRIANGLES && !gfx10_is_ngg_passthrough(shader))
+   else if (input_prim >= MESA_PRIM_TRIANGLES && !gfx10_is_ngg_passthrough(shader))
       gs_vgpr_comp_cnt = 1; /* VGPR1 contains offsets 2, 3 */
    else
       gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
@@ -2142,7 +2142,7 @@ static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_sele
    key->ge.mono.u.vs_export_prim_id = vs->stage != MESA_SHADER_GEOMETRY &&
                                       sctx->shader.ps.cso && sctx->shader.ps.cso->info.uses_primid;
    key->ge.opt.kill_pointsize = vs->info.writes_psize &&
-                                sctx->current_rast_prim != PIPE_PRIM_POINTS &&
+                                sctx->current_rast_prim != MESA_PRIM_POINTS &&
                                 !sctx->queued.named.rasterizer->polygon_mode_is_points;
    key->ge.opt.remove_streamout = vs->info.enabled_streamout_buffer_mask &&
                                   !sctx->streamout.enabled_mask;
@@ -2346,7 +2346,7 @@ static void si_ps_key_update_primtype_shader_rasterizer_framebuffer(struct si_co
       sctx->framebuffer.nr_samples <= 1;
 
    key->ps.mono.point_smoothing = rs->point_smooth &&
-                                  sctx->current_rast_prim == PIPE_PRIM_POINTS;
+                                  sctx->current_rast_prim == MESA_PRIM_POINTS;
 }
 
 void si_ps_key_update_sample_shading(struct si_context *sctx)
@@ -3158,9 +3158,9 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    switch (sel->stage) {
    case MESA_SHADER_GEOMETRY:
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      sel->rast_prim = (enum pipe_prim_type)sel->info.base.gs.output_primitive;
+      sel->rast_prim = (enum mesa_prim)sel->info.base.gs.output_primitive;
       if (util_rast_prim_is_triangles(sel->rast_prim))
-         sel->rast_prim = PIPE_PRIM_TRIANGLES;
+         sel->rast_prim = MESA_PRIM_TRIANGLES;
 
       /* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tessellation so
        * we can't split workgroups. Disable ngg if any of the following conditions is true:
@@ -3178,13 +3178,13 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    case MESA_SHADER_TESS_EVAL:
       if (sel->stage == MESA_SHADER_TESS_EVAL) {
          if (sel->info.base.tess.point_mode)
-            sel->rast_prim = PIPE_PRIM_POINTS;
+            sel->rast_prim = MESA_PRIM_POINTS;
          else if (sel->info.base.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
-            sel->rast_prim = PIPE_PRIM_LINE_STRIP;
+            sel->rast_prim = MESA_PRIM_LINE_STRIP;
          else
-            sel->rast_prim = PIPE_PRIM_TRIANGLES;
+            sel->rast_prim = MESA_PRIM_TRIANGLES;
       } else {
-         sel->rast_prim = PIPE_PRIM_TRIANGLES;
+         sel->rast_prim = MESA_PRIM_TRIANGLES;
       }
       break;
    default:;
@@ -3213,7 +3213,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
             sel->ngg_cull_vert_threshold = 128;
       } else if (sel->stage == MESA_SHADER_TESS_EVAL ||
                  sel->stage == MESA_SHADER_GEOMETRY) {
-         if (sel->rast_prim != PIPE_PRIM_POINTS)
+         if (sel->rast_prim != MESA_PRIM_POINTS)
             sel->ngg_cull_vert_threshold = 0; /* always enabled */
       }
    }

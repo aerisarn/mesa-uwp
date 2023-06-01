@@ -513,30 +513,30 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_EMULATE_NONFIXED_PRIMITIVE_RESTART:
       return 1;
    case PIPE_CAP_SUPPORTED_PRIM_MODES_WITH_RESTART: {
-      uint32_t modes = BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
-                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
-                       BITFIELD_BIT(PIPE_PRIM_LINE_STRIP_ADJACENCY) |
-                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY);
+      uint32_t modes = BITFIELD_BIT(MESA_PRIM_LINE_STRIP) |
+                       BITFIELD_BIT(MESA_PRIM_TRIANGLE_STRIP) |
+                       BITFIELD_BIT(MESA_PRIM_LINE_STRIP_ADJACENCY) |
+                       BITFIELD_BIT(MESA_PRIM_TRIANGLE_STRIP_ADJACENCY);
       if (screen->have_triangle_fans)
-         modes |= BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN);
+         modes |= BITFIELD_BIT(MESA_PRIM_TRIANGLE_FAN);
       if (screen->info.have_EXT_primitive_topology_list_restart) {
-         modes |= BITFIELD_BIT(PIPE_PRIM_POINTS) |
-                  BITFIELD_BIT(PIPE_PRIM_LINES) |
-                  BITFIELD_BIT(PIPE_PRIM_LINES_ADJACENCY) |
-                  BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
-                  BITFIELD_BIT(PIPE_PRIM_TRIANGLES_ADJACENCY);
+         modes |= BITFIELD_BIT(MESA_PRIM_POINTS) |
+                  BITFIELD_BIT(MESA_PRIM_LINES) |
+                  BITFIELD_BIT(MESA_PRIM_LINES_ADJACENCY) |
+                  BITFIELD_BIT(MESA_PRIM_TRIANGLES) |
+                  BITFIELD_BIT(MESA_PRIM_TRIANGLES_ADJACENCY);
          if (screen->info.list_restart_feats.primitiveTopologyPatchListRestart)
-            modes |= BITFIELD_BIT(PIPE_PRIM_PATCHES);
+            modes |= BITFIELD_BIT(MESA_PRIM_PATCHES);
       }
       return modes;
    }
    case PIPE_CAP_SUPPORTED_PRIM_MODES: {
-      uint32_t modes = BITFIELD_MASK(PIPE_PRIM_MAX);
-      modes &= ~BITFIELD_BIT(PIPE_PRIM_QUAD_STRIP);
-      modes &= ~BITFIELD_BIT(PIPE_PRIM_POLYGON);
-      modes &= ~BITFIELD_BIT(PIPE_PRIM_LINE_LOOP);
+      uint32_t modes = BITFIELD_MASK(MESA_PRIM_COUNT);
+      modes &= ~BITFIELD_BIT(MESA_PRIM_QUAD_STRIP);
+      modes &= ~BITFIELD_BIT(MESA_PRIM_POLYGON);
+      modes &= ~BITFIELD_BIT(MESA_PRIM_LINE_LOOP);
       if (!screen->have_triangle_fans)
-         modes &= ~BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN);
+         modes &= ~BITFIELD_BIT(MESA_PRIM_TRIANGLE_FAN);
       return modes;
    }
 

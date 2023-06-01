@@ -870,12 +870,12 @@ r600_shader_from_nir(struct r600_context *rctx,
        (sh->info.stage == MESA_SHADER_VERTEX && key->vs.as_ls)) {
       auto prim_type = sh->info.stage == MESA_SHADER_TESS_EVAL
                           ? u_tess_prim_from_shader(sh->info.tess._primitive_mode)
-                          : (pipe_prim_type)key->tcs.prim_mode;
-      NIR_PASS_V(sh, r600_lower_tess_io, static_cast<pipe_prim_type>(prim_type));
+                          : (mesa_prim)key->tcs.prim_mode;
+      NIR_PASS_V(sh, r600_lower_tess_io, static_cast<mesa_prim>(prim_type));
    }
 
    if (sh->info.stage == MESA_SHADER_TESS_CTRL)
-      NIR_PASS_V(sh, r600_append_tcs_TF_emission, (pipe_prim_type)key->tcs.prim_mode);
+      NIR_PASS_V(sh, r600_append_tcs_TF_emission, (mesa_prim)key->tcs.prim_mode);
 
    if (sh->info.stage == MESA_SHADER_TESS_EVAL) {
       NIR_PASS_V(sh,

@@ -1043,17 +1043,17 @@ pipeline_populate_v3d_key(struct v3d_key *key,
 /* FIXME: anv maps to hw primitive type. Perhaps eventually we would do the
  * same. For not using prim_mode that is the one already used on v3d
  */
-static const enum pipe_prim_type vk_to_pipe_prim_type[] = {
-   [VK_PRIMITIVE_TOPOLOGY_POINT_LIST] = PIPE_PRIM_POINTS,
-   [VK_PRIMITIVE_TOPOLOGY_LINE_LIST] = PIPE_PRIM_LINES,
-   [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP] = PIPE_PRIM_LINE_STRIP,
-   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST] = PIPE_PRIM_TRIANGLES,
-   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP] = PIPE_PRIM_TRIANGLE_STRIP,
-   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN] = PIPE_PRIM_TRIANGLE_FAN,
-   [VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY] = PIPE_PRIM_LINES_ADJACENCY,
-   [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY] = PIPE_PRIM_LINE_STRIP_ADJACENCY,
-   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY] = PIPE_PRIM_TRIANGLES_ADJACENCY,
-   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY] = PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY,
+static const enum mesa_prim vk_to_mesa_prim[] = {
+   [VK_PRIMITIVE_TOPOLOGY_POINT_LIST] = MESA_PRIM_POINTS,
+   [VK_PRIMITIVE_TOPOLOGY_LINE_LIST] = MESA_PRIM_LINES,
+   [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP] = MESA_PRIM_LINE_STRIP,
+   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST] = MESA_PRIM_TRIANGLES,
+   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP] = MESA_PRIM_TRIANGLE_STRIP,
+   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN] = MESA_PRIM_TRIANGLE_FAN,
+   [VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY] = MESA_PRIM_LINES_ADJACENCY,
+   [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY] = MESA_PRIM_LINE_STRIP_ADJACENCY,
+   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY] = MESA_PRIM_TRIANGLES_ADJACENCY,
+   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY] = MESA_PRIM_TRIANGLE_STRIP_ADJACENCY,
 };
 
 static const enum pipe_logicop vk_to_pipe_logicop[] = {
@@ -1093,11 +1093,11 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
 
    const VkPipelineInputAssemblyStateCreateInfo *ia_info =
       pCreateInfo->pInputAssemblyState;
-   uint8_t topology = vk_to_pipe_prim_type[ia_info->topology];
+   uint8_t topology = vk_to_mesa_prim[ia_info->topology];
 
-   key->is_points = (topology == PIPE_PRIM_POINTS);
-   key->is_lines = (topology >= PIPE_PRIM_LINES &&
-                    topology <= PIPE_PRIM_LINE_STRIP);
+   key->is_points = (topology == MESA_PRIM_POINTS);
+   key->is_lines = (topology >= MESA_PRIM_LINES &&
+                    topology <= MESA_PRIM_LINE_STRIP);
    key->has_gs = has_geometry_shader;
 
    const VkPipelineColorBlendStateCreateInfo *cb_info =
@@ -1264,11 +1264,11 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
     */
    const VkPipelineInputAssemblyStateCreateInfo *ia_info =
       pCreateInfo->pInputAssemblyState;
-   uint8_t topology = vk_to_pipe_prim_type[ia_info->topology];
+   uint8_t topology = vk_to_mesa_prim[ia_info->topology];
 
    /* FIXME: PRIM_POINTS is not enough, in gallium the full check is
-    * PIPE_PRIM_POINTS && v3d->rasterizer->base.point_size_per_vertex */
-   key->per_vertex_point_size = (topology == PIPE_PRIM_POINTS);
+    * MESA_PRIM_POINTS && v3d->rasterizer->base.point_size_per_vertex */
+   key->per_vertex_point_size = (topology == MESA_PRIM_POINTS);
 
    key->is_coord = broadcom_shader_stage_is_binning(p_stage->stage);
 
@@ -1928,7 +1928,7 @@ pipeline_populate_graphics_key(struct v3dv_pipeline *pipeline,
 
    const VkPipelineInputAssemblyStateCreateInfo *ia_info =
       pCreateInfo->pInputAssemblyState;
-   key->topology = vk_to_pipe_prim_type[ia_info->topology];
+   key->topology = vk_to_mesa_prim[ia_info->topology];
 
    const VkPipelineColorBlendStateCreateInfo *cb_info =
       raster_enabled ? pCreateInfo->pColorBlendState : NULL;
@@ -2127,19 +2127,19 @@ write_creation_feedback(struct v3dv_pipeline *pipeline,
    }
 }
 
-static enum shader_prim
+static enum mesa_prim
 multiview_gs_input_primitive_from_pipeline(struct v3dv_pipeline *pipeline)
 {
    switch (pipeline->topology) {
-   case PIPE_PRIM_POINTS:
-      return SHADER_PRIM_POINTS;
-   case PIPE_PRIM_LINES:
-   case PIPE_PRIM_LINE_STRIP:
-      return SHADER_PRIM_LINES;
-   case PIPE_PRIM_TRIANGLES:
-   case PIPE_PRIM_TRIANGLE_STRIP:
-   case PIPE_PRIM_TRIANGLE_FAN:
-      return SHADER_PRIM_TRIANGLES;
+   case MESA_PRIM_POINTS:
+      return MESA_PRIM_POINTS;
+   case MESA_PRIM_LINES:
+   case MESA_PRIM_LINE_STRIP:
+      return MESA_PRIM_LINES;
+   case MESA_PRIM_TRIANGLES:
+   case MESA_PRIM_TRIANGLE_STRIP:
+   case MESA_PRIM_TRIANGLE_FAN:
+      return MESA_PRIM_TRIANGLES;
    default:
       /* Since we don't allow GS with multiview, we can only see non-adjacency
        * primitives.
@@ -2148,19 +2148,19 @@ multiview_gs_input_primitive_from_pipeline(struct v3dv_pipeline *pipeline)
    }
 }
 
-static enum shader_prim
+static enum mesa_prim
 multiview_gs_output_primitive_from_pipeline(struct v3dv_pipeline *pipeline)
 {
    switch (pipeline->topology) {
-   case PIPE_PRIM_POINTS:
-      return SHADER_PRIM_POINTS;
-   case PIPE_PRIM_LINES:
-   case PIPE_PRIM_LINE_STRIP:
-      return SHADER_PRIM_LINE_STRIP;
-   case PIPE_PRIM_TRIANGLES:
-   case PIPE_PRIM_TRIANGLE_STRIP:
-   case PIPE_PRIM_TRIANGLE_FAN:
-      return SHADER_PRIM_TRIANGLE_STRIP;
+   case MESA_PRIM_POINTS:
+      return MESA_PRIM_POINTS;
+   case MESA_PRIM_LINES:
+   case MESA_PRIM_LINE_STRIP:
+      return MESA_PRIM_LINE_STRIP;
+   case MESA_PRIM_TRIANGLES:
+   case MESA_PRIM_TRIANGLE_STRIP:
+   case MESA_PRIM_TRIANGLE_FAN:
+      return MESA_PRIM_TRIANGLE_STRIP;
    default:
       /* Since we don't allow GS with multiview, we can only see non-adjacency
        * primitives.
@@ -2906,7 +2906,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
 
    const VkPipelineInputAssemblyStateCreateInfo *ia_info =
       pCreateInfo->pInputAssemblyState;
-   pipeline->topology = vk_to_pipe_prim_type[ia_info->topology];
+   pipeline->topology = vk_to_mesa_prim[ia_info->topology];
 
    /* If rasterization is not enabled, various CreateInfo structs must be
     * ignored.

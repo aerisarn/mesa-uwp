@@ -1078,13 +1078,13 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 
       enum a6xx_tess_output output;
       switch (gs->gs.output_primitive) {
-      case SHADER_PRIM_POINTS:
+      case MESA_PRIM_POINTS:
          output = TESS_POINTS;
          break;
-      case SHADER_PRIM_LINE_STRIP:
+      case MESA_PRIM_LINE_STRIP:
          output = TESS_LINES;
          break;
-      case SHADER_PRIM_TRIANGLE_STRIP:
+      case MESA_PRIM_TRIANGLE_STRIP:
          output = TESS_CW_TRIS;
          break;
       default:

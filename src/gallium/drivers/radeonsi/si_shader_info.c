@@ -799,7 +799,7 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
       info->gsvs_vertex_size = info->num_outputs * 16;
       info->max_gsvs_emit_size = info->gsvs_vertex_size * info->base.gs.vertices_out;
       info->gs_input_verts_per_prim =
-         u_vertices_per_prim((enum pipe_prim_type)info->base.gs.input_primitive);
+         u_vertices_per_prim((enum mesa_prim)info->base.gs.input_primitive);
    }
 
    info->clipdist_mask = info->writes_clipvertex ? SI_USER_CLIP_PLANE_MASK :

@@ -855,8 +855,8 @@ dzn_nir_polygon_point_mode_gs(const nir_shader *previous_shader, struct dzn_nir_
    nir_shader *nir = b->shader;
    nir->info.inputs_read = nir->info.outputs_written = previous_shader->info.outputs_written;
    nir->info.outputs_written |= (1ull << VARYING_SLOT_VAR12);
-   nir->info.gs.input_primitive = PIPE_PRIM_TRIANGLES;
-   nir->info.gs.output_primitive = PIPE_PRIM_POINTS;
+   nir->info.gs.input_primitive = MESA_PRIM_TRIANGLES;
+   nir->info.gs.output_primitive = MESA_PRIM_POINTS;
    nir->info.gs.vertices_in = 3;
    nir->info.gs.vertices_out = 3;
    nir->info.gs.invocations = 1;

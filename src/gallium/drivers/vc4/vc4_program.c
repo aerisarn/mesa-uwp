@@ -2780,9 +2780,9 @@ vc4_update_compiled_fs(struct vc4_context *vc4, uint8_t prim_mode)
         memset(key, 0, sizeof(*key));
         vc4_setup_shared_key(vc4, &key->base, &vc4->fragtex);
         key->base.shader_state = vc4->prog.bind_fs;
-        key->is_points = (prim_mode == PIPE_PRIM_POINTS);
-        key->is_lines = (prim_mode >= PIPE_PRIM_LINES &&
-                         prim_mode <= PIPE_PRIM_LINE_STRIP);
+        key->is_points = (prim_mode == MESA_PRIM_POINTS);
+        key->is_lines = (prim_mode >= MESA_PRIM_LINES &&
+                         prim_mode <= MESA_PRIM_LINE_STRIP);
         key->blend = vc4->blend->rt[0];
         if (vc4->blend->logicop_enable) {
                 key->logicop_func = vc4->blend->logicop_func;
@@ -2855,7 +2855,7 @@ vc4_update_compiled_vs(struct vc4_context *vc4, uint8_t prim_mode)
                 key->attr_formats[i] = vc4->vtx->pipe[i].src_format;
 
         key->per_vertex_point_size =
-                (prim_mode == PIPE_PRIM_POINTS &&
+                (prim_mode == MESA_PRIM_POINTS &&
                  vc4->rasterizer->base.point_size_per_vertex);
 
         struct vc4_compiled_shader *vs =

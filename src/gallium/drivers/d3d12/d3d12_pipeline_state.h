@@ -80,7 +80,7 @@ struct d3d12_gfx_pipeline_state {
    DXGI_FORMAT rtv_formats[8];
    DXGI_FORMAT dsv_format;
    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE ib_strip_cut_value;
-   enum pipe_prim_type prim_type;
+   enum mesa_prim prim_type;
 };
 
 struct d3d12_compute_pipeline_state {

@@ -85,7 +85,7 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    const unsigned gs_num_invocations = MAX2(gs_sel->info.base.gs.invocations, 1);
    const unsigned input_prim = si_get_input_prim(gs_sel, &shader->key);
    const bool use_adjacency =
-      input_prim >= PIPE_PRIM_LINES_ADJACENCY && input_prim <= PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
+      input_prim >= MESA_PRIM_LINES_ADJACENCY && input_prim <= MESA_PRIM_TRIANGLE_STRIP_ADJACENCY;
    const unsigned max_verts_per_prim = u_vertices_per_prim(input_prim);
    const unsigned min_verts_per_prim = gs_stage == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
 
