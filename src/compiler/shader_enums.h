@@ -1151,7 +1151,7 @@ enum tess_primitive_mode
 };
 
 /* these also map directly to GL and gallium prim types. */
-enum shader_prim
+enum PACKED shader_prim
 {
    SHADER_PRIM_POINTS,
    SHADER_PRIM_LINES,
