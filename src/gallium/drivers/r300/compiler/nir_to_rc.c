@@ -1093,7 +1093,6 @@ ntr_setup_registers(struct ntr_compile *c)
    nir_foreach_reg_decl_safe(nir_reg, nir_shader_get_entrypoint(c->s)) {
       unsigned num_array_elems = nir_intrinsic_num_array_elems(nir_reg);
       unsigned num_components = nir_intrinsic_num_components(nir_reg);
-      unsigned bit_size = nir_intrinsic_bit_size(nir_reg);
       unsigned index = nir_reg->def.index;
 
       /* We already handled arrays */
@@ -1102,15 +1101,6 @@ ntr_setup_registers(struct ntr_compile *c)
          uint32_t write_mask = BITFIELD_MASK(num_components);
 
          if (!ntr_try_store_reg_in_tgsi_output(c, &decl, nir_reg)) {
-            if (bit_size == 64) {
-               if (num_components > 2) {
-                  fprintf(stderr, "NIR-to-TGSI: error: %d-component NIR r%d\n",
-                          num_components, index);
-               }
-
-               write_mask = ntr_64bit_write_mask(write_mask);
-            }
-
             decl = ureg_writemask(ntr_temp(c), write_mask);
          }
          c->reg_temp[index] = decl;
@@ -1195,28 +1185,11 @@ ntr_get_alu_src(struct ntr_compile *c, nir_alu_instr *instr, int i)
       nir_legacy_chase_alu_src(&instr->src[i], !c->options->lower_fabs);
    struct ureg_src usrc = ntr_get_chased_src(c, &src.src);
 
-   /* Expand double/dvec2 src references to TGSI swizzles using a pair of 32-bit
-    * channels.  We skip this for undefs, as those don't get split to vec2s (but
-    * the specific swizzles from an undef don't matter)
-    */
-   if (nir_src_bit_size(instr->src[i].src) == 64 &&
-      !(src.src.is_ssa && src.src.ssa->parent_instr->type == nir_instr_type_undef)) {
-      int chan1 = 1;
-      if (nir_op_infos[instr->op].input_sizes[i] == 0) {
-         chan1 = instr->def.num_components > 1 ? 1 : 0;
-      }
-      usrc = ureg_swizzle(usrc,
-                          src.swizzle[0] * 2,
-                          src.swizzle[0] * 2 + 1,
-                          src.swizzle[chan1] * 2,
-                          src.swizzle[chan1] * 2 + 1);
-   } else {
-      usrc = ureg_swizzle(usrc,
-                          src.swizzle[0],
-                          src.swizzle[1],
-                          src.swizzle[2],
-                          src.swizzle[3]);
-   }
+   usrc = ureg_swizzle(usrc,
+                       src.swizzle[0],
+                       src.swizzle[1],
+                       src.swizzle[2],
+                       src.swizzle[3]);
 
    if (src.fabs)
       usrc = ureg_abs(usrc);
@@ -1245,8 +1218,6 @@ static struct ureg_dst
 ntr_get_ssa_def_decl(struct ntr_compile *c, nir_def *ssa)
 {
    uint32_t writemask = BITSET_MASK(ssa->num_components);
-   if (ssa->bit_size == 64)
-      writemask = ntr_64bit_write_mask(writemask);
 
    struct ureg_dst dst;
    if (!ntr_try_store_ssa_in_tgsi_output(c, &dst, ssa))
@@ -1303,13 +1274,7 @@ ntr_get_alu_dest(struct ntr_compile *c, nir_def *def)
    if (chased.dest.is_ssa)
       return dst;
 
-   int dst_64 = def->bit_size == 64;
-   unsigned write_mask = chased.write_mask;
-
-   if (dst_64)
-      return ureg_writemask(dst, ntr_64bit_write_mask(write_mask));
-   else
-      return ureg_writemask(dst, write_mask);
+   return ureg_writemask(dst, chased.write_mask);
 }
 
 /* For an SSA dest being populated by a constant src, replace the storage with
