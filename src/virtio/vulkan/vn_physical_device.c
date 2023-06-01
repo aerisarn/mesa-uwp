@@ -1045,6 +1045,7 @@ vn_physical_device_get_native_extensions(
    exts->EXT_physical_device_drm = true;
    /* use common implementation */
    exts->EXT_tooling_info = true;
+   exts->EXT_device_memory_report = true;
 }
 
 static void
@@ -1807,6 +1808,10 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
          /* clang-format on */
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_MEMORY_REPORT_FEATURES_EXT:
+         ((VkPhysicalDeviceDeviceMemoryReportFeaturesEXT *)out)
+            ->deviceMemoryReport = VK_TRUE;
+         break;
       default:
          break;
 #undef CASE

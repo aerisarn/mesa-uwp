@@ -342,6 +342,11 @@ vn_device_fix_create_info(const struct vn_device *dev,
       extra_exts[extra_count++] = VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME;
    }
 
+   if (app_exts->EXT_device_memory_report) {
+      /* see vn_physical_device_get_native_extensions */
+      block_exts[block_count++] = VK_EXT_DEVICE_MEMORY_REPORT_EXTENSION_NAME;
+   }
+
    if (app_exts->EXT_physical_device_drm) {
       /* see vn_physical_device_get_native_extensions */
       block_exts[block_count++] = VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME;
