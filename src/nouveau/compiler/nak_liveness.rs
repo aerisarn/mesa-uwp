@@ -3,59 +3,92 @@
  * SPDX-License-Identifier: MIT
  */
 
-use crate::bitset::*;
 use crate::nak_ir::*;
 
+use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 
+struct SSAEntry {
+    defined: bool,
+    uses: Vec<usize>,
+}
+
+impl SSAEntry {
+    fn add_def(&mut self) {
+        self.defined = true;
+    }
+
+    fn add_in_block_use(&mut self, use_ip: usize) {
+        self.uses.push(use_ip);
+    }
+
+    fn add_successor_use(
+        &mut self,
+        num_block_instrs: usize,
+        use_ip: usize,
+    ) -> bool {
+        /* IPs are relative to the start of their block */
+        let use_ip = num_block_instrs + use_ip;
+
+        if let Some(last_use_ip) = self.uses.last_mut() {
+            if *last_use_ip < num_block_instrs {
+                /* We've never seen a successor use before */
+                self.uses.push(use_ip);
+                true
+            } else if *last_use_ip > use_ip {
+                /* Otherwise, we want the minimum next use */
+                *last_use_ip = use_ip;
+                true
+            } else {
+                false
+            }
+        } else {
+            self.uses.push(use_ip);
+            true
+        }
+    }
+}
+
 pub struct BlockLiveness {
-    defs: BitSet,
-    uses: BitSet,
-    last_use: HashMap<u32, usize>,
-    live_in: BitSet,
-    live_out: BitSet,
+    num_instrs: usize,
+    ssa_map: HashMap<SSAValue, SSAEntry>,
     pub predecessors: Vec<u32>,
     pub successors: [Option<u32>; 2],
 }
 
 impl BlockLiveness {
-    fn new() -> Self {
+    fn new(num_instrs: usize) -> Self {
         Self {
-            defs: BitSet::new(),
-            uses: BitSet::new(),
-            last_use: HashMap::new(),
-            live_in: BitSet::new(),
-            live_out: BitSet::new(),
+            num_instrs: num_instrs,
+            ssa_map: HashMap::new(),
             predecessors: Vec::new(),
             successors: [None; 2],
         }
     }
 
-    fn add_def(&mut self, val: &SSAValue) {
-        self.defs.insert(val.idx().try_into().unwrap());
-    }
-
-    fn add_use(&mut self, val: &SSAValue, ip: usize) {
-        self.uses.insert(val.idx().try_into().unwrap());
-        self.last_use.insert(val.idx(), ip);
+    fn entry_mut(&mut self, ssa: SSAValue) -> &mut SSAEntry {
+        self.ssa_map.entry(ssa).or_insert_with(|| SSAEntry {
+            defined: false,
+            uses: Vec::new(),
+        })
     }
 
     fn add_live_block(&mut self, block: &BasicBlock) {
         for (ip, instr) in block.instrs.iter().enumerate() {
             if let PredRef::SSA(val) = &instr.pred.pred_ref {
-                self.add_use(val, ip);
+                self.entry_mut(*val).add_in_block_use(ip);
             }
 
             for src in instr.srcs() {
                 for sv in src.iter_ssa() {
-                    self.add_use(sv, ip);
+                    self.entry_mut(*sv).add_in_block_use(ip);
                 }
             }
 
             for dst in instr.dsts() {
                 if let Dst::SSA(sr) = dst {
                     for sv in sr.iter() {
-                        self.add_def(sv);
+                        self.entry_mut(*sv).add_def();
                     }
                 }
             }
@@ -63,42 +96,54 @@ impl BlockLiveness {
     }
 
     pub fn is_live_after(&self, val: &SSAValue, ip: usize) -> bool {
-        if self.live_out.get(val.idx().try_into().unwrap()) {
-            true
-        } else {
-            if let Some(last_use_ip) = self.last_use.get(&val.idx()) {
+        if let Some(entry) = self.ssa_map.get(val) {
+            if let Some(last_use_ip) = entry.uses.last() {
                 *last_use_ip > ip
             } else {
                 false
             }
+        } else {
+            false
         }
     }
 
     #[allow(dead_code)]
     pub fn is_live_in(&self, val: &SSAValue) -> bool {
-        self.live_in.get(val.idx().try_into().unwrap())
+        if let Some(entry) = self.ssa_map.get(val) {
+            !entry.defined && !entry.uses.is_empty()
+        } else {
+            false
+        }
     }
 
     #[allow(dead_code)]
     pub fn is_live_out(&self, val: &SSAValue) -> bool {
-        self.live_out.get(val.idx().try_into().unwrap())
+        if let Some(entry) = self.ssa_map.get(val) {
+            if let Some(last_use_ip) = entry.uses.last() {
+                *last_use_ip >= self.num_instrs
+            } else {
+                false
+            }
+        } else {
+            false
+        }
     }
 }
 
 pub struct Liveness {
-    blocks: HashMap<u32, BlockLiveness>,
+    blocks: HashMap<u32, RefCell<BlockLiveness>>,
 }
 
 impl Liveness {
-    pub fn block(&self, block: &BasicBlock) -> &BlockLiveness {
-        self.blocks.get(&block.id).unwrap()
+    pub fn block(&self, block: &BasicBlock) -> Ref<BlockLiveness> {
+        self.blocks.get(&block.id).unwrap().borrow()
     }
 
     fn link_blocks(&mut self, p_id: u32, s_id: u32) {
-        let s = self.blocks.get_mut(&s_id).unwrap();
+        let s = self.blocks.get_mut(&s_id).unwrap().get_mut();
         s.predecessors.push(p_id);
 
-        let p = self.blocks.get_mut(&p_id).unwrap();
+        let p = self.blocks.get_mut(&p_id).unwrap().get_mut();
         if p.successors[0].is_none() {
             p.successors[0] = Some(s_id);
         } else {
@@ -111,14 +156,11 @@ impl Liveness {
         let mut l = Liveness {
             blocks: HashMap::new(),
         };
-        let mut live_in = HashMap::new();
 
         for b in &func.blocks {
-            let mut bl = BlockLiveness::new();
+            let mut bl = BlockLiveness::new(b.instrs.len());
             bl.add_live_block(&b);
-            l.blocks.insert(b.id, bl);
-
-            live_in.insert(b.id, BitSet::new());
+            l.blocks.insert(b.id, RefCell::new(bl));
         }
 
         for (i, b) in func.blocks.iter().enumerate() {
@@ -141,27 +183,46 @@ impl Liveness {
         while to_do {
             to_do = false;
             for b in func.blocks.iter().rev() {
-                let bl = l.blocks.get_mut(&b.id).unwrap();
+                let num_instrs = b.instrs.len();
+                let mut bl = l.blocks.get(&b.id).unwrap().borrow_mut();
 
                 /* Compute live-out */
                 for s in bl.successors {
-                    if let Some(sb_id) = s {
-                        let s_live_in = live_in.get(&sb_id).unwrap();
-                        to_do |= bl.live_out.union_with(s_live_in);
+                    let Some(sb_id) = s else {
+                        continue;
+                    };
+
+                    if sb_id == b.id {
+                        for entry in bl.ssa_map.values_mut() {
+                            if entry.defined {
+                                continue;
+                            }
+
+                            let Some(first_use_ip) = entry.uses.first() else {
+                                continue;
+                            };
+
+                            to_do |= entry
+                                .add_successor_use(num_instrs, *first_use_ip);
+                        }
+                    } else {
+                        let sbl = l.blocks.get(&sb_id).unwrap().borrow();
+                        for (ssa, entry) in sbl.ssa_map.iter() {
+                            if entry.defined {
+                                continue;
+                            }
+
+                            let Some(first_use_ip) = entry.uses.first() else {
+                                continue;
+                            };
+
+                            to_do |= bl
+                                .entry_mut(*ssa)
+                                .add_successor_use(num_instrs, *first_use_ip);
+                        }
                     }
                 }
-
-                let b_live_in = live_in.get_mut(&b.id).unwrap();
-
-                let new_live_in =
-                    (bl.live_out.clone() | bl.uses.clone()) & !bl.defs.clone();
-                to_do |= b_live_in.union_with(&new_live_in);
             }
-        }
-
-        for b in &func.blocks {
-            let bl = l.blocks.get_mut(&b.id).unwrap();
-            bl.live_in = live_in.remove(&b.id).unwrap();
         }
 
         l

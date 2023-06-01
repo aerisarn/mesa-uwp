@@ -923,7 +923,7 @@ impl AssignRegs {
             };
 
             let mut arb = AssignRegsBlock::new(ra);
-            arb.first_pass(b, bl);
+            arb.first_pass(b, &bl);
             self.blocks.insert(b.id, arb);
         }
 
