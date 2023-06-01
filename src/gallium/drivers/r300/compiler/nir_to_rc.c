@@ -540,66 +540,6 @@ ntr_allocate_regs_unoptimized(struct ntr_compile *c, nir_function_impl *impl)
       ureg_DECL_temporary(c->ureg);
 }
 
-
-/**
- * Try to find an iadd of a constant value with a non-constant value in the
- * nir_src's first component, returning the constant offset and replacing *src
- * with the non-constant component.
- */
-static const uint32_t
-ntr_extract_const_src_offset(nir_src *src)
-{
-   nir_scalar s = nir_get_scalar(src->ssa, 0);
-
-   while (nir_scalar_is_alu(s)) {
-      nir_alu_instr *alu = nir_instr_as_alu(s.def->parent_instr);
-
-      if (alu->op == nir_op_iadd) {
-         for (int i = 0; i < 2; i++) {
-            nir_const_value *v = nir_src_as_const_value(alu->src[i].src);
-            if (v != NULL) {
-               *src = alu->src[1 - i].src;
-               return v[alu->src[i].swizzle[s.comp]].u32;
-            }
-         }
-
-         return 0;
-      }
-
-      /* We'd like to reuse nir_scalar_chase_movs(), but it assumes SSA and that
-       * seems reasonable for something used in inner loops of the compiler.
-       */
-      if (alu->op == nir_op_mov) {
-         s.def = alu->src[0].src.ssa;
-         s.comp = alu->src[0].swizzle[s.comp];
-      } else if (nir_op_is_vec(alu->op)) {
-         s.def = alu->src[s.comp].src.ssa;
-         s.comp = alu->src[s.comp].swizzle[0];
-      } else {
-         return 0;
-      }
-   }
-
-   return 0;
-}
-
-static const struct glsl_type *
-ntr_shader_input_type(struct ntr_compile *c,
-                      struct nir_variable *var)
-{
-   switch (c->s->info.stage) {
-   case MESA_SHADER_GEOMETRY:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_TESS_CTRL:
-      if (glsl_type_is_array(var->type))
-         return glsl_get_array_element(var->type);
-      else
-         return var->type;
-   default:
-      return var->type;
-   }
-}
-
 static void
 ntr_get_gl_varying_semantic(struct ntr_compile *c, unsigned location,
                             unsigned *semantic_name, unsigned *semantic_index)
@@ -807,7 +747,7 @@ ntr_setup_inputs(struct ntr_compile *c)
    int num_input_arrays = 0;
 
    nir_foreach_shader_in_variable(var, c->s) {
-      const struct glsl_type *type = ntr_shader_input_type(c, var);
+      const struct glsl_type *type = var->type;
       unsigned array_len =
          glsl_count_attribute_slots(type, false);
 
@@ -817,7 +757,7 @@ ntr_setup_inputs(struct ntr_compile *c)
    c->input_index_map = ralloc_array(c, struct ureg_src, num_inputs);
 
    nir_foreach_shader_in_variable(var, c->s) {
-      const struct glsl_type *type = ntr_shader_input_type(c, var);
+      const struct glsl_type *type = var->type;
       unsigned array_len =
          glsl_count_attribute_slots(type, false);
 
