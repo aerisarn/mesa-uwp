@@ -369,6 +369,8 @@ handle_file(const char *filename, int start, int end, int draw)
 
    script_end_cmdstream();
 
+   reset_buffers();
+
    io_close(io);
    fflush(stdout);
 

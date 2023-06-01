@@ -397,6 +397,8 @@ static int parse_reg(const char *str)
 "unlock"                          return TOKEN(T_OP_UNLOCK);
 "alias"                           return TOKEN(T_OP_ALIAS);
 
+"print"                           return TOKEN(T_OP_PRINT);
+
 "f16"                             return TOKEN(T_TYPE_F16);
 "f32"                             return TOKEN(T_TYPE_F32);
 "u16"                             return TOKEN(T_TYPE_U16);

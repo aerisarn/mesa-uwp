@@ -636,6 +636,8 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 
 %token <u64> T_RAW
 
+%token <tok> T_OP_PRINT
+
 /* type qualifiers: */
 %token <tok> T_TYPE_F16
 %token <tok> T_TYPE_F32
@@ -828,6 +830,7 @@ instr:             iflags cat0_instr
 |                  iflags cat6_instr
 |                  iflags cat7_instr
 |                  raw_instr
+|                  meta_print
 |                  label
 
 label:             T_IDENTIFIER ':' { new_label($1); }
@@ -1344,6 +1347,56 @@ cat7_instr:        cat7_barrier
                    }
 
 raw_instr: T_RAW   {new_instr(OPC_META_RAW)->raw.value = $1;}
+
+meta_print: T_OP_PRINT T_REGISTER ',' T_REGISTER {
+	/* low */
+	new_instr(OPC_MOV);
+	instr->cat1.src_type = TYPE_U32;
+	instr->cat1.dst_type = TYPE_U32;
+	new_dst($2, IR3_REG_R);
+	new_src(0, IR3_REG_IMMED)->uim_val = info->shader_print_buffer_iova & 0xffffffff;
+
+	/* high */
+	new_instr(OPC_MOV);
+	instr->cat1.src_type = TYPE_U32;
+	instr->cat1.dst_type = TYPE_U32;
+	new_dst($2 + 2, IR3_REG_R);
+	new_src(0, IR3_REG_IMMED)->uim_val = info->shader_print_buffer_iova >> 32;
+
+	/* offset */
+	new_instr(OPC_MOV);
+	instr->cat1.src_type = TYPE_U32;
+	instr->cat1.dst_type = TYPE_U32;
+	new_dst($2 + 4, IR3_REG_R);
+	new_src(0, IR3_REG_IMMED)->uim_val = 4;
+
+	new_instr(OPC_NOP);
+	instr->repeat = 5;
+
+	/* Increment and get current offset into print buffer */
+	new_instr(OPC_ATOMIC_G_ADD);
+	instr->cat6.d = 1;
+	instr->cat6.typed = 0;
+	instr->cat6.type = TYPE_U32;
+	instr->cat6.iim_val = 1;
+
+	new_dst($2, IR3_REG_R);
+	new_src($2, IR3_REG_R);
+	new_src($2 + 4, IR3_REG_R);
+
+	/* Store the value */
+	new_instr(OPC_STG);
+	dummy_dst();
+	instr->cat6.type = TYPE_U32;
+	instr->flags = IR3_INSTR_SY;
+	new_src($2, IR3_REG_R);
+	new_src(0, IR3_REG_IMMED)->iim_val = 0;
+	new_src($4, IR3_REG_R);
+	new_src(0, IR3_REG_IMMED)->iim_val = 1;
+
+	new_instr(OPC_NOP);
+	instr->flags = IR3_INSTR_SY;
+}
 
 src:               T_REGISTER     { $$ = new_src($1, 0); }
 |                  T_A0           { $$ = new_src((61 << 3), IR3_REG_HALF); }

@@ -177,6 +177,8 @@ struct device {
 
    struct u_vector cmdstreams;
 
+   uint64_t shader_log_iova;
+
    bool has_set_iova;
 
    uint32_t va_id;
@@ -240,6 +242,37 @@ device_free_unused_buffers(struct device *dev)
          buffer_mem_free(dev, buf);
          rb_tree_remove(&dev->buffers, &buf->node);
          free(buf);
+      }
+   }
+}
+
+static void
+device_print_shader_log(struct device *dev)
+{
+   struct shader_log {
+      uint64_t cur_iova;
+      union {
+         uint32_t entries_u32[0];
+         float entries_float[0];
+      };
+   };
+
+   if (dev->shader_log_iova != 0)
+   {
+      struct buffer *buf = device_get_buffer(dev, dev->shader_log_iova);
+      if (buf) {
+         struct shader_log *log = buf->map + (dev->shader_log_iova - buf->iova);
+         uint32_t count = (log->cur_iova - dev->shader_log_iova -
+                           offsetof(struct shader_log, entries_u32)) / 4;
+
+         printf("Shader Log Entries: %u\n", count);
+
+         for (uint32_t i = 0; i < count; i++) {
+            printf("[%u] %08x %.4f\n", i, log->entries_u32[i],
+                   log->entries_float[i]);
+         }
+
+         printf("========================================\n");
       }
    }
 }
@@ -437,6 +470,8 @@ device_submit_cmdstreams(struct device *dev)
 
    u_vector_finish(&dev->cmdstreams);
    u_vector_init(&dev->cmdstreams, 8, sizeof(struct cmdstream));
+
+   device_print_shader_log(dev);
 }
 
 static void
@@ -627,6 +662,8 @@ device_submit_cmdstreams(struct device *dev)
 
    u_vector_finish(&dev->cmdstreams);
    u_vector_init(&dev->cmdstreams, 8, sizeof(struct cmdstream));
+
+   device_print_shader_log(dev);
 }
 
 static void
@@ -655,8 +692,7 @@ upload_buffer(struct device *dev, uint64_t iova, unsigned int size,
       buf->iova = iova;
       buf->size = size;
 
-      if (dev->has_set_iova)
-         rb_tree_insert(&dev->buffers, &buf->node, rb_buffer_insert_cmp);
+      rb_tree_insert(&dev->buffers, &buf->node, rb_buffer_insert_cmp);
 
       buffer_mem_alloc(dev, buf);
    } else if (buf->size != size) {
@@ -736,6 +772,11 @@ override_cmdstream(struct device *dev, struct cmdstream *cs,
 
          cs->iova = gpuaddr;
          cs->size = sizedwords * sizeof(uint32_t);
+         break;
+      }
+      case RD_SHADER_LOG_BUFFER: {
+         unsigned int sizedwords;
+         parse_addr(ps.buf, ps.sz, &sizedwords, &dev->shader_log_iova);
          break;
       }
       default:

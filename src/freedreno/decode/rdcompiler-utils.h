@@ -54,6 +54,8 @@ struct replay_context {
    struct cmdstream *state_cs;
    struct cmdstream *shader_cs;
 
+   struct cmdstream *shader_log;
+
    struct list_head cs_list;
 
    struct ir3_compiler *compiler;
@@ -223,6 +225,11 @@ replay_context_init(struct replay_context *ctx, struct fd_dev_id *dev_id,
    ctx->state_cs = cs_alloc(ctx, 2 * 1024 * 1024);
    ctx->shader_cs = cs_alloc(ctx, 8 * 1024 * 1024);
 
+   ctx->shader_log = cs_alloc(ctx, 1024 * 1024);
+   ctx->shader_log->mem[0] = (ctx->shader_log->iova & 0xffffffff) + sizeof(uint64_t);
+   ctx->shader_log->mem[1] = ctx->shader_log->iova >> 32;
+   ctx->shader_log->cur = ctx->shader_log->total_size;
+
    struct ir3_compiler_options options{};
    ctx->compiler =
       ir3_compiler_create(NULL, dev_id, &options);
@@ -243,6 +250,14 @@ replay_context_finish(struct replay_context *ctx)
    fwrite(&section_gpu_id, sizeof(section_gpu_id), 1, out);
    fwrite(&gpu_id, sizeof(uint32_t), 1, out);
 
+   const uint32_t packet[] = {(uint32_t)ctx->shader_log->iova,
+                              (uint32_t)(ctx->shader_log->total_size),
+                              (uint32_t)(ctx->shader_log->iova >> 32)};
+   struct rd_section section_shader_log = {.type = RD_SHADER_LOG_BUFFER,
+                                           .size = sizeof(packet)};
+   fwrite(&section_shader_log, sizeof(section_shader_log), 1, out);
+   fwrite(packet, sizeof(packet), 1, out);
+
    list_for_each_entry (struct cmdstream, cs, &ctx->cs_list, link) {
       rd_write_cs_buffer(out, cs);
    }
@@ -256,7 +271,9 @@ upload_shader(struct replay_context *ctx, uint64_t id, const char *source)
 {
    FILE *in = fmemopen((void *)source, strlen(source), "r");
 
-   struct ir3_kernel_info info = {};
+   struct ir3_kernel_info info = {
+      .shader_print_buffer_iova = ctx->shader_log->iova,
+   };
    struct ir3_shader *shader = ir3_parse_asm(ctx->compiler, &info, in);
    assert(shader);
 
