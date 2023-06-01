@@ -47,13 +47,4 @@ const void *nir_to_rc_options(struct nir_shader *s,
                                 struct pipe_screen *screen,
                                 const struct nir_to_rc_options *ntr_options);
 
-const void *
-nir_to_rc_get_compiler_options(struct pipe_screen *pscreen,
-                                 enum pipe_shader_ir ir,
-                                 unsigned shader);
-
-const void *
-r300_pipe_shader_state_to_tgsi_tokens(struct pipe_screen *screen,
-                                 const struct pipe_shader_state *cso);
-
 #endif /* NIR_TO_RC_H */
