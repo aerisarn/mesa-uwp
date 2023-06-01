@@ -4857,8 +4857,11 @@ static void pvr_unwind_rects(uint32_t width,
 
          rect->extent.width = split_point - rect->offset.x;
          new_rect->offset.x = split_point;
+         new_rect->extent.width -=
+            (int32_t)split_point - (int32_t)rect->offset.x;
 
-         split_width = (rect->offset.x + new_rect->extent.width) - split_point;
+         split_width =
+            (new_rect->offset.x + new_rect->extent.width) - split_point;
 
          if (input) {
             mappings[i].dst_rect.extent.width -= split_width;
@@ -4879,7 +4882,6 @@ static void pvr_unwind_rects(uint32_t width,
 
          new_rect->offset.x += (int32_t)texel_unwind - (int32_t)width;
          new_rect->offset.y++;
-         new_rect->extent.width += (int32_t)texel_unwind - (int32_t)width;
 
          new_mappings++;
       }
