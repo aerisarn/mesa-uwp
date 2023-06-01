@@ -1182,6 +1182,7 @@
       - .clang-format-include
       - .clang-format-ignore
       - src/**/.clang-format
+      - src/egl/**/*
       - src/**/asahi/**/*
       - src/**/panfrost/**/*
       - src/amd/vulkan/**/*
