@@ -461,6 +461,10 @@ v3d_tlb_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
             util_format_is_depth_or_stencil(info->dst.format))
                 return;
 
+        if ((is_depth_blit || is_stencil_blit) &&
+            !util_format_is_depth_or_stencil(info->dst.format))
+                return;
+
         if (!v3d_rt_format_supported(devinfo, info->src.format))
                 return;
 
