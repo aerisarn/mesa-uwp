@@ -2828,8 +2828,13 @@ fs_visitor::opt_algebraic()
 	 break;
       }
 
-      /* Swap if src[0] is immediate. */
-      if (progress && inst->is_commutative()) {
+      /* Ensure that the correct source has the immediate value. 2-source
+       * instructions must have the immediate in src[1]. On Gfx12 and later,
+       * some 3-source instructions can have the immediate in src[0] or
+       * src[2]. It's complicated, so don't mess with 3-source instructions
+       * here.
+       */
+      if (progress && inst->sources == 2 && inst->is_commutative()) {
          if (inst->src[0].file == IMM) {
             fs_reg tmp = inst->src[1];
             inst->src[1] = inst->src[0];
