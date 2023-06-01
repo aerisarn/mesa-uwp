@@ -74,7 +74,6 @@ struct ntr_compile {
    struct ureg_program *ureg;
 
    bool needs_texcoord_semantic;
-   bool native_integers;
    bool has_txf_lz;
 
    bool addr_declared[3];
@@ -231,7 +230,7 @@ static uint32_t
 ntr_src_as_uint(struct ntr_compile *c, nir_src src)
 {
    uint32_t val = nir_src_as_uint(src);
-   if (!c->native_integers && val >= fui(1.0))
+   if (val >= fui(1.0))
       val = (uint32_t)uif(val);
    return val;
 }
@@ -904,21 +903,15 @@ ntr_setup_inputs(struct ntr_compile *c)
 
       if (semantic_name == TGSI_SEMANTIC_FACE) {
          struct ureg_dst temp = ntr_temp(c);
-         if (c->native_integers) {
-            /* NIR is ~0 front and 0 back, while TGSI is +1 front */
-            ntr_SGE(c, temp, decl, ureg_imm1f(c->ureg, 0));
-         } else {
-            /* tgsi docs say that floating point FACE will be positive for
-             * frontface and negative for backface, but realistically
-             * GLSL-to-TGSI had been doing MOV_SAT to turn it into 0.0 vs 1.0.
-             * Copy that behavior, since some drivers (r300) have been doing a
-             * 0.0 vs 1.0 backface (and I don't think anybody has a non-1.0
-             * front face).
-             */
-            temp.Saturate = true;
-            ntr_MOV(c, temp, decl);
-
-         }
+         /* tgsi docs say that floating point FACE will be positive for
+          * frontface and negative for backface, but realistically
+          * GLSL-to-TGSI had been doing MOV_SAT to turn it into 0.0 vs 1.0.
+          * Copy that behavior, since some drivers (r300) have been doing a
+          * 0.0 vs 1.0 backface (and I don't think anybody has a non-1.0
+          * front face).
+          */
+         temp.Saturate = true;
+         ntr_MOV(c, temp, decl);
          decl = ureg_src(temp);
       }
 
@@ -1167,30 +1160,12 @@ ntr_get_load_const_src(struct ntr_compile *c, nir_load_const_instr *instr)
 {
    int num_components = instr->def.num_components;
 
-   if (!c->native_integers) {
-      float values[4];
-      assert(instr->def.bit_size == 32);
-      for (int i = 0; i < num_components; i++)
-         values[i] = uif(instr->value[i].u32);
+   float values[4];
+   assert(instr->def.bit_size == 32);
+   for (int i = 0; i < num_components; i++)
+      values[i] = uif(instr->value[i].u32);
 
-      return ureg_DECL_immediate(c->ureg, values, num_components);
-   } else {
-      uint32_t values[4];
-
-      if (instr->def.bit_size == 32) {
-         for (int i = 0; i < num_components; i++)
-            values[i] = instr->value[i].u32;
-      } else {
-         assert(num_components <= 2);
-         for (int i = 0; i < num_components; i++) {
-            values[i * 2 + 0] = instr->value[i].u64 & 0xffffffff;
-            values[i * 2 + 1] = instr->value[i].u64 >> 32;
-         }
-         num_components *= 2;
-      }
-
-      return ureg_DECL_immediate_uint(c->ureg, values, num_components);
-   }
+   return ureg_DECL_immediate(c->ureg, values, num_components);
 }
 
 static struct ureg_src
@@ -1206,10 +1181,7 @@ ntr_reladdr(struct ntr_compile *c, struct ureg_src addr, int addr_index)
       }
    }
 
-   if (c->native_integers)
-      ntr_UARL(c, c->addr_reg[addr_index], addr);
-   else
-      ntr_ARL(c, c->addr_reg[addr_index], addr);
+   ntr_ARL(c, c->addr_reg[addr_index], addr);
    return ureg_scalar(ureg_src(c->addr_reg[addr_index]), 0);
 }
 
@@ -1910,16 +1882,14 @@ ntr_emit_load_sysval(struct ntr_compile *c, nir_intrinsic_instr *instr)
     * the draw path (i915g).  In that case, having called nir_lower_int_to_float
     * means that we actually want floats instead.
     */
-   if (!c->native_integers) {
-      switch (instr->intrinsic) {
-      case nir_intrinsic_load_vertex_id:
-      case nir_intrinsic_load_instance_id:
-         ntr_U2F(c, ntr_get_dest(c, &instr->def), sv);
-         return;
+   switch (instr->intrinsic) {
+   case nir_intrinsic_load_vertex_id:
+   case nir_intrinsic_load_instance_id:
+      ntr_U2F(c, ntr_get_dest(c, &instr->def), sv);
+      return;
 
-      default:
-         break;
-      }
+   default:
+      break;
    }
 
    ntr_store(c, &instr->def, sv);
@@ -2009,15 +1979,8 @@ ntr_emit_intrinsic(struct ntr_compile *c, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_discard_if: {
       struct ureg_src cond = ureg_scalar(ntr_get_src(c, instr->src[0]), 0);
-
-      if (c->native_integers) {
-         struct ureg_dst temp = ureg_writemask(ntr_temp(c), 1);
-         ntr_AND(c, temp, cond, ureg_imm1f(c->ureg, 1.0));
-         ntr_KILL_IF(c, ureg_scalar(ureg_negate(ureg_src(temp)), 0));
-      } else {
-         /* For !native_integers, the bool got lowered to 1.0 or 0.0. */
-         ntr_KILL_IF(c, ureg_negate(cond));
-      }
+      /* For !native_integers, the bool got lowered to 1.0 or 0.0. */
+      ntr_KILL_IF(c, ureg_negate(cond));
       break;
    }
       /* In TGSI we don't actually generate the barycentric coords, and emit
@@ -2328,10 +2291,7 @@ ntr_emit_instr(struct ntr_compile *c, nir_instr *instr)
 static void
 ntr_emit_if(struct ntr_compile *c, nir_if *if_stmt)
 {
-   if (c->native_integers)
-      ntr_UIF(c, c->if_cond);
-   else
-      ntr_IF(c, c->if_cond);
+   ntr_IF(c, c->if_cond);
 
    ntr_emit_cf_list(c, &if_stmt->then_list);
 
@@ -2416,10 +2376,6 @@ ntr_emit_block_ureg(struct ntr_compile *c, struct nir_block *block)
          tgsi_get_opcode_info(insn->opcode);
 
       switch (insn->opcode) {
-      case TGSI_OPCODE_UIF:
-         ureg_UIF(c->ureg, insn->src[0], &c->cf_label);
-         break;
-
       case TGSI_OPCODE_IF:
          ureg_IF(c->ureg, insn->src[0], &c->cf_label);
          break;
@@ -3235,9 +3191,6 @@ const void *nir_to_rc_options(struct nir_shader *s,
    struct ntr_compile *c;
    const void *tgsi_tokens;
    nir_variable_mode no_indirects_mask = ntr_no_indirects_mask(s, screen);
-   bool native_integers = screen->get_shader_param(screen,
-                                                   pipe_shader_type_from_mesa(s->info.stage),
-                                                   PIPE_SHADER_CAP_INTEGERS);
    const struct nir_shader_compiler_options *original_options = s->options;
 
    ntr_fix_nir_options(screen, s, options);
@@ -3275,7 +3228,7 @@ const void *nir_to_rc_options(struct nir_shader *s,
    if (!original_options->lower_uniforms_to_ubo) {
       NIR_PASS_V(s, nir_lower_uniforms_to_ubo,
                  screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS),
-                 !native_integers);
+                 true);
    }
 
    /* Do lowering so we can directly translate f64/i64 NIR ALU ops to TGSI --
@@ -3310,18 +3263,12 @@ const void *nir_to_rc_options(struct nir_shader *s,
 
    NIR_PASS_V(s, nir_opt_combine_barriers, NULL, NULL);
 
-   if (screen->get_shader_param(screen,
-                                pipe_shader_type_from_mesa(s->info.stage),
-                                PIPE_SHADER_CAP_INTEGERS)) {
-      NIR_PASS_V(s, nir_lower_bool_to_int32);
-   } else {
-      NIR_PASS_V(s, nir_lower_int_to_float);
-      NIR_PASS_V(s, nir_lower_bool_to_float,
-                 !options->lower_cmp && !options->lower_fabs);
-      /* bool_to_float generates MOVs for b2f32 that we want to clean up. */
-      NIR_PASS_V(s, nir_copy_prop);
-      NIR_PASS_V(s, nir_opt_dce);
-   }
+   NIR_PASS_V(s, nir_lower_int_to_float);
+   NIR_PASS_V(s, nir_lower_bool_to_float,
+              !options->lower_cmp && !options->lower_fabs);
+   /* bool_to_float generates MOVs for b2f32 that we want to clean up. */
+   NIR_PASS_V(s, nir_copy_prop);
+   NIR_PASS_V(s, nir_opt_dce);
 
    nir_move_options move_all =
        nir_move_const_undef | nir_move_load_ubo | nir_move_load_input |
@@ -3355,7 +3302,6 @@ const void *nir_to_rc_options(struct nir_shader *s,
       screen->get_param(screen, PIPE_CAP_TGSI_TEX_TXF_LZ);
 
    c->s = s;
-   c->native_integers = native_integers;
    c->ureg = ureg_create(pipe_shader_type_from_mesa(s->info.stage));
    ureg_setup_shader_info(c->ureg, &s->info);
    if (s->info.use_legacy_math_rules && screen->get_param(screen, PIPE_CAP_LEGACY_MATH_RULES))
