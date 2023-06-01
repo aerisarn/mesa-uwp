@@ -145,6 +145,7 @@ static const struct {
    EGLint default_value;
 } _eglValidationTable[] =
 {
+   /* clang-format off */
    /* core */
    { EGL_BUFFER_SIZE,               ATTRIB_TYPE_INTEGER,
                                     ATTRIB_CRITERION_ATLEAST,
@@ -258,6 +259,7 @@ static const struct {
    { EGL_COLOR_COMPONENT_TYPE_EXT,  ATTRIB_TYPE_ENUM,
                                     ATTRIB_CRITERION_EXACT,
                                     EGL_COLOR_COMPONENT_TYPE_FIXED_EXT },
+   /* clang-format on */
 };
 
 

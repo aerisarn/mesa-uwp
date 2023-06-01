@@ -78,11 +78,13 @@ _printHeaderFormat(void)
     * supported
     * surfaces ------------- EGL_SURFACE_TYPE
     */
+   /* clang-format off */
    _eglLog(_EGL_DEBUG, "---------------");
    _eglLog(_EGL_DEBUG, "Configurations:");
    _eglLog(_EGL_DEBUG, "cho       bf lv colourbuffer dp st  ms           vis  cav  bi     renderable           supported");
    _eglLog(_EGL_DEBUG, "sen    id sz  l  r  g  b  a  th cl ns b           id  eat  nd  gl es es2 es3 vg         surfaces");
    _eglLog(_EGL_DEBUG, "---------------");
+   /* clang-format on */
 }
 
 /* Append a formatted string to the buffer, up to the buffer size */

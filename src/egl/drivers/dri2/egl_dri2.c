@@ -82,6 +82,7 @@ static const struct dri2_pbuffer_visual {
    int rgba_shifts[4];
    unsigned int rgba_sizes[4];
 } dri2_pbuffer_visuals[] = {
+   /* clang-format off */
    {
       "ABGR16F",
       __DRI_IMAGE_FORMAT_ABGR16161616F,
@@ -124,6 +125,7 @@ static const struct dri2_pbuffer_visual {
       { 11, 5, 0, -1 },
       { 5, 6, 5, 0 }
    },
+   /* clang-format on */
 };
 
 static void
