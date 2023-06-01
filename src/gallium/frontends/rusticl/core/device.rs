@@ -782,7 +782,10 @@ impl Device {
     }
 
     pub fn param_max_size(&self) -> usize {
-        self.shader_param(pipe_shader_cap::PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE) as usize
+        min(
+            self.shader_param(pipe_shader_cap::PIPE_SHADER_CAP_MAX_CONST_BUFFER0_SIZE),
+            32 * 1024,
+        ) as usize
     }
 
     pub fn printf_buffer_size(&self) -> usize {
