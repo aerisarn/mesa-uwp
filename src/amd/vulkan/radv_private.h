@@ -2144,6 +2144,7 @@ struct radv_event {
 #define RADV_HASH_SHADER_NGG_STREAMOUT         (1 << 20)
 
 struct radv_pipeline_key;
+struct radv_ray_tracing_group;
 
 void radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
                               struct radv_pipeline_stage *out_stage, gl_shader_stage stage);

@@ -467,11 +467,7 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
    if (result != VK_SUCCESS)
       return result;
 
-   VkRayTracingPipelineCreateInfoKHR local_create_info =
-      radv_create_merged_rt_create_info(pCreateInfo);
-
-   rt_stage.internal_nir = create_rt_shader(device, &local_create_info, pipeline->stages,
-                                            pipeline->groups, pipeline_key);
+   rt_stage.internal_nir = create_rt_shader(device, pipeline, pCreateInfo, pipeline_key);
 
    /* Compile SPIR-V shader to NIR. */
    rt_stage.nir =
