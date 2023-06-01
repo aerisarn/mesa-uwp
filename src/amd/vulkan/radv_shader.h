@@ -685,6 +685,9 @@ bool radv_can_dump_shader_stats(struct radv_device *device, nir_shader *nir);
 VkResult radv_dump_shader_stats(struct radv_device *device, struct radv_pipeline *pipeline, struct radv_shader *shader,
                                 gl_shader_stage stage, FILE *output);
 
+/* Returns true on success and false on failure */
+bool radv_shader_reupload(struct radv_device *device, struct radv_shader *shader);
+
 extern const struct vk_pipeline_cache_object_ops radv_shader_ops;
 
 static inline struct radv_shader *
