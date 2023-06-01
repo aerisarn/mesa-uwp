@@ -155,6 +155,15 @@ _legal_parameters(struct gl_context *ctx, GLenum target, GLenum internalformat,
       }
       break;
 
+   case GL_CLEAR_TEXTURE:
+      if (!_mesa_has_ARB_clear_texture(ctx)) {
+         _mesa_error(ctx, GL_INVALID_ENUM,
+                     "glGetInternalformativ(pname=%s)",
+                     _mesa_enum_to_string(pname));
+         return false;
+      }
+      break;
+
    case GL_SRGB_DECODE_ARB:
       /* The ARB_internalformat_query2 spec says:
        *
@@ -163,15 +172,6 @@ _legal_parameters(struct gl_context *ctx, GLenum target, GLenum internalformat,
        *     SRGB_DECODE_ARB <pname> set the INVALID_ENUM error.
        */
       if (!_mesa_has_EXT_texture_sRGB_decode(ctx)) {
-         _mesa_error(ctx, GL_INVALID_ENUM,
-                     "glGetInternalformativ(pname=%s)",
-                     _mesa_enum_to_string(pname));
-         return false;
-      }
-      break;
-
-   case GL_CLEAR_TEXTURE:
-      if (!_mesa_has_ARB_clear_texture(ctx)) {
          _mesa_error(ctx, GL_INVALID_ENUM,
                      "glGetInternalformativ(pname=%s)",
                      _mesa_enum_to_string(pname));
