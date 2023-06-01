@@ -6369,6 +6369,11 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
       if (ctx->shader->info.outputs_written &
           (VARYING_BIT_VIEWPORT | VARYING_BIT_LAYER))
          ctx->mod.feats.array_layer_from_vs_or_ds = true;
+   } else if (ctx->shader->info.stage == MESA_SHADER_GEOMETRY ||
+              ctx->shader->info.stage == MESA_SHADER_TESS_CTRL) {
+      if (ctx->shader->info.inputs_read &
+          (VARYING_BIT_VIEWPORT | VARYING_BIT_LAYER))
+         ctx->mod.feats.array_layer_from_vs_or_ds = true;
    }
 
    if (ctx->mod.feats.native_low_precision && ctx->mod.minor_version < 2) {
