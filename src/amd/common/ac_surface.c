@@ -1127,6 +1127,10 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
    if (!compressed)
       AddrDccIn.bpp = AddrSurfInfoIn.bpp = surf->bpe * 8;
 
+   /* Setting ADDR_FMT_32_32_32 breaks gfx6-8, while INVALID works. */
+   if (AddrSurfInfoIn.format == ADDR_FMT_32_32_32)
+      AddrSurfInfoIn.format = ADDR_FMT_INVALID;
+
    AddrDccIn.numSamples = AddrSurfInfoIn.numSamples = MAX2(1, config->info.samples);
    AddrSurfInfoIn.tileIndex = -1;
 
