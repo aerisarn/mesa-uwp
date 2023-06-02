@@ -288,16 +288,12 @@
 #define PKT_COUNT_S(x)        (((unsigned)(x)&0x3FFF) << 16)
 #define PKT_COUNT_G(x)        (((x) >> 16) & 0x3FFF)
 #define PKT_COUNT_C           0xC000FFFF
-#define PKT0_BASE_INDEX_S(x)  (((unsigned)(x)&0xFFFF) << 0)
-#define PKT0_BASE_INDEX_G(x)  (((x) >> 0) & 0xFFFF)
-#define PKT0_BASE_INDEX_C     0xFFFF0000
 #define PKT3_IT_OPCODE_S(x)   (((unsigned)(x)&0xFF) << 8)
 #define PKT3_IT_OPCODE_G(x)   (((x) >> 8) & 0xFF)
 #define PKT3_IT_OPCODE_C      0xFFFF00FF
 #define PKT3_PREDICATE(x)     (((x) >> 0) & 0x1)
 #define PKT3_SHADER_TYPE_S(x) (((unsigned)(x)&0x1) << 1)
 #define PKT3_RESET_FILTER_CAM(x) (((unsigned)(x)&0x1) << 2)
-#define PKT0(index, count)    (PKT_TYPE_S(0) | PKT0_BASE_INDEX_S(index) | PKT_COUNT_S(count))
 #define PKT3(op, count, predicate)                                                                 \
    (PKT_TYPE_S(3) | PKT_COUNT_S(count) | PKT3_IT_OPCODE_S(op) | PKT3_PREDICATE(predicate))
 
