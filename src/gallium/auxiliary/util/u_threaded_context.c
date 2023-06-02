@@ -3145,9 +3145,10 @@ tc_buffer_subdata(struct pipe_context *_pipe,
 
 struct tc_texture_subdata {
    struct tc_call_base base;
-   unsigned level, usage, stride, layer_stride;
+   unsigned level, usage, stride;
    struct pipe_box box;
    struct pipe_resource *resource;
+   uintptr_t layer_stride;
    char slot[0]; /* more will be allocated if needed */
 };
 
@@ -3168,16 +3169,16 @@ tc_texture_subdata(struct pipe_context *_pipe,
                    unsigned level, unsigned usage,
                    const struct pipe_box *box,
                    const void *data, unsigned stride,
-                   unsigned layer_stride)
+                   uintptr_t layer_stride)
 {
    struct threaded_context *tc = threaded_context(_pipe);
-   unsigned size;
+   uint64_t size;
 
    assert(box->height >= 1);
    assert(box->depth >= 1);
 
    size = (box->depth - 1) * layer_stride +
-          (box->height - 1) * stride +
+          (box->height - 1) * (uint64_t)stride +
           box->width * util_format_get_blocksize(resource->format);
    if (!size)
       return;
@@ -3204,8 +3205,11 @@ tc_texture_subdata(struct pipe_context *_pipe,
             format = util_format_get_depth_only(format);
          else if (usage & PIPE_MAP_STENCIL_ONLY)
             format = PIPE_FORMAT_S8_UINT;
+
          unsigned stride = util_format_get_stride(format, box->width);
-         unsigned layer_stride = util_format_get_2d_size(format, stride, box->height);
+         uint64_t layer_stride = util_format_get_2d_size(format, stride, box->height);
+         assert(layer_stride * box->depth <= UINT32_MAX);
+
          struct pipe_resource *pres = pipe_buffer_create_with_data(pipe, 0, PIPE_USAGE_STREAM, layer_stride * box->depth, data);
          struct pipe_box src_box = *box;
          src_box.x = src_box.y = src_box.z = 0;

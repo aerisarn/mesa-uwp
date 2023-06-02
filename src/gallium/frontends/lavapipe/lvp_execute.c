@@ -2373,12 +2373,12 @@ copy_depth_rect(ubyte * dst,
 static void
 copy_depth_box(ubyte *dst,
                enum pipe_format dst_format,
-               unsigned dst_stride, unsigned dst_slice_stride,
+               unsigned dst_stride, uint64_t dst_slice_stride,
                unsigned dst_x, unsigned dst_y, unsigned dst_z,
                unsigned width, unsigned height, unsigned depth,
                const ubyte * src,
                enum pipe_format src_format,
-               int src_stride, unsigned src_slice_stride,
+               int src_stride, uint64_t src_slice_stride,
                unsigned src_x, unsigned src_y, unsigned src_z)
 {
    dst += dst_z * dst_slice_stride;

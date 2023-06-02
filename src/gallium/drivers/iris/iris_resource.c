@@ -2709,7 +2709,7 @@ iris_texture_subdata(struct pipe_context *ctx,
                      const struct pipe_box *box,
                      const void *data,
                      unsigned stride,
-                     unsigned layer_stride)
+                     uintptr_t layer_stride)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_resource *res = (struct iris_resource *)resource;
