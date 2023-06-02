@@ -198,6 +198,31 @@ struct rendering_state {
    void *tess_states[2];
 };
 
+static struct pipe_resource *
+get_buffer_resource(struct pipe_context *ctx, void *mem)
+{
+   struct pipe_screen *pscreen = ctx->screen;
+   struct pipe_resource templ = {0};
+
+   if (!mem)
+      return NULL;
+
+   templ.screen = pscreen;
+   templ.target = PIPE_BUFFER;
+   templ.format = PIPE_FORMAT_R8_UNORM;
+   templ.width0 = UINT32_MAX;
+   templ.height0 = 1;
+   templ.depth0 = 1;
+   templ.array_size = 1;
+   templ.bind |= PIPE_BIND_CONSTANT_BUFFER;
+   templ.flags = PIPE_RESOURCE_FLAG_DONT_OVER_ALLOCATE;
+
+   uint64_t size;
+   struct pipe_resource *pres = pscreen->resource_create_unbacked(pscreen, &templ, &size);
+   pscreen->resource_bind_backing(pscreen, pres, mem, 0);
+   return pres;
+}
+
 ALWAYS_INLINE static void
 assert_subresource_layers(const struct pipe_resource *pres, const VkImageSubresourceLayers *layers, const VkOffset3D *offsets)
 {
@@ -2795,6 +2820,7 @@ static void handle_draw_indirect(struct vk_cmd_queue_entry *cmd,
                                  struct rendering_state *state, bool indexed)
 {
    struct pipe_draw_start_count_bias draw = {0};
+   struct pipe_resource *index = NULL;
    if (indexed) {
       state->info.index_bounds_valid = false;
       state->info.index_size = state->index_size;
@@ -2802,6 +2828,14 @@ static void handle_draw_indirect(struct vk_cmd_queue_entry *cmd,
       state->info.max_index = ~0U;
       if (state->info.primitive_restart)
          state->info.restart_index = util_prim_restart_index_from_size(state->info.index_size);
+      if (state->index_offset) {
+         struct pipe_transfer *xfer;
+         uint8_t *mem = pipe_buffer_map(state->pctx, state->index_buffer, 0, &xfer);
+         state->pctx->buffer_unmap(state->pctx, xfer);
+         index = get_buffer_resource(state->pctx, mem + state->index_offset);
+         index->width0 = state->index_buffer->width0 - state->index_offset;
+         state->info.index.resource = index;
+      }
    } else
       state->info.index_size = 0;
    state->indirect_info.offset = cmd->u.draw_indirect.offset;
@@ -2810,6 +2844,7 @@ static void handle_draw_indirect(struct vk_cmd_queue_entry *cmd,
    state->indirect_info.buffer = lvp_buffer_from_handle(cmd->u.draw_indirect.buffer)->bo;
 
    state->pctx->draw_vbo(state->pctx, &state->info, 0, &state->indirect_info, &draw, 1);
+   pipe_resource_reference(&index, NULL);
 }
 
 static void handle_index_buffer(struct vk_cmd_queue_entry *cmd,
@@ -3299,11 +3334,20 @@ static void handle_draw_indirect_count(struct vk_cmd_queue_entry *cmd,
                                        struct rendering_state *state, bool indexed)
 {
    struct pipe_draw_start_count_bias draw = {0};
+   struct pipe_resource *index = NULL;
    if (indexed) {
       state->info.index_bounds_valid = false;
       state->info.index_size = state->index_size;
       state->info.index.resource = state->index_buffer;
       state->info.max_index = ~0U;
+      if (state->index_offset) {
+         struct pipe_transfer *xfer;
+         uint8_t *mem = pipe_buffer_map(state->pctx, state->index_buffer, 0, &xfer);
+         state->pctx->buffer_unmap(state->pctx, xfer);
+         index = get_buffer_resource(state->pctx, mem + state->index_offset);
+         index->width0 = state->index_buffer->width0 - state->index_offset;
+         state->info.index.resource = index;
+      }
    } else
       state->info.index_size = 0;
    state->indirect_info.offset = cmd->u.draw_indirect_count.offset;
@@ -3314,6 +3358,7 @@ static void handle_draw_indirect_count(struct vk_cmd_queue_entry *cmd,
    state->indirect_info.indirect_draw_count = lvp_buffer_from_handle(cmd->u.draw_indirect_count.count_buffer)->bo;
 
    state->pctx->draw_vbo(state->pctx, &state->info, 0, &state->indirect_info, &draw, 1);
+   pipe_resource_reference(&index, NULL);
 }
 
 static void handle_compute_push_descriptor_set(struct lvp_cmd_push_descriptor_set *pds,
