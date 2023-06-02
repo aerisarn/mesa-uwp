@@ -502,6 +502,7 @@ virgl_get_video_param(struct pipe_screen *screen,
    case PIPE_VIDEO_FORMAT_VC1:
    case PIPE_VIDEO_FORMAT_JPEG:
    case PIPE_VIDEO_FORMAT_VP9:
+   case PIPE_VIDEO_FORMAT_AV1:
       drv_supported = (entrypoint == PIPE_VIDEO_ENTRYPOINT_BITSTREAM);
       break;
    default:
