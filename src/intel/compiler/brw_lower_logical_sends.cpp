@@ -3086,6 +3086,7 @@ fs_visitor::lower_uniform_pull_constant_loads()
 
          invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
       } else {
+         assert(surface_handle.file == BAD_FILE);
          /* Before register allocation, we didn't tell the scheduler about the
           * MRF we use.  We know it's safe to use this MRF because nothing
           * else does except for register spill/unspill, which generates and

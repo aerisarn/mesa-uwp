@@ -2107,7 +2107,9 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
       case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
          assert(inst->force_writemask_all);
-	 generate_uniform_pull_constant_load(inst, dst, src[0], src[1]);
+	 generate_uniform_pull_constant_load(inst, dst,
+                                             src[PULL_UNIFORM_CONSTANT_SRC_SURFACE],
+                                             src[PULL_UNIFORM_CONSTANT_SRC_OFFSET]);
          send_count++;
 	 break;
 
