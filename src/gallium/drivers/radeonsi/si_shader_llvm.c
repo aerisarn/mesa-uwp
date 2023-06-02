@@ -674,9 +674,6 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    case nir_intrinsic_load_tess_rel_patch_id_amd:
       return si_get_rel_patch_id(ctx);
 
-   case nir_intrinsic_load_ring_gsvs_amd:
-      return ctx->gsvs_ring[nir_intrinsic_stream_id(intrin)];
-
    case nir_intrinsic_load_lds_ngg_scratch_base_amd:
       return LLVMBuildPtrToInt(ctx->ac.builder, ctx->gs_ngg_scratch.value, ctx->ac.i32, "");
 
@@ -763,15 +760,6 @@ static bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shade
             ac_build_load_to_sgpr(
                &ctx->ac, buf, LLVMConstInt(ctx->ac.i32, SI_VS_CONST_INSTANCE_DIVISORS, 0));
       }
-
-      /* preload GSVS ring for GS copy shader */
-      if (shader->is_gs_copy_shader) {
-         ctx->gsvs_ring[0] =
-            ac_build_load_to_sgpr(
-               &ctx->ac,
-               ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings),
-               LLVMConstInt(ctx->ac.i32, SI_RING_GSVS, 0));
-      }
       break;
 
    case MESA_SHADER_TESS_CTRL:
@@ -792,8 +780,6 @@ static bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shade
             ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0), "ngg_emit", AC_ADDR_SPACE_LDS);
          LLVMSetLinkage(ctx->gs_ngg_emit, LLVMExternalLinkage);
          LLVMSetAlignment(ctx->gs_ngg_emit, 4);
-      } else {
-         si_preload_gs_rings(ctx);
       }
       break;
 

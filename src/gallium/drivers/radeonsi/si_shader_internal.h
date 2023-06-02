@@ -97,7 +97,6 @@ struct si_shader_context {
    struct ac_llvm_compiler *compiler;
 
    /* Preloaded descriptors. */
-   LLVMValueRef gsvs_ring[4];
    LLVMValueRef instance_divisor_constbuf;
 
    LLVMValueRef gs_ngg_emit;
@@ -194,7 +193,6 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
 LLVMValueRef si_is_gs_thread(struct si_shader_context *ctx);
 void si_llvm_es_build_end(struct si_shader_context *ctx);
-void si_preload_gs_rings(struct si_shader_context *ctx);
 void si_llvm_gs_build_end(struct si_shader_context *ctx);
 
 /* si_shader_llvm_tess.c */
