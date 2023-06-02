@@ -287,14 +287,14 @@ static bool si_fence_finish(struct pipe_screen *screen, struct pipe_context *ctx
       if (!timeout)
          return false;
 
-      if (timeout == PIPE_TIMEOUT_INFINITE) {
+      if (timeout == OS_TIMEOUT_INFINITE) {
          util_queue_fence_wait(&sfence->ready);
       } else {
          if (!util_queue_fence_wait_timeout(&sfence->ready, abs_timeout))
             return false;
       }
 
-      if (timeout && timeout != PIPE_TIMEOUT_INFINITE) {
+      if (timeout && timeout != OS_TIMEOUT_INFINITE) {
          int64_t time = os_time_get_nano();
          timeout = abs_timeout > time ? abs_timeout - time : 0;
       }
@@ -342,7 +342,7 @@ static bool si_fence_finish(struct pipe_screen *screen, struct pipe_context *ctx
          return false;
 
       /* Recompute the timeout after all that. */
-      if (timeout && timeout != PIPE_TIMEOUT_INFINITE) {
+      if (timeout && timeout != OS_TIMEOUT_INFINITE) {
          int64_t time = os_time_get_nano();
          timeout = abs_timeout > time ? abs_timeout - time : 0;
       }

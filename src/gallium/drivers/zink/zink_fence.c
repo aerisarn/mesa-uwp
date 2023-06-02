@@ -111,13 +111,13 @@ tc_fence_finish(struct zink_context *ctx, struct zink_tc_fence *mfence, uint64_t
       /* this is a tc mfence, so we're just waiting on the queue mfence to complete
        * after being signaled by the real mfence
        */
-      if (*timeout_ns == PIPE_TIMEOUT_INFINITE) {
+      if (*timeout_ns == OS_TIMEOUT_INFINITE) {
          util_queue_fence_wait(&mfence->ready);
       } else {
          if (!util_queue_fence_wait_timeout(&mfence->ready, abs_timeout))
             return false;
       }
-      if (*timeout_ns && *timeout_ns != PIPE_TIMEOUT_INFINITE) {
+      if (*timeout_ns && *timeout_ns != OS_TIMEOUT_INFINITE) {
          int64_t time_ns = os_time_get_nano();
          *timeout_ns = abs_timeout > time_ns ? abs_timeout - time_ns : 0;
       }

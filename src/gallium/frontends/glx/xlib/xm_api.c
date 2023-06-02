@@ -1351,7 +1351,7 @@ void XMesaSwapBuffers( XMesaBuffer b )
          XMesaDisplay xmdpy = xmesa_init_display(b->xm_visual->display);
          struct pipe_screen *screen = xmdpy->screen;
          xmdpy->screen->fence_finish(screen, NULL, fence,
-                                     PIPE_TIMEOUT_INFINITE);
+                                     OS_TIMEOUT_INFINITE);
          xmdpy->screen->fence_reference(screen, &fence, NULL);
       }
    }
@@ -1389,7 +1389,7 @@ void XMesaFlush( XMesaContext c )
       st_context_flush(c->st, ST_FLUSH_FRONT, &fence, NULL, NULL);
       if (fence) {
          xmdpy->screen->fence_finish(xmdpy->screen, NULL, fence,
-                                     PIPE_TIMEOUT_INFINITE);
+                                     OS_TIMEOUT_INFINITE);
          xmdpy->screen->fence_reference(xmdpy->screen, &fence, NULL);
       }
       XFlush( c->xm_visual->display );

@@ -126,7 +126,7 @@ static bool radeon_bo_wait(struct radeon_winsys *rws,
       return false;
 
    /* Infinite timeout. */
-   if (abs_timeout == PIPE_TIMEOUT_INFINITE) {
+   if (abs_timeout == OS_TIMEOUT_INFINITE) {
       radeon_bo_wait_idle(bo);
       return true;
    }
@@ -530,7 +530,7 @@ static void *radeon_bo_map(struct radeon_winsys *rws,
                cs->flush_cs(cs->flush_data,
                             RADEON_FLUSH_START_NEXT_GFX_IB_NOW, NULL);
             }
-            radeon_bo_wait(rws, (struct pb_buffer*)bo, PIPE_TIMEOUT_INFINITE,
+            radeon_bo_wait(rws, (struct pb_buffer*)bo, OS_TIMEOUT_INFINITE,
                            RADEON_USAGE_WRITE);
          } else {
             /* Mapping for write. */
@@ -545,7 +545,7 @@ static void *radeon_bo_map(struct radeon_winsys *rws,
                }
             }
 
-            radeon_bo_wait(rws, (struct pb_buffer*)bo, PIPE_TIMEOUT_INFINITE,
+            radeon_bo_wait(rws, (struct pb_buffer*)bo, OS_TIMEOUT_INFINITE,
                            RADEON_USAGE_READWRITE);
          }
 
@@ -920,7 +920,7 @@ static void radeon_bo_set_metadata(struct radeon_winsys *rws,
 
    memset(&args, 0, sizeof(args));
 
-   os_wait_until_zero(&bo->num_active_ioctls, PIPE_TIMEOUT_INFINITE);
+   os_wait_until_zero(&bo->num_active_ioctls, OS_TIMEOUT_INFINITE);
 
    if (surf) {
       if (surf->u.legacy.level[0].mode >= RADEON_SURF_MODE_1D)

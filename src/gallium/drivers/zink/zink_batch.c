@@ -514,7 +514,7 @@ post_submit(void *data, void *gdata, int thread_index)
       screen->device_lost = true;
    } else if (bs->ctx->batch_states_count > 5000) {
       /* throttle in case something crazy is happening */
-      zink_screen_timeline_wait(screen, bs->fence.batch_id - 2500, PIPE_TIMEOUT_INFINITE);
+      zink_screen_timeline_wait(screen, bs->fence.batch_id - 2500, OS_TIMEOUT_INFINITE);
    }
    /* this resets the buffer hashlist for the state's next use */
    memset(&bs->buffer_indices_hashlist, -1, sizeof(bs->buffer_indices_hashlist));

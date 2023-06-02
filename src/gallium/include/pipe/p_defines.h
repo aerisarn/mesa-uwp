@@ -31,6 +31,7 @@
 #include "p_compiler.h"
 
 #include "compiler/shader_enums.h"
+#include "util/os_time.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -654,9 +655,6 @@ enum pipe_viewport_swizzle {
    PIPE_VIEWPORT_SWIZZLE_POSITIVE_W,
    PIPE_VIEWPORT_SWIZZLE_NEGATIVE_W,
 };
-
-#define PIPE_TIMEOUT_INFINITE 0xffffffffffffffffull
-
 
 /**
  * Device reset status.

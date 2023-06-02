@@ -338,7 +338,7 @@ util_wait_for_idle(struct pipe_context *ctx)
    struct pipe_fence_handle *fence = NULL;
 
    ctx->flush(ctx, &fence, 0);
-   ctx->screen->fence_finish(ctx->screen, NULL, fence, PIPE_TIMEOUT_INFINITE);
+   ctx->screen->fence_finish(ctx->screen, NULL, fence, OS_TIMEOUT_INFINITE);
 }
 
 void
@@ -424,7 +424,7 @@ util_throttle_memory_usage(struct pipe_context *pipe,
 
    /* Wait for the fence to decrease memory usage. */
    if (fence) {
-      screen->fence_finish(screen, pipe, *fence, PIPE_TIMEOUT_INFINITE);
+      screen->fence_finish(screen, pipe, *fence, OS_TIMEOUT_INFINITE);
       screen->fence_reference(screen, fence, NULL);
    }
 
@@ -452,7 +452,7 @@ util_throttle_memory_usage(struct pipe_context *pipe,
          t->wait_index = (t->wait_index + 1) % ring_size;
 
          assert(*fence);
-         screen->fence_finish(screen, pipe, *fence, PIPE_TIMEOUT_INFINITE);
+         screen->fence_finish(screen, pipe, *fence, OS_TIMEOUT_INFINITE);
          screen->fence_reference(screen, fence, NULL);
       }
 

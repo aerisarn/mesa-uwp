@@ -729,7 +729,7 @@ void si_handle_sqtt(struct si_context *sctx, struct radeon_cmdbuf *rcs) {
     if (frame_trigger || file_trigger) {
       /* Wait for last submission */
       sctx->ws->fence_wait(sctx->ws, sctx->last_gfx_fence,
-                           PIPE_TIMEOUT_INFINITE);
+                           OS_TIMEOUT_INFINITE);
 
       /* Start SQTT */
       si_begin_sqtt(sctx, rcs);
@@ -753,7 +753,7 @@ void si_handle_sqtt(struct si_context *sctx, struct radeon_cmdbuf *rcs) {
 
     /* Wait for SQTT to finish and read back the bo */
     if (sctx->ws->fence_wait(sctx->ws, sctx->last_sqtt_fence,
-                             PIPE_TIMEOUT_INFINITE) &&
+                             OS_TIMEOUT_INFINITE) &&
         si_get_sqtt_trace(sctx, &sqtt_trace)) {
       struct ac_spm_trace spm_trace;
 

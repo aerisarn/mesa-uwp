@@ -430,7 +430,7 @@ static bool si_query_sw_get_result(struct si_context *sctx, struct si_query *squ
       struct pipe_screen *screen = sctx->b.screen;
       struct pipe_context *ctx = squery->b.flushed ? NULL : &sctx->b;
 
-      result->b = screen->fence_finish(screen, ctx, query->fence, wait ? PIPE_TIMEOUT_INFINITE : 0);
+      result->b = screen->fence_finish(screen, ctx, query->fence, wait ? OS_TIMEOUT_INFINITE : 0);
       return result->b;
    }
 

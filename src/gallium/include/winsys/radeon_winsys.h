@@ -367,7 +367,7 @@ struct radeon_winsys {
     * by the device.
     *
     * The timeout of 0 will only return the status.
-    * The timeout of PIPE_TIMEOUT_INFINITE will always wait until the buffer
+    * The timeout of OS_TIMEOUT_INFINITE will always wait until the buffer
     * is idle.
     */
    bool (*buffer_wait)(struct radeon_winsys *ws, struct pb_buffer *buf,
@@ -677,7 +677,7 @@ struct radeon_winsys {
    /**
     * Wait for the fence and return true if the fence has been signalled.
     * The timeout of 0 will only return the status.
-    * The timeout of PIPE_TIMEOUT_INFINITE will always wait until the fence
+    * The timeout of OS_TIMEOUT_INFINITE will always wait until the fence
     * is signalled.
     */
    bool (*fence_wait)(struct radeon_winsys *ws, struct pipe_fence_handle *fence, uint64_t timeout);

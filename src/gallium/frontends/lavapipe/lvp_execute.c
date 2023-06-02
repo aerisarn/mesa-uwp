@@ -224,7 +224,7 @@ static void finish_fence(struct rendering_state *state)
 
    state->pctx->screen->fence_finish(state->pctx->screen,
                                      NULL,
-                                     handle, PIPE_TIMEOUT_INFINITE);
+                                     handle, OS_TIMEOUT_INFINITE);
    state->pctx->screen->fence_reference(state->pctx->screen,
                                         &handle, NULL);
 }
