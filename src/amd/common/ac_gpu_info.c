@@ -965,6 +965,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    info->mid_command_buffer_preemption_enabled = device_info.ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
    info->has_tmz_support = has_tmz_support(dev, info, device_info.ids_flags);
    info->kernel_has_modifiers = has_modifiers(fd);
+   info->uses_kernel_cu_mask = false; /* Not implemented in the kernel. */
    info->has_graphics = info->ip[AMD_IP_GFX].num_queues > 0;
 
    info->pa_sc_tile_steering_override = device_info.pa_sc_tile_steering_override;
@@ -1755,6 +1756,8 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
                  info->max_submitted_ibs[i]);
       }
    }
+   fprintf(f, "    kernel_has_modifiers = %u\n", info->kernel_has_modifiers);
+   fprintf(f, "    uses_kernel_cu_mask = %u\n", info->uses_kernel_cu_mask);
 
    fprintf(f, "Shader core info:\n");
    for (unsigned i = 0; i < info->max_se; i++) {

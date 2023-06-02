@@ -92,10 +92,12 @@ void si_pm4_set_reg_idx3(struct si_screen *sscreen, struct si_pm4_state *state,
 {
    SI_CHECK_SHADOWED_REGS(reg, 1);
 
-   if (sscreen->info.gfx_level >= GFX10)
+   if (sscreen->info.uses_kernel_cu_mask) {
+      assert(sscreen->info.gfx_level >= GFX10);
       si_pm4_set_reg_custom(state, reg - SI_SH_REG_OFFSET, val, PKT3_SET_SH_REG_INDEX, 3);
-   else
+   } else {
       si_pm4_set_reg_custom(state, reg - SI_SH_REG_OFFSET, val, PKT3_SET_SH_REG, 0);
+   }
 }
 
 void si_pm4_set_reg_va(struct si_pm4_state *state, unsigned reg, uint32_t val)

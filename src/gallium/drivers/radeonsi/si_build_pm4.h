@@ -110,7 +110,8 @@
 #define radeon_set_sh_reg_idx3_seq(sctx, reg, num) do { \
    SI_CHECK_SHADOWED_REGS(reg, num); \
    assert((reg) >= SI_SH_REG_OFFSET && (reg) < SI_SH_REG_END); \
-   if ((sctx)->gfx_level >= GFX10) { \
+   if ((sctx)->screen->info.uses_kernel_cu_mask) { \
+      assert((sctx)->gfx_level >= GFX10); \
       radeon_emit(PKT3(PKT3_SET_SH_REG_INDEX, num, 0)); \
       radeon_emit((((reg) - SI_SH_REG_OFFSET) >> 2) | (3 << 28)); \
    } else { \

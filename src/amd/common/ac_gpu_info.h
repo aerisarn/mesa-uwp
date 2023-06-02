@@ -210,6 +210,21 @@ struct radeon_info {
    bool has_tmz_support;
    bool kernel_has_modifiers;
 
+   /* If the kernel driver uses CU reservation for high priority compute on gfx10+, it programs
+    * a global CU mask in the hw that is AND'ed with CU_EN register fields set by userspace.
+    * The packet that does the AND'ing is SET_SH_REG_INDEX(index = 3). If you don't use
+    * SET_SH_REG_INDEX, the global CU mask will not be applied.
+    *
+    * If uses_kernel_cu_mask is true, use SET_SH_REG_INDEX.
+    *
+    * If uses_kernel_cu_mask is false, SET_SH_REG_INDEX shouldn't be used because it only
+    * increases CP overhead and doesn't have any other effect.
+    *
+    * The alternative to this is to set the AMD_CU_MASK environment variable that has the same
+    * effect on radeonsi and RADV and doesn't need SET_SH_REG_INDEX.
+    */
+   bool uses_kernel_cu_mask;
+
    /* Shader cores. */
    uint16_t cu_mask[AMD_MAX_SE][AMD_MAX_SA_PER_SE];
    uint32_t r600_max_quad_pipes; /* wave size / 16 */
