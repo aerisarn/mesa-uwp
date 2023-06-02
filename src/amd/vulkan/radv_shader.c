@@ -2001,12 +2001,37 @@ radv_shader_dma_submit(struct radv_device *device, struct radv_shader_dma_submis
    return true;
 }
 
+static bool
+radv_shader_upload(struct radv_device *device, struct radv_shader *shader, const struct radv_shader_binary *binary)
+{
+   if (device->shader_use_invisible_vram) {
+      struct radv_shader_dma_submission *submission =
+         radv_shader_dma_get_submission(device, shader->bo, shader->va, shader->code_size);
+      if (!submission)
+         return false;
+
+      if (!radv_shader_binary_upload(device, binary, shader, submission->ptr)) {
+         radv_shader_dma_push_submission(device, submission, 0);
+         return false;
+      }
+
+      if (!radv_shader_dma_submit(device, submission, &shader->upload_seq))
+         return false;
+   } else {
+      void *dest_ptr = shader->alloc->arena->ptr + shader->alloc->offset;
+
+      if (!radv_shader_binary_upload(device, binary, shader, dest_ptr))
+         return false;
+   }
+   return true;
+}
+
 struct radv_shader *
 radv_shader_create_uncached(struct radv_device *device, const struct radv_shader_binary *binary)
 {
    struct radv_shader *shader = calloc(1, sizeof(struct radv_shader));
    if (!shader)
-      return NULL;
+      goto fail;
 
    vk_pipeline_cache_object_init(&device->vk, &shader->base, &radv_shader_ops, shader->sha1, SHA1_DIGEST_LENGTH);
 
@@ -2017,14 +2042,12 @@ radv_shader_create_uncached(struct radv_device *device, const struct radv_shader
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
 #if !defined(USE_LIBELF)
-      free(shader);
-      return NULL;
+      goto fail;
 #else
       struct ac_rtld_binary rtld_binary = {0};
 
       if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
-         free(shader);
-         return NULL;
+         goto fail;
       }
 
       shader->code_size = rtld_binary.rx_size;
@@ -2045,32 +2068,19 @@ radv_shader_create_uncached(struct radv_device *device, const struct radv_shader
 
    shader->alloc = radv_alloc_shader_memory(device, shader->code_size, false, shader);
    if (!shader->alloc)
-      return NULL;
+      goto fail;
 
    shader->bo = shader->alloc->arena->bo;
    shader->va = radv_buffer_get_va(shader->bo) + shader->alloc->offset;
 
-   if (device->shader_use_invisible_vram) {
-      struct radv_shader_dma_submission *submission =
-         radv_shader_dma_get_submission(device, shader->bo, shader->va, shader->code_size);
-      if (!submission)
-         return NULL;
-
-      if (!radv_shader_binary_upload(device, binary, shader, submission->ptr)) {
-         radv_shader_dma_push_submission(device, submission, 0);
-         return NULL;
-      }
-
-      if (!radv_shader_dma_submit(device, submission, &shader->upload_seq))
-         return NULL;
-   } else {
-      void *dest_ptr = shader->alloc->arena->ptr + shader->alloc->offset;
-
-      if (!radv_shader_binary_upload(device, binary, shader, dest_ptr))
-         return NULL;
-   }
+   if (!radv_shader_upload(device, shader, binary))
+      goto fail;
 
    return shader;
+
+fail:
+   free(shader);
+   return NULL;
 }
 
 bool

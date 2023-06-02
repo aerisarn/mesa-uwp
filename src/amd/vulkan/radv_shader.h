@@ -626,9 +626,6 @@ struct radv_shader *radv_shader_create(struct radv_device *device, struct vk_pip
 
 struct radv_shader *radv_shader_create_uncached(struct radv_device *device, const struct radv_shader_binary *binary);
 
-struct radv_shader *radv_shader_create_cached(struct radv_device *device, struct vk_pipeline_cache *cache,
-                                              const struct radv_shader_binary *binary);
-
 struct radv_shader_binary *radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *pl_stage,
                                                   struct nir_shader *const *shaders, int shader_count,
                                                   const struct radv_pipeline_key *key, bool keep_shader_info,
