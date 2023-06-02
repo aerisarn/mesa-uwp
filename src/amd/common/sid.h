@@ -293,8 +293,10 @@
 #define PKT3_IT_OPCODE_G(x)   (((x) >> 8) & 0xFF)
 #define PKT3_IT_OPCODE_C      0xFFFF00FF
 #define PKT3_PREDICATE(x)     (((x) >> 0) & 0x1)
-#define PKT3_SHADER_TYPE_S(x) (((unsigned)(x)&0x1) << 1)
-#define PKT3_RESET_FILTER_CAM(x) (((unsigned)(x)&0x1) << 2)
+#define PKT3_SHADER_TYPE_S(x) (((unsigned)(x) & 0x1) << 1)
+#define PKT3_SHADER_TYPE_G(x) (((x) >> 1) & 0x1)
+#define PKT3_RESET_FILTER_CAM_S(x) (((unsigned)(x) & 0x1) << 2)
+#define PKT3_RESET_FILTER_CAM_G(x) (((unsigned)(x) >> 2) & 0x1)
 #define PKT3(op, count, predicate)                                                                 \
    (PKT_TYPE_S(3) | PKT_COUNT_S(count) | PKT3_IT_OPCODE_S(op) | PKT3_PREDICATE(predicate))
 

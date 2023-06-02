@@ -179,7 +179,7 @@ radeon_set_perfctr_reg(struct radv_cmd_buffer *cmd_buffer, unsigned reg, unsigne
    bool filter_cam_workaround =
       cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10 && cmd_buffer->qf == RADV_QUEUE_GENERAL;
 
-   radeon_emit(cs, PKT3(PKT3_SET_UCONFIG_REG, 1, 0) | PKT3_RESET_FILTER_CAM(filter_cam_workaround));
+   radeon_emit(cs, PKT3(PKT3_SET_UCONFIG_REG, 1, 0) | PKT3_RESET_FILTER_CAM_S(filter_cam_workaround));
    radeon_emit(cs, (reg - CIK_UCONFIG_REG_OFFSET) >> 2);
    radeon_emit(cs, value);
 }
