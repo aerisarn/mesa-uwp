@@ -243,6 +243,26 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
+            nir_op_fceil | nir_op_ffloor | nir_op_fround_even
+            | nir_op_ftrunc => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                let ty = FloatType::from_bits(alu.def.bit_size().into());
+                let rnd_mode = match alu.op {
+                    nir_op_fceil => FRndMode::PosInf,
+                    nir_op_ffloor => FRndMode::NegInf,
+                    nir_op_ftrunc => FRndMode::Zero,
+                    nir_op_fround_even => FRndMode::NearestEven,
+                    _ => unreachable!(),
+                };
+                b.push_op(OpFRnd {
+                    dst: dst.into(),
+                    src: srcs[0],
+                    src_type: ty,
+                    dst_type: ty,
+                    rnd_mode,
+                });
+                dst
+            }
             nir_op_fcos => {
                 let frac_1_2pi = 1.0 / (2.0 * std::f32::consts::PI);
                 let tmp =

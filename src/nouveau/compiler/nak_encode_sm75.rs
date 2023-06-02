@@ -756,6 +756,26 @@ impl SM75Instr {
         self.set_field(84..86, (op.src_type.bits() / 8).ilog2());
     }
 
+    fn encode_frnd(&mut self, op: &OpFRnd) {
+        let opcode = match (op.src_type, op.dst_type) {
+            (FloatType::F64, FloatType::F64) => 0x113,
+            _ => 0x107,
+        };
+
+        self.encode_alu(
+            opcode,
+            Some(op.dst),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.src.into()),
+            ALUSrc::None,
+        );
+
+        self.set_field(84..86, (op.src_type.bits() / 8).ilog2());
+        self.set_bit(80, false); // TODO: FMZ
+        self.set_rnd_mode(78..80, op.rnd_mode);
+        self.set_field(75..77, (op.dst_type.bits() / 8).ilog2());
+    }
+
     fn encode_mov(&mut self, op: &OpMov) {
         self.encode_alu(
             0x002,
@@ -1493,6 +1513,7 @@ impl SM75Instr {
             Op::F2F(op) => si.encode_f2f(&op),
             Op::F2I(op) => si.encode_f2i(&op),
             Op::I2F(op) => si.encode_i2f(&op),
+            Op::FRnd(op) => si.encode_frnd(&op),
             Op::Mov(op) => si.encode_mov(&op),
             Op::Sel(op) => si.encode_sel(&op),
             Op::PLop3(op) => si.encode_plop3(&op),

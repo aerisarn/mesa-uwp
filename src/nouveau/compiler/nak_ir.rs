@@ -1105,6 +1105,7 @@ impl fmt::Display for LogicOp {
     }
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum FloatType {
     F16,
     F32,
@@ -2107,6 +2108,47 @@ impl fmt::Display for OpI2F {
 }
 
 #[repr(C)]
+#[derive(DstsAsSlice)]
+pub struct OpFRnd {
+    pub dst: Dst,
+
+    pub src: Src,
+
+    pub dst_type: FloatType,
+    pub src_type: FloatType,
+    pub rnd_mode: FRndMode,
+}
+
+impl SrcsAsSlice for OpFRnd {
+    fn srcs_as_slice(&self) -> &[Src] {
+        std::slice::from_ref(&self.src)
+    }
+
+    fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
+        std::slice::from_mut(&mut self.src)
+    }
+
+    fn src_types(&self) -> SrcTypeList {
+        let src_type = match self.src_type {
+            FloatType::F16 => unimplemented!(),
+            FloatType::F32 => SrcType::F32,
+            FloatType::F64 => SrcType::F64,
+        };
+        SrcTypeList::Uniform(src_type)
+    }
+}
+
+impl fmt::Display for OpFRnd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "FRND.{}.{}.{} {} {}",
+            self.dst_type, self.src_type, self.rnd_mode, self.dst, self.src,
+        )
+    }
+}
+
+#[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpMov {
     pub dst: Dst,
@@ -3060,6 +3102,7 @@ pub enum Op {
     F2F(OpF2F),
     F2I(OpF2I),
     I2F(OpI2F),
+    FRnd(OpFRnd),
     Mov(OpMov),
     Sel(OpSel),
     PLop3(OpPLop3),
@@ -3374,7 +3417,9 @@ impl Instr {
             | Op::PLop3(_)
             | Op::ISetP(_)
             | Op::Shf(_) => Some(6),
-            Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::Mov(_) => Some(15),
+            Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::Mov(_) | Op::FRnd(_) => {
+                Some(15)
+            }
             Op::Sel(_) => Some(15),
             Op::S2R(_) => None,
             Op::ALd(_) => None,

@@ -182,7 +182,9 @@ impl<'a> LegalizeInstr<'a> {
                 self.mov_src_if_not_reg(&mut op.low, RegFile::GPR);
                 self.mov_src_if_not_reg(&mut op.high, RegFile::GPR);
             }
-            Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::Mov(_) => (),
+            Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::Mov(_) | Op::FRnd(_) => {
+                ()
+            }
             Op::Sel(op) => {
                 let [ref mut src0, ref mut src1] = op.srcs;
                 if !src_is_reg(src0) && src_is_reg(src1) {
