@@ -81,11 +81,10 @@ void si_pm4_set_reg(struct si_pm4_state *state, unsigned reg, uint32_t val)
    si_pm4_set_reg_custom(state, reg, val, opcode, 0);
 }
 
-void si_pm4_set_reg_idx3(struct si_screen *sscreen, struct si_pm4_state *state,
-                         unsigned reg, uint32_t val)
+void si_pm4_set_reg_idx3(struct si_pm4_state *state, unsigned reg, uint32_t val)
 {
-   if (sscreen->info.uses_kernel_cu_mask) {
-      assert(sscreen->info.gfx_level >= GFX10);
+   if (state->screen->info.uses_kernel_cu_mask) {
+      assert(state->screen->info.gfx_level >= GFX10);
       si_pm4_set_reg_custom(state, reg - SI_SH_REG_OFFSET, val, PKT3_SET_SH_REG_INDEX, 3);
    } else {
       si_pm4_set_reg_custom(state, reg - SI_SH_REG_OFFSET, val, PKT3_SET_SH_REG, 0);

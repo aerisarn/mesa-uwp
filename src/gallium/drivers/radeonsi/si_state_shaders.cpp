@@ -708,7 +708,7 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
                                 GFX6_TCS_NUM_USER_SGPR;
 
    if (sscreen->info.gfx_level >= GFX11) {
-      si_pm4_set_reg_idx3(sscreen, pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
+      si_pm4_set_reg_idx3(pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
                           ac_apply_cu_en(S_00B404_INST_PREF_SIZE(si_get_shader_prefetch_size(shader)) |
                                          S_00B404_CU_EN(0xffff),
                                          C_00B404_CU_EN, 16, &sscreen->info));
@@ -1655,7 +1655,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    oc_lds_en = shader->selector->stage == MESA_SHADER_TESS_EVAL ? 1 : 0;
 
    if (sscreen->info.gfx_level >= GFX7) {
-      si_pm4_set_reg_idx3(sscreen, pm4, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
+      si_pm4_set_reg_idx3(pm4, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
                           ac_apply_cu_en(S_00B118_CU_EN(cu_mask) |
                                          S_00B118_WAVE_LIMIT(0x3F),
                                          C_00B118_CU_EN, 0, &sscreen->info));
@@ -1928,7 +1928,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    if (sscreen->info.gfx_level >= GFX11) {
       unsigned cu_mask_ps = gfx103_get_cu_mask_ps(sscreen);
 
-      si_pm4_set_reg_idx3(sscreen, pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
+      si_pm4_set_reg_idx3(pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
                           ac_apply_cu_en(S_00B004_CU_EN(cu_mask_ps >> 16) |
                                          S_00B004_INST_PREF_SIZE(si_get_shader_prefetch_size(shader)),
                                          C_00B004_CU_EN, 16, &sscreen->info));

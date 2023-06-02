@@ -5670,7 +5670,7 @@ static void gfx6_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_
    }
 
    if (sctx->gfx_level >= GFX7) {
-      si_pm4_set_reg_idx3(sscreen, pm4, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
+      si_pm4_set_reg_idx3(pm4, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
                           ac_apply_cu_en(S_00B01C_CU_EN(0xffffffff) |
                                          S_00B01C_WAVE_LIMIT(0x3F),
                                          C_00B01C_CU_EN, 0, &sscreen->info));
@@ -5755,7 +5755,7 @@ static void gfx6_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_
                      S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF) |
                      S_028060_POPS_DRAIN_PS_ON_OVERLAP(1));
 
-      si_pm4_set_reg_idx3(sscreen, pm4, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
+      si_pm4_set_reg_idx3(pm4, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
                           ac_apply_cu_en(S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F),
                                          C_00B41C_CU_EN, 0, &sscreen->info));
 
@@ -5898,11 +5898,11 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
    /* Shader registers - PS. */
    unsigned cu_mask_ps = sctx->gfx_level >= GFX10_3 ? gfx103_get_cu_mask_ps(sscreen) : ~0u;
    if (sctx->gfx_level < GFX11) {
-      si_pm4_set_reg_idx3(sscreen, pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
+      si_pm4_set_reg_idx3(pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
                           ac_apply_cu_en(S_00B004_CU_EN(cu_mask_ps >> 16), /* CUs 16-31 */
                                          C_00B004_CU_EN, 16, &sscreen->info));
    }
-   si_pm4_set_reg_idx3(sscreen, pm4, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
+   si_pm4_set_reg_idx3(pm4, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
                        ac_apply_cu_en(S_00B01C_CU_EN(cu_mask_ps) |
                                       S_00B01C_WAVE_LIMIT(0x3F) |
                                       S_00B01C_LDS_GROUP_SIZE(sctx->gfx_level >= GFX11),
@@ -5917,7 +5917,7 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
 
    /* Shader registers - VS. */
    if (sctx->gfx_level < GFX11) {
-      si_pm4_set_reg_idx3(sscreen, pm4, R_00B104_SPI_SHADER_PGM_RSRC4_VS,
+      si_pm4_set_reg_idx3(pm4, R_00B104_SPI_SHADER_PGM_RSRC4_VS,
                           ac_apply_cu_en(S_00B104_CU_EN(0xffff), /* CUs 16-31 */
                                          C_00B104_CU_EN, 16, &sscreen->info));
       si_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
@@ -5937,11 +5937,11 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
 
    /* Shader registers - HS. */
    if (sctx->gfx_level < GFX11) {
-      si_pm4_set_reg_idx3(sscreen, pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
+      si_pm4_set_reg_idx3(pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
                           ac_apply_cu_en(S_00B404_CU_EN(0xffff), /* CUs 16-31 */
                                          C_00B404_CU_EN, 16, &sscreen->info));
    }
-   si_pm4_set_reg_idx3(sscreen, pm4, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
+   si_pm4_set_reg_idx3(pm4, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
                        ac_apply_cu_en(S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F),
                                       C_00B41C_CU_EN, 0, &sscreen->info));
    si_pm4_set_reg(pm4, R_00B4C8_SPI_SHADER_USER_ACCUM_LSHS_0, 0);
