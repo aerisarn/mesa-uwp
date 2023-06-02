@@ -552,6 +552,9 @@ union radv_shader_arena_block {
 struct radv_shader {
    struct vk_pipeline_cache_object base;
 
+   simple_mtx_t replay_mtx;
+   bool has_replay_alloc;
+
    struct radeon_winsys_bo *bo;
    union radv_shader_arena_block *alloc;
    uint64_t va;
@@ -624,7 +627,9 @@ struct radv_shader_args;
 struct radv_shader *radv_shader_create(struct radv_device *device, struct vk_pipeline_cache *cache,
                                        const struct radv_shader_binary *binary, bool skip_cache);
 
-struct radv_shader *radv_shader_create_uncached(struct radv_device *device, const struct radv_shader_binary *binary);
+VkResult radv_shader_create_uncached(struct radv_device *device, const struct radv_shader_binary *binary,
+                                     bool replayable, struct radv_serialized_shader_arena_block *replay_block,
+                                     struct radv_shader **out_shader);
 
 struct radv_shader_binary *radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *pl_stage,
                                                   struct nir_shader *const *shaders, int shader_count,

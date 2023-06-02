@@ -2026,12 +2026,17 @@ radv_shader_upload(struct radv_device *device, struct radv_shader *shader, const
    return true;
 }
 
-struct radv_shader *
-radv_shader_create_uncached(struct radv_device *device, const struct radv_shader_binary *binary)
+VkResult
+radv_shader_create_uncached(struct radv_device *device, const struct radv_shader_binary *binary, bool replayable,
+                            struct radv_serialized_shader_arena_block *replay_block, struct radv_shader **out_shader)
 {
+   VkResult result = VK_SUCCESS;
    struct radv_shader *shader = calloc(1, sizeof(struct radv_shader));
-   if (!shader)
-      goto fail;
+   if (!shader) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto out;
+   }
+   simple_mtx_init(&shader->replay_mtx, mtx_plain);
 
    vk_pipeline_cache_object_init(&device->vk, &shader->base, &radv_shader_ops, shader->sha1, SHA1_DIGEST_LENGTH);
 
@@ -2047,7 +2052,8 @@ radv_shader_create_uncached(struct radv_device *device, const struct radv_shader
       struct ac_rtld_binary rtld_binary = {0};
 
       if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
-         goto fail;
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         goto out;
       }
 
       shader->code_size = rtld_binary.rx_size;
@@ -2066,21 +2072,39 @@ radv_shader_create_uncached(struct radv_device *device, const struct radv_shader
       }
    }
 
-   shader->alloc = radv_alloc_shader_memory(device, shader->code_size, false, shader);
-   if (!shader->alloc)
-      goto fail;
+   if (replay_block) {
+      shader->alloc = radv_replay_shader_arena_block(device, replay_block, shader);
+      if (!shader->alloc) {
+         result = VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
+         goto out;
+      }
+
+      shader->has_replay_alloc = true;
+   } else {
+      shader->alloc = radv_alloc_shader_memory(device, shader->code_size, replayable, shader);
+      if (!shader->alloc) {
+         result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+         goto out;
+      }
+   }
 
    shader->bo = shader->alloc->arena->bo;
    shader->va = radv_buffer_get_va(shader->bo) + shader->alloc->offset;
 
-   if (!radv_shader_upload(device, shader, binary))
-      goto fail;
+   if (!radv_shader_upload(device, shader, binary)) {
+      result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+      goto out;
+   }
 
-   return shader;
+   *out_shader = shader;
 
-fail:
-   free(shader);
-   return NULL;
+out:
+   if (result != VK_SUCCESS) {
+      free(shader);
+      *out_shader = NULL;
+   }
+
+   return result;
 }
 
 bool
@@ -2398,7 +2422,8 @@ radv_create_trap_handler_shader(struct radv_device *device)
    radv_declare_shader_args(device, &key, &info, stage, MESA_SHADER_NONE, &args);
 
    struct radv_shader_binary *binary = shader_compile(device, &b.shader, 1, stage, &info, &args, &options);
-   struct radv_shader *shader = radv_shader_create_uncached(device, binary);
+   struct radv_shader *shader;
+   radv_shader_create_uncached(device, binary, false, NULL, &shader);
 
    ralloc_free(b.shader);
    free(binary);
@@ -2478,7 +2503,7 @@ radv_create_rt_prolog(struct radv_device *device)
    binary->info = info;
 
    radv_postprocess_binary_config(device, binary, &in_args);
-   prolog = radv_shader_create_uncached(device, binary);
+   radv_shader_create_uncached(device, binary, false, NULL, &prolog);
    if (!prolog)
       goto done;
 
