@@ -272,7 +272,7 @@ emit_shared_to_payload_copy(nir_builder *b,
    /* Copy the last few dwords not forming full vec4. */
    if (remaining_dwords > 0) {
       assert(remaining_dwords < 4);
-      nir_ssa_def *cmp = nir_ieq(b, invocation_index, nir_imm_int(b, 0));
+      nir_ssa_def *cmp = nir_ieq_imm(b, invocation_index, 0);
       nir_if *if_stmt = nir_push_if(b, cmp);
       {
          copy_shared_to_payload(b, remaining_dwords, addr, base_shared_addr, off);

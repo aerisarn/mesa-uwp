@@ -682,7 +682,7 @@ lower_ufind_msb64(nir_builder *b, nir_ssa_def *x)
    nir_ssa_def *hi_count = nir_ufind_msb(b, x_hi);
 
    if (b->shader->options->lower_uadd_sat) {
-      nir_ssa_def *valid_hi_bits = nir_ine(b, x_hi, nir_imm_int(b, 0));
+      nir_ssa_def *valid_hi_bits = nir_ine_imm(b, x_hi, 0);
       nir_ssa_def *hi_res = nir_iadd(b, nir_imm_intN_t(b, 32, 32), hi_count);
       return nir_bcsel(b, valid_hi_bits, hi_res, lo_count);
    } else {
@@ -765,7 +765,7 @@ lower_2f(nir_builder *b, nir_ssa_def *x, unsigned dest_bit_size,
    nir_ssa_def *half = COND_LOWER_OP(b, ishr, lsb_mask, nir_imm_int(b, 1));
    nir_ssa_def *rem = COND_LOWER_OP(b, iand, x, rem_mask);
    nir_ssa_def *halfway = nir_iand(b, COND_LOWER_CMP(b, ieq, rem, half),
-                                   nir_ine(b, discard, nir_imm_int(b, 0)));
+                                   nir_ine_imm(b, discard, 0));
    nir_ssa_def *is_odd = COND_LOWER_CMP(b, ine, nir_imm_int64(b, 0),
                                          COND_LOWER_OP(b, iand, x, lsb_mask));
    nir_ssa_def *round_up = nir_ior(b, COND_LOWER_CMP(b, ilt, half, rem),

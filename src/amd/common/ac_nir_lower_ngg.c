@@ -1585,7 +1585,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       if_es_thread->control = nir_selection_control_divergent_always_taken;
       {
          nir_ssa_def *accepted = nir_load_shared(b, 1, 8u, es_vertex_lds_addr, .base = lds_es_vertex_accepted, .align_mul = 4u);
-         nir_ssa_def *accepted_bool = nir_ine(b, nir_u2u32(b, accepted), nir_imm_int(b, 0));
+         nir_ssa_def *accepted_bool = nir_ine_imm(b, nir_u2u32(b, accepted), 0);
          nir_store_var(b, s->es_accepted_var, accepted_bool, 0x1u);
       }
       nir_pop_if(b, if_es_thread);
@@ -1605,7 +1605,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       num_exported_prims = nir_bcsel(b, fully_culled, nir_imm_int(b, 0u), num_exported_prims);
       nir_store_var(b, s->gs_exported_var, nir_iand(b, nir_inot(b, fully_culled), has_input_primitive(b)), 0x1u);
 
-      nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_load_subgroup_id(b), nir_imm_int(b, 0)));
+      nir_if *if_wave_0 = nir_push_if(b, nir_ieq_imm(b, nir_load_subgroup_id(b), 0));
       {
          /* Tell the final vertex and primitive count to the HW. */
          if (s->options->gfx_level == GFX10) {
@@ -1628,7 +1628,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    nir_push_else(b, if_cull_en);
    {
       /* When culling is disabled, we do the same as we would without culling. */
-      nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_load_subgroup_id(b), nir_imm_int(b, 0)));
+      nir_if *if_wave_0 = nir_push_if(b, nir_ieq_imm(b, nir_load_subgroup_id(b), 0));
       {
          nir_ssa_def *vtx_cnt = nir_load_workgroup_num_input_vertices_amd(b);
          nir_ssa_def *prim_cnt = nir_load_workgroup_num_input_primitives_amd(b);
@@ -2370,7 +2370,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       /* Newer chips can use PRIMGEN_PASSTHRU_NO_MSG to skip gs_alloc_req for NGG passthrough. */
       if (!(options->passthrough && options->family >= CHIP_NAVI23)) {
          /* Allocate export space on wave 0 - confirm to the HW that we want to use all possible space */
-         nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_load_subgroup_id(b), nir_imm_int(b, 0)));
+         nir_if *if_wave_0 = nir_push_if(b, nir_ieq_imm(b, nir_load_subgroup_id(b), 0));
          {
             nir_ssa_def *vtx_cnt = nir_load_workgroup_num_input_vertices_amd(b);
             nir_ssa_def *prim_cnt = nir_load_workgroup_num_input_primitives_amd(b);
@@ -3311,7 +3311,7 @@ ngg_gs_finale(nir_builder *b, lower_ngg_gs_state *s)
       /* When the output is compile-time known, the GS writes all possible vertices and primitives it can.
        * The gs_alloc_req needs to happen on one wave only, otherwise the HW hangs.
        */
-      nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_load_subgroup_id(b), nir_imm_zero(b, 1, 32)));
+      nir_if *if_wave_0 = nir_push_if(b, nir_ieq_imm(b, nir_load_subgroup_id(b), 0));
       alloc_vertices_and_primitives(b, max_vtxcnt, max_prmcnt);
       nir_pop_if(b, if_wave_0);
    }
@@ -3345,7 +3345,7 @@ ngg_gs_finale(nir_builder *b, lower_ngg_gs_state *s)
     * requires that the invocations that export vertices are packed (ie. compact).
     * To ensure this, we need to repack invocations that have a live vertex.
     */
-   nir_ssa_def *vertex_live = nir_ine(b, out_vtx_primflag_0, nir_imm_zero(b, 1, out_vtx_primflag_0->bit_size));
+   nir_ssa_def *vertex_live = nir_ine_imm(b, out_vtx_primflag_0, 0);
    wg_repack_result rep = repack_invocations_in_workgroup(b, vertex_live, s->lds_addr_gs_scratch,
                                                           s->max_num_waves, s->options->wave_size);
 
@@ -3353,11 +3353,11 @@ ngg_gs_finale(nir_builder *b, lower_ngg_gs_state *s)
    nir_ssa_def *exporter_tid_in_tg = rep.repacked_invocation_index;
 
    /* When the workgroup emits 0 total vertices, we also must export 0 primitives (otherwise the HW can hang). */
-   nir_ssa_def *any_output = nir_ine(b, workgroup_num_vertices, nir_imm_int(b, 0));
+   nir_ssa_def *any_output = nir_ine_imm(b, workgroup_num_vertices, 0);
    max_prmcnt = nir_bcsel(b, any_output, max_prmcnt, nir_imm_int(b, 0));
 
    /* Allocate export space. We currently don't compact primitives, just use the maximum number. */
-   nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_load_subgroup_id(b), nir_imm_zero(b, 1, 32)));
+   nir_if *if_wave_0 = nir_push_if(b, nir_ieq_imm(b, nir_load_subgroup_id(b), 0));
    {
       if (s->options->gfx_level == GFX10)
          alloc_vertices_and_primitives_gfx10_workaround(b, workgroup_num_vertices, max_prmcnt);

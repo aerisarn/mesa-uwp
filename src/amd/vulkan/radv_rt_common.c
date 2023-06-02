@@ -600,7 +600,7 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
                build_node_to_addr(device, b, nir_load_deref(b, args->vars.bvh_base), true);
 
             nir_ssa_def *parent = fetch_parent_node(b, bvh_addr, prev);
-            nir_push_if(b, nir_ieq(b, parent, nir_imm_int(b, RADV_BVH_INVALID_NODE)));
+            nir_push_if(b, nir_ieq_imm(b, parent, RADV_BVH_INVALID_NODE));
             {
                nir_store_var(b, incomplete, nir_imm_bool(b, false), 0x1);
                nir_jump(b, nir_jump_break);

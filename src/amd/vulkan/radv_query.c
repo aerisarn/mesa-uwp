@@ -293,7 +293,7 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
    nir_ssa_def *global_id = get_global_ids(&b, 1);
 
    nir_variable *input_stride = nir_local_variable_create(b.impl, glsl_int_type(), "input_stride");
-   nir_push_if(&b, nir_ine(&b, uses_gds, nir_imm_int(&b, 0)));
+   nir_push_if(&b, nir_ine_imm(&b, uses_gds, 0));
    {
       nir_store_var(&b, input_stride, nir_imm_int(&b, pipelinestat_block_size * 2 + 8 * 2), 0x1);
    }
@@ -335,8 +335,8 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
       nir_store_var(&b, result, nir_isub(&b, end, start), 0x1);
 
       nir_push_if(&b, nir_iand(&b, nir_i2b(&b, uses_gds),
-                               nir_ieq(&b, nir_imm_int(&b, 1u << i),
-                                       nir_imm_int(&b, VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT))));
+                               nir_ieq_imm(&b, nir_imm_int(&b, 1u << i),
+                                           VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT)));
       {
          /* Compute the GDS result if needed. */
          nir_ssa_def *gds_start_offset =

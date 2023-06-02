@@ -160,7 +160,7 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
       nir_ssa_def *draw_count =
          nir_load_ssbo(&b, 1, 32, count_buf_desc, nir_imm_int(&b, 0), .align_mul = 4);
 
-      nir_push_if(&b, nir_ieq(&b, index, nir_imm_int(&b, 0)));
+      nir_push_if(&b, nir_ieq_imm(&b, index, 0));
       nir_store_ssbo(&b, draw_count, exec_buf_desc, nir_imm_int(&b, 0),
                     .write_mask = 0x1, .access = ACCESS_NON_READABLE,
                     .align_mul = 16);

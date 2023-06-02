@@ -926,8 +926,8 @@ brw_nir_rt_load_primitive_id_from_hit(nir_builder *b,
 {
    if (!is_procedural) {
       is_procedural =
-         nir_ieq(b, defs->leaf_type,
-                    nir_imm_int(b, BRW_RT_BVH_NODE_TYPE_PROCEDURAL));
+         nir_ieq_imm(b, defs->leaf_type,
+                        BRW_RT_BVH_NODE_TYPE_PROCEDURAL);
    }
 
    nir_ssa_def *prim_id_proc, *prim_id_quad;
@@ -973,7 +973,7 @@ brw_nir_rt_acceleration_structure_to_root_node(nir_builder *b,
     * BVH, we can find the root node at a given offset.
     */
    nir_ssa_def *root_node_ptr, *null_node_ptr;
-   nir_push_if(b, nir_ieq(b, as_addr, nir_imm_int64(b, 0)));
+   nir_push_if(b, nir_ieq_imm(b, as_addr, 0));
    {
       null_node_ptr = nir_imm_int64(b, 0);
    }

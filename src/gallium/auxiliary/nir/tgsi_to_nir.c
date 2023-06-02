@@ -1120,7 +1120,7 @@ static void
 ttn_ucmp(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 {
    ttn_move_dest(b, dest, nir_bcsel(b,
-                                    nir_ine(b, src[0], nir_imm_int(b, 0)),
+                                    nir_ine_imm(b, src[0], 0),
                                     src[1], src[2]));
 }
 

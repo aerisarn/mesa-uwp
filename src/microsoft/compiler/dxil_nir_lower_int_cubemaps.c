@@ -301,7 +301,7 @@ handle_cube_edge(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *fa
 
       /* For each possible original face */
       for (unsigned j = 0; j < 6; j++) {
-         nir_ssa_def *predicate = nir_iand(b, remap_predicates[i], nir_ieq(b, face, nir_imm_int(b, j)));
+         nir_ssa_def *predicate = nir_iand(b, remap_predicates[i], nir_ieq_imm(b, face, j));
 
          x_result = nir_bcsel(b, predicate, remap_array[remap_table[j].remap_x], x_result);
          y_result = nir_bcsel(b, predicate, remap_array[remap_table[j].remap_y], y_result);

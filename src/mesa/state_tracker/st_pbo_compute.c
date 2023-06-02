@@ -293,10 +293,10 @@ init_pbo_shader_data(nir_builder *b, struct pbo_shader_data *sd, unsigned coord_
                                                        nir_bcsel(b,
                                                                  nir_uge(b, sd->channels, nir_imm_int(b, 3)),
                                                                  nir_bcsel(b,
-                                                                           nir_ieq(b, sd->channels, nir_imm_int(b, 4)),
-                                                                           nir_ball(b, nir_ieq(b, sd->bits, nir_imm_ivec4(b, 8, 8, 8, 8))),
-                                                                           nir_ball(b, nir_ieq(b, nir_channels(b, sd->bits, 7), nir_imm_ivec3(b, 8, 8, 8)))),
-                                                                 nir_ball(b, nir_ieq(b, nir_channels(b, sd->bits, 3), nir_imm_ivec2(b, 8, 8)))),
+                                                                           nir_ieq_imm(b, sd->channels, 4),
+                                                                           nir_ball(b, nir_ieq_imm(b, sd->bits, 8)),
+                                                                           nir_ball(b, nir_ieq_imm(b, nir_channels(b, sd->bits, 7), 8))),
+                                                                 nir_ball(b, nir_ieq_imm(b, nir_channels(b, sd->bits, 3), 8))),
                                                        nir_imm_bool(b, 0)),
                                              nir_imm_bool(b, 0))),
                            nir_imm_bool(b, 0),
@@ -490,7 +490,7 @@ check_for_weird_packing(nir_builder *b, struct pbo_shader_data *sd, unsigned com
                     nir_ige(b, sd->channels, nir_imm_int(b, component)),
                     nir_ior(b,
                             nir_ine(b, c, sd->bits1),
-                            nir_ine(b, nir_imod(b, c, nir_imm_int(b, 8)), nir_imm_int(b, 0))),
+                            nir_ine_imm(b, nir_imod(b, c, nir_imm_int(b, 8)), 0)),
                     nir_imm_bool(b, 0));
 }
 
