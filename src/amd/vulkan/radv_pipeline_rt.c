@@ -149,9 +149,9 @@ radv_create_group_handles(struct radv_device *device, const VkRayTracingPipeline
          unreachable("VK_SHADER_GROUP_SHADER_MAX_ENUM_KHR");
       }
 
-      if (capture_replay) {
-         if (group_info->pShaderGroupCaptureReplayHandle &&
-             memcmp(group_info->pShaderGroupCaptureReplayHandle, &groups[i].handle, sizeof(groups[i].handle)) != 0) {
+      if (group_info->pShaderGroupCaptureReplayHandle) {
+         const struct radv_rt_capture_replay_handle *handle = group_info->pShaderGroupCaptureReplayHandle;
+         if (memcmp(&handle->non_recursive_idx, &groups[i].handle.any_hit_index, sizeof(uint32_t)) != 0) {
             return VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
          }
       }
