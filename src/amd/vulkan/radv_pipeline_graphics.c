@@ -3321,6 +3321,9 @@ radv_emit_fragment_shader(const struct radv_device *device, struct radeon_cmdbuf
    radeon_set_context_reg(ctx_cs, R_028710_SPI_SHADER_Z_FORMAT,
                           ac_get_spi_shader_z_format(ps->info.ps.writes_z, ps->info.ps.writes_stencil,
                                                      ps->info.ps.writes_sample_mask, ps->info.ps.writes_mrt0_alpha));
+
+   if (pdevice->rad_info.gfx_level >= GFX9 && pdevice->rad_info.gfx_level < GFX11)
+      radeon_set_context_reg(ctx_cs, R_028C40_PA_SC_SHADER_CONTROL, S_028C40_LOAD_COLLISION_WAVEID(ps->info.ps.pops));
 }
 
 static void
