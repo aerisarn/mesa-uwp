@@ -890,7 +890,7 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
 
       /* VK_KHR_ray_tracing_pipeline */
       .rayTracingPipeline = true,
-      .rayTracingPipelineShaderGroupHandleCaptureReplay = false,
+      .rayTracingPipelineShaderGroupHandleCaptureReplay = true,
       .rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false,
       .rayTracingPipelineTraceRaysIndirect = true,
       .rayTraversalPrimitiveCulling = true,
@@ -1677,7 +1677,7 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice, VkPhysicalDev
          /* This isn't strictly necessary, but Doom Eternal breaks if the
           * alignment is any lower. */
          props->shaderGroupBaseAlignment = RADV_RT_HANDLE_SIZE;
-         props->shaderGroupHandleCaptureReplaySize = RADV_RT_HANDLE_SIZE;
+         props->shaderGroupHandleCaptureReplaySize = sizeof(struct radv_rt_capture_replay_handle);
          props->maxRayDispatchInvocationCount = 1024 * 1024 * 64;
          props->shaderGroupHandleAlignment = 16;
          props->maxRayHitAttributeSize = RADV_MAX_HIT_ATTRIB_SIZE;
