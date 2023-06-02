@@ -387,7 +387,7 @@ dump_shader_info(struct etna_shader_variant *v, struct util_debug_callback *debu
          "%s shader: %u instructions, %u temps, "
          "%u immediates, %u loops",
          etna_shader_stage(v),
-         v->code_size,
+         v->code_size / 4,
          v->num_temps,
          v->uniforms.count,
          v->num_loops);
