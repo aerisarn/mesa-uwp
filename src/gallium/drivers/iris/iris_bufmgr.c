@@ -2325,8 +2325,14 @@ iris_bufmgr_get_meminfo(struct iris_bufmgr *bufmgr,
    bufmgr->sys.region = &devinfo->mem.sram.mem;
    bufmgr->sys.size = devinfo->mem.sram.mappable.size;
 
+   /* When the resizable bar feature is disabled,
+    * then vram.mappable.size is only 256MB.
+    * The second half of the total size is in the vram.unmappable.size
+    * variable.
+    */
    bufmgr->vram.region = &devinfo->mem.vram.mem;
-   bufmgr->vram.size = devinfo->mem.vram.mappable.size;
+   bufmgr->vram.size = devinfo->mem.vram.mappable.size +
+                       devinfo->mem.vram.unmappable.size;
 
    return true;
 }
