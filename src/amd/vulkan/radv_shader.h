@@ -374,6 +374,8 @@ struct radv_shader_info {
       uint8_t reads_sample_pos_mask;
       uint8_t depth_layout;
       bool allow_flat_shading;
+      bool pops; /* Uses Primitive Ordered Pixel Shading (fragment shader interlock) */
+      bool pops_is_per_sample;
       bool has_epilog;
       bool mrt0_is_dual_src;
       unsigned spi_ps_input;

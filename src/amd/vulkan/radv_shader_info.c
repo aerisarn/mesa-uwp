@@ -231,6 +231,9 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr, s
    case nir_intrinsic_load_poly_line_smooth_enabled:
       info->ps.needs_poly_line_smooth = true;
       break;
+   case nir_intrinsic_begin_invocation_interlock:
+      info->ps.pops = true;
+      break;
    default:
       break;
    }
@@ -586,6 +589,9 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
         BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_POS) ||
         BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN) ||
         BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_HELPER_INVOCATION));
+
+   info->ps.pops_is_per_sample =
+      info->ps.pops && (nir->info.fs.sample_interlock_ordered || nir->info.fs.sample_interlock_unordered);
 
    info->ps.spi_ps_input = radv_compute_spi_ps_input(pipeline_key, info);
 
