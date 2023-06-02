@@ -434,6 +434,8 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
    if (!blend)
       return NULL;
 
+   si_pm4_clear_state(pm4, sctx->screen, false);
+
    blend->alpha_to_coverage = state->alpha_to_coverage;
    blend->alpha_to_one = state->alpha_to_one;
    blend->dual_src_blend = util_blend_state_is_dual(state, 0);
@@ -940,6 +942,8 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
       return NULL;
    }
 
+   si_pm4_clear_state(pm4, sscreen, false);
+
    rs->scissor_enable = state->scissor;
    rs->clip_halfz = state->clip_halfz;
    rs->two_side = state->light_twoside;
@@ -1117,6 +1121,8 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
       float offset_units = state->offset_units;
       float offset_scale = state->offset_scale * 16.0f;
       uint32_t pa_su_poly_offset_db_fmt_cntl = 0;
+
+      si_pm4_clear_state(pm4, sscreen, false);
 
       if (!state->offset_units_unscaled) {
          switch (i) {
@@ -1335,6 +1341,8 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
    if (!dsa) {
       return NULL;
    }
+
+   si_pm4_clear_state(pm4, (struct si_screen*)ctx->screen, false);
 
    dsa->stencil_ref.valuemask[0] = state->stencil[0].valuemask;
    dsa->stencil_ref.valuemask[1] = state->stencil[1].valuemask;
@@ -5548,7 +5556,7 @@ static void gfx6_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_
    bool has_clear_state = sscreen->info.has_clear_state;
 
    /* We need more space because the preamble is large. */
-   struct si_pm4_state *pm4 = si_pm4_create_sized(214);
+   struct si_pm4_state *pm4 = si_pm4_create_sized(sscreen, 214, sctx->has_graphics);
    if (!pm4)
       return;
 
@@ -5774,7 +5782,7 @@ static void cdna_init_compute_preamble_state(struct si_context *sctx)
    uint32_t compute_cu_en = S_00B858_SH0_CU_EN(sscreen->info.spi_cu_en) |
                             S_00B858_SH1_CU_EN(sscreen->info.spi_cu_en);
 
-   struct si_pm4_state *pm4 = si_pm4_create_sized(48);
+   struct si_pm4_state *pm4 = si_pm4_create_sized(sscreen, 48, true);
    if (!pm4)
       return;
 
@@ -5831,7 +5839,7 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
    }
 
    /* We need more space because the preamble is large. */
-   struct si_pm4_state *pm4 = si_pm4_create_sized(214);
+   struct si_pm4_state *pm4 = si_pm4_create_sized(sscreen, 214, sctx->has_graphics);
    if (!pm4)
       return;
 

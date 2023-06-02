@@ -347,7 +347,7 @@ static bool si_update_shaders(struct si_context *sctx)
             si_resource_reference(&pipeline->bo, bo);
 
             /* Re-upload all gfx shaders and init PM4. */
-            si_pm4_clear_state(&pipeline->pm4);
+            si_pm4_clear_state(&pipeline->pm4, sctx->screen, false);
 
             for (int i = 0; i < SI_NUM_GRAPHICS_SHADERS; i++) {
                struct si_shader *shader = sctx->shaders[i].current;

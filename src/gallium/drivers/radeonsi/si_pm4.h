@@ -25,12 +25,15 @@ struct si_atom {
 };
 
 struct si_pm4_state {
+   struct si_screen *screen;
+
    /* PKT3_SET_*_REG handling */
    uint16_t last_reg;   /* register offset in dwords */
    uint16_t last_pm4;
    uint16_t ndw;        /* number of dwords in pm4 */
    uint8_t last_opcode;
    uint8_t last_idx;
+   bool is_compute_queue;
 
    /* For shader states only */
    bool is_shader;
@@ -52,12 +55,14 @@ void si_pm4_set_reg_va(struct si_pm4_state *state, unsigned reg, uint32_t val);
 void si_pm4_set_reg_idx3(struct si_screen *sscreen, struct si_pm4_state *state,
                          unsigned reg, uint32_t val);
 
-void si_pm4_clear_state(struct si_pm4_state *state);
+void si_pm4_clear_state(struct si_pm4_state *state, struct si_screen *sscreen,
+                        bool is_compute_queue);
 void si_pm4_free_state(struct si_context *sctx, struct si_pm4_state *state, unsigned idx);
 
 void si_pm4_emit(struct si_context *sctx, struct si_pm4_state *state);
 void si_pm4_reset_emitted(struct si_context *sctx);
-struct si_pm4_state *si_pm4_create_sized(unsigned max_dw);
+struct si_pm4_state *si_pm4_create_sized(struct si_screen *sscreen, unsigned max_dw,
+                                         bool is_compute_queue);
 struct si_pm4_state *si_pm4_clone(struct si_pm4_state *orig);
 
 #ifdef __cplusplus

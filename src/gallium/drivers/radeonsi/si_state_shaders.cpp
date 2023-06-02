@@ -607,7 +607,7 @@ static void polaris_set_vgt_vertex_reuse(struct si_screen *sscreen, struct si_sh
 static struct si_pm4_state *si_get_shader_pm4_state(struct si_shader *shader,
                                                     void (*emit_func)(struct si_context *ctx))
 {
-   si_pm4_clear_state(&shader->pm4);
+   si_pm4_clear_state(&shader->pm4, shader->selector->screen, false);
    shader->pm4.is_shader = true;
    shader->pm4.atom.emit = emit_func;
    return &shader->pm4;
