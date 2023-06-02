@@ -126,13 +126,6 @@ etna_link_shaders(struct etna_context *ctx, struct compiled_shader_state *cs,
    assert(vs->stage == MESA_SHADER_VERTEX);
    assert(fs->stage == MESA_SHADER_FRAGMENT);
 
-#ifdef DEBUG
-   if (DBG_ENABLED(ETNA_DBG_DUMP_SHADERS)) {
-      etna_dump_shader(vs);
-      etna_dump_shader(fs);
-   }
-#endif
-
    failed = etna_link_shader(&link, vs, fs);
 
    if (failed) {
@@ -424,6 +417,11 @@ create_variant(struct etna_shader *shader,
    }
 
    etna_disk_cache_store(shader->compiler, v);
+
+#ifdef DEBUG
+   if (DBG_ENABLED(ETNA_DBG_DUMP_SHADERS))
+      etna_dump_shader(v);
+#endif
 
    return v;
 
