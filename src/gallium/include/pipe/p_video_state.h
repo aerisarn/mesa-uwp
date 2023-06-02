@@ -1377,6 +1377,7 @@ struct pipe_av1_picture_desc
       uint16_t slice_data_row[256];
       uint16_t slice_data_col[256];
       uint8_t slice_data_anchor_frame_idx[256];
+      uint16_t slice_count;
    } slice_parameter;
 };
 
