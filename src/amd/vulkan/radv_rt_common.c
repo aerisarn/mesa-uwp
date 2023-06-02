@@ -312,7 +312,7 @@ intersect_ray_amd_software_tri(struct radv_device *device, nir_builder *b, nir_s
       nir_flt_imm(b, w, 0.0f));
 
    nir_ssa_def *cond_front = nir_ior(
-      b, nir_ior(b, nir_flt(b, nir_imm_float(b, 0.0f), u), nir_flt(b, nir_imm_float(b, 0.0f), v)),
+      b, nir_ior(b, nir_fgt_imm(b, u, 0.0f), nir_fgt_imm(b, v, 0.0f)),
       nir_flt(b, nir_imm_float(b, 0.0f), w));
 
    nir_ssa_def *cond = nir_inot(b, nir_iand(b, cond_back, cond_front));
@@ -435,7 +435,7 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b,
 
    nir_push_if(b, nir_flt(b, intersection.t, nir_load_deref(b, args->vars.tmax)));
    {
-      intersection.frontface = nir_flt(b, nir_imm_float(b, 0), div);
+      intersection.frontface = nir_fgt_imm(b, div, 0);
       nir_ssa_def *switch_ccw = nir_test_mask(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
                                               RADV_INSTANCE_TRIANGLE_FLIP_FACING);
       intersection.frontface = nir_ixor(b, intersection.frontface, switch_ccw);

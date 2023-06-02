@@ -547,7 +547,7 @@ lower_udiv64_mod64(nir_builder *b, nir_ssa_def *n, nir_ssa_def *d,
              * in the last iteration.
              */
             cond = nir_iand(b, cond,
-                               nir_ige(b, nir_imm_int(b, 31 - i), log2_d_lo));
+                               nir_ile_imm(b, log2_d_lo, 31 - i));
          }
          n_hi = nir_bcsel(b, cond, new_n_hi, n_hi);
          q_hi = nir_bcsel(b, cond, new_q_hi, q_hi);
@@ -576,7 +576,7 @@ lower_udiv64_mod64(nir_builder *b, nir_ssa_def *n, nir_ssa_def *d,
           * in the last iteration.
           */
          cond = nir_iand(b, cond,
-                            nir_ige(b, nir_imm_int(b, 31 - i), log2_denom));
+                            nir_ile_imm(b, log2_denom, 31 - i));
       }
       n = nir_bcsel(b, cond, new_n, n);
       q_lo = nir_bcsel(b, cond, new_q_lo, q_lo);

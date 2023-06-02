@@ -310,7 +310,7 @@ build_shader(struct radv_device *dev)
          nir_ssa_def *g1 = nir_iadd(&b, gb, gd);
          nir_ssa_def *b1 = nir_iadd(&b, bb, bd);
 
-         nir_push_if(&b, nir_ult(&b, nir_imm_int(&b, 31), r1));
+         nir_push_if(&b, nir_ugt_imm(&b, r1, 31));
          {
             nir_ssa_def *r0 = nir_ior(&b, nir_ubfe_imm(&b, color_y, 24, 2),
                                       nir_ishl_imm(&b, nir_ubfe_imm(&b, color_y, 27, 2), 2));
@@ -342,7 +342,7 @@ build_shader(struct radv_device *dev)
             nir_pop_if(&b, NULL);
          }
          nir_push_else(&b, NULL);
-         nir_push_if(&b, nir_ult(&b, nir_imm_int(&b, 31), g1));
+         nir_push_if(&b, nir_ugt_imm(&b, g1, 31));
          {
             nir_ssa_def *r0 = nir_ubfe_imm(&b, color_y, 27, 4);
             nir_ssa_def *g0 = nir_ior(&b, nir_ishl_imm(&b, nir_ubfe_imm(&b, color_y, 24, 3), 1),
@@ -373,7 +373,7 @@ build_shader(struct radv_device *dev)
                           0x1);
          }
          nir_push_else(&b, NULL);
-         nir_push_if(&b, nir_ult(&b, nir_imm_int(&b, 31), b1));
+         nir_push_if(&b, nir_ugt_imm(&b, b1, 31));
          {
             nir_ssa_def *r0 = nir_ubfe_imm(&b, color_y, 25, 6);
             nir_ssa_def *g0 = nir_ior(&b, nir_ubfe_imm(&b, color_y, 17, 6),

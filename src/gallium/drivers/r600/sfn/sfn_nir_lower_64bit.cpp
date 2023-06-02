@@ -201,7 +201,7 @@ class LowerSplit64op : public NirLowerInstruction {
          }
          case nir_op_f2i32: {
             auto src = nir_ssa_for_alu_src(b, alu, 0);
-            auto gt0 = nir_flt(b, nir_imm_double(b, 0.0), src);
+            auto gt0 = nir_fgt_imm(b, src, 0.0);
             auto abs_src = nir_fabs(b, src);
             auto value = nir_f2u32(b, abs_src);
             return nir_bcsel(b, gt0, value, nir_ineg(b, value));
@@ -213,7 +213,7 @@ class LowerSplit64op : public NirLowerInstruction {
              * For values > UINT_MAX the result is undefined */
             auto src = nir_ssa_for_alu_src(b, alu, 0);
             src = nir_fadd(b, src, nir_fneg(b, nir_ffract(b, src)));
-            auto gt0 = nir_flt(b, nir_imm_double(b, 0.0), src);
+            auto gt0 = nir_fgt_imm(b, src, 0.0);
             auto highval = nir_fmul_imm(b, src, 1.0 / 65536.0);
             auto fract = nir_ffract(b, highval);
             auto high = nir_f2u32(b, nir_f2f32(b, nir_fadd(b, highval, nir_fneg(b, fract))));

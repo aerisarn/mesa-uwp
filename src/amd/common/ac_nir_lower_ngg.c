@@ -2046,7 +2046,7 @@ ngg_nogs_build_streamout(nir_builder *b, lower_ngg_nogs_state *s)
 
       for (unsigned i = 0; i < s->options->num_vertices_per_primitive; i++) {
          nir_if *if_valid_vertex =
-            nir_push_if(b, nir_ilt(b, nir_imm_int(b, i), num_vert_per_prim));
+            nir_push_if(b, nir_igt_imm(b, num_vert_per_prim, i));
          {
             nir_ssa_def *vtx_lds_idx = nir_load_var(b, s->gs_vtx_indices_vars[i]);
             nir_ssa_def *vtx_lds_addr = pervertex_lds_addr(b, vtx_lds_idx, vtx_lds_stride);

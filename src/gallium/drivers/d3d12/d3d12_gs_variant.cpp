@@ -47,9 +47,9 @@ nir_cull_face(nir_builder *b, nir_variable *vertices, bool ccw)
                                                nir_fsub(b, v2, v0)),
                                    nir_imm_vec4(b, 0.0, 0.0, -1.0, 0.0));
    if (ccw)
-       return nir_fge(b, nir_imm_float(b, 0.0f), dir);
+       return nir_fle_imm(b, dir, 0.0f);
    else
-       return nir_flt(b, nir_imm_float(b, 0.0f), dir);
+       return nir_fgt_imm(b, dir, 0.0f);
 }
 
 static void
