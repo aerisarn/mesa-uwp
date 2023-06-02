@@ -2200,6 +2200,13 @@ struct radv_pipeline_group_handle {
    };
 };
 
+struct radv_serialized_shader_arena_block {
+   uint32_t offset;
+   uint32_t size;
+   uint64_t arena_va;
+   uint32_t arena_size;
+};
+
 enum radv_depth_clamp_mode {
    RADV_DEPTH_CLAMP_MODE_VIEWPORT = 0,    /* Clamp to the viewport min/max depth bounds */
    RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE = 1, /* Clamp between 0.0f and 1.0f */

@@ -1261,6 +1261,70 @@ radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_bloc
    mtx_unlock(&device->shader_arena_mutex);
 }
 
+struct radv_serialized_shader_arena_block
+radv_serialize_shader_arena_block(union radv_shader_arena_block *block)
+{
+   struct radv_serialized_shader_arena_block serialized_block = {
+      .offset = block->offset,
+      .size = block->size,
+      .arena_va = block->arena->bo->va,
+      .arena_size = block->arena->size,
+   };
+   return serialized_block;
+}
+
+union radv_shader_arena_block *
+radv_replay_shader_arena_block(struct radv_device *device, const struct radv_serialized_shader_arena_block *src,
+                               void *ptr)
+{
+   mtx_lock(&device->shader_arena_mutex);
+   uint64_t va = src->arena_va;
+   void *data = _mesa_hash_table_u64_search(device->capture_replay_arena_vas, va);
+
+   if (!data) {
+      struct radv_shader_arena *arena =
+         radv_create_shader_arena(device, NULL, 0, src->arena_size, false, src->arena_va);
+      if (!arena) {
+         mtx_unlock(&device->shader_arena_mutex);
+         return NULL;
+      }
+
+      _mesa_hash_table_u64_insert(device->capture_replay_arena_vas, src->arena_va, arena);
+      list_addtail(&arena->list, &device->shader_arenas);
+      data = arena;
+   }
+   mtx_unlock(&device->shader_arena_mutex);
+
+   uint32_t block_begin = src->offset;
+   uint32_t block_end = src->offset + src->size;
+
+   struct radv_shader_arena *arena = data;
+   list_for_each_entry (union radv_shader_arena_block, hole, &arena->entries, list) {
+      /* Only consider holes, not allocated shaders */
+      if (!hole->freelist.prev)
+         continue;
+
+      if (hole->offset + hole->size < src->offset)
+         continue;
+
+      uint32_t hole_begin = hole->offset;
+      uint32_t hole_end = hole->offset + hole->size;
+
+      /* If another allocated block overlaps the current replay block, allocation is impossible */
+      if (block_begin > hole_begin || (hole_end < block_end && hole_end >= block_begin))
+         return NULL;
+
+      union radv_shader_arena_block *block = insert_block(device, hole, block_begin - hole_begin, src->size, NULL);
+      if (!block)
+         return NULL;
+
+      block->freelist.prev = NULL;
+      block->freelist.next = ptr;
+      return hole;
+   }
+   return NULL;
+}
+
 void
 radv_init_shader_arenas(struct radv_device *device)
 {

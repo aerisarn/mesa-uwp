@@ -48,6 +48,7 @@ struct radv_pipeline_key;
 struct radv_shader_args;
 struct radv_vs_input_state;
 struct radv_shader_args;
+struct radv_serialized_shader_arena_block;
 
 enum radv_required_subgroup_size {
    RADV_REQUIRED_NONE = 0,
@@ -645,6 +646,12 @@ bool radv_shader_dma_submit(struct radv_device *device, struct radv_shader_dma_s
 
 union radv_shader_arena_block *radv_alloc_shader_memory(struct radv_device *device, uint32_t size, bool replayable,
                                                         void *ptr);
+
+union radv_shader_arena_block *radv_replay_shader_arena_block(struct radv_device *device,
+                                                              const struct radv_serialized_shader_arena_block *src,
+                                                              void *ptr);
+
+struct radv_serialized_shader_arena_block radv_serialize_shader_arena_block(union radv_shader_arena_block *block);
 
 void radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_block *alloc);
 
