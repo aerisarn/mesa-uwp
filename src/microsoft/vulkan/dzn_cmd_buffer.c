@@ -3399,7 +3399,7 @@ dzn_cmd_buffer_update_vbviews(struct dzn_cmd_buffer *cmdbuf)
    unsigned start, end;
 
    BITSET_FOREACH_RANGE(start, end, cmdbuf->state.vb.dirty, MAX_VBS)
-      ID3D12GraphicsCommandList1_IASetVertexBuffers(cmdbuf->cmdlist, start, end - start, cmdbuf->state.vb.views);
+      ID3D12GraphicsCommandList1_IASetVertexBuffers(cmdbuf->cmdlist, start, end - start, &cmdbuf->state.vb.views[start]);
 
    BITSET_CLEAR_RANGE(cmdbuf->state.vb.dirty, 0, MAX_VBS);
 }
