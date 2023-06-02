@@ -87,7 +87,7 @@ debian-testing:
       -D valgrind=disabled
       -D perfetto=true
       -D tools=drm-shim
-    MINIO_ARTIFACT_NAME: mesa-amd64
+    MINIO_ARTIFACT_NAME: mesa-x86_64
     LLVM_VERSION: 15
   script:
     - .gitlab-ci/meson/build.sh
@@ -236,7 +236,7 @@ debian-release:
       -D intel-clc=enabled
       -D imagination-srv=true
     BUILDTYPE: "release"
-    MINIO_ARTIFACT_NAME: "mesa-amd64-${BUILDTYPE}"
+    MINIO_ARTIFACT_NAME: "mesa-x86_64-${BUILDTYPE}"
   script:
     - .gitlab-ci/meson/build.sh
     - 'if [ -n "$MESA_CI_PERFORMANCE_ENABLED" ]; then .gitlab-ci/prepare-artifacts.sh; fi'
