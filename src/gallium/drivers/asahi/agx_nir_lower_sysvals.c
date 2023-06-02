@@ -319,5 +319,8 @@ agx_nir_lower_sysvals(nir_shader *shader, struct agx_compiled_shader *compiled,
       &state);
 
    *push_size = lay_out_uniforms(compiled, &state);
+
+   util_dynarray_fini(&state.load_preambles);
+
    return true;
 }
