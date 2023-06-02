@@ -162,7 +162,9 @@ radv_create_group_handles(struct radv_device *device, const VkRayTracingPipeline
 
 static VkResult
 radv_rt_fill_group_info(struct radv_device *device, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                        struct radv_ray_tracing_stage *stages, struct radv_ray_tracing_group *groups)
+                        struct radv_ray_tracing_stage *stages,
+                        struct radv_serialized_shader_arena_block *capture_replay_blocks,
+                        struct radv_ray_tracing_group *groups)
 {
    VkResult result = radv_create_group_handles(device, pCreateInfo, stages, groups);
 
@@ -175,6 +177,47 @@ radv_rt_fill_group_info(struct radv_device *device, const VkRayTracingPipelineCr
          groups[idx].recursive_shader = pCreateInfo->pGroups[idx].closestHitShader;
       groups[idx].any_hit_shader = pCreateInfo->pGroups[idx].anyHitShader;
       groups[idx].intersection_shader = pCreateInfo->pGroups[idx].intersectionShader;
+
+      if (pCreateInfo->pGroups[idx].pShaderGroupCaptureReplayHandle) {
+         const struct radv_rt_capture_replay_handle *handle =
+            (const struct radv_rt_capture_replay_handle *)pCreateInfo->pGroups[idx].pShaderGroupCaptureReplayHandle;
+
+         if (groups[idx].recursive_shader < pCreateInfo->stageCount) {
+            capture_replay_blocks[groups[idx].recursive_shader] = handle->recursive_shader_alloc;
+         } else if (groups[idx].recursive_shader != VK_SHADER_UNUSED_KHR) {
+            assert(stages[groups[idx].recursive_shader].shader);
+            struct radv_shader *library_shader =
+               container_of(stages[groups[idx].recursive_shader].shader, struct radv_shader, base);
+            simple_mtx_lock(&library_shader->replay_mtx);
+            if (!library_shader->has_replay_alloc) {
+               union radv_shader_arena_block *new_block =
+                  radv_replay_shader_arena_block(device, &handle->recursive_shader_alloc, library_shader);
+               if (!new_block) {
+                  result = VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
+                  goto reloc_out;
+               }
+
+               radv_shader_wait_for_upload(device, library_shader->upload_seq);
+               radv_free_shader_memory(device, library_shader->alloc);
+
+               library_shader->alloc = new_block;
+               library_shader->has_replay_alloc = true;
+
+               library_shader->bo = library_shader->alloc->arena->bo;
+               library_shader->va = radv_buffer_get_va(library_shader->bo) + library_shader->alloc->offset;
+
+               if (!radv_shader_reupload(device, library_shader)) {
+                  result = VK_ERROR_UNKNOWN;
+                  goto reloc_out;
+               }
+            }
+
+         reloc_out:
+            simple_mtx_unlock(&library_shader->replay_mtx);
+            if (result != VK_SUCCESS)
+               return result;
+         }
+      }
    }
 
    /* copy and adjust library groups (incl. handles) */
@@ -568,6 +611,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
    VK_MULTIALLOC_DECL(&ma, struct radv_ray_tracing_pipeline, pipeline, 1);
    VK_MULTIALLOC_DECL(&ma, struct radv_ray_tracing_stage, stages, local_create_info.stageCount);
    VK_MULTIALLOC_DECL(&ma, struct radv_ray_tracing_group, groups, local_create_info.groupCount);
+   VK_MULTIALLOC_DECL(&ma, struct radv_serialized_shader_arena_block, capture_replay_blocks, pCreateInfo->stageCount);
    if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, pAllocator, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -587,7 +631,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
       pipeline->traversal_uniform_robustness2 = true;
 
    radv_rt_fill_stage_info(device, pCreateInfo, stages, &key);
-   result = radv_rt_fill_group_info(device, pCreateInfo, stages, pipeline->groups);
+   result = radv_rt_fill_group_info(device, pCreateInfo, stages, capture_replay_blocks, pipeline->groups);
    if (result != VK_SUCCESS)
       goto fail;
 
