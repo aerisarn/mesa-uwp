@@ -2254,8 +2254,7 @@ radv_should_force_vrs1x1(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
 
    return pdevice->rad_info.gfx_level >= GFX10_3 &&
-          (cmd_buffer->state.ms.sample_shading_enable ||
-           (ps && ps->info.ps.reads_sample_mask_in && !ps->info.ps.needs_poly_line_smooth));
+          (cmd_buffer->state.ms.sample_shading_enable || (ps && ps->info.ps.force_sample_iter_shading_rate));
 }
 
 static void
@@ -2314,8 +2313,7 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
    /* Disable VRS and use the rates from PS_ITER_SAMPLES if:
     *
     * 1) sample shading is enabled or per-sample interpolation is used by the fragment shader
-    * 2) the fragment shader reads gl_SampleMaskIn because the 16-bit sample coverage mask isn't
-    *    enough for MSAA8x and 2x2 coarse shading isn't enough.
+    * 2) the fragment shader requires 1x1 shading rate for some other reason
     */
    if (radv_should_force_vrs1x1(cmd_buffer)) {
       pa_cl_vrs_cntl |= S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_SC_VRS_COMB_MODE_OVERRIDE);
@@ -6339,8 +6337,8 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    if (!previous_ps || previous_ps->info.ps.reads_fully_covered != ps->info.ps.reads_fully_covered)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
 
-   if (gfx_level >= GFX10_3 &&
-       (!previous_ps || previous_ps->info.ps.reads_sample_mask_in != ps->info.ps.reads_sample_mask_in))
+   if (gfx_level >= GFX10_3 && (!previous_ps || previous_ps->info.ps.force_sample_iter_shading_rate !=
+                                                   ps->info.ps.force_sample_iter_shading_rate))
       cmd_buffer->state.dirty |=
          RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES | RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
 

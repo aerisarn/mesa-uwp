@@ -644,6 +644,19 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
       }
    }
 
+   /* Disable VRS and use the rates from PS_ITER_SAMPLES if:
+    *
+    * - The fragment shader reads gl_SampleMaskIn because the 16-bit sample coverage mask isn't enough for MSAA8x and
+    *   2x2 coarse shading.
+    * - On GFX10.3, if the fragment shader requests a fragment interlock execution mode even if the ordered section was
+    *   optimized out, to consistently implement fragmentShadingRateWithFragmentShaderInterlock = VK_FALSE.
+    */
+   info->ps.force_sample_iter_shading_rate =
+      (info->ps.reads_sample_mask_in && !info->ps.needs_poly_line_smooth) ||
+      (device->physical_device->rad_info.gfx_level == GFX10_3 &&
+       (nir->info.fs.sample_interlock_ordered || nir->info.fs.sample_interlock_unordered ||
+        nir->info.fs.pixel_interlock_ordered || nir->info.fs.pixel_interlock_unordered));
+
    /* DB_SHADER_CONTROL based on other fragment shader info fields. */
 
    unsigned conservative_z_export = V_02880C_EXPORT_ANY_Z;
