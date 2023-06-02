@@ -769,6 +769,174 @@ static int fill_vp9_picture_desc(const struct pipe_picture_desc *desc,
 
     return 0;
 }
+
+static int fill_av1_picture_desc(const struct pipe_picture_desc *desc,
+                                 union virgl_picture_desc *vdsc)
+{
+    unsigned i;
+    struct virgl_video_buffer *vbuf;
+    struct virgl_av1_picture_desc *vav1 = &vdsc->av1;
+    struct pipe_av1_picture_desc *av1 = (struct pipe_av1_picture_desc *)desc;
+
+    fill_base_picture_desc(desc, &vav1->base);
+
+    for (i = 0; i < ARRAY_SIZE(vav1->ref); i++) {
+        vbuf = virgl_video_buffer(av1->ref[i]);
+        vav1->ref[i] = vbuf ? vbuf->handle : 0;
+    }
+    vbuf = virgl_video_buffer(av1->film_grain_target);
+    vav1->film_grain_target = vbuf ? vbuf->handle : 0;
+
+    ITEM_SET(vav1, av1, picture_parameter.profile);
+    ITEM_SET(vav1, av1, picture_parameter.order_hint_bits_minus_1);
+    ITEM_SET(vav1, av1, picture_parameter.bit_depth_idx);
+
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.use_128x128_superblock);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.enable_filter_intra);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.enable_intra_edge_filter);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.enable_interintra_compound);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.enable_masked_compound);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.enable_dual_filter);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.enable_order_hint);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.enable_jnt_comp);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.enable_cdef);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.mono_chrome);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.ref_frame_mvs);
+    ITEM_SET(vav1, av1, picture_parameter.seq_info_fields.film_grain_params_present);
+
+    ITEM_SET(vav1, av1, picture_parameter.current_frame_id);
+    ITEM_SET(vav1, av1, picture_parameter.frame_width);
+    ITEM_SET(vav1, av1, picture_parameter.frame_height);
+    ITEM_SET(vav1, av1, picture_parameter.max_width);
+    ITEM_SET(vav1, av1, picture_parameter.max_height);
+    ITEM_CPY(vav1, av1, picture_parameter.ref_frame_idx);
+    ITEM_SET(vav1, av1, picture_parameter.primary_ref_frame);
+    ITEM_SET(vav1, av1, picture_parameter.order_hint);
+
+    ITEM_SET(vav1, av1, picture_parameter.seg_info.segment_info_fields.enabled);
+    ITEM_SET(vav1, av1, picture_parameter.seg_info.segment_info_fields.update_map);
+    ITEM_SET(vav1, av1, picture_parameter.seg_info.segment_info_fields.update_data);
+    ITEM_SET(vav1, av1, picture_parameter.seg_info.segment_info_fields.temporal_update);
+    ITEM_CPY(vav1, av1, picture_parameter.seg_info.feature_data);
+    ITEM_CPY(vav1, av1, picture_parameter.seg_info.feature_mask);
+
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.film_grain_info_fields.apply_grain);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.film_grain_info_fields.chroma_scaling_from_luma);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.film_grain_info_fields.grain_scaling_minus_8);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.film_grain_info_fields.ar_coeff_lag);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.film_grain_info_fields.ar_coeff_shift_minus_6);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.film_grain_info_fields.grain_scale_shift);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.film_grain_info_fields.overlap_flag);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.film_grain_info_fields.clip_to_restricted_range);
+
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.grain_seed);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.num_y_points);
+    ITEM_CPY(vav1, av1, picture_parameter.film_grain_info.point_y_value);
+    ITEM_CPY(vav1, av1, picture_parameter.film_grain_info.point_y_scaling);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.num_cb_points);
+    ITEM_CPY(vav1, av1, picture_parameter.film_grain_info.point_cb_value);
+    ITEM_CPY(vav1, av1, picture_parameter.film_grain_info.point_cb_scaling);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.num_cr_points);
+    ITEM_CPY(vav1, av1, picture_parameter.film_grain_info.point_cr_value);
+    ITEM_CPY(vav1, av1, picture_parameter.film_grain_info.point_cr_scaling);
+    ITEM_CPY(vav1, av1, picture_parameter.film_grain_info.ar_coeffs_y);
+    ITEM_CPY(vav1, av1, picture_parameter.film_grain_info.ar_coeffs_cb);
+    ITEM_CPY(vav1, av1, picture_parameter.film_grain_info.ar_coeffs_cr);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.cb_mult);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.cb_luma_mult);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.cb_offset);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.cr_mult);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.cr_luma_mult);
+    ITEM_SET(vav1, av1, picture_parameter.film_grain_info.cr_offset);
+
+    ITEM_SET(vav1, av1, picture_parameter.tile_cols);
+    ITEM_SET(vav1, av1, picture_parameter.tile_rows);
+    ITEM_CPY(vav1, av1, picture_parameter.tile_col_start_sb);
+    ITEM_CPY(vav1, av1, picture_parameter.tile_row_start_sb);
+    ITEM_CPY(vav1, av1, picture_parameter.width_in_sbs);
+    ITEM_CPY(vav1, av1, picture_parameter.height_in_sbs);
+    ITEM_SET(vav1, av1, picture_parameter.context_update_tile_id);
+
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.frame_type);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.show_frame);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.showable_frame);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.error_resilient_mode);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.disable_cdf_update);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.allow_screen_content_tools);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.force_integer_mv);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.allow_intrabc);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.use_superres);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.allow_high_precision_mv);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.is_motion_mode_switchable);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.use_ref_frame_mvs);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.disable_frame_end_update_cdf);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.uniform_tile_spacing_flag);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.allow_warped_motion);
+    ITEM_SET(vav1, av1, picture_parameter.pic_info_fields.large_scale_tile);
+
+    ITEM_SET(vav1, av1, picture_parameter.superres_scale_denominator);
+    ITEM_SET(vav1, av1, picture_parameter.interp_filter);
+    ITEM_CPY(vav1, av1, picture_parameter.filter_level);
+    ITEM_SET(vav1, av1, picture_parameter.filter_level_u);
+    ITEM_SET(vav1, av1, picture_parameter.filter_level_v);
+    ITEM_SET(vav1, av1, picture_parameter.loop_filter_info_fields.sharpness_level);
+    ITEM_SET(vav1, av1, picture_parameter.loop_filter_info_fields.mode_ref_delta_enabled);
+    ITEM_SET(vav1, av1, picture_parameter.loop_filter_info_fields.mode_ref_delta_update);
+
+    ITEM_CPY(vav1, av1, picture_parameter.ref_deltas);
+    ITEM_CPY(vav1, av1, picture_parameter.mode_deltas);
+    ITEM_SET(vav1, av1, picture_parameter.base_qindex);
+    ITEM_SET(vav1, av1, picture_parameter.y_dc_delta_q);
+    ITEM_SET(vav1, av1, picture_parameter.u_dc_delta_q);
+    ITEM_SET(vav1, av1, picture_parameter.u_ac_delta_q);
+    ITEM_SET(vav1, av1, picture_parameter.v_dc_delta_q);
+    ITEM_SET(vav1, av1, picture_parameter.v_ac_delta_q);
+
+    ITEM_SET(vav1, av1, picture_parameter.qmatrix_fields.using_qmatrix);
+    ITEM_SET(vav1, av1, picture_parameter.qmatrix_fields.qm_y);
+    ITEM_SET(vav1, av1, picture_parameter.qmatrix_fields.qm_u);
+    ITEM_SET(vav1, av1, picture_parameter.qmatrix_fields.qm_v);
+
+    ITEM_SET(vav1, av1, picture_parameter.mode_control_fields.delta_q_present_flag);
+    ITEM_SET(vav1, av1, picture_parameter.mode_control_fields.log2_delta_q_res);
+    ITEM_SET(vav1, av1, picture_parameter.mode_control_fields.delta_lf_present_flag);
+    ITEM_SET(vav1, av1, picture_parameter.mode_control_fields.log2_delta_lf_res);
+    ITEM_SET(vav1, av1, picture_parameter.mode_control_fields.delta_lf_multi);
+    ITEM_SET(vav1, av1, picture_parameter.mode_control_fields.tx_mode);
+    ITEM_SET(vav1, av1, picture_parameter.mode_control_fields.reference_select);
+    ITEM_SET(vav1, av1, picture_parameter.mode_control_fields.reduced_tx_set_used);
+    ITEM_SET(vav1, av1, picture_parameter.mode_control_fields.skip_mode_present);
+
+    ITEM_SET(vav1, av1, picture_parameter.cdef_damping_minus_3);
+    ITEM_SET(vav1, av1, picture_parameter.cdef_bits);
+    ITEM_CPY(vav1, av1, picture_parameter.cdef_y_strengths);
+    ITEM_CPY(vav1, av1, picture_parameter.cdef_uv_strengths);
+
+    ITEM_SET(vav1, av1, picture_parameter.loop_restoration_fields.yframe_restoration_type);
+    ITEM_SET(vav1, av1, picture_parameter.loop_restoration_fields.cbframe_restoration_type);
+    ITEM_SET(vav1, av1, picture_parameter.loop_restoration_fields.crframe_restoration_type);
+    ITEM_SET(vav1, av1, picture_parameter.loop_restoration_fields.lr_unit_shift);
+    ITEM_SET(vav1, av1, picture_parameter.loop_restoration_fields.lr_uv_shift);
+
+    for (i = 0; i < ARRAY_SIZE(vav1->picture_parameter.wm); i++) {
+        ITEM_SET(vav1, av1, picture_parameter.wm[i].wmtype);
+        ITEM_SET(vav1, av1, picture_parameter.wm[i].invalid);
+        ITEM_CPY(vav1, av1, picture_parameter.wm[i].wmmat);
+    }
+
+    ITEM_SET(vav1, av1, picture_parameter.refresh_frame_flags);
+    ITEM_SET(vav1, av1, picture_parameter.matrix_coefficients);
+
+    ITEM_CPY(vav1, av1, slice_parameter.slice_data_size);
+    ITEM_CPY(vav1, av1, slice_parameter.slice_data_offset);
+    ITEM_CPY(vav1, av1, slice_parameter.slice_data_row);
+    ITEM_CPY(vav1, av1, slice_parameter.slice_data_col);
+    ITEM_CPY(vav1, av1, slice_parameter.slice_data_anchor_frame_idx);
+    ITEM_SET(vav1, av1, slice_parameter.slice_count);
+
+    return 0;
+}
+
 #undef ITEM_SET
 #undef ITEM_CPY
 
@@ -790,6 +958,8 @@ static int fill_picture_desc(const struct pipe_picture_desc *desc,
         return fill_mjpeg_picture_desc(desc, vdsc);
     case PIPE_VIDEO_FORMAT_VP9:
         return fill_vp9_picture_desc(desc, vdsc);
+    case PIPE_VIDEO_FORMAT_AV1:
+        return fill_av1_picture_desc(desc, vdsc);
     default:
         return -1;
     }
@@ -1046,7 +1216,8 @@ virgl_video_create_codec(struct pipe_context *ctx,
     case PIPE_VIDEO_FORMAT_MPEG12:
     case PIPE_VIDEO_FORMAT_VC1:
     case PIPE_VIDEO_FORMAT_JPEG:
-    case PIPE_VIDEO_FORMAT_VP9: /* fall through */
+    case PIPE_VIDEO_FORMAT_VP9:
+    case PIPE_VIDEO_FORMAT_AV1: /* fall through */
     default:
         break;
     }
