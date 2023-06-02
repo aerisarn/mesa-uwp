@@ -6380,7 +6380,17 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       uint32_t pds_size;
       VkResult result;
 
+      /* TODO: Move this outside the loop and allocate all of them in one go? */
+      result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
+                                        cmd_buffer->device->heaps.general_heap,
+                                        DUMMY_VDM_CONTROL_STREAM_BLOCK_SIZE,
+                                        PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                                        &dummy_bo);
+      if (result != VK_SUCCESS)
+         return result;
+
       pds_prog.increment_draw_id = (i != 0);
+      pds_prog.index_list_addr_buffer = dummy_bo->dev_addr.addr;
 
       if (state->draw_state.draw_indexed) {
          pvr_pds_generate_draw_elements_indirect(&pds_prog,
@@ -6462,14 +6472,6 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       pvr_csb_emit (csb, VDMCTRL_INDEX_LIST0, list0) {
          list0.primitive_topology = PVRX(VDMCTRL_PRIMITIVE_TOPOLOGY_TRI_LIST);
       }
-
-      result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
-                                        cmd_buffer->device->heaps.general_heap,
-                                        DUMMY_VDM_CONTROL_STREAM_BLOCK_SIZE,
-                                        PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                                        &dummy_bo);
-      if (result != VK_SUCCESS)
-         return result;
 
       dummy_stream = pvr_bo_suballoc_get_map_addr(dummy_bo);
 
