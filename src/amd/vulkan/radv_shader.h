@@ -525,6 +525,7 @@ struct radv_shader_part_binary {
 struct radv_shader_arena {
    struct list_head list;
    struct list_head entries;
+   uint32_t size;
    struct radeon_winsys_bo *bo;
    char *ptr;
 };

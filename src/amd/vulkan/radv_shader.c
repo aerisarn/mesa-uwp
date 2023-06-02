@@ -913,20 +913,20 @@ get_size_class(unsigned size, bool round_up)
 }
 
 static void
-remove_hole(struct radv_device *device, union radv_shader_arena_block *hole)
+remove_hole(struct radv_shader_free_list *free_list, union radv_shader_arena_block *hole)
 {
    unsigned size_class = get_size_class(hole->size, false);
    list_del(&hole->freelist);
-   if (list_is_empty(&device->shader_free_list.free_lists[size_class]))
-      device->shader_free_list.size_mask &= ~(1u << size_class);
+   if (list_is_empty(&free_list->free_lists[size_class]))
+      free_list->size_mask &= ~(1u << size_class);
 }
 
 static void
-add_hole(struct radv_device *device, union radv_shader_arena_block *hole)
+add_hole(struct radv_shader_free_list *free_list, union radv_shader_arena_block *hole)
 {
    unsigned size_class = get_size_class(hole->size, false);
-   list_addtail(&hole->freelist, &device->shader_free_list.free_lists[size_class]);
-   device->shader_free_list.size_mask |= 1u << size_class;
+   list_addtail(&hole->freelist, &free_list->free_lists[size_class]);
+   free_list->size_mask |= 1u << size_class;
 }
 
 static union radv_shader_arena_block *
@@ -961,6 +961,128 @@ radv_shader_wait_for_upload(struct radv_device *device, uint64_t seq)
       .pValues = &seq,
    };
    return device->vk.dispatch_table.WaitSemaphores(radv_device_to_handle(device), &wait_info, UINT64_MAX);
+}
+
+static struct radv_shader_arena *
+radv_create_shader_arena(struct radv_device *device, struct radv_shader_free_list *free_list, unsigned min_size,
+                         unsigned arena_size, uint64_t replay_va)
+{
+   union radv_shader_arena_block *alloc = NULL;
+   struct radv_shader_arena *arena = calloc(1, sizeof(struct radv_shader_arena));
+   if (!arena)
+      goto fail;
+
+   if (!arena_size)
+      arena_size = MAX2(
+         RADV_SHADER_ALLOC_MIN_ARENA_SIZE << MIN2(RADV_SHADER_ALLOC_MAX_ARENA_SIZE_SHIFT, device->shader_arena_shift),
+         min_size);
+   arena->size = arena_size;
+
+   enum radeon_bo_flag flags = RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_32BIT;
+   if (device->shader_use_invisible_vram)
+      flags |= RADEON_FLAG_NO_CPU_ACCESS;
+   else
+      flags |= (device->physical_device->rad_info.cpdma_prefetch_writes_memory ? 0 : RADEON_FLAG_READ_ONLY);
+
+   VkResult result;
+   result = device->ws->buffer_create(device->ws, arena_size, RADV_SHADER_ALLOC_ALIGNMENT, RADEON_DOMAIN_VRAM, flags,
+                                      RADV_BO_PRIORITY_SHADER, replay_va, &arena->bo);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   radv_rmv_log_bo_allocate(device, arena->bo, arena_size, true);
+
+   list_inithead(&arena->entries);
+   alloc = alloc_block_obj(device);
+   if (!alloc)
+      goto fail;
+
+   list_inithead(&alloc->freelist);
+   alloc->arena = arena;
+   alloc->offset = 0;
+   alloc->size = arena_size;
+   list_addtail(&alloc->list, &arena->entries);
+   if (free_list)
+      add_hole(free_list, alloc);
+
+   if (!(flags & RADEON_FLAG_NO_CPU_ACCESS)) {
+      arena->ptr = (char *)device->ws->buffer_map(arena->bo);
+      if (!arena->ptr)
+         goto fail;
+   }
+
+   return arena;
+
+fail:
+   if (alloc)
+      free_block_obj(device, alloc);
+   if (arena && arena->bo) {
+      radv_rmv_log_bo_destroy(device, arena->bo);
+      device->ws->buffer_destroy(device->ws, arena->bo);
+   }
+   free(arena);
+   return NULL;
+}
+
+/* Inserts a block at an arbitrary place into a hole, splitting the hole as needed */
+static union radv_shader_arena_block *
+insert_block(struct radv_device *device, union radv_shader_arena_block *hole, uint32_t offset_in_hole, uint32_t size,
+             struct radv_shader_free_list *freelist)
+{
+   uint32_t hole_begin = hole->offset;
+   uint32_t hole_end = hole->offset + hole->size;
+
+   /* The block might not lie exactly at the beginning or end
+    * of the hole. Resize the hole to fit the block exactly,
+    * and insert new holes before (left_hole) or after (right_hole) as needed.
+    * left_hole or right_hole are skipped if the allocation lies exactly at the
+    * beginning or end of the hole to avoid 0-sized holes. */
+   union radv_shader_arena_block *left_hole = NULL;
+   union radv_shader_arena_block *right_hole = NULL;
+
+   if (offset_in_hole) {
+      left_hole = alloc_block_obj(device);
+      if (!left_hole)
+         return NULL;
+      list_inithead(&left_hole->freelist);
+      left_hole->arena = hole->arena;
+      left_hole->offset = hole->offset;
+      left_hole->size = offset_in_hole;
+
+      if (freelist)
+         add_hole(freelist, left_hole);
+   }
+
+   if (hole_end > offset_in_hole + size) {
+      right_hole = alloc_block_obj(device);
+      if (!right_hole) {
+         free(left_hole);
+         return NULL;
+      }
+      list_inithead(&right_hole->freelist);
+      right_hole->arena = hole->arena;
+      right_hole->offset = hole_begin + offset_in_hole + size;
+      right_hole->size = hole_end - right_hole->offset;
+
+      if (freelist)
+         add_hole(freelist, right_hole);
+   }
+
+   if (left_hole) {
+      hole->offset += left_hole->size;
+      hole->size -= left_hole->size;
+
+      list_addtail(&left_hole->list, &hole->list);
+   }
+   if (right_hole) {
+      hole->size -= right_hole->size;
+
+      list_add(&right_hole->list, &hole->list);
+   }
+
+   if (freelist)
+      remove_hole(freelist, hole);
+   return hole;
 }
 
 /* Segregated fit allocator, implementing a good-fit allocation policy.
@@ -998,7 +1120,7 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
          assert(hole->offset % RADV_SHADER_ALLOC_ALIGNMENT == 0);
 
          if (size == hole->size) {
-            remove_hole(device, hole);
+            remove_hole(&device->shader_free_list, hole);
             hole->freelist.next = ptr;
             mtx_unlock(&device->shader_arena_mutex);
             return hole;
@@ -1015,10 +1137,10 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
             alloc->offset = hole->offset;
             alloc->size = size;
 
-            remove_hole(device, hole);
+            remove_hole(&device->shader_free_list, hole);
             hole->offset += size;
             hole->size -= size;
-            add_hole(device, hole);
+            add_hole(&device->shader_free_list, hole);
 
             mtx_unlock(&device->shader_arena_mutex);
             return alloc;
@@ -1026,55 +1148,13 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
       }
    }
 
-   /* Allocate a new shader arena. */
-   struct radv_shader_arena *arena = calloc(1, sizeof(struct radv_shader_arena));
-   union radv_shader_arena_block *alloc = NULL, *hole = NULL;
+   struct radv_shader_arena *arena = radv_create_shader_arena(device, &device->shader_free_list, size, 0, 0);
+   union radv_shader_arena_block *alloc = NULL;
    if (!arena)
       goto fail;
 
-   unsigned arena_size =
-      MAX2(RADV_SHADER_ALLOC_MIN_ARENA_SIZE << MIN2(RADV_SHADER_ALLOC_MAX_ARENA_SIZE_SHIFT, device->shader_arena_shift),
-           size);
-   enum radeon_bo_flag flags = RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_32BIT;
-   if (device->shader_use_invisible_vram)
-      flags |= RADEON_FLAG_NO_CPU_ACCESS;
-   else
-      flags |= (device->physical_device->rad_info.cpdma_prefetch_writes_memory ? 0 : RADEON_FLAG_READ_ONLY);
-
-   VkResult result;
-   result = device->ws->buffer_create(device->ws, arena_size, RADV_SHADER_ALLOC_ALIGNMENT, RADEON_DOMAIN_VRAM, flags,
-                                      RADV_BO_PRIORITY_SHADER, 0, &arena->bo);
-   if (result != VK_SUCCESS)
-      goto fail;
-   radv_rmv_log_bo_allocate(device, arena->bo, arena_size, true);
-
-   list_inithead(&arena->entries);
-
-   if (!(flags & RADEON_FLAG_NO_CPU_ACCESS)) {
-      arena->ptr = (char *)device->ws->buffer_map(arena->bo);
-      if (!arena->ptr)
-         goto fail;
-   }
-
-   alloc = alloc_block_obj(device);
-   hole = arena_size - size > 0 ? alloc_block_obj(device) : alloc;
-   if (!alloc || !hole)
-      goto fail;
-   list_addtail(&alloc->list, &arena->entries);
-   alloc->freelist.prev = NULL;
-   alloc->freelist.next = ptr;
-   alloc->arena = arena;
-   alloc->offset = 0;
-   alloc->size = size;
-
-   if (hole != alloc) {
-      hole->arena = arena;
-      hole->offset = size;
-      hole->size = arena_size - size;
-
-      list_addtail(&hole->list, &arena->entries);
-      add_hole(device, hole);
-   }
+   alloc = insert_block(device, list_entry(arena->entries.next, union radv_shader_arena_block, list), 0, size,
+                        &device->shader_free_list);
 
    ++device->shader_arena_shift;
    list_addtail(&arena->list, &device->shader_arenas);
@@ -1085,8 +1165,8 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
 fail:
    mtx_unlock(&device->shader_arena_mutex);
    free(alloc);
-   free(hole);
-   if (arena && arena->bo) {
+   if (arena) {
+      free(arena->list.next);
       radv_rmv_log_bo_destroy(device, arena->bo);
       device->ws->buffer_destroy(device->ws, arena->bo);
    }
@@ -1116,7 +1196,7 @@ radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_bloc
 
    /* merge with previous hole */
    if (hole_prev) {
-      remove_hole(device, hole_prev);
+      remove_hole(&device->shader_free_list, hole_prev);
 
       hole_prev->size += hole->size;
       list_del(&hole->list);
@@ -1127,7 +1207,7 @@ radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_bloc
 
    /* merge with next hole */
    if (hole_next) {
-      remove_hole(device, hole_next);
+      remove_hole(&device->shader_free_list, hole_next);
 
       hole_next->offset -= hole->size;
       hole_next->size += hole->size;
@@ -1146,7 +1226,7 @@ radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_bloc
       list_del(&arena->list);
       free(arena);
    } else {
-      add_hole(device, hole);
+      add_hole(&device->shader_free_list, hole);
    }
 
    mtx_unlock(&device->shader_arena_mutex);
