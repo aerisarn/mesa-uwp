@@ -2207,6 +2207,11 @@ struct radv_serialized_shader_arena_block {
    uint32_t arena_size;
 };
 
+struct radv_rt_capture_replay_handle {
+   struct radv_serialized_shader_arena_block recursive_shader_alloc;
+   uint32_t non_recursive_idx;
+};
+
 enum radv_depth_clamp_mode {
    RADV_DEPTH_CLAMP_MODE_VIEWPORT = 0,    /* Clamp to the viewport min/max depth bounds */
    RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE = 1, /* Clamp between 0.0f and 1.0f */
