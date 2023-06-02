@@ -30,6 +30,7 @@ agx_compile_meta_shader(struct agx_meta_cache *cache, nir_shader *shader,
    res->ptr = agx_pool_upload_aligned_with_bo(&cache->pool, binary.data,
                                               binary.size, 128, &res->bo);
    util_dynarray_fini(&binary);
+   ralloc_free(shader);
 
    return res;
 }
