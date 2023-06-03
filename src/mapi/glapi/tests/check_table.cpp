@@ -28,7 +28,7 @@
 
 struct name_offset {
    const char *name;
-   unsigned int offset;
+   size_t offset;
 };
 
 extern const struct name_offset linux_gl_abi[];
