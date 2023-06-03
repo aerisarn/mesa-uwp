@@ -36,11 +36,6 @@
 #include "util/macros.h"
 #include "util/simple_mtx.h"
 
-#ifdef __cplusplus
-#include "util/glheader.h"
-#include "util/ralloc.h"
-#endif
-
 struct glsl_type;
 
 #ifdef __cplusplus
@@ -306,7 +301,7 @@ is_gl_identifier(const char *s)
 #ifdef __cplusplus
 
 struct glsl_type {
-   GLenum gl_type;
+   uint32_t gl_type;
    glsl_base_type base_type:8;
 
    glsl_base_type sampled_type:8; /**< Type of data returned using this
@@ -1268,14 +1263,14 @@ private:
    void *mem_ctx;
 
    /** Constructor for vector and matrix types */
-   glsl_type(GLenum gl_type,
+   glsl_type(uint32_t gl_type,
              glsl_base_type base_type, unsigned vector_elements,
              unsigned matrix_columns, const char *name,
              unsigned explicit_stride = 0, bool row_major = false,
              unsigned explicit_alignment = 0);
 
    /** Constructor for sampler or image types */
-   glsl_type(GLenum gl_type, glsl_base_type base_type,
+   glsl_type(uint32_t gl_type, glsl_base_type base_type,
 	     enum glsl_sampler_dim dim, bool shadow, bool array,
 	     glsl_base_type type, const char *name);
 

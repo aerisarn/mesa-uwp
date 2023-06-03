@@ -24,8 +24,10 @@
 #include <stdio.h>
 #include "glsl_types.h"
 #include "util/compiler.h"
+#include "util/glheader.h"
 #include "util/hash_table.h"
 #include "util/macros.h"
+#include "util/ralloc.h"
 #include "util/u_math.h"
 #include "util/u_string.h"
 
@@ -44,7 +46,7 @@ hash_table *glsl_type::subroutine_types = NULL;
  */
 static uint32_t glsl_type_users = 0;
 
-glsl_type::glsl_type(GLenum gl_type,
+glsl_type::glsl_type(uint32_t gl_type,
                      glsl_base_type base_type, unsigned vector_elements,
                      unsigned matrix_columns, const char *name,
                      unsigned explicit_stride, bool row_major,
@@ -82,7 +84,7 @@ glsl_type::glsl_type(GLenum gl_type,
    memset(& fields, 0, sizeof(fields));
 }
 
-glsl_type::glsl_type(GLenum gl_type, glsl_base_type base_type,
+glsl_type::glsl_type(uint32_t gl_type, glsl_base_type base_type,
                      enum glsl_sampler_dim dim, bool shadow, bool array,
                      glsl_base_type type, const char *name) :
    gl_type(gl_type),
