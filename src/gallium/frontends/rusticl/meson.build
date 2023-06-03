@@ -44,6 +44,10 @@ libmesa_rust_files = files(
   'mesa/pipe/transfer.rs',
 )
 
+rusticl_proc_macros_files = files(
+  'proc/lib.rs',
+)
+
 rusticl_files = files(
   'lib.rs',
   'api.rs',
@@ -316,6 +320,15 @@ libmesa_rust = static_library(
   ]
 )
 
+rusticl_proc_macros = shared_library(
+  'rusticl_proc_macros',
+  [rusticl_proc_macros_files],
+  rust_crate_type : 'proc-macro',
+  rust_args : [
+    rusticl_args,
+  ],
+)
+
 librusticl = static_library(
   'rusticl',
   [rusticl_files],
@@ -329,6 +342,7 @@ librusticl = static_library(
     libmesa_rust_gen,
     libmesa_rust_util,
     rusticl_opencl_gen,
+    rusticl_proc_macros,
   ],
   dependencies : [
     idep_rusticl_gen,
