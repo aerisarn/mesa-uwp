@@ -3504,7 +3504,7 @@ pvr_int32_to_isp_xy_vtx(const struct pvr_device_info *dev_info,
       return vk_error(NULL, VK_ERROR_UNKNOWN);
 
    pvr_csb_pack (word_out, IPF_ISP_VERTEX_XY, word) {
-      word.sign = val < 0U;
+      word.sign = val < 0;
       word.integer = val;
    }
 
