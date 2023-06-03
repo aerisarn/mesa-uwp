@@ -636,6 +636,7 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
    }
 
    si_pm4_set_reg(pm4, R_028808_CB_COLOR_CONTROL, color_control);
+   si_pm4_finalize(pm4);
    return blend;
 }
 
@@ -1105,6 +1106,7 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                      S_028230_ER_LINE_TB(0xA) |
                      S_028230_ER_LINE_BT(0xA));
    }
+   si_pm4_finalize(pm4);
 
    if (!rs->uses_poly_offset)
       return rs;
@@ -1148,6 +1150,7 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
       si_pm4_set_reg(pm4, R_028B84_PA_SU_POLY_OFFSET_FRONT_OFFSET, fui(offset_units));
       si_pm4_set_reg(pm4, R_028B88_PA_SU_POLY_OFFSET_BACK_SCALE, fui(offset_scale));
       si_pm4_set_reg(pm4, R_028B8C_PA_SU_POLY_OFFSET_BACK_OFFSET, fui(offset_units));
+      si_pm4_finalize(pm4);
    }
 
    return rs;
@@ -1393,6 +1396,7 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
       si_pm4_set_reg(pm4, R_028020_DB_DEPTH_BOUNDS_MIN, fui(state->depth_bounds_min));
       si_pm4_set_reg(pm4, R_028024_DB_DEPTH_BOUNDS_MAX, fui(state->depth_bounds_max));
    }
+   si_pm4_finalize(pm4);
 
    dsa->depth_enabled = state->depth_enabled;
    dsa->depth_write_enabled = state->depth_enabled && state->depth_writemask;
@@ -5770,6 +5774,7 @@ static void gfx6_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_
    }
 
 done:
+   si_pm4_finalize(pm4);
    sctx->cs_preamble_state = pm4;
    sctx->cs_preamble_state_tmz = si_pm4_clone(pm4); /* Make a copy of the preamble for TMZ. */
 }
@@ -5815,6 +5820,7 @@ static void cdna_init_compute_preamble_state(struct si_context *sctx)
                      S_030E04_ADDRESS(border_color_va >> 40));
    }
 
+   si_pm4_finalize(pm4);
    sctx->cs_preamble_state = pm4;
    sctx->cs_preamble_state_tmz = si_pm4_clone(pm4); /* Make a copy of the preamble for TMZ. */
 }
@@ -6111,6 +6117,7 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
    }
 
 done:
+   si_pm4_finalize(pm4);
    sctx->cs_preamble_state = pm4;
    sctx->cs_preamble_state_tmz = si_pm4_clone(pm4); /* Make a copy of the preamble for TMZ. */
 }

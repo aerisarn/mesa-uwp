@@ -379,6 +379,7 @@ static bool si_update_shaders(struct si_context *sctx)
                   si_pm4_set_reg(&pipeline->pm4, reg, va_low);
                }
             }
+            si_pm4_finalize(&pipeline->pm4);
             sctx->screen->ws->buffer_unmap(sctx->screen->ws, bo->buf);
 
             _mesa_hash_table_u64_insert(sctx->sqtt->pipeline_bos,

@@ -9,13 +9,144 @@
 #include "sid.h"
 #include "util/u_memory.h"
 
+static void si_pm4_set_reg_custom(struct si_pm4_state *state, unsigned reg, uint32_t val,
+                                  unsigned opcode, unsigned idx);
+
+static bool opcode_is_packed(unsigned opcode)
+{
+   return opcode == PKT3_SET_CONTEXT_REG_PAIRS_PACKED ||
+          opcode == PKT3_SET_SH_REG_PAIRS_PACKED ||
+          opcode == PKT3_SET_SH_REG_PAIRS_PACKED_N;
+}
+
+static unsigned packed_opcode_to_unpacked(unsigned opcode)
+{
+   switch (opcode) {
+   case PKT3_SET_CONTEXT_REG_PAIRS_PACKED:
+      return PKT3_SET_CONTEXT_REG;
+   case PKT3_SET_SH_REG_PAIRS_PACKED:
+      return PKT3_SET_SH_REG;
+   default:
+      unreachable("invalid packed opcode");
+   }
+}
+
+static unsigned unpacked_opcode_to_packed(struct si_pm4_state *state, unsigned opcode)
+{
+   switch (opcode) {
+   case PKT3_SET_CONTEXT_REG:
+      if (state->screen->info.gfx_level >= GFX11)
+         return PKT3_SET_CONTEXT_REG_PAIRS_PACKED;
+      break;
+   case PKT3_SET_SH_REG:
+      if (state->screen->info.gfx_level >= GFX11 &&
+          state->screen->info.register_shadowing_required)
+         return PKT3_SET_SH_REG_PAIRS_PACKED;
+      break;
+   }
+
+   return opcode;
+}
+
+static bool packed_next_is_reg_offset_pair(struct si_pm4_state *state)
+{
+   return (state->ndw - state->last_pm4) % 3 == 2;
+}
+
+static bool packed_next_is_reg_value1(struct si_pm4_state *state)
+{
+   return (state->ndw - state->last_pm4) % 3 == 1;
+}
+
+static bool packed_prev_is_reg_value0(struct si_pm4_state *state)
+{
+   return packed_next_is_reg_value1(state);
+}
+
+static unsigned get_packed_reg_dw_offsetN(struct si_pm4_state *state, unsigned index)
+{
+   unsigned i = state->last_pm4 + 2 + (index / 2) * 3;
+   assert(i < state->ndw);
+   return (state->pm4[i] >> ((index % 2) * 16)) & 0xffff;
+}
+
+static unsigned get_packed_reg_valueN_idx(struct si_pm4_state *state, unsigned index)
+{
+   unsigned i = state->last_pm4 + 2 + (index / 2) * 3 + 1 + (index % 2);
+   assert(i < state->ndw);
+   return i;
+}
+
+static unsigned get_packed_reg_valueN(struct si_pm4_state *state, unsigned index)
+{
+   return state->pm4[get_packed_reg_valueN_idx(state, index)];
+}
+
+static unsigned get_packed_reg_count(struct si_pm4_state *state)
+{
+   int body_size = state->ndw - state->last_pm4 - 2;
+   assert(body_size > 0 && body_size % 3 == 0);
+   return (body_size / 3) * 2;
+}
+
+void si_pm4_finalize(struct si_pm4_state *state)
+{
+   if (opcode_is_packed(state->last_opcode)) {
+      unsigned reg_count = get_packed_reg_count(state);
+      unsigned reg_dw_offset0 = get_packed_reg_dw_offsetN(state, 0);
+
+      if (state->packed_is_padded)
+         reg_count--;
+
+      bool all_consecutive = true;
+
+      /* If the whole packed SET packet only sets consecutive registers, rewrite the packet
+       * to be unpacked to make it shorter.
+       *
+       * This also eliminates the invalid scenario when the packed SET packet sets only
+       * 2 registers and the register offsets are equal due to padding.
+       */
+      for (unsigned i = 1; i < reg_count; i++) {
+         if (reg_dw_offset0 != get_packed_reg_dw_offsetN(state, i) - i) {
+            all_consecutive = false;
+            break;
+         }
+      }
+
+      if (all_consecutive) {
+         assert(state->ndw - state->last_pm4 == 2 + 3 * (reg_count + state->packed_is_padded) / 2);
+         state->pm4[state->last_pm4] = PKT3(packed_opcode_to_unpacked(state->last_opcode),
+                                            reg_count, 0);
+         state->pm4[state->last_pm4 + 1] = reg_dw_offset0;
+         for (unsigned i = 0; i < reg_count; i++)
+            state->pm4[state->last_pm4 + 2 + i] = get_packed_reg_valueN(state, i);
+         state->ndw = state->last_pm4 + 2 + reg_count;
+         state->last_opcode = PKT3_SET_SH_REG;
+      } else {
+         /* All SET_*_PAIRS* packets on the gfx queue must set RESET_FILTER_CAM. */
+         if (!state->is_compute_queue)
+            state->pm4[state->last_pm4] |= PKT3_RESET_FILTER_CAM_S(1);
+
+         /* If it's a packed SET_SH packet, use the *_N variant when possible. */
+         if (state->last_opcode == PKT3_SET_SH_REG_PAIRS_PACKED && reg_count <= 14) {
+            state->pm4[state->last_pm4] &= PKT3_IT_OPCODE_C;
+            state->pm4[state->last_pm4] |= PKT3_IT_OPCODE_S(PKT3_SET_SH_REG_PAIRS_PACKED_N);
+         }
+
+      }
+   }
+}
+
 static void si_pm4_cmd_begin(struct si_pm4_state *state, unsigned opcode)
 {
+   si_pm4_finalize(state);
+
    assert(state->max_dw);
    assert(state->ndw < state->max_dw);
    assert(opcode <= 254);
    state->last_opcode = opcode;
    state->last_pm4 = state->ndw++;
+   state->packed_is_padded = false;
 }
 
 void si_pm4_cmd_add(struct si_pm4_state *state, uint32_t dw)
@@ -31,17 +162,36 @@ static void si_pm4_cmd_end(struct si_pm4_state *state, bool predicate)
    unsigned count;
    count = state->ndw - state->last_pm4 - 2;
    state->pm4[state->last_pm4] = PKT3(state->last_opcode, count, predicate);
+
+   if (opcode_is_packed(state->last_opcode)) {
+      if (packed_prev_is_reg_value0(state)) {
+         /* Duplicate the first register at the end to make the number of registers aligned to 2. */
+         si_pm4_set_reg_custom(state, get_packed_reg_dw_offsetN(state, 0) * 4,
+                               get_packed_reg_valueN(state, 0),
+                               state->last_opcode, 0);
+         state->packed_is_padded = true;
+      }
+
+      state->pm4[state->last_pm4 + 1] = get_packed_reg_count(state);
+   }
 }
 
 static void si_pm4_set_reg_custom(struct si_pm4_state *state, unsigned reg, uint32_t val,
                                   unsigned opcode, unsigned idx)
 {
+   bool is_packed = opcode_is_packed(opcode);
    reg >>= 2;
 
    assert(state->max_dw);
    assert(state->ndw + 2 <= state->max_dw);
 
-   if (opcode != state->last_opcode || reg != (state->last_reg + 1) || idx != state->last_idx) {
+   if (is_packed) {
+      if (opcode != state->last_opcode) {
+         si_pm4_cmd_begin(state, opcode); /* reserve space for the header */
+         state->ndw++; /* reserve space for the register count, it will be set at the end */
+      }
+   } else if (opcode != state->last_opcode || reg != (state->last_reg + 1) ||
+              idx != state->last_idx) {
       si_pm4_cmd_begin(state, opcode);
       state->pm4[state->ndw++] = reg | (idx << 28);
    }
@@ -49,6 +199,25 @@ static void si_pm4_set_reg_custom(struct si_pm4_state *state, unsigned reg, uint
    assert(reg <= UINT16_MAX);
    state->last_reg = reg;
    state->last_idx = idx;
+
+   if (is_packed) {
+      if (state->packed_is_padded) {
+         /* The packet is padded, which means the first register is written redundantly again
+          * at the end. Remove it, so that we can replace it with this register.
+          */
+         state->packed_is_padded = false;
+         state->ndw--;
+      }
+
+      if (packed_next_is_reg_offset_pair(state)) {
+         state->pm4[state->ndw++] = reg;
+      } else if (packed_next_is_reg_value1(state)) {
+         /* Set the second register offset in the high 16 bits. */
+         state->pm4[state->ndw - 2] &= 0x0000ffff;
+         state->pm4[state->ndw - 2] |= reg << 16;
+      }
+   }
+
    state->pm4[state->ndw++] = val;
    si_pm4_cmd_end(state, false);
 }
@@ -77,6 +246,8 @@ void si_pm4_set_reg(struct si_pm4_state *state, unsigned reg, uint32_t val)
       PRINT_ERR("Invalid register offset %08x!\n", reg);
       return;
    }
+
+   opcode = unpacked_opcode_to_packed(state, opcode);
 
    si_pm4_set_reg_custom(state, reg, val, opcode, 0);
 }

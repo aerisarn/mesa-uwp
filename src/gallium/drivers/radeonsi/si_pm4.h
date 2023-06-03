@@ -34,6 +34,7 @@ struct si_pm4_state {
    uint8_t last_opcode;
    uint8_t last_idx;
    bool is_compute_queue;
+   bool packed_is_padded; /* whether SET_*_REG_PAIRS_PACKED is padded to an even number of regs */
 
    /* For shader states only */
    bool is_shader;
@@ -53,6 +54,7 @@ void si_pm4_cmd_add(struct si_pm4_state *state, uint32_t dw);
 void si_pm4_set_reg(struct si_pm4_state *state, unsigned reg, uint32_t val);
 void si_pm4_set_reg_va(struct si_pm4_state *state, unsigned reg, uint32_t val);
 void si_pm4_set_reg_idx3(struct si_pm4_state *state, unsigned reg, uint32_t val);
+void si_pm4_finalize(struct si_pm4_state *state);
 
 void si_pm4_clear_state(struct si_pm4_state *state, struct si_screen *sscreen,
                         bool is_compute_queue);

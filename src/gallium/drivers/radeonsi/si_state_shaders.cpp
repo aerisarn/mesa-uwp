@@ -694,6 +694,7 @@ static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)
                           S_00B528_FLOAT_MODE(shader->config.float_mode);
    shader->config.rsrc2 = S_00B52C_USER_SGPR(si_get_num_vs_user_sgprs(shader, SI_VS_NUM_USER_SGPR)) |
                           S_00B52C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
+   si_pm4_finalize(pm4);
 }
 
 static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
@@ -745,6 +746,8 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 
    if (sscreen->info.gfx_level <= GFX8)
       si_pm4_set_reg(pm4, R_00B42C_SPI_SHADER_PGM_RSRC2_HS, shader->config.rsrc2);
+
+   si_pm4_finalize(pm4);
 }
 
 static void si_emit_shader_es(struct si_context *sctx)
@@ -811,6 +814,7 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
       si_set_tesseval_regs(sscreen, shader->selector, shader);
 
    polaris_set_vgt_vertex_reuse(sscreen, shader->selector, shader);
+   si_pm4_finalize(pm4);
 }
 
 void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *gs,
@@ -1124,6 +1128,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
                      S_00B22C_USER_SGPR(GFX6_GS_NUM_USER_SGPR) |
                      S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
    }
+   si_pm4_finalize(pm4);
 }
 
 bool gfx10_is_ngg_passthrough(struct si_shader *shader)
@@ -1499,6 +1504,8 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       S_028B54_NGG_WAVE_ID_EN(si_shader_uses_streamout(shader)) |
       S_028B54_GS_W32_EN(shader->wave_size == 32) |
       S_028B54_MAX_PRIMGRP_IN_WAVE(2);
+
+   si_pm4_finalize(pm4);
 }
 
 static void si_emit_shader_vs(struct si_context *sctx)
@@ -1704,6 +1711,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
       si_set_tesseval_regs(sscreen, shader->selector, shader);
 
    polaris_set_vgt_vertex_reuse(sscreen, shader->selector, shader);
+   si_pm4_finalize(pm4);
 }
 
 static unsigned si_get_spi_shader_col_format(struct si_shader *shader)
@@ -1949,6 +1957,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
                   S_00B02C_EXTRA_LDS_SIZE(shader->config.lds_size) |
                   S_00B02C_USER_SGPR(SI_PS_NUM_USER_SGPR) |
                   S_00B32C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
+   si_pm4_finalize(pm4);
 }
 
 static void si_shader_init_pm4_state(struct si_screen *sscreen, struct si_shader *shader)
@@ -3696,6 +3705,7 @@ static void si_cs_preamble_add_vgt_flush(struct si_context *sctx, bool tmz)
    /* VGT_FLUSH is required even if VGT is idle. It resets VGT pointers. */
    si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
    si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
+   si_pm4_finalize(pm4);
 
    *has_vgt_flush = true;
 }
@@ -3857,6 +3867,7 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
          si_pm4_set_reg(pm4, R_0088CC_VGT_GSVS_RING_SIZE,
                         sctx->gsvs_ring ? sctx->gsvs_ring->width0 / 256 : 0);
       }
+      si_pm4_finalize(pm4);
 
       if (old_ndw) {
          pm4->ndw = old_ndw;
@@ -4126,6 +4137,7 @@ void si_init_tess_factor_ring(struct si_context *sctx)
          si_pm4_set_reg(pm4, R_0089B8_VGT_TF_MEMORY_BASE, factor_va >> 8);
          si_pm4_set_reg(pm4, R_0089B0_VGT_HS_OFFCHIP_PARAM, sctx->screen->hs.hs_offchip_param);
       }
+      si_pm4_finalize(pm4);
    }
 
    /* Flush the context to re-emit the cs_preamble state.
