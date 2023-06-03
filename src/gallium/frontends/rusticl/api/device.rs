@@ -8,6 +8,8 @@ use crate::core::version::*;
 use mesa_rust_gen::*;
 use mesa_rust_util::ptr::*;
 use rusticl_opencl_gen::*;
+use rusticl_proc_macros::cl_entrypoint;
+use rusticl_proc_macros::cl_info_entrypoint;
 
 use std::cmp::min;
 use std::ffi::CStr;
@@ -24,6 +26,8 @@ const SPIRV_SUPPORT: [cl_name_version; 5] = [
     mk_cl_version_ext(1, 4, 0, "SPIR-V"),
 ];
 type ClDevIdpAccelProps = cl_device_integer_dot_product_acceleration_properties_khr;
+
+#[cl_info_entrypoint(cl_get_device_info)]
 impl CLInfo<cl_device_info> for cl_device_id {
     fn query(&self, q: cl_device_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let dev = self.get_ref()?;
@@ -284,7 +288,8 @@ pub fn get_devs_for_type(device_type: cl_device_type) -> Vec<&'static Arc<Device
         .collect()
 }
 
-pub fn get_device_ids(
+#[cl_entrypoint]
+fn get_device_ids(
     platform: cl_platform_id,
     device_type: cl_device_type,
     num_entries: cl_uint,
@@ -332,7 +337,18 @@ pub fn get_device_ids(
     Ok(())
 }
 
-pub fn get_device_and_host_timer(
+#[cl_entrypoint]
+fn retain_device(_device: cl_device_id) -> CLResult<()> {
+    Ok(())
+}
+
+#[cl_entrypoint]
+fn release_device(_device: cl_device_id) -> CLResult<()> {
+    Ok(())
+}
+
+#[cl_entrypoint]
+fn get_device_and_host_timer(
     _device: cl_device_id,
     _device_timestamp: *mut cl_ulong,
     _host_timestamp: *mut cl_ulong,
@@ -341,12 +357,14 @@ pub fn get_device_and_host_timer(
     Err(CL_INVALID_OPERATION)
 }
 
-pub fn get_host_timer(_device: cl_device_id, _host_timestamp: *mut cl_ulong) -> CLResult<()> {
+#[cl_entrypoint]
+fn get_host_timer(_device: cl_device_id, _host_timestamp: *mut cl_ulong) -> CLResult<()> {
     // TODO: we could support it
     Err(CL_INVALID_OPERATION)
 }
 
-pub fn set_default_device_command_queue(
+#[cl_entrypoint]
+fn set_default_device_command_queue(
     _context: cl_context,
     _device: cl_device_id,
     _command_queue: cl_command_queue,
