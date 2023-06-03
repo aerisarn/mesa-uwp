@@ -5857,6 +5857,12 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
       si_pm4_cmd_add(pm4, 0);
    }
 
+   /* Non-graphics uconfig registers. */
+   if (sctx->gfx_level < GFX11)
+      si_pm4_set_reg(pm4, R_0301EC_CP_COHER_START_DELAY, 0x20);
+   si_pm4_set_reg(pm4, R_030E00_TA_CS_BC_BASE_ADDR, border_color_va >> 8);
+   si_pm4_set_reg(pm4, R_030E04_TA_CS_BC_BASE_ADDR_HI, S_030E04_ADDRESS(border_color_va >> 40));
+
    /* Compute registers. */
    si_pm4_set_reg(pm4, R_00B834_COMPUTE_PGM_HI, S_00B834_DATA(sscreen->info.address32_hi >> 8));
    si_pm4_set_reg(pm4, R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0, compute_cu_en);
@@ -5886,11 +5892,6 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
    }
 
    si_pm4_set_reg(pm4, R_00B9F4_COMPUTE_DISPATCH_TUNNEL, 0);
-
-   if (sctx->gfx_level < GFX11)
-      si_pm4_set_reg(pm4, R_0301EC_CP_COHER_START_DELAY, 0x20);
-   si_pm4_set_reg(pm4, R_030E00_TA_CS_BC_BASE_ADDR, border_color_va >> 8);
-   si_pm4_set_reg(pm4, R_030E04_TA_CS_BC_BASE_ADDR_HI, S_030E04_ADDRESS(border_color_va >> 40));
 
    if (!sctx->has_graphics)
       goto done;
