@@ -37,8 +37,6 @@
 #include "util/simple_mtx.h"
 
 #ifdef __cplusplus
-#include "mesa/main/config.h"
-#include "mesa/main/menums.h" /* for gl_texture_index, C++'s enum rules are broken */
 #include "util/glheader.h"
 #include "util/ralloc.h"
 #endif
