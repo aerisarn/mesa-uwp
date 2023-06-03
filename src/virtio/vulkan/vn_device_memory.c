@@ -468,6 +468,31 @@ vn_device_memory_alloc(struct vn_device *dev,
                                          external_handles);
 }
 
+static void
+vn_device_memory_emit_report(struct vn_device *dev,
+                             struct vn_device_memory *mem,
+                             bool is_alloc,
+                             VkResult result)
+{
+   if (likely(!dev->memory_reports))
+      return;
+
+   VkDeviceMemoryReportEventTypeEXT type;
+   if (result != VK_SUCCESS) {
+      type = VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_ALLOCATION_FAILED_EXT;
+   } else if (is_alloc) {
+      type = mem->is_import ? VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_IMPORT_EXT
+                            : VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_ALLOCATE_EXT;
+   } else {
+      type = mem->is_import ? VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_UNIMPORT_EXT
+                            : VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_FREE_EXT;
+   }
+   const uint64_t mem_obj_id =
+      mem->is_external ? mem->base_bo->res_id : mem->base.id;
+   vn_device_emit_device_memory_report(dev, type, mem_obj_id, mem->size,
+                                       &mem->base, mem->type.heapIndex);
+}
+
 VkResult
 vn_AllocateMemory(VkDevice device,
                   const VkMemoryAllocateInfo *pAllocateInfo,
@@ -514,6 +539,8 @@ vn_AllocateMemory(VkDevice device,
    mem->size = pAllocateInfo->allocationSize;
    mem->type = dev->physical_device->memory_properties.memoryProperties
                   .memoryTypes[pAllocateInfo->memoryTypeIndex];
+   mem->is_import = import_ahb_info || import_fd_info;
+   mem->is_external = mem->is_import || export_info;
 
    VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
    VkResult result;
@@ -535,6 +562,9 @@ vn_AllocateMemory(VkDevice device,
    } else {
       result = vn_device_memory_alloc(dev, mem, pAllocateInfo, 0);
    }
+
+   vn_device_memory_emit_report(dev, mem, /* is_alloc */ true, result);
+
    if (result != VK_SUCCESS) {
       vn_object_base_fini(&mem->base);
       vk_free(alloc, mem);
@@ -559,6 +589,8 @@ vn_FreeMemory(VkDevice device,
 
    if (!mem)
       return;
+
+   vn_device_memory_emit_report(dev, mem, /* is_alloc */ false, VK_SUCCESS);
 
    if (mem->base_memory) {
       vn_device_memory_pool_unref(dev, mem->base_memory);

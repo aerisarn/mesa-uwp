@@ -24,6 +24,8 @@ struct vn_device_memory {
 
    VkDeviceSize size;
    VkMemoryType type;
+   bool is_external;
+   bool is_import;
 
    /* non-NULL when suballocated */
    struct vn_device_memory *base_memory;
