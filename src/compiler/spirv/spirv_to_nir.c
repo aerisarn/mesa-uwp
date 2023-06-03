@@ -2912,6 +2912,15 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpImageQueryLevels:
+      /* This operation is not valid for a MS image but present in some old
+       * shaders.  Just return 1 in those cases.
+       */
+      if (sampler_dim == GLSL_SAMPLER_DIM_MS) {
+         vtn_warn("OpImageQueryLevels 'Sampled Image' should have an MS of 0, "
+                  "but found MS of 1.  Replacing query with constant value 1.");
+         vtn_push_nir_ssa(b, w[2], nir_imm_int(&b->nb, 1));
+         return;
+      }
       vtn_assert(sampler_dim == GLSL_SAMPLER_DIM_1D ||
                  sampler_dim == GLSL_SAMPLER_DIM_2D ||
                  sampler_dim == GLSL_SAMPLER_DIM_3D ||
