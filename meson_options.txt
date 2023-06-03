@@ -295,7 +295,7 @@ option(
   type : 'feature',
   deprecated: {'true': 'enabled', 'false': 'disabled'},
   description : 'Whether to build a shared or static glapi. Defaults to ' +
-                'false on Windows, true elsewhere'
+                'disabled on Windows, enabled elsewhere'
 )
 
 option(
