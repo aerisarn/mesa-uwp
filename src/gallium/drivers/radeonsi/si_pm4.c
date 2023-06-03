@@ -87,7 +87,7 @@ void si_pm4_set_reg_idx3(struct si_pm4_state *state, unsigned reg, uint32_t val)
       assert(state->screen->info.gfx_level >= GFX10);
       si_pm4_set_reg_custom(state, reg - SI_SH_REG_OFFSET, val, PKT3_SET_SH_REG_INDEX, 3);
    } else {
-      si_pm4_set_reg_custom(state, reg - SI_SH_REG_OFFSET, val, PKT3_SET_SH_REG, 0);
+      si_pm4_set_reg(state, reg, val);
    }
 }
 
