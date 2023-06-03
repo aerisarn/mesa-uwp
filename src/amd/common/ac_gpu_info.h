@@ -167,8 +167,6 @@ struct radeon_info {
    uint32_t mec_fw_feature;
    uint32_t pfp_fw_version;
    uint32_t pfp_fw_feature;
-   bool has_set_reg_pairs;
-   bool has_set_sh_reg_pairs_n;
 
    /* Multimedia info. */
    uint32_t uvd_fw_version;
