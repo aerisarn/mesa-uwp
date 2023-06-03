@@ -499,7 +499,6 @@ static int r300_get_video_param(struct pipe_screen *screen,
    .lower_flrp32 = true,                      \
    .lower_flrp64 = true,                      \
    .lower_fmod = true,                        \
-   .lower_fround_even = true,                 \
    .lower_fsign = true,                       \
    .lower_ftrunc = true,                      \
    .lower_insert_byte = true,                 \
