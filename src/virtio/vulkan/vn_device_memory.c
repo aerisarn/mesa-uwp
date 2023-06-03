@@ -29,10 +29,6 @@ vn_device_memory_pool_grow_alloc(struct vn_device *dev,
 {
    VkDevice dev_handle = vn_device_to_handle(dev);
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
-   const VkPhysicalDeviceMemoryProperties *mem_props =
-      &dev->physical_device->memory_properties.memoryProperties;
-   const VkMemoryPropertyFlags mem_flags =
-      mem_props->memoryTypes[mem_type_index].propertyFlags;
    struct vn_device_memory *mem = NULL;
    VkDeviceMemory mem_handle = VK_NULL_HANDLE;
    VkResult result;
@@ -44,7 +40,8 @@ vn_device_memory_pool_grow_alloc(struct vn_device *dev,
 
    vn_object_base_init(&mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY, &dev->base);
    mem->size = size;
-   mem->flags = mem_flags;
+   mem->type = dev->physical_device->memory_properties.memoryProperties
+                  .memoryTypes[mem_type_index];
 
    mem_handle = vn_device_memory_to_handle(mem);
    result = vn_call_vkAllocateMemory(
@@ -61,7 +58,8 @@ vn_device_memory_pool_grow_alloc(struct vn_device *dev,
    }
 
    result = vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem->size, mem->base.id, mem->flags, 0, &mem->base_bo);
+      dev->renderer, mem->size, mem->base.id, mem->type.propertyFlags, 0,
+      &mem->base_bo);
    if (result != VK_SUCCESS) {
       assert(!mem->base_bo);
       goto fail;
@@ -306,7 +304,7 @@ vn_device_memory_alloc_guest_vram(
    VkResult result = VK_SUCCESS;
 
    result = vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem->size, 0, mem->flags, external_handles,
+      dev->renderer, mem->size, 0, mem->type.propertyFlags, external_handles,
       &mem->base_bo);
    if (result != VK_SUCCESS) {
       return result;
@@ -364,8 +362,8 @@ vn_device_memory_alloc_generic(
       return result;
 
    result = vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem->size, mem->base.id, mem->flags, external_handles,
-      &mem->base_bo);
+      dev->renderer, mem->size, mem->base.id, mem->type.propertyFlags,
+      external_handles, &mem->base_bo);
    if (result != VK_SUCCESS) {
       vn_async_vkFreeMemory(dev->instance, dev_handle, mem_handle, NULL);
       return result;
@@ -481,16 +479,10 @@ vn_AllocateMemory(VkDevice device,
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
 
-   const VkPhysicalDeviceMemoryProperties *mem_props =
-      &dev->physical_device->memory_properties.memoryProperties;
-   const VkMemoryPropertyFlags mem_flags =
-      mem_props->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
-
    const VkExportMemoryAllocateInfo *export_info = NULL;
    const VkImportAndroidHardwareBufferInfoANDROID *import_ahb_info = NULL;
    const VkImportMemoryFdInfoKHR *import_fd_info = NULL;
    bool export_ahb = false;
-
    vk_foreach_struct_const(pnext, pAllocateInfo->pNext) {
       switch (pnext->sType) {
       case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO:
@@ -520,7 +512,8 @@ vn_AllocateMemory(VkDevice device,
 
    vn_object_base_init(&mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY, &dev->base);
    mem->size = pAllocateInfo->allocationSize;
-   mem->flags = mem_flags;
+   mem->type = dev->physical_device->memory_properties.memoryProperties
+                  .memoryTypes[pAllocateInfo->memoryTypeIndex];
 
    VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
    VkResult result;
@@ -536,7 +529,7 @@ vn_AllocateMemory(VkDevice device,
       result = vn_device_memory_alloc(dev, mem, pAllocateInfo,
                                       export_info->handleTypes);
    } else if (vn_device_memory_should_suballocate(dev, pAllocateInfo,
-                                                  mem_flags)) {
+                                                  mem->type.propertyFlags)) {
       result = vn_device_memory_pool_suballocate(
          dev, mem, pAllocateInfo->memoryTypeIndex);
    } else {
@@ -614,7 +607,7 @@ vn_MapMemory(VkDevice device,
    void *ptr = NULL;
    VkResult result;
 
-   assert(mem->flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+   assert(mem->type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
    /* We don't want to blindly create a bo for each HOST_VISIBLE memory as
     * that has a cost. By deferring bo creation until now, we can avoid the
@@ -630,7 +623,7 @@ vn_MapMemory(VkDevice device,
     */
    if (need_bo) {
       result = vn_renderer_bo_create_from_device_memory(
-         dev->renderer, mem->size, mem->base.id, mem->flags, 0,
+         dev->renderer, mem->size, mem->base.id, mem->type.propertyFlags, 0,
          &mem->base_bo);
       if (result != VK_SUCCESS)
          return vn_error(dev->instance, result);

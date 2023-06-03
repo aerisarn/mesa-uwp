@@ -23,7 +23,7 @@ struct vn_device_memory {
    struct vn_object_base base;
 
    VkDeviceSize size;
-   VkMemoryPropertyFlags flags;
+   VkMemoryType type;
 
    /* non-NULL when suballocated */
    struct vn_device_memory *base_memory;
