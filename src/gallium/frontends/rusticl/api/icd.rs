@@ -279,8 +279,11 @@ pub trait ReferenceCountedAPIPointer<T, const ERR: i32> {
         }
     }
 
-    fn release(&self) -> CLResult<Arc<T>> {
-        unsafe { Ok(Arc::from_raw(self.get_ptr()?)) }
+    fn release(&self) -> CLResult<()> {
+        unsafe {
+            Arc::from_raw(self.get_ptr()?);
+            Ok(())
+        }
     }
 
     fn refcnt(&self) -> CLResult<u32> {
