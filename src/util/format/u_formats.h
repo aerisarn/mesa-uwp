@@ -666,6 +666,16 @@ enum pipe_swizzle {
    PIPE_SWIZZLE_MAX, /**< Number of enums counter (must be last) */
 };
 
+#define PIPE_MASK_R  0x1
+#define PIPE_MASK_G  0x2
+#define PIPE_MASK_B  0x4
+#define PIPE_MASK_A  0x8
+#define PIPE_MASK_RGBA 0xf
+#define PIPE_MASK_Z  0x10
+#define PIPE_MASK_S  0x20
+#define PIPE_MASK_ZS 0x30
+#define PIPE_MASK_RGBAZS (PIPE_MASK_RGBA|PIPE_MASK_ZS)
+
 #ifdef __cplusplus
 }
 #endif
