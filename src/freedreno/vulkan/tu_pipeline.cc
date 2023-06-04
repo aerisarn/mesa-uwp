@@ -12,7 +12,6 @@
 #include "common/freedreno_guardband.h"
 
 #include "ir3/ir3_nir.h"
-#include "main/menums.h"
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
 #include "nir/nir_serialize.h"

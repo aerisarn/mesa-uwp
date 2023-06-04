@@ -37,10 +37,6 @@ libfreedreno_drm_includes = [
   inc_freedreno,
   inc_include,
   inc_src,
-  inc_mapi,
-  inc_mesa,
-  inc_gallium,
-  inc_gallium_aux,
 ]
 
 libfreedreno_drm_msm_files = files(

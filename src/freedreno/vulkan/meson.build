@@ -137,10 +137,6 @@ libvulkan_freedreno = shared_library(
   include_directories : [
     inc_include,
     inc_src,
-    inc_mapi,
-    inc_mesa,
-    inc_gallium,
-    inc_gallium_aux,
     inc_compiler,
     inc_freedreno,
   ],
