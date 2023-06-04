@@ -676,6 +676,13 @@ enum pipe_swizzle {
 #define PIPE_MASK_ZS 0x30
 #define PIPE_MASK_RGBAZS (PIPE_MASK_RGBA|PIPE_MASK_ZS)
 
+union pipe_color_union
+{
+   float f[4];
+   int i[4];
+   unsigned int ui[4];
+};
+
 #ifdef __cplusplus
 }
 #endif

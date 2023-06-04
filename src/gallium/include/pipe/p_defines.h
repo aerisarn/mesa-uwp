@@ -1214,13 +1214,6 @@ enum pipe_query_flags
    PIPE_QUERY_PARTIAL = (1 << 1),
 };
 
-union pipe_color_union
-{
-   float f[4];
-   int i[4];
-   unsigned int ui[4];
-};
-
 enum pipe_driver_query_type
 {
    PIPE_DRIVER_QUERY_TYPE_UINT64,
