@@ -581,20 +581,6 @@ enum pipe_sprite_coord_mode {
 };
 
 /**
- * Texture & format swizzles
- */
-enum pipe_swizzle {
-   PIPE_SWIZZLE_X,
-   PIPE_SWIZZLE_Y,
-   PIPE_SWIZZLE_Z,
-   PIPE_SWIZZLE_W,
-   PIPE_SWIZZLE_0,
-   PIPE_SWIZZLE_1,
-   PIPE_SWIZZLE_NONE,
-   PIPE_SWIZZLE_MAX, /**< Number of enums counter (must be last) */
-};
-
-/**
  * Viewport swizzles
  */
 enum pipe_viewport_swizzle {
