@@ -154,6 +154,7 @@ files_mesa_util = files(
   'u_memset.h',
   'u_mm.c',
   'u_mm.h',
+  'u_pack_color.h',
   'u_debug.c',
   'u_debug.h',
   'u_debug_memory.c',
@@ -232,8 +233,9 @@ deps_for_libmesa_util = [
 if with_platform_android
   deps_for_libmesa_util += dep_android
   files_debug_stack = files('u_debug_stack_android.cpp')
- else
+else
   files_debug_stack = files(
+    'dbghelp.h',
     'u_debug_stack.c',
     'u_debug_symbol.c',
     'u_debug_symbol.h',
