@@ -35,9 +35,11 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
+/* clang-format off */
 #include <xcb/xcb.h>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_xcb.h>
+/* clang-format on */
 #ifdef HAVE_LIBDRM
 #include <xf86drm.h>
 #endif
