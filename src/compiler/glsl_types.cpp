@@ -2180,16 +2180,16 @@ glsl_type::std140_size(bool row_major) const
          }
 
          const struct glsl_type *field_type = this->fields.structure[i].type;
-         unsigned align = field_type->std140_base_alignment(field_row_major);
+         unsigned base_alignment = field_type->std140_base_alignment(field_row_major);
 
          /* Ignore unsized arrays when calculating size */
          if (field_type->is_unsized_array())
             continue;
 
-         size = glsl_align(size, align);
+         size = glsl_align(size, base_alignment);
          size += field_type->std140_size(field_row_major);
 
-         max_align = MAX2(align, max_align);
+         max_align = MAX2(base_alignment, max_align);
 
          if (field_type->is_struct() && (i + 1 < this->length))
             size = glsl_align(size, 16);
@@ -2548,11 +2548,11 @@ glsl_type::std430_size(bool row_major) const
          }
 
          const struct glsl_type *field_type = this->fields.structure[i].type;
-         unsigned align = field_type->std430_base_alignment(field_row_major);
-         size = glsl_align(size, align);
+         unsigned base_alignment = field_type->std430_base_alignment(field_row_major);
+         size = glsl_align(size, base_alignment);
          size += field_type->std430_size(field_row_major);
 
-         max_align = MAX2(align, max_align);
+         max_align = MAX2(base_alignment, max_align);
       }
       size = glsl_align(size, max_align);
       return size;
