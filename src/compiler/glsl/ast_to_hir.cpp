@@ -7758,17 +7758,17 @@ ast_process_struct_or_iface_block_members(exec_list *instructions,
                      _mesa_glsl_error(&loc, state, "align layout qualifier "
                                       "is not a power of 2");
                   } else {
-                     fields[i].offset = glsl_align(offset, member_align);
+                     fields[i].offset = align(offset, member_align);
                      next_offset = fields[i].offset + size;
                   }
                }
             } else {
-               fields[i].offset = glsl_align(offset, expl_align);
+               fields[i].offset = align(offset, expl_align);
                next_offset = fields[i].offset + size;
             }
          } else if (!qual->flags.q.explicit_offset) {
             if (base_alignment != 0 && size != 0)
-               next_offset = glsl_align(next_offset, base_alignment) + size;
+               next_offset = align(next_offset, base_alignment) + size;
          }
 
          /* From the ARB_enhanced_layouts spec:
@@ -7791,7 +7791,7 @@ ast_process_struct_or_iface_block_members(exec_list *instructions,
          } else {
             if (layout && layout->flags.q.explicit_xfb_offset) {
                unsigned base_alignment = field_type->is_64bit() ? 8 : 4;
-               fields[i].offset = glsl_align(block_xfb_offset, base_alignment);
+               fields[i].offset = align(block_xfb_offset, base_alignment);
                block_xfb_offset += 4 * field_type->component_slots();
             }
          }
