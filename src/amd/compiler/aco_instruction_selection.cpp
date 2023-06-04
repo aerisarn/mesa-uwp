@@ -4010,7 +4010,7 @@ can_use_byte_align_for_global_load(unsigned num_components, unsigned component_s
    if (align_ < 4) {
       assert(component_size < 4);
       unsigned load_size = num_components * component_size;
-      int new_size = align(load_size + (4 - align_), 4);
+      uint32_t new_size = align(load_size + (4 - align_), 4);
       return new_size == align(load_size, 4) && (new_size != 12 || support_12_byte);
    }
    return true;

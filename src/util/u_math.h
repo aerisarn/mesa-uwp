@@ -691,8 +691,8 @@ ROUND_DOWN_TO(uint64_t value, uint32_t alignment)
 /**
  * Align a value, only works pot alignemnts.
  */
-static inline int
-align(int value, int alignment)
+static inline uint32_t
+align(uint32_t value, uint32_t alignment)
 {
    assert(IS_POT(alignment));
    return ALIGN_POT(value, alignment);
