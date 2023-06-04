@@ -39,7 +39,6 @@
 #include <xf86drm.h>
 
 #include "hwdef/rogue_hw_utils.h"
-#include "pipe/p_defines.h"
 #include "pvr_bo.h"
 #include "pvr_border.h"
 #include "pvr_clear.h"
