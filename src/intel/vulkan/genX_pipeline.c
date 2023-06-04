@@ -691,55 +691,6 @@ const uint32_t genX(vk_to_intel_front_face)[] = {
    [VK_FRONT_FACE_CLOCKWISE]                 = 0
 };
 
-void
-genX(rasterization_mode)(VkPolygonMode raster_mode,
-                         VkLineRasterizationModeEXT line_mode,
-                         float line_width,
-                         uint32_t *api_mode,
-                         bool *msaa_rasterization_enable)
-{
-   if (raster_mode == VK_POLYGON_MODE_LINE) {
-      /* Unfortunately, configuring our line rasterization hardware on gfx8
-       * and later is rather painful.  Instead of giving us bits to tell the
-       * hardware what line mode to use like we had on gfx7, we now have an
-       * arcane combination of API Mode and MSAA enable bits which do things
-       * in a table which are expected to magically put the hardware into the
-       * right mode for your API.  Sadly, Vulkan isn't any of the APIs the
-       * hardware people thought of so nothing works the way you want it to.
-       *
-       * Look at the table titled "Multisample Rasterization Modes" in Vol 7
-       * of the Skylake PRM for more details.
-       */
-      switch (line_mode) {
-      case VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT:
-         *api_mode = DX101;
-#if GFX_VER <= 9
-         /* Prior to ICL, the algorithm the HW uses to draw wide lines
-          * doesn't quite match what the CTS expects, at least for rectangular
-          * lines, so we set this to false here, making it draw parallelograms
-          * instead, which work well enough.
-          */
-         *msaa_rasterization_enable = line_width < 1.0078125;
-#else
-         *msaa_rasterization_enable = true;
-#endif
-         break;
-
-      case VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT:
-      case VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT:
-         *api_mode = DX9OGL;
-         *msaa_rasterization_enable = false;
-         break;
-
-      default:
-         unreachable("Unsupported line rasterization mode");
-      }
-   } else {
-      *api_mode = DX101;
-      *msaa_rasterization_enable = true;
-   }
-}
-
 static void
 emit_rs_state(struct anv_graphics_pipeline *pipeline,
               const struct vk_input_assembly_state *ia,

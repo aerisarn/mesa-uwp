@@ -179,13 +179,6 @@ void genX(batch_emit_dummy_post_sync_op)(struct anv_batch *batch,
                                          uint32_t primitive_topology,
                                          uint32_t vertex_count);
 
-void
-genX(rasterization_mode)(VkPolygonMode raster_mode,
-                         VkLineRasterizationModeEXT line_mode,
-                         float line_width,
-                         uint32_t *api_mode,
-                         bool *msaa_rasterization_enable);
-
 VkPolygonMode
 genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
                           VkPolygonMode polygon_mode,
