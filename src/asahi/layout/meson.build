@@ -9,7 +9,7 @@ libasahi_layout_files = files(
 libasahi_layout = static_library(
   'asahi_layout',
   [libasahi_layout_files],
-  include_directories : [inc_include, inc_src, inc_gallium],
+  include_directories : [inc_include, inc_src],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
   build_by_default : false,
