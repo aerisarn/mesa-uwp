@@ -294,6 +294,7 @@ static void si_get_compute_state_info(struct pipe_context *ctx, void *state,
    uint8_t wave_size = program->shader.wave_size;
    info->private_memory = DIV_ROUND_UP(program->shader.config.scratch_bytes_per_wave, wave_size);
    info->preferred_simd_size = wave_size;
+   info->simd_sizes = wave_size;
    info->max_threads = si_get_max_workgroup_size(&program->shader);
 }
 

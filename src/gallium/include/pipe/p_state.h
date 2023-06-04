@@ -1062,6 +1062,11 @@ struct pipe_compute_state_object_info
    unsigned preferred_simd_size;
 
    /**
+    * Bitmask of supported SIMD sizes.
+    */
+   unsigned simd_sizes;
+
+   /**
     * How much private memory does this CSO require per thread (a.k.a. NIR scratch memory).
     */
    unsigned private_memory;

@@ -2505,6 +2505,7 @@ iris_get_compute_state_info(struct pipe_context *ctx, void *state,
    info->max_threads = MIN2(1024, 32 * screen->devinfo->max_cs_workgroup_threads);
    info->private_memory = 0;
    info->preferred_simd_size = 32;
+   info->simd_sizes = 8 | 16 | 32;
 
    list_for_each_entry_safe(struct iris_compiled_shader, shader,
                             &ish->variants, link) {

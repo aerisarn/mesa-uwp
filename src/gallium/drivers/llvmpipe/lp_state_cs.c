@@ -922,7 +922,8 @@ llvmpipe_get_compute_state_info(struct pipe_context *pipe, void *cs,
    struct nir_shader* nir = shader->base.ir.nir;
 
    info->max_threads = 1024;
-   info->preferred_simd_size = lp_native_vector_width / 32;
+   info->simd_sizes = lp_native_vector_width / 32;
+   info->preferred_simd_size = info->simd_sizes;
    // TODO: this is a bad estimate, but not much we can do without actually compiling the shaders
    info->private_memory = nir->scratch_size;
 }
