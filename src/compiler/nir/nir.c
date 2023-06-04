@@ -30,13 +30,12 @@
 #include <limits.h>
 #include <math.h>
 #include "util/half_float.h"
+#include "util/macros.h"
 #include "util/u_math.h"
 #include "util/u_qsort.h"
 #include "nir_builder.h"
 #include "nir_control_flow_private.h"
 #include "nir_worklist.h"
-
-#include "main/menums.h" /* BITFIELD64_MASK */
 
 #ifndef NDEBUG
 uint32_t nir_debug = 0;
