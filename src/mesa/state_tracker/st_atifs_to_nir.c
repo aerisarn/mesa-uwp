@@ -64,7 +64,7 @@ nir_channel_vec4(nir_builder *b, nir_ssa_def *src, unsigned channel)
 static nir_ssa_def *
 nir_imm_vec4_float(nir_builder *b, float f)
 {
-   return nir_channel_vec4(b, nir_imm_float(b, f), 0);
+   return nir_imm_vec4(b, f, f, f, f);
 }
 
 static nir_ssa_def *
