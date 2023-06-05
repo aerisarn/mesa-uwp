@@ -4,6 +4,9 @@
 
 set -ex
 
+# Our rootfs may not have "less", which apitrace uses during apitrace dump
+export PAGER=cat  # FIXME: export everywhere
+
 INSTALL=$(realpath -s "$PWD"/install)
 S3_ARGS="--token-file ${CI_JOB_JWT_FILE}"
 
@@ -58,22 +61,18 @@ quiet() {
 
 # Set environment for apitrace executable.
 export PATH="/apitrace/build:$PATH"
-
 export PIGLIT_REPLAY_WINE_BINARY=wine
 export PIGLIT_REPLAY_WINE_APITRACE_BINARY="/apitrace-msvc-win64/bin/apitrace.exe"
 export PIGLIT_REPLAY_WINE_D3DRETRACE_BINARY="/apitrace-msvc-win64/bin/d3dretrace.exe"
 
-# Our rootfs may not have "less", which apitrace uses during
-# apitrace dump
-export PAGER=cat
+echo "Version:"
+apitrace version 2>/dev/null || echo "apitrace not found (Linux)"
 
 SANITY_MESA_VERSION_CMD="wflinfo"
 
 HANG_DETECTION_CMD=""
 
-
 # Set up the platform windowing system.
-
 if [ "$EGL_PLATFORM" = "surfaceless" ]; then
     # Use the surfaceless EGL platform.
     export DISPLAY=
