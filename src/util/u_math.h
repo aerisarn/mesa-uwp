@@ -702,7 +702,7 @@ static inline uint64_t
 align64(uint64_t value, uint64_t alignment)
 {
    assert(IS_POT(alignment));
-   return ALIGN_POT(value, (uint64_t)alignment);
+   return ALIGN_POT(value, alignment);
 }
 
 /**
