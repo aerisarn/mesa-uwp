@@ -324,9 +324,9 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
 
       nir_store_var(&b, result, nir_isub(&b, end, start), 0x1);
 
-      nir_push_if(&b, nir_iand(&b, nir_i2b(&b, uses_gds),
-                               nir_ieq_imm(&b, nir_imm_int(&b, 1u << i),
-                                           VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT)));
+      nir_push_if(&b,
+                  nir_iand(&b, nir_i2b(&b, uses_gds),
+                           nir_imm_bool(&b, 1u << i == VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT)));
       {
          /* Compute the GDS result if needed. */
          nir_ssa_def *gds_start_offset = nir_iadd(&b, input_base, nir_imm_int(&b, pipelinestat_block_size * 2));
