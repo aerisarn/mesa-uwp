@@ -167,7 +167,10 @@ static void declare_streamout_params(struct si_shader_args *args, struct si_shad
 
 unsigned si_get_max_workgroup_size(const struct si_shader *shader)
 {
-   switch (shader->selector->stage) {
+   gl_shader_stage stage = shader->is_gs_copy_shader ?
+      MESA_SHADER_VERTEX : shader->selector->stage;
+
+   switch (stage) {
    case MESA_SHADER_VERTEX:
    case MESA_SHADER_TESS_EVAL:
       /* Use the largest workgroup size for streamout */
@@ -2329,7 +2332,7 @@ static void si_determine_use_aco(struct si_shader *shader)
       break;
    case MESA_SHADER_TESS_EVAL:
    case MESA_SHADER_GEOMETRY:
-      shader->use_aco = !si_is_multi_part_shader(shader);
+      shader->use_aco = !si_is_multi_part_shader(shader) || shader->is_gs_copy_shader;
       break;
    case MESA_SHADER_FRAGMENT:
       shader->use_aco = shader->is_monolithic;
@@ -2399,6 +2402,8 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
                                    sscreen->options.vrs2x2,
                                    output_info);
 
+   si_determine_use_aco(shader);
+
    struct si_shader_args args;
    si_init_shader_args(shader, &args);
 
@@ -2406,13 +2411,20 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
 
    si_nir_opts(gs_selector->screen, nir, false);
 
+   /* aco only accept scalar const */
+   if (shader->use_aco)
+      NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+
    if (si_can_dump_shader(sscreen, MESA_SHADER_GEOMETRY, SI_DUMP_NIR)) {
       fprintf(stderr, "GS Copy Shader:\n");
       nir_print_shader(nir, stderr);
    }
 
-   bool ok = false;
-   if (si_llvm_compile_shader(sscreen, compiler, shader, &args, debug, nir)) {
+   bool ok = shader->use_aco ?
+      si_aco_compile_shader(shader, &args, nir, debug) :
+      si_llvm_compile_shader(sscreen, compiler, shader, &args, debug, nir);
+
+   if (ok) {
       assert(!shader->config.scratch_bytes_per_wave);
       ok = si_shader_binary_upload(sscreen, shader, 0);
       si_shader_dump(sscreen, shader, debug, stderr, true);
