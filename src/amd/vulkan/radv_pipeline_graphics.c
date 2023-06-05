@@ -2029,6 +2029,12 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device,
       key.vs.topology = si_translate_prim(state->ia->primitive_topology);
    }
 
+   if (pipeline->base.type == RADV_PIPELINE_GRAPHICS_LIB &&
+       (!(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT) ||
+        !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT))) {
+      key.unknown_rast_prim = true;
+   }
+
    if (device->physical_device->rad_info.gfx_level >= GFX10 && state->rs) {
       key.vs.provoking_vtx_last =
          state->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
