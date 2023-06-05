@@ -32,17 +32,6 @@ spec@glsl-es-3.20.*
 dEQP-VK.draw.renderpass.inverted_depth_ranges.nodepthclamp_deltazero
 dEQP-VK.rasterization.depth_bias.d32_sfloat
 
-# Invalid tests; these will be fixed or removed from CTS in a future release
-# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/4075
-dEQP-VK.api.external.fence.sync_fd.export_multiple_times_temporary
-dEQP-VK.api.external.semaphore.sync_fd.export_multiple_times_temporary
-dEQP-VK.api.external.semaphore.sync_fd.import_twice_temporary
-
-# Tests using a wrongly aligned offset when calling BindImageMemoryInfo
-# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/4223
-dEQP-VK.ycbcr.subresource_offset.g8_b8_r8_3plane_420_unorm
-dEQP-VK.ycbcr.subresource_offset.g8_b8r8_2plane_420_unorm
-
 # Kernel blocks (probably GMP violations)
 spec@arb_shading_language_420pack@active sampler conflict
 spec@arb_texture_buffer_object@render-no-bo
