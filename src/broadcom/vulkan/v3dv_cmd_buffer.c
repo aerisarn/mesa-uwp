@@ -2297,11 +2297,6 @@ emit_scissor(struct v3dv_cmd_buffer *cmd_buffer)
    maxy = MIN2(vp_maxy, cmd_buffer->state.render_area.offset.y +
                         cmd_buffer->state.render_area.extent.height);
 
-   minx = vp_minx;
-   miny = vp_miny;
-   maxx = vp_maxx;
-   maxy = vp_maxy;
-
    /* Clip against user provided scissor if needed.
     *
     * FIXME: right now we only allow one scissor. Below would need to be
