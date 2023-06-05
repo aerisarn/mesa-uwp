@@ -61,8 +61,11 @@ dEQP-VK.binding_model.buffer_device_address.set3.depth3.basessbo.convertcheckuv2
 dEQP-VK.binding_model.buffer_device_address.set3.depth3.basessbo.convertcheckuv2.store.single.std140.comp
 dEQP-VK.binding_model.buffer_device_address.set3.depth3.basessbo.convertcheckuv2.store.single.std140.frag
 dEQP-VK.binding_model.buffer_device_address.set3.depth3.basessbo.convertcheckuv2.store.single.std140.vert
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.basessbo.convertuvec2.nostore.multi.std140.vert
 dEQP-VK.binding_model.buffer_device_address.set3.depth3.basessbo.convertuvec2.nostore.single.std140.vert
 dEQP-VK.binding_model.buffer_device_address.set3.depth3.basessbo.convertuvec2.store.single.std140.vert
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.basessbo.load.nostore.multi.std140.vert
+dEQP-VK.binding_model.buffer_device_address.set3.depth3.basessbo.load.nostore.single.std140.vert
 dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.convertcheckuv2.nostore.multi.std140.comp
 dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.convertcheckuv2.nostore.multi.std140.frag
 dEQP-VK.binding_model.buffer_device_address.set3.depth3.baseubo.convertcheckuv2.nostore.multi.std140.vert
@@ -90,10 +93,12 @@ dEQP-VK.memory.mapping.suballocation.full.variable.implicit_unmap
 dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_geom
 dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_vert
 dEQP-VK.ssbo.layout.3_level_array.std140.column_major_mat4
+dEQP-VK.ssbo.layout.3_level_array.std140.mat4
 dEQP-VK.ssbo.layout.3_level_array.std140.row_major_mat4
 dEQP-VK.ssbo.layout.3_level_array.std140.row_major_mat4_comp_access
 dEQP-VK.ssbo.layout.3_level_array.std430.mat4
 dEQP-VK.ssbo.layout.3_level_array.std430.row_major_mat4
+dEQP-VK.ssbo.layout.3_level_unsized_array.std140.mat4
 dEQP-VK.ssbo.layout.3_level_unsized_array.std140.row_major_mat4
 dEQP-VK.ssbo.layout.3_level_unsized_array.std140.row_major_mat4_comp_access
 dEQP-VK.ssbo.layout.3_level_unsized_array.std140.row_major_mat4_comp_access_store_cols

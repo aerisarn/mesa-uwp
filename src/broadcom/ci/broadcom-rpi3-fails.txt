@@ -797,6 +797,7 @@ spec@!opengl 1.1@depthstencil-default_fb-clear samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-clear samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-clear,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=2,Crash
+spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=2,Crash
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=4,Crash
 spec@!opengl 1.1@depthstencil-default_fb-readpixels-24_8 samples=4,Crash
