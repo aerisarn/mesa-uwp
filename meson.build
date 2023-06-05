@@ -779,10 +779,12 @@ if with_clc
 endif
 
 gl_pkgconfig_c_flags = []
+with_glx_indirect_rendering = false
 if with_platform_x11
   if with_glx == 'xlib'
     pre_args += '-DUSE_XSHM'
   else
+    with_glx_indirect_rendering = true
     pre_args += '-DGLX_INDIRECT_RENDERING'
     if with_glx_direct
       pre_args += '-DGLX_DIRECT_RENDERING'
@@ -796,6 +798,13 @@ if with_platform_x11
     endif
   endif
 endif
+
+with_glapi_export_proto_entry_points = false
+if with_shared_glapi and not with_glx_indirect_rendering
+  # Imply !defined(GLX_INDIRECT_RENDERING)
+  with_glapi_export_proto_entry_points = true
+endif
+pre_args += '-DGLAPI_EXPORT_PROTO_ENTRY_POINTS=@0@'.format(with_glapi_export_proto_entry_points ? '1' : '0')
 
 with_android_stub = get_option('android-stub')
 if with_android_stub and not with_platform_android
