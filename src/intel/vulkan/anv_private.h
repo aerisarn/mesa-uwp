@@ -1081,6 +1081,29 @@ struct anv_queue {
    /** Synchronization object for debug purposes (DEBUG_SYNC) */
    struct vk_sync                           *sync;
 
+   /** Companion synchronization object
+    *
+    * Vulkan command buffers can be destroyed as soon as their lifecycle moved
+    * from the Pending state to the Invalid/Executable state. This transition
+    * happens when the VkFence/VkSemaphore associated with the completion of
+    * the command buffer work is signaled.
+    *
+    * When we're using a companion command buffer to execute part of another
+    * command buffer, we need to tie the 2 work submissions together to ensure
+    * when the associated VkFence/VkSemaphore is signaled, both command
+    * buffers are actually unused by the HW. To do this, we run an empty batch
+    * buffer that we use to signal after both submissions :
+    *
+    *   CCS -->    main   ---> empty_batch (with wait on companion) --> signal
+    *   RCS --> companion -|
+    *
+    * When companion batch completes, it signals companion_sync and allow
+    * empty_batch to execute. Since empty_batch is running on the main engine,
+    * we're guaranteed that upon completion both main & companion command
+    * buffers are not used by HW anymore.
+    */
+   struct vk_sync                           *companion_sync;
+
    struct intel_ds_queue                     ds;
 };
 

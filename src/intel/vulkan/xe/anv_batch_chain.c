@@ -216,10 +216,16 @@ xe_companion_rcs_queue_exec_locked(struct anv_queue *queue,
    struct anv_device *device = queue->device;
    VkResult result;
 
+   struct vk_sync_signal companion_sync = {
+      .sync = queue->companion_sync,
+   };
    struct drm_xe_sync *xe_syncs = NULL;
    uint32_t xe_syncs_count = 0;
-   result = xe_exec_process_syncs(queue, wait_count, waits, 0, NULL, NULL,
-                                  true, /* is_companion_rcs_queue */
+   result = xe_exec_process_syncs(queue,
+                                  wait_count, waits,
+                                  1, &companion_sync,
+                                  NULL /* utrace_submit */,
+                                  true /* is_companion_rcs_queue */,
                                   &xe_syncs,
                                   &xe_syncs_count);
    if (result != VK_SUCCESS)

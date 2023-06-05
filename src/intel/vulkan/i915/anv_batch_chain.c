@@ -677,6 +677,14 @@ i915_companion_rcs_queue_exec_locked(struct anv_queue *queue,
          goto error;
    }
 
+   if (queue->companion_sync) {
+      result = anv_execbuf_add_sync(device, &execbuf,
+                                    queue->companion_sync,
+                                    true /* is_signal */, 0);
+      if (result != VK_SUCCESS)
+         goto error;
+   }
+
    result = setup_execbuf_for_cmd_buffers(&execbuf, queue, cmd_buffers,
                                           cmd_buffer_count,
                                           true /* is_companion_rcs_cmd_buffer */);

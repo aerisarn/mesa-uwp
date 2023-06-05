@@ -1281,11 +1281,48 @@ anv_queue_exec_locked(struct anv_queue *queue,
                       uint32_t perf_query_pass)
 {
    struct anv_device *device = queue->device;
-   return device->kmd_backend->queue_exec_locked(queue, wait_count, waits,
-                                                 cmd_buffer_count,
-                                                 cmd_buffers, signal_count,
-                                                 signals, perf_query_pool,
-                                                 perf_query_pass);
+   VkResult result = VK_SUCCESS;
+
+   /* We only need to synchronize the main & companion command buffers if we
+    * have a companion command buffer somewhere in the list of command
+    * buffers.
+    */
+   bool needs_companion_sync = false;
+   for (uint32_t i = 0; i < cmd_buffer_count; i++) {
+      if (cmd_buffers[i]->companion_rcs_cmd_buffer != NULL) {
+         needs_companion_sync = true;
+         break;
+      }
+   }
+
+   result =
+      device->kmd_backend->queue_exec_locked(
+         queue,
+         wait_count, waits,
+         cmd_buffer_count, cmd_buffers,
+         needs_companion_sync ? 0 : signal_count, signals,
+         perf_query_pool,
+         perf_query_pass);
+   if (result != VK_SUCCESS)
+      return result;
+
+   if (needs_companion_sync) {
+      struct vk_sync_wait companion_sync = {
+         .sync = queue->companion_sync,
+      };
+      /* If any of the command buffer had a companion batch, the submission
+       * backend will signal queue->companion_sync, so to ensure completion,
+       * we just need to wait on that fence.
+       */
+      result =
+         device->kmd_backend->queue_exec_locked(queue,
+                                                1, &companion_sync,
+                                                0, NULL,
+                                                signal_count, signals,
+                                                NULL, 0);
+   }
+
+   return result;
 }
 
 static inline bool
