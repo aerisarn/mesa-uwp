@@ -663,7 +663,7 @@ radv_meta_build_resolve_shader_core(struct radv_device *device, nir_builder *b, 
       accum = nir_fadd(b, accum, sample);
    }
 
-   accum = nir_fdiv(b, accum, nir_imm_float(b, samples));
+   accum = nir_fdiv_imm(b, accum, samples);
    nir_store_var(b, color, accum, 0xf);
 
    if (device->physical_device->use_fmask) {

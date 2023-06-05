@@ -305,7 +305,7 @@ build_depth_stencil_resolve_fragment_shader(struct radv_device *dev, int samples
       }
 
       if (resolve_mode == VK_RESOLVE_MODE_AVERAGE_BIT)
-         outval = nir_fdiv(&b, outval, nir_imm_float(&b, samples));
+         outval = nir_fdiv_imm(&b, outval, samples);
    }
 
    nir_store_var(&b, fs_out, outval, 0x1);

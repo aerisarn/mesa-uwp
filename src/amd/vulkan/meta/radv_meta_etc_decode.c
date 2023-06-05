@@ -449,8 +449,8 @@ build_shader(struct radv_device *dev)
       nir_pop_if(&b, NULL);
       nir_ssa_def *col[4];
       for (unsigned i = 0; i < 3; ++i)
-         col[i] = nir_fdiv(&b, nir_i2f32(&b, nir_channel(&b, nir_load_var(&b, rgb_result), i)),
-                           nir_imm_float(&b, 255.0));
+         col[i] = nir_fdiv_imm(&b, nir_i2f32(&b, nir_channel(&b, nir_load_var(&b, rgb_result), i)),
+                               255.0);
       col[3] = nir_load_var(&b, alpha_result);
       nir_store_var(&b, color, nir_vec(&b, col, 4), 0xf);
    }

@@ -177,7 +177,7 @@ build_depth_stencil_resolve_compute_shader(struct radv_device *dev, int samples,
       }
 
       if (resolve_mode == VK_RESOLVE_MODE_AVERAGE_BIT)
-         outval = nir_fdiv(&b, outval, nir_imm_float(&b, samples));
+         outval = nir_fdiv_imm(&b, outval, samples);
    }
 
    nir_ssa_def *coord = nir_vec4(&b, nir_channel(&b, img_coord, 0), nir_channel(&b, img_coord, 1),

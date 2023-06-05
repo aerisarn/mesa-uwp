@@ -820,6 +820,12 @@ nir_fmul_imm(nir_builder *build, nir_ssa_def *x, double y)
 }
 
 static inline nir_ssa_def *
+nir_fdiv_imm(nir_builder *build, nir_ssa_def *x, double y)
+{
+   return nir_fdiv(build, x, nir_imm_floatN_t(build, y, x->bit_size));
+}
+
+static inline nir_ssa_def *
 nir_iand_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 {
    assert(x->bit_size <= 64);

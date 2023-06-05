@@ -314,7 +314,7 @@ nir_format_linear_to_srgb(nir_builder *b, nir_ssa_def *c)
 static inline nir_ssa_def *
 nir_format_srgb_to_linear(nir_builder *b, nir_ssa_def *c)
 {
-   nir_ssa_def *linear = nir_fdiv(b, c, nir_imm_float(b, 12.92f));
+   nir_ssa_def *linear = nir_fdiv_imm(b, c, 12.92f);
    nir_ssa_def *curved =
       nir_fpow(b, nir_fmul_imm(b, nir_fadd_imm(b, c, 0.055f),
                                   1.0 / 1.055f),
