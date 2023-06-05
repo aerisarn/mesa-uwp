@@ -39,9 +39,8 @@
 
 
 struct mapi_stub {
-   const void *name;
+   size_t name_offset;
    int slot;
-   mapi_func addr;
 };
 
 /* define public_string_pool and public_stubs */
@@ -62,7 +61,7 @@ stub_compare(const void *key, const void *elem)
    const struct mapi_stub *stub = (const struct mapi_stub *) elem;
    const char *stub_name;
 
-   stub_name = &public_string_pool[(size_t) stub->name];
+   stub_name = &public_string_pool[stub->name_offset];
 
    return strcmp(name, stub_name);
 }
@@ -104,7 +103,7 @@ stub_find_by_slot(int slot)
 const char *
 stub_get_name(const struct mapi_stub *stub)
 {
-   return &public_string_pool[(size_t) stub->name];
+   return &public_string_pool[stub->name_offset];
 }
 
 /**
