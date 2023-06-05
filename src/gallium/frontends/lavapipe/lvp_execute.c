@@ -757,29 +757,29 @@ unbind_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
       memset(&state->access[stage], 0, sizeof(state->access[stage]));
       state->has_pcbuf[stage] = false;
       switch (stage) {
-         case MESA_SHADER_FRAGMENT:
-            if (state->shaders[MESA_SHADER_FRAGMENT])
-               state->pctx->bind_fs_state(state->pctx, NULL);
-            state->noop_fs_bound = false;
-            break;
-         case MESA_SHADER_GEOMETRY:
-            if (state->shaders[MESA_SHADER_GEOMETRY])
-               state->pctx->bind_gs_state(state->pctx, NULL);
-            break;
-         case MESA_SHADER_TESS_CTRL:
-            if (state->shaders[MESA_SHADER_TESS_CTRL])
-               state->pctx->bind_tcs_state(state->pctx, NULL);
-            break;
-         case MESA_SHADER_TESS_EVAL:
-            if (state->shaders[MESA_SHADER_TESS_EVAL])
-               state->pctx->bind_tes_state(state->pctx, NULL);
-            break;
-         case MESA_SHADER_VERTEX:
-            if (state->shaders[MESA_SHADER_VERTEX])
-               state->pctx->bind_vs_state(state->pctx, NULL);
-            break;
-         default:
-            unreachable("what stage is this?!");
+      case MESA_SHADER_FRAGMENT:
+         if (state->shaders[MESA_SHADER_FRAGMENT])
+            state->pctx->bind_fs_state(state->pctx, NULL);
+         state->noop_fs_bound = false;
+         break;
+      case MESA_SHADER_GEOMETRY:
+         if (state->shaders[MESA_SHADER_GEOMETRY])
+            state->pctx->bind_gs_state(state->pctx, NULL);
+         break;
+      case MESA_SHADER_TESS_CTRL:
+         if (state->shaders[MESA_SHADER_TESS_CTRL])
+            state->pctx->bind_tcs_state(state->pctx, NULL);
+         break;
+      case MESA_SHADER_TESS_EVAL:
+         if (state->shaders[MESA_SHADER_TESS_EVAL])
+            state->pctx->bind_tes_state(state->pctx, NULL);
+         break;
+      case MESA_SHADER_VERTEX:
+         if (state->shaders[MESA_SHADER_VERTEX])
+            state->pctx->bind_vs_state(state->pctx, NULL);
+         break;
+      default:
+         unreachable("what stage is this?!");
       }
       state->shaders[stage] = NULL;
    }
