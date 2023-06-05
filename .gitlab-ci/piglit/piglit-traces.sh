@@ -30,19 +30,20 @@ esac
 # Avoid asking about Gecko or Mono instalation
 export WINEDLLOVERRIDES="mscoree=d;mshtml=d"  # FIXME: drop, not needed anymore? (wine dir is already created)
 
-# Set environment for DXVK.
-export DXVK_LOG_LEVEL="info"
-export DXVK_LOG="$RESULTS/dxvk"
-[ -d "$DXVK_LOG" ] || mkdir -pv "$DXVK_LOG"
-export DXVK_STATE_CACHE=0
 
-
-# Set up the driver environment.
+# Set up the environment.
 # Modifiying here directly LD_LIBRARY_PATH may cause problems when
 # using a command wrapper. Hence, we will just set it when running the
 # command.
 export __LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$INSTALL/lib/"
-export VK_ICD_FILENAMES="$INSTALL/share/vulkan/icd.d/${VK_DRIVER}_icd.${VK_CPU:-$(uname -m)}.json"
+if [ -n "${VK_DRIVER}" ]; then
+  # Set environment for DXVK.
+  export DXVK_LOG_LEVEL="info"
+  export DXVK_LOG="$RESULTS/dxvk"
+  [ -d "$DXVK_LOG" ] || mkdir -pv "$DXVK_LOG"
+  export DXVK_STATE_CACHE=0
+  export VK_ICD_FILENAMES="$INSTALL/share/vulkan/icd.d/${VK_DRIVER}_icd.${VK_CPU:-$(uname -m)}.json"
+fi
 
 # Sanity check to ensure that our environment is sufficient to make our tests
 # run against the Mesa built by CI, rather than any installed distro version.
