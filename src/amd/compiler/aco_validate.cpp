@@ -280,6 +280,7 @@ validate_ir(Program* program)
                                    (flat && i == 1) || (instr->isMIMG() && (i == 1 || i == 2)) ||
                                    ((instr->isMUBUF() || instr->isMTBUF()) && i == 1) ||
                                    (instr->isScratch() && i == 0) ||
+                                   (instr->isDS() && i == 0) ||
                                    (instr->opcode == aco_opcode::p_init_scratch && i == 0);
                check(can_be_undef, "Undefs can only be used in certain operands", instr.get());
             } else {
@@ -744,7 +745,8 @@ validate_ir(Program* program)
          }
          case Format::DS: {
             for (const Operand& op : instr->operands) {
-               check((op.isTemp() && op.regClass().type() == RegType::vgpr) || op.physReg() == m0,
+               check((op.isTemp() && op.regClass().type() == RegType::vgpr) || op.physReg() == m0 ||
+                     op.isUndefined(),
                      "Only VGPRs are valid DS instruction operands", instr.get());
             }
             if (!instr->definitions.empty())
