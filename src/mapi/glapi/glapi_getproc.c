@@ -369,28 +369,26 @@ set_entry_info( struct _glapi_function * entry, const char * signature, unsigned
  */
 
 int
-_glapi_add_dispatch( const char * const * function_names,
-		     const char * parameter_signature )
+_glapi_add_dispatch(const char *const *function_names, const char *parameter_signature)
 {
    static int next_dynamic_offset = FIRST_DYNAMIC_OFFSET;
-   const char * const real_sig = (parameter_signature != NULL)
-     ? parameter_signature : "";
-   struct _glapi_function * entry[8];
+   const char *const real_sig = (parameter_signature != NULL) ? parameter_signature : "";
+   struct _glapi_function *entry[8];
    GLboolean is_static[8];
    unsigned i;
    int offset = ~0;
 
    init_glapi_relocs_once();
 
-   (void) memset( is_static, 0, sizeof( is_static ) );
-   (void) memset( entry, 0, sizeof( entry ) );
+   (void)memset(is_static, 0, sizeof(is_static));
+   (void)memset(entry, 0, sizeof(entry));
 
    /* Find the _single_ dispatch offset for all function names that already
     * exist (and have a dispatch offset).
     */
 
-   for ( i = 0 ; function_names[i] != NULL ; i++ ) {
-      const char * funcName = function_names[i];
+   for (i = 0; function_names[i] != NULL; i++) {
+      const char *funcName = function_names[i];
       int static_offset;
       int extension_offset;
 
@@ -401,45 +399,44 @@ _glapi_add_dispatch( const char * const * function_names,
       static_offset = get_static_proc_offset(funcName);
 
       if (static_offset >= 0) {
+         is_static[i] = GL_TRUE;
 
-	 is_static[i] = GL_TRUE;
+         /* FIXME: Make sure the parameter signatures match!  How do we get
+          * FIXME: the parameter signature for static functions?
+          */
 
-	 /* FIXME: Make sure the parameter signatures match!  How do we get
-	  * FIXME: the parameter signature for static functions?
-	  */
+         if ((offset != ~0) && (static_offset != offset)) {
+            return -1;
+         }
 
-	 if ( (offset != ~0) && (static_offset != offset) ) {
-	    return -1;
-	 }
+         offset = static_offset;
 
-	 offset = static_offset;
-
-	 continue;
+         continue;
       }
 
       /* search added extension functions */
       entry[i] = get_extension_proc(funcName);
 
       if (entry[i] != NULL) {
-	 extension_offset = entry[i]->dispatch_offset;
+         extension_offset = entry[i]->dispatch_offset;
 
-	 /* The offset may be ~0 if the function name was added by
-	  * glXGetProcAddress but never filled in by the driver.
-	  */
+         /* The offset may be ~0 if the function name was added by
+          * glXGetProcAddress but never filled in by the driver.
+          */
 
-	 if (extension_offset == ~0) {
-	    continue;
-	 }
+         if (extension_offset == ~0) {
+            continue;
+         }
 
-	 if (strcmp(real_sig, entry[i]->parameter_signature) != 0) {
-	    return -1;
-	 }
+         if (strcmp(real_sig, entry[i]->parameter_signature) != 0) {
+            return -1;
+         }
 
-	 if ( (offset != ~0) && (extension_offset != offset) ) {
-	    return -1;
-	 }
+         if ((offset != ~0) && (extension_offset != offset)) {
+            return -1;
+         }
 
-	 offset = extension_offset;
+         offset = extension_offset;
       }
    }
 
@@ -456,28 +453,27 @@ _glapi_add_dispatch( const char * const * function_names,
     * no dispatch offset).
     */
 
-   for ( i = 0 ; function_names[i] != NULL ; i++ ) {
+   for (i = 0; function_names[i] != NULL; i++) {
       if (is_static[i]) {
-	 continue;
+         continue;
       }
 
       /* generate entrypoints for new function names */
       if (entry[i] == NULL) {
-	 entry[i] = add_function_name( function_names[i] );
-	 if (entry[i] == NULL) {
-	    /* FIXME: Possible memory leak here. */
-	    return -1;
-	 }
+         entry[i] = add_function_name(function_names[i]);
+         if (entry[i] == NULL) {
+            /* FIXME: Possible memory leak here. */
+            return -1;
+         }
       }
 
       if (entry[i]->dispatch_offset == ~0) {
-	 set_entry_info( entry[i], real_sig, offset );
+         set_entry_info(entry[i], real_sig, offset);
       }
    }
 
    return offset;
 }
-
 
 /**
  * Return offset of entrypoint for named function within dispatch table.
