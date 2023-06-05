@@ -521,14 +521,14 @@ static VkResult pvr_pds_vertex_attrib_programs_create_and_upload(
       if (special_vars_layout->vertex_id_offset !=
           PVR_VERTEX_SPECIAL_VAR_UNUSED) {
          /* Gets filled by the HW and copied into the appropriate reg. */
-         input.flags = PVR_PDS_VERTEX_FLAGS_VERTEX_ID_REQUIRED;
+         input.flags |= PVR_PDS_VERTEX_FLAGS_VERTEX_ID_REQUIRED;
          input.vertex_id_register = special_vars_layout->vertex_id_offset;
       }
 
       if (special_vars_layout->instance_id_offset !=
           PVR_VERTEX_SPECIAL_VAR_UNUSED) {
          /* Gets filled by the HW and copied into the appropriate reg. */
-         input.flags = PVR_PDS_VERTEX_FLAGS_INSTANCE_ID_REQUIRED;
+         input.flags |= PVR_PDS_VERTEX_FLAGS_INSTANCE_ID_REQUIRED;
          input.instance_id_register = special_vars_layout->instance_id_offset;
       }
    }
