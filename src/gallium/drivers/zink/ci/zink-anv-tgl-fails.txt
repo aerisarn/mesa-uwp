@@ -706,3 +706,4 @@ KHR-GL46.polygon_offset_clamp.PolygonOffsetClampZeroInfinity,Fail
 # since Debian 12 (bookworm) uprev
 spec@arb_viewport_array@display-list,Fail
 glx@glx-multi-window-single-context,Fail
+spec@arb_timer_query@timestamp-get,Fail
