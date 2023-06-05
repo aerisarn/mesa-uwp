@@ -154,7 +154,6 @@ zink-tu-a618-traces-performance:
   variables:
     PIGLIT_PROFILES: all
     PIGLIT_PLATFORM: gbm
-    RADV_PERFTEST: gpl
     HWCI_TEST_SCRIPT: ./install/valve/gl_combined_testing.sh
     B2C_JOB_SUCCESS_REGEX: 'Execution is over, pipeline status: 0'
 
