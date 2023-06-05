@@ -52,43 +52,6 @@
 int driDispatchRemapTable[driDispatchRemapTable_size];
 
 
-/**
- * Map a function by its spec.  The function will be added to glapi,
- * and the dispatch offset will be returned.
- *
- * \param spec a '\0'-separated string array specifying a function.
- *        It consists of a list of gl* names followed by \0.  An empty name
- *        point name terminates the array.
- *
- * \return the offset of the (re-)mapped function in the dispatch
- *         table, or -1.
- */
-static int
-map_function_spec(const char *spec)
-{
-   const char *names[MAX_ENTRY_POINTS + 1];
-   int num_names = 0;
-
-   if (!spec)
-      return -1;
-
-   /* spec is terminated by an empty string */
-   while (*spec) {
-      names[num_names] = spec;
-      num_names++;
-      if (num_names >= MAX_ENTRY_POINTS)
-         break;
-      spec += strlen(spec) + 1;
-   }
-   if (!num_names)
-      return -1;
-
-   names[num_names] = NULL;
-
-   /* add the entry points to the dispatch table */
-   return _glapi_add_dispatch(names);
-}
-
 
 /**
  * Initialize the remap table.  This is called in one_time_init().
@@ -105,19 +68,17 @@ _mesa_init_remap_table(void)
       return;
    initialized = true;
 
-   /* initialize the MESA_remap_table_functions table */
    for (i = 0; i < driDispatchRemapTable_size; i++) {
-      int offset;
-
       /* sanity check */
       assert(i == MESA_remap_table_functions[i].remap_index);
-      const char *spec = _mesa_function_pool + MESA_remap_table_functions[i].pool_index;
+      const char *name = _mesa_function_pool + MESA_remap_table_functions[i].pool_index;
 
-      offset = map_function_spec(spec);
-      /* store the dispatch offset in the MESA_remap_table_functions table */
-      driDispatchRemapTable[i] = offset;
-      if (offset < 0) {
-         _mesa_warning(NULL, "failed to remap %s", spec);
+      /* store the dispatch offset in driDispatchRemapTable, for use by
+       * _gloffset_* macros.
+       */
+      driDispatchRemapTable[i] = _glapi_add_dispatch(name);
+      if (driDispatchRemapTable[i] < 0) {
+         _mesa_warning(NULL, "failed to remap %s", name);
       }
    }
 }

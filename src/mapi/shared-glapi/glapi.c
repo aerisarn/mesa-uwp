@@ -53,59 +53,19 @@ _glapi_get_dispatch_table_size(void)
 }
 
 /**
- * Fill-in the dispatch stub for the named function.
- *
- * This function is intended to be called by Mesa core, returning the dispatch
- * table offset for the passed set of aliased gl* functions.
- *
- * \param function_names       Array of pointers to function names that should
- *                             share a common dispatch offset.
- *
- * \returns
- * The offset in the dispatch table of the named function.  A pointer to the
- * driver's implementation of the named function should be stored at
- * \c dispatch_table[\c offset].  Return -1 if error/problem.
- *
- * \sa glXGetProcAddress
- *
- * \warning
- * This function can only handle up to 8 names at a time.  As far as I know,
- * the maximum number of names ever associated with an existing GL function is
- * 4 (\c glPointParameterfSGIS, \c glPointParameterfEXT,
- * \c glPointParameterfARB, and \c glPointParameterf), so this should not be
- * too painful of a limitation.
+ * Initializes the glapi relocs table (no-op for shared-glapi), and returns the
+ * offset of the given function in the dispatch table.
  */
 int
-_glapi_add_dispatch( const char * const * function_names )
+_glapi_add_dispatch( const char * function_name )
 {
-   const struct mapi_stub *alias = NULL;
-   unsigned i;
+   assert(function_name[0] == 'g' && function_name[1] == 'l');
 
-   /* find the missing stubs, and decide the alias */
-   for (i = 0; function_names[i] != NULL && i < 8; i++) {
-      const char * funcName = function_names[i];
-      const struct mapi_stub *stub;
-      int slot;
+   const struct mapi_stub *stub = stub_find_public(function_name + 2);
+   if (!stub)
+      return -1;
 
-      if (!funcName || funcName[0] != 'g' || funcName[1] != 'l')
-         return -1;
-      funcName += 2;
-
-      stub = stub_find_public(funcName);
-      if (!stub)
-         return -1;
-
-      slot = (stub) ? stub_get_slot(stub) : -1;
-      if (slot >= 0) {
-         if (alias && stub_get_slot(alias) != slot)
-            return -1;
-         /* use the first existing stub as the alias */
-         if (!alias)
-            alias = stub;
-      }
-   }
-
-   return (alias) ? stub_get_slot(alias) : -1;
+   return stub_get_slot(stub);
 }
 
 static const struct mapi_stub *

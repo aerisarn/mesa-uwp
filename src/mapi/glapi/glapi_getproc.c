@@ -144,70 +144,15 @@ struct _glapi_function {
 
 
 /**
- * This function is intended to be called by Mesa core, returning the dispatch
- * table offset for the passed set of aliased gl* functions.
- *
- * \param function_names       Array of pointers to function names that should
- *                             share a common dispatch offset.
- *
- * \returns
- * The offset in the dispatch table of the named function.  A pointer to the
- * driver's implementation of the named function should be stored at
- * \c dispatch_table[\c offset].  Return -1 if error/problem.
- *
- * \sa glXGetProcAddress
- *
- * \warning
- * This function can only handle up to 8 names at a time.  As far as I know,
- * the maximum number of names ever associated with an existing GL function is
- * 4 (\c glPointParameterfSGIS, \c glPointParameterfEXT,
- * \c glPointParameterfARB, and \c glPointParameterf), so this should not be
- * too painful of a limitation.
- *
- * \todo
- * Determine if code should be added to reject function names that start with
- * 'glX'.
+ * Initializes the glapi relocs table, and returns the offset of the given
+ * function in the dispatch table.
  */
-
 int
-_glapi_add_dispatch(const char *const *function_names)
+_glapi_add_dispatch(const char function_name)
 {
-   unsigned i;
-   int offset = ~0;
-
    init_glapi_relocs_once();
 
-   /* Find the _single_ dispatch offset for all function names that already
-    * exist (and have a dispatch offset).
-    */
-
-   for (i = 0; function_names[i] != NULL; i++) {
-      const char *funcName = function_names[i];
-      int static_offset;
-      int extension_offset;
-
-      if (funcName[0] != 'g' || funcName[1] != 'l')
-         return -1;
-
-      /* search built-in functions */
-      static_offset = get_static_proc_offset(funcName);
-
-      if (static_offset >= 0) {
-         /* FIXME: Make sure the parameter signatures match!  How do we get
-          * FIXME: the parameter signature for static functions?
-          */
-
-         if ((offset != ~0) && (static_offset != offset)) {
-            return -1;
-         }
-
-         offset = static_offset;
-      } else {
-         return -1;
-      }
-   }
-
-   return offset;
+   return get_static_proc_offset(funcName);
 }
 
 /**
