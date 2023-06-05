@@ -1989,7 +1989,6 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
             marketing_name ? marketing_name : "AMD Unknown", device->rad_info.name,
             radv_get_compiler_string(device));
 
-#ifdef ENABLE_SHADER_CACHE
    if (radv_device_get_cache_uuid(device, device->cache_uuid)) {
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED, "cannot generate UUID");
       goto fail_wsi;
@@ -2001,7 +2000,6 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    char buf[VK_UUID_SIZE * 2 + 1];
    mesa_bytes_to_hex(buf, device->cache_uuid, VK_UUID_SIZE);
    device->vk.disk_cache = disk_cache_create(device->name, buf, 0);
-#endif
 
    if (!radv_is_conformant(device))
       vk_warn_non_conformant_implementation("radv");
@@ -2129,9 +2127,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 fail_perfcounters:
    ac_destroy_perfcounters(&device->ac_perfcounters);
    disk_cache_destroy(device->vk.disk_cache);
-#ifdef ENABLE_SHADER_CACHE
 fail_wsi:
-#endif
    device->ws->destroy(device->ws);
 fail_base:
    vk_physical_device_finish(&device->vk);
