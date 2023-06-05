@@ -113,9 +113,9 @@ float_to_half_impl(nir_builder *b, nir_ssa_def *src, nir_rounding_mode mode)
    /* FP16 will be normal */
    nir_ssa_def *value = nir_ior(b,
                                 nir_ishl_imm(b,
-                                             nir_isub(b,
-                                                      nir_ushr_imm(b, abs, 23),
-                                                      nir_imm_int(b, 112)),
+                                             nir_iadd_imm(b,
+                                                          nir_ushr_imm(b, abs, 23),
+                                                          -112),
                                              10),
                                 nir_iand_imm(b, nir_ushr_imm(b, abs, 13), 0x3FFF));
    nir_ssa_def *guard = nir_iand(b, nir_ushr_imm(b, abs, 12), one);

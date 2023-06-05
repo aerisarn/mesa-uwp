@@ -2910,9 +2910,9 @@ ngg_gs_export_primitives(nir_builder *b, nir_ssa_def *max_num_out_prims, nir_ssa
    nir_ssa_def *vtx_indices[3] = {0};
    vtx_indices[s->num_vertices_per_primitive - 1] = exporter_tid_in_tg;
    if (s->num_vertices_per_primitive >= 2)
-      vtx_indices[s->num_vertices_per_primitive - 2] = nir_isub(b, exporter_tid_in_tg, nir_imm_int(b, 1));
+      vtx_indices[s->num_vertices_per_primitive - 2] = nir_iadd_imm(b, exporter_tid_in_tg, -1);
    if (s->num_vertices_per_primitive == 3)
-      vtx_indices[s->num_vertices_per_primitive - 3] = nir_isub(b, exporter_tid_in_tg, nir_imm_int(b, 2));
+      vtx_indices[s->num_vertices_per_primitive - 3] = nir_iadd_imm(b, exporter_tid_in_tg, -2);
 
    if (s->num_vertices_per_primitive == 3) {
       /* API GS outputs triangle strips, but NGG HW understands triangles.
