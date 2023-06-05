@@ -152,9 +152,6 @@ static void si_launch_grid_internal(struct si_context *sctx, const struct pipe_g
    if (flags & SI_OP_SYNC_CS_BEFORE)
       sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
 
-   if (!(flags & SI_OP_CS_IMAGE))
-      sctx->flags |= SI_CONTEXT_PFP_SYNC_ME;
-
    /* Invalidate L0-L1 caches. */
    /* sL0 is never invalidated, because src resources don't use it. */
    if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
