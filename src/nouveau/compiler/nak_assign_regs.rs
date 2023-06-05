@@ -689,64 +689,22 @@ fn instr_assign_regs_file(
     ra.end_alloc();
 }
 
-#[derive(Clone)]
-struct RegAllocation {
-    files: [RegFileAllocation; 4],
-}
-
-impl RegAllocation {
-    pub fn new(sm: u8) -> Self {
-        Self {
-            files: [
-                RegFileAllocation::new(RegFile::GPR, sm),
-                RegFileAllocation::new(RegFile::UGPR, sm),
-                RegFileAllocation::new(RegFile::Pred, sm),
-                RegFileAllocation::new(RegFile::UPred, sm),
-            ],
-        }
-    }
-
-    pub fn file(&self, file: RegFile) -> &RegFileAllocation {
-        for f in &self.files {
-            if f.file() == file {
-                return f;
-            }
-        }
-        panic!("Unknown register file");
-    }
-
-    pub fn file_mut(&mut self, file: RegFile) -> &mut RegFileAllocation {
-        for f in &mut self.files {
-            if f.file() == file {
-                return f;
-            }
-        }
-        panic!("Unknown register file");
-    }
-
-    pub fn free_ssa(&mut self, ssa: SSAValue) {
-        self.file_mut(ssa.file()).free_ssa(ssa);
-    }
-
+impl PerRegFile<RegFileAllocation> {
     pub fn free_killed(&mut self, killed: &KillSet) {
         for ssa in killed.iter() {
-            self.free_ssa(*ssa);
+            self[ssa.file()].free_ssa(*ssa);
         }
-    }
-
-    pub fn get_scalar(&mut self, ssa: SSAValue) -> RegRef {
-        self.file_mut(ssa.file()).get_scalar(ssa)
     }
 }
 
 struct AssignRegsBlock {
-    ra: RegAllocation,
+    ra: PerRegFile<RegFileAllocation>,
     live_in: Vec<LiveValue>,
     phi_out: HashMap<u32, SrcRef>,
 }
 
 impl AssignRegsBlock {
-    fn new(ra: RegAllocation) -> AssignRegsBlock {
+    fn new(ra: PerRegFile<RegFileAllocation>) -> AssignRegsBlock {
         AssignRegsBlock {
             ra: ra,
             live_in: Vec::new(),
@@ -766,7 +724,7 @@ impl AssignRegsBlock {
             Op::Undef(undef) => {
                 if let Dst::SSA(ssa) = undef.dst {
                     assert!(ssa.comps() == 1);
-                    let ra = self.ra.file_mut(ssa.file());
+                    let ra = &mut self.ra[ssa.file()];
                     ra.alloc_scalar(ip, sum, ssa[0]);
                 }
                 None
@@ -776,8 +734,8 @@ impl AssignRegsBlock {
                     assert!(src.src_mod.is_none());
                     if let SrcRef::SSA(ssa) = src.src_ref {
                         assert!(ssa.comps() == 1);
-                        let src = self.ra.get_scalar(ssa[0]).into();
-                        self.phi_out.insert(*id, src);
+                        let reg = self.ra[ssa.file()].get_scalar(ssa[0]);
+                        self.phi_out.insert(*id, reg.into());
                     } else {
                         self.phi_out.insert(*id, src.src_ref);
                     }
@@ -791,7 +749,7 @@ impl AssignRegsBlock {
                 for (id, dst) in phi.iter() {
                     if let Dst::SSA(ssa) = dst {
                         assert!(ssa.comps() == 1);
-                        let ra = self.ra.file_mut(ssa.file());
+                        let ra = &mut self.ra[ssa.file()];
                         self.live_in.push(LiveValue {
                             live_ref: LiveRef::Phi(*id),
                             reg_ref: ra.alloc_scalar(ip, sum, ssa[0]),
@@ -802,7 +760,7 @@ impl AssignRegsBlock {
                 None
             }
             _ => {
-                for file in &mut self.ra.files {
+                for file in self.ra.values_mut() {
                     instr_assign_regs_file(
                         &mut instr, ip, sum, killed, pcopy, file,
                     );
@@ -816,7 +774,7 @@ impl AssignRegsBlock {
         /* Populate live in from the register file we're handed.  We'll add more
          * live in when we process the OpPhiDst, if any.
          */
-        for raf in &self.ra.files {
+        for raf in self.ra.values_mut() {
             for (ssa, reg) in &raf.ssa_reg {
                 if bl.is_live_in(ssa) {
                     self.live_in.push(LiveValue {
@@ -874,7 +832,7 @@ impl AssignRegsBlock {
         for lv in &target.live_in {
             let src = match lv.live_ref {
                 LiveRef::SSA(ssa) => {
-                    let reg = self.ra.file(ssa.file()).get_reg(ssa);
+                    let reg = self.ra[ssa.file()].get_reg(ssa);
                     SrcRef::from(RegRef::new(ssa.file(), reg, 1))
                 }
                 LiveRef::Phi(phi) => *self.phi_out.get(&phi).unwrap(),
@@ -916,7 +874,9 @@ impl AssignRegs {
             let bl = live.block(&b);
 
             let ra = if bl.predecessors.is_empty() {
-                RegAllocation::new(self.sm)
+                PerRegFile::new_with(&|file| {
+                    RegFileAllocation::new(file, self.sm)
+                })
             } else {
                 /* Start with the previous block's. */
                 self.blocks.get(&bl.predecessors[0]).unwrap().ra.clone()

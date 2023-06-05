@@ -11,7 +11,7 @@ pub use crate::nak_builder::{
 use nak_ir_proc::*;
 use std::fmt;
 use std::iter::Zip;
-use std::ops::{BitAnd, BitOr, Deref, DerefMut, Index, Not, Range};
+use std::ops::{BitAnd, BitOr, Deref, DerefMut, Index, IndexMut, Not, Range};
 use std::slice;
 
 #[repr(u8)]
@@ -22,6 +22,8 @@ pub enum RegFile {
     Pred = 2,
     UPred = 3,
 }
+
+const NUM_REG_FILES: usize = 4;
 
 impl RegFile {
     pub fn is_uniform(&self) -> bool {
@@ -116,6 +118,56 @@ pub trait HasRegFile {
 
     fn is_predicate(&self) -> bool {
         self.file().is_predicate()
+    }
+}
+
+#[derive(Clone)]
+pub struct PerRegFile<T> {
+    per_file: [T; NUM_REG_FILES],
+}
+
+impl<T> PerRegFile<T> {
+    pub fn new_with<F: Fn(RegFile) -> T>(f: F) -> Self {
+        PerRegFile {
+            per_file: [
+                f(RegFile::GPR),
+                f(RegFile::UGPR),
+                f(RegFile::Pred),
+                f(RegFile::UPred),
+            ],
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn values(&self) -> slice::Iter<T> {
+        self.per_file.iter()
+    }
+
+    #[allow(dead_code)]
+    pub fn values_mut(&mut self) -> slice::IterMut<T> {
+        self.per_file.iter_mut()
+    }
+}
+
+impl<T: Default> Default for PerRegFile<T> {
+    fn default() -> Self {
+        PerRegFile {
+            per_file: Default::default(),
+        }
+    }
+}
+
+impl<T> Index<RegFile> for PerRegFile<T> {
+    type Output = T;
+
+    fn index(&self, idx: RegFile) -> &T {
+        &self.per_file[idx as u8 as usize]
+    }
+}
+
+impl<T> IndexMut<RegFile> for PerRegFile<T> {
+    fn index_mut(&mut self, idx: RegFile) -> &mut T {
+        &mut self.per_file[idx as u8 as usize]
     }
 }
 
