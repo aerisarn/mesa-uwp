@@ -47,7 +47,7 @@ traces:
         This trace is flaky on freedreno too.
   SirYouAreBeingHunted/sir-f750-v2.trace:
     gl-zink-anv-tgl:
-      checksum: c40a5858c5d598b0845e64dd13862cd7
+      checksum: 682cd837d4884dfb4ed484f6181d801b
   SpecOps/specops-s0-1088-f1300-v2.trace:
     gl-zink-anv-tgl:
       label: [skip, broken, flakes]
