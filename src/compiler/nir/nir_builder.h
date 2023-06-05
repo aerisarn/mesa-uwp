@@ -750,6 +750,18 @@ nir_iadd_nuw(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
    return d;
 }
 
+static inline nir_ssa_def *
+nir_fgt_imm(nir_builder *build, nir_ssa_def *src1, double src2)
+{
+   return nir_flt(build, nir_imm_floatN_t(build, src2, src1->bit_size), src1);
+}
+
+static inline nir_ssa_def *
+nir_fle_imm(nir_builder *build, nir_ssa_def *src1, double src2)
+{
+   return nir_fge(build, nir_imm_floatN_t(build, src2, src1->bit_size), src1);
+}
+
 /* Use nir_iadd(x, -y) for reversing parameter ordering */
 static inline nir_ssa_def *
 nir_isub_imm(nir_builder *build, uint64_t y, nir_ssa_def *x)
