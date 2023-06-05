@@ -267,6 +267,43 @@
    } \
 } while (0)
 
+/**
+ * Set 2 consecutive registers if any register value is different.
+ */
+#define radeon_opt_set_sh_reg2(sctx, offset, reg, val1, val2) do { \
+   unsigned __value1 = (val1), __value2 = (val2); \
+   if (((sctx->tracked_regs.other_reg_saved_mask >> (reg)) & 0x3) != 0x3 || \
+       sctx->tracked_regs.other_reg_value[reg] != __value1 || \
+       sctx->tracked_regs.other_reg_value[(reg) + 1] != __value2) { \
+      radeon_set_sh_reg_seq(offset, 2); \
+      radeon_emit(__value1); \
+      radeon_emit(__value2); \
+      sctx->tracked_regs.other_reg_value[reg] = __value1; \
+      sctx->tracked_regs.other_reg_value[(reg) + 1] = __value2; \
+      sctx->tracked_regs.other_reg_saved_mask |= 0x3ull << (reg); \
+   } \
+} while (0)
+
+/**
+ * Set 3 consecutive registers if any register value is different.
+ */
+#define radeon_opt_set_sh_reg3(sctx, offset, reg, val1, val2, val3) do { \
+   unsigned __value1 = (val1), __value2 = (val2), __value3 = (val3); \
+   if (((sctx->tracked_regs.other_reg_saved_mask >> (reg)) & 0x7) != 0x7 || \
+       sctx->tracked_regs.other_reg_value[reg] != __value1 || \
+       sctx->tracked_regs.other_reg_value[(reg) + 1] != __value2 || \
+       sctx->tracked_regs.other_reg_value[(reg) + 2] != __value3) { \
+      radeon_set_sh_reg_seq(offset, 3); \
+      radeon_emit(__value1); \
+      radeon_emit(__value2); \
+      radeon_emit(__value3); \
+      sctx->tracked_regs.other_reg_value[reg] = __value1; \
+      sctx->tracked_regs.other_reg_value[(reg) + 1] = __value2; \
+      sctx->tracked_regs.other_reg_value[(reg) + 2] = __value3; \
+      sctx->tracked_regs.other_reg_saved_mask |= 0x7ull << (reg); \
+   } \
+} while (0)
+
 #define radeon_opt_set_sh_reg_idx3(sctx, offset, reg, val) do { \
    unsigned __value = val; \
    if (((sctx->tracked_regs.other_reg_saved_mask >> (reg)) & 0x1) != 0x1 || \
