@@ -427,7 +427,6 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
    /* We don't use miptails yet.  The PRM recommends that you set "Mip Tail
     * Start LOD" to 15 to prevent the hardware from trying to use them.
     */
-   s.TiledResourceMode = NONE;
    s.MipTailStartLOD = 15;
 #endif
 
