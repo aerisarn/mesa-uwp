@@ -53,10 +53,6 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info, const struct radv
    ASSIGN_FIELD(vs.tcs_in_out_eq);
    ASSIGN_FIELD(vs.tcs_temp_only_input_mask);
    ASSIGN_FIELD(vs.has_prolog);
-   ASSIGN_FIELD_CP(gs.output_usage_mask);
-   ASSIGN_FIELD_CP(gs.num_stream_output_components);
-   ASSIGN_FIELD_CP(gs.output_streams);
-   ASSIGN_FIELD(gs.vertices_out);
    ASSIGN_FIELD(tcs.num_lds_blocks);
    ASSIGN_FIELD(tes.as_es);
    ASSIGN_FIELD(ps.has_epilog);

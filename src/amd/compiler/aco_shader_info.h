@@ -91,12 +91,6 @@ struct aco_shader_info {
       bool has_prolog;
    } vs;
    struct {
-      uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
-      uint8_t num_stream_output_components[4];
-      uint8_t output_streams[VARYING_SLOT_VAR31 + 1];
-      unsigned vertices_out;
-   } gs;
-   struct {
       uint32_t num_lds_blocks;
       unsigned tess_input_vertices;
    } tcs;
