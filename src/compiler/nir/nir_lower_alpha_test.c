@@ -55,7 +55,7 @@ nir_lower_alpha_test(nir_shader *shader, enum compare_func func,
 
                switch (intr->intrinsic) {
                case nir_intrinsic_store_deref:
-                  out = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+                  out = nir_intrinsic_get_var(intr, 0);
                   break;
                case nir_intrinsic_store_output:
                   /* already had i/o lowered.. lookup the matching output var: */

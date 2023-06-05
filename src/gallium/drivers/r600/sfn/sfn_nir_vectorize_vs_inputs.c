@@ -101,8 +101,8 @@ r600_io_access_same_var(const nir_instr *instr1, const nir_instr *instr2)
    nir_intrinsic_instr *intr1 = nir_instr_as_intrinsic(instr1);
    nir_intrinsic_instr *intr2 = nir_instr_as_intrinsic(instr2);
 
-   nir_variable *var1 = nir_deref_instr_get_variable(nir_src_as_deref(intr1->src[0]));
-   nir_variable *var2 = nir_deref_instr_get_variable(nir_src_as_deref(intr2->src[0]));
+   nir_variable *var1 = nir_intrinsic_get_var(intr1, 0);
+   nir_variable *var2 = nir_intrinsic_get_var(intr2, 0);
 
    /* We don't handle combining vars of different base types, so skip those */
    if (glsl_get_base_type(var1->type) != glsl_get_base_type(var2->type))
@@ -185,7 +185,7 @@ r600_vec_instr_stack_pop(nir_builder *b,
    assert(last->type == nir_instr_type_intrinsic);
 
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(last);
-   nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
    unsigned loc = r600_correct_location(var);
 
    nir_variable *new_var;
@@ -229,7 +229,7 @@ r600_hash_instr(const nir_instr *instr)
    assert(instr->type == nir_instr_type_intrinsic);
 
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
 
    uint32_t hash = 0;
 

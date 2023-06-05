@@ -2599,7 +2599,7 @@ guess_image_format_for_var(nir_shader *s, nir_variable *var)
             case nir_intrinsic_image_deref_store:
             case nir_intrinsic_image_deref_atomic:
             case nir_intrinsic_image_deref_atomic_swap:
-               if (nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0])) != var)
+               if (nir_intrinsic_get_var(intr, 0) != var)
                   continue;
                break;
             case nir_intrinsic_image_load:

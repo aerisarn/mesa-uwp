@@ -49,12 +49,6 @@ static nir_variable* tex_get_texture_var(const nir_tex_instr *instr)
    return NULL;
 }
 
-static nir_variable* intrinsic_get_var(const nir_intrinsic_instr *instr)
-{
-   return nir_deref_instr_get_variable(nir_src_as_deref(instr->src[0]));
-}
-
-
 static void gather_usage_helper(const nir_deref_instr **deref_ptr,
                                 unsigned location,
                                 uint8_t mask,
@@ -311,7 +305,7 @@ static void scan_instruction(const struct nir_shader *nir,
          info->writes_memory = true;
          break;
       case nir_intrinsic_load_deref: {
-         const nir_variable *var = intrinsic_get_var(intr);
+         const nir_variable *var = nir_intrinsic_get_var(intr, 0);
          const nir_variable_mode mode = var->data.mode;
          nir_deref_instr *const deref = nir_src_as_deref(intr->src[0]);
          enum glsl_base_type base_type =
@@ -356,7 +350,7 @@ static void scan_instruction(const struct nir_shader *nir,
       case nir_intrinsic_interp_deref_at_centroid:
       case nir_intrinsic_interp_deref_at_sample:
       case nir_intrinsic_interp_deref_at_offset: {
-         enum glsl_interp_mode interp = intrinsic_get_var(intr)->data.interpolation;
+         enum glsl_interp_mode interp = nir_intrinsic_get_var(intr, 0)->data.interpolation;
          switch (interp) {
          case INTERP_MODE_SMOOTH:
          case INTERP_MODE_NONE:

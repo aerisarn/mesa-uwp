@@ -1048,8 +1048,7 @@ replace_varying_input_by_constant_load(nir_shader *shader,
 
    nir_builder b = nir_builder_create(impl);
 
-   nir_variable *out_var =
-      nir_deref_instr_get_variable(nir_src_as_deref(store_intr->src[0]));
+   nir_variable *out_var = nir_intrinsic_get_var(store_intr, 0);
 
    bool progress = false;
    nir_foreach_block(block, impl) {
@@ -1099,8 +1098,7 @@ replace_duplicate_input(nir_shader *shader, nir_variable *input_var,
 
    nir_builder b = nir_builder_create(impl);
 
-   nir_variable *dup_out_var =
-      nir_deref_instr_get_variable(nir_src_as_deref(dup_store_intr->src[0]));
+   nir_variable *dup_out_var = nir_intrinsic_get_var(dup_store_intr, 0);
 
    bool progress = false;
    nir_foreach_block(block, impl) {
@@ -1234,8 +1232,7 @@ replace_varying_input_by_uniform_load(nir_shader *shader,
 
    nir_builder b = nir_builder_create(impl);
 
-   nir_variable *out_var =
-      nir_deref_instr_get_variable(nir_src_as_deref(store_intr->src[0]));
+   nir_variable *out_var = nir_intrinsic_get_var(store_intr, 0);
 
    nir_intrinsic_instr *load = nir_instr_as_intrinsic(scalar->def->parent_instr);
    nir_deref_instr *deref = nir_src_as_deref(load->src[0]);

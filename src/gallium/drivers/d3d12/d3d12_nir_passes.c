@@ -792,7 +792,7 @@ is_multisampling_instr(const nir_instr *instr, const void *_data)
       nir_io_semantics semantics = nir_intrinsic_io_semantics(intr);
       return semantics.location == FRAG_RESULT_SAMPLE_MASK;
    } else if (intr->intrinsic == nir_intrinsic_store_deref) {
-      nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+      nir_variable *var = nir_intrinsic_get_var(intr, 0);
       return var->data.location == FRAG_RESULT_SAMPLE_MASK;
    } else if (intr->intrinsic == nir_intrinsic_load_sample_id ||
               intr->intrinsic == nir_intrinsic_load_sample_mask_in)

@@ -200,7 +200,7 @@ lower_image_cast_instr(nir_builder *b, nir_instr *instr, void *_data)
       return false;
 
    const struct d3d12_image_format_conversion_info_arr* info = _data;
-   nir_variable *image = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+   nir_variable *image = nir_intrinsic_get_var(intr, 0);
    assert(image);
 
    if (image->data.driver_location >= info->n_images)

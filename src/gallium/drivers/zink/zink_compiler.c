@@ -1651,7 +1651,7 @@ lower_fbfetch_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_deref)
       return false;
-   nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
    if (!var->data.fb_fetch_output)
       return false;
    b->cursor = nir_after_instr(instr);
@@ -4327,8 +4327,7 @@ scan_nir(struct zink_screen *screen, nir_shader *shader, struct zink_shader *zs)
                 intr->intrinsic == nir_intrinsic_image_deref_format ||
                 intr->intrinsic == nir_intrinsic_image_deref_order) {
 
-                nir_variable *var =
-                   nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+                nir_variable *var = nir_intrinsic_get_var(intr, 0);
 
                 /* Structs have been lowered already, so get_aoa_size is sufficient. */
                 const unsigned size =

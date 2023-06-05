@@ -2842,8 +2842,7 @@ nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin, nir_ssa_def *src,
       unreachable("Unhanded image intrinsic");
    }
 
-   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-   nir_variable *var = nir_deref_instr_get_variable(deref);
+   nir_variable *var = nir_intrinsic_get_var(intrin, 0);
 
    /* Only update the format if the intrinsic doesn't have one set */
    if (nir_intrinsic_format(intrin) == PIPE_FORMAT_NONE)

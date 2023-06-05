@@ -2729,7 +2729,7 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    const struct glsl_type *gtype = nir_src_as_deref(intr->src[0])->type;
    SpvId type = get_glsl_type(ctx, gtype);
-   nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
    unsigned wrmask = nir_intrinsic_write_mask(intr);
    if (!glsl_type_is_scalar(gtype) &&
        wrmask != BITFIELD_MASK(glsl_type_is_array(gtype) ? glsl_get_aoa_size(gtype) : glsl_get_vector_elements(gtype))) {
