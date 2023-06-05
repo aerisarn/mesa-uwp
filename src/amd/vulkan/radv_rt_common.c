@@ -402,8 +402,8 @@ hit_is_opaque(nir_builder *b, nir_ssa_def *sbt_offset_and_flags,
    nir_ssa_def *opaque =
       nir_uge_imm(b, nir_ior(b, geometry_id_and_flags, sbt_offset_and_flags),
                   RADV_INSTANCE_FORCE_OPAQUE | RADV_INSTANCE_NO_FORCE_NOT_OPAQUE);
-   opaque = nir_bcsel(b, ray_flags->force_opaque, nir_imm_bool(b, true), opaque);
-   opaque = nir_bcsel(b, ray_flags->force_not_opaque, nir_imm_bool(b, false), opaque);
+   opaque = nir_bcsel(b, ray_flags->force_opaque, nir_imm_true(b), opaque);
+   opaque = nir_bcsel(b, ray_flags->force_not_opaque, nir_imm_false(b), opaque);
    return opaque;
 }
 
@@ -555,7 +555,7 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
          nir_push_if(b, nir_ilt_imm(b, nir_load_deref(b, args->vars.stack),
                                     args->stack_base + args->stack_stride));
          {
-            nir_store_var(b, incomplete, nir_imm_bool(b, false), 0x1);
+            nir_store_var(b, incomplete, nir_imm_false(b), 0x1);
             nir_jump(b, nir_jump_break);
          }
          nir_pop_if(b, NULL);
@@ -592,7 +592,7 @@ radv_build_ray_traversal(struct radv_device *device, nir_builder *b,
             nir_ssa_def *parent = fetch_parent_node(b, bvh_addr, prev);
             nir_push_if(b, nir_ieq_imm(b, parent, RADV_BVH_INVALID_NODE));
             {
-               nir_store_var(b, incomplete, nir_imm_bool(b, false), 0x1);
+               nir_store_var(b, incomplete, nir_imm_false(b), 0x1);
                nir_jump(b, nir_jump_break);
             }
             nir_pop_if(b, NULL);

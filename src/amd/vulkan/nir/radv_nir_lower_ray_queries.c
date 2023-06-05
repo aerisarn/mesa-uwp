@@ -336,7 +336,7 @@ insert_terminate_on_first_hit(nir_builder *b, nir_ssa_def *index, struct ray_que
                                              SpvRayFlagsTerminateOnFirstHitKHRMask);
    nir_push_if(b, terminate_on_first_hit);
    {
-      rq_store_var(b, index, vars->incomplete, nir_imm_bool(b, false), 0x1);
+      rq_store_var(b, index, vars->incomplete, nir_imm_false(b), 0x1);
       if (break_on_terminate)
          nir_jump(b, nir_jump_break);
    }
@@ -672,7 +672,7 @@ static void
 lower_rq_terminate(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *instr,
                    struct ray_query_vars *vars)
 {
-   rq_store_var(b, index, vars->incomplete, nir_imm_bool(b, false), 0x1);
+   rq_store_var(b, index, vars->incomplete, nir_imm_false(b), 0x1);
 }
 
 bool

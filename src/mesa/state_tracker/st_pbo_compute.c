@@ -297,9 +297,9 @@ init_pbo_shader_data(nir_builder *b, struct pbo_shader_data *sd, unsigned coord_
                                                                            nir_ball(b, nir_ieq_imm(b, sd->bits, 8)),
                                                                            nir_ball(b, nir_ieq_imm(b, nir_channels(b, sd->bits, 7), 8))),
                                                                  nir_ball(b, nir_ieq_imm(b, nir_channels(b, sd->bits, 3), 8))),
-                                                       nir_imm_bool(b, 0)),
-                                             nir_imm_bool(b, 0))),
-                           nir_imm_bool(b, 0),
+                                                       nir_imm_false(b)),
+                                             nir_imm_false(b))),
+                           nir_imm_false(b),
                            sd->swap);
      */
 }
@@ -494,7 +494,7 @@ check_for_weird_packing(nir_builder *b, struct pbo_shader_data *sd, unsigned com
                     nir_ior(b,
                             nir_ine(b, c, sd->bits1),
                             nir_ine_imm(b, nir_imod(b, c, nir_imm_int(b, 8)), 0)),
-                    nir_imm_bool(b, 0));
+                    nir_imm_false(b));
 }
 
 /* convenience function for clamping signed integers */

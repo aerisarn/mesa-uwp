@@ -21,9 +21,9 @@ static void
 analyze_position_w(nir_builder *b, nir_ssa_def *pos[][4], unsigned num_vertices,
                    position_w_info *w_info)
 {
-   w_info->all_w_negative = nir_imm_bool(b, true);
-   w_info->w_reflection = nir_imm_bool(b, false);
-   w_info->any_w_negative = nir_imm_bool(b, false);
+   w_info->all_w_negative = nir_imm_true(b);
+   w_info->w_reflection = nir_imm_false(b);
+   w_info->any_w_negative = nir_imm_false(b);
 
    for (unsigned i = 0; i < num_vertices; ++i) {
       nir_ssa_def *neg_w = nir_flt_imm(b, pos[i][3], 0.0f);

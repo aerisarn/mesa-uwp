@@ -2196,7 +2196,7 @@ lower_subgroup_scan(nir_builder *b, nir_instr *instr, void *data)
    b->cursor = nir_before_instr(instr);
    nir_op op = nir_intrinsic_reduction_op(intr);
    nir_ssa_def *subgroup_id = nir_build_load_subgroup_invocation(b);
-   nir_ssa_def *active_threads = nir_build_ballot(b, 4, 32, nir_imm_bool(b, true));
+   nir_ssa_def *active_threads = nir_build_ballot(b, 4, 32, nir_imm_true(b));
    nir_ssa_def *base_value;
    uint32_t bit_size = intr->dest.ssa.bit_size;
    if (op == nir_op_iand || op == nir_op_umin)

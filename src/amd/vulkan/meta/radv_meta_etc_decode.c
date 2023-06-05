@@ -256,7 +256,7 @@ build_shader(struct radv_device *dev)
 
       nir_variable *etc1_compat =
          nir_variable_create(b.shader, nir_var_shader_temp, glsl_bool_type(), "etc1_compat");
-      nir_store_var(&b, etc1_compat, nir_imm_bool(&b, false), 0x1);
+      nir_store_var(&b, etc1_compat, nir_imm_false(&b), 0x1);
 
       nir_variable *alpha_result =
          nir_variable_create(b.shader, nir_var_shader_temp, glsl_float_type(), "alpha_result");
@@ -286,7 +286,7 @@ build_shader(struct radv_device *dev)
       nir_push_if(
          &b, nir_iand(&b, nir_inot(&b, alpha_bits_1), nir_inot(&b, nir_test_mask(&b, color_y, 2))));
       {
-         nir_store_var(&b, etc1_compat, nir_imm_bool(&b, true), 1);
+         nir_store_var(&b, etc1_compat, nir_imm_true(&b), 1);
          nir_ssa_def *tmp[3];
          for (unsigned i = 0; i < 3; ++i)
             tmp[i] = etc_extend(
@@ -407,11 +407,11 @@ build_shader(struct radv_device *dev)
                                        nir_channel(&b, pixel_coord, 1));
             rgb = nir_iadd(&b, rgb, nir_ishr_imm(&b, nir_iadd_imm(&b, nir_iadd(&b, dx, dy), 2), 2));
             nir_store_var(&b, rgb_result, rgb, 0x7);
-            nir_store_var(&b, punchthrough, nir_imm_bool(&b, false), 0x1);
+            nir_store_var(&b, punchthrough, nir_imm_false(&b), 0x1);
          }
          nir_push_else(&b, NULL);
          {
-            nir_store_var(&b, etc1_compat, nir_imm_bool(&b, true), 1);
+            nir_store_var(&b, etc1_compat, nir_imm_true(&b), 1);
             nir_ssa_def *subblock_b = nir_ine_imm(&b, subblock, 0);
             nir_ssa_def *tmp[] = {
                nir_bcsel(&b, subblock_b, r1, rb),

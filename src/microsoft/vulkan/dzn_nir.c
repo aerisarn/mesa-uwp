@@ -925,7 +925,7 @@ dzn_nir_polygon_point_mode_gs(const nir_shader *previous_shader, struct dzn_nir_
    nir_deref_instr *loop_index_deref = nir_build_deref_var(b, loop_index_var);
    nir_store_deref(b, loop_index_deref, nir_imm_int(b, 0), 1);
 
-   nir_ssa_def *cull_pass = nir_imm_bool(b, true);
+   nir_ssa_def *cull_pass = nir_imm_true(b);
    nir_ssa_def *front_facing;
    assert(info->cull_mode != VK_CULL_MODE_FRONT_AND_BACK);
    if (info->cull_mode == VK_CULL_MODE_FRONT_BIT) {

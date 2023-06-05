@@ -1520,7 +1520,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
                             .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
-      nir_store_var(b, s->gs_accepted_var, nir_imm_bool(b, false), 0x1u);
+      nir_store_var(b, s->gs_accepted_var, nir_imm_false(b), 0x1u);
       nir_store_var(b, s->prim_exp_arg_var, nir_imm_int(b, 1u << 31), 0x1u);
 
       /* GS invocations load the vertex data and perform the culling. */
@@ -1560,7 +1560,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
             /* primitive is culled if any plane's clipdist of all vertices are negative */
             accepted_by_clipdist = nir_ieq_imm(b, clipdist_neg_mask, 0);
          } else {
-            accepted_by_clipdist = nir_imm_bool(b, true);
+            accepted_by_clipdist = nir_imm_true(b);
          }
 
          /* See if the current primitive is accepted */
@@ -1573,7 +1573,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
                             .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
-      nir_store_var(b, s->es_accepted_var, nir_imm_bool(b, false), 0x1u);
+      nir_store_var(b, s->es_accepted_var, nir_imm_false(b), 0x1u);
 
       /* ES invocations load their accepted flag from LDS. */
       if_es_thread = nir_push_if(b, es_thread);
@@ -1849,7 +1849,7 @@ ngg_build_streamout_buffer_info(nir_builder *b,
       nir_ssa_def *emit_prim[4];
       memcpy(emit_prim, gen_prim, 4 * sizeof(nir_ssa_def *));
 
-      nir_ssa_def *any_overflow = nir_imm_bool(b, false);
+      nir_ssa_def *any_overflow = nir_imm_false(b);
       nir_ssa_def *overflow_amount[4] = {undef, undef, undef, undef};
 
       for (unsigned buffer = 0; buffer < 4; buffer++) {
@@ -3144,7 +3144,7 @@ ngg_gs_cull_primitive(nir_builder *b, nir_ssa_def *tid_in_tg, nir_ssa_def *max_v
       }
 
       /* TODO: support clipdist culling in GS */
-      nir_ssa_def *accepted_by_clipdist = nir_imm_bool(b, true);
+      nir_ssa_def *accepted_by_clipdist = nir_imm_true(b);
 
       nir_ssa_def *accepted = ac_nir_cull_primitive(
          b, accepted_by_clipdist, pos, s->num_vertices_per_primitive, NULL, NULL);

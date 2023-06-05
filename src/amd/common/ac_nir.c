@@ -777,7 +777,7 @@ ac_nir_gs_shader_query(nir_builder *b,
 
    nir_if *if_shader_query = nir_push_if(b, shader_query_enabled);
 
-   nir_ssa_def *active_threads_mask = nir_ballot(b, 1, wave_size, nir_imm_bool(b, true));
+   nir_ssa_def *active_threads_mask = nir_ballot(b, 1, wave_size, nir_imm_true(b));
    nir_ssa_def *num_active_threads = nir_bit_count(b, active_threads_mask);
 
    /* Calculate the "real" number of emitted primitives from the emitted GS vertices and primitives.

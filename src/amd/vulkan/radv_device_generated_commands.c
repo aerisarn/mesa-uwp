@@ -480,7 +480,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
                   nir_ssa_def *convert_cond =
                      nir_ine_imm(&b, nir_load_var(&b, num_records), 0);
                   if (dev->physical_device->rad_info.gfx_level == GFX9)
-                     convert_cond = nir_imm_bool(&b, false);
+                     convert_cond = nir_imm_false(&b);
                   else if (dev->physical_device->rad_info.gfx_level != GFX8)
                      convert_cond =
                         nir_iand(&b, convert_cond, nir_ieq_imm(&b, stride, 0));

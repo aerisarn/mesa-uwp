@@ -1309,7 +1309,7 @@ nir_lower_lod_zero_width(nir_builder *b, nir_tex_instr *tex)
 
    b->cursor = nir_after_instr(&tex->instr);
 
-   nir_ssa_def *is_zero = nir_imm_bool(b, true);
+   nir_ssa_def *is_zero = nir_imm_true(b);
    for (unsigned i = 0; i < tex->coord_components; i++) {
       nir_ssa_def *coord = nir_channel(b, tex->src[coord_index].src.ssa, i);
 
