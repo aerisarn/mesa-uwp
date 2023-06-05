@@ -37,10 +37,6 @@
 #include "glapitable.h"
 
 
-#define FIRST_DYNAMIC_OFFSET (sizeof(struct _glapi_table) / sizeof(void *))
-
-
-
 /**********************************************************************
  * Static function management.
  */
@@ -156,177 +152,12 @@ struct _glapi_function {
     *   - 'd' for \c GLdouble and \c GLclampd
     */
    const char * parameter_signature;
-
-
-   /**
-    * Offset in the dispatch table where the pointer to the real function is
-    * located.  If the driver has not requested that the named function be
-    * added to the dispatch table, this will have the value ~0.
-    */
-   unsigned dispatch_offset;
-
-
-   /**
-    * Pointer to the dispatch stub for the named function.
-    * 
-    * \todo
-    * The semantic of this field should be changed slightly.  Currently, it
-    * is always expected to be non-\c NULL.  However, it would be better to
-    * only allocate the entry-point stub when the application requests the
-    * function via \c glXGetProcAddress.  This would save memory for all the
-    * functions that the driver exports but that the application never wants
-    * to call.
-    */
-   _glapi_proc dispatch_stub;
 };
 
 
-static struct _glapi_function ExtEntryTable[MAX_EXTENSION_FUNCS];
-static GLuint NumExtEntryPoints = 0;
-
-
-static struct _glapi_function *
-get_extension_proc(const char *funcName)
-{
-   GLuint i;
-   for (i = 0; i < NumExtEntryPoints; i++) {
-      if (strcmp(ExtEntryTable[i].name, funcName) == 0) {
-         return & ExtEntryTable[i];
-      }
-   }
-   return NULL;
-}
-
-
-static GLint
-get_extension_proc_offset(const char *funcName)
-{
-   const struct _glapi_function * const f = get_extension_proc( funcName );
-   if (f == NULL) {
-      return -1;
-   }
-
-   return f->dispatch_offset;
-}
-
-
-static _glapi_proc
-get_extension_proc_address(const char *funcName)
-{
-   const struct _glapi_function * const f = get_extension_proc( funcName );
-   if (f == NULL) {
-      return NULL;
-   }
-
-   return f->dispatch_stub;
-}
-
-
-static const char *
-get_extension_proc_name(GLuint offset)
-{
-   GLuint i;
-   for (i = 0; i < NumExtEntryPoints; i++) {
-      if (ExtEntryTable[i].dispatch_offset == offset) {
-         return ExtEntryTable[i].name;
-      }
-   }
-   return NULL;
-}
-
-
 /**
- * strdup() is actually not a standard ANSI C or POSIX routine.
- * Irix will not define it if ANSI mode is in effect.
- */
-static char *
-str_dup(const char *str)
-{
-   char *copy;
-   copy = malloc(strlen(str) + 1);
-   if (!copy)
-      return NULL;
-   strcpy(copy, str);
-   return copy;
-}
-
-
-/**
- * Generate new entrypoint
- *
- * Use a temporary dispatch offset of ~0 (i.e. -1).  Later, when the driver
- * calls \c _glapi_add_dispatch we'll put in the proper offset.  If that
- * never happens, and the user calls this function, he'll segfault.  That's
- * what you get when you try calling a GL function that doesn't really exist.
- * 
- * \param funcName  Name of the function to create an entry-point for.
- * 
- * \sa _glapi_add_entrypoint
- */
-
-static struct _glapi_function *
-add_function_name( const char * funcName )
-{
-   struct _glapi_function * entry = NULL;
-   _glapi_proc entrypoint = NULL;
-   char * name_dup = NULL;
-
-   if (NumExtEntryPoints >= MAX_EXTENSION_FUNCS)
-      return NULL;
-
-   if (funcName == NULL)
-      return NULL;
-
-   name_dup = str_dup(funcName);
-   if (name_dup == NULL)
-      return NULL;
-
-   entrypoint = generate_entrypoint(~0);
-
-   if (entrypoint == NULL) {
-      free(name_dup);
-      return NULL;
-   }
-
-   entry = & ExtEntryTable[NumExtEntryPoints];
-   NumExtEntryPoints++;
-
-   entry->name = name_dup;
-   entry->parameter_signature = NULL;
-   entry->dispatch_offset = ~0;
-   entry->dispatch_stub = entrypoint;
-
-   return entry;
-}
-
-
-static struct _glapi_function *
-set_entry_info( struct _glapi_function * entry, const char * signature, unsigned offset )
-{
-   char * sig_dup = NULL;
-
-   if (signature == NULL)
-      return NULL;
-
-   sig_dup = str_dup(signature);
-   if (sig_dup == NULL)
-      return NULL;
-
-   fill_in_entrypoint_offset(entry->dispatch_stub, offset);
-
-   entry->parameter_signature = sig_dup;
-   entry->dispatch_offset = offset;
-
-   return entry;
-}
-
-
-/**
- * Fill-in the dispatch stub for the named function.
- * 
- * This function is intended to be called by a hardware driver.  When called,
- * a dispatch stub may be created for the function.  A pointer to this
- * dispatch function will be returned by glXGetProcAddress.
+ * This function is intended to be called by Mesa core, returning the dispatch
+ * table offset for the passed set of aliased gl* functions.
  *
  * \param function_names       Array of pointers to function names that should
  *                             share a common dispatch offset.
@@ -371,17 +202,10 @@ set_entry_info( struct _glapi_function * entry, const char * signature, unsigned
 int
 _glapi_add_dispatch(const char *const *function_names, const char *parameter_signature)
 {
-   static int next_dynamic_offset = FIRST_DYNAMIC_OFFSET;
-   const char *const real_sig = (parameter_signature != NULL) ? parameter_signature : "";
-   struct _glapi_function *entry[8];
-   GLboolean is_static[8];
    unsigned i;
    int offset = ~0;
 
    init_glapi_relocs_once();
-
-   (void)memset(is_static, 0, sizeof(is_static));
-   (void)memset(entry, 0, sizeof(entry));
 
    /* Find the _single_ dispatch offset for all function names that already
     * exist (and have a dispatch offset).
@@ -399,8 +223,6 @@ _glapi_add_dispatch(const char *const *function_names, const char *parameter_sig
       static_offset = get_static_proc_offset(funcName);
 
       if (static_offset >= 0) {
-         is_static[i] = GL_TRUE;
-
          /* FIXME: Make sure the parameter signatures match!  How do we get
           * FIXME: the parameter signature for static functions?
           */
@@ -410,65 +232,8 @@ _glapi_add_dispatch(const char *const *function_names, const char *parameter_sig
          }
 
          offset = static_offset;
-
-         continue;
-      }
-
-      /* search added extension functions */
-      entry[i] = get_extension_proc(funcName);
-
-      if (entry[i] != NULL) {
-         extension_offset = entry[i]->dispatch_offset;
-
-         /* The offset may be ~0 if the function name was added by
-          * glXGetProcAddress but never filled in by the driver.
-          */
-
-         if (extension_offset == ~0) {
-            continue;
-         }
-
-         if (strcmp(real_sig, entry[i]->parameter_signature) != 0) {
-            return -1;
-         }
-
-         if ((offset != ~0) && (extension_offset != offset)) {
-            return -1;
-         }
-
-         offset = extension_offset;
-      }
-   }
-
-   /* If all function names are either new (or with no dispatch offset),
-    * allocate a new dispatch offset.
-    */
-
-   if (offset == ~0) {
-      offset = next_dynamic_offset;
-      next_dynamic_offset++;
-   }
-
-   /* Fill in the dispatch offset for the new function names (and those with
-    * no dispatch offset).
-    */
-
-   for (i = 0; function_names[i] != NULL; i++) {
-      if (is_static[i]) {
-         continue;
-      }
-
-      /* generate entrypoints for new function names */
-      if (entry[i] == NULL) {
-         entry[i] = add_function_name(function_names[i]);
-         if (entry[i] == NULL) {
-            /* FIXME: Possible memory leak here. */
-            return -1;
-         }
-      }
-
-      if (entry[i]->dispatch_offset == ~0) {
-         set_entry_info(entry[i], real_sig, offset);
+      } else {
+         return -1;
       }
    }
 
@@ -481,13 +246,6 @@ _glapi_add_dispatch(const char *const *function_names, const char *parameter_sig
 GLint
 _glapi_get_proc_offset(const char *funcName)
 {
-   GLint offset;
-
-   /* search extension functions first */
-   offset = get_extension_proc_offset(funcName);
-   if (offset >= 0)
-      return offset;
-
    /* search static functions */
    return get_static_proc_offset(funcName);
 }
@@ -510,22 +268,12 @@ _glapi_get_proc_address(const char *funcName)
   if (!funcName || funcName[0] != 'g' || funcName[1] != 'l')
       return NULL;
 
-   /* search extension functions first */
-   func = get_extension_proc_address(funcName);
-   if (func)
-      return func;
-
    /* search static functions */
    func = get_static_proc_address(funcName);
    if (func)
       return func;
 
-   /* generate entrypoint, dispatch offset must be filled in by the driver */
-   entry = add_function_name(funcName);
-   if (entry == NULL)
-      return NULL;
-
-   return entry->dispatch_stub;
+   return NULL;
 }
 
 
@@ -563,11 +311,5 @@ _glapi_get_proc_name(GLuint offset)
 GLuint
 _glapi_get_dispatch_table_size(void)
 {
-   /*
-    * The dispatch table size (number of entries) is the size of the
-    * _glapi_table struct plus the number of dynamic entries we can add.
-    * The extra slots can be filled in by DRI drivers that register new
-    * extension functions.
-    */
-   return FIRST_DYNAMIC_OFFSET + MAX_EXTENSION_FUNCS;
+   return sizeof(struct _glapi_table) / sizeof(void *);
 }
