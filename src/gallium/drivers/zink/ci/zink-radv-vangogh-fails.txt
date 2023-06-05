@@ -322,13 +322,6 @@ spec@!opengl 1.1@depthstencil-default_fb-blit samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=6,Fail
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=8,Fail
 
-# New CTS failures in 1.3.5.0
-KHR-GL46.polygon_offset_clamp.PolygonOffsetClampMinMax,Fail
-KHR-GL46.polygon_offset_clamp.PolygonOffsetClampZeroInfinity,Fail
-
-# Should be fixed in the next glcts release (according to zmike)
-KHR-GL46.multi_bind.dispatch_bind_image_textures,Fail
-
 spec@ext_transform_feedback@tessellation quad_strip wireframe,Fail
 spec@ext_transform_feedback@tessellation quads wireframe,Fail
 
