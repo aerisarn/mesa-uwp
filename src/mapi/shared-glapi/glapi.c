@@ -60,14 +60,6 @@ _glapi_get_dispatch_table_size(void)
  *
  * \param function_names       Array of pointers to function names that should
  *                             share a common dispatch offset.
- * \param parameter_signature  String representing the types of the parameters
- *                             passed to the named function.  Parameter types
- *                             are converted to characters using the following
- *                             rules:
- *                               - 'i' for \c GLint, \c GLuint, and \c GLenum
- *                               - 'p' for any pointer type
- *                               - 'f' for \c GLfloat and \c GLclampf
- *                               - 'd' for \c GLdouble and \c GLclampd
  *
  * \returns
  * The offset in the dispatch table of the named function.  A pointer to the
@@ -82,13 +74,9 @@ _glapi_get_dispatch_table_size(void)
  * 4 (\c glPointParameterfSGIS, \c glPointParameterfEXT,
  * \c glPointParameterfARB, and \c glPointParameterf), so this should not be
  * too painful of a limitation.
- *
- * \todo
- * Check parameter_signature.
  */
 int
-_glapi_add_dispatch( const char * const * function_names,
-		     const char * parameter_signature )
+_glapi_add_dispatch( const char * const * function_names )
 {
    const struct mapi_stub *alias = NULL;
    unsigned i;

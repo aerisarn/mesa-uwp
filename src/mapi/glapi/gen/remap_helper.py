@@ -30,23 +30,8 @@ import gl_XML
 
 
 def get_function_spec(func):
-    sig = ""
-    # derive parameter signature
-    for p in func.parameterIterator():
-        if p.is_padding:
-            continue
-        # FIXME: This is a *really* ugly hack. :(
-        tn = p.type_expr.get_base_type_node()
-        if p.is_pointer():
-            sig += 'p'
-        elif tn.integer:
-            sig += 'i'
-        elif tn.size == 4:
-            sig += 'f'
-        else:
-            sig += 'd'
+    spec = []
 
-    spec = [sig]
     for ent in func.entry_points:
         spec.append("gl" + ent)
 

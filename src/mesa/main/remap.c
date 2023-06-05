@@ -57,8 +57,7 @@ int driDispatchRemapTable[driDispatchRemapTable_size];
  * and the dispatch offset will be returned.
  *
  * \param spec a '\0'-separated string array specifying a function.
- *        It begins with the parameter signature of the function,
- *        followed by the names of the entry points.  An empty entry
+ *        It consists of a list of gl* names followed by \0.  An empty name
  *        point name terminates the array.
  *
  * \return the offset of the (re-)mapped function in the dispatch
@@ -67,15 +66,11 @@ int driDispatchRemapTable[driDispatchRemapTable_size];
 static int
 map_function_spec(const char *spec)
 {
-   const char *signature;
    const char *names[MAX_ENTRY_POINTS + 1];
    int num_names = 0;
 
    if (!spec)
       return -1;
-
-   signature = spec;
-   spec += strlen(spec) + 1;
 
    /* spec is terminated by an empty string */
    while (*spec) {
@@ -91,7 +86,7 @@ map_function_spec(const char *spec)
    names[num_names] = NULL;
 
    /* add the entry points to the dispatch table */
-   return _glapi_add_dispatch(names, signature);
+   return _glapi_add_dispatch(names);
 }
 
 
@@ -113,18 +108,16 @@ _mesa_init_remap_table(void)
    /* initialize the MESA_remap_table_functions table */
    for (i = 0; i < driDispatchRemapTable_size; i++) {
       int offset;
-      const char *spec;
 
       /* sanity check */
       assert(i == MESA_remap_table_functions[i].remap_index);
-      spec = _mesa_function_pool + MESA_remap_table_functions[i].pool_index;
+      const char *spec = _mesa_function_pool + MESA_remap_table_functions[i].pool_index;
 
       offset = map_function_spec(spec);
       /* store the dispatch offset in the MESA_remap_table_functions table */
       driDispatchRemapTable[i] = offset;
       if (offset < 0) {
-         const char *name = spec + strlen(spec) + 1;
-         _mesa_warning(NULL, "failed to remap %s", name);
+         _mesa_warning(NULL, "failed to remap %s", spec);
       }
    }
 }

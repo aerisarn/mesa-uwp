@@ -140,18 +140,6 @@ struct _glapi_function {
     * Name of the function.
     */
    const char * name;
-
-
-   /**
-    * Text string that describes the types of the parameters passed to the
-    * named function.   Parameter types are converted to characters using the
-    * following rules:
-    *   - 'i' for \c GLint, \c GLuint, and \c GLenum
-    *   - 'p' for any pointer type
-    *   - 'f' for \c GLfloat and \c GLclampf
-    *   - 'd' for \c GLdouble and \c GLclampd
-    */
-   const char * parameter_signature;
 };
 
 
@@ -161,14 +149,6 @@ struct _glapi_function {
  *
  * \param function_names       Array of pointers to function names that should
  *                             share a common dispatch offset.
- * \param parameter_signature  String representing the types of the parameters
- *                             passed to the named function.  Parameter types
- *                             are converted to characters using the following
- *                             rules:
- *                               - 'i' for \c GLint, \c GLuint, and \c GLenum
- *                               - 'p' for any pointer type
- *                               - 'f' for \c GLfloat and \c GLclampf
- *                               - 'd' for \c GLdouble and \c GLclampd
  *
  * \returns
  * The offset in the dispatch table of the named function.  A pointer to the
@@ -185,22 +165,12 @@ struct _glapi_function {
  * too painful of a limitation.
  *
  * \todo
- * Determine whether or not \c parameter_signature should be allowed to be
- * \c NULL.  It doesn't seem like much of a hardship for drivers to have to
- * pass in an empty string.
- *
- * \todo
  * Determine if code should be added to reject function names that start with
  * 'glX'.
- * 
- * \bug
- * Add code to compare \c parameter_signature with the parameter signature of
- * a static function.  In order to do that, we need to find a way to \b get
- * the parameter signature of a static function.
  */
 
 int
-_glapi_add_dispatch(const char *const *function_names, const char *parameter_signature)
+_glapi_add_dispatch(const char *const *function_names)
 {
    unsigned i;
    int offset = ~0;
