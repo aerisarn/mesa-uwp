@@ -162,6 +162,8 @@ fill_ssbo_descriptors(struct d3d12_context *ctx,
       uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
       uav_desc.Buffer.StructureByteStride = 0;
       uav_desc.Buffer.CounterOffsetInBytes = 0;
+      uav_desc.Buffer.FirstElement = 0;
+      uav_desc.Buffer.NumElements = 0;
       ID3D12Resource *d3d12_res = nullptr;
       if (view->buffer) {
          struct d3d12_resource *res = d3d12_resource(view->buffer);
