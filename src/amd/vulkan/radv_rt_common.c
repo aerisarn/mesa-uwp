@@ -223,8 +223,8 @@ intersect_ray_amd_software_tri(struct radv_device *device, nir_builder *b, nir_s
       b, nir_fge(b, abs_dirs[0], abs_dirs[1]),
       nir_bcsel(b, nir_fge(b, abs_dirs[0], abs_dirs[2]), nir_imm_int(b, 0), nir_imm_int(b, 2)),
       nir_bcsel(b, nir_fge(b, abs_dirs[1], abs_dirs[2]), nir_imm_int(b, 1), nir_imm_int(b, 2)));
-   nir_ssa_def *kx = nir_imod(b, nir_iadd_imm(b, kz, 1), nir_imm_int(b, 3));
-   nir_ssa_def *ky = nir_imod(b, nir_iadd_imm(b, kx, 1), nir_imm_int(b, 3));
+   nir_ssa_def *kx = nir_imod_imm(b, nir_iadd_imm(b, kz, 1), 3);
+   nir_ssa_def *ky = nir_imod_imm(b, nir_iadd_imm(b, kx, 1), 3);
    nir_ssa_def *k_indices[3] = {kx, ky, kz};
    nir_ssa_def *k = nir_vec(b, k_indices, 3);
 

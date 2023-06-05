@@ -493,7 +493,7 @@ check_for_weird_packing(nir_builder *b, struct pbo_shader_data *sd, unsigned com
                     nir_ige_imm(b, sd->channels, component),
                     nir_ior(b,
                             nir_ine(b, c, sd->bits1),
-                            nir_ine_imm(b, nir_imod(b, c, nir_imm_int(b, 8)), 0)),
+                            nir_ine_imm(b, nir_imod_imm(b, c, 8), 0)),
                     nir_imm_false(b));
 }
 

@@ -893,6 +893,12 @@ nir_ushr_imm(nir_builder *build, nir_ssa_def *x, uint32_t y)
 }
 
 static inline nir_ssa_def *
+nir_imod_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
+{
+   return nir_imod(build, x, nir_imm_intN_t(build, y, x->bit_size));
+}
+
+static inline nir_ssa_def *
 nir_udiv_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 {
    assert(x->bit_size <= 64);

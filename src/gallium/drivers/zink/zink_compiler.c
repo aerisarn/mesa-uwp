@@ -421,8 +421,8 @@ lower_pv_mode_gs_ring_index(nir_builder *b,
                             nir_ssa_def *index)
 {
    nir_ssa_def *ring_offset = nir_load_var(b, state->ring_offset);
-   return nir_imod(b, nir_iadd(b, index, ring_offset),
-                      nir_imm_int(b, state->ring_size));
+   return nir_imod_imm(b, nir_iadd(b, index, ring_offset),
+                          state->ring_size);
 }
 
 /* Given the final deref of chain of derefs this function will walk up the chain
