@@ -121,6 +121,7 @@ radv_aco_convert_opts(struct aco_compiler_options *aco_info,
    ASSIGN_FIELD(debug.func);
    ASSIGN_FIELD(debug.private_data);
    ASSIGN_FIELD(debug.private_data);
+   aco_info->is_opengl = false;
    aco_info->load_grid_size_from_user_sgpr = radv_args->load_grid_size_from_user_sgpr;
    aco_info->optimisations_disabled = radv->key.optimisations_disabled;
 }
