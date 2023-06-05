@@ -1485,10 +1485,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    if (info->gfx_level >= GFX11) {
       switch (info->family) {
       case CHIP_GFX1103_R1:
-         info->attribute_ring_size_per_se = 512 * 1024;
+         info->attribute_ring_size_per_se = 768 * 1024;
          break;
       case CHIP_GFX1103_R2:
-         /* TODO: Test if 192 * 1024 is faster. */
+         /* TODO: Test if 192K or 384K is faster. */
          info->attribute_ring_size_per_se = 256 * 1024;
          break;
       default:
