@@ -90,7 +90,7 @@ task_draw_ready_bit(nir_builder *b,
    nir_ssa_def *workgroup_index = task_workgroup_index(b, s);
 
    nir_ssa_def *idx = nir_iadd_nuw(b, ring_entry, workgroup_index);
-   return nir_u2u8(b, nir_ubfe(b, idx, nir_imm_int(b, util_bitcount(s->num_entries - 1)), nir_imm_int(b, 1)));
+   return nir_u2u8(b, nir_ubfe_imm(b, idx, util_bitcount(s->num_entries - 1), 1));
 }
 
 static nir_ssa_def *

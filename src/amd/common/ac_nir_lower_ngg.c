@@ -412,14 +412,14 @@ emit_pack_ngg_prim_exp_arg(nir_builder *b, unsigned num_vertices_per_primitives,
 
    for (unsigned i = 0; i < num_vertices_per_primitives; ++i) {
       assert(vertex_indices[i]);
-      arg = nir_ior(b, arg, nir_ishl(b, vertex_indices[i], nir_imm_int(b, 10u * i)));
+      arg = nir_ior(b, arg, nir_ishl_imm(b, vertex_indices[i], 10u * i));
    }
 
    if (is_null_prim) {
       if (is_null_prim->bit_size == 1)
          is_null_prim = nir_b2i32(b, is_null_prim);
       assert(is_null_prim->bit_size == 32);
-      arg = nir_ior(b, arg, nir_ishl(b, is_null_prim, nir_imm_int(b, 31u)));
+      arg = nir_ior(b, arg, nir_ishl_imm(b, is_null_prim, 31u));
    }
 
    return arg;
@@ -493,10 +493,10 @@ ngg_nogs_init_vertex_indices_vars(nir_builder *b, nir_function_impl *impl, lower
       s->gs_vtx_indices_vars[v] = nir_local_variable_create(impl, glsl_uint_type(), "gs_vtx_addr");
 
       nir_ssa_def *vtx = s->options->passthrough ?
-         nir_ubfe(b, nir_load_packed_passthrough_primitive_amd(b),
-                  nir_imm_int(b, 10 * v), nir_imm_int(b, 9)) :
-         nir_ubfe(b, nir_load_gs_vertex_offset_amd(b, .base = v / 2u),
-                  nir_imm_int(b, (v & 1u) * 16u), nir_imm_int(b, 16u));
+         nir_ubfe_imm(b, nir_load_packed_passthrough_primitive_amd(b),
+                      10 * v, 9) :
+         nir_ubfe_imm(b, nir_load_gs_vertex_offset_amd(b, .base = v / 2u),
+                      (v & 1u) * 16u, 16u);
 
       nir_store_var(b, s->gs_vtx_indices_vars[v], vtx, 0x1);
    }
@@ -542,8 +542,8 @@ nogs_prim_gen_query(nir_builder *b, lower_ngg_nogs_state *s)
       nir_if *if_elected = nir_push_if(b, nir_elect(b, 1));
       {
          /* Number of input primitives in the current wave. */
-         nir_ssa_def *num_input_prims = nir_ubfe(b, nir_load_merged_wave_info_amd(b),
-                                                 nir_imm_int(b, 8), nir_imm_int(b, 8));
+         nir_ssa_def *num_input_prims = nir_ubfe_imm(b, nir_load_merged_wave_info_amd(b),
+                                                     8, 8);
 
          /* Add to stream 0 primitive generated counter. */
          nir_atomic_add_gen_prim_count_amd(b, num_input_prims, .stream_id = 0);
@@ -2825,7 +2825,7 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
    nir_ssa_def *prim_flag = nir_ior(b, vertex_live_flag, complete_flag);
    if (s->num_vertices_per_primitive == 3) {
       nir_ssa_def *odd = nir_iand(b, current_vtx_per_prim, complete_flag);
-      nir_ssa_def *odd_flag = nir_ishl(b, odd, nir_imm_int(b, 1));
+      nir_ssa_def *odd_flag = nir_ishl_imm(b, odd, 1);
       prim_flag = nir_ior(b, prim_flag, odd_flag);
    }
 
@@ -2920,7 +2920,7 @@ ngg_gs_export_primitives(nir_builder *b, nir_ssa_def *max_num_out_prims, nir_ssa
        * make sure the vertex order is so that the front/back is correct, and the provoking vertex is kept.
        */
 
-      nir_ssa_def *is_odd = nir_ubfe(b, primflag_0, nir_imm_int(b, 1), nir_imm_int(b, 1));
+      nir_ssa_def *is_odd = nir_ubfe_imm(b, primflag_0, 1, 1);
       nir_ssa_def *provoking_vertex_index = nir_load_provoking_vtx_in_prim_amd(b);
       nir_ssa_def *provoking_vertex_first = nir_ieq_imm(b, provoking_vertex_index, 0);
 
@@ -3092,7 +3092,7 @@ ngg_gs_out_prim_all_vtxptr(nir_builder *b, nir_ssa_def *last_vtxidx, nir_ssa_def
 
    bool primitive_is_triangle = s->num_vertices_per_primitive == 3;
    nir_ssa_def *is_odd = primitive_is_triangle ?
-      nir_ubfe(b, last_vtx_primflag, nir_imm_int(b, 1), nir_imm_int(b, 1)) : NULL;
+      nir_ubfe_imm(b, last_vtx_primflag, 1, 1) : NULL;
 
    for (unsigned i = 0; i < s->num_vertices_per_primitive - 1; i++) {
       nir_ssa_def *vtxidx = nir_iadd_imm(b, last_vtxidx, -(last_vtx - i));

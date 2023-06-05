@@ -240,7 +240,7 @@ lower_ishr64(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)
                                 hi_shifted);
    nir_ssa_def *res_if_ge_32 =
       nir_pack_64_2x32_split(b, nir_ishr(b, x_hi, reverse_count),
-                                nir_ishr(b, x_hi, nir_imm_int(b, 31)));
+                                nir_ishr_imm(b, x_hi, 31));
 
    return nir_bcsel(b, nir_ieq_imm(b, y, 0), x,
                     nir_bcsel(b, nir_uge_imm(b, y, 32),
@@ -1259,8 +1259,8 @@ lower_scan_iadd64(nir_builder *b, const nir_intrinsic_instr *intrin)
                               cluster_size, x_hi);
 
    scan_low = nir_u2u64(b, scan_low);
-   scan_mid = nir_ishl(b, nir_u2u64(b, scan_mid), nir_imm_int(b, 24));
-   scan_hi = nir_ishl(b, nir_u2u64(b, scan_hi), nir_imm_int(b, 48));
+   scan_mid = nir_ishl_imm(b, nir_u2u64(b, scan_mid), 24);
+   scan_hi = nir_ishl_imm(b, nir_u2u64(b, scan_hi), 48);
 
    return nir_iadd(b, scan_hi, nir_iadd(b, scan_mid, scan_low));
 }

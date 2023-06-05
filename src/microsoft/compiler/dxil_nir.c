@@ -105,8 +105,7 @@ lower_32b_offset_load(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *v
        */
       if (num_bits <= 16) {
          nir_ssa_def *shift =
-            nir_imul(b, nir_iand(b, offset, nir_imm_int(b, 3)),
-                        nir_imm_int(b, 8));
+            nir_imul_imm(b, nir_iand_imm(b, offset, 3), 8);
          vec32 = nir_ushr(b, vec32, shift);
       }
 
@@ -133,7 +132,7 @@ lower_masked_store_vec32(nir_builder *b, nir_ssa_def *offset, nir_ssa_def *index
    /* If we have small alignments, we need to place them correctly in the u32 component. */
    if (alignment <= 2) {
       nir_ssa_def *shift =
-         nir_imul_imm(b, nir_iand(b, offset, nir_imm_int(b, 3)), 8);
+         nir_imul_imm(b, nir_iand_imm(b, offset, 3), 8);
 
       vec32 = nir_ishl(b, vec32, shift);
       mask = nir_ishl(b, mask, shift);

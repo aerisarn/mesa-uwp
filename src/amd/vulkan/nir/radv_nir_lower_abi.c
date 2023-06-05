@@ -140,8 +140,8 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_ring_attr_offset_amd: {
       nir_ssa_def *ring_attr_offset = ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_attr_offset);
       replacement =
-         nir_ishl(b, nir_ubfe(b, ring_attr_offset, nir_imm_int(b, 0), nir_imm_int(b, 15)),
-                  nir_imm_int(b, 9)); /* 512b increments. */
+         nir_ishl_imm(b, nir_ubfe_imm(b, ring_attr_offset, 0, 15),
+                      9); /* 512b increments. */
       break;
    }
 
@@ -181,12 +181,12 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
          ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_vtx_offset[nir_intrinsic_base(intrin)]);
       break;
    case nir_intrinsic_load_workgroup_num_input_vertices_amd:
-      replacement = nir_ubfe(b, ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_tg_info),
-                             nir_imm_int(b, 12), nir_imm_int(b, 9));
+      replacement = nir_ubfe_imm(b, ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_tg_info),
+                                 12, 9);
       break;
    case nir_intrinsic_load_workgroup_num_input_primitives_amd:
-      replacement = nir_ubfe(b, ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_tg_info),
-                             nir_imm_int(b, 22), nir_imm_int(b, 9));
+      replacement = nir_ubfe_imm(b, ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_tg_info),
+                                 22, 9);
       break;
    case nir_intrinsic_load_packed_passthrough_primitive_amd:
       /* NGG passthrough mode: the HW already packs the primitive export value to a single register.

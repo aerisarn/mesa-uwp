@@ -222,8 +222,8 @@ gs_per_vertex_input_vertex_offset_gfx9(nir_builder *b, lower_esgs_io_state *st,
 {
    if (nir_src_is_const(*vertex_src)) {
       unsigned vertex = nir_src_as_uint(*vertex_src);
-      return nir_ubfe(b, gs_get_vertex_offset(b, st, vertex / 2u),
-                      nir_imm_int(b, (vertex & 1u) * 16u), nir_imm_int(b, 16u));
+      return nir_ubfe_imm(b, gs_get_vertex_offset(b, st, vertex / 2u),
+                          (vertex & 1u) * 16u, 16u);
    }
 
    nir_ssa_def *vertex_offset = gs_get_vertex_offset(b, st, 0);
