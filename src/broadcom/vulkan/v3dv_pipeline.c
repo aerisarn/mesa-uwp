@@ -30,13 +30,13 @@
 #include "qpu/qpu_disasm.h"
 
 #include "compiler/nir/nir_builder.h"
-#include "nir/nir_vulkan.h"
 #include "nir/nir_serialize.h"
 
 #include "util/u_atomic.h"
 #include "util/u_prim.h"
 #include "util/os_time.h"
 
+#include "vk_nir_convert_ycbcr.h"
 #include "vk_pipeline.h"
 #include "vulkan/util/vk_format.h"
 

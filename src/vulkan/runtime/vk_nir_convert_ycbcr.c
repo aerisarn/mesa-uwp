@@ -21,9 +21,11 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir_vulkan.h"
-#include "vulkan/util/vk_format.h"
-#include "vulkan/runtime/vk_ycbcr_conversion.h"
+#include "vk_nir_convert_ycbcr.h"
+
+#include "vk_format.h"
+#include "vk_ycbcr_conversion.h"
+
 #include <math.h>
 
 static nir_ssa_def *

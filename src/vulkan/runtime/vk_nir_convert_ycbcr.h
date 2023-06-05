@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef NIR_VULKAN_H
-#define NIR_VULKAN_H
+#ifndef VK_NIR_CONVERT_YCBCR_H
+#define VK_NIR_CONVERT_YCBCR_H
 
 #include "nir.h"
 #include "nir_builder.h"
@@ -53,4 +53,4 @@ bool nir_vk_lower_ycbcr_tex(nir_shader *nir,
 } /* extern "C" */
 #endif
 
-#endif /* NIR_VULKAN_H */
+#endif /* VK_NIR_CONVERT_YCBCR_H */

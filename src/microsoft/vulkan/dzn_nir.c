@@ -27,8 +27,8 @@
 #include "nir_to_dxil.h"
 #include "nir_builder.h"
 #include "nir_builtin_builder.h"
-#include "nir_vulkan.h"
 #include "dxil_nir.h"
+#include "vk_nir_convert_ycbcr.h"
 
 static nir_ssa_def *
 dzn_nir_create_bo_desc(nir_builder *b,

@@ -8,7 +8,7 @@
 #include "spirv/nir_spirv.h"
 #include "util/mesa-sha1.h"
 #include "nir/nir_xfb_info.h"
-#include "nir/nir_vulkan.h"
+#include "vk_nir_convert_ycbcr.h"
 #include "vk_pipeline.h"
 #include "vk_util.h"
 

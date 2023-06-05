@@ -25,7 +25,7 @@
 #include "anv_private.h"
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
-#include "nir/nir_vulkan.h"
+#include "vk_nir_convert_ycbcr.h"
 
 struct ycbcr_state {
    nir_builder *builder;

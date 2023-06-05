@@ -29,7 +29,6 @@
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
 #include "nir/nir_serialize.h"
-#include "nir/nir_vulkan.h"
 #include "nir/radv_nir.h"
 #include "spirv/nir_spirv.h"
 #include "util/disk_cache.h"
@@ -52,6 +51,7 @@
 #include "aco_interface.h"
 #include "sid.h"
 #include "vk_format.h"
+#include "vk_nir_convert_ycbcr.h"
 
 bool
 radv_shader_need_indirect_descriptor_sets(const struct radv_shader *shader)
