@@ -77,14 +77,6 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
       return profile_wave_size;
    }
 
-   /* LLVM 13 has a bug that causes compile failures with discard in Wave32
-    * in some cases. Alpha test in Wave32 is luckily unaffected.
-    */
-   if (stage == MESA_SHADER_FRAGMENT && info->base.fs.uses_discard &&
-       !(info && info->options & SI_PROFILE_IGNORE_LLVM13_DISCARD_BUG) &&
-       LLVM_VERSION_MAJOR == 13 && !(sscreen->debug_flags & DBG(W32_PS_DISCARD)))
-      return 64;
-
    /* Debug flags except w32psdiscard don't override the discard bug workaround,
     * but they override everything else.
     */

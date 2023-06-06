@@ -545,11 +545,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_scalar_block_layout = device->rad_info.gfx_level >= GFX7,
       .EXT_separate_stencil_usage = true,
       .EXT_shader_atomic_float = true,
-#ifdef LLVM_AVAILABLE
-      .EXT_shader_atomic_float2 = !device->use_llvm || LLVM_VERSION_MAJOR >= 14,
-#else
       .EXT_shader_atomic_float2 = true,
-#endif
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_image_atomic_int64 = true,
       .EXT_shader_module_identifier = true,

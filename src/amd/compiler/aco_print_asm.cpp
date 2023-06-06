@@ -310,7 +310,7 @@ disasm_instr(amd_gfx_level gfx_level, LLVMDisasmContextRef disasm, uint32_t* bin
       size = l / 4;
    }
 
-#if LLVM_VERSION_MAJOR <= 14
+#if LLVM_VERSION_MAJOR == 14
    /* See: https://github.com/GPUOpen-Tools/radeon_gpu_profiler/issues/65 and
     * https://github.com/llvm/llvm-project/issues/38652
     */

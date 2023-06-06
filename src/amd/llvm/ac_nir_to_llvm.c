@@ -2181,7 +2181,7 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
           */
          index = LLVMConstInt(ctx->ac.i32, nir_intrinsic_io_semantics(instr).high_16bits, 0);
 
-#if LLVM_VERSION_MAJOR <= 14
+#if LLVM_VERSION_MAJOR == 14
          /* To work around old LLVM bug which won't change the output type to
           * LLVMBuildLoad2 type argument.
           */
@@ -2669,11 +2669,6 @@ static LLVMValueRef visit_load_shared(struct ac_nir_context *ctx, const nir_intr
 
    for (int chan = 0; chan < instr->num_components; chan++) {
       index = LLVMConstInt(ctx->ac.i32, chan, 0);
-      #if LLVM_VERSION_MAJOR < 14
-      ptr = LLVMBuildBitCast(
-         ctx->ac.builder, ptr,
-         LLVMPointerType(elem_type, LLVMGetPointerAddressSpace(LLVMTypeOf(ptr))), "");
-      #endif
       derived_ptr = LLVMBuildGEP2(ctx->ac.builder, elem_type, ptr, &index, 1, "");
       values[chan] = LLVMBuildLoad2(ctx->ac.builder, elem_type, derived_ptr, "");
    }
@@ -2700,11 +2695,6 @@ static void visit_store_shared(struct ac_nir_context *ctx, const nir_intrinsic_i
       }
       data = ac_llvm_extract_elem(&ctx->ac, src, chan);
       index = LLVMConstInt(ctx->ac.i32, chan, 0);
-      #if LLVM_VERSION_MAJOR < 14
-      ptr = LLVMBuildBitCast(
-         ctx->ac.builder, ptr,
-         LLVMPointerType(elem_type, LLVMGetPointerAddressSpace(LLVMTypeOf(ptr))), "");
-      #endif
       derived_ptr = LLVMBuildGEP2(builder, elem_type, ptr, &index, 1, "");
       LLVMBuildStore(builder, data, derived_ptr);
    }
