@@ -1306,11 +1306,6 @@ handle_barrier(struct vectorize_ctx *ctx, bool *progress, nir_function_impl *imp
    if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       switch (intrin->intrinsic) {
-      case nir_intrinsic_group_memory_barrier:
-      case nir_intrinsic_memory_barrier:
-         modes = nir_var_mem_ssbo | nir_var_mem_shared | nir_var_mem_global |
-                 nir_var_mem_task_payload;
-         break;
       /* prevent speculative loads/stores */
       case nir_intrinsic_discard_if:
       case nir_intrinsic_discard:
@@ -1323,12 +1318,6 @@ handle_barrier(struct vectorize_ctx *ctx, bool *progress, nir_function_impl *imp
       case nir_intrinsic_demote:
          acquire = false;
          modes = nir_var_all;
-         break;
-      case nir_intrinsic_memory_barrier_buffer:
-         modes = nir_var_mem_ssbo | nir_var_mem_global;
-         break;
-      case nir_intrinsic_memory_barrier_shared:
-         modes = nir_var_mem_shared | nir_var_mem_task_payload;
          break;
       case nir_intrinsic_scoped_barrier:
          if (nir_intrinsic_memory_scope(intrin) == NIR_SCOPE_NONE)
