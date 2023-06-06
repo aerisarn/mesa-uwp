@@ -299,6 +299,7 @@ enum si_tracked_context_reg
    SI_TRACKED_VGT_GSVS_RING_ITEMSIZE,        /* GFX6-10 (GFX11+ can reuse this slot) */
    SI_TRACKED_VGT_GS_MODE,                   /* GFX6-10 (GFX11+ can reuse this slot) */
    SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL,   /* GFX6-10 (GFX11+ can reuse this slot) */
+   SI_TRACKED_VGT_GS_OUT_PRIM_TYPE,          /* GFX6-10 (GFX11+ can reuse this slot) */
 
    /* 3 consecutive registers */
    SI_TRACKED_VGT_GSVS_RING_OFFSET_1,        /* GFX6-10 (GFX11+ can reuse this slot) */
@@ -324,6 +325,7 @@ enum si_tracked_other_reg {
    SI_TRACKED_GE_PC_ALLOC,                   /* GFX10+ */
    SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,       /* GFX7+ */
    SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,       /* GFX10+ */
+   SI_TRACKED_VGT_GS_OUT_PRIM_TYPE_UCONFIG,  /* GFX11+ */
 
    SI_TRACKED_COMPUTE_RESOURCE_LIMITS,
    SI_TRACKED_COMPUTE_NUM_THREAD_X,

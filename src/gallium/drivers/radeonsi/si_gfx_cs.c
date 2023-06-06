@@ -289,6 +289,7 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GSVS_RING_ITEMSIZE] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GS_MODE] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL] = 0x1e;
+   ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GS_OUT_PRIM_TYPE] = 0;
 
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GSVS_RING_OFFSET_1] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GSVS_RING_OFFSET_2] = 0;
@@ -306,11 +307,6 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
 
    /* Set all cleared context registers to saved. */
    ctx->tracked_regs.context_reg_saved_mask = BITFIELD64_MASK(SI_NUM_TRACKED_CONTEXT_REGS);
-
-   if (ctx->gfx_level >= GFX11)
-      ctx->last_gs_out_prim = -1; /* uconfig register, unknown value */
-   else
-      ctx->last_gs_out_prim = 0; /* context register cleared by CLEAR_STATE */
 }
 
 void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper,
@@ -532,7 +528,6 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
       } else {
          /* Set all register values to unknown. */
          ctx->tracked_regs.context_reg_saved_mask = 0;
-         ctx->last_gs_out_prim = -1; /* unknown */
       }
 
       /* 0xffffffff is an impossible value to register SPI_PS_INPUT_CNTL_n */
