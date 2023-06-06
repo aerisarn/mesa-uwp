@@ -341,12 +341,39 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
       return NULL;
 
    so->base = *cso;
+   so->seqno = seqno_next_u16(&fd6_context(fd_context(pctx))->tex_seqno);
    pipe_reference(NULL, &prsc->reference);
    so->base.texture = prsc;
    so->base.reference.count = 1;
    so->base.context = pctx;
 
    return &so->base;
+}
+
+/**
+ * Remove any texture state entries that reference the specified sampler
+ * view.
+ */
+static void
+fd6_sampler_view_invalidate(struct fd_context *ctx,
+                            struct fd6_pipe_sampler_view *view)
+{
+   struct fd6_context *fd6_ctx = fd6_context(ctx);
+
+   fd_screen_lock(ctx->screen);
+
+   hash_table_foreach (fd6_ctx->tex_cache, entry) {
+      struct fd6_texture_state *state = (struct fd6_texture_state *)entry->data;
+
+      for (unsigned i = 0; i < ARRAY_SIZE(state->key.view_seqno); i++) {
+         if (view->seqno == state->key.view_seqno[i]) {
+            remove_tex_entry(fd6_ctx, entry);
+            break;
+         }
+      }
+   }
+
+   fd_screen_unlock(ctx->screen);
 }
 
 static void
@@ -365,7 +392,8 @@ fd6_sampler_view_update(struct fd_context *ctx,
    if (so->rsc_seqno == rsc->seqno)
       return;
 
-   so->seqno = seqno_next_u16(&fd6_context(ctx)->tex_seqno);
+   fd6_sampler_view_invalidate(ctx, so);
+
    so->rsc_seqno = rsc->seqno;
 
    if (format == PIPE_FORMAT_X32_S8X24_UINT) {
@@ -476,23 +504,9 @@ fd6_sampler_view_destroy(struct pipe_context *pctx,
                          struct pipe_sampler_view *_view)
 {
    struct fd_context *ctx = fd_context(pctx);
-   struct fd6_context *fd6_ctx = fd6_context(ctx);
    struct fd6_pipe_sampler_view *view = fd6_pipe_sampler_view(_view);
 
-   fd_screen_lock(ctx->screen);
-
-   hash_table_foreach (fd6_ctx->tex_cache, entry) {
-      struct fd6_texture_state *state = (struct fd6_texture_state *)entry->data;
-
-      for (unsigned i = 0; i < ARRAY_SIZE(state->key.view_seqno); i++) {
-         if (view->seqno == state->key.view_seqno[i]) {
-            remove_tex_entry(fd6_ctx, entry);
-            break;
-         }
-      }
-   }
-
-   fd_screen_unlock(ctx->screen);
+   fd6_sampler_view_invalidate(ctx, view);
 
    pipe_resource_reference(&view->base.texture, NULL);
 
