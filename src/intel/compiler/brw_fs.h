@@ -439,10 +439,8 @@ public:
    fs_reg interp_reg(int location, int channel);
    fs_reg per_primitive_reg(int location);
 
-   virtual void dump_instructions() const;
-   virtual void dump_instructions(const char *name) const;
-   void dump_instruction(const backend_instruction *inst) const;
-   void dump_instruction(const backend_instruction *inst, FILE *file) const;
+   virtual void dump_instruction_to_file(const backend_instruction *inst, FILE *file) const;
+   virtual void dump_instructions_to_file(FILE *file) const;
 
    const brw_base_prog_key *const key;
    const struct brw_sampler_prog_key_data *key_tex;

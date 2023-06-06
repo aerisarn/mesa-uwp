@@ -1236,12 +1236,6 @@ backend_instruction::remove(bblock_t *block, bool defer_later_block_ip_updates)
 }
 
 void
-backend_shader::dump_instructions() const
-{
-   dump_instructions(NULL);
-}
-
-void
 backend_shader::dump_instructions(const char *name) const
 {
    FILE *file = stderr;
@@ -1251,6 +1245,16 @@ backend_shader::dump_instructions(const char *name) const
          file = stderr;
    }
 
+   dump_instructions_to_file(file);
+
+   if (file != stderr) {
+      fclose(file);
+   }
+}
+
+void
+backend_shader::dump_instructions_to_file(FILE *file) const
+{
    if (cfg) {
       int ip = 0;
       foreach_block_and_inst(block, backend_instruction, inst, cfg) {
@@ -1265,10 +1269,6 @@ backend_shader::dump_instructions(const char *name) const
             fprintf(file, "%4d: ", ip++);
          dump_instruction(inst, file);
       }
-   }
-
-   if (file != stderr) {
-      fclose(file);
    }
 }
 

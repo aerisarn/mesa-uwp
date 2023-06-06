@@ -1309,13 +1309,7 @@ vec4_visitor::split_virtual_grfs()
 }
 
 void
-vec4_visitor::dump_instruction(const backend_instruction *be_inst) const
-{
-   dump_instruction(be_inst, stderr);
-}
-
-void
-vec4_visitor::dump_instruction(const backend_instruction *be_inst, FILE *file) const
+vec4_visitor::dump_instruction_to_file(const backend_instruction *be_inst, FILE *file) const
 {
    const vec4_instruction *inst = (const vec4_instruction *)be_inst;
 
