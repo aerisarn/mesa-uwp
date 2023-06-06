@@ -1192,7 +1192,6 @@ struct si_context {
    unsigned tes_offchip_ring_va_sgpr;
    unsigned ls_hs_rsrc2;
    unsigned ls_hs_config;
-   unsigned last_ls_hs_config;
 
    /* Debug state. */
    bool is_debug;

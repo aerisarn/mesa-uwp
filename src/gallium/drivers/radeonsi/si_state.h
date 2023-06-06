@@ -277,6 +277,7 @@ enum si_tracked_context_reg
    SI_TRACKED_VGT_GS_INSTANCE_CNT,
    SI_TRACKED_VGT_GS_MAX_VERT_OUT,
    SI_TRACKED_VGT_SHADER_STAGES_EN,
+   SI_TRACKED_VGT_LS_HS_CONFIG,
    SI_TRACKED_VGT_TF_PARAM,
    SI_TRACKED_PA_SU_SMALL_PRIM_FILTER_CNTL,  /* GFX8-9 (only with has_small_prim_filter_sample_loc_bug) */
    SI_TRACKED_PA_SC_BINNER_CNTL_0,           /* GFX9+ */

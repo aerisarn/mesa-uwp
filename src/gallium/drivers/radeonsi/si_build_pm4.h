@@ -157,6 +157,16 @@
    } \
 } while (0)
 
+#define radeon_opt_set_context_reg_idx(sctx, offset, reg, idx, val) do { \
+   unsigned __value = val; \
+   if (((sctx->tracked_regs.context_reg_saved_mask >> (reg)) & 0x1) != 0x1 || \
+       sctx->tracked_regs.context_reg_value[reg] != __value) { \
+      radeon_set_context_reg_idx(offset, idx, __value); \
+      sctx->tracked_regs.context_reg_saved_mask |= 0x1ull << (reg); \
+      sctx->tracked_regs.context_reg_value[reg] = __value; \
+   } \
+} while (0)
+
 /**
  * Set 2 consecutive registers if any registers value is different.
  * @param offset        starting register offset

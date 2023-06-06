@@ -891,16 +891,15 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
    radeon_emit(sctx->tes_offchip_ring_va_sgpr);
    radeon_end();
 
-   if (sctx->last_ls_hs_config != sctx->ls_hs_config) {
-      radeon_begin(cs);
-      if (sctx->gfx_level >= GFX7) {
-         radeon_set_context_reg_idx(R_028B58_VGT_LS_HS_CONFIG, 2, sctx->ls_hs_config);
-      } else {
-         radeon_set_context_reg(R_028B58_VGT_LS_HS_CONFIG, sctx->ls_hs_config);
-      }
-      radeon_end_update_context_roll(sctx);
-      sctx->last_ls_hs_config = sctx->ls_hs_config;
+   radeon_begin_again(cs);
+   if (sctx->gfx_level >= GFX7) {
+      radeon_opt_set_context_reg_idx(sctx, R_028B58_VGT_LS_HS_CONFIG,
+                                     SI_TRACKED_VGT_LS_HS_CONFIG, 2, sctx->ls_hs_config);
+   } else {
+      radeon_opt_set_context_reg(sctx, R_028B58_VGT_LS_HS_CONFIG,
+                                 SI_TRACKED_VGT_LS_HS_CONFIG, sctx->ls_hs_config);
    }
+   radeon_end_update_context_roll(sctx);
 }
 #endif
 

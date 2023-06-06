@@ -269,6 +269,7 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GS_INSTANCE_CNT] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GS_MAX_VERT_OUT] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_SHADER_STAGES_EN] = 0;
+   ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_LS_HS_CONFIG] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_TF_PARAM] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_PA_SU_SMALL_PRIM_FILTER_CNTL] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_PA_SC_BINNER_CNTL_0] = 0x3;
@@ -551,7 +552,6 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    ctx->last_tcs = NULL;
    ctx->last_tes_sh_base = -1;
    ctx->last_num_tcs_input_cp = -1;
-   ctx->last_ls_hs_config = -1; /* impossible value */
 
    if (ctx->scratch_buffer) {
       si_context_add_resource_size(ctx, &ctx->scratch_buffer->b.b);
