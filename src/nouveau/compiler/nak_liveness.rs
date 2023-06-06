@@ -6,7 +6,8 @@
 use crate::nak_ir::*;
 
 use std::cell::{Ref, RefCell};
-use std::collections::HashMap;
+use std::cmp::max;
+use std::collections::{HashMap, HashSet};
 
 struct SSAEntry {
     defined: bool,
@@ -52,6 +53,7 @@ impl SSAEntry {
 pub struct BlockLiveness {
     num_instrs: usize,
     ssa_map: HashMap<SSAValue, SSAEntry>,
+    max_live: PerRegFile<u32>,
     pub predecessors: Vec<u32>,
     pub successors: [Option<u32>; 2],
 }
@@ -61,6 +63,7 @@ impl BlockLiveness {
         Self {
             num_instrs: num_instrs,
             ssa_map: HashMap::new(),
+            max_live: Default::default(),
             predecessors: Vec::new(),
             successors: [None; 2],
         }
@@ -93,6 +96,11 @@ impl BlockLiveness {
                 }
             }
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn max_live(&self, file: RegFile) -> u32 {
+        self.max_live[file]
     }
 
     pub fn is_live_after(&self, val: &SSAValue, ip: usize) -> bool {
@@ -132,11 +140,16 @@ impl BlockLiveness {
 
 pub struct Liveness {
     blocks: HashMap<u32, RefCell<BlockLiveness>>,
+    max_live: PerRegFile<u32>,
 }
 
 impl Liveness {
     pub fn block(&self, block: &BasicBlock) -> Ref<BlockLiveness> {
         self.blocks.get(&block.id).unwrap().borrow()
+    }
+
+    pub fn max_live(&self, file: RegFile) -> u32 {
+        self.max_live[file]
     }
 
     fn link_blocks(&mut self, p_id: u32, s_id: u32) {
@@ -155,6 +168,7 @@ impl Liveness {
     pub fn for_function(func: &Function) -> Liveness {
         let mut l = Liveness {
             blocks: HashMap::new(),
+            max_live: Default::default(),
         };
 
         for b in &func.blocks {
@@ -222,6 +236,74 @@ impl Liveness {
                         }
                     }
                 }
+            }
+        }
+
+        for b in func.blocks.iter().rev() {
+            let mut bl = l.blocks.get(&b.id).unwrap().borrow_mut();
+
+            /* Populate a live set based on live out */
+            let mut dead = HashSet::new();
+            let mut live: PerRegFile<u32> = Default::default();
+            for (ssa, entry) in bl.ssa_map.iter() {
+                if !entry.defined {
+                    assert!(!entry.uses.is_empty());
+                    live[ssa.file()] += 1;
+                }
+            }
+
+            for (ip, instr) in b.instrs.iter().enumerate() {
+                /* Vector destinations go live before sources are killed */
+                for dst in instr.dsts() {
+                    if let Dst::SSA(vec) = dst {
+                        if vec.comps() > 1 {
+                            live[vec.file()] += u32::from(vec.comps());
+                        }
+                    }
+                }
+
+                for (bml, l) in bl.max_live.values_mut().zip(live.values()) {
+                    *bml = max(*bml, *l);
+                }
+
+                /* Because any given SSA value may appear multiple times in
+                 * sources, we have to de-duplicate in order to get an accurate
+                 * count.
+                 */
+                dead.clear();
+
+                if let PredRef::SSA(ssa) = &instr.pred.pred_ref {
+                    if !bl.is_live_after(ssa, ip) {
+                        dead.insert(*ssa);
+                    }
+                }
+
+                for src in instr.srcs() {
+                    if let SrcRef::SSA(vec) = &src.src_ref {
+                        for ssa in vec.iter() {
+                            if !bl.is_live_after(ssa, ip) {
+                                dead.insert(*ssa);
+                            }
+                        }
+                    }
+                }
+
+                for ssa in dead.iter() {
+                    live[ssa.file()] -= 1;
+                }
+
+                /* Scalar destinations go live after we've killed sources */
+                for dst in instr.dsts() {
+                    if let Dst::SSA(vec) = dst {
+                        if vec.comps() == 1 {
+                            live[vec.file()] += 1;
+                        }
+                    }
+                }
+            }
+
+            for (ml, bml) in l.max_live.values_mut().zip(bl.max_live.values()) {
+                *ml = max(*ml, *bml);
             }
         }
 
