@@ -219,7 +219,7 @@ struct vk_discard_rectangles_state {
    VkRect2D rectangles[MESA_VK_MAX_DISCARD_RECTANGLES];
 };
 
-enum PACKED vk_mesa_depth_clip_enable {
+enum ENUM_PACKED vk_mesa_depth_clip_enable {
    /** Depth clipping should be disabled */
    VK_MESA_DEPTH_CLIP_ENABLE_FALSE = 0,
 
