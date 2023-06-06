@@ -647,7 +647,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       result = LLVMBuildFMul(ctx->ac.builder, src[0], src[1], "");
       break;
    case nir_op_fmulz:
-      assert(LLVM_VERSION_MAJOR >= 12);
       src[0] = ac_to_float(&ctx->ac, src[0]);
       src[1] = ac_to_float(&ctx->ac, src[1]);
       result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.fmul.legacy", ctx->ac.f32,
@@ -845,7 +844,7 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
                                     src[0], src[1], src[2]);
       break;
    case nir_op_ffmaz:
-      assert(LLVM_VERSION_MAJOR >= 12 && ctx->ac.gfx_level >= GFX10_3);
+      assert(ctx->ac.gfx_level >= GFX10_3);
       src[0] = ac_to_float(&ctx->ac, src[0]);
       src[1] = ac_to_float(&ctx->ac, src[1]);
       src[2] = ac_to_float(&ctx->ac, src[2]);

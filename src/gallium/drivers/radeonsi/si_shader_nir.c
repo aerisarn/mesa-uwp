@@ -185,7 +185,7 @@ static void si_late_optimize_16bit_samplers(struct si_screen *sscreen, nir_shade
     *
     * We only use a16/g16 if all of the affected sources are 16bit.
     */
-   bool has_g16 = sscreen->info.gfx_level >= GFX10 && LLVM_VERSION_MAJOR >= 12;
+   bool has_g16 = sscreen->info.gfx_level >= GFX10;
    struct nir_fold_tex_srcs_options fold_srcs_options[] = {
       {
          .sampler_dims =

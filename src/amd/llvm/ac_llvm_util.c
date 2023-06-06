@@ -34,10 +34,6 @@ static void ac_init_llvm_target(void)
       /* error messages prefix */
       "mesa",
       "-amdgpu-atomic-optimizations=true",
-#if LLVM_VERSION_MAJOR == 11
-      /* This fixes variable indexing on LLVM 11. It also breaks atomic.cmpswap on LLVM >= 12. */
-      "-structurizecfg-skip-uniform-regions",
-#endif
    };
 
    ac_reset_llvm_all_options_occurrences();
@@ -148,11 +144,11 @@ const char *ac_get_llvm_processor_name(enum radeon_family family)
    case CHIP_NAVI21:
       return "gfx1030";
    case CHIP_NAVI22:
-      return LLVM_VERSION_MAJOR >= 12 ? "gfx1031" : "gfx1030";
+      return "gfx1031";
    case CHIP_NAVI23:
-      return LLVM_VERSION_MAJOR >= 12 ? "gfx1032" : "gfx1030";
+      return "gfx1032";
    case CHIP_VANGOGH:
-      return LLVM_VERSION_MAJOR >= 12 ? "gfx1033" : "gfx1030";
+      return "gfx1033";
    case CHIP_NAVI24:
       return LLVM_VERSION_MAJOR >= 13 ? "gfx1034" : "gfx1030";
    case CHIP_REMBRANDT:
