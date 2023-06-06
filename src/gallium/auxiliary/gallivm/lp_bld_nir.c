@@ -1841,9 +1841,19 @@ visit_shared_atomic(struct lp_build_nir_context *bld_base,
 
 
 static void
-visit_barrier(struct lp_build_nir_context *bld_base)
+visit_barrier(struct lp_build_nir_context *bld_base,
+              nir_intrinsic_instr *instr)
 {
-   bld_base->barrier(bld_base);
+   LLVMBuilderRef builder = bld_base->base.gallivm->builder;
+   nir_scope exec_scope = nir_intrinsic_execution_scope(instr);
+   unsigned nir_semantics = nir_intrinsic_memory_semantics(instr);
+
+   if (nir_semantics) {
+      LLVMAtomicOrdering ordering = LLVMAtomicOrderingSequentiallyConsistent;
+      LLVMBuildFence(builder, ordering, false, "");
+   }
+   if (exec_scope != NIR_SCOPE_NONE)
+      bld_base->barrier(bld_base);
 }
 
 
@@ -2142,8 +2152,7 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
       visit_shared_atomic(bld_base, instr, result);
       break;
    case nir_intrinsic_scoped_barrier:
-      if (nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE)
-         visit_barrier(bld_base);
+      visit_barrier(bld_base, instr);
       break;
    case nir_intrinsic_load_kernel_input:
       visit_load_kernel_input(bld_base, instr, result);
