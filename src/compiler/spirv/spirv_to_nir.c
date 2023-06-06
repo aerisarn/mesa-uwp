@@ -2635,9 +2635,9 @@ vtn_emit_scoped_control_barrier(struct vtn_builder *b, SpvScope exec_scope,
                               .memory_semantics=nir_semantics, .memory_modes=modes);
 }
 
-static void
-vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
-                               SpvMemorySemanticsMask semantics)
+void
+vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
+                        SpvMemorySemanticsMask semantics)
 {
    nir_variable_mode modes = vtn_mem_semantics_to_nir_var_modes(b, semantics);
    nir_memory_semantics nir_semantics =
@@ -4328,80 +4328,6 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
    vtn_push_ssa_value(b, w[2], ssa);
 }
 
-void
-vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
-                        SpvMemorySemanticsMask semantics)
-{
-   if (b->shader->options->use_scoped_barrier) {
-      vtn_emit_scoped_memory_barrier(b, scope, semantics);
-      return;
-   }
-
-   static const SpvMemorySemanticsMask all_memory_semantics =
-      SpvMemorySemanticsUniformMemoryMask |
-      SpvMemorySemanticsWorkgroupMemoryMask |
-      SpvMemorySemanticsAtomicCounterMemoryMask |
-      SpvMemorySemanticsImageMemoryMask |
-      SpvMemorySemanticsOutputMemoryMask;
-
-   /* If we're not actually doing a memory barrier, bail */
-   if (!(semantics & all_memory_semantics))
-      return;
-
-   /* GL and Vulkan don't have these */
-   vtn_assert(scope != SpvScopeCrossDevice);
-
-   if (scope == SpvScopeSubgroup)
-      return; /* Nothing to do here */
-
-   if (scope == SpvScopeWorkgroup) {
-      nir_group_memory_barrier(&b->nb);
-      return;
-   }
-
-   /* There's only three scopes left */
-   vtn_assert(scope == SpvScopeInvocation || scope == SpvScopeDevice || scope == SpvScopeQueueFamily);
-
-   /* Map the GLSL memoryBarrier() construct and any barriers with more than one
-    * semantic to the corresponding NIR one.
-    */
-   if (util_bitcount(semantics & all_memory_semantics) > 1) {
-      nir_memory_barrier(&b->nb);
-      if (semantics & SpvMemorySemanticsOutputMemoryMask) {
-         /* GLSL memoryBarrier() (and the corresponding NIR one) doesn't include
-          * TCS outputs, so we have to emit it's own intrinsic for that. We
-          * then need to emit another memory_barrier to prevent moving
-          * non-output operations to before the tcs_patch barrier.
-          */
-         nir_memory_barrier_tcs_patch(&b->nb);
-         nir_memory_barrier(&b->nb);
-      }
-      return;
-   }
-
-   /* Issue a more specific barrier */
-   switch (semantics & all_memory_semantics) {
-   case SpvMemorySemanticsUniformMemoryMask:
-      nir_memory_barrier_buffer(&b->nb);
-      break;
-   case SpvMemorySemanticsWorkgroupMemoryMask:
-      nir_memory_barrier_shared(&b->nb);
-      break;
-   case SpvMemorySemanticsAtomicCounterMemoryMask:
-      nir_memory_barrier_atomic_counter(&b->nb);
-      break;
-   case SpvMemorySemanticsImageMemoryMask:
-      nir_memory_barrier_image(&b->nb);
-      break;
-   case SpvMemorySemanticsOutputMemoryMask:
-      if (b->nb.shader->info.stage == MESA_SHADER_TESS_CTRL)
-         nir_memory_barrier_tcs_patch(&b->nb);
-      break;
-   default:
-      break;
-   }
-}
-
 static void
 vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
                    const uint32_t *w, UNUSED unsigned count)
@@ -4479,15 +4405,8 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
                              SpvMemorySemanticsOutputMemoryMask;
       }
 
-      if (b->shader->options->use_scoped_barrier) {
-         vtn_emit_scoped_control_barrier(b, execution_scope, memory_scope,
-                                         memory_semantics);
-      } else {
-         vtn_emit_memory_barrier(b, memory_scope, memory_semantics);
-
-         if (execution_scope == SpvScopeWorkgroup)
-            nir_control_barrier(&b->nb);
-      }
+      vtn_emit_scoped_control_barrier(b, execution_scope, memory_scope,
+                                      memory_semantics);
       break;
    }
 
