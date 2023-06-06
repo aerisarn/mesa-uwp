@@ -1643,7 +1643,7 @@ struct radv_cmd_state {
    uint64_t index_va;
    int32_t last_index_type;
 
-   uint32_t last_primitive_reset_index;
+   uint32_t last_primitive_reset_index; /* only relevant on GFX6-7 */
    enum radv_cmd_flush_bits flush_bits;
    unsigned active_occlusion_queries;
    bool perfect_occlusion_queries_enabled;

@@ -545,6 +545,13 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
       }
    }
 
+   if (physical_device->rad_info.gfx_level >= GFX8) {
+      /* GFX8+ only compares the bits according to the index type by default,
+       * so we can always leave the programmed value at the maximum.
+       */
+      radeon_set_context_reg(cs, R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, 0xffffffff);
+   }
+
    if (physical_device->rad_info.gfx_level >= GFX9) {
       radeon_set_context_reg(
          cs, R_028C48_PA_SC_BINNER_CNTL_1,

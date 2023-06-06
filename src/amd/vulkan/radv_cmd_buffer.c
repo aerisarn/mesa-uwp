@@ -2408,19 +2408,24 @@ radv_get_primitive_reset_index(const struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_primitive_restart_enable(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   const enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
+   const struct radv_dynamic_state *const d = &cmd_buffer->state.dynamic;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    const bool en = d->vk.ia.primitive_restart_enable;
 
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+   if (gfx_level >= GFX11) {
       radeon_set_uconfig_reg(cs, R_03092C_GE_MULTI_PRIM_IB_RESET_EN, en);
-   } else if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
+   } else if (gfx_level >= GFX9) {
       radeon_set_uconfig_reg(cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN, en);
    } else {
       radeon_set_context_reg(cs, R_028A94_VGT_MULTI_PRIM_IB_RESET_EN, en);
    }
 
-   if (en) {
+   /* GFX6-7: All 32 bits are compared.
+    * GFX8: Only index type bits are compared.
+    * GFX9+: Default is same as GFX8, MATCH_ALL_BITS=1 selects GFX6-7 behavior
+    */
+   if (en && gfx_level <= GFX7) {
       const uint32_t primitive_reset_index = radv_get_primitive_reset_index(cmd_buffer);
 
       if (primitive_reset_index != cmd_buffer->state.last_primitive_reset_index) {
