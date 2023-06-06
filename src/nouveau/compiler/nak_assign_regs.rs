@@ -389,13 +389,17 @@ impl RegFileAllocation {
              */
             if let Some(evicted) = self.get_ssa(reg + c) {
                 self.free_ssa(evicted);
-                pcopy.srcs.push(RegRef::new(self.file, reg + c, 1).into());
-                pcopy.dsts.push(RegRef::new(self.file, old_reg, 1).into());
+                pcopy.push(
+                    RegRef::new(self.file, old_reg, 1).into(),
+                    RegRef::new(self.file, reg + c, 1).into(),
+                );
                 self.assign_reg(evicted, old_reg);
             }
 
-            pcopy.srcs.push(RegRef::new(self.file, old_reg, 1).into());
-            pcopy.dsts.push(RegRef::new(self.file, reg + c, 1).into());
+            pcopy.push(
+                RegRef::new(self.file, reg + c, 1).into(),
+                RegRef::new(self.file, old_reg, 1).into(),
+            );
             self.assign_reg(ssa[usize::from(c)], reg + c);
         }
 
@@ -493,8 +497,10 @@ impl RegFileAllocation {
             if let Some(evicted) = self.get_ssa(reg + c) {
                 self.free_ssa(evicted);
                 let new_reg = self.try_find_unused_reg_range(0, 1).unwrap();
-                pcopy.srcs.push(RegRef::new(self.file, reg + c, 1).into());
-                pcopy.dsts.push(RegRef::new(self.file, new_reg, 1).into());
+                pcopy.push(
+                    RegRef::new(self.file, new_reg, 1).into(),
+                    RegRef::new(self.file, reg + c, 1).into(),
+                );
                 self.assign_reg(evicted, new_reg);
             }
         }
@@ -851,8 +857,7 @@ impl AssignRegsBlock {
                     continue;
                 }
             }
-            pcopy.srcs.push(src.into());
-            pcopy.dsts.push(dst.into());
+            pcopy.push(dst.into(), src.into());
         }
 
         if b.branch().is_some() {
