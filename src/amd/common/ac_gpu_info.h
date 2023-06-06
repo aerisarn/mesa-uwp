@@ -204,7 +204,7 @@ struct radeon_info {
    bool has_pcie_bandwidth_info;
    bool has_stable_pstate;
    /* Whether SR-IOV is enabled or amdgpu.mcbp=1 was set on the kernel command line. */
-   bool mid_command_buffer_preemption_enabled;
+   bool register_shadowing_required;
    bool has_tmz_support;
    bool kernel_has_modifiers;
 

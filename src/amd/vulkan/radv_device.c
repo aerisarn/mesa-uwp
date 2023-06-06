@@ -783,7 +783,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->overallocation_disallowed = overallocation_disallowed;
    mtx_init(&device->overallocation_mutex, mtx_plain);
 
-   if (physical_device->rad_info.mid_command_buffer_preemption_enabled ||
+   if (physical_device->rad_info.register_shadowing_required ||
        device->instance->debug_flags & RADV_DEBUG_SHADOW_REGS)
       device->uses_shadow_regs = true;
 

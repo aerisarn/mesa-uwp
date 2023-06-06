@@ -21,7 +21,7 @@ static void si_set_context_reg_array(struct radeon_cmdbuf *cs, unsigned reg, uns
 void si_init_cp_reg_shadowing(struct si_context *sctx)
 {
    if (sctx->has_graphics &&
-       (sctx->screen->info.mid_command_buffer_preemption_enabled ||
+       (sctx->screen->info.register_shadowing_required ||
         sctx->screen->debug_flags & DBG(SHADOW_REGS))) {
       if (sctx->screen->info.has_fw_based_shadowing) {
          sctx->shadowing.registers =
