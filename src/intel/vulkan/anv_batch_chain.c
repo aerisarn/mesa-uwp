@@ -1190,7 +1190,7 @@ anv_cmd_buffer_exec_batch_debug(struct anv_queue *queue,
                                 struct anv_query_pool *perf_query_pool,
                                 uint32_t perf_query_pass)
 {
-   if (!INTEL_DEBUG(DEBUG_BATCH))
+   if (!INTEL_DEBUG(DEBUG_BATCH | DEBUG_BATCH_STATS))
       return;
 
    struct anv_device *device = queue->device;
@@ -1209,19 +1209,28 @@ anv_cmd_buffer_exec_batch_debug(struct anv_queue *queue,
          uint64_t pass_batch_offset =
             khr_perf_query_preamble_offset(perf_query_pool, perf_query_pass);
 
-         intel_print_batch(queue->decoder,
-                           pass_batch_bo->map + pass_batch_offset, 64,
-                           pass_batch_bo->offset + pass_batch_offset, false);
+         if (INTEL_DEBUG(DEBUG_BATCH)) {
+            intel_print_batch(queue->decoder,
+                              pass_batch_bo->map + pass_batch_offset, 64,
+                              pass_batch_bo->offset + pass_batch_offset, false);
+         }
       }
 
       for (uint32_t i = 0; i < cmd_buffer_count; i++) {
-         struct anv_batch_bo **bo = u_vector_tail(&cmd_buffers[i]->seen_bbos);
+         struct anv_batch_bo *bbo =
+            list_first_entry(&cmd_buffers[i]->batch_bos, struct anv_batch_bo, link);
          device->cmd_buffer_being_decoded = cmd_buffers[i];
-         intel_print_batch(queue->decoder, (*bo)->bo->map,
-                           (*bo)->bo->size, (*bo)->bo->offset, false);
+         if (INTEL_DEBUG(DEBUG_BATCH)) {
+            intel_print_batch(queue->decoder, bbo->bo->map,
+                              bbo->bo->size, bbo->bo->offset, false);
+         }
+         if (INTEL_DEBUG(DEBUG_BATCH_STATS)) {
+            intel_batch_stats(queue->decoder, bbo->bo->map,
+                              bbo->bo->size, bbo->bo->offset, false);
+         }
          device->cmd_buffer_being_decoded = NULL;
       }
-   } else {
+   } else if (INTEL_DEBUG(DEBUG_BATCH)) {
       intel_print_batch(queue->decoder, device->trivial_batch_bo->map,
                         device->trivial_batch_bo->size,
                         device->trivial_batch_bo->offset, false);

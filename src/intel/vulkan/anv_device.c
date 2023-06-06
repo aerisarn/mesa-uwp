@@ -3071,7 +3071,7 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   if (INTEL_DEBUG(DEBUG_BATCH)) {
+   if (INTEL_DEBUG(DEBUG_BATCH | DEBUG_BATCH_STATS)) {
       for (unsigned i = 0; i < physical_device->queue.family_count; i++) {
          struct intel_batch_decode_ctx *decoder = &device->decoder[i];
 
@@ -3082,6 +3082,7 @@ VkResult anv_CreateDevice(
                                      &physical_device->info,
                                      stderr, decode_flags, NULL,
                                      decode_get_bo, NULL, device);
+         intel_batch_stats_reset(decoder);
 
          decoder->engine = physical_device->queue.families[i].engine_class;
          decoder->dynamic_base = physical_device->va.dynamic_state_pool.addr;
@@ -3644,9 +3645,12 @@ void anv_DestroyDevice(
 
    anv_device_destroy_context_or_vm(device);
 
-   if (INTEL_DEBUG(DEBUG_BATCH)) {
-      for (unsigned i = 0; i < pdevice->queue.family_count; i++)
+   if (INTEL_DEBUG(DEBUG_BATCH | DEBUG_BATCH_STATS)) {
+      for (unsigned i = 0; i < pdevice->queue.family_count; i++) {
+         if (INTEL_DEBUG(DEBUG_BATCH_STATS))
+            intel_batch_print_stats(&device->decoder[i]);
          intel_batch_decode_ctx_finish(&device->decoder[i]);
+      }
    }
 
    close(device->fd);

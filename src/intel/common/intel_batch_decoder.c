@@ -25,6 +25,7 @@
 #include "intel_disasm.h"
 #include "util/macros.h"
 #include "util/u_debug.h"
+#include "util/u_dynarray.h"
 #include "util/u_math.h" /* Needed for ROUND_DOWN_TO */
 
 #include <string.h>
@@ -67,11 +68,18 @@ intel_batch_decode_ctx_init(struct intel_batch_decode_ctx *ctx,
       ctx->spec = intel_spec_load(devinfo);
    else
       ctx->spec = intel_spec_load_from_path(devinfo, xml_path);
+
+   ctx->commands =
+      _mesa_hash_table_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   ctx->stats =
+      _mesa_hash_table_create(NULL, _mesa_hash_string, _mesa_key_string_equal);
 }
 
 void
 intel_batch_decode_ctx_finish(struct intel_batch_decode_ctx *ctx)
 {
+   _mesa_hash_table_destroy(ctx->commands, NULL);
+   _mesa_hash_table_destroy(ctx->stats, NULL);
    intel_spec_destroy(ctx->spec);
 }
 
@@ -1601,4 +1609,134 @@ intel_print_batch(struct intel_batch_decode_ctx *ctx,
    }
 
    ctx->n_batch_buffer_start--;
+}
+
+void
+intel_batch_stats_reset(struct intel_batch_decode_ctx *ctx)
+{
+   _mesa_hash_table_clear(ctx->stats, NULL);
+}
+
+void
+intel_batch_stats(struct intel_batch_decode_ctx *ctx,
+                  const uint32_t *batch, uint32_t batch_size,
+                  uint64_t batch_addr, bool from_ring)
+{
+   const uint32_t *p, *end = batch + batch_size / sizeof(uint32_t);
+   int length;
+   struct intel_group *inst;
+
+   if (ctx->n_batch_buffer_start >= 100) {
+      fprintf(stderr, "Max batch buffer jumps exceeded\n");
+      return;
+   }
+
+   ctx->n_batch_buffer_start++;
+
+   for (p = batch; p < end; p += length) {
+      inst = intel_ctx_find_instruction(ctx, p);
+      length = intel_group_get_length(inst, p);
+      assert(inst == NULL || length > 0);
+      length = MAX2(1, length);
+
+      const char *name =
+         inst != NULL ? inst->name : "unknown";
+
+      struct hash_entry *entry = _mesa_hash_table_search(ctx->stats, name);
+      if (entry != NULL) {
+         entry->data = (void *)((uintptr_t)entry->data + 1);
+      } else {
+         _mesa_hash_table_insert(ctx->stats, name, (void *)(uintptr_t)1);
+      }
+
+      if (inst == NULL)
+         continue;
+
+      if (strcmp(inst->name, "MI_BATCH_BUFFER_START") == 0) {
+         uint64_t next_batch_addr = 0;
+         bool ppgtt = false;
+         bool second_level = false;
+         bool predicate = false;
+         struct intel_field_iterator iter;
+         intel_field_iterator_init(&iter, inst, p, 0, false);
+         while (intel_field_iterator_next(&iter)) {
+            if (strcmp(iter.name, "Batch Buffer Start Address") == 0) {
+               next_batch_addr = iter.raw_value;
+            } else if (strcmp(iter.name, "Second Level Batch Buffer") == 0) {
+               second_level = iter.raw_value;
+            } else if (strcmp(iter.name, "Address Space Indicator") == 0) {
+               ppgtt = iter.raw_value;
+            } else if (strcmp(iter.name, "Predication Enable") == 0) {
+               predicate = iter.raw_value;
+            }
+         }
+
+         if (!predicate) {
+            struct intel_batch_decode_bo next_batch =
+               ctx_get_bo(ctx, ppgtt, next_batch_addr);
+
+            if (next_batch.map == NULL) {
+               fprintf(stderr, "Secondary batch at 0x%08"PRIx64" unavailable\n",
+                       next_batch_addr);
+            } else {
+               intel_batch_stats(ctx, next_batch.map, next_batch.size,
+                                 next_batch.addr, false);
+            }
+            if (second_level) {
+               /* MI_BATCH_BUFFER_START with "2nd Level Batch Buffer" set acts
+                * like a subroutine call.  Commands that come afterwards get
+                * processed once the 2nd level batch buffer returns with
+                * MI_BATCH_BUFFER_END.
+                */
+               continue;
+            } else if (!from_ring) {
+               /* MI_BATCH_BUFFER_START with "2nd Level Batch Buffer" unset acts
+                * like a goto.  Nothing after it will ever get processed.  In
+                * order to prevent the recursion from growing, we just reset the
+                * loop and continue;
+                */
+               break;
+            }
+         }
+      } else if (strcmp(inst->name, "MI_BATCH_BUFFER_END") == 0) {
+         break;
+      }
+   }
+
+   ctx->n_batch_buffer_start--;
+}
+
+struct inst_stat {
+   const char *name;
+   uint32_t    count;
+};
+
+static int
+compare_inst_stat(const void *v1, const void *v2)
+{
+   const struct inst_stat *i1 = v1, *i2 = v2;
+   return strcmp(i1->name, i2->name);
+}
+
+void
+intel_batch_print_stats(struct intel_batch_decode_ctx *ctx)
+{
+   struct util_dynarray arr;
+   util_dynarray_init(&arr, NULL);
+
+   hash_table_foreach(ctx->stats, entry) {
+      struct inst_stat inst = {
+         .name = (const char *)entry->key,
+         .count = (uintptr_t)entry->data,
+      };
+      util_dynarray_append(&arr, struct inst_stat, inst);
+   }
+   qsort(util_dynarray_begin(&arr),
+         util_dynarray_num_elements(&arr, struct inst_stat),
+         sizeof(struct inst_stat),
+         compare_inst_stat);
+   util_dynarray_foreach(&arr, struct inst_stat, i)
+      fprintf(ctx->fp, "%-40s: %u\n", i->name, i->count);
+
+   util_dynarray_fini(&arr);
 }
