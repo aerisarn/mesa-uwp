@@ -210,6 +210,17 @@ load_rgb32(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *coordinate)
 }
 
 /*
+ * Given a 1D buffer texture coordinate, calculate the 2D coordinate vector that
+ * will be used to access the linear 2D texture bound to the buffer.
+ */
+static nir_ssa_def *
+coords_for_buffer_texture(nir_builder *b, nir_ssa_def *coord)
+{
+   return nir_vec2(b, nir_iand_imm(b, coord, BITFIELD_MASK(10)),
+                   nir_ushr_imm(b, coord, 10));
+}
+
+/*
  * Buffer textures are lowered to 2D (1024xN) textures in the driver to access
  * more storage. When lowering, we need to fix up the coordinate accordingly.
  *
@@ -246,8 +257,8 @@ lower_buffer_texture(nir_builder *b, nir_tex_instr *tex)
    /* Otherwise, lower the texture instruction to read from 2D */
    assert(coord->num_components == 1 && "buffer textures are 1D");
    tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
-   nir_ssa_def *coord2d = nir_vec2(b, nir_iand_imm(b, coord, BITFIELD_MASK(10)),
-                                   nir_ushr_imm(b, coord, 10));
+
+   nir_ssa_def *coord2d = coords_for_buffer_texture(b, coord);
    nir_instr_remove(&tex->instr);
    nir_builder_instr_insert(b, &tex->instr);
    nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(coord2d));
