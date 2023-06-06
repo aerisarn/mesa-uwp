@@ -346,9 +346,8 @@ spec@ext_packed_float@query-rgba-signed-components,Fail
 spec@ext_texture_integer@fbo-blending,Fail
 spec@ext_texture_integer@getteximage-clamping gl_arb_texture_rg,Fail
 spec@ext_texture_integer@getteximage-clamping,Fail
-spec@ext_texture_integer@multisample-fast-clear gl_ext_texture_integer,Crash
-spec@ext_texture_integer@multisample-formats 2 gl_ext_texture_integer,Crash
-spec@ext_texture_integer@multisample-formats 4 gl_ext_texture_integer,Crash
+spec@ext_texture_integer@multisample-formats 2 gl_ext_texture_integer,Fail
+spec@ext_texture_integer@multisample-formats 4 gl_ext_texture_integer,Fail
 spec@ext_texture_integer@texwrap formats bordercolor,Fail
 spec@ext_texture_integer@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_integer@texwrap formats bordercolor-swizzled@GL_ALPHA16I_EXT- swizzled- border color only,Fail
