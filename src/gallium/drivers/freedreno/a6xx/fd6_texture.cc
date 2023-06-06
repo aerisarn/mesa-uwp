@@ -264,7 +264,7 @@ fd6_sampler_state_create(struct pipe_context *pctx,
       return NULL;
 
    so->base = *cso;
-   so->seqno = seqno_next_u16(&fd6_context(ctx)->tex_seqno);
+   so->seqno = util_idalloc_alloc(&fd6_context(ctx)->tex_ids);
 
    if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR)
       miplinear = true;
@@ -328,6 +328,8 @@ fd6_sampler_state_delete(struct pipe_context *pctx, void *hwcso)
 
    fd_screen_unlock(ctx->screen);
 
+   util_idalloc_free(&fd6_ctx->tex_ids, samp->seqno);
+
    free(hwcso);
 }
 
@@ -335,13 +337,14 @@ static struct pipe_sampler_view *
 fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
                         const struct pipe_sampler_view *cso)
 {
+   struct fd6_context *fd6_ctx = fd6_context(fd_context(pctx));
    struct fd6_pipe_sampler_view *so = CALLOC_STRUCT(fd6_pipe_sampler_view);
 
    if (!so)
       return NULL;
 
    so->base = *cso;
-   so->seqno = seqno_next_u16(&fd6_context(fd_context(pctx))->tex_seqno);
+   so->seqno = util_idalloc_alloc(&fd6_ctx->tex_ids);
    pipe_reference(NULL, &prsc->reference);
    so->base.texture = prsc;
    so->base.reference.count = 1;
@@ -509,6 +512,8 @@ fd6_sampler_view_destroy(struct pipe_context *pctx,
    fd6_sampler_view_invalidate(ctx, view);
 
    pipe_resource_reference(&view->base.texture, NULL);
+
+   util_idalloc_free(&fd6_context(ctx)->tex_ids, view->seqno);
 
    free(view);
 }
@@ -859,6 +864,7 @@ fd6_texture_init(struct pipe_context *pctx) disable_thread_safety_analysis
                                    0, "bcolor");
 
    fd6_ctx->tex_cache = _mesa_hash_table_create(NULL, tex_key_hash, tex_key_equals);
+   util_idalloc_init(&fd6_ctx->tex_ids, 256);
 }
 
 void
@@ -875,6 +881,7 @@ fd6_texture_fini(struct pipe_context *pctx)
 
    fd_screen_unlock(ctx->screen);
 
+   util_idalloc_fini(&fd6_ctx->tex_ids);
    ralloc_free(fd6_ctx->tex_cache);
    fd_bo_del(fd6_ctx->bcolor_mem);
    ralloc_free(fd6_ctx->bcolor_cache);
