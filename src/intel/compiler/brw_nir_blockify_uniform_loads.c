@@ -37,6 +37,7 @@ brw_nir_blockify_uniform_loads_instr(nir_builder *b,
 
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    switch (intrin->intrinsic) {
+   case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_ssbo:
       /* BDW PRMs, Volume 7: 3D-Media-GPGPU: OWord Block ReadWrite:
        *
@@ -60,7 +61,10 @@ brw_nir_blockify_uniform_loads_instr(nir_builder *b,
       if (!devinfo->has_lsc && nir_dest_num_components(intrin->dest) < 4)
          return false;
 
-      intrin->intrinsic = nir_intrinsic_load_ssbo_uniform_block_intel;
+      intrin->intrinsic =
+         intrin->intrinsic == nir_intrinsic_load_ubo ?
+         nir_intrinsic_load_ubo_uniform_block_intel :
+         nir_intrinsic_load_ssbo_uniform_block_intel;
       return true;
 
    case nir_intrinsic_load_shared:

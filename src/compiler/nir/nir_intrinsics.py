@@ -1765,7 +1765,8 @@ store("shared_block_intel", [1], [BASE, WRITE_MASK, ALIGN_MUL, ALIGN_OFFSET])
 # Similar to load_global_const_block_intel but for UBOs
 # offset should be uniform
 # src[] = { buffer_index, offset }.
-load("ubo_uniform_block_intel", [-1, 1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET, RANGE_BASE, RANGE], [CAN_ELIMINATE])
+load("ubo_uniform_block_intel", [-1, 1],
+     [ACCESS, ALIGN_MUL, ALIGN_OFFSET, RANGE_BASE, RANGE], [CAN_ELIMINATE, CAN_REORDER])
 
 # Similar to load_global_const_block_intel but for SSBOs
 # offset should be uniform
