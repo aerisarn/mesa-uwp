@@ -786,6 +786,7 @@ tu_destroy_clear_blit_shaders(struct tu_device *dev)
    }
 }
 
+template <chip CHIP>
 static void
 r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
            uint32_t rts_mask, bool z_scale, VkSampleCountFlagBits samples)
@@ -810,7 +811,7 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
    struct ir3_shader_variant *fs = cmd->device->global_shader_variants[fs_id];
    uint64_t fs_iova = cmd->device->global_shader_va[fs_id];
 
-   tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
+   tu_cs_emit_regs(cs, HLSQ_INVALIDATE_CMD(CHIP,
          .vs_state = true,
          .hs_state = true,
          .ds_state = true,
@@ -823,40 +824,47 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
          .cs_bindless = 0x1f,
          .gfx_bindless = 0x1f,));
 
-   tu6_emit_xs_config<A7XX>(cs, MESA_SHADER_VERTEX, vs);
-   tu6_emit_xs_config<A7XX>(cs, MESA_SHADER_TESS_CTRL, NULL);
-   tu6_emit_xs_config<A7XX>(cs, MESA_SHADER_TESS_EVAL, NULL);
-   tu6_emit_xs_config<A7XX>(cs, MESA_SHADER_GEOMETRY, NULL);
-   tu6_emit_xs_config<A7XX>(cs, MESA_SHADER_FRAGMENT, fs);
+   tu6_emit_xs_config<CHIP>(cs, MESA_SHADER_VERTEX, vs);
+   tu6_emit_xs_config<CHIP>(cs, MESA_SHADER_TESS_CTRL, NULL);
+   tu6_emit_xs_config<CHIP>(cs, MESA_SHADER_TESS_EVAL, NULL);
+   tu6_emit_xs_config<CHIP>(cs, MESA_SHADER_GEOMETRY, NULL);
+   tu6_emit_xs_config<CHIP>(cs, MESA_SHADER_FRAGMENT, fs);
 
    struct tu_pvtmem_config pvtmem = {};
-   tu6_emit_xs<A7XX>(cs, MESA_SHADER_VERTEX, vs, &pvtmem, vs_iova);
-   tu6_emit_xs<A7XX>(cs, MESA_SHADER_FRAGMENT, fs, &pvtmem, fs_iova);
+   tu6_emit_xs<CHIP>(cs, MESA_SHADER_VERTEX, vs, &pvtmem, vs_iova);
+   tu6_emit_xs<CHIP>(cs, MESA_SHADER_FRAGMENT, fs, &pvtmem, fs_iova);
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0());
    tu_cs_emit_regs(cs, A6XX_VFD_CONTROL_0());
 
    if (cmd->device->physical_device->info->a6xx.has_cp_reg_write) {
-   /* Copy what the blob does here. This will emit an extra 0x3f
-    * CP_EVENT_WRITE when multiview is disabled. I'm not exactly sure what
-    * this is working around yet.
-    */
-   tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);
-   tu_cs_emit(cs, CP_REG_WRITE_0_TRACKER(UNK_EVENT_WRITE));
-   tu_cs_emit(cs, REG_A6XX_PC_MULTIVIEW_CNTL);
-   tu_cs_emit(cs, 0);
+      /* Copy what the blob does here. This will emit an extra 0x3f
+       * CP_EVENT_WRITE when multiview is disabled. I'm not exactly sure what
+       * this is working around yet.
+       */
+      tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);
+      tu_cs_emit(cs, CP_REG_WRITE_0_TRACKER(UNK_EVENT_WRITE));
+      tu_cs_emit(cs, REG_A6XX_PC_MULTIVIEW_CNTL);
+      tu_cs_emit(cs, 0);
    } else {
       tu_cs_emit_regs(cs, A6XX_PC_MULTIVIEW_CNTL());
    }
    tu_cs_emit_regs(cs, A6XX_VFD_MULTIVIEW_CNTL());
 
-   tu6_emit_vpc<A7XX>(cs, vs, NULL, NULL, NULL, fs);
+   tu6_emit_vpc<CHIP>(cs, vs, NULL, NULL, NULL, fs);
+
+   if (CHIP >= A7XX) {
+      tu_cs_emit_regs(cs, A7XX_HLSQ_UNKNOWN_A9AE(.unk0 = 0x2, .unk8 = 1));
+      tu_cs_emit_regs(cs, A6XX_GRAS_UNKNOWN_8110(0x2));
+
+      tu_cs_emit_regs(cs, A7XX_HLSQ_FS_UNKNOWN_A9AA(.consts_load_disable = false));
+   }
 
    /* REPL_MODE for varying with RECTLIST (2 vertices only) */
    tu_cs_emit_regs(cs, A6XX_VPC_VARYING_INTERP_MODE(0, 0));
    tu_cs_emit_regs(cs, A6XX_VPC_VARYING_PS_REPL_MODE(0, 2 << 2 | 1 << 0));
 
-   tu6_emit_fs_inputs<A7XX>(cs, fs);
+   tu6_emit_fs_inputs<CHIP>(cs, fs);
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_CL_CNTL(
@@ -866,8 +874,10 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
                       .persp_division_disable = 1,));
    tu_cs_emit_regs(cs, A6XX_GRAS_SU_CNTL()); // XXX msaa enable?
 
-   tu_cs_emit_regs(cs, A6XX_PC_RASTER_CNTL());
-   tu_cs_emit_regs(cs, A6XX_VPC_UNKNOWN_9107());
+   tu_cs_emit_regs(cs, PC_RASTER_CNTL(CHIP));
+   if (CHIP == A6XX) {
+      tu_cs_emit_regs(cs, A6XX_VPC_UNKNOWN_9107());
+   }
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL(0, .x = 0, .y = 0),
@@ -1390,6 +1400,7 @@ enum r3d_blit_param {
    R3D_DST_GMEM = 1 << 1,
 };
 
+template <chip CHIP>
 static void
 r3d_setup(struct tu_cmd_buffer *cmd,
           struct tu_cs *cs,
@@ -1409,16 +1420,27 @@ r3d_setup(struct tu_cmd_buffer *cmd,
    fixup_dst_format(src_format, &dst_format, &fmt);
 
    if (!cmd->state.pass) {
-      tu_emit_cache_flush_ccu<A7XX>(cmd, cs, TU_CMD_CCU_SYSMEM);
+      tu_emit_cache_flush_ccu<CHIP>(cmd, cs, TU_CMD_CCU_SYSMEM);
       tu6_emit_window_scissor(cs, 0, 0, 0x3fff, 0x3fff);
    }
 
    if (!(blit_param & R3D_DST_GMEM)) {
-      tu_cs_emit_regs(cs, A6XX_GRAS_BIN_CONTROL(.buffers_location = BUFFERS_IN_SYSMEM));
-      tu_cs_emit_regs(cs, A6XX_RB_BIN_CONTROL(.buffers_location = BUFFERS_IN_SYSMEM));
+      if (CHIP == A6XX) {
+         tu_cs_emit_regs(cs, A6XX_GRAS_BIN_CONTROL(.buffers_location = BUFFERS_IN_SYSMEM));
+      } else {
+         tu_cs_emit_regs(cs, A6XX_GRAS_BIN_CONTROL());
+      }
+
+      tu_cs_emit_regs(cs, RB_BIN_CONTROL(CHIP, .buffers_location = BUFFERS_IN_SYSMEM));
+
+      if (CHIP >= A7XX) {
+         tu_cs_emit_regs(cs, A7XX_RB_UNKNOWN_8812(0x3ff));
+         tu_cs_emit_regs(cs, A7XX_RB_UNKNOWN_88E5(0x50120004));
+         tu_cs_emit_regs(cs, A7XX_RB_UNKNOWN_8E06(0x2080000));
+      }
    }
 
-   r3d_common(cmd, cs, !clear, 1, blit_param & R3D_Z_SCALE, samples);
+   r3d_common<CHIP>(cmd, cs, !clear, 1, blit_param & R3D_Z_SCALE, samples);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(0xfc) |
@@ -1464,7 +1486,7 @@ r3d_setup(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = true));
 
    if (cmd->state.prim_generated_query_running_before_rp) {
-      tu_emit_event_write<A6XX>(cmd, cs, FD_STOP_PRIMITIVE_CTRS);
+      tu_emit_event_write<CHIP>(cmd, cs, FD_STOP_PRIMITIVE_CTRS);
    }
 
    if (cmd->state.predication_active) {
@@ -1495,6 +1517,7 @@ r3d_run_vis(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit(cs, 2); /* vertex count */
 }
 
+template <chip CHIP>
 static void
 r3d_teardown(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
@@ -1507,7 +1530,7 @@ r3d_teardown(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = false));
 
    if (cmd->state.prim_generated_query_running_before_rp) {
-      tu_emit_event_write<A6XX>(cmd, cs, FD_START_PRIMITIVE_CTRS);
+      tu_emit_event_write<CHIP>(cmd, cs, FD_START_PRIMITIVE_CTRS);
    }
 }
 
@@ -1576,9 +1599,9 @@ static const struct blit_ops r3d_ops = {
    .dst_depth = r3d_dst_depth,
    .dst_stencil = r3d_dst_stencil,
    .dst_buffer = r3d_dst_buffer,
-   .setup = r3d_setup,
+   .setup = r3d_setup<CHIP>,
    .run = r3d_run,
-   .teardown = r3d_teardown,
+   .teardown = r3d_teardown<CHIP>,
 };
 
 /* passthrough set coords from 3D extents */
@@ -2811,7 +2834,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
                   0xfc000000);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
-   r3d_common(cmd, cs, false, clear_rts, false, cmd->state.subpass->samples);
+   r3d_common<CHIP>(cmd, cs, false, clear_rts, false, cmd->state.subpass->samples);
 
    /* Disable sample counting in order to not affect occlusion query. */
    tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.disable = true));
@@ -3418,9 +3441,9 @@ load_3d_blit(struct tu_cmd_buffer *cmd,
       else
          format = PIPE_FORMAT_Z32_FLOAT;
    }
-   r3d_setup(cmd, cs, format, format,
-             VK_IMAGE_ASPECT_COLOR_BIT, R3D_DST_GMEM, false,
-             iview->view.ubwc_enabled, iview->image->vk.samples);
+   r3d_setup<CHIP>(cmd, cs, format, format, VK_IMAGE_ASPECT_COLOR_BIT,
+                   R3D_DST_GMEM, false, iview->view.ubwc_enabled,
+                   iview->image->vk.samples);
 
    if (!cmd->state.pass->has_fdm) {
       r3d_coords(cs, (VkOffset2D) { 0, 0 }, (VkOffset2D) { 0, 0 },
@@ -3457,7 +3480,7 @@ load_3d_blit(struct tu_cmd_buffer *cmd,
       r3d_run(cmd, cs);
    }
 
-   r3d_teardown(cmd, cs);
+   r3d_teardown<CHIP>(cmd, cs);
 
    /* It seems we need to WFI here for depth/stencil because color writes here
     * aren't synchronized with depth/stencil writes.
@@ -3655,9 +3678,15 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
    tu_cs_emit(cs, CP_REG_TO_SCRATCH_0_REG(REG_A6XX_RB_BIN_CONTROL) |
                   CP_REG_TO_SCRATCH_0_SCRATCH(0) |
                   CP_REG_TO_SCRATCH_0_CNT(1 - 1));
+   if (CHIP >= A7XX) {
+      tu_cs_emit_pkt7(cs, CP_REG_TO_SCRATCH, 1);
+      tu_cs_emit(cs, CP_REG_TO_SCRATCH_0_REG(REG_A7XX_RB_UNKNOWN_8812) |
+                     CP_REG_TO_SCRATCH_0_SCRATCH(1) |
+                     CP_REG_TO_SCRATCH_0_CNT(1 - 1));
+   }
 
-   r3d_setup(cmd, cs, src_format, dst_format, VK_IMAGE_ASPECT_COLOR_BIT, 0, false,
-             iview->view.ubwc_enabled, dst_samples);
+   r3d_setup<CHIP>(cmd, cs, src_format, dst_format, VK_IMAGE_ASPECT_COLOR_BIT,
+                   0, false, iview->view.ubwc_enabled, dst_samples);
 
    r3d_coords(cs, render_area->offset, render_area->offset, render_area->extent);
 
@@ -3681,7 +3710,7 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
 
    r3d_run(cmd, cs);
 
-   r3d_teardown(cmd, cs);
+   r3d_teardown<CHIP>(cmd, cs);
 
    /* Draws write to the CCU, unlike CP_EVENT_WRITE::BLIT which writes to
     * sysmem, and we generally assume that GMEM renderpasses leave their
@@ -3700,6 +3729,13 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
    tu_cs_emit(cs, CP_SCRATCH_TO_REG_0_REG(REG_A6XX_GRAS_BIN_CONTROL) |
                   CP_SCRATCH_TO_REG_0_SCRATCH(0) |
                   CP_SCRATCH_TO_REG_0_CNT(1 - 1));
+
+   if (CHIP >= A7XX) {
+      tu_cs_emit_pkt7(cs, CP_SCRATCH_TO_REG, 1);
+      tu_cs_emit(cs, CP_SCRATCH_TO_REG_0_REG(REG_A7XX_RB_UNKNOWN_8812) |
+                        CP_SCRATCH_TO_REG_0_SCRATCH(1) |
+                        CP_SCRATCH_TO_REG_0_CNT(1 - 1));
+   }
 }
 
 static bool
