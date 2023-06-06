@@ -704,9 +704,9 @@ struct AssignRegsBlock {
 }
 
 impl AssignRegsBlock {
-    fn new(ra: PerRegFile<RegFileAllocation>) -> AssignRegsBlock {
+    fn new(sm: u8) -> AssignRegsBlock {
         AssignRegsBlock {
-            ra: ra,
+            ra: PerRegFile::new_with(&|file| RegFileAllocation::new(file, sm)),
             live_in: Vec::new(),
             phi_out: HashMap::new(),
         }
@@ -770,17 +770,25 @@ impl AssignRegsBlock {
         }
     }
 
-    fn first_pass(&mut self, b: &mut BasicBlock, bl: &BlockLiveness) {
+    fn first_pass(
+        &mut self,
+        b: &mut BasicBlock,
+        bl: &BlockLiveness,
+        pred_ra: Option<&PerRegFile<RegFileAllocation>>,
+    ) {
         /* Populate live in from the register file we're handed.  We'll add more
          * live in when we process the OpPhiDst, if any.
          */
-        for raf in self.ra.values_mut() {
-            for (ssa, reg) in &raf.ssa_reg {
-                if bl.is_live_in(ssa) {
-                    self.live_in.push(LiveValue {
-                        live_ref: LiveRef::SSA(*ssa),
-                        reg_ref: RegRef::new(raf.file(), *reg, 1),
-                    });
+        if let Some(pred_ra) = pred_ra {
+            for (raf, pred_raf) in self.ra.values_mut().zip(pred_ra.values()) {
+                for (ssa, reg) in &pred_raf.ssa_reg {
+                    if bl.is_live_in(ssa) {
+                        raf.assign_reg(*ssa, *reg);
+                        self.live_in.push(LiveValue {
+                            live_ref: LiveRef::SSA(*ssa),
+                            reg_ref: RegRef::new(raf.file(), *reg, 1),
+                        });
+                    }
                 }
             }
         }
@@ -873,17 +881,15 @@ impl AssignRegs {
         for b in &mut f.blocks {
             let bl = live.block(&b);
 
-            let ra = if bl.predecessors.is_empty() {
-                PerRegFile::new_with(&|file| {
-                    RegFileAllocation::new(file, self.sm)
-                })
+            let pred_ra = if bl.predecessors.is_empty() {
+                None
             } else {
                 /* Start with the previous block's. */
-                self.blocks.get(&bl.predecessors[0]).unwrap().ra.clone()
+                Some(&self.blocks.get(&bl.predecessors[0]).unwrap().ra)
             };
 
-            let mut arb = AssignRegsBlock::new(ra);
-            arb.first_pass(b, &bl);
+            let mut arb = AssignRegsBlock::new(self.sm);
+            arb.first_pass(b, &bl, pred_ra);
             self.blocks.insert(b.id, arb);
         }
 
