@@ -2329,6 +2329,10 @@ static void si_determine_use_aco(struct si_shader *shader)
    if (!(sel->screen->debug_flags & DBG(USE_ACO)))
       return;
 
+   /* ACO does not support compute cards yet. */
+   if (!sel->screen->info.has_graphics)
+      return;
+
    switch (sel->stage) {
    case MESA_SHADER_VERTEX:
    case MESA_SHADER_TESS_CTRL:
@@ -2340,6 +2344,9 @@ static void si_determine_use_aco(struct si_shader *shader)
       break;
    case MESA_SHADER_FRAGMENT:
       shader->use_aco = shader->is_monolithic;
+      break;
+   case MESA_SHADER_COMPUTE:
+      shader->use_aco = true;
       break;
    default:
       break;
