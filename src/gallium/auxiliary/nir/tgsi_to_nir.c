@@ -1127,10 +1127,7 @@ ttn_ucmp(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 static void
 ttn_barrier(nir_builder *b)
 {
-   if (b->shader->options->use_scoped_barrier)
-      nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP);
-   else
-      nir_control_barrier(b);
+   nir_scoped_barrier(b, .execution_scope = NIR_SCOPE_WORKGROUP);
 }
 
 static void
