@@ -694,6 +694,23 @@ image_texel_address(nir_builder *b, nir_intrinsic_instr *intr)
    return nir_iadd(b, base, nir_u2u64(b, total_B));
 }
 
+static bool
+lower_buffer_image(nir_builder *b, nir_intrinsic_instr *intr)
+{
+   if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_BUF)
+      return false;
+
+   nir_ssa_def *coord_vector = intr->src[1].ssa;
+   nir_ssa_def *coord = nir_channel(b, coord_vector, 0);
+
+   /* Lower the buffer load/store to a 2D image load/store, matching the 2D
+    * texture/PBE descriptor the driver supplies for buffer images.
+    */
+   nir_ssa_def *coord2d = coords_for_buffer_texture(b, coord);
+   nir_src_rewrite_ssa(&intr->src[1], nir_pad_vector(b, coord2d, 4));
+   nir_intrinsic_set_image_dim(intr, GLSL_SAMPLER_DIM_2D);
+   return true;
+}
 
 static bool
 lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
@@ -705,6 +722,12 @@ lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
    b->cursor = nir_before_instr(instr);
 
    switch (intr->intrinsic) {
+   case nir_intrinsic_image_load:
+   case nir_intrinsic_image_store:
+   case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_bindless_image_store:
+      return lower_buffer_image(b, intr);
+
    case nir_intrinsic_image_size:
    case nir_intrinsic_bindless_image_size:
       nir_ssa_def_rewrite_uses(
