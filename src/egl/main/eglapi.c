@@ -684,7 +684,8 @@ eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor)
       disp->Options.ForceSoftware |= disp->Options.Zink;
 
       const char *gallium_hud_env = getenv("GALLIUM_HUD");
-      disp->Options.GalliumHud = gallium_hud_env && gallium_hud_env[0] != '\0';
+      disp->Options.GalliumHudWarn =
+         gallium_hud_env && gallium_hud_env[0] != '\0';
 
       /**
        * Initialize the display using the driver's function.
