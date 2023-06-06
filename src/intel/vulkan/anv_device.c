@@ -302,6 +302,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_conditional_rendering             = true,
       .EXT_conservative_rasterization        = true,
       .EXT_custom_border_color               = true,
+      .EXT_depth_bias_control                = true,
       .EXT_depth_clamp_zero_one              = true,
       .EXT_depth_clip_control                = true,
       .EXT_depth_clip_enable                 = true,
@@ -815,6 +816,12 @@ get_features(const struct anv_physical_device *pdevice,
 
       /* VK_EXT_dynamic_rendering_unused_attachments */
       .dynamicRenderingUnusedAttachments = true,
+
+      /* VK_EXT_depth_bias_control */
+      .depthBiasControl = true,
+      .floatRepresentation = true,
+      .leastRepresentableValueForceUnormRepresentation = false,
+      .depthBiasExact = true,
    };
 
    /* The new DOOM and Wolfenstein games require depthBounds without
