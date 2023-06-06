@@ -3397,7 +3397,6 @@ nvir_nir_shader_compiler_options(int chipset, uint8_t shader_type)
        */
       ((chipset >= NVISA_GV100_CHIPSET && shader_type == PIPE_SHADER_FRAGMENT) ? nir_var_shader_in : 0)
    );
-   op.use_scoped_barrier = true;
    op.force_indirect_unrolling_sampler = (chipset < NVISA_GF100_CHIPSET);
    op.max_unroll_iterations = 32;
    op.lower_int64_options = (nir_lower_int64_options) (

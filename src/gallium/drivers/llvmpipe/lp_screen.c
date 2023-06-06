@@ -623,7 +623,6 @@ static const struct nir_shader_compiler_options gallivm_nir_options = {
    .lower_device_index_to_zero = true,
    .support_16bit_alu = true,
    .lower_fisnormal = true,
-   .use_scoped_barrier = true,
 };
 
 

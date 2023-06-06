@@ -137,7 +137,6 @@ nir_options = {
    .lower_interpolate_at = true,
    .has_fsub = true,
    .has_isub = true,
-   .use_scoped_barrier = true,
    .vertex_id_zero_based = true,
    .lower_base_vertex = true,
    .lower_helper_invocation = true,

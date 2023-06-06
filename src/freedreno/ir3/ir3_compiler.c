@@ -116,7 +116,6 @@ static const nir_shader_compiler_options ir3_base_options = {
    .has_isub = true,
    .force_indirect_unrolling_sampler = true,
    .lower_uniforms_to_ubo = true,
-   .use_scoped_barrier = true,
    .max_unroll_iterations = 32,
 
    .lower_cs_local_index_to_id = true,
