@@ -320,6 +320,18 @@ struct vk_rasterization_state {
        * MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS
        */
       float slope;
+
+      /** VkDepthBiasRepresentationInfoEXT::depthBiasRepresentation
+       *
+       * MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS
+       */
+      VkDepthBiasRepresentationEXT representation;
+
+      /** VkDepthBiasRepresentationInfoEXT::depthBiasExact
+       *
+       * MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS
+       */
+      bool exact;
    } depth_bias;
 
    struct {
