@@ -2156,6 +2156,8 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
             pvr_clear_vdm_state_get_size_in_dw(dev_info,
                                                clear_rect->layerCount);
 
+         pvr_csb_set_relocation_mark(&sub_cmd->control_stream);
+
          vdm_cs_buffer =
             pvr_csb_alloc_dwords(&sub_cmd->control_stream, vdm_cs_size_in_dw);
          if (!vdm_cs_buffer) {
@@ -2171,6 +2173,8 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
                                   vs_output_size_in_bytes,
                                   clear_rect->layerCount,
                                   vdm_cs_buffer);
+
+         pvr_csb_clear_relocation_mark(&sub_cmd->control_stream);
       }
    }
 }

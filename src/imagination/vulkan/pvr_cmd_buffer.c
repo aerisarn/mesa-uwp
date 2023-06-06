@@ -362,6 +362,8 @@ pvr_cmd_buffer_emit_ppp_state(const struct pvr_cmd_buffer *const cmd_buffer,
    assert(csb->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS ||
           csb->stream_type == PVR_CMD_STREAM_TYPE_GRAPHICS_DEFERRED);
 
+   pvr_csb_set_relocation_mark(csb);
+
    pvr_csb_emit (csb, VDMCTRL_PPP_STATE0, state0) {
       state0.addrmsb = framebuffer->ppp_state_bo->dev_addr;
       state0.word_count = framebuffer->ppp_state_size;
@@ -370,6 +372,8 @@ pvr_cmd_buffer_emit_ppp_state(const struct pvr_cmd_buffer *const cmd_buffer,
    pvr_csb_emit (csb, VDMCTRL_PPP_STATE1, state1) {
       state1.addrlsb = framebuffer->ppp_state_bo->dev_addr;
    }
+
+   pvr_csb_clear_relocation_mark(csb);
 
    return csb->status;
 }
@@ -1756,6 +1760,8 @@ pvr_compute_generate_control_stream(struct pvr_csb *csb,
                                     struct pvr_sub_cmd_compute *sub_cmd,
                                     const struct pvr_compute_kernel_info *info)
 {
+   pvr_csb_set_relocation_mark(csb);
+
    /* Compute kernel 0. */
    pvr_csb_emit (csb, CDMCTRL_KERNEL0, kernel0) {
       kernel0.indirect_present = !!info->indirect_buffer_addr.addr;
@@ -1824,6 +1830,8 @@ pvr_compute_generate_control_stream(struct pvr_csb *csb,
       assert(info->local_size[2U] > 0U);
       kernel8.workgroup_size_z = info->local_size[2U] - 1U;
    }
+
+   pvr_csb_clear_relocation_mark(csb);
 
    /* Track the highest amount of shared registers usage in this dispatch.
     * This is used by the FW for context switching, so must be large enough
@@ -2957,6 +2965,8 @@ static void pvr_emit_clear_words(struct pvr_cmd_buffer *const cmd_buffer,
    vdm_state_size_in_dw =
       pvr_clear_vdm_state_get_size_in_dw(&device->pdevice->dev_info, 1);
 
+   pvr_csb_set_relocation_mark(csb);
+
    stream = pvr_csb_alloc_dwords(csb, vdm_state_size_in_dw);
    if (!stream) {
       pvr_cmd_buffer_set_error_unwarned(cmd_buffer, csb->status);
@@ -2969,6 +2979,8 @@ static void pvr_emit_clear_words(struct pvr_cmd_buffer *const cmd_buffer,
       vdm_state = device->static_clear_state.vdm_words;
 
    memcpy(stream, vdm_state, PVR_DW_TO_BYTES(vdm_state_size_in_dw));
+
+   pvr_csb_clear_relocation_mark(csb);
 }
 
 static VkResult pvr_cs_write_load_op(struct pvr_cmd_buffer *cmd_buffer,
@@ -4684,6 +4696,8 @@ pvr_emit_dirty_pds_state(const struct pvr_cmd_buffer *const cmd_buffer,
    if (!vertex_descriptor_state->pds_info.code_size_in_dwords)
       return;
 
+   pvr_csb_set_relocation_mark(csb);
+
    pvr_csb_emit (csb, VDMCTRL_PDS_STATE0, state0) {
       state0.usc_target = PVRX(VDMCTRL_USC_TARGET_ALL);
 
@@ -4705,6 +4719,8 @@ pvr_emit_dirty_pds_state(const struct pvr_cmd_buffer *const cmd_buffer,
       state2.pds_code_addr =
          PVR_DEV_ADDR(vertex_descriptor_state->pds_code.code_offset);
    }
+
+   pvr_csb_clear_relocation_mark(csb);
 }
 
 static void pvr_setup_output_select(struct pvr_cmd_buffer *const cmd_buffer)
@@ -5748,6 +5764,8 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
           ppp_state_words,
           PVR_DW_TO_BYTES(ppp_state_words_count));
 
+   pvr_csb_set_relocation_mark(control_stream);
+
    /* Write the VDM state update into the VDM control stream. */
    pvr_csb_emit (control_stream, VDMCTRL_PPP_STATE0, state0) {
       state0.word_count = ppp_state_words_count;
@@ -5758,18 +5776,25 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
       state1.addrlsb = pvr_bo->dev_addr;
    }
 
+   pvr_csb_clear_relocation_mark(control_stream);
+
    if (emit_dbsc && cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
       struct pvr_deferred_cs_command cmd;
 
       if (deferred_secondary) {
          const uint32_t num_dwords = pvr_cmd_length(VDMCTRL_PPP_STATE0) +
                                      pvr_cmd_length(VDMCTRL_PPP_STATE1);
+         uint32_t *vdm_state;
 
-         uint32_t *vdm_state = pvr_csb_alloc_dwords(control_stream, num_dwords);
+         pvr_csb_set_relocation_mark(control_stream);
+
+         vdm_state = pvr_csb_alloc_dwords(control_stream, num_dwords);
          if (!vdm_state) {
             result = pvr_csb_get_status(control_stream);
             return pvr_cmd_buffer_set_error_unwarned(cmd_buffer, result);
          }
+
+         pvr_csb_clear_relocation_mark(control_stream);
 
          cmd = (struct pvr_deferred_cs_command){
             .type = PVR_DEFERRED_CS_COMMAND_TYPE_DBSC,
@@ -6012,6 +6037,8 @@ static void pvr_emit_dirty_vdm_state(struct pvr_cmd_buffer *const cmd_buffer,
                                  &cam_size,
                                  &max_instances);
 
+   pvr_csb_set_relocation_mark(csb);
+
    pvr_csb_emit (csb, VDMCTRL_VDM_STATE0, state0) {
       state0.cam_size = cam_size;
 
@@ -6113,6 +6140,8 @@ static void pvr_emit_dirty_vdm_state(struct pvr_cmd_buffer *const cmd_buffer,
             PVRX(VDMCTRL_VDM_STATE5_VS_PDS_DATA_SIZE_UNIT_SIZE));
       }
    }
+
+   pvr_csb_clear_relocation_mark(csb);
 }
 
 static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
@@ -6427,7 +6456,8 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
             dev_info);
       }
 
-      /* Write the VDM state update. */
+      pvr_csb_set_relocation_mark(csb);
+
       pvr_csb_emit (csb, VDMCTRL_PDS_STATE0, state0) {
          state0.usc_target = PVRX(VDMCTRL_USC_TARGET_ANY);
 
@@ -6459,12 +6489,21 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
          state2.pds_code_addr = PVR_DEV_ADDR(code_offset);
       }
 
+      pvr_csb_clear_relocation_mark(csb);
+
+      /* We don't really need to set the relocation mark since the following
+       * state update is just one emit but let's be nice and use it.
+       */
+      pvr_csb_set_relocation_mark(csb);
+
       /* Sync task to ensure the VDM doesn't start reading the dummy blocks
        * before they are ready.
        */
       pvr_csb_emit (csb, VDMCTRL_INDEX_LIST0, list0) {
          list0.primitive_topology = PVRX(VDMCTRL_PRIMITIVE_TOPOLOGY_TRI_LIST);
       }
+
+      pvr_csb_clear_relocation_mark(csb);
 
       dummy_stream = pvr_bo_suballoc_get_map_addr(dummy_bo);
 
@@ -6483,6 +6522,8 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       pvr_csb_pack (dummy_stream, VDMCTRL_STREAM_RETURN, word);
       /* clang-format on */
 
+      pvr_csb_set_relocation_mark(csb);
+
       /* Stream link to the first dummy which forces the VDM to discard any
        * prefetched (dummy) control stream.
        */
@@ -6494,6 +6535,8 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       pvr_csb_emit (csb, VDMCTRL_STREAM_LINK1, link) {
          link.link_addrlsb = dummy_bo->dev_addr;
       }
+
+      pvr_csb_clear_relocation_mark(csb);
 
       /* Point the pds program to the next argument buffer and the next VDM
        * dummy buffer.
@@ -6585,6 +6628,8 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
       return;
    }
 
+   pvr_csb_set_relocation_mark(csb);
+
    pvr_csb_emit (csb, VDMCTRL_INDEX_LIST0, list0) {
       list0 = list_hdr;
    }
@@ -6612,6 +6657,8 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
          list4.index_offset = index_offset;
       }
    }
+
+   pvr_csb_clear_relocation_mark(csb);
 }
 
 void pvr_CmdDraw(VkCommandBuffer commandBuffer,
