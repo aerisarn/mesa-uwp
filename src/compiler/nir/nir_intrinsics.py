@@ -363,17 +363,6 @@ intrinsic("is_helper_invocation", dest_comp=1, flags=[CAN_ELIMINATE])
 # SpvOpTerminateInvocation from SPIR-V.  Essentially a discard "for real".
 barrier("terminate")
 
-# A workgroup-level control barrier.  Any thread which hits this barrier will
-# pause until all threads within the current workgroup have also hit the
-# barrier.  For compute shaders, the workgroup is defined as the local group.
-# For tessellation control shaders, the workgroup is defined as the current
-# patch.  This intrinsic does not imply any sort of memory barrier.
-barrier("control_barrier")
-
-# Memory barrier with semantics analogous to the memoryBarrier() GLSL
-# intrinsic.
-barrier("memory_barrier")
-
 # Control/Memory barrier with explicit scope.  Follows the semantics of SPIR-V
 # OpMemoryBarrier and OpControlBarrier, used to implement Vulkan Memory Model.
 # Storage that the barrier applies is represented using NIR variable modes.
@@ -413,19 +402,8 @@ intrinsic("elect", dest_comp=1, flags=[CAN_ELIMINATE])
 intrinsic("first_invocation", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE])
 intrinsic("last_invocation", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE])
 
-# Memory barrier with semantics analogous to the compute shader
-# groupMemoryBarrier(), memoryBarrierAtomicCounter(), memoryBarrierBuffer(),
-# memoryBarrierImage() and memoryBarrierShared() GLSL intrinsics.
-barrier("group_memory_barrier")
-barrier("memory_barrier_atomic_counter")
-barrier("memory_barrier_buffer")
-barrier("memory_barrier_image")
-barrier("memory_barrier_shared")
 barrier("begin_invocation_interlock")
 barrier("end_invocation_interlock")
-
-# Memory barrier for synchronizing TCS patch outputs
-barrier("memory_barrier_tcs_patch")
 
 # A conditional discard/demote/terminate, with a single boolean source.
 intrinsic("discard_if", src_comp=[1])
