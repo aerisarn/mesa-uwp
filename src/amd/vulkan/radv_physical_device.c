@@ -485,7 +485,9 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_attachment_feedback_loop_layout = true,
       .EXT_border_color_swizzle = device->rad_info.gfx_level >= GFX10,
       .EXT_buffer_device_address = true,
-      .EXT_calibrated_timestamps = RADV_SUPPORT_CALIBRATED_TIMESTAMPS,
+      .EXT_calibrated_timestamps = RADV_SUPPORT_CALIBRATED_TIMESTAMPS &&
+                                   !(device->rad_info.family == CHIP_RAVEN ||
+                                     device->rad_info.family == CHIP_RAVEN2),
       .EXT_color_write_enable = true,
       .EXT_conditional_rendering = true,
       .EXT_conservative_rasterization = device->rad_info.gfx_level >= GFX9,
