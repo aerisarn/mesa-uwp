@@ -1303,24 +1303,23 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
          (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
           min_vertex_count);
 
-   /* Draw state. */
-   if (ia_multi_vgt_param != sctx->last_multi_vgt_param ||
-       /* Workaround for SpecviewPerf13 Catia hang on GFX9. */
-       (GFX_VERSION == GFX9 && prim != sctx->last_prim)) {
-      radeon_begin(cs);
+   radeon_begin(cs);
+   if (GFX_VERSION == GFX9) {
+      /* Workaround for SpecviewPerf13 Catia hang on GFX9. */
+      if (prim != sctx->last_prim)
+         sctx->tracked_regs.other_reg_saved_mask &= ~BITFIELD64_BIT(SI_TRACKED_IA_MULTI_VGT_PARAM);
 
-      if (GFX_VERSION == GFX9)
-         radeon_set_uconfig_reg_idx(sctx->screen, GFX_VERSION,
-                                    R_030960_IA_MULTI_VGT_PARAM, 4, ia_multi_vgt_param);
-      else if (GFX_VERSION >= GFX7)
-         radeon_set_context_reg_idx(R_028AA8_IA_MULTI_VGT_PARAM, 1, ia_multi_vgt_param);
-      else
-         radeon_set_context_reg(R_028AA8_IA_MULTI_VGT_PARAM, ia_multi_vgt_param);
-
-      radeon_end();
-
-      sctx->last_multi_vgt_param = ia_multi_vgt_param;
+      radeon_opt_set_uconfig_reg_idx(sctx, GFX_VERSION, R_030960_IA_MULTI_VGT_PARAM,
+                                     SI_TRACKED_IA_MULTI_VGT_PARAM_UCONFIG,
+                                     4, ia_multi_vgt_param);
+   } else if (GFX_VERSION >= GFX7) {
+      radeon_opt_set_context_reg_idx(sctx, R_028AA8_IA_MULTI_VGT_PARAM,
+                                     SI_TRACKED_IA_MULTI_VGT_PARAM, 1, ia_multi_vgt_param);
+   } else {
+      radeon_opt_set_context_reg(sctx, R_028AA8_IA_MULTI_VGT_PARAM,
+                                 SI_TRACKED_IA_MULTI_VGT_PARAM, ia_multi_vgt_param);
    }
+   radeon_end();
 }
 
 /* GFX10 removed IA_MULTI_VGT_PARAM in exchange for GE_CNTL.
@@ -1371,14 +1370,9 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
     * Since we don't use that, we don't have to do anything.
     */
 
-   if (ge_cntl != sctx->last_multi_vgt_param) {
-      struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-
-      radeon_begin(cs);
-      radeon_set_uconfig_reg(R_03096C_GE_CNTL, ge_cntl);
-      radeon_end();
-      sctx->last_multi_vgt_param = ge_cntl;
-   }
+   radeon_begin(&sctx->gfx_cs);
+   radeon_opt_set_uconfig_reg(sctx, R_03096C_GE_CNTL, SI_TRACKED_GE_CNTL, ge_cntl);
+   radeon_end();
 }
 
 template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,

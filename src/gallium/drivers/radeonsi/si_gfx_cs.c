@@ -283,6 +283,7 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
 
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_ESGS_RING_ITEMSIZE] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_REUSE_OFF] = 0;
+   ctx->tracked_regs.context_reg_value[SI_TRACKED_IA_MULTI_VGT_PARAM] = 0xff;
 
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GS_MAX_PRIMS_PER_SUBGROUP] = 0;
    ctx->tracked_regs.context_reg_value[SI_TRACKED_VGT_GS_ONCHIP_CNTL] = 0;
@@ -545,7 +546,6 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    ctx->last_primitive_restart_en = ctx->gfx_level >= GFX11 ? false : -1;
    ctx->last_restart_index = SI_RESTART_INDEX_UNKNOWN;
    ctx->last_prim = -1;
-   ctx->last_multi_vgt_param = -1;
    ctx->last_vs_state = ~0;
    ctx->last_gs_state = ~0;
    ctx->last_ls = NULL;

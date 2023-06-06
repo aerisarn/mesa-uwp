@@ -293,6 +293,7 @@ enum si_tracked_context_reg
    /* The slots below can be reused by other generations. */
    SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,        /* GFX6-8 (GFX9+ can reuse this slot) */
    SI_TRACKED_VGT_REUSE_OFF,                 /* GFX6-8 (GFX9+ can reuse this slot) */
+   SI_TRACKED_IA_MULTI_VGT_PARAM,            /* GFX6-8 (GFX9+ can reuse this slot) */
 
    SI_TRACKED_VGT_GS_MAX_PRIMS_PER_SUBGROUP, /* GFX9-10 - the slots above can be reused */
    SI_TRACKED_VGT_GS_ONCHIP_CNTL,            /* GFX9-10 - the slots above can be reused */
@@ -327,6 +328,9 @@ enum si_tracked_other_reg {
    SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,       /* GFX7+ */
    SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,       /* GFX10+ */
    SI_TRACKED_VGT_GS_OUT_PRIM_TYPE_UCONFIG,  /* GFX11+ */
+
+   SI_TRACKED_IA_MULTI_VGT_PARAM_UCONFIG,    /* GFX9 only */
+   SI_TRACKED_GE_CNTL = SI_TRACKED_IA_MULTI_VGT_PARAM_UCONFIG, /* GFX10+ */
 
    SI_TRACKED_COMPUTE_RESOURCE_LIMITS,
    SI_TRACKED_COMPUTE_NUM_THREAD_X,

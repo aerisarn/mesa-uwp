@@ -334,6 +334,16 @@
    } \
 } while (0)
 
+#define radeon_opt_set_uconfig_reg_idx(sctx, gfx_level, offset, reg, idx, val) do { \
+   unsigned __value = val; \
+   if (((sctx->tracked_regs.other_reg_saved_mask >> (reg)) & 0x1) != 0x1 || \
+       sctx->tracked_regs.other_reg_value[reg] != __value) { \
+      radeon_set_uconfig_reg_idx((sctx)->screen, gfx_level, offset, idx, __value); \
+      sctx->tracked_regs.other_reg_saved_mask |= 0x1ull << (reg); \
+      sctx->tracked_regs.other_reg_value[reg] = __value; \
+   } \
+} while (0)
+
 #define radeon_set_privileged_config_reg(reg, value) do { \
    assert((reg) < CIK_UCONFIG_REG_OFFSET); \
    radeon_emit(PKT3(PKT3_COPY_DATA, 4, 0)); \
