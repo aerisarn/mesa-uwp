@@ -163,6 +163,7 @@ agx_resource_setup(struct agx_device *dev, struct agx_resource *nresource)
       .depth_px = templ->depth0 * templ->array_size,
       .sample_count_sa = MAX2(templ->nr_samples, 1),
       .levels = templ->last_level + 1,
+      .writeable_image = templ->bind & PIPE_BIND_SHADER_IMAGE,
    };
 }
 
