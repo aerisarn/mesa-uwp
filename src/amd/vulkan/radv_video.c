@@ -45,6 +45,26 @@
 /* Not 100% sure this isn't too much but works */
 #define VID_DEFAULT_ALIGNMENT 256
 
+const int vl_zscan_h265_up_right_diagonal_16[] =
+{
+   /* Up-right diagonal scan order for 4x4 blocks - see H.265 section 6.5.3. */
+    0,  4,  1,  8,  5,  2, 12,  9,
+    6,  3, 13, 10,  7, 14, 11, 15,
+};
+
+const int vl_zscan_h265_up_right_diagonal[] =
+{
+   /* Up-right diagonal scan order for 8x8 blocks - see H.265 section 6.5.3. */
+    0,  8,  1, 16,  9,  2, 24, 17,
+   10,  3, 32, 25, 18, 11,  4, 40,
+   33, 26, 19, 12,  5, 48, 41, 34,
+   27, 20, 13,  6, 56, 49, 42, 35,
+   28, 21, 14,  7, 57, 50, 43, 36,
+   29, 22, 15, 58, 51, 44, 37, 30,
+   23, 59, 52, 45, 38, 31, 60, 53,
+   46, 39, 61, 54, 47, 62, 55, 63,
+};
+
 static bool
 radv_enable_tier2(struct radv_physical_device *pdevice)
 {
@@ -866,6 +886,34 @@ static rvcn_dec_message_avc_t get_h264_msg(struct radv_video_session *vid,
    return result;
 }
 
+static void update_h265_scaling(void *it_ptr,
+                                const StdVideoH265ScalingLists *scaling_lists)
+{
+   uint8_t ScalingList4x4[STD_VIDEO_H265_SCALING_LIST_4X4_NUM_LISTS][STD_VIDEO_H265_SCALING_LIST_4X4_NUM_ELEMENTS] = { 0 };
+   uint8_t ScalingList8x8[STD_VIDEO_H265_SCALING_LIST_8X8_NUM_LISTS][STD_VIDEO_H265_SCALING_LIST_8X8_NUM_ELEMENTS] = { 0 };
+   uint8_t ScalingList16x16[STD_VIDEO_H265_SCALING_LIST_16X16_NUM_LISTS][STD_VIDEO_H265_SCALING_LIST_16X16_NUM_ELEMENTS] = { 0 };
+   uint8_t ScalingList32x32[STD_VIDEO_H265_SCALING_LIST_32X32_NUM_LISTS][STD_VIDEO_H265_SCALING_LIST_32X32_NUM_ELEMENTS] = { 0 };
+   int i, j;
+
+   if (scaling_lists) {
+      for (i = 0; i < STD_VIDEO_H265_SCALING_LIST_4X4_NUM_LISTS; i++)  {
+         for (j = 0; j < STD_VIDEO_H265_SCALING_LIST_4X4_NUM_ELEMENTS; j++)
+            ScalingList4x4[i][j] = scaling_lists->ScalingList4x4[i][vl_zscan_h265_up_right_diagonal_16[j]];
+         for (j = 0; j < STD_VIDEO_H265_SCALING_LIST_8X8_NUM_ELEMENTS; j++) {
+            ScalingList8x8[i][j] = scaling_lists->ScalingList8x8[i][vl_zscan_h265_up_right_diagonal[j]];
+            ScalingList16x16[i][j] = scaling_lists->ScalingList16x16[i][vl_zscan_h265_up_right_diagonal[j]];
+            if (i < STD_VIDEO_H265_SCALING_LIST_32X32_NUM_LISTS)
+               ScalingList32x32[i][j] = scaling_lists->ScalingList32x32[i][vl_zscan_h265_up_right_diagonal[j]];
+         }
+      }
+   }
+
+   memcpy(it_ptr, ScalingList4x4, STD_VIDEO_H265_SCALING_LIST_4X4_NUM_LISTS * STD_VIDEO_H265_SCALING_LIST_4X4_NUM_ELEMENTS);
+   memcpy((char *)it_ptr + 96, ScalingList8x8, STD_VIDEO_H265_SCALING_LIST_8X8_NUM_LISTS * STD_VIDEO_H265_SCALING_LIST_8X8_NUM_ELEMENTS);
+   memcpy((char *)it_ptr + 480, ScalingList16x16, STD_VIDEO_H265_SCALING_LIST_16X16_NUM_LISTS * STD_VIDEO_H265_SCALING_LIST_16X16_NUM_ELEMENTS);
+   memcpy((char *)it_ptr + 864, ScalingList32x32, STD_VIDEO_H265_SCALING_LIST_32X32_NUM_LISTS * STD_VIDEO_H265_SCALING_LIST_32X32_NUM_ELEMENTS);
+}
+
 static rvcn_dec_message_hevc_t get_h265_msg(struct radv_device *device,
                                             struct radv_video_session *vid,
                                             struct radv_video_session_params *params,
@@ -992,17 +1040,21 @@ static rvcn_dec_message_hevc_t get_h265_msg(struct radv_device *device,
    for (i = 0; i < 8; ++i)
       result.ref_pic_set_lt_curr[i] = IDXS(h265_pic_info->pStdPictureInfo->RefPicSetLtCurr[i]);
 
-   if (sps->flags.sps_scaling_list_data_present_flag) {
-      for (i = 0; i < 6; ++i)
-         result.ucScalingListDCCoefSizeID2[i] = sps->pScalingLists->ScalingListDCCoef16x16[i];
 
-      for (i = 0; i < 2; ++i)
-         result.ucScalingListDCCoefSizeID3[i] = sps->pScalingLists->ScalingListDCCoef32x32[i];
+   const StdVideoH265ScalingLists *scaling_lists = NULL;
+   if (sps->flags.sps_scaling_list_data_present_flag)
+      scaling_lists = sps->pScalingLists;
+   else if (pps->flags.pps_scaling_list_data_present_flag)
+      scaling_lists = pps->pScalingLists;
 
-      memcpy(it_ptr, sps->pScalingLists->ScalingList4x4, 6 * 16);
-      memcpy((char *)it_ptr + 96, sps->pScalingLists->ScalingList8x8, 6 * 64);
-      memcpy((char *)it_ptr + 480, sps->pScalingLists->ScalingList16x16, 6 * 64);
-      memcpy((char *)it_ptr + 864, sps->pScalingLists->ScalingList32x32, 2 * 64);
+   update_h265_scaling(it_ptr, scaling_lists);
+
+   if (scaling_lists) {
+      for (i = 0; i < STD_VIDEO_H265_SCALING_LIST_16X16_NUM_LISTS; ++i)
+         result.ucScalingListDCCoefSizeID2[i] = scaling_lists->ScalingListDCCoef16x16[i];
+
+      for (i = 0; i < STD_VIDEO_H265_SCALING_LIST_32X32_NUM_LISTS; ++i)
+         result.ucScalingListDCCoefSizeID3[i] = scaling_lists->ScalingListDCCoef32x32[i];
    }
 
    for (i = 0; i < 2; i++) {
@@ -1446,17 +1498,19 @@ static struct ruvd_h265 get_uvd_h265_msg(struct radv_device *device,
    for (i = 0; i < 8; ++i)
       result.ref_pic_set_lt_curr[i] = IDXS(h265_pic_info->pStdPictureInfo->RefPicSetLtCurr[i]);
 
-   if (sps->flags.sps_scaling_list_data_present_flag) {
-      for (i = 0; i < 6; ++i)
-         result.ucScalingListDCCoefSizeID2[i] = sps->pScalingLists->ScalingListDCCoef16x16[i];
+   const StdVideoH265ScalingLists *scaling_lists = NULL;
+   if (sps->flags.sps_scaling_list_data_present_flag)
+      scaling_lists = sps->pScalingLists;
+   else if (pps->flags.pps_scaling_list_data_present_flag)
+      scaling_lists = pps->pScalingLists;
 
-      for (i = 0; i < 2; ++i)
-         result.ucScalingListDCCoefSizeID3[i] = sps->pScalingLists->ScalingListDCCoef32x32[i];
+   update_h265_scaling(it_ptr, scaling_lists);
+   if (scaling_lists) {
+      for (i = 0; i < STD_VIDEO_H265_SCALING_LIST_16X16_NUM_LISTS; ++i)
+         result.ucScalingListDCCoefSizeID2[i] = scaling_lists->ScalingListDCCoef16x16[i];
 
-      memcpy(it_ptr, sps->pScalingLists->ScalingList4x4, 6 * 16);
-      memcpy((char *)it_ptr + 96, sps->pScalingLists->ScalingList8x8, 6 * 64);
-      memcpy((char *)it_ptr + 480, sps->pScalingLists->ScalingList16x16, 6 * 64);
-      memcpy((char *)it_ptr + 864, sps->pScalingLists->ScalingList32x32, 2 * 64);
+      for (i = 0; i < STD_VIDEO_H265_SCALING_LIST_32X32_NUM_LISTS; ++i)
+         result.ucScalingListDCCoefSizeID3[i] = scaling_lists->ScalingListDCCoef32x32[i];
    }
 
    for (i = 0; i < 2; i++) {
