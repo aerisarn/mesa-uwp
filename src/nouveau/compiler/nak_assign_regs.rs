@@ -152,7 +152,7 @@ impl PartialOrd for LiveValue {
 #[derive(Clone)]
 struct RegFileAllocation {
     file: RegFile,
-    max_reg: u8,
+    num_regs: u8,
     used: BitSet,
     pinned: BitSet,
     reg_ssa: Vec<SSAValue>,
@@ -163,7 +163,7 @@ impl RegFileAllocation {
     pub fn new(file: RegFile, sm: u8) -> Self {
         Self {
             file: file,
-            max_reg: file.num_regs(sm) - 1,
+            num_regs: file.num_regs(sm),
             used: BitSet::new(),
             pinned: BitSet::new(),
             reg_ssa: Vec::new(),
@@ -183,7 +183,7 @@ impl RegFileAllocation {
 
     fn is_reg_in_bounds(&self, reg: u8, comps: u8) -> bool {
         if let Some(max_reg) = reg.checked_add(comps - 1) {
-            max_reg <= self.max_reg
+            max_reg < self.num_regs
         } else {
             false
         }
@@ -238,7 +238,7 @@ impl RegFileAllocation {
 
     pub fn assign_reg(&mut self, ssa: SSAValue, reg: u8) -> RegRef {
         assert!(ssa.file() == self.file);
-        assert!(reg <= self.max_reg);
+        assert!(reg < self.num_regs);
         assert!(!self.used.get(reg.into()));
 
         if usize::from(reg) >= self.reg_ssa.len() {
