@@ -173,6 +173,9 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
    case nir_intrinsic_load_provoking_vtx_amd:
       info->ps.load_provoking_vtx = true;
       break;
+   case nir_intrinsic_load_sample_positions_amd:
+      info->ps.needs_sample_positions = true;
+      break;
    case nir_intrinsic_load_rasterization_primitive_amd:
       info->ps.load_rasterization_prim = true;
       break;
