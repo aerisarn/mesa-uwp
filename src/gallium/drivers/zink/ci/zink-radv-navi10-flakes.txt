@@ -75,3 +75,6 @@ spec@arb_compute_variable_group_size@execution@global-invocation-id
 spec@arb_compute_variable_group_size@execution@separate-global-id
 spec@arb_compute_variable_group_size@execution@separate-global-id-2
 spec@arb_compute_variable_group_size@local-size
+
+# first noticed in https://gitlab.freedesktop.org/mesa/mesa/-/pipelines/898164
+spec@arb_query_buffer_object@qbo@query-GL_PRIMITIVES_GENERATED-ASYNC-GL_UNSIGNED_INT64_ARB
