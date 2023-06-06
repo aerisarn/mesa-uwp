@@ -719,7 +719,8 @@ genX(cmd_buffer_flush_generated_draws)(struct anv_cmd_buffer *cmd_buffer)
                                  ANV_PIPE_VF_CACHE_INVALIDATE_BIT |
 #endif
                                  ANV_PIPE_DATA_CACHE_FLUSH_BIT |
-                                 ANV_PIPE_CS_STALL_BIT);
+                                 ANV_PIPE_CS_STALL_BIT,
+                                 NULL /* query_bits */);
 
 #if GFX_VER >= 12
    anv_batch_emit(batch, GENX(MI_ARB_CHECK), arb) {

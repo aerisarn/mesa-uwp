@@ -535,6 +535,16 @@ void anv_CmdCopyBufferToImage2(
    anv_blorp_batch_finish(&batch);
 }
 
+static void
+anv_add_buffer_write_pending_bits(struct anv_cmd_buffer *cmd_buffer,
+                                  const char *reason)
+{
+   const struct intel_device_info *devinfo = cmd_buffer->device->info;
+
+   cmd_buffer->state.pending_query_bits |=
+      ANV_QUERY_RENDER_TARGET_WRITES_PENDING_BITS(devinfo);
+}
+
 void anv_CmdCopyImageToBuffer2(
     VkCommandBuffer                             commandBuffer,
     const VkCopyImageToBufferInfo2*             pCopyImageToBufferInfo)
@@ -554,9 +564,7 @@ void anv_CmdCopyImageToBuffer2(
 
    anv_blorp_batch_finish(&batch);
 
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_RENDER_TARGET_BUFFER_WRITES,
-                             "after copy image to buffer");
+   anv_add_buffer_write_pending_bits(cmd_buffer, "after copy image to buffer");
 }
 
 static bool
@@ -781,9 +789,7 @@ void anv_CmdCopyBuffer2(
 
    anv_blorp_batch_finish(&batch);
 
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_RENDER_TARGET_BUFFER_WRITES,
-                             "after copy buffer");
+   anv_add_buffer_write_pending_bits(cmd_buffer, "after copy buffer");
 }
 
 
@@ -845,9 +851,7 @@ void anv_CmdUpdateBuffer(
 
    anv_blorp_batch_finish(&batch);
 
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_RENDER_TARGET_BUFFER_WRITES,
-                             "update buffer");
+   anv_add_buffer_write_pending_bits(cmd_buffer, "update buffer");
 }
 
 void
@@ -955,9 +959,8 @@ void anv_CmdFillBuffer(
                             anv_address_add(dst_buffer->address, dstOffset),
                             fillSize, data);
 
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_RENDER_TARGET_BUFFER_WRITES,
-                             "after fill buffer");
+   anv_add_buffer_write_pending_bits(cmd_buffer, "after fill buffer");
+
 }
 
 void anv_CmdClearColorImage(
