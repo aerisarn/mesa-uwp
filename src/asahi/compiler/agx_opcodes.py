@@ -335,6 +335,7 @@ for is_float in [False, True]:
             imms = imms, is_float = is_float)
 
 op("bitop", (0x7E, 0x7F, 6, _), srcs = 2, imms = [TRUTH_TABLE])
+op("intl", (0x3E, 0x7F, 6, _), srcs = 2, imms = [])
 op("convert", (0x3E | L, 0x7F | L | (0x3 << 38), 6, _), srcs = 2, imms = [ROUND]) 
 
 # Sources are the coeffient register and the sample index (if applicable)

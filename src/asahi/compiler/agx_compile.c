@@ -1131,6 +1131,7 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       BINOP(iand, and);
       BINOP(ior, or);
       BINOP(ixor, xor);
+      BINOP(interleave_agx, intl);
 
    case nir_op_feq:
       return agx_fcmpsel_to(b, dst, s0, s1, i1, i0, AGX_FCOND_EQ);
