@@ -750,6 +750,10 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       if (shader->selector->info.uses_subgroup_info)
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tg_size);
 
+      /* GFX11 set FLAT_SCRATCH directly instead of using this arg. */
+      if (shader->use_aco && sel->screen->info.gfx_level < GFX11)
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
+
       /* Hardware VGPRs. */
       /* Thread IDs are packed in VGPR0, 10 bits per component or stored in 3 separate VGPRs */
       if (sel->screen->info.gfx_level >= GFX11 ||
