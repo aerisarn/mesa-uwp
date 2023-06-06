@@ -1103,8 +1103,8 @@ v3dX(cmd_buffer_emit_viewport)(struct v3dv_cmd_buffer *cmd_buffer)
    }
 
    cl_emit(&job->bcl, VIEWPORT_OFFSET, vp) {
-      vp.viewport_centre_x_coordinate = vptranslate[0];
-      vp.viewport_centre_y_coordinate = vptranslate[1];
+      vp.fine_x = vptranslate[0];
+      vp.fine_y = vptranslate[1];
    }
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_VIEWPORT;

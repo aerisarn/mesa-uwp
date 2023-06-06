@@ -587,10 +587,15 @@ v3dX(emit_state)(struct pipe_context *pctx)
                 }
 
                 cl_emit(&job->bcl, VIEWPORT_OFFSET, vp) {
+#if V3D_VERSION < 41
                         vp.viewport_centre_x_coordinate =
                                 v3d->viewport.translate[0];
                         vp.viewport_centre_y_coordinate =
                                 v3d->viewport.translate[1];
+#else
+                        vp.fine_x = v3d->viewport.translate[0];
+                        vp.fine_y = v3d->viewport.translate[1];
+#endif
                 }
         }
 
