@@ -159,10 +159,10 @@ struct RegAllocator {
 }
 
 impl RegAllocator {
-    pub fn new(file: RegFile, sm: u8) -> Self {
+    pub fn new(file: RegFile, num_regs: u8) -> Self {
         Self {
             file: file,
-            num_regs: file.num_regs(sm),
+            num_regs: num_regs,
             used: BitSet::new(),
             reg_ssa: Vec::new(),
             ssa_reg: HashMap::new(),
@@ -809,9 +809,11 @@ struct AssignRegsBlock {
 }
 
 impl AssignRegsBlock {
-    fn new(sm: u8) -> AssignRegsBlock {
+    fn new(num_regs: &PerRegFile<u8>) -> AssignRegsBlock {
         AssignRegsBlock {
-            ra: PerRegFile::new_with(&|file| RegAllocator::new(file, sm)),
+            ra: PerRegFile::new_with(|file| {
+                RegAllocator::new(file, num_regs[file])
+            }),
             live_in: Vec::new(),
             phi_out: HashMap::new(),
         }
@@ -981,6 +983,8 @@ impl AssignRegs {
 
     pub fn run(&mut self, f: &mut Function) {
         let live = Liveness::for_function(f);
+        let num_regs = PerRegFile::new_with(|file| file.num_regs(self.sm));
+
         for b in &mut f.blocks {
             let bl = live.block(&b);
 
@@ -991,7 +995,7 @@ impl AssignRegs {
                 Some(&self.blocks.get(&bl.predecessors[0]).unwrap().ra)
             };
 
-            let mut arb = AssignRegsBlock::new(self.sm);
+            let mut arb = AssignRegsBlock::new(&num_regs);
             arb.first_pass(b, &bl, pred_ra);
             self.blocks.insert(b.id, arb);
         }
