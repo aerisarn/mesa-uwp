@@ -8925,8 +8925,6 @@ static bool
 radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
                                 const struct radv_draw_info *info)
 {
-   struct radv_cmd_state *state = &cmd_buffer->state;
-
    if (cmd_buffer->state.context_roll_without_scissor_emitted || info->strmout_buffer)
       return true;
 
@@ -8939,16 +8937,7 @@ radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
    used_states &= ~(RADV_CMD_DIRTY_INDEX_BUFFER | RADV_CMD_DIRTY_VERTEX_BUFFER |
                     RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT | RADV_CMD_DIRTY_STREAMOUT_BUFFER);
 
-   if (cmd_buffer->state.dirty & used_states)
-      return true;
-
-   uint32_t primitive_reset_index = radv_get_primitive_reset_index(cmd_buffer);
-
-   if (info->indexed && state->dynamic.vk.ia.primitive_restart_enable &&
-       primitive_reset_index != state->last_primitive_reset_index)
-      return true;
-
-   return false;
+   return cmd_buffer->state.dirty & used_states;
 }
 
 ALWAYS_INLINE static uint32_t
