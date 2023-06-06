@@ -294,12 +294,8 @@ LLVMValueRef ac_build_intrinsic(struct ac_llvm_context *ctx, const char *name,
 
    call = LLVMBuildCall2(ctx->builder, function_type, function, params, param_count, "");
 
-   if (attrib_mask & AC_ATTR_INVARIANT_LOAD) {
-      if (LLVM_VERSION_MAJOR >= 15)
-         LLVMSetMetadata(call, ctx->invariant_load_md_kind, ctx->empty_md);
-      else
-         LLVMAddCallSiteAttribute(call, -1, ac_get_llvm_attribute(ctx->context, "readnone"));
-   }
+   if (attrib_mask & AC_ATTR_INVARIANT_LOAD)
+      LLVMSetMetadata(call, ctx->invariant_load_md_kind, ctx->empty_md);
 
    if (attrib_mask & AC_ATTR_CONVERGENT)
       LLVMAddCallSiteAttribute(call, -1, ac_get_llvm_attribute(ctx->context, "convergent"));
@@ -3819,7 +3815,7 @@ struct ac_llvm_pointer ac_build_main(const struct ac_shader_args *args, struct a
    LLVMAddTargetDependentFunctionAttr(main_function, "denormal-fp-math-f32",
                                       "preserve-sign,preserve-sign");
 
-   if (LLVM_VERSION_MAJOR >= 15 && convention == AC_LLVM_AMDGPU_PS) {
+   if (convention == AC_LLVM_AMDGPU_PS) {
       LLVMAddTargetDependentFunctionAttr(main_function, "amdgpu-depth-export",
                                          ctx->exports_mrtz ? "1" : "0");
       LLVMAddTargetDependentFunctionAttr(main_function, "amdgpu-color-export",
