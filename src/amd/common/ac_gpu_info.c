@@ -1289,8 +1289,13 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
          /* Displayable DCC with retiling is known to increase power consumption on Raphael
           * and Mendocino, so disable it on the smallest APUs. We need a proof that
           * displayable DCC doesn't regress bigger chips in the same way.
+          * With num_cu = 4 in gfx11 measured power for idle, video playback and observed
+          * power savings, hence enable dcc with retile for gfx11 with num_cu >= 4.
           */
-         info->use_display_dcc_with_retile_blit = info->num_cu > 4;
+         if (info->gfx_level >= GFX11)
+            info->use_display_dcc_with_retile_blit = info->num_cu >= 4;
+         else
+            info->use_display_dcc_with_retile_blit = info->num_cu > 4;
       }
    }
 
