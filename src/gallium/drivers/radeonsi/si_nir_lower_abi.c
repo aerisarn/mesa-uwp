@@ -708,6 +708,10 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
          s->gsvs_ring[stream_id] : nir_ssa_undef(b, 4, 32);
       break;
    }
+   case nir_intrinsic_load_user_data_amd:
+      replacement = ac_nir_load_arg(b, &args->ac, args->cs_user_data);
+      replacement = nir_pad_vec4(b, replacement);
+      break;
    default:
       return false;
    }

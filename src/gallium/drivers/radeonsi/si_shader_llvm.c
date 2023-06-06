@@ -793,12 +793,6 @@ static bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shade
    }
 
    case MESA_SHADER_COMPUTE:
-      if (nir->info.cs.user_data_components_amd) {
-         ctx->abi.user_data = ac_get_arg(&ctx->ac, ctx->args->cs_user_data);
-         ctx->abi.user_data = ac_build_expand_to_vec4(&ctx->ac, ctx->abi.user_data,
-                                                      nir->info.cs.user_data_components_amd);
-      }
-
       if (ctx->shader->selector->info.base.shared_size)
          si_llvm_declare_compute_memory(ctx);
       break;
