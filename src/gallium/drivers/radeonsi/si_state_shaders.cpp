@@ -159,12 +159,9 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
       shader_variant_flags |= 1 << 1;
    if (wave_size == 32)
       shader_variant_flags |= 1 << 2;
-   if (sel->stage == MESA_SHADER_FRAGMENT &&
-       /* Derivatives imply helper invocations so check for needs_quad_helper_invocations. */
-       sel->info.base.fs.needs_quad_helper_invocations &&
-       sel->info.base.fs.uses_discard &&
-       sel->screen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL))
-      shader_variant_flags |= 1 << 3;
+
+   /* bit gap */
+
    /* use_ngg_culling disables NGG passthrough for non-culling shaders to reduce context
     * rolls, which can be changed with AMD_DEBUG=nonggc or AMD_DEBUG=nggc.
     */

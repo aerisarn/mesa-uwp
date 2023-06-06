@@ -293,9 +293,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
 
    NIR_PASS_V(nir, nir_lower_subgroups, &si_nir_subgroups_options);
 
-   NIR_PASS_V(nir, nir_lower_discard_or_demote,
-              (sscreen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL)) ||
-               nir->info.use_legacy_math_rules);
+   NIR_PASS_V(nir, nir_lower_discard_or_demote, true);
 
    /* Lower load constants to scalar and then clean up the mess */
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);

@@ -1698,11 +1698,6 @@ static LLVMValueRef enter_waterfall_ssbo(struct ac_nir_context *ctx, struct wate
 
 static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
-   if (ctx->ac.postponed_kill) {
-      LLVMValueRef cond = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i1, ctx->ac.postponed_kill, "");
-      ac_build_ifcc(&ctx->ac, cond, 7000);
-   }
-
    LLVMValueRef src_data = get_src(ctx, instr->src[0]);
    int elem_size_bytes = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src_data)) / 8;
    unsigned writemask = nir_intrinsic_write_mask(instr);
@@ -1789,9 +1784,6 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
    }
 
    exit_waterfall(ctx, &wctx, NULL);
-
-   if (ctx->ac.postponed_kill)
-      ac_build_endif(&ctx->ac, 7000);
 }
 
 static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx, LLVMValueRef descriptor,
@@ -1896,11 +1888,6 @@ translate_atomic_op(nir_atomic_op op)
 
 static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
-   if (ctx->ac.postponed_kill) {
-      LLVMValueRef cond = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i1, ctx->ac.postponed_kill, "");
-      ac_build_ifcc(&ctx->ac, cond, 7001);
-   }
-
    nir_atomic_op nir_op = nir_intrinsic_atomic_op(instr);
    const char *op = translate_atomic_op_str(nir_op);
    bool is_float = nir_atomic_op_type(nir_op) == nir_type_float;
@@ -1951,10 +1938,7 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
       }
    }
 
-   result = exit_waterfall(ctx, &wctx, result);
-   if (ctx->ac.postponed_kill)
-      ac_build_endif(&ctx->ac, 7001);
-   return result;
+   return exit_waterfall(ctx, &wctx, result);
 }
 
 static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
@@ -2073,11 +2057,6 @@ static LLVMValueRef visit_load_global(struct ac_nir_context *ctx,
 static void visit_store_global(struct ac_nir_context *ctx,
 				     nir_intrinsic_instr *instr)
 {
-   if (ctx->ac.postponed_kill) {
-      LLVMValueRef cond = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i1, ctx->ac.postponed_kill, "");
-      ac_build_ifcc(&ctx->ac, cond, 7002);
-   }
-
    LLVMValueRef data = get_src(ctx, instr->src[0]);
    LLVMTypeRef type = LLVMTypeOf(data);
    LLVMValueRef addr = get_global_address(ctx, instr, type);
@@ -2089,19 +2068,11 @@ static void visit_store_global(struct ac_nir_context *ctx,
       LLVMSetOrdering(val, LLVMAtomicOrderingMonotonic);
       LLVMSetAlignment(val, ac_get_type_size(type));
    }
-
-   if (ctx->ac.postponed_kill)
-      ac_build_endif(&ctx->ac, 7002);
 }
 
 static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
 					nir_intrinsic_instr *instr)
 {
-   if (ctx->ac.postponed_kill) {
-      LLVMValueRef cond = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i1, ctx->ac.postponed_kill, "");
-      ac_build_ifcc(&ctx->ac, cond, 7002);
-   }
-
    LLVMValueRef data = get_src(ctx, instr->src[1]);
    LLVMAtomicRMWBinOp op;
    LLVMValueRef result;
@@ -2140,9 +2111,6 @@ static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
       result = ac_build_atomic_rmw(&ctx->ac, op, addr, ac_to_integer(&ctx->ac, data), sync_scope);
    }
 
-   if (ctx->ac.postponed_kill)
-      ac_build_endif(&ctx->ac, 7002);
-
    return result;
 }
 
@@ -2174,11 +2142,6 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrin
 
 static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
-   if (ctx->ac.postponed_kill) {
-      LLVMValueRef cond = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i1, ctx->ac.postponed_kill, "");
-      ac_build_ifcc(&ctx->ac, cond, 7002);
-   }
-
    unsigned base = nir_intrinsic_base(instr);
    unsigned writemask = nir_intrinsic_write_mask(instr);
    unsigned component = nir_intrinsic_component(instr);
@@ -2232,9 +2195,6 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
       }
       LLVMBuildStore(ctx->ac.builder, value, output_addr);
    }
-
-   if (ctx->ac.postponed_kill)
-      ac_build_endif(&ctx->ac, 7002);
 }
 
 static int image_type_to_components_count(enum glsl_sampler_dim dim, bool array)
@@ -2450,11 +2410,6 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
 
 static void visit_image_store(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
 {
-   if (ctx->ac.postponed_kill) {
-      LLVMValueRef cond = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i1, ctx->ac.postponed_kill, "");
-      ac_build_ifcc(&ctx->ac, cond, 7003);
-   }
-
    enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
    bool is_array = nir_intrinsic_image_array(instr);
 
@@ -2502,17 +2457,10 @@ static void visit_image_store(struct ac_nir_context *ctx, const nir_intrinsic_in
    }
 
    exit_waterfall(ctx, &wctx, NULL);
-   if (ctx->ac.postponed_kill)
-      ac_build_endif(&ctx->ac, 7003);
 }
 
 static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
 {
-   if (ctx->ac.postponed_kill) {
-      LLVMValueRef cond = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i1, ctx->ac.postponed_kill, "");
-      ac_build_ifcc(&ctx->ac, cond, 7004);
-   }
-
    LLVMValueRef params[7];
    int param_count = 0;
 
@@ -2627,10 +2575,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
       result = ac_build_image_opcode(&ctx->ac, &args);
    }
 
-   result = exit_waterfall(ctx, &wctx, result);
-   if (ctx->ac.postponed_kill)
-      ac_build_endif(&ctx->ac, 7004);
-   return result;
+   return exit_waterfall(ctx, &wctx, result);
 }
 
 static void emit_discard(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
@@ -2660,43 +2605,8 @@ static void emit_demote(struct ac_nir_context *ctx, const nir_intrinsic_instr *i
       cond = ctx->ac.i1false;
    }
 
-   if (LLVM_VERSION_MAJOR >= 13) {
-      /* This demotes the pixel if the condition is false. */
-      ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.wqm.demote", ctx->ac.voidt, &cond, 1, 0);
-      return;
-   }
-
-   LLVMValueRef mask = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i1, ctx->ac.postponed_kill, "");
-   mask = LLVMBuildAnd(ctx->ac.builder, mask, cond, "");
-   LLVMBuildStore(ctx->ac.builder, mask, ctx->ac.postponed_kill);
-
-   if (!ctx->info->fs.needs_all_helper_invocations) {
-      /* This is an optional optimization that only kills whole inactive quads.
-       * It's not used when subgroup operations can possibly use all helper
-       * invocations.
-       */
-      if (ctx->ac.flow->depth == 0) {
-         ac_build_kill_if_false(&ctx->ac, ac_build_wqm_vote(&ctx->ac, cond));
-      } else {
-         /* amdgcn.wqm.vote doesn't work inside conditional blocks. Here's why.
-          *
-          * The problem is that kill(wqm.vote(0)) kills all active threads within
-          * the block, which breaks the whole quad mode outside the block if
-          * the conditional block has partially active quads (2x2 pixel blocks).
-          * E.g. threads 0-3 are active outside the block, but only thread 0 is
-          * active inside the block. Thread 0 shouldn't be killed by demote,
-          * because threads 1-3 are still active outside the block.
-          *
-          * The fix for amdgcn.wqm.vote would be to return S_WQM((live & ~exec) | cond)
-          * instead of S_WQM(cond).
-          *
-          * The less efficient workaround we do here is to save the kill condition
-          * to a temporary (postponed_kill) and do kill(wqm.vote(cond)) after we
-          * exit the conditional block.
-          */
-         ctx->ac.conditional_demote_seen = true;
-      }
-   }
+   /* This demotes the pixel if the condition is false. */
+   ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.wqm.demote", ctx->ac.voidt, &cond, 1, 0);
 }
 
 static LLVMValueRef visit_load_subgroup_id(struct ac_nir_context *ctx)
@@ -2837,11 +2747,6 @@ static void visit_store_shared2_amd(struct ac_nir_context *ctx, const nir_intrin
 static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr,
                                      LLVMValueRef ptr, int src_idx)
 {
-   if (ctx->ac.postponed_kill) {
-      LLVMValueRef cond = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.i1, ctx->ac.postponed_kill, "");
-      ac_build_ifcc(&ctx->ac, cond, 7005);
-   }
-
    LLVMValueRef result;
    LLVMValueRef src = get_src(ctx, instr->src[src_idx]);
    nir_atomic_op nir_op = nir_intrinsic_atomic_op(instr);
@@ -2890,8 +2795,6 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
       }
    }
 
-   if (ctx->ac.postponed_kill)
-      ac_build_endif(&ctx->ac, 7005);
    return result;
 }
 
@@ -3276,10 +3179,8 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = emit_i2b(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->front_face));
       break;
    case nir_intrinsic_load_helper_invocation:
-      result = ac_build_load_helper_invocation(&ctx->ac);
-      break;
    case nir_intrinsic_is_helper_invocation:
-      result = ac_build_is_helper_invocation(&ctx->ac);
+      result = ac_build_load_helper_invocation(&ctx->ac);
       break;
    case nir_intrinsic_load_user_data_amd:
       assert(LLVMTypeOf(ctx->abi->user_data) == ctx->ac.v4i32);
@@ -4575,19 +4476,10 @@ bool ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
    if (gl_shader_stage_is_compute(nir->info.stage))
       setup_shared(&ctx, nir);
 
-   if (nir->info.stage == MESA_SHADER_FRAGMENT && nir->info.fs.uses_demote &&
-       LLVM_VERSION_MAJOR < 13) {
-      /* true = don't kill. */
-      ctx.ac.postponed_kill = ac_build_alloca_init(&ctx.ac, ctx.ac.i1true, "");
-   }
-
    if (!visit_cf_list(&ctx, &func->impl->body))
       return false;
 
    phi_post_pass(&ctx);
-
-   if (ctx.ac.postponed_kill)
-      ac_build_kill_if_false(&ctx.ac, LLVMBuildLoad2(ctx.ac.builder, ctx.ac.i1, ctx.ac.postponed_kill, ""));
 
    free(ctx.ssa_defs);
    ralloc_free(ctx.defs);

@@ -1188,16 +1188,6 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->max_texel_buffer_elements = sscreen->b.get_param(
       &sscreen->b, PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT);
 
-   /* Set these flags in debug_flags early, so that the shader cache takes
-    * them into account.
-    *
-    * Enable FS_CORRECT_DERIVS_AFTER_KILL by default if LLVM is >= 13. This makes
-    * nir_opt_move_discards_to_top more effective.
-    */
-   if (driQueryOptionb(config->options, "glsl_correct_derivatives_after_discard") ||
-       LLVM_VERSION_MAJOR >= 13)
-      sscreen->debug_flags |= DBG(FS_CORRECT_DERIVS_AFTER_KILL);
-
    if (sscreen->debug_flags & DBG(INFO))
       ac_print_gpu_info(&sscreen->info, stdout);
 
