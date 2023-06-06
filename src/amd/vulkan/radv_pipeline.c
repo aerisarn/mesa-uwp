@@ -619,7 +619,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
             pipeline_key->ps.epilog.spi_shader_col_format & stage->info.ps.colors_written,
          .color_is_int8 = pipeline_key->ps.epilog.color_is_int8,
          .color_is_int10 = pipeline_key->ps.epilog.color_is_int10,
-         .alpha_func = PIPE_FUNC_ALWAYS,
+         .alpha_func = COMPARE_FUNC_ALWAYS,
 
          .enable_mrt_output_nan_fixup = pipeline_key->ps.epilog.enable_mrt_output_nan_fixup,
          .no_color_export = stage->info.ps.has_epilog,
