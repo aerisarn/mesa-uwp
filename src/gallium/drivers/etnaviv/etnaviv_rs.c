@@ -826,6 +826,9 @@ manual:
       if ((etna_resource_status(ctx, src) & ETNA_PENDING_WRITE) ||
           (etna_resource_status(ctx, dst) & ETNA_PENDING_WRITE))
          etna_flush(pctx, NULL, 0, true);
+
+      perf_debug_ctx(ctx, "RS blit falls back to sw");
+
       return etna_manual_blit(dst, dst_lev, dst_offset, src, src_lev, src_offset, blit_info);
    }
 

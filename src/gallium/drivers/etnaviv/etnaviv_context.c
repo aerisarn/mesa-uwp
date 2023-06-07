@@ -168,7 +168,7 @@ etna_get_vs(struct etna_context *ctx, struct etna_shader_key* const key)
 {
    const struct etna_shader_variant *old = ctx->shader.vs;
 
-   ctx->shader.vs = etna_shader_variant(ctx->shader.bind_vs, key, &ctx->base.debug);
+   ctx->shader.vs = etna_shader_variant(ctx->shader.bind_vs, key, &ctx->base.debug, true);
 
    if (!ctx->shader.vs)
       return false;
@@ -204,7 +204,7 @@ etna_get_fs(struct etna_context *ctx, struct etna_shader_key* const key)
       }
    }
 
-   ctx->shader.fs = etna_shader_variant(ctx->shader.bind_fs, key, &ctx->base.debug);
+   ctx->shader.fs = etna_shader_variant(ctx->shader.bind_fs, key, &ctx->base.debug, true);
 
    if (!ctx->shader.fs)
       return false;
@@ -675,6 +675,8 @@ etna_render_condition_check(struct pipe_context *pctx)
 
    if (!ctx->cond_query)
       return true;
+
+   perf_debug_ctx(ctx, "Implementing conditional rendering on the CPU");
 
    union pipe_query_result res = { 0 };
    bool wait =

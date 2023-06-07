@@ -101,7 +101,8 @@ etna_shader_update_vertex(struct etna_context *ctx);
 struct etna_shader_variant *
 etna_shader_variant(struct etna_shader *shader,
                     const struct etna_shader_key* const key,
-                    struct util_debug_callback *debug);
+                    struct util_debug_callback *debug,
+                    bool called_from_draw);
 
 void
 etna_shader_init(struct pipe_context *pctx);

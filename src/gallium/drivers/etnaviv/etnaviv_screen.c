@@ -75,6 +75,7 @@ static const struct debug_named_value etna_debug_options[] = {
    {"linear_pe",      ETNA_DBG_LINEAR_PE, "Enable linear PE"},
    {"msaa",           ETNA_DBG_MSAA, "Enable MSAA support"},
    {"shared_ts",      ETNA_DBG_SHARED_TS, "Enable TS sharing"},
+   {"perf",           ETNA_DBG_PERF, "Enable performance warnings"},
    DEBUG_NAMED_VALUE_END
 };
 

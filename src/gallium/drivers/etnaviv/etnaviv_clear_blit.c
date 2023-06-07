@@ -176,6 +176,7 @@ etna_resource_copy_region(struct pipe_context *pctx, struct pipe_resource *dst,
       util_blitter_copy_texture(ctx->blitter, dst, dst_level, dstx, dsty, dstz,
                                 src, src_level, src_box);
    } else {
+      perf_debug_ctx(ctx, "copy_region falls back to sw");
       util_resource_copy_region(pctx, dst, dst_level, dstx, dsty, dstz, src,
                                 src_level, src_box);
    }
