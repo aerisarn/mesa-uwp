@@ -37,6 +37,7 @@ struct vn_physical_device_features {
 
    /* EXT */
    VkPhysicalDeviceBorderColorSwizzleFeaturesEXT border_color_swizzle;
+   VkPhysicalDeviceColorWriteEnableFeaturesEXT color_write_enable;
    VkPhysicalDeviceConditionalRenderingFeaturesEXT conditional_rendering;
    VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_color;
    VkPhysicalDeviceDepthClipControlFeaturesEXT depth_clip_control;
