@@ -187,6 +187,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_PNEXT_EXT(feats2, TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, feats->texel_buffer_alignment, exts->EXT_texel_buffer_alignment);
    VN_ADD_PNEXT_EXT(feats2, YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, feats->ycbcr_2plane_444_formats, exts->EXT_ycbcr_2plane_444_formats);
 
+   /* KHR */
+   VN_ADD_PNEXT_EXT(feats2, SHADER_CLOCK_FEATURES_KHR, feats->shader_clock, exts->KHR_shader_clock);
+
    /* EXT */
    VN_ADD_PNEXT_EXT(feats2, CONDITIONAL_RENDERING_FEATURES_EXT, feats->conditional_rendering, exts->EXT_conditional_rendering);
    VN_ADD_PNEXT_EXT(feats2, CUSTOM_BORDER_COLOR_FEATURES_EXT, feats->custom_border_color, exts->EXT_custom_border_color);
@@ -1143,6 +1146,7 @@ vn_physical_device_get_passthrough_extensions(
 
       /* KHR */
       .KHR_push_descriptor = true,
+      .KHR_shader_clock = true,
 
       /* EXT */
       .EXT_calibrated_timestamps = true,
@@ -1790,6 +1794,9 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT, extended_dynamic_state_2);
       CASE(TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT, texel_buffer_alignment);
       CASE(YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT, ycbcr_2plane_444_formats);
+
+      /* KHR */
+      CASE(SHADER_CLOCK_FEATURES_KHR, shader_clock);
 
       /* EXT */
       CASE(CONDITIONAL_RENDERING_FEATURES_EXT, conditional_rendering);

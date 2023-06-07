@@ -32,6 +32,9 @@ struct vn_physical_device_features {
    VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT texel_buffer_alignment;
    VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT ycbcr_2plane_444_formats;
 
+   /* KHR */
+   VkPhysicalDeviceShaderClockFeaturesKHR shader_clock;
+
    /* EXT */
    VkPhysicalDeviceConditionalRenderingFeaturesEXT conditional_rendering;
    VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_color;
