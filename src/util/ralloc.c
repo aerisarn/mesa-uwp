@@ -38,9 +38,9 @@
 #define CANARY 0x5A1106
 
 #if defined(__LP64__) || defined(_WIN64)
-#define HEADER_ALIGN alignas(16)
+#define HEADER_ALIGN 16
 #else
-#define HEADER_ALIGN alignas(8)
+#define HEADER_ALIGN 8
 #endif
 
 /* Align the header's size so that ralloc() allocations will return with the
@@ -50,7 +50,7 @@
  */
 struct ralloc_header
 {
-   HEADER_ALIGN
+   alignas(HEADER_ALIGN)
 
 #ifndef NDEBUG
    /* A canary value used to determine whether a pointer is ralloc'd. */
@@ -578,7 +578,7 @@ typedef struct
  * allocated using a freelist backed by a simple linear allocator.
  */
 typedef struct gc_slab {
-   HEADER_ALIGN
+   alignas(HEADER_ALIGN)
 
    gc_ctx *ctx;
 
@@ -801,6 +801,9 @@ gc_alloc_size(gc_ctx *ctx, size_t size, size_t align)
     */
    assert((align - alignof(gc_block_header)) <= 127);
 
+   /* We can only align as high as the slab is. */
+   assert(align <= HEADER_ALIGN);
+
    size_t header_size = align64(sizeof(gc_block_header), align);
    size = align64(size, align);
    size += header_size;
@@ -954,7 +957,7 @@ gc_sweep_end(gc_ctx *ctx)
 
 struct linear_header {
 
-   HEADER_ALIGN
+   alignas(HEADER_ALIGN)
 
 #ifndef NDEBUG
    unsigned magic;   /* for debugging */
