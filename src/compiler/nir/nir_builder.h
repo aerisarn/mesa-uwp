@@ -1650,6 +1650,24 @@ nir_tex_src_for_ssa(nir_tex_src_type src_type, nir_ssa_def *def)
    return src;
 }
 
+/*
+ * Find a texture source, remove it, and return its nir_ssa_def. If the texture
+ * source does not exist, return NULL. This is useful for texture lowering pass
+ * that consume their input sources and produce a new lowered source.
+ */
+static inline nir_ssa_def *
+nir_steal_tex_src(nir_tex_instr *tex, nir_tex_src_type type_)
+{
+   int idx = nir_tex_instr_src_index(tex, type_);
+   if (idx < 0)
+      return NULL;
+
+   assert(tex->src[idx].src.is_ssa);
+   nir_ssa_def *ssa = tex->src[idx].src.ssa;
+   nir_tex_instr_remove_src(tex, idx);
+   return ssa;
+}
+
 static inline nir_ssa_def *
 nir_tex_deref(nir_builder *b, nir_deref_instr *t, nir_deref_instr *s,
               nir_ssa_def *coord)
