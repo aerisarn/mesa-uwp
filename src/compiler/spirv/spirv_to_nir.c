@@ -2570,9 +2570,8 @@ vtn_mem_semantics_to_nir_var_modes(struct vtn_builder *b,
 }
 
 nir_scope
-vtn_scope_to_nir_scope(struct vtn_builder *b, SpvScope scope)
+vtn_translate_scope(struct vtn_builder *b, SpvScope scope)
 {
-   nir_scope nir_scope;
    switch (scope) {
    case SpvScopeDevice:
       vtn_fail_if(b->options->caps.vk_memory_model &&
@@ -2580,37 +2579,29 @@ vtn_scope_to_nir_scope(struct vtn_builder *b, SpvScope scope)
                   "If the Vulkan memory model is declared and any instruction "
                   "uses Device scope, the VulkanMemoryModelDeviceScope "
                   "capability must be declared.");
-      nir_scope = NIR_SCOPE_DEVICE;
-      break;
+      return NIR_SCOPE_DEVICE;
 
    case SpvScopeQueueFamily:
       vtn_fail_if(!b->options->caps.vk_memory_model,
                   "To use Queue Family scope, the VulkanMemoryModel capability "
                   "must be declared.");
-      nir_scope = NIR_SCOPE_QUEUE_FAMILY;
-      break;
+      return NIR_SCOPE_QUEUE_FAMILY;
 
    case SpvScopeWorkgroup:
-      nir_scope = NIR_SCOPE_WORKGROUP;
-      break;
+      return NIR_SCOPE_WORKGROUP;
 
    case SpvScopeSubgroup:
-      nir_scope = NIR_SCOPE_SUBGROUP;
-      break;
+      return NIR_SCOPE_SUBGROUP;
 
    case SpvScopeInvocation:
-      nir_scope = NIR_SCOPE_INVOCATION;
-      break;
+      return NIR_SCOPE_INVOCATION;
 
    case SpvScopeShaderCallKHR:
-      nir_scope = NIR_SCOPE_SHADER_CALL;
-      break;
+      return NIR_SCOPE_SHADER_CALL;
 
    default:
       vtn_fail("Invalid memory scope");
    }
-
-   return nir_scope;
 }
 
 static void
@@ -2621,14 +2612,14 @@ vtn_emit_scoped_control_barrier(struct vtn_builder *b, SpvScope exec_scope,
    nir_memory_semantics nir_semantics =
       vtn_mem_semantics_to_nir_mem_semantics(b, semantics);
    nir_variable_mode modes = vtn_mem_semantics_to_nir_var_modes(b, semantics);
-   nir_scope nir_exec_scope = vtn_scope_to_nir_scope(b, exec_scope);
+   nir_scope nir_exec_scope = vtn_translate_scope(b, exec_scope);
 
    /* Memory semantics is optional for OpControlBarrier. */
    nir_scope nir_mem_scope;
    if (nir_semantics == 0 || modes == 0)
       nir_mem_scope = NIR_SCOPE_NONE;
    else
-      nir_mem_scope = vtn_scope_to_nir_scope(b, mem_scope);
+      nir_mem_scope = vtn_translate_scope(b, mem_scope);
 
    nir_scoped_barrier(&b->nb, .execution_scope=nir_exec_scope, .memory_scope=nir_mem_scope,
                               .memory_semantics=nir_semantics, .memory_modes=modes);
@@ -2646,7 +2637,7 @@ vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
    if (nir_semantics == 0 || modes == 0)
       return;
 
-   nir_scoped_barrier(&b->nb, .memory_scope=vtn_scope_to_nir_scope(b, scope),
+   nir_scoped_barrier(&b->nb, .memory_scope=vtn_translate_scope(b, scope),
                               .memory_semantics=nir_semantics,
                               .memory_modes=modes);
 }
