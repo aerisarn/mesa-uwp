@@ -177,11 +177,12 @@ struct draw_context
       /* Current active frontend */
       struct draw_pt_front_end *frontend;
       enum mesa_prim prim;
+      ubyte vertices_per_patch;
+      boolean rebind_parameters;
+
       unsigned opt;     /**< bitmask of PT_x flags */
       unsigned eltSize; /* saved eltSize for flushing */
       unsigned viewid; /* saved viewid for flushing */
-      ubyte vertices_per_patch;
-      boolean rebind_parameters;
 
       struct {
          struct draw_pt_middle_end *fetch_shade_emit;
@@ -208,6 +209,9 @@ struct draw_context
       struct pipe_vertex_element vertex_element[PIPE_MAX_ATTRIBS];
       unsigned nr_vertex_elements;
 
+      boolean test_fse;         /* enable FSE even though its not correct (eg for softpipe) */
+      boolean no_fse;           /* disable FSE even when it is correct */
+
       /* user-space vertex data, buffers */
       struct {
          /** vertex element/index buffer (ex: glDrawElements) */
@@ -233,9 +237,6 @@ struct draw_context
          /* pointer to planes */
          float (*planes)[DRAW_TOTAL_CLIP_PLANES][4];
       } user;
-
-      boolean test_fse;         /* enable FSE even though its not correct (eg for softpipe) */
-      boolean no_fse;           /* disable FSE even when it is correct */
    } pt;
 
    struct {
@@ -260,6 +261,8 @@ struct draw_context
    boolean guard_band_points_lines_xy;
 
    boolean dump_vs;
+   boolean identity_viewport;
+   boolean bypass_viewport;
 
    /** Depth format and bias related settings. */
    boolean floating_point_depth;
@@ -274,8 +277,6 @@ struct draw_context
    void *rasterizer_no_cull[2][2][2];
 
    struct pipe_viewport_state viewports[PIPE_MAX_VIEWPORTS];
-   boolean identity_viewport;
-   boolean bypass_viewport;
 
    /** Vertex shader state */
    struct {
@@ -382,10 +383,10 @@ struct draw_context
 
    struct pipe_query_data_pipeline_statistics statistics;
    boolean collect_statistics;
+   bool collect_primgen;
 
    float default_outer_tess_level[4];
    float default_inner_tess_level[2];
-   bool collect_primgen;
 
    struct draw_assembler *ia;
 
