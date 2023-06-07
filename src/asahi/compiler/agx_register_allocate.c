@@ -44,6 +44,7 @@ agx_write_registers(const agx_instr *I, unsigned d)
       assert(1 <= I->channels && I->channels <= 4);
       return I->channels * size;
 
+   case AGX_OPCODE_IMAGE_LOAD:
    case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
       /* Even when masked out, these clobber 4 registers */
@@ -238,6 +239,7 @@ agx_read_registers(const agx_instr *I, unsigned s)
       else
          return size;
 
+   case AGX_OPCODE_IMAGE_LOAD:
    case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
       if (s == 0) {

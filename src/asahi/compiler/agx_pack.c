@@ -774,6 +774,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
    }
 
    case AGX_OPCODE_TEXTURE_LOAD:
+   case AGX_OPCODE_IMAGE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE: {
       assert(I->mask != 0);
       assert(I->format <= 0x10);
@@ -795,6 +796,18 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       unsigned q3 = 12;  // XXX
       unsigned kill = 0; // helper invocation kill bit
 
+      /* Set bit 43 for image loads. This seems to makes sure that image loads
+       * get the value written by the latest image store, not some other image
+       * store that was already in flight, fixing
+       *
+       *    KHR-GLES31.core.shader_image_load_store.basic-glsl-misc-fs
+       *
+       * Apple seems to set this bit unconditionally for read/write image loads
+       * and never for readonly image loads. Some sort of cache control.
+       */
+      if (I->op == AGX_OPCODE_IMAGE_LOAD)
+         q3 |= 1;
+
       uint32_t extend = ((U & BITFIELD_MASK(5)) << 0) | (kill << 5) |
                         ((I->dim >> 3) << 7) | ((R >> 6) << 8) |
                         ((C >> 6) << 10) | ((D >> 6) << 12) | ((T >> 6) << 14) |
@@ -804,7 +817,7 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       bool L = (extend != 0);
 
       uint64_t raw =
-         0x31 | ((I->op == AGX_OPCODE_TEXTURE_LOAD) ? (1 << 6) : 0) |
+         0x31 | ((I->op != AGX_OPCODE_TEXTURE_SAMPLE) ? (1 << 6) : 0) |
          (Rt ? (1 << 8) : 0) | ((R & BITFIELD_MASK(6)) << 9) |
          (L ? (1 << 15) : 0) | ((C & BITFIELD_MASK(6)) << 16) |
          (Ct ? (1 << 22) : 0) | (q1 << 23) | ((D & BITFIELD_MASK(6)) << 24) |

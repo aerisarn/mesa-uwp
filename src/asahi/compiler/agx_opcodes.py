@@ -254,9 +254,10 @@ op("texture_sample",
       encoding_32 = (0x31, 0x7F, 8, 10), # XXX WRONG SIZE
       srcs = 6, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET, SHADOW,
 								GATHER])
-op("texture_load",
-      encoding_32 = (0x71, 0x7F, 8, 10), # XXX WRONG SIZE
-      srcs = 6, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET])
+for memory, can_reorder in [("texture", True), ("image", False)]:
+    op(f"{memory}_load", encoding_32 = (0x71, 0x7F, 8, 10), # XXX WRONG SIZE
+       srcs = 6, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET],
+       can_reorder = can_reorder)
 
 # sources are base, index
 op("device_load",

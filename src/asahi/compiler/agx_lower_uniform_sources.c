@@ -22,6 +22,7 @@ should_lower(enum agx_opcode op, agx_index uniform, unsigned src_index)
    bool high = uniform.value >= 256;
 
    switch (op) {
+   case AGX_OPCODE_IMAGE_LOAD:
    case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
       return src_index != 1 && src_index != 2;
