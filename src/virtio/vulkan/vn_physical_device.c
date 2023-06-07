@@ -191,6 +191,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_PNEXT_EXT(feats2, SHADER_CLOCK_FEATURES_KHR, feats->shader_clock, exts->KHR_shader_clock);
 
    /* EXT */
+   VN_ADD_PNEXT_EXT(feats2, BORDER_COLOR_SWIZZLE_FEATURES_EXT, feats->border_color_swizzle, exts->EXT_border_color_swizzle);
    VN_ADD_PNEXT_EXT(feats2, CONDITIONAL_RENDERING_FEATURES_EXT, feats->conditional_rendering, exts->EXT_conditional_rendering);
    VN_ADD_PNEXT_EXT(feats2, CUSTOM_BORDER_COLOR_FEATURES_EXT, feats->custom_border_color, exts->EXT_custom_border_color);
    VN_ADD_PNEXT_EXT(feats2, DEPTH_CLIP_CONTROL_FEATURES_EXT, feats->depth_clip_control, exts->EXT_depth_clip_control);
@@ -1149,6 +1150,7 @@ vn_physical_device_get_passthrough_extensions(
       .KHR_shader_clock = true,
 
       /* EXT */
+      .EXT_border_color_swizzle = true,
       .EXT_calibrated_timestamps = true,
       .EXT_conditional_rendering = true,
       .EXT_conservative_rasterization = true,
@@ -1799,6 +1801,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(SHADER_CLOCK_FEATURES_KHR, shader_clock);
 
       /* EXT */
+      CASE(BORDER_COLOR_SWIZZLE_FEATURES_EXT, border_color_swizzle);
       CASE(CONDITIONAL_RENDERING_FEATURES_EXT, conditional_rendering);
       CASE(CUSTOM_BORDER_COLOR_FEATURES_EXT, custom_border_color);
       CASE(DEPTH_CLIP_CONTROL_FEATURES_EXT, depth_clip_control);

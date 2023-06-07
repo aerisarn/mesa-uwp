@@ -36,6 +36,7 @@ struct vn_physical_device_features {
    VkPhysicalDeviceShaderClockFeaturesKHR shader_clock;
 
    /* EXT */
+   VkPhysicalDeviceBorderColorSwizzleFeaturesEXT border_color_swizzle;
    VkPhysicalDeviceConditionalRenderingFeaturesEXT conditional_rendering;
    VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_color;
    VkPhysicalDeviceDepthClipControlFeaturesEXT depth_clip_control;
