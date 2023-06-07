@@ -432,25 +432,25 @@ llvm_middle_end_bind_parameters(struct draw_pt_middle_end *middle)
    struct draw_llvm *llvm = fpme->llvm;
    unsigned i;
 
-   for (i = 0; i < ARRAY_SIZE(llvm->jit_resources.constants); ++i) {
+   for (i = 0; i < ARRAY_SIZE(llvm->vs_jit_resources.constants); ++i) {
       /*
        * There could be a potential issue with rounding this up, as the
        * shader expects 16-byte allocations, the fix is likely to move
        * to LOAD intrinsic in the future and remove the vec4 constraint.
        */
       int num_consts = get_num_consts_robust(draw, draw->pt.user.vs_constants_size, i);
-      llvm->jit_resources.constants[i].f = draw->pt.user.vs_constants[i];
-      llvm->jit_resources.constants[i].num_elements = num_consts;
+      llvm->vs_jit_resources.constants[i].f = draw->pt.user.vs_constants[i];
+      llvm->vs_jit_resources.constants[i].num_elements = num_consts;
       if (num_consts == 0) {
-         llvm->jit_resources.constants[i].f = fake_const_buf;
+         llvm->vs_jit_resources.constants[i].f = fake_const_buf;
       }
    }
-   for (i = 0; i < ARRAY_SIZE(llvm->jit_resources.ssbos); ++i) {
+   for (i = 0; i < ARRAY_SIZE(llvm->vs_jit_resources.ssbos); ++i) {
       int num_ssbos = draw->pt.user.vs_ssbos_size[i];
-      llvm->jit_resources.ssbos[i].u = draw->pt.user.vs_ssbos[i];
-      llvm->jit_resources.ssbos[i].num_elements = num_ssbos;
+      llvm->vs_jit_resources.ssbos[i].u = draw->pt.user.vs_ssbos[i];
+      llvm->vs_jit_resources.ssbos[i].num_elements = num_ssbos;
       if (num_ssbos == 0) {
-         llvm->jit_resources.ssbos[i].u = (const uint32_t *)fake_const_buf;
+         llvm->vs_jit_resources.ssbos[i].u = (const uint32_t *)fake_const_buf;
       }
    }
 
@@ -505,15 +505,15 @@ llvm_middle_end_bind_parameters(struct draw_pt_middle_end *middle)
       }
    }
 
-   llvm->jit_context.planes =
+   llvm->vs_jit_context.planes =
       (float (*)[DRAW_TOTAL_CLIP_PLANES][4]) draw->pt.user.planes[0];
    llvm->gs_jit_context.planes =
       (float (*)[DRAW_TOTAL_CLIP_PLANES][4]) draw->pt.user.planes[0];
 
-   llvm->jit_context.viewports = draw->viewports;
+   llvm->vs_jit_context.viewports = draw->viewports;
    llvm->gs_jit_context.viewports = draw->viewports;
 
-   llvm->jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
+   llvm->vs_jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
    llvm->gs_jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
    llvm->tcs_jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
    llvm->tes_jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
@@ -608,8 +608,8 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
          elts = fetch_info->elts;
       }
       /* Run vertex fetch shader */
-      clipped = fpme->current_variant->jit_func(&fpme->llvm->jit_context,
-                                                &fpme->llvm->jit_resources,
+      clipped = fpme->current_variant->jit_func(&fpme->llvm->vs_jit_context,
+                                                &fpme->llvm->vs_jit_resources,
                                                 llvm_vert_info.verts,
                                                 draw->pt.user.vbuffer,
                                                 fetch_info->count,
