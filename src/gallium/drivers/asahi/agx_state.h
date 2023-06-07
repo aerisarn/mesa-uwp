@@ -571,7 +571,7 @@ agx_device(struct pipe_screen *p)
    } while (0)
 
 #define perf_debug_ctx(ctx, ...)                                               \
-   perf_debug(agx_device((ctx)->base.screen), __VA_ARGS__);
+   perf_debug(agx_device((ctx)->base.screen), __VA_ARGS__)
 
 struct agx_resource {
    struct pipe_resource base;
