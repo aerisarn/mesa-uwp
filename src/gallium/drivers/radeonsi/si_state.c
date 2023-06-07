@@ -5975,8 +5975,6 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
                       S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_GFX10)) |
                   S_028410_DCC_RD_POLICY(meta_read_policy));
 
-   if (sctx->gfx_level >= GFX11)
-      si_pm4_set_reg(pm4, R_028620_PA_RATE_CNTL, S_028620_VERTEX_RATE(2) | S_028620_PRIM_RATE(1));
    if (sctx->gfx_level >= GFX10_3)
       si_pm4_set_reg(pm4, R_028750_SX_PS_DOWNCONVERT_CONTROL, 0xff);
 
