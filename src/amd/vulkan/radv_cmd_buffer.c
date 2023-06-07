@@ -6648,11 +6648,11 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    }
 
    /* Re-emit the conservative rasterization mode because inner coverage is different. */
-   if (previous_ps && previous_ps->info.ps.reads_fully_covered != ps->info.ps.reads_fully_covered)
+   if (!previous_ps || previous_ps->info.ps.reads_fully_covered != ps->info.ps.reads_fully_covered)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
 
    if (gfx_level >= GFX10_3 &&
-       previous_ps && previous_ps->info.ps.reads_sample_mask_in != ps->info.ps.reads_sample_mask_in)
+       (!previous_ps || previous_ps->info.ps.reads_sample_mask_in != ps->info.ps.reads_sample_mask_in))
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
                                  RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
 
