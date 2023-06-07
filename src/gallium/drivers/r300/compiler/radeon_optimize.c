@@ -1345,6 +1345,7 @@ static void merge_A0_loads(
 	unsigned int A0_src_reg = inst->U.I.SrcReg[0].Index;
 	unsigned int A0_src_file = inst->U.I.SrcReg[0].File;
 	unsigned int A0_src_swizzle = inst->U.I.SrcReg[0].Swizzle;
+	int cf_depth = 0;
 
 	struct rc_instruction * cur = inst;
 	while (cur != &c->Program.Instructions) {
@@ -1352,10 +1353,30 @@ static void merge_A0_loads(
 		const struct rc_opcode_info * opcode = rc_get_opcode_info(cur->U.I.Opcode);
 
 		/* Keep it simple for now and stop when encountering any
-		 * control flow.
+		 * control flow besides simple ifs.
 		 */
-		if (opcode->IsFlowControl)
-			return;
+		if (opcode->IsFlowControl) {
+			switch (cur->U.I.Opcode) {
+			case RC_OPCODE_IF:
+			{
+				cf_depth++;
+				break;
+			}
+			case RC_OPCODE_ELSE:
+			{
+				if (cf_depth < 1)
+					return;
+				break;
+			}
+			case RC_OPCODE_ENDIF:
+			{
+                                cf_depth--;
+                                break;
+			}
+			default:
+				return;
+			}
+		}
 
 		/* Stop when the original source is overwritten */
 		if (A0_src_reg == cur->U.I.DstReg.Index &&
