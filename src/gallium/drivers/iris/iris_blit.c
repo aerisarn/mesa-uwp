@@ -508,6 +508,12 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
          iris_resource_render_aux_usage(ice, dst_res, dst_fmt.fmt,
                                         info->dst.level, false);
 
+      iris_resource_prepare_render(ice, dst_res, dst_fmt.fmt, info->dst.level,
+                                   info->dst.box.z, info->dst.box.depth,
+                                   dst_aux_usage);
+      iris_emit_buffer_barrier_for(batch, dst_res->bo,
+                                   IRIS_DOMAIN_RENDER_WRITE);
+
       struct blorp_surf src_surf, dst_surf;
       iris_blorp_surf_for_resource(&screen->isl_dev,  &src_surf,
                                    &src_res->base.b, src_aux_usage,
@@ -515,12 +521,6 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       iris_blorp_surf_for_resource(&screen->isl_dev, &dst_surf,
                                    &dst_res->base.b, dst_aux_usage,
                                    info->dst.level, true);
-
-      iris_resource_prepare_render(ice, dst_res, dst_fmt.fmt, info->dst.level,
-                                   info->dst.box.z, info->dst.box.depth,
-                                   dst_aux_usage);
-      iris_emit_buffer_barrier_for(batch, dst_res->bo,
-                                   IRIS_DOMAIN_RENDER_WRITE);
 
       if (iris_batch_references(batch, src_res->bo))
          tex_cache_flush_hack(batch, src_fmt.fmt, src_res->surf.format);
@@ -730,12 +730,6 @@ iris_copy_region(struct blorp_context *blorp,
    } else {
       // XXX: what about one surface being a buffer and not the other?
 
-      struct blorp_surf src_surf, dst_surf;
-      iris_blorp_surf_for_resource(&screen->isl_dev, &src_surf,
-                                   src, src_aux_usage, src_level, false);
-      iris_blorp_surf_for_resource(&screen->isl_dev, &dst_surf,
-                                   dst, dst_aux_usage, dst_level, true);
-
       iris_resource_prepare_access(ice, src_res, src_level, 1,
                                    src_box->z, src_box->depth,
                                    src_aux_usage, src_clear_supported);
@@ -746,6 +740,12 @@ iris_copy_region(struct blorp_context *blorp,
       iris_emit_buffer_barrier_for(batch, src_res->bo,
                                    IRIS_DOMAIN_SAMPLER_READ);
       iris_emit_buffer_barrier_for(batch, dst_res->bo, write_domain);
+
+      struct blorp_surf src_surf, dst_surf;
+      iris_blorp_surf_for_resource(&screen->isl_dev, &src_surf,
+                                   src, src_aux_usage, src_level, false);
+      iris_blorp_surf_for_resource(&screen->isl_dev, &dst_surf,
+                                   dst, dst_aux_usage, dst_level, true);
 
       for (int slice = 0; slice < src_box->depth; slice++) {
          iris_batch_maybe_flush(batch, 1500);
