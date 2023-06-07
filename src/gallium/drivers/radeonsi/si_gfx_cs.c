@@ -385,14 +385,19 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
     * users (e.g. BO evictions and SDMA/UVD/VCE IBs) can modify our
     * buffers.
     *
+    * Gfx10+ automatically invalidates I$, SMEM$, VMEM$, and GL1$ at the beginning of IBs,
+    * so we only need to flush the GL2 cache.
+    *
     * Note that the cache flush done by the kernel at the end of GFX IBs
     * isn't useful here, because that flush can finish after the following
     * IB starts drawing.
     *
     * TODO: Do we also need to invalidate CB & DB caches?
     */
-   ctx->flags |= SI_CONTEXT_INV_ICACHE | SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE |
-                 SI_CONTEXT_INV_L2 | SI_CONTEXT_START_PIPELINE_STATS;
+   ctx->flags |= SI_CONTEXT_INV_L2 | SI_CONTEXT_START_PIPELINE_STATS;
+   if (ctx->gfx_level < GFX10)
+      ctx->flags |= SI_CONTEXT_INV_ICACHE | SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE;
+
    ctx->pipeline_stats_enabled = -1;
 
    /* We don't know if the last draw used NGG because it can be a different process.
