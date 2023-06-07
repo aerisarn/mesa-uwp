@@ -774,6 +774,23 @@ agx_translate_bindless_handle(agx_builder *b, nir_src *handle, agx_index *base)
    return agx_emit_extract(b, agx_src_index(handle), 1);
 }
 
+/*
+ * Contrary to NIR, in the hardware txf requires a special sampler. The sampler
+ * cannot be arbitrary, since the hardware honours the clamps so particular
+ * configuration is required for correct out-of-bounds behaviour for txf. This
+ * helper gets the shader's txf sampler, allocating one if needed.
+ */
+static agx_index
+agx_txf_sampler(agx_context *ctx)
+{
+   if (!ctx->out->uses_txf) {
+      ctx->out->txf_sampler = BITSET_LAST_BIT(ctx->nir->info.samplers_used);
+      ctx->out->uses_txf = true;
+   }
+
+   return agx_immediate(ctx->out->txf_sampler);
+}
+
 static agx_instr *
 agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
 {
@@ -1432,11 +1449,8 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
    bool txf = (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms);
 
-   /* txf loads a texture without an associated sampler, but in the hardware
-    * there is an associated load of a sampler. This requires that the driver
-    * upload a dummy sampler.
-    */
-   b->shader->out->needs_dummy_sampler |= txf;
+   if (txf)
+      sampler = agx_txf_sampler(b->shader);
 
    for (unsigned i = 0; i < instr->num_srcs; ++i) {
       agx_index index = agx_src_index(&instr->src[i].src);

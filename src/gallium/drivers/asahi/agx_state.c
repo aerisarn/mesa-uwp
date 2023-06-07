@@ -1973,12 +1973,12 @@ static unsigned
 sampler_count(struct agx_context *ctx, struct agx_compiled_shader *cs,
               enum pipe_shader_type stage)
 {
-   unsigned nr_samplers = ctx->stage[stage].sampler_count;
+   unsigned sampler_count = ctx->stage[stage].sampler_count;
 
-   if (cs->info.needs_dummy_sampler)
-      nr_samplers = MAX2(nr_samplers, 1);
+   if (cs->info.uses_txf)
+      sampler_count = MAX2(sampler_count, cs->info.txf_sampler + 1);
 
-   return nr_samplers;
+   return sampler_count;
 }
 
 static inline enum agx_sampler_states
@@ -2107,31 +2107,35 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
    uint8_t *out_sampler = T_samp.cpu;
-   if (nr_samplers && ctx->stage[stage].sampler_count == 0) {
-      /* Configuration is irrelevant for the dummy sampler */
-      agx_pack(out_sampler, SAMPLER, cfg)
-         ;
-   } else {
-      for (unsigned i = 0; i < nr_samplers; ++i) {
-         struct agx_sampler_state *sampler = ctx->stage[stage].samplers[i];
-         struct agx_sampler_packed *out =
-            (struct agx_sampler_packed *)out_sampler;
+   for (unsigned i = 0; i < nr_samplers; ++i) {
+      struct agx_sampler_state *sampler = ctx->stage[stage].samplers[i];
+      struct agx_sampler_packed *out = (struct agx_sampler_packed *)out_sampler;
 
-         if (sampler) {
-            *out = sampler->desc;
+      if (cs->info.uses_txf && i == cs->info.txf_sampler) {
+         agx_pack(out, SAMPLER, cfg) {
+            /* Allow mipmapping. This is respected by txf, weirdly. */
+            cfg.mip_filter = AGX_MIP_FILTER_NEAREST;
 
-            if (custom_borders) {
-               memcpy(out_sampler + AGX_SAMPLER_LENGTH, &sampler->border,
-                      AGX_BORDER_LENGTH);
-            } else {
-               assert(!sampler->uses_custom_border && "invalid combination");
-            }
-         } else {
-            memset(out, 0, sampler_length);
+            /* Out-of-bounds reads must return 0 */
+            cfg.wrap_s = AGX_WRAP_CLAMP_TO_BORDER;
+            cfg.wrap_t = AGX_WRAP_CLAMP_TO_BORDER;
+            cfg.wrap_r = AGX_WRAP_CLAMP_TO_BORDER;
+            cfg.border_colour = AGX_BORDER_COLOUR_TRANSPARENT_BLACK;
          }
+      } else if (sampler) {
+         *out = sampler->desc;
 
-         out_sampler += sampler_length;
+         if (custom_borders) {
+            memcpy(out_sampler + AGX_SAMPLER_LENGTH, &sampler->border,
+                   AGX_BORDER_LENGTH);
+         } else {
+            assert(!sampler->uses_custom_border && "invalid combination");
+         }
+      } else {
+         memset(out, 0, sampler_length);
       }
+
+      out_sampler += sampler_length;
    }
 
    struct agx_usc_builder b =

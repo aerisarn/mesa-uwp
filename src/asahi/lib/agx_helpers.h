@@ -12,7 +12,7 @@
 static inline enum agx_sampler_states
 agx_translate_sampler_state_count(unsigned count, bool extended)
 {
-   assert(count <= 16 && "max 16 sampler state registers supported");
+   assert(count <= 17 && "max 17 sampler state registers supported");
 
    if (count == 0) {
       return AGX_SAMPLER_STATES_0;

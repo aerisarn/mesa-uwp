@@ -125,8 +125,9 @@ struct agx_shader_info {
    /* Shader is incompatible with triangle merging */
    bool disable_tri_merging;
 
-   /* Shader needs a dummy sampler (for txf reads) */
-   bool needs_dummy_sampler;
+   /* Shader uses txf, requiring a workaround sampler in the given location */
+   bool uses_txf;
+   unsigned txf_sampler;
 
    /* Number of bindful textures, images used */
    unsigned nr_bindful_textures, nr_bindful_images;
