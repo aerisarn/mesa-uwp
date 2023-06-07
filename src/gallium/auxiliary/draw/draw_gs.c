@@ -903,7 +903,7 @@ draw_create_geometry_shader(struct draw_context *draw,
       gs->run = llvm_gs_run;
 
       gs->jit_context = &draw->llvm->gs_jit_context;
-      gs->jit_resources = &draw->llvm->gs_jit_resources;
+      gs->jit_resources = &draw->llvm->jit_resources[PIPE_SHADER_GEOMETRY];
 
       llvm_gs->variant_key_size =
          draw_gs_llvm_variant_key_size(

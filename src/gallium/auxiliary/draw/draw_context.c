@@ -461,26 +461,8 @@ draw_set_mapped_constant_buffer(struct draw_context *draw,
 
    draw_do_flush(draw, DRAW_FLUSH_PARAMETER_CHANGE);
 
-   switch (shader_type) {
-   case PIPE_SHADER_VERTEX:
-      draw->pt.user.vs_constants[slot].ptr = buffer;
-      draw->pt.user.vs_constants[slot].size = size;
-      break;
-   case PIPE_SHADER_GEOMETRY:
-      draw->pt.user.gs_constants[slot].ptr = buffer;
-      draw->pt.user.gs_constants[slot].size = size;
-      break;
-   case PIPE_SHADER_TESS_CTRL:
-      draw->pt.user.tcs_constants[slot].ptr = buffer;
-      draw->pt.user.tcs_constants[slot].size = size;
-      break;
-   case PIPE_SHADER_TESS_EVAL:
-      draw->pt.user.tes_constants[slot].ptr = buffer;
-      draw->pt.user.tes_constants[slot].size = size;
-      break;
-   default:
-      assert(0 && "invalid shader type in draw_set_mapped_constant_buffer");
-   }
+   draw->pt.user.constants[shader_type][slot].ptr = buffer;
+   draw->pt.user.constants[shader_type][slot].size = size;
 }
 
 void
@@ -498,26 +480,8 @@ draw_set_mapped_shader_buffer(struct draw_context *draw,
 
    draw_do_flush(draw, DRAW_FLUSH_PARAMETER_CHANGE);
 
-   switch (shader_type) {
-   case PIPE_SHADER_VERTEX:
-      draw->pt.user.vs_ssbos[slot].ptr = buffer;
-      draw->pt.user.vs_ssbos[slot].size = size;
-      break;
-   case PIPE_SHADER_GEOMETRY:
-      draw->pt.user.gs_ssbos[slot].ptr = buffer;
-      draw->pt.user.gs_ssbos[slot].size = size;
-      break;
-   case PIPE_SHADER_TESS_CTRL:
-      draw->pt.user.tcs_ssbos[slot].ptr = buffer;
-      draw->pt.user.tcs_ssbos[slot].size = size;
-      break;
-   case PIPE_SHADER_TESS_EVAL:
-      draw->pt.user.tes_ssbos[slot].ptr = buffer;
-      draw->pt.user.tes_ssbos[slot].size = size;
-      break;
-   default:
-      assert(0 && "invalid shader type in draw_set_mapped_shader_buffer");
-   }
+   draw->pt.user.ssbos[shader_type][slot].ptr = buffer;
+   draw->pt.user.ssbos[shader_type][slot].size = size;
 }
 
 

@@ -222,15 +222,8 @@ struct draw_context
          struct draw_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];
 
          /** constant buffers for each shader stage */
-         struct draw_buffer_info vs_constants[PIPE_MAX_CONSTANT_BUFFERS];
-         struct draw_buffer_info gs_constants[PIPE_MAX_CONSTANT_BUFFERS];
-         struct draw_buffer_info tcs_constants[PIPE_MAX_CONSTANT_BUFFERS];
-         struct draw_buffer_info tes_constants[PIPE_MAX_CONSTANT_BUFFERS];
-
-         struct draw_buffer_info vs_ssbos[PIPE_MAX_SHADER_BUFFERS];
-         struct draw_buffer_info gs_ssbos[PIPE_MAX_SHADER_BUFFERS];
-         struct draw_buffer_info tcs_ssbos[PIPE_MAX_SHADER_BUFFERS];
-         struct draw_buffer_info tes_ssbos[PIPE_MAX_SHADER_BUFFERS];
+         struct draw_buffer_info constants[PIPE_SHADER_GEOMETRY + 1][PIPE_MAX_CONSTANT_BUFFERS];
+         struct draw_buffer_info ssbos[PIPE_SHADER_GEOMETRY + 1][PIPE_MAX_SHADER_BUFFERS];
 
          /* pointer to planes */
          float (*planes)[DRAW_TOTAL_CLIP_PLANES][4];

@@ -455,7 +455,7 @@ draw_create_tess_ctrl_shader(struct draw_context *draw,
       tcs->tcs_output = align_malloc(sizeof(struct draw_tcs_outputs), 16);
       memset(tcs->tcs_output, 0, sizeof(struct draw_tcs_outputs));
 
-      tcs->jit_resources = &draw->llvm->tcs_jit_resources;
+      tcs->jit_resources = &draw->llvm->jit_resources[PIPE_SHADER_TESS_CTRL];
       llvm_tcs->variant_key_size =
          draw_tcs_llvm_variant_key_size(
                                         tcs->info.file_max[TGSI_FILE_SAMPLER]+1,
@@ -580,7 +580,7 @@ draw_create_tess_eval_shader(struct draw_context *draw,
       tes->tes_input = align_malloc(sizeof(struct draw_tes_inputs), 16);
       memset(tes->tes_input, 0, sizeof(struct draw_tes_inputs));
 
-      tes->jit_resources = &draw->llvm->tes_jit_resources;
+      tes->jit_resources = &draw->llvm->jit_resources[PIPE_SHADER_TESS_EVAL];
       llvm_tes->variant_key_size =
          draw_tes_llvm_variant_key_size(
                                         tes->info.file_max[TGSI_FILE_SAMPLER]+1,

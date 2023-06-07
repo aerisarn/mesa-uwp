@@ -2156,28 +2156,11 @@ draw_llvm_set_mapped_texture(struct draw_context *draw,
 {
    struct lp_jit_texture *jit_tex;
 
-   switch (shader_stage) {
-   case PIPE_SHADER_VERTEX:
-      assert(sview_idx < ARRAY_SIZE(draw->llvm->vs_jit_resources.textures));
-      jit_tex = &draw->llvm->vs_jit_resources.textures[sview_idx];
-      break;
-   case PIPE_SHADER_GEOMETRY:
-      assert(sview_idx < ARRAY_SIZE(draw->llvm->gs_jit_resources.textures));
-      jit_tex = &draw->llvm->gs_jit_resources.textures[sview_idx];
-      break;
-   case PIPE_SHADER_TESS_CTRL:
-      assert(sview_idx < ARRAY_SIZE(draw->llvm->tcs_jit_resources.textures));
-      jit_tex = &draw->llvm->tcs_jit_resources.textures[sview_idx];
-      break;
-   case PIPE_SHADER_TESS_EVAL:
-      assert(sview_idx < ARRAY_SIZE(draw->llvm->tes_jit_resources.textures));
-      jit_tex = &draw->llvm->tes_jit_resources.textures[sview_idx];
-      break;
-   default:
-      assert(0);
-      return;
-   }
+   assert (shader_stage >= PIPE_SHADER_VERTEX &&
+           shader_stage <= PIPE_SHADER_GEOMETRY);
+   assert(sview_idx < ARRAY_SIZE(draw->llvm->jit_resources[shader_stage].textures));
 
+   jit_tex = &draw->llvm->jit_resources[shader_stage].textures[sview_idx];
    jit_tex->width = width;
    jit_tex->height = height;
    jit_tex->depth = depth;
@@ -2208,27 +2191,11 @@ draw_llvm_set_mapped_image(struct draw_context *draw,
 {
    struct lp_jit_image *jit_image;
 
-   switch (shader_stage) {
-   case PIPE_SHADER_VERTEX:
-      assert(idx < ARRAY_SIZE(draw->llvm->vs_jit_resources.images));
-      jit_image = &draw->llvm->vs_jit_resources.images[idx];
-      break;
-   case PIPE_SHADER_GEOMETRY:
-      assert(idx < ARRAY_SIZE(draw->llvm->gs_jit_resources.images));
-      jit_image = &draw->llvm->gs_jit_resources.images[idx];
-      break;
-   case PIPE_SHADER_TESS_CTRL:
-      assert(idx < ARRAY_SIZE(draw->llvm->tcs_jit_resources.images));
-      jit_image = &draw->llvm->tcs_jit_resources.images[idx];
-      break;
-   case PIPE_SHADER_TESS_EVAL:
-      assert(idx < ARRAY_SIZE(draw->llvm->tes_jit_resources.images));
-      jit_image = &draw->llvm->tes_jit_resources.images[idx];
-      break;
-   default:
-      assert(0);
-      return;
-   }
+   assert (shader_stage >= PIPE_SHADER_VERTEX &&
+           shader_stage <= PIPE_SHADER_GEOMETRY);
+   assert(idx < ARRAY_SIZE(draw->llvm->jit_resources[shader_stage].images));
+
+   jit_image = &draw->llvm->jit_resources[shader_stage].images[idx];
 
    jit_image->width = width;
    jit_image->height = height;
@@ -2246,70 +2213,20 @@ void
 draw_llvm_set_sampler_state(struct draw_context *draw,
                             enum pipe_shader_type shader_type)
 {
-   switch (shader_type) {
-   case PIPE_SHADER_VERTEX:
-      for (unsigned i = 0; i < draw->num_samplers[PIPE_SHADER_VERTEX]; i++) {
-         struct lp_jit_sampler *jit_sam = &draw->llvm->vs_jit_resources.samplers[i];
+   assert (shader_type >= PIPE_SHADER_VERTEX &&
+           shader_type <= PIPE_SHADER_GEOMETRY);
+   for (unsigned i = 0; i < draw->num_samplers[shader_type]; i++) {
+      struct lp_jit_sampler *jit_sam = &draw->llvm->jit_resources[shader_type].samplers[i];
 
-         if (draw->samplers[PIPE_SHADER_VERTEX][i]) {
-            const struct pipe_sampler_state *s
-               = draw->samplers[PIPE_SHADER_VERTEX][i];
-            jit_sam->min_lod = s->min_lod;
-            jit_sam->max_lod = s->max_lod;
-            jit_sam->lod_bias = s->lod_bias;
-            jit_sam->max_aniso = s->max_anisotropy;
-            COPY_4V(jit_sam->border_color, s->border_color.f);
-         }
+      if (draw->samplers[shader_type][i]) {
+         const struct pipe_sampler_state *s
+            = draw->samplers[shader_type][i];
+         jit_sam->min_lod = s->min_lod;
+         jit_sam->max_lod = s->max_lod;
+         jit_sam->lod_bias = s->lod_bias;
+         jit_sam->max_aniso = s->max_anisotropy;
+         COPY_4V(jit_sam->border_color, s->border_color.f);
       }
-      break;
-   case PIPE_SHADER_GEOMETRY:
-      for (unsigned i = 0; i < draw->num_samplers[PIPE_SHADER_GEOMETRY]; i++) {
-         struct lp_jit_sampler *jit_sam = &draw->llvm->gs_jit_resources.samplers[i];
-
-         if (draw->samplers[PIPE_SHADER_GEOMETRY][i]) {
-            const struct pipe_sampler_state *s
-               = draw->samplers[PIPE_SHADER_GEOMETRY][i];
-            jit_sam->min_lod = s->min_lod;
-            jit_sam->max_lod = s->max_lod;
-            jit_sam->lod_bias = s->lod_bias;
-            jit_sam->max_aniso = s->max_anisotropy;
-            COPY_4V(jit_sam->border_color, s->border_color.f);
-         }
-      }
-      break;
-   case PIPE_SHADER_TESS_CTRL:
-      for (unsigned i = 0; i < draw->num_samplers[PIPE_SHADER_TESS_CTRL]; i++) {
-         struct lp_jit_sampler *jit_sam = &draw->llvm->tcs_jit_resources.samplers[i];
-
-         if (draw->samplers[PIPE_SHADER_TESS_CTRL][i]) {
-            const struct pipe_sampler_state *s
-               = draw->samplers[PIPE_SHADER_TESS_CTRL][i];
-            jit_sam->min_lod = s->min_lod;
-            jit_sam->max_lod = s->max_lod;
-            jit_sam->lod_bias = s->lod_bias;
-            jit_sam->max_aniso = s->max_anisotropy;
-            COPY_4V(jit_sam->border_color, s->border_color.f);
-         }
-      }
-      break;
-   case PIPE_SHADER_TESS_EVAL:
-      for (unsigned i = 0; i < draw->num_samplers[PIPE_SHADER_TESS_EVAL]; i++) {
-         struct lp_jit_sampler *jit_sam = &draw->llvm->tes_jit_resources.samplers[i];
-
-         if (draw->samplers[PIPE_SHADER_TESS_EVAL][i]) {
-            const struct pipe_sampler_state *s
-               = draw->samplers[PIPE_SHADER_TESS_EVAL][i];
-            jit_sam->min_lod = s->min_lod;
-            jit_sam->max_lod = s->max_lod;
-            jit_sam->lod_bias = s->lod_bias;
-            jit_sam->max_aniso = s->max_anisotropy;
-            COPY_4V(jit_sam->border_color, s->border_color.f);
-         }
-      }
-      break;
-   default:
-      assert(0);
-      break;
    }
 }
 

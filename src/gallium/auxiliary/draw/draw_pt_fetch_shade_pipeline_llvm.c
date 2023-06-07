@@ -431,77 +431,30 @@ llvm_middle_end_bind_parameters(struct draw_pt_middle_end *middle)
    struct draw_llvm *llvm = fpme->llvm;
    unsigned i;
 
-   for (i = 0; i < ARRAY_SIZE(llvm->vs_jit_resources.constants); ++i) {
-      /*
-       * There could be a potential issue with rounding this up, as the
-       * shader expects 16-byte allocations, the fix is likely to move
-       * to LOAD intrinsic in the future and remove the vec4 constraint.
-       */
-      int num_consts = get_num_consts_robust(draw, draw->pt.user.vs_constants, i);
-      llvm->vs_jit_resources.constants[i].f = draw->pt.user.vs_constants[i].ptr;
-      llvm->vs_jit_resources.constants[i].num_elements = num_consts;
-      if (num_consts == 0) {
-         llvm->vs_jit_resources.constants[i].f = fake_const_buf;
+   for (enum pipe_shader_type shader_type = PIPE_SHADER_VERTEX; shader_type <= PIPE_SHADER_GEOMETRY; shader_type++) {
+      for (i = 0; i < ARRAY_SIZE(llvm->jit_resources[shader_type].constants); ++i) {
+         /*
+          * There could be a potential issue with rounding this up, as the
+          * shader expects 16-byte allocations, the fix is likely to move
+          * to LOAD intrinsic in the future and remove the vec4 constraint.
+          */
+         int num_consts = get_num_consts_robust(draw, draw->pt.user.constants[shader_type], i);
+         llvm->jit_resources[shader_type].constants[i].f = draw->pt.user.constants[shader_type][i].ptr;
+         llvm->jit_resources[shader_type].constants[i].num_elements = num_consts;
+         if (num_consts == 0) {
+            llvm->jit_resources[shader_type].constants[i].f = fake_const_buf;
+         }
       }
-   }
-   for (i = 0; i < ARRAY_SIZE(llvm->vs_jit_resources.ssbos); ++i) {
-      int num_ssbos = draw->pt.user.vs_ssbos[i].size;
-      llvm->vs_jit_resources.ssbos[i].u = draw->pt.user.vs_ssbos[i].ptr;
-      llvm->vs_jit_resources.ssbos[i].num_elements = num_ssbos;
-      if (num_ssbos == 0) {
-         llvm->vs_jit_resources.ssbos[i].u = (const uint32_t *)fake_const_buf;
+      for (i = 0; i < ARRAY_SIZE(llvm->jit_resources[shader_type].ssbos); ++i) {
+         int num_ssbos = draw->pt.user.ssbos[shader_type][i].size;
+         llvm->jit_resources[shader_type].ssbos[i].u = draw->pt.user.ssbos[shader_type][i].ptr;
+         llvm->jit_resources[shader_type].ssbos[i].num_elements = num_ssbos;
+         if (num_ssbos == 0) {
+            llvm->jit_resources[shader_type].ssbos[i].u = (const uint32_t *)fake_const_buf;
+         }
       }
-   }
 
-   for (i = 0; i < ARRAY_SIZE(llvm->gs_jit_resources.constants); ++i) {
-      int num_consts = get_num_consts_robust(draw, draw->pt.user.gs_constants, i);
-      llvm->gs_jit_resources.constants[i].f = draw->pt.user.gs_constants[i].ptr;
-      llvm->gs_jit_resources.constants[i].num_elements = num_consts;
-      if (num_consts == 0) {
-         llvm->gs_jit_resources.constants[i].f = fake_const_buf;
-      }
-   }
-   for (i = 0; i < ARRAY_SIZE(llvm->gs_jit_resources.ssbos); ++i) {
-      int num_ssbos = draw->pt.user.gs_ssbos[i].size;
-      llvm->gs_jit_resources.ssbos[i].u = draw->pt.user.gs_ssbos[i].ptr;
-      llvm->gs_jit_resources.ssbos[i].num_elements = num_ssbos;
-      if (num_ssbos == 0) {
-         llvm->gs_jit_resources.ssbos[i].u = (const uint32_t *)fake_const_buf;
-      }
-   }
-
-   for (i = 0; i < ARRAY_SIZE(llvm->tcs_jit_resources.constants); ++i) {
-      int num_consts = get_num_consts_robust(draw, draw->pt.user.tcs_constants, i);
-      llvm->tcs_jit_resources.constants[i].f = draw->pt.user.tcs_constants[i].ptr;
-      llvm->tcs_jit_resources.constants[i].num_elements = num_consts;
-      if (num_consts == 0) {
-         llvm->tcs_jit_resources.constants[i].f = fake_const_buf;
-      }
-   }
-   for (i = 0; i < ARRAY_SIZE(llvm->tcs_jit_resources.ssbos); ++i) {
-      int num_ssbos = draw->pt.user.tcs_ssbos[i].size;
-      llvm->tcs_jit_resources.ssbos[i].u = draw->pt.user.tcs_ssbos[i].ptr;
-      llvm->tcs_jit_resources.ssbos[i].num_elements = num_ssbos;
-      if (num_ssbos == 0) {
-         llvm->tcs_jit_resources.ssbos[i].u = (const uint32_t *)fake_const_buf;
-      }
-   }
-
-   for (i = 0; i < ARRAY_SIZE(llvm->tes_jit_resources.constants); ++i) {
-      int num_consts = get_num_consts_robust(draw, draw->pt.user.tes_constants, i);
-      llvm->tes_jit_resources.constants[i].f = draw->pt.user.tes_constants[i].ptr;
-      llvm->tes_jit_resources.constants[i].num_elements = num_consts;
-      if (num_consts == 0) {
-         llvm->tes_jit_resources.constants[i].f = fake_const_buf;
-      }
-   }
-   for (i = 0; i < ARRAY_SIZE(llvm->tes_jit_resources.ssbos); ++i) {
-      int num_ssbos = draw->pt.user.tes_ssbos[i].size;
-      llvm->tes_jit_resources.ssbos[i].u = draw->pt.user.tes_ssbos[i].ptr;
-      llvm->tes_jit_resources.ssbos[i].num_elements = num_ssbos;
-      if (num_ssbos == 0) {
-         llvm->tes_jit_resources.ssbos[i].u = (const uint32_t *)fake_const_buf;
-      }
+      llvm->jit_resources[shader_type].aniso_filter_table = lp_build_sample_aniso_filter_table();
    }
 
    llvm->vs_jit_context.planes =
@@ -511,11 +464,6 @@ llvm_middle_end_bind_parameters(struct draw_pt_middle_end *middle)
 
    llvm->vs_jit_context.viewports = draw->viewports;
    llvm->gs_jit_context.viewports = draw->viewports;
-
-   llvm->vs_jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
-   llvm->gs_jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
-   llvm->tcs_jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
-   llvm->tes_jit_resources.aniso_filter_table = lp_build_sample_aniso_filter_table();
 }
 
 
@@ -608,7 +556,7 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
       }
       /* Run vertex fetch shader */
       clipped = fpme->current_variant->jit_func(&fpme->llvm->vs_jit_context,
-                                                &fpme->llvm->vs_jit_resources,
+                                                &fpme->llvm->jit_resources[PIPE_SHADER_VERTEX],
                                                 llvm_vert_info.verts,
                                                 draw->pt.user.vbuffer,
                                                 fetch_info->count,
@@ -679,7 +627,7 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
    if ((opt & PT_SHADE) && gshader) {
       struct draw_vertex_shader *vshader = draw->vs.vertex_shader;
       draw_geometry_shader_run(gshader,
-                               draw->pt.user.gs_constants,
+                               draw->pt.user.constants[PIPE_SHADER_GEOMETRY],
                                vert_info,
                                prim_info,
                                tes_shader ? &tes_shader->info : &vshader->info,
