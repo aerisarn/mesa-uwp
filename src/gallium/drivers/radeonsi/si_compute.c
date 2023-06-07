@@ -227,9 +227,6 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
    program->ir_type = cso->ir_type;
    program->input_size = cso->req_input_mem;
 
-   if (si_can_dump_shader(sscreen, sel->stage, SI_DUMP_INIT_NIR))
-      nir_print_shader(sel->nir, stderr);
-
    if (cso->ir_type != PIPE_SHADER_IR_NATIVE) {
       if (cso->ir_type == PIPE_SHADER_IR_TGSI) {
          program->ir_type = PIPE_SHADER_IR_NIR;
@@ -238,6 +235,9 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
          assert(cso->ir_type == PIPE_SHADER_IR_NIR);
          sel->nir = (struct nir_shader *)cso->prog;
       }
+
+      if (si_can_dump_shader(sscreen, sel->stage, SI_DUMP_INIT_NIR))
+         nir_print_shader(sel->nir, stderr);
 
       sel->compiler_ctx_state.debug = sctx->debug;
       sel->compiler_ctx_state.is_debug_context = sctx->is_debug;
