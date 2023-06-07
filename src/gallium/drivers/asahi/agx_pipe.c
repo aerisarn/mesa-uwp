@@ -510,6 +510,16 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
       assert(nresource->modifier != DRM_FORMAT_MOD_INVALID);
    }
 
+   /* If there's only 1 layer and there's no compression, there's no harm in
+    * inferring the shader image flag. Do so to avoid reallocation in case the
+    * resource is later used as an image.
+    */
+   if (nresource->modifier != DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED &&
+       templ->depth0 == 1) {
+
+      nresource->base.bind |= PIPE_BIND_SHADER_IMAGE;
+   }
+
    nresource->mipmapped = (templ->last_level > 0);
 
    assert(templ->format != PIPE_FORMAT_Z24X8_UNORM &&
@@ -1122,8 +1132,11 @@ void
 agx_decompress(struct agx_context *ctx, struct agx_resource *rsrc,
                const char *reason)
 {
-   assert(rsrc->layout.tiling == AIL_TILING_TWIDDLED_COMPRESSED);
-   perf_debug_ctx(ctx, "Decompressing resource due to %s", reason);
+   if (rsrc->layout.tiling == AIL_TILING_TWIDDLED_COMPRESSED) {
+      perf_debug_ctx(ctx, "Decompressing resource due to %s", reason);
+   } else if (!rsrc->layout.writeable_image) {
+      perf_debug_ctx(ctx, "Reallocating image due to %s", reason);
+   }
 
    struct pipe_resource templ = rsrc->base;
    assert(!(templ.bind & PIPE_BIND_SHADER_IMAGE) && "currently compressed");

@@ -110,7 +110,7 @@ agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
        * compression. Decompress if necessary.
        */
       struct agx_resource *rsrc = agx_resource(image->resource);
-      if (rsrc->layout.tiling == AIL_TILING_TWIDDLED_COMPRESSED &&
+      if (!rsrc->layout.writeable_image &&
           (image->shader_access & PIPE_IMAGE_ACCESS_WRITE)) {
 
          agx_decompress(ctx, rsrc, "Shader image");
@@ -120,6 +120,9 @@ agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
        * reinterpretation rules.
        */
       agx_legalize_compression(ctx, rsrc, image->format);
+
+      if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE)
+         assert(rsrc->layout.writeable_image);
 
       /* FIXME: Decompress here once we have texture compression */
       util_copy_image_view(&ctx->stage[shader].images[start_slot + i], image);
