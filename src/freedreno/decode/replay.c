@@ -178,6 +178,7 @@ struct device {
    struct u_vector cmdstreams;
 
    uint64_t shader_log_iova;
+   uint64_t cp_log_iova;
 
    bool has_set_iova;
 
@@ -274,6 +275,52 @@ device_print_shader_log(struct device *dev)
 
          printf("========================================\n");
       }
+   }
+}
+
+static void
+device_print_cp_log(struct device *dev)
+{
+   struct cp_log {
+      uint64_t cur_iova;
+      uint64_t tmp;
+      uint64_t first_entry_size;
+   };
+
+   struct cp_log_entry {
+      uint64_t size;
+      uint32_t data[0];
+   };
+
+   if (dev->cp_log_iova == 0)
+      return;
+
+   struct buffer *buf = device_get_buffer(dev, dev->cp_log_iova);
+   if (!buf)
+      return;
+
+   struct cp_log *log = buf->map + (dev->cp_log_iova - buf->iova);
+   if (log->first_entry_size == 0)
+      return;
+
+   struct cp_log_entry *log_entry =
+      buf->map + offsetof(struct cp_log, first_entry_size);
+   uint32_t idx = 0;
+   while (log_entry->size != 0) {
+      printf("\nCP Log [%u]:\n", idx++);
+      uint32_t dwords = log_entry->size / 4;
+
+      for (uint32_t i = 0; i < dwords; i++) {
+         if (i % 8 == 0)
+            printf("\t");
+         printf("%08x ", log_entry->data[i]);
+         if (i % 8 == 7)
+            printf("\n");
+      }
+      printf("\n");
+
+      log_entry = (void *)log_entry + log_entry->size +
+                  offsetof(struct cp_log_entry, data);
    }
 }
 
@@ -472,6 +519,7 @@ device_submit_cmdstreams(struct device *dev)
    u_vector_init(&dev->cmdstreams, 8, sizeof(struct cmdstream));
 
    device_print_shader_log(dev);
+   device_print_cp_log(dev);
 }
 
 static void
@@ -664,6 +712,7 @@ device_submit_cmdstreams(struct device *dev)
    u_vector_init(&dev->cmdstreams, 8, sizeof(struct cmdstream));
 
    device_print_shader_log(dev);
+   device_print_cp_log(dev);
 }
 
 static void
@@ -777,6 +826,11 @@ override_cmdstream(struct device *dev, struct cmdstream *cs,
       case RD_SHADER_LOG_BUFFER: {
          unsigned int sizedwords;
          parse_addr(ps.buf, ps.sz, &sizedwords, &dev->shader_log_iova);
+         break;
+      }
+      case RD_CP_LOG_BUFFER: {
+         unsigned int sizedwords;
+         parse_addr(ps.buf, ps.sz, &sizedwords, &dev->cp_log_iova);
          break;
       }
       default:
