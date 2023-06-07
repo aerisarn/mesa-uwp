@@ -965,7 +965,7 @@ radv_shader_wait_for_upload(struct radv_device *device, uint64_t seq)
 
 static struct radv_shader_arena *
 radv_create_shader_arena(struct radv_device *device, struct radv_shader_free_list *free_list, unsigned min_size,
-                         unsigned arena_size, uint64_t replay_va)
+                         unsigned arena_size, bool replayable, uint64_t replay_va)
 {
    union radv_shader_arena_block *alloc = NULL;
    struct radv_shader_arena *arena = calloc(1, sizeof(struct radv_shader_arena));
@@ -983,6 +983,9 @@ radv_create_shader_arena(struct radv_device *device, struct radv_shader_free_lis
       flags |= RADEON_FLAG_NO_CPU_ACCESS;
    else
       flags |= (device->physical_device->rad_info.cpdma_prefetch_writes_memory ? 0 : RADEON_FLAG_READ_ONLY);
+
+   if (replayable)
+      flags |= RADEON_FLAG_REPLAYABLE;
 
    VkResult result;
    result = device->ws->buffer_create(device->ws, arena_size, RADV_SHADER_ALLOC_ALIGNMENT, RADEON_DOMAIN_VRAM, flags,
@@ -1011,6 +1014,13 @@ radv_create_shader_arena(struct radv_device *device, struct radv_shader_free_lis
          goto fail;
    }
 
+   if (replay_va)
+      arena->type = RADV_SHADER_ARENA_REPLAYED;
+   else if (replayable)
+      arena->type = RADV_SHADER_ARENA_REPLAYABLE;
+   else
+      arena->type = RADV_SHADER_ARENA_DEFAULT;
+
    return arena;
 
 fail:
@@ -1027,7 +1037,7 @@ fail:
 /* Inserts a block at an arbitrary place into a hole, splitting the hole as needed */
 static union radv_shader_arena_block *
 insert_block(struct radv_device *device, union radv_shader_arena_block *hole, uint32_t offset_in_hole, uint32_t size,
-             struct radv_shader_free_list *freelist)
+             struct radv_shader_free_list *free_list)
 {
    uint32_t hole_begin = hole->offset;
    uint32_t hole_end = hole->offset + hole->size;
@@ -1049,8 +1059,8 @@ insert_block(struct radv_device *device, union radv_shader_arena_block *hole, ui
       left_hole->offset = hole->offset;
       left_hole->size = offset_in_hole;
 
-      if (freelist)
-         add_hole(freelist, left_hole);
+      if (free_list)
+         add_hole(free_list, left_hole);
    }
 
    if (hole_end > offset_in_hole + size) {
@@ -1064,8 +1074,8 @@ insert_block(struct radv_device *device, union radv_shader_arena_block *hole, ui
       right_hole->offset = hole_begin + offset_in_hole + size;
       right_hole->size = hole_end - right_hole->offset;
 
-      if (freelist)
-         add_hole(freelist, right_hole);
+      if (free_list)
+         add_hole(free_list, right_hole);
    }
 
    if (left_hole) {
@@ -1080,8 +1090,8 @@ insert_block(struct radv_device *device, union radv_shader_arena_block *hole, ui
       list_add(&right_hole->list, &hole->list);
    }
 
-   if (freelist)
-      remove_hole(freelist, hole);
+   if (free_list)
+      remove_hole(free_list, hole);
    return hole;
 }
 
@@ -1098,29 +1108,30 @@ insert_block(struct radv_device *device, union radv_shader_arena_block *hole, ui
  * free'd memory to be re-used.
  */
 union radv_shader_arena_block *
-radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
+radv_alloc_shader_memory(struct radv_device *device, uint32_t size, bool replayable, void *ptr)
 {
    size = align(size, RADV_SHADER_ALLOC_ALIGNMENT);
 
    mtx_lock(&device->shader_arena_mutex);
 
+   struct radv_shader_free_list *free_list = replayable ? &device->capture_replay_free_list : &device->shader_free_list;
+
    /* Try to use an existing hole. Unless the shader is very large, this should only have to look
     * at the first one available.
     */
    unsigned free_list_mask = BITFIELD_MASK(RADV_SHADER_ALLOC_NUM_FREE_LISTS);
-   unsigned size_class = ffs(device->shader_free_list.size_mask & (free_list_mask << get_size_class(size, true)));
+   unsigned size_class = ffs(free_list->size_mask & (free_list_mask << get_size_class(size, true)));
    if (size_class) {
       size_class--;
 
-      list_for_each_entry (union radv_shader_arena_block, hole, &device->shader_free_list.free_lists[size_class],
-                           freelist) {
+      list_for_each_entry (union radv_shader_arena_block, hole, &free_list->free_lists[size_class], freelist) {
          if (hole->size < size)
             continue;
 
          assert(hole->offset % RADV_SHADER_ALLOC_ALIGNMENT == 0);
 
          if (size == hole->size) {
-            remove_hole(&device->shader_free_list, hole);
+            remove_hole(free_list, hole);
             hole->freelist.next = ptr;
             mtx_unlock(&device->shader_arena_mutex);
             return hole;
@@ -1137,10 +1148,10 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
             alloc->offset = hole->offset;
             alloc->size = size;
 
-            remove_hole(&device->shader_free_list, hole);
+            remove_hole(free_list, hole);
             hole->offset += size;
             hole->size -= size;
-            add_hole(&device->shader_free_list, hole);
+            add_hole(free_list, hole);
 
             mtx_unlock(&device->shader_arena_mutex);
             return alloc;
@@ -1148,13 +1159,13 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
       }
    }
 
-   struct radv_shader_arena *arena = radv_create_shader_arena(device, &device->shader_free_list, size, 0, 0);
+   struct radv_shader_arena *arena = radv_create_shader_arena(device, free_list, size, 0, replayable, 0);
    union radv_shader_arena_block *alloc = NULL;
    if (!arena)
       goto fail;
 
-   alloc = insert_block(device, list_entry(arena->entries.next, union radv_shader_arena_block, list), 0, size,
-                        &device->shader_free_list);
+   alloc =
+      insert_block(device, list_entry(arena->entries.next, union radv_shader_arena_block, list), 0, size, free_list);
 
    ++device->shader_arena_shift;
    list_addtail(&arena->list, &device->shader_arenas);
@@ -1194,9 +1205,26 @@ radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_bloc
 
    union radv_shader_arena_block *hole = alloc;
 
+   struct radv_shader_free_list *free_list;
+
+   switch (alloc->arena->type) {
+   case RADV_SHADER_ARENA_DEFAULT:
+      free_list = &device->shader_free_list;
+      break;
+   case RADV_SHADER_ARENA_REPLAYABLE:
+      free_list = &device->capture_replay_free_list;
+      break;
+   case RADV_SHADER_ARENA_REPLAYED:
+      free_list = NULL;
+      break;
+   default:
+      unreachable("invalid shader arena type");
+   }
+
    /* merge with previous hole */
    if (hole_prev) {
-      remove_hole(&device->shader_free_list, hole_prev);
+      if (free_list)
+         remove_hole(free_list, hole_prev);
 
       hole_prev->size += hole->size;
       list_del(&hole->list);
@@ -1207,7 +1235,8 @@ radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_bloc
 
    /* merge with next hole */
    if (hole_next) {
-      remove_hole(&device->shader_free_list, hole_next);
+      if (free_list)
+         remove_hole(free_list, hole_next);
 
       hole_next->offset -= hole->size;
       hole_next->size += hole->size;
@@ -1225,8 +1254,8 @@ radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_bloc
       device->ws->buffer_destroy(device->ws, arena->bo);
       list_del(&arena->list);
       free(arena);
-   } else {
-      add_hole(&device->shader_free_list, hole);
+   } else if (free_list) {
+      add_hole(free_list, hole);
    }
 
    mtx_unlock(&device->shader_arena_mutex);
@@ -1238,11 +1267,14 @@ radv_init_shader_arenas(struct radv_device *device)
    mtx_init(&device->shader_arena_mutex, mtx_plain);
 
    device->shader_free_list.size_mask = 0;
+   device->capture_replay_free_list.size_mask = 0;
 
    list_inithead(&device->shader_arenas);
    list_inithead(&device->shader_block_obj_pool);
-   for (unsigned i = 0; i < RADV_SHADER_ALLOC_NUM_FREE_LISTS; i++)
+   for (unsigned i = 0; i < RADV_SHADER_ALLOC_NUM_FREE_LISTS; i++) {
       list_inithead(&device->shader_free_list.free_lists[i]);
+      list_inithead(&device->capture_replay_free_list.free_lists[i]);
+   }
 }
 
 void
@@ -1947,7 +1979,7 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
       }
    }
 
-   shader->alloc = radv_alloc_shader_memory(device, shader->code_size, shader);
+   shader->alloc = radv_alloc_shader_memory(device, shader->code_size, false, shader);
    if (!shader->alloc)
       return NULL;
 
@@ -2029,7 +2061,7 @@ radv_shader_part_create(struct radv_device *device, struct radv_shader_part_bina
    shader_part->spi_shader_col_format = binary->info.spi_shader_col_format;
 
    /* Allocate memory and upload. */
-   shader_part->alloc = radv_alloc_shader_memory(device, shader_part->code_size, NULL);
+   shader_part->alloc = radv_alloc_shader_memory(device, shader_part->code_size, false, NULL);
    if (!shader_part->alloc)
       goto fail;
 

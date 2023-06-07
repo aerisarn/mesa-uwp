@@ -160,7 +160,7 @@ radv_sqtt_reloc_graphics_shaders(struct radv_device *device, struct radv_graphic
    }
 
    /* Allocate memory for all shader binaries. */
-   reloc->alloc = radv_alloc_shader_memory(device, code_size, pipeline);
+   reloc->alloc = radv_alloc_shader_memory(device, code_size, false, pipeline);
    if (!reloc->alloc) {
       free(reloc);
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;

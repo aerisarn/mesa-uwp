@@ -1081,6 +1081,10 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       radv_rra_trace_init(device);
    }
 
+   if (device->vk.enabled_features.rayTracingPipelineShaderGroupHandleCaptureReplay) {
+      device->capture_replay_arena_vas = _mesa_hash_table_u64_create(NULL);
+   }
+
    *pDevice = radv_device_to_handle(device);
    return VK_SUCCESS;
 
@@ -1143,6 +1147,9 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    if (!device)
       return;
+
+   if (device->capture_replay_arena_vas)
+      _mesa_hash_table_u64_destroy(device->capture_replay_arena_vas);
 
    radv_device_finish_perf_counter_lock_cs(device);
    if (device->perf_counter_bo)

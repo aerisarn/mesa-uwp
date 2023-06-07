@@ -522,12 +522,15 @@ struct radv_shader_part_binary {
    uint8_t data[0];
 };
 
+enum radv_shader_arena_type { RADV_SHADER_ARENA_DEFAULT, RADV_SHADER_ARENA_REPLAYABLE, RADV_SHADER_ARENA_REPLAYED };
+
 struct radv_shader_arena {
    struct list_head list;
    struct list_head entries;
    uint32_t size;
    struct radeon_winsys_bo *bo;
    char *ptr;
+   enum radv_shader_arena_type type;
 };
 
 union radv_shader_arena_block {
@@ -640,7 +643,9 @@ radv_shader_dma_get_submission(struct radv_device *device, struct radeon_winsys_
 bool radv_shader_dma_submit(struct radv_device *device, struct radv_shader_dma_submission *submission,
                             uint64_t *upload_seq_out);
 
-union radv_shader_arena_block *radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr);
+union radv_shader_arena_block *radv_alloc_shader_memory(struct radv_device *device, uint32_t size, bool replayable,
+                                                        void *ptr);
+
 void radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_block *alloc);
 
 struct radv_shader *radv_create_trap_handler_shader(struct radv_device *device);
