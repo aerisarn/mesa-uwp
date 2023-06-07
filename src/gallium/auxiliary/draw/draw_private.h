@@ -327,15 +327,6 @@ struct draw_context
    /* Tessellation state */
    struct {
       struct draw_tess_ctrl_shader *tess_ctrl_shader;
-
-      /** Fields for TGSI interpreter / execution */
-      struct {
-         struct tgsi_exec_machine *machine;
-
-         struct tgsi_sampler *sampler;
-         struct tgsi_image *image;
-         struct tgsi_buffer *buffer;
-      } tgsi;
    } tcs;
 
    struct {
@@ -343,15 +334,6 @@ struct draw_context
       uint num_tes_outputs;  /**< convenience, from tess_eval_shader */
       uint position_output;
       uint clipvertex_output;
-
-      /** Fields for TGSI interpreter / execution */
-      struct {
-         struct tgsi_exec_machine *machine;
-
-         struct tgsi_sampler *sampler;
-         struct tgsi_image *image;
-         struct tgsi_buffer *buffer;
-      } tgsi;
    } tes;
 
    /** Fragment shader state */

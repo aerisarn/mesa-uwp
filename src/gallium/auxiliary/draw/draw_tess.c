@@ -155,8 +155,6 @@ llvm_tcs_run(struct draw_tess_ctrl_shader *shader, uint32_t prim_id)
  * Execute tess ctrl shader.
  */
 int draw_tess_ctrl_shader_run(struct draw_tess_ctrl_shader *shader,
-                              const void *constants[PIPE_MAX_CONSTANT_BUFFERS],
-                              const unsigned constants_size[PIPE_MAX_CONSTANT_BUFFERS],
                               const struct draw_vertex_info *input_verts,
                               const struct draw_prim_info *input_prim,
                               const struct tgsi_shader_info *input_info,
@@ -320,8 +318,6 @@ llvm_tes_run(struct draw_tess_eval_shader *shader,
  * Execute tess eval shader.
  */
 int draw_tess_eval_shader_run(struct draw_tess_eval_shader *shader,
-                              const void *constants[PIPE_MAX_CONSTANT_BUFFERS],
-                              const unsigned constants_size[PIPE_MAX_CONSTANT_BUFFERS],
                               unsigned num_input_vertices_per_patch,
                               const struct draw_vertex_info *input_verts,
                               const struct draw_prim_info *input_prim,

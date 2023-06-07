@@ -794,12 +794,6 @@ draw_texture_sampler(struct draw_context *draw,
    case PIPE_SHADER_GEOMETRY:
       draw->gs.tgsi.sampler = sampler;
       break;
-   case PIPE_SHADER_TESS_CTRL:
-      draw->tcs.tgsi.sampler = sampler;
-      break;
-   case PIPE_SHADER_TESS_EVAL:
-      draw->tes.tgsi.sampler = sampler;
-      break;
    default:
       assert(0);
       break;
@@ -824,12 +818,6 @@ draw_image(struct draw_context *draw,
    case PIPE_SHADER_GEOMETRY:
       draw->gs.tgsi.image = image;
       break;
-   case PIPE_SHADER_TESS_CTRL:
-      draw->tcs.tgsi.image = image;
-      break;
-   case PIPE_SHADER_TESS_EVAL:
-      draw->tes.tgsi.image = image;
-      break;
    default:
       assert(0);
       break;
@@ -853,12 +841,6 @@ draw_buffer(struct draw_context *draw,
       break;
    case PIPE_SHADER_GEOMETRY:
       draw->gs.tgsi.buffer = buffer;
-      break;
-   case PIPE_SHADER_TESS_CTRL:
-      draw->tcs.tgsi.buffer = buffer;
-      break;
-   case PIPE_SHADER_TESS_EVAL:
-      draw->tes.tgsi.buffer = buffer;
       break;
    default:
       assert(0);
