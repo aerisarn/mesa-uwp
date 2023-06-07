@@ -15,6 +15,7 @@
 #include "agx_debug.h"
 #include "agx_internal_formats.h"
 #include "agx_nir.h"
+#include "nir_intrinsics.h"
 
 /* Alignment for shader programs. I'm not sure what the optimal value is. */
 #define AGX_CODE_ALIGN 0x100
@@ -818,6 +819,62 @@ agx_expand_tex_to(agx_builder *b, nir_dest *dest, agx_index src, bool masked)
 }
 
 static agx_instr *
+agx_emit_image_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *intr)
+{
+   agx_index ms_index = agx_src_index(&intr->src[2]);
+   agx_index lod = agx_src_index(&intr->src[3]);
+   enum agx_lod_mode lod_mode = AGX_LOD_MODE_LOD_MIN;
+
+   agx_index bindless = agx_immediate(0), texture;
+   if (intr->intrinsic == nir_intrinsic_bindless_image_load)
+      texture = agx_translate_bindless_handle(b, &intr->src[0], &bindless);
+   else if (nir_src_is_const(intr->src[0]) &&
+            nir_src_as_uint(intr->src[0]) < 0x100)
+      texture = agx_immediate(nir_src_as_uint(intr->src[0]));
+   else
+      texture = agx_src_index(&intr->src[0]);
+
+   assert(nir_src_num_components(intr->src[1]) == 4);
+   agx_index coord[4] = {
+      agx_extract_nir_src(b, intr->src[1], 0),
+      agx_extract_nir_src(b, intr->src[1], 1),
+      agx_extract_nir_src(b, intr->src[1], 2),
+      agx_extract_nir_src(b, intr->src[1], 3),
+   };
+
+   enum glsl_sampler_dim dim = nir_intrinsic_image_dim(intr);
+   bool is_array = nir_intrinsic_image_array(intr);
+   bool is_ms = dim == GLSL_SAMPLER_DIM_MS;
+   unsigned coord_comps = glsl_get_sampler_dim_coordinate_components(dim);
+   if (is_array && is_ms) {
+      agx_index layer = agx_temp(b->shader, AGX_SIZE_16);
+      agx_subdivide_to(b, layer, coord[coord_comps], 0);
+      coord[coord_comps++] = agx_vec2(b, ms_index, layer);
+   } else if (is_ms) {
+      agx_index tmp = agx_temp(b->shader, AGX_SIZE_32);
+      agx_mov_to(b, tmp, ms_index);
+      coord[coord_comps++] = tmp;
+   } else if (is_array) {
+      coord_comps++;
+   }
+
+   /* Multisampled images do not support mipmapping */
+   if (is_ms) {
+      lod_mode = AGX_LOD_MODE_AUTO_LOD;
+      lod = agx_zero();
+   }
+
+   agx_index coords = agx_emit_collect(b, coord_comps, coord);
+   agx_index tmp = agx_temp(b->shader, dst.size);
+
+   agx_instr *I = agx_image_load_to(
+      b, tmp, coords, lod, bindless, texture, agx_txf_sampler(b->shader),
+      agx_null(), agx_tex_dim(dim, is_array), lod_mode, 0, 0, false);
+   I->mask = agx_expand_tex_to(b, &intr->dest, tmp, true);
+   return NULL;
+}
+
+static agx_instr *
 agx_emit_image_store(agx_builder *b, nir_intrinsic_instr *instr)
 {
    enum glsl_sampler_dim glsl_dim = nir_intrinsic_image_dim(instr);
@@ -989,6 +1046,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_store_preamble:
       return agx_emit_store_preamble(b, instr);
+
+   case nir_intrinsic_image_load:
+   case nir_intrinsic_bindless_image_load:
+      return agx_emit_image_load(b, dst, instr);
 
    case nir_intrinsic_image_store:
    case nir_intrinsic_bindless_image_store:
