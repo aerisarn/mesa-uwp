@@ -43,6 +43,7 @@ struct vn_physical_device_features {
    VkPhysicalDeviceLineRasterizationFeaturesEXT line_rasterization;
    VkPhysicalDeviceMultiDrawFeaturesEXT multi_draw;
    VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_descriptor_type;
+   VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT non_seamless_cube_map;
    VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT
       primitive_topology_list_restart;
    VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT
