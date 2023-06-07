@@ -46,7 +46,7 @@
 #include "r300_fs.h"
 #include "r300_texture.h"
 #include "r300_vs.h"
-#include "nir.h"
+#include "compiler/r300_nir.h"
 #include "nir/nir_to_tgsi.h"
 
 /* r300_state: Functions used to initialize state context by translating

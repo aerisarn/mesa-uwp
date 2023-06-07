@@ -53,7 +53,7 @@ def main():
     import nir_algebraic  # pylint: disable=import-error
 
     with open(args.output, 'w') as f:
-        f.write('#include "r300_vs.h"')
+        f.write('#include "compiler/r300_nir.h"')
 
         f.write(nir_algebraic.AlgebraicPass("r300_transform_vs_trig_input",
                                             transform_trig_input_vs_r500).render())
