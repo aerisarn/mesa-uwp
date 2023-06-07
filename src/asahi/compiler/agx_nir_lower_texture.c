@@ -38,19 +38,6 @@ texture_descriptor_ptr(nir_builder *b, nir_tex_instr *tex)
    return nir_iadd(b, nir_load_texture_base_agx(b), nir_u2u64(b, offs));
 }
 
-static nir_ssa_def *
-steal_tex_src(nir_tex_instr *tex, nir_tex_src_type type_)
-{
-   int idx = nir_tex_instr_src_index(tex, type_);
-
-   if (idx < 0)
-      return NULL;
-
-   nir_ssa_def *ssa = tex->src[idx].src.ssa;
-   nir_tex_instr_remove_src(tex, idx);
-   return ssa;
-}
-
 /* Implement txs for buffer textures. There is no mipmapping to worry about, so
  * this is just a uniform pull. However, we lower buffer textures to 2D so the
  * original size is irrecoverable. Instead, we stash it in the "Acceleration
@@ -231,7 +218,7 @@ load_rgb32(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *coordinate)
 static bool
 lower_buffer_texture(nir_builder *b, nir_tex_instr *tex)
 {
-   nir_ssa_def *coord = steal_tex_src(tex, nir_tex_src_coord);
+   nir_ssa_def *coord = nir_steal_tex_src(tex, nir_tex_src_coord);
 
    /* The OpenGL ES 3.2 specification says on page 187:
     *
@@ -291,8 +278,8 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
       return lower_buffer_texture(b, tex);
 
    /* Get the coordinates */
-   nir_ssa_def *coord = steal_tex_src(tex, nir_tex_src_coord);
-   nir_ssa_def *ms_idx = steal_tex_src(tex, nir_tex_src_ms_index);
+   nir_ssa_def *coord = nir_steal_tex_src(tex, nir_tex_src_coord);
+   nir_ssa_def *ms_idx = nir_steal_tex_src(tex, nir_tex_src_ms_index);
 
    /* It's unclear if mipmapped 1D textures work in the hardware. For now, we
     * always lower to 2D.
@@ -317,7 +304,7 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
       };
 
       for (unsigned i = 0; i < ARRAY_SIZE(other_srcs); ++i) {
-         nir_ssa_def *src = steal_tex_src(tex, other_srcs[i]);
+         nir_ssa_def *src = nir_steal_tex_src(tex, other_srcs[i]);
 
          if (!src)
             continue;
@@ -374,7 +361,7 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
    nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(coord));
 
    /* Furthermore, if there is an offset vector, it must be packed */
-   nir_ssa_def *offset = steal_tex_src(tex, nir_tex_src_offset);
+   nir_ssa_def *offset = nir_steal_tex_src(tex, nir_tex_src_offset);
 
    if (offset != NULL) {
       nir_ssa_def *packed = NULL;
@@ -430,7 +417,7 @@ lower_sampler_bias(nir_builder *b, nir_instr *instr, UNUSED void *data)
       nir_tex_src_type src =
          tex->op == nir_texop_txl ? nir_tex_src_lod : nir_tex_src_bias;
 
-      nir_ssa_def *orig = steal_tex_src(tex, src);
+      nir_ssa_def *orig = nir_steal_tex_src(tex, src);
       assert(orig != NULL && "invalid NIR");
 
       if (orig->bit_size != 16)
@@ -451,7 +438,7 @@ lower_sampler_bias(nir_builder *b, nir_instr *instr, UNUSED void *data)
       nir_tex_src_type src[] = {nir_tex_src_ddx, nir_tex_src_ddy};
 
       for (unsigned s = 0; s < ARRAY_SIZE(src); ++s) {
-         nir_ssa_def *orig = steal_tex_src(tex, src[s]);
+         nir_ssa_def *orig = nir_steal_tex_src(tex, src[s]);
          assert(orig != NULL && "invalid");
 
          nir_ssa_def *scaled = nir_fmul(b, nir_f2f32(b, orig), scale);
