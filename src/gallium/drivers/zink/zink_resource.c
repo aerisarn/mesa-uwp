@@ -1978,7 +1978,7 @@ zink_buffer_map(struct pipe_context *pctx,
       usage |= PIPE_MAP_UNSYNCHRONIZED;
    } else if (!(usage & PIPE_MAP_UNSYNCHRONIZED) &&
               (((usage & PIPE_MAP_READ) && !(usage & PIPE_MAP_PERSISTENT) &&
-               ((res->obj->bo->base.placement & VK_STAGING_RAM) != VK_STAGING_RAM)) ||
+               ((screen->info.mem_props.memoryTypes[res->obj->bo->base.placement].propertyFlags & VK_STAGING_RAM) != VK_STAGING_RAM)) ||
               !res->obj->host_visible)) {
       /* the above conditional catches uncached reads and non-HV writes */
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC)));
