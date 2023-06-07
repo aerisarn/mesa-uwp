@@ -213,7 +213,8 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
             zs_surf->u.tex.last_layer - zs_surf->u.tex.first_layer + 1;
 
          if (z_res) {
-            iris_resource_prepare_render(ice, z_res, zs_surf->u.tex.level,
+            iris_resource_prepare_render(ice, z_res, z_res->surf.format,
+                                         zs_surf->u.tex.level,
                                          zs_surf->u.tex.first_layer,
                                          num_layers, ice->state.hiz_usage);
             iris_emit_buffer_barrier_for(batch, z_res->bo,
@@ -261,7 +262,8 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
             ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_BINDINGS;
          }
 
-         iris_resource_prepare_render(ice, res, surf->view.base_level,
+         iris_resource_prepare_render(ice, res, surf->view.format,
+                                      surf->view.base_level,
                                       surf->view.base_array_layer,
                                       surf->view.array_len,
                                       aux_usage);
@@ -1245,7 +1247,8 @@ iris_resource_render_aux_usage(struct iris_context *ice,
 
 void
 iris_resource_prepare_render(struct iris_context *ice,
-                             struct iris_resource *res, uint32_t level,
+                             struct iris_resource *res,
+                             enum isl_format render_format, uint32_t level,
                              uint32_t start_layer, uint32_t layer_count,
                              enum isl_aux_usage aux_usage)
 {

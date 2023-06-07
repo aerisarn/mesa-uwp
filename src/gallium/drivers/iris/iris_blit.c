@@ -516,7 +516,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                                    &dst_res->base.b, dst_aux_usage,
                                    info->dst.level, true);
 
-      iris_resource_prepare_render(ice, dst_res, info->dst.level,
+      iris_resource_prepare_render(ice, dst_res, dst_fmt.fmt, info->dst.level,
                                    info->dst.box.z, info->dst.box.depth,
                                    dst_aux_usage);
       iris_emit_buffer_barrier_for(batch, dst_res->bo,
@@ -580,9 +580,9 @@ get_copy_region_aux_settings(struct iris_context *ice,
    case ISL_AUX_USAGE_HIZ_CCS_WT:
    case ISL_AUX_USAGE_STC_CCS:
       if (is_dest) {
-         *out_aux_usage = iris_resource_render_aux_usage(ice, res, level,
+         *out_aux_usage = iris_resource_render_aux_usage(ice, res,
                                                          res->surf.format,
-                                                         false);
+                                                         level, false);
       } else {
          *out_aux_usage = iris_resource_texture_aux_usage(ice, res,
                                                           res->surf.format,
