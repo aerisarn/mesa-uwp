@@ -1332,16 +1332,19 @@ static void merge_channels(struct radeon_compiler * c, struct rc_instruction * i
 }
 
 /**
- * Searches for duplicate ARLs
+ * Searches for duplicate ARLs/ARRs
  *
- * Only a very trivial case is now optimized where if a second ARL is detected which reads from
+ * Only a very trivial case is now optimized where if a second one is detected which reads from
  * the same register as the first one and source is the same, just remove the second one.
  */
-static void merge_ARL(struct radeon_compiler * c, struct rc_instruction * inst)
+static void merge_A0_loads(
+	struct radeon_compiler * c,
+	struct rc_instruction * inst,
+	bool is_ARL)
 {
-	unsigned int ARL_src_reg = inst->U.I.SrcReg[0].Index;
-	unsigned int ARL_src_file = inst->U.I.SrcReg[0].File;
-	unsigned int ARL_src_swizzle = inst->U.I.SrcReg[0].Swizzle;
+	unsigned int A0_src_reg = inst->U.I.SrcReg[0].Index;
+	unsigned int A0_src_file = inst->U.I.SrcReg[0].File;
+	unsigned int A0_src_swizzle = inst->U.I.SrcReg[0].Swizzle;
 
 	struct rc_instruction * cur = inst;
 	while (cur != &c->Program.Instructions) {
@@ -1355,15 +1358,20 @@ static void merge_ARL(struct radeon_compiler * c, struct rc_instruction * inst)
 			return;
 
 		/* Stop when the original source is overwritten */
-		if (ARL_src_reg == cur->U.I.DstReg.Index &&
-			ARL_src_file == cur->U.I.DstReg.File &&
-			cur->U.I.DstReg.WriteMask | rc_swizzle_to_writemask(ARL_src_swizzle))
+		if (A0_src_reg == cur->U.I.DstReg.Index &&
+			A0_src_file == cur->U.I.DstReg.File &&
+			cur->U.I.DstReg.WriteMask | rc_swizzle_to_writemask(A0_src_swizzle))
 			return;
 
-		if (cur->U.I.Opcode == RC_OPCODE_ARL) {
-			if (ARL_src_reg == cur->U.I.SrcReg[0].Index &&
-			    ARL_src_file == cur->U.I.SrcReg[0].File &&
-			    ARL_src_swizzle == cur->U.I.SrcReg[0].Swizzle) {
+		/* Wrong A0 load type. */
+		if ((is_ARL && cur->U.I.Opcode == RC_OPCODE_ARR) ||
+		    (!is_ARL && cur->U.I.Opcode == RC_OPCODE_ARL))
+			return;
+
+		if (cur->U.I.Opcode == RC_OPCODE_ARL || cur->U.I.Opcode == RC_OPCODE_ARR) {
+			if (A0_src_reg == cur->U.I.SrcReg[0].Index &&
+			    A0_src_file == cur->U.I.SrcReg[0].File &&
+			    A0_src_swizzle == cur->U.I.SrcReg[0].Swizzle) {
 				struct rc_instruction * next = cur->Next;
 				rc_remove_instruction(cur);
 				cur = next;
@@ -1413,7 +1421,9 @@ static void optimize_A0_loads(struct radeon_compiler * c) {
 		struct rc_instruction * cur = inst;
 		inst = inst->Next;
 		if (cur->U.I.Opcode == RC_OPCODE_ARL) {
-			merge_ARL(c, cur);
+			merge_A0_loads(c, cur, true);
+		} else if (cur->U.I.Opcode == RC_OPCODE_ARR) {
+			merge_A0_loads(c, cur, false);
 		} else if (cur->U.I.Opcode == RC_OPCODE_ROUND) {
 			transform_vertex_ROUND(c, cur);
 		}
