@@ -1387,6 +1387,8 @@ typedef enum {
    SCOPE_DEVICE,
 } mesa_scope;
 
+const char *mesa_scope_name(mesa_scope scope);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
