@@ -570,7 +570,8 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
    ici->queueFamilyIndexCount = 0;
 
    /* assume we're going to be doing some CompressedTexSubImage */
-   if (util_format_is_compressed(templ->format) && (ici->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
+   if (util_format_is_compressed(templ->format) && (ici->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) &&
+       !vk_find_struct_const(ici->pNext, IMAGE_FORMAT_LIST_CREATE_INFO))
       ici->flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT;
 
    if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
@@ -834,11 +835,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       bool success = false;
       VkImageCreateInfo ici;
       enum pipe_format srgb = PIPE_FORMAT_NONE;
-      /* We use modifiers as a proxy for "this surface is used as a window system render target".
-       * For winsys, we need to be able to mutate between srgb and linear, but we don't need general
+      /* we often need to be able to mutate between srgb and linear, but we don't need general
        * image view/shader image format compatibility (that path means losing fast clears or compression on some hardware).
        */
-      if (ici_modifier_count) {
+      if (!(templ->bind & ZINK_BIND_MUTABLE)) {
          srgb = util_format_is_srgb(templ->format) ? util_format_linear(templ->format) : util_format_srgb(templ->format);
          /* why do these helpers have different default return values? */
          if (srgb == templ->format)

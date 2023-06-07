@@ -54,6 +54,12 @@ zink_format_clamp_channel_srgb(const struct util_format_description *desc, union
 static inline bool
 zink_format_needs_mutable(enum pipe_format a, enum pipe_format b)
 {
-   return a != b;
+   if (a == b)
+      return false;
+   if (util_format_is_srgb(a))
+      return util_format_linear(a) != b;
+   if (util_format_is_srgb(b))
+      return util_format_linear(b) != a;
+   return true;
 }
 #endif
