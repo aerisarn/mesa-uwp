@@ -433,6 +433,19 @@ debian-arm32:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
+debian-arm32-asan:
+  extends:
+    - debian-arm32
+  variables:
+    EXTRA_OPTION: >
+      -D llvm=disabled
+      -D b_sanitize=address
+      -D valgrind=disabled
+      -D tools=dlclose-skip
+    ARTIFACTS_DEBUG_SYMBOLS: 1
+    MINIO_ARTIFACT_NAME: mesa-arm32-asan
+    MESON_TEST_ARGS: "--no-suite mesa:compiler --no-suite mesa:util"
+
 debian-arm64:
   extends:
     - .meson-arm

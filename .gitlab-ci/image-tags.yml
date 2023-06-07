@@ -1,6 +1,6 @@
 variables:
    DEBIAN_X86_64_BUILD_BASE_IMAGE: "debian/x86_64_build-base"
-   DEBIAN_BASE_TAG: "2023-06-08-rust-clippy"
+   DEBIAN_BASE_TAG: "2023-06-08-asan-arm32"
 
    DEBIAN_X86_64_BUILD_IMAGE_PATH: "debian/x86_64_build"
    DEBIAN_BUILD_TAG: "2023-05-25-bookworm"
