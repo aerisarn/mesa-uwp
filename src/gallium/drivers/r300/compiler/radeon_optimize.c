@@ -1375,6 +1375,35 @@ static void merge_ARL(struct radeon_compiler * c, struct rc_instruction * inst)
 }
 
 /**
+ * According to the GLSL spec, round is only 1.30 and up
+ * so the only reason why we should ever see round is if it actually
+ * is lowered ARR (from nine->ttn). In that case we want to reconstruct
+ * the ARR instead of lowering the round.
+ */
+static void transform_vertex_ROUND(struct radeon_compiler* c,
+	struct rc_instruction* inst)
+{
+	struct rc_reader_data readers;
+	rc_get_readers(c, inst, &readers, NULL, NULL, NULL);
+
+	assert(readers.ReaderCount > 0);
+	for (unsigned i = 0; i < readers.ReaderCount; i++) {
+		struct rc_instruction *reader = readers.Readers[i].Inst;
+		if (reader->U.I.Opcode != RC_OPCODE_ARL) {
+			assert(!"Unable to convert ROUND+ARL to ARR\n");
+			return;
+		}
+	}
+
+	/* Only ARL readers, convert all to ARR */
+	for (unsigned i = 0; i < readers.ReaderCount; i++) {
+		readers.Readers[i].Inst->U.I.Opcode = RC_OPCODE_ARR;
+	}
+	/* Switch ROUND to MOV and let copy propagate sort it out later. */
+	inst->U.I.Opcode = RC_OPCODE_MOV;
+}
+
+/**
  * Apply various optimizations specific to the A0 adress register loads.
  */
 static void optimize_A0_loads(struct radeon_compiler * c) {
@@ -1385,6 +1414,8 @@ static void optimize_A0_loads(struct radeon_compiler * c) {
 		inst = inst->Next;
 		if (cur->U.I.Opcode == RC_OPCODE_ARL) {
 			merge_ARL(c, cur);
+		} else if (cur->U.I.Opcode == RC_OPCODE_ROUND) {
+			transform_vertex_ROUND(c, cur);
 		}
 	}
 }
