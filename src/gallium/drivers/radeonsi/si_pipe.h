@@ -564,7 +564,6 @@ struct si_screen {
    bool dpbb_allowed;
    bool use_ngg;
    bool use_ngg_culling;
-   bool use_ngg_streamout;
    bool allow_dcc_msaa_clear_to_reg_for_bpp[5]; /* indexed by log2(Bpp) */
    bool always_allow_dcc_stores;
 
@@ -690,7 +689,6 @@ struct si_screen {
 
    /* NGG streamout. */
    simple_mtx_t gds_mutex;
-   struct pb_buffer *gds;
    struct pb_buffer *gds_oa;
 };
 
@@ -1597,11 +1595,11 @@ void *si_clear_render_target_shader_1d_array(struct pipe_context *ctx);
 void *si_clear_12bytes_buffer_shader(struct pipe_context *ctx);
 void *si_create_fmask_expand_cs(struct pipe_context *ctx, unsigned num_samples, bool is_array);
 void *si_create_query_result_cs(struct si_context *sctx);
-void *gfx10_create_sh_query_result_cs(struct si_context *sctx);
+void *gfx11_create_sh_query_result_cs(struct si_context *sctx);
 
-/* gfx10_query.c */
-void gfx10_init_query(struct si_context *sctx);
-void gfx10_destroy_query(struct si_context *sctx);
+/* gfx11_query.c */
+void gfx11_init_query(struct si_context *sctx);
+void gfx11_destroy_query(struct si_context *sctx);
 
 /* si_test_image_copy_region.c */
 void si_test_image_copy_region(struct si_screen *sscreen);

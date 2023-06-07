@@ -85,12 +85,8 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
           * idle when we leave the IB, otherwise another process
           * might overwrite it while our shaders are busy.
           */
-         if (sscreen->use_ngg_streamout) {
-            if (ctx->gfx_level >= GFX11)
-               wait_flags |= SI_CONTEXT_VS_PARTIAL_FLUSH;
-            else
-               wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
-         }
+         if (ctx->gfx_level >= GFX11)
+            wait_flags |= SI_CONTEXT_VS_PARTIAL_FLUSH;
       }
    }
 
@@ -194,8 +190,6 @@ static void si_begin_gfx_cs_debug(struct si_context *ctx)
 
 static void si_add_gds_to_buffer_list(struct si_context *sctx)
 {
-   if (sctx->screen->gds)
-      sctx->ws->cs_add_buffer(&sctx->gfx_cs, sctx->screen->gds, RADEON_USAGE_READWRITE, 0);
    if (sctx->screen->gds_oa)
       sctx->ws->cs_add_buffer(&sctx->gfx_cs, sctx->screen->gds_oa, RADEON_USAGE_READWRITE, 0);
 }
@@ -204,25 +198,16 @@ void si_allocate_gds(struct si_context *sctx)
 {
    struct radeon_winsys *ws = sctx->ws;
 
-   assert(sctx->screen->use_ngg_streamout);
+   assert(sctx->gfx_level >= GFX11);
 
    if (sctx->screen->gds_oa)
       return;
 
-   assert(!sctx->screen->gds && !sctx->screen->gds_oa);
-
-   /* Gfx11 only uses GDS OA, not GDS memory.
-    * Gfx10 needs 256B (64 dw) of GDS, otherwise streamout hangs.
-    */
+   /* Gfx11 only uses GDS OA, not GDS memory. */
    simple_mtx_lock(&sctx->screen->gds_mutex);
    if (!sctx->screen->gds_oa) {
       sctx->screen->gds_oa = ws->buffer_create(ws, 1, 1, RADEON_DOMAIN_OA, RADEON_FLAG_DRIVER_INTERNAL);
       assert(sctx->screen->gds_oa);
-
-      if (sctx->gfx_level < GFX11) {
-         sctx->screen->gds = ws->buffer_create(ws, 256, 4, RADEON_DOMAIN_GDS, RADEON_FLAG_DRIVER_INTERNAL);
-         assert(sctx->screen->gds);
-      }
    }
    simple_mtx_unlock(&sctx->screen->gds_mutex);
 
@@ -514,7 +499,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
          si_mark_atom_dirty(ctx, &ctx->atoms.s.dpbb_state);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.stencil_ref);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.spi_map);
-      if (!ctx->screen->use_ngg_streamout)
+      if (ctx->gfx_level < GFX11)
          si_mark_atom_dirty(ctx, &ctx->atoms.s.streamout_enable);
       /* CLEAR_STATE disables all window rectangles. */
       if (!has_clear_state || ctx->num_window_rectangles > 0)

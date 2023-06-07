@@ -1681,7 +1681,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    else if (sscreen->info.gfx_level == GFX9)
       rsrc2 |= S_00B12C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5);
 
-   if (!sscreen->use_ngg_streamout && si_shader_uses_streamout(shader)) {
+   if (si_shader_uses_streamout(shader)) {
       rsrc2 |= S_00B12C_SO_BASE0_EN(!!shader->selector->info.base.xfb_stride[0]) |
                S_00B12C_SO_BASE1_EN(!!shader->selector->info.base.xfb_stride[1]) |
                S_00B12C_SO_BASE2_EN(!!shader->selector->info.base.xfb_stride[2]) |
@@ -2963,7 +2963,7 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
 
       if (sel->stage <= MESA_SHADER_GEOMETRY &&
           sscreen->use_ngg && (!sel->info.enabled_streamout_buffer_mask ||
-                               sscreen->use_ngg_streamout) &&
+                               sscreen->info.gfx_level >= GFX11) &&
           ((sel->stage == MESA_SHADER_VERTEX && !shader->key.ge.as_ls) ||
            sel->stage == MESA_SHADER_TESS_EVAL || sel->stage == MESA_SHADER_GEOMETRY))
          shader->key.ge.as_ngg = 1;
@@ -3258,7 +3258,7 @@ static void si_update_streamout_state(struct si_context *sctx)
    sctx->streamout.stride_in_dw = shader_with_so->info.base.xfb_stride;
 
    /* GDS must be allocated when any GDS instructions are used, otherwise it hangs. */
-   if (sctx->screen->use_ngg_streamout && shader_with_so->info.enabled_streamout_buffer_mask)
+   if (sctx->gfx_level >= GFX11 && shader_with_so->info.enabled_streamout_buffer_mask)
       si_allocate_gds(sctx);
 }
 
@@ -3384,7 +3384,7 @@ bool si_update_ngg(struct si_context *sctx)
 
    if (sctx->shader.gs.cso && sctx->shader.tes.cso && sctx->shader.gs.cso->tess_turns_off_ngg) {
       new_ngg = false;
-   } else if (!sctx->screen->use_ngg_streamout) {
+   } else if (sctx->gfx_level < GFX11) {
       struct si_shader_selector *last = si_get_vs(sctx)->cso;
 
       if ((last && last->info.enabled_streamout_buffer_mask) ||

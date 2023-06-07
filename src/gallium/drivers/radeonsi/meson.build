@@ -20,8 +20,8 @@
 
 files_libradeonsi = files(
   'driinfo_radeonsi.h',
-  'gfx10_query.c',
   'gfx10_shader_ngg.c',
+  'gfx11_query.c',
   'si_blit.c',
   'si_buffer.c',
   'si_build_pm4.h',

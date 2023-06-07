@@ -142,7 +142,8 @@ static void declare_streamout_params(struct si_shader_args *args, struct si_shad
 {
    struct si_shader_selector *sel = shader->selector;
 
-   if (sel->screen->use_ngg_streamout) {
+   if (shader->selector->screen->info.gfx_level >= GFX11) {
+      /* NGG streamout. */
       if (sel->stage == MESA_SHADER_TESS_EVAL)
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
       return;
@@ -1761,7 +1762,7 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
       options.passthrough = gfx10_is_ngg_passthrough(shader);
       options.use_edgeflags = gfx10_edgeflags_have_effect(shader);
       options.has_gen_prim_query = options.has_xfb_prim_query =
-         sel->screen->use_ngg_streamout && !sel->info.base.vs.blit_sgprs_amd;
+         sel->screen->info.gfx_level >= GFX11 && !sel->info.base.vs.blit_sgprs_amd;
       options.export_primitive_id = key->ge.mono.u.vs_export_prim_id;
       options.instance_rate_inputs = instance_rate_inputs;
       options.user_clip_plane_enable_mask = clip_plane_enable;
@@ -1772,7 +1773,7 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
 
       options.gs_out_vtx_bytes = sel->info.gsvs_vertex_size;
       options.has_gen_prim_query = options.has_xfb_prim_query =
-         sel->screen->use_ngg_streamout;
+         sel->screen->info.gfx_level >= GFX11;
 
       NIR_PASS_V(nir, ac_nir_lower_ngg_gs, &options);
    }

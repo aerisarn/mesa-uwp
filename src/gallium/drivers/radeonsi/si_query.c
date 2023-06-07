@@ -1050,10 +1050,10 @@ static void si_emit_query_predication(struct si_context *ctx)
    flag_wait = ctx->render_cond_mode == PIPE_RENDER_COND_WAIT ||
                ctx->render_cond_mode == PIPE_RENDER_COND_BY_REGION_WAIT;
 
-   if (ctx->screen->use_ngg_streamout && (query->b.type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
-                                          query->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)) {
-      struct gfx10_sh_query *gfx10_query = (struct gfx10_sh_query *)query;
-      struct gfx10_sh_query_buffer *qbuf, *first, *last;
+   if (ctx->gfx_level >= GFX11 && (query->b.type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
+                                   query->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)) {
+      struct gfx11_sh_query *gfx10_query = (struct gfx11_sh_query *)query;
+      struct gfx11_sh_query_buffer *qbuf, *first, *last;
 
       op = PRED_OP(PREDICATION_OP_PRIMCOUNT);
 
@@ -1071,7 +1071,7 @@ static void si_emit_query_predication(struct si_context *ctx)
       while (first) {
          qbuf = first;
          if (first != last)
-            first = list_entry(qbuf->list.next, struct gfx10_sh_query_buffer, list);
+            first = list_entry(qbuf->list.next, struct gfx11_sh_query_buffer, list);
          else
             first = NULL;
 
@@ -1082,7 +1082,7 @@ static void si_emit_query_predication(struct si_context *ctx)
          unsigned begin = qbuf == gfx10_query->first ? gfx10_query->first_begin : 0;
          unsigned end = qbuf == gfx10_query->last ? gfx10_query->last_end : qbuf->buf->b.b.width0;
 
-         unsigned count = (end - begin) / sizeof(struct gfx10_sh_query_buffer_mem);
+         unsigned count = (end - begin) / sizeof(struct gfx11_sh_query_buffer_mem);
          do {
             if (gfx10_query->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
                for (unsigned stream = 0; stream < SI_MAX_STREAMS; ++stream) {
@@ -1096,7 +1096,7 @@ static void si_emit_query_predication(struct si_context *ctx)
                op |= PREDICATION_CONTINUE;
             }
 
-            results_base += sizeof(struct gfx10_sh_query_buffer_mem);
+            results_base += sizeof(struct gfx11_sh_query_buffer_mem);
          } while (count--);
       }
    } else {
@@ -1178,12 +1178,12 @@ static struct pipe_query *si_create_query(struct pipe_context *ctx, unsigned que
        (query_type >= PIPE_QUERY_DRIVER_SPECIFIC))
       return si_query_sw_create(query_type);
 
-   if (sscreen->use_ngg_streamout &&
+   if (sscreen->info.gfx_level >= GFX11 &&
        (query_type == PIPE_QUERY_PRIMITIVES_EMITTED ||
         query_type == PIPE_QUERY_PRIMITIVES_GENERATED || query_type == PIPE_QUERY_SO_STATISTICS ||
         query_type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
         query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE))
-      return gfx10_sh_query_create(sscreen, query_type, index);
+      return gfx11_sh_query_create(sscreen, query_type, index);
 
    return si_query_hw_create(sscreen, query_type, index);
 }

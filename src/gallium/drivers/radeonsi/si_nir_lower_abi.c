@@ -497,8 +497,8 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
 
       unsigned stream = nir_intrinsic_stream_id(intrin);
       unsigned offset = intrin->intrinsic == nir_intrinsic_atomic_add_gen_prim_count_amd ?
-         offsetof(struct gfx10_sh_query_buffer_mem, stream[stream].generated_primitives) :
-         offsetof(struct gfx10_sh_query_buffer_mem, stream[stream].emitted_primitives);
+         offsetof(struct gfx11_sh_query_buffer_mem, stream[stream].generated_primitives) :
+         offsetof(struct gfx11_sh_query_buffer_mem, stream[stream].emitted_primitives);
 
       nir_ssa_def *prim_count = intrin->src[0].ssa;
       nir_ssbo_atomic(b, 32, buf, nir_imm_int(b, offset), prim_count,
