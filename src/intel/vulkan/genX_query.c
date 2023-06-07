@@ -674,15 +674,10 @@ emit_ps_depth_count(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-   anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-      pc.DestinationAddressType  = DAT_PPGTT;
-      pc.PostSyncOperation       = WritePSDepthCount;
-      pc.DepthStallEnable        = true;
-      pc.Address                 = addr;
-
-      if (GFX_VER == 9 && cmd_buffer->device->info->gt == 4)
-         pc.CommandStreamerStallEnable = true;
-   }
+   bool cs_stall_needed = (GFX_VER == 9 && cmd_buffer->device->info->gt == 4);
+   genX(batch_emit_pipe_control_write)
+      (&cmd_buffer->batch, cmd_buffer->device->info, WritePSDepthCount, addr, 0,
+       ANV_PIPE_DEPTH_STALL_BIT | (cs_stall_needed ? ANV_PIPE_CS_STALL_BIT : 0));
 }
 
 static void
@@ -701,12 +696,9 @@ emit_query_pc_availability(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-   anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-      pc.DestinationAddressType  = DAT_PPGTT;
-      pc.PostSyncOperation       = WriteImmediateData;
-      pc.Address                 = addr;
-      pc.ImmediateData           = available;
-   }
+   genX(batch_emit_pipe_control_write)
+      (&cmd_buffer->batch, cmd_buffer->device->info, WriteImmediateData, addr,
+       available, ANV_PIPE_CS_STALL_BIT);
 }
 
 /**
@@ -1036,20 +1028,20 @@ void genX(CmdBeginQueryIndexedEXT)(
       break;
 
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-         pc.StallAtPixelScoreboard = true;
-      }
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       mi_store(&b, mi_mem64(anv_address_add(query_addr, 8)),
                    mi_reg64(GENX(CL_INVOCATION_COUNT_num)));
       break;
 
    case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
       /* TODO: This might only be necessary for certain stats */
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-         pc.StallAtPixelScoreboard = true;
-      }
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
 
       uint32_t statistics = pool->pipeline_statistics;
       uint32_t offset = 8;
@@ -1062,10 +1054,10 @@ void genX(CmdBeginQueryIndexedEXT)(
    }
 
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-         pc.StallAtPixelScoreboard = true;
-      }
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       emit_xfb_query(&b, index, anv_address_add(query_addr, 8));
       break;
 
@@ -1121,10 +1113,10 @@ void genX(CmdBeginQueryIndexedEXT)(
       const enum intel_engine_class engine_class = cmd_buffer->queue_family->engine_class;
       mi_self_mod_barrier(&b, devinfo->engine_class_prefetch[engine_class]);
 
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-         pc.StallAtPixelScoreboard = true;
-      }
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       cmd_buffer->perf_query_pool = pool;
 
       cmd_buffer->perf_reloc_idx = 0;
@@ -1183,10 +1175,10 @@ void genX(CmdBeginQueryIndexedEXT)(
    }
 
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL: {
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-         pc.StallAtPixelScoreboard = true;
-      }
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       emit_perf_intel_query(cmd_buffer, pool, &b, query_addr, false);
       break;
    }
@@ -1230,10 +1222,10 @@ void genX(CmdEndQueryIndexedEXT)(
       /* Ensure previous commands have completed before capturing the register
        * value.
        */
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-         pc.StallAtPixelScoreboard = true;
-      }
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
 
       mi_store(&b, mi_mem64(anv_address_add(query_addr, 16)),
                    mi_reg64(GENX(CL_INVOCATION_COUNT_num)));
@@ -1242,10 +1234,10 @@ void genX(CmdEndQueryIndexedEXT)(
 
    case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
       /* TODO: This might only be necessary for certain stats */
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-         pc.StallAtPixelScoreboard = true;
-      }
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
 
       uint32_t statistics = pool->pipeline_statistics;
       uint32_t offset = 16;
@@ -1260,20 +1252,19 @@ void genX(CmdEndQueryIndexedEXT)(
    }
 
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-         pc.StallAtPixelScoreboard = true;
-      }
-
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       emit_xfb_query(&b, index, anv_address_add(query_addr, 16));
       emit_query_mi_availability(&b, query_addr, true);
       break;
 
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-         pc.StallAtPixelScoreboard = true;
-      }
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       cmd_buffer->perf_query_pool = pool;
 
       if (!khr_perf_query_ensure_relocs(cmd_buffer))
@@ -1348,10 +1339,10 @@ void genX(CmdEndQueryIndexedEXT)(
    }
 
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL: {
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-         pc.StallAtPixelScoreboard = true;
-      }
+      genX(batch_emit_pipe_control)(&cmd_buffer->batch,
+                                    cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_STALL_AT_SCOREBOARD_BIT);
       uint32_t marker_offset = intel_perf_marker_offset();
       mi_store(&b, mi_mem64(anv_address_add(query_addr, marker_offset)),
                    mi_imm(cmd_buffer->intel_perf_marker));
@@ -1412,14 +1403,13 @@ void genX(CmdWriteTimestamp2)(
       cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.DestinationAddressType  = DAT_PPGTT;
-         pc.PostSyncOperation       = WriteTimestamp;
-         pc.Address                 = anv_address_add(query_addr, 8);
+      bool cs_stall_needed =
+         (GFX_VER == 9 && cmd_buffer->device->info->gt == 4);
+      genX(batch_emit_pipe_control_write)
+         (&cmd_buffer->batch, cmd_buffer->device->info, WriteTimestamp,
+          anv_address_add(query_addr, 8), 0,
+          cs_stall_needed ? ANV_PIPE_CS_STALL_BIT : 0);
 
-         if (GFX_VER == 9 && cmd_buffer->device->info->gt == 4)
-            pc.CommandStreamerStallEnable = true;
-      }
       emit_query_pc_availability(cmd_buffer, query_addr, true);
    }
 
