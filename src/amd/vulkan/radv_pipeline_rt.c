@@ -788,8 +788,24 @@ radv_GetRayTracingShaderGroupStackSizeKHR(VkDevice device, VkPipeline _pipeline,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-radv_GetRayTracingCaptureReplayShaderGroupHandlesKHR(VkDevice device, VkPipeline pipeline, uint32_t firstGroup,
+radv_GetRayTracingCaptureReplayShaderGroupHandlesKHR(VkDevice device, VkPipeline _pipeline, uint32_t firstGroup,
                                                      uint32_t groupCount, size_t dataSize, void *pData)
 {
-   return radv_GetRayTracingShaderGroupHandlesKHR(device, pipeline, firstGroup, groupCount, dataSize, pData);
+   RADV_FROM_HANDLE(radv_pipeline, pipeline, _pipeline);
+   struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
+   struct radv_rt_capture_replay_handle *data = pData;
+
+   memset(data, 0, groupCount * sizeof(struct radv_rt_capture_replay_handle));
+
+   for (uint32_t i = 0; i < groupCount; ++i) {
+      uint32_t recursive_shader = rt_pipeline->groups[firstGroup + i].recursive_shader;
+      if (recursive_shader != VK_SHADER_UNUSED_KHR) {
+         struct radv_shader *shader =
+            container_of(rt_pipeline->stages[recursive_shader].shader, struct radv_shader, base);
+         data[i].recursive_shader_alloc = radv_serialize_shader_arena_block(shader->alloc);
+      }
+      data[i].non_recursive_idx = rt_pipeline->groups[firstGroup + i].handle.any_hit_index;
+   }
+
+   return VK_SUCCESS;
 }
