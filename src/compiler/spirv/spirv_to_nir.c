@@ -2569,6 +2569,13 @@ vtn_mem_semantics_to_nir_var_modes(struct vtn_builder *b,
          modes |= nir_var_mem_task_payload;
    }
 
+   if (semantics & SpvMemorySemanticsAtomicCounterMemoryMask) {
+      /* There's no nir_var_atomic_counter, but since atomic counters are
+       * lowered to SSBOs, we use nir_var_mem_ssbo instead.
+       */
+      modes |= nir_var_mem_ssbo;
+   }
+
    return modes;
 }
 
