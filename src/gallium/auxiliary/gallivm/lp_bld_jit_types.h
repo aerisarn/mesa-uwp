@@ -188,5 +188,20 @@ void
 lp_build_jit_fill_sampler_dynamic_state(struct lp_sampler_dynamic_state *state);
 void
 lp_build_jit_fill_image_dynamic_state(struct lp_sampler_dynamic_state *state);
+
+union lp_descriptor {
+   struct {
+      struct lp_jit_texture texture;
+      struct lp_jit_sampler sampler;
+      void *sample_functions;
+      uint32_t sampler_index;
+   };
+   struct {
+      struct lp_jit_image image;
+      void *image_functions;
+   };
+   struct lp_jit_buffer buffer;
+};
+
 #endif
 
