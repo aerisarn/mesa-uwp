@@ -8,6 +8,7 @@
 #include "si_build_pm4.h"
 #include "sid.h"
 #include "util/u_memory.h"
+#include "ac_debug.h"
 
 static void si_pm4_set_reg_custom(struct si_pm4_state *state, unsigned reg, uint32_t val,
                                   unsigned opcode, unsigned idx);
@@ -123,6 +124,25 @@ void si_pm4_finalize(struct si_pm4_state *state)
          state->ndw = state->last_pm4 + 2 + reg_count;
          state->last_opcode = PKT3_SET_SH_REG;
       } else {
+         /* Set reg_va_low_idx to where the shader address is stored in the pm4 state. */
+         if (state->screen->debug_flags & DBG(SQTT) &&
+             (state->last_opcode == PKT3_SET_SH_REG_PAIRS_PACKED ||
+              state->last_opcode == PKT3_SET_SH_REG_PAIRS_PACKED_N)) {
+            if (state->packed_is_padded)
+               reg_count++; /* Add this back because we only need to record the last write. */
+
+            for (int i = reg_count - 1; i >= 0; i--) {
+               unsigned reg_offset = SI_SH_REG_OFFSET + get_packed_reg_dw_offsetN(state, i) * 4;
+
+               if (strstr(ac_get_register_name(state->screen->info.gfx_level,
+                                               state->screen->info.family, reg_offset),
+                          "SPI_SHADER_PGM_LO_")) {
+                  state->reg_va_low_idx = get_packed_reg_valueN_idx(state, i);
+                  break;
+               }
+            }
+         }
+
          /* All SET_*_PAIRS* packets on the gfx queue must set RESET_FILTER_CAM. */
          if (!state->is_compute_queue)
             state->pm4[state->last_pm4] |= PKT3_RESET_FILTER_CAM_S(1);
@@ -132,7 +152,21 @@ void si_pm4_finalize(struct si_pm4_state *state)
             state->pm4[state->last_pm4] &= PKT3_IT_OPCODE_C;
             state->pm4[state->last_pm4] |= PKT3_IT_OPCODE_S(PKT3_SET_SH_REG_PAIRS_PACKED_N);
          }
+      }
+   }
 
+   if (state->screen->debug_flags & DBG(SQTT) && state->last_opcode == PKT3_SET_SH_REG) {
+      /* Set reg_va_low_idx to where the shader address is stored in the pm4 state. */
+      unsigned reg_count = PKT_COUNT_G(state->pm4[state->last_pm4]);
+      unsigned reg_base_offset = SI_SH_REG_OFFSET + state->pm4[state->last_pm4 + 1] * 4;
+
+      for (unsigned i = 0; i < reg_count; i++) {
+         if (strstr(ac_get_register_name(state->screen->info.gfx_level,
+                                         state->screen->info.family, reg_base_offset + i * 4),
+                    "SPI_SHADER_PGM_LO_")) {
+            state->reg_va_low_idx = state->last_pm4 + 2 + i;
+            break;
+         }
       }
    }
 }
@@ -260,12 +294,6 @@ void si_pm4_set_reg_idx3(struct si_pm4_state *state, unsigned reg, uint32_t val)
    } else {
       si_pm4_set_reg(state, reg, val);
    }
-}
-
-void si_pm4_set_reg_va(struct si_pm4_state *state, unsigned reg, uint32_t val)
-{
-   si_pm4_set_reg(state, reg, val);
-   state->reg_va_low_idx = state->ndw - 1;
 }
 
 void si_pm4_clear_state(struct si_pm4_state *state, struct si_screen *sscreen,
