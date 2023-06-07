@@ -197,6 +197,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_PNEXT_EXT(feats2, DEPTH_CLIP_CONTROL_FEATURES_EXT, feats->depth_clip_control, exts->EXT_depth_clip_control);
    VN_ADD_PNEXT_EXT(feats2, DEPTH_CLIP_ENABLE_FEATURES_EXT, feats->depth_clip_enable, exts->EXT_depth_clip_enable);
    VN_ADD_PNEXT_EXT(feats2, DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT, feats->dynamic_rendering_unused_attachments, exts->EXT_dynamic_rendering_unused_attachments);
+   VN_ADD_PNEXT_EXT(feats2, FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT, feats->fragment_shader_interlock, exts->EXT_fragment_shader_interlock);
    VN_ADD_PNEXT_EXT(feats2, IMAGE_2D_VIEW_OF_3D_FEATURES_EXT, feats->image_2d_view_of_3d, exts->EXT_image_2d_view_of_3d);
    VN_ADD_PNEXT_EXT(feats2, IMAGE_VIEW_MIN_LOD_FEATURES_EXT, feats->image_view_min_lod, exts->EXT_image_view_min_lod);
    VN_ADD_PNEXT_EXT(feats2, INDEX_TYPE_UINT8_FEATURES_EXT, feats->index_type_uint8, exts->EXT_index_type_uint8);
@@ -1158,6 +1159,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_depth_clip_control = true,
       .EXT_depth_clip_enable = true,
       .EXT_dynamic_rendering_unused_attachments = true,
+      .EXT_fragment_shader_interlock = true,
       .EXT_image_2d_view_of_3d = true,
       .EXT_image_drm_format_modifier = true,
       .EXT_image_view_min_lod = true,
@@ -1807,6 +1809,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       CASE(DEPTH_CLIP_CONTROL_FEATURES_EXT, depth_clip_control);
       CASE(DEPTH_CLIP_ENABLE_FEATURES_EXT, depth_clip_enable);
       CASE(DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT, dynamic_rendering_unused_attachments);
+      CASE(FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT, fragment_shader_interlock);
       CASE(IMAGE_2D_VIEW_OF_3D_FEATURES_EXT, image_2d_view_of_3d);
       CASE(IMAGE_VIEW_MIN_LOD_FEATURES_EXT, image_view_min_lod);
       CASE(INDEX_TYPE_UINT8_FEATURES_EXT, index_type_uint8);

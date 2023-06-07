@@ -43,6 +43,8 @@ struct vn_physical_device_features {
    VkPhysicalDeviceDepthClipEnableFeaturesEXT depth_clip_enable;
    VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT
       dynamic_rendering_unused_attachments;
+   VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT
+      fragment_shader_interlock;
    VkPhysicalDeviceImage2DViewOf3DFeaturesEXT image_2d_view_of_3d;
    VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod;
    VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8;
