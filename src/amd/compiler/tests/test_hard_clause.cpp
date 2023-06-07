@@ -355,27 +355,5 @@ BEGIN_TEST(form_hard_clauses.stores)
    create_mubuf_store();
    create_mubuf();
 
-   /* Unimportant pass limitations */
-   //>> p_unit_test 4
-   //; search_re('buffer_store_dword')
-   //! s_clause imm:61
-   //; for i in range(62):
-   //;    search_re('buffer_load_dword')
-   //; search_re('buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4u));
-   create_mubuf_store();
-   for (unsigned i = 0; i < 63; i++)
-      create_mubuf();
-
-   //>> p_unit_test 5
-   //! s_clause imm:62
-   //; for i in range(63):
-   //;    search_re('buffer_load_dword')
-   //; search_re('buffer_store_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(5u));
-   for (unsigned i = 0; i < 63; i++)
-      create_mubuf();
-   create_mubuf_store();
-
    finish_form_hard_clause_test();
 END_TEST

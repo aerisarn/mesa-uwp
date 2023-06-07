@@ -1277,6 +1277,9 @@ wait_imm::empty() const
 bool
 should_form_clause(const Instruction* a, const Instruction* b)
 {
+   if (a->definitions.empty() != b->definitions.empty())
+      return false;
+
    if (a->format != b->format)
       return false;
 
