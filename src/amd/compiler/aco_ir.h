@@ -748,7 +748,7 @@ public:
 
    constexpr uint32_t tempId() const noexcept { return data_.temp.id(); }
 
-   constexpr bool hasRegClass() const noexcept { return isTemp() || isUndefined(); }
+   constexpr bool hasRegClass() const noexcept { return !isConstant(); }
 
    constexpr RegClass regClass() const noexcept { return data_.temp.regClass(); }
 
