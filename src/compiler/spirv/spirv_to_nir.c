@@ -6490,23 +6490,14 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpReadClockKHR: {
       SpvScope scope = vtn_constant_uint(b, w[3]);
-      nir_scope nir_scope;
-
-      switch (scope) {
-      case SpvScopeDevice:
-         nir_scope = NIR_SCOPE_DEVICE;
-         break;
-      case SpvScopeSubgroup:
-         nir_scope = NIR_SCOPE_SUBGROUP;
-         break;
-      default:
-         vtn_fail("invalid read clock scope");
-      }
+      vtn_fail_if(scope != SpvScopeDevice && scope != SpvScopeSubgroup,
+                  "OpReadClockKHR Scope must be either "
+                  "ScopeDevice or ScopeSubgroup.");
 
       /* Operation supports two result types: uvec2 and uint64_t.  The NIR
        * intrinsic gives uvec2, so pack the result for the other case.
        */
-      nir_ssa_def *result = nir_shader_clock(&b->nb, nir_scope);
+      nir_ssa_def *result = nir_shader_clock(&b->nb, vtn_translate_scope(b, scope));
 
       struct vtn_type *type = vtn_get_type(b, w[1]);
       const struct glsl_type *dest_type = type->type;
