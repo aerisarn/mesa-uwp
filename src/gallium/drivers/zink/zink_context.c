@@ -2034,7 +2034,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
             zink_batch_resource_usage_set(&ctx->batch, res, false, true);
             if (!ctx->unordered_blitting)
                res->obj->unordered_read = false;
-         } else if (!res->obj->is_buffer) {
+         } else {
             if (!res->obj->dt && res->base.b.format != b->image_view->base.format)
                /* mutable not set by default */
                zink_resource_object_init_mutable(ctx, res);
