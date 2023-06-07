@@ -3149,6 +3149,88 @@ cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
    }
 }
 
+ALWAYS_INLINE void
+genX(batch_emit_pipe_control)(struct anv_batch *batch,
+                              const struct intel_device_info *devinfo,
+                              enum anv_pipe_bits bits)
+{
+   genX(batch_emit_pipe_control_write)(batch,
+                                       devinfo,
+                                       NoWrite,
+                                       ANV_NULL_ADDRESS,
+                                       0,
+                                       bits);
+}
+
+ALWAYS_INLINE void
+genX(batch_emit_pipe_control_write)(struct anv_batch *batch,
+                                    const struct intel_device_info *devinfo,
+                                    uint32_t post_sync_op,
+                                    struct anv_address address,
+                                    uint32_t imm_data,
+                                    enum anv_pipe_bits bits)
+{
+   /* XXX - insert all workarounds and GFX specific things below. */
+
+#if INTEL_NEEDS_WA_1409600907
+   /* Wa_1409600907: "PIPE_CONTROL with Depth Stall Enable bit must
+    * be set with any PIPE_CONTROL with Depth Flush Enable bit set.
+    */
+   if (bits & ANV_PIPE_DEPTH_CACHE_FLUSH_BIT)
+      bits |= ANV_PIPE_DEPTH_STALL_BIT;
+#endif
+
+   anv_batch_emit(batch, GENX(PIPE_CONTROL), pipe) {
+#if GFX_VERx10 >= 125
+      pipe.UntypedDataPortCacheFlushEnable =
+         bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT;
+#endif
+#if GFX_VER >= 12
+      pipe.TileCacheFlushEnable = bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT;
+#endif
+#if GFX_VER >= 11
+      pipe.HDCPipelineFlushEnable = bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
+#endif
+      pipe.DepthCacheFlushEnable = bits & ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
+      pipe.DCFlushEnable = bits & ANV_PIPE_DATA_CACHE_FLUSH_BIT;
+      pipe.RenderTargetCacheFlushEnable =
+         bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
+
+      pipe.DepthStallEnable = bits & ANV_PIPE_DEPTH_STALL_BIT;
+
+#if GFX_VERx10 >= 125
+      pipe.PSSStallSyncEnable = bits & ANV_PIPE_PSS_STALL_SYNC_BIT;
+#endif
+      pipe.CommandStreamerStallEnable = bits & ANV_PIPE_CS_STALL_BIT;
+      pipe.StallAtPixelScoreboard = bits & ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
+
+      pipe.StateCacheInvalidationEnable =
+         bits & ANV_PIPE_STATE_CACHE_INVALIDATE_BIT;
+      pipe.ConstantCacheInvalidationEnable =
+         bits & ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT;
+#if GFX_VER >= 12
+      /* Invalidates the L3 cache part in which index & vertex data is loaded
+       * when VERTEX_BUFFER_STATE::L3BypassDisable is set.
+       */
+      pipe.L3ReadOnlyCacheInvalidationEnable =
+         bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
+#endif
+      pipe.VFCacheInvalidationEnable =
+         bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
+      pipe.TextureCacheInvalidationEnable =
+         bits & ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
+      pipe.InstructionCacheInvalidateEnable =
+         bits & ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT;
+
+      pipe.PostSyncOperation = post_sync_op;
+      pipe.Address = address;
+      pipe.DestinationAddressType = DAT_PPGTT;
+      pipe.ImmediateData = imm_data;
+
+      anv_debug_dump_pc(pipe);
+   }
+}
+
 /* Set preemption on/off. */
 void
 genX(batch_set_preemption)(struct anv_batch *batch, bool value)

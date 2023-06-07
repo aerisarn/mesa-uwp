@@ -222,3 +222,16 @@ genX(batch_set_preemption)(struct anv_batch *batch, bool value);
 
 void
 genX(cmd_buffer_set_preemption)(struct anv_cmd_buffer *cmd_buffer, bool value);
+
+void
+genX(batch_emit_pipe_control)(struct anv_batch *batch,
+                              const struct intel_device_info *devinfo,
+                              enum anv_pipe_bits bits);
+
+void
+genX(batch_emit_pipe_control_write)(struct anv_batch *batch,
+                                    const struct intel_device_info *devinfo,
+                                    uint32_t post_sync_op,
+                                    struct anv_address address,
+                                    uint32_t imm_data,
+                                    enum anv_pipe_bits bits);
