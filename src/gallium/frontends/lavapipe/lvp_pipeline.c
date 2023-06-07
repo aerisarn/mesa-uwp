@@ -394,6 +394,11 @@ lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader 
               nir_var_mem_global,
               nir_address_format_64bit_global);
 
+   nir_lower_non_uniform_access_options options = {
+      .types = nir_lower_non_uniform_ubo_access | nir_lower_non_uniform_texture_access | nir_lower_non_uniform_image_access,
+   };
+   NIR_PASS(_, nir, nir_lower_non_uniform_access, &options);
+
    lvp_lower_pipeline_layout(pdevice, layout, nir);
 
    if (nir->info.stage == MESA_SHADER_COMPUTE ||
