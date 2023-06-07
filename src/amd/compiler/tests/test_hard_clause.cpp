@@ -315,45 +315,48 @@ BEGIN_TEST(form_hard_clauses.heuristic)
 END_TEST
 
 BEGIN_TEST(form_hard_clauses.stores)
-   if (!setup_cs(NULL, GFX10))
-      return;
+   for (amd_gfx_level gfx : {GFX10, GFX11}) {
+      if (!setup_cs(NULL, gfx))
+         continue;
 
-   //>> p_unit_test 0
-   //; search_re('buffer_store_dword')
-   //; search_re('buffer_store_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand::zero());
-   create_mubuf_store();
-   create_mubuf_store();
+      //>> p_unit_test 0
+      //~gfx11! s_clause imm:1
+      //; search_re('buffer_store_dword')
+      //; search_re('buffer_store_dword')
+      bld.pseudo(aco_opcode::p_unit_test, Operand::zero());
+      create_mubuf_store();
+      create_mubuf_store();
 
-   //>> p_unit_test 1
-   //! s_clause imm:1
-   //; search_re('buffer_load_dword')
-   //; search_re('buffer_load_dword')
-   //; search_re('buffer_store_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1u));
-   create_mubuf();
-   create_mubuf();
-   create_mubuf_store();
+      //>> p_unit_test 1
+      //! s_clause imm:1
+      //; search_re('buffer_load_dword')
+      //; search_re('buffer_load_dword')
+      //; search_re('buffer_store_dword')
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1u));
+      create_mubuf();
+      create_mubuf();
+      create_mubuf_store();
 
-   //>> p_unit_test 2
-   //; search_re('buffer_store_dword')
-   //! s_clause imm:1
-   //; search_re('buffer_load_dword')
-   //; search_re('buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
-   create_mubuf_store();
-   create_mubuf();
-   create_mubuf();
+      //>> p_unit_test 2
+      //; search_re('buffer_store_dword')
+      //! s_clause imm:1
+      //; search_re('buffer_load_dword')
+      //; search_re('buffer_load_dword')
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
+      create_mubuf_store();
+      create_mubuf();
+      create_mubuf();
 
-   /* Unclear whether this is the best behaviour */
-   //>> p_unit_test 3
-   //; search_re('buffer_load_dword')
-   //; search_re('buffer_store_dword')
-   //; search_re('buffer_load_dword')
-   bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3u));
-   create_mubuf();
-   create_mubuf_store();
-   create_mubuf();
+      /* Unclear whether this is the best behaviour */
+      //>> p_unit_test 3
+      //; search_re('buffer_load_dword')
+      //; search_re('buffer_store_dword')
+      //; search_re('buffer_load_dword')
+      bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3u));
+      create_mubuf();
+      create_mubuf_store();
+      create_mubuf();
 
-   finish_form_hard_clause_test();
+      finish_form_hard_clause_test();
+   }
 END_TEST
