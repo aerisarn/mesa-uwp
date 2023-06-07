@@ -155,7 +155,7 @@ radv_shader_deserialize(struct vk_pipeline_cache *cache, const void *key_data, s
    const struct radv_shader_binary *binary = blob_read_bytes(blob, sizeof(struct radv_shader_binary));
    assert(key_size == SHA1_DIGEST_LENGTH);
 
-   struct radv_shader *shader = radv_shader_create(device, binary);
+   struct radv_shader *shader = radv_shader_create_uncached(device, binary);
    if (!shader)
       return NULL;
 
@@ -196,11 +196,11 @@ radv_shader_serialize(struct vk_pipeline_cache_object *object, struct blob *blob
 }
 
 struct radv_shader *
-radv_shader_create_cached(struct radv_device *device, struct vk_pipeline_cache *cache,
-                          const struct radv_shader_binary *binary)
+radv_shader_create(struct radv_device *device, struct vk_pipeline_cache *cache, const struct radv_shader_binary *binary,
+                   bool skip_cache)
 {
-   if (radv_is_cache_disabled(device))
-      return radv_shader_create(device, binary);
+   if (radv_is_cache_disabled(device) || skip_cache)
+      return radv_shader_create_uncached(device, binary);
 
    if (!cache)
       cache = device->mem_cache;

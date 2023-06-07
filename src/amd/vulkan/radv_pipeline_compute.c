@@ -203,9 +203,14 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
       nir_print_shader(cs_stage.nir, stderr);
 
    /* Compile NIR shader to AMD assembly. */
+   bool dump_shader = radv_can_dump_shader(device, cs_stage.nir, false);
+
+   binaries[MESA_SHADER_COMPUTE] = radv_shader_nir_to_asm(device, &cs_stage, &cs_stage.nir, 1, pipeline_key,
+                                                          keep_executable_info, keep_statistic_info);
    pipeline->base.shaders[MESA_SHADER_COMPUTE] =
-      radv_shader_nir_to_asm(device, cache, &cs_stage, &cs_stage.nir, 1, pipeline_key, keep_executable_info,
-                             keep_statistic_info, &binaries[MESA_SHADER_COMPUTE]);
+      radv_shader_create(device, cache, binaries[MESA_SHADER_COMPUTE], keep_executable_info || dump_shader);
+   radv_shader_generate_debug_info(device, dump_shader, binaries[MESA_SHADER_COMPUTE],
+                                   pipeline->base.shaders[MESA_SHADER_COMPUTE], &cs_stage.nir, 1, &cs_stage.info);
 
    cs_stage.feedback.duration += os_time_get_nano() - stage_start;
 

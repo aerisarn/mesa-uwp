@@ -353,15 +353,21 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
          nir_print_shader(temp_stage.nir, stderr);
    }
 
-   /* Compile NIR shader to AMD assembly. */
-   struct radv_shader *shader;
-   shader = radv_shader_nir_to_asm(device, cache, stage, shaders, num_shaders, pipeline_key, keep_executable_info,
-                                   keep_statistic_info, &binary);
+   bool dump_shader = radv_can_dump_shader(device, shaders[0], false);
 
-   if (shader && keep_executable_info && stage->spirv.size) {
-      shader->spirv = malloc(stage->spirv.size);
-      memcpy(shader->spirv, stage->spirv.data, stage->spirv.size);
-      shader->spirv_size = stage->spirv.size;
+   /* Compile NIR shader to AMD assembly. */
+   binary = radv_shader_nir_to_asm(device, stage, shaders, num_shaders, pipeline_key, keep_executable_info,
+                                   keep_statistic_info);
+   struct radv_shader *shader = radv_shader_create(device, cache, binary, keep_executable_info || dump_shader);
+
+   if (shader) {
+      radv_shader_generate_debug_info(device, dump_shader, binary, shader, shaders, num_shaders, &stage->info);
+
+      if (shader && keep_executable_info && stage->spirv.size) {
+         shader->spirv = malloc(stage->spirv.size);
+         memcpy(shader->spirv, stage->spirv.data, stage->spirv.size);
+         shader->spirv_size = stage->spirv.size;
+      }
    }
 
    free(binary);

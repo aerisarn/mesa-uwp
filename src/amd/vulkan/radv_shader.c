@@ -2002,7 +2002,7 @@ radv_shader_dma_submit(struct radv_device *device, struct radv_shader_dma_submis
 }
 
 struct radv_shader *
-radv_shader_create(struct radv_device *device, const struct radv_shader_binary *binary)
+radv_shader_create_uncached(struct radv_device *device, const struct radv_shader_binary *binary)
 {
    struct radv_shader *shader = calloc(1, sizeof(struct radv_shader));
    if (!shader)
@@ -2334,11 +2334,10 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
    return binary;
 }
 
-struct radv_shader *
-radv_shader_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
-                       struct radv_pipeline_stage *pl_stage, struct nir_shader *const *shaders, int shader_count,
-                       const struct radv_pipeline_key *key, bool keep_shader_info, bool keep_statistic_info,
-                       struct radv_shader_binary **binary_out)
+struct radv_shader_binary *
+radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *pl_stage,
+                       struct nir_shader *const *shaders, int shader_count, const struct radv_pipeline_key *key,
+                       bool keep_shader_info, bool keep_statistic_info)
 {
    gl_shader_stage stage = shaders[shader_count - 1]->info.stage;
    struct radv_shader_info *info = &pl_stage->info;
@@ -2351,32 +2350,23 @@ radv_shader_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cac
    struct radv_shader_binary *binary =
       shader_compile(device, shaders, shader_count, stage, info, &pl_stage->args, &options);
 
-   struct radv_shader *shader;
-   if (keep_shader_info || options.dump_shader) {
-      /* skip cache insertion and directly create shader */
-      shader = radv_shader_create(device, binary);
-   } else {
-      shader = radv_shader_create_cached(device, cache, binary);
-   }
-   if (!shader) {
-      free(binary);
-      return NULL;
-   }
+   return binary;
+}
 
-   if (keep_shader_info || options.dump_shader) {
-      radv_capture_shader_executable_info(device, shader, shaders, shader_count, binary);
-   }
+void
+radv_shader_generate_debug_info(struct radv_device *device, bool dump_shader, struct radv_shader_binary *binary,
+                                struct radv_shader *shader, struct nir_shader *const *shaders, int shader_count,
+                                struct radv_shader_info *info)
+{
+   radv_capture_shader_executable_info(device, shader, shaders, shader_count, binary);
 
-   if (options.dump_shader) {
+   if (dump_shader) {
       fprintf(stderr, "%s", radv_get_shader_name(info, shaders[0]->info.stage));
       for (int i = 1; i < shader_count; ++i)
          fprintf(stderr, " + %s", radv_get_shader_name(info, shaders[i]->info.stage));
 
       fprintf(stderr, "\ndisasm:\n%s\n", shader->disasm_string);
    }
-
-   *binary_out = binary;
-   return shader;
 }
 
 struct radv_shader *
@@ -2398,7 +2388,7 @@ radv_create_trap_handler_shader(struct radv_device *device)
    radv_declare_shader_args(device, &key, &info, stage, MESA_SHADER_NONE, &args);
 
    struct radv_shader_binary *binary = shader_compile(device, &b.shader, 1, stage, &info, &args, &options);
-   struct radv_shader *shader = radv_shader_create(device, binary);
+   struct radv_shader *shader = radv_shader_create_uncached(device, binary);
 
    ralloc_free(b.shader);
    free(binary);
@@ -2478,7 +2468,7 @@ radv_create_rt_prolog(struct radv_device *device)
    binary->info = info;
 
    radv_postprocess_binary_config(device, binary, &in_args);
-   prolog = radv_shader_create(device, binary);
+   prolog = radv_shader_create_uncached(device, binary);
    if (!prolog)
       goto done;
 

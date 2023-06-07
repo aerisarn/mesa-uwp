@@ -2217,8 +2217,15 @@ radv_pipeline_create_gs_copy_shader(struct radv_device *device, struct radv_pipe
       .optimisations_disabled = pipeline_key->optimisations_disabled,
    };
 
-   return radv_shader_nir_to_asm(device, cache, &gs_copy_stage, &nir, 1, &key, keep_executable_info,
-                                 keep_statistic_info, gs_copy_binary);
+   bool dump_shader = radv_can_dump_shader(device, nir, true);
+
+   *gs_copy_binary =
+      radv_shader_nir_to_asm(device, &gs_copy_stage, &nir, 1, &key, keep_executable_info, keep_statistic_info);
+   struct radv_shader *copy_shader =
+      radv_shader_create(device, cache, *gs_copy_binary, keep_executable_info || dump_shader);
+   if (copy_shader)
+      radv_shader_generate_debug_info(device, dump_shader, *gs_copy_binary, copy_shader, &nir, 1, &gs_copy_stage.info);
+   return copy_shader;
 }
 
 static void
@@ -2254,8 +2261,13 @@ radv_pipeline_nir_to_asm(struct radv_device *device, struct radv_graphics_pipeli
 
       int64_t stage_start = os_time_get_nano();
 
-      pipeline->base.shaders[s] = radv_shader_nir_to_asm(device, cache, &stages[s], shaders, shader_count, pipeline_key,
-                                                         keep_executable_info, keep_statistic_info, &binaries[s]);
+      bool dump_shader = radv_can_dump_shader(device, shaders[0], false);
+
+      binaries[s] = radv_shader_nir_to_asm(device, &stages[s], shaders, shader_count, pipeline_key,
+                                           keep_executable_info, keep_statistic_info);
+      pipeline->base.shaders[s] = radv_shader_create(device, cache, binaries[s], keep_executable_info || dump_shader);
+      radv_shader_generate_debug_info(device, dump_shader, binaries[s], pipeline->base.shaders[s], shaders,
+                                      shader_count, &stages[s].info);
 
       if (s == MESA_SHADER_GEOMETRY && !stages[s].info.is_ngg) {
          pipeline->base.gs_copy_shader =

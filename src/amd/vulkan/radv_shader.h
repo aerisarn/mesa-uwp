@@ -621,15 +621,22 @@ void radv_destroy_shader_upload_queue(struct radv_device *device);
 
 struct radv_shader_args;
 
-struct radv_shader *radv_shader_create(struct radv_device *device, const struct radv_shader_binary *binary);
+struct radv_shader *radv_shader_create(struct radv_device *device, struct vk_pipeline_cache *cache,
+                                       const struct radv_shader_binary *binary, bool skip_cache);
+
+struct radv_shader *radv_shader_create_uncached(struct radv_device *device, const struct radv_shader_binary *binary);
 
 struct radv_shader *radv_shader_create_cached(struct radv_device *device, struct vk_pipeline_cache *cache,
                                               const struct radv_shader_binary *binary);
 
-struct radv_shader *radv_shader_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
-                                           struct radv_pipeline_stage *stage, struct nir_shader *const *shaders,
-                                           int shader_count, const struct radv_pipeline_key *key, bool keep_shader_info,
-                                           bool keep_statistic_info, struct radv_shader_binary **binary_out);
+struct radv_shader_binary *radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *pl_stage,
+                                                  struct nir_shader *const *shaders, int shader_count,
+                                                  const struct radv_pipeline_key *key, bool keep_shader_info,
+                                                  bool keep_statistic_info);
+
+void radv_shader_generate_debug_info(struct radv_device *device, bool dump_shader, struct radv_shader_binary *binary,
+                                     struct radv_shader *shader, struct nir_shader *const *shaders, int shader_count,
+                                     struct radv_shader_info *info);
 
 VkResult radv_shader_wait_for_upload(struct radv_device *device, uint64_t seq);
 
