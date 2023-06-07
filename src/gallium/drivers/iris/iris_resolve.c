@@ -250,8 +250,8 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
          struct iris_resource *res = (void *) surf->base.texture;
 
          enum isl_aux_usage aux_usage =
-            iris_resource_render_aux_usage(ice, res, surf->view.base_level,
-                                           surf->view.format,
+            iris_resource_render_aux_usage(ice, res, surf->view.format,
+                                           surf->view.base_level,
                                            draw_aux_buffer_disabled[i]);
 
          if (ice->state.draw_aux_usage[i] != aux_usage) {
@@ -1183,8 +1183,8 @@ iris_render_formats_color_compatible(enum isl_format a, enum isl_format b,
 
 enum isl_aux_usage
 iris_resource_render_aux_usage(struct iris_context *ice,
-                               struct iris_resource *res, uint32_t level,
-                               enum isl_format render_format,
+                               struct iris_resource *res,
+                               enum isl_format render_format, uint32_t level,
                                bool draw_aux_disabled)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;

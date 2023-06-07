@@ -505,8 +505,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
          iris_format_for_usage(devinfo, dst_pfmt,
                                ISL_SURF_USAGE_RENDER_TARGET_BIT);
       enum isl_aux_usage dst_aux_usage =
-         iris_resource_render_aux_usage(ice, dst_res, info->dst.level,
-                                        dst_fmt.fmt, false);
+         iris_resource_render_aux_usage(ice, dst_res, dst_fmt.fmt,
+                                        info->dst.level, false);
 
       struct blorp_surf src_surf, dst_surf;
       iris_blorp_surf_for_resource(&screen->isl_dev,  &src_surf,
