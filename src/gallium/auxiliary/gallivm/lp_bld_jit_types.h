@@ -24,6 +24,9 @@
 #ifndef LP_BLD_JIT_TYPES_H
 #define LP_BLD_JIT_TYPES_H
 
+#include "gallivm/lp_bld_limits.h"
+#include "gallivm/lp_bld_struct.h"
+
 struct lp_sampler_dynamic_state;
 
 struct lp_jit_buffer
