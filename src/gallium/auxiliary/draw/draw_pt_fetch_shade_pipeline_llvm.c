@@ -406,16 +406,15 @@ llvm_middle_end_prepare(struct draw_pt_middle_end *middle,
 
 
 static unsigned
-get_num_consts_robust(struct draw_context *draw, unsigned *sizes, unsigned idx)
+get_num_consts_robust(struct draw_context *draw, struct draw_buffer_info *bufs, unsigned idx)
 {
-   uint64_t const_bytes = sizes[idx];
+   uint64_t const_bytes = bufs[idx].size;
 
    if (const_bytes < sizeof(float))
       return 0;
 
    return DIV_ROUND_UP(const_bytes, draw->constant_buffer_stride);
 }
-
 
 /**
  * Bind/update constant buffer pointers, clip planes and viewport dims.
@@ -438,16 +437,16 @@ llvm_middle_end_bind_parameters(struct draw_pt_middle_end *middle)
        * shader expects 16-byte allocations, the fix is likely to move
        * to LOAD intrinsic in the future and remove the vec4 constraint.
        */
-      int num_consts = get_num_consts_robust(draw, draw->pt.user.vs_constants_size, i);
-      llvm->vs_jit_resources.constants[i].f = draw->pt.user.vs_constants[i];
+      int num_consts = get_num_consts_robust(draw, draw->pt.user.vs_constants, i);
+      llvm->vs_jit_resources.constants[i].f = draw->pt.user.vs_constants[i].ptr;
       llvm->vs_jit_resources.constants[i].num_elements = num_consts;
       if (num_consts == 0) {
          llvm->vs_jit_resources.constants[i].f = fake_const_buf;
       }
    }
    for (i = 0; i < ARRAY_SIZE(llvm->vs_jit_resources.ssbos); ++i) {
-      int num_ssbos = draw->pt.user.vs_ssbos_size[i];
-      llvm->vs_jit_resources.ssbos[i].u = draw->pt.user.vs_ssbos[i];
+      int num_ssbos = draw->pt.user.vs_ssbos[i].size;
+      llvm->vs_jit_resources.ssbos[i].u = draw->pt.user.vs_ssbos[i].ptr;
       llvm->vs_jit_resources.ssbos[i].num_elements = num_ssbos;
       if (num_ssbos == 0) {
          llvm->vs_jit_resources.ssbos[i].u = (const uint32_t *)fake_const_buf;
@@ -455,16 +454,16 @@ llvm_middle_end_bind_parameters(struct draw_pt_middle_end *middle)
    }
 
    for (i = 0; i < ARRAY_SIZE(llvm->gs_jit_resources.constants); ++i) {
-      int num_consts = get_num_consts_robust(draw, draw->pt.user.gs_constants_size, i);
-      llvm->gs_jit_resources.constants[i].f = draw->pt.user.gs_constants[i];
+      int num_consts = get_num_consts_robust(draw, draw->pt.user.gs_constants, i);
+      llvm->gs_jit_resources.constants[i].f = draw->pt.user.gs_constants[i].ptr;
       llvm->gs_jit_resources.constants[i].num_elements = num_consts;
       if (num_consts == 0) {
          llvm->gs_jit_resources.constants[i].f = fake_const_buf;
       }
    }
    for (i = 0; i < ARRAY_SIZE(llvm->gs_jit_resources.ssbos); ++i) {
-      int num_ssbos = draw->pt.user.gs_ssbos_size[i];
-      llvm->gs_jit_resources.ssbos[i].u = draw->pt.user.gs_ssbos[i];
+      int num_ssbos = draw->pt.user.gs_ssbos[i].size;
+      llvm->gs_jit_resources.ssbos[i].u = draw->pt.user.gs_ssbos[i].ptr;
       llvm->gs_jit_resources.ssbos[i].num_elements = num_ssbos;
       if (num_ssbos == 0) {
          llvm->gs_jit_resources.ssbos[i].u = (const uint32_t *)fake_const_buf;
@@ -472,16 +471,16 @@ llvm_middle_end_bind_parameters(struct draw_pt_middle_end *middle)
    }
 
    for (i = 0; i < ARRAY_SIZE(llvm->tcs_jit_resources.constants); ++i) {
-      int num_consts = get_num_consts_robust(draw, draw->pt.user.tcs_constants_size, i);
-      llvm->tcs_jit_resources.constants[i].f = draw->pt.user.tcs_constants[i];
+      int num_consts = get_num_consts_robust(draw, draw->pt.user.tcs_constants, i);
+      llvm->tcs_jit_resources.constants[i].f = draw->pt.user.tcs_constants[i].ptr;
       llvm->tcs_jit_resources.constants[i].num_elements = num_consts;
       if (num_consts == 0) {
          llvm->tcs_jit_resources.constants[i].f = fake_const_buf;
       }
    }
    for (i = 0; i < ARRAY_SIZE(llvm->tcs_jit_resources.ssbos); ++i) {
-      int num_ssbos = draw->pt.user.tcs_ssbos_size[i];
-      llvm->tcs_jit_resources.ssbos[i].u = draw->pt.user.tcs_ssbos[i];
+      int num_ssbos = draw->pt.user.tcs_ssbos[i].size;
+      llvm->tcs_jit_resources.ssbos[i].u = draw->pt.user.tcs_ssbos[i].ptr;
       llvm->tcs_jit_resources.ssbos[i].num_elements = num_ssbos;
       if (num_ssbos == 0) {
          llvm->tcs_jit_resources.ssbos[i].u = (const uint32_t *)fake_const_buf;
@@ -489,16 +488,16 @@ llvm_middle_end_bind_parameters(struct draw_pt_middle_end *middle)
    }
 
    for (i = 0; i < ARRAY_SIZE(llvm->tes_jit_resources.constants); ++i) {
-      int num_consts = get_num_consts_robust(draw, draw->pt.user.tes_constants_size, i);
-      llvm->tes_jit_resources.constants[i].f = draw->pt.user.tes_constants[i];
+      int num_consts = get_num_consts_robust(draw, draw->pt.user.tes_constants, i);
+      llvm->tes_jit_resources.constants[i].f = draw->pt.user.tes_constants[i].ptr;
       llvm->tes_jit_resources.constants[i].num_elements = num_consts;
       if (num_consts == 0) {
          llvm->tes_jit_resources.constants[i].f = fake_const_buf;
       }
    }
    for (i = 0; i < ARRAY_SIZE(llvm->tes_jit_resources.ssbos); ++i) {
-      int num_ssbos = draw->pt.user.tes_ssbos_size[i];
-      llvm->tes_jit_resources.ssbos[i].u = draw->pt.user.tes_ssbos[i];
+      int num_ssbos = draw->pt.user.tes_ssbos[i].size;
+      llvm->tes_jit_resources.ssbos[i].u = draw->pt.user.tes_ssbos[i].ptr;
       llvm->tes_jit_resources.ssbos[i].num_elements = num_ssbos;
       if (num_ssbos == 0) {
          llvm->tes_jit_resources.ssbos[i].u = (const uint32_t *)fake_const_buf;
@@ -681,7 +680,6 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
       struct draw_vertex_shader *vshader = draw->vs.vertex_shader;
       draw_geometry_shader_run(gshader,
                                draw->pt.user.gs_constants,
-                               draw->pt.user.gs_constants_size,
                                vert_info,
                                prim_info,
                                tes_shader ? &tes_shader->info : &vshader->info,

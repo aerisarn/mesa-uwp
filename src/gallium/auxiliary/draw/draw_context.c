@@ -463,20 +463,20 @@ draw_set_mapped_constant_buffer(struct draw_context *draw,
 
    switch (shader_type) {
    case PIPE_SHADER_VERTEX:
-      draw->pt.user.vs_constants[slot] = buffer;
-      draw->pt.user.vs_constants_size[slot] = size;
+      draw->pt.user.vs_constants[slot].ptr = buffer;
+      draw->pt.user.vs_constants[slot].size = size;
       break;
    case PIPE_SHADER_GEOMETRY:
-      draw->pt.user.gs_constants[slot] = buffer;
-      draw->pt.user.gs_constants_size[slot] = size;
+      draw->pt.user.gs_constants[slot].ptr = buffer;
+      draw->pt.user.gs_constants[slot].size = size;
       break;
    case PIPE_SHADER_TESS_CTRL:
-      draw->pt.user.tcs_constants[slot] = buffer;
-      draw->pt.user.tcs_constants_size[slot] = size;
+      draw->pt.user.tcs_constants[slot].ptr = buffer;
+      draw->pt.user.tcs_constants[slot].size = size;
       break;
    case PIPE_SHADER_TESS_EVAL:
-      draw->pt.user.tes_constants[slot] = buffer;
-      draw->pt.user.tes_constants_size[slot] = size;
+      draw->pt.user.tes_constants[slot].ptr = buffer;
+      draw->pt.user.tes_constants[slot].size = size;
       break;
    default:
       assert(0 && "invalid shader type in draw_set_mapped_constant_buffer");
@@ -500,20 +500,20 @@ draw_set_mapped_shader_buffer(struct draw_context *draw,
 
    switch (shader_type) {
    case PIPE_SHADER_VERTEX:
-      draw->pt.user.vs_ssbos[slot] = buffer;
-      draw->pt.user.vs_ssbos_size[slot] = size;
+      draw->pt.user.vs_ssbos[slot].ptr = buffer;
+      draw->pt.user.vs_ssbos[slot].size = size;
       break;
    case PIPE_SHADER_GEOMETRY:
-      draw->pt.user.gs_ssbos[slot] = buffer;
-      draw->pt.user.gs_ssbos_size[slot] = size;
+      draw->pt.user.gs_ssbos[slot].ptr = buffer;
+      draw->pt.user.gs_ssbos[slot].size = size;
       break;
    case PIPE_SHADER_TESS_CTRL:
-      draw->pt.user.tcs_ssbos[slot] = buffer;
-      draw->pt.user.tcs_ssbos_size[slot] = size;
+      draw->pt.user.tcs_ssbos[slot].ptr = buffer;
+      draw->pt.user.tcs_ssbos[slot].size = size;
       break;
    case PIPE_SHADER_TESS_EVAL:
-      draw->pt.user.tes_ssbos[slot] = buffer;
-      draw->pt.user.tes_ssbos_size[slot] = size;
+      draw->pt.user.tes_ssbos[slot].ptr = buffer;
+      draw->pt.user.tes_ssbos[slot].size = size;
       break;
    default:
       assert(0 && "invalid shader type in draw_set_mapped_shader_buffer");

@@ -117,6 +117,11 @@ struct draw_vertex_buffer {
 /* maximum number of shader variants we can cache */
 #define DRAW_MAX_SHADER_VARIANTS 512
 
+struct draw_buffer_info {
+   const void *ptr;
+   unsigned size;
+};
+
 /**
  * Private context for the drawing module.
  */
@@ -217,24 +222,15 @@ struct draw_context
          struct draw_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];
 
          /** constant buffers for each shader stage */
-         const void *vs_constants[PIPE_MAX_CONSTANT_BUFFERS];
-         unsigned vs_constants_size[PIPE_MAX_CONSTANT_BUFFERS];
-         const void *gs_constants[PIPE_MAX_CONSTANT_BUFFERS];
-         unsigned gs_constants_size[PIPE_MAX_CONSTANT_BUFFERS];
-         const void *tcs_constants[PIPE_MAX_CONSTANT_BUFFERS];
-         unsigned tcs_constants_size[PIPE_MAX_CONSTANT_BUFFERS];
-         const void *tes_constants[PIPE_MAX_CONSTANT_BUFFERS];
-         unsigned tes_constants_size[PIPE_MAX_CONSTANT_BUFFERS];
+         struct draw_buffer_info vs_constants[PIPE_MAX_CONSTANT_BUFFERS];
+         struct draw_buffer_info gs_constants[PIPE_MAX_CONSTANT_BUFFERS];
+         struct draw_buffer_info tcs_constants[PIPE_MAX_CONSTANT_BUFFERS];
+         struct draw_buffer_info tes_constants[PIPE_MAX_CONSTANT_BUFFERS];
 
-         /** shader buffers for each shader stage */
-         const void *vs_ssbos[PIPE_MAX_SHADER_BUFFERS];
-         unsigned vs_ssbos_size[PIPE_MAX_SHADER_BUFFERS];
-         const void *gs_ssbos[PIPE_MAX_SHADER_BUFFERS];
-         unsigned gs_ssbos_size[PIPE_MAX_SHADER_BUFFERS];
-         const void *tcs_ssbos[PIPE_MAX_SHADER_BUFFERS];
-         unsigned tcs_ssbos_size[PIPE_MAX_SHADER_BUFFERS];
-         const void *tes_ssbos[PIPE_MAX_SHADER_BUFFERS];
-         unsigned tes_ssbos_size[PIPE_MAX_SHADER_BUFFERS];
+         struct draw_buffer_info vs_ssbos[PIPE_MAX_SHADER_BUFFERS];
+         struct draw_buffer_info gs_ssbos[PIPE_MAX_SHADER_BUFFERS];
+         struct draw_buffer_info tcs_ssbos[PIPE_MAX_SHADER_BUFFERS];
+         struct draw_buffer_info tes_ssbos[PIPE_MAX_SHADER_BUFFERS];
 
          /* pointer to planes */
          float (*planes)[DRAW_TOTAL_CLIP_PLANES][4];
