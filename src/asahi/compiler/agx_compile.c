@@ -1086,7 +1086,7 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE) {
          nir_variable_mode modes = nir_intrinsic_memory_modes(instr);
 
-         if (modes & nir_var_mem_global)
+         if (modes & (nir_var_mem_global | nir_var_image))
             agx_memory_barrier(b);
 
          if (modes & nir_var_mem_shared)
