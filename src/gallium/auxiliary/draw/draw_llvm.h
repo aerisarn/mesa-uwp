@@ -547,7 +547,7 @@ struct draw_llvm {
    struct draw_vs_jit_context vs_jit_context;
    struct draw_gs_jit_context gs_jit_context;
 
-   struct lp_jit_resources jit_resources[PIPE_SHADER_GEOMETRY + 1];
+   struct lp_jit_resources jit_resources[DRAW_MAX_SHADER_STAGE];
 
    struct draw_llvm_variant_list_item vs_variants_list;
    int nr_variants;

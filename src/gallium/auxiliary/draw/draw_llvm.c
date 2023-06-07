@@ -2156,8 +2156,7 @@ draw_llvm_set_mapped_texture(struct draw_context *draw,
 {
    struct lp_jit_texture *jit_tex;
 
-   assert (shader_stage >= PIPE_SHADER_VERTEX &&
-           shader_stage <= PIPE_SHADER_GEOMETRY);
+   assert(shader_stage < DRAW_MAX_SHADER_STAGE);
    assert(sview_idx < ARRAY_SIZE(draw->llvm->jit_resources[shader_stage].textures));
 
    jit_tex = &draw->llvm->jit_resources[shader_stage].textures[sview_idx];
@@ -2191,8 +2190,7 @@ draw_llvm_set_mapped_image(struct draw_context *draw,
 {
    struct lp_jit_image *jit_image;
 
-   assert (shader_stage >= PIPE_SHADER_VERTEX &&
-           shader_stage <= PIPE_SHADER_GEOMETRY);
+   assert(shader_stage < DRAW_MAX_SHADER_STAGE);
    assert(idx < ARRAY_SIZE(draw->llvm->jit_resources[shader_stage].images));
 
    jit_image = &draw->llvm->jit_resources[shader_stage].images[idx];
@@ -2213,8 +2211,7 @@ void
 draw_llvm_set_sampler_state(struct draw_context *draw,
                             enum pipe_shader_type shader_type)
 {
-   assert (shader_type >= PIPE_SHADER_VERTEX &&
-           shader_type <= PIPE_SHADER_GEOMETRY);
+   assert(shader_type < DRAW_MAX_SHADER_STAGE);
    for (unsigned i = 0; i < draw->num_samplers[shader_type]; i++) {
       struct lp_jit_sampler *jit_sam = &draw->llvm->jit_resources[shader_type].samplers[i];
 

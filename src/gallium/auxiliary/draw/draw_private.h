@@ -50,6 +50,11 @@
 struct gallivm_state;
 #endif
 
+/**
+ * The max stage the draw stores resources for.
+ * i.e. vs, tcs, tes, gs. no fs/cs/ms/ts.
+ */
+#define DRAW_MAX_SHADER_STAGE (PIPE_SHADER_GEOMETRY + 1)
 
 /**
  * The largest possible index of a vertex that can be fetched.
@@ -222,8 +227,8 @@ struct draw_context
          struct draw_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];
 
          /** constant buffers for each shader stage */
-         struct draw_buffer_info constants[PIPE_SHADER_GEOMETRY + 1][PIPE_MAX_CONSTANT_BUFFERS];
-         struct draw_buffer_info ssbos[PIPE_SHADER_GEOMETRY + 1][PIPE_MAX_SHADER_BUFFERS];
+         struct draw_buffer_info constants[DRAW_MAX_SHADER_STAGE][PIPE_MAX_CONSTANT_BUFFERS];
+         struct draw_buffer_info ssbos[DRAW_MAX_SHADER_STAGE][PIPE_MAX_SHADER_BUFFERS];
 
          /* pointer to planes */
          float (*planes)[DRAW_TOTAL_CLIP_PLANES][4];
@@ -367,13 +372,13 @@ struct draw_context
     * we only handle vertex and geometry shaders in the draw module, but
     * there may be more in the future (ex: hull and tessellation).
     */
-   struct pipe_sampler_view *sampler_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   unsigned num_sampler_views[PIPE_SHADER_TYPES];
-   const struct pipe_sampler_state *samplers[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
-   unsigned num_samplers[PIPE_SHADER_TYPES];
+   struct pipe_sampler_view *sampler_views[DRAW_MAX_SHADER_STAGE][PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   unsigned num_sampler_views[DRAW_MAX_SHADER_STAGE];
+   const struct pipe_sampler_state *samplers[DRAW_MAX_SHADER_STAGE][PIPE_MAX_SAMPLERS];
+   unsigned num_samplers[DRAW_MAX_SHADER_STAGE];
 
-   struct pipe_image_view *images[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
-   unsigned num_images[PIPE_SHADER_TYPES];
+   struct pipe_image_view *images[DRAW_MAX_SHADER_STAGE][PIPE_MAX_SHADER_IMAGES];
+   unsigned num_images[DRAW_MAX_SHADER_STAGE];
 
    struct pipe_query_data_pipeline_statistics statistics;
    boolean collect_statistics;
