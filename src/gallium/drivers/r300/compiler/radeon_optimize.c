@@ -1374,6 +1374,21 @@ static void merge_ARL(struct radeon_compiler * c, struct rc_instruction * inst)
 	}
 }
 
+/**
+ * Apply various optimizations specific to the A0 adress register loads.
+ */
+static void optimize_A0_loads(struct radeon_compiler * c) {
+	struct rc_instruction * inst = c->Program.Instructions.Next;
+
+	while (inst != &c->Program.Instructions) {
+		struct rc_instruction * cur = inst;
+		inst = inst->Next;
+		if (cur->U.I.Opcode == RC_OPCODE_ARL) {
+			merge_ARL(c, cur);
+		}
+	}
+}
+
 void rc_optimize(struct radeon_compiler * c, void *user)
 {
 	struct rc_instruction * inst = c->Program.Instructions.Next;
@@ -1391,6 +1406,10 @@ void rc_optimize(struct radeon_compiler * c, void *user)
 		if (cur->U.I.Opcode == RC_OPCODE_MOV) {
 			copy_propagate(c, cur);
 		}
+	}
+
+	if (c->type == RC_VERTEX_PROGRAM) {
+		optimize_A0_loads(c);
 	}
 
 	/* Merge MOVs to same source in different channels using the constant
@@ -1419,6 +1438,10 @@ void rc_optimize(struct radeon_compiler * c, void *user)
 		}
 	}
 
+	if (c->type != RC_FRAGMENT_PROGRAM) {
+		return;
+	}
+
 	/* Presubtract operations. */
 	inst = c->Program.Instructions.Next;
 	while(inst != &c->Program.Instructions) {
@@ -1427,19 +1450,7 @@ void rc_optimize(struct radeon_compiler * c, void *user)
 		peephole(c, cur);
 	}
 
-
-	if (!c->has_omod) {
-		inst = c->Program.Instructions.Next;
-		while (inst != &c->Program.Instructions) {
-			struct rc_instruction * cur = inst;
-			inst = inst->Next;
-			if (cur->U.I.Opcode == RC_OPCODE_ARL) {
-				merge_ARL(c, cur);
-			}
-		}
-		return;
-	}
-
+	/* Output modifiers. */
 	inst = c->Program.Instructions.Next;
 	struct rc_list * var_list = NULL;
 	while(inst != &c->Program.Instructions) {
