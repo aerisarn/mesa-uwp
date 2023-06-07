@@ -99,15 +99,12 @@ static const float bt2020_full_range_csc_offsets[3] = {
 static bool
 project_src(nir_builder *b, nir_tex_instr *tex)
 {
-   /* Find the projector in the srcs list, if present. */
-   int proj_index = nir_tex_instr_src_index(tex, nir_tex_src_projector);
-   if (proj_index < 0)
+   nir_ssa_def *proj = nir_steal_tex_src(tex, nir_tex_src_projector);
+   if (!proj)
       return false;
 
    b->cursor = nir_before_instr(&tex->instr);
-
-   nir_ssa_def *inv_proj =
-      nir_frcp(b, nir_ssa_for_src(b, tex->src[proj_index].src, 1));
+   nir_ssa_def *inv_proj = nir_frcp(b, proj);
 
    /* Walk through the sources projecting the arguments. */
    for (unsigned i = 0; i < tex->num_srcs; i++) {
@@ -156,23 +153,20 @@ project_src(nir_builder *b, nir_tex_instr *tex)
                             nir_src_for_ssa(projected));
    }
 
-   nir_tex_instr_remove_src(tex, proj_index);
    return true;
 }
 
 static bool
 lower_offset(nir_builder *b, nir_tex_instr *tex)
 {
-   int offset_index = nir_tex_instr_src_index(tex, nir_tex_src_offset);
-   if (offset_index < 0)
+   nir_ssa_def *offset = nir_steal_tex_src(tex, nir_tex_src_offset);
+   if (!offset)
       return false;
 
    int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
    assert(coord_index >= 0);
 
-   assert(tex->src[offset_index].src.is_ssa);
    assert(tex->src[coord_index].src.is_ssa);
-   nir_ssa_def *offset = tex->src[offset_index].src.ssa;
    nir_ssa_def *coord = tex->src[coord_index].src.ssa;
 
    b->cursor = nir_before_instr(&tex->instr);
@@ -210,8 +204,6 @@ lower_offset(nir_builder *b, nir_tex_instr *tex)
 
    nir_instr_rewrite_src(&tex->instr, &tex->src[coord_index].src,
                          nir_src_for_ssa(offset_coord));
-
-   nir_tex_instr_remove_src(tex, offset_index);
 
    return true;
 }
@@ -263,19 +255,15 @@ lower_lod(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *lod)
    assert(nir_tex_instr_src_index(tex, nir_tex_src_ddx) < 0);
    assert(nir_tex_instr_src_index(tex, nir_tex_src_ddy) < 0);
 
-   int bias_idx = nir_tex_instr_src_index(tex, nir_tex_src_bias);
-   if (bias_idx >= 0) {
-      /* If we have a bias, add it in */
-      lod = nir_fadd(b, lod, nir_ssa_for_src(b, tex->src[bias_idx].src, 1));
-      nir_tex_instr_remove_src(tex, bias_idx);
-   }
+   /* If we have a bias, add it in */
+   nir_ssa_def *bias = nir_steal_tex_src(tex, nir_tex_src_bias);
+   if (bias)
+      lod = nir_fadd(b, lod, bias);
 
-   int min_lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_min_lod);
-   if (min_lod_idx >= 0) {
-      /* If we have a minimum LOD, clamp LOD accordingly */
-      lod = nir_fmax(b, lod, nir_ssa_for_src(b, tex->src[min_lod_idx].src, 1));
-      nir_tex_instr_remove_src(tex, min_lod_idx);
-   }
+   /* If we have a minimum LOD, clamp LOD accordingly */
+   nir_ssa_def *min_lod = nir_steal_tex_src(tex, nir_tex_src_min_lod);
+   if (min_lod)
+      lod = nir_fmax(b, lod, min_lod);
 
    nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(lod));
    tex->op = nir_texop_txl;
@@ -576,12 +564,10 @@ replace_gradient_with_lod(nir_builder *b, nir_ssa_def *lod, nir_tex_instr *tex)
    nir_tex_instr_remove_src(tex, nir_tex_instr_src_index(tex, nir_tex_src_ddx));
    nir_tex_instr_remove_src(tex, nir_tex_instr_src_index(tex, nir_tex_src_ddy));
 
-   int min_lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_min_lod);
-   if (min_lod_idx >= 0) {
-      /* If we have a minimum LOD, clamp LOD accordingly */
-      lod = nir_fmax(b, lod, nir_ssa_for_src(b, tex->src[min_lod_idx].src, 1));
-      nir_tex_instr_remove_src(tex, min_lod_idx);
-   }
+   /* If we have a minimum LOD, clamp LOD accordingly */
+   nir_ssa_def *min_lod = nir_steal_tex_src(tex, nir_tex_src_min_lod);
+   if (min_lod)
+      lod = nir_fmax(b, lod, min_lod);
 
    nir_tex_instr_add_src(tex, nir_tex_src_lod, nir_src_for_ssa(lod));
    tex->op = nir_texop_txl;
