@@ -260,25 +260,6 @@ radv_format_meta_fs_key(struct radv_device *device, VkFormat format)
    }
 }
 
-bool
-radv_can_enable_dual_src(const struct vk_color_blend_attachment_state *att)
-{
-   VkBlendOp eqRGB = att->color_blend_op;
-   VkBlendFactor srcRGB = att->src_color_blend_factor;
-   VkBlendFactor dstRGB = att->dst_color_blend_factor;
-   VkBlendOp eqA = att->alpha_blend_op;
-   VkBlendFactor srcA = att->src_alpha_blend_factor;
-   VkBlendFactor dstA = att->dst_alpha_blend_factor;
-   bool eqRGB_minmax = eqRGB == VK_BLEND_OP_MIN || eqRGB == VK_BLEND_OP_MAX;
-   bool eqA_minmax = eqA == VK_BLEND_OP_MIN || eqA == VK_BLEND_OP_MAX;
-
-   if (!eqRGB_minmax && (radv_is_dual_src(srcRGB) || radv_is_dual_src(dstRGB)))
-      return true;
-   if (!eqA_minmax && (radv_is_dual_src(srcA) || radv_is_dual_src(dstA)))
-      return true;
-   return false;
-}
-
 static bool
 radv_pipeline_needs_dynamic_ps_epilog(const struct radv_graphics_pipeline *pipeline)
 {
