@@ -7339,7 +7339,7 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
       cmd_buffer->vertex_bindings[attrib->binding].stride = binding->stride;
       vs_state->offsets[loc] = attrib->offset;
 
-      enum pipe_format format = vk_format_to_pipe_format(attrib->format);
+      enum pipe_format format = vk_format_map[attrib->format];
       const struct ac_vtx_format_info *vtx_info = &vtx_info_table[format];
 
       vs_state->formats[loc] = format;
