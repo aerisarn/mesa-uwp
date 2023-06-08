@@ -87,7 +87,7 @@ debian-testing:
       -D valgrind=disabled
       -D perfetto=true
       -D tools=drm-shim
-    MINIO_ARTIFACT_NAME: mesa-x86_64
+    MINIO_ARTIFACT_NAME: mesa-x86_64-default-${BUILDTYPE}
     LLVM_VERSION: 15
   script:
     - .gitlab-ci/meson/build.sh
@@ -237,7 +237,7 @@ debian-release:
       -D intel-clc=enabled
       -D imagination-srv=true
     BUILDTYPE: "release"
-    MINIO_ARTIFACT_NAME: "mesa-x86_64-${BUILDTYPE}"
+    MINIO_ARTIFACT_NAME: "mesa-x86_64-default-${BUILDTYPE}"
   script:
     - .gitlab-ci/meson/build.sh
     - 'if [ -n "$MESA_CI_PERFORMANCE_ENABLED" ]; then .gitlab-ci/prepare-artifacts.sh; fi'
@@ -374,7 +374,7 @@ debian-android:
     LLVM_VERSION: ""
     PKG_CONFIG_LIBDIR: "/disable/non/android/system/pc/files"
     ARTIFACTS_DEBUG_SYMBOLS: 1
-    MINIO_ARTIFACT_NAME: mesa-x86_64-android
+    MINIO_ARTIFACT_NAME: mesa-x86_64-android-${BUILDTYPE}
   script:
     - CROSS=aarch64-linux-android GALLIUM_DRIVERS=etnaviv,freedreno,lima,panfrost,vc4,v3d VULKAN_DRIVERS=freedreno,broadcom,virtio .gitlab-ci/meson/build.sh
     # x86_64 build:
@@ -427,7 +427,7 @@ debian-arm32:
     EXTRA_OPTION: >
       -D llvm=disabled
       -D valgrind=disabled
-    MINIO_ARTIFACT_NAME: mesa-arm32
+    MINIO_ARTIFACT_NAME: mesa-arm32-default-${BUILDTYPE}
     # The strip command segfaults, failing to strip the binary and leaving
     # tempfiles in our artifacts.
     ARTIFACTS_DEBUG_SYMBOLS: 1
@@ -445,7 +445,7 @@ debian-arm32-asan:
       -D valgrind=disabled
       -D tools=dlclose-skip
     ARTIFACTS_DEBUG_SYMBOLS: 1
-    MINIO_ARTIFACT_NAME: mesa-arm32-asan
+    MINIO_ARTIFACT_NAME: mesa-arm32-asan-${BUILDTYPE}
     MESON_TEST_ARGS: "--no-suite mesa:compiler --no-suite mesa:util"
 
 debian-arm64:
@@ -462,7 +462,7 @@ debian-arm64:
       -D valgrind=disabled
       -D imagination-srv=true
       -D perfetto=true
-    MINIO_ARTIFACT_NAME: mesa-arm64
+    MINIO_ARTIFACT_NAME: mesa-arm64-default-${BUILDTYPE}
   script:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -477,7 +477,7 @@ debian-arm64-asan:
       -D valgrind=disabled
       -D tools=dlclose-skip
     ARTIFACTS_DEBUG_SYMBOLS: 1
-    MINIO_ARTIFACT_NAME: mesa-arm64-asan
+    MINIO_ARTIFACT_NAME: mesa-arm64-asan-${BUILDTYPE}
     MESON_TEST_ARGS: "--no-suite mesa:compiler"
 
 debian-arm64-build-test:
@@ -496,7 +496,7 @@ debian-arm64-release:
     - debian-arm64
   variables:
     BUILDTYPE: release
-    MINIO_ARTIFACT_NAME: mesa-arm64-${BUILDTYPE}
+    MINIO_ARTIFACT_NAME: mesa-arm64-default-${BUILDTYPE}
     C_ARGS: >
       -Wno-error=array-bounds
       -Wno-error=stringop-truncation

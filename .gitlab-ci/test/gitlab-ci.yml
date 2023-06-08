@@ -76,7 +76,7 @@ clang-format:
     - .test
     - .use-debian/x86_64_test-android
   variables:
-    MINIO_ARTIFACT_NAME: mesa-x86_64-android
+    MINIO_ARTIFACT_NAME: mesa-x86_64-android-debug
   needs:
     - job: debian-testing
       artifacts: true  # On the host we want the Linux build
@@ -191,7 +191,7 @@ clang-format:
     - .use-debian/arm32_test
   variables:
     BM_ROOTFS: /rootfs-armhf
-    MINIO_ARTIFACT_NAME: mesa-arm32
+    MINIO_ARTIFACT_NAME: mesa-arm32-default-debugoptimized
   needs:
     - debian/arm32_test
     - job: debian-arm32
@@ -204,7 +204,7 @@ clang-format:
     - .use-debian/arm64_test
   variables:
     BM_ROOTFS: /rootfs-arm64
-    MINIO_ARTIFACT_NAME: mesa-arm64
+    MINIO_ARTIFACT_NAME: mesa-arm64-default-debugoptimized
   needs:
     - debian/arm64_test
     - job: debian-arm64
@@ -217,7 +217,7 @@ clang-format:
     - .use-debian/arm32_test
   variables:
     DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.8:/install/lib/libdlclose-skip.so"
-    MINIO_ARTIFACT_NAME: mesa-arm32-asan
+    MINIO_ARTIFACT_NAME: mesa-arm32-asan-debugoptimized
   needs:
     - debian/arm32_test
     - job: debian-arm32-asan
@@ -229,7 +229,7 @@ clang-format:
     - .use-debian/arm64_test
   variables:
     DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.8:/install/lib/libdlclose-skip.so"
-    MINIO_ARTIFACT_NAME: mesa-arm64-asan
+    MINIO_ARTIFACT_NAME: mesa-arm64-asan-debugoptimized
   needs:
     - debian/arm64_test
     - job: debian-arm64-asan
