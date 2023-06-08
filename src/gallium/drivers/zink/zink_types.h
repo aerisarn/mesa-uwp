@@ -352,6 +352,7 @@ struct zink_rasterizer_state {
 
 struct zink_blend_state {
    uint32_t hash;
+   unsigned num_rts;
    VkPipelineColorBlendAttachmentState attachments[PIPE_MAX_COLOR_BUFS];
 
    struct {
@@ -365,6 +366,9 @@ struct zink_blend_state {
 
    VkBool32 alpha_to_coverage;
    VkBool32 alpha_to_one;
+
+   uint32_t wrmask;
+   uint8_t enables;
 
    bool dual_src_blend;
 };
@@ -1722,6 +1726,25 @@ typedef void (*pipe_draw_vertex_state_func)(struct pipe_context *ctx,
                                             unsigned num_draws);
 typedef void (*pipe_launch_grid_func)(struct pipe_context *pipe, const struct pipe_grid_info *info);
 
+
+enum zink_ds3_state {
+   ZINK_DS3_RAST_STIPPLE,
+   ZINK_DS3_RAST_CLIP,
+   ZINK_DS3_RAST_CLAMP,
+   ZINK_DS3_RAST_POLYGON,
+   ZINK_DS3_RAST_HALFZ,
+   ZINK_DS3_RAST_PV,
+   ZINK_DS3_RAST_LINE,
+   ZINK_DS3_RAST_STIPPLE_ON,
+   ZINK_DS3_BLEND_A2C,
+   ZINK_DS3_BLEND_A21,
+   ZINK_DS3_BLEND_ON,
+   ZINK_DS3_BLEND_WRITE,
+   ZINK_DS3_BLEND_EQ,
+   ZINK_DS3_BLEND_LOGIC_ON,
+   ZINK_DS3_BLEND_LOGIC,
+};
+
 struct zink_context {
    struct pipe_context base;
    struct threaded_context *tc;
@@ -1952,6 +1975,8 @@ struct zink_context {
    struct set update_barriers[2][2]; //[gfx, compute][current, next]
    uint8_t barrier_set_idx[2];
    unsigned memory_barrier;
+
+   uint32_t ds3_states;
 
    uint32_t num_so_targets;
    struct pipe_stream_output_target *so_targets[PIPE_MAX_SO_OUTPUTS];

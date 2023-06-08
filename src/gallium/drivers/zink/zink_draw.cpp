@@ -795,19 +795,26 @@ zink_draw(struct pipe_context *pctx,
          VKCTX(CmdSetFrontFaceEXT)(batch->state->cmdbuf, (VkFrontFace)ctx->gfx_pipeline_state.dyn_state1.front_face);
          VKCTX(CmdSetCullModeEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.dyn_state1.cull_mode);
       }
-      if (!screen->driver_workarounds.no_linestipple && (DYNAMIC_STATE >= ZINK_DYNAMIC_STATE3 || rast_state->base.line_stipple_enable))
-         VKCTX(CmdSetLineStippleEXT)(batch->state->cmdbuf, rast_state->base.line_stipple_factor, rast_state->base.line_stipple_pattern);
 
       if (DYNAMIC_STATE >= ZINK_DYNAMIC_STATE3) {
-         VKCTX(CmdSetDepthClipEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.depth_clip);
-         VKCTX(CmdSetDepthClampEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.depth_clamp);
-         VKCTX(CmdSetPolygonModeEXT)(batch->state->cmdbuf, (VkPolygonMode)rast_state->hw_state.polygon_mode);
-         VKCTX(CmdSetDepthClipNegativeOneToOneEXT)(batch->state->cmdbuf, !rast_state->hw_state.clip_halfz);
-         VKCTX(CmdSetProvokingVertexModeEXT)(batch->state->cmdbuf, rast_state->hw_state.pv_last ?
-                                                                  VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT :
-                                                                  VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT);
-         VKCTX(CmdSetLineRasterizationModeEXT)(batch->state->cmdbuf, rast_state->dynamic_line_mode);
-         if (screen->info.dynamic_state3_feats.extendedDynamicState3LineStippleEnable)
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_RAST_STIPPLE))
+            VKCTX(CmdSetLineStippleEXT)(batch->state->cmdbuf, rast_state->base.line_stipple_factor, rast_state->base.line_stipple_pattern);
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_RAST_CLIP))
+            VKCTX(CmdSetDepthClipEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.depth_clip);
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_RAST_CLAMP))
+            VKCTX(CmdSetDepthClampEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.depth_clamp);
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_RAST_POLYGON))
+            VKCTX(CmdSetPolygonModeEXT)(batch->state->cmdbuf, (VkPolygonMode)rast_state->hw_state.polygon_mode);
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_RAST_HALFZ))
+            VKCTX(CmdSetDepthClipNegativeOneToOneEXT)(batch->state->cmdbuf, !rast_state->hw_state.clip_halfz);
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_RAST_PV))
+            VKCTX(CmdSetProvokingVertexModeEXT)(batch->state->cmdbuf,
+                                                rast_state->hw_state.pv_last ?
+                                                VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT :
+                                                VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT);
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_RAST_CLIP))
+            VKCTX(CmdSetLineRasterizationModeEXT)(batch->state->cmdbuf, rast_state->dynamic_line_mode);
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_RAST_STIPPLE_ON))
             VKCTX(CmdSetLineStippleEnableEXT)(batch->state->cmdbuf, rast_state->hw_state.line_stipple_enable);
       }
    }
@@ -816,20 +823,27 @@ zink_draw(struct pipe_context *pctx,
       VKCTX(CmdSetSampleMaskEXT)(batch->state->cmdbuf, (VkSampleCountFlagBits)(ctx->gfx_pipeline_state.rast_samples + 1), &ctx->gfx_pipeline_state.sample_mask);
       ctx->sample_mask_changed = false;
    }
-   if ((BATCH_CHANGED || ctx->blend_state_changed) && screen->have_full_ds3) {
+   if ((BATCH_CHANGED || ctx->blend_state_changed)) {
       if (ctx->gfx_pipeline_state.blend_state) {
-         VKCTX(CmdSetAlphaToCoverageEnableEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->alpha_to_coverage);
-         if (screen->info.feats.features.alphaToOne)
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_A2C))
+            VKCTX(CmdSetAlphaToCoverageEnableEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->alpha_to_coverage);
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_A21))
             VKCTX(CmdSetAlphaToOneEnableEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->alpha_to_one);
          if (ctx->fb_state.nr_cbufs) {
-            VKCTX(CmdSetColorBlendEnableEXT)(batch->state->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.enables);
-            VKCTX(CmdSetColorWriteMaskEXT)(batch->state->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.wrmask);
-            VKCTX(CmdSetColorBlendEquationEXT)(batch->state->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.eq);
+            if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_ON))
+               VKCTX(CmdSetColorBlendEnableEXT)(batch->state->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.enables);
+            if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_WRITE))
+               VKCTX(CmdSetColorWriteMaskEXT)(batch->state->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.wrmask);
+            if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_EQ))
+               VKCTX(CmdSetColorBlendEquationEXT)(batch->state->cmdbuf, 0, ctx->fb_state.nr_cbufs, ctx->gfx_pipeline_state.blend_state->ds3.eq);
          }
-         VKCTX(CmdSetLogicOpEnableEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->logicop_enable);
-         VKCTX(CmdSetLogicOpEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->logicop_func);
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_LOGIC_ON))
+            VKCTX(CmdSetLogicOpEnableEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->logicop_enable);
+         if (ctx->ds3_states & BITFIELD_BIT(ZINK_DS3_BLEND_LOGIC))
+            VKCTX(CmdSetLogicOpEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.blend_state->logicop_func);
       }
    }
+   ctx->ds3_states = 0;
 
    if (BATCH_CHANGED ||
        /* only re-emit on non-batch change when actually drawing lines */

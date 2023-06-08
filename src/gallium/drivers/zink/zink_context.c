@@ -3210,8 +3210,9 @@ flush_batch(struct zink_context *ctx, bool sync)
    if (ctx->batch.state->is_device_lost) {
       check_device_lost(ctx);
    } else {
+      struct zink_screen *screen = zink_screen(ctx->base.screen);
       zink_start_batch(ctx, batch);
-      if (zink_screen(ctx->base.screen)->info.have_EXT_transform_feedback && ctx->num_so_targets)
+      if (screen->info.have_EXT_transform_feedback && ctx->num_so_targets)
          ctx->dirty_so_targets = true;
       ctx->pipeline_changed[0] = ctx->pipeline_changed[1] = true;
       zink_select_draw_vbo(ctx);
@@ -3219,6 +3220,14 @@ flush_batch(struct zink_context *ctx, bool sync)
 
       if (ctx->oom_stall)
          stall(ctx);
+      if (screen->info.have_EXT_extended_dynamic_state3) {
+         if (screen->have_full_ds3)
+            ctx->ds3_states = UINT32_MAX;
+         else
+            ctx->ds3_states = BITFIELD_MASK(ZINK_DS3_BLEND_A2C);
+         if (!screen->info.dynamic_state3_feats.extendedDynamicState3AlphaToOneEnable)
+            ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_BLEND_A21);
+      }
       ctx->oom_flush = false;
       ctx->oom_stall = false;
       ctx->dd.bindless_bound = false;
@@ -3412,8 +3421,11 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    /* renderpass changes if the number or types of attachments change */
    ctx->rp_changed |= ctx->fb_state.nr_cbufs != state->nr_cbufs;
    ctx->rp_changed |= !!ctx->fb_state.zsbuf != !!state->zsbuf;
-   if (ctx->fb_state.nr_cbufs != state->nr_cbufs)
+   if (ctx->fb_state.nr_cbufs != state->nr_cbufs) {
       ctx->blend_state_changed |= screen->have_full_ds3;
+      if (state->nr_cbufs && screen->have_full_ds3)
+         ctx->ds3_states |= BITFIELD_BIT(ZINK_DS3_BLEND_ON) | BITFIELD_BIT(ZINK_DS3_BLEND_WRITE) | BITFIELD_BIT(ZINK_DS3_BLEND_EQ);
+   }
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
    zink_update_fbfetch(ctx);
