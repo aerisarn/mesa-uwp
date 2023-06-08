@@ -7548,7 +7548,9 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
       color_att[i].format = iview->vk.format;
       color_att[i].iview = iview;
       color_att[i].layout = att_info->imageLayout;
-      radv_initialise_color_surface(cmd_buffer->device, &color_att[i].cb, iview);
+      if (!iview->cb.cb_color_base)
+         radv_initialise_color_surface_va(cmd_buffer->device, &iview->cb, iview);
+      color_att[i].cb = iview->cb;
 
       if (att_info->resolveMode != VK_RESOLVE_MODE_NONE && att_info->resolveImageView != VK_NULL_HANDLE) {
          color_att[i].resolve_mode = att_info->resolveMode;
@@ -7603,7 +7605,9 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
 
       assert(d_iview == NULL || s_iview == NULL || d_iview == s_iview);
       ds_att.iview = d_iview ? d_iview : s_iview, ds_att.format = ds_att.iview->vk.format;
-      radv_initialise_ds_surface(cmd_buffer->device, &ds_att.ds, ds_att.iview);
+      if (!ds_att.iview->ds.db_z_read_base && !ds_att.iview->ds.db_stencil_read_base)
+         radv_initialise_ds_surface_va(cmd_buffer->device, &ds_att.iview->ds, ds_att.iview);
+      ds_att.ds = ds_att.iview->ds;
 
       assert(d_res_iview == NULL || s_res_iview == NULL || d_res_iview == s_res_iview);
       ds_att.resolve_iview = d_res_iview ? d_res_iview : s_res_iview;

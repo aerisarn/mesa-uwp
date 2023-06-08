@@ -1502,7 +1502,11 @@ struct radv_ds_buffer_info {
    uint32_t db_render_control;
 };
 
+void radv_initialise_color_surface_va(struct radv_device *device, struct radv_color_buffer_info *cb,
+                                      struct radv_image_view *iview);
 void radv_initialise_color_surface(struct radv_device *device, struct radv_color_buffer_info *cb,
+                                   struct radv_image_view *iview);
+void radv_initialise_ds_surface_va(const struct radv_device *device, struct radv_ds_buffer_info *ds,
                                    struct radv_image_view *iview);
 void radv_initialise_ds_surface(const struct radv_device *device, struct radv_ds_buffer_info *ds,
                                 struct radv_image_view *iview);
@@ -2802,6 +2806,11 @@ struct radv_image_view {
 
    /* Block-compressed image views on GFX10+. */
    struct ac_surf_nbc_view nbc_view;
+
+   union {
+      struct radv_color_buffer_info cb;
+      struct radv_ds_buffer_info ds;
+   };
 };
 
 struct radv_image_create_info {

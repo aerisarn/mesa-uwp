@@ -2294,6 +2294,14 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
                                       disable_compression, enable_compression, iview->plane_id + i, i, img_create_flags,
                                       &iview->nbc_view, sliced_3d);
    }
+
+   if (iview->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      radv_initialise_ds_surface(device, &iview->ds, iview);
+   } else {
+      bool blendable = false;
+      if (radv_is_colorbuffer_format_supported(device->physical_device, iview->vk.format, &blendable))
+         radv_initialise_color_surface(device, &iview->cb, iview);
+   }
 }
 
 void
