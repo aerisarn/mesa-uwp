@@ -112,27 +112,6 @@ radv_get_indirect_cmdbuf_size(const VkGeneratedCommandsInfoNV *cmd_info)
    return radv_align_cmdbuf_size(cmd_size * cmd_info->sequencesCount);
 }
 
-enum radv_dgc_token_type {
-   RADV_DGC_INDEX_BUFFER,
-   RADV_DGC_DRAW,
-   RADV_DGC_INDEXED_DRAW,
-};
-
-struct radv_dgc_token {
-   uint16_t type; /* enum radv_dgc_token_type, but making the size explicit */
-   uint16_t offset; /* offset in the input stream */
-   union {
-      struct {
-         uint16_t vtx_base_sgpr;
-      } draw;
-      struct {
-         uint16_t index_size;
-         uint16_t vtx_base_sgpr;
-         uint32_t max_index_count;
-      } indexed_draw;
-   };
-};
-
 struct radv_dgc_params {
    uint32_t cmd_buf_stride;
    uint32_t cmd_buf_size;
