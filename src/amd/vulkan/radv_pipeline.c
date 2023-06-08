@@ -765,13 +765,15 @@ radv_GetPipelineExecutablePropertiesKHR(VkDevice _device, const VkPipelineInfoKH
    }
 
    const uint32_t count = MIN2(total_count, *pExecutableCount);
-   for (unsigned i = 0, executable_idx = 0; i < MESA_VULKAN_SHADER_STAGES && executable_idx < count; ++i) {
-      if (!pipeline->shaders[i])
-         continue;
-      pProperties[executable_idx].stages = mesa_to_vk_shader_stage(i);
+   for (uint32_t executable_idx = 0; executable_idx < count; executable_idx++) {
+      gl_shader_stage stage;
+      struct radv_shader *shader = radv_get_shader_from_executable_index(pipeline, executable_idx, &stage);
+
+      pProperties[executable_idx].stages = mesa_to_vk_shader_stage(stage);
+
       const char *name = NULL;
       const char *description = NULL;
-      switch (i) {
+      switch (stage) {
       case MESA_SHADER_VERTEX:
          name = "Vertex Shader";
          description = "Vulkan Vertex Shader";
@@ -791,6 +793,12 @@ radv_GetPipelineExecutablePropertiesKHR(VkDevice _device, const VkPipelineInfoKH
          description = "Vulkan Tessellation Evaluation Shader";
          break;
       case MESA_SHADER_GEOMETRY:
+         if (shader->info.type == RADV_SHADER_TYPE_GS_COPY) {
+            name = "GS Copy Shader";
+            description = "Extra shader stage that loads the GS output ringbuffer into the rasterizer";
+            break;
+         }
+
          if (pipeline->shaders[MESA_SHADER_TESS_CTRL] && !pipeline->shaders[MESA_SHADER_TESS_EVAL]) {
             pProperties[executable_idx].stages |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
             name = "Tessellation Evaluation + Geometry Shaders";
@@ -844,26 +852,13 @@ radv_GetPipelineExecutablePropertiesKHR(VkDevice _device, const VkPipelineInfoKH
          name = "Callable Shader";
          description = "Vulkan Callable Shader";
          break;
+      default:
+         unreachable("Unsupported shader stage");
       }
 
-      pProperties[executable_idx].subgroupSize = pipeline->shaders[i]->info.wave_size;
+      pProperties[executable_idx].subgroupSize = shader->info.wave_size;
       desc_copy(pProperties[executable_idx].name, name);
       desc_copy(pProperties[executable_idx].description, description);
-
-      ++executable_idx;
-      if (i == MESA_SHADER_GEOMETRY && !radv_pipeline_has_ngg(radv_pipeline_to_graphics(pipeline))) {
-         assert(pipeline->gs_copy_shader);
-         if (executable_idx >= count)
-            break;
-
-         pProperties[executable_idx].stages = VK_SHADER_STAGE_GEOMETRY_BIT;
-         pProperties[executable_idx].subgroupSize = 64;
-         desc_copy(pProperties[executable_idx].name, "GS Copy Shader");
-         desc_copy(pProperties[executable_idx].description,
-                   "Extra shader stage that loads the GS output ringbuffer into the rasterizer");
-
-         ++executable_idx;
-      }
    }
 
    VkResult result = *pExecutableCount < total_count ? VK_INCOMPLETE : VK_SUCCESS;
