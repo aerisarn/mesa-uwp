@@ -14,7 +14,7 @@ export LLVM_VERSION="${LLVM_VERSION:=15}"
 
 check_minio()
 {
-    MINIO_PATH="${MINIO_HOST}/mesa-lava/$1/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
+    MINIO_PATH="${S3_HOST}/mesa-lava/$1/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
     if curl -L --retry 4 -f --retry-delay 60 -s -X HEAD \
       "https://${MINIO_PATH}/done"; then
         echo "Remote files are up-to-date, skip rebuilding them."
