@@ -891,6 +891,8 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
          b, dst, instr, AGX_SR_THREAD_POSITION_IN_THREADGROUP_X);
 
    case nir_intrinsic_scoped_barrier: {
+      assert(!b->shader->is_preamble && "invalid");
+
       bool needs_threadgroup_barrier = false;
 
       if (nir_intrinsic_execution_scope(instr) != SCOPE_NONE) {
@@ -2164,6 +2166,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    agx_context *ctx = rzalloc(NULL, agx_context);
    ctx->nir = nir;
+   ctx->is_preamble = impl->function->is_preamble;
    ctx->out = out;
    ctx->key = key;
    ctx->stage = nir->info.stage;
