@@ -380,6 +380,8 @@ memory_barrier("image_barrier_2", 3, 2, 10)
 memory_barrier("image_barrier_3", 2, 1, 10)
 memory_barrier("image_barrier_4", 3, 1, 10)
 
+memory_barrier("flush_memory_to_texture", 0, 0, 4)
+
 # Convenient aliases.
 op("mov", _, srcs = 1)
 op("not", _, srcs = 1)

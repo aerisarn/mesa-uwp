@@ -1104,6 +1104,40 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return NULL;
    }
 
+   case nir_intrinsic_fence_pbe_to_tex_agx: {
+      agx_image_barrier_1(b);
+      agx_image_barrier_2(b);
+      agx_image_barrier_3(b);
+      agx_image_barrier_4(b);
+      return NULL;
+   }
+
+   case nir_intrinsic_fence_mem_to_tex_agx: {
+      /* Flush out the atomic to main memory */
+      agx_memory_barrier(b);
+
+      /* Flush out the texture cache */
+      agx_flush_memory_to_texture(b);
+      return NULL;
+   }
+
+   case nir_intrinsic_fence_pbe_to_tex_pixel_agx: {
+      agx_image_barrier_1(b);
+      agx_image_barrier_2(b);
+      agx_flush_memory_to_texture(b);
+      agx_image_barrier_3(b);
+      return NULL;
+   }
+
+   case nir_intrinsic_begin_invocation_interlock: {
+      if (!b->shader->did_writeout &&
+          !b->shader->key->fs.ignore_tib_dependencies)
+         agx_wait_pix(b, 0x000C);
+
+      b->shader->did_writeout = true;
+      return NULL;
+   }
+
    case nir_intrinsic_load_barycentric_sample:
    case nir_intrinsic_load_sample_id:
    case nir_intrinsic_load_sample_pos:
