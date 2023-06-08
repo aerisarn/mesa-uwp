@@ -5247,7 +5247,10 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->batch.state)
       goto fail;
 
-   ctx->invalidate_descriptor_state = zink_context_invalidate_descriptor_state;
+   if (screen->compact_descriptors)
+      ctx->invalidate_descriptor_state = zink_context_invalidate_descriptor_state_compact;
+   else
+      ctx->invalidate_descriptor_state = zink_context_invalidate_descriptor_state;
    if (!is_copy_only && !is_compute_only) {
       pipe_buffer_write_nooverlap(&ctx->base, ctx->dummy_vertex_buffer, 0, sizeof(data), data);
       pipe_buffer_write_nooverlap(&ctx->base, ctx->dummy_xfb_buffer, 0, sizeof(data), data);

@@ -1450,8 +1450,16 @@ zink_context_invalidate_descriptor_state(struct zink_context *ctx, gl_shader_sta
 {
    if (type == ZINK_DESCRIPTOR_TYPE_UBO && !start)
       ctx->dd.push_state_changed[shader == MESA_SHADER_COMPUTE] = true;
+   else
+      ctx->dd.state_changed[shader == MESA_SHADER_COMPUTE] |= BITFIELD_BIT(type);
+}
+void
+zink_context_invalidate_descriptor_state_compact(struct zink_context *ctx, gl_shader_stage shader, enum zink_descriptor_type type, unsigned start, unsigned count)
+{
+   if (type == ZINK_DESCRIPTOR_TYPE_UBO && !start)
+      ctx->dd.push_state_changed[shader == MESA_SHADER_COMPUTE] = true;
    else {
-      if (zink_screen(ctx->base.screen)->compact_descriptors && type > ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)
+      if (type > ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)
          type -= ZINK_DESCRIPTOR_COMPACT;
       ctx->dd.state_changed[shader == MESA_SHADER_COMPUTE] |= BITFIELD_BIT(type);
    }
