@@ -52,15 +52,6 @@ struct si_shader_args {
     */
    struct ac_arg tcs_offchip_layout;
 
-   /* API TCS */
-   /* Offsets where TCS outputs and TCS patch outputs live in LDS (<= 16K):
-    *   [16:31] = TCS output patch0 offset for per-patch / 4,
-    *       64 outputs are implied by SI_UNIQUE_SLOT_* values.
-    *       max = 32(CPs) * 64(outputs) * 16(vec4) * 64(num_patches) * 2(inputs + outputs) / 4
-    *           = 1M, clamped to 32K(LDS limit) / 4 = 8K
-    */
-   struct ac_arg tcs_out_lds_offsets;
-
    /* API TCS & TES */
    struct ac_arg tes_offchip_addr;
    /* PS */

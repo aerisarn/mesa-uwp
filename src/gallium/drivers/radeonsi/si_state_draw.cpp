@@ -797,7 +797,6 @@ void si_update_tess_io_layout_state(struct si_context *sctx)
    assert((ring_va & u_bit_consecutive(0, 19)) == 0);
 
    sctx->tes_offchip_ring_va_sgpr = ring_va;
-   sctx->tcs_out_offsets = ((perpatch_output_offset / 4) << 16);
    sctx->tcs_offchip_layout =
       (num_patches - 1) | ((num_tcs_output_cp - 1) << 6) | ((num_tcs_input_cp - 1) << 11) |
       ((pervertex_output_patch_size * num_patches) << 16);
@@ -815,6 +814,7 @@ void si_update_tess_io_layout_state(struct si_context *sctx)
 
    /* Set SI_SGPR_VS_STATE_BITS. */
    SET_FIELD(sctx->current_vs_state, VS_STATE_LS_OUT_VERTEX_SIZE, input_vertex_size / 4);
+   SET_FIELD(sctx->current_vs_state, VS_STATE_TCS_OUT_PATCH0_OFFSET, perpatch_output_offset / 4);
 
    /* We should be able to support in-shader LDS use with LLVM >= 9
     * by just adding the lds_sizes together, but it has never
@@ -859,9 +859,8 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
 
       /* Set userdata SGPRs for merged LS-HS. */
       radeon_set_sh_reg_seq(
-         R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4, 3);
+         R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4, 2);
       radeon_emit(sctx->tcs_offchip_layout);
-      radeon_emit(sctx->tcs_out_offsets);
       radeon_emit(sctx->tes_offchip_ring_va_sgpr);
    } else {
       /* Due to a hw bug, RSRC2_LS must be written twice with another
@@ -874,9 +873,8 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
 
       /* Set userdata SGPRs for TCS. */
       radeon_set_sh_reg_seq(
-         R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX6_SGPR_TCS_OFFCHIP_LAYOUT * 4, 4);
+         R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX6_SGPR_TCS_OFFCHIP_LAYOUT * 4, 3);
       radeon_emit(sctx->tcs_offchip_layout);
-      radeon_emit(sctx->tcs_out_offsets);
       radeon_emit(sctx->tes_offchip_ring_va_sgpr);
       radeon_emit(sctx->current_vs_state);
    }
@@ -1214,7 +1212,9 @@ static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
       vs_state |= ENCODE_FIELD(VS_STATE_INDEXED, 1);
 
    /* Copy all state bits from vs_state to gs_state except the LS bits. */
-   gs_state |= vs_state & CLEAR_FIELD(VS_STATE_LS_OUT_VERTEX_SIZE);
+   gs_state |= vs_state &
+               CLEAR_FIELD(VS_STATE_TCS_OUT_PATCH0_OFFSET) &
+               CLEAR_FIELD(VS_STATE_LS_OUT_VERTEX_SIZE);
 
    if (vs_state != sctx->last_vs_state ||
        ((HAS_GS || NGG) && gs_state != sctx->last_gs_state)) {

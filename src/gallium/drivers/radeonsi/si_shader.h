@@ -169,14 +169,12 @@ enum
 
    /* GFX6-8: TCS only */
    GFX6_SGPR_TCS_OFFCHIP_LAYOUT = SI_NUM_RESOURCE_SGPRS,
-   GFX6_SGPR_TCS_OUT_OFFSETS,
    GFX6_SGPR_TCS_OFFCHIP_ADDR,
    GFX6_SGPR_TCS_IN_LAYOUT,
    GFX6_TCS_NUM_USER_SGPR,
 
    /* GFX9: Merged LS-HS (VS-TCS) only. */
    GFX9_SGPR_TCS_OFFCHIP_LAYOUT = SI_VS_NUM_USER_SGPR,
-   GFX9_SGPR_TCS_OUT_OFFSETS,
    GFX9_SGPR_TCS_OFFCHIP_ADDR,
    GFX9_TCS_NUM_USER_SGPR,
 
@@ -238,8 +236,16 @@ enum
  * in the shader via vs_state_bits in LS/HS.
  */
 /* bit gap */
-#define VS_STATE_LS_OUT_VERTEX_SIZE__SHIFT   24
-#define VS_STATE_LS_OUT_VERTEX_SIZE__MASK    0xff /* max 32 * 4 + 1 (to reduce LDS bank conflicts) */
+/* TCS output patch0 offset for per-patch outputs / 4
+ * - 64 outputs are implied by SI_UNIQUE_SLOT_* values.
+ * - max = 32(CPs) * 64(outputs) * 16(vec4) * 64(num_patches) * 2(inputs + outputs) / 4
+ *       = 1M, clamped to 32K(LDS limit) / 4 = 8K
+ * - only used by si_llvm_tcs_build_end, it can be removed after NIR lowering replaces it
+ */
+#define VS_STATE_TCS_OUT_PATCH0_OFFSET__SHIFT   10
+#define VS_STATE_TCS_OUT_PATCH0_OFFSET__MASK    0x3fff
+#define VS_STATE_LS_OUT_VERTEX_SIZE__SHIFT      24
+#define VS_STATE_LS_OUT_VERTEX_SIZE__MASK       0xff /* max 32 * 4 + 1 (to reduce LDS bank conflicts) */
 
 /* These fields are only set in current_gs_state in si_context, and they are accessible
  * in the shader via vs_state_bits in legacy GS, the GS copy shader, and any NGG shader.
