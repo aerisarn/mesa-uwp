@@ -2194,9 +2194,10 @@ radv_create_trap_handler_shader(struct radv_device *device)
    nir_builder b = radv_meta_init_shader(device, stage, "meta_trap_handler");
 
    info.wave_size = 64;
+   info.type = RADV_SHADER_TYPE_TRAP_HANDLER;
 
    struct radv_shader_args args;
-   radv_declare_shader_args(device, &key, &info, stage, MESA_SHADER_NONE, RADV_SHADER_TYPE_TRAP_HANDLER, &args);
+   radv_declare_shader_args(device, &key, &info, stage, MESA_SHADER_NONE, &args);
 
    struct radv_shader_binary *binary = shader_compile(device, &b.shader, 1, stage, &info, &args, &options);
    struct radv_shader *shader = radv_shader_create(device, binary);
@@ -2260,8 +2261,7 @@ radv_create_rt_prolog(struct radv_device *device)
 
    struct radv_pipeline_key pipeline_key = {0};
 
-   radv_declare_shader_args(device, &pipeline_key, &info, MESA_SHADER_COMPUTE, MESA_SHADER_NONE,
-                            RADV_SHADER_TYPE_DEFAULT, &in_args);
+   radv_declare_shader_args(device, &pipeline_key, &info, MESA_SHADER_COMPUTE, MESA_SHADER_NONE, &in_args);
    radv_declare_rt_shader_args(options.info->gfx_level, &out_args);
    info.user_sgprs_locs = in_args.user_sgprs_locs;
 
@@ -2323,8 +2323,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    struct radv_pipeline_key pipeline_key = {0};
 
    radv_declare_shader_args(device, &pipeline_key, &info, key->next_stage,
-                            key->next_stage != MESA_SHADER_VERTEX ? MESA_SHADER_VERTEX : MESA_SHADER_NONE,
-                            RADV_SHADER_TYPE_DEFAULT, &args);
+                            key->next_stage != MESA_SHADER_VERTEX ? MESA_SHADER_VERTEX : MESA_SHADER_NONE, &args);
 
    info.user_sgprs_locs = args.user_sgprs_locs;
    info.inline_push_constant_mask = args.ac.inline_push_const_mask;

@@ -290,8 +290,7 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
                              RADV_PIPELINE_RAY_TRACING, false, &stage->info);
 
    /* Declare shader arguments. */
-   radv_declare_shader_args(device, pipeline_key, &stage->info, stage->stage, MESA_SHADER_NONE,
-                            RADV_SHADER_TYPE_DEFAULT, &stage->args);
+   radv_declare_shader_args(device, pipeline_key, &stage->info, stage->stage, MESA_SHADER_NONE, &stage->args);
 
    stage->info.user_sgprs_locs = stage->args.user_sgprs_locs;
    stage->info.inline_push_constant_mask = stage->args.ac.inline_push_const_mask;

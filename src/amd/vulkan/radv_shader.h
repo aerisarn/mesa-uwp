@@ -254,6 +254,12 @@ struct gfx10_ngg_info {
    bool max_vert_out_per_gs_instance;
 };
 
+enum radv_shader_type {
+   RADV_SHADER_TYPE_DEFAULT = 0,
+   RADV_SHADER_TYPE_GS_COPY,
+   RADV_SHADER_TYPE_TRAP_HANDLER,
+};
+
 struct radv_shader_info {
    uint64_t inline_push_constant_mask;
    bool can_inline_all_push_constants;
@@ -279,6 +285,7 @@ struct radv_shader_info {
    bool force_vrs_per_vertex;
    gl_shader_stage stage;
    gl_shader_stage next_stage;
+   enum radv_shader_type type;
    uint32_t user_data_0;
 
    struct {

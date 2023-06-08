@@ -204,7 +204,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
                              false, &cs_stage.info);
 
    radv_declare_shader_args(device, pipeline_key, &cs_stage.info, MESA_SHADER_COMPUTE, MESA_SHADER_NONE,
-                            RADV_SHADER_TYPE_DEFAULT, &cs_stage.args);
+                            &cs_stage.args);
 
    cs_stage.info.user_sgprs_locs = cs_stage.args.user_sgprs_locs;
    cs_stage.info.inline_push_constant_mask = cs_stage.args.ac.inline_push_const_mask;
