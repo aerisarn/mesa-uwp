@@ -155,6 +155,7 @@ static void pvr_physical_device_get_supported_extensions(
    *extensions = (struct vk_device_extension_table){
       .KHR_external_memory = true,
       .KHR_external_memory_fd = true,
+      .KHR_get_memory_requirements2 = true,
       .KHR_swapchain = PVR_USE_WSI_PLATFORM,
       .KHR_timeline_semaphore = true,
       .EXT_external_memory_dma_buf = true,
