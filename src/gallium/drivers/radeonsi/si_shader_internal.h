@@ -42,6 +42,8 @@ struct si_shader_args {
     *   [0:5] = the number of patches per threadgroup - 1, max = 63
     * # 5 bits
     *   [6:10] = the number of output vertices per patch - 1, max = 31
+    * # 5 bits
+    *   [11:15] = the number of input vertices per patch - 1, max = 31 (TCS only)
     * # 16 bits
     *   [16:31] = the offset of per patch attributes in the buffer in bytes.
     *       64 outputs are implied by SI_UNIQUE_SLOT_* values.
@@ -59,7 +61,6 @@ struct si_shader_args {
     */
    struct ac_arg tcs_out_lds_offsets;
    /* Layout of TCS outputs / TES inputs:
-    *   [13:18] = gl_PatchVerticesIn, max = 32
     *   [19:31] = high 13 bits of the 32-bit address of tessellation ring buffers
     */
    struct ac_arg tcs_out_lds_layout;

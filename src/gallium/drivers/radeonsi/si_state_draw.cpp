@@ -797,10 +797,10 @@ void si_update_tess_io_layout_state(struct si_context *sctx)
    assert((ring_va & u_bit_consecutive(0, 19)) == 0);
 
    sctx->tes_offchip_ring_va_sgpr = ring_va;
-   sctx->tcs_out_layout = (num_tcs_input_cp << 13) | ring_va;
+   sctx->tcs_out_layout = ring_va;
    sctx->tcs_out_offsets = ((perpatch_output_offset / 4) << 16);
    sctx->tcs_offchip_layout =
-      (num_patches - 1) | ((num_tcs_output_cp - 1) << 6) |
+      (num_patches - 1) | ((num_tcs_output_cp - 1) << 6) | ((num_tcs_input_cp - 1) << 11) |
       ((pervertex_output_patch_size * num_patches) << 16);
 
    /* Compute the LDS size. */

@@ -367,12 +367,12 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
    }
    case nir_intrinsic_load_patch_vertices_in:
       if (stage == MESA_SHADER_TESS_CTRL)
-         replacement = ac_nir_unpack_arg(b, &args->ac, args->tcs_out_lds_layout, 13, 6);
+         replacement = ac_nir_unpack_arg(b, &args->ac, args->tcs_offchip_layout, 11, 5);
       else if (stage == MESA_SHADER_TESS_EVAL) {
-         nir_ssa_def *tmp = ac_nir_unpack_arg(b, &args->ac, args->tcs_offchip_layout, 6, 5);
-         replacement = nir_iadd_imm(b, tmp, 1);
+         replacement = ac_nir_unpack_arg(b, &args->ac, args->tcs_offchip_layout, 6, 5);
       } else
          unreachable("no nir_load_patch_vertices_in");
+      replacement = nir_iadd_imm(b, replacement, 1);
       break;
    case nir_intrinsic_load_sample_mask_in:
       replacement = ac_nir_load_arg(b, &args->ac, args->ac.sample_coverage);
