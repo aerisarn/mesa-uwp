@@ -745,9 +745,6 @@ etna_try_rs_blit(struct pipe_context *pctx,
       etna_set_state(ctx->stream, VIVS_GL_FLUSH_CACHE,
 		     VIVS_GL_FLUSH_CACHE_COLOR | VIVS_GL_FLUSH_CACHE_DEPTH);
       etna_stall(ctx->stream, SYNC_RECIPIENT_RA, SYNC_RECIPIENT_PE);
-
-      if (src_lev->ts_size && src_lev->ts_valid)
-         etna_set_state(ctx->stream, VIVS_TS_FLUSH_CACHE, VIVS_TS_FLUSH_CACHE_FLUSH);
    }
 
    /* Set up color TS to source surface before blit, if needed */
@@ -757,6 +754,9 @@ etna_try_rs_blit(struct pipe_context *pctx,
       unsigned ts_offset =
          src_lev->ts_offset + blit_info->src.box.z * src_lev->ts_layer_stride;
       uint32_t ts_mem_config = 0;
+
+      /* flush TS cache before changing to another TS configuration */
+      etna_set_state(ctx->stream, VIVS_TS_FLUSH_CACHE, VIVS_TS_FLUSH_CACHE_FLUSH);
 
       if (src_lev->ts_compress_fmt >= 0) {
          ts_mem_config |= VIVS_TS_MEM_CONFIG_COLOR_COMPRESSION |
