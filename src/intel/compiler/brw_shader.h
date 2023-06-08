@@ -101,7 +101,6 @@ struct backend_shader;
 #endif /* __cplusplus */
 
 enum brw_reg_type brw_type_for_base_type(const struct glsl_type *type);
-enum brw_conditional_mod brw_conditional_for_comparison(unsigned int op);
 uint32_t brw_math_function(enum opcode op);
 const char *brw_instruction_name(const struct brw_isa_info *isa,
                                  enum opcode op);

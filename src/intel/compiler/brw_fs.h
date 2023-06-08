@@ -782,10 +782,6 @@ void brw_compute_urb_setup_index(struct brw_wm_prog_data *wm_prog_data);
 
 bool brw_nir_lower_simd(nir_shader *nir, unsigned dispatch_width);
 
-namespace brw {
-   class fs_builder;
-}
-
 fs_reg brw_sample_mask_reg(const brw::fs_builder &bld);
 void brw_emit_predicate_on_sample_mask(const brw::fs_builder &bld, fs_inst *inst);
 

@@ -81,25 +81,6 @@ brw_type_for_base_type(const struct glsl_type *type)
    return BRW_REGISTER_TYPE_F;
 }
 
-enum brw_conditional_mod
-brw_conditional_for_comparison(unsigned int op)
-{
-   switch (op) {
-   case ir_binop_less:
-      return BRW_CONDITIONAL_L;
-   case ir_binop_gequal:
-      return BRW_CONDITIONAL_GE;
-   case ir_binop_equal:
-   case ir_binop_all_equal: /* same as equal for scalars */
-      return BRW_CONDITIONAL_Z;
-   case ir_binop_nequal:
-   case ir_binop_any_nequal: /* same as nequal for scalars */
-      return BRW_CONDITIONAL_NZ;
-   default:
-      unreachable("not reached: bad operation for comparison");
-   }
-}
-
 uint32_t
 brw_math_function(enum opcode op)
 {
