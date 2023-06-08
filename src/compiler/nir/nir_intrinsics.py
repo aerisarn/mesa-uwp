@@ -1749,6 +1749,19 @@ system_value("api_sample_mask_agx", 1, bit_sizes=[16])
 # Loads the sample position array as fixed point packed into a 32-bit word
 system_value("sample_positions_agx", 1, bit_sizes=[32])
 
+# Image loads go through the texture cache, which is not coherent with the PBE
+# or memory access, so fencing is necessary for writes to become visible.
+
+# Make writes via main memory (image atomics) visible for texturing.
+barrier("fence_pbe_to_tex_agx")
+
+# Make writes from global memory instructions (atomics) visible for texturing.
+barrier("fence_mem_to_tex_agx")
+
+# Variant of fence_pbe_to_tex_agx specialized to stores in pixel shaders that
+# act like render target writes, in conjunction with fragment interlock.
+barrier("fence_pbe_to_tex_pixel_agx")
+
 # Intel-specific query for loading from the brw_image_param struct passed
 # into the shader as a uniform.  The variable is a deref to the image
 # variable. The const index specifies which of the six parameters to load.
