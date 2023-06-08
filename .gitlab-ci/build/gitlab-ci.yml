@@ -167,6 +167,7 @@ debian-rusticl-testing:
 debian-build-testing:
   extends: .meson-build
   variables:
+    BUILDTYPE: debug
     UNWIND: "enabled"
     DRI_LOADERS: >
       -D glx=dri
@@ -336,6 +337,7 @@ debian-android:
     - .use-debian/android_build
     - .ci-deqp-artifacts
   variables:
+    BUILDTYPE: debug
     UNWIND: "disabled"
     C_ARGS: >
       -Wno-error=asm-operand-widths
@@ -506,6 +508,7 @@ debian-arm64-release:
 debian-clang:
   extends: .meson-build
   variables:
+    BUILDTYPE: debug
     LLVM_VERSION: 15
     UNWIND: "enabled"
     GALLIUM_DUMP_CPU: "true"
@@ -607,6 +610,7 @@ windows-vs2019:
 debian-rusticl:
   extends: .debian-cl
   variables:
+    BUILDTYPE: debug
     GALLIUM_DRIVERS: "iris,swrast"
     GALLIUM_ST: >
       -D dri3=disabled
@@ -622,6 +626,7 @@ debian-rusticl:
 debian-vulkan:
   extends: .meson-build
   variables:
+    BUILDTYPE: debug
     LLVM_VERSION: 15
     UNWIND: "disabled"
     DRI_LOADERS: >
@@ -655,6 +660,7 @@ debian-x86_32:
     - .meson-cross
     - .use-debian/x86_32_build
   variables:
+    BUILDTYPE: debug
     CROSS: i386
     VULKAN_DRIVERS: intel,amd,swrast,virtio
     GALLIUM_DRIVERS: "iris,nouveau,r300,r600,radeonsi,swrast,virgl,zink,crocus"
@@ -681,6 +687,7 @@ debian-ppc64el:
     - .use-debian/ppc64el_build
     - .ppc64el-rules
   variables:
+    BUILDTYPE: debug
     CROSS: ppc64el
     GALLIUM_DRIVERS: "nouveau,radeonsi,swrast,virgl,zink"
     VULKAN_DRIVERS: "amd,swrast"
