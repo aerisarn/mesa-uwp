@@ -10,6 +10,7 @@
 #include "compiler/nir/nir_builtin_builder.h"
 #include "agx_compiler.h"
 #include "agx_internal_formats.h"
+#include "agx_nir.h"
 #include "nir_builder_opcodes.h"
 #include "nir_intrinsics.h"
 #include "nir_intrinsics_indices.h"
@@ -772,6 +773,12 @@ agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
    };
 
    NIR_PASS(progress, s, nir_lower_tex, &lower_tex_options);
+
+   /* Insert fences before lowering image atomics, since image atomics need
+    * different fencing than other image operations.
+    */
+   NIR_PASS(progress, s, agx_nir_fence_images);
+
    NIR_PASS(progress, s, nir_lower_image_atomics_to_global);
 
    /* Lower bias after nir_lower_tex (to get rid of txd) but before
