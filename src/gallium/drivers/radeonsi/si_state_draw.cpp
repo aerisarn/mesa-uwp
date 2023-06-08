@@ -790,7 +790,7 @@ void si_update_tess_io_layout_state(struct si_context *sctx)
    assert(num_tcs_input_cp <= 32);
    assert(num_tcs_output_cp <= 32);
    assert(num_patches <= 64);
-   assert(((pervertex_output_patch_size * num_patches) & ~0x1fffff) == 0);
+   assert(((pervertex_output_patch_size * num_patches) & ~0xffff) == 0);
 
    uint64_t ring_va = (unlikely(sctx->ws->cs_is_secure(&sctx->gfx_cs)) ?
       si_resource(sctx->tess_rings_tmz) : si_resource(sctx->tess_rings))->gpu_address;
@@ -801,7 +801,7 @@ void si_update_tess_io_layout_state(struct si_context *sctx)
    sctx->tcs_out_offsets = ((perpatch_output_offset / 4) << 16);
    sctx->tcs_offchip_layout =
       (num_patches - 1) | ((num_tcs_output_cp - 1) << 6) |
-      ((pervertex_output_patch_size * num_patches) << 11);
+      ((pervertex_output_patch_size * num_patches) << 16);
 
    /* Compute the LDS size. */
    unsigned lds_size = lds_per_patch * num_patches;

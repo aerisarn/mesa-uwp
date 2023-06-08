@@ -42,15 +42,20 @@ struct si_shader_args {
     *   [0:5] = the number of patches per threadgroup - 1, max = 63
     * # 5 bits
     *   [6:10] = the number of output vertices per patch - 1, max = 31
-    * # 21 bits
-    *   [11:31] = the offset of per patch attributes in the buffer in bytes.
-    *             max = NUM_PATCHES*32*32*16 = 1M
+    * # 16 bits
+    *   [16:31] = the offset of per patch attributes in the buffer in bytes.
+    *       64 outputs are implied by SI_UNIQUE_SLOT_* values.
+    *       max = 32(CPs) * 64(outputs) * 16(vec4) * 64(num_patches) = 2M,
+    *       clamped to 32K(LDS limit) = 32K
     */
    struct ac_arg tcs_offchip_layout;
 
    /* API TCS */
    /* Offsets where TCS outputs and TCS patch outputs live in LDS (<= 16K):
-    *   [16:31] = TCS output patch0 offset for per-patch / 4, max = 16K / 4 = 4K
+    *   [16:31] = TCS output patch0 offset for per-patch / 4,
+    *       64 outputs are implied by SI_UNIQUE_SLOT_* values.
+    *       max = 32(CPs) * 64(outputs) * 16(vec4) * 64(num_patches) * 2(inputs + outputs) / 4
+    *           = 1M, clamped to 32K(LDS limit) / 4 = 8K
     */
    struct ac_arg tcs_out_lds_offsets;
    /* Layout of TCS outputs / TES inputs:
