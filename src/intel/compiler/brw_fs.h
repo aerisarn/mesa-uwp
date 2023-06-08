@@ -373,7 +373,8 @@ public:
                                nir_intrinsic_instr *instr);
    void nir_emit_surface_atomic(const brw::fs_builder &bld,
                                 nir_intrinsic_instr *instr,
-                                fs_reg surface);
+                                fs_reg surface,
+                                bool bindless_surface);
    void nir_emit_global_atomic(const brw::fs_builder &bld,
                                nir_intrinsic_instr *instr);
    void nir_emit_texture(const brw::fs_builder &bld,

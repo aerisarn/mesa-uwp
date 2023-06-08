@@ -3730,7 +3730,8 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
    case nir_intrinsic_shared_atomic:
    case nir_intrinsic_shared_atomic_swap:
-      nir_emit_surface_atomic(bld, instr, brw_imm_ud(GFX7_BTI_SLM));
+      nir_emit_surface_atomic(bld, instr, brw_imm_ud(GFX7_BTI_SLM),
+                              false /* bindless */);
       break;
 
    case nir_intrinsic_load_shared: {
@@ -5230,7 +5231,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_ssbo_atomic:
    case nir_intrinsic_ssbo_atomic_swap:
       nir_emit_surface_atomic(bld, instr,
-                              get_nir_buffer_intrinsic_index(bld, instr));
+                              get_nir_buffer_intrinsic_index(bld, instr),
+                              get_nir_src_bindless(instr->src[0]));
       break;
 
    case nir_intrinsic_get_ssbo_size: {
@@ -6146,7 +6148,8 @@ expand_to_32bit(const fs_builder &bld, const fs_reg &src)
 void
 fs_visitor::nir_emit_surface_atomic(const fs_builder &bld,
                                     nir_intrinsic_instr *instr,
-                                    fs_reg surface)
+                                    fs_reg surface,
+                                    bool bindless)
 {
    enum lsc_opcode op = lsc_aop_for_nir_intrinsic(instr);
    int num_data = lsc_op_num_data_values(op);
@@ -6168,7 +6171,7 @@ fs_visitor::nir_emit_surface_atomic(const fs_builder &bld,
    fs_reg dest = get_nir_dest(instr->dest);
 
    fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-   srcs[get_nir_src_bindless(instr->src[0]) ?
+   srcs[bindless ?
         SURFACE_LOGICAL_SRC_SURFACE_HANDLE :
         SURFACE_LOGICAL_SRC_SURFACE] = surface;
    srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(1);
