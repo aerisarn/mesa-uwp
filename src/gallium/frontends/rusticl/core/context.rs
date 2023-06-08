@@ -132,7 +132,7 @@ impl Context {
         if !user_ptr.is_null() {
             let bx = desc.bx()?;
             let stride = desc.row_pitch()?;
-            let layer_stride = desc.slice_pitch()?;
+            let layer_stride = desc.slice_pitch();
 
             res.iter()
                 .filter(|(_, r)| copy || !r.is_user)

@@ -127,7 +127,7 @@ pub trait CLImageDescInfo {
     fn pixels(&self) -> usize;
     fn bx(&self) -> CLResult<pipe_box>;
     fn row_pitch(&self) -> CLResult<u32>;
-    fn slice_pitch(&self) -> CLResult<usize>;
+    fn slice_pitch(&self) -> usize;
     fn width(&self) -> CLResult<u32>;
     fn height(&self) -> CLResult<u32>;
     fn size(&self) -> CLVec<usize>;
@@ -204,10 +204,8 @@ impl CLImageDescInfo for cl_image_desc {
             .map_err(|_| CL_OUT_OF_HOST_MEMORY)
     }
 
-    fn slice_pitch(&self) -> CLResult<usize> {
+    fn slice_pitch(&self) -> usize {
         self.image_slice_pitch
-            .try_into()
-            .map_err(|_| CL_OUT_OF_HOST_MEMORY)
     }
 
     fn width(&self) -> CLResult<u32> {
@@ -679,7 +677,7 @@ impl Mem {
                 src_pitch[0] = bpp;
                 if self.is_image_from_buffer() {
                     src_pitch[1] = self.image_desc.row_pitch()? as usize;
-                    src_pitch[2] = self.image_desc.slice_pitch()? as usize;
+                    src_pitch[2] = self.image_desc.slice_pitch();
                 } else {
                     src_pitch[1] = region[0] * bpp;
                     src_pitch[2] = region[0] * region[1] * bpp;
@@ -707,7 +705,7 @@ impl Mem {
                 dst_pitch[0] = bpp;
                 if dst_base.is_image_from_buffer() {
                     dst_pitch[1] = dst_base.image_desc.row_pitch()? as usize;
-                    dst_pitch[2] = dst_base.image_desc.slice_pitch()? as usize;
+                    dst_pitch[2] = dst_base.image_desc.slice_pitch();
                 } else {
                     dst_pitch[1] = region[0] * bpp;
                     dst_pitch[2] = region[0] * region[1] * bpp;
@@ -820,7 +818,7 @@ impl Mem {
         if self.is_parent_buffer() {
             let strides = (
                 self.image_desc.row_pitch()? as usize,
-                self.image_desc.slice_pitch()? as usize,
+                self.image_desc.slice_pitch(),
             );
             ctx.clear_image_buffer(res, &new_pattern, origin, region, strides, pixel_size);
         } else {
@@ -888,9 +886,7 @@ impl Mem {
                 src_row_pitch
                     .try_into()
                     .map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
-                src_slice_pitch
-                    .try_into()
-                    .map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
+                src_slice_pitch,
             );
         }
         Ok(())
