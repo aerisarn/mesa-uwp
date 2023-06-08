@@ -758,14 +758,15 @@ isl_tiling_get_info(enum isl_tiling tiling,
       break;
    }
    case ISL_TILING_64:
-      /* The tables below are taken from the "2D Surfaces" page in the Bspec
-       * which are formulated in terms of the Cv and Cu constants. This is
-       * different from the tables in the "Tile64 Format" page which should be
-       * equivalent but are usually in terms of pixels. Also note that Cv and
-       * Cu are HxW order to match the Bspec table, not WxH order like you
-       * might expect.
+      /* The tables below are taken from the "2D Surfaces" & "3D Surfaces"
+       * pages in the Bspec which are formulated in terms of the Cv and Cu
+       * constants. This is different from the tables in the "Tile64 Format"
+       * page which should be equivalent but are usually in terms of pixels.
+       * Also note that Cv and Cu are HxW order to match the Bspec table, not
+       * WxH order like you might expect.
        *
-       * From the Bspec's "Tile64 Format" page:
+       * From the Bspec's or ATS-M PRMs Volume 5: Memory Data Formats, "Tile64
+       * Format" :
        *
        *    MSAA Depth/Stencil surface use IMS (Interleaved Multi Samples)
        *    which means:
@@ -775,42 +776,53 @@ isl_tiling_get_info(enum isl_tiling tiling,
        *
        * Surfaces using the IMS layout will use the mapping for 1x MSAA.
        */
-#define tile_extent(bs, cv, cu, a) \
+#define tile_extent2d(bs, cv, cu, a) \
       isl_extent4d((1 << cu) / bs, 1 << cv, 1, a)
+#define tile_extent3d(bs, cr, cv, cu) \
+      isl_extent4d((1 << cu) / bs, 1 << cv, 1 << cr, 1)
 
-      /* Only 1D and 2D surfaces are handled. */
-      assert(dim != ISL_SURF_DIM_3D);
-
-      if (samples == 1 || msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED) {
-         switch (format_bpb) {
-         case 128: logical_el = tile_extent(bs, 6, 10, 1); break;
-         case  64: logical_el = tile_extent(bs, 6, 10, 1); break;
-         case  32: logical_el = tile_extent(bs, 7,  9, 1); break;
-         case  16: logical_el = tile_extent(bs, 7,  9, 1); break;
-         case   8: logical_el = tile_extent(bs, 8,  8, 1); break;
-         default: unreachable("Unsupported format size.");
-         }
-      } else if (samples == 2) {
-         switch (format_bpb) {
-         case 128: logical_el = tile_extent(bs, 6,  9, 2); break;
-         case  64: logical_el = tile_extent(bs, 6,  9, 2); break;
-         case  32: logical_el = tile_extent(bs, 7,  8, 2); break;
-         case  16: logical_el = tile_extent(bs, 7,  8, 2); break;
-         case   8: logical_el = tile_extent(bs, 8,  7, 2); break;
-         default: unreachable("Unsupported format size.");
-         }
+      if (dim == ISL_SURF_DIM_3D) {
+          switch (format_bpb) {
+          case 128: logical_el = tile_extent3d(bs, 4, 4, 8); break;
+          case  64: logical_el = tile_extent3d(bs, 4, 4, 8); break;
+          case  32: logical_el = tile_extent3d(bs, 4, 5, 7); break;
+          case  16: logical_el = tile_extent3d(bs, 5, 5, 6); break;
+          case   8: logical_el = tile_extent3d(bs, 5, 5, 6); break;
+          default: unreachable("Unsupported format size for 3D");
+          }
       } else {
-         switch (format_bpb) {
-         case 128: logical_el = tile_extent(bs, 5,  9, 4); break;
-         case  64: logical_el = tile_extent(bs, 5,  9, 4); break;
-         case  32: logical_el = tile_extent(bs, 6,  8, 4); break;
-         case  16: logical_el = tile_extent(bs, 6,  8, 4); break;
-         case   8: logical_el = tile_extent(bs, 7,  7, 4); break;
-         default: unreachable("Unsupported format size.");
-         }
+          if (samples == 1 || msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED) {
+              switch (format_bpb) {
+              case 128: logical_el = tile_extent2d(bs, 6, 10, 1); break;
+              case  64: logical_el = tile_extent2d(bs, 6, 10, 1); break;
+              case  32: logical_el = tile_extent2d(bs, 7,  9, 1); break;
+              case  16: logical_el = tile_extent2d(bs, 7,  9, 1); break;
+              case   8: logical_el = tile_extent2d(bs, 8,  8, 1); break;
+              default: unreachable("Unsupported format size.");
+              }
+          } else if (samples == 2) {
+              switch (format_bpb) {
+              case 128: logical_el = tile_extent2d(bs, 6,  9, 2); break;
+              case  64: logical_el = tile_extent2d(bs, 6,  9, 2); break;
+              case  32: logical_el = tile_extent2d(bs, 7,  8, 2); break;
+              case  16: logical_el = tile_extent2d(bs, 7,  8, 2); break;
+              case   8: logical_el = tile_extent2d(bs, 8,  7, 2); break;
+              default: unreachable("Unsupported format size.");
+              }
+          } else {
+              switch (format_bpb) {
+              case 128: logical_el = tile_extent2d(bs, 5,  9, 4); break;
+              case  64: logical_el = tile_extent2d(bs, 5,  9, 4); break;
+              case  32: logical_el = tile_extent2d(bs, 6,  8, 4); break;
+              case  16: logical_el = tile_extent2d(bs, 6,  8, 4); break;
+              case   8: logical_el = tile_extent2d(bs, 7,  7, 4); break;
+              default: unreachable("Unsupported format size.");
+              }
+          }
       }
 
-#undef tile_extent
+#undef tile_extent2d
+#undef tile_extent3d
 
       phys_B.w = logical_el.w * bs;
       phys_B.h = 64 * 1024 / phys_B.w;
