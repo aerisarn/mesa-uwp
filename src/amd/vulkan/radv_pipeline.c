@@ -838,7 +838,7 @@ radv_GetPipelineExecutablePropertiesKHR(VkDevice _device, const VkPipelineInfoKH
          break;
       case MESA_SHADER_INTERSECTION:
          name = "Intersection Shader";
-         description = "Vulkan Intersection Shader";
+         description = "Shader responsible for traversing the acceleration structure";
          break;
       case MESA_SHADER_CALLABLE:
          name = "Callable Shader";
