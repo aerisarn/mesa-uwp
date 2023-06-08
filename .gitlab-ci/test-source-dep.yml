@@ -100,7 +100,7 @@
     # Always use the same device
     LAVA_TAGS: "cbg-0"
     # Ensure that we are using the release build artifact
-    MINIO_ARTIFACT_NAME: mesa-${ARCH}-default-release
+    S3_ARTIFACT_NAME: mesa-${ARCH}-default-release
   # Reset dependencies in performance jobs to enforce the release build artifact
   dependencies: null
   # Don't run in parallel. It is okay to performance jobs to take a little
@@ -367,7 +367,7 @@
   variables:
     LAVA_JOB_PRIORITY: 40
     # Ensure that we are using the release build artifact
-    MINIO_ARTIFACT_NAME: mesa-arm64-default-release
+    S3_ARTIFACT_NAME: mesa-arm64-default-release
   needs:
     - debian/arm64_test
     - debian-arm64-release
@@ -712,7 +712,7 @@
   allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
   variables:
     LAVA_JOB_PRIORITY: 40
-    MINIO_ARTIFACT_NAME: "mesa-x86_64-default-release"
+    S3_ARTIFACT_NAME: "mesa-x86_64-default-release"
   needs:
     - kernel+rootfs_x86_64
     - debian-release
@@ -804,7 +804,7 @@
   allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
   variables:
     LAVA_JOB_PRIORITY: 40
-    MINIO_ARTIFACT_NAME: "mesa-x86_64-default-release"
+    S3_ARTIFACT_NAME: "mesa-x86_64-default-release"
   needs:
     - kernel+rootfs_x86_64
     - debian-release

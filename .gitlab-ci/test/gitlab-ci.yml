@@ -76,7 +76,7 @@ clang-format:
     - .test
     - .use-debian/x86_64_test-android
   variables:
-    MINIO_ARTIFACT_NAME: mesa-x86_64-android-debug
+    S3_ARTIFACT_NAME: mesa-x86_64-android-debug
   needs:
     - job: debian-testing
       artifacts: true  # On the host we want the Linux build
@@ -171,7 +171,7 @@ clang-format:
     - section_start artifacts_download "Downloading artifacts from s3"
     # Note: Build dir (and thus install) may be dirty due to GIT_STRATEGY
     - rm -rf install
-    - (set -x; curl -L --retry 4 -f --retry-all-errors --retry-delay 60 ${FDO_HTTP_CACHE_URI:-}https://${PIPELINE_ARTIFACTS_BASE}/${MINIO_ARTIFACT_NAME}.tar.zst | tar --zstd -x)
+    - (set -x; curl -L --retry 4 -f --retry-all-errors --retry-delay 60 ${FDO_HTTP_CACHE_URI:-}https://${PIPELINE_ARTIFACTS_BASE}/${S3_ARTIFACT_NAME}.tar.zst | tar --zstd -x)
     - section_end artifacts_download
   artifacts:
     when: always
@@ -191,7 +191,7 @@ clang-format:
     - .use-debian/arm32_test
   variables:
     BM_ROOTFS: /rootfs-armhf
-    MINIO_ARTIFACT_NAME: mesa-arm32-default-debugoptimized
+    S3_ARTIFACT_NAME: mesa-arm32-default-debugoptimized
   needs:
     - debian/arm32_test
     - job: debian-arm32
@@ -204,7 +204,7 @@ clang-format:
     - .use-debian/arm64_test
   variables:
     BM_ROOTFS: /rootfs-arm64
-    MINIO_ARTIFACT_NAME: mesa-arm64-default-debugoptimized
+    S3_ARTIFACT_NAME: mesa-arm64-default-debugoptimized
   needs:
     - debian/arm64_test
     - job: debian-arm64
@@ -217,7 +217,7 @@ clang-format:
     - .use-debian/arm32_test
   variables:
     DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.8:/install/lib/libdlclose-skip.so"
-    MINIO_ARTIFACT_NAME: mesa-arm32-asan-debugoptimized
+    S3_ARTIFACT_NAME: mesa-arm32-asan-debugoptimized
   needs:
     - debian/arm32_test
     - job: debian-arm32-asan
@@ -229,7 +229,7 @@ clang-format:
     - .use-debian/arm64_test
   variables:
     DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.8:/install/lib/libdlclose-skip.so"
-    MINIO_ARTIFACT_NAME: mesa-arm64-asan-debugoptimized
+    S3_ARTIFACT_NAME: mesa-arm64-asan-debugoptimized
   needs:
     - debian/arm64_test
     - job: debian-arm64-asan

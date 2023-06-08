@@ -52,9 +52,9 @@ $ADB push /deqp/assets/gl_cts/data/mustpass/egl/aosp_mustpass/3.2.6.x/egl-master
 $ADB push /deqp-runner/deqp-runner /data/.
 
 # download Android Mesa from S3
-MESA_ANDROID_ARTIFACT_URL=https://${PIPELINE_ARTIFACTS_BASE}/${MINIO_ARTIFACT_NAME}.tar.zst
-curl -L --retry 4 -f --retry-all-errors --retry-delay 60 -o ${MINIO_ARTIFACT_NAME}.tar.zst ${MESA_ANDROID_ARTIFACT_URL}
-tar -xvf ${MINIO_ARTIFACT_NAME}.tar.zst
+MESA_ANDROID_ARTIFACT_URL=https://${PIPELINE_ARTIFACTS_BASE}/${S3_ARTIFACT_NAME}.tar.zst
+curl -L --retry 4 -f --retry-all-errors --retry-delay 60 -o ${S3_ARTIFACT_NAME}.tar.zst ${MESA_ANDROID_ARTIFACT_URL}
+tar -xvf ${S3_ARTIFACT_NAME}.tar.zst
 
 $ADB push install/all-skips.txt /data/.
 $ADB push install/$GPU_VERSION-flakes.txt /data/.

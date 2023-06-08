@@ -33,12 +33,12 @@ tar zcf job-rootfs-overlay.tar.gz -C results/job-rootfs-overlay/ .
 ci-fairy s3cp --token-file "${CI_JOB_JWT_FILE}" job-rootfs-overlay.tar.gz "https://${JOB_ROOTFS_OVERLAY_PATH}"
 
 ARTIFACT_URL="${FDO_HTTP_CACHE_URI:-}https://${BUILD_PATH}"
-# Make it take the mesa build from MINIO_ARTIFACT_NAME, if it is specified in
+# Make it take the mesa build from S3_ARTIFACT_NAME, if it is specified in
 # the environment. This will make the LAVA behavior consistent with the
 # baremetal jobs.
-if [ -n "${MINIO_ARTIFACT_NAME}" ]
+if [ -n "${S3_ARTIFACT_NAME}" ]
 then
-	ARTIFACT_URL="${FDO_HTTP_CACHE_URI:-}https://${PIPELINE_ARTIFACTS_BASE}/${MINIO_ARTIFACT_NAME}.tar.zst"
+	ARTIFACT_URL="${FDO_HTTP_CACHE_URI:-}https://${PIPELINE_ARTIFACTS_BASE}/${S3_ARTIFACT_NAME}.tar.zst"
 fi
 
 touch results/lava.log
