@@ -2390,6 +2390,13 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    tu_bo_suballocator_finish(&device->pipeline_suballoc);
    tu_bo_suballocator_finish(&device->autotune_suballoc);
 
+   for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
+      for (unsigned q = 0; q < device->queue_count[i]; q++)
+         tu_queue_finish(&device->queues[i][q]);
+      if (device->queue_count[i])
+         vk_free(&device->vk.alloc, device->queues[i]);
+   }
+
    tu_drm_device_finish(device);
 
    if (device->physical_device->has_set_iova)
@@ -2399,13 +2406,6 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    u_rwlock_destroy(&device->dma_bo_lock);
 
    u_vector_finish(&device->zombie_vmas);
-
-   for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
-      for (unsigned q = 0; q < device->queue_count[i]; q++)
-         tu_queue_finish(&device->queues[i][q]);
-      if (device->queue_count[i])
-         vk_free(&device->vk.alloc, device->queues[i]);
-   }
 
    pthread_cond_destroy(&device->timeline_cond);
    _mesa_hash_table_destroy(device->bo_sizes, NULL);
