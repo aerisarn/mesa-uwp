@@ -176,3 +176,6 @@ zink-radv-vangogh-valve:
     - .zink-radv-manual-rules
   variables:
     GPU_VERSION: zink-radv-vangogh
+  # Override the list of tags to drop `priority:low`
+  tags:
+    - amdgpu:codename:VANGOGH

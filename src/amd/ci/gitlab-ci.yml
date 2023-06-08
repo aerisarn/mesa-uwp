@@ -272,6 +272,7 @@ radeonsi-raven-va-full:x86_64:
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g'
   tags:
     - amdgpu:codename:VANGOGH
+    - priority:low
 
 ############### VKCTS tests ###############
 
