@@ -392,10 +392,13 @@ void
 lp_jit_init_cs_types(struct lp_compute_shader_variant *lp);
 
 /* Helpers for converting pipe_* to lp_jit_* resources. */
+void lp_jit_buffer_from_bda(struct lp_jit_buffer *jit, void *mem, size_t size);
 void lp_jit_buffer_from_pipe(struct lp_jit_buffer *jit, const struct pipe_shader_buffer *buffer);
 void lp_jit_buffer_from_pipe_const(struct lp_jit_buffer *jit, const struct pipe_constant_buffer *buffer, struct pipe_screen *screen);
 void lp_jit_texture_from_pipe(struct lp_jit_texture *jit, const struct pipe_sampler_view *view);
+void lp_jit_texture_buffer_from_bda(struct lp_jit_texture *jit, void *mem, size_t size, enum pipe_format format);
 void lp_jit_sampler_from_pipe(struct lp_jit_sampler *jit, const struct pipe_sampler_state *sampler);
 void lp_jit_image_from_pipe(struct lp_jit_image *jit, const struct pipe_image_view *view);
+void lp_jit_image_buffer_from_bda(struct lp_jit_image *jit, void *mem, size_t size, enum pipe_format format);
 
 #endif /* LP_JIT_H */

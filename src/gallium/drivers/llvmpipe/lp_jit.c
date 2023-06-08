@@ -325,6 +325,20 @@ lp_jit_buffer_from_pipe(struct lp_jit_buffer *jit, const struct pipe_shader_buff
 }
 
 void
+lp_jit_buffer_from_bda(struct lp_jit_buffer *jit, void *mem, size_t size)
+{
+   const uint8_t *current_data = mem;
+
+   if (current_data) {
+      jit->u = (const uint32_t *)current_data;
+      jit->num_elements = size;
+   } else {
+      jit->u = NULL;
+      jit->num_elements = 0;
+   }
+}
+
+void
 lp_jit_buffer_from_pipe_const(struct lp_jit_buffer *jit, const struct pipe_constant_buffer *buffer, struct pipe_screen *screen)
 {
    uint64_t current_size = buffer->buffer_size;
@@ -464,6 +478,47 @@ lp_jit_texture_from_pipe(struct lp_jit_texture *jit, const struct pipe_sampler_v
 }
 
 void
+lp_jit_texture_buffer_from_bda(struct lp_jit_texture *jit, void *mem, size_t size, enum pipe_format format)
+{
+   jit->base = mem;
+
+   if (LP_PERF & PERF_TEX_MEM) {
+      /* use dummy tile memory */
+      jit->base = lp_dummy_tile;
+      jit->width = TILE_SIZE/8;
+      jit->height = TILE_SIZE/8;
+      jit->depth = 1;
+      jit->first_level = 0;
+      jit->last_level = 0;
+      jit->mip_offsets[0] = 0;
+      jit->row_stride[0] = 0;
+      jit->img_stride[0] = 0;
+      jit->num_samples = 0;
+      jit->sample_stride = 0;
+   } else {
+      jit->height = 1;
+      jit->depth = 1;
+      jit->first_level = 0;
+      jit->last_level = 0;
+      jit->num_samples = 1;
+      jit->sample_stride = 0;
+
+      /*
+       * For buffers, we don't have "offset", instead adjust
+       * the size (stored as width) plus the base pointer.
+       */
+      const unsigned view_blocksize = util_format_get_blocksize(format);
+      /* probably don't really need to fill that out */
+      jit->mip_offsets[0] = 0;
+      jit->row_stride[0] = 0;
+      jit->img_stride[0] = 0;
+
+      /* everything specified in number of elements here. */
+      jit->width = size / view_blocksize;
+   }
+}
+
+void
 lp_jit_sampler_from_pipe(struct lp_jit_sampler *jit, const struct pipe_sampler_state *sampler)
 {
    jit->min_lod = sampler->min_lod;
@@ -524,4 +579,17 @@ lp_jit_image_from_pipe(struct lp_jit_image *jit, const struct pipe_image_view *v
          jit->base = (uint8_t *)jit->base + view->u.buf.offset;
       }
    }
+}
+
+void
+lp_jit_image_buffer_from_bda(struct lp_jit_image *jit, void *mem, size_t size, enum pipe_format format)
+{
+   jit->base = mem;
+
+   jit->height = 1;
+   jit->depth = 1;
+   jit->num_samples = 1;
+
+   unsigned view_blocksize = util_format_get_blocksize(format);
+   jit->width = size / view_blocksize;
 }
