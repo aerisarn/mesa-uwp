@@ -2407,16 +2407,7 @@ radv_is_mrt0_dual_src(struct radv_cmd_buffer *cmd_buffer)
    if (!d->vk.cb.attachments[0].write_mask || !d->vk.cb.attachments[0].blend_enable)
       return false;
 
-   const struct vk_color_blend_attachment_state att = {
-      .color_blend_op = d->vk.cb.attachments[0].color_blend_op,
-      .src_color_blend_factor = d->vk.cb.attachments[0].src_color_blend_factor,
-      .dst_color_blend_factor = d->vk.cb.attachments[0].dst_color_blend_factor,
-      .alpha_blend_op = d->vk.cb.attachments[0].alpha_blend_op,
-      .src_alpha_blend_factor = d->vk.cb.attachments[0].src_alpha_blend_factor,
-      .dst_alpha_blend_factor = d->vk.cb.attachments[0].dst_alpha_blend_factor,
-   };
-
-   return radv_can_enable_dual_src(&att);
+   return radv_can_enable_dual_src(&d->vk.cb.attachments[0]);
 }
 
 static void
