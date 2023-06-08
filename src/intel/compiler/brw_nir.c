@@ -1310,7 +1310,8 @@ brw_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
    if (low->intrinsic == nir_intrinsic_load_global_const_block_intel ||
        low->intrinsic == nir_intrinsic_load_ubo_uniform_block_intel ||
        low->intrinsic == nir_intrinsic_load_ssbo_uniform_block_intel ||
-       low->intrinsic == nir_intrinsic_load_shared_uniform_block_intel) {
+       low->intrinsic == nir_intrinsic_load_shared_uniform_block_intel ||
+       low->intrinsic == nir_intrinsic_load_global_constant_uniform_block_intel) {
       if (num_components > 4) {
          if (!util_is_power_of_two_nonzero(num_components))
             return false;
