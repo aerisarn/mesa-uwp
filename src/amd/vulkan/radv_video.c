@@ -432,6 +432,16 @@ radv_GetPhysicalDeviceVideoCapabilitiesKHR(VkPhysicalDevice physicalDevice,
    case VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR: {
       struct VkVideoDecodeH264CapabilitiesKHR *ext = (struct VkVideoDecodeH264CapabilitiesKHR *)
          vk_find_struct(pCapabilities->pNext, VIDEO_DECODE_H264_CAPABILITIES_KHR);
+
+      const struct VkVideoDecodeH264ProfileInfoKHR *h264_profile =
+         vk_find_struct_const(pVideoProfile->pNext,
+                              VIDEO_DECODE_H264_PROFILE_INFO_KHR);
+
+      if (h264_profile->stdProfileIdc != STD_VIDEO_H264_PROFILE_IDC_BASELINE &&
+          h264_profile->stdProfileIdc != STD_VIDEO_H264_PROFILE_IDC_MAIN &&
+          h264_profile->stdProfileIdc != STD_VIDEO_H264_PROFILE_IDC_HIGH)
+         return VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR;
+
       pCapabilities->maxDpbSlots = NUM_H264_REFS;
       pCapabilities->maxActiveReferencePictures = NUM_H264_REFS;
 
