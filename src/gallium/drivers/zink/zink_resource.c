@@ -741,14 +741,19 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       VkFormat formats[2];
       VkImageFormatListCreateInfo format_list;
       if (srgb) {
-         format_list.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO;
-         format_list.pNext = NULL;
-         format_list.viewFormatCount = 2;
-         format_list.pViewFormats = formats;
-
          formats[0] = zink_get_format(screen, templ->format);
          formats[1] = zink_get_format(screen, srgb);
-         ici.pNext = &format_list;
+         /* only use format list if both formats have supported vk equivalents */
+         if (formats[0] && formats[1]) {
+            format_list.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO;
+            format_list.pNext = NULL;
+            format_list.viewFormatCount = 2;
+            format_list.pViewFormats = formats;
+
+            ici.pNext = &format_list;
+         } else {
+            ici.pNext = NULL;
+         }
       } else {
          ici.pNext = NULL;
       }
