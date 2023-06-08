@@ -117,7 +117,7 @@ def generate_docker_test(args):
     init_stages_test = {
         "namespace": "container",
         "timeout": {"minutes": args.job_timeout_min},
-        "failure_retry": 1,
+        "failure_retry": 3,
         "definitions": [
             {
                 "name": "docker_ssh_client",
