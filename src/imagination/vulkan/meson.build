@@ -83,6 +83,7 @@ pvr_deps = [
   dep_csbgen,
   dep_libdrm,
   dep_valgrind,
+  idep_mesautil,
   idep_vulkan_runtime,
   idep_vulkan_util,
   idep_vulkan_wsi,
