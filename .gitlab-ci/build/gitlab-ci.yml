@@ -604,6 +604,7 @@ debian-rusticl:
       -D gallium-nine=false
       -D gallium-opencl=disabled
       -D gallium-rusticl=true
+    RUSTC: clippy-driver
 
 debian-vulkan:
   extends: .meson-build
