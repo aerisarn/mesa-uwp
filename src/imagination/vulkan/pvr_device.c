@@ -154,6 +154,7 @@ static void pvr_physical_device_get_supported_extensions(
 {
    /* clang-format off */
    *extensions = (struct vk_device_extension_table){
+      .KHR_copy_commands2 = true,
       .KHR_external_memory = true,
       .KHR_external_memory_fd = true,
       .KHR_get_memory_requirements2 = true,

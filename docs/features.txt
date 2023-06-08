@@ -475,7 +475,7 @@ Vulkan 1.2 -- all DONE: anv, tu, vn
 
 Vulkan 1.3 -- all DONE: anv, radv, tu, lvp, vn
 
-  VK_KHR_copy_commands2                                 DONE (anv, hasvk, lvp, nvk, panvk, radv, tu, v3dv, vn)
+  VK_KHR_copy_commands2                                 DONE (anv, hasvk, lvp, nvk, panvk, pvr, radv, tu, v3dv, vn)
   VK_KHR_dynamic_rendering                              DONE (anv, dzn, hasvk, lvp, nvk, radv, tu, vn)
   VK_KHR_format_feature_flags2                          DONE (anv, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_KHR_maintenance4                                   DONE (anv, hasvk, lvp, nvk, radv, tu, v3dv, vn)
