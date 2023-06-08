@@ -853,10 +853,35 @@ pvr_get_physical_device_descriptor_limits(struct pvr_physical_device *pdevice)
    return &descriptor_limits[cs_level];
 }
 
-void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
-                                      VkPhysicalDeviceProperties2 *pProperties)
+static void
+pvr_get_physical_device_properties_1_1(struct pvr_physical_device *pdevice,
+                                       VkPhysicalDeviceVulkan11Properties *p)
+{
+   assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES);
+}
+
+static void
+pvr_get_physical_device_properties_1_2(struct pvr_physical_device *pdevice,
+                                       VkPhysicalDeviceVulkan12Properties *p)
+{
+   assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES);
+
+   /* VK_KHR_timeline_semaphore */
+   p->maxTimelineSemaphoreValueDifference = UINT64_MAX;
+}
+
+static void
+pvr_get_physical_device_properties_1_3(struct pvr_physical_device *pdevice,
+                                       VkPhysicalDeviceVulkan13Properties *p)
+{
+   assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES);
+}
+
+void pvr_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
+                                     VkPhysicalDeviceProperties *pProperties)
 {
    PVR_FROM_HANDLE(pvr_physical_device, pdevice, physicalDevice);
+
    const struct pvr_descriptor_limits *descriptor_limits =
       pvr_get_physical_device_descriptor_limits(pdevice);
 
@@ -1065,7 +1090,7 @@ void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .nonCoherentAtomSize = 1U,
    };
 
-   pProperties->properties = (VkPhysicalDeviceProperties){
+   *pProperties = (VkPhysicalDeviceProperties){
       .apiVersion = PVR_API_VERSION,
       .driverVersion = vk_get_driver_version(),
       .vendorID = VK_VENDOR_ID_IMAGINATION,
@@ -1075,23 +1100,49 @@ void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .sparseProperties = { 0 },
    };
 
-   snprintf(pProperties->properties.deviceName,
-            sizeof(pProperties->properties.deviceName),
+   snprintf(pProperties->deviceName,
+            sizeof(pProperties->deviceName),
             "%s",
             pdevice->name);
 
-   memcpy(pProperties->properties.pipelineCacheUUID,
+   memcpy(pProperties->pipelineCacheUUID,
           pdevice->pipeline_cache_uuid,
           VK_UUID_SIZE);
+}
+
+void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
+                                      VkPhysicalDeviceProperties2 *pProperties)
+{
+   PVR_FROM_HANDLE(pvr_physical_device, pdevice, physicalDevice);
+
+   VkPhysicalDeviceVulkan11Properties core_1_1 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
+   };
+
+   VkPhysicalDeviceVulkan12Properties core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
+   };
+
+   VkPhysicalDeviceVulkan13Properties core_1_3 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
+   };
+
+   pvr_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
+   pvr_get_physical_device_properties_1_1(pdevice, &core_1_1);
+   pvr_get_physical_device_properties_1_2(pdevice, &core_1_2);
+   pvr_get_physical_device_properties_1_3(pdevice, &core_1_3);
 
    vk_foreach_struct (ext, pProperties->pNext) {
+      if (vk_get_physical_device_core_1_1_property_ext(ext, &core_1_1))
+         continue;
+
+      if (vk_get_physical_device_core_1_2_property_ext(ext, &core_1_2))
+         continue;
+
+      if (vk_get_physical_device_core_1_3_property_ext(ext, &core_1_3))
+         continue;
+
       switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
-         VkPhysicalDeviceTimelineSemaphoreProperties *pProperties =
-            (VkPhysicalDeviceTimelineSemaphoreProperties *)ext;
-         pProperties->maxTimelineSemaphoreValueDifference = UINT64_MAX;
-         break;
-      }
       default: {
          pvr_debug_ignored_stype(ext->sType);
          break;
