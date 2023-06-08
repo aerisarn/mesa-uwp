@@ -1645,29 +1645,6 @@ blorp_setup_binding_table(struct blorp_batch *batch,
       }
    }
 
-#if GFX_VER >= 7 && GFX_VER < 12
-   if (has_indirect_clear_color) {
-      /* Updating a surface state object may require that the state cache be
-       * invalidated. From the SKL PRM, Shared Functions -> State -> State
-       * Caching:
-       *
-       *    Whenever the RENDER_SURFACE_STATE object in memory pointed to by
-       *    the Binding Table Pointer (BTP) and Binding Table Index (BTI) is
-       *    modified [...], the L1 state cache must be invalidated to ensure
-       *    the new surface or sampler state is fetched from system memory.
-       *
-       * XXX - Investigate why exactly this invalidation is necessary to
-       *       avoid Vulkan regressions on ICL.  It's possible that the
-       *       MI_ATOMIC used to update the clear color isn't correctly
-       *       ordered with the pre-existing invalidation in
-       *       blorp_update_clear_color().
-       */
-      blorp_emit(batch, GENX(PIPE_CONTROL), pipe) {
-         pipe.StateCacheInvalidationEnable = true;
-      }
-   }
-#endif
-
    return bind_offset;
 }
 
@@ -1916,10 +1893,6 @@ blorp_update_clear_color(UNUSED struct blorp_batch *batch,
 {
    assert(info->clear_color_addr.buffer != NULL);
 #if GFX_VER == 11
-   blorp_emit(batch, GENX(PIPE_CONTROL), pipe) {
-      pipe.CommandStreamerStallEnable = true;
-   }
-
    /* 2 QWORDS */
    const unsigned inlinedata_dw = 2 * 2;
    const unsigned num_dwords = GENX(MI_ATOMIC_length) + inlinedata_dw;
@@ -1950,10 +1923,6 @@ blorp_update_clear_color(UNUSED struct blorp_batch *batch,
    dw[4] = info->clear_color.u32[3];
    dw[5] = 0;
 
-   blorp_emit(batch, GENX(PIPE_CONTROL), pipe) {
-      pipe.StateCacheInvalidationEnable = true;
-      pipe.TextureCacheInvalidationEnable = true;
-   }
 #elif GFX_VER >= 9
 
    /* According to Wa_2201730850, in the Clear Color Programming Note under
