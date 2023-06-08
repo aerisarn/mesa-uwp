@@ -174,10 +174,8 @@ emit_so_memcpy(struct anv_batch *batch, struct anv_device *device,
     * 3dstate_so_buffer_index_0/1/2/3 states to ensure so_buffer_index_*
     * state is not combined with other state changes.
     */
-   if (intel_needs_workaround(device->info, 16011411144)) {
-      anv_batch_emit(batch, GENX(PIPE_CONTROL), pc)
-         pc.CommandStreamerStallEnable = true;
-   }
+   if (intel_needs_workaround(device->info, 16011411144))
+      genX(batch_emit_pipe_control)(batch, device->info, ANV_PIPE_CS_STALL_BIT);
 
    anv_batch_emit(batch, GENX(3DSTATE_SO_BUFFER), sob) {
 #if GFX_VER < 12
@@ -201,11 +199,9 @@ emit_so_memcpy(struct anv_batch *batch, struct anv_device *device,
       sob.StreamOffset = 0;
    }
 
-   if (intel_needs_workaround(device->info, 16011411144)) {
-      /* Wa_16011411144: also CS_STALL after touching SO_BUFFER change */
-      anv_batch_emit(batch, GENX(PIPE_CONTROL), pc)
-         pc.CommandStreamerStallEnable = true;
-   }
+   /* Wa_16011411144: also CS_STALL after touching SO_BUFFER change */
+   if (intel_needs_workaround(device->info, 16011411144))
+      genX(batch_emit_pipe_control)(batch, device->info, ANV_PIPE_CS_STALL_BIT);
 
    dw = anv_batch_emitn(batch, 5, GENX(3DSTATE_SO_DECL_LIST),
                         .StreamtoBufferSelects0 = (1 << 0),
@@ -221,9 +217,7 @@ emit_so_memcpy(struct anv_batch *batch, struct anv_device *device,
 
 #if GFX_VERx10 == 125
       /* Wa_14015946265: Send PC with CS stall after SO_DECL. */
-      anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-      }
+      genX(batch_emit_pipe_control)(batch, device->info, ANV_PIPE_CS_STALL_BIT);
 #endif
 
    anv_batch_emit(batch, GENX(3DSTATE_STREAMOUT), so) {
