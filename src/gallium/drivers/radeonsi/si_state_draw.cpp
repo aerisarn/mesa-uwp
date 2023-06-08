@@ -855,13 +855,15 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
       return;
 
    if (sctx->gfx_level >= GFX9) {
-      radeon_set_sh_reg(R_00B42C_SPI_SHADER_PGM_RSRC2_HS, sctx->ls_hs_rsrc2);
+      radeon_opt_set_sh_reg(sctx, R_00B42C_SPI_SHADER_PGM_RSRC2_HS,
+                            SI_TRACKED_SPI_SHADER_PGM_RSRC2_HS, sctx->ls_hs_rsrc2);
 
       /* Set userdata SGPRs for merged LS-HS. */
-      radeon_set_sh_reg_seq(
-         R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4, 2);
-      radeon_emit(sctx->tcs_offchip_layout);
-      radeon_emit(sctx->tes_offchip_ring_va_sgpr);
+      radeon_opt_set_sh_reg2(sctx,
+                             R_00B430_SPI_SHADER_USER_DATA_HS_0 +
+                             GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4,
+                             SI_TRACKED_SPI_SHADER_USER_DATA_HS__TCS_OFFCHIP_LAYOUT,
+                             sctx->tcs_offchip_layout, sctx->tes_offchip_ring_va_sgpr);
    } else {
       /* Due to a hw bug, RSRC2_LS must be written twice with another
        * LS register written in between. */
@@ -872,17 +874,21 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
       radeon_emit(sctx->ls_hs_rsrc2);
 
       /* Set userdata SGPRs for TCS. */
-      radeon_set_sh_reg_seq(
-         R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX6_SGPR_TCS_OFFCHIP_LAYOUT * 4, 3);
-      radeon_emit(sctx->tcs_offchip_layout);
-      radeon_emit(sctx->tes_offchip_ring_va_sgpr);
-      radeon_emit(sctx->current_vs_state);
+      radeon_opt_set_sh_reg3(sctx,
+                             R_00B430_SPI_SHADER_USER_DATA_HS_0 +
+                             GFX6_SGPR_TCS_OFFCHIP_LAYOUT * 4,
+                             SI_TRACKED_SPI_SHADER_USER_DATA_HS__TCS_OFFCHIP_LAYOUT,
+                             sctx->tcs_offchip_layout, sctx->tes_offchip_ring_va_sgpr,
+                             sctx->current_vs_state);
    }
 
    /* Set userdata SGPRs for TES. */
    unsigned tes_sh_base = sctx->shader_pointers.sh_base[PIPE_SHADER_TESS_EVAL];
    assert(tes_sh_base);
 
+   /* These can't be optimized because the user data SGPRs may have different meaning
+    * without tessellation. (they are VS and ES/GS user data SGPRs)
+    */
    radeon_set_sh_reg_seq(tes_sh_base + SI_SGPR_TES_OFFCHIP_LAYOUT * 4, 2);
    radeon_emit(sctx->tcs_offchip_layout);
    radeon_emit(sctx->tes_offchip_ring_va_sgpr);
