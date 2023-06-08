@@ -143,6 +143,7 @@ static const struct vk_instance_extension_table pvr_instance_extensions = {
    .KHR_external_memory_capabilities = true,
    .KHR_get_display_properties2 = PVR_USE_WSI_PLATFORM_DISPLAY,
    .KHR_get_physical_device_properties2 = true,
+   .KHR_get_surface_capabilities2 = PVR_USE_WSI_PLATFORM,
    .KHR_surface = PVR_USE_WSI_PLATFORM,
    .EXT_debug_report = true,
    .EXT_debug_utils = true,
