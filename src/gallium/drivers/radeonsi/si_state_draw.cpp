@@ -797,7 +797,6 @@ void si_update_tess_io_layout_state(struct si_context *sctx)
    assert((ring_va & u_bit_consecutive(0, 19)) == 0);
 
    sctx->tes_offchip_ring_va_sgpr = ring_va;
-   sctx->tcs_out_layout = ring_va;
    sctx->tcs_out_offsets = ((perpatch_output_offset / 4) << 16);
    sctx->tcs_offchip_layout =
       (num_patches - 1) | ((num_tcs_output_cp - 1) << 6) | ((num_tcs_input_cp - 1) << 11) |
@@ -863,7 +862,7 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
          R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4, 3);
       radeon_emit(sctx->tcs_offchip_layout);
       radeon_emit(sctx->tcs_out_offsets);
-      radeon_emit(sctx->tcs_out_layout);
+      radeon_emit(sctx->tes_offchip_ring_va_sgpr);
    } else {
       /* Due to a hw bug, RSRC2_LS must be written twice with another
        * LS register written in between. */
@@ -878,7 +877,7 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
          R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX6_SGPR_TCS_OFFCHIP_LAYOUT * 4, 4);
       radeon_emit(sctx->tcs_offchip_layout);
       radeon_emit(sctx->tcs_out_offsets);
-      radeon_emit(sctx->tcs_out_layout);
+      radeon_emit(sctx->tes_offchip_ring_va_sgpr);
       radeon_emit(sctx->current_vs_state);
    }
 

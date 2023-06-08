@@ -162,15 +162,7 @@ fetch_framebuffer(nir_builder *b, struct si_shader_args *args,
 static nir_ssa_def *build_tess_ring_desc(nir_builder *b, struct si_screen *screen,
                                          struct si_shader_args *args)
 {
-   nir_ssa_def *addr;
-   if (b->shader->info.stage == MESA_SHADER_TESS_CTRL) {
-      addr = ac_nir_load_arg(b, &args->ac, args->tcs_out_lds_layout);
-      /* TCS only receives high 13 bits of the address. */
-      addr = nir_iand_imm(b, addr, 0xfff80000);
-   } else {
-      assert(b->shader->info.stage == MESA_SHADER_TESS_EVAL);
-      addr = ac_nir_load_arg(b, &args->ac, args->tes_offchip_addr);
-   }
+   nir_ssa_def *addr = ac_nir_load_arg(b, &args->ac, args->tes_offchip_addr);
 
    uint32_t rsrc3 =
       S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |

@@ -413,7 +413,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       declare_per_stage_desc_pointers(args, shader, true);
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_offchip_layout);
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_out_lds_offsets);
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_out_lds_layout);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tes_offchip_addr);
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->vs_state_bits);
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tcs_factor_offset);
@@ -464,7 +464,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.start_instance);
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_offchip_layout);
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_out_lds_offsets);
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_out_lds_layout);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tes_offchip_addr);
       if (stage == MESA_SHADER_VERTEX)
          declare_vb_descriptor_input_sgprs(args, shader);
 
@@ -505,7 +505,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
              * param_tcs_offchip_layout, and internal_bindings
              * should be passed to the epilog.
              */
-            for (i = 0; i <= 8 + GFX9_SGPR_TCS_OUT_LAYOUT; i++)
+            for (i = 0; i <= 8 + GFX9_SGPR_TCS_OFFCHIP_ADDR; i++)
                ac_add_return(&args->ac, AC_ARG_SGPR);
             for (i = 0; i < 11; i++)
                ac_add_return(&args->ac, AC_ARG_VGPR);

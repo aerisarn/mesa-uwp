@@ -60,12 +60,8 @@ struct si_shader_args {
     *           = 1M, clamped to 32K(LDS limit) / 4 = 8K
     */
    struct ac_arg tcs_out_lds_offsets;
-   /* Layout of TCS outputs / TES inputs:
-    *   [19:31] = high 13 bits of the 32-bit address of tessellation ring buffers
-    */
-   struct ac_arg tcs_out_lds_layout;
 
-   /* API TES */
+   /* API TCS & TES */
    struct ac_arg tes_offchip_addr;
    /* PS */
    struct ac_arg pos_fixed_pt;
