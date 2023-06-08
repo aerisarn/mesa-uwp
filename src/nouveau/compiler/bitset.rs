@@ -117,6 +117,12 @@ impl BitSet {
     }
 }
 
+impl Default for BitSet {
+    fn default() -> BitSet {
+        BitSet::new()
+    }
+}
+
 impl BitAndAssign for BitSet {
     fn bitand_assign(&mut self, rhs: BitSet) {
         self.reserve_words(rhs.words.len());
