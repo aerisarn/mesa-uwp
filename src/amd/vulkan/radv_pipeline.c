@@ -786,85 +786,71 @@ radv_GetPipelineExecutablePropertiesKHR(VkDevice _device, const VkPipelineInfoKH
 
       pProperties[executable_idx].stages = mesa_to_vk_shader_stage(stage);
 
-      const char *name = NULL;
+      const char *name = _mesa_shader_stage_to_string(stage);
       const char *description = NULL;
       switch (stage) {
       case MESA_SHADER_VERTEX:
-         name = "Vertex Shader";
          description = "Vulkan Vertex Shader";
          break;
       case MESA_SHADER_TESS_CTRL:
          if (!pipeline->shaders[MESA_SHADER_VERTEX]) {
             pProperties[executable_idx].stages |= VK_SHADER_STAGE_VERTEX_BIT;
-            name = "Vertex + Tessellation Control Shaders";
+            name = "vertex + tessellation control";
             description = "Combined Vulkan Vertex and Tessellation Control Shaders";
          } else {
-            name = "Tessellation Control Shader";
             description = "Vulkan Tessellation Control Shader";
          }
          break;
       case MESA_SHADER_TESS_EVAL:
-         name = "Tessellation Evaluation Shader";
          description = "Vulkan Tessellation Evaluation Shader";
          break;
       case MESA_SHADER_GEOMETRY:
          if (shader->info.type == RADV_SHADER_TYPE_GS_COPY) {
-            name = "GS Copy Shader";
+            name = "geometry copy";
             description = "Extra shader stage that loads the GS output ringbuffer into the rasterizer";
             break;
          }
 
          if (pipeline->shaders[MESA_SHADER_TESS_CTRL] && !pipeline->shaders[MESA_SHADER_TESS_EVAL]) {
             pProperties[executable_idx].stages |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-            name = "Tessellation Evaluation + Geometry Shaders";
+            name = "tessellation evaluation + geometry";
             description = "Combined Vulkan Tessellation Evaluation and Geometry Shaders";
          } else if (!pipeline->shaders[MESA_SHADER_TESS_CTRL] && !pipeline->shaders[MESA_SHADER_VERTEX]) {
             pProperties[executable_idx].stages |= VK_SHADER_STAGE_VERTEX_BIT;
-            name = "Vertex + Geometry Shader";
+            name = "vertex + geometry";
             description = "Combined Vulkan Vertex and Geometry Shaders";
          } else {
-            name = "Geometry Shader";
             description = "Vulkan Geometry Shader";
          }
          break;
       case MESA_SHADER_FRAGMENT:
-         name = "Fragment Shader";
          description = "Vulkan Fragment Shader";
          break;
       case MESA_SHADER_COMPUTE:
-         name = "Compute Shader";
          description = "Vulkan Compute Shader";
          break;
       case MESA_SHADER_MESH:
-         name = "Mesh Shader";
          description = "Vulkan Mesh Shader";
          break;
       case MESA_SHADER_TASK:
-         name = "Task Shader";
          description = "Vulkan Task Shader";
          break;
       case MESA_SHADER_RAYGEN:
-         name = "Ray Generation Shader";
          description = "Vulkan Ray Generation Shader";
          break;
       case MESA_SHADER_ANY_HIT:
-         name = "Any-Hit Shader";
          description = "Vulkan Any-Hit Shader";
          break;
       case MESA_SHADER_CLOSEST_HIT:
-         name = "Closest-Hit Shader";
          description = "Vulkan Closest-Hit Shader";
          break;
       case MESA_SHADER_MISS:
-         name = "Miss Shader";
          description = "Vulkan Miss Shader";
          break;
       case MESA_SHADER_INTERSECTION:
-         name = "Intersection Shader";
          description = "Shader responsible for traversing the acceleration structure";
          break;
       case MESA_SHADER_CALLABLE:
-         name = "Callable Shader";
          description = "Vulkan Callable Shader";
          break;
       default:
