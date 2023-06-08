@@ -693,10 +693,14 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
 static uint32_t
 radv_get_executable_count(struct radv_pipeline *pipeline)
 {
-   if (pipeline->type == RADV_PIPELINE_RAY_TRACING)
-      return 1;
-
    uint32_t ret = 0;
+
+   if (pipeline->type == RADV_PIPELINE_RAY_TRACING) {
+      struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
+      for (uint32_t i = 0; i < rt_pipeline->stage_count; i++)
+         ret += radv_ray_tracing_stage_is_compiled(&rt_pipeline->stages[i]) ? 1 : 0;
+   }
+
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
       if (!pipeline->shaders[i])
          continue;
@@ -714,8 +718,19 @@ static struct radv_shader *
 radv_get_shader_from_executable_index(struct radv_pipeline *pipeline, int index, gl_shader_stage *stage)
 {
    if (pipeline->type == RADV_PIPELINE_RAY_TRACING) {
-      *stage = MESA_SHADER_INTERSECTION;
-      return pipeline->shaders[*stage];
+      struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
+      for (uint32_t i = 0; i < rt_pipeline->stage_count; i++) {
+         struct radv_ray_tracing_stage *rt_stage = &rt_pipeline->stages[i];
+         if (!radv_ray_tracing_stage_is_compiled(rt_stage))
+            continue;
+
+         if (!index) {
+            *stage = rt_stage->stage;
+            return container_of(rt_stage->shader, struct radv_shader, base);
+         }
+
+         index--;
+      }
    }
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
