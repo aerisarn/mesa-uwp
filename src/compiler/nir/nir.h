@@ -5351,6 +5351,8 @@ bool nir_zero_initialize_shared_memory(nir_shader *shader,
 bool nir_move_vec_src_uses_to_dest(nir_shader *shader);
 bool nir_lower_vec_to_movs(nir_shader *shader, nir_instr_writemask_filter_cb cb,
                            const void *_data);
+bool nir_lower_vec_to_regs(nir_shader *shader, nir_instr_writemask_filter_cb cb,
+                           const void *_data);
 void nir_lower_alpha_test(nir_shader *shader, enum compare_func func,
                           bool alpha_to_one,
                           const gl_state_index16 *alpha_ref_state_tokens);
