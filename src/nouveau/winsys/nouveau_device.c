@@ -186,12 +186,13 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    const char *path = drm_device->nodes[DRM_NODE_RENDER];
    struct nouveau_ws_device *device = CALLOC_STRUCT(nouveau_ws_device);
    uint64_t value = 0;
+   drmVersionPtr ver = NULL;
 
    int fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0)
       goto out_err;
 
-   drmVersionPtr ver = drmGetVersion(fd);
+   ver = drmGetVersion(fd);
    if (!ver)
       goto out_err;
 
