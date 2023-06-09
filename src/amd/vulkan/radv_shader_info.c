@@ -673,6 +673,9 @@ gather_shader_info_cs(struct radv_device *device, const nir_shader *nir, const s
       info->cs.subgroup_size = pipeline_key->cs.compute_subgroup_size;
    } else if (require_full_subgroups) {
       info->cs.subgroup_size = RADV_SUBGROUP_SIZE;
+   } else if (device->physical_device->rad_info.gfx_level >= GFX10 && local_size <= 32) {
+      /* Use wave32 for small workgroups. */
+      info->cs.subgroup_size = 32;
    } else {
       info->cs.subgroup_size = default_wave_size;
    }
