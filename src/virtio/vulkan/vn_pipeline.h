@@ -41,8 +41,14 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_pipeline_cache,
                                VkPipelineCache,
                                VK_OBJECT_TYPE_PIPELINE_CACHE)
 
+enum vn_pipeline_type {
+   VN_PIPELINE_TYPE_GRAPHICS,
+   VN_PIPELINE_TYPE_COMPUTE,
+};
+
 struct vn_pipeline {
    struct vn_object_base base;
+   enum vn_pipeline_type type;
 
    /**
     * The VkPipelineLayout provided directly (without linking) at pipeline
