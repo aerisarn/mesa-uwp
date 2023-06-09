@@ -1052,10 +1052,10 @@ static rvcn_dec_message_hevc_t get_h265_msg(struct radv_device *device,
 
 
    const StdVideoH265ScalingLists *scaling_lists = NULL;
-   if (sps->flags.sps_scaling_list_data_present_flag)
-      scaling_lists = sps->pScalingLists;
-   else if (pps->flags.pps_scaling_list_data_present_flag)
+   if (pps->flags.pps_scaling_list_data_present_flag)
       scaling_lists = pps->pScalingLists;
+   else if (sps->flags.sps_scaling_list_data_present_flag)
+      scaling_lists = sps->pScalingLists;
 
    update_h265_scaling(it_ptr, scaling_lists);
 
@@ -1509,10 +1509,10 @@ static struct ruvd_h265 get_uvd_h265_msg(struct radv_device *device,
       result.ref_pic_set_lt_curr[i] = IDXS(h265_pic_info->pStdPictureInfo->RefPicSetLtCurr[i]);
 
    const StdVideoH265ScalingLists *scaling_lists = NULL;
-   if (sps->flags.sps_scaling_list_data_present_flag)
-      scaling_lists = sps->pScalingLists;
-   else if (pps->flags.pps_scaling_list_data_present_flag)
+   if (pps->flags.pps_scaling_list_data_present_flag)
       scaling_lists = pps->pScalingLists;
+   else if (sps->flags.sps_scaling_list_data_present_flag)
+      scaling_lists = sps->pScalingLists;
 
    update_h265_scaling(it_ptr, scaling_lists);
    if (scaling_lists) {
