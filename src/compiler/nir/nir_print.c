@@ -125,7 +125,7 @@ print_ssa_def(nir_ssa_def *def, print_state *state)
 {
    FILE *fp = state->fp;
 
-   fprintf(fp, "%s %2u %sssa_%u", sizes[def->num_components], def->bit_size,
+   fprintf(fp, "%s %2u %s%%%u", sizes[def->num_components], def->bit_size,
            divergence_status(state, def->divergent), def->index);
 }
 
@@ -329,7 +329,7 @@ static void
 print_ssa_use(nir_ssa_def *def, print_state *state, nir_alu_type src_type)
 {
    FILE *fp = state->fp;
-   fprintf(fp, "ssa_%u", def->index);
+   fprintf(fp, "%%%u", def->index);
    nir_instr *instr = def->parent_instr;
 
    if (instr->type == nir_instr_type_load_const && !NIR_DEBUG(PRINT_NO_INLINE_CONSTS)) {
@@ -515,13 +515,13 @@ get_var_name(nir_variable *var, print_state *state)
 
    char *name;
    if (var->name == NULL) {
-      name = ralloc_asprintf(state->syms, "@%u", state->index++);
+      name = ralloc_asprintf(state->syms, "#%u", state->index++);
    } else {
       struct set_entry *set_entry = _mesa_set_search(state->syms, var->name);
       if (set_entry != NULL) {
-         /* we have a collision with another name, append an @ + a unique
+         /* we have a collision with another name, append an # + a unique
           * index */
-         name = ralloc_asprintf(state->syms, "%s@%u", var->name,
+         name = ralloc_asprintf(state->syms, "%s#%u", var->name,
                                 state->index++);
       } else {
          /* Mark this one as seen */
@@ -1069,7 +1069,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       fprintf(fp, " = ");
    }
 
-   fprintf(fp, "intrinsic %s (", info->name);
+   fprintf(fp, "@%s (", info->name);
 
    for (unsigned i = 0; i < num_srcs; i++) {
       if (i != 0)
