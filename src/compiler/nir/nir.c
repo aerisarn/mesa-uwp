@@ -318,7 +318,7 @@ nir_create_variable_with_location(nir_shader *shader, nir_variable_mode mode, in
    /* Only supporting non-array, or arrayed-io types, because otherwise we don't
     * know how much to increment num_inputs/outputs
     */
-   assert(glsl_get_length(type) <= 1);
+   assert(glsl_type_is_vector_or_scalar(type) || glsl_type_is_unsized_array(type));
 
    const char *name;
    switch (mode) {
