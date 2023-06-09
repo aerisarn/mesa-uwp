@@ -266,6 +266,16 @@ static LLVMValueRef emit_b2i(struct ac_llvm_context *ctx, LLVMValueRef src0, uns
    case 8:
       return LLVMBuildSelect(ctx->builder, src0, ctx->i8_1, ctx->i8_0, "");
    case 16:
+      if (LLVMGetTypeKind(LLVMTypeOf(src0)) == LLVMVectorTypeKind) {
+         assert(LLVMGetVectorSize(LLVMTypeOf(src0)) == 2);
+         LLVMValueRef i[] = {
+            LLVMBuildSelect(ctx->builder, ac_llvm_extract_elem(ctx, src0, 0),
+                            ctx->i16_1, ctx->i16_0, ""),
+            LLVMBuildSelect(ctx->builder, ac_llvm_extract_elem(ctx, src0, 1),
+                            ctx->i16_1, ctx->i16_0, ""),
+         };
+         return ac_build_gather_values(ctx, i, 2);
+      }
       return LLVMBuildSelect(ctx->builder, src0, ctx->i16_1, ctx->i16_0, "");
    case 32:
       return LLVMBuildSelect(ctx->builder, src0, ctx->i32_1, ctx->i32_0, "");
