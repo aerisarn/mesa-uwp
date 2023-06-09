@@ -656,32 +656,26 @@ gather_shader_info_cs(struct radv_device *device, const nir_shader *nir, const s
 {
    info->cs.uses_ray_launch_size = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_RAY_LAUNCH_SIZE_ADDR_AMD);
 
-   unsigned subgroup_size = pipeline_key->cs.compute_subgroup_size;
-   unsigned req_subgroup_size = subgroup_size;
-   bool require_full_subgroups = pipeline_key->cs.require_full_subgroups;
-
    unsigned default_wave_size = device->physical_device->cs_wave_size;
    if (info->cs.uses_rt)
       default_wave_size = device->physical_device->rt_wave_size;
-
-   if (!subgroup_size)
-      subgroup_size = default_wave_size;
 
    unsigned local_size = nir->info.workgroup_size[0] * nir->info.workgroup_size[1] * nir->info.workgroup_size[2];
 
    /* Games don't always request full subgroups when they should, which can cause bugs if cswave32
     * is enabled.
     */
-   if (default_wave_size == 32 && nir->info.uses_wide_subgroup_intrinsics && !req_subgroup_size &&
-       local_size % RADV_SUBGROUP_SIZE == 0)
-      require_full_subgroups = true;
+   bool require_full_subgroups =
+      pipeline_key->cs.require_full_subgroups ||
+      (default_wave_size == 32 && nir->info.uses_wide_subgroup_intrinsics && local_size % RADV_SUBGROUP_SIZE == 0);
 
-   if (require_full_subgroups && !req_subgroup_size) {
-      /* don't use wave32 pretending to be wave64 */
-      subgroup_size = RADV_SUBGROUP_SIZE;
+   if (pipeline_key->cs.compute_subgroup_size) {
+      info->cs.subgroup_size = pipeline_key->cs.compute_subgroup_size;
+   } else if (require_full_subgroups) {
+      info->cs.subgroup_size = RADV_SUBGROUP_SIZE;
+   } else {
+      info->cs.subgroup_size = default_wave_size;
    }
-
-   info->cs.subgroup_size = subgroup_size;
 
    if (device->physical_device->rad_info.has_cs_regalloc_hang_bug) {
       info->cs.regalloc_hang_bug = info->cs.block_size[0] * info->cs.block_size[1] * info->cs.block_size[2] > 256;
