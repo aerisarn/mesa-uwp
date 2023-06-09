@@ -93,10 +93,11 @@ print_register(nir_register *reg, print_state *state)
    fprintf(fp, "r%u", reg->index);
 }
 
-static const char *sizes[] = { "error", "vec1", "vec2", "vec3", "vec4",
-                               "vec5", "error", "error", "vec8",
-                               "error", "error", "error", "error",
-                               "error", "error", "error", "vec16"};
+/* For 1 element, the size is intentionally omitted. */
+static const char *sizes[] = { "x??", "   ", "x2 ", "x3 ", "x4 ",
+                               "x5 ", "x??", "x??", "x8 ",
+                               "x??", "x??", "x??", "x??",
+                               "x??", "x??", "x??", "x16"};
 
 static const char *
 divergence_status(print_state *state, bool divergent)
@@ -111,8 +112,8 @@ static void
 print_register_decl(nir_register *reg, print_state *state)
 {
    FILE *fp = state->fp;
-   fprintf(fp, "decl_reg %s %u %s", sizes[reg->num_components],
-           reg->bit_size, divergence_status(state, reg->divergent));
+   fprintf(fp, "decl_reg %u%s %s", reg->bit_size,
+           sizes[reg->num_components], divergence_status(state, reg->divergent));
 
    print_register(reg, state);
    if (reg->num_array_elems != 0)
@@ -125,7 +126,8 @@ print_ssa_def(nir_ssa_def *def, print_state *state)
 {
    FILE *fp = state->fp;
 
-   fprintf(fp, "%s %2u %s%%%u", sizes[def->num_components], def->bit_size,
+   fprintf(fp, "%u%s%s  %s%%%u", def->bit_size, sizes[def->num_components],
+           def->bit_size <= 8 ? " " : "",
            divergence_status(state, def->divergent), def->index);
 }
 
