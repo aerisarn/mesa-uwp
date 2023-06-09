@@ -125,14 +125,14 @@ etna_acc_get_query_result(struct etna_context *ctx, struct etna_query *q,
           * spin forever.
           */
          if (aq->no_wait_cnt++ > 5) {
-            ctx->base.flush(&ctx->base, NULL, 0);
+            etna_flush(&ctx->base, NULL, 0, true);
             aq->no_wait_cnt = 0;
          }
 
          return false;
       } else {
          /* flush that GPU executes all query related actions */
-         ctx->base.flush(&ctx->base, NULL, 0);
+         etna_flush(&ctx->base, NULL, 0, true);
       }
    }
 
