@@ -37,9 +37,9 @@
 #include <inttypes.h> /* for PRIx64 macro */
 
 static void
-print_tabs(unsigned num_tabs, FILE *fp)
+print_indentation(unsigned levels, FILE *fp)
 {
-   for (unsigned i = 0; i < num_tabs; i++)
+   for (unsigned i = 0; i < levels; i++)
       fprintf(fp, "\t");
 }
 
@@ -1771,7 +1771,7 @@ static void
 print_instr(const nir_instr *instr, print_state *state, unsigned tabs)
 {
    FILE *fp = state->fp;
-   print_tabs(tabs, fp);
+   print_indentation(tabs, fp);
 
    switch (instr->type) {
    case nir_instr_type_alu:
@@ -1867,12 +1867,12 @@ print_block(nir_block *block, print_state *state, unsigned tabs)
    else
       state->padding_for_no_dest = 0;
 
-   print_tabs(tabs, fp);
+   print_indentation(tabs, fp);
    fprintf(fp, "block b%u:\n", block->index);
 
    nir_block **preds = nir_block_get_predecessors_sorted(block, NULL);
 
-   print_tabs(tabs, fp);
+   print_indentation(tabs, fp);
    fprintf(fp, "/* preds: ");
    for (unsigned i = 0; i < block->predecessors->entries; i++) {
       fprintf(fp, "b%u ", preds[i]->index);
@@ -1887,7 +1887,7 @@ print_block(nir_block *block, print_state *state, unsigned tabs)
       print_annotation(state, instr);
    }
 
-   print_tabs(tabs, fp);
+   print_indentation(tabs, fp);
    fprintf(fp, "/* succs: ");
    for (unsigned i = 0; i < 2; i++)
       if (block->successors[i]) {
@@ -1901,7 +1901,7 @@ print_if(nir_if *if_stmt, print_state *state, unsigned tabs)
 {
    FILE *fp = state->fp;
 
-   print_tabs(tabs, fp);
+   print_indentation(tabs, fp);
    fprintf(fp, "if ");
    print_src(&if_stmt->condition, state, nir_type_invalid);
    switch (if_stmt->control) {
@@ -1922,12 +1922,12 @@ print_if(nir_if *if_stmt, print_state *state, unsigned tabs)
    foreach_list_typed(nir_cf_node, node, node, &if_stmt->then_list) {
       print_cf_node(node, state, tabs + 1);
    }
-   print_tabs(tabs, fp);
+   print_indentation(tabs, fp);
    fprintf(fp, "} else {\n");
    foreach_list_typed(nir_cf_node, node, node, &if_stmt->else_list) {
       print_cf_node(node, state, tabs + 1);
    }
-   print_tabs(tabs, fp);
+   print_indentation(tabs, fp);
    fprintf(fp, "}\n");
 }
 
@@ -1936,19 +1936,19 @@ print_loop(nir_loop *loop, print_state *state, unsigned tabs)
 {
    FILE *fp = state->fp;
 
-   print_tabs(tabs, fp);
+   print_indentation(tabs, fp);
    fprintf(fp, "loop {\n");
    foreach_list_typed(nir_cf_node, node, node, &loop->body) {
       print_cf_node(node, state, tabs + 1);
    }
-   print_tabs(tabs, fp);
+   print_indentation(tabs, fp);
 
    if (nir_loop_has_continue_construct(loop)) {
       fprintf(fp, "} continue {\n");
       foreach_list_typed(nir_cf_node, node, node, &loop->continue_list) {
          print_cf_node(node, state, tabs + 1);
       }
-      print_tabs(tabs, fp);
+      print_indentation(tabs, fp);
    }
 
    fprintf(fp, "}\n");
@@ -1987,7 +1987,8 @@ print_function_impl(nir_function_impl *impl, print_state *state)
    fprintf(fp, "{\n");
 
    if (impl->preamble) {
-      fprintf(fp, "\tpreamble %s\n", impl->preamble->name);
+      print_indentation(1, fp);
+      fprintf(fp, "preamble %s\n", impl->preamble->name);
    }
 
    if (!NIR_DEBUG(PRINT_NO_INLINE_CONSTS)) {
@@ -2001,12 +2002,12 @@ print_function_impl(nir_function_impl *impl, print_state *state)
    }
 
    nir_foreach_function_temp_variable(var, impl) {
-      fprintf(fp, "\t");
+      print_indentation(1, fp);
       print_var_decl(var, state);
    }
 
    foreach_list_typed(nir_register, reg, node, &impl->registers) {
-      fprintf(fp, "\t");
+      print_indentation(1, fp);
       print_register_decl(reg, state);
    }
 
@@ -2016,7 +2017,8 @@ print_function_impl(nir_function_impl *impl, print_state *state)
       print_cf_node(node, state, 1);
    }
 
-   fprintf(fp, "\tblock b%u:\n}\n\n", impl->end_block->index);
+   print_indentation(1, fp);
+   fprintf(fp, "block b%u:\n}\n\n", impl->end_block->index);
 
    free(state->float_types);
    free(state->int_types);
