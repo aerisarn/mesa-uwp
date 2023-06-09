@@ -85,6 +85,7 @@ case nir_intrinsic_##op: {\
    STORE(nir_var_mem_shared, shared, -1, 1, -1, 0)
    LOAD(nir_var_mem_global, global, -1, 0, -1)
    STORE(nir_var_mem_global, global, -1, 1, -1, 0)
+   LOAD(nir_var_mem_global, global_constant, -1, 0, -1)
    LOAD(nir_var_mem_task_payload, task_payload, -1, 0, -1)
    STORE(nir_var_mem_task_payload, task_payload, -1, 1, -1, 0)
    ATOMIC(nir_var_mem_ssbo, ssbo, 0, 1, -1, 2)
@@ -97,6 +98,7 @@ case nir_intrinsic_##op: {\
    LOAD(nir_var_mem_ubo, ubo_uniform_block_intel, 0, 1, -1)
    LOAD(nir_var_mem_ssbo, ssbo_uniform_block_intel, 0, 1, -1)
    LOAD(nir_var_mem_shared, shared_uniform_block_intel, -1, 0, -1)
+   LOAD(nir_var_mem_global, global_constant_uniform_block_intel, -1, 0, -1)
    default:
       break;
 #undef ATOMIC

@@ -214,6 +214,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_barycentric_optimize_amd:
    case nir_intrinsic_load_poly_line_smooth_enabled:
    case nir_intrinsic_load_rasterization_primitive_amd:
+   case nir_intrinsic_load_global_constant_uniform_block_intel:
       is_divergent = false;
       break;
 
