@@ -914,6 +914,9 @@ struct anv_physical_device {
     /** True if we can create protected contexts. */
     bool                                        has_protected_contexts;
 
+    /** Whether the i915 driver has the ability to create VM objects */
+    bool                                        has_vm_control;
+
     /**/
     bool                                        uses_ex_bso;
 
@@ -1068,6 +1071,7 @@ struct anv_queue {
 
    union {
       uint32_t                               exec_flags; /* i915 */
+      uint32_t                               context_id; /* i915 */
       uint32_t                               exec_queue_id; /* Xe */
    };
 
@@ -1761,6 +1765,8 @@ int anv_gem_get_tiling(struct anv_device *device, uint32_t gem_handle);
 int anv_gem_handle_to_fd(struct anv_device *device, uint32_t gem_handle);
 uint32_t anv_gem_fd_to_handle(struct anv_device *device, int fd);
 int anv_gem_set_caching(struct anv_device *device, uint32_t gem_handle, uint32_t caching);
+int anv_gem_set_context_param(int fd, uint32_t context, uint32_t param,
+                              uint64_t value);
 
 uint64_t anv_vma_alloc(struct anv_device *device,
                        uint64_t size, uint64_t align,

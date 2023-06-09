@@ -318,6 +318,21 @@ pin_state_pool(struct anv_device *device,
    return VK_SUCCESS;
 }
 
+static void
+get_context_and_exec_flags(struct anv_queue *queue,
+                           uint64_t *exec_flags,
+                           uint32_t *context_id)
+{
+   assert(queue != NULL);
+
+   struct anv_device *device = queue->device;
+   /* Submit to index 0 which is the main (CCS/BCS etc) virtual engine. */
+   *exec_flags = device->physical->has_vm_control ? 0 : queue->exec_flags;
+
+   *context_id = device->physical->has_vm_control ? queue->context_id :
+                                                    device->context_id;
+}
+
 static VkResult
 setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
                               struct anv_queue *queue,
@@ -427,6 +442,10 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
       anv_cmd_buffer_clflush(cmd_buffers, num_cmd_buffers);
 #endif
 
+   uint64_t exec_flags = 0;
+   uint32_t context_id;
+   get_context_and_exec_flags(queue, &exec_flags, &context_id);
+
    execbuf->execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf->objects,
       .buffer_count = execbuf->bo_count,
@@ -439,8 +458,8 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
       .DR4 = 0,
       .flags = I915_EXEC_NO_RELOC |
                I915_EXEC_HANDLE_LUT |
-               queue->exec_flags,
-      .rsvd1 = device->context_id,
+               exec_flags,
+      .rsvd1 = context_id,
       .rsvd2 = 0,
    };
 
@@ -457,13 +476,17 @@ setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_queue *queue)
    if (result != VK_SUCCESS)
       return result;
 
+   uint64_t exec_flags = 0;
+   uint32_t context_id;
+   get_context_and_exec_flags(queue, &exec_flags, &context_id);
+
    execbuf->execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf->objects,
       .buffer_count = execbuf->bo_count,
       .batch_start_offset = 0,
       .batch_len = 8, /* GFX7_MI_BATCH_BUFFER_END and NOOP */
-      .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags | I915_EXEC_NO_RELOC,
-      .rsvd1 = device->context_id,
+      .flags = I915_EXEC_HANDLE_LUT | exec_flags | I915_EXEC_NO_RELOC,
+      .rsvd1 = context_id,
       .rsvd2 = 0,
    };
 
@@ -517,6 +540,10 @@ setup_utrace_execbuf(struct anv_execbuf *execbuf, struct anv_queue *queue,
       intel_flush_range(submit->batch_bo->map, submit->batch_bo->size);
 #endif
 
+   uint64_t exec_flags = 0;
+   uint32_t context_id;
+   get_context_and_exec_flags(queue, &exec_flags, &context_id);
+
    execbuf->execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf->objects,
       .buffer_count = execbuf->bo_count,
@@ -525,8 +552,8 @@ setup_utrace_execbuf(struct anv_execbuf *execbuf, struct anv_queue *queue,
       .flags = I915_EXEC_NO_RELOC |
                I915_EXEC_HANDLE_LUT |
                I915_EXEC_FENCE_ARRAY |
-               queue->exec_flags,
-      .rsvd1 = device->context_id,
+               exec_flags,
+      .rsvd1 = context_id,
       .rsvd2 = 0,
       .num_cliprects = execbuf->syncobj_count,
       .cliprects_ptr = (uintptr_t)execbuf->syncobjs,
@@ -740,13 +767,18 @@ i915_queue_exec_locked(struct anv_queue *queue,
          .offset = pass_batch_bo->offset,
          .flags  = pass_batch_bo->flags,
       };
+
+      uint64_t exec_flags = 0;
+      uint32_t context_id;
+      get_context_and_exec_flags(queue, &exec_flags, &context_id);
+
       struct drm_i915_gem_execbuffer2 query_pass_execbuf = {
          .buffers_ptr = (uintptr_t) &query_pass_object,
          .buffer_count = 1,
          .batch_start_offset = khr_perf_query_preamble_offset(perf_query_pool,
                                                               perf_query_pass),
-         .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags,
-         .rsvd1 = device->context_id,
+         .flags = I915_EXEC_HANDLE_LUT | exec_flags,
+         .rsvd1 = context_id,
       };
 
       int ret = queue->device->info->no_hw ? 0 :
@@ -792,13 +824,17 @@ i915_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
    if (result != VK_SUCCESS)
       goto fail;
 
+   uint64_t exec_flags = 0;
+   uint32_t context_id;
+   get_context_and_exec_flags(queue, &exec_flags, &context_id);
+
    execbuf.execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf.objects,
       .buffer_count = execbuf.bo_count,
       .batch_start_offset = 0,
       .batch_len = batch_bo_size,
-      .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags | I915_EXEC_NO_RELOC,
-      .rsvd1 = device->context_id,
+      .flags = I915_EXEC_HANDLE_LUT | exec_flags | I915_EXEC_NO_RELOC,
+      .rsvd1 = context_id,
       .rsvd2 = 0,
    };
 

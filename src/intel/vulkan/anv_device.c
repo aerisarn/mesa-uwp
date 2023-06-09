@@ -60,6 +60,7 @@
 #include "vk_drm_syncobj.h"
 #include "common/intel_aux_map.h"
 #include "common/intel_uuid.h"
+#include "common/i915/intel_gem.h"
 #include "perf/intel_perf.h"
 
 #include "i915/anv_device.h"
@@ -3005,7 +3006,10 @@ anv_device_destroy_context_or_vm(struct anv_device *device)
 {
    switch (device->info->kmd_type) {
    case INTEL_KMD_TYPE_I915:
-      return intel_gem_destroy_context(device->fd, device->context_id);
+      if (device->physical->has_vm_control)
+         return anv_i915_device_destroy_vm(device);
+      else
+         return intel_gem_destroy_context(device->fd, device->context_id);
    case INTEL_KMD_TYPE_XE:
       return anv_xe_device_destroy_vm(device);
    default:
