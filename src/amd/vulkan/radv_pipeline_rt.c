@@ -336,8 +336,8 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
    for (uint32_t i = 0; i < num_shaders; i++) {
       struct radv_pipeline_stage temp_stage = *stage;
       temp_stage.nir = shaders[i];
-      radv_nir_lower_rt_abi(temp_stage.nir, pCreateInfo, &temp_stage.args, pipeline_key,
-                            stack_size);
+      radv_nir_lower_rt_abi(temp_stage.nir, pCreateInfo, &temp_stage.args, pipeline_key, stack_size,
+                            i > 0);
       radv_optimize_nir(temp_stage.nir, pipeline_key->optimisations_disabled);
       radv_postprocess_nir(device, pipeline_layout, pipeline_key, MESA_SHADER_NONE, &temp_stage);
 

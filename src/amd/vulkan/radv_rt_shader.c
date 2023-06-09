@@ -1631,7 +1631,7 @@ select_next_shader(nir_builder *b, nir_ssa_def *shader_va, unsigned wave_size)
 void
 radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                       const struct radv_shader_args *args, const struct radv_pipeline_key *key,
-                      uint32_t *stack_size)
+                      uint32_t *stack_size, bool resume_shader)
 {
    nir_builder b;
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
@@ -1687,14 +1687,20 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
    nir_store_var(&b, vars.hit_kind, ac_nir_load_arg(&b, &args->ac, args->ac.rt.hit_kind), 1);
 
    /* guard the shader, so that only the correct invocations execute it */
-   nir_ssa_def *shader_pc = ac_nir_load_arg(&b, &args->ac, args->ac.rt.shader_pc);
-   shader_pc = nir_pack_64_2x32(&b, shader_pc);
-   shader_pc = nir_ior_imm(&b, shader_pc, radv_get_rt_priority(shader->info.stage));
-   nir_ssa_def *cond = nir_ieq(&b, shader_pc, shader_va);
-   nir_if *shader_guard = nir_push_if(&b, cond);
-   shader_guard->control = nir_selection_control_divergent_always_taken;
+   nir_if *shader_guard = NULL;
+   if (shader->info.stage != MESA_SHADER_RAYGEN || resume_shader) {
+      nir_ssa_def *shader_pc = ac_nir_load_arg(&b, &args->ac, args->ac.rt.shader_pc);
+      shader_pc = nir_pack_64_2x32(&b, shader_pc);
+      shader_pc = nir_ior_imm(&b, shader_pc, radv_get_rt_priority(shader->info.stage));
+
+      shader_guard = nir_push_if(&b, nir_ieq(&b, shader_pc, shader_va));
+      shader_guard->control = nir_selection_control_divergent_always_taken;
+   }
+
    nir_cf_reinsert(&list, b.cursor);
-   nir_pop_if(&b, shader_guard);
+
+   if (shader_guard)
+      nir_pop_if(&b, shader_guard);
 
    /* select next shader */
    b.cursor = nir_after_cf_list(&impl->body);
