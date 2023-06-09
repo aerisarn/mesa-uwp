@@ -53,10 +53,22 @@
 #define INIT_SUBPASSES(_pass, _pCreateInfo)                                  \
    do {                                                                      \
       for (uint32_t i = 0; i < _pCreateInfo->subpassCount; i++) {            \
-         _pass->subpasses[i].has_color_attachment =                          \
-            (_pCreateInfo->pSubpasses[i].colorAttachmentCount > 0);          \
-         _pass->subpasses[i].has_depth_stencil_attachment =                  \
-            (_pCreateInfo->pSubpasses[i].pDepthStencilAttachment != NULL);   \
+         __auto_type subpass_desc = &_pCreateInfo->pSubpasses[i];            \
+         struct vn_subpass *subpass = &_pass->subpasses[i];                  \
+                                                                             \
+         for (uint32_t j = 0; j < subpass_desc->colorAttachmentCount; j++) { \
+            if (subpass_desc->pColorAttachments[j].attachment !=             \
+                VK_ATTACHMENT_UNUSED) {                                      \
+               subpass->has_color_attachment = true;                         \
+               break;                                                        \
+            }                                                                \
+         }                                                                   \
+                                                                             \
+         if (subpass_desc->pDepthStencilAttachment &&                        \
+             subpass_desc->pDepthStencilAttachment->attachment !=            \
+                VK_ATTACHMENT_UNUSED) {                                      \
+            subpass->has_depth_stencil_attachment = true;                    \
+         }                                                                   \
       }                                                                      \
    } while (false)
 
