@@ -262,8 +262,6 @@ files_libmesa = files(
   'math/m_matrix.h',
   'program/arbprogparse.c',
   'program/arbprogparse.h',
-  'program/link_program.cpp',
-  'program/link_program.h',
   'program/prog_cache.c',
   'program/prog_cache.h',
   'program/prog_instruction.c',
