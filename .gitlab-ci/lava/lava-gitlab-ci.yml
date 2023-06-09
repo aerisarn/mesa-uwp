@@ -36,6 +36,8 @@ variables:
     - $RUNNER_TAG
   after_script:
     - curl -L --retry 4 -f --retry-all-errors --retry-delay 60 -s "https://${JOB_RESULTS_PATH}" | tar --zstd -x
+  needs:
+    - alpine/x86_64_lava_ssh_client
 
 .lava-test:arm32:
   variables:
@@ -50,6 +52,7 @@ variables:
     - .lava-test
     - .use-kernel+rootfs-arm
   needs:
+    - !reference [.lava-test, needs]
     - kernel+rootfs_arm32
     - debian/x86_64_build
     - debian-arm32
@@ -75,6 +78,7 @@ variables:
   dependencies:
     - debian-arm64
   needs:
+    - !reference [.lava-test, needs]
     - kernel+rootfs_arm64
     - debian/x86_64_build
     - debian-arm64
@@ -98,6 +102,7 @@ variables:
     - .lava-test
     - .use-kernel+rootfs-x86_64
   needs:
+    - !reference [.lava-test, needs]
     - kernel+rootfs_x86_64
     - debian-testing
 

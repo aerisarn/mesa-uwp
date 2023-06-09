@@ -135,6 +135,8 @@ a530-traces:
     PIGLIT_RESULTS: "freedreno-a530-replay"
 
 .a618-test:
+  extends:
+    .lava-test:arm64
   variables:
     FLAKES_CHANNEL: "#freedreno-ci"
     BOOT_METHOD: depthcharge
@@ -259,6 +261,9 @@ a618-traces-performance:
     # Always use the same device
     # a618 tag starts with cbg-1 (not cbg-0) for some reason
     LAVA_TAGS: "cbg-1"
+  needs:
+    - !reference [a618-traces, needs]
+    - !reference [.piglit-performance:arm64, needs]
 
 .lava-sm8350-hdk:
   variables:
