@@ -31,6 +31,7 @@
 #include "util/memstream.h"
 #include "util/mesa-sha1.h"
 #include "vulkan/vulkan_core.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h> /* for PRIx64 macro */
@@ -66,6 +67,14 @@ typedef struct {
     * (such as instr or var) to message to print.
     */
    struct hash_table *annotations;
+
+   /* Maximum length for SSA or Reg index in the current impl */
+   unsigned max_dest_index;
+
+   /* Padding for instructions without destination to make
+    * them align with the `=` for instructions with destination.
+    */
+   unsigned padding_for_no_dest;
 } print_state;
 
 static void
@@ -121,14 +130,43 @@ print_register_decl(nir_register *reg, print_state *state)
    fprintf(fp, "\n");
 }
 
+static unsigned
+count_digits(unsigned n)
+{
+   return n ? (unsigned)floor(log10(n)) + 1u : 1u;
+}
+
 static void
 print_ssa_def(nir_ssa_def *def, print_state *state)
 {
    FILE *fp = state->fp;
 
-   fprintf(fp, "%u%s%s  %s%%%u", def->bit_size, sizes[def->num_components],
+   const unsigned padding = state->max_dest_index ?
+      count_digits(state->max_dest_index) - count_digits(def->index) : 0;
+
+   fprintf(fp, "%u%s%s %s%*s%%%u", def->bit_size, sizes[def->num_components],
            def->bit_size <= 8 ? " " : "",
-           divergence_status(state, def->divergent), def->index);
+           divergence_status(state, def->divergent), padding, "", def->index);
+}
+
+static unsigned
+calculate_padding_for_no_dest(print_state *state)
+{
+   const unsigned div = state->shader->info.divergence_analysis_run ? 4 : 0;
+   const unsigned ssa_size = 5;
+   const unsigned percent = 1;
+   const unsigned ssa_index = count_digits(state->max_dest_index);
+   const unsigned equals = 1;
+   return ssa_size + 1 + div + percent + ssa_index + 1 + equals + 1;
+}
+
+static void
+print_no_dest_padding(print_state *state)
+{
+   FILE *fp = state->fp;
+
+   if (state->padding_for_no_dest)
+      fprintf(fp, "%*s", state->padding_for_no_dest, "");
 }
 
 static void
@@ -379,8 +417,14 @@ static void
 print_reg_dest(nir_register_dest *dest, print_state *state)
 {
    FILE *fp = state->fp;
-   fprintf(fp, "%s", divergence_status(state, dest->reg->divergent));
-   print_register(dest->reg, state);
+
+   /* TODO: Alignment currently ignore array registers. */
+   /* TODO: If there's no SSA, we could remove the prefix to align with SSA size. */
+   const unsigned padding = state->max_dest_index ?
+   count_digits(state->max_dest_index) - count_digits(dest->reg->index) : 0;
+   fprintf(fp, "      %s%*sr%u", divergence_status(state, dest->reg->divergent),
+           padding, "", dest->reg->index);
+
    if (dest->reg->num_array_elems != 0) {
       fprintf(fp, "[%u", dest->base_offset);
       if (dest->indirect != NULL) {
@@ -1069,6 +1113,8 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
    if (info->has_dest) {
       print_dest(&instr->dest, state);
       fprintf(fp, " = ");
+   } else {
+      print_no_dest_padding(state);
    }
 
    fprintf(fp, "@%s (", info->name);
@@ -1633,6 +1679,8 @@ print_call_instr(nir_call_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
 
+   print_no_dest_padding(state);
+
    fprintf(fp, "call %s ", instr->callee->name);
 
    for (unsigned i = 0; i < instr->num_params; i++) {
@@ -1647,6 +1695,8 @@ static void
 print_jump_instr(nir_jump_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
+
+   print_no_dest_padding(state);
 
    switch (instr->type) {
    case nir_jump_break:
@@ -1770,6 +1820,40 @@ print_instr(const nir_instr *instr, print_state *state, unsigned tabs)
    }
 }
 
+static bool
+block_has_instruction_with_dest(nir_block *block)
+{
+   nir_foreach_instr(instr, block) {
+      switch (instr->type) {
+      case nir_instr_type_load_const:
+      case nir_instr_type_deref:
+      case nir_instr_type_alu:
+      case nir_instr_type_tex:
+      case nir_instr_type_ssa_undef:
+      case nir_instr_type_phi:
+      case nir_instr_type_parallel_copy:
+         return true;
+
+      case nir_instr_type_intrinsic: {
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         const nir_intrinsic_info *info = &nir_intrinsic_infos[intrin->intrinsic];
+         if (info->has_dest)
+            return true;
+
+         /* Doesn't define a new value. */
+         break;
+      }
+
+      case nir_instr_type_jump:
+      case nir_instr_type_call:
+         /* Doesn't define a new value. */
+         break;
+      }
+   }
+
+   return false;
+}
+
 static void print_cf_node(nir_cf_node *node, print_state *state,
                           unsigned tabs);
 
@@ -1777,6 +1861,11 @@ static void
 print_block(nir_block *block, print_state *state, unsigned tabs)
 {
    FILE *fp = state->fp;
+
+   if (block_has_instruction_with_dest(block))
+      state->padding_for_no_dest = calculate_padding_for_no_dest(state);
+   else
+      state->padding_for_no_dest = 0;
 
    print_tabs(tabs, fp);
    fprintf(fp, "block b%u:\n", block->index);
@@ -1891,6 +1980,8 @@ print_function_impl(nir_function_impl *impl, print_state *state)
 {
    FILE *fp = state->fp;
 
+   state->max_dest_index = MAX2(impl->ssa_alloc, impl->reg_alloc);
+
    fprintf(fp, "\nimpl %s ", impl->function->name);
 
    fprintf(fp, "{\n");
@@ -1929,6 +2020,7 @@ print_function_impl(nir_function_impl *impl, print_state *state)
 
    free(state->float_types);
    free(state->int_types);
+   state->max_dest_index = 0;
 }
 
 static void
@@ -1958,6 +2050,8 @@ init_print_state(print_state *state, nir_shader *shader, FILE *fp)
    state->index = 0;
    state->int_types = NULL;
    state->float_types = NULL;
+   state->max_dest_index = 0;
+   state->padding_for_no_dest = 0;
 }
 
 static void
