@@ -36,6 +36,8 @@
 #include "etnaviv_query_acc.h"
 #include "etnaviv_screen.h"
 
+#define MAX_OQ_SAMPLES 511 /* 4KB / 8Bytes/sample */
+
 /*
  * Occlusion Query:
  *
@@ -73,8 +75,8 @@ occlusion_resume(struct etna_acc_query *aq, struct etna_context *ctx)
       .flags = ETNA_RELOC_WRITE
    };
 
-   if (aq->samples > 63) {
-      aq->samples = 63;
+   if (aq->samples > MAX_OQ_SAMPLES) {
+      aq->samples = MAX_OQ_SAMPLES;
       BUG("samples overflow");
    }
 
