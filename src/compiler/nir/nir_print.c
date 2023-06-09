@@ -1664,15 +1664,15 @@ print_jump_instr(nir_jump_instr *instr, print_state *state)
       break;
 
    case nir_jump_goto:
-      fprintf(fp, "goto block_%u",
+      fprintf(fp, "goto b%u",
               instr->target ? instr->target->index : -1);
       break;
 
    case nir_jump_goto_if:
-      fprintf(fp, "goto block_%u if ",
+      fprintf(fp, "goto b%u if ",
               instr->target ? instr->target->index : -1);
       print_src(&instr->condition, state, nir_type_invalid);
-      fprintf(fp, " else block_%u",
+      fprintf(fp, " else b%u",
               instr->else_target ? instr->else_target->index : -1);
       break;
    }
@@ -1696,7 +1696,7 @@ print_phi_instr(nir_phi_instr *instr, print_state *state)
       if (&src->node != exec_list_get_head(&instr->srcs))
          fprintf(fp, ", ");
 
-      fprintf(fp, "block_%u: ", src->pred->index);
+      fprintf(fp, "b%u: ", src->pred->index);
       print_src(&src->src, state, nir_type_invalid);
    }
 }
@@ -1777,14 +1777,14 @@ print_block(nir_block *block, print_state *state, unsigned tabs)
    FILE *fp = state->fp;
 
    print_tabs(tabs, fp);
-   fprintf(fp, "block block_%u:\n", block->index);
+   fprintf(fp, "block b%u:\n", block->index);
 
    nir_block **preds = nir_block_get_predecessors_sorted(block, NULL);
 
    print_tabs(tabs, fp);
    fprintf(fp, "/* preds: ");
    for (unsigned i = 0; i < block->predecessors->entries; i++) {
-      fprintf(fp, "block_%u ", preds[i]->index);
+      fprintf(fp, "b%u ", preds[i]->index);
    }
    fprintf(fp, "*/\n");
 
@@ -1800,7 +1800,7 @@ print_block(nir_block *block, print_state *state, unsigned tabs)
    fprintf(fp, "/* succs: ");
    for (unsigned i = 0; i < 2; i++)
       if (block->successors[i]) {
-         fprintf(fp, "block_%u ", block->successors[i]->index);
+         fprintf(fp, "b%u ", block->successors[i]->index);
       }
    fprintf(fp, "*/\n");
 }
@@ -1923,7 +1923,7 @@ print_function_impl(nir_function_impl *impl, print_state *state)
       print_cf_node(node, state, 1);
    }
 
-   fprintf(fp, "\tblock block_%u:\n}\n\n", impl->end_block->index);
+   fprintf(fp, "\tblock b%u:\n}\n\n", impl->end_block->index);
 
    free(state->float_types);
    free(state->int_types);
