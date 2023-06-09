@@ -889,6 +889,32 @@ backend_instruction::is_math() const
 }
 
 bool
+backend_instruction::is_control_flow_begin() const
+{
+   switch (opcode) {
+   case BRW_OPCODE_DO:
+   case BRW_OPCODE_IF:
+   case BRW_OPCODE_ELSE:
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
+backend_instruction::is_control_flow_end() const
+{
+   switch (opcode) {
+   case BRW_OPCODE_ELSE:
+   case BRW_OPCODE_WHILE:
+   case BRW_OPCODE_ENDIF:
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
 backend_instruction::is_control_flow() const
 {
    switch (opcode) {

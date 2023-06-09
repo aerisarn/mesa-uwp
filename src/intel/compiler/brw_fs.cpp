@@ -5698,11 +5698,20 @@ fs_visitor::dump_instructions_to_file(FILE *file) const
    if (cfg) {
       const register_pressure &rp = regpressure_analysis.require();
       unsigned ip = 0, max_pressure = 0;
+      unsigned cf_count = 0;
       foreach_block_and_inst(block, backend_instruction, inst, cfg) {
+         if (inst->is_control_flow_end())
+            cf_count -= 1;
+
          max_pressure = MAX2(max_pressure, rp.regs_live_at_ip[ip]);
          fprintf(file, "{%3d} %4d: ", rp.regs_live_at_ip[ip], ip);
+         for (unsigned i = 0; i < cf_count; i++)
+            fprintf(file, "  ");
          dump_instruction(inst, file);
          ip++;
+
+         if (inst->is_control_flow_begin())
+            cf_count += 1;
       }
       fprintf(file, "Maximum %3d registers live at once.\n", max_pressure);
    } else {
