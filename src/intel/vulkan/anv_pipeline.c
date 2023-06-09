@@ -4239,15 +4239,16 @@ VkResult anv_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.max_live_registers;
    }
 
-   if (gl_shader_stage_uses_workgroup(exe->stage)) {
-      vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
-         WRITE_STR(stat->name, "Workgroup Memory Size");
-         WRITE_STR(stat->description,
-                   "Number of bytes of workgroup shared memory used by this "
-                   "shader including any padding.");
-         stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
+      WRITE_STR(stat->name, "Workgroup Memory Size");
+      WRITE_STR(stat->description,
+                "Number of bytes of workgroup shared memory used by this "
+                "shader including any padding.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      if (gl_shader_stage_uses_workgroup(exe->stage))
          stat->value.u64 = prog_data->total_shared;
-      }
+      else
+         stat->value.u64 = 0;
    }
 
    return vk_outarray_status(&out);
