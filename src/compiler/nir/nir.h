@@ -2627,8 +2627,13 @@ nir_phi_get_src_from_block(nir_phi_instr *phi, struct nir_block *block)
 
 typedef struct {
    struct exec_node node;
+   bool src_is_reg;
+   bool dest_is_reg;
    nir_src src;
-   nir_dest dest;
+   union {
+      nir_dest dest;
+      nir_src reg;
+   } dest;
 } nir_parallel_copy_entry;
 
 #define nir_foreach_parallel_copy_entry(entry, pcopy) \

@@ -91,7 +91,7 @@ is_live(BITSET_WORD *defs_live, nir_instr *instr)
    case nir_instr_type_parallel_copy: {
       nir_parallel_copy_instr *pc = nir_instr_as_parallel_copy(instr);
       nir_foreach_parallel_copy_entry(entry, pc) {
-         if (is_dest_live(&entry->dest, defs_live))
+         if (entry->dest_is_reg || is_dest_live(&entry->dest.dest, defs_live))
             return true;
       }
       return false;

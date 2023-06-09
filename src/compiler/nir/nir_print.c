@@ -1764,8 +1764,16 @@ print_parallel_copy_instr(nir_parallel_copy_instr *instr, print_state *state)
       if (&entry->node != exec_list_get_head(&instr->entries))
          fprintf(fp, "; ");
 
-      print_dest(&entry->dest, state);
+      if (entry->dest_is_reg) {
+         fprintf(fp, "*");
+         print_src(&entry->dest.reg, state, nir_type_invalid);
+      } else {
+         print_dest(&entry->dest.dest, state);
+      }
       fprintf(fp, " = ");
+
+      if (entry->src_is_reg)
+         fprintf(fp, "*");
       print_src(&entry->src, state, nir_type_invalid);
    }
 }
