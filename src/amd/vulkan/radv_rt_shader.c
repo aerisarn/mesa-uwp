@@ -1732,6 +1732,8 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
                     nir_load_var(&b, vars.geometry_id_and_flags));
    ac_nir_store_arg(&b, &args->ac, args->ac.rt.hit_kind, nir_load_var(&b, vars.hit_kind));
 
+   nir_metadata_preserve(impl, nir_metadata_none);
+
    /* cleanup passes */
    NIR_PASS_V(shader, nir_lower_global_vars_to_local);
    NIR_PASS_V(shader, nir_lower_vars_to_ssa);
