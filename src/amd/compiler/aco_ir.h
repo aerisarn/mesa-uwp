@@ -2266,6 +2266,7 @@ unsigned emit_program(Program* program, std::vector<uint32_t>& code,
 bool check_print_asm_support(Program* program);
 bool print_asm(Program* program, std::vector<uint32_t>& binary, unsigned exec_size, FILE* output);
 bool validate_ir(Program* program);
+bool validate_cfg(Program* program);
 bool validate_ra(Program* program);
 #ifndef NDEBUG
 void perfwarn(Program* program, bool cond, const char* msg, Instruction* instr = NULL);

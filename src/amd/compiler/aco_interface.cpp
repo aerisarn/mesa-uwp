@@ -119,6 +119,9 @@ aco_postprocess_shader(const struct aco_compiler_options* options,
    if (options->dump_preoptir)
       aco_print_program(program.get(), stderr);
 
+   ASSERTED bool is_valid = aco::validate_cfg(program.get());
+   assert(is_valid);
+
    aco::live live_vars;
    if (!info->is_trap_handler_shader) {
       aco::dominator_tree(program.get());

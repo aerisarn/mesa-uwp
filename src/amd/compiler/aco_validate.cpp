@@ -102,15 +102,6 @@ validate_ir(Program* program)
       }
    };
 
-   auto check_block = [&program, &is_valid](bool success, const char* msg,
-                                            aco::Block* block) -> void
-   {
-      if (!success) {
-         aco_err(program, "%s: BB%u", msg, block->index);
-         is_valid = false;
-      }
-   };
-
    for (Block& block : program->blocks) {
       for (aco_ptr<Instruction>& instr : block.instructions) {
 
@@ -782,6 +773,25 @@ validate_ir(Program* program)
          }
       }
    }
+
+   return is_valid;
+}
+
+bool
+validate_cfg(Program* program)
+{
+   if (!(debug_flags & DEBUG_VALIDATE_IR))
+      return true;
+
+   bool is_valid = true;
+   auto check_block = [&program, &is_valid](bool success, const char* msg,
+                                            aco::Block* block) -> void
+   {
+      if (!success) {
+         aco_err(program, "%s: BB%u", msg, block->index);
+         is_valid = false;
+      }
+   };
 
    /* validate CFG */
    for (unsigned i = 0; i < program->blocks.size(); i++) {
