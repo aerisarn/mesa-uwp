@@ -55,6 +55,7 @@ $ADB push /deqp-runner/deqp-runner /data/.
 MESA_ANDROID_ARTIFACT_URL=https://${PIPELINE_ARTIFACTS_BASE}/${S3_ARTIFACT_NAME}.tar.zst
 curl -L --retry 4 -f --retry-all-errors --retry-delay 60 -o ${S3_ARTIFACT_NAME}.tar.zst ${MESA_ANDROID_ARTIFACT_URL}
 tar -xvf ${S3_ARTIFACT_NAME}.tar.zst
+rm "${S3_ARTIFACT_NAME}.tar.zst" &
 
 $ADB push install/all-skips.txt /data/.
 $ADB push install/$GPU_VERSION-flakes.txt /data/.
