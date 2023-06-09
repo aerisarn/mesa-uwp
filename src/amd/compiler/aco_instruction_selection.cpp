@@ -11623,7 +11623,6 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    for (unsigned i = 0; i < 3; i++)
       out_launch_ids[i] = get_arg_reg(out_args, out_args->rt.launch_id).advance(i * 4);
    PhysReg out_stack_ptr = get_arg_reg(out_args, out_args->rt.dynamic_callable_stack_base);
-   PhysReg out_shader_va = get_arg_reg(out_args, out_args->rt.next_shader);
    PhysReg out_record_ptr = get_arg_reg(out_args, out_args->rt.shader_record);
 
    /* Temporaries: */
@@ -11702,12 +11701,6 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    }
    bld.vop1(aco_opcode::v_mov_b32, Definition(out_record_ptr.advance(4), v1),
             Operand(tmp_raygen_sbt.advance(4), s1));
-
-   /* initialize shader_va with raygen shader */
-   // TODO: we can optimize this away if we don't guard the raygen shader with an IF
-   bld.vop1(aco_opcode::v_mov_b32, Definition(out_shader_va, v1), Operand(out_shader_pc, s1));
-   bld.vop1(aco_opcode::v_mov_b32, Definition(out_shader_va.advance(4), v1),
-            Operand(out_shader_pc.advance(4), s1));
 
    /* jump to raygen */
    bld.sop1(aco_opcode::s_setpc_b64, Operand(out_shader_pc, s2));
