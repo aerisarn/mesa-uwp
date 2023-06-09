@@ -64,7 +64,6 @@ realloc_query_bo(struct etna_context *ctx, struct etna_acc_query *aq)
 
    pipe_resource_reference(&aq->prsc, NULL);
 
-   /* allocate resource with space for 64 * 64bit values */
    aq->prsc = pipe_buffer_create(&ctx->screen->base, PIPE_BIND_QUERY_BUFFER,
                                  0, 0x1000);
 
