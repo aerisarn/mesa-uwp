@@ -40,7 +40,7 @@ static void
 print_indentation(unsigned levels, FILE *fp)
 {
    for (unsigned i = 0; i < levels; i++)
-      fprintf(fp, "\t");
+      fprintf(fp, "    ");
 }
 
 typedef struct {
