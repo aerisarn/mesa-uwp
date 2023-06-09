@@ -33,6 +33,8 @@
 #include "etnaviv_emit.h"
 #include "etnaviv_query_acc.h"
 
+#define MAX_PERFMON_SAMPLES 1022 /* (4KB / 4Byte/sample) - 1 reserved seqno */
+
 struct etna_pm_query
 {
    struct etna_acc_query base;
@@ -65,8 +67,8 @@ pm_query(struct etna_context *ctx, struct etna_acc_query *aq, unsigned flags)
    unsigned offset;
    assert(flags);
 
-   if (aq->samples > 127) {
-      aq->samples = 127;
+   if (aq->samples > MAX_PERFMON_SAMPLES) {
+      aq->samples = MAX_PERFMON_SAMPLES;
       BUG("samples overflow perfmon");
    }
 
