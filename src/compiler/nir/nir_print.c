@@ -1047,18 +1047,17 @@ print_deref_instr(nir_deref_instr *instr, print_state *state)
    }
    fprintf(fp, " %s)", glsl_get_type_name(instr->type));
 
-   if (instr->deref_type != nir_deref_type_var &&
-       instr->deref_type != nir_deref_type_cast) {
-      /* Print the entire chain as a comment */
-      fprintf(fp, " /* &");
-      print_deref_link(instr, true, state);
-      fprintf(fp, " */");
-   }
-
    if (instr->deref_type == nir_deref_type_cast) {
       fprintf(fp, "  (ptr_stride=%u, align_mul=%u, align_offset=%u)",
               instr->cast.ptr_stride,
               instr->cast.align_mul, instr->cast.align_offset);
+   }
+
+   if (instr->deref_type != nir_deref_type_var &&
+       instr->deref_type != nir_deref_type_cast) {
+      /* Print the entire chain as a comment */
+      fprintf(fp, "  // &");
+      print_deref_link(instr, true, state);
    }
 }
 
@@ -1476,7 +1475,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
             nir_intrinsic_component(instr) <
             (var->data.location_frac + glsl_get_components(var->type)))) &&
            var->name) {
-         fprintf(fp, "\t/* %s */", var->name);
+         fprintf(fp, "  // %s", var->name);
          break;
       }
    }
@@ -1873,11 +1872,11 @@ print_block(nir_block *block, print_state *state, unsigned tabs)
    nir_block **preds = nir_block_get_predecessors_sorted(block, NULL);
 
    print_indentation(tabs, fp);
-   fprintf(fp, "/* preds: ");
+   fprintf(fp, "// preds: ");
    for (unsigned i = 0; i < block->predecessors->entries; i++) {
       fprintf(fp, "b%u ", preds[i]->index);
    }
-   fprintf(fp, "*/\n");
+   fprintf(fp, "\n");
 
    ralloc_free(preds);
 
@@ -1888,12 +1887,12 @@ print_block(nir_block *block, print_state *state, unsigned tabs)
    }
 
    print_indentation(tabs, fp);
-   fprintf(fp, "/* succs: ");
+   fprintf(fp, "// succs: ");
    for (unsigned i = 0; i < 2; i++)
       if (block->successors[i]) {
          fprintf(fp, "b%u ", block->successors[i]->index);
       }
-   fprintf(fp, "*/\n");
+   fprintf(fp, "\n");
 }
 
 static void
@@ -1906,13 +1905,13 @@ print_if(nir_if *if_stmt, print_state *state, unsigned tabs)
    print_src(&if_stmt->condition, state, nir_type_invalid);
    switch (if_stmt->control) {
    case nir_selection_control_flatten:
-      fprintf(fp, " /* flatten */");
+      fprintf(fp, "  // flatten");
       break;
    case nir_selection_control_dont_flatten:
-      fprintf(fp, " /* don't flatten */");
+      fprintf(fp, "  // don't flatten");
       break;
    case nir_selection_control_divergent_always_taken:
-      fprintf(fp, " /* divergent always taken */");
+      fprintf(fp, "  // divergent always taken");
       break;
    case nir_selection_control_none:
    default:
