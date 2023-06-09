@@ -34,6 +34,8 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
+#include "ds/intel_tracepoints.h"
+
 /* We reserve :
  *    - GPR 14 for perf queries
  *    - GPR 15 for conditional rendering
@@ -786,6 +788,8 @@ void genX(CmdResetQueryPool)(
     */
    if (queryCount >= pdevice->instance->query_clear_with_blorp_threshold &&
        !intel_device_info_is_mtl(cmd_buffer->device->info)) {
+      trace_intel_begin_query_clear_blorp(&cmd_buffer->trace);
+
       anv_cmd_buffer_fill_area(cmd_buffer,
                                anv_query_address(pool, firstQuery),
                                queryCount * pool->stride,
@@ -794,8 +798,12 @@ void genX(CmdResetQueryPool)(
       anv_add_pending_pipe_bits(cmd_buffer,
                                 ANV_PIPE_QUERY_CLEARS_BIT,
                                 "vkCmdResetQueryPool of timestamps");
+
+      trace_intel_end_query_clear_blorp(&cmd_buffer->trace);
       return;
    }
+
+   trace_intel_begin_query_clear_cs(&cmd_buffer->trace);
 
    switch (pool->type) {
    case VK_QUERY_TYPE_OCCLUSION:
@@ -870,6 +878,8 @@ void genX(CmdResetQueryPool)(
    default:
       unreachable("Unsupported query type");
    }
+
+   trace_intel_end_query_clear_cs(&cmd_buffer->trace);
 }
 
 void genX(ResetQueryPool)(
@@ -1500,6 +1510,8 @@ void genX(CmdCopyQueryPoolResults)(
    ANV_FROM_HANDLE(anv_query_pool, pool, queryPool);
    ANV_FROM_HANDLE(anv_buffer, buffer, destBuffer);
 
+   trace_intel_begin_query_copy(&cmd_buffer->trace);
+
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
    struct mi_value result;
@@ -1630,6 +1642,8 @@ void genX(CmdCopyQueryPoolResults)(
 
       dest_addr = anv_address_add(dest_addr, destStride);
    }
+
+   trace_intel_end_query_copy(&cmd_buffer->trace);
 }
 
 #if GFX_VERx10 >= 125 && ANV_SUPPORT_RT

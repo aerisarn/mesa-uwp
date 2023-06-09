@@ -121,6 +121,13 @@ def define_tracepoints(args):
     # Indirect draw generation, only for Anv
     begin_end_tp('generate_draws')
 
+    # vkCmdResetQuery, only for Anv
+    begin_end_tp('query_clear_blorp')
+    begin_end_tp('query_clear_cs', end_pipelined=False)
+
+    # vkCmdCopyQueryResults, only for Anv
+    begin_end_tp('query_copy', end_pipelined=False)
+
     # Various draws/dispatch, Anv & Iris
     begin_end_tp('draw',
                  tp_args=[Arg(type='uint32_t', var='count', c_format='%u')])
