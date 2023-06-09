@@ -656,8 +656,8 @@ make_texture(struct st_context *st,
 
       /* map texture transfer */
       dest = pipe_texture_map(pipe, pt, 0, 0,
-                               PIPE_MAP_WRITE, 0, 0,
-                               width, height, &transfer);
+                              PIPE_MAP_WRITE | PIPE_MAP_DISCARD_WHOLE_RESOURCE,
+                              0, 0, width, height, &transfer);
       if (!dest) {
          pipe_resource_reference(&pt, NULL);
          _mesa_unmap_pbo_source(ctx, unpack);
