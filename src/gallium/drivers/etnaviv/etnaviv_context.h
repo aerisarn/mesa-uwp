@@ -220,4 +220,8 @@ void
 etna_context_add_flush_resource(struct etna_context *ctx,
                                 struct pipe_resource *rsc);
 
+void
+etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
+           enum pipe_flush_flags flags, bool internal);
+
 #endif

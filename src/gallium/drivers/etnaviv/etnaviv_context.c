@@ -506,7 +506,7 @@ etna_reset_gpu_state(struct etna_context *ctx)
    ctx->dirty_sampler_views = ~0L;
 }
 
-static void
+void
 etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
            enum pipe_flush_flags flags, bool internal)
 {

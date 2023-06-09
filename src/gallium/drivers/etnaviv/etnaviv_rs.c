@@ -822,7 +822,7 @@ manual:
    if (src->layout == ETNA_LAYOUT_TILED && dst->layout == ETNA_LAYOUT_TILED) {
       if ((etna_resource_status(ctx, src) & ETNA_PENDING_WRITE) ||
           (etna_resource_status(ctx, dst) & ETNA_PENDING_WRITE))
-         pctx->flush(pctx, NULL, 0);
+         etna_flush(pctx, NULL, 0, true);
       return etna_manual_blit(dst, dst_lev, dst_offset, src, src_lev, src_offset, blit_info);
    }
 
