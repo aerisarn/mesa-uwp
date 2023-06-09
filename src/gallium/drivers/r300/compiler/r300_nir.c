@@ -68,6 +68,8 @@ r300_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
 
       NIR_PASS(progress, s, nir_copy_prop);
       NIR_PASS(progress, s, nir_opt_algebraic);
+      if (s->info.stage == MESA_SHADER_VERTEX)
+         NIR_PASS(progress, s, r300_nir_fuse_fround_d3d9);
       NIR_PASS(progress, s, nir_opt_constant_folding);
       NIR_PASS(progress, s, nir_opt_remove_phis);
       NIR_PASS(progress, s, nir_opt_conditional_discard);

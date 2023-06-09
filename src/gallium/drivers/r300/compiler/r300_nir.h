@@ -32,4 +32,6 @@ extern bool r300_transform_vs_trig_input(struct nir_shader *shader);
 
 extern bool r300_transform_fs_trig_input(struct nir_shader *shader);
 
+extern bool r300_nir_fuse_fround_d3d9(struct nir_shader *shader);
+
 #endif /* R300_NIR_H */
