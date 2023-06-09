@@ -90,6 +90,7 @@ occlusion_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
    /* 0x1DF5E76 is the value used by blob - but any random value will work */
    etna_set_state(ctx->stream, VIVS_GL_OCCLUSION_QUERY_CONTROL, 0x1DF5E76);
    resource_written(ctx, aq->prsc);
+   aq->samples++;
 }
 
 static bool

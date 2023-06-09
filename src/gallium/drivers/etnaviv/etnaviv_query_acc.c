@@ -88,7 +88,6 @@ etna_acc_begin_query(struct etna_context *ctx, struct etna_query *q)
    realloc_query_bo(ctx, aq);
 
    p->resume(aq, ctx);
-   aq->samples++;
 
    /* add to active list */
    assert(list_is_empty(&aq->node));
@@ -102,7 +101,6 @@ etna_acc_end_query(struct etna_context *ctx, struct etna_query *q)
    const struct etna_acc_sample_provider *p = aq->provider;
 
    p->suspend(aq, ctx);
-   aq->samples++;
 
    /* remove from active list */
    list_delinit(&aq->node);

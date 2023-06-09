@@ -126,12 +126,14 @@ static void
 perfmon_resume(struct etna_acc_query *aq, struct etna_context *ctx)
 {
    pm_query(ctx, aq, ETNA_PM_PROCESS_PRE);
+   aq->samples++;
 }
 
 static void
 perfmon_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
 {
    pm_query(ctx, aq, ETNA_PM_PROCESS_POST);
+   aq->samples++;
 }
 
 static bool
