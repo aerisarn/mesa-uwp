@@ -12,6 +12,7 @@
 
 #include "venus-protocol/vn_protocol_driver_framebuffer.h"
 #include "venus-protocol/vn_protocol_driver_render_pass.h"
+#include "vk_format.h"
 
 #include "vn_device.h"
 #include "vn_image.h"
@@ -59,7 +60,7 @@
          for (uint32_t j = 0; j < subpass_desc->colorAttachmentCount; j++) { \
             if (subpass_desc->pColorAttachments[j].attachment !=             \
                 VK_ATTACHMENT_UNUSED) {                                      \
-               subpass->has_color_attachment = true;                         \
+               subpass->attachment_aspects |= VK_IMAGE_ASPECT_COLOR_BIT;     \
                break;                                                        \
             }                                                                \
          }                                                                   \
@@ -67,7 +68,10 @@
          if (subpass_desc->pDepthStencilAttachment &&                        \
              subpass_desc->pDepthStencilAttachment->attachment !=            \
                 VK_ATTACHMENT_UNUSED) {                                      \
-            subpass->has_depth_stencil_attachment = true;                    \
+            uint32_t att =                                                   \
+               subpass_desc->pDepthStencilAttachment->attachment;            \
+            subpass->attachment_aspects |=                                   \
+               vk_format_aspects(_pCreateInfo->pAttachments[att].format);    \
          }                                                                   \
       }                                                                      \
    } while (false)

@@ -583,7 +583,9 @@ vn_fix_graphics_pipeline_create_info(
       /* Ignore pDepthStencilState? */
       if (info->pDepthStencilState) {
          const bool has_static_attachment =
-            subpass && subpass->has_depth_stencil_attachment;
+            subpass &&
+            (subpass->attachment_aspects &
+             (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
 
          /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06043 */
          bool require_state =
@@ -610,7 +612,8 @@ vn_fix_graphics_pipeline_create_info(
       /* Ignore pColorBlendState? */
       if (info->pColorBlendState) {
          const bool has_static_attachment =
-            subpass && subpass->has_color_attachment;
+            subpass &&
+            (subpass->attachment_aspects & VK_IMAGE_ASPECT_COLOR_BIT);
 
          /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06044 */
          bool require_state =
