@@ -924,6 +924,15 @@ Rusticl environment variables
    -  ``RUSTICL_ENABLE=iris:1,radeonsi:0,2`` (enables second iris and first
       and third radeonsi device)
 
+   Supported drivers (decent support with maybe a few conformance issues or bugs):
+   ``iris``,
+   ``llvmpipe``,
+   ``nouveau``,
+   ``panfrost``,
+   ``radeonsi``,
+   Experimental drivers (unknown level of support, expect conformance issues or major bugs):
+   ``r600``
+
 .. envvar:: RUSTICL_FEATURES
 
    a comma-separated list of features to enable. Those are disabled by default
