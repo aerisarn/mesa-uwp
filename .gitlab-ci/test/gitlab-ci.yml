@@ -368,7 +368,7 @@ clang-format:
       # Submit the job to Valve's CI gateway service with the CI
       # provisioned job_folder.
       env PYTHONUNBUFFERED=1 executorctl \
-          run -w b2c.yml.jinja2 -j $(slugify "$CI_JOB_NAME") -s ${JOB_FOLDER}
+          run -w b2c.yml.jinja2 -j $(slugify "$CI_JOB_NAME") -s ${JOB_FOLDER} -i "$CI_RUNNER_DESCRIPTION"
 
       # Anything our job places in results/ will be collected by the
       # Gitlab coordinator for status presentation. results/junit.xml
