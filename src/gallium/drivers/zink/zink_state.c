@@ -545,8 +545,6 @@ zink_bind_depth_stencil_alpha_state(struct pipe_context *pctx, void *cso)
 {
    struct zink_context *ctx = zink_context(pctx);
 
-   bool prev_zsread = ctx->dsa_state ? ctx->dsa_state->hw_state.depth_test || ctx->dsa_state->hw_state.stencil_test : false;
-   bool prev_zswrite = ctx->dsa_state ? ctx->dsa_state->hw_state.depth_write || ctx->dsa_state->hw_state.stencil_test : false;
    zink_flush_dgc_if_enabled(ctx);
    ctx->dsa_state = cso;
 
@@ -558,12 +556,8 @@ zink_bind_depth_stencil_alpha_state(struct pipe_context *pctx, void *cso)
          ctx->dsa_state_changed = true;
       }
    }
-   if (!ctx->track_renderpasses && !ctx->blitting) {
-      bool zs_write = ctx->dsa_state ? ctx->dsa_state->hw_state.depth_write || ctx->dsa_state->hw_state.stencil_test : false;
-      bool zs_read = ctx->dsa_state ? ctx->dsa_state->hw_state.depth_test || ctx->dsa_state->hw_state.stencil_test : false;
-      if (prev_zswrite != zs_write || prev_zsread != zs_read)
-         zink_parse_tc_info(ctx);
-   }
+   if (!ctx->track_renderpasses && !ctx->blitting)
+      ctx->rp_tc_info_updated = true;
 }
 
 static void

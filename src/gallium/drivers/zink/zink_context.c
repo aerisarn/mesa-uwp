@@ -2804,6 +2804,10 @@ void
 zink_batch_rp(struct zink_context *ctx)
 {
    assert(!(ctx->batch.in_rp && ctx->rp_changed));
+   if (!ctx->track_renderpasses && !ctx->blitting) {
+      if (ctx->rp_tc_info_updated)
+         zink_parse_tc_info(ctx);
+   }
    if (ctx->batch.in_rp && !ctx->rp_layout_changed)
       return;
    bool in_rp = ctx->batch.in_rp;
