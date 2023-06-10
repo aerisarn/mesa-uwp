@@ -303,6 +303,36 @@ vk_image_buffer_copy_layout(const struct vk_image *image,
    };
 }
 
+struct vk_image_buffer_layout
+vk_memory_to_image_copy_layout(const struct vk_image *image,
+                               const VkMemoryToImageCopyEXT* region)
+{
+   const VkBufferImageCopy2 bic = {
+      .bufferOffset = 0,
+      .bufferRowLength = region->memoryRowLength,
+      .bufferImageHeight = region->memoryImageHeight,
+      .imageSubresource = region->imageSubresource,
+      .imageOffset = region->imageOffset,
+      .imageExtent = region->imageExtent,
+   };
+   return vk_image_buffer_copy_layout(image, &bic);
+}
+
+struct vk_image_buffer_layout
+vk_image_to_memory_copy_layout(const struct vk_image *image,
+                               const VkImageToMemoryCopyEXT* region)
+{
+   const VkBufferImageCopy2 bic = {
+      .bufferOffset = 0,
+      .bufferRowLength = region->memoryRowLength,
+      .bufferImageHeight = region->memoryImageHeight,
+      .imageSubresource = region->imageSubresource,
+      .imageOffset = region->imageOffset,
+      .imageExtent = region->imageExtent,
+   };
+   return vk_image_buffer_copy_layout(image, &bic);
+}
+
 static VkComponentSwizzle
 remap_swizzle(VkComponentSwizzle swizzle, VkComponentSwizzle component)
 {
