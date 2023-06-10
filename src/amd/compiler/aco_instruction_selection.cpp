@@ -11107,7 +11107,7 @@ select_program_rt(isel_context& ctx, unsigned shader_count, struct nir_shader* c
                                             : Operand(PhysReg{reg}, type);
          ret->operands[j] = op;
       }
-      bld.sop1(aco_opcode::s_setpc_b64, get_arg(&ctx, ctx.args->rt.shader_pc));
+      bld.sop1(aco_opcode::s_setpc_b64, get_arg(&ctx, ctx.args->rt.uniform_shader_addr));
 
       cleanup_context(&ctx);
    }
@@ -11610,7 +11610,7 @@ select_rt_prolog(Program* program, ac_shader_config* config,
     * Shader VA:                   v[4-5]
     * Shader Record Ptr:           v[6-7]
     */
-   PhysReg out_shader_pc = get_arg_reg(out_args, out_args->rt.shader_pc);
+   PhysReg out_uniform_shader_addr = get_arg_reg(out_args, out_args->rt.uniform_shader_addr);
    PhysReg out_launch_size_x = get_arg_reg(out_args, out_args->rt.launch_size);
    PhysReg out_launch_size_z = out_launch_size_x.advance(8);
    PhysReg out_launch_ids[3];
@@ -11625,7 +11625,7 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    PhysReg tmp_ring_offsets = PhysReg{num_sgprs - 2};
 
    /* Confirm some assumptions about register aliasing */
-   assert(in_ring_offsets == out_shader_pc);
+   assert(in_ring_offsets == out_uniform_shader_addr);
    assert(get_arg_reg(in_args, in_args->push_constants) ==
           get_arg_reg(out_args, out_args->push_constants));
    assert(get_arg_reg(in_args, in_args->rt.sbt_descriptors) ==
@@ -11652,8 +11652,8 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    bld.vop1(aco_opcode::v_mov_b32, Definition(out_stack_ptr, v1), Operand(in_stack_base, s1));
 
    /* load raygen address */
-   bld.smem(aco_opcode::s_load_dwordx2, Definition(out_shader_pc, s2), Operand(tmp_raygen_sbt, s2),
-            Operand::c32(0u));
+   bld.smem(aco_opcode::s_load_dwordx2, Definition(out_uniform_shader_addr, s2),
+            Operand(tmp_raygen_sbt, s2), Operand::c32(0u));
 
    /* load ray launch sizes */
    bld.smem(aco_opcode::s_load_dword, Definition(out_launch_size_z, s1),
@@ -11697,7 +11697,7 @@ select_rt_prolog(Program* program, ac_shader_config* config,
             Operand(tmp_raygen_sbt.advance(4), s1));
 
    /* jump to raygen */
-   bld.sop1(aco_opcode::s_setpc_b64, Operand(out_shader_pc, s2));
+   bld.sop1(aco_opcode::s_setpc_b64, Operand(out_uniform_shader_addr, s2));
 
    program->config->float_mode = program->blocks[0].fp_mode.val;
    program->config->num_vgprs = get_vgpr_alloc(program, num_vgprs);

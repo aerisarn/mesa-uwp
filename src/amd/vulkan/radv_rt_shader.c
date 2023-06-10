@@ -87,7 +87,7 @@ struct rt_variables {
     * the correct resume index upon returning.
     */
    nir_variable *idx;
-   nir_variable *shader_va;
+   nir_variable *shader_addr;
    nir_variable *traversal_addr;
 
    /* scratch offset of the argument area relative to stack_ptr */
@@ -130,7 +130,7 @@ create_rt_variables(nir_shader *shader, const VkPipelineCreateFlags2KHR flags)
       .flags = flags,
    };
    vars.idx = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "idx");
-   vars.shader_va = nir_variable_create(shader, nir_var_shader_temp, glsl_uint64_t_type(), "shader_va");
+   vars.shader_addr = nir_variable_create(shader, nir_var_shader_temp, glsl_uint64_t_type(), "shader_addr");
    vars.traversal_addr = nir_variable_create(shader, nir_var_shader_temp, glsl_uint64_t_type(), "traversal_addr");
    vars.arg = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "arg");
    vars.stack_ptr = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "stack_ptr");
@@ -167,7 +167,7 @@ static void
 map_rt_variables(struct hash_table *var_remap, struct rt_variables *src, const struct rt_variables *dst)
 {
    _mesa_hash_table_insert(var_remap, src->idx, dst->idx);
-   _mesa_hash_table_insert(var_remap, src->shader_va, dst->shader_va);
+   _mesa_hash_table_insert(var_remap, src->shader_addr, dst->shader_addr);
    _mesa_hash_table_insert(var_remap, src->traversal_addr, dst->traversal_addr);
    _mesa_hash_table_insert(var_remap, src->arg, dst->arg);
    _mesa_hash_table_insert(var_remap, src->stack_ptr, dst->stack_ptr);
@@ -221,7 +221,8 @@ static void
 insert_rt_return(nir_builder *b, const struct rt_variables *vars)
 {
    nir_store_var(b, vars->stack_ptr, nir_iadd_imm(b, nir_load_var(b, vars->stack_ptr), -16), 1);
-   nir_store_var(b, vars->shader_va, nir_load_scratch(b, 1, 64, nir_load_var(b, vars->stack_ptr), .align_mul = 16), 1);
+   nir_store_var(b, vars->shader_addr, nir_load_scratch(b, 1, 64, nir_load_var(b, vars->stack_ptr), .align_mul = 16),
+                 1);
 }
 
 enum sbt_type {
@@ -260,7 +261,7 @@ load_sbt_entry(nir_builder *b, const struct rt_variables *vars, nir_def *idx, en
    nir_def *load_addr = nir_iadd_imm(b, addr, offset);
 
    if (offset == SBT_RECURSIVE_PTR) {
-      nir_store_var(b, vars->shader_va, nir_build_load_global(b, 1, 64, load_addr), 1);
+      nir_store_var(b, vars->shader_addr, nir_build_load_global(b, 1, 64, load_addr), 1);
    } else {
       nir_store_var(b, vars->idx, nir_build_load_global(b, 1, 32, load_addr), 1);
    }
@@ -315,7 +316,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                nir_store_var(&b_shader, vars->stack_ptr,
                              nir_iadd_imm_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), 16), 1);
 
-               nir_store_var(&b_shader, vars->shader_va, nir_load_var(&b_shader, vars->traversal_addr), 1);
+               nir_store_var(&b_shader, vars->shader_addr, nir_load_var(&b_shader, vars->traversal_addr), 1);
                nir_store_var(&b_shader, vars->arg, nir_iadd_imm(&b_shader, intr->src[10].ssa, -size - 16), 1);
 
                vars->stack_size = MAX2(vars->stack_size, size + 16);
@@ -526,7 +527,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
 
                if (!(vars->flags & VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR)) {
                   should_return = nir_ior(&b_shader, should_return,
-                                          nir_ieq_imm(&b_shader, nir_load_var(&b_shader, vars->shader_va), 0));
+                                          nir_ieq_imm(&b_shader, nir_load_var(&b_shader, vars->shader_addr), 0));
                }
 
                /* should_return is set if we had a hit but we won't be calling the closest hit
@@ -548,7 +549,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
 
                if (!(vars->flags & VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR)) {
                   /* In case of a NULL miss shader, do nothing and just return. */
-                  nir_push_if(&b_shader, nir_ieq_imm(&b_shader, nir_load_var(&b_shader, vars->shader_va), 0));
+                  nir_push_if(&b_shader, nir_ieq_imm(&b_shader, nir_load_var(&b_shader, vars->shader_addr), 0));
                   insert_rt_return(&b_shader, vars);
                   nir_pop_if(&b_shader, NULL);
                }
@@ -1505,10 +1506,10 @@ radv_build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_
  * Callable     :  Callable  >  Chit / Miss  >             >  Raygen
  */
 static nir_def *
-select_next_shader(nir_builder *b, nir_def *shader_va, unsigned wave_size)
+select_next_shader(nir_builder *b, nir_def *shader_addr, unsigned wave_size)
 {
    gl_shader_stage stage = b->shader->info.stage;
-   nir_def *prio = nir_iand_imm(b, shader_va, radv_rt_priority_mask);
+   nir_def *prio = nir_iand_imm(b, shader_addr, radv_rt_priority_mask);
    nir_def *ballot = nir_ballot(b, 1, wave_size, nir_imm_bool(b, true));
    nir_def *ballot_traversal = nir_ballot(b, 1, wave_size, nir_ieq_imm(b, prio, radv_rt_priority_traversal));
    nir_def *ballot_hit_miss = nir_ballot(b, 1, wave_size, nir_ieq_imm(b, prio, radv_rt_priority_hit_miss));
@@ -1522,7 +1523,7 @@ select_next_shader(nir_builder *b, nir_def *shader_va, unsigned wave_size)
       ballot = nir_bcsel(b, nir_ine_imm(b, ballot_callable, 0), ballot_callable, ballot);
 
    nir_def *lsb = nir_find_lsb(b, ballot);
-   nir_def *next = nir_read_invocation(b, shader_va, lsb);
+   nir_def *next = nir_read_invocation(b, shader_addr, lsb);
    return nir_iand_imm(b, next, ~radv_rt_priority_mask);
 }
 
@@ -1554,9 +1555,11 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
 
    nir_def *traversal_addr = ac_nir_load_arg(&b, &args->ac, args->ac.rt.traversal_shader);
    nir_store_var(&b, vars.traversal_addr, nir_pack_64_2x32(&b, traversal_addr), 1);
-   nir_def *shader_va = ac_nir_load_arg(&b, &args->ac, args->ac.rt.next_shader);
-   shader_va = nir_pack_64_2x32(&b, shader_va);
-   nir_store_var(&b, vars.shader_va, shader_va, 1);
+
+   nir_def *shader_addr = ac_nir_load_arg(&b, &args->ac, args->ac.rt.shader_addr);
+   shader_addr = nir_pack_64_2x32(&b, shader_addr);
+   nir_store_var(&b, vars.shader_addr, shader_addr, 1);
+
    nir_store_var(&b, vars.stack_ptr, ac_nir_load_arg(&b, &args->ac, args->ac.rt.dynamic_callable_stack_base), 1);
    nir_def *record_ptr = ac_nir_load_arg(&b, &args->ac, args->ac.rt.shader_record);
    nir_store_var(&b, vars.shader_record_ptr, nir_pack_64_2x32(&b, record_ptr), 1);
@@ -1582,11 +1585,11 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
    /* guard the shader, so that only the correct invocations execute it */
    nir_if *shader_guard = NULL;
    if (shader->info.stage != MESA_SHADER_RAYGEN || resume_shader) {
-      nir_def *shader_pc = ac_nir_load_arg(&b, &args->ac, args->ac.rt.shader_pc);
-      shader_pc = nir_pack_64_2x32(&b, shader_pc);
-      shader_pc = nir_ior_imm(&b, shader_pc, radv_get_rt_priority(shader->info.stage));
+      nir_def *uniform_shader_addr = ac_nir_load_arg(&b, &args->ac, args->ac.rt.uniform_shader_addr);
+      uniform_shader_addr = nir_pack_64_2x32(&b, uniform_shader_addr);
+      uniform_shader_addr = nir_ior_imm(&b, uniform_shader_addr, radv_get_rt_priority(shader->info.stage));
 
-      shader_guard = nir_push_if(&b, nir_ieq(&b, shader_pc, shader_va));
+      shader_guard = nir_push_if(&b, nir_ieq(&b, uniform_shader_addr, shader_addr));
       shader_guard->control = nir_selection_control_divergent_always_taken;
    }
 
@@ -1597,13 +1600,14 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
 
    /* select next shader */
    b.cursor = nir_after_cf_list(&impl->body);
-   shader_va = nir_load_var(&b, vars.shader_va);
-   nir_def *next = select_next_shader(&b, shader_va, info->wave_size);
-   ac_nir_store_arg(&b, &args->ac, args->ac.rt.shader_pc, next);
+
+   shader_addr = nir_load_var(&b, vars.shader_addr);
+   nir_def *next = select_next_shader(&b, shader_addr, info->wave_size);
+   ac_nir_store_arg(&b, &args->ac, args->ac.rt.uniform_shader_addr, next);
 
    /* store back all variables to registers */
    ac_nir_store_arg(&b, &args->ac, args->ac.rt.dynamic_callable_stack_base, nir_load_var(&b, vars.stack_ptr));
-   ac_nir_store_arg(&b, &args->ac, args->ac.rt.next_shader, nir_load_var(&b, vars.shader_va));
+   ac_nir_store_arg(&b, &args->ac, args->ac.rt.shader_addr, shader_addr);
    ac_nir_store_arg(&b, &args->ac, args->ac.rt.shader_record, nir_load_var(&b, vars.shader_record_ptr));
    ac_nir_store_arg(&b, &args->ac, args->ac.rt.payload_offset, nir_load_var(&b, vars.arg));
    ac_nir_store_arg(&b, &args->ac, args->ac.rt.accel_struct, nir_load_var(&b, vars.accel_struct));
