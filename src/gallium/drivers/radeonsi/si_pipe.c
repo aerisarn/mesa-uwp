@@ -1149,6 +1149,9 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       sscreen->info.use_display_dcc_with_retile_blit = false;
    }
 
+   if (sscreen->debug_flags & DBG(SHADOW_REGS))
+      sscreen->info.register_shadowing_required = true;
+
    if (sscreen->debug_flags & DBG(NO_GFX))
       sscreen->info.has_graphics = false;
 
