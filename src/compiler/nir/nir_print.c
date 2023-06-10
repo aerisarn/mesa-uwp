@@ -234,7 +234,7 @@ print_ssa_use(nir_ssa_def *def, print_state *state)
    FILE *fp = state->fp;
    fprintf(fp, "ssa_%u", def->index);
    nir_instr *instr = def->parent_instr;
-   if (instr->type == nir_instr_type_load_const && NIR_DEBUG(PRINT_CONSTS)) {
+   if (instr->type == nir_instr_type_load_const && !NIR_DEBUG(PRINT_NO_INLINE_CONSTS)) {
       fprintf(fp, " ");
       print_const_from_load(nir_instr_as_load_const(instr), state, true);
    }
@@ -1780,7 +1780,7 @@ print_function_impl(nir_function_impl *impl, print_state *state)
       fprintf(fp, "\tpreamble %s\n", impl->preamble->name);
    }
 
-   if (NIR_DEBUG(PRINT_CONSTS)) {
+   if (!NIR_DEBUG(PRINT_NO_INLINE_CONSTS)) {
       /* Don't reindex the SSA as suggested by nir_gather_ssa_types() because
        * nir_print don't modify the shader.  If needed, a limit for ssa_alloc
        * can be added.
