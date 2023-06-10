@@ -1002,15 +1002,15 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    info->tcc_rb_non_coherent = !util_is_power_of_two_or_zero(info->num_tcc_blocks);
 
    if (info->drm_minor >= 52) {
-      info->sqc_inst_cache_size = device_info.sqc_inst_cache_size;
-      info->sqc_scalar_cache_size = device_info.sqc_data_cache_size;
+      info->sqc_inst_cache_size = device_info.sqc_inst_cache_size * 1024;
+      info->sqc_scalar_cache_size = device_info.sqc_data_cache_size * 1024;
       info->num_sqc_per_wgp = device_info.num_sqc_per_wgp;
    }
 
    if (info->gfx_level >= GFX11 && info->drm_minor >= 52) {
-      info->tcp_cache_size = device_info.tcp_cache_size;
-      info->l1_cache_size = device_info.gl1c_cache_size;
-      info->l2_cache_size = device_info.gl2c_cache_size;
+      info->tcp_cache_size = device_info.tcp_cache_size * 1024;
+      info->l1_cache_size = device_info.gl1c_cache_size * 1024;
+      info->l2_cache_size = device_info.gl2c_cache_size * 1024;
       info->l3_cache_size_mb = DIV_ROUND_UP(device_info.mall_size, 1024 * 1024);
    } else {
       if (info->gfx_level >= GFX11) {
