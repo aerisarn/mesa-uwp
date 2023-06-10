@@ -86,7 +86,7 @@ if [ "$HWCI_KVM" = "true" ]; then
     mkdir -p /lava-files
     curl -L --retry 4 -f --retry-all-errors --retry-delay 60 \
 	-o "/lava-files/${KERNEL_IMAGE_NAME}" \
-        "${KERNEL_IMAGE_BASE_URL}/${KERNEL_IMAGE_NAME}"
+        "${KERNEL_IMAGE_BASE}/amd64/${KERNEL_IMAGE_NAME}"
 fi
 
 # Fix prefix confusion: the build installs to $CI_PROJECT_DIR, but we expect
