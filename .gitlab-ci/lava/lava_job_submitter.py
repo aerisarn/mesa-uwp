@@ -370,6 +370,7 @@ class LAVAJobSubmitter(PathResolver):
     kernel_image_name: str = None
     kernel_image_type: str = ""
     kernel_url_prefix: str = None
+    kernel_external: str = None
     lava_tags: str = ""  # Comma-separated LAVA tags for the job
     mesa_job_name: str = "mesa_ci_job"
     pipeline_info: str = ""

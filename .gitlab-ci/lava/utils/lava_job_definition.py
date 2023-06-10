@@ -153,6 +153,13 @@ class LAVAJobDefinition:
                 f"{self.job_submitter.dtb_filename}.dtb"
             }
 
+    def attach_external_modules(self, deploy_field):
+        if self.job_submitter.kernel_external:
+            deploy_field["modules"] = {
+                "url": f"{self.job_submitter.kernel_url_prefix}/modules.tar.zst",
+                "compression": "zstd"
+            }
+
     def artifact_download_steps(self):
         """
         This function is responsible for setting up the SSH server in the DUT and to
