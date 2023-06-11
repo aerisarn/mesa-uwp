@@ -308,6 +308,9 @@ macro_rules! impl_cl_type_trait {
             }
 
             fn from_ptr(ptr: *const $t) -> Self {
+                if ptr.is_null() {
+                    return std::ptr::null_mut();
+                }
                 let offset = ::mesa_rust_util::offset_of!($t, base);
                 // SAFETY: The resulting pointer is safe as we simply offset into the ICD specified
                 //         base type.
