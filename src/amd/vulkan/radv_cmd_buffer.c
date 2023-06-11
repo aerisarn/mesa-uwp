@@ -5293,7 +5293,7 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, const struct radv_d
       disable_instance_packing = true;
    }
 
-   if ((draw_info->indexed && (state->index_type != state->last_index_type || cmd_buffer->device->uses_shadow_regs)) ||
+   if ((draw_info->indexed && state->index_type != state->last_index_type) ||
        (info->gfx_level == GFX10_3 &&
         (state->last_index_type == -1 ||
          disable_instance_packing != G_028A7C_DISABLE_INSTANCE_PACKING(state->last_index_type)))) {
