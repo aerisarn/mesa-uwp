@@ -30,41 +30,5 @@
 
 
 #include "util/compiler.h"
-#include "util/detect.h"
-#include "util/macros.h"
-
-#include <limits.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-#if !defined(__HAIKU__) && !defined(__USE_MISC)
-#if !DETECT_OS_ANDROID
-typedef unsigned int       uint;
-#endif
-typedef unsigned short     ushort;
-#endif
-typedef unsigned char      ubyte;
-
-typedef unsigned char boolean;
-#ifndef TRUE
-#define TRUE  true
-#endif
-#ifndef FALSE
-#define FALSE false
-#endif
-
-#if defined(__cplusplus)
-}
-#endif
-
 
 #endif /* P_COMPILER_H */
