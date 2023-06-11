@@ -507,6 +507,7 @@ etna_reset_gpu_state(struct etna_context *ctx)
 
    ctx->dirty = ~0L;
    ctx->dirty_sampler_views = ~0L;
+   ctx->prev_active_samplers = ~0L;
 }
 
 void
