@@ -76,11 +76,15 @@ void si_init_cp_reg_shadowing(struct si_context *sctx)
                                    RADEON_USAGE_READWRITE | RADEON_PRIO_DESCRIPTORS);
       si_pm4_emit(sctx, shadowing_preamble);
       ac_emulate_clear_state(&sctx->screen->info, &sctx->gfx_cs, si_set_context_reg_array);
-      si_pm4_emit(sctx, sctx->cs_preamble_state);
 
-      /* The register values are shadowed, so we won't need to set them again. */
-      si_pm4_free_state(sctx, sctx->cs_preamble_state, ~0);
-      sctx->cs_preamble_state = NULL;
+      /* TODO: Gfx11 fails GLCTS if we don't re-emit the preamble at the beginning of every IB. */
+      if (sctx->gfx_level < GFX11) {
+         si_pm4_emit(sctx, sctx->cs_preamble_state);
+
+         /* The register values are shadowed, so we won't need to set them again. */
+         si_pm4_free_state(sctx, sctx->cs_preamble_state, ~0);
+         sctx->cs_preamble_state = NULL;
+      }
 
       si_set_tracked_regs_to_clear_state(sctx);
 
