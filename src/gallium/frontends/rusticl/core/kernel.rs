@@ -331,7 +331,6 @@ impl KernelDevState {
     }
 }
 
-#[repr(C)]
 pub struct Kernel {
     pub base: CLObjectBase<CL_INVALID_KERNEL>,
     pub prog: Arc<Program>,

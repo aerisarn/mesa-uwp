@@ -33,7 +33,6 @@ struct EventMutState {
     work: Option<EventSig>,
 }
 
-#[repr(C)]
 pub struct Event {
     pub base: CLObjectBase<CL_INVALID_EVENT>,
     pub context: Arc<Context>,

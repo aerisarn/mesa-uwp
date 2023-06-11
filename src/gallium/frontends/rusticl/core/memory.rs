@@ -101,7 +101,6 @@ impl Mappings {
     }
 }
 
-#[repr(C)]
 pub struct Mem {
     pub base: CLObjectBase<CL_INVALID_MEM_OBJECT>,
     pub context: Arc<Context>,
@@ -1237,7 +1236,6 @@ impl Drop for Mem {
     }
 }
 
-#[repr(C)]
 pub struct Sampler {
     pub base: CLObjectBase<CL_INVALID_SAMPLER>,
     pub context: Arc<Context>,

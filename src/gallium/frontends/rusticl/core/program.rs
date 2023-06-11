@@ -55,7 +55,6 @@ pub enum ProgramSourceType {
     Il(spirv::SPIRVBin),
 }
 
-#[repr(C)]
 pub struct Program {
     pub base: CLObjectBase<CL_INVALID_PROGRAM>,
     pub context: Arc<Context>,

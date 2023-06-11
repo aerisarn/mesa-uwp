@@ -14,7 +14,6 @@ use std::sync::Mutex;
 use std::thread;
 use std::thread::JoinHandle;
 
-#[repr(C)]
 pub struct Queue {
     pub base: CLObjectBase<CL_INVALID_COMMAND_QUEUE>,
     pub context: Arc<Context>,
