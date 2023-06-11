@@ -3706,50 +3706,6 @@ void ac_emulate_clear_state(const struct radeon_info *info, struct radeon_cmdbuf
    }
 }
 
-/* Debug helper to find if any registers are missing in the tables above.
- * Call this in the driver whenever you set a register.
- */
-void ac_check_shadowed_regs(enum amd_gfx_level gfx_level, enum radeon_family family,
-                            unsigned reg_offset, unsigned count)
-{
-   bool found = false;
-   bool shadowed = false;
-
-   for (unsigned type = 0; type < SI_NUM_REG_RANGES && !found; type++) {
-      const struct ac_reg_range *ranges;
-      unsigned num_ranges;
-
-      ac_get_reg_ranges(gfx_level, family, type, &num_ranges, &ranges);
-
-      for (unsigned i = 0; i < num_ranges; i++) {
-         unsigned end_reg_offset = reg_offset + count * 4;
-         unsigned end_range_offset = ranges[i].offset + ranges[i].size;
-
-         /* Test if the ranges intersect. */
-         if (MAX2(ranges[i].offset, reg_offset) < MIN2(end_range_offset, end_reg_offset)) {
-            /* Assertion: A register can be listed only once. */
-            assert(!found);
-            found = true;
-            shadowed = true;
-         }
-      }
-   }
-
-   if (reg_offset == R_00B858_COMPUTE_DESTINATION_EN_SE0 ||
-       reg_offset == R_00B864_COMPUTE_DESTINATION_EN_SE2)
-      return;
-
-   if (!found || !shadowed) {
-      printf("register %s: ", !found ? "not found" : "not shadowed");
-      if (count > 1) {
-         printf("%s .. %s\n", ac_get_register_name(gfx_level, family, reg_offset),
-                ac_get_register_name(gfx_level, family, reg_offset + (count - 1) * 4));
-      } else {
-         printf("%s\n", ac_get_register_name(gfx_level, family, reg_offset));
-      }
-   }
-}
-
 /* Debug helper to print all shadowed registers and their current values read
  * by umr. This can be used to verify whether register shadowing doesn't affect
  * apps that don't enable it, because the shadowed register tables might contain

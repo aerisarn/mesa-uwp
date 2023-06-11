@@ -14,13 +14,6 @@
 #include "si_pipe.h"
 #include "sid.h"
 
-#if 0
-#include "ac_shadowed_regs.h"
-#define SI_CHECK_SHADOWED_REGS(reg_offset, count) ac_check_shadowed_regs(GFX10, CHIP_NAVI14, reg_offset, count)
-#else
-#define SI_CHECK_SHADOWED_REGS(reg_offset, count)
-#endif
-
 #define radeon_begin(cs) struct radeon_cmdbuf *__cs = (cs); \
                          unsigned __cs_num = __cs->current.cdw; \
                          UNUSED unsigned __cs_num_initial = __cs_num; \
@@ -64,7 +57,6 @@
 } while (0)
 
 #define radeon_set_config_reg_seq(reg, num) do { \
-   SI_CHECK_SHADOWED_REGS(reg, num); \
    assert((reg) < SI_CONTEXT_REG_OFFSET); \
    radeon_emit(PKT3(PKT3_SET_CONFIG_REG, num, 0)); \
    radeon_emit(((reg) - SI_CONFIG_REG_OFFSET) >> 2); \
@@ -76,7 +68,6 @@
 } while (0)
 
 #define radeon_set_context_reg_seq(reg, num) do { \
-   SI_CHECK_SHADOWED_REGS(reg, num); \
    assert((reg) >= SI_CONTEXT_REG_OFFSET); \
    radeon_emit(PKT3(PKT3_SET_CONTEXT_REG, num, 0)); \
    radeon_emit(((reg) - SI_CONTEXT_REG_OFFSET) >> 2); \
@@ -93,7 +84,6 @@
 } while (0)
 
 #define radeon_set_context_reg_idx(reg, idx, value) do { \
-   SI_CHECK_SHADOWED_REGS(reg, 1); \
    assert((reg) >= SI_CONTEXT_REG_OFFSET); \
    radeon_emit(PKT3(PKT3_SET_CONTEXT_REG, 1, 0)); \
    radeon_emit(((reg) - SI_CONTEXT_REG_OFFSET) >> 2 | ((idx) << 28)); \
@@ -101,14 +91,12 @@
 } while (0)
 
 #define radeon_set_sh_reg_seq(reg, num) do { \
-   SI_CHECK_SHADOWED_REGS(reg, num); \
    assert((reg) >= SI_SH_REG_OFFSET && (reg) < SI_SH_REG_END); \
    radeon_emit(PKT3(PKT3_SET_SH_REG, num, 0)); \
    radeon_emit(((reg) - SI_SH_REG_OFFSET) >> 2); \
 } while (0)
 
 #define radeon_set_sh_reg_idx3_seq(sctx, reg, num) do { \
-   SI_CHECK_SHADOWED_REGS(reg, num); \
    assert((reg) >= SI_SH_REG_OFFSET && (reg) < SI_SH_REG_END); \
    if ((sctx)->screen->info.uses_kernel_cu_mask) { \
       assert((sctx)->gfx_level >= GFX10); \
@@ -131,7 +119,6 @@
 } while (0)
 
 #define radeon_set_uconfig_reg_seq(reg, num, perfctr) do { \
-   SI_CHECK_SHADOWED_REGS(reg, num); \
    assert((reg) >= CIK_UCONFIG_REG_OFFSET && (reg) < CIK_UCONFIG_REG_END); \
    radeon_emit(PKT3(PKT3_SET_UCONFIG_REG, num, perfctr)); \
    radeon_emit(((reg) - CIK_UCONFIG_REG_OFFSET) >> 2); \
@@ -148,7 +135,6 @@
 } while (0)
 
 #define radeon_set_uconfig_reg_idx(screen, gfx_level, reg, idx, value) do { \
-   SI_CHECK_SHADOWED_REGS(reg, 1); \
    assert((reg) >= CIK_UCONFIG_REG_OFFSET && (reg) < CIK_UCONFIG_REG_END); \
    assert((idx) != 0); \
    unsigned __opcode = PKT3_SET_UCONFIG_REG_INDEX; \

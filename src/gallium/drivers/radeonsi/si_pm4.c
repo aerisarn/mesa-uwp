@@ -61,8 +61,6 @@ void si_pm4_set_reg(struct si_pm4_state *state, unsigned reg, uint32_t val)
 {
    unsigned opcode;
 
-   SI_CHECK_SHADOWED_REGS(reg, 1);
-
    if (reg >= SI_CONFIG_REG_OFFSET && reg < SI_CONFIG_REG_END) {
       opcode = PKT3_SET_CONFIG_REG;
       reg -= SI_CONFIG_REG_OFFSET;
@@ -90,8 +88,6 @@ void si_pm4_set_reg(struct si_pm4_state *state, unsigned reg, uint32_t val)
 void si_pm4_set_reg_idx3(struct si_screen *sscreen, struct si_pm4_state *state,
                          unsigned reg, uint32_t val)
 {
-   SI_CHECK_SHADOWED_REGS(reg, 1);
-
    if (sscreen->info.uses_kernel_cu_mask) {
       assert(sscreen->info.gfx_level >= GFX10);
       si_pm4_set_reg_custom(state, reg - SI_SH_REG_OFFSET, val, PKT3_SET_SH_REG_INDEX, 3);
