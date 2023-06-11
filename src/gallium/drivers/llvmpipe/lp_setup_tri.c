@@ -29,6 +29,21 @@
  * Binning code for triangles
  */
 
+#include "util/detect.h"
+
+#if DETECT_ARCH_SSE
+#include <emmintrin.h>
+#elif defined(_ARCH_PWR8) && UTIL_ARCH_LITTLE_ENDIAN
+#include <altivec.h>
+/*
+altivec.h inclusion in -std=c++98..11 causes bool to be redefined
+ https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58241
+*/
+#undef bool
+#endif
+
+#include <stdbool.h>
+
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_rect.h"
@@ -42,11 +57,7 @@
 
 #include <inttypes.h>
 
-
-#if DETECT_ARCH_SSE
-#include <emmintrin.h>
-#elif defined(_ARCH_PWR8) && UTIL_ARCH_LITTLE_ENDIAN
-#include <altivec.h>
+#if defined(_ARCH_PWR8) && UTIL_ARCH_LITTLE_ENDIAN
 #include "util/u_pwr8.h"
 #endif
 
