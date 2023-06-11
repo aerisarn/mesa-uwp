@@ -495,123 +495,6 @@ static const struct ac_reg_range Gfx10CsShShadowRange[] = {
    },
 };
 
-static const struct ac_reg_range Navi10NonShadowedRanges[] = {
-   /* These are not defined in Mesa. */
-   /*{
-      VGT_DMA_PRIMITIVE_TYPE,
-      VGT_DMA_LS_HS_CONFIG - VGT_DMA_PRIMITIVE_TYPE + 4,
-   },*/
-   /* VGT_INDEX_TYPE and VGT_DMA_INDEX_TYPE are a special case and neither of these should be
-      shadowed. */
-   {
-      R_028A7C_VGT_DMA_INDEX_TYPE,
-      4,
-   },
-   {
-      R_03090C_VGT_INDEX_TYPE,
-      R_03091C_VGT_STRMOUT_BUFFER_FILLED_SIZE_3 - R_03090C_VGT_INDEX_TYPE + 4,
-   },
-   {
-      R_028A88_VGT_DMA_NUM_INSTANCES,
-      4,
-   },
-   /* RSRC{3,4}_{VS,PS,HS,GS} are not shadowed because they are set by SET_SH_REG_INDEX. */
-   {
-      R_00B118_SPI_SHADER_PGM_RSRC3_VS,
-      4,
-   },
-   {
-      R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
-      4,
-   },
-   {
-      R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
-      4,
-   },
-   {
-      R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
-      4,
-   },
-   {
-      R_00B004_SPI_SHADER_PGM_RSRC4_PS,
-      4,
-   },
-   {
-      R_00B104_SPI_SHADER_PGM_RSRC4_VS,
-      4,
-   },
-   {
-      R_00B404_SPI_SHADER_PGM_RSRC4_HS,
-      4,
-   },
-   {
-      R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-      4,
-   },
-   {
-      R_00B858_COMPUTE_DESTINATION_EN_SE0,
-      R_00B85C_COMPUTE_DESTINATION_EN_SE1 - R_00B858_COMPUTE_DESTINATION_EN_SE0 + 4,
-   },
-   {
-      R_00B864_COMPUTE_DESTINATION_EN_SE2,
-      R_00B868_COMPUTE_DESTINATION_EN_SE3 - R_00B864_COMPUTE_DESTINATION_EN_SE2 + 4,
-   },
-   {
-      R_030800_GRBM_GFX_INDEX,
-      4,
-   },
-   {
-      R_030A00_PA_SU_LINE_STIPPLE_VALUE,
-      R_030A04_PA_SC_LINE_STIPPLE_STATE - R_030A00_PA_SU_LINE_STIPPLE_VALUE + 4,
-   },
-   {
-      R_031100_SPI_CONFIG_CNTL_REMAP,
-      4,
-   },
-   /* SQ thread trace registers are always not shadowed. */
-   {
-      R_008D00_SQ_THREAD_TRACE_BUF0_BASE,
-      R_008D38_SQ_THREAD_TRACE_HP3D_MARKER_CNTR - R_008D00_SQ_THREAD_TRACE_BUF0_BASE + 4,
-   },
-   {
-      R_030D00_SQ_THREAD_TRACE_USERDATA_0,
-      R_030D1C_SQ_THREAD_TRACE_USERDATA_7 - R_030D00_SQ_THREAD_TRACE_USERDATA_0 + 4,
-   },
-   /* Perf counter registers are always not shadowed. Most of them are in the perf
-    * register space but some legacy registers are still outside of it. The SPM
-    * registers are in the perf range as well.
-    */
-   {
-      SI_UCONFIG_PERF_REG_OFFSET,
-      SI_UCONFIG_PERF_REG_SPACE_SIZE,
-   },
-   /* These are not defined in Mesa. */
-   /*{
-      ATC_PERFCOUNTER0_CFG,
-      ATC_PERFCOUNTER_HI - ATC_PERFCOUNTER0_CFG + 4,
-   },
-   {
-      RPB_PERFCOUNTER_LO,
-      RPB_PERFCOUNTER_RSLT_CNTL - RPB_PERFCOUNTER_LO + 4,
-   },
-   {
-      SDMA0_PERFCOUNTER0_SELECT,
-      SDMA0_PERFCOUNTER1_HI - SDMA0_PERFCOUNTER0_SELECT + 4,
-   },
-   {
-      SDMA1_PERFCOUNTER0_SELECT,
-      SDMA1_PERFCOUNTER1_HI - SDMA1_PERFCOUNTER0_SELECT + 4,
-   },
-   {
-      GCEA_PERFCOUNTER_LO,
-      GCEA_PERFCOUNTER_RSLT_CNTL - GCEA_PERFCOUNTER_LO + 4,
-   },
-   {
-      GUS_PERFCOUNTER_LO,
-      GUS_PERFCOUNTER_RSLT_CNTL - GUS_PERFCOUNTER_LO + 4,
-   },*/
-};
-
 static const struct ac_reg_range Gfx103ContextShadowRange[] = {
    {
       R_028000_DB_RENDER_CONTROL,
@@ -716,107 +599,6 @@ static const struct ac_reg_range Gfx103UserConfigShadowRange[] = {
       R_030988_GE_USER_VGPR_EN,
       0x03098C - R_030988_GE_USER_VGPR_EN + 4,
    },
-};
-
-static const struct ac_reg_range Gfx103NonShadowedRanges[] = {
-   /* These are not defined in Mesa. */
-   /*{
-      VGT_DMA_PRIMITIVE_TYPE,
-      VGT_DMA_LS_HS_CONFIG - VGT_DMA_PRIMITIVE_TYPE + 4,
-   },*/
-   /* VGT_INDEX_TYPE and VGT_DMA_INDEX_TYPE are a special case and neither of these should be
-      shadowed. */
-   {
-      R_028A7C_VGT_DMA_INDEX_TYPE,
-      4,
-   },
-   {
-      R_03090C_VGT_INDEX_TYPE,
-      R_03091C_VGT_STRMOUT_BUFFER_FILLED_SIZE_3 - R_03090C_VGT_INDEX_TYPE + 4,
-   },
-   {
-      R_028A88_VGT_DMA_NUM_INSTANCES,
-      4,
-   },
-   /* RSRC{3,4}_{VS,PS,HS,GS} are not shadowed because they are set by SET_SH_REG_INDEX. */
-   {
-      R_00B118_SPI_SHADER_PGM_RSRC3_VS,
-      4,
-   },
-   {
-      R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
-      4,
-   },
-   {
-      R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
-      4,
-   },
-   {
-      R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
-      4,
-   },
-   {
-      R_00B004_SPI_SHADER_PGM_RSRC4_PS,
-      4,
-   },
-   {
-      R_00B104_SPI_SHADER_PGM_RSRC4_VS,
-      4,
-   },
-   {
-      R_00B404_SPI_SHADER_PGM_RSRC4_HS,
-      4,
-   },
-   {
-      R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-      4,
-   },
-   {
-      R_00B858_COMPUTE_DESTINATION_EN_SE0,
-      R_00B85C_COMPUTE_DESTINATION_EN_SE1 - R_00B858_COMPUTE_DESTINATION_EN_SE0 + 4,
-   },
-   {
-      R_00B864_COMPUTE_DESTINATION_EN_SE2,
-      R_00B868_COMPUTE_DESTINATION_EN_SE3 - R_00B864_COMPUTE_DESTINATION_EN_SE2 + 4,
-   },
-   {
-      R_030800_GRBM_GFX_INDEX,
-      4,
-   },
-   {
-      R_030A00_PA_SU_LINE_STIPPLE_VALUE,
-      R_030A04_PA_SC_LINE_STIPPLE_STATE - R_030A00_PA_SU_LINE_STIPPLE_VALUE + 4,
-   },
-   {
-      R_031100_SPI_CONFIG_CNTL_REMAP,
-      4,
-   },
-   /* SQ thread trace registers are always not shadowed. */
-   {
-      R_008D00_SQ_THREAD_TRACE_BUF0_BASE,
-      R_008D3C_SQ_THREAD_TRACE_STATUS2 - R_008D00_SQ_THREAD_TRACE_BUF0_BASE + 4,
-   },
-   {
-      R_030D00_SQ_THREAD_TRACE_USERDATA_0,
-      R_030D1C_SQ_THREAD_TRACE_USERDATA_7 - R_030D00_SQ_THREAD_TRACE_USERDATA_0 + 4,
-   },
-   /* Perf counter registers are always not shadowed. Most of them are in the perf
-    * register space but some legacy registers are still outside of it. The SPM
-    * registers are in the perf range as well.
-    */
-   {
-      SI_UCONFIG_PERF_REG_OFFSET,
-      SI_UCONFIG_PERF_REG_SPACE_SIZE,
-   },
-   /* These are not defined in Mesa. */
-   /*{
-      ATC_PERFCOUNTER0_CFG,
-      ATC_PERFCOUNTER_HI - ATC_PERFCOUNTER0_CFG + 4
-   },
-   {
-      RPB_PERFCOUNTER_LO,
-      RPB_PERFCOUNTER_RSLT_CNTL - RPB_PERFCOUNTER_LO + 4
-   },*/
 };
 
 static const struct ac_reg_range Gfx11ShShadowRange[] =
@@ -1130,107 +912,6 @@ static const struct ac_reg_range Gfx11UserConfigShadowRange[] =
    },
 };
 
-/* Defines the set of ranges of registers which cannot be shadowed for various reasons. */
-static const struct ac_reg_range Gfx11NonShadowedRanges[] =
-{
-
-   /* VGT_INDEX_TYPE and VGT_DMA_INDEX_TYPE are a special case and neither of these should
-    * be shadowed.
-    */
-   {
-      R_028A7C_VGT_DMA_INDEX_TYPE,
-      4,
-   },
-   {
-      R_03090C_VGT_INDEX_TYPE,
-      4,
-   },
-   {
-      R_028A88_VGT_DMA_NUM_INSTANCES,
-      4,
-   },
-   {
-      R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
-      4,
-   },
-   {
-      R_00B004_SPI_SHADER_PGM_RSRC4_PS,
-      4,
-   },
-   {
-      R_00B404_SPI_SHADER_PGM_RSRC4_HS,
-      4,
-   },
-   {
-      R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-      4,
-   },
-   {
-      R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0,
-      R_00B85C_COMPUTE_STATIC_THREAD_MGMT_SE1 - R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0 + 4,
-   },
-   {
-      R_00B864_COMPUTE_STATIC_THREAD_MGMT_SE2,
-      R_00B868_COMPUTE_STATIC_THREAD_MGMT_SE3 - R_00B864_COMPUTE_STATIC_THREAD_MGMT_SE2 + 4,
-   },
-   {
-      R_00B894_COMPUTE_STATIC_THREAD_MGMT_SE4,
-      R_00B8A0_COMPUTE_STATIC_THREAD_MGMT_SE7 - R_00B894_COMPUTE_STATIC_THREAD_MGMT_SE4 + 4,
-   },
-   {
-      R_030800_GRBM_GFX_INDEX,
-      4,
-   },
-   {
-      R_030A00_PA_SU_LINE_STIPPLE_VALUE,
-      R_030A04_PA_SC_LINE_STIPPLE_STATE - R_030A00_PA_SU_LINE_STIPPLE_VALUE + 4,
-   },
-   /* SQ thread trace registers are always not shadowed. */
-   {
-      R_0367A0_SQ_THREAD_TRACE_BUF0_BASE,
-      R_0367D4_SQ_THREAD_TRACE_STATUS2 - R_0367A0_SQ_THREAD_TRACE_BUF0_BASE + 4,
-   },
-   {
-      R_030D00_SQ_THREAD_TRACE_USERDATA_0,
-      R_030D1C_SQ_THREAD_TRACE_USERDATA_7 - R_030D00_SQ_THREAD_TRACE_USERDATA_0 + 4,
-   },
-   /* Perf counter registers are always not shadowed. Most of them are in the perf register
-    * space, but some legacy registers are still outside of it. The SPM registers are
-    * in the perf range as well.
-    */
-   {
-      SI_UCONFIG_PERF_REG_OFFSET,
-      SI_UCONFIG_PERF_REG_SPACE_SIZE,
-   },
-   /* These aren't defined in Mesa. */
-   /*{
-      RPB_PERFCOUNTER_LO,
-      RPB_PERFCOUNTER_RSLT_CNTL - RPB_PERFCOUNTER_LO + 4,
-   },*/
-   {
-      R_037890_SDMA0_PERFCOUNTER0_SELECT,
-      R_03789C_SDMA0_PERFCOUNTER1_SELECT1 - R_037890_SDMA0_PERFCOUNTER0_SELECT + 4,
-   },
-   {
-      R_0378C0_SDMA1_PERFCOUNTER0_SELECT,
-      R_0378CC_SDMA1_PERFCOUNTER1_SELECT1 - R_0378C0_SDMA1_PERFCOUNTER0_SELECT + 4,
-   },
-   {
-      R_0359B0_SDMA1_PERFCNT_PERFCOUNTER_LO,
-      R_0359C4_SDMA1_PERFCOUNTER1_HI - R_0359B0_SDMA1_PERFCNT_PERFCOUNTER_LO + 4,
-   },
-   {
-      R_035980_SDMA0_PERFCNT_PERFCOUNTER_LO,
-      R_035994_SDMA0_PERFCOUNTER1_HI - R_035980_SDMA0_PERFCNT_PERFCOUNTER_LO + 4,
-   },
-   {
-      R_031100_SPI_CONFIG_CNTL,
-      4,
-   },
-};
-
-/* TODO: Port Gfx11CpRs64InitShRanges and Gfx11CpRs64InitCsShRanges from PAL. */
-
 void ac_get_reg_ranges(enum amd_gfx_level gfx_level, enum radeon_family family,
                        enum ac_reg_range_type type, unsigned *num_ranges,
                        const struct ac_reg_range **ranges)
@@ -1284,16 +965,6 @@ void ac_get_reg_ranges(enum amd_gfx_level gfx_level, enum radeon_family family,
          RETURN(Gfx9CsShShadowRangeRaven2);
       else if (gfx_level == GFX9)
          RETURN(Gfx9CsShShadowRange);
-      break;
-   case SI_REG_RANGE_NON_SHADOWED:
-      if (gfx_level == GFX11)
-         RETURN(Gfx11NonShadowedRanges);
-      else if (gfx_level == GFX10_3)
-         RETURN(Gfx103NonShadowedRanges);
-      else if (gfx_level == GFX10)
-         RETURN(Navi10NonShadowedRanges);
-      else
-         assert(0);
       break;
    default:
       break;
@@ -4044,7 +3715,7 @@ void ac_check_shadowed_regs(enum amd_gfx_level gfx_level, enum radeon_family fam
    bool found = false;
    bool shadowed = false;
 
-   for (unsigned type = 0; type < SI_NUM_ALL_REG_RANGES && !found; type++) {
+   for (unsigned type = 0; type < SI_NUM_REG_RANGES && !found; type++) {
       const struct ac_reg_range *ranges;
       unsigned num_ranges;
 
@@ -4059,7 +3730,7 @@ void ac_check_shadowed_regs(enum amd_gfx_level gfx_level, enum radeon_family fam
             /* Assertion: A register can be listed only once. */
             assert(!found);
             found = true;
-            shadowed = type != SI_REG_RANGE_NON_SHADOWED;
+            shadowed = true;
          }
       }
    }
@@ -4089,7 +3760,7 @@ void ac_print_shadowed_regs(const struct radeon_info *info)
    if (!debug_get_bool_option("AMD_PRINT_SHADOW_REGS", false))
       return;
 
-   for (unsigned type = 0; type < SI_NUM_SHADOWED_REG_RANGES; type++) {
+   for (unsigned type = 0; type < SI_NUM_REG_RANGES; type++) {
       const struct ac_reg_range *ranges;
       unsigned num_ranges;
 
@@ -4271,7 +3942,7 @@ void ac_create_shadowing_ib_preamble(const struct radeon_info *info,
                CC1_SHADOW_GLOBAL_CONFIG(1));
 
    if (!info->has_fw_based_shadowing) {
-      for (unsigned i = 0; i < SI_NUM_SHADOWED_REG_RANGES; i++)
+      for (unsigned i = 0; i < SI_NUM_REG_RANGES; i++)
          ac_build_load_reg(info, pm4_cmd_add, pm4_cmdbuf, i, gpu_address);
    }
 }
