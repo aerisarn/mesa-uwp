@@ -39,7 +39,7 @@ void ac_get_reg_ranges(enum amd_gfx_level gfx_level, enum radeon_family family,
                        const struct ac_reg_range **ranges);
 void ac_emulate_clear_state(const struct radeon_info *info, struct radeon_cmdbuf *cs,
                             set_context_reg_seq_array_fn set_context_reg_seq_array);
-void ac_print_shadowed_regs(const struct radeon_info *info);
+void ac_print_nonshadowed_regs(enum amd_gfx_level gfx_level, enum radeon_family family);
 
 void ac_create_shadowing_ib_preamble(const struct radeon_info *info,
                                      pm4_cmd_add_fn pm4_cmd_add, void *pm4_cmdbuf,

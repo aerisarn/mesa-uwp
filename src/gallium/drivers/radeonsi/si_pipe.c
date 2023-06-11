@@ -1448,7 +1448,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
                                     RADEON_DOMAIN_OA);
    }
 
-   ac_print_shadowed_regs(&sscreen->info);
+   ac_print_nonshadowed_regs(sscreen->info.gfx_level, sscreen->info.family);
 
    return &sscreen->b;
 }

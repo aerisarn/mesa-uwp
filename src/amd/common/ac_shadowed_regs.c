@@ -3706,44 +3706,53 @@ void ac_emulate_clear_state(const struct radeon_info *info, struct radeon_cmdbuf
    }
 }
 
-/* Debug helper to print all shadowed registers and their current values read
- * by umr. This can be used to verify whether register shadowing doesn't affect
- * apps that don't enable it, because the shadowed register tables might contain
- * registers that the driver doesn't set.
- */
-void ac_print_shadowed_regs(const struct radeon_info *info)
+static void ac_print_nonshadowed_reg(enum amd_gfx_level gfx_level, enum radeon_family family,
+                                     unsigned reg_offset)
+{
+   bool found = false;
+
+   for (unsigned type = 0; type < SI_NUM_REG_RANGES && !found; type++) {
+      const struct ac_reg_range *ranges;
+      unsigned num_ranges;
+
+      ac_get_reg_ranges(gfx_level, family, type, &num_ranges, &ranges);
+
+      for (unsigned i = 0; i < num_ranges; i++) {
+         if (reg_offset >= ranges[i].offset && reg_offset < ranges[i].offset + ranges[i].size) {
+            /* Assertion: A register can be listed only once in the shadowed tables. */
+            if (found) {
+               printf("warning: register R_%06X_%s found multiple times in tables\n",
+                      reg_offset, ac_get_register_name(gfx_level, family, reg_offset));
+            }
+            found = true;
+         }
+      }
+   }
+
+   if (!found) {
+      printf("register R_%06X_%s not found in any tables\n", reg_offset,
+             ac_get_register_name(gfx_level, family, reg_offset));
+   }
+}
+
+void ac_print_nonshadowed_regs(enum amd_gfx_level gfx_level, enum radeon_family family)
 {
    if (!debug_get_bool_option("AMD_PRINT_SHADOW_REGS", false))
       return;
 
-   for (unsigned type = 0; type < SI_NUM_REG_RANGES; type++) {
-      const struct ac_reg_range *ranges;
-      unsigned num_ranges;
+   for (unsigned i = 0xB000; i < 0xBFFF; i += 4) {
+      if (ac_register_exists(gfx_level, family, i))
+         ac_print_nonshadowed_reg(gfx_level, family, i);
+   }
 
-      ac_get_reg_ranges(info->gfx_level, info->family, type, &num_ranges, &ranges);
+   for (unsigned i = 0x28000; i < 0x28FFF; i += 4) {
+      if (ac_register_exists(gfx_level, family, i))
+         ac_print_nonshadowed_reg(gfx_level, family, i);
+   }
 
-      for (unsigned i = 0; i < num_ranges; i++) {
-         for (unsigned j = 0; j < ranges[i].size / 4; j++) {
-            unsigned offset = ranges[i].offset + j * 4;
-
-            const char *name = ac_get_register_name(info->gfx_level, info->family, offset);
-            unsigned value = -1;
-
-#ifndef _WIN32
-            char cmd[1024];
-            snprintf(cmd, sizeof(cmd), "umr -r 0x%x", offset);
-            FILE *p = popen(cmd, "r");
-            if (p) {
-               ASSERTED int r = fscanf(p, "%x", &value);
-               assert(r == 1);
-               pclose(p);
-            }
-#endif
-
-            printf("0x%X %s = 0x%X\n", offset, name, value);
-         }
-         printf("--------------------------------------------\n");
-      }
+   for (unsigned i = 0x30000; i < 0x31FFF; i += 4) {
+      if (ac_register_exists(gfx_level, family, i))
+         ac_print_nonshadowed_reg(gfx_level, family, i);
    }
 }
 
