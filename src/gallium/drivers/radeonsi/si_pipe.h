@@ -1034,6 +1034,8 @@ struct si_context {
    /* Gfx11+: Buffered SH registers for SET_SH_REG_PAIRS_PACKED*. */
    unsigned num_buffered_gfx_sh_regs;
    struct si_sh_reg_pair buffered_gfx_sh_regs[32];
+   unsigned num_buffered_compute_sh_regs;
+   struct si_sh_reg_pair buffered_compute_sh_regs[32];
 
    /* Atom declarations. */
    struct si_framebuffer framebuffer;

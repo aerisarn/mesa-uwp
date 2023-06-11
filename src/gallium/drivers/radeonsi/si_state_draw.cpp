@@ -1517,6 +1517,16 @@ gfx11_emit_buffered_sh_regs_inline(struct si_context *sctx, unsigned *num_regs,
    radeon_end();
 }
 
+#if GFX_VER == 6 /* declare this function only once because there is only one variant. */
+
+void gfx11_emit_buffered_compute_sh_regs(struct si_context *sctx)
+{
+   gfx11_emit_buffered_sh_regs_inline(sctx, &sctx->num_buffered_compute_sh_regs,
+                                      sctx->buffered_compute_sh_regs);
+}
+
+#endif
+
 #define EMIT_SQTT_END_DRAW                                                     \
   do {                                                                         \
     if (GFX_VERSION >= GFX9 && unlikely(sctx->sqtt_enabled)) {                 \

@@ -499,24 +499,24 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
                              RADEON_USAGE_READ | RADEON_PRIO_SHADER_BINARY);
 
    if (sctx->gfx_level >= GFX11) {
-      radeon_begin(cs);
-      radeon_set_sh_reg(R_00B830_COMPUTE_PGM_LO, shader_va >> 8);
-      radeon_opt_set_sh_reg2(sctx, R_00B848_COMPUTE_PGM_RSRC1,
-                             SI_TRACKED_COMPUTE_PGM_RSRC1,
-                             config->rsrc1, rsrc2);
-      radeon_opt_set_sh_reg(sctx, R_00B8A0_COMPUTE_PGM_RSRC3,
-                            SI_TRACKED_COMPUTE_PGM_RSRC3,
-                            S_00B8A0_INST_PREF_SIZE(si_get_shader_prefetch_size(shader)));
-      radeon_opt_set_sh_reg(sctx, R_00B860_COMPUTE_TMPRING_SIZE,
-                            SI_TRACKED_COMPUTE_TMPRING_SIZE, tmpring_size);
-
+      radeon_push_compute_sh_reg(R_00B830_COMPUTE_PGM_LO, shader_va >> 8);
+      radeon_opt_push_compute_sh_reg(R_00B848_COMPUTE_PGM_RSRC1,
+                                     SI_TRACKED_COMPUTE_PGM_RSRC1, config->rsrc1);
+      radeon_opt_push_compute_sh_reg(R_00B84C_COMPUTE_PGM_RSRC2,
+                                     SI_TRACKED_COMPUTE_PGM_RSRC2, rsrc2);
+      radeon_opt_push_compute_sh_reg(R_00B8A0_COMPUTE_PGM_RSRC3,
+                                     SI_TRACKED_COMPUTE_PGM_RSRC3,
+                                     S_00B8A0_INST_PREF_SIZE(si_get_shader_prefetch_size(shader)));
+      radeon_opt_push_compute_sh_reg(R_00B860_COMPUTE_TMPRING_SIZE,
+                                     SI_TRACKED_COMPUTE_TMPRING_SIZE, tmpring_size);
       if (shader->scratch_bo) {
-         radeon_opt_set_sh_reg2(sctx, R_00B840_COMPUTE_DISPATCH_SCRATCH_BASE_LO,
-                                SI_TRACKED_COMPUTE_DISPATCH_SCRATCH_BASE_LO,
-                                sctx->compute_scratch_buffer->gpu_address >> 8,
-                                sctx->compute_scratch_buffer->gpu_address >> 40);
+         radeon_opt_push_compute_sh_reg(R_00B840_COMPUTE_DISPATCH_SCRATCH_BASE_LO,
+                                        SI_TRACKED_COMPUTE_DISPATCH_SCRATCH_BASE_LO,
+                                        sctx->compute_scratch_buffer->gpu_address >> 8);
+         radeon_opt_push_compute_sh_reg(R_00B844_COMPUTE_DISPATCH_SCRATCH_BASE_HI,
+                                        SI_TRACKED_COMPUTE_DISPATCH_SCRATCH_BASE_HI,
+                                        sctx->compute_scratch_buffer->gpu_address >> 40);
       }
-      radeon_end();
    } else {
       radeon_begin(cs);
       radeon_set_sh_reg(R_00B830_COMPUTE_PGM_LO, shader_va >> 8);
@@ -730,24 +730,39 @@ static void si_setup_nir_user_data(struct si_context *sctx, const struct pipe_gr
          }
          radeon_begin_again(cs);
       } else {
-         radeon_set_sh_reg_seq(grid_size_reg, 3);
-         radeon_emit(info->grid[0]);
-         radeon_emit(info->grid[1]);
-         radeon_emit(info->grid[2]);
+         if (sctx->gfx_level >= GFX11) {
+            radeon_push_compute_sh_reg(grid_size_reg, info->grid[0]);
+            radeon_push_compute_sh_reg(grid_size_reg + 4, info->grid[1]);
+            radeon_push_compute_sh_reg(grid_size_reg + 8, info->grid[2]);
+         } else {
+            radeon_set_sh_reg_seq(grid_size_reg, 3);
+            radeon_emit(info->grid[0]);
+            radeon_emit(info->grid[1]);
+            radeon_emit(info->grid[2]);
+         }
       }
    }
 
    if (sel->info.uses_variable_block_size) {
       uint32_t value = info->block[0] | (info->block[1] << 10) | (info->block[2] << 20);
 
-      radeon_set_sh_reg(block_size_reg, value);
+      if (sctx->gfx_level >= GFX11) {
+         radeon_push_compute_sh_reg(block_size_reg, value);
+      } else {
+         radeon_set_sh_reg(block_size_reg, value);
+      }
    }
 
    if (sel->info.base.cs.user_data_components_amd) {
       unsigned num = sel->info.base.cs.user_data_components_amd;
 
-      radeon_set_sh_reg_seq(cs_user_data_reg, num);
-      radeon_emit_array(sctx->cs_user_data, num);
+      if (sctx->gfx_level >= GFX11) {
+         for (unsigned i = 0; i < num; i++)
+            radeon_push_compute_sh_reg(cs_user_data_reg + i * 4, sctx->cs_user_data[i]);
+      } else {
+         radeon_set_sh_reg_seq(cs_user_data_reg, num);
+         radeon_emit_array(sctx->cs_user_data, num);
+      }
    }
    radeon_end();
 }
@@ -777,9 +792,15 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
                                      sctx->cs_max_waves_per_sh,
                                      threadgroups_per_cu);
 
-   radeon_opt_set_sh_reg(sctx, R_00B854_COMPUTE_RESOURCE_LIMITS,
-                         SI_TRACKED_COMPUTE_RESOURCE_LIMITS,
-                         compute_resource_limits);
+   if (sctx->gfx_level >= GFX11) {
+      radeon_opt_push_compute_sh_reg(R_00B854_COMPUTE_RESOURCE_LIMITS,
+                                     SI_TRACKED_COMPUTE_RESOURCE_LIMITS,
+                                     compute_resource_limits);
+   } else {
+      radeon_opt_set_sh_reg(sctx, R_00B854_COMPUTE_RESOURCE_LIMITS,
+                            SI_TRACKED_COMPUTE_RESOURCE_LIMITS,
+                            compute_resource_limits);
+   }
 
    unsigned dispatch_initiator = S_00B800_COMPUTE_SHADER_EN(1) | S_00B800_FORCE_START_AT_000(1) |
                                  /* If the KMD allows it (there is a KMD hw register for it),
@@ -816,9 +837,24 @@ static void si_emit_dispatch_packets(struct si_context *sctx, const struct pipe_
       num_threads[2] = S_00B824_NUM_THREAD_FULL(info->block[2]);
    }
 
-   radeon_opt_set_sh_reg3(sctx, R_00B81C_COMPUTE_NUM_THREAD_X,
-                          SI_TRACKED_COMPUTE_NUM_THREAD_X,
-                          num_threads[0], num_threads[1], num_threads[2]);
+   if (sctx->gfx_level >= GFX11) {
+      radeon_opt_push_compute_sh_reg(R_00B81C_COMPUTE_NUM_THREAD_X,
+                                     SI_TRACKED_COMPUTE_NUM_THREAD_X, num_threads[0]);
+      radeon_opt_push_compute_sh_reg(R_00B820_COMPUTE_NUM_THREAD_Y,
+                                     SI_TRACKED_COMPUTE_NUM_THREAD_Y, num_threads[1]);
+      radeon_opt_push_compute_sh_reg(R_00B824_COMPUTE_NUM_THREAD_Z,
+                                     SI_TRACKED_COMPUTE_NUM_THREAD_Z, num_threads[2]);
+   } else {
+      radeon_opt_set_sh_reg3(sctx, R_00B81C_COMPUTE_NUM_THREAD_X,
+                             SI_TRACKED_COMPUTE_NUM_THREAD_X,
+                             num_threads[0], num_threads[1], num_threads[2]);
+   }
+
+   if (sctx->gfx_level >= GFX11) {
+      radeon_end();
+      gfx11_emit_buffered_compute_sh_regs(sctx);
+      radeon_begin_again(cs);
+   }
 
    if (info->indirect) {
       uint64_t base_va = si_resource(info->indirect)->gpu_address;
