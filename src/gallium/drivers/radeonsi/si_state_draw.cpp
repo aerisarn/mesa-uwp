@@ -1630,9 +1630,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
          radeon_emit(di_src_sel);
       }
    } else {
-      /* Register shadowing requires that we always emit PKT3_NUM_INSTANCES. */
-      if (sctx->shadowing.registers ||
-          sctx->last_instance_count == SI_INSTANCE_COUNT_UNKNOWN ||
+      if (sctx->last_instance_count == SI_INSTANCE_COUNT_UNKNOWN ||
           sctx->last_instance_count != instance_count) {
          radeon_emit(PKT3(PKT3_NUM_INSTANCES, 0, 0));
          radeon_emit(instance_count);
