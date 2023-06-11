@@ -5557,7 +5557,7 @@ unsigned gfx103_get_cu_mask_ps(struct si_screen *sscreen)
    return u_bit_consecutive(0, sscreen->info.min_good_cu_per_sa);
 }
 
-static void gfx6_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
+static void gfx6_init_gfx_preamble_state(struct si_context *sctx)
 {
    struct si_screen *sscreen = sctx->screen;
    uint64_t border_color_va =
@@ -5571,7 +5571,7 @@ static void gfx6_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_
    if (!pm4)
       return;
 
-   if (sctx->has_graphics && !uses_reg_shadowing) {
+   if (sctx->has_graphics && !sctx->shadowing.registers) {
       si_pm4_cmd_add(pm4, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
       si_pm4_cmd_add(pm4, CC0_UPDATE_LOAD_ENABLES(1));
       si_pm4_cmd_add(pm4, CC1_UPDATE_SHADOW_ENABLES(1));
@@ -5832,7 +5832,7 @@ static void cdna_init_compute_preamble_state(struct si_context *sctx)
    sctx->cs_preamble_state_tmz = si_pm4_clone(pm4); /* Make a copy of the preamble for TMZ. */
 }
 
-static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
+static void gfx10_init_gfx_preamble_state(struct si_context *sctx)
 {
    struct si_screen *sscreen = sctx->screen;
    uint64_t border_color_va =
@@ -5856,7 +5856,7 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg
    if (!pm4)
       return;
 
-   if (sctx->has_graphics && !uses_reg_shadowing) {
+   if (sctx->has_graphics && !sctx->shadowing.registers) {
       si_pm4_cmd_add(pm4, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
       si_pm4_cmd_add(pm4, CC0_UPDATE_LOAD_ENABLES(1));
       si_pm4_cmd_add(pm4, CC1_UPDATE_SHADOW_ENABLES(1));
@@ -6129,12 +6129,12 @@ done:
    sctx->cs_preamble_state_tmz = si_pm4_clone(pm4); /* Make a copy of the preamble for TMZ. */
 }
 
-void si_init_gfx_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
+void si_init_gfx_preamble_state(struct si_context *sctx)
 {
    if (!sctx->screen->info.has_graphics)
       cdna_init_compute_preamble_state(sctx);
    else if (sctx->gfx_level >= GFX10)
-      gfx10_init_gfx_preamble_state(sctx, uses_reg_shadowing);
+      gfx10_init_gfx_preamble_state(sctx);
    else
-      gfx6_init_gfx_preamble_state(sctx, uses_reg_shadowing);
+      gfx6_init_gfx_preamble_state(sctx);
 }

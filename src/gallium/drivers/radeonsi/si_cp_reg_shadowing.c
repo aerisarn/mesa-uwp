@@ -53,7 +53,7 @@ void si_init_cp_reg_shadowing(struct si_context *sctx)
       }
    }
 
-   si_init_gfx_preamble_state(sctx, sctx->shadowing.registers != NULL);
+   si_init_gfx_preamble_state(sctx);
 
    if (sctx->shadowing.registers) {
       /* We need to clear the shadowed reg buffer. */
