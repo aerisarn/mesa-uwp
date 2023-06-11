@@ -61,16 +61,8 @@ void si_init_cp_reg_shadowing(struct si_context *sctx)
                              0, sctx->shadowing.registers->bo_size, 0, SI_OP_SYNC_AFTER,
                              SI_COHERENCY_CP, L2_BYPASS);
 
-      /* Create the shadowing preamble. */
-      struct si_shadow_preamble {
-         struct si_pm4_state pm4;
-         uint32_t more_pm4[150]; /* Add more space because the command buffer is large. */
-      };
-      struct si_pm4_state *shadowing_preamble = (struct si_pm4_state *)CALLOC_STRUCT(si_shadow_preamble);
-
-      /* Add all the space that we allocated. */
-      shadowing_preamble->max_dw = (sizeof(struct si_shadow_preamble) -
-                                    offsetof(struct si_shadow_preamble, pm4.pm4)) / 4;
+      /* Create the shadowing preamble. (allocate enough dwords because the preamble is large) */
+      struct si_pm4_state *shadowing_preamble = si_pm4_create_sized(sctx->screen, 256, false);
 
       ac_create_shadowing_ib_preamble(&sctx->screen->info,
                                       (pm4_cmd_add_fn)si_pm4_cmd_add, shadowing_preamble,
