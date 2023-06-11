@@ -910,6 +910,20 @@ struct si_vertex_state {
    uint32_t descriptors[4 * SI_MAX_ATTRIBS];
 };
 
+/* The structure layout is identical to a pair of registers in SET_*_REG_PAIRS_PACKED. */
+struct si_sh_reg_pair {
+   union {
+      /* A pair of register offsets. */
+      struct {
+         uint16_t reg_offset[2];
+      };
+      /* The same pair of register offsets as a dword. */
+      uint32_t reg_offsets;
+   };
+   /* A pair of register values for the register offsets above. */
+   uint32_t reg_value[2];
+};
+
 typedef void (*pipe_draw_vbo_func)(struct pipe_context *pipe,
                                    const struct pipe_draw_info *info,
                                    unsigned drawid_offset,
@@ -1017,6 +1031,9 @@ struct si_context {
    unsigned dirty_states;
    union si_state queued;
    union si_state emitted;
+   /* Gfx11+: Buffered SH registers for SET_SH_REG_PAIRS_PACKED*. */
+   unsigned num_buffered_gfx_sh_regs;
+   struct si_sh_reg_pair buffered_gfx_sh_regs[32];
 
    /* Atom declarations. */
    struct si_framebuffer framebuffer;

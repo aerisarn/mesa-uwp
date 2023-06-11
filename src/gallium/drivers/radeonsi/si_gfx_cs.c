@@ -545,6 +545,9 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    ctx->last_tes_sh_base = -1;
    ctx->last_num_tcs_input_cp = -1;
 
+   assert(ctx->num_buffered_gfx_sh_regs == 0);
+   ctx->num_buffered_gfx_sh_regs = 0;
+
    if (ctx->scratch_buffer) {
       si_context_add_resource_size(ctx, &ctx->scratch_buffer->b.b);
       si_mark_atom_dirty(ctx, &ctx->atoms.s.scratch_state);

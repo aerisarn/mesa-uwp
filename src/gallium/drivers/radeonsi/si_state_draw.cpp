@@ -855,7 +855,20 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
    if (!sctx->shader.tes.cso || !sctx->shader.tcs.current)
       return;
 
-   if (sctx->gfx_level >= GFX9) {
+   if (sctx->gfx_level >= GFX11) {
+      radeon_opt_push_gfx_sh_reg(R_00B42C_SPI_SHADER_PGM_RSRC2_HS,
+                                 SI_TRACKED_SPI_SHADER_PGM_RSRC2_HS, sctx->ls_hs_rsrc2);
+
+      /* Set userdata SGPRs for merged LS-HS. */
+      radeon_opt_push_gfx_sh_reg(R_00B430_SPI_SHADER_USER_DATA_HS_0 +
+                                 GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4,
+                                 SI_TRACKED_SPI_SHADER_USER_DATA_HS__TCS_OFFCHIP_LAYOUT,
+                                 sctx->tcs_offchip_layout);
+      radeon_opt_push_gfx_sh_reg(R_00B430_SPI_SHADER_USER_DATA_HS_0 +
+                                 GFX9_SGPR_TCS_OFFCHIP_ADDR * 4,
+                                 SI_TRACKED_SPI_SHADER_USER_DATA_HS__TCS_OFFCHIP_ADDR,
+                                 sctx->tes_offchip_ring_va_sgpr);
+   } else if (sctx->gfx_level >= GFX9) {
       radeon_opt_set_sh_reg(sctx, R_00B42C_SPI_SHADER_PGM_RSRC2_HS,
                             SI_TRACKED_SPI_SHADER_PGM_RSRC2_HS, sctx->ls_hs_rsrc2);
 
@@ -890,9 +903,16 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
    /* These can't be optimized because the user data SGPRs may have different meaning
     * without tessellation. (they are VS and ES/GS user data SGPRs)
     */
-   radeon_set_sh_reg_seq(tes_sh_base + SI_SGPR_TES_OFFCHIP_LAYOUT * 4, 2);
-   radeon_emit(sctx->tcs_offchip_layout);
-   radeon_emit(sctx->tes_offchip_ring_va_sgpr);
+   if (sctx->gfx_level >= GFX11) {
+      radeon_push_gfx_sh_reg(tes_sh_base + SI_SGPR_TES_OFFCHIP_LAYOUT * 4,
+                             sctx->tcs_offchip_layout);
+      radeon_push_gfx_sh_reg(tes_sh_base + SI_SGPR_TES_OFFCHIP_ADDR * 4,
+                             sctx->tes_offchip_ring_va_sgpr);
+   } else {
+      radeon_set_sh_reg_seq(tes_sh_base + SI_SGPR_TES_OFFCHIP_LAYOUT * 4, 2);
+      radeon_emit(sctx->tcs_offchip_layout);
+      radeon_emit(sctx->tes_offchip_ring_va_sgpr);
+   }
    radeon_end();
 
    radeon_begin_again(cs);
@@ -1238,23 +1258,23 @@ static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
 
       radeon_begin(cs);
       if (HAS_GS) {
-         radeon_set_sh_reg(vs_base + SI_SGPR_VS_STATE_BITS * 4, vs_state);
+         radeon_set_or_push_gfx_sh_reg(vs_base + SI_SGPR_VS_STATE_BITS * 4, vs_state);
 
          /* GS always uses the state bits for emulating VGT_ESGS_RING_ITEMSIZE on Gfx9
           * (via nir_load_esgs_vertex_stride_amd) and for emulating GS pipeline statistics
           * on gfx10.x. NGG GS also has lots of states in there.
           */
          if (GFX_VERSION >= GFX9)
-            radeon_set_sh_reg(gs_base + SI_SGPR_VS_STATE_BITS * 4, gs_state);
+            radeon_set_or_push_gfx_sh_reg(gs_base + SI_SGPR_VS_STATE_BITS * 4, gs_state);
 
          /* The GS copy shader (for legacy GS) always uses the state bits. */
          if (!NGG)
-            radeon_set_sh_reg(gs_copy_base + SI_SGPR_VS_STATE_BITS * 4, gs_state);
+            radeon_set_or_push_gfx_sh_reg(gs_copy_base + SI_SGPR_VS_STATE_BITS * 4, gs_state);
       } else if (HAS_TESS) {
-         radeon_set_sh_reg(vs_base + SI_SGPR_VS_STATE_BITS * 4, vs_state);
-         radeon_set_sh_reg(tes_base + SI_SGPR_VS_STATE_BITS * 4, NGG ? gs_state : vs_state);
+         radeon_set_or_push_gfx_sh_reg(vs_base + SI_SGPR_VS_STATE_BITS * 4, vs_state);
+         radeon_set_or_push_gfx_sh_reg(tes_base + SI_SGPR_VS_STATE_BITS * 4, NGG ? gs_state : vs_state);
       } else {
-         radeon_set_sh_reg(vs_base + SI_SGPR_VS_STATE_BITS * 4, NGG ? gs_state : vs_state);
+         radeon_set_or_push_gfx_sh_reg(vs_base + SI_SGPR_VS_STATE_BITS * 4, NGG ? gs_state : vs_state);
       }
       radeon_end();
 
@@ -1454,6 +1474,49 @@ static void si_emit_draw_registers(struct si_context *sctx,
    radeon_end();
 }
 
+static ALWAYS_INLINE void
+gfx11_emit_buffered_sh_regs_inline(struct si_context *sctx, unsigned *num_regs,
+                                   struct si_sh_reg_pair *reg_pairs)
+{
+   unsigned reg_count = *num_regs;
+
+   if (!reg_count)
+      return;
+
+   *num_regs = 0;
+
+   /* If there is only one register, we can't use the packed SET packet. */
+   if (reg_count == 1) {
+      radeon_begin(&sctx->gfx_cs);
+      radeon_emit(PKT3(PKT3_SET_SH_REG, 1, 0));
+      radeon_emit(reg_pairs[0].reg_offset[0]);
+      radeon_emit(reg_pairs[0].reg_value[0]);
+      radeon_end();
+      return;
+   }
+
+   unsigned packet = reg_count <= 14 ? PKT3_SET_SH_REG_PAIRS_PACKED_N :
+                                       PKT3_SET_SH_REG_PAIRS_PACKED;
+   unsigned padded_reg_count = align(reg_count, 2);
+
+   radeon_begin(&sctx->gfx_cs);
+   radeon_emit(PKT3(packet, (padded_reg_count / 2) * 3, 0) | PKT3_RESET_FILTER_CAM_S(1));
+   radeon_emit(padded_reg_count);
+   radeon_emit_array(reg_pairs, (reg_count / 2) * 3);
+
+   if (reg_count % 2 == 1) {
+      unsigned i = reg_count / 2;
+
+      /* Pad the packet by setting the first register again at the end because the register
+       * count must be even and 2 consecutive offsets must not be equal.
+       */
+      radeon_emit(reg_pairs[i].reg_offset[0] | ((uint32_t)reg_pairs[0].reg_offset[0] << 16));
+      radeon_emit(reg_pairs[i].reg_value[0]);
+      radeon_emit(reg_pairs[0].reg_value[0]);
+   }
+   radeon_end();
+}
+
 #define EMIT_SQTT_END_DRAW                                                     \
   do {                                                                         \
     if (GFX_VERSION >= GFX9 && unlikely(sctx->sqtt_enabled)) {                 \
@@ -1605,6 +1668,13 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
       assert(indirect_va % 8 == 0);
 
+      if (GFX_VERSION >= GFX11) {
+         radeon_end();
+         gfx11_emit_buffered_sh_regs_inline(sctx, &sctx->num_buffered_gfx_sh_regs,
+                                            sctx->buffered_gfx_sh_regs);
+         radeon_begin_again(cs);
+      }
+
       si_invalidate_draw_constants(sctx);
 
       radeon_emit(PKT3(PKT3_SET_BASE, 2, 0));
@@ -1674,43 +1744,80 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
       bool set_draw_id = !IS_DRAW_VERTEX_STATE && sctx->vs_uses_draw_id;
       bool set_base_instance = sctx->vs_uses_base_instance;
+      bool is_blit = !IS_DRAW_VERTEX_STATE && sctx->num_vs_blit_sgprs;
 
-      if (!IS_DRAW_VERTEX_STATE && sctx->num_vs_blit_sgprs) {
+      if (!is_blit) {
+         /* Prefer SET_SH_REG_PAIRS_PACKED* on Gfx11+. */
+         if (GFX_VERSION >= GFX11) {
+            if (base_vertex != sctx->last_base_vertex ||
+                sctx->last_base_vertex == SI_BASE_VERTEX_UNKNOWN) {
+               radeon_push_gfx_sh_reg(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, base_vertex);
+               sctx->last_base_vertex = base_vertex;
+            }
+
+            if (set_draw_id &&
+                (drawid_base != sctx->last_drawid ||
+                 sctx->last_drawid == SI_DRAW_ID_UNKNOWN)) {
+               radeon_push_gfx_sh_reg(sh_base_reg + SI_SGPR_DRAWID * 4, drawid_base);
+               sctx->last_drawid = drawid_base;
+            }
+
+            if (set_base_instance &&
+                (info->start_instance != sctx->last_start_instance ||
+                 sctx->last_start_instance == SI_START_INSTANCE_UNKNOWN)) {
+               radeon_push_gfx_sh_reg(sh_base_reg + SI_SGPR_START_INSTANCE * 4,
+                                      info->start_instance);
+               sctx->last_start_instance = info->start_instance;
+            }
+         } else if (base_vertex != sctx->last_base_vertex ||
+                    sctx->last_base_vertex == SI_BASE_VERTEX_UNKNOWN ||
+                    (set_base_instance &&
+                     (info->start_instance != sctx->last_start_instance ||
+                      sctx->last_start_instance == SI_START_INSTANCE_UNKNOWN)) ||
+                    (set_draw_id &&
+                     (drawid_base != sctx->last_drawid ||
+                      sctx->last_drawid == SI_DRAW_ID_UNKNOWN)) ||
+                    sh_base_reg != sctx->last_sh_base_reg) {
+            if (set_base_instance) {
+               radeon_set_sh_reg_seq(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 3);
+               radeon_emit(base_vertex);
+               radeon_emit(drawid_base);
+               radeon_emit(info->start_instance);
+
+               sctx->last_start_instance = info->start_instance;
+               sctx->last_drawid = drawid_base;
+            } else if (set_draw_id) {
+               radeon_set_sh_reg_seq(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 2);
+               radeon_emit(base_vertex);
+               radeon_emit(drawid_base);
+
+               sctx->last_drawid = drawid_base;
+            } else {
+               radeon_set_sh_reg(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, base_vertex);
+            }
+
+            sctx->last_base_vertex = base_vertex;
+            sctx->last_sh_base_reg = sh_base_reg;
+         }
+      }
+
+      if (GFX_VERSION >= GFX11) {
+         radeon_end();
+         gfx11_emit_buffered_sh_regs_inline(sctx, &sctx->num_buffered_gfx_sh_regs,
+                                            sctx->buffered_gfx_sh_regs);
+         radeon_begin_again(cs);
+      }
+
+      /* Blit SGPRs must be set after gfx11_emit_buffered_sh_regs_inline because they can
+       * overwrite them.
+       */
+      if (is_blit) {
          /* Re-emit draw constants after we leave u_blitter. */
          si_invalidate_draw_sh_constants(sctx);
 
          /* Blit VS doesn't use BASE_VERTEX, START_INSTANCE, and DRAWID. */
          radeon_set_sh_reg_seq(sh_base_reg + SI_SGPR_VS_BLIT_DATA * 4, sctx->num_vs_blit_sgprs);
          radeon_emit_array(sctx->vs_blit_sh_data, sctx->num_vs_blit_sgprs);
-      } else if (base_vertex != sctx->last_base_vertex ||
-                 sctx->last_base_vertex == SI_BASE_VERTEX_UNKNOWN ||
-                 (set_base_instance &&
-                  (info->start_instance != sctx->last_start_instance ||
-                   sctx->last_start_instance == SI_START_INSTANCE_UNKNOWN)) ||
-                 (set_draw_id &&
-                  (drawid_base != sctx->last_drawid ||
-                   sctx->last_drawid == SI_DRAW_ID_UNKNOWN)) ||
-                 sh_base_reg != sctx->last_sh_base_reg) {
-         if (set_base_instance) {
-            radeon_set_sh_reg_seq(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 3);
-            radeon_emit(base_vertex);
-            radeon_emit(drawid_base);
-            radeon_emit(info->start_instance);
-
-            sctx->last_start_instance = info->start_instance;
-            sctx->last_drawid = drawid_base;
-         } else if (set_draw_id) {
-            radeon_set_sh_reg_seq(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 2);
-            radeon_emit(base_vertex);
-            radeon_emit(drawid_base);
-
-            sctx->last_drawid = drawid_base;
-         } else {
-            radeon_set_sh_reg(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, base_vertex);
-         }
-
-         sctx->last_base_vertex = base_vertex;
-         sctx->last_sh_base_reg = sh_base_reg;
       }
 
       /* Don't update draw_id in the following code if it doesn't increment. */
@@ -2018,7 +2125,7 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
             unsigned vb_desc_offset =
                sh_base + get_vb_descriptor_sgpr_ptr_offset<GFX_VERSION, HAS_TESS, HAS_GS, NGG>();
 
-            radeon_set_sh_reg(vb_desc_offset, vb_descriptors_address);
+            radeon_set_or_push_gfx_sh_reg(vb_desc_offset, vb_descriptors_address);
 
             /* the first iteration always executes */
             do {
@@ -2072,7 +2179,7 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
             unsigned vb_desc_ptr_offset =
                sh_base + get_vb_descriptor_sgpr_ptr_offset<GFX_VERSION, HAS_TESS, HAS_GS, NGG>();
             radeon_begin(&sctx->gfx_cs);
-            radeon_set_sh_reg(vb_desc_ptr_offset, vb_descriptors_address);
+            radeon_set_or_push_gfx_sh_reg(vb_desc_ptr_offset, vb_descriptors_address);
             radeon_end();
          }
 

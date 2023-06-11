@@ -118,6 +118,32 @@
    radeon_emit(value); \
 } while (0)
 
+#define radeon_push_gfx_sh_reg(reg, value) do { \
+   unsigned __i = sctx->num_buffered_gfx_sh_regs++; \
+   assert(__i / 2 < ARRAY_SIZE(sctx->buffered_gfx_sh_regs)); \
+   sctx->buffered_gfx_sh_regs[__i / 2].reg_offset[__i % 2] = ((reg) - SI_SH_REG_OFFSET) >> 2; \
+   sctx->buffered_gfx_sh_regs[__i / 2].reg_value[__i % 2] = value; \
+} while (0)
+
+#define radeon_set_or_push_gfx_sh_reg(reg, value) do { \
+   if (GFX_VERSION >= GFX11) { \
+      radeon_push_gfx_sh_reg(reg, value); \
+   } else { \
+      radeon_set_sh_reg_seq(reg, 1); \
+      radeon_emit(value); \
+   } \
+} while (0)
+
+#define radeon_opt_push_gfx_sh_reg(offset, reg, val) do { \
+   unsigned __value = val; \
+   if (((sctx->tracked_regs.other_reg_saved_mask >> (reg)) & 0x1) != 0x1 || \
+       sctx->tracked_regs.other_reg_value[reg] != __value) { \
+      radeon_push_gfx_sh_reg(offset, __value); \
+      sctx->tracked_regs.other_reg_saved_mask |= BITFIELD64_BIT(reg); \
+      sctx->tracked_regs.other_reg_value[reg] = __value; \
+   } \
+} while (0)
+
 #define radeon_set_uconfig_reg_seq(reg, num, perfctr) do { \
    assert((reg) >= CIK_UCONFIG_REG_OFFSET && (reg) < CIK_UCONFIG_REG_END); \
    radeon_emit(PKT3(PKT3_SET_UCONFIG_REG, num, perfctr)); \
