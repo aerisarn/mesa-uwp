@@ -29,7 +29,7 @@
 #define TGSI_INFO_H
 
 #include "compiler/shader_enums.h"
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_shader_tokens.h"
 #include "util/format/u_format.h"
 

@@ -33,7 +33,7 @@
 #ifndef DRAW_PT_H
 #define DRAW_PT_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 struct draw_pt_middle_end;
 struct draw_context;

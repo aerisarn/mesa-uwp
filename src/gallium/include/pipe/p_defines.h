@@ -28,7 +28,7 @@
 #ifndef PIPE_DEFINES_H
 #define PIPE_DEFINES_H
 
-#include "p_compiler.h"
+#include "util/compiler.h"
 
 #include "compiler/shader_enums.h"
 #include "util/os_time.h"

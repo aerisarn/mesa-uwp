@@ -35,7 +35,7 @@
 #define VMW_SURFACE_H_
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_atomic.h"
 #include "util/u_inlines.h"
 #include "util/u_thread.h"

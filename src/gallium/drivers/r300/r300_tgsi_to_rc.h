@@ -23,7 +23,7 @@
 #ifndef R300_TGSI_TO_RC_H
 #define R300_TGSI_TO_RC_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 struct radeon_compiler;
 

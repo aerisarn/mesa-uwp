@@ -28,7 +28,7 @@
 #ifndef LP_FLUSH_H
 #define LP_FLUSH_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 struct pipe_context;
 struct pipe_fence_handle;

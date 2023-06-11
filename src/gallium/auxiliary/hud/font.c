@@ -52,7 +52,7 @@
 
 #include "hud/font.h"
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"

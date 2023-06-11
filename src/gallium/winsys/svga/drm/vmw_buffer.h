@@ -28,7 +28,7 @@
 #define VMW_BUFFER_H_
 
 #include <assert.h>
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipebuffer/pb_bufmgr.h"
 #include "util/u_debug_flush.h"
 

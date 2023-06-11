@@ -29,7 +29,7 @@
 #define STW_DEVICE_H_
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "frontend/api.h"
 #include "util/u_handle_table.h"
 #include "util/u_dynarray.h"

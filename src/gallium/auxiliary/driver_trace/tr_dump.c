@@ -48,7 +48,7 @@
 # include <io.h>
 #endif
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_thread.h"
 #include "util/os_time.h"
 #include "util/simple_mtx.h"

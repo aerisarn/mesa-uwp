@@ -23,7 +23,7 @@
 #ifndef R300_TEXTURE_H
 #define R300_TEXTURE_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/format/u_formats.h"
 #include "pipe/p_screen.h"
 

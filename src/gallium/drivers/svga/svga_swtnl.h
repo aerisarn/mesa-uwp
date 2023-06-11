@@ -26,7 +26,7 @@
 #ifndef SVGA_SWTNL_H
 #define SVGA_SWTNL_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 struct svga_context;
 struct pipe_context;

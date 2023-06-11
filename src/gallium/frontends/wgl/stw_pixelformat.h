@@ -34,7 +34,7 @@
 #define PFD_SUPPORT_COMPOSITION 0x00008000
 #endif
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/format/u_formats.h"
 #include "frontend/api.h"
 

@@ -23,7 +23,7 @@
 #ifndef _NINE_IUNKNOWN_H_
 #define _NINE_IUNKNOWN_H_
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 #include "util/u_atomic.h"
 #include "util/u_memory.h"

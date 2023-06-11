@@ -29,7 +29,7 @@
 #ifndef TGSI_EXEC_H
 #define TGSI_EXEC_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_state.h"
 #include "pipe/p_shader_tokens.h"
 

@@ -27,7 +27,7 @@
 #ifndef LP_SETUP_H
 #define LP_SETUP_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "lp_jit.h"
 
 struct draw_context;

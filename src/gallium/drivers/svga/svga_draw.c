@@ -23,7 +23,7 @@
  *
  **********************************************************/
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_inlines.h"
 #include "pipe/p_defines.h"
 #include "util/u_helpers.h"

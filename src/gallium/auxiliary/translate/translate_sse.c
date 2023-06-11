@@ -27,7 +27,7 @@
 
 
 #include "util/detect.h"
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_memory.h"
 #include "util/u_cpu_detect.h"
 #include "util/u_math.h"

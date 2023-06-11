@@ -33,7 +33,7 @@
 #include <vdpau/vdpau.h>
 #include <vdpau/vdpau_x11.h>
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_video_codec.h"
 
 #include "frontend/vdpau_interop.h"

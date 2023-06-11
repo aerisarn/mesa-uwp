@@ -25,7 +25,7 @@
 #ifndef U_INDICES_PRIV_H
 #define U_INDICES_PRIV_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "u_indices.h"
 
 #define IN_UINT8      0

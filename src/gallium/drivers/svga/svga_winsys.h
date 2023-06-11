@@ -40,7 +40,7 @@
 #include "svga_reg.h"
 #include "svga3d_reg.h"
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_defines.h"
 
 #include "svga_mksstats.h"

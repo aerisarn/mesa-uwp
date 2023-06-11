@@ -43,7 +43,7 @@
 #include "gallivm/lp_bld_sample.h"
 #include "gallivm/lp_bld_ir_common.h"
 #include "lp_bld_type.h"
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_state.h"
 #include "tgsi/tgsi_exec.h"
 #include "tgsi/tgsi_scan.h"

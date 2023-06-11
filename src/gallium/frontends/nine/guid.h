@@ -23,7 +23,7 @@
 #ifndef _NINE_GUID_H_
 #define _NINE_GUID_H_
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 #include "d3d9types.h"
 

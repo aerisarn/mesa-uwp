@@ -28,7 +28,7 @@
 #define U_DEBUG_IMAGE_H
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/format/u_formats.h"
 
 

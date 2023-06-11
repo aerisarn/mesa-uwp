@@ -38,7 +38,7 @@
 
 
 #include "util/format/u_format.h"
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "gallivm/lp_bld.h"
 
 #ifdef __cplusplus

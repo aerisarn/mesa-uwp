@@ -28,7 +28,7 @@
 #include <windows.h>
 #include <tlhelp32.h>
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_debug.h"
 #include "stw_tls.h"
 

@@ -27,7 +27,7 @@
 #ifndef U_TEXTURE_H
 #define U_TEXTURE_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 #ifdef __cplusplus
 extern "C" {

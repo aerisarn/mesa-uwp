@@ -36,7 +36,7 @@
 #define PB_VALIDATE_H_
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_defines.h"
 
 #ifdef __cplusplus

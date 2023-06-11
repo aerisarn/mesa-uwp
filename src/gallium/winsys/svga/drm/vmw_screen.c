@@ -32,7 +32,7 @@
 
 #include "util/os_file.h"
 #include "util/u_memory.h"
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_hash_table.h"
 #ifdef MAJOR_IN_MKDEV
 #include <sys/mkdev.h>

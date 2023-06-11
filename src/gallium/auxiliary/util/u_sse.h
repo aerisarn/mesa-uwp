@@ -38,7 +38,7 @@
 #define U_SSE_H_
 
 #include "util/detect.h"
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_debug.h"
 
 #if DETECT_ARCH_SSE

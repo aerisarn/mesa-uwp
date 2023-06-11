@@ -26,7 +26,7 @@
 #ifndef SVGA_DRAW_H
 #define SVGA_DRAW_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 #include "svga_hw_reg.h"
 

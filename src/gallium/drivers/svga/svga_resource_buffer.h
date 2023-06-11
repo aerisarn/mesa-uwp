@@ -27,7 +27,7 @@
 #define SVGA_BUFFER_H
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_state.h"
 #include "util/u_transfer.h"
 

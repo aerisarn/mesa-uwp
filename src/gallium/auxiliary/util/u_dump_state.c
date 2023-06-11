@@ -26,7 +26,7 @@
  **************************************************************************/
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_memory.h"
 #include "util/u_string.h"
 #include "util/format/u_format.h"

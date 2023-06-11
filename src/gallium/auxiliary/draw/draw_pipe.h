@@ -33,7 +33,7 @@
 #ifndef DRAW_PIPE_H
 #define DRAW_PIPE_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "draw_private.h"       /* for sizeof(vertex_header) */
 #include "draw_context.h"
 

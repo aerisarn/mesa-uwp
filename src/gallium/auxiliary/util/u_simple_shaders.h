@@ -30,7 +30,7 @@
 #define U_SIMPLE_SHADERS_H
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_shader_tokens.h"
 
 

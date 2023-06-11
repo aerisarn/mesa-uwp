@@ -45,7 +45,7 @@
 #define U_FORMAT_YUV_H_
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_math.h"
 
 #include "c99_compat.h"

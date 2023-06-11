@@ -25,7 +25,7 @@
  *
  **************************************************************************/
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 #include "postprocess/filters.h"
 #include "postprocess/pp_private.h"

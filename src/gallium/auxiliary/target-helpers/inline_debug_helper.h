@@ -2,7 +2,7 @@
 #ifndef INLINE_DEBUG_HELPER_H
 #define INLINE_DEBUG_HELPER_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_debug.h"
 #include "util/u_tests.h"
 

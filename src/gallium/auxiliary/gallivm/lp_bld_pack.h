@@ -37,7 +37,7 @@
 #define LP_BLD_PACK_H
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 #include "gallivm/lp_bld.h"
 

@@ -28,7 +28,7 @@
 #ifndef TGSI_SANITY_H
 #define TGSI_SANITY_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 #if defined __cplusplus
 extern "C" {

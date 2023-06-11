@@ -29,7 +29,7 @@
 #ifndef U_RECT_H
 #define U_RECT_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_math.h"
 
 #ifdef __cplusplus

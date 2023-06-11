@@ -37,7 +37,7 @@
 #define DRAW_VBUF_H_
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_defines.h"
 
 

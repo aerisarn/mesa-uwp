@@ -30,7 +30,7 @@
 
 #include <windows.h> /* for HDC */
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "frontend/api.h"
 
 struct pipe_screen;

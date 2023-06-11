@@ -67,7 +67,7 @@ def prolog(f: 'T.TextIO'):
 
 #include "indices/u_indices.h"
 #include "indices/u_indices_priv.h"
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_debug.h"
 #include "pipe/p_defines.h"
 #include "util/u_memory.h"

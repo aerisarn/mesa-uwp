@@ -34,7 +34,7 @@
 #define TR_DUMP_H
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/format/u_formats.h"
 
 struct pipe_resource;

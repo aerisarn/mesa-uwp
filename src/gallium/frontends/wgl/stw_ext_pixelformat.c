@@ -41,7 +41,7 @@
 #include <GL/gl.h>
 #include <GL/wglext.h>
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/format/u_format.h"
 #include "util/u_memory.h"
 #include "stw_device.h"

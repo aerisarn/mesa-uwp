@@ -30,7 +30,7 @@
 #define LP_BLD_INIT_H
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_pointer.h" // for func_pointer
 #include "lp_bld.h"
 #include <llvm-c/ExecutionEngine.h>

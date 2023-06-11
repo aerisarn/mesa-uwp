@@ -28,7 +28,7 @@
 #ifndef FONT_H
 #define FONT_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 struct pipe_resource;
 struct pipe_context;

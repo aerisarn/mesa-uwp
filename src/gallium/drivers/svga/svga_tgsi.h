@@ -26,7 +26,7 @@
 #ifndef SVGA_TGSI_H
 #define SVGA_TGSI_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "svga3d_reg.h"
 
 

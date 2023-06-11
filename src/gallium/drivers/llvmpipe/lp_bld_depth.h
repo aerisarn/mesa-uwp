@@ -36,7 +36,7 @@
 #define LP_BLD_DEPTH_H
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_state.h"
 
 #include "gallivm/lp_bld.h"

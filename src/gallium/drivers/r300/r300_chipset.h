@@ -23,7 +23,7 @@
 #ifndef R300_CHIPSET_H
 #define R300_CHIPSET_H
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 /* these are sizes in dwords */
 #define R300_HIZ_LIMIT 10240

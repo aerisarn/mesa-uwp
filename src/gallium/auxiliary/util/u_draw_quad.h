@@ -29,7 +29,7 @@
 #define U_DRAWQUAD_H
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "pipe/p_context.h"
 
 #include "util/u_draw.h"

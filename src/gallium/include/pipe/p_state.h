@@ -46,7 +46,7 @@
 
 #include "util/u_memory.h"
 
-#include "p_compiler.h"
+#include "util/compiler.h"
 #include "p_defines.h"
 #include "util/format/u_formats.h"
 

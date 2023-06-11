@@ -32,7 +32,7 @@
  * @author Jose Fonseca <jfonseca@vmware.com>
  */
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/u_thread.h"
 #include "util/simple_mtx.h"
 #include "util/u_string.h"

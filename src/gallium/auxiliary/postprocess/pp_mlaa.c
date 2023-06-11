@@ -38,7 +38,7 @@
  * policies, either expressed or implied, of the copyright holders.
  */
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 
 #include "postprocess/postprocess.h"
 #include "postprocess/pp_mlaa.h"

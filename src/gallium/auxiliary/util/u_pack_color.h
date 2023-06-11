@@ -35,7 +35,7 @@
 #define U_PACK_COLOR_H
 
 
-#include "pipe/p_compiler.h"
+#include "util/compiler.h"
 #include "util/format/u_formats.h"
 #include "util/format/u_format.h"
 #include "util/u_math.h"
