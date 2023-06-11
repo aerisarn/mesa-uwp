@@ -72,7 +72,8 @@ static void si_emit_cb_render_state(struct si_context *sctx)
    /* GFX9: Flush DFSM when CB_TARGET_MASK changes.
     * I think we don't have to do anything between IBs.
     */
-   if (sctx->screen->dpbb_allowed && sctx->last_cb_target_mask != cb_target_mask) {
+   if (sctx->screen->dpbb_allowed && sctx->last_cb_target_mask != cb_target_mask &&
+       sctx->screen->pbb_context_states_per_bin > 1) {
       sctx->last_cb_target_mask = cb_target_mask;
 
       radeon_begin(cs);
@@ -3550,7 +3551,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
    radeon_set_context_reg(R_028208_PA_SC_WINDOW_SCISSOR_BR,
                           S_028208_BR_X(state->width) | S_028208_BR_Y(state->height));
 
-   if (sctx->screen->dpbb_allowed) {
+   if (sctx->screen->dpbb_allowed &&
+       sctx->screen->pbb_context_states_per_bin > 1) {
       radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
    }
