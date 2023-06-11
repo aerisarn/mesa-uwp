@@ -1075,6 +1075,9 @@ struct anv_queue {
       uint32_t                               exec_queue_id; /* Xe */
    };
 
+   /** Context/Engine id which executes companion RCS command buffer */
+   uint32_t                                  companion_rcs_id;
+
    /** Synchronization object for debug purposes (DEBUG_SYNC) */
    struct vk_sync                           *sync;
 

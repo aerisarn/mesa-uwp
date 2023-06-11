@@ -342,6 +342,14 @@ anv_i915_device_check_status(struct vk_device *vk_device)
                                                   device->queues[i].context_id);
          if (result != VK_SUCCESS)
             return result;
+
+         if (device->queues[i].companion_rcs_id != 0) {
+            uint32_t context_id = device->queues[i].companion_rcs_id;
+            result = anv_gem_context_get_reset_stats(device, context_id);
+            if (result != VK_SUCCESS) {
+               return result;
+            }
+         }
       }
    } else {
       result = anv_gem_context_get_reset_stats(device, device->context_id);

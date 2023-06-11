@@ -57,18 +57,31 @@ anv_i915_create_engine(struct anv_device *device,
       }
    } else if (device->physical->has_vm_control) {
       assert(pCreateInfo->queueFamilyIndex < physical->queue.family_count);
-      enum intel_engine_class engine_classes[2];
-      int engine_count = 0;
-
-      engine_classes[engine_count++] = queue_family->engine_class;
-
+      enum intel_engine_class engine_classes[1];
+      engine_classes[0] = queue_family->engine_class;
       if (!intel_gem_create_context_engines(device->fd, 0 /* flags */,
                                             physical->engine_info,
-                                            engine_count, engine_classes,
+                                            1, engine_classes,
                                             device->vm_id,
                                             (uint32_t *)&queue->context_id))
          return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
                           "engine creation failed");
+
+      /* Create a companion RCS logical engine to support MSAA copy/clear
+       * operation on compute/copy engine.
+       */
+      if (queue_family->engine_class == INTEL_ENGINE_CLASS_COPY ||
+          queue_family->engine_class == INTEL_ENGINE_CLASS_COMPUTE) {
+         uint32_t *context_id = (uint32_t *)&queue->companion_rcs_id;
+         engine_classes[0] = INTEL_ENGINE_CLASS_RENDER;
+         if (!intel_gem_create_context_engines(device->fd, 0 /* flags */,
+                                               physical->engine_info,
+                                               1, engine_classes,
+                                               device->vm_id,
+                                               context_id))
+            return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                             "companion RCS engine creation failed");
+      }
 
       /* Check if client specified queue priority. */
       const VkDeviceQueueGlobalPriorityCreateInfoKHR *queue_priority =
@@ -80,6 +93,9 @@ anv_i915_create_engine(struct anv_device *device,
                                                       queue_priority);
       if (result != VK_SUCCESS) {
          intel_gem_destroy_context(device->fd, queue->context_id);
+         if (queue->companion_rcs_id != 0) {
+            intel_gem_destroy_context(device->fd, queue->companion_rcs_id);
+         }
          return result;
       }
    } else {
@@ -95,6 +111,11 @@ anv_i915_create_engine(struct anv_device *device,
 void
 anv_i915_destroy_engine(struct anv_device *device, struct anv_queue *queue)
 {
-   if (device->physical->has_vm_control)
+   if (device->physical->has_vm_control) {
       intel_gem_destroy_context(device->fd, queue->context_id);
+
+      if (queue->companion_rcs_id != 0) {
+         intel_gem_destroy_context(device->fd, queue->companion_rcs_id);
+      }
+   }
 }

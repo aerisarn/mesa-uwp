@@ -65,6 +65,7 @@
 
 #include "i915/anv_device.h"
 #include "xe/anv_device.h"
+#include "xe/anv_queue.h"
 
 #include "genxml/gen7_pack.h"
 #include "genxml/genX_bits.h"
