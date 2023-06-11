@@ -421,9 +421,9 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    if (ctx->cs_preamble_state) {
       struct si_pm4_state *preamble = is_secure ? ctx->cs_preamble_state_tmz :
                                                   ctx->cs_preamble_state;
-      ctx->ws->cs_set_preamble(&ctx->gfx_cs, preamble->pm4, preamble->ndw,
-                               preamble != ctx->last_preamble);
-      ctx->last_preamble = preamble;
+      radeon_begin(&ctx->gfx_cs);
+      radeon_emit_array(preamble->pm4, preamble->ndw);
+      radeon_end();
    }
 
    if (!ctx->has_graphics) {

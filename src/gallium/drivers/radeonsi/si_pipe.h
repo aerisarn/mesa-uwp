@@ -1038,7 +1038,6 @@ struct si_context {
    struct pipe_scissor_state window_rectangles[4];
 
    /* Precomputed states. */
-   struct si_pm4_state *last_preamble;
    struct si_pm4_state *cs_preamble_state;
    struct si_pm4_state *cs_preamble_state_tmz;
    uint16_t gs_ring_state_dw_offset;
