@@ -603,102 +603,33 @@ static const struct ac_reg_range Gfx103UserConfigShadowRange[] = {
 
 static const struct ac_reg_range Gfx11ShShadowRange[] =
 {
-   {
-      R_00B018_SPI_SHADER_PGM_CHKSUM_PS,
-      4,
-   },
-   {
-      R_00B020_SPI_SHADER_PGM_LO_PS,
-      R_00B0AC_SPI_SHADER_USER_DATA_PS_31 - R_00B020_SPI_SHADER_PGM_LO_PS + 4,
-   },
-   {
-      R_00B0C8_SPI_SHADER_USER_ACCUM_PS_0,
-      R_00B0D4_SPI_SHADER_USER_ACCUM_PS_3 - R_00B0C8_SPI_SHADER_USER_ACCUM_PS_0 + 4,
-   },
-   {
-      R_00B320_SPI_SHADER_PGM_LO_ES,
-      R_00B324_SPI_SHADER_PGM_HI_ES - R_00B320_SPI_SHADER_PGM_LO_ES + 4,
-   },
-   {
-      R_00B520_SPI_SHADER_PGM_LO_LS,
-      R_00B524_SPI_SHADER_PGM_HI_LS - R_00B520_SPI_SHADER_PGM_LO_LS + 4,
-   },
-   {
-      R_00B200_SPI_SHADER_PGM_CHKSUM_GS,
-      4,
-   },
-   {
-      R_00B220_SPI_SHADER_PGM_LO_GS,
-      R_00B2B4_SPI_SHADER_GS_MESHLET_EXP_ALLOC - R_00B220_SPI_SHADER_PGM_LO_GS + 4,
-   },
-   {
-      R_00B2C8_SPI_SHADER_USER_ACCUM_ESGS_0,
-      R_00B2D4_SPI_SHADER_USER_ACCUM_ESGS_3 - R_00B2C8_SPI_SHADER_USER_ACCUM_ESGS_0 + 4,
-   },
-   {
-      R_00B400_SPI_SHADER_PGM_CHKSUM_HS,
-      4,
-   },
-   {
-      R_00B420_SPI_SHADER_PGM_LO_HS,
-      R_00B4AC_SPI_SHADER_USER_DATA_HS_31 - R_00B420_SPI_SHADER_PGM_LO_HS + 4,
-   },
-   {
-      R_00B4C8_SPI_SHADER_USER_ACCUM_LSHS_0,
-      R_00B4D4_SPI_SHADER_USER_ACCUM_LSHS_3 - R_00B4C8_SPI_SHADER_USER_ACCUM_LSHS_0 + 4,
-   },
-   {
-      R_00B0C0_SPI_SHADER_REQ_CTRL_PS,
-      4,
-   },
+   /* First register                            Count * 4      Last register */
+   { R_00B004_SPI_SHADER_PGM_RSRC4_PS,             1  * 4}, // SPI_SHADER_PGM_RSRC4_PS
+   { R_00B018_SPI_SHADER_PGM_CHKSUM_PS,            38 * 4}, // SPI_SHADER_USER_DATA_PS_31
+   { R_00B0C0_SPI_SHADER_REQ_CTRL_PS,              1  * 4}, // SPI_SHADER_REQ_CTRL_PS
+   { R_00B0C8_SPI_SHADER_USER_ACCUM_PS_0,          4  * 4}, // SPI_SHADER_USER_ACCUM_PS_3
+   { R_00B200_SPI_SHADER_PGM_CHKSUM_GS,            2  * 4}, // SPI_SHADER_PGM_RSRC4_GS
+   { R_00B21C_SPI_SHADER_PGM_RSRC3_GS,             39 * 4}, // SPI_SHADER_GS_MESHLET_EXP_ALLOC
+   { R_00B2C8_SPI_SHADER_USER_ACCUM_ESGS_0,        4  * 4}, // SPI_SHADER_USER_ACCUM_ESGS_3
+   { R_00B320_SPI_SHADER_PGM_LO_ES,                2  * 4}, // SPI_SHADER_PGM_HI_ES
+   { R_00B400_SPI_SHADER_PGM_CHKSUM_HS,            2  * 4}, // SPI_SHADER_PGM_RSRC4_HS
+   { R_00B41C_SPI_SHADER_PGM_RSRC3_HS,             37 * 4}, // SPI_SHADER_USER_DATA_HS_31
+   { R_00B4C8_SPI_SHADER_USER_ACCUM_LSHS_0,        4  * 4}, // SPI_SHADER_USER_ACCUM_LSHS_3
+   { R_00B520_SPI_SHADER_PGM_LO_LS,                2  * 4}  // SPI_SHADER_PGM_HI_LS
 };
 
 static const struct ac_reg_range Gfx11CsShShadowRange[] =
 {
-   {
-      R_00B810_COMPUTE_START_X,
-      R_00B824_COMPUTE_NUM_THREAD_Z - R_00B810_COMPUTE_START_X + 4,
-   },
-   {
-      R_00B82C_COMPUTE_PERFCOUNT_ENABLE,
-      R_00B834_COMPUTE_PGM_HI - R_00B82C_COMPUTE_PERFCOUNT_ENABLE + 4,
-   },
-   {
-      R_00B840_COMPUTE_DISPATCH_SCRATCH_BASE_LO,
-      R_00B84C_COMPUTE_PGM_RSRC2 - R_00B840_COMPUTE_DISPATCH_SCRATCH_BASE_LO + 4,
-   },
-   {
-      R_00B854_COMPUTE_RESOURCE_LIMITS,
-      4,
-   },
-   {
-      R_00B860_COMPUTE_TMPRING_SIZE,
-      4,
-   },
-   {
-      R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
-      4,
-   },
-   {
-      R_00B890_COMPUTE_USER_ACCUM_0,
-      R_00B8A0_COMPUTE_PGM_RSRC3 - R_00B890_COMPUTE_USER_ACCUM_0 + 4,
-   },
-   {
-      R_00B8A8_COMPUTE_SHADER_CHKSUM,
-      4,
-   },
-   {
-      R_00B8BC_COMPUTE_DISPATCH_INTERLEAVE,
-      4,
-   },
-   {
-      R_00B900_COMPUTE_USER_DATA_0,
-      R_00B93C_COMPUTE_USER_DATA_15 - R_00B900_COMPUTE_USER_DATA_0 + 4,
-   },
-   {
-      R_00B9F4_COMPUTE_DISPATCH_TUNNEL,
-      4,
-   },
+   /* First register                            Count * 4      Last register */
+   { R_00B810_COMPUTE_START_X,                     6  * 4}, // COMPUTE_NUM_THREAD_Z
+   { R_00B82C_COMPUTE_PERFCOUNT_ENABLE,            3  * 4}, // COMPUTE_PGM_HI
+   { R_00B840_COMPUTE_DISPATCH_SCRATCH_BASE_LO,    4  * 4}, // COMPUTE_PGM_RSRC2
+   { R_00B854_COMPUTE_RESOURCE_LIMITS,             6  * 4}, // COMPUTE_STATIC_THREAD_MGMT_SE3
+   { R_00B878_COMPUTE_THREAD_TRACE_ENABLE,         1  * 4}, // COMPUTE_THREAD_TRACE_ENABLE
+   { R_00B890_COMPUTE_USER_ACCUM_0,                5  * 4}, // COMPUTE_PGM_RSRC3
+   { R_00B8A8_COMPUTE_SHADER_CHKSUM,               6  * 4}, // COMPUTE_DISPATCH_INTERLEAVE
+   { R_00B900_COMPUTE_USER_DATA_0,                 16 * 4}, // COMPUTE_USER_DATA_15
+   { R_00B9F4_COMPUTE_DISPATCH_TUNNEL,             1  * 4}  // COMPUTE_DISPATCH_TUNNEL
 };
 
 /* Defines the set of ranges of context registers we shadow when mid command buffer preemption
@@ -706,210 +637,84 @@ static const struct ac_reg_range Gfx11CsShShadowRange[] =
  */
 static const struct ac_reg_range Gfx11ContextShadowRange[] =
 {
-   {
-      R_028000_DB_RENDER_CONTROL,
-      R_028084_TA_BC_BASE_ADDR_HI - R_028000_DB_RENDER_CONTROL + 4,
-   },
-   {
-      R_0281E8_COHER_DEST_BASE_HI_0,
-      R_02835C_PA_SC_TILE_STEERING_OVERRIDE - R_0281E8_COHER_DEST_BASE_HI_0 + 4,
-   },
-   {
-      R_0283D0_PA_SC_VRS_OVERRIDE_CNTL,
-      R_0283E4_PA_SC_VRS_RATE_CACHE_CNTL - R_0283D0_PA_SC_VRS_OVERRIDE_CNTL + 4,
-   },
-   {
-      R_0283F0_PA_SC_VRS_RATE_BASE,
-      R_0283F8_PA_SC_VRS_RATE_SIZE_XY - R_0283F0_PA_SC_VRS_RATE_BASE + 4,
-   },
-   {
-      R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX,
-      R_028618_PA_CL_UCP_5_W - R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX + 4,
-   },
-   {
-      R_028644_SPI_PS_INPUT_CNTL_0,
-      R_0286F0_SPI_GFX_SCRATCH_BASE_HI - R_028644_SPI_PS_INPUT_CNTL_0 + 4,
-   },
-   {
-      R_028708_SPI_SHADER_IDX_FORMAT,
-      R_028714_SPI_SHADER_COL_FORMAT - R_028708_SPI_SHADER_IDX_FORMAT + 4,
-   },
-   {
-      R_028750_SX_PS_DOWNCONVERT_CONTROL,
-      R_02879C_CB_BLEND7_CONTROL - R_028750_SX_PS_DOWNCONVERT_CONTROL + 4,
-   },
-   {
-      R_0287D4_PA_CL_POINT_X_RAD,
-      R_0287E0_PA_CL_POINT_CULL_RAD - R_0287D4_PA_CL_POINT_X_RAD + 4,
-   },
-   {
-      R_0287FC_GE_MAX_OUTPUT_PER_SUBGROUP,
-      R_028848_PA_CL_VRS_CNTL - R_0287FC_GE_MAX_OUTPUT_PER_SUBGROUP + 4,
-   },
-   {
-      R_028A00_PA_SU_POINT_SIZE,
-      R_028A0C_PA_SC_LINE_STIPPLE - R_028A00_PA_SU_POINT_SIZE + 4,
-   },
-   {
-      R_028A18_VGT_HOS_MAX_TESS_LEVEL,
-      R_028A1C_VGT_HOS_MIN_TESS_LEVEL - R_028A18_VGT_HOS_MAX_TESS_LEVEL + 4,
-   },
-   {
-      R_028A48_PA_SC_MODE_CNTL_0,
-      R_028A50_VGT_ENHANCE - R_028A48_PA_SC_MODE_CNTL_0 + 4,
-   },
-   {
-      R_028A84_VGT_PRIMITIVEID_EN,
-      4,
-   },
-   {
-      R_028A8C_VGT_PRIMITIVEID_RESET,
-      4,
-   },
-   {
-      R_028A98_VGT_DRAW_PAYLOAD_CNTL,
-      4,
-   },
-   {
-      R_028AAC_VGT_ESGS_RING_ITEMSIZE,
-      R_028AC4_DB_SRESULTS_COMPARE_STATE1 - R_028AAC_VGT_ESGS_RING_ITEMSIZE + 4,
-   },
-   {
-      R_028B28_VGT_STRMOUT_DRAW_OPAQUE_OFFSET,
-      R_028B38_VGT_GS_MAX_VERT_OUT - R_028B28_VGT_STRMOUT_DRAW_OPAQUE_OFFSET + 4,
-   },
-   {
-      R_028B4C_GE_NGG_SUBGRP_CNTL,
-      R_028B58_VGT_LS_HS_CONFIG - R_028B4C_GE_NGG_SUBGRP_CNTL + 4,
-   },
-   {
-      R_028B6C_VGT_TF_PARAM,
-      R_028B90_VGT_GS_INSTANCE_CNT - R_028B6C_VGT_TF_PARAM + 4,
-   },
-   {
-      R_028BD4_PA_SC_CENTROID_PRIORITY_0,
-      R_028C54_PA_SC_BINNER_CNTL_2 - R_028BD4_PA_SC_CENTROID_PRIORITY_0 + 4,
-   },
-   {
-      R_028C60_CB_COLOR0_BASE,
-      4,
-   },
-   {
-      R_028C6C_CB_COLOR0_VIEW,
-      R_028C78_CB_COLOR0_FDCC_CONTROL - R_028C6C_CB_COLOR0_VIEW + 4,
-   },
-   {
-      R_028C94_CB_COLOR0_DCC_BASE,
-      R_028C9C_CB_COLOR1_BASE - R_028C94_CB_COLOR0_DCC_BASE + 4,
-   },
-   {
-      R_028CA8_CB_COLOR1_VIEW,
-      R_028CB4_CB_COLOR1_FDCC_CONTROL - R_028CA8_CB_COLOR1_VIEW + 4,
-   },
-   {
-      R_028CD0_CB_COLOR1_DCC_BASE,
-      R_028CD8_CB_COLOR2_BASE - R_028CD0_CB_COLOR1_DCC_BASE + 4,
-   },
-   {
-      R_028CE4_CB_COLOR2_VIEW,
-      R_028CF0_CB_COLOR2_FDCC_CONTROL - R_028CE4_CB_COLOR2_VIEW + 4,
-   },
-   {
-      R_028D0C_CB_COLOR2_DCC_BASE,
-      R_028D14_CB_COLOR3_BASE - R_028D0C_CB_COLOR2_DCC_BASE + 4,
-   },
-   {
-      R_028D20_CB_COLOR3_VIEW,
-      R_028D2C_CB_COLOR3_FDCC_CONTROL - R_028D20_CB_COLOR3_VIEW + 4,
-   },
-   {
-      R_028D48_CB_COLOR3_DCC_BASE,
-      R_028D50_CB_COLOR4_BASE - R_028D48_CB_COLOR3_DCC_BASE + 4,
-   },
-   {
-      R_028D5C_CB_COLOR4_VIEW,
-      R_028D68_CB_COLOR4_FDCC_CONTROL - R_028D5C_CB_COLOR4_VIEW + 4,
-   },
-   {
-      R_028D84_CB_COLOR4_DCC_BASE,
-      R_028D8C_CB_COLOR5_BASE - R_028D84_CB_COLOR4_DCC_BASE + 4,
-   },
-   {
-      R_028D98_CB_COLOR5_VIEW,
-      R_028DA4_CB_COLOR5_FDCC_CONTROL - R_028D98_CB_COLOR5_VIEW + 4,
-   },
-   {
-      R_028DC0_CB_COLOR5_DCC_BASE,
-      R_028DC8_CB_COLOR6_BASE - R_028DC0_CB_COLOR5_DCC_BASE + 4,
-   },
-   {
-      R_028DD4_CB_COLOR6_VIEW,
-      R_028DE0_CB_COLOR6_FDCC_CONTROL - R_028DD4_CB_COLOR6_VIEW + 4,
-   },
-   {
-      R_028DFC_CB_COLOR6_DCC_BASE,
-      R_028E04_CB_COLOR7_BASE - R_028DFC_CB_COLOR6_DCC_BASE + 4,
-   },
-   {
-      R_028E10_CB_COLOR7_VIEW,
-      R_028E1C_CB_COLOR7_FDCC_CONTROL - R_028E10_CB_COLOR7_VIEW + 4,
-   },
-   {
-      R_028E38_CB_COLOR7_DCC_BASE,
-      R_028E5C_CB_COLOR7_BASE_EXT - R_028E38_CB_COLOR7_DCC_BASE + 4,
-   },
-   {
-      R_028EA0_CB_COLOR0_DCC_BASE_EXT,
-      R_028EFC_CB_COLOR7_ATTRIB3 - R_028EA0_CB_COLOR0_DCC_BASE_EXT + 4,
-   },
+   /* First register                            Count * 4      Last register */
+   { R_028000_DB_RENDER_CONTROL,                  6   * 4}, // DB_HTILE_DATA_BASE
+   { R_02801C_DB_DEPTH_SIZE_XY,                   7   * 4}, // PA_SC_SCREEN_SCISSOR_BR
+   { R_02803C_DB_RESERVED_REG_2,                  10  * 4}, // DB_SPI_VRS_CENTER_LOCATION
+   { R_028068_DB_Z_READ_BASE_HI,                  8   * 4}, // TA_BC_BASE_ADDR_HI
+   { R_0281E8_COHER_DEST_BASE_HI_0,               94  * 4}, // PA_SC_TILE_STEERING_OVERRIDE
+   { R_0283D0_PA_SC_VRS_OVERRIDE_CNTL,            4   * 4}, // PA_SC_VRS_RATE_FEEDBACK_SIZE_XY
+   { R_0283E4_PA_SC_VRS_RATE_CACHE_CNTL,          1   * 4}, // PA_SC_VRS_RATE_CACHE_CNTL
+   { R_0283F0_PA_SC_VRS_RATE_BASE,                3   * 4}, // PA_SC_VRS_RATE_SIZE_XY
+   { R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX,       11  * 4}, // DB_STENCILREFMASK_BF
+   { R_02843C_PA_CL_VPORT_XSCALE,                 120 * 4}, // PA_CL_UCP_5_W
+   { R_02861C_PA_CL_PROG_NEAR_CLIP_Z,             2   * 4}, // PA_RATE_CNTL - not shadowed by RS64 !!!
+   { R_028644_SPI_PS_INPUT_CNTL_0,                33  * 4}, // SPI_VS_OUT_CONFIG
+   { R_0286CC_SPI_PS_INPUT_ENA,                   6   * 4}, // SPI_BARYC_CNTL
+   { R_0286E8_SPI_TMPRING_SIZE,                   3   * 4}, // SPI_GFX_SCRATCH_BASE_HI
+   { R_028708_SPI_SHADER_IDX_FORMAT,              4   * 4}, // SPI_SHADER_COL_FORMAT
+   { R_028750_SX_PS_DOWNCONVERT_CONTROL,          20  * 4}, // CB_BLEND7_CONTROL
+   { R_0287D4_PA_CL_POINT_X_RAD,                  4   * 4}, // PA_CL_POINT_CULL_RAD
+   { R_0287FC_GE_MAX_OUTPUT_PER_SUBGROUP,         14  * 4}, // PA_SU_SMALL_PRIM_FILTER_CNTL
+   { R_028838_PA_CL_NGG_CNTL,                     5   * 4}, // PA_CL_VRS_CNTL
+   { R_028A00_PA_SU_POINT_SIZE,                   4   * 4}, // PA_SC_LINE_STIPPLE
+   { R_028A18_VGT_HOS_MAX_TESS_LEVEL,             2   * 4}, // VGT_HOS_MIN_TESS_LEVEL
+   { R_028A48_PA_SC_MODE_CNTL_0,                  3   * 4}, // VGT_ENHANCE
+   { R_028A84_VGT_PRIMITIVEID_EN,                 1   * 4}, // VGT_PRIMITIVEID_EN
+   { R_028A8C_VGT_PRIMITIVEID_RESET,              1   * 4}, // VGT_PRIMITIVEID_RESET
+   { R_028A98_VGT_DRAW_PAYLOAD_CNTL,              1   * 4}, // VGT_DRAW_PAYLOAD_CNTL
+   { R_028AAC_VGT_ESGS_RING_ITEMSIZE,             1   * 4}, // VGT_ESGS_RING_ITEMSIZE
+   { R_028AB4_VGT_REUSE_OFF,                      1   * 4}, // VGT_REUSE_OFF
+   { R_028ABC_DB_HTILE_SURFACE,                   4   * 4}, // DB_PRELOAD_CONTROL
+   { R_028B28_VGT_STRMOUT_DRAW_OPAQUE_OFFSET,     3   * 4}, // VGT_STRMOUT_DRAW_OPAQUE_VERTEX_STRIDE
+   { R_028B38_VGT_GS_MAX_VERT_OUT,                1   * 4}, // VGT_GS_MAX_VERT_OUT
+   { R_028B4C_GE_NGG_SUBGRP_CNTL,                 4   * 4}, // VGT_LS_HS_CONFIG
+   { R_028B6C_VGT_TF_PARAM,                       2   * 4}, // DB_ALPHA_TO_MASK
+   { R_028B78_PA_SU_POLY_OFFSET_DB_FMT_CNTL,      7   * 4}, // VGT_GS_INSTANCE_CNT
+   { R_028BD4_PA_SC_CENTROID_PRIORITY_0,          33  * 4}, // PA_SC_BINNER_CNTL_2
+   { R_028C60_CB_COLOR0_BASE,                     1   * 4}, // CB_COLOR0_BASE
+   { R_028C6C_CB_COLOR0_VIEW,                     4   * 4}, // CB_COLOR0_FDCC_CONTROL
+   { R_028C94_CB_COLOR0_DCC_BASE,                 1   * 4}, // CB_COLOR0_DCC_BASE
+   { R_028C9C_CB_COLOR1_BASE,                     1   * 4}, // CB_COLOR1_BASE
+   { R_028CA8_CB_COLOR1_VIEW,                     4   * 4}, // CB_COLOR1_FDCC_CONTROL
+   { R_028CD0_CB_COLOR1_DCC_BASE,                 1   * 4}, // CB_COLOR1_DCC_BASE
+   { R_028CD8_CB_COLOR2_BASE,                     1   * 4}, // CB_COLOR2_BASE
+   { R_028CE4_CB_COLOR2_VIEW,                     4   * 4}, // CB_COLOR2_FDCC_CONTROL
+   { R_028D0C_CB_COLOR2_DCC_BASE,                 1   * 4}, // CB_COLOR2_DCC_BASE
+   { R_028D14_CB_COLOR3_BASE,                     1   * 4}, // CB_COLOR3_BASE
+   { R_028D20_CB_COLOR3_VIEW,                     4   * 4}, // CB_COLOR3_FDCC_CONTROL
+   { R_028D48_CB_COLOR3_DCC_BASE,                 1   * 4}, // CB_COLOR3_DCC_BASE
+   { R_028D50_CB_COLOR4_BASE,                     1   * 4}, // CB_COLOR4_BASE
+   { R_028D5C_CB_COLOR4_VIEW,                     4   * 4}, // CB_COLOR4_FDCC_CONTROL
+   { R_028D84_CB_COLOR4_DCC_BASE,                 1   * 4}, // CB_COLOR4_DCC_BASE
+   { R_028D8C_CB_COLOR5_BASE,                     1   * 4}, // CB_COLOR5_BASE
+   { R_028D98_CB_COLOR5_VIEW,                     4   * 4}, // CB_COLOR5_FDCC_CONTROL
+   { R_028DC0_CB_COLOR5_DCC_BASE,                 1   * 4}, // CB_COLOR5_DCC_BASE
+   { R_028DC8_CB_COLOR6_BASE,                     1   * 4}, // CB_COLOR6_BASE
+   { R_028DD4_CB_COLOR6_VIEW,                     4   * 4}, // CB_COLOR6_FDCC_CONTROL
+   { R_028DFC_CB_COLOR6_DCC_BASE,                 1   * 4}, // CB_COLOR6_DCC_BASE
+   { R_028E04_CB_COLOR7_BASE,                     1   * 4}, // CB_COLOR7_BASE
+   { R_028E10_CB_COLOR7_VIEW,                     4   * 4}, // CB_COLOR7_FDCC_CONTROL
+   { R_028E38_CB_COLOR7_DCC_BASE,                 1   * 4}, // CB_COLOR7_DCC_BASE
+   { R_028E40_CB_COLOR0_BASE_EXT,                 8   * 4}, // CB_COLOR7_BASE_EXT
+   { R_028EA0_CB_COLOR0_DCC_BASE_EXT,             24  * 4}  // CB_COLOR7_ATTRIB3
 };
 
 static const struct ac_reg_range Gfx11UserConfigShadowRange[] =
 {
-   {
-      R_030908_VGT_PRIMITIVE_TYPE,
-      4,
-   },
-   {
-      R_030998_VGT_GS_OUT_PRIM_TYPE,
-      4,
-   },
-   {
-      R_030964_GE_MAX_VTX_INDX,
-      4,
-   },
-   {
-      R_030924_GE_MIN_VTX_INDX,
-      R_03092C_GE_MULTI_PRIM_IB_RESET_EN - R_030924_GE_MIN_VTX_INDX + 4,
-   },
-   {
-      R_030934_VGT_NUM_INSTANCES,
-      R_030940_VGT_TF_MEMORY_BASE - R_030934_VGT_NUM_INSTANCES + 4,
-   },
-   {
-      R_03097C_GE_STEREO_CNTL,
-      R_030984_VGT_TF_MEMORY_BASE_HI - R_03097C_GE_STEREO_CNTL + 4,
-   },
-   {
-      R_03096C_GE_CNTL,
-      4,
-   },
-   {
-      R_030968_VGT_INSTANCE_BASE_ID,
-      4,
-   },
-   {
-      R_030E00_TA_CS_BC_BASE_ADDR,
-      R_030E04_TA_CS_BC_BASE_ADDR_HI - R_030E00_TA_CS_BC_BASE_ADDR + 4,
-   },
-   {
-      R_030988_GE_USER_VGPR_EN,
-      R_03098C_GE_VRS_RATE - R_030988_GE_USER_VGPR_EN + 4,
-   },
-   {
-      R_031110_SPI_GS_THROTTLE_CNTL1,
-      R_03111C_SPI_ATTRIBUTE_RING_SIZE - R_031110_SPI_GS_THROTTLE_CNTL1 + 4,
-   },
+   /* First register                            Count * 4      Last register */
+   { R_030908_VGT_PRIMITIVE_TYPE,                   1 * 4}, // VGT_PRIMITIVE_TYPE
+   { R_030924_GE_MIN_VTX_INDX,                      3 * 4}, // GE_MULTI_PRIM_IB_RESET_EN
+   { R_030934_VGT_NUM_INSTANCES,                    4 * 4}, // VGT_TF_MEMORY_BASE
+   { R_030964_GE_MAX_VTX_INDX,                      3 * 4}, // GE_CNTL
+   { R_03097C_GE_STEREO_CNTL,                       5 * 4}, // GE_VRS_RATE
+   { R_030998_VGT_GS_OUT_PRIM_TYPE,                 1 * 4}, // VGT_GS_OUT_PRIM_TYPE
+   { R_030A00_PA_SU_LINE_STIPPLE_VALUE,             2 * 4}, // PA_SC_LINE_STIPPLE_STATE - not shadowed by RS64
+   { R_030E00_TA_CS_BC_BASE_ADDR,                   2 * 4}, // TA_CS_BC_BASE_ADDR_HI
+   { R_031110_SPI_GS_THROTTLE_CNTL1,                4 * 4}, // SPI_ATTRIBUTE_RING_SIZE
+   /* GDS_STRMOUT_* registers are not listed because they are modified outside of the command buffer,
+    * so they have to be shadowed differently by firmware.
+  . */
 };
 
 void ac_get_reg_ranges(enum amd_gfx_level gfx_level, enum radeon_family family,
