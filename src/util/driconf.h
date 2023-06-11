@@ -645,6 +645,10 @@
    DRI_CONF_OPT_B(radv_flush_before_timestamp_write, def, \
                   "Wait for previous commands to finish before writing timestamps")
 
+#define DRI_CONF_RADV_RT_WAVE64(def) \
+   DRI_CONF_OPT_B(radv_rt_wave64, def, \
+                  "Force wave64 in RT shaders")
+
 #define DRI_CONF_RADV_APP_LAYER() DRI_CONF_OPT_S_NODEF(radv_app_layer, "Select an application layer.")
 
 /**

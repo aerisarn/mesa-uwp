@@ -416,6 +416,7 @@ struct radv_instance {
    bool enable_unified_heap_on_apu;
    bool tex_non_uniform;
    bool flush_before_timestamp_write;
+   bool force_rt_wave64;
    char *app_layer;
 };
 

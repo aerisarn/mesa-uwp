@@ -146,6 +146,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_TEX_NON_UNIFORM(false)
       DRI_CONF_RADV_RT(false)
       DRI_CONF_RADV_FLUSH_BEFORE_TIMESTAMP_WRITE(false)
+      DRI_CONF_RADV_RT_WAVE64(false)
       DRI_CONF_RADV_APP_LAYER()
    DRI_CONF_SECTION_END
 };
@@ -207,6 +208,8 @@ radv_init_dri_options(struct radv_instance *instance)
 
    instance->flush_before_timestamp_write =
       driQueryOptionb(&instance->dri_options, "radv_flush_before_timestamp_write");
+
+   instance->force_rt_wave64 = driQueryOptionb(&instance->dri_options, "radv_rt_wave64");
 }
 
 static const struct vk_instance_extension_table radv_instance_extensions_supported = {
