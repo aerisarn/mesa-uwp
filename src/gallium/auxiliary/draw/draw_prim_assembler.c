@@ -247,7 +247,7 @@ draw_prim_assembler_prepare_outputs(struct draw_assembler *ia)
 #include "draw_prim_assembler_tmp.h"
 
 #define FUNC assembler_run_elts
-#define LOCAL_VARS   const ushort *elts = input_prims->elts;
+#define LOCAL_VARS   const uint16_t *elts = input_prims->elts;
 #define GET_ELT(idx) (elts[start + (idx)])
 #include "draw_prim_assembler_tmp.h"
 

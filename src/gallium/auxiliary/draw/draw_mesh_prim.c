@@ -168,7 +168,7 @@ prim_tri(struct draw_mesh_prim *asmblr,
 #include "draw_mesh_prim_tmp.h"
 
 #define FUNC assembler_run_elts
-#define LOCAL_VARS   const ushort *elts = input_prims->elts;
+#define LOCAL_VARS   const uint16_t *elts = input_prims->elts;
 #define GET_ELT(idx) (elts[start + (idx)])
 #include "draw_mesh_prim_tmp.h"
 
