@@ -3492,7 +3492,7 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
    struct zink_shader_info *sinfo = &zs->sinfo;
    prune_io(nir);
 
-   NIR_PASS_V(nir, nir_convert_from_ssa, true, false);
+   NIR_PASS_V(nir, nir_convert_from_ssa, true, true);
 
    struct zink_shader_object obj;
    struct spirv_shader *spirv = nir_to_spirv(nir, sinfo, screen->spirv_version);
@@ -5274,7 +5274,7 @@ zink_shader_tcs_create(struct zink_screen *screen, nir_shader *tes, unsigned ver
 
    optimize_nir(nir, NULL);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
-   NIR_PASS_V(nir, nir_convert_from_ssa, true, false);
+   NIR_PASS_V(nir, nir_convert_from_ssa, true, true);
 
    *nir_ret = nir;
    zink_shader_serialize_blob(nir, &ret->blob);
