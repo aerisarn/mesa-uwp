@@ -69,8 +69,9 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_SCISSORS = BIT(12),
    TU_CMD_DIRTY_BLEND = BIT(13),
    TU_CMD_DIRTY_PATCH_CONTROL_POINTS = BIT(14),
+   TU_CMD_DIRTY_TESS_PARAMS = BIT(15),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = BIT(15)
+   TU_CMD_DIRTY_DRAW_STATE = BIT(16)
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
@@ -271,6 +272,12 @@ struct tu_primitive_params {
    bool primitive_restart;
    bool provoking_vtx_last;
    bool tess_upper_left_domain_origin;
+};
+
+struct tu_tess_params {
+   bool valid;
+   enum a6xx_tess_output output_upper_left, output_lower_left;
+   enum a6xx_tess_spacing spacing;
 };
 
 /* This should be for state that is set inside a renderpass and used at
@@ -546,6 +553,8 @@ struct tu_cmd_state
    struct tu_vs_params last_vs_params;
 
    struct tu_primitive_params last_prim_params;
+
+   struct tu_tess_params tess_params;
 
    uint64_t descriptor_buffer_iova[MAX_SETS];
 };

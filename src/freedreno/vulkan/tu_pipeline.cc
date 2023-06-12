@@ -1391,40 +1391,6 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
       tu_cs_emit(cs, hs->tess.tcs_vertices_out);
 
-      /* In SPIR-V generated from GLSL, the tessellation primitive params are
-       * are specified in the tess eval shader, but in SPIR-V generated from
-       * HLSL, they are specified in the tess control shader. */
-      const struct ir3_shader_variant *tess =
-         ds->tess.spacing == TESS_SPACING_UNSPECIFIED ? hs : ds;
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_CNTL, 1);
-      enum a6xx_tess_output output;
-      if (tess->tess.point_mode)
-         output = TESS_POINTS;
-      else if (tess->tess.primitive_mode == TESS_PRIMITIVE_ISOLINES)
-         output = TESS_LINES;
-      else if (tess->tess.ccw)
-         output = TESS_CCW_TRIS;
-      else
-         output = TESS_CW_TRIS;
-
-      enum a6xx_tess_spacing spacing;
-      switch (tess->tess.spacing) {
-      case TESS_SPACING_EQUAL:
-         spacing = TESS_EQUAL;
-         break;
-      case TESS_SPACING_FRACTIONAL_ODD:
-         spacing = TESS_FRACTIONAL_ODD;
-         break;
-      case TESS_SPACING_FRACTIONAL_EVEN:
-         spacing = TESS_FRACTIONAL_EVEN;
-         break;
-      case TESS_SPACING_UNSPECIFIED:
-      default:
-         unreachable("invalid tess spacing");
-      }
-      tu_cs_emit(cs, A6XX_PC_TESS_CNTL_SPACING(spacing) |
-            A6XX_PC_TESS_CNTL_OUTPUT(output));
-
       tu6_emit_link_map(cs, vs, hs, SB6_HS_SHADER);
       tu6_emit_link_map(cs, hs, ds, SB6_DS_SHADER);
    }
@@ -4125,6 +4091,43 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
                                    state_size)) {
          tu6_emit_patch_control_points(&cs, pipeline,
                                        pipeline->tess.patch_control_points);
+      }
+
+      /* In SPIR-V generated from GLSL, the tessellation primitive params are
+       * are specified in the tess eval shader, but in SPIR-V generated from
+       * HLSL, they are specified in the tess control shader. */
+      const struct ir3_shader_variant *tess =
+         ds->tess.spacing == TESS_SPACING_UNSPECIFIED ? hs : ds;
+      if (tess->tess.point_mode) {
+         pipeline->program.tess_output_lower_left =
+            pipeline->program.tess_output_upper_left = TESS_POINTS;
+      } else if (tess->tess.primitive_mode == TESS_PRIMITIVE_ISOLINES) {
+         pipeline->program.tess_output_lower_left =
+            pipeline->program.tess_output_upper_left = TESS_LINES;
+      } else if (tess->tess.ccw) {
+         /* Tessellation orientation in HW is specified with a lower-left
+          * origin, we need to swap them if the origin is upper-left.
+          */
+         pipeline->program.tess_output_lower_left = TESS_CCW_TRIS;
+         pipeline->program.tess_output_upper_left = TESS_CW_TRIS;
+      } else {
+         pipeline->program.tess_output_lower_left = TESS_CW_TRIS;
+         pipeline->program.tess_output_upper_left = TESS_CCW_TRIS;
+      }
+
+      switch (tess->tess.spacing) {
+      case TESS_SPACING_EQUAL:
+         pipeline->program.tess_spacing = TESS_EQUAL;
+         break;
+      case TESS_SPACING_FRACTIONAL_ODD:
+         pipeline->program.tess_spacing = TESS_FRACTIONAL_ODD;
+         break;
+      case TESS_SPACING_FRACTIONAL_EVEN:
+         pipeline->program.tess_spacing = TESS_FRACTIONAL_EVEN;
+         break;
+      case TESS_SPACING_UNSPECIFIED:
+      default:
+         unreachable("invalid tess spacing");
       }
    }
 

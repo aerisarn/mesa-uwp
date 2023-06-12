@@ -236,6 +236,9 @@ struct tu_pipeline
 
       bool writes_viewport;
       bool per_samp;
+
+      enum a6xx_tess_output tess_output_upper_left, tess_output_lower_left;
+      enum a6xx_tess_spacing tess_spacing;
    } program;
 
    struct

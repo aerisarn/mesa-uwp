@@ -3069,6 +3069,23 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    if (pipeline->output.rb_depth_cntl_disable)
       cmd->state.dirty |= TU_CMD_DIRTY_DS;
+
+   if (pipeline->active_stages & MESA_SHADER_TESS_CTRL) {
+      if (!cmd->state.tess_params.valid ||
+          cmd->state.tess_params.output_upper_left !=
+          pipeline->program.tess_output_upper_left ||
+          cmd->state.tess_params.output_lower_left !=
+          pipeline->program.tess_output_lower_left ||
+          cmd->state.tess_params.spacing != pipeline->program.tess_spacing) {
+         cmd->state.tess_params.output_upper_left =
+            pipeline->program.tess_output_upper_left;
+         cmd->state.tess_params.output_lower_left =
+            pipeline->program.tess_output_lower_left;
+         cmd->state.tess_params.spacing = pipeline->program.tess_spacing;
+         cmd->state.tess_params.valid = true;
+         cmd->state.dirty |= TU_CMD_DIRTY_TESS_PARAMS;
+      }
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -5437,13 +5454,21 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_regs(
          cs,
          A6XX_PC_PRIMITIVE_CNTL_0(.primitive_restart = primitive_restart,
-                                  .provoking_vtx_last = provoking_vtx_last,
-         .tess_upper_left_domain_origin =
-                                     tess_upper_left_domain_origin));
+                                  .provoking_vtx_last = provoking_vtx_last));
       prim_params->valid = true;
       prim_params->primitive_restart = primitive_restart;
       prim_params->provoking_vtx_last = provoking_vtx_last;
       prim_params->tess_upper_left_domain_origin = tess_upper_left_domain_origin;
+      cmd->state.dirty |= TU_CMD_DIRTY_TESS_PARAMS;
+   }
+
+   struct tu_tess_params *tess_params = &cmd->state.tess_params;
+   if (cmd->state.dirty & TU_CMD_DIRTY_TESS_PARAMS) {
+      tu_cs_emit_regs(cs, A6XX_PC_TESS_CNTL(
+            .spacing = tess_params->spacing,
+            .output = prim_params->tess_upper_left_domain_origin ?
+               tess_params->output_upper_left :
+               tess_params->output_lower_left));
    }
 
    /* Early exit if there is nothing to emit, saves CPU cycles */
