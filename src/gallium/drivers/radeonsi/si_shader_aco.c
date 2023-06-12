@@ -107,19 +107,11 @@ si_fill_aco_shader_info(struct si_shader *shader, struct aco_shader_info *info)
    info->hw_stage = si_select_hw_stage(stage, key, gfx_level);
 
    if (stage <= MESA_SHADER_GEOMETRY && key->ge.as_ngg && !key->ge.as_es) {
-      info->is_ngg = true;
       info->has_ngg_culling = key->ge.opt.ngg_culling;
       info->has_ngg_early_prim_export = gfx10_ngg_export_prim_early(shader);
    }
 
    switch (stage) {
-   case MESA_SHADER_VERTEX:
-      info->vs.as_es = key->ge.as_es;
-      info->vs.as_ls = key->ge.as_ls;
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      info->tes.as_es = key->ge.as_es;
-      break;
    case MESA_SHADER_FRAGMENT:
       info->ps.num_interp = si_get_ps_num_interp(shader);
       info->ps.spi_ps_input = shader->config.spi_ps_input_ena;

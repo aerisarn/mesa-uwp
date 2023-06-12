@@ -90,17 +90,13 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info, const struct radv
                              const enum amd_gfx_level gfx_level)
 {
    ASSIGN_FIELD(wave_size);
-   ASSIGN_FIELD(is_ngg);
    ASSIGN_FIELD(has_ngg_culling);
    ASSIGN_FIELD(has_ngg_early_prim_export);
    ASSIGN_FIELD(workgroup_size);
-   ASSIGN_FIELD(vs.as_es);
-   ASSIGN_FIELD(vs.as_ls);
    ASSIGN_FIELD(vs.tcs_in_out_eq);
    ASSIGN_FIELD(vs.tcs_temp_only_input_mask);
    ASSIGN_FIELD(vs.has_prolog);
    ASSIGN_FIELD(tcs.num_lds_blocks);
-   ASSIGN_FIELD(tes.as_es);
    ASSIGN_FIELD(ps.has_epilog);
    ASSIGN_FIELD(ps.num_interp);
    ASSIGN_FIELD(ps.spi_ps_input);
