@@ -28,6 +28,7 @@
 #define ACO_SHADER_INFO_H
 
 #include "ac_shader_args.h"
+#include "ac_shader_util.h"
 #include "amd_family.h"
 #include "shader_enums.h"
 
@@ -77,6 +78,7 @@ struct aco_ps_epilog_info {
 };
 
 struct aco_shader_info {
+   enum ac_hw_stage hw_stage;
    uint8_t wave_size;
    bool is_ngg;
    bool has_ngg_culling;
