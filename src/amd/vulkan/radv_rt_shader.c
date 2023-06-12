@@ -1630,7 +1630,7 @@ select_next_shader(nir_builder *b, nir_ssa_def *shader_va, unsigned wave_size)
 
 void
 radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                      const struct radv_shader_args *args, const struct radv_pipeline_key *key,
+                      const struct radv_shader_args *args, const struct radv_shader_info *info,
                       uint32_t *stack_size, bool resume_shader)
 {
    nir_builder b;
@@ -1705,7 +1705,7 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
    /* select next shader */
    b.cursor = nir_after_cf_list(&impl->body);
    shader_va = nir_load_var(&b, vars.shader_va);
-   nir_ssa_def *next = select_next_shader(&b, shader_va, key->cs.compute_subgroup_size);
+   nir_ssa_def *next = select_next_shader(&b, shader_va, info->wave_size);
    ac_nir_store_arg(&b, &args->ac, args->ac.rt.shader_pc, next);
 
    /* store back all variables to registers */
@@ -1739,5 +1739,5 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
    NIR_PASS_V(shader, nir_lower_vars_to_ssa);
    if (shader->info.stage == MESA_SHADER_CLOSEST_HIT ||
        shader->info.stage == MESA_SHADER_INTERSECTION)
-      NIR_PASS_V(shader, lower_hit_attribs, NULL, key->cs.compute_subgroup_size);
+      NIR_PASS_V(shader, lower_hit_attribs, NULL, info->wave_size);
 }

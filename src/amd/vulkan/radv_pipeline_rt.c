@@ -336,7 +336,7 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
    for (uint32_t i = 0; i < num_shaders; i++) {
       struct radv_pipeline_stage temp_stage = *stage;
       temp_stage.nir = shaders[i];
-      radv_nir_lower_rt_abi(temp_stage.nir, pCreateInfo, &temp_stage.args, pipeline_key, stack_size,
+      radv_nir_lower_rt_abi(temp_stage.nir, pCreateInfo, &temp_stage.args, &stage->info, stack_size,
                             i > 0);
       radv_optimize_nir(temp_stage.nir, pipeline_key->optimisations_disabled);
       radv_postprocess_nir(device, pipeline_layout, pipeline_key, MESA_SHADER_NONE, &temp_stage);
@@ -496,17 +496,6 @@ compute_rt_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
       2 * callable_size;
 }
 
-static struct radv_pipeline_key
-radv_generate_rt_pipeline_key(const struct radv_device *device,
-                              const struct radv_ray_tracing_pipeline *pipeline,
-                              VkPipelineCreateFlags flags)
-{
-   struct radv_pipeline_key key = radv_generate_pipeline_key(device, &pipeline->base.base, flags);
-   key.cs.compute_subgroup_size = device->physical_device->rt_wave_size;
-
-   return key;
-}
-
 static void
 combine_config(struct ac_shader_config *config, struct ac_shader_config *other)
 {
@@ -597,7 +586,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       goto fail;
 
    struct radv_pipeline_key key =
-      radv_generate_rt_pipeline_key(device, pipeline, pCreateInfo->flags);
+      radv_generate_pipeline_key(device, &pipeline->base.base, pCreateInfo->flags);
 
    radv_hash_rt_shaders(pipeline->sha1, pCreateInfo, &key, pipeline->groups,
                         radv_get_hash_flags(device, keep_statistic_info));
