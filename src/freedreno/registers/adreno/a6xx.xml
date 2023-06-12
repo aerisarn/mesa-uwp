@@ -2875,9 +2875,14 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x9b00" name="PC_PRIMITIVE_CNTL_0">
 		<bitfield name="PRIMITIVE_RESTART" pos="0" type="boolean"/>
-		<!-- maybe?  b1 seems always set, so just assume it is for now: -->
 		<bitfield name="PROVOKING_VTX_LAST" pos="1" type="boolean"/>
-		<bitfield name="TESS_UPPER_LEFT_DOMAIN_ORIGIN" pos="2" type="boolean"/>
+		<bitfield name="D3D_VERTEX_ORDERING" pos="2" type="boolean">
+			<doc>
+				Swaps TESS_CW_TRIS/TESS_CCW_TRIS, and also makes
+                                triangle fans and triangle strips use the D3D
+                                order instead of the OpenGL order.
+			</doc>
+		</bitfield>
 		<bitfield name="UNK3" pos="3" type="boolean"/>
 	</reg32>
 
