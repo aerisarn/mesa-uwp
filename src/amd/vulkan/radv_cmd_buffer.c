@@ -4518,6 +4518,12 @@ radv_emit_line_rasterization_mode(struct radv_cmd_buffer *cmd_buffer)
                              d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT));
 }
 
+static bool
+radv_ps_can_enable_early_z(const struct radv_shader *ps)
+{
+   return ps->info.ps.early_fragment_test || !ps->info.ps.writes_memory;
+}
+
 static void
 radv_emit_attachment_feedback_loop_enable(struct radv_cmd_buffer *cmd_buffer)
 {
@@ -4532,7 +4538,7 @@ radv_emit_attachment_feedback_loop_enable(struct radv_cmd_buffer *cmd_buffer)
    /* When a depth/stencil attachment is used inside feedback loops, use LATE_Z to make sure shader
     * invocations read the correct value.
     */
-   if (!uses_ds_feedback_loop && ps && (ps->info.ps.early_fragment_test || !ps->info.ps.writes_memory)) {
+   if (!uses_ds_feedback_loop && ps && radv_ps_can_enable_early_z(ps)) {
       z_order = V_02880C_EARLY_Z_THEN_LATE_Z;
    } else {
       z_order = V_02880C_LATE_Z;
@@ -6655,6 +6661,9 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
        (!previous_ps || previous_ps->info.ps.reads_sample_mask_in != ps->info.ps.reads_sample_mask_in))
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
                                  RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
+
+   if (!previous_ps || radv_ps_can_enable_early_z(previous_ps) != radv_ps_can_enable_early_z(ps))
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
 
    if (cmd_buffer->state.ms.sample_shading_enable != ps->info.ps.uses_sample_shading) {
       cmd_buffer->state.ms.sample_shading_enable = ps->info.ps.uses_sample_shading;
