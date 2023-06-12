@@ -7096,18 +7096,21 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-      /* Wa_1408224581
-       *
-       * Workaround: Gfx12LP Astep only An additional pipe control with
-       * post-sync = store dword operation would be required.( w/a is to
-       * have an additional pipe control after the stencil state whenever
-       * the surface state bits of this state is changing).
-       *
-       * This also seems sufficient to handle Wa_14014097488.
-       */
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-         pc.PostSyncOperation = WriteImmediateData;
-         pc.Address = cmd_buffer->device->workaround_address;
+      if (intel_needs_workaround(cmd_buffer->device->info, 1408224581) ||
+          intel_needs_workaround(cmd_buffer->device->info, 14014097488)) {
+         /* Wa_1408224581
+          *
+          * Workaround: Gfx12LP Astep only An additional pipe control with
+          * post-sync = store dword operation would be required.( w/a is to
+          * have an additional pipe control after the stencil state whenever
+          * the surface state bits of this state is changing).
+          *
+          * This also seems sufficient to handle Wa_14014097488.
+          */
+         anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
+            pc.PostSyncOperation = WriteImmediateData;
+            pc.Address = cmd_buffer->device->workaround_address;
+         }
       }
    }
    cmd_buffer->state.hiz_enabled = isl_aux_usage_has_hiz(info.hiz_usage);
