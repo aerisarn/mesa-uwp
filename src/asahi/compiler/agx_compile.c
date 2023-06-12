@@ -2379,12 +2379,13 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       out->tag_write_disable = true;
 
    /* Late sysval lowering creates large loads. Load lowering creates unpacks */
-   NIR_PASS_V(nir, nir_lower_mem_access_bit_sizes,
-              nir_var_mem_ssbo | nir_var_mem_constant |
-                 nir_var_mem_task_payload | nir_var_shader_temp |
-                 nir_var_function_temp | nir_var_mem_global |
-                 nir_var_mem_shared,
-              mem_access_size_align_cb, NULL);
+   nir_lower_mem_access_bit_sizes_options lower_mem_access_options = {
+      .modes = nir_var_mem_ssbo | nir_var_mem_constant |
+               nir_var_mem_task_payload | nir_var_shader_temp |
+               nir_var_function_temp | nir_var_mem_global | nir_var_mem_shared,
+      .callback = mem_access_size_align_cb,
+   };
+   NIR_PASS_V(nir, nir_lower_mem_access_bit_sizes, &lower_mem_access_options);
    NIR_PASS_V(nir, nir_lower_pack);
 
    /* Late blend lowering creates vectors */

@@ -5112,10 +5112,14 @@ typedef nir_mem_access_size_align
                                         bool offset_is_const,
                                         const void *cb_data);
 
+typedef struct {
+   nir_lower_mem_access_bit_sizes_cb callback;
+   nir_variable_mode modes;
+   void *cb_data;
+} nir_lower_mem_access_bit_sizes_options;
+
 bool nir_lower_mem_access_bit_sizes(nir_shader *shader,
-                                    nir_variable_mode modes,
-                                    nir_lower_mem_access_bit_sizes_cb cb,
-                                    const void *cb_data);
+                                    const nir_lower_mem_access_bit_sizes_options *options);
 
 typedef bool (*nir_should_vectorize_mem_func)(unsigned align_mul,
                                               unsigned align_offset,

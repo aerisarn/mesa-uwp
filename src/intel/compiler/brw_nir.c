@@ -1495,15 +1495,17 @@ brw_vectorize_lower_mem_access(nir_shader *nir,
       }
    }
 
-   OPT(nir_lower_mem_access_bit_sizes,
-       nir_var_mem_ssbo |
-       nir_var_mem_constant |
-       nir_var_mem_task_payload |
-       nir_var_shader_temp |
-       nir_var_function_temp |
-       nir_var_mem_global |
-       nir_var_mem_shared,
-       get_mem_access_size_align, NULL);
+   nir_lower_mem_access_bit_sizes_options mem_access_options = {
+      .modes = nir_var_mem_ssbo |
+               nir_var_mem_constant |
+               nir_var_mem_task_payload |
+               nir_var_shader_temp |
+               nir_var_function_temp |
+               nir_var_mem_global |
+               nir_var_mem_shared,
+      .callback = get_mem_access_size_align,
+   };
+   OPT(nir_lower_mem_access_bit_sizes, &mem_access_options);
 
    while (progress) {
       progress = false;

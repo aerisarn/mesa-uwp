@@ -317,12 +317,6 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
    return true;
 }
 
-struct lower_mem_access_state {
-   nir_variable_mode modes;
-   nir_lower_mem_access_bit_sizes_cb cb;
-   const void *cb_data;
-};
-
 static nir_variable_mode
 intrin_to_variable_mode(nir_intrinsic_op intrin)
 {
@@ -361,7 +355,7 @@ intrin_to_variable_mode(nir_intrinsic_op intrin)
 static bool
 lower_mem_access_instr(nir_builder *b, nir_instr *instr, void *_data)
 {
-   struct lower_mem_access_state *state = _data;
+   const nir_lower_mem_access_bit_sizes_options *state = _data;
 
    if (instr->type != nir_instr_type_intrinsic)
       return false;
@@ -380,14 +374,14 @@ lower_mem_access_instr(nir_builder *b, nir_instr *instr, void *_data)
    case nir_intrinsic_load_shared:
    case nir_intrinsic_load_scratch:
    case nir_intrinsic_load_task_payload:
-      return lower_mem_load(b, intrin, state->cb, state->cb_data);
+      return lower_mem_load(b, intrin, state->callback, state->cb_data);
 
    case nir_intrinsic_store_global:
    case nir_intrinsic_store_ssbo:
    case nir_intrinsic_store_shared:
    case nir_intrinsic_store_scratch:
    case nir_intrinsic_store_task_payload:
-      return lower_mem_store(b, intrin, state->cb, state->cb_data);
+      return lower_mem_store(b, intrin, state->callback, state->cb_data);
 
    default:
       return false;
@@ -396,18 +390,10 @@ lower_mem_access_instr(nir_builder *b, nir_instr *instr, void *_data)
 
 bool
 nir_lower_mem_access_bit_sizes(nir_shader *shader,
-                               nir_variable_mode modes,
-                               nir_lower_mem_access_bit_sizes_cb cb,
-                               const void *cb_data)
+                               const nir_lower_mem_access_bit_sizes_options *options)
 {
-   struct lower_mem_access_state state = {
-      .modes = modes,
-      .cb = cb,
-      .cb_data = cb_data
-   };
-
    return nir_shader_instructions_pass(shader, lower_mem_access_instr,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance,
-                                       (void *)&state);
+                                       (void *)options);
 }
