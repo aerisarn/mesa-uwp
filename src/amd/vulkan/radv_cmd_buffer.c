@@ -10037,6 +10037,9 @@ static void
 radv_trace_rays(struct radv_cmd_buffer *cmd_buffer, const VkTraceRaysIndirectCommand2KHR *tables,
                 uint64_t indirect_va, enum radv_rt_mode mode)
 {
+   if (cmd_buffer->device->instance->debug_flags & RADV_DEBUG_NO_RT)
+      return;
+
    struct radv_compute_pipeline *pipeline = &cmd_buffer->state.rt_pipeline->base;
    struct radv_shader *rt_prolog = cmd_buffer->state.rt_prolog;
    uint32_t base_reg = rt_prolog->info.user_data_0;

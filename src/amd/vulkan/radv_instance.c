@@ -77,6 +77,7 @@ static const struct debug_control radv_debug_options[] = {
    {"extra_md", RADV_DEBUG_EXTRA_MD},
    {"nogpl", RADV_DEBUG_NO_GPL},
    {"videoarraypath", RADV_DEBUG_VIDEO_ARRAY_PATH},
+   {"nort", RADV_DEBUG_NO_RT},
    {NULL, 0}};
 
 const char *

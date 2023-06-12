@@ -27,6 +27,7 @@
 #include "util/hash_table.h"
 
 #include "bvh/bvh.h"
+#include "radv_debug.h"
 #include "radv_nir.h"
 #include "radv_private.h"
 #include "radv_rt_common.h"
@@ -372,7 +373,7 @@ enum rq_intersection_type {
 
 static void
 lower_rq_initialize(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *instr,
-                    struct ray_query_vars *vars)
+                    struct ray_query_vars *vars, struct radv_instance *instance)
 {
    rq_store_var(b, index, vars->flags, instr->src[2].ssa, 0x1);
    rq_store_var(b, index, vars->cull_mask, nir_ishl_imm(b, instr->src[3].ssa, 24), 0x1);
@@ -420,7 +421,8 @@ lower_rq_initialize(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *ins
 
    rq_store_var(b, index, vars->trav.top_stack, nir_imm_int(b, -1), 1);
 
-   rq_store_var(b, index, vars->incomplete, nir_imm_bool(b, true), 0x1);
+   rq_store_var(b, index, vars->incomplete,
+                nir_imm_bool(b, !(instance->debug_flags & RADV_DEBUG_NO_RT)), 0x1);
 }
 
 static nir_ssa_def *
@@ -741,7 +743,7 @@ radv_nir_lower_ray_queries(struct nir_shader *shader, struct radv_device *device
                lower_rq_generate_intersection(&builder, index, intrinsic, vars);
                break;
             case nir_intrinsic_rq_initialize:
-               lower_rq_initialize(&builder, index, intrinsic, vars);
+               lower_rq_initialize(&builder, index, intrinsic, vars, device->instance);
                break;
             case nir_intrinsic_rq_load:
                new_dest = lower_rq_load(&builder, index, intrinsic, vars);
