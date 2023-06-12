@@ -81,13 +81,13 @@ zink_resource_object_init_mutable(struct zink_context *ctx, struct zink_resource
 VkDeviceAddress
 zink_resource_get_address(struct zink_screen *screen, struct zink_resource *res);
 
-static inline bool
+static ALWAYS_INLINE bool
 zink_resource_has_binds(const struct zink_resource *res)
 {
    return res->all_binds > 0;
 }
 
-static inline bool
+static ALWAYS_INLINE  bool
 zink_is_swapchain(const struct zink_resource *res)
 {
    return res->swapchain;

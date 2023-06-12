@@ -79,13 +79,13 @@ zink_program_cache_stages(uint32_t stages_present)
                              (1 << MESA_SHADER_GEOMETRY))) >> 1;
 }
 
-static inline bool
+static ALWAYS_INLINE bool
 zink_is_zsbuf_used(const struct zink_context *ctx)
 {
    return ctx->blitting || tc_renderpass_info_is_zsbuf_used(&ctx->dynamic_fb.tc_info);
 }
 
-static inline bool
+static ALWAYS_INLINE bool
 zink_is_zsbuf_write(const struct zink_context *ctx)
 {
    if (!zink_is_zsbuf_used(ctx))
