@@ -362,6 +362,165 @@ dgc_emit_state(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf,
    nir_pop_if(b, NULL);
 }
 
+/**
+ * Emit VK_INDIRECT_COMMANDS_TOKEN_TYPE_PUSH_CONSTANT_NV.
+ */
+static void
+dgc_emit_push_constant(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf,
+                       nir_ssa_def *stream_base, nir_ssa_def *push_const_mask,
+                       nir_variable *upload_offset)
+{
+   nir_ssa_def *vbo_cnt = load_param8(b, vbo_cnt);
+   nir_ssa_def *const_copy = nir_ine_imm(b, load_param8(b, const_copy), 0);
+   nir_ssa_def *const_copy_size = load_param16(b, const_copy_size);
+   nir_ssa_def *const_copy_words = nir_ushr_imm(b, const_copy_size, 2);
+   const_copy_words = nir_bcsel(b, const_copy, const_copy_words, nir_imm_int(b, 0));
+
+   nir_variable *idx =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "const_copy_idx");
+   nir_store_var(b, idx, nir_imm_int(b, 0), 0x1);
+
+   nir_ssa_def *param_buf = radv_meta_load_descriptor(b, 0, DGC_DESC_PARAMS);
+   nir_ssa_def *param_offset = nir_imul_imm(b, vbo_cnt, 24);
+   nir_ssa_def *param_offset_offset = nir_iadd_imm(b, param_offset, MESA_VULKAN_SHADER_STAGES * 12);
+   nir_ssa_def *param_const_offset =
+      nir_iadd_imm(b, param_offset, MAX_PUSH_CONSTANTS_SIZE + MESA_VULKAN_SHADER_STAGES * 12);
+   nir_push_loop(b);
+   {
+      nir_ssa_def *cur_idx = nir_load_var(b, idx);
+      nir_push_if(b, nir_uge(b, cur_idx, const_copy_words));
+      {
+         nir_jump(b, nir_jump_break);
+      }
+      nir_pop_if(b, NULL);
+
+      nir_variable *data =
+         nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "copy_data");
+
+      nir_ssa_def *update = nir_iand(b, push_const_mask, nir_ishl(b, nir_imm_int64(b, 1), cur_idx));
+      update = nir_bcsel(b, nir_ult_imm(b, cur_idx, 64 /* bits in push_const_mask */), update,
+                         nir_imm_int64(b, 0));
+
+      nir_push_if(b, nir_ine_imm(b, update, 0));
+      {
+         nir_ssa_def *stream_offset = nir_load_ssbo(
+            b, 1, 32, param_buf, nir_iadd(b, param_offset_offset, nir_ishl_imm(b, cur_idx, 2)));
+         nir_ssa_def *new_data =
+            nir_load_ssbo(b, 1, 32, stream_buf, nir_iadd(b, stream_base, stream_offset));
+         nir_store_var(b, data, new_data, 0x1);
+      }
+      nir_push_else(b, NULL);
+      {
+         nir_store_var(b, data,
+                       nir_load_ssbo(b, 1, 32, param_buf,
+                                     nir_iadd(b, param_const_offset, nir_ishl_imm(b, cur_idx, 2))),
+                       0x1);
+      }
+      nir_pop_if(b, NULL);
+
+      nir_store_ssbo(b, nir_load_var(b, data), cs->descriptor,
+                     nir_iadd(b, nir_load_var(b, upload_offset), nir_ishl_imm(b, cur_idx, 2)),
+                     .access = ACCESS_NON_READABLE);
+
+      nir_store_var(b, idx, nir_iadd_imm(b, cur_idx, 1), 0x1);
+   }
+   nir_pop_loop(b, NULL);
+
+   nir_variable *shader_idx =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "shader_idx");
+   nir_store_var(b, shader_idx, nir_imm_int(b, 0), 0x1);
+   nir_ssa_def *shader_cnt = load_param16(b, push_constant_shader_cnt);
+
+   nir_push_loop(b);
+   {
+      nir_ssa_def *cur_shader_idx = nir_load_var(b, shader_idx);
+      nir_push_if(b, nir_uge(b, cur_shader_idx, shader_cnt));
+      {
+         nir_jump(b, nir_jump_break);
+      }
+      nir_pop_if(b, NULL);
+
+      nir_ssa_def *reg_info = nir_load_ssbo(
+         b, 3, 32, param_buf, nir_iadd(b, param_offset, nir_imul_imm(b, cur_shader_idx, 12)));
+      nir_ssa_def *upload_sgpr = nir_ubfe_imm(b, nir_channel(b, reg_info, 0), 0, 16);
+      nir_ssa_def *inline_sgpr = nir_ubfe_imm(b, nir_channel(b, reg_info, 0), 16, 16);
+      nir_ssa_def *inline_mask = nir_pack_64_2x32(b, nir_channels(b, reg_info, 0x6));
+
+      nir_push_if(b, nir_ine_imm(b, upload_sgpr, 0));
+      {
+         nir_ssa_def *pkt[3] = {
+            nir_imm_int(b, PKT3(PKT3_SET_SH_REG, 1, 0)), upload_sgpr,
+            nir_iadd(b, load_param32(b, upload_addr), nir_load_var(b, upload_offset))};
+
+         dgc_emit(b, cs, nir_vec(b, pkt, 3));
+      }
+      nir_pop_if(b, NULL);
+
+      nir_push_if(b, nir_ine_imm(b, inline_sgpr, 0));
+      {
+         nir_ssa_def *inline_len = nir_bit_count(b, inline_mask);
+         nir_store_var(b, idx, nir_imm_int(b, 0), 0x1);
+
+         nir_ssa_def *pkt[2] = {nir_pkt3(b, PKT3_SET_SH_REG, inline_len), inline_sgpr};
+
+         dgc_emit(b, cs, nir_vec(b, pkt, 2));
+
+         nir_push_loop(b);
+         {
+            nir_ssa_def *cur_idx = nir_load_var(b, idx);
+            nir_push_if(b, nir_uge_imm(b, cur_idx, 64 /* bits in inline_mask */));
+            {
+               nir_jump(b, nir_jump_break);
+            }
+            nir_pop_if(b, NULL);
+
+            nir_ssa_def *l = nir_ishl(b, nir_imm_int64(b, 1), cur_idx);
+            nir_push_if(b, nir_ieq_imm(b, nir_iand(b, l, inline_mask), 0));
+            {
+               nir_store_var(b, idx, nir_iadd_imm(b, cur_idx, 1), 0x1);
+               nir_jump(b, nir_jump_continue);
+            }
+            nir_pop_if(b, NULL);
+
+            nir_variable *data =
+               nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "copy_data");
+
+            nir_ssa_def *update =
+               nir_iand(b, push_const_mask, nir_ishl(b, nir_imm_int64(b, 1), cur_idx));
+            update = nir_bcsel(b, nir_ult_imm(b, cur_idx, 64 /* bits in push_const_mask */), update,
+                               nir_imm_int64(b, 0));
+
+            nir_push_if(b, nir_ine_imm(b, update, 0));
+            {
+               nir_ssa_def *stream_offset =
+                  nir_load_ssbo(b, 1, 32, param_buf,
+                                nir_iadd(b, param_offset_offset, nir_ishl_imm(b, cur_idx, 2)));
+               nir_ssa_def *new_data =
+                  nir_load_ssbo(b, 1, 32, stream_buf, nir_iadd(b, stream_base, stream_offset));
+               nir_store_var(b, data, new_data, 0x1);
+            }
+            nir_push_else(b, NULL);
+            {
+               nir_store_var(
+                  b, data,
+                  nir_load_ssbo(b, 1, 32, param_buf,
+                                nir_iadd(b, param_const_offset, nir_ishl_imm(b, cur_idx, 2))),
+                  0x1);
+            }
+            nir_pop_if(b, NULL);
+
+            dgc_emit(b, cs, nir_load_var(b, data));
+
+            nir_store_var(b, idx, nir_iadd_imm(b, cur_idx, 1), 0x1);
+         }
+         nir_pop_loop(b, NULL);
+      }
+      nir_pop_if(b, NULL);
+      nir_store_var(b, shader_idx, nir_iadd_imm(b, cur_shader_idx, 1), 0x1);
+   }
+   nir_pop_loop(b, NULL);
+}
+
 static nir_shader *
 build_dgc_prepare_shader(struct radv_device *dev)
 {
@@ -592,158 +751,8 @@ build_dgc_prepare_shader(struct radv_device *dev)
       nir_ssa_def *push_const_mask = load_param64(&b, push_constant_mask);
       nir_push_if(&b, nir_ine_imm(&b, push_const_mask, 0));
       {
-         nir_ssa_def *const_copy = nir_ine_imm(&b, load_param8(&b, const_copy), 0);
-         nir_ssa_def *const_copy_size = load_param16(&b, const_copy_size);
-         nir_ssa_def *const_copy_words = nir_ushr_imm(&b, const_copy_size, 2);
-         const_copy_words = nir_bcsel(&b, const_copy, const_copy_words, nir_imm_int(&b, 0));
-
-         nir_variable *idx =
-            nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "const_copy_idx");
-         nir_store_var(&b, idx, nir_imm_int(&b, 0), 0x1);
-
-         nir_ssa_def *param_buf = radv_meta_load_descriptor(&b, 0, DGC_DESC_PARAMS);
-         nir_ssa_def *param_offset = nir_imul_imm(&b, vbo_cnt, 24);
-         nir_ssa_def *param_offset_offset = nir_iadd_imm(&b, param_offset, MESA_VULKAN_SHADER_STAGES * 12);
-         nir_ssa_def *param_const_offset = nir_iadd_imm(&b, param_offset, MAX_PUSH_CONSTANTS_SIZE + MESA_VULKAN_SHADER_STAGES * 12);
-         nir_push_loop(&b);
-         {
-            nir_ssa_def *cur_idx = nir_load_var(&b, idx);
-            nir_push_if(&b, nir_uge(&b, cur_idx, const_copy_words));
-            {
-               nir_jump(&b, nir_jump_break);
-            }
-            nir_pop_if(&b, NULL);
-
-            nir_variable *data = nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "copy_data");
-
-            nir_ssa_def *update = nir_iand(&b, push_const_mask, nir_ishl(&b, nir_imm_int64(&b, 1), cur_idx));
-            update = nir_bcsel(
-               &b, nir_ult_imm(&b, cur_idx, 64 /* bits in push_const_mask */), update,
-               nir_imm_int64(&b, 0));
-
-            nir_push_if(&b, nir_ine_imm(&b, update, 0));
-            {
-               nir_ssa_def *stream_offset = nir_load_ssbo(
-                  &b, 1, 32, param_buf,
-                  nir_iadd(&b, param_offset_offset, nir_ishl_imm(&b, cur_idx, 2)));
-               nir_ssa_def *new_data = nir_load_ssbo(&b, 1, 32, stream_buf, nir_iadd(&b, stream_base, stream_offset));
-               nir_store_var(&b, data, new_data, 0x1);
-            }
-            nir_push_else(&b, NULL);
-            {
-               nir_store_var(
-                  &b, data,
-                  nir_load_ssbo(&b, 1, 32, param_buf,
-                                nir_iadd(&b, param_const_offset, nir_ishl_imm(&b, cur_idx, 2))),
-                  0x1);
-            }
-            nir_pop_if(&b, NULL);
-
-            nir_store_ssbo(
-               &b, nir_load_var(&b, data), cmd_buf.descriptor,
-               nir_iadd(&b, nir_load_var(&b, upload_offset), nir_ishl_imm(&b, cur_idx, 2)),
-               .access = ACCESS_NON_READABLE);
-
-            nir_store_var(&b, idx, nir_iadd_imm(&b, cur_idx, 1), 0x1);
-         }
-         nir_pop_loop(&b, NULL);
-
-         nir_variable *shader_idx =
-            nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "shader_idx");
-         nir_store_var(&b, shader_idx, nir_imm_int(&b, 0), 0x1);
-         nir_ssa_def *shader_cnt = load_param16(&b, push_constant_shader_cnt);
-
-         nir_push_loop(&b);
-         {
-            nir_ssa_def *cur_shader_idx = nir_load_var(&b, shader_idx);
-            nir_push_if(&b, nir_uge(&b, cur_shader_idx, shader_cnt));
-            {
-               nir_jump(&b, nir_jump_break);
-            }
-            nir_pop_if(&b, NULL);
-
-            nir_ssa_def *reg_info = nir_load_ssbo(&b, 3, 32, param_buf, nir_iadd(&b, param_offset, nir_imul_imm(&b, cur_shader_idx, 12)));
-            nir_ssa_def *upload_sgpr = nir_ubfe_imm(&b, nir_channel(&b, reg_info, 0), 0, 16);
-            nir_ssa_def *inline_sgpr = nir_ubfe_imm(&b, nir_channel(&b, reg_info, 0), 16, 16);
-            nir_ssa_def *inline_mask = nir_pack_64_2x32(&b, nir_channels(&b, reg_info, 0x6));
-
-            nir_push_if(&b, nir_ine_imm(&b, upload_sgpr, 0));
-            {
-               nir_ssa_def *pkt[3] = {
-                  nir_imm_int(&b, PKT3(PKT3_SET_SH_REG, 1, 0)),
-                  upload_sgpr,
-                  nir_iadd(&b, load_param32(&b, upload_addr), nir_load_var(&b, upload_offset))
-               };
-
-               dgc_emit(&b, &cmd_buf, nir_vec(&b, pkt, 3));
-            }
-            nir_pop_if(&b, NULL);
-
-            nir_push_if(&b, nir_ine_imm(&b, inline_sgpr, 0));
-            {
-               nir_ssa_def *inline_len = nir_bit_count(&b, inline_mask);
-               nir_store_var(&b, idx, nir_imm_int(&b, 0), 0x1);
-
-               nir_ssa_def *pkt[2] = {
-                  nir_pkt3(&b, PKT3_SET_SH_REG, inline_len),
-                  inline_sgpr
-               };
-
-               dgc_emit(&b, &cmd_buf, nir_vec(&b, pkt, 2));
-
-               nir_push_loop(&b);
-               {
-                  nir_ssa_def *cur_idx = nir_load_var(&b, idx);
-                  nir_push_if(&b,
-                              nir_uge_imm(&b, cur_idx, 64 /* bits in inline_mask */));
-                  {
-                     nir_jump(&b, nir_jump_break);
-                  }
-                  nir_pop_if(&b, NULL);
-
-                  nir_ssa_def *l = nir_ishl(&b, nir_imm_int64(&b, 1), cur_idx);
-                  nir_push_if(&b, nir_ieq_imm(&b, nir_iand(&b, l, inline_mask), 0));
-                  {
-                     nir_store_var(&b, idx, nir_iadd_imm(&b, cur_idx, 1), 0x1);
-                     nir_jump(&b, nir_jump_continue);
-                  }
-                  nir_pop_if(&b, NULL);
-
-                  nir_variable *data = nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "copy_data");
-
-                  nir_ssa_def *update = nir_iand(&b, push_const_mask, nir_ishl(&b, nir_imm_int64(&b, 1), cur_idx));
-                  update = nir_bcsel(
-                     &b, nir_ult_imm(&b, cur_idx, 64 /* bits in push_const_mask */),
-                     update, nir_imm_int64(&b, 0));
-
-                  nir_push_if(&b, nir_ine_imm(&b, update, 0));
-                  {
-                     nir_ssa_def *stream_offset = nir_load_ssbo(
-                        &b, 1, 32, param_buf,
-                        nir_iadd(&b, param_offset_offset, nir_ishl_imm(&b, cur_idx, 2)));
-                     nir_ssa_def *new_data = nir_load_ssbo(&b, 1, 32, stream_buf, nir_iadd(&b, stream_base, stream_offset));
-                     nir_store_var(&b, data, new_data, 0x1);
-                  }
-                  nir_push_else(&b, NULL);
-                  {
-                     nir_store_var(&b, data,
-                                   nir_load_ssbo(&b, 1, 32, param_buf,
-                                                 nir_iadd(&b, param_const_offset,
-                                                          nir_ishl_imm(&b, cur_idx, 2))),
-                                   0x1);
-                  }
-                  nir_pop_if(&b, NULL);
-
-                  dgc_emit(&b, &cmd_buf, nir_load_var(&b, data));
-
-                  nir_store_var(&b, idx, nir_iadd_imm(&b, cur_idx, 1), 0x1);
-               }
-               nir_pop_loop(&b, NULL);
-            }
-            nir_pop_if(&b, NULL);
-            nir_store_var(&b, shader_idx, nir_iadd_imm(&b, cur_shader_idx, 1), 0x1);
-         }
-         nir_pop_loop(&b, NULL);
+         dgc_emit_push_constant(&b, &cmd_buf, stream_buf, stream_base, push_const_mask,
+                                upload_offset);
       }
       nir_pop_if(&b, 0);
 
