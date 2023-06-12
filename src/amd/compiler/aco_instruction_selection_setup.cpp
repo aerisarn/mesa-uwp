@@ -689,51 +689,7 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
       sw_stage = SWStage::FS;
    }
 
-   bool gfx9_plus = options->gfx_level >= GFX9;
-   bool ngg = info->is_ngg && options->gfx_level >= GFX10;
-   ac_hw_stage hw_stage;
-   if (sw_stage == SWStage::VS && info->vs.as_es && !ngg)
-      hw_stage = AC_HW_EXPORT_SHADER;
-   else if (sw_stage == SWStage::VS && !info->vs.as_ls && !ngg)
-      hw_stage = AC_HW_VERTEX_SHADER;
-   else if (sw_stage == SWStage::VS && ngg)
-      hw_stage = AC_HW_NEXT_GEN_GEOMETRY_SHADER;
-   else if (sw_stage == SWStage::GS)
-      hw_stage = AC_HW_LEGACY_GEOMETRY_SHADER;
-   else if (sw_stage == SWStage::FS)
-      hw_stage = AC_HW_PIXEL_SHADER;
-   else if (sw_stage == SWStage::CS)
-      hw_stage = AC_HW_COMPUTE_SHADER;
-   else if (sw_stage == SWStage::TS)
-      hw_stage = AC_HW_COMPUTE_SHADER;
-   else if (sw_stage == SWStage::MS)
-      hw_stage = AC_HW_NEXT_GEN_GEOMETRY_SHADER;
-   else if (sw_stage == SWStage::VS_GS && gfx9_plus && !ngg)
-      hw_stage = AC_HW_LEGACY_GEOMETRY_SHADER;
-   else if (sw_stage == SWStage::VS_GS && ngg)
-      hw_stage = AC_HW_NEXT_GEN_GEOMETRY_SHADER;
-   else if (sw_stage == SWStage::VS && info->vs.as_ls)
-      hw_stage = AC_HW_LOCAL_SHADER;
-   else if (sw_stage == SWStage::TCS)
-      hw_stage = AC_HW_HULL_SHADER;
-   else if (sw_stage == SWStage::VS_TCS)
-      hw_stage = AC_HW_HULL_SHADER;
-   else if (sw_stage == SWStage::TES && !info->tes.as_es && !ngg)
-      hw_stage = AC_HW_VERTEX_SHADER;
-   else if (sw_stage == SWStage::TES && !info->tes.as_es && ngg)
-      hw_stage = AC_HW_NEXT_GEN_GEOMETRY_SHADER;
-   else if (sw_stage == SWStage::TES && info->tes.as_es && !ngg)
-      hw_stage = AC_HW_EXPORT_SHADER;
-   else if (sw_stage == SWStage::TES_GS && gfx9_plus && !ngg)
-      hw_stage = AC_HW_LEGACY_GEOMETRY_SHADER;
-   else if (sw_stage == SWStage::TES_GS && ngg)
-      hw_stage = AC_HW_NEXT_GEN_GEOMETRY_SHADER;
-   else if (sw_stage == SWStage::RT)
-      hw_stage = AC_HW_COMPUTE_SHADER;
-   else
-      unreachable("Shader stage not implemented");
-
-   init_program(program, Stage{hw_stage, sw_stage}, info, options->gfx_level, options->family,
+   init_program(program, Stage{info->hw_stage, sw_stage}, info, options->gfx_level, options->family,
                 options->wgp_mode, config);
 
    isel_context ctx = {};
