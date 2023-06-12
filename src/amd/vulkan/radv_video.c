@@ -869,7 +869,7 @@ static rvcn_dec_message_avc_t get_h264_msg(struct radv_video_session *vid,
       const struct VkVideoDecodeH264DpbSlotInfoKHR *dpb_slot =
          vk_find_struct_const(frame_info->pReferenceSlots[i].pNext, VIDEO_DECODE_H264_DPB_SLOT_INFO_KHR);
 
-      result.frame_num_list[i] = idx;
+      result.frame_num_list[i] = dpb_slot->pStdReferenceInfo->FrameNum;
       result.field_order_cnt_list[i][0] = dpb_slot->pStdReferenceInfo->PicOrderCnt[0];
       result.field_order_cnt_list[i][1] = dpb_slot->pStdReferenceInfo->PicOrderCnt[1];
 
