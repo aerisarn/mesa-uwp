@@ -2389,7 +2389,12 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
 
          isl_memcpy_tiled_to_linear(x1, x2, y1, y2, ptr, src, xfer->stride,
                                     surf->row_pitch_B, has_swizzling,
-                                    surf->tiling, ISL_MEMCPY_STREAMING_LOAD);
+                                    surf->tiling,
+#if defined(USE_SSE41)
+                                    util_get_cpu_caps()->has_sse4_1 ?
+                                    ISL_MEMCPY_STREAMING_LOAD :
+#endif
+                                    ISL_MEMCPY);
       }
    }
 
