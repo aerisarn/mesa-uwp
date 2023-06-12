@@ -289,7 +289,9 @@ validate_ir(Program* program)
                      instr.get());
          }
 
-         if (instr->isSALU() || instr->isVALU()) {
+         if ((instr->isSALU() && instr->opcode != aco_opcode::p_constaddr_addlo &&
+              instr->opcode != aco_opcode::p_resumeaddr_addlo) ||
+             instr->isVALU()) {
             /* check literals */
             Operand literal(s1);
             for (unsigned i = 0; i < instr->operands.size(); i++) {
