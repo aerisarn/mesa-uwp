@@ -38,9 +38,56 @@ static inline void radv_aco_convert_ps_epilog_key(struct aco_ps_epilog_info *aco
                                                   const struct radv_ps_epilog_key *radv,
                                                   const struct radv_shader_args *radv_args);
 
+static enum ac_hw_stage
+radv_select_hw_stage(const struct radv_shader_info *const info, const enum amd_gfx_level gfx_level)
+{
+   switch (info->stage) {
+   case MESA_SHADER_VERTEX:
+      if (info->is_ngg)
+         return AC_HW_NEXT_GEN_GEOMETRY_SHADER;
+      else if (info->vs.as_es)
+         return gfx_level >= GFX9 ? AC_HW_LEGACY_GEOMETRY_SHADER : AC_HW_EXPORT_SHADER;
+      else if (info->vs.as_ls)
+         return gfx_level >= GFX9 ? AC_HW_HULL_SHADER : AC_HW_LOCAL_SHADER;
+      else
+         return AC_HW_VERTEX_SHADER;
+   case MESA_SHADER_TESS_EVAL:
+      if (info->is_ngg)
+         return AC_HW_NEXT_GEN_GEOMETRY_SHADER;
+      else if (info->tes.as_es)
+         return gfx_level >= GFX9 ? AC_HW_LEGACY_GEOMETRY_SHADER : AC_HW_EXPORT_SHADER;
+      else
+         return AC_HW_VERTEX_SHADER;
+   case MESA_SHADER_TESS_CTRL:
+      return AC_HW_HULL_SHADER;
+   case MESA_SHADER_GEOMETRY:
+      if (info->is_ngg)
+         return AC_HW_NEXT_GEN_GEOMETRY_SHADER;
+      else
+         return AC_HW_LEGACY_GEOMETRY_SHADER;
+   case MESA_SHADER_MESH:
+      return AC_HW_NEXT_GEN_GEOMETRY_SHADER;
+   case MESA_SHADER_FRAGMENT:
+      return AC_HW_PIXEL_SHADER;
+   case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_KERNEL:
+   case MESA_SHADER_TASK:
+   case MESA_SHADER_RAYGEN:
+   case MESA_SHADER_ANY_HIT:
+   case MESA_SHADER_CLOSEST_HIT:
+   case MESA_SHADER_MISS:
+   case MESA_SHADER_INTERSECTION:
+   case MESA_SHADER_CALLABLE:
+      return AC_HW_COMPUTE_SHADER;
+   default:
+      unreachable("Unsupported HW stage");
+   }
+}
+
 static inline void
 radv_aco_convert_shader_info(struct aco_shader_info *aco_info, const struct radv_shader_info *radv,
-                             const struct radv_shader_args *radv_args, const struct radv_pipeline_key *radv_key)
+                             const struct radv_shader_args *radv_args, const struct radv_pipeline_key *radv_key,
+                             const enum amd_gfx_level gfx_level)
 {
    ASSIGN_FIELD(wave_size);
    ASSIGN_FIELD(is_ngg);
@@ -64,6 +111,7 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info, const struct radv
    aco_info->tcs.tess_input_vertices = radv_key->tcs.tess_input_vertices;
    aco_info->image_2d_view_of_3d = radv_key->image_2d_view_of_3d;
    aco_info->ps.epilog_pc = radv_args->ps_epilog_pc;
+   aco_info->hw_stage = radv_select_hw_stage(radv, gfx_level);
 }
 
 #define ASSIGN_VS_STATE_FIELD(x)    aco_info->state.x = radv->state->x
