@@ -521,6 +521,166 @@ dgc_emit_push_constant(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *strea
    nir_pop_loop(b, NULL);
 }
 
+/**
+ * For emitting VK_INDIRECT_COMMANDS_TOKEN_TYPE_VERTEX_BUFFER_NV.
+ */
+static void
+dgc_emit_vertex_buffer(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf,
+                       nir_ssa_def *stream_base, nir_ssa_def *vbo_bind_mask,
+                       nir_variable *upload_offset, const struct radv_device *device)
+{
+   nir_ssa_def *vbo_cnt = load_param8(b, vbo_cnt);
+   nir_variable *vbo_idx =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "vbo_idx");
+   nir_store_var(b, vbo_idx, nir_imm_int(b, 0), 0x1);
+
+   nir_push_loop(b);
+   {
+      nir_push_if(b, nir_uge(b, nir_load_var(b, vbo_idx), vbo_cnt));
+      {
+         nir_jump(b, nir_jump_break);
+      }
+      nir_pop_if(b, NULL);
+
+      nir_ssa_def *vbo_offset = nir_imul_imm(b, nir_load_var(b, vbo_idx), 16);
+      nir_variable *vbo_data =
+         nir_variable_create(b->shader, nir_var_shader_temp, glsl_uvec4_type(), "vbo_data");
+
+      nir_ssa_def *param_buf = radv_meta_load_descriptor(b, 0, DGC_DESC_PARAMS);
+      nir_store_var(b, vbo_data, nir_load_ssbo(b, 4, 32, param_buf, vbo_offset), 0xf);
+
+      nir_ssa_def *vbo_override = nir_ine_imm(
+         b, nir_iand(b, vbo_bind_mask, nir_ishl(b, nir_imm_int(b, 1), nir_load_var(b, vbo_idx))),
+         0);
+      nir_push_if(b, vbo_override);
+      {
+         nir_ssa_def *vbo_offset_offset =
+            nir_iadd(b, nir_imul_imm(b, vbo_cnt, 16), nir_imul_imm(b, nir_load_var(b, vbo_idx), 8));
+         nir_ssa_def *vbo_over_data = nir_load_ssbo(b, 2, 32, param_buf, vbo_offset_offset);
+         nir_ssa_def *stream_offset =
+            nir_iadd(b, stream_base, nir_iand_imm(b, nir_channel(b, vbo_over_data, 0), 0x7FFF));
+         nir_ssa_def *stream_data = nir_load_ssbo(b, 4, 32, stream_buf, stream_offset);
+
+         nir_ssa_def *va = nir_pack_64_2x32(b, nir_trim_vector(b, stream_data, 2));
+         nir_ssa_def *size = nir_channel(b, stream_data, 2);
+         nir_ssa_def *stride = nir_channel(b, stream_data, 3);
+
+         nir_ssa_def *dyn_stride =
+            nir_test_mask(b, nir_channel(b, vbo_over_data, 0), DGC_DYNAMIC_STRIDE);
+         nir_ssa_def *old_stride =
+            nir_ubfe_imm(b, nir_channel(b, nir_load_var(b, vbo_data), 1), 16, 14);
+         stride = nir_bcsel(b, dyn_stride, stride, old_stride);
+
+         nir_ssa_def *use_per_attribute_vb_descs =
+            nir_test_mask(b, nir_channel(b, vbo_over_data, 0), 1u << 31);
+         nir_variable *num_records =
+            nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "num_records");
+         nir_store_var(b, num_records, size, 0x1);
+
+         nir_push_if(b, use_per_attribute_vb_descs);
+         {
+            nir_ssa_def *attrib_end = nir_ubfe_imm(b, nir_channel(b, vbo_over_data, 1), 16, 16);
+            nir_ssa_def *attrib_index_offset =
+               nir_ubfe_imm(b, nir_channel(b, vbo_over_data, 1), 0, 16);
+
+            nir_push_if(b, nir_ult(b, nir_load_var(b, num_records), attrib_end));
+            {
+               nir_store_var(b, num_records, nir_imm_int(b, 0), 0x1);
+            }
+            nir_push_else(b, NULL);
+            nir_push_if(b, nir_ieq_imm(b, stride, 0));
+            {
+               nir_store_var(b, num_records, nir_imm_int(b, 1), 0x1);
+            }
+            nir_push_else(b, NULL);
+            {
+               nir_ssa_def *r = nir_iadd(
+                  b,
+                  nir_iadd_imm(
+                     b, nir_udiv(b, nir_isub(b, nir_load_var(b, num_records), attrib_end), stride),
+                     1),
+                  attrib_index_offset);
+               nir_store_var(b, num_records, r, 0x1);
+            }
+            nir_pop_if(b, NULL);
+            nir_pop_if(b, NULL);
+
+            nir_ssa_def *convert_cond = nir_ine_imm(b, nir_load_var(b, num_records), 0);
+            if (device->physical_device->rad_info.gfx_level == GFX9)
+               convert_cond = nir_imm_false(b);
+            else if (device->physical_device->rad_info.gfx_level != GFX8)
+               convert_cond = nir_iand(b, convert_cond, nir_ieq_imm(b, stride, 0));
+
+            nir_ssa_def *new_records =
+               nir_iadd(b, nir_imul(b, nir_iadd_imm(b, nir_load_var(b, num_records), -1), stride),
+                        attrib_end);
+            new_records = nir_bcsel(b, convert_cond, new_records, nir_load_var(b, num_records));
+            nir_store_var(b, num_records, new_records, 0x1);
+         }
+         nir_push_else(b, NULL);
+         {
+            if (device->physical_device->rad_info.gfx_level != GFX8) {
+               nir_push_if(b, nir_ine_imm(b, stride, 0));
+               {
+                  nir_ssa_def *r =
+                     nir_iadd(b, nir_load_var(b, num_records), nir_iadd_imm(b, stride, -1));
+                  nir_store_var(b, num_records, nir_udiv(b, r, stride), 0x1);
+               }
+               nir_pop_if(b, NULL);
+            }
+         }
+         nir_pop_if(b, NULL);
+
+         nir_ssa_def *rsrc_word3 = nir_channel(b, nir_load_var(b, vbo_data), 3);
+         if (device->physical_device->rad_info.gfx_level >= GFX10) {
+            nir_ssa_def *oob_select =
+               nir_bcsel(b, nir_ieq_imm(b, stride, 0), nir_imm_int(b, V_008F0C_OOB_SELECT_RAW),
+                         nir_imm_int(b, V_008F0C_OOB_SELECT_STRUCTURED));
+            rsrc_word3 = nir_iand_imm(b, rsrc_word3, C_008F0C_OOB_SELECT);
+            rsrc_word3 = nir_ior(b, rsrc_word3, nir_ishl_imm(b, oob_select, 28));
+         }
+
+         nir_ssa_def *va_hi = nir_iand_imm(b, nir_unpack_64_2x32_split_y(b, va), 0xFFFF);
+         stride = nir_iand_imm(b, stride, 0x3FFF);
+         nir_ssa_def *new_vbo_data[4] = {nir_unpack_64_2x32_split_x(b, va),
+                                         nir_ior(b, nir_ishl_imm(b, stride, 16), va_hi),
+                                         nir_load_var(b, num_records), rsrc_word3};
+         nir_store_var(b, vbo_data, nir_vec(b, new_vbo_data, 4), 0xf);
+      }
+      nir_pop_if(b, NULL);
+
+      /* On GFX9, it seems bounds checking is disabled if both
+       * num_records and stride are zero. This doesn't seem necessary on GFX8, GFX10 and
+       * GFX10.3 but it doesn't hurt.
+       */
+      nir_ssa_def *num_records = nir_channel(b, nir_load_var(b, vbo_data), 2);
+      nir_ssa_def *buf_va =
+         nir_iand_imm(b, nir_pack_64_2x32(b, nir_trim_vector(b, nir_load_var(b, vbo_data), 2)),
+                      (1ull << 48) - 1ull);
+      nir_push_if(b, nir_ior(b, nir_ieq_imm(b, num_records, 0), nir_ieq_imm(b, buf_va, 0)));
+      {
+         nir_ssa_def *new_vbo_data[4] = {nir_imm_int(b, 0), nir_imm_int(b, 0), nir_imm_int(b, 0),
+                                         nir_imm_int(b, 0)};
+         nir_store_var(b, vbo_data, nir_vec(b, new_vbo_data, 4), 0xf);
+      }
+      nir_pop_if(b, NULL);
+
+      nir_ssa_def *upload_off = nir_iadd(b, nir_load_var(b, upload_offset), vbo_offset);
+      nir_store_ssbo(b, nir_load_var(b, vbo_data), cs->descriptor, upload_off,
+                     .access = ACCESS_NON_READABLE);
+      nir_store_var(b, vbo_idx, nir_iadd_imm(b, nir_load_var(b, vbo_idx), 1), 0x1);
+   }
+   nir_pop_loop(b, NULL);
+   nir_ssa_def *packet[3] = {
+      nir_imm_int(b, PKT3(PKT3_SET_SH_REG, 1, 0)), load_param16(b, vbo_reg),
+      nir_iadd(b, load_param32(b, upload_addr), nir_load_var(b, upload_offset))};
+
+   dgc_emit(b, cs, nir_vec(b, packet, 3));
+
+   nir_store_var(b, upload_offset,
+                 nir_iadd(b, nir_load_var(b, upload_offset), nir_imul_imm(b, vbo_cnt, 16)), 0x1);
+}
+
 static nir_shader *
 build_dgc_prepare_shader(struct radv_device *dev)
 {
@@ -578,172 +738,10 @@ build_dgc_prepare_shader(struct radv_device *dev)
                     0x1);
 
       nir_ssa_def *vbo_bind_mask = load_param32(&b, vbo_bind_mask);
-      nir_ssa_def *vbo_cnt = load_param8(&b, vbo_cnt);
       nir_push_if(&b, nir_ine_imm(&b, vbo_bind_mask, 0));
       {
-         nir_variable *vbo_idx =
-            nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "vbo_idx");
-         nir_store_var(&b, vbo_idx, nir_imm_int(&b, 0), 0x1);
-
-         nir_push_loop(&b);
-         {
-            nir_push_if(&b, nir_uge(&b, nir_load_var(&b, vbo_idx), vbo_cnt));
-            {
-               nir_jump(&b, nir_jump_break);
-            }
-            nir_pop_if(&b, NULL);
-
-            nir_ssa_def *vbo_offset = nir_imul_imm(&b, nir_load_var(&b, vbo_idx), 16);
-            nir_variable *vbo_data =
-               nir_variable_create(b.shader, nir_var_shader_temp, glsl_uvec4_type(), "vbo_data");
-
-            nir_ssa_def *param_buf = radv_meta_load_descriptor(&b, 0, DGC_DESC_PARAMS);
-            nir_store_var(&b, vbo_data,
-                          nir_load_ssbo(&b, 4, 32, param_buf, vbo_offset), 0xf);
-
-            nir_ssa_def *vbo_override =
-               nir_ine_imm(&b,
-                       nir_iand(&b, vbo_bind_mask,
-                                nir_ishl(&b, nir_imm_int(&b, 1), nir_load_var(&b, vbo_idx))),
-                       0);
-            nir_push_if(&b, vbo_override);
-            {
-               nir_ssa_def *vbo_offset_offset =
-                  nir_iadd(&b, nir_imul_imm(&b, vbo_cnt, 16),
-                           nir_imul_imm(&b, nir_load_var(&b, vbo_idx), 8));
-               nir_ssa_def *vbo_over_data =
-                  nir_load_ssbo(&b, 2, 32, param_buf, vbo_offset_offset);
-               nir_ssa_def *stream_offset = nir_iadd(
-                  &b, stream_base, nir_iand_imm(&b, nir_channel(&b, vbo_over_data, 0), 0x7FFF));
-               nir_ssa_def *stream_data =
-                  nir_load_ssbo(&b, 4, 32, stream_buf, stream_offset);
-
-               nir_ssa_def *va = nir_pack_64_2x32(&b,
-                                                  nir_trim_vector(&b, stream_data, 2));
-               nir_ssa_def *size = nir_channel(&b, stream_data, 2);
-               nir_ssa_def *stride = nir_channel(&b, stream_data, 3);
-
-               nir_ssa_def *dyn_stride = nir_test_mask(&b, nir_channel(&b, vbo_over_data, 0), DGC_DYNAMIC_STRIDE);
-               nir_ssa_def *old_stride =
-                  nir_ubfe_imm(&b, nir_channel(&b, nir_load_var(&b, vbo_data), 1), 16, 14);
-               stride = nir_bcsel(&b, dyn_stride, stride, old_stride);
-
-               nir_ssa_def *use_per_attribute_vb_descs =
-                  nir_test_mask(&b, nir_channel(&b, vbo_over_data, 0), 1u << 31);
-               nir_variable *num_records = nir_variable_create(b.shader, nir_var_shader_temp,
-                                                               glsl_uint_type(), "num_records");
-               nir_store_var(&b, num_records, size, 0x1);
-
-               nir_push_if(&b, use_per_attribute_vb_descs);
-               {
-                  nir_ssa_def *attrib_end = nir_ubfe_imm(&b, nir_channel(&b, vbo_over_data, 1), 16,
-                                                         16);
-                  nir_ssa_def *attrib_index_offset =
-                     nir_ubfe_imm(&b, nir_channel(&b, vbo_over_data, 1), 0, 16);
-
-                  nir_push_if(&b, nir_ult(&b, nir_load_var(&b, num_records), attrib_end));
-                  {
-                     nir_store_var(&b, num_records, nir_imm_int(&b, 0), 0x1);
-                  }
-                  nir_push_else(&b, NULL);
-                  nir_push_if(&b, nir_ieq_imm(&b, stride, 0));
-                  {
-                     nir_store_var(&b, num_records, nir_imm_int(&b, 1), 0x1);
-                  }
-                  nir_push_else(&b, NULL);
-                  {
-                     nir_ssa_def *r = nir_iadd(
-                        &b,
-                        nir_iadd_imm(
-                           &b,
-                           nir_udiv(&b, nir_isub(&b, nir_load_var(&b, num_records), attrib_end),
-                                    stride),
-                           1),
-                        attrib_index_offset);
-                     nir_store_var(&b, num_records, r, 0x1);
-                  }
-                  nir_pop_if(&b, NULL);
-                  nir_pop_if(&b, NULL);
-
-                  nir_ssa_def *convert_cond =
-                     nir_ine_imm(&b, nir_load_var(&b, num_records), 0);
-                  if (dev->physical_device->rad_info.gfx_level == GFX9)
-                     convert_cond = nir_imm_false(&b);
-                  else if (dev->physical_device->rad_info.gfx_level != GFX8)
-                     convert_cond =
-                        nir_iand(&b, convert_cond, nir_ieq_imm(&b, stride, 0));
-
-                  nir_ssa_def *new_records = nir_iadd(
-                     &b, nir_imul(&b, nir_iadd_imm(&b, nir_load_var(&b, num_records), -1), stride),
-                     attrib_end);
-                  new_records =
-                     nir_bcsel(&b, convert_cond, new_records, nir_load_var(&b, num_records));
-                  nir_store_var(&b, num_records, new_records, 0x1);
-               }
-               nir_push_else(&b, NULL);
-               {
-                  if (dev->physical_device->rad_info.gfx_level != GFX8) {
-                     nir_push_if(&b, nir_ine_imm(&b, stride, 0));
-                     {
-                        nir_ssa_def *r = nir_iadd(&b, nir_load_var(&b, num_records),
-                                                  nir_iadd_imm(&b, stride, -1));
-                        nir_store_var(&b, num_records, nir_udiv(&b, r, stride), 0x1);
-                     }
-                     nir_pop_if(&b, NULL);
-                  }
-               }
-               nir_pop_if(&b, NULL);
-
-               nir_ssa_def *rsrc_word3 = nir_channel(&b, nir_load_var(&b, vbo_data), 3);
-               if (dev->physical_device->rad_info.gfx_level >= GFX10) {
-                  nir_ssa_def *oob_select = nir_bcsel(
-                     &b, nir_ieq_imm(&b, stride, 0), nir_imm_int(&b, V_008F0C_OOB_SELECT_RAW),
-                     nir_imm_int(&b, V_008F0C_OOB_SELECT_STRUCTURED));
-                  rsrc_word3 = nir_iand_imm(&b, rsrc_word3, C_008F0C_OOB_SELECT);
-                  rsrc_word3 = nir_ior(&b, rsrc_word3, nir_ishl_imm(&b, oob_select, 28));
-               }
-
-               nir_ssa_def *va_hi = nir_iand_imm(&b, nir_unpack_64_2x32_split_y(&b, va), 0xFFFF);
-               stride = nir_iand_imm(&b, stride, 0x3FFF);
-               nir_ssa_def *new_vbo_data[4] = {nir_unpack_64_2x32_split_x(&b, va),
-                                               nir_ior(&b, nir_ishl_imm(&b, stride, 16), va_hi),
-                                               nir_load_var(&b, num_records), rsrc_word3};
-               nir_store_var(&b, vbo_data, nir_vec(&b, new_vbo_data, 4), 0xf);
-            }
-            nir_pop_if(&b, NULL);
-
-            /* On GFX9, it seems bounds checking is disabled if both
-             * num_records and stride are zero. This doesn't seem necessary on GFX8, GFX10 and
-             * GFX10.3 but it doesn't hurt.
-             */
-            nir_ssa_def *num_records = nir_channel(&b, nir_load_var(&b, vbo_data), 2);
-            nir_ssa_def *buf_va = nir_iand_imm(
-               &b,
-               nir_pack_64_2x32(&b, nir_trim_vector(&b, nir_load_var(&b, vbo_data), 2)),
-               (1ull << 48) - 1ull);
-            nir_push_if(&b,
-                        nir_ior(&b, nir_ieq_imm(&b, num_records, 0), nir_ieq_imm(&b, buf_va, 0)));
-            {
-               nir_ssa_def *new_vbo_data[4] = {nir_imm_int(&b, 0), nir_imm_int(&b, 0),
-                                               nir_imm_int(&b, 0), nir_imm_int(&b, 0)};
-               nir_store_var(&b, vbo_data, nir_vec(&b, new_vbo_data, 4), 0xf);
-            }
-            nir_pop_if(&b, NULL);
-
-            nir_ssa_def *upload_off = nir_iadd(&b, nir_load_var(&b, upload_offset), vbo_offset);
-            nir_store_ssbo(&b, nir_load_var(&b, vbo_data), cmd_buf.descriptor, upload_off, .access = ACCESS_NON_READABLE);
-            nir_store_var(&b, vbo_idx, nir_iadd_imm(&b, nir_load_var(&b, vbo_idx), 1), 0x1);
-         }
-         nir_pop_loop(&b, NULL);
-         nir_ssa_def *packet[3] = {
-            nir_imm_int(&b, PKT3(PKT3_SET_SH_REG, 1, 0)), load_param16(&b, vbo_reg),
-            nir_iadd(&b, load_param32(&b, upload_addr), nir_load_var(&b, upload_offset))};
-
-         dgc_emit(&b, &cmd_buf, nir_vec(&b, packet, 3));
-
-         nir_store_var(&b, upload_offset,
-                       nir_iadd(&b, nir_load_var(&b, upload_offset), nir_imul_imm(&b, vbo_cnt, 16)),
-                       0x1);
+         dgc_emit_vertex_buffer(&b, &cmd_buf, stream_buf, stream_base, vbo_bind_mask, upload_offset,
+                                dev);
       }
       nir_pop_if(&b, NULL);
 
