@@ -6703,6 +6703,18 @@ radv_bind_shader(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *shader,
    if (!shader) {
       cmd_buffer->state.shaders[stage] = NULL;
       cmd_buffer->state.active_stages &= ~mesa_to_vk_shader_stage(stage);
+
+      /* Reset some dynamic states when a shader stage is unbound. */
+      switch (stage) {
+      case MESA_SHADER_FRAGMENT:
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE |
+                                    RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
+                                    RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE |
+                                    RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
+         break;
+      default:
+         break;
+      }
       return;
    }
 
