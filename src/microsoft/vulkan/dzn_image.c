@@ -276,8 +276,12 @@ dzn_image_get_dxgi_format(const struct dzn_physical_device *pdev,
 {
    enum pipe_format pfmt = vk_format_to_pipe_format(format);
 
-   if (pfmt == PIPE_FORMAT_A4R4G4B4_UNORM && !pdev->support_a4b4g4r4)
-      return DXGI_FORMAT_B4G4R4A4_UNORM;
+   if (pdev && !pdev->support_a4b4g4r4) {
+      if (pfmt == PIPE_FORMAT_A4R4G4B4_UNORM)
+         return DXGI_FORMAT_B4G4R4A4_UNORM;
+      if (pfmt == PIPE_FORMAT_A4B4G4R4_UNORM)
+         return DXGI_FORMAT_UNKNOWN;
+   }
 
    if (!vk_format_is_depth_or_stencil(format))
       return dzn_pipe_to_dxgi_format(pfmt);
