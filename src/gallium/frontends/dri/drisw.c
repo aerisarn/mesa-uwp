@@ -43,7 +43,7 @@
 #include "dri_helpers.h"
 #include "dri_query_renderer.h"
 
-DEBUG_GET_ONCE_BOOL_OPTION(swrast_no_present, "SWRAST_NO_PRESENT", FALSE);
+DEBUG_GET_ONCE_BOOL_OPTION(swrast_no_present, "SWRAST_NO_PRESENT", false);
 
 static inline void
 get_drawable_info(struct dri_drawable *drawable, int *x, int *y, int *w, int *h)
@@ -128,16 +128,16 @@ get_image_shm(struct dri_drawable *drawable, int x, int y, int width, int height
    whandle.type = WINSYS_HANDLE_TYPE_SHMID;
 
    if (loader->base.version < 4 || !loader->getImageShm)
-      return FALSE;
+      return false;
 
    if (!res->screen->resource_get_handle(res->screen, NULL, res, &whandle, PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE))
-      return FALSE;
+      return false;
 
    if (loader->base.version > 5 && loader->getImageShm2)
       return loader->getImageShm2(opaque_dri_drawable(drawable), x, y, width, height, whandle.handle, drawable->loaderPrivate);
 
    loader->getImageShm(opaque_dri_drawable(drawable), x, y, width, height, whandle.handle, drawable->loaderPrivate);
-   return TRUE;
+   return true;
 }
 
 static void
@@ -350,7 +350,7 @@ drisw_allocate_textures(struct dri_context *stctx,
    const __DRIswrastLoaderExtension *loader = drawable->screen->swrast_loader;
    struct pipe_resource templ;
    unsigned width, height;
-   boolean resized;
+   bool resized;
    unsigned i;
 
    /* Wait for glthread to finish because we can't use pipe_context from
@@ -522,7 +522,7 @@ static const struct drisw_loader_funcs drisw_shm_lf = {
 
 static struct dri_drawable *
 drisw_create_drawable(struct dri_screen *screen, const struct gl_config * visual,
-                      boolean isPixmap, void *loaderPrivate)
+                      bool isPixmap, void *loaderPrivate)
 {
    struct dri_drawable *drawable = dri_create_drawable(screen, visual, isPixmap,
                                                        loaderPrivate);

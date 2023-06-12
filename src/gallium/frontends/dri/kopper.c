@@ -59,7 +59,7 @@ extern const __DRIimageExtension driVkImageExtensionSw;
 
 static struct dri_drawable *
 kopper_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
-                       boolean isPixmap, void *loaderPrivate);
+                       bool isPixmap, void *loaderPrivate);
 
 static inline void
 kopper_invalidate_drawable(__DRIdrawable *dPriv)
@@ -452,7 +452,7 @@ kopper_allocate_textures(struct dri_context *ctx,
    struct dri_screen *screen = drawable->screen;
    struct pipe_resource templ;
    unsigned width, height;
-   boolean resized;
+   bool resized;
    unsigned i;
    struct __DRIimageList images;
    const __DRIimageLoaderExtension *image = screen->image.loader;
@@ -741,16 +741,16 @@ get_image_shm(struct dri_drawable *drawable, int x, int y, int width, int height
    whandle.type = WINSYS_HANDLE_TYPE_SHMID;
 
    if (loader->base.version < 4 || !loader->getImageShm)
-      return FALSE;
+      return false;
 
    if (!res->screen->resource_get_handle(res->screen, NULL, res, &whandle, PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE))
-      return FALSE;
+      return false;
 
    if (loader->base.version > 5 && loader->getImageShm2)
       return loader->getImageShm2(opaque_dri_drawable(drawable), x, y, width, height, whandle.handle, drawable->loaderPrivate);
 
    loader->getImageShm(opaque_dri_drawable(drawable), x, y, width, height, whandle.handle, drawable->loaderPrivate);
-   return TRUE;
+   return true;
 }
 
 static void
@@ -809,7 +809,7 @@ kopper_swap_buffers(struct dri_drawable *drawable);
 
 static struct dri_drawable *
 kopper_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
-                       boolean isPixmap, void *loaderPrivate)
+                       bool isPixmap, void *loaderPrivate)
 {
    /* always pass !pixmap because it isn't "handled" or relevant */
    struct dri_drawable *drawable = dri_create_drawable(screen, visual, false,

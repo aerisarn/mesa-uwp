@@ -726,7 +726,7 @@ dri_get_egl_image(struct pipe_frontend_screen *fscreen,
    }
 
    if (!img)
-      return FALSE;
+      return false;
 
    stimg->texture = NULL;
    pipe_resource_reference(&stimg->texture, img->texture);
@@ -749,7 +749,7 @@ dri_get_egl_image(struct pipe_frontend_screen *fscreen,
    stimg->yuv_color_space = img->yuv_color_space;
    stimg->yuv_range = img->sample_range;
 
-   return TRUE;
+   return true;
 }
 
 static bool

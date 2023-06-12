@@ -119,7 +119,7 @@ dri2_drawable_get_buffers(struct dri_drawable *drawable,
                           unsigned *count)
 {
    const __DRIdri2LoaderExtension *loader = drawable->screen->dri2.loader;
-   boolean with_format;
+   bool with_format;
    __DRIbuffer *buffers;
    int num_buffers;
    unsigned attachments[__DRI_BUFFER_COUNT];
@@ -466,7 +466,7 @@ dri2_allocate_textures(struct dri_context *ctx,
 {
    struct dri_screen *screen = drawable->screen;
    struct pipe_resource templ;
-   boolean alloc_depthstencil = FALSE;
+   bool alloc_depthstencil = false;
    unsigned i, j, bind;
    const __DRIimageLoaderExtension *image = screen->image.loader;
    /* Image specific variables */
@@ -504,7 +504,7 @@ dri2_allocate_textures(struct dri_context *ctx,
    /* See if we need a depth-stencil buffer. */
    for (i = 0; i < statts_count; i++) {
       if (statts[i] == ST_ATTACHMENT_DEPTH_STENCIL) {
-         alloc_depthstencil = TRUE;
+         alloc_depthstencil = true;
          break;
       }
    }
@@ -528,13 +528,13 @@ dri2_allocate_textures(struct dri_context *ctx,
 
    if (drawable->stvis.samples > 1) {
       for (i = 0; i < ST_ATTACHMENT_COUNT; i++) {
-         boolean del = TRUE;
+         bool del = true;
 
          /* Don't delete MSAA resources for the attachments which are enabled,
           * we can reuse them. */
          for (j = 0; j < statts_count; j++) {
             if (i == statts[j]) {
-               del = FALSE;
+               del = false;
                break;
             }
          }
@@ -1131,7 +1131,7 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
    img->dri_components = map->dri_components;
    img->dri_fourcc = fourcc;
    img->dri_format = map->dri_format;
-   img->imported_dmabuf = TRUE;
+   img->imported_dmabuf = true;
 
 exit:
    if (error)
@@ -1625,7 +1625,7 @@ dri2_from_fds2(__DRIscreen *screen, int width, int height, int fourcc,
                                    strides, offsets, bind, NULL, loaderPrivate);
 }
 
-static boolean
+static bool
 dri2_query_dma_buf_modifiers(__DRIscreen *_screen, int fourcc, int max,
                              uint64_t *modifiers, unsigned int *external_only,
                              int *count)
@@ -1663,7 +1663,7 @@ dri2_query_dma_buf_modifiers(__DRIscreen *_screen, int fourcc, int max,
    return false;
 }
 
-static boolean
+static bool
 dri2_query_dma_buf_format_modifier_attribs(__DRIscreen *_screen,
                                            uint32_t fourcc, uint64_t modifier,
                                            int attrib, uint64_t *value)
@@ -2257,7 +2257,7 @@ dri2_init_screen_extensions(struct dri_screen *screen,
 
 static struct dri_drawable *
 dri2_create_drawable(struct dri_screen *screen, const struct gl_config *visual,
-                     boolean isPixmap, void *loaderPrivate)
+                     bool isPixmap, void *loaderPrivate)
 {
    struct dri_drawable *drawable = dri_create_drawable(screen, visual, isPixmap,
                                                        loaderPrivate);
