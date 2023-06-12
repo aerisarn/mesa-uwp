@@ -7002,7 +7002,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       if (zres)
          genX(emit_depth_state_workarounds)(ice, batch, &zres->surf);
 
-      if (GFX_VER >= 11) {
+      if (intel_needs_workaround(batch->screen->devinfo, 1408224581) ||
+          intel_needs_workaround(batch->screen->devinfo, 14014097488)) {
          /* Wa_1408224581
           *
           * Workaround: Gfx12LP Astep only An additional pipe control with
