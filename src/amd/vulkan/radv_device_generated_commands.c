@@ -312,6 +312,56 @@ build_dgc_buffer_tail(nir_builder *b, nir_ssa_def *sequence_count)
    nir_pop_if(b, NULL);
 }
 
+/**
+ * Emit VK_INDIRECT_COMMANDS_TOKEN_TYPE_STATE_FLAGS_NV.
+ */
+static void
+dgc_emit_state(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf,
+               nir_ssa_def *stream_base, nir_ssa_def *state_offset)
+{
+   nir_ssa_def *stream_offset = nir_iadd(b, state_offset, stream_base);
+   nir_ssa_def *state = nir_load_ssbo(b, 1, 32, stream_buf, stream_offset);
+   state = nir_iand_imm(b, state, 1);
+
+   nir_ssa_def *reg =
+      nir_ior(b, load_param32(b, pa_su_sc_mode_cntl_base), nir_ishl_imm(b, state, 2));
+
+   nir_ssa_def *cmd_values[3] = {
+      nir_imm_int(b, PKT3(PKT3_SET_CONTEXT_REG, 1, 0)),
+      nir_imm_int(b, (R_028814_PA_SU_SC_MODE_CNTL - SI_CONTEXT_REG_OFFSET) >> 2), reg};
+
+   dgc_emit(b, cs, nir_vec(b, cmd_values, 3));
+
+   nir_ssa_def *scissor_count = load_param16(b, scissor_count);
+   nir_push_if(b, nir_ine_imm(b, scissor_count, 0));
+   {
+      nir_ssa_def *scissor_offset = load_param16(b, scissor_offset);
+      nir_variable *idx =
+         nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "scissor_copy_idx");
+      nir_store_var(b, idx, nir_imm_int(b, 0), 1);
+
+      nir_push_loop(b);
+      {
+         nir_ssa_def *cur_idx = nir_load_var(b, idx);
+         nir_push_if(b, nir_uge(b, cur_idx, scissor_count));
+         {
+            nir_jump(b, nir_jump_break);
+         }
+         nir_pop_if(b, NULL);
+
+         nir_ssa_def *param_buf = radv_meta_load_descriptor(b, 0, DGC_DESC_PARAMS);
+         nir_ssa_def *param_offset = nir_iadd(b, scissor_offset, nir_imul_imm(b, cur_idx, 4));
+         nir_ssa_def *value = nir_load_ssbo(b, 1, 32, param_buf, param_offset);
+
+         dgc_emit(b, cs, value);
+
+         nir_store_var(b, idx, nir_iadd_imm(b, cur_idx, 1), 1);
+      }
+      nir_pop_loop(b, NULL);
+   }
+   nir_pop_if(b, NULL);
+}
+
 static nir_shader *
 build_dgc_prepare_shader(struct radv_device *dev)
 {
@@ -699,47 +749,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
       nir_push_if(&b, nir_ieq_imm(&b, load_param16(&b, emit_state), 1));
       {
-         nir_ssa_def *stream_offset = nir_iadd(&b, load_param16(&b, state_offset), stream_base);
-         nir_ssa_def *state = nir_load_ssbo(&b, 1, 32, stream_buf, stream_offset);
-         state = nir_iand_imm(&b, state, 1);
-
-         nir_ssa_def *reg =
-            nir_ior(&b, load_param32(&b, pa_su_sc_mode_cntl_base), nir_ishl_imm(&b, state, 2));
-
-         nir_ssa_def *cmd_values[3] = {
-            nir_imm_int(&b, PKT3(PKT3_SET_CONTEXT_REG, 1, 0)),
-            nir_imm_int(&b, (R_028814_PA_SU_SC_MODE_CNTL - SI_CONTEXT_REG_OFFSET) >> 2), reg};
-
-         dgc_emit(&b, &cmd_buf, nir_vec(&b, cmd_values, 3));
-      }
-      nir_pop_if(&b, NULL);
-
-      nir_ssa_def *scissor_count = load_param16(&b, scissor_count);
-      nir_push_if(&b, nir_ine_imm(&b, scissor_count, 0));
-      {
-         nir_ssa_def *scissor_offset = load_param16(&b, scissor_offset);
-         nir_variable *idx = nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(),
-                                                 "scissor_copy_idx");
-         nir_store_var(&b, idx, nir_imm_int(&b, 0), 1);
-
-         nir_push_loop(&b);
-         {
-            nir_ssa_def *cur_idx = nir_load_var(&b, idx);
-            nir_push_if(&b, nir_uge(&b, cur_idx, scissor_count));
-            {
-               nir_jump(&b, nir_jump_break);
-            }
-            nir_pop_if(&b, NULL);
-
-            nir_ssa_def *param_buf = radv_meta_load_descriptor(&b, 0, DGC_DESC_PARAMS);
-            nir_ssa_def *param_offset = nir_iadd(&b, scissor_offset, nir_imul_imm(&b, cur_idx, 4));
-            nir_ssa_def *value = nir_load_ssbo(&b, 1, 32, param_buf, param_offset);
-
-            dgc_emit(&b, &cmd_buf, value);
-
-            nir_store_var(&b, idx, nir_iadd_imm(&b, cur_idx, 1), 1);
-         }
-         nir_pop_loop(&b, NULL);
+         dgc_emit_state(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, state_offset));
       }
       nir_pop_if(&b, NULL);
 
