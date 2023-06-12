@@ -358,7 +358,8 @@ iris_memobj_create_from_handle(struct pipe_screen *pscreen,
                                         whandle->handle);
       break;
    case WINSYS_HANDLE_TYPE_FD:
-      bo = iris_bo_import_dmabuf(screen->bufmgr, whandle->handle);
+      bo = iris_bo_import_dmabuf(screen->bufmgr, whandle->handle,
+                                 whandle->modifier);
       break;
    default:
       unreachable("invalid winsys handle type");
@@ -1421,7 +1422,8 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
 
    switch (whandle->type) {
    case WINSYS_HANDLE_TYPE_FD:
-      res->bo = iris_bo_import_dmabuf(bufmgr, whandle->handle);
+      res->bo = iris_bo_import_dmabuf(bufmgr, whandle->handle,
+                                      whandle->modifier);
       break;
    case WINSYS_HANDLE_TYPE_SHARED:
       res->bo = iris_bo_gem_create_from_name(bufmgr, "winsys image",
