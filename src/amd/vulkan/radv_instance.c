@@ -96,7 +96,6 @@ static const struct debug_control radv_perftest_options[] = {
    {"gewave32", RADV_PERFTEST_GE_WAVE_32},
    {"nosam", RADV_PERFTEST_NO_SAM},
    {"sam", RADV_PERFTEST_SAM},
-   {"rt", RADV_PERFTEST_RT},
    {"nggc", RADV_PERFTEST_NGGC},
    {"emulate_rt", RADV_PERFTEST_EMULATE_RT},
    {"rtwave64", RADV_PERFTEST_RT_WAVE_64},
@@ -145,7 +144,6 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_FLUSH_BEFORE_QUERY_COPY(false)
       DRI_CONF_RADV_ENABLE_UNIFIED_HEAP_ON_APU(false)
       DRI_CONF_RADV_TEX_NON_UNIFORM(false)
-      DRI_CONF_RADV_RT(false)
       DRI_CONF_RADV_FLUSH_BEFORE_TIMESTAMP_WRITE(false)
       DRI_CONF_RADV_RT_WAVE64(false)
       DRI_CONF_RADV_APP_LAYER()
