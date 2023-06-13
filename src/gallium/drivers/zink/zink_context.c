@@ -806,8 +806,9 @@ zink_bind_sampler_states(struct pipe_context *pctx,
    struct zink_screen *screen = zink_screen(pctx->screen);
    for (unsigned i = 0; i < num_samplers; ++i) {
       struct zink_sampler_state *state = samplers[i];
-      if (ctx->sampler_states[shader][start_slot + i] != state)
-         ctx->invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot, 1);
+      if (samplers[i] == ctx->sampler_states[shader][start_slot + i])
+         continue;
+      ctx->invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot, 1);
       ctx->sampler_states[shader][start_slot + i] = state;
       if (state) {
          ctx->di.textures[shader][start_slot + i].sampler = state->sampler;
@@ -2000,6 +2001,15 @@ zink_set_sampler_views(struct pipe_context *pctx,
          struct pipe_sampler_view *pview = views[i];
          struct zink_sampler_view *a = zink_sampler_view(ctx->sampler_views[shader_type][start_slot + i]);
          struct zink_sampler_view *b = zink_sampler_view(pview);
+
+         if (a == b) {
+            if (take_ownership) {
+               struct pipe_sampler_view *view = views[i];
+               pipe_sampler_view_reference(&view, NULL);
+            }
+            continue;
+         }
+
          struct zink_resource *res = b ? zink_resource(b->base.texture) : NULL;
          if (b && b->base.texture) {
             if (!a || zink_resource(a->base.texture) != res) {
