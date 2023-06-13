@@ -238,6 +238,7 @@ enum zink_debug {
    ZINK_DEBUG_NOOPT = (1<<15),
    ZINK_DEBUG_NOBGC = (1<<16),
    ZINK_DEBUG_DGC = (1<<17),
+   ZINK_DEBUG_MEM = (1<<18),
 };
 
 enum zink_pv_emulation_primitive {
@@ -711,6 +712,7 @@ struct zink_bo {
    uint64_t offset;
 
    uint32_t unique_id;
+   const char *name;
 
    simple_mtx_t lock;
 
@@ -1253,8 +1255,8 @@ struct zink_resource_object {
 
 
    VkDeviceSize offset, size, alignment;
-   VkImageCreateFlags vkflags;
-   VkImageUsageFlags vkusage;
+   uint64_t vkflags;
+   uint64_t vkusage;
    VkFormatFeatureFlags vkfeats;
    uint64_t modifier;
    VkImageAspectFlags modifier_aspect;
@@ -1428,6 +1430,9 @@ struct zink_screen {
 
    VkInstance instance;
    struct zink_instance_info instance_info;
+
+   struct hash_table *debug_mem_sizes;
+   simple_mtx_t debug_mem_lock;
 
    VkPhysicalDevice pdev;
    uint32_t vk_version, spirv_version;

@@ -97,6 +97,7 @@ zink_debug_options[] = {
    { "noopt", ZINK_DEBUG_NOOPT, "Disable async optimized pipeline compiles" },
    { "nobgc", ZINK_DEBUG_NOBGC, "Disable all async pipeline compiles" },
    { "dgc", ZINK_DEBUG_DGC, "Use DGC (driver testing only)" },
+   { "mem", ZINK_DEBUG_MEM, "Debug memory allocations" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -1492,6 +1493,9 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(&screen->semaphores, VkSemaphore), NULL);
    if (screen->bindless_layout)
       VKSCR(DestroyDescriptorSetLayout)(screen->dev, screen->bindless_layout, NULL);
+
+   if (zink_debug & ZINK_DEBUG_MEM)
+      simple_mtx_destroy(&screen->debug_mem_lock);
 
    simple_mtx_destroy(&screen->queue_lock);
    VKSCR(DestroyDevice)(screen->dev, NULL);
@@ -2894,6 +2898,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
          mesa_loge("zink: can't use DGC without NV_device_generated_commands");
          goto fail;
       }
+   }
+
+   if (zink_debug & ZINK_DEBUG_MEM) {
+      simple_mtx_init(&screen->debug_mem_lock, mtx_plain);
+      screen->debug_mem_sizes = _mesa_hash_table_create(screen, _mesa_hash_string, _mesa_key_string_equal);
    }
 
    init_driver_workarounds(screen);

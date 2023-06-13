@@ -108,7 +108,7 @@ zink_string_vkflags_unroll(char *buf, size_t bufsize, uint64_t flags, zink_vkfla
    u_foreach_bit64(bit, flags) {
       if (!first)
          buf[idx++] = '|';
-      idx += snprintf(&buf[idx], bufsize - idx, "%s", func((1ul<<bit)));
+      idx += snprintf(&buf[idx], bufsize - idx, "%s", func((BITFIELD64_BIT(bit))));
       first = false;
    }
    return idx;

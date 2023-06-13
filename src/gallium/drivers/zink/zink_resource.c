@@ -65,6 +65,102 @@
 
 #define ZINK_EXTERNAL_MEMORY_HANDLE 999
 
+
+
+struct zink_debug_mem_entry {
+   uint32_t count;
+   uint64_t size;
+   const char *name;
+};
+
+static const char *
+zink_debug_mem_add(struct zink_screen *screen, uint64_t size, const char *name)
+{
+   assert(name);
+
+   simple_mtx_lock(&screen->debug_mem_lock);
+   struct hash_entry *entry = _mesa_hash_table_search(screen->debug_mem_sizes, name);
+   struct zink_debug_mem_entry *debug_bos;
+
+   if (!entry) {
+      debug_bos = calloc(1, sizeof(struct zink_debug_mem_entry));
+      debug_bos->name = strdup(name);
+      _mesa_hash_table_insert(screen->debug_mem_sizes, debug_bos->name, debug_bos);
+   } else {
+      debug_bos = (struct zink_debug_mem_entry *) entry->data;
+   }
+
+   debug_bos->count++;
+   debug_bos->size += align(size, 4096);
+   simple_mtx_unlock(&screen->debug_mem_lock);
+
+   return debug_bos->name;
+}
+
+static void
+zink_debug_mem_del(struct zink_screen *screen, struct zink_bo *bo)
+{
+   simple_mtx_lock(&screen->debug_mem_lock);
+   struct hash_entry *entry = _mesa_hash_table_search(screen->debug_mem_sizes, bo->name);
+   /* If we're finishing the BO, it should have been added already */
+   assert(entry);
+
+   struct zink_debug_mem_entry *debug_bos = entry->data;
+   debug_bos->count--;
+   debug_bos->size -= align(zink_bo_get_size(bo), 4096);
+   if (!debug_bos->count) {
+      _mesa_hash_table_remove(screen->debug_mem_sizes, entry);
+      free((void*)debug_bos->name);
+      free(debug_bos);
+   }
+   simple_mtx_unlock(&screen->debug_mem_lock);
+}
+
+static int
+debug_bos_count_compare(const void *in_a, const void *in_b)
+{
+   struct zink_debug_mem_entry *a = *(struct zink_debug_mem_entry **)in_a;
+   struct zink_debug_mem_entry *b = *(struct zink_debug_mem_entry **)in_b;
+   return a->count - b->count;
+}
+
+void
+zink_debug_mem_print_stats(struct zink_screen *screen)
+{
+   simple_mtx_lock(&screen->debug_mem_lock);
+
+   /* Put the HT's sizes data in an array so we can sort by number of allocations. */
+   struct util_dynarray dyn;
+   util_dynarray_init(&dyn, NULL);
+
+   uint32_t size = 0;
+   uint32_t count = 0;
+   hash_table_foreach(screen->debug_mem_sizes, entry)
+   {
+      struct zink_debug_mem_entry *debug_bos = entry->data;
+      util_dynarray_append(&dyn, struct zink_debug_mem_entry *, debug_bos);
+      size += debug_bos->size / 1024;
+      count += debug_bos->count;
+   }
+
+   qsort(dyn.data,
+         util_dynarray_num_elements(&dyn, struct zink_debug_mem_entry *),
+         sizeof(struct zink_debug_mem_entryos_entry *), debug_bos_count_compare);
+
+   util_dynarray_foreach(&dyn, struct zink_debug_mem_entry *, entryp)
+   {
+      struct zink_debug_mem_entry *debug_bos = *entryp;
+      mesa_logi("%30s: %4d bos, %lld kb\n", debug_bos->name, debug_bos->count,
+                (long long) (debug_bos->size / 1024));
+   }
+
+   mesa_logi("submitted %d bos (%d MB)\n", count, DIV_ROUND_UP(size, 1024));
+
+   util_dynarray_fini(&dyn);
+
+   simple_mtx_unlock(&screen->debug_mem_lock);
+}
+
 static bool
 equals_ivci(const void *a, const void *b)
 {
@@ -104,6 +200,8 @@ zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_ob
       while (util_dynarray_contains(&obj->views, VkImageView))
          VKSCR(DestroyImageView)(screen->dev, util_dynarray_pop(&obj->views, VkImageView), NULL);
    }
+   if (!obj->dt && zink_debug & ZINK_DEBUG_MEM)
+      zink_debug_mem_del(screen, obj->bo);
    util_dynarray_fini(&obj->views);
    for (unsigned i = 0; i < ARRAY_SIZE(obj->copies); i++)
       util_dynarray_fini(&obj->copies[i]);
@@ -1147,6 +1245,35 @@ retry:
       obj->offset = zink_bo_get_offset(obj->bo);
       obj->size = zink_bo_get_size(obj->bo);
    }
+   if (zink_debug & ZINK_DEBUG_MEM) {
+      char buf[4096];
+      unsigned idx = 0;
+      if (obj->is_buffer) {
+         size_t size = (size_t)DIV_ROUND_UP(obj->size, 1024);
+         if (templ->bind == PIPE_BIND_QUERY_BUFFER && templ->usage == PIPE_USAGE_STAGING) //internal qbo
+            idx += snprintf(buf, sizeof(buf), "QBO(%zu)", size);
+         else
+            idx += snprintf(buf, sizeof(buf), "BUF(%zu)", size);
+      } else {
+         idx += snprintf(buf, sizeof(buf), "IMG(%s:%ux%ux%u)", util_format_short_name(templ->format), templ->width0, templ->height0, templ->depth0);
+      }
+      /*
+      zink_vkflags_func flag_func = obj->is_buffer ? (zink_vkflags_func)vk_BufferCreateFlagBits_to_str : (zink_vkflags_func)vk_ImageCreateFlagBits_to_str;
+      zink_vkflags_func usage_func = obj->is_buffer ? (zink_vkflags_func)vk_BufferUsageFlagBits_to_str : (zink_vkflags_func)vk_ImageUsageFlagBits_to_str;
+      if (obj->vkflags) {
+         buf[idx++] = '[';
+         idx += zink_string_vkflags_unroll(&buf[idx], sizeof(buf) - idx, obj->vkflags, flag_func);
+         buf[idx++] = ']';
+      }
+      if (obj->vkusage) {
+         buf[idx++] = '[';
+         idx += zink_string_vkflags_unroll(&buf[idx], sizeof(buf) - idx, obj->vkusage, usage_func);
+         buf[idx++] = ']';
+      }
+      */
+      buf[idx] = 0;
+      obj->bo->name = zink_debug_mem_add(screen, obj->size, buf);
+   }
 
    obj->coherent = screen->info.mem_props.memoryTypes[obj->bo->base.placement].propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
    if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE)) {
@@ -1192,6 +1319,7 @@ retry:
             }
       }
    }
+
    for (unsigned i = 0; i < max_level; i++)
       util_dynarray_init(&obj->copies[i], NULL);
    return obj;

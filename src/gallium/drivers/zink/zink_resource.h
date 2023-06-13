@@ -191,6 +191,9 @@ zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *re
    batch->has_work = true;
 }
 
+void
+zink_debug_mem_print_stats(struct zink_screen *screen);
+
 #ifdef __cplusplus
 }
 #endif
