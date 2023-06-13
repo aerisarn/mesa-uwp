@@ -47,13 +47,20 @@ xe_gem_create(struct iris_bufmgr *bufmgr,
    uint32_t vm_id = iris_bufmgr_get_global_vm_id(bufmgr);
    vm_id = alloc_flags & BO_ALLOC_SHARED ? 0 : vm_id;
 
+   uint32_t flags = 0;
+   /* TODO: we might need to consider scanout for shared buffers too as we
+    * do not know what the process this is shared with will do with it
+    */
+   if (alloc_flags & BO_ALLOC_SCANOUT)
+      flags |= XE_GEM_CREATE_FLAG_SCANOUT;
+   if (!intel_vram_all_mappable(iris_bufmgr_get_device_info(bufmgr)) &&
+       heap_flags == IRIS_HEAP_DEVICE_LOCAL_PREFERRED)
+      flags |= XE_GEM_CREATE_FLAG_NEEDS_VISIBLE_VRAM;
+
    struct drm_xe_gem_create gem_create = {
      .vm_id = vm_id,
      .size = align64(size, iris_bufmgr_get_device_info(bufmgr)->mem_alignment),
-     /* TODO: we might need to consider scanout for shared buffers too as we
-      * do not know what the process this is shared with will do with it
-      */
-     .flags = alloc_flags & BO_ALLOC_SCANOUT ? XE_GEM_CREATE_FLAG_SCANOUT : 0,
+     .flags = flags,
    };
    for (uint16_t i = 0; i < regions_count; i++)
       gem_create.flags |= BITFIELD_BIT(regions[i]->instance);
