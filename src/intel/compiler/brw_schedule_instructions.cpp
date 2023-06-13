@@ -609,7 +609,7 @@ class instruction_scheduler {
 public:
    instruction_scheduler(const backend_shader *s, int grf_count,
                          unsigned hw_reg_count, int block_count,
-                         instruction_scheduler_mode mode):
+                         instruction_scheduler_mode mode, int grf_write_scale):
       bs(s)
    {
       this->mem_ctx = ralloc_context(NULL);
@@ -620,6 +620,7 @@ public:
       this->mode = mode;
       this->reg_pressure = 0;
       this->block_idx = 0;
+      this->last_grf_write = ralloc_array(this->mem_ctx, schedule_node *, grf_count * grf_write_scale);
       if (!post_reg_alloc) {
          this->reg_pressure_in = rzalloc_array(mem_ctx, int, block_count);
 
@@ -739,6 +740,12 @@ public:
     */
 
    int *hw_reads_remaining;
+
+   /**
+    * Last instruction to have written the grf (or a channel in the grf, for the
+    * scalar backend)
+    */
+   schedule_node **last_grf_write;
 };
 
 class fs_instruction_scheduler : public instruction_scheduler
@@ -763,7 +770,7 @@ fs_instruction_scheduler::fs_instruction_scheduler(const fs_visitor *v,
                                                    int grf_count, int hw_reg_count,
                                                    int block_count,
                                                    instruction_scheduler_mode mode)
-   : instruction_scheduler(v, grf_count, hw_reg_count, block_count, mode),
+   : instruction_scheduler(v, grf_count, hw_reg_count, block_count, mode, 16),
      v(v)
 {
 }
@@ -939,7 +946,7 @@ public:
 
 vec4_instruction_scheduler::vec4_instruction_scheduler(const vec4_visitor *v,
                                                        int grf_count)
-   : instruction_scheduler(v, grf_count, 0, 0, SCHEDULE_POST),
+   : instruction_scheduler(v, grf_count, 0, 0, SCHEDULE_POST, 1),
      v(v)
 {
 }
@@ -1199,7 +1206,6 @@ fs_instruction_scheduler::calculate_deps()
     * After register allocation, reg_offsets are gone and we track individual
     * GRF registers.
     */
-   schedule_node **last_grf_write;
    schedule_node *last_mrf_write[BRW_MAX_MRF(v->devinfo->ver)];
    schedule_node *last_conditional_mod[8] = {};
    schedule_node *last_accumulator_write = NULL;
@@ -1210,7 +1216,7 @@ fs_instruction_scheduler::calculate_deps()
     */
    schedule_node *last_fixed_grf_write = NULL;
 
-   last_grf_write = (schedule_node **)calloc(sizeof(schedule_node *), grf_count * 16);
+   memset(last_grf_write, 0, sizeof(schedule_node *) * grf_count * 16);
    memset(last_mrf_write, 0, sizeof(last_mrf_write));
 
    /* top-to-bottom dependencies: RAW and WAW. */
@@ -1460,14 +1466,11 @@ fs_instruction_scheduler::calculate_deps()
          last_accumulator_write = n;
       }
    }
-
-   free(last_grf_write);
 }
 
 void
 vec4_instruction_scheduler::calculate_deps()
 {
-   schedule_node *last_grf_write[grf_count];
    schedule_node *last_mrf_write[BRW_MAX_MRF(v->devinfo->ver)];
    schedule_node *last_conditional_mod = NULL;
    schedule_node *last_accumulator_write = NULL;
@@ -1478,7 +1481,7 @@ vec4_instruction_scheduler::calculate_deps()
     */
    schedule_node *last_fixed_grf_write = NULL;
 
-   memset(last_grf_write, 0, sizeof(last_grf_write));
+   memset(last_grf_write, 0, grf_count * sizeof(*last_grf_write));
    memset(last_mrf_write, 0, sizeof(last_mrf_write));
 
    /* top-to-bottom dependencies: RAW and WAW. */
@@ -1565,7 +1568,7 @@ vec4_instruction_scheduler::calculate_deps()
    }
 
    /* bottom-to-top dependencies: WAR */
-   memset(last_grf_write, 0, sizeof(last_grf_write));
+   memset(last_grf_write, 0, grf_count * sizeof(*last_grf_write));
    memset(last_mrf_write, 0, sizeof(last_mrf_write));
    last_conditional_mod = NULL;
    last_accumulator_write = NULL;
