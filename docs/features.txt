@@ -660,18 +660,19 @@ Clover OpenCL 1.1 -- all DONE:
   Minimum requirement changes for clGetDeviceInfo       DONE (nvc0, r600, radeonsi)
   Arg prerequisite change for clEnqueueNDRangeKernel    DONE ()
   3-component vector data types                         DONE (nvc0, r600, radeonsi)
-  cl_khr_byte_addressable_store                         DONE (nvc0, r600, radeonsi)
-  cl_khr_global_int32_base_atomics                      DONE (nvc0, r600, radeonsi)
-  cl_khr_global_int32_extended_atomics                  DONE (nvc0, r600, radeonsi)
-  cl_khr_local_int32_base_atomics                       DONE (nvc0, r600, radeonsi)
-  cl_khr_local_int32_extended_atomics                   DONE (nvc0, r600, radeonsi)
+  OpenCL C 1.1                                          DONE (nvc0, r600, radeonsi)
+  - cl_khr_byte_addressable_store                       DONE (nvc0, r600, radeonsi)
+  - cl_khr_global_int32_base_atomics                    DONE (nvc0, r600, radeonsi)
+  - cl_khr_global_int32_extended_atomics                DONE (nvc0, r600, radeonsi)
+  - cl_khr_local_int32_base_atomics                     DONE (nvc0, r600, radeonsi)
+  - cl_khr_local_int32_extended_atomics                 DONE (nvc0, r600, radeonsi)
 
 
 Clover OpenCL 1.2 -- all DONE:
 
   Custom devices                                        DONE
-  Built-in kernels                                      DONE ()
-  Device partitioning                                   DONE ()
+  Built-in kernels                                      in progress
+  Device partitioning                                   not started
   Separate compilation and linking of programs          DONE
   Extend cl_mem_flags                                   DONE
   clEnqueueFillBuffer, clEnqueueFillImage               DONE
@@ -687,6 +688,7 @@ Clover OpenCL 1.2 -- all DONE:
   cl_khr_fp64                                           DONE (nvc0, r600, radeonsi)
   printf                                                DONE (nvc0)
   CL_KERNEL_ATTRIBUTES for clGetKernelInfo              DONE
+  OpenCL C 1.2                                          DONE
 
 
 Clover OpenCL 2.0 -- all DONE:
@@ -701,7 +703,11 @@ Clover OpenCL 2.0 -- all DONE:
   - cl_khr_depth_images                                 not started
   - from sRGB images                                    not started
   clCreateSamplerWithProperties                         not started
+  Non-uniform work-group sizes                          not started
   cl_khr_3d_image_writes                                not started
+  OpenCL C 2.0                                          in progress
+  - Work-group Collective Functions                     not started
+  - Generic address space                               in progress
 
 
 Clover OpenCL 2.1 -- all DONE:
@@ -738,6 +744,7 @@ Clover OpenCL 3.0 -- all DONE:
 
 
 Clover extensions that are not part of any OpenCL version:
+  cl_khr_async_copy_fence                               not started
   cl_khr_async_work_group_copy_fence                    not started
   cl_khr_byte_addressable_store                         not started                
   cl_khr_device_enqueue_local_arg_types                 not started
@@ -774,8 +781,10 @@ Clover extensions that are not part of any OpenCL version:
   cl_khr_throttle_hints                                 not started
   cl_khr_work_group_uniform_arithmetic                  not started
 
+  cl_arm_non_uniform_work_group_size                    not started
   cl_arm_shared_virtual_memory                          DONE (nvc0)
   cl_intel_unified_shared_memory                        not started
+
 
 Rusticl OpenCL 1.0 -- all DONE:
 
@@ -797,22 +806,23 @@ Rusticl OpenCL 1.1 -- all DONE:
   Minimum requirement changes for clGetDeviceInfo       DONE
   Arg prerequisite change for clEnqueueNDRangeKernel    DONE
   3-component vector data types                         DONE
-  cl_khr_byte_addressable_store                         DONE
-  cl_khr_global_int32_base_atomics                      DONE
-  cl_khr_global_int32_extended_atomics                  DONE
-  cl_khr_local_int32_base_atomics                       DONE
-  cl_khr_local_int32_extended_atomics                   DONE
+  OpenCL C 1.1                                          DONE
+  - cl_khr_byte_addressable_store                       DONE
+  - cl_khr_global_int32_base_atomics                    DONE
+  - cl_khr_global_int32_extended_atomics                DONE
+  - cl_khr_local_int32_base_atomics                     DONE
+  - cl_khr_local_int32_extended_atomics                 DONE
 
 
 Rusticl OpenCL 1.2 -- all DONE:
 
   Custom devices                                        DONE
-  Built-in kernels                                      DONE
+  Built-in kernels                                      in progress
   Device partitioning                                   not started
   Separate compilation and linking of programs          DONE
   Extend cl_mem_flags                                   DONE
   clEnqueueFillBuffer, clEnqueueFillImage               DONE
-  Add CL_MAP_WRITE_INVALIDATE_REGION to cl_map_flags    not started
+  Add CL_MAP_WRITE_INVALIDATE_REGION to cl_map_flags    in progress (flag is ignored)
   New image types                                       DONE
   clCreateImage                                         DONE
   clEnqueueMigrateMemObjects                            DONE
@@ -821,14 +831,15 @@ Rusticl OpenCL 1.2 -- all DONE:
   clEnqueueMarkerWithWaitList                           DONE
   clEnqueueBarrierWithWaitList                          DONE
   clUnloadPlatformCompiler                              DONE
-  cl_khr_fp64                                           in progress (Available with environment variable RUSTICL_FEATURES=fp64, device dependent.)
+  cl_khr_fp64                                           in progress (iris, llvmpipe, nvc0, radeonsi, Available with environment variable RUSTICL_FEATURES=fp64, device dependent.)
   CL_KERNEL_ATTRIBUTES for clGetKernelInfo              DONE
+  OpenCL C 1.2                                          DONE
 
 
 Rusticl OpenCL 2.0 -- all DONE:
 
-  Shared virtual memory                                 in progress
-  Device queues                                         DONE
+  Shared virtual memory                                 in progress (nvc0)
+  Device queues                                         not started
   - cl_khr_create_command_queue                         DONE
   - Additional queries for clGetDeviceInfo              DONE
   Pipes                                                 not started
@@ -837,7 +848,11 @@ Rusticl OpenCL 2.0 -- all DONE:
   - cl_khr_depth_images                                 not started
   - from sRGB images                                    not started
   clCreateSamplerWithProperties                         DONE
+  Non-uniform work-group sizes                          not started
   cl_khr_3d_image_writes                                DONE
+  OpenCL C 2.0                                          in progress
+  - Work-group Collective Functions                     not started
+  - Generic address space                               in progress
 
 
 Rusticl OpenCL 2.1 -- all DONE:
@@ -870,14 +885,16 @@ Rusticl OpenCL 3.0 -- all DONE: iris/gen12
   Query properties arrays                               DONE
   Supported OpenCL C versions and features queries      DONE
   CL_COMMAND_SVM_MIGRATE_MEM for clGetEventInfo         DONE
+  OpenCL C 3.0                                          DONE
   Latest conformance version passed for devices         DONE ()
 
 
 Rusticl extensions that are not part of any OpenCL version:
+  cl_khr_async_copy_fence                               not started
   cl_khr_async_work_group_copy_fence                    not started
   cl_khr_byte_addressable_store                         DONE                   
   cl_khr_device_enqueue_local_arg_types                 not started
-  cl_khr_device_uuid                                    DONE
+  cl_khr_device_uuid                                    DONE (iris, llvmpipe, radeonsi)
   cl_khr_egl_event                                      not started
   cl_khr_egl_image                                      not started
   cl_khr_expect_assume                                  in progress
@@ -893,7 +910,7 @@ Rusticl extensions that are not part of any OpenCL version:
   cl_khr_int64_extended_atomics                         not started
   cl_khr_integer_dot_product                            DONE
   cl_khr_mipmap_image                                   not started
-  cl_khr_pci_bus_info                                   DONE (iris, nvc0, panfrost, radeonsi)
+  cl_khr_pci_bus_info                                   DONE (iris, nvc0, radeonsi)
   cl_khr_priority_hints                                 not started
   cl_khr_srgb_image_writes                              not started
   cl_khr_subgroup_ballot                                not started
@@ -910,7 +927,8 @@ Rusticl extensions that are not part of any OpenCL version:
   cl_khr_throttle_hints                                 not started 
   cl_khr_work_group_uniform_arithmetic                  not started
 
-  cl_arm_shared_virtual_memory                          in progress
+  cl_arm_non_uniform_work_group_size                    not started
+  cl_arm_shared_virtual_memory                          in progress (nvc0)
   cl_intel_unified_shared_memory                        not started
 
 
