@@ -1988,7 +1988,6 @@ zink_set_sampler_views(struct pipe_context *pctx,
                        struct pipe_sampler_view **views)
 {
    struct zink_context *ctx = zink_context(pctx);
-   unsigned i;
 
    const uint32_t mask = BITFIELD_RANGE(start_slot, num_views);
    uint32_t shadow_mask = ctx->di.zs_swizzle[shader_type].mask;
@@ -1996,102 +1995,108 @@ zink_set_sampler_views(struct pipe_context *pctx,
 
    bool update = false;
    bool shadow_update = false;
-   for (i = 0; i < num_views; ++i) {
-      struct pipe_sampler_view *pview = views ? views[i] : NULL;
-      struct zink_sampler_view *a = zink_sampler_view(ctx->sampler_views[shader_type][start_slot + i]);
-      struct zink_sampler_view *b = zink_sampler_view(pview);
-      struct zink_resource *res = b ? zink_resource(b->base.texture) : NULL;
-      if (b && b->base.texture) {
-         if (!a || zink_resource(a->base.texture) != res) {
-            if (a)
-               unbind_samplerview(ctx, shader_type, start_slot + i);
-            update_res_bind_count(ctx, res, shader_type == MESA_SHADER_COMPUTE, false);
-            res->sampler_bind_count[shader_type == MESA_SHADER_COMPUTE]++;
-            res->gfx_barrier |= zink_pipeline_flags_from_pipe_stage(shader_type);
-            res->barrier_access[shader_type == MESA_SHADER_COMPUTE] |= VK_ACCESS_SHADER_READ_BIT;
-         }
-         if (res->base.b.target == PIPE_BUFFER) {
-            if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
-               if (!a || a->base.texture != b->base.texture || zink_resource(a->base.texture)->obj != res->obj ||
-                   memcmp(&a->base.u.buf, &b->base.u.buf, sizeof(b->base.u.buf)))
-                  update = true;
-            } else if (b->buffer_view->bvci.buffer != res->obj->buffer) {
-               /* if this resource has been rebound while it wasn't set here,
-                * its backing resource will have changed and thus we need to update
-                * the bufferview
-                */
-               VkBufferViewCreateInfo bvci = b->buffer_view->bvci;
-               bvci.buffer = res->obj->buffer;
-               struct zink_buffer_view *buffer_view = get_buffer_view(ctx, res, &bvci);
-               assert(buffer_view != b->buffer_view);
-               zink_buffer_view_reference(zink_screen(ctx->base.screen), &b->buffer_view, NULL);
-               b->buffer_view = buffer_view;
-               update = true;
-            } else if (!a || a->buffer_view->buffer_view != b->buffer_view->buffer_view)
-                  update = true;
-            zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_SHADER_READ_BIT,
-                                         res->gfx_barrier);
-            zink_batch_resource_usage_set(&ctx->batch, res, false, true);
-            if (!ctx->unordered_blitting)
-               res->obj->unordered_read = false;
-         } else {
-            if (zink_format_needs_mutable(res->base.b.format, b->image_view->base.format))
-               /* mutable not set by default */
-               zink_resource_object_init_mutable(ctx, res);
-            if (res->obj != b->image_view->obj) {
-               struct pipe_surface *psurf = &b->image_view->base;
-               VkImageView iv = b->image_view->image_view;
-               zink_rebind_surface(ctx, &psurf);
-               b->image_view = zink_surface(psurf);
-               update |= iv != b->image_view->image_view;
-            } else  if (a != b)
-               update = true;
-            if (shader_type == MESA_SHADER_COMPUTE)
-               flush_pending_clears(ctx, res);
-            if (b->cube_array) {
-               ctx->di.cubes[shader_type] |= BITFIELD_BIT(start_slot + i);
+   if (views) {
+      for (unsigned i = 0; i < num_views; ++i) {
+         struct pipe_sampler_view *pview = views[i];
+         struct zink_sampler_view *a = zink_sampler_view(ctx->sampler_views[shader_type][start_slot + i]);
+         struct zink_sampler_view *b = zink_sampler_view(pview);
+         struct zink_resource *res = b ? zink_resource(b->base.texture) : NULL;
+         if (b && b->base.texture) {
+            if (!a || zink_resource(a->base.texture) != res) {
+               if (a)
+                  unbind_samplerview(ctx, shader_type, start_slot + i);
+               update_res_bind_count(ctx, res, shader_type == MESA_SHADER_COMPUTE, false);
+               res->sampler_bind_count[shader_type == MESA_SHADER_COMPUTE]++;
+               res->gfx_barrier |= zink_pipeline_flags_from_pipe_stage(shader_type);
+               res->barrier_access[shader_type == MESA_SHADER_COMPUTE] |= VK_ACCESS_SHADER_READ_BIT;
             }
-            if (!check_for_layout_update(ctx, res, shader_type == MESA_SHADER_COMPUTE) && !ctx->unordered_blitting) {
-               /* no deferred barrier: unset unordered usage immediately */
-               res->obj->unordered_read = false;
-               // TODO: figure out a way to link up layouts between unordered and main cmdbuf
-               res->obj->unordered_write = false;
-            }
-            if (!a)
-               update = true;
-            zink_batch_resource_usage_set(&ctx->batch, res, false, false);
-            if (b->zs_view) {
-               assert(start_slot + i < 32); //bitfield size
-               ctx->di.zs_swizzle[shader_type].mask |= BITFIELD_BIT(start_slot + i);
-               /* this is already gonna be slow, so don't bother trying to micro-optimize */
-               shadow_update |= memcmp(&ctx->di.zs_swizzle[shader_type].swizzle[start_slot + i],
-                                       &b->swizzle, sizeof(struct zink_zs_swizzle));
-               memcpy(&ctx->di.zs_swizzle[shader_type].swizzle[start_slot + i], &b->swizzle, sizeof(struct zink_zs_swizzle));
+            if (res->base.b.target == PIPE_BUFFER) {
+               if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
+                  if (!a || a->base.texture != b->base.texture || zink_resource(a->base.texture)->obj != res->obj ||
+                     memcmp(&a->base.u.buf, &b->base.u.buf, sizeof(b->base.u.buf)))
+                     update = true;
+               } else if (b->buffer_view->bvci.buffer != res->obj->buffer) {
+                  /* if this resource has been rebound while it wasn't set here,
+                  * its backing resource will have changed and thus we need to update
+                  * the bufferview
+                  */
+                  VkBufferViewCreateInfo bvci = b->buffer_view->bvci;
+                  bvci.buffer = res->obj->buffer;
+                  struct zink_buffer_view *buffer_view = get_buffer_view(ctx, res, &bvci);
+                  assert(buffer_view != b->buffer_view);
+                  zink_buffer_view_reference(zink_screen(ctx->base.screen), &b->buffer_view, NULL);
+                  b->buffer_view = buffer_view;
+                  update = true;
+               } else if (!a || a->buffer_view->buffer_view != b->buffer_view->buffer_view)
+                     update = true;
+               zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_SHADER_READ_BIT,
+                                          res->gfx_barrier);
+               zink_batch_resource_usage_set(&ctx->batch, res, false, true);
+               if (!ctx->unordered_blitting)
+                  res->obj->unordered_read = false;
             } else {
-               assert(start_slot + i < 32); //bitfield size
-               ctx->di.zs_swizzle[shader_type].mask &= ~BITFIELD_BIT(start_slot + i);
+               if (zink_format_needs_mutable(res->base.b.format, b->image_view->base.format))
+                  /* mutable not set by default */
+                  zink_resource_object_init_mutable(ctx, res);
+               if (res->obj != b->image_view->obj) {
+                  struct pipe_surface *psurf = &b->image_view->base;
+                  VkImageView iv = b->image_view->image_view;
+                  zink_rebind_surface(ctx, &psurf);
+                  b->image_view = zink_surface(psurf);
+                  update |= iv != b->image_view->image_view;
+               } else  if (a != b)
+                  update = true;
+               if (shader_type == MESA_SHADER_COMPUTE)
+                  flush_pending_clears(ctx, res);
+               if (b->cube_array) {
+                  ctx->di.cubes[shader_type] |= BITFIELD_BIT(start_slot + i);
+               }
+               if (!check_for_layout_update(ctx, res, shader_type == MESA_SHADER_COMPUTE) && !ctx->unordered_blitting) {
+                  /* no deferred barrier: unset unordered usage immediately */
+                  res->obj->unordered_read = false;
+                  // TODO: figure out a way to link up layouts between unordered and main cmdbuf
+                  res->obj->unordered_write = false;
+               }
+               if (!a)
+                  update = true;
+               zink_batch_resource_usage_set(&ctx->batch, res, false, false);
+               if (b->zs_view) {
+                  assert(start_slot + i < 32); //bitfield size
+                  ctx->di.zs_swizzle[shader_type].mask |= BITFIELD_BIT(start_slot + i);
+                  /* this is already gonna be slow, so don't bother trying to micro-optimize */
+                  shadow_update |= memcmp(&ctx->di.zs_swizzle[shader_type].swizzle[start_slot + i],
+                                          &b->swizzle, sizeof(struct zink_zs_swizzle));
+                  memcpy(&ctx->di.zs_swizzle[shader_type].swizzle[start_slot + i], &b->swizzle, sizeof(struct zink_zs_swizzle));
+               } else {
+                  assert(start_slot + i < 32); //bitfield size
+                  ctx->di.zs_swizzle[shader_type].mask &= ~BITFIELD_BIT(start_slot + i);
+               }
             }
+            res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
+         } else if (a) {
+            unbind_samplerview(ctx, shader_type, start_slot + i);
+            update = true;
          }
-         res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
-      } else if (a) {
-         unbind_samplerview(ctx, shader_type, start_slot + i);
-         update = true;
+         if (take_ownership) {
+            pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], NULL);
+            ctx->sampler_views[shader_type][start_slot + i] = pview;
+         } else {
+            pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], pview);
+         }
+         update_descriptor_state_sampler(ctx, shader_type, start_slot + i, res);
       }
-      if (take_ownership) {
-         pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], NULL);
-         ctx->sampler_views[shader_type][start_slot + i] = pview;
-      } else {
-         pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], pview);
-      }
-      update_descriptor_state_sampler(ctx, shader_type, start_slot + i, res);
+   } else {
+      unbind_num_trailing_slots += num_views;
+      num_views = 0;
    }
-   for (; i < num_views + unbind_num_trailing_slots; ++i) {
-      update |= !!ctx->sampler_views[shader_type][start_slot + i];
-      unbind_samplerview(ctx, shader_type, start_slot + i);
+   for (unsigned i = 0; i < unbind_num_trailing_slots; ++i) {
+      unsigned slot = start_slot + num_views + i;
+      update |= !!ctx->sampler_views[shader_type][slot];
+      unbind_samplerview(ctx, shader_type, slot);
       pipe_sampler_view_reference(
-         &ctx->sampler_views[shader_type][start_slot + i],
+         &ctx->sampler_views[shader_type][slot],
          NULL);
-      update_descriptor_state_sampler(ctx, shader_type, start_slot + i, NULL);
+      update_descriptor_state_sampler(ctx, shader_type, slot, NULL);
    }
    ctx->di.num_sampler_views[shader_type] = start_slot + num_views;
    if (update) {
