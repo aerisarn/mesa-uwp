@@ -368,7 +368,7 @@ qbo_append(struct pipe_screen *screen, struct zink_query *query)
       qbo->buffers[i] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
                                            PIPE_USAGE_STAGING,
                                            /* this is the maximum possible size of the results in a given buffer */
-                                           NUM_QUERIES * get_num_results(query) * sizeof(uint64_t));
+                                           (query->type == PIPE_QUERY_TIMESTAMP ? 1 : NUM_QUERIES) * get_num_results(query) * sizeof(uint64_t));
       if (!qbo->buffers[i])
          goto fail;
    }
