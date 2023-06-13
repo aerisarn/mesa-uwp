@@ -191,6 +191,7 @@ fs_live_variables::compute_live_variables()
             for (int i = 0; i < bitset_words; i++) {
                BITSET_WORD new_liveout = (child_bd->livein[i] &
                                           ~bd->liveout[i]);
+               new_liveout &= bd->defout[i]; /* Screen off uses with no reaching def */
                if (new_liveout) {
                   bd->liveout[i] |= new_liveout;
                   cont = true;
@@ -209,6 +210,7 @@ fs_live_variables::compute_live_variables()
             BITSET_WORD new_livein = (bd->use[i] |
                                       (bd->liveout[i] &
                                        ~bd->def[i]));
+            new_livein &= bd->defin[i]; /* Screen off uses with no reaching def */
             if (new_livein & ~bd->livein[i]) {
                bd->livein[i] |= new_livein;
                cont = true;
@@ -236,8 +238,8 @@ fs_live_variables::compute_start_end()
       struct block_data *bd = &block_data[block->num];
 
       for (int w = 0; w < bitset_words; w++) {
-         BITSET_WORD livedefin = bd->livein[w] & bd->defin[w];
-         BITSET_WORD livedefout = bd->liveout[w] & bd->defout[w];
+         BITSET_WORD livedefin = bd->livein[w];
+         BITSET_WORD livedefout = bd->liveout[w];
          BITSET_WORD livedefinout = livedefin | livedefout;
          while (livedefinout) {
             unsigned b = u_bit_scan(&livedefinout);
