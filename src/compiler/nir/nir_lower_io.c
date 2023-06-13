@@ -2597,10 +2597,10 @@ nir_gather_explicit_io_initializers(nir_shader *shader,
 }
 
 /**
- * Return the offset source for a load/store intrinsic.
+ * Return the offset source number for a load/store intrinsic or -1 if there's no offset.
  */
-nir_src *
-nir_get_io_offset_src(nir_intrinsic_instr *instr)
+int
+nir_get_io_offset_src_number(const nir_intrinsic_instr *instr)
 {
    switch (instr->intrinsic) {
    case nir_intrinsic_load_input:
@@ -2620,7 +2620,7 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
    case nir_intrinsic_task_payload_atomic_swap:
    case nir_intrinsic_global_atomic:
    case nir_intrinsic_global_atomic_swap:
-      return &instr->src[0];
+      return 0;
    case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_input_vertex:
@@ -2636,13 +2636,42 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
    case nir_intrinsic_store_scratch:
    case nir_intrinsic_ssbo_atomic:
    case nir_intrinsic_ssbo_atomic_swap:
-      return &instr->src[1];
+      return 1;
    case nir_intrinsic_store_ssbo:
    case nir_intrinsic_store_per_vertex_output:
    case nir_intrinsic_store_per_primitive_output:
-      return &instr->src[2];
+      return 2;
    default:
-      return NULL;
+      return -1;
+   }
+}
+
+/**
+ * Return the offset source for a load/store intrinsic.
+ */
+nir_src *
+nir_get_io_offset_src(nir_intrinsic_instr *instr)
+{
+   const int idx = nir_get_io_offset_src_number(instr);
+   return idx >= 0 ? &instr->src[idx] : NULL;
+}
+
+/**
+ * Return the vertex index source number for a load/store per_vertex intrinsic or -1 if there's no offset.
+ */
+int
+nir_get_io_arrayed_index_src_number(const nir_intrinsic_instr *instr)
+{
+   switch (instr->intrinsic) {
+   case nir_intrinsic_load_per_vertex_input:
+   case nir_intrinsic_load_per_vertex_output:
+   case nir_intrinsic_load_per_primitive_output:
+      return 0;
+   case nir_intrinsic_store_per_vertex_output:
+   case nir_intrinsic_store_per_primitive_output:
+      return 1;
+   default:
+      return -1;
    }
 }
 
@@ -2652,17 +2681,8 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
 nir_src *
 nir_get_io_arrayed_index_src(nir_intrinsic_instr *instr)
 {
-   switch (instr->intrinsic) {
-   case nir_intrinsic_load_per_vertex_input:
-   case nir_intrinsic_load_per_vertex_output:
-   case nir_intrinsic_load_per_primitive_output:
-      return &instr->src[0];
-   case nir_intrinsic_store_per_vertex_output:
-   case nir_intrinsic_store_per_primitive_output:
-      return &instr->src[1];
-   default:
-      return NULL;
-   }
+   const int idx = nir_get_io_arrayed_index_src_number(instr);
+   return idx >= 0 ? &instr->src[idx] : NULL;
 }
 
 /**
