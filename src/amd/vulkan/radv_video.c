@@ -962,7 +962,7 @@ static rvcn_dec_message_hevc_t get_h265_msg(struct radv_device *device,
    result.bit_depth_luma_minus8 = sps->bit_depth_luma_minus8;
    result.bit_depth_chroma_minus8 = sps->bit_depth_chroma_minus8;
    result.log2_max_pic_order_cnt_lsb_minus4 = sps->log2_max_pic_order_cnt_lsb_minus4;
-   result.sps_max_dec_pic_buffering_minus1 = sps->pDecPicBufMgr->max_dec_pic_buffering_minus1[0];
+   result.sps_max_dec_pic_buffering_minus1 = sps->pDecPicBufMgr->max_dec_pic_buffering_minus1[sps->sps_max_sub_layers_minus1];
    result.log2_min_luma_coding_block_size_minus3 =
       sps->log2_min_luma_coding_block_size_minus3;
    result.log2_diff_max_min_luma_coding_block_size =
@@ -1418,7 +1418,7 @@ static struct ruvd_h265 get_uvd_h265_msg(struct radv_device *device,
    result.bit_depth_luma_minus8 = sps->bit_depth_luma_minus8;
    result.bit_depth_chroma_minus8 = sps->bit_depth_chroma_minus8;
    result.log2_max_pic_order_cnt_lsb_minus4 = sps->log2_max_pic_order_cnt_lsb_minus4;
-   result.sps_max_dec_pic_buffering_minus1 = sps->pDecPicBufMgr->max_dec_pic_buffering_minus1[0];
+   result.sps_max_dec_pic_buffering_minus1 = sps->pDecPicBufMgr->max_dec_pic_buffering_minus1[sps->sps_max_sub_layers_minus1];
    result.log2_min_luma_coding_block_size_minus3 =
       sps->log2_min_luma_coding_block_size_minus3;
    result.log2_diff_max_min_luma_coding_block_size =
