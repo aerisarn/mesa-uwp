@@ -2299,7 +2299,7 @@ dri2_init_screen(struct dri_screen *screen)
    if (pscreen->get_param(pscreen, PIPE_CAP_DEVICE_PROTECTED_CONTEXT))
       screen->has_protected_context = true;
 
-   configs = dri_init_screen_helper(screen, pscreen);
+   configs = dri_init_screen(screen, pscreen);
    if (!configs)
       goto fail;
 
@@ -2351,7 +2351,7 @@ dri_swrast_kms_init_screen(struct dri_screen *screen)
    dri_init_options(screen);
    dri2_init_screen_extensions(screen, pscreen, true);
 
-   configs = dri_init_screen_helper(screen, pscreen);
+   configs = dri_init_screen(screen, pscreen);
    if (!configs)
       goto fail;
 

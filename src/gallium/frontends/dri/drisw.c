@@ -568,7 +568,7 @@ drisw_init_screen(struct dri_screen *screen)
       goto fail;
 
    dri_init_options(screen);
-   configs = dri_init_screen_helper(screen, pscreen);
+   configs = dri_init_screen(screen, pscreen);
    if (!configs)
       goto fail;
 

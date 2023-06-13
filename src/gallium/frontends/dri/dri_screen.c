@@ -829,8 +829,8 @@ dri_set_background_context(struct st_context *st,
 }
 
 const __DRIconfig **
-dri_init_screen_helper(struct dri_screen *screen,
-                       struct pipe_screen *pscreen)
+dri_init_screen(struct dri_screen *screen,
+                struct pipe_screen *pscreen)
 {
    screen->base.screen = pscreen;
    screen->base.get_egl_image = dri_get_egl_image;

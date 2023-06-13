@@ -219,8 +219,8 @@ void
 dri_init_options(struct dri_screen *screen);
 
 const __DRIconfig **
-dri_init_screen_helper(struct dri_screen *screen,
-                       struct pipe_screen *pscreen);
+dri_init_screen(struct dri_screen *screen,
+                struct pipe_screen *pscreen);
 
 void
 dri_release_screen(struct dri_screen * screen);

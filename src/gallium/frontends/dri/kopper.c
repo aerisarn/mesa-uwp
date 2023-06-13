@@ -140,7 +140,7 @@ kopper_init_screen(struct dri_screen *screen)
    dri_init_options(screen);
    screen->unwrapped_screen = trace_screen_unwrap(pscreen);
 
-   configs = dri_init_screen_helper(screen, pscreen);
+   configs = dri_init_screen(screen, pscreen);
    if (!configs)
       goto fail;
 
