@@ -305,6 +305,15 @@ impl PipeScreen {
         unsafe { s.is_format_supported.unwrap()(self.screen, format, target, 0, 0, bindings) }
     }
 
+    pub fn get_timestamp(&self) -> u64 {
+        // We have get_timestamp in has_required_cbs, so it will exist
+        unsafe {
+            (*self.screen)
+                .get_timestamp
+                .expect("get_timestamp should be required")(self.screen)
+        }
+    }
+
     pub fn nir_shader_compiler_options(
         &self,
         shader: pipe_shader_type,
@@ -376,6 +385,7 @@ fn has_required_cbs(screen: *mut pipe_screen) -> bool {
         & has_required_feature!(screen, get_name)
         & has_required_feature!(screen, get_param)
         & has_required_feature!(screen, get_shader_param)
+        & has_required_feature!(screen, get_timestamp)
         & has_required_feature!(screen, is_format_supported)
         & has_required_feature!(screen, resource_create)
 }
