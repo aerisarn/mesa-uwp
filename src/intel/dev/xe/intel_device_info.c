@@ -106,13 +106,16 @@ intel_device_info_xe_query_regions(int fd, struct intel_device_info *devinfo,
          if (!update) {
             devinfo->mem.vram.mem.klass = region->mem_class;
             devinfo->mem.vram.mem.instance = region->instance;
-            devinfo->mem.vram.mappable.size = region->total_size;
+            devinfo->mem.vram.mappable.size = region->cpu_visible_size;
+            devinfo->mem.vram.unmappable.size = region->total_size - region->cpu_visible_size;
          } else {
             assert(devinfo->mem.vram.mem.klass == region->mem_class);
             assert(devinfo->mem.vram.mem.instance == region->instance);
-            assert(devinfo->mem.vram.mappable.size == region->total_size);
+            assert(devinfo->mem.vram.mappable.size == region->cpu_visible_size);
+            assert(devinfo->mem.vram.unmappable.size == (region->total_size - region->cpu_visible_size));
          }
-         devinfo->mem.vram.mappable.free = region->total_size - region->used;
+         devinfo->mem.vram.mappable.free = devinfo->mem.vram.mappable.size - region->cpu_visible_used;
+         devinfo->mem.vram.unmappable.free = devinfo->mem.vram.unmappable.size - (region->used - region->cpu_visible_used);
          break;
       }
       default:
