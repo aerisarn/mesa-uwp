@@ -143,6 +143,14 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
          case nir_intrinsic_load_frag_shading_rate:
          case nir_intrinsic_is_sparse_texels_resident:
          case nir_intrinsic_sparse_residency_code_and:
+         case nir_intrinsic_read_invocation:
+         case nir_intrinsic_quad_broadcast:
+         case nir_intrinsic_quad_swap_horizontal:
+         case nir_intrinsic_quad_swap_vertical:
+         case nir_intrinsic_quad_swap_diagonal:
+         case nir_intrinsic_quad_swizzle_amd:
+         case nir_intrinsic_masked_swizzle_amd:
+         case nir_intrinsic_lane_permute_16_amd:
             if (!alu_ok)
                return false;
             break;
