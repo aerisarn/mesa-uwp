@@ -300,6 +300,11 @@
       when: never
     - !reference [.collabora-farm-rules, rules]
 
+.microsoft-farm-rules:
+  rules:
+    - if: '$MICROSOFT_FARM == "offline"'
+      when: never
+
 # Rules for changes that impact either freedreno or turnip.
 .freedreno-common-rules:
   rules:
@@ -915,8 +920,7 @@
 # rules duplication manually
 .windows-build-rules:
   rules:
-    - if: '$MICROSOFT_FARM == "offline"'
-      when: never
+    - !reference [.microsoft-farm-rules, rules]
     - !reference [.zink-common-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes:
@@ -943,8 +947,7 @@
 
 .glon12-test-rules:
   rules:
-    - if: '$MICROSOFT_FARM == "offline"'
-      when: never
+    - !reference [.microsoft-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: *d3d12_file_list
       when: on_success
@@ -954,8 +957,7 @@
 
 .spirv2dxil-test-rules:
   rules:
-    - if: '$MICROSOFT_FARM == "offline"'
-      when: never
+    - !reference [.microsoft-farm-rules, rules]
     - !reference [.core-rules, rules]
     - changes: &spirv2dxil_file_list
       - src/microsoft/ci/*
@@ -965,8 +967,7 @@
 
 .dozen-test-rules:
   rules:
-    - if: '$MICROSOFT_FARM == "offline"'
-      when: never
+    - !reference [.microsoft-farm-rules, rules]
     - !reference [.vulkan-rules, rules]
     - changes:
         *spirv2dxil_file_list
