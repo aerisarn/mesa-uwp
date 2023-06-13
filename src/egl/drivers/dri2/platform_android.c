@@ -44,6 +44,7 @@
 #include "util/os_file.h"
 
 #include "egl_dri2.h"
+#include "eglglobals.h"
 #include "loader.h"
 #include "platform_android.h"
 
@@ -1609,8 +1610,8 @@ droid_open_device(_EGLDisplay *disp, bool swrast)
 {
 #define MAX_DRM_DEVICES 64
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   drmDevicePtr device, devices[MAX_DRM_DEVICES] = {NULL};
-   int num_devices;
+   _EGLDevice *dev_list = _eglGlobal.DeviceList;
+   drmDevicePtr device;
 
    char *vendor_name = NULL;
    char vendor_buf[PROPERTY_VALUE_MAX];
@@ -1624,21 +1625,21 @@ droid_open_device(_EGLDisplay *disp, bool swrast)
    if (property_get("drm.gpu.vendor_name", vendor_buf, NULL) > 0)
       vendor_name = vendor_buf;
 
-   num_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
-   if (num_devices < 0)
-      return EGL_FALSE;
+   while (dev_list) {
+      if (!_eglDeviceSupports(dev_list, _EGL_DEVICE_DRM))
+         goto next;
 
-   for (int i = 0; i < num_devices; i++) {
-      device = devices[i];
+      device = _eglDeviceDrm(dev_list);
+      assert(device);
 
       if (!(device->available_nodes & (1 << node_type)))
-         continue;
+         goto next;
 
       dri2_dpy->fd_render_gpu = loader_open_device(device->nodes[node_type]);
       if (dri2_dpy->fd_render_gpu < 0) {
          _eglLog(_EGL_WARNING, "%s() Failed to open DRM device %s", __func__,
                  device->nodes[node_type]);
-         continue;
+         goto next;
       }
 
       /* If a vendor is explicitly provided, we use only that.
@@ -1649,7 +1650,7 @@ droid_open_device(_EGLDisplay *disp, bool swrast)
             /* Device does not match - try next device */
             close(dri2_dpy->fd_render_gpu);
             dri2_dpy->fd_render_gpu = -1;
-            continue;
+            goto next;
          }
          /* If the requested device matches - use it. Regardless if
           * init fails, do not fall-back to any other device.
@@ -1667,8 +1668,10 @@ droid_open_device(_EGLDisplay *disp, bool swrast)
       /* No explicit request - attempt the next device */
       close(dri2_dpy->fd_render_gpu);
       dri2_dpy->fd_render_gpu = -1;
+
+   next:
+      dev_list = _eglDeviceNext(dev_list);
    }
-   drmFreeDevices(devices, num_devices);
 
    if (dri2_dpy->fd_render_gpu < 0) {
       _eglLog(_EGL_WARNING, "Failed to open %s DRM device",
@@ -1677,7 +1680,6 @@ droid_open_device(_EGLDisplay *disp, bool swrast)
    }
 
    return EGL_TRUE;
-#undef MAX_DRM_DEVICES
 }
 
 #endif
