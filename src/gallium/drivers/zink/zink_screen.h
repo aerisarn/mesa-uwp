@@ -98,6 +98,22 @@ zink_screen_handle_vkresult(struct zink_screen *screen, VkResult ret)
    return success;
 }
 
+typedef const char *(*zink_vkflags_func)(uint64_t);
+
+static inline unsigned
+zink_string_vkflags_unroll(char *buf, size_t bufsize, uint64_t flags, zink_vkflags_func func)
+{
+   bool first = true;
+   unsigned idx = 0;
+   u_foreach_bit64(bit, flags) {
+      if (!first)
+         buf[idx++] = '|';
+      idx += snprintf(&buf[idx], bufsize - idx, "%s", func((1ul<<bit)));
+      first = false;
+   }
+   return idx;
+}
+
 VkSemaphore
 zink_create_semaphore(struct zink_screen *screen);
 
