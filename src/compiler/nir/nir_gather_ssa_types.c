@@ -170,62 +170,24 @@ nir_gather_ssa_types(nir_function_impl *impl,
 
             case nir_instr_type_intrinsic: {
                nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-               /* We could go nuts here, but we'll just handle a few simple
-                * cases and let everything else be untyped.
-                */
-               switch (intrin->intrinsic) {
-               case nir_intrinsic_load_deref: {
-                  nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
 
-                  if (intrin->dest.is_ssa) {
-                     set_type(intrin->dest.ssa.index,
-                              nir_get_nir_type_for_glsl_type(deref->type),
+               if (intrin->dest.is_ssa) {
+                  nir_alu_type dest_type = nir_intrinsic_instr_dest_type(intrin);
+                  if (dest_type != nir_type_invalid) {
+                     set_type(intrin->dest.ssa.index, dest_type,
                               float_types, int_types, &progress);
                   }
-                  break;
                }
 
-               case nir_intrinsic_store_deref: {
-                  nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-
-                  if (intrin->src[1].is_ssa) {
-                     set_type(intrin->src[1].ssa->index,
-                              nir_get_nir_type_for_glsl_type(deref->type),
-                              float_types, int_types, &progress);
+               const unsigned num_srcs = nir_intrinsic_infos[intrin->intrinsic].num_srcs;
+               for (unsigned i = 0; i < num_srcs; i++) {
+                  if (intrin->src[i].is_ssa) {
+                     nir_alu_type src_type = nir_intrinsic_instr_src_type(intrin, i);
+                     if (src_type != nir_type_invalid) {
+                        set_type(intrin->src[i].ssa->index, src_type,
+                                 float_types, int_types, &progress);
+                     }
                   }
-                  break;
-               }
-
-               case nir_intrinsic_load_input:
-               case nir_intrinsic_load_uniform:
-                  if (intrin->dest.is_ssa) {
-                     set_type(intrin->dest.ssa.index,
-                              nir_intrinsic_dest_type(intrin),
-                              float_types, int_types, &progress);
-                  }
-                  break;
-
-               case nir_intrinsic_store_output:
-                  if (intrin->src[0].is_ssa) {
-                     set_type(intrin->src[0].ssa->index,
-                              nir_intrinsic_src_type(intrin),
-                              float_types, int_types, &progress);
-                  }
-                  break;
-
-               default:
-                  break;
-               }
-
-               /* For the most part, we leave other intrinsics alone.  Most
-                * of them don't matter in OpenGL ES 2.0 drivers anyway.
-                * However, we should at least check if this is some sort of
-                * IO intrinsic and flag it's offset and index sources.
-                */
-               nir_src *offset_src = nir_get_io_offset_src(intrin);
-               if (offset_src && offset_src->is_ssa) {
-                  set_type(offset_src->ssa->index, nir_type_int,
-                           float_types, int_types, &progress);
                }
                break;
             }

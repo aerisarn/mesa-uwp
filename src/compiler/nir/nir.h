@@ -2028,6 +2028,12 @@ nir_intrinsic_src_components(const nir_intrinsic_instr *intr, unsigned srcn);
 unsigned
 nir_intrinsic_dest_components(nir_intrinsic_instr *intr);
 
+nir_alu_type
+nir_intrinsic_instr_src_type(const nir_intrinsic_instr *intrin, unsigned src);
+
+nir_alu_type
+nir_intrinsic_instr_dest_type(const nir_intrinsic_instr *intrin);
+
 /**
  * Helper to copy const_index[] from src to dst, without assuming they
  * match in order.
