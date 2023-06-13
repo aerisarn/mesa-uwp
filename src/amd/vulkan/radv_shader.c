@@ -116,6 +116,7 @@ get_nir_options_for_stage(struct radv_physical_device *device, gl_shader_stage s
                              nir_lower_minmax64 | nir_lower_iabs64 | nir_lower_iadd_sat64,
       .lower_doubles_options = nir_lower_drcp | nir_lower_dsqrt | nir_lower_drsq | nir_lower_ddiv,
       .divergence_analysis_options = nir_divergence_view_index_uniform,
+      .optimize_quad_vote_to_reduce = true,
    };
 }
 
@@ -205,6 +206,7 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively)
       NIR_PASS(progress, shader, nir_opt_cse);
       NIR_PASS(progress, shader, nir_opt_peephole_select, 8, true, true);
       NIR_PASS(progress, shader, nir_opt_constant_folding);
+      NIR_PASS(progress, shader, nir_opt_intrinsics);
       NIR_PASS(progress, shader, nir_opt_algebraic);
 
       NIR_PASS(progress, shader, nir_opt_undef);
