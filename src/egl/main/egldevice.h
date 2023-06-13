@@ -81,6 +81,9 @@ _eglDeviceNext(_EGLDevice *dev);
 EGLBoolean
 _eglDeviceSupports(_EGLDevice *dev, _EGLDeviceExtension ext);
 
+int
+_eglDeviceRefreshList(void);
+
 EGLBoolean
 _eglQueryDeviceAttribEXT(_EGLDevice *dev, EGLint attribute, EGLAttrib *value);
 

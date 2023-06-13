@@ -284,7 +284,7 @@ _eglQueryDeviceStringEXT(_EGLDevice *dev, EGLint name)
  *
  * Must be called with the global lock held.
  */
-static int
+int
 _eglDeviceRefreshList(void)
 {
    ASSERTED _EGLDevice *dev;
