@@ -449,6 +449,9 @@ radv_GetPhysicalDeviceVideoCapabilitiesKHR(VkPhysicalDevice physicalDevice,
           h264_profile->stdProfileIdc != STD_VIDEO_H264_PROFILE_IDC_HIGH)
          return VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR;
 
+      if (pVideoProfile->lumaBitDepth != VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR)
+         return VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR;
+
       pCapabilities->maxDpbSlots = NUM_H264_REFS;
       pCapabilities->maxActiveReferencePictures = NUM_H264_REFS;
 
