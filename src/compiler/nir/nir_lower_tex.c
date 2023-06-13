@@ -1127,6 +1127,8 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
       tex_copy->is_gather_implicit_lod = tex->is_gather_implicit_lod;
       tex_copy->component = tex->component;
       tex_copy->dest_type = tex->dest_type;
+      tex_copy->texture_index = tex->texture_index;
+      tex_copy->sampler_index = tex->sampler_index;
 
       for (unsigned j = 0; j < tex->num_srcs; ++j) {
          nir_src_copy(&tex_copy->src[j].src, &tex->src[j].src, &tex_copy->instr);
