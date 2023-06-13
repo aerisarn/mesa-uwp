@@ -86,6 +86,13 @@ struct wsi_x11 {
    struct hash_table *connections;
 };
 
+struct wsi_x11_vk_surface {
+   union {
+      VkIcdSurfaceXlib xlib;
+      VkIcdSurfaceXcb xcb;
+   };
+   bool has_alpha;
+};
 
 /**
  * Wrapper around xcb_dri3_open. Returns the opened fd or -1 on error.
@@ -678,26 +685,19 @@ x11_surface_get_capabilities(VkIcdSurfaceBase *icd_surface,
 {
    xcb_connection_t *conn = x11_surface_get_connection(icd_surface);
    xcb_window_t window = x11_surface_get_window(icd_surface);
+   struct wsi_x11_vk_surface *surface = (struct wsi_x11_vk_surface*)icd_surface;
    struct wsi_x11_connection *wsi_conn =
       wsi_x11_get_connection(wsi_device, conn);
    xcb_get_geometry_cookie_t geom_cookie;
    xcb_generic_error_t *err;
    xcb_get_geometry_reply_t *geom;
-   unsigned visual_depth;
 
    geom_cookie = xcb_get_geometry(conn, window);
 
-   /* This does a round-trip.  This is why we do get_geometry first and
-    * wait to read the reply until after we have a visual.
-    */
-   xcb_visualtype_t *visual =
-      get_visualtype_for_window(conn, window, &visual_depth, NULL);
-
-   if (!visual)
-      return VK_ERROR_SURFACE_LOST_KHR;
-
    geom = xcb_get_geometry_reply(conn, geom_cookie, &err);
-   if (geom) {
+   if (!geom)
+      return VK_ERROR_SURFACE_LOST_KHR;
+   {
       VkExtent2D extent = { geom->width, geom->height };
       caps->currentExtent = extent;
       caps->minImageExtent = extent;
@@ -708,7 +708,7 @@ x11_surface_get_capabilities(VkIcdSurfaceBase *icd_surface,
    if (!geom)
        return VK_ERROR_SURFACE_LOST_KHR;
 
-   if (visual_has_alpha(visual, visual_depth)) {
+   if (surface->has_alpha) {
       caps->supportedCompositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR |
                                       VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
    } else {
@@ -964,20 +964,28 @@ wsi_CreateXcbSurfaceKHR(VkInstance _instance,
                         VkSurfaceKHR *pSurface)
 {
    VK_FROM_HANDLE(vk_instance, instance, _instance);
-   VkIcdSurfaceXcb *surface;
+   struct wsi_x11_vk_surface *surface;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR);
 
-   surface = vk_alloc2(&instance->alloc, pAllocator, sizeof *surface, 8,
+   unsigned visual_depth;
+   xcb_visualtype_t *visual =
+      get_visualtype_for_window(pCreateInfo->connection, pCreateInfo->window, &visual_depth, NULL);
+   if (!visual)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   surface = vk_alloc2(&instance->alloc, pAllocator, sizeof(struct wsi_x11_vk_surface), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (surface == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   surface->base.platform = VK_ICD_WSI_PLATFORM_XCB;
-   surface->connection = pCreateInfo->connection;
-   surface->window = pCreateInfo->window;
+   surface->xcb.base.platform = VK_ICD_WSI_PLATFORM_XCB;
+   surface->xcb.connection = pCreateInfo->connection;
+   surface->xcb.window = pCreateInfo->window;
 
-   *pSurface = VkIcdSurfaceBase_to_handle(&surface->base);
+   surface->has_alpha = visual_has_alpha(visual, visual_depth);
+
+   *pSurface = VkIcdSurfaceBase_to_handle(&surface->xcb.base);
    return VK_SUCCESS;
 }
 
@@ -988,20 +996,28 @@ wsi_CreateXlibSurfaceKHR(VkInstance _instance,
                          VkSurfaceKHR *pSurface)
 {
    VK_FROM_HANDLE(vk_instance, instance, _instance);
-   VkIcdSurfaceXlib *surface;
+   struct wsi_x11_vk_surface *surface;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR);
 
-   surface = vk_alloc2(&instance->alloc, pAllocator, sizeof *surface, 8,
+   unsigned visual_depth;
+   xcb_visualtype_t *visual =
+      get_visualtype_for_window(XGetXCBConnection(pCreateInfo->dpy), pCreateInfo->window, &visual_depth, NULL);
+   if (!visual)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   surface = vk_alloc2(&instance->alloc, pAllocator, sizeof(struct wsi_x11_vk_surface), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (surface == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   surface->base.platform = VK_ICD_WSI_PLATFORM_XLIB;
-   surface->dpy = pCreateInfo->dpy;
-   surface->window = pCreateInfo->window;
+   surface->xlib.base.platform = VK_ICD_WSI_PLATFORM_XLIB;
+   surface->xlib.dpy = pCreateInfo->dpy;
+   surface->xlib.window = pCreateInfo->window;
 
-   *pSurface = VkIcdSurfaceBase_to_handle(&surface->base);
+   surface->has_alpha = visual_has_alpha(visual, visual_depth);
+
+   *pSurface = VkIcdSurfaceBase_to_handle(&surface->xlib.base);
    return VK_SUCCESS;
 }
 
