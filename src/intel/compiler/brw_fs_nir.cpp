@@ -4896,7 +4896,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
          const unsigned block_sz = 64; /* Fetch one cacheline at a time. */
          const fs_builder ubld = bld.exec_all().group(block_sz / 4, 0);
-         const fs_reg packed_consts = ubld.vgrf(BRW_REGISTER_TYPE_UD);
 
          for (unsigned c = 0; c < instr->num_components;) {
             const unsigned base = load_offset + c * type_size;
@@ -4904,6 +4903,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
             const unsigned count = MIN2(instr->num_components - c,
                                         (block_sz - base % block_sz) / type_size);
 
+            const fs_reg packed_consts = ubld.vgrf(BRW_REGISTER_TYPE_UD);
             fs_reg srcs[PULL_UNIFORM_CONSTANT_SRCS];
             srcs[PULL_UNIFORM_CONSTANT_SRC_SURFACE]        = surface;
             srcs[PULL_UNIFORM_CONSTANT_SRC_SURFACE_HANDLE] = surface_handle;
