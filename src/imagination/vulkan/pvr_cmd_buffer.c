@@ -7518,8 +7518,6 @@ pvr_cmd_buffer_insert_mid_frag_barrier_event(struct pvr_cmd_buffer *cmd_buffer,
    pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
    pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_GRAPHICS);
 
-   pvr_finishme("Handle mid frag barrier color attachment load.");
-
    /* Use existing render setup, but load color attachments from HW BGOBJ */
    cmd_buffer->state.current_sub_cmd->gfx.barrier_load = true;
    cmd_buffer->state.current_sub_cmd->gfx.barrier_store = false;
