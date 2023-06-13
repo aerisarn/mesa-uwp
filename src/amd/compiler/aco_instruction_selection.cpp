@@ -7892,6 +7892,7 @@ emit_uniform_reduce(isel_context* ctx, nir_intrinsic_instr* instr)
 
       Temp thread_count =
          bld.sop1(Builder::s_bcnt1_i32, bld.def(s1), bld.def(s1, scc), Operand(exec, bld.lm));
+      thread_count = emit_wqm(bld, thread_count);
 
       emit_addition_uniform_reduce(ctx, op, dst, instr->src[0], thread_count);
    } else {
@@ -7921,6 +7922,7 @@ emit_uniform_scan(isel_context* ctx, nir_intrinsic_instr* instr)
          packed_tid = emit_mbcnt(ctx, bld.tmp(v1), Operand(exec, bld.lm), Operand::c32(1u));
       else
          packed_tid = emit_mbcnt(ctx, bld.tmp(v1), Operand(exec, bld.lm));
+      packed_tid = emit_wqm(bld, packed_tid);
 
       emit_addition_uniform_reduce(ctx, op, dst, instr->src[0], packed_tid);
       return true;
