@@ -461,11 +461,26 @@ double_check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, VkImageUsag
     if (check_ici(screen, ici, *mod))
        return true;
     if (pNext) {
-       ici->pNext = NULL;
+       VkBaseOutStructure *prev = NULL;
+       VkBaseOutStructure *fmt_list = NULL;
+       vk_foreach_struct(strct, (void*)ici->pNext) {
+          if (strct->sType == VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO) {
+             fmt_list = strct;
+             if (prev) {
+                prev->pNext = strct->pNext;
+             } else {
+                ici->pNext = strct->pNext;
+             }
+             fmt_list->pNext = NULL;
+             break;
+          }
+          prev = strct;
+       }
        ici->flags &= ~VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
        if (check_ici(screen, ici, *mod))
           return true;
-       ici->pNext = pNext;
+       fmt_list->pNext = (void*)ici->pNext;
+       ici->pNext = fmt_list;
        ici->flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     }
     return false;
