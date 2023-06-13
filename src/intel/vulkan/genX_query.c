@@ -798,7 +798,7 @@ void genX(CmdResetQueryPool)(
       cmd_buffer->state.pending_query_bits =
          ANV_QUERY_RENDER_TARGET_WRITES_PENDING_BITS(cmd_buffer->device->info);
 
-      trace_intel_end_query_clear_blorp(&cmd_buffer->trace);
+      trace_intel_end_query_clear_blorp(&cmd_buffer->trace, queryCount);
       return;
    }
 
@@ -878,7 +878,7 @@ void genX(CmdResetQueryPool)(
       unreachable("Unsupported query type");
    }
 
-   trace_intel_end_query_clear_cs(&cmd_buffer->trace);
+   trace_intel_end_query_clear_cs(&cmd_buffer->trace, queryCount);
 }
 
 void genX(ResetQueryPool)(
@@ -1649,7 +1649,7 @@ void genX(CmdCopyQueryPoolResults)(
       dest_addr = anv_address_add(dest_addr, destStride);
    }
 
-   trace_intel_end_query_copy(&cmd_buffer->trace);
+   trace_intel_end_query_copy(&cmd_buffer->trace, queryCount);
 }
 
 #if GFX_VERx10 >= 125 && ANV_SUPPORT_RT
