@@ -677,7 +677,7 @@ Shader::scan_instruction(nir_instr *instr)
       m_flags.set(sh_uses_images);
       break;
    case nir_intrinsic_scoped_barrier:
-      m_chain_instr.prepare_mem_barrier =
+      m_chain_instr.prepare_mem_barrier |=
             (nir_intrinsic_memory_modes(intr) &
              (nir_var_mem_ssbo | nir_var_mem_global | nir_var_image) &&
              nir_intrinsic_memory_scope(intr) != NIR_SCOPE_NONE);
