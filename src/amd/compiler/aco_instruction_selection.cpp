@@ -7892,7 +7892,7 @@ emit_uniform_reduce(isel_context* ctx, nir_intrinsic_instr* instr)
 
       Temp thread_count =
          bld.sop1(Builder::s_bcnt1_i32, bld.def(s1), bld.def(s1, scc), Operand(exec, bld.lm));
-      thread_count = emit_wqm(bld, thread_count);
+      thread_count = emit_wqm(bld, thread_count, Temp(0, s1), nir_intrinsic_include_helpers(instr));
 
       emit_addition_uniform_reduce(ctx, op, dst, instr->src[0], thread_count);
    } else {
@@ -8523,6 +8523,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          instr->intrinsic == nir_intrinsic_reduce ? nir_intrinsic_cluster_size(instr) : 0;
       cluster_size = util_next_power_of_two(
          MIN2(cluster_size ? cluster_size : ctx->program->wave_size, ctx->program->wave_size));
+      bool create_helpers =
+         instr->intrinsic == nir_intrinsic_reduce && nir_intrinsic_include_helpers(instr);
 
       if (!nir_src_is_divergent(instr->src[0]) && cluster_size == ctx->program->wave_size &&
           instr->dest.ssa.bit_size != 1) {
@@ -8552,7 +8554,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
          switch (instr->intrinsic) {
          case nir_intrinsic_reduce:
-            emit_wqm(bld, emit_boolean_reduce(ctx, op, cluster_size, src), dst);
+            emit_wqm(bld, emit_boolean_reduce(ctx, op, cluster_size, src), dst, create_helpers);
             break;
          case nir_intrinsic_exclusive_scan:
             emit_wqm(bld, emit_boolean_exclusive_scan(ctx, op, src), dst);
@@ -8581,7 +8583,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
          Temp tmp_dst = emit_reduction_instr(ctx, aco_op, reduce_op, cluster_size,
                                              bld.def(dst.regClass()), src);
-         emit_wqm(bld, tmp_dst, dst);
+         emit_wqm(bld, tmp_dst, dst, create_helpers);
       }
       break;
    }
