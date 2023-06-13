@@ -40,6 +40,14 @@ xe_gem_create(struct anv_device *device,
               enum anv_bo_alloc_flags alloc_flags,
               uint64_t *actual_size)
 {
+   uint32_t flags = 0;
+   if (alloc_flags & ANV_BO_ALLOC_SCANOUT)
+      flags |= XE_GEM_CREATE_FLAG_SCANOUT;
+   if ((alloc_flags & (ANV_BO_ALLOC_MAPPED | ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE)) &&
+       !(alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM) &&
+       device->physical->vram_non_mappable.size > 0)
+      flags |= XE_GEM_CREATE_FLAG_NEEDS_VISIBLE_VRAM;
+
    struct drm_xe_gem_create gem_create = {
      /* From xe_drm.h: If a VM is specified, this BO must:
       * 1. Only ever be bound to that VM.
@@ -47,7 +55,7 @@ xe_gem_create(struct anv_device *device,
       */
      .vm_id = alloc_flags & ANV_BO_ALLOC_EXTERNAL ? 0 : device->vm_id,
      .size = align64(size, device->info->mem_alignment),
-     .flags = alloc_flags & ANV_BO_ALLOC_SCANOUT ? XE_GEM_CREATE_FLAG_SCANOUT : 0,
+     .flags = flags,
    };
    for (uint16_t i = 0; i < regions_count; i++)
       gem_create.flags |= BITFIELD_BIT(regions[i]->instance);
