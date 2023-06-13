@@ -156,7 +156,29 @@ fs_live_variables::compute_live_variables()
 {
    bool cont = true;
 
-   while (cont) {
+   /* Propagate defin and defout down the CFG to calculate the union of live
+    * variables potentially defined along any possible control flow path.
+    */
+   do {
+      cont = false;
+
+      foreach_block (block, cfg) {
+         const struct block_data *bd = &block_data[block->num];
+
+         foreach_list_typed(bblock_link, child_link, link, &block->children) {
+            struct block_data *child_bd = &block_data[child_link->block->num];
+
+            for (int i = 0; i < bitset_words; i++) {
+               const BITSET_WORD new_def = bd->defout[i] & ~child_bd->defin[i];
+               child_bd->defin[i] |= new_def;
+               child_bd->defout[i] |= new_def;
+               cont |= new_def;
+            }
+         }
+      }
+   } while (cont);
+
+   do {
       cont = false;
 
       foreach_block_reverse (block, cfg) {
@@ -198,28 +220,6 @@ fs_live_variables::compute_live_variables()
          if (new_livein & ~bd->flag_livein[0]) {
             bd->flag_livein[0] |= new_livein;
             cont = true;
-         }
-      }
-   }
-
-   /* Propagate defin and defout down the CFG to calculate the union of live
-    * variables potentially defined along any possible control flow path.
-    */
-   do {
-      cont = false;
-
-      foreach_block (block, cfg) {
-         const struct block_data *bd = &block_data[block->num];
-
-         foreach_list_typed(bblock_link, child_link, link, &block->children) {
-            struct block_data *child_bd = &block_data[child_link->block->num];
-
-            for (int i = 0; i < bitset_words; i++) {
-               const BITSET_WORD new_def = bd->defout[i] & ~child_bd->defin[i];
-               child_bd->defin[i] |= new_def;
-               child_bd->defout[i] |= new_def;
-               cont |= new_def;
-            }
          }
       }
    } while (cont);
