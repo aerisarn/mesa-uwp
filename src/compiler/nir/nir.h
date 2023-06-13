@@ -3658,6 +3658,12 @@ typedef struct nir_shader_compiler_options {
     */
    bool optimize_sample_mask_in;
 
+   /**
+    * Optimize boolean reductions of quad broadcasts. This should only be enabled if
+    * nir_intrinsic_reduce supports INCLUDE_HELPERS.
+    */
+   bool optimize_quad_vote_to_reduce;
+
    bool lower_cs_local_index_to_id;
    bool lower_cs_local_id_to_index;
 
