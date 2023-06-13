@@ -707,3 +707,11 @@ KHR-GL46.polygon_offset_clamp.PolygonOffsetClampZeroInfinity,Fail
 spec@arb_viewport_array@display-list,Fail
 glx@glx-multi-window-single-context,Fail
 spec@arb_timer_query@timestamp-get,Fail
+
+# SIGKILL
+spec@arb_gpu_shader_fp64@execution@arb_gpu_shader_fp64-fs-getuniformdv,Crash
+spec@arb_gpu_shader_fp64@execution@arb_gpu_shader_fp64-gs-getuniformdv,Crash
+spec@arb_gpu_shader_fp64@execution@arb_gpu_shader_fp64-vs-getuniformdv,Crash
+
+# ../src/util/simple_mtx.h:131: simple_mtx_unlock: Assertion `c != _SIMPLE_MTX_INVALID_VALUE' failed.
+dEQP-EGL.functional.sharing.gles2.multithread.simple_egl_sync.programs.link,Crash
