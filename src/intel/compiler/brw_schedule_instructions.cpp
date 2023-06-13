@@ -620,7 +620,7 @@ public:
       this->mode = mode;
       this->reg_pressure = 0;
       this->block_idx = 0;
-      this->last_grf_write = ralloc_array(this->mem_ctx, schedule_node *, grf_count * grf_write_scale);
+      this->last_grf_write = rzalloc_array(this->mem_ctx, schedule_node *, grf_count * grf_write_scale);
       if (!post_reg_alloc) {
          this->reg_pressure_in = rzalloc_array(mem_ctx, int, block_count);
 
@@ -764,6 +764,7 @@ public:
    void setup_liveness(cfg_t *cfg);
    void update_register_pressure(backend_instruction *inst);
    int get_register_pressure_benefit(backend_instruction *inst);
+   void clear_last_grf_write();
 };
 
 fs_instruction_scheduler::fs_instruction_scheduler(const fs_visitor *v,
@@ -1199,6 +1200,34 @@ fs_instruction_scheduler::is_compressed(const fs_inst *inst)
    return inst->exec_size == 16;
 }
 
+/* Clears last_grf_write to be ready to start calculating deps for a block
+ * again.
+ *
+ * Since pre-ra grf_count scales with instructions, and instructions scale with
+ * BBs, we don't want to memset all of last_grf_write per block or you'll end up
+ * O(n^2) with number of blocks.  For shaders using softfp64, we get a *lot* of
+ * blocks.
+ *
+ * We don't bother being careful for post-ra, since then grf_count doesn't scale
+ * with instructions.
+ */
+void
+fs_instruction_scheduler::clear_last_grf_write()
+{
+   if (!post_reg_alloc) {
+      foreach_in_list(schedule_node, n, &instructions) {
+         fs_inst *inst = (fs_inst *)n->inst;
+
+         if (inst->dst.file == VGRF) {
+            /* Don't bother being careful with regs_written(), quicker to just clear 2 cachelines. */
+            memset(&last_grf_write[inst->dst.nr * 16], 0, sizeof(*last_grf_write) * 16);
+         }
+      }
+   } else {
+      memset(last_grf_write, 0, sizeof(*last_grf_write) * grf_count * 16);
+   }
+}
+
 void
 fs_instruction_scheduler::calculate_deps()
 {
@@ -1216,7 +1245,6 @@ fs_instruction_scheduler::calculate_deps()
     */
    schedule_node *last_fixed_grf_write = NULL;
 
-   memset(last_grf_write, 0, sizeof(schedule_node *) * grf_count * 16);
    memset(last_mrf_write, 0, sizeof(last_mrf_write));
 
    /* top-to-bottom dependencies: RAW and WAW. */
@@ -1349,8 +1377,9 @@ fs_instruction_scheduler::calculate_deps()
       }
    }
 
+   clear_last_grf_write();
+
    /* bottom-to-top dependencies: WAR */
-   memset(last_grf_write, 0, sizeof(schedule_node *) * grf_count * 16);
    memset(last_mrf_write, 0, sizeof(last_mrf_write));
    memset(last_conditional_mod, 0, sizeof(last_conditional_mod));
    last_accumulator_write = NULL;
@@ -1466,6 +1495,8 @@ fs_instruction_scheduler::calculate_deps()
          last_accumulator_write = n;
       }
    }
+
+   clear_last_grf_write();
 }
 
 void
