@@ -142,17 +142,14 @@ SOFTWARE.
     <value name="GAMMA_BOTH_CHANNELS"  value="1"/>
   </enum>
 
-  <enum name="ZLOADFORMAT_TYPE">
+  <enum name="ZLS_FORMAT_TYPE">
+    <!-- Separate depth and stencil -->
     <value name="F32Z"     value="0"/>
+    <!-- Packed depth and stencil -->
     <value name="24BITINT" value="1"/>
+    <!-- Separate depth and stencil -->
     <value name="16BITINT" value="2"/>
-    <value name="F64Z"     value="3"/>
-  </enum>
-
-  <enum name="ZSTOREFORMAT_TYPE">
-    <value name="F32Z"     value="0"/>
-    <value name="24BITINT" value="1"/>
-    <value name="16BITINT" value="2"/>
+    <!-- Packed depth and stencil -->
     <value name="F64Z"     value="3"/>
   </enum>
 
@@ -554,8 +551,8 @@ SOFTWARE.
     <field name="zlsextent_x_s" start="38" end="47" type="uint"/>
     <field name="stencil_extent_enable" start="37" end="37" type="bool"/>
     <field name="zlsextent_y_z" start="27" end="36" type="uint"/>
-    <field name="zstoreformat" start="25" end="26" type="ZSTOREFORMAT_TYPE"/>
-    <field name="zloadformat" start="23" end="24" type="ZLOADFORMAT_TYPE"/>
+    <field name="zstoreformat" start="25" end="26" type="ZLS_FORMAT_TYPE"/>
+    <field name="zloadformat" start="23" end="24" type="ZLS_FORMAT_TYPE"/>
     <field name="fb_storeen" start="22" end="22" type="bool"/>
     <field name="fb_loaden" start="21" end="21" type="bool"/>
     <field name="mstoreen" start="20" end="20" type="bool"/>

@@ -1064,8 +1064,8 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    const enum PVRX(CR_ISP_AA_MODE_TYPE)
       isp_aa_mode = pvr_cr_isp_aa_mode_type(job->samples);
 
+   enum PVRX(CR_ZLS_FORMAT_TYPE) zload_format = PVRX(CR_ZLS_FORMAT_TYPE_F32Z);
    uint32_t *stream_ptr = (uint32_t *)state->fw_stream;
-   enum PVRX(CR_ZLOADFORMAT_TYPE) zload_format;
    uint32_t pixel_ctl;
    uint32_t isp_ctl;
 
@@ -1101,7 +1101,7 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    stream_ptr += pvr_cmd_length(CR_ISP_OCLQRY_BASE);
 
    pvr_csb_pack ((uint64_t *)stream_ptr, CR_ISP_ZLSCTL, value) {
-      if (job->has_depth_attachment) {
+      if (job->has_depth_attachment || job->has_stencil_attachment) {
          uint32_t alignment_x;
          uint32_t alignment_y;
 
@@ -1129,44 +1129,24 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
             value.storetwiddled = true;
          }
 
-         switch (job->ds.vk_format) {
-         case VK_FORMAT_D16_UNORM:
-            value.zloadformat = PVRX(CR_ZLOADFORMAT_TYPE_16BITINT);
-            value.zstoreformat = PVRX(CR_ZSTOREFORMAT_TYPE_16BITINT);
-            break;
-
-         case VK_FORMAT_D32_SFLOAT:
-            value.zloadformat = PVRX(CR_ZLOADFORMAT_TYPE_F32Z);
-            value.zstoreformat = PVRX(CR_ZSTOREFORMAT_TYPE_F32Z);
-            break;
-
-         case VK_FORMAT_D24_UNORM_S8_UINT:
-            value.zloadformat = PVRX(CR_ZLOADFORMAT_TYPE_24BITINT);
-            value.zstoreformat = PVRX(CR_ZSTOREFORMAT_TYPE_24BITINT);
-            break;
-
-         default:
-            unreachable("Unsupported depth format");
-         }
-
-         value.zloaden = job->ds.load;
-         value.forcezload = value.zloaden;
-
-         value.zstoreen = job->ds.store;
-         value.forcezstore = value.zstoreen;
+         value.zloadformat = job->ds.zls_format;
+         value.zstoreformat = job->ds.zls_format;
 
          zload_format = value.zloadformat;
-      } else {
-         zload_format = PVRX(CR_ZLOADFORMAT_TYPE_F32Z);
+      }
+
+      if (job->has_depth_attachment) {
+         value.zloaden = job->ds.load.d;
+         value.zstoreen = job->ds.store.d;
       }
 
       if (job->has_stencil_attachment) {
-         value.sstoreen = job->ds.store;
-         value.forcezstore = value.sstoreen;
-
-         value.sloaden = job->ds.load;
-         value.forcezload = value.sloaden;
+         value.sloaden = job->ds.load.s;
+         value.sstoreen = job->ds.store.s;
       }
+
+      value.forcezload = value.zloaden || value.sloaden;
+      value.forcezstore = value.zstoreen || value.sstoreen;
    }
    stream_ptr += pvr_cmd_length(CR_ISP_ZLSCTL);
 
@@ -1184,7 +1164,7 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
           * in CR_ISP_STENCIL_LOAD_BASE does not contain a depth component.
           */
          assert(job->has_depth_attachment ||
-                job->ds.vk_format == VK_FORMAT_S8_UINT);
+                !pvr_zls_format_type_is_packed(job->ds.zls_format));
          value.enable = !job->has_depth_attachment;
       }
    }
@@ -1236,15 +1216,15 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
        *  - job->depth_clear_value is set to a sensible default in that case.
        */
       switch (zload_format) {
-      case PVRX(CR_ZLOADFORMAT_TYPE_F32Z):
+      case PVRX(CR_ZLS_FORMAT_TYPE_F32Z):
          value.value = fui(depth_clear);
          break;
 
-      case PVRX(CR_ZLOADFORMAT_TYPE_16BITINT):
+      case PVRX(CR_ZLS_FORMAT_TYPE_16BITINT):
          value.value = _mesa_float_to_unorm(depth_clear, 16);
          break;
 
-      case PVRX(CR_ZLOADFORMAT_TYPE_24BITINT):
+      case PVRX(CR_ZLS_FORMAT_TYPE_24BITINT):
          value.value = _mesa_float_to_unorm(depth_clear, 24);
          break;
 
@@ -1277,8 +1257,7 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
        * bias factor of 1.0 equates to 1 ULP of increase to the depth value.
        */
       value.dbias_is_int = PVR_HAS_ERN(dev_info, 42307) &&
-                           (job->ds.vk_format == VK_FORMAT_D16_UNORM ||
-                            job->ds.vk_format == VK_FORMAT_D24_UNORM_S8_UINT);
+                           pvr_zls_format_type_is_int(job->ds.zls_format);
    }
    /* FIXME: When pvr_setup_tiles_in_flight() is refactored it might be
     * possible to fully pack CR_ISP_CTL above rather than having to OR in part

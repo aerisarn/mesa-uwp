@@ -1080,6 +1080,17 @@ pvr_pass_get_pixel_output_width(const struct pvr_render_pass *pass,
    return util_next_power_of_two(width);
 }
 
+static inline bool
+pvr_ds_attachment_requires_zls(const struct pvr_ds_attachment *attachment)
+{
+   bool zls_used;
+
+   zls_used = attachment->load.d || attachment->load.s;
+   zls_used |= attachment->store.d || attachment->store.s;
+
+   return zls_used;
+}
+
 /**
  * \brief If depth and/or stencil attachment dimensions are not tile-aligned,
  * then we may need to insert some additional transfer subcommands.
@@ -1119,7 +1130,7 @@ static bool pvr_sub_cmd_gfx_requires_ds_subtile_alignment(
 
    /* No ZLS functions enabled; nothing to do. */
    if ((!job->has_depth_attachment && !job->has_stencil_attachment) ||
-       (!job->ds.load && !job->ds.store)) {
+       !pvr_ds_attachment_requires_zls(&job->ds)) {
       return false;
    }
 
@@ -1151,7 +1162,7 @@ pvr_sub_cmd_gfx_align_ds_subtiles(struct pvr_cmd_buffer *const cmd_buffer,
    assert(list_last_entry(&cmd_buffer->sub_cmds, struct pvr_sub_cmd, link) ==
           prev_sub_cmd);
 
-   if (!ds->load && !ds->store)
+   if (!pvr_ds_attachment_requires_zls(ds))
       return VK_SUCCESS;
 
    rogue_get_zls_tile_size_xy(&cmd_buffer->device->pdevice->dev_info,
@@ -1203,7 +1214,7 @@ pvr_sub_cmd_gfx_align_ds_subtiles(struct pvr_cmd_buffer *const cmd_buffer,
       },
    };
 
-   if (ds->load) {
+   if (ds->load.d || ds->load.s) {
       cmd_buffer->state.current_sub_cmd = NULL;
 
       result =
@@ -1235,7 +1246,7 @@ pvr_sub_cmd_gfx_align_ds_subtiles(struct pvr_cmd_buffer *const cmd_buffer,
       cmd_buffer->state.current_sub_cmd = prev_sub_cmd;
    }
 
-   if (ds->store) {
+   if (ds->store.d || ds->store.s) {
       cmd_buffer->state.current_sub_cmd = NULL;
 
       result =
@@ -1501,7 +1512,24 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                job->ds_clear_value.stencil = clear_values->stencil;
          }
 
-         job->ds.vk_format = ds_iview->vk.format;
+         switch (ds_iview->vk.format) {
+         case VK_FORMAT_D16_UNORM:
+            job->ds.zls_format = PVRX(CR_ZLS_FORMAT_TYPE_16BITINT);
+            break;
+
+         case VK_FORMAT_S8_UINT:
+         case VK_FORMAT_D32_SFLOAT:
+            job->ds.zls_format = PVRX(CR_ZLS_FORMAT_TYPE_F32Z);
+            break;
+
+         case VK_FORMAT_D24_UNORM_S8_UINT:
+            job->ds.zls_format = PVRX(CR_ZLS_FORMAT_TYPE_24BITINT);
+            break;
+
+         default:
+            unreachable("Unsupported depth stencil format");
+         }
+
          job->ds.memlayout = ds_image->memlayout;
 
          if (job->has_depth_attachment) {
@@ -1557,14 +1585,34 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
             }
          }
 
-         if (job->has_depth_attachment && job->has_stencil_attachment)
-            assert(d_store == s_store && d_load == s_load);
+         job->ds.load.d = d_load;
+         job->ds.load.s = s_load;
+         job->ds.store.d = d_store;
+         job->ds.store.s = s_store;
 
-         job->ds.store = d_store || s_store;
-         job->ds.load = d_load || s_load;
+         /* ZLS can't do masked writes for packed depth stencil formats so if
+          * we store anything, we have to store everything.
+          */
+         if ((job->ds.store.d || job->ds.store.s) &&
+             pvr_zls_format_type_is_packed(job->ds.zls_format)) {
+            job->ds.store.d = true;
+            job->ds.store.s = true;
 
-         if (job->ds.load || job->ds.store || store_was_optimised_out)
+            /* In case we are only operating on one aspect of the attachment we
+             * need to load the unused one in order to preserve its contents due
+             * to the forced store which might otherwise corrupt it.
+             */
+            if (hw_render->depth_init != VK_ATTACHMENT_LOAD_OP_CLEAR)
+               job->ds.load.d = true;
+
+            if (hw_render->stencil_init != VK_ATTACHMENT_LOAD_OP_CLEAR)
+               job->ds.load.s = true;
+         }
+
+         if (pvr_ds_attachment_requires_zls(&job->ds) ||
+             store_was_optimised_out) {
             job->process_empty_tiles = true;
+         }
 
          if (pvr_sub_cmd_gfx_requires_ds_subtile_alignment(dev_info, job)) {
             result = pvr_sub_cmd_gfx_align_ds_subtiles(cmd_buffer, sub_cmd);
