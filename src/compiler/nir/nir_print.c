@@ -1192,7 +1192,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          case nir_rounding_mode_ru:    fprintf(fp, "ru");      break;
          case nir_rounding_mode_rd:    fprintf(fp, "rd");      break;
          case nir_rounding_mode_rtz:   fprintf(fp, "rtz");     break;
-         default:                      fprintf(fp, "unkown");  break;
+         default:                      fprintf(fp, "unknown"); break;
          }
          break;
       }

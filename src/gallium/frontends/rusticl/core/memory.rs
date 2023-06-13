@@ -1277,13 +1277,13 @@ impl Sampler {
             cl_sampler_addressing_mode::SAMPLER_ADDRESSING_MODE_REPEAT_MIRRORED => {
                 CL_ADDRESS_MIRRORED_REPEAT
             }
-            _ => panic!("unkown addressing_mode"),
+            _ => panic!("unknown addressing_mode"),
         };
 
         let filter = match filter_mode {
             cl_sampler_filter_mode::SAMPLER_FILTER_MODE_NEAREST => CL_FILTER_NEAREST,
             cl_sampler_filter_mode::SAMPLER_FILTER_MODE_LINEAR => CL_FILTER_LINEAR,
-            _ => panic!("unkown filter_mode"),
+            _ => panic!("unknown filter_mode"),
         };
 
         (addr_mode, filter, normalized_coords != 0)
@@ -1310,7 +1310,7 @@ impl Sampler {
         let img_filter = match filter_mode {
             CL_FILTER_NEAREST => pipe_tex_filter::PIPE_TEX_FILTER_NEAREST,
             CL_FILTER_LINEAR => pipe_tex_filter::PIPE_TEX_FILTER_LINEAR,
-            _ => panic!("unkown filter_mode"),
+            _ => panic!("unknown filter_mode"),
         };
 
         res.set_min_img_filter(img_filter);
