@@ -1916,14 +1916,16 @@ instruction_scheduler::run(cfg_t *cfg)
    if (!post_reg_alloc)
       setup_liveness(cfg);
 
+   if (reads_remaining) {
+      memset(reads_remaining, 0,
+               grf_count * sizeof(*reads_remaining));
+      memset(hw_reads_remaining, 0,
+               hw_reg_count * sizeof(*hw_reads_remaining));
+      memset(written, 0, grf_count * sizeof(*written));
+   }
+
    foreach_block(block, cfg) {
       if (reads_remaining) {
-         memset(reads_remaining, 0,
-                grf_count * sizeof(*reads_remaining));
-         memset(hw_reads_remaining, 0,
-                hw_reg_count * sizeof(*hw_reads_remaining));
-         memset(written, 0, grf_count * sizeof(*written));
-
          foreach_inst_in_block(fs_inst, inst, block)
             count_reads_remaining(inst);
       }
