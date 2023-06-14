@@ -82,7 +82,6 @@ static unsigned translate_opcode(unsigned opcode)
         case TGSI_OPCODE_ARR: return RC_OPCODE_ARR;
      /* case TGSI_OPCODE_CAL: return RC_OPCODE_CAL; */
      /* case TGSI_OPCODE_RET: return RC_OPCODE_RET; */
-        case TGSI_OPCODE_SSG: return RC_OPCODE_SSG;
         case TGSI_OPCODE_CMP: return RC_OPCODE_CMP;
         case TGSI_OPCODE_TXB: return RC_OPCODE_TXB;
      /* case TGSI_OPCODE_DIV: return RC_OPCODE_DIV; */
