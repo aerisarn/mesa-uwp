@@ -649,6 +649,7 @@
 .radeonsi-vaapi-manual-rules:
   stage: amd
   rules:
+    - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
         *radeon_vcn_file_list
