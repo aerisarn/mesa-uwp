@@ -1,5 +1,4 @@
 use crate::api::icd::*;
-use crate::api::util::cl_prop;
 use crate::core::device::*;
 use crate::core::event::*;
 use crate::core::format::*;
@@ -1000,13 +999,15 @@ impl Kernel {
                 }
                 InternalKernelArgType::GlobalWorkOffsets => {
                     if q.device.address_bits() == 64 {
-                        input.extend_from_slice(&cl_prop::<[u64; 3]>(offsets));
+                        input.extend_from_slice(unsafe { as_byte_slice(&offsets) });
                     } else {
-                        input.extend_from_slice(&cl_prop::<[u32; 3]>([
-                            offsets[0] as u32,
-                            offsets[1] as u32,
-                            offsets[2] as u32,
-                        ]));
+                        input.extend_from_slice(unsafe {
+                            as_byte_slice(&[
+                                offsets[0] as u32,
+                                offsets[1] as u32,
+                                offsets[2] as u32,
+                            ])
+                        });
                     }
                 }
                 InternalKernelArgType::PrintfBuffer => {
@@ -1026,12 +1027,12 @@ impl Kernel {
                     samplers.push(Sampler::cl_to_pipe(cl));
                 }
                 InternalKernelArgType::FormatArray => {
-                    input.extend_from_slice(&cl_prop::<&Vec<u16>>(&tex_formats));
-                    input.extend_from_slice(&cl_prop::<&Vec<u16>>(&img_formats));
+                    input.extend_from_slice(unsafe { as_byte_slice(&tex_formats) });
+                    input.extend_from_slice(unsafe { as_byte_slice(&img_formats) });
                 }
                 InternalKernelArgType::OrderArray => {
-                    input.extend_from_slice(&cl_prop::<&Vec<u16>>(&tex_orders));
-                    input.extend_from_slice(&cl_prop::<&Vec<u16>>(&img_orders));
+                    input.extend_from_slice(unsafe { as_byte_slice(&tex_orders) });
+                    input.extend_from_slice(unsafe { as_byte_slice(&img_orders) });
                 }
                 InternalKernelArgType::WorkDim => {
                     input.extend_from_slice(&[work_dim as u8; 1]);
