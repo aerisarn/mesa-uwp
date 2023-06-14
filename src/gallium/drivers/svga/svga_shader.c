@@ -923,19 +923,13 @@ svga_create_shader(struct pipe_context *pipe,
       return NULL;
 
    shader->id = svga->debug.shader_id++;
-   shader->type = templ->type;
    shader->stage = stage;
 
    shader->tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
+   shader->type = PIPE_SHADER_IR_TGSI;
 
-   if (shader->type == PIPE_SHADER_IR_TGSI) {
-      /* Collect basic info of the shader */
-      svga_tgsi_scan_shader(shader);
-   }
-   else {
-      debug_printf("Unexpected nir shader\n");
-      assert(0);
-   }
+   /* Collect basic info of the shader */
+   svga_tgsi_scan_shader(shader);
 
    /* check for any stream output declarations */
    if (templ->stream_output.num_outputs) {
