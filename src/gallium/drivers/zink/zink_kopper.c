@@ -723,8 +723,9 @@ kopper_present(void *data, void *gdata, int thread_idx)
                                                       (void*)(uintptr_t)swapchain->last_present_prune);
       if (he) {
          arr = he->data;
-         while (util_dynarray_contains(arr, VkSemaphore))
-            VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(arr, VkSemaphore), NULL);
+         simple_mtx_lock(&screen->semaphores_lock);
+         util_dynarray_append_dynarray(&screen->semaphores, arr);
+         simple_mtx_unlock(&screen->semaphores_lock);
          util_dynarray_fini(arr);
          free(arr);
          _mesa_hash_table_remove(swapchain->presents, he);
