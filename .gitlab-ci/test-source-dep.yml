@@ -692,6 +692,7 @@
 .crocus-rules:
   stage: intel
   rules:
+    - !reference [.anholt-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes: &crocus_file_list
       - src/gallium/drivers/crocus/**/*
@@ -703,6 +704,7 @@
   stage: intel
   retry: *scheduled-pipeline-retries
   rules:
+    - !reference [.anholt-farm-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
         *crocus_file_list
