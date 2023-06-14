@@ -6,16 +6,28 @@
 use crate::nak_cfg::CFG;
 use crate::nak_ir::*;
 
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::cmp::max;
 use std::collections::{HashMap, HashSet};
 
-struct SSAEntry {
+pub trait BlockLiveness {
+    fn is_live_after_ip(&self, val: &SSAValue, ip: usize) -> bool;
+    fn is_live_in(&self, val: &SSAValue) -> bool;
+    fn is_live_out(&self, val: &SSAValue) -> bool;
+}
+
+pub trait Liveness {
+    type PerBlock: BlockLiveness;
+
+    fn block_live(&self, id: u32) -> &Self::PerBlock;
+}
+
+struct SSAUseDef {
     defined: bool,
     uses: Vec<usize>,
 }
 
-impl SSAEntry {
+impl SSAUseDef {
     fn add_def(&mut self) {
         self.defined = true;
     }
@@ -51,15 +63,15 @@ impl SSAEntry {
     }
 }
 
-pub struct BlockLiveness {
+pub struct NextUseBlockLiveness {
     num_instrs: usize,
-    ssa_map: HashMap<SSAValue, SSAEntry>,
+    ssa_map: HashMap<SSAValue, SSAUseDef>,
     max_live: PerRegFile<u32>,
 }
 
-impl BlockLiveness {
-    fn entry_mut(&mut self, ssa: SSAValue) -> &mut SSAEntry {
-        self.ssa_map.entry(ssa).or_insert_with(|| SSAEntry {
+impl NextUseBlockLiveness {
+    fn entry_mut(&mut self, ssa: SSAValue) -> &mut SSAUseDef {
+        self.ssa_map.entry(ssa).or_insert_with(|| SSAUseDef {
             defined: false,
             uses: Vec::new(),
         })
@@ -99,8 +111,10 @@ impl BlockLiveness {
     pub fn max_live(&self, file: RegFile) -> u32 {
         self.max_live[file]
     }
+}
 
-    pub fn is_live_after(&self, val: &SSAValue, ip: usize) -> bool {
+impl BlockLiveness for NextUseBlockLiveness {
+    fn is_live_after_ip(&self, val: &SSAValue, ip: usize) -> bool {
         if let Some(entry) = self.ssa_map.get(val) {
             if let Some(last_use_ip) = entry.uses.last() {
                 *last_use_ip > ip
@@ -112,8 +126,7 @@ impl BlockLiveness {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn is_live_in(&self, val: &SSAValue) -> bool {
+    fn is_live_in(&self, val: &SSAValue) -> bool {
         if let Some(entry) = self.ssa_map.get(val) {
             !entry.defined && !entry.uses.is_empty()
         } else {
@@ -121,8 +134,7 @@ impl BlockLiveness {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn is_live_out(&self, val: &SSAValue) -> bool {
+    fn is_live_out(&self, val: &SSAValue) -> bool {
         if let Some(entry) = self.ssa_map.get(val) {
             if let Some(last_use_ip) = entry.uses.last() {
                 *last_use_ip >= self.num_instrs
@@ -135,29 +147,21 @@ impl BlockLiveness {
     }
 }
 
-pub struct Liveness {
-    blocks: HashMap<u32, RefCell<BlockLiveness>>,
+pub struct NextUseLiveness {
+    blocks: HashMap<u32, NextUseBlockLiveness>,
     max_live: PerRegFile<u32>,
 }
 
-impl Liveness {
-    pub fn block(&self, block: &BasicBlock) -> Ref<BlockLiveness> {
-        self.blocks.get(&block.id).unwrap().borrow()
-    }
-
+impl NextUseLiveness {
     pub fn max_live(&self, file: RegFile) -> u32 {
         self.max_live[file]
     }
 
-    pub fn for_function(func: &Function, cfg: &CFG) -> Liveness {
-        let mut l = Liveness {
-            blocks: HashMap::new(),
-            max_live: Default::default(),
-        };
-
+    pub fn for_function(func: &Function, cfg: &CFG) -> NextUseLiveness {
+        let mut blocks = HashMap::new();
         for b in &func.blocks {
-            let bl = BlockLiveness::for_block(b);
-            l.blocks.insert(b.id, RefCell::new(bl));
+            let bl = NextUseBlockLiveness::for_block(b);
+            blocks.insert(b.id, RefCell::new(bl));
         }
 
         let mut to_do = true;
@@ -165,7 +169,7 @@ impl Liveness {
             to_do = false;
             for b in func.blocks.iter().rev() {
                 let num_instrs = b.instrs.len();
-                let mut bl = l.blocks.get(&b.id).unwrap().borrow_mut();
+                let mut bl = blocks.get(&b.id).unwrap().borrow_mut();
 
                 /* Compute live-out */
                 for sb_id in cfg.block_successors(b.id) {
@@ -183,7 +187,7 @@ impl Liveness {
                                 .add_successor_use(num_instrs, *first_use_ip);
                         }
                     } else {
-                        let sbl = l.blocks.get(&sb_id).unwrap().borrow();
+                        let sbl = blocks.get(&sb_id).unwrap().borrow();
                         for (ssa, entry) in sbl.ssa_map.iter() {
                             if entry.defined {
                                 continue;
@@ -202,8 +206,15 @@ impl Liveness {
             }
         }
 
+        let mut l = NextUseLiveness {
+            blocks: HashMap::from_iter(
+                blocks.drain().map(|(k, v)| (k, v.into_inner())),
+            ),
+            max_live: Default::default(),
+        };
+
         for b in func.blocks.iter().rev() {
-            let mut bl = l.blocks.get(&b.id).unwrap().borrow_mut();
+            let bl = l.blocks.get_mut(&b.id).unwrap();
 
             /* Populate a live set based on live out */
             let mut dead = HashSet::new();
@@ -236,7 +247,7 @@ impl Liveness {
                 dead.clear();
 
                 if let PredRef::SSA(ssa) = &instr.pred.pred_ref {
-                    if !bl.is_live_after(ssa, ip) {
+                    if !bl.is_live_after_ip(ssa, ip) {
                         dead.insert(*ssa);
                     }
                 }
@@ -244,7 +255,7 @@ impl Liveness {
                 for src in instr.srcs() {
                     if let SrcRef::SSA(vec) = &src.src_ref {
                         for ssa in vec.iter() {
-                            if !bl.is_live_after(ssa, ip) {
+                            if !bl.is_live_after_ip(ssa, ip) {
                                 dead.insert(*ssa);
                             }
                         }
@@ -271,5 +282,13 @@ impl Liveness {
         }
 
         l
+    }
+}
+
+impl Liveness for NextUseLiveness {
+    type PerBlock = NextUseBlockLiveness;
+
+    fn block_live(&self, id: u32) -> &NextUseBlockLiveness {
+        self.blocks.get(&id).unwrap()
     }
 }

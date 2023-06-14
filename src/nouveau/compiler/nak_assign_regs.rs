@@ -8,7 +8,7 @@
 use crate::bitset::BitSet;
 use crate::nak_cfg::CFG;
 use crate::nak_ir::*;
-use crate::nak_liveness::{BlockLiveness, Liveness};
+use crate::nak_liveness::{BlockLiveness, Liveness, NextUseLiveness};
 use crate::util::NextMultipleOf;
 
 use std::cmp::{max, Ordering};
@@ -878,10 +878,10 @@ impl AssignRegsBlock {
         }
     }
 
-    fn first_pass(
+    fn first_pass<BL: BlockLiveness>(
         &mut self,
         b: &mut BasicBlock,
-        bl: &BlockLiveness,
+        bl: &BL,
         pred_ra: Option<&PerRegFile<RegAllocator>>,
     ) {
         /* Populate live in from the register file we're handed.  We'll add more
@@ -910,13 +910,13 @@ impl AssignRegsBlock {
             /* Build up the kill set */
             killed.clear();
             if let PredRef::SSA(ssa) = &instr.pred.pred_ref {
-                if !bl.is_live_after(ssa, ip) {
+                if !bl.is_live_after_ip(ssa, ip) {
                     killed.insert(*ssa);
                 }
             }
             for src in instr.srcs() {
                 for ssa in src.iter_ssa() {
-                    if !bl.is_live_after(ssa, ip) {
+                    if !bl.is_live_after_ip(ssa, ip) {
                         killed.insert(*ssa);
                     }
                 }
@@ -984,7 +984,7 @@ impl AssignRegs {
 
     pub fn run(&mut self, f: &mut Function) {
         let cfg = CFG::for_function(f);
-        let live = Liveness::for_function(f, &cfg);
+        let live = NextUseLiveness::for_function(f, &cfg);
 
         let num_regs = PerRegFile::new_with(|file| {
             let num_regs = file.num_regs(self.sm);
@@ -1003,7 +1003,7 @@ impl AssignRegs {
         });
 
         for b in &mut f.blocks {
-            let bl = live.block(&b);
+            let bl = live.block_live(b.id);
 
             let pred = cfg.block_predecessors(b.id);
             let pred_ra = if pred.is_empty() {
@@ -1014,7 +1014,7 @@ impl AssignRegs {
             };
 
             let mut arb = AssignRegsBlock::new(&num_regs);
-            arb.first_pass(b, &bl, pred_ra);
+            arb.first_pass(b, bl, pred_ra);
             self.blocks.insert(b.id, arb);
         }
 
