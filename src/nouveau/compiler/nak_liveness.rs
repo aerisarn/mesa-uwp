@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+use crate::nak_cfg::CFG;
 use crate::nak_ir::*;
 
 use std::cell::{Ref, RefCell};
@@ -54,21 +55,9 @@ pub struct BlockLiveness {
     num_instrs: usize,
     ssa_map: HashMap<SSAValue, SSAEntry>,
     max_live: PerRegFile<u32>,
-    pub predecessors: Vec<u32>,
-    pub successors: [Option<u32>; 2],
 }
 
 impl BlockLiveness {
-    fn new(num_instrs: usize) -> Self {
-        Self {
-            num_instrs: num_instrs,
-            ssa_map: HashMap::new(),
-            max_live: Default::default(),
-            predecessors: Vec::new(),
-            successors: [None; 2],
-        }
-    }
-
     fn entry_mut(&mut self, ssa: SSAValue) -> &mut SSAEntry {
         self.ssa_map.entry(ssa).or_insert_with(|| SSAEntry {
             defined: false,
@@ -76,26 +65,34 @@ impl BlockLiveness {
         })
     }
 
-    fn add_live_block(&mut self, block: &BasicBlock) {
+    fn for_block(block: &BasicBlock) -> Self {
+        let mut bl = Self {
+            num_instrs: block.instrs.len(),
+            ssa_map: HashMap::new(),
+            max_live: Default::default(),
+        };
+
         for (ip, instr) in block.instrs.iter().enumerate() {
             if let PredRef::SSA(val) = &instr.pred.pred_ref {
-                self.entry_mut(*val).add_in_block_use(ip);
+                bl.entry_mut(*val).add_in_block_use(ip);
             }
 
             for src in instr.srcs() {
                 for sv in src.iter_ssa() {
-                    self.entry_mut(*sv).add_in_block_use(ip);
+                    bl.entry_mut(*sv).add_in_block_use(ip);
                 }
             }
 
             for dst in instr.dsts() {
                 if let Dst::SSA(sr) = dst {
                     for sv in sr.iter() {
-                        self.entry_mut(*sv).add_def();
+                        bl.entry_mut(*sv).add_def();
                     }
                 }
             }
         }
+
+        bl
     }
 
     #[allow(dead_code)]
@@ -152,45 +149,15 @@ impl Liveness {
         self.max_live[file]
     }
 
-    fn link_blocks(&mut self, p_id: u32, s_id: u32) {
-        let s = self.blocks.get_mut(&s_id).unwrap().get_mut();
-        s.predecessors.push(p_id);
-
-        let p = self.blocks.get_mut(&p_id).unwrap().get_mut();
-        if p.successors[0].is_none() {
-            p.successors[0] = Some(s_id);
-        } else {
-            assert!(p.successors[1].is_none());
-            p.successors[1] = Some(s_id);
-        }
-    }
-
-    pub fn for_function(func: &Function) -> Liveness {
+    pub fn for_function(func: &Function, cfg: &CFG) -> Liveness {
         let mut l = Liveness {
             blocks: HashMap::new(),
             max_live: Default::default(),
         };
 
         for b in &func.blocks {
-            let mut bl = BlockLiveness::new(b.instrs.len());
-            bl.add_live_block(&b);
+            let bl = BlockLiveness::for_block(b);
             l.blocks.insert(b.id, RefCell::new(bl));
-        }
-
-        for (i, b) in func.blocks.iter().enumerate() {
-            if b.falls_through() {
-                l.link_blocks(b.id, func.blocks[i + 1].id);
-            }
-
-            if let Some(br) = b.branch() {
-                match &br.op {
-                    Op::Bra(bra) => {
-                        l.link_blocks(b.id, bra.target);
-                    }
-                    Op::Exit(_) => (),
-                    _ => panic!("Unhandled branch op"),
-                }
-            }
         }
 
         let mut to_do = true;
@@ -201,12 +168,8 @@ impl Liveness {
                 let mut bl = l.blocks.get(&b.id).unwrap().borrow_mut();
 
                 /* Compute live-out */
-                for s in bl.successors {
-                    let Some(sb_id) = s else {
-                        continue;
-                    };
-
-                    if sb_id == b.id {
+                for sb_id in cfg.block_successors(b.id) {
+                    if *sb_id == b.id {
                         for entry in bl.ssa_map.values_mut() {
                             if entry.defined {
                                 continue;

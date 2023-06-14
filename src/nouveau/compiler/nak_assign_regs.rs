@@ -6,6 +6,7 @@
 #![allow(unstable_name_collisions)]
 
 use crate::bitset::BitSet;
+use crate::nak_cfg::CFG;
 use crate::nak_ir::*;
 use crate::nak_liveness::{BlockLiveness, Liveness};
 use crate::util::NextMultipleOf;
@@ -982,7 +983,8 @@ impl AssignRegs {
     }
 
     pub fn run(&mut self, f: &mut Function) {
-        let live = Liveness::for_function(f);
+        let cfg = CFG::for_function(f);
+        let live = Liveness::for_function(f, &cfg);
 
         let num_regs = PerRegFile::new_with(|file| {
             let num_regs = file.num_regs(self.sm);
@@ -1003,11 +1005,12 @@ impl AssignRegs {
         for b in &mut f.blocks {
             let bl = live.block(&b);
 
-            let pred_ra = if bl.predecessors.is_empty() {
+            let pred = cfg.block_predecessors(b.id);
+            let pred_ra = if pred.is_empty() {
                 None
             } else {
                 /* Start with the previous block's. */
-                Some(&self.blocks.get(&bl.predecessors[0]).unwrap().ra)
+                Some(&self.blocks.get(&pred[0]).unwrap().ra)
             };
 
             let mut arb = AssignRegsBlock::new(&num_regs);
@@ -1016,13 +1019,10 @@ impl AssignRegs {
         }
 
         for b in &mut f.blocks {
-            let bl = live.block(&b);
             let arb = self.blocks.get(&b.id).unwrap();
-            for succ in bl.successors {
-                if let Some(succ) = succ {
-                    let target = self.blocks.get(&succ).unwrap();
-                    arb.second_pass(target, b);
-                }
+            for sb_id in cfg.block_successors(b.id) {
+                let target = self.blocks.get(&sb_id).unwrap();
+                arb.second_pass(target, b);
             }
         }
     }
