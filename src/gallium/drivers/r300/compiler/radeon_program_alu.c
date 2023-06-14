@@ -365,21 +365,6 @@ static void transform_LRP(struct radeon_compiler* c,
 	rc_remove_instruction(inst);
 }
 
-static void transform_POW(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	struct rc_dst_register tempdst = new_dst_reg(c, inst);
-	struct rc_src_register tempsrc = srcreg(RC_FILE_TEMPORARY, tempdst.Index);
-	tempdst.WriteMask = RC_MASK_W;
-	tempsrc.Swizzle = RC_SWIZZLE_WWWW;
-
-	emit1(c, inst->Prev, RC_OPCODE_LG2, NULL, tempdst, swizzle_xxxx(inst->U.I.SrcReg[0]));
-	emit2(c, inst->Prev, RC_OPCODE_MUL, NULL, tempdst, tempsrc, swizzle_xxxx(inst->U.I.SrcReg[1]));
-	emit1(c, inst->Prev, RC_OPCODE_EX2, &inst->U.I, inst->U.I.DstReg, tempsrc);
-
-	rc_remove_instruction(inst);
-}
-
 /* dst = ROUND(src) :
  *   add = src + .5
  *   frac = FRC(add)
@@ -514,7 +499,7 @@ static void transform_KILP(struct radeon_compiler * c,
  * no userData necessary.
  *
  * Eliminates the following ALU instructions:
- *  DST, LIT, LRP, POW, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
+ *  DST, LIT, LRP, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
  * using:
  *  MOV, ADD, MUL, MAD, FRC, DP3, LG2, EX2, CMP
  *
@@ -534,7 +519,6 @@ int radeonTransformALU(
 	case RC_OPCODE_KILP: transform_KILP(c, inst); return 1;
 	case RC_OPCODE_LIT: transform_LIT(c, inst); return 1;
 	case RC_OPCODE_LRP: transform_LRP(c, inst); return 1;
-	case RC_OPCODE_POW: transform_POW(c, inst); return 1;
 	case RC_OPCODE_ROUND: transform_ROUND(c, inst); return 1;
 	case RC_OPCODE_RSQ: transform_RSQ(c, inst); return 1;
 	case RC_OPCODE_SEQ: transform_SEQ(c, inst); return 1;
