@@ -762,6 +762,12 @@ def system_value(name, dest_comp, indices=[], bit_sizes=[32]):
               bit_sizes=bit_sizes)
 
 system_value("frag_coord", 4)
+# 16-bit integer vec2 of the pixel X/Y in the framebuffer.
+system_value("pixel_coord", 2, bit_sizes=[16])
+# Scalar load of frag_coord Z/W components (component=2 for Z, component=3 for
+# W). Backends can lower frag_coord to pixel_coord + frag_coord_zw, in case
+# X/Y is available as an integer but Z/W requires interpolation.
+system_value("frag_coord_zw", 1, indices=[COMPONENT])
 system_value("point_coord", 2)
 system_value("line_coord", 1)
 system_value("front_face", 1, bit_sizes=[1, 32])
