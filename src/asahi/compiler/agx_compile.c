@@ -645,43 +645,6 @@ agx_emit_block_image_store(agx_builder *b, nir_intrinsic_instr *instr)
    return agx_block_image_store(b, agx_immediate(image), offset, format, dim);
 }
 
-/*
- * Emit code to generate gl_FragCoord. The xy components are calculated from
- * special registers, whereas the zw components are interpolated varyings.
- * Because interpolating varyings requires allocating coefficient registers that
- * might not be used, we only emit code for components that are actually used.
- */
-static void
-agx_emit_load_frag_coord(agx_builder *b, agx_index dst,
-                         nir_intrinsic_instr *instr)
-{
-   agx_index dests[4];
-
-   for (unsigned i = 0; i < ARRAY_SIZE(dests); ++i) {
-      dests[i] = agx_undef(AGX_SIZE_32);
-   }
-
-   u_foreach_bit(i, nir_ssa_def_components_read(&instr->dest.ssa)) {
-      agx_index fp32 = agx_temp(b->shader, AGX_SIZE_32);
-
-      if (i < 2) {
-         agx_convert_to(b, fp32, agx_immediate(AGX_CONVERT_U32_TO_F),
-                        agx_get_sr(b, 32, AGX_SR_THREAD_POSITION_IN_GRID_X + i),
-                        AGX_ROUND_RTE);
-
-         dests[i] = agx_fadd(b, fp32, agx_immediate_f(0.5f));
-      } else {
-         agx_index cf =
-            agx_get_cf(b->shader, true, false, VARYING_SLOT_POS, i, 1);
-
-         dests[i] = fp32;
-         agx_iter_to(b, fp32, cf, agx_zero(), 1, AGX_INTERPOLATION_CENTER);
-      }
-   }
-
-   agx_emit_collect_to(b, dst, 4, dests);
-}
-
 static agx_instr *
 agx_load_compute_dimension(agx_builder *b, agx_index dst,
                            nir_intrinsic_instr *instr, enum agx_sr base)
@@ -862,9 +825,20 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       agx_emit_local_load_pixel(b, dst, instr);
       return NULL;
 
-   case nir_intrinsic_load_frag_coord:
-      agx_emit_load_frag_coord(b, dst, instr);
-      return NULL;
+   case nir_intrinsic_load_pixel_coord:
+      return agx_emit_collect_to(
+         b, dst, 2,
+         (agx_index[2]){
+            agx_get_sr(b, 32, AGX_SR_THREAD_POSITION_IN_GRID_X),
+            agx_get_sr(b, 32, AGX_SR_THREAD_POSITION_IN_GRID_Y),
+         });
+
+   case nir_intrinsic_load_frag_coord_zw: {
+      agx_index cf = agx_get_cf(b->shader, true, false, VARYING_SLOT_POS,
+                                nir_intrinsic_component(instr), 1);
+
+      return agx_iter_to(b, dst, cf, agx_zero(), 1, AGX_INTERPOLATION_CENTER);
+   }
 
    case nir_intrinsic_sample_mask_agx: {
       assert(stage == MESA_SHADER_FRAGMENT);
@@ -2360,6 +2334,7 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
    NIR_PASS_V(nir, agx_lower_sincos);
    NIR_PASS_V(nir, nir_shader_instructions_pass, agx_lower_front_face,
               nir_metadata_block_index | nir_metadata_dominance, NULL);
+   NIR_PASS_V(nir, nir_lower_frag_coord_to_pixel_coord);
 
    /* After lowering, run through the standard suite of NIR optimizations. We
     * will run through the loop later, once we have the shader key, but if we

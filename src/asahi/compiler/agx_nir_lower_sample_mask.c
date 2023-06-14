@@ -81,7 +81,7 @@ lower_sample_mask_to_zs(nir_builder *b, nir_instr *instr, UNUSED void *data)
     */
    if (intr->intrinsic == nir_intrinsic_store_zs_agx && !depth_written) {
       /* Load the current depth at this pixel */
-      nir_ssa_def *z = nir_channel(b, nir_load_frag_coord(b), 2);
+      nir_ssa_def *z = nir_load_frag_coord_zw(b, .component = 2);
 
       /* Write it out from this store_zs */
       nir_intrinsic_set_base(intr, nir_intrinsic_base(intr) | BASE_Z);
