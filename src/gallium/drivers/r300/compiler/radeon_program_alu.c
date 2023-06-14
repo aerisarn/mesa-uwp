@@ -218,19 +218,6 @@ static void transform_DP2(struct radeon_compiler* c,
 	rc_remove_instruction(inst);
 }
 
-/**
- * [1, src0.y*src1.y, src0.z, src1.w]
- * So basically MUL with lotsa swizzling.
- */
-static void transform_DST(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	emit2(c, inst->Prev, RC_OPCODE_MUL, &inst->U.I, inst->U.I.DstReg,
-		swizzle(inst->U.I.SrcReg[0], RC_SWIZZLE_ONE, RC_SWIZZLE_Y, RC_SWIZZLE_Z, RC_SWIZZLE_ONE),
-		swizzle(inst->U.I.SrcReg[1], RC_SWIZZLE_ONE, RC_SWIZZLE_Y, RC_SWIZZLE_ONE, RC_SWIZZLE_W));
-	rc_remove_instruction(inst);
-}
-
 static void transform_TRUNC(struct radeon_compiler* c,
 	struct rc_instruction* inst)
 {
@@ -499,7 +486,7 @@ static void transform_KILP(struct radeon_compiler * c,
  * no userData necessary.
  *
  * Eliminates the following ALU instructions:
- *  DST, LIT, LRP, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
+ *  LIT, LRP, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
  * using:
  *  MOV, ADD, MUL, MAD, FRC, DP3, LG2, EX2, CMP
  *
@@ -515,7 +502,6 @@ int radeonTransformALU(
 {
 	switch(inst->U.I.Opcode) {
 	case RC_OPCODE_DP2: transform_DP2(c, inst); return 1;
-	case RC_OPCODE_DST: transform_DST(c, inst); return 1;
 	case RC_OPCODE_KILP: transform_KILP(c, inst); return 1;
 	case RC_OPCODE_LIT: transform_LIT(c, inst); return 1;
 	case RC_OPCODE_LRP: transform_LRP(c, inst); return 1;
