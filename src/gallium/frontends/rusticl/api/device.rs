@@ -178,7 +178,7 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE => {
                 cl_prop::<cl_uint>(size_of::<cl_ulong16>() as cl_uint)
             }
-            CL_DEVICE_NAME => cl_prop(dev.screen().name()),
+            CL_DEVICE_NAME => cl_prop::<&str>(&dev.screen().name()),
             CL_DEVICE_NATIVE_VECTOR_WIDTH_CHAR => cl_prop::<cl_uint>(1),
             CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE => {
                 cl_prop::<cl_uint>(if dev.doubles_supported() { 1 } else { 0 })
@@ -227,7 +227,7 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_PROFILING_TIMER_RESOLUTION => cl_prop::<usize>(0),
             CL_DEVICE_OPENCL_C_FEATURES => cl_prop::<&Vec<cl_name_version>>(&dev.clc_features),
             CL_DEVICE_OPENCL_C_VERSION => {
-                cl_prop::<String>(format!("OpenCL C {} ", dev.clc_version.api_str()))
+                cl_prop::<&str>(&format!("OpenCL C {} ", dev.clc_version.api_str()))
             }
             CL_DEVICE_OPENCL_C_ALL_VERSIONS => cl_prop::<&Vec<cl_name_version>>(&dev.clc_versions),
             CL_DEVICE_PROFILE => cl_prop(if dev.embedded {
@@ -262,9 +262,9 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_UUID_KHR => cl_prop::<[cl_uchar; CL_UUID_SIZE_KHR as usize]>(
                 dev.screen().device_uuid().unwrap_or_default(),
             ),
-            CL_DEVICE_VENDOR => cl_prop(dev.screen().device_vendor()),
+            CL_DEVICE_VENDOR => cl_prop::<&str>(&dev.screen().device_vendor()),
             CL_DEVICE_VENDOR_ID => cl_prop::<cl_uint>(dev.vendor_id()),
-            CL_DEVICE_VERSION => cl_prop::<String>(format!("OpenCL {} ", dev.cl_version.api_str())),
+            CL_DEVICE_VERSION => cl_prop::<&str>(&format!("OpenCL {} ", dev.cl_version.api_str())),
             CL_DRIVER_UUID_KHR => cl_prop::<[cl_char; CL_UUID_SIZE_KHR as usize]>(
                 dev.screen().driver_uuid().unwrap_or_default(),
             ),

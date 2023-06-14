@@ -48,7 +48,7 @@ impl CLInfo<cl_program_info> for cl_program {
                 ProgramSourceType::Il(il) => il.to_bin().to_vec(),
                 _ => Vec::new(),
             },
-            CL_PROGRAM_KERNEL_NAMES => cl_prop::<String>(prog.kernels().join(";")),
+            CL_PROGRAM_KERNEL_NAMES => cl_prop::<&str>(&*prog.kernels().join(";")),
             CL_PROGRAM_NUM_DEVICES => cl_prop::<cl_uint>(prog.devs.len() as cl_uint),
             CL_PROGRAM_NUM_KERNELS => cl_prop::<usize>(prog.kernels().len()),
             CL_PROGRAM_REFERENCE_COUNT => cl_prop::<cl_uint>(self.refcnt()?),
@@ -72,8 +72,8 @@ impl CLInfoObj<cl_program_build_info, cl_device_id> for cl_program {
         Ok(match q {
             CL_PROGRAM_BINARY_TYPE => cl_prop::<cl_program_binary_type>(prog.bin_type(&dev)),
             CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE => cl_prop::<usize>(0),
-            CL_PROGRAM_BUILD_LOG => cl_prop::<String>(prog.log(&dev)),
-            CL_PROGRAM_BUILD_OPTIONS => cl_prop::<String>(prog.options(&dev)),
+            CL_PROGRAM_BUILD_LOG => cl_prop::<&str>(&prog.log(&dev)),
+            CL_PROGRAM_BUILD_OPTIONS => cl_prop::<&str>(&prog.options(&dev)),
             CL_PROGRAM_BUILD_STATUS => cl_prop::<cl_build_status>(prog.status(&dev)),
             // CL_INVALID_VALUE if param_name is not one of the supported values
             _ => return Err(CL_INVALID_VALUE),

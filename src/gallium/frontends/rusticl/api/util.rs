@@ -135,14 +135,6 @@ impl CLProp for bool {
     }
 }
 
-impl CLProp for String {
-    fn cl_vec(&self) -> Vec<u8> {
-        let mut c = self.clone();
-        c.push('\0');
-        c.into_bytes()
-    }
-}
-
 impl CLProp for &str {
     fn cl_vec(&self) -> Vec<u8> {
         CString::new(*self)
