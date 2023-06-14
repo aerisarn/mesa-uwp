@@ -274,6 +274,21 @@ impl NextUseLiveness {
                         }
                     }
                 }
+
+                for (bml, l) in bl.max_live.values_mut().zip(live.values()) {
+                    *bml = max(*bml, *l);
+                }
+
+                /* Some destinations may only be momentarily live */
+                for dst in instr.dsts() {
+                    if let Dst::SSA(vec) = dst {
+                        for ssa in vec.iter() {
+                            if !bl.is_live_after_ip(ssa, ip) {
+                                live[vec.file()] -= 1;
+                            }
+                        }
+                    }
+                }
             }
 
             for (ml, bml) in l.max_live.values_mut().zip(bl.max_live.values()) {

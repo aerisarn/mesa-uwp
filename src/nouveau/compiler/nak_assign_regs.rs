@@ -41,6 +41,10 @@ impl KillSet {
     pub fn iter(&self) -> std::slice::Iter<'_, SSAValue> {
         self.vec.iter()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.vec.is_empty()
+    }
 }
 
 enum SSAUse {
@@ -825,7 +829,8 @@ impl AssignRegsBlock {
         mut instr: Box<Instr>,
         ip: usize,
         sum: &SSAUseMap,
-        killed: &KillSet,
+        srcs_killed: &KillSet,
+        dsts_killed: &KillSet,
         pcopy: &mut OpParCopy,
     ) -> Option<Box<Instr>> {
         match &instr.op {
@@ -835,6 +840,8 @@ impl AssignRegsBlock {
                     let ra = &mut self.ra[ssa.file()];
                     ra.alloc_scalar(ip, sum, ssa[0]);
                 }
+                assert!(srcs_killed.is_empty());
+                self.ra.free_killed(dsts_killed);
                 None
             }
             Op::PhiSrcs(phi) => {
@@ -848,7 +855,8 @@ impl AssignRegsBlock {
                         self.phi_out.insert(*id, src.src_ref);
                     }
                 }
-                self.ra.free_killed(killed);
+                self.ra.free_killed(srcs_killed);
+                assert!(dsts_killed.is_empty());
                 None
             }
             Op::PhiDsts(phi) => {
@@ -864,15 +872,23 @@ impl AssignRegsBlock {
                         });
                     }
                 }
+                assert!(srcs_killed.is_empty());
+                self.ra.free_killed(dsts_killed);
 
                 None
             }
             _ => {
                 for file in self.ra.values_mut() {
                     instr_assign_regs_file(
-                        &mut instr, ip, sum, killed, pcopy, file,
+                        &mut instr,
+                        ip,
+                        sum,
+                        srcs_killed,
+                        pcopy,
+                        file,
                     );
                 }
+                self.ra.free_killed(dsts_killed);
                 Some(instr)
             }
         }
@@ -904,28 +920,46 @@ impl AssignRegsBlock {
         let sum = SSAUseMap::for_block(b);
 
         let mut instrs = Vec::new();
-        let mut killed = KillSet::new();
+        let mut srcs_killed = KillSet::new();
+        let mut dsts_killed = KillSet::new();
 
         for (ip, instr) in b.instrs.drain(..).enumerate() {
             /* Build up the kill set */
-            killed.clear();
+            srcs_killed.clear();
             if let PredRef::SSA(ssa) = &instr.pred.pred_ref {
                 if !bl.is_live_after_ip(ssa, ip) {
-                    killed.insert(*ssa);
+                    srcs_killed.insert(*ssa);
                 }
             }
             for src in instr.srcs() {
                 for ssa in src.iter_ssa() {
                     if !bl.is_live_after_ip(ssa, ip) {
-                        killed.insert(*ssa);
+                        srcs_killed.insert(*ssa);
+                    }
+                }
+            }
+
+            dsts_killed.clear();
+            for dst in instr.dsts() {
+                if let Dst::SSA(vec) = dst {
+                    for ssa in vec.iter() {
+                        if !bl.is_live_after_ip(ssa, ip) {
+                            dsts_killed.insert(*ssa);
+                        }
                     }
                 }
             }
 
             let mut pcopy = OpParCopy::new();
 
-            let instr =
-                self.assign_regs_instr(instr, ip, &sum, &killed, &mut pcopy);
+            let instr = self.assign_regs_instr(
+                instr,
+                ip,
+                &sum,
+                &srcs_killed,
+                &dsts_killed,
+                &mut pcopy,
+            );
 
             if !pcopy.is_empty() {
                 instrs.push(Instr::new_boxed(pcopy));
