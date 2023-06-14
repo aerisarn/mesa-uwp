@@ -3546,6 +3546,8 @@ static void
 zink_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
 {
    struct zink_context *ctx = zink_context(pctx);
+   if (ctx->gfx_pipeline_state.sample_mask == sample_mask)
+      return;
    ctx->gfx_pipeline_state.sample_mask = sample_mask;
    zink_flush_dgc_if_enabled(ctx);
    if (zink_screen(pctx->screen)->have_full_ds3)
