@@ -610,6 +610,158 @@ dzn_physical_device_get_max_array_layers()
    return dzn_physical_device_get_max_extent(false);
 }
 
+static void
+dzn_physical_device_get_features(const struct dzn_physical_device *pdev,
+                                 struct vk_features *features)
+{
+   struct dzn_instance *instance = container_of(pdev->vk.instance, struct dzn_instance, vk);
+
+   bool support_descriptor_indexing = pdev->shader_model >= D3D_SHADER_MODEL_6_6 &&
+      !(instance->debug_flags & DZN_DEBUG_NO_BINDLESS);
+   bool support_8bit = driQueryOptionb(&instance->dri_options, "dzn_enable_8bit_loads_stores") &&
+      pdev->options4.Native16BitShaderOpsSupported;
+
+   *features = (struct vk_features) {
+      .robustBufferAccess = true, /* This feature is mandatory */
+      .fullDrawIndexUint32 = false,
+      .imageCubeArray = true,
+      .independentBlend = true,
+      .geometryShader = true,
+      .tessellationShader = false,
+      .sampleRateShading = true,
+      .dualSrcBlend = false,
+      .logicOp = false,
+      .multiDrawIndirect = true,
+      .drawIndirectFirstInstance = true,
+      .depthClamp = true,
+      .depthBiasClamp = true,
+      .fillModeNonSolid = true,
+      .depthBounds = pdev->options2.DepthBoundsTestSupported,
+      .wideLines = driQueryOptionb(&instance->dri_options, "dzn_claim_wide_lines"),
+      .largePoints = false,
+      .alphaToOne = false,
+      .multiViewport = false,
+      .samplerAnisotropy = true,
+      .textureCompressionETC2 = false,
+      .textureCompressionASTC_LDR = false,
+      .textureCompressionBC = dzn_physical_device_supports_bc(pdev),
+      .occlusionQueryPrecise = true,
+      .pipelineStatisticsQuery = true,
+      .vertexPipelineStoresAndAtomics = true,
+      .fragmentStoresAndAtomics = true,
+      .shaderTessellationAndGeometryPointSize = false,
+      .shaderImageGatherExtended = true,
+      .shaderStorageImageExtendedFormats = pdev->options.TypedUAVLoadAdditionalFormats,
+      .shaderStorageImageMultisample = false,
+      .shaderStorageImageReadWithoutFormat = true,
+      .shaderStorageImageWriteWithoutFormat = true,
+      .shaderUniformBufferArrayDynamicIndexing = true,
+      .shaderSampledImageArrayDynamicIndexing = true,
+      .shaderStorageBufferArrayDynamicIndexing = true,
+      .shaderStorageImageArrayDynamicIndexing = true,
+      .shaderClipDistance = true,
+      .shaderCullDistance = true,
+      .shaderFloat64 = pdev->options.DoublePrecisionFloatShaderOps,
+      .shaderInt64 = pdev->options1.Int64ShaderOps,
+      .shaderInt16 = pdev->options4.Native16BitShaderOpsSupported,
+      .shaderResourceResidency = false,
+      .shaderResourceMinLod = false,
+      .sparseBinding = false,
+      .sparseResidencyBuffer = false,
+      .sparseResidencyImage2D = false,
+      .sparseResidencyImage3D = false,
+      .sparseResidency2Samples = false,
+      .sparseResidency4Samples = false,
+      .sparseResidency8Samples = false,
+      .sparseResidency16Samples = false,
+      .sparseResidencyAliased = false,
+      .variableMultisampleRate = false,
+      .inheritedQueries = false,
+
+      .storageBuffer16BitAccess           = pdev->options4.Native16BitShaderOpsSupported,
+      .uniformAndStorageBuffer16BitAccess = pdev->options4.Native16BitShaderOpsSupported,
+      .storagePushConstant16              = false,
+      .storageInputOutput16               = false,
+      .multiview                          = true,
+      .multiviewGeometryShader            = true,
+      .multiviewTessellationShader        = false,
+      .variablePointersStorageBuffer      = false,
+      .variablePointers                   = false,
+      .protectedMemory                    = false,
+      .samplerYcbcrConversion             = false,
+      .shaderDrawParameters               = true,
+
+      .samplerMirrorClampToEdge           = true,
+      .drawIndirectCount                  = true,
+      .storageBuffer8BitAccess            = support_8bit,
+      .uniformAndStorageBuffer8BitAccess  = support_8bit,
+      .storagePushConstant8               = support_8bit,
+      .shaderBufferInt64Atomics           = false,
+      .shaderSharedInt64Atomics           = false,
+      .shaderFloat16                      = pdev->options4.Native16BitShaderOpsSupported,
+      .shaderInt8                         = support_8bit,
+
+      .descriptorIndexing                                   = support_descriptor_indexing,
+      .shaderInputAttachmentArrayDynamicIndexing            = true,
+      .shaderUniformTexelBufferArrayDynamicIndexing         = true,
+      .shaderStorageTexelBufferArrayDynamicIndexing         = true,
+      .shaderUniformBufferArrayNonUniformIndexing           = support_descriptor_indexing,
+      .shaderSampledImageArrayNonUniformIndexing            = support_descriptor_indexing,
+      .shaderStorageBufferArrayNonUniformIndexing           = support_descriptor_indexing,
+      .shaderStorageImageArrayNonUniformIndexing            = support_descriptor_indexing,
+      .shaderInputAttachmentArrayNonUniformIndexing         = support_descriptor_indexing,
+      .shaderUniformTexelBufferArrayNonUniformIndexing      = support_descriptor_indexing,
+      .shaderStorageTexelBufferArrayNonUniformIndexing      = support_descriptor_indexing,
+      .descriptorBindingUniformBufferUpdateAfterBind        = support_descriptor_indexing,
+      .descriptorBindingSampledImageUpdateAfterBind         = support_descriptor_indexing,
+      .descriptorBindingStorageImageUpdateAfterBind         = support_descriptor_indexing,
+      .descriptorBindingStorageBufferUpdateAfterBind        = support_descriptor_indexing,
+      .descriptorBindingUniformTexelBufferUpdateAfterBind   = support_descriptor_indexing,
+      .descriptorBindingStorageTexelBufferUpdateAfterBind   = support_descriptor_indexing,
+      .descriptorBindingUpdateUnusedWhilePending            = support_descriptor_indexing,
+      .descriptorBindingPartiallyBound                      = support_descriptor_indexing,
+      .descriptorBindingVariableDescriptorCount             = support_descriptor_indexing,
+      .runtimeDescriptorArray                               = support_descriptor_indexing,
+
+      .samplerFilterMinmax                = false,
+      .scalarBlockLayout                  = true,
+      .imagelessFramebuffer               = true,
+      .uniformBufferStandardLayout        = true,
+      .shaderSubgroupExtendedTypes        = true,
+      .separateDepthStencilLayouts        = true,
+      .hostQueryReset                     = true,
+      .timelineSemaphore                  = true,
+      .bufferDeviceAddress                = false,
+      .bufferDeviceAddressCaptureReplay   = false,
+      .bufferDeviceAddressMultiDevice     = false,
+      .vulkanMemoryModel                  = false,
+      .vulkanMemoryModelDeviceScope       = false,
+      .vulkanMemoryModelAvailabilityVisibilityChains = false,
+      .shaderOutputViewportIndex          = false,
+      .shaderOutputLayer                  = false,
+      .subgroupBroadcastDynamicId         = true,
+
+      .robustImageAccess                  = false,
+      .inlineUniformBlock                 = false,
+      .descriptorBindingInlineUniformBlockUpdateAfterBind = false,
+      .pipelineCreationCacheControl       = false,
+      .privateData                        = true,
+      .shaderDemoteToHelperInvocation     = false,
+      .shaderTerminateInvocation          = false,
+      .subgroupSizeControl                = pdev->options1.WaveOps && pdev->shader_model >= D3D_SHADER_MODEL_6_6,
+      .computeFullSubgroups               = true,
+      .synchronization2                   = true,
+      .textureCompressionASTC_HDR         = false,
+      .shaderZeroInitializeWorkgroupMemory = false,
+      .dynamicRendering                   = true,
+      .shaderIntegerDotProduct            = true,
+      .maintenance4                       = false,
+
+      .vertexAttributeInstanceRateDivisor = true,
+      .vertexAttributeInstanceRateZeroDivisor = true,
+   };
+}
+
 static VkResult
 dzn_physical_device_create(struct vk_instance *instance,
                            IUnknown *adapter,
@@ -691,6 +843,7 @@ dzn_physical_device_create(struct vk_instance *instance,
       pdev->vk.supported_extensions.KHR_8bit_storage = true;
    if (dzn_instance->debug_flags & DZN_DEBUG_NO_BINDLESS)
       pdev->vk.supported_extensions.EXT_descriptor_indexing = false;
+   dzn_physical_device_get_features(pdev, &pdev->vk.supported_features);
 
    return VK_SUCCESS;
 }
@@ -1409,190 +1562,6 @@ dzn_physical_device_supports_bc(struct dzn_physical_device *pdev)
    };
 
    return dzn_physical_device_supports_compressed_format(pdev, formats, ARRAY_SIZE(formats));
-}
-
-static bool
-dzn_physical_device_supports_depth_bounds(struct dzn_physical_device *pdev)
-{
-   return pdev->options2.DepthBoundsTestSupported;
-}
-
-VKAPI_ATTR void VKAPI_CALL
-dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
-                               VkPhysicalDeviceFeatures2 *pFeatures)
-{
-   VK_FROM_HANDLE(dzn_physical_device, pdev, physicalDevice);
-   struct dzn_instance *instance = container_of(pdev->vk.instance, struct dzn_instance, vk);
-
-   pFeatures->features = (VkPhysicalDeviceFeatures) {
-      .robustBufferAccess = true, /* This feature is mandatory */
-      .fullDrawIndexUint32 = false,
-      .imageCubeArray = true,
-      .independentBlend = true,
-      .geometryShader = true,
-      .tessellationShader = false,
-      .sampleRateShading = true,
-      .dualSrcBlend = false,
-      .logicOp = false,
-      .multiDrawIndirect = true,
-      .drawIndirectFirstInstance = true,
-      .depthClamp = true,
-      .depthBiasClamp = true,
-      .fillModeNonSolid = true,
-      .depthBounds = dzn_physical_device_supports_depth_bounds(pdev),
-      .wideLines = driQueryOptionb(&instance->dri_options, "dzn_claim_wide_lines"),
-      .largePoints = false,
-      .alphaToOne = false,
-      .multiViewport = false,
-      .samplerAnisotropy = true,
-      .textureCompressionETC2 = false,
-      .textureCompressionASTC_LDR = false,
-      .textureCompressionBC = dzn_physical_device_supports_bc(pdev),
-      .occlusionQueryPrecise = true,
-      .pipelineStatisticsQuery = true,
-      .vertexPipelineStoresAndAtomics = true,
-      .fragmentStoresAndAtomics = true,
-      .shaderTessellationAndGeometryPointSize = false,
-      .shaderImageGatherExtended = true,
-      .shaderStorageImageExtendedFormats = pdev->options.TypedUAVLoadAdditionalFormats,
-      .shaderStorageImageMultisample = false,
-      .shaderStorageImageReadWithoutFormat = true,
-      .shaderStorageImageWriteWithoutFormat = true,
-      .shaderUniformBufferArrayDynamicIndexing = true,
-      .shaderSampledImageArrayDynamicIndexing = true,
-      .shaderStorageBufferArrayDynamicIndexing = true,
-      .shaderStorageImageArrayDynamicIndexing = true,
-      .shaderClipDistance = true,
-      .shaderCullDistance = true,
-      .shaderFloat64 = pdev->options.DoublePrecisionFloatShaderOps,
-      .shaderInt64 = pdev->options1.Int64ShaderOps,
-      .shaderInt16 = pdev->options4.Native16BitShaderOpsSupported,
-      .shaderResourceResidency = false,
-      .shaderResourceMinLod = false,
-      .sparseBinding = false,
-      .sparseResidencyBuffer = false,
-      .sparseResidencyImage2D = false,
-      .sparseResidencyImage3D = false,
-      .sparseResidency2Samples = false,
-      .sparseResidency4Samples = false,
-      .sparseResidency8Samples = false,
-      .sparseResidency16Samples = false,
-      .sparseResidencyAliased = false,
-      .variableMultisampleRate = false,
-      .inheritedQueries = false,
-   };
-
-   VkPhysicalDeviceVulkan11Features core_1_1 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
-      .storageBuffer16BitAccess           = pdev->options4.Native16BitShaderOpsSupported,
-      .uniformAndStorageBuffer16BitAccess = pdev->options4.Native16BitShaderOpsSupported,
-      .storagePushConstant16              = false,
-      .storageInputOutput16               = false,
-      .multiview                          = true,
-      .multiviewGeometryShader            = true,
-      .multiviewTessellationShader        = false,
-      .variablePointersStorageBuffer      = false,
-      .variablePointers                   = false,
-      .protectedMemory                    = false,
-      .samplerYcbcrConversion             = false,
-      .shaderDrawParameters               = true,
-   };
-
-   bool support_descriptor_indexing = pdev->shader_model >= D3D_SHADER_MODEL_6_6 &&
-      !(instance->debug_flags & DZN_DEBUG_NO_BINDLESS);
-   bool support_8bit = driQueryOptionb(&instance->dri_options, "dzn_enable_8bit_loads_stores") &&
-      pdev->options4.Native16BitShaderOpsSupported;
-   const VkPhysicalDeviceVulkan12Features core_1_2 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-      .samplerMirrorClampToEdge           = true,
-      .drawIndirectCount                  = true,
-      .storageBuffer8BitAccess            = support_8bit,
-      .uniformAndStorageBuffer8BitAccess  = support_8bit,
-      .storagePushConstant8               = support_8bit,
-      .shaderBufferInt64Atomics           = false,
-      .shaderSharedInt64Atomics           = false,
-      .shaderFloat16                      = pdev->options4.Native16BitShaderOpsSupported,
-      .shaderInt8                         = support_8bit,
-
-      .descriptorIndexing                                   = support_descriptor_indexing,
-      .shaderInputAttachmentArrayDynamicIndexing            = true,
-      .shaderUniformTexelBufferArrayDynamicIndexing         = true,
-      .shaderStorageTexelBufferArrayDynamicIndexing         = true,
-      .shaderUniformBufferArrayNonUniformIndexing           = support_descriptor_indexing,
-      .shaderSampledImageArrayNonUniformIndexing            = support_descriptor_indexing,
-      .shaderStorageBufferArrayNonUniformIndexing           = support_descriptor_indexing,
-      .shaderStorageImageArrayNonUniformIndexing            = support_descriptor_indexing,
-      .shaderInputAttachmentArrayNonUniformIndexing         = support_descriptor_indexing,
-      .shaderUniformTexelBufferArrayNonUniformIndexing      = support_descriptor_indexing,
-      .shaderStorageTexelBufferArrayNonUniformIndexing      = support_descriptor_indexing,
-      .descriptorBindingUniformBufferUpdateAfterBind        = support_descriptor_indexing,
-      .descriptorBindingSampledImageUpdateAfterBind         = support_descriptor_indexing,
-      .descriptorBindingStorageImageUpdateAfterBind         = support_descriptor_indexing,
-      .descriptorBindingStorageBufferUpdateAfterBind        = support_descriptor_indexing,
-      .descriptorBindingUniformTexelBufferUpdateAfterBind   = support_descriptor_indexing,
-      .descriptorBindingStorageTexelBufferUpdateAfterBind   = support_descriptor_indexing,
-      .descriptorBindingUpdateUnusedWhilePending            = support_descriptor_indexing,
-      .descriptorBindingPartiallyBound                      = support_descriptor_indexing,
-      .descriptorBindingVariableDescriptorCount             = support_descriptor_indexing,
-      .runtimeDescriptorArray                               = support_descriptor_indexing,
-
-      .samplerFilterMinmax                = false,
-      .scalarBlockLayout                  = true,
-      .imagelessFramebuffer               = true,
-      .uniformBufferStandardLayout        = true,
-      .shaderSubgroupExtendedTypes        = true,
-      .separateDepthStencilLayouts        = true,
-      .hostQueryReset                     = true,
-      .timelineSemaphore                  = true,
-      .bufferDeviceAddress                = false,
-      .bufferDeviceAddressCaptureReplay   = false,
-      .bufferDeviceAddressMultiDevice     = false,
-      .vulkanMemoryModel                  = false,
-      .vulkanMemoryModelDeviceScope       = false,
-      .vulkanMemoryModelAvailabilityVisibilityChains = false,
-      .shaderOutputViewportIndex          = false,
-      .shaderOutputLayer                  = false,
-      .subgroupBroadcastDynamicId         = true,
-   };
-
-   const VkPhysicalDeviceVulkan13Features core_1_3 = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-      .robustImageAccess                  = false,
-      .inlineUniformBlock                 = false,
-      .descriptorBindingInlineUniformBlockUpdateAfterBind = false,
-      .pipelineCreationCacheControl       = false,
-      .privateData                        = true,
-      .shaderDemoteToHelperInvocation     = false,
-      .shaderTerminateInvocation          = false,
-      .subgroupSizeControl                = pdev->options1.WaveOps && pdev->shader_model >= D3D_SHADER_MODEL_6_6,
-      .computeFullSubgroups               = true,
-      .synchronization2                   = true,
-      .textureCompressionASTC_HDR         = false,
-      .shaderZeroInitializeWorkgroupMemory = false,
-      .dynamicRendering                   = true,
-      .shaderIntegerDotProduct            = true,
-      .maintenance4                       = false,
-   };
-
-   vk_foreach_struct(ext, pFeatures->pNext) {
-      if (vk_get_physical_device_core_1_1_feature_ext(ext, &core_1_1) ||
-          vk_get_physical_device_core_1_2_feature_ext(ext, &core_1_2) ||
-          vk_get_physical_device_core_1_3_feature_ext(ext, &core_1_3))
-         continue;
-
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
-         VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *features =
-            (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *)ext;
-         features->vertexAttributeInstanceRateDivisor = true;
-         features->vertexAttributeInstanceRateZeroDivisor = true;
-         break;
-      }
-      default:
-         dzn_debug_ignored_stype(ext->sType);
-         break;
-      }
-   }
 }
 
 
