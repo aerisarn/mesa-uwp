@@ -83,9 +83,6 @@ typedef enum {
 	/** special instruction, see ARB_vertex_program */
 	RC_OPCODE_EXP,
 
-	/** vec4 instruction: dst.c = floor(src0.c) */
-	RC_OPCODE_FLR,
-
 	/** vec4 instruction: dst.c = src0.c - floor(src0.c) */
 	RC_OPCODE_FRC,
 
