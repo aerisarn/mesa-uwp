@@ -324,7 +324,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_EXT_memory_object                                  DONE (freedreno, radeonsi, llvmpipe, zink, d3d12, iris, crocus/gen7+)
   GL_EXT_memory_object_fd                               DONE (freedreno, radeonsi, llvmpipe, zink, iris, crocus/gen7+)
   GL_EXT_memory_object_win32                            DONE (zink, d3d12)
-  GL_EXT_multisampled_render_to_texture                 DONE (freedreno/a6xx, panfrost, zink, lima, asahi)
+  GL_EXT_multisampled_render_to_texture                 DONE (freedreno/a6xx, panfrost, zink, lima)
   GL_EXT_render_snorm                                   DONE (freedreno/a6xx, r600, radeonsi, softpipe, zink, panfrost/bifrost+, iris)
   GL_EXT_semaphore                                      DONE (radeonsi, zink, d3d12, iris, crocus)
   GL_EXT_semaphore_fd                                   DONE (radeonsi, zink, iris, crocus)

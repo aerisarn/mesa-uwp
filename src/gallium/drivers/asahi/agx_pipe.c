@@ -1529,8 +1529,9 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
-   case PIPE_CAP_SURFACE_SAMPLE_COUNT:
       return 1;
+   case PIPE_CAP_SURFACE_SAMPLE_COUNT:
+      /* TODO: MSRTT */
    case PIPE_CAP_SAMPLE_SHADING:
       /* TODO: sample shading */
       return 0;
