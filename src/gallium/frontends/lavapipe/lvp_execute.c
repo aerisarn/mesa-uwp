@@ -4155,7 +4155,7 @@ handle_shaders(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
    unsigned null_stages = 0;
    for (unsigned i = 0; i < bind->stage_count; i++) {
       gl_shader_stage stage = vk_to_mesa_shader_stage(bind->stages[i]);
-      assert(stage <= MESA_SHADER_COMPUTE && stage != MESA_SHADER_NONE);
+      assert(stage != MESA_SHADER_NONE && stage <= MESA_SHADER_MESH);
       LVP_FROM_HANDLE(lvp_shader, shader, bind->shaders ? bind->shaders[i] : VK_NULL_HANDLE);
       if (stage == MESA_SHADER_FRAGMENT) {
          if (shader) {
@@ -4184,9 +4184,10 @@ handle_shaders(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
       }
    }
 
-   if ((new_stages | null_stages) & BITFIELD_MASK(MESA_SHADER_COMPUTE)) {
-      unbind_graphics_stages(state, null_stages & VK_SHADER_STAGE_ALL_GRAPHICS);
-      handle_graphics_stages(state, vkstages & VK_SHADER_STAGE_ALL_GRAPHICS, true);
+   if ((new_stages | null_stages) & LVP_STAGE_MASK_GFX) {
+      VkShaderStageFlags all_gfx = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT;
+      unbind_graphics_stages(state, null_stages & all_gfx);
+      handle_graphics_stages(state, vkstages & all_gfx, true);
       u_foreach_bit(i, new_stages) {
          handle_graphics_layout(state, i, state->shaders[i]->layout);
          handle_pipeline_access(state, i);
