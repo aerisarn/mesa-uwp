@@ -1028,19 +1028,15 @@ pvr_geom_state_stream_ext_init(struct pvr_render_ctx *ctx,
       state->fw_ext_stream_len = 0;
 }
 
-static void pvr_geom_state_flags_init(const struct pvr_render_job *const job,
-                                      uint32_t *const flags)
+static void
+pvr_geom_state_flags_init(const struct pvr_render_job *const job,
+                          struct pvr_winsys_geometry_state_flags *flags)
 {
-   *flags = 0;
-
-   if (!job->rt_dataset->need_frag)
-      *flags |= PVR_WINSYS_GEOM_FLAG_FIRST_GEOMETRY;
-
-   if (job->geometry_terminate)
-      *flags |= PVR_WINSYS_GEOM_FLAG_LAST_GEOMETRY;
-
-   if (job->frag_uses_atomic_ops)
-      *flags |= PVR_WINSYS_GEOM_FLAG_SINGLE_CORE;
+   *flags = (struct pvr_winsys_geometry_state_flags){
+      .is_first_geometry = !job->rt_dataset->need_frag,
+      .is_last_geometry = job->geometry_terminate,
+      .use_single_core = job->frag_uses_atomic_ops,
+   };
 }
 
 static void
@@ -1405,28 +1401,18 @@ pvr_frag_state_stream_ext_init(struct pvr_render_ctx *ctx,
       state->fw_ext_stream_len = 0;
 }
 
-static void pvr_frag_state_flags_init(const struct pvr_render_job *const job,
-                                      uint32_t *const flags)
+static void
+pvr_frag_state_flags_init(const struct pvr_render_job *const job,
+                          struct pvr_winsys_fragment_state_flags *flags)
 {
-   *flags = 0;
-
-   if (job->has_depth_attachment)
-      *flags |= PVR_WINSYS_FRAG_FLAG_DEPTH_BUFFER_PRESENT;
-
-   if (job->has_stencil_attachment)
-      *flags |= PVR_WINSYS_FRAG_FLAG_STENCIL_BUFFER_PRESENT;
-
-   if (job->disable_compute_overlap)
-      *flags |= PVR_WINSYS_FRAG_FLAG_PREVENT_CDM_OVERLAP;
-
-   if (job->frag_uses_atomic_ops)
-      *flags |= PVR_WINSYS_FRAG_FLAG_SINGLE_CORE;
-
-   if (job->get_vis_results)
-      *flags |= PVR_WINSYS_FRAG_FLAG_GET_VIS_RESULTS;
-
-   if (job->requires_spm_scratch_buffer)
-      *flags |= PVR_WINSYS_FRAG_FLAG_SPMSCRATCHBUFFER;
+   *flags = (struct pvr_winsys_fragment_state_flags){
+      .has_depth_buffer = job->has_depth_attachment,
+      .has_stencil_buffer = job->has_stencil_attachment,
+      .prevent_cdm_overlap = job->disable_compute_overlap,
+      .use_single_core = job->frag_uses_atomic_ops,
+      .get_vis_results = job->get_vis_results,
+      .has_spm_scratch_buffer = job->requires_spm_scratch_buffer,
+   };
 }
 
 static void

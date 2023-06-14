@@ -163,7 +163,7 @@ struct pvr_transfer_3d_state {
 };
 
 struct pvr_transfer_prep_data {
-   uint32_t flags;
+   struct pvr_winsys_transfer_cmd_flags flags;
    struct pvr_transfer_3d_state state;
 };
 
@@ -5740,12 +5740,10 @@ pvr_submit_info_stream_init(struct pvr_transfer_ctx *ctx,
 static void
 pvr_submit_info_flags_init(const struct pvr_device_info *const dev_info,
                            const struct pvr_transfer_prep_data *const prep_data,
-                           uint32_t *const flags)
+                           struct pvr_winsys_transfer_cmd_flags *flags)
 {
    *flags = prep_data->flags;
-
-   if (PVR_HAS_FEATURE(dev_info, gpu_multicore_support))
-      *flags |= PVR_WINSYS_TRANSFER_FLAG_SINGLE_CORE;
+   flags->use_single_core = PVR_HAS_FEATURE(dev_info, gpu_multicore_support);
 }
 
 static void pvr_transfer_job_ws_submit_info_init(

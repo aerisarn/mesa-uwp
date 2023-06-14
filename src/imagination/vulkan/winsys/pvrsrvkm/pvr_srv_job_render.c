@@ -711,13 +711,13 @@ static void pvr_srv_geometry_cmd_init(
                                            dev_info);
    }
 
-   if (state->flags & PVR_WINSYS_GEOM_FLAG_FIRST_GEOMETRY)
+   if (state->flags.is_first_geometry)
       cmd->flags |= ROGUE_FWIF_TAFLAGS_FIRSTKICK;
 
-   if (state->flags & PVR_WINSYS_GEOM_FLAG_LAST_GEOMETRY)
+   if (state->flags.is_last_geometry)
       cmd->flags |= ROGUE_FWIF_TAFLAGS_LASTKICK;
 
-   if (state->flags & PVR_WINSYS_GEOM_FLAG_SINGLE_CORE)
+   if (state->flags.use_single_core)
       cmd->flags |= ROGUE_FWIF_TAFLAGS_SINGLE_CORE;
 
    cmd->partial_render_ta_3d_fence.ufo_addr.addr =
@@ -880,22 +880,22 @@ static void pvr_srv_fragment_cmd_init(
                                            dev_info);
    }
 
-   if (state->flags & PVR_WINSYS_FRAG_FLAG_DEPTH_BUFFER_PRESENT)
+   if (state->flags.has_depth_buffer)
       cmd->flags |= ROGUE_FWIF_RENDERFLAGS_DEPTHBUFFER;
 
-   if (state->flags & PVR_WINSYS_FRAG_FLAG_STENCIL_BUFFER_PRESENT)
+   if (state->flags.has_stencil_buffer)
       cmd->flags |= ROGUE_FWIF_RENDERFLAGS_STENCILBUFFER;
 
-   if (state->flags & PVR_WINSYS_FRAG_FLAG_PREVENT_CDM_OVERLAP)
+   if (state->flags.prevent_cdm_overlap)
       cmd->flags |= ROGUE_FWIF_RENDERFLAGS_PREVENT_CDM_OVERLAP;
 
-   if (state->flags & PVR_WINSYS_FRAG_FLAG_SINGLE_CORE)
+   if (state->flags.use_single_core)
       cmd->flags |= ROGUE_FWIF_RENDERFLAGS_SINGLE_CORE;
 
-   if (state->flags & PVR_WINSYS_FRAG_FLAG_GET_VIS_RESULTS)
+   if (state->flags.get_vis_results)
       cmd->flags |= ROGUE_FWIF_RENDERFLAGS_GETVISRESULTS;
 
-   if (state->flags & PVR_WINSYS_FRAG_FLAG_SPMSCRATCHBUFFER)
+   if (state->flags.has_spm_scratch_buffer)
       cmd->flags |= ROGUE_FWIF_RENDERFLAGS_SPMSCRATCHBUFFER;
 }
 
@@ -973,7 +973,7 @@ VkResult pvr_srv_winsys_render_submit(
       }
    }
 
-   if (submit_info->geometry.flags & PVR_WINSYS_GEOM_FLAG_FIRST_GEOMETRY) {
+   if (submit_info->geometry.flags.is_first_geometry) {
       frag_to_geom_fence_count = 1;
       frag_to_geom_fence_value = current_sync_value;
    }

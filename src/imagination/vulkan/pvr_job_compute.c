@@ -162,17 +162,13 @@ static void pvr_submit_info_ext_stream_init(
 static void
 pvr_submit_info_flags_init(const struct pvr_device_info *const dev_info,
                            const struct pvr_sub_cmd_compute *const sub_cmd,
-                           uint32_t *const flags)
+                           struct pvr_winsys_compute_submit_flags *flags)
 {
-   *flags = 0;
-
-   if (sub_cmd->uses_barrier)
-      *flags |= PVR_WINSYS_COMPUTE_FLAG_PREVENT_ALL_OVERLAP;
-
-   if (PVR_HAS_FEATURE(dev_info, gpu_multicore_support) &&
-       sub_cmd->uses_atomic_ops) {
-      *flags |= PVR_WINSYS_COMPUTE_FLAG_SINGLE_CORE;
-   }
+   *flags = (struct pvr_winsys_compute_submit_flags){
+      .prevent_all_overlap = sub_cmd->uses_barrier,
+      .use_single_core = PVR_HAS_FEATURE(dev_info, gpu_multicore_support) &&
+                         sub_cmd->uses_atomic_ops,
+   };
 }
 
 static void pvr_compute_job_ws_submit_info_init(

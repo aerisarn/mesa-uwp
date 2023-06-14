@@ -219,10 +219,10 @@ static void pvr_srv_compute_cmd_init(
                                           dev_info);
    }
 
-   if (submit_info->flags & PVR_WINSYS_COMPUTE_FLAG_PREVENT_ALL_OVERLAP)
+   if (submit_info->flags.prevent_all_overlap)
       cmd->flags |= ROGUE_FWIF_COMPUTE_FLAG_PREVENT_ALL_OVERLAP;
 
-   if (submit_info->flags & PVR_WINSYS_COMPUTE_FLAG_SINGLE_CORE)
+   if (submit_info->flags.use_single_core)
       cmd->flags |= ROGUE_FWIF_COMPUTE_FLAG_SINGLE_CORE;
 }
 
