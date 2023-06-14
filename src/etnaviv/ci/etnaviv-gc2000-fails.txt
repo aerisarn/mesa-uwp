@@ -193,10 +193,6 @@ spec@arb_fragment_program@fp-fragment-position,Crash
 spec@arb_fragment_program@fp-indirections2,Fail
 spec@arb_fragment_program@sparse-samplers,Crash
 
-# MESA: error: etna_link_shader:1302: Semantic value not found in vertex shader outputs
-# ati_fragment_shader-render-ops: ../src/gallium/drivers/etnaviv/etnaviv_shader.c:141: etna_link_shaders: Assertion `0' failed.
-spec@ati_fragment_shader@ati_fragment_shader-render-ops,Crash
-
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_depth24_stencil8,Fail
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index16,Fail
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index1,Fail
@@ -566,10 +562,6 @@ spec@nv_copy_image@nv_copy_image-simple --tex-to-tex,Fail
 spec@nv_fog_distance@simple draw - gl_eye_plane,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-lines,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-triangles,Fail
-
-# MESA: error: etna_link_shader:1302: Semantic value not found in vertex shader outputs
-# nv_texture_env_combine4-combine: ../src/gallium/drivers/etnaviv/etnaviv_shader.c:141: etna_link_shaders: Assertion `0' failed.
-spec@nv_texture_env_combine4@nv_texture_env_combine4-combine,Crash
 
 # segfault
 spec@sgis_generate_mipmap@gen-nonzero-unit,Crash

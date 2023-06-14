@@ -1103,6 +1103,11 @@ etna_compile_shader(struct etna_shader_variant *v)
                  false, v->key.sprite_coord_yinvert);
    }
 
+   /*
+    * Remove any dead in variables before we iterate over them
+    */
+   NIR_PASS_V(s, nir_remove_dead_variables, nir_var_shader_in, NULL);
+
    /* setup input linking */
    struct etna_shader_io_file *sf = &v->infile;
    if (s->info.stage == MESA_SHADER_VERTEX) {
