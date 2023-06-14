@@ -236,23 +236,16 @@ fs_live_variables::compute_start_end()
 {
    foreach_block (block, cfg) {
       struct block_data *bd = &block_data[block->num];
+      unsigned i;
 
-      for (int w = 0; w < bitset_words; w++) {
-         BITSET_WORD livedefin = bd->livein[w];
-         BITSET_WORD livedefout = bd->liveout[w];
-         BITSET_WORD livedefinout = livedefin | livedefout;
-         while (livedefinout) {
-            unsigned b = u_bit_scan(&livedefinout);
-            unsigned i = w * BITSET_WORDBITS + b;
-            if (livedefin & (1u << b)) {
-               start[i] = MIN2(start[i], block->start_ip);
-               end[i] = MAX2(end[i], block->start_ip);
-            }
-            if (livedefout & (1u << b)) {
-               start[i] = MIN2(start[i], block->end_ip);
-               end[i] = MAX2(end[i], block->end_ip);
-            }
-         }
+      BITSET_FOREACH_SET(i, bd->livein, (unsigned)num_vars) {
+         start[i] = MIN2(start[i], block->start_ip);
+         end[i] = MAX2(end[i], block->start_ip);
+      }
+
+      BITSET_FOREACH_SET(i, bd->liveout, (unsigned)num_vars) {
+         start[i] = MIN2(start[i], block->end_ip);
+         end[i] = MAX2(end[i], block->end_ip);
       }
    }
 }
