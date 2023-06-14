@@ -1060,6 +1060,7 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
       state->force_min_sample = pipeline->force_min_sample;
       state->sample_shading = ps->ms->sample_shading_enable;
       state->min_sample_shading = ps->ms->min_sample_shading;
+      state->min_samples_dirty = true;
       state->blend_dirty = true;
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_RASTERIZATION_SAMPLES))
          update_samples(state, ps->ms->rasterization_samples);
@@ -1072,7 +1073,7 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_MS_SAMPLE_MASK)) {
          state->sample_mask_dirty = state->sample_mask != 0xffffffff;
          state->sample_mask = 0xffffffff;
-         state->min_samples_dirty = state->min_samples;
+         state->min_samples_dirty = !!state->min_samples;
          state->min_samples = 0;
       }
       state->blend_dirty |= state->blend_state.alpha_to_coverage || state->blend_state.alpha_to_one;
