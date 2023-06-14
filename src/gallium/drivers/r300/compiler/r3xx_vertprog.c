@@ -805,14 +805,8 @@ void r3xx_compile_vertex_program(struct r300_vertex_program_compiler *c)
 	int opt = !c->Base.disable_optimizations;
 
 	/* Lists of instruction transformations. */
-	struct radeon_program_transformation alu_rewrite_r500[] = {
+	struct radeon_program_transformation alu_rewrite[] = {
 		{ &r300_transform_vertex_alu, NULL },
-		{ NULL, NULL }
-	};
-
-	struct radeon_program_transformation alu_rewrite_r300[] = {
-		{ &r300_transform_vertex_alu, NULL },
-		{ &r300_transform_trig_simple, NULL },
 		{ NULL, NULL }
 	};
 
@@ -834,8 +828,7 @@ void r3xx_compile_vertex_program(struct r300_vertex_program_compiler *c)
 	struct radeon_compiler_pass vs_list[] = {
 		/* NAME				DUMP PREDICATE	FUNCTION			PARAM */
 		{"add artificial outputs",	0, 1,		rc_vs_add_artificial_outputs,	NULL},
-		{"native rewrite",		1, is_r500,	rc_local_transform,		alu_rewrite_r500},
-		{"native rewrite",		1, !is_r500,	rc_local_transform,		alu_rewrite_r300},
+		{"native rewrite",		1, 1,		rc_local_transform,		alu_rewrite},
 		{"emulate modifiers",		1, !is_r500,	rc_local_transform,		emulate_modifiers},
 		{"deadcode",			1, opt,		rc_dataflow_deadcode,		NULL},
 		{"dataflow optimize",		1, opt,		rc_optimize,			NULL},
