@@ -53,17 +53,12 @@ svga_create_compute_state(struct pipe_context *pipe,
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_CREATECS);
 
-   if (templ->ir_type == PIPE_SHADER_IR_NIR) {
-      cs->base.tokens = nir_to_tgsi((void *)templ->prog, pipe->screen);
-   } else {
-      assert(templ->ir_type == PIPE_SHADER_IR_TGSI);
-      /* we need to keep a local copy of the tokens */
-      cs->base.tokens = tgsi_dup_tokens(templ->prog);
-   }
-   assert(templ->ir_type == PIPE_SHADER_IR_TGSI);
+   assert(templ->ir_type == PIPE_SHADER_IR_NIR);
+   cs->base.tokens = nir_to_tgsi((void *)templ->prog, pipe->screen);
+
    struct svga_shader *shader = &cs->base;
    shader->id = svga->debug.shader_id++;
-   shader->type = templ->ir_type;
+   shader->type = PIPE_SHADER_IR_TGSI;
    shader->stage = PIPE_SHADER_COMPUTE;
 
    /* Collect shader basic info */
