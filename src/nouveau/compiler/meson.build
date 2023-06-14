@@ -1,6 +1,11 @@
 add_languages('rust', required: true)
 rust = import('unstable-rust')
 
+rc = meson.get_compiler('rust')
+if rc.version().version_compare('< 1.70.0')
+  error('NAK requires Rust 1.70.0')
+endif
+
 dep_syn = dependency('syn',
   version : '>= 2.0.15',
   fallback : ['syn', 'dep_syn'],
