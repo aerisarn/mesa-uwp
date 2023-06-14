@@ -33,6 +33,54 @@ tib_filter(const nir_instr *instr, UNUSED const void *_)
    return (sem.location >= FRAG_RESULT_DATA0);
 }
 
+static void
+store_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
+                 enum pipe_format format, enum pipe_format logical_format,
+                 unsigned rt, nir_ssa_def *value, unsigned write_mask)
+{
+   /* The hardware cannot extend for a 32-bit format. Extend ourselves. */
+   if (format == PIPE_FORMAT_R32_UINT && value->bit_size == 16) {
+      if (util_format_is_pure_sint(logical_format))
+         value = nir_i2i32(b, value);
+      else if (util_format_is_pure_uint(logical_format))
+         value = nir_u2u32(b, value);
+      else
+         value = nir_f2f32(b, value);
+   }
+
+   uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
+   nir_store_local_pixel_agx(b, value, nir_imm_intN_t(b, ALL_SAMPLES, 16),
+                             .base = offset_B, .write_mask = write_mask,
+                             .format = format);
+}
+
+static nir_ssa_def *
+load_tilebuffer(nir_builder *b, struct agx_tilebuffer_layout *tib,
+                uint8_t load_comps, uint8_t bit_size, unsigned rt,
+                enum pipe_format format, enum pipe_format logical_format)
+{
+   unsigned comps = util_format_get_nr_components(logical_format);
+   bool f16 = (format == PIPE_FORMAT_R16_FLOAT);
+
+   /* Don't load with F16 */
+   if (f16)
+      format = PIPE_FORMAT_R16_UINT;
+
+   uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
+   nir_ssa_def *res = nir_load_local_pixel_agx(
+      b, MIN2(load_comps, comps), f16 ? 16 : bit_size,
+      nir_imm_intN_t(b, ALL_SAMPLES, 16), .base = offset_B, .format = format);
+
+   /* Extend floats */
+   if (f16 && bit_size != 16) {
+      assert(bit_size == 32);
+      res = nir_f2f32(b, res);
+   }
+
+   res = nir_sign_extend_if_sint(b, res, logical_format);
+   return nir_pad_vector(b, res, load_comps);
+}
+
 static nir_ssa_def *
 tib_impl(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -65,16 +113,14 @@ tib_impl(nir_builder *b, nir_instr *instr, void *data)
          assert(ctx->translucent != NULL &&
                 "colour masking requires translucency");
 
-         assert(agx_internal_format_supports_mask(format) &&
-                "write mask but format cannot be masked");
-
+         assert(agx_tilebuffer_supports_mask(tib, rt));
          *(ctx->translucent) = true;
       }
 
       /* But we ignore the NIR write mask for that, since it's basically an
        * optimization hint.
        */
-      if (agx_internal_format_supports_mask(format))
+      if (agx_tilebuffer_supports_mask(tib, rt))
          write_mask &= nir_intrinsic_write_mask(intr);
 
       /* Delete stores that are entirely masked out */
@@ -86,21 +132,7 @@ tib_impl(nir_builder *b, nir_instr *instr, void *data)
       /* Trim to format as required by hardware */
       value = nir_trim_vector(b, intr->src[0].ssa, comps);
 
-      /* The hardware cannot extend for a 32-bit format. Extend ourselves. */
-      if (format == PIPE_FORMAT_R32_UINT && value->bit_size == 16) {
-         if (util_format_is_pure_sint(logical_format))
-            value = nir_i2i32(b, value);
-         else if (util_format_is_pure_uint(logical_format))
-            value = nir_u2u32(b, value);
-         else
-            value = nir_f2f32(b, value);
-      }
-
-      uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
-      nir_store_local_pixel_agx(b, value, nir_imm_intN_t(b, ALL_SAMPLES, 16),
-                                .base = offset_B, .write_mask = write_mask,
-                                .format = format);
-
+      store_tilebuffer(b, tib, format, logical_format, rt, value, write_mask);
       return NIR_LOWER_INSTR_PROGRESS_REPLACE;
    } else {
       uint8_t bit_size = nir_dest_bit_size(intr->dest);
@@ -108,31 +140,12 @@ tib_impl(nir_builder *b, nir_instr *instr, void *data)
       /* Loads from non-existent render targets are undefined in NIR but not
        * possible to encode in the hardware, delete them.
        */
-      if (logical_format == PIPE_FORMAT_NONE)
+      if (logical_format == PIPE_FORMAT_NONE) {
          return nir_ssa_undef(b, intr->num_components, bit_size);
-
-      bool f16 = (format == PIPE_FORMAT_R16_FLOAT);
-
-      /* Don't load with F16 */
-      if (f16)
-         format = PIPE_FORMAT_R16_UINT;
-
-      uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
-      nir_ssa_def *res = nir_load_local_pixel_agx(
-         b, MIN2(intr->num_components, comps), f16 ? 16 : bit_size,
-         nir_imm_intN_t(b, ALL_SAMPLES, 16), .base = offset_B,
-         .format = format);
-
-      /* Extend floats */
-      if (f16 && nir_dest_bit_size(intr->dest) != 16) {
-         assert(nir_dest_bit_size(intr->dest) == 32);
-         res = nir_f2f32(b, res);
+      } else {
+         return load_tilebuffer(b, tib, intr->num_components, bit_size, rt,
+                                format, logical_format);
       }
-
-      res = nir_sign_extend_if_sint(b, res, logical_format);
-      res = nir_pad_vector(b, res, intr->num_components);
-
-      return res;
    }
 }
 
