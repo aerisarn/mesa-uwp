@@ -144,20 +144,13 @@ image_binding_grow(const struct anv_device *device,
                           "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
                           "pPlaneLayouts[]::offset is misaligned");
       }
-
-      /* We require that surfaces be added in memory-order. This simplifies the
-       * layout validation required by
-       * VkImageDrmFormatModifierExplicitCreateInfoEXT,
-       */
-      if (unlikely(offset < container->size)) {
-         return vk_errorf(device,
-                          VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
-                          "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
-                          "pPlaneLayouts[]::offset is too small");
-      }
    }
 
-   if (__builtin_add_overflow(offset, size, &container->size)) {
+   /* Surfaces can be added out of memory-order. Track the end of each memory
+    * plane to update the binding size properly.
+    */
+   uint64_t memory_range_end;
+   if (__builtin_add_overflow(offset, size, &memory_range_end)) {
       if (has_implicit_offset) {
          assert(!"overflow");
          return vk_errorf(device, VK_ERROR_UNKNOWN,
@@ -170,6 +163,7 @@ image_binding_grow(const struct anv_device *device,
       }
    }
 
+   container->size = MAX2(container->size, memory_range_end);
    container->alignment = MAX2(container->alignment, alignment);
 
    *out_range = (struct anv_image_memory_range) {
