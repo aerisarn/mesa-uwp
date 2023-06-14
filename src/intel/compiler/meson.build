@@ -88,6 +88,7 @@ libintel_compiler_files = files(
   'brw_nir_blockify_uniform_loads.c',
   'brw_nir_clamp_per_vertex_loads.c',
   'brw_nir_lower_conversions.c',
+  'brw_nir_lower_cooperative_matrix.c',
   'brw_nir_lower_cs_intrinsics.c',
   'brw_nir_lower_alpha_to_coverage.c',
   'brw_nir_lower_intersection_shader.c',
