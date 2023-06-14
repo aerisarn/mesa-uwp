@@ -203,26 +203,6 @@ static struct rc_dst_register new_dst_reg(struct radeon_compiler *c,
 	return dstregtmpmask(tmp, inst->U.I.DstReg.WriteMask);
 }
 
-static void transform_CEIL(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	/* Assuming:
-	 *     ceil(x) = -floor(-x)
-	 *
-	 * After inlining floor:
-	 *     ceil(x) = -(-x-frac(-x))
-	 *
-	 * After simplification:
-	 *     ceil(x) = x+frac(-x)
-	 */
-
-	struct rc_dst_register dst = new_dst_reg(c, inst);
-	emit1(c, inst->Prev, RC_OPCODE_FRC, NULL, dst, negate(inst->U.I.SrcReg[0]));
-	emit2(c, inst->Prev, RC_OPCODE_ADD, &inst->U.I, inst->U.I.DstReg,
-		inst->U.I.SrcReg[0], srcreg(RC_FILE_TEMPORARY, dst.Index));
-	rc_remove_instruction(inst);
-}
-
 static void transform_DP2(struct radeon_compiler* c,
 	struct rc_instruction* inst)
 {
@@ -544,7 +524,7 @@ static void transform_KILP(struct radeon_compiler * c,
  * no userData necessary.
  *
  * Eliminates the following ALU instructions:
- *  CEIL, DST, FLR, LIT, LRP, POW, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
+ *  DST, FLR, LIT, LRP, POW, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
  * using:
  *  MOV, ADD, MUL, MAD, FRC, DP3, LG2, EX2, CMP
  *
@@ -559,7 +539,6 @@ int radeonTransformALU(
 	void* unused)
 {
 	switch(inst->U.I.Opcode) {
-	case RC_OPCODE_CEIL: transform_CEIL(c, inst); return 1;
 	case RC_OPCODE_DP2: transform_DP2(c, inst); return 1;
 	case RC_OPCODE_DST: transform_DST(c, inst); return 1;
 	case RC_OPCODE_FLR: transform_FLR(c, inst); return 1;
@@ -751,7 +730,6 @@ int r300_transform_vertex_alu(
 	void* unused)
 {
 	switch(inst->U.I.Opcode) {
-	case RC_OPCODE_CEIL: transform_CEIL(c, inst); return 1;
 	case RC_OPCODE_CMP: transform_r300_vertex_CMP(c, inst); return 1;
 	case RC_OPCODE_DP2: transform_r300_vertex_DP2(c, inst); return 1;
 	case RC_OPCODE_DP3: transform_r300_vertex_DP3(c, inst); return 1;

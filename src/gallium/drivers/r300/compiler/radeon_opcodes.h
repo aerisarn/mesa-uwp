@@ -48,9 +48,6 @@ typedef enum {
 	 * dst.x = round(src.x), where dst must be an address register */
 	RC_OPCODE_ARR,
 
-	/** vec4 instruction: dst.c = ceil(src0.c) */
-	RC_OPCODE_CEIL,
-
 	/** vec4 instruction: dst.c = src0.c < 0.0 ? src1.c : src2.c */
 	RC_OPCODE_CMP,
 
