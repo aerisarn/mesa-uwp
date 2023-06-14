@@ -115,8 +115,10 @@ agx_build_end_of_tile_shader(struct agx_meta_cache *cache,
          continue;
 
       assert(key->op[rt] == AGX_META_OP_STORE);
+      unsigned offset_B = agx_tilebuffer_offset_B(&key->tib, rt);
+
       nir_block_image_store_agx(
-         &b, nir_imm_int(&b, rt), nir_imm_intN_t(&b, key->tib.offset_B[rt], 16),
+         &b, nir_imm_int(&b, rt), nir_imm_intN_t(&b, offset_B, 16),
          .format = agx_tilebuffer_physical_format(&key->tib, rt),
          .image_dim = dim);
    }

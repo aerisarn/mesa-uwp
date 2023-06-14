@@ -96,9 +96,10 @@ tib_impl(nir_builder *b, nir_instr *instr, void *data)
             value = nir_f2f32(b, value);
       }
 
+      uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
       nir_store_local_pixel_agx(b, value, nir_imm_intN_t(b, ALL_SAMPLES, 16),
-                                .base = tib->offset_B[rt],
-                                .write_mask = write_mask, .format = format);
+                                .base = offset_B, .write_mask = write_mask,
+                                .format = format);
 
       return NIR_LOWER_INSTR_PROGRESS_REPLACE;
    } else {
@@ -116,9 +117,10 @@ tib_impl(nir_builder *b, nir_instr *instr, void *data)
       if (f16)
          format = PIPE_FORMAT_R16_UINT;
 
+      uint8_t offset_B = agx_tilebuffer_offset_B(tib, rt);
       nir_ssa_def *res = nir_load_local_pixel_agx(
          b, MIN2(intr->num_components, comps), f16 ? 16 : bit_size,
-         nir_imm_intN_t(b, ALL_SAMPLES, 16), .base = tib->offset_B[rt],
+         nir_imm_intN_t(b, ALL_SAMPLES, 16), .base = offset_B,
          .format = format);
 
       /* Extend floats */
