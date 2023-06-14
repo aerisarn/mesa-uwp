@@ -1261,8 +1261,15 @@ static void
 radv_amdgpu_winsys_cs_dump(struct radeon_cmdbuf *_cs, FILE *file, const int *trace_ids, int trace_id_count)
 {
    struct radv_amdgpu_cs *cs = (struct radv_amdgpu_cs *)_cs;
-   void *ib = radv_amdgpu_winsys_get_cpu_addr(cs, cs->ib.ib_mc_address);
    int num_dw = cs->base.cdw;
+   void *ib;
+
+   if (cs->use_ib) {
+      ib = radv_amdgpu_winsys_get_cpu_addr(cs, cs->ib.ib_mc_address);
+   } else {
+      ib = cs->base.buf;
+   }
+
    assert(ib);
    ac_parse_ib(file, ib, num_dw, trace_ids, trace_id_count, "main IB", cs->ws->info.gfx_level, cs->ws->info.family,
                radv_amdgpu_winsys_get_cpu_addr, cs);
