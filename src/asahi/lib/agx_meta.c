@@ -114,6 +114,13 @@ agx_build_end_of_tile_shader(struct agx_meta_cache *cache,
       if (key->op[rt] == AGX_META_OP_NONE)
          continue;
 
+      /* The end-of-tile shader is unsuitable to handle spilled render targets.
+       * Skip them. If blits are needed with spilled render targets, other parts
+       * of the driver need to implement them.
+       */
+      if (key->tib.spilled[rt])
+         continue;
+
       assert(key->op[rt] == AGX_META_OP_STORE);
       unsigned offset_B = agx_tilebuffer_offset_B(&key->tib, rt);
 
