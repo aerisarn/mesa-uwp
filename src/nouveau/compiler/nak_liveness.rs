@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+use crate::bitset::BitSet;
 use crate::nak_cfg::CFG;
 use crate::nak_ir::*;
 
@@ -160,6 +161,133 @@ pub trait Liveness {
         }
 
         max_live
+    }
+}
+
+pub struct SimpleBlockLiveness {
+    defs: BitSet,
+    uses: BitSet,
+    last_use: HashMap<u32, usize>,
+    live_in: BitSet,
+    live_out: BitSet,
+}
+
+impl SimpleBlockLiveness {
+    fn add_def(&mut self, val: &SSAValue) {
+        self.defs.insert(val.idx().try_into().unwrap());
+    }
+
+    fn add_use(&mut self, val: &SSAValue, ip: usize) {
+        self.uses.insert(val.idx().try_into().unwrap());
+        self.last_use.insert(val.idx(), ip);
+    }
+
+    fn for_block(block: &BasicBlock) -> Self {
+        let mut bl = Self {
+            defs: BitSet::new(),
+            uses: BitSet::new(),
+            last_use: HashMap::new(),
+            live_in: BitSet::new(),
+            live_out: BitSet::new(),
+        };
+
+        for (ip, instr) in block.instrs.iter().enumerate() {
+            if let PredRef::SSA(val) = &instr.pred.pred_ref {
+                bl.add_use(val, ip);
+            }
+
+            for src in instr.srcs() {
+                for sv in src.iter_ssa() {
+                    bl.add_use(sv, ip);
+                }
+            }
+
+            for dst in instr.dsts() {
+                if let Dst::SSA(sr) = dst {
+                    for sv in sr.iter() {
+                        bl.add_def(sv);
+                    }
+                }
+            }
+        }
+
+        bl
+    }
+}
+
+impl BlockLiveness for SimpleBlockLiveness {
+    fn is_live_after_ip(&self, val: &SSAValue, ip: usize) -> bool {
+        if self.live_out.get(val.idx().try_into().unwrap()) {
+            true
+        } else {
+            if let Some(last_use_ip) = self.last_use.get(&val.idx()) {
+                *last_use_ip > ip
+            } else {
+                false
+            }
+        }
+    }
+
+    fn is_live_in(&self, val: &SSAValue) -> bool {
+        self.live_in.get(val.idx().try_into().unwrap())
+    }
+
+    fn is_live_out(&self, val: &SSAValue) -> bool {
+        self.live_out.get(val.idx().try_into().unwrap())
+    }
+}
+
+pub struct SimpleLiveness {
+    blocks: HashMap<u32, SimpleBlockLiveness>,
+}
+
+impl SimpleLiveness {
+    pub fn for_function(func: &Function, cfg: &CFG) -> SimpleLiveness {
+        let mut l = SimpleLiveness {
+            blocks: HashMap::new(),
+        };
+        let mut live_in = HashMap::new();
+
+        for b in &func.blocks {
+            let bl = SimpleBlockLiveness::for_block(b);
+            l.blocks.insert(b.id, bl);
+            live_in.insert(b.id, BitSet::new());
+        }
+
+        let mut to_do = true;
+        while to_do {
+            to_do = false;
+            for b in func.blocks.iter().rev() {
+                let bl = l.blocks.get_mut(&b.id).unwrap();
+
+                /* Compute live-out */
+                for sb_id in cfg.block_successors(b.id) {
+                    let s_live_in = live_in.get(&sb_id).unwrap();
+                    to_do |= bl.live_out.union_with(s_live_in);
+                }
+
+                let b_live_in = live_in.get_mut(&b.id).unwrap();
+
+                let new_live_in =
+                    (bl.live_out.clone() | bl.uses.clone()) & !bl.defs.clone();
+                to_do |= b_live_in.union_with(&new_live_in);
+            }
+        }
+
+        for b in &func.blocks {
+            let bl = l.blocks.get_mut(&b.id).unwrap();
+            bl.live_in = live_in.remove(&b.id).unwrap();
+        }
+
+        l
+    }
+}
+
+impl Liveness for SimpleLiveness {
+    type PerBlock = SimpleBlockLiveness;
+
+    fn block_live(&self, id: u32) -> &SimpleBlockLiveness {
+        self.blocks.get(&id).unwrap()
     }
 }
 

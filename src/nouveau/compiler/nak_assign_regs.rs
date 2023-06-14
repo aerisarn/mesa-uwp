@@ -8,7 +8,7 @@
 use crate::bitset::BitSet;
 use crate::nak_cfg::CFG;
 use crate::nak_ir::*;
-use crate::nak_liveness::{BlockLiveness, Liveness, NextUseLiveness};
+use crate::nak_liveness::{BlockLiveness, Liveness, SimpleLiveness};
 use crate::util::NextMultipleOf;
 
 use std::cmp::{max, Ordering};
@@ -1018,7 +1018,7 @@ impl AssignRegs {
 
     pub fn run(&mut self, f: &mut Function) {
         let cfg = CFG::for_function(f);
-        let live = NextUseLiveness::for_function(f, &cfg);
+        let live = SimpleLiveness::for_function(f, &cfg);
         let max_live = live.calc_max_live(f, &cfg);
 
         let num_regs = PerRegFile::new_with(|file| {
