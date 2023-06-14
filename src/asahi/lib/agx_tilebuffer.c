@@ -123,6 +123,12 @@ agx_tilebuffer_physical_format(struct agx_tilebuffer_layout *tib, unsigned rt)
 bool
 agx_tilebuffer_supports_mask(struct agx_tilebuffer_layout *tib, unsigned rt)
 {
+   /* We don't bother support masking with spilled render targets. This might be
+    * optimized in the future but spilling is so rare anyway it's not worth it.
+    */
+   if (tib->spilled[rt])
+      return false;
+
    enum pipe_format fmt = agx_tilebuffer_physical_format(tib, rt);
    return agx_internal_format_supports_mask((enum agx_internal_formats)fmt);
 }
