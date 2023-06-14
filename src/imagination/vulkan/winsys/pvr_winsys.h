@@ -325,7 +325,7 @@ struct pvr_winsys_compute_submit_info {
 #define PVR_WINSYS_FRAG_FLAG_PREVENT_CDM_OVERLAP BITFIELD_BIT(2U)
 #define PVR_WINSYS_FRAG_FLAG_SINGLE_CORE BITFIELD_BIT(3U)
 #define PVR_WINSYS_FRAG_FLAG_GET_VIS_RESULTS BITFIELD_BIT(4U)
-#define PVR_WINSYS_FRAG_FLAG_SPMSCRATCHBUFFER (5U)
+#define PVR_WINSYS_FRAG_FLAG_SPMSCRATCHBUFFER BITFIELD_BIT(5U)
 
 struct pvr_winsys_render_submit_info {
    struct pvr_winsys_rt_dataset *rt_dataset;
