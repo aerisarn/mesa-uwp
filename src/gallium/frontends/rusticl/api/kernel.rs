@@ -122,7 +122,7 @@ const ZERO_ARR: [usize; 3] = [0; 3];
 /// This function is only safe when called on an array of `work_dim` length
 unsafe fn kernel_work_arr_or_default<'a>(arr: *const usize, work_dim: cl_uint) -> &'a [usize] {
     if !arr.is_null() {
-        slice::from_raw_parts(arr, work_dim as usize)
+        unsafe { slice::from_raw_parts(arr, work_dim as usize) }
     } else {
         &ZERO_ARR
     }

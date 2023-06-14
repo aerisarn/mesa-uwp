@@ -38,12 +38,15 @@ pub struct CLCHeader<'a> {
 }
 
 unsafe fn callback_impl(data: *mut c_void, msg: *const c_char) {
-    let msgs = (data as *mut Vec<String>).as_mut().expect("");
+    let data = data as *mut Vec<String>;
+    let msgs = unsafe { data.as_mut() }.unwrap();
     msgs.push(c_string_to_string(msg));
 }
 
 unsafe extern "C" fn spirv_msg_callback(data: *mut c_void, msg: *const c_char) {
-    callback_impl(data, msg);
+    unsafe {
+        callback_impl(data, msg);
+    }
 }
 
 unsafe extern "C" fn spirv_to_nir_msg_callback(
@@ -53,7 +56,9 @@ unsafe extern "C" fn spirv_to_nir_msg_callback(
     msg: *const c_char,
 ) {
     if dbg_level >= nir_spirv_debug_level::NIR_SPIRV_DEBUG_LEVEL_WARNING {
-        callback_impl(data, msg);
+        unsafe {
+            callback_impl(data, msg);
+        }
     }
 }
 

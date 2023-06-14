@@ -76,6 +76,8 @@ rusticl_files = files(
 )
 
 rusticl_args = [
+  # we want unsafe blocks inside unsafe functions
+  '-Dunsafe_op_in_unsafe_fn',
   # we error on all clippy warnings unless they are disabled
   '-Dclippy::all',
   # we want to add asserts in control flow
