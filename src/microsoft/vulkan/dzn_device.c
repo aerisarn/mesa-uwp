@@ -1625,10 +1625,8 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 {
    VK_FROM_HANDLE(dzn_physical_device, pdevice, physicalDevice);
 
-   /* minimum from the spec */
-   const VkSampleCountFlags supported_sample_counts =
-      VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT |
-      VK_SAMPLE_COUNT_8_BIT | VK_SAMPLE_COUNT_16_BIT;
+   /* minimum from the D3D and Vulkan specs */
+   const VkSampleCountFlags supported_sample_counts = VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_4_BIT;
 
    VkPhysicalDeviceLimits limits = {
       .maxImageDimension1D                      = D3D12_REQ_TEXTURE1D_U_DIMENSION,
