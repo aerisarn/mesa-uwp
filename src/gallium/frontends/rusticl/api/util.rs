@@ -98,16 +98,6 @@ macro_rules! cl_prop_for_type {
     ($ty: ty) => {
         impl CLProp for $ty {
             fn cl_vec(&self) -> Vec<u8> {
-                self.to_ne_bytes().to_vec()
-            }
-        }
-    };
-}
-
-macro_rules! cl_prop_for_struct {
-    ($ty: ty) => {
-        impl CLProp for $ty {
-            fn cl_vec(&self) -> Vec<u8> {
                 unsafe { slice::from_raw_parts((self as *const Self).cast(), size_of::<Self>()) }
                     .to_vec()
             }
@@ -124,10 +114,10 @@ cl_prop_for_type!(cl_ulong);
 cl_prop_for_type!(isize);
 cl_prop_for_type!(usize);
 
-cl_prop_for_struct!(cl_device_integer_dot_product_acceleration_properties_khr);
-cl_prop_for_struct!(cl_device_pci_bus_info_khr);
-cl_prop_for_struct!(cl_image_format);
-cl_prop_for_struct!(cl_name_version);
+cl_prop_for_type!(cl_device_integer_dot_product_acceleration_properties_khr);
+cl_prop_for_type!(cl_device_pci_bus_info_khr);
+cl_prop_for_type!(cl_image_format);
+cl_prop_for_type!(cl_name_version);
 
 impl CLProp for bool {
     fn cl_vec(&self) -> Vec<u8> {
