@@ -1771,7 +1771,7 @@ create_image_surface(struct zink_context *ctx, const struct pipe_image_view *vie
       break;
    default: break;
    }
-   if (!res->obj->dt && view->resource->format != view->format)
+   if (!res->obj->dt && zink_format_needs_mutable(view->resource->format, view->format))
       /* mutable not set by default */
       zink_resource_object_init_mutable(ctx, res);
    VkImageViewCreateInfo ivci = create_ivci(screen, res, &tmpl, target);
@@ -2035,7 +2035,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
             if (!ctx->unordered_blitting)
                res->obj->unordered_read = false;
          } else {
-            if (!res->obj->dt && res->base.b.format != b->image_view->base.format)
+            if (!res->obj->dt && zink_format_needs_mutable(res->base.b.format, b->image_view->base.format))
                /* mutable not set by default */
                zink_resource_object_init_mutable(ctx, res);
             if (res->obj != b->image_view->obj) {

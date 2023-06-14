@@ -23,6 +23,7 @@
 
 #include "zink_context.h"
 #include "zink_framebuffer.h"
+#include "zink_format.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
 #include "zink_surface.h"
@@ -285,7 +286,7 @@ zink_create_surface(struct pipe_context *pctx,
    bool is_array = templ->u.tex.last_layer != templ->u.tex.first_layer;
    bool needs_mutable = false;
    enum pipe_texture_target target_2d[] = {PIPE_TEXTURE_2D, PIPE_TEXTURE_2D_ARRAY};
-   if (!res->obj->dt && pres->format != templ->format) {
+   if (!res->obj->dt && zink_format_needs_mutable(pres->format, templ->format)) {
       /* mutable not set by default */
       needs_mutable = !(res->base.b.bind & ZINK_BIND_MUTABLE);
       /*

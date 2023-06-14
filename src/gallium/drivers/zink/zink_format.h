@@ -50,4 +50,10 @@ void
 zink_format_clamp_channel_color(const struct util_format_description *desc, union pipe_color_union *dst, const union pipe_color_union *src, unsigned i);
 void
 zink_format_clamp_channel_srgb(const struct util_format_description *desc, union pipe_color_union *dst, const union pipe_color_union *src, unsigned i);
+
+static inline bool
+zink_format_needs_mutable(enum pipe_format a, enum pipe_format b)
+{
+   return a != b;
+}
 #endif
