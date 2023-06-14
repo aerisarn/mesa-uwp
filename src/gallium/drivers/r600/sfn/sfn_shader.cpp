@@ -1567,6 +1567,7 @@ Shader::get_shader_info(r600_shader *sh_info)
    sh_info->needs_scratch_space = m_flags.test(sh_needs_scratch_space);
    sh_info->uses_images = m_flags.test(sh_uses_images);
    sh_info->uses_atomics = m_flags.test(sh_uses_atomics);
+   sh_info->disable_sb = m_flags.test(sh_disble_sb);
    sh_info->has_txq_cube_array_z_comp = m_flags.test(sh_txs_cube_array_comp);
    sh_info->indirect_files = m_indirect_files;
    do_get_shader_info(sh_info);

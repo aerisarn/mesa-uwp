@@ -227,6 +227,7 @@ public:
       sh_indirect_atomic,
       sh_mem_barrier,
       sh_legacy_math_rules,
+      sh_disble_sb,
       sh_flags_count
    };
 

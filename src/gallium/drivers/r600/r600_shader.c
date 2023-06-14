@@ -240,6 +240,7 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 	use_sb &= !shader->shader.uses_atomics;
 	use_sb &= !shader->shader.uses_images;
 	use_sb &= !shader->shader.uses_helper_invocation;
+        use_sb &= !shader->shader.disable_sb;
 
 	/* SB can't handle READ_SCRATCH properly */
 	use_sb &= !(shader->shader.needs_scratch_space && rscreen->b.gfx_level < R700);

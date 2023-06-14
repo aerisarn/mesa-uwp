@@ -2643,6 +2643,8 @@ emit_dot(const nir_alu_instr& alu, int n, Shader& shader)
       ir->set_alu_flag(alu_dst_clamp);
 
    shader.emit_instruction(ir);
+   shader.set_flag(Shader::sh_disble_sb);
+
    return true;
 }
 
