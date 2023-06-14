@@ -12,7 +12,7 @@
  *
  *    foreach sample in TARGET {
  *       if sample in LIVE {
- *          mark sample live
+ *          run depth/stencil test and update
  *       } else {
  *          kill sample
  *       }
@@ -28,23 +28,30 @@
  * sample_mask must follow these rules:
  *
  * 1. All sample_mask instructions affecting a sample must execute before a
- *    local_store_pixel instruction targeting that sample.
+ *    local_store_pixel instruction targeting that sample. This ensures that
+ *    nothing is written for discarded samples (whether discarded in shader or
+ *    due to a failed depth/stencil test).
  *
- * 2. If sample_mask is used anywhere in a shader, the state of every sample
- *    must be set on all execution paths. That is, the union of the TARGET sets
- *    of executed sample_masks must contain all samples.
+ * 2. If sample_mask is used anywhere in a shader, then on every execution path,
+ *    every sample must be killed or else run depth/stencil tests exactly ONCE.
  *
- * 3. If a sample is killed, future sample_mask instructions will have
- *    no effect. The following code sequence correctly implements a conditional
- *    discard (if there are no other sample_mask instructions in the shader):
+ * 3. If a sample is killed, future sample_mask instructions have
+ *    no effect on that sample. The following code sequence correctly implements
+ *    a conditional discard (if there are no other sample_mask instructions in
+ *    the shader):
  *
  *       sample_mask discarded, 0
  *       sample_mask ~0, ~0
  *
+ *    but this sequence is incorrect:
+ *
+ *       sample_mask ~0, ~discarded
+ *       sample_mask ~0, ~0         <-- incorrect: depth/stencil tests run twice
+ *
  * 4. If zs_emit is used anywhere in the shader, sample_mask must not be used.
  * Instead, zs_emit with depth = NaN can be emitted.
  *
- * This pass legalizes sample_mask instructions to satisfy these rules.
+ * This pass legalizes some sample_mask instructions to satisfy these rules.
  */
 
 #define ALL_SAMPLES (0xFF)
