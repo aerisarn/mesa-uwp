@@ -8,9 +8,11 @@ use rusticl_opencl_gen::*;
 use rusticl_proc_macros::cl_entrypoint;
 use rusticl_proc_macros::cl_info_entrypoint;
 
+use std::mem::MaybeUninit;
+
 #[cl_info_entrypoint(cl_get_platform_info)]
 impl CLInfo<cl_platform_info> for cl_platform_id {
-    fn query(&self, q: cl_platform_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_platform_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         self.get_ref()?;
         Ok(match q {
             // TODO spirv

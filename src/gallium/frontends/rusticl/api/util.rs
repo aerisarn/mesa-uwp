@@ -11,14 +11,14 @@ use std::cmp;
 use std::convert::TryInto;
 use std::ffi::CStr;
 use std::ffi::CString;
-use std::mem::size_of;
+use std::mem::{size_of, MaybeUninit};
 use std::ops::BitAnd;
 use std::os::raw::c_void;
 use std::slice;
 use std::sync::Arc;
 
 pub trait CLInfo<I> {
-    fn query(&self, q: I, vals: &[u8]) -> CLResult<Vec<u8>>;
+    fn query(&self, q: I, vals: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>>;
 
     fn get_info(
         &self,
@@ -57,7 +57,7 @@ pub trait CLInfo<I> {
 }
 
 pub trait CLInfoObj<I, O> {
-    fn query(&self, o: O, q: I) -> CLResult<Vec<u8>>;
+    fn query(&self, o: O, q: I) -> CLResult<Vec<MaybeUninit<u8>>>;
 
     fn get_info_obj(
         &self,
@@ -91,13 +91,13 @@ pub trait CLInfoObj<I, O> {
 }
 
 pub trait CLProp {
-    fn cl_vec(&self) -> Vec<u8>;
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>>;
 }
 
 macro_rules! cl_prop_for_type {
     ($ty: ty) => {
         impl CLProp for $ty {
-            fn cl_vec(&self) -> Vec<u8> {
+            fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
                 unsafe { slice::from_raw_parts((self as *const Self).cast(), size_of::<Self>()) }
                     .to_vec()
             }
@@ -120,22 +120,24 @@ cl_prop_for_type!(cl_image_format);
 cl_prop_for_type!(cl_name_version);
 
 impl CLProp for bool {
-    fn cl_vec(&self) -> Vec<u8> {
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
         cl_prop::<cl_bool>(if *self { CL_TRUE } else { CL_FALSE })
     }
 }
 
 impl CLProp for &str {
-    fn cl_vec(&self) -> Vec<u8> {
-        CString::new(*self)
-            .unwrap_or_default()
-            .into_bytes_with_nul()
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
+        to_maybeuninit_vec(
+            CString::new(*self)
+                .unwrap_or_default()
+                .into_bytes_with_nul(),
+        )
     }
 }
 
 impl CLProp for &CStr {
-    fn cl_vec(&self) -> Vec<u8> {
-        self.to_bytes_with_nul().to_vec()
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
+        to_maybeuninit_vec(self.to_bytes_with_nul().to_vec())
     }
 }
 
@@ -143,8 +145,8 @@ impl<T> CLProp for Vec<T>
 where
     T: CLProp,
 {
-    fn cl_vec(&self) -> Vec<u8> {
-        let mut res: Vec<u8> = Vec::new();
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
+        let mut res: Vec<MaybeUninit<u8>> = Vec::new();
         for i in self {
             res.append(&mut i.cl_vec())
         }
@@ -156,7 +158,7 @@ impl<T> CLProp for &T
 where
     T: CLProp,
 {
-    fn cl_vec(&self) -> Vec<u8> {
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
         T::cl_vec(self)
     }
 }
@@ -165,8 +167,8 @@ impl<T> CLProp for [T]
 where
     T: CLProp,
 {
-    fn cl_vec(&self) -> Vec<u8> {
-        let mut res: Vec<u8> = Vec::new();
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
+        let mut res: Vec<MaybeUninit<u8>> = Vec::new();
         for i in self {
             res.append(&mut i.cl_vec())
         }
@@ -178,8 +180,8 @@ impl<T, const I: usize> CLProp for [T; I]
 where
     T: CLProp,
 {
-    fn cl_vec(&self) -> Vec<u8> {
-        let mut res: Vec<u8> = Vec::new();
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
+        let mut res: Vec<MaybeUninit<u8>> = Vec::new();
         for i in self {
             res.append(&mut i.cl_vec())
         }
@@ -188,13 +190,13 @@ where
 }
 
 impl<T> CLProp for *const T {
-    fn cl_vec(&self) -> Vec<u8> {
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
         (*self as usize).cl_vec()
     }
 }
 
 impl<T> CLProp for *mut T {
-    fn cl_vec(&self) -> Vec<u8> {
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
         (*self as usize).cl_vec()
     }
 }
@@ -203,8 +205,8 @@ impl<T> CLProp for Properties<T>
 where
     T: CLProp + Default,
 {
-    fn cl_vec(&self) -> Vec<u8> {
-        let mut res: Vec<u8> = Vec::new();
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
+        let mut res: Vec<MaybeUninit<u8>> = Vec::new();
         for (k, v) in &self.props {
             res.append(&mut k.cl_vec());
             res.append(&mut v.cl_vec());
@@ -218,12 +220,12 @@ impl<T> CLProp for Option<T>
 where
     T: CLProp,
 {
-    fn cl_vec(&self) -> Vec<u8> {
+    fn cl_vec(&self) -> Vec<MaybeUninit<u8>> {
         self.as_ref().map_or(Vec::new(), |v| v.cl_vec())
     }
 }
 
-pub fn cl_prop<T: CLProp>(v: T) -> Vec<u8>
+pub fn cl_prop<T: CLProp>(v: T) -> Vec<MaybeUninit<u8>>
 where
     T: Sized,
 {
@@ -295,6 +297,11 @@ pub fn event_list_from_cl(
     }
 
     Ok(res)
+}
+
+pub fn to_maybeuninit_vec<T: Copy>(v: Vec<T>) -> Vec<MaybeUninit<T>> {
+    // In my tests the compiler was smart enough to turn this into a noop
+    v.into_iter().map(MaybeUninit::new).collect()
 }
 
 pub fn check_cb<T>(cb: &Option<T>, user_data: *mut c_void) -> CLResult<()> {

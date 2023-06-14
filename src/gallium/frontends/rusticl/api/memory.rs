@@ -19,7 +19,7 @@ use rusticl_proc_macros::cl_info_entrypoint;
 use std::alloc;
 use std::alloc::Layout;
 use std::cmp::Ordering;
-use std::mem;
+use std::mem::{self, MaybeUninit};
 use std::os::raw::c_void;
 use std::ptr;
 use std::slice;
@@ -211,7 +211,7 @@ fn validate_matching_buffer_flags(mem: &Mem, flags: cl_mem_flags) -> CLResult<()
 
 #[cl_info_entrypoint(cl_get_mem_object_info)]
 impl CLInfo<cl_mem_info> for cl_mem {
-    fn query(&self, q: cl_mem_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_mem_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         let mem = self.get_ref()?;
         Ok(match *q {
             CL_MEM_ASSOCIATED_MEMOBJECT => {
@@ -704,7 +704,7 @@ fn validate_buffer(
 
 #[cl_info_entrypoint(cl_get_image_info)]
 impl CLInfo<cl_image_info> for cl_mem {
-    fn query(&self, q: cl_image_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_image_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         let mem = self.get_ref()?;
         Ok(match *q {
             CL_IMAGE_ARRAY_SIZE => cl_prop::<usize>(mem.image_desc.image_array_size),
@@ -899,7 +899,7 @@ fn get_supported_image_formats(
 
 #[cl_info_entrypoint(cl_get_sampler_info)]
 impl CLInfo<cl_sampler_info> for cl_sampler {
-    fn query(&self, q: cl_sampler_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_sampler_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         let sampler = self.get_ref()?;
         Ok(match q {
             CL_SAMPLER_ADDRESSING_MODE => cl_prop::<cl_addressing_mode>(sampler.addressing_mode),
@@ -2263,7 +2263,7 @@ fn enqueue_migrate_mem_objects(
 
 #[cl_info_entrypoint(cl_get_pipe_info)]
 impl CLInfo<cl_pipe_info> for cl_mem {
-    fn query(&self, _q: cl_pipe_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, _q: cl_pipe_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         // CL_INVALID_MEM_OBJECT if pipe is a not a valid pipe object.
         Err(CL_INVALID_MEM_OBJECT)
     }

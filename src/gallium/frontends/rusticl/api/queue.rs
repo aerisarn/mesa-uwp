@@ -9,12 +9,13 @@ use rusticl_opencl_gen::*;
 use rusticl_proc_macros::cl_entrypoint;
 use rusticl_proc_macros::cl_info_entrypoint;
 
+use std::mem::MaybeUninit;
 use std::ptr;
 use std::sync::Arc;
 
 #[cl_info_entrypoint(cl_get_command_queue_info)]
 impl CLInfo<cl_command_queue_info> for cl_command_queue {
-    fn query(&self, q: cl_command_queue_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_command_queue_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         let queue = self.get_ref()?;
         Ok(match q {
             CL_QUEUE_CONTEXT => {

@@ -10,7 +10,7 @@ use rusticl_opencl_gen::*;
 use rusticl_proc_macros::cl_entrypoint;
 use rusticl_proc_macros::cl_info_entrypoint;
 
-use std::mem;
+use std::mem::{self, MaybeUninit};
 use std::os::raw::c_void;
 use std::ptr;
 use std::slice;
@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 #[cl_info_entrypoint(cl_get_kernel_info)]
 impl CLInfo<cl_kernel_info> for cl_kernel {
-    fn query(&self, q: cl_kernel_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_kernel_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         let kernel = self.get_ref()?;
         Ok(match q {
             CL_KERNEL_ATTRIBUTES => cl_prop::<&str>(&kernel.attributes_string),
@@ -41,7 +41,7 @@ impl CLInfo<cl_kernel_info> for cl_kernel {
 
 #[cl_info_entrypoint(cl_get_kernel_arg_info)]
 impl CLInfoObj<cl_kernel_arg_info, cl_uint> for cl_kernel {
-    fn query(&self, idx: cl_uint, q: cl_kernel_arg_info) -> CLResult<Vec<u8>> {
+    fn query(&self, idx: cl_uint, q: cl_kernel_arg_info) -> CLResult<Vec<MaybeUninit<u8>>> {
         let kernel = self.get_ref()?;
 
         // CL_INVALID_ARG_INDEX if arg_index is not a valid argument index.
@@ -69,7 +69,11 @@ impl CLInfoObj<cl_kernel_arg_info, cl_uint> for cl_kernel {
 
 #[cl_info_entrypoint(cl_get_kernel_work_group_info)]
 impl CLInfoObj<cl_kernel_work_group_info, cl_device_id> for cl_kernel {
-    fn query(&self, dev: cl_device_id, q: cl_kernel_work_group_info) -> CLResult<Vec<u8>> {
+    fn query(
+        &self,
+        dev: cl_device_id,
+        q: cl_kernel_work_group_info,
+    ) -> CLResult<Vec<MaybeUninit<u8>>> {
         let kernel = self.get_ref()?;
 
         // CL_INVALID_DEVICE [..] if device is NULL but there is more than one device associated with kernel.
@@ -107,7 +111,7 @@ impl CLInfoObj<cl_kernel_sub_group_info, (cl_device_id, usize, *const c_void)> f
         &self,
         (d, _input_value_size, _input_value): (cl_device_id, usize, *const c_void),
         _q: cl_program_build_info,
-    ) -> CLResult<Vec<u8>> {
+    ) -> CLResult<Vec<MaybeUninit<u8>>> {
         let _kernel = self.get_ref()?;
         let _dev = d.get_arc()?;
 

@@ -13,7 +13,7 @@ use rusticl_proc_macros::cl_info_entrypoint;
 
 use std::cmp::min;
 use std::ffi::CStr;
-use std::mem::size_of;
+use std::mem::{size_of, MaybeUninit};
 use std::ptr;
 use std::sync::Arc;
 
@@ -29,7 +29,7 @@ type ClDevIdpAccelProps = cl_device_integer_dot_product_acceleration_properties_
 
 #[cl_info_entrypoint(cl_get_device_info)]
 impl CLInfo<cl_device_info> for cl_device_id {
-    fn query(&self, q: cl_device_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_device_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         let dev = self.get_ref()?;
 
         // curses you CL_DEVICE_INTEGER_DOT_PRODUCT_ACCELERATION_PROPERTIES_4x8BIT_PACKED_KHR

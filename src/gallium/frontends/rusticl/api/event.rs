@@ -9,12 +9,13 @@ use rusticl_proc_macros::cl_entrypoint;
 use rusticl_proc_macros::cl_info_entrypoint;
 
 use std::collections::HashSet;
+use std::mem::MaybeUninit;
 use std::ptr;
 use std::sync::Arc;
 
 #[cl_info_entrypoint(cl_get_event_info)]
 impl CLInfo<cl_event_info> for cl_event {
-    fn query(&self, q: cl_event_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_event_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         let event = self.get_ref()?;
         Ok(match *q {
             CL_EVENT_COMMAND_EXECUTION_STATUS => cl_prop::<cl_int>(event.status()),
@@ -40,7 +41,7 @@ impl CLInfo<cl_event_info> for cl_event {
 
 #[cl_info_entrypoint(cl_get_event_profiling_info)]
 impl CLInfo<cl_profiling_info> for cl_event {
-    fn query(&self, q: cl_profiling_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_profiling_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         let event = self.get_ref()?;
         if event.cmd_type == CL_COMMAND_USER {
             // CL_PROFILING_INFO_NOT_AVAILABLE [...] if event is a user event object.

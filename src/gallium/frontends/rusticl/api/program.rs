@@ -14,6 +14,7 @@ use rusticl_proc_macros::cl_info_entrypoint;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::iter;
+use std::mem::MaybeUninit;
 use std::num::NonZeroUsize;
 use std::os::raw::c_char;
 use std::ptr;
@@ -22,7 +23,7 @@ use std::sync::Arc;
 
 #[cl_info_entrypoint(cl_get_program_info)]
 impl CLInfo<cl_program_info> for cl_program {
-    fn query(&self, q: cl_program_info, vals: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_program_info, vals: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         let prog = self.get_ref()?;
         Ok(match q {
             CL_PROGRAM_BINARIES => cl_prop::<Vec<*mut u8>>(prog.binaries(vals)),
@@ -45,7 +46,7 @@ impl CLInfo<cl_program_info> for cl_program {
                 )
             }
             CL_PROGRAM_IL => match &prog.src {
-                ProgramSourceType::Il(il) => il.to_bin().to_vec(),
+                ProgramSourceType::Il(il) => to_maybeuninit_vec(il.to_bin().to_vec()),
                 _ => Vec::new(),
             },
             CL_PROGRAM_KERNEL_NAMES => cl_prop::<&str>(&*prog.kernels().join(";")),
@@ -66,7 +67,7 @@ impl CLInfo<cl_program_info> for cl_program {
 
 #[cl_info_entrypoint(cl_get_program_build_info)]
 impl CLInfoObj<cl_program_build_info, cl_device_id> for cl_program {
-    fn query(&self, d: cl_device_id, q: cl_program_build_info) -> CLResult<Vec<u8>> {
+    fn query(&self, d: cl_device_id, q: cl_program_build_info) -> CLResult<Vec<MaybeUninit<u8>>> {
         let prog = self.get_ref()?;
         let dev = d.get_arc()?;
         Ok(match q {
