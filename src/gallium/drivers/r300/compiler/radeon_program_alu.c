@@ -248,89 +248,6 @@ static void transform_TRUNC(struct radeon_compiler* c,
 	rc_remove_instruction(inst);
 }
 
-/**
- * Definition of LIT (from ARB_fragment_program):
- *
- *  tmp = VectorLoad(op0);
- *  if (tmp.x < 0) tmp.x = 0;
- *  if (tmp.y < 0) tmp.y = 0;
- *  if (tmp.w < -(128.0-epsilon)) tmp.w = -(128.0-epsilon);
- *  else if (tmp.w > 128-epsilon) tmp.w = 128-epsilon;
- *  result.x = 1.0;
- *  result.y = tmp.x;
- *  result.z = (tmp.x > 0) ? RoughApproxPower(tmp.y, tmp.w) : 0.0;
- *  result.w = 1.0;
- *
- * The longest path of computation is the one leading to result.z,
- * consisting of 5 operations. This implementation of LIT takes
- * 5 slots, if the subsequent optimization passes are clever enough
- * to pair instructions correctly.
- */
-static void transform_LIT(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	unsigned int constant;
-	unsigned int constant_swizzle;
-	unsigned int temp;
-	struct rc_src_register srctemp;
-
-	constant = rc_constants_add_immediate_scalar(&c->Program.Constants, -127.999999, &constant_swizzle);
-
-	if (inst->U.I.DstReg.WriteMask != RC_MASK_XYZW || inst->U.I.DstReg.File != RC_FILE_TEMPORARY) {
-		struct rc_instruction * inst_mov;
-
-		inst_mov = emit1(c, inst,
-			RC_OPCODE_MOV, NULL, inst->U.I.DstReg,
-			srcreg(RC_FILE_TEMPORARY, rc_find_free_temporary(c)));
-
-		inst->U.I.DstReg.File = RC_FILE_TEMPORARY;
-		inst->U.I.DstReg.Index = inst_mov->U.I.SrcReg[0].Index;
-		inst->U.I.DstReg.WriteMask = RC_MASK_XYZW;
-	}
-
-	temp = inst->U.I.DstReg.Index;
-	srctemp = srcreg(RC_FILE_TEMPORARY, temp);
-
-	/* tmp.x = max(0.0, Src.x); */
-	/* tmp.y = max(0.0, Src.y); */
-	/* tmp.w = clamp(Src.z, -128+eps, 128-eps); */
-	emit2(c, inst->Prev, RC_OPCODE_MAX, NULL,
-		dstregtmpmask(temp, RC_MASK_XYW),
-		inst->U.I.SrcReg[0],
-		swizzle(srcreg(RC_FILE_CONSTANT, constant),
-			RC_SWIZZLE_ZERO, RC_SWIZZLE_ZERO, RC_SWIZZLE_ZERO, constant_swizzle&3));
-	emit2(c, inst->Prev, RC_OPCODE_MIN, NULL,
-		dstregtmpmask(temp, RC_MASK_Z),
-		swizzle_wwww(srctemp),
-		negate(srcregswz(RC_FILE_CONSTANT, constant, constant_swizzle)));
-
-	/* tmp.w = Pow(tmp.y, tmp.w) */
-	emit1(c, inst->Prev, RC_OPCODE_LG2, NULL,
-		dstregtmpmask(temp, RC_MASK_W),
-		swizzle_yyyy(srctemp));
-	emit2(c, inst->Prev, RC_OPCODE_MUL, NULL,
-		dstregtmpmask(temp, RC_MASK_W),
-		swizzle_wwww(srctemp),
-		swizzle_zzzz(srctemp));
-	emit1(c, inst->Prev, RC_OPCODE_EX2, NULL,
-		dstregtmpmask(temp, RC_MASK_W),
-		swizzle_wwww(srctemp));
-
-	/* tmp.z = (tmp.x > 0) ? tmp.w : 0.0 */
-	emit3(c, inst->Prev, RC_OPCODE_CMP, &inst->U.I,
-		dstregtmpmask(temp, RC_MASK_Z),
-		negate(swizzle_xxxx(srctemp)),
-		swizzle_wwww(srctemp),
-		builtin_zero);
-
-	/* tmp.x, tmp.y, tmp.w = 1.0, tmp.x, 1.0 */
-	emit1(c, inst->Prev, RC_OPCODE_MOV, &inst->U.I,
-		dstregtmpmask(temp, RC_MASK_XYW),
-		swizzle(srctemp, RC_SWIZZLE_ONE, RC_SWIZZLE_X, RC_SWIZZLE_ONE, RC_SWIZZLE_ONE));
-
-	rc_remove_instruction(inst);
-}
-
 static void transform_LRP(struct radeon_compiler* c,
 	struct rc_instruction* inst)
 {
@@ -443,7 +360,7 @@ static void transform_KILP(struct radeon_compiler * c,
  * no userData necessary.
  *
  * Eliminates the following ALU instructions:
- *  LIT, LRP, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
+ *  LRP, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
  * using:
  *  MOV, ADD, MUL, MAD, FRC, DP3, LG2, EX2, CMP
  *
@@ -460,7 +377,6 @@ int radeonTransformALU(
 	switch(inst->U.I.Opcode) {
 	case RC_OPCODE_DP2: transform_DP2(c, inst); return 1;
 	case RC_OPCODE_KILP: transform_KILP(c, inst); return 1;
-	case RC_OPCODE_LIT: transform_LIT(c, inst); return 1;
 	case RC_OPCODE_LRP: transform_LRP(c, inst); return 1;
 	case RC_OPCODE_RSQ: transform_RSQ(c, inst); return 1;
 	case RC_OPCODE_SEQ: transform_SEQ(c, inst); return 1;
