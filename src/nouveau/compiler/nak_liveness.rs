@@ -8,7 +8,55 @@ use crate::nak_ir::*;
 
 use std::cell::RefCell;
 use std::cmp::max;
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_set, HashMap, HashSet};
+
+struct LiveSet {
+    live: PerRegFile<u32>,
+    set: HashSet<SSAValue>,
+}
+
+impl LiveSet {
+    pub fn new() -> LiveSet {
+        LiveSet {
+            live: Default::default(),
+            set: HashSet::new(),
+        }
+    }
+
+    pub fn contains(&self, ssa: &SSAValue) -> bool {
+        self.set.contains(ssa)
+    }
+
+    pub fn count(&self, file: RegFile) -> u32 {
+        self.live[file]
+    }
+
+    pub fn counts(&self) -> &PerRegFile<u32> {
+        &self.live
+    }
+
+    pub fn insert(&mut self, ssa: SSAValue) -> bool {
+        if self.set.insert(ssa) {
+            self.live[ssa.file()] += 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn iter(&self) -> hash_set::Iter<SSAValue> {
+        self.set.iter()
+    }
+
+    pub fn remove(&mut self, ssa: &SSAValue) -> bool {
+        if self.set.remove(ssa) {
+            self.live[ssa.file()] -= 1;
+            true
+        } else {
+            false
+        }
+    }
+}
 
 pub trait BlockLiveness {
     fn is_live_after_ip(&self, val: &SSAValue, ip: usize) -> bool;
@@ -20,6 +68,99 @@ pub trait Liveness {
     type PerBlock: BlockLiveness;
 
     fn block_live(&self, id: u32) -> &Self::PerBlock;
+
+    fn calc_max_live(&self, f: &Function, cfg: &CFG) -> PerRegFile<u32> {
+        let mut max_live: PerRegFile<u32> = Default::default();
+        let mut block_live_out: HashMap<u32, LiveSet> = HashMap::new();
+
+        for bb in &f.blocks {
+            let bl = self.block_live(bb.id);
+
+            let mut live = LiveSet::new();
+
+            /* Predecessors are added block order so we can just grab the first
+             * one (if any) and it will be a block we've processed.
+             */
+            if let Some(pred_id) = cfg.block_predecessors(bb.id).first() {
+                let pred_out = block_live_out.get(&pred_id).unwrap();
+                for ssa in pred_out.iter() {
+                    if bl.is_live_in(ssa) {
+                        live.insert(*ssa);
+                    }
+                }
+            }
+
+            for (ip, instr) in bb.instrs.iter().enumerate() {
+                /* Vector destinations go live before sources are killed.  Even
+                 * in the case where the destination is immediately killed, it
+                 * still may contribute to pressure temporarily.
+                 */
+                for dst in instr.dsts() {
+                    if let Dst::SSA(vec) = dst {
+                        if vec.comps() > 1 {
+                            for ssa in vec.iter() {
+                                live.insert(*ssa);
+                            }
+                        }
+                    }
+                }
+
+                for (ml, l) in max_live.values_mut().zip(live.counts().values())
+                {
+                    *ml = max(*ml, *l);
+                }
+
+                if let PredRef::SSA(ssa) = &instr.pred.pred_ref {
+                    if !bl.is_live_after_ip(ssa, ip) {
+                        live.remove(ssa);
+                    }
+                }
+
+                for src in instr.srcs() {
+                    if let SrcRef::SSA(vec) = &src.src_ref {
+                        for ssa in vec.iter() {
+                            if !bl.is_live_after_ip(ssa, ip) {
+                                live.remove(ssa);
+                            }
+                        }
+                    }
+                }
+
+                /* Scalar destinations are allocated last */
+                for dst in instr.dsts() {
+                    if let Dst::SSA(vec) = dst {
+                        if vec.comps() == 1 {
+                            live.insert(vec[0]);
+                        }
+                    }
+                }
+
+                for (ml, l) in max_live.values_mut().zip(live.counts().values())
+                {
+                    *ml = max(*ml, *l);
+                }
+
+                /* We already added destinations to the live count but haven't
+                 * inserted them into the live set yet.  If a destination is
+                 * killed immediately, subtract from the count, otherwise add to
+                 * the set.
+                 */
+                for dst in instr.dsts() {
+                    if let Dst::SSA(vec) = dst {
+                        for ssa in vec.iter() {
+                            if !bl.is_live_after_ip(ssa, ip) {
+                                live.remove(ssa);
+                            }
+                        }
+                    }
+                }
+            }
+
+            block_live_out.insert(bb.id, live);
+        }
+
+        max_live
+    }
 }
 
 struct SSAUseDef {
@@ -66,7 +207,6 @@ impl SSAUseDef {
 pub struct NextUseBlockLiveness {
     num_instrs: usize,
     ssa_map: HashMap<SSAValue, SSAUseDef>,
-    max_live: PerRegFile<u32>,
 }
 
 impl NextUseBlockLiveness {
@@ -81,7 +221,6 @@ impl NextUseBlockLiveness {
         let mut bl = Self {
             num_instrs: block.instrs.len(),
             ssa_map: HashMap::new(),
-            max_live: Default::default(),
         };
 
         for (ip, instr) in block.instrs.iter().enumerate() {
@@ -105,11 +244,6 @@ impl NextUseBlockLiveness {
         }
 
         bl
-    }
-
-    #[allow(dead_code)]
-    pub fn max_live(&self, file: RegFile) -> u32 {
-        self.max_live[file]
     }
 }
 
@@ -149,14 +283,9 @@ impl BlockLiveness for NextUseBlockLiveness {
 
 pub struct NextUseLiveness {
     blocks: HashMap<u32, NextUseBlockLiveness>,
-    max_live: PerRegFile<u32>,
 }
 
 impl NextUseLiveness {
-    pub fn max_live(&self, file: RegFile) -> u32 {
-        self.max_live[file]
-    }
-
     pub fn for_function(func: &Function, cfg: &CFG) -> NextUseLiveness {
         let mut blocks = HashMap::new();
         for b in &func.blocks {
@@ -206,97 +335,11 @@ impl NextUseLiveness {
             }
         }
 
-        let mut l = NextUseLiveness {
+        NextUseLiveness {
             blocks: HashMap::from_iter(
                 blocks.drain().map(|(k, v)| (k, v.into_inner())),
             ),
-            max_live: Default::default(),
-        };
-
-        for b in func.blocks.iter().rev() {
-            let bl = l.blocks.get_mut(&b.id).unwrap();
-
-            /* Populate a live set based on live out */
-            let mut dead = HashSet::new();
-            let mut live: PerRegFile<u32> = Default::default();
-            for (ssa, entry) in bl.ssa_map.iter() {
-                if !entry.defined {
-                    assert!(!entry.uses.is_empty());
-                    live[ssa.file()] += 1;
-                }
-            }
-
-            for (ip, instr) in b.instrs.iter().enumerate() {
-                /* Vector destinations go live before sources are killed */
-                for dst in instr.dsts() {
-                    if let Dst::SSA(vec) = dst {
-                        if vec.comps() > 1 {
-                            live[vec.file()] += u32::from(vec.comps());
-                        }
-                    }
-                }
-
-                for (bml, l) in bl.max_live.values_mut().zip(live.values()) {
-                    *bml = max(*bml, *l);
-                }
-
-                /* Because any given SSA value may appear multiple times in
-                 * sources, we have to de-duplicate in order to get an accurate
-                 * count.
-                 */
-                dead.clear();
-
-                if let PredRef::SSA(ssa) = &instr.pred.pred_ref {
-                    if !bl.is_live_after_ip(ssa, ip) {
-                        dead.insert(*ssa);
-                    }
-                }
-
-                for src in instr.srcs() {
-                    if let SrcRef::SSA(vec) = &src.src_ref {
-                        for ssa in vec.iter() {
-                            if !bl.is_live_after_ip(ssa, ip) {
-                                dead.insert(*ssa);
-                            }
-                        }
-                    }
-                }
-
-                for ssa in dead.iter() {
-                    live[ssa.file()] -= 1;
-                }
-
-                /* Scalar destinations go live after we've killed sources */
-                for dst in instr.dsts() {
-                    if let Dst::SSA(vec) = dst {
-                        if vec.comps() == 1 {
-                            live[vec.file()] += 1;
-                        }
-                    }
-                }
-
-                for (bml, l) in bl.max_live.values_mut().zip(live.values()) {
-                    *bml = max(*bml, *l);
-                }
-
-                /* Some destinations may only be momentarily live */
-                for dst in instr.dsts() {
-                    if let Dst::SSA(vec) = dst {
-                        for ssa in vec.iter() {
-                            if !bl.is_live_after_ip(ssa, ip) {
-                                live[vec.file()] -= 1;
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (ml, bml) in l.max_live.values_mut().zip(bl.max_live.values()) {
-                *ml = max(*ml, *bml);
-            }
         }
-
-        l
     }
 }
 

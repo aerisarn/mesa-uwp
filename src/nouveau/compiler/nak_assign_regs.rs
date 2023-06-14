@@ -1019,10 +1019,11 @@ impl AssignRegs {
     pub fn run(&mut self, f: &mut Function) {
         let cfg = CFG::for_function(f);
         let live = NextUseLiveness::for_function(f, &cfg);
+        let max_live = live.calc_max_live(f, &cfg);
 
         let num_regs = PerRegFile::new_with(|file| {
             let num_regs = file.num_regs(self.sm);
-            let max_live = live.max_live(file);
+            let max_live = max_live[file];
             if max_live > u32::from(num_regs) {
                 panic!("Not enough registers. Needs {}", max_live);
             }
