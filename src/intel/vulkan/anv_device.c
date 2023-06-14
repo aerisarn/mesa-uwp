@@ -218,6 +218,9 @@ get_device_extensions(const struct anv_physical_device *device,
 
    const bool rt_enabled = ANV_SUPPORT_RT && device->info.has_ray_tracing;
 
+   const bool cooperative_matrix_enabled =
+      anv_has_cooperative_matrix(&device->info);
+
    *ext = (struct vk_device_extension_table) {
       .KHR_8bit_storage                      = true,
       .KHR_16bit_storage                     = !device->instance->no_16bit,
@@ -226,6 +229,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_buffer_device_address             = true,
       .KHR_calibrated_timestamps             = device->has_reg_timestamp,
       .KHR_copy_commands2                    = true,
+      .KHR_cooperative_matrix                = cooperative_matrix_enabled,
       .KHR_create_renderpass2                = true,
       .KHR_dedicated_allocation              = true,
       .KHR_deferred_host_operations          = true,
@@ -862,6 +866,9 @@ get_features(const struct anv_physical_device *pdevice,
       .nestedCommandBuffer = true,
       .nestedCommandBufferRendering = true,
       .nestedCommandBufferSimultaneousUse = false,
+
+      /* VK_KHR_cooperative_matrix */
+      .cooperativeMatrix = anv_has_cooperative_matrix(&pdevice->info),
    };
 
    /* The new DOOM and Wolfenstein games require depthBounds without
@@ -1319,6 +1326,9 @@ get_properties(const struct anv_physical_device *pdevice,
       .sparseResidencyStandard3DBlockShape = has_sparse_or_fake,
       .sparseResidencyAlignedMipSize = false,
       .sparseResidencyNonResidentStrict = has_sparse_or_fake,
+
+      /* VK_KHR_cooperative_matrix */
+      .cooperativeMatrixSupportedStages = VK_SHADER_STAGE_COMPUTE_BIT,
    };
 
    snprintf(props->deviceName, sizeof(props->deviceName),
@@ -5126,4 +5136,69 @@ anv_device_get_pat_entry(struct anv_device *device,
       return &device->info->pat.writeback_incoherent;
    else
       return &device->info->pat.writecombining;
+}
+
+static VkComponentTypeKHR
+convert_component_type(enum intel_cooperative_matrix_component_type t)
+{
+   switch (t) {
+   case INTEL_CMAT_FLOAT16: return VK_COMPONENT_TYPE_FLOAT16_KHR;
+   case INTEL_CMAT_FLOAT32: return VK_COMPONENT_TYPE_FLOAT32_KHR;
+   case INTEL_CMAT_SINT32:  return VK_COMPONENT_TYPE_SINT32_KHR;
+   case INTEL_CMAT_SINT8:   return VK_COMPONENT_TYPE_SINT8_KHR;
+   case INTEL_CMAT_UINT32:  return VK_COMPONENT_TYPE_UINT32_KHR;
+   case INTEL_CMAT_UINT8:   return VK_COMPONENT_TYPE_UINT8_KHR;
+   }
+   unreachable("invalid cooperative matrix component type in configuration");
+}
+
+static VkScopeKHR
+convert_scope(mesa_scope scope)
+{
+   switch (scope) {
+   case SCOPE_DEVICE:       return VK_SCOPE_DEVICE_KHR;
+   case SCOPE_WORKGROUP:    return VK_SCOPE_WORKGROUP_KHR;
+   case SCOPE_SUBGROUP:     return VK_SCOPE_SUBGROUP_KHR;
+   case SCOPE_QUEUE_FAMILY: return VK_SCOPE_QUEUE_FAMILY_KHR;
+   default:
+      unreachable("invalid cooperative matrix scope in configuration");
+   }
+}
+
+VkResult anv_GetPhysicalDeviceCooperativeMatrixPropertiesKHR(
+   VkPhysicalDevice                            physicalDevice,
+   uint32_t*                                   pPropertyCount,
+   VkCooperativeMatrixPropertiesKHR*           pProperties)
+{
+   ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
+   const struct intel_device_info *devinfo = &pdevice->info;
+
+   assert(anv_has_cooperative_matrix(devinfo));
+
+   VK_OUTARRAY_MAKE_TYPED(VkCooperativeMatrixPropertiesKHR, out, pProperties, pPropertyCount);
+
+   for (int i = 0; i < ARRAY_SIZE(devinfo->cooperative_matrix_configurations); i++) {
+      const struct intel_cooperative_matrix_configuration *cfg =
+         &devinfo->cooperative_matrix_configurations[i];
+
+      if (cfg->scope == SCOPE_NONE)
+         break;
+
+      vk_outarray_append_typed(VkCooperativeMatrixPropertiesKHR, &out, prop) {
+         prop->sType = VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_KHR;
+
+         prop->MSize = cfg->m;
+         prop->NSize = cfg->n;
+         prop->KSize = cfg->k;
+
+         prop->AType      = convert_component_type(cfg->a);
+         prop->BType      = convert_component_type(cfg->b);
+         prop->CType      = convert_component_type(cfg->c);
+         prop->ResultType = convert_component_type(cfg->result);
+
+         prop->scope = convert_scope(cfg->scope);
+      }
+   }
+
+   return vk_outarray_status(&out);
 }

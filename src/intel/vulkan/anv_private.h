@@ -5804,6 +5804,11 @@ static inline void anv_perfetto_end_submit(struct anv_queue *queue,
 {}
 #endif
 
+static bool
+anv_has_cooperative_matrix(const struct intel_device_info *info)
+{
+   return info->cooperative_matrix_configurations[0].scope != SCOPE_NONE;
+}
 
 #define ANV_FROM_HANDLE(__anv_type, __name, __handle) \
    VK_FROM_HANDLE(__anv_type, __name, __handle)

@@ -144,6 +144,7 @@ anv_shader_stage_to_nir(struct anv_device *device,
    const bool rt_enabled = ANV_SUPPORT_RT && pdevice->info.has_ray_tracing;
    const struct spirv_to_nir_options spirv_options = {
       .caps = {
+         .cooperative_matrix = anv_has_cooperative_matrix(&pdevice->info),
          .demote_to_helper_invocation = true,
          .derivative_group = true,
          .descriptor_array_dynamic_indexing = true,
@@ -975,6 +976,13 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
        pipeline->type == ANV_PIPELINE_GRAPHICS_LIB) {
       NIR_PASS(_, nir, anv_nir_lower_multiview, view_mask,
                use_primitive_replication);
+   }
+
+   if (gl_shader_stage_uses_workgroup(nir->info.stage)) {
+      // TODO(coop): Write this restriction the right way, maybe we need to do at the backend.
+      assert(nir->info.subgroup_size <= SUBGROUP_SIZE_REQUIRE_8);
+      nir->info.subgroup_size = SUBGROUP_SIZE_REQUIRE_8;
+      NIR_PASS(_, nir, brw_nir_lower_cmat, nir->info.subgroup_size);
    }
 
    /* The patch control points are delivered through a push constant when
