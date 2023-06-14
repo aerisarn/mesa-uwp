@@ -378,18 +378,48 @@ fn release_device(_device: cl_device_id) -> CLResult<()> {
 
 #[cl_entrypoint]
 fn get_device_and_host_timer(
-    _device: cl_device_id,
-    _device_timestamp: *mut cl_ulong,
-    _host_timestamp: *mut cl_ulong,
+    device: cl_device_id,
+    device_timestamp: *mut cl_ulong,
+    host_timestamp: *mut cl_ulong,
 ) -> CLResult<()> {
-    // TODO: we could support it
-    Err(CL_INVALID_OPERATION)
+    if device_timestamp.is_null() {
+        // CL_INVALID_VALUE if host_timestamp or device_timestamp is NULL
+        return Err(CL_INVALID_VALUE);
+    }
+
+    get_host_timer(device, host_timestamp)?;
+    // There is a requirement that the two timestamps
+    // are synchronised, but don't need to be the same,
+    // but as it is, the same timestamp is the best to
+    // use for both
+
+    // Safe because null check on device_timestamp above
+    // and host_timestamp null check in get_host_timer
+    unsafe {
+        *device_timestamp = *host_timestamp;
+    };
+
+    Ok(())
 }
 
 #[cl_entrypoint]
-fn get_host_timer(_device: cl_device_id, _host_timestamp: *mut cl_ulong) -> CLResult<()> {
-    // TODO: we could support it
-    Err(CL_INVALID_OPERATION)
+fn get_host_timer(device_id: cl_device_id, host_timestamp: *mut cl_ulong) -> CLResult<()> {
+    if host_timestamp.is_null() {
+        // CL_INVALID_VALUE if host_timestamp is NULL
+        return Err(CL_INVALID_VALUE);
+    }
+
+    let device = device_id.get_ref()?;
+
+    if !device.has_timestamp {
+        // CL_INVALID_OPERATION if the platform associated with device does not support device and host timer synchronization
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    // Currently the best clock we have for the host_timestamp
+    host_timestamp.write_checked(device.screen().get_timestamp());
+
+    Ok(())
 }
 
 #[cl_entrypoint]
