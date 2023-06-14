@@ -45,6 +45,18 @@ do_winsys_init(struct radv_amdgpu_winsys *ws, int fd)
    if (!ac_query_gpu_info(fd, ws->dev, &ws->info))
       return false;
 
+   /*
+    * Override the max submits on video queues.
+    * If you submit multiple session contexts in the same IB sequence the
+    * hardware gets upset as it expects a kernel fence to be emitted to reset
+    * the session context in the hardware.
+    * Avoid this problem by never submitted more than one IB at a time.
+    * This possibly should be fixed in the kernel, and if it is this can be
+    * resolved.
+    */
+   for (enum amd_ip_type ip_type = AMD_IP_UVD; ip_type <= AMD_IP_VCN_ENC; ip_type++)
+      ws->info.max_submitted_ibs[ip_type] = 1;
+
    if (!ac_query_pci_bus_info(fd, &ws->info))
       return false;
 
