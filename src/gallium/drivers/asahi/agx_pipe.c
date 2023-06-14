@@ -1471,7 +1471,6 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
    case PIPE_CAP_SHADER_PACK_HALF_FLOAT:
    case PIPE_CAP_FS_FINE_DERIVATIVE:
-   case PIPE_CAP_TEXTURE_BARRIER:
       return 1;
 
    /* We could support ARB_clip_control by toggling the clip control bit for
