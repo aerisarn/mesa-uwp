@@ -644,7 +644,7 @@ dzn_physical_device_get_features(const struct dzn_physical_device *pdev,
       .samplerAnisotropy = true,
       .textureCompressionETC2 = false,
       .textureCompressionASTC_LDR = false,
-      .textureCompressionBC = dzn_physical_device_supports_bc(pdev),
+      .textureCompressionBC = true,
       .occlusionQueryPrecise = true,
       .pipelineStatisticsQuery = true,
       .vertexPipelineStoresAndAtomics = true,
@@ -1518,50 +1518,6 @@ dzn_EnumerateInstanceVersion(uint32_t *pApiVersion)
 {
    *pApiVersion = DZN_API_VERSION;
    return VK_SUCCESS;
-}
-
-static bool
-dzn_physical_device_supports_compressed_format(struct dzn_physical_device *pdev,
-                                               const VkFormat *formats,
-                                               uint32_t format_count)
-{
-#define REQUIRED_COMPRESSED_CAPS \
-        (VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | \
-         VK_FORMAT_FEATURE_BLIT_SRC_BIT | \
-         VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)
-   for (uint32_t i = 0; i < format_count; i++) {
-      VkFormatProperties2 props = { 0 };
-      dzn_physical_device_get_format_properties(pdev, formats[i], &props);
-      if ((props.formatProperties.optimalTilingFeatures & REQUIRED_COMPRESSED_CAPS) != REQUIRED_COMPRESSED_CAPS)
-         return false;
-   }
-
-   return true;
-}
-
-static bool
-dzn_physical_device_supports_bc(struct dzn_physical_device *pdev)
-{
-   static const VkFormat formats[] = {
-      VK_FORMAT_BC1_RGB_UNORM_BLOCK,
-      VK_FORMAT_BC1_RGB_SRGB_BLOCK,
-      VK_FORMAT_BC1_RGBA_UNORM_BLOCK,
-      VK_FORMAT_BC1_RGBA_SRGB_BLOCK,
-      VK_FORMAT_BC2_UNORM_BLOCK,
-      VK_FORMAT_BC2_SRGB_BLOCK,
-      VK_FORMAT_BC3_UNORM_BLOCK,
-      VK_FORMAT_BC3_SRGB_BLOCK,
-      VK_FORMAT_BC4_UNORM_BLOCK,
-      VK_FORMAT_BC4_SNORM_BLOCK,
-      VK_FORMAT_BC5_UNORM_BLOCK,
-      VK_FORMAT_BC5_SNORM_BLOCK,
-      VK_FORMAT_BC6H_UFLOAT_BLOCK,
-      VK_FORMAT_BC6H_SFLOAT_BLOCK,
-      VK_FORMAT_BC7_UNORM_BLOCK,
-      VK_FORMAT_BC7_SRGB_BLOCK,
-   };
-
-   return dzn_physical_device_supports_compressed_format(pdev, formats, ARRAY_SIZE(formats));
 }
 
 
