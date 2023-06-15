@@ -600,10 +600,8 @@ kill_undefined_varyings(struct nir_builder *b,
     * since that would remove the store instruction, and would make it tricky to satisfy
     * the DXIL requirements of writing all position components.
     */
-   unsigned int swizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
-   nir_ssa_def *zero =
-      nir_swizzle(b, nir_imm_intN_t(b, 0, nir_dest_bit_size(intr->dest)),
-                     swizzle, nir_dest_num_components(intr->dest));
+   nir_ssa_def *zero = nir_imm_zero(b, nir_dest_num_components(intr->dest),
+                                       nir_dest_bit_size(intr->dest));
    nir_ssa_def_rewrite_uses(&intr->dest.ssa, zero);
    nir_instr_remove(instr);
    return true;
@@ -807,7 +805,7 @@ lower_pntc_read(nir_builder *b, nir_instr *instr, void *data)
    else
       pos = nir_interp_deref_at_offset(b, 4, 32,
                                        &nir_build_deref_var(b, pos_var)->dest.ssa,
-                                       nir_replicate(b, nir_imm_float(b, 0), 2));
+                                       nir_imm_zero(b, 2, 32));
 
    nir_ssa_def *pntc = nir_fadd_imm(b,
                                     nir_fsub(b, nir_trim_vector(b, pos, 2), nir_trim_vector(b, point_center, 2)),
