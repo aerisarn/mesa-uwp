@@ -56,7 +56,8 @@ namespace nv50_ir {
 
 class NVC0LegalizeSSA : public Pass
 {
-private:
+protected:
+   using Pass::visit;
    bool visit(BasicBlock *) override;
    bool visit(Function *) override;
 
@@ -69,7 +70,6 @@ private:
    void handleShift(Instruction *);
    void handleBREV(Instruction *);
 
-protected:
    void handleFTZ(Instruction *);
 
    BuildUtil bld;
@@ -80,10 +80,12 @@ class NVC0LegalizePostRA : public Pass
 public:
    NVC0LegalizePostRA(const Program *);
 
-private:
+protected:
+   using Pass::visit;
    bool visit(Function *) override;
    bool visit(BasicBlock *) override;
 
+private:
    void replaceCvt(Instruction *);
    void replaceZero(Instruction *);
    bool tryReplaceContWithBra(BasicBlock *);
@@ -156,11 +158,10 @@ protected:
    Value *loadMsAdjInfo32(TexInstruction::Target targ, uint32_t index, int slot, Value *ind, bool bindless);
 
    bool visit(Instruction *) override;
-
-private:
    bool visit(Function *) override;
    bool visit(BasicBlock *) override;
 
+private:
    void readTessCoord(LValue *dst, int c);
 
    Value *loadResInfo32(Value *ptr, uint32_t off, uint16_t base);
