@@ -1000,7 +1000,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
          goto fail;
    }
 
-   if (device->physical_device->rad_info.gfx_level >= GFX7)
+   if (device->physical_device->rad_info.gfx_level >= GFX7 &&
+       !(device->instance->debug_flags & RADV_DEBUG_NO_IBS))
       cik_create_gfx_config(device);
 
    struct vk_pipeline_cache_create_info info = {0};
