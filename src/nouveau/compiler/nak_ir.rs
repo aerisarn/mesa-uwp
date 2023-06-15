@@ -3858,7 +3858,7 @@ impl Shader {
     pub fn new(sm: u8) -> Shader {
         Shader {
             sm: sm,
-            num_gprs: RegFile::GPR.num_regs(sm),
+            num_gprs: 0,
             tls_size: 0,
             functions: Vec::new(),
         }

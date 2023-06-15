@@ -1016,7 +1016,10 @@ impl AssignRegs {
         }
     }
 
-    pub fn run(&mut self, f: &mut Function) {
+    pub fn run(&mut self, s: &mut Shader) {
+        assert!(s.functions.len() == 1);
+        let f = &mut s.functions[0];
+
         let cfg = CFG::for_function(f);
         let live = SimpleLiveness::for_function(f, &cfg);
         let max_live = live.calc_max_live(f, &cfg);
@@ -1036,6 +1039,8 @@ impl AssignRegs {
                 num_regs
             }
         });
+
+        s.num_gprs = num_regs[RegFile::GPR];
 
         for b in &mut f.blocks {
             let bl = live.block_live(b.id);
@@ -1065,8 +1070,6 @@ impl AssignRegs {
 
 impl Shader {
     pub fn assign_regs(&mut self) {
-        for f in &mut self.functions {
-            AssignRegs::new(self.sm).run(f);
-        }
+        AssignRegs::new(self.sm).run(self);
     }
 }
