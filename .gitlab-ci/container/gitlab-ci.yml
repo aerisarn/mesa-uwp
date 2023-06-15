@@ -437,7 +437,7 @@ debian/arm64_test:
     - .container
     - .windows-docker-vs2019
   rules:
-    - !reference [.microsoft-farm-rules, rules]
+    - !reference [.microsoft-farm-container-rules, rules]
     - !reference [.container-rules, rules]
   variables:
     GIT_STRATEGY: fetch # we do actually need the full repository though

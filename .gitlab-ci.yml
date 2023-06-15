@@ -28,16 +28,10 @@ variables:
   JOB_ARTIFACTS_BASE: ${PIPELINE_ARTIFACTS_BASE}/${CI_JOB_ID}
   # reference images stored for traces
   PIGLIT_REPLAY_REFERENCE_IMAGES_BASE: "${S3_HOST}/mesa-tracie-results/$FDO_UPSTREAM_REPO"
-  # Individual CI farm status, set to "offline" to disable jobs
-  # running on a particular CI farm (ie. for outages, etc):
-  FD_FARM: "online"
-  COLLABORA_FARM: "online"
-  MICROSOFT_FARM: "online"
-  LIMA_FARM: "offline"
-  IGALIA_FARM: "online"
-  ANHOLT_FARM: "online"
-  VALVE_FARM: "online"
-  AUSTRIANCODER_FARM: "online"  # only etnaviv GPUs
+  # For individual CI farm status see .ci-farms folder
+  # Disable farm with   `git mv .ci-farms{,-disabled}/$farm_name`
+  # Re-enable farm with `git mv .ci-farms{-disabled,}/$farm_name`
+  # NEVER MIX FARM MAINTENANCE WITH ANY OTHER CHANGE IN THE SAME MERGE REQUEST!
 
 default:
   before_script:
@@ -165,6 +159,7 @@ stages:
       # Source code
       - include/**/*
       - src/**/*
+      - .ci-farms/*
       when: on_success
     # Otherwise, build/test jobs won't run because no rule matched.
 
@@ -208,6 +203,16 @@ stages:
         *all_paths
       when: manual
     # Otherwise, container jobs won't run because no rule matched.
+
+.microsoft-farm-container-rules:
+  rules:
+    # Allow triggering jobs manually in other cases if any files affecting the
+    # pipeline were changed
+    - exists: [ .ci-farms-disabled/microsoft ]
+      when: never
+    - changes: [ .ci-farms-disabled/microsoft ]
+      when: manual
+    - !reference [.microsoft-farm-rules, rules]
 
 # Git archive
 

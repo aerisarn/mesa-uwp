@@ -268,41 +268,81 @@
       - src/gallium/frontends/rusticl/**/*
       when: on_success
 
+# Farm rules
+.microsoft-farm-rules:
+  rules:
+    - exists: [ .ci-farms-disabled/microsoft ]  # 1. Is disabled, never run
+      when: never
+    - changes: [ .ci-farms-disabled/microsoft ]  # 2. Removed from disabled, run
+      when: on_success
+    - changes: [ .ci-farms-disabled/* ]  # 3. We touched other farms in MR, do not run
+      when: never
+    # 4. Fall-through (other rules or on_success)
+
 .collabora-farm-rules:
   rules:
-    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+    - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      exists: [ .ci-farms-disabled/collabora ]
+      when: never
+    - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      changes: [ .ci-farms-disabled/collabora ]
+      when: on_success
+    - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      changes: [ .ci-farms-disabled/* ]
       when: never
 
 .igalia-farm-rules:
   rules:
-    - if: '$IGALIA_FARM == "offline"'
+    - exists: [ .ci-farms-disabled/igalia ]
+      when: never
+    - changes: [ .ci-farms-disabled/igalia ]
+      when: on_success
+    - changes: [ .ci-farms-disabled/* ]
+      when: never
+
+.lima-farm-rules:
+  rules:
+    - exists: [ .ci-farms-disabled/lima ]
+      when: never
+    - changes: [ .ci-farms-disabled/lima ]
+      when: on_success
+    - changes: [ .ci-farms-disabled/* ]
       when: never
 
 .anholt-farm-rules:
   rules:
-    - if: '$ANHOLT_FARM == "offline"'
+    - exists: [ .ci-farms-disabled/anholt ]
+      when: never
+    - changes: [ .ci-farms-disabled/anholt ]
+      when: on_success
+    - changes: [ .ci-farms-disabled/* ]
       when: never
 
 .valve-farm-rules:
   rules:
-    - if: '$VALVE_FARM == "offline"'
+    - exists: [ .ci-farms-disabled/valve ]
+      when: never
+    - changes: [ .ci-farms-disabled/valve ]
+      when: on_success
+    - changes: [ .ci-farms-disabled/* ]
       when: never
 
 .austriancoder-farm-rules:
   rules:
-    - if: '$AUSTRIANCODER_FARM == "offline"'
+    - exists: [ .ci-farms-disabled/austriancoder ]
+      when: never
+    - changes: [ .ci-farms-disabled/austriancoder ]
+      when: on_success
+    - changes: [ .ci-farms-disabled/* ]
       when: never
 
-# Skips freedreno jobs if either of the farms we use are offline.
 .freedreno-farm-rules:
   rules:
-    - if: '$FD_FARM == "offline"'
+    - exists: [ .ci-farms-disabled/freedreno ]
       when: never
-    - !reference [.collabora-farm-rules, rules]
-
-.microsoft-farm-rules:
-  rules:
-    - if: '$MICROSOFT_FARM == "offline"'
+    - changes: [ .ci-farms-disabled/freedreno ]
+      when: on_success
+    - changes: [ .ci-farms-disabled/* ]
       when: never
 
 # Rules for changes that impact either freedreno or turnip.
@@ -555,8 +595,7 @@
 .lima-rules:
   stage: arm
   rules:
-    - if: '$LIMA_FARM == "offline"'
-      when: never
+    - !reference [.lima-farm-rules, rules]
     - !reference [.gl-rules, rules]
     - changes:
       - src/gallium/drivers/lima/**/*
