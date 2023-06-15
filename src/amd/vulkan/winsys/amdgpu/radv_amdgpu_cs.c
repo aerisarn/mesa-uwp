@@ -881,6 +881,22 @@ radv_assign_last_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_reque
    radv_amdgpu_request_to_fence(ctx, &ctx->last_submission[request->ip_type][request->ring], request);
 }
 
+static unsigned
+radv_amdgpu_count_ibs(struct radeon_cmdbuf **cs_array, unsigned cs_count,
+                      unsigned initial_preamble_count, unsigned continue_preamble_count,
+                      unsigned postamble_count)
+{
+   unsigned num_ibs = 0;
+
+   for (unsigned i = 0; i < cs_count; i++) {
+      struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
+
+      num_ibs += cs->use_ib ? 1 : cs->num_old_ib_buffers;
+   }
+
+   return MAX2(initial_preamble_count, continue_preamble_count) + num_ibs + postamble_count;
+}
+
 static VkResult
 radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx, struct radv_winsys_sem_info *sem_info,
                                       struct radeon_cmdbuf **cs_array, unsigned cs_count,
@@ -896,8 +912,10 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
    struct radv_amdgpu_winsys *ws = last_cs->ws;
 
    assert(cs_count);
-   const unsigned num_pre_post_cs = MAX2(initial_preamble_count, continue_preamble_count) + postamble_count;
-   const unsigned ib_array_size = MIN2(RADV_MAX_IBS_PER_SUBMIT, num_pre_post_cs + cs_count);
+   const unsigned num_ibs = radv_amdgpu_count_ibs(cs_array, cs_count, initial_preamble_count,
+                                                  continue_preamble_count, postamble_count);
+   const unsigned ib_array_size = MIN2(RADV_MAX_IBS_PER_SUBMIT, num_ibs);
+
    STACK_ARRAY(struct radv_amdgpu_cs_ib_info, ibs, ib_array_size);
 
    struct drm_amdgpu_bo_list_entry *handles = NULL;
@@ -984,6 +1002,7 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
          if (uses_shadow_regs && ib.ip_type == AMDGPU_HW_IP_GFX)
             ib.flags |= AMDGPU_IB_FLAG_PREEMPT;
 
+         assert(num_submitted_ibs < ib_array_size);
          ibs[num_submitted_ibs++] = ib;
          ibs_per_ip[cs->hw_ip]++;
       }
