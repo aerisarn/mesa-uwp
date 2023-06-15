@@ -49,6 +49,7 @@ librusticl = shared_library(
     driver_radeonsi,
     driver_swrast,
     idep_nir,
+    idep_vtn,
   ],
   link_args: ld_args_build_id,
   version : '@0@.0.0'.format(opencl_version),

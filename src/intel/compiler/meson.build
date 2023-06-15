@@ -177,7 +177,7 @@ if with_intel_clc
     include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel],
     c_args : [pre_args, no_override_init_args],
     link_args : [ld_args_build_id],
-    dependencies : [idep_nir, idep_mesaclc, idep_mesautil, idep_intel_dev],
+    dependencies : [idep_nir, idep_vtn, idep_mesaclc, idep_mesautil, idep_intel_dev],
     native : true,
   )
 endif
