@@ -9267,6 +9267,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
    VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    VK_FROM_HANDLE(radv_indirect_command_layout, layout, pGeneratedCommandsInfo->indirectCommandsLayout);
    VK_FROM_HANDLE(radv_buffer, prep_buffer, pGeneratedCommandsInfo->preprocessBuffer);
+   const struct radv_device *device = cmd_buffer->device;
 
    /* The only actions that can be done are draws, so skip on other queues. */
    if (cmd_buffer->qf != RADV_QUEUE_GENERAL)
@@ -9295,25 +9296,20 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
       return;
 
    uint32_t cmdbuf_size = radv_get_indirect_cmdbuf_size(pGeneratedCommandsInfo);
-   uint64_t va = radv_buffer_get_va(prep_buffer->bo) + prep_buffer->offset + pGeneratedCommandsInfo->preprocessOffset;
+   struct radeon_winsys_bo *ib_bo = prep_buffer->bo;
+   const uint64_t ib_offset = prep_buffer->offset + pGeneratedCommandsInfo->preprocessOffset;
    const uint32_t view_mask = cmd_buffer->state.render.view_mask;
 
    radeon_emit(cmd_buffer->cs, PKT3(PKT3_PFP_SYNC_ME, 0, cmd_buffer->state.predicating));
    radeon_emit(cmd_buffer->cs, 0);
 
    if (!view_mask) {
-      radeon_emit(cmd_buffer->cs, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
-      radeon_emit(cmd_buffer->cs, va);
-      radeon_emit(cmd_buffer->cs, va >> 32);
-      radeon_emit(cmd_buffer->cs, cmdbuf_size >> 2);
+      device->ws->cs_execute_ib(cmd_buffer->cs, ib_bo, ib_offset, cmdbuf_size >> 2);
    } else {
       u_foreach_bit (view, view_mask) {
          radv_emit_view_index(cmd_buffer, view);
 
-         radeon_emit(cmd_buffer->cs, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
-         radeon_emit(cmd_buffer->cs, va);
-         radeon_emit(cmd_buffer->cs, va >> 32);
-         radeon_emit(cmd_buffer->cs, cmdbuf_size >> 2);
+         device->ws->cs_execute_ib(cmd_buffer->cs, ib_bo, ib_offset, cmdbuf_size >> 2);
       }
    }
 

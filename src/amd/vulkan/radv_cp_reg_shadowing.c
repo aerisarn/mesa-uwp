@@ -111,11 +111,10 @@ void
 radv_emit_shadow_regs_preamble(struct radeon_cmdbuf *cs, const struct radv_device *device,
                                struct radv_queue_state *queue_state)
 {
-   uint64_t va = radv_buffer_get_va(queue_state->shadow_regs_ib);
-   radeon_emit(cs, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
-   radeon_emit(cs, va);
-   radeon_emit(cs, va >> 32);
-   radeon_emit(cs, queue_state->shadow_regs_ib_size_dw & 0xffff);
+   struct radeon_winsys *ws = device->ws;
+
+   ws->cs_execute_ib(cs, queue_state->shadow_regs_ib, 0,
+                     queue_state->shadow_regs_ib_size_dw & 0xffff);
 
    radv_cs_add_buffer(device->ws, cs, queue_state->shadowed_regs);
    radv_cs_add_buffer(device->ws, cs, queue_state->shadow_regs_ib);
