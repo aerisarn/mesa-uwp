@@ -1617,20 +1617,6 @@ x11_present_to_x11_dri3(struct x11_swapchain *chain, uint32_t image_index,
       options |= XCB_PRESENT_OPTION_SUBOPTIMAL;
 #endif
 
-   /* Poll for any available event and update the swapchain status. This could
-    * update the status of the swapchain to SUBOPTIMAL or OUT_OF_DATE if the
-    * associated X11 surface has been resized.
-    */
-   xcb_generic_event_t *event;
-   while ((event = xcb_poll_for_special_event(chain->conn, chain->special_event))) {
-      VkResult result = x11_handle_dri3_present_event(chain, (void *)event);
-      /* Ensure that VK_SUBOPTIMAL_KHR is reported to the application */
-      result = x11_swapchain_result(chain, result);
-      free(event);
-      if (result < 0)
-         return result;
-   }
-
    xshmfence_reset(image->shm_fence);
 
    ++chain->sent_image_count;
@@ -1640,28 +1626,22 @@ x11_present_to_x11_dri3(struct x11_swapchain *chain, uint32_t image_index,
    image->present_queued = true;
    image->serial = (uint32_t) chain->send_sbc;
 
-   xcb_void_cookie_t cookie =
-      xcb_present_pixmap_checked(chain->conn,
-                                 chain->window,
-                                 image->pixmap,
-                                 image->serial,
-                                 0,                            /* valid */
-                                 image->update_area,           /* update */
-                                 0,                            /* x_off */
-                                 0,                            /* y_off */
-                                 XCB_NONE,                     /* target_crtc */
-                                 XCB_NONE,
-                                 image->sync_fence,
-                                 options,
-                                 target_msc,
-                                 divisor,
-                                 remainder, 0, NULL);
-   xcb_generic_error_t *error = xcb_request_check(chain->conn, cookie);
-   if (error) {
-      free(error);
-      return x11_swapchain_result(chain, VK_ERROR_SURFACE_LOST_KHR);
-   }
-
+   xcb_present_pixmap(chain->conn,
+                      chain->window,
+                      image->pixmap,
+                      image->serial,
+                      0,                            /* valid */
+                      image->update_area,           /* update */
+                      0,                            /* x_off */
+                      0,                            /* y_off */
+                      XCB_NONE,                     /* target_crtc */
+                      XCB_NONE,
+                      image->sync_fence,
+                      options,
+                      target_msc,
+                      divisor,
+                      remainder, 0, NULL);
+   xcb_flush(chain->conn);
    return x11_swapchain_result(chain, VK_SUCCESS);
 }
 
