@@ -366,6 +366,66 @@ dgc_emit_draw_indexed(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream
    nir_pop_if(b, 0);
 }
 
+
+/**
+ * Emit VK_INDIRECT_COMMANDS_TOKEN_TYPE_INDEX_BUFFER_NV.
+ */
+static void
+dgc_emit_index_buffer(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf,
+                      nir_ssa_def *stream_base, nir_ssa_def *index_buffer_offset,
+                      nir_ssa_def *ibo_type_32, nir_ssa_def *ibo_type_8,
+                      nir_variable *index_size_var, nir_variable *max_index_count_var,
+                      const struct radv_device *device)
+{
+   nir_ssa_def *index_stream_offset =
+      nir_iadd(b, index_buffer_offset, stream_base);
+   nir_ssa_def *data =
+      nir_load_ssbo(b, 4, 32, stream_buf, index_stream_offset);
+
+   nir_ssa_def *vk_index_type = nir_channel(b, data, 3);
+   nir_ssa_def *index_type = nir_bcsel(
+      b, nir_ieq(b, vk_index_type, ibo_type_32),
+      nir_imm_int(b, V_028A7C_VGT_INDEX_32), nir_imm_int(b, V_028A7C_VGT_INDEX_16));
+   index_type = nir_bcsel(b, nir_ieq(b, vk_index_type, ibo_type_8),
+                          nir_imm_int(b, V_028A7C_VGT_INDEX_8), index_type);
+
+   nir_ssa_def *index_size = nir_iand_imm(
+      b, nir_ushr(b, nir_imm_int(b, 0x142), nir_imul_imm(b, index_type, 4)), 0xf);
+   nir_store_var(b, index_size_var, index_size, 0x1);
+
+   nir_ssa_def *max_index_count = nir_udiv(b, nir_channel(b, data, 2), index_size);
+   nir_store_var(b, max_index_count_var, max_index_count, 0x1);
+
+   nir_ssa_def *cmd_values[3 + 2 + 3];
+
+   if (device->physical_device->rad_info.gfx_level >= GFX9) {
+      unsigned opcode = PKT3_SET_UCONFIG_REG_INDEX;
+      if (device->physical_device->rad_info.gfx_level < GFX9 ||
+          (device->physical_device->rad_info.gfx_level == GFX9 &&
+           device->physical_device->rad_info.me_fw_version < 26))
+         opcode = PKT3_SET_UCONFIG_REG;
+      cmd_values[0] = nir_imm_int(b, PKT3(opcode, 1, 0));
+      cmd_values[1] = nir_imm_int(
+         b, (R_03090C_VGT_INDEX_TYPE - CIK_UCONFIG_REG_OFFSET) >> 2 | (2u << 28));
+      cmd_values[2] = index_type;
+   } else {
+      cmd_values[0] = nir_imm_int(b, PKT3(PKT3_INDEX_TYPE, 0, 0));
+      cmd_values[1] = index_type;
+      cmd_values[2] = nir_imm_int(b, PKT3_NOP_PAD);
+   }
+
+   nir_ssa_def *addr_upper = nir_channel(b, data, 1);
+   addr_upper = nir_ishr_imm(b, nir_ishl_imm(b, addr_upper, 16), 16);
+
+   cmd_values[3] = nir_imm_int(b, PKT3(PKT3_INDEX_BASE, 1, 0));
+   cmd_values[4] = nir_channel(b, data, 0);
+   cmd_values[5] = addr_upper;
+   cmd_values[6] = nir_imm_int(b, PKT3(PKT3_INDEX_BUFFER_SIZE, 0, 0));
+   cmd_values[7] = max_index_count;
+
+   dgc_emit(b, cs, nir_vec(b, cmd_values, 8));
+}
+
 /**
  * Emit VK_INDIRECT_COMMANDS_TOKEN_TYPE_STATE_FLAGS_NV.
  */
@@ -831,53 +891,10 @@ build_dgc_prepare_shader(struct radv_device *dev)
          nir_ssa_def *bind_index_buffer = nir_ieq_imm(&b, nir_load_var(&b, index_size_var), 0);
          nir_push_if(&b, bind_index_buffer);
          {
-            nir_ssa_def *index_stream_offset =
-               nir_iadd(&b, load_param16(&b, index_buffer_offset), stream_base);
-            nir_ssa_def *data =
-               nir_load_ssbo(&b, 4, 32, stream_buf, index_stream_offset);
-
-            nir_ssa_def *vk_index_type = nir_channel(&b, data, 3);
-            nir_ssa_def *index_type = nir_bcsel(
-               &b, nir_ieq(&b, vk_index_type, load_param32(&b, ibo_type_32)),
-               nir_imm_int(&b, V_028A7C_VGT_INDEX_32), nir_imm_int(&b, V_028A7C_VGT_INDEX_16));
-            index_type = nir_bcsel(&b, nir_ieq(&b, vk_index_type, load_param32(&b, ibo_type_8)),
-                                   nir_imm_int(&b, V_028A7C_VGT_INDEX_8), index_type);
-
-            nir_ssa_def *index_size = nir_iand_imm(
-               &b, nir_ushr(&b, nir_imm_int(&b, 0x142), nir_imul_imm(&b, index_type, 4)), 0xf);
-            nir_store_var(&b, index_size_var, index_size, 0x1);
-
-            nir_ssa_def *max_index_count = nir_udiv(&b, nir_channel(&b, data, 2), index_size);
-            nir_store_var(&b, max_index_count_var, max_index_count, 0x1);
-
-            nir_ssa_def *cmd_values[3 + 2 + 3];
-
-            if (dev->physical_device->rad_info.gfx_level >= GFX9) {
-               unsigned opcode = PKT3_SET_UCONFIG_REG_INDEX;
-               if (dev->physical_device->rad_info.gfx_level < GFX9 ||
-                   (dev->physical_device->rad_info.gfx_level == GFX9 &&
-                    dev->physical_device->rad_info.me_fw_version < 26))
-                  opcode = PKT3_SET_UCONFIG_REG;
-               cmd_values[0] = nir_imm_int(&b, PKT3(opcode, 1, 0));
-               cmd_values[1] = nir_imm_int(
-                  &b, (R_03090C_VGT_INDEX_TYPE - CIK_UCONFIG_REG_OFFSET) >> 2 | (2u << 28));
-               cmd_values[2] = index_type;
-            } else {
-               cmd_values[0] = nir_imm_int(&b, PKT3(PKT3_INDEX_TYPE, 0, 0));
-               cmd_values[1] = index_type;
-               cmd_values[2] = nir_imm_int(&b, PKT3_NOP_PAD);
-            }
-
-            nir_ssa_def *addr_upper = nir_channel(&b, data, 1);
-            addr_upper = nir_ishr_imm(&b, nir_ishl_imm(&b, addr_upper, 16), 16);
-
-            cmd_values[3] = nir_imm_int(&b, PKT3(PKT3_INDEX_BASE, 1, 0));
-            cmd_values[4] = nir_channel(&b, data, 0);
-            cmd_values[5] = addr_upper;
-            cmd_values[6] = nir_imm_int(&b, PKT3(PKT3_INDEX_BUFFER_SIZE, 0, 0));
-            cmd_values[7] = max_index_count;
-
-            dgc_emit(&b, &cmd_buf, nir_vec(&b, cmd_values, 8));
+            dgc_emit_index_buffer(&b, &cmd_buf, stream_buf, stream_base,
+                                  load_param16(&b, index_buffer_offset),
+                                  load_param32(&b, ibo_type_32), load_param32(&b, ibo_type_8),
+                                  index_size_var, max_index_count_var, dev);
          }
          nir_pop_if(&b, NULL);
 
