@@ -720,6 +720,24 @@ radv_amdgpu_cs_execute_secondary(struct radeon_cmdbuf *_parent, struct radeon_cm
    }
 }
 
+static void
+radv_amdgpu_cs_execute_ib(struct radeon_cmdbuf *_cs, struct radeon_winsys_bo *bo,
+                          const uint64_t offset, const uint32_t cdw)
+{
+   struct radv_amdgpu_cs *cs = radv_amdgpu_cs(_cs);
+   const uint64_t va = bo->va + offset;
+
+   if (cs->status != VK_SUCCESS)
+      return;
+
+   assert(cs->use_ib && cs->hw_ip == AMD_IP_GFX);
+
+   radeon_emit(&cs->base, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
+   radeon_emit(&cs->base, va);
+   radeon_emit(&cs->base, va >> 32);
+   radeon_emit(&cs->base, cdw);
+}
+
 static unsigned
 radv_amdgpu_count_cs_bo(struct radv_amdgpu_cs *start_cs)
 {
@@ -1674,6 +1692,7 @@ radv_amdgpu_cs_init_functions(struct radv_amdgpu_winsys *ws)
    ws->base.cs_unchain = radv_amdgpu_cs_unchain;
    ws->base.cs_add_buffer = radv_amdgpu_cs_add_buffer;
    ws->base.cs_execute_secondary = radv_amdgpu_cs_execute_secondary;
+   ws->base.cs_execute_ib = radv_amdgpu_cs_execute_ib;
    ws->base.cs_submit = radv_amdgpu_winsys_cs_submit;
    ws->base.cs_dump = radv_amdgpu_winsys_cs_dump;
 }

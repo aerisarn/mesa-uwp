@@ -303,6 +303,9 @@ struct radeon_winsys {
 
    void (*cs_execute_secondary)(struct radeon_cmdbuf *parent, struct radeon_cmdbuf *child, bool allow_ib2);
 
+   void (*cs_execute_ib)(struct radeon_cmdbuf *cs, struct radeon_winsys_bo *bo,
+                         const uint64_t offset, const uint32_t cdw);
+
    void (*cs_dump)(struct radeon_cmdbuf *cs, FILE *file, const int *trace_ids, int trace_id_count);
 
    void (*dump_bo_ranges)(struct radeon_winsys *ws, FILE *file);
