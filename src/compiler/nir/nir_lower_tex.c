@@ -1635,6 +1635,17 @@ nir_lower_tex(nir_shader *shader, const nir_lower_tex_options *options)
 {
    bool progress = false;
 
+   /* lower_tg4_offsets injects new tg4 instructions that won't be lowered
+    * if lower_tg4_broadcom_swizzle is also requested so when both are set
+    * we want to run lower_tg4_offsets in a separate pass first.
+    */
+   if (options->lower_tg4_offsets && options->lower_tg4_broadcom_swizzle) {
+      nir_lower_tex_options _options = {
+         .lower_tg4_offsets = true,
+      };
+      progress = nir_lower_tex(shader, &_options);
+   }
+
    nir_foreach_function(function, shader) {
       if (function->impl)
          progress |= nir_lower_tex_impl(function->impl, options, shader->options);
