@@ -250,8 +250,8 @@ dgc_emit_instance_count(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *inst
 }
 
 static void
-dgc_emit_draw_indexed(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *index_offset,
-                      nir_ssa_def *index_count, nir_ssa_def *max_index_count)
+dgc_emit_draw_index_offset_2(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *index_offset,
+                             nir_ssa_def *index_count, nir_ssa_def *max_index_count)
 {
    nir_ssa_def *values[5] = {nir_imm_int(b, PKT3(PKT3_DRAW_INDEX_OFFSET_2, 3, false)),
                              max_index_count, index_offset, index_count,
@@ -333,6 +333,35 @@ dgc_emit_draw(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf,
       dgc_emit_userdata_vertex(b, cs, vtx_base_sgpr, vertex_offset, first_instance, sequence_id);
       dgc_emit_instance_count(b, cs, instance_count);
       dgc_emit_draw_index_auto(b, cs, vertex_count);
+   }
+   nir_pop_if(b, 0);
+}
+
+/**
+ * Emit VK_INDIRECT_COMMANDS_TOKEN_TYPE_DRAW_INDEXED_NV.
+ */
+static void
+dgc_emit_draw_indexed(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf,
+                      nir_ssa_def *stream_base, nir_ssa_def *draw_params_offset,
+                      nir_ssa_def *sequence_id, nir_ssa_def *max_index_count)
+{
+   nir_ssa_def *vtx_base_sgpr = load_param16(b, vtx_base_sgpr);
+   nir_ssa_def *stream_offset = nir_iadd(b, draw_params_offset, stream_base);
+
+   nir_ssa_def *draw_data0 = nir_load_ssbo(b, 4, 32, stream_buf, stream_offset);
+   nir_ssa_def *draw_data1 =
+      nir_load_ssbo(b, 1, 32, stream_buf, nir_iadd_imm(b, stream_offset, 16));
+   nir_ssa_def *index_count = nir_channel(b, draw_data0, 0);
+   nir_ssa_def *instance_count = nir_channel(b, draw_data0, 1);
+   nir_ssa_def *first_index = nir_channel(b, draw_data0, 2);
+   nir_ssa_def *vertex_offset = nir_channel(b, draw_data0, 3);
+   nir_ssa_def *first_instance = nir_channel(b, draw_data1, 0);
+
+   nir_push_if(b, nir_iand(b, nir_ine_imm(b, index_count, 0), nir_ine_imm(b, instance_count, 0)));
+   {
+      dgc_emit_userdata_vertex(b, cs, vtx_base_sgpr, vertex_offset, first_instance, sequence_id);
+      dgc_emit_instance_count(b, cs, instance_count);
+      dgc_emit_draw_index_offset_2(b, cs, first_index, index_count, max_index_count);
    }
    nir_pop_if(b, 0);
 }
@@ -854,32 +883,14 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
          nir_ssa_def *index_size = nir_load_var(&b, index_size_var);
          nir_ssa_def *max_index_count = nir_load_var(&b, max_index_count_var);
-         nir_ssa_def *vtx_base_sgpr = load_param16(&b, vtx_base_sgpr);
-         nir_ssa_def *stream_offset =
-            nir_iadd(&b, load_param16(&b, draw_params_offset), stream_base);
 
          index_size =
             nir_bcsel(&b, bind_index_buffer, nir_load_var(&b, index_size_var), index_size);
          max_index_count = nir_bcsel(&b, bind_index_buffer, nir_load_var(&b, max_index_count_var),
                                      max_index_count);
-         nir_ssa_def *draw_data0 =
-            nir_load_ssbo(&b, 4, 32, stream_buf, stream_offset);
-         nir_ssa_def *draw_data1 = nir_load_ssbo(
-            &b, 1, 32, stream_buf, nir_iadd_imm(&b, stream_offset, 16));
-         nir_ssa_def *index_count = nir_channel(&b, draw_data0, 0);
-         nir_ssa_def *instance_count = nir_channel(&b, draw_data0, 1);
-         nir_ssa_def *first_index = nir_channel(&b, draw_data0, 2);
-         nir_ssa_def *vertex_offset = nir_channel(&b, draw_data0, 3);
-         nir_ssa_def *first_instance = nir_channel(&b, draw_data1, 0);
 
-         nir_push_if(&b, nir_iand(&b, nir_ine_imm(&b, index_count, 0), nir_ine_imm(&b, instance_count, 0)));
-         {
-            dgc_emit_userdata_vertex(&b, &cmd_buf, vtx_base_sgpr, vertex_offset, first_instance, sequence_id);
-            dgc_emit_instance_count(&b, &cmd_buf, instance_count);
-            dgc_emit_draw_indexed(&b, &cmd_buf, first_index, index_count,
-                                       max_index_count);
-         }
-         nir_pop_if(&b, 0);
+         dgc_emit_draw_indexed(&b, &cmd_buf, stream_buf, stream_base,
+                               load_param16(&b, draw_params_offset), sequence_id, max_index_count);
       }
       nir_pop_if(&b, NULL);
 
