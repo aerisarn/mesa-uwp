@@ -104,7 +104,7 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
                               struct anv_device *device,
                               uint32_t current_pipeline,
                               enum anv_pipe_bits bits,
-                              enum anv_query_bits *query_bits);
+                              enum anv_pipe_bits *emitted_flush_bits);
 
 void genX(emit_so_memcpy_init)(struct anv_memcpy_state *state,
                                struct anv_device *device,

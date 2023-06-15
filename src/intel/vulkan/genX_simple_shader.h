@@ -505,8 +505,10 @@ genX(emit_simple_shader_dispatch)(struct anv_simple_shader *state,
        *     these scoreboard related states, a MEDIA_STATE_FLUSH is
        *     sufficient."
        */
+      enum anv_pipe_bits emitted_bits = 0;
       genX(emit_apply_pipe_flushes)(batch, device, GPGPU, ANV_PIPE_CS_STALL_BIT,
-                                    &state->cmd_buffer->state.pending_query_bits);
+                                    &emitted_bits);
+      anv_cmd_buffer_update_pending_query_bits(state->cmd_buffer, emitted_bits);
 
       anv_batch_emit(batch, GENX(MEDIA_VFE_STATE), vfe) {
          vfe.StackSize              = 0;

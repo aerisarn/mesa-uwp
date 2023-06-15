@@ -1392,7 +1392,7 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
                               struct anv_device *device,
                               uint32_t current_pipeline,
                               enum anv_pipe_bits bits,
-                              enum anv_query_bits *query_bits)
+                              enum anv_pipe_bits *emitted_flush_bits)
 {
 #if GFX_VER >= 12
    /* From the TGL PRM, Volume 2a, "PIPE_CONTROL":
@@ -1601,28 +1601,11 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
       genX(batch_emit_pipe_control_write)(batch, device->info, sync_op, addr,
                                           0, flush_bits);
 
-      /* Based on emitted flushes, clear the associated buffer write tracking
-       * bits of buffer writes.
+      /* If the caller wants to know what flushes have been emitted,
+       * provide the bits based off the PIPE_CONTROL programmed bits.
        */
-      if (query_bits != NULL) {
-         if (bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT)
-            *query_bits &= ~ANV_QUERY_WRITES_RT_FLUSH;
-
-         if (bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT)
-            *query_bits &= ~ANV_QUERY_WRITES_TILE_FLUSH;
-
-         if ((bits & ANV_PIPE_DATA_CACHE_FLUSH_BIT) &&
-             (bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT) &&
-             (bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT))
-            *query_bits &= ~ANV_QUERY_WRITES_TILE_FLUSH;
-
-         /* Once RT/TILE have been flushed, we can consider the CS_STALL flush */
-         if ((*query_bits & (ANV_QUERY_WRITES_TILE_FLUSH |
-                             ANV_QUERY_WRITES_RT_FLUSH |
-                             ANV_QUERY_WRITES_DATA_FLUSH)) == 0 &&
-             (bits & (ANV_PIPE_END_OF_PIPE_SYNC_BIT | ANV_PIPE_CS_STALL_BIT)))
-            *query_bits &= ~ANV_QUERY_WRITES_CS_STALL;
-      }
+      if (emitted_flush_bits != NULL)
+         *emitted_flush_bits = flush_bits;
 
       bits &= ~(ANV_PIPE_FLUSH_BITS | ANV_PIPE_STALL_BITS |
                 ANV_PIPE_END_OF_PIPE_SYNC_BIT);
@@ -1751,12 +1734,15 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
              sizeof(cmd_buffer->state.gfx.ib_dirty_range));
    }
 
+
+   enum anv_pipe_bits emitted_bits = 0;
    cmd_buffer->state.pending_pipe_bits =
       genX(emit_apply_pipe_flushes)(&cmd_buffer->batch,
                                     cmd_buffer->device,
                                     cmd_buffer->state.current_pipeline,
                                     bits,
-                                    &cmd_buffer->state.pending_query_bits);
+                                    &emitted_bits);
+   anv_cmd_buffer_update_pending_query_bits(cmd_buffer, emitted_bits);
 
 #if INTEL_NEEDS_WA_1508744258
    if (rhwo_opt_change) {

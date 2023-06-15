@@ -3144,6 +3144,10 @@ void
 anv_cmd_buffer_clflush(struct anv_cmd_buffer **cmd_buffers,
                        uint32_t num_cmd_buffers);
 
+void
+anv_cmd_buffer_update_pending_query_bits(struct anv_cmd_buffer *cmd_buffer,
+                                         enum anv_pipe_bits flushed_bits);
+
 /**
  * A allocation tied to a command buffer.
  *
