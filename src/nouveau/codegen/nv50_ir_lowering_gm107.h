@@ -7,9 +7,9 @@ class GM107LoweringPass : public NVC0LoweringPass
 public:
    GM107LoweringPass(Program *p) : NVC0LoweringPass(p) {}
 private:
-   virtual bool visit(Instruction *);
+   bool visit(Instruction *) override;
 
-   virtual bool handleManualTXD(TexInstruction *);
+   bool handleManualTXD(TexInstruction *) override;
    bool handleDFDX(Instruction *);
    bool handlePFETCH(Instruction *);
    bool handlePOPCNT(Instruction *);
@@ -19,7 +19,7 @@ private:
 class GM107LegalizeSSA : public NVC0LegalizeSSA
 {
 private:
-   virtual bool visit(Instruction *);
+   bool visit(Instruction *) override;
 
 protected:
    void handlePFETCH(Instruction *);
