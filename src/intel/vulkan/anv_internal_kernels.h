@@ -104,16 +104,21 @@ struct anv_query_copy_shader_params {
    uint32_t num_items;
 
    /* First query to copy result from */
-   uint query_base;
+   uint32_t query_base;
 
    /* Query stride in bytes */
-   uint query_stride;
+   uint32_t query_stride;
 
    /* Offset at which the data should be read from */
-   uint query_data_offset;
+   uint32_t query_data_offset;
 
    /* Stride of destination writes */
-   uint destination_stride;
+   uint32_t destination_stride;
+
+   /* We need to be 64 bit aligned, or 32 bit builds get
+    * very unhappy.
+    */
+   uint32_t padding;
 };
 
 struct anv_query_copy_params {
