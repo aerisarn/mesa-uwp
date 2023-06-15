@@ -776,8 +776,6 @@
       <value name="Horizontal" value="0" />
     </field>
     <field name="Surface Base Address" start="256" end="319" type="address" />
-    <field name="Quilt Width" start="320" end="324" type="uint" />
-    <field name="Quilt Height" start="325" end="329" type="uint" />
     <field name="Clear Value Address Enable" start="330" end="330" type="bool" />
     <field name="Caching Expanded Formats" start="331" end="331" type="uint" />
     <field name="Auxiliary Surface Base Address" start="332" end="383" type="address" />

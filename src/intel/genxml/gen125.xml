@@ -756,17 +756,11 @@
     <field name="Corner Texel Mode" start="50" end="50" type="uint" />
     <field name="Base Mip Level" start="51" end="55" type="u4.1" />
     <field name="MOCS" start="56" end="62" type="uint" nonzero="true" />
-    <field name="Enable Unorm Path In Color Pipe" start="63" end="63" type="bool" />
     <field name="Width" start="64" end="77" type="uint" />
     <field name="Height" start="80" end="93" type="uint" />
     <field name="Depth Stencil Resource" start="95" end="95" type="bool" />
     <field name="Surface Pitch" start="96" end="113" type="uint" />
     <field name="Null Probing Enable" start="114" end="114" type="uint" />
-    <field name="Standard Tiling Mode Extensions" start="115" end="115" type="uint" />
-    <field name="Tile Address Mapping Mode" start="116" end="116" type="uint">
-      <value name="Gfx9" value="0" />
-      <value name="Gfx10+" value="1" />
-    </field>
     <field name="Depth" start="117" end="127" type="uint" />
     <field name="Multisample Position Palette Index" start="128" end="130" type="uint" />
     <field name="Number of Multisamples" start="131" end="133" type="uint">
@@ -792,10 +786,7 @@
     <field name="MIP Count / LOD" start="160" end="163" type="uint" />
     <field name="Surface Min LOD" start="164" end="167" type="uint" />
     <field name="Mip Tail Start LOD" start="168" end="171" type="uint" />
-    <field name="Coherency Type" start="174" end="174" type="uint">
-      <value name="GPU coherent" value="0" />
-      <value name="IA coherent" value="1" />
-    </field>
+    <field name="Coherency Type" start="174" end="174" type="mbz" />
     <field name="L1 Cache Control" start="176" end="178" type="uint" prefix="L1CC">
       <value name="WBP" value="0" />
       <value name="UC" value="1" />
@@ -827,11 +818,10 @@
     <field name="Shader Channel Select Red" start="249" end="251" type="Shader Channel Select" />
     <field name="Memory Compression Enable" start="254" end="254" type="bool" />
     <field name="Memory Compression Mode" start="255" end="255" type="uint">
-      <value name="Horizontal" value="0" />
+      <value name="Media Compression" value="0" />
+      <value name="3D Compression" value="1" />
     </field>
     <field name="Surface Base Address" start="256" end="319" type="address" />
-    <field name="Quilt Width" start="320" end="324" type="uint" />
-    <field name="Quilt Height" start="325" end="329" type="uint" />
     <field name="Clear Value Address Enable" start="330" end="330" type="bool" />
     <field name="Caching Expanded Formats" start="331" end="331" type="uint" />
     <field name="Auxiliary Surface Base Address" start="332" end="383" type="address" />
