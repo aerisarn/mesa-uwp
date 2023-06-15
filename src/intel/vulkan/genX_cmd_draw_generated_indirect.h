@@ -109,9 +109,8 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
       /* Make sure the memcpy landed for the generating draw call to pick up
        * the value.
        */
-      anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
-         pc.CommandStreamerStallEnable = true;
-      }
+      genX(batch_emit_pipe_control)(batch, cmd_buffer->device->info,
+                                    ANV_PIPE_CS_STALL_BIT);
    }
 
    genX(emit_simple_shader_dispatch)(&cmd_buffer->generation_shader_state,
