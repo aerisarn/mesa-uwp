@@ -121,8 +121,9 @@ static void
 print_register_decl(nir_register *reg, print_state *state)
 {
    FILE *fp = state->fp;
-   fprintf(fp, "decl_reg %u%s %s", reg->bit_size,
-           sizes[reg->num_components], divergence_status(state, reg->divergent));
+   fprintf(fp, "decl_reg %s %u%s",
+           divergence_status(state, reg->divergent),
+           reg->bit_size, sizes[reg->num_components]);
 
    print_register(reg, state);
    if (reg->num_array_elems != 0)
@@ -141,12 +142,15 @@ print_ssa_def(nir_ssa_def *def, print_state *state)
 {
    FILE *fp = state->fp;
 
-   const unsigned padding = state->max_dest_index ?
+   const unsigned ssa_padding = state->max_dest_index ?
       count_digits(state->max_dest_index) - count_digits(def->index) : 0;
 
-   fprintf(fp, "%u%s%s %s%*s%%%u", def->bit_size, sizes[def->num_components],
-           def->bit_size <= 8 ? " " : "",
-           divergence_status(state, def->divergent), padding, "", def->index);
+   const unsigned padding = (def->bit_size == 1) + 1 + ssa_padding;
+
+   fprintf(fp, "%s%u%s%*s%%%u",
+           divergence_status(state, def->divergent),
+           def->bit_size, sizes[def->num_components],
+           padding, "", def->index);
 }
 
 static unsigned
@@ -422,7 +426,7 @@ print_reg_dest(nir_register_dest *dest, print_state *state)
    /* TODO: If there's no SSA, we could remove the prefix to align with SSA size. */
    const unsigned padding = state->max_dest_index ?
    count_digits(state->max_dest_index) - count_digits(dest->reg->index) : 0;
-   fprintf(fp, "      %s%*sr%u", divergence_status(state, dest->reg->divergent),
+   fprintf(fp, "%s      %*sr%u", divergence_status(state, dest->reg->divergent),
            padding, "", dest->reg->index);
 
    if (dest->reg->num_array_elems != 0) {
