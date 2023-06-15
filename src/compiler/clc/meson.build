@@ -20,13 +20,13 @@
 # IN THE SOFTWARE.
 
 
-files_libclc = files(
+files_libmesaclc = files(
   'clc.c',
   'clc_helpers.cpp',
 )
 
-_libclc_cpp_args = ['-DLLVM_LIB_DIR="@0@"'.format(llvm_libdir)]
-_libclc_sources = []
+_libmesaclc_cpp_args = ['-DLLVM_LIB_DIR="@0@"'.format(llvm_libdir)]
+_libmesaclc_sources = []
 
 if get_option('opencl-external-clang-headers') \
    .disable_auto_if(host_machine.system() == 'windows') \
@@ -57,30 +57,30 @@ if get_option('opencl-external-clang-headers') \
     command : [prog_python, '@INPUT@', '@OUTPUT@', '-n', 'opencl_c_base_source'],
   )
 
-  _libclc_sources += [opencl_c_base_h]
+  _libmesaclc_sources += [opencl_c_base_h]
   if dep_llvm.version().version_compare('< 15.0')
-    _libclc_sources += [opencl_c_h]
+    _libmesaclc_sources += [opencl_c_h]
   endif
 
-  _libclc_cpp_args += ['-DUSE_STATIC_OPENCL_C_H=1']
+  _libmesaclc_cpp_args += ['-DUSE_STATIC_OPENCL_C_H=1']
 endif
 
 # Supported added for SPIRV 1.4 in a version that required LLVM 14.
 if dep_llvm.version().version_compare('>= 14.0')
-  _libclc_cpp_args += ['-DHAS_SPIRV_1_4=1']
+  _libmesaclc_cpp_args += ['-DHAS_SPIRV_1_4=1']
 endif
 
-_libclc = static_library(
-  'libclc',
-  files_libclc,
-  sources: _libclc_sources,
+_libmesaclc = static_library(
+  'libmesaclc',
+  files_libmesaclc,
+  sources: _libmesaclc_sources,
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_compiler, inc_spirv],
-  cpp_args : _libclc_cpp_args,
+  cpp_args : _libmesaclc_cpp_args,
   dependencies: [idep_nir_headers, dep_clang, dep_llvm, dep_llvmspirvlib,
                  idep_mesautil, idep_nir, dep_spirv_tools]
 )
 
-idep_clc = declare_dependency(
-  link_with : _libclc,
+idep_mesaclc = declare_dependency(
+  link_with : _libmesaclc,
   include_directories : include_directories('.'),
 )

@@ -285,7 +285,7 @@ libmesa_rust_gen = static_library(
     libgallium,
   ],
   dependencies: [
-    idep_clc,
+    idep_mesaclc,
   ],
   rust_crate_type : 'rlib',
   rust_args : [
