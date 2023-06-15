@@ -792,7 +792,9 @@ vk_video_parse_h265_slice_header(const struct VkVideoDecodeInfoKHR *frame_info,
       }
    }
 
-   if (pps->flags.pps_loop_filter_across_slices_enabled_flag)
+   if (pps->flags.pps_loop_filter_across_slices_enabled_flag &&
+         (params->sao_luma_flag || params->sao_chroma_flag ||
+          !params->disable_deblocking_filter_idc))
       params->loop_filter_across_slices_enable = vl_rbsp_u(&rbsp, 1);
 
    if (pps->flags.tiles_enabled_flag || pps->flags.entropy_coding_sync_enabled_flag) {
