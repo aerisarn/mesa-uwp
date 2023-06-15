@@ -791,6 +791,8 @@ void genX(CmdResetQueryPool)(
                                0);
 
       cmd_buffer->state.pending_query_bits =
+         (cmd_buffer->queue_family->queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0 ?
+         ANV_QUERY_COMPUTE_WRITES_PENDING_BITS :
          ANV_QUERY_RENDER_TARGET_WRITES_PENDING_BITS(cmd_buffer->device->info);
 
       trace_intel_end_query_clear_blorp(&cmd_buffer->trace, queryCount);
