@@ -911,7 +911,6 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
    struct radv_amdgpu_cs *last_cs = radv_amdgpu_cs(cs_array[cs_count - 1]);
    struct radv_amdgpu_winsys *ws = last_cs->ws;
 
-   assert(cs_count);
    const unsigned num_ibs = radv_amdgpu_count_ibs(cs_array, cs_count, initial_preamble_count,
                                                   continue_preamble_count, postamble_count);
    const unsigned ib_array_size = MIN2(RADV_MAX_IBS_PER_SUBMIT, num_ibs);
