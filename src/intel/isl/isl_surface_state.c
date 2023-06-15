@@ -461,7 +461,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
    s.RenderCacheReadWriteMode = 0;
 #endif
 
-#if GFX_VER >= 11
+#if GFX_VER >= 11 && GFX_VERx10 < 125
    /* We've seen dEQP failures when enabling this bit with UINT formats,
     * which particularly affects blorp_copy() operations.  It shouldn't
     * have any effect on UINT textures anyway, so disable it for them.
