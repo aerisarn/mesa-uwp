@@ -214,7 +214,6 @@
     <field name="Unk mipmapped" size="1" start="58" type="bool"/>
     <field name="Compressed 1" size="1" start="59" type="bool"/>
     <field name="Buffer" size="36" start="64" type="address" modifier="shr(4)"/>
-    <!-- N.b. sRGB is not specified here -->
     <field name="Level" size="4" start="100" type="uint"/>
 
     <!-- If layout is not linear. Layers must be zero unless rendering to an
@@ -223,11 +222,17 @@
     <field name="Layers" size="14" start="108" type="uint" modifier="minus(1)" default="1"/>
     <field name="Page-aligned layers" size="1" start="124" type="bool"/>
 
+    <!-- Should writes to this image convert to sRGB?
+
+      Note that imageblock writes do not use this flag, instead doing the
+      conversion when writing into the tilebuffer. -->
+    <field name="sRGB" size="1" start="125" type="bool"/>
+
     <!-- Read the next word (set for compression or linear 2D arrays) -->
     <field name="Extended" size="1" start="127" type="bool"/>
 
     <!-- If layout is linear. Off by 4? -->
-    <field name="Stride" size="24" start="104" type="hex"/>
+    <field name="Stride" size="21" start="104" type="hex"/>
 
     <!-- If layout is compressed -->
     <field name="Acceleration buffer" size="64" start="128" type="address" modifier="shr(4)"/>
