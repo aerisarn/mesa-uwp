@@ -3906,6 +3906,10 @@ pvr_cmd_buffer_upload_desc_set_table(struct pvr_cmd_buffer *const cmd_buffer,
 
       desc_set = desc_state->descriptor_sets[set];
 
+      /* TODO: Is it better if we don't set the valid_mask for empty sets? */
+      if (desc_set->layout->descriptor_count == 0)
+         continue;
+
       if (desc_set->layout->dynamic_buffer_count > 0) {
          struct pvr_suballoc_bo *new_desc_set_bo;
 
