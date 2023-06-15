@@ -1898,7 +1898,7 @@ void radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer);
 void si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs);
 void si_emit_compute(struct radv_device *device, struct radeon_cmdbuf *cs);
 
-void cik_create_gfx_config(struct radv_device *device);
+void radv_create_gfx_config(struct radv_device *device);
 
 void si_write_scissors(struct radeon_cmdbuf *cs, int count, const VkRect2D *scissors, const VkViewport *viewports);
 
