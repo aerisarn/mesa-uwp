@@ -1848,6 +1848,9 @@ genX(CmdWriteAccelerationStructuresPropertiesKHR)(
           queryType == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR ||
           queryType == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_BOTTOM_LEVEL_POINTERS_KHR);
 
+   emit_query_clear_flush(cmd_buffer, pool,
+                          "CmdWriteAccelerationStructuresPropertiesKHR flush query clears");
+
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
 
