@@ -1533,98 +1533,83 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
 
    if (bits & (ANV_PIPE_FLUSH_BITS | ANV_PIPE_STALL_BITS |
                ANV_PIPE_END_OF_PIPE_SYNC_BIT)) {
-      anv_batch_emit(batch, GENX(PIPE_CONTROL), pipe) {
-#if GFX_VERx10 >= 125
-         /* BSpec 47112: PIPE_CONTROL::Untyped Data-Port Cache Flush:
-          *
-          *    "'HDC Pipeline Flush' bit must be set for this bit to take
-          *     effect."
-          *
-          * BSpec 47112: PIPE_CONTROL::HDC Pipeline Flush:
-          *
-          *    "When the "Pipeline Select" mode in PIPELINE_SELECT command is
-          *     set to "3D", HDC Pipeline Flush can also flush/invalidate the
-          *     LSC Untyped L1 cache based on the programming of HDC_Chicken0
-          *     register bits 13:11."
-          *
-          *    "When the 'Pipeline Select' mode is set to 'GPGPU', the LSC
-          *     Untyped L1 cache flush is controlled by 'Untyped Data-Port
-          *     Cache Flush' bit in the PIPE_CONTROL command."
-          *
-          *    As part of Wa_1608949956 & Wa_14010198302, i915 is programming
-          *    HDC_CHICKEN0[11:13] = 0 ("Untyped L1 is flushed, for both 3D
-          *    Pipecontrol Dataport flush, and UAV coherency barrier event").
-          *    So there is no need to set "Untyped Data-Port Cache" in 3D
-          *    mode.
-          */
-         pipe.UntypedDataPortCacheFlushEnable =
-            (bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT) &&
-            current_pipeline == GPGPU;
-         pipe.HDCPipelineFlushEnable |= pipe.UntypedDataPortCacheFlushEnable;
-#endif
-#if GFX_VER >= 12
-         pipe.TileCacheFlushEnable = bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT;
-         pipe.HDCPipelineFlushEnable |= bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
-#else
-         /* Flushing HDC pipeline requires DC Flush on earlier HW. */
-         pipe.DCFlushEnable |= bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
-#endif
-         pipe.DepthCacheFlushEnable = bits & ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
-         pipe.DCFlushEnable |= bits & ANV_PIPE_DATA_CACHE_FLUSH_BIT;
-         pipe.RenderTargetCacheFlushEnable =
-            bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
-
-#if INTEL_NEEDS_WA_1409600907
-         /* Wa_1409600907: "PIPE_CONTROL with Depth Stall Enable bit must
-          * be set with any PIPE_CONTROL with Depth Flush Enable bit set.
-          */
-         pipe.DepthStallEnable =
-            pipe.DepthCacheFlushEnable || (bits & ANV_PIPE_DEPTH_STALL_BIT);
-#else
-         pipe.DepthStallEnable = bits & ANV_PIPE_DEPTH_STALL_BIT;
-#endif
+      enum anv_pipe_bits flush_bits =
+         bits & (ANV_PIPE_FLUSH_BITS | ANV_PIPE_STALL_BITS |
+                 ANV_PIPE_END_OF_PIPE_SYNC_BIT);
 
 #if GFX_VERx10 >= 125
-         pipe.PSSStallSyncEnable = bits & ANV_PIPE_PSS_STALL_SYNC_BIT;
+      /* BSpec 47112: PIPE_CONTROL::Untyped Data-Port Cache Flush:
+       *
+       *    "'HDC Pipeline Flush' bit must be set for this bit to take
+       *     effect."
+       *
+       * BSpec 47112: PIPE_CONTROL::HDC Pipeline Flush:
+       *
+       *    "When the "Pipeline Select" mode in PIPELINE_SELECT command is
+       *     set to "3D", HDC Pipeline Flush can also flush/invalidate the
+       *     LSC Untyped L1 cache based on the programming of HDC_Chicken0
+       *     register bits 13:11."
+       *
+       *    "When the 'Pipeline Select' mode is set to 'GPGPU', the LSC
+       *     Untyped L1 cache flush is controlled by 'Untyped Data-Port
+       *     Cache Flush' bit in the PIPE_CONTROL command."
+       *
+       *    As part of Wa_1608949956 & Wa_14010198302, i915 is programming
+       *    HDC_CHICKEN0[11:13] = 0 ("Untyped L1 is flushed, for both 3D
+       *    Pipecontrol Dataport flush, and UAV coherency barrier event").
+       *    So there is no need to set "Untyped Data-Port Cache" in 3D
+       *    mode.
+       */
+      if ((flush_bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT) &&
+          current_pipeline != GPGPU)
+         flush_bits &= ~ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT;
+
+      if (flush_bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT)
+         flush_bits |= ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
 #endif
 
-         pipe.CommandStreamerStallEnable = bits & ANV_PIPE_CS_STALL_BIT;
+#if GFX_VER < 12
+      if (flush_bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT)
+         flush_bits |= ANV_PIPE_DATA_CACHE_FLUSH_BIT;
+#endif
 
-         pipe.StallAtPixelScoreboard = bits & ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
+      uint32_t sync_op = NoWrite;
+      struct anv_address addr = ANV_NULL_ADDRESS;
 
-         /* From Sandybridge PRM, volume 2, "1.7.3.1 Writing a Value to Memory":
-          *
-          *    "The most common action to perform upon reaching a
-          *    synchronization point is to write a value out to memory. An
-          *    immediate value (included with the synchronization command) may
-          *    be written."
-          *
-          *
-          * From Broadwell PRM, volume 7, "End-of-Pipe Synchronization":
-          *
-          *    "In case the data flushed out by the render engine is to be
-          *    read back in to the render engine in coherent manner, then the
-          *    render engine has to wait for the fence completion before
-          *    accessing the flushed data. This can be achieved by following
-          *    means on various products: PIPE_CONTROL command with CS Stall
-          *    and the required write caches flushed with Post-Sync-Operation
-          *    as Write Immediate Data.
-          *
-          *    Example:
-          *       - Workload-1 (3D/GPGPU/MEDIA)
-          *       - PIPE_CONTROL (CS Stall, Post-Sync-Operation Write
-          *         Immediate Data, Required Write Cache Flush bits set)
-          *       - Workload-2 (Can use the data produce or output by
-          *         Workload-1)
-          */
-         if (bits & ANV_PIPE_END_OF_PIPE_SYNC_BIT) {
-            pipe.CommandStreamerStallEnable = true;
-            pipe.PostSyncOperation = WriteImmediateData;
-            pipe.Address = device->workaround_address;
-         }
-
-         anv_debug_dump_pc(pipe);
+      /* From Sandybridge PRM, volume 2, "1.7.3.1 Writing a Value to Memory":
+       *
+       *    "The most common action to perform upon reaching a
+       *    synchronization point is to write a value out to memory. An
+       *    immediate value (included with the synchronization command) may
+       *    be written."
+       *
+       *
+       * From Broadwell PRM, volume 7, "End-of-Pipe Synchronization":
+       *
+       *    "In case the data flushed out by the render engine is to be
+       *    read back in to the render engine in coherent manner, then the
+       *    render engine has to wait for the fence completion before
+       *    accessing the flushed data. This can be achieved by following
+       *    means on various products: PIPE_CONTROL command with CS Stall
+       *    and the required write caches flushed with Post-Sync-Operation
+       *    as Write Immediate Data.
+       *
+       *    Example:
+       *       - Workload-1 (3D/GPGPU/MEDIA)
+       *       - PIPE_CONTROL (CS Stall, Post-Sync-Operation Write
+       *         Immediate Data, Required Write Cache Flush bits set)
+       *       - Workload-2 (Can use the data produce or output by
+       *         Workload-1)
+       */
+      if (flush_bits & ANV_PIPE_END_OF_PIPE_SYNC_BIT) {
+         flush_bits |= ANV_PIPE_CS_STALL_BIT;
+         sync_op = WriteImmediateData;
+         addr = device->workaround_address;
       }
+
+      /* Flush PC. */
+      genX(batch_emit_pipe_control_write)(batch, device->info, sync_op, addr,
+                                          0, flush_bits);
 
       /* Based on emitted flushes, clear the associated buffer write tracking
        * bits of buffer writes.
