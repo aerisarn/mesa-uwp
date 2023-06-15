@@ -4057,6 +4057,37 @@ genX(CmdExecuteCommands)(
    }
 }
 
+static inline bool
+stage_is_shader(const VkPipelineStageFlags2 stage)
+{
+   return (stage & (VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
+                    VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT |
+                    VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+                    VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR |
+                    VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                    VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT));
+}
+
+static inline bool
+stage_is_transfer(const VkPipelineStageFlags2 stage)
+{
+   return (stage & (VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT |
+                    VK_PIPELINE_STAGE_2_TRANSFER_BIT));
+}
+
+static inline bool
+mask_is_shader_write(const VkAccessFlags2 access)
+{
+   return (access & (VK_ACCESS_2_SHADER_WRITE_BIT |
+                     VK_ACCESS_2_MEMORY_WRITE_BIT |
+                     VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT));
+}
+
 static void
 cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
                    const VkDependencyInfo *dep_info,
@@ -4075,11 +4106,31 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
    for (uint32_t i = 0; i < dep_info->memoryBarrierCount; i++) {
       src_flags |= dep_info->pMemoryBarriers[i].srcAccessMask;
       dst_flags |= dep_info->pMemoryBarriers[i].dstAccessMask;
+
+      /* Shader writes to buffers that could then be written by a transfer
+       * command (including queries).
+       */
+      if (stage_is_shader(dep_info->pMemoryBarriers[i].srcStageMask) &&
+          mask_is_shader_write(dep_info->pMemoryBarriers[i].srcAccessMask) &&
+          stage_is_transfer(dep_info->pMemoryBarriers[i].dstStageMask)) {
+         cmd_buffer->state.pending_query_bits |=
+            ANV_QUERY_COMPUTE_WRITES_PENDING_BITS;
+      }
    }
 
    for (uint32_t i = 0; i < dep_info->bufferMemoryBarrierCount; i++) {
       src_flags |= dep_info->pBufferMemoryBarriers[i].srcAccessMask;
       dst_flags |= dep_info->pBufferMemoryBarriers[i].dstAccessMask;
+
+      /* Shader writes to buffers that could then be written by a transfer
+       * command (including queries).
+       */
+      if (stage_is_shader(dep_info->pBufferMemoryBarriers[i].srcStageMask) &&
+          mask_is_shader_write(dep_info->pBufferMemoryBarriers[i].srcAccessMask) &&
+          stage_is_transfer(dep_info->pBufferMemoryBarriers[i].dstStageMask)) {
+         cmd_buffer->state.pending_query_bits |=
+            ANV_QUERY_COMPUTE_WRITES_PENDING_BITS;
+      }
    }
 
    for (uint32_t i = 0; i < dep_info->imageMemoryBarrierCount; i++) {
