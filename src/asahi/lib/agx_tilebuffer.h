@@ -68,6 +68,17 @@ agx_tilebuffer_offset_B(struct agx_tilebuffer_layout *layout, unsigned rt)
    return layout->_offset_B[rt];
 }
 
+static inline bool
+agx_tilebuffer_spills(struct agx_tilebuffer_layout *layout)
+{
+   for (unsigned rt = 0; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+      if (layout->spilled[rt])
+         return true;
+   }
+
+   return false;
+}
+
 struct agx_tilebuffer_layout
 agx_build_tilebuffer_layout(enum pipe_format *formats, uint8_t nr_cbufs,
                             uint8_t nr_samples);
