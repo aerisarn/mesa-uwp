@@ -2380,7 +2380,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          needs_sampler = true;
       } else if (key.op[rt] == AGX_META_OP_CLEAR) {
          assert(batch->uploaded_clear_color[rt] && "set when cleared");
-         agx_usc_uniform(&b, 8 * rt, 8, batch->uploaded_clear_color[rt]);
+         agx_usc_uniform(&b, 4 + (8 * rt), 8, batch->uploaded_clear_color[rt]);
       } else if (key.op[rt] == AGX_META_OP_STORE) {
          struct pipe_image_view view =
             image_view_for_surface(batch->key.cbufs[rt]);

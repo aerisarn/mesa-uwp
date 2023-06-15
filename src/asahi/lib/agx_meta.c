@@ -64,7 +64,7 @@ build_background_op(nir_builder *b, enum agx_meta_op op, unsigned rt,
    } else {
       assert(op == AGX_META_OP_CLEAR);
 
-      return nir_load_preamble(b, nr, 32, rt * 8);
+      return nir_load_preamble(b, nr, 32, 4 + (rt * 8));
    }
 }
 
