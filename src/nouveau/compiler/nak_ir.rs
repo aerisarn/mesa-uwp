@@ -3849,6 +3849,8 @@ impl fmt::Display for Function {
 
 pub struct Shader {
     pub sm: u8,
+    pub num_gprs: u8,
+    pub tls_size: u32,
     pub functions: Vec<Function>,
 }
 
@@ -3856,6 +3858,8 @@ impl Shader {
     pub fn new(sm: u8) -> Shader {
         Shader {
             sm: sm,
+            num_gprs: RegFile::GPR.num_regs(sm),
+            tls_size: 0,
             functions: Vec::new(),
         }
     }
