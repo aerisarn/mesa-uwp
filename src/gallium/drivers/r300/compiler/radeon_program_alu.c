@@ -395,7 +395,18 @@ int radeonTransformALU(
 static void transform_r300_vertex_CMP(struct radeon_compiler* c,
 	struct rc_instruction* inst)
 {
-	/* There is no decent CMP available, so let's rig one up.
+	/* R5xx has a CMP, but we can use it only if it reads from less than
+	 * three different temps. */
+	if (c->is_r500 &&
+	    (inst->U.I.SrcReg[0].File != RC_FILE_TEMPORARY ||
+	     inst->U.I.SrcReg[1].File != RC_FILE_TEMPORARY ||
+	     inst->U.I.SrcReg[2].File != RC_FILE_TEMPORARY ||
+	     inst->U.I.SrcReg[0].Index == inst->U.I.SrcReg[1].Index ||
+	     inst->U.I.SrcReg[1].Index == inst->U.I.SrcReg[2].Index ||
+	     inst->U.I.SrcReg[0].Index == inst->U.I.SrcReg[2].Index))
+		return;
+
+	/* There is no decent CMP available on r300, so let's rig one up.
 	 * CMP is defined as dst = src0 < 0.0 ? src1 : src2
 	 * The following sequence consumes zero to two temps and two extra slots
 	 * (the second temp and the second slot is consumed by transform_LRP),

@@ -237,6 +237,36 @@ static void ei_math1(struct r300_vertex_program_code *vp,
 	inst[3] = __CONST(0, RC_SWIZZLE_ZERO);
 }
 
+static void ei_cmp(struct r300_vertex_program_code *vp,
+				struct rc_sub_instruction *vpi,
+				unsigned int * inst)
+{
+	inst[0] = PVS_OP_DST_OPERAND(VE_COND_MUX_GTE,
+				     0,
+				     0,
+				     t_dst_index(vp, &vpi->DstReg),
+				     t_dst_mask(vpi->DstReg.WriteMask),
+				     t_dst_class(vpi->DstReg.File),
+                                     vpi->SaturateMode == RC_SATURATE_ZERO_ONE);
+
+	/* Arguments with constant swizzles still count as a unique
+	 * temporary, so we should make sure these arguments share a
+	 * register index with one of the other arguments. */
+	for (unsigned i = 0; i < 3; i++) {
+		unsigned j = (i + 1) % 3;
+		if (vpi->SrcReg[i].File == RC_FILE_NONE &&
+			(vpi->SrcReg[j].File == RC_FILE_NONE ||
+			 vpi->SrcReg[j].File == RC_FILE_TEMPORARY)) {
+			vpi->SrcReg[i].Index = vpi->SrcReg[j].Index;
+			break;
+		}
+	}
+
+	inst[1] = t_src(vp, &vpi->SrcReg[0]);
+	inst[2] = t_src(vp, &vpi->SrcReg[2]);
+	inst[3] = t_src(vp, &vpi->SrcReg[1]);
+}
+
 static void ei_lit(struct r300_vertex_program_code *vp,
 				      struct rc_sub_instruction *vpi,
 				      unsigned int * inst)
@@ -414,6 +444,7 @@ static void translate_vertex_program(struct radeon_compiler *c, void *user)
 		case RC_OPCODE_ARL: ei_vector1(compiler->code, VE_FLT2FIX_DX, vpi, inst); break;
 		case RC_OPCODE_ARR: ei_vector1(compiler->code, VE_FLT2FIX_DX_RND, vpi, inst); break;
 		case RC_OPCODE_COS: ei_math1(compiler->code, ME_COS, vpi, inst); break;
+		case RC_OPCODE_CMP: ei_cmp(compiler->code, vpi, inst); break;
 		case RC_OPCODE_DP4: ei_vector2(compiler->code, VE_DOT_PRODUCT, vpi, inst); break;
 		case RC_OPCODE_DST: ei_vector2(compiler->code, VE_DISTANCE_VECTOR, vpi, inst); break;
 		case RC_OPCODE_EX2: ei_math1(compiler->code, ME_EXP_BASE2_FULL_DX, vpi, inst); break;

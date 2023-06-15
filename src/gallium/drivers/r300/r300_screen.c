@@ -512,6 +512,7 @@ static int r300_get_video_param(struct pipe_screen *screen,
 
 static const nir_shader_compiler_options r500_vs_compiler_options = {
    COMMON_NIR_OPTIONS,
+   .has_fused_comp_and_csel = true,
 
    /* Have HW loops support and 1024 max instr count, but don't unroll *too*
     * hard.
