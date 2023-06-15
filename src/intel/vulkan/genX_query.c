@@ -1675,6 +1675,23 @@ copy_query_results_with_shader(struct anv_cmd_buffer *cmd_buffer,
                          ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT);
    }
 
+   /* Flushes for the queries to complete */
+   if (flags & VK_QUERY_RESULT_WAIT_BIT) {
+      /* Some queries are done with shaders, so we need to have them flush
+       * high level caches writes. The L3 should be shared across the GPU.
+       */
+      if (pool->type == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR ||
+          pool->type == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR ||
+          pool->type == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR ||
+          pool->type == VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_BOTTOM_LEVEL_POINTERS_KHR) {
+         needed_flushes |= ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT;
+      }
+      /* And we need to stall for previous CS writes to land or the flushes to
+       * complete.
+       */
+      needed_flushes |= ANV_PIPE_CS_STALL_BIT;
+   }
+
    /* Occlusion & timestamp queries are written using a PIPE_CONTROL and
     * because we're about to copy values from MI commands, we need to stall
     * the command streamer to make sure the PIPE_CONTROL values have
@@ -1695,21 +1712,6 @@ copy_query_results_with_shader(struct anv_cmd_buffer *cmd_buffer,
                                 needed_flushes | ANV_PIPE_END_OF_PIPE_SYNC_BIT,
                                 "CopyQueryPoolResults");
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
-   }
-
-   /* Wait for the queries to complete */
-   if (flags & VK_QUERY_RESULT_WAIT_BIT) {
-      for (uint32_t i = 0; i < query_count; i++) {
-         struct anv_address query_addr = anv_query_address(pool, first_query + i);
-
-         /* Wait for the availability write to land before we go read the data */
-         anv_batch_emit(&cmd_buffer->batch, GENX(MI_SEMAPHORE_WAIT), sem) {
-            sem.WaitMode            = PollingMode;
-            sem.CompareOperation    = COMPARE_SAD_EQUAL_SDD;
-            sem.SemaphoreDataDword  = true;
-            sem.SemaphoreAddress    = query_addr;
-         }
-      }
    }
 
    struct anv_simple_shader state = {
