@@ -46,6 +46,8 @@ radv_create_shadow_regs_preamble(const struct radv_device *device, struct radv_q
    if (!cs)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
+   radeon_check_space(ws, cs, 256);
+
    /* allocate memory for queue_state->shadowed_regs where register states are saved */
    result = ws->buffer_create(ws, SI_SHADOWED_REG_BUFFER_SIZE, 4096, RADEON_DOMAIN_VRAM,
                               RADEON_FLAG_ZERO_VRAM | RADEON_FLAG_NO_INTERPROCESS_SHARING, RADV_BO_PRIORITY_SCRATCH, 0,
@@ -132,6 +134,9 @@ radv_init_shadowed_regs_buffer_state(const struct radv_device *device, struct ra
    cs = ws->cs_create(ws, AMD_IP_GFX, false);
    if (!cs)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   radeon_check_space(ws, cs, 768);
+
    radv_emit_shadow_regs_preamble(cs, device, &queue->state);
    ac_emulate_clear_state(info, cs, radv_set_context_reg_array);
 
