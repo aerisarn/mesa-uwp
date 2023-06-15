@@ -223,7 +223,7 @@ lower_image(struct v3d_compile *c,
                 nir_ssa_def *z = nir_channel(b, coord, 2);
                 nir_ssa_def *d = nir_channel(b, size, 2);
                 if (nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_CUBE)
-                        d = nir_imul(b, nir_imm_int(b, 6), d);
+                        d = nir_imul_imm(b, d, 6);
                 oob_cond = nir_ior(b, oob_cond, nir_uge(b, z, d));
         }
 

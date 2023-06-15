@@ -158,7 +158,7 @@ pack_unorm_rgb10a2(nir_builder *b, nir_ssa_def *c)
         int offset = bits[0];
         for (int i = 1; i < 4; i++) {
                 nir_ssa_def *shifted_chan =
-                        nir_ishl(b, chans[i], nir_imm_int(b, offset));
+                        nir_ishl_imm(b, chans[i], offset);
                 result = nir_ior(b, result, shifted_chan);
                 offset += bits[i];
         }
@@ -176,9 +176,9 @@ unpack_unorm_rgb10a2(nir_builder *b, nir_ssa_def *c)
 
         nir_ssa_def *chans[4];
         for (int i = 0; i < 4; i++) {
-                nir_ssa_def *unorm = nir_iand(b, c, nir_imm_int(b, masks[i]));
+                nir_ssa_def *unorm = nir_iand_imm(b, c, masks[i]);
                 chans[i] = nir_format_unorm_to_float(b, unorm, &bits[i]);
-                c = nir_ushr(b, c, nir_imm_int(b, bits[i]));
+                c = nir_ushr_imm(b, c, bits[i]);
         }
 
         return nir_vec4(b, chans[0], chans[1], chans[2], chans[3]);
@@ -246,9 +246,8 @@ v3d_emit_logic_op_raw(struct v3d_compile *c, nir_builder *b,
                                         c->fs_key->color_fmt[rt].format,
                                         UTIL_FORMAT_COLORSPACE_RGB, i);
                         if (bits > 0 && bits < 32) {
-                                nir_ssa_def *mask =
-                                        nir_imm_int(b, (1u << bits) - 1);
-                                op_res[i] = nir_iand(b, op_res[i], mask);
+                                op_res[i] = nir_iand_imm(b, op_res[i],
+                                                         (1u << bits) - 1);
                         }
                 }
         }

@@ -109,8 +109,8 @@ v3d_nir_lower_uniform(struct v3d_compile *c, nir_builder *b,
 
         nir_instr_rewrite_src(&intr->instr,
                               &intr->src[0],
-                              nir_src_for_ssa(nir_ishl(b, intr->src[0].ssa,
-                                                       nir_imm_int(b, 4))));
+                              nir_src_for_ssa(nir_ishl_imm(b, intr->src[0].ssa,
+                                                           4)));
 }
 
 static int
@@ -185,7 +185,7 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
         if (location == VARYING_SLOT_LAYER) {
                 assert(c->s->info.stage == MESA_SHADER_GEOMETRY);
                 nir_ssa_def *header = nir_load_var(b, state->gs.header_var);
-                header = nir_iand(b, header, nir_imm_int(b, 0xff00ffff));
+                header = nir_iand_imm(b, header, 0xff00ffff);
 
                 /* From the GLES 3.2 spec:
                  *
@@ -210,7 +210,7 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
                 nir_ssa_def *layer_id =
                         nir_bcsel(b, cond,
                                   nir_imm_int(b, 0),
-                                  nir_ishl(b, src, nir_imm_int(b, 16)));
+                                  nir_ishl_imm(b, src, 16));
                 header = nir_ior(b, header, layer_id);
                 nir_store_var(b, state->gs.header_var, header, 0x1);
         }
@@ -275,13 +275,13 @@ v3d_nir_lower_emit_vertex(struct v3d_compile *c, nir_builder *b,
 
         /* Update VPM offset for next vertex output data and header */
         output_offset =
-                nir_iadd(b, output_offset,
-                            nir_imm_int(b, state->gs.output_vertex_data_size));
+                nir_iadd_imm(b, output_offset,
+                             state->gs.output_vertex_data_size);
 
-        header_offset = nir_iadd(b, header_offset, nir_imm_int(b, 1));
+        header_offset = nir_iadd_imm(b, header_offset, 1);
 
         /* Reset the New Primitive bit */
-        header = nir_iand(b, header, nir_imm_int(b, 0xfffffffe));
+        header = nir_iand_imm(b, header, 0xfffffffe);
 
         nir_store_var(b, state->gs.output_offset_var, output_offset, 0x1);
         nir_store_var(b, state->gs.header_offset_var, header_offset, 0x1);
@@ -686,11 +686,12 @@ emit_gs_vpm_output_header_prolog(struct v3d_compile *c, nir_builder *b,
         nir_ssa_def *header_offset =
                 nir_load_var(b, state->gs.header_offset_var);
         nir_ssa_def *vertex_count =
-                nir_isub(b, header_offset, nir_imm_int(b, 1));
+                nir_iadd_imm(b, header_offset, -1);
         nir_ssa_def *header =
-                nir_ior(b, nir_imm_int(b, state->gs.output_header_size),
-                           nir_ishl(b, vertex_count,
-                                    nir_imm_int(b, VERTEX_COUNT_OFFSET)));
+                nir_ior_imm(b,
+                            nir_ishl_imm(b, vertex_count,
+                                         VERTEX_COUNT_OFFSET),
+                            state->gs.output_header_size);
 
         v3d_nir_store_output(b, 0, NULL, header);
 }
