@@ -17,6 +17,8 @@
 #include "util/u_upload_mgr.h"
 
 static const struct si_query_ops query_hw_ops;
+static const struct si_query_hw_ops query_hw_default_hw_ops;
+static const struct si_query_ops sw_query_ops;
 
 struct si_hw_query_params {
    unsigned start_offset;
@@ -476,12 +478,6 @@ static bool si_query_sw_get_result(struct si_context *sctx, struct si_query *squ
    return true;
 }
 
-static const struct si_query_ops sw_query_ops = {.destroy = si_query_sw_destroy,
-                                                 .begin = si_query_sw_begin,
-                                                 .end = si_query_sw_end,
-                                                 .get_result = si_query_sw_get_result,
-                                                 .get_result_resource = NULL};
-
 static struct pipe_query *si_query_sw_create(unsigned query_type)
 {
    struct si_query_sw *query;
@@ -573,7 +569,7 @@ bool si_query_buffer_alloc(struct si_context *sctx, struct si_query_buffer *buff
    return true;
 }
 
-void si_query_hw_destroy(struct si_context *sctx, struct si_query *squery)
+static void si_query_hw_destroy(struct si_context *sctx, struct si_query *squery)
 {
    struct si_query_hw *query = (struct si_query_hw *)squery;
 
@@ -652,28 +648,6 @@ unsigned si_query_pipestat_end_dw_offset(struct si_screen *sscreen,
 {
    return si_query_pipestats_num_results(sscreen) * 2 + si_query_pipestat_dw_offset(index);
 }
-
-static void si_query_hw_get_result_resource(struct si_context *sctx, struct si_query *squery,
-                                            enum pipe_query_flags flags,
-                                            enum pipe_query_value_type result_type,
-                                            int index, struct pipe_resource *resource,
-                                            unsigned offset);
-
-static void si_query_hw_do_emit_start(struct si_context *sctx, struct si_query_hw *query,
-                                      struct si_resource *buffer, uint64_t va);
-static void si_query_hw_do_emit_stop(struct si_context *sctx, struct si_query_hw *query,
-                                     struct si_resource *buffer, uint64_t va);
-static void si_query_hw_add_result(struct si_screen *sscreen, struct si_query_hw *, void *buffer,
-                                   union pipe_query_result *result);
-static void si_query_hw_clear_result(struct si_query_hw *, union pipe_query_result *);
-
-static struct si_query_hw_ops query_hw_default_hw_ops = {
-   .prepare_buffer = si_query_hw_prepare_buffer,
-   .emit_start = si_query_hw_do_emit_start,
-   .emit_stop = si_query_hw_do_emit_stop,
-   .clear_result = si_query_hw_clear_result,
-   .add_result = si_query_hw_add_result,
-};
 
 static struct pipe_query *si_query_hw_create(struct si_screen *sscreen, unsigned query_type,
                                              unsigned index)
@@ -1226,7 +1200,7 @@ static bool si_begin_query(struct pipe_context *ctx, struct pipe_query *query)
    return squery->ops->begin(sctx, squery);
 }
 
-bool si_query_hw_begin(struct si_context *sctx, struct si_query *squery)
+static bool si_query_hw_begin(struct si_context *sctx, struct si_query *squery)
 {
    struct si_query_hw *query = (struct si_query_hw *)squery;
 
@@ -1257,7 +1231,7 @@ static bool si_end_query(struct pipe_context *ctx, struct pipe_query *query)
    return squery->ops->end(sctx, squery);
 }
 
-bool si_query_hw_end(struct si_context *sctx, struct si_query *squery)
+static bool si_query_hw_end(struct si_context *sctx, struct si_query *squery)
 {
    struct si_query_hw *query = (struct si_query_hw *)squery;
 
@@ -1443,26 +1417,15 @@ static void si_query_hw_add_result(struct si_screen *sscreen, struct si_query_hw
    }
 }
 
-void si_query_hw_suspend(struct si_context *sctx, struct si_query *query)
+static void si_query_hw_suspend(struct si_context *sctx, struct si_query *query)
 {
    si_query_hw_emit_stop(sctx, (struct si_query_hw *)query);
 }
 
-void si_query_hw_resume(struct si_context *sctx, struct si_query *query)
+static void si_query_hw_resume(struct si_context *sctx, struct si_query *query)
 {
    si_query_hw_emit_start(sctx, (struct si_query_hw *)query);
 }
-
-static const struct si_query_ops query_hw_ops = {
-   .destroy = si_query_hw_destroy,
-   .begin = si_query_hw_begin,
-   .end = si_query_hw_end,
-   .get_result = si_query_hw_get_result,
-   .get_result_resource = si_query_hw_get_result_resource,
-
-   .suspend = si_query_hw_suspend,
-   .resume = si_query_hw_resume,
-};
 
 static bool si_get_query_result(struct pipe_context *ctx, struct pipe_query *query, bool wait,
                                 union pipe_query_result *result)
@@ -1488,8 +1451,8 @@ static void si_query_hw_clear_result(struct si_query_hw *query, union pipe_query
    util_query_clear_result(result, query->b.type);
 }
 
-bool si_query_hw_get_result(struct si_context *sctx, struct si_query *squery, bool wait,
-                            union pipe_query_result *result)
+static bool si_query_hw_get_result(struct si_context *sctx, struct si_query *squery, bool wait,
+                                   union pipe_query_result *result)
 {
    struct si_screen *sscreen = sctx->screen;
    struct si_query_hw *query = (struct si_query_hw *)squery;
@@ -1936,6 +1899,33 @@ static int si_get_driver_query_group_info(struct pipe_screen *screen, unsigned i
    info->num_queries = 5;
    return 1;
 }
+
+static const struct si_query_ops query_hw_ops = {
+   .destroy = si_query_hw_destroy,
+   .begin = si_query_hw_begin,
+   .end = si_query_hw_end,
+   .get_result = si_query_hw_get_result,
+   .get_result_resource = si_query_hw_get_result_resource,
+
+   .suspend = si_query_hw_suspend,
+   .resume = si_query_hw_resume,
+};
+
+static const struct si_query_ops sw_query_ops = {
+   .destroy = si_query_sw_destroy,
+   .begin = si_query_sw_begin,
+   .end = si_query_sw_end,
+   .get_result = si_query_sw_get_result,
+   .get_result_resource = NULL
+};
+
+static const struct si_query_hw_ops query_hw_default_hw_ops = {
+   .prepare_buffer = si_query_hw_prepare_buffer,
+   .emit_start = si_query_hw_do_emit_start,
+   .emit_stop = si_query_hw_do_emit_stop,
+   .clear_result = si_query_hw_clear_result,
+   .add_result = si_query_hw_add_result,
+};
 
 void si_init_query_functions(struct si_context *sctx)
 {

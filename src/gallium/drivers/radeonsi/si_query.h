@@ -181,7 +181,7 @@ bool si_query_buffer_alloc(struct si_context *sctx, struct si_query_buffer *buff
 
 struct si_query_hw {
    struct si_query b;
-   struct si_query_hw_ops *ops;
+   const struct si_query_hw_ops *ops;
    unsigned flags;
 
    /* The query buffer and how many results are in it. */
@@ -203,13 +203,6 @@ struct si_query_hw {
 
 unsigned si_query_pipestat_end_dw_offset(struct si_screen *sscreen,
                                          enum pipe_statistics_query_index index);
-void si_query_hw_destroy(struct si_context *sctx, struct si_query *squery);
-bool si_query_hw_begin(struct si_context *sctx, struct si_query *squery);
-bool si_query_hw_end(struct si_context *sctx, struct si_query *squery);
-bool si_query_hw_get_result(struct si_context *sctx, struct si_query *squery, bool wait,
-                            union pipe_query_result *result);
-void si_query_hw_suspend(struct si_context *sctx, struct si_query *query);
-void si_query_hw_resume(struct si_context *sctx, struct si_query *query);
 
 /* Shader-based queries */
 
