@@ -27,6 +27,7 @@
 #include "nir_types.h"
 #include "clc.h"
 #include "clc_helpers.h"
+#include "nir_clc_helpers.h"
 #include "spirv/nir_spirv.h"
 #include "util/u_debug.h"
 

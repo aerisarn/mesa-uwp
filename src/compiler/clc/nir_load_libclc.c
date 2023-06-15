@@ -22,6 +22,7 @@
  */
 
 #include "nir.h"
+#include "nir_clc_helpers.h"
 #include "nir_serialize.h"
 #include "nir_spirv.h"
 #include "util/mesa-sha1.h"

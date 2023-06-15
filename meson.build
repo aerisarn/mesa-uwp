@@ -278,7 +278,6 @@ else
   with_intel_vk_rt = false
 endif
 with_clc = with_microsoft_clc or with_intel_clc
-with_libclc = with_clc
 with_spirv_to_dxil = get_option('spirv-to-dxil')
 
 if host_machine.system() == 'darwin'
@@ -751,7 +750,7 @@ if _opencl != 'disabled'
     error('The Clover OpenCL state tracker requires rtti')
   endif
 
-  with_libclc = true
+  with_clc = true
   with_gallium_opencl = true
   with_opencl_icd = _opencl == 'icd'
 else
@@ -772,11 +771,10 @@ if with_gallium_rusticl
   add_languages('rust', required: true)
 
   with_clc = true
-  with_libclc = true
 endif
 
 dep_clc = null_dep
-if with_libclc
+if with_clc
   dep_clc = dependency('libclc')
 endif
 

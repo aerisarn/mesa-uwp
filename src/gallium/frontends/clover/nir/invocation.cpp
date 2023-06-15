@@ -32,6 +32,7 @@
 #include "util/functional.hpp"
 
 #include <compiler/glsl_types.h>
+#include <compiler/clc/nir_clc_helpers.h>
 #include <compiler/nir/nir_builder.h>
 #include <compiler/nir/nir_serialize.h>
 #include <compiler/spirv/nir_spirv.h>

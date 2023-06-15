@@ -23,8 +23,11 @@
 files_libmesaclc = files(
   'clc.c',
   'clc_helpers.cpp',
+  'nir_load_libclc.c',
+  'nir_lower_libclc.c',
 )
 
+_libmesaclc_c_args = []
 _libmesaclc_cpp_args = ['-DLLVM_LIB_DIR="@0@"'.format(llvm_libdir)]
 _libmesaclc_sources = []
 
@@ -70,14 +73,57 @@ if dep_llvm.version().version_compare('>= 14.0')
   _libmesaclc_cpp_args += ['-DHAS_SPIRV_1_4=1']
 endif
 
+_basedir = dep_clc.get_variable(pkgconfig : 'libexecdir')
+
+_static_libclc = get_option('static-libclc')
+if _static_libclc.length() > 0
+  if _static_libclc.contains('all')
+    _static_libclc = ['spirv', 'spirv64']
+  endif
+  prog_zstd = find_program('zstd', required : false, native : true)
+  _zstd_static_libclc = dep_zstd.found() and prog_zstd.found()
+  if _zstd_static_libclc
+    _libmesaclc_c_args += '-DHAVE_STATIC_LIBCLC_ZSTD'
+  endif
+  foreach s : _static_libclc
+    _libmesaclc_c_args += '-DHAVE_STATIC_LIBCLC_@0@'.format(s.to_upper())
+    f = '@0@-mesa3d-.spv'.format(s)
+    _libclc_file = _basedir / f
+    if _zstd_static_libclc
+      _libclc_file = custom_target(
+        '@0@.zstd'.format(f),
+        command : [prog_zstd, '-f', '@INPUT@', '-o', '@OUTPUT@'],
+        input : [_libclc_file],
+        output : '@0@.zstd'.format(f),
+      )
+    endif
+    files_libmesaclc += custom_target(
+      '@0@.h'.format(f),
+      command : [
+        prog_python, files_xxd, '-b', '@INPUT@', '@OUTPUT@',
+        '-n', 'libclc_@0@_mesa3d_spv'.format(s),
+      ],
+      input : [_libclc_file],
+      output : '@0@.h'.format(f),
+      depend_files : files_xxd,
+    )
+  endforeach
+else
+  _libmesaclc_c_args += ['-DDYNAMIC_LIBCLC_PATH="@0@/"'.format(_basedir)]
+  if not cc.has_function('mmap')
+    error('mmap required for dynamic libCLC loading')
+  endif
+endif
+
 _libmesaclc = static_library(
   'libmesaclc',
   files_libmesaclc,
   sources: _libmesaclc_sources,
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_compiler, inc_spirv],
-  cpp_args : _libmesaclc_cpp_args,
-  dependencies: [idep_nir_headers, dep_clang, dep_llvm, dep_llvmspirvlib,
-                 idep_mesautil, idep_nir, dep_spirv_tools]
+  c_args : _libmesaclc_c_args,
+  cpp_args : [_libmesaclc_cpp_args, _libmesaclc_c_args],
+  dependencies: [idep_nir, dep_clang, dep_llvm, dep_llvmspirvlib,
+                 idep_mesautil, dep_spirv_tools]
 )
 
 idep_mesaclc = declare_dependency(

@@ -22,6 +22,7 @@
  */
 
 #include "nir.h"
+#include "nir_clc_helpers.h"
 #include "nir_serialize.h"
 #include "glsl_types.h"
 #include "nir_types.h"
