@@ -143,6 +143,74 @@ pub trait HasRegFile {
 }
 
 #[derive(Clone)]
+pub struct RegFileSet {
+    bits: u8,
+}
+
+impl RegFileSet {
+    pub fn new() -> RegFileSet {
+        RegFileSet { bits: 0 }
+    }
+
+    pub fn len(&self) -> usize {
+        self.bits.count_ones() as usize
+    }
+
+    pub fn contains(&self, file: RegFile) -> bool {
+        self.bits & (1 << (file as u8)) != 0
+    }
+
+    pub fn insert(&mut self, file: RegFile) -> bool {
+        let has_file = self.contains(file);
+        self.bits |= 1 << (file as u8);
+        !has_file
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.bits == 0
+    }
+
+    pub fn iter(&self) -> RegFileSet {
+        self.clone()
+    }
+
+    pub fn remove(&mut self, file: RegFile) -> bool {
+        let has_file = self.contains(file);
+        self.bits &= !(1 << (file as u8));
+        has_file
+    }
+}
+
+impl FromIterator<RegFile> for RegFileSet {
+    fn from_iter<T: IntoIterator<Item = RegFile>>(iter: T) -> Self {
+        let mut set = RegFileSet::new();
+        for file in iter {
+            set.insert(file);
+        }
+        set
+    }
+}
+
+impl Iterator for RegFileSet {
+    type Item = RegFile;
+
+    fn next(&mut self) -> Option<RegFile> {
+        if self.is_empty() {
+            None
+        } else {
+            let bit = self.bits.trailing_zeros();
+            self.bits &= !(1 << bit);
+            Some(bit.try_into().unwrap())
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+
+#[derive(Clone)]
 pub struct PerRegFile<T> {
     per_file: [T; NUM_REG_FILES],
 }
