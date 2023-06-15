@@ -261,7 +261,7 @@ dgc_emit_draw_indexed(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *index_
 }
 
 static void
-dgc_emit_draw(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *vertex_count)
+dgc_emit_draw_index_auto(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *vertex_count)
 {
    nir_ssa_def *values[3] = {nir_imm_int(b, PKT3(PKT3_DRAW_INDEX_AUTO, 1, false)), vertex_count,
                              nir_imm_int(b, V_0287F0_DI_SRC_SEL_AUTO_INDEX)};
@@ -310,6 +310,31 @@ build_dgc_buffer_tail(nir_builder *b, nir_ssa_def *sequence_count)
       nir_pop_loop(b, NULL);
    }
    nir_pop_if(b, NULL);
+}
+
+/**
+ * Emit VK_INDIRECT_COMMANDS_TOKEN_TYPE_DRAW_NV.
+ */
+static void
+dgc_emit_draw(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf,
+              nir_ssa_def *stream_base, nir_ssa_def *draw_params_offset, nir_ssa_def *sequence_id)
+{
+   nir_ssa_def *vtx_base_sgpr = load_param16(b, vtx_base_sgpr);
+   nir_ssa_def *stream_offset = nir_iadd(b, draw_params_offset, stream_base);
+
+   nir_ssa_def *draw_data0 = nir_load_ssbo(b, 4, 32, stream_buf, stream_offset);
+   nir_ssa_def *vertex_count = nir_channel(b, draw_data0, 0);
+   nir_ssa_def *instance_count = nir_channel(b, draw_data0, 1);
+   nir_ssa_def *vertex_offset = nir_channel(b, draw_data0, 2);
+   nir_ssa_def *first_instance = nir_channel(b, draw_data0, 3);
+
+   nir_push_if(b, nir_iand(b, nir_ine_imm(b, vertex_count, 0), nir_ine_imm(b, instance_count, 0)));
+   {
+      dgc_emit_userdata_vertex(b, cs, vtx_base_sgpr, vertex_offset, first_instance, sequence_id);
+      dgc_emit_instance_count(b, cs, instance_count);
+      dgc_emit_draw_index_auto(b, cs, vertex_count);
+   }
+   nir_pop_if(b, 0);
 }
 
 /**
@@ -762,24 +787,8 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
       nir_push_if(&b, nir_ieq_imm(&b, load_param16(&b, draw_indexed), 0));
       {
-         nir_ssa_def *vtx_base_sgpr = load_param16(&b, vtx_base_sgpr);
-         nir_ssa_def *stream_offset =
-            nir_iadd(&b, load_param16(&b, draw_params_offset), stream_base);
-
-         nir_ssa_def *draw_data0 =
-            nir_load_ssbo(&b, 4, 32, stream_buf, stream_offset);
-         nir_ssa_def *vertex_count = nir_channel(&b, draw_data0, 0);
-         nir_ssa_def *instance_count = nir_channel(&b, draw_data0, 1);
-         nir_ssa_def *vertex_offset = nir_channel(&b, draw_data0, 2);
-         nir_ssa_def *first_instance = nir_channel(&b, draw_data0, 3);
-
-         nir_push_if(&b, nir_iand(&b, nir_ine_imm(&b, vertex_count, 0), nir_ine_imm(&b, instance_count, 0)));
-         {
-            dgc_emit_userdata_vertex(&b, &cmd_buf, vtx_base_sgpr, vertex_offset, first_instance, sequence_id);
-            dgc_emit_instance_count(&b, &cmd_buf, instance_count);
-            dgc_emit_draw(&b, &cmd_buf, vertex_count);
-         }
-         nir_pop_if(&b, 0);
+         dgc_emit_draw(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset),
+                       sequence_id);
       }
       nir_push_else(&b, NULL);
       {
