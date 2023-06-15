@@ -3839,9 +3839,9 @@ genX(EndCommandBuffer)(
    /* Flush query clears using blorp so that secondary query writes do not
     * race with the clear.
     */
-   if (cmd_buffer->state.pending_query_bits) {
+   if (cmd_buffer->state.queries.clear_bits) {
       anv_add_pending_pipe_bits(cmd_buffer,
-                                ANV_PIPE_QUERY_BITS(cmd_buffer->state.pending_query_bits),
+                                ANV_PIPE_QUERY_BITS(cmd_buffer->state.queries.clear_bits),
                                 "query clear flush prior command buffer end");
    }
 
@@ -3923,9 +3923,9 @@ genX(CmdExecuteCommands)(
    /* Flush query clears using blorp so that secondary query writes do not
     * race with the clear.
     */
-   if (primary->state.pending_query_bits) {
+   if (primary->state.queries.clear_bits) {
       anv_add_pending_pipe_bits(primary,
-                                ANV_PIPE_QUERY_BITS(primary->state.pending_query_bits),
+                                ANV_PIPE_QUERY_BITS(primary->state.queries.clear_bits),
                                 "query clear flush prior to secondary buffer");
    }
 
@@ -4099,7 +4099,7 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
       if (stage_is_shader(dep_info->pMemoryBarriers[i].srcStageMask) &&
           mask_is_shader_write(dep_info->pMemoryBarriers[i].srcAccessMask) &&
           stage_is_transfer(dep_info->pMemoryBarriers[i].dstStageMask)) {
-         cmd_buffer->state.pending_query_bits |=
+         cmd_buffer->state.queries.buffer_write_bits |=
             ANV_QUERY_COMPUTE_WRITES_PENDING_BITS;
       }
    }
@@ -4114,7 +4114,7 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
       if (stage_is_shader(dep_info->pBufferMemoryBarriers[i].srcStageMask) &&
           mask_is_shader_write(dep_info->pBufferMemoryBarriers[i].srcAccessMask) &&
           stage_is_transfer(dep_info->pBufferMemoryBarriers[i].dstStageMask)) {
-         cmd_buffer->state.pending_query_bits |=
+         cmd_buffer->state.queries.buffer_write_bits |=
             ANV_QUERY_COMPUTE_WRITES_PENDING_BITS;
       }
    }
@@ -6716,9 +6716,9 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
     * copy/write. So we need to flush it before going to GPGPU mode.
     */
    if (cmd_buffer->state.current_pipeline == _3D &&
-       cmd_buffer->state.pending_query_bits) {
+       cmd_buffer->state.queries.clear_bits) {
       anv_add_pending_pipe_bits(cmd_buffer,
-                                ANV_PIPE_QUERY_BITS(cmd_buffer->state.pending_query_bits),
+                                ANV_PIPE_QUERY_BITS(cmd_buffer->state.queries.clear_bits),
                                 "query clear flush prior to GPGPU");
    }
 #endif

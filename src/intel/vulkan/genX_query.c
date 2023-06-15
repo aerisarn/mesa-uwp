@@ -790,7 +790,7 @@ void genX(CmdResetQueryPool)(
                                queryCount * pool->stride,
                                0);
 
-      cmd_buffer->state.pending_query_bits =
+      cmd_buffer->state.queries.clear_bits =
          (cmd_buffer->queue_family->queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0 ?
          ANV_QUERY_COMPUTE_WRITES_PENDING_BITS :
          ANV_QUERY_RENDER_TARGET_WRITES_PENDING_BITS(cmd_buffer->device->info);
@@ -987,12 +987,12 @@ emit_query_clear_flush(struct anv_cmd_buffer *cmd_buffer,
                        struct anv_query_pool *pool,
                        const char *reason)
 {
-   if (cmd_buffer->state.pending_query_bits == 0)
+   if (cmd_buffer->state.queries.clear_bits == 0)
       return;
 
    anv_add_pending_pipe_bits(cmd_buffer,
                              ANV_PIPE_QUERY_BITS(
-                                cmd_buffer->state.pending_query_bits),
+                                cmd_buffer->state.queries.clear_bits),
                              reason);
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 }
@@ -1507,22 +1507,26 @@ copy_query_results_with_cs(struct anv_cmd_buffer *cmd_buffer,
     * to ensure proper ordering of the commands from the 3d pipe and the
     * command streamer.
     */
-   if (cmd_buffer->state.pending_query_bits &
+   if ((cmd_buffer->state.queries.buffer_write_bits |
+        cmd_buffer->state.queries.clear_bits) &
        ANV_QUERY_WRITES_RT_FLUSH)
       needed_flushes |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
 
-   if (cmd_buffer->state.pending_query_bits &
+   if ((cmd_buffer->state.queries.buffer_write_bits |
+        cmd_buffer->state.queries.clear_bits) &
        ANV_QUERY_WRITES_TILE_FLUSH)
       needed_flushes |= ANV_PIPE_TILE_CACHE_FLUSH_BIT;
 
-   if (cmd_buffer->state.pending_query_bits &
+   if ((cmd_buffer->state.queries.buffer_write_bits |
+        cmd_buffer->state.queries.clear_bits) &
        ANV_QUERY_WRITES_DATA_FLUSH) {
       needed_flushes |= (ANV_PIPE_DATA_CACHE_FLUSH_BIT |
                          ANV_PIPE_HDC_PIPELINE_FLUSH_BIT |
                          ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT);
    }
 
-   if (cmd_buffer->state.pending_query_bits &
+   if ((cmd_buffer->state.queries.buffer_write_bits |
+        cmd_buffer->state.queries.clear_bits) &
        ANV_QUERY_WRITES_CS_STALL)
       needed_flushes |= ANV_PIPE_CS_STALL_BIT;
 
@@ -1661,10 +1665,12 @@ copy_query_results_with_shader(struct anv_cmd_buffer *cmd_buffer,
    if (cmd_buffer->state.current_pipeline == UINT32_MAX)
       genX(flush_pipeline_select_3d)(cmd_buffer);
 
-   if (cmd_buffer->state.pending_query_bits & ANV_QUERY_WRITES_RT_FLUSH)
+   if ((cmd_buffer->state.queries.buffer_write_bits |
+        cmd_buffer->state.queries.clear_bits) & ANV_QUERY_WRITES_RT_FLUSH)
       needed_flushes |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
 
-   if (cmd_buffer->state.pending_query_bits & ANV_QUERY_WRITES_DATA_FLUSH) {
+   if ((cmd_buffer->state.queries.buffer_write_bits |
+        cmd_buffer->state.queries.clear_bits) & ANV_QUERY_WRITES_DATA_FLUSH) {
       needed_flushes |= (ANV_PIPE_HDC_PIPELINE_FLUSH_BIT |
                          ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT);
    }

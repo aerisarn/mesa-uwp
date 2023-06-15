@@ -298,27 +298,35 @@ anv_cmd_emit_conditional_render_predicate(struct anv_cmd_buffer *cmd_buffer)
    anv_genX(devinfo, cmd_emit_conditional_render_predicate)(cmd_buffer);
 }
 
-void
-anv_cmd_buffer_update_pending_query_bits(struct anv_cmd_buffer *cmd_buffer,
-                                         enum anv_pipe_bits flushed_bits)
+static void
+clear_pending_query_bits(enum anv_query_bits *query_bits,
+                         enum anv_pipe_bits flushed_bits)
 {
    if (flushed_bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT)
-      cmd_buffer->state.pending_query_bits &= ~ANV_QUERY_WRITES_RT_FLUSH;
+      *query_bits &= ~ANV_QUERY_WRITES_RT_FLUSH;
 
    if (flushed_bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT)
-      cmd_buffer->state.pending_query_bits &= ~ANV_QUERY_WRITES_TILE_FLUSH;
+      *query_bits &= ~ANV_QUERY_WRITES_TILE_FLUSH;
 
    if ((flushed_bits & ANV_PIPE_DATA_CACHE_FLUSH_BIT) &&
        (flushed_bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT) &&
        (flushed_bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT))
-      cmd_buffer->state.pending_query_bits &= ~ANV_QUERY_WRITES_TILE_FLUSH;
+      *query_bits &= ~ANV_QUERY_WRITES_TILE_FLUSH;
 
    /* Once RT/TILE have been flushed, we can consider the CS_STALL flush */
-   if ((cmd_buffer->state.pending_query_bits & (ANV_QUERY_WRITES_TILE_FLUSH |
-                                                ANV_QUERY_WRITES_RT_FLUSH |
-                                                ANV_QUERY_WRITES_DATA_FLUSH)) == 0 &&
+   if ((*query_bits & (ANV_QUERY_WRITES_TILE_FLUSH |
+                       ANV_QUERY_WRITES_RT_FLUSH |
+                       ANV_QUERY_WRITES_DATA_FLUSH)) == 0 &&
        (flushed_bits & (ANV_PIPE_END_OF_PIPE_SYNC_BIT | ANV_PIPE_CS_STALL_BIT)))
-      cmd_buffer->state.pending_query_bits &= ~ANV_QUERY_WRITES_CS_STALL;
+      *query_bits &= ~ANV_QUERY_WRITES_CS_STALL;
+}
+
+void
+anv_cmd_buffer_update_pending_query_bits(struct anv_cmd_buffer *cmd_buffer,
+                                         enum anv_pipe_bits flushed_bits)
+{
+   clear_pending_query_bits(&cmd_buffer->state.queries.clear_bits, flushed_bits);
+   clear_pending_query_bits(&cmd_buffer->state.queries.buffer_write_bits, flushed_bits);
 }
 
 static bool

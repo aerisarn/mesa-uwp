@@ -2850,13 +2850,25 @@ struct anv_cmd_state {
 
    enum anv_pipe_bits                           pending_pipe_bits;
 
-   /**
-    * Tracks operations susceptible to interfere with queries, either blorp
-    * clears of the query buffer or the destination buffer of
-    * vkCmdCopyQueryResults, we need those operations to have completed before
-    * we do the work of vkCmdCopyQueryResults.
-    */
-   enum anv_query_bits                          pending_query_bits;
+   struct {
+      /**
+       * Tracks operations susceptible to interfere with queries in the
+       * destination buffer of vkCmdCopyQueryResults, we need those operations to
+       * have completed before we do the work of vkCmdCopyQueryResults.
+       */
+      enum anv_query_bits                          buffer_write_bits;
+
+      /**
+       * Tracks clear operations of query buffers that can interact with
+       * vkCmdQueryBegin*, vkCmdWriteTimestamp*,
+       * vkCmdWriteAccelerationStructuresPropertiesKHR, etc...
+       *
+       * We need the clearing of the buffer completed before with write data with
+       * the command streamer or a shader.
+       */
+      enum anv_query_bits                          clear_bits;
+   } queries;
+
    VkShaderStageFlags                           descriptors_dirty;
    VkShaderStageFlags                           push_descriptors_dirty;
    VkShaderStageFlags                           push_constants_dirty;
