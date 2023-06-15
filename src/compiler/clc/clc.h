@@ -49,7 +49,6 @@ enum clc_spirv_version {
    CLC_SPIRV_VERSION_1_4,
 };
 
-// IMPORTANT: this struct is used for hashing and must not contain any padding.
 struct clc_optional_features {
    bool fp16;
    bool fp64;

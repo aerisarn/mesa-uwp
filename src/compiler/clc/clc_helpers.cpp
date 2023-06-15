@@ -756,6 +756,9 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
                            const struct clc_compile_args *args,
                            const struct clc_logger *logger)
 {
+   static_assert(std::has_unique_object_representations<clc_optional_features>(),
+                 "no padding allowed inside clc_optional_features");
+
    std::string diag_log_str;
    raw_string_ostream diag_log_stream { diag_log_str };
 
