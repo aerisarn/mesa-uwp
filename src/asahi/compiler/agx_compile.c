@@ -2658,7 +2658,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 
    /* If required, tag writes will be enabled by instruction selection */
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
-      out->tag_write_disable = true;
+      out->tag_write_disable = !nir->info.writes_memory;
 
    /* Late sysval lowering creates large loads. Load lowering creates unpacks */
    nir_lower_mem_access_bit_sizes_options lower_mem_access_options = {
