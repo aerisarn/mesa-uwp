@@ -262,7 +262,7 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
          comps[ncomps++] = nir_channel(b, load, i);
 
       totalsz -= loadsz;
-      addr = nir_iadd(b, addr, nir_imm_intN_t(b, loadsz / 8, addr->bit_size));
+      addr = nir_iadd_imm(b, addr, loadsz / 8);
    }
 
    assert(ncomps == nir_dest_num_components(intr->dest));
