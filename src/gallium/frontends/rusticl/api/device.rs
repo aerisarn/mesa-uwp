@@ -50,8 +50,14 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_BUILT_IN_KERNELS => cl_prop::<&str>(""),
             CL_DEVICE_BUILT_IN_KERNELS_WITH_VERSION => cl_prop::<Vec<cl_name_version>>(Vec::new()),
             CL_DEVICE_COMPILER_AVAILABLE => cl_prop::<bool>(true),
+            CL_DEVICE_CROSS_DEVICE_SHARED_MEM_CAPABILITIES_INTEL => {
+                cl_prop::<cl_device_device_enqueue_capabilities>(0)
+            }
             CL_DEVICE_DEVICE_ENQUEUE_CAPABILITIES => {
                 cl_prop::<cl_device_device_enqueue_capabilities>(0)
+            }
+            CL_DEVICE_DEVICE_MEM_CAPABILITIES_INTEL => {
+                cl_prop::<cl_device_unified_shared_memory_capabilities_intel>(0)
             }
             CL_DEVICE_DOUBLE_FP_CONFIG => cl_prop::<cl_device_fp_config>(
                 if dev.doubles_supported() {
@@ -84,6 +90,9 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_GLOBAL_MEM_SIZE => cl_prop::<cl_ulong>(dev.global_mem_size()),
             CL_DEVICE_GLOBAL_VARIABLE_PREFERRED_TOTAL_SIZE => cl_prop::<usize>(0),
             CL_DEVICE_HALF_FP_CONFIG => cl_prop::<cl_device_fp_config>(0),
+            CL_DEVICE_HOST_MEM_CAPABILITIES_INTEL => {
+                cl_prop::<cl_device_unified_shared_memory_capabilities_intel>(0)
+            }
             CL_DEVICE_HOST_UNIFIED_MEMORY => cl_prop::<bool>(dev.unified_memory()),
             CL_DEVICE_IL_VERSION => cl_prop::<&str>(SPIRV_SUPPORT_STRING),
             CL_DEVICE_ILS_WITH_VERSION => cl_prop::<Vec<cl_name_version>>(SPIRV_SUPPORT.to_vec()),
@@ -242,6 +251,12 @@ impl CLInfo<cl_device_info> for cl_device_id {
                 cl_prop::<cl_command_queue_properties>(CL_QUEUE_PROFILING_ENABLE.into())
             }
             CL_DEVICE_REFERENCE_COUNT => cl_prop::<cl_uint>(1),
+            CL_DEVICE_SHARED_SYSTEM_MEM_CAPABILITIES_INTEL => {
+                cl_prop::<cl_device_unified_shared_memory_capabilities_intel>(0)
+            }
+            CL_DEVICE_SINGLE_DEVICE_SHARED_MEM_CAPABILITIES_INTEL => {
+                cl_prop::<cl_device_unified_shared_memory_capabilities_intel>(0)
+            }
             CL_DEVICE_SINGLE_FP_CONFIG => cl_prop::<cl_device_fp_config>(
                 (CL_FP_ROUND_TO_NEAREST | CL_FP_INF_NAN) as cl_device_fp_config,
             ),
