@@ -335,7 +335,10 @@ static void si_destroy_context(struct pipe_context *context)
    si_resource_reference(&sctx->shadowing.registers, NULL);
    si_resource_reference(&sctx->shadowing.csa, NULL);
 
-   si_destroy_compiler(&sctx->compiler);
+   if (sctx->compiler) {
+      si_destroy_compiler(sctx->compiler);
+      FREE(sctx->compiler);
+   }
 
    si_saved_cs_reference(&sctx->current_saved_cs, NULL);
 
@@ -968,11 +971,19 @@ static void si_destroy_screen(struct pipe_screen *pscreen)
    /* Release the reference on glsl types of the compiler threads. */
    glsl_type_singleton_decref();
 
-   for (i = 0; i < ARRAY_SIZE(sscreen->compiler); i++)
-      si_destroy_compiler(&sscreen->compiler[i]);
+   for (i = 0; i < ARRAY_SIZE(sscreen->compiler); i++) {
+      if (sscreen->compiler[i]) {
+         si_destroy_compiler(sscreen->compiler[i]);
+         FREE(sscreen->compiler[i]);
+      }
+   }
 
-   for (i = 0; i < ARRAY_SIZE(sscreen->compiler_lowp); i++)
-      si_destroy_compiler(&sscreen->compiler_lowp[i]);
+   for (i = 0; i < ARRAY_SIZE(sscreen->compiler_lowp); i++) {
+      if (sscreen->compiler_lowp[i]) {
+         si_destroy_compiler(sscreen->compiler_lowp[i]);
+         FREE(sscreen->compiler_lowp[i]);
+      }
+   }
 
    /* Free shader parts. */
    for (i = 0; i < ARRAY_SIZE(parts); i++) {
@@ -1003,6 +1014,7 @@ static void si_destroy_screen(struct pipe_screen *pscreen)
    util_vertex_state_cache_deinit(&sscreen->vertex_state_cache);
 
    sscreen->ws->destroy(sscreen->ws);
+   FREE(sscreen->nir_options);
    FREE(sscreen);
 }
 
@@ -1158,6 +1170,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    if ((sscreen->debug_flags & DBG(TMZ)) &&
        !sscreen->info.has_tmz_support) {
       fprintf(stderr, "radeonsi: requesting TMZ features but TMZ is not supported\n");
+      FREE(sscreen->nir_options);
       FREE(sscreen);
       return NULL;
    }
@@ -1165,8 +1178,10 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    /* Initialize just one compiler instance to check for errors. The other compiler instances are
     * initialized on demand.
     */
-   if (!si_init_compiler(sscreen, &sscreen->compiler[0])) {
+   sscreen->compiler[0] = CALLOC_STRUCT(ac_llvm_compiler);
+   if (!si_init_compiler(sscreen, sscreen->compiler[0])) {
       /* The callee prints the error message. */
+      FREE(sscreen->nir_options);
       FREE(sscreen);
       return NULL;
    }
@@ -1179,6 +1194,8 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->b.set_max_shader_compiler_threads = si_set_max_shader_compiler_threads;
    sscreen->b.is_parallel_shader_compilation_finished = si_is_parallel_shader_compilation_finished;
    sscreen->b.finalize_nir = si_finalize_nir;
+
+   sscreen->nir_options = CALLOC_STRUCT(nir_shader_compiler_options);
 
    si_init_screen_get_functions(sscreen);
    si_init_screen_buffer_functions(sscreen);
@@ -1214,6 +1231,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    si_init_gs_info(sscreen);
    if (!si_init_shader_cache(sscreen)) {
+      FREE(sscreen->nir_options);
       FREE(sscreen);
       return NULL;
    }
@@ -1270,6 +1288,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
                            UTIL_QUEUE_INIT_SCALE_THREADS |
                            UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY, NULL)) {
       si_destroy_shader_cache(sscreen);
+      FREE(sscreen->nir_options);
       FREE(sscreen);
       glsl_type_singleton_decref();
       return NULL;
@@ -1282,6 +1301,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
                            UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY |
                            UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY, NULL)) {
       si_destroy_shader_cache(sscreen);
+      FREE(sscreen->nir_options);
       FREE(sscreen);
       glsl_type_singleton_decref();
       return NULL;

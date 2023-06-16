@@ -512,7 +512,7 @@ static const void *si_get_compiler_options(struct pipe_screen *screen, enum pipe
    struct si_screen *sscreen = (struct si_screen *)screen;
 
    assert(ir == PIPE_SHADER_IR_NIR);
-   return &sscreen->nir_options;
+   return sscreen->nir_options;
 }
 
 static void si_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
@@ -1324,5 +1324,5 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
          nir_lower_divmod64 | nir_lower_minmax64 | nir_lower_iabs64 |
          nir_lower_iadd_sat64,
    };
-   sscreen->nir_options = nir_options;
+   *sscreen->nir_options = nir_options;
 }

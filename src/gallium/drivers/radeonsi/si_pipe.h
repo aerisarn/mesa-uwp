@@ -538,7 +538,7 @@ struct si_screen {
    struct disk_cache *disk_shader_cache;
 
    struct radeon_info info;
-   struct nir_shader_compiler_options nir_options;
+   struct nir_shader_compiler_options *nir_options;
    uint64_t debug_flags;
    char renderer_string[183];
 
@@ -675,12 +675,12 @@ struct si_screen {
    /* Use at most 3 normal compiler threads on quadcore and better.
     * Hyperthreaded CPUs report the number of threads, but we want
     * the number of cores. We only need this many threads for shader-db. */
-   struct ac_llvm_compiler compiler[24]; /* used by the queue only */
+   struct ac_llvm_compiler *compiler[24]; /* used by the queue only */
 
    struct util_queue shader_compiler_queue_low_priority;
    /* Use at most 2 low priority threads on quadcore and better.
     * We want to minimize the impact on multithreaded Mesa. */
-   struct ac_llvm_compiler compiler_lowp[10];
+   struct ac_llvm_compiler *compiler_lowp[10];
 
    struct util_idalloc_mt buffer_ids;
    struct util_vertex_state_cache vertex_state_cache;
@@ -997,7 +997,7 @@ struct si_context {
    struct hash_table *cs_blit_shaders;
    struct si_screen *screen;
    struct util_debug_callback debug;
-   struct ac_llvm_compiler compiler; /* only non-threaded compilation */
+   struct ac_llvm_compiler *compiler; /* only non-threaded compilation */
    struct hash_table *fixed_func_tcs_shader_cache;
    struct si_resource *wait_mem_scratch;
    struct si_resource *wait_mem_scratch_tmz;

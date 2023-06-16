@@ -2493,7 +2493,7 @@ static void si_build_shader_variant(struct si_shader *shader, int thread_index, 
 {
    struct si_shader_selector *sel = shader->selector;
    struct si_screen *sscreen = sel->screen;
-   struct ac_llvm_compiler *compiler;
+   struct ac_llvm_compiler **compiler;
    struct util_debug_callback *debug = &shader->compiler_ctx_state.debug;
 
    if (thread_index >= 0) {
@@ -2508,13 +2508,15 @@ static void si_build_shader_variant(struct si_shader *shader, int thread_index, 
          debug = NULL;
    } else {
       assert(!low_priority);
-      compiler = shader->compiler_ctx_state.compiler;
+      compiler = &shader->compiler_ctx_state.compiler;
    }
 
-   if (!compiler->passes)
-      si_init_compiler(sscreen, compiler);
+   if (!*compiler) {
+      *compiler = CALLOC_STRUCT(ac_llvm_compiler);
+      si_init_compiler(sscreen, *compiler);
+   }
 
-   if (unlikely(!si_create_shader_variant(sscreen, compiler, shader, debug))) {
+   if (unlikely(!si_create_shader_variant(sscreen, *compiler, shader, debug))) {
       PRINT_ERR("Failed to build shader variant (type=%u)\n", sel->stage);
       shader->compilation_failed = true;
       return;
@@ -2727,13 +2729,15 @@ current_not_ready:
 
    util_queue_fence_init(&shader->ready);
 
-   if (!sctx->compiler.passes)
-      si_init_compiler(sctx->screen, &sctx->compiler);
+   if (!sctx->compiler) {
+      sctx->compiler = CALLOC_STRUCT(ac_llvm_compiler);
+      si_init_compiler(sctx->screen, sctx->compiler);
+   }
 
    shader->selector = sel;
    *((SHADER_KEY_TYPE*)&shader->key) = *key;
    shader->wave_size = si_determine_wave_size(sscreen, shader);
-   shader->compiler_ctx_state.compiler = &sctx->compiler;
+   shader->compiler_ctx_state.compiler = sctx->compiler;
    shader->compiler_ctx_state.debug = sctx->debug;
    shader->compiler_ctx_state.is_debug_context = sctx->is_debug;
 
@@ -2929,7 +2933,7 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
 {
    struct si_shader_selector *sel = (struct si_shader_selector *)job;
    struct si_screen *sscreen = sel->screen;
-   struct ac_llvm_compiler *compiler;
+   struct ac_llvm_compiler **compiler;
    struct util_debug_callback *debug = &sel->compiler_ctx_state.debug;
 
    assert(!debug->debug_message || debug->async);
@@ -2937,8 +2941,10 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
    assert(thread_index < (int)ARRAY_SIZE(sscreen->compiler));
    compiler = &sscreen->compiler[thread_index];
 
-   if (!compiler->passes)
-      si_init_compiler(sscreen, compiler);
+   if (!*compiler) {
+      *compiler = CALLOC_STRUCT(ac_llvm_compiler);
+      si_init_compiler(sscreen, *compiler);
+   }
 
    /* Serialize NIR to save memory. Monolithic shader variants
     * have to deserialize NIR before compilation.
@@ -3008,7 +3014,7 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
          simple_mtx_unlock(&sscreen->shader_cache_mutex);
 
          /* Compile the shader if it hasn't been loaded from the cache. */
-         if (!si_compile_shader(sscreen, compiler, shader, debug)) {
+         if (!si_compile_shader(sscreen, *compiler, shader, debug)) {
             fprintf(stderr,
                "radeonsi: can't compile a main shader part (type: %s, name: %s).\n"
                "This is probably a driver bug, please report "

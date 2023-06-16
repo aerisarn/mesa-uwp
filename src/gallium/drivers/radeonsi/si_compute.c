@@ -93,7 +93,7 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
    struct si_compute *program = (struct si_compute *)job;
    struct si_shader_selector *sel = &program->sel;
    struct si_shader *shader = &program->shader;
-   struct ac_llvm_compiler *compiler;
+   struct ac_llvm_compiler **compiler;
    struct util_debug_callback *debug = &sel->compiler_ctx_state.debug;
    struct si_screen *sscreen = sel->screen;
 
@@ -102,8 +102,10 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
    assert(thread_index < ARRAY_SIZE(sscreen->compiler));
    compiler = &sscreen->compiler[thread_index];
 
-   if (!compiler->passes)
-      si_init_compiler(sscreen, compiler);
+   if (!*compiler) {
+      *compiler = CALLOC_STRUCT(ac_llvm_compiler);
+      si_init_compiler(sscreen, *compiler);
+   }
 
    assert(program->ir_type == PIPE_SHADER_IR_NIR);
    si_nir_scan_shader(sscreen, sel->nir, &sel->info);
@@ -172,7 +174,7 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
    } else {
       simple_mtx_unlock(&sscreen->shader_cache_mutex);
 
-      if (!si_create_shader_variant(sscreen, compiler, &program->shader, debug)) {
+      if (!si_create_shader_variant(sscreen, *compiler, &program->shader, debug)) {
          program->shader.compilation_failed = true;
          return;
       }
