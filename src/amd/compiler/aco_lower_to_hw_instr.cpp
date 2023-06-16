@@ -488,19 +488,20 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
    bld.sop1(Builder::s_or_saveexec, Definition(stmp, bld.lm), Definition(scc, s1),
             Definition(exec, bld.lm), Operand::c64(UINT64_MAX), Operand(exec, bld.lm));
 
-   for (unsigned i = 0; i < src.size(); i++) {
-      /* p_exclusive_scan needs it to be a sgpr or inline constant for the v_writelane_b32
-       * except on GFX10, where v_writelane_b32 can take a literal. */
-      if (identity[i].isLiteral() && op == aco_opcode::p_exclusive_scan &&
-          ctx->program->gfx_level < GFX10) {
-         bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg{sitmp + i}, s1), identity[i]);
-         identity[i] = Operand(PhysReg{sitmp + i}, s1);
+   /* On GFX10+ v_writelane_b32/v_cndmask_b32_e64 can take a literal */
+   if (ctx->program->gfx_level < GFX10) {
+      for (unsigned i = 0; i < src.size(); i++) {
+         /* p_exclusive_scan uses identity for v_writelane_b32 */
+         if (identity[i].isLiteral() && op == aco_opcode::p_exclusive_scan) {
+            bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg{sitmp + i}, s1), identity[i]);
+            identity[i] = Operand(PhysReg{sitmp + i}, s1);
 
-         bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg{tmp + i}, v1), identity[i]);
-         vcndmask_identity[i] = Operand(PhysReg{tmp + i}, v1);
-      } else if (identity[i].isLiteral()) {
-         bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg{tmp + i}, v1), identity[i]);
-         vcndmask_identity[i] = Operand(PhysReg{tmp + i}, v1);
+            bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg{tmp + i}, v1), identity[i]);
+            vcndmask_identity[i] = Operand(PhysReg{tmp + i}, v1);
+         } else if (identity[i].isLiteral()) {
+            bld.vop1(aco_opcode::v_mov_b32, Definition(PhysReg{tmp + i}, v1), identity[i]);
+            vcndmask_identity[i] = Operand(PhysReg{tmp + i}, v1);
+         }
       }
    }
 
