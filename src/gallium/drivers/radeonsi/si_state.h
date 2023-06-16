@@ -7,9 +7,8 @@
 #ifndef SI_STATE_H
 #define SI_STATE_H
 
-#include "pipebuffer/pb_slab.h"
 #include "si_pm4.h"
-#include "util/u_blitter.h"
+#include "util/format/u_format.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,6 +30,8 @@ struct si_shader_ctx_state;
 struct si_shader_selector;
 struct si_texture;
 struct si_qbo_state;
+struct legacy_surf_level;
+struct pb_slab_entry;
 
 struct si_state_blend {
    struct si_pm4_state pm4;

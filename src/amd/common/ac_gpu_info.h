@@ -7,14 +7,9 @@
 #ifndef AC_GPU_INFO_H
 #define AC_GPU_INFO_H
 
-#include "amd_family.h"
-
 #include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-
 #include "util/macros.h"
+#include "amd_family.h"
 
 #ifdef __cplusplus
 extern "C" {

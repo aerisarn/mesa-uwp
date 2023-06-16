@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "si_pm4.h"
 #include "si_pipe.h"
 #include "si_build_pm4.h"
 #include "sid.h"

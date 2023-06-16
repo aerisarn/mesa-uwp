@@ -8,6 +8,7 @@
 #include "util/mesa-sha1.h"
 #include "util/u_prim.h"
 #include "sid.h"
+#include "nir.h"
 
 
 struct si_shader_profile {

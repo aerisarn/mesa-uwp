@@ -8,6 +8,7 @@
 #define SI_SHADER_PRIVATE_H
 
 #include "ac_shader_abi.h"
+#include "ac_llvm_build.h"
 #include "si_shader.h"
 
 struct util_debug_callback;

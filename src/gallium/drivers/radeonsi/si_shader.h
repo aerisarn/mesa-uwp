@@ -112,24 +112,20 @@
 #ifndef SI_SHADER_H
 #define SI_SHADER_H
 
+#include "shader_info.h"
 #include "ac_binary.h"
-#include "ac_llvm_build.h"
-#include "ac_llvm_util.h"
-#include "util/simple_mtx.h"
-#include "util/u_inlines.h"
+#include "ac_gpu_info.h"
 #include "util/u_live_shader_cache.h"
 #include "util/u_queue.h"
 #include "si_pm4.h"
-
-#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct nir_shader;
-struct si_shader;
-struct si_context;
+struct nir_instr;
+struct nir_lower_subgroups_options;
 
 #define SI_MAX_ATTRIBS    16
 #define SI_MAX_VS_OUTPUTS 40
@@ -1003,7 +999,7 @@ struct si_shader_part {
 /* si_shader.c */
 struct ac_rtld_binary;
 
-void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir);
+void si_update_shader_binary_info(struct si_shader *shader, struct nir_shader *nir);
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct util_debug_callback *debug);
 bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
@@ -1034,11 +1030,11 @@ void si_nir_scan_shader(struct si_screen *sscreen,  const struct nir_shader *nir
                         struct si_shader_info *info);
 
 /* si_shader_nir.c */
-extern const nir_lower_subgroups_options si_nir_subgroups_options;
+extern const struct nir_lower_subgroups_options si_nir_subgroups_options;
 
-bool si_alu_to_scalar_packed_math_filter(const nir_instr *instr, const void *data);
+bool si_alu_to_scalar_packed_math_filter(const struct nir_instr *instr, const void *data);
 void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first);
-void si_nir_late_opts(nir_shader *nir);
+void si_nir_late_opts(struct nir_shader *nir);
 char *si_finalize_nir(struct pipe_screen *screen, void *nirptr);
 
 /* si_state_shaders.cpp */

@@ -9,7 +9,8 @@
 
 #include "si_shader.h"
 #include "si_state.h"
-#include "util/u_dynarray.h"
+#include "winsys/radeon_winsys.h"
+#include "util/u_blitter.h"
 #include "util/u_idalloc.h"
 #include "util/u_suballoc.h"
 #include "util/u_threaded_context.h"
@@ -20,6 +21,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct si_compute;
+struct ac_llvm_compiler;
 
 #define ATI_VENDOR_ID         0x1002
 #define SI_NOT_QUERY          0xffffffff
@@ -300,10 +304,6 @@ enum si_coherency
 #define SI_BIND_SAMPLER_BUFFER(shader)    ((1 << (shader)) << SI_BIND_SAMPLER_BUFFER_SHIFT)
 #define SI_BIND_VERTEX_BUFFER             (1 << (SI_BIND_OTHER_BUFFER_SHIFT + 0))
 #define SI_BIND_STREAMOUT_BUFFER          (1 << (SI_BIND_OTHER_BUFFER_SHIFT + 1))
-
-struct si_compute;
-struct si_shader_context;
-struct hash_table;
 
 /* Only 32-bit buffer allocations are supported, gallium doesn't support more
  * at the moment.
@@ -1363,7 +1363,7 @@ bool si_msaa_resolve_blit_via_CB(struct pipe_context *ctx, const struct pipe_bli
 void si_gfx_blit(struct pipe_context *ctx, const struct pipe_blit_info *info);
 
 /* si_nir_optim.c */
-bool si_nir_is_output_const_if_tex_is_const(nir_shader *shader, float *in, float *out, int *texunit);
+bool si_nir_is_output_const_if_tex_is_const(struct nir_shader *shader, float *in, float *out, int *texunit);
 
 /* si_buffer.c */
 bool si_cs_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *buf,
