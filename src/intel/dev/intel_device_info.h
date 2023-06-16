@@ -135,6 +135,30 @@ struct intel_device_info_pat_entry {
    .coherency = INTEL_DEVICE_INFO_COHERENCY_MODE_##coh_     \
 }
 
+enum intel_cooperative_matrix_component_type
+{
+   INTEL_CMAT_FLOAT16,
+   INTEL_CMAT_FLOAT32,
+   INTEL_CMAT_SINT32,
+   INTEL_CMAT_SINT8,
+   INTEL_CMAT_UINT32,
+   INTEL_CMAT_UINT8,
+};
+
+struct intel_cooperative_matrix_configuration
+{
+   mesa_scope scope;
+
+   /* Matrix A is MxK.
+    * Matrix B is KxN.
+    * Matrix C and Matrix Result are MxN.
+    *
+    * Result = A * B + C;
+    */
+   uint8_t m, n, k;
+   enum intel_cooperative_matrix_component_type a, b, c, result;
+};
+
 /**
  * Intel hardware information and quirks
  */
@@ -498,6 +522,8 @@ struct intel_device_info
    } pat;
 
    BITSET_DECLARE(workarounds, INTEL_WA_NUM);
+
+   struct intel_cooperative_matrix_configuration cooperative_matrix_configurations[4];
    /** @} */
 };
 
