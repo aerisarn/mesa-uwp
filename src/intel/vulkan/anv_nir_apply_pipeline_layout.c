@@ -723,8 +723,9 @@ build_surface_index_for_binding(nir_builder *b,
 
          /* With bindless indexes are offsets in the descriptor buffer */
          surface_index =
-            nir_iadd(b, nir_imm_int(b, bind_layout->descriptor_offset),
-                     nir_imul_imm(b, array_index, bind_layout->descriptor_stride));
+            nir_iadd_imm(b,
+                         nir_imul_imm(b, array_index, bind_layout->descriptor_stride),
+                         bind_layout->descriptor_offset);
          if (plane != 0) {
             assert(plane < bind_layout->max_plane_count);
             surface_index = nir_iadd_imm(b, surface_index,
