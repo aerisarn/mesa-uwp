@@ -1112,7 +1112,7 @@ public:
          return;
 
       std::ostringstream message;
-      message << "(file=" << src
+      message << "(file=" << (src ? src : "input")
               << ",line=" << pos.line
               << ",column=" << pos.column
               << ",index=" << pos.index
