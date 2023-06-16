@@ -257,7 +257,7 @@ get_aoa_deref_offset(nir_builder *b,
       nir_ssa_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
       assert(deref->arr.index.ssa);
       offset = nir_iadd(b, offset,
-                        nir_imul(b, index, nir_imm_int(b, array_size)));
+                        nir_imul_imm(b, index, array_size));
 
       deref = nir_deref_instr_parent(deref);
       assert(glsl_type_is_array(deref->type));
@@ -301,8 +301,8 @@ crocus_lower_storage_image_derefs(nir_shader *nir)
 
             b.cursor = nir_before_instr(&intrin->instr);
             nir_ssa_def *index =
-               nir_iadd(&b, nir_imm_int(&b, var->data.driver_location),
-                        get_aoa_deref_offset(&b, deref, 1));
+               nir_iadd_imm(&b, get_aoa_deref_offset(&b, deref, 1),
+                            var->data.driver_location);
             nir_rewrite_image_intrinsic(intrin, index, false);
             break;
          }
@@ -597,10 +597,10 @@ crocus_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
             }
 
             b.cursor = nir_before_instr(instr);
-            offset = nir_iadd(&b,
-                              get_aoa_deref_offset(&b, deref, BRW_IMAGE_PARAM_SIZE * 4),
-                              nir_imm_int(&b, img_idx[var->data.binding] * 4 +
-                                          nir_intrinsic_base(intrin) * 16));
+            offset = nir_iadd_imm(&b,
+                                  get_aoa_deref_offset(&b, deref, BRW_IMAGE_PARAM_SIZE * 4),
+                                  img_idx[var->data.binding] * 4 +
+                                  nir_intrinsic_base(intrin) * 16);
             break;
          }
          case nir_intrinsic_load_workgroup_size: {
@@ -991,8 +991,8 @@ crocus_setup_binding_table(const struct intel_device_info *devinfo,
                nir_ssa_def *val = nir_fmul_imm(&b, &tex->dest.ssa, (1 << width) - 1);
                val = nir_f2u32(&b, val);
                if (wa & WA_SIGN) {
-                  val = nir_ishl(&b, val, nir_imm_int(&b, 32 - width));
-                  val = nir_ishr(&b, val, nir_imm_int(&b, 32 - width));
+                  val = nir_ishl_imm(&b, val, 32 - width);
+                  val = nir_ishr_imm(&b, val, 32 - width);
                }
                nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, val, val->parent_instr);
             }

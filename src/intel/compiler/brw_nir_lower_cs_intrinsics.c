@@ -100,7 +100,7 @@ compute_local_index_id(nir_builder *b,
          id_x = nir_umod(b, block, size_x);
          id_y = nir_umod(b,
                          nir_iadd(b,
-                                  nir_umod(b, linear, nir_imm_int(b, height)),
+                                  nir_umod_imm(b, linear, height),
                                   nir_imul_imm(b,
                                                nir_udiv(b, block, size_x),
                                                height)),

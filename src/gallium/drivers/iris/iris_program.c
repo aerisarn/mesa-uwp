@@ -240,7 +240,7 @@ get_aoa_deref_offset(nir_builder *b,
       nir_ssa_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
       assert(deref->arr.index.ssa);
       offset = nir_iadd(b, offset,
-                           nir_imul(b, index, nir_imm_int(b, array_size)));
+                           nir_imul_imm(b, index, array_size));
 
       deref = nir_deref_instr_parent(deref);
       assert(glsl_type_is_array(deref->type));
@@ -284,8 +284,8 @@ iris_lower_storage_image_derefs(nir_shader *nir)
 
             b.cursor = nir_before_instr(&intrin->instr);
             nir_ssa_def *index =
-               nir_iadd(&b, nir_imm_int(&b, var->data.driver_location),
-                            get_aoa_deref_offset(&b, deref, 1));
+               nir_iadd_imm(&b, get_aoa_deref_offset(&b, deref, 1),
+                                var->data.driver_location);
             nir_rewrite_image_intrinsic(intrin, index, false);
             break;
          }
@@ -624,11 +624,11 @@ iris_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
             }
 
             b.cursor = nir_before_instr(instr);
-            offset = nir_iadd(&b,
+            offset = nir_iadd_imm(&b,
                get_aoa_deref_offset(&b, deref, BRW_IMAGE_PARAM_SIZE * 4),
-               nir_imm_int(&b, system_values_start +
-                               img_idx[var->data.binding] * 4 +
-                               nir_intrinsic_base(intrin) * 16));
+               system_values_start +
+               img_idx[var->data.binding] * 4 +
+               nir_intrinsic_base(intrin) * 16);
             break;
          }
          case nir_intrinsic_load_workgroup_size: {
