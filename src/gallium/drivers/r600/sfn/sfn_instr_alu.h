@@ -49,6 +49,13 @@ public:
       op2_opt_abs_src0 = 1 << 2
    };
 
+   enum SourceMod {
+      mod_none = 0,
+      mod_abs = 1,
+      mod_neg = 2
+   };
+
+
    static constexpr const AluBankSwizzle bs[6] = {
       alu_vec_012, alu_vec_021, alu_vec_120, alu_vec_102, alu_vec_201, alu_vec_210};
 
@@ -192,6 +199,16 @@ public:
    void inc_ar_uses() { ++m_num_ar_uses;}
    auto num_ar_uses() const {return m_num_ar_uses;}
 
+   void set_source_mod(int src, SourceMod mod) {
+      m_source_modifiers |= mod << (2 * src);
+   }
+   auto has_source_mod(int src, SourceMod mod) const {
+      return (m_source_modifiers & (mod << (2 * src))) != 0;
+   }
+   void reset_source_mod(int src, SourceMod mod) {
+      m_source_modifiers &= ~(mod << (2 * src));
+   }
+
 private:
    friend class AluGroup;
 
@@ -228,6 +245,7 @@ private:
    AluGroup *m_parent_group{nullptr};
    unsigned m_allowed_dest_mask{0xf};
    unsigned m_num_ar_uses{0};
+   uint32_t m_source_modifiers{0};
 };
 
 class AluInstrVisitor : public InstrVisitor {

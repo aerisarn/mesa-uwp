@@ -242,13 +242,8 @@ enum EAluOp {
 };
 
 enum AluModifiers {
-   alu_src0_neg,
-   alu_src0_abs,
    alu_src0_rel,
-   alu_src1_neg,
-   alu_src1_abs,
    alu_src1_rel,
-   alu_src2_neg,
    alu_src2_rel,
    alu_dst_clamp,
    alu_dst_rel,
@@ -265,6 +260,7 @@ enum AluModifiers {
    alu_lds_address,
    alu_no_schedule_bias,
    alu_64bit_op,
+   alu_flag_none,
    alu_flag_count
 };
 

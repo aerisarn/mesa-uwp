@@ -478,8 +478,8 @@ CopyPropFwdVisitor::propagate_to(RegisterVec4& value, Instr *instr)
              return;
 
          if ((parents[i]->opcode() != op1_mov) ||
-             parents[i]->has_alu_flag(alu_src0_neg) ||
-             parents[i]->has_alu_flag(alu_src0_abs) ||
+             parents[i]->has_source_mod(0, AluInstr::mod_neg) ||
+             parents[i]->has_source_mod(0, AluInstr::mod_abs) ||
              parents[i]->has_alu_flag(alu_dst_clamp) ||
              parents[i]->has_alu_flag(alu_src0_rel))
             return;
@@ -854,7 +854,8 @@ ReplaceConstSource::visit(AluInstr *alu)
    if (alu->opcode() != op1_mov)
       return;
 
-   if (alu->has_alu_flag(alu_src0_abs) || alu->has_alu_flag(alu_src0_neg))
+   if (alu->has_source_mod(0, AluInstr::mod_abs) ||
+       alu->has_source_mod(0, AluInstr::mod_neg))
       return;
 
    auto src = alu->psrc(0);

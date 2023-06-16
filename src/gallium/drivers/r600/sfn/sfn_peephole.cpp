@@ -263,16 +263,14 @@ ReplacePredicate::visit(AluInstr *alu)
    m_pred->set_op(new_op);
    m_pred->set_sources(alu->sources());
 
-   if (alu->has_alu_flag(alu_src0_abs))
-      m_pred->set_alu_flag(alu_src0_abs);
-   if (alu->has_alu_flag(alu_src1_abs))
-      m_pred->set_alu_flag(alu_src1_abs);
+   std::array<AluInstr::SourceMod, 2> mods = { AluInstr::mod_abs, AluInstr::mod_neg };
 
-   if (alu->has_alu_flag(alu_src0_neg))
-      m_pred->set_alu_flag(alu_src0_neg);
-
-   if (alu->has_alu_flag(alu_src1_neg))
-      m_pred->set_alu_flag(alu_src1_neg);
+   for (int i = 0; i < 2; ++i) {
+      for (auto m : mods) {
+         if (alu->has_source_mod(i, m))
+            m_pred->set_source_mod(i, m);
+      }
+   }
 
    success = true;
 }
