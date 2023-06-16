@@ -816,7 +816,8 @@ vk_video_parse_h265_slice_header(const struct VkVideoDecodeInfoKHR *frame_info,
          vl_rbsp_u(&rbsp, 1);
    }
 
-   unsigned header_bits = (slice_size * 8 - 24 /* start code */) - vl_vlc_bits_left(&rbsp.nal);
+   unsigned header_bits =
+      (slice_size * 8 - 24 /* start code */) - vl_vlc_bits_left(&rbsp.nal) - rbsp.removed;
    params->slice_data_bytes_offset = (header_bits + 8) / 8;
 }
 
