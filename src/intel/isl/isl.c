@@ -1843,6 +1843,152 @@ isl_calc_row_pitch(const struct isl_device *dev,
    return true;
 }
 
+static bool
+isl_calc_size(const struct isl_device *dev,
+              const struct isl_tile_info *tile_info,
+              const struct isl_extent4d *phys_total_el,
+              uint32_t array_pitch_el_rows,
+              uint32_t row_pitch_B,
+              uint64_t *out_size_B)
+{
+   uint64_t size_B;
+   if (tile_info->tiling == ISL_TILING_LINEAR) {
+      /* LINEAR tiling has no concept of intra-tile arrays */
+      assert(phys_total_el->d == 1 && phys_total_el->a == 1);
+
+      size_B = (uint64_t) row_pitch_B * phys_total_el->h;
+
+   } else {
+      /* Pitches must make sense with the tiling */
+      assert(row_pitch_B % tile_info->phys_extent_B.width == 0);
+
+      uint32_t array_slices, array_pitch_tl_rows;
+      if (phys_total_el->d > 1) {
+         assert(phys_total_el->a == 1);
+         array_pitch_tl_rows = isl_assert_div(array_pitch_el_rows,
+                                              tile_info->logical_extent_el.h);
+         array_slices = isl_align_div(phys_total_el->d,
+                                      tile_info->logical_extent_el.d);
+      } else if (phys_total_el->a > 1) {
+         assert(phys_total_el->d == 1);
+         array_pitch_tl_rows = isl_assert_div(array_pitch_el_rows,
+                                              tile_info->logical_extent_el.h);
+         array_slices = isl_align_div(phys_total_el->a,
+                                      tile_info->logical_extent_el.a);
+      } else {
+         assert(phys_total_el->d == 1 && phys_total_el->a == 1);
+         array_pitch_tl_rows = 0;
+         array_slices = 1;
+      }
+
+      const uint32_t total_h_tl =
+         (array_slices - 1) * array_pitch_tl_rows +
+         isl_align_div(phys_total_el->h, tile_info->logical_extent_el.height);
+
+      size_B = (uint64_t) total_h_tl * tile_info->phys_extent_B.height *
+               row_pitch_B;
+   }
+
+   if (ISL_GFX_VER(dev) < 9) {
+      /* From the Broadwell PRM Vol 5, Surface Layout:
+       *
+       *    "In addition to restrictions on maximum height, width, and depth,
+       *     surfaces are also restricted to a maximum size in bytes. This
+       *     maximum is 2 GB for all products and all surface types."
+       *
+       * This comment is applicable to all Pre-gfx9 platforms.
+       */
+      if (size_B > (uint64_t) 1 << 31)
+         return false;
+   } else if (ISL_GFX_VER(dev) < 11) {
+      /* From the Skylake PRM Vol 5, Maximum Surface Size in Bytes:
+       *    "In addition to restrictions on maximum height, width, and depth,
+       *     surfaces are also restricted to a maximum size of 2^38 bytes.
+       *     All pixels within the surface must be contained within 2^38 bytes
+       *     of the base address."
+       */
+      if (size_B > (uint64_t) 1 << 38)
+         return false;
+   } else {
+      /* gfx11+ platforms raised this limit to 2^44 bytes. */
+      if (size_B > (uint64_t) 1 << 44)
+         return false;
+   }
+
+   *out_size_B = size_B;
+   return true;
+}
+
+static uint32_t
+isl_calc_base_alignment(const struct isl_device *dev,
+                        const struct isl_surf_init_info *info,
+                        const struct isl_tile_info *tile_info)
+{
+   uint32_t base_alignment_B;
+   if (tile_info->tiling == ISL_TILING_LINEAR) {
+      /* From the Broadwell PRM Vol 2d,
+       * RENDER_SURFACE_STATE::SurfaceBaseAddress:
+       *
+       *    "The Base Address for linear render target surfaces and surfaces
+       *    accessed with the typed surface read/write data port messages must
+       *    be element-size aligned, for non-YUV surface formats, or a
+       *    multiple of 2 element-sizes for YUV surface formats. Other linear
+       *    surfaces have no alignment requirements (byte alignment is
+       *    sufficient.)"
+       */
+      base_alignment_B = MAX(1, info->min_alignment_B);
+      if (info->usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) {
+         if (isl_format_is_yuv(info->format)) {
+            base_alignment_B =
+               MAX(base_alignment_B, tile_info->format_bpb / 4);
+         } else {
+            base_alignment_B =
+               MAX(base_alignment_B, tile_info->format_bpb / 8);
+         }
+      }
+      base_alignment_B = isl_round_up_to_power_of_two(base_alignment_B);
+
+      /* From the Skylake PRM Vol 2c, PLANE_STRIDE::Stride:
+       *
+       *     "For Linear memory, this field specifies the stride in chunks of
+       *     64 bytes (1 cache line)."
+       */
+      if (isl_surf_usage_is_display(info->usage))
+         base_alignment_B = MAX(base_alignment_B, 64);
+   } else {
+      const uint32_t tile_size_B = tile_info->phys_extent_B.width *
+                                   tile_info->phys_extent_B.height;
+      assert(isl_is_pow2(info->min_alignment_B) && isl_is_pow2(tile_size_B));
+      base_alignment_B = MAX(info->min_alignment_B, tile_size_B);
+
+      /* The diagram in the Bspec section Memory Compression - Gfx12, shows
+       * that the CCS is indexed in 256B chunks. However, the
+       * PLANE_AUX_DIST::Auxiliary Surface Distance field is in units of 4K
+       * pages. We currently don't assign the usage field like we do for main
+       * surfaces, so just use 4K for now.
+       */
+      if (tile_info->tiling == ISL_TILING_GFX12_CCS)
+         base_alignment_B = MAX(base_alignment_B, 4096);
+
+      /* Platforms using an aux map require that images be granularity-aligned
+       * if they're going to used with CCS. This is because the Aux
+       * translation table maps main surface addresses to aux addresses at a
+       * granularity in the main surface. Because we don't know for sure in
+       * ISL if a surface will use CCS, we have to guess based on the
+       * DISABLE_AUX usage bit. The one thing we do know is that we haven't
+       * enable CCS on linear images yet so we can avoid the extra alignment
+       * there.
+       */
+      if (dev->info->has_aux_map &&
+          !(info->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)) {
+         base_alignment_B = MAX(base_alignment_B, dev->info->verx10 >= 125 ?
+               1024 * 1024 : 64 * 1024);
+      }
+   }
+
+   return base_alignment_B;
+}
+
 bool
 isl_surf_init_s(const struct isl_device *dev,
                 struct isl_surf *surf,
@@ -1903,123 +2049,13 @@ isl_surf_init_s(const struct isl_device *dev,
                            &phys_total_el, &row_pitch_B))
       return false;
 
-   uint32_t base_alignment_B;
    uint64_t size_B;
-   if (tiling == ISL_TILING_LINEAR) {
-      /* LINEAR tiling has no concept of intra-tile arrays */
-      assert(phys_total_el.d == 1 && phys_total_el.a == 1);
+   if (!isl_calc_size(dev, &tile_info, &phys_total_el, array_pitch_el_rows,
+                      row_pitch_B, &size_B))
+      return false;
 
-      size_B = (uint64_t) row_pitch_B * phys_total_el.h;
-
-      /* From the Broadwell PRM Vol 2d, RENDER_SURFACE_STATE::SurfaceBaseAddress:
-       *
-       *    "The Base Address for linear render target surfaces and surfaces
-       *    accessed with the typed surface read/write data port messages must
-       *    be element-size aligned, for non-YUV surface formats, or a
-       *    multiple of 2 element-sizes for YUV surface formats. Other linear
-       *    surfaces have no alignment requirements (byte alignment is
-       *    sufficient.)"
-       */
-      base_alignment_B = MAX(1, info->min_alignment_B);
-      if (info->usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) {
-         if (isl_format_is_yuv(info->format)) {
-            base_alignment_B = MAX(base_alignment_B, fmtl->bpb / 4);
-         } else {
-            base_alignment_B = MAX(base_alignment_B, fmtl->bpb / 8);
-         }
-      }
-      base_alignment_B = isl_round_up_to_power_of_two(base_alignment_B);
-
-      /* From the Skylake PRM Vol 2c, PLANE_STRIDE::Stride:
-       *
-       *     "For Linear memory, this field specifies the stride in chunks of
-       *     64 bytes (1 cache line)."
-       */
-      if (isl_surf_usage_is_display(info->usage))
-         base_alignment_B = MAX(base_alignment_B, 64);
-   } else {
-      /* Pitches must make sense with the tiling */
-      assert(row_pitch_B % tile_info.phys_extent_B.width == 0);
-
-      uint32_t array_slices, array_pitch_tl_rows;
-      if (phys_total_el.d > 1) {
-         assert(phys_total_el.a == 1);
-         array_pitch_tl_rows = isl_assert_div(array_pitch_el_rows,
-                                              tile_info.logical_extent_el.h);
-         array_slices = isl_align_div(phys_total_el.d,
-                                      tile_info.logical_extent_el.d);
-      } else if (phys_total_el.a > 1) {
-         assert(phys_total_el.d == 1);
-         array_pitch_tl_rows = isl_assert_div(array_pitch_el_rows,
-                                              tile_info.logical_extent_el.h);
-         array_slices = isl_align_div(phys_total_el.a,
-                                      tile_info.logical_extent_el.a);
-      } else {
-         assert(phys_total_el.d == 1 && phys_total_el.a == 1);
-         array_pitch_tl_rows = 0;
-         array_slices = 1;
-      }
-
-      const uint32_t total_h_tl =
-         (array_slices - 1) * array_pitch_tl_rows +
-         isl_align_div(phys_total_el.h, tile_info.logical_extent_el.height);
-
-      size_B = (uint64_t) total_h_tl * tile_info.phys_extent_B.height * row_pitch_B;
-
-      const uint32_t tile_size_B = tile_info.phys_extent_B.width *
-                                   tile_info.phys_extent_B.height;
-      assert(isl_is_pow2(info->min_alignment_B) && isl_is_pow2(tile_size_B));
-      base_alignment_B = MAX(info->min_alignment_B, tile_size_B);
-
-      /* The diagram in the Bspec section Memory Compression - Gfx12, shows
-       * that the CCS is indexed in 256B chunks. However, the
-       * PLANE_AUX_DIST::Auxiliary Surface Distance field is in units of 4K
-       * pages. We currently don't assign the usage field like we do for main
-       * surfaces, so just use 4K for now.
-       */
-      if (tiling == ISL_TILING_GFX12_CCS)
-         base_alignment_B = MAX(base_alignment_B, 4096);
-
-      /* Platforms using an aux map require that images be granularity-aligned
-       * if they're going to used with CCS. This is because the Aux translation
-       * table maps main surface addresses to aux addresses at a granularity in
-       * the main surface. Because we don't know for sure in ISL if a surface
-       * will use CCS, we have to guess based on the DISABLE_AUX usage bit. The
-       * one thing we do know is that we haven't enable CCS on linear images
-       * yet so we can avoid the extra alignment there.
-       */
-      if (dev->info->has_aux_map &&
-          !(info->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)) {
-         base_alignment_B = MAX(base_alignment_B, dev->info->verx10 >= 125 ?
-               1024 * 1024 : 64 * 1024);
-      }
-   }
-
-   if (ISL_GFX_VER(dev) < 9) {
-      /* From the Broadwell PRM Vol 5, Surface Layout:
-       *
-       *    "In addition to restrictions on maximum height, width, and depth,
-       *     surfaces are also restricted to a maximum size in bytes. This
-       *     maximum is 2 GB for all products and all surface types."
-       *
-       * This comment is applicable to all Pre-gfx9 platforms.
-       */
-      if (size_B > (uint64_t) 1 << 31)
-         return false;
-   } else if (ISL_GFX_VER(dev) < 11) {
-      /* From the Skylake PRM Vol 5, Maximum Surface Size in Bytes:
-       *    "In addition to restrictions on maximum height, width, and depth,
-       *     surfaces are also restricted to a maximum size of 2^38 bytes.
-       *     All pixels within the surface must be contained within 2^38 bytes
-       *     of the base address."
-       */
-      if (size_B > (uint64_t) 1 << 38)
-         return false;
-   } else {
-      /* gfx11+ platforms raised this limit to 2^44 bytes. */
-      if (size_B > (uint64_t) 1 << 44)
-         return false;
-   }
+   const uint32_t base_alignment_B =
+      isl_calc_base_alignment(dev, info, &tile_info);
 
    *surf = (struct isl_surf) {
       .dim = info->dim,
