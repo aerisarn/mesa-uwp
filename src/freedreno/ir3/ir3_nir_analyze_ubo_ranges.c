@@ -307,8 +307,8 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
       uniform_offset = new_offset;
    } else {
       uniform_offset = shift > 0
-                          ? nir_ishl(b, ubo_offset, nir_imm_int(b, shift))
-                          : nir_ushr(b, ubo_offset, nir_imm_int(b, -shift));
+                          ? nir_ishl_imm(b, ubo_offset, shift)
+                          : nir_ushr_imm(b, ubo_offset, -shift);
    }
 
    assert(!(const_offset & 0x3));
