@@ -50,6 +50,9 @@ public:
 
    void convert_to_mov(AluInstr *alu, int src_idx);
 
+   void apply_source_mods(AluInstr *alu);
+   void apply_dest_clamp(AluInstr *alu);
+
    bool progress{false};
 };
 
@@ -81,6 +84,10 @@ void
 PeepholeVisitor::visit(AluInstr *instr)
 {
    switch (instr->opcode()) {
+   case op1_mov:
+      if (instr->has_alu_flag(alu_dst_clamp))
+         apply_dest_clamp(instr);
+      break;
    case op2_add:
    case op2_add_int:
       if (value_is_const_uint(instr->src(0), 0))
@@ -110,8 +117,13 @@ PeepholeVisitor::visit(AluInstr *instr)
             progress |= visitor.success;
          }
       }
+      break;
    default:;
    }
+
+   auto opinfo = alu_ops.at(instr->opcode());
+   if (opinfo.can_srcmod && !opinfo.is_fp64)
+         apply_source_mods(instr);
 }
 
 void
@@ -153,6 +165,108 @@ PeepholeVisitor::visit(IfInstr *instr)
       }
    }
 }
+
+void PeepholeVisitor::apply_source_mods(AluInstr *alu)
+{
+   bool has_abs = alu->n_sources() / alu->alu_slots() < 3;
+
+   for (unsigned i = 0; i < alu->n_sources(); ++i) {
+
+      auto reg = alu->psrc(i)->as_register();
+      if (!reg)
+         continue;
+      if (!reg->has_flag(Register::ssa))
+         continue;
+      if (reg->parents().size() != 1)
+         continue;
+
+      auto p = (*reg->parents().begin())->as_alu();
+      if (!p)
+         continue;
+
+      if (p->opcode() != op1_mov)
+         continue;
+
+      if (!has_abs && p->has_source_mod(0, AluInstr::mod_abs))
+         continue;
+
+      if (!p->has_source_mod(0, AluInstr::mod_abs) &&
+          !p->has_source_mod(0, AluInstr::mod_neg))
+         continue;
+
+      if (p->has_alu_flag(alu_dst_clamp))
+         continue;
+
+      auto new_src = p->psrc(0);
+      bool new_src_not_pinned = new_src->pin() == pin_free ||
+                                new_src->pin() == pin_none;
+
+      bool old_src_not_pinned = reg->pin() == pin_free ||
+                                reg->pin() == pin_none;
+
+      bool sources_equal_channel = reg->pin() == pin_chan &&
+                                   new_src->pin() == pin_chan &&
+                                   new_src->chan() == reg->chan();
+
+      if (!new_src_not_pinned &&
+          !old_src_not_pinned &&
+          !sources_equal_channel)
+         continue;
+
+      uint32_t to_set = 0;
+      AluInstr::SourceMod to_clear = AluInstr::mod_none;
+
+      if (p->has_source_mod(0, AluInstr::mod_abs))
+         to_set |= AluInstr::mod_abs;
+      if (p->has_source_mod(0, AluInstr::mod_neg)) {
+         if (!alu->has_source_mod(i, AluInstr::mod_neg))
+            to_set |= AluInstr::mod_neg;
+         else
+            to_clear = AluInstr::mod_neg;
+      }
+
+      progress |= alu->replace_src(i, new_src, to_set, to_clear);
+   }
+}
+
+void PeepholeVisitor::apply_dest_clamp(AluInstr *alu)
+{
+   if (alu->has_source_mod(0, AluInstr::mod_abs) ||
+       alu->has_source_mod(0, AluInstr::mod_neg))
+       return;
+
+   auto dest = alu->dest();
+
+   assert(dest);
+
+   if (!dest->has_flag(Register::ssa))
+      return;
+
+   auto src = alu->psrc(0)->as_register();
+   if (!src)
+      return;
+
+   if (src->parents().size() != 1)
+      return;
+
+   if (src->uses().size() != 1)
+      return;
+
+   auto new_parent = (*src->parents().begin())->as_alu();
+   if (!new_parent)
+      return;
+
+   auto opinfo = alu_ops.at(new_parent->opcode());
+   if (!opinfo.can_clamp)
+      return;
+
+   // Move clamp flag to the parent, and let copy propagation do the rest
+   new_parent->set_alu_flag(alu_dst_clamp);
+   alu->reset_alu_flag(alu_dst_clamp);
+
+   progress = true;
+}
+
 
 static EAluOp
 pred_from_op(EAluOp pred_op, EAluOp op)

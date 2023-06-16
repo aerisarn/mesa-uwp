@@ -199,6 +199,9 @@ public:
    void inc_ar_uses() { ++m_num_ar_uses;}
    auto num_ar_uses() const {return m_num_ar_uses;}
 
+   bool replace_src(int i, PVirtualValue new_src, uint32_t to_set,
+                    SourceMod to_clear);
+
    void set_source_mod(int src, SourceMod mod) {
       m_source_modifiers |= mod << (2 * src);
    }

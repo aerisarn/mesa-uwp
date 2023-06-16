@@ -468,6 +468,33 @@ bool AluInstr::do_replace_source(PRegister old_src, PVirtualValue new_src)
    return process;
 }
 
+bool AluInstr::replace_src(int i, PVirtualValue new_src, uint32_t to_set,
+                           SourceMod to_clear)
+{
+   auto old_src = m_src[i]->as_register();
+   assert(old_src);
+
+   if (!can_replace_source(old_src, new_src)) {
+      std::cerr << "Can't replace src " << *old_src << " with " << *new_src << "\n";
+      return false;
+   }
+
+   assert(old_src);
+   old_src->del_use(this);
+
+   m_src[i] = new_src;
+
+   auto r = new_src->as_register();
+   if (r)
+      r->add_use(this);
+
+   m_source_modifiers |= to_set << (2 * i);
+   m_source_modifiers &= ~(to_clear  << (2 * i));
+
+   return true;
+}
+
+
 bool AluInstr::can_replace_source(PRegister old_src, PVirtualValue new_src)
 {
    if (!check_readport_validation(old_src, new_src))
