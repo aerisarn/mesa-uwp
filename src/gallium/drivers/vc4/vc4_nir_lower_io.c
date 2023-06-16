@@ -77,9 +77,9 @@ static nir_ssa_def *
 vc4_nir_unpack_16u(nir_builder *b, nir_ssa_def *src, unsigned chan)
 {
         if (chan == 0) {
-                return nir_iand(b, src, nir_imm_int(b, 0xffff));
+                return nir_iand_imm(b, src, 0xffff);
         } else {
-                return nir_ushr(b, src, nir_imm_int(b, 16));
+                return nir_ushr_imm(b, src, 16);
         }
 }
 
@@ -313,8 +313,7 @@ vc4_nir_lower_uniform(struct vc4_compile *c, nir_builder *b,
                                         nir_intrinsic_range(intr) * 16 - i * 4);
 
                 intr_comp->src[0] =
-                        nir_src_for_ssa(nir_ishl(b, intr->src[0].ssa,
-                                                 nir_imm_int(b, 4)));
+                        nir_src_for_ssa(nir_ishl_imm(b, intr->src[0].ssa, 4));
 
                 dests[i] = &intr_comp->dest.ssa;
 
