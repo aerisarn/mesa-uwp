@@ -596,12 +596,6 @@ init_context(isel_context* ctx, nir_shader* shader)
                regclasses[tex->dest.ssa.index] = rc;
                break;
             }
-            case nir_instr_type_parallel_copy: {
-               nir_foreach_parallel_copy_entry (entry, nir_instr_as_parallel_copy(instr)) {
-                  regclasses[entry->dest.ssa.index] = regclasses[entry->src.ssa->index];
-               }
-               break;
-            }
             case nir_instr_type_ssa_undef: {
                unsigned num_components = nir_instr_as_ssa_undef(instr)->def.num_components;
                unsigned bit_size = nir_instr_as_ssa_undef(instr)->def.bit_size;
