@@ -1162,13 +1162,22 @@ clc_link_spirv_binaries(const struct clc_linker_args *args,
 
 bool
 clc_validate_spirv(const struct clc_binary *spirv,
-                   const struct clc_logger *logger)
+                   const struct clc_logger *logger,
+                   const struct clc_validator_options *options)
 {
    SPIRVMessageConsumer msgconsumer(logger);
    spvtools::SpirvTools tools(spirv_target);
    tools.SetMessageConsumer(msgconsumer);
+   spvtools::ValidatorOptions spirv_options;
    const uint32_t *data = static_cast<const uint32_t *>(spirv->data);
-   return tools.Validate(data, spirv->size / 4);
+
+   if (options) {
+      spirv_options.SetUniversalLimit(
+         spv_validator_limit_max_function_args,
+         options->limit_max_function_arg);
+   }
+
+   return tools.Validate(data, spirv->size / 4, spirv_options);
 }
 
 int

@@ -206,7 +206,7 @@ impl SPIRVBin {
     pub fn clone_on_validate(&self) -> (Option<Self>, String) {
         let mut msgs: Vec<String> = Vec::new();
         let logger = create_clc_logger(&mut msgs);
-        let res = unsafe { clc_validate_spirv(&self.spirv, &logger) };
+        let res = unsafe { clc_validate_spirv(&self.spirv, &logger, ptr::null()) };
 
         (res.then(|| self.clone()), msgs.join("\n"))
     }
