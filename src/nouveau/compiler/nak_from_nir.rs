@@ -1551,7 +1551,7 @@ impl<'a> ShaderFromNir<'a> {
                 let dst = alloc_ssa_for_nir(&mut b, np.def.as_def());
                 for (i, dst) in dst.iter().enumerate() {
                     let phi_id = self.get_phi_id(np, i.try_into().unwrap());
-                    phi.push(phi_id, (*dst).into());
+                    phi.dsts.push(phi_id, (*dst).into());
                 }
                 self.set_ssa(np.def.as_def(), dst);
             } else {
@@ -1559,7 +1559,7 @@ impl<'a> ShaderFromNir<'a> {
             }
         }
 
-        if !phi.ids.is_empty() {
+        if !phi.dsts.is_empty() {
             b.push_op(phi);
         }
 
@@ -1609,14 +1609,14 @@ impl<'a> ShaderFromNir<'a> {
                         for (i, src) in src.iter().enumerate() {
                             let phi_id =
                                 self.get_phi_id(np, i.try_into().unwrap());
-                            phi.push(phi_id, (*src).into());
+                            phi.srcs.push(phi_id, (*src).into());
                         }
                         break;
                     }
                 }
             }
 
-            if !phi.ids.is_empty() {
+            if !phi.srcs.is_empty() {
                 b.push_op(phi);
             }
         }

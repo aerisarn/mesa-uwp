@@ -483,8 +483,7 @@ impl<'a> PinnedRegAllocator<'a> {
     }
 
     fn finish(mut self, pcopy: &mut OpParCopy) {
-        pcopy.srcs.append(&mut self.pcopy.srcs);
-        pcopy.dsts.append(&mut self.pcopy.dsts);
+        pcopy.dsts_srcs.append(&mut self.pcopy.dsts_srcs);
 
         if !self.evicted.is_empty() {
             /* Sort so we get determinism, even if the hash map order changes
@@ -845,7 +844,7 @@ impl AssignRegsBlock {
                 None
             }
             Op::PhiSrcs(phi) => {
-                for (id, src) in phi.iter() {
+                for (id, src) in phi.srcs.iter() {
                     assert!(src.src_mod.is_none());
                     if let SrcRef::SSA(ssa) = src.src_ref {
                         assert!(ssa.comps() == 1);
@@ -862,7 +861,7 @@ impl AssignRegsBlock {
             Op::PhiDsts(phi) => {
                 assert!(instr.pred.is_true());
 
-                for (id, dst) in phi.iter() {
+                for (id, dst) in phi.dsts.iter() {
                     if let Dst::SSA(ssa) = dst {
                         assert!(ssa.comps() == 1);
                         let ra = &mut self.ra[ssa.file()];

@@ -65,7 +65,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
     let mut vals = Vec::new();
     let mut reg_to_idx = HashMap::new();
 
-    for (i, dst) in pc.dsts.iter().enumerate() {
+    for (i, (dst, _)) in pc.dsts_srcs.iter().enumerate() {
         /* Destinations must be pairwise unique */
         let reg = dst.as_reg().unwrap();
         assert!(reg_to_idx.get(reg).is_none());
@@ -79,7 +79,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
         reg_to_idx.insert(*reg, i);
     }
 
-    for (dst_idx, src) in pc.srcs.iter().enumerate() {
+    for (dst_idx, (_, src)) in pc.dsts_srcs.iter().enumerate() {
         assert!(src.src_mod.is_none());
         let src = src.src_ref;
 
@@ -113,7 +113,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
     let mut b = InstrBuilder::new();
 
     let mut ready = Vec::new();
-    for i in 0..pc.dsts.len() {
+    for i in 0..pc.dsts_srcs.len() {
         if graph.num_reads(i) == 0 {
             ready.push(i);
         }
@@ -156,7 +156,7 @@ fn lower_par_copy(pc: OpParCopy) -> MappedInstrs {
      *
      * QED
      */
-    for i in 0..pc.dsts.len() {
+    for i in 0..pc.dsts_srcs.len() {
         loop {
             if let Some(j) = graph.src(i) {
                 /* We're part of a cycle so j also has a source */

@@ -81,7 +81,7 @@ impl DeadCodePass {
         match &instr.op {
             Op::PhiSrcs(phi) => {
                 assert!(instr.pred.is_true());
-                for (id, src) in phi.iter() {
+                for (id, src) in phi.srcs.iter() {
                     if self.is_phi_live(*id) {
                         self.mark_src_live(src);
                     } else {
@@ -91,7 +91,7 @@ impl DeadCodePass {
             }
             Op::PhiDsts(phi) => {
                 assert!(instr.pred.is_true());
-                for (id, dst) in phi.iter() {
+                for (id, dst) in phi.dsts.iter() {
                     if self.is_dst_live(dst) {
                         self.mark_phi_live(*id);
                     } else {
@@ -101,7 +101,7 @@ impl DeadCodePass {
             }
             Op::ParCopy(pcopy) => {
                 assert!(instr.pred.is_true());
-                for (dst, src) in pcopy.iter() {
+                for (dst, src) in pcopy.dsts_srcs.iter() {
                     if self.is_dst_live(dst) {
                         self.mark_src_live(src);
                     } else {
@@ -128,43 +128,16 @@ impl DeadCodePass {
     fn map_instr(&self, mut instr: Box<Instr>) -> MappedInstrs {
         let is_live = match &mut instr.op {
             Op::PhiSrcs(phi) => {
-                assert!(phi.ids.len() == phi.srcs.len());
-                let mut i = 0;
-                while i < phi.ids.len() {
-                    if self.is_phi_live(phi.ids[i]) {
-                        i += 1;
-                    } else {
-                        phi.srcs.remove(i);
-                        phi.ids.remove(i);
-                    }
-                }
-                i > 0
+                phi.srcs.retain(|id, _| self.is_phi_live(*id));
+                !phi.srcs.is_empty()
             }
             Op::PhiDsts(phi) => {
-                assert!(phi.ids.len() == phi.dsts.len());
-                let mut i = 0;
-                while i < phi.ids.len() {
-                    if self.is_dst_live(&phi.dsts[i]) {
-                        i += 1;
-                    } else {
-                        phi.ids.remove(i);
-                        phi.dsts.remove(i);
-                    }
-                }
-                i > 0
+                phi.dsts.retain(|_, dst| self.is_dst_live(dst));
+                !phi.dsts.is_empty()
             }
             Op::ParCopy(pcopy) => {
-                assert!(pcopy.srcs.len() == pcopy.dsts.len());
-                let mut i = 0;
-                while i < pcopy.dsts.len() {
-                    if self.is_dst_live(&pcopy.dsts[i]) {
-                        i += 1;
-                    } else {
-                        pcopy.srcs.remove(i);
-                        pcopy.dsts.remove(i);
-                    }
-                }
-                i > 0
+                pcopy.dsts_srcs.retain(|dst, _| self.is_dst_live(dst));
+                !pcopy.dsts_srcs.is_empty()
             }
             _ => self.is_instr_live(&instr),
         };

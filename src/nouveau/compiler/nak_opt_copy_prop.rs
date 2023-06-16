@@ -415,7 +415,7 @@ impl CopyPropPass {
                         self.add_copy(dst[0], SrcType::I32, neg.src.ineg());
                     }
                     Op::ParCopy(pcopy) => {
-                        for (dst, src) in pcopy.iter() {
+                        for (dst, src) in pcopy.dsts_srcs.iter() {
                             let dst = dst.as_ssa().unwrap();
                             assert!(dst.comps() == 1);
                             self.add_copy(dst[0], SrcType::GPR, *src);

@@ -3007,46 +3007,104 @@ impl fmt::Display for OpUndef {
     }
 }
 
+pub struct VecPair<A, B> {
+    a: Vec<A>,
+    b: Vec<B>,
+}
+
+impl<A, B> VecPair<A, B> {
+    pub fn append(&mut self, other: &mut VecPair<A, B>) {
+        self.a.append(&mut other.a);
+        self.b.append(&mut other.b);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        debug_assert!(self.a.len() == self.b.len());
+        self.a.is_empty()
+    }
+
+    pub fn iter(&self) -> Zip<slice::Iter<'_, A>, slice::Iter<'_, B>> {
+        debug_assert!(self.a.len() == self.b.len());
+        self.a.iter().zip(self.b.iter())
+    }
+
+    pub fn len(&self) -> usize {
+        debug_assert!(self.a.len() == self.b.len());
+        self.a.len()
+    }
+
+    pub fn new() -> Self {
+        Self {
+            a: Vec::new(),
+            b: Vec::new(),
+        }
+    }
+
+    pub fn push(&mut self, a: A, b: B) {
+        debug_assert!(self.a.len() == self.b.len());
+        self.a.push(a);
+        self.b.push(b);
+    }
+}
+
+impl<A: Clone, B: Clone> VecPair<A, B> {
+    pub fn retain(&mut self, f: impl Fn(&A, &B) -> bool) {
+        debug_assert!(self.a.len() == self.b.len());
+        let len = self.a.len();
+        let mut i = 0_usize;
+        while i < len {
+            if !f(&self.a[i], &self.b[i]) {
+                break;
+            }
+            i += 1;
+        }
+
+        let mut new_len = i;
+
+        /* Don't check this one twice. */
+        i += 1;
+
+        while i < len {
+            /* This could be more efficient but it's good enough for our
+             * purposes since everything we're storing is small and has a
+             * trivial Drop.
+             */
+            if f(&self.a[i], &self.b[i]) {
+                self.a[new_len] = self.a[i].clone();
+                self.b[new_len] = self.b[i].clone();
+                new_len += 1;
+            }
+            i += 1;
+        }
+
+        if new_len < len {
+            self.a.truncate(new_len);
+            self.b.truncate(new_len);
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(DstsAsSlice)]
 pub struct OpPhiSrcs {
-    pub srcs: Vec<Src>,
-    pub ids: Vec<u32>,
+    pub srcs: VecPair<u32, Src>,
 }
 
 impl OpPhiSrcs {
     pub fn new() -> OpPhiSrcs {
         OpPhiSrcs {
-            srcs: Vec::new(),
-            ids: Vec::new(),
+            srcs: VecPair::new(),
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn is_empty(&self) -> bool {
-        assert!(self.ids.len() == self.srcs.len());
-        self.ids.is_empty()
-    }
-
-    pub fn iter(&self) -> Zip<slice::Iter<'_, u32>, slice::Iter<'_, Src>> {
-        assert!(self.ids.len() == self.srcs.len());
-        self.ids.iter().zip(self.srcs.iter())
-    }
-
-    pub fn push(&mut self, id: u32, src: Src) {
-        assert!(self.ids.len() == self.srcs.len());
-        self.ids.push(id);
-        self.srcs.push(src);
     }
 }
 
 impl SrcsAsSlice for OpPhiSrcs {
     fn srcs_as_slice(&self) -> &[Src] {
-        &self.srcs
+        &self.srcs.b
     }
 
     fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
-        &mut self.srcs
+        &mut self.srcs.b
     }
 
     fn src_types(&self) -> SrcTypeList {
@@ -3057,12 +3115,11 @@ impl SrcsAsSlice for OpPhiSrcs {
 impl fmt::Display for OpPhiSrcs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "PHI_SRC {{")?;
-        assert!(self.ids.len() == self.srcs.len());
-        for i in 0..self.ids.len() {
+        for (i, (id, src)) in self.srcs.iter().enumerate() {
             if i > 0 {
                 write!(f, ",")?;
             }
-            write!(f, " {} <- {}", self.ids[i], self.srcs[i])?;
+            write!(f, " {} <- {}", id, src)?;
         }
         write!(f, " }}")
     }
@@ -3071,55 +3128,35 @@ impl fmt::Display for OpPhiSrcs {
 #[repr(C)]
 #[derive(SrcsAsSlice)]
 pub struct OpPhiDsts {
-    pub ids: Vec<u32>,
-    pub dsts: Vec<Dst>,
+    pub dsts: VecPair<u32, Dst>,
 }
 
 impl OpPhiDsts {
     pub fn new() -> OpPhiDsts {
         OpPhiDsts {
-            ids: Vec::new(),
-            dsts: Vec::new(),
+            dsts: VecPair::new(),
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn is_empty(&self) -> bool {
-        assert!(self.ids.len() == self.dsts.len());
-        self.ids.is_empty()
-    }
-
-    pub fn iter(&self) -> Zip<slice::Iter<'_, u32>, slice::Iter<'_, Dst>> {
-        assert!(self.ids.len() == self.dsts.len());
-        self.ids.iter().zip(self.dsts.iter())
-    }
-
-    pub fn push(&mut self, id: u32, dst: Dst) {
-        assert!(self.ids.len() == self.dsts.len());
-        self.ids.push(id);
-        self.dsts.push(dst);
     }
 }
 
 impl DstsAsSlice for OpPhiDsts {
     fn dsts_as_slice(&self) -> &[Dst] {
-        &self.dsts
+        &self.dsts.b
     }
 
     fn dsts_as_mut_slice(&mut self) -> &mut [Dst] {
-        &mut self.dsts
+        &mut self.dsts.b
     }
 }
 
 impl fmt::Display for OpPhiDsts {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "PHI_DST {{")?;
-        assert!(self.ids.len() == self.dsts.len());
-        for i in 0..self.ids.len() {
+        for (i, (id, dst)) in self.dsts.iter().enumerate() {
             if i > 0 {
                 write!(f, ",")?;
             }
-            write!(f, " {} <- {}", self.dsts[i], self.ids[i])?;
+            write!(f, " {} <- {}", dst, id)?;
         }
         write!(f, " }}")
     }
@@ -3144,42 +3181,32 @@ impl fmt::Display for OpSwap {
 
 #[repr(C)]
 pub struct OpParCopy {
-    pub dsts: Vec<Dst>,
-    pub srcs: Vec<Src>,
+    pub dsts_srcs: VecPair<Dst, Src>,
 }
 
 impl OpParCopy {
     pub fn new() -> OpParCopy {
         OpParCopy {
-            dsts: Vec::new(),
-            srcs: Vec::new(),
+            dsts_srcs: VecPair::new(),
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        assert!(self.srcs.len() == self.dsts.len());
-        self.srcs.is_empty()
-    }
-
-    pub fn iter(&self) -> Zip<slice::Iter<'_, Dst>, slice::Iter<'_, Src>> {
-        assert!(self.srcs.len() == self.dsts.len());
-        self.dsts.iter().zip(&self.srcs)
+        self.dsts_srcs.is_empty()
     }
 
     pub fn push(&mut self, dst: Dst, src: Src) {
-        assert!(self.srcs.len() == self.dsts.len());
-        self.srcs.push(src);
-        self.dsts.push(dst);
+        self.dsts_srcs.push(dst, src);
     }
 }
 
 impl SrcsAsSlice for OpParCopy {
     fn srcs_as_slice(&self) -> &[Src] {
-        &self.srcs
+        &self.dsts_srcs.b
     }
 
     fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
-        &mut self.srcs
+        &mut self.dsts_srcs.b
     }
 
     fn src_types(&self) -> SrcTypeList {
@@ -3189,23 +3216,22 @@ impl SrcsAsSlice for OpParCopy {
 
 impl DstsAsSlice for OpParCopy {
     fn dsts_as_slice(&self) -> &[Dst] {
-        &self.dsts
+        &self.dsts_srcs.a
     }
 
     fn dsts_as_mut_slice(&mut self) -> &mut [Dst] {
-        &mut self.dsts
+        &mut self.dsts_srcs.a
     }
 }
 
 impl fmt::Display for OpParCopy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "PAR_COPY {{")?;
-        assert!(self.srcs.len() == self.dsts.len());
-        for i in 0..self.srcs.len() {
+        for (i, (dst, src)) in self.dsts_srcs.iter().enumerate() {
             if i > 0 {
                 write!(f, ",")?;
             }
-            write!(f, " {} <- {}", self.dsts[i], self.srcs[i])?;
+            write!(f, " {} <- {}", dst, src)?;
         }
         write!(f, " }}")
     }
@@ -4055,8 +4081,7 @@ impl Shader {
                     for (i, src) in out.srcs.iter().enumerate() {
                         let dst =
                             RegRef::new(RegFile::GPR, i.try_into().unwrap(), 1);
-                        pcopy.srcs.push(*src);
-                        pcopy.dsts.push(dst.into());
+                        pcopy.push(dst.into(), *src);
                     }
                     MappedInstrs::One(Instr::new_boxed(pcopy))
                 }
