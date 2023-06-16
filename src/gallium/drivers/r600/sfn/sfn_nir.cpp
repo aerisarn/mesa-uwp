@@ -102,7 +102,7 @@ r600_nir_lower_scratch_address_impl(nir_builder *b, nir_intrinsic_instr *instr)
    }
 
    nir_ssa_def *address = instr->src[address_index].ssa;
-   nir_ssa_def *new_address = nir_ishr(b, address, nir_imm_int(b, 4 * align));
+   nir_ssa_def *new_address = nir_ishr_imm(b, address, 4 * align);
 
    nir_instr_rewrite_src(&instr->instr,
                          &instr->src[address_index],
@@ -414,7 +414,7 @@ r600_lower_deref_instr(nir_builder *b, nir_instr *instr_, UNUSED void *cb_data)
          array_stride *= glsl_get_aoa_size(d->type);
 
       offset =
-         nir_iadd(b, offset, nir_imul(b, d->arr.index.ssa, nir_imm_int(b, array_stride)));
+         nir_iadd(b, offset, nir_imul_imm(b, d->arr.index.ssa, array_stride));
    }
 
    /* Since the first source is a deref and the first source in the lowered
@@ -569,7 +569,7 @@ r600_lower_shared_io_impl(nir_function *func)
                bool start_even = (writemask & (1u << (2 * i)));
 
                auto addr2 =
-                  nir_iadd(&b, addr, nir_imm_int(&b, 8 * i + (start_even ? 0 : 4)));
+                  nir_iadd_imm(&b, addr, 8 * i + (start_even ? 0 : 4));
                store->src[1] = nir_src_for_ssa(addr2);
 
                nir_builder_instr_insert(&b, &store->instr);
