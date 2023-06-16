@@ -359,7 +359,7 @@ print_ssa_use(nir_ssa_def *def, print_state *state, nir_alu_type src_type)
 static void print_src(const nir_src *src, print_state *state, nir_alu_type src_type);
 
 static void
-print_reg_src(const nir_reg_src *src, print_state *state)
+print_reg_src(const nir_register_src *src, print_state *state)
 {
    FILE *fp = state->fp;
    print_register(src->reg, state);
@@ -374,7 +374,7 @@ print_reg_src(const nir_reg_src *src, print_state *state)
 }
 
 static void
-print_reg_dest(nir_reg_dest *dest, print_state *state)
+print_reg_dest(nir_register_dest *dest, print_state *state)
 {
    FILE *fp = state->fp;
    fprintf(fp, "%s", divergence_status(state, dest->reg->divergent));

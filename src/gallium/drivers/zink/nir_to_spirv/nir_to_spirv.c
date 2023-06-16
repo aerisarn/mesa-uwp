@@ -1428,7 +1428,7 @@ get_var_from_reg(struct ntv_context *ctx, nir_register *reg, nir_alu_type *atype
 }
 
 static SpvId
-get_src_reg(struct ntv_context *ctx, const nir_reg_src *reg, nir_alu_type *atype)
+get_src_reg(struct ntv_context *ctx, const nir_register_src *reg, nir_alu_type *atype)
 {
    assert(reg->reg);
    assert(!reg->indirect);
@@ -1573,7 +1573,7 @@ cast_src_to_type(struct ntv_context *ctx, SpvId value, nir_src src, nir_alu_type
 }
 
 static void
-store_reg_def(struct ntv_context *ctx, nir_reg_dest *reg, SpvId result, nir_alu_type atype)
+store_reg_def(struct ntv_context *ctx, nir_register_dest *reg, SpvId result, nir_alu_type atype)
 {
    atype = nir_alu_type_get_base_type(atype);
    init_reg(ctx, reg->reg, atype);

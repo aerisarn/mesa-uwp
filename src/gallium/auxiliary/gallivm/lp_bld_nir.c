@@ -161,7 +161,7 @@ get_src(struct lp_build_nir_context *bld_base, nir_src src);
 
 
 static LLVMValueRef
-get_reg_src(struct lp_build_nir_context *bld_base, nir_reg_src src)
+get_reg_src(struct lp_build_nir_context *bld_base, nir_register_src src)
 {
    struct hash_entry *entry = _mesa_hash_table_search(bld_base->regs, src.reg);
    LLVMValueRef reg_storage = (LLVMValueRef)entry->data;
@@ -205,7 +205,7 @@ assign_ssa_dest(struct lp_build_nir_context *bld_base, const nir_ssa_def *ssa,
 
 
 static void
-assign_reg(struct lp_build_nir_context *bld_base, const nir_reg_dest *reg,
+assign_reg(struct lp_build_nir_context *bld_base, const nir_register_dest *reg,
            unsigned write_mask,
            LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS])
 {

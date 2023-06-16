@@ -989,7 +989,7 @@ typedef struct {
    nir_register *reg;
    struct nir_src *indirect; /** < NULL for no indirect offset */
    unsigned base_offset;
-} nir_reg_src;
+} nir_register_src;
 
 typedef struct {
    nir_instr *parent_instr;
@@ -998,7 +998,7 @@ typedef struct {
    nir_register *reg;
    struct nir_src *indirect; /** < NULL for no indirect offset */
    unsigned base_offset;
-} nir_reg_dest;
+} nir_register_dest;
 
 struct nir_if;
 
@@ -1012,7 +1012,7 @@ typedef struct nir_src {
    struct list_head use_link;
 
    union {
-      nir_reg_src reg;
+      nir_register_src reg;
       nir_ssa_def *ssa;
    };
 
@@ -1076,7 +1076,7 @@ nir_ssa_def_used_by_if(const nir_ssa_def *def)
 
 typedef struct {
    union {
-      nir_reg_dest reg;
+      nir_register_dest reg;
       nir_ssa_def ssa;
    };
 

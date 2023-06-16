@@ -162,7 +162,7 @@ emit_store_var(struct lp_build_nir_context *bld_base,
 static LLVMValueRef
 emit_load_reg(struct lp_build_nir_context *bld_base,
               struct lp_build_context *reg_bld,
-              const nir_reg_src *reg,
+              const nir_register_src *reg,
               LLVMValueRef indir_src,
               LLVMValueRef reg_storage)
 {
@@ -205,7 +205,7 @@ swizzle_writemask(struct lp_build_nir_aos_context *bld,
 static void
 emit_store_reg(struct lp_build_nir_context *bld_base,
                struct lp_build_context *reg_bld,
-               const nir_reg_dest *reg,
+               const nir_register_dest *reg,
                unsigned writemask,
                LLVMValueRef indir_src,
                LLVMValueRef reg_storage,

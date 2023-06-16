@@ -247,7 +247,7 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
 }
 
 static void
-validate_reg_dest(nir_reg_dest *dest, validate_state *state,
+validate_reg_dest(nir_register_dest *dest, validate_state *state,
                   unsigned bit_sizes, unsigned num_components)
 {
    validate_assert(state, dest->reg != NULL);
