@@ -1888,10 +1888,6 @@ emit_alu_op1_64bit(const nir_alu_instr& alu,
                         value_factory.src64(alu.src[0], i, swz[0]),
                         {alu_write});
       group->add_instruction(ir);
-      if (alu.src[0].abs)
-         ir->set_alu_flag(alu_src0_abs);
-      if (alu.src[0].negate)
-         ir->set_alu_flag(alu_src0_neg);
 
       ir = new AluInstr(opcode,
                         value_factory.dest(alu.dest, 2 * i + 1, pin_chan),
@@ -1920,10 +1916,6 @@ emit_alu_mov_64bit(const nir_alu_instr& alu, Shader& shader)
                            {alu_write});
          shader.emit_instruction(ir);
       }
-      if (alu.src[0].abs)
-         ir->set_alu_flag(alu_src0_abs);
-      if (alu.src[0].negate)
-         ir->set_alu_flag(alu_src0_neg);
    }
    if (ir)
       ir->set_alu_flag(alu_last_instr);
@@ -2006,19 +1998,6 @@ emit_alu_op2_64bit(const nir_alu_instr& alu,
                            value_factory.src64(alu.src[order[0]], k, 1),
                            value_factory.src64(alu.src[order[1]], k, 1),
                            i < 2 ? AluInstr::write : AluInstr::empty);
-
-         if (alu.src[0].abs)
-            ir->set_alu_flag(switch_src ? alu_src1_abs : alu_src0_abs);
-         if (alu.src[1].abs)
-            ir->set_alu_flag(switch_src ? alu_src0_abs : alu_src1_abs);
-         if (alu.src[0].negate)
-            ir->set_alu_flag(switch_src ? alu_src1_neg : alu_src0_neg);
-         if (alu.src[1].negate)
-            ir->set_alu_flag(switch_src ? alu_src0_neg : alu_src1_neg);
-         if (alu.dest.saturate && i == 0) {
-            ir->set_alu_flag(alu_dst_clamp);
-         }
-
          group->add_instruction(ir);
       }
 
@@ -2063,15 +2042,6 @@ emit_alu_op2_64bit_one_dst(const nir_alu_instr& alu,
       src[3] = value_factory.src64(alu.src[order[1]], k, 0);
 
       ir = new AluInstr(opcode, dest, src, AluInstr::write, 2);
-
-      if (alu.src[0].abs)
-         ir->set_alu_flag(switch_order ? alu_src1_abs : alu_src0_abs);
-      if (alu.src[1].abs)
-         ir->set_alu_flag(switch_order ? alu_src0_abs : alu_src1_abs);
-      if (alu.src[0].negate)
-         ir->set_alu_flag(switch_order ? alu_src1_neg : alu_src0_neg);
-      if (alu.src[1].negate)
-         ir->set_alu_flag(switch_order ? alu_src0_neg : alu_src1_neg);
       ir->set_alu_flag(alu_64bit_op);
 
       shader.emit_instruction(ir);
@@ -2095,11 +2065,6 @@ emit_alu_op1_64bit_trans(const nir_alu_instr& alu, EAluOp opcode, Shader& shader
                         value_factory.src64(alu.src[0], 0, 1),
                         value_factory.src64(alu.src[0], 0, 0),
                         i < 2 ? AluInstr::write : AluInstr::empty);
-
-      if (alu.src[0].abs || opcode == op1_sqrt_64)
-         ir->set_alu_flag(alu_src1_abs);
-      if (alu.src[0].negate)
-         ir->set_alu_flag(alu_src1_neg);
 
       group->add_instruction(ir);
    }
@@ -2127,16 +2092,6 @@ emit_alu_fma_64bit(const nir_alu_instr& alu, EAluOp opcode, Shader& shader)
                         value_factory.src64(alu.src[1], 0, chan),
                         value_factory.src64(alu.src[2], 0, chan),
                         i < 2 ? AluInstr::write : AluInstr::empty);
-
-      if (i < 3) {
-         if (alu.src[0].negate)
-            ir->set_alu_flag(alu_src0_neg);
-         if (alu.src[1].negate)
-            ir->set_alu_flag(alu_src1_neg);
-         if (alu.src[2].negate)
-            ir->set_alu_flag(alu_src2_neg);
-      }
-
       group->add_instruction(ir);
    }
    if (ir)
@@ -2295,10 +2250,6 @@ emit_alu_b2x(const nir_alu_instr& alu, AluInlineConstants mask, Shader& shader)
                            src,
                            value_factory.inline_const(mask, 0),
                            {alu_write});
-         if (alu.src[0].negate)
-            ir->set_alu_flag(alu_src0_neg);
-         if (alu.src[0].abs)
-            ir->set_alu_flag(alu_src0_abs);
          shader.emit_instruction(ir);
       }
    }
@@ -2324,13 +2275,6 @@ emit_alu_op1(const nir_alu_instr& alu,
                            value_factory.dest(alu.dest, i, pin),
                            value_factory.src(alu.src[0], i),
                            {alu_write});
-
-         if (flags.test(alu_src0_abs) || alu.src[0].abs)
-            ir->set_alu_flag(alu_src0_abs);
-
-         if (alu.src[0].negate ^ flags.test(alu_src0_neg))
-            ir->set_alu_flag(alu_src0_neg);
-
          if (flags.test(alu_dst_clamp) || alu.dest.saturate)
             ir->set_alu_flag(alu_dst_clamp);
 
@@ -2359,7 +2303,7 @@ emit_alu_op2(const nir_alu_instr& alu,
       std::swap(idx0, idx1);
    }
 
-   bool src1_negate = (opts & AluInstr::op2_opt_neg_src1) ^ src1->negate;
+   bool src1_negate = (opts & AluInstr::op2_opt_neg_src1);
 
    auto pin = pin_for_components(alu);
    AluInstr *ir = nullptr;
@@ -2370,17 +2314,8 @@ emit_alu_op2(const nir_alu_instr& alu,
                            value_factory.src(*src0, i),
                            value_factory.src(*src1, i),
                            {alu_write});
-
-         if (src0->negate)
-            ir->set_alu_flag(alu_src0_neg);
-         if (src0->abs)
-            ir->set_alu_flag(alu_src0_abs);
          if (src1_negate)
             ir->set_alu_flag(alu_src1_neg);
-         if (src1->abs)
-            ir->set_alu_flag(alu_src1_abs);
-         if (alu.dest.saturate)
-            ir->set_alu_flag(alu_dst_clamp);
          shader.emit_instruction(ir);
       }
    }
@@ -2395,11 +2330,6 @@ emit_alu_op2_int(const nir_alu_instr& alu,
                  Shader& shader,
                  AluInstr::Op2Options opts)
 {
-   assert(!alu.src[0].abs);
-   assert(!alu.src[0].negate);
-   assert(!alu.src[1].abs);
-   assert(!alu.src[1].negate);
-
    return emit_alu_op2(alu, opcode, shader, opts);
 }
 
@@ -2425,20 +2355,6 @@ emit_alu_op3(const nir_alu_instr& alu,
                            value_factory.src(*src[1], i),
                            value_factory.src(*src[2], i),
                            {alu_write});
-
-         if (src[0]->negate)
-            ir->set_alu_flag(alu_src0_neg);
-         if (src[1]->negate)
-            ir->set_alu_flag(alu_src1_neg);
-         if (src[2]->negate)
-            ir->set_alu_flag(alu_src2_neg);
-
-         assert(!src[0]->abs);
-         assert(!src[1]->abs);
-         assert(!src[2]->abs);
-
-         if (alu.dest.saturate)
-            ir->set_alu_flag(alu_dst_clamp);
          ir->set_alu_flag(alu_write);
          shader.emit_instruction(ir);
       }
@@ -2464,16 +2380,6 @@ emit_any_all_fcomp2(const nir_alu_instr& alu, EAluOp opcode, Shader& shader)
                         value_factory.src(alu.src[0], i),
                         value_factory.src(alu.src[1], i),
                         {alu_write});
-      if (alu.src[0].abs)
-         ir->set_alu_flag(alu_src0_abs);
-      if (alu.src[0].negate)
-         ir->set_alu_flag(alu_src0_neg);
-
-      if (alu.src[1].abs)
-         ir->set_alu_flag(alu_src1_abs);
-      if (alu.src[1].negate)
-         ir->set_alu_flag(alu_src1_neg);
-
       shader.emit_instruction(ir);
    }
    ir->set_alu_flag(alu_last_instr);
@@ -2511,17 +2417,6 @@ emit_any_all_fcomp(const nir_alu_instr& alu, EAluOp op, int nc, bool all, Shader
                         value_factory.src(alu.src[0], i),
                         value_factory.src(alu.src[1], i),
                         {alu_write});
-
-      if (alu.src[0].abs)
-         ir->set_alu_flag(alu_src0_abs);
-      if (alu.src[0].negate)
-         ir->set_alu_flag(alu_src0_neg);
-
-      if (alu.src[1].abs)
-         ir->set_alu_flag(alu_src1_abs);
-      if (alu.src[1].negate)
-         ir->set_alu_flag(alu_src1_neg);
-
       shader.emit_instruction(ir);
    }
    if (ir)
@@ -2630,18 +2525,6 @@ emit_dot(const nir_alu_instr& alu, int n, Shader& shader)
 
    AluInstr *ir = new AluInstr(op2_dot_ieee, dest, srcs, AluInstr::last_write, n);
 
-   if (src0.negate)
-      ir->set_alu_flag(alu_src0_neg);
-   if (src0.abs)
-      ir->set_alu_flag(alu_src0_abs);
-   if (src1.negate)
-      ir->set_alu_flag(alu_src1_neg);
-   if (src1.abs)
-      ir->set_alu_flag(alu_src1_abs);
-
-   if (alu.dest.saturate)
-      ir->set_alu_flag(alu_dst_clamp);
-
    shader.emit_instruction(ir);
    shader.set_flag(Shader::sh_disble_sb);
 
@@ -2671,18 +2554,6 @@ emit_dot4(const nir_alu_instr& alu, int nelm, Shader& shader)
 
    AluInstr *ir = new AluInstr(op2_dot4_ieee, dest, srcs, AluInstr::last_write, 4);
 
-   if (src0.negate)
-      ir->set_alu_flag(alu_src0_neg);
-   if (src0.abs)
-      ir->set_alu_flag(alu_src0_abs);
-   if (src1.negate)
-      ir->set_alu_flag(alu_src1_neg);
-   if (src1.abs)
-      ir->set_alu_flag(alu_src1_abs);
-
-   if (alu.dest.saturate)
-      ir->set_alu_flag(alu_dst_clamp);
-
    shader.emit_instruction(ir);
    return true;
 }
@@ -2707,19 +2578,6 @@ emit_fdph(const nir_alu_instr& alu, Shader& shader)
    srcs[7] = value_factory.src(src1, 3);
 
    AluInstr *ir = new AluInstr(op2_dot4_ieee, dest, srcs, AluInstr::last_write, 4);
-
-   if (src0.negate)
-      ir->set_alu_flag(alu_src0_neg);
-   if (src0.abs)
-      ir->set_alu_flag(alu_src0_abs);
-   if (src1.negate)
-      ir->set_alu_flag(alu_src1_neg);
-   if (src1.abs)
-      ir->set_alu_flag(alu_src1_abs);
-
-   if (alu.dest.saturate)
-      ir->set_alu_flag(alu_dst_clamp);
-
    shader.emit_instruction(ir);
    return true;
 }
@@ -2734,16 +2592,7 @@ emit_create_vec(const nir_alu_instr& instr, unsigned nc, Shader& shader)
       if (instr.dest.write_mask & (1 << i)) {
          auto src = value_factory.src(instr.src[i].src, instr.src[i].swizzle[0]);
          auto dst = value_factory.dest(instr.dest.dest, i, pin_none);
-         ir = new AluInstr(op1_mov, dst, src, {alu_write});
-
-         if (instr.dest.saturate)
-            ir->set_alu_flag(alu_dst_clamp);
-         if (instr.src[i].negate)
-            ir->set_alu_flag(alu_src0_neg);
-         if (instr.src[i].abs)
-            ir->set_alu_flag(alu_src0_abs);
-
-         shader.emit_instruction(ir);
+         shader.emit_instruction(new AluInstr(op1_mov, dst, src, {alu_write}));
       }
    }
 
@@ -2925,12 +2774,6 @@ emit_alu_trans_op1_eg(const nir_alu_instr& alu, EAluOp opcode, Shader& shader)
                            value_factory.dest(alu.dest.dest, i, pin),
                            value_factory.src(src0, i),
                            AluInstr::last_write);
-         if (src0.negate)
-            ir->set_alu_flag(alu_src0_neg);
-         if (src0.abs)
-            ir->set_alu_flag(alu_src0_abs);
-         if (alu.dest.saturate)
-            ir->set_alu_flag(alu_dst_clamp);
          ir->set_alu_flag(alu_is_trans);
          shader.emit_instruction(ir);
       }
@@ -2955,10 +2798,6 @@ emit_alu_f2i32_or_u32_eg(const nir_alu_instr& alu, EAluOp opcode, Shader& shader
                         reg[i],
                         value_factory.src(alu.src[0], i),
                         AluInstr::last_write);
-      if (alu.src[0].abs)
-         ir->set_alu_flag(alu_src0_abs);
-      if (alu.src[0].negate)
-         ir->set_alu_flag(alu_src0_neg);
       shader.emit_instruction(ir);
    }
 
@@ -2999,14 +2838,6 @@ emit_alu_trans_op1_cayman(const nir_alu_instr& alu, EAluOp opcode, Shader& shade
             srcs[i] = value_factory.src(src0, j);
 
          auto ir = new AluInstr(opcode, dest, srcs, flags, ncomp);
-
-         if (alu.src[0].abs)
-            ir->set_alu_flag(alu_src0_abs);
-         if (alu.src[0].negate)
-            ir->set_alu_flag(alu_src0_neg);
-         if (alu.dest.saturate)
-            ir->set_alu_flag(alu_dst_clamp);
-
          shader.emit_instruction(ir);
       }
    }
@@ -3031,16 +2862,6 @@ emit_alu_trans_op2_eg(const nir_alu_instr& alu, EAluOp opcode, Shader& shader)
                            value_factory.src(src0, i),
                            value_factory.src(src1, i),
                            AluInstr::last_write);
-         if (src0.negate)
-            ir->set_alu_flag(alu_src0_neg);
-         if (src0.abs)
-            ir->set_alu_flag(alu_src0_abs);
-         if (src1.negate)
-            ir->set_alu_flag(alu_src1_neg);
-         if (src1.abs)
-            ir->set_alu_flag(alu_src1_abs);
-         if (alu.dest.saturate)
-            ir->set_alu_flag(alu_dst_clamp);
          ir->set_alu_flag(alu_is_trans);
          shader.emit_instruction(ir);
       }
@@ -3071,17 +2892,6 @@ emit_alu_trans_op2_cayman(const nir_alu_instr& alu, EAluOp opcode, Shader& shade
          }
 
          auto ir = new AluInstr(opcode, dest, srcs, flags, last_slot);
-
-         if (src0.negate)
-            ir->set_alu_flag(alu_src0_neg);
-         if (src0.abs)
-            ir->set_alu_flag(alu_src0_abs);
-         if (src1.negate)
-            ir->set_alu_flag(alu_src1_neg);
-         if (src1.abs)
-            ir->set_alu_flag(alu_src1_abs);
-         if (alu.dest.saturate)
-            ir->set_alu_flag(alu_dst_clamp);
          ir->set_alu_flag(alu_is_cayman_trans);
          shader.emit_instruction(ir);
       }
@@ -3108,10 +2918,6 @@ emit_tex_fdd(const nir_alu_instr& alu, TexInstr::Opcode opcode, bool fine, Shade
    AluInstr *mv = nullptr;
    for (int i = 0; i < ncomp; ++i) {
       mv = new AluInstr(op1_mov, tmp[i], src[i], AluInstr::write);
-      if (alu.src[0].abs)
-         mv->set_alu_flag(alu_src0_abs);
-      if (alu.src[0].negate)
-         mv->set_alu_flag(alu_src0_neg);
       shader.emit_instruction(mv);
    }
    if (mv)
