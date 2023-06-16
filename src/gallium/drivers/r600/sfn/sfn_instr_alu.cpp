@@ -72,15 +72,15 @@ AluInstr::AluInstr(EAluOp opcode,
 
    if (dest && slots > 1) {
       switch (m_opcode) {
-      case op2_dot_ieee: m_allowed_desk_mask = (1 << (5 - slots)) - 1;
+      case op2_dot_ieee: m_allowed_dest_mask = (1 << (5 - slots)) - 1;
          break;
       default:
          if (has_alu_flag(alu_is_cayman_trans)) {
-            m_allowed_desk_mask = (1 << slots) - 1;
+            m_allowed_dest_mask = (1 << slots) - 1;
          }
       }
    }
-   assert(!dest || (m_allowed_desk_mask & (1 << dest->chan())));
+   assert(!dest || (m_allowed_dest_mask & (1 << dest->chan())));
 }
 
 AluInstr::AluInstr(EAluOp opcode):
