@@ -2411,7 +2411,18 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
     */
    if (key->fs.nr_samples) {
       assert(nir->info.stage == MESA_SHADER_FRAGMENT);
-      NIR_PASS_V(nir, agx_nir_lower_sample_mask, key->fs.nr_samples);
+
+      if (agx_nir_lower_sample_mask(nir, key->fs.nr_samples)) {
+         /* Clean up ixor(bcsel) patterns created from sample mask lowering.
+          * If this succeeds, we'll have expressions to constant fold to get the
+          * benefit. We need to rescalarize after folding constants.
+          */
+         if (agx_nir_opt_ixor_bcsel(nir)) {
+            NIR_PASS_V(nir, nir_opt_constant_folding);
+            NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+            NIR_PASS_V(nir, nir_opt_dce);
+         }
+      }
    }
 
    /* Must be last since NIR passes can remap driver_location freely */
