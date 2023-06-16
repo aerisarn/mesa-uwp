@@ -58,8 +58,8 @@ load_comps_to_vec(nir_builder *b, unsigned src_bit_size,
 
       dst_comps[i] = nir_u2uN(b, src_comps[src_offs], dst_bit_size);
       for (unsigned j = 1; j < comps_per_dst && src_offs + j < num_src_comps; j++) {
-         nir_ssa_def *tmp = nir_ishl(b, nir_u2uN(b, src_comps[src_offs + j], dst_bit_size),
-                                          nir_imm_int(b, j * src_bit_size));
+         nir_ssa_def *tmp = nir_ishl_imm(b, nir_u2uN(b, src_comps[src_offs + j], dst_bit_size),
+                                         j * src_bit_size);
          dst_comps[i] = nir_ior(b, dst_comps[i], tmp);
       }
    }
@@ -80,10 +80,10 @@ lower_32b_offset_load(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *v
    assert(intr->src[0].is_ssa);
    nir_ssa_def *offset = intr->src[0].ssa;
    if (intr->intrinsic == nir_intrinsic_load_shared)
-      offset = nir_iadd(b, offset, nir_imm_int(b, nir_intrinsic_base(intr)));
+      offset = nir_iadd_imm(b, offset, nir_intrinsic_base(intr));
    else
       offset = nir_u2u32(b, offset);
-   nir_ssa_def *index = nir_ushr(b, offset, nir_imm_int(b, 2));
+   nir_ssa_def *index = nir_ushr_imm(b, offset, 2);
    nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
    nir_ssa_def *comps_32bit[NIR_MAX_VEC_COMPONENTS * 2];
 
@@ -168,7 +168,7 @@ lower_32b_offset_store(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *
 
    nir_ssa_def *offset = intr->src[1].ssa;
    if (intr->intrinsic == nir_intrinsic_store_shared)
-      offset = nir_iadd(b, offset, nir_imm_int(b, nir_intrinsic_base(intr)));
+      offset = nir_iadd_imm(b, offset, nir_intrinsic_base(intr));
    else
       offset = nir_u2u32(b, offset);
    nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
@@ -181,10 +181,10 @@ lower_32b_offset_store(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *
    for (unsigned i = 0; i < num_bits; i += step) {
       /* For each 4byte chunk (or smaller) we generate a 32bit scalar store. */
       unsigned substore_num_bits = MIN2(num_bits - i, step);
-      nir_ssa_def *local_offset = nir_iadd(b, offset, nir_imm_int(b, i / 8));
+      nir_ssa_def *local_offset = nir_iadd_imm(b, offset, i / 8);
       nir_ssa_def *vec32 = load_comps_to_vec(b, bit_size, &comps[comp_idx],
                                              substore_num_bits / bit_size, 32);
-      nir_ssa_def *index = nir_ushr(b, local_offset, nir_imm_int(b, 2));
+      nir_ssa_def *index = nir_ushr_imm(b, local_offset, 2);
 
       /* For anything less than 32bits we need to use the masked version of the
        * intrinsic to preserve data living in the same 32bit slot. */
@@ -327,8 +327,8 @@ flatten_var_arrays(nir_builder *b, nir_instr *instr, void *data)
       nir_deref_instr *arr_deref = path.path[level];
       assert(arr_deref->deref_type == nir_deref_type_array);
       b->cursor = nir_before_instr(&arr_deref->instr);
-      nir_ssa_def *stride = nir_imm_int(b, glsl_get_component_slots(arr_deref->type));
-      nir_ssa_def *val = nir_imul(b, arr_deref->arr.index.ssa, stride);
+      nir_ssa_def *val = nir_imul_imm(b, arr_deref->arr.index.ssa,
+                                      glsl_get_component_slots(arr_deref->type));
       if (index) {
          index = nir_iadd(b, index, val);
       } else {
@@ -628,8 +628,8 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var
 
    assert(intr->src[0].is_ssa);
    nir_ssa_def *offset =
-      nir_iadd(b, intr->src[0].ssa, nir_imm_int(b, nir_intrinsic_base(intr)));
-   nir_ssa_def *index = nir_ushr(b, offset, nir_imm_int(b, 2));
+      nir_iadd_imm(b, intr->src[0].ssa, nir_intrinsic_base(intr));
+   nir_ssa_def *index = nir_ushr_imm(b, offset, 2);
 
    nir_deref_instr *deref = nir_build_deref_array(b, nir_build_deref_var(b, var), index);
    nir_ssa_def *result;

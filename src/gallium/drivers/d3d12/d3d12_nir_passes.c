@@ -234,7 +234,7 @@ lower_uint_color_write(nir_builder *b, struct nir_instr *instr, bool is_signed)
                                   nir_format_float_to_unorm(b, col, bits);
    if (is_signed)
       def = nir_bcsel(b, nir_ilt_imm(b, def, 0),
-                      nir_iadd(b, def, nir_imm_int(b, 1 << NUM_BITS)),
+                      nir_iadd_imm(b, def, 1ull << NUM_BITS),
                       def);
    nir_instr_rewrite_src(&intr->instr, intr->src + 1, nir_src_for_ssa(def));
 }
@@ -721,7 +721,7 @@ lower_triangle_strip_emit_vertex(nir_builder *b, nir_intrinsic_instr *intr,
 
    nir_pop_if(b, count_check);
 
-   vertex_count = nir_iadd(b, vertex_count, nir_imm_int(b, 1));
+   vertex_count = nir_iadd_imm(b, vertex_count, 1);
    nir_store_var(b, vertex_count_var, vertex_count, 0x1);
 
    nir_instr_remove(&intr->instr);
