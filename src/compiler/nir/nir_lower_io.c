@@ -961,7 +961,7 @@ build_runtime_addr_mode_check(nir_builder *b, nir_ssa_def *addr,
    case nir_address_format_62bit_generic: {
       assert(addr->num_components == 1);
       assert(addr->bit_size == 64);
-      nir_ssa_def *mode_enum = nir_ushr(b, addr, nir_imm_int(b, 62));
+      nir_ssa_def *mode_enum = nir_ushr_imm(b, addr, 62);
       switch (mode) {
       case nir_var_function_temp:
       case nir_var_shader_temp:
