@@ -42,13 +42,13 @@ build_cube_select(nir_builder *b, nir_ssa_def *ma, nir_ssa_def *id, nir_ssa_def 
    nir_ssa_def *deriv_y = nir_channel(b, deriv, 1);
    nir_ssa_def *deriv_z = nir_channel(b, deriv, 2);
 
-   nir_ssa_def *is_ma_positive = nir_fge(b, ma, nir_imm_float(b, 0.0));
+   nir_ssa_def *is_ma_positive = nir_fge_imm(b, ma, 0.0);
    nir_ssa_def *sgn_ma =
       nir_bcsel(b, is_ma_positive, nir_imm_float(b, 1.0), nir_imm_float(b, -1.0));
    nir_ssa_def *neg_sgn_ma = nir_fneg(b, sgn_ma);
 
-   nir_ssa_def *is_ma_z = nir_fge(b, id, nir_imm_float(b, 4.0));
-   nir_ssa_def *is_ma_y = nir_fge(b, id, nir_imm_float(b, 2.0));
+   nir_ssa_def *is_ma_z = nir_fge_imm(b, id, 4.0);
+   nir_ssa_def *is_ma_y = nir_fge_imm(b, id, 2.0);
    is_ma_y = nir_iand(b, is_ma_y, nir_inot(b, is_ma_z));
    nir_ssa_def *is_not_ma_x = nir_ior(b, is_ma_z, is_ma_y);
 

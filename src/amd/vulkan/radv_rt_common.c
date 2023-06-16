@@ -296,7 +296,7 @@ intersect_ray_amd_software_tri(struct radv_device *device, nir_builder *b, nir_s
       nir_ior(b, nir_ior(b, nir_flt_imm(b, u, 0.0f), nir_flt_imm(b, v, 0.0f)), nir_flt_imm(b, w, 0.0f));
 
    nir_ssa_def *cond_front =
-      nir_ior(b, nir_ior(b, nir_fgt_imm(b, u, 0.0f), nir_fgt_imm(b, v, 0.0f)), nir_flt(b, nir_imm_float(b, 0.0f), w));
+      nir_ior(b, nir_ior(b, nir_fgt_imm(b, u, 0.0f), nir_fgt_imm(b, v, 0.0f)), nir_fgt_imm(b, w, 0.0f));
 
    nir_ssa_def *cond = nir_inot(b, nir_iand(b, cond_back, cond_front));
 
