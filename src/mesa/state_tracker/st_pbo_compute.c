@@ -370,7 +370,7 @@ get_buffer_offset(nir_builder *b, nir_ssa_def *coord, struct pbo_shader_data *sd
                                       nir_inot(b, nir_isub(b, sd->alignment, nir_imm_int(b, 1)))));
    nir_ssa_def *bytes_per_image = nir_imul(b, bytes_per_row, nir_channel(b, sd->range, 1));
    bytes_per_row = nir_bcsel(b, sd->invert,
-                             nir_isub(b, nir_imm_int(b, 0), bytes_per_row),
+                             nir_ineg(b, bytes_per_row),
                              bytes_per_row);
    return nir_iadd(b,
                    nir_imul(b, nir_channel(b, coord, 0), sd->blocksize),
