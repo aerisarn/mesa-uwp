@@ -111,21 +111,11 @@ pub trait Liveness {
                     *ml = max(*ml, *l);
                 }
 
-                if let PredRef::SSA(ssa) = &instr.pred.pred_ref {
+                instr.for_each_ssa_use(|ssa| {
                     if !bl.is_live_after_ip(ssa, ip) {
                         live.remove(ssa);
                     }
-                }
-
-                for src in instr.srcs() {
-                    if let SrcRef::SSA(vec) = &src.src_ref {
-                        for ssa in vec.iter() {
-                            if !bl.is_live_after_ip(ssa, ip) {
-                                live.remove(ssa);
-                            }
-                        }
-                    }
-                }
+                });
 
                 /* Scalar destinations are allocated last */
                 for dst in instr.dsts() {
@@ -146,15 +136,12 @@ pub trait Liveness {
                  * killed immediately, subtract from the count, otherwise add to
                  * the set.
                  */
-                for dst in instr.dsts() {
-                    if let Dst::SSA(vec) = dst {
-                        for ssa in vec.iter() {
-                            if !bl.is_live_after_ip(ssa, ip) {
-                                live.remove(ssa);
-                            }
-                        }
+                instr.for_each_ssa_def(|ssa| {
+                    debug_assert!(live.contains(ssa));
+                    if !bl.is_live_after_ip(ssa, ip) {
+                        live.remove(ssa);
                     }
-                }
+                });
             }
 
             block_live_out.insert(bb.id, live);
@@ -192,23 +179,12 @@ impl SimpleBlockLiveness {
         };
 
         for (ip, instr) in block.instrs.iter().enumerate() {
-            if let PredRef::SSA(val) = &instr.pred.pred_ref {
-                bl.add_use(val, ip);
-            }
-
-            for src in instr.srcs() {
-                for sv in src.iter_ssa() {
-                    bl.add_use(sv, ip);
-                }
-            }
-
-            for dst in instr.dsts() {
-                if let Dst::SSA(sr) = dst {
-                    for sv in sr.iter() {
-                        bl.add_def(sv);
-                    }
-                }
-            }
+            instr.for_each_ssa_use(|ssa| {
+                bl.add_use(ssa, ip);
+            });
+            instr.for_each_ssa_def(|ssa| {
+                bl.add_def(ssa);
+            });
         }
 
         bl
@@ -352,23 +328,13 @@ impl NextUseBlockLiveness {
         };
 
         for (ip, instr) in block.instrs.iter().enumerate() {
-            if let PredRef::SSA(val) = &instr.pred.pred_ref {
-                bl.entry_mut(*val).add_in_block_use(ip);
-            }
+            instr.for_each_ssa_use(|ssa| {
+                bl.entry_mut(*ssa).add_in_block_use(ip);
+            });
 
-            for src in instr.srcs() {
-                for sv in src.iter_ssa() {
-                    bl.entry_mut(*sv).add_in_block_use(ip);
-                }
-            }
-
-            for dst in instr.dsts() {
-                if let Dst::SSA(sr) = dst {
-                    for sv in sr.iter() {
-                        bl.entry_mut(*sv).add_def();
-                    }
-                }
-            }
+            instr.for_each_ssa_def(|ssa| {
+                bl.entry_mut(*ssa).add_def();
+            });
         }
 
         bl

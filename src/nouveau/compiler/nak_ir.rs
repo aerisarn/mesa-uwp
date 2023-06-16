@@ -553,6 +553,22 @@ impl Dst {
             _ => None,
         }
     }
+
+    pub fn iter_ssa(&self) -> slice::Iter<'_, SSAValue> {
+        match self {
+            Dst::None | Dst::Reg(_) => &[],
+            Dst::SSA(ssa) => ssa.deref(),
+        }
+        .iter()
+    }
+
+    pub fn iter_ssa_mut(&mut self) -> slice::IterMut<'_, SSAValue> {
+        match self {
+            Dst::None | Dst::Reg(_) => &mut [],
+            Dst::SSA(ssa) => ssa.deref_mut(),
+        }
+        .iter_mut()
+    }
 }
 
 impl From<RegRef> for Dst {
@@ -686,9 +702,25 @@ impl SrcRef {
                 CBuf::Binding(_) | CBuf::BindlessGPR(_) => &[],
                 CBuf::BindlessSSA(ssa) => slice::from_ref(ssa),
             },
-            SrcRef::SSA(ssa) => ssa,
+            SrcRef::SSA(ssa) => ssa.deref(),
         }
         .iter()
+    }
+
+    pub fn iter_ssa_mut(&mut self) -> slice::IterMut<'_, SSAValue> {
+        match self {
+            SrcRef::Zero
+            | SrcRef::True
+            | SrcRef::False
+            | SrcRef::Imm32(_)
+            | SrcRef::Reg(_) => &mut [],
+            SrcRef::CBuf(cb) => match &mut cb.buf {
+                CBuf::Binding(_) | CBuf::BindlessGPR(_) => &mut [],
+                CBuf::BindlessSSA(ssa) => slice::from_mut(ssa),
+            },
+            SrcRef::SSA(ssa) => ssa.deref_mut(),
+        }
+        .iter_mut()
     }
 }
 
@@ -870,6 +902,10 @@ impl Src {
 
     pub fn iter_ssa(&self) -> slice::Iter<'_, SSAValue> {
         self.src_ref.iter_ssa()
+    }
+
+    pub fn iter_ssa_mut(&mut self) -> slice::IterMut<'_, SSAValue> {
+        self.src_ref.iter_ssa_mut()
     }
 
     #[allow(dead_code)]
@@ -3471,6 +3507,22 @@ impl PredRef {
             _ => false,
         }
     }
+
+    pub fn iter_ssa(&self) -> slice::Iter<'_, SSAValue> {
+        match self {
+            PredRef::None | PredRef::Reg(_) => &[],
+            PredRef::SSA(ssa) => slice::from_ref(ssa),
+        }
+        .iter()
+    }
+
+    pub fn iter_ssa_mut(&mut self) -> slice::IterMut<'_, SSAValue> {
+        match self {
+            PredRef::None | PredRef::Reg(_) => &mut [],
+            PredRef::SSA(ssa) => slice::from_mut(ssa),
+        }
+        .iter_mut()
+    }
 }
 
 impl From<RegRef> for PredRef {
@@ -3508,6 +3560,14 @@ impl Pred {
 
     pub fn is_false(&self) -> bool {
         self.pred_ref.is_none() && self.pred_inv
+    }
+
+    pub fn iter_ssa(&self) -> slice::Iter<'_, SSAValue> {
+        self.pred_ref.iter_ssa()
+    }
+
+    pub fn iter_ssa_mut(&mut self) -> slice::IterMut<'_, SSAValue> {
+        self.pred_ref.iter_ssa_mut()
     }
 }
 
@@ -3669,6 +3729,44 @@ impl Instr {
 
     pub fn src_types(&self) -> SrcTypeList {
         self.op.src_types()
+    }
+
+    pub fn for_each_ssa_use(&self, mut f: impl FnMut(&SSAValue)) {
+        for ssa in self.pred.iter_ssa() {
+            f(ssa);
+        }
+        for src in self.srcs() {
+            for ssa in src.iter_ssa() {
+                f(ssa);
+            }
+        }
+    }
+
+    pub fn for_each_ssa_use_mut(&mut self, mut f: impl FnMut(&mut SSAValue)) {
+        for ssa in self.pred.iter_ssa_mut() {
+            f(ssa);
+        }
+        for src in self.srcs_mut() {
+            for ssa in src.iter_ssa_mut() {
+                f(ssa);
+            }
+        }
+    }
+
+    pub fn for_each_ssa_def(&self, mut f: impl FnMut(&SSAValue)) {
+        for dst in self.dsts() {
+            for ssa in dst.iter_ssa() {
+                f(ssa);
+            }
+        }
+    }
+
+    pub fn for_each_ssa_def_mut(&mut self, mut f: impl FnMut(&mut SSAValue)) {
+        for dst in self.dsts_mut() {
+            for ssa in dst.iter_ssa_mut() {
+                f(ssa);
+            }
+        }
     }
 
     pub fn is_branch(&self) -> bool {
