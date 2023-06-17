@@ -89,7 +89,14 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_GLOBAL_MEM_CACHELINE_SIZE => cl_prop::<cl_uint>(0),
             CL_DEVICE_GLOBAL_MEM_SIZE => cl_prop::<cl_ulong>(dev.global_mem_size()),
             CL_DEVICE_GLOBAL_VARIABLE_PREFERRED_TOTAL_SIZE => cl_prop::<usize>(0),
-            CL_DEVICE_HALF_FP_CONFIG => cl_prop::<cl_device_fp_config>(0),
+            CL_DEVICE_HALF_FP_CONFIG => cl_prop::<cl_device_fp_config>(
+                if dev.fp16_supported() {
+                    CL_FP_ROUND_TO_NEAREST | CL_FP_INF_NAN
+                } else {
+                    0
+                }
+                .into(),
+            ),
             CL_DEVICE_HOST_MEM_CAPABILITIES_INTEL => {
                 cl_prop::<cl_device_unified_shared_memory_capabilities_intel>(0)
             }
@@ -193,7 +200,9 @@ impl CLInfo<cl_device_info> for cl_device_id {
                 cl_prop::<cl_uint>(if dev.fp64_supported() { 1 } else { 0 })
             }
             CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT => cl_prop::<cl_uint>(1),
-            CL_DEVICE_NATIVE_VECTOR_WIDTH_HALF => cl_prop::<cl_uint>(0),
+            CL_DEVICE_NATIVE_VECTOR_WIDTH_HALF => {
+                cl_prop::<cl_uint>(if dev.fp16_supported() { 1 } else { 0 })
+            }
             CL_DEVICE_NATIVE_VECTOR_WIDTH_INT => cl_prop::<cl_uint>(1),
             CL_DEVICE_NATIVE_VECTOR_WIDTH_LONG => cl_prop::<cl_uint>(1),
             CL_DEVICE_NATIVE_VECTOR_WIDTH_SHORT => cl_prop::<cl_uint>(1),
@@ -232,7 +241,9 @@ impl CLInfo<cl_device_info> for cl_device_id {
                 cl_prop::<cl_uint>(if dev.fp64_supported() { 1 } else { 0 })
             }
             CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT => cl_prop::<cl_uint>(1),
-            CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF => cl_prop::<cl_uint>(0),
+            CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF => {
+                cl_prop::<cl_uint>(if dev.fp16_supported() { 1 } else { 0 })
+            }
             CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT => cl_prop::<cl_uint>(1),
             CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG => cl_prop::<cl_uint>(1),
             CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT => cl_prop::<cl_uint>(1),

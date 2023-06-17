@@ -517,6 +517,10 @@ impl Device {
         add_spirv("SPV_KHR_integer_dot_product");
         add_spirv("SPV_KHR_no_integer_wrap_decoration");
 
+        if self.fp16_supported() {
+            add_ext(1, 0, 0, "cl_khr_fp16");
+        }
+
         if self.fp64_supported() {
             add_ext(1, 0, 0, "cl_khr_fp64");
             add_feat(1, 0, 0, "__opencl_c_fp64");
@@ -614,6 +618,14 @@ impl Device {
         }
 
         res as cl_device_type
+    }
+
+    pub fn fp16_supported(&self) -> bool {
+        if !Platform::features().fp16 {
+            return false;
+        }
+
+        self.shader_param(pipe_shader_cap::PIPE_SHADER_CAP_FP16) != 0
     }
 
     pub fn fp64_supported(&self) -> bool {
@@ -867,7 +879,7 @@ impl Device {
 
     pub fn cl_features(&self) -> clc_optional_features {
         clc_optional_features {
-            fp16: false,
+            fp16: self.fp16_supported(),
             fp64: self.fp64_supported(),
             int64: self.int64_supported(),
             images: self.image_supported(),

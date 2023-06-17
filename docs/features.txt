@@ -918,7 +918,7 @@ Rusticl extensions that are not part of any OpenCL version:
   cl_khr_expect_assume                                  in progress
   cl_khr_extended_async_copies                          not started
   cl_khr_extended_bit_ops                               in progress
-  cl_khr_fp16                                           not started
+  cl_khr_fp16                                           in progress (llvmpipe, radeonsi, Available with environment variable RUSTICL_FEATURES=fp16)
   cl_khr_gl_depth_images                                not started
   cl_khr_gl_msaa_sharing                                not started
   cl_khr_gl_sharing                                     in progress

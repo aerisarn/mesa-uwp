@@ -938,6 +938,7 @@ Rusticl environment variables
    a comma-separated list of features to enable. Those are disabled by default
    as they might not be stable enough or break OpenCL conformance.
 
+   - ``fp16`` enables OpenCL half support
    - ``fp64`` enables OpenCL double support
 
 .. envvar:: RUSTICL_DEBUG

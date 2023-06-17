@@ -319,6 +319,7 @@ impl SPIRVBin {
 
             caps: spirv_supported_capabilities {
                 address: true,
+                float16: true,
                 float64: true,
                 generic_pointers: true,
                 int8: true,
