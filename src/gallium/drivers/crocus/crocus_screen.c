@@ -393,6 +393,9 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_HARDWARE_GL_SELECT:
       return 0;
 
+   case PIPE_CAP_TIMER_RESOLUTION:
+      return DIV_ROUND_UP(1000000000ull, devinfo->timestamp_frequency);
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
