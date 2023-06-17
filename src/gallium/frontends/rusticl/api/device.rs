@@ -202,6 +202,11 @@ impl CLInfo<cl_device_info> for cl_device_id {
             }
             CL_DEVICE_NON_UNIFORM_WORK_GROUP_SUPPORT => cl_prop::<bool>(false),
             CL_DEVICE_NUMERIC_VERSION => cl_prop::<cl_version>(dev.cl_version as cl_version),
+            CL_DEVICE_OPENCL_C_ALL_VERSIONS => cl_prop::<&Vec<cl_name_version>>(&dev.clc_versions),
+            CL_DEVICE_OPENCL_C_FEATURES => cl_prop::<&Vec<cl_name_version>>(&dev.clc_features),
+            CL_DEVICE_OPENCL_C_VERSION => {
+                cl_prop::<&str>(&format!("OpenCL C {} ", dev.clc_version.api_str()))
+            }
             // TODO subdevice support
             CL_DEVICE_PARENT_DEVICE => cl_prop::<cl_device_id>(cl_device_id::from_ptr(ptr::null())),
             CL_DEVICE_PARTITION_AFFINITY_DOMAIN => cl_prop::<cl_device_affinity_domain>(0),
@@ -232,18 +237,13 @@ impl CLInfo<cl_device_info> for cl_device_id {
                 cl_prop::<usize>(dev.subgroups() as usize)
             }
             CL_DEVICE_PRINTF_BUFFER_SIZE => cl_prop::<usize>(dev.printf_buffer_size()),
-            // TODO
-            CL_DEVICE_PROFILING_TIMER_RESOLUTION => cl_prop::<usize>(0),
-            CL_DEVICE_OPENCL_C_FEATURES => cl_prop::<&Vec<cl_name_version>>(&dev.clc_features),
-            CL_DEVICE_OPENCL_C_VERSION => {
-                cl_prop::<&str>(&format!("OpenCL C {} ", dev.clc_version.api_str()))
-            }
-            CL_DEVICE_OPENCL_C_ALL_VERSIONS => cl_prop::<&Vec<cl_name_version>>(&dev.clc_versions),
             CL_DEVICE_PROFILE => cl_prop(if dev.embedded {
                 "EMBEDDED_PROFILE"
             } else {
                 "FULL_PROFILE"
             }),
+            // TODO
+            CL_DEVICE_PROFILING_TIMER_RESOLUTION => cl_prop::<usize>(0),
             CL_DEVICE_QUEUE_ON_DEVICE_MAX_SIZE => cl_prop::<cl_uint>(0),
             CL_DEVICE_QUEUE_ON_DEVICE_PREFERRED_SIZE => cl_prop::<cl_uint>(0),
             CL_DEVICE_QUEUE_ON_DEVICE_PROPERTIES => cl_prop::<cl_command_queue_properties>(0),
