@@ -1032,5 +1032,12 @@ vtn_parse_switch(struct vtn_builder *b,
                  const uint32_t *branch,
                  struct list_head *case_list);
 
+bool vtn_get_mem_operands(struct vtn_builder *b, const uint32_t *w, unsigned count,
+                          unsigned *idx, SpvMemoryAccessMask *access, unsigned *alignment,
+                          SpvScope *dest_scope, SpvScope *src_scope);
+void vtn_emit_make_visible_barrier(struct vtn_builder *b, SpvMemoryAccessMask access,
+                                   SpvScope scope, enum vtn_variable_mode mode);
+void vtn_emit_make_available_barrier(struct vtn_builder *b, SpvMemoryAccessMask access,
+                                     SpvScope scope, enum vtn_variable_mode mode);
 
 #endif /* _VTN_PRIVATE_H_ */

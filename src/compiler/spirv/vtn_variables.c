@@ -2368,7 +2368,7 @@ nir_sloppy_bitcast(nir_builder *b, nir_def *val,
    return nir_shrink_zero_pad_vec(b, val, num_components);
 }
 
-static bool
+bool
 vtn_get_mem_operands(struct vtn_builder *b, const uint32_t *w, unsigned count,
                      unsigned *idx, SpvMemoryAccessMask *access, unsigned *alignment,
                      SpvScope *dest_scope, SpvScope *src_scope)
@@ -2435,7 +2435,7 @@ vtn_mode_to_memory_semantics(enum vtn_variable_mode mode)
    }
 }
 
-static void
+void
 vtn_emit_make_visible_barrier(struct vtn_builder *b, SpvMemoryAccessMask access,
                               SpvScope scope, enum vtn_variable_mode mode)
 {
@@ -2447,7 +2447,7 @@ vtn_emit_make_visible_barrier(struct vtn_builder *b, SpvMemoryAccessMask access,
                                      vtn_mode_to_memory_semantics(mode));
 }
 
-static void
+void
 vtn_emit_make_available_barrier(struct vtn_builder *b, SpvMemoryAccessMask access,
                                 SpvScope scope, enum vtn_variable_mode mode)
 {
