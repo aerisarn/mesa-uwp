@@ -373,7 +373,7 @@ impl Device {
 
             // TODO check req formats
         }
-        !self.long_supported()
+        !self.int64_supported()
     }
 
     fn parse_env_device_type() -> Option<cl_device_type> {
@@ -517,12 +517,12 @@ impl Device {
         add_spirv("SPV_KHR_integer_dot_product");
         add_spirv("SPV_KHR_no_integer_wrap_decoration");
 
-        if self.doubles_supported() {
+        if self.fp64_supported() {
             add_ext(1, 0, 0, "cl_khr_fp64");
             add_feat(1, 0, 0, "__opencl_c_fp64");
         }
 
-        if self.long_supported() {
+        if self.int64_supported() {
             if self.embedded {
                 add_ext(1, 0, 0, "cles_khr_int64");
             };
@@ -616,7 +616,7 @@ impl Device {
         res as cl_device_type
     }
 
-    pub fn doubles_supported(&self) -> bool {
+    pub fn fp64_supported(&self) -> bool {
         if !Platform::features().fp64 {
             return false;
         }
@@ -648,14 +648,14 @@ impl Device {
         self.get_nir_options().has_pack_32_4x8
     }
 
-    pub fn doubles_is_softfp(&self) -> bool {
+    pub fn fp64_is_softfp(&self) -> bool {
         bit_check(
             self.get_nir_options().lower_doubles_options as u32,
             nir_lower_doubles_options::nir_lower_fp64_full_software as u32,
         )
     }
 
-    pub fn long_supported(&self) -> bool {
+    pub fn int64_supported(&self) -> bool {
         self.screen.param(pipe_cap::PIPE_CAP_INT64) == 1
     }
 
@@ -868,8 +868,8 @@ impl Device {
     pub fn cl_features(&self) -> clc_optional_features {
         clc_optional_features {
             fp16: false,
-            fp64: self.doubles_supported(),
-            int64: self.long_supported(),
+            fp64: self.fp64_supported(),
+            int64: self.int64_supported(),
             images: self.image_supported(),
             images_read_write: self.image_read_write_supported(),
             images_write_3d: self.image_3d_write_supported(),
