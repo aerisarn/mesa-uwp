@@ -740,21 +740,22 @@ Clover OpenCL 3.0 -- all DONE:
   Query properties arrays                               in progress
   Supported OpenCL C versions and features queries      DONE
   CL_COMMAND_SVM_MIGRATE_MEM for clGetEventInfo         not started
+  OpenCL C 3.0                                          DONE
   Latest conformance version passed for devices         not started
 
 
 Clover extensions that are not part of any OpenCL version:
   cl_khr_async_copy_fence                               not started
   cl_khr_async_work_group_copy_fence                    not started
-  cl_khr_byte_addressable_store                         not started                
+  cl_khr_byte_addressable_store                         not started
   cl_khr_device_enqueue_local_arg_types                 not started
   cl_khr_device_uuid                                    not started
   cl_khr_egl_event                                      not started
   cl_khr_egl_image                                      not started
-  cl_khr_expect_assume                                  not started 
+  cl_khr_expect_assume                                  not started
   cl_khr_extended_async_copies                          not started
   cl_khr_extended_bit_ops                               not started
-  cl_khr_fp16                                           DONE ()                     
+  cl_khr_fp16                                           DONE ()
   cl_khr_gl_depth_images                                not started
   cl_khr_gl_msaa_sharing                                not started
   cl_khr_gl_sharing                                     not started
@@ -765,7 +766,10 @@ Clover extensions that are not part of any OpenCL version:
   cl_khr_integer_dot_product                            not started
   cl_khr_mipmap_image                                   not started
   cl_khr_pci_bus_info                                   not started
-  cl_khr_priority_hints                                 not started 
+  cl_khr_priority_hints                                 not started
+  cl_khr_spirv_extended_debug_info                      not started
+  cl_khr_spirv_linkonce_odr                             not started
+  cl_khr_spirv_no_integer_wrap_decoration               not started
   cl_khr_srgb_image_writes                              not started
   cl_khr_subgroup_ballot                                not started
   cl_khr_subgroup_clustered_reduce                      not started
@@ -832,6 +836,7 @@ Rusticl OpenCL 1.2 -- all DONE:
   clEnqueueBarrierWithWaitList                          DONE
   clUnloadPlatformCompiler                              DONE
   cl_khr_fp64                                           in progress (iris, llvmpipe, nvc0, radeonsi, Available with environment variable RUSTICL_FEATURES=fp64, device dependent.)
+  printf                                                DONE
   CL_KERNEL_ATTRIBUTES for clGetKernelInfo              DONE
   OpenCL C 1.2                                          DONE
 
@@ -892,7 +897,7 @@ Rusticl OpenCL 3.0 -- all DONE: iris/gen12
 Rusticl extensions that are not part of any OpenCL version:
   cl_khr_async_copy_fence                               not started
   cl_khr_async_work_group_copy_fence                    not started
-  cl_khr_byte_addressable_store                         DONE                   
+  cl_khr_byte_addressable_store                         DONE
   cl_khr_device_enqueue_local_arg_types                 not started
   cl_khr_device_uuid                                    DONE (iris, llvmpipe, radeonsi)
   cl_khr_egl_event                                      not started
@@ -912,6 +917,9 @@ Rusticl extensions that are not part of any OpenCL version:
   cl_khr_mipmap_image                                   not started
   cl_khr_pci_bus_info                                   DONE (iris, nvc0, radeonsi)
   cl_khr_priority_hints                                 not started
+  cl_khr_spirv_extended_debug_info                      not started
+  cl_khr_spirv_linkonce_odr                             not started
+  cl_khr_spirv_no_integer_wrap_decoration               not started
   cl_khr_srgb_image_writes                              not started
   cl_khr_subgroup_ballot                                not started
   cl_khr_subgroup_clustered_reduce                      not started
@@ -924,7 +932,7 @@ Rusticl extensions that are not part of any OpenCL version:
   cl_khr_subgroup_shuffle_relative                      not started
   cl_khr_suggested_local_work_size                      not started
   cl_khr_terminate_context                              not started
-  cl_khr_throttle_hints                                 not started 
+  cl_khr_throttle_hints                                 not started
   cl_khr_work_group_uniform_arithmetic                  not started
 
   cl_arm_non_uniform_work_group_size                    not started
