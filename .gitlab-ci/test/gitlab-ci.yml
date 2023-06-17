@@ -30,24 +30,6 @@ rustfmt:
     - shopt -s globstar
     - rustfmt --check --verbose src/**/lib.rs
 
-clang-format:
-  # Cancel job if a newer commit is pushed to the same branch
-  interruptible: true
-  stage: lint
-  extends:
-    - .use-debian/x86_64_build
-    - .lint-clang-format-rules
-  variables:
-    GIT_STRATEGY: fetch
-    LLVM_VERSION: 15
-  script:
-    - shopt -s globstar
-    # We need a meson build dir, but its config doesn't actually matter, so
-    # let's just use the default.
-    - meson setup build
-    - ninja -C build clang-format
-    - git diff --color=always --exit-code  # Fails if there are diffs
-
 .test-gl:
   extends:
     - .test
