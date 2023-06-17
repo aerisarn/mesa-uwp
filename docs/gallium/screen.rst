@@ -153,6 +153,7 @@ The integer capabilities:
   the pipe_screen::get_timestamp hook are implemented.
 * ``PIPE_CAP_QUERY_TIMESTAMP_BITS``: How many bits the driver uses for the
   results of GL_TIMESTAMP queries.
+* ``PIPE_CAP_TIMER_RESOLUTION``: The resolution of the timer in nanos.
 * ``PIPE_CAP_TEXTURE_MULTISAMPLE``: Whether all MSAA resources supported
   for rendering are also supported for texturing.
 * ``PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT``: The minimum alignment that should be
