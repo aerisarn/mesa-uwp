@@ -204,6 +204,9 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_NUMERIC_VERSION => cl_prop::<cl_version>(dev.cl_version.into()),
             CL_DEVICE_OPENCL_C_ALL_VERSIONS => cl_prop::<&Vec<cl_name_version>>(&dev.clc_versions),
             CL_DEVICE_OPENCL_C_FEATURES => cl_prop::<&Vec<cl_name_version>>(&dev.clc_features),
+            CL_DEVICE_OPENCL_C_NUMERIC_VERSION_KHR => {
+                cl_prop::<cl_version_khr>(dev.clc_version.into())
+            }
             CL_DEVICE_OPENCL_C_VERSION => {
                 cl_prop::<&str>(&format!("OpenCL C {} ", dev.clc_version.api_str()))
             }
