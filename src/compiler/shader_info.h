@@ -47,6 +47,7 @@ struct spirv_supported_capabilities {
    bool amd_shader_explicit_vertex_parameter;
    bool amd_trinary_minmax;
    bool atomic_storage;
+   bool cooperative_matrix;
    bool demote_to_helper_invocation;
    bool derivative_group;
    bool descriptor_array_dynamic_indexing;

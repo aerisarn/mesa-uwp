@@ -283,6 +283,7 @@ enum vtn_base_type {
    vtn_base_type_ray_query,
    vtn_base_type_function,
    vtn_base_type_event,
+   vtn_base_type_cooperative_matrix,
 };
 
 struct vtn_type {
@@ -390,6 +391,12 @@ struct vtn_type {
 
          /* Return type for functions */
          struct vtn_type *return_type;
+      };
+
+      /* Members for cooperative matrix types. */
+      struct {
+         struct glsl_cmat_description desc;
+         struct vtn_type *component_type;
       };
    };
 };
@@ -1047,5 +1054,21 @@ void vtn_emit_make_visible_barrier(struct vtn_builder *b, SpvMemoryAccessMask ac
                                    SpvScope scope, enum vtn_variable_mode mode);
 void vtn_emit_make_available_barrier(struct vtn_builder *b, SpvMemoryAccessMask access,
                                      SpvScope scope, enum vtn_variable_mode mode);
+
+
+void vtn_handle_cooperative_type(struct vtn_builder *b, struct vtn_value *val,
+                                 SpvOp opcode, const uint32_t *w, unsigned count);
+void vtn_handle_cooperative_instruction(struct vtn_builder *b, SpvOp opcode,
+                                        const uint32_t *w, unsigned count);
+void vtn_handle_cooperative_alu(struct vtn_builder *b, struct vtn_value *dest_val,
+                                const struct glsl_type *dest_type, SpvOp opcode,
+                                const uint32_t *w, unsigned count);
+struct vtn_ssa_value *vtn_cooperative_matrix_extract(struct vtn_builder *b, struct vtn_ssa_value *mat,
+                                                     const uint32_t *indices, unsigned num_indices);
+struct vtn_ssa_value *vtn_cooperative_matrix_insert(struct vtn_builder *b, struct vtn_ssa_value *mat,
+                                                    struct vtn_ssa_value *insert,
+                                                    const uint32_t *indices, unsigned num_indices);
+nir_deref_instr *vtn_create_cmat_temporary(struct vtn_builder *b,
+                                           const struct glsl_type *t, const char *name);
 
 #endif /* _VTN_PRIVATE_H_ */

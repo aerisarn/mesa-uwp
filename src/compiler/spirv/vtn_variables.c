@@ -474,8 +474,15 @@ vtn_pointer_dereference(struct vtn_builder *b,
          nir_def *arr_index =
             vtn_access_link_as_ssa(b, deref_chain->link[idx], 1,
                                    tail->def.bit_size);
+         if (type->base_type == vtn_base_type_cooperative_matrix) {
+            const struct glsl_type *element_type = glsl_get_cmat_element(type->type);
+            tail = nir_build_deref_cast(&b->nb, &tail->def, tail->modes,
+                                        glsl_array_type(element_type, 0, 0), 0);
+            type = type->component_type;
+         } else {
+            type = type->array_element;
+         }
          tail = nir_build_deref_array(&b->nb, tail, arr_index);
-         type = type->array_element;
       }
       tail->arr.in_bounds = deref_chain->in_bounds;
 
@@ -510,7 +517,16 @@ _vtn_local_load_store(struct vtn_builder *b, bool load, nir_deref_instr *deref,
                       struct vtn_ssa_value *inout,
                       enum gl_access_qualifier access)
 {
-   if (glsl_type_is_vector_or_scalar(deref->type)) {
+   if (glsl_type_is_cmat(deref->type)) {
+      if (load) {
+         nir_deref_instr *temp = vtn_create_cmat_temporary(b, deref->type, "cmat_ssa");
+         nir_cmat_copy(&b->nb, &temp->def, &deref->def);
+         vtn_set_ssa_value_var(b, inout, temp->var);
+      } else {
+         nir_deref_instr *src_deref = vtn_get_deref_for_ssa_value(b, inout);
+         nir_cmat_copy(&b->nb, &deref->def, &src_deref->def);
+      }
+   } else if (glsl_type_is_vector_or_scalar(deref->type)) {
       if (load) {
          inout->def = nir_load_deref_with_access(&b->nb, deref, access);
       } else {
@@ -555,7 +571,17 @@ get_deref_tail(nir_deref_instr *deref)
    nir_deref_instr *parent =
       nir_instr_as_deref(deref->parent.ssa->parent_instr);
 
-   if (glsl_type_is_vector(parent->type))
+   if (parent->deref_type == nir_deref_type_cast &&
+       parent->parent.ssa->parent_instr->type == nir_instr_type_deref) {
+      nir_deref_instr *grandparent =
+         nir_instr_as_deref(parent->parent.ssa->parent_instr);
+
+      if (glsl_type_is_cmat(grandparent->type))
+         return grandparent;
+   }
+
+   if (glsl_type_is_vector(parent->type) ||
+       glsl_type_is_cmat(parent->type))
       return parent;
    else
       return deref;
@@ -571,7 +597,19 @@ vtn_local_load(struct vtn_builder *b, nir_deref_instr *src,
 
    if (src_tail != src) {
       val->type = src->type;
-      val->def = nir_vector_extract(&b->nb, val->def, src->arr.index.ssa);
+
+      if (glsl_type_is_cmat(src_tail->type)) {
+         assert(val->is_variable);
+         nir_deref_instr *mat = vtn_get_deref_for_ssa_value(b, val);
+
+         /* Reset is_variable because we are repurposing val. */
+         val->is_variable = false;
+         val->def = nir_cmat_extract(&b->nb,
+                                     glsl_get_bit_size(src->type),
+                                     &mat->def, src->arr.index.ssa);
+      } else {
+         val->def = nir_vector_extract(&b->nb, val->def, src->arr.index.ssa);
+      }
    }
 
    return val;
@@ -587,8 +625,16 @@ vtn_local_store(struct vtn_builder *b, struct vtn_ssa_value *src,
       struct vtn_ssa_value *val = vtn_create_ssa_value(b, dest_tail->type);
       _vtn_local_load_store(b, true, dest_tail, val, access);
 
-      val->def = nir_vector_insert(&b->nb, val->def, src->def,
-                                   dest->arr.index.ssa);
+      if (glsl_type_is_cmat(dest_tail->type)) {
+         nir_deref_instr *mat = vtn_get_deref_for_ssa_value(b, val);
+         nir_deref_instr *dst = vtn_create_cmat_temporary(b, dest_tail->type, "cmat_insert");
+         nir_cmat_insert(&b->nb, &dst->def, src->def, &mat->def, dest->arr.index.ssa);
+         vtn_set_ssa_value_var(b, val, dst->var);
+      } else {
+         val->def = nir_vector_insert(&b->nb, val->def, src->def,
+                                      dest->arr.index.ssa);
+      }
+
       _vtn_local_load_store(b, false, dest_tail, val, access);
    } else {
       _vtn_local_load_store(b, false, dest_tail, src, access);
@@ -654,6 +700,7 @@ _vtn_variable_load_store(struct vtn_builder *b, bool load,
    case GLSL_TYPE_FLOAT16:
    case GLSL_TYPE_BOOL:
    case GLSL_TYPE_DOUBLE:
+   case GLSL_TYPE_COOPERATIVE_MATRIX:
       if (glsl_type_is_vector_or_scalar(ptr->type->type)) {
          /* We hit a vector or scalar; go ahead and emit the load[s] */
          nir_deref_instr *deref = vtn_pointer_to_deref(b, ptr);
