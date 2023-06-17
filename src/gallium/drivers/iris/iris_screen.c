@@ -431,6 +431,9 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_QUERY_TIMESTAMP_BITS:
       return TIMESTAMP_BITS;
 
+   case PIPE_CAP_TIMER_RESOLUTION:
+      return DIV_ROUND_UP(1000000000ull, devinfo->timestamp_frequency);
+
    case PIPE_CAP_DEVICE_PROTECTED_CONTEXT:
       return screen->kernel_features & KERNEL_HAS_PROTECTED_CONTEXT;
 
