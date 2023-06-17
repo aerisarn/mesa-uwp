@@ -85,6 +85,8 @@ static void pvr_image_setup_mip_levels(struct pvr_image *image)
    const uint32_t extent_alignment =
       image->vk.image_type == VK_IMAGE_TYPE_3D ? 4 : 1;
    const unsigned int cpp = vk_format_get_blocksize(image->vk.format);
+   VkExtent3D extent =
+      vk_image_extent_to_elements(&image->vk, image->physical_extent);
 
    /* Mip-mapped textures that are non-dword aligned need dword-aligned levels
     * so they can be TQd from.
@@ -96,9 +98,9 @@ static void pvr_image_setup_mip_levels(struct pvr_image *image)
    image->layer_size = 0;
 
    for (uint32_t i = 0; i < image->vk.mip_levels; i++) {
-      const uint32_t height = u_minify(image->physical_extent.height, i);
-      const uint32_t width = u_minify(image->physical_extent.width, i);
-      const uint32_t depth = u_minify(image->physical_extent.depth, i);
+      const uint32_t height = u_minify(extent.height, i);
+      const uint32_t width = u_minify(extent.width, i);
+      const uint32_t depth = u_minify(extent.depth, i);
       struct pvr_mip_level *mip_level = &image->mip_levels[i];
 
       mip_level->pitch = cpp * ALIGN(width, extent_alignment);
