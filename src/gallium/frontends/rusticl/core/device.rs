@@ -506,6 +506,7 @@ impl Device {
 
         add_spirv("SPV_KHR_float_controls");
         add_spirv("SPV_KHR_integer_dot_product");
+        add_spirv("SPV_KHR_no_integer_wrap_decoration");
 
         if self.doubles_supported() {
             add_ext(1, 0, 0, "cl_khr_fp64");

@@ -919,7 +919,7 @@ Rusticl extensions that are not part of any OpenCL version:
   cl_khr_priority_hints                                 not started
   cl_khr_spirv_extended_debug_info                      not started
   cl_khr_spirv_linkonce_odr                             not started
-  cl_khr_spirv_no_integer_wrap_decoration               not started
+  cl_khr_spirv_no_integer_wrap_decoration               DONE
   cl_khr_srgb_image_writes                              not started
   cl_khr_subgroup_ballot                                not started
   cl_khr_subgroup_clustered_reduce                      not started

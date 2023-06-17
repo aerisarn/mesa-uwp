@@ -47,6 +47,7 @@ gen_cl_exts!([
     (1, 0, 0, "cl_khr_extended_versioning"),
     (1, 0, 0, "cl_khr_icd"),
     (1, 0, 0, "cl_khr_il_program"),
+    (1, 0, 0, "cl_khr_spirv_no_integer_wrap_decoration"),
 ]);
 
 static mut PLATFORM: Platform = Platform {
