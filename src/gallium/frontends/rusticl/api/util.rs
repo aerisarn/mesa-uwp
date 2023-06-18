@@ -255,16 +255,6 @@ pub const CL_IMAGE_TYPES: [cl_mem_object_type; 6] = [
     CL_MEM_OBJECT_IMAGE1D_BUFFER,
 ];
 
-pub const fn cl_image_format(
-    order: cl_channel_order,
-    data_type: cl_channel_type,
-) -> cl_image_format {
-    cl_image_format {
-        image_channel_order: order,
-        image_channel_data_type: data_type,
-    }
-}
-
 pub fn check_cl_bool<T: PartialEq + TryInto<cl_uint>>(val: T) -> Option<bool> {
     let c: u32 = val.try_into().ok()?;
     if c != CL_TRUE && c != CL_FALSE {

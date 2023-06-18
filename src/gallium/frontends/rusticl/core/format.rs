@@ -1,5 +1,3 @@
-use crate::api::util::*;
-
 use mesa_rust_gen::pipe_format;
 use rusticl_opencl_gen::*;
 
@@ -12,8 +10,9 @@ pub struct RusticlImageFormat {
     pub pipe: pipe_format,
 }
 
-pub const fn rusticl_image_format(
-    cl_image_format: cl_image_format,
+const fn rusticl_image_format(
+    ch_order: cl_channel_order,
+    ch_type: cl_channel_type,
     req_for_full_read_or_write: bool,
     req_for_embeded_read_or_write: bool,
     req_for_full_read_and_write: bool,
@@ -21,7 +20,10 @@ pub const fn rusticl_image_format(
     pipe: pipe_format,
 ) -> RusticlImageFormat {
     RusticlImageFormat {
-        cl_image_format: cl_image_format,
+        cl_image_format: cl_image_format {
+            image_channel_order: ch_order,
+            image_channel_data_type: ch_type,
+        },
         req_for_full_read_or_write: req_for_full_read_or_write,
         req_for_embeded_read_or_write: req_for_embeded_read_or_write,
         req_for_full_read_and_write: req_for_full_read_and_write,
@@ -32,7 +34,8 @@ pub const fn rusticl_image_format(
 
 pub const FORMATS: &[RusticlImageFormat] = &[
     rusticl_image_format(
-        cl_image_format(CL_R, CL_HALF_FLOAT),
+        CL_R,
+        CL_HALF_FLOAT,
         false,
         false,
         true,
@@ -40,7 +43,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R16_FLOAT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_R, CL_FLOAT),
+        CL_R,
+        CL_FLOAT,
         false,
         false,
         true,
@@ -48,7 +52,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R32_FLOAT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_R, CL_SIGNED_INT8),
+        CL_R,
+        CL_SIGNED_INT8,
         false,
         false,
         true,
@@ -56,7 +61,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R8_SINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_R, CL_SIGNED_INT16),
+        CL_R,
+        CL_SIGNED_INT16,
         false,
         false,
         true,
@@ -64,7 +70,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R16_SINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_R, CL_SIGNED_INT32),
+        CL_R,
+        CL_SIGNED_INT32,
         false,
         false,
         true,
@@ -72,7 +79,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R32_SINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_R, CL_UNORM_INT8),
+        CL_R,
+        CL_UNORM_INT8,
         false,
         false,
         true,
@@ -80,7 +88,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R8_UNORM,
     ),
     rusticl_image_format(
-        cl_image_format(CL_R, CL_UNORM_INT16),
+        CL_R,
+        CL_UNORM_INT16,
         false,
         false,
         false,
@@ -88,7 +97,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R16_UNORM,
     ),
     rusticl_image_format(
-        cl_image_format(CL_R, CL_UNSIGNED_INT8),
+        CL_R,
+        CL_UNSIGNED_INT8,
         false,
         false,
         true,
@@ -96,7 +106,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R8_UINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_R, CL_UNSIGNED_INT16),
+        CL_R,
+        CL_UNSIGNED_INT16,
         false,
         false,
         true,
@@ -104,7 +115,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R16_UINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_R, CL_UNSIGNED_INT32),
+        CL_R,
+        CL_UNSIGNED_INT32,
         false,
         false,
         true,
@@ -112,7 +124,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R32_UINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_RGBA, CL_HALF_FLOAT),
+        CL_RGBA,
+        CL_HALF_FLOAT,
         true,
         true,
         true,
@@ -120,7 +133,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R16G16B16A16_FLOAT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_RGBA, CL_FLOAT),
+        CL_RGBA,
+        CL_FLOAT,
         true,
         true,
         true,
@@ -128,7 +142,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R32G32B32A32_FLOAT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_RGBA, CL_SIGNED_INT8),
+        CL_RGBA,
+        CL_SIGNED_INT8,
         true,
         true,
         true,
@@ -136,7 +151,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R8G8B8A8_SINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_RGBA, CL_SIGNED_INT16),
+        CL_RGBA,
+        CL_SIGNED_INT16,
         true,
         true,
         true,
@@ -144,7 +160,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R16G16B16A16_SINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_RGBA, CL_SIGNED_INT32),
+        CL_RGBA,
+        CL_SIGNED_INT32,
         true,
         true,
         true,
@@ -152,7 +169,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R32G32B32A32_SINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_RGBA, CL_UNORM_INT8),
+        CL_RGBA,
+        CL_UNORM_INT8,
         true,
         true,
         true,
@@ -160,7 +178,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R8G8B8A8_UNORM,
     ),
     rusticl_image_format(
-        cl_image_format(CL_RGBA, CL_UNORM_INT16),
+        CL_RGBA,
+        CL_UNORM_INT16,
         true,
         true,
         false,
@@ -168,7 +187,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R16G16B16A16_UNORM,
     ),
     rusticl_image_format(
-        cl_image_format(CL_RGBA, CL_UNSIGNED_INT8),
+        CL_RGBA,
+        CL_UNSIGNED_INT8,
         true,
         true,
         true,
@@ -176,7 +196,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R8G8B8A8_UINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_RGBA, CL_UNSIGNED_INT16),
+        CL_RGBA,
+        CL_UNSIGNED_INT16,
         true,
         true,
         true,
@@ -184,7 +205,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R16G16B16A16_UINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_RGBA, CL_UNSIGNED_INT32),
+        CL_RGBA,
+        CL_UNSIGNED_INT32,
         true,
         true,
         true,
@@ -192,7 +214,8 @@ pub const FORMATS: &[RusticlImageFormat] = &[
         pipe_format::PIPE_FORMAT_R32G32B32A32_UINT,
     ),
     rusticl_image_format(
-        cl_image_format(CL_BGRA, CL_UNORM_INT8),
+        CL_BGRA,
+        CL_UNORM_INT8,
         true,
         false,
         false,
