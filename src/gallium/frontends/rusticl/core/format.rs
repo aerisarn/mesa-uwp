@@ -6,6 +6,7 @@ pub struct RusticlImageFormat {
     pub req_for_full_read_or_write: bool,
     pub req_for_embeded_read_or_write: bool,
     pub req_for_full_read_and_write: bool,
+    pub req_for_full_cl2: bool,
     pub pipe: pipe_format,
 }
 
@@ -107,6 +108,55 @@ const fn req_for_full_rw(
         | (CL_RGBA, CL_FLOAT))
 }
 
+#[rustfmt::skip]
+#[allow(non_upper_case_globals)]
+const fn req_for_full_cl2(
+    ch_order: cl_channel_order,
+    ch_type: cl_channel_type
+) -> bool {
+    matches!((ch_order, ch_type),
+          (CL_R,     CL_UNORM_INT8)
+        | (CL_R,     CL_UNORM_INT16)
+        | (CL_R,     CL_SNORM_INT8)
+        | (CL_R,     CL_SNORM_INT16)
+        | (CL_R,     CL_SIGNED_INT8)
+        | (CL_R,     CL_SIGNED_INT16)
+        | (CL_R,     CL_SIGNED_INT32)
+        | (CL_R,     CL_UNSIGNED_INT8)
+        | (CL_R,     CL_UNSIGNED_INT16)
+        | (CL_R,     CL_UNSIGNED_INT32)
+        | (CL_R,     CL_HALF_FLOAT)
+        | (CL_R,     CL_FLOAT)
+        | (CL_DEPTH, CL_UNORM_INT16)
+        | (CL_DEPTH, CL_FLOAT)
+        | (CL_RG,    CL_UNORM_INT8)
+        | (CL_RG,    CL_UNORM_INT16)
+        | (CL_RG,    CL_SNORM_INT8)
+        | (CL_RG,    CL_SNORM_INT16)
+        | (CL_RG,    CL_SIGNED_INT8)
+        | (CL_RG,    CL_SIGNED_INT16)
+        | (CL_RG,    CL_SIGNED_INT32)
+        | (CL_RG,    CL_UNSIGNED_INT8)
+        | (CL_RG,    CL_UNSIGNED_INT16)
+        | (CL_RG,    CL_UNSIGNED_INT32)
+        | (CL_RG,    CL_HALF_FLOAT)
+        | (CL_RG,    CL_FLOAT)
+        | (CL_RGBA,  CL_UNORM_INT8)
+        | (CL_RGBA,  CL_UNORM_INT16)
+        | (CL_RGBA,  CL_SNORM_INT8)
+        | (CL_RGBA,  CL_SNORM_INT16)
+        | (CL_RGBA,  CL_SIGNED_INT8)
+        | (CL_RGBA,  CL_SIGNED_INT16)
+        | (CL_RGBA,  CL_SIGNED_INT32)
+        | (CL_RGBA,  CL_UNSIGNED_INT8)
+        | (CL_RGBA,  CL_UNSIGNED_INT16)
+        | (CL_RGBA,  CL_UNSIGNED_INT32)
+        | (CL_RGBA,  CL_HALF_FLOAT)
+        | (CL_RGBA,  CL_FLOAT)
+        | (CL_BGRA,  CL_UNORM_INT8)
+        | (CL_sRGBA, CL_UNORM_INT8))
+}
+
 const fn rusticl_image_format(
     ch_order: cl_channel_order,
     ch_type: cl_channel_type,
@@ -124,6 +174,7 @@ const fn rusticl_image_format(
         req_for_full_read_or_write: req_for_full_r_or_w(ch_order, ch_type),
         req_for_embeded_read_or_write: req_for_embedded_r_or_w(ch_order, ch_type),
         req_for_full_read_and_write: req_for_full_rw(ch_order, ch_type),
+        req_for_full_cl2: req_for_full_cl2(ch_order, ch_type),
         pipe: pipe,
     }
 }
