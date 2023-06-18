@@ -59,14 +59,16 @@ Farm management
    Never mix farm maintenance with any other change in the same merge request!
 
 When the farm starts failing for any reason (power, network, out-of-space), it needs to be disabled by pushing separate MR with
+
 .. code-block:: console
  
-   git mv .ci-farm{,-disabled}/$farm_name`
+   git mv .ci-farm{,-disabled}/$farm_name
    
 After farm restore functionality can be enabled by pushing a new merge request, which contains
+
 .. code-block:: console
 
-   git mv .ci-farm{-disabled,}/$farm_name`
+   git mv .ci-farm{-disabled,}/$farm_name
 
 
 Application traces replay
