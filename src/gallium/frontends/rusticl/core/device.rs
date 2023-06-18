@@ -718,7 +718,7 @@ impl Device {
     pub fn image_3d_write_supported(&self) -> bool {
         !FORMATS
             .iter()
-            .filter(|f| f.req_for_3d_image_write_ext)
+            .filter(|f| f.req_for_full_read_or_write)
             .map(|f| self.formats.get(&f.cl_image_format).unwrap())
             .map(|f| f.get(&CL_MEM_OBJECT_IMAGE3D).unwrap())
             .any(|f| *f & cl_mem_flags::from(CL_MEM_WRITE_ONLY) == 0)

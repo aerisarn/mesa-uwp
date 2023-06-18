@@ -6,7 +6,6 @@ pub struct RusticlImageFormat {
     pub req_for_full_read_or_write: bool,
     pub req_for_embeded_read_or_write: bool,
     pub req_for_full_read_and_write: bool,
-    pub req_for_3d_image_write_ext: bool,
     pub pipe: pipe_format,
 }
 
@@ -125,7 +124,6 @@ const fn rusticl_image_format(
         req_for_full_read_or_write: req_for_full_r_or_w(ch_order, ch_type),
         req_for_embeded_read_or_write: req_for_embedded_r_or_w(ch_order, ch_type),
         req_for_full_read_and_write: req_for_full_rw(ch_order, ch_type),
-        req_for_3d_image_write_ext: req_for_full_r_or_w(ch_order, ch_type),
         pipe: pipe,
     }
 }
