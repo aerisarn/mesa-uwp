@@ -1,7 +1,6 @@
 use crate::api::icd::*;
 use crate::core::device::*;
 use crate::core::event::*;
-use crate::core::format::*;
 use crate::core::memory::*;
 use crate::core::program::*;
 use crate::core::queue::*;
@@ -936,7 +935,7 @@ impl Kernel {
                         }
                         resource_info.push((res.clone(), arg.offset));
                     } else {
-                        let format = mem.image_format.to_pipe_format().unwrap();
+                        let format = mem.pipe_format;
                         let (formats, orders) = if arg.kind == KernelArgType::Image {
                             iviews.push(res.pipe_image_view(format, false, app_img_info.as_ref()));
                             (&mut img_formats, &mut img_orders)

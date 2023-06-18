@@ -111,6 +111,7 @@ pub struct Mem {
     pub offset: usize,
     pub host_ptr: *mut c_void,
     pub image_format: cl_image_format,
+    pub pipe_format: pipe_format,
     pub image_desc: cl_image_desc,
     pub image_elem_size: u8,
     pub props: Vec<cl_mem_properties>,
@@ -299,6 +300,7 @@ impl Mem {
             offset: 0,
             host_ptr: host_ptr,
             image_format: cl_image_format::default(),
+            pipe_format: pipe_format::PIPE_FORMAT_NONE,
             image_desc: cl_image_desc::default(),
             image_elem_size: 0,
             props: props,
@@ -330,6 +332,7 @@ impl Mem {
             offset: offset,
             host_ptr: host_ptr,
             image_format: cl_image_format::default(),
+            pipe_format: pipe_format::PIPE_FORMAT_NONE,
             image_desc: cl_image_desc::default(),
             image_elem_size: 0,
             props: Vec::new(),
@@ -370,10 +373,11 @@ impl Mem {
             ResourceType::Normal
         };
 
+        let pipe_format = image_format.to_pipe_format().unwrap();
         let texture = if parent.is_none() {
             Some(context.create_texture(
                 &image_desc,
-                image_format,
+                pipe_format,
                 host_ptr,
                 bit_check(flags, CL_MEM_COPY_HOST_PTR),
                 res_type,
@@ -398,6 +402,7 @@ impl Mem {
             offset: 0,
             host_ptr: host_ptr,
             image_format: *image_format,
+            pipe_format: pipe_format,
             image_desc: api_image_desc,
             image_elem_size: image_elem_size,
             props: props,
@@ -529,7 +534,7 @@ impl Mem {
                     r.depth(),
                     r.array_size(),
                     cl_mem_type_to_texture_target(self.image_desc.image_type),
-                    self.image_format.to_pipe_format().unwrap(),
+                    self.pipe_format,
                     ResourceType::Staging,
                 )
                 .ok_or(CL_OUT_OF_RESOURCES)?;
@@ -805,7 +810,7 @@ impl Mem {
         // CL_DEPTH where it's just one value.
         unsafe {
             util_format_pack_rgba(
-                self.image_format.to_pipe_format().unwrap(),
+                self.pipe_format,
                 new_pattern.as_mut_ptr().cast(),
                 pattern.as_ptr().cast(),
                 1,
