@@ -799,7 +799,7 @@ Clover extensions that are not part of any OpenCL version:
 Rusticl OpenCL 1.0 -- all DONE:
 
   Image support                                         DONE
-  - Optional image formats                              not started
+  - Optional image formats                              in progress
 
 
 Rusticl OpenCL 1.1 -- all DONE:
@@ -859,10 +859,10 @@ Rusticl OpenCL 2.0 -- all DONE:
   - Additional queries for clGetDeviceInfo              DONE
   Pipes                                                 not started
   Extended 2D images creation                           in progress
-  - CL_ABGR                                             not started
+  - CL_ABGR                                             DONE
   - cl_khr_image2d_from_buffer                          DONE (iris, llvmpipe)
   - cl_khr_depth_images                                 not started
-  - from sRGB images                                    not started
+  - from sRGB images                                    in progress
   clCreateSamplerWithProperties                         DONE
   Non-uniform work-group sizes                          not started
   cl_khr_3d_image_writes                                DONE

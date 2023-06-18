@@ -232,22 +232,31 @@ impl Device {
                 ) {
                     flags |= CL_MEM_READ_ONLY;
                 }
-                if self.screen.is_format_supported(
-                    f.pipe,
-                    cl_mem_type_to_texture_target(t),
-                    PIPE_BIND_SHADER_IMAGE,
-                ) {
+
+                // TODO: cl_khr_srgb_image_writes
+                if !f.is_srgb
+                    && self.screen.is_format_supported(
+                        f.pipe,
+                        cl_mem_type_to_texture_target(t),
+                        PIPE_BIND_SHADER_IMAGE,
+                    )
+                {
                     flags |= CL_MEM_WRITE_ONLY;
                     // TODO: enable once we support it
                     // flags |= CL_MEM_KERNEL_READ_AND_WRITE;
                 }
-                if self.screen.is_format_supported(
-                    f.pipe,
-                    cl_mem_type_to_texture_target(t),
-                    PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_SHADER_IMAGE,
-                ) {
+
+                // TODO: cl_khr_srgb_image_writes
+                if !f.is_srgb
+                    && self.screen.is_format_supported(
+                        f.pipe,
+                        cl_mem_type_to_texture_target(t),
+                        PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_SHADER_IMAGE,
+                    )
+                {
                     flags |= CL_MEM_READ_WRITE;
                 }
+
                 fs.insert(t, flags as cl_mem_flags);
             }
             self.formats.insert(f.cl_image_format, fs);
