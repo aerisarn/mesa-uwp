@@ -10,6 +10,36 @@ pub struct RusticlImageFormat {
     pub pipe: pipe_format,
 }
 
+// cl -> pipe mapping:
+//
+// channels (x: bit size):
+// CL_R         => Rx
+// CL_A         => Ax
+// CL_DEPTH     => Zx
+// CL_LUMINANCE => Lx
+// CL_INTENSITY => Ix
+// CL_RG        => RxGx
+// CL_RA        => RxAx
+// CL_Rx        => not supported
+// CL_RGB       => RxGxBx
+// CL_RGx       => not supported
+// CL_RGBA      => RxGxBxAx
+// CL_ARGB      => AxRxGxBx
+// CL_BGRA      => BxGxRxAx
+// CL_ABGR      => AxBxGxRx
+// CL_RGBx      => RxGxBxXx
+// CL_sRGB      => RxGxBx_SRGB
+// CL_sRGBA     => RxGxBxAx_SRGB
+// CL_sBGRA     => BxGxRxAx_SRGB
+// CL_sRGBx     => RxGxBxXx_SRGB
+//
+// data types:
+// SNORM        => x  SNORM
+// UNORM        => x  UNORM
+// SIGNED_INT   => x  SINT
+// UNSIGNED_INT => x  UINT
+// HALF_FLOAT   => 16 FLOAT
+// FLOAT        => 32 FLOAT
 #[rustfmt::skip]
 const fn cl_format_to_pipe(
     ch_order: cl_channel_order,
