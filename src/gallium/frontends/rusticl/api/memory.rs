@@ -379,9 +379,9 @@ fn validate_image_format<'a>(
     // special validation
     let valid_combination = match format.image_channel_data_type {
         CL_UNORM_SHORT_565 | CL_UNORM_SHORT_555 | CL_UNORM_INT_101010 => {
-            [CL_RGB, CL_RGBx].contains(&format.image_channel_data_type)
+            [CL_RGB, CL_RGBx].contains(&format.image_channel_order)
         }
-        CL_UNORM_INT_101010_2 => format.image_channel_data_type == CL_RGBA,
+        CL_UNORM_INT_101010_2 => format.image_channel_order == CL_RGBA,
         _ => true,
     };
     if !valid_combination {
