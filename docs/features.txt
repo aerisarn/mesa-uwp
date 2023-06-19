@@ -643,13 +643,17 @@ Khronos extensions that are not part of any Vulkan version:
 Clover OpenCL 1.0 -- all DONE:
 
   Image support                                         in progress
+  - Optional image formats                              in progress
 
 
 Clover OpenCL 1.1 -- all DONE:
 
   Additional queries for clGetDeviceInfo                DONE (nvc0, r600, radeonsi)
   CL_CONTEXT_NUM_DEVICES for clGetContextInfo           DONE
-  Optional image formats                                not started
+  New optional image formats                            not started
+  - CL_Rx                                               not started
+  - CL_RGx                                              not started
+  - CL_RGBx                                             not started
   clCreateSubBuffer                                     DONE
   Read from, write to, copy rectangular regions         DONE
   clSetMemObjectDestructorCallback                      DONE
@@ -698,7 +702,8 @@ Clover OpenCL 2.0 -- all DONE:
   - cl_khr_create_command_queue                         not started
   - Additional queries for clGetDeviceInfo              not started
   Pipes                                                 not started
-  Extended 2D images creation                           not started
+  Extended 2D images creation                           in progress
+  - CL_ABGR                                             DONE
   - cl_khr_image2d_from_buffer                          not started
   - cl_khr_depth_images                                 not started
   - from sRGB images                                    not started
@@ -719,6 +724,7 @@ Clover OpenCL 2.1 -- all DONE:
   clEnqueueSVMMigrateMem                                not started
   clCloneKernel                                         not started
   Default device command queue                          not started
+  CL_UNORM_INT_101010_2                                 DONE
 
 
 Clover OpenCL 2.2 -- all DONE:
@@ -793,13 +799,17 @@ Clover extensions that are not part of any OpenCL version:
 Rusticl OpenCL 1.0 -- all DONE:
 
   Image support                                         DONE
+  - Optional image formats                              not started
 
 
 Rusticl OpenCL 1.1 -- all DONE:
 
   Additional queries for clGetDeviceInfo                DONE
   CL_CONTEXT_NUM_DEVICES for clGetContextInfo           DONE
-  Optional image formats                                not started
+  New optional image formats                            not started
+  - CL_Rx                                               not started
+  - CL_RGx                                              not started
+  - CL_RGBx                                             not started
   clCreateSubBuffer                                     DONE
   Read from, write to, copy rectangular regions         DONE
   clSetMemObjectDestructorCallback                      DONE
@@ -849,6 +859,7 @@ Rusticl OpenCL 2.0 -- all DONE:
   - Additional queries for clGetDeviceInfo              DONE
   Pipes                                                 not started
   Extended 2D images creation                           in progress
+  - CL_ABGR                                             not started
   - cl_khr_image2d_from_buffer                          DONE (iris, llvmpipe)
   - cl_khr_depth_images                                 not started
   - from sRGB images                                    not started
@@ -869,6 +880,7 @@ Rusticl OpenCL 2.1 -- all DONE:
   clEnqueueSVMMigrateMem                                in progress (nvc0/gp100, broken)
   clCloneKernel                                         DONE
   Default device command queue                          not started
+  CL_UNORM_INT_101010_2                                 not started
 
 
 Rusticl OpenCL 2.2 -- all DONE:
