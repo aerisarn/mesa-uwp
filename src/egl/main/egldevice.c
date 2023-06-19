@@ -198,6 +198,26 @@ out:
    return dev;
 }
 
+#ifdef HAVE_LIBDRM
+drmDevicePtr
+_eglDeviceDrm(_EGLDevice *dev)
+{
+   if (!dev)
+      return NULL;
+
+   return dev->device;
+}
+#endif
+
+_EGLDevice *
+_eglDeviceNext(_EGLDevice *dev)
+{
+   if (!dev)
+      return NULL;
+
+   return dev->Next;
+}
+
 EGLBoolean
 _eglDeviceSupports(_EGLDevice *dev, _EGLDeviceExtension ext)
 {
