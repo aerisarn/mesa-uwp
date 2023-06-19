@@ -611,6 +611,125 @@ util_clear_depth_stencil_texture(struct pipe_context *pipe,
 }
 
 
+/* Try to clear the texture as a surface, returns true if successful.
+ */
+static bool
+util_clear_texture_as_surface(struct pipe_context *pipe,
+                              struct pipe_resource *res,
+                              unsigned level,
+                              const struct pipe_box *box,
+                              const void *data)
+{
+   struct pipe_surface tmpl = {{0}}, *sf;
+
+   tmpl.format = res->format;
+   tmpl.u.tex.first_layer = box->z;
+   tmpl.u.tex.last_layer = box->z + box->depth - 1;
+   tmpl.u.tex.level = level;
+
+   if (util_format_is_depth_or_stencil(res->format)) {
+      if (!pipe->clear_depth_stencil)
+         return false;
+
+      sf = pipe->create_surface(pipe, res, &tmpl);
+      if (!sf)
+         return false;
+
+      float depth = 0;
+      uint8_t stencil = 0;
+      unsigned clear = 0;
+      const struct util_format_description *desc =
+         util_format_description(tmpl.format);
+
+      if (util_format_has_depth(desc)) {
+         clear |= PIPE_CLEAR_DEPTH;
+         util_format_unpack_z_float(tmpl.format, &depth, data, 1);
+      }
+      if (util_format_has_stencil(desc)) {
+         clear |= PIPE_CLEAR_STENCIL;
+         util_format_unpack_s_8uint(tmpl.format, &stencil, data, 1);
+      }
+      pipe->clear_depth_stencil(pipe, sf, clear, depth, stencil,
+                                box->x, box->y, box->width, box->height,
+                                false);
+
+      pipe_surface_reference(&sf, NULL);
+   } else {
+      if (!pipe->clear_render_target)
+         return false;
+
+      if (!pipe->screen->is_format_supported(pipe->screen, tmpl.format,
+                  res->target, 0, 0,
+                  PIPE_BIND_RENDER_TARGET)) {
+         tmpl.format = util_format_as_renderable(tmpl.format);
+
+         if (tmpl.format == PIPE_FORMAT_NONE)
+            return false;
+
+         if (!pipe->screen->is_format_supported(pipe->screen, tmpl.format,
+                     res->target, 0, 0,
+                     PIPE_BIND_RENDER_TARGET))
+            return false;
+      }
+
+      sf = pipe->create_surface(pipe, res, &tmpl);
+      if (!sf)
+         return false;
+
+      union pipe_color_union color;
+      util_format_unpack_rgba(sf->format, color.ui, data, 1);
+      pipe->clear_render_target(pipe, sf, &color, box->x, box->y,
+                              box->width, box->height, false);
+
+      pipe_surface_reference(&sf, NULL);
+   }
+
+   return true;
+}
+
+/* First attempt to clear using HW, fallback to SW if needed.
+ */
+void
+u_default_clear_texture(struct pipe_context *pipe,
+                        struct pipe_resource *tex,
+                        unsigned level,
+                        const struct pipe_box *box,
+                        const void *data)
+{
+   struct pipe_screen *screen = pipe->screen;
+   bool cleared = false;
+   assert(data != NULL);
+
+   bool has_layers = screen->get_param(screen, PIPE_CAP_VS_INSTANCEID) &&
+                     screen->get_param(screen, PIPE_CAP_VS_LAYER_VIEWPORT);
+
+   if (has_layers) {
+      cleared = util_clear_texture_as_surface(pipe, tex, level,
+                                              box, data);
+   } else {
+      struct pipe_box layer = *box;
+      layer.depth = 1;
+      int l;
+      for (l = box->z; l < box->z + box->depth; l++) {
+         layer.z = l;
+         cleared |= util_clear_texture_as_surface(pipe, tex, level,
+                                                  &layer, data);
+         if (!cleared) {
+            /* If one layer is cleared, all layers should also be clearable.
+             * Therefore, if we fail on any later other than the first, it
+             * is a bug somewhere.
+             */
+            assert(l == box->z);
+            break;
+         }
+      }
+   }
+
+   /* Fallback to clearing it in SW if the HW paths failed. */
+   if (!cleared)
+      util_clear_texture(pipe, tex, level, box, data);
+}
+
 void
 util_clear_texture(struct pipe_context *pipe,
                    struct pipe_resource *tex,
