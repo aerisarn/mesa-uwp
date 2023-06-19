@@ -285,7 +285,7 @@ _eglQueryDeviceStringEXT(_EGLDevice *dev, EGLint name)
  * Must be called with the global lock held.
  */
 static int
-_eglRefreshDeviceList(void)
+_eglDeviceRefreshList(void)
 {
    ASSERTED _EGLDevice *dev;
    int count = 0;
@@ -334,7 +334,7 @@ _eglQueryDevicesEXT(EGLint max_devices, _EGLDevice **devices,
 
    simple_mtx_lock(_eglGlobal.Mutex);
 
-   num_devs = _eglRefreshDeviceList();
+   num_devs = _eglDeviceRefreshList();
    devs = _eglGlobal.DeviceList;
 
 #ifdef GALLIUM_SOFTPIPE
