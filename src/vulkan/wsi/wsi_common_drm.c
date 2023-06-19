@@ -25,6 +25,7 @@
 #include "wsi_common_drm.h"
 #include "util/macros.h"
 #include "util/os_file.h"
+#include "util/log.h"
 #include "util/xmlconfig.h"
 #include "vk_device.h"
 #include "vk_physical_device.h"
@@ -57,6 +58,7 @@ wsi_dma_buf_export_sync_file(int dma_buf_fd, int *sync_file_fd)
          no_dma_buf_sync_file = true;
          return VK_ERROR_FEATURE_NOT_PRESENT;
       } else {
+         mesa_loge("MESA: failed to export sync file '%s'", strerror(errno));
          return VK_ERROR_OUT_OF_HOST_MEMORY;
       }
    }
@@ -84,6 +86,7 @@ wsi_dma_buf_import_sync_file(int dma_buf_fd, int sync_file_fd)
          no_dma_buf_sync_file = true;
          return VK_ERROR_FEATURE_NOT_PRESENT;
       } else {
+         mesa_loge("MESA: failed to import sync file '%s'", strerror(errno));
          return VK_ERROR_OUT_OF_HOST_MEMORY;
       }
    }
