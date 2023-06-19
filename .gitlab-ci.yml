@@ -204,16 +204,6 @@ stages:
       when: manual
     # Otherwise, container jobs won't run because no rule matched.
 
-.microsoft-farm-container-rules:
-  rules:
-    # Allow triggering jobs manually in other cases if any files affecting the
-    # pipeline were changed
-    - exists: [ .ci-farms-disabled/microsoft ]
-      when: never
-    - changes: [ .ci-farms-disabled/microsoft ]
-      when: manual
-    - !reference [.microsoft-farm-rules, rules]
-
 # Git archive
 
 make git archive:
