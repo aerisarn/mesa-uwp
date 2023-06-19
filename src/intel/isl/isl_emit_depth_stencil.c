@@ -299,6 +299,19 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
        */
       assert(info->hiz_surf->tiling == ISL_TILING_HIZ);
       hiz.TiledMode = TILE4;
+#elif GFX_VERx10 >= 120
+      /* From 3DSTATE_HIER_DEPTH_BUFFER_BODY::TiledMode,
+       *
+       *     HZ buffer only supports Tile Y mode.
+       *
+       * and
+       *
+       *    Value | Name
+       *    ----------------------------------------
+       *    0h    | No tiled resource (Tile Y Mode).
+       */
+      assert(info->hiz_surf->tiling == ISL_TILING_HIZ);
+      hiz.TiledMode = NONE;
 #endif
 
 #if GFX_VER >= 12
