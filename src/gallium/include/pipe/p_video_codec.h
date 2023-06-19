@@ -182,6 +182,12 @@ struct pipe_video_buffer
    void (*destroy)(struct pipe_video_buffer *buffer);
 
    /**
+    * get an individual resource for each plane,
+    * only returns existing resources by reference
+    */
+   void (*get_resources)(struct pipe_video_buffer *buffer, struct pipe_resource **resources);
+
+   /**
     * get an individual sampler view for each plane
     */
    struct pipe_sampler_view **(*get_sampler_view_planes)(struct pipe_video_buffer *buffer);
