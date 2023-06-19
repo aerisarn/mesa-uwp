@@ -3115,6 +3115,11 @@ update_resource_refs_for_stage(struct zink_context *ctx, gl_shader_stage stage)
                continue;
             bool is_buffer = res->obj->is_buffer;
             bool is_write = zink_resource_access_is_write(get_access_flags_for_binding(ctx, i, stage, j));
+            if (zink_is_swapchain(res)) {
+               if (!zink_kopper_acquire(ctx, res, UINT64_MAX))
+                  /* technically this is a failure condition, but there's no safe way out */
+                  continue;
+            }
             zink_batch_resource_usage_set(batch, res, is_write, is_buffer);
             if (is_write || !res->obj->is_buffer)
                res->obj->unordered_read = res->obj->unordered_write = false;
