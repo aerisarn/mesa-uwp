@@ -403,17 +403,18 @@ static void
 zink_bind_blend_state(struct pipe_context *pctx, void *cso)
 {
    struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_gfx_pipeline_state* state = &zink_context(pctx)->gfx_pipeline_state;
    zink_flush_dgc_if_enabled(ctx);
    struct zink_blend_state *blend = cso;
 
    if (state->blend_state != cso) {
       state->blend_state = cso;
-      if (!zink_screen(pctx->screen)->have_full_ds3) {
+      if (!screen->have_full_ds3) {
          state->blend_id = blend ? blend->hash : 0;
          state->dirty = true;
       }
-      bool force_dual_color_blend = zink_screen(pctx->screen)->driconf.dual_color_blend_by_location &&
+      bool force_dual_color_blend = screen->driconf.dual_color_blend_by_location &&
                                     blend && blend->dual_src_blend && state->blend_state->attachments[0].blendEnable;
       if (force_dual_color_blend != zink_get_fs_base_key(ctx)->force_dual_color_blend)
          zink_set_fs_base_key(ctx)->force_dual_color_blend = force_dual_color_blend;
