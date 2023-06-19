@@ -42,6 +42,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "drm-uapi/drm_fourcc.h"
 #include "util/compiler.h"
 #include "util/macros.h"
 #include "util/format/u_format.h"
@@ -2246,6 +2247,9 @@ isl_drm_modifier_get_info(uint64_t modifier);
 static inline bool
 isl_drm_modifier_has_aux(uint64_t modifier)
 {
+   if (modifier == DRM_FORMAT_MOD_INVALID)
+      return false;
+
    return isl_drm_modifier_get_info(modifier)->aux_usage != ISL_AUX_USAGE_NONE;
 }
 
