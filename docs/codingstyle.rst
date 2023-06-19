@@ -49,6 +49,38 @@ If ``/usr/share/clang/clang-format.py`` doesn't exist, try
 has put the file somewhere else, look through the files in the package
 providing ``clang-format``.
 
+Emacs
+*****
+
+Add this to your ``.emacs`` to automatically format any C & C++ file
+(that has a .clang-format config) when you save it:
+
+.. code:: emacs
+
+   (load "/usr/share/clang/clang-format.el")
+
+   (defun clang-format-save-hook-for-this-buffer ()
+     "Create a buffer local save hook."
+     (add-hook 'before-save-hook
+               (lambda ()
+                 (when (locate-dominating-file "." ".clang-format")
+                   (clang-format-buffer))
+                 ;; Continue to save.
+                 nil)
+               nil
+               ;; Buffer local hook.
+               t))
+
+   ;; Run this for each mode you want to use the hook.
+   (add-hook 'c-mode-hook (lambda () (clang-format-save-hook-for-this-buffer)))
+   (add-hook 'c++-mode-hook (lambda () (clang-format-save-hook-for-this-buffer)))
+
+If ``/usr/share/clang/clang-format.el`` doesn't exist, look through the
+files in the package providing ``clang-format`` in your distro. If you
+can't find anything (eg. on Debian/Ubuntu), refer to `this StackOverflow
+answer <https://stackoverflow.com/a/59850773>`__ to install clang-format
+through Emacs instead.
+
 Basic formatting guidelines
 ---------------------------
 
