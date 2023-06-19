@@ -10,11 +10,7 @@
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 
-#if DETECT_ARCH_X86_64 || DETECT_ARCH_PPC_64 || DETECT_ARCH_AARCH64 || DETECT_ARCH_MIPS64
-#define NUM_QUERIES 5000
-#else
 #define NUM_QUERIES 500
-#endif
 
 struct zink_query_pool {
    struct list_head list;
