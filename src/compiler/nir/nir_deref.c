@@ -421,16 +421,23 @@ nir_fixup_deref_modes_instr(UNUSED struct nir_builder *b, nir_instr *instr, UNUS
       return false;
 
    nir_deref_instr *deref = nir_instr_as_deref(instr);
-   if (deref->deref_type == nir_deref_type_cast)
-      return false;
-
    nir_variable_mode parent_modes;
    if (deref->deref_type == nir_deref_type_var) {
       parent_modes = deref->var->data.mode;
    } else {
-      assert(deref->parent.is_ssa);
-      nir_deref_instr *parent =
-         nir_instr_as_deref(deref->parent.ssa->parent_instr);
+      nir_deref_instr *parent = nir_src_as_deref(deref->parent);
+      if (parent == NULL) {
+         /* Cast to some non-deref value, nothing to propagate. */
+         assert(deref->deref_type == nir_deref_type_cast);
+         return false;
+      }
+
+      /* It's safe to propagate a specific mode into a more generic one
+       * but never the other way around.
+       */
+      if (util_bitcount(parent->modes) != 1)
+         return false;
+
       parent_modes = parent->modes;
    }
 
