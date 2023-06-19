@@ -118,6 +118,13 @@ fn nir_options(_dev: &nv_device_info) -> nir_shader_compiler_options {
     op.lower_iadd_sat = true; // TODO
     op.use_interpolated_input_intrinsics = true;
     op.lower_int64_options = !nir_lower_iadd64;
+    op.lower_ldexp = true;
+    op.lower_fmod = true;
+    op.lower_ffract = true;
+    op.lower_fpow = true;
+    op.lower_scmp = true;
+    op.lower_uadd_carry = true;
+    op.lower_usub_borrow = true;
 
     op
 }
