@@ -76,6 +76,7 @@ private:
    unsigned m_num_color_exports;
    unsigned m_color_export_mask;
    ExportInstr *m_last_pixel_export;
+   unsigned m_color_export_written_mask{0};
 
    std::bitset<s_max_interpolators> m_interpolators_used;
    RegisterVec4 m_pos_input;
