@@ -819,7 +819,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          VKSCR(GetBufferMemoryRequirements)(screen->dev, obj->buffer, &reqs);
       }
       if (templ->usage == PIPE_USAGE_STAGING)
-         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
       else if (templ->usage == PIPE_USAGE_STREAM)
          flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
       else if (templ->usage == PIPE_USAGE_IMMUTABLE)
@@ -1106,7 +1106,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       flags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
    else if (!(flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) &&
             templ->usage == PIPE_USAGE_STAGING)
-      flags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+      flags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
    if (templ->bind & ZINK_BIND_TRANSIENT)
       flags |= VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
