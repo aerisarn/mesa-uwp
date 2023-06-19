@@ -3058,9 +3058,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       /* not found: use compatible heap */
       if (screen->heap_map[i][0] == UINT8_MAX) {
          /* only cached mem has a failure case for now */
-         assert(i == ZINK_HEAP_HOST_VISIBLE_CACHED || i == ZINK_HEAP_DEVICE_LOCAL_LAZY ||
+         assert(i == ZINK_HEAP_HOST_VISIBLE_COHERENT_CACHED || i == ZINK_HEAP_DEVICE_LOCAL_LAZY ||
                 i == ZINK_HEAP_DEVICE_LOCAL_VISIBLE);
-         if (i == ZINK_HEAP_HOST_VISIBLE_CACHED) {
+         if (i == ZINK_HEAP_HOST_VISIBLE_COHERENT_CACHED) {
             memcpy(screen->heap_map[i], screen->heap_map[ZINK_HEAP_HOST_VISIBLE_COHERENT], screen->heap_count[ZINK_HEAP_HOST_VISIBLE_COHERENT]);
             screen->heap_count[i] = screen->heap_count[ZINK_HEAP_HOST_VISIBLE_COHERENT];
          } else {

@@ -66,7 +66,7 @@ vk_domain_from_heap(enum zink_heap heap)
    case ZINK_HEAP_HOST_VISIBLE_COHERENT:
       domains = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
       break;
-   case ZINK_HEAP_HOST_VISIBLE_CACHED:
+   case ZINK_HEAP_HOST_VISIBLE_COHERENT_CACHED:
       domains = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
       break;
    default:
@@ -88,7 +88,7 @@ zink_heap_from_domain_flags(VkMemoryPropertyFlags domains, enum zink_alloc_flag 
       return ZINK_HEAP_DEVICE_LOCAL;
 
    if (domains & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
-      return ZINK_HEAP_HOST_VISIBLE_CACHED;
+      return ZINK_HEAP_HOST_VISIBLE_COHERENT_CACHED;
 
    return ZINK_HEAP_HOST_VISIBLE_COHERENT;
 }
