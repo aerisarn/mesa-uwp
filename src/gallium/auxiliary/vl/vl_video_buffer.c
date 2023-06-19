@@ -218,6 +218,21 @@ vl_video_buffer_destroy(struct pipe_video_buffer *buffer)
    FREE(buffer);
 }
 
+static void
+vl_video_buffer_resources(struct pipe_video_buffer *buffer,
+                          struct pipe_resource **resources)
+{
+   struct vl_video_buffer *buf = (struct vl_video_buffer *)buffer;
+   unsigned num_planes = util_format_get_num_planes(buffer->buffer_format);
+   unsigned i;
+
+   assert(buf);
+
+   for (i = 0; i < num_planes; ++i) {
+      resources[i] = buf->resources[i];
+   }
+}
+
 static struct pipe_sampler_view **
 vl_video_buffer_sampler_view_planes(struct pipe_video_buffer *buffer)
 {
@@ -453,6 +468,7 @@ vl_video_buffer_create_ex2(struct pipe_context *pipe,
    buffer->base = *tmpl;
    buffer->base.context = pipe;
    buffer->base.destroy = vl_video_buffer_destroy;
+   buffer->base.get_resources = vl_video_buffer_resources;
    buffer->base.get_sampler_view_planes = vl_video_buffer_sampler_view_planes;
    buffer->base.get_sampler_view_components = vl_video_buffer_sampler_view_components;
    buffer->base.get_surfaces = vl_video_buffer_surfaces;
