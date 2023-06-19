@@ -81,6 +81,22 @@ can't find anything (eg. on Debian/Ubuntu), refer to `this StackOverflow
 answer <https://stackoverflow.com/a/59850773>`__ to install clang-format
 through Emacs instead.
 
+git ``pre-commit`` hook
+***********************
+
+If your editor doesn't support this, or if you don't want to enable it, you
+can always just run ``ninja clang-format`` to format everything, or add
+a ``pre-commit`` hook that runs this automatically whenever you ``git
+commit`` by adding the following in your ``.git/hooks/pre-commit``:
+
+.. code:: sh
+
+   shopt -s globstar
+   git clang-format $upstream -- $(grep -oE '[^#]' .clang-format-include)
+   # replace $upstream with the name of the remote tracking upstream mesa
+   # if you don't know, it's probably `origin`
+
+
 Basic formatting guidelines
 ---------------------------
 
