@@ -21,6 +21,34 @@ running ``ninja -C build/ clang-format``.
 Most code editors also support automatically formatting code as you
 write it; check your editor or its pluggins to see how to enable this.
 
+Vim
+***
+
+Add this to your ``.vimrc`` to automatically format any C & C++ file
+(that has a .clang-format config) when you save it:
+
+.. code:: vim
+
+   augroup ClangFormatOnSave
+     au!
+
+     function! ClangFormatOnSave()
+       " Only format files that have a .clang-format in a parent folder
+       if !empty(findfile('.clang-format', '.;'))
+         let l:formatdiff = 1 " Only format lines that have changed
+         py3f /usr/share/clang/clang-format.py
+       endif
+     endfunction
+
+     autocmd BufWritePre *.h,*.c,*.cc,*.cpp call ClangFormatOnSave()
+   augroup END
+
+If ``/usr/share/clang/clang-format.py`` doesn't exist, try
+``/usr/share/clang/clang-format-$CLANG_VERSION/clang-format.py``
+(replacing ``$CLANG_VERSION`` with your clang version). If your distro
+has put the file somewhere else, look through the files in the package
+providing ``clang-format``.
+
 Basic formatting guidelines
 ---------------------------
 
