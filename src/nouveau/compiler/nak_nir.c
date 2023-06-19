@@ -60,6 +60,7 @@ optimize_nir(nir_shader *nir, const struct nak_compiler *nak, bool allow_copies)
 
       OPT(nir, nir_lower_alu_to_scalar, NULL, NULL);
       OPT(nir, nir_lower_phis_to_scalar, false);
+      OPT(nir, nir_lower_frexp);
       OPT(nir, nir_copy_prop);
       OPT(nir, nir_opt_dce);
       OPT(nir, nir_opt_cse);
@@ -599,6 +600,17 @@ nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
    OPT(nir, nak_nir_lower_system_values);
 
    nak_optimize_nir(nir, nak);
+
+   do {
+      progress = false;
+      if (OPT(nir, nir_opt_algebraic_late)) {
+         OPT(nir, nir_opt_constant_folding);
+         OPT(nir, nir_copy_prop);
+         OPT(nir, nir_opt_dce);
+         OPT(nir, nir_opt_cse);
+      }
+   } while (progress);
+
    nir_divergence_analysis(nir);
 
    /* Re-index blocks and compact SSA defs because we'll use them to index
