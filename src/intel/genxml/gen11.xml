@@ -1829,11 +1829,6 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="3" />
     <field name="Command Type" start="29" end="31" type="uint" default="3" />
     <field name="Surface Pitch" start="32" end="48" type="uint" />
-    <field name="Tiled Resource Mode" start="55" end="56" type="uint">
-      <value name="NONE" value="0" />
-      <value name="TILEYF" value="1" />
-      <value name="TILEYS" value="2" />
-    </field>
     <field name="MOCS" start="57" end="63" type="uint" nonzero="true" />
     <field name="Surface Base Address" start="64" end="127" type="address" />
     <field name="Surface QPitch" start="128" end="142" type="uint" />
