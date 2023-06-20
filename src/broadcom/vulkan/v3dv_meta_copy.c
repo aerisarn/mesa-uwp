@@ -351,17 +351,36 @@ get_compatible_tlb_format(VkFormat format)
  * Checks if we can implement an image copy or clear operation using the TLB
  * hardware.
  *
+ * The extent and miplevel are only used to validate tile stores (to match the
+ * region to store against the miplevel dimensions to avoid avoid cases where
+ * the region to store is not a aligned to tile boundaries). If extent is
+ * NULL no checks are done (which is fine if the image will only be used for a
+ * TLB load or when we know in advance that the store will be for the entire
+ * size of the image miplevel).
+ *
  * For tlb copies we are doing a per-plane copy, so for multi-plane formats,
  * the compatible format will be single-plane.
  */
 bool
 v3dv_meta_can_use_tlb(struct v3dv_image *image,
                       uint8_t plane,
+                      uint8_t miplevel,
                       const VkOffset3D *offset,
+                      const VkExtent3D *extent,
                       VkFormat *compat_format)
 {
    if (offset->x != 0 || offset->y != 0)
       return false;
+
+   /* FIXME: this is suboptimal, what we really want to check is that the
+    * extent of the region to copy is the full slice or a multiple of the
+    * tile size.
+    */
+   if (extent) {
+      struct v3d_resource_slice *slice = &image->planes[plane].slices[miplevel];
+      if (slice->width != extent->width || slice->height != extent->height)
+         return false;
+   }
 
    if (image->format->planes[plane].rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO) {
       if (compat_format)
@@ -403,8 +422,11 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    uint8_t plane = v3dv_plane_from_aspect(region->imageSubresource.aspectMask);
    assert(plane < image->plane_count);
 
-   if (!v3dv_meta_can_use_tlb(image, plane, &region->imageOffset, &fb_format))
+   if (!v3dv_meta_can_use_tlb(image, plane, region->imageSubresource.mipLevel,
+                              &region->imageOffset, &region->imageExtent,
+                              &fb_format)) {
       return false;
+   }
 
    uint32_t internal_type, internal_bpp;
    v3dv_X(cmd_buffer->device, get_internal_type_bpp_for_image_aspects)
@@ -965,9 +987,12 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    assert(dst_plane < dst->plane_count);
 
    VkFormat fb_format;
-   if (!v3dv_meta_can_use_tlb(src, src_plane, &region->srcOffset, &fb_format) ||
-       !v3dv_meta_can_use_tlb(dst, dst_plane, &region->dstOffset, &fb_format))
+   if (!v3dv_meta_can_use_tlb(src, src_plane, region->srcSubresource.mipLevel,
+                              &region->srcOffset, NULL, &fb_format) ||
+       !v3dv_meta_can_use_tlb(dst, dst_plane, region->dstSubresource.mipLevel,
+                              &region->dstOffset, &region->extent, &fb_format)) {
       return false;
+   }
 
    /* From the Vulkan spec, VkImageCopy valid usage:
     *
@@ -1637,8 +1662,11 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    uint8_t plane = v3dv_plane_from_aspect(region->imageSubresource.aspectMask);
    assert(plane < image->plane_count);
 
-   if (!v3dv_meta_can_use_tlb(image, plane, &region->imageOffset, &fb_format))
+   if (!v3dv_meta_can_use_tlb(image, plane, region->imageSubresource.mipLevel,
+                              &region->imageOffset, &region->imageExtent,
+                              &fb_format)) {
       return false;
+   }
 
    uint32_t internal_type, internal_bpp;
    v3dv_X(cmd_buffer->device, get_internal_type_bpp_for_image_aspects)
@@ -4535,8 +4563,10 @@ resolve_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    assert(dst->plane_count == 1);
    assert(src->plane_count == 1);
 
-   if (!v3dv_meta_can_use_tlb(src, 0, &region->srcOffset, NULL) ||
-       !v3dv_meta_can_use_tlb(dst, 0, &region->dstOffset, NULL)) {
+   if (!v3dv_meta_can_use_tlb(src, 0, region->srcSubresource.mipLevel,
+                              &region->srcOffset, NULL, NULL) ||
+       !v3dv_meta_can_use_tlb(dst, 0, region->dstSubresource.mipLevel,
+                              &region->dstOffset, &region->extent, NULL)) {
       return false;
    }
 
