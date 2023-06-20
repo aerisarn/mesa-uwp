@@ -9470,10 +9470,6 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
    const bool compute = layout->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
    const struct radv_device *device = cmd_buffer->device;
 
-   /* The only actions that can be done are draws, so skip on other queues. */
-   if (cmd_buffer->qf != RADV_QUEUE_GENERAL)
-      return;
-
    /* Secondary command buffers are needed for the full extension but can't use
     * PKT3_INDIRECT_BUFFER.
     */
@@ -9505,8 +9501,10 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
    const uint64_t ib_offset = prep_buffer->offset + pGeneratedCommandsInfo->preprocessOffset;
    const uint32_t view_mask = cmd_buffer->state.render.view_mask;
 
-   radeon_emit(cmd_buffer->cs, PKT3(PKT3_PFP_SYNC_ME, 0, cmd_buffer->state.predicating));
-   radeon_emit(cmd_buffer->cs, 0);
+   if (!radv_cmd_buffer_uses_mec(cmd_buffer)) {
+      radeon_emit(cmd_buffer->cs, PKT3(PKT3_PFP_SYNC_ME, 0, cmd_buffer->state.predicating));
+      radeon_emit(cmd_buffer->cs, 0);
+   }
 
    if (compute || !view_mask) {
       device->ws->cs_execute_ib(cmd_buffer->cs, ib_bo, ib_offset, cmdbuf_size >> 2);
