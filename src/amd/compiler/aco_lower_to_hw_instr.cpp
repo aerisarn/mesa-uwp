@@ -649,7 +649,8 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
 
          /* fill in the gaps in rows 1 and 3 */
          bld.sop1(aco_opcode::s_mov_b32, Definition(exec_lo, s1), Operand::c32(0x10000u));
-         bld.sop1(aco_opcode::s_mov_b32, Definition(exec_hi, s1), Operand::c32(0x10000u));
+         if (ctx->program->wave_size == 64)
+            bld.sop1(aco_opcode::s_mov_b32, Definition(exec_hi, s1), Operand::c32(0x10000u));
          for (unsigned i = 0; i < src.size(); i++) {
             Instruction* perm =
                bld.vop3(aco_opcode::v_permlanex16_b32, Definition(PhysReg{vtmp + i}, v1),
@@ -782,8 +783,10 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
       if (ctx->program->gfx_level >= GFX10) {
          bld.sop2(aco_opcode::s_bfm_b32, Definition(exec_lo, s1), Operand::c32(16u),
                   Operand::c32(16u));
-         bld.sop2(aco_opcode::s_bfm_b32, Definition(exec_hi, s1), Operand::c32(16u),
-                  Operand::c32(16u));
+         if (ctx->program->wave_size == 64) {
+            bld.sop2(aco_opcode::s_bfm_b32, Definition(exec_hi, s1), Operand::c32(16u),
+                     Operand::c32(16u));
+         }
          for (unsigned i = 0; i < src.size(); i++) {
             Instruction* perm =
                bld.vop3(aco_opcode::v_permlanex16_b32, Definition(PhysReg{vtmp + i}, v1),
