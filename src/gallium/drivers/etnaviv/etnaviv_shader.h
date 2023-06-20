@@ -79,7 +79,6 @@ struct etna_shader {
    uint32_t id;
    uint32_t variant_count;
 
-   struct tgsi_token *tokens;
    struct nir_shader *nir;
    const struct etna_specs *specs;
    struct etna_compiler *compiler;

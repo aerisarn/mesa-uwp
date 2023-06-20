@@ -540,7 +540,6 @@ etna_delete_shader_state(struct pipe_context *pctx, void *ss)
       etna_destroy_shader(t);
    }
 
-   tgsi_free_tokens(shader->tokens);
    ralloc_free(shader->nir);
    util_queue_fence_destroy(&shader->ready);
    FREE(shader);
