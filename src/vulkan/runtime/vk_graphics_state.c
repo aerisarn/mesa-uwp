@@ -2210,26 +2210,16 @@ vk_common_CmdSetDepthBias(VkCommandBuffer commandBuffer,
                           float depthBiasSlopeFactor)
 {
    VK_FROM_HANDLE(vk_command_buffer, cmd, commandBuffer);
-   struct vk_dynamic_graphics_state *dyn = &cmd->dynamic_graphics_state;
 
-   SET_DYN_VALUE(dyn, RS_DEPTH_BIAS_FACTORS,
-                 rs.depth_bias.constant, depthBiasConstantFactor);
-   SET_DYN_VALUE(dyn, RS_DEPTH_BIAS_FACTORS,
-                 rs.depth_bias.clamp, depthBiasClamp);
-   SET_DYN_VALUE(dyn, RS_DEPTH_BIAS_FACTORS,
-                 rs.depth_bias.slope, depthBiasSlopeFactor);
+   VkDepthBiasInfoEXT depth_bias_info = {
+      .sType = VK_STRUCTURE_TYPE_DEPTH_BIAS_INFO_EXT,
+      .depthBiasConstantFactor = depthBiasConstantFactor,
+      .depthBiasClamp = depthBiasClamp,
+      .depthBiasSlopeFactor = depthBiasSlopeFactor,
+   };
 
-   /** From the Vulkan 1.3.254 spec:
-    *
-    *   "Calling this function is equivalent to calling vkCmdSetDepthBias2EXT
-    *    without a VkDepthBiasRepresentationInfoEXT in the pNext chain of
-    *    VkDepthBiasInfoEXT."
-    */
-   SET_DYN_VALUE(dyn, RS_DEPTH_BIAS_FACTORS,
-                 rs.depth_bias.representation,
-                 VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT);
-   SET_DYN_VALUE(dyn, RS_DEPTH_BIAS_FACTORS,
-                 rs.depth_bias.exact, false);
+   cmd->base.device->dispatch_table.CmdSetDepthBias2EXT(commandBuffer,
+                                                        &depth_bias_info);
 }
 
 VKAPI_ATTR void VKAPI_CALL
