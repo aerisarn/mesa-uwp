@@ -374,11 +374,9 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
          stages[idx].stack_size = stack_size;
          stages[idx].shader = shader ? &shader->base : NULL;
       } else {
-         uint8_t shader_sha1[SHA1_DIGEST_LENGTH];
-         radv_hash_shaders(shader_sha1, &stage, 1, NULL, key, radv_get_hash_flags(device, false));
          stages[idx].stack_size = stage.nir->scratch_size;
          stages[idx].shader =
-            radv_pipeline_cache_nir_to_handle(device, cache, stage.nir, shader_sha1, !key->optimisations_disabled);
+            radv_pipeline_cache_nir_to_handle(device, cache, stage.nir, stages[idx].sha1, !key->optimisations_disabled);
       }
       ralloc_free(stage.nir);
 
