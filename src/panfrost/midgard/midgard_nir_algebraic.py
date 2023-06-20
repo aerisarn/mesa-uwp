@@ -41,12 +41,6 @@ algebraic = [
 ]
 
 algebraic_late = [
-    # ineg must be lowered late, but only for integers; floats will try to
-    # have modifiers attached... hence why this has to be here rather than
-    # a more standard lower_negate approach
-
-    (('ineg', a), ('isub', 0, a)),
-
     # Likewise we want fsub lowered but not isub
     (('fsub', a, b), ('fadd', a, ('fneg', b))),
 
