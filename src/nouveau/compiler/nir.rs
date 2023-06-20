@@ -495,6 +495,7 @@ impl NirInstr for nir_instr {
 pub trait NirBlock {
     fn iter_instr_list(&self) -> ExecListIter<nir_instr>;
     fn successors(&self) -> [Option<&nir_block>; 2];
+    fn following_if(&self) -> Option<&nir_if>;
 }
 
 impl NirBlock for nir_block {
@@ -508,14 +509,27 @@ impl NirBlock for nir_block {
             NonNull::new(self.successors[1]).map(|b| unsafe { b.as_ref() }),
         ]
     }
+
+    fn following_if(&self) -> Option<&nir_if> {
+        let self_ptr = self as *const _ as *mut _;
+        unsafe { nir_block_get_following_if(self_ptr).as_ref() }
+    }
 }
 
 pub trait NirIf {
+    fn first_then_block(&self) -> &nir_block;
+    fn first_else_block(&self) -> &nir_block;
     fn iter_then_list(&self) -> ExecListIter<nir_cf_node>;
     fn iter_else_list(&self) -> ExecListIter<nir_cf_node>;
 }
 
 impl NirIf for nir_if {
+    fn first_then_block(&self) -> &nir_block {
+        self.iter_then_list().next().unwrap().as_block().unwrap()
+    }
+    fn first_else_block(&self) -> &nir_block {
+        self.iter_else_list().next().unwrap().as_block().unwrap()
+    }
     fn iter_then_list(&self) -> ExecListIter<nir_cf_node> {
         ExecListIter::new(&self.then_list, offset_of!(nir_cf_node, node))
     }
