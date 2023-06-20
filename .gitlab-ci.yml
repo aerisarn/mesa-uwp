@@ -249,3 +249,12 @@ sanity:
     when: on_failure
     reports:
       junit: check-*.xml
+
+
+# Jobs that need to pass before spending hardware resources on further testing
+.required-for-hardware-jobs:
+  needs:
+    - job: clang-format
+      optional: true
+    - job: rustfmt
+      optional: true
