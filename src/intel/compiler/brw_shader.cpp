@@ -25,6 +25,7 @@
 #include "brw_eu.h"
 #include "brw_fs.h"
 #include "brw_nir.h"
+#include "brw_private.h"
 #include "brw_vec4_tes.h"
 #include "dev/intel_debug.h"
 #include "main/uniforms.h"
@@ -1305,7 +1306,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
    struct brw_tes_prog_data *prog_data = params->prog_data;
 
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_TESS_EVAL];
-   const bool debug_enabled = INTEL_DEBUG(DEBUG_TES);
+   const bool debug_enabled = brw_should_print_shader(nir, DEBUG_TES);
    const unsigned *assembly;
 
    prog_data->base.base.stage = MESA_SHADER_TESS_EVAL;

@@ -30,6 +30,7 @@
 #include "brw_nir.h"
 #include "brw_vec4_tcs.h"
 #include "brw_fs.h"
+#include "brw_private.h"
 #include "dev/intel_debug.h"
 
 namespace brw {
@@ -362,7 +363,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
    struct brw_vue_prog_data *vue_prog_data = &prog_data->base;
 
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_TESS_CTRL];
-   const bool debug_enabled = INTEL_DEBUG(DEBUG_TCS);
+   const bool debug_enabled = brw_should_print_shader(nir, DEBUG_TCS);
    const unsigned *assembly;
 
    vue_prog_data->base.stage = MESA_SHADER_TESS_CTRL;

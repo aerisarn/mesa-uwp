@@ -28,6 +28,7 @@
 #include "brw_vec4_builder.h"
 #include "brw_vec4_vs.h"
 #include "brw_dead_control_flow.h"
+#include "brw_private.h"
 #include "dev/intel_debug.h"
 #include "program/prog_parameter.h"
 #include "util/u_math.h"
@@ -2539,7 +2540,7 @@ brw_compile_vs(const struct brw_compiler *compiler,
    const struct brw_vs_prog_key *key = params->key;
    struct brw_vs_prog_data *prog_data = params->prog_data;
    const bool debug_enabled =
-      INTEL_DEBUG(params->debug_flag ? params->debug_flag : DEBUG_VS);
+      brw_should_print_shader(nir, params->debug_flag ? params->debug_flag : DEBUG_VS);
 
    prog_data->base.base.stage = MESA_SHADER_VERTEX;
    prog_data->base.base.ray_queries = nir->info.ray_queries;
