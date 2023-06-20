@@ -34,7 +34,6 @@
 #include "etnaviv_screen.h"
 #include "etnaviv_util.h"
 
-#include "tgsi/tgsi_parse.h"
 #include "nir/tgsi_to_nir.h"
 #include "util/u_atomic.h"
 #include "util/u_cpu_detect.h"

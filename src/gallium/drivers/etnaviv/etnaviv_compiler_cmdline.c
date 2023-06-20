@@ -31,7 +31,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "tgsi/tgsi_dump.h"
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_text.h"
 
