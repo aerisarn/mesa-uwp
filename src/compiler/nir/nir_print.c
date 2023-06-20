@@ -1935,6 +1935,8 @@ print_shader_info(const struct shader_info *info, FILE *fp)
    if (info->label)
       fprintf(fp, "label: %s\n", info->label);
 
+   fprintf(fp, "internal: %s\n", info->internal ? "true" : "false");
+
    if (gl_shader_stage_uses_workgroup(info->stage)) {
       fprintf(fp, "workgroup-size: %u, %u, %u%s\n",
               info->workgroup_size[0],
