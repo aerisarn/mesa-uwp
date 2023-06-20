@@ -48,6 +48,7 @@ struct asm_context {
    std::map<unsigned, constaddr_info> constaddrs;
    std::map<unsigned, constaddr_info> resumeaddrs;
    std::vector<struct aco_symbol>* symbols;
+   Block* loop_header;
    const int16_t* opcode;
    // TODO: keep track of branch instructions referring blocks
    // and, when emitting the block, correct the offset in instr
@@ -1220,6 +1221,35 @@ fix_constaddrs(asm_context& ctx, std::vector<uint32_t>& out)
 void
 align_block(asm_context& ctx, std::vector<uint32_t>& code, Block& block)
 {
+   if (block.kind & block_kind_loop_exit && ctx.loop_header) {
+      Block* loop_header = ctx.loop_header;
+      ctx.loop_header = NULL;
+      std::vector<uint32_t> nops;
+
+      const unsigned loop_num_cl = DIV_ROUND_UP(block.offset - loop_header->offset, 16);
+      const unsigned loop_start_cl = loop_header->offset >> 4;
+      const unsigned loop_end_cl = (block.offset - 1) >> 4;
+
+      /* Align the loop if it fits into a single cache line or if we can
+       * reduce the number of cache lines with less than 8 NOPs.
+       */
+      const bool align_loop = loop_end_cl - loop_start_cl >= loop_num_cl &&
+                              (loop_num_cl == 1 || loop_header->offset % 16 > 8);
+
+      if (align_loop) {
+         nops.resize(16 - (loop_header->offset % 16), 0xbf800000u);
+         insert_code(ctx, code, loop_header->offset, nops.size(), nops.data());
+      }
+   }
+
+   if (block.kind & block_kind_loop_header) {
+      /* In case of nested loops, only handle the inner-most loops in order
+       * to not break the alignment of inner loops by handling outer loops.
+       * Also ignore loops without back-edge.
+       */
+      ctx.loop_header = block.linear_preds.size() > 1 ? &block : NULL;
+   }
+
    /* align resume shaders with cache line */
    if (block.kind & block_kind_resume) {
       size_t cache_aligned = align(code.size(), 16);
