@@ -577,6 +577,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .INTEL_shader_integer_functions2 = true,
       .NV_compute_shader_derivatives = true,
       .NV_device_generated_commands = radv_NV_device_generated_commands_enabled(device),
+      .NV_device_generated_commands_compute = radv_NV_device_generated_commands_enabled(device),
       /* Undocumented extension purely for vkd3d-proton. This check is to prevent anyone else from
        * using it.
        */
@@ -1032,6 +1033,11 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
 
       /* VK_KHR_maintenance5 */
       .maintenance5 = true,
+
+      /* VK_NV_device_generated_commands_compute */
+      .deviceGeneratedCompute = true,
+      .deviceGeneratedComputePipelines = false,
+      .deviceGeneratedComputeCaptureReplay = false,
    };
 }
 
