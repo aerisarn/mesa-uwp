@@ -462,6 +462,12 @@ make_compiler_temp_reg(compiler_context *ctx)
    return ((ctx->func->impl->reg_alloc + ctx->temp_alloc++) << 1) | PAN_IS_REG;
 }
 
+static bool
+mir_is_ssa(unsigned index)
+{
+   return (index < SSA_FIXED_MINIMUM) && !(index & PAN_IS_REG);
+}
+
 static inline unsigned
 nir_ssa_index(nir_ssa_def *ssa)
 {
