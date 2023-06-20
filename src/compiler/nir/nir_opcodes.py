@@ -1397,6 +1397,14 @@ for (int i = 0; i < 32; i += 8) {
 unop("fsat_signed_mali", tfloat, ("fmin(fmax(src0, -1.0), 1.0)"))
 unop("fclamp_pos_mali", tfloat, ("fmax(src0, 0.0)"))
 
+opcode("b32fcsel_mdg", 0, tuint, [0, 0, 0],
+       [tbool32, tfloat, tfloat], False, selection, "src0 ? src1 : src2",
+       description = csel_description.format("a 32-bit", "0 vs ~0") + """
+       This Midgard-specific variant takes floating-point sources, rather than
+       integer sources. That includes support for floating point modifiers in
+       the backend.
+       """)
+
 # Magnitude equal to fddx/y, sign undefined. Derivative of a constant is zero.
 unop("fddx_must_abs_mali", tfloat, "0.0")
 unop("fddy_must_abs_mali", tfloat, "0.0")
