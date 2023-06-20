@@ -83,7 +83,7 @@ radv_vrs_attachment_enabled(const struct radv_physical_device *pdevice)
 static bool
 radv_NV_device_generated_commands_enabled(const struct radv_physical_device *device)
 {
-   return device->rad_info.gfx_level >= GFX7 && !(device->instance->debug_flags & RADV_DEBUG_NO_IBS) &&
+   return !(device->instance->debug_flags & RADV_DEBUG_NO_IBS) &&
           driQueryOptionb(&device->instance->dri_options, "radv_dgc");
 }
 
