@@ -97,10 +97,10 @@ radv_pipeline_emit_compute_state(const struct radv_physical_device *pdevice, str
 }
 
 static void
-radv_compute_generate_pm4(const struct radv_device *device, struct radv_compute_pipeline *pipeline)
+radv_compute_generate_pm4(const struct radv_device *device, struct radv_compute_pipeline *pipeline,
+                          struct radv_shader *shader)
 {
    struct radv_physical_device *pdevice = device->physical_device;
-   struct radv_shader *shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];
    struct radeon_cmdbuf *cs = &pipeline->base.cs;
 
    cs->reserved_dw = cs->max_dw = pdevice->rad_info.gfx_level >= GFX10 ? 19 : 16;
@@ -134,18 +134,17 @@ radv_generate_compute_pipeline_key(const struct radv_device *device, struct radv
 
 void
 radv_compute_pipeline_init(const struct radv_device *device, struct radv_compute_pipeline *pipeline,
-                           const struct radv_pipeline_layout *layout)
+                           const struct radv_pipeline_layout *layout, struct radv_shader *shader)
 {
-   pipeline->base.need_indirect_descriptor_sets |=
-      radv_shader_need_indirect_descriptor_sets(pipeline->base.shaders[MESA_SHADER_COMPUTE]);
+   pipeline->base.need_indirect_descriptor_sets |= radv_shader_need_indirect_descriptor_sets(shader);
    radv_pipeline_init_scratch(device, &pipeline->base);
 
    pipeline->base.push_constant_size = layout->push_constant_size;
    pipeline->base.dynamic_offset_count = layout->dynamic_offset_count;
 
-   pipeline->base.shader_upload_seq = pipeline->base.shaders[MESA_SHADER_COMPUTE]->upload_seq;
+   pipeline->base.shader_upload_seq = shader->upload_seq;
 
-   radv_compute_generate_pm4(device, pipeline);
+   radv_compute_generate_pm4(device, pipeline, shader);
 }
 
 static VkResult
@@ -290,7 +289,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkC
       return result;
    }
 
-   radv_compute_pipeline_init(device, pipeline, pipeline_layout);
+   radv_compute_pipeline_init(device, pipeline, pipeline_layout, pipeline->base.shaders[MESA_SHADER_COMPUTE]);
 
    *pPipeline = radv_pipeline_to_handle(&pipeline->base);
    radv_rmv_log_compute_pipeline_create(device, pCreateInfo->flags, &pipeline->base, pipeline->base.is_internal);

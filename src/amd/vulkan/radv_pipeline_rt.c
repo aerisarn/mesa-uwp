@@ -504,10 +504,10 @@ postprocess_rt_config(struct ac_shader_config *config, enum amd_gfx_level gfx_le
 static void
 compile_rt_prolog(struct radv_device *device, struct radv_ray_tracing_pipeline *pipeline)
 {
-   pipeline->base.base.shaders[MESA_SHADER_COMPUTE] = radv_create_rt_prolog(device);
+   pipeline->prolog = radv_create_rt_prolog(device);
 
    /* create combined config */
-   struct ac_shader_config *config = &pipeline->base.base.shaders[MESA_SHADER_COMPUTE]->config;
+   struct ac_shader_config *config = &pipeline->prolog->config;
    for (unsigned i = 0; i < pipeline->stage_count; i++) {
       if (radv_ray_tracing_stage_is_compiled(&pipeline->stages[i])) {
          struct radv_shader *shader = container_of(pipeline->stages[i].shader, struct radv_shader, base);
@@ -576,7 +576,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
       compute_rt_stack_size(pCreateInfo, pipeline);
       compile_rt_prolog(device, pipeline);
 
-      radv_compute_pipeline_init(device, &pipeline->base, pipeline_layout);
+      radv_compute_pipeline_init(device, &pipeline->base, pipeline_layout, pipeline->prolog);
       radv_rmv_log_compute_pipeline_create(device, pCreateInfo->flags, &pipeline->base.base, false);
    }
 
@@ -611,8 +611,8 @@ radv_destroy_ray_tracing_pipeline(struct radv_device *device, struct radv_ray_tr
          vk_pipeline_cache_object_unref(&device->vk, pipeline->stages[i].shader);
    }
 
-   if (pipeline->base.base.shaders[MESA_SHADER_COMPUTE])
-      radv_shader_unref(device, pipeline->base.base.shaders[MESA_SHADER_COMPUTE]);
+   if (pipeline->prolog)
+      radv_shader_unref(device, pipeline->prolog);
    if (pipeline->base.base.shaders[MESA_SHADER_INTERSECTION])
       radv_shader_unref(device, pipeline->base.base.shaders[MESA_SHADER_INTERSECTION]);
 }

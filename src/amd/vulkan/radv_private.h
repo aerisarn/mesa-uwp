@@ -2315,6 +2315,8 @@ radv_ray_tracing_stage_is_compiled(struct radv_ray_tracing_stage *stage)
 struct radv_ray_tracing_pipeline {
    struct radv_compute_pipeline base;
 
+   struct radv_shader *prolog;
+
    struct radv_ray_tracing_stage *stages;
    struct radv_ray_tracing_group *groups;
    unsigned stage_count;
@@ -2404,7 +2406,7 @@ bool radv_mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsi
                                  nir_intrinsic_instr *low, nir_intrinsic_instr *high, void *data);
 
 void radv_compute_pipeline_init(const struct radv_device *device, struct radv_compute_pipeline *pipeline,
-                                const struct radv_pipeline_layout *layout);
+                                const struct radv_pipeline_layout *layout, struct radv_shader *shader);
 
 struct radv_graphics_pipeline_create_info {
    bool use_rectlist;
