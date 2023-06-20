@@ -11231,6 +11231,123 @@ pops_await_overlapped_waves(isel_context* ctx)
    bld.reset(ctx->block);
 }
 
+void
+select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, const bool need_barrier,
+              if_context* ic_merged_wave_info, const bool check_merged_wave_info,
+              const bool endif_merged_wave_info)
+{
+   init_context(&ctx, nir);
+   setup_fp_mode(&ctx, nir);
+
+   Program* program = ctx.program;
+
+   if (need_startpgm) {
+      /* Needs to be after init_context() for FS. */
+      Pseudo_instruction* startpgm = add_startpgm(&ctx);
+      append_logical_start(ctx.block);
+
+      if (unlikely(ctx.options->has_ls_vgpr_init_bug && ctx.stage == vertex_tess_control_hs))
+         fix_ls_vgpr_init_bug(&ctx, startpgm);
+
+      split_arguments(&ctx, startpgm);
+
+      if (!program->info.vs.has_prolog &&
+          (program->stage.has(SWStage::VS) || program->stage.has(SWStage::TES))) {
+         Builder(ctx.program, ctx.block).sopp(aco_opcode::s_setprio, -1u, 0x3u);
+      }
+   }
+
+   if (program->gfx_level == GFX10 && program->stage.hw == AC_HW_NEXT_GEN_GEOMETRY_SHADER &&
+       !program->stage.has(SWStage::GS)) {
+      /* Workaround for Navi1x HW bug to ensure that all NGG waves launch before
+       * s_sendmsg(GS_ALLOC_REQ).
+       */
+      Builder(ctx.program, ctx.block).sopp(aco_opcode::s_barrier, -1u, 0u);
+   }
+
+   if (check_merged_wave_info) {
+      const unsigned i =
+         nir->info.stage == MESA_SHADER_VERTEX || nir->info.stage == MESA_SHADER_TESS_EVAL ? 0 : 1;
+      const Temp cond = merged_wave_info_to_mask(&ctx, i);
+      begin_divergent_if_then(&ctx, ic_merged_wave_info, cond);
+   }
+
+   if (need_barrier) {
+      const sync_scope scope = ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq &&
+                                     program->wave_size % nir->info.tess.tcs_vertices_out == 0
+                                  ? scope_subgroup
+                                  : scope_workgroup;
+
+      Builder(ctx.program, ctx.block)
+         .barrier(aco_opcode::p_barrier, memory_sync_info(storage_shared, semantic_acqrel, scope),
+                  scope);
+   }
+
+   nir_function_impl* func = nir_shader_get_entrypoint(nir);
+   visit_cf_list(&ctx, &func->body);
+
+   if (ctx.stage == fragment_fs && ctx.program->info.ps.has_epilog) {
+      create_fs_jump_to_epilog(&ctx);
+
+      /* FS epilogs always have at least one color/null export. */
+      ctx.program->has_color_exports = true;
+      ctx.block->kind |= block_kind_export_end;
+   }
+
+   if (endif_merged_wave_info) {
+      begin_divergent_if_else(&ctx, ic_merged_wave_info);
+      end_divergent_if(&ctx, ic_merged_wave_info);
+   }
+
+   cleanup_context(&ctx);
+}
+
+void
+select_program_merged(isel_context& ctx, const unsigned shader_count, nir_shader* const* shaders)
+{
+   if_context ic_merged_wave_info;
+   const bool ngg_gs = ctx.stage.hw == AC_HW_NEXT_GEN_GEOMETRY_SHADER && ctx.stage.has(SWStage::GS);
+
+   for (unsigned i = 0; i < shader_count; i++) {
+      nir_shader* nir = shaders[i];
+
+      /* We always need to insert p_startpgm at the beginning of the first shader.  */
+      const bool need_startpgm = i == 0;
+
+      /* In a merged VS+TCS HS, the VS implementation can be completely empty. */
+      nir_function_impl* func = nir_shader_get_entrypoint(nir);
+      const bool empty_shader =
+         nir_cf_list_is_empty_block(&func->body) &&
+         ((nir->info.stage == MESA_SHADER_VERTEX &&
+           (ctx.stage == vertex_tess_control_hs || ctx.stage == vertex_geometry_gs)) ||
+          (nir->info.stage == MESA_SHADER_TESS_EVAL && ctx.stage == tess_eval_geometry_gs));
+
+      /* See if we need to emit a check of the merged wave info SGPR. */
+      const bool check_merged_wave_info =
+         ctx.tcs_in_out_eq ? i == 0 : (shader_count >= 2 && !empty_shader && !(ngg_gs && i == 1));
+      const bool endif_merged_wave_info =
+         ctx.tcs_in_out_eq ? i == 1 : (check_merged_wave_info && !(ngg_gs && i == 1));
+
+      /* Skip s_barrier from TCS when VS outputs are not stored in the LDS. */
+      const bool tcs_skip_barrier =
+         ctx.stage == vertex_tess_control_hs && ctx.tcs_temp_only_inputs == nir->info.inputs_read;
+
+      /* A barrier is usually needed at the beginning of the second shader, with exceptions. */
+      const bool need_barrier = i != 0 && !ngg_gs && !tcs_skip_barrier;
+
+      select_shader(ctx, nir, need_startpgm, need_barrier, &ic_merged_wave_info,
+                    check_merged_wave_info, endif_merged_wave_info);
+
+      if (i == 0 && ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq) {
+         /* Special handling when TCS input and output patch size is the same.
+          * Outputs of the previous stage are inputs to the next stage.
+          */
+         ctx.inputs = ctx.outputs;
+         ctx.outputs = shader_io_state();
+      }
+   }
+}
+
 } /* end namespace */
 
 void
@@ -11244,96 +11361,10 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
    if (ctx.stage == raytracing_cs)
       return select_program_rt(ctx, shader_count, shaders, args);
 
-   if_context ic_merged_wave_info;
-   bool ngg_gs = ctx.stage.hw == AC_HW_NEXT_GEN_GEOMETRY_SHADER && ctx.stage.has(SWStage::GS);
-
-   for (unsigned i = 0; i < shader_count; i++) {
-      nir_shader* nir = shaders[i];
-      init_context(&ctx, nir);
-
-      setup_fp_mode(&ctx, nir);
-
-      if (!i) {
-         /* needs to be after init_context() for FS */
-         Pseudo_instruction* startpgm = add_startpgm(&ctx);
-         append_logical_start(ctx.block);
-
-         if (unlikely(ctx.options->has_ls_vgpr_init_bug && ctx.stage == vertex_tess_control_hs))
-            fix_ls_vgpr_init_bug(&ctx, startpgm);
-
-         split_arguments(&ctx, startpgm);
-
-         if (!info->vs.has_prolog &&
-             (program->stage.has(SWStage::VS) || program->stage.has(SWStage::TES))) {
-            Builder(ctx.program, ctx.block).sopp(aco_opcode::s_setprio, -1u, 0x3u);
-         }
-      }
-
-      /* In a merged VS+TCS HS, the VS implementation can be completely empty. */
-      nir_function_impl* func = nir_shader_get_entrypoint(nir);
-      bool empty_shader =
-         nir_cf_list_is_empty_block(&func->body) &&
-         ((nir->info.stage == MESA_SHADER_VERTEX &&
-           (ctx.stage == vertex_tess_control_hs || ctx.stage == vertex_geometry_gs)) ||
-          (nir->info.stage == MESA_SHADER_TESS_EVAL && ctx.stage == tess_eval_geometry_gs));
-
-      bool check_merged_wave_info =
-         ctx.tcs_in_out_eq ? i == 0 : (shader_count >= 2 && !empty_shader && !(ngg_gs && i == 1));
-      bool endif_merged_wave_info =
-         ctx.tcs_in_out_eq ? i == 1 : (check_merged_wave_info && !(ngg_gs && i == 1));
-
-      if (program->gfx_level == GFX10 && program->stage.hw == AC_HW_NEXT_GEN_GEOMETRY_SHADER &&
-          program->stage.num_sw_stages() == 1) {
-         /* Workaround for Navi1x HW bug to ensure that all NGG waves launch before
-          * s_sendmsg(GS_ALLOC_REQ). */
-         Builder(ctx.program, ctx.block).sopp(aco_opcode::s_barrier, -1u, 0u);
-      }
-
-      if (check_merged_wave_info) {
-         Temp cond = merged_wave_info_to_mask(&ctx, i);
-         begin_divergent_if_then(&ctx, &ic_merged_wave_info, cond);
-      }
-
-      if (i) {
-         Builder bld(ctx.program, ctx.block);
-
-         /* Skip s_barrier from TCS when VS outputs are not stored in the LDS. */
-         bool tcs_skip_barrier = ctx.stage == vertex_tess_control_hs &&
-                                 ctx.tcs_temp_only_inputs == nir->info.inputs_read;
-
-         if (!ngg_gs && !tcs_skip_barrier) {
-            sync_scope scope = ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq &&
-                                     program->wave_size % nir->info.tess.tcs_vertices_out == 0
-                                  ? scope_subgroup
-                                  : scope_workgroup;
-            bld.barrier(aco_opcode::p_barrier,
-                        memory_sync_info(storage_shared, semantic_acqrel, scope), scope);
-         }
-      }
-
-      visit_cf_list(&ctx, &func->body);
-
-      if (ctx.stage == fragment_fs && ctx.program->info.ps.has_epilog) {
-         create_fs_jump_to_epilog(&ctx);
-
-         /* FS epilogs always have at least one color/null export. */
-         ctx.program->has_color_exports = true;
-
-         ctx.block->kind |= block_kind_export_end;
-      }
-
-      if (endif_merged_wave_info) {
-         begin_divergent_if_else(&ctx, &ic_merged_wave_info);
-         end_divergent_if(&ctx, &ic_merged_wave_info);
-      }
-
-      if (i == 0 && ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq) {
-         /* Outputs of the previous stage are inputs to the next stage */
-         ctx.inputs = ctx.outputs;
-         ctx.outputs = shader_io_state();
-      }
-
-      cleanup_context(&ctx);
+   if (shader_count >= 2) {
+      select_program_merged(ctx, shader_count, shaders);
+   } else {
+      select_shader(ctx, shaders[0], true, false, NULL, false, false);
    }
 
    program->config->float_mode = program->blocks[0].fp_mode.val;
