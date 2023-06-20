@@ -461,8 +461,14 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
    NIR_PASS(progress, nir, midgard_nir_cancel_inot);
    NIR_PASS_V(nir, midgard_nir_type_csel);
 
-   NIR_PASS(progress, nir, nir_copy_prop);
-   NIR_PASS(progress, nir, nir_opt_dce);
+   /* Clean up after late opts */
+   do {
+      progress = false;
+
+      NIR_PASS(progress, nir, nir_opt_dce);
+      NIR_PASS(progress, nir, nir_opt_constant_folding);
+      NIR_PASS(progress, nir, nir_copy_prop);
+   } while (progress);
 
    /* Backend scheduler is purely local, so do some global optimizations
     * to reduce register pressure. */
