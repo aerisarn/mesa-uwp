@@ -459,6 +459,7 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
    /* Now that booleans are lowered, we can run out late opts */
    NIR_PASS(progress, nir, midgard_nir_lower_algebraic_late);
    NIR_PASS(progress, nir, midgard_nir_cancel_inot);
+   NIR_PASS_V(nir, midgard_nir_type_csel);
 
    NIR_PASS(progress, nir, nir_copy_prop);
    NIR_PASS(progress, nir, nir_opt_dce);
@@ -697,50 +698,6 @@ mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i,
    }
 }
 
-/* Midgard features both fcsel and icsel, depending on whether you want int or
- * float modifiers. NIR's csel is typeless, so we want a heuristic to guess if
- * we should emit an int or float csel depending on what modifiers could be
- * placed. In the absense of modifiers, this is probably arbitrary. */
-
-static bool
-mir_is_bcsel_float(nir_alu_instr *instr)
-{
-   nir_op intmods[] = {nir_op_i2i8, nir_op_i2i16, nir_op_i2i32, nir_op_i2i64};
-
-   nir_op floatmods[] = {nir_op_fabs, nir_op_fneg, nir_op_f2f16, nir_op_f2f32,
-                         nir_op_f2f64};
-
-   nir_op floatdestmods[] = {nir_op_fsat, nir_op_fsat_signed_mali,
-                             nir_op_fclamp_pos_mali, nir_op_f2f16,
-                             nir_op_f2f32};
-
-   signed score = 0;
-
-   for (unsigned i = 1; i < 3; ++i) {
-      nir_alu_src s = instr->src[i];
-      for (unsigned q = 0; q < ARRAY_SIZE(intmods); ++q) {
-         if (pan_has_source_mod(&s, intmods[q]))
-            score--;
-      }
-   }
-
-   for (unsigned i = 1; i < 3; ++i) {
-      nir_alu_src s = instr->src[i];
-      for (unsigned q = 0; q < ARRAY_SIZE(floatmods); ++q) {
-         if (pan_has_source_mod(&s, floatmods[q]))
-            score++;
-      }
-   }
-
-   for (unsigned q = 0; q < ARRAY_SIZE(floatdestmods); ++q) {
-      nir_dest *dest = &instr->dest.dest;
-      if (pan_has_dest_mod(&dest, floatdestmods[q]))
-         score++;
-   }
-
-   return (score > 0);
-}
-
 static void
 emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 {
@@ -940,9 +897,10 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       break;
    }
 
-   case nir_op_b32csel: {
+   case nir_op_b32csel:
+   case nir_op_b32fcsel_mdg: {
       bool mixed = nir_is_non_scalar_swizzle(&instr->src[0], nr_components);
-      bool is_float = mir_is_bcsel_float(instr);
+      bool is_float = instr->op == nir_op_b32fcsel_mdg;
       op = is_float ? (mixed ? midgard_alu_op_fcsel_v : midgard_alu_op_fcsel)
                     : (mixed ? midgard_alu_op_icsel_v : midgard_alu_op_icsel);
 
@@ -1021,7 +979,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       for (unsigned i = 0; i < nr_inputs; ++i) {
          unsigned to = i;
 
-         if (instr->op == nir_op_b32csel) {
+         if (instr->op == nir_op_b32csel || instr->op == nir_op_b32fcsel_mdg) {
             /* The condition is the first argument; move
              * the other arguments up one to be a binary
              * instruction for Midgard with the condition
