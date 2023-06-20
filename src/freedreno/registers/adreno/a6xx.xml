@@ -962,8 +962,8 @@ to upconvert to 32b float internally?
 	<bitset name="A6XX_RBBM_INT_0_MASK" inline="no" varset="chip">
 		<bitfield name="RBBM_GPU_IDLE" pos="0" type="boolean"/>
 		<bitfield name="CP_AHB_ERROR" pos="1" type="boolean"/>
-		<bitfield name="CP_IPC_INTR_0" pos="4" type="boolean" variants="A7XX"/>
-		<bitfield name="CP_IPC_INTR_1" pos="5" type="boolean" variants="A7XX"/>
+		<bitfield name="CP_IPC_INTR_0" pos="4" type="boolean" variants="A7XX-"/>
+		<bitfield name="CP_IPC_INTR_1" pos="5" type="boolean" variants="A7XX-"/>
 		<bitfield name="RBBM_ATB_ASYNCFIFO_OVERFLOW" pos="6" type="boolean"/>
 		<bitfield name="RBBM_GPC_ERROR" pos="7" type="boolean"/>
 		<bitfield name="CP_SW" pos="8" type="boolean"/>
@@ -975,19 +975,19 @@ to upconvert to 32b float internally?
 		<bitfield name="CP_IB1" pos="14" type="boolean"/>
 		<bitfield name="CP_RB" pos="15" type="boolean" variants="A6XX"/>
 		<!-- Same as above but different name??: -->
-		<bitfield name="PM4CPINTERRUPT" pos="15" type="boolean" variants="A7XX"/>
-		<bitfield name="PM4CPINTERRUPTLPAC" pos="16" type="boolean" variants="A7XX"/>
+		<bitfield name="PM4CPINTERRUPT" pos="15" type="boolean" variants="A7XX-"/>
+		<bitfield name="PM4CPINTERRUPTLPAC" pos="16" type="boolean" variants="A7XX-"/>
 		<bitfield name="CP_RB_DONE_TS" pos="17" type="boolean"/>
 		<bitfield name="CP_WT_DONE_TS" pos="18" type="boolean"/>
 		<bitfield name="CP_CACHE_FLUSH_TS" pos="20" type="boolean"/>
-		<bitfield name="CP_CACHE_FLUSH_TS_LPAC" pos="21" type="boolean" variants="A7XX"/>
+		<bitfield name="CP_CACHE_FLUSH_TS_LPAC" pos="21" type="boolean" variants="A7XX-"/>
 		<bitfield name="RBBM_ATB_BUS_OVERFLOW" pos="22" type="boolean"/>
 		<bitfield name="RBBM_HANG_DETECT" pos="23" type="boolean"/>
 		<bitfield name="UCHE_OOB_ACCESS" pos="24" type="boolean"/>
 		<bitfield name="UCHE_TRAP_INTR" pos="25" type="boolean"/>
 		<bitfield name="DEBBUS_INTR_0" pos="26" type="boolean"/>
 		<bitfield name="DEBBUS_INTR_1" pos="27" type="boolean"/>
-		<bitfield name="TSBWRITEERROR" pos="28" type="boolean" variants="A7XX"/>
+		<bitfield name="TSBWRITEERROR" pos="28" type="boolean" variants="A7XX-"/>
 		<bitfield name="ISDB_CPU_IRQ" pos="30" type="boolean"/>
 		<bitfield name="ISDB_UNDER_DEBUG" pos="31" type="boolean"/>
 	</bitset>
@@ -1004,16 +1004,16 @@ to upconvert to 32b float internally?
 		<bitfield name="CP_AHB_ERROR" pos="5" type="boolean"/>
 		<bitfield name="CP_VSD_PARITY_ERROR" pos="6" type="boolean"/>
 		<bitfield name="CP_ILLEGAL_INSTR_ERROR" pos="7" type="boolean"/>
-		<bitfield name="CP_OPCODE_ERROR_LPAC" pos="8" type="boolean" variants="A7XX"/>
-		<bitfield name="CP_UCODE_ERROR_LPAC" pos="9" type="boolean" variants="A7XX"/>
-		<bitfield name="CP_HW_FAULT_ERROR_LPAC" pos="10" type="boolean" variants="A7XX"/>
-		<bitfield name="CP_REGISTER_PROTECTION_ERROR_LPAC" pos="11" type="boolean" variants="A7XX"/>
-		<bitfield name="CP_ILLEGAL_INSTR_ERROR_LPAC" pos="12" type="boolean" variants="A7XX"/>
-		<bitfield name="CP_OPCODE_ERROR_BV" pos="13" type="boolean" variants="A7XX"/>
-		<bitfield name="CP_UCODE_ERROR_BV" pos="14" type="boolean" variants="A7XX"/>
-		<bitfield name="CP_HW_FAULT_ERROR_BV" pos="15" type="boolean" variants="A7XX"/>
-		<bitfield name="CP_REGISTER_PROTECTION_ERROR_BV" pos="16" type="boolean" variants="A7XX"/>
-		<bitfield name="CP_ILLEGAL_INSTR_ERROR_BV" pos="17" type="boolean" variants="A7XX"/>
+		<bitfield name="CP_OPCODE_ERROR_LPAC" pos="8" type="boolean" variants="A7XX-"/>
+		<bitfield name="CP_UCODE_ERROR_LPAC" pos="9" type="boolean" variants="A7XX-"/>
+		<bitfield name="CP_HW_FAULT_ERROR_LPAC" pos="10" type="boolean" variants="A7XX-"/>
+		<bitfield name="CP_REGISTER_PROTECTION_ERROR_LPAC" pos="11" type="boolean" variants="A7XX-"/>
+		<bitfield name="CP_ILLEGAL_INSTR_ERROR_LPAC" pos="12" type="boolean" variants="A7XX-"/>
+		<bitfield name="CP_OPCODE_ERROR_BV" pos="13" type="boolean" variants="A7XX-"/>
+		<bitfield name="CP_UCODE_ERROR_BV" pos="14" type="boolean" variants="A7XX-"/>
+		<bitfield name="CP_HW_FAULT_ERROR_BV" pos="15" type="boolean" variants="A7XX-"/>
+		<bitfield name="CP_REGISTER_PROTECTION_ERROR_BV" pos="16" type="boolean" variants="A7XX-"/>
+		<bitfield name="CP_ILLEGAL_INSTR_ERROR_BV" pos="17" type="boolean" variants="A7XX-"/>
 	</bitset>
 
 	<reg64 offset="0x0800" name="CP_RB_BASE"/>
@@ -1101,9 +1101,9 @@ to upconvert to 32b float internally?
 	<reg64 offset="0x08A3" name="CP_CONTEXT_SWITCH_PRIV_NON_SECURE_RESTORE_ADDR"/>
 	<reg64 offset="0x08A5" name="CP_CONTEXT_SWITCH_PRIV_SECURE_RESTORE_ADDR"/>
 	<reg64 offset="0x08A7" name="CP_CONTEXT_SWITCH_NON_PRIV_RESTORE_ADDR"/>
-	<reg32 offset="0x08ab" name="CP_CONTEXT_SWITCH_LEVEL_STATUS" variants="A7XX"/>
+	<reg32 offset="0x08ab" name="CP_CONTEXT_SWITCH_LEVEL_STATUS" variants="A7XX-"/>
 	<array offset="0x08D0" name="CP_PERFCTR_CP_SEL" stride="1" length="14"/>
-	<array offset="0x08e0" name="CP_BV_PERFCTR_CP_SEL" stride="1" length="7" variants="A7XX"/>
+	<array offset="0x08e0" name="CP_BV_PERFCTR_CP_SEL" stride="1" length="7" variants="A7XX-"/>
 	<reg64 offset="0x0900" name="CP_CRASH_SCRIPT_BASE"/>
 	<reg32 offset="0x0902" name="CP_CRASH_DUMP_CNTL"/>
 	<reg32 offset="0x0903" name="CP_CRASH_DUMP_STATUS"/>
@@ -1179,38 +1179,38 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0A00" name="CP_APERTURE_CNTL_HOST"/>
 	<reg32 offset="0x0A03" name="CP_APERTURE_CNTL_CD"/>
 
-	<reg32 offset="0x0a61" name="CP_BV_PROTECT_STATUS" variants="A7XX"/>
-	<reg32 offset="0x0a64" name="CP_BV_HW_FAULT" variants="A7XX"/>
-	<reg32 offset="0x0a81" name="CP_BV_DRAW_STATE_ADDR" variants="A7XX"/>
-	<reg32 offset="0x0a82" name="CP_BV_DRAW_STATE_DATA" variants="A7XX"/>
-	<reg32 offset="0x0a83" name="CP_BV_ROQ_DBG_ADDR" variants="A7XX"/>
-	<reg32 offset="0x0a84" name="CP_BV_ROQ_DBG_DATA" variants="A7XX"/>
-	<reg32 offset="0x0a85" name="CP_BV_SQE_UCODE_DBG_ADDR" variants="A7XX"/>
-	<reg32 offset="0x0a86" name="CP_BV_SQE_UCODE_DBG_DATA" variants="A7XX"/>
-	<reg32 offset="0x0a87" name="CP_BV_SQE_STAT_ADDR" variants="A7XX"/>
-	<reg32 offset="0x0a88" name="CP_BV_SQE_STAT_DATA" variants="A7XX"/>
-	<reg32 offset="0x0a96" name="CP_BV_MEM_POOL_DBG_ADDR" variants="A7XX"/>
-	<reg32 offset="0x0a97" name="CP_BV_MEM_POOL_DBG_DATA" variants="A7XX"/>
-	<reg64 offset="0x0a98" name="CP_BV_RB_RPTR_ADDR" variants="A7XX"/>
+	<reg32 offset="0x0a61" name="CP_BV_PROTECT_STATUS" variants="A7XX-"/>
+	<reg32 offset="0x0a64" name="CP_BV_HW_FAULT" variants="A7XX-"/>
+	<reg32 offset="0x0a81" name="CP_BV_DRAW_STATE_ADDR" variants="A7XX-"/>
+	<reg32 offset="0x0a82" name="CP_BV_DRAW_STATE_DATA" variants="A7XX-"/>
+	<reg32 offset="0x0a83" name="CP_BV_ROQ_DBG_ADDR" variants="A7XX-"/>
+	<reg32 offset="0x0a84" name="CP_BV_ROQ_DBG_DATA" variants="A7XX-"/>
+	<reg32 offset="0x0a85" name="CP_BV_SQE_UCODE_DBG_ADDR" variants="A7XX-"/>
+	<reg32 offset="0x0a86" name="CP_BV_SQE_UCODE_DBG_DATA" variants="A7XX-"/>
+	<reg32 offset="0x0a87" name="CP_BV_SQE_STAT_ADDR" variants="A7XX-"/>
+	<reg32 offset="0x0a88" name="CP_BV_SQE_STAT_DATA" variants="A7XX-"/>
+	<reg32 offset="0x0a96" name="CP_BV_MEM_POOL_DBG_ADDR" variants="A7XX-"/>
+	<reg32 offset="0x0a97" name="CP_BV_MEM_POOL_DBG_DATA" variants="A7XX-"/>
+	<reg64 offset="0x0a98" name="CP_BV_RB_RPTR_ADDR" variants="A7XX-"/>
 
-	<reg32 offset="0x0a9a" name="CP_RESOURCE_TBL_DBG_ADDR" variants="A7XX"/>
-	<reg32 offset="0x0a9b" name="CP_RESOURCE_TBL_DBG_DATA" variants="A7XX"/>
-	<reg32 offset="0x0ad0" name="CP_BV_APRIV_CNTL" variants="A7XX"/>
-	<reg32 offset="0x0ada" name="CP_BV_CHICKEN_DBG" variants="A7XX"/>
+	<reg32 offset="0x0a9a" name="CP_RESOURCE_TBL_DBG_ADDR" variants="A7XX-"/>
+	<reg32 offset="0x0a9b" name="CP_RESOURCE_TBL_DBG_DATA" variants="A7XX-"/>
+	<reg32 offset="0x0ad0" name="CP_BV_APRIV_CNTL" variants="A7XX-"/>
+	<reg32 offset="0x0ada" name="CP_BV_CHICKEN_DBG" variants="A7XX-"/>
 
-	<reg32 offset="0x0b0a" name="CP_LPAC_DRAW_STATE_ADDR" variants="A7XX"/>
-	<reg32 offset="0x0b0b" name="CP_LPAC_DRAW_STATE_DATA" variants="A7XX"/>
-	<reg32 offset="0x0b0c" name="CP_LPAC_ROQ_DBG_ADDR" variants="A7XX"/>
-	<reg32 offset="0x0b27" name="CP_SQE_AC_UCODE_DBG_ADDR" variants="A7XX"/>
-	<reg32 offset="0x0b28" name="CP_SQE_AC_UCODE_DBG_DATA" variants="A7XX"/>
-	<reg32 offset="0x0b29" name="CP_SQE_AC_STAT_ADDR" variants="A7XX"/>
-	<reg32 offset="0x0b2a" name="CP_SQE_AC_STAT_DATA" variants="A7XX"/>
+	<reg32 offset="0x0b0a" name="CP_LPAC_DRAW_STATE_ADDR" variants="A7XX-"/>
+	<reg32 offset="0x0b0b" name="CP_LPAC_DRAW_STATE_DATA" variants="A7XX-"/>
+	<reg32 offset="0x0b0c" name="CP_LPAC_ROQ_DBG_ADDR" variants="A7XX-"/>
+	<reg32 offset="0x0b27" name="CP_SQE_AC_UCODE_DBG_ADDR" variants="A7XX-"/>
+	<reg32 offset="0x0b28" name="CP_SQE_AC_UCODE_DBG_DATA" variants="A7XX-"/>
+	<reg32 offset="0x0b29" name="CP_SQE_AC_STAT_ADDR" variants="A7XX-"/>
+	<reg32 offset="0x0b2a" name="CP_SQE_AC_STAT_DATA" variants="A7XX-"/>
 
-	<reg32 offset="0x0b31" name="CP_LPAC_APRIV_CNTL" variants="A7XX"/>
+	<reg32 offset="0x0b31" name="CP_LPAC_APRIV_CNTL" variants="A7XX-"/>
 	<reg32 offset="0x0B34" name="CP_LPAC_PROG_FIFO_SIZE"/>
-	<reg32 offset="0x0b35" name="CP_LPAC_ROQ_DBG_DATA" variants="A7XX"/>
-	<reg32 offset="0x0b36" name="CP_LPAC_FIFO_DBG_DATA" variants="A7XX"/>
-	<reg32 offset="0x0b40" name="CP_LPAC_FIFO_DBG_ADDR" variants="A7XX"/>
+	<reg32 offset="0x0b35" name="CP_LPAC_ROQ_DBG_DATA" variants="A7XX-"/>
+	<reg32 offset="0x0b36" name="CP_LPAC_FIFO_DBG_DATA" variants="A7XX-"/>
+	<reg32 offset="0x0b40" name="CP_LPAC_FIFO_DBG_ADDR" variants="A7XX-"/>
 	<reg64 offset="0x0b82" name="CP_LPAC_SQE_INSTR_BASE"/>
 	<reg32 offset="0x0C01" name="VSC_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0018" name="RBBM_GPR0_CNTL"/>
@@ -1248,12 +1248,12 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="0x0215" name="RBBM_VBIF_GX_RESET_STATUS"/>
 
-	<reg32 offset="0x0260" name="RBBM_CLOCK_MODE_CP" variants="A7XX"/>
-	<reg32 offset="0x0284" name="RBBM_CLOCK_MODE_BV_LRZ" variants="A7XX"/>
-	<reg32 offset="0x0285" name="RBBM_CLOCK_MODE_BV_GRAS" variants="A7XX"/>
-	<reg32 offset="0x0286" name="RBBM_CLOCK_MODE2_GRAS" variants="A7XX"/>
-	<reg32 offset="0x0287" name="RBBM_CLOCK_MODE_BV_VFD" variants="A7XX"/>
-	<reg32 offset="0x0288" name="RBBM_CLOCK_MODE_BV_GPC" variants="A7XX"/>
+	<reg32 offset="0x0260" name="RBBM_CLOCK_MODE_CP" variants="A7XX-"/>
+	<reg32 offset="0x0284" name="RBBM_CLOCK_MODE_BV_LRZ" variants="A7XX-"/>
+	<reg32 offset="0x0285" name="RBBM_CLOCK_MODE_BV_GRAS" variants="A7XX-"/>
+	<reg32 offset="0x0286" name="RBBM_CLOCK_MODE2_GRAS" variants="A7XX-"/>
+	<reg32 offset="0x0287" name="RBBM_CLOCK_MODE_BV_VFD" variants="A7XX-"/>
+	<reg32 offset="0x0288" name="RBBM_CLOCK_MODE_BV_GPC" variants="A7XX-"/>
 
 	<array offset="0x0400" name="RBBM_PERFCTR_CP" stride="2" length="14" variants="A6XX"/>
 	<array offset="0x041c" name="RBBM_PERFCTR_RBBM" stride="2" length="4" variants="A6XX"/>
@@ -1272,34 +1272,34 @@ to upconvert to 32b float internally?
 	<array offset="0x04ea" name="RBBM_PERFCTR_LRZ" stride="2" length="4" variants="A6XX"/>
 	<array offset="0x04f2" name="RBBM_PERFCTR_CMP" stride="2" length="4" variants="A6XX"/>
 
-	<array offset="0x0300" name="RBBM_PERFCTR_CP" stride="2" length="14" variants="A7XX"/>
-	<array offset="0x031c" name="RBBM_PERFCTR_RBBM" stride="2" length="4" variants="A7XX"/>
-	<array offset="0x0324" name="RBBM_PERFCTR_PC" stride="2" length="8" variants="A7XX"/>
-	<array offset="0x0334" name="RBBM_PERFCTR_VFD" stride="2" length="8" variants="A7XX"/>
-	<array offset="0x0344" name="RBBM_PERFCTR_HLSQ" stride="2" length="6" variants="A7XX"/>
-	<array offset="0x0350" name="RBBM_PERFCTR_VPC" stride="2" length="6" variants="A7XX"/>
-	<array offset="0x035c" name="RBBM_PERFCTR_CCU" stride="2" length="5" variants="A7XX"/>
-	<array offset="0x0366" name="RBBM_PERFCTR_TSE" stride="2" length="4" variants="A7XX"/>
-	<array offset="0x036e" name="RBBM_PERFCTR_RAS" stride="2" length="4" variants="A7XX"/>
-	<array offset="0x0376" name="RBBM_PERFCTR_UCHE" stride="2" length="12" variants="A7XX"/>
-	<array offset="0x038e" name="RBBM_PERFCTR_TP" stride="2" length="12" variants="A7XX"/>
-	<array offset="0x03a6" name="RBBM_PERFCTR_SP" stride="2" length="24" variants="A7XX"/>
-	<array offset="0x03d6" name="RBBM_PERFCTR_RB" stride="2" length="8" variants="A7XX"/>
-	<array offset="0x03e6" name="RBBM_PERFCTR_VSC" stride="2" length="2" variants="A7XX"/>
-	<array offset="0x03ea" name="RBBM_PERFCTR_LRZ" stride="2" length="4" variants="A7XX"/>
-	<array offset="0x03f2" name="RBBM_PERFCTR_CMP" stride="2" length="4" variants="A7XX"/>
-	<array offset="0x03fa" name="RBBM_PERFCTR_UFC" stride="2" length="4" variants="A7XX"/>
-	<array offset="0x0410" name="RBBM_PERFCTR2_HLSQ" stride="2" length="6" variants="A7XX"/>
-	<array offset="0x041c" name="RBBM_PERFCTR2_CP" stride="2" length="7" variants="A7XX"/>
-	<array offset="0x042a" name="RBBM_PERFCTR2_SP" stride="2" length="12" variants="A7XX"/>
-	<array offset="0x0442" name="RBBM_PERFCTR2_TP" stride="2" length="6" variants="A7XX"/>
-	<array offset="0x044e" name="RBBM_PERFCTR2_UFC" stride="2" length="2" variants="A7XX"/>
-	<array offset="0x0460" name="RBBM_PERFCTR_BV_PC" stride="2" length="8" variants="A7XX"/>
-	<array offset="0x0470" name="RBBM_PERFCTR_BV_VFD" stride="2" length="8" variants="A7XX"/>
-	<array offset="0x0480" name="RBBM_PERFCTR_BV_VPC" stride="2" length="6" variants="A7XX"/>
-	<array offset="0x048c" name="RBBM_PERFCTR_BV_TSE" stride="2" length="4" variants="A7XX"/>
-	<array offset="0x0494" name="RBBM_PERFCTR_BV_RAS" stride="2" length="4" variants="A7XX"/>
-	<array offset="0x049c" name="RBBM_PERFCTR_BV_LRZ" stride="2" length="4" variants="A7XX"/>
+	<array offset="0x0300" name="RBBM_PERFCTR_CP" stride="2" length="14" variants="A7XX-"/>
+	<array offset="0x031c" name="RBBM_PERFCTR_RBBM" stride="2" length="4" variants="A7XX-"/>
+	<array offset="0x0324" name="RBBM_PERFCTR_PC" stride="2" length="8" variants="A7XX-"/>
+	<array offset="0x0334" name="RBBM_PERFCTR_VFD" stride="2" length="8" variants="A7XX-"/>
+	<array offset="0x0344" name="RBBM_PERFCTR_HLSQ" stride="2" length="6" variants="A7XX-"/>
+	<array offset="0x0350" name="RBBM_PERFCTR_VPC" stride="2" length="6" variants="A7XX-"/>
+	<array offset="0x035c" name="RBBM_PERFCTR_CCU" stride="2" length="5" variants="A7XX-"/>
+	<array offset="0x0366" name="RBBM_PERFCTR_TSE" stride="2" length="4" variants="A7XX-"/>
+	<array offset="0x036e" name="RBBM_PERFCTR_RAS" stride="2" length="4" variants="A7XX-"/>
+	<array offset="0x0376" name="RBBM_PERFCTR_UCHE" stride="2" length="12" variants="A7XX-"/>
+	<array offset="0x038e" name="RBBM_PERFCTR_TP" stride="2" length="12" variants="A7XX-"/>
+	<array offset="0x03a6" name="RBBM_PERFCTR_SP" stride="2" length="24" variants="A7XX-"/>
+	<array offset="0x03d6" name="RBBM_PERFCTR_RB" stride="2" length="8" variants="A7XX-"/>
+	<array offset="0x03e6" name="RBBM_PERFCTR_VSC" stride="2" length="2" variants="A7XX-"/>
+	<array offset="0x03ea" name="RBBM_PERFCTR_LRZ" stride="2" length="4" variants="A7XX-"/>
+	<array offset="0x03f2" name="RBBM_PERFCTR_CMP" stride="2" length="4" variants="A7XX-"/>
+	<array offset="0x03fa" name="RBBM_PERFCTR_UFC" stride="2" length="4" variants="A7XX-"/>
+	<array offset="0x0410" name="RBBM_PERFCTR2_HLSQ" stride="2" length="6" variants="A7XX-"/>
+	<array offset="0x041c" name="RBBM_PERFCTR2_CP" stride="2" length="7" variants="A7XX-"/>
+	<array offset="0x042a" name="RBBM_PERFCTR2_SP" stride="2" length="12" variants="A7XX-"/>
+	<array offset="0x0442" name="RBBM_PERFCTR2_TP" stride="2" length="6" variants="A7XX-"/>
+	<array offset="0x044e" name="RBBM_PERFCTR2_UFC" stride="2" length="2" variants="A7XX-"/>
+	<array offset="0x0460" name="RBBM_PERFCTR_BV_PC" stride="2" length="8" variants="A7XX-"/>
+	<array offset="0x0470" name="RBBM_PERFCTR_BV_VFD" stride="2" length="8" variants="A7XX-"/>
+	<array offset="0x0480" name="RBBM_PERFCTR_BV_VPC" stride="2" length="6" variants="A7XX-"/>
+	<array offset="0x048c" name="RBBM_PERFCTR_BV_TSE" stride="2" length="4" variants="A7XX-"/>
+	<array offset="0x0494" name="RBBM_PERFCTR_BV_RAS" stride="2" length="4" variants="A7XX-"/>
+	<array offset="0x049c" name="RBBM_PERFCTR_BV_LRZ" stride="2" length="4" variants="A7XX-"/>
 
 	<reg32 offset="0x0500" name="RBBM_PERFCTR_CNTL"/>
 	<reg32 offset="0x0501" name="RBBM_PERFCTR_LOAD_CMD0"/>
@@ -1313,8 +1313,8 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x050e" name="RBBM_PERFCTR_SRAM_INIT_CMD"/>
 	<reg32 offset="0x050f" name="RBBM_PERFCTR_SRAM_INIT_STATUS"/>
 	<reg32 offset="0x0533" name="RBBM_ISDB_CNT"/>
-	<reg32 offset="0x0534" name="RBBM_NC_MODE_CNTL" variants="A7XX"/>
-	<reg32 offset="0x0535" name="RBBM_SNAPSHOT_STATUS" variants="A7XX"/>
+	<reg32 offset="0x0534" name="RBBM_NC_MODE_CNTL" variants="A7XX-"/>
+	<reg32 offset="0x0535" name="RBBM_SNAPSHOT_STATUS" variants="A7XX-"/>
 
 	<!---
 	    This block of registers aren't tied to perf counters. They
@@ -1350,7 +1350,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xF802" name="RBBM_SECVID_TSB_TRUSTED_SIZE"/>
 	<reg32 offset="0xF803" name="RBBM_SECVID_TSB_CNTL"/>
 	<reg32 offset="0xF810" name="RBBM_SECVID_TSB_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
-	<reg64 offset="0xfc00" name="RBBM_SECVID_TSB_STATUS" variants="A7XX"/>
+	<reg64 offset="0xfc00" name="RBBM_SECVID_TSB_STATUS" variants="A7XX-"/>
 	<reg32 offset="0x00010" name="RBBM_VBIF_CLIENT_QOS_CNTL"/>
 	<reg32 offset="0x00011" name="RBBM_GBIF_CLIENT_QOS_CNTL"/>
 	<reg32 offset="0x00016" name="RBBM_GBIF_HALT"/>
@@ -1359,12 +1359,12 @@ to upconvert to 32b float internally?
 		<bitfield pos="0" name="WAIT_GPU_IDLE" type="boolean"/>
 	</reg32>
 
-	<reg32 offset="0x00016" name="RBBM_GBIF_HALT" variants="A7XX"/>
-	<reg32 offset="0x00017" name="RBBM_GBIF_HALT_ACK" variants="A7XX"/>
+	<reg32 offset="0x00016" name="RBBM_GBIF_HALT" variants="A7XX-"/>
+	<reg32 offset="0x00017" name="RBBM_GBIF_HALT_ACK" variants="A7XX-"/>
 	<reg32 offset="0x0001f" name="RBBM_INTERFACE_HANG_INT_CNTL"/>
 	<reg32 offset="0x00037" name="RBBM_INT_CLEAR_CMD" type="A6XX_RBBM_INT_0_MASK"/>
 	<reg32 offset="0x00038" name="RBBM_INT_0_MASK" type="A6XX_RBBM_INT_0_MASK"/>
-	<reg32 offset="0x0003a" name="RBBM_INT_2_MASK" variants="A7XX"/>
+	<reg32 offset="0x0003a" name="RBBM_INT_2_MASK" variants="A7XX-"/>
 	<reg32 offset="0x00042" name="RBBM_SP_HYST_CNT"/>
 	<reg32 offset="0x00043" name="RBBM_SW_RESET_CMD"/>
 	<reg32 offset="0x00044" name="RBBM_RAC_THRESHOLD_CNT"/>
@@ -1480,7 +1480,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x00120" name="RBBM_CLOCK_CNTL_TEX_FCHE"/>
 	<reg32 offset="0x00121" name="RBBM_CLOCK_DELAY_TEX_FCHE"/>
 	<reg32 offset="0x00122" name="RBBM_CLOCK_HYST_TEX_FCHE"/>
-	<reg32 offset="0x0012f" name="RBBM_CLOCK_HYST2_VFD" variants="A7XX"/>
+	<reg32 offset="0x0012f" name="RBBM_CLOCK_HYST2_VFD" variants="A7XX-"/>
 	<reg32 offset="0x005ff" name="RBBM_LPAC_GBIF_CLIENT_QOS_CNTL"/>
 
 	<reg32 offset="0x0600" name="DBGC_CFG_DBGBUS_SEL_A"/>
@@ -2064,7 +2064,7 @@ to upconvert to 32b float internally?
 		<bitfield name="MASK" low="20" high="23"/>
 		<bitfield name="IFMT" low="24" high="28" type="a6xx_2d_ifmt"/>
 		<bitfield name="RASTER_MODE" pos="29" type="a6xx_raster_mode"/>
-		<bitfield name="UNK30" pos="30" type="boolean" variants="A7XX"/>
+		<bitfield name="UNK30" pos="30" type="boolean" variants="A7XX-"/>
 	</bitset>
 
 	<reg32 offset="0x8400" name="GRAS_2D_BLIT_CNTL" type="a6xx_2d_blit_cntl"/>
@@ -2091,7 +2091,7 @@ to upconvert to 32b float internally?
 		<bitfield name="LRZCACHELOCKDIS" pos="11" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x8601" name="GRAS_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
-	<reg32 offset="0x8602" name="GRAS_NC_MODE_CNTL" variants="A7XX"/>
+	<reg32 offset="0x8602" name="GRAS_NC_MODE_CNTL" variants="A7XX-"/>
 	<array offset="0x8610" name="GRAS_PERFCTR_TSE_SEL" stride="1" length="4"/>
 	<array offset="0x8614" name="GRAS_PERFCTR_RAS_SEL" stride="1" length="4"/>
 	<array offset="0x8618" name="GRAS_PERFCTR_LRZ_SEL" stride="1" length="4"/>
@@ -2110,7 +2110,7 @@ to upconvert to 32b float internally?
 		<bitfield name="LRZ_FEEDBACK_ZMODE_MASK" low="24" high="26"/>
 	</reg32>
 
-	<reg32 offset="0x8800" name="RB_BIN_CONTROL" variants="A7XX">
+	<reg32 offset="0x8800" name="RB_BIN_CONTROL" variants="A7XX-">
 		<bitfield name="BINW" low="0" high="5" shr="5" type="uint"/>
 		<bitfield name="BINH" low="8" high="14" shr="4" type="uint"/>
 		<bitfield name="RENDER_MODE" low="18" high="20" type="a6xx_render_mode"/>
@@ -2133,7 +2133,7 @@ to upconvert to 32b float internally?
 		<!-- bitmask of MRTs using UBWC flag buffer: -->
 		<bitfield name="FLAG_MRTS" low="16" high="23"/>
 	</reg32>
-	<reg32 offset="0x8801" name="RB_RENDER_CNTL" variants="A7XX">
+	<reg32 offset="0x8801" name="RB_RENDER_CNTL" variants="A7XX-">
 		<bitfield name="EARLYVIZOUTEN" pos="6" type="boolean"/>
 		<!-- set during binning pass: -->
 		<bitfield name="BINNING" pos="7" type="boolean"/>
@@ -2262,7 +2262,7 @@ to upconvert to 32b float internally?
 			<bitfield name="UNK10" pos="10"/>
 			<bitfield name="COLOR_SWAP" low="13" high="14" type="a3xx_color_swap"/>
 		</reg32>
-		<reg32 offset="0x2" name="BUF_INFO" variants="A7XX">
+		<reg32 offset="0x2" name="BUF_INFO" variants="A7XX-">
 			<bitfield name="COLOR_FORMAT" low="0" high="7" type="a6xx_format"/>
 			<bitfield name="COLOR_TILE_MODE" low="8" high="9" type="a6xx_tile_mode"/>
 			<bitfield name="UNK10" pos="10"/>
@@ -2328,7 +2328,7 @@ to upconvert to 32b float internally?
 		<bitfield name="UNK3" low="3" high="4"/>
 	</reg32>
 	<!-- first 4 bits duplicates GRAS_SU_DEPTH_BUFFER_INFO -->
-	<reg32 offset="0x8872" name="RB_DEPTH_BUFFER_INFO" variants="A7XX">
+	<reg32 offset="0x8872" name="RB_DEPTH_BUFFER_INFO" variants="A7XX-">
 		<bitfield name="DEPTH_FORMAT" low="0" high="2" type="a6xx_depth_format"/>
 		<bitfield name="UNK3" low="3" high="4"/>
 		<bitfield name="TILEMODE" low="5" high="6" type="a6xx_tile_mode"/>
@@ -2366,7 +2366,7 @@ to upconvert to 32b float internally?
 		<bitfield name="SEPARATE_STENCIL" pos="0" type="boolean"/>
 		<bitfield name="UNK1" pos="1" type="boolean"/>
 	</reg32>
-	<reg32 offset="0x8881" name="RB_STENCIL_INFO" variants="A7XX">
+	<reg32 offset="0x8881" name="RB_STENCIL_INFO" variants="A7XX-">
 		<bitfield name="SEPARATE_STENCIL" pos="0" type="boolean"/>
 		<bitfield name="UNK1" pos="1" type="boolean"/>
 		<bitfield name="TILEMODE" low="2" high="3" type="a6xx_tile_mode"/>
@@ -2594,7 +2594,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8e28" name="RB_UNKNOWN_8E28" low="0" high="10"/>
 	<!-- 0x8e29-0x8e2b invalid -->
 	<array offset="0x8e2c" name="RB_PERFCTR_CMP_SEL" stride="1" length="4"/>
-	<array offset="0x8e30" name="RB_PERFCTR_UFC_SEL" stride="1" length="6" variants="A7XX"/>
+	<array offset="0x8e30" name="RB_PERFCTR_UFC_SEL" stride="1" length="6" variants="A7XX-"/>
 	<reg32 offset="0x8e3b" name="RB_RB_SUB_BLOCK_SEL_CNTL_HOST"/>
 	<reg32 offset="0x8e3d" name="RB_RB_SUB_BLOCK_SEL_CNTL_CD"/>
 	<!-- 0x8e3e-0x8e4f invalid -->
@@ -2767,7 +2767,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x9306" name="VPC_SO_DISABLE">
 		<bitfield name="DISABLE" pos="0" type="boolean"/>
 	</reg32>
-	<reg32 offset="0x9307" name="VPC_POLYGON_MODE2" variants="A7XX">
+	<reg32 offset="0x9307" name="VPC_POLYGON_MODE2" variants="A7XX-">
 		<bitfield name="MODE" low="0" high="1" type="a6xx_polygon_mode"/>
 	</reg32>
 
@@ -2779,7 +2779,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x9602" name="VPC_UNKNOWN_9602" pos="0"/> <!-- always 0x0 ? -->
 	<reg32 offset="0x9603" name="VPC_UNKNOWN_9603" low="0" high="26"/>
 	<array offset="0x9604" name="VPC_PERFCTR_VPC_SEL" stride="1" length="6" variants="A6XX"/>
-	<array offset="0x960b" name="VPC_PERFCTR_VPC_SEL" stride="1" length="12" variants="A7XX"/>
+	<array offset="0x960b" name="VPC_PERFCTR_VPC_SEL" stride="1" length="12" variants="A7XX-"/>
 	<!-- 0x960a-0x9623 invalid -->
 	<!-- TODO: regs from 0x9624-0x963a -->
 	<!-- 0x963b-0x97ff invalid -->
@@ -2853,7 +2853,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x9981" name="PC_POLYGON_MODE" variants="A6XX">
 		<bitfield name="MODE" low="0" high="1" type="a6xx_polygon_mode"/>
 	</reg32>
-	<reg32 offset="0x9809" name="PC_POLYGON_MODE" variants="A7XX">
+	<reg32 offset="0x9809" name="PC_POLYGON_MODE" variants="A7XX-">
 		<bitfield name="MODE" low="0" high="1" type="a6xx_polygon_mode"/>
 	</reg32>
 
@@ -2864,7 +2864,7 @@ to upconvert to 32b float internally?
 		<bitfield name="DISCARD" pos="2" type="boolean"/>
 	</reg32>
 	<!-- VPC_RASTER_CNTL -->
-	<reg32 offset="0x9107" name="PC_RASTER_CNTL" variants="A7XX">
+	<reg32 offset="0x9107" name="PC_RASTER_CNTL" variants="A7XX-">
 		<!-- which stream to send to GRAS -->
 		<bitfield name="STREAM" low="0" high="1" type="uint"/>
 		<!-- discard primitives before rasterization -->
@@ -2982,7 +2982,7 @@ to upconvert to 32b float internally?
 	</reg32>
 
 	<array offset="0x9e34" name="PC_PERFCTR_PC_SEL" stride="1" length="8" variants="A6XX"/>
-	<array offset="0x9e42" name="PC_PERFCTR_PC_SEL" stride="1" length="16" variants="A7XX"/>
+	<array offset="0x9e42" name="PC_PERFCTR_PC_SEL" stride="1" length="16" variants="A7XX-"/>
 
 	<!-- always 0x0 -->
 	<reg32 offset="0x9e72" name="PC_UNKNOWN_9E72"/>
@@ -3076,7 +3076,7 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0xa601" name="VFD_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<array offset="0xa610" name="VFD_PERFCTR_VFD_SEL" stride="1" length="8" variants="A6XX"/>
-	<array offset="0xa610" name="VFD_PERFCTR_VFD_SEL" stride="1" length="16" variants="A7XX"/>
+	<array offset="0xa610" name="VFD_PERFCTR_VFD_SEL" stride="1" length="16" variants="A7XX-"/>
 
 	<!--
 	Note: this seems to always be paired with another bit in another
@@ -3503,8 +3503,8 @@ to upconvert to 32b float internally?
 			<bitfield name="CMD" low="29" high="31" type="a6xx_tex_prefetch_cmd"/>
 		</reg32>
 	</array>
-	<array offset="0xa99f" name="SP_FS_PREFETCH" stride="1" length="4" variants="A7XX">
-		<reg32 offset="0" name="CMD" variants="A7XX">
+	<array offset="0xa99f" name="SP_FS_PREFETCH" stride="1" length="4" variants="A7XX-">
+		<reg32 offset="0" name="CMD" variants="A7XX-">
 			<bitfield name="SAMP_DESC_ID" low="7" high="9" type="uint"/>
 			<bitfield name="TEX_DESC_ID" low="10" high="12" type="uint"/>
 			<bitfield name="DST" low="13" high="18" type="a3xx_regid"/>
@@ -3608,8 +3608,8 @@ to upconvert to 32b float internally?
 			<bitfield name="ADDR" low="2" high="63" shr="2" type="address"/>
 		</reg64>
 	</array>
-	<array offset="0xa9e8" name="SP_CS_BINDLESS_BASE" stride="2" length="8" variants="A7XX">
-		<reg64 offset="0" name="DESCRIPTOR" variants="A7XX">
+	<array offset="0xa9e8" name="SP_CS_BINDLESS_BASE" stride="2" length="8" variants="A7XX-">
+		<reg64 offset="0" name="DESCRIPTOR" variants="A7XX-">
 			<bitfield name="DESC_SIZE" low="0" high="1" type="a6xx_bindless_descriptor_size"/>
 			<bitfield name="ADDR" low="2" high="63" shr="2" type="address"/>
 		</reg64>
@@ -3654,8 +3654,8 @@ to upconvert to 32b float internally?
 			<bitfield name="ADDR" low="2" high="63" shr="2" type="address"/>
 		</reg64>
 	</array>
-	<array offset="0xab0a" name="SP_BINDLESS_BASE" stride="2" length="8" variants="A7XX">
-		<reg64 offset="0" name="DESCRIPTOR" variants="A7XX">
+	<array offset="0xab0a" name="SP_BINDLESS_BASE" stride="2" length="8" variants="A7XX-">
+		<reg64 offset="0" name="DESCRIPTOR" variants="A7XX-">
 			<bitfield name="DESC_SIZE" low="0" high="1" type="a6xx_bindless_descriptor_size"/>
 			<bitfield name="ADDR" low="2" high="63" shr="2" type="address"/>
 		</reg64>
@@ -3682,7 +3682,7 @@ to upconvert to 32b float internally?
 	</bitset>
 
 	<reg32 offset="0xacc0" name="SP_2D_DST_FORMAT" type="a6xx_sp_2d_dst_format" variants="A6XX"/>
-	<reg32 offset="0xa9bf" name="SP_2D_DST_FORMAT" type="a6xx_sp_2d_dst_format" variants="A7XX"/>
+	<reg32 offset="0xa9bf" name="SP_2D_DST_FORMAT" type="a6xx_sp_2d_dst_format" variants="A7XX-"/>
 
 	<reg32 offset="0xae00" name="SP_DBG_ECO_CNTL"/>
 	<reg32 offset="0xae01" name="SP_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
@@ -3706,9 +3706,9 @@ to upconvert to 32b float internally?
 		<bitfield name="CS" pos="5" type="boolean"/>
 	</reg32>
 	<array offset="0xae10" name="SP_PERFCTR_SP_SEL" stride="1" length="24"/>
-	<array offset="0xae60" name="SP_PERFCTR_HLSQ_SEL" stride="1" length="6" variants="A7XX"/>
-	<reg32 offset="0xae6d" name="SP_READ_SEL" variants="A7XX"/>
-	<array offset="0xae80" name="SP_PERFCTR_SP_SEL" stride="1" length="36" variants="A7XX"/>
+	<array offset="0xae60" name="SP_PERFCTR_HLSQ_SEL" stride="1" length="6" variants="A7XX-"/>
+	<reg32 offset="0xae6d" name="SP_READ_SEL" variants="A7XX-"/>
+	<array offset="0xae80" name="SP_PERFCTR_SP_SEL" stride="1" length="36" variants="A7XX-"/>
 	<!-- TODO: there are 4 more percntr select registers (0xae28-0xae2b) -->
 	<!-- TODO: there are a few unknown registers in the 0xae30-0xae52 range -->
 	<reg32 offset="0xbe22" name="SP_CONTEXT_SWITCH_GFX_PREEMPTION_SAFE_MODE"/>
@@ -3763,13 +3763,13 @@ to upconvert to 32b float internally?
 		<bitfield name="PITCH" low="9" high="23" shr="6" type="uint"/>
 	</reg32>
 
-	<reg32 offset="0xb2c0" name="SP_PS_2D_SRC_INFO" type="a6xx_2d_surf_info" variants="A7XX"/>
-	<reg32 offset="0xb2c1" name="SP_PS_2D_SRC_SIZE" variants="A7XX">
+	<reg32 offset="0xb2c0" name="SP_PS_2D_SRC_INFO" type="a6xx_2d_surf_info" variants="A7XX-"/>
+	<reg32 offset="0xb2c1" name="SP_PS_2D_SRC_SIZE" variants="A7XX-">
 		<bitfield name="WIDTH" low="0" high="14" type="uint"/>
 		<bitfield name="HEIGHT" low="15" high="29" type="uint"/>
 	</reg32>
-	<reg64 offset="0xb2c2" name="SP_PS_2D_SRC" type="address" align="16" variants="A7XX"/>
-	<reg32 offset="0xb2c4" name="SP_PS_2D_SRC_PITCH" variants="A7XX">
+	<reg64 offset="0xb2c2" name="SP_PS_2D_SRC" type="address" align="16" variants="A7XX-"/>
+	<reg32 offset="0xb2c4" name="SP_PS_2D_SRC_PITCH" variants="A7XX-">
 		<bitfield name="UNK0" low="0" high="8"/>
 		<bitfield name="PITCH" low="9" high="23" shr="6" type="uint"/>
 	</reg32>
@@ -3779,15 +3779,15 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb4c7" name="SP_PS_2D_SRC_PLANE_PITCH" low="0" high="11" shr="6" type="uint" variants="A6XX"/>
 	<reg64 offset="0xb4c8" name="SP_PS_2D_SRC_PLANE2" type="address" align="16" variants="A6XX"/>
 
-	<reg64 offset="0xb2c5" name="SP_PS_2D_SRC_PLANE1" type="address" align="16" variants="A7XX"/>
-	<reg32 offset="0xb2c7" name="SP_PS_2D_SRC_PLANE_PITCH" low="0" high="11" shr="6" type="uint" variants="A7XX"/>
-	<reg64 offset="0xb2c8" name="SP_PS_2D_SRC_PLANE2" type="address" align="16" variants="A7XX"/>
+	<reg64 offset="0xb2c5" name="SP_PS_2D_SRC_PLANE1" type="address" align="16" variants="A7XX-"/>
+	<reg32 offset="0xb2c7" name="SP_PS_2D_SRC_PLANE_PITCH" low="0" high="11" shr="6" type="uint" variants="A7XX-"/>
+	<reg64 offset="0xb2c8" name="SP_PS_2D_SRC_PLANE2" type="address" align="16" variants="A7XX-"/>
 
 	<reg64 offset="0xb4ca" name="SP_PS_2D_SRC_FLAGS" type="address" align="16" variants="A6XX"/>
 	<reg32 offset="0xb4cc" name="SP_PS_2D_SRC_FLAGS_PITCH" low="0" high="7" shr="6" type="uint" variants="A6XX"/>
 
-	<reg64 offset="0xb2ca" name="SP_PS_2D_SRC_FLAGS" type="address" align="16" variants="A7XX"/>
-	<reg32 offset="0xb2cc" name="SP_PS_2D_SRC_FLAGS_PITCH" low="0" high="7" shr="6" type="uint" variants="A7XX"/>
+	<reg64 offset="0xb2ca" name="SP_PS_2D_SRC_FLAGS" type="address" align="16" variants="A7XX-"/>
+	<reg32 offset="0xb2cc" name="SP_PS_2D_SRC_FLAGS_PITCH" low="0" high="7" shr="6" type="uint" variants="A7XX-"/>
 
 	<reg32 offset="0xb4cd" name="SP_PS_UNKNOWN_B4CD" low="6" high="31" variants="A6XX"/>
 	<reg32 offset="0xb4ce" name="SP_PS_UNKNOWN_B4CE" low="0" high="31" variants="A6XX"/>
@@ -3795,12 +3795,12 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb4d0" name="SP_PS_UNKNOWN_B4D0" low="0" high="29" variants="A6XX"/>
 	<reg32 offset="0xb4d1" name="SP_WINDOW_OFFSET" type="a6xx_reg_xy" variants="A6XX"/>
 
-	<reg32 offset="0xb2cd" name="SP_PS_UNKNOWN_B4CD" low="6" high="31" variants="A7XX"/>
-	<reg32 offset="0xb2ce" name="SP_PS_UNKNOWN_B4CE" low="0" high="31" variants="A7XX"/>
-	<reg32 offset="0xb2cf" name="SP_PS_UNKNOWN_B4CF" low="0" high="30" variants="A7XX"/>
-	<reg32 offset="0xb2d0" name="SP_PS_UNKNOWN_B4D0" low="0" high="29" variants="A7XX"/>
-	<reg32 offset="0xb2d1" name="SP_PS_2D_WINDOW_OFFSET" type="a6xx_reg_xy" variants="A7XX"/>
-	<reg32 offset="0xab21" name="SP_WINDOW_OFFSET" type="a6xx_reg_xy" variants="A7XX"/>
+	<reg32 offset="0xb2cd" name="SP_PS_UNKNOWN_B4CD" low="6" high="31" variants="A7XX-"/>
+	<reg32 offset="0xb2ce" name="SP_PS_UNKNOWN_B4CE" low="0" high="31" variants="A7XX-"/>
+	<reg32 offset="0xb2cf" name="SP_PS_UNKNOWN_B4CF" low="0" high="30" variants="A7XX-"/>
+	<reg32 offset="0xb2d0" name="SP_PS_UNKNOWN_B4D0" low="0" high="29" variants="A7XX-"/>
+	<reg32 offset="0xb2d1" name="SP_PS_2D_WINDOW_OFFSET" type="a6xx_reg_xy" variants="A7XX-"/>
+	<reg32 offset="0xab21" name="SP_WINDOW_OFFSET" type="a6xx_reg_xy" variants="A7XX-"/>
 
 	<!-- always 0x100000 or 0x1000000? -->
 	<reg32 offset="0xb600" name="TPL1_DBG_ECO_CNTL" low="0" high="25"/>
@@ -3833,10 +3833,10 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb802" name="HLSQ_DS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A6XX"/>
 	<reg32 offset="0xb803" name="HLSQ_GS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A6XX"/>
 
-	<reg32 offset="0xa827" name="HLSQ_VS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX"/>
-	<reg32 offset="0xa83f" name="HLSQ_HS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX"/>
-	<reg32 offset="0xa867" name="HLSQ_DS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX"/>
-	<reg32 offset="0xa898" name="HLSQ_GS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX"/>
+	<reg32 offset="0xa827" name="HLSQ_VS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX-"/>
+	<reg32 offset="0xa83f" name="HLSQ_HS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX-"/>
+	<reg32 offset="0xa867" name="HLSQ_DS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX-"/>
+	<reg32 offset="0xa898" name="HLSQ_GS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX-"/>
 
 	<reg32 offset="0xb820" name="HLSQ_LOAD_STATE_GEOM_CMD"/>
 	<reg64 offset="0xb821" name="HLSQ_LOAD_STATE_GEOM_EXT_SRC_ADDR" align="16" type="address"/>
@@ -3884,21 +3884,21 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb986" type="a6xx_hlsq_control_5_reg" name="HLSQ_CONTROL_5_REG" variants="A6XX"/>
 	<reg32 offset="0xb987" name="HLSQ_CS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A6XX"/>
 
-	<reg32 offset="0xa9c6" type="a6xx_hlsq_fs_cntl_0" name="HLSQ_FS_CNTL_0" variants="A7XX"/>
-	<reg32 offset="0xa9c7" name="HLSQ_CONTROL_1_REG" low="0" high="2" variants="A7XX">
+	<reg32 offset="0xa9c6" type="a6xx_hlsq_fs_cntl_0" name="HLSQ_FS_CNTL_0" variants="A7XX-"/>
+	<reg32 offset="0xa9c7" name="HLSQ_CONTROL_1_REG" low="0" high="2" variants="A7XX-">
 		<!-- TODO: have test cases with either 0x3 or 0x7 -->
 	</reg32>
-	<reg32 offset="0xa9c8" name="HLSQ_CONTROL_2_REG" variants="A7XX">
+	<reg32 offset="0xa9c8" name="HLSQ_CONTROL_2_REG" variants="A7XX-">
 		<bitfield name="FACEREGID" low="0" high="7" type="a3xx_regid"/>
 		<!-- SAMPLEID is loaded into a half-precision register: -->
 		<bitfield name="SAMPLEID" low="8" high="15" type="a3xx_regid"/>
 		<bitfield name="SAMPLEMASK" low="16" high="23" type="a3xx_regid"/>
 		<bitfield name="CENTERRHW" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
-	<reg32 offset="0xa9c9" type="a6xx_hlsq_control_3_reg" name="HLSQ_CONTROL_3_REG" variants="A7XX"/>
-	<reg32 offset="0xa9ca" type="a6xx_hlsq_control_4_reg" name="HLSQ_CONTROL_4_REG" variants="A7XX"/>
-	<reg32 offset="0xa9cb" type="a6xx_hlsq_control_5_reg" name="HLSQ_CONTROL_5_REG" variants="A7XX"/>
-	<reg32 offset="0xa9cd" name="HLSQ_CS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX"/>
+	<reg32 offset="0xa9c9" type="a6xx_hlsq_control_3_reg" name="HLSQ_CONTROL_3_REG" variants="A7XX-"/>
+	<reg32 offset="0xa9ca" type="a6xx_hlsq_control_4_reg" name="HLSQ_CONTROL_4_REG" variants="A7XX-"/>
+	<reg32 offset="0xa9cb" type="a6xx_hlsq_control_5_reg" name="HLSQ_CONTROL_5_REG" variants="A7XX-"/>
+	<reg32 offset="0xa9cd" name="HLSQ_CS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX-"/>
 
 	<!-- TODO: what does KERNELDIM do exactly (blob sets it differently from turnip) -->
 	<reg32 offset="0xb990" name="HLSQ_CS_NDRANGE_0" variants="A6XX">
@@ -3953,35 +3953,35 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb99b" name="HLSQ_CS_KERNEL_GROUP_Z" variants="A6XX"/>
 
 	<!-- TODO: what does KERNELDIM do exactly (blob sets it differently from turnip) -->
-	<reg32 offset="0xa9d4" name="HLSQ_CS_NDRANGE_0" variants="A7XX">
+	<reg32 offset="0xa9d4" name="HLSQ_CS_NDRANGE_0" variants="A7XX-">
 		<bitfield name="KERNELDIM" low="0" high="1" type="uint"/>
 		<!-- localsize is value minus one: -->
 		<bitfield name="LOCALSIZEX" low="2" high="11" type="uint"/>
 		<bitfield name="LOCALSIZEY" low="12" high="21" type="uint"/>
 		<bitfield name="LOCALSIZEZ" low="22" high="31" type="uint"/>
 	</reg32>
-	<reg32 offset="0xa9d5" name="HLSQ_CS_NDRANGE_1" variants="A7XX">
+	<reg32 offset="0xa9d5" name="HLSQ_CS_NDRANGE_1" variants="A7XX-">
 		<bitfield name="GLOBALSIZE_X" low="0" high="31" type="uint"/>
 	</reg32>
-	<reg32 offset="0xa9d6" name="HLSQ_CS_NDRANGE_2" variants="A7XX">
+	<reg32 offset="0xa9d6" name="HLSQ_CS_NDRANGE_2" variants="A7XX-">
 		<bitfield name="GLOBALOFF_X" low="0" high="31" type="uint"/>
 	</reg32>
-	<reg32 offset="0xa9d7" name="HLSQ_CS_NDRANGE_3" variants="A7XX">
+	<reg32 offset="0xa9d7" name="HLSQ_CS_NDRANGE_3" variants="A7XX-">
 		<bitfield name="GLOBALSIZE_Y" low="0" high="31" type="uint"/>
 	</reg32>
-	<reg32 offset="0xa9d8" name="HLSQ_CS_NDRANGE_4" variants="A7XX">
+	<reg32 offset="0xa9d8" name="HLSQ_CS_NDRANGE_4" variants="A7XX-">
 		<bitfield name="GLOBALOFF_Y" low="0" high="31" type="uint"/>
 	</reg32>
-	<reg32 offset="0xa9d9" name="HLSQ_CS_NDRANGE_5" variants="A7XX">
+	<reg32 offset="0xa9d9" name="HLSQ_CS_NDRANGE_5" variants="A7XX-">
 		<bitfield name="GLOBALSIZE_Z" low="0" high="31" type="uint"/>
 	</reg32>
-	<reg32 offset="0xa9da" name="HLSQ_CS_NDRANGE_6" variants="A7XX">
+	<reg32 offset="0xa9da" name="HLSQ_CS_NDRANGE_6" variants="A7XX-">
 		<bitfield name="GLOBALOFF_Z" low="0" high="31" type="uint"/>
 	</reg32>
 	<!--note: vulkan blob doesn't use these -->
-	<reg32 offset="0xa9dc" name="HLSQ_CS_KERNEL_GROUP_X" variants="A7XX"/>
-	<reg32 offset="0xa9dd" name="HLSQ_CS_KERNEL_GROUP_Y" variants="A7XX"/>
-	<reg32 offset="0xa9de" name="HLSQ_CS_KERNEL_GROUP_Z" variants="A7XX"/>
+	<reg32 offset="0xa9dc" name="HLSQ_CS_KERNEL_GROUP_X" variants="A7XX-"/>
+	<reg32 offset="0xa9dd" name="HLSQ_CS_KERNEL_GROUP_Y" variants="A7XX-"/>
+	<reg32 offset="0xa9de" name="HLSQ_CS_KERNEL_GROUP_Z" variants="A7XX-"/>
 
 	<reg32 offset="0xb9a0" name="HLSQ_LOAD_STATE_FRAG_CMD"/>
 	<reg64 offset="0xb9a1" name="HLSQ_LOAD_STATE_FRAG_EXT_SRC_ADDR" align="16" type="address"/>
@@ -4044,7 +4044,7 @@ to upconvert to 32b float internally?
 		<bitfield name="GFX_BINDLESS" low="14" high="18" type="hex"/>
 	</reg32>
 
-	<reg32 offset="0xab1f" name="HLSQ_INVALIDATE_CMD" variants="A7XX">
+	<reg32 offset="0xab1f" name="HLSQ_INVALIDATE_CMD" variants="A7XX-">
 		<doc>
 			This register clears pending loads queued up by
 			CP_LOAD_STATE6. Each bit resets a particular kind(s) of
@@ -4068,7 +4068,7 @@ to upconvert to 32b float internally?
 	</reg32>
 
 	<reg32 offset="0xbb10" name="HLSQ_FS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A6XX"/>
-	<reg32 offset="0xab03" name="HLSQ_FS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX"/>
+	<reg32 offset="0xab03" name="HLSQ_FS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A7XX-"/>
 
 	<reg32 offset="0xbb11" name="HLSQ_SHARED_CONSTS">
 		<doc>
@@ -4115,7 +4115,7 @@ to upconvert to 32b float internally?
 	<!-- TODO: some valid registers between 0xbe20 and 0xbe33 -->
 	<reg32 offset="0xbe22" name="HLSQ_CONTEXT_SWITCH_GFX_PREEMPTION_SAFE_MODE"/>
 
-	<reg32 offset="0xc000" name="SP_AHB_READ_APERTURE" variants="A7XX"/>
+	<reg32 offset="0xc000" name="SP_AHB_READ_APERTURE" variants="A7XX-"/>
 
 	<!--
 		These special registers signal the beginning/end of an event
@@ -4414,7 +4414,7 @@ to upconvert to 32b float internally?
 <domain name="A6XX_CX_MISC" width="32" prefix="variant" varset="chip">
 	<reg32 offset="0x0001" name="SYSTEM_CACHE_CNTL_0"/>
 	<reg32 offset="0x0002" name="SYSTEM_CACHE_CNTL_1"/>
-	<reg32 offset="0x0039" name="CX_MISC_TCM_RET_CNTL" variants="A7XX"/>
+	<reg32 offset="0x0039" name="CX_MISC_TCM_RET_CNTL" variants="A7XX-"/>
 </domain>
 
 </database>
