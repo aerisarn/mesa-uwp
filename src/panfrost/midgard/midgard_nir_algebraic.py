@@ -136,7 +136,8 @@ constant_switch = [
 
 # ..since the above switching happens after algebraic stuff is done
 cancel_inot = [
-        (('inot', ('inot', a)), a)
+        (('inot', ('inot', a)), a),
+        (('b32csel', ('inot', a), b, c), ('b32csel', a, c, b)),
 ]
 
 def main():

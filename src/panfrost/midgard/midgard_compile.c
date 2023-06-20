@@ -588,9 +588,6 @@ nir_accepts_inot(nir_op op, unsigned src)
    case nir_op_iand: /* TODO: b2f16 */
    case nir_op_ixor:
       return true;
-   case nir_op_b32csel:
-      /* Only the condition */
-      return (src == 0);
    default:
       return false;
    }
@@ -1042,12 +1039,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
          mir_copy_src(&ins, instr, i, to, &ins.src_abs[to], &ins.src_neg[to],
                       &ins.src_invert[to], roundptr, is_int, broadcast_swizzle);
-
-         /* (!c) ? a : b = c ? b : a */
-         if (instr->op == nir_op_b32csel && ins.src_invert[2]) {
-            ins.src_invert[2] = false;
-            flip_src12 ^= true;
-         }
       }
    }
 
