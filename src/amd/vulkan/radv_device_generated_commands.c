@@ -209,9 +209,19 @@ nir_pkt3(nir_builder *b, unsigned op, nir_ssa_def *len)
    return nir_ior_imm(b, nir_ishl_imm(b, len, 16), PKT_TYPE_S(3) | PKT3_IT_OPCODE_S(op));
 }
 
+static nir_ssa_def *
+dgc_get_nop_packet(nir_builder *b, const struct radv_device *device)
+{
+   if (device->physical_device->rad_info.gfx_ib_pad_with_type2) {
+      return nir_imm_int(b, PKT2_NOP_PAD);
+   } else {
+      return nir_imm_int(b, PKT3_NOP_PAD);
+   }
+}
+
 static void
 dgc_emit_userdata_vertex(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *vtx_base_sgpr, nir_ssa_def *first_vertex,
-                         nir_ssa_def *first_instance, nir_ssa_def *drawid)
+                         nir_ssa_def *first_instance, nir_ssa_def *drawid, const struct radv_device *device)
 {
    vtx_base_sgpr = nir_u2u32(b, vtx_base_sgpr);
    nir_ssa_def *has_drawid = nir_test_mask(b, vtx_base_sgpr, DGC_USES_DRAWID);
@@ -223,7 +233,7 @@ dgc_emit_userdata_vertex(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *vtx
 
    nir_ssa_def *values[5] = {
       nir_pkt3(b, PKT3_SET_SH_REG, pkt_cnt), nir_iand_imm(b, vtx_base_sgpr, 0x3FFF), first_vertex,
-      nir_imm_int(b, PKT3_NOP_PAD),          nir_imm_int(b, PKT3_NOP_PAD),
+      dgc_get_nop_packet(b, device),         dgc_get_nop_packet(b, device),
    };
 
    values[3] = nir_bcsel(b, nir_ior(b, has_drawid, has_baseinstance), nir_bcsel(b, has_drawid, drawid, first_instance),
@@ -261,7 +271,7 @@ dgc_emit_draw_index_auto(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *ver
 }
 
 static void
-build_dgc_buffer_tail(nir_builder *b, nir_ssa_def *sequence_count)
+build_dgc_buffer_tail(nir_builder *b, nir_ssa_def *sequence_count, const struct radv_device *device)
 {
    nir_ssa_def *global_id = get_global_ids(b, 1);
 
@@ -287,12 +297,19 @@ build_dgc_buffer_tail(nir_builder *b, nir_ssa_def *sequence_count)
          }
          nir_pop_if(b, NULL);
 
-         nir_ssa_def *packet_size = nir_isub(b, cmd_buf_size, curr_offset);
-         packet_size = nir_umin(b, packet_size, nir_imm_int(b, MAX_PACKET_WORDS * 4));
+         nir_ssa_def *packet, *packet_size;
 
-         nir_ssa_def *len = nir_ushr_imm(b, packet_size, 2);
-         len = nir_iadd_imm(b, len, -2);
-         nir_ssa_def *packet = nir_pkt3(b, PKT3_NOP, len);
+         if (device->physical_device->rad_info.gfx_ib_pad_with_type2) {
+            packet_size = nir_imm_int(b, 4);
+            packet = nir_imm_int(b, PKT2_NOP_PAD);
+         } else {
+            packet_size = nir_isub(b, cmd_buf_size, curr_offset);
+            packet_size = nir_umin(b, packet_size, nir_imm_int(b, MAX_PACKET_WORDS * 4));
+
+            nir_ssa_def *len = nir_ushr_imm(b, packet_size, 2);
+            len = nir_iadd_imm(b, len, -2);
+            packet = nir_pkt3(b, PKT3_NOP, len);
+         }
 
          nir_store_ssbo(b, packet, dst_buf, curr_offset, .access = ACCESS_NON_READABLE);
          nir_store_var(b, offset, nir_iadd(b, curr_offset, packet_size), 0x1);
@@ -307,7 +324,7 @@ build_dgc_buffer_tail(nir_builder *b, nir_ssa_def *sequence_count)
  */
 static void
 dgc_emit_draw(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf, nir_ssa_def *stream_base,
-              nir_ssa_def *draw_params_offset, nir_ssa_def *sequence_id)
+              nir_ssa_def *draw_params_offset, nir_ssa_def *sequence_id, const struct radv_device *device)
 {
    nir_ssa_def *vtx_base_sgpr = load_param16(b, vtx_base_sgpr);
    nir_ssa_def *stream_offset = nir_iadd(b, draw_params_offset, stream_base);
@@ -320,7 +337,7 @@ dgc_emit_draw(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf, ni
 
    nir_push_if(b, nir_iand(b, nir_ine_imm(b, vertex_count, 0), nir_ine_imm(b, instance_count, 0)));
    {
-      dgc_emit_userdata_vertex(b, cs, vtx_base_sgpr, vertex_offset, first_instance, sequence_id);
+      dgc_emit_userdata_vertex(b, cs, vtx_base_sgpr, vertex_offset, first_instance, sequence_id, device);
       dgc_emit_instance_count(b, cs, instance_count);
       dgc_emit_draw_index_auto(b, cs, vertex_count);
    }
@@ -332,7 +349,8 @@ dgc_emit_draw(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf, ni
  */
 static void
 dgc_emit_draw_indexed(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf, nir_ssa_def *stream_base,
-                      nir_ssa_def *draw_params_offset, nir_ssa_def *sequence_id, nir_ssa_def *max_index_count)
+                      nir_ssa_def *draw_params_offset, nir_ssa_def *sequence_id, nir_ssa_def *max_index_count,
+                      const struct radv_device *device)
 {
    nir_ssa_def *vtx_base_sgpr = load_param16(b, vtx_base_sgpr);
    nir_ssa_def *stream_offset = nir_iadd(b, draw_params_offset, stream_base);
@@ -347,7 +365,7 @@ dgc_emit_draw_indexed(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream
 
    nir_push_if(b, nir_iand(b, nir_ine_imm(b, index_count, 0), nir_ine_imm(b, instance_count, 0)));
    {
-      dgc_emit_userdata_vertex(b, cs, vtx_base_sgpr, vertex_offset, first_instance, sequence_id);
+      dgc_emit_userdata_vertex(b, cs, vtx_base_sgpr, vertex_offset, first_instance, sequence_id, device);
       dgc_emit_instance_count(b, cs, instance_count);
       dgc_emit_draw_index_offset_2(b, cs, first_index, index_count, max_index_count);
    }
@@ -389,7 +407,7 @@ dgc_emit_index_buffer(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream
    } else {
       cmd_values[0] = nir_imm_int(b, PKT3(PKT3_INDEX_TYPE, 0, 0));
       cmd_values[1] = index_type;
-      cmd_values[2] = nir_imm_int(b, PKT3_NOP_PAD);
+      cmd_values[2] = dgc_get_nop_packet(b, device);
    }
 
    nir_ssa_def *addr_upper = nir_channel(b, data, 1);
@@ -815,7 +833,7 @@ build_dgc_prepare_shader(struct radv_device *dev)
 
       nir_push_if(&b, nir_ieq_imm(&b, load_param16(&b, draw_indexed), 0));
       {
-         dgc_emit_draw(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset), sequence_id);
+         dgc_emit_draw(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset), sequence_id, dev);
       }
       nir_push_else(&b, NULL);
       {
@@ -842,25 +860,43 @@ build_dgc_prepare_shader(struct radv_device *dev)
          max_index_count = nir_bcsel(&b, bind_index_buffer, nir_load_var(&b, max_index_count_var), max_index_count);
 
          dgc_emit_draw_indexed(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset), sequence_id,
-                               max_index_count);
+                               max_index_count, dev);
       }
       nir_pop_if(&b, NULL);
 
       /* Pad the cmdbuffer if we did not use the whole stride */
       nir_push_if(&b, nir_ine(&b, nir_load_var(&b, cmd_buf.offset), cmd_buf_end));
       {
-         nir_ssa_def *cnt = nir_isub(&b, cmd_buf_end, nir_load_var(&b, cmd_buf.offset));
-         cnt = nir_ushr_imm(&b, cnt, 2);
-         cnt = nir_iadd_imm(&b, cnt, -2);
-         nir_ssa_def *pkt = nir_pkt3(&b, PKT3_NOP, cnt);
+         if (dev->physical_device->rad_info.gfx_ib_pad_with_type2) {
+            nir_push_loop(&b);
+            {
+               nir_ssa_def *curr_offset = nir_load_var(&b, cmd_buf.offset);
 
-         dgc_emit(&b, &cmd_buf, pkt);
+               nir_push_if(&b, nir_ieq(&b, curr_offset, cmd_buf_end));
+               {
+                  nir_jump(&b, nir_jump_break);
+               }
+               nir_pop_if(&b, NULL);
+
+               nir_ssa_def *pkt = nir_imm_int(&b, PKT2_NOP_PAD);
+
+               dgc_emit(&b, &cmd_buf, pkt);
+            }
+            nir_pop_loop(&b, NULL);
+         } else {
+            nir_ssa_def *cnt = nir_isub(&b, cmd_buf_end, nir_load_var(&b, cmd_buf.offset));
+            cnt = nir_ushr_imm(&b, cnt, 2);
+            cnt = nir_iadd_imm(&b, cnt, -2);
+            nir_ssa_def *pkt = nir_pkt3(&b, PKT3_NOP, cnt);
+
+            dgc_emit(&b, &cmd_buf, pkt);
+         }
       }
       nir_pop_if(&b, NULL);
    }
    nir_pop_if(&b, NULL);
 
-   build_dgc_buffer_tail(&b, sequence_count);
+   build_dgc_buffer_tail(&b, sequence_count, dev);
    return b.shader;
 }
 
