@@ -196,7 +196,7 @@ GL 4.4, GLSL 4.40 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, v
 
   GL_MAX_VERTEX_ATTRIB_STRIDE                           DONE (all drivers)
   GL_ARB_buffer_storage                                 DONE (freedreno, nv50, v3d, vc4, lima, panfrost, asahi, d3d12, softpipe, etnaviv, crocus)
-  GL_ARB_clear_texture                                  DONE (freedreno/a6xx, nv50, softpipe, crocus)
+  GL_ARB_clear_texture                                  DONE (all drivers)
   GL_ARB_enhanced_layouts                               DONE (freedreno/a3xx+, nv50, softpipe, crocus)
   - compile-time constant expressions                   DONE
   - explicit byte offsets for blocks                    DONE

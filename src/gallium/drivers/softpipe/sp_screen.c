@@ -297,8 +297,6 @@ softpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_SHADER_ARRAY_COMPONENTS:
    case PIPE_CAP_TGSI_TEXCOORD:
       return 1;
-   case PIPE_CAP_CLEAR_TEXTURE:
-      return 1;
    case PIPE_CAP_MAX_VARYINGS:
       return TGSI_EXEC_MAX_INPUT_ATTRIBS;
    case PIPE_CAP_PCI_GROUP:

@@ -324,8 +324,6 @@ The integer capabilities:
 * ``PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS``:
   Whether copying between compressed and plain formats is supported where
   a compressed block is copied to/from a plain pixel of the same size.
-* ``PIPE_CAP_CLEAR_TEXTURE``: Whether ``clear_texture`` will be
-  available in contexts.
 * ``PIPE_CAP_CLEAR_SCISSORED``: Whether ``clear`` can accept a scissored
   bounding box.
 * ``PIPE_CAP_DRAW_PARAMETERS``: Whether ``TGSI_SEMANTIC_BASEVERTEX``,
