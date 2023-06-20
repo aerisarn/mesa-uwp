@@ -1621,16 +1621,25 @@ impl<'a> ShaderFromNir<'a> {
             }
         }
 
-        let s0 = succ[0].unwrap();
-        if let Some(s1) = succ[1] {
-            /* Jump to the else.  We'll come back and fix up the predicate as
-             * part of our handling of nir_if.
-             */
-            b.push_op(OpBra { target: s1.index });
-        } else if s0.index == self.end_block_id {
-            b.push_op(OpExit {});
+        if let Some(ni) = nb.following_if() {
+            let mut bra = Instr::new_boxed(OpBra {
+                target: ni.first_else_block().index,
+            });
+
+            let cond = self.get_ssa(&ni.condition.as_def())[0];
+            bra.pred = cond.into();
+            /* This is the branch to jump to the else */
+            bra.pred.pred_inv = true;
+
+            b.push_instr(bra);
         } else {
-            b.push_op(OpBra { target: s0.index });
+            assert!(succ[1].is_none());
+            let s0 = succ[0].unwrap();
+            if s0.index == self.end_block_id {
+                b.push_op(OpExit {});
+            } else {
+                b.push_op(OpBra { target: s0.index });
+            }
         }
 
         let mut bb = BasicBlock::new(nb.index);
@@ -1639,13 +1648,6 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     fn parse_if(&mut self, alloc: &mut SSAValueAllocator, ni: &nir_if) {
-        let cond = self.get_ssa(&ni.condition.as_def())[0];
-
-        let if_bra = self.blocks.last_mut().unwrap().branch_mut().unwrap();
-        if_bra.pred = cond.into();
-        /* This is the branch to jump to the else */
-        if_bra.pred.pred_inv = true;
-
         self.parse_cf_list(alloc, ni.iter_then_list());
         self.parse_cf_list(alloc, ni.iter_else_list());
     }
