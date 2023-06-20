@@ -39,6 +39,7 @@ libpanfrost_midgard_files = files(
   'midgard_opt_copy_prop.c',
   'midgard_opt_dce.c',
   'midgard_opt_perspective.c',
+  'midgard_opt_prop.c',
   'midgard_errata_lod.c',
   'nir_fuse_io_16.c',
 )

@@ -586,94 +586,11 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
       ALU_CHECK_CMP();                                                         \
       break;
 
-/* Compare mir_lower_invert */
-static bool
-nir_accepts_inot(nir_op op, unsigned src)
-{
-   switch (op) {
-   case nir_op_ior:
-   case nir_op_iand: /* TODO: b2f16 */
-   case nir_op_ixor:
-      return true;
-   default:
-      return false;
-   }
-}
-
-static bool
-mir_accept_dest_mod(compiler_context *ctx, nir_dest **dest, nir_op op)
-{
-   if (pan_has_dest_mod(dest, op)) {
-      assert((*dest)->is_ssa);
-      BITSET_SET(ctx->already_emitted, (*dest)->ssa.index);
-      return true;
-   }
-
-   return false;
-}
-
-/* Look for floating point mods. We have the mods clamp_m1_1, clamp_0_1,
- * and clamp_0_inf. We also have the relations (note 3 * 2 = 6 cases):
- *
- * clamp_0_1(clamp_0_inf(x))  = clamp_m1_1(x)
- * clamp_0_1(clamp_m1_1(x))   = clamp_m1_1(x)
- * clamp_0_inf(clamp_0_1(x))  = clamp_m1_1(x)
- * clamp_0_inf(clamp_m1_1(x)) = clamp_m1_1(x)
- * clamp_m1_1(clamp_0_1(x))   = clamp_m1_1(x)
- * clamp_m1_1(clamp_0_inf(x)) = clamp_m1_1(x)
- *
- * So by cases any composition of output modifiers is equivalent to
- * clamp_m1_1 alone.
- */
-static unsigned
-mir_determine_float_outmod(compiler_context *ctx, nir_dest **dest,
-                           unsigned prior_outmod)
-{
-   bool clamp_0_inf = mir_accept_dest_mod(ctx, dest, nir_op_fclamp_pos_mali);
-   bool clamp_0_1 = mir_accept_dest_mod(ctx, dest, nir_op_fsat);
-   bool clamp_m1_1 = mir_accept_dest_mod(ctx, dest, nir_op_fsat_signed_mali);
-   bool prior = (prior_outmod != midgard_outmod_none);
-   int count = (int)prior + (int)clamp_0_inf + (int)clamp_0_1 + (int)clamp_m1_1;
-
-   return ((count > 1) || clamp_0_1) ? midgard_outmod_clamp_0_1
-          : clamp_0_inf              ? midgard_outmod_clamp_0_inf
-          : clamp_m1_1               ? midgard_outmod_clamp_m1_1
-                                     : prior_outmod;
-}
-
 static void
 mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i,
-             unsigned to, bool *abs, bool *neg, bool * not,
-             enum midgard_roundmode *roundmode, bool is_int,
-             unsigned bcast_count)
+             unsigned to, bool is_int, unsigned bcast_count)
 {
    nir_alu_src src = instr->src[i];
-
-   if (!is_int) {
-      if (pan_has_source_mod(&src, nir_op_fneg))
-         *neg = !(*neg);
-
-      if (pan_has_source_mod(&src, nir_op_fabs))
-         *abs = true;
-   }
-
-   if (nir_accepts_inot(instr->op, i) && pan_has_source_mod(&src, nir_op_inot))
-      *not = true;
-
-   if (roundmode) {
-      if (pan_has_source_mod(&src, nir_op_fround_even))
-         *roundmode = MIDGARD_RTE;
-
-      if (pan_has_source_mod(&src, nir_op_ftrunc))
-         *roundmode = MIDGARD_RTZ;
-
-      if (pan_has_source_mod(&src, nir_op_ffloor))
-         *roundmode = MIDGARD_RTN;
-
-      if (pan_has_source_mod(&src, nir_op_fceil))
-         *roundmode = MIDGARD_RTP;
-   }
-
    unsigned bits = nir_src_bit_size(src.src);
 
    ins->src[to] = nir_src_index(NULL, &src.src);
@@ -708,9 +625,6 @@ static void
 emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 {
    nir_dest *dest = &instr->dest.dest;
-
-   if (dest->is_ssa && BITSET_TEST(ctx->already_emitted, dest->ssa.index))
-      return;
 
    /* Derivatives end up emitted on the texture pipe, not the ALUs. This
     * is handled elsewhere */
@@ -959,10 +873,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
    unsigned opcode_props = alu_opcode_props[op].props;
    bool quirk_flipped_r24 = opcode_props & QUIRK_FLIPPED_R24;
 
-   if (!midgard_is_integer_out_op(op)) {
-      outmod = mir_determine_float_outmod(ctx, &dest, outmod);
-   }
-
    midgard_instruction ins = {
       .type = TAG_ALU_4,
       .dest = nir_dest_index(dest),
@@ -971,16 +881,12 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       .roundmode = roundmode,
    };
 
-   enum midgard_roundmode *roundptr =
-      (opcode_props & MIDGARD_ROUNDS) ? &ins.roundmode : NULL;
-
    for (unsigned i = nr_inputs; i < ARRAY_SIZE(ins.src); ++i)
       ins.src[i] = ~0;
 
    if (quirk_flipped_r24) {
       ins.src[0] = ~0;
-      mir_copy_src(&ins, instr, 0, 1, &ins.src_abs[1], &ins.src_neg[1],
-                   &ins.src_invert[1], roundptr, is_int, broadcast_swizzle);
+      mir_copy_src(&ins, instr, 0, 1, is_int, broadcast_swizzle);
    } else {
       for (unsigned i = 0; i < nr_inputs; ++i) {
          unsigned to = i;
@@ -1001,8 +907,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
             to = 1 - to;
          }
 
-         mir_copy_src(&ins, instr, i, to, &ins.src_abs[to], &ins.src_neg[to],
-                      &ins.src_invert[to], roundptr, is_int, broadcast_swizzle);
+         mir_copy_src(&ins, instr, i, to, is_int, broadcast_swizzle);
       }
    }
 
@@ -1623,17 +1528,6 @@ emit_control_barrier(compiler_context *ctx)
    emit_mir_instruction(ctx, ins);
 }
 
-static unsigned
-mir_get_branch_cond(nir_src *src, bool *invert)
-{
-   /* Wrap it. No swizzle since it's a scalar */
-
-   nir_alu_src alu = {.src = *src};
-
-   *invert = pan_has_source_mod(&alu, nir_op_inot);
-   return nir_src_index(NULL, &alu.src);
-}
-
 static uint8_t
 output_load_rt_addr(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -1663,8 +1557,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       discard.branch.target_type = TARGET_DISCARD;
 
       if (conditional) {
-         discard.src[0] = mir_get_branch_cond(
-            &instr->src[0], &discard.branch.invert_conditional);
+         discard.src[0] = nir_src_index(ctx, &instr->src[0]);
          discard.src_types[0] = nir_type_uint32;
       }
 
@@ -2259,14 +2152,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
    if (!nir_tex_instr_need_sampler(instr))
       sampler_index = 0;
 
-   nir_alu_type dest_base = nir_alu_type_get_base_type(instr->dest_type);
-
-   /* texture instructions support float outmods */
-   unsigned outmod = midgard_outmod_none;
-   if (dest_base == nir_type_float) {
-      outmod = mir_determine_float_outmod(ctx, &dest, 0);
-   }
-
    midgard_instruction ins = {
       .type = TAG_TEXTURE_4,
       .mask = 0xF,
@@ -2274,7 +2159,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
       .src = {~0, ~0, ~0, ~0},
       .dest_type = instr->dest_type,
       .swizzle = SWIZZLE_IDENTITY_4,
-      .outmod = outmod,
+      .outmod = midgard_outmod_none,
       .op = midgard_texop,
       .texture = {
          .format = midgard_tex_format(instr->sampler_dim),
@@ -2774,12 +2659,10 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
    midgard_block *before_block = ctx->current_block;
 
    /* Speculatively emit the branch, but we can't fill it in until later */
-   bool inv = false;
    EMIT(branch, true, true);
    midgard_instruction *then_branch = mir_last_in_block(ctx->current_block);
-   then_branch->src[0] = mir_get_branch_cond(&nif->condition, &inv);
+   then_branch->src[0] = nir_src_index(ctx, &nif->condition);
    then_branch->src_types[0] = nir_type_uint32;
-   then_branch->branch.invert_conditional = !inv;
 
    /* Emit the two subblocks. */
    midgard_block *then_block = emit_cf_list(ctx, &nif->then_list);
@@ -3036,8 +2919,6 @@ midgard_compile_shader_nir(nir_shader *nir,
       list_inithead(&ctx->blocks);
       ctx->block_count = 0;
       ctx->func = func;
-      ctx->already_emitted =
-         calloc(BITSET_WORDS(func->impl->ssa_alloc), sizeof(BITSET_WORD));
 
       if (nir->info.outputs_read && !inputs->is_blend) {
          emit_block_init(ctx);
@@ -3051,7 +2932,6 @@ midgard_compile_shader_nir(nir_shader *nir,
       }
 
       emit_cf_list(ctx, &func->impl->body);
-      free(ctx->already_emitted);
       break; /* TODO: Multi-function shaders */
    }
 
@@ -3069,6 +2949,7 @@ midgard_compile_shader_nir(nir_shader *nir,
    do {
       progress = false;
       progress |= midgard_opt_dead_code_eliminate(ctx);
+      progress |= midgard_opt_prop(ctx);
 
       mir_foreach_block(ctx, _block) {
          midgard_block *block = (midgard_block *)_block;

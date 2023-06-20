@@ -288,9 +288,6 @@ typedef struct compiler_context {
    int temp_count;
    int max_hash;
 
-   /* Set of NIR indices that were already emitted as outmods */
-   BITSET_WORD *already_emitted;
-
    /* Count of instructions emitted from NIR overall, across all blocks */
    int instruction_count;
 
@@ -683,6 +680,7 @@ unsigned midgard_get_first_tag_from_block(compiler_context *ctx,
 /* Optimizations */
 
 bool midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block);
+bool midgard_opt_prop(compiler_context *ctx);
 bool midgard_opt_combine_projection(compiler_context *ctx,
                                     midgard_block *block);
 bool midgard_opt_varying_projection(compiler_context *ctx,
