@@ -697,11 +697,7 @@ impl Mem {
                     RWFlags::RD,
                 )?;
 
-                src_pitch = [
-                    1,
-                    tx_src.row_pitch() as usize,
-                    tx_src.slice_pitch() as usize,
-                ];
+                src_pitch = [1, tx_src.row_pitch() as usize, tx_src.slice_pitch()];
             }
 
             if dst.is_buffer() {
@@ -725,11 +721,7 @@ impl Mem {
                     RWFlags::WR,
                 )?;
 
-                dst_pitch = [
-                    1,
-                    tx_dst.row_pitch() as usize,
-                    tx_dst.slice_pitch() as usize,
-                ];
+                dst_pitch = [1, tx_dst.row_pitch() as usize, tx_dst.slice_pitch()];
             }
 
             // Those pitch values cannot have 0 value in its coordinates
@@ -930,7 +922,7 @@ impl Mem {
             let bx = create_pipe_box(*src_origin, *region, self.mem_type)?;
             tx = self.tx_image(q, ctx, &bx, RWFlags::RD)?;
             src_row_pitch = tx.row_pitch() as usize;
-            src_slice_pitch = tx.slice_pitch() as usize;
+            src_slice_pitch = tx.slice_pitch();
 
             pixel_size = self.pixel_size().unwrap();
         };
@@ -1150,7 +1142,7 @@ impl Mem {
                 *row_pitch = tx.row_pitch() as usize;
             }
             if self.image_desc.dims() > 2 || self.image_desc.is_array() {
-                *slice_pitch = tx.slice_pitch() as usize;
+                *slice_pitch = tx.slice_pitch();
             }
 
             tx.ptr()
