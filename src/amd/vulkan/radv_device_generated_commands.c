@@ -934,6 +934,7 @@ radv_CreateIndirectCommandsLayoutNV(VkDevice _device, const VkIndirectCommandsLa
 
    vk_object_base_init(&device->vk, &layout->base, VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV);
 
+   layout->pipeline_bind_point = pCreateInfo->pipelineBindPoint;
    layout->input_stride = pCreateInfo->pStreamStrides[0];
    layout->token_count = pCreateInfo->tokenCount;
    typed_memcpy(layout->tokens, pCreateInfo->pTokens, pCreateInfo->tokenCount);

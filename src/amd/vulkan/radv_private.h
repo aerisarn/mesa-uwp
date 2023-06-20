@@ -3224,6 +3224,8 @@ void radv_sqtt_emit_relocated_shaders(struct radv_cmd_buffer *cmd_buffer, struct
 struct radv_indirect_command_layout {
    struct vk_object_base base;
 
+   VkPipelineBindPoint pipeline_bind_point;
+
    uint32_t input_stride;
    uint32_t token_count;
 
