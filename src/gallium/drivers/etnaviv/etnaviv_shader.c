@@ -58,7 +58,6 @@ static bool etna_icache_upload_shader(struct etna_context *ctx, struct etna_shad
    return true;
 }
 
-extern const char *tgsi_swizzle_names[];
 void
 etna_dump_shader(const struct etna_shader_variant *shader)
 {
@@ -73,9 +72,9 @@ etna_dump_shader(const struct etna_shader_variant *shader)
    printf("num temps: %i\n", shader->num_temps);
    printf("immediates:\n");
    for (int idx = 0; idx < shader->uniforms.count; ++idx) {
-      printf(" [%i].%s = %f (0x%08x) (%d)\n",
+      printf(" [%i].%c = %f (0x%08x) (%d)\n",
              idx / 4,
-             tgsi_swizzle_names[idx % 4],
+             "xyzw"[idx % 4],
              *((float *)&shader->uniforms.data[idx]),
              shader->uniforms.data[idx],
              shader->uniforms.contents[idx]);
