@@ -6,7 +6,6 @@
 #![allow(unstable_name_collisions)]
 
 use crate::bitset::BitSet;
-use crate::nak_cfg::CFG;
 use crate::nak_ir::*;
 use crate::nak_liveness::{BlockLiveness, Liveness, SimpleLiveness};
 use crate::util::NextMultipleOf;
@@ -1019,9 +1018,8 @@ impl AssignRegs {
         assert!(s.functions.len() == 1);
         let f = &mut s.functions[0];
 
-        let cfg = CFG::for_function(f);
-        let live = SimpleLiveness::for_function(f, &cfg);
-        let max_live = live.calc_max_live(f, &cfg);
+        let live = SimpleLiveness::for_function(f);
+        let max_live = live.calc_max_live(f);
 
         let num_regs = PerRegFile::new_with(|file| {
             let num_regs = file.num_regs(self.sm);
@@ -1041,26 +1039,31 @@ impl AssignRegs {
 
         s.num_gprs = num_regs[RegFile::GPR];
 
-        for b in &mut f.blocks {
-            let bl = live.block_live(b.id);
-
-            let pred = cfg.block_predecessors(b.id);
+        for b_idx in 0..f.blocks.len() {
+            let pred = f.blocks.pred_indices(b_idx);
             let pred_ra = if pred.is_empty() {
                 None
             } else {
                 /* Start with the previous block's. */
-                Some(&self.blocks.get(&pred[0]).unwrap().ra)
+                let pred_id = f.blocks[pred[0]].id;
+                Some(&self.blocks.get(&pred_id).unwrap().ra)
             };
 
+            let b = &f.blocks[b_idx];
+            let bl = live.block_live(b.id);
+
             let mut arb = AssignRegsBlock::new(&num_regs);
-            arb.first_pass(b, bl, pred_ra);
-            self.blocks.insert(b.id, arb);
+            arb.first_pass(&mut f.blocks[b_idx], bl, pred_ra);
+            self.blocks.insert(f.blocks[b_idx].id, arb);
         }
 
-        for b in &mut f.blocks {
-            let arb = self.blocks.get(&b.id).unwrap();
-            for sb_id in cfg.block_successors(b.id) {
+        for b_idx in 0..f.blocks.len() {
+            let b_id = f.blocks[b_idx].id;
+            let arb = self.blocks.get(&b_id).unwrap();
+            for sb_idx in f.blocks.succ_indices(b_idx).to_vec() {
+                let sb_id = f.blocks[sb_idx].id;
                 let target = self.blocks.get(&sb_id).unwrap();
+                let b = &mut f.blocks[b_idx];
                 arb.second_pass(target, b);
             }
         }

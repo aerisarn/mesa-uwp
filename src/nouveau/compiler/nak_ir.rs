@@ -8,6 +8,7 @@ extern crate nak_ir_proc;
 pub use crate::nak_builder::{
     Builder, InstrBuilder, SSABuilder, SSAInstrBuilder,
 };
+use crate::nak_cfg::CFG;
 use nak_ir_proc::*;
 use std::fmt;
 use std::iter::Zip;
@@ -3995,29 +3996,12 @@ impl BasicBlock {
     }
 }
 
-impl fmt::Display for BasicBlock {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "block {} {{\n", self.id)?;
-        for i in &self.instrs {
-            write!(f, "    {}\n", i)?;
-        }
-        write!(f, "}}\n")
-    }
-}
-
 pub struct Function {
     pub ssa_alloc: SSAValueAllocator,
-    pub blocks: Vec<BasicBlock>,
+    pub blocks: CFG<BasicBlock>,
 }
 
 impl Function {
-    pub fn new(_id: u32) -> Function {
-        Function {
-            ssa_alloc: SSAValueAllocator::new(),
-            blocks: Vec::new(),
-        }
-    }
-
     pub fn map_instrs<
         F: Fn(Box<Instr>, &mut SSAValueAllocator) -> MappedInstrs,
     >(
@@ -4032,8 +4016,28 @@ impl Function {
 
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for b in &self.blocks {
-            write!(f, "{}", b)?;
+        for i in 0..self.blocks.len() {
+            write!(f, "block {}(id={}) [", i, self.blocks[i].id)?;
+            for (pi, p) in self.blocks.pred_indices(i).iter().enumerate() {
+                if pi > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", p)?;
+            }
+            write!(f, "] -> {{\n")?;
+
+            for i in &self.blocks[i].instrs {
+                write!(f, "    {}\n", i)?;
+            }
+
+            write!(f, "}} -> [")?;
+            for (si, s) in self.blocks.succ_indices(i).iter().enumerate() {
+                if si > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", s)?;
+            }
+            write!(f, "]\n")?;
         }
         Ok(())
     }

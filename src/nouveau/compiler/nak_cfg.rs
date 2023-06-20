@@ -4,7 +4,6 @@
  */
 
 use crate::bitset::BitSet;
-use crate::nak_ir::*;
 
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -148,11 +147,11 @@ fn calc_dominance<N>(nodes: &mut Vec<CFGNode<N>>) {
     }
 }
 
-pub struct CFG2<N> {
+pub struct CFG<N> {
     nodes: Vec<CFGNode<N>>,
 }
 
-impl<N> CFG2<N> {
+impl<N> CFG<N> {
     pub fn from_blocks_edges(
         nodes: impl IntoIterator<Item = N>,
         edges: impl IntoIterator<Item = (usize, usize)>,
@@ -172,7 +171,7 @@ impl<N> CFG2<N> {
         rev_post_order_sort(&mut nodes);
         calc_dominance(&mut nodes);
 
-        CFG2 { nodes: nodes }
+        CFG { nodes: nodes }
     }
 
     pub fn get(&self, idx: usize) -> Option<&N> {
@@ -204,7 +203,7 @@ impl<N> CFG2<N> {
     }
 }
 
-impl<N> Index<usize> for CFG2<N> {
+impl<N> Index<usize> for CFG<N> {
     type Output = N;
 
     fn index(&self, idx: usize) -> &N {
@@ -212,13 +211,13 @@ impl<N> Index<usize> for CFG2<N> {
     }
 }
 
-impl<N> IndexMut<usize> for CFG2<N> {
+impl<N> IndexMut<usize> for CFG<N> {
     fn index_mut(&mut self, idx: usize) -> &mut N {
         &mut self.nodes[idx].node
     }
 }
 
-impl<'a, N> IntoIterator for &'a CFG2<N> {
+impl<'a, N> IntoIterator for &'a CFG<N> {
     type Item = &'a CFGNode<N>;
     type IntoIter = slice::Iter<'a, CFGNode<N>>;
 
@@ -227,7 +226,7 @@ impl<'a, N> IntoIterator for &'a CFG2<N> {
     }
 }
 
-impl<'a, N> IntoIterator for &'a mut CFG2<N> {
+impl<'a, N> IntoIterator for &'a mut CFG<N> {
     type Item = &'a mut CFGNode<N>;
     type IntoIter = slice::IterMut<'a, CFGNode<N>>;
 
@@ -262,90 +261,18 @@ impl<K: Eq + Hash, N> CFGBuilder<K, N> {
         self.edges.push((s, p));
     }
 
-    pub fn as_cfg(mut self) -> CFG2<N> {
+    pub fn as_cfg(mut self) -> CFG<N> {
         let edges = self.edges.drain(..).map(|(s, p)| {
             let s = *self.key_map.get(&s).unwrap();
             let p = *self.key_map.get(&p).unwrap();
             (s, p)
         });
-        CFG2::from_blocks_edges(self.nodes, edges)
+        CFG::from_blocks_edges(self.nodes, edges)
     }
 }
 
 impl<K, N> Default for CFGBuilder<K, N> {
     fn default() -> Self {
         CFGBuilder::new()
-    }
-}
-
-struct CFGBlock {
-    pred: Vec<u32>,
-    num_succ: u8,
-    succ: [u32; 2],
-}
-
-pub struct CFG {
-    block_map: HashMap<u32, CFGBlock>,
-}
-
-impl CFG {
-    fn block_mut(&mut self, id: u32) -> &mut CFGBlock {
-        self.block_map.entry(id).or_insert_with(|| CFGBlock {
-            pred: Vec::new(),
-            num_succ: 0,
-            succ: [0_u32; 2],
-        })
-    }
-
-    fn block(&self, id: u32) -> &CFGBlock {
-        self.block_map.get(&id).unwrap()
-    }
-
-    pub fn block_predecessors(&self, id: u32) -> &[u32] {
-        &self.block(id).pred
-    }
-
-    pub fn block_successors(&self, id: u32) -> &[u32] {
-        let b = self.block(id);
-        let num_succ = usize::try_from(b.num_succ).unwrap();
-        &b.succ[0..num_succ]
-    }
-
-    pub fn for_function(f: &Function) -> CFG {
-        let mut cfg = CFG {
-            block_map: HashMap::new(),
-        };
-
-        for (i, bb) in f.blocks.iter().enumerate() {
-            let mut succ = [0_u32; 2];
-            let mut num_succ = 0_usize;
-
-            if bb.falls_through() {
-                succ[num_succ] = f.blocks[i + 1].id;
-                num_succ += 1;
-            }
-
-            if let Some(br) = bb.branch() {
-                match &br.op {
-                    Op::Bra(bra) => {
-                        succ[num_succ] = bra.target;
-                        num_succ += 1;
-                    }
-                    Op::Exit(_) => (),
-                    _ => panic!("Unhandled branch op"),
-                }
-            }
-
-            for si in 0..num_succ {
-                cfg.block_mut(succ[si]).pred.push(bb.id);
-            }
-
-            let cb = cfg.block_mut(bb.id);
-            assert!(cb.num_succ == 0);
-            cb.num_succ = num_succ.try_into().unwrap();
-            cb.succ = succ;
-        }
-
-        cfg
     }
 }

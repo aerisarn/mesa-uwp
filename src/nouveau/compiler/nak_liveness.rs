@@ -4,7 +4,6 @@
  */
 
 use crate::bitset::BitSet;
-use crate::nak_cfg::CFG;
 use crate::nak_ir::*;
 
 use std::cell::RefCell;
@@ -70,11 +69,11 @@ pub trait Liveness {
 
     fn block_live(&self, id: u32) -> &Self::PerBlock;
 
-    fn calc_max_live(&self, f: &Function, cfg: &CFG) -> PerRegFile<u32> {
+    fn calc_max_live(&self, f: &Function) -> PerRegFile<u32> {
         let mut max_live: PerRegFile<u32> = Default::default();
         let mut block_live_out: HashMap<u32, LiveSet> = HashMap::new();
 
-        for bb in &f.blocks {
+        for (bb_idx, bb) in f.blocks.iter().enumerate() {
             let bl = self.block_live(bb.id);
 
             let mut live = LiveSet::new();
@@ -82,7 +81,8 @@ pub trait Liveness {
             /* Predecessors are added block order so we can just grab the first
              * one (if any) and it will be a block we've processed.
              */
-            if let Some(pred_id) = cfg.block_predecessors(bb.id).first() {
+            if let Some(pred_idx) = f.blocks.pred_indices(bb_idx).first() {
+                let pred_id = f.blocks[*pred_idx].id;
                 let pred_out = block_live_out.get(&pred_id).unwrap();
                 for ssa in pred_out.iter() {
                     if bl.is_live_in(ssa) {
@@ -218,13 +218,13 @@ pub struct SimpleLiveness {
 }
 
 impl SimpleLiveness {
-    pub fn for_function(func: &Function, cfg: &CFG) -> SimpleLiveness {
+    pub fn for_function(func: &Function) -> SimpleLiveness {
         let mut l = SimpleLiveness {
             blocks: HashMap::new(),
         };
         let mut live_in = HashMap::new();
 
-        for b in &func.blocks {
+        for b in func.blocks.iter() {
             let bl = SimpleBlockLiveness::for_block(b);
             l.blocks.insert(b.id, bl);
             live_in.insert(b.id, BitSet::new());
@@ -233,11 +233,12 @@ impl SimpleLiveness {
         let mut to_do = true;
         while to_do {
             to_do = false;
-            for b in func.blocks.iter().rev() {
+            for (b_idx, b) in func.blocks.iter().enumerate().rev() {
                 let bl = l.blocks.get_mut(&b.id).unwrap();
 
                 /* Compute live-out */
-                for sb_id in cfg.block_successors(b.id) {
+                for sb_idx in func.blocks.succ_indices(b_idx) {
+                    let sb_id = func.blocks[*sb_idx].id;
                     let s_live_in = live_in.get(&sb_id).unwrap();
                     to_do |= bl.live_out.union_with(s_live_in);
                 }
@@ -380,7 +381,7 @@ pub struct NextUseLiveness {
 }
 
 impl NextUseLiveness {
-    pub fn for_function(func: &Function, cfg: &CFG) -> NextUseLiveness {
+    pub fn for_function(func: &Function) -> NextUseLiveness {
         let mut blocks = HashMap::new();
         for b in &func.blocks {
             let bl = NextUseBlockLiveness::for_block(b);
@@ -390,13 +391,14 @@ impl NextUseLiveness {
         let mut to_do = true;
         while to_do {
             to_do = false;
-            for b in func.blocks.iter().rev() {
+            for (b_idx, b) in func.blocks.iter().enumerate().rev() {
                 let num_instrs = b.instrs.len();
                 let mut bl = blocks.get(&b.id).unwrap().borrow_mut();
 
                 /* Compute live-out */
-                for sb_id in cfg.block_successors(b.id) {
-                    if *sb_id == b.id {
+                for sb_idx in func.blocks.succ_indices(b_idx) {
+                    let sb_id = func.blocks[*sb_idx].id;
+                    if sb_id == b.id {
                         for entry in bl.ssa_map.values_mut() {
                             if entry.defined {
                                 continue;

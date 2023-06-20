@@ -6,6 +6,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(unstable_name_collisions)]
 
+use crate::nak_cfg::CFGBuilder;
 use crate::nak_ir::*;
 use crate::nir::*;
 use crate::util::DivCeil;
@@ -32,7 +33,7 @@ fn alloc_ssa_for_nir(b: &mut impl SSABuilder, ssa: &nir_def) -> Vec<SSAValue> {
 
 struct ShaderFromNir<'a> {
     nir: &'a nir_shader,
-    blocks: Vec<BasicBlock>,
+    cfg: CFGBuilder<u32, BasicBlock>,
     fs_out_regs: Vec<Src>,
     end_block_id: u32,
     ssa_map: HashMap<u32, Vec<SSAValue>>,
@@ -51,7 +52,7 @@ impl<'a> ShaderFromNir<'a> {
 
         Self {
             nir: nir,
-            blocks: Vec::new(),
+            cfg: CFGBuilder::new(),
             fs_out_regs: fs_out_regs,
             end_block_id: 0,
             ssa_map: HashMap::new(),
@@ -1622,6 +1623,10 @@ impl<'a> ShaderFromNir<'a> {
         }
 
         if let Some(ni) = nb.following_if() {
+            /* The fall-through edge has to come first */
+            self.cfg.add_edge(nb.index, ni.first_then_block().index);
+            self.cfg.add_edge(nb.index, ni.first_else_block().index);
+
             let mut bra = Instr::new_boxed(OpBra {
                 target: ni.first_else_block().index,
             });
@@ -1638,13 +1643,14 @@ impl<'a> ShaderFromNir<'a> {
             if s0.index == self.end_block_id {
                 b.push_op(OpExit {});
             } else {
+                self.cfg.add_edge(nb.index, s0.index);
                 b.push_op(OpBra { target: s0.index });
             }
         }
 
         let mut bb = BasicBlock::new(nb.index);
         bb.instrs.append(&mut b.as_vec());
-        self.blocks.push(bb);
+        self.cfg.add_node(bb.id, bb);
     }
 
     fn parse_if(&mut self, alloc: &mut SSAValueAllocator, ni: &nir_if) {
@@ -1678,24 +1684,35 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     pub fn parse_function_impl(&mut self, nfi: &nir_function_impl) -> Function {
-        let mut f = Function::new(0);
+        let mut ssa_alloc = SSAValueAllocator::new();
         self.end_block_id = nfi.end_block().index;
 
-        self.parse_cf_list(&mut f.ssa_alloc, nfi.iter_body());
+        self.parse_cf_list(&mut ssa_alloc, nfi.iter_body());
 
-        let end_block = self.blocks.last_mut().unwrap();
+        let mut cfg = std::mem::take(&mut self.cfg).as_cfg();
+        assert!(cfg.len() > 0);
+        for i in 0..cfg.len() {
+            if cfg[i].falls_through() {
+                assert!(cfg.succ_indices(i)[0] == i + 1);
+            }
+        }
 
         if self.nir.info.stage() == MESA_SHADER_FRAGMENT
             && nfi.function().is_entrypoint
         {
+            let end_block_idx = cfg.len() - 1;
+            let end_block = &mut cfg[end_block_idx];
+
             let fs_out = Instr::new_boxed(OpFSOut {
                 srcs: std::mem::replace(&mut self.fs_out_regs, Vec::new()),
             });
             end_block.instrs.insert(end_block.instrs.len() - 1, fs_out);
         }
 
-        f.blocks.append(&mut self.blocks);
-        f
+        Function {
+            ssa_alloc: ssa_alloc,
+            blocks: cfg,
+        }
     }
 
     pub fn parse_shader(&mut self, sm: u8) -> Shader {
