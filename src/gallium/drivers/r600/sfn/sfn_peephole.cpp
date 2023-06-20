@@ -25,6 +25,7 @@
  */
 
 #include "sfn_peephole.h"
+#include "sfn_instr_alugroup.h"
 
 namespace r600 {
 
@@ -122,7 +123,7 @@ PeepholeVisitor::visit(AluInstr *instr)
    }
 
    auto opinfo = alu_ops.at(instr->opcode());
-   if (opinfo.can_srcmod && !opinfo.is_fp64)
+   if (opinfo.can_srcmod)
          apply_source_mods(instr);
 }
 
@@ -138,6 +139,11 @@ PeepholeVisitor::convert_to_mov(AluInstr *alu, int src_idx)
 void
 PeepholeVisitor::visit(UNUSED AluGroup *instr)
 {
+   for (auto alu : *instr) {
+      if (!alu)
+         continue;
+      visit(alu);
+   }
 }
 
 void

@@ -1960,8 +1960,6 @@ emit_alu_neg(const nir_alu_instr& alu, Shader& shader)
 {
    auto& value_factory = shader.value_factory();
 
-   auto group = new AluGroup();
-
    AluInstr *ir = nullptr;
 
    for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
@@ -1970,13 +1968,13 @@ emit_alu_neg(const nir_alu_instr& alu, Shader& shader)
                            value_factory.dest(alu.dest, 2 * i + c, pin_chan),
                            value_factory.src64(alu.src[0], i, c),
                            {alu_write});
-         group->add_instruction(ir);
+         shader.emit_instruction(ir);
       }
       ir->set_source_mod(0, AluInstr::mod_neg);
    }
    if (ir)
       ir->set_alu_flag(alu_last_instr);
-   shader.emit_instruction(group);
+
    return true;
 }
 
