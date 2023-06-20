@@ -203,7 +203,7 @@ mtx_lock(mtx_t *mtx)
 }
 
 static int
-threads_timespec_compare(struct timespec *a, struct timespec *b)
+threads_timespec_compare(const struct timespec *a, const struct timespec *b)
 {
     if (a->tv_sec < b->tv_sec) {
         return -1;
