@@ -92,6 +92,19 @@ struct vk_video_session_parameters {
          uint32_t std_pps_count;
          StdVideoH264PictureParameterSet *std_pps;
       } h264_enc;
+
+      struct {
+         uint32_t max_std_vps_count;
+         uint32_t max_std_sps_count;
+         uint32_t max_std_pps_count;
+
+         uint32_t std_vps_count;
+         StdVideoH265VideoParameterSet *std_vps;
+         uint32_t std_sps_count;
+         StdVideoH265SequenceParameterSet *std_sps;
+         uint32_t std_pps_count;
+         StdVideoH265PictureParameterSet *std_pps;
+      } h265_enc;
 #endif
    };
 };
@@ -224,6 +237,16 @@ vk_video_find_h264_enc_std_sps(const struct vk_video_session_parameters *params,
                                uint32_t id);
 const StdVideoH264PictureParameterSet *
 vk_video_find_h264_enc_std_pps(const struct vk_video_session_parameters *params,
+                               uint32_t id);
+
+const StdVideoH265VideoParameterSet *
+vk_video_find_h265_enc_std_vps(const struct vk_video_session_parameters *params,
+                               uint32_t id);
+const StdVideoH265SequenceParameterSet *
+vk_video_find_h265_enc_std_sps(const struct vk_video_session_parameters *params,
+                               uint32_t id);
+const StdVideoH265PictureParameterSet *
+vk_video_find_h265_enc_std_pps(const struct vk_video_session_parameters *params,
                                uint32_t id);
 #endif
 

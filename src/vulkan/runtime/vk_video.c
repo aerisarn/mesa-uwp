@@ -64,13 +64,20 @@ vk_video_session_init(struct vk_device *device,
       vid->h264.profile_idc = h264_profile->stdProfileIdc;
       break;
    }
+   case VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_EXT: {
+      const struct VkVideoEncodeH265ProfileInfoEXT *h265_profile =
+         vk_find_struct_const(create_info->pVideoProfile->pNext, VIDEO_ENCODE_H265_PROFILE_INFO_EXT);
+      vid->h265.profile_idc = h265_profile->stdProfileIdc;
+      break;
+   }
 #endif
    default:
       return VK_ERROR_FEATURE_NOT_PRESENT;
    }
 
 #ifdef VK_ENABLE_BETA_EXTENSIONS
-   if (vid->op == VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_EXT) {
+   if (vid->op == VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_EXT ||
+       vid->op == VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_EXT) {
       const struct VkVideoEncodeUsageInfoKHR *encode_usage_profile =
          vk_find_struct_const(create_info->pVideoProfile->pNext, VIDEO_ENCODE_USAGE_INFO_KHR);
       if (encode_usage_profile) {
@@ -126,6 +133,10 @@ FIND(StdVideoH265PictureParameterSet, h265_dec, std_pps, pps_pic_parameter_set_i
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 FIND(StdVideoH264SequenceParameterSet, h264_enc, std_sps, seq_parameter_set_id)
 FIND(StdVideoH264PictureParameterSet, h264_enc, std_pps, pic_parameter_set_id)
+
+FIND(StdVideoH265VideoParameterSet, h265_enc, std_vps, vps_video_parameter_set_id)
+FIND(StdVideoH265SequenceParameterSet, h265_enc, std_sps, sps_seq_parameter_set_id)
+FIND(StdVideoH265PictureParameterSet, h265_enc, std_pps, pps_pic_parameter_set_id)
 #endif
 
 static void
@@ -190,7 +201,7 @@ init_add_h264_enc_session_parameters(struct vk_video_session_parameters *params,
 #endif
 
 static void
-init_add_h265_session_parameters(struct vk_video_session_parameters *params,
+init_add_h265_dec_session_parameters(struct vk_video_session_parameters *params,
                                  const struct VkVideoDecodeH265SessionParametersAddInfoKHR *h265_add,
                                  const struct vk_video_session_parameters *templ)
 {
@@ -228,6 +239,48 @@ init_add_h265_session_parameters(struct vk_video_session_parameters *params,
       }
    }
 }
+
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+static void
+init_add_h265_enc_session_parameters(struct vk_video_session_parameters *params,
+                                     const struct VkVideoEncodeH265SessionParametersAddInfoEXT *h265_add,
+                                     const struct vk_video_session_parameters *templ)
+{
+   unsigned i;
+
+   if (h265_add) {
+      for (i = 0; i < h265_add->stdVPSCount; i++) {
+         add_h265_enc_std_vps(params, &h265_add->pStdVPSs[i], false);
+      }
+   }
+   if (templ) {
+      for (i = 0; i < templ->h265_enc.std_vps_count; i++) {
+         add_h265_enc_std_vps(params, &templ->h265_enc.std_vps[i], true);
+      }
+   }
+   if (h265_add) {
+      for (i = 0; i < h265_add->stdSPSCount; i++) {
+         add_h265_enc_std_sps(params, &h265_add->pStdSPSs[i], false);
+      }
+   }
+   if (templ) {
+      for (i = 0; i < templ->h265_enc.std_sps_count; i++) {
+         add_h265_enc_std_sps(params, &templ->h265_enc.std_sps[i], true);
+      }
+   }
+
+   if (h265_add) {
+      for (i = 0; i < h265_add->stdPPSCount; i++) {
+         add_h265_enc_std_pps(params, &h265_add->pStdPPSs[i], false);
+      }
+   }
+   if (templ) {
+      for (i = 0; i < templ->h265_enc.std_pps_count; i++) {
+         add_h265_enc_std_pps(params, &templ->h265_enc.std_pps[i], true);
+      }
+   }
+}
+#endif
 
 VkResult
 vk_video_session_parameters_init(struct vk_device *device,
@@ -285,7 +338,7 @@ vk_video_session_parameters_init(struct vk_device *device,
          return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
-      init_add_h265_session_parameters(params, h265_create->pParametersAddInfo, templ);
+      init_add_h265_dec_session_parameters(params, h265_create->pParametersAddInfo, templ);
       break;
    }
 #ifdef VK_ENABLE_BETA_EXTENSIONS
@@ -308,6 +361,31 @@ vk_video_session_parameters_init(struct vk_device *device,
       }
 
       init_add_h264_enc_session_parameters(params, h264_create->pParametersAddInfo, templ);
+      break;
+   }
+   case VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_EXT: {
+      const struct VkVideoEncodeH265SessionParametersCreateInfoEXT *h265_create =
+         vk_find_struct_const(create_info->pNext, VIDEO_ENCODE_H265_SESSION_PARAMETERS_CREATE_INFO_EXT);
+
+      params->h265_enc.max_std_vps_count = h265_create->maxStdVPSCount;
+      params->h265_enc.max_std_sps_count = h265_create->maxStdSPSCount;
+      params->h265_enc.max_std_pps_count = h265_create->maxStdPPSCount;
+
+      uint32_t vps_size = params->h265_enc.max_std_vps_count * sizeof(StdVideoH265VideoParameterSet);
+      uint32_t sps_size = params->h265_enc.max_std_sps_count * sizeof(StdVideoH265SequenceParameterSet);
+      uint32_t pps_size = params->h265_enc.max_std_pps_count * sizeof(StdVideoH265PictureParameterSet);
+
+      params->h265_enc.std_vps = vk_alloc(&device->alloc, vps_size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      params->h265_enc.std_sps = vk_alloc(&device->alloc, sps_size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      params->h265_enc.std_pps = vk_alloc(&device->alloc, pps_size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (!params->h265_enc.std_sps || !params->h265_enc.std_pps || !params->h265_enc.std_vps) {
+         vk_free(&device->alloc, params->h265_enc.std_vps);
+         vk_free(&device->alloc, params->h265_enc.std_sps);
+         vk_free(&device->alloc, params->h265_enc.std_pps);
+         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+
+      init_add_h265_enc_session_parameters(params, h265_create->pParametersAddInfo, templ);
       break;
    }
 #endif
@@ -336,6 +414,11 @@ vk_video_session_parameters_finish(struct vk_device *device,
    case VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_EXT:
       vk_free(&device->alloc, params->h264_enc.std_sps);
       vk_free(&device->alloc, params->h264_enc.std_pps);
+      break;
+   case VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_EXT:
+      vk_free(&device->alloc, params->h265_enc.std_vps);
+      vk_free(&device->alloc, params->h265_enc.std_sps);
+      vk_free(&device->alloc, params->h265_enc.std_pps);
       break;
 #endif
    default:
@@ -373,7 +456,7 @@ update_h264_dec_session_parameters(struct vk_video_session_parameters *params,
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 static VkResult
 update_h264_enc_session_parameters(struct vk_video_session_parameters *params,
-				   const struct VkVideoEncodeH264SessionParametersAddInfoEXT *h264_add)
+                                  const struct VkVideoEncodeH264SessionParametersAddInfoEXT *h264_add)
 {
    VkResult result = VK_SUCCESS;
    result = update_h264_enc_std_sps(params, h264_add->stdSPSCount, h264_add->pStdSPSs);
@@ -381,6 +464,24 @@ update_h264_enc_session_parameters(struct vk_video_session_parameters *params,
       return result;
 
    result = update_h264_enc_std_pps(params, h264_add->stdPPSCount, h264_add->pStdPPSs);
+   return result;
+}
+
+static VkResult
+update_h265_enc_session_parameters(struct vk_video_session_parameters *params,
+                                   const struct VkVideoEncodeH265SessionParametersAddInfoEXT *h265_add)
+{
+   VkResult result = VK_SUCCESS;
+
+   result = update_h265_enc_std_vps(params, h265_add->stdVPSCount, h265_add->pStdVPSs);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = update_h265_enc_std_sps(params, h265_add->stdSPSCount, h265_add->pStdSPSs);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = update_h265_enc_std_pps(params, h265_add->stdPPSCount, h265_add->pStdPPSs);
    return result;
 }
 #endif
@@ -436,6 +537,11 @@ vk_video_session_parameters_update(struct vk_video_session_parameters *params,
       const struct VkVideoEncodeH264SessionParametersAddInfoEXT *h264_add =
         vk_find_struct_const(update->pNext, VIDEO_ENCODE_H264_SESSION_PARAMETERS_ADD_INFO_EXT);
       return update_h264_enc_session_parameters(params, h264_add);
+   }
+   case VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_EXT: {
+      const struct VkVideoEncodeH265SessionParametersAddInfoEXT *h265_add =
+        vk_find_struct_const(update->pNext, VIDEO_ENCODE_H265_SESSION_PARAMETERS_ADD_INFO_EXT);
+      return update_h265_enc_session_parameters(params, h265_add);
    }
 #endif
    default:
@@ -1120,7 +1226,11 @@ vk_video_get_profile_alignments(const VkVideoProfileListInfoKHR *profile_list,
          width_align = MAX2(width_align, VK_VIDEO_H264_MACROBLOCK_WIDTH);
          height_align = MAX2(height_align, VK_VIDEO_H264_MACROBLOCK_HEIGHT);
       }
-      if (profile_list->pProfiles[i].videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR) {
+      if (profile_list->pProfiles[i].videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+          || profile_list->pProfiles[i].videoCodecOperation == VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_EXT
+#endif
+         ) {
          width_align = MAX2(width_align, VK_VIDEO_H265_CTU_MAX_WIDTH);
          height_align = MAX2(height_align, VK_VIDEO_H265_CTU_MAX_HEIGHT);
       }
@@ -1142,5 +1252,26 @@ vk_video_find_h264_enc_std_pps(const struct vk_video_session_parameters *params,
                                uint32_t id)
 {
    return find_h264_enc_std_pps(params, id);
+}
+
+const StdVideoH265VideoParameterSet *
+vk_video_find_h265_enc_std_vps(const struct vk_video_session_parameters *params,
+                               uint32_t id)
+{
+   return find_h265_enc_std_vps(params, id);
+}
+
+const StdVideoH265SequenceParameterSet *
+vk_video_find_h265_enc_std_sps(const struct vk_video_session_parameters *params,
+                               uint32_t id)
+{
+   return find_h265_enc_std_sps(params, id);
+}
+
+const StdVideoH265PictureParameterSet *
+vk_video_find_h265_enc_std_pps(const struct vk_video_session_parameters *params,
+                               uint32_t id)
+{
+   return find_h265_enc_std_pps(params, id);
 }
 #endif
