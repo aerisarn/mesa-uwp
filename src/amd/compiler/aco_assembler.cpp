@@ -1217,6 +1217,17 @@ fix_constaddrs(asm_context& ctx, std::vector<uint32_t>& out)
    }
 }
 
+void
+align_block(asm_context& ctx, std::vector<uint32_t>& code, Block& block)
+{
+   /* align resume shaders with cache line */
+   if (block.kind & block_kind_resume) {
+      size_t cache_aligned = align(code.size(), 16);
+      code.resize(cache_aligned, 0xbf800000u); /* s_nop 0 */
+      block.offset = code.size();
+   }
+}
+
 unsigned
 emit_program(Program* program, std::vector<uint32_t>& code, std::vector<struct aco_symbol>* symbols)
 {
@@ -1228,6 +1239,7 @@ emit_program(Program* program, std::vector<uint32_t>& code, std::vector<struct a
 
    for (Block& block : program->blocks) {
       block.offset = code.size();
+      align_block(ctx, code, block);
       emit_block(ctx, code, block);
    }
 
