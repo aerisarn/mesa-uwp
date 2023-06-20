@@ -61,9 +61,12 @@ LOCAL_SHARED_LIBRARIES += libdrm_intel
 MESON_GEN_PKGCONFIGS += libdrm_intel:$(LIBDRM_VERSION)
 endif
 
-ifneq ($(filter radeonsi amd,$(BOARD_MESA3D_GALLIUM_DRIVERS) $(BOARD_MESA3D_VULKAN_DRIVERS)),)
+ifneq ($(filter radeonsi,$(BOARD_MESA3D_GALLIUM_DRIVERS)),)
 MESON_GEN_LLVM_STUB := true
 LOCAL_CFLAGS += -DFORCE_BUILD_AMDGPU   # instructs LLVM to declare LLVMInitializeAMDGPU* functions
+endif
+
+ifneq ($(filter radeonsi amd,$(BOARD_MESA3D_GALLIUM_DRIVERS) $(BOARD_MESA3D_VULKAN_DRIVERS)),)
 LOCAL_SHARED_LIBRARIES += libdrm_amdgpu
 MESON_GEN_PKGCONFIGS += libdrm_amdgpu:$(LIBDRM_VERSION)
 endif
