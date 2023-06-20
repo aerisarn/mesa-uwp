@@ -1373,6 +1373,8 @@ static bool
 emit_alu_f2f32(const nir_alu_instr& alu, Shader& shader);
 static bool
 emit_alu_abs64(const nir_alu_instr& alu, Shader& shader);
+static bool
+emit_alu_fsat64(const nir_alu_instr& alu, Shader& shader);
 
 static bool
 emit_alu_op2(const nir_alu_instr& alu,
@@ -1488,6 +1490,8 @@ AluInstr::from_nir(nir_alu_instr *alu, Shader& shader)
          return emit_alu_mov_64bit(*alu, shader);
       case nir_op_fneg:
          return emit_alu_neg(*alu, shader);
+      case nir_op_fsat:
+         return emit_alu_fsat64(*alu, shader);
       case nir_op_ffract:
          return emit_alu_op1_64bit(*alu, op1_fract_64, shader, true);
       case nir_op_feq32:
@@ -1996,6 +2000,81 @@ emit_alu_abs64(const nir_alu_instr& alu, Shader& shader)
    shader.emit_instruction(ir);
    return true;
 }
+
+static bool
+try_propagat_fsat64(const nir_alu_instr& alu, Shader& shader)
+{
+   auto& value_factory = shader.value_factory();
+   auto src0 = value_factory.src64(alu.src[0], 0, 0);
+   auto reg0 = src0->as_register();
+   if (!reg0)
+      return false;
+
+   if (!reg0->has_flag(Register::ssa))
+      return false;
+
+   if (reg0->parents().size() != 1)
+      return false;
+
+   if (!reg0->uses().empty())
+      return false;
+
+   auto parent = (*reg0->parents().begin())->as_alu();
+   if (!parent)
+      return false;
+
+   auto opinfo = alu_ops.at(parent->opcode());
+   if (!opinfo.can_clamp)
+      return false;
+
+   parent->set_alu_flag(alu_dst_clamp);
+   return true;
+}
+
+
+static bool
+emit_alu_fsat64(const nir_alu_instr& alu, Shader& shader)
+{
+   auto& value_factory = shader.value_factory();
+
+   assert(nir_dest_num_components(alu.dest.dest) == 1);
+
+   if (try_propagat_fsat64(alu, shader)) {
+      auto ir = new AluInstr(op1_mov,
+                             value_factory.dest(alu.dest, 0, pin_chan),
+                             value_factory.src64(alu.src[0], 0, 0),
+                             AluInstr::write);
+      shader.emit_instruction(ir);
+
+      shader.emit_instruction(new AluInstr(op1_mov,
+                                           value_factory.dest(alu.dest, 1, pin_chan),
+                                           value_factory.src64(alu.src[0], 0, 1),
+                              AluInstr::last_write));
+   } else {
+
+      /* dest clamp doesn't work on plain 64 bit move, so add a zero
+       * to apply the modifier */
+
+      auto group = new AluGroup();
+      auto ir = new AluInstr(op2_add_64,
+                             value_factory.dest(alu.dest, 0, pin_chan),
+                             value_factory.src64(alu.src[0], 0, 1),
+                             value_factory.literal(0),
+                             AluInstr::write);
+      ir->set_alu_flag(alu_dst_clamp);
+      group->add_instruction(ir);
+
+      group->add_instruction(new AluInstr(op2_add_64,
+                                          value_factory.dest(alu.dest, 1, pin_chan),
+                                          value_factory.src64(alu.src[0], 0, 0),
+                                          value_factory.literal(0),
+                                          AluInstr::last_write));
+      shader.emit_instruction(group);
+
+   }
+   return true;
+}
+
 
 static bool
 emit_alu_op2_64bit(const nir_alu_instr& alu,
