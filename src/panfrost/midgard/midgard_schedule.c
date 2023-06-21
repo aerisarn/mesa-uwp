@@ -1602,8 +1602,8 @@ midgard_schedule_program(compiler_context *ctx)
    midgard_promote_uniforms(ctx);
 
    /* Must be lowered right before scheduling */
-   mir_squeeze_index(ctx);
    mir_lower_special_reads(ctx);
+   mir_squeeze_index(ctx);
 
    if (ctx->stage == MESA_SHADER_FRAGMENT) {
       mir_invalidate_liveness(ctx);
