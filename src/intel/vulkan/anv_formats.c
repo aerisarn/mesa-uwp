@@ -775,17 +775,17 @@ anv_get_image_format_features2(const struct anv_physical_device *physical_device
           * planes and aux planes due to the lack of defined ABI for external
           * multi-planar images.
           */
-         if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
+         if (isl_drm_modifier_has_aux(isl_mod_info->modifier)) {
             return 0;
          }
       }
 
-      if (isl_aux_usage_has_ccs_e(isl_mod_info->aux_usage) &&
+      if (isl_drm_modifier_has_aux(isl_mod_info->modifier) &&
           !isl_format_supports_ccs_e(devinfo, plane_format.isl_format)) {
          return 0;
       }
 
-      if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
+      if (isl_drm_modifier_has_aux(isl_mod_info->modifier)) {
          /* Rejection DISJOINT for consistency with the GL driver. In
           * eglCreateImage, we require that the dma_buf for the primary surface
           * and the dma_buf for its aux surface refer to the same bo.
@@ -1340,7 +1340,7 @@ anv_get_image_format_properties(
       maxMipLevels = 1;
       sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 
-      if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
+      if (isl_drm_modifier_has_aux(isl_mod_info->modifier) &&
           !anv_formats_ccs_e_compatible(devinfo, info->flags, info->format,
                                         info->tiling, info->usage,
                                         format_list_info)) {
@@ -1405,7 +1405,7 @@ anv_get_image_format_properties(
       }
 
       if (info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT &&
-          isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
+          isl_drm_modifier_has_aux(isl_mod_info->modifier)) {
          /* Rejection DISJOINT for consistency with the GL driver. In
           * eglCreateImage, we require that the dma_buf for the primary surface
           * and the dma_buf for its aux surface refer to the same bo.
