@@ -168,6 +168,32 @@ print_float_const_value(const nir_const_value *value, unsigned bit_size, FILE *f
 }
 
 static void
+print_int_const_value(const nir_const_value *value, unsigned bit_size, FILE *fp)
+{
+   switch (bit_size) {
+   case 64: fprintf(fp, "%+" PRIi64, value->i64); break;
+   case 32: fprintf(fp, "%+d", value->i32); break;
+   case 16: fprintf(fp, "%+d", value->i16); break;
+   case 8:  fprintf(fp, "%+d", value->i8); break;
+   default:
+      unreachable("unhandled bit size");
+   }
+}
+
+static void
+print_uint_const_value(const nir_const_value *value, unsigned bit_size, FILE *fp)
+{
+   switch (bit_size) {
+   case 64: fprintf(fp, "%" PRIu64, value->u64); break;
+   case 32: fprintf(fp, "%u", value->u32); break;
+   case 16: fprintf(fp, "%u", value->u16); break;
+   case 8:  fprintf(fp, "%u", value->u8); break;
+   default:
+      unreachable("unhandled bit size");
+   }
+}
+
+static void
 print_const_from_load(nir_load_const_instr *instr, print_state *state, nir_alu_type type)
 {
    FILE *fp = state->fp;
@@ -210,23 +236,76 @@ print_const_from_load(nir_load_const_instr *instr, print_state *state, nir_alu_t
          }
       }
    } else {
+      #define PRINT_VALUES(F)                            \
+      do {                                               \
+         for (unsigned i = 0; i < num_components; i++) { \
+            if (i != 0)                                  \
+               fprintf(fp, ", ");                        \
+            F(&instr->value[i], bit_size, fp);           \
+         }                                               \
+      } while (0)
+
+      #define SEPARATOR()                    \
+      if (num_components > 1)                \
+         fprintf(fp, ") = (");               \
+      else                                   \
+         fprintf(fp, " = ")
+
+      bool needs_float = bit_size > 8;
+      bool needs_signed = false;
+      bool needs_decimal = false;
       for (unsigned i = 0; i < num_components; i++) {
-         if (i != 0)
-            fprintf(fp, ", ");
-         print_hex_padded_const_value(&instr->value[i], bit_size, fp);
+         const nir_const_value *v = &instr->value[i];
+         switch (bit_size) {
+         case 64:
+            needs_signed  |= v->i64 < 0;
+            needs_decimal |= v->u64 >= 10;
+            break;
+         case 32:
+            needs_signed  |= v->i32 < 0;
+            needs_decimal |= v->u32 >= 10;
+            break;
+         case 16:
+            needs_signed  |= v->i16 < 0;
+            needs_decimal |= v->u16 >= 10;
+            break;
+         case 8:
+            needs_signed  |= v->i8 < 0;
+            needs_decimal |= v->u8 >= 10;
+            break;
+         default:
+            unreachable("invalid bit size");
+         }
       }
 
-      if (bit_size > 8) {
-         if (num_components > 1)
-            fprintf(fp, ") = (");
-         else
-            fprintf(fp, " = ");
+      if (state->int_types) {
+         const unsigned index = instr->def.index;
+         const bool inferred_int = BITSET_TEST(state->int_types, index);
+         const bool inferred_float = BITSET_TEST(state->float_types, index);
 
-         for (unsigned i = 0; i < num_components; i++) {
-            if (i != 0)
-               fprintf(fp, ", ");
-            print_float_const_value(&instr->value[i], bit_size, fp);
+         if (inferred_int && !inferred_float) {
+            needs_float = false;
+         } else if (inferred_float && !inferred_int) {
+            needs_signed = false;
+            needs_decimal = false;
          }
+      }
+
+      PRINT_VALUES(print_hex_padded_const_value);
+
+      if (needs_float) {
+         SEPARATOR();
+         PRINT_VALUES(print_float_const_value);
+      }
+
+      if (needs_signed) {
+         SEPARATOR();
+         PRINT_VALUES(print_int_const_value);
+      }
+
+      if (needs_decimal) {
+         SEPARATOR();
+         PRINT_VALUES(print_uint_const_value);
       }
    }
 
