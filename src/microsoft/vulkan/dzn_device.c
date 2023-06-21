@@ -2963,13 +2963,12 @@ dzn_device_memory_create(struct dzn_device *device,
    if (export_flags) {
       error = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       ID3D12DeviceChild *shareable = mem->heap ? (void *)mem->heap : (void *)mem->dedicated_res;
+      DWORD dwAccess = GENERIC_ALL; /* Ignore any provided access, this is the only one D3D allows */
 #ifdef _WIN32
       const SECURITY_ATTRIBUTES *pAttributes = win32_export ? win32_export->pAttributes : NULL;
-      DWORD dwAccess = win32_export ? win32_export->dwAccess : GENERIC_ALL;
       const wchar_t *name = win32_export ? win32_export->name : NULL;
 #else
       const SECURITY_ATTRIBUTES *pAttributes = NULL;
-      DWORD dwAccess = GENERIC_ALL;
       const wchar_t *name = NULL;
 #endif
       if (FAILED(ID3D12Device_CreateSharedHandle(device->dev, shareable, pAttributes,
