@@ -1298,4 +1298,55 @@ enum H264NALUType
    /* 24...31 UNSPECIFIED */
 };
 
+enum HEVCNALUnitType {
+   HEVC_NAL_TRAIL_N        = 0,
+   HEVC_NAL_TRAIL_R        = 1,
+   HEVC_NAL_TSA_N          = 2,
+   HEVC_NAL_TSA_R          = 3,
+   HEVC_NAL_STSA_N         = 4,
+   HEVC_NAL_STSA_R         = 5,
+   HEVC_NAL_RADL_N         = 6,
+   HEVC_NAL_RADL_R         = 7,
+   HEVC_NAL_RASL_N         = 8,
+   HEVC_NAL_RASL_R         = 9,
+   HEVC_NAL_VCL_N10        = 10,
+   HEVC_NAL_VCL_R11        = 11,
+   HEVC_NAL_VCL_N12        = 12,
+   HEVC_NAL_VCL_R13        = 13,
+   HEVC_NAL_VCL_N14        = 14,
+   HEVC_NAL_VCL_R15        = 15,
+   HEVC_NAL_BLA_W_LP       = 16,
+   HEVC_NAL_BLA_W_RADL     = 17,
+   HEVC_NAL_BLA_N_LP       = 18,
+   HEVC_NAL_IDR_W_RADL     = 19,
+   HEVC_NAL_IDR_N_LP       = 20,
+   HEVC_NAL_CRA_NUT        = 21,
+   HEVC_NAL_VPS_NUT        = 32,
+   HEVC_NAL_SPS_NUT        = 33,
+   HEVC_NAL_PPS_NUT        = 34,
+};
+
+unsigned
+vk_video_get_h265_nal_unit(StdVideoH265PictureType pic_type, bool irap_pic_flag)
+{
+   switch (pic_type) {
+   case STD_VIDEO_H265_PICTURE_TYPE_IDR:
+      return HEVC_NAL_IDR_W_RADL;
+   case STD_VIDEO_H265_PICTURE_TYPE_I:
+      return HEVC_NAL_CRA_NUT;
+   case STD_VIDEO_H265_PICTURE_TYPE_P:
+      return HEVC_NAL_TRAIL_R;
+   case STD_VIDEO_H265_PICTURE_TYPE_B:
+      if (irap_pic_flag)
+         return HEVC_NAL_RASL_R;
+      else
+         return HEVC_NAL_TRAIL_R;
+      break;
+   default:
+      assert(0);
+      break;
+   }
+   return 0;
+}
+
 #endif

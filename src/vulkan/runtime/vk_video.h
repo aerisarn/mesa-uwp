@@ -248,6 +248,10 @@ vk_video_find_h265_enc_std_sps(const struct vk_video_session_parameters *params,
 const StdVideoH265PictureParameterSet *
 vk_video_find_h265_enc_std_pps(const struct vk_video_session_parameters *params,
                                uint32_t id);
+
+unsigned
+vk_video_get_h265_nal_unit(StdVideoH265PictureType pic_type, bool irap_pic_flag);
+
 #endif
 
 #ifdef __cplusplus
