@@ -20,6 +20,14 @@
 
 opencl_version = '1'
 
+rusticl_ld_args = []
+rusticl_ld_depends = []
+
+if with_ld_version_script
+  rusticl_ld_args += ['-Wl,--version-script', join_paths(meson.current_source_dir(), 'rusticl.sym')]
+  rusticl_ld_depends += files('rusticl.sym')
+endif
+
 librusticl = shared_library(
   'RusticlOpenCL',
   'target.c',
@@ -54,7 +62,9 @@ librusticl = shared_library(
   link_args : [
     ld_args_build_id,
     ld_args_gc_sections,
+    rusticl_ld_args,
   ],
+  link_depends : rusticl_ld_depends,
   version : '@0@.0.0'.format(opencl_version),
   install : true,
 )
