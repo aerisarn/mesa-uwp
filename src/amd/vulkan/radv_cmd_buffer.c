@@ -9305,7 +9305,9 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
 {
    VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    VK_FROM_HANDLE(radv_indirect_command_layout, layout, pGeneratedCommandsInfo->indirectCommandsLayout);
+   VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
    VK_FROM_HANDLE(radv_buffer, prep_buffer, pGeneratedCommandsInfo->preprocessBuffer);
+   struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
    const struct radv_device *device = cmd_buffer->device;
 
    /* The only actions that can be done are draws, so skip on other queues. */
@@ -9363,7 +9365,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
    if (layout->binds_state)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
 
-   cmd_buffer->push_constant_stages |= ~0;
+   cmd_buffer->push_constant_stages |= graphics_pipeline->active_stages;
 
    if (!layout->indexed && cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
       /* On GFX7 and later, non-indexed draws overwrite VGT_INDEX_TYPE, so the state must be
