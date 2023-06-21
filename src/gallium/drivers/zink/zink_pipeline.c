@@ -329,7 +329,6 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {0};
    pipelineDynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
    pipelineDynamicStateCreateInfo.pDynamicStates = dynamicStateEnables;
-   pipelineDynamicStateCreateInfo.dynamicStateCount = state_count;
 
    VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -368,6 +367,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    pci.pViewportState = &viewport_state;
    pci.pDepthStencilState = &depth_stencil_state;
    pci.pDynamicState = &pipelineDynamicStateCreateInfo;
+   pipelineDynamicStateCreateInfo.dynamicStateCount = state_count;
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
@@ -560,7 +560,6 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
    VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {0};
    pipelineDynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
    pipelineDynamicStateCreateInfo.pDynamicStates = dynamicStateEnables;
-   pipelineDynamicStateCreateInfo.dynamicStateCount = state_count;
 
    VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -585,6 +584,7 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
    }
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
       pci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+   pipelineDynamicStateCreateInfo.dynamicStateCount = state_count;
    pci.pColorBlendState = &blend_state;
    pci.pMultisampleState = &ms_state;
    pci.pDynamicState = &pipelineDynamicStateCreateInfo;
