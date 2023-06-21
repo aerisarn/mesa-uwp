@@ -3447,36 +3447,6 @@ verify_subroutine_associated_funcs(struct gl_shader_program *prog)
    }
 }
 
-static bool
-link_varyings(const struct gl_constants *consts, struct gl_shader_program *prog,
-              void *mem_ctx)
-{
-   /* Mark all generic shader inputs and outputs as unpaired. */
-   for (unsigned i = MESA_SHADER_VERTEX; i <= MESA_SHADER_FRAGMENT; i++) {
-      if (prog->_LinkedShaders[i] != NULL) {
-         link_invalidate_variable_locations(prog->_LinkedShaders[i]->ir);
-      }
-   }
-
-   prog->last_vert_prog = NULL;
-   for (int i = MESA_SHADER_GEOMETRY; i >= MESA_SHADER_VERTEX; i--) {
-      if (prog->_LinkedShaders[i] == NULL)
-         continue;
-
-      prog->last_vert_prog = prog->_LinkedShaders[i]->Program;
-      break;
-   }
-
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (prog->_LinkedShaders[i] == NULL)
-         continue;
-
-      lower_vector_derefs(prog->_LinkedShaders[i]);
-   }
-
-   return true;
-}
-
 void
 link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 {
@@ -3818,8 +3788,28 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 
    store_fragdepth_layout(prog);
 
-   if(!link_varyings(consts, prog, mem_ctx))
-      goto done;
+   /* Mark all generic shader inputs and outputs as unpaired. */
+   for (unsigned i = MESA_SHADER_VERTEX; i <= MESA_SHADER_FRAGMENT; i++) {
+      if (prog->_LinkedShaders[i] != NULL) {
+         link_invalidate_variable_locations(prog->_LinkedShaders[i]->ir);
+      }
+   }
+
+   prog->last_vert_prog = NULL;
+   for (int i = MESA_SHADER_GEOMETRY; i >= MESA_SHADER_VERTEX; i--) {
+      if (prog->_LinkedShaders[i] == NULL)
+         continue;
+
+      prog->last_vert_prog = prog->_LinkedShaders[i]->Program;
+      break;
+   }
+
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (prog->_LinkedShaders[i] == NULL)
+         continue;
+
+      lower_vector_derefs(prog->_LinkedShaders[i]);
+   }
 
 done:
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
