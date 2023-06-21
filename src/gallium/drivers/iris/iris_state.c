@@ -5923,7 +5923,9 @@ genX(invalidate_aux_map_state)(struct iris_batch *batch)
       iris_emit_end_of_pipe_sync(batch, "Invalidate aux map table",
                                  PIPE_CONTROL_CS_STALL |
                                  PIPE_CONTROL_RENDER_TARGET_FLUSH |
-                                 PIPE_CONTROL_STATE_CACHE_INVALIDATE);
+                                 PIPE_CONTROL_STATE_CACHE_INVALIDATE |
+                                 (GFX_VERx10 == 125 ?
+                                  PIPE_CONTROL_CCS_CACHE_FLUSH : 0));
 
       /* If the aux-map state number increased, then we need to rewrite the
        * register. Rewriting the register is used to both set the aux-map
