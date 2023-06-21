@@ -1651,7 +1651,7 @@ bind_gfx_stage(struct zink_context *ctx, gl_shader_stage stage, struct zink_shad
    if (ctx->gfx_stages[stage])
       ctx->gfx_hash ^= ctx->gfx_stages[stage]->hash;
 
-   if (!shader && stage == MESA_SHADER_GEOMETRY) {
+   if (stage == MESA_SHADER_GEOMETRY && ctx->is_generated_gs_bound && (!shader || !shader->non_fs.parent)) {
       ctx->inlinable_uniforms_valid_mask &= ~BITFIELD64_BIT(MESA_SHADER_GEOMETRY);
       ctx->is_generated_gs_bound = false;
    }
