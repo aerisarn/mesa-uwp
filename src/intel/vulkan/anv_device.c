@@ -1849,7 +1849,7 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
    p->conformanceVersion = (VkConformanceVersion) {
       .major = 1,
       .minor = 3,
-      .subminor = 0,
+      .subminor = 6,
       .patch = 0,
    };
 
