@@ -3855,9 +3855,9 @@ const void *nir_to_tgsi_options(struct nir_shader *s,
 
    NIR_PASS_V(s, nir_opt_move, move_all);
 
-   /* Only lower 32-bit floats.  The only other modifier type officially
-    * supported by TGSI is 32-bit integer negates, but even those are broken on
-    * virglrenderer, so skip lowering all integer and f64 float mods.
+   /* We're fine lowering only 32-bit floats. TGSI officially supports 32-bit
+    * integer negates, but even those are broken on virglrenderer, so we don't
+    * use integer or f64 float mods.
     *
     * The options->lower_fabs requests that we not have native source modifiers
     * for fabs, and instead emit MAX(a,-a) for nir_op_fabs.
