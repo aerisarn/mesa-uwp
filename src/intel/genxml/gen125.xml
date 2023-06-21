@@ -7355,6 +7355,9 @@
     <field name="Destination Depth/Stencil Resource" start="498" end="498" type="bool" />
     <field name="Destination Array Index" start="501" end="511" type="uint" />
   </instruction>
+  <register name="BCS_CCS_AUX_INV" length="1" num="0x4248">
+    <field name="Aux Inv" start="0" end="0" type="bool" />
+  </register>
   <register name="BCS_INSTDONE" length="1" num="0x2206c">
     <field name="Ring Enable" start="0" end="0" type="bool" />
     <field name="Blitter IDLE" start="1" end="1" type="bool" default="1" />
@@ -7400,6 +7403,9 @@
     <field name="NP Early Z Fails Disable Mask" start="29" end="29" type="bool" />
     <field name="Blend Optimization Fix Disable Mask" start="30" end="30" type="bool" />
     <field name="Color Compression Disable Mask" start="31" end="31" type="bool" />
+  </register>
+  <register name="CCS_CCS_AUX_INV" length="1" num="0x42C0">
+    <field name="Aux Inv" start="0" end="0" type="bool" />
   </register>
   <register name="CHICKEN_RASTER_1" length="1" num="0x6204">
     <field name="AA Line Quality Fix" start="5" end="5" type="bool" />
