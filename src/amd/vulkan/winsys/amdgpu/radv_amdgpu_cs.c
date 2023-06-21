@@ -349,30 +349,8 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 
    enum amd_ip_type ip_type = cs->hw_ip;
    uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ip_type]);
-   uint32_t nop_packet = get_nop_packet(cs);
 
-   if (cs->use_ib) {
-      /* Ensure that with the 4 dword reservation we subtract from max_dw we always
-       * have 4 nops at the end for chaining.
-       */
-      while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
-         radeon_emit_unchecked(&cs->base, nop_packet);
-
-      radeon_emit_unchecked(&cs->base, nop_packet);
-      radeon_emit_unchecked(&cs->base, nop_packet);
-      radeon_emit_unchecked(&cs->base, nop_packet);
-      radeon_emit_unchecked(&cs->base, nop_packet);
-
-      *cs->ib_size_ptr |= cs->base.cdw;
-   } else {
-      /* Pad the CS with NOP packets. */
-      while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask))
-         radeon_emit_unchecked(&cs->base, nop_packet);
-   }
-
-   radv_amdgpu_cs_add_old_ib_buffer(cs);
-   if (cs->status != VK_SUCCESS)
-      return;
+   cs->ws->base.cs_finalize(_cs);
 
    uint64_t ib_size = MAX2(min_size * 4 + 16, cs->base.max_dw * 4 * 2);
 
