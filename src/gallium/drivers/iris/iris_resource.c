@@ -733,7 +733,7 @@ iris_resource_configure_main(const struct iris_screen *screen,
 
    isl_surf_usage_flags_t usage = 0;
 
-   if (res->mod_info && res->mod_info->aux_usage == ISL_AUX_USAGE_NONE)
+   if (res->mod_info && !isl_drm_modifier_has_aux(modifier))
       usage |= ISL_SURF_USAGE_DISABLE_AUX_BIT;
 
    if (templ->usage == PIPE_USAGE_STAGING)
@@ -888,7 +888,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_NONE:
       /* Having no aux buffer is only okay if there's no modifier with aux. */
-      return !res->mod_info || res->mod_info->aux_usage == ISL_AUX_USAGE_NONE;
+      return !res->mod_info ||
+             !isl_drm_modifier_has_aux(res->mod_info->modifier);
    case ISL_AUX_USAGE_HIZ:
    case ISL_AUX_USAGE_HIZ_CCS:
    case ISL_AUX_USAGE_HIZ_CCS_WT:
@@ -1121,13 +1122,12 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
          map_aux_addresses(screen, r[0], res->external_format, 0);
          map_aux_addresses(screen, r[1], res->external_format, 1);
       }
-      assert(!isl_aux_usage_has_fast_clears(res->mod_info->aux_usage));
       break;
    case I915_FORMAT_MOD_4_TILED_DG2_MC_CCS:
-      assert(!isl_aux_usage_has_fast_clears(res->mod_info->aux_usage));
+      assert(num_main_planes == num_planes);
       break;
    default:
-      assert(res->mod_info->aux_usage == ISL_AUX_USAGE_NONE);
+      assert(!isl_drm_modifier_has_aux(res->mod_info->modifier));
       break;
    }
 }
@@ -1602,7 +1602,7 @@ iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
    iris_resource_prepare_access(ice, res,
                                 0, INTEL_REMAINING_LEVELS,
                                 0, INTEL_REMAINING_LAYERS,
-                                mod ? mod->aux_usage : ISL_AUX_USAGE_NONE,
+                                mod ? res->aux.usage : ISL_AUX_USAGE_NONE,
                                 mod ? mod->supports_clear_color : false);
 
    if (!res->mod_info && res->aux.usage != ISL_AUX_USAGE_NONE) {
@@ -1757,7 +1757,7 @@ iris_resource_disable_aux_on_first_query(struct pipe_resource *resource,
 {
    struct iris_resource *res = (struct iris_resource *)resource;
    bool mod_with_aux =
-      res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
+      res->mod_info && isl_drm_modifier_has_aux(res->mod_info->modifier);
 
    /* Disable aux usage if explicit flush not set and this is the first time
     * we are dealing with this resource and the resource was not created with
@@ -1784,7 +1784,7 @@ iris_resource_get_param(struct pipe_screen *pscreen,
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    struct iris_resource *res = (struct iris_resource *)resource;
    bool mod_with_aux =
-      res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
+      res->mod_info && isl_drm_modifier_has_aux(res->mod_info->modifier);
    bool wants_aux = mod_with_aux && plane > 0;
    bool wants_cc = mod_with_aux &&
       mod_plane_is_clear_color(res->mod_info->modifier, plane);
@@ -1879,7 +1879,7 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
    struct iris_screen *screen = (struct iris_screen *) pscreen;
    struct iris_resource *res = (struct iris_resource *)resource;
    bool mod_with_aux =
-      res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
+      res->mod_info && isl_drm_modifier_has_aux(res->mod_info->modifier);
 
    iris_resource_disable_aux_on_first_query(resource, usage);
    iris_resource_disable_suballoc_on_first_query(pscreen, ctx, res);
@@ -1908,8 +1908,8 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
 
 #ifndef NDEBUG
    enum isl_aux_usage allowed_usage =
-      usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH ? res->aux.usage :
-      res->mod_info ? res->mod_info->aux_usage : ISL_AUX_USAGE_NONE;
+      (usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) || mod_with_aux ?
+      res->aux.usage : ISL_AUX_USAGE_NONE;
 
    if (res->aux.usage != allowed_usage) {
       enum isl_aux_state aux_state = iris_resource_get_aux_state(res, 0, 0);

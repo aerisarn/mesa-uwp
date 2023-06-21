@@ -975,7 +975,7 @@ iris_resource_set_aux_state(struct iris_context *ice,
    }
 
    if (res->mod_info && !res->mod_info->supports_clear_color) {
-      assert(res->mod_info->aux_usage != ISL_AUX_USAGE_NONE);
+      assert(isl_drm_modifier_has_aux(res->mod_info->modifier));
       if (aux_state == ISL_AUX_STATE_CLEAR ||
           aux_state == ISL_AUX_STATE_COMPRESSED_CLEAR ||
           aux_state == ISL_AUX_STATE_PARTIAL_CLEAR) {
