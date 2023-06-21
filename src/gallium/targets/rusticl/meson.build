@@ -51,7 +51,10 @@ librusticl = shared_library(
     idep_nir,
     idep_vtn,
   ],
-  link_args: ld_args_build_id,
+  link_args : [
+    ld_args_build_id,
+    ld_args_gc_sections,
+  ],
   version : '@0@.0.0'.format(opencl_version),
   install : true,
 )
