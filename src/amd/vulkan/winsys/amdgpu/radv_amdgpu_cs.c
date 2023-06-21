@@ -313,6 +313,8 @@ get_nop_packet(struct radv_amdgpu_cs *cs)
 static void
 radv_amdgpu_cs_add_old_ib_buffer(struct radv_amdgpu_cs *cs)
 {
+   unsigned cdw;
+
    if (cs->num_old_ib_buffers == cs->max_num_old_ib_buffers) {
       unsigned max_num_old_ib_buffers = MAX2(1, cs->max_num_old_ib_buffers * 2);
       struct radv_amdgpu_ib *old_ib_buffers =
@@ -325,8 +327,14 @@ radv_amdgpu_cs_add_old_ib_buffer(struct radv_amdgpu_cs *cs)
       cs->old_ib_buffers = old_ib_buffers;
    }
 
+   if (cs->use_ib) {
+      cdw = *cs->ib_size_ptr;
+   } else {
+      cdw = cs->base.cdw;
+   }
+
    cs->old_ib_buffers[cs->num_old_ib_buffers].bo = cs->ib_buffer;
-   cs->old_ib_buffers[cs->num_old_ib_buffers++].cdw = cs->base.cdw;
+   cs->old_ib_buffers[cs->num_old_ib_buffers++].cdw = cdw;
 }
 
 static void
@@ -436,13 +444,13 @@ radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
          while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask))
             radeon_emit_unchecked(&cs->base, nop_packet);
       }
-
-      /* Append the current (last) IB to the array of old IB buffers. */
-      radv_amdgpu_cs_add_old_ib_buffer(cs);
-
-      /* Prevent freeing this BO twice. */
-      cs->ib_buffer = NULL;
    }
+
+   /* Append the current (last) IB to the array of old IB buffers. */
+   radv_amdgpu_cs_add_old_ib_buffer(cs);
+
+   /* Prevent freeing this BO twice. */
+   cs->ib_buffer = NULL;
 
    cs->chained_to = NULL;
 
@@ -711,19 +719,6 @@ radv_amdgpu_cs_execute_secondary(struct radeon_cmdbuf *_parent, struct radeon_cm
          memcpy(parent->base.buf + parent->base.cdw, mapped, 4 * ib->cdw);
          parent->base.cdw += ib->cdw;
       }
-
-      /* When the parent and child can both use IBs, the current (last)
-       * IB is not part of old_ib_buffers, take care of that here.
-       */
-      if (child->ib_buffer) {
-         if (parent->base.cdw + child->base.cdw > parent->base.max_dw)
-            radv_amdgpu_cs_grow(&parent->base, child->base.cdw);
-
-         parent->base.reserved_dw = MAX2(parent->base.reserved_dw, parent->base.cdw + child->base.cdw);
-
-         memcpy(parent->base.buf + parent->base.cdw, child->base.buf, 4 * child->base.cdw);
-         parent->base.cdw += child->base.cdw;
-      }
    }
 }
 
@@ -977,12 +972,8 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
          struct radv_amdgpu_cs *cs = radv_amdgpu_cs(preambles[i]);
          struct radv_amdgpu_cs_ib_info ib;
 
-         assert(cs->num_old_ib_buffers <= 1);
-         if (cs->use_ib) {
-            ib = cs->ib;
-         } else {
-            ib = radv_amdgpu_cs_ib_to_info(cs, cs->old_ib_buffers[0]);
-         }
+         assert(cs->num_old_ib_buffers == 1);
+         ib = radv_amdgpu_cs_ib_to_info(cs, cs->old_ib_buffers[0]);
 
          ibs[num_submitted_ibs++] = ib;
          ibs_per_ip[cs->hw_ip]++;
@@ -1018,7 +1009,7 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
           * Otherwise we must submit all IBs in the old_ib_buffers array.
           */
          if (cs->use_ib) {
-            ib = cs->ib;
+            ib = radv_amdgpu_cs_ib_to_info(cs, cs->old_ib_buffers[0]);
             cs_idx++;
          } else {
             assert(cs_ib_idx < cs->num_old_ib_buffers);
@@ -1046,12 +1037,8 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
          struct radv_amdgpu_cs *cs = radv_amdgpu_cs(postamble_cs[i]);
          struct radv_amdgpu_cs_ib_info ib;
 
-         assert(cs->num_old_ib_buffers <= 1);
-         if (cs->use_ib) {
-            ib = cs->ib;
-         } else {
-            ib = radv_amdgpu_cs_ib_to_info(cs, cs->old_ib_buffers[0]);
-         }
+         assert(cs->num_old_ib_buffers == 1);
+         ib = radv_amdgpu_cs_ib_to_info(cs, cs->old_ib_buffers[0]);
 
          ibs[num_submitted_ibs++] = ib;
          ibs_per_ip[cs->hw_ip]++;
