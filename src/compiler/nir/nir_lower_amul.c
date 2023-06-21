@@ -235,14 +235,7 @@ nir_lower_amul(nir_shader *shader,
       }
    }
 
-   /* clear pass flags: */
-   nir_foreach_function_impl(impl, shader) {
-      nir_foreach_block(block, impl) {
-         nir_foreach_instr(instr, block) {
-            instr->pass_flags = 0;
-         }
-      }
-   }
+   nir_shader_clear_pass_flags(shader);
 
    nir_foreach_function_impl(impl, shader) {
       nir_foreach_block(block, impl) {
