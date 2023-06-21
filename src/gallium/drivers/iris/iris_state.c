@@ -5886,15 +5886,13 @@ iris_viewport_zmin_zmax(const struct pipe_viewport_state *vp, bool halfz,
 }
 
 #if GFX_VER >= 12
-void
-genX(invalidate_aux_map_state)(struct iris_batch *batch)
+static void
+invalidate_aux_map_state_per_engine(struct iris_batch *batch)
 {
-   struct iris_screen *screen = batch->screen;
-   void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
-   if (!aux_map_ctx)
-      return;
-   uint32_t aux_map_state_num = intel_aux_map_get_state_num(aux_map_ctx);
-   if (batch->last_aux_map_state != aux_map_state_num) {
+   uint64_t register_addr = 0;
+
+   switch (batch->name) {
+   case IRIS_BATCH_RENDER: {
       /* HSD 1209978178: docs say that before programming the aux table:
        *
        *    "Driver must ensure that the engine is IDLE but ensure it doesn't
@@ -5919,6 +5917,14 @@ genX(invalidate_aux_map_state)(struct iris_batch *batch)
        *     enabled."
        *
        * Therefore setting L3 Fabric Flush here would be redundant.
+       *
+       * From Bspec 43904 (Register_CCSAuxiliaryTableInvalidate):
+       * RCS engine idle sequence:
+       *
+       *    Gfx125+:
+       *       PIPE_CONTROL:- DC Flush + L3 Fabric Flush + CS Stall + Render
+       *                      Target Cache Flush + Depth Cache + CCS flush
+       *
        */
       iris_emit_end_of_pipe_sync(batch, "Invalidate aux map table",
                                  PIPE_CONTROL_CS_STALL |
@@ -5927,12 +5933,78 @@ genX(invalidate_aux_map_state)(struct iris_batch *batch)
                                  (GFX_VERx10 == 125 ?
                                   PIPE_CONTROL_CCS_CACHE_FLUSH : 0));
 
+      register_addr = GENX(GFX_CCS_AUX_INV_num);
+      break;
+   }
+   case IRIS_BATCH_COMPUTE: {
+      /*
+       * Notice we don't set the L3 Fabric Flush here, because we have
+       * PIPE_CONTROL_CS_STALL. The PIPE_CONTROL::L3 Fabric Flush
+       * documentation says :
+       *
+       *    "L3 Fabric Flush will ensure all the pending transactions in the
+       *     L3 Fabric are flushed to global observation point. HW does
+       *     implicit L3 Fabric Flush on all stalling flushes (both explicit
+       *     and implicit) and on PIPECONTROL having Post Sync Operation
+       *     enabled."
+       *
+       * Therefore setting L3 Fabric Flush here would be redundant.
+       *
+       * From Bspec 43904 (Register_CCSAuxiliaryTableInvalidate):
+       * Compute engine idle sequence:
+       *
+       *    Gfx125+:
+       *       PIPE_CONTROL:- DC Flush + L3 Fabric Flush + CS Stall + CCS flush
+       */
+      iris_emit_end_of_pipe_sync(batch, "Invalidate aux map table",
+                                 PIPE_CONTROL_DATA_CACHE_FLUSH |
+                                 PIPE_CONTROL_CS_STALL |
+                                 (GFX_VERx10 == 125 ?
+                                  PIPE_CONTROL_CCS_CACHE_FLUSH : 0));
+
+      register_addr = GENX(CCS_CCS_AUX_INV_num);
+      break;
+   }
+   case IRIS_BATCH_BLITTER: {
+#if GFX_VERx10 >= 125
+      /*
+       * Notice we don't set the L3 Fabric Flush here, because we have
+       * PIPE_CONTROL_CS_STALL. The PIPE_CONTROL::L3 Fabric Flush
+       * documentation says :
+       *
+       *    "L3 Fabric Flush will ensure all the pending transactions in the
+       *     L3 Fabric are flushed to global observation point. HW does
+       *     implicit L3 Fabric Flush on all stalling flushes (both explicit
+       *     and implicit) and on PIPECONTROL having Post Sync Operation
+       *     enabled."
+       *
+       * Therefore setting L3 Fabric Flush here would be redundant.
+       *
+       * From Bspec 43904 (Register_CCSAuxiliaryTableInvalidate):
+       * Blitter engine idle sequence:
+       *
+       *    Gfx125+:
+       *       MI_FLUSH_DW (dw0;b16 – flush CCS)
+       */
+      iris_emit_cmd(batch, GENX(MI_FLUSH_DW), fd) {
+         fd.FlushCCS = true;
+      }
+      register_addr = GENX(BCS_CCS_AUX_INV_num);
+#endif
+      break;
+   }
+   default:
+      unreachable("Invalid batch for aux map invalidation");
+      break;
+   }
+
+   if (register_addr != 0) {
       /* If the aux-map state number increased, then we need to rewrite the
        * register. Rewriting the register is used to both set the aux-map
        * translation table address, and also to invalidate any previously
        * cached translations.
        */
-      iris_load_register_imm32(batch, GENX(GFX_CCS_AUX_INV_num), 1);
+      iris_load_register_imm32(batch, register_addr, 1);
 
       /* HSD 22012751911: SW Programming sequence when issuing aux invalidation:
        *
@@ -5944,9 +6016,21 @@ genX(invalidate_aux_map_state)(struct iris_batch *batch)
          sem.WaitMode = PollingMode;
          sem.RegisterPollMode = true;
          sem.SemaphoreDataDword = 0x0;
-         sem.SemaphoreAddress = ro_bo(NULL, GENX(GFX_CCS_AUX_INV_num));
+         sem.SemaphoreAddress = ro_bo(NULL, register_addr);
       }
+   }
+}
 
+void
+genX(invalidate_aux_map_state)(struct iris_batch *batch)
+{
+   struct iris_screen *screen = batch->screen;
+   void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
+   if (!aux_map_ctx)
+      return;
+   uint32_t aux_map_state_num = intel_aux_map_get_state_num(aux_map_ctx);
+   if (batch->last_aux_map_state != aux_map_state_num) {
+      invalidate_aux_map_state_per_engine(batch);
       batch->last_aux_map_state = aux_map_state_num;
    }
 }
