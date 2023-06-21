@@ -246,6 +246,38 @@ radv_amdgpu_cs_bo_create(struct radv_amdgpu_cs *cs, uint32_t ib_size)
                             &cs->ib_buffer);
 }
 
+static VkResult
+radv_amdgpu_cs_get_new_ib(struct radeon_cmdbuf *_cs, uint32_t ib_size)
+{
+   struct radv_amdgpu_cs *cs = radv_amdgpu_cs(_cs);
+   VkResult result;
+
+   result = radv_amdgpu_cs_bo_create(cs, ib_size);
+   if (result != VK_SUCCESS)
+      return result;
+
+   cs->ib_mapped = cs->ws->base.buffer_map(cs->ib_buffer);
+   if (!cs->ib_mapped) {
+      cs->ws->base.buffer_destroy(&cs->ws->base, cs->ib_buffer);
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
+
+   cs->ib.ib_mc_address = radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va;
+   cs->base.buf = (uint32_t *)cs->ib_mapped;
+   cs->base.cdw = 0;
+   cs->base.reserved_dw = 0;
+   cs->base.max_dw = ib_size / 4 - 4;
+   cs->ib.size = 0;
+   cs->ib.ip_type = cs->hw_ip;
+
+   if (cs->use_ib)
+      cs->ib_size_ptr = &cs->ib.size;
+
+   cs->ws->base.cs_add_buffer(&cs->base, cs->ib_buffer);
+
+   return VK_SUCCESS;
+}
+
 static struct radeon_cmdbuf *
 radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type, bool is_secondary)
 {
@@ -262,29 +294,11 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type, bool i
 
    cs->use_ib = ring_can_use_ib_bos(cs->ws, ip_type);
 
-   VkResult result = radv_amdgpu_cs_bo_create(cs, ib_size);
+   VkResult result = radv_amdgpu_cs_get_new_ib(&cs->base, ib_size);
    if (result != VK_SUCCESS) {
       free(cs);
       return NULL;
    }
-
-   cs->ib_mapped = ws->buffer_map(cs->ib_buffer);
-   if (!cs->ib_mapped) {
-      ws->buffer_destroy(ws, cs->ib_buffer);
-      free(cs);
-      return NULL;
-   }
-
-   cs->ib.ib_mc_address = radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va;
-   cs->base.buf = (uint32_t *)cs->ib_mapped;
-   cs->base.max_dw = ib_size / 4 - 4;
-   cs->ib.size = 0;
-   cs->ib.ip_type = ip_type;
-
-   if (cs->use_ib)
-      cs->ib_size_ptr = &cs->ib.size;
-
-   ws->cs_add_buffer(&cs->base, cs->ib_buffer);
 
    return &cs->base;
 }
