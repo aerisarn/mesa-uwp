@@ -78,7 +78,7 @@ endif
 
 if freedreno_kmds.contains('msm')
   tu_flags += '-DTU_HAS_MSM'
-  libtu_files += files('tu_knl_drm_msm.cc')
+  libtu_files += files('tu_knl_drm_msm.cc', 'tu_knl_drm.cc')
   tu_deps += dep_libdrm
 endif
 
