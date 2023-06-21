@@ -67,14 +67,14 @@ pub trait BlockLiveness {
 pub trait Liveness {
     type PerBlock: BlockLiveness;
 
-    fn block_live(&self, id: u32) -> &Self::PerBlock;
+    fn block_live(&self, idx: usize) -> &Self::PerBlock;
 
     fn calc_max_live(&self, f: &Function) -> PerRegFile<u32> {
         let mut max_live: PerRegFile<u32> = Default::default();
-        let mut block_live_out: HashMap<u32, LiveSet> = HashMap::new();
+        let mut block_live_out: Vec<LiveSet> = Vec::new();
 
         for (bb_idx, bb) in f.blocks.iter().enumerate() {
-            let bl = self.block_live(bb.id);
+            let bl = self.block_live(bb_idx);
 
             let mut live = LiveSet::new();
 
@@ -82,8 +82,7 @@ pub trait Liveness {
              * one (if any) and it will be a block we've processed.
              */
             if let Some(pred_idx) = f.blocks.pred_indices(bb_idx).first() {
-                let pred_id = f.blocks[*pred_idx].id;
-                let pred_out = block_live_out.get(&pred_id).unwrap();
+                let pred_out = &block_live_out[*pred_idx];
                 for ssa in pred_out.iter() {
                     if bl.is_live_in(ssa) {
                         live.insert(*ssa);
@@ -144,7 +143,8 @@ pub trait Liveness {
                 });
             }
 
-            block_live_out.insert(bb.id, live);
+            assert!(block_live_out.len() == bb_idx);
+            block_live_out.push(live);
         }
 
         max_live
@@ -214,46 +214,39 @@ impl BlockLiveness for SimpleBlockLiveness {
 }
 
 pub struct SimpleLiveness {
-    blocks: HashMap<u32, SimpleBlockLiveness>,
+    blocks: Vec<SimpleBlockLiveness>,
 }
 
 impl SimpleLiveness {
     pub fn for_function(func: &Function) -> SimpleLiveness {
-        let mut l = SimpleLiveness {
-            blocks: HashMap::new(),
-        };
-        let mut live_in = HashMap::new();
+        let mut l = SimpleLiveness { blocks: Vec::new() };
+        let mut live_in = Vec::new();
 
         for b in func.blocks.iter() {
-            let bl = SimpleBlockLiveness::for_block(b);
-            l.blocks.insert(b.id, bl);
-            live_in.insert(b.id, BitSet::new());
+            l.blocks.push(SimpleBlockLiveness::for_block(b));
+            live_in.push(BitSet::new());
         }
+        assert!(l.blocks.len() == func.blocks.len());
+        assert!(live_in.len() == func.blocks.len());
 
         let mut to_do = true;
         while to_do {
             to_do = false;
-            for (b_idx, b) in func.blocks.iter().enumerate().rev() {
-                let bl = l.blocks.get_mut(&b.id).unwrap();
-
+            for (b_idx, bl) in l.blocks.iter_mut().enumerate() {
                 /* Compute live-out */
                 for sb_idx in func.blocks.succ_indices(b_idx) {
-                    let sb_id = func.blocks[*sb_idx].id;
-                    let s_live_in = live_in.get(&sb_id).unwrap();
-                    to_do |= bl.live_out.union_with(s_live_in);
+                    to_do |= bl.live_out.union_with(&live_in[*sb_idx]);
                 }
-
-                let b_live_in = live_in.get_mut(&b.id).unwrap();
 
                 let new_live_in =
                     (bl.live_out.clone() | bl.uses.clone()) & !bl.defs.clone();
-                to_do |= b_live_in.union_with(&new_live_in);
+
+                to_do |= live_in[b_idx].union_with(&new_live_in);
             }
         }
 
-        for b in &func.blocks {
-            let bl = l.blocks.get_mut(&b.id).unwrap();
-            bl.live_in = live_in.remove(&b.id).unwrap();
+        for (bl, b_live_in) in l.blocks.iter_mut().zip(live_in.into_iter()) {
+            bl.live_in = b_live_in;
         }
 
         l
@@ -263,8 +256,8 @@ impl SimpleLiveness {
 impl Liveness for SimpleLiveness {
     type PerBlock = SimpleBlockLiveness;
 
-    fn block_live(&self, id: u32) -> &SimpleBlockLiveness {
-        self.blocks.get(&id).unwrap()
+    fn block_live(&self, idx: usize) -> &SimpleBlockLiveness {
+        &self.blocks[idx]
     }
 }
 
@@ -377,15 +370,15 @@ impl BlockLiveness for NextUseBlockLiveness {
 }
 
 pub struct NextUseLiveness {
-    blocks: HashMap<u32, NextUseBlockLiveness>,
+    blocks: Vec<NextUseBlockLiveness>,
 }
 
 impl NextUseLiveness {
     pub fn for_function(func: &Function) -> NextUseLiveness {
-        let mut blocks = HashMap::new();
+        let mut blocks = Vec::new();
         for b in &func.blocks {
             let bl = NextUseBlockLiveness::for_block(b);
-            blocks.insert(b.id, RefCell::new(bl));
+            blocks.push(RefCell::new(bl));
         }
 
         let mut to_do = true;
@@ -393,12 +386,11 @@ impl NextUseLiveness {
             to_do = false;
             for (b_idx, b) in func.blocks.iter().enumerate().rev() {
                 let num_instrs = b.instrs.len();
-                let mut bl = blocks.get(&b.id).unwrap().borrow_mut();
+                let mut bl = blocks[b_idx].borrow_mut();
 
                 /* Compute live-out */
                 for sb_idx in func.blocks.succ_indices(b_idx) {
-                    let sb_id = func.blocks[*sb_idx].id;
-                    if sb_id == b.id {
+                    if *sb_idx == b_idx {
                         for entry in bl.ssa_map.values_mut() {
                             if entry.defined {
                                 continue;
@@ -412,7 +404,7 @@ impl NextUseLiveness {
                                 .add_successor_use(num_instrs, *first_use_ip);
                         }
                     } else {
-                        let sbl = blocks.get(&sb_id).unwrap().borrow();
+                        let sbl = blocks[*sb_idx].borrow();
                         for (ssa, entry) in sbl.ssa_map.iter() {
                             if entry.defined {
                                 continue;
@@ -432,9 +424,7 @@ impl NextUseLiveness {
         }
 
         NextUseLiveness {
-            blocks: HashMap::from_iter(
-                blocks.drain().map(|(k, v)| (k, v.into_inner())),
-            ),
+            blocks: blocks.into_iter().map(|bl| bl.into_inner()).collect(),
         }
     }
 }
@@ -442,7 +432,7 @@ impl NextUseLiveness {
 impl Liveness for NextUseLiveness {
     type PerBlock = NextUseBlockLiveness;
 
-    fn block_live(&self, id: u32) -> &NextUseBlockLiveness {
-        self.blocks.get(&id).unwrap()
+    fn block_live(&self, idx: usize) -> &NextUseBlockLiveness {
+        &self.blocks[idx]
     }
 }

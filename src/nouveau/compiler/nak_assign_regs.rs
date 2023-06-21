@@ -1003,14 +1003,14 @@ impl AssignRegsBlock {
 
 struct AssignRegs {
     sm: u8,
-    blocks: HashMap<u32, AssignRegsBlock>,
+    blocks: Vec<AssignRegsBlock>,
 }
 
 impl AssignRegs {
     pub fn new(sm: u8) -> Self {
         Self {
             sm: sm,
-            blocks: HashMap::new(),
+            blocks: Vec::new(),
         }
     }
 
@@ -1045,26 +1045,22 @@ impl AssignRegs {
                 None
             } else {
                 /* Start with the previous block's. */
-                let pred_id = f.blocks[pred[0]].id;
-                Some(&self.blocks.get(&pred_id).unwrap().ra)
+                Some(&self.blocks[pred[0]].ra)
             };
 
-            let b = &f.blocks[b_idx];
-            let bl = live.block_live(b.id);
+            let bl = live.block_live(b_idx);
 
             let mut arb = AssignRegsBlock::new(&num_regs);
             arb.first_pass(&mut f.blocks[b_idx], bl, pred_ra);
-            self.blocks.insert(f.blocks[b_idx].id, arb);
+
+            assert!(self.blocks.len() == b_idx);
+            self.blocks.push(arb);
         }
 
         for b_idx in 0..f.blocks.len() {
-            let b_id = f.blocks[b_idx].id;
-            let arb = self.blocks.get(&b_id).unwrap();
+            let arb = &self.blocks[b_idx];
             for sb_idx in f.blocks.succ_indices(b_idx).to_vec() {
-                let sb_id = f.blocks[sb_idx].id;
-                let target = self.blocks.get(&sb_id).unwrap();
-                let b = &mut f.blocks[b_idx];
-                arb.second_pass(target, b);
+                arb.second_pass(&self.blocks[sb_idx], &mut f.blocks[b_idx]);
             }
         }
     }
