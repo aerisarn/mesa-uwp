@@ -440,9 +440,6 @@ radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
       /* Append the current (last) IB to the array of old IB buffers. */
       radv_amdgpu_cs_add_old_ib_buffer(cs);
 
-      /* The ib field holds the first IB, set its size correctly. */
-      cs->ib.size = cs->old_ib_buffers[0].cdw;
-
       /* Prevent freeing this BO twice. */
       cs->ib_buffer = NULL;
    }
@@ -978,8 +975,16 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
       for (unsigned i = 0; i < preamble_count; ++i) {
          /* Assume that the full preamble fits into 1 IB. */
          struct radv_amdgpu_cs *cs = radv_amdgpu_cs(preambles[i]);
+         struct radv_amdgpu_cs_ib_info ib;
+
          assert(cs->num_old_ib_buffers <= 1);
-         ibs[num_submitted_ibs++] = cs->ib;
+         if (cs->use_ib) {
+            ib = cs->ib;
+         } else {
+            ib = radv_amdgpu_cs_ib_to_info(cs, cs->old_ib_buffers[0]);
+         }
+
+         ibs[num_submitted_ibs++] = ib;
          ibs_per_ip[cs->hw_ip]++;
       }
 
@@ -1039,8 +1044,16 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx, int queue_idx
       for (unsigned i = 0; i < postamble_count; ++i) {
          /* Assume that the full postamble fits into 1 IB. */
          struct radv_amdgpu_cs *cs = radv_amdgpu_cs(postamble_cs[i]);
+         struct radv_amdgpu_cs_ib_info ib;
+
          assert(cs->num_old_ib_buffers <= 1);
-         ibs[num_submitted_ibs++] = cs->ib;
+         if (cs->use_ib) {
+            ib = cs->ib;
+         } else {
+            ib = radv_amdgpu_cs_ib_to_info(cs, cs->old_ib_buffers[0]);
+         }
+
+         ibs[num_submitted_ibs++] = ib;
          ibs_per_ip[cs->hw_ip]++;
       }
 
