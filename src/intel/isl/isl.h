@@ -1442,8 +1442,9 @@ struct isl_drm_modifier_info {
    /** ISL tiling implied by this modifier */
    enum isl_tiling tiling;
 
-   /** ISL aux usage implied by this modifier */
-   enum isl_aux_usage aux_usage;
+   /** Compression types supported by this modifier */
+   bool supports_render_compression;
+   bool supports_media_compression;
 
    /** Whether or not this modifier supports clear color */
    bool supports_clear_color;
@@ -2252,7 +2253,8 @@ isl_drm_modifier_has_aux(uint64_t modifier)
    if (modifier == DRM_FORMAT_MOD_INVALID)
       return false;
 
-   return isl_drm_modifier_get_info(modifier)->aux_usage != ISL_AUX_USAGE_NONE;
+   return isl_drm_modifier_get_info(modifier)->supports_render_compression ||
+          isl_drm_modifier_get_info(modifier)->supports_media_compression;
 }
 
 /** Returns the default isl_aux_state for the given modifier.
@@ -2283,12 +2285,11 @@ isl_drm_modifier_get_default_aux_state(uint64_t modifier)
    const struct isl_drm_modifier_info *mod_info =
       isl_drm_modifier_get_info(modifier);
 
-   if (!mod_info || mod_info->aux_usage == ISL_AUX_USAGE_NONE)
+   if (!mod_info || !isl_drm_modifier_has_aux(modifier))
       return ISL_AUX_STATE_AUX_INVALID;
 
-   assert(mod_info->aux_usage == ISL_AUX_USAGE_CCS_E ||
-          mod_info->aux_usage == ISL_AUX_USAGE_FCV_CCS_E ||
-          mod_info->aux_usage == ISL_AUX_USAGE_MC);
+   assert(mod_info->supports_render_compression !=
+          mod_info->supports_media_compression);
    return mod_info->supports_clear_color ? ISL_AUX_STATE_COMPRESSED_CLEAR :
                                            ISL_AUX_STATE_COMPRESSED_NO_CLEAR;
 }

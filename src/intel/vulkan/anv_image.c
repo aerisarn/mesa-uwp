@@ -1107,7 +1107,10 @@ check_drm_format_mod(const struct anv_device *device,
           * The inverse, however, does not hold; if the modifier has no aux
           * usage, then we may enable a private aux surface.
           */
-         if (plane->aux_usage != isl_mod_info->aux_usage) {
+         if ((isl_mod_info->supports_media_compression &&
+              plane->aux_usage != ISL_AUX_USAGE_MC) ||
+             (isl_mod_info->supports_render_compression &&
+              !isl_aux_usage_has_ccs_e(plane->aux_usage))) {
             return vk_errorf(device, VK_ERROR_UNKNOWN,
                              "image with modifier unexpectedly has wrong aux "
                              "usage");
