@@ -1293,6 +1293,7 @@ mir_schedule_alu(compiler_context *ctx, midgard_instruction **instructions,
 
    /* Reset */
    predicate.move_mode = 0;
+   predicate.exclude = ~0;
 
    mir_update_worklist(worklist, len, instructions, vlut);
    mir_update_worklist(worklist, len, instructions, vadd);
