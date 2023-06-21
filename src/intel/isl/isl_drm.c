@@ -221,3 +221,32 @@ isl_drm_modifier_get_score(const struct intel_device_info *devinfo,
       return 4;
    }
 }
+
+uint32_t
+isl_drm_modifier_get_plane_count(const struct intel_device_info *devinfo,
+                                 uint64_t modifier,
+                                 uint32_t fmt_planes)
+{
+   /* This function could return the wrong value if the modifier is not
+    * supported by the device.
+    */
+   assert(isl_drm_modifier_get_score(devinfo, modifier) > 0);
+
+   /* Planar images don't support clear color. */
+   if (isl_drm_modifier_get_info(modifier)->supports_clear_color)
+      assert(fmt_planes == 1);
+
+   if (devinfo->has_flat_ccs) {
+      if (isl_drm_modifier_get_info(modifier)->supports_clear_color)
+         return 2 * fmt_planes;
+      else
+         return 1 * fmt_planes;
+   } else {
+      if (isl_drm_modifier_get_info(modifier)->supports_clear_color)
+         return 3 * fmt_planes;
+      else if (isl_drm_modifier_has_aux(modifier))
+         return 2 * fmt_planes;
+      else
+         return 1 * fmt_planes;
+   }
+}

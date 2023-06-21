@@ -895,9 +895,10 @@ get_drm_format_modifier_properties_list(const struct anv_physical_device *physic
       if (!features)
          continue;
 
-      uint32_t planes = anv_format->n_planes;
-      if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE)
-         ++planes;
+      const uint32_t planes =
+         isl_drm_modifier_get_plane_count(&physical_device->info,
+                                          isl_mod_info->modifier,
+                                          anv_format->n_planes);
 
       vk_outarray_append_typed(VkDrmFormatModifierPropertiesEXT, &out, out_props) {
          *out_props = (VkDrmFormatModifierPropertiesEXT) {
@@ -928,9 +929,10 @@ get_drm_format_modifier_properties_list_2(const struct anv_physical_device *phys
       if (!features2)
          continue;
 
-      uint32_t planes = anv_format->n_planes;
-      if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE)
-         ++planes;
+      const uint32_t planes =
+         isl_drm_modifier_get_plane_count(&physical_device->info,
+                                          isl_mod_info->modifier,
+                                          anv_format->n_planes);
 
       vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT, &out, out_props) {
          *out_props = (VkDrmFormatModifierProperties2EXT) {
