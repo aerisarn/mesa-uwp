@@ -1489,7 +1489,8 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
    if (GFX_VER == 12 && (bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT)) {
       bits |= (ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT |
                ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
-               ANV_PIPE_STATE_CACHE_INVALIDATE_BIT);
+               ANV_PIPE_STATE_CACHE_INVALIDATE_BIT |
+               (GFX_VERx10 == 125 ? ANV_PIPE_CCS_CACHE_FLUSH_BIT: 0));
    }
 
    /* If we're going to do an invalidate and we have a pending end-of-pipe
