@@ -9365,7 +9365,13 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
 
    cmd_buffer->push_constant_stages |= ~0;
 
-   cmd_buffer->state.last_index_type = -1;
+   if (!layout->indexed && cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
+      /* On GFX7 and later, non-indexed draws overwrite VGT_INDEX_TYPE, so the state must be
+       * re-emitted before the next indexed draw.
+       */
+      cmd_buffer->state.last_index_type = -1;
+   }
+
    cmd_buffer->state.last_num_instances = -1;
    cmd_buffer->state.last_vertex_offset_valid = false;
    cmd_buffer->state.last_first_instance = -1;
