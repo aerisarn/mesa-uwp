@@ -268,8 +268,8 @@ is located at this offset.
 
 ### InstFwdPrefetchBug
 
-According to LLVM, the `s_inst_prefetch` instruction can cause a hang.
-There are no further details.
+According to LLVM, the `s_inst_prefetch` instruction can cause a hang on GFX10.
+Seems to be resolved on GFX10.3+. There are no further details.
 
 ### LdsMisalignedBug
 

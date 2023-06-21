@@ -1227,16 +1227,36 @@ align_block(asm_context& ctx, std::vector<uint32_t>& code, Block& block)
       std::vector<uint32_t> nops;
 
       const unsigned loop_num_cl = DIV_ROUND_UP(block.offset - loop_header->offset, 16);
+
+      /* On GFX10.3+, change the prefetch mode if the loop fits into 2 or 3 cache lines.
+       * Don't use the s_inst_prefetch instruction on GFX10 as it might cause hangs.
+       */
+      const bool change_prefetch =
+         ctx.program->gfx_level >= GFX10_3 && loop_num_cl > 1 && loop_num_cl <= 3;
+
+      if (change_prefetch) {
+         Builder bld(ctx.program);
+         int16_t prefetch_mode = loop_num_cl == 3 ? 0x1 : 0x2;
+         aco_ptr<Instruction> instr(bld.sopp(aco_opcode::s_inst_prefetch, -1, prefetch_mode));
+         emit_instruction(ctx, nops, instr.get());
+         insert_code(ctx, code, loop_header->offset, nops.size(), nops.data());
+
+         /* Change prefetch mode back to default (0x3). */
+         instr->sopp().imm = 0x3;
+         emit_instruction(ctx, code, instr.get());
+      }
+
       const unsigned loop_start_cl = loop_header->offset >> 4;
       const unsigned loop_end_cl = (block.offset - 1) >> 4;
 
-      /* Align the loop if it fits into a single cache line or if we can
+      /* Align the loop if it fits into the fetched cache lines or if we can
        * reduce the number of cache lines with less than 8 NOPs.
        */
       const bool align_loop = loop_end_cl - loop_start_cl >= loop_num_cl &&
-                              (loop_num_cl == 1 || loop_header->offset % 16 > 8);
+                              (loop_num_cl == 1 || change_prefetch || loop_header->offset % 16 > 8);
 
       if (align_loop) {
+         nops.clear();
          nops.resize(16 - (loop_header->offset % 16), 0xbf800000u);
          insert_code(ctx, code, loop_header->offset, nops.size(), nops.data());
       }
