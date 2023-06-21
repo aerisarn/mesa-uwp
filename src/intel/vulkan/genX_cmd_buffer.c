@@ -1487,10 +1487,16 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
     * Therefore setting L3 Fabric Flush here would be redundant.
     */
    if (GFX_VER == 12 && (bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT)) {
-      bits |= (ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT |
-               ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
-               ANV_PIPE_STATE_CACHE_INVALIDATE_BIT |
-               (GFX_VERx10 == 125 ? ANV_PIPE_CCS_CACHE_FLUSH_BIT: 0));
+      if (current_pipeline == GPGPU) {
+         bits |= (ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT |
+                  ANV_PIPE_DATA_CACHE_FLUSH_BIT |
+                  (GFX_VERx10 == 125 ? ANV_PIPE_CCS_CACHE_FLUSH_BIT: 0));
+      } else if (current_pipeline == _3D) {
+         bits |= (ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT |
+                  ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                  ANV_PIPE_STATE_CACHE_INVALIDATE_BIT |
+                  (GFX_VERx10 == 125 ? ANV_PIPE_CCS_CACHE_FLUSH_BIT: 0));
+      }
    }
 
    /* If we're going to do an invalidate and we have a pending end-of-pipe
@@ -1661,8 +1667,11 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
 
 #if GFX_VER == 12
       if ((bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT) && device->info->has_aux_map) {
+         uint64_t register_addr =
+            current_pipeline == GPGPU ? GENX(CCS_CCS_AUX_INV_num) :
+                                        GENX(GFX_CCS_AUX_INV_num);
          anv_batch_emit(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-            lri.RegisterOffset = GENX(GFX_CCS_AUX_INV_num);
+            lri.RegisterOffset = register_addr;
             lri.DataDWord = 1;
          }
          /* HSD 22012751911: SW Programming sequence when issuing aux invalidation:
@@ -1676,7 +1685,7 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
             sem.RegisterPollMode = true;
             sem.SemaphoreDataDword = 0x0;
             sem.SemaphoreAddress =
-               anv_address_from_u64(GENX(GFX_CCS_AUX_INV_num));
+               anv_address_from_u64(register_addr);
          }
       }
 #endif
