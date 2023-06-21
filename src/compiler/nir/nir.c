@@ -2264,6 +2264,18 @@ nir_index_instrs(nir_function_impl *impl)
    return index;
 }
 
+void
+nir_shader_clear_pass_flags(nir_shader *shader)
+{
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            instr->pass_flags = 0;
+         }
+      }
+   }
+}
+
 unsigned
 nir_shader_index_vars(nir_shader *shader, nir_variable_mode modes)
 {
