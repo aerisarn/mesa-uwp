@@ -244,6 +244,38 @@ In the case of ``<override>`` elements, the override applies if the expression
 evaluates to non-zero.  In the case of ``<derived>`` fields, the expression
 evaluates to the value of the derived field.
 
+Branching
+---------
+
+isaspec supports a few special field types for printing branch destinations. If
+``isaspec_decode_options::branch_labels`` is true, a pre-pass over the program
+to be disassembled determines which instructions are branch destinations and
+then they are printed when disassembling, in addition to printing the name of
+the destination when printing the field itself.
+
+There are two different types, which affect how the destination is computed. If
+the field type is ``branch``, then the field is interpreted as a signed offset
+from the current instruction. If the type is ``absbranch``, then it is
+interpreted as an offset from the first instruction to be disassembled. In
+either case, the offset is multiplied by the instruction size.
+
+For example, here is what a signed-offset unconditional jump instruction might
+look like:
+
+.. code-block:: xml
+
+   <bitset name="jump" extends="#instruction">
+      <display>
+         jump #{OFFSET}
+      </display>
+      <pattern low="26" high="31">110010</pattern> <!-- opcode goes here -->
+      <field name="OFFSET" low="0" high="25" type="branch"/>
+   </bitset>
+
+This would produce a disassembly like ``jump #l42`` if the destination is 42
+instructions after the start of the disassembly. The destination would be
+preceded by a line with just ``l42:``.
+
 Encoding
 --------
 

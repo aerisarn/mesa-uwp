@@ -610,8 +610,14 @@ display_field(struct decode_scope *scope, const char *field_name)
 	switch (field->type) {
 	/* Basic types: */
 	case TYPE_BRANCH:
+        case TYPE_ABSBRANCH:
 		if (scope->state->options->branch_labels) {
-			int offset = util_sign_extend(val, width) + scope->state->n;
+			int offset;
+			if (field->type == TYPE_BRANCH) {
+				offset = util_sign_extend(val, width) + scope->state->n;
+			} else {
+				offset = val;
+			}
 			if (offset < scope->state->num_instr) {
 				print(scope->state, "l%d", offset);
 				BITSET_SET(scope->state->branch_targets, offset);

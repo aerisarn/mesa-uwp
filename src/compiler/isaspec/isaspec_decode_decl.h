@@ -79,7 +79,8 @@ struct isa_field {
 	unsigned high;
 	enum {
 		/* Basic types: */
-		TYPE_BRANCH,   /* branch target, like INT but optional labeling*/
+		TYPE_BRANCH,   /* relative branch target, like INT but optional labeling*/
+		TYPE_ABSBRANCH,   /* absolute branch target */
 		TYPE_INT,
 		TYPE_UINT,
 		TYPE_HEX,
