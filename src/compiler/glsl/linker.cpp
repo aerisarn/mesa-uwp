@@ -481,28 +481,6 @@ linker_warning(gl_shader_program *prog, const char *fmt, ...)
 }
 
 
-void
-link_invalidate_variable_locations(exec_list *ir)
-{
-   foreach_in_list(ir_instruction, node, ir) {
-      ir_variable *const var = node->as_variable();
-
-      if (var == NULL)
-         continue;
-
-      /* Only assign locations for variables that lack an explicit location.
-       * Explicit locations are set for all built-in variables, generic vertex
-       * shader inputs (via layout(location=...)), and generic fragment shader
-       * outputs (also via layout(location=...)).
-       */
-      if (!var->data.explicit_location) {
-         var->data.location = -1;
-         var->data.location_frac = 0;
-      }
-   }
-}
-
-
 /**
  * Set clip_distance_array_size based and cull_distance_array_size on the given
  * shader.
@@ -3787,13 +3765,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
    validate_geometry_shader_emissions(consts, prog);
 
    store_fragdepth_layout(prog);
-
-   /* Mark all generic shader inputs and outputs as unpaired. */
-   for (unsigned i = MESA_SHADER_VERTEX; i <= MESA_SHADER_FRAGMENT; i++) {
-      if (prog->_LinkedShaders[i] != NULL) {
-         link_invalidate_variable_locations(prog->_LinkedShaders[i]->ir);
-      }
-   }
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (prog->_LinkedShaders[i] == NULL)
