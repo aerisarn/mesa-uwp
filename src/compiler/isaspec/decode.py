@@ -158,7 +158,7 @@ static const struct isa_bitset bitset_${bitset.get_c_name()}_gen_${bitset.gen_mi
 %   if bitset.extends is not None:
        .parent   = &bitset_${isa.bitsets[bitset.extends].get_c_name()}_gen_${isa.bitsets[bitset.extends].gen_min},
 %   endif
-       .name     = "${name}",
+       .name     = "${bitset.display_name}",
        .gen      = {
            .min  = ${bitset.get_gen_min()},
            .max  = ${bitset.get_gen_max()},

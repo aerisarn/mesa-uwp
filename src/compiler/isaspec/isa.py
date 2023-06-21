@@ -247,6 +247,7 @@ class BitSet(object):
         self.isa = isa
         self.xml = xml
         self.name = xml.attrib['name']
+        self.display_name = xml.attrib['displayname'] if 'displayname' in xml.attrib else self.name
 
         # Used for generated encoder, to de-duplicate encoding for
         # similar instructions:

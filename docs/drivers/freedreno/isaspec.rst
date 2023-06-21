@@ -184,6 +184,19 @@ decoding.  The display template consists of references to fields (which may
 be derived fields) specified as ``{FIELDNAME}`` and other characters
 which are just echoed through to the resulting decoded bitset.
 
+The special field reference ``{NAME}`` prints the name of the bitset. This is
+often useful when the ``<display>`` element is at a higher level than the
+leaves of the hierarchy, for example a whole class of similar instructions that
+only differ in opcode.
+
+Sometimes there may be multiple variants of an instruction that must be
+different bitsets, for example because they are so different that they must
+derive from different bitsets, but they have the same name. Because bitset
+names must be unique in the encoder, this can be a problem, but this can worked
+around with the ``displayname`` attribute on the ``bitset`` which changes how
+``{NAME}`` is displayed but not the name used in the encoder. ``displayname``
+is only useful for leaf bitsets.
+
 It is possible to define a line column alignment value per field to influence
 the visual output. It needs to be specified as ``{FIELDNAME:align=xx}``.
 
