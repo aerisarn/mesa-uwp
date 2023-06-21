@@ -13,6 +13,7 @@ use std::slice;
 pub struct CFGNode<N> {
     node: N,
     dom: usize,
+    lph: usize,
     pred: Vec<usize>,
     succ: Vec<usize>,
 }
@@ -147,7 +148,55 @@ fn calc_dominance<N>(nodes: &mut Vec<CFGNode<N>>) {
     }
 }
 
+fn loop_detect_dfs<N>(
+    nodes: &Vec<CFGNode<N>>,
+    id: usize,
+    pre: &mut BitSet,
+    post: &mut BitSet,
+    loops: &mut BitSet,
+) {
+    if pre.get(id) {
+        if !post.get(id) {
+            loops.insert(id);
+        }
+        return;
+    }
+
+    pre.insert(id);
+
+    for s in nodes[id].succ.iter() {
+        loop_detect_dfs(nodes, *s, pre, post, loops);
+    }
+
+    post.insert(id);
+}
+
+fn detect_loops<N>(nodes: &mut Vec<CFGNode<N>>) -> bool {
+    let mut dfs_pre = BitSet::new();
+    let mut dfs_post = BitSet::new();
+    let mut loops = BitSet::new();
+    loop_detect_dfs(nodes, 0, &mut dfs_pre, &mut dfs_post, &mut loops);
+
+    let mut has_loop = false;
+    nodes[0].lph = usize::MAX;
+    for i in 1..nodes.len() {
+        if loops.get(i) {
+            /* This is a loop header */
+            nodes[i].lph = i;
+            has_loop = true;
+        } else {
+            /* Otherwise, we have the same loop header as our dominator */
+            let dom = nodes[i].dom;
+            let dom_lph = nodes[dom].lph;
+            nodes[i].lph = dom_lph;
+        }
+    }
+
+    has_loop
+}
+
 pub struct CFG<N> {
+    has_loop: bool,
     nodes: Vec<CFGNode<N>>,
 }
 
@@ -159,6 +208,7 @@ impl<N> CFG<N> {
         let mut nodes = Vec::from_iter(nodes.into_iter().map(|n| CFGNode {
             node: n,
             dom: usize::MAX,
+            lph: usize::MAX,
             pred: Vec::new(),
             succ: Vec::new(),
         }));
@@ -170,8 +220,12 @@ impl<N> CFG<N> {
 
         rev_post_order_sort(&mut nodes);
         calc_dominance(&mut nodes);
+        let has_loop = detect_loops(&mut nodes);
 
-        CFG { nodes: nodes }
+        CFG {
+            has_loop: has_loop,
+            nodes: nodes,
+        }
     }
 
     pub fn get(&self, idx: usize) -> Option<&N> {
@@ -192,6 +246,32 @@ impl<N> CFG<N> {
 
     pub fn len(&self) -> usize {
         self.nodes.len()
+    }
+
+    pub fn dom_parent_index(&self, idx: usize) -> Option<usize> {
+        if idx == 0 {
+            None
+        } else {
+            Some(self.nodes[idx].dom)
+        }
+    }
+
+    pub fn has_loop(&self) -> bool {
+        self.has_loop
+    }
+
+    pub fn is_loop_header(&self, idx: usize) -> bool {
+        self.nodes[idx].lph == idx
+    }
+
+    pub fn loop_header_index(&self, idx: usize) -> Option<usize> {
+        let lph = self.nodes[idx].lph;
+        if lph == usize::MAX {
+            None
+        } else {
+            debug_assert!(self.is_loop_header(lph));
+            Some(lph)
+        }
     }
 
     pub fn succ_indices(&self, idx: usize) -> &[usize] {
