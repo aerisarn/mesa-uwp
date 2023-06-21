@@ -179,11 +179,31 @@ i915_gem_vm_unbind(struct anv_device *device, struct anv_bo *bo)
    return 0;
 }
 
+static uint32_t
+i915_gem_create_userptr(struct anv_device *device, void *mem, uint64_t size)
+{
+   struct drm_i915_gem_userptr userptr = {
+      .user_ptr = (__u64)((unsigned long) mem),
+      .user_size = size,
+      .flags = 0,
+   };
+
+   if (device->physical->info.has_userptr_probe)
+      userptr.flags |= I915_USERPTR_PROBE;
+
+   int ret = intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_USERPTR, &userptr);
+   if (ret == -1)
+      return 0;
+
+   return userptr.handle;
+}
+
 const struct anv_kmd_backend *
 anv_i915_kmd_backend_get(void)
 {
    static const struct anv_kmd_backend i915_backend = {
       .gem_create = i915_gem_create,
+      .gem_create_userptr = i915_gem_create_userptr,
       .gem_close = i915_gem_close,
       .gem_mmap = i915_gem_mmap,
       .gem_vm_bind = i915_gem_vm_bind,

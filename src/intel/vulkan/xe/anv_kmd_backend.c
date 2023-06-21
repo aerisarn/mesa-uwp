@@ -135,11 +135,18 @@ static int xe_gem_vm_unbind(struct anv_device *device, struct anv_bo *bo)
    return xe_gem_vm_bind_op(device, bo, XE_VM_BIND_OP_UNMAP);
 }
 
+static uint32_t
+xe_gem_create_userptr(struct anv_device *device, void *mem, uint64_t size)
+{
+   return 0;
+}
+
 const struct anv_kmd_backend *
 anv_xe_kmd_backend_get(void)
 {
    static const struct anv_kmd_backend xe_backend = {
       .gem_create = xe_gem_create,
+      .gem_create_userptr = xe_gem_create_userptr,
       .gem_close = xe_gem_close,
       .gem_mmap = xe_gem_mmap,
       .gem_vm_bind = xe_gem_vm_bind,
