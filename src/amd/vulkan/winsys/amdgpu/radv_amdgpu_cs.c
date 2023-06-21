@@ -344,10 +344,18 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    uint32_t nop_packet = get_nop_packet(cs);
 
    if (cs->use_ib) {
+      /* Ensure that with the 4 dword reservation we subtract from max_dw we always
+       * have 4 nops at the end for chaining.
+       */
       while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
          radeon_emit_unchecked(&cs->base, nop_packet);
 
-      *cs->ib_size_ptr |= cs->base.cdw + 4;
+      radeon_emit_unchecked(&cs->base, nop_packet);
+      radeon_emit_unchecked(&cs->base, nop_packet);
+      radeon_emit_unchecked(&cs->base, nop_packet);
+      radeon_emit_unchecked(&cs->base, nop_packet);
+
+      *cs->ib_size_ptr |= cs->base.cdw;
    } else {
       /* Pad the CS with NOP packets. */
       while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask))
@@ -384,10 +392,10 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    cs->ws->base.cs_add_buffer(&cs->base, cs->ib_buffer);
 
    if (cs->use_ib) {
-      radeon_emit_unchecked(&cs->base, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
-      radeon_emit_unchecked(&cs->base, radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va);
-      radeon_emit_unchecked(&cs->base, radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va >> 32);
-      radeon_emit_unchecked(&cs->base, S_3F2_CHAIN(1) | S_3F2_VALID(1));
+      cs->base.buf[cs->base.cdw - 4] = PKT3(PKT3_INDIRECT_BUFFER, 2, 0);
+      cs->base.buf[cs->base.cdw - 3] = radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va;
+      cs->base.buf[cs->base.cdw - 2] = radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va >> 32;
+      cs->base.buf[cs->base.cdw - 1] = S_3F2_CHAIN(1) | S_3F2_VALID(1);
 
       cs->ib_size_ptr = cs->base.buf + cs->base.cdw - 1;
    }
