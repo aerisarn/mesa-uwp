@@ -3795,15 +3795,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
       }
    }
 
-   prog->last_vert_prog = NULL;
-   for (int i = MESA_SHADER_GEOMETRY; i >= MESA_SHADER_VERTEX; i--) {
-      if (prog->_LinkedShaders[i] == NULL)
-         continue;
-
-      prog->last_vert_prog = prog->_LinkedShaders[i]->Program;
-      break;
-   }
-
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (prog->_LinkedShaders[i] == NULL)
          continue;

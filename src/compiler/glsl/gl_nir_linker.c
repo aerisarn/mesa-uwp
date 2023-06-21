@@ -1302,6 +1302,15 @@ gl_nir_link_glsl(const struct gl_constants *consts,
 
    MESA_TRACE_FUNC();
 
+   prog->last_vert_prog = NULL;
+   for (int i = MESA_SHADER_GEOMETRY; i >= MESA_SHADER_VERTEX; i--) {
+      if (prog->_LinkedShaders[i] == NULL)
+         continue;
+
+      prog->last_vert_prog = prog->_LinkedShaders[i]->Program;
+      break;
+   }
+
    if (prog->SeparateShader)
       disable_varying_optimizations_for_sso(prog);
 
