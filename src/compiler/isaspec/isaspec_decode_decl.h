@@ -104,6 +104,7 @@ struct isa_field {
 		bitmask_t val;                      /* if type==ASSERT */
 		const struct isa_enum *enums;       /* if type==ENUM */
 		const char *display;                /* if type==BOOL */
+		bool call;                          /* if type==(BRANCH|ABSBRANCH) */
 	};
 
 	/**

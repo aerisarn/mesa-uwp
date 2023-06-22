@@ -148,6 +148,9 @@ static const struct isa_case ${case.get_c_name()}_gen_${bitset.gen_min} = {
 %      if field.get_c_typename() == 'TYPE_ASSERT':
             .val.bitset = { ${', '.join(isa.split_bits(field.val, 32))} },
 %      endif
+%      if field.get_c_typename() == 'TYPE_BRANCH' or field.get_c_typename() == 'TYPE_ABSBRANCH':
+            .call = ${str(field.call).lower()},
+%      endif
           },
 %   endfor
        },

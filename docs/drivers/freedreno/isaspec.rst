@@ -276,6 +276,30 @@ This would produce a disassembly like ``jump #l42`` if the destination is 42
 instructions after the start of the disassembly. The destination would be
 preceded by a line with just ``l42:``.
 
+``branch`` and ``absbranch`` fields can additionally have a ``call="true"``
+attribute. For now, this just changes the disassembly. In particular the label
+prefix is changed to ``fxn`` and an extra empty line before the destination is
+added to visually seperate the disassembly into functions. So, for example, a
+call instruction defined like this:
+
+.. code-block:: xml
+
+   <bitset name="call" extends="#instruction">
+      <display>
+         call #{OFFSET}
+      </display>
+      <pattern low="26" high="31">110010</pattern> <!-- opcode goes here -->
+      <field name="OFFSET" low="0" high="25" type="branch" call="true"/>
+   </bitset>
+
+will disassemble to ``call #fxn42``.
+
+Finally, users with special knowledge about where execution may start can define
+"entrypoints" when disassembling which are printed like function call
+destinations, with an extra empty line, but with an arbitrary user-defined
+name. Names that are ``fxn`` or ``l`` followed by a number are discouraged
+because they may clash with automatically-generated names.
+
 Encoding
 --------
 

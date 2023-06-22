@@ -114,6 +114,7 @@ class BitSetField(object):
             self.params.append([name, aas])
         self.expr = None
         self.display = None
+        self.call = 'call' in xml.attrib and xml.attrib['call'] == 'true'
         if 'display' in xml.attrib:
             self.display = xml.attrib['display'].strip()
 
@@ -176,6 +177,7 @@ class BitSetDerivedField(BitSetField):
         self.display = None
         if 'display' in xml.attrib:
             self.display = xml.attrib['display'].strip()
+        self.call = 'call' in xml.attrib and xml.attrib['call'] == 'true'
 
 class BitSetCase(object):
     """Class that encapsulates a single bitset case

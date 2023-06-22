@@ -142,6 +142,16 @@ struct decode_state {
 	BITSET_WORD *branch_targets;
 
 	/**
+	 * Bitset of instructions that are call targets.
+	 */
+	BITSET_WORD *call_targets;
+
+	/**
+	 * Bitset of instructions that are entrypoints.
+	 */
+	BITSET_WORD *entrypoints;
+
+	/**
 	 * We allow a limited amount of expression evaluation recursion, but
 	 * not recursive evaluation of any given expression, to prevent infinite
 	 * recursion.
@@ -155,6 +165,12 @@ struct decode_state {
 	 * fields, potentially from a lower/out level in the stack.
 	 */
 	struct decode_scope *scope;
+
+	/* Next entrypoint to be decoded. */
+	struct isa_entrypoint *next_entrypoint;
+
+	/* Sentinel value after the last entrypoint in the array. */
+	struct isa_entrypoint *end_entrypoint;
 
 	/**
 	 * A small fixed upper limit on # of decode errors to capture per-
@@ -619,8 +635,13 @@ display_field(struct decode_scope *scope, const char *field_name)
 				offset = val;
 			}
 			if (offset < scope->state->num_instr) {
-				print(scope->state, "l%d", offset);
-				BITSET_SET(scope->state->branch_targets, offset);
+				if (field->call) {
+					print(scope->state, "fxn%d", offset);
+					BITSET_SET(scope->state->call_targets, offset);
+				} else {
+					print(scope->state, "l%d", offset);
+					BITSET_SET(scope->state->branch_targets, offset);
+				}
 				break;
 			}
 		}
@@ -732,13 +753,48 @@ decode(struct decode_state *state, void *bin, int sz)
 			break;
 		}
 
-		if (state->options->branch_labels &&
-				BITSET_TEST(state->branch_targets, state->n)) {
-			if (state->options->instr_cb) {
-				state->options->instr_cb(state->options->cbdata,
-						state->n, instr.bitset);
+		if (state->options->branch_labels) {
+			bool entrypoint = state->next_entrypoint !=
+				state->end_entrypoint &&
+				state->next_entrypoint->offset == state->n;
+
+			/* Print an extra empty line before functions and
+			 * entrypoints to more clearly separate them.
+			 */
+			if ((BITSET_TEST(state->call_targets, state->n) || entrypoint) &&
+			    state->n != 0) {
+				if (state->options->instr_cb) {
+					state->options->instr_cb(state->options->cbdata,
+							state->n, instr.bitset);
+				}
+				print(state, "\n");
 			}
-			print(state, "l%d:\n", state->n);
+
+			while (state->next_entrypoint != state->end_entrypoint &&
+			       state->next_entrypoint->offset == state->n) {
+				if (state->options->instr_cb) {
+					state->options->instr_cb(state->options->cbdata,
+							state->n, instr.bitset);
+				}
+				print(state, "%s:\n", state->next_entrypoint->name);
+				state->next_entrypoint++;
+			}
+
+			if (BITSET_TEST(state->call_targets, state->n)) {
+				if (state->options->instr_cb) {
+					state->options->instr_cb(state->options->cbdata,
+							state->n, instr.bitset);
+				}
+				print(state, "fxn%d:\n", state->n);
+			}
+
+			if (BITSET_TEST(state->branch_targets, state->n)) {
+				if (state->options->instr_cb) {
+					state->options->instr_cb(state->options->cbdata,
+							state->n, instr.bitset);
+				}
+				print(state, "l%d:\n", state->n);
+			}
 		}
 
 		if (state->options->instr_cb) {
@@ -774,6 +830,13 @@ decode(struct decode_state *state, void *bin, int sz)
 	}
 }
 
+static int
+cmp_entrypoints(const void *_a, const void *_b)
+{
+	const struct isa_entrypoint *a = _a, *b = _b;
+	return (int)a->offset - (int)b->offset;
+}
+
 void
 isa_decode(void *bin, int sz, FILE *out, const struct isa_decode_options *options)
 {
@@ -793,6 +856,8 @@ isa_decode(void *bin, int sz, FILE *out, const struct isa_decode_options *option
 	if (state->options->branch_labels) {
 		state->branch_targets = rzalloc_size(state,
 				sizeof(BITSET_WORD) * BITSET_WORDS(state->num_instr));
+		state->call_targets = rzalloc_size(state,
+				sizeof(BITSET_WORD) * BITSET_WORDS(state->num_instr));
 
 		/* Do a pre-pass to find all the branch targets: */
 		state->out = fopen("/dev/null", "w");
@@ -801,6 +866,21 @@ isa_decode(void *bin, int sz, FILE *out, const struct isa_decode_options *option
 		fclose(state->out);
 		if (options) {
 			state->options = options;
+		}
+
+		/* Sort the entrypoints by offset and initialize entrypoint
+		 * state.
+		 */
+		if (options->entrypoint_count) {
+			struct isa_entrypoint *entrypoints =
+				ralloc_array(state, struct isa_entrypoint,
+					     options->entrypoint_count);
+			memcpy(entrypoints, options->entrypoints,
+			       options->entrypoint_count * sizeof(*entrypoints));
+			qsort(entrypoints, options->entrypoint_count,
+			      sizeof(*entrypoints), cmp_entrypoints);
+			state->next_entrypoint = entrypoints;
+			state->end_entrypoint = entrypoints + options->entrypoint_count;
 		}
 	}
 
