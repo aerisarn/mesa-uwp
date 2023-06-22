@@ -329,7 +329,7 @@ radeonsi-raven-va-full:x86_64:
   variables:
     GPU_VERSION: radv-polaris10-aco
 
-.vkcts-vega10-valve:
+vkcts-vega10-valve:
   extends:
     - .vkcts-test-valve
     - .vega10-test-valve
@@ -340,7 +340,7 @@ radeonsi-raven-va-full:x86_64:
     B2C_TIMEOUT_BOOT_MINUTES: 70
     B2C_TIMEOUT_OVERALL_MINUTES: 70
 
-.vkcts-renoir-valve:
+vkcts-renoir-valve:
   extends:
     - .vkcts-test-valve
     - .renoir-test-valve
@@ -351,7 +351,7 @@ radeonsi-raven-va-full:x86_64:
     B2C_TIMEOUT_BOOT_MINUTES: 130
     B2C_TIMEOUT_OVERALL_MINUTES: 130
 
-.vkcts-navi10-valve:
+vkcts-navi10-valve:
   extends:
     - .vkcts-test-valve
     - .navi10-test-valve
@@ -385,7 +385,7 @@ vkcts-navi21-valve:
     GPU_VERSION: radv-navi21-llvm
     RADV_DEBUG: llvm,checkir
 
-.vkcts-vangogh-valve:
+vkcts-vangogh-valve:
   parallel: 2
   extends:
     - .vkcts-test-valve
@@ -395,7 +395,7 @@ vkcts-navi21-valve:
   variables:
     GPU_VERSION: radv-vangogh-aco
 
-.glcts-vangogh-valve:
+glcts-vangogh-valve:
   extends:
     - .b2c-test-gl
     - .deqp-test-valve
