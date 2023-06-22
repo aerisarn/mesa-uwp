@@ -36,6 +36,19 @@
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
+static int
+i915_gem_set_domain(struct iris_bufmgr *bufmgr, uint32_t handle,
+                    uint32_t read_domains, uint32_t write_domains)
+{
+   struct drm_i915_gem_set_domain sd = {
+      .handle = handle,
+      .read_domains = read_domains,
+      .write_domain = write_domains,
+   };
+   return intel_ioctl(iris_bufmgr_get_fd(bufmgr),
+                      DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd);
+}
+
 static uint32_t
 i915_gem_create(struct iris_bufmgr *bufmgr,
                 const struct intel_memory_class_instance **regions,
@@ -107,6 +120,13 @@ i915_gem_create(struct iris_bufmgr *bufmgr,
    if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_CREATE_EXT,
                    &create))
       return 0;
+
+   if (iris_bufmgr_vram_size(bufmgr) == 0)
+      /* Calling set_domain() will allocate pages for the BO outside of the
+       * struct mutex lock in the kernel, which is more efficient than waiting
+       * to create them during the first execbuf that uses the BO.
+       */
+      i915_gem_set_domain(bufmgr, create.handle, I915_GEM_DOMAIN_CPU, 0);
 
    return create.handle;
 }

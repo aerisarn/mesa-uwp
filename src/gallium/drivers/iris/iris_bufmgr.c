@@ -1123,13 +1123,6 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
    bo->size = bo_size;
    bo->idle = true;
 
-   if (bufmgr->vram.size == 0)
-      /* Calling set_domain() will allocate pages for the BO outside of the
-       * struct mutex lock in the kernel, which is more efficient than waiting
-       * to create them during the first execbuf that uses the BO.
-       */
-      i915_gem_set_domain(bufmgr, bo->gem_handle, I915_GEM_DOMAIN_CPU, 0);
-
    return bo;
 }
 
