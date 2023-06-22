@@ -510,11 +510,10 @@ nir_opt_peephole_select(nir_shader *shader, unsigned limit,
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= nir_opt_peephole_select_impl(function->impl, limit,
-                                                  indirect_load_ok,
-                                                  expensive_alu_ok);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_opt_peephole_select_impl(impl, limit,
+                                               indirect_load_ok,
+                                               expensive_alu_ok);
    }
 
    return progress;

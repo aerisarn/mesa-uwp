@@ -340,16 +340,13 @@ nir_opt_intrinsics(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
-
-      if (opt_intrinsics_impl(function->impl, shader->options)) {
+   nir_foreach_function_impl(impl, shader) {
+      if (opt_intrinsics_impl(impl, shader->options)) {
          progress = true;
-         nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
+         nir_metadata_preserve(impl, nir_metadata_block_index |
+                                     nir_metadata_dominance);
       } else {
-         nir_metadata_preserve(function->impl, nir_metadata_all);
+         nir_metadata_preserve(impl, nir_metadata_all);
       }
    }
 

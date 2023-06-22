@@ -164,8 +164,8 @@ nir_lower_continue_constructs(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl && lower_continue_constructs_impl(function->impl))
+   nir_foreach_function_impl(impl, shader) {
+      if (lower_continue_constructs_impl(impl))
          progress = true;
    }
 

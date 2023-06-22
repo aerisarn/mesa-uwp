@@ -792,10 +792,8 @@ nir_lower_doubles(nir_shader *shader,
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         progress |= nir_lower_doubles_impl(function->impl, softfp64, options);
-      }
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_lower_doubles_impl(impl, softfp64, options);
    }
 
    return progress;

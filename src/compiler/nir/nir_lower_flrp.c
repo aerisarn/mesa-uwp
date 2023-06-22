@@ -637,11 +637,8 @@ nir_lower_flrp(nir_shader *shader,
    if (!u_vector_init_pow2(&dead_flrp, 8, sizeof(struct nir_alu_instr *)))
       return false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         lower_flrp_impl(function->impl, &dead_flrp, lowering_mask,
-                         always_precise);
-      }
+   nir_foreach_function_impl(impl, shader) {
+      lower_flrp_impl(impl, &dead_flrp, lowering_mask, always_precise);
    }
 
    /* Progress was made if the dead list is not empty.  Remove all the

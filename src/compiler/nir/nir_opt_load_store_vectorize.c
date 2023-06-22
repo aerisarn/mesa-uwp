@@ -1455,19 +1455,17 @@ nir_opt_load_store_vectorize(nir_shader *shader, const nir_load_store_vectorize_
 
    nir_shader_index_vars(shader, options->modes);
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         if (options->modes & nir_var_function_temp)
-            nir_function_impl_index_vars(function->impl);
+   nir_foreach_function_impl(impl, shader) {
+      if (options->modes & nir_var_function_temp)
+         nir_function_impl_index_vars(impl);
 
-         nir_foreach_block(block, function->impl)
-            progress |= process_block(function->impl, ctx, block);
+      nir_foreach_block(block, impl)
+         progress |= process_block(impl, ctx, block);
 
-         nir_metadata_preserve(function->impl,
-                               nir_metadata_block_index |
-                               nir_metadata_dominance |
-                               nir_metadata_live_ssa_defs);
-      }
+      nir_metadata_preserve(impl,
+                            nir_metadata_block_index |
+                            nir_metadata_dominance |
+                            nir_metadata_live_ssa_defs);
    }
 
    ralloc_free(ctx);

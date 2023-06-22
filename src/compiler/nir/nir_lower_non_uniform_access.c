@@ -328,9 +328,8 @@ nir_lower_non_uniform_access(nir_shader *shader,
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl &&
-          nir_lower_non_uniform_access_impl(function->impl, options))
+   nir_foreach_function_impl(impl, shader) {
+      if (nir_lower_non_uniform_access_impl(impl, options))
          progress = true;
    }
 

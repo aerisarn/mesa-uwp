@@ -589,8 +589,8 @@ nir_lower_mediump_vars(nir_shader *shader, nir_variable_mode modes)
       ralloc_free(no_lower_set);
    }
 
-   nir_foreach_function(function, shader) {
-      if (function->impl && nir_lower_mediump_vars_impl(function->impl, modes, progress))
+   nir_foreach_function_impl(impl, shader) {
+      if (nir_lower_mediump_vars_impl(impl, modes, progress))
          progress = true;
    }
 

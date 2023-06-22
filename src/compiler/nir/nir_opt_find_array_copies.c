@@ -675,8 +675,8 @@ nir_opt_find_array_copies(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl && opt_find_array_copies_impl(function->impl))
+   nir_foreach_function_impl(impl, shader) {
+      if (opt_find_array_copies_impl(impl))
          progress = true;
    }
 

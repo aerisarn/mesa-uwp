@@ -1676,26 +1676,23 @@ nir_opt_if(nir_shader *shader, nir_opt_if_options options)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl == NULL)
-         continue;
+   nir_foreach_function_impl(impl, shader) {
+      nir_builder b = nir_builder_create(impl);
 
-      nir_builder b = nir_builder_create(function->impl);
-
-      nir_metadata_require(function->impl, nir_metadata_block_index |
-                           nir_metadata_dominance);
-      progress = opt_if_safe_cf_list(&b, &function->impl->body);
-      nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                            nir_metadata_dominance);
+      nir_metadata_require(impl, nir_metadata_block_index |
+                                 nir_metadata_dominance);
+      progress = opt_if_safe_cf_list(&b, &impl->body);
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                                  nir_metadata_dominance);
 
       bool preserve = true;
 
-      if (opt_if_cf_list(&b, &function->impl->body, options)) {
+      if (opt_if_cf_list(&b, &impl->body, options)) {
          preserve = false;
          progress = true;
       }
 
-      if (opt_if_regs_cf_list(&function->impl->body)) {
+      if (opt_if_regs_cf_list(&impl->body)) {
          preserve = false;
          progress = true;
 
@@ -1703,13 +1700,13 @@ nir_opt_if(nir_shader *shader, nir_opt_if_options options)
           * need to convert registers back into SSA defs and clean up SSA defs
           * that don't dominate their uses.
           */
-         nir_lower_regs_to_ssa_impl(function->impl);
+         nir_lower_regs_to_ssa_impl(impl);
       }
 
       if (preserve) {
-         nir_metadata_preserve(function->impl, nir_metadata_none);
+         nir_metadata_preserve(impl, nir_metadata_none);
       } else {
-         nir_metadata_preserve(function->impl, nir_metadata_all);
+         nir_metadata_preserve(impl, nir_metadata_all);
       }
    }
 

@@ -76,11 +76,8 @@ nir_lower_load_and_store_is_helper(nir_builder *b, nir_instr *instr, void *data)
 static bool
 has_is_helper_invocation(nir_shader *shader)
 {
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
-
-      nir_foreach_block_safe(block, function->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block_safe(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;

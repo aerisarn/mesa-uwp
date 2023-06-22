@@ -102,15 +102,11 @@ nir_lower_variable_initializers(nir_shader *shader, nir_variable_mode modes)
             nir_var_function_temp |
             nir_var_system_value;
 
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-	 continue;
-
+   nir_foreach_function_impl(impl, shader) {
       bool impl_progress = false;
+      nir_builder builder = nir_builder_create(impl);
 
-      nir_builder builder = nir_builder_create(function->impl);
-
-      if ((modes & ~nir_var_function_temp) && function->is_entrypoint) {
+      if ((modes & ~nir_var_function_temp) && impl->function->is_entrypoint) {
          impl_progress |= lower_const_initializer(&builder,
                                                   &shader->variables,
                                                   modes);
@@ -118,17 +114,17 @@ nir_lower_variable_initializers(nir_shader *shader, nir_variable_mode modes)
 
       if (modes & nir_var_function_temp) {
          impl_progress |= lower_const_initializer(&builder,
-                                                  &function->impl->locals,
+                                                  &impl->locals,
                                                   nir_var_function_temp);
       }
 
       if (impl_progress) {
          progress = true;
-         nir_metadata_preserve(function->impl, nir_metadata_block_index |
+         nir_metadata_preserve(impl, nir_metadata_block_index |
                                                nir_metadata_dominance |
                                                nir_metadata_live_ssa_defs);
       } else {
-         nir_metadata_preserve(function->impl, nir_metadata_all);
+         nir_metadata_preserve(impl, nir_metadata_all);
       }
    }
 

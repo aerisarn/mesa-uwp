@@ -406,8 +406,8 @@ bool
 nir_remove_dead_derefs(nir_shader *shader)
 {
    bool progress = false;
-   nir_foreach_function(function, shader) {
-      if (function->impl && nir_remove_dead_derefs_impl(function->impl))
+   nir_foreach_function_impl(impl, shader) {
+      if (nir_remove_dead_derefs_impl(impl))
          progress = true;
    }
 
@@ -417,11 +417,8 @@ nir_remove_dead_derefs(nir_shader *shader)
 void
 nir_fixup_deref_modes(nir_shader *shader)
 {
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
-
-      nir_foreach_block(block, function->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_deref)
                continue;
@@ -1517,8 +1514,8 @@ nir_opt_deref(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(func, shader) {
-      if (func->impl && nir_opt_deref_impl(func->impl))
+   nir_foreach_function_impl(impl, shader) {
+      if (nir_opt_deref_impl(impl))
          progress = true;
    }
 

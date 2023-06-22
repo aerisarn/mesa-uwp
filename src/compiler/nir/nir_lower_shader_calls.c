@@ -1804,15 +1804,12 @@ nir_opt_stack_loads(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(func, shader) {
-      if (!func->impl)
-         continue;
-
-      nir_metadata_require(func->impl, nir_metadata_dominance |
-                                       nir_metadata_block_index);
+   nir_foreach_function_impl(impl, shader) {
+      nir_metadata_require(impl, nir_metadata_dominance |
+                                 nir_metadata_block_index);
 
       bool func_progress = false;
-      nir_foreach_block_safe(block, func->impl) {
+      nir_foreach_block_safe(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;
@@ -1822,7 +1819,7 @@ nir_opt_stack_loads(nir_shader *shader)
                continue;
 
             nir_ssa_def *value = &intrin->dest.ssa;
-            nir_block *new_block = find_last_dominant_use_block(func->impl, value);
+            nir_block *new_block = find_last_dominant_use_block(impl, value);
             if (new_block == block)
                continue;
 
@@ -1834,7 +1831,7 @@ nir_opt_stack_loads(nir_shader *shader)
          }
       }
 
-      nir_metadata_preserve(func->impl,
+      nir_metadata_preserve(impl,
                             func_progress ? (nir_metadata_block_index |
                                              nir_metadata_dominance |
                                              nir_metadata_loop_analysis) :

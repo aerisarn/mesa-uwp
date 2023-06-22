@@ -479,24 +479,21 @@ nir_opt_shrink_vectors(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
+   nir_foreach_function_impl(impl, shader) {
+      nir_builder b = nir_builder_create(impl);
 
-      nir_builder b = nir_builder_create(function->impl);
-
-      nir_foreach_block_reverse(block, function->impl) {
+      nir_foreach_block_reverse(block, impl) {
          nir_foreach_instr_reverse(instr, block) {
             progress |= opt_shrink_vectors_instr(&b, instr);
          }
       }
 
       if (progress) {
-         nir_metadata_preserve(function->impl,
+         nir_metadata_preserve(impl,
                                nir_metadata_block_index |
                                nir_metadata_dominance);
       } else {
-         nir_metadata_preserve(function->impl, nir_metadata_all);
+         nir_metadata_preserve(impl, nir_metadata_all);
       }
    }
 

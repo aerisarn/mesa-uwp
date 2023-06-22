@@ -365,11 +365,8 @@ lower_task_intrin(nir_builder *b,
 static bool
 requires_payload_in_shared(nir_shader *shader, bool atomics, bool small_types)
 {
-   nir_foreach_function(func, shader) {
-      if (!func->impl)
-         continue;
-
-      nir_foreach_block(block, func->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;

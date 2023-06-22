@@ -304,9 +304,8 @@ nir_lower_returns(nir_shader *shader)
     */
    bool progress = nir_opt_remove_phis(shader);
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= nir_lower_returns_impl(function->impl) || progress;
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_lower_returns_impl(impl) || progress;
    }
 
    return progress;

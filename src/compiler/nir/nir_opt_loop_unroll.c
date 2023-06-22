@@ -1161,11 +1161,9 @@ nir_opt_loop_unroll(nir_shader *shader)
 
    bool force_unroll_sampler_indirect = shader->options->force_indirect_unrolling_sampler;
    nir_variable_mode indirect_mask = shader->options->force_indirect_unrolling;
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         progress |= nir_opt_loop_unroll_impl(function->impl, indirect_mask,
-                                              force_unroll_sampler_indirect);
-      }
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_opt_loop_unroll_impl(impl, indirect_mask,
+                                           force_unroll_sampler_indirect);
    }
    return progress;
 }

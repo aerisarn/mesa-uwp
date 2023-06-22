@@ -43,8 +43,7 @@ nir_lower_alpha_test(nir_shader *shader, enum compare_func func,
    assert(alpha_ref_state_tokens);
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
-   nir_foreach_function(function, shader) {
-      nir_function_impl *impl = function->impl;
+   nir_foreach_function_impl(impl, shader) {
       nir_builder b = nir_builder_create(impl);
       b.cursor = nir_before_cf_list(&impl->body);
 

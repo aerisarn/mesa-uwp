@@ -293,9 +293,8 @@ nir_lower_bit_size(nir_shader *shader,
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= lower_impl(function->impl, callback, callback_data);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= lower_impl(impl, callback, callback_data);
    }
 
    return progress;

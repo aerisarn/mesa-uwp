@@ -300,9 +300,8 @@ nir_lower_regs_to_ssa(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= nir_lower_regs_to_ssa_impl(function->impl);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_lower_regs_to_ssa_impl(impl);
    }
 
    return progress;

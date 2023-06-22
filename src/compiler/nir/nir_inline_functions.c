@@ -275,9 +275,8 @@ nir_inline_functions(nir_shader *shader)
    struct set *inlined = _mesa_pointer_set_create(NULL);
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress = inline_function_impl(function->impl, inlined) || progress;
+   nir_foreach_function_impl(impl, shader) {
+      progress = inline_function_impl(impl, inlined) || progress;
    }
 
    _mesa_set_destroy(inlined, NULL);

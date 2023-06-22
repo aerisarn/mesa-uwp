@@ -1474,10 +1474,8 @@ nir_opt_copy_prop_vars(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
-      progress |= nir_copy_prop_vars_impl(function->impl);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_copy_prop_vars_impl(impl);
    }
 
    return progress;

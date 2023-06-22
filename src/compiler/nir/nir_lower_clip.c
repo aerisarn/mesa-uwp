@@ -169,22 +169,20 @@ static nir_ssa_def *
 find_output(nir_shader *shader, unsigned drvloc)
 {
    nir_ssa_def *def = NULL;
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_foreach_block_reverse(block, function->impl) {
-            nir_ssa_def *new_def = find_output_in_block(block, drvloc);
-            assert(!(new_def && def));
-            def = new_def;
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block_reverse(block, impl) {
+         nir_ssa_def *new_def = find_output_in_block(block, drvloc);
+         assert(!(new_def && def));
+         def = new_def;
 #if !defined(DEBUG)
-            /* for debug builds, scan entire shader to assert
-             * if output is written multiple times.  For release
-             * builds just assume all is well and bail when we
-             * find first:
-             */
-            if (def)
-               break;
+         /* for debug builds, scan entire shader to assert
+          * if output is written multiple times.  For release
+          * builds just assume all is well and bail when we
+          * find first:
+          */
+         if (def)
+            break;
 #endif
-         }
       }
    }
 

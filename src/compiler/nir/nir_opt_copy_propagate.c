@@ -173,8 +173,8 @@ nir_copy_prop(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl && nir_copy_prop_impl(function->impl))
+   nir_foreach_function_impl(impl, shader) {
+      if (nir_copy_prop_impl(impl))
          progress = true;
    }
 

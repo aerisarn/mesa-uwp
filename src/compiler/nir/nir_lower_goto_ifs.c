@@ -986,8 +986,8 @@ nir_lower_goto_ifs(nir_shader *shader)
 {
    bool progress = true;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl && nir_lower_goto_ifs_impl(function->impl))
+   nir_foreach_function_impl(impl, shader) {
+      if (nir_lower_goto_ifs_impl(impl))
          progress = true;
    }
 

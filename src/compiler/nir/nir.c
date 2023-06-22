@@ -2422,10 +2422,8 @@ nir_shader_lower_instructions(nir_shader *shader,
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl &&
-          nir_function_impl_lower_instructions(function->impl,
-                                               filter, lower, cb_data))
+   nir_foreach_function_impl(impl, shader) {
+      if (nir_function_impl_lower_instructions(impl, filter, lower, cb_data))
          progress = true;
    }
 

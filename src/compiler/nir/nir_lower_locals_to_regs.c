@@ -322,12 +322,8 @@ nir_lower_locals_to_regs(nir_shader *shader, uint8_t bool_bitsize)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         progress =
-            nir_lower_locals_to_regs_impl(function->impl, bool_bitsize) ||
-            progress;
-      }
+   nir_foreach_function_impl(impl, shader) {
+      progress = nir_lower_locals_to_regs_impl(impl, bool_bitsize) || progress;
    }
 
    return progress;

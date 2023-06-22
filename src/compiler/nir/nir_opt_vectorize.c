@@ -409,9 +409,8 @@ nir_opt_vectorize(nir_shader *shader, nir_vectorize_cb filter,
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= nir_opt_vectorize_impl(function->impl, filter, data);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_opt_vectorize_impl(impl, filter, data);
    }
 
    return progress;

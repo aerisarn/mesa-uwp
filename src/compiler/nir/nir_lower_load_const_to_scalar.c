@@ -91,9 +91,8 @@ nir_lower_load_const_to_scalar(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= nir_lower_load_const_to_scalar_impl(function->impl);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_lower_load_const_to_scalar_impl(impl);
    }
 
    return progress;

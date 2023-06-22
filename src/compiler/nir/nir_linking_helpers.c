@@ -80,11 +80,8 @@ get_num_components(nir_variable *var)
 static void
 tcs_add_output_reads(nir_shader *shader, uint64_t *read, uint64_t *patches_read)
 {
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
-
-      nir_foreach_block(block, function->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;

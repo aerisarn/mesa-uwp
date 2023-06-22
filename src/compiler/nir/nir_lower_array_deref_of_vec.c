@@ -186,9 +186,8 @@ nir_lower_array_deref_of_vec(nir_shader *shader, nir_variable_mode modes,
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl &&
-          nir_lower_array_deref_of_vec_impl(function->impl, modes, options))
+   nir_foreach_function_impl(impl, shader) {
+      if (nir_lower_array_deref_of_vec_impl(impl, modes, options))
          progress = true;
    }
 

@@ -1647,9 +1647,8 @@ nir_lower_tex(nir_shader *shader, const nir_lower_tex_options *options)
       progress = nir_lower_tex(shader, &_options);
    }
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= nir_lower_tex_impl(function->impl, options, shader->options);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_lower_tex_impl(impl, options, shader->options);
    }
 
    return progress;

@@ -1840,18 +1840,15 @@ nir_validate_ssa_dominance(nir_shader *shader, const char *when)
 
    state.shader = shader;
 
-   nir_foreach_function(func, shader) {
-      if (func->impl == NULL)
-         continue;
-
+   nir_foreach_function_impl(impl, shader) {
       state.ssa_defs_found = reralloc(state.mem_ctx, state.ssa_defs_found,
                                       BITSET_WORD,
-                                      BITSET_WORDS(func->impl->ssa_alloc));
-      memset(state.ssa_defs_found, 0, BITSET_WORDS(func->impl->ssa_alloc) *
+                                      BITSET_WORDS(impl->ssa_alloc));
+      memset(state.ssa_defs_found, 0, BITSET_WORDS(impl->ssa_alloc) *
                                       sizeof(BITSET_WORD));
 
-      state.impl = func->impl;
-      validate_ssa_dominance(func->impl, &state);
+      state.impl = impl;
+      validate_ssa_dominance(impl, &state);
    }
 
    if (_mesa_hash_table_num_entries(state.errors) > 0)

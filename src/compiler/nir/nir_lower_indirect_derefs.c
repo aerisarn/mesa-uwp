@@ -218,11 +218,9 @@ nir_lower_indirect_derefs(nir_shader *shader, nir_variable_mode modes,
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         progress = lower_indirects_impl(function->impl, modes, NULL,
-                                         max_lower_array_len) || progress;
-      }
+   nir_foreach_function_impl(impl, shader) {
+      progress = lower_indirects_impl(impl, modes, NULL, max_lower_array_len) ||
+                 progress;
    }
 
    return progress;
@@ -234,11 +232,9 @@ nir_lower_indirect_var_derefs(nir_shader *shader, const struct set *vars)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         progress = lower_indirects_impl(function->impl, nir_var_uniform,
-                                         vars, UINT_MAX) || progress;
-      }
+   nir_foreach_function_impl(impl, shader) {
+      progress = lower_indirects_impl(impl, nir_var_uniform, vars, UINT_MAX) ||
+                 progress;
    }
 
    return progress;

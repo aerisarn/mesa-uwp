@@ -361,18 +361,15 @@ nir_lower_io_to_temporaries(nir_shader *shader, nir_function_impl *entrypoint,
       _mesa_hash_table_insert(state.input_map, var, input);
    }
 
-   nir_foreach_function(function, shader) {
-      if (function->impl == NULL)
-         continue;
-
+   nir_foreach_function_impl(impl, shader) {
       if (inputs)
-         emit_input_copies_impl(&state, function->impl);
+         emit_input_copies_impl(&state, impl);
 
       if (outputs)
-         emit_output_copies_impl(&state, function->impl);
+         emit_output_copies_impl(&state, impl);
 
-      nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                                            nir_metadata_dominance);
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                                  nir_metadata_dominance);
    }
 
    exec_list_append(&shader->variables, &state.old_inputs);

@@ -614,9 +614,8 @@ nir_lower_io_to_vector(nir_shader *shader, nir_variable_mode modes)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= nir_lower_io_to_vector_impl(function->impl, modes);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_lower_io_to_vector_impl(impl, modes);
    }
 
    return progress;
@@ -718,9 +717,8 @@ nir_vectorize_tess_levels(nir_shader *shader)
       }
    }
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= nir_vectorize_tess_levels_impl(function->impl);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_vectorize_tess_levels_impl(impl);
    }
 
    return progress;

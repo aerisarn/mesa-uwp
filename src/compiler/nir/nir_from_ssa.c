@@ -910,9 +910,8 @@ nir_convert_from_ssa(nir_shader *shader, bool phi_webs_only)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= nir_convert_from_ssa_impl(function->impl, phi_webs_only);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_convert_from_ssa_impl(impl, phi_webs_only);
    }
 
    return progress;

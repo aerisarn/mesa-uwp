@@ -755,11 +755,8 @@ nir_lower_io(nir_shader *shader, nir_variable_mode modes,
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         progress |= nir_lower_io_impl(function->impl, modes,
-                                       type_size, options);
-      }
+   nir_foreach_function_impl(impl, shader) {
+      progress |= nir_lower_io_impl(impl, modes, type_size, options);
    }
 
    return progress;
@@ -2327,9 +2324,8 @@ nir_lower_explicit_io(nir_shader *shader, nir_variable_mode modes,
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl &&
-          nir_lower_explicit_io_impl(function->impl, modes, addr_format))
+   nir_foreach_function_impl(impl, shader) {
+      if (impl && nir_lower_explicit_io_impl(impl, modes, addr_format))
          progress = true;
    }
 
@@ -2513,13 +2509,11 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
    if (modes & nir_var_mem_task_payload)
       progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_mem_task_payload, type_info);
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         if (modes & nir_var_function_temp)
-            progress |= lower_vars_to_explicit(shader, &function->impl->locals, nir_var_function_temp, type_info);
+   nir_foreach_function_impl(impl, shader) {
+      if (modes & nir_var_function_temp)
+         progress |= lower_vars_to_explicit(shader, &impl->locals, nir_var_function_temp, type_info);
 
-         progress |= nir_lower_vars_to_explicit_types_impl(function->impl, modes, type_info);
-      }
+      progress |= nir_lower_vars_to_explicit_types_impl(impl, modes, type_info);
    }
 
    return progress;
@@ -2873,19 +2867,17 @@ nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode modes)
 {
    bool progress = false;
 
-   nir_foreach_function(f, nir) {
-      if (f->impl) {
-         bool impl_progress = false;
-         nir_builder b = nir_builder_create(f->impl);
-         nir_foreach_block(block, f->impl) {
-            impl_progress |= add_const_offset_to_base_block(block, &b, modes);
-         }
-         progress |= impl_progress;
-         if (impl_progress)
-            nir_metadata_preserve(f->impl, nir_metadata_block_index | nir_metadata_dominance);
-         else
-            nir_metadata_preserve(f->impl, nir_metadata_all);
+   nir_foreach_function_impl(impl, nir) {
+      bool impl_progress = false;
+      nir_builder b = nir_builder_create(impl);
+      nir_foreach_block(block, impl) {
+         impl_progress |= add_const_offset_to_base_block(block, &b, modes);
       }
+      progress |= impl_progress;
+      if (impl_progress)
+         nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
+      else
+         nir_metadata_preserve(impl, nir_metadata_all);
    }
 
    return progress;
