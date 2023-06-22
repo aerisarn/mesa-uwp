@@ -774,10 +774,6 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
    shader->info.num_input_vgprs -= num_prolog_vgprs;
 }
 
-/* For the UMR disassembler. */
-#define DEBUGGER_END_OF_CODE_MARKER 0xbf9f0000 /* invalid instruction */
-#define DEBUGGER_NUM_MARKERS        5
-
 static unsigned get_lds_granularity(struct si_screen *screen, gl_shader_stage stage)
 {
    return screen->info.gfx_level >= GFX11 && stage == MESA_SHADER_FRAGMENT ? 1024 :

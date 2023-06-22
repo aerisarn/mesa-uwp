@@ -1431,16 +1431,6 @@ radv_destroy_shader_upload_queue(struct radv_device *device)
    }
 }
 
-/* For the UMR disassembler. */
-#define DEBUGGER_END_OF_CODE_MARKER 0xbf9f0000 /* invalid instruction */
-#define DEBUGGER_NUM_MARKERS        5
-
-static unsigned
-radv_get_shader_binary_size(size_t code_size)
-{
-   return code_size + DEBUGGER_NUM_MARKERS * 4;
-}
-
 static bool
 radv_should_use_wgp_mode(const struct radv_device *device, gl_shader_stage stage, const struct radv_shader_info *info)
 {
@@ -1847,11 +1837,6 @@ radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_b
       struct radv_shader_binary_legacy *bin = (struct radv_shader_binary_legacy *)binary;
       memcpy(dest_ptr, bin->data + bin->stats_size, bin->code_size);
 
-      /* Add end-of-code markers for the UMR disassembler. */
-      uint32_t *ptr32 = (uint32_t *)dest_ptr + bin->code_size / 4;
-      for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
-         ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
-
       if (shader->code) {
          memcpy(shader->code, bin->data + bin->stats_size, bin->code_size);
       }
@@ -2063,7 +2048,7 @@ radv_shader_create_uncached(struct radv_device *device, const struct radv_shader
    } else {
       struct radv_shader_binary_legacy *bin = (struct radv_shader_binary_legacy *)binary;
 
-      shader->code_size = radv_get_shader_binary_size(bin->code_size);
+      shader->code_size = bin->code_size;
       shader->exec_size = bin->exec_size;
 
       if (bin->stats_size) {
@@ -2131,13 +2116,12 @@ static bool
 radv_shader_part_binary_upload(struct radv_device *device, const struct radv_shader_part_binary *bin,
                                struct radv_shader_part *shader_part)
 {
-   uint32_t code_size = radv_get_shader_binary_size(bin->code_size);
    struct radv_shader_dma_submission *submission = NULL;
    void *dest_ptr;
 
    if (device->shader_use_invisible_vram) {
       uint64_t va = radv_buffer_get_va(shader_part->alloc->arena->bo) + shader_part->alloc->offset;
-      submission = radv_shader_dma_get_submission(device, shader_part->alloc->arena->bo, va, code_size);
+      submission = radv_shader_dma_get_submission(device, shader_part->alloc->arena->bo, va, bin->code_size);
       if (!submission)
          return false;
 
@@ -2147,10 +2131,6 @@ radv_shader_part_binary_upload(struct radv_device *device, const struct radv_sha
    }
 
    memcpy(dest_ptr, bin->data, bin->code_size);
-   /* Add end-of-code markers for the UMR disassembler. */
-   uint32_t *ptr32 = (uint32_t *)dest_ptr + code_size / 4;
-   for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
-      ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
 
    if (device->shader_use_invisible_vram) {
       if (!radv_shader_dma_submit(device, submission, &shader_part->upload_seq))
@@ -2163,7 +2143,6 @@ radv_shader_part_binary_upload(struct radv_device *device, const struct radv_sha
 struct radv_shader_part *
 radv_shader_part_create(struct radv_device *device, struct radv_shader_part_binary *binary, unsigned wave_size)
 {
-   uint32_t code_size = radv_get_shader_binary_size(binary->code_size);
    struct radv_shader_part *shader_part;
 
    shader_part = calloc(1, sizeof(struct radv_shader_part));
@@ -2171,7 +2150,7 @@ radv_shader_part_create(struct radv_device *device, struct radv_shader_part_bina
       return NULL;
 
    shader_part->ref_count = 1;
-   shader_part->code_size = code_size;
+   shader_part->code_size = binary->code_size;
    shader_part->rsrc1 =
       S_00B848_VGPRS((binary->num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) | S_00B228_SGPRS((binary->num_sgprs - 1) / 8);
    shader_part->disasm_string = binary->disasm_size ? strdup((const char *)(binary->data + binary->code_size)) : NULL;
