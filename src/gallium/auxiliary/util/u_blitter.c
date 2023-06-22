@@ -2388,6 +2388,7 @@ void util_blitter_clear_render_target(struct blitter_context *blitter,
    struct pipe_framebuffer_state fb_state;
    bool msaa;
    unsigned num_layers;
+   blitter_get_vs_func get_vs;
 
    assert(dstsurf->texture);
    if (!dstsurf->texture)
@@ -2419,23 +2420,23 @@ void util_blitter_clear_render_target(struct blitter_context *blitter,
    msaa = util_framebuffer_get_num_samples(&fb_state) > 1;
 
    blitter_set_dst_dimensions(ctx, dstsurf->width, dstsurf->height);
+   blitter_set_common_draw_rect_state(ctx, false, msaa);
 
    union blitter_attrib attrib;
    memcpy(attrib.color, color->ui, sizeof(color->ui));
 
    num_layers = dstsurf->u.tex.last_layer - dstsurf->u.tex.first_layer + 1;
+
    if (num_layers > 1 && ctx->has_layered) {
-      blitter_set_common_draw_rect_state(ctx, false, msaa);
-      blitter->draw_rectangle(blitter, ctx->velem_state, get_vs_layered,
-                              dstx, dsty, dstx+width, dsty+height, 0,
-                              num_layers, UTIL_BLITTER_ATTRIB_COLOR, &attrib);
+      get_vs = get_vs_layered;
    } else {
-      blitter_set_common_draw_rect_state(ctx, false, msaa);
-      blitter->draw_rectangle(blitter, ctx->velem_state,
-                              get_vs_passthrough_pos_generic,
-                              dstx, dsty, dstx+width, dsty+height, 0,
-                              1, UTIL_BLITTER_ATTRIB_COLOR, &attrib);
+      get_vs = get_vs_passthrough_pos_generic;
+      num_layers = 1;
    }
+
+   blitter->draw_rectangle(blitter, ctx->velem_state, get_vs,
+                           dstx, dsty, dstx+width, dsty+height, 0,
+                           num_layers, UTIL_BLITTER_ATTRIB_COLOR, &attrib);
 
    util_blitter_restore_vertex_states(blitter);
    util_blitter_restore_fragment_states(blitter);
