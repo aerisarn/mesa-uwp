@@ -1247,6 +1247,26 @@ etna_shader_vs_lookup(const struct etna_shader_variant *sobj,
       if (sobj->outfile.reg[i].slot == in->slot)
          return &sobj->outfile.reg[i];
 
+   /*
+    * There are valid NIR shaders pairs where the vertex shader has
+    * a VARYING_SLOT_BFC0 shader_out and the corresponding framgent
+    * shader has a VARYING_SLOT_COL0 shader_in.
+    * So at link time if there is no matching VARYING_SLOT_BFC[n],
+    * we must map VARYING_SLOT_BFC0[n] to VARYING_SLOT_COL[n].
+    */
+   gl_varying_slot slot;
+
+   if (in->slot == VARYING_SLOT_COL0)
+      slot = VARYING_SLOT_BFC0;
+   else if (in->slot == VARYING_SLOT_COL1)
+      slot = VARYING_SLOT_BFC1;
+   else
+      return NULL;
+
+   for (int i = 0; i < sobj->outfile.num_reg; i++)
+      if (sobj->outfile.reg[i].slot == slot)
+         return &sobj->outfile.reg[i];
+
    return NULL;
 }
 
