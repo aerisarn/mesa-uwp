@@ -204,13 +204,13 @@ do_triangle(struct draw_context *draw,
 #define GET_ELT(idx) (MIN2(elts[idx], max_index))
 
 #define FUNC pipe_run_elts
-#define FUNC_VARS                               \
+#define FUNC_VARS                              \
    struct draw_context *draw,                  \
-   enum mesa_prim prim,                   \
+   enum mesa_prim prim,                        \
    unsigned prim_flags,                        \
    struct vertex_header *vertices,             \
    unsigned stride,                            \
-   const uint16_t *elts,                         \
+   const uint16_t *elts,                       \
    unsigned count,                             \
    unsigned max_index
 

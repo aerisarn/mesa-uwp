@@ -984,8 +984,8 @@ static void* r300_render_map_vertices(struct vbuf_render* render)
 }
 
 static void r300_render_unmap_vertices(struct vbuf_render* render,
-                                             uint16_t min,
-                                             uint16_t max)
+                                       uint16_t min,
+                                       uint16_t max)
 {
     struct r300_render* r300render = r300_render(render);
     struct r300_context* r300 = r300render->r300;

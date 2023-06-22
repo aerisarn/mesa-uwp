@@ -281,10 +281,10 @@ llvmpipe_get_sample_position(struct pipe_context *pipe,
 
 static void
 lp_clear_color_texture_helper(struct pipe_transfer *dst_trans,
-                                uint8_t *dst_map,
-                                enum pipe_format format,
-                                const union pipe_color_union *color,
-                                unsigned width, unsigned height,
+                              uint8_t *dst_map,
+                              enum pipe_format format,
+                              const union pipe_color_union *color,
+                              unsigned width, unsigned height,
                               unsigned depth)
 {
    union util_color uc;
@@ -375,11 +375,11 @@ lp_clear_depth_stencil_texture_msaa(struct pipe_context *pipe,
    }
 
    uint8_t *dst_map = llvmpipe_transfer_map_ms(pipe,
-                                             texture,
-                                             0,
-                                             (need_rmw ? PIPE_MAP_READ_WRITE :
-                                              PIPE_MAP_WRITE),
-                                             sample, box, &dst_trans);
+                                               texture,
+                                               0,
+                                               (need_rmw ? PIPE_MAP_READ_WRITE :
+                                                PIPE_MAP_WRITE),
+                                               sample, box, &dst_trans);
    assert(dst_map);
    if (!dst_map)
       return;

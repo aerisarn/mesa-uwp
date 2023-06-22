@@ -4238,7 +4238,7 @@ emit_vs_output_declarations(struct svga_shader_emitter_v10 *emit)
  */
 static unsigned
 output_writemask_for_stream(unsigned stream, uint8_t output_streams,
-                                 uint8_t output_usagemask)
+                            uint8_t output_usagemask)
 {
    unsigned i;
    unsigned writemask = 0;
