@@ -87,7 +87,7 @@ ir3_context_init(struct ir3_compiler *compiler, struct ir3_shader *shader,
     */
    bool progress = false;
    bool needs_late_alg = false;
-   NIR_PASS(progress, ctx->s, nir_lower_locals_to_regs);
+   NIR_PASS(progress, ctx->s, nir_lower_locals_to_regs, 1);
 
    /* we could need cleanup after lower_locals_to_regs */
    while (progress) {

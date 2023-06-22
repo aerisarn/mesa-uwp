@@ -1701,7 +1701,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    OPT(nir_copy_prop);
    OPT(nir_opt_dce);
 
-   OPT(nir_lower_locals_to_regs);
+   OPT(nir_lower_locals_to_regs, 32);
 
    if (unlikely(debug_enabled)) {
       /* Re-index SSA defs so we print more sensible numbers. */

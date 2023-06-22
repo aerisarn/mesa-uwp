@@ -3871,7 +3871,7 @@ const void *nir_to_tgsi_options(struct nir_shader *s,
    NIR_PASS_V(s, nir_lower_vec_to_movs, ntt_vec_to_mov_writemask_cb, NULL);
 
    /* locals_to_regs will leave dead derefs that are good to clean up. */
-   NIR_PASS_V(s, nir_lower_locals_to_regs);
+   NIR_PASS_V(s, nir_lower_locals_to_regs, 32);
    NIR_PASS_V(s, nir_opt_dce);
 
    if (NIR_DEBUG(TGSI)) {
