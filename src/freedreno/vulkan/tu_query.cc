@@ -821,6 +821,7 @@ tu_ResetQueryPool(VkDevice device,
    }
 }
 
+template <chip CHIP>
 static void
 emit_begin_occlusion_query(struct tu_cmd_buffer *cmdbuf,
                            struct tu_query_pool *pool,
@@ -846,11 +847,17 @@ emit_begin_occlusion_query(struct tu_cmd_buffer *cmdbuf,
    tu_cs_emit_regs(cs,
                    A6XX_RB_SAMPLE_COUNT_CONTROL(.copy = true));
 
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_SAMPLE_COUNT_ADDR(.qword = begin_iova));
-
-   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
-   tu_cs_emit(cs, ZPASS_DONE);
+   if (CHIP == A6XX) {
+      tu_cs_emit_regs(cs,
+                        A6XX_RB_SAMPLE_COUNT_ADDR(.qword = begin_iova));
+      tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
+      tu_cs_emit(cs, ZPASS_DONE);
+   } else {
+      tu_cs_emit_pkt7(cs, CP_EVENT_WRITE7, 3);
+      tu_cs_emit(cs, CP_EVENT_WRITE7_0(.event = ZPASS_DONE,
+                                       .write_sample_count = true).value);
+      tu_cs_emit_qw(cs, begin_iova);
+   }
 }
 
 template <chip CHIP>
@@ -1064,7 +1071,7 @@ tu_CmdBeginQuery(VkCommandBuffer commandBuffer,
        * GL_SAMPLES_PASSED and GL_ANY_SAMPLES_PASSED, so we can similarly
        * ignore the VK_QUERY_CONTROL_PRECISE_BIT flag here.
        */
-      emit_begin_occlusion_query(cmdbuf, pool, query);
+      emit_begin_occlusion_query<CHIP>(cmdbuf, pool, query);
       break;
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       emit_begin_xfb_query<CHIP>(cmdbuf, pool, query, 0);
@@ -1111,6 +1118,7 @@ tu_CmdBeginQueryIndexedEXT(VkCommandBuffer commandBuffer,
 }
 TU_GENX(tu_CmdBeginQueryIndexedEXT);
 
+template <chip CHIP>
 static void
 emit_end_occlusion_query(struct tu_cmd_buffer *cmdbuf,
                          struct tu_query_pool *pool,
@@ -1146,11 +1154,18 @@ emit_end_occlusion_query(struct tu_cmd_buffer *cmdbuf,
    tu_cs_emit_regs(cs,
                    A6XX_RB_SAMPLE_COUNT_CONTROL(.copy = true));
 
-   tu_cs_emit_regs(cs,
-                   A6XX_RB_SAMPLE_COUNT_ADDR(.qword = end_iova));
-
-   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
-   tu_cs_emit(cs, ZPASS_DONE);
+   if (CHIP == A6XX) {
+      tu_cs_emit_regs(cs,
+                        A6XX_RB_SAMPLE_COUNT_ADDR(.qword = end_iova));
+      tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
+      tu_cs_emit(cs, ZPASS_DONE);
+   } else {
+      /* A7XX TODO: Calculate (end - begin) via ZPASS_DONE. */
+      tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 3);
+      tu_cs_emit(cs, CP_EVENT_WRITE7_0(.event = ZPASS_DONE,
+                                       .write_sample_count = true).value);
+      tu_cs_emit_qw(cs, end_iova);
+   }
 
    tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
    tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_NE) |
@@ -1534,7 +1549,7 @@ tu_CmdEndQuery(VkCommandBuffer commandBuffer,
 
    switch (pool->type) {
    case VK_QUERY_TYPE_OCCLUSION:
-      emit_end_occlusion_query(cmdbuf, pool, query);
+      emit_end_occlusion_query<CHIP>(cmdbuf, pool, query);
       break;
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       emit_end_xfb_query<CHIP>(cmdbuf, pool, query, 0);
