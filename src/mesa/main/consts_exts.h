@@ -941,6 +941,15 @@ struct gl_constants
    /** Is the drivers uniform storage packed or padded to 16 bytes. */
    bool PackedDriverUniformStorage;
 
+   bool HasFBFetch;
+
+   /** Whether the backend supports reading from outputs */
+   bool SupportsReadingOutputs;
+
+   bool CombinedClipCullDistanceArrays;
+
+   bool PointSizeFixed;
+
    /** Wether or not glBitmap uses red textures rather than alpha */
    bool BitmapUsesRed;
 
