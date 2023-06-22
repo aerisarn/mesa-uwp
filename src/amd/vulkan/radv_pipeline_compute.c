@@ -137,7 +137,7 @@ radv_compute_pipeline_init(const struct radv_device *device, struct radv_compute
                            const struct radv_pipeline_layout *layout, struct radv_shader *shader)
 {
    pipeline->base.need_indirect_descriptor_sets |= radv_shader_need_indirect_descriptor_sets(shader);
-   radv_pipeline_init_scratch(device, &pipeline->base);
+   radv_pipeline_init_scratch(device, &pipeline->base, shader);
 
    pipeline->base.push_constant_size = layout->push_constant_size;
    pipeline->base.dynamic_offset_count = layout->dynamic_offset_count;

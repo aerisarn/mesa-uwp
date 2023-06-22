@@ -124,26 +124,17 @@ radv_DestroyPipeline(VkDevice _device, VkPipeline _pipeline, const VkAllocationC
 }
 
 void
-radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipeline *pipeline)
+radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipeline *pipeline, struct radv_shader *shader)
 {
-   unsigned scratch_bytes_per_wave = 0;
-   unsigned max_waves = 0;
-   bool is_rt = pipeline->type == RADV_PIPELINE_RAY_TRACING;
+   if (!shader->config.scratch_bytes_per_wave && pipeline->type != RADV_PIPELINE_RAY_TRACING)
+      return;
 
-   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (pipeline->shaders[i] && (pipeline->shaders[i]->config.scratch_bytes_per_wave || is_rt)) {
-         unsigned max_stage_waves = device->scratch_waves;
+   pipeline->scratch_bytes_per_wave = MAX2(pipeline->scratch_bytes_per_wave, shader->config.scratch_bytes_per_wave);
 
-         scratch_bytes_per_wave = MAX2(scratch_bytes_per_wave, pipeline->shaders[i]->config.scratch_bytes_per_wave);
-
-         max_stage_waves = MIN2(max_stage_waves, 4 * device->physical_device->rad_info.num_cu *
-                                                    radv_get_max_waves(device, pipeline->shaders[i], i));
-         max_waves = MAX2(max_waves, max_stage_waves);
-      }
-   }
-
-   pipeline->scratch_bytes_per_wave = scratch_bytes_per_wave;
-   pipeline->max_waves = max_waves;
+   unsigned max_stage_waves = device->scratch_waves;
+   max_stage_waves = MIN2(max_stage_waves, 4 * device->physical_device->rad_info.num_cu *
+                                              radv_get_max_waves(device, shader, shader->info.stage));
+   pipeline->max_waves = MAX2(pipeline->max_waves, max_stage_waves);
 }
 
 struct radv_pipeline_key

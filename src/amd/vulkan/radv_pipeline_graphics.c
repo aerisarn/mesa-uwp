@@ -3924,7 +3924,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       radv_pipeline_init_vertex_input_state(device, pipeline, &state);
 
    radv_pipeline_init_shader_stages_state(device, pipeline);
-   radv_pipeline_init_scratch(device, &pipeline->base);
 
    /* Find the last vertex shader stage that eventually uses streamout. */
    pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
@@ -3944,6 +3943,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       if (pipeline->base.shaders[i]) {
          pipeline->base.shader_upload_seq =
             MAX2(pipeline->base.shader_upload_seq, pipeline->base.shaders[i]->upload_seq);
+
+         radv_pipeline_init_scratch(device, &pipeline->base, pipeline->base.shaders[i]);
       }
    }
 
