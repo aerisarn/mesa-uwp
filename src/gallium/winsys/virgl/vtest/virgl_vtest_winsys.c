@@ -197,9 +197,9 @@ static bool virgl_vtest_resource_is_busy(struct virgl_winsys *vws,
    ret = virgl_vtest_busy_wait(vtws, res->res_handle, 0);
 
    if (ret < 0)
-      return FALSE;
+      return false;
 
-   return ret == 1 ? TRUE : FALSE;
+   return ret == 1 ? true : false;
 }
 
 static void virgl_vtest_resource_reference(struct virgl_winsys *vws,
@@ -469,7 +469,7 @@ static void virgl_vtest_add_res(struct virgl_vtest_winsys *vtws,
 
    cbuf->res_bo[cbuf->cres] = NULL;
    virgl_vtest_resource_reference(&vtws->base, &cbuf->res_bo[cbuf->cres], res);
-   cbuf->is_handle_added[hash] = TRUE;
+   cbuf->is_handle_added[hash] = true;
 
    cbuf->reloc_indices_hashlist[hash] = cbuf->cres;
    p_atomic_inc(&res->num_cs_references);
@@ -572,9 +572,9 @@ static bool virgl_vtest_res_is_ref(struct virgl_winsys *vws,
                                    struct virgl_hw_res *res)
 {
    if (!p_atomic_read(&res->num_cs_references))
-      return FALSE;
+      return false;
 
-   return TRUE;
+   return true;
 }
 
 static int virgl_vtest_get_caps(struct virgl_winsys *vws,
@@ -611,13 +611,13 @@ static bool virgl_fence_wait(struct virgl_winsys *vws,
       timeout /= 1000;
       while (virgl_vtest_resource_is_busy(vws, res)) {
          if (os_time_get() - start_time >= timeout)
-            return FALSE;
+            return false;
          os_time_sleep(10);
       }
-      return TRUE;
+      return true;
    }
    virgl_vtest_resource_wait(vws, res);
-   return TRUE;
+   return true;
 }
 
 static void virgl_fence_reference(struct virgl_winsys *vws,

@@ -57,9 +57,9 @@ bool
 draw_get_option_use_llvm(void)
 {
 #ifdef DRAW_LLVM_AVAILABLE
-   return debug_get_bool_option("DRAW_USE_LLVM", TRUE);
+   return debug_get_bool_option("DRAW_USE_LLVM", true);
 #else
-   return FALSE;
+   return false;
 #endif
 }
 
@@ -106,7 +106,7 @@ err_out:
 struct draw_context *
 draw_create(struct pipe_context *pipe)
 {
-   return draw_create_context(pipe, NULL, TRUE);
+   return draw_create_context(pipe, NULL, true);
 }
 
 
@@ -115,7 +115,7 @@ struct draw_context *
 draw_create_with_llvm_context(struct pipe_context *pipe,
                               void *context)
 {
-   return draw_create_context(pipe, context, TRUE);
+   return draw_create_context(pipe, context, true);
 }
 #endif
 
@@ -126,7 +126,7 @@ draw_create_with_llvm_context(struct pipe_context *pipe,
 struct draw_context *
 draw_create_no_llvm(struct pipe_context *pipe)
 {
-   return draw_create_context(pipe, NULL, FALSE);
+   return draw_create_context(pipe, NULL, false);
 }
 
 
@@ -145,30 +145,30 @@ draw_init(struct draw_context *draw)
    ASSIGN_4V(draw->plane[3],  0,  1,  0, 1);
    ASSIGN_4V(draw->plane[4],  0,  0,  1, 1); /* yes these are correct */
    ASSIGN_4V(draw->plane[5],  0,  0, -1, 1); /* mesa's a bit wonky */
-   draw->clip_xy = TRUE;
-   draw->clip_z = TRUE;
+   draw->clip_xy = true;
+   draw->clip_z = true;
 
    draw->pt.user.planes = (float (*) [DRAW_TOTAL_CLIP_PLANES][4]) &(draw->plane[0]);
    draw->pt.user.eltMax = ~0;
 
    if (!draw_pipeline_init(draw))
-      return FALSE;
+      return false;
 
    if (!draw_pt_init(draw))
-      return FALSE;
+      return false;
 
    if (!draw_vs_init(draw))
-      return FALSE;
+      return false;
 
    if (!draw_gs_init(draw))
-      return FALSE;
+      return false;
 
    draw->quads_always_flatshade_last = !draw->pipe->screen->get_param(
       draw->pipe->screen, PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION);
 
    draw->floating_point_depth = false;
 
-   return TRUE;
+   return true;
 }
 
 
@@ -852,13 +852,13 @@ void draw_do_flush(struct draw_context *draw, unsigned flags)
    if (!draw->suspend_flushing) {
       assert(!draw->flushing); /* catch inadvertant recursion */
 
-      draw->flushing = TRUE;
+      draw->flushing = true;
 
       draw_pipeline_flush(draw, flags);
 
       draw_pt_flush(draw, flags);
 
-      draw->flushing = FALSE;
+      draw->flushing = false;
    }
 }
 
@@ -1269,7 +1269,7 @@ draw_will_inject_frontface(const struct draw_context *draw)
    const struct pipe_rasterizer_state *rast = draw->rasterizer;
 
    if (reduced_prim != MESA_PRIM_TRIANGLES) {
-      return FALSE;
+      return false;
    }
 
    return (rast &&

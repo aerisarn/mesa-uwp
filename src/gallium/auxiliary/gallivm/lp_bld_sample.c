@@ -71,21 +71,21 @@ lp_sampler_wrap_mode_uses_border_color(enum pipe_tex_wrap mode,
    case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
    case PIPE_TEX_WRAP_MIRROR_REPEAT:
    case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE:
-      return FALSE;
+      return false;
    case PIPE_TEX_WRAP_CLAMP:
    case PIPE_TEX_WRAP_MIRROR_CLAMP:
       if (min_img_filter == PIPE_TEX_FILTER_NEAREST &&
           mag_img_filter == PIPE_TEX_FILTER_NEAREST) {
-         return FALSE;
+         return false;
       } else {
-         return TRUE;
+         return true;
       }
    case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
    case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER:
-      return TRUE;
+      return true;
    default:
       assert(0 && "unexpected wrap mode");
-      return FALSE;
+      return false;
    }
 }
 
@@ -273,7 +273,7 @@ lp_build_pmin(struct lp_build_sample_context *bld,
    const unsigned num_quads = length / 4;
    const bool pmin_per_quad = pmin_bld->type.length != length;
 
-   int_size = lp_build_minify(int_size_bld, bld->int_size, first_level, TRUE);
+   int_size = lp_build_minify(int_size_bld, bld->int_size, first_level, true);
    float_size = lp_build_int_to_float(float_size_bld, int_size);
    max_aniso = lp_build_broadcast_scalar(coord_bld, max_aniso);
    max_aniso = lp_build_mul(coord_bld, max_aniso, max_aniso);
@@ -381,7 +381,7 @@ lp_build_rho(struct lp_build_sample_context *bld,
     */
 
    LLVMValueRef int_size =
-      lp_build_minify(int_size_bld, bld->int_size, first_level, TRUE);
+      lp_build_minify(int_size_bld, bld->int_size, first_level, true);
    LLVMValueRef float_size = lp_build_int_to_float(float_size_bld, int_size);
 
    if (derivs) {
@@ -1386,7 +1386,7 @@ lp_build_mipmap_level_sizes(struct lp_build_sample_context *bld,
    if (bld->num_mips == 1) {
       ilevel_vec = lp_build_broadcast_scalar(&bld->int_size_bld, ilevel);
       *out_size = lp_build_minify(&bld->int_size_bld, bld->int_size,
-                                  ilevel_vec, TRUE);
+                                  ilevel_vec, true);
       *out_size = lp_build_scale_view_dims(&bld->int_size_bld, *out_size,
                                            bld->int_tex_blocksize,
                                            bld->int_tex_blocksize_log2,
@@ -1442,7 +1442,7 @@ lp_build_mipmap_level_sizes(struct lp_build_sample_context *bld,
                                                  bld4.type,
                                                  ilevel,
                                                  indexi);
-            tmp[i] = lp_build_minify(&bld4, int_size_vec, ileveli, TRUE);
+            tmp[i] = lp_build_minify(&bld4, int_size_vec, ileveli, true);
             tmp[i] = lp_build_scale_view_dims(&bld4, tmp[i],
                                               int_tex_blocksize_vec,
                                               int_tex_blocksize_log2_vec,
@@ -1483,7 +1483,7 @@ lp_build_mipmap_level_sizes(struct lp_build_sample_context *bld,
                lp_build_broadcast_scalar(&bld->int_coord_bld,
                                          bld->int_view_blocksize);
             *out_size = lp_build_minify(&bld->int_coord_bld, int_size_vec,
-                                        ilevel, FALSE);
+                                        ilevel, false);
             *out_size = lp_build_scale_view_dims(&bld->int_coord_bld,
                                                  *out_size,
                                                  int_tex_blocksize_vec,
@@ -1499,7 +1499,7 @@ lp_build_mipmap_level_sizes(struct lp_build_sample_context *bld,
                                                     ilevel, indexi);
                tmp[i] = bld->int_size;
                tmp[i] = lp_build_minify(&bld->int_size_in_bld, tmp[i],
-                                        ilevel1, TRUE);
+                                        ilevel1, true);
                tmp[i] = lp_build_scale_view_dims(&bld->int_size_in_bld,
                                                  tmp[i],
                                                  bld->int_tex_blocksize,

@@ -104,7 +104,7 @@ nine_d3ddeclusage_check(unsigned usage, unsigned usage_idx)
     case D3DDECLUSAGE_BLENDWEIGHT:
     case D3DDECLUSAGE_BLENDINDICES:
     case D3DDECLUSAGE_COLOR:
-        return TRUE;
+        return true;
     case D3DDECLUSAGE_PSIZE:
     case D3DDECLUSAGE_FOG:
     case D3DDECLUSAGE_SAMPLE:
@@ -112,7 +112,7 @@ nine_d3ddeclusage_check(unsigned usage, unsigned usage_idx)
     case D3DDECLUSAGE_TEXCOORD:
         return usage_idx <= 15;
     default:
-        return FALSE;
+        return false;
     }
 }
 
@@ -204,7 +204,7 @@ NineVertexDeclaration9_ctor( struct NineVertexDeclaration9 *This,
         This->usage_map[i] = usage;
 
         if (This->decls[i].Usage == D3DDECLUSAGE_POSITIONT)
-            This->position_t = TRUE;
+            This->position_t = true;
 
         This->elems[i].src_offset = This->decls[i].Offset;
         This->elems[i].instance_divisor = 0;

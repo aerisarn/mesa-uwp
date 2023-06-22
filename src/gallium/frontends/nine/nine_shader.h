@@ -164,13 +164,13 @@ nine_shader_variant_add(struct nine_shader_variant *list,
     }
     list->next = MALLOC_STRUCT(nine_shader_variant);
     if (!list->next)
-        return FALSE;
+        return false;
     list->next->next = NULL;
     list->next->key = key;
     list->next->cso = cso;
     list->next->const_ranges = const_ranges;
     list->next->const_used_size = const_used_size;
-    return TRUE;
+    return true;
 }
 
 static inline void
@@ -215,7 +215,7 @@ nine_shader_variant_so_add(struct nine_shader_variant_so *list,
         nine_bind(&list->vdecl, vdecl);
         list->so = *so;
         list->cso = cso;
-        return TRUE;
+        return true;
     }
     while (list->next) {
         assert(list->vdecl != vdecl);
@@ -223,12 +223,12 @@ nine_shader_variant_so_add(struct nine_shader_variant_so *list,
     }
     list->next = MALLOC_STRUCT(nine_shader_variant_so);
     if (!list->next)
-        return FALSE;
+        return false;
     list->next->next = NULL;
     nine_bind(&list->vdecl, vdecl);
     list->next->so = *so;
     list->next->cso = cso;
-    return TRUE;
+    return true;
 }
 
 static inline void
@@ -272,7 +272,7 @@ nine_shader_constant_combination_key(struct nine_shader_constant_combination **l
 
     while (current) {
         index++; /* start at 1. 0 is for the variant without constant replacement */
-        match = TRUE;
+        match = true;
         for (i = 0; i < NINE_MAX_CONST_I; ++i) {
             if (int_slots_used[i])
                 match &= !memcmp(const_i + 4*i, current->const_i[i], sizeof(current->const_i[0]));
@@ -312,7 +312,7 @@ nine_shader_constant_combination_get(struct nine_shader_constant_combination *li
             return list;
         list = list->next;
     }
-    assert(FALSE);
+    assert(false);
     return NULL;
 }
 

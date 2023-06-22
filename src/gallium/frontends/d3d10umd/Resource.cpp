@@ -609,14 +609,14 @@ areResourcesCompatible(const struct pipe_resource *src_resource, // IN
        * Trivial.
        */
 
-      return TRUE;
+      return true;
    } else if (src_resource->target == PIPE_BUFFER &&
               dst_resource->target == PIPE_BUFFER) {
       /*
        * Buffer resources are merely a collection of bytes.
        */
 
-      return TRUE;
+      return true;
    } else {
       /*
        * Check whether the formats are supported by
@@ -821,7 +821,7 @@ ResourceIsStagingBusy(D3D10DDI_HDEVICE hDevice,       // IN
 
    /* ignore */
 
-   return FALSE;
+   return false;
 }
 
 

@@ -165,7 +165,7 @@ lp_linear_init_noop_sampler(struct lp_linear_sampler *samp);
 #define FAIL(s) do {                                    \
       if (LP_DEBUG & DEBUG_LINEAR)                      \
          debug_printf("%s: %s\n", __func__, s);         \
-      return FALSE;                                     \
+      return false;                                     \
 } while (0)
 
 #endif

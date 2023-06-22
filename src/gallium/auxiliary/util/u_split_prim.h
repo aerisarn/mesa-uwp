@@ -50,8 +50,8 @@ util_split_prim_next(struct util_split_prim *s, unsigned max_verts)
       s->emit(s->priv, s->start, 1);
       max_verts--;
       if (s->edgeflag_off) {
-         s->edge(s->priv, TRUE);
-         s->edgeflag_off = FALSE;
+         s->edge(s->priv, true);
+         s->edgeflag_off = false;
       }
    }
 
@@ -59,7 +59,7 @@ util_split_prim_next(struct util_split_prim *s, unsigned max_verts)
       s->emit(s->priv, s->p_start, s->p_end - s->p_start);
       if (s->close_first)
          s->emit(s->priv, s->start, 1);
-      return TRUE;
+      return true;
    }
 
    switch (s->mode) {
@@ -72,12 +72,12 @@ util_split_prim_next(struct util_split_prim *s, unsigned max_verts)
    case MESA_PRIM_POLYGON:
       max_verts--;
       s->emit(s->priv, s->p_start, max_verts);
-      s->edge(s->priv, FALSE);
+      s->edge(s->priv, false);
       s->emit(s->priv, s->p_start + max_verts, 1);
       s->p_start += max_verts;
-      s->repeat_first = TRUE;
-      s->edgeflag_off = TRUE;
-      return FALSE;
+      s->repeat_first = true;
+      s->edgeflag_off = true;
+      return false;
    case MESA_PRIM_TRIANGLES:
       max_verts = max_verts - (max_verts % 3);
       break;
@@ -89,7 +89,7 @@ util_split_prim_next(struct util_split_prim *s, unsigned max_verts)
       repeat = 2;
       break;
    case MESA_PRIM_TRIANGLE_FAN:
-      s->repeat_first = TRUE;
+      s->repeat_first = true;
       repeat = 1;
       break;
    case MESA_PRIM_QUADS:
@@ -108,7 +108,7 @@ util_split_prim_next(struct util_split_prim *s, unsigned max_verts)
 
    s->emit (s->priv, s->p_start, max_verts);
    s->p_start += (max_verts - repeat);
-   return FALSE;
+   return false;
 }
 
 #endif /* U_SPLIT_PRIM_H */

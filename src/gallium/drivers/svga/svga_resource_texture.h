@@ -247,7 +247,7 @@ svga_set_texture_dirty(struct svga_texture *tex,
 {
    check_face_level(tex, face, level);
    tex->dirty[face] |= 1 << level;
-   tex->modified = TRUE;
+   tex->modified = true;
 }
 
 static inline void
@@ -257,7 +257,7 @@ svga_clear_texture_dirty(struct svga_texture *tex)
    for (i = 0; i < tex->b.depth0 * tex->b.array_size; i++) {
       tex->dirty[i] = 0;
    }
-   tex->modified = FALSE;
+   tex->modified = false;
 }
 
 static inline bool

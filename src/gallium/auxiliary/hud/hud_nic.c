@@ -101,9 +101,9 @@ static bool
 get_nic_bytes(const char *fn, uint64_t *bytes)
 {
    if (get_file_value(fn, bytes) < 0)
-      return FALSE;
+      return false;
 
-   return TRUE;
+   return true;
 }
 
 static void

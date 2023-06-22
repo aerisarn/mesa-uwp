@@ -173,11 +173,11 @@ u_trim_pipe_prim(enum mesa_prim pipe_prim, unsigned *nr)
    if (count && *nr >= count->min) {
       if (count->incr > 1)
          *nr -= (*nr % count->incr);
-      return TRUE;
+      return true;
    }
    else {
       *nr = 0;
-      return FALSE;
+      return false;
    }
 }
 

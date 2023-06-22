@@ -159,7 +159,7 @@ remove_dynamic_indexes(struct tgsi_transform_context *ctx,
    ctx->emit_instruction(ctx, &inst);
 
    for (i = 0; i < dc->num_iterations; i++) {
-      bool out_of_bound_index = FALSE;
+      bool out_of_bound_index = false;
       /**
        * Make sure we are not exceeding index limit of constant buffer
        *
@@ -178,7 +178,7 @@ remove_dynamic_indexes(struct tgsi_transform_context *ctx,
       if ((reg->Register.File == TGSI_FILE_CONSTANT) &&
           (!reg->Register.Indirect &&
            (reg->Register.Index > dc->const_buf_range[i]))) {
-         out_of_bound_index = TRUE;
+         out_of_bound_index = true;
       }
 
       if (!out_of_bound_index) {
@@ -279,7 +279,7 @@ dIndexing_inst(struct tgsi_transform_context *ctx,
                struct tgsi_full_instruction *inst)
 {
    int i;
-   bool indexing = FALSE;
+   bool indexing = false;
    struct dIndexing_transform_context *dc = dIndexing_transform_context(ctx);
 
    for (i = 0; i < inst->Instruction.NumSrcRegs; i++) {
@@ -300,7 +300,7 @@ dIndexing_inst(struct tgsi_transform_context *ctx,
             dc->num_iterations = dc->num_samplers;
 
          remove_dynamic_indexes(ctx, inst, src);
-         indexing = TRUE;
+         indexing = true;
       }
    }
 

@@ -372,7 +372,7 @@ setup_sort_vertices(struct setup_context *setup,
                    __func__, setup->oneoverarea, area, det );
       */
       if (util_is_inf_or_nan(setup->oneoverarea))
-         return FALSE;
+         return false;
    }
 
    /* We need to know if this is a front or back-facing triangle for:
@@ -388,10 +388,10 @@ setup_sort_vertices(struct setup_context *setup,
       unsigned face = setup->facing == 0 ? PIPE_FACE_FRONT : PIPE_FACE_BACK;
 
       if (face & setup->cull_face)
-	 return FALSE;
+	 return false;
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -904,7 +904,7 @@ setup_line_coefficients(struct setup_context *setup,
    /* NOTE: this is not really area but something proportional to it */
    area = setup->emaj.dx * setup->emaj.dx + setup->emaj.dy * setup->emaj.dy;
    if (area == 0.0f || util_is_inf_or_nan(area))
-      return FALSE;
+      return false;
    setup->oneoverarea = 1.0f / area;
 
    /* z and w are done by linear interpolation:
@@ -956,7 +956,7 @@ setup_line_coefficients(struct setup_context *setup,
          setup->coef[fragSlot].dady[0] = 0.0;
       }
    }
-   return TRUE;
+   return true;
 }
 
 

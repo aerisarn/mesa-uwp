@@ -152,8 +152,8 @@ tgsi_transform_shader(const struct tgsi_token *tokens_in,
                       uint initial_tokens_len,
                       struct tgsi_transform_context *ctx)
 {
-   bool first_instruction = TRUE;
-   bool epilog_emitted = FALSE;
+   bool first_instruction = true;
+   bool epilog_emitted = false;
    int cond_stack = 0;
    int call_stack = 0;
 
@@ -244,7 +244,7 @@ tgsi_transform_shader(const struct tgsi_token *tokens_in,
                   assert(cond_stack == 0);
                   /* Emit caller's epilog */
                   ctx->epilog(ctx);
-                  epilog_emitted = TRUE;
+                  epilog_emitted = true;
                }
                /* Emit END (or RET) */
                ctx->emit_instruction(ctx, fullinst);
@@ -281,7 +281,7 @@ tgsi_transform_shader(const struct tgsi_token *tokens_in,
                   ctx->emit_instruction(ctx, fullinst);
             }
 
-            first_instruction = FALSE;
+            first_instruction = false;
          }
          break;
 

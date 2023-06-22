@@ -9,7 +9,7 @@
    const unsigned prim = input_prims->prim;                       \
    const unsigned prim_flags = input_prims->flags;                \
    const unsigned count = input_prims->count;                     \
-   const bool quads_flatshade_last = FALSE;                    \
+   const bool quads_flatshade_last = false;                    \
    const bool last_vertex_last = !gs->draw->rasterizer->flatshade_first;  \
    do {                                                           \
       switch (prim) {                                             \

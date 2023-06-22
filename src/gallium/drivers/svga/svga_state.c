@@ -217,9 +217,9 @@ update_state(struct svga_context *svga,
              uint64_t *state)
 {
 #ifdef DEBUG
-   bool debug = TRUE;
+   bool debug = true;
 #else
-   bool debug = FALSE;
+   bool debug = false;
 #endif
    enum pipe_error ret = PIPE_OK;
    unsigned i;

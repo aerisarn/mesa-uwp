@@ -681,7 +681,7 @@ static inline struct r300_vertex_shader *r300_vs(struct r300_context *r300)
 static inline void r300_mark_atom_dirty(struct r300_context *r300,
                                         struct r300_atom *atom)
 {
-    atom->dirty = TRUE;
+    atom->dirty = true;
 
     if (!r300->first_dirty) {
         r300->first_dirty = atom;

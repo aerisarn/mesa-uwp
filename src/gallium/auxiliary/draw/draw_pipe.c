@@ -64,16 +64,16 @@ draw_pipeline_init(struct draw_context *draw)
        !draw->pipeline.cull ||
        !draw->pipeline.user_cull ||
        !draw->pipeline.validate)
-      return FALSE;
+      return false;
 
    /* these defaults are oriented toward the needs of softpipe */
    draw->pipeline.wide_point_threshold = 1000000.0f; /* infinity */
    draw->pipeline.wide_line_threshold = 1.0f;
-   draw->pipeline.wide_point_sprites = FALSE;
-   draw->pipeline.line_stipple = TRUE;
-   draw->pipeline.point_sprite = TRUE;
+   draw->pipeline.wide_point_sprites = false;
+   draw->pipeline.line_stipple = true;
+   draw->pipeline.point_sprite = true;
 
-   return TRUE;
+   return true;
 }
 
 

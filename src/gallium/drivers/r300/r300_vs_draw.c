@@ -95,7 +95,7 @@ static void emit_output(struct tgsi_transform_context *ctx,
     decl = tgsi_default_full_declaration();
     decl.Declaration.File = TGSI_FILE_OUTPUT;
     decl.Declaration.Interpolate = 1;
-    decl.Declaration.Semantic = TRUE;
+    decl.Declaration.Semantic = true;
     decl.Semantic.Name = name;
     decl.Semantic.Index = index;
     decl.Range.First = decl.Range.Last = reg;
@@ -163,7 +163,7 @@ static void transform_decl(struct tgsi_transform_context *ctx,
                 if (decl->Semantic.Index == 1 && !vsctx->color_used[0]) {
                     insert_output_before(ctx, decl, TGSI_SEMANTIC_COLOR, 0,
                                          TGSI_INTERPOLATE_LINEAR);
-                    vsctx->color_used[0] = TRUE;
+                    vsctx->color_used[0] = true;
                 }
                 break;
 
@@ -176,17 +176,17 @@ static void transform_decl(struct tgsi_transform_context *ctx,
                 if (!vsctx->color_used[0]) {
                     insert_output_before(ctx, decl, TGSI_SEMANTIC_COLOR, 0,
                                          TGSI_INTERPOLATE_LINEAR);
-                    vsctx->color_used[0] = TRUE;
+                    vsctx->color_used[0] = true;
                 }
                 if (!vsctx->color_used[1]) {
                     insert_output_before(ctx, decl, TGSI_SEMANTIC_COLOR, 1,
                                          TGSI_INTERPOLATE_LINEAR);
-                    vsctx->color_used[1] = TRUE;
+                    vsctx->color_used[1] = true;
                 }
                 if (decl->Semantic.Index == 1 && !vsctx->bcolor_used[0]) {
                     insert_output_before(ctx, decl, TGSI_SEMANTIC_BCOLOR, 0,
                                          TGSI_INTERPOLATE_LINEAR);
-                    vsctx->bcolor_used[0] = TRUE;
+                    vsctx->bcolor_used[0] = true;
                 }
                 break;
 
@@ -204,7 +204,7 @@ static void transform_decl(struct tgsi_transform_context *ctx,
         ++vsctx->num_outputs;
     } else if (decl->Declaration.File == TGSI_FILE_TEMPORARY) {
         for (i = decl->Range.First; i <= decl->Range.Last; i++) {
-           vsctx->temp_used[i] = TRUE;
+           vsctx->temp_used[i] = true;
         }
     }
 
@@ -227,7 +227,7 @@ static void transform_inst(struct tgsi_transform_context *ctx,
     unsigned i;
 
     if (!vsctx->first_instruction) {
-        vsctx->first_instruction = TRUE;
+        vsctx->first_instruction = true;
 
         /* Insert the generic output for WPOS. */
         emit_output(ctx, TGSI_SEMANTIC_GENERIC, vsctx->last_generic + 1,
@@ -268,7 +268,7 @@ static void transform_inst(struct tgsi_transform_context *ctx,
         new_inst.Src[0].Register.Index = vsctx->pos_temp;
         ctx->emit_instruction(ctx, &new_inst);
 
-        vsctx->end_instruction = TRUE;
+        vsctx->end_instruction = true;
     } else {
         /* Not an END instruction. */
         /* Fix writes to outputs. */
@@ -337,12 +337,12 @@ void r300_draw_init_vertex_shader(struct r300_context *r300,
         switch (info.output_semantic_name[i]) {
             case TGSI_SEMANTIC_COLOR:
                 assert(index < 2);
-                transform.color_used[index] = TRUE;
+                transform.color_used[index] = true;
                 break;
 
             case TGSI_SEMANTIC_BCOLOR:
                 assert(index < 2);
-                transform.bcolor_used[index] = TRUE;
+                transform.bcolor_used[index] = true;
                 break;
         }
     }

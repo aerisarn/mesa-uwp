@@ -69,7 +69,7 @@ pb_validate_add_buffer(struct pb_validate *vl,
                        bool *already_present)
 {
    assert(buf);
-   *already_present = FALSE;
+   *already_present = false;
    if (!buf)
       return PIPE_ERROR;
 
@@ -85,7 +85,7 @@ pb_validate_add_buffer(struct pb_validate *vl,
 
          assert(entry->buf == buf);
          entry->flags |= flags;
-         *already_present = TRUE;
+         *already_present = true;
 
          return PIPE_OK;
       }

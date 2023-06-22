@@ -98,10 +98,10 @@ is_integer_target(struct pipe_framebuffer_state *fb, unsigned buffers)
       if ((buffers & (PIPE_CLEAR_COLOR0 << i)) &&
           fb->cbufs[i] &&
           util_format_is_pure_integer(fb->cbufs[i]->format)) {
-         return TRUE;
+         return true;
       }
    }
-   return FALSE;
+   return false;
 }
 
 
@@ -130,7 +130,7 @@ try_clear(struct svga_context *svga,
 {
    enum pipe_error ret = PIPE_OK;
    SVGA3dRect rect = { 0, 0, 0, 0 };
-   bool restore_viewport = FALSE;
+   bool restore_viewport = false;
    SVGA3dClearFlag flags = 0;
    struct pipe_framebuffer_state *fb = &svga->curr.framebuffer;
    union util_color uc = {0};
@@ -167,7 +167,7 @@ try_clear(struct svga_context *svga,
 
    if (!svga_have_vgpu10(svga) &&
        !svga_rects_equal(&rect, &svga->state.hw_clear.viewport)) {
-      restore_viewport = TRUE;
+      restore_viewport = true;
       ret = SVGA3D_SetViewport(svga->swc, &rect);
       if (ret != PIPE_OK)
          return ret;
@@ -531,7 +531,7 @@ svga_clear_render_target(struct pipe_context *pipe,
 {
     struct svga_context *svga = svga_context( pipe );
 
-    svga_toggle_render_condition(svga, render_condition_enabled, FALSE);
+    svga_toggle_render_condition(svga, render_condition_enabled, false);
     if (!svga_have_vgpu10(svga) || dstx != 0 || dsty != 0 ||
         width != dst->width || height != dst->height) {
        svga_blitter_clear_render_target(svga, dst, color, dstx, dsty, width,
@@ -543,7 +543,7 @@ svga_clear_render_target(struct pipe_context *pipe,
                                                               color));
        assert (ret == PIPE_OK);
     }
-    svga_toggle_render_condition(svga, render_condition_enabled, TRUE);
+    svga_toggle_render_condition(svga, render_condition_enabled, true);
 }
 
 void svga_init_clear_functions(struct svga_context *svga)

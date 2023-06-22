@@ -114,7 +114,7 @@ r300_texture_transfer_map(struct pipe_context *ctx,
     referenced_cs =
         r300->rws->cs_is_buffer_referenced(&r300->cs, tex->buf, RADEON_USAGE_READWRITE);
     if (referenced_cs) {
-        referenced_hw = TRUE;
+        referenced_hw = true;
     } else {
         referenced_hw =
             !r300->rws->buffer_wait(r300->rws, tex->buf, 0, RADEON_USAGE_READWRITE);

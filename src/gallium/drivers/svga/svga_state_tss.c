@@ -53,7 +53,7 @@ svga_cleanup_tss_binding(struct svga_context *svga)
          pipe_sampler_view_reference(&svga->curr.sampler_views[shader][i],
                                      NULL);
          pipe_resource_reference(&view->texture, NULL);
-         view->dirty = TRUE;
+         view->dirty = true;
       }
    }
 }
@@ -110,7 +110,7 @@ emit_tex_binding_unit(struct svga_context *svga,
       svga_sampler_view_reference(&view->v, NULL);
       pipe_resource_reference(&view->texture, texture);
 
-      view->dirty = TRUE;
+      view->dirty = true;
       view->min_lod = min_lod;
       view->max_lod = max_lod;
 
@@ -210,13 +210,13 @@ update_tss_binding(struct svga_context *svga, uint64_t dirty )
                                        handle,
                                        SVGA_RELOC_READ);
 
-         queue.bind[i].view->dirty = FALSE;
+         queue.bind[i].view->dirty = false;
       }
 
       SVGA_FIFOCommitAll(svga->swc);
    }
 
-   svga->rebind.flags.texture_samplers = FALSE;
+   svga->rebind.flags.texture_samplers = false;
 
    return PIPE_OK;
 
@@ -294,7 +294,7 @@ svga_reemit_tss_bindings(struct svga_context *svga)
       SVGA_FIFOCommitAll(svga->swc);
    }
 
-   svga->rebind.flags.texture_samplers = FALSE;
+   svga->rebind.flags.texture_samplers = false;
 
    return PIPE_OK;
 }

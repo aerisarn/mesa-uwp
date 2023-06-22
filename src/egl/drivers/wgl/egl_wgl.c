@@ -1004,7 +1004,7 @@ wgl_create_sync_khr(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_lis
       break;
 
    case EGL_SYNC_REUSABLE_KHR:
-      wgl_sync->event = CreateEvent(NULL, TRUE, FALSE, NULL);
+      wgl_sync->event = CreateEvent(NULL, true, false, NULL);
       if (!wgl_sync->event) {
          _eglError(EGL_BAD_ALLOC, "eglCreateSyncKHR");
          free(wgl_sync);

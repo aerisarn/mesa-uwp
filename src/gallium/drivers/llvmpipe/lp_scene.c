@@ -119,11 +119,11 @@ lp_scene_is_empty(struct lp_scene *scene)
       for (unsigned x = 0; x < scene->tiles_x; x++) {
          const struct cmd_bin *bin = lp_scene_get_bin(scene, x, y);
          if (bin->head) {
-            return FALSE;
+            return false;
          }
       }
    }
-   return TRUE;
+   return true;
 }
 
 
@@ -321,7 +321,7 @@ lp_scene_end_rasterization(struct lp_scene *scene)
    scene->scene_size = 0;
    scene->resource_reference_size = 0;
 
-   scene->alloc_failed = FALSE;
+   scene->alloc_failed = false;
 
    util_unreference_framebuffer_state(&scene->fb);
 }
@@ -353,7 +353,7 @@ lp_scene_new_data_block(struct lp_scene *scene)
 {
    if (scene->scene_size + DATA_BLOCK_SIZE > LP_SCENE_MAX_SIZE) {
       if (0) debug_printf("%s: failed\n", __func__);
-      scene->alloc_failed = TRUE;
+      scene->alloc_failed = true;
       return NULL;
    } else {
       struct data_block *block = MALLOC_STRUCT(data_block);
@@ -411,7 +411,7 @@ lp_scene_add_resource_reference(struct lp_scene *scene,
        */
       for (i = 0; i < ref->count; i++)
          if (ref->resource[i] == resource)
-            return TRUE;
+            return true;
 
       if (ref->count < RESOURCE_REF_SZ) {
          /* If the block is half-empty, then append the reference here.
@@ -426,7 +426,7 @@ lp_scene_add_resource_reference(struct lp_scene *scene,
       assert(*last == NULL);
       *last = lp_scene_alloc(scene, sizeof *ref);
       if (*last == NULL)
-          return FALSE;
+          return false;
 
       ref = *last;
       memset(ref, 0, sizeof *ref);
@@ -450,9 +450,9 @@ lp_scene_add_resource_reference(struct lp_scene *scene,
     */
    if (!initializing_scene &&
        scene->resource_reference_size >= LP_SCENE_MAX_RESOURCE_SIZE)
-      return FALSE;
+      return false;
 
-   return TRUE;
+   return true;
 }
 
 
@@ -475,7 +475,7 @@ lp_scene_add_frag_shader_reference(struct lp_scene *scene,
        */
       for (int i = 0; i < ref->count; i++)
          if (ref->variant[i] == variant)
-            return TRUE;
+            return true;
 
       if (ref->count < SHADER_REF_SZ) {
          /* If the block is half-empty, then append the reference here.
@@ -490,7 +490,7 @@ lp_scene_add_frag_shader_reference(struct lp_scene *scene,
       assert(*last == NULL);
       *last = lp_scene_alloc(scene, sizeof *ref);
       if (*last == NULL)
-          return FALSE;
+          return false;
 
       ref = *last;
       memset(ref, 0, sizeof *ref);
@@ -501,7 +501,7 @@ lp_scene_add_frag_shader_reference(struct lp_scene *scene,
    lp_fs_variant_reference(llvmpipe_context(scene->pipe),
                            &ref->variant[ref->count++], variant);
 
-   return TRUE;
+   return true;
 }
 
 
@@ -542,9 +542,9 @@ next_bin(struct lp_scene *scene)
    }
    if (scene->curr_y >= scene->tiles_y) {
       /* no more bins */
-      return FALSE;
+      return false;
    }
-   return TRUE;
+   return true;
 }
 
 

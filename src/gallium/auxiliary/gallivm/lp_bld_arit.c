@@ -1273,7 +1273,7 @@ lp_build_div(struct lp_build_context *bld,
       return bld->undef;
 
    /* fast rcp is disabled (just uses div), so makes no sense to try that */
-   if (FALSE &&
+   if (false &&
       ((util_get_cpu_caps()->has_sse && type.width == 32 && type.length == 4) ||
        (util_get_cpu_caps()->has_avx && type.width == 32 && type.length == 8)) &&
       type.floating)
@@ -1861,16 +1861,16 @@ arch_rounding_available(const struct lp_type type)
        (type.length == 1 || type.width*type.length == 128)) ||
        (util_get_cpu_caps()->has_avx && type.width*type.length == 256) ||
        (util_get_cpu_caps()->has_avx512f && type.width*type.length == 512))
-      return TRUE;
+      return true;
    else if ((util_get_cpu_caps()->has_altivec &&
             (type.width == 32 && type.length == 4)))
-      return TRUE;
+      return true;
    else if (util_get_cpu_caps()->has_neon)
-      return TRUE;
+      return true;
    else if (util_get_cpu_caps()->family == CPU_S390X)
-      return TRUE;
+      return true;
 
-   return FALSE;
+   return false;
 }
 
 enum lp_build_round_mode
@@ -2644,7 +2644,7 @@ lp_build_rcp(struct lp_build_context *bld,
     * particular uses that require less workarounds.
     */
 
-   if (FALSE && ((util_get_cpu_caps()->has_sse && type.width == 32 && type.length == 4) ||
+   if (false && ((util_get_cpu_caps()->has_sse && type.width == 32 && type.length == 4) ||
          (util_get_cpu_caps()->has_avx && type.width == 32 && type.length == 8))){
       const unsigned num_iterations = 0;
       LLVMValueRef res;
@@ -3035,7 +3035,7 @@ lp_build_sin(struct lp_build_context *bld,
       return lp_build_intrinsic(builder, intrinsic, vec_type, args, 1, 0);
    }
 
-   return lp_build_sin_or_cos(bld, a, FALSE);
+   return lp_build_sin_or_cos(bld, a, false);
 }
 
 
@@ -3057,7 +3057,7 @@ lp_build_cos(struct lp_build_context *bld,
       return lp_build_intrinsic(builder, intrinsic, vec_type, args, 1, 0);
    }
 
-   return lp_build_sin_or_cos(bld, a, TRUE);
+   return lp_build_sin_or_cos(bld, a, true);
 }
 
 
@@ -3535,7 +3535,7 @@ lp_build_log2(struct lp_build_context *bld,
               LLVMValueRef x)
 {
    LLVMValueRef res;
-   lp_build_log2_approx(bld, x, NULL, NULL, &res, FALSE);
+   lp_build_log2_approx(bld, x, NULL, NULL, &res, false);
    return res;
 }
 
@@ -3550,7 +3550,7 @@ lp_build_log2_safe(struct lp_build_context *bld,
                    LLVMValueRef x)
 {
    LLVMValueRef res;
-   lp_build_log2_approx(bld, x, NULL, NULL, &res, TRUE);
+   lp_build_log2_approx(bld, x, NULL, NULL, &res, true);
    return res;
 }
 

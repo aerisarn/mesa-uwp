@@ -206,12 +206,12 @@ check_linear_rasterizer(struct llvmpipe_context *lp)
    if (lp->permit_linear_rasterizer != permit_linear) {
       lp->permit_linear_rasterizer = permit_linear;
       lp_setup_set_linear_mode(lp->setup, permit_linear);
-      clipping_changed = TRUE;
+      clipping_changed = true;
    }
 
    if (lp->single_vp != single_vp) {
       lp->single_vp = single_vp;
-      clipping_changed = TRUE;
+      clipping_changed = true;
    }
 
    /* Disable xy clipping in linear mode.
@@ -228,8 +228,8 @@ check_linear_rasterizer(struct llvmpipe_context *lp)
     */
    if (clipping_changed) {
       draw_set_driver_clipping(lp->draw,
-                               FALSE, // bypass_clip_xy
-                               FALSE, //bypass_clip_z
+                               false, // bypass_clip_xy
+                               false, //bypass_clip_z
                                permit_linear, // guard_band_xy,
                                single_vp); // bypass_clip_points)
    }
@@ -301,7 +301,7 @@ llvmpipe_update_derived(struct llvmpipe_context *llvmpipe)
                           LP_NEW_SAMPLE_MASK |
                           LP_NEW_DEPTH_STENCIL_ALPHA)) {
       bool discard =
-         llvmpipe->rasterizer ? llvmpipe->rasterizer->rasterizer_discard : FALSE;
+         llvmpipe->rasterizer ? llvmpipe->rasterizer->rasterizer_discard : false;
       lp_setup_set_rasterizer_discard(llvmpipe->setup, discard);
    }
 

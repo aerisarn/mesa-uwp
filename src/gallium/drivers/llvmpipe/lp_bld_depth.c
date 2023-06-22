@@ -315,7 +315,7 @@ lp_depth_type(const struct util_format_description *format_desc,
    z_swizzle = format_desc->swizzle[0];
    if (z_swizzle < 4) {
       if (format_desc->channel[z_swizzle].type == UTIL_FORMAT_TYPE_FLOAT) {
-         type.floating = TRUE;
+         type.floating = true;
          assert(z_swizzle == 0);
          assert(format_desc->channel[z_swizzle].size == 32);
       }
@@ -326,7 +326,7 @@ lp_depth_type(const struct util_format_description *format_desc,
             /* Prefer signed integers when possible, as SSE has less support
              * for unsigned comparison;
              */
-            type.sign = TRUE;
+            type.sign = true;
          }
       }
       else
@@ -364,7 +364,7 @@ get_z_shift_and_mask(const struct util_format_description *format_desc,
    z_swizzle = format_desc->swizzle[0];
 
    if (z_swizzle == PIPE_SWIZZLE_NONE)
-      return FALSE;
+      return false;
 
    *width = format_desc->channel[z_swizzle].size;
    /* & 31 is for the same reason as the 32-bit limit above */
@@ -376,7 +376,7 @@ get_z_shift_and_mask(const struct util_format_description *format_desc,
       *mask = ((1 << *width) - 1) << *shift;
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -392,7 +392,7 @@ get_s_shift_and_mask(const struct util_format_description *format_desc,
    const unsigned s_swizzle = format_desc->swizzle[1];
 
    if (s_swizzle == PIPE_SWIZZLE_NONE)
-      return FALSE;
+      return false;
 
    /* just special case 64bit d/s format */
    if (format_desc->block.bits > 32) {
@@ -400,14 +400,14 @@ get_s_shift_and_mask(const struct util_format_description *format_desc,
       assert(format_desc->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT);
       *shift = 0;
       *mask = 0xff;
-      return TRUE;
+      return true;
    }
 
    *shift = format_desc->channel[s_swizzle].shift;
    const unsigned sz = format_desc->channel[s_swizzle].size;
    *mask = (1U << sz) - 1U;
 
-   return TRUE;
+   return true;
 }
 
 
@@ -854,8 +854,8 @@ lp_build_depth_stencil_test(struct gallivm_state *gallivm,
     */
    if (z_src_type.floating) {
       if (restrict_depth) {
-         z_src_type.sign = FALSE;
-         z_src_type.norm = TRUE;
+         z_src_type.sign = false;
+         z_src_type.norm = true;
       }
    } else {
       assert(!z_src_type.sign);

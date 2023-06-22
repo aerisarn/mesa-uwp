@@ -116,7 +116,7 @@ u_upload_clone(struct pipe_context *pipe, struct u_upload_mgr *upload)
 void
 u_upload_disable_persistent(struct u_upload_mgr *upload)
 {
-   upload->map_persistent = FALSE;
+   upload->map_persistent = false;
    upload->map_flags &= ~(PIPE_MAP_COHERENT | PIPE_MAP_PERSISTENT);
    upload->map_flags |= PIPE_MAP_FLUSH_EXPLICIT;
 }
@@ -143,7 +143,7 @@ upload_unmap_internal(struct u_upload_mgr *upload, bool destroying)
 void
 u_upload_unmap(struct u_upload_mgr *upload)
 {
-   upload_unmap_internal(upload, FALSE);
+   upload_unmap_internal(upload, false);
 }
 
 
@@ -151,7 +151,7 @@ static void
 u_upload_release_buffer(struct u_upload_mgr *upload)
 {
    /* Unmap and unreference the upload buffer. */
-   upload_unmap_internal(upload, TRUE);
+   upload_unmap_internal(upload, true);
    if (upload->buffer_private_refcount) {
       /* Subtract the remaining private references before unreferencing
        * the buffer. The mega comment below explains it.

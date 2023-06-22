@@ -671,7 +671,7 @@ sampler_is_nearest(const struct lp_linear_sampler *samp,
    /* Is it obviously nearest?
     */
    if (img_filter == PIPE_TEX_FILTER_NEAREST)
-      return TRUE;
+      return true;
 
    /* Otherwise look for linear samplers which devolve to nearest.
     */
@@ -679,20 +679,20 @@ sampler_is_nearest(const struct lp_linear_sampler *samp,
    /* Needs to be axis aligned.
     */
    if (!samp->axis_aligned)
-      return FALSE;
+      return false;
 
    if (0) {
       /* For maximizing shaders, revert to nearest
        */
       if (samp->dsdx < -FIXED16_HALF && samp->dsdx < FIXED16_HALF &&
           samp->dtdy < -FIXED16_HALF && samp->dtdy < FIXED16_HALF)
-         return TRUE;
+         return true;
 
       /* For severely minimising shaders, revert to nearest:
        */
       if ((samp->dsdx < 2 * FIXED16_ONE || samp->dsdx > 2 * FIXED16_ONE) &&
           (samp->dtdy < 2 * FIXED16_ONE || samp->dtdy > 2 * FIXED16_ONE))
-         return TRUE;
+         return true;
    }
 
    /*
@@ -700,18 +700,18 @@ sampler_is_nearest(const struct lp_linear_sampler *samp,
     */
    if (!fixed16_approx(fixed16_frac(samp->s), FIXED16_HALF, FIXED16_TOL) ||
        !fixed16_approx(fixed16_frac(samp->t), FIXED16_HALF, FIXED16_TOL))
-      return FALSE;
+      return false;
 
    /*
     * Must make a full step between pixels:
     */
    if (!fixed16_approx(samp->dsdx, FIXED16_ONE, FIXED16_TOL_DERIV) ||
        !fixed16_approx(samp->dtdy, FIXED16_ONE, FIXED16_TOL_DERIV))
-      return FALSE;
+      return false;
 
    /* Treat it as nearest!
     */
-   return TRUE;
+   return true;
 }
 
 
@@ -868,7 +868,7 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
    if (need_wrap &&
        (sampler_state->sampler_state.wrap_s != PIPE_TEX_WRAP_CLAMP_TO_EDGE ||
         sampler_state->sampler_state.wrap_t != PIPE_TEX_WRAP_CLAMP_TO_EDGE)) {
-       return FALSE;
+       return false;
    }
 
    if (is_nearest) {
@@ -882,7 +882,7 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
             samp->base.fetch = fetch_bgra_axis_aligned;
          else
             samp->base.fetch = fetch_bgra_memcpy;
-         return TRUE;
+         return true;
       case PIPE_FORMAT_B8G8R8X8_UNORM:
          if (need_wrap)
             samp->base.fetch = fetch_bgrx_clamp;
@@ -892,7 +892,7 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
             samp->base.fetch = fetch_bgrx_axis_aligned;
          else
             samp->base.fetch = fetch_bgrx_memcpy;
-         return TRUE;
+         return true;
       default:
          break;
       }
@@ -911,7 +911,7 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
             samp->base.fetch = fetch_bgra_linear;
          else
             samp->base.fetch = fetch_bgra_axis_aligned_linear;
-         return TRUE;
+         return true;
       case PIPE_FORMAT_B8G8R8X8_UNORM:
          if (need_wrap)
             samp->base.fetch = fetch_bgrx_clamp_linear;
@@ -919,7 +919,7 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
             samp->base.fetch = fetch_bgrx_linear;
          else
             samp->base.fetch = fetch_bgrx_axis_aligned_linear;
-         return TRUE;
+         return true;
       default:
          break;
       }
@@ -952,14 +952,14 @@ lp_linear_check_sampler(const struct lp_sampler_static_state *sampler,
                         const struct lp_tgsi_texture_info *tex)
 {
    if (tex->modifier != LP_BLD_TEX_MODIFIER_NONE)
-      return FALSE;
+      return false;
 
    if (tex->target != TGSI_TEXTURE_2D)
-      return FALSE;
+      return false;
 
    if (tex->coord[0].file != TGSI_FILE_INPUT ||
        tex->coord[1].file != TGSI_FILE_INPUT)
-      return FALSE;
+      return false;
 
    /* These are the only sampling modes we support at the moment.
     *
@@ -969,23 +969,23 @@ lp_linear_check_sampler(const struct lp_sampler_static_state *sampler,
     */
    if (!is_nearest_sampler(sampler) &&
        !is_linear_sampler(sampler))
-      return FALSE;
+      return false;
 
    /* These are the only texture formats we support at the moment
     */
    if (sampler->texture_state.format != PIPE_FORMAT_B8G8R8A8_UNORM &&
        sampler->texture_state.format != PIPE_FORMAT_B8G8R8X8_UNORM)
-      return FALSE;
+      return false;
 
    /* We don't support sampler view swizzling on the linear path */
    if (sampler->texture_state.swizzle_r != PIPE_SWIZZLE_X ||
        sampler->texture_state.swizzle_g != PIPE_SWIZZLE_Y ||
        sampler->texture_state.swizzle_b != PIPE_SWIZZLE_Z ||
        sampler->texture_state.swizzle_a != PIPE_SWIZZLE_W) {
-      return FALSE;
+      return false;
    }
 
-   return TRUE;
+   return true;
 }
 
 #else  // DETECT_ARCH_SSE
@@ -994,7 +994,7 @@ bool
 lp_linear_check_sampler(const struct lp_sampler_static_state *sampler,
                         const struct lp_tgsi_texture_info *tex)
 {
-   return FALSE;
+   return false;
 }
 
 #endif  // DETECT_ARCH_SSE

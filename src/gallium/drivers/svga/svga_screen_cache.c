@@ -565,7 +565,7 @@ svga_screen_surface_create(struct svga_screen *svgascreen,
                      key->numMipLevels,
                      key->numFaces,
                      key->arraySize);
-         *validated = TRUE;
+         *validated = true;
       }
    }
 
@@ -600,7 +600,7 @@ svga_screen_surface_create(struct svga_screen *svgascreen,
                   key->size.height,
                   key->size.depth);
 
-      *validated = FALSE;
+      *validated = false;
    }
 
    return handle;

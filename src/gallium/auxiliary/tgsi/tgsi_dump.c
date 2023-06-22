@@ -444,7 +444,7 @@ iter_declaration(
 
    EOL();
 
-   return TRUE;
+   return true;
 }
 
 static bool
@@ -485,7 +485,7 @@ iter_property(
    }
    EOL();
 
-   return TRUE;
+   return true;
 }
 
 static bool
@@ -505,7 +505,7 @@ iter_immediate(
 
    EOL();
 
-   return TRUE;
+   return true;
 }
 
 static bool
@@ -517,7 +517,7 @@ iter_instruction(
    uint instno = ctx->instno++;
    const struct tgsi_opcode_info *info = tgsi_get_opcode_info( inst->Instruction.Opcode );
    uint i;
-   bool first_reg = TRUE;
+   bool first_reg = true;
 
    INSTID( instno );
    TXT( ": " );
@@ -547,7 +547,7 @@ iter_instruction(
       _dump_register_dst( ctx, dst );
       _dump_writemask( ctx, dst->Register.WriteMask );
 
-      first_reg = FALSE;
+      first_reg = false;
    }
 
    for (i = 0; i < inst->Instruction.NumSrcRegs; i++) {
@@ -578,7 +578,7 @@ iter_instruction(
       if (src->Register.Absolute)
          CHR( '|' );
 
-      first_reg = FALSE;
+      first_reg = false;
    }
 
    if (inst->Instruction.Texture) {
@@ -643,7 +643,7 @@ iter_instruction(
 
    EOL();
 
-   return TRUE;
+   return true;
 }
 
 void
@@ -671,7 +671,7 @@ prolog(
    struct dump_ctx *ctx = (struct dump_ctx *) iter;
    ENM( iter->processor.Processor, tgsi_processor_type_names );
    EOL();
-   return TRUE;
+   return true;
 }
 
 static void
@@ -686,7 +686,7 @@ init_dump_ctx(struct dump_ctx *ctx, uint flags)
    ctx->iter.iterate_property = iter_property;
 
    if (flags & TGSI_DUMP_FLOAT_AS_HEX)
-      ctx->dump_float_as_hex = TRUE;
+      ctx->dump_float_as_hex = true;
 }
 
 void

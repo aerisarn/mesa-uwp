@@ -622,7 +622,7 @@ util_get_offset(const struct pipe_rasterizer_state *templ,
       return templ->offset_tri;
    default:
       assert(0);
-      return FALSE;
+      return false;
    }
 }
 
@@ -645,7 +645,7 @@ util_query_clear_result(union pipe_query_result *result, unsigned type)
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
    case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
    case PIPE_QUERY_GPU_FINISHED:
-      result->b = FALSE;
+      result->b = false;
       break;
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_TIMESTAMP:

@@ -484,13 +484,13 @@ do_clip_tri(struct draw_stage *stage,
                 */
                if (is_user_clip_plane) {
                   /* we want to see an edge along the clip plane */
-                  *new_edge = TRUE;
-                  new_vert->edgeflag = TRUE;
+                  *new_edge = true;
+                  new_vert->edgeflag = true;
                }
                else {
                   /* we don't want to see an edge along the frustum clip plane */
                   *new_edge = *edge_prev;
-                  new_vert->edgeflag = FALSE;
+                  new_vert->edgeflag = false;
                }
             }
             else {

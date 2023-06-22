@@ -1534,7 +1534,7 @@ XMesaBindTexImage(Display *dpy, XMesaBuffer drawable, int buffer,
       pipe_texture_unmap(pipe, tex_xfer);
 
       st_context_teximage(st, GL_TEXTURE_2D, 0 /* level */, internal_format,
-                          res, FALSE /* no mipmap */);
+                          res, false /* no mipmap */);
 
    }
 }

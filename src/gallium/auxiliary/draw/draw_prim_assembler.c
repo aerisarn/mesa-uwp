@@ -67,9 +67,9 @@ needs_primid(const struct draw_context *draw)
       else if (tes)
          return !tes->info.uses_primid;
       else
-         return TRUE;
+         return true;
    }
-   return FALSE;
+   return false;
 }
 
 
@@ -80,13 +80,13 @@ draw_prim_assembler_is_required(const struct draw_context *draw,
 {
    /* viewport index requires primitive boundaries to get correct vertex */
    if (draw_current_shader_uses_viewport_index(draw))
-      return TRUE;
+      return true;
    switch (prim_info->prim) {
    case MESA_PRIM_LINES_ADJACENCY:
    case MESA_PRIM_LINE_STRIP_ADJACENCY:
    case MESA_PRIM_TRIANGLES_ADJACENCY:
    case MESA_PRIM_TRIANGLE_STRIP_ADJACENCY:
-      return TRUE;
+      return true;
    default:
       return needs_primid(draw);
    }
@@ -285,7 +285,7 @@ draw_prim_assembler_run(struct draw_context *draw,
    asmblr->needs_primid = needs_primid(asmblr->draw);
    asmblr->num_prims = 0;
 
-   output_prims->linear = TRUE;
+   output_prims->linear = true;
    output_prims->elts = NULL;
    output_prims->start = 0;
    output_prims->prim = assembled_prim;

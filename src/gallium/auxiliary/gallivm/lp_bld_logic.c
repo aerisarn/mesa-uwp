@@ -207,7 +207,7 @@ lp_build_compare(struct gallivm_state *gallivm,
    }
 #endif
 
-   return lp_build_compare_ext(gallivm, type, func, a, b, FALSE);
+   return lp_build_compare_ext(gallivm, type, func, a, b, false);
 }
 
 /**
@@ -224,7 +224,7 @@ lp_build_cmp_ordered(struct lp_build_context *bld,
                      LLVMValueRef a,
                      LLVMValueRef b)
 {
-   return lp_build_compare_ext(bld->gallivm, bld->type, func, a, b, TRUE);
+   return lp_build_compare_ext(bld->gallivm, bld->type, func, a, b, true);
 }
 
 /**

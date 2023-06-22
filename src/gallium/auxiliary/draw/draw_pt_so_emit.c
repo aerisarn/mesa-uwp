@@ -80,9 +80,9 @@ draw_has_so(const struct draw_context *draw)
    const struct pipe_stream_output_info *state = draw_so_info(draw);
 
    if (state && state->num_outputs > 0)
-      return TRUE;
+      return true;
 
-   return FALSE;
+   return false;
 }
 
 void
@@ -98,10 +98,10 @@ draw_pt_so_emit_prepare(struct pt_so_emit *emit, bool use_pre_clip_pos)
    /* if we have a state with outputs make sure we have
     * buffers to output to */
    if (emit->has_so) {
-      bool has_valid_buffer = FALSE;
+      bool has_valid_buffer = false;
       for (unsigned i = 0; i < draw->so.num_targets; ++i) {
          if (draw->so.targets[i]) {
-            has_valid_buffer = TRUE;
+            has_valid_buffer = true;
             break;
          }
       }
@@ -191,7 +191,7 @@ so_emit_prim(struct pt_so_emit *so,
             continue;
 
          unsigned ob = state->output[slot].output_buffer;
-         buffer_written[ob] = TRUE;
+         buffer_written[ob] = true;
 
          float *buffer = (float *)((char *)draw->so.targets[ob]->mapping +
                             draw->so.targets[ob]->target.buffer_offset +

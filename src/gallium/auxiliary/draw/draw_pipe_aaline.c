@@ -359,14 +359,14 @@ generate_aaline_fs_nir(struct aaline_stage *aaline)
    aaline_fs = *orig_fs; /* copy to init */
    aaline_fs.ir.nir = nir_shader_clone(NULL, orig_fs->ir.nir);
    if (!aaline_fs.ir.nir)
-      return FALSE;
+      return false;
 
    nir_lower_aaline_fs(aaline_fs.ir.nir, &aaline->fs->generic_attrib, NULL, NULL);
    aaline->fs->aaline_fs = aaline->driver_create_fs_state(pipe, &aaline_fs);
    if (aaline->fs->aaline_fs == NULL)
-      return FALSE;
+      return false;
 
-   return TRUE;
+   return true;
 }
 
 /**
@@ -382,17 +382,17 @@ bind_aaline_fragment_shader(struct aaline_stage *aaline)
    if (!aaline->fs->aaline_fs) {
       if (aaline->fs->state.type == PIPE_SHADER_IR_NIR) {
          if (!generate_aaline_fs_nir(aaline))
-            return FALSE;
+            return false;
       } else
          if (!generate_aaline_fs(aaline))
-            return FALSE;
+            return false;
    }
 
-   draw->suspend_flushing = TRUE;
+   draw->suspend_flushing = true;
    aaline->driver_bind_fs_state(pipe, aaline->fs->aaline_fs);
-   draw->suspend_flushing = FALSE;
+   draw->suspend_flushing = false;
 
-   return TRUE;
+   return true;
 }
 
 
@@ -527,13 +527,13 @@ aaline_first_line(struct draw_stage *stage, struct prim_header *header)
 
    draw_aaline_prepare_outputs(draw, draw->pipeline.aaline);
 
-   draw->suspend_flushing = TRUE;
+   draw->suspend_flushing = true;
 
    /* Disable triangle culling, stippling, unfilled mode etc. */
    r = draw_get_rasterizer_no_cull(draw, rast);
    pipe->bind_rasterizer_state(pipe, r);
 
-   draw->suspend_flushing = FALSE;
+   draw->suspend_flushing = false;
 
    /* now really draw first line */
    stage->line = aaline_line;
@@ -552,7 +552,7 @@ aaline_flush(struct draw_stage *stage, unsigned flags)
    stage->next->flush(stage->next, flags);
 
    /* restore original frag shader */
-   draw->suspend_flushing = TRUE;
+   draw->suspend_flushing = true;
    aaline->driver_bind_fs_state(pipe, aaline->fs ? aaline->fs->driver_fs : NULL);
 
    /* restore original rasterizer state */
@@ -560,7 +560,7 @@ aaline_flush(struct draw_stage *stage, unsigned flags)
       pipe->bind_rasterizer_state(pipe, draw->rast_handle);
    }
 
-   draw->suspend_flushing = FALSE;
+   draw->suspend_flushing = false;
 
    draw_remove_extra_vertex_attribs(draw);
 }
@@ -743,7 +743,7 @@ draw_install_aaline_stage(struct draw_context *draw, struct pipe_context *pipe)
     */
    aaline = draw_aaline_stage(draw);
    if (!aaline)
-      return FALSE;
+      return false;
 
    /* save original driver functions */
    aaline->driver_create_fs_state = pipe->create_fs_state;
@@ -759,5 +759,5 @@ draw_install_aaline_stage(struct draw_context *draw, struct pipe_context *pipe)
     */
    draw->pipeline.aaline = &aaline->stage;
 
-   return TRUE;
+   return true;
 }

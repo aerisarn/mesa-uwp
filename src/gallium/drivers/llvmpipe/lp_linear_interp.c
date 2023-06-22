@@ -225,7 +225,7 @@ lp_linear_init_interp(struct lp_linear_interp *interp,
       interp->base.fetch = interp_0_8;
    }
 
-   return TRUE;
+   return true;
 }
 
 #else //DETECT_ARCH_SSE
@@ -240,7 +240,7 @@ lp_linear_init_interp(struct lp_linear_interp *interp,
                       const float *dadx,
                       const float *dady)
 {
-   return FALSE;
+   return false;
 }
 
 #endif //DETECT_ARCH_SSE

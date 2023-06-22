@@ -65,23 +65,23 @@ svga_vbuf_render_allocate_vertices(struct vbuf_render *render,
    struct svga_context *svga = svga_render->svga;
    struct pipe_screen *screen = svga->pipe.screen;
    size_t size = (size_t)nr_vertices * (size_t)vertex_size;
-   bool new_vbuf = FALSE;
-   bool new_ibuf = FALSE;
+   bool new_vbuf = false;
+   bool new_ibuf = false;
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga),
                         SVGA_STATS_TIME_VBUFRENDERALLOCVERT);
 
    if (svga_render->vertex_size != vertex_size)
-      svga->swtnl.new_vdecl = TRUE;
+      svga->swtnl.new_vdecl = true;
    svga_render->vertex_size = (size_t)vertex_size;
 
    if (svga->swtnl.new_vbuf)
-      new_ibuf = new_vbuf = TRUE;
-   svga->swtnl.new_vbuf = FALSE;
+      new_ibuf = new_vbuf = true;
+   svga->swtnl.new_vbuf = false;
 
    if (svga_render->vbuf_size
        < svga_render->vbuf_offset + svga_render->vbuf_used + size)
-      new_vbuf = TRUE;
+      new_vbuf = true;
 
    if (new_vbuf)
       pipe_resource_reference(&svga_render->vbuf, NULL);
@@ -108,7 +108,7 @@ svga_vbuf_render_allocate_vertices(struct vbuf_render *render,
          svga_retry_exit(svga);
       }
 
-      svga->swtnl.new_vdecl = TRUE;
+      svga->swtnl.new_vdecl = true;
       svga_render->vbuf_offset = 0;
    } else {
       svga_render->vbuf_offset += svga_render->vbuf_used;
@@ -121,7 +121,7 @@ svga_vbuf_render_allocate_vertices(struct vbuf_render *render,
 
    SVGA_STATS_TIME_POP(svga_sws(svga));
 
-   return TRUE;
+   return true;
 }
 
 
@@ -233,7 +233,7 @@ svga_vbuf_submit_state(struct svga_vbuf_render *svga_render)
    SVGA_RETRY_CHECK(svga, svga_hwtnl_flush(svga->hwtnl), retried);
    if (retried) {
       /* if we hit this path we might become synced with hw */
-      svga->swtnl.new_vbuf = TRUE;
+      svga->swtnl.new_vbuf = true;
    }
 
    for (i = 0; i < svga_render->vdecl_count; i++) {
@@ -260,7 +260,7 @@ svga_vbuf_submit_state(struct svga_vbuf_render *svga_render)
     * module use whatever is most convenient:
     */
    if (svga->state.sw.need_pipeline) {
-      svga_hwtnl_set_flatshade(svga->hwtnl, FALSE, FALSE);
+      svga_hwtnl_set_flatshade(svga->hwtnl, false, false);
       svga_hwtnl_set_fillmode(svga->hwtnl, PIPE_POLYGON_MODE_FILL);
    }
    else {
@@ -272,7 +272,7 @@ svga_vbuf_submit_state(struct svga_vbuf_render *svga_render)
       svga_hwtnl_set_fillmode(svga->hwtnl, svga->curr.rast->hw_fillmode);
    }
 
-   svga->swtnl.new_vdecl = FALSE;
+   svga->swtnl.new_vdecl = false;
    SVGA_STATS_TIME_POP(svga_sws(svga));
 }
 
@@ -304,7 +304,7 @@ svga_vbuf_render_draw_arrays(struct vbuf_render *render,
                     (svga->hwtnl, svga_render->prim, start + bias,
                      nr, start_instance, instance_count, 0), retried);
    if (retried) {
-      svga->swtnl.new_vbuf = TRUE;
+      svga->swtnl.new_vbuf = true;
    }
 
    SVGA_STATS_TIME_POP(svga_sws(svga));
@@ -356,7 +356,7 @@ svga_vbuf_render_draw_elements(struct vbuf_render *render,
                                                          &draw,
                                                          nr_indices), retried);
    if (retried) {
-      svga->swtnl.new_vbuf = TRUE;
+      svga->swtnl.new_vbuf = true;
    }
 
    SVGA_STATS_TIME_POP(svga_sws(svga));

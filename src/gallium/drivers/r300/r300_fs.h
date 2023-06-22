@@ -84,14 +84,14 @@ void r300_fragment_program_get_external_state(struct r300_context *r300,
 static inline bool r300_fragment_shader_writes_depth(struct r300_fragment_shader *fs)
 {
     if (!fs)
-        return FALSE;
-    return (fs->shader->code.writes_depth) ? TRUE : FALSE;
+        return false;
+    return (fs->shader->code.writes_depth) ? true : false;
 }
 
 static inline bool r300_fragment_shader_writes_all(struct r300_fragment_shader *fs)
 {
     if (!fs)
-        return FALSE;
-    return (fs->shader->write_all) ? TRUE : FALSE;
+        return false;
+    return (fs->shader->write_all) ? true : false;
 }
 #endif /* R300_FS_H */

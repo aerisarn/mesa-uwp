@@ -170,7 +170,7 @@ uint32_t r300_translate_texformat(enum pipe_format format,
     uint32_t result = 0;
     const struct util_format_description *desc;
     int i;
-    bool uniform = TRUE;
+    bool uniform = true;
     const uint32_t sign_bit[4] = {
         R300_TX_FORMAT_SIGNED_W,
         R300_TX_FORMAT_SIGNED_Z,
@@ -241,10 +241,10 @@ uint32_t r300_translate_texformat(enum pipe_format format,
         format != PIPE_FORMAT_LATC1_UNORM &&
         format != PIPE_FORMAT_LATC1_SNORM) {
         result |= r300_get_swizzle_combined(desc->swizzle, swizzle_view,
-                                            TRUE);
+                                            true);
     } else {
         result |= r300_get_swizzle_combined(desc->swizzle, swizzle_view,
-                                            FALSE);
+                                            false);
     }
 
     /* S3TC formats. */
@@ -659,10 +659,10 @@ static uint32_t r300_translate_out_fmt(enum pipe_format format)
     }
 
     /* Add sign. */
-    uniform_sign = TRUE;
+    uniform_sign = true;
     for (i = 0; i < desc->nr_channels; i++)
         if (desc->channel[i].type != UTIL_FORMAT_TYPE_SIGNED)
-            uniform_sign = FALSE;
+            uniform_sign = false;
 
     if (uniform_sign)
         modifier |= R300_OUT_SIGN(0xf);
@@ -886,7 +886,7 @@ bool r300_is_zs_format_supported(enum pipe_format format)
 
 bool r300_is_sampler_format_supported(enum pipe_format format)
 {
-    return r300_translate_texformat(format, NULL, TRUE, FALSE) != ~0;
+    return r300_translate_texformat(format, NULL, true, false) != ~0;
 }
 
 void r300_texture_setup_format_state(struct r300_screen *screen,

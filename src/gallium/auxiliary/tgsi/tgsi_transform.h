@@ -533,7 +533,7 @@ tgsi_transform_tex_inst(struct tgsi_transform_context *ctx,
    inst.Dst[0].Register.File = dst_file;
    inst.Dst[0].Register.Index = dst_index;
    inst.Instruction.NumSrcRegs = 2;
-   inst.Instruction.Texture = TRUE;
+   inst.Instruction.Texture = true;
    inst.Texture.Texture = tex_target;
    tgsi_transform_src_reg_xyzw(&inst.Src[0], src_file, src_index);
    tgsi_transform_src_reg_xyzw(&inst.Src[1], TGSI_FILE_SAMPLER, sampler_index);

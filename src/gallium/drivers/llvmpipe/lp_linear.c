@@ -64,7 +64,7 @@ linear_fallback(const struct lp_rast_state *state,
       }
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -200,7 +200,7 @@ lp_fs_linear_run(const struct lp_rast_state *state,
       jit.color0 += stride;
    }
 
-   return TRUE;
+   return true;
 
 fail:
    /* Visually distinguish this from other fallbacks:
@@ -209,7 +209,7 @@ fail:
       return linear_fallback(state, x, y, width, height, color, stride);
    }
 
-   return FALSE;
+   return false;
 }
 
 

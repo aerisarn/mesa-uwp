@@ -505,9 +505,9 @@ lp_is_simple_wrap_mode(unsigned mode)
    switch (mode) {
    case PIPE_TEX_WRAP_REPEAT:
    case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
-      return TRUE;
+      return true;
    default:
-      return FALSE;
+      return false;
    }
 }
 
@@ -562,9 +562,9 @@ has_layer_coord(enum pipe_texture_target tex)
    /* cube is not layered but 3rd coord (after cube mapping) behaves the same */
    case PIPE_TEXTURE_CUBE:
    case PIPE_TEXTURE_CUBE_ARRAY:
-      return TRUE;
+      return true;
    default:
-      return FALSE;
+      return false;
    }
 }
 

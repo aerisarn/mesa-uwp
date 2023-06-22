@@ -1016,10 +1016,10 @@ static void r300_merge_textures_and_samplers(struct r300_context* r300)
                 if (sampler->state.compare_mode == PIPE_TEX_COMPARE_NONE) {
                     texstate->format.format1 |=
                         r300_get_swizzle_combined(depth_swizzle,
-                                                  view->swizzle, FALSE);
+                                                  view->swizzle, false);
                 } else {
                     texstate->format.format1 |=
-                        r300_get_swizzle_combined(depth_swizzle, NULL, FALSE);
+                        r300_get_swizzle_combined(depth_swizzle, NULL, false);
                 }
             }
 
@@ -1121,7 +1121,7 @@ static void r300_merge_textures_and_samplers(struct r300_context* r300)
                         r300_translate_tex_filters(PIPE_TEX_FILTER_NEAREST,
                                                    PIPE_TEX_FILTER_NEAREST,
                                                    PIPE_TEX_FILTER_NEAREST,
-                                                   FALSE);
+                                                   false);
                 texstate->filter1 = 0;
                 texstate->border_color = 0;
 

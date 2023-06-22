@@ -202,7 +202,7 @@ svga_need_unfilled_fallback(const struct svga_hwtnl *hwtnl,
 {
    if (u_reduced_prim(prim) != MESA_PRIM_TRIANGLES) {
       /* if we're drawing points or lines, no fallback needed */
-      return FALSE;
+      return false;
    }
 
    if ((prim == MESA_PRIM_QUADS ||

@@ -43,9 +43,9 @@ util_texture_is_array(enum pipe_texture_target target)
    case PIPE_TEXTURE_1D_ARRAY:
    case PIPE_TEXTURE_2D_ARRAY:
    case PIPE_TEXTURE_CUBE_ARRAY:
-      return TRUE;
+      return true;
    default:
-      return FALSE;
+      return false;
    }
 }
 

@@ -234,8 +234,8 @@ i915_vbuf_render_allocate_vertices(struct vbuf_render *render,
    i915_vbuf_update_vbo_state(render);
 
    if (!i915_render->vbo)
-      return FALSE;
-   return TRUE;
+      return false;
+   return true;
 }
 
 static void *

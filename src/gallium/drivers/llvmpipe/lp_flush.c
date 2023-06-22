@@ -134,7 +134,7 @@ llvmpipe_flush_resource(struct pipe_context *pipe,
 
       if (cpu_access)
          if (do_not_block)
-            return FALSE;
+            return false;
 
       /*
        * Flush and wait.
@@ -143,5 +143,5 @@ llvmpipe_flush_resource(struct pipe_context *pipe,
       llvmpipe_finish(pipe, reason);
    }
 
-   return TRUE;
+   return true;
 }

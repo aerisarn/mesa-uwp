@@ -228,9 +228,9 @@ u_box_test_intersection_2d(const struct pipe_box *a,
 
    for (i = 0; i < 2; ++i) {
       if (a_l[i] > b_r[i] || a_r[i] < b_l[i])
-         return FALSE;
+         return false;
    }
-   return TRUE;
+   return true;
 }
 
 static inline bool

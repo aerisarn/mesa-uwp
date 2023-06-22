@@ -442,7 +442,7 @@ render_texture(struct gl_context *ctx,
    assert(pt);
 
    /* point renderbuffer at texobject */
-   rb->is_rtt = TRUE;
+   rb->is_rtt = true;
    rb->rtt_face = att->CubeMapFace;
    rb->rtt_slice = att->Zoffset;
    rb->rtt_layered = att->Layered;
@@ -468,7 +468,7 @@ render_texture(struct gl_context *ctx,
 static void
 finish_render_texture(struct gl_context *ctx, struct gl_renderbuffer *rb)
 {
-   rb->is_rtt = FALSE;
+   rb->is_rtt = false;
 
    /* restore previous framebuffer state */
    st_invalidate_buffers(st_context(ctx));

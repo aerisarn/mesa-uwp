@@ -2301,7 +2301,7 @@ visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
    params.target = glsl_sampler_to_pipe(instr->sampler_dim, instr->is_array);
    params.texture_unit = instr->texture_index;
    params.explicit_lod = explicit_lod;
-   params.is_sviewinfo = TRUE;
+   params.is_sviewinfo = true;
    params.sizes_out = sizes_out;
    params.samples_only = (instr->op == nir_texop_texture_samples);
    params.texture_unit_offset = texture_unit_offset;

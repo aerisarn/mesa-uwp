@@ -46,14 +46,14 @@ static inline bool
 u_clip_tile(uint x, uint y, uint *w, uint *h, const struct pipe_box *box)
 {
    if ((int) x >= box->width)
-      return TRUE;
+      return true;
    if ((int) y >= box->height)
-      return TRUE;
+      return true;
    if ((int) (x + *w) > box->width)
       *w = box->width - x;
    if ((int) (y + *h) > box->height)
       *h = box->height - y;
-   return FALSE;
+   return false;
 }
 
 #ifdef __cplusplus

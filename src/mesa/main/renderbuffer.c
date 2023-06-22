@@ -287,7 +287,7 @@ renderbuffer_alloc_storage(struct gl_context * ctx,
    rb->texture = screen->resource_create(screen, &templ);
 
    if (!rb->texture)
-      return FALSE;
+      return false;
 
    _mesa_update_renderbuffer_surface(ctx, rb);
    return rb->surface != NULL;

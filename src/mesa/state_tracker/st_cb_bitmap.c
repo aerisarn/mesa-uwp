@@ -543,7 +543,7 @@ accum_bitmap(struct gl_context *ctx,
    /* PBO source... */
    bitmap = _mesa_map_pbo_source(ctx, unpack, bitmap);
    if (!bitmap) {
-      return FALSE;
+      return false;
    }
 
    unpack_bitmap(st, px, py, width, height, unpack, bitmap,

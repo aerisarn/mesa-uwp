@@ -352,7 +352,7 @@ static void virgl_encoder_emit_resource(struct virgl_screen *vs,
 {
    struct virgl_winsys *vws = vs->vws;
    if (res && res->hw_res)
-      vws->emit_res(vws, buf, res->hw_res, TRUE);
+      vws->emit_res(vws, buf, res->hw_res, true);
    else {
       virgl_encoder_write_dword(buf, 0);
    }
@@ -907,7 +907,7 @@ static void virgl_encoder_transfer3d_common(struct virgl_screen *vs,
     * because transfer->resource might have a different virgl_hw_res than what
     * this transfer targets, which is saved in xfer->hw_res.
     */
-   vs->vws->emit_res(vs->vws, buf, xfer->hw_res, TRUE);
+   vs->vws->emit_res(vs->vws, buf, xfer->hw_res, true);
    virgl_encoder_write_dword(buf, transfer->level);
    virgl_encoder_write_dword(buf, transfer->usage);
    virgl_encoder_write_dword(buf, stride);
@@ -1533,7 +1533,7 @@ void virgl_encode_copy_transfer(struct virgl_context *ctx,
     * from the image stride.
     */
    virgl_encoder_transfer3d_common(vs, ctx->cbuf, trans, virgl_transfer3d_explicit_stride);
-   vs->vws->emit_res(vs->vws, ctx->cbuf, trans->copy_src_hw_res, TRUE);
+   vs->vws->emit_res(vs->vws, ctx->cbuf, trans->copy_src_hw_res, true);
    virgl_encoder_write_dword(ctx->cbuf, trans->copy_src_offset);
    virgl_encoder_write_dword(ctx->cbuf, direction_and_synchronized);
 }

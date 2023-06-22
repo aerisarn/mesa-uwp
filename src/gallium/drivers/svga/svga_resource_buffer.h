@@ -250,7 +250,7 @@ svga_buffer_is_user_buffer(struct pipe_resource *buffer)
    if (buffer) {
       return svga_buffer(buffer)->user;
    } else {
-      return FALSE;
+      return false;
    }
 }
 
@@ -273,9 +273,9 @@ static inline bool
 svga_buffer_has_hw_storage(struct svga_buffer *sbuf)
 {
    if (svga_buffer_winsys_screen(sbuf)->have_gb_objects)
-      return (sbuf->handle ? TRUE : FALSE);
+      return (sbuf->handle ? true : false);
    else
-      return (sbuf->hwbuf ? TRUE : FALSE);
+      return (sbuf->hwbuf ? true : false);
 }
 
 /**
@@ -313,7 +313,7 @@ svga_buffer_hw_storage_map(struct svga_context *svga,
       }
       return map;
    } else {
-      *retry = FALSE;
+      *retry = false;
       return sws->buffer_map(sws, sbuf->hwbuf, flags);
    }
 }

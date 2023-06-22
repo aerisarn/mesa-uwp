@@ -198,7 +198,7 @@ draw_mesh_prim_run(struct draw_context *draw,
    asmblr->per_prim = per_prim_inputs;
    asmblr->cull_prim_idx = cull_prim_idx;
 
-   output_prims->linear = TRUE;
+   output_prims->linear = true;
    output_prims->elts = NULL;
    output_prims->start = 0;
    output_prims->prim = input_prims->prim;

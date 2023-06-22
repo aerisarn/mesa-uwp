@@ -527,16 +527,16 @@ svga_shader_too_large(const struct svga_context *svga,
                       const struct svga_shader_variant *variant)
 {
    if (svga_have_gb_objects(svga)) {
-      return FALSE;
+      return false;
    }
 
    if (variant->nr_tokens * sizeof(variant->tokens[0])
        + sizeof(SVGA3dCmdDefineShader) + sizeof(SVGA3dCmdHeader)
        < SVGA_CB_MAX_COMMAND_SIZE) {
-      return FALSE;
+      return false;
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -613,7 +613,7 @@ svga_is_using_flat_shading(const struct svga_context *svga)
 {
    return
       svga->state.hw_draw.fs ?
-         svga_fs_variant(svga->state.hw_draw.fs)->uses_flat_interp : FALSE;
+         svga_fs_variant(svga->state.hw_draw.fs)->uses_flat_interp : false;
 }
 
 struct svga_shader_variant *

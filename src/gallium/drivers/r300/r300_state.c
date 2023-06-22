@@ -397,8 +397,8 @@ static void* r300_create_blend_state(struct pipe_context* pipe,
             ( r300_translate_blend_factor(srcRGBX) << R300_SRC_BLEND_SHIFT) |
             ( r300_translate_blend_factor(dstRGBX) << R300_DST_BLEND_SHIFT);
 
-        blend_eq = r300_translate_blend_function(eqRGB, TRUE);
-        blend_eq_noclamp = r300_translate_blend_function(eqRGB, FALSE);
+        blend_eq = r300_translate_blend_function(eqRGB, true);
+        blend_eq_noclamp = r300_translate_blend_function(eqRGB, false);
 
         blend_control |= blend_eq;
         blend_control_noalpha |= blend_eq;
@@ -409,11 +409,11 @@ static void* r300_create_blend_state(struct pipe_context* pipe,
         blend_control |= blend_read_enable(eqRGB, eqA, dstRGB, dstA,
                                            srcRGB, srcA, r300screen->caps.is_r500);
         blend_control_noclamp |= blend_read_enable(eqRGB, eqA, dstRGB, dstA,
-                                                   srcRGB, srcA, FALSE);
+                                                   srcRGB, srcA, false);
         blend_control_noalpha |= blend_read_enable(eqRGB, eqA, dstRGBX, dstA,
                                                    srcRGBX, srcA, r300screen->caps.is_r500);
         blend_control_noalpha_noclamp |= blend_read_enable(eqRGB, eqA, dstRGBX, dstA,
-                                                           srcRGBX, srcA, FALSE);
+                                                           srcRGBX, srcA, false);
 
         /* Optimization: discard pixels which don't change the colorbuffer.
          * It cannot be used with FP16 AA. */
@@ -430,8 +430,8 @@ static void* r300_create_blend_state(struct pipe_context* pipe,
             alpha_blend_control = alpha_blend_control_noclamp =
                 (r300_translate_blend_factor(srcA) << R300_SRC_BLEND_SHIFT) |
                 (r300_translate_blend_factor(dstA) << R300_DST_BLEND_SHIFT);
-            alpha_blend_control |= r300_translate_blend_function(eqA, TRUE);
-            alpha_blend_control_noclamp |= r300_translate_blend_function(eqA, FALSE);
+            alpha_blend_control |= r300_translate_blend_function(eqA, true);
+            alpha_blend_control_noclamp |= r300_translate_blend_function(eqA, false);
         }
         if (srcA != srcRGBX || dstA != dstRGBX || eqA != eqRGB) {
             blend_control_noalpha |= R300_SEPARATE_ALPHA_ENABLE;
@@ -440,8 +440,8 @@ static void* r300_create_blend_state(struct pipe_context* pipe,
             alpha_blend_control_noalpha = alpha_blend_control_noalpha_noclamp =
                 (r300_translate_blend_factor(srcA) << R300_SRC_BLEND_SHIFT) |
                 (r300_translate_blend_factor(dstA) << R300_DST_BLEND_SHIFT);
-            alpha_blend_control_noalpha |= r300_translate_blend_function(eqA, TRUE);
-            alpha_blend_control_noalpha_noclamp |= r300_translate_blend_function(eqA, FALSE);
+            alpha_blend_control_noalpha |= r300_translate_blend_function(eqA, true);
+            alpha_blend_control_noalpha_noclamp |= r300_translate_blend_function(eqA, false);
         }
     }
 
@@ -721,7 +721,7 @@ static void* r300_create_dsa_state(struct pipe_context* pipe,
                 (state->stencil[0].writemask << R300_STENCILWRITEMASK_SHIFT);
 
         if (state->stencil[1].enabled) {
-            dsa->two_sided = TRUE;
+            dsa->two_sided = true;
 
             z_buffer_control |= R300_STENCIL_FRONT_BACK;
             z_stencil_control |=
@@ -907,7 +907,7 @@ r300_set_framebuffer_state(struct pipe_context* pipe,
     struct pipe_framebuffer_state *current_state = r300->fb_state.state;
     unsigned max_width, max_height, i;
     uint32_t zbuffer_bpp = 0;
-    bool unlock_zbuffer = FALSE;
+    bool unlock_zbuffer = false;
 
     if (r300->screen->caps.is_r500) {
         max_width = max_height = 4096;
@@ -929,7 +929,7 @@ r300_set_framebuffer_state(struct pipe_context* pipe,
             if (!pipe_surface_equal(current_state->zsbuf, state->zsbuf)) {
                 /* Decompress the currently bound zbuffer before we bind another one. */
                 r300_decompress_zmask(r300);
-                r300->hiz_in_use = FALSE;
+                r300->hiz_in_use = false;
             }
         } else {
             /* We don't bind another zbuffer, so lock the current one. */
@@ -942,10 +942,10 @@ r300_set_framebuffer_state(struct pipe_context* pipe,
                 /* We are binding some other zbuffer, so decompress the locked one,
                  * it gets unlocked automatically. */
                 r300_decompress_zmask_locked_unsafe(r300);
-                r300->hiz_in_use = FALSE;
+                r300->hiz_in_use = false;
             } else {
                 /* We are binding the locked zbuffer again, so unlock it. */
-                unlock_zbuffer = TRUE;
+                unlock_zbuffer = true;
             }
         }
     }
@@ -1379,12 +1379,12 @@ static void r300_bind_rs_state(struct pipe_context* pipe, void* state)
         r300->flatshade = rs->rs.flatshade;
         r300->clip_halfz = rs->rs.clip_halfz;
     } else {
-        r300->polygon_offset_enabled = FALSE;
+        r300->polygon_offset_enabled = false;
         r300->sprite_coord_enable = 0;
-        r300->two_sided_color = FALSE;
-        r300->msaa_enable = FALSE;
-        r300->flatshade = FALSE;
-        r300->clip_halfz = FALSE;
+        r300->two_sided_color = false;
+        r300->msaa_enable = false;
+        r300->flatshade = false;
+        r300->clip_halfz = false;
     }
 
     UPDATE_STATE(state, r300->rs_state);
@@ -1557,7 +1557,7 @@ static void r300_set_sampler_views(struct pipe_context* pipe,
     struct r300_resource *texture;
     unsigned i, real_num_views = 0, view_index = 0;
     unsigned tex_units = r300->screen->caps.num_tex_units;
-    bool dirty_tex = FALSE;
+    bool dirty_tex = false;
 
     assert(start == 0);  /* non-zero not handled yet */
 
@@ -1593,7 +1593,7 @@ static void r300_set_sampler_views(struct pipe_context* pipe,
         }
 
         /* A new sampler view (= texture)... */
-        dirty_tex = TRUE;
+        dirty_tex = true;
 
         /* Set the texrect factor in the fragment shader.
              * Needed for RECT and NPOT fallback. */
@@ -1790,7 +1790,7 @@ static void r300_set_vertex_buffers_hwtcl(struct pipe_context* pipe,
                                       &r300->dummy_vb, 0, 1, 0, false);
     }
 
-    r300->vertex_arrays_dirty = TRUE;
+    r300->vertex_arrays_dirty = true;
 }
 
 static void r300_set_vertex_buffers_swtcl(struct pipe_context* pipe,
@@ -1927,7 +1927,7 @@ static void r300_bind_vertex_elements_state(struct pipe_context *pipe,
 
     UPDATE_STATE(&velems->vertex_stream, r300->vertex_stream_state);
     r300->vertex_stream_state.size = (1 + velems->vertex_stream.count) * 2;
-    r300->vertex_arrays_dirty = TRUE;
+    r300->vertex_arrays_dirty = true;
 }
 
 static void r300_delete_vertex_elements_state(struct pipe_context *pipe, void *state)

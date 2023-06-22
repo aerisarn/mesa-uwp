@@ -489,7 +489,7 @@ ureg_DECL_output_masked(struct ureg_program *ureg,
 {
    return ureg_DECL_output_layout(ureg, name, index, 0,
                                   ureg->nr_output_regs, usage_mask, array_id,
-                                  array_size, FALSE);
+                                  array_size, false);
 }
 
 
@@ -666,12 +666,12 @@ static struct ureg_dst alloc_temporary( struct ureg_program *ureg,
 
 struct ureg_dst ureg_DECL_temporary( struct ureg_program *ureg )
 {
-   return alloc_temporary(ureg, FALSE);
+   return alloc_temporary(ureg, false);
 }
 
 struct ureg_dst ureg_DECL_local_temporary( struct ureg_program *ureg )
 {
-   return alloc_temporary(ureg, TRUE);
+   return alloc_temporary(ureg, true);
 }
 
 struct ureg_dst ureg_DECL_array_temporary( struct ureg_program *ureg,
@@ -853,17 +853,17 @@ match_or_expand_immediate64( const unsigned *v,
    *swizzle = 0;
 
    for (i = 0; i < nr; i += 2) {
-      bool found = FALSE;
+      bool found = false;
 
       for (j = 0; j < nr2 && !found; j += 2) {
          if (v[i] == v2[j] && v[i + 1] == v2[j + 1]) {
             *swizzle |= (j << (i * 2)) | ((j + 1) << ((i + 1) * 2));
-            found = TRUE;
+            found = true;
          }
       }
       if (!found) {
          if ((nr2) >= 4) {
-            return FALSE;
+            return false;
          }
 
          v2[nr2] = v[i];
@@ -877,7 +877,7 @@ match_or_expand_immediate64( const unsigned *v,
    /* Actually expand immediate only when fully succeeded.
     */
    *pnr2 = nr2;
-   return TRUE;
+   return true;
 }
 
 static int
@@ -899,18 +899,18 @@ match_or_expand_immediate( const unsigned *v,
    *swizzle = 0;
 
    for (i = 0; i < nr; i++) {
-      bool found = FALSE;
+      bool found = false;
 
       for (j = 0; j < nr2 && !found; j++) {
          if (v[i] == v2[j]) {
             *swizzle |= j << (i * 2);
-            found = TRUE;
+            found = true;
          }
       }
 
       if (!found) {
          if (nr2 >= 4) {
-            return FALSE;
+            return false;
          }
 
          v2[nr2] = v[i];
@@ -922,7 +922,7 @@ match_or_expand_immediate( const unsigned *v,
    /* Actually expand immediate only when fully succeeded.
     */
    *pnr2 = nr2;
-   return TRUE;
+   return true;
 }
 
 
@@ -1414,7 +1414,7 @@ ureg_insn(struct ureg_program *ureg,
       return;
    }
 
-   saturate = nr_dst ? dst[0].Saturate : FALSE;
+   saturate = nr_dst ? dst[0].Saturate : false;
 
    insn = ureg_emit_insn(ureg,
                          opcode,
@@ -1452,7 +1452,7 @@ ureg_tex_insn(struct ureg_program *ureg,
       return;
    }
 
-   saturate = nr_dst ? dst[0].Saturate : FALSE;
+   saturate = nr_dst ? dst[0].Saturate : false;
 
    insn = ureg_emit_insn(ureg,
                          opcode,
@@ -1493,7 +1493,7 @@ ureg_memory_insn(struct ureg_program *ureg,
 
    insn = ureg_emit_insn(ureg,
                          opcode,
-                         FALSE,
+                         false,
                          0,
                          nr_dst,
                          nr_src);
@@ -1904,7 +1904,7 @@ static void emit_decls( struct ureg_program *ureg )
                                0,
                                TGSI_WRITEMASK_XYZW,
                                ureg->input[i].array_id,
-                               FALSE);
+                               false);
          }
       }
       else {
@@ -1917,7 +1917,7 @@ static void emit_decls( struct ureg_program *ureg )
                                   ureg->input[i].semantic_index +
                                   (j - ureg->input[i].first),
                                   0,
-                                  TGSI_WRITEMASK_XYZW, 0, FALSE);
+                                  TGSI_WRITEMASK_XYZW, 0, false);
             }
          }
       }
@@ -1931,7 +1931,7 @@ static void emit_decls( struct ureg_program *ureg )
                          ureg->system_value[i].semantic_name,
                          ureg->system_value[i].semantic_index,
                          0,
-                         TGSI_WRITEMASK_XYZW, 0, FALSE);
+                         TGSI_WRITEMASK_XYZW, 0, false);
    }
 
    /* While not required by TGSI spec, virglrenderer has a dependency on the

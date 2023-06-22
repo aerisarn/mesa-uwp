@@ -3700,7 +3700,7 @@ dzn_GetMemoryWin32HandleKHR(VkDevice device,
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT:
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT:
       if (!DuplicateHandle(GetCurrentProcess(), mem->export_handle, GetCurrentProcess(), pHandle,
-                           0, FALSE, DUPLICATE_SAME_ACCESS))
+                           0, false, DUPLICATE_SAME_ACCESS))
          return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       return VK_SUCCESS;
    default:

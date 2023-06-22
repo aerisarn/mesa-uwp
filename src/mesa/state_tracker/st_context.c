@@ -69,7 +69,7 @@
 #include "cso_cache/cso_context.h"
 #include "compiler/glsl/glsl_parser_extras.h"
 
-DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", FALSE)
+DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", false)
 
 /* The list of state update functions. */
 st_update_func_t st_update_functions[ST_NUM_ATOMS];

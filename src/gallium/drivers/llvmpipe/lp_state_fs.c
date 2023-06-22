@@ -2453,7 +2453,7 @@ generate_unswizzled_blend(struct gallivm_state *gallivm,
       /* We need to make sure that denorms are ok for half float
          conversions */
       fpstate = lp_build_fpstate_get(gallivm);
-      lp_build_fpstate_set_denorms_zero(gallivm, FALSE);
+      lp_build_fpstate_set_denorms_zero(gallivm, false);
    }
 
    struct lp_type mask_type = lp_int32_vec4_type();
@@ -2664,9 +2664,9 @@ generate_unswizzled_blend(struct gallivm_state *gallivm,
     * unpack only with 128bit vectors).
     * Note: for 16bit sizes really need matching pack conversion code
     */
-   bool twiddle_after_convert = FALSE;
+   bool twiddle_after_convert = false;
    if (!is_1d && dst_channels != 3 && dst_type.width == 8) {
-      twiddle_after_convert = TRUE;
+      twiddle_after_convert = true;
    }
 
    /*
@@ -3161,17 +3161,17 @@ generate_fragment(struct llvmpipe_context *lp,
 
    struct lp_type fs_type;
    memset(&fs_type, 0, sizeof fs_type);
-   fs_type.floating = TRUE;      /* floating point values */
-   fs_type.sign = TRUE;          /* values are signed */
-   fs_type.norm = FALSE;         /* values are not limited to [0,1] or [-1,1] */
+   fs_type.floating = true;      /* floating point values */
+   fs_type.sign = true;          /* values are signed */
+   fs_type.norm = false;         /* values are not limited to [0,1] or [-1,1] */
    fs_type.width = 32;           /* 32-bit float */
    fs_type.length = MIN2(lp_native_vector_width / 32, 16); /* n*4 elements per vector */
 
    struct lp_type blend_type;
    memset(&blend_type, 0, sizeof blend_type);
-   blend_type.floating = FALSE; /* values are integers */
-   blend_type.sign = FALSE;     /* values are unsigned */
-   blend_type.norm = TRUE;      /* values are in [0,1] or [-1,1] */
+   blend_type.floating = false; /* values are integers */
+   blend_type.sign = false;     /* values are unsigned */
+   blend_type.norm = true;      /* values are in [0,1] or [-1,1] */
    blend_type.width = 8;        /* 8-bit ubyte values */
    blend_type.length = 16;      /* 16 elements per vector */
 
@@ -3568,23 +3568,23 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
       debug_printf("depth nr_samples = %d\n", key->zsbuf_nr_samples);
    }
    if (key->depth.enabled) {
-      debug_printf("depth.func = %s\n", util_str_func(key->depth.func, TRUE));
+      debug_printf("depth.func = %s\n", util_str_func(key->depth.func, true));
       debug_printf("depth.writemask = %u\n", key->depth.writemask);
    }
 
    for (unsigned i = 0; i < 2; ++i) {
       if (key->stencil[i].enabled) {
-         debug_printf("stencil[%u].func = %s\n", i, util_str_func(key->stencil[i].func, TRUE));
-         debug_printf("stencil[%u].fail_op = %s\n", i, util_str_stencil_op(key->stencil[i].fail_op, TRUE));
-         debug_printf("stencil[%u].zpass_op = %s\n", i, util_str_stencil_op(key->stencil[i].zpass_op, TRUE));
-         debug_printf("stencil[%u].zfail_op = %s\n", i, util_str_stencil_op(key->stencil[i].zfail_op, TRUE));
+         debug_printf("stencil[%u].func = %s\n", i, util_str_func(key->stencil[i].func, true));
+         debug_printf("stencil[%u].fail_op = %s\n", i, util_str_stencil_op(key->stencil[i].fail_op, true));
+         debug_printf("stencil[%u].zpass_op = %s\n", i, util_str_stencil_op(key->stencil[i].zpass_op, true));
+         debug_printf("stencil[%u].zfail_op = %s\n", i, util_str_stencil_op(key->stencil[i].zfail_op, true));
          debug_printf("stencil[%u].valuemask = 0x%x\n", i, key->stencil[i].valuemask);
          debug_printf("stencil[%u].writemask = 0x%x\n", i, key->stencil[i].writemask);
       }
    }
 
    if (key->alpha.enabled) {
-      debug_printf("alpha.func = %s\n", util_str_func(key->alpha.func, TRUE));
+      debug_printf("alpha.func = %s\n", util_str_func(key->alpha.func, true));
    }
 
    if (key->occlusion_count) {
@@ -3592,14 +3592,14 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
    }
 
    if (key->blend.logicop_enable) {
-      debug_printf("blend.logicop_func = %s\n", util_str_logicop(key->blend.logicop_func, TRUE));
+      debug_printf("blend.logicop_func = %s\n", util_str_logicop(key->blend.logicop_func, true));
    } else if (key->blend.rt[0].blend_enable) {
-      debug_printf("blend.rgb_func = %s\n",   util_str_blend_func  (key->blend.rt[0].rgb_func, TRUE));
-      debug_printf("blend.rgb_src_factor = %s\n",   util_str_blend_factor(key->blend.rt[0].rgb_src_factor, TRUE));
-      debug_printf("blend.rgb_dst_factor = %s\n",   util_str_blend_factor(key->blend.rt[0].rgb_dst_factor, TRUE));
-      debug_printf("blend.alpha_func = %s\n",       util_str_blend_func  (key->blend.rt[0].alpha_func, TRUE));
-      debug_printf("blend.alpha_src_factor = %s\n", util_str_blend_factor(key->blend.rt[0].alpha_src_factor, TRUE));
-      debug_printf("blend.alpha_dst_factor = %s\n", util_str_blend_factor(key->blend.rt[0].alpha_dst_factor, TRUE));
+      debug_printf("blend.rgb_func = %s\n",   util_str_blend_func  (key->blend.rt[0].rgb_func, true));
+      debug_printf("blend.rgb_src_factor = %s\n",   util_str_blend_factor(key->blend.rt[0].rgb_src_factor, true));
+      debug_printf("blend.rgb_dst_factor = %s\n",   util_str_blend_factor(key->blend.rt[0].rgb_dst_factor, true));
+      debug_printf("blend.alpha_func = %s\n",       util_str_blend_func  (key->blend.rt[0].alpha_func, true));
+      debug_printf("blend.alpha_src_factor = %s\n", util_str_blend_factor(key->blend.rt[0].alpha_src_factor, true));
+      debug_printf("blend.alpha_dst_factor = %s\n", util_str_blend_factor(key->blend.rt[0].alpha_dst_factor, true));
    }
    debug_printf("blend.colormask = 0x%x\n", key->blend.rt[0].colormask);
    if (key->blend.alpha_to_coverage) {
@@ -3610,17 +3610,17 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
       const struct lp_static_sampler_state *sampler = &samplers[i].sampler_state;
       debug_printf("sampler[%u] = \n", i);
       debug_printf("  .wrap = %s %s %s\n",
-                   util_str_tex_wrap(sampler->wrap_s, TRUE),
-                   util_str_tex_wrap(sampler->wrap_t, TRUE),
-                   util_str_tex_wrap(sampler->wrap_r, TRUE));
+                   util_str_tex_wrap(sampler->wrap_s, true),
+                   util_str_tex_wrap(sampler->wrap_t, true),
+                   util_str_tex_wrap(sampler->wrap_r, true));
       debug_printf("  .min_img_filter = %s\n",
-                   util_str_tex_filter(sampler->min_img_filter, TRUE));
+                   util_str_tex_filter(sampler->min_img_filter, true));
       debug_printf("  .min_mip_filter = %s\n",
-                   util_str_tex_mipfilter(sampler->min_mip_filter, TRUE));
+                   util_str_tex_mipfilter(sampler->min_mip_filter, true));
       debug_printf("  .mag_img_filter = %s\n",
-                   util_str_tex_filter(sampler->mag_img_filter, TRUE));
+                   util_str_tex_filter(sampler->mag_img_filter, true));
       if (sampler->compare_mode != PIPE_TEX_COMPARE_NONE)
-         debug_printf("  .compare_func = %s\n", util_str_func(sampler->compare_func, TRUE));
+         debug_printf("  .compare_func = %s\n", util_str_func(sampler->compare_func, true));
       debug_printf("  .normalized_coords = %u\n", sampler->normalized_coords);
       debug_printf("  .min_max_lod_equal = %u\n", sampler->min_max_lod_equal);
       debug_printf("  .lod_bias_non_zero = %u\n", sampler->lod_bias_non_zero);
@@ -3636,7 +3636,7 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
       debug_printf("  .format = %s\n",
                    util_format_name(texture->format));
       debug_printf("  .target = %s\n",
-                   util_str_tex_target(texture->target, TRUE));
+                   util_str_tex_target(texture->target, true));
       debug_printf("  .level_zero_only = %u\n",
                    texture->level_zero_only);
       debug_printf("  .pot = %u %u %u\n",
@@ -3651,7 +3651,7 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
       debug_printf("  .format = %s\n",
                    util_format_name(image->format));
       debug_printf("  .target = %s\n",
-                   util_str_tex_target(image->target, TRUE));
+                   util_str_tex_target(image->target, true));
       debug_printf("  .level_zero_only = %u\n",
                    image->level_zero_only);
       debug_printf("  .pot = %u %u %u\n",
@@ -3773,7 +3773,7 @@ generate_variant(struct llvmpipe_context *lp,
     * Determine whether we are touching all channels in the color buffer.
     */
    const struct util_format_description *cbuf0_format_desc = NULL;
-   bool fullcolormask = FALSE;
+   bool fullcolormask = false;
    if (key->nr_cbufs == 1) {
       cbuf0_format_desc = util_format_description(key->cbuf_format[0]);
       fullcolormask = util_format_colormask_full(cbuf0_format_desc,
@@ -3798,7 +3798,7 @@ generate_variant(struct llvmpipe_context *lp,
          no_kill &&
          !key->blend.logicop_enable &&
          !key->blend.rt[0].blend_enable
-         ? TRUE : FALSE;
+         ? true : false;
 
    variant->potentially_opaque =
          no_kill &&
@@ -3816,7 +3816,7 @@ generate_variant(struct llvmpipe_context *lp,
           * field, hence causing a crash).
           */
          shader->info.cbuf[0][3].file != TGSI_FILE_NULL
-         ? TRUE : FALSE;
+         ? true : false;
 
    /* We only care about opaque blits for now */
    if (variant->opaque &&
@@ -4403,7 +4403,7 @@ make_variant_key(struct llvmpipe_context *lp,
                 sizeof key->stencil);
       }
       if (llvmpipe_resource_is_1d(lp->framebuffer.zsbuf->texture)) {
-         key->resource_1d = TRUE;
+         key->resource_1d = true;
       }
       key->zsbuf_nr_samples =
          util_res_sample_count(lp->framebuffer.zsbuf->texture);
@@ -4439,7 +4439,7 @@ make_variant_key(struct llvmpipe_context *lp,
    key->multisample = lp->rasterizer->multisample;
    key->no_ms_sample_mask_out = lp->rasterizer->no_ms_sample_mask_out;
    if (lp->active_occlusion_queries && !lp->queries_disabled) {
-      key->occlusion_count = TRUE;
+      key->occlusion_count = true;
    }
 
    memcpy(&key->blend, lp->blend, sizeof key->blend);
@@ -4503,7 +4503,7 @@ make_variant_key(struct llvmpipe_context *lp,
           * we pick 1d if any cbuf or zsbuf is 1d.
           */
          if (llvmpipe_resource_is_1d(lp->framebuffer.cbufs[i]->texture)) {
-            key->resource_1d = TRUE;
+            key->resource_1d = true;
          }
 
          const struct util_format_description *format_desc =

@@ -55,15 +55,15 @@ GUID_equal( const GUID *a,
     unsigned i;
 
     if (!a || !b)
-        return FALSE;
+        return false;
 
     if (a->Data1 != b->Data1 ||
         a->Data2 != b->Data2 ||
-        a->Data3 != b->Data3) { return FALSE; }
+        a->Data3 != b->Data3) { return false; }
     for (i = 0; i < 8; i++) {
-        if (a->Data4[i] != b->Data4[i]) { return FALSE; }
+        if (a->Data4[i] != b->Data4[i]) { return false; }
     }
-    return TRUE;
+    return true;
 }
 
 char* GUID_sprintf(char *guid_str, REFGUID id) {

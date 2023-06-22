@@ -1094,7 +1094,7 @@ tgsi_exec_machine_bind_shader(
 
       mach->Inputs = inputs;
       mach->Outputs = outputs;
-      mach->UsedGeometryShader = TRUE;
+      mach->UsedGeometryShader = true;
    }
 
    declarations = (struct tgsi_full_declaration *)
@@ -5203,7 +5203,7 @@ exec_instruction(
             mach->SwitchStackTop = 0;
             mach->BreakStackTop = 0;
             *pc = -1;
-            return FALSE;
+            return false;
          }
 
          assert(mach->CallStackTop > 0);
@@ -5586,19 +5586,19 @@ exec_instruction(
       break;
 
    case TGSI_OPCODE_SAMPLE:
-      exec_sample(mach, inst, TEX_MODIFIER_NONE, FALSE);
+      exec_sample(mach, inst, TEX_MODIFIER_NONE, false);
       break;
 
    case TGSI_OPCODE_SAMPLE_B:
-      exec_sample(mach, inst, TEX_MODIFIER_LOD_BIAS, FALSE);
+      exec_sample(mach, inst, TEX_MODIFIER_LOD_BIAS, false);
       break;
 
    case TGSI_OPCODE_SAMPLE_C:
-      exec_sample(mach, inst, TEX_MODIFIER_NONE, TRUE);
+      exec_sample(mach, inst, TEX_MODIFIER_NONE, true);
       break;
 
    case TGSI_OPCODE_SAMPLE_C_LZ:
-      exec_sample(mach, inst, TEX_MODIFIER_LEVEL_ZERO, TRUE);
+      exec_sample(mach, inst, TEX_MODIFIER_LEVEL_ZERO, true);
       break;
 
    case TGSI_OPCODE_SAMPLE_D:
@@ -5606,11 +5606,11 @@ exec_instruction(
       break;
 
    case TGSI_OPCODE_SAMPLE_L:
-      exec_sample(mach, inst, TEX_MODIFIER_EXPLICIT_LOD, FALSE);
+      exec_sample(mach, inst, TEX_MODIFIER_EXPLICIT_LOD, false);
       break;
 
    case TGSI_OPCODE_GATHER4:
-      exec_sample(mach, inst, TEX_MODIFIER_GATHER, FALSE);
+      exec_sample(mach, inst, TEX_MODIFIER_GATHER, false);
       break;
 
    case TGSI_OPCODE_SVIEWINFO:
@@ -5815,7 +5815,7 @@ exec_instruction(
       break;
    case TGSI_OPCODE_BARRIER:
    case TGSI_OPCODE_MEMBAR:
-      return TRUE;
+      return true;
       break;
 
    case TGSI_OPCODE_I64ABS:
@@ -5940,7 +5940,7 @@ exec_instruction(
    default:
       assert( 0 );
    }
-   return FALSE;
+   return false;
 }
 
 static void

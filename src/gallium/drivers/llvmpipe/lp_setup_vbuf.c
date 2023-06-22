@@ -72,7 +72,7 @@ lp_setup_get_vertex_info(struct vbuf_render *vbr)
    /* Vertex size/info depends on the latest state.
     * The draw module may have issued additional state-change commands.
     */
-   lp_setup_update_state(setup, FALSE);
+   lp_setup_update_state(setup, false);
 
    return setup->vertex_info;
 }
@@ -179,7 +179,7 @@ lp_setup_draw_elements(struct vbuf_render *vbr, const ushort *indices, uint nr)
 
    assert(setup->setup.variant);
 
-   if (!lp_setup_update_state(setup, TRUE))
+   if (!lp_setup_update_state(setup, true))
       return;
 
    const bool uses_constant_interp =
@@ -387,7 +387,7 @@ lp_setup_draw_arrays(struct vbuf_render *vbr, uint start, uint nr)
    const bool flatshade_first = setup->flatshade_first;
    unsigned i;
 
-   if (!lp_setup_update_state(setup, TRUE))
+   if (!lp_setup_update_state(setup, true))
       return;
 
    const bool uses_constant_interp =

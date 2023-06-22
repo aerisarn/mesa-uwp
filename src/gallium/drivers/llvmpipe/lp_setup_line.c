@@ -299,7 +299,7 @@ try_setup_line(struct lp_setup_context *setup,
    if (lp_setup_zero_sample_mask(setup)) {
       if (0) debug_printf("zero sample mask\n");
       LP_COUNT(nr_culled_tris);
-      return TRUE;
+      return true;
    }
 
    const float (*pv)[4];
@@ -326,7 +326,7 @@ try_setup_line(struct lp_setup_context *setup,
    const float area = dx * dx + dy * dy;
    if (area == 0) {
       LP_COUNT(nr_culled_tris);
-      return TRUE;
+      return true;
    }
 
    struct lp_line_info info;
@@ -599,7 +599,7 @@ try_setup_line(struct lp_setup_context *setup,
    if (!u_rect_test_intersection(&setup->draw_regions[viewport_index], &bbox)) {
       if (0) debug_printf("no intersection\n");
       LP_COUNT(nr_culled_tris);
-      return TRUE;
+      return true;
    }
 
    int max_szorig = ((bbox.x1 - (bbox.x0 & ~3)) |
@@ -627,7 +627,7 @@ try_setup_line(struct lp_setup_context *setup,
                                                            key->num_inputs,
                                                            nr_planes);
    if (!line)
-      return FALSE;
+      return false;
 
 #ifdef DEBUG
    line->v[0][0] = v1[0][0];
@@ -654,7 +654,7 @@ try_setup_line(struct lp_setup_context *setup,
        setup->face_slot > 0) {
       line->inputs.frontfacing = v1[setup->face_slot][0];
    } else {
-      line->inputs.frontfacing = TRUE;
+      line->inputs.frontfacing = true;
    }
 
    /* Setup parameter interpolants:
@@ -665,7 +665,7 @@ try_setup_line(struct lp_setup_context *setup,
    info.frontfacing = line->inputs.frontfacing;
    setup_line_coefficients(setup, &info);
 
-   line->inputs.disable = FALSE;
+   line->inputs.disable = false;
    line->inputs.layer = layer;
    line->inputs.viewport_index = viewport_index;
    line->inputs.view_index = setup->view_index;

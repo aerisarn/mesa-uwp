@@ -164,26 +164,26 @@ svga_hwtnl_is_buffer_referred(struct svga_hwtnl *hwtnl,
    unsigned i;
 
    if (svga_buffer_is_user_buffer(buffer)) {
-      return FALSE;
+      return false;
    }
 
    if (!hwtnl->cmd.prim_count) {
-      return FALSE;
+      return false;
    }
 
    for (i = 0; i < hwtnl->cmd.vbuf_count; ++i) {
       if (hwtnl->cmd.vbufs[i].buffer.resource == buffer) {
-         return TRUE;
+         return true;
       }
    }
 
    for (i = 0; i < hwtnl->cmd.prim_count; ++i) {
       if (hwtnl->cmd.prim_ib[i] == buffer) {
-         return TRUE;
+         return true;
       }
    }
 
-   return FALSE;
+   return false;
 }
 
 
@@ -419,7 +419,7 @@ svga_validate_sampler_resources(struct svga_context *svga,
          }
       }
    }
-   svga->rebind.flags.texture_samplers = FALSE;
+   svga->rebind.flags.texture_samplers = false;
 
    return PIPE_OK;
 }
@@ -519,7 +519,7 @@ svga_validate_constant_buffers(struct svga_context *svga,
          }
       }
    }
-   svga->rebind.flags.constbufs = FALSE;
+   svga->rebind.flags.constbufs = false;
 
    return PIPE_OK;
 }
@@ -558,7 +558,7 @@ svga_validate_image_views(struct svga_context *svga,
          return ret;
    }
 
-   svga->rebind.flags.images = FALSE;
+   svga->rebind.flags.images = false;
 
    return PIPE_OK;
 }
@@ -597,7 +597,7 @@ svga_validate_shader_buffers(struct svga_context *svga,
          return ret;
    }
 
-   svga->rebind.flags.shaderbufs = FALSE;
+   svga->rebind.flags.shaderbufs = false;
 
    ret = svga_validate_shader_buffer_resources(svga,
                svga->state.hw_draw.num_atomic_buffers,
@@ -607,7 +607,7 @@ svga_validate_shader_buffers(struct svga_context *svga,
    if (ret != PIPE_OK)
       return ret;
 
-   svga->rebind.flags.atomicbufs = FALSE;
+   svga->rebind.flags.atomicbufs = false;
 
    return PIPE_OK;
 }
@@ -848,7 +848,7 @@ validate_vertex_buffers(struct svga_hwtnl *hwtnl,
                   /* Include the last vertex buffer in the next emit
                    * if it is different.
                    */
-                  emit = TRUE;
+                  emit = true;
                   numVBuf++;
                   i++;
                }
@@ -915,7 +915,7 @@ validate_vertex_buffers(struct svga_hwtnl *hwtnl,
       }
    }
 
-   svga->rebind.flags.vertexbufs = FALSE;
+   svga->rebind.flags.vertexbufs = false;
 
    return PIPE_OK;
 }
@@ -987,7 +987,7 @@ validate_index_buffer(struct svga_hwtnl *hwtnl,
       }
    }
 
-   svga->rebind.flags.indexbuf = FALSE;
+   svga->rebind.flags.indexbuf = false;
 
    return PIPE_OK;
 }

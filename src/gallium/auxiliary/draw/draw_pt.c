@@ -44,8 +44,8 @@
 #include "util/u_draw.h"
 
 
-DEBUG_GET_ONCE_BOOL_OPTION(draw_fse, "DRAW_FSE", FALSE)
-DEBUG_GET_ONCE_BOOL_OPTION(draw_no_fse, "DRAW_NO_FSE", FALSE)
+DEBUG_GET_ONCE_BOOL_OPTION(draw_fse, "DRAW_FSE", false)
+DEBUG_GET_ONCE_BOOL_OPTION(draw_no_fse, "DRAW_NO_FSE", false)
 
 
 /* Overall we split things into:
@@ -129,7 +129,7 @@ draw_pt_arrays(struct draw_context *draw,
    if (draw->pt.rebind_parameters) {
       /* update constants, viewport dims, clip planes, etc */
       middle->bind_parameters(middle);
-      draw->pt.rebind_parameters = FALSE;
+      draw->pt.rebind_parameters = false;
    }
 
    for (unsigned i = 0; i < num_draws; i++) {
@@ -164,7 +164,7 @@ draw_pt_arrays(struct draw_context *draw,
          draw->pt.user.drawid++;
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -182,7 +182,7 @@ draw_pt_flush(struct draw_context *draw, unsigned flags)
    }
 
    if (flags & DRAW_FLUSH_PARAMETER_CHANGE) {
-      draw->pt.rebind_parameters = TRUE;
+      draw->pt.rebind_parameters = true;
    }
 }
 
@@ -195,15 +195,15 @@ draw_pt_init(struct draw_context *draw)
 
    draw->pt.front.vsplit = draw_pt_vsplit(draw);
    if (!draw->pt.front.vsplit)
-      return FALSE;
+      return false;
 
    draw->pt.middle.fetch_shade_emit = draw_pt_middle_fse(draw);
    if (!draw->pt.middle.fetch_shade_emit)
-      return FALSE;
+      return false;
 
    draw->pt.middle.general = draw_pt_fetch_pipeline_or_emit(draw);
    if (!draw->pt.middle.general)
-      return FALSE;
+      return false;
 
 #ifdef DRAW_LLVM_AVAILABLE
    if (draw->llvm) {
@@ -212,7 +212,7 @@ draw_pt_init(struct draw_context *draw)
    }
 #endif
 
-   return TRUE;
+   return true;
 }
 
 

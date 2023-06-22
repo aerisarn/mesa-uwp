@@ -659,7 +659,7 @@ void r300_emit_query_start(struct r300_context *r300, unsigned size, void*state)
     }
     OUT_CS_REG(R300_ZB_ZPASS_DATA, 0);
     END_CS;
-    query->begin_emitted = TRUE;
+    query->begin_emitted = true;
 }
 
 static void r300_emit_query_end_frag_pipes(struct r300_context *r300,
@@ -755,7 +755,7 @@ void r300_emit_query_end(struct r300_context* r300)
     if (!query)
 	return;
 
-    if (query->begin_emitted == FALSE)
+    if (query->begin_emitted == false)
         return;
 
     if (caps->family == CHIP_RV530) {
@@ -766,7 +766,7 @@ void r300_emit_query_end(struct r300_context* r300)
     } else 
         r300_emit_query_end_frag_pipes(r300, query);
 
-    query->begin_emitted = FALSE;
+    query->begin_emitted = false;
     query->num_results += query->num_pipes;
 
     /* XXX grab all the results and reset the counter. */
@@ -1233,7 +1233,7 @@ void r300_emit_hiz_clear(struct r300_context *r300, unsigned size, void *state)
     END_CS;
 
     /* Mark the current zbuffer's hiz ram as in use. */
-    r300->hiz_in_use = TRUE;
+    r300->hiz_in_use = true;
     r300->hiz_func = HIZ_FUNC_NONE;
     r300_mark_atom_dirty(r300, &r300->hyperz_state);
 }
@@ -1255,7 +1255,7 @@ void r300_emit_zmask_clear(struct r300_context *r300, unsigned size, void *state
     END_CS;
 
     /* Mark the current zbuffer's zmask as in use. */
-    r300->zmask_in_use = TRUE;
+    r300->zmask_in_use = true;
     r300_mark_atom_dirty(r300, &r300->hyperz_state);
 }
 
@@ -1276,7 +1276,7 @@ void r300_emit_cmask_clear(struct r300_context *r300, unsigned size, void *state
     END_CS;
 
     /* Mark the current zbuffer's zmask as in use. */
-    r300->cmask_in_use = TRUE;
+    r300->cmask_in_use = true;
     r300_mark_fb_state_dirty(r300, R300_CHANGED_CMASK_ENABLE);
 }
 
@@ -1311,7 +1311,7 @@ bool r300_emit_buffer_validate(struct r300_context *r300,
         (struct r300_textures_state*)r300->textures_state.state;
     struct r300_resource *tex;
     unsigned i;
-    bool flushed = FALSE;
+    bool flushed = false;
 
 validate:
     if (r300->fb_state.dirty) {
@@ -1404,13 +1404,13 @@ validate:
     if (!r300->rws->cs_validate(&r300->cs)) {
         /* Ooops, an infinite loop, give up. */
         if (flushed)
-            return FALSE;
+            return false;
 
-        flushed = TRUE;
+        flushed = true;
         goto validate;
     }
 
-    return TRUE;
+    return true;
 }
 
 unsigned r300_get_num_dirty_dwords(struct r300_context *r300)
@@ -1452,7 +1452,7 @@ void r300_emit_dirty_state(struct r300_context* r300)
     foreach_dirty_atom(r300, atom) {
         if (atom->dirty) {
             atom->emit(r300, atom->size, atom->state);
-            atom->dirty = FALSE;
+            atom->dirty = false;
         }
     }
 

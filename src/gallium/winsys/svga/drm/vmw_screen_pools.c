@@ -94,7 +94,7 @@ vmw_query_pools_init(struct vmw_winsys_screen *vws)
                                                       VMW_QUERY_POOL_SIZE,
                                                       &desc);
    if (!vws->pools.query_mm)
-      return FALSE;
+      return false;
 
    vws->pools.query_fenced = simple_fenced_bufmgr_create(
       vws->pools.query_mm, vws->fence_ops);
@@ -102,11 +102,11 @@ vmw_query_pools_init(struct vmw_winsys_screen *vws)
    if(!vws->pools.query_fenced)
       goto out_no_query_fenced;
 
-   return TRUE;
+   return true;
 
   out_no_query_fenced:
    vws->pools.query_mm->destroy(vws->pools.query_mm);
-   return FALSE;
+   return false;
 }
 
 /**
@@ -127,7 +127,7 @@ vmw_mob_pools_init(struct vmw_winsys_screen *vws)
                               VMW_BUFFER_USAGE_SHARED,
                               64 * 1024 * 1024);
    if (!vws->pools.mob_cache)
-      return FALSE;
+      return false;
 
    vws->pools.mob_fenced = 
       simple_fenced_bufmgr_create(vws->pools.mob_cache,
@@ -153,7 +153,7 @@ vmw_mob_pools_init(struct vmw_winsys_screen *vws)
    if(!vws->pools.mob_shader_slab_fenced)
       goto out_no_mob_shader_slab_fenced;
 
-   return TRUE;
+   return true;
 
  out_no_mob_shader_slab_fenced:
    vws->pools.mob_shader_slab->destroy(vws->pools.mob_shader_slab);
@@ -161,7 +161,7 @@ vmw_mob_pools_init(struct vmw_winsys_screen *vws)
    vws->pools.mob_fenced->destroy(vws->pools.mob_fenced);
  out_no_mob_fenced:
    vws->pools.mob_cache->destroy(vws->pools.mob_cache);
-   return FALSE;
+   return false;
 }
 
 /**
@@ -234,9 +234,9 @@ vmw_pools_init(struct vmw_winsys_screen *vws)
    if (vws->base.have_gb_objects && !vmw_mob_pools_init(vws))
       goto error;
 
-   return TRUE;
+   return true;
 
 error:
    vmw_pools_cleanup(vws);
-   return FALSE;
+   return false;
 }

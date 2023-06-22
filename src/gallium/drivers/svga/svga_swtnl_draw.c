@@ -59,11 +59,11 @@ svga_swtnl_draw_vbo(struct svga_context *svga,
    assert(draw);
 
    /* Make sure that the need_swtnl flag does not go away */
-   svga->state.sw.in_swtnl_draw = TRUE;
+   svga->state.sw.in_swtnl_draw = true;
 
    SVGA_RETRY_CHECK(svga, svga_update_state(svga, SVGA_STATE_SWTNL_DRAW), retried);
    if (retried) {
-      svga->swtnl.new_vbuf = TRUE;
+      svga->swtnl.new_vbuf = true;
    }
 
    /*
@@ -145,7 +145,7 @@ svga_swtnl_draw_vbo(struct svga_context *svga,
    }
 
    /* Now safe to remove the need_swtnl flag in any update_state call */
-   svga->state.sw.in_swtnl_draw = FALSE;
+   svga->state.sw.in_swtnl_draw = false;
    svga->dirty |= SVGA_NEW_NEED_PIPELINE | SVGA_NEW_NEED_SWVFETCH;
 
    SVGA_STATS_TIME_POP(svga_sws(svga));
@@ -202,10 +202,10 @@ svga_init_swtnl(struct svga_context *svga)
                             MAX2(screen->maxLineWidth,
                                  screen->maxLineWidthAA));
 
-   if (debug_get_bool_option("SVGA_SWTNL_FSE", FALSE))
-      draw_set_driver_clipping(svga->swtnl.draw, TRUE, TRUE, TRUE, FALSE);
+   if (debug_get_bool_option("SVGA_SWTNL_FSE", false))
+      draw_set_driver_clipping(svga->swtnl.draw, true, true, true, false);
 
-   return TRUE;
+   return true;
 
 fail:
    if (svga->blitter)
@@ -217,7 +217,7 @@ fail:
    if (svga->swtnl.draw)
       draw_destroy(svga->swtnl.draw);
 
-   return FALSE;
+   return false;
 }
 
 

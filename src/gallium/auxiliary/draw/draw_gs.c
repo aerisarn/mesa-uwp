@@ -687,7 +687,7 @@ draw_geometry_shader_run(struct draw_geometry_shader *shader,
    /* Update prim_info:
     */
    for (int i = 0; i < shader->num_vertex_streams; i++) {
-      output_prims[i].linear = TRUE;
+      output_prims[i].linear = true;
       output_prims[i].elts = NULL;
       output_prims[i].start = 0;
       output_prims[i].count = shader->stream[i].emitted_vertices;
@@ -744,7 +744,7 @@ draw_gs_init(struct draw_context *draw)
             MAX_PRIMITIVES * sizeof(struct tgsi_exec_vector), 16);
          if (!draw->gs.tgsi.machine->Primitives[i] ||
              !draw->gs.tgsi.machine->PrimitiveOffsets[i])
-            return FALSE;
+            return false;
          memset(draw->gs.tgsi.machine->Primitives[i], 0,
                 MAX_PRIMITIVES * sizeof(struct tgsi_exec_vector));
          memset(draw->gs.tgsi.machine->PrimitiveOffsets[i], 0,
@@ -752,7 +752,7 @@ draw_gs_init(struct draw_context *draw)
       }
    }
 
-   return TRUE;
+   return true;
 }
 
 

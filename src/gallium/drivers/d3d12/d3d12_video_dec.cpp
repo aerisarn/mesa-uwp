@@ -539,7 +539,7 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
    bool fReferenceOnly = (pD3D12Dec->m_ConfigDecoderSpecificFlags &
                           d3d12_video_decode_config_specific_flag_reference_only_textures_required) != 0;
    if (fReferenceOnly) {
-      d3d12OutputArguments.ConversionArguments.Enable = TRUE;
+      d3d12OutputArguments.ConversionArguments.Enable = true;
 
       assert(pRefOnlyOutputD3D12Texture);
       d3d12OutputArguments.ConversionArguments.pReferenceTexture2D = pRefOnlyOutputD3D12Texture;
@@ -565,7 +565,7 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
       d3d12OutputArguments.ConversionArguments.OutputWidth = HeapDesc.DecodeWidth;
       d3d12OutputArguments.ConversionArguments.OutputHeight = HeapDesc.DecodeHeight;
    } else {
-      d3d12OutputArguments.ConversionArguments.Enable = FALSE;
+      d3d12OutputArguments.ConversionArguments.Enable = false;
    }
 
    CD3DX12_RESOURCE_DESC outputDesc(GetDesc(d3d12OutputArguments.pOutputTexture2D));

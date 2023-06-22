@@ -821,7 +821,7 @@ virgl_is_format_supported( struct pipe_screen *screen,
    if (bind & PIPE_BIND_RENDER_TARGET) {
       /* For ARB_framebuffer_no_attachments. */
       if (format == PIPE_FORMAT_NONE)
-         return TRUE;
+         return true;
 
       if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS)
          return false;

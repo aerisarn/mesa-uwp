@@ -164,5 +164,5 @@ softpipe_draw_vbo(struct pipe_context *pipe,
    draw_flush(draw);
 
    /* Note: leave drawing surfaces mapped */
-   sp->dirty_render_cache = TRUE;
+   sp->dirty_render_cache = true;
 }

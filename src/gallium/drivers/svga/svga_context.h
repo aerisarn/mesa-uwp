@@ -1050,7 +1050,7 @@ svga_get_time(struct svga_context *svga)
  * the _retry parameter to TRUE.
  */
 #define SVGA_TRY_MAP(_func, _retry) \
-   ((SVGA_DEBUG & DEBUG_RETRY) ? (_retry) = TRUE, NULL : (_func))
+   ((SVGA_DEBUG & DEBUG_RETRY) ? (_retry) = true, NULL : (_func))
 #else
 
 #define SVGA_TRY(_func) (_func)

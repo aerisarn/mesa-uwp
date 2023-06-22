@@ -118,7 +118,7 @@ is_blend(const struct lp_rast_state *state,
    if (variant)
       return  variant->key.blend.rt[0].blend_enable;
 
-   return FALSE;
+   return false;
 }
 
 
@@ -137,7 +137,7 @@ is_linear(const struct lp_rast_state *state,
    if (block->cmd[k] == LP_RAST_OP_RECTANGLE)
       return state->variant->jit_linear != NULL;
 
-   return FALSE;
+   return false;
 }
 
 
@@ -258,7 +258,7 @@ debug_blit_tile(int x, int y,
 
    for (unsigned i = 0; i < TILE_SIZE; i++)
       for (unsigned j = 0; j < TILE_SIZE; j++)
-         plot(tile, i, j, val, FALSE);
+         plot(tile, i, j, val, false);
 
    return TILE_SIZE * TILE_SIZE;
 }
@@ -295,7 +295,7 @@ debug_clear_tile(int x, int y,
 {
    for (unsigned i = 0; i < TILE_SIZE; i++)
       for (unsigned j = 0; j < TILE_SIZE; j++)
-         plot(tile, i, j, val, FALSE);
+         plot(tile, i, j, val, false);
 
    return TILE_SIZE * TILE_SIZE;
 }
@@ -430,7 +430,7 @@ lp_debug_bin(const struct cmd_bin *bin, int i, int j)
    struct tile tile;
 
    if (bin->head) {
-      do_debug_bin(&tile, bin, i, j, TRUE);
+      do_debug_bin(&tile, bin, i, j, true);
 
       debug_printf("------------------------------------------------------------------\n");
       for (int y = 0; y < TILE_SIZE; y++) {
@@ -482,7 +482,7 @@ lp_debug_draw_bins_by_coverage(struct lp_scene *scene)
             struct tile tile;
             //lp_debug_bin(bin, x, y);
 
-            do_debug_bin(&tile, bin, x, y, FALSE);
+            do_debug_bin(&tile, bin, x, y, false);
 
             total += tile.coverage;
             possible += 64*64;

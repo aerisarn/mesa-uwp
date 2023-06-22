@@ -30,7 +30,7 @@ debug_screen_wrap(struct pipe_screen *screen)
    screen = trace_screen_create(screen);
    screen = noop_screen_create(screen);
 
-   if (debug_get_bool_option("GALLIUM_TESTS", FALSE))
+   if (debug_get_bool_option("GALLIUM_TESTS", false))
       util_run_tests(screen);
 
    return screen;

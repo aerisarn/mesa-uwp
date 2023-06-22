@@ -301,7 +301,7 @@ svga_bind_sampler_states(struct pipe_context *pipe,
 {
    struct svga_context *svga = svga_context(pipe);
    unsigned i;
-   bool any_change = FALSE;
+   bool any_change = false;
 
    assert(shader < PIPE_SHADER_TYPES);
    assert(start + num <= PIPE_MAX_SAMPLERS);
@@ -312,7 +312,7 @@ svga_bind_sampler_states(struct pipe_context *pipe,
 
    for (i = 0; i < num; i++) {
       if (svga->curr.sampler[shader][start + i] != samplers[i])
-         any_change = TRUE;
+         any_change = true;
       svga->curr.sampler[shader][start + i] = samplers[i];
    }
 
@@ -421,7 +421,7 @@ svga_set_sampler_views(struct pipe_context *pipe,
    unsigned flag_1d = 0;
    unsigned flag_srgb = 0;
    uint i;
-   bool any_change = FALSE;
+   bool any_change = false;
 
    assert(shader < PIPE_SHADER_TYPES);
    assert(start + num <= ARRAY_SIZE(svga->curr.sampler_views[shader]));
@@ -447,7 +447,7 @@ svga_set_sampler_views(struct pipe_context *pipe,
          pipe_sampler_view_reference(&svga->curr.sampler_views[shader][i],
                                      NULL);
       }
-      any_change = TRUE;
+      any_change = true;
    }
 
    for (i = 0; i < num; i++) {
@@ -490,7 +490,7 @@ svga_set_sampler_views(struct pipe_context *pipe,
       if (svga->curr.sampler_views[shader][start + i]) {
          pipe_sampler_view_reference(&svga->curr.sampler_views[shader][start + i],
                                      NULL);
-         any_change = TRUE;
+         any_change = true;
       }
    }
 

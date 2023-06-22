@@ -739,14 +739,14 @@ lp_build_interp_soa_init(struct lp_build_interp_soa_context *bld,
    memset(bld, 0, sizeof *bld);
 
    memset(&coeff_type, 0, sizeof coeff_type);
-   coeff_type.floating = TRUE;
-   coeff_type.sign = TRUE;
+   coeff_type.floating = true;
+   coeff_type.sign = true;
    coeff_type.width = 32;
    coeff_type.length = type.length;
 
    memset(&setup_type, 0, sizeof setup_type);
-   setup_type.floating = TRUE;
-   setup_type.sign = TRUE;
+   setup_type.floating = true;
+   setup_type.sign = true;
    setup_type.width = 32;
    setup_type.length = TGSI_NUM_CHANNELS;
 

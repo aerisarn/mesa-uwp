@@ -292,7 +292,7 @@ Shader_parse_opcode(struct Shader_parser *parser,
    unsigned i;
 
    if (curr >= parser->code + parser->header.size) {
-      return FALSE;
+      return false;
    }
 
    memset(opcode, 0, sizeof *opcode);
@@ -318,7 +318,7 @@ Shader_parse_opcode(struct Shader_parser *parser,
       curr += opcode->customdata.u.constbuf.count;
 
       parser->curr = curr;
-      return TRUE;
+      return true;
    }
 
    opcode->dcl_siv_name = D3D10_SB_NAME_UNDEFINED;
@@ -414,7 +414,7 @@ Shader_parse_opcode(struct Shader_parser *parser,
        *      Should be okay to continue execution -- we have enough info
        *      to skip to the next instruction.
        */
-      LOG_UNSUPPORTED(TRUE);
+      LOG_UNSUPPORTED(true);
       opcode->num_dst = 0;
       opcode->num_src = 0;
       goto skip;
@@ -596,7 +596,7 @@ skip:
    /* Advance to the next opcode. */
    parser->curr += length;
 
-   return TRUE;
+   return true;
 }
 
 void

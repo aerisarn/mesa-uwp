@@ -170,13 +170,13 @@ stw_init(const struct stw_winsys *stw_winsys)
 
    stw_dev->initialized = true;
 
-   return TRUE;
+   return true;
 
 error1:
    FREE(stw_dev->fscreen);
 
    stw_dev = NULL;
-   return FALSE;
+   return false;
 }
 
 bool
@@ -295,5 +295,5 @@ DrvValidateVersion(ULONG ulVersion)
     * ignore it.
     */
    (void)ulVersion;
-   return TRUE;
+   return true;
 }

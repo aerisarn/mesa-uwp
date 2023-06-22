@@ -238,7 +238,7 @@ convert_quad_stencil( struct depth_data *data,
 {
    unsigned j;
 
-   data->use_shader_stencil_refs = TRUE;
+   data->use_shader_stencil_refs = true;
    /* Copy quads stencil values
     */
    switch (data->format) {
@@ -591,7 +591,7 @@ depth_test_quad(struct quad_stage *qs,
 
    quad->inout.mask &= zmask;
    if (quad->inout.mask == 0)
-      return FALSE;
+      return false;
 
    /* Update our internal copy only if writemask set.  Even if
     * depth.writemask is FALSE, may still need to write out buffer
@@ -605,7 +605,7 @@ depth_test_quad(struct quad_stage *qs,
       }
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -855,7 +855,7 @@ depth_test_quads_fallback(struct quad_stage *qs,
    struct depth_data data;
    unsigned vp_idx = quads[0]->input.viewport_index;
 
-   data.use_shader_stencil_refs = FALSE;
+   data.use_shader_stencil_refs = false;
 
    if (have_zs && (qs->softpipe->depth_stencil->depth_enabled ||
                    qs->softpipe->depth_stencil->stencil[0].enabled ||
@@ -1007,7 +1007,7 @@ choose_depth_test(struct quad_stage *qs,
    bool depth_bounds = qs->softpipe->depth_stencil->depth_bounds_test;
 
    if(!qs->softpipe->framebuffer.zsbuf)
-      depth = depthwrite = stencil = FALSE;
+      depth = depthwrite = stencil = false;
 
    /* default */
    qs->run = depth_test_quads_fallback;

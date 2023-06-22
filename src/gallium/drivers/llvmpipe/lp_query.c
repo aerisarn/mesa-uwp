@@ -552,7 +552,7 @@ llvmpipe_check_render_cond(struct llvmpipe_context *lp)
       return (!data) == lp->render_cond_cond;
    }
    if (!lp->render_cond_query)
-      return TRUE; /* no query predicate, draw normally */
+      return true; /* no query predicate, draw normally */
 
    bool wait = (lp->render_cond_mode == PIPE_RENDER_COND_WAIT ||
                 lp->render_cond_mode == PIPE_RENDER_COND_BY_REGION_WAIT);
@@ -563,7 +563,7 @@ llvmpipe_check_render_cond(struct llvmpipe_context *lp)
    if (b)
       return ((!result) == lp->render_cond_cond);
    else
-      return TRUE;
+      return true;
 }
 
 

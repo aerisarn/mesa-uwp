@@ -92,16 +92,16 @@ lp_resource_copy(struct pipe_context *pipe,
 {
    llvmpipe_flush_resource(pipe,
                            dst, dst_level,
-                           FALSE, /* read_only */
-                           TRUE, /* cpu_access */
-                           FALSE, /* do_not_block */
+                           false, /* read_only */
+                           true, /* cpu_access */
+                           false, /* do_not_block */
                            "blit dest");
 
    llvmpipe_flush_resource(pipe,
                            src, src_level,
-                           TRUE, /* read_only */
-                           TRUE, /* cpu_access */
-                           FALSE, /* do_not_block */
+                           true, /* read_only */
+                           true, /* cpu_access */
+                           false, /* do_not_block */
                            "blit src");
 
    if (dst->nr_samples > 1 &&
@@ -366,12 +366,12 @@ lp_clear_depth_stencil_texture_msaa(struct pipe_context *pipe,
                                     const struct pipe_box *box)
 {
    struct pipe_transfer *dst_trans;
-   bool need_rmw = FALSE;
+   bool need_rmw = false;
 
    if ((clear_flags & PIPE_CLEAR_DEPTHSTENCIL) &&
        ((clear_flags & PIPE_CLEAR_DEPTHSTENCIL) != PIPE_CLEAR_DEPTHSTENCIL) &&
        util_format_is_depth_and_stencil(format)) {
-      need_rmw = TRUE;
+      need_rmw = true;
    }
 
    ubyte *dst_map = llvmpipe_transfer_map_ms(pipe,

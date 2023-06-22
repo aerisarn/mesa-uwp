@@ -69,18 +69,18 @@ util_gen_mipmap(struct pipe_context *pipe, struct pipe_resource *pt,
 
    /* nothing to do for stencil-only formats */
    if (is_zs && !has_depth)
-      return TRUE;
+      return true;
 
    /* nothing to do for integer formats */
    if (!is_zs && util_format_is_pure_integer(format))
-      return TRUE;
+      return true;
 
    if (!screen->is_format_supported(screen, format, pt->target,
                                     pt->nr_samples, pt->nr_storage_samples,
                                     PIPE_BIND_SAMPLER_VIEW |
                                     (is_zs ? PIPE_BIND_DEPTH_STENCIL :
                                      PIPE_BIND_RENDER_TARGET))) {
-      return FALSE;
+      return false;
    }
 
    /* The texture object should have room for the levels which we're
@@ -124,5 +124,5 @@ util_gen_mipmap(struct pipe_context *pipe, struct pipe_resource *pt,
 
       pipe->blit(pipe, &blit);
    }
-   return TRUE;
+   return true;
 }

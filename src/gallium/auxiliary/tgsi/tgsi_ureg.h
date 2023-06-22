@@ -631,7 +631,7 @@ static inline void ureg_##op( struct ureg_program *ureg )       \
    struct ureg_emit_insn_result insn;                           \
    insn = ureg_emit_insn(ureg,                                  \
                          opcode,                                \
-                         FALSE,                                 \
+                         false,                                 \
                          0,                                     \
                          0,                                     \
                          0);                                    \
@@ -646,7 +646,7 @@ static inline void ureg_##op( struct ureg_program *ureg,        \
    struct ureg_emit_insn_result insn;                           \
    insn = ureg_emit_insn(ureg,                                  \
                          opcode,                                \
-                         FALSE,                                 \
+                         false,                                 \
                          0,                                     \
                          0,                                     \
                          1);                                    \
@@ -662,7 +662,7 @@ static inline void ureg_##op( struct ureg_program *ureg,        \
    struct ureg_emit_insn_result insn;                           \
    insn = ureg_emit_insn(ureg,                                  \
                          opcode,                                \
-                         FALSE,                                 \
+                         false,                                 \
                          0,                                     \
                          0,                                     \
                          0);                                    \
@@ -679,7 +679,7 @@ static inline void ureg_##op( struct ureg_program *ureg,        \
    struct ureg_emit_insn_result insn;                           \
    insn = ureg_emit_insn(ureg,                                  \
                          opcode,                                \
-                         FALSE,                                 \
+                         false,                                 \
                          0,                                     \
                          0,                                     \
                          1);                                    \

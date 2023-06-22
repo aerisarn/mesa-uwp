@@ -76,7 +76,7 @@ lp_linear_blit_rgba_blit(const struct lp_rast_state *state,
    if (a0[0][3] != 1.0 ||
        dadx[0][3] != 0.0 ||
        dady[0][3] != 0.0)
-      return FALSE;
+      return false;
 
    const int src_x = x + util_iround(a0[1][0]*texture->width - 0.5f);
    const int src_y = y + util_iround(a0[1][1]*texture->height - 0.5f);
@@ -90,7 +90,7 @@ lp_linear_blit_rgba_blit(const struct lp_rast_state *state,
        src_y < 0 ||
        src_x + width > texture->width ||
        src_y + height > texture->height)
-      return FALSE;
+      return false;
 
    util_copy_rect(color, PIPE_FORMAT_B8G8R8A8_UNORM, stride,
                   x, y,
@@ -98,7 +98,7 @@ lp_linear_blit_rgba_blit(const struct lp_rast_state *state,
                   src, src_stride,
                   src_x, src_y);
 
-   return TRUE;
+   return true;
 }
 
 
@@ -125,7 +125,7 @@ lp_linear_blit_rgb1_blit(const struct lp_rast_state *state,
    if (a0[0][3] != 1.0 ||
        dadx[0][3] != 0.0 ||
        dady[0][3] != 0.0)
-      return FALSE;
+      return false;
 
    color += x * 4 + y * stride;
 
@@ -141,7 +141,7 @@ lp_linear_blit_rgb1_blit(const struct lp_rast_state *state,
        src_y < 0 ||
        src_x + width > texture->width ||
        src_y + height > texture->height)
-      return FALSE;
+      return false;
 
    for (y = 0; y < height; y++) {
       const uint32_t *src_row = (const uint32_t *)src;
@@ -155,7 +155,7 @@ lp_linear_blit_rgb1_blit(const struct lp_rast_state *state,
       src += src_stride;
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -185,7 +185,7 @@ lp_linear_purple(const struct lp_rast_state *state,
                   height,
                   &uc);
 
-   return TRUE;
+   return true;
 }
 
 
@@ -233,7 +233,7 @@ lp_linear_check_fastpath(struct lp_fragment_shader_variant *variant)
 bool
 lp_linear_check_fastpath(struct lp_fragment_shader_variant *variant)
 {
-   return FALSE;
+   return false;
 }
 
 #endif

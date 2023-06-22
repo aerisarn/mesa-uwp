@@ -504,14 +504,14 @@ static void emit_load_var(struct lp_build_nir_context *bld_base,
                LLVMValueRef attrib_index_val = lp_build_add(&bld_base->uint_bld, indir_index, lp_build_const_int_vec(gallivm, bld_base->uint_bld.type, comp_loc));
                LLVMValueRef index_vec = get_soa_array_offsets(&bld_base->uint_bld,
                                                               attrib_index_val, 4, idx,
-                                                              TRUE);
+                                                              true);
                LLVMValueRef index_vec2 = NULL;
                LLVMTypeRef scalar_type = LLVMFloatTypeInContext(gallivm->context);
                LLVMValueRef inputs_array = LLVMBuildBitCast(gallivm->builder, bld->inputs_array, LLVMPointerType(scalar_type, 0), "");
 
                if (bit_size == 64)
                   index_vec2 = get_soa_array_offsets(&bld_base->uint_bld,
-                                                     indir_index, 4, idx + 1, TRUE);
+                                                     indir_index, 4, idx + 1, true);
 
                /* Gather values from the input register array */
                result[i] = build_gather(bld_base, &bld_base->base, scalar_type, inputs_array, index_vec, NULL, index_vec2);
@@ -869,7 +869,7 @@ static LLVMValueRef emit_load_reg(struct lp_build_nir_context *bld_base,
       indirect_val = lp_build_min(uint_bld, indirect_val, max_index);
       reg_storage = LLVMBuildBitCast(builder, reg_storage, LLVMPointerType(reg_bld->elem_type, 0), "");
       for (unsigned i = 0; i < nc; i++) {
-         LLVMValueRef indirect_offset = get_soa_array_offsets(uint_bld, indirect_val, nc, i, TRUE);
+         LLVMValueRef indirect_offset = get_soa_array_offsets(uint_bld, indirect_val, nc, i, true);
          vals[i] = build_gather(bld_base, reg_bld, reg_bld->elem_type, reg_storage, indirect_offset, NULL, NULL);
       }
    } else {
@@ -904,7 +904,7 @@ static void emit_store_reg(struct lp_build_nir_context *bld_base,
       for (unsigned i = 0; i < nc; i++) {
          if (!(writemask & (1 << i)))
             continue;
-         LLVMValueRef indirect_offset = get_soa_array_offsets(uint_bld, indirect_val, nc, i, TRUE);
+         LLVMValueRef indirect_offset = get_soa_array_offsets(uint_bld, indirect_val, nc, i, true);
          dst[i] = LLVMBuildBitCast(builder, dst[i], reg_bld->vec_type, "");
          emit_mask_scatter(bld, reg_storage, indirect_offset, dst[i], &bld->exec_mask);
       }

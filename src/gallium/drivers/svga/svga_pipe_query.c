@@ -133,7 +133,7 @@ begin_query_vgpu9(struct svga_context *svga, struct svga_query *sq)
        * big deal, given that no sane application would do this.
        */
        uint64_t result;
-       svga_get_query_result(&svga->pipe, &sq->base, TRUE, (void*)&result);
+       svga_get_query_result(&svga->pipe, &sq->base, true, (void*)&result);
        assert(sq->queryResult->state != SVGA3D_QUERYSTATE_PENDING);
    }
 
@@ -545,7 +545,7 @@ rebind_vgpu10_query(struct svga_context *svga)
 {
    SVGA_RETRY(svga, svga->swc->query_bind(svga->swc, svga->gb_query,
                                           SVGA_QUERY_FLAG_REF));
-   svga->rebind.flags.query = FALSE;
+   svga->rebind.flags.query = false;
 }
 
 
@@ -742,7 +742,7 @@ svga_create_query(struct pipe_context *pipe,
    case SVGA_QUERY_FLUSH_TIME:
    case SVGA_QUERY_MAP_BUFFER_TIME:
       /* These queries need os_time_get() */
-      svga->hud.uses_time = TRUE;
+      svga->hud.uses_time = true;
       break;
 
    default:
@@ -955,7 +955,7 @@ svga_begin_query(struct pipe_context *pipe, struct pipe_query *q)
    SVGA_DBG(DEBUG_QUERY, "%s sq=0x%x id=%d type=%d svga_type=%d\n",
             __func__, sq, sq->id, sq->type, sq->svga_type);
 
-   sq->active = TRUE;
+   sq->active = true;
 
    return true;
 }
@@ -1075,7 +1075,7 @@ svga_end_query(struct pipe_context *pipe, struct pipe_query *q)
    default:
       assert(!"unexpected query type in svga_end_query()");
    }
-   sq->active = FALSE;
+   sq->active = false;
    return true;
 }
 
@@ -1290,7 +1290,7 @@ svga_get_timestamp(struct pipe_context *pipe)
    util_query_clear_result(&result, PIPE_QUERY_TIMESTAMP);
    svga_begin_query(pipe, q);
    svga_end_query(pipe,q);
-   svga_get_query_result(pipe, q, TRUE, &result);
+   svga_get_query_result(pipe, q, true, &result);
    svga_destroy_query(pipe, q);
 
    return result.u64;

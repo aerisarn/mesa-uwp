@@ -330,7 +330,7 @@ lp_scene_bin_command(struct lp_scene *scene,
    if (tail == NULL || tail->count == CMD_BLOCK_MAX) {
       tail = lp_scene_new_cmd_block(scene, bin);
       if (!tail) {
-         return FALSE;
+         return false;
       }
       assert(tail->count == 0);
    }
@@ -342,7 +342,7 @@ lp_scene_bin_command(struct lp_scene *scene,
       tail->count++;
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -360,13 +360,13 @@ lp_scene_bin_cmd_with_state(struct lp_scene *scene,
       if (!lp_scene_bin_command(scene, x, y,
                                 LP_RAST_OP_SET_STATE,
                                 lp_rast_arg_state(state)))
-         return FALSE;
+         return false;
    }
 
    if (!lp_scene_bin_command(scene, x, y, cmd, arg))
-      return FALSE;
+      return false;
 
-   return TRUE;
+   return true;
 }
 
 
@@ -380,11 +380,11 @@ lp_scene_bin_everywhere(struct lp_scene *scene,
    for (unsigned i = 0; i < scene->tiles_x; i++) {
       for (unsigned j = 0; j < scene->tiles_y; j++) {
          if (!lp_scene_bin_command(scene, i, j, cmd, arg))
-            return FALSE;
+            return false;
       }
    }
 
-   return TRUE;
+   return true;
 }
 
 

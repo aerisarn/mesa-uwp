@@ -573,7 +573,7 @@ counter_dialog(void)
    dialog = newwin(dh, dw, (h - dh) / 2, (w - dw) / 2);
    box(dialog, 0, 0);
    wrefresh(dialog);
-   keypad(dialog, TRUE);
+   keypad(dialog, true);
 
    while (true) {
       int max = MIN2(dh - 2, group->group->num_countables);
@@ -660,7 +660,7 @@ main_ui(void)
    cbreak();
    wtimeout(mainwin, options.refresh_ms);
    noecho();
-   keypad(mainwin, TRUE);
+   keypad(mainwin, true);
    curs_set(0);
    start_color();
    init_pair(COLOR_GROUP_HEADER, COLOR_WHITE, COLOR_GREEN);

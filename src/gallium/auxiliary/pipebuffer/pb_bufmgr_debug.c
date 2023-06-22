@@ -138,7 +138,7 @@ static inline bool
 check_random_pattern(const uint8_t *dst, pb_size size, 
                      pb_size *min_ofs, pb_size *max_ofs) 
 {
-   bool result = TRUE;
+   bool result = true;
    pb_size i;
    *min_ofs = size;
    *max_ofs = 0;
@@ -146,7 +146,7 @@ check_random_pattern(const uint8_t *dst, pb_size size,
       if(*dst++ != random_pattern[i % sizeof(random_pattern)]) {
          *min_ofs = MIN2(*min_ofs, i);
          *max_ofs = MAX2(*max_ofs, i);
-	 result = FALSE;
+	 result = false;
       }
    }
    return result;

@@ -191,26 +191,26 @@ scan_src_operand(struct tgsi_shader_info *info,
             case TGSI_INTERPOLATE_PERSPECTIVE:
                switch (info->input_interpolate_loc[input]) {
                case TGSI_INTERPOLATE_LOC_CENTER:
-                  info->uses_persp_center = TRUE;
+                  info->uses_persp_center = true;
                   break;
                case TGSI_INTERPOLATE_LOC_CENTROID:
-                  info->uses_persp_centroid = TRUE;
+                  info->uses_persp_centroid = true;
                   break;
                case TGSI_INTERPOLATE_LOC_SAMPLE:
-                  info->uses_persp_sample = TRUE;
+                  info->uses_persp_sample = true;
                   break;
                }
                break;
             case TGSI_INTERPOLATE_LINEAR:
                switch (info->input_interpolate_loc[input]) {
                case TGSI_INTERPOLATE_LOC_CENTER:
-                  info->uses_linear_center = TRUE;
+                  info->uses_linear_center = true;
                   break;
                case TGSI_INTERPOLATE_LOC_CENTROID:
-                  info->uses_linear_centroid = TRUE;
+                  info->uses_linear_centroid = true;
                   break;
                case TGSI_INTERPOLATE_LOC_SAMPLE:
-                  info->uses_linear_sample = TRUE;
+                  info->uses_linear_sample = true;
                   break;
                }
                break;
@@ -303,7 +303,7 @@ scan_src_operand(struct tgsi_shader_info *info,
       }
 
       if (tgsi_get_opcode_info(fullinst->Instruction.Opcode)->is_store) {
-         info->writes_memory = TRUE;
+         info->writes_memory = true;
 
          if (src->Register.File == TGSI_FILE_IMAGE) {
             if (src->Register.Indirect)
@@ -451,13 +451,13 @@ scan_instruction(struct tgsi_shader_info *info,
       case TGSI_INTERPOLATE_PERSPECTIVE:
          switch (fullinst->Instruction.Opcode) {
          case TGSI_OPCODE_INTERP_CENTROID:
-            info->uses_persp_opcode_interp_centroid = TRUE;
+            info->uses_persp_opcode_interp_centroid = true;
             break;
          case TGSI_OPCODE_INTERP_OFFSET:
-            info->uses_persp_opcode_interp_offset = TRUE;
+            info->uses_persp_opcode_interp_offset = true;
             break;
          case TGSI_OPCODE_INTERP_SAMPLE:
-            info->uses_persp_opcode_interp_sample = TRUE;
+            info->uses_persp_opcode_interp_sample = true;
             break;
          }
          break;
@@ -465,13 +465,13 @@ scan_instruction(struct tgsi_shader_info *info,
       case TGSI_INTERPOLATE_LINEAR:
          switch (fullinst->Instruction.Opcode) {
          case TGSI_OPCODE_INTERP_CENTROID:
-            info->uses_linear_opcode_interp_centroid = TRUE;
+            info->uses_linear_opcode_interp_centroid = true;
             break;
          case TGSI_OPCODE_INTERP_OFFSET:
-            info->uses_linear_opcode_interp_offset = TRUE;
+            info->uses_linear_opcode_interp_offset = true;
             break;
          case TGSI_OPCODE_INTERP_SAMPLE:
-            info->uses_linear_opcode_interp_sample = TRUE;
+            info->uses_linear_opcode_interp_sample = true;
             break;
          }
          break;
@@ -486,7 +486,7 @@ scan_instruction(struct tgsi_shader_info *info,
        fullinst->Instruction.Opcode == TGSI_OPCODE_D2I64 ||
        fullinst->Instruction.Opcode == TGSI_OPCODE_U642D ||
        fullinst->Instruction.Opcode == TGSI_OPCODE_I642D)
-      info->uses_doubles = TRUE;
+      info->uses_doubles = true;
 
    for (i = 0; i < fullinst->Instruction.NumSrcRegs; i++) {
       scan_src_operand(info, fullinst, &fullinst->Src[i], i,
@@ -566,7 +566,7 @@ scan_instruction(struct tgsi_shader_info *info,
          assert(fullinst->Instruction.Opcode == TGSI_OPCODE_STORE);
 
          is_mem_inst = true;
-         info->writes_memory = TRUE;
+         info->writes_memory = true;
 
          if (dst->Register.File == TGSI_FILE_IMAGE) {
             if (fullinst->Memory.Texture == TGSI_TEXTURE_2D_MSAA ||
@@ -695,34 +695,34 @@ scan_declaration(struct tgsi_shader_info *info,
 
          switch (semName) {
          case TGSI_SEMANTIC_INSTANCEID:
-            info->uses_instanceid = TRUE;
+            info->uses_instanceid = true;
             break;
          case TGSI_SEMANTIC_VERTEXID:
-            info->uses_vertexid = TRUE;
+            info->uses_vertexid = true;
             break;
          case TGSI_SEMANTIC_VERTEXID_NOBASE:
-            info->uses_vertexid_nobase = TRUE;
+            info->uses_vertexid_nobase = true;
             break;
          case TGSI_SEMANTIC_BASEVERTEX:
-            info->uses_basevertex = TRUE;
+            info->uses_basevertex = true;
             break;
          case TGSI_SEMANTIC_DRAWID:
-            info->uses_drawid = TRUE;
+            info->uses_drawid = true;
             break;
          case TGSI_SEMANTIC_PRIMID:
-            info->uses_primid = TRUE;
+            info->uses_primid = true;
             break;
          case TGSI_SEMANTIC_INVOCATIONID:
-            info->uses_invocationid = TRUE;
+            info->uses_invocationid = true;
             break;
          case TGSI_SEMANTIC_POSITION:
-            info->reads_position = TRUE;
+            info->reads_position = true;
             break;
          case TGSI_SEMANTIC_FACE:
-            info->uses_frontface = TRUE;
+            info->uses_frontface = true;
             break;
          case TGSI_SEMANTIC_SAMPLEMASK:
-            info->reads_samplemask = TRUE;
+            info->reads_samplemask = true;
             break;
          case TGSI_SEMANTIC_TESSINNER:
          case TGSI_SEMANTIC_TESSOUTER:

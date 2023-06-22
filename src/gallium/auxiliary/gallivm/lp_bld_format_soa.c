@@ -322,11 +322,11 @@ lp_build_unpack_rgba_soa(struct gallivm_state *gallivm,
    /* Decode the input vector components */
    for (chan = 0; chan < format_desc->nr_channels; ++chan) {
       struct util_format_channel_description chan_desc = format_desc->channel[chan];
-      bool srgb_chan = FALSE;
+      bool srgb_chan = false;
 
       if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB &&
           format_desc->swizzle[3] != chan) {
-         srgb_chan = TRUE;
+         srgb_chan = true;
       }
 
       inputs[chan] = lp_build_extract_soa_chan(&bld,
@@ -457,7 +457,7 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
                                format_desc->block.bits,
                                fetch_type,
                                aligned,
-                               base_ptr, offset, FALSE);
+                               base_ptr, offset, false);
 
       /*
        * convert texels to float rgba
@@ -610,7 +610,7 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
          packed[i] = lp_build_gather(gallivm, gather_type.length,
                                      format_desc->block.bits,
                                      fetch_type, aligned,
-                                     base_ptr, offsetr, FALSE);
+                                     base_ptr, offsetr, false);
          if (fp64) {
             struct lp_type conv_type = type;
             conv_type.width *= 2;
@@ -663,7 +663,7 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
 
             output[i] = lp_build_extract_soa_chan(&bld,
                                                   blockbits,
-                                                  FALSE,
+                                                  false,
                                                   chan_desc,
                                                   dst[vec_nr]);
          }
@@ -693,7 +693,7 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
       packed = lp_build_gather(gallivm, type.length,
                                format_desc->block.bits,
                                fetch_type, aligned,
-                               base_ptr, offset, FALSE);
+                               base_ptr, offset, false);
       if (format == PIPE_FORMAT_R11G11B10_FLOAT) {
          lp_build_r11g11b10_to_float(gallivm, packed, rgba_out);
       }
@@ -721,14 +721,14 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
          LLVMValueRef s_offset = lp_build_const_int_vec(gallivm, type, 4);
          offset = LLVMBuildAdd(builder, offset, s_offset, "");
          packed = lp_build_gather(gallivm, type.length, 32, fetch_type,
-                                  aligned, base_ptr, offset, FALSE);
+                                  aligned, base_ptr, offset, false);
          packed = LLVMBuildAnd(builder, packed,
                                lp_build_const_int_vec(gallivm, type, mask), "");
       }
       else {
          assert (format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT);
          packed = lp_build_gather(gallivm, type.length, 32, fetch_type,
-                                  aligned, base_ptr, offset, TRUE);
+                                  aligned, base_ptr, offset, true);
          packed = LLVMBuildBitCast(builder, packed,
                                    lp_build_vec_type(gallivm, type), "");
       }
@@ -773,7 +773,7 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
       memset(&tmp_type, 0, sizeof tmp_type);
       tmp_type.width = 8;
       tmp_type.length = type.length * 4;
-      tmp_type.norm = TRUE;
+      tmp_type.norm = true;
       tmp_type.sign = is_signed;
 
       packed = lp_build_fetch_rgba_aos(gallivm, flinear_desc, tmp_type,

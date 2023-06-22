@@ -401,12 +401,12 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
           * support vertex shader texture lookups when LLVM is enabled in
           * the draw module.
           */
-         if (debug_get_bool_option("DRAW_USE_LLVM", TRUE))
+         if (debug_get_bool_option("DRAW_USE_LLVM", true))
             return PIPE_MAX_SAMPLERS;
          else
             return 0;
       case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
-         if (debug_get_bool_option("DRAW_USE_LLVM", TRUE))
+         if (debug_get_bool_option("DRAW_USE_LLVM", true))
             return PIPE_MAX_SHADER_SAMPLER_VIEWS;
          else
             return 0;

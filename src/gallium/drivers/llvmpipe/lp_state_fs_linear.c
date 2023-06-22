@@ -264,7 +264,7 @@ init_nearest_sampler(struct nearest_sampler *samp,
    const float oow = 1.0f / w0;
 
    if (dwdx != 0.0 || dwdy != 0.0)
-      return FALSE;
+      return false;
 
    samp->texture = texture;
    samp->width = width;
@@ -317,7 +317,7 @@ init_nearest_sampler(struct nearest_sampler *samp,
       }
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -373,7 +373,7 @@ blit_rgba_blit(const struct lp_rast_state *state,
    if (a0[0][3] != 1.0 ||
        dadx[0][3] != 0.0 ||
        dady[0][3] != 0.0)
-      return FALSE;
+      return false;
 
    src_x = x + util_iround(a0[1][0]*texture->width - 0.5f);
    src_y = y + util_iround(a0[1][1]*texture->height - 0.5f);
@@ -387,7 +387,7 @@ blit_rgba_blit(const struct lp_rast_state *state,
        src_y < 0 ||
        src_x + width > texture->width ||
        src_y + height > texture->height)
-      return FALSE;
+      return false;
 
    util_copy_rect(color, PIPE_FORMAT_B8G8R8A8_UNORM, stride,
                   x, y,
@@ -395,7 +395,7 @@ blit_rgba_blit(const struct lp_rast_state *state,
                   src, src_stride,
                   src_x, src_y);
 
-   return TRUE;
+   return true;
 }
 
 
@@ -425,7 +425,7 @@ blit_rgb1_blit(const struct lp_rast_state *state,
    if (a0[0][3] != 1.0 ||
        dadx[0][3] != 0.0 ||
        dady[0][3] != 0.0)
-      return FALSE;
+      return false;
 
    color += x * 4 + y * stride;
 
@@ -441,7 +441,7 @@ blit_rgb1_blit(const struct lp_rast_state *state,
        src_y < 0 ||
        src_x + width > texture->width ||
        src_y + height > texture->height)
-      return FALSE;
+      return false;
 
    for (y = 0; y < height; y++) {
       const uint32_t *src_row = (const uint32_t *)src;
@@ -455,7 +455,7 @@ blit_rgb1_blit(const struct lp_rast_state *state,
       src += src_stride;
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -484,7 +484,7 @@ blit_rgba(const struct lp_rast_state *state,
                              a0[1][0], dadx[1][0], dady[1][0],
                              a0[1][1], dadx[1][1], dady[1][1],
                              a0[0][3], dadx[0][3], dady[0][3]))
-      return FALSE;
+      return false;
 
    init_blend(&blend,
               x, y, width, height,
@@ -497,7 +497,7 @@ blit_rgba(const struct lp_rast_state *state,
       blend_noop(&blend);
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -524,7 +524,7 @@ blit_rgb1(const struct lp_rast_state *state,
                              a0[1][0], dadx[1][0], dady[1][0],
                              a0[1][1], dadx[1][1], dady[1][1],
                              a0[0][3], dadx[0][3], dady[0][3]))
-      return FALSE;
+      return false;
 
    init_blend(&blend, x, y, width, height, color, stride);
 
@@ -538,7 +538,7 @@ blit_rgb1(const struct lp_rast_state *state,
       blend_noop(&blend);
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -567,7 +567,7 @@ blit_rgba_blend_premul(const struct lp_rast_state *state,
                              a0[1][0], dadx[1][0], dady[1][0],
                              a0[1][1], dadx[1][1], dady[1][1],
                              a0[0][3], dadx[0][3], dady[0][3]))
-      return FALSE;
+      return false;
 
    init_blend(&blend, x, y, width, height, color, stride);
 
@@ -578,7 +578,7 @@ blit_rgba_blend_premul(const struct lp_rast_state *state,
       blend_premul(&blend);
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -608,7 +608,7 @@ linear_red(const struct lp_rast_state *state,
                   height,
                   &uc);
 
-   return TRUE;
+   return true;
 }
 
 
@@ -624,7 +624,7 @@ linear_no_op(const struct lp_rast_state *state,
              uint8_t *color,
              unsigned stride)
 {
-   return TRUE;
+   return true;
 }
 
 

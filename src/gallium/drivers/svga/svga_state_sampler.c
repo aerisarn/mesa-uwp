@@ -72,7 +72,7 @@ svga_check_sampler_view_resource_collision(const struct svga_context *svga,
    unsigned i;
 
    if (svga_screen(screen)->debug.no_surface_view) {
-      return FALSE;
+      return false;
    }
 
    for (i = 0; i < svga->curr.num_sampler_views[shader]; i++) {
@@ -80,11 +80,11 @@ svga_check_sampler_view_resource_collision(const struct svga_context *svga,
          svga_pipe_sampler_view(svga->curr.sampler_views[shader][i]);
 
       if (sv && res == svga_resource_handle(sv->base.texture)) {
-         return TRUE;
+         return true;
       }
    }
 
-   return FALSE;
+   return false;
 }
 
 
@@ -104,17 +104,17 @@ svga_check_sampler_framebuffer_resource_collision(struct svga_context *svga,
       if (surf &&
           svga_check_sampler_view_resource_collision(svga, surf->handle,
                                                      shader)) {
-         return TRUE;
+         return true;
       }
    }
 
    surf = svga_surface(svga->curr.framebuffer.zsbuf);
    if (surf &&
        svga_check_sampler_view_resource_collision(svga, surf->handle, shader)) {
-      return TRUE;
+      return true;
    }
 
-   return FALSE;
+   return false;
 }
 
 
@@ -309,7 +309,7 @@ update_sampler_resources(struct svga_context *svga, uint64_t dirty)
                    /* Include the last sampler view in the next emit
                     * if it is different.
                     */
-                   emit = TRUE;
+                   emit = true;
                    numSR++;
                    i++;
                 }
@@ -607,7 +607,7 @@ update_cs_sampler_resources(struct svga_context *svga, uint64_t dirty)
                /* Include the last sampler view in the next emit
                 * if it is different.
                 */
-               emit = TRUE;
+               emit = true;
                numSR++;
                i++;
             }

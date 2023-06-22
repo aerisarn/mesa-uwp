@@ -75,9 +75,9 @@ vmw_dri1_check_version(const struct dri1_api_version *cur,
 		       const char component[])
 {
    if (cur->major > required->major && cur->major <= compat->major)
-      return TRUE;
+      return true;
    if (cur->major == required->major && cur->minor >= required->minor)
-      return TRUE;
+      return true;
 
    vmw_error("%s version failure.\n", component);
    vmw_error("%s version is %d.%d.%d and this driver can only work\n"
@@ -85,7 +85,7 @@ vmw_dri1_check_version(const struct dri1_api_version *cur,
              component,
              cur->major, cur->minor, cur->patch_level,
              required->major, required->minor, compat->major);
-   return FALSE;
+   return false;
 }
 
 /* This is actually the entrypoint to the entire driver,
@@ -311,7 +311,7 @@ vmw_drm_surface_from_handle(struct svga_winsys_screen *sws,
     base_size.depth = size.depth;
     vsrf->size = svga3dsurface_get_serialized_size(rep->format, base_size,
                                                    rep->mip_levels[0],
-                                                   FALSE);
+                                                   false);
 
     return ssrf;
 
@@ -332,7 +332,7 @@ vmw_drm_surface_get_handle(struct svga_winsys_screen *sws,
     int ret;
 
     if (!surface)
-	return FALSE;
+	return false;
 
     vsrf = vmw_svga_winsys_surface(surface);
     whandle->handle = vsrf->sid;
@@ -349,14 +349,14 @@ vmw_drm_surface_get_handle(struct svga_winsys_screen *sws,
 				(int *)&whandle->handle);
        if (ret) {
 	  vmw_error("Failed to get file descriptor from prime.\n");
-	  return FALSE;
+	  return false;
        }
        break;
     default:
        vmw_error("Attempt to export unsupported handle type %d.\n",
 		 whandle->type);
-       return FALSE;
+       return false;
     }
 
-    return TRUE;
+    return true;
 }

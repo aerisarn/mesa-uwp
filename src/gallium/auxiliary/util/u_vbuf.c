@@ -628,7 +628,7 @@ u_vbuf_translate_find_free_vb_slots(struct u_vbuf *mgr,
 
    /* No vertex buffers available at all */
    if (!unused_vb_mask)
-      return FALSE;
+      return false;
 
    memset(fallback_vbs, ~0, sizeof(fallback_vbs));
    mgr->fallback_vbs_mask = 0;
@@ -671,7 +671,7 @@ u_vbuf_translate_find_free_vb_slots(struct u_vbuf *mgr,
    }
 
    memcpy(mgr->fallback_vbs, fallback_vbs, sizeof(fallback_vbs));
-   return TRUE;
+   return true;
 }
 
 static bool
@@ -735,7 +735,7 @@ u_vbuf_translate_begin(struct u_vbuf *mgr,
 
    /* Find free vertex buffer slots. */
    if (!u_vbuf_translate_find_free_vb_slots(mgr, mask)) {
-      return FALSE;
+      return false;
    }
 
    unsigned min_alignment[VB_NUM] = {0};
@@ -801,7 +801,7 @@ u_vbuf_translate_begin(struct u_vbuf *mgr,
                                         start[type], num[type], min_index,
                                         unroll_indices && type == VB_VERTEX);
          if (err != PIPE_OK)
-            return FALSE;
+            return false;
 
          /* Fixup the stride for constant attribs. */
          if (type == VB_CONST) {
@@ -836,8 +836,8 @@ u_vbuf_translate_begin(struct u_vbuf *mgr,
    mgr->fallback_velems.count = mgr->ve->count;
 
    u_vbuf_set_vertex_elements_internal(mgr, &mgr->fallback_velems);
-   mgr->using_translate = TRUE;
-   return TRUE;
+   mgr->using_translate = true;
+   return true;
 }
 
 static void u_vbuf_translate_end(struct u_vbuf *mgr)
@@ -846,7 +846,7 @@ static void u_vbuf_translate_end(struct u_vbuf *mgr)
 
    /* Restore vertex elements. */
    mgr->pipe->bind_vertex_elements_state(mgr->pipe, mgr->ve->driver_cso);
-   mgr->using_translate = FALSE;
+   mgr->using_translate = false;
 
    /* Unreference the now-unused VBOs. */
    for (i = 0; i < VB_NUM; i++) {
@@ -1464,7 +1464,7 @@ void u_vbuf_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *inf
    int start_vertex;
    unsigned min_index;
    unsigned num_vertices;
-   bool unroll_indices = FALSE;
+   bool unroll_indices = false;
    const uint32_t used_vb_mask = mgr->ve->used_vb_mask;
    uint32_t user_vb_mask = mgr->user_vb_mask & used_vb_mask;
    unsigned fixed_restart_index = info->index_size ? util_prim_restart_index_from_size(info->index_size) : 0;
@@ -1701,7 +1701,7 @@ void u_vbuf_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *inf
                 !new_info.primitive_restart &&
                 util_is_vbo_upload_ratio_too_large(new_draw.count, num_vertices) &&
                 !u_vbuf_mapping_vertex_buffer_blocks(mgr, misaligned)) {
-               unroll_indices = TRUE;
+               unroll_indices = true;
                user_vb_mask &= ~(mgr->nonzero_stride_vb_mask &
                                  mgr->ve->noninstance_vb_mask_any);
             }

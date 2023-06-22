@@ -585,17 +585,17 @@ util_format_is_rgba1010102_variant(const struct util_format_description *desc)
    if (desc->block.width != 1 ||
        desc->block.height != 1 ||
        desc->block.bits != 32)
-      return FALSE;
+      return false;
 
    for (chan = 0; chan < 4; ++chan) {
       if(desc->channel[chan].type != UTIL_FORMAT_TYPE_UNSIGNED &&
          desc->channel[chan].type != UTIL_FORMAT_TYPE_VOID)
-         return FALSE;
+         return false;
       if (desc->channel[chan].size != size[chan])
-         return FALSE;
+         return false;
    }
 
-   return TRUE;
+   return true;
 }
 
 static bool r300_is_blending_supported(struct r300_screen *rscreen,
@@ -837,7 +837,7 @@ struct pipe_screen* r300_screen_create(struct radeon_winsys *rws,
     if (SCREEN_DBG_ON(r300screen, DBG_NO_HIZ))
         r300screen->caps.hiz_ram = 0;
     if (SCREEN_DBG_ON(r300screen, DBG_NO_TCL))
-        r300screen->caps.has_tcl = FALSE;
+        r300screen->caps.has_tcl = false;
 
     r300screen->rws = rws;
     r300screen->screen.destroy = r300_destroy_screen;

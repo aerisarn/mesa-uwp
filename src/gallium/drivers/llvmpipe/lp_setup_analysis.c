@@ -136,7 +136,7 @@ rect(struct lp_setup_context *setup,
    assert(v0[0][0] == v1[0][0]);
    assert(v1[0][1] == v2[0][1]);
 
-   lp_rect_cw(setup, v0, v1, v2, TRUE);
+   lp_rect_cw(setup, v0, v1, v2, true);
 
    assert(culled == LP_COUNT_GET(nr_culled_rects));
 }
@@ -160,15 +160,15 @@ test_rect(const_float4_ptr v0,
        v1[0][1] != v2[0][1] ||
        v2[0][0] != v3[0][0] ||
        v3[0][1] != v0[0][1])
-      return FALSE;
+      return false;
 
    if (v0[0][3] != 1.0 ||
        v1[0][3] != 1.0 ||
        v2[0][3] != 1.0 ||
        v3[0][3] != 1.0)
-      return FALSE;
+      return false;
 
-   return TRUE;
+   return true;
 }
 
 
@@ -249,15 +249,15 @@ check_elts24(struct lp_setup_context *setup, const void *vb, int stride)
    int i;
 
    if (stride != 32)
-      return FALSE;
+      return false;
 
    /* Check the shape is two rectangles:
     */
    if (!test_rect(v12, v2, v1, v18))
-      return FALSE;
+      return false;
 
    if (!test_rect(v6, v0, v3, v9))
-      return FALSE;
+      return false;
 
    /* XXX: check one rect is inside the other?
     */
@@ -268,7 +268,7 @@ check_elts24(struct lp_setup_context *setup, const void *vb, int stride)
       if (memcmp(get_vert(vb, i, stride),
                  get_vert(vb, elts[i], stride),
                  6 * sizeof(float)) != 0)
-         return FALSE;
+         return false;
    }
 
    /* Test that this is a stretch blit, meaning we should be able to
@@ -280,7 +280,7 @@ check_elts24(struct lp_setup_context *setup, const void *vb, int stride)
    for (i = 0; i < ARRAY_SIZE(uniq); i++) {
       const_float4_ptr v = get_vert(vb, stride, i);
       if (!test_interps(v, as, bs, at, bt))
-         return FALSE;
+         return false;
    }
 
    make_vert(v18, v9, vA);
@@ -313,7 +313,7 @@ check_elts24(struct lp_setup_context *setup, const void *vb, int stride)
         (const_float4_ptr)vD,
         (const_float4_ptr)v0);
 
-   return TRUE;
+   return true;
 }
 
 bool
@@ -368,9 +368,9 @@ lp_setup_analyse_triangles(struct lp_setup_context *setup,
           v0[0][1] == v3[0][1] && v0[0][1] == v5[0][1] &&
           v1[0][1] == v2[0][1] && v1[0][1] == v4[0][1]) {
 
-         lp_rect_cw(setup, v0, v1, v2, TRUE);
+         lp_rect_cw(setup, v0, v1, v2, true);
       }
-      return TRUE;
+      return true;
    }
 
    /* When highlighting (?) windows, aero sends a window border
@@ -391,8 +391,8 @@ lp_setup_analyse_triangles(struct lp_setup_context *setup,
                     get_vert(vb, nr-3, stride)) &&
        check_elts24(setup, vb, stride))
    {
-      return TRUE;
+      return true;
    }
 
-   return FALSE;
+   return false;
 }

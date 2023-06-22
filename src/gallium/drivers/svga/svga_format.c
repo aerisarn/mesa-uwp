@@ -1470,7 +1470,7 @@ static const struct format_compat_entry format_compats[] = {
 static void
 check_format_tables(void)
 {
-   static bool first_call = TRUE;
+   static bool first_call = true;
 
    if (first_call) {
       unsigned i;
@@ -1480,7 +1480,7 @@ check_format_tables(void)
          assert(format_cap_table[i].format == i);
       }
 
-      first_call = FALSE;
+      first_call = false;
    }
 }
 
@@ -1808,9 +1808,9 @@ svga_format_is_integer(SVGA3dSurfaceFormat format)
    case SVGA3D_R8G8_UINT:
    case SVGA3D_R8_UINT:
    case SVGA3D_R10G10B10A2_UINT:
-      return TRUE;
+      return true;
    default:
-      return FALSE;
+      return false;
    }
 }
 
@@ -1905,10 +1905,10 @@ svga_has_any_integer_cbufs(const struct svga_context *svga)
       struct pipe_surface *cbuf = svga->curr.framebuffer.cbufs[i];
 
       if (cbuf && util_format_is_pure_integer(cbuf->format)) {
-         return TRUE;
+         return true;
       }
    }
-   return FALSE;
+   return false;
 }
 
 

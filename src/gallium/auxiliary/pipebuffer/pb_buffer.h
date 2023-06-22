@@ -291,12 +291,12 @@ static inline bool
 pb_check_alignment(uint32_t requested, uint32_t provided)
 {
    if (!requested)
-      return TRUE;
+      return true;
    if (requested > provided)
-      return FALSE;
+      return false;
    if (provided % requested != 0)
-      return FALSE;
-   return TRUE;
+      return false;
+   return true;
 }
 
 
@@ -307,7 +307,7 @@ pb_check_alignment(uint32_t requested, uint32_t provided)
 static inline bool
 pb_check_usage(unsigned requested, unsigned provided)
 {
-   return (requested & provided) == requested ? TRUE : FALSE;
+   return (requested & provided) == requested ? true : false;
 }
 
 #ifdef __cplusplus

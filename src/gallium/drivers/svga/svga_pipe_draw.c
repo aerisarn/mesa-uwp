@@ -186,10 +186,10 @@ need_fallback_prim_restart(const struct svga_context *svga,
 {
    if (info->primitive_restart && info->index_size) {
       if (!svga_have_vgpu10(svga))
-         return TRUE;
+         return true;
       else if (!svga->state.sw.need_swtnl) {
          if (info->index_size == 1)
-            return TRUE; /* no device support for 1-byte indexes */
+            return true; /* no device support for 1-byte indexes */
          else if (info->index_size == 2)
             return info->restart_index != 0xffff;
          else
@@ -197,7 +197,7 @@ need_fallback_prim_restart(const struct svga_context *svga,
       }
    }
 
-   return FALSE;
+   return false;
 }
 
 

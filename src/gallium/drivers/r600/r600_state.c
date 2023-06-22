@@ -144,13 +144,13 @@ static uint32_t r600_translate_dbformat(enum pipe_format format)
 static bool r600_is_sampler_format_supported(struct pipe_screen *screen, enum pipe_format format)
 {
 	return r600_translate_texformat(screen, format, NULL, NULL, NULL,
-                                   FALSE) != ~0U;
+                                   false) != ~0U;
 }
 
 static bool r600_is_colorbuffer_format_supported(enum amd_gfx_level chip, enum pipe_format format)
 {
-	return r600_translate_colorformat(chip, format, FALSE) != ~0U &&
-	       r600_translate_colorswap(format, FALSE) != ~0U;
+	return r600_translate_colorformat(chip, format, false) != ~0U &&
+	       r600_translate_colorswap(format, false) != ~0U;
 }
 
 static bool r600_is_zs_format_supported(enum pipe_format format)
@@ -677,7 +677,7 @@ r600_create_sampler_view_custom(struct pipe_context *ctx,
 	uint32_t word4 = 0, yuv_format = 0, pitch = 0;
 	unsigned char swizzle[4], array_mode = 0;
 	unsigned width, height, depth, offset_level, last_level;
-	bool do_endian_swap = FALSE;
+	bool do_endian_swap = false;
 
 	if (!view)
 		return NULL;
@@ -824,7 +824,7 @@ static void r600_init_color_surface(struct r600_context *rctx,
 	unsigned offset;
 	const struct util_format_description *desc;
 	int i;
-	bool blend_bypass = 0, blend_clamp = 0, do_endian_swap = FALSE;
+	bool blend_bypass = 0, blend_clamp = 0, do_endian_swap = false;
 
 	if (rtex->db_compatible && !r600_can_sample_zs(rtex, false)) {
 		r600_init_flushed_depth_texture(&rctx->b.b, surf->base.texture, NULL);
@@ -2917,7 +2917,7 @@ static bool r600_dma_copy_tile(struct r600_context *rctx,
 	}
 	/* check that we are in dw/base alignment constraint */
 	if (addr % 4 || base % 256) {
-		return FALSE;
+		return false;
 	}
 
 	/* It's a r6xx/r7xx limitation, the blit must be on 8 boundary for number
@@ -2946,7 +2946,7 @@ static bool r600_dma_copy_tile(struct r600_context *rctx,
 		addr += cheight * pitch;
 		y += cheight;
 	}
-	return TRUE;
+	return true;
 }
 
 static void r600_dma_copy(struct pipe_context *ctx,

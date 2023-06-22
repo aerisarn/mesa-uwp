@@ -215,9 +215,9 @@ widepoint_first_point(struct draw_stage *stage,
 
    /* Disable triangle culling, stippling, unfilled mode etc. */
    r = draw_get_rasterizer_no_cull(draw, rast);
-   draw->suspend_flushing = TRUE;
+   draw->suspend_flushing = true;
    pipe->bind_rasterizer_state(pipe, r);
-   draw->suspend_flushing = FALSE;
+   draw->suspend_flushing = false;
 
    /* XXX we won't know the real size if it's computed by the vertex shader! */
    if ((rast->point_size > draw->pipeline.wide_point_threshold) ||
@@ -286,9 +286,9 @@ widepoint_flush(struct draw_stage *stage, unsigned flags)
 
    /* restore original rasterizer state */
    if (draw->rast_handle) {
-      draw->suspend_flushing = TRUE;
+      draw->suspend_flushing = true;
       pipe->bind_rasterizer_state(pipe, draw->rast_handle);
-      draw->suspend_flushing = FALSE;
+      draw->suspend_flushing = false;
    }
 }
 

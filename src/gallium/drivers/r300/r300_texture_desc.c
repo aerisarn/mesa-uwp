@@ -88,7 +88,7 @@ static bool r300_texture_macro_switch(struct r300_resource *tex,
     unsigned tile, texdim;
 
     if (tex->b.nr_samples > 1) {
-        return TRUE;
+        return true;
     }
 
     tile = r300_get_pixel_alignment(tex->b.format, tex->b.nr_samples,
@@ -193,7 +193,7 @@ static unsigned r300_texture_get_nblocksy(struct r300_resource *tex,
 
                 *out_aligned_for_cbzb = height % (tile_height * 2) == 0;
             } else {
-                *out_aligned_for_cbzb = FALSE;
+                *out_aligned_for_cbzb = false;
             }
         }
     }
@@ -236,7 +236,7 @@ static void r300_setup_miptree(struct r300_screen *screen,
 
         /* Compute the number of blocks in Y, see if the CBZB clear can be
          * used on the texture. */
-        aligned_for_cbzb = FALSE;
+        aligned_for_cbzb = false;
         if (align_for_cbzb && tex->tex.cbzb_allowed[i])
             nblocksy = r300_texture_get_nblocksy(tex, i, &aligned_for_cbzb);
         else
@@ -298,7 +298,7 @@ static void r300_setup_cbzb_flags(struct r300_screen *rscreen,
                        tex->tex.macrotile[0];
 
     if (SCREEN_DBG_ON(rscreen, DBG_NO_CBZB))
-        first_level_valid = FALSE;
+        first_level_valid = false;
 
     for (i = 0; i <= tex->b.last_level; i++)
         tex->tex.cbzb_allowed[i] = first_level_valid && tex->tex.macrotile[i];
@@ -388,7 +388,7 @@ static void r300_setup_hyperz_properties(struct r300_screen *screen,
                     util_align_npot(stride, zmask_blocks_x_per_dw[pipes-1] * zcompsize);
             } else {
                 tex->tex.zmask_dwords[i] = 0;
-                tex->tex.zcomp8x8[i] = FALSE;
+                tex->tex.zcomp8x8[i] = false;
                 tex->tex.zmask_stride_in_pixels[i] = 0;
             }
 
@@ -603,11 +603,11 @@ void r300_texture_desc_init(struct r300_screen *rscreen,
     r300_setup_cbzb_flags(rscreen, tex);
 
     /* Setup the miptree description. */
-    r300_setup_miptree(rscreen, tex, TRUE);
+    r300_setup_miptree(rscreen, tex, true);
     /* If the required buffer size is larger than the given max size,
      * try again without the alignment for the CBZB clear. */
     if (tex->buf && tex->tex.size_in_bytes > tex->buf->size) {
-        r300_setup_miptree(rscreen, tex, FALSE);
+        r300_setup_miptree(rscreen, tex, false);
 
         /* Make sure the buffer we got is large enough. */
         if (tex->tex.size_in_bytes > tex->buf->size) {

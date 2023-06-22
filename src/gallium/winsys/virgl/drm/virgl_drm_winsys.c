@@ -119,11 +119,11 @@ static bool virgl_drm_resource_is_busy(struct virgl_winsys *vws,
 
    ret = drmIoctl(vdws->fd, DRM_IOCTL_VIRTGPU_WAIT, &waitcmd);
    if (ret && errno == EBUSY)
-      return TRUE;
+      return true;
 
    p_atomic_set(&res->maybe_busy, false);
 
-   return FALSE;
+   return false;
 }
 
 static void
@@ -637,7 +637,7 @@ static bool virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
    struct drm_gem_flink flink;
 
    if (!res)
-       return FALSE;
+       return false;
 
    if (whandle->type == WINSYS_HANDLE_TYPE_SHARED) {
       if (!res->flink_name) {
@@ -645,7 +645,7 @@ static bool virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
          flink.handle = res->bo_handle;
 
          if (drmIoctl(qdws->fd, DRM_IOCTL_GEM_FLINK, &flink)) {
-            return FALSE;
+            return false;
          }
          res->flink_name = flink.name;
 
@@ -658,7 +658,7 @@ static bool virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
       whandle->handle = res->bo_handle;
    } else if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
       if (drmPrimeHandleToFD(qdws->fd, res->bo_handle, DRM_CLOEXEC, (int*)&whandle->handle))
-            return FALSE;
+            return false;
       mtx_lock(&qdws->bo_handles_mutex);
       _mesa_hash_table_insert(qdws->bo_handles, (void *)(uintptr_t)res->bo_handle, res);
       mtx_unlock(&qdws->bo_handles_mutex);
@@ -667,7 +667,7 @@ static bool virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
    p_atomic_set(&res->external, true);
 
    whandle->stride = stride;
-   return TRUE;
+   return true;
 }
 
 static void *virgl_drm_resource_map(struct virgl_winsys *qws,
@@ -798,7 +798,7 @@ static void virgl_drm_add_res(struct virgl_drm_winsys *qdws,
    cbuf->res_bo[cbuf->cres] = NULL;
    virgl_drm_resource_reference(&qdws->base, &cbuf->res_bo[cbuf->cres], res);
    cbuf->res_hlist[cbuf->cres] = res->bo_handle;
-   cbuf->is_handle_added[hash] = TRUE;
+   cbuf->is_handle_added[hash] = true;
 
    cbuf->reloc_indices_hashlist[hash] = cbuf->cres;
    p_atomic_inc(&res->num_cs_references);
@@ -843,9 +843,9 @@ static bool virgl_drm_res_is_ref(struct virgl_winsys *qws,
                                  struct virgl_hw_res *res)
 {
    if (!p_atomic_read(&res->num_cs_references))
-      return FALSE;
+      return false;
 
-   return TRUE;
+   return true;
 }
 
 static struct virgl_cmd_buf *virgl_drm_cmd_buf_create(struct virgl_winsys *qws,
@@ -1067,14 +1067,14 @@ static bool virgl_fence_wait(struct virgl_winsys *vws,
       timeout /= 1000;
       while (virgl_drm_resource_is_busy(vws, fence->hw_res)) {
          if (os_time_get() - start_time >= timeout)
-            return FALSE;
+            return false;
          os_time_sleep(10);
       }
-      return TRUE;
+      return true;
    }
    virgl_drm_resource_wait(vws, fence->hw_res);
 
-   return TRUE;
+   return true;
 }
 
 static void virgl_fence_reference(struct virgl_winsys *vws,

@@ -352,7 +352,7 @@ xa_solid_done(struct xa_context *ctx)
 {
     renderer_draw_flush(ctx);
     ctx->comp = NULL;
-    ctx->has_solid_src = FALSE;
+    ctx->has_solid_src = false;
     ctx->num_bound_samplers = 0;
 }
 

@@ -243,10 +243,10 @@ check_opaque(const struct lp_setup_context *setup,
       setup->fs.current.variant;
 
    if (variant->opaque)
-      return TRUE;
+      return true;
 
    if (!variant->potentially_opaque)
-      return FALSE;
+      return false;
 
    const struct lp_tgsi_channel_info *alpha_info = &variant->shader->info.cbuf[0][3];
    if (alpha_info->file == TGSI_FILE_CONSTANT) {
@@ -262,7 +262,7 @@ check_opaque(const struct lp_setup_context *setup,
               v3[1 + alpha_info->u.index][alpha_info->swizzle] == 1.0f);
    }
 
-   return FALSE;
+   return false;
 }
 
 
@@ -326,7 +326,7 @@ do_triangle_ccw(struct lp_setup_context *setup,
    if (!u_rect_test_intersection(&setup->draw_regions[viewport_index], &bbox)) {
       if (0) debug_printf("no intersection\n");
       LP_COUNT(nr_culled_tris);
-      return TRUE;
+      return true;
    }
 
    int max_szorig = ((bbox.x1 - (bbox.x0 & ~3)) |
@@ -359,7 +359,7 @@ do_triangle_ccw(struct lp_setup_context *setup,
    struct lp_rast_triangle *tri =
       lp_setup_alloc_triangle(scene, key->num_inputs, nr_planes);
    if (!tri)
-      return FALSE;
+      return false;
 
 #ifdef DEBUG
    tri->v[0][0] = v0[0][0];
@@ -460,8 +460,8 @@ do_triangle_ccw(struct lp_setup_context *setup,
                                       &setup->setup.variant->key);
 
    tri->inputs.frontfacing = frontfacing;
-   tri->inputs.disable = FALSE;
-   tri->inputs.is_blit = FALSE;
+   tri->inputs.disable = false;
+   tri->inputs.is_blit = false;
    tri->inputs.layer = layer;
    tri->inputs.viewport_index = viewport_index;
    tri->inputs.view_index = setup->view_index;
@@ -927,7 +927,7 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
        * Else, bin a lp_rast_triangle command.
        */
       for (int y = iy0; y <= iy1; y++) {
-         bool in = FALSE;  /* are we inside the triangle? */
+         bool in = false;  /* are we inside the triangle? */
          int64_t cx[MAX_PLANES];
 
          for (int i = 0; i < nr_planes; i++)
@@ -953,7 +953,7 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
                 * rasterize/shade partial tile
                 */
                int count = util_bitcount(partial);
-               in = TRUE;
+               in = true;
 
                if (setup->multisample)
                   cmd = lp_rast_ms_tri_tab[count];
@@ -968,7 +968,7 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
             } else {
                /* triangle covers the whole tile- shade whole tile */
                LP_COUNT(nr_fully_covered_64);
-               in = TRUE;
+               in = true;
                if (!lp_setup_whole_tile(setup, &tri->inputs, x, y, opaque))
                   goto fail;
             }
@@ -984,15 +984,15 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
       }
    }
 
-   return TRUE;
+   return true;
 
 fail:
    /* Need to disable any partially binned triangle.  This is easier
     * than trying to locate all the triangle, shade-tile, etc,
     * commands which may have been binned.
     */
-   tri->inputs.disable = TRUE;
-   return FALSE;
+   tri->inputs.disable = true;
+   return false;
 }
 
 

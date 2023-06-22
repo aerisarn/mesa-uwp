@@ -37,11 +37,11 @@ static const struct debug_named_value nine_quirk_table[] = {
 bool
 _nine_get_quirk( unsigned quirk )
 {
-    static bool first = TRUE;
+    static bool first = true;
     static unsigned long flags = 0;
 
     if (first) {
-        first = FALSE;
+        first = false;
         flags = debug_get_flags_option("NINE_QUIRKS", nine_quirk_table, 0);
     }
 

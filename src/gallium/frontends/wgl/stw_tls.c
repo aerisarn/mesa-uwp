@@ -62,7 +62,7 @@ stw_tls_init(void)
 {
    tlsIndex = TlsAlloc();
    if (tlsIndex == TLS_OUT_OF_INDEXES) {
-      return FALSE;
+      return false;
    }
 
    /*
@@ -104,7 +104,7 @@ stw_tls_init(void)
    }
 #endif /* _GAMING_XBOX */
 
-   return TRUE;
+   return true;
 }
 
 
@@ -181,17 +181,17 @@ stw_tls_init_thread(void)
    struct stw_tls_data *data;
 
    if (tlsIndex == TLS_OUT_OF_INDEXES) {
-      return FALSE;
+      return false;
    }
 
    data = stw_tls_data_create(GetCurrentThreadId());
    if (!data) {
-      return FALSE;
+      return false;
    }
 
    TlsSetValue(tlsIndex, data);
 
-   return TRUE;
+   return true;
 }
 
 void

@@ -354,9 +354,9 @@ generate_compute(struct llvmpipe_context *lp,
    assert(lp_native_vector_width / 32 >= 4);
 
    memset(&cs_type, 0, sizeof cs_type);
-   cs_type.floating = TRUE;      /* floating point values */
-   cs_type.sign = TRUE;          /* values are signed */
-   cs_type.norm = FALSE;         /* values are not limited to [0,1] or [-1,1] */
+   cs_type.floating = true;      /* floating point values */
+   cs_type.sign = true;          /* values are signed */
+   cs_type.norm = false;         /* values are not limited to [0,1] or [-1,1] */
    cs_type.width = 32;           /* 32-bit float */
    cs_type.length = MIN2(lp_native_vector_width / 32, 16); /* n*4 elements per vector */
    snprintf(func_name, sizeof(func_name), "cs_variant");
@@ -817,7 +817,7 @@ generate_compute(struct llvmpipe_context *lp,
          io = LLVMBuildIntToPtr(gallivm->builder, io, LLVMPointerType(LLVMVoidTypeInContext(gallivm->context), 0), "");
          mesh_convert_to_aos(gallivm, shader->base.ir.nir, true, variant->jit_vertex_header_type,
                              io, output_array, clipmask,
-                             vertex_loop_state.counter, lp_elem_type(cs_type), -1, FALSE);
+                             vertex_loop_state.counter, lp_elem_type(cs_type), -1, false);
          lp_build_loop_end_cond(&vertex_loop_state,
                                 vertex_count,
                                 NULL,  LLVMIntUGE);
@@ -832,7 +832,7 @@ generate_compute(struct llvmpipe_context *lp,
          io = LLVMBuildIntToPtr(gallivm->builder, io, LLVMPointerType(LLVMVoidTypeInContext(gallivm->context), 0), "");
          mesh_convert_to_aos(gallivm, shader->base.ir.nir, false, variant->jit_prim_type,
                              io, output_array, clipmask,
-                             prim_loop_state.counter, lp_elem_type(cs_type), -1, FALSE);
+                             prim_loop_state.counter, lp_elem_type(cs_type), -1, false);
          lp_build_loop_end_cond(&prim_loop_state,
                                 prim_count,
                                 NULL,  LLVMIntUGE);
@@ -1073,17 +1073,17 @@ dump_cs_variant_key(const struct lp_compute_shader_variant_key *key)
       const struct lp_static_sampler_state *sampler = &samplers[i].sampler_state;
       debug_printf("sampler[%u] = \n", i);
       debug_printf("  .wrap = %s %s %s\n",
-                   util_str_tex_wrap(sampler->wrap_s, TRUE),
-                   util_str_tex_wrap(sampler->wrap_t, TRUE),
-                   util_str_tex_wrap(sampler->wrap_r, TRUE));
+                   util_str_tex_wrap(sampler->wrap_s, true),
+                   util_str_tex_wrap(sampler->wrap_t, true),
+                   util_str_tex_wrap(sampler->wrap_r, true));
       debug_printf("  .min_img_filter = %s\n",
-                   util_str_tex_filter(sampler->min_img_filter, TRUE));
+                   util_str_tex_filter(sampler->min_img_filter, true));
       debug_printf("  .min_mip_filter = %s\n",
-                   util_str_tex_mipfilter(sampler->min_mip_filter, TRUE));
+                   util_str_tex_mipfilter(sampler->min_mip_filter, true));
       debug_printf("  .mag_img_filter = %s\n",
-                   util_str_tex_filter(sampler->mag_img_filter, TRUE));
+                   util_str_tex_filter(sampler->mag_img_filter, true));
       if (sampler->compare_mode != PIPE_TEX_COMPARE_NONE)
-         debug_printf("  .compare_func = %s\n", util_str_func(sampler->compare_func, TRUE));
+         debug_printf("  .compare_func = %s\n", util_str_func(sampler->compare_func, true));
       debug_printf("  .normalized_coords = %u\n", sampler->normalized_coords);
       debug_printf("  .min_max_lod_equal = %u\n", sampler->min_max_lod_equal);
       debug_printf("  .lod_bias_non_zero = %u\n", sampler->lod_bias_non_zero);
@@ -1098,7 +1098,7 @@ dump_cs_variant_key(const struct lp_compute_shader_variant_key *key)
       debug_printf("  .format = %s\n",
                    util_format_name(texture->format));
       debug_printf("  .target = %s\n",
-                   util_str_tex_target(texture->target, TRUE));
+                   util_str_tex_target(texture->target, true));
       debug_printf("  .level_zero_only = %u\n",
                    texture->level_zero_only);
       debug_printf("  .pot = %u %u %u\n",
@@ -1113,7 +1113,7 @@ dump_cs_variant_key(const struct lp_compute_shader_variant_key *key)
       debug_printf("  .format = %s\n",
                    util_format_name(image->format));
       debug_printf("  .target = %s\n",
-                   util_str_tex_target(image->target, TRUE));
+                   util_str_tex_target(image->target, true));
       debug_printf("  .level_zero_only = %u\n",
                    image->level_zero_only);
       debug_printf("  .pot = %u %u %u\n",

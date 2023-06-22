@@ -312,11 +312,11 @@ cso_create_context(struct pipe_context *pipe, unsigned flags)
 
    if (pipe->screen->get_shader_param(pipe->screen, PIPE_SHADER_GEOMETRY,
                                 PIPE_SHADER_CAP_MAX_INSTRUCTIONS) > 0) {
-      ctx->has_geometry_shader = TRUE;
+      ctx->has_geometry_shader = true;
    }
    if (pipe->screen->get_shader_param(pipe->screen, PIPE_SHADER_TESS_CTRL,
                                 PIPE_SHADER_CAP_MAX_INSTRUCTIONS) > 0) {
-      ctx->has_tessellation = TRUE;
+      ctx->has_tessellation = true;
    }
    if (pipe->screen->get_shader_param(pipe->screen, PIPE_SHADER_COMPUTE,
                                       PIPE_SHADER_CAP_MAX_INSTRUCTIONS) > 0) {
@@ -325,16 +325,16 @@ cso_create_context(struct pipe_context *pipe, unsigned flags)
                                         PIPE_SHADER_CAP_SUPPORTED_IRS);
       if (supported_irs & ((1 << PIPE_SHADER_IR_TGSI) |
                            (1 << PIPE_SHADER_IR_NIR))) {
-         ctx->has_compute_shader = TRUE;
+         ctx->has_compute_shader = true;
       }
    }
    if (pipe->screen->get_shader_param(pipe->screen, PIPE_SHADER_MESH,
                                 PIPE_SHADER_CAP_MAX_INSTRUCTIONS) > 0) {
-      ctx->has_task_mesh_shader = TRUE;
+      ctx->has_task_mesh_shader = true;
    }
    if (pipe->screen->get_param(pipe->screen,
                                PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS) != 0) {
-      ctx->has_streamout = TRUE;
+      ctx->has_streamout = true;
    }
 
    if (pipe->screen->get_param(pipe->screen,

@@ -107,7 +107,7 @@ radeon_winsys(struct pipe_screen *screen) {
 /*@}*/
 static inline bool SCREEN_DBG_ON(struct r300_screen * screen, unsigned flags)
 {
-    return (screen->debug & flags) ? TRUE : FALSE;
+    return (screen->debug & flags) ? true : false;
 }
 
 static inline void SCREEN_DBG(struct r300_screen * screen, unsigned flags,

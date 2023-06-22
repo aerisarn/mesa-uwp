@@ -93,7 +93,7 @@ test_printf(unsigned verbose, FILE *fp,
    struct gallivm_state *gallivm;
    LLVMValueRef test;
    test_printf_t test_printf_func;
-   bool success = TRUE;
+   bool success = true;
 
    context = LLVMContextCreate();
 #if LLVM_VERSION_MAJOR == 15
@@ -121,7 +121,7 @@ test_printf(unsigned verbose, FILE *fp,
 bool
 test_all(unsigned verbose, FILE *fp)
 {
-   bool success = TRUE;
+   bool success = true;
 
    test_printf(verbose, fp, NULL);
 
@@ -141,5 +141,5 @@ bool
 test_single(unsigned verbose, FILE *fp)
 {
    printf("no test_single()");
-   return TRUE;
+   return true;
 }

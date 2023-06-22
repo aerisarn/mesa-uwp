@@ -94,7 +94,7 @@ match_aero_minification_shader(const struct tgsi_token *tokens,
    if ((info->base.opcode_count[TGSI_OPCODE_TEX] != 4 &&
         info->base.opcode_count[TGSI_OPCODE_SAMPLE] != 4) ||
        info->num_texs != 4) {
-      return FALSE;
+      return false;
    }
 
    /*
@@ -111,20 +111,20 @@ match_aero_minification_shader(const struct tgsi_token *tokens,
           tex->coord[0].u.index != tex->coord[1].u.index ||
           (tex->coord[0].swizzle % 2) != 0 ||
           tex->coord[1].swizzle != tex->coord[0].swizzle + 1) {
-         return FALSE;
+         return false;
       }
 
       coord_mask |= 1 << (tex->coord[0].u.index*2 + tex->coord[0].swizzle/2);
    }
    if (coord_mask != 0xf) {
-      return FALSE;
+      return false;
    }
 
    /*
     * Ensure it has the 0.25 immediate.
     */
 
-   has_quarter_imm = FALSE;
+   has_quarter_imm = false;
 
    tgsi_parse_init(&parse, tokens);
 
@@ -145,7 +145,7 @@ match_aero_minification_shader(const struct tgsi_token *tokens,
             assert(size <= 4);
             for (chan = 0; chan < size; ++chan) {
                if (parse.FullToken.FullImmediate.u[chan].Float == 0.25f) {
-                  has_quarter_imm = TRUE;
+                  has_quarter_imm = true;
                   goto finished;
                }
             }
@@ -165,10 +165,10 @@ finished:
    tgsi_parse_free(&parse);
 
    if (!has_quarter_imm) {
-      return FALSE;
+      return false;
    }
 
-   return TRUE;
+   return true;
 }
 
 

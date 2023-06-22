@@ -177,7 +177,7 @@ svga_transfer_dma(struct svga_context *svga,
           * Prevent the texture contents to be discarded on the next band
           * upload.
           */
-         flags.discard = FALSE;
+         flags.discard = false;
 
          if (transfer == SVGA3D_READ_HOST_VRAM) {
             svga_context_flush(svga, &fence);
@@ -229,14 +229,14 @@ static inline bool
 need_tex_readback(struct svga_transfer *st)
 {
    if (st->base.usage & PIPE_MAP_READ)
-      return TRUE;
+      return true;
 
    if ((st->base.usage & PIPE_MAP_WRITE) &&
        ((st->base.usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) == 0)) {
       return svga_was_texture_rendered_to(svga_texture(st->base.resource));
    }
 
-   return FALSE;
+   return false;
 }
 
 
@@ -493,7 +493,7 @@ svga_texture_transfer_map(struct pipe_context *pipe,
    /* We can't map texture storage directly unless we have GB objects */
    if (usage & PIPE_MAP_DIRECTLY) {
       if (svga_have_gb_objects(svga))
-         use_direct_map = TRUE;
+         use_direct_map = true;
       else
          goto done;
    }
@@ -542,7 +542,7 @@ svga_texture_transfer_map(struct pipe_context *pipe,
     * makes it impossible to support both at the same time.
     */
    if (svga_have_gb_objects(svga)) {
-      use_direct_map = TRUE;
+      use_direct_map = true;
    }
 
    st->use_direct_map = use_direct_map;
@@ -696,10 +696,10 @@ svga_texture_transfer_unmap_dma(struct svga_context *svga,
 
       memset(&flags, 0, sizeof flags);
       if (st->base.usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
-         flags.discard = TRUE;
+         flags.discard = true;
       }
       if (st->base.usage & PIPE_MAP_UNSYNCHRONIZED) {
-         flags.unsynchronized = TRUE;
+         flags.unsynchronized = true;
       }
 
       svga_transfer_dma(svga, st, SVGA3D_WRITE_HOST_VRAM, flags);
@@ -1041,7 +1041,7 @@ svga_texture_create(struct pipe_screen *screen,
       goto fail;
    }
 
-   bool use_typeless = FALSE;
+   bool use_typeless = false;
    if (svgascreen->sws->have_gl43) {
       /* Do not use typeless for SHARED, SCANOUT or DISPLAY_TARGET surfaces. */
       use_typeless = !(bindings & (PIPE_BIND_SHARED | PIPE_BIND_SCANOUT |
@@ -1211,7 +1211,7 @@ svga_texture_from_handle(struct pipe_screen *screen,
    if (!tex->dirty)
       goto out_no_dirty;
 
-   tex->imported = TRUE;
+   tex->imported = true;
 
    ss->hud.num_resources++;
 
@@ -1324,25 +1324,25 @@ bool
 svga_texture_transfer_map_can_upload(const struct svga_screen *svgascreen,
                                      const struct pipe_resource *texture)
 {
-   if (svgascreen->sws->have_transfer_from_buffer_cmd == FALSE)
-      return FALSE;
+   if (svgascreen->sws->have_transfer_from_buffer_cmd == false)
+      return false;
 
    /* TransferFromBuffer command is not well supported with multi-samples surface */
    if (texture->nr_samples > 1)
-      return FALSE;
+      return false;
 
    if (util_format_is_compressed(texture->format)) {
       /* XXX Need to take a closer look to see why texture upload
        * with 3D texture with compressed format fails
        */ 
       if (texture->target == PIPE_TEXTURE_3D)
-          return FALSE;
+          return false;
    }
    else if (texture->format == PIPE_FORMAT_R9G9B9E5_FLOAT) {
-      return FALSE;
+      return false;
    }
 
-   return TRUE;
+   return true;
 }
 
 

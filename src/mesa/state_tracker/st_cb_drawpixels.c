@@ -885,7 +885,7 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
    }
 
    /* viewport state: viewport matching window dims */
-   cso_set_viewport_dims(cso, fb_width, fb_height, TRUE);
+   cso_set_viewport_dims(cso, fb_width, fb_height, true);
 
    st->util_velems.count = 3;
    cso_set_vertex_elements(cso, &st->util_velems);
@@ -1852,8 +1852,8 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
       if (type == GL_DEPTH_STENCIL)
          write_depth = GL_TRUE;
       if (type == GL_DEPTH_STENCIL_TO_RGBA_NV || type == GL_DEPTH_STENCIL_TO_BGRA_NV) {
-         write_depth = FALSE;
-         write_stencil = FALSE;
+         write_depth = false;
+         write_stencil = false;
       }
 
       enum pipe_format stencil_format =

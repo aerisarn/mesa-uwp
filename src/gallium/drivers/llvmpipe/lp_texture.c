@@ -178,16 +178,16 @@ llvmpipe_texture_layout(struct llvmpipe_screen *screen,
 
       lpr->tex_data = align_malloc(total_size, mip_align);
       if (!lpr->tex_data) {
-         return FALSE;
+         return false;
       } else {
          memset(lpr->tex_data, 0, total_size);
       }
    }
 
-   return TRUE;
+   return true;
 
 fail:
-   return FALSE;
+   return false;
 }
 
 
@@ -712,7 +712,7 @@ llvmpipe_transfer_map_ms(struct pipe_context *pipe,
       if (!llvmpipe_flush_resource(pipe, resource,
                                    level,
                                    read_only,
-                                   TRUE, /* cpu_access */
+                                   true, /* cpu_access */
                                    do_not_block,
                                    __func__)) {
          /*
@@ -1029,18 +1029,18 @@ llvmpipe_resource_bind_backing(struct pipe_screen *screen,
    struct llvmpipe_resource *lpr = llvmpipe_resource(pt);
 
    if (!lpr->backable)
-      return FALSE;
+      return false;
 
    if (llvmpipe_resource_is_texture(&lpr->base)) {
       if (lpr->size_required > LP_MAX_TEXTURE_SIZE)
-         return FALSE;
+         return false;
 
       lpr->tex_data = (char *)pmem + offset;
    } else
       lpr->data = (char *)pmem + offset;
    lpr->backing_offset = offset;
 
-   return TRUE;
+   return true;
 }
 
 
@@ -1163,11 +1163,11 @@ llvmpipe_init_screen_resource_funcs(struct pipe_screen *screen)
 #ifdef DEBUG
    /* init linked list for tracking resources */
    {
-      static bool first_call = TRUE;
+      static bool first_call = true;
       if (first_call) {
          memset(&resource_list, 0, sizeof(resource_list));
          list_inithead(&resource_list.list);
-         first_call = FALSE;
+         first_call = false;
       }
    }
 #endif

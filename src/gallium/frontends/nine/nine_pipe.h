@@ -107,9 +107,9 @@ rect_to_pipe_box_clamp(struct pipe_box *dst, const RECT *src)
         DBG_FLAG(DBG_UNKNOWN, "Warning: NULL box");
         dst->width = MAX2(dst->width, 0);
         dst->height = MAX2(dst->height, 0);
-        return TRUE;
+        return true;
     }
-    return FALSE;
+    return false;
 }
 
 static inline bool
@@ -118,10 +118,10 @@ rect_to_pipe_box_flip(struct pipe_box *dst, const RECT *src)
     rect_to_pipe_box(dst, src);
 
     if (dst->width >= 0 && dst->height >= 0)
-        return FALSE;
+        return false;
     if (dst->width < 0) dst->width = -dst->width;
     if (dst->height < 0) dst->height = -dst->height;
-    return TRUE;
+    return true;
 }
 
 static inline void
@@ -144,9 +144,9 @@ rect_to_pipe_box_xy_only_clamp(struct pipe_box *dst, const RECT *src)
         DBG_FLAG(DBG_UNKNOWN, "Warning: NULL box");
         dst->width = MAX2(dst->width, 0);
         dst->height = MAX2(dst->height, 0);
-        return TRUE;
+        return true;
     }
-    return FALSE;
+    return false;
 }
 
 static inline void
@@ -198,9 +198,9 @@ fetch4_compatible_format( D3DFORMAT fmt )
     unsigned i;
 
     for (i = 0; i < sizeof(allowed)/sizeof(D3DFORMAT); i++) {
-        if (fmt == allowed[i]) { return TRUE; }
+        if (fmt == allowed[i]) { return true; }
     }
-    return FALSE;
+    return false;
 }
 
 /* ATI1 and ATI2 are not officially compressed in d3d9 */
@@ -213,11 +213,11 @@ compressed_format( D3DFORMAT fmt )
     case D3DFMT_DXT3:
     case D3DFMT_DXT4:
     case D3DFMT_DXT5:
-        return TRUE;
+        return true;
     default:
         break;
     }
-    return FALSE;
+    return false;
 }
 
 static inline bool
@@ -241,9 +241,9 @@ depth_stencil_format( D3DFORMAT fmt )
     unsigned i;
 
     for (i = 0; i < sizeof(allowed)/sizeof(D3DFORMAT); i++) {
-        if (fmt == allowed[i]) { return TRUE; }
+        if (fmt == allowed[i]) { return true; }
     }
-    return FALSE;
+    return false;
 }
 
 static inline unsigned
@@ -434,7 +434,7 @@ d3dmultisample_type_check(struct pipe_screen *screen,
         for (i = D3DMULTISAMPLE_2_SAMPLES; i < D3DMULTISAMPLE_16_SAMPLES &&
             multisamplequality; ++i) {
             if (d3d9_to_pipe_format_checked(screen, format, PIPE_TEXTURE_2D,
-                    i, bind, FALSE, FALSE) != PIPE_FORMAT_NONE) {
+                    i, bind, false, false) != PIPE_FORMAT_NONE) {
                 multisamplequality--;
                 if (levels)
                     (*levels)++;

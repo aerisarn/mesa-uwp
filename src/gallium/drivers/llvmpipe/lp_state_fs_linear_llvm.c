@@ -96,7 +96,7 @@ emit_fetch_texel_linear(const struct lp_build_sampler_aos *base,
    struct linear_sampler *sampler = (struct linear_sampler *)base;
 
    if (sampler->instance >= LP_MAX_LINEAR_TEXTURES) {
-      assert(FALSE);
+      assert(false);
       return bld->undef;
    }
 
@@ -257,9 +257,9 @@ llvmpipe_fs_variant_linear_llvm(struct llvmpipe_context *lp,
    // unorm8[16] vector type
    struct lp_type fs_type;
    memset(&fs_type, 0, sizeof fs_type);
-   fs_type.floating = FALSE;
-   fs_type.sign = FALSE;
-   fs_type.norm = TRUE;
+   fs_type.floating = false;
+   fs_type.sign = false;
+   fs_type.norm = true;
    fs_type.width = 8;
    fs_type.length = 16;
 

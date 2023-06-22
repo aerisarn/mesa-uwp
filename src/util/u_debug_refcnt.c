@@ -66,7 +66,7 @@ static bool
 debug_serial(void *p, unsigned *pserial)
 {
    unsigned serial;
-   bool found = TRUE;
+   bool found = true;
 
    simple_mtx_lock(&serials_mutex);
    if (!serials_hash)
@@ -84,7 +84,7 @@ debug_serial(void *p, unsigned *pserial)
       }
 
       _mesa_hash_table_insert(serials_hash, p, (void *) (uintptr_t) serial);
-      found = FALSE;
+      found = false;
    }
    simple_mtx_unlock(&serials_mutex);
 

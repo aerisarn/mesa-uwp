@@ -681,7 +681,7 @@ fetch_instanced(struct gallivm_state *gallivm,
    aos = lp_build_fetch_rgba_aos(gallivm,
                                  format_desc,
                                  lp_float32_vec4_type(),
-                                 FALSE,
+                                 false,
                                  map_ptr,
                                  stride, zero, zero,
                                  NULL);
@@ -752,7 +752,7 @@ fetch_vector(struct gallivm_state *gallivm,
    }
 
    lp_build_fetch_rgba_soa(gallivm, format_desc,
-                           fetch_type, FALSE, map_ptr, offset,
+                           fetch_type, false, map_ptr, offset,
                            blduivec.zero, blduivec.zero,
                            NULL, inputs);
 
@@ -1275,7 +1275,7 @@ generate_clipmask(struct draw_llvm *llvm,
             int i;
             i = plane_idx - 6;
 
-            *have_clipdist = TRUE;
+            *have_clipdist = true;
             if (i < 4) {
                clipdist = LLVMBuildLoad2(builder, vec_type, outputs[cd[0]][i], "");
             } else {
@@ -1482,7 +1482,7 @@ draw_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
                   outputs, clipmask,
                   gs_info->num_outputs, gs_type,
                   -1,
-                  FALSE);
+                  false);
    lp_build_endif(&if_ctx);
 }
 
@@ -1604,7 +1604,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    LLVMValueRef variant_func;
    const unsigned pos = draw->vs.position_output;
    const unsigned cv = draw->vs.clipvertex_output;
-   bool have_clipdist = FALSE;
+   bool have_clipdist = false;
    struct lp_bld_tgsi_system_values system_values;
 
    memset(&system_values, 0, sizeof(system_values));
@@ -1686,9 +1686,9 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    LLVMPositionBuilderAtEnd(builder, block);
 
    memset(&vs_type, 0, sizeof vs_type);
-   vs_type.floating = TRUE; /* floating point values */
-   vs_type.sign = TRUE;     /* values are signed */
-   vs_type.norm = FALSE;    /* values are not limited to [0,1] or [-1,1] */
+   vs_type.floating = true; /* floating point values */
+   vs_type.sign = true;     /* values are signed */
+   vs_type.norm = false;    /* values are not limited to [0,1] or [-1,1] */
    vs_type.width = 32;      /* 32-bit float */
    vs_type.length = vector_length;
 
@@ -1890,8 +1890,8 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
                                        LLVMPointerType(LLVMInt8TypeInContext(context),
                                                        0), "");
          tmp = lp_build_gather(gallivm, vs_type.length,
-                               32, bld.type, TRUE,
-                               fetch_elts, tmp, FALSE);
+                               32, bld.type, true,
+                               fetch_elts, tmp, false);
          LLVMBuildStore(builder, tmp, index_store);
       }
       lp_build_else(&if_ctx);
@@ -2039,7 +2039,7 @@ draw_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
    key->bypass_viewport = llvm->draw->bypass_viewport;
    key->clip_halfz = llvm->draw->rasterizer->clip_halfz;
    /* XXX assumes edgeflag output not at 0 */
-   key->need_edgeflags = (llvm->draw->vs.edgeflag_output ? TRUE : FALSE);
+   key->need_edgeflags = (llvm->draw->vs.edgeflag_output ? true : false);
    key->ucp_enable = llvm->draw->rasterizer->clip_plane_enable;
    key->has_gs_or_tes = llvm->draw->gs.geometry_shader != NULL || llvm->draw->tes.tess_eval_shader != NULL;
    key->num_outputs = draw_total_vs_outputs(llvm->draw);
@@ -2404,9 +2404,9 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    lp_build_context_init(&bld, gallivm, lp_type_int(32));
 
    memset(&gs_type, 0, sizeof gs_type);
-   gs_type.floating = TRUE; /* floating point values */
-   gs_type.sign = TRUE;     /* values are signed */
-   gs_type.norm = FALSE;    /* values are not limited to [0,1] or [-1,1] */
+   gs_type.floating = true; /* floating point values */
+   gs_type.sign = true;     /* values are signed */
+   gs_type.norm = false;    /* values are not limited to [0,1] or [-1,1] */
    gs_type.width = 32;      /* 32-bit float */
    gs_type.length = vector_length;
 
@@ -2972,9 +2972,9 @@ draw_tcs_llvm_generate(struct draw_llvm *llvm,
    lp_build_context_init(&bld, gallivm, lp_type_int(32));
 
    memset(&tcs_type, 0, sizeof tcs_type);
-   tcs_type.floating = TRUE; /* floating point values */
-   tcs_type.sign = TRUE;     /* values are signed */
-   tcs_type.norm = FALSE;    /* values are not limited to [0,1] or [-1,1] */
+   tcs_type.floating = true; /* floating point values */
+   tcs_type.sign = true;     /* values are signed */
+   tcs_type.norm = false;    /* values are not limited to [0,1] or [-1,1] */
    tcs_type.width = 32;      /* 32-bit float */
    tcs_type.length = vector_length;
 
@@ -3545,9 +3545,9 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
    lp_build_context_init(&bld, gallivm, lp_type_int(32));
 
    memset(&tes_type, 0, sizeof tes_type);
-   tes_type.floating = TRUE; /* floating point values */
-   tes_type.sign = TRUE;     /* values are signed */
-   tes_type.norm = FALSE;    /* values are not limited to [0,1] or [-1,1] */
+   tes_type.floating = true; /* floating point values */
+   tes_type.sign = true;     /* values are signed */
+   tes_type.norm = false;    /* values are not limited to [0,1] or [-1,1] */
    tes_type.width = 32;      /* 32-bit float */
    tes_type.length = vector_length;
 
@@ -3643,7 +3643,7 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
                                                      lp_int_type(tes_type), 0);
 
       convert_to_aos(gallivm, variant->vertex_header_type, io, NULL, outputs, clipmask,
-                     draw_total_tes_outputs(llvm->draw), tes_type, primid_slot, FALSE);
+                     draw_total_tes_outputs(llvm->draw), tes_type, primid_slot, false);
    }
    lp_build_loop_end_cond(&lp_loop, num_tess_coord, step, LLVMIntUGE);
    lp_bld_llvm_sampler_soa_destroy(sampler);

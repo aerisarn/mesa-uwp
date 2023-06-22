@@ -58,9 +58,9 @@ mask_has_loop(struct lp_exec_mask *mask)
    for (i = mask->function_stack_size - 1; i >= 0; --i) {
       const struct function_ctx *ctx = &mask->function_stack[i];
       if (ctx->loop_stack_size > 0)
-         return TRUE;
+         return true;
    }
-   return FALSE;
+   return false;
 }
 
 /*
@@ -76,9 +76,9 @@ mask_has_switch(struct lp_exec_mask *mask)
    for (i = mask->function_stack_size - 1; i >= 0; --i) {
       const struct function_ctx *ctx = &mask->function_stack[i];
       if (ctx->switch_stack_size > 0)
-         return TRUE;
+         return true;
    }
-   return FALSE;
+   return false;
 }
 
 /*
@@ -94,9 +94,9 @@ mask_has_cond(struct lp_exec_mask *mask)
    for (i = mask->function_stack_size - 1; i >= 0; --i) {
       const struct function_ctx *ctx = &mask->function_stack[i];
       if (ctx->cond_stack_size > 0)
-         return TRUE;
+         return true;
    }
-   return FALSE;
+   return false;
 }
 
 void lp_exec_mask_update(struct lp_exec_mask *mask)
@@ -173,8 +173,8 @@ lp_exec_mask_function_init(struct lp_exec_mask *mask, int function_idx)
 void lp_exec_mask_init(struct lp_exec_mask *mask, struct lp_build_context *bld)
 {
    mask->bld = bld;
-   mask->has_mask = FALSE;
-   mask->ret_in_main = FALSE;
+   mask->has_mask = false;
+   mask->ret_in_main = false;
    /* For the main function */
    mask->function_stack_size = 1;
 

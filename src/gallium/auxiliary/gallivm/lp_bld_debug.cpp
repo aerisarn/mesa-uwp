@@ -226,7 +226,7 @@ lp_profile(LLVMValueRef func, const void *code)
 {
 #if defined(__linux__) && defined(PROFILE)
    static std::ofstream perf_asm_file;
-   static bool first_time = TRUE;
+   static bool first_time = true;
    static FILE *perf_map_file = NULL;
    if (first_time) {
       /*
@@ -243,7 +243,7 @@ lp_profile(LLVMValueRef func, const void *code)
          snprintf(filename, sizeof filename, "/tmp/perf-%llu.map.asm", (unsigned long long)pid);
          perf_asm_file.open(filename);
       }
-      first_time = FALSE;
+      first_time = false;
    }
    if (perf_map_file) {
       const char *symbol = LLVMGetValueName(func);

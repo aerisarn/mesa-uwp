@@ -134,7 +134,7 @@ pp_init_prog(struct pp_queue_t *ppq, struct pipe_context *pipe,
       const uint semantic_indexes[] = { 0, 0 };
       p->passvs = util_make_vertex_passthrough_shader(p->pipe, 2,
                                                       semantic_names,
-                                                      semantic_indexes, FALSE);
+                                                      semantic_indexes, false);
    }
 
    p->framebuffer.nr_cbufs = 1;

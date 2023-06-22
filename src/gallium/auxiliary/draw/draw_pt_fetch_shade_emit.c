@@ -313,11 +313,11 @@ fse_run_linear_elts(struct draw_pt_middle_end *middle,
    if (!draw->render->allocate_vertices(draw->render,
                                         (ushort) fse->key.output_stride,
                                         (ushort) count))
-      return FALSE;
+      return false;
 
    hw_verts = draw->render->map_vertices(draw->render);
    if (!hw_verts)
-      return FALSE;
+      return false;
 
    /* Single routine to fetch vertices, run shader and emit HW verts.
     * Clipping is done elsewhere -- either by the API or on hardware,
@@ -331,7 +331,7 @@ fse_run_linear_elts(struct draw_pt_middle_end *middle,
 
    draw->render->release_vertices(draw->render);
 
-   return TRUE;
+   return true;
 }
 
 

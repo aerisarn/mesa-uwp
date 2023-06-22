@@ -1748,7 +1748,7 @@ nv50_blit(struct pipe_context *pipe, const struct pipe_blit_info *info)
 {
    struct nv50_context *nv50 = nv50_context(pipe);
    struct nouveau_pushbuf *push = nv50->base.pushbuf;
-   bool eng3d = FALSE;
+   bool eng3d = false;
 
    if (info->src.box.width == 0 || info->src.box.height == 0 ||
        info->dst.box.width == 0 || info->dst.box.height == 0) {

@@ -421,7 +421,7 @@ test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned
    struct gallivm_state *gallivm;
    LLVMValueRef test_func;
    unary_func_t test_func_jit;
-   bool success = TRUE;
+   bool success = true;
    int i, j;
    float *in, *out;
 
@@ -459,7 +459,7 @@ test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned
       for (i = 0; i < num_vals; ++i) {
          float testval, ref;
          double error, precision;
-         bool expected_pass = TRUE;
+         bool expected_pass = true;
          bool pass;
 
          testval = flush_denorm_to_zero(in[i]);
@@ -485,7 +485,7 @@ test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned
             /* FIXME: The generic (non SSE) path in lp_build_iround, which is
              * always taken for length==2 regardless of native round support,
              * does not round to even. */
-            expected_pass = FALSE;
+            expected_pass = false;
          }
 
          if (test->ref == &expf && util_inf_sign(testval) == -1) {
@@ -506,7 +506,7 @@ test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned
          }
 
          if (pass != expected_pass) {
-            success = FALSE;
+            success = false;
          }
       }
    }
@@ -524,7 +524,7 @@ test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned
 bool
 test_all(unsigned verbose, FILE *fp)
 {
-   bool success = TRUE;
+   bool success = true;
    int i;
 
    for (i = 0; i < ARRAY_SIZE(unary_tests); ++i) {
@@ -532,7 +532,7 @@ test_all(unsigned verbose, FILE *fp)
       unsigned length;
       for (length = 1; length <= max_length; length *= 2) {
          if (!test_unary(verbose, fp, &unary_tests[i], length)) {
-            success = FALSE;
+            success = false;
          }
       }
    }
@@ -556,5 +556,5 @@ test_some(unsigned verbose, FILE *fp,
 bool
 test_single(unsigned verbose, FILE *fp)
 {
-   return TRUE;
+   return true;
 }

@@ -550,7 +550,7 @@ d3d12_video_processor_check_caps_and_create_processor(struct d3d12_video_process
         {},                                     // LumaKey
         0,                                      // NumPastFrames
         0,                                      // NumFutureFrames
-        FALSE                                   // EnableAutoProcessing
+        false                                   // EnableAutoProcessing
     };
 
     D3D12_VIDEO_PROCESS_OUTPUT_STREAM_DESC outputStreamDesc =
@@ -561,7 +561,7 @@ d3d12_video_processor_check_caps_and_create_processor(struct d3d12_video_process
         0u,                                         // AlphaFillModeSourceStreamIndex
         {0, 0, 0, 0},                               // BackgroundColor
         FrameRate,                                  // FrameRate
-        FALSE                                       // EnableStereo
+        false                                       // EnableStereo
     };
     
     // gets the required past/future frames for VP creation

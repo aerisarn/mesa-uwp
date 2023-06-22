@@ -267,11 +267,11 @@ compare_vec_with_eps(struct lp_type type, const void *res, const void *ref, doub
       }
       delta = fabs(delta);
       if (delta >= eps) {
-         return FALSE;
+         return false;
       }
    }
 
-   return TRUE;
+   return true;
 }
 
 
@@ -371,7 +371,7 @@ main(int argc, char **argv)
    unsigned long n = 1000;
    unsigned i;
    bool success;
-   bool single = FALSE;
+   bool single = false;
    unsigned fpstate;
 
    fpstate = util_fpstate_get();
@@ -384,7 +384,7 @@ main(int argc, char **argv)
       if (strcmp(argv[i], "-v") == 0)
          ++verbose;
       else if (strcmp(argv[i], "-s") == 0)
-         single = TRUE;
+         single = true;
       else if (strcmp(argv[i], "-o") == 0)
          fp = fopen(argv[++i], "wt");
       else
