@@ -1558,9 +1558,9 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
        *    So there is no need to set "Untyped Data-Port Cache" in 3D
        *    mode.
        */
-      if ((flush_bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT) &&
-          current_pipeline != GPGPU)
+      if (current_pipeline != GPGPU) {
          flush_bits &= ~ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT;
+      }
 
       if (flush_bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT)
          flush_bits |= ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
