@@ -3689,7 +3689,13 @@ st_ClearTexSubImage(struct gl_context *ctx,
 
    assert(level <= pt->last_level);
 
-   pipe->clear_texture(pipe, pt, level, &box, clearValue ? clearValue : zeros);
+   if (pipe->clear_texture) {
+      pipe->clear_texture(pipe, pt, level, &box,
+                          clearValue ? clearValue : zeros);
+   } else {
+      u_default_clear_texture(pipe, pt, level, &box,
+                              clearValue ? clearValue : zeros);
+   }
 }
 
 
