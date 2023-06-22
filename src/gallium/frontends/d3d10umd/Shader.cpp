@@ -842,7 +842,7 @@ CreateGeometryShaderWithStreamOutput(
    Shader *pShader = CastShader(hShader);
    int total_components[PIPE_MAX_SO_BUFFERS] = {0};
    unsigned num_holes = 0;
-   boolean all_slot_zero = TRUE;
+   bool all_slot_zero = TRUE;
 
    pShader->type = PIPE_SHADER_GEOMETRY;
 

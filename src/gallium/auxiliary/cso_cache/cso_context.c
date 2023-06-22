@@ -70,11 +70,11 @@ struct cso_context {
    bool always_use_vbuf;
    bool sampler_format;
 
-   boolean has_geometry_shader;
-   boolean has_tessellation;
-   boolean has_compute_shader;
-   boolean has_task_mesh_shader;
-   boolean has_streamout;
+   bool has_geometry_shader;
+   bool has_tessellation;
+   bool has_compute_shader;
+   bool has_task_mesh_shader;
+   bool has_streamout;
 
    uint32_t max_fs_samplerviews : 16;
 
@@ -111,7 +111,7 @@ struct cso_context {
    void *velements, *velements_saved;
    struct pipe_query *render_condition, *render_condition_saved;
    enum pipe_render_cond_flag render_condition_mode, render_condition_mode_saved;
-   boolean render_condition_cond, render_condition_cond_saved;
+   bool render_condition_cond, render_condition_cond_saved;
    bool flatshade_first, flatshade_first_saved;
 
    struct pipe_framebuffer_state fb, fb_saved;
@@ -125,7 +125,7 @@ struct cso_context {
 };
 
 
-static inline boolean
+static inline bool
 delete_cso(struct cso_context *ctx,
            void *state, enum cso_cache_type type)
 {
@@ -819,7 +819,7 @@ cso_set_viewport(struct cso_context *ctx,
  */
 void
 cso_set_viewport_dims(struct cso_context *ctx,
-                      float width, float height, boolean invert)
+                      float width, float height, bool invert)
 {
    struct pipe_viewport_state vp;
    vp.scale[0] = width * 0.5f;
@@ -933,7 +933,7 @@ cso_restore_stencil_ref(struct cso_context *ctx)
 void
 cso_set_render_condition(struct cso_context *ctx,
                          struct pipe_query *query,
-                         boolean condition,
+                         bool condition,
                          enum pipe_render_cond_flag mode)
 {
    struct pipe_context *pipe = ctx->base.pipe;

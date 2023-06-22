@@ -83,7 +83,7 @@ void r300_emit_dsa_state(struct r300_context* r300, unsigned size, void* state)
     struct r300_dsa_state* dsa = (struct r300_dsa_state*)state;
     struct pipe_framebuffer_state* fb =
         (struct pipe_framebuffer_state*)r300->fb_state.state;
-    boolean is_r500 = r300->screen->caps.is_r500;
+    bool is_r500 = r300->screen->caps.is_r500;
     CS_LOCALS(r300);
     uint32_t alpha_func = dsa->alpha_function;
 
@@ -895,7 +895,7 @@ void r300_emit_textures_state(struct r300_context *r300,
     struct r300_texture_sampler_state *texstate;
     struct r300_resource *tex;
     unsigned i;
-    boolean has_us_format = r300->screen->caps.has_us_format;
+    bool has_us_format = r300->screen->caps.has_us_format;
     CS_LOCALS(r300);
 
     BEGIN_CS(size);
@@ -928,7 +928,7 @@ void r300_emit_textures_state(struct r300_context *r300,
 }
 
 void r300_emit_vertex_arrays(struct r300_context* r300, int offset,
-                             boolean indexed, int instance_id)
+                             bool indexed, int instance_id)
 {
     struct pipe_vertex_buffer *vbuf = r300->vertex_buffer;
     struct pipe_vertex_element *velem = r300->velems->velem;
@@ -1027,7 +1027,7 @@ void r300_emit_vertex_arrays(struct r300_context* r300, int offset,
     END_CS;
 }
 
-void r300_emit_vertex_arrays_swtcl(struct r300_context *r300, boolean indexed)
+void r300_emit_vertex_arrays_swtcl(struct r300_context *r300, bool indexed)
 {
     CS_LOCALS(r300);
 
@@ -1300,8 +1300,8 @@ void r300_emit_texture_cache_inval(struct r300_context* r300, unsigned size, voi
     END_CS;
 }
 
-boolean r300_emit_buffer_validate(struct r300_context *r300,
-                                  boolean do_validate_vertex_buffers,
+bool r300_emit_buffer_validate(struct r300_context *r300,
+                                  bool do_validate_vertex_buffers,
                                   struct pipe_resource *index_buffer)
 {
     struct pipe_framebuffer_state *fb =
@@ -1311,7 +1311,7 @@ boolean r300_emit_buffer_validate(struct r300_context *r300,
         (struct r300_textures_state*)r300->textures_state.state;
     struct r300_resource *tex;
     unsigned i;
-    boolean flushed = FALSE;
+    bool flushed = FALSE;
 
 validate:
     if (r300->fb_state.dirty) {

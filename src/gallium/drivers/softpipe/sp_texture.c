@@ -51,10 +51,10 @@
  * Conventional allocation path for non-display textures:
  * Use a simple, maximally packed layout.
  */
-static boolean
+static bool
 softpipe_resource_layout(struct pipe_screen *screen,
                          struct softpipe_resource *spr,
-                         boolean allocate)
+                         bool allocate)
 {
    struct pipe_resource *pt = &spr->base;
    unsigned level;
@@ -126,7 +126,7 @@ softpipe_can_create_resource(struct pipe_screen *screen,
 /**
  * Texture layout for simple color buffers.
  */
-static boolean
+static bool
 softpipe_displaytarget_layout(struct pipe_screen *screen,
                               struct softpipe_resource *spr,
                               const void *map_front_private)
@@ -395,8 +395,8 @@ softpipe_transfer_map(struct pipe_context *pipe,
     * context if necessary.
     */
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
-      boolean read_only = !(usage & PIPE_MAP_WRITE);
-      boolean do_not_block = !!(usage & PIPE_MAP_DONTBLOCK);
+      bool read_only = !(usage & PIPE_MAP_WRITE);
+      bool do_not_block = !!(usage & PIPE_MAP_DONTBLOCK);
       if (!softpipe_flush_resource(pipe, resource,
                                    level, box->depth > 1 ? -1 : box->z,
                                    0, /* flush_flags */

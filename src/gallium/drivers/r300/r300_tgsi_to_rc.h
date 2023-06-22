@@ -43,7 +43,7 @@ struct tgsi_to_rc {
     int immediate_offset;
 
     /* If an error occurred. */
-    boolean error;
+    bool error;
 };
 
 void r300_tgsi_to_rc(struct tgsi_to_rc * ttr, const struct tgsi_token * tokens);

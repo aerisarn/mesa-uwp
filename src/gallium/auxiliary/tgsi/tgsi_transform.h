@@ -495,7 +495,7 @@ tgsi_transform_kill_inst(struct tgsi_transform_context *ctx,
                          unsigned src_file,
                          unsigned src_index,
                          unsigned src_swizzle,
-                         boolean negate)
+                         bool negate)
 {
    struct tgsi_full_instruction inst;
 

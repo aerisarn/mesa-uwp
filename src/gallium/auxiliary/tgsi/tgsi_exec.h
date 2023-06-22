@@ -402,7 +402,7 @@ struct tgsi_exec_machine
    struct tgsi_declaration_sampler_view
       SamplerViews[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
-   boolean UsedGeometryShader;
+   bool UsedGeometryShader;
 
    int pc;
 };

@@ -239,7 +239,7 @@ ureg_DECL_output_layout(struct ureg_program *,
                         unsigned usage_mask,
                         unsigned array_id,
                         unsigned array_size,
-                        boolean invariant);
+                        bool invariant);
 
 struct ureg_dst
 ureg_DECL_output_masked(struct ureg_program *,
@@ -330,7 +330,7 @@ ureg_DECL_local_temporary( struct ureg_program * );
 struct ureg_dst
 ureg_DECL_array_temporary( struct ureg_program *,
                            unsigned size,
-                           boolean local );
+                           bool local );
 
 void 
 ureg_release_temporary( struct ureg_program *ureg,
@@ -362,8 +362,8 @@ ureg_DECL_image(struct ureg_program *ureg,
                 unsigned index,
                 enum tgsi_texture_type target,
                 enum pipe_format format,
-                boolean wr,
-                boolean raw);
+                bool wr,
+                bool raw);
 
 struct ureg_src
 ureg_DECL_buffer(struct ureg_program *ureg, unsigned nr, bool atomic);
@@ -502,7 +502,7 @@ ureg_imm1i( struct ureg_program *ureg,
 /* Where the destination register has a valid file, but an empty
  * writemask.
  */
-static inline boolean
+static inline bool
 ureg_dst_is_empty( struct ureg_dst dst )
 {
    return dst.File != TGSI_FILE_NULL &&
@@ -583,7 +583,7 @@ struct ureg_emit_insn_result {
 struct ureg_emit_insn_result
 ureg_emit_insn(struct ureg_program *ureg,
                enum tgsi_opcode opcode,
-               boolean saturate,
+               bool saturate,
                unsigned precise,
                unsigned num_dst,
                unsigned num_src);
@@ -1189,13 +1189,13 @@ ureg_src_undef( void )
    return src;
 }
 
-static inline boolean
+static inline bool
 ureg_src_is_undef( struct ureg_src src )
 {
    return src.File == TGSI_FILE_NULL;
 }
 
-static inline boolean
+static inline bool
 ureg_dst_is_undef( struct ureg_dst dst )
 {
    return dst.File == TGSI_FILE_NULL;

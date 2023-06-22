@@ -61,7 +61,7 @@
  * Does the given texture wrap mode allow sampling the texture border color?
  * XXX maybe move this into gallium util code.
  */
-boolean
+bool
 lp_sampler_wrap_mode_uses_border_color(enum pipe_tex_wrap mode,
                                        enum pipe_tex_filter min_img_filter,
                                        enum pipe_tex_filter mag_img_filter)
@@ -271,7 +271,7 @@ lp_build_pmin(struct lp_build_sample_context *bld,
    LLVMValueRef int_size, float_size;
    const unsigned length = coord_bld->type.length;
    const unsigned num_quads = length / 4;
-   const boolean pmin_per_quad = pmin_bld->type.length != length;
+   const bool pmin_per_quad = pmin_bld->type.length != length;
 
    int_size = lp_build_minify(int_size_bld, bld->int_size, first_level, TRUE);
    float_size = lp_build_int_to_float(float_size_bld, int_size);
@@ -366,8 +366,8 @@ lp_build_rho(struct lp_build_sample_context *bld,
    LLVMValueRef rho;
    unsigned length = coord_bld->type.length;
    unsigned num_quads = length / 4;
-   boolean rho_per_quad = rho_bld->type.length != length;
-   boolean no_rho_opt = bld->no_rho_approx && (dims > 1);
+   bool rho_per_quad = rho_bld->type.length != length;
+   bool no_rho_opt = bld->no_rho_approx && (dims > 1);
    LLVMValueRef i32undef = LLVMGetUndef(LLVMInt32TypeInContext(gallivm->context));
    LLVMValueRef rho_xvec, rho_yvec;
 
@@ -793,7 +793,7 @@ lp_build_ilog2_sqrt(struct lp_build_context *bld,
  */
 void
 lp_build_lod_selector(struct lp_build_sample_context *bld,
-                      boolean is_lodq,
+                      bool is_lodq,
                       unsigned sampler_unit,
                       LLVMValueRef first_level,
                       LLVMValueRef s,
@@ -855,7 +855,7 @@ lp_build_lod_selector(struct lp_build_sample_context *bld,
             lod = explicit_lod;
       } else {
          LLVMValueRef rho;
-         boolean rho_squared = bld->no_rho_approx && (bld->dims > 1);
+         bool rho_squared = bld->no_rho_approx && (bld->dims > 1);
 
          if (bld->static_sampler_state->aniso &&
              !explicit_lod) {
@@ -1205,7 +1205,7 @@ LLVMValueRef
 lp_build_minify(struct lp_build_context *bld,
                 LLVMValueRef base_size,
                 LLVMValueRef level,
-                boolean lod_scalar)
+                bool lod_scalar)
 {
    LLVMBuilderRef builder = bld->gallivm->builder;
    assert(lp_check_value(bld->type, base_size));
@@ -1814,7 +1814,7 @@ lp_build_cube_lookup(struct lp_build_sample_context *bld,
                      LLVMValueRef *coords,
                      const struct lp_derivatives *derivs_in, /* optional */
                      struct lp_derivatives *derivs_out, /* optional */
-                     boolean need_derivs)
+                     bool need_derivs)
 {
    struct lp_build_context *coord_bld = &bld->coord_bld;
    LLVMBuilderRef builder = bld->gallivm->builder;

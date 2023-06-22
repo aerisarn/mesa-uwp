@@ -200,7 +200,7 @@ i915_vbuf_render_new_buf(struct i915_vbuf_render *i915_render, size_t size)
  *    a new buffer. Also updates may update the vbo state
  *    on the i915 context.
  */
-static boolean
+static bool
 i915_vbuf_render_allocate_vertices(struct vbuf_render *render,
                                    ushort vertex_size, ushort nr_vertices)
 {

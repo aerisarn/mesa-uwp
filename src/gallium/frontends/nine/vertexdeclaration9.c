@@ -90,7 +90,7 @@ static inline unsigned decltype_size(BYTE type)
  * simple lookup table won't work in that case. Let's just wait
  * with making this more generic until we need it.
  */
-static inline boolean
+static inline bool
 nine_d3ddeclusage_check(unsigned usage, unsigned usage_idx)
 {
     switch (usage) {

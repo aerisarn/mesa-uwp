@@ -69,7 +69,7 @@ struct linear_interp {
    __m128i dadx;
    __m128i dady;
    int width;                   /* rounded up to multiple of 4 */
-   boolean is_constant;
+   bool is_constant;
 };
 
 /* Organize all the information needed for blending in one place.
@@ -252,7 +252,7 @@ fetch_row_xy_clamped(struct nearest_sampler *samp)
 }
 
 
-static boolean
+static bool
 init_nearest_sampler(struct nearest_sampler *samp,
                      const struct lp_jit_texture *texture,
                      int x0, int y0,
@@ -350,7 +350,7 @@ init_shader(struct shader *shader,
 /* Linear shader which implements the BLIT_RGBA shader with the
  * additional constraints imposed by lp_setup_is_blit().
  */
-static boolean
+static bool
 blit_rgba_blit(const struct lp_rast_state *state,
                unsigned x, unsigned y,
                unsigned width, unsigned height,
@@ -402,7 +402,7 @@ blit_rgba_blit(const struct lp_rast_state *state,
 /* Linear shader which implements the BLIT_RGB1 shader, with the
  * additional constraints imposed by lp_setup_is_blit().
  */
-static boolean
+static bool
 blit_rgb1_blit(const struct lp_rast_state *state,
                unsigned x, unsigned y,
                unsigned width, unsigned height,
@@ -462,7 +462,7 @@ blit_rgb1_blit(const struct lp_rast_state *state,
 /* Linear shader variant implementing the BLIT_RGBA shader without
  * blending.
  */
-static boolean
+static bool
 blit_rgba(const struct lp_rast_state *state,
           unsigned x, unsigned y,
           unsigned width, unsigned height,
@@ -501,7 +501,7 @@ blit_rgba(const struct lp_rast_state *state,
 }
 
 
-static boolean
+static bool
 blit_rgb1(const struct lp_rast_state *state,
           unsigned x, unsigned y,
           unsigned width, unsigned height,
@@ -545,7 +545,7 @@ blit_rgb1(const struct lp_rast_state *state,
 /* Linear shader variant implementing the BLIT_RGBA shader with
  * one/inv_src_alpha blending.
  */
-static boolean
+static bool
 blit_rgba_blend_premul(const struct lp_rast_state *state,
                        unsigned x, unsigned y,
                        unsigned width, unsigned height,
@@ -584,7 +584,7 @@ blit_rgba_blend_premul(const struct lp_rast_state *state,
 
 /* Linear shader which always emits red.  Used for debugging.
  */
-static boolean
+static bool
 linear_red(const struct lp_rast_state *state,
            unsigned x, unsigned y,
            unsigned width, unsigned height,
@@ -614,7 +614,7 @@ linear_red(const struct lp_rast_state *state,
 
 /* Noop linear shader variant, for debugging.
  */
-static boolean
+static bool
 linear_no_op(const struct lp_rast_state *state,
              unsigned x, unsigned y,
              unsigned width, unsigned height,
@@ -630,7 +630,7 @@ linear_no_op(const struct lp_rast_state *state,
 
 /* Check for ADD/ONE/INV_SRC_ALPHA, ie premultiplied-alpha blending.
  */
-static boolean
+static bool
 is_one_inv_src_alpha_blend(const struct lp_fragment_shader_variant *variant)
 {
    return

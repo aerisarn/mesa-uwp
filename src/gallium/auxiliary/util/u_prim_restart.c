@@ -104,7 +104,7 @@ struct range_info {
  * Helper function for util_draw_vbo_without_prim_restart()
  * \return true for success, false if out of memory
  */
-static boolean
+static bool
 add_range(enum mesa_prim mode, struct range_info *info, unsigned start, unsigned count, unsigned index_bias)
 {
    /* degenerate primitive: ignore */

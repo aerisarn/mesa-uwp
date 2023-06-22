@@ -44,7 +44,7 @@
 struct dump_info
 {
    uint32 version;
-   boolean is_ps;
+   bool is_ps;
    int indent;
 };
 
@@ -273,7 +273,7 @@ static void dump_idata( struct sh_idata idata )
    _debug_printf( "%d, %d, %d, %d", idata.xyzw[0], idata.xyzw[1], idata.xyzw[2], idata.xyzw[3] );
 }
 
-static void dump_bdata( boolean bdata )
+static void dump_bdata( bool bdata )
 {
    _debug_printf( bdata ? "TRUE" : "FALSE" );
 }
@@ -533,7 +533,7 @@ dump_inst(struct dump_info *di,
           const struct sh_opcode_info *info)
 {
    struct dump_op dop;
-   boolean not_first_arg = FALSE;
+   bool not_first_arg = FALSE;
    uint i;
 
    assert(info->num_dst <= 1);
@@ -569,7 +569,7 @@ svga_shader_dump(
    unsigned dwords,
    unsigned do_binary )
 {
-   boolean finished = FALSE;
+   bool finished = FALSE;
    struct dump_info di;
 
    di.version = *assem++;

@@ -70,7 +70,7 @@ WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 struct stw_framebuffer *
 stw_pbuffer_create(const struct stw_pixelformat_info *pfi, int iWidth, int iHeight, struct pipe_frontend_screen *fscreen)
 {
-   static boolean first = TRUE;
+   static bool first = TRUE;
 
    /*
     * Implement pbuffers through invisible windows

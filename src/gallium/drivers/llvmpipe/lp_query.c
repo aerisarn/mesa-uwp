@@ -541,7 +541,7 @@ llvmpipe_end_query(struct pipe_context *pipe, struct pipe_query *q)
 }
 
 
-boolean
+bool
 llvmpipe_check_render_cond(struct llvmpipe_context *lp)
 {
    struct pipe_context *pipe = &lp->pipe;

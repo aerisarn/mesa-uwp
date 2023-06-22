@@ -55,7 +55,7 @@
  * \param filter  the minification filter used to generate mipmap levels with
  *                one of PIPE_TEX_FILTER_LINEAR, PIPE_TEX_FILTER_NEAREST
  */
-boolean
+bool
 util_gen_mipmap(struct pipe_context *pipe, struct pipe_resource *pt,
                 enum pipe_format format, uint base_level, uint last_level,
                 uint first_layer, uint last_layer, uint filter)
@@ -63,8 +63,8 @@ util_gen_mipmap(struct pipe_context *pipe, struct pipe_resource *pt,
    struct pipe_screen *screen = pipe->screen;
    struct pipe_blit_info blit;
    uint dstLevel;
-   boolean is_zs = util_format_is_depth_or_stencil(format);
-   boolean has_depth =
+   bool is_zs = util_format_is_depth_or_stencil(format);
+   bool has_depth =
       util_format_has_depth(util_format_description(format));
 
    /* nothing to do for stencil-only formats */

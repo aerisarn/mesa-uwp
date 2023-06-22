@@ -143,7 +143,7 @@ struct ureg_program
       unsigned first;
       unsigned last;
       unsigned array_id;
-      boolean invariant;
+      bool invariant;
    } output[UREG_MAX_OUTPUT];
    unsigned nr_outputs, nr_output_regs;
 
@@ -175,8 +175,8 @@ struct ureg_program
       unsigned index;
       enum tgsi_texture_type target;
       enum pipe_format format;
-      boolean wr;
-      boolean raw;
+      bool wr;
+      bool raw;
    } image[PIPE_MAX_SHADER_IMAGES];
    unsigned nr_images;
 
@@ -432,7 +432,7 @@ ureg_DECL_output_layout(struct ureg_program *ureg,
                         unsigned usage_mask,
                         unsigned array_id,
                         unsigned array_size,
-                        boolean invariant)
+                        bool invariant)
 {
    unsigned i;
 
@@ -633,7 +633,7 @@ ureg_DECL_hw_atomic(struct ureg_program *ureg,
 }
 
 static struct ureg_dst alloc_temporary( struct ureg_program *ureg,
-                                        boolean local )
+                                        bool local )
 {
    unsigned i;
 
@@ -676,7 +676,7 @@ struct ureg_dst ureg_DECL_local_temporary( struct ureg_program *ureg )
 
 struct ureg_dst ureg_DECL_array_temporary( struct ureg_program *ureg,
                                            unsigned size,
-                                           boolean local )
+                                           bool local )
 {
    unsigned i = ureg->nr_temps;
    struct ureg_dst dst = ureg_dst_register( TGSI_FILE_TEMPORARY, i );
@@ -783,8 +783,8 @@ ureg_DECL_image(struct ureg_program *ureg,
                 unsigned index,
                 enum tgsi_texture_type target,
                 enum pipe_format format,
-                boolean wr,
-                boolean raw)
+                bool wr,
+                bool raw)
 {
    struct ureg_src reg = ureg_src_register(TGSI_FILE_IMAGE, index);
    unsigned i;
@@ -853,7 +853,7 @@ match_or_expand_immediate64( const unsigned *v,
    *swizzle = 0;
 
    for (i = 0; i < nr; i += 2) {
-      boolean found = FALSE;
+      bool found = FALSE;
 
       for (j = 0; j < nr2 && !found; j += 2) {
          if (v[i] == v2[j] && v[i + 1] == v2[j + 1]) {
@@ -899,7 +899,7 @@ match_or_expand_immediate( const unsigned *v,
    *swizzle = 0;
 
    for (i = 0; i < nr; i++) {
-      boolean found = FALSE;
+      bool found = FALSE;
 
       for (j = 0; j < nr2 && !found; j++) {
          if (v[i] == v2[j]) {
@@ -1259,7 +1259,7 @@ static void validate( enum tgsi_opcode opcode,
 struct ureg_emit_insn_result
 ureg_emit_insn(struct ureg_program *ureg,
                enum tgsi_opcode opcode,
-               boolean saturate,
+               bool saturate,
                unsigned precise,
                unsigned num_dst,
                unsigned num_src)
@@ -1408,7 +1408,7 @@ ureg_insn(struct ureg_program *ureg,
 {
    struct ureg_emit_insn_result insn;
    unsigned i;
-   boolean saturate;
+   bool saturate;
 
    if (nr_dst && ureg_dst_is_empty(dst[0])) {
       return;
@@ -1446,7 +1446,7 @@ ureg_tex_insn(struct ureg_program *ureg,
 {
    struct ureg_emit_insn_result insn;
    unsigned i;
-   boolean saturate;
+   bool saturate;
 
    if (nr_dst && ureg_dst_is_empty(dst[0])) {
       return;
@@ -1520,7 +1520,7 @@ emit_decl_semantic(struct ureg_program *ureg,
                    unsigned streams,
                    unsigned usage_mask,
                    unsigned array_id,
-                   boolean invariant)
+                   bool invariant)
 {
    union tgsi_any_token *out = get_tokens(ureg, DOMAIN_DECL, array_id ? 4 : 3);
 
@@ -1626,7 +1626,7 @@ emit_decl_fs(struct ureg_program *ureg,
 static void
 emit_decl_temps( struct ureg_program *ureg,
                  unsigned first, unsigned last,
-                 boolean local,
+                 bool local,
                  unsigned arrayid )
 {
    union tgsi_any_token *out = get_tokens( ureg, DOMAIN_DECL,
@@ -1727,8 +1727,8 @@ emit_decl_image(struct ureg_program *ureg,
                 unsigned index,
                 enum tgsi_texture_type target,
                 enum pipe_format format,
-                boolean wr,
-                boolean raw)
+                bool wr,
+                bool raw)
 {
    union tgsi_any_token *out = get_tokens(ureg, DOMAIN_DECL, 3);
 
@@ -2044,7 +2044,7 @@ static void emit_decls( struct ureg_program *ureg )
    if (ureg->nr_temps) {
       unsigned array = 0;
       for (i = 0; i < ureg->nr_temps;) {
-         boolean local = util_bitmask_get(ureg->local_temps, i);
+         bool local = util_bitmask_get(ureg->local_temps, i);
          unsigned first = i;
          i = util_bitmask_get_next_index(ureg->decl_temps, i + 1);
          if (i == UTIL_BITMASK_INVALID_INDEX)

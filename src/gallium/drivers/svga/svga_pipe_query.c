@@ -50,7 +50,7 @@ struct svga_query {
    SVGA3dQueryType svga_type;      /**< SVGA3D_QUERYTYPE_x or unused */
 
    unsigned id;                    /** Per-context query identifier */
-   boolean active;                 /** TRUE if query is active */
+   bool active;                 /** TRUE if query is active */
 
    struct pipe_fence_handle *fence;
 
@@ -1313,8 +1313,8 @@ svga_set_active_query_state(struct pipe_context *pipe, bool enable)
  */
 void
 svga_toggle_render_condition(struct svga_context *svga,
-                             boolean render_condition_enabled,
-                             boolean on)
+                             bool render_condition_enabled,
+                             bool on)
 {
    SVGA3dQueryId query_id;
 

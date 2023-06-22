@@ -129,7 +129,7 @@ stw_get_config_xml(void)
    return driGetOptionsXml(gallium_driconf, ARRAY_SIZE(gallium_driconf));
 }
 
-boolean
+bool
 stw_init(const struct stw_winsys *stw_winsys)
 {
    static struct stw_device stw_dev_storage;
@@ -179,7 +179,7 @@ error1:
    return FALSE;
 }
 
-boolean
+bool
 stw_init_screen(HDC hdc)
 {
    EnterCriticalSection(&stw_dev->screen_mutex);
@@ -204,7 +204,7 @@ stw_get_device(void)
    return stw_dev;
 }
 
-boolean
+bool
 stw_init_thread(void)
 {
    return stw_tls_init_thread();

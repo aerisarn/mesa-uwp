@@ -629,7 +629,7 @@ static simple_mtx_t screen_mutex = SIMPLE_MTX_INITIALIZER;
 static void
 drm_screen_destroy(struct pipe_screen *pscreen)
 {
-   boolean destroy;
+   bool destroy;
 
    simple_mtx_lock(&screen_mutex);
    destroy = --pscreen->refcnt == 0;

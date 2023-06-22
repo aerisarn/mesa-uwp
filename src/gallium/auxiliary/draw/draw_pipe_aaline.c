@@ -307,7 +307,7 @@ aa_transform_inst(struct tgsi_transform_context *ctx,
  * Generate the frag shader we'll use for drawing AA lines.
  * This will be the user's shader plus some arithmetic instructions.
  */
-static boolean
+static bool
 generate_aaline_fs(struct aaline_stage *aaline)
 {
    struct pipe_context *pipe = aaline->stage.draw->pipe;
@@ -349,7 +349,7 @@ generate_aaline_fs(struct aaline_stage *aaline)
    return aaline->fs->aaline_fs != NULL;
 }
 
-static boolean
+static bool
 generate_aaline_fs_nir(struct aaline_stage *aaline)
 {
    struct pipe_context *pipe = aaline->stage.draw->pipe;
@@ -373,7 +373,7 @@ generate_aaline_fs_nir(struct aaline_stage *aaline)
  * When we're about to draw our first AA line in a batch, this function is
  * called to tell the driver to bind our modified fragment shader.
  */
-static boolean
+static bool
 bind_aaline_fragment_shader(struct aaline_stage *aaline)
 {
    struct draw_context *draw = aaline->stage.draw;
@@ -731,7 +731,7 @@ draw_aaline_prepare_outputs(struct draw_context *draw,
  * into the draw module's pipeline.  This will not be used if the
  * hardware has native support for AA lines.
  */
-boolean
+bool
 draw_install_aaline_stage(struct draw_context *draw, struct pipe_context *pipe)
 {
    struct aaline_stage *aaline;

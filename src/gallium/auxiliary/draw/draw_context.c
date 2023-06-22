@@ -53,7 +53,7 @@
 #endif
 
 
-boolean
+bool
 draw_get_option_use_llvm(void)
 {
 #ifdef DRAW_LLVM_AVAILABLE
@@ -69,7 +69,7 @@ draw_get_option_use_llvm(void)
  */
 static struct draw_context *
 draw_create_context(struct pipe_context *pipe, void *context,
-                    boolean try_llvm)
+                    bool try_llvm)
 {
    struct draw_context *draw = CALLOC_STRUCT(draw_context);
    if (!draw)
@@ -130,7 +130,7 @@ draw_create_no_llvm(struct pipe_context *pipe)
 }
 
 
-boolean
+bool
 draw_init(struct draw_context *draw)
 {
    /*
@@ -330,10 +330,10 @@ void draw_set_rasterizer_state(struct draw_context *draw,
  */
 void
 draw_set_driver_clipping(struct draw_context *draw,
-                         boolean bypass_clip_xy,
-                         boolean bypass_clip_z,
-                         boolean guard_band_xy,
-                         boolean bypass_clip_points_lines)
+                         bool bypass_clip_xy,
+                         bool bypass_clip_z,
+                         bool guard_band_xy,
+                         bool bypass_clip_points_lines)
 {
    draw_do_flush(draw, DRAW_FLUSH_STATE_CHANGE);
 
@@ -501,7 +501,7 @@ draw_wide_point_threshold(struct draw_context *draw, float threshold)
  * Should the draw module handle point->quad conversion for drawing sprites?
  */
 void
-draw_wide_point_sprites(struct draw_context *draw, boolean draw_sprite)
+draw_wide_point_sprites(struct draw_context *draw, bool draw_sprite)
 {
    draw_do_flush(draw, DRAW_FLUSH_STATE_CHANGE);
    draw->pipeline.wide_point_sprites = draw_sprite;
@@ -524,7 +524,7 @@ draw_wide_line_threshold(struct draw_context *draw, float threshold)
  * Tells the draw module whether or not to implement line stipple.
  */
 void
-draw_enable_line_stipple(struct draw_context *draw, boolean enable)
+draw_enable_line_stipple(struct draw_context *draw, bool enable)
 {
    draw_do_flush(draw, DRAW_FLUSH_STATE_CHANGE);
    draw->pipeline.line_stipple = enable;
@@ -535,7 +535,7 @@ draw_enable_line_stipple(struct draw_context *draw, boolean enable)
  * Tells draw module whether to convert points to quads for sprite mode.
  */
 void
-draw_enable_point_sprites(struct draw_context *draw, boolean enable)
+draw_enable_point_sprites(struct draw_context *draw, bool enable)
 {
    draw_do_flush(draw, DRAW_FLUSH_STATE_CHANGE);
    draw->pipeline.point_sprite = enable;
@@ -920,7 +920,7 @@ draw_current_shader_viewport_index_output(const struct draw_context *draw)
  * Returns true if there's a geometry shader bound and the geometry
  * shader writes out a viewport index.
  */
-boolean
+bool
 draw_current_shader_uses_viewport_index(const struct draw_context *draw)
 {
    if (draw->ms.mesh_shader)
@@ -1214,7 +1214,7 @@ draw_get_shader_param(enum pipe_shader_type shader, enum pipe_shader_cap param)
  */
 void
 draw_collect_pipeline_statistics(struct draw_context *draw,
-                                 boolean enable)
+                                 bool enable)
 {
    draw->collect_statistics = enable;
 }
@@ -1262,7 +1262,7 @@ draw_stats_clipper_primitives(struct draw_context *draw,
  * outputs. This is done to preserve the front-facing
  * info when decomposing primitives into wireframes.
  */
-boolean
+bool
 draw_will_inject_frontface(const struct draw_context *draw)
 {
    unsigned reduced_prim = u_reduced_prim(draw->pt.prim);

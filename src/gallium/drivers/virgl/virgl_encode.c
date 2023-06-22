@@ -1220,7 +1220,7 @@ int virgl_encoder_end_query(struct virgl_context *ctx,
 }
 
 int virgl_encoder_get_query_result(struct virgl_context *ctx,
-                                  uint32_t handle, boolean wait)
+                                  uint32_t handle, bool wait)
 {
    virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_GET_QUERY_RESULT, 0, 2));
    virgl_encoder_write_dword(ctx->cbuf, handle);
@@ -1229,7 +1229,7 @@ int virgl_encoder_get_query_result(struct virgl_context *ctx,
 }
 
 int virgl_encoder_render_condition(struct virgl_context *ctx,
-                                  uint32_t handle, boolean condition,
+                                  uint32_t handle, bool condition,
                                   enum pipe_render_cond_flag mode)
 {
    virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_SET_RENDER_CONDITION, 0, VIRGL_RENDER_CONDITION_SIZE));
@@ -1472,7 +1472,7 @@ int virgl_encode_tweak(struct virgl_context *ctx, enum vrend_tweak_type tweak, u
 
 int virgl_encode_get_query_result_qbo(struct virgl_context *ctx,
                                       uint32_t handle,
-                                      struct virgl_resource *res, boolean wait,
+                                      struct virgl_resource *res, bool wait,
                                       uint32_t result_type,
                                       uint32_t offset,
                                       uint32_t index)

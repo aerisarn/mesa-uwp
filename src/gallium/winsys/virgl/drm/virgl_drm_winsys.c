@@ -60,7 +60,7 @@
 #define cache_entry_container_res(ptr) \
     (struct virgl_hw_res*)((char*)ptr - offsetof(struct virgl_hw_res, cache_entry))
 
-static inline boolean can_cache_resource(uint32_t bind)
+static inline bool can_cache_resource(uint32_t bind)
 {
    return bind == VIRGL_BIND_CONSTANT_BUFFER ||
           bind == VIRGL_BIND_INDEX_BUFFER ||
@@ -103,7 +103,7 @@ static void virgl_hw_res_destroy(struct virgl_drm_winsys *qdws,
       FREE(res);
 }
 
-static boolean virgl_drm_resource_is_busy(struct virgl_winsys *vws,
+static bool virgl_drm_resource_is_busy(struct virgl_winsys *vws,
                                           struct virgl_hw_res *res)
 {
    struct virgl_drm_winsys *vdws = virgl_drm_winsys(vws);
@@ -628,7 +628,7 @@ virgl_drm_winsys_resource_set_type(struct virgl_winsys *qws,
    mtx_unlock(&qdws->bo_handles_mutex);
 }
 
-static boolean virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
+static bool virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
                                                     struct virgl_hw_res *res,
                                                     uint32_t stride,
                                                     struct winsys_handle *whandle)
@@ -746,7 +746,7 @@ static void virgl_drm_free_res_list(struct virgl_drm_cmd_buf *cbuf)
    FREE(cbuf->res_bo);
 }
 
-static boolean virgl_drm_lookup_res(struct virgl_drm_cmd_buf *cbuf,
+static bool virgl_drm_lookup_res(struct virgl_drm_cmd_buf *cbuf,
                                     struct virgl_hw_res *res)
 {
    unsigned hash = res->res_handle & (sizeof(cbuf->is_handle_added)-1);
@@ -825,11 +825,11 @@ static void virgl_drm_clear_res_list(struct virgl_drm_cmd_buf *cbuf)
 
 static void virgl_drm_emit_res(struct virgl_winsys *qws,
                                struct virgl_cmd_buf *_cbuf,
-                               struct virgl_hw_res *res, boolean write_buf)
+                               struct virgl_hw_res *res, bool write_buf)
 {
    struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
    struct virgl_drm_cmd_buf *cbuf = virgl_drm_cmd_buf(_cbuf);
-   boolean already_in_list = virgl_drm_lookup_res(cbuf, res);
+   bool already_in_list = virgl_drm_lookup_res(cbuf, res);
 
    if (write_buf)
       cbuf->base.buf[cbuf->base.cdw++] = res->res_handle;
@@ -838,7 +838,7 @@ static void virgl_drm_emit_res(struct virgl_winsys *qws,
       virgl_drm_add_res(qdws, cbuf, res);
 }
 
-static boolean virgl_drm_res_is_ref(struct virgl_winsys *qws,
+static bool virgl_drm_res_is_ref(struct virgl_winsys *qws,
                                     struct virgl_cmd_buf *_cbuf,
                                     struct virgl_hw_res *res)
 {
@@ -1299,7 +1299,7 @@ static void
 virgl_drm_screen_destroy(struct pipe_screen *pscreen)
 {
    struct virgl_screen *screen = virgl_screen(pscreen);
-   boolean destroy;
+   bool destroy;
 
    simple_mtx_lock(&virgl_screen_mutex);
    destroy = --screen->refcnt == 0;

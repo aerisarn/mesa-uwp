@@ -656,10 +656,10 @@ fetch_bgrx_linear(struct lp_linear_elem *elem)
 }
 
 
-static boolean
+static bool
 sampler_is_nearest(const struct lp_linear_sampler *samp,
                    const struct lp_sampler_static_state *sampler_state,
-                   boolean minify)
+                   bool minify)
 {
    unsigned img_filter;
 
@@ -719,7 +719,7 @@ sampler_is_nearest(const struct lp_linear_sampler *samp,
  * little info is extracted from each one.  Consolidate it all down to
  * something succinct in the prepare phase?
  */
-boolean
+bool
 lp_linear_init_sampler(struct lp_linear_sampler *samp,
                        const struct lp_tgsi_texture_info *info,
                        const struct lp_sampler_static_state *sampler_state,
@@ -756,9 +756,9 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
    float fdtdy = dtdy * height_oow;
    int fetch_width;
    int fetch_height;
-   boolean minify;
-   boolean need_wrap;
-   boolean is_nearest;
+   bool minify;
+   bool need_wrap;
+   bool is_nearest;
 
    samp->texture = texture;
    samp->width = width;
@@ -947,7 +947,7 @@ lp_linear_init_noop_sampler(struct lp_linear_sampler *samp)
 /*
  * Check the given sampler and texture info for linear path compatibility.
  */
-boolean
+bool
 lp_linear_check_sampler(const struct lp_sampler_static_state *sampler,
                         const struct lp_tgsi_texture_info *tex)
 {
@@ -990,7 +990,7 @@ lp_linear_check_sampler(const struct lp_sampler_static_state *sampler,
 
 #else  // DETECT_ARCH_SSE
 
-boolean
+bool
 lp_linear_check_sampler(const struct lp_sampler_static_state *sampler,
                         const struct lp_tgsi_texture_info *tex)
 {

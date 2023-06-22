@@ -43,13 +43,13 @@ void
 llvmpipe_finish(struct pipe_context *pipe,
                 const char *reason);
 
-boolean
+bool
 llvmpipe_flush_resource(struct pipe_context *pipe,
                         struct pipe_resource *resource,
                         unsigned level,
-                        boolean read_only,
-                        boolean cpu_access,
-                        boolean do_not_block,
+                        bool read_only,
+                        bool cpu_access,
+                        bool do_not_block,
                         const char *reason);
 
 #endif

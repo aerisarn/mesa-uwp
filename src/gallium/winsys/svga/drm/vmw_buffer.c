@@ -277,7 +277,7 @@ vmw_gmr_bufmgr_create(struct vmw_winsys_screen *vws)
 }
 
 
-boolean
+bool
 vmw_gmr_bufmgr_region_ptr(struct pb_buffer *buf, 
                           struct SVGAGuestPtr *ptr)
 {

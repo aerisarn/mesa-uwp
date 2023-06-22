@@ -348,15 +348,15 @@ LLVMTypeRef
 lp_build_vec_type(const struct gallivm_state *gallivm, struct lp_type type);
 
 
-boolean
+bool
 lp_check_elem_type(struct lp_type type, LLVMTypeRef elem_type);
 
 
-boolean
+bool
 lp_check_vec_type(struct lp_type type, LLVMTypeRef vec_type);
 
 
-boolean
+bool
 lp_check_value(struct lp_type type, LLVMValueRef val);
 
 

@@ -97,7 +97,7 @@ void
 renderonly_scanout_destroy(struct renderonly_scanout *scanout,
 			   struct renderonly *ro);
 
-static inline boolean
+static inline bool
 renderonly_get_handle(struct renderonly_scanout *scanout,
       struct winsys_handle *handle)
 {

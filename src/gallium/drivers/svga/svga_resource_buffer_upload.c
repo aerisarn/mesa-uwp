@@ -158,7 +158,7 @@ svga_buffer_create_host_surface(struct svga_screen *ss,
    assert(!sbuf->user);
 
    if (!sbuf->handle) {
-      boolean invalidated;
+      bool invalidated;
 
       sbuf->key.flags = 0;
 
@@ -308,7 +308,7 @@ svga_buffer_recreate_host_surface(struct svga_context *svga,
 /**
  * Returns TRUE if the surface bind flags is compatible with the new bind flags.
  */
-static boolean
+static bool
 compatible_bind_flags(unsigned bind_flags,
                       unsigned tobind_flags)
 {
@@ -857,7 +857,7 @@ svga_buffer_update_hw(struct svga_context *svga, struct svga_buffer *sbuf,
    if (!svga_buffer_has_hw_storage(sbuf)) {
       struct svga_screen *ss = svga_screen(sbuf->b.screen);
       enum pipe_error ret;
-      boolean retry;
+      bool retry;
       void *map;
       unsigned i;
 

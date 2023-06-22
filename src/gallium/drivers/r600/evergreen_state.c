@@ -1059,7 +1059,7 @@ struct r600_tex_color_info {
 	unsigned fmask;
 	unsigned fmask_slice;
 	uint64_t offset;
-	boolean export_16bpc;
+	bool export_16bpc;
 };
 
 static void evergreen_set_color_surface_buffer(struct r600_context *rctx,
@@ -3402,7 +3402,7 @@ void evergreen_update_ps_state(struct pipe_context *ctx, struct r600_pipe_shader
 	unsigned i, exports_ps, num_cout, spi_ps_in_control_0, spi_input_z, spi_ps_in_control_1, db_shader_control = 0;
 	int pos_index = -1, face_index = -1, fixed_pt_position_index = -1;
 	int ninterp = 0;
-	boolean have_perspective = FALSE, have_linear = FALSE;
+	bool have_perspective = FALSE, have_linear = FALSE;
 	static const unsigned spi_baryc_enable_bit[6] = {
 		S_0286E0_PERSP_SAMPLE_ENA(1),
 		S_0286E0_PERSP_CENTER_ENA(1),

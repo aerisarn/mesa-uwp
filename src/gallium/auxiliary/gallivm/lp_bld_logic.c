@@ -80,7 +80,7 @@ lp_build_compare_ext(struct gallivm_state *gallivm,
                      enum pipe_compare_func func,
                      LLVMValueRef a,
                      LLVMValueRef b,
-                     boolean ordered)
+                     bool ordered)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMTypeRef int_vec_type = lp_build_int_vec_type(gallivm, type);

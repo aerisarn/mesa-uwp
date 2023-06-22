@@ -173,7 +173,7 @@ struct softpipe_context {
 
    struct blitter_context *blitter;
 
-   boolean dirty_render_cache;
+   bool dirty_render_cache;
 
    struct softpipe_tile_cache *cbuf_cache[PIPE_MAX_COLOR_BUFS];
    struct softpipe_tile_cache *zsbuf_cache;

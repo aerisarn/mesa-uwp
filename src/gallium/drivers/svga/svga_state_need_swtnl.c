@@ -60,7 +60,7 @@ struct svga_tracked_state svga_update_need_swvfetch =
 static enum pipe_error
 update_need_pipeline(struct svga_context *svga, uint64_t dirty)
 {
-   boolean need_pipeline = FALSE;
+   bool need_pipeline = FALSE;
    struct svga_vertex_shader *vs = svga->curr.vs;
    const char *reason = "";
 
@@ -158,7 +158,7 @@ struct svga_tracked_state svga_update_need_pipeline =
 static enum pipe_error
 update_need_swtnl(struct svga_context *svga, uint64_t dirty)
 {
-   boolean need_swtnl;
+   bool need_swtnl;
 
    if (svga->debug.no_swtnl) {
       svga->state.sw.need_swvfetch = FALSE;

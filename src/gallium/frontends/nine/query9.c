@@ -206,7 +206,7 @@ NineQuery9_GetData( struct NineQuery9 *This,
                     DWORD dwGetDataFlags )
 {
     struct NineDevice9 *device = This->base.device;
-    boolean ok, wait_query_result = FALSE;
+    bool ok, wait_query_result = FALSE;
     union pipe_query_result presult;
     union nine_query_result nresult;
 

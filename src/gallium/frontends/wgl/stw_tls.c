@@ -57,7 +57,7 @@ static struct stw_tls_data *
 stw_tls_lookup_pending_data(DWORD dwThreadId);
 
 
-boolean
+bool
 stw_tls_init(void)
 {
    tlsIndex = TlsAlloc();
@@ -175,7 +175,7 @@ stw_tls_data_destroy(struct stw_tls_data *data)
    free(data);
 }
 
-boolean
+bool
 stw_tls_init_thread(void)
 {
    struct stw_tls_data *data;

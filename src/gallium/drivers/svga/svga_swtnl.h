@@ -33,7 +33,7 @@ struct pipe_context;
 struct vbuf_render;
 
 
-boolean svga_init_swtnl( struct svga_context *svga );
+bool svga_init_swtnl( struct svga_context *svga );
 void svga_destroy_swtnl( struct svga_context *svga );
 
 

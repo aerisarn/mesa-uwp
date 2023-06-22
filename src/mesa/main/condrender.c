@@ -47,7 +47,7 @@ BeginConditionalRender(struct gl_context *ctx, struct gl_query_object *q,
    struct st_context *st = st_context(ctx);
    uint m;
    /* Don't invert the condition for rendering by default */
-   boolean inverted = FALSE;
+   bool inverted = FALSE;
 
    st_flush_bitmap_cache(st);
 

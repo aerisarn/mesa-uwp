@@ -2713,7 +2713,7 @@ void r600_emit_shader(struct r600_context *rctx, struct r600_atom *a)
 
 unsigned r600_get_swizzle_combined(const unsigned char *swizzle_format,
 				   const unsigned char *swizzle_view,
-				   boolean vtx)
+				   bool vtx)
 {
 	unsigned i;
 	unsigned char swizzle[4];
@@ -2773,7 +2773,7 @@ uint32_t r600_translate_texformat(struct pipe_screen *screen,
 	struct r600_screen *rscreen = (struct r600_screen *)screen;
 	uint32_t result = 0, word4 = 0, yuv_format = 0;
 	const struct util_format_description *desc;
-	boolean uniform = TRUE;
+	bool uniform = TRUE;
 	bool is_srgb_valid = FALSE;
 	const unsigned char swizzle_xxxx[4] = {0, 0, 0, 0};
 	const unsigned char swizzle_yyyy[4] = {1, 1, 1, 1};

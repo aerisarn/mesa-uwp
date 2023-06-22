@@ -85,7 +85,7 @@ sp_vbuf_get_vertex_info(struct vbuf_render *vbr)
 }
 
 
-static boolean
+static bool
 sp_vbuf_allocate_vertices(struct vbuf_render *vbr,
                           ushort vertex_size, ushort nr_vertices)
 {
@@ -164,7 +164,7 @@ sp_vbuf_draw_elements(struct vbuf_render *vbr, const ushort *indices, uint nr)
    const unsigned stride = softpipe->vertex_info.size * sizeof(float);
    const void *vertex_buffer = cvbr->vertex_buffer;
    struct setup_context *setup = cvbr->setup;
-   const boolean flatshade_first = softpipe->rasterizer->flatshade_first;
+   const bool flatshade_first = softpipe->rasterizer->flatshade_first;
    unsigned i;
 
    switch (cvbr->prim) {
@@ -361,7 +361,7 @@ sp_vbuf_draw_arrays(struct vbuf_render *vbr, uint start, uint nr)
    const unsigned stride = softpipe->vertex_info.size * sizeof(float);
    const void *vertex_buffer =
       (void *) get_vert(cvbr->vertex_buffer, start, stride);
-   const boolean flatshade_first = softpipe->rasterizer->flatshade_first;
+   const bool flatshade_first = softpipe->rasterizer->flatshade_first;
    unsigned i;
 
    switch (cvbr->prim) {

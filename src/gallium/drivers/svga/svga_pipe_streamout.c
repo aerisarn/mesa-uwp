@@ -422,7 +422,7 @@ svga_set_stream_output_targets(struct pipe_context *pipe,
    struct SVGA3dSoTarget soBindings[SVGA3D_DX_MAX_SOTARGETS];
    unsigned i;
    unsigned num_so_targets;
-   boolean begin_so_queries = num_targets > 0;
+   bool begin_so_queries = num_targets > 0;
 
    SVGA_DBG(DEBUG_STREAMOUT, "%s num_targets=%d\n", __func__,
             num_targets);

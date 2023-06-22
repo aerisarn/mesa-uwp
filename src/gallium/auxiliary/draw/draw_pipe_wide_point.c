@@ -127,7 +127,7 @@ widepoint_point(struct draw_stage *stage,
 {
    const struct widepoint_stage *wide = widepoint_stage(stage);
    const unsigned pos = draw_current_shader_position_output(stage->draw);
-   const boolean sprite = (boolean) stage->draw->rasterizer->point_quad_rasterization;
+   const bool sprite = (bool) stage->draw->rasterizer->point_quad_rasterization;
    float half_size;
    float left_adj, right_adj, bot_adj, top_adj;
 

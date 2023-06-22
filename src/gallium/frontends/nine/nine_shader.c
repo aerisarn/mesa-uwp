@@ -450,15 +450,15 @@ struct shader_translator
     unsigned num_consti_allowed;
     unsigned num_constb_allowed;
 
-    boolean native_integers;
-    boolean inline_subroutines;
-    boolean want_texcoord;
-    boolean shift_wpos;
-    boolean wpos_is_sysval;
-    boolean face_is_sysval_integer;
-    boolean mul_zero_wins;
-    boolean always_output_pointsize;
-    boolean no_vs_window_space;
+    bool native_integers;
+    bool inline_subroutines;
+    bool want_texcoord;
+    bool shift_wpos;
+    bool wpos_is_sysval;
+    bool face_is_sysval_integer;
+    bool mul_zero_wins;
+    bool always_output_pointsize;
+    bool no_vs_window_space;
     unsigned texcoord_sn;
 
     struct sm1_instruction insn; /* current instruction */
@@ -498,8 +498,8 @@ struct shader_translator
     unsigned cond_depth;
     unsigned loop_labels[NINE_MAX_LOOP_DEPTH];
     unsigned cond_labels[NINE_MAX_COND_DEPTH];
-    boolean loop_or_rep[NINE_MAX_LOOP_DEPTH]; /* true: loop, false: rep */
-    boolean predicated_activated;
+    bool loop_or_rep[NINE_MAX_LOOP_DEPTH]; /* true: loop, false: rep */
+    bool predicated_activated;
 
     unsigned *inst_labels; /* LABEL op */
     unsigned num_inst_labels;
@@ -513,12 +513,12 @@ struct shader_translator
     struct sm1_local_const *lconstb;
     unsigned num_lconstb;
 
-    boolean slots_used[NINE_MAX_CONST_ALL_VS];
+    bool slots_used[NINE_MAX_CONST_ALL_VS];
     unsigned *slot_map;
     unsigned num_slots;
 
-    boolean indirect_const_access;
-    boolean failure;
+    bool indirect_const_access;
+    bool failure;
 
     struct nine_vs_output_info output_info[16];
     int num_outputs;
@@ -663,7 +663,7 @@ static struct ureg_src nine_special_constant_src(struct shader_translator *tx, i
     return src;
 }
 
-static boolean
+static bool
 tx_lconstf(struct shader_translator *tx, struct ureg_src *src, INT index)
 {
    INT i;
@@ -680,7 +680,7 @@ tx_lconstf(struct shader_translator *tx, struct ureg_src *src, INT index)
    }
    return FALSE;
 }
-static boolean
+static bool
 tx_lconsti(struct shader_translator *tx, struct ureg_src *src, INT index)
 {
    int i;
@@ -697,7 +697,7 @@ tx_lconsti(struct shader_translator *tx, struct ureg_src *src, INT index)
    }
    return FALSE;
 }
-static boolean
+static bool
 tx_lconstb(struct shader_translator *tx, struct ureg_src *src, INT index)
 {
    int i;
@@ -898,7 +898,7 @@ TEX_with_ps1x_projection(struct shader_translator *tx, struct ureg_dst dst,
 {
     unsigned dim = 1 + ((tx->info->projected >> (2 * idx)) & 3);
     struct ureg_dst tmp;
-    boolean shadow = !!(tx->info->sampler_mask_shadow & (1 << idx));
+    bool shadow = !!(tx->info->sampler_mask_shadow & (1 << idx));
 
     /* dim == 1: no projection
      * Looks like must be disabled when it makes no
@@ -946,7 +946,7 @@ tx_endloop(struct shader_translator *tx)
 }
 
 static struct ureg_dst
-tx_get_loopctr(struct shader_translator *tx, boolean loop_or_rep)
+tx_get_loopctr(struct shader_translator *tx, bool loop_or_rep)
 {
     const unsigned l = tx->loop_depth - 1;
 
@@ -2092,7 +2092,7 @@ sm1_to_nine_declusage(struct sm1_semantic *dcl)
 
 static void
 sm1_declusage_to_tgsi(struct tgsi_declaration_semantic *sem,
-                      boolean tc,
+                      bool tc,
                       struct sm1_semantic *dcl)
 {
     BYTE index = dcl->usage_idx;
@@ -2223,7 +2223,7 @@ d3dstt_to_tgsi_tex_shadow(BYTE sampler_type)
 static inline unsigned
 ps1x_sampler_type(const struct nine_shader_info *info, unsigned stage)
 {
-    boolean shadow = !!(info->sampler_mask_shadow & (1 << stage));
+    bool shadow = !!(info->sampler_mask_shadow & (1 << stage));
     switch ((info->sampler_ps1xtypes >> (stage * 2)) & 0x3) {
     case 1: return shadow ? TGSI_TEXTURE_SHADOW1D : TGSI_TEXTURE_1D;
     case 0: return shadow ? TGSI_TEXTURE_SHADOW2D : TGSI_TEXTURE_2D;
@@ -2279,8 +2279,8 @@ nine_tgsi_to_interp_mode(struct tgsi_declaration_semantic *sem)
 DECL_SPECIAL(DCL)
 {
     struct ureg_program *ureg = tx->ureg;
-    boolean is_input;
-    boolean is_sampler;
+    bool is_input;
+    bool is_sampler;
     struct tgsi_declaration_semantic tgsi;
     struct sm1_semantic sem;
     sm1_read_semantic(tx, &sem);
@@ -3316,7 +3316,7 @@ TOKEN_JUMP(struct shader_translator *tx)
     }
 }
 
-static inline boolean
+static inline bool
 sm1_parse_eof(struct shader_translator *tx)
 {
     return TOKEN_PEEK(tx) == NINED3DSP_END;
@@ -3964,11 +3964,11 @@ static const struct debug_named_value nine_shader_debug_options[] = {
     DEBUG_NAMED_VALUE_END /* must be last */
 };
 
-static inline boolean
+static inline bool
 nine_shader_get_debug_flag(uint64_t flag)
 {
     static uint64_t flags = 0;
-    static boolean first_run = TRUE;
+    static bool first_run = TRUE;
 
     if (unlikely(first_run)) {
         first_run = FALSE;

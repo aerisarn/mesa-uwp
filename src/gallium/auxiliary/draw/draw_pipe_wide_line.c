@@ -67,7 +67,7 @@ wideline_line(struct draw_stage *stage,
    const float dx = fabsf(pos0[0] - pos2[0]);
    const float dy = fabsf(pos0[1] - pos2[1]);
 
-   const boolean half_pixel_center =
+   const bool half_pixel_center =
       stage->draw->rasterizer->half_pixel_center;
 
    /* small tweak to meet GL specification */

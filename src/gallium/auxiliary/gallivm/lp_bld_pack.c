@@ -588,7 +588,7 @@ lp_build_pack2(struct gallivm_state *gallivm,
    if ((util_get_cpu_caps()->has_sse2 || util_get_cpu_caps()->has_altivec) &&
         src_type.width * src_type.length >= 128) {
       const char *intrinsic = NULL;
-      boolean swap_intrinsic_operands = FALSE;
+      bool swap_intrinsic_operands = FALSE;
 
       switch(src_type.width) {
       case 32:
@@ -781,7 +781,7 @@ lp_build_packs2(struct gallivm_state *gallivm,
                 LLVMValueRef lo,
                 LLVMValueRef hi)
 {
-   boolean clamp;
+   bool clamp;
 
    assert(!src_type.floating);
    assert(!dst_type.floating);
@@ -823,7 +823,7 @@ LLVMValueRef
 lp_build_pack(struct gallivm_state *gallivm,
               struct lp_type src_type,
               struct lp_type dst_type,
-              boolean clamped,
+              bool clamped,
               const LLVMValueRef *src, unsigned num_srcs)
 {
    LLVMValueRef (*pack2)(struct gallivm_state *gallivm,

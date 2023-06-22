@@ -1176,7 +1176,7 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
 {
    GLXContext glxCtx = ctx;
    GLXContext current = GetCurrentContext();
-   static boolean firsttime = 1, no_rast = 0;
+   static bool firsttime = 1, no_rast = 0;
 
    if (firsttime) {
       no_rast = getenv("SP_NO_RAST") != NULL;
@@ -1420,7 +1420,7 @@ PUBLIC void
 glXSwapBuffers( Display *dpy, GLXDrawable drawable )
 {
    XMesaBuffer buffer = XMesaFindBuffer( dpy, drawable );
-   static boolean firsttime = 1, no_rast = 0;
+   static bool firsttime = 1, no_rast = 0;
 
    if (firsttime) {
       no_rast = getenv("SP_NO_RAST") != NULL;

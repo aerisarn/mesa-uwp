@@ -305,7 +305,7 @@ lp_build_llvm_texture_member(struct gallivm_state *gallivm,
                              LLVMValueRef texture_unit_offset,
                              unsigned member_index,
                              const char *member_name,
-                             boolean emit_load,
+                             bool emit_load,
                              LLVMTypeRef *out_type)
 {
    LLVMBuilderRef builder = gallivm->builder;
@@ -420,7 +420,7 @@ lp_build_llvm_sampler_member(struct gallivm_state *gallivm,
                              unsigned sampler_unit,
                              unsigned member_index,
                              const char *member_name,
-                             boolean emit_load)
+                             bool emit_load)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef indices[4];
@@ -487,7 +487,7 @@ lp_build_llvm_image_member(struct gallivm_state *gallivm,
                            LLVMValueRef image_unit_offset,
                            unsigned member_index,
                            const char *member_name,
-                           boolean emit_load)
+                           bool emit_load)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef indices[4];

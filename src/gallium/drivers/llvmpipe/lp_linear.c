@@ -48,7 +48,7 @@
  * purple.  Keep blending active so we can see more of what's going
  * on.
  */
-static boolean
+static bool
 linear_fallback(const struct lp_rast_state *state,
                 unsigned x, unsigned y,
                 unsigned width, unsigned height,
@@ -73,7 +73,7 @@ linear_fallback(const struct lp_rast_state *state,
  * x,y is the surface position of the linear region, width, height is the size.
  * Return TRUE for success, FALSE otherwise.
  */
-static boolean
+static bool
 lp_fs_linear_run(const struct lp_rast_state *state,
                  unsigned x, unsigned y,
                  unsigned width, unsigned height,
@@ -139,7 +139,7 @@ lp_fs_linear_run(const struct lp_rast_state *state,
    while (input_mask) {
       int i = u_bit_scan(&input_mask);
       unsigned usage_mask = info->base.input_usage_mask[i];
-      boolean perspective =
+      bool perspective =
             info->base.input_interpolate[i] == TGSI_INTERPOLATE_PERSPECTIVE ||
             (info->base.input_interpolate[i] == TGSI_INTERPOLATE_COLOR &&
              !variant->key.flatshade);

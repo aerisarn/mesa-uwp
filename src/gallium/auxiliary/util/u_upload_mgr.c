@@ -46,7 +46,7 @@ struct u_upload_mgr {
    enum pipe_resource_usage usage;
    unsigned flags;
    unsigned map_flags;     /* Bitmask of PIPE_MAP_* flags. */
-   boolean map_persistent; /* If persistent mappings are supported. */
+   bool map_persistent; /* If persistent mappings are supported. */
 
    struct pipe_resource *buffer;   /* Upload buffer. */
    struct pipe_transfer *transfer; /* Transfer object for the upload buffer. */
@@ -122,7 +122,7 @@ u_upload_disable_persistent(struct u_upload_mgr *upload)
 }
 
 static void
-upload_unmap_internal(struct u_upload_mgr *upload, boolean destroying)
+upload_unmap_internal(struct u_upload_mgr *upload, bool destroying)
 {
    if ((!destroying && upload->map_persistent) || !upload->transfer)
       return;

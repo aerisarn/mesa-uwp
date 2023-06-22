@@ -107,7 +107,7 @@ wglBindTexImageARB(HPBUFFERARB hPbuffer, int iBuffer)
    struct stw_context *curctx = stw_current_context();
    struct stw_framebuffer *fb, *old_fb, *old_fbRead;
    GLenum texFormat, srcBuffer, target;
-   boolean retVal;
+   bool retVal;
    const struct stw_pixelformat_info *pfiSave;
 
    /*

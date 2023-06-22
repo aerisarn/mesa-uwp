@@ -511,9 +511,9 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
    struct draw_prim_info ia_prim_info;
    struct draw_vertex_info ia_vert_info;
    const struct draw_prim_info *prim_info = in_prim_info;
-   boolean free_prim_info = FALSE;
+   bool free_prim_info = FALSE;
    unsigned opt = fpme->opt;
-   boolean clipped = 0;
+   bool clipped = 0;
    ushort *tes_elts_out = NULL;
 
    assert(fetch_info->count > 0);
@@ -785,7 +785,7 @@ llvm_middle_end_linear_run(struct draw_pt_middle_end *middle,
 }
 
 
-static boolean
+static bool
 llvm_middle_end_linear_run_elts(struct draw_pt_middle_end *middle,
                                 unsigned start,
                                 unsigned count,

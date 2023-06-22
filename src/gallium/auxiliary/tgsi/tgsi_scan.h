@@ -84,58 +84,58 @@ struct tgsi_shader_info
    /**
     * If a tessellation control shader reads outputs, this describes which ones.
     */
-   boolean reads_pervertex_outputs;
-   boolean reads_perpatch_outputs;
-   boolean reads_tessfactor_outputs;
+   bool reads_pervertex_outputs;
+   bool reads_perpatch_outputs;
+   bool reads_tessfactor_outputs;
 
    ubyte colors_read; /**< which color components are read by the FS */
    ubyte colors_written;
-   boolean reads_position; /**< does fragment shader read position? */
-   boolean reads_z; /**< does fragment shader read depth? */
-   boolean reads_samplemask; /**< does fragment shader read sample mask? */
-   boolean reads_tess_factors; /**< If TES reads TESSINNER or TESSOUTER */
-   boolean writes_z;  /**< does fragment shader write Z value? */
-   boolean writes_stencil; /**< does fragment shader write stencil value? */
-   boolean writes_samplemask; /**< does fragment shader write sample mask? */
-   boolean writes_edgeflag; /**< vertex shader outputs edgeflag */
-   boolean uses_kill;  /**< KILL or KILL_IF instruction used? */
-   boolean uses_persp_center;
-   boolean uses_persp_centroid;
-   boolean uses_persp_sample;
-   boolean uses_linear_center;
-   boolean uses_linear_centroid;
-   boolean uses_linear_sample;
-   boolean uses_persp_opcode_interp_centroid;
-   boolean uses_persp_opcode_interp_offset;
-   boolean uses_persp_opcode_interp_sample;
-   boolean uses_linear_opcode_interp_centroid;
-   boolean uses_linear_opcode_interp_offset;
-   boolean uses_linear_opcode_interp_sample;
-   boolean uses_instanceid;
-   boolean uses_vertexid;
-   boolean uses_vertexid_nobase;
-   boolean uses_basevertex;
-   boolean uses_drawid;
-   boolean uses_primid;
-   boolean uses_frontface;
-   boolean uses_invocationid;
-   boolean uses_thread_id[3];
-   boolean uses_block_id[3];
-   boolean uses_block_size;
-   boolean uses_grid_size;
-   boolean uses_subgroup_info;
-   boolean writes_position;
-   boolean writes_psize;
-   boolean writes_clipvertex;
-   boolean writes_primid;
-   boolean writes_viewport_index;
-   boolean writes_layer;
-   boolean writes_memory; /**< contains stores or atomics to buffers or images */
-   boolean uses_doubles; /**< uses any of the double instructions */
-   boolean uses_derivatives;
-   boolean uses_bindless_samplers;
-   boolean uses_bindless_images;
-   boolean uses_fbfetch;
+   bool reads_position; /**< does fragment shader read position? */
+   bool reads_z; /**< does fragment shader read depth? */
+   bool reads_samplemask; /**< does fragment shader read sample mask? */
+   bool reads_tess_factors; /**< If TES reads TESSINNER or TESSOUTER */
+   bool writes_z;  /**< does fragment shader write Z value? */
+   bool writes_stencil; /**< does fragment shader write stencil value? */
+   bool writes_samplemask; /**< does fragment shader write sample mask? */
+   bool writes_edgeflag; /**< vertex shader outputs edgeflag */
+   bool uses_kill;  /**< KILL or KILL_IF instruction used? */
+   bool uses_persp_center;
+   bool uses_persp_centroid;
+   bool uses_persp_sample;
+   bool uses_linear_center;
+   bool uses_linear_centroid;
+   bool uses_linear_sample;
+   bool uses_persp_opcode_interp_centroid;
+   bool uses_persp_opcode_interp_offset;
+   bool uses_persp_opcode_interp_sample;
+   bool uses_linear_opcode_interp_centroid;
+   bool uses_linear_opcode_interp_offset;
+   bool uses_linear_opcode_interp_sample;
+   bool uses_instanceid;
+   bool uses_vertexid;
+   bool uses_vertexid_nobase;
+   bool uses_basevertex;
+   bool uses_drawid;
+   bool uses_primid;
+   bool uses_frontface;
+   bool uses_invocationid;
+   bool uses_thread_id[3];
+   bool uses_block_id[3];
+   bool uses_block_size;
+   bool uses_grid_size;
+   bool uses_subgroup_info;
+   bool writes_position;
+   bool writes_psize;
+   bool writes_clipvertex;
+   bool writes_primid;
+   bool writes_viewport_index;
+   bool writes_layer;
+   bool writes_memory; /**< contains stores or atomics to buffers or images */
+   bool uses_doubles; /**< uses any of the double instructions */
+   bool uses_derivatives;
+   bool uses_bindless_samplers;
+   bool uses_bindless_images;
+   bool uses_fbfetch;
    unsigned clipdist_writemask;
    unsigned culldist_writemask;
    unsigned num_written_culldistance;

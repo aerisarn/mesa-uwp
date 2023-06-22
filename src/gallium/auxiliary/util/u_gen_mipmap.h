@@ -38,7 +38,7 @@ extern "C" {
 
 struct pipe_context;
 
-extern boolean
+extern bool
 util_gen_mipmap(struct pipe_context *pipe, struct pipe_resource *pt,
                 enum pipe_format format, uint base_level, uint last_level,
                 uint first_layer, uint last_layer, uint filter);

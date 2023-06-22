@@ -28,7 +28,7 @@
 #include "util/u_debug.h"
 #include "tgsi_iterate.h"
 
-boolean
+bool
 tgsi_iterate_shader(
    const struct tgsi_token *tokens,
    struct tgsi_iterate_context *ctx )

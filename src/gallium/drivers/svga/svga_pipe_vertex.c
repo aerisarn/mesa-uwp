@@ -63,7 +63,7 @@ svga_set_vertex_buffers(struct pipe_context *pipe,
  * Range adjustment scales and biases values from [0,1] to [-1,1].
  * This lets us avoid the swtnl path.
  */
-static boolean
+static bool
 attrib_needs_range_adjustment(enum pipe_format format)
 {
    switch (format) {

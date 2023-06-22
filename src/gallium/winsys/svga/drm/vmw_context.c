@@ -69,7 +69,7 @@
 struct vmw_buffer_relocation
 {
    struct pb_buffer *buffer;
-   boolean is_mob;
+   bool is_mob;
    uint32 offset;
 
    union {
@@ -88,7 +88,7 @@ struct vmw_ctx_validate_item {
       struct vmw_svga_winsys_surface *vsurf;
       struct vmw_svga_winsys_shader *vshader;
    };
-   boolean referenced;
+   bool referenced;
 };
 
 struct vmw_svga_winsys_context
@@ -99,7 +99,7 @@ struct vmw_svga_winsys_context
    struct hash_table *hash;
 
 #ifdef DEBUG
-   boolean must_flush;
+   bool must_flush;
    struct debug_stack_frame must_flush_stack[VMW_MUST_FLUSH_STACK];
    struct debug_flush_ctx *fctx;
 #endif
@@ -150,7 +150,7 @@ struct vmw_svga_winsys_context
     * ran out of command space, but because a substantial ammount of GMR was
     * referred.
     */
-   boolean preemptive_flush;
+   bool preemptive_flush;
 };
 
 
@@ -366,14 +366,14 @@ vmw_swc_context_relocation(struct svga_winsys_context *swc,
    *cid = swc->cid;
 }
 
-static boolean
+static bool
 vmw_swc_add_validate_buffer(struct vmw_svga_winsys_context *vswc,
 			    struct pb_buffer *pb_buf,
 			    unsigned flags)
 {
    ASSERTED enum pipe_error ret;
    unsigned translated_flags;
-   boolean already_present;
+   bool already_present;
 
    translated_flags = vmw_translate_to_pb_flags(flags);
    ret = pb_validate_add_buffer(vswc->validate, pb_buf, translated_flags,

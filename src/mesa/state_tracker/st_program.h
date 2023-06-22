@@ -237,7 +237,7 @@ struct st_common_variant_key
    bool clamp_color;
 
    /** lower glPointSize to gl_PointSize */
-   boolean export_point_size;
+   bool export_point_size;
 
    /* for user-defined clip-planes */
    uint8_t lower_ucp;

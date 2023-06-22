@@ -56,7 +56,7 @@ svga_vbuf_render_get_vertex_info(struct vbuf_render *render)
 }
 
 
-static boolean
+static bool
 svga_vbuf_render_allocate_vertices(struct vbuf_render *render,
                                    ushort vertex_size,
                                    ushort nr_vertices)
@@ -65,8 +65,8 @@ svga_vbuf_render_allocate_vertices(struct vbuf_render *render,
    struct svga_context *svga = svga_render->svga;
    struct pipe_screen *screen = svga->pipe.screen;
    size_t size = (size_t)nr_vertices * (size_t)vertex_size;
-   boolean new_vbuf = FALSE;
-   boolean new_ibuf = FALSE;
+   bool new_vbuf = FALSE;
+   bool new_ibuf = FALSE;
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga),
                         SVGA_STATS_TIME_VBUFRENDERALLOCVERT);
@@ -218,7 +218,7 @@ svga_vbuf_submit_state(struct svga_vbuf_render *svga_render)
    SVGA3dVertexDecl vdecl[PIPE_MAX_ATTRIBS];
    unsigned i;
    static const unsigned zero[PIPE_MAX_ATTRIBS] = {0};
-   boolean retried;
+   bool retried;
 
    /* if the vdecl or vbuf hasn't changed do nothing */
    if (!svga->swtnl.new_vdecl)
@@ -288,7 +288,7 @@ svga_vbuf_render_draw_arrays(struct vbuf_render *render,
    /* instancing will already have been resolved at this point by 'draw' */
    const unsigned start_instance = 0;
    const unsigned instance_count = 1;
-   boolean retried;
+   bool retried;
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_VBUFDRAWARRAYS);
 
@@ -320,7 +320,7 @@ svga_vbuf_render_draw_elements(struct vbuf_render *render,
    struct svga_context *svga = svga_render->svga;
    int bias = (svga_render->vbuf_offset - svga_render->vdecl_offset)
       / svga_render->vertex_size;
-   boolean retried;
+   bool retried;
    /* instancing will already have been resolved at this point by 'draw' */
    const struct pipe_draw_info info = {
       .index_size = 2,

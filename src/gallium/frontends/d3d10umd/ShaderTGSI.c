@@ -217,10 +217,10 @@ struct Shader_xlate {
    uint indexable_temp_offsets[SHADER_MAX_INDEXABLE_TEMPS];
 
    struct {
-      boolean declared;
+      bool declared;
       uint    writemask;
       uint    siv_name;
-      boolean overloaded;
+      bool overloaded;
       struct ureg_src reg;
    } inputs[SHADER_MAX_INPUTS];
 
@@ -815,7 +815,7 @@ translate_indexable_temp(struct Shader_xlate *sx,
 static struct ureg_dst
 translate_dst_operand(struct Shader_xlate *sx,
                       const struct Shader_dst_operand *operand,
-                      boolean saturate)
+                      bool saturate)
 {
    struct ureg_dst reg;
    unsigned writemask =
@@ -1128,7 +1128,7 @@ texture_dim_from_tgsi_target(unsigned tgsi_target)
    }
 }
 
-static boolean
+static bool
 operand_is_scalar(const struct Shader_src_operand *operand)
 {
    return operand->swizzle[0] == operand->swizzle[1] &&
@@ -1247,8 +1247,8 @@ Shader_tgsi_translate(const unsigned *code,
    struct Shader_opcode opcode;
    const struct tgsi_token *tokens = NULL;
    uint nr_tokens;
-   boolean shader_dumped = FALSE;
-   boolean inside_sub = FALSE;
+   bool shader_dumped = FALSE;
+   bool inside_sub = FALSE;
    uint i, j;
 
    memset(&sx, 0, sizeof sx);

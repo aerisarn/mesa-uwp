@@ -64,7 +64,7 @@ draw_pipe_passthrough_tri(struct draw_stage *stage, struct prim_header *header)
 /**
  * Allocate space for temporary post-transform vertices, such as for clipping.
  */
-boolean
+bool
 draw_alloc_temp_verts(struct draw_stage *stage, unsigned nr)
 {
    assert(!stage->tmp);

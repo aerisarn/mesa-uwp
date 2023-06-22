@@ -424,7 +424,7 @@ lp_emit_declaration_aos(
  * Emit LLVM for one TGSI instruction.
  * \param return TRUE for success, FALSE otherwise
  */
-boolean
+bool
 lp_emit_instruction_aos(
    struct lp_build_tgsi_aos_context *bld,
    const struct tgsi_full_instruction *inst,

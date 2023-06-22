@@ -50,8 +50,8 @@
 struct vs_transform_context {
     struct tgsi_transform_context base;
 
-    boolean color_used[2];
-    boolean bcolor_used[2];
+    bool color_used[2];
+    bool bcolor_used[2];
 
     /* Index of the pos output, typically 0. */
     unsigned pos_output;
@@ -68,11 +68,11 @@ struct vs_transform_context {
     unsigned out_remap[32];
 
     /* First instruction processed? */
-    boolean first_instruction;
+    bool first_instruction;
     /* End instruction processed? */
-    boolean end_instruction;
+    bool end_instruction;
 
-    boolean temp_used[1024];
+    bool temp_used[1024];
 };
 
 static void emit_temp(struct tgsi_transform_context *ctx, unsigned reg)

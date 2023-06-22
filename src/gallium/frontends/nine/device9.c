@@ -132,7 +132,7 @@ nine_resource_create_with_retry( struct NineDevice9 *This,
 }
 
 void
-NineDevice9_SetDefaultState( struct NineDevice9 *This, boolean is_reset )
+NineDevice9_SetDefaultState( struct NineDevice9 *This, bool is_reset )
 {
     struct NineSurface9 *refSurf = NULL;
 
@@ -179,7 +179,7 @@ NineDevice9_ctor( struct NineDevice9 *This,
                   IDirect3D9 *pD3D9,
                   ID3DPresentGroup *pPresentationGroup,
                   struct d3dadapter9_context *pCTX,
-                  boolean ex,
+                  bool ex,
                   D3DDISPLAYMODEEX *pFullscreenDisplayMode,
                   int minorVersionNum )
 {
@@ -1696,9 +1696,9 @@ NineDevice9_StretchRect( struct NineDevice9 *This,
     struct NineSurface9 *dst = NineSurface9(pDestSurface);
     struct NineSurface9 *src = NineSurface9(pSourceSurface);
     struct pipe_resource *dst_res, *src_res;
-    boolean zs;
+    bool zs;
     struct pipe_blit_info blit;
-    boolean scaled, clamped, ms, flip_x = FALSE, flip_y = FALSE;
+    bool scaled, clamped, ms, flip_x = FALSE, flip_y = FALSE;
 
     DBG("This=%p pSourceSurface=%p pSourceRect=%p pDestSurface=%p "
         "pDestRect=%p Filter=%u\n",
@@ -4318,7 +4318,7 @@ NineDevice9_new( struct pipe_screen *pScreen,
                  IDirect3D9 *pD3D9,
                  ID3DPresentGroup *pPresentationGroup,
                  struct d3dadapter9_context *pCTX,
-                 boolean ex,
+                 bool ex,
                  D3DDISPLAYMODEEX *pFullscreenDisplayMode,
                  struct NineDevice9 **ppOut,
                  int minorVersionNum )

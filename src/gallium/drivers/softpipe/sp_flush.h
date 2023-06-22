@@ -45,15 +45,15 @@ softpipe_flush_wrapped(struct pipe_context *pipe,
                        struct pipe_fence_handle **fence,
                        unsigned flags);
 
-boolean
+bool
 softpipe_flush_resource(struct pipe_context *pipe,
                         struct pipe_resource *texture,
                         unsigned level,
                         int layer,
                         unsigned flush_flags,
-                        boolean read_only,
-                        boolean cpu_access,
-                        boolean do_not_block);
+                        bool read_only,
+                        bool cpu_access,
+                        bool do_not_block);
 
 void softpipe_texture_barrier(struct pipe_context *pipe, unsigned flags);
 void softpipe_memory_barrier(struct pipe_context *pipe, unsigned flags);

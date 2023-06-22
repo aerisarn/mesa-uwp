@@ -75,7 +75,7 @@ write_tsv_row(FILE *fp,
               const struct pipe_blend_state *blend,
               struct lp_type type,
               double cycles,
-              boolean success)
+              bool success)
 {
    fprintf(fp, "%s\t", success ? "pass" : "fail");
 
@@ -431,7 +431,7 @@ compute_blend_ref(const struct pipe_blend_state *blend,
 
 
 UTIL_ALIGN_STACK
-static boolean
+static bool
 test_one(unsigned verbose,
          FILE *fp,
          const struct pipe_blend_state *blend,
@@ -441,7 +441,7 @@ test_one(unsigned verbose,
    struct gallivm_state *gallivm;
    LLVMValueRef func = NULL;
    blend_test_ptr_t blend_test_ptr;
-   boolean success;
+   bool success;
    const unsigned n = LP_TEST_NUM_SAMPLES;
    int64_t cycles[LP_TEST_NUM_SAMPLES];
    double cycles_avg = 0.0;
@@ -636,7 +636,7 @@ const unsigned num_factors = ARRAY_SIZE(blend_factors);
 const unsigned num_types = ARRAY_SIZE(blend_types);
 
 
-boolean
+bool
 test_all(unsigned verbose, FILE *fp)
 {
    const unsigned *rgb_func;
@@ -647,7 +647,7 @@ test_all(unsigned verbose, FILE *fp)
    const unsigned *alpha_dst_factor;
    struct pipe_blend_state blend;
    const struct lp_type *type;
-   boolean success = TRUE;
+   bool success = TRUE;
 
    for (rgb_func = blend_funcs; rgb_func < &blend_funcs[num_funcs]; ++rgb_func) {
       for (alpha_func = blend_funcs; alpha_func < &blend_funcs[num_funcs]; ++alpha_func) {
@@ -686,7 +686,7 @@ test_all(unsigned verbose, FILE *fp)
 }
 
 
-boolean
+bool
 test_some(unsigned verbose, FILE *fp,
           unsigned long n)
 {
@@ -698,7 +698,7 @@ test_some(unsigned verbose, FILE *fp,
    const unsigned *alpha_dst_factor;
    struct pipe_blend_state blend;
    const struct lp_type *type;
-   boolean success = TRUE;
+   bool success = TRUE;
 
    for (unsigned long i = 0; i < n; ++i) {
       rgb_func = &blend_funcs[rand() % num_funcs];
@@ -734,7 +734,7 @@ test_some(unsigned verbose, FILE *fp,
 }
 
 
-boolean
+bool
 test_single(unsigned verbose, FILE *fp)
 {
    printf("no test_single()");

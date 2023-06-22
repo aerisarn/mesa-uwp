@@ -60,7 +60,7 @@ struct sanity_check_ctx
    uint implied_array_size;
    uint implied_out_array_size;
 
-   boolean print;
+   bool print;
 };
 
 static inline unsigned
@@ -185,7 +185,7 @@ report_warning(
    ctx->warnings++;
 }
 
-static boolean
+static bool
 check_file_name(
    struct sanity_check_ctx *ctx,
    uint file )
@@ -197,7 +197,7 @@ check_file_name(
    return TRUE;
 }
 
-static boolean
+static bool
 is_register_declared(
    struct sanity_check_ctx *ctx,
    const scan_register *reg)
@@ -208,7 +208,7 @@ is_register_declared(
    return  data ? TRUE : FALSE;
 }
 
-static boolean
+static bool
 is_any_register_declared(
    struct sanity_check_ctx *ctx,
    uint file )
@@ -226,7 +226,7 @@ is_any_register_declared(
    return FALSE;
 }
 
-static boolean
+static bool
 is_register_used(
    struct sanity_check_ctx *ctx,
    scan_register *reg)
@@ -238,7 +238,7 @@ is_register_used(
 }
 
 
-static boolean
+static bool
 is_ind_register_used(
    struct sanity_check_ctx *ctx,
    scan_register *reg)
@@ -260,12 +260,12 @@ static const char *file_names[TGSI_FILE_COUNT] =
    "RES"
 };
 
-static boolean
+static bool
 check_register_usage(
    struct sanity_check_ctx *ctx,
    scan_register *reg,
    const char *name,
-   boolean indirect_access )
+   bool indirect_access )
 {
    if (!check_file_name( ctx, reg->file )) {
       FREE(reg);
@@ -303,7 +303,7 @@ check_register_usage(
    return TRUE;
 }
 
-static boolean
+static bool
 iter_instruction(
    struct tgsi_iterate_context *iter,
    struct tgsi_full_instruction *inst )
@@ -354,7 +354,7 @@ iter_instruction(
          ctx,
          reg,
          "source",
-         (boolean)inst->Src[i].Register.Indirect );
+         (bool)inst->Src[i].Register.Indirect );
       if (inst->Src[i].Register.Indirect) {
          scan_register *ind_reg = MALLOC(sizeof(scan_register));
 
@@ -387,7 +387,7 @@ check_and_declare(struct sanity_check_ctx *ctx,
 }
 
 
-static boolean
+static bool
 iter_declaration(
    struct tgsi_iterate_context *iter,
    struct tgsi_full_declaration *decl )
@@ -446,7 +446,7 @@ iter_declaration(
    return TRUE;
 }
 
-static boolean
+static bool
 iter_immediate(
    struct tgsi_iterate_context *iter,
    struct tgsi_full_immediate *imm )
@@ -479,7 +479,7 @@ iter_immediate(
 }
 
 
-static boolean
+static bool
 iter_property(
    struct tgsi_iterate_context *iter,
    struct tgsi_full_property *prop )
@@ -496,7 +496,7 @@ iter_property(
    return TRUE;
 }
 
-static boolean
+static bool
 prolog(struct tgsi_iterate_context *iter)
 {
    struct sanity_check_ctx *ctx = (struct sanity_check_ctx *) iter;
@@ -506,7 +506,7 @@ prolog(struct tgsi_iterate_context *iter)
    return TRUE;
 }
 
-static boolean
+static bool
 epilog(
    struct tgsi_iterate_context *iter )
 {
@@ -555,12 +555,12 @@ regs_hash_destroy(struct cso_hash *hash)
    cso_hash_deinit(hash);
 }
 
-boolean
+bool
 tgsi_sanity_check(
    const struct tgsi_token *tokens )
 {
    struct sanity_check_ctx ctx;
-   boolean retval;
+   bool retval;
 
    ctx.iter.prolog = prolog;
    ctx.iter.iterate_instruction = iter_instruction;

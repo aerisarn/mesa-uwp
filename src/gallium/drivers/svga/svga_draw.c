@@ -86,7 +86,7 @@ svga_hwtnl_destroy(struct svga_hwtnl *hwtnl)
 
 void
 svga_hwtnl_set_flatshade(struct svga_hwtnl *hwtnl,
-                         boolean flatshade, boolean flatshade_first)
+                         bool flatshade, bool flatshade_first)
 {
    struct svga_screen *svgascreen = svga_screen(hwtnl->svga->pipe.screen);
 
@@ -157,7 +157,7 @@ svga_hwtnl_vertex_buffers(struct svga_hwtnl *hwtnl,
  * Determine whether the specified buffer is referred in the primitive queue,
  * for which no commands have been written yet.
  */
-boolean
+bool
 svga_hwtnl_is_buffer_referred(struct svga_hwtnl *hwtnl,
                               struct pipe_resource *buffer)
 {
@@ -646,7 +646,7 @@ last_command_was_draw(const struct svga_context *svga)
  * They are equal if the vertex buffer attributes and the vertex buffer
  * resources are identical.
  */
-static boolean
+static bool
 vertex_buffers_equal(unsigned count,
                      SVGA3dVertexBuffer_v2 *pVBufAttr1,
                      struct pipe_resource **pVBuf1,
@@ -824,7 +824,7 @@ validate_vertex_buffers(struct svga_hwtnl *hwtnl,
             SVGA3dVertexBuffer_v2 *pbufAttrs = vbuffer_attrs;
             struct svga_winsys_surface **pbufHandles = vbuffer_handles;
             unsigned numVBuf = 0;
-            boolean emitVBufs =
+            bool emitVBufs =
                !svga_sws(svga)->have_index_vertex_buffer_offset_cmd ||
                svga->rebind.flags.vertexbufs;
 
@@ -833,7 +833,7 @@ validate_vertex_buffers(struct svga_hwtnl *hwtnl,
              * corresponding entries in the device's vertex buffer list.
              */
             for (i = 0; i < num_vbuffers; i++) {
-               boolean emit =
+               bool emit =
                   vertex_buffers_equal(1,
                                        &vbuffer_attrs[i],
                                        &vbuffers[i],
@@ -1410,7 +1410,7 @@ done:
 /**
  * Return TRUE if there are pending primitives.
  */
-boolean
+bool
 svga_hwtnl_has_pending_prim(struct svga_hwtnl *hwtnl)
 {
    return hwtnl->cmd.prim_count > 0;

@@ -44,7 +44,7 @@ struct u_rect {
 /* Do two rectangles intersect?
  * Note: empty rectangles are valid as inputs (and never intersect).
  */
-static inline boolean
+static inline bool
 u_rect_test_intersection(const struct u_rect *a,
                          const struct u_rect *b)
 {

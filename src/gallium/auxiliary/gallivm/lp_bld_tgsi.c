@@ -235,7 +235,7 @@ get_src_chan_idx(enum tgsi_opcode opcode,
 /* XXX: COMMENT
  * It should be assumed that this function ignores writemasks
  */
-boolean
+bool
 lp_build_tgsi_inst_llvm(struct lp_build_tgsi_context *bld_base,
                         const struct tgsi_full_instruction *inst)
 {
@@ -508,7 +508,7 @@ lp_build_emit_fetch_texoffset(struct lp_build_tgsi_context *bld_base,
 }
 
 
-boolean
+bool
 lp_build_tgsi_llvm(struct lp_build_tgsi_context *bld_base,
                    const struct tgsi_token *tokens)
 {

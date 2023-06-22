@@ -137,9 +137,9 @@ get_uint_cap(struct svga_winsys_screen *sws, SVGA3dDevCapIndex cap,
 
 
 /** Helper for querying boolean-valued device cap */
-static boolean
+static bool
 get_bool_cap(struct svga_winsys_screen *sws, SVGA3dDevCapIndex cap,
-             boolean defaultVal)
+             bool defaultVal)
 {
    SVGA3dDevCapResult result;
    if (sws->get_cap(sws, cap, &result))
@@ -1161,7 +1161,7 @@ svga_screen_create(struct svga_winsys_screen *sws)
     */
 
    {
-      boolean has_df16, has_df24, has_d24s8_int;
+      bool has_df16, has_df24, has_d24s8_int;
       SVGA3dSurfaceFormatCaps caps;
       SVGA3dSurfaceFormatCaps mask;
       mask.value = 0;

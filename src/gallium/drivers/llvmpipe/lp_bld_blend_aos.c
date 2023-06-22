@@ -74,7 +74,7 @@ struct lp_build_blend_aos_context
    LLVMValueRef dst;
    LLVMValueRef const_;
    LLVMValueRef const_alpha;
-   boolean has_dst_alpha;
+   bool has_dst_alpha;
 
    LLVMValueRef inv_src;
    LLVMValueRef inv_src_alpha;
@@ -93,7 +93,7 @@ struct lp_build_blend_aos_context
 static LLVMValueRef
 lp_build_blend_factor_unswizzled(struct lp_build_blend_aos_context *bld,
                                  unsigned factor,
-                                 boolean alpha)
+                                 bool alpha)
 {
    LLVMValueRef src_alpha = bld->src_alpha ? bld->src_alpha : bld->src;
    LLVMValueRef src1_alpha = bld->src1_alpha ? bld->src1_alpha : bld->src1;
@@ -369,11 +369,11 @@ lp_build_blend_aos(struct gallivm_state *gallivm,
    } else if (!state->blend_enable) {
       result = src;
    } else {
-      boolean rgb_alpha_same =
+      bool rgb_alpha_same =
          (state->rgb_src_factor == state->rgb_dst_factor &&
           state->alpha_src_factor == state->alpha_dst_factor) ||
          nr_channels == 1;
-      boolean alpha_only = nr_channels == 1 && alpha_swizzle == PIPE_SWIZZLE_X;
+      bool alpha_only = nr_channels == 1 && alpha_swizzle == PIPE_SWIZZLE_X;
       LLVMValueRef src_factor, dst_factor;
 
       src_factor = lp_build_blend_factor(&bld, state->rgb_src_factor,

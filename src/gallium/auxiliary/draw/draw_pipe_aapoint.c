@@ -359,7 +359,7 @@ aa_transform_inst(struct tgsi_transform_context *ctx,
  * Generate the frag shader we'll use for drawing AA points.
  * This will be the user's shader plus some texture/modulate instructions.
  */
-static boolean
+static bool
 generate_aapoint_fs(struct aapoint_stage *aapoint)
 {
    const struct pipe_shader_state *orig_fs = &aapoint->fs->state;
@@ -409,7 +409,7 @@ fail:
 }
 
 
-static boolean
+static bool
 generate_aapoint_fs_nir(struct aapoint_stage *aapoint)
 {
    struct pipe_context *pipe = aapoint->stage.draw->pipe;
@@ -437,7 +437,7 @@ fail:
  * When we're about to draw our first AA point in a batch, this function is
  * called to tell the driver to bind our modified fragment shader.
  */
-static boolean
+static bool
 bind_aapoint_fragment_shader(struct aapoint_stage *aapoint)
 {
    struct draw_context *draw = aapoint->stage.draw;
@@ -795,7 +795,7 @@ aapoint_delete_fs_state(struct pipe_context *pipe, void *fs)
  * into the draw module's pipeline.  This will not be used if the
  * hardware has native support for AA points.
  */
-boolean
+bool
 draw_install_aapoint_stage(struct draw_context *draw,
                            struct pipe_context *pipe,
                            nir_alu_type bool_type)

@@ -33,7 +33,7 @@ unsigned r300_get_pixel_alignment(enum pipe_format format,
                                   unsigned num_samples,
                                   enum radeon_bo_layout microtile,
                                   enum radeon_bo_layout macrotile,
-                                  enum r300_dim dim, boolean is_rs690)
+                                  enum r300_dim dim, bool is_rs690)
 {
     static const unsigned table[2][5][3][2] =
     {
@@ -80,9 +80,9 @@ unsigned r300_get_pixel_alignment(enum pipe_format format,
 }
 
 /* Return true if macrotiling should be enabled on the miplevel. */
-static boolean r300_texture_macro_switch(struct r300_resource *tex,
+static bool r300_texture_macro_switch(struct r300_resource *tex,
                                          unsigned level,
-                                         boolean rv350_mode,
+                                         bool rv350_mode,
                                          enum r300_dim dim)
 {
     unsigned tile, texdim;
@@ -116,7 +116,7 @@ static unsigned r300_texture_get_stride(struct r300_screen *screen,
                                         unsigned level)
 {
     unsigned tile_width, width, stride;
-    boolean is_rs690 = (screen->caps.family == CHIP_RS600 ||
+    bool is_rs690 = (screen->caps.family == CHIP_RS600 ||
                         screen->caps.family == CHIP_RS690 ||
                         screen->caps.family == CHIP_RS740);
 
@@ -150,7 +150,7 @@ static unsigned r300_texture_get_stride(struct r300_screen *screen,
 
 static unsigned r300_texture_get_nblocksy(struct r300_resource *tex,
                                           unsigned level,
-                                          boolean *out_aligned_for_cbzb)
+                                          bool *out_aligned_for_cbzb)
 {
     unsigned height, tile_height;
 
@@ -211,12 +211,12 @@ unsigned r300_stride_to_width(enum pipe_format format,
 
 static void r300_setup_miptree(struct r300_screen *screen,
                                struct r300_resource *tex,
-                               boolean align_for_cbzb)
+                               bool align_for_cbzb)
 {
     struct pipe_resource *base = &tex->b;
     unsigned stride, size, layer_size, nblocksy, i;
-    boolean rv350_mode = screen->caps.family >= CHIP_R350;
-    boolean aligned_for_cbzb;
+    bool rv350_mode = screen->caps.family >= CHIP_R350;
+    bool aligned_for_cbzb;
 
     tex->tex.size_in_bytes = 0;
 
@@ -285,7 +285,7 @@ static void r300_setup_cbzb_flags(struct r300_screen *rscreen,
                                   struct r300_resource *tex)
 {
     unsigned i, bpp;
-    boolean first_level_valid;
+    bool first_level_valid;
 
     bpp = util_format_get_blocksizebits(tex->b.format);
 
@@ -468,10 +468,10 @@ static void r300_setup_tiling(struct r300_screen *screen,
                               struct r300_resource *tex)
 {
     enum pipe_format format = tex->b.format;
-    boolean rv350_mode = screen->caps.family >= CHIP_R350;
-    boolean is_zb = util_format_is_depth_or_stencil(format);
-    boolean dbg_no_tiling = SCREEN_DBG_ON(screen, DBG_NO_TILING);
-    boolean force_microtiling =
+    bool rv350_mode = screen->caps.family >= CHIP_R350;
+    bool is_zb = util_format_is_depth_or_stencil(format);
+    bool dbg_no_tiling = SCREEN_DBG_ON(screen, DBG_NO_TILING);
+    bool force_microtiling =
         (tex->b.flags & R300_RESOURCE_FORCE_MICROTILING) != 0;
 
     if (tex->b.nr_samples > 1) {

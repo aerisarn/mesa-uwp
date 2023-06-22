@@ -59,7 +59,7 @@ static struct svga_winsys_surface *
 vmw_drm_gb_surface_from_handle(struct svga_winsys_screen *sws,
                                struct winsys_handle *whandle,
                                SVGA3dSurfaceFormat *format);
-static boolean
+static bool
 vmw_drm_surface_get_handle(struct svga_winsys_screen *sws,
 			   struct svga_winsys_surface *surface,
 			   unsigned stride,
@@ -68,7 +68,7 @@ vmw_drm_surface_get_handle(struct svga_winsys_screen *sws,
 static struct dri1_api_version drm_required = { 2, 1, 0 };
 static struct dri1_api_version drm_compat = { 2, 0, 0 };
 
-static boolean
+static bool
 vmw_dri1_check_version(const struct dri1_api_version *cur,
 		       const struct dri1_api_version *required,
 		       const struct dri1_api_version *compat,
@@ -321,7 +321,7 @@ out_mip:
     return NULL;
 }
 
-static boolean
+static bool
 vmw_drm_surface_get_handle(struct svga_winsys_screen *sws,
 			   struct svga_winsys_surface *surface,
 			   unsigned stride,

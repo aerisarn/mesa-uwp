@@ -108,7 +108,7 @@ stw_pf_depth_stencil[] = {
 };
 
 
-static const boolean
+static const bool
 stw_pf_doublebuffer[] = {
    FALSE,
    TRUE,
@@ -133,12 +133,12 @@ stw_pf_multisample[] = {
 
 static void
 stw_pixelformat_add(struct stw_device *stw_dev,
-                    boolean extended,
+                    bool extended,
                     const struct stw_pf_color_info *color,
                     const struct stw_pf_depth_info *depth,
                     unsigned accum,
-                    boolean doublebuffer,
-                    boolean gdi,
+                    bool doublebuffer,
+                    bool gdi,
                     unsigned samples)
 {
    struct stw_pixelformat_info *pfi;
@@ -238,7 +238,7 @@ stw_pixelformat_add(struct stw_device *stw_dev,
  */
 static unsigned
 add_color_format_variants(const struct stw_pf_color_info *color_formats,
-                          unsigned num_color_formats, boolean extended)
+                          unsigned num_color_formats, bool extended)
 {
    struct pipe_screen *screen = stw_dev->screen;
    unsigned cfmt, ms, db, ds, acc, f;

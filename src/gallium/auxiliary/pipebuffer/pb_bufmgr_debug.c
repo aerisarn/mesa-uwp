@@ -134,11 +134,11 @@ fill_random_pattern(uint8_t *dst, pb_size size)
 }
 
 
-static inline boolean 
+static inline bool 
 check_random_pattern(const uint8_t *dst, pb_size size, 
                      pb_size *min_ofs, pb_size *max_ofs) 
 {
-   boolean result = TRUE;
+   bool result = TRUE;
    pb_size i;
    *min_ofs = size;
    *max_ofs = 0;
@@ -184,7 +184,7 @@ pb_debug_buffer_check(struct pb_debug_buffer *buf)
                 PB_USAGE_UNSYNCHRONIZED, NULL);
    assert(map);
    if (map) {
-      boolean underflow, overflow;
+      bool underflow, overflow;
       pb_size min_ofs, max_ofs;
       
       underflow = !check_random_pattern(map, buf->underflow_size, 

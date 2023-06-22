@@ -54,7 +54,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(draw_no_fse, "DRAW_NO_FSE", FALSE)
  *     - pipeline -- the prim pipeline: clipping, wide lines, etc
  *     - backend  -- the vbuf_render provided by the driver.
  */
-static boolean
+static bool
 draw_pt_arrays(struct draw_context *draw,
                enum mesa_prim prim,
                bool index_bias_varies,
@@ -187,7 +187,7 @@ draw_pt_flush(struct draw_context *draw, unsigned flags)
 }
 
 
-boolean
+bool
 draw_pt_init(struct draw_context *draw)
 {
    draw->pt.test_fse = debug_get_option_draw_fse();

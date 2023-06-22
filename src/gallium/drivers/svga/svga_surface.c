@@ -189,13 +189,13 @@ svga_texture_view_surface(struct svga_context *svga,
                           int layer_pick,
                           unsigned num_layers,
                           int zslice_pick,
-                          boolean cacheable,
+                          bool cacheable,
                           struct svga_host_surface_cache_key *key) /* OUT */
 {
    struct svga_screen *ss = svga_screen(svga->pipe.screen);
    struct svga_winsys_surface *handle = NULL;
-   boolean invalidated;
-   boolean needCopyResource;
+   bool invalidated;
+   bool needCopyResource;
 
    SVGA_DBG(DEBUG_PERF,
             "svga: Create surface view: layer %d zslice %d mips %d..%d\n",
@@ -284,7 +284,7 @@ static struct pipe_surface *
 svga_create_surface_view(struct pipe_context *pipe,
                          struct pipe_resource *pt,
                          const struct pipe_surface *surf_tmpl,
-                         boolean clone_resource)
+                         bool clone_resource)
 {
    struct svga_context *svga = svga_context(pipe);
    struct svga_texture *tex = svga_texture(pt);
@@ -436,7 +436,7 @@ svga_create_surface(struct pipe_context *pipe,
    struct svga_context *svga = svga_context(pipe);
    struct pipe_screen *screen = pipe->screen;
    struct pipe_surface *surf = NULL;
-   boolean view = FALSE;
+   bool view = FALSE;
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_CREATESURFACE);
 
@@ -466,7 +466,7 @@ svga_create_surface(struct pipe_context *pipe,
  */
 static struct svga_surface *
 create_backed_surface_view(struct svga_context *svga, struct svga_surface *s,
-                           boolean clone_resource)
+                           bool clone_resource)
 {
    struct svga_texture *tex = svga_texture(s->base.texture);
 
@@ -779,7 +779,7 @@ svga_mark_surfaces_dirty(struct svga_context *svga)
  */
 void
 svga_propagate_surface(struct svga_context *svga, struct pipe_surface *surf,
-                       boolean reset)
+                       bool reset)
 {
    struct svga_surface *s = svga_surface(surf);
    struct svga_texture *tex = svga_texture(surf->texture);
@@ -906,7 +906,7 @@ svga_propagate_rendertargets(struct svga_context *svga)
 /**
  * Check if we should call svga_propagate_surface on the surface.
  */
-boolean
+bool
 svga_surface_needs_propagation(const struct pipe_surface *surf)
 {
    const struct svga_surface *s = svga_surface_const(surf);

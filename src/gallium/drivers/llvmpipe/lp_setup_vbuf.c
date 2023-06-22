@@ -78,7 +78,7 @@ lp_setup_get_vertex_info(struct vbuf_render *vbr)
 }
 
 
-static boolean
+static bool
 lp_setup_allocate_vertices(struct vbuf_render *vbr,
                           ushort vertex_size, ushort nr_vertices)
 {
@@ -174,7 +174,7 @@ lp_setup_draw_elements(struct vbuf_render *vbr, const ushort *indices, uint nr)
    struct lp_setup_context *setup = lp_setup_context(vbr);
    const unsigned stride = setup->vertex_info->size * sizeof(float);
    const void *vertex_buffer = setup->vertex_buffer;
-   const boolean flatshade_first = setup->flatshade_first;
+   const bool flatshade_first = setup->flatshade_first;
    unsigned i;
 
    assert(setup->setup.variant);
@@ -384,7 +384,7 @@ lp_setup_draw_arrays(struct vbuf_render *vbr, uint start, uint nr)
    const unsigned stride = setup->vertex_info->size * sizeof(float);
    const void *vertex_buffer =
       (void *) get_vert(setup->vertex_buffer, start, stride);
-   const boolean flatshade_first = setup->flatshade_first;
+   const bool flatshade_first = setup->flatshade_first;
    unsigned i;
 
    if (!lp_setup_update_state(setup, TRUE))

@@ -36,7 +36,7 @@
 #include "util/u_math.h"
 
 
-boolean
+bool
 draw_pipeline_init(struct draw_context *draw)
 {
    /* create pipeline stages */

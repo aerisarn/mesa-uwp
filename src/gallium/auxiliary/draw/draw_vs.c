@@ -158,7 +158,7 @@ draw_delete_vertex_shader(struct draw_context *draw,
 }
 
 
-boolean
+bool
 draw_vs_init(struct draw_context *draw)
 {
    draw->dump_vs = debug_get_option_gallium_dump_vs();

@@ -128,7 +128,7 @@ struct lp_sampler_size_query_params
    unsigned target;
    LLVMTypeRef resources_type;
    LLVMValueRef resources_ptr;
-   boolean is_sviewinfo;
+   bool is_sviewinfo;
    bool samples_only;
    enum lp_sampler_lod_property lod_property;
    LLVMValueRef explicit_lod;
@@ -386,10 +386,10 @@ struct lp_build_sample_context
    unsigned num_lods;
 
    unsigned gather_comp;
-   boolean no_quad_lod;
-   boolean no_brilinear;
-   boolean no_rho_approx;
-   boolean fetch_ms;
+   bool no_quad_lod;
+   bool no_brilinear;
+   bool no_rho_approx;
+   bool fetch_ms;
 
    /** regular scalar float type */
    struct lp_type float_type;
@@ -499,7 +499,7 @@ struct lp_build_img_op_array_switch {
  * We only support a few wrap modes in lp_build_sample_wrap_linear_int() at
  * this time.  Return whether the given mode is supported by that function.
  */
-static inline boolean
+static inline bool
 lp_is_simple_wrap_mode(unsigned mode)
 {
    switch (mode) {
@@ -553,7 +553,7 @@ texture_dims(enum pipe_texture_target tex)
 }
 
 
-static inline boolean
+static inline bool
 has_layer_coord(enum pipe_texture_target tex)
 {
    switch (tex) {
@@ -569,7 +569,7 @@ has_layer_coord(enum pipe_texture_target tex)
 }
 
 
-boolean
+bool
 lp_sampler_wrap_mode_uses_border_color(enum pipe_tex_wrap mode,
                                        enum pipe_tex_filter min_img_filter,
                                        enum pipe_tex_filter mag_img_filter);
@@ -592,7 +592,7 @@ lp_sampler_static_texture_state_image(struct lp_static_texture_state *state,
 
 void
 lp_build_lod_selector(struct lp_build_sample_context *bld,
-                      boolean is_lodq,
+                      bool is_lodq,
                       unsigned sampler_index,
                       LLVMValueRef first_level,
                       LLVMValueRef s,
@@ -676,7 +676,7 @@ lp_build_cube_lookup(struct lp_build_sample_context *bld,
                      LLVMValueRef *coords,
                      const struct lp_derivatives *derivs_in, /* optional */
                      struct lp_derivatives *derivs_out, /* optional */
-                     boolean need_derivs);
+                     bool need_derivs);
 
 
 void
@@ -748,7 +748,7 @@ LLVMValueRef
 lp_build_minify(struct lp_build_context *bld,
                 LLVMValueRef base_size,
                 LLVMValueRef level,
-                boolean lod_scalar);
+                bool lod_scalar);
 
 void
 lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,

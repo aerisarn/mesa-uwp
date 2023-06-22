@@ -48,7 +48,7 @@
 #include "stw_pixelformat.h"
 
 
-static boolean
+static bool
 stw_query_attrib(HDC hdc, int iPixelFormat, int iLayerPlane, int attrib, int *pvalue)
 {
    uint count;
@@ -442,7 +442,7 @@ wglChoosePixelFormatARB(HDC hdc, const int *piAttribIList,
     */
    if (count > 1) {
       uint n = count;
-      boolean swapped;
+      bool swapped;
 
       do {
          swapped = FALSE;

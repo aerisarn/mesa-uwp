@@ -126,7 +126,7 @@ struct translate_sse
    /* Multiple elements can map to a single buffer variant. */
    unsigned element_to_buffer_variant[TRANSLATE_MAX_ATTRIBS];
 
-   boolean use_instancing;
+   bool use_instancing;
    unsigned instance_id;
    unsigned start_instance;
 
@@ -190,7 +190,7 @@ get_const(struct translate_sse *p, unsigned id)
 
 
 /* load the data in a SSE2 register, padding with zeros */
-static boolean
+static bool
 emit_load_sse2(struct translate_sse *p,
                struct x86_reg data, struct x86_reg src, unsigned size)
 {
@@ -471,7 +471,7 @@ emit_memcpy(struct translate_sse *p, struct x86_reg dst, struct x86_reg src,
    }
 }
 
-static boolean
+static bool
 translate_attr_convert(struct translate_sse *p,
                        const struct translate_element *a,
                        struct x86_reg src, struct x86_reg dst)
@@ -481,7 +481,7 @@ translate_attr_convert(struct translate_sse *p,
    const struct util_format_description *output_desc =
       util_format_description(a->output_format);
    unsigned i;
-   boolean id_swizzle = TRUE;
+   bool id_swizzle = TRUE;
    unsigned swizzle[4] =
       { PIPE_SWIZZLE_NONE, PIPE_SWIZZLE_NONE,
         PIPE_SWIZZLE_NONE, PIPE_SWIZZLE_NONE };
@@ -1083,7 +1083,7 @@ translate_attr_convert(struct translate_sse *p,
 }
 
 
-static boolean
+static bool
 translate_attr(struct translate_sse *p,
                const struct translate_element *a,
                struct x86_reg src, struct x86_reg dst)
@@ -1097,7 +1097,7 @@ translate_attr(struct translate_sse *p,
 }
 
 
-static boolean
+static bool
 init_inputs(struct translate_sse *p, unsigned index_size)
 {
    unsigned i;
@@ -1252,7 +1252,7 @@ get_buffer_ptr(struct translate_sse *p,
 }
 
 
-static boolean
+static bool
 incr_inputs(struct translate_sse *p, unsigned index_size)
 {
    if (!index_size && p->nr_buffer_variants == 1) {
@@ -1316,7 +1316,7 @@ incr_inputs(struct translate_sse *p, unsigned index_size)
  * ECX -- pointer to current attribute 
  * 
  */
-static boolean
+static bool
 build_vertex_emit(struct translate_sse *p,
                   struct x86_function *func, unsigned index_size)
 {

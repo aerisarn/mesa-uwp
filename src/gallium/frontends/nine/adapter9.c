@@ -172,10 +172,10 @@ NineAdapter9_GetAdapterIdentifier( struct NineAdapter9 *This,
     return D3D_OK;
 }
 
-static inline boolean
+static inline bool
 backbuffer_format( D3DFORMAT dfmt,
                    D3DFORMAT bfmt,
-                   boolean win )
+                   bool win )
 {
     if (dfmt == D3DFMT_A2R10G10B10 && win) { return FALSE; }
 
@@ -233,9 +233,9 @@ NineAdapter9_CheckDeviceType( struct NineAdapter9 *This,
     return D3D_OK;
 }
 
-static inline boolean
+static inline bool
 display_format( D3DFORMAT fmt,
-                boolean win )
+                bool win )
 {
     /* http://msdn.microsoft.com/en-us/library/bb172558(v=VS.85).aspx#BackBuffer_or_Display_Formats */
     static const D3DFORMAT allowed[] = {
@@ -254,7 +254,7 @@ display_format( D3DFORMAT fmt,
     return FALSE;
 }
 
-static inline boolean
+static inline bool
 adapter_format( D3DFORMAT fmt )
 {
     /* Formats that are compatible to display_format (modulo alpha bits) */
@@ -287,7 +287,7 @@ NineAdapter9_CheckDeviceFormat( struct NineAdapter9 *This,
     enum pipe_format pf;
     enum pipe_texture_target target;
     unsigned bind = 0;
-    boolean srgb;
+    bool srgb;
 
     /* Check adapter format. */
 

@@ -41,7 +41,7 @@ static void *virgl_vtest_resource_map(struct virgl_winsys *vws,
 static void virgl_vtest_resource_unmap(struct virgl_winsys *vws,
                                        struct virgl_hw_res *res);
 
-static inline boolean can_cache_resource_with_bind(uint32_t bind)
+static inline bool can_cache_resource_with_bind(uint32_t bind)
 {
    return bind == VIRGL_BIND_CONSTANT_BUFFER ||
           bind == VIRGL_BIND_INDEX_BUFFER ||
@@ -187,7 +187,7 @@ static void virgl_hw_res_destroy(struct virgl_vtest_winsys *vtws,
    FREE(res);
 }
 
-static boolean virgl_vtest_resource_is_busy(struct virgl_winsys *vws,
+static bool virgl_vtest_resource_is_busy(struct virgl_winsys *vws,
                                             struct virgl_hw_res *res)
 {
    struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
@@ -414,7 +414,7 @@ alloc:
    return res;
 }
 
-static boolean virgl_vtest_lookup_res(struct virgl_vtest_cmd_buf *cbuf,
+static bool virgl_vtest_lookup_res(struct virgl_vtest_cmd_buf *cbuf,
                                       struct virgl_hw_res *res)
 {
    unsigned hash = res->res_handle & (sizeof(cbuf->is_handle_added)-1);
@@ -555,11 +555,11 @@ static int virgl_vtest_winsys_submit_cmd(struct virgl_winsys *vws,
 
 static void virgl_vtest_emit_res(struct virgl_winsys *vws,
                                  struct virgl_cmd_buf *_cbuf,
-                                 struct virgl_hw_res *res, boolean write_buf)
+                                 struct virgl_hw_res *res, bool write_buf)
 {
    struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
    struct virgl_vtest_cmd_buf *cbuf = virgl_vtest_cmd_buf(_cbuf);
-   boolean already_in_list = virgl_vtest_lookup_res(cbuf, res);
+   bool already_in_list = virgl_vtest_lookup_res(cbuf, res);
 
    if (write_buf)
       cbuf->base.buf[cbuf->base.cdw++] = res->res_handle;
@@ -567,7 +567,7 @@ static void virgl_vtest_emit_res(struct virgl_winsys *vws,
       virgl_vtest_add_res(vtws, cbuf, res);
 }
 
-static boolean virgl_vtest_res_is_ref(struct virgl_winsys *vws,
+static bool virgl_vtest_res_is_ref(struct virgl_winsys *vws,
                                       struct virgl_cmd_buf *_cbuf,
                                       struct virgl_hw_res *res)
 {

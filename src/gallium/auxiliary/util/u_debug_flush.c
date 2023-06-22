@@ -56,7 +56,7 @@
 
 struct debug_map_item {
    struct debug_stack_frame *frame;
-   boolean persistent;
+   bool persistent;
 };
 
 struct debug_flush_buf {
@@ -64,11 +64,11 @@ struct debug_flush_buf {
    struct pipe_reference reference; /* Must be the first member. */
    mtx_t mutex;
    /* Immutable */
-   boolean supports_persistent;
+   bool supports_persistent;
    unsigned bt_depth;
    /* Protected by mutex */
    int map_count;
-   boolean has_sync_map;
+   bool has_sync_map;
    int last_sync_map;
    struct debug_map_item maps[DEBUG_FLUSH_MAP_DEPTH];
 };
@@ -82,7 +82,7 @@ struct debug_flush_item {
 struct debug_flush_ctx {
    /* Contexts are used by a single thread at a time */
    unsigned bt_depth;
-   boolean catch_map_of_referenced;
+   bool catch_map_of_referenced;
    struct hash_table *ref_hash;
    struct list_head head;
 };
@@ -104,7 +104,7 @@ debug_flush_capture_frame(int start, int depth)
 }
 
 struct debug_flush_buf *
-debug_flush_buf_create(boolean supports_persistent, unsigned bt_depth)
+debug_flush_buf_create(bool supports_persistent, unsigned bt_depth)
 {
    struct debug_flush_buf *fbuf = CALLOC_STRUCT(debug_flush_buf);
 
@@ -152,7 +152,7 @@ debug_flush_item_destroy(struct debug_flush_item *item)
 }
 
 struct debug_flush_ctx *
-debug_flush_ctx_create(UNUSED boolean catch_reference_of_mapped,
+debug_flush_ctx_create(UNUSED bool catch_reference_of_mapped,
                        unsigned bt_depth)
 {
    struct debug_flush_ctx *fctx = CALLOC_STRUCT(debug_flush_ctx);
@@ -183,8 +183,8 @@ out_no_ctx:
 static void
 debug_flush_alert(const char *s, const char *op,
                   unsigned start, unsigned depth,
-                  boolean continued,
-                  boolean capture,
+                  bool continued,
+                  bool capture,
                   const struct debug_stack_frame *frame)
 {
    if (capture)
@@ -211,7 +211,7 @@ debug_flush_alert(const char *s, const char *op,
 void
 debug_flush_map(struct debug_flush_buf *fbuf, unsigned flags)
 {
-   boolean map_sync, persistent;
+   bool map_sync, persistent;
 
    if (!fbuf)
       return;

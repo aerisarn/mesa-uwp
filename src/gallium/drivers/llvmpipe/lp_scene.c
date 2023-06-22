@@ -112,7 +112,7 @@ lp_scene_destroy(struct lp_scene *scene)
  * Check if the scene's bins are all empty.
  * For debugging purposes.
  */
-boolean
+bool
 lp_scene_is_empty(struct lp_scene *scene)
 {
    for (unsigned y = 0; y < scene->tiles_y; y++) {
@@ -131,7 +131,7 @@ lp_scene_is_empty(struct lp_scene *scene)
  * this scene.  Used in triangle/rectangle emit to avoid having to
  * check success at each bin.
  */
-boolean
+bool
 lp_scene_is_oom(struct lp_scene *scene)
 {
    return scene->alloc_failed;
@@ -391,11 +391,11 @@ lp_scene_data_size(const struct lp_scene *scene)
 /**
  * Add a reference to a resource by the scene.
  */
-boolean
+bool
 lp_scene_add_resource_reference(struct lp_scene *scene,
                                 struct pipe_resource *resource,
-                                boolean initializing_scene,
-                                boolean writeable)
+                                bool initializing_scene,
+                                bool writeable)
 {
    struct resource_ref *ref;
    int i;
@@ -460,7 +460,7 @@ lp_scene_add_resource_reference(struct lp_scene *scene,
  * Add a reference to a fragment shader variant
  * Return FALSE if out of memory, TRUE otherwise.
  */
-boolean
+bool
 lp_scene_add_frag_shader_reference(struct lp_scene *scene,
                                    struct lp_fragment_shader_variant *variant)
 {
@@ -532,7 +532,7 @@ lp_scene_is_resource_referenced(const struct lp_scene *scene,
 
 
 /** advance curr_x,y to the next bin */
-static boolean
+static bool
 next_bin(struct lp_scene *scene)
 {
    scene->curr_x++;

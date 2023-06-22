@@ -98,7 +98,7 @@ fit_rect_format_inclusive(enum pipe_format format, RECT *rect, int width, int he
     rect->bottom = MIN2(rect->bottom, height);
 }
 
-static inline boolean
+static inline bool
 rect_to_pipe_box_clamp(struct pipe_box *dst, const RECT *src)
 {
     rect_to_pipe_box(dst, src);
@@ -112,7 +112,7 @@ rect_to_pipe_box_clamp(struct pipe_box *dst, const RECT *src)
     return FALSE;
 }
 
-static inline boolean
+static inline bool
 rect_to_pipe_box_flip(struct pipe_box *dst, const RECT *src)
 {
     rect_to_pipe_box(dst, src);
@@ -135,7 +135,7 @@ rect_to_pipe_box_xy_only(struct pipe_box *dst, const RECT *src)
     dst->height = src->bottom - src->top;
 }
 
-static inline boolean
+static inline bool
 rect_to_pipe_box_xy_only_clamp(struct pipe_box *dst, const RECT *src)
 {
     rect_to_pipe_box_xy_only(dst, src);
@@ -181,7 +181,7 @@ pipe_to_d3d9_format(enum pipe_format format)
     return nine_pipe_to_d3d9_format_map[format];
 }
 
-static inline boolean
+static inline bool
 fetch4_compatible_format( D3DFORMAT fmt )
 {
     /* Basically formats with only red channel are allowed (with some exceptions) */
@@ -204,7 +204,7 @@ fetch4_compatible_format( D3DFORMAT fmt )
 }
 
 /* ATI1 and ATI2 are not officially compressed in d3d9 */
-static inline boolean
+static inline bool
 compressed_format( D3DFORMAT fmt )
 {
     switch (fmt) {
@@ -220,7 +220,7 @@ compressed_format( D3DFORMAT fmt )
     return FALSE;
 }
 
-static inline boolean
+static inline bool
 depth_stencil_format( D3DFORMAT fmt )
 {
     static const D3DFORMAT allowed[] = {
@@ -316,8 +316,8 @@ d3d9_to_pipe_format_checked(struct pipe_screen *screen,
                             enum pipe_texture_target target,
                             unsigned sample_count,
                             unsigned bindings,
-                            boolean srgb,
-                            boolean bypass_check)
+                            bool srgb,
+                            bool bypass_check)
 {
     enum pipe_format result;
 

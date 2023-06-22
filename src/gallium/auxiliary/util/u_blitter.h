@@ -139,7 +139,7 @@ struct blitter_context
    uint saved_render_cond_mode;
    bool saved_render_cond_cond;
 
-   boolean saved_window_rectangles_include;
+   bool saved_window_rectangles_include;
    unsigned saved_num_window_rectangles;
    struct pipe_scissor_state saved_window_rectangles[PIPE_MAX_WINDOW_RECTANGLES];
 };
@@ -576,7 +576,7 @@ util_blitter_save_render_condition(struct blitter_context *blitter,
 
 static inline void
 util_blitter_save_window_rectangles(struct blitter_context *blitter,
-                                    boolean include,
+                                    bool include,
                                     unsigned num_rectangles,
                                     const struct pipe_scissor_state *rects)
 {

@@ -55,7 +55,7 @@ const_float4_ptr get_vert(const void *vertex_buffer, int index, int stride)
 
 /* Aero sends these weird zero area triangles.  Test for them here.
  */
-static boolean
+static bool
 is_zero_area(const float (*v0)[4],
              const float (*v1)[4],
              const float (*v2)[4])
@@ -106,7 +106,7 @@ calc_interps(float x0, float x1,
 /* Validate axis-aligned interpolant for s and t as functions of x and
  * y respectively.
  */
-static boolean
+static bool
 test_interps(const_float4_ptr v,
              float as, float bs,
              float at, float bt)
@@ -150,7 +150,7 @@ rect(struct lp_setup_context *setup,
  *    |      |
  *   v2------v1
  */
-static boolean
+static bool
 test_rect(const_float4_ptr v0,
           const_float4_ptr v1,
           const_float4_ptr v2,
@@ -211,7 +211,7 @@ test_rect(const_float4_ptr v0,
  * rectangles by introducing new vertices at vA, vB, vC and vD, and
  * then drawing rectangles.
  */
-static boolean
+static bool
 check_elts24(struct lp_setup_context *setup, const void *vb, int stride)
 {
    const int count = 24;
@@ -316,14 +316,14 @@ check_elts24(struct lp_setup_context *setup, const void *vb, int stride)
    return TRUE;
 }
 
-boolean
+bool
 lp_setup_analyse_triangles(struct lp_setup_context *setup,
                            const void *vb,
                            int stride,
                            int nr)
 {
    int i;
-   const boolean variant_blit = setup->fs.current.variant->blit;
+   const bool variant_blit = setup->fs.current.variant->blit;
 
    if (0) {
       debug_printf("%s %d\n", __func__, nr);

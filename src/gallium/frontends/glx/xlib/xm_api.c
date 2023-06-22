@@ -398,7 +398,7 @@ xmesa_get_window_size(Display *dpy, XMesaBuffer b,
 static GLuint
 choose_pixel_format(XMesaVisual v)
 {
-   boolean native_byte_order = (host_byte_order() ==
+   bool native_byte_order = (host_byte_order() ==
                                 ImageByteOrder(v->display));
 
    if (   GET_REDMASK(v)   == 0x0000ff

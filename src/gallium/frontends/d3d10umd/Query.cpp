@@ -244,12 +244,12 @@ QueryGetData(D3D10DDI_HDEVICE hDevice,                      // IN
       return;
    }
 
-   boolean wait = !!(Flags & D3D10_DDI_GET_DATA_DO_NOT_FLUSH);
+   bool wait = !!(Flags & D3D10_DDI_GET_DATA_DO_NOT_FLUSH);
    union pipe_query_result result;
 
    memset(&result, 0, sizeof result);
 
-   boolean ret;
+   bool ret;
 
    if (state) {
       ret = pipe->get_query_result(pipe, state, wait, &result);
@@ -386,7 +386,7 @@ CheckPredicate(Device *pDevice)
    union pipe_query_result result;
    memset(&result, 0, sizeof result);
 
-   boolean ret;
+   bool ret;
    ret = pipe->get_query_result(pipe, query, TRUE, &result);
    assert(ret == TRUE);
    if (!ret) {

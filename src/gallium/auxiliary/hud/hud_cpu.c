@@ -60,7 +60,7 @@ filetime_to_scalar(FILETIME ft)
    return uli.QuadPart;
 }
 
-static boolean
+static bool
 get_cpu_stats(unsigned cpu_index, uint64_t *busy_time, uint64_t *total_time)
 {
    SYSTEM_INFO sysInfo;
@@ -97,7 +97,7 @@ get_cpu_stats(unsigned cpu_index, uint64_t *busy_time, uint64_t *total_time)
 
 #elif DETECT_OS_BSD
 
-static boolean
+static bool
 get_cpu_stats(unsigned cpu_index, uint64_t *busy_time, uint64_t *total_time)
 {
 #if DETECT_OS_NETBSD || DETECT_OS_OPENBSD
@@ -172,7 +172,7 @@ get_cpu_stats(unsigned cpu_index, uint64_t *busy_time, uint64_t *total_time)
 
 #else
 
-static boolean
+static bool
 get_cpu_stats(unsigned cpu_index, uint64_t *busy_time, uint64_t *total_time)
 {
    char cpuname[32];

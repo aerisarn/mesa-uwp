@@ -46,7 +46,7 @@
  *
  * This can be overridden by the driver.
  */
-boolean
+bool
 draw_need_pipeline(const struct draw_context *draw,
                    const struct pipe_rasterizer_state *rasterizer,
                    enum mesa_prim prim)
@@ -144,9 +144,9 @@ validate_pipeline(struct draw_stage *stage)
 {
    struct draw_context *draw = stage->draw;
    struct draw_stage *next = draw->pipeline.rasterize;
-   boolean need_det = FALSE;
-   boolean precalc_flat = FALSE;
-   boolean wide_lines, wide_points;
+   bool need_det = FALSE;
+   bool precalc_flat = FALSE;
+   bool wide_lines, wide_points;
    const struct pipe_rasterizer_state *rast = draw->rasterizer;
 
    /* Set the validate's next stage to the rasterize stage, so that it

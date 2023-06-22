@@ -473,13 +473,13 @@ typedef struct
 
 typedef uint32_t vlHandle;
 
-boolean vlCreateHTAB(void);
+bool vlCreateHTAB(void);
 void vlDestroyHTAB(void);
 vlHandle vlAddDataHTAB(void *data);
 void* vlGetDataHTAB(vlHandle handle);
 void vlRemoveDataHTAB(vlHandle handle);
 
-boolean vlGetFuncFTAB(VdpFuncId function_id, void **func);
+bool vlGetFuncFTAB(VdpFuncId function_id, void **func);
 
 /* Public functions */
 VdpDeviceCreateX11 vdp_imp_device_create_x11;

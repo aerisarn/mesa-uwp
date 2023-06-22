@@ -1027,7 +1027,7 @@ rasterize_bin(struct lp_rasterizer_task *task,
  *
  * Try to avoid doing pointless work in this case.
  */
-static boolean
+static bool
 is_empty_bin(const struct cmd_bin *bin)
 {
    return bin->head == NULL;
@@ -1161,7 +1161,7 @@ thread_function(void *init_data)
 {
    struct lp_rasterizer_task *task = (struct lp_rasterizer_task *) init_data;
    struct lp_rasterizer *rast = task->rast;
-   boolean debug = false;
+   bool debug = false;
    char thread_name[16];
 
    snprintf(thread_name, sizeof thread_name, "llvmpipe-%u", task->thread_index);

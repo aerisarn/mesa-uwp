@@ -1186,7 +1186,7 @@ do_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
          &fb->Attachment[BUFFER_STENCIL];
    GLuint i;
    enum pipe_format first_format = PIPE_FORMAT_NONE;
-   boolean mixed_formats =
+   bool mixed_formats =
          screen->get_param(screen, PIPE_CAP_MIXED_COLORBUFFER_FORMATS) != 0;
 
    if (depth->Type && stencil->Type && depth->Type != stencil->Type) {

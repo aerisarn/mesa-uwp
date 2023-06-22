@@ -136,7 +136,7 @@ lp_setup_set_sample_mask(struct lp_setup_context *setup,
 
 void
 lp_setup_set_rasterizer_discard(struct lp_setup_context *setup,
-                                boolean rasterizer_discard);
+                                bool rasterizer_discard);
 
 void
 lp_setup_set_vertex_info(struct lp_setup_context *setup,
@@ -144,7 +144,7 @@ lp_setup_set_vertex_info(struct lp_setup_context *setup,
 
 void
 lp_setup_set_linear_mode(struct lp_setup_context *setup,
-                         boolean permit_linear_rasterizer);
+                         bool permit_linear_rasterizer);
 
 void
 lp_setup_begin_query(struct lp_setup_context *setup,

@@ -40,7 +40,7 @@
 #include "tgsi_util.h"
 #include "tgsi_dump.h"
 
-static boolean is_alpha_underscore( const char *cur )
+static bool is_alpha_underscore( const char *cur )
 {
    return
       (*cur >= 'a' && *cur <= 'z') ||
@@ -48,12 +48,12 @@ static boolean is_alpha_underscore( const char *cur )
       *cur == '_';
 }
 
-static boolean is_digit( const char *cur )
+static bool is_digit( const char *cur )
 {
    return *cur >= '0' && *cur <= '9';
 }
 
-static boolean is_digit_alpha_underscore( const char *cur )
+static bool is_digit_alpha_underscore( const char *cur )
 {
    return is_digit( cur ) || is_alpha_underscore( cur );
 }
@@ -87,7 +87,7 @@ streq_nocase_uprcase(const char *str1,
  * The pointer to the first string is moved at end of the read word
  * on success.
  */
-static boolean str_match_no_case( const char **pcur, const char *str )
+static bool str_match_no_case( const char **pcur, const char *str )
 {
    const char *cur = *pcur;
 
@@ -108,7 +108,7 @@ static boolean str_match_no_case( const char **pcur, const char *str )
  * The pointer to the first string is moved at end of the read word
  * on success.
  */
-static boolean str_match_nocase_whole( const char **pcur, const char *str )
+static bool str_match_nocase_whole( const char **pcur, const char *str )
 {
    const char *cur = *pcur;
 
@@ -167,7 +167,7 @@ static void eat_opt_white( const char **pcur )
 /* Eat one or more whitespaces.
  * Return TRUE if at least one whitespace eaten.
  */
-static boolean eat_white( const char **pcur )
+static bool eat_white( const char **pcur )
 {
    const char *cur = *pcur;
 
@@ -178,7 +178,7 @@ static boolean eat_white( const char **pcur )
 /* Parse unsigned integer.
  * No checks for overflow.
  */
-static boolean parse_uint( const char **pcur, uint *val )
+static bool parse_uint( const char **pcur, uint *val )
 {
    const char *cur = *pcur;
 
@@ -192,7 +192,7 @@ static boolean parse_uint( const char **pcur, uint *val )
    return FALSE;
 }
 
-static boolean parse_int( const char **pcur, int *val )
+static bool parse_int( const char **pcur, int *val )
 {
    const char *cur = *pcur;
    int sign = (*cur == '-' ? -1 : 1);
@@ -209,7 +209,7 @@ static boolean parse_int( const char **pcur, int *val )
    return FALSE;
 }
 
-static boolean parse_identifier( const char **pcur, char *ret, size_t len )
+static bool parse_identifier( const char **pcur, char *ret, size_t len )
 {
    const char *cur = *pcur;
    size_t i = 0;
@@ -229,7 +229,7 @@ static boolean parse_identifier( const char **pcur, char *ret, size_t len )
 
 /* Parse floating point.
  */
-static boolean parse_float( const char **pcur, float *val )
+static bool parse_float( const char **pcur, float *val )
 {
    const char *cur = *pcur;
    *val = _mesa_strtof(cur, (char**)pcur);
@@ -238,7 +238,7 @@ static boolean parse_float( const char **pcur, float *val )
    return TRUE;
 }
 
-static boolean parse_double( const char **pcur, uint32_t *val0, uint32_t *val1)
+static bool parse_double( const char **pcur, uint32_t *val0, uint32_t *val1)
 {
    const char *cur = *pcur;
    union {
@@ -256,7 +256,7 @@ static boolean parse_double( const char **pcur, uint32_t *val0, uint32_t *val1)
    return TRUE;
 }
 
-static boolean parse_int64( const char **pcur, uint32_t *val0, uint32_t *val1)
+static bool parse_int64( const char **pcur, uint32_t *val0, uint32_t *val1)
 {
    const char *cur = *pcur;
    union {
@@ -274,7 +274,7 @@ static boolean parse_int64( const char **pcur, uint32_t *val0, uint32_t *val1)
    return TRUE;
 }
 
-static boolean parse_uint64( const char **pcur, uint32_t *val0, uint32_t *val1)
+static bool parse_uint64( const char **pcur, uint32_t *val0, uint32_t *val1)
 {
    const char *cur = *pcur;
    union {
@@ -329,7 +329,7 @@ static void report_error( struct translate_ctx *ctx, const char *msg )
  *    GEOM
  *    VERT
  */
-static boolean parse_header( struct translate_ctx *ctx )
+static bool parse_header( struct translate_ctx *ctx )
 {
    uint processor;
 
@@ -363,7 +363,7 @@ static boolean parse_header( struct translate_ctx *ctx )
    return TRUE;
 }
 
-static boolean parse_label( struct translate_ctx *ctx, uint *val )
+static bool parse_label( struct translate_ctx *ctx, uint *val )
 {
    const char *cur = ctx->cur;
 
@@ -378,7 +378,7 @@ static boolean parse_label( struct translate_ctx *ctx, uint *val )
    return FALSE;
 }
 
-static boolean
+static bool
 parse_file( const char **pcur, uint *file )
 {
    uint i;
@@ -395,7 +395,7 @@ parse_file( const char **pcur, uint *file )
    return FALSE;
 }
 
-static boolean
+static bool
 parse_opt_writemask(
    struct translate_ctx *ctx,
    uint *writemask )
@@ -441,7 +441,7 @@ parse_opt_writemask(
 
 /* <register_file_bracket> ::= <file> `['
  */
-static boolean
+static bool
 parse_register_file_bracket(
    struct translate_ctx *ctx,
    uint *file )
@@ -461,7 +461,7 @@ parse_register_file_bracket(
 
 /* <register_file_bracket_index> ::= <register_file_bracket> <uint>
  */
-static boolean
+static bool
 parse_register_file_bracket_index(
    struct translate_ctx *ctx,
    uint *file,
@@ -483,7 +483,7 @@ parse_register_file_bracket_index(
 /* Parse simple 1d register operand.
  *    <register_dst> ::= <register_file_bracket_index> `]'
  */
-static boolean
+static bool
 parse_register_1d(struct translate_ctx *ctx,
                   uint *file,
                   int *index )
@@ -509,7 +509,7 @@ struct parsed_bracket {
 };
 
 
-static boolean
+static bool
 parse_register_bracket(
    struct translate_ctx *ctx,
    struct parsed_bracket *brackets)
@@ -590,7 +590,7 @@ parse_register_bracket(
    return TRUE;
 }
 
-static boolean
+static bool
 parse_opt_register_src_bracket(
    struct translate_ctx *ctx,
    struct parsed_bracket *brackets,
@@ -621,7 +621,7 @@ parse_opt_register_src_bracket(
  *                       <register_file_bracket> <register_dst> [`.' (`x' | `y' | `z' | `w')] `+' <uint> `]' |
  *                       <register_file_bracket> <register_dst> [`.' (`x' | `y' | `z' | `w')] `-' <uint> `]'
  */
-static boolean
+static bool
 parse_register_src(
    struct translate_ctx *ctx,
    uint *file,
@@ -641,7 +641,7 @@ struct parsed_dcl_bracket {
    uint last;
 };
 
-static boolean
+static bool
 parse_register_dcl_bracket(
    struct translate_ctx *ctx,
    struct parsed_dcl_bracket *bracket)
@@ -695,7 +695,7 @@ cleanup:
  *    <register_dcl> ::= <register_file_bracket_index> `]' |
  *                       <register_file_bracket_index> `..' <index> `]'
  */
-static boolean
+static bool
 parse_register_dcl(
    struct translate_ctx *ctx,
    uint *file,
@@ -746,7 +746,7 @@ parse_register_dcl(
 
 
 /* Parse destination register operand.*/
-static boolean
+static bool
 parse_register_dst(
    struct translate_ctx *ctx,
    uint *file,
@@ -761,7 +761,7 @@ parse_register_dst(
    return TRUE;
 }
 
-static boolean
+static bool
 parse_dst_operand(
    struct translate_ctx *ctx,
    struct tgsi_full_dst_register *dst )
@@ -811,11 +811,11 @@ parse_dst_operand(
    return TRUE;
 }
 
-static boolean
+static bool
 parse_optional_swizzle(
    struct translate_ctx *ctx,
    uint *swizzle,
-   boolean *parsed_swizzle,
+   bool *parsed_swizzle,
    int components)
 {
    const char *cur = ctx->cur;
@@ -849,14 +849,14 @@ parse_optional_swizzle(
    return TRUE;
 }
 
-static boolean
+static bool
 parse_src_operand(
    struct translate_ctx *ctx,
    struct tgsi_full_src_register *src )
 {
    uint file;
    uint swizzle[4];
-   boolean parsed_swizzle;
+   bool parsed_swizzle;
    struct parsed_bracket bracket[2];
    int parsed_opt_brackets;
 
@@ -925,14 +925,14 @@ parse_src_operand(
    return TRUE;
 }
 
-static boolean
+static bool
 parse_texoffset_operand(
    struct translate_ctx *ctx,
    struct tgsi_texture_offset *src )
 {
    uint file;
    uint swizzle[3];
-   boolean parsed_swizzle;
+   bool parsed_swizzle;
    struct parsed_bracket bracket;
 
    if (!parse_register_src(ctx, &file, &bracket))
@@ -954,7 +954,7 @@ parse_texoffset_operand(
    return TRUE;
 }
 
-static boolean
+static bool
 match_inst(const char **pcur,
            unsigned *saturate,
            unsigned *precise,
@@ -990,10 +990,10 @@ match_inst(const char **pcur,
    return FALSE;
 }
 
-static boolean
+static bool
 parse_instruction(
    struct translate_ctx *ctx,
-   boolean has_label )
+   bool has_label )
 {
    int i;
    uint saturate = 0;
@@ -1172,7 +1172,7 @@ parse_instruction(
 
 /* parses a 4-touple of the form {x, y, z, w}
  * where x, y, z, w are numbers */
-static boolean parse_immediate_data(struct translate_ctx *ctx, unsigned type,
+static bool parse_immediate_data(struct translate_ctx *ctx, unsigned type,
                                     union tgsi_immediate_data *values)
 {
    unsigned i;
@@ -1238,7 +1238,7 @@ static boolean parse_immediate_data(struct translate_ctx *ctx, unsigned type,
    return TRUE;
 }
 
-static boolean parse_declaration( struct translate_ctx *ctx )
+static bool parse_declaration( struct translate_ctx *ctx )
 {
    struct tgsi_full_declaration decl;
    uint file;
@@ -1247,7 +1247,7 @@ static boolean parse_declaration( struct translate_ctx *ctx )
    uint writemask;
    const char *cur, *cur2;
    uint advance;
-   boolean is_vs_input;
+   bool is_vs_input;
 
    if (!eat_white( &ctx->cur )) {
       report_error( ctx, "Syntax error" );
@@ -1590,7 +1590,7 @@ static boolean parse_declaration( struct translate_ctx *ctx )
    return TRUE;
 }
 
-static boolean parse_immediate( struct translate_ctx *ctx )
+static bool parse_immediate( struct translate_ctx *ctx )
 {
    struct tgsi_full_immediate imm;
    uint advance;
@@ -1653,7 +1653,7 @@ static boolean parse_immediate( struct translate_ctx *ctx )
    return TRUE;
 }
 
-static boolean
+static bool
 parse_primitive( const char **pcur, uint *primitive )
 {
    uint i;
@@ -1670,7 +1670,7 @@ parse_primitive( const char **pcur, uint *primitive )
    return FALSE;
 }
 
-static boolean
+static bool
 parse_fs_coord_origin( const char **pcur, uint *fs_coord_origin )
 {
    uint i;
@@ -1687,7 +1687,7 @@ parse_fs_coord_origin( const char **pcur, uint *fs_coord_origin )
    return FALSE;
 }
 
-static boolean
+static bool
 parse_fs_coord_pixel_center( const char **pcur, uint *fs_coord_pixel_center )
 {
    uint i;
@@ -1704,7 +1704,7 @@ parse_fs_coord_pixel_center( const char **pcur, uint *fs_coord_pixel_center )
    return FALSE;
 }
 
-static boolean
+static bool
 parse_property_next_shader( const char **pcur, uint *next_shader )
 {
    uint i;
@@ -1721,7 +1721,7 @@ parse_property_next_shader( const char **pcur, uint *next_shader )
    return FALSE;
 }
 
-static boolean parse_property( struct translate_ctx *ctx )
+static bool parse_property( struct translate_ctx *ctx )
 {
    struct tgsi_full_property prop;
    uint property_name;
@@ -1805,7 +1805,7 @@ static boolean parse_property( struct translate_ctx *ctx )
 }
 
 
-static boolean translate( struct translate_ctx *ctx )
+static bool translate( struct translate_ctx *ctx )
 {
    eat_opt_white( &ctx->cur );
    if (!parse_header( ctx ))
@@ -1848,7 +1848,7 @@ static boolean translate( struct translate_ctx *ctx )
    return TRUE;
 }
 
-boolean
+bool
 tgsi_text_translate(
    const char *text,
    struct tgsi_token *tokens,

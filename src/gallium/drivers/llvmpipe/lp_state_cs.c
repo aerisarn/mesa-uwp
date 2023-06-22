@@ -138,11 +138,11 @@ static void
 lp_mesh_llvm_emit_store_output(const struct lp_build_mesh_iface *mesh_iface,
                                 struct lp_build_context *bld,
                                 unsigned name,
-                                boolean is_vindex_indirect,
+                                bool is_vindex_indirect,
                                 LLVMValueRef vertex_index,
-                                boolean is_aindex_indirect,
+                                bool is_aindex_indirect,
                                 LLVMValueRef attrib_index,
-                                boolean is_sindex_indirect,
+                                bool is_sindex_indirect,
                                 LLVMValueRef swizzle_index,
                                 LLVMValueRef value,
                                 LLVMValueRef mask_vec)
@@ -236,7 +236,7 @@ mesh_convert_to_aos(struct gallivm_state *gallivm,
                     LLVMValueRef vertex_index,
                     struct lp_type soa_type,
                     int primid_slot,
-                    boolean need_edgeflag)
+                    bool need_edgeflag)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef inds[3];

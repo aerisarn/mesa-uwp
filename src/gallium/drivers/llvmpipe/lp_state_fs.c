@@ -132,10 +132,10 @@ load_unswizzled_block(struct gallivm_state *gallivm,
  *
  * A format which has irregular channel sizes such as R3_G3_B2 or R5_G6_B5.
  */
-static inline boolean
+static inline bool
 is_arithmetic_format(const struct util_format_description *format_desc)
 {
-   boolean arith = false;
+   bool arith = false;
 
    for (unsigned i = 0; i < format_desc->nr_channels; ++i) {
       arith |= format_desc->channel[i].size != format_desc->channel[0].size;
@@ -151,7 +151,7 @@ is_arithmetic_format(const struct util_format_description *format_desc)
  * to floats for blending, and furthermore has "natural" packed AoS ->
  * unpacked SoA conversion.
  */
-static inline boolean
+static inline bool
 format_expands_to_float_soa(const struct util_format_description *format_desc)
 {
    if (format_desc->format == PIPE_FORMAT_R11G11B10_FLOAT ||
@@ -674,10 +674,10 @@ generate_fs_loop(struct gallivm_state *gallivm,
     * keep. Disabled because it may hide some real bugs in the (depth/stencil)
     * code since tests tend to take another codepath than real shaders.
     */
-   boolean simple_shader = (shader->info.base.file_count[TGSI_FILE_SAMPLER] == 0 &&
+   bool simple_shader = (shader->info.base.file_count[TGSI_FILE_SAMPLER] == 0 &&
                             shader->info.base.num_inputs < 3 &&
                             shader->info.base.num_instructions < 8) && 0;
-   const boolean dual_source_blend = key->blend.rt[0].blend_enable &&
+   const bool dual_source_blend = key->blend.rt[0].blend_enable &&
                                      util_blend_state_is_dual(&key->blend, 0);
    const bool post_depth_coverage = shader->info.base.properties[TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE];
 
@@ -2397,7 +2397,7 @@ generate_unswizzled_blend(struct gallivm_state *gallivm,
                           LLVMValueRef color_ptr,
                           LLVMValueRef stride,
                           unsigned partial_mask,
-                          boolean do_branch)
+                          bool do_branch)
 {
    const unsigned alpha_channel = 3;
    const unsigned block_width = LP_RASTER_BLOCK_SIZE;
@@ -2424,11 +2424,11 @@ generate_unswizzled_blend(struct gallivm_state *gallivm,
       util_format_description(out_format);
 
    bool pad_inline = is_arithmetic_format(out_format_desc);
-   const boolean dual_source_blend =
+   const bool dual_source_blend =
       variant->key.blend.rt[0].blend_enable &&
       util_blend_state_is_dual(&variant->key.blend, 0);
 
-   const boolean is_1d = variant->key.resource_1d;
+   const bool is_1d = variant->key.resource_1d;
    const unsigned num_fullblock_fs = is_1d ? 2 * num_fs : num_fs;
    LLVMValueRef fpstate = NULL;
 
@@ -2664,7 +2664,7 @@ generate_unswizzled_blend(struct gallivm_state *gallivm,
     * unpack only with 128bit vectors).
     * Note: for 16bit sizes really need matching pack conversion code
     */
-   boolean twiddle_after_convert = FALSE;
+   bool twiddle_after_convert = FALSE;
    if (!is_1d && dst_channels != 3 && dst_type.width == 8) {
       twiddle_after_convert = TRUE;
    }
@@ -3133,8 +3133,8 @@ generate_fragment(struct llvmpipe_context *lp,
    LLVMValueRef fs_out_color[LP_MAX_SAMPLES][PIPE_MAX_COLOR_BUFS][TGSI_NUM_CHANNELS][16 / 4];
    LLVMValueRef function;
    LLVMValueRef facing;
-   boolean cbuf0_write_all;
-   const boolean dual_source_blend = key->blend.rt[0].blend_enable &&
+   bool cbuf0_write_all;
+   const bool dual_source_blend = key->blend.rt[0].blend_enable &&
                                      util_blend_state_is_dual(&key->blend, 0);
 
    assert(lp_native_vector_width / 32 >= 4);
@@ -3335,7 +3335,7 @@ generate_fragment(struct llvmpipe_context *lp,
       LLVMSetInitializer(glob_sample_pos, sample_pos_array);
 
       LLVMValueRef color_store[PIPE_MAX_COLOR_BUFS][TGSI_NUM_CHANNELS];
-      boolean pixel_center_integer =
+      bool pixel_center_integer =
          shader->info.base.properties[TGSI_PROPERTY_FS_COORD_PIXEL_CENTER];
 
       /*
@@ -3485,7 +3485,7 @@ generate_fragment(struct llvmpipe_context *lp,
          LLVMValueRef sample_stride = NULL;
          LLVMValueRef index = lp_build_const_int32(gallivm, cbuf);
 
-         boolean do_branch = ((key->depth.enabled
+         bool do_branch = ((key->depth.enabled
                                || key->stencil[0].enabled
                                || key->alpha.enabled)
                               && !shader->info.base.uses_kill);
@@ -3773,7 +3773,7 @@ generate_variant(struct llvmpipe_context *lp,
     * Determine whether we are touching all channels in the color buffer.
     */
    const struct util_format_description *cbuf0_format_desc = NULL;
-   boolean fullcolormask = FALSE;
+   bool fullcolormask = FALSE;
    if (key->nr_cbufs == 1) {
       cbuf0_format_desc = util_format_description(key->cbuf_format[0]);
       fullcolormask = util_format_colormask_full(cbuf0_format_desc,
@@ -3783,7 +3783,7 @@ generate_variant(struct llvmpipe_context *lp,
    /* The scissor is ignored here as only tiles inside the scissoring
     * rectangle will refer to this.
     */
-   const boolean no_kill =
+   const bool no_kill =
          fullcolormask &&
          !key->stencil[0].enabled &&
          !key->alpha.enabled &&
@@ -3857,7 +3857,7 @@ generate_variant(struct llvmpipe_context *lp,
    /* Determine whether this shader + pipeline state is a candidate for
     * the linear path.
     */
-   const boolean linear_pipeline =
+   const bool linear_pipeline =
          !key->stencil[0].enabled &&
          !key->depth.enabled &&
          !shader->info.base.uses_kill &&
@@ -4248,7 +4248,7 @@ llvmpipe_set_shader_buffers(struct pipe_context *pipe,
       util_copy_shader_buffer(&llvmpipe->ssbos[shader][i], buffer);
 
       if (buffer && buffer->buffer) {
-         boolean read_only = !(writable_bitmask & (1 << idx));
+         bool read_only = !(writable_bitmask & (1 << idx));
          llvmpipe_flush_resource(pipe, buffer->buffer, 0, read_only, false,
                                  false, "buffer");
       }
@@ -4349,7 +4349,7 @@ llvmpipe_set_shader_images(struct pipe_context *pipe,
  * Return the blend factor equivalent to a destination alpha of one.
  */
 static inline enum pipe_blendfactor
-force_dst_alpha_one(enum pipe_blendfactor factor, boolean clamped_zero)
+force_dst_alpha_one(enum pipe_blendfactor factor, bool clamped_zero)
 {
    switch (factor) {
    case PIPE_BLENDFACTOR_DST_ALPHA:
@@ -4542,7 +4542,7 @@ make_variant_key(struct llvmpipe_context *lp,
          if (format_desc->swizzle[3] > PIPE_SWIZZLE_W ||
              format_desc->swizzle[3] == format_desc->swizzle[0]) {
             // Doesn't cover mixed snorm/unorm but can't render to them anyway
-            boolean clamped_zero = !util_format_is_float(format) &&
+            bool clamped_zero = !util_format_is_float(format) &&
                                    !util_format_is_snorm(format);
             blend_rt->rgb_src_factor =
                force_dst_alpha_one(blend_rt->rgb_src_factor, clamped_zero);

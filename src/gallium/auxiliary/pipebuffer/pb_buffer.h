@@ -287,7 +287,7 @@ pb_reference_with_winsys(void *winsys,
  * Utility function to check whether the provided alignment is consistent with
  * the requested or not.
  */
-static inline boolean
+static inline bool
 pb_check_alignment(uint32_t requested, uint32_t provided)
 {
    if (!requested)
@@ -304,7 +304,7 @@ pb_check_alignment(uint32_t requested, uint32_t provided)
  * Utility function to check whether the provided alignment is consistent with
  * the requested or not.
  */
-static inline boolean
+static inline bool
 pb_check_usage(unsigned requested, unsigned provided)
 {
    return (requested & provided) == requested ? TRUE : FALSE;

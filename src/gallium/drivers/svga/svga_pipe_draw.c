@@ -180,7 +180,7 @@ retry_draw_indirect(struct svga_context *svga,
  * path which breaks the original primitive into sub-primitive at the
  * restart indexes.
  */
-static boolean
+static bool
 need_fallback_prim_restart(const struct svga_context *svga,
                            const struct pipe_draw_info *info)
 {
@@ -235,7 +235,7 @@ svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    enum mesa_prim reduced_prim = u_reduced_prim(info->mode);
    unsigned count = draws[0].count;
    enum pipe_error ret = 0;
-   boolean needed_swtnl;
+   bool needed_swtnl;
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_DRAWVBO);
 

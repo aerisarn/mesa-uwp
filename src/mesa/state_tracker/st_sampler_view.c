@@ -310,7 +310,7 @@ st_delete_texture_sampler_views(struct st_context *st,
  *
  * \param texObj  the st texture object,
  */
-ASSERTED static boolean
+ASSERTED static bool
 check_sampler_swizzle(const struct st_context *st,
                       const struct gl_texture_object *texObj,
                       const struct pipe_sampler_view *sv,

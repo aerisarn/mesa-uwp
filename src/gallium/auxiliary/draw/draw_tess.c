@@ -415,7 +415,7 @@ draw_create_tess_ctrl_shader(struct draw_context *draw,
                              const struct pipe_shader_state *state)
 {
 #ifdef DRAW_LLVM_AVAILABLE
-   boolean use_llvm = draw->llvm != NULL;
+   bool use_llvm = draw->llvm != NULL;
    struct llvm_tess_ctrl_shader *llvm_tcs = NULL;
 #endif
    struct draw_tess_ctrl_shader *tcs;
@@ -517,7 +517,7 @@ draw_create_tess_eval_shader(struct draw_context *draw,
                              const struct pipe_shader_state *state)
 {
 #ifdef DRAW_LLVM_AVAILABLE
-   boolean use_llvm = draw->llvm != NULL;
+   bool use_llvm = draw->llvm != NULL;
    struct llvm_tess_eval_shader *llvm_tes = NULL;
 #endif
    struct draw_tess_eval_shader *tes;

@@ -61,7 +61,7 @@ svga_uav_cache_init(struct svga_context *svga)
  * Helper function to compare two image view descriptions.
  * Return TRUE if they are identical.
  */
-static boolean
+static bool
 image_view_desc_identical(struct pipe_image_view *img1,
                           struct pipe_image_view *img2)
 {
@@ -85,7 +85,7 @@ image_view_desc_identical(struct pipe_image_view *img1,
  * Helper function to compare two shader buffer descriptions.
  * Return TRUE if they are identical.
  */
-static boolean
+static bool
 shader_buffer_desc_identical(struct pipe_shader_buffer *buf1,
                              struct pipe_shader_buffer *buf2)
 {
@@ -97,7 +97,7 @@ shader_buffer_desc_identical(struct pipe_shader_buffer *buf1,
  * Helper function to compare two uav cache entry descriptions.
  * Return TRUE if they are identical.
  */
-static boolean
+static bool
 uav_desc_identical(enum svga_uav_type uav_type,
                    void *desc, void *uav_desc)
 {

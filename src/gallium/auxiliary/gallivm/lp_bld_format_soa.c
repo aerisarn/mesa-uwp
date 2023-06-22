@@ -120,7 +120,7 @@ lp_build_format_swizzle_soa(const struct util_format_description *format_desc,
 static LLVMValueRef
 lp_build_extract_soa_chan(struct lp_build_context *bld,
                           unsigned blockbits,
-                          boolean srgb_chan,
+                          bool srgb_chan,
                           struct util_format_channel_description chan_desc,
                           LLVMValueRef packed)
 {
@@ -322,7 +322,7 @@ lp_build_unpack_rgba_soa(struct gallivm_state *gallivm,
    /* Decode the input vector components */
    for (chan = 0; chan < format_desc->nr_channels; ++chan) {
       struct util_format_channel_description chan_desc = format_desc->channel[chan];
-      boolean srgb_chan = FALSE;
+      bool srgb_chan = FALSE;
 
       if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB &&
           format_desc->swizzle[3] != chan) {
@@ -415,7 +415,7 @@ void
 lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
                         const struct util_format_description *format_desc,
                         struct lp_type type,
-                        boolean aligned,
+                        bool aligned,
                         LLVMValueRef base_ptr,
                         LLVMValueRef offset,
                         LLVMValueRef i,
@@ -496,7 +496,7 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
       struct lp_type fetch_type, gather_type = type;
       unsigned num_gather, fetch_width, i, j;
       struct lp_build_context bld;
-      boolean fp64 = format_desc->channel[0].size == 64;
+      bool fp64 = format_desc->channel[0].size == 64;
 
       lp_build_context_init(&bld, gallivm, type);
 

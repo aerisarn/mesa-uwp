@@ -295,7 +295,7 @@ svga_init_shader_key_common(const struct svga_context *svga,
     * the number of samplers exceeds SVGA limit or the sampler state
     * mapping env is set.
     */
-   boolean sampler_state_mapping =
+   bool sampler_state_mapping =
       svga_use_sampler_state_mapping(svga, svga->curr.num_samplers[shader_type]);
 
    key->sampler_state_mapping =

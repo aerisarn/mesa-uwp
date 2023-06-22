@@ -52,7 +52,7 @@ struct point_info {
    float (*dadx)[4];
    float (*dady)[4];
 
-   boolean frontfacing;
+   bool frontfacing;
 };
 
 
@@ -109,7 +109,7 @@ texcoord_coef(struct lp_setup_context *setup,
               unsigned slot,
               unsigned i,
               unsigned sprite_coord_origin,
-              boolean perspective)
+              bool perspective)
 {
    float w0 = info->v0[0][3];
 
@@ -215,7 +215,7 @@ setup_point_coefficients(struct lp_setup_context *setup,
       unsigned vert_attr = key->inputs[slot].src_index;
       unsigned usage_mask = key->inputs[slot].usage_mask;
       enum lp_interp interp = key->inputs[slot].interp;
-      boolean perspective = !!(interp == LP_INTERP_PERSPECTIVE);
+      bool perspective = !!(interp == LP_INTERP_PERSPECTIVE);
       unsigned i;
 
       if (perspective && usage_mask) {
@@ -321,7 +321,7 @@ print_point(struct lp_setup_context *setup,
 }
 
 
-static boolean
+static bool
 try_setup_point(struct lp_setup_context *setup,
                 const float (*v0)[4])
 {
@@ -543,7 +543,7 @@ try_setup_point(struct lp_setup_context *setup,
 
       int max_szorig = ((bbox.x1 - (bbox.x0 & ~3)) |
                         (bbox.y1 - (bbox.y0 & ~3)));
-      boolean use_32bits = max_szorig <= MAX_FIXED_LENGTH32;
+      bool use_32bits = max_szorig <= MAX_FIXED_LENGTH32;
 
       return lp_setup_bin_triangle(setup, point, use_32bits,
                                    setup->fs.current.variant->opaque,

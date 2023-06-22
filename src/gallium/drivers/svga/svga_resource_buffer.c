@@ -50,7 +50,7 @@
  * do on vgpu10. Staging texture-upload buffers do when they are
  * supported.
  */
-static inline boolean
+static inline bool
 svga_buffer_needs_hw_storage(const struct svga_screen *ss,
                              const struct pipe_resource *template)
 {
@@ -80,7 +80,7 @@ svga_buffer_needs_hw_storage(const struct svga_screen *ss,
 }
 
 
-static inline boolean
+static inline bool
 need_buf_readback(struct svga_context *svga,
                   struct pipe_transfer *st)
 {
@@ -295,7 +295,7 @@ svga_buffer_transfer_map(struct pipe_context *pipe,
       map = sbuf->swbuf;
    }
    else if (svga_buffer_has_hw_storage(sbuf)) {
-      boolean retry;
+      bool retry;
 
       map = SVGA_TRY_MAP(svga_buffer_hw_storage_map
                          (svga, sbuf, transfer->usage, &retry), retry);
@@ -459,7 +459,7 @@ svga_resource_destroy(struct pipe_screen *screen,
       */
       SVGA_DBG(DEBUG_DMA, "unref sid %p (texture)\n", tex->handle);
 
-      boolean to_invalidate = svga_was_texture_rendered_to(tex);
+      bool to_invalidate = svga_was_texture_rendered_to(tex);
       svga_screen_surface_destroy(ss, &tex->key, to_invalidate, &tex->handle);
 
       /* Destroy the backed surface handle if exists */

@@ -192,7 +192,7 @@ lp_build_shuffle1undef(struct gallivm_state *gallivm,
    return LLVMBuildShuffleVector(gallivm->builder, a, a, shuf, "");
 }
 
-static boolean
+static bool
 format_dxt1_variant(enum pipe_format format)
 {
   return format == PIPE_FORMAT_DXT1_RGB ||
@@ -573,7 +573,7 @@ s3tc_dxt1_full_to_rgba_aos(struct gallivm_state *gallivm,
    LLVMValueRef bit_pos, sel_mask, sel_lo, sel_hi, indices;
    struct lp_type type, type8;
    struct lp_build_context bld8, bld32;
-   boolean is_dxt1_variant = format_dxt1_variant(format);
+   bool is_dxt1_variant = format_dxt1_variant(format);
 
    memset(&type, 0, sizeof type);
    type.width = 32;
@@ -1269,7 +1269,7 @@ s3tc_decode_block_dxt1(struct gallivm_state *gallivm,
    struct lp_type type8, type32, type16, type64;
    struct lp_build_context bld8, bld32, bld16, bld64;
    unsigned i;
-   boolean is_dxt1_variant = format_dxt1_variant(format);
+   bool is_dxt1_variant = format_dxt1_variant(format);
 
    memset(&type32, 0, sizeof type32);
    type32.width = 32;

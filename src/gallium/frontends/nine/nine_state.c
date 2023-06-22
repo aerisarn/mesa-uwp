@@ -977,10 +977,10 @@ update_vertex_buffers(struct NineDevice9 *device)
     context->changed.vtxbuf = 0;
 }
 
-static inline boolean
+static inline bool
 update_sampler_derived(struct nine_context *context, unsigned s)
 {
-    boolean changed = FALSE;
+    bool changed = FALSE;
 
     if (context->samp[s][NINED3DSAMP_SHADOW] != context->texture[s].shadow) {
         changed = TRUE;
@@ -1017,7 +1017,7 @@ update_textures_and_samplers(struct NineDevice9 *device)
     struct pipe_context *pipe = context->pipe;
     struct pipe_sampler_view *view[NINE_MAX_SAMPLERS];
     unsigned num_textures = 0;
-    boolean commit_samplers;
+    bool commit_samplers;
     uint16_t sampler_mask = context->ps ? context->ps->sampler_mask :
                             device->ff.ps->sampler_mask;
 
@@ -2067,7 +2067,7 @@ CSMT_ITEM_NO_WAIT(nine_context_set_clip_plane,
 }
 
 CSMT_ITEM_NO_WAIT(nine_context_set_swvp,
-                  ARG_VAL(boolean, swvp))
+                  ARG_VAL(bool, swvp))
 {
     struct nine_context *context = &device->context;
 
@@ -2701,13 +2701,13 @@ CSMT_ITEM_NO_WAIT_WITH_COUNTER(nine_context_end_query,
     (void) context->pipe->end_query(context->pipe, query);
 }
 
-boolean
+bool
 nine_context_get_query_result(struct NineDevice9 *device, struct pipe_query *query,
-                              unsigned *counter, boolean flush, boolean wait,
+                              unsigned *counter, bool flush, bool wait,
                               union pipe_query_result *result)
 {
     struct pipe_context *pipe;
-    boolean ret;
+    bool ret;
 
     if (wait)
         nine_csmt_process(device);
@@ -2910,7 +2910,7 @@ void nine_state_restore_non_cso(struct NineDevice9 *device)
 
 void
 nine_state_set_defaults(struct NineDevice9 *device, const D3DCAPS9 *caps,
-                        boolean is_reset)
+                        bool is_reset)
 {
     struct nine_state *state = &device->state;
     struct nine_context *context = &device->context;
@@ -3642,7 +3642,7 @@ nine_state_resize_transform(struct nine_ff_state *ff_state, unsigned N)
 
 D3DMATRIX *
 nine_state_access_transform(struct nine_ff_state *ff_state, D3DTRANSFORMSTATETYPE t,
-                            boolean alloc)
+                            bool alloc)
 {
     unsigned index;
 

@@ -576,7 +576,7 @@ _mesa_update_renderbuffer_surface(struct gl_context *ctx,
     * the format).  Check rb->Format instead of rb->texture->format
     * to determine if the rb is sRGB-capable.
     */
-   boolean enable_srgb = ctx->Color.sRGBEnabled &&
+   bool enable_srgb = ctx->Color.sRGBEnabled &&
       _mesa_is_format_srgb(rb->Format);
    enum pipe_format format = resource->format;
 

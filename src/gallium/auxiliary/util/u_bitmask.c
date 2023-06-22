@@ -86,7 +86,7 @@ util_bitmask_create(void)
 /**
  * Resize the bitmask if necessary
  */
-static inline boolean
+static inline bool
 util_bitmask_resize(struct util_bitmask *bm,
                     unsigned minimum_index)
 {
@@ -249,7 +249,7 @@ util_bitmask_clear(struct util_bitmask *bm,
 }
 
 
-boolean
+bool
 util_bitmask_get(struct util_bitmask *bm,
                  unsigned index)
 {

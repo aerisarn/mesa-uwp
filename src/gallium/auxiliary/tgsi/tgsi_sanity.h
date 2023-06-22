@@ -41,7 +41,7 @@ struct tgsi_token;
  * controlled by the debug option TGSI_PRINT_SANITY (default false).
  * Returns TRUE if there are no errors, even though there could be some warnings.
  */
-boolean
+bool
 tgsi_sanity_check(
    const struct tgsi_token *tokens );
 

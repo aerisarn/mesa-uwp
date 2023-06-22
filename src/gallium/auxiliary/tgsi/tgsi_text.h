@@ -36,7 +36,7 @@ extern "C" {
 
 struct tgsi_token;
 
-boolean
+bool
 tgsi_text_translate(
    const char *text,
    struct tgsi_token *tokens,

@@ -194,7 +194,7 @@ u_box_union_3d(struct pipe_box *dst,
    dst->z = z;
 }
 
-static inline boolean
+static inline bool
 u_box_test_intersection_1d(const struct pipe_box *a,
                            const struct pipe_box *b)
 {
@@ -209,7 +209,7 @@ u_box_test_intersection_1d(const struct pipe_box *a,
    return ax[1] >= bx[0] && bx[1] >= ax[0];
 }
 
-static inline boolean
+static inline bool
 u_box_test_intersection_2d(const struct pipe_box *a,
                            const struct pipe_box *b)
 {
@@ -233,7 +233,7 @@ u_box_test_intersection_2d(const struct pipe_box *a,
    return TRUE;
 }
 
-static inline boolean
+static inline bool
 u_box_test_intersection_3d(const struct pipe_box *a,
                            const struct pipe_box *b)
 {

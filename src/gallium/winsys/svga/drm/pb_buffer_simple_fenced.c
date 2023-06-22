@@ -151,7 +151,7 @@ static enum pipe_error
 fenced_buffer_create_gpu_storage_locked(struct fenced_manager *fenced_mgr,
                                         struct fenced_buffer *fenced_buf,
                                         const struct pb_desc *desc,
-                                        boolean wait);
+                                        bool wait);
 /**
  * Dump the fenced buffer list.
  *
@@ -253,7 +253,7 @@ fenced_buffer_add_locked(struct fenced_manager *fenced_mgr,
  *
  * Returns TRUE if the buffer was detroyed.
  */
-static inline boolean
+static inline bool
 fenced_buffer_remove_locked(struct fenced_manager *fenced_mgr,
                             struct fenced_buffer *fenced_buf)
 {
@@ -307,7 +307,7 @@ fenced_buffer_finish_locked(struct fenced_manager *fenced_mgr,
    if(fenced_buf->fence) {
       struct pipe_fence_handle *fence = NULL;
       int finished;
-      boolean proceed;
+      bool proceed;
 
       ops->fence_reference(ops, &fence, fenced_buf->fence);
 
@@ -333,7 +333,7 @@ fenced_buffer_finish_locked(struct fenced_manager *fenced_mgr,
           * Remove from the fenced list
           */
 
-         boolean destroyed;
+         bool destroyed;
 
          destroyed = fenced_buffer_remove_locked(fenced_mgr, fenced_buf);
 
@@ -357,15 +357,15 @@ fenced_buffer_finish_locked(struct fenced_manager *fenced_mgr,
  *
  * Returns TRUE if at least one buffer was removed.
  */
-static boolean
+static bool
 fenced_manager_check_signalled_locked(struct fenced_manager *fenced_mgr,
-                                      boolean wait)
+                                      bool wait)
 {
    struct pb_fence_ops *ops = fenced_mgr->ops;
    struct list_head *curr, *next;
    struct fenced_buffer *fenced_buf;
    struct pipe_fence_handle *prev_fence = NULL;
-   boolean ret = FALSE;
+   bool ret = FALSE;
 
    curr = fenced_mgr->fenced.next;
    next = curr->next;
@@ -432,7 +432,7 @@ fenced_buffer_destroy_gpu_storage_locked(struct fenced_buffer *fenced_buf)
  * This function is a shorthand around pb_manager::create_buffer for
  * fenced_buffer_create_gpu_storage_locked()'s benefit.
  */
-static inline boolean
+static inline bool
 fenced_buffer_try_create_gpu_storage_locked(struct fenced_manager *fenced_mgr,
                                             struct fenced_buffer *fenced_buf,
                                             const struct pb_desc *desc)
@@ -454,7 +454,7 @@ static enum pipe_error
 fenced_buffer_create_gpu_storage_locked(struct fenced_manager *fenced_mgr,
                                         struct fenced_buffer *fenced_buf,
                                         const struct pb_desc *desc,
-                                        boolean wait)
+                                        bool wait)
 {
    assert(!fenced_buf->buffer);
 
@@ -659,7 +659,7 @@ fenced_buffer_fence(struct pb_buffer *buf,
       assert(fenced_buf->validation_flags);
 
       if (fenced_buf->fence) {
-         boolean destroyed;
+         bool destroyed;
          destroyed = fenced_buffer_remove_locked(fenced_mgr, fenced_buf);
          assert(!destroyed);
          (void) destroyed;

@@ -183,7 +183,7 @@ create_dst_texture(struct gl_context *ctx,
    return screen->resource_create(screen, &dst_templ);
 }
 
-static boolean
+static bool
 copy_to_staging_dest(struct gl_context * ctx, struct pipe_resource *dst,
                  GLint xoffset, GLint yoffset, GLint zoffset,
                  GLsizei width, GLsizei height, GLint depth,
@@ -200,7 +200,7 @@ copy_to_staging_dest(struct gl_context * ctx, struct pipe_resource *dst,
    unsigned dims;
    struct pipe_transfer *tex_xfer;
    ubyte *map = NULL;
-   boolean done = FALSE;
+   bool done = FALSE;
 
    pixels = _mesa_map_pbo_dest(ctx, &ctx->Pack, pixels);
 
@@ -923,7 +923,7 @@ guess_base_level_size(GLenum target,
  * \param stObj  the texture object we're going to allocate memory for.
  * \param stImage  describes the incoming image which we need to store.
  */
-static boolean
+static bool
 allocate_full_mipmap(const struct gl_texture_object *stObj,
                      const struct gl_texture_image *stImage)
 {
@@ -2600,7 +2600,7 @@ st_GetTexSubImage(struct gl_context * ctx,
    enum pipe_texture_target pipe_target;
    struct pipe_blit_info blit;
    unsigned bind;
-   boolean done = FALSE;
+   bool done = FALSE;
 
    assert(!_mesa_is_format_etc2(texImage->TexFormat) &&
           !_mesa_is_format_astc_2d(texImage->TexFormat) &&
@@ -3394,7 +3394,7 @@ st_texture_storage(struct gl_context *ctx,
        * choose 4x here.
        */
       enum pipe_texture_target ptarget = gl_target_to_pipe(texObj->Target);
-      boolean found = FALSE;
+      bool found = FALSE;
 
       if (ctx->Const.MaxSamples > 1 && num_samples == 1) {
          /* don't try num_samples = 1 with drivers that support real msaa */

@@ -79,7 +79,7 @@ struct draw_vertex_info {
 };
 
 struct draw_prim_info {
-   boolean linear;
+   bool linear;
    unsigned start;
 
    const ushort *elts;
@@ -136,27 +136,27 @@ void draw_set_rasterize_stage(struct draw_context *draw,
 
 void draw_wide_point_threshold(struct draw_context *draw, float threshold);
 
-void draw_wide_point_sprites(struct draw_context *draw, boolean draw_sprite);
+void draw_wide_point_sprites(struct draw_context *draw, bool draw_sprite);
 
 void draw_wide_line_threshold(struct draw_context *draw, float threshold);
 
-void draw_enable_line_stipple(struct draw_context *draw, boolean enable);
+void draw_enable_line_stipple(struct draw_context *draw, bool enable);
 
-void draw_enable_point_sprites(struct draw_context *draw, boolean enable);
+void draw_enable_point_sprites(struct draw_context *draw, bool enable);
 
 void draw_set_zs_format(struct draw_context *draw, enum pipe_format format);
 
 /* for TGSI constants are 4 * sizeof(float), but for NIR they need to be sizeof(float); */
 void draw_set_constant_buffer_stride(struct draw_context *draw, unsigned num_bytes);
 
-boolean
+bool
 draw_install_aaline_stage(struct draw_context *draw, struct pipe_context *pipe);
 
-boolean
+bool
 draw_install_aapoint_stage(struct draw_context *draw, struct pipe_context *pipe,
                            nir_alu_type bool_type);
 
-boolean
+bool
 draw_install_pstipple_stage(struct draw_context *draw, struct pipe_context *pipe);
 
 
@@ -171,7 +171,7 @@ draw_find_shader_output(const struct draw_context *draw,
                         enum tgsi_semantic semantic_name,
                         unsigned semantic_index);
 
-boolean
+bool
 draw_will_inject_frontface(const struct draw_context *draw);
 
 unsigned
@@ -384,17 +384,17 @@ draw_set_render(struct draw_context *draw,
 
 void
 draw_set_driver_clipping(struct draw_context *draw,
-                         boolean bypass_clip_xy,
-                         boolean bypass_clip_z,
-                         boolean guard_band_xy,
-                         boolean bypass_clip_points_lines);
+                         bool bypass_clip_xy,
+                         bool bypass_clip_z,
+                         bool guard_band_xy,
+                         bool bypass_clip_points_lines);
 
 /*******************************************************************************
  * Draw statistics
  */
 void
 draw_collect_pipeline_statistics(struct draw_context *draw,
-                                 boolean enable);
+                                 bool enable);
 
 void
 draw_collect_primitives_generated(struct draw_context *draw,
@@ -403,7 +403,7 @@ draw_collect_primitives_generated(struct draw_context *draw,
 /*******************************************************************************
  * Draw pipeline
  */
-boolean
+bool
 draw_need_pipeline(const struct draw_context *draw,
                    const struct pipe_rasterizer_state *rasterizer,
                    enum mesa_prim prim);
@@ -415,7 +415,7 @@ int
 draw_get_shader_param_no_llvm(enum pipe_shader_type shader,
                               enum pipe_shader_cap param);
 
-boolean
+bool
 draw_get_option_use_llvm(void);
 
 

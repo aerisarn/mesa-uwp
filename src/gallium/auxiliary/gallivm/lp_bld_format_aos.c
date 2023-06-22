@@ -99,7 +99,7 @@ lp_build_format_swizzle_aos(const struct util_format_description *desc,
 /**
  * Whether the format matches the vector type, apart of swizzles.
  */
-static inline boolean
+static inline bool
 format_matches_type(const struct util_format_description *desc,
                     struct lp_type type)
 {
@@ -229,8 +229,8 @@ lp_build_unpack_arith_rgba_aos(struct gallivm_state *gallivm,
    LLVMValueRef scales[4];
    LLVMTypeRef vec32_type;
 
-   boolean normalized;
-   boolean needs_uitofp;
+   bool normalized;
+   bool needs_uitofp;
    unsigned i;
 
    /* TODO: Support more formats */
@@ -372,7 +372,7 @@ lp_build_pack_rgba_aos(struct gallivm_state *gallivm,
    LLVMValueRef shifted, casted, scaled, unswizzled;
    LLVMValueRef shifts[4];
    LLVMValueRef scales[4];
-   boolean normalized;
+   bool normalized;
    unsigned i, j;
 
    assert(desc->layout == UTIL_FORMAT_LAYOUT_PLAIN);
@@ -471,7 +471,7 @@ LLVMValueRef
 lp_build_fetch_rgba_aos(struct gallivm_state *gallivm,
                         const struct util_format_description *format_desc,
                         struct lp_type type,
-                        boolean aligned,
+                        bool aligned,
                         LLVMValueRef base_ptr,
                         LLVMValueRef offset,
                         LLVMValueRef i,

@@ -115,7 +115,7 @@ struct draw_pt_middle_end {
    /* Transform all vertices in a linear range and then draw them with
     * the supplied element list.  May fail and return FALSE.
     */
-   boolean (*run_linear_elts)(struct draw_pt_middle_end *,
+   bool (*run_linear_elts)(struct draw_pt_middle_end *,
                               unsigned fetch_start,
                               unsigned fetch_count,
                               const ushort *draw_elts,
@@ -187,7 +187,7 @@ draw_pt_emit_create(struct draw_context *draw);
 struct pt_so_emit;
 
 void
-draw_pt_so_emit_prepare(struct pt_so_emit *emit, boolean use_pre_clip_pos);
+draw_pt_so_emit_prepare(struct pt_so_emit *emit, bool use_pre_clip_pos);
 
 void
 draw_pt_so_emit(struct pt_so_emit *emit,
@@ -237,20 +237,20 @@ draw_pt_fetch_create(struct draw_context *draw);
  */
 struct pt_post_vs;
 
-boolean
+bool
 draw_pt_post_vs_run(struct pt_post_vs *pvs,
                     struct draw_vertex_info *info,
                     const struct draw_prim_info *prim_info);
 
 void
 draw_pt_post_vs_prepare(struct pt_post_vs *pvs,
-                        boolean clip_xy,
-                        boolean clip_z,
-                        boolean clip_user,
-                        boolean guard_band,
-                        boolean bypass_viewport,
-                        boolean clip_halfz,
-                        boolean need_edgeflags);
+                        bool clip_xy,
+                        bool clip_z,
+                        bool clip_user,
+                        bool guard_band,
+                        bool bypass_viewport,
+                        bool clip_halfz,
+                        bool need_edgeflags);
 
 struct pt_post_vs *
 draw_pt_post_vs_create(struct draw_context *draw);

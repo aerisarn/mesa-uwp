@@ -64,13 +64,13 @@
 #endif
 
 #ifdef GALLIUM_LLVMPIPE
-static boolean use_llvmpipe = FALSE;
+static bool use_llvmpipe = FALSE;
 #endif
 #ifdef GALLIUM_D3D12
-static boolean use_d3d12 = FALSE;
+static bool use_d3d12 = FALSE;
 #endif
 #ifdef GALLIUM_ZINK
-static boolean use_zink = FALSE;
+static bool use_zink = FALSE;
 #endif
 
 static const char *created_driver_name = NULL;
@@ -207,7 +207,7 @@ wgl_present(struct pipe_screen *screen,
 
 
 #if WINVER >= 0xA00
-static boolean
+static bool
 wgl_get_adapter_luid(struct pipe_screen* screen,
    HDC hDC,
    LUID* adapter_luid)

@@ -65,7 +65,7 @@ nv30_render_get_vertex_info(struct vbuf_render *render)
    return &nv30_render(render)->vertex_info;
 }
 
-static boolean
+static bool
 nv30_render_allocate_vertices(struct vbuf_render *render,
                               ushort vertex_size, ushort nr_vertices)
 {

@@ -50,7 +50,7 @@ svga_swtnl_draw_vbo(struct svga_context *svga,
    ASSERTED unsigned old_num_vertex_buffers;
    unsigned i;
    const void *map;
-   boolean retried;
+   bool retried;
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_SWTNLDRAWVBO);
 
@@ -153,7 +153,7 @@ svga_swtnl_draw_vbo(struct svga_context *svga,
 }
 
 
-boolean
+bool
 svga_init_swtnl(struct svga_context *svga)
 {
    struct svga_screen *screen = svga_screen(svga->pipe.screen);

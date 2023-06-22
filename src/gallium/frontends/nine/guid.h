@@ -29,7 +29,7 @@
 
 extern const GUID IID_ID3D9Adapter;
 
-boolean
+bool
 GUID_equal( const GUID *a,
             const GUID *b );
 

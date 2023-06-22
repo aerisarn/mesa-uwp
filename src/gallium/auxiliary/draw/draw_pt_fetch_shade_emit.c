@@ -294,7 +294,7 @@ fail:
 }
 
 
-static boolean
+static bool
 fse_run_linear_elts(struct draw_pt_middle_end *middle,
                     unsigned start,
                     unsigned count,

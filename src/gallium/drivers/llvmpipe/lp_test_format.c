@@ -60,7 +60,7 @@ write_tsv_header(FILE *fp)
 static void
 write_tsv_row(FILE *fp,
               const struct util_format_description *desc,
-              boolean success)
+              bool success)
 {
    fprintf(fp, "%s\t", success ? "pass" : "fail");
 
@@ -134,7 +134,7 @@ add_fetch_rgba_test(struct gallivm_state *gallivm, unsigned verbose,
 
 
 UTIL_ALIGN_STACK
-static boolean
+static bool
 test_format_float(unsigned verbose, FILE *fp,
                   const struct util_format_description *desc,
                   unsigned use_cache)
@@ -145,8 +145,8 @@ test_format_float(unsigned verbose, FILE *fp,
    fetch_ptr_t fetch_ptr;
    alignas(16) uint8_t packed[UTIL_FORMAT_MAX_PACKED_BYTES];
    alignas(16) float unpacked[4];
-   boolean first = TRUE;
-   boolean success = TRUE;
+   bool first = TRUE;
+   bool success = TRUE;
    unsigned i, j, k, l;
 
    context = LLVMContextCreate();
@@ -181,7 +181,7 @@ test_format_float(unsigned verbose, FILE *fp,
 
          for (i = 0; i < desc->block.height; ++i) {
             for (j = 0; j < desc->block.width; ++j) {
-               boolean match = TRUE;
+               bool match = TRUE;
 
                memset(unpacked, 0, sizeof unpacked);
 
@@ -238,7 +238,7 @@ test_format_float(unsigned verbose, FILE *fp,
 
 
 UTIL_ALIGN_STACK
-static boolean
+static bool
 test_format_unorm8(unsigned verbose, FILE *fp,
                    const struct util_format_description *desc,
                    unsigned use_cache)
@@ -249,8 +249,8 @@ test_format_unorm8(unsigned verbose, FILE *fp,
    fetch_ptr_t fetch_ptr;
    alignas(16) uint8_t packed[UTIL_FORMAT_MAX_PACKED_BYTES];
    uint8_t unpacked[4];
-   boolean first = TRUE;
-   boolean success = TRUE;
+   bool first = TRUE;
+   bool success = TRUE;
    unsigned i, j, k, l;
 
    context = LLVMContextCreate();
@@ -285,7 +285,7 @@ test_format_unorm8(unsigned verbose, FILE *fp,
 
          for (i = 0; i < desc->block.height; ++i) {
             for (j = 0; j < desc->block.width; ++j) {
-               boolean match;
+               bool match;
 
                memset(unpacked, 0, sizeof unpacked);
 
@@ -342,12 +342,12 @@ test_format_unorm8(unsigned verbose, FILE *fp,
 
 
 
-static boolean
+static bool
 test_one(unsigned verbose, FILE *fp,
          const struct util_format_description *format_desc,
          unsigned use_cache)
 {
-   boolean success = TRUE;
+   bool success = TRUE;
 
    if (!test_format_float(verbose, fp, format_desc, use_cache)) {
      success = FALSE;
@@ -361,11 +361,11 @@ test_one(unsigned verbose, FILE *fp,
 }
 
 
-boolean
+bool
 test_all(unsigned verbose, FILE *fp)
 {
    enum pipe_format format;
-   boolean success = TRUE;
+   bool success = TRUE;
    unsigned use_cache;
 
    cache_ptr = align_malloc(sizeof(struct lp_build_format_cache), 16);
@@ -412,7 +412,7 @@ test_all(unsigned verbose, FILE *fp)
 }
 
 
-boolean
+bool
 test_some(unsigned verbose, FILE *fp,
           unsigned long n)
 {
@@ -420,7 +420,7 @@ test_some(unsigned verbose, FILE *fp,
 }
 
 
-boolean
+bool
 test_single(unsigned verbose, FILE *fp)
 {
    printf("no test_single()");

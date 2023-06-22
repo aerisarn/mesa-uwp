@@ -46,7 +46,7 @@ struct lp_line_info {
    float dx;
    float dy;
    float oneoverarea;
-   boolean frontfacing;
+   bool frontfacing;
 
    const float (*v1)[4];
    const float (*v2)[4];
@@ -263,7 +263,7 @@ print_line(struct lp_setup_context *setup,
 }
 
 
-static inline boolean
+static inline bool
 sign(float x)
 {
    return x >= 0;
@@ -279,7 +279,7 @@ fracf(float f)
 }
 
 
-static boolean
+static bool
 try_setup_line(struct lp_setup_context *setup,
                const float (*v1)[4],
                const float (*v2)[4])
@@ -604,7 +604,7 @@ try_setup_line(struct lp_setup_context *setup,
 
    int max_szorig = ((bbox.x1 - (bbox.x0 & ~3)) |
                      (bbox.y1 - (bbox.y0 & ~3)));
-   boolean use_32bits = max_szorig <= MAX_FIXED_LENGTH32;
+   bool use_32bits = max_szorig <= MAX_FIXED_LENGTH32;
    bboxpos = bbox;
 
    /* Can safely discard negative regions:
@@ -619,7 +619,7 @@ try_setup_line(struct lp_setup_context *setup,
     */
    const struct u_rect *scissor = &setup->draw_regions[viewport_index];
 
-   boolean s_planes[4];
+   bool s_planes[4];
    scissor_planes_needed(s_planes, &bboxpos, scissor);
    nr_planes += s_planes[0] + s_planes[1] + s_planes[2] + s_planes[3];
 

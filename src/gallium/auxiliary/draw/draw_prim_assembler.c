@@ -47,7 +47,7 @@ struct draw_assembler
    const struct draw_prim_info *input_prims;
    const struct draw_vertex_info *input_verts;
 
-   boolean needs_primid;
+   bool needs_primid;
    int primid_slot;
    unsigned primid;
 
@@ -55,7 +55,7 @@ struct draw_assembler
 };
 
 
-static boolean
+static bool
 needs_primid(const struct draw_context *draw)
 {
    const struct draw_fragment_shader *fs = draw->fs.fragment_shader;
@@ -73,7 +73,7 @@ needs_primid(const struct draw_context *draw)
 }
 
 
-boolean
+bool
 draw_prim_assembler_is_required(const struct draw_context *draw,
                                 const struct draw_prim_info *prim_info,
                                 const struct draw_vertex_info *vert_info)

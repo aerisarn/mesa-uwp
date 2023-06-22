@@ -102,8 +102,8 @@ out_unlock:
 void *
 vmw_svga_winsys_surface_map(struct svga_winsys_context *swc,
                             struct svga_winsys_surface *srf,
-                            unsigned flags, boolean *retry,
-                            boolean *rebind)
+                            unsigned flags, bool *retry,
+                            bool *rebind)
 {
    struct vmw_svga_winsys_surface *vsrf = vmw_svga_winsys_surface(srf);
    void *data = NULL;
@@ -228,7 +228,7 @@ out_unlock:
 void
 vmw_svga_winsys_surface_unmap(struct svga_winsys_context *swc,
                               struct svga_winsys_surface *srf,
-                              boolean *rebind)
+                              bool *rebind)
 {
    struct vmw_svga_winsys_surface *vsrf = vmw_svga_winsys_surface(srf);
    mtx_lock(&vsrf->mutex);

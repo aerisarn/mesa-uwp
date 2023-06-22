@@ -156,7 +156,7 @@ void llvmpipe_init_screen_resource_funcs(struct pipe_screen *screen);
 void llvmpipe_init_context_resource_funcs(struct pipe_context *pipe);
 
 
-static inline boolean
+static inline bool
 llvmpipe_resource_is_texture(const struct pipe_resource *resource)
 {
    switch (resource->target) {
@@ -178,7 +178,7 @@ llvmpipe_resource_is_texture(const struct pipe_resource *resource)
 }
 
 
-static inline boolean
+static inline bool
 llvmpipe_resource_is_1d(const struct pipe_resource *resource)
 {
    switch (resource->target) {

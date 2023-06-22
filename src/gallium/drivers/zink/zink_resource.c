@@ -2411,7 +2411,7 @@ zink_resource_copy_box_intersects(struct zink_resource *res, unsigned level, con
       return true;
    struct pipe_box *b = res->obj->copies[level].data;
    unsigned num_boxes = util_dynarray_num_elements(&res->obj->copies[level], struct pipe_box);
-   boolean (*intersect)(const struct pipe_box *, const struct pipe_box *);
+   bool (*intersect)(const struct pipe_box *, const struct pipe_box *);
    /* determine intersection function based on dimensionality */
    switch (res->base.b.target) {
    case PIPE_BUFFER:

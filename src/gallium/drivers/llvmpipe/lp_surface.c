@@ -366,7 +366,7 @@ lp_clear_depth_stencil_texture_msaa(struct pipe_context *pipe,
                                     const struct pipe_box *box)
 {
    struct pipe_transfer *dst_trans;
-   boolean need_rmw = FALSE;
+   bool need_rmw = FALSE;
 
    if ((clear_flags & PIPE_CLEAR_DEPTHSTENCIL) &&
        ((clear_flags & PIPE_CLEAR_DEPTHSTENCIL) != PIPE_CLEAR_DEPTHSTENCIL) &&

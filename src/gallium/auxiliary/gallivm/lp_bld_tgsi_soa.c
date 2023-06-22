@@ -254,7 +254,7 @@ static void lp_exec_case(struct lp_exec_mask *mask,
  *                         if default wasn't last but there's no
  *                         fallthrough into default.
  */
-static boolean default_analyse_is_last(struct lp_exec_mask *mask,
+static bool default_analyse_is_last(struct lp_exec_mask *mask,
                                        struct lp_build_tgsi_context * bld_base,
                                        int *default_pc_start)
 {
@@ -307,7 +307,7 @@ static void lp_exec_default(struct lp_exec_mask *mask,
    struct function_ctx *ctx = func_ctx(mask);
 
    int default_exec_pc = 0;
-   boolean default_is_last;
+   bool default_is_last;
 
    if (ctx->switch_stack_size > LP_MAX_TGSI_NESTING) {
       return;
@@ -346,7 +346,7 @@ static void lp_exec_default(struct lp_exec_mask *mask,
        */
       enum tgsi_opcode opcode =
          bld_base->instructions[bld_base->pc - 1].Instruction.Opcode;
-      boolean ft_into = (opcode != TGSI_OPCODE_BRK &&
+      bool ft_into = (opcode != TGSI_OPCODE_BRK &&
                          opcode != TGSI_OPCODE_SWITCH);
       /*
        * If it is not last statement and there was no fallthrough into it,
@@ -776,7 +776,7 @@ static LLVMValueRef
 get_soa_array_offsets(struct lp_build_context *uint_bld,
                       LLVMValueRef indirect_index,
                       unsigned chan_index,
-                      boolean need_perelement_offset)
+                      bool need_perelement_offset)
 {
    struct gallivm_state *gallivm = uint_bld->gallivm;
    LLVMValueRef chan_vec =
@@ -2289,7 +2289,7 @@ static void
 emit_sample(struct lp_build_tgsi_soa_context *bld,
             const struct tgsi_full_instruction *inst,
             enum lp_build_tex_modifier modifier,
-            boolean compare,
+            bool compare,
             enum lp_sampler_op_type sample_type,
             LLVMValueRef *texel)
 {
@@ -2471,7 +2471,7 @@ static void
 emit_fetch_texels( struct lp_build_tgsi_soa_context *bld,
                    const struct tgsi_full_instruction *inst,
                    LLVMValueRef *texel,
-                   boolean is_samplei)
+                   bool is_samplei)
 {
    unsigned unit, target;
    LLVMValueRef coord_undef = LLVMGetUndef(bld->bld_base.base.int_vec_type);
@@ -2612,7 +2612,7 @@ static void
 emit_size_query( struct lp_build_tgsi_soa_context *bld,
                  const struct tgsi_full_instruction *inst,
                  LLVMValueRef *sizes_out,
-                 boolean is_sviewinfo)
+                 bool is_sviewinfo)
 {
    LLVMValueRef explicit_lod;
    enum lp_sampler_lod_property lod_property;
@@ -2678,7 +2678,7 @@ emit_size_query( struct lp_build_tgsi_soa_context *bld,
                                  &params);
 }
 
-static boolean
+static bool
 near_end_of_shader(struct lp_build_tgsi_soa_context *bld,
                    int pc)
 {

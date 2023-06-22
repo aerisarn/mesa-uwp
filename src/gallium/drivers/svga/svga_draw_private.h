@@ -196,7 +196,7 @@ struct svga_hwtnl {
  * Do we need to use the gallium 'indices' helper to render unfilled
  * triangles?
  */
-static inline boolean
+static inline bool
 svga_need_unfilled_fallback(const struct svga_hwtnl *hwtnl,
                             enum mesa_prim prim)
 {

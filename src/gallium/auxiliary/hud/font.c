@@ -372,7 +372,7 @@ util_font_draw_character(void *dst_mem, unsigned dst_stride, unsigned character)
    }
 }
 
-static boolean
+static bool
 util_font_create_fixed_8x13(struct pipe_context *pipe,
                             struct util_font *out_font)
 {
@@ -442,7 +442,7 @@ util_font_create_fixed_8x13(struct pipe_context *pipe,
 }
 
 
-boolean
+bool
 util_font_create(struct pipe_context *pipe, enum util_font_name name,
                  struct util_font *out_font)
 {

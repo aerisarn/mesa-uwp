@@ -78,7 +78,7 @@ emit_tex_binding_unit(struct svga_context *svga,
                       const struct svga_sampler_state *s,
                       const struct pipe_sampler_view *sv,
                       struct svga_hw_view_state *view,
-                      boolean reemit,
+                      bool reemit,
                       struct bind_queue *queue)
 {
    struct pipe_resource *texture = NULL;
@@ -142,7 +142,7 @@ static enum pipe_error
 update_tss_binding(struct svga_context *svga, uint64_t dirty )
 {
    const enum pipe_shader_type shader = PIPE_SHADER_FRAGMENT;
-   boolean reemit = svga->rebind.flags.texture_samplers;
+   bool reemit = svga->rebind.flags.texture_samplers;
    unsigned i;
    unsigned count = MAX2(svga->curr.num_sampler_views[shader],
                          svga->state.hw_draw.num_views);

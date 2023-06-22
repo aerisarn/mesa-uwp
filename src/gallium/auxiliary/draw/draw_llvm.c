@@ -590,7 +590,7 @@ generate_vs(struct draw_llvm_variant *variant,
             LLVMValueRef resources_ptr,
             const struct lp_build_sampler_soa *draw_sampler,
             const struct lp_build_image_soa *draw_image,
-            boolean clamp_vertex_color,
+            bool clamp_vertex_color,
             struct lp_build_mask_context *bld_mask)
 {
    struct draw_llvm *llvm = variant->llvm;
@@ -874,7 +874,7 @@ draw_store_aos_array(struct gallivm_state *gallivm,
                      LLVMValueRef* aos,
                      int attrib,
                      LLVMValueRef clipmask,
-                     boolean need_edgeflag, bool is_per_prim)
+                     bool need_edgeflag, bool is_per_prim)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef attr_index = lp_build_const_int32(gallivm, attrib);
@@ -950,7 +950,7 @@ convert_to_aos(struct gallivm_state *gallivm,
                int num_outputs,
                struct lp_type soa_type,
                int primid_slot,
-               boolean need_edgeflag)
+               bool need_edgeflag)
 {
    LLVMBuilderRef builder = gallivm->builder;
 
@@ -1141,7 +1141,7 @@ generate_clipmask(struct draw_llvm *llvm,
                   struct draw_llvm_variant_key *key,
                   LLVMTypeRef context_type,
                   LLVMValueRef context_ptr,
-                  boolean *have_clipdist)
+                  bool *have_clipdist)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef mask; /* stores the <nxi32> clipmasks */
@@ -1155,8 +1155,8 @@ generate_clipmask(struct draw_llvm *llvm,
    const unsigned pos = llvm->draw->vs.position_output;
    const unsigned cv = llvm->draw->vs.clipvertex_output;
    int num_written_clipdistance = llvm->draw->vs.vertex_shader->info.num_written_clipdistance;
-   boolean have_cd = false;
-   boolean clip_user = key->clip_user;
+   bool have_cd = false;
+   bool clip_user = key->clip_user;
    unsigned ucp_enable = key->ucp_enable;
    unsigned cd[2];
 
@@ -1341,7 +1341,7 @@ clipmask_booli8(struct gallivm_state *gallivm,
                 const struct lp_type vs_type,
                 LLVMTypeRef clipmask_bool_type,
                 LLVMValueRef clipmask_bool_ptr,
-                boolean edgeflag_in_clipmask)
+                bool edgeflag_in_clipmask)
 {
    LLVMBuilderRef builder = gallivm->builder;
    LLVMTypeRef int8_type = LLVMInt8TypeInContext(gallivm->context);
@@ -1378,9 +1378,9 @@ clipmask_booli8(struct gallivm_state *gallivm,
 static LLVMValueRef
 draw_gs_llvm_fetch_input(const struct lp_build_gs_iface *gs_iface,
                          struct lp_build_context * bld,
-                         boolean is_vindex_indirect,
+                         bool is_vindex_indirect,
                          LLVMValueRef vertex_index,
-                         boolean is_aindex_indirect,
+                         bool is_aindex_indirect,
                          LLVMValueRef attrib_index,
                          LLVMValueRef swizzle_index)
 {
@@ -1595,16 +1595,16 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
     * (though this would be fixable here, but couldn't just broadcast
     * the values).
     */
-   const boolean bypass_viewport = key->has_gs_or_tes || key->bypass_viewport ||
+   const bool bypass_viewport = key->has_gs_or_tes || key->bypass_viewport ||
                                    vs_info->writes_viewport_index;
-   const boolean enable_cliptest = !key->has_gs_or_tes && (key->clip_xy ||
+   const bool enable_cliptest = !key->has_gs_or_tes && (key->clip_xy ||
                                                     key->clip_z ||
                                                     key->clip_user ||
                                                     key->need_edgeflags);
    LLVMValueRef variant_func;
    const unsigned pos = draw->vs.position_output;
    const unsigned cv = draw->vs.clipvertex_output;
-   boolean have_clipdist = FALSE;
+   bool have_clipdist = FALSE;
    struct lp_bld_tgsi_system_values system_values;
 
    memset(&system_values, 0, sizeof(system_values));
@@ -2662,11 +2662,11 @@ get_tcs_resources_ptr_type(struct draw_tcs_llvm_variant *variant)
 static LLVMValueRef
 draw_tcs_llvm_emit_fetch_input(const struct lp_build_tcs_iface *tes_iface,
                                struct lp_build_context *bld,
-                               boolean is_vindex_indirect,
+                               bool is_vindex_indirect,
                                LLVMValueRef vertex_index,
-                               boolean is_aindex_indirect,
+                               bool is_aindex_indirect,
                                LLVMValueRef attrib_index,
-                               boolean is_sindex_indirect,
+                               bool is_sindex_indirect,
                                LLVMValueRef swizzle_index)
 {
    const struct draw_tcs_llvm_iface *tcs = draw_tcs_llvm_iface(tes_iface);
@@ -2723,11 +2723,11 @@ draw_tcs_llvm_emit_fetch_input(const struct lp_build_tcs_iface *tes_iface,
 static LLVMValueRef
 draw_tcs_llvm_emit_fetch_output(const struct lp_build_tcs_iface *tes_iface,
                                 struct lp_build_context *bld,
-                                boolean is_vindex_indirect,
+                                bool is_vindex_indirect,
                                 LLVMValueRef vertex_index,
-                                boolean is_aindex_indirect,
+                                bool is_aindex_indirect,
                                 LLVMValueRef attrib_index,
-                                boolean is_sindex_indirect,
+                                bool is_sindex_indirect,
                                 LLVMValueRef swizzle_index,
                                 uint32_t name)
 {
@@ -2788,11 +2788,11 @@ static void
 draw_tcs_llvm_emit_store_output(const struct lp_build_tcs_iface *tes_iface,
                                 struct lp_build_context *bld,
                                 unsigned name,
-                                boolean is_vindex_indirect,
+                                bool is_vindex_indirect,
                                 LLVMValueRef vertex_index,
-                                boolean is_aindex_indirect,
+                                bool is_aindex_indirect,
                                 LLVMValueRef attrib_index,
-                                boolean is_sindex_indirect,
+                                bool is_sindex_indirect,
                                 LLVMValueRef swizzle_index,
                                 LLVMValueRef value,
                                 LLVMValueRef mask_vec)
@@ -3335,11 +3335,11 @@ generate_tes_mask_value(struct draw_tes_llvm_variant *variant,
 static LLVMValueRef
 draw_tes_llvm_fetch_vertex_input(const struct lp_build_tes_iface *tes_iface,
                                  struct lp_build_context *bld,
-                                 boolean is_vindex_indirect,
+                                 bool is_vindex_indirect,
                                  LLVMValueRef vertex_index,
-                                 boolean is_aindex_indirect,
+                                 bool is_aindex_indirect,
                                  LLVMValueRef attrib_index,
-                                 boolean is_sindex_indirect,
+                                 bool is_sindex_indirect,
                                  LLVMValueRef swizzle_index)
 {
    const struct draw_tes_llvm_iface *tes = draw_tes_llvm_iface(tes_iface);
@@ -3397,7 +3397,7 @@ draw_tes_llvm_fetch_vertex_input(const struct lp_build_tes_iface *tes_iface,
 static LLVMValueRef
 draw_tes_llvm_fetch_patch_input(const struct lp_build_tes_iface *tes_iface,
                                 struct lp_build_context *bld,
-                                boolean is_aindex_indirect,
+                                bool is_aindex_indirect,
                                 LLVMValueRef attrib_index,
                                 LLVMValueRef swizzle_index)
 {

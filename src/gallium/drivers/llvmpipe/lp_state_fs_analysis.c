@@ -82,13 +82,13 @@
  *  performance impact it has. The ultimate purpose of detecting these shaders
  *  is to override with nearest texture filtering.
  */
-static inline boolean
+static inline bool
 match_aero_minification_shader(const struct tgsi_token *tokens,
                                const struct lp_tgsi_info *info)
 {
    struct tgsi_parse_context parse;
    unsigned coord_mask;
-   boolean has_quarter_imm;
+   bool has_quarter_imm;
    unsigned index, chan;
 
    if ((info->base.opcode_count[TGSI_OPCODE_TEX] != 4 &&

@@ -11,7 +11,7 @@
 struct util_split_prim {
    void *priv;
    void (*emit)(void *priv, unsigned start, unsigned count);
-   void (*edge)(void *priv, boolean enabled);
+   void (*edge)(void *priv, bool enabled);
 
    unsigned mode;
    unsigned start;
@@ -41,7 +41,7 @@ util_split_prim_init(struct util_split_prim *s,
    s->repeat_first = 0;
 }
 
-static inline boolean
+static inline bool
 util_split_prim_next(struct util_split_prim *s, unsigned max_verts)
 {
    int repeat = 0;

@@ -137,7 +137,7 @@ LLVMValueRef
 lp_build_pack(struct gallivm_state *gallivm,
               struct lp_type src_type,
               struct lp_type dst_type,
-              boolean clamped,
+              bool clamped,
               const LLVMValueRef *src, unsigned num_srcs);
 
 

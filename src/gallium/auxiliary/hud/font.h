@@ -52,7 +52,7 @@ struct util_font {
    unsigned glyph_height;
 };
 
-boolean
+bool
 util_font_create(struct pipe_context *pipe, enum util_font_name name,
                          struct util_font *out_font);
 

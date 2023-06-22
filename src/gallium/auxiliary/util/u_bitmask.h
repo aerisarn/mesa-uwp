@@ -82,7 +82,7 @@ void
 util_bitmask_clear(struct util_bitmask *bm,
                    unsigned index);
 
-boolean
+bool
 util_bitmask_get(struct util_bitmask *bm,
                  unsigned index);
 

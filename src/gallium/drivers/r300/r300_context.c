@@ -152,11 +152,11 @@ do { \
         return FALSE; \
 } while (0)
 
-static boolean r300_setup_atoms(struct r300_context* r300)
+static bool r300_setup_atoms(struct r300_context* r300)
 {
-    boolean is_rv350 = r300->screen->caps.is_rv350;
-    boolean is_r500 = r300->screen->caps.is_r500;
-    boolean has_tcl = r300->screen->caps.has_tcl;
+    bool is_rv350 = r300->screen->caps.is_rv350;
+    bool is_r500 = r300->screen->caps.is_r500;
+    bool has_tcl = r300->screen->caps.has_tcl;
 
     /* Create the actual atom list.
      *

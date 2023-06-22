@@ -46,7 +46,7 @@ struct hud_batch_query_context {
    unsigned allocated_query_types;
    unsigned *query_types;
 
-   boolean failed;
+   bool failed;
    struct pipe_query *query[NUM_QUERIES];
    union pipe_query_result *result[NUM_QUERIES];
    unsigned head, pending, results;
@@ -129,7 +129,7 @@ hud_batch_query_begin(struct hud_batch_query_context *bq,
    }
 }
 
-static boolean
+static bool
 batch_query_add(struct hud_batch_query_context **pbq,
                 unsigned query_type, unsigned *result_index)
 {
@@ -419,14 +419,14 @@ fail_gr:
    FREE(gr);
 }
 
-boolean
+bool
 hud_driver_query_install(struct hud_batch_query_context **pbq,
                          struct hud_pane *pane, struct pipe_screen *screen,
                          const char *name)
 {
    struct pipe_driver_query_info query = { 0 };
    unsigned num_queries, i;
-   boolean found = FALSE;
+   bool found = FALSE;
 
    if (!screen->get_driver_query_info)
       return FALSE;

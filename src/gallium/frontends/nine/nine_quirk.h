@@ -25,7 +25,7 @@
 
 #include "pipe/p_compiler.h"
 
-boolean
+bool
 _nine_get_quirk( unsigned quirk );
 
 #define QUIRK(q) (_nine_get_quirk(QUIRK_##q))

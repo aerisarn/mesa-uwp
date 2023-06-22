@@ -35,7 +35,7 @@
  * Translate TGSI semantic info into SVGA3d semantic info.
  * This is called for VS outputs and PS inputs only.
  */
-static boolean
+static bool
 translate_vs_ps_semantic(struct svga_shader_emitter *emit,
                          struct tgsi_declaration_semantic semantic,
                          unsigned *usage,
@@ -95,7 +95,7 @@ translate_vs_ps_semantic(struct svga_shader_emitter *emit,
  * For example, if usage = SVGA3D_DECLUSAGE_TEXCOORD, reg.num = 1, and
  * index = 3, we'll emit "dcl_texcoord3 v1".
  */
-static boolean
+static bool
 emit_decl(struct svga_shader_emitter *emit,
           SVGA3dShaderDestToken reg,
           unsigned usage,
@@ -125,7 +125,7 @@ emit_decl(struct svga_shader_emitter *emit,
 /**
  * Emit declaration for PS front/back-face input register.
  */
-static boolean
+static bool
 emit_vface_decl(struct svga_shader_emitter *emit)
 {
    if (!emit->emitted_vface) {
@@ -145,7 +145,7 @@ emit_vface_decl(struct svga_shader_emitter *emit)
  * Emit PS input register to pass depth/fog coordinates.
  * Note that this always goes into texcoord[0].
  */
-static boolean
+static bool
 ps30_input_emit_depth_fog(struct svga_shader_emitter *emit,
                           struct src_register *out)
 {
@@ -174,7 +174,7 @@ ps30_input_emit_depth_fog(struct svga_shader_emitter *emit,
  * Process a PS input declaration.
  * We'll emit a declaration like "dcl_texcoord1 v2"
  */
-static boolean
+static bool
 ps30_input(struct svga_shader_emitter *emit,
            struct tgsi_declaration_semantic semantic,
            unsigned idx)
@@ -323,7 +323,7 @@ ps30_input(struct svga_shader_emitter *emit,
  * Note that we don't actually emit a SVGA3DOpDcl for PS outputs.
  * \idx  register index, such as OUT[2] (not semantic index)
  */
-static boolean
+static bool
 ps30_output(struct svga_shader_emitter *emit,
             struct tgsi_declaration_semantic semantic,
             unsigned idx)
@@ -387,7 +387,7 @@ ps30_output(struct svga_shader_emitter *emit,
  * Declare a VS input register.
  * We still make up the input semantics the same as in 2.0
  */
-static boolean
+static bool
 vs30_input(struct svga_shader_emitter *emit,
            struct tgsi_declaration_semantic semantic,
            unsigned idx)
@@ -419,7 +419,7 @@ vs30_input(struct svga_shader_emitter *emit,
 /**
  * Declare VS output for holding depth/fog.
  */
-static boolean
+static bool
 vs30_output_emit_depth_fog(struct svga_shader_emitter *emit,
                            SVGA3dShaderDestToken *out)
 {
@@ -445,7 +445,7 @@ vs30_output_emit_depth_fog(struct svga_shader_emitter *emit,
  * VS3.0 outputs have proper declarations and semantic info for
  * matching against PS inputs.
  */
-static boolean
+static bool
 vs30_output(struct svga_shader_emitter *emit,
             struct tgsi_declaration_semantic semantic,
             unsigned idx)
@@ -537,7 +537,7 @@ svga_tgsi_sampler_type(const struct svga_shader_emitter *emit, int idx)
 }
 
 
-static boolean
+static bool
 ps30_sampler(struct svga_shader_emitter *emit,
               unsigned idx)
 {
@@ -557,7 +557,7 @@ ps30_sampler(struct svga_shader_emitter *emit,
 }
 
 
-boolean
+bool
 svga_shader_emit_samplers_decl(struct svga_shader_emitter *emit)
 {
    unsigned i;
@@ -570,7 +570,7 @@ svga_shader_emit_samplers_decl(struct svga_shader_emitter *emit)
 }
 
 
-boolean
+bool
 svga_translate_decl_sm30(struct svga_shader_emitter *emit,
                          const struct tgsi_full_declaration *decl)
 {
@@ -579,7 +579,7 @@ svga_translate_decl_sm30(struct svga_shader_emitter *emit,
    unsigned idx;
 
    for (idx = first; idx <= last; idx++) {
-      boolean ok = TRUE;
+      bool ok = TRUE;
 
       switch (decl->Declaration.File) {
       case TGSI_FILE_SAMPLER:

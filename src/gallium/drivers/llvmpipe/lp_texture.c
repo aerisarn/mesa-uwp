@@ -70,10 +70,10 @@ static unsigned id_counter = 0;
  * Conventional allocation path for non-display textures:
  * Compute strides and allocate data (unless asked not to).
  */
-static boolean
+static bool
 llvmpipe_texture_layout(struct llvmpipe_screen *screen,
                         struct llvmpipe_resource *lpr,
-                        boolean allocate)
+                        bool allocate)
 {
    struct pipe_resource *pt = &lpr->base;
    unsigned width = pt->width0;
@@ -209,7 +209,7 @@ llvmpipe_can_create_resource(struct pipe_screen *screen,
 }
 
 
-static boolean
+static bool
 llvmpipe_displaytarget_layout(struct llvmpipe_screen *screen,
                               struct llvmpipe_resource *lpr,
                               const void *map_front_private)
@@ -707,8 +707,8 @@ llvmpipe_transfer_map_ms(struct pipe_context *pipe,
     * the context if necessary.
     */
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
-      boolean read_only = !(usage & PIPE_MAP_WRITE);
-      boolean do_not_block = !!(usage & PIPE_MAP_DONTBLOCK);
+      bool read_only = !(usage & PIPE_MAP_WRITE);
+      bool do_not_block = !!(usage & PIPE_MAP_DONTBLOCK);
       if (!llvmpipe_flush_resource(pipe, resource,
                                    level,
                                    read_only,
@@ -1163,7 +1163,7 @@ llvmpipe_init_screen_resource_funcs(struct pipe_screen *screen)
 #ifdef DEBUG
    /* init linked list for tracking resources */
    {
-      static boolean first_call = TRUE;
+      static bool first_call = TRUE;
       if (first_call) {
          memset(&resource_list, 0, sizeof(resource_list));
          list_inithead(&resource_list.list);

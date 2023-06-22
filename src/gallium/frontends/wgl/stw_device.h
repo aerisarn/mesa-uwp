@@ -96,7 +96,7 @@ struct stw_device
 
 extern struct stw_device *stw_dev;
 
-boolean
+bool
 stw_init_screen(HDC hdc);
 
 struct stw_device *

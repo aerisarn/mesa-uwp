@@ -229,7 +229,7 @@ lp_build_sample_texel_soa(struct lp_build_sample_context *bld,
  */
 static LLVMValueRef
 lp_build_coord_mirror(struct lp_build_sample_context *bld,
-                      LLVMValueRef coord, boolean posOnly)
+                      LLVMValueRef coord, bool posOnly)
 {
    struct lp_build_context *coord_bld = &bld->coord_bld;
    LLVMValueRef fract;
@@ -312,12 +312,12 @@ lp_build_coord_repeat_npot_linear(struct lp_build_sample_context *bld,
  */
 static void
 lp_build_sample_wrap_linear(struct lp_build_sample_context *bld,
-                            boolean is_gather,
+                            bool is_gather,
                             LLVMValueRef coord,
                             LLVMValueRef length,
                             LLVMValueRef length_f,
                             LLVMValueRef offset,
-                            boolean is_pot,
+                            bool is_pot,
                             unsigned wrap_mode,
                             LLVMValueRef *x0_out,
                             LLVMValueRef *x1_out,
@@ -682,7 +682,7 @@ lp_build_sample_wrap_nearest(struct lp_build_sample_context *bld,
                              LLVMValueRef length,
                              LLVMValueRef length_f,
                              LLVMValueRef offset,
-                             boolean is_pot,
+                             bool is_pot,
                              unsigned wrap_mode)
 {
    struct lp_build_context *coord_bld = &bld->coord_bld;
@@ -999,7 +999,7 @@ lp_build_masklerp2d(struct lp_build_context *bld,
  */
 static void
 lp_build_sample_image_linear(struct lp_build_sample_context *bld,
-                             boolean is_gather,
+                             bool is_gather,
                              LLVMValueRef size,
                              LLVMValueRef linear_mask,
                              LLVMValueRef row_stride_vec,
@@ -1030,7 +1030,7 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
    LLVMValueRef s_fpart, t_fpart = NULL, r_fpart = NULL;
    LLVMValueRef xs[4], ys[4], zs[4];
    LLVMValueRef neighbors[2][2][4];
-   boolean seamless_cube_filter, accurate_cube_corners;
+   bool seamless_cube_filter, accurate_cube_corners;
    unsigned chan_swiz = bld->static_texture_state->swizzle_r;
 
    if (is_gather) {
@@ -1762,7 +1762,7 @@ static void
 lp_build_sample_mipmap(struct lp_build_sample_context *bld,
                        unsigned img_filter,
                        unsigned mip_filter,
-                       boolean is_gather,
+                       bool is_gather,
                        const LLVMValueRef *coords,
                        const LLVMValueRef *offsets,
                        LLVMValueRef ilevel0,
@@ -2010,7 +2010,7 @@ lp_build_sample_mipmap_both(struct lp_build_sample_context *bld,
 static LLVMValueRef
 lp_build_layer_coord(struct lp_build_sample_context *bld,
                      unsigned texture_unit,
-                     boolean is_cube_array,
+                     bool is_cube_array,
                      LLVMValueRef layer,
                      LLVMValueRef *out_of_bounds)
 {
@@ -2066,7 +2066,7 @@ static void
 lp_build_sample_aniso(struct lp_build_sample_context *bld,
                       unsigned img_filter,
                       unsigned mip_filter,
-                      boolean is_gather,
+                      bool is_gather,
                       const LLVMValueRef *coords,
                       const LLVMValueRef *offsets,
                       LLVMValueRef ilevel0,
@@ -2513,7 +2513,7 @@ lp_build_sample_aniso(struct lp_build_sample_context *bld,
  */
 static void
 lp_build_sample_common(struct lp_build_sample_context *bld,
-                       boolean is_lodq,
+                       bool is_lodq,
                        unsigned texture_index,
                        unsigned sampler_index,
                        LLVMValueRef *coords,
@@ -2554,7 +2554,7 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
     * calculate / transform derivatives.
     */
    if (target == PIPE_TEXTURE_CUBE || target == PIPE_TEXTURE_CUBE_ARRAY) {
-      boolean need_derivs = ((min_filter != mag_filter ||
+      bool need_derivs = ((min_filter != mag_filter ||
                               mip_filter != PIPE_TEX_MIPFILTER_NONE) &&
                              !bld->static_sampler_state->min_max_lod_equal &&
                              !explicit_lod);
@@ -2927,7 +2927,7 @@ lp_build_clamp_border_color(struct lp_build_sample_context *bld,
 static void
 lp_build_sample_general(struct lp_build_sample_context *bld,
                         unsigned sampler_unit,
-                        boolean is_gather,
+                        bool is_gather,
                         const LLVMValueRef *coords,
                         const LLVMValueRef *offsets,
                         LLVMValueRef lod_positive,
@@ -3097,7 +3097,7 @@ lp_build_fetch_texel(struct lp_build_sample_context *bld,
    struct lp_build_context *int_coord_bld = &bld->int_coord_bld;
    unsigned dims = bld->dims, chan;
    unsigned target = bld->static_texture_state->target;
-   boolean out_of_bound_ret_zero = TRUE;
+   bool out_of_bound_ret_zero = TRUE;
    LLVMValueRef size, ilevel;
    LLVMValueRef row_stride_vec = NULL, img_stride_vec = NULL;
    LLVMValueRef x = coords[0], y = coords[1], z = coords[2];
@@ -3334,10 +3334,10 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
       (sample_key & LP_SAMPLER_OP_TYPE_MASK) >>
       LP_SAMPLER_OP_TYPE_SHIFT;
 
-   const boolean fetch_ms = !!(sample_key & LP_SAMPLER_FETCH_MS);
-   const boolean op_is_tex = op_type == LP_SAMPLER_OP_TEXTURE;
-   const boolean op_is_lodq = op_type == LP_SAMPLER_OP_LODQ;
-   const boolean op_is_gather = op_type == LP_SAMPLER_OP_GATHER;
+   const bool fetch_ms = !!(sample_key & LP_SAMPLER_FETCH_MS);
+   const bool op_is_tex = op_type == LP_SAMPLER_OP_TEXTURE;
+   const bool op_is_lodq = op_type == LP_SAMPLER_OP_LODQ;
+   const bool op_is_gather = op_type == LP_SAMPLER_OP_GATHER;
 
    LLVMValueRef lod_bias = NULL;
    LLVMValueRef explicit_lod = NULL;
@@ -3685,7 +3685,7 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
    } else {
       LLVMValueRef lod_fpart = NULL, lod_positive = NULL;
       LLVMValueRef ilevel0 = NULL, ilevel1 = NULL, lod = NULL;
-      boolean use_aos = util_format_fits_8unorm(bld.format_desc) &&
+      bool use_aos = util_format_fits_8unorm(bld.format_desc) &&
                 op_is_tex &&
                 /* not sure this is strictly needed or simply impossible */
                 derived_sampler_state.compare_mode == PIPE_TEX_COMPARE_NONE &&
@@ -4013,7 +4013,7 @@ lp_build_sample_gen_func(struct gallivm_state *gallivm,
    struct lp_derivatives *deriv_ptr = NULL;
    unsigned num_param = 0;
    unsigned num_coords, num_derivs, num_offsets, layer;
-   boolean need_cache = FALSE;
+   bool need_cache = FALSE;
 
    const enum lp_sampler_lod_control lod_control =
        (sample_key & LP_SAMPLER_LOD_CONTROL_MASK)
@@ -4153,7 +4153,7 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
    if (layer && op_type == LP_SAMPLER_OP_LODQ)
       layer = 0;
 
-   boolean need_cache = FALSE;
+   bool need_cache = FALSE;
    if (dynamic_state->cache_ptr) {
       const struct util_format_description *format_desc;
       format_desc = util_format_description(static_texture_state->format);
@@ -4308,7 +4308,7 @@ lp_build_sample_soa(const struct lp_static_texture_state *static_texture_state,
                     struct gallivm_state *gallivm,
                     const struct lp_sampler_params *params)
 {
-   boolean use_tex_func = FALSE;
+   bool use_tex_func = FALSE;
 
    /*
     * Do not use a function call if the sampling is "simple enough".
@@ -4328,13 +4328,13 @@ lp_build_sample_soa(const struct lp_static_texture_state *static_texture_state,
    if (USE_TEX_FUNC_CALL) {
       const struct util_format_description *format_desc =
          util_format_description(static_texture_state->format);
-      const boolean simple_format =
+      const bool simple_format =
          (util_format_is_rgba8_variant(format_desc) &&
          format_desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB);
       const enum lp_sampler_op_type op_type =
          (params->sample_key & LP_SAMPLER_OP_TYPE_MASK) >>
          LP_SAMPLER_OP_TYPE_SHIFT;
-      const boolean simple_tex =
+      const bool simple_tex =
          op_type != LP_SAMPLER_OP_TEXTURE ||
            ((static_sampler_state->min_mip_filter == PIPE_TEX_MIPFILTER_NONE ||
              static_texture_state->level_zero_only == TRUE) &&
@@ -4439,7 +4439,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
 
    const unsigned dims = texture_dims(target);
 
-   const boolean has_array = has_layer_coord(target);
+   const bool has_array = has_layer_coord(target);
 
    assert(!params->int_type.floating);
 
@@ -4834,7 +4834,7 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                                              params->resources_type,
                                              params->resources_ptr,
                                              params->image_index, NULL);
-   boolean layer_coord = has_layer_coord(target);
+   bool layer_coord = has_layer_coord(target);
 
    width = lp_build_scale_view_dim(gallivm, width, res_format_desc->block.width,
                                    format_desc->block.width);

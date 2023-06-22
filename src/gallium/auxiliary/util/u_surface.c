@@ -582,7 +582,7 @@ util_clear_depth_stencil_texture(struct pipe_context *pipe,
 {
    struct pipe_transfer *dst_trans;
    ubyte *dst_map;
-   boolean need_rmw = FALSE;
+   bool need_rmw = FALSE;
 
    if ((clear_flags & PIPE_CLEAR_DEPTHSTENCIL) &&
        ((clear_flags & PIPE_CLEAR_DEPTHSTENCIL) != PIPE_CLEAR_DEPTHSTENCIL) &&
@@ -690,7 +690,7 @@ util_clear_depth_stencil(struct pipe_context *pipe,
 
 /* Return if the box is totally inside the resource.
  */
-static boolean
+static bool
 is_box_inside_resource(const struct pipe_resource *res,
                        const struct pipe_box *box,
                        unsigned level)

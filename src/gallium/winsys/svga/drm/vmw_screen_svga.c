@@ -445,7 +445,7 @@ vmw_svga_winsys_fence_finish(struct svga_winsys_screen *sws,
 static int
 vmw_svga_winsys_fence_get_fd(struct svga_winsys_screen *sws,
                              struct pipe_fence_handle *fence,
-                             boolean duplicate)
+                             bool duplicate)
 {
    if (duplicate)
       return os_dupfd_cloexec(vmw_fence_get_fd(fence));
@@ -630,7 +630,7 @@ no_surface:
    return NULL;
 }
 
-static boolean
+static bool
 vmw_svga_winsys_surface_can_create(struct svga_winsys_screen *sws,
                                SVGA3dSurfaceFormat format,
                                SVGA3dSize size,
@@ -654,7 +654,7 @@ vmw_svga_winsys_surface_can_create(struct svga_winsys_screen *sws,
 }
 
 
-static boolean
+static bool
 vmw_svga_winsys_surface_is_flushed(struct svga_winsys_screen *sws,
                                    struct svga_winsys_surface *surface)
 {
@@ -697,7 +697,7 @@ vmw_svga_winsys_get_hw_version(struct svga_winsys_screen *sws)
 }
 
 
-static boolean
+static bool
 vmw_svga_winsys_get_cap(struct svga_winsys_screen *sws,
                         SVGA3dDevCapIndex index,
                         SVGA3dDevCapResult *result)
@@ -883,7 +883,7 @@ vmw_svga_winsys_get_fd(struct svga_winsys_screen *sws)
    return vws->ioctl.drm_fd;
 }
 
-boolean
+bool
 vmw_winsys_screen_init_svga(struct vmw_winsys_screen *vws)
 {
    vws->base.destroy = vmw_svga_winsys_destroy;

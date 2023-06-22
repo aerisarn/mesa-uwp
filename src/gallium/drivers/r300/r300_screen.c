@@ -124,7 +124,7 @@ static struct disk_cache* r300_get_disk_shader_cache(struct pipe_screen* pscreen
 static int r300_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 {
     struct r300_screen* r300screen = r300_screen(pscreen);
-    boolean is_r500 = r300screen->caps.is_r500;
+    bool is_r500 = r300screen->caps.is_r500;
 
     switch (param) {
         /* Supported features (boolean caps). */
@@ -252,8 +252,8 @@ static int r300_get_shader_param(struct pipe_screen *pscreen,
                                  enum pipe_shader_cap param)
 {
    struct r300_screen* r300screen = r300_screen(pscreen);
-   boolean is_r400 = r300screen->caps.is_r400;
-   boolean is_r500 = r300screen->caps.is_r500;
+   bool is_r400 = r300screen->caps.is_r400;
+   bool is_r500 = r300screen->caps.is_r500;
 
    switch (param) {
     case PIPE_SHADER_CAP_SUPPORTED_IRS:
@@ -576,7 +576,7 @@ r300_get_compiler_options(struct pipe_screen *pscreen,
  * Whether the format matches:
  *   PIPE_FORMAT_?10?10?10?2_UNORM
  */
-static inline boolean
+static inline bool
 util_format_is_rgba1010102_variant(const struct util_format_description *desc)
 {
    static const unsigned size[4] = {10, 10, 10, 2};
@@ -644,22 +644,22 @@ static bool r300_is_format_supported(struct pipe_screen* screen,
                                      unsigned usage)
 {
     uint32_t retval = 0;
-    boolean is_r500 = r300_screen(screen)->caps.is_r500;
-    boolean is_r400 = r300_screen(screen)->caps.is_r400;
-    boolean is_color2101010 = format == PIPE_FORMAT_R10G10B10A2_UNORM ||
+    bool is_r500 = r300_screen(screen)->caps.is_r500;
+    bool is_r400 = r300_screen(screen)->caps.is_r400;
+    bool is_color2101010 = format == PIPE_FORMAT_R10G10B10A2_UNORM ||
                               format == PIPE_FORMAT_R10G10B10X2_SNORM ||
                               format == PIPE_FORMAT_B10G10R10A2_UNORM ||
                               format == PIPE_FORMAT_B10G10R10X2_UNORM ||
                               format == PIPE_FORMAT_R10SG10SB10SA2U_NORM;
-    boolean is_ati1n = format == PIPE_FORMAT_RGTC1_UNORM ||
+    bool is_ati1n = format == PIPE_FORMAT_RGTC1_UNORM ||
                        format == PIPE_FORMAT_RGTC1_SNORM ||
                        format == PIPE_FORMAT_LATC1_UNORM ||
                        format == PIPE_FORMAT_LATC1_SNORM;
-    boolean is_ati2n = format == PIPE_FORMAT_RGTC2_UNORM ||
+    bool is_ati2n = format == PIPE_FORMAT_RGTC2_UNORM ||
                        format == PIPE_FORMAT_RGTC2_SNORM ||
                        format == PIPE_FORMAT_LATC2_UNORM ||
                        format == PIPE_FORMAT_LATC2_SNORM;
-    boolean is_half_float = format == PIPE_FORMAT_R16_FLOAT ||
+    bool is_half_float = format == PIPE_FORMAT_R16_FLOAT ||
                             format == PIPE_FORMAT_R16G16_FLOAT ||
                             format == PIPE_FORMAT_R16G16B16_FLOAT ||
                             format == PIPE_FORMAT_R16G16B16A16_FLOAT ||

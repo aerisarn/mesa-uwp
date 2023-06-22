@@ -206,7 +206,7 @@ make_fs_key(const struct svga_context *svga,
     * Do some debug checks/warnings here.
     */
    {
-      static boolean warned = FALSE;
+      static bool warned = FALSE;
       unsigned i, n = MAX2(svga->curr.num_sampler_views[shader],
                            svga->curr.num_samplers[shader]);
       /* Only warn once to prevent too much debug output */

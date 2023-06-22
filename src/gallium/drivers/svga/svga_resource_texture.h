@@ -55,7 +55,7 @@ struct svga_texture
    unsigned view_age[SVGA_MAX_TEXTURE_LEVELS];
    unsigned age;
 
-   boolean views_modified;
+   bool views_modified;
 
    /**
     * Creation key for the host surface handle.
@@ -78,17 +78,17 @@ struct svga_texture
     * Whether the host side surface is imported and not created by this
     * driver.
     */
-   boolean imported;
+   bool imported;
 
    /**
     * Whether texture upload buffer can be used on this texture
     */
-   boolean can_use_upload;
+   bool can_use_upload;
 
    /**
     * Whether texture is modified.  Set if any of the dirty bits is set.
     */
-   boolean modified;
+   bool modified;
 
    unsigned size;  /**< Approximate size in bytes */
 
@@ -136,7 +136,7 @@ struct svga_transfer
    /* True if guest backed surface is supported and we can directly map
     * to the surface for this transfer.
     */
-   boolean use_direct_map;
+   bool use_direct_map;
 
    struct {
       struct pipe_resource *buf;  /* points to the upload buffer if this
@@ -235,7 +235,7 @@ svga_clear_texture_rendered_to(struct svga_texture *tex)
    tex->surface_state = SVGA_SURFACE_STATE_UPDATED;
 }
 
-static inline boolean
+static inline bool
 svga_was_texture_rendered_to(const struct svga_texture *tex)
 {
    return (tex->surface_state == SVGA_SURFACE_STATE_RENDERED);
@@ -260,7 +260,7 @@ svga_clear_texture_dirty(struct svga_texture *tex)
    tex->modified = FALSE;
 }
 
-static inline boolean
+static inline bool
 svga_is_texture_level_dirty(const struct svga_texture *tex,
                             unsigned face, unsigned level)
 {
@@ -268,7 +268,7 @@ svga_is_texture_level_dirty(const struct svga_texture *tex,
    return !!(tex->dirty[face] & (1 << level));
 }
 
-static inline boolean
+static inline bool
 svga_is_texture_dirty(const struct svga_texture *tex)
 {
    return tex->modified;
@@ -299,13 +299,13 @@ svga_texture_generate_mipmap(struct pipe_context *pipe,
                              unsigned first_layer,
                              unsigned last_layer);
 
-boolean
+bool
 svga_texture_transfer_map_upload_create(struct svga_context *svga);
 
 void
 svga_texture_transfer_map_upload_destroy(struct svga_context *svga);
 
-boolean
+bool
 svga_texture_transfer_map_can_upload(const struct svga_screen *svgascreen,
                                      const struct pipe_resource *pt);
 
@@ -317,7 +317,7 @@ void
 svga_texture_transfer_unmap_upload(struct svga_context *svga,
                                    struct svga_transfer *st);
 
-boolean
+bool
 svga_texture_device_format_has_alpha(struct pipe_resource *texture);
 
 void *

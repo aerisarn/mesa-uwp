@@ -107,7 +107,7 @@ get_variant(const struct lp_rast_state *state,
 }
 
 
-static boolean
+static bool
 is_blend(const struct lp_rast_state *state,
          const struct cmd_block *block,
          int k)
@@ -122,7 +122,7 @@ is_blend(const struct lp_rast_state *state,
 }
 
 
-static boolean
+static bool
 is_linear(const struct lp_rast_state *state,
           const struct cmd_block *block,
           int k)
@@ -197,7 +197,7 @@ static void
 plot(struct tile *tile,
      int x, int y,
      char val,
-     boolean blend)
+     bool blend)
 {
    if (tile->data[x][y] == ' ')
       tile->coverage++;
@@ -228,7 +228,7 @@ debug_rectangle(int x, int y,
       return 0;
    }
 
-   boolean blend = tile->state->variant->key.blend.rt[0].blend_enable;
+   bool blend = tile->state->variant->key.blend.rt[0].blend_enable;
    unsigned count = 0;
    for (unsigned i = 0; i < TILE_SIZE; i++) {
       for (unsigned j = 0; j < TILE_SIZE; j++) {
@@ -277,7 +277,7 @@ debug_shade_tile(int x, int y,
    if (inputs->disable)
       return 0;
 
-   boolean blend = tile->state->variant->key.blend.rt[0].blend_enable;
+   bool blend = tile->state->variant->key.blend.rt[0].blend_enable;
 
    for (unsigned i = 0; i < TILE_SIZE; i++)
       for (unsigned j = 0; j < TILE_SIZE; j++)
@@ -314,7 +314,7 @@ debug_triangle(int tilex, int tiley,
    int x, y;
    int count = 0;
    unsigned i, nr_planes = 0;
-   boolean blend = tile->state->variant->key.blend.rt[0].blend_enable;
+   bool blend = tile->state->variant->key.blend.rt[0].blend_enable;
 
    if (tri->inputs.disable) {
       /* This triangle was partially binned and has been disabled */
@@ -356,7 +356,7 @@ static void
 do_debug_bin(struct tile *tile,
              const struct cmd_bin *bin,
              int x, int y,
-             boolean print_cmds)
+             bool print_cmds)
 {
    unsigned k, j = 0;
    const struct cmd_block *block;
@@ -371,8 +371,8 @@ do_debug_bin(struct tile *tile,
 
    for (block = bin->head; block; block = block->next) {
       for (k = 0; k < block->count; k++, j++) {
-         boolean blend = is_blend(tile->state, block, k);
-         boolean linear = is_linear(tile->state, block, k);
+         bool blend = is_blend(tile->state, block, k);
+         bool linear = is_linear(tile->state, block, k);
          const char *fskind = get_fs_kind(tile->state, block, k);
          char val = get_label(j);
          int count = 0;

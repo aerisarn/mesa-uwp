@@ -123,7 +123,7 @@ struct pstip_stage
  * Generate the frag shader we'll use for doing polygon stipple.
  * This will be the user's shader prefixed with a TEX and KIL instruction.
  */
-static boolean
+static bool
 generate_pstip_fs(struct pstip_stage *pstip)
 {
    struct pipe_context *pipe = pstip->pipe;
@@ -168,7 +168,7 @@ generate_pstip_fs(struct pstip_stage *pstip)
  * When we're about to draw our first stipple polygon in a batch, this function
  * is called to tell the driver to bind our modified fragment shader.
  */
-static boolean
+static bool
 bind_pstip_fragment_shader(struct pstip_stage *pstip)
 {
    struct draw_context *draw = pstip->stage.draw;
@@ -466,7 +466,7 @@ pstip_set_polygon_stipple(struct pipe_context *pipe,
  * into the draw module's pipeline.  This will not be used if the
  * hardware has native support for polygon stipple.
  */
-boolean
+bool
 draw_install_pstipple_stage(struct draw_context *draw,
                             struct pipe_context *pipe)
 {

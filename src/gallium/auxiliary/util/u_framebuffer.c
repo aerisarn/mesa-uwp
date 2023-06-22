@@ -45,7 +45,7 @@
  * Compare pipe_framebuffer_state objects.
  * \return TRUE if same, FALSE if different
  */
-boolean
+bool
 util_framebuffer_state_equal(const struct pipe_framebuffer_state *dst,
                              const struct pipe_framebuffer_state *src)
 {
@@ -147,7 +147,7 @@ util_unreference_framebuffer_state(struct pipe_framebuffer_state *fb)
 /* Where multiple sizes are allowed for framebuffer surfaces, find the
  * minimum width and height of all bound surfaces.
  */
-boolean
+bool
 util_framebuffer_min_size(const struct pipe_framebuffer_state *fb,
                           unsigned *width,
                           unsigned *height)

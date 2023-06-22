@@ -113,7 +113,7 @@ static void set_vertex_inputs_outputs(struct r300_vertex_program_compiler * c)
     struct r300_shader_semantics* outputs = &vs->outputs;
     struct tgsi_shader_info* info = &vs->info;
     int i, reg = 0;
-    boolean any_bcolor_used = outputs->bcolor[0] != ATTR_UNUSED ||
+    bool any_bcolor_used = outputs->bcolor[0] != ATTR_UNUSED ||
                               outputs->bcolor[1] != ATTR_UNUSED;
 
     /* Fill in the input mapping */

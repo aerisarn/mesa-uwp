@@ -277,10 +277,10 @@ end_query(struct gl_context *ctx, struct gl_query_object *q)
 }
 
 
-static boolean
+static bool
 get_query_result(struct pipe_context *pipe,
                  struct gl_query_object *q,
-                 boolean wait)
+                 bool wait)
 {
    union pipe_query_result data;
 

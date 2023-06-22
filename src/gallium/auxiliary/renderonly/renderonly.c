@@ -127,7 +127,7 @@ renderonly_create_gpu_import_for_resource(struct pipe_resource *rsc,
 {
    struct pipe_screen *screen = rsc->screen;
    struct renderonly_scanout *scanout = NULL;
-   boolean status;
+   bool status;
    uint32_t scanout_handle;
    int fd, err;
    struct winsys_handle handle = {

@@ -65,7 +65,7 @@ struct vbuf_render {
     *
     * Currently optional.
     */
-   boolean (*need_pipeline)(const struct vbuf_render *render,
+   bool (*need_pipeline)(const struct vbuf_render *render,
                             const struct pipe_rasterizer_state *rasterizer,
                             unsigned int prim);
 
@@ -82,7 +82,7 @@ struct vbuf_render {
     * Hardware renderers will use ttm memory, others will just malloc
     * something.
     */
-   boolean (*allocate_vertices)(struct vbuf_render *,
+   bool (*allocate_vertices)(struct vbuf_render *,
                                 ushort vertex_size,
                                 ushort nr_vertices);
 

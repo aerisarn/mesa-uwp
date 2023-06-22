@@ -177,7 +177,7 @@ hgl_st_framebuffer_validate(struct st_context *st,
 		|| (buffer->height != buffer->newHeight);
 
 	if (resized || newMask) {
-		boolean ret;
+		bool ret;
 		TRACE("%s: resize event. old:  %d x %d; new: %d x %d\n", __func__,
 			buffer->width, buffer->height, buffer->newWidth, buffer->newHeight);
 

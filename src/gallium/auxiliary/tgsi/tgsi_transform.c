@@ -152,8 +152,8 @@ tgsi_transform_shader(const struct tgsi_token *tokens_in,
                       uint initial_tokens_len,
                       struct tgsi_transform_context *ctx)
 {
-   boolean first_instruction = TRUE;
-   boolean epilog_emitted = FALSE;
+   bool first_instruction = TRUE;
+   bool epilog_emitted = FALSE;
    int cond_stack = 0;
    int call_stack = 0;
 

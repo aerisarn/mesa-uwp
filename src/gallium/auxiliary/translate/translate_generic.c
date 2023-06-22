@@ -757,7 +757,7 @@ generic_release(struct translate *translate)
    FREE(translate);
 }
 
-static boolean
+static bool
 is_legal_int_format_combo(const struct util_format_description *src,
                           const struct util_format_description *dst)
 {
@@ -846,7 +846,7 @@ translate_generic_create(const struct translate_key *key)
    return &tg->translate;
 }
 
-boolean
+bool
 translate_generic_is_output_format_supported(enum pipe_format format)
 {
    switch(format) {

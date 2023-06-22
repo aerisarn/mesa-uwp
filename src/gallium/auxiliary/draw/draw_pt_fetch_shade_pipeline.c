@@ -236,7 +236,7 @@ fetch_pipeline_generic(struct draw_pt_middle_end *middle,
    struct draw_prim_info ia_prim_info;
    struct draw_vertex_info ia_vert_info;
    const struct draw_prim_info *prim_info = in_prim_info;
-   boolean free_prim_info = FALSE;
+   bool free_prim_info = FALSE;
    unsigned opt = fpme->opt;
    int num_vertex_streams = 1;
 
@@ -432,7 +432,7 @@ fetch_pipeline_linear_run(struct draw_pt_middle_end *middle,
 }
 
 
-static boolean
+static bool
 fetch_pipeline_linear_run_elts(struct draw_pt_middle_end *middle,
                                unsigned start,
                                unsigned count,

@@ -340,7 +340,7 @@ st_framebuffer_update_attachments(struct gl_framebuffer *stfb)
  * renderbuffer).  The window system code determines the format.
  */
 static struct gl_renderbuffer *
-st_new_renderbuffer_fb(enum pipe_format format, unsigned samples, boolean sw)
+st_new_renderbuffer_fb(enum pipe_format format, unsigned samples, bool sw)
 {
    struct gl_renderbuffer *rb;
 

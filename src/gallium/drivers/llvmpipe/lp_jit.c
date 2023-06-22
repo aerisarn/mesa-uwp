@@ -227,7 +227,7 @@ lp_jit_screen_cleanup(struct llvmpipe_screen *screen)
 }
 
 
-boolean
+bool
 lp_jit_screen_init(struct llvmpipe_screen *screen)
 {
    return lp_build_init();

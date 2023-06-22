@@ -1470,7 +1470,7 @@ static const struct format_compat_entry format_compats[] = {
 static void
 check_format_tables(void)
 {
-   static boolean first_call = TRUE;
+   static bool first_call = TRUE;
 
    if (first_call) {
       unsigned i;
@@ -1783,7 +1783,7 @@ svga_format_name(SVGA3dSurfaceFormat format)
 /**
  * Is the given SVGA3dSurfaceFormat a signed or unsigned integer color format?
  */
-boolean
+bool
 svga_format_is_integer(SVGA3dSurfaceFormat format)
 {
    switch (format) {
@@ -1814,7 +1814,7 @@ svga_format_is_integer(SVGA3dSurfaceFormat format)
    }
 }
 
-boolean
+bool
 svga_format_support_gen_mips(enum pipe_format format)
 {
    const struct vgpu10_format_entry *entry = svga_format_entry(format);
@@ -1897,7 +1897,7 @@ svga_get_texture_datatype(enum pipe_format format)
  * Given an svga context, return true iff there are currently any integer color
  * buffers attached to the framebuffer.
  */
-boolean
+bool
 svga_has_any_integer_cbufs(const struct svga_context *svga)
 {
    unsigned i;

@@ -89,7 +89,7 @@ struct draw_stage *draw_wide_point_stage(struct draw_context *context);
 struct draw_stage *draw_validate_stage(struct draw_context *context);
 
 void draw_free_temp_verts(struct draw_stage *stage);
-boolean draw_alloc_temp_verts(struct draw_stage *stage, unsigned nr);
+bool draw_alloc_temp_verts(struct draw_stage *stage, unsigned nr);
 
 void draw_reset_vertex_ids(struct draw_context *draw);
 

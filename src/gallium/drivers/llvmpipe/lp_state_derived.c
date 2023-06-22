@@ -300,7 +300,7 @@ llvmpipe_update_derived(struct llvmpipe_context *llvmpipe)
                           LP_NEW_RASTERIZER |
                           LP_NEW_SAMPLE_MASK |
                           LP_NEW_DEPTH_STENCIL_ALPHA)) {
-      boolean discard =
+      bool discard =
          llvmpipe->rasterizer ? llvmpipe->rasterizer->rasterizer_discard : FALSE;
       lp_setup_set_rasterizer_discard(llvmpipe->setup, discard);
    }

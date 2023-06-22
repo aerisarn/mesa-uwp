@@ -49,8 +49,8 @@ struct stw_pixelformat_info
    struct st_visual stvis;
 
    /** WGL_ARB_render_texture */
-   boolean bindToTextureRGB;
-   boolean bindToTextureRGBA;
+   bool bindToTextureRGB;
+   bool bindToTextureRGBA;
 
    int iPixelFormat;
 };

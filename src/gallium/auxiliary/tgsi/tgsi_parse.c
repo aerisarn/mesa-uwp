@@ -55,7 +55,7 @@ tgsi_parse_free(
 {
 }
 
-boolean
+bool
 tgsi_parse_end_of_tokens(
    struct tgsi_parse_context *ctx )
 {

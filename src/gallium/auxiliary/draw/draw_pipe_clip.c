@@ -54,7 +54,7 @@ struct clip_stage {
    struct draw_stage stage;      /**< base class */
 
    unsigned pos_attr;
-   boolean have_clipdist;
+   bool have_clipdist;
    int cv_attr;
 
    /* List of the attributes to be constant interpolated. */
@@ -217,7 +217,7 @@ interp(const struct clip_stage *clip,
 static void
 emit_poly(struct draw_stage *stage,
           struct vertex_header **inlist,
-          const boolean *edgeflags,
+          const bool *edgeflags,
           unsigned n,
           const struct prim_header *origPrim)
 {
@@ -353,10 +353,10 @@ do_clip_tri(struct draw_stage *stage,
    struct vertex_header *prov_vertex;
    unsigned tmpnr = 0;
    unsigned n = 3;
-   boolean aEdges[MAX_CLIPPED_VERTICES];
-   boolean bEdges[MAX_CLIPPED_VERTICES];
-   boolean *inEdges = aEdges;
-   boolean *outEdges = bEdges;
+   bool aEdges[MAX_CLIPPED_VERTICES];
+   bool bEdges[MAX_CLIPPED_VERTICES];
+   bool *inEdges = aEdges;
+   bool *outEdges = bEdges;
    int viewport_index = 0;
 
    inlist[0] = header->v[0];
@@ -410,9 +410,9 @@ do_clip_tri(struct draw_stage *stage,
 
    while (clipmask && n >= 3) {
       const unsigned plane_idx = ffs(clipmask)-1;
-      const boolean is_user_clip_plane = plane_idx >= 6;
+      const bool is_user_clip_plane = plane_idx >= 6;
       struct vertex_header *vert_prev = inlist[0];
-      boolean *edge_prev = &inEdges[0];
+      bool *edge_prev = &inEdges[0];
       float dp_prev;
       unsigned outcount = 0;
 
@@ -430,8 +430,8 @@ do_clip_tri(struct draw_stage *stage,
 
       for (unsigned i = 1; i <= n; i++) {
          struct vertex_header *vert = inlist[i];
-         boolean *edge = &inEdges[i];
-         boolean different_sign;
+         bool *edge = &inEdges[i];
+         bool different_sign;
 
          float dp = getclipdist(clipper, vert, plane_idx);
 
@@ -451,7 +451,7 @@ do_clip_tri(struct draw_stage *stage,
 
          if (different_sign) {
             struct vertex_header *new_vert;
-            boolean *new_edge;
+            bool *new_edge;
 
             assert(tmpnr < MAX_CLIPPED_VERTICES + 1);
             if (tmpnr >= MAX_CLIPPED_VERTICES + 1)
@@ -524,7 +524,7 @@ do_clip_tri(struct draw_stage *stage,
          n = outcount;
       }
       {
-         boolean *tmp = inEdges;
+         bool *tmp = inEdges;
          inEdges = outEdges;
          outEdges = tmp;
       }

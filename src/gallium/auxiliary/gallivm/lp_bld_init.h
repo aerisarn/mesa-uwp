@@ -71,7 +71,7 @@ struct gallivm_state
 unsigned
 lp_build_init_native_width(void);
 
-boolean
+bool
 lp_build_init(void);
 
 

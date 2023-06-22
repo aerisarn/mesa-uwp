@@ -120,11 +120,11 @@ lp_linear_init_noop_interp(struct lp_linear_interp *interp)
 }
 
 
-boolean
+bool
 lp_linear_init_interp(struct lp_linear_interp *interp,
                       int x, int y, int width, int height,
                       unsigned usage_mask,
-                      boolean perspective,
+                      bool perspective,
                       float oow,
                       const float *a0,
                       const float *dadx,
@@ -230,11 +230,11 @@ lp_linear_init_interp(struct lp_linear_interp *interp,
 
 #else //DETECT_ARCH_SSE
 
-boolean
+bool
 lp_linear_init_interp(struct lp_linear_interp *interp,
                       int x, int y, int width, int height,
                       unsigned usage_mask,
-                      boolean perspective,
+                      bool perspective,
                       float oow,
                       const float *a0,
                       const float *dadx,

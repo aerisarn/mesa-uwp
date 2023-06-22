@@ -2433,7 +2433,7 @@ exec_txq(struct tgsi_exec_machine *mach,
 static void
 exec_sample(struct tgsi_exec_machine *mach,
             const struct tgsi_full_instruction *inst,
-            uint modifier, boolean compare)
+            uint modifier, bool compare)
 {
    const uint resource_unit = inst->Src[1].Register.Index;
    const uint sampler_unit = inst->Src[2].Register.Index;
@@ -4892,7 +4892,7 @@ exec_interp_at_centroid(struct tgsi_exec_machine *mach,
  * Returns TRUE if a barrier instruction is hit,
  * otherwise FALSE.
  */
-static boolean
+static bool
 exec_instruction(
    struct tgsi_exec_machine *mach,
    const struct tgsi_full_instruction *inst,
@@ -6015,7 +6015,7 @@ tgsi_exec_machine_run( struct tgsi_exec_machine *mach, int start_pc )
 
       /* execute instructions, until pc is set to -1 */
       while (mach->pc != -1) {
-         boolean barrier_hit;
+         bool barrier_hit;
 #if DEBUG_EXECUTION
          uint i;
 

@@ -372,7 +372,7 @@ void *
 util_make_fragment_passthrough_shader(struct pipe_context *pipe,
                                       int input_semantic,
                                       int input_interpolate,
-                                      boolean write_all_cbufs)
+                                      bool write_all_cbufs)
 {
    static const char shader_templ[] =
          "FRAG\n"

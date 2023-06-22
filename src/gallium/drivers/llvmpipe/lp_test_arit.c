@@ -412,7 +412,7 @@ flush_denorm_to_zero(float val)
 /*
  * Test one LLVM unary arithmetic builder function.
  */
-static boolean
+static bool
 test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned length)
 {
    char test_name[128];
@@ -421,7 +421,7 @@ test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned
    struct gallivm_state *gallivm;
    LLVMValueRef test_func;
    unary_func_t test_func_jit;
-   boolean success = TRUE;
+   bool success = TRUE;
    int i, j;
    float *in, *out;
 
@@ -459,7 +459,7 @@ test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned
       for (i = 0; i < num_vals; ++i) {
          float testval, ref;
          double error, precision;
-         boolean expected_pass = TRUE;
+         bool expected_pass = TRUE;
          bool pass;
 
          testval = flush_denorm_to_zero(in[i]);
@@ -521,10 +521,10 @@ test_unary(unsigned verbose, FILE *fp, const struct unary_test_t *test, unsigned
 }
 
 
-boolean
+bool
 test_all(unsigned verbose, FILE *fp)
 {
-   boolean success = TRUE;
+   bool success = TRUE;
    int i;
 
    for (i = 0; i < ARRAY_SIZE(unary_tests); ++i) {
@@ -541,7 +541,7 @@ test_all(unsigned verbose, FILE *fp)
 }
 
 
-boolean
+bool
 test_some(unsigned verbose, FILE *fp,
           unsigned long n)
 {
@@ -553,7 +553,7 @@ test_some(unsigned verbose, FILE *fp,
 }
 
 
-boolean
+bool
 test_single(unsigned verbose, FILE *fp)
 {
    return TRUE;

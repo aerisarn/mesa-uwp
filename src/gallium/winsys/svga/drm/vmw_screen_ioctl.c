@@ -100,7 +100,7 @@ vmw_ioctl_context_create(struct vmw_winsys_screen *vws)
 
 uint32
 vmw_ioctl_extended_context_create(struct vmw_winsys_screen *vws,
-                                  boolean vgpu10)
+                                  bool vgpu10)
 {
    union drm_vmw_extended_context_arg c_arg;
    int ret;
@@ -349,7 +349,7 @@ static int
 vmw_ioctl_surface_req(const struct vmw_winsys_screen *vws,
                       const struct winsys_handle *whandle,
                       struct drm_vmw_surface_arg *req,
-                      boolean *needs_unref)
+                      bool *needs_unref)
 {
    int ret;
 
@@ -413,7 +413,7 @@ vmw_ioctl_gb_surface_ref(struct vmw_winsys_screen *vws,
                          struct vmw_region **p_region)
 {
    struct vmw_region *region = NULL;
-   boolean needs_unref = FALSE;
+   bool needs_unref = FALSE;
    int ret;
 
    assert(p_region != NULL);
@@ -519,9 +519,9 @@ vmw_ioctl_command(struct vmw_winsys_screen *vws, int32_t cid,
 
 #ifdef DEBUG
    {
-      static boolean firsttime = TRUE;
-      static boolean debug = FALSE;
-      static boolean skip = FALSE;
+      static bool firsttime = TRUE;
+      static bool debug = FALSE;
+      static bool skip = FALSE;
       if (firsttime) {
          debug = debug_get_bool_option("SVGA_DUMP_CMD", FALSE);
          skip = debug_get_bool_option("SVGA_SKIP_CMD", FALSE);
@@ -735,9 +735,9 @@ vmw_ioctl_region_unmap(struct vmw_region *region)
  */
 int
 vmw_ioctl_syncforcpu(struct vmw_region *region,
-                     boolean dont_block,
-                     boolean readonly,
-                     boolean allow_cs)
+                     bool dont_block,
+                     bool readonly,
+                     bool allow_cs)
 {
    struct drm_vmw_synccpu_arg arg;
 
@@ -764,8 +764,8 @@ vmw_ioctl_syncforcpu(struct vmw_region *region,
  */
 void
 vmw_ioctl_releasefromcpu(struct vmw_region *region,
-                         boolean readonly,
-                         boolean allow_cs)
+                         bool readonly,
+                         bool allow_cs)
 {
    struct drm_vmw_synccpu_arg arg;
 
@@ -970,7 +970,7 @@ vmw_ioctl_parse_caps(struct vmw_winsys_screen *vws,
    return 0;
 }
 
-boolean
+bool
 vmw_ioctl_init(struct vmw_winsys_screen *vws)
 {
    struct drm_vmw_getparam_arg gp_arg;
@@ -979,8 +979,8 @@ vmw_ioctl_init(struct vmw_winsys_screen *vws)
    int ret;
    uint32_t *cap_buffer;
    drmVersionPtr version;
-   boolean drm_gb_capable;
-   boolean have_drm_2_5;
+   bool drm_gb_capable;
+   bool have_drm_2_5;
    const char *getenv_val;
 
    VMW_FUNC;

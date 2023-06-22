@@ -68,7 +68,7 @@ static unsigned r300_get_sc_hz_max(struct r300_context *r300)
     return func >= PIPE_FUNC_GREATER ? R300_SC_HYPERZ_MAX : R300_SC_HYPERZ_MIN;
 }
 
-static boolean r300_is_hiz_func_valid(struct r300_context *r300)
+static bool r300_is_hiz_func_valid(struct r300_context *r300)
 {
     struct r300_dsa_state *dsa = r300->dsa_state.state;
     unsigned func = dsa->dsa.depth_func;
@@ -89,13 +89,13 @@ static boolean r300_is_hiz_func_valid(struct r300_context *r300)
     return TRUE;
 }
 
-static boolean r300_dsa_stencil_op_not_keep(struct pipe_stencil_state *s)
+static bool r300_dsa_stencil_op_not_keep(struct pipe_stencil_state *s)
 {
     return s->enabled && (s->fail_op != PIPE_STENCIL_OP_KEEP ||
                           s->zfail_op != PIPE_STENCIL_OP_KEEP);
 }
 
-static boolean r300_hiz_allowed(struct r300_context *r300)
+static bool r300_hiz_allowed(struct r300_context *r300)
 {
     struct r300_dsa_state *dsa = r300->dsa_state.state;
     struct r300_screen *r300screen = r300->screen;
@@ -218,7 +218,7 @@ static void r300_update_hyperz(struct r300_context* r300)
 /* The ZTOP state                                                            */
 /*****************************************************************************/
 
-static boolean r300_dsa_alpha_test_enabled(
+static bool r300_dsa_alpha_test_enabled(
         struct pipe_depth_stencil_alpha_state *dsa)
 {
     /* We are interested only in the cases when alpha testing can kill

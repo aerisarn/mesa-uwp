@@ -99,7 +99,7 @@ struct osmesa_context
 {
    struct st_context *st;
 
-   boolean ever_used;     /*< Has this context ever been current? */
+   bool ever_used;     /*< Has this context ever been current? */
 
    struct osmesa_buffer *current_buffer;
 
@@ -782,7 +782,7 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
 
    if (!osmesa->ever_used) {
       /* one-time init, just postprocessing for now */
-      boolean any_pp_enabled = FALSE;
+      bool any_pp_enabled = FALSE;
       unsigned i;
 
       for (i = 0; i < ARRAY_SIZE(osmesa->pp_enabled); i++) {

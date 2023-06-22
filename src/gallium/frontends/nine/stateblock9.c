@@ -109,7 +109,7 @@ NineStateBlock9_dtor( struct NineStateBlock9 *This )
 
 static void
 NineStateBlock9_BindBuffer( struct NineDevice9 *device,
-                            boolean applyToDevice,
+                            bool applyToDevice,
                             struct NineBuffer9 **slot,
                             struct NineBuffer9 *buf )
 {
@@ -121,7 +121,7 @@ NineStateBlock9_BindBuffer( struct NineDevice9 *device,
 
 static void
 NineStateBlock9_BindTexture( struct NineDevice9 *device,
-                             boolean applyToDevice,
+                             bool applyToDevice,
                              struct NineBaseTexture9 **slot,
                              struct NineBaseTexture9 *tex )
 {
@@ -140,7 +140,7 @@ nine_state_copy_common(struct NineDevice9 *device,
                        struct nine_state *dst,
                        struct nine_state *src,
                        struct nine_state *mask, /* aliases either src or dst */
-                       const boolean apply,
+                       const bool apply,
                        struct nine_range_pool *pool)
 {
     unsigned i, s;
@@ -391,7 +391,7 @@ nine_state_copy_common_all(struct NineDevice9 *device,
                            struct nine_state *dst,
                            struct nine_state *src,
                            struct nine_state *help,
-                           const boolean apply,
+                           const bool apply,
                            struct nine_range_pool *pool,
                            const int MaxStreams)
 {

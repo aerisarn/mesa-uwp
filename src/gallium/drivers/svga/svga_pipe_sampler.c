@@ -132,8 +132,8 @@ static SVGA3dFilter
 translate_filter_mode(unsigned img_filter,
                       unsigned min_filter,
                       unsigned mag_filter,
-                      boolean anisotropic,
-                      boolean compare)
+                      bool anisotropic,
+                      bool compare)
 {
    SVGA3dFilter mode = 0;
 
@@ -161,7 +161,7 @@ define_sampler_state_object(struct svga_context *svga,
                             const struct pipe_sampler_state *ps)
 {
    uint8_t max_aniso = (uint8_t) 255; /* XXX fix me */
-   boolean anisotropic;
+   bool anisotropic;
    uint8 compare_func;
    SVGA3dFilter filter;
    SVGA3dRGBAFloat bcolor;
@@ -301,7 +301,7 @@ svga_bind_sampler_states(struct pipe_context *pipe,
 {
    struct svga_context *svga = svga_context(pipe);
    unsigned i;
-   boolean any_change = FALSE;
+   bool any_change = FALSE;
 
    assert(shader < PIPE_SHADER_TYPES);
    assert(start + num <= PIPE_MAX_SAMPLERS);
@@ -421,7 +421,7 @@ svga_set_sampler_views(struct pipe_context *pipe,
    unsigned flag_1d = 0;
    unsigned flag_srgb = 0;
    uint i;
-   boolean any_change = FALSE;
+   bool any_change = FALSE;
 
    assert(shader < PIPE_SHADER_TYPES);
    assert(start + num <= ARRAY_SIZE(svga->curr.sampler_views[shader]));

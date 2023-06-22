@@ -78,7 +78,7 @@ fail:
 }
 
 
-static boolean
+static bool
 compare(unsigned cached_nr, unsigned nr, unsigned type)
 {
    if (type == U_GENERATE_REUSABLE)

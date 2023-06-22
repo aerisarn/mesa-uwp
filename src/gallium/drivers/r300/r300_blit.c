@@ -132,7 +132,7 @@ static uint32_t r300_depth_clear_cb_value(enum pipe_format format,
         return uc.us | (uc.us << 16);
 }
 
-static boolean r300_cbzb_clear_allowed(struct r300_context *r300,
+static bool r300_cbzb_clear_allowed(struct r300_context *r300,
                                        unsigned clear_buffers)
 {
     struct pipe_framebuffer_state *fb =
@@ -145,7 +145,7 @@ static boolean r300_cbzb_clear_allowed(struct r300_context *r300,
     return r300_surface(fb->cbufs[0])->cbzb_allowed;
 }
 
-static boolean r300_fast_zclear_allowed(struct r300_context *r300,
+static bool r300_fast_zclear_allowed(struct r300_context *r300,
                                         unsigned clear_buffers)
 {
     struct pipe_framebuffer_state *fb =
@@ -154,7 +154,7 @@ static boolean r300_fast_zclear_allowed(struct r300_context *r300,
     return r300_resource(fb->zsbuf->texture)->tex.zmask_dwords[fb->zsbuf->u.tex.level] != 0;
 }
 
-static boolean r300_hiz_clear_allowed(struct r300_context *r300)
+static bool r300_hiz_clear_allowed(struct r300_context *r300)
 {
     struct pipe_framebuffer_state *fb =
         (struct pipe_framebuffer_state*)r300->fb_state.state;
@@ -272,7 +272,7 @@ static void r300_clear(struct pipe_context* pipe,
     /* Use fast Z clear.
      * The zbuffer must be in micro-tiled mode, otherwise it locks up. */
     if (buffers & PIPE_CLEAR_DEPTHSTENCIL) {
-        boolean zmask_clear, hiz_clear;
+        bool zmask_clear, hiz_clear;
 
         /* If both depth and stencil are present, they must be cleared together. */
         if (fb->zsbuf->texture->format == PIPE_FORMAT_S8_UINT_Z24_UNORM &&
@@ -692,7 +692,7 @@ static void r300_resource_copy_region(struct pipe_context *pipe,
     pipe_sampler_view_reference(&src_view, NULL);
 }
 
-static boolean r300_is_simple_msaa_resolve(const struct pipe_blit_info *info)
+static bool r300_is_simple_msaa_resolve(const struct pipe_blit_info *info)
 {
     unsigned dst_width = u_minify(info->dst.resource->width0, info->dst.level);
     unsigned dst_height = u_minify(info->dst.resource->height0, info->dst.level);

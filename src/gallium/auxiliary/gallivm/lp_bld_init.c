@@ -85,7 +85,7 @@ static const struct debug_named_value lp_bld_debug_flags[] = {
 DEBUG_GET_ONCE_FLAGS_OPTION(gallivm_debug, "GALLIVM_DEBUG", lp_bld_debug_flags, 0)
 
 
-static boolean gallivm_initialized = FALSE;
+static bool gallivm_initialized = FALSE;
 
 unsigned lp_native_vector_width;
 
@@ -112,7 +112,7 @@ enum LLVM_CodeGenOpt_Level {
  * relevant optimization passes.
  * \return  TRUE for success, FALSE for failure
  */
-static boolean
+static bool
 create_pass_manager(struct gallivm_state *gallivm)
 {
 #if GALLIVM_USE_NEW_PASS == 0
@@ -266,7 +266,7 @@ gallivm_free_code(struct gallivm_state *gallivm)
 }
 
 
-static boolean
+static bool
 init_gallivm_engine(struct gallivm_state *gallivm)
 {
    if (1) {
@@ -327,7 +327,7 @@ fail:
  * Allocate gallivm LLVM objects.
  * \return  TRUE for success, FALSE for failure
  */
-static boolean
+static bool
 init_gallivm_state(struct gallivm_state *gallivm, const char *name,
                    LLVMContextRef context, struct lp_cached_code *cache)
 {
@@ -433,7 +433,7 @@ lp_build_init_native_width(void)
    return lp_native_vector_width;
 }
 
-boolean
+bool
 lp_build_init(void)
 {
    lp_build_init_native_width();

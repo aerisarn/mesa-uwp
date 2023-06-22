@@ -777,7 +777,7 @@ try_cpu_copy_region(struct svga_context *svga,
  * A helper function to resolve a multisampled surface to a single-sampled
  * surface using SVGA command ResolveCopy.
  */
-static boolean
+static bool
 try_resolve_copy(struct svga_context *svga,
                  const struct pipe_blit_info *blit)
 {
@@ -816,7 +816,7 @@ try_resolve_copy(struct svga_context *svga,
 /**
  * Returns FALSE if the resource does not have data to copy.
  */
-static boolean
+static bool
 is_texture_valid_to_copy(struct svga_context *svga,
                          struct pipe_resource *resource)
 {

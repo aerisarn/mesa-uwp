@@ -42,7 +42,7 @@ struct svga_hwtnl *svga_hwtnl_create(struct svga_context *svga);
 void svga_hwtnl_destroy(struct svga_hwtnl *hwtnl);
 
 void svga_hwtnl_set_flatshade(struct svga_hwtnl *hwtnl,
-                              boolean flatshade, boolean flatshade_first);
+                              bool flatshade, bool flatshade_first);
 
 void svga_hwtnl_set_fillmode(struct svga_hwtnl *hwtnl, unsigned mode);
 
@@ -69,7 +69,7 @@ svga_hwtnl_draw_range_elements(struct svga_hwtnl *hwtnl,
                                const struct pipe_draw_start_count_bias *draw,
                                unsigned count);
 
-boolean
+bool
 svga_hwtnl_is_buffer_referred(struct svga_hwtnl *hwtnl,
                               struct pipe_resource *buffer);
 

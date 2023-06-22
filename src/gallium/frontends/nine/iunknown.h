@@ -47,7 +47,7 @@ struct NineUnknown
 
     int32_t refs; /* external reference count */
     int32_t bind; /* internal bind count */
-    boolean forward; /* whether to forward references to the container */
+    bool forward; /* whether to forward references to the container */
 
     /* container: for surfaces and volumes only.
      * Can be a texture, a volume texture or a swapchain.

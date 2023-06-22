@@ -48,7 +48,7 @@ struct depth_data {
    unsigned bzzzz[TGSI_QUAD_SIZE];  /**< Z values fetched from depth buffer */
    unsigned qzzzz[TGSI_QUAD_SIZE];  /**< Z values from the quad */
    ubyte stencilVals[TGSI_QUAD_SIZE];
-   boolean use_shader_stencil_refs;
+   bool use_shader_stencil_refs;
    ubyte shader_stencil_refs[TGSI_QUAD_SIZE];
    struct softpipe_cached_tile *tile;
    float minval, maxval;
@@ -533,7 +533,7 @@ apply_stencil_op(struct depth_data *data,
  * of this function that are specifically for Z16, Z32 and FP Z buffers.
  * Try to effectively do that with codegen...
  */
-static boolean
+static bool
 depth_test_quad(struct quad_stage *qs, 
                 struct depth_data *data,
                 struct quad_header *quad)
@@ -849,9 +849,9 @@ depth_test_quads_fallback(struct quad_stage *qs,
 {
    unsigned i, pass = 0;
    const struct tgsi_shader_info *fsInfo = &qs->softpipe->fs_variant->info;
-   boolean interp_depth = !fsInfo->writes_z || qs->softpipe->early_depth;
-   boolean shader_stencil_ref = fsInfo->writes_stencil;
-   boolean have_zs = !!qs->softpipe->framebuffer.zsbuf;
+   bool interp_depth = !fsInfo->writes_z || qs->softpipe->early_depth;
+   bool shader_stencil_ref = fsInfo->writes_stencil;
+   bool have_zs = !!qs->softpipe->framebuffer.zsbuf;
    struct depth_data data;
    unsigned vp_idx = quads[0]->input.viewport_index;
 
@@ -988,23 +988,23 @@ choose_depth_test(struct quad_stage *qs,
 {
    const struct tgsi_shader_info *fsInfo = &qs->softpipe->fs_variant->info;
 
-   boolean interp_depth = !fsInfo->writes_z || qs->softpipe->early_depth;
+   bool interp_depth = !fsInfo->writes_z || qs->softpipe->early_depth;
 
-   boolean alpha = qs->softpipe->depth_stencil->alpha_enabled;
+   bool alpha = qs->softpipe->depth_stencil->alpha_enabled;
 
-   boolean depth = qs->softpipe->depth_stencil->depth_enabled;
+   bool depth = qs->softpipe->depth_stencil->depth_enabled;
 
    unsigned depthfunc = qs->softpipe->depth_stencil->depth_func;
 
-   boolean stencil = qs->softpipe->depth_stencil->stencil[0].enabled;
+   bool stencil = qs->softpipe->depth_stencil->stencil[0].enabled;
 
-   boolean depthwrite = qs->softpipe->depth_stencil->depth_writemask;
+   bool depthwrite = qs->softpipe->depth_stencil->depth_writemask;
 
-   boolean occlusion = qs->softpipe->active_query_count;
+   bool occlusion = qs->softpipe->active_query_count;
 
-   boolean clipped = !qs->softpipe->rasterizer->depth_clip_near;
+   bool clipped = !qs->softpipe->rasterizer->depth_clip_near;
 
-   boolean depth_bounds = qs->softpipe->depth_stencil->depth_bounds_test;
+   bool depth_bounds = qs->softpipe->depth_stencil->depth_bounds_test;
 
    if(!qs->softpipe->framebuffer.zsbuf)
       depth = depthwrite = stencil = FALSE;

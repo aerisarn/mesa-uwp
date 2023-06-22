@@ -81,7 +81,7 @@ lp_build_vec_type(const struct gallivm_state *gallivm, struct lp_type type)
  * XXX: I'm not sure if it wouldn't be easier/efficient to just recreate the
  * type and check for identity.
  */
-boolean
+bool
 lp_check_elem_type(struct lp_type type, LLVMTypeRef elem_type)
 {
    assert(elem_type);
@@ -134,7 +134,7 @@ lp_check_elem_type(struct lp_type type, LLVMTypeRef elem_type)
 }
 
 
-boolean
+bool
 lp_check_vec_type(struct lp_type type, LLVMTypeRef vec_type)
 {
    assert(vec_type);
@@ -161,7 +161,7 @@ lp_check_vec_type(struct lp_type type, LLVMTypeRef vec_type)
 }
 
 
-boolean
+bool
 lp_check_value(struct lp_type type, LLVMValueRef val)
 {
    assert(val);

@@ -68,7 +68,7 @@ draw_gs_get_input_index(int semantic, int index,
  * the number of elements in the SOA vector. This ensures that the
  * throughput is optimized for the given vector instruction set.
  */
-static inline boolean
+static inline bool
 draw_gs_should_flush(struct draw_geometry_shader *shader)
 {
    return (shader->fetched_prim_count == shader->vector_length || shader->num_invocations > 1);
@@ -719,7 +719,7 @@ void
 draw_geometry_shader_prepare(struct draw_geometry_shader *shader,
                              struct draw_context *draw)
 {
-   boolean use_llvm = draw->llvm != NULL;
+   bool use_llvm = draw->llvm != NULL;
    if (!use_llvm &&
        shader && shader->machine->Tokens != shader->state.tokens) {
       tgsi_exec_machine_bind_shader(shader->machine,
@@ -731,7 +731,7 @@ draw_geometry_shader_prepare(struct draw_geometry_shader *shader,
 }
 
 
-boolean
+bool
 draw_gs_init(struct draw_context *draw)
 {
    if (!draw->llvm) {
@@ -777,7 +777,7 @@ draw_create_geometry_shader(struct draw_context *draw,
                             const struct pipe_shader_state *state)
 {
 #ifdef DRAW_LLVM_AVAILABLE
-   boolean use_llvm = draw->llvm != NULL;
+   bool use_llvm = draw->llvm != NULL;
    struct llvm_geometry_shader *llvm_gs = NULL;
 #endif
    struct draw_geometry_shader *gs;

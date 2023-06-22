@@ -46,7 +46,7 @@ struct r300_stencilref_context {
     ubyte ref_value_front;
 };
 
-static boolean r300_stencilref_needed(struct r300_context *r300)
+static bool r300_stencilref_needed(struct r300_context *r300)
 {
     struct r300_dsa_state *dsa = (struct r300_dsa_state*)r300->dsa_state.state;
 

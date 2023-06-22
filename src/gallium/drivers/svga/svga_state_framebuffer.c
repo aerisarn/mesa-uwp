@@ -56,7 +56,7 @@ emit_fb_vgpu9(struct svga_context *svga)
    struct svga_screen *svgascreen = svga_screen(svga->pipe.screen);
    const struct pipe_framebuffer_state *curr = &svga->curr.framebuffer;
    struct pipe_framebuffer_state *hw = &svga->state.hw_clear.framebuffer;
-   boolean reemit = svga->rebind.flags.rendertargets;
+   bool reemit = svga->rebind.flags.rendertargets;
    unsigned i;
    enum pipe_error ret;
 
@@ -410,8 +410,8 @@ get_viewport_prescale(struct svga_context *svga,
    float range_min = 0.0;
    float range_max = 1.0;
    float flip = -1.0;
-   boolean degenerate = FALSE;
-   boolean invertY = FALSE;
+   bool degenerate = FALSE;
+   bool invertY = FALSE;
 
    float fb_width = (float) svga->curr.framebuffer.width;
    float fb_height = (float) svga->curr.framebuffer.height;

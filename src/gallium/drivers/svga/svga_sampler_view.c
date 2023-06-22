@@ -65,7 +65,7 @@ svga_get_tex_sampler_view(struct pipe_context *pipe,
    SVGA3dSurface1Flags flags = SVGA3D_SURFACE_HINT_TEXTURE;
    SVGA3dSurfaceFormat format = svga_translate_format(ss, pt->format,
                                                       PIPE_BIND_SAMPLER_VIEW);
-   boolean view = TRUE;
+   bool view = TRUE;
 
    assert(pt);
    assert(min_lod <= max_lod);

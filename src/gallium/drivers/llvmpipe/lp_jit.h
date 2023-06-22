@@ -282,7 +282,7 @@ typedef const uint8_t *
 /* We're not really jitting this, but I need to get into the
  * rast_state struct to call the function we actually are jitting.
  */
-typedef boolean
+typedef bool
 (*lp_jit_linear_func)(const struct lp_rast_state *state,
                       uint32_t x,
                       uint32_t y,
@@ -382,7 +382,7 @@ typedef void
 void
 lp_jit_screen_cleanup(struct llvmpipe_screen *screen);
 
-boolean
+bool
 lp_jit_screen_init(struct llvmpipe_screen *screen);
 
 void

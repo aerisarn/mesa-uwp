@@ -56,7 +56,7 @@
 /* Linear shader which implements the BLIT_RGBA shader with the
  * additional constraints imposed by lp_setup_is_blit().
  */
-static boolean
+static bool
 lp_linear_blit_rgba_blit(const struct lp_rast_state *state,
                          unsigned x, unsigned y,
                          unsigned width, unsigned height,
@@ -105,7 +105,7 @@ lp_linear_blit_rgba_blit(const struct lp_rast_state *state,
 /* Linear shader which implements the BLIT_RGB1 shader, with the
  * additional constraints imposed by lp_setup_is_blit().
  */
-static boolean
+static bool
 lp_linear_blit_rgb1_blit(const struct lp_rast_state *state,
                unsigned x, unsigned y,
                unsigned width, unsigned height,
@@ -161,7 +161,7 @@ lp_linear_blit_rgb1_blit(const struct lp_rast_state *state,
 
 /* Linear shader which always emits purple.  Used for debugging.
  */
-static boolean
+static bool
 lp_linear_purple(const struct lp_rast_state *state,
                  unsigned x, unsigned y,
                  unsigned width, unsigned height,
@@ -192,7 +192,7 @@ lp_linear_purple(const struct lp_rast_state *state,
 /* Examine the fragment shader variant and determine whether we can
  * substitute a fastpath linear shader implementation.
  */
-boolean
+bool
 lp_linear_check_fastpath(struct lp_fragment_shader_variant *variant)
 {
    struct lp_sampler_static_state *samp0 =
@@ -230,7 +230,7 @@ lp_linear_check_fastpath(struct lp_fragment_shader_variant *variant)
 
 #else
 
-boolean
+bool
 lp_linear_check_fastpath(struct lp_fragment_shader_variant *variant)
 {
    return FALSE;

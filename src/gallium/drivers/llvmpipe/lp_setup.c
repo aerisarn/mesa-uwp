@@ -61,7 +61,7 @@
 #include "draw/draw_vbuf.h"
 
 
-static boolean
+static bool
 try_update_scene_state(struct lp_setup_context *setup);
 
 
@@ -129,7 +129,7 @@ first_triangle(struct lp_setup_context *setup,
 }
 
 
-static boolean
+static bool
 first_rectangle(struct lp_setup_context *setup,
                 const float (*v0)[4],
                 const float (*v1)[4],
@@ -219,7 +219,7 @@ lp_setup_rasterize_scene(struct lp_setup_context *setup)
 }
 
 
-static boolean
+static bool
 begin_binning(struct lp_setup_context *setup)
 {
    struct lp_scene *scene = setup->scene;
@@ -237,7 +237,7 @@ begin_binning(struct lp_setup_context *setup)
       return FALSE;
    }
 
-   boolean need_zsload = FALSE;
+   bool need_zsload = FALSE;
    if (setup->fb.zsbuf &&
        ((setup->clear.flags & PIPE_CLEAR_DEPTHSTENCIL) != PIPE_CLEAR_DEPTHSTENCIL) &&
         util_format_is_depth_and_stencil(setup->fb.zsbuf->format)) {
@@ -302,7 +302,7 @@ begin_binning(struct lp_setup_context *setup)
  *
  * TODO: fast path for fullscreen clears and no triangles.
  */
-static boolean
+static bool
 execute_clears(struct lp_setup_context *setup)
 {
    LP_DBG(DEBUG_SETUP, "%s\n", __func__);
@@ -318,7 +318,7 @@ static const char *states[] = {
 };
 
 
-static boolean
+static bool
 set_scene_state(struct lp_setup_context *setup,
                 enum setup_state new_state,
                 const char *reason)
@@ -418,7 +418,7 @@ lp_setup_bind_framebuffer(struct lp_setup_context *setup,
  * Try to clear one color buffer of the attached fb, either by binning a clear
  * command or queuing up the clear for later (when binning is started).
  */
-static boolean
+static bool
 lp_setup_try_clear_color_buffer(struct lp_setup_context *setup,
                                 const union pipe_color_union *color,
                                 unsigned cbuf)
@@ -474,7 +474,7 @@ lp_setup_try_clear_color_buffer(struct lp_setup_context *setup,
 }
 
 
-static boolean
+static bool
 lp_setup_try_clear_zs(struct lp_setup_context *setup,
                       double depth,
                       unsigned stencil,
@@ -774,7 +774,7 @@ lp_setup_set_sample_mask(struct lp_setup_context *setup,
 
 void
 lp_setup_set_rasterizer_discard(struct lp_setup_context *setup,
-                                boolean rasterizer_discard)
+                                bool rasterizer_discard)
 {
    if (setup->rasterizer_discard != rasterizer_discard) {
       setup->rasterizer_discard = rasterizer_discard;
@@ -798,7 +798,7 @@ lp_setup_set_vertex_info(struct lp_setup_context *setup,
 
 void
 lp_setup_set_linear_mode(struct lp_setup_context *setup,
-                         boolean mode)
+                         bool mode)
 {
    /* The linear rasterizer requires sse2 both at compile and runtime,
     * in particular for the code in lp_rast_linear_fallback.c.  This
@@ -991,11 +991,11 @@ lp_setup_is_resource_referenced(const struct lp_setup_context *setup,
  * pointers previously allocated with lp_scene_alloc() in this function (or any
  * function) as they may belong to a scene freed since then.
  */
-static boolean
+static bool
 try_update_scene_state(struct lp_setup_context *setup)
 {
    static const float fake_const_buf[4];
-   boolean new_scene = (setup->fs.stored == NULL);
+   bool new_scene = (setup->fs.stored == NULL);
    struct lp_scene *scene = setup->scene;
 
    assert(scene);
@@ -1209,7 +1209,7 @@ try_update_scene_state(struct lp_setup_context *setup)
       }
       if (setup->permit_linear_rasterizer) {
          /* NOTE: this only takes first vp into account. */
-         boolean need_vp_scissoring =
+         bool need_vp_scissoring =
             !!memcmp(&setup->vpwh, &setup->framebuffer,
                      sizeof(setup->framebuffer));
 
@@ -1230,7 +1230,7 @@ try_update_scene_state(struct lp_setup_context *setup)
           * cause large points to always get vp scissored, regardless the
           * point_line_tri_clip setting.)
           */
-         boolean need_vp_scissoring =
+         bool need_vp_scissoring =
             !!memcmp(&setup->vpwh, &setup->framebuffer,
                      sizeof(setup->framebuffer));
          if (need_vp_scissoring) {
@@ -1247,9 +1247,9 @@ try_update_scene_state(struct lp_setup_context *setup)
 }
 
 
-boolean
+bool
 lp_setup_update_state(struct lp_setup_context *setup,
-                      boolean update_scene)
+                      bool update_scene)
 {
    /* Some of the 'draw' pipeline stages may have changed some driver state.
     * Make sure we've processed those state changes before anything else.
@@ -1558,7 +1558,7 @@ fail:
 }
 
 
-boolean
+bool
 lp_setup_flush_and_restart(struct lp_setup_context *setup)
 {
    if (0) debug_printf("%s\n", __func__);
@@ -1578,7 +1578,7 @@ lp_setup_flush_and_restart(struct lp_setup_context *setup)
 void
 lp_setup_add_scissor_planes(const struct u_rect *scissor,
                             struct lp_rast_plane *plane_s,
-                            boolean s_planes[4], bool multisample)
+                            bool s_planes[4], bool multisample)
 {
    /*
     * When rasterizing scissored tris, use the intersection of the

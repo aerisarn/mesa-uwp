@@ -46,7 +46,7 @@ struct dump_ctx
 {
    struct tgsi_iterate_context iter;
 
-   boolean dump_float_as_hex;
+   bool dump_float_as_hex;
 
    uint instno;
    uint immno;
@@ -294,13 +294,13 @@ dump_imm_data(struct tgsi_iterate_context *iter,
    TXT( "}" );
 }
 
-static boolean
+static bool
 iter_declaration(
    struct tgsi_iterate_context *iter,
    struct tgsi_full_declaration *decl )
 {
    struct dump_ctx *ctx = (struct dump_ctx *)iter;
-   boolean patch = decl->Semantic.Name == TGSI_SEMANTIC_PATCH ||
+   bool patch = decl->Semantic.Name == TGSI_SEMANTIC_PATCH ||
       decl->Semantic.Name == TGSI_SEMANTIC_TESSINNER ||
       decl->Semantic.Name == TGSI_SEMANTIC_TESSOUTER ||
       decl->Semantic.Name == TGSI_SEMANTIC_PRIMID;
@@ -447,7 +447,7 @@ iter_declaration(
    return TRUE;
 }
 
-static boolean
+static bool
 iter_property(
    struct tgsi_iterate_context *iter,
    struct tgsi_full_property *prop )
@@ -488,7 +488,7 @@ iter_property(
    return TRUE;
 }
 
-static boolean
+static bool
 iter_immediate(
    struct tgsi_iterate_context *iter,
    struct tgsi_full_immediate *imm )
@@ -508,7 +508,7 @@ iter_immediate(
    return TRUE;
 }
 
-static boolean
+static bool
 iter_instruction(
    struct tgsi_iterate_context *iter,
    struct tgsi_full_instruction *inst )
@@ -517,7 +517,7 @@ iter_instruction(
    uint instno = ctx->instno++;
    const struct tgsi_opcode_info *info = tgsi_get_opcode_info( inst->Instruction.Opcode );
    uint i;
-   boolean first_reg = TRUE;
+   bool first_reg = TRUE;
 
    INSTID( instno );
    TXT( ": " );
@@ -664,7 +664,7 @@ tgsi_dump_instruction(
    iter_instruction( &ctx.iter, (struct tgsi_full_instruction *)inst );
 }
 
-static boolean
+static bool
 prolog(
    struct tgsi_iterate_context *iter )
 {

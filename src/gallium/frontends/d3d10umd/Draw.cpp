@@ -66,7 +66,7 @@ ResolveState(Device *pDevice)
        pDevice->bound_vs->state.tokens) {
       Shader *gs = pDevice->bound_empty_gs;
       Shader *vs = pDevice->bound_vs;
-      boolean remapped = FALSE;
+      bool remapped = FALSE;
       struct pipe_context *pipe = pDevice->pipe;
       if (!gs->output_resolved) {
          for (unsigned i = 0; i < gs->state.stream_output.num_outputs; ++i) {

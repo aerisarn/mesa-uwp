@@ -281,14 +281,14 @@ parse_operand_index(const unsigned **curr,
    }
 }
 
-boolean
+bool
 Shader_parse_opcode(struct Shader_parser *parser,
                          struct Shader_opcode *opcode)
 {
    const unsigned *curr = parser->curr;
    const struct dx10_opcode_info *info;
    unsigned length;
-   boolean opcode_is_extended;
+   bool opcode_is_extended;
    unsigned i;
 
    if (curr >= parser->code + parser->header.size) {
@@ -450,7 +450,7 @@ Shader_parse_opcode(struct Shader_parser *parser,
 
    /* Source operands. */
    for (i = 0; i < info->num_src; i++) {
-      boolean extended;
+      bool extended;
       D3D10_SB_OPERAND_NUM_COMPONENTS num_components;
 
       extended = DECODE_IS_D3D10_SB_OPERAND_EXTENDED(*curr);

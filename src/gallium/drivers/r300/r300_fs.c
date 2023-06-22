@@ -575,7 +575,7 @@ static void r300_translate_fragment_shader(
     r300_emit_fs_code_to_buffer(r300, shader);
 }
 
-boolean r300_pick_fragment_shader(struct r300_context *r300,
+bool r300_pick_fragment_shader(struct r300_context *r300,
                                   struct r300_fragment_shader* fs,
                                   struct r300_fragment_program_external_state *state)
 {

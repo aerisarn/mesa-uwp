@@ -1854,7 +1854,7 @@ lp_build_int_to_float(struct lp_build_context *bld,
 }
 
 
-static boolean
+static bool
 arch_rounding_available(const struct lp_type type)
 {
    if ((util_get_cpu_caps()->has_sse4_1 &&
@@ -2760,7 +2760,7 @@ lp_build_rsqrt(struct lp_build_context *bld,
  * unavailable it would result in sqrt/div/mul so obviously
  * much better to just call sqrt, skipping both div and mul).
  */
-boolean
+bool
 lp_build_fast_rsqrt_available(struct lp_type type)
 {
    assert(type.floating);
@@ -2817,7 +2817,7 @@ lp_build_fast_rsqrt(struct lp_build_context *bld,
 static LLVMValueRef
 lp_build_sin_or_cos(struct lp_build_context *bld,
                     LLVMValueRef a,
-                    boolean cos)
+                    bool cos)
 {
    struct gallivm_state *gallivm = bld->gallivm;
    LLVMBuilderRef b = gallivm->builder;
@@ -3408,7 +3408,7 @@ lp_build_log2_approx(struct lp_build_context *bld,
                      LLVMValueRef *p_exp,
                      LLVMValueRef *p_floor_log2,
                      LLVMValueRef *p_log2,
-                     boolean handle_edge_cases)
+                     bool handle_edge_cases)
 {
    LLVMBuilderRef builder = bld->gallivm->builder;
    const struct lp_type type = bld->type;
@@ -3735,7 +3735,7 @@ lp_build_fpstate_get(struct gallivm_state *gallivm)
 
 void
 lp_build_fpstate_set_denorms_zero(struct gallivm_state *gallivm,
-                                  boolean zero)
+                                  bool zero)
 {
    if (util_get_cpu_caps()->has_sse) {
       /* turn on DAZ (64) | FTZ (32768) = 32832 if available */

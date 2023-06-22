@@ -67,7 +67,7 @@
  */
 #define ALWAYS_READPIXELS_CACHE false
 
-static boolean
+static bool
 needs_integer_signed_unsigned_conversion(const struct gl_context *ctx,
                                          GLenum format, GLenum type)
 {

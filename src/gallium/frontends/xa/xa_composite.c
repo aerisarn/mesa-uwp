@@ -99,7 +99,7 @@ xa_convert_blend_for_luminance(unsigned factor)
     return factor;
 }
 
-static boolean
+static bool
 blend_for_op(struct xa_composite_blend *blend,
 	     enum xa_composite_op op,
 	     struct xa_picture *src_pic,
@@ -109,7 +109,7 @@ blend_for_op(struct xa_composite_blend *blend,
     const int num_blends =
 	sizeof(xa_blends)/sizeof(struct xa_composite_blend);
     int i;
-    boolean supported = FALSE;
+    bool supported = FALSE;
 
     /*
      * our default in case something goes wrong
@@ -173,7 +173,7 @@ xa_repeat_to_gallium(int mode)
     return PIPE_TEX_WRAP_REPEAT;
 }
 
-static inline boolean
+static inline bool
 xa_filter_to_gallium(int xrender_filter, int *out_filter)
 {
 
@@ -208,7 +208,7 @@ xa_is_filter_accelerated(struct xa_picture *pic)
  *
  * \returns TRUE if accelerated, FALSE otherwise.
  */
-static boolean
+static bool
 xa_src_pict_is_accelerated(const union xa_source_pict *src_pic)
 {
     if (!src_pic)
@@ -276,8 +276,8 @@ static unsigned int
 picture_format_fixups(struct xa_picture *src_pic,
 		      int mask)
 {
-    boolean set_alpha = FALSE;
-    boolean swizzle = FALSE;
+    bool set_alpha = FALSE;
+    bool swizzle = FALSE;
     unsigned ret = 0;
     struct xa_surface *src = src_pic->srf;
     enum xa_formats src_hw_format, src_pic_format;
@@ -343,10 +343,10 @@ xa_src_in_mask(float src[4], const float mask[4])
  * to upload the solid color and also the solid color itself used as an input
  * to the fragment shader.
  */
-static boolean
+static bool
 xa_handle_src_pict(struct xa_context *ctx,
                    const union xa_source_pict *src_pict,
-                   boolean is_mask)
+                   bool is_mask)
 {
     float solid_color[4];
 

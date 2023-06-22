@@ -38,7 +38,7 @@ _nine_debug_printf( unsigned long flag,
 #define WARN(fmt, ...) _nine_debug_printf(DBG_WARN, __func__, fmt, ## __VA_ARGS__)
 #define WARN_ONCE(fmt, ...) \
     do { \
-        static boolean once = TRUE; \
+        static bool once = TRUE; \
         if (once) { \
             once = FALSE; \
             _nine_debug_printf(DBG_WARN, __func__, fmt, ## __VA_ARGS__); \

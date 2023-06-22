@@ -90,7 +90,7 @@ analyse_src(struct analysis_context *ctx,
 /**
  * Whether this register channel refers to a specific immediate value.
  */
-static boolean
+static bool
 is_immediate(const struct lp_tgsi_channel_info *chan_info, float value)
 {
    return chan_info->file == TGSI_FILE_IMMEDIATE &&
@@ -113,7 +113,7 @@ analyse_tex(struct analysis_context *ctx,
 
    if (info->num_texs < ARRAY_SIZE(info->tex)) {
       struct lp_tgsi_texture_info *tex_info = &info->tex[info->num_texs];
-      boolean indirect = FALSE;
+      bool indirect = FALSE;
       unsigned readmask = 0;
 
       tex_info->target = inst->Texture.Texture;
@@ -202,7 +202,7 @@ static void
 analyse_sample(struct analysis_context *ctx,
                const struct tgsi_full_instruction *inst,
                enum lp_build_tex_modifier modifier,
-               boolean shadow)
+               bool shadow)
 {
    struct lp_tgsi_info *info = ctx->info;
    unsigned chan;
@@ -210,8 +210,8 @@ analyse_sample(struct analysis_context *ctx,
    if (info->num_texs < ARRAY_SIZE(info->tex)) {
       struct lp_tgsi_texture_info *tex_info = &info->tex[info->num_texs];
       unsigned target = ctx->sample_target[inst->Src[1].Register.Index];
-      boolean indirect = FALSE;
-      boolean shadow = FALSE;
+      bool indirect = FALSE;
+      bool shadow = FALSE;
       unsigned readmask;
 
       switch (target) {

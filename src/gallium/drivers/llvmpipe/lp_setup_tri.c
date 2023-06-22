@@ -233,7 +233,7 @@ lp_rast_ms_tri_tab[MAX_PLANES+1] = {
  * This is used when simulating anti-aliasing primitives in shaders, e.g.,
  * when drawing the windows client area in Aero's flip-3d effect.
  */
-static boolean
+static bool
 check_opaque(const struct lp_setup_context *setup,
              const float (*v1)[4],
              const float (*v2)[4],
@@ -271,13 +271,13 @@ check_opaque(const struct lp_setup_context *setup,
  * framebuffer tiles are touched.  Put the triangle in the scene's
  * bins for the tiles which we overlap.
  */
-static boolean
+static bool
 do_triangle_ccw(struct lp_setup_context *setup,
                 struct fixed_position *position,
                 const float (*v0)[4],
                 const float (*v1)[4],
                 const float (*v2)[4],
-                boolean frontfacing)
+                bool frontfacing)
 {
    struct lp_scene *scene = setup->scene;
 
@@ -331,9 +331,9 @@ do_triangle_ccw(struct lp_setup_context *setup,
 
    int max_szorig = ((bbox.x1 - (bbox.x0 & ~3)) |
                      (bbox.y1 - (bbox.y0 & ~3)));
-   boolean use_32bits = max_szorig <= MAX_FIXED_LENGTH32;
+   bool use_32bits = max_szorig <= MAX_FIXED_LENGTH32;
 #if defined(_ARCH_PWR8) && UTIL_ARCH_LITTLE_ENDIAN
-   boolean pwr8_limit_check = (bbox.x1 - bbox.x0) <= MAX_FIXED_LENGTH32 &&
+   bool pwr8_limit_check = (bbox.x1 - bbox.x0) <= MAX_FIXED_LENGTH32 &&
       (bbox.y1 - bbox.y0) <= MAX_FIXED_LENGTH32;
 #endif
 
@@ -351,7 +351,7 @@ do_triangle_ccw(struct lp_setup_context *setup,
     * edges if the bounding box of the tri is fully inside that edge.
     */
    const struct u_rect *scissor = &setup->draw_regions[viewport_index];
-   boolean s_planes[4];
+   bool s_planes[4];
    scissor_planes_needed(s_planes, &bbox, scissor);
    nr_planes += s_planes[0] + s_planes[1] + s_planes[2] + s_planes[3];
 
@@ -776,11 +776,11 @@ floor_pot(uint32_t n)
 }
 
 
-boolean
+bool
 lp_setup_bin_triangle(struct lp_setup_context *setup,
                       struct lp_rast_triangle *tri,
-                      boolean use_32bits,
-                      boolean opaque,
+                      bool use_32bits,
+                      bool opaque,
                       const struct u_rect *bbox,
                       int nr_planes,
                       unsigned viewport_index)
@@ -927,7 +927,7 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
        * Else, bin a lp_rast_triangle command.
        */
       for (int y = iy0; y <= iy1; y++) {
-         boolean in = FALSE;  /* are we inside the triangle? */
+         bool in = FALSE;  /* are we inside the triangle? */
          int64_t cx[MAX_PLANES];
 
          for (int i = 0; i < nr_planes; i++)
@@ -1005,7 +1005,7 @@ retry_triangle_ccw(struct lp_setup_context *setup,
                    const float (*v0)[4],
                    const float (*v1)[4],
                    const float (*v2)[4],
-                   boolean front)
+                   bool front)
 {
    if (0)
       lp_setup_print_triangle(setup, v0, v1, v2);

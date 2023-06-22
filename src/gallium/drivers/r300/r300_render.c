@@ -193,14 +193,14 @@ enum r300_prepare_flags {
  * \param cs_dwords     The number of dwords to reserve in CS.
  * \return TRUE if the CS was flushed
  */
-static boolean r300_reserve_cs_dwords(struct r300_context *r300,
+static bool r300_reserve_cs_dwords(struct r300_context *r300,
                                       enum r300_prepare_flags flags,
                                       unsigned cs_dwords)
 {
-    boolean flushed        = FALSE;
-    boolean emit_states    = flags & PREP_EMIT_STATES;
-    boolean emit_vertex_arrays       = flags & PREP_EMIT_VARRAYS;
-    boolean emit_vertex_arrays_swtcl = flags & PREP_EMIT_VARRAYS_SWTCL;
+    bool flushed        = FALSE;
+    bool emit_states    = flags & PREP_EMIT_STATES;
+    bool emit_vertex_arrays       = flags & PREP_EMIT_VARRAYS;
+    bool emit_vertex_arrays_swtcl = flags & PREP_EMIT_VARRAYS_SWTCL;
 
     /* Add dirty state, index offset, and AOS. */
     if (emit_states)
@@ -236,17 +236,17 @@ static boolean r300_reserve_cs_dwords(struct r300_context *r300,
  * \param instance_id   Index of instance to render
  * \return TRUE if rendering should be skipped
  */
-static boolean r300_emit_states(struct r300_context *r300,
+static bool r300_emit_states(struct r300_context *r300,
                                 enum r300_prepare_flags flags,
                                 struct pipe_resource *index_buffer,
                                 int buffer_offset,
                                 int index_bias, int instance_id)
 {
-    boolean emit_states    = flags & PREP_EMIT_STATES;
-    boolean emit_vertex_arrays       = flags & PREP_EMIT_VARRAYS;
-    boolean emit_vertex_arrays_swtcl = flags & PREP_EMIT_VARRAYS_SWTCL;
-    boolean indexed        = flags & PREP_INDEXED;
-    boolean validate_vbos  = flags & PREP_VALIDATE_VBOS;
+    bool emit_states    = flags & PREP_EMIT_STATES;
+    bool emit_vertex_arrays       = flags & PREP_EMIT_VARRAYS;
+    bool emit_vertex_arrays_swtcl = flags & PREP_EMIT_VARRAYS_SWTCL;
+    bool indexed        = flags & PREP_INDEXED;
+    bool validate_vbos  = flags & PREP_VALIDATE_VBOS;
 
     /* Validate buffers and emit dirty state if needed. */
     if (emit_states || (emit_vertex_arrays && validate_vbos)) {
@@ -299,7 +299,7 @@ static boolean r300_emit_states(struct r300_context *r300,
  * \param instance_id The instance to render.
  * \return TRUE if rendering should be skipped
  */
-static boolean r300_prepare_for_rendering(struct r300_context *r300,
+static bool r300_prepare_for_rendering(struct r300_context *r300,
                                           enum r300_prepare_flags flags,
                                           struct pipe_resource *index_buffer,
                                           unsigned cs_dwords,
@@ -315,7 +315,7 @@ static boolean r300_prepare_for_rendering(struct r300_context *r300,
                             index_bias, instance_id);
 }
 
-static boolean immd_is_good_idea(struct r300_context *r300,
+static bool immd_is_good_idea(struct r300_context *r300,
                                  unsigned count)
 {
     if (DBG_ON(r300, DBG_NO_IMMD)) {
@@ -405,7 +405,7 @@ static void r300_emit_draw_arrays(struct r300_context *r300,
                                   unsigned mode,
                                   unsigned count)
 {
-    boolean alt_num_verts = count > 65535;
+    bool alt_num_verts = count > 65535;
     CS_LOCALS(r300);
 
     if (count >= (1 << 24)) {
@@ -437,7 +437,7 @@ static void r300_emit_draw_elements(struct r300_context *r300,
                                     uint16_t *imm_indices3)
 {
     uint32_t count_dwords, offset_dwords;
-    boolean alt_num_verts = count > 65535;
+    bool alt_num_verts = count > 65535;
     CS_LOCALS(r300);
 
     if (count >= (1 << 24)) {
@@ -596,7 +596,7 @@ static void r300_draw_elements(struct r300_context *r300,
     struct pipe_resource* orgIndexBuffer = indexBuffer;
     unsigned start = draw->start;
     unsigned count = draw->count;
-    boolean alt_num_verts = r300->screen->caps.is_r500 &&
+    bool alt_num_verts = r300->screen->caps.is_r500 &&
                             count > 65536;
     unsigned short_count;
     int buffer_offset = 0, index_offset = 0; /* for index bias emulation */
@@ -682,7 +682,7 @@ static void r300_draw_arrays(struct r300_context *r300,
                              const struct pipe_draw_start_count_bias *draw,
                              int instance_id)
 {
-    boolean alt_num_verts = r300->screen->caps.is_r500 &&
+    bool alt_num_verts = r300->screen->caps.is_r500 &&
                             draw->count > 65536;
     unsigned start = draw->start;
     unsigned count = draw->count;
@@ -939,7 +939,7 @@ r300_render_get_vertex_info(struct vbuf_render* render)
     return &r300->vertex_info;
 }
 
-static boolean r300_render_allocate_vertices(struct vbuf_render* render,
+static bool r300_render_allocate_vertices(struct vbuf_render* render,
                                              ushort vertex_size,
                                              ushort count)
 {

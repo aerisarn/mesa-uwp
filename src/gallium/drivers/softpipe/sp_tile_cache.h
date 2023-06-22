@@ -93,7 +93,7 @@ struct softpipe_tile_cache
    uint clear_flags_size;
    union pipe_color_union clear_color; /**< for color bufs */
    uint64_t clear_val;        /**< for z+stencil */
-   boolean depth_stencil; /**< Is the surface a depth/stencil format? */
+   bool depth_stencil; /**< Is the surface a depth/stencil format? */
 
    struct softpipe_cached_tile *tile;  /**< scratch tile for clears */
 

@@ -50,7 +50,7 @@
 static char err_buf[128];
 
 
-static boolean
+static bool
 svga_shader_expand(struct svga_shader_emitter *emit)
 {
    char *new_buf;
@@ -75,7 +75,7 @@ svga_shader_expand(struct svga_shader_emitter *emit)
 }
 
 
-static inline boolean
+static inline bool
 reserve(struct svga_shader_emitter *emit, unsigned nr_dwords)
 {
    if (emit->ptr - emit->buf + nr_dwords * sizeof(unsigned) >= emit->size) {
@@ -88,7 +88,7 @@ reserve(struct svga_shader_emitter *emit, unsigned nr_dwords)
 }
 
 
-boolean
+bool
 svga_shader_emit_dword(struct svga_shader_emitter * emit, unsigned dword)
 {
    if (!reserve(emit, 1))
@@ -100,7 +100,7 @@ svga_shader_emit_dword(struct svga_shader_emitter * emit, unsigned dword)
 }
 
 
-boolean
+bool
 svga_shader_emit_dwords(struct svga_shader_emitter * emit,
                         const unsigned *dwords, unsigned nr)
 {
@@ -113,7 +113,7 @@ svga_shader_emit_dwords(struct svga_shader_emitter * emit,
 }
 
 
-boolean
+bool
 svga_shader_emit_opcode(struct svga_shader_emitter * emit, unsigned opcode)
 {
    SVGA3dShaderInstToken *here;
@@ -136,7 +136,7 @@ svga_shader_emit_opcode(struct svga_shader_emitter * emit, unsigned opcode)
 }
 
 
-static boolean
+static bool
 svga_shader_emit_header(struct svga_shader_emitter *emit)
 {
    SVGA3dShaderVersion header;

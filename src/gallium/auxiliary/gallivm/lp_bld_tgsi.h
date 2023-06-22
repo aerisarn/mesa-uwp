@@ -396,7 +396,7 @@ struct lp_build_tgsi_context
     * to every function. */
    void * userdata;
 
-   boolean soa;
+   bool soa;
 
    int pc;
 
@@ -429,9 +429,9 @@ struct lp_build_gs_iface
 {
    LLVMValueRef (*fetch_input)(const struct lp_build_gs_iface *gs_iface,
                                struct lp_build_context * bld,
-                               boolean is_vindex_indirect,
+                               bool is_vindex_indirect,
                                LLVMValueRef vertex_index,
-                               boolean is_aindex_indirect,
+                               bool is_aindex_indirect,
                                LLVMValueRef attrib_index,
                                LLVMValueRef swizzle_index);
    void (*emit_vertex)(const struct lp_build_gs_iface *gs_iface,
@@ -459,31 +459,31 @@ struct lp_build_tcs_iface
    void (*emit_store_output)(const struct lp_build_tcs_iface *tcs_iface,
                              struct lp_build_context * bld,
                              unsigned name,
-                             boolean is_vindex_indirect,
+                             bool is_vindex_indirect,
                              LLVMValueRef vertex_index,
-                             boolean is_aindex_indirect,
+                             bool is_aindex_indirect,
                              LLVMValueRef attrib_index,
-                             boolean is_sindex_indirect,
+                             bool is_sindex_indirect,
                              LLVMValueRef swizzle_index,
                              LLVMValueRef value,
                              LLVMValueRef mask_vec);
 
    LLVMValueRef (*emit_fetch_input)(const struct lp_build_tcs_iface *tcs_iface,
                                     struct lp_build_context * bld,
-                                    boolean is_vindex_indirect,
+                                    bool is_vindex_indirect,
                                     LLVMValueRef vertex_index,
-                                    boolean is_aindex_indirect,
+                                    bool is_aindex_indirect,
                                     LLVMValueRef attrib_index,
-                                    boolean is_sindex_indirect,
+                                    bool is_sindex_indirect,
                                     LLVMValueRef swizzle_index);
 
    LLVMValueRef (*emit_fetch_output)(const struct lp_build_tcs_iface *tcs_iface,
                                     struct lp_build_context * bld,
-                                    boolean is_vindex_indirect,
+                                    bool is_vindex_indirect,
                                     LLVMValueRef vertex_index,
-                                    boolean is_aindex_indirect,
+                                    bool is_aindex_indirect,
                                     LLVMValueRef attrib_index,
-                                    boolean is_sindex_indirect,
+                                    bool is_sindex_indirect,
                                     LLVMValueRef swizzle_index,
                                     uint32_t name);
 };
@@ -492,16 +492,16 @@ struct lp_build_tes_iface
 {
    LLVMValueRef (*fetch_vertex_input)(const struct lp_build_tes_iface *tes_iface,
                                       struct lp_build_context * bld,
-                                      boolean is_vindex_indirect,
+                                      bool is_vindex_indirect,
                                       LLVMValueRef vertex_index,
-                                      boolean is_aindex_indirect,
+                                      bool is_aindex_indirect,
                                       LLVMValueRef attrib_index,
-                                      boolean is_sindex_indirect,
+                                      bool is_sindex_indirect,
                                       LLVMValueRef swizzle_index);
 
    LLVMValueRef (*fetch_patch_input)(const struct lp_build_tes_iface *tes_iface,
                                      struct lp_build_context * bld,
-                                     boolean is_aindex_indirect,
+                                     bool is_aindex_indirect,
                                      LLVMValueRef attrib_index,
                                      LLVMValueRef swizzle_index);
 };
@@ -511,11 +511,11 @@ struct lp_build_mesh_iface
    void (*emit_store_output)(const struct lp_build_mesh_iface *mesh_iface,
                              struct lp_build_context * bld,
                              unsigned name,
-                             boolean is_vindex_indirect,
+                             bool is_vindex_indirect,
                              LLVMValueRef vertex_index,
-                             boolean is_aindex_indirect,
+                             bool is_aindex_indirect,
                              LLVMValueRef attrib_index,
-                             boolean is_sindex_indirect,
+                             bool is_sindex_indirect,
                              LLVMValueRef swizzle_index,
                              LLVMValueRef value,
                              LLVMValueRef mask_vec);
@@ -605,7 +605,7 @@ struct lp_build_tgsi_soa_context
    struct lp_exec_mask exec_mask;
 
    uint num_immediates;
-   boolean use_immediates_array;
+   bool use_immediates_array;
 };
 
 void
@@ -617,7 +617,7 @@ void lp_emit_immediate_soa(
    struct lp_build_tgsi_context *bld_base,
    const struct tgsi_full_immediate *imm);
 
-boolean
+bool
 lp_emit_instruction_soa(
    struct lp_build_tgsi_soa_context *bld,
    const struct tgsi_full_instruction *inst,
@@ -694,7 +694,7 @@ lp_emit_declaration_aos(
    const struct tgsi_full_declaration *decl);
 
 
-boolean
+bool
 lp_emit_instruction_aos(
    struct lp_build_tgsi_aos_context *bld,
    const struct tgsi_full_instruction *inst,
@@ -750,7 +750,7 @@ lp_build_emit_llvm_ternary(
    LLVMValueRef arg1,
    LLVMValueRef arg2);
 
-boolean
+bool
 lp_build_tgsi_inst_llvm(
    struct lp_build_tgsi_context * bld_base,
    const struct tgsi_full_instruction *inst);
@@ -777,7 +777,7 @@ lp_build_emit_fetch_texoffset(
    unsigned tex_off_op,
    const unsigned chan_index);
 
-boolean
+bool
 lp_build_tgsi_llvm(
    struct lp_build_tgsi_context * bld_base,
    const struct tgsi_token *tokens);

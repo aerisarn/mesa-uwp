@@ -82,7 +82,7 @@ vmw_pools_cleanup(struct vmw_winsys_screen *vws)
  * query slabs, it should be easily fixable by allocating them out
  * of a buffer cache.
  */
-boolean
+bool
 vmw_query_pools_init(struct vmw_winsys_screen *vws)
 {
    struct pb_desc desc;
@@ -117,7 +117,7 @@ vmw_query_pools_init(struct vmw_winsys_screen *vws)
  * Typically this pool should be created on demand when we
  * detect that the app will be using MOB buffers.
  */
-boolean
+bool
 vmw_mob_pools_init(struct vmw_winsys_screen *vws)
 {
    struct pb_desc desc;
@@ -169,7 +169,7 @@ vmw_mob_pools_init(struct vmw_winsys_screen *vws)
  *
  * @vws: Pointer to a struct vmw_winsys_screen.
  */
-boolean
+bool
 vmw_pools_init(struct vmw_winsys_screen *vws)
 {
    struct pb_desc desc;

@@ -107,7 +107,7 @@ r300_texture_transfer_map(struct pipe_context *ctx,
     struct r300_context *r300 = r300_context(ctx);
     struct r300_resource *tex = r300_resource(texture);
     struct r300_transfer *trans;
-    boolean referenced_cs, referenced_hw;
+    bool referenced_cs, referenced_hw;
     enum pipe_format format = tex->b.format;
     char *map;
 

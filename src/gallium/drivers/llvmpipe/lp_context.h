@@ -143,7 +143,7 @@ struct llvmpipe_context {
    int8_t face_slot;
 
    /** Depth format and bias settings. */
-   boolean floating_point_depth;
+   bool floating_point_depth;
    double mrd;   /**< minimum resolvable depth value, for polygon offset */
 
    /** The tiling engine */
@@ -162,8 +162,8 @@ struct llvmpipe_context {
    unsigned nr_fs_variants;
    unsigned nr_fs_instrs;
 
-   boolean permit_linear_rasterizer;
-   boolean single_vp;
+   bool permit_linear_rasterizer;
+   bool single_vp;
 
    struct lp_setup_variant_list_item setup_variants_list;
    unsigned nr_setup_variants;
@@ -180,7 +180,7 @@ struct llvmpipe_context {
    /** Conditional query object and mode */
    struct pipe_query *render_cond_query;
    enum pipe_render_cond_flag render_cond_mode;
-   boolean render_cond_cond;
+   bool render_cond_cond;
 
    /** VK render cond */
    struct llvmpipe_resource *render_cond_buffer;

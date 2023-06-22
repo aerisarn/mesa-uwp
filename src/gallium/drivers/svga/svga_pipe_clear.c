@@ -89,7 +89,7 @@ clear_buffers_with_quad(struct svga_context *svga,
 /**
  * Check if any of the color buffers are integer buffers.
  */
-static boolean
+static bool
 is_integer_target(struct pipe_framebuffer_state *fb, unsigned buffers)
 {
    unsigned i;
@@ -110,7 +110,7 @@ is_integer_target(struct pipe_framebuffer_state *fb, unsigned buffers)
  * by floats.  If so, we can use the VGPU10 ClearRenderTargetView command.
  * Otherwise, we need to clear with a quad.
  */
-static boolean
+static bool
 ints_fit_in_floats(const union pipe_color_union *color)
 {
    const int max = 1 << 24;
@@ -130,7 +130,7 @@ try_clear(struct svga_context *svga,
 {
    enum pipe_error ret = PIPE_OK;
    SVGA3dRect rect = { 0, 0, 0, 0 };
-   boolean restore_viewport = FALSE;
+   bool restore_viewport = FALSE;
    SVGA3dClearFlag flags = 0;
    struct pipe_framebuffer_state *fb = &svga->curr.framebuffer;
    union util_color uc = {0};

@@ -59,7 +59,7 @@ struct quad_shade_stage
  * Execute fragment shader for the four fragments in the quad.
  * \return TRUE if quad is alive, FALSE if all four pixels are killed
  */
-static inline boolean
+static inline bool
 shade_quad(struct quad_stage *qs, struct quad_header *quad)
 {
    struct softpipe_context *softpipe = qs->softpipe;

@@ -42,7 +42,7 @@ void
 lp_scene_queue_destroy(struct lp_scene_queue *queue);
 
 struct lp_scene *
-lp_scene_dequeue(struct lp_scene_queue *queue, boolean wait);
+lp_scene_dequeue(struct lp_scene_queue *queue, bool wait);
 
 void
 lp_scene_enqueue(struct lp_scene_queue *queue, struct lp_scene *scene);
