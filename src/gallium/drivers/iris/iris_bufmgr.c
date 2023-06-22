@@ -1067,19 +1067,6 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
    return bo;
 }
 
-static int
-i915_gem_set_domain(struct iris_bufmgr *bufmgr, uint32_t handle,
-                    uint32_t read_domains, uint32_t write_domains)
-{
-   struct drm_i915_gem_set_domain sd = {
-      .handle = handle,
-      .read_domains = read_domains,
-      .write_domain = write_domains,
-   };
-   return intel_ioctl(iris_bufmgr_get_fd(bufmgr),
-                      DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd);
-}
-
 static struct iris_bo *
 alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
 {
@@ -1296,20 +1283,9 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
    if (!bo)
       return NULL;
 
-   struct drm_i915_gem_userptr arg = {
-      .user_ptr = (uintptr_t)ptr,
-      .user_size = size,
-      .flags = bufmgr->devinfo.has_userptr_probe ? I915_USERPTR_PROBE : 0,
-   };
-   if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_USERPTR, &arg))
+   bo->gem_handle = bufmgr->kmd_backend->gem_create_userptr(bufmgr, ptr, size);
+   if (bo->gem_handle == 0)
       goto err_free;
-   bo->gem_handle = arg.handle;
-
-   if (!bufmgr->devinfo.has_userptr_probe) {
-      /* Check the buffer for validity before we try and use it in a batch */
-      if (i915_gem_set_domain(bufmgr, bo->gem_handle, I915_GEM_DOMAIN_CPU, 0))
-         goto err_close;
-   }
 
    bo->name = name;
    bo->size = size;

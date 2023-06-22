@@ -436,10 +436,18 @@ xe_gem_close(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
    return intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_GEM_CLOSE, &close);
 }
 
+static uint32_t
+xe_gem_create_userptr(struct iris_bufmgr *bufmgr, void *ptr, uint64_t size)
+{
+   /* We return 0, because Xe doesn't create handles for userptrs. */
+   return 0;
+}
+
 const struct iris_kmd_backend *xe_get_backend(void)
 {
    static const struct iris_kmd_backend xe_backend = {
       .gem_create = xe_gem_create,
+      .gem_create_userptr = xe_gem_create_userptr,
       .gem_close = xe_gem_close,
       .gem_mmap = xe_gem_mmap,
       .gem_vm_bind = xe_gem_vm_bind,

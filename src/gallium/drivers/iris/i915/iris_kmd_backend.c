@@ -421,10 +421,37 @@ i915_gem_close(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
    return intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_GEM_CLOSE, &close);
 }
 
+static uint32_t
+i915_gem_create_userptr(struct iris_bufmgr *bufmgr, void *ptr, uint64_t size)
+{
+   const struct intel_device_info *devinfo = iris_bufmgr_get_device_info(bufmgr);
+   struct drm_i915_gem_userptr arg = {
+      .user_ptr = (uintptr_t)ptr,
+      .user_size = size,
+      .flags = devinfo->has_userptr_probe ? I915_USERPTR_PROBE : 0,
+   };
+   if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_USERPTR, &arg))
+      return 0;
+
+   if (!devinfo->has_userptr_probe) {
+      /* Check the buffer for validity before we try and use it in a batch */
+      if (i915_gem_set_domain(bufmgr, arg.handle, I915_GEM_DOMAIN_CPU, 0)) {
+         struct drm_gem_close close = {
+               .handle = arg.handle,
+         };
+         intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_GEM_CLOSE, &close);
+         return 0;
+      }
+   }
+
+   return arg.handle;
+}
+
 const struct iris_kmd_backend *i915_get_backend(void)
 {
    static const struct iris_kmd_backend i915_backend = {
       .gem_create = i915_gem_create,
+      .gem_create_userptr = i915_gem_create_userptr,
       .gem_close = i915_gem_close,
       .bo_madvise = i915_bo_madvise,
       .bo_set_caching = i915_bo_set_caching,
