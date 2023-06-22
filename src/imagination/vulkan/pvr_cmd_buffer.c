@@ -3400,6 +3400,7 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
                    attribute->const_offset,
                    pds_info->data_size_in_dwords);
 
+         entries += sizeof(*attribute);
          break;
       }
 
