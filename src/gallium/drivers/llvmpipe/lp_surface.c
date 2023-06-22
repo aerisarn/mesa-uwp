@@ -442,7 +442,7 @@ llvmpipe_clear_texture(struct pipe_context *pipe,
    const struct util_format_description *desc =
           util_format_description(tex->format);
    if (tex->nr_samples <= 1) {
-      util_clear_texture(pipe, tex, level, box, data);
+      util_clear_texture_sw(pipe, tex, level, box, data);
       return;
    }
    union pipe_color_union color;

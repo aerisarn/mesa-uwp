@@ -727,18 +727,19 @@ u_default_clear_texture(struct pipe_context *pipe,
 
    /* Fallback to clearing it in SW if the HW paths failed. */
    if (!cleared)
-      util_clear_texture(pipe, tex, level, box, data);
+      util_clear_texture_sw(pipe, tex, level, box, data);
 }
 
 void
-util_clear_texture(struct pipe_context *pipe,
-                   struct pipe_resource *tex,
-                   unsigned level,
-                   const struct pipe_box *box,
-                   const void *data)
+util_clear_texture_sw(struct pipe_context *pipe,
+                      struct pipe_resource *tex,
+                      unsigned level,
+                      const struct pipe_box *box,
+                      const void *data)
 {
    const struct util_format_description *desc =
           util_format_description(tex->format);
+   assert(data != NULL);
 
    if (level > tex->last_level)
       return;
