@@ -14,18 +14,36 @@ use std::iter::Zip;
 use std::ops::{BitAnd, BitOr, Deref, DerefMut, Index, IndexMut, Not, Range};
 use std::slice;
 
+/// Represents a register file
 #[repr(u8)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum RegFile {
+    /// The general-purpose register file
+    ///
+    /// General-purpose registers are 32 bits per SIMT channel.
     GPR = 0,
+
+    /// The general-purpose uniform register file
+    ///
+    /// General-purpose uniform registers are 32 bits each and uniform across a
+    /// wave.
     UGPR = 1,
+
+    /// The predicate reigster file
+    ///
+    /// Predicate registers are 1 bit per SIMT channel.
     Pred = 2,
+
+    /// The uniform predicate reigster file
+    ///
+    /// Uniform predicate registers are 1 bit and uniform across a wave.
     UPred = 3,
 }
 
 const NUM_REG_FILES: usize = 4;
 
 impl RegFile {
+    /// Returns true if the register file is uniform across a wave
     pub fn is_uniform(&self) -> bool {
         match self {
             RegFile::GPR | RegFile::Pred => false,
@@ -33,6 +51,7 @@ impl RegFile {
         }
     }
 
+    /// Returns true if the register file is general-purpose
     pub fn is_gpr(&self) -> bool {
         match self {
             RegFile::GPR | RegFile::UGPR => true,
@@ -40,6 +59,7 @@ impl RegFile {
         }
     }
 
+    /// Returns true if the register file is a predicate register file
     pub fn is_predicate(&self) -> bool {
         match self {
             RegFile::GPR | RegFile::UGPR => false,
@@ -105,6 +125,7 @@ impl TryFrom<u8> for RegFile {
     }
 }
 
+/// A trait for things which have an associated register file
 pub trait HasRegFile {
     fn file(&self) -> RegFile;
 
@@ -171,14 +192,29 @@ impl<T> IndexMut<RegFile> for PerRegFile<T> {
     }
 }
 
+/// An SSA value
+///
+/// Each SSA in NAK represents a single 32-bit or 1-bit (if a predicate) value
+/// which must either be spilled to memory or allocated space in the specified
+/// register file.  Whenever more data is required such as a 64-bit memory
+/// address, double-precision float, or a vec4 texture result, multiple SSA
+/// values are used.
+///
+/// Each SSA value logically contains two things: an index and a register file.
+/// It is required that each index refers to a unique SSA value, regardless of
+/// register file.  This way the index can be used to index tightly-packed data
+/// structures such as bitsets without having to determine separate ranges for
+/// each register file.
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct SSAValue {
     packed: u32,
 }
 
 impl SSAValue {
+    /// A special SSA value which is always invalid
     pub const NONE: Self = SSAValue { packed: 0 };
 
+    /// Returns an SSA value with the given register file and index
     pub fn new(file: RegFile, idx: u32) -> SSAValue {
         /* Reserve 2 numbers for use for SSARef::comps() */
         assert!(idx > 0 && idx < (1 << 30) - 2);
@@ -188,10 +224,12 @@ impl SSAValue {
         SSAValue { packed: packed }
     }
 
+    /// Returns the index of this SSA value
     pub fn idx(&self) -> u32 {
         self.packed & 0x3fffffff
     }
 
+    /// Returns true if this SSA value is equal to SSAValue::NONE
     #[allow(dead_code)]
     pub fn is_none(&self) -> bool {
         self.packed == 0
@@ -199,6 +237,7 @@ impl SSAValue {
 }
 
 impl HasRegFile for SSAValue {
+    /// Returns the register file of this SSA value
     fn file(&self) -> RegFile {
         RegFile::try_from(self.packed >> 30).unwrap()
     }
@@ -216,12 +255,27 @@ impl fmt::Display for SSAValue {
     }
 }
 
+/// A reference to one or more SSA values
+///
+/// Because each SSA value represents a single 1 or 32-bit scalar, we need a way
+/// to reference multiple SSA values for instructions which read or write
+/// multiple registers in the same source.  When the register allocator runs,
+/// all the SSA values in a given SSA ref will be placed in consecutive
+/// registers, with the base register aligned to the number of values, aligned
+/// to the next power of two.
+///
+/// An SSA reference can reference between 1 and 4 SSA values.  It dereferences
+/// to a slice for easy access to individual SSA values.  The structure is
+/// designed so that is always 16B, regardless of how many SSA values are
+/// referenced so it's easy and fairly cheap to copy around and embed in other
+/// structures.
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct SSARef {
     v: [SSAValue; 4],
 }
 
 impl SSARef {
+    /// Returns a new SSA reference
     #[inline]
     fn new(comps: &[SSAValue]) -> SSARef {
         assert!(comps.len() > 0 && comps.len() <= 4);
@@ -237,6 +291,7 @@ impl SSARef {
         r
     }
 
+    /// Returns the number of components in this SSA reference
     pub fn comps(&self) -> u8 {
         if self.v[3].packed >= u32::MAX - 2 {
             self.v[3].packed.wrapping_neg() as u8
