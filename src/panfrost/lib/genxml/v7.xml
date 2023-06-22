@@ -677,7 +677,7 @@
     <field name="Pointer" size="64" start="0:0" type="address"/>
   </struct>
 
-  <struct name="Surface With Stride" align="8">
+  <struct name="Surface With Stride" align="16">
     <field name="Pointer" size="64" start="0:0" type="address"/>
     <field name="Row stride" size="32" start="2:0" type="int"/>
     <field name="Surface stride" size="32" start="3:0" type="int"/>
