@@ -3667,10 +3667,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
    if (!interstage_cross_validate_uniform_blocks(prog, true))
       goto done;
 
-   /* Do common optimization before assigning storage for attributes,
-    * uniforms, and varyings.  Later optimization could possibly make
-    * some of that unused.
-    */
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (prog->_LinkedShaders[i] == NULL)
          continue;
@@ -3703,11 +3699,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
             goto done;
          }
       }
-
-      /* Run it just once, since NIR will do the real optimizaiton. */
-      do_common_optimization(prog->_LinkedShaders[i]->ir, true,
-                             &consts->ShaderCompilerOptions[i],
-                             consts->NativeIntegers);
    }
 
    /* Check and validate stream emissions in geometry shaders */

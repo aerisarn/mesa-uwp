@@ -210,6 +210,12 @@ glsl_to_nir(const struct gl_constants *consts,
 
    MESA_TRACE_FUNC();
 
+   /* NIR cannot handle instructions after a break so we use the GLSL IR do
+    * lower jumps pass to clean those up for now.
+    */
+   do_lower_jumps(sh->ir, true, true, gl_options->EmitNoMainReturn,
+                  gl_options->EmitNoCont);
+
    /* glsl_to_nir can only handle converting certain function paramaters
     * to NIR. If we find something we can't handle then we get the GLSL IR
     * opts to remove it before we continue on.

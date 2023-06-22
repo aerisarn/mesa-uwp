@@ -81,7 +81,7 @@ traces:
       label: [crash]
   paraview/pv-waveletvolume-v2.trace:
     gl-virgl:
-      checksum: f4af4067b37c00861fa5911e4c0a6629
+      checksum: 7e0fc4f2f8c635e571793ed8fa705f85
   supertuxkart/supertuxkart-mansion-egl-gles-v2.trace:
     gl-virgl:
       checksum: 4ac8b872bfa701632d76801a3f77c5db
