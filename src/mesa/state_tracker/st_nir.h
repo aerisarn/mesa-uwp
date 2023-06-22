@@ -76,8 +76,6 @@ st_nir_make_passthrough_shader(struct st_context *st,
                                const gl_varying_slot *output_locations,
                                unsigned *interpolation_modes,
                                unsigned sysval_mask);
-void
-st_nir_add_point_size(struct nir_shader *nir);
 
 struct pipe_shader_state *
 st_nir_make_clearcolor_shader(struct st_context *st);

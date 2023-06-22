@@ -38,6 +38,7 @@ struct gl_constants;
 struct gl_extensions;
 struct gl_linked_shader;
 struct gl_shader_program;
+struct gl_program;
 struct gl_transform_feedback_info;
 struct xfb_decl;
 struct nir_xfb_info;
@@ -112,6 +113,13 @@ void gl_nir_link_assign_xfb_resources(const struct gl_constants *consts,
                                       struct gl_shader_program *prog);
 
 bool gl_nir_link_uniform_blocks(struct gl_shader_program *prog);
+
+bool
+gl_nir_can_add_pointsize_to_program(const struct gl_constants *consts,
+                                    struct gl_program *prog);
+
+void
+gl_nir_add_point_size(struct nir_shader *nir);
 
 bool lower_packed_varying_needs_lowering(nir_shader *shader, nir_variable *var,
                                          bool xfb_enabled,

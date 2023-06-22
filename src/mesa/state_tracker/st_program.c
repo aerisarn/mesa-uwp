@@ -1228,35 +1228,6 @@ st_destroy_program_variants(struct st_context *st)
                   destroy_shader_program_variants_cb, st);
 }
 
-bool
-st_can_add_pointsize_to_program(struct st_context *st, struct gl_program *prog)
-{
-   nir_shader *nir = prog->nir;
-   if (!nir)
-      return true; //fixedfunction
-   assert(nir->info.stage == MESA_SHADER_VERTEX ||
-          nir->info.stage == MESA_SHADER_TESS_EVAL ||
-          nir->info.stage == MESA_SHADER_GEOMETRY);
-   if (nir->info.outputs_written & VARYING_BIT_PSIZ)
-      return false;
-   unsigned max_components = nir->info.stage == MESA_SHADER_GEOMETRY ?
-                             st->ctx->Const.MaxGeometryTotalOutputComponents :
-                             st->ctx->Const.Program[nir->info.stage].MaxOutputComponents;
-   unsigned num_components = 0;
-   unsigned needed_components = nir->info.stage == MESA_SHADER_GEOMETRY ? nir->info.gs.vertices_out : 1;
-   nir_foreach_shader_out_variable(var, nir) {
-      num_components += glsl_count_dword_slots(var->type, false);
-   }
-   /* Ensure that there is enough attribute space to emit at least one primitive */
-   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
-      if (num_components + needed_components > st->ctx->Const.Program[nir->info.stage].MaxOutputComponents)
-         return false;
-      num_components *= nir->info.gs.vertices_out;
-   }
-
-   return num_components + needed_components <= max_components;
-}
-
 /**
  * Compile one shader variant.
  */
@@ -1396,9 +1367,10 @@ st_program_string_notify( struct gl_context *ctx,
    } else if (target == GL_VERTEX_PROGRAM_ARB) {
       if (!st_translate_vertex_program(st, prog))
          return false;
-      if (st->lower_point_size && st_can_add_pointsize_to_program(st, prog)) {
+      if (st->lower_point_size &&
+          gl_nir_can_add_pointsize_to_program(&st->ctx->Const, prog)) {
          prog->skip_pointsize_xfb = true;
-         NIR_PASS_V(prog->nir, st_nir_add_point_size);
+         NIR_PASS_V(prog->nir, gl_nir_add_point_size);
       }
    }
 

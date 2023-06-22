@@ -228,45 +228,6 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
    }
 }
 
-/* - create a gl_PointSize variable
- * - find every gl_Position write
- * - store 1.0 to gl_PointSize after every gl_Position write
- */
-void
-st_nir_add_point_size(nir_shader *nir)
-{
-   nir_variable *psiz = nir_create_variable_with_location(nir, nir_var_shader_out,
-                                                          VARYING_SLOT_PSIZ, glsl_float_type());
-   psiz->data.how_declared = nir_var_hidden;
-
-   nir_builder b;
-   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-   b = nir_builder_create(impl);
-   bool found = false;
-   nir_foreach_block_safe(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         if (instr->type == nir_instr_type_intrinsic) {
-            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-            if (intr->intrinsic == nir_intrinsic_store_deref ||
-                intr->intrinsic == nir_intrinsic_copy_deref) {
-               nir_variable *var = nir_intrinsic_get_var(intr, 0);
-               if (var->data.location == VARYING_SLOT_POS) {
-                  b.cursor = nir_after_instr(instr);
-                  nir_deref_instr *deref = nir_build_deref_var(&b, psiz);
-                  nir_store_deref(&b, deref, nir_imm_float(&b, 1.0), BITFIELD_BIT(0));
-                  found = true;
-               }
-            }
-         }
-      }
-   }
-   if (!found) {
-      b.cursor = nir_before_cf_list(&impl->body);
-      nir_deref_instr *deref = nir_build_deref_var(&b, psiz);
-      nir_store_deref(&b, deref, nir_imm_float(&b, 1.0), BITFIELD_BIT(0));
-   }
-}
-
 static void
 shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 {
@@ -377,8 +338,8 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    prog->skip_pointsize_xfb = !(nir->info.outputs_written & VARYING_BIT_PSIZ);
    if (st->lower_point_size && prog->skip_pointsize_xfb &&
        stage < MESA_SHADER_FRAGMENT && stage != MESA_SHADER_TESS_CTRL &&
-       st_can_add_pointsize_to_program(st, prog)) {
-      NIR_PASS_V(nir, st_nir_add_point_size);
+       gl_nir_can_add_pointsize_to_program(&st->ctx->Const, prog)) {
+      NIR_PASS_V(nir, gl_nir_add_point_size);
    }
 
    if (stage < MESA_SHADER_FRAGMENT && stage != MESA_SHADER_TESS_CTRL &&

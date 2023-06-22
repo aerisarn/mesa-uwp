@@ -333,9 +333,6 @@ GLboolean st_program_string_notify(struct gl_context *ctx,
                                    GLenum target,
                                    struct gl_program *prog);
 
-bool
-st_can_add_pointsize_to_program(struct st_context *st, struct gl_program *prog);
-
 #ifdef __cplusplus
 }
 #endif
