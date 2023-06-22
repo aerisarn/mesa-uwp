@@ -15,9 +15,6 @@ spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-SYNC_CPU_R
 spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-SYNC-GL_INT,Fail
 spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-SYNC-GL_UNSIGNED_INT64_ARB,Fail
 spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-SYNC-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_PRIMITIVES_GENERATED-ASYNC-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_PRIMITIVES_GENERATED-ASYNC-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_PRIMITIVES_GENERATED-ASYNC_CPU_READ_AFTER-GL_INT,Fail
 
 # kopper
 glx@glx-multi-window-single-context,Crash
