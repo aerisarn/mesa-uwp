@@ -2794,14 +2794,14 @@ bool lp_build_nir_llvm(struct lp_build_nir_context *bld_base,
 {
    struct nir_function *func;
 
-   nir_convert_from_ssa(nir, true);
-   nir_lower_locals_to_regs(nir, 32);
-   nir_remove_dead_derefs(nir);
-   nir_remove_dead_variables(nir, nir_var_function_temp, NULL);
+   NIR_PASS_V(nir, nir_convert_from_ssa, true);
+   NIR_PASS_V(nir, nir_lower_locals_to_regs, 32);
+   NIR_PASS_V(nir, nir_remove_dead_derefs);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
    if (is_aos(bld_base)) {
-      nir_move_vec_src_uses_to_dest(nir);
-      nir_lower_vec_to_movs(nir, NULL, NULL);
+      NIR_PASS_V(nir, nir_move_vec_src_uses_to_dest);
+      NIR_PASS_V(nir, nir_lower_vec_to_movs, NULL, NULL);
    }
 
    nir_foreach_shader_out_variable(variable, nir)
