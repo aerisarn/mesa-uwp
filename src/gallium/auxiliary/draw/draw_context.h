@@ -82,7 +82,7 @@ struct draw_prim_info {
    bool linear;
    unsigned start;
 
-   const ushort *elts;
+   const uint16_t *elts;
    unsigned count;
 
    enum mesa_prim prim;

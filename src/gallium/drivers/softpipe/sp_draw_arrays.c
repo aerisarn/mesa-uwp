@@ -117,7 +117,7 @@ softpipe_draw_vbo(struct pipe_context *pipe,
       }
 
       draw_set_indexes(draw,
-                       (ubyte *) mapped_indices,
+                       (uint8_t *) mapped_indices,
                        info->index_size, available_space);
    }
 

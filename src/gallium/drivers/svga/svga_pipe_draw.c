@@ -61,7 +61,7 @@ static enum pipe_error
 retry_draw_arrays( struct svga_context *svga,
                    enum mesa_prim prim, unsigned start, unsigned count,
                    unsigned start_instance, unsigned instance_count,
-                   ubyte vertices_per_patch)
+                   uint8_t vertices_per_patch)
 {
    enum pipe_error ret;
 

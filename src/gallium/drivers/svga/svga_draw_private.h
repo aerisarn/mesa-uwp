@@ -66,7 +66,7 @@ static const unsigned svga_hw_prims =
  */
 static inline SVGA3dPrimitiveType
 svga_translate_prim(unsigned mode, unsigned vcount, unsigned *prim_count,
-                    ubyte vertices_per_patch)
+                    uint8_t vertices_per_patch)
 {
    switch (mode) {
    case MESA_PRIM_POINTS:
@@ -243,6 +243,6 @@ svga_hwtnl_simple_draw_range_elements(struct svga_hwtnl *hwtnl,
                                       unsigned count,
                                       unsigned start_instance,
                                       unsigned instance_count,
-                                      ubyte vertices_per_patch);
+                                      uint8_t vertices_per_patch);
 
 #endif

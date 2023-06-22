@@ -258,8 +258,8 @@ struct svga_shader_emitter_v10
    /* Samplers */
    unsigned num_samplers;
    bool sampler_view[PIPE_MAX_SAMPLERS];  /**< True if sampler view exists*/
-   ubyte sampler_target[PIPE_MAX_SAMPLERS];  /**< TGSI_TEXTURE_x */
-   ubyte sampler_return_type[PIPE_MAX_SAMPLERS];  /**< TGSI_RETURN_TYPE_x */
+   uint8_t sampler_target[PIPE_MAX_SAMPLERS];  /**< TGSI_TEXTURE_x */
+   uint8_t sampler_return_type[PIPE_MAX_SAMPLERS];  /**< TGSI_RETURN_TYPE_x */
 
    /* Images */
    unsigned num_images;
@@ -293,10 +293,10 @@ struct svga_shader_emitter_v10
    unsigned address_reg_index[MAX_VGPU10_ADDR_REGS];
 
    /* Output register usage masks */
-   ubyte output_usage_mask[PIPE_MAX_SHADER_OUTPUTS];
+   uint8_t output_usage_mask[PIPE_MAX_SHADER_OUTPUTS];
 
    /* To map TGSI system value index to VGPU shader input indexes */
-   ubyte system_value_indexes[MAX_SYSTEM_VALUES];
+   uint8_t system_value_indexes[MAX_SYSTEM_VALUES];
 
    struct {
       /* vertex position scale/translation */
@@ -4237,8 +4237,8 @@ emit_vs_output_declarations(struct svga_shader_emitter_v10 *emit)
  * for the specified stream.
  */
 static unsigned
-output_writemask_for_stream(unsigned stream, ubyte output_streams,
-                                 ubyte output_usagemask)
+output_writemask_for_stream(unsigned stream, uint8_t output_streams,
+                                 uint8_t output_usagemask)
 {
    unsigned i;
    unsigned writemask = 0;

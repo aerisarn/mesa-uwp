@@ -43,7 +43,7 @@ struct r300_stencilref_context {
 
     uint32_t rs_cull_mode;
     uint32_t zb_stencilrefmask;
-    ubyte ref_value_front;
+    uint8_t ref_value_front;
 };
 
 static bool r300_stencilref_needed(struct r300_context *r300)

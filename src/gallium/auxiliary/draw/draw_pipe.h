@@ -43,8 +43,8 @@
  */
 struct prim_header {
    float det;                 /**< front/back face determinant */
-   ushort flags;
-   ushort pad;
+   uint16_t flags;
+   uint16_t pad;
    struct vertex_header *v[3];  /**< 1 to 3 vertex pointers */
 };
 

@@ -613,7 +613,7 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
             }
          }
 
-         ubyte usagemask = 0;
+         uint8_t usagemask = 0;
          for (unsigned j = component; j < num_components + component; j++) {
             switch (j) {
             case 0:

@@ -65,7 +65,7 @@ util_pstipple_update_stipple_texture(struct pipe_context *pipe,
 {
    static const uint bit31 = 1u << 31;
    struct pipe_transfer *transfer;
-   ubyte *data;
+   uint8_t *data;
    int i, j;
 
    /* map texture memory */

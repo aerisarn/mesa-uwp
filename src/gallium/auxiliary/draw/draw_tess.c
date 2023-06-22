@@ -39,8 +39,8 @@ draw_tes_get_input_index(int semantic, int index,
                          const struct tgsi_shader_info *input_info)
 {
    int i;
-   const ubyte *input_semantic_names = input_info->output_semantic_name;
-   const ubyte *input_semantic_indices = input_info->output_semantic_index;
+   const uint8_t *input_semantic_names = input_info->output_semantic_name;
+   const uint8_t *input_semantic_indices = input_info->output_semantic_index;
    for (i = 0; i < PIPE_MAX_SHADER_OUTPUTS; i++) {
       if (input_semantic_names[i] == semantic &&
           input_semantic_indices[i] == index)
@@ -324,13 +324,13 @@ int draw_tess_eval_shader_run(struct draw_tess_eval_shader *shader,
                               const struct tgsi_shader_info *input_info,
                               struct draw_vertex_info *output_verts,
                               struct draw_prim_info *output_prims,
-                              ushort **elts_out)
+                              uint16_t **elts_out)
 {
    const float (*input)[4] = (const float (*)[4])input_verts->verts->data;
    unsigned num_outputs = draw_total_tes_outputs(shader->draw);
    unsigned input_stride = input_verts->vertex_size;
    unsigned vertex_size = sizeof(struct vertex_header) + num_outputs * 4 * sizeof(float);
-   ushort *elts = NULL;
+   uint16_t *elts = NULL;
    output_verts->vertex_size = vertex_size;
    output_verts->stride = output_verts->vertex_size;
    output_verts->count = 0;

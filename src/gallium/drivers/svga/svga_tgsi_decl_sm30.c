@@ -516,7 +516,7 @@ vs30_output(struct svga_shader_emitter *emit,
 
 
 /** Translate PIPE_TEXTURE_x to SVGA3DSAMP_x */
-static ubyte
+static uint8_t
 svga_tgsi_sampler_type(const struct svga_shader_emitter *emit, int idx)
 {
    switch (emit->sampler_target[idx]) {

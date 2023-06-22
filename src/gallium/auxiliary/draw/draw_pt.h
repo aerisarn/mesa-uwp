@@ -103,7 +103,7 @@ struct draw_pt_middle_end {
    void (*run)(struct draw_pt_middle_end *,
                const unsigned *fetch_elts,
                unsigned fetch_count,
-               const ushort *draw_elts,
+               const uint16_t *draw_elts,
                unsigned draw_count,
                unsigned prim_flags);
 
@@ -118,7 +118,7 @@ struct draw_pt_middle_end {
    bool (*run_linear_elts)(struct draw_pt_middle_end *,
                               unsigned fetch_start,
                               unsigned fetch_count,
-                              const ushort *draw_elts,
+                              const uint16_t *draw_elts,
                               unsigned draw_count,
                               unsigned prim_flags);
 

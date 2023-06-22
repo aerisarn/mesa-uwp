@@ -45,29 +45,29 @@ u_surface_default_template(struct pipe_surface *view,
                            const struct pipe_resource *texture);
 
 extern void
-util_copy_box(ubyte * dst,
+util_copy_box(uint8_t * dst,
               enum pipe_format format,
               unsigned dst_stride, uint64_t dst_slice_stride,
               unsigned dst_x, unsigned dst_y, unsigned dst_z,
               unsigned width, unsigned height, unsigned depth,
-              const ubyte * src,
+              const uint8_t * src,
               int src_stride, uint64_t src_slice_stride,
               unsigned src_x, unsigned src_y, unsigned src_z);
 
 extern void
-util_fill_rect(ubyte * dst, enum pipe_format format,
+util_fill_rect(uint8_t * dst, enum pipe_format format,
                unsigned dst_stride, unsigned dst_x, unsigned dst_y,
                unsigned width, unsigned height, union util_color *uc);
 
 extern void
-util_fill_box(ubyte * dst, enum pipe_format format,
+util_fill_box(uint8_t * dst, enum pipe_format format,
               unsigned stride, uintptr_t layer_stride,
               unsigned x, unsigned y, unsigned z,
               unsigned width, unsigned height, unsigned depth,
               union util_color *uc);
 
 extern void
-util_fill_zs_box(ubyte *dst, enum pipe_format format,
+util_fill_zs_box(uint8_t *dst, enum pipe_format format,
                  bool need_rmw, unsigned clear_flags, unsigned stride,
                  unsigned layer_stride, unsigned width,
                  unsigned height, unsigned depth,

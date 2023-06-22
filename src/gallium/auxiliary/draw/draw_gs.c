@@ -51,8 +51,8 @@ static inline int
 draw_gs_get_input_index(int semantic, int index,
                         const struct tgsi_shader_info *input_info)
 {
-   const ubyte *input_semantic_names = input_info->output_semantic_name;
-   const ubyte *input_semantic_indices = input_info->output_semantic_index;
+   const uint8_t *input_semantic_names = input_info->output_semantic_name;
+   const uint8_t *input_semantic_indices = input_info->output_semantic_index;
    for (int i = 0; i < PIPE_MAX_SHADER_OUTPUTS; i++) {
       if (input_semantic_names[i] == semantic &&
           input_semantic_indices[i] == index)

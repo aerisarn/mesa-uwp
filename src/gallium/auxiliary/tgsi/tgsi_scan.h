@@ -44,22 +44,22 @@ struct tgsi_shader_info
 {
    uint num_tokens;
 
-   ubyte num_inputs;
-   ubyte num_outputs;
-   ubyte input_semantic_name[PIPE_MAX_SHADER_INPUTS]; /**< TGSI_SEMANTIC_x */
-   ubyte input_semantic_index[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_interpolate[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_interpolate_loc[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_usage_mask[PIPE_MAX_SHADER_INPUTS];
-   ubyte output_semantic_name[PIPE_MAX_SHADER_OUTPUTS]; /**< TGSI_SEMANTIC_x */
-   ubyte output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
-   ubyte output_usagemask[PIPE_MAX_SHADER_OUTPUTS];
-   ubyte output_streams[PIPE_MAX_SHADER_OUTPUTS];
+   uint8_t num_inputs;
+   uint8_t num_outputs;
+   uint8_t input_semantic_name[PIPE_MAX_SHADER_INPUTS]; /**< TGSI_SEMANTIC_x */
+   uint8_t input_semantic_index[PIPE_MAX_SHADER_INPUTS];
+   uint8_t input_interpolate[PIPE_MAX_SHADER_INPUTS];
+   uint8_t input_interpolate_loc[PIPE_MAX_SHADER_INPUTS];
+   uint8_t input_usage_mask[PIPE_MAX_SHADER_INPUTS];
+   uint8_t output_semantic_name[PIPE_MAX_SHADER_OUTPUTS]; /**< TGSI_SEMANTIC_x */
+   uint8_t output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
+   uint8_t output_usagemask[PIPE_MAX_SHADER_OUTPUTS];
+   uint8_t output_streams[PIPE_MAX_SHADER_OUTPUTS];
 
-   ubyte num_system_values;
-   ubyte system_value_semantic_name[PIPE_MAX_SHADER_INPUTS];
+   uint8_t num_system_values;
+   uint8_t system_value_semantic_name[PIPE_MAX_SHADER_INPUTS];
 
-   ubyte processor;
+   uint8_t processor;
 
    uint file_mask[TGSI_FILE_COUNT];  /**< bitmask of declared registers */
    uint file_count[TGSI_FILE_COUNT];  /**< number of declared registers */
@@ -67,12 +67,12 @@ struct tgsi_shader_info
    int const_file_max[PIPE_MAX_CONSTANT_BUFFERS];
    unsigned const_buffers_declared; /**< bitmask of declared const buffers */
    unsigned samplers_declared; /**< bitmask of declared samplers */
-   ubyte sampler_targets[PIPE_MAX_SHADER_SAMPLER_VIEWS];  /**< TGSI_TEXTURE_x values */
-   ubyte sampler_type[PIPE_MAX_SHADER_SAMPLER_VIEWS]; /**< TGSI_RETURN_TYPE_x */
-   ubyte num_stream_output_components[4];
+   uint8_t sampler_targets[PIPE_MAX_SHADER_SAMPLER_VIEWS];  /**< TGSI_TEXTURE_x values */
+   uint8_t sampler_type[PIPE_MAX_SHADER_SAMPLER_VIEWS]; /**< TGSI_RETURN_TYPE_x */
+   uint8_t num_stream_output_components[4];
 
-   ubyte input_array_first[PIPE_MAX_SHADER_INPUTS];
-   ubyte output_array_first[PIPE_MAX_SHADER_OUTPUTS];
+   uint8_t input_array_first[PIPE_MAX_SHADER_INPUTS];
+   uint8_t output_array_first[PIPE_MAX_SHADER_OUTPUTS];
    unsigned array_max[TGSI_FILE_COUNT];  /**< highest index array per register file */
 
    uint immediate_count; /**< number of immediates declared */
@@ -88,8 +88,8 @@ struct tgsi_shader_info
    bool reads_perpatch_outputs;
    bool reads_tessfactor_outputs;
 
-   ubyte colors_read; /**< which color components are read by the FS */
-   ubyte colors_written;
+   uint8_t colors_read; /**< which color components are read by the FS */
+   uint8_t colors_written;
    bool reads_position; /**< does fragment shader read position? */
    bool reads_z; /**< does fragment shader read depth? */
    bool reads_samplemask; /**< does fragment shader read sample mask? */

@@ -69,7 +69,7 @@ struct vbuf_stage {
    unsigned nr_vertices;
 
    /** Indices */
-   ushort *indices;
+   uint16_t *indices;
    unsigned max_indices;
    unsigned nr_indices;
 
@@ -115,7 +115,7 @@ check_space(struct vbuf_stage *vbuf, unsigned nr)
  * have a couple of slots at the beginning (1-dword header, 4-dword
  * clip pos) that we ignore here.  We only use the vertex->data[] fields.
  */
-static inline ushort
+static inline uint16_t
 emit_vertex(struct vbuf_stage *vbuf, struct vertex_header *vertex)
 {
    if (vertex->vertex_id == UNDEFINED_VERTEX_ID && vbuf->vertex_ptr) {
@@ -134,7 +134,7 @@ emit_vertex(struct vbuf_stage *vbuf, struct vertex_header *vertex)
       vertex->vertex_id = vbuf->nr_vertices++;
    }
 
-   return (ushort)vertex->vertex_id;
+   return (uint16_t)vertex->vertex_id;
 }
 
 
@@ -362,8 +362,8 @@ vbuf_alloc_vertices(struct vbuf_stage *vbuf)
     * fail, we are basically without usable hardware.
     */
    vbuf->render->allocate_vertices(vbuf->render,
-                                   (ushort) vbuf->vertex_size,
-                                   (ushort) vbuf->max_vertices);
+                                   (uint16_t) vbuf->vertex_size,
+                                   (uint16_t) vbuf->max_vertices);
 
    vbuf->vertex_ptr = vbuf->vertices =
       vbuf->render->map_vertices(vbuf->render);
@@ -428,7 +428,7 @@ draw_vbuf_stage(struct draw_context *draw, struct vbuf_render *render)
    vbuf->render = render;
    vbuf->max_indices = MIN2(render->max_indices, UNDEFINED_VERTEX_ID-1);
 
-   vbuf->indices = (ushort *) align_malloc(vbuf->max_indices *
+   vbuf->indices = (uint16_t *) align_malloc(vbuf->max_indices *
                     sizeof(vbuf->indices[0]),
                     16);
    if (!vbuf->indices)

@@ -83,13 +83,13 @@ struct vbuf_render {
     * something.
     */
    bool (*allocate_vertices)(struct vbuf_render *,
-                             ushort vertex_size,
-                             ushort nr_vertices);
+                             uint16_t vertex_size,
+                             uint16_t nr_vertices);
 
    void *(*map_vertices)(struct vbuf_render *);
    void (*unmap_vertices)(struct vbuf_render *,
-                          ushort min_index,
-                          ushort max_index);
+                          uint16_t min_index,
+                          uint16_t max_index);
 
    /**
     * Notify the renderer of the current primitive when it changes.
@@ -109,7 +109,7 @@ struct vbuf_render {
     * must complete this call, if necessary splitting the index list itself.
     */
    void (*draw_elements)(struct vbuf_render *,
-                         const ushort *indices,
+                         const uint16_t *indices,
                          unsigned nr_indices);
 
    /* Draw non-indexed primitives.

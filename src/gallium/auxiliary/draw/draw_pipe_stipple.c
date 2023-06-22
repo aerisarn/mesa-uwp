@@ -48,8 +48,8 @@
 struct stipple_stage {
    struct draw_stage stage;
    unsigned counter;
-   ushort pattern;
-   ushort factor;
+   uint16_t pattern;
+   uint16_t factor;
    bool rectangular;
 };
 
@@ -110,7 +110,7 @@ emit_segment(struct draw_stage *stage, struct prim_header *header,
 
 
 static inline bool
-stipple_test(unsigned counter, ushort pattern, ushort factor)
+stipple_test(unsigned counter, uint16_t pattern, uint16_t factor)
 {
    unsigned b = (counter / factor) & 0xf;
    return !!((1 << b) & pattern);

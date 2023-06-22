@@ -185,7 +185,7 @@ osmesa_read_buffer(OSMesaContext osmesa, struct pipe_resource *res, void *dst,
    u_box_2d(0, 0, res->width0, res->height0, &box);
 
    struct pipe_transfer *transfer = NULL;
-   ubyte *src = pipe->texture_map(pipe, res, 0, PIPE_MAP_READ, &box,
+   uint8_t *src = pipe->texture_map(pipe, res, 0, PIPE_MAP_READ, &box,
                                    &transfer);
 
    /*
@@ -194,7 +194,7 @@ osmesa_read_buffer(OSMesaContext osmesa, struct pipe_resource *res, void *dst,
 
    if (y_up) {
       /* need to flip image upside down */
-      dst = (ubyte *)dst + (res->height0 - 1) * dst_stride;
+      dst = (uint8_t *)dst + (res->height0 - 1) * dst_stride;
       dst_stride = -dst_stride;
    }
 
@@ -202,7 +202,7 @@ osmesa_read_buffer(OSMesaContext osmesa, struct pipe_resource *res, void *dst,
    for (unsigned y = 0; y < res->height0; y++)
    {
       memcpy(dst, src, bpp * res->width0);
-      dst = (ubyte *)dst + dst_stride;
+      dst = (uint8_t *)dst + dst_stride;
       src += transfer->stride;
    }
 

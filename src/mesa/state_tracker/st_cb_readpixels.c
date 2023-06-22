@@ -424,7 +424,7 @@ st_ReadPixels(struct gl_context *ctx, GLint x, GLint y,
    enum pipe_format dst_format, src_format;
    unsigned bind;
    struct pipe_transfer *tex_xfer;
-   ubyte *map = NULL;
+   uint8_t *map = NULL;
    int dst_x, dst_y;
 
    /* Validate state (to be sure we have up-to-date framebuffer surfaces)

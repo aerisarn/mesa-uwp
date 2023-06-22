@@ -666,10 +666,10 @@ scan_declaration(struct tgsi_shader_info *info,
          break;
 
       case TGSI_FILE_INPUT:
-         info->input_semantic_name[reg] = (ubyte) semName;
-         info->input_semantic_index[reg] = (ubyte) semIndex;
-         info->input_interpolate[reg] = (ubyte)fulldecl->Interp.Interpolate;
-         info->input_interpolate_loc[reg] = (ubyte)fulldecl->Interp.Location;
+         info->input_semantic_name[reg] = (uint8_t) semName;
+         info->input_semantic_index[reg] = (uint8_t) semIndex;
+         info->input_interpolate[reg] = (uint8_t)fulldecl->Interp.Interpolate;
+         info->input_interpolate_loc[reg] = (uint8_t)fulldecl->Interp.Location;
 
          /* Vertex shaders can have inputs with holes between them. */
          info->num_inputs = MAX2(info->num_inputs, reg + 1);
@@ -732,25 +732,25 @@ scan_declaration(struct tgsi_shader_info *info,
          break;
 
       case TGSI_FILE_OUTPUT:
-         info->output_semantic_name[reg] = (ubyte) semName;
-         info->output_semantic_index[reg] = (ubyte) semIndex;
+         info->output_semantic_name[reg] = (uint8_t) semName;
+         info->output_semantic_index[reg] = (uint8_t) semIndex;
          info->output_usagemask[reg] |= fulldecl->Declaration.UsageMask;
          info->num_outputs = MAX2(info->num_outputs, reg + 1);
 
          if (fulldecl->Declaration.UsageMask & TGSI_WRITEMASK_X) {
-            info->output_streams[reg] |= (ubyte)fulldecl->Semantic.StreamX;
+            info->output_streams[reg] |= (uint8_t)fulldecl->Semantic.StreamX;
             info->num_stream_output_components[fulldecl->Semantic.StreamX]++;
          }
          if (fulldecl->Declaration.UsageMask & TGSI_WRITEMASK_Y) {
-            info->output_streams[reg] |= (ubyte)fulldecl->Semantic.StreamY << 2;
+            info->output_streams[reg] |= (uint8_t)fulldecl->Semantic.StreamY << 2;
             info->num_stream_output_components[fulldecl->Semantic.StreamY]++;
          }
          if (fulldecl->Declaration.UsageMask & TGSI_WRITEMASK_Z) {
-            info->output_streams[reg] |= (ubyte)fulldecl->Semantic.StreamZ << 4;
+            info->output_streams[reg] |= (uint8_t)fulldecl->Semantic.StreamZ << 4;
             info->num_stream_output_components[fulldecl->Semantic.StreamZ]++;
          }
          if (fulldecl->Declaration.UsageMask & TGSI_WRITEMASK_W) {
-            info->output_streams[reg] |= (ubyte)fulldecl->Semantic.StreamW << 6;
+            info->output_streams[reg] |= (uint8_t)fulldecl->Semantic.StreamW << 6;
             info->num_stream_output_components[fulldecl->Semantic.StreamW]++;
          }
 

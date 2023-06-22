@@ -308,11 +308,11 @@ lp_jit_init_cs_types(struct lp_compute_shader_variant *lp)
 void
 lp_jit_buffer_from_pipe(struct lp_jit_buffer *jit, const struct pipe_shader_buffer *buffer)
 {
-   const ubyte *current_data = NULL;
+   const uint8_t *current_data = NULL;
 
    /* resource buffer */
    if (buffer->buffer)
-      current_data = (ubyte *)llvmpipe_resource_data(buffer->buffer);
+      current_data = (uint8_t *)llvmpipe_resource_data(buffer->buffer);
 
    if (current_data) {
       current_data += buffer->buffer_offset;
@@ -329,13 +329,13 @@ lp_jit_buffer_from_pipe_const(struct lp_jit_buffer *jit, const struct pipe_const
 {
    uint64_t current_size = buffer->buffer_size;
 
-   const ubyte *current_data = NULL;
+   const uint8_t *current_data = NULL;
    if (buffer->buffer) {
       /* resource buffer */
-      current_data = (ubyte *)llvmpipe_resource_data(buffer->buffer);
+      current_data = (uint8_t *)llvmpipe_resource_data(buffer->buffer);
    } else if (buffer->user_buffer) {
       /* user-space buffer */
-      current_data = (ubyte *)buffer->user_buffer;
+      current_data = (uint8_t *)buffer->user_buffer;
    }
 
    if (current_data && current_size >= sizeof(float)) {

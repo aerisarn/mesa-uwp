@@ -222,7 +222,7 @@ emit_poly(struct draw_stage *stage,
           const struct prim_header *origPrim)
 {
    const struct clip_stage *clipper = clip_stage(stage);
-   ushort edge_first, edge_middle, edge_last;
+   uint16_t edge_first, edge_middle, edge_last;
 
    if (stage->draw->rasterizer->flatshade_first) {
       edge_first  = DRAW_PIPE_EDGE_FLAG_0;

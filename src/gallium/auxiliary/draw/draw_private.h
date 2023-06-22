@@ -178,7 +178,7 @@ struct draw_context
       /* Current active frontend */
       struct draw_pt_front_end *frontend;
       enum mesa_prim prim;
-      ubyte vertices_per_patch;
+      uint8_t vertices_per_patch;
       bool rebind_parameters;
 
       unsigned opt;     /**< bitmask of PT_x flags */

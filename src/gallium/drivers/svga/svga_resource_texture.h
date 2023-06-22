@@ -48,7 +48,7 @@ struct svga_texture
 {
    struct pipe_resource b;
 
-   ushort *defined;
+   uint16_t *defined;
 
    struct svga_sampler_view *cached_view;
 
@@ -93,12 +93,12 @@ struct svga_texture
    unsigned size;  /**< Approximate size in bytes */
 
    /** array indexed by cube face or 3D/array slice, one bit per mipmap level */
-   ushort *rendered_to;
+   uint16_t *rendered_to;
 
    /** array indexed by cube face or 3D/array slice, one bit per mipmap level.
     *  Set if the level is marked as dirty.
     */
-   ushort *dirty;
+   uint16_t *dirty;
 
    enum svga_surface_state surface_state;
 

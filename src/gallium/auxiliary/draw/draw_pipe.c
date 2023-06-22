@@ -136,7 +136,7 @@ do_point(struct draw_context *draw,
  */
 static void
 do_line(struct draw_context *draw,
-        ushort flags,
+        uint16_t flags,
         const char *v0,
         const char *v1)
 {
@@ -157,7 +157,7 @@ do_line(struct draw_context *draw,
  */
 static void
 do_triangle(struct draw_context *draw,
-            ushort flags,
+            uint16_t flags,
             char *v0,
             char *v1,
             char *v2)
@@ -210,7 +210,7 @@ do_triangle(struct draw_context *draw,
    unsigned prim_flags,                        \
    struct vertex_header *vertices,             \
    unsigned stride,                            \
-   const ushort *elts,                         \
+   const uint16_t *elts,                         \
    unsigned count,                             \
    unsigned max_index
 

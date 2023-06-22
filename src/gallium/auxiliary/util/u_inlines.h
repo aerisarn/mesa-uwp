@@ -526,9 +526,9 @@ pipe_buffer_read(struct pipe_context *pipe,
                  void *data)
 {
    struct pipe_transfer *src_transfer;
-   ubyte *map;
+   uint8_t *map;
 
-   map = (ubyte *) pipe_buffer_map_range(pipe,
+   map = (uint8_t *) pipe_buffer_map_range(pipe,
                                          buf,
                                          offset, size,
                                          PIPE_MAP_READ,

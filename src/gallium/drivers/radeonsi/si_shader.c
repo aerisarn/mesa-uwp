@@ -2704,7 +2704,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
         sel->stage == MESA_SHADER_TESS_EVAL ||
         sel->stage == MESA_SHADER_GEOMETRY) &&
        !shader->key.ge.as_ls && !shader->key.ge.as_es) {
-      ubyte *vs_output_param_offset = shader->info.vs_output_param_offset;
+      uint8_t *vs_output_param_offset = shader->info.vs_output_param_offset;
 
       if (sel->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg)
          vs_output_param_offset = shader->gs_copy_shader->info.vs_output_param_offset;
@@ -3025,7 +3025,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
       shader->info.uses_vmem_load_other = true;
 
    if (info->colors_read) {
-      ubyte *color = shader->selector->info.color_attr_index;
+      uint8_t *color = shader->selector->info.color_attr_index;
 
       if (shader->key.ps.part.prolog.color_two_side) {
          /* BCOLORs are stored after the last input. */

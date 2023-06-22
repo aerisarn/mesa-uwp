@@ -743,7 +743,7 @@ void util_blitter_restore_fragment_states(struct blitter_context *blitter)
 
 static void blitter_check_saved_fb_state(ASSERTED struct blitter_context_priv *ctx)
 {
-   assert(ctx->base.saved_fb_state.nr_cbufs != (ubyte) ~0);
+   assert(ctx->base.saved_fb_state.nr_cbufs != (uint8_t) ~0);
 }
 
 static void blitter_disable_render_cond(struct blitter_context_priv *ctx)

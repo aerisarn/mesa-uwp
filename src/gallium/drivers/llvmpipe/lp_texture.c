@@ -696,7 +696,7 @@ llvmpipe_transfer_map_ms(struct pipe_context *pipe,
    struct llvmpipe_resource *lpr = llvmpipe_resource(resource);
    struct llvmpipe_transfer *lpt;
    struct pipe_transfer *pt;
-   ubyte *map;
+   uint8_t *map;
    enum pipe_format format;
 
    assert(resource);
@@ -921,7 +921,7 @@ tex_image_face_size(const struct llvmpipe_resource *lpr, unsigned level)
  * Return pointer to a 2D texture image/face/slice.
  * No tiled/linear conversion is done.
  */
-ubyte *
+uint8_t *
 llvmpipe_get_texture_image_address(struct llvmpipe_resource *lpr,
                                    unsigned face_slice, unsigned level)
 {
@@ -932,7 +932,7 @@ llvmpipe_get_texture_image_address(struct llvmpipe_resource *lpr,
    if (face_slice > 0)
       offset += face_slice * tex_image_face_size(lpr, level);
 
-   return (ubyte *) lpr->tex_data + offset;
+   return (uint8_t *) lpr->tex_data + offset;
 }
 
 

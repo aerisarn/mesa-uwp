@@ -142,10 +142,10 @@ ATTRIB(R32G32B32_FLOAT,      3, float, float, TO_32_FLOAT)
 ATTRIB(R32G32_FLOAT,         2, float, float, TO_32_FLOAT)
 ATTRIB(R32_FLOAT,            1, float, float, TO_32_FLOAT)
 
-ATTRIB(R16G16B16A16_FLOAT,   4, float, ushort, TO_16_FLOAT)
-ATTRIB(R16G16B16_FLOAT,      3, float, ushort, TO_16_FLOAT)
-ATTRIB(R16G16_FLOAT,         2, float, ushort, TO_16_FLOAT)
-ATTRIB(R16_FLOAT,            1, float, ushort, TO_16_FLOAT)
+ATTRIB(R16G16B16A16_FLOAT,   4, float, uint16_t, TO_16_FLOAT)
+ATTRIB(R16G16B16_FLOAT,      3, float, uint16_t, TO_16_FLOAT)
+ATTRIB(R16G16_FLOAT,         2, float, uint16_t, TO_16_FLOAT)
+ATTRIB(R16_FLOAT,            1, float, uint16_t, TO_16_FLOAT)
 
 ATTRIB(R32G32B32A32_USCALED, 4, float, unsigned, TO_32_USCALED)
 ATTRIB(R32G32B32_USCALED,    3, float, unsigned, TO_32_USCALED)
@@ -167,40 +167,40 @@ ATTRIB(R32G32B32_SNORM,    3, float, int, TO_32_SNORM)
 ATTRIB(R32G32_SNORM,       2, float, int, TO_32_SNORM)
 ATTRIB(R32_SNORM,          1, float, int, TO_32_SNORM)
 
-ATTRIB(R16G16B16A16_USCALED, 4, float, ushort, TO_16_USCALED)
-ATTRIB(R16G16B16_USCALED,    3, float, ushort, TO_16_USCALED)
-ATTRIB(R16G16_USCALED,       2, float, ushort, TO_16_USCALED)
-ATTRIB(R16_USCALED,          1, float, ushort, TO_16_USCALED)
+ATTRIB(R16G16B16A16_USCALED, 4, float, uint16_t, TO_16_USCALED)
+ATTRIB(R16G16B16_USCALED,    3, float, uint16_t, TO_16_USCALED)
+ATTRIB(R16G16_USCALED,       2, float, uint16_t, TO_16_USCALED)
+ATTRIB(R16_USCALED,          1, float, uint16_t, TO_16_USCALED)
 
 ATTRIB(R16G16B16A16_SSCALED, 4, float, short, TO_16_SSCALED)
 ATTRIB(R16G16B16_SSCALED,    3, float, short, TO_16_SSCALED)
 ATTRIB(R16G16_SSCALED,       2, float, short, TO_16_SSCALED)
 ATTRIB(R16_SSCALED,          1, float, short, TO_16_SSCALED)
 
-ATTRIB(R16G16B16A16_UNORM, 4, float, ushort, TO_16_UNORM)
-ATTRIB(R16G16B16_UNORM,    3, float, ushort, TO_16_UNORM)
-ATTRIB(R16G16_UNORM,       2, float, ushort, TO_16_UNORM)
-ATTRIB(R16_UNORM,          1, float, ushort, TO_16_UNORM)
+ATTRIB(R16G16B16A16_UNORM, 4, float, uint16_t, TO_16_UNORM)
+ATTRIB(R16G16B16_UNORM,    3, float, uint16_t, TO_16_UNORM)
+ATTRIB(R16G16_UNORM,       2, float, uint16_t, TO_16_UNORM)
+ATTRIB(R16_UNORM,          1, float, uint16_t, TO_16_UNORM)
 
 ATTRIB(R16G16B16A16_SNORM, 4, float, short, TO_16_SNORM)
 ATTRIB(R16G16B16_SNORM,    3, float, short, TO_16_SNORM)
 ATTRIB(R16G16_SNORM,       2, float, short, TO_16_SNORM)
 ATTRIB(R16_SNORM,          1, float, short, TO_16_SNORM)
 
-ATTRIB(R8G8B8A8_USCALED,   4, float, ubyte, TO_8_USCALED)
-ATTRIB(R8G8B8_USCALED,     3, float, ubyte, TO_8_USCALED)
-ATTRIB(R8G8_USCALED,       2, float, ubyte, TO_8_USCALED)
-ATTRIB(R8_USCALED,         1, float, ubyte, TO_8_USCALED)
+ATTRIB(R8G8B8A8_USCALED,   4, float, uint8_t, TO_8_USCALED)
+ATTRIB(R8G8B8_USCALED,     3, float, uint8_t, TO_8_USCALED)
+ATTRIB(R8G8_USCALED,       2, float, uint8_t, TO_8_USCALED)
+ATTRIB(R8_USCALED,         1, float, uint8_t, TO_8_USCALED)
 
 ATTRIB(R8G8B8A8_SSCALED,  4, float, char, TO_8_SSCALED)
 ATTRIB(R8G8B8_SSCALED,    3, float, char, TO_8_SSCALED)
 ATTRIB(R8G8_SSCALED,      2, float, char, TO_8_SSCALED)
 ATTRIB(R8_SSCALED,        1, float, char, TO_8_SSCALED)
 
-ATTRIB(R8G8B8A8_UNORM,  4, float, ubyte, TO_8_UNORM)
-ATTRIB(R8G8B8_UNORM,    3, float, ubyte, TO_8_UNORM)
-ATTRIB(R8G8_UNORM,      2, float, ubyte, TO_8_UNORM)
-ATTRIB(R8_UNORM,        1, float, ubyte, TO_8_UNORM)
+ATTRIB(R8G8B8A8_UNORM,  4, float, uint8_t, TO_8_UNORM)
+ATTRIB(R8G8B8_UNORM,    3, float, uint8_t, TO_8_UNORM)
+ATTRIB(R8G8_UNORM,      2, float, uint8_t, TO_8_UNORM)
+ATTRIB(R8_UNORM,        1, float, uint8_t, TO_8_UNORM)
 
 ATTRIB(R8G8B8A8_SNORM,  4, float, char, TO_8_SNORM)
 ATTRIB(R8G8B8_SNORM,    3, float, char, TO_8_SNORM)
@@ -212,15 +212,15 @@ ATTRIB(R32G32B32_UINT,    3, uint32_t, unsigned, TO_INT)
 ATTRIB(R32G32_UINT,       2, uint32_t, unsigned, TO_INT)
 ATTRIB(R32_UINT,          1, uint32_t, unsigned, TO_INT)
 
-ATTRIB(R16G16B16A16_UINT, 4, uint32_t, ushort, TO_INT)
-ATTRIB(R16G16B16_UINT,    3, uint32_t, ushort, TO_INT)
-ATTRIB(R16G16_UINT,       2, uint32_t, ushort, TO_INT)
-ATTRIB(R16_UINT,          1, uint32_t, ushort, TO_INT)
+ATTRIB(R16G16B16A16_UINT, 4, uint32_t, uint16_t, TO_INT)
+ATTRIB(R16G16B16_UINT,    3, uint32_t, uint16_t, TO_INT)
+ATTRIB(R16G16_UINT,       2, uint32_t, uint16_t, TO_INT)
+ATTRIB(R16_UINT,          1, uint32_t, uint16_t, TO_INT)
 
-ATTRIB(R8G8B8A8_UINT,   4, uint32_t, ubyte, TO_INT)
-ATTRIB(R8G8B8_UINT,     3, uint32_t, ubyte, TO_INT)
-ATTRIB(R8G8_UINT,       2, uint32_t, ubyte, TO_INT)
-ATTRIB(R8_UINT,         1, uint32_t, ubyte, TO_INT)
+ATTRIB(R8G8B8A8_UINT,   4, uint32_t, uint8_t, TO_INT)
+ATTRIB(R8G8B8_UINT,     3, uint32_t, uint8_t, TO_INT)
+ATTRIB(R8G8_UINT,       2, uint32_t, uint8_t, TO_INT)
+ATTRIB(R8_UINT,         1, uint32_t, uint8_t, TO_INT)
 
 ATTRIB(R32G32B32A32_SINT, 4, int32_t, int, TO_INT)
 ATTRIB(R32G32B32_SINT,    3, int32_t, int, TO_INT)
@@ -241,7 +241,7 @@ static void
 emit_A8R8G8B8_UNORM(const void *attrib, void *ptr)
 {
    float *in = (float *)attrib;
-   ubyte *out = (ubyte *)ptr;
+   uint8_t *out = (uint8_t *)ptr;
    out[0] = TO_8_UNORM(in[3]);
    out[1] = TO_8_UNORM(in[0]);
    out[2] = TO_8_UNORM(in[1]);
@@ -252,7 +252,7 @@ static void
 emit_B8G8R8A8_UNORM(const void *attrib, void *ptr)
 {
    float *in = (float *)attrib;
-   ubyte *out = (ubyte *)ptr;
+   uint8_t *out = (uint8_t *)ptr;
    out[2] = TO_8_UNORM(in[0]);
    out[1] = TO_8_UNORM(in[1]);
    out[0] = TO_8_UNORM(in[2]);

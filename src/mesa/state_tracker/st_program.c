@@ -446,7 +446,7 @@ st_translate_stream_output_info(struct gl_program *prog)
 
    /* Determine the (default) output register mapping for each output. */
    unsigned num_outputs = 0;
-   ubyte output_mapping[VARYING_SLOT_TESS_MAX];
+   uint8_t output_mapping[VARYING_SLOT_TESS_MAX];
    memset(output_mapping, 0, sizeof(output_mapping));
 
    for (unsigned attr = 0; attr < VARYING_SLOT_MAX; attr++) {

@@ -3065,19 +3065,19 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
          break;
       case 2:
          constbuf.buffer_offset =
-            (ubyte *)sctx->sample_positions.x2 - (ubyte *)sctx->sample_positions.x1;
+            (uint8_t *)sctx->sample_positions.x2 - (uint8_t *)sctx->sample_positions.x1;
          break;
       case 4:
          constbuf.buffer_offset =
-            (ubyte *)sctx->sample_positions.x4 - (ubyte *)sctx->sample_positions.x1;
+            (uint8_t *)sctx->sample_positions.x4 - (uint8_t *)sctx->sample_positions.x1;
          break;
       case 8:
          constbuf.buffer_offset =
-            (ubyte *)sctx->sample_positions.x8 - (ubyte *)sctx->sample_positions.x1;
+            (uint8_t *)sctx->sample_positions.x8 - (uint8_t *)sctx->sample_positions.x1;
          break;
       case 16:
          constbuf.buffer_offset =
-            (ubyte *)sctx->sample_positions.x16 - (ubyte *)sctx->sample_positions.x1;
+            (uint8_t *)sctx->sample_positions.x16 - (uint8_t *)sctx->sample_positions.x1;
          break;
       default:
          PRINT_ERR("Requested an invalid number of samples %i.\n", sctx->framebuffer.nr_samples);

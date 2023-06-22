@@ -62,12 +62,12 @@ u_surface_default_template(struct pipe_surface *surf,
  * Position and sizes are in pixels.
  */
 void
-util_copy_box(ubyte * dst,
+util_copy_box(uint8_t * dst,
               enum pipe_format format,
               unsigned dst_stride, uint64_t dst_slice_stride,
               unsigned dst_x, unsigned dst_y, unsigned dst_z,
               unsigned width, unsigned height, unsigned depth,
-              const ubyte * src,
+              const uint8_t * src,
               int src_stride, uint64_t src_slice_stride,
               unsigned src_x, unsigned src_y, unsigned src_z)
 {
@@ -91,7 +91,7 @@ util_copy_box(ubyte * dst,
 
 
 void
-util_fill_rect(ubyte * dst,
+util_fill_rect(uint8_t * dst,
                enum pipe_format format,
                unsigned dst_stride,
                unsigned dst_x,
@@ -153,7 +153,7 @@ util_fill_rect(ubyte * dst,
       break;
    default:
       for (i = 0; i < height; i++) {
-         ubyte *row = dst;
+         uint8_t *row = dst;
          for (j = 0; j < width; j++) {
             memcpy(row, uc, blocksize);
             row += blocksize;
@@ -166,7 +166,7 @@ util_fill_rect(ubyte * dst,
 
 
 void
-util_fill_box(ubyte * dst,
+util_fill_box(uint8_t * dst,
               enum pipe_format format,
               unsigned stride,
               uintptr_t layer_stride,
@@ -360,7 +360,7 @@ util_resource_copy_region(struct pipe_context *pipe,
 
 static void
 util_clear_color_texture_helper(struct pipe_transfer *dst_trans,
-                                ubyte *dst_map,
+                                uint8_t *dst_map,
                                 enum pipe_format format,
                                 const union pipe_color_union *color,
                                 unsigned width, unsigned height, unsigned depth)
@@ -386,7 +386,7 @@ util_clear_color_texture(struct pipe_context *pipe,
                          unsigned width, unsigned height, unsigned depth)
 {
    struct pipe_transfer *dst_trans;
-   ubyte *dst_map;
+   uint8_t *dst_map;
 
    dst_map = pipe_texture_map_3d(pipe,
                                   texture,
@@ -425,7 +425,7 @@ util_clear_render_target(struct pipe_context *pipe,
                          unsigned width, unsigned height)
 {
    struct pipe_transfer *dst_trans;
-   ubyte *dst_map;
+   uint8_t *dst_map;
 
    assert(dst->texture);
    if (!dst->texture)
@@ -461,7 +461,7 @@ util_clear_render_target(struct pipe_context *pipe,
 }
 
 static void
-util_fill_zs_rect(ubyte *dst_map,
+util_fill_zs_rect(uint8_t *dst_map,
                   enum pipe_format format,
                   bool need_rmw,
                   unsigned clear_flags,
@@ -551,7 +551,7 @@ util_fill_zs_rect(ubyte *dst_map,
 }
 
 void
-util_fill_zs_box(ubyte *dst,
+util_fill_zs_box(uint8_t *dst,
                  enum pipe_format format,
                  bool need_rmw,
                  unsigned clear_flags,
@@ -581,7 +581,7 @@ util_clear_depth_stencil_texture(struct pipe_context *pipe,
                                  unsigned width, unsigned height, unsigned depth)
 {
    struct pipe_transfer *dst_trans;
-   ubyte *dst_map;
+   uint8_t *dst_map;
    bool need_rmw = false;
 
    if ((clear_flags & PIPE_CLEAR_DEPTHSTENCIL) &&

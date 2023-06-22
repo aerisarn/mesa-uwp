@@ -48,8 +48,8 @@
 
 union m128i {
    __m128i m;
-   ubyte ub[16];
-   ushort us[8];
+   uint8_t ub[16];
+   uint16_t us[8];
    uint ui[4];
 };
 

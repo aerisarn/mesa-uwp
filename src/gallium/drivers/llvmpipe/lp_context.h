@@ -117,7 +117,7 @@ struct llvmpipe_context {
    uint64_t dirty; /**< Mask of LP_NEW_x flags */
    unsigned cs_dirty; /**< Mask of LP_CSNEW_x flags */
    /** Mapped vertex buffers */
-   ubyte *mapped_vbuffer[PIPE_MAX_ATTRIBS];
+   uint8_t *mapped_vbuffer[PIPE_MAX_ATTRIBS];
 
    /** Vertex format */
    struct vertex_info vertex_info;

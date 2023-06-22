@@ -199,7 +199,7 @@ copy_to_staging_dest(struct gl_context * ctx, struct pipe_resource *dst,
    GLenum gl_target = texImage->TexObject->Target;
    unsigned dims;
    struct pipe_transfer *tex_xfer;
-   ubyte *map = NULL;
+   uint8_t *map = NULL;
    bool done = false;
 
    pixels = _mesa_map_pbo_dest(ctx, &ctx->Pack, pixels);
@@ -221,7 +221,7 @@ copy_to_staging_dest(struct gl_context * ctx, struct pipe_resource *dst,
       GLuint row, slice;
 
       for (slice = 0; slice < depth; slice++) {
-         ubyte *slice_map = map;
+         uint8_t *slice_map = map;
 
          for (row = 0; row < height; row++) {
             void *dest = _mesa_image_address(dims, &ctx->Pack, pixels,
@@ -2285,7 +2285,7 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
             memcpy(map, src, bytesPerRow);
          }
          else {
-            ubyte *slice_map = map;
+            uint8_t *slice_map = map;
 
             for (row = 0; row < (unsigned) height; row++) {
                void *src = _mesa_image_address(dims, unpack, pixels,

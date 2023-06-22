@@ -940,8 +940,8 @@ r300_render_get_vertex_info(struct vbuf_render* render)
 }
 
 static bool r300_render_allocate_vertices(struct vbuf_render* render,
-                                          ushort vertex_size,
-                                          ushort count)
+                                          uint16_t vertex_size,
+                                          uint16_t count)
 {
     struct r300_render* r300render = r300_render(render);
     struct r300_context* r300 = r300render->r300;
@@ -984,8 +984,8 @@ static void* r300_render_map_vertices(struct vbuf_render* render)
 }
 
 static void r300_render_unmap_vertices(struct vbuf_render* render,
-                                             ushort min,
-                                             ushort max)
+                                             uint16_t min,
+                                             uint16_t max)
 {
     struct r300_render* r300render = r300_render(render);
     struct r300_context* r300 = r300render->r300;
@@ -1051,7 +1051,7 @@ static void r300_render_draw_arrays(struct vbuf_render* render,
 }
 
 static void r300_render_draw_elements(struct vbuf_render* render,
-                                      const ushort* indices,
+                                      const uint16_t* indices,
                                       uint count)
 {
     struct r300_render* r300render = r300_render(render);

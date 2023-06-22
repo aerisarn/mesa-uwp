@@ -914,8 +914,8 @@ util_make_fs_msaa_resolve_bilinear(struct pipe_context *pipe,
 void *
 util_make_geometry_passthrough_shader(struct pipe_context *pipe,
                                       uint num_attribs,
-                                      const ubyte *semantic_names,
-                                      const ubyte *semantic_indexes)
+                                      const uint8_t *semantic_names,
+                                      const uint8_t *semantic_indexes)
 {
    static const unsigned zero[4] = {0, 0, 0, 0};
 
@@ -1134,10 +1134,10 @@ void *
 util_make_tess_ctrl_passthrough_shader(struct pipe_context *pipe,
                                        uint num_vs_outputs,
                                        uint num_tes_inputs,
-                                       const ubyte *vs_semantic_names,
-                                       const ubyte *vs_semantic_indexes,
-                                       const ubyte *tes_semantic_names,
-                                       const ubyte *tes_semantic_indexes,
+                                       const uint8_t *vs_semantic_names,
+                                       const uint8_t *vs_semantic_indexes,
+                                       const uint8_t *tes_semantic_names,
+                                       const uint8_t *tes_semantic_indexes,
                                        const unsigned vertices_per_patch)
 {
    unsigned i, j;

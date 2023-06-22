@@ -956,7 +956,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
    enum pipe_map_flags usage;
    struct pipe_transfer *pt;
    const GLboolean zoom = ctx->Pixel.ZoomX != 1.0 || ctx->Pixel.ZoomY != 1.0;
-   ubyte *stmap;
+   uint8_t *stmap;
    struct gl_pixelstore_attrib clippedUnpack = *unpack;
    GLubyte *sValues;
    GLuint *zValues;
@@ -1030,7 +1030,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
             switch (pt->resource->format) {
             case PIPE_FORMAT_S8_UINT:
                {
-                  ubyte *dest = stmap + spanY * pt->stride;
+                  uint8_t *dest = stmap + spanY * pt->stride;
                   assert(usage == PIPE_MAP_WRITE);
                   memcpy(dest, sValues, width);
                }
@@ -1409,11 +1409,11 @@ copy_stencil_pixels(struct gl_context *ctx, GLint srcx, GLint srcy,
    struct pipe_context *pipe = st_context(ctx)->pipe;
    enum pipe_map_flags usage;
    struct pipe_transfer *ptDraw;
-   ubyte *drawMap;
-   ubyte *buffer;
+   uint8_t *drawMap;
+   uint8_t *buffer;
    int i;
 
-   buffer = malloc(width * height * sizeof(ubyte));
+   buffer = malloc(width * height * sizeof(uint8_t));
    if (!buffer) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glCopyPixels(stencil)");
       return;
@@ -1462,8 +1462,8 @@ copy_stencil_pixels(struct gl_context *ctx, GLint srcx, GLint srcy,
    /* draw */
    /* XXX PixelZoom not handled yet */
    for (i = 0; i < height; i++) {
-      ubyte *dst;
-      const ubyte *src;
+      uint8_t *dst;
+      const uint8_t *src;
       int y;
 
       y = i;

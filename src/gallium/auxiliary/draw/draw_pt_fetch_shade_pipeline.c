@@ -378,7 +378,7 @@ static void
 fetch_pipeline_run(struct draw_pt_middle_end *middle,
                    const unsigned *fetch_elts,
                    unsigned fetch_count,
-                   const ushort *draw_elts,
+                   const uint16_t *draw_elts,
                    unsigned draw_count,
                    unsigned prim_flags)
 {
@@ -436,7 +436,7 @@ static bool
 fetch_pipeline_linear_run_elts(struct draw_pt_middle_end *middle,
                                unsigned start,
                                unsigned count,
-                               const ushort *draw_elts,
+                               const uint16_t *draw_elts,
                                unsigned draw_count,
                                unsigned prim_flags)
 {

@@ -61,7 +61,7 @@ enum pipe_error
 svga_hwtnl_draw_arrays(struct svga_hwtnl *hwtnl,
                        enum mesa_prim prim, unsigned start, unsigned count,
                        unsigned start_instance, unsigned instance_count,
-                       ubyte vertices_per_patch);
+                       uint8_t vertices_per_patch);
 
 enum pipe_error
 svga_hwtnl_draw_range_elements(struct svga_hwtnl *hwtnl,

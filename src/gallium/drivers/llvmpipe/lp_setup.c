@@ -714,7 +714,7 @@ lp_setup_set_alpha_ref_value(struct lp_setup_context *setup,
 
 void
 lp_setup_set_stencil_ref_values(struct lp_setup_context *setup,
-                                const ubyte refs[2])
+                                const uint8_t refs[2])
 {
    LP_DBG(DEBUG_SETUP, "%s %d %d\n", __func__, refs[0], refs[1]);
 
@@ -1067,16 +1067,16 @@ try_update_scene_state(struct lp_setup_context *setup)
          struct pipe_resource *buffer = setup->constants[i].current.buffer;
          const unsigned current_size = MIN2(setup->constants[i].current.buffer_size,
                                             LP_MAX_TGSI_CONST_BUFFER_SIZE);
-         const ubyte *current_data = NULL;
+         const uint8_t *current_data = NULL;
 
          STATIC_ASSERT(DATA_BLOCK_SIZE >= LP_MAX_TGSI_CONST_BUFFER_SIZE);
 
          if (buffer) {
             /* resource buffer */
-            current_data = (ubyte *) llvmpipe_resource_data(buffer);
+            current_data = (uint8_t *) llvmpipe_resource_data(buffer);
          } else if (setup->constants[i].current.user_buffer) {
             /* user-space buffer */
-            current_data = (ubyte *) setup->constants[i].current.user_buffer;
+            current_data = (uint8_t *) setup->constants[i].current.user_buffer;
          }
 
          if (current_data && current_size >= sizeof(float)) {

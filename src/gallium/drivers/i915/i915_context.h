@@ -120,7 +120,7 @@ struct i915_fragment_shader {
     * slot of the user's constant buffer. (set by pipe->set_constant_buffer())
     * Else, the bitmask indicates which components are occupied by immediates.
     */
-   ubyte constant_flags[I915_MAX_CONSTANT];
+   uint8_t constant_flags[I915_MAX_CONSTANT];
 
    /**
     * The mapping between TGSI inputs and hw texture coords.

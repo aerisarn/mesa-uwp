@@ -1113,7 +1113,7 @@ static bool num_instanced_prims_less_than(const struct pipe_draw_indirect_info *
                                           unsigned min_vertex_count,
                                           unsigned instance_count,
                                           unsigned num_prims,
-                                          ubyte vertices_per_patch)
+                                          uint8_t vertices_per_patch)
 {
    if (IS_DRAW_VERTEX_STATE)
       return 0;

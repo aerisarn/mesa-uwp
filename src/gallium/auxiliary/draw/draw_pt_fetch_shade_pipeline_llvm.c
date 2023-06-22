@@ -514,7 +514,7 @@ llvm_pipeline_generic(struct draw_pt_middle_end *middle,
    bool free_prim_info = false;
    unsigned opt = fpme->opt;
    bool clipped = 0;
-   ushort *tes_elts_out = NULL;
+   uint16_t *tes_elts_out = NULL;
 
    assert(fetch_info->count > 0);
 
@@ -731,7 +731,7 @@ static void
 llvm_middle_end_run(struct draw_pt_middle_end *middle,
                     const unsigned *fetch_elts,
                     unsigned fetch_count,
-                    const ushort *draw_elts,
+                    const uint16_t *draw_elts,
                     unsigned draw_count,
                     unsigned prim_flags)
 {
@@ -789,7 +789,7 @@ static bool
 llvm_middle_end_linear_run_elts(struct draw_pt_middle_end *middle,
                                 unsigned start,
                                 unsigned count,
-                                const ushort *draw_elts,
+                                const uint16_t *draw_elts,
                                 unsigned draw_count,
                                 unsigned prim_flags)
 {

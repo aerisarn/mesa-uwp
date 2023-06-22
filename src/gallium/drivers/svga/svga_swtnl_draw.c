@@ -86,14 +86,14 @@ svga_swtnl_draw_vbo(struct svga_context *svga,
    map = NULL;
    if (info->index_size) {
       if (info->has_user_indices) {
-         map = (ubyte *) info->index.user;
+         map = (uint8_t *) info->index.user;
       } else {
          map = pipe_buffer_map(&svga->pipe, info->index.resource,
                                PIPE_MAP_READ |
                                PIPE_MAP_UNSYNCHRONIZED, &ib_transfer);
       }
       draw_set_indexes(draw,
-                       (const ubyte *) map,
+                       (const uint8_t *) map,
                        info->index_size, ~0);
    }
 

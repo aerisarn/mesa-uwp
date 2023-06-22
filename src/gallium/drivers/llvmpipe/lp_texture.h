@@ -248,7 +248,7 @@ unsigned
 llvmpipe_resource_size(const struct pipe_resource *resource);
 
 
-ubyte *
+uint8_t *
 llvmpipe_get_texture_image_address(struct llvmpipe_resource *lpr,
                                    unsigned face_slice, unsigned level);
 

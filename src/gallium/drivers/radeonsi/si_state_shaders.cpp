@@ -986,7 +986,7 @@ static void si_emit_shader_gs(struct si_context *sctx)
 static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 {
    struct si_shader_selector *sel = shader->selector;
-   const ubyte *num_components = sel->info.num_stream_output_components;
+   const uint8_t *num_components = sel->info.num_stream_output_components;
    unsigned gs_num_invocations = sel->info.base.gs.invocations;
    struct si_pm4_state *pm4;
    uint64_t va;

@@ -67,12 +67,12 @@ struct softpipe_cached_tile
       float color[TILE_SIZE][TILE_SIZE][4];
       uint color32[TILE_SIZE][TILE_SIZE];
       uint depth32[TILE_SIZE][TILE_SIZE];
-      ushort depth16[TILE_SIZE][TILE_SIZE];
-      ubyte stencil8[TILE_SIZE][TILE_SIZE];
+      uint16_t depth16[TILE_SIZE][TILE_SIZE];
+      uint8_t stencil8[TILE_SIZE][TILE_SIZE];
       uint colorui128[TILE_SIZE][TILE_SIZE][4];
       int colori128[TILE_SIZE][TILE_SIZE][4];
       uint64_t depth64[TILE_SIZE][TILE_SIZE];
-      ubyte any[1];
+      uint8_t any[1];
    } data;
 };
 

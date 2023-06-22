@@ -124,7 +124,7 @@ struct rendering_state {
    } depth[16];
 
    uint8_t patch_vertices;
-   ubyte index_size;
+   uint8_t index_size;
    unsigned index_offset;
    struct pipe_resource *index_buffer;
    struct pipe_constant_buffer const_buffer[LVP_SHADER_STAGES][16];
@@ -2329,14 +2329,14 @@ static void handle_set_stencil_reference(struct vk_cmd_queue_entry *cmd,
 }
 
 static void
-copy_depth_rect(ubyte * dst,
+copy_depth_rect(uint8_t * dst,
                 enum pipe_format dst_format,
                 unsigned dst_stride,
                 unsigned dst_x,
                 unsigned dst_y,
                 unsigned width,
                 unsigned height,
-                const ubyte * src,
+                const uint8_t * src,
                 enum pipe_format src_format,
                 int src_stride,
                 unsigned src_x,
@@ -2409,12 +2409,12 @@ copy_depth_rect(ubyte * dst,
 }
 
 static void
-copy_depth_box(ubyte *dst,
+copy_depth_box(uint8_t *dst,
                enum pipe_format dst_format,
                unsigned dst_stride, uint64_t dst_slice_stride,
                unsigned dst_x, unsigned dst_y, unsigned dst_z,
                unsigned width, unsigned height, unsigned depth,
-               const ubyte * src,
+               const uint8_t * src,
                enum pipe_format src_format,
                int src_stride, uint64_t src_slice_stride,
                unsigned src_x, unsigned src_y, unsigned src_z)
@@ -2444,7 +2444,7 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
    LVP_FROM_HANDLE(lvp_image, src_image, copycmd->srcImage);
    struct pipe_box box, dbox;
    struct pipe_transfer *src_t, *dst_t;
-   ubyte *src_data, *dst_data;
+   uint8_t *src_data, *dst_data;
 
    for (uint32_t i = 0; i < copycmd->regionCount; i++) {
 
@@ -2497,7 +2497,7 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
                         box.depth,
                         src_data, src_format, src_t->stride, src_t->layer_stride, 0, 0, 0);
       } else {
-         util_copy_box((ubyte *)dst_data, src_format,
+         util_copy_box((uint8_t *)dst_data, src_format,
                        buffer_layout.row_stride_B,
                        buffer_layout.image_stride_B,
                        0, 0, 0,

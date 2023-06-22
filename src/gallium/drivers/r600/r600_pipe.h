@@ -233,9 +233,9 @@ struct r600_config_state {
 
 struct r600_stencil_ref
 {
-	ubyte ref_value[2];
-	ubyte valuemask[2];
-	ubyte writemask[2];
+	uint8_t ref_value[2];
+	uint8_t valuemask[2];
+	uint8_t writemask[2];
 };
 
 struct r600_stencil_ref_state {
@@ -331,8 +331,8 @@ struct r600_blend_state {
 struct r600_dsa_state {
 	struct r600_command_buffer	buffer;
 	unsigned			alpha_ref;
-	ubyte				valuemask[2];
-	ubyte				writemask[2];
+	uint8_t				valuemask[2];
+	uint8_t				writemask[2];
 	unsigned			zwritemask;
 	unsigned			sx_alpha_test_control;
 };

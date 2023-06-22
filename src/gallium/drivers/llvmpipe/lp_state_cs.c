@@ -1689,11 +1689,11 @@ update_csctx_ssbo(struct llvmpipe_context *llvmpipe,
 {
    for (int i = 0; i < ARRAY_SIZE(csctx->ssbos); ++i) {
       struct pipe_resource *buffer = csctx->ssbos[i].current.buffer;
-      const ubyte *current_data = NULL;
+      const uint8_t *current_data = NULL;
 
       /* resource buffer */
       if (buffer)
-         current_data = (ubyte *) llvmpipe_resource_data(buffer);
+         current_data = (uint8_t *) llvmpipe_resource_data(buffer);
       if (current_data) {
          current_data += csctx->ssbos[i].current.buffer_offset;
 

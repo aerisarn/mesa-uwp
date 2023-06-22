@@ -4203,9 +4203,9 @@ llvmpipe_set_constant_buffer(struct pipe_context *pipe,
    case PIPE_SHADER_TESS_EVAL: {
       const unsigned size = cb ? cb->buffer_size : 0;
 
-      const ubyte *data = NULL;
+      const uint8_t *data = NULL;
       if (constants->buffer) {
-         data = (ubyte *) llvmpipe_resource_data(constants->buffer)
+         data = (uint8_t *) llvmpipe_resource_data(constants->buffer)
             + constants->buffer_offset;
       }
 
@@ -4259,9 +4259,9 @@ llvmpipe_set_shader_buffers(struct pipe_context *pipe,
       case PIPE_SHADER_TESS_CTRL:
       case PIPE_SHADER_TESS_EVAL: {
          const unsigned size = buffer ? buffer->buffer_size : 0;
-         const ubyte *data = NULL;
+         const uint8_t *data = NULL;
          if (buffer && buffer->buffer)
-            data = (ubyte *) llvmpipe_resource_data(buffer->buffer);
+            data = (uint8_t *) llvmpipe_resource_data(buffer->buffer);
          if (data)
             data += buffer->buffer_offset;
          draw_set_mapped_shader_buffer(llvmpipe->draw, shader,

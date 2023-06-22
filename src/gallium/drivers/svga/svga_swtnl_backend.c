@@ -58,8 +58,8 @@ svga_vbuf_render_get_vertex_info(struct vbuf_render *render)
 
 static bool
 svga_vbuf_render_allocate_vertices(struct vbuf_render *render,
-                                   ushort vertex_size,
-                                   ushort nr_vertices)
+                                   uint16_t vertex_size,
+                                   uint16_t nr_vertices)
 {
    struct svga_vbuf_render *svga_render = svga_vbuf_render(render);
    struct svga_context *svga = svga_render->svga;
@@ -165,8 +165,8 @@ svga_vbuf_render_map_vertices(struct vbuf_render *render)
 
 static void
 svga_vbuf_render_unmap_vertices(struct vbuf_render *render,
-                                ushort min_index,
-                                ushort max_index)
+                                uint16_t min_index,
+                                uint16_t max_index)
 {
    struct svga_vbuf_render *svga_render = svga_vbuf_render(render);
    struct svga_context *svga = svga_render->svga;
@@ -313,7 +313,7 @@ svga_vbuf_render_draw_arrays(struct vbuf_render *render,
 
 static void
 svga_vbuf_render_draw_elements(struct vbuf_render *render,
-                                const ushort *indices,
+                                const uint16_t *indices,
                                 uint nr_indices)
 {
    struct svga_vbuf_render *svga_render = svga_vbuf_render(render);

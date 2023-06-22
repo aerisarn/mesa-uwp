@@ -297,7 +297,7 @@ draw_print_arrays(struct draw_context *draw, enum mesa_prim prim,
 
       for (unsigned j = 0; j < draw->pt.nr_vertex_elements; j++) {
          unsigned buf = draw->pt.vertex_element[j].vertex_buffer_index;
-         ubyte *ptr = (ubyte *) draw->pt.user.vbuffer[buf].map;
+         uint8_t *ptr = (uint8_t *) draw->pt.user.vbuffer[buf].map;
 
          if (draw->pt.vertex_element[j].instance_divisor) {
             ii = draw->instance_id / draw->pt.vertex_element[j].instance_divisor;
@@ -336,14 +336,14 @@ draw_print_arrays(struct draw_context *draw, enum mesa_prim prim,
             break;
          case PIPE_FORMAT_B8G8R8A8_UNORM:
             {
-               ubyte *u = (ubyte *) ptr;
+               uint8_t *u = (uint8_t *) ptr;
                debug_printf("BGRA %d %d %d %d  @ %p\n", u[0], u[1], u[2], u[3],
                             (void *) u);
             }
             break;
          case PIPE_FORMAT_A8R8G8B8_UNORM:
             {
-               ubyte *u = (ubyte *) ptr;
+               uint8_t *u = (uint8_t *) ptr;
                debug_printf("ARGB %d %d %d %d  @ %p\n", u[0], u[1], u[2], u[3],
                             (void *) u);
             }

@@ -101,7 +101,7 @@ lp_setup_set_alpha_ref_value(struct lp_setup_context *setup,
 
 void
 lp_setup_set_stencil_ref_values(struct lp_setup_context *setup,
-                                const ubyte refs[2]);
+                                const uint8_t refs[2]);
 
 void
 lp_setup_set_blend_color(struct lp_setup_context *setup,

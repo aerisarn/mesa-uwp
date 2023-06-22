@@ -84,7 +84,7 @@ struct cmd_block {
 
 
 struct data_block {
-   ubyte data[DATA_BLOCK_SIZE];
+   uint8_t data[DATA_BLOCK_SIZE];
    unsigned used;
    struct data_block *next;
 };
@@ -258,7 +258,7 @@ lp_scene_alloc(struct lp_scene *scene, unsigned size)
    }
 
    {
-      ubyte *data = block->data + block->used;
+      uint8_t *data = block->data + block->used;
       block->used += size;
       return data;
    }
@@ -290,7 +290,7 @@ lp_scene_alloc_aligned(struct lp_scene *scene, unsigned size,
    }
 
    {
-      ubyte *data = block->data + block->used;
+      uint8_t *data = block->data + block->used;
       unsigned offset = (((uintptr_t)data + alignment - 1) & ~(alignment - 1)) - (uintptr_t)data;
       block->used += offset + size;
       return data + offset;

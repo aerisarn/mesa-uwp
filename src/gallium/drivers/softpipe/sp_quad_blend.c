@@ -152,7 +152,7 @@ logicop_quad(struct quad_stage *qs,
              float (*dest)[4])
 {
    struct softpipe_context *softpipe = qs->softpipe;
-   ubyte src[4][4], dst[4][4], res[4][4];
+   uint8_t src[4][4], dst[4][4], res[4][4];
    uint *src4 = (uint *) src;
    uint *dst4 = (uint *) dst;
    uint *res4 = (uint *) res;

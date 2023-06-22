@@ -47,9 +47,9 @@ struct depth_data {
    enum pipe_format format;
    unsigned bzzzz[TGSI_QUAD_SIZE];  /**< Z values fetched from depth buffer */
    unsigned qzzzz[TGSI_QUAD_SIZE];  /**< Z values from the quad */
-   ubyte stencilVals[TGSI_QUAD_SIZE];
+   uint8_t stencilVals[TGSI_QUAD_SIZE];
    bool use_shader_stencil_refs;
-   ubyte shader_stencil_refs[TGSI_QUAD_SIZE];
+   uint8_t shader_stencil_refs[TGSI_QUAD_SIZE];
    struct softpipe_cached_tile *tile;
    float minval, maxval;
    bool clamp;
@@ -275,7 +275,7 @@ write_depth_stencil_values( struct depth_data *data,
       for (j = 0; j < TGSI_QUAD_SIZE; j++) {
          int x = quad->input.x0 % TILE_SIZE + (j & 1);
          int y = quad->input.y0 % TILE_SIZE + (j >> 1);
-         tile->data.depth16[y][x] = (ushort) data->bzzzz[j];
+         tile->data.depth16[y][x] = (uint16_t) data->bzzzz[j];
       }
       break;
    case PIPE_FORMAT_Z24X8_UNORM:
@@ -357,7 +357,7 @@ do_stencil_test(struct depth_data *data,
 {
    unsigned passMask = 0x0;
    unsigned j;
-   ubyte refs[TGSI_QUAD_SIZE];
+   uint8_t refs[TGSI_QUAD_SIZE];
 
    for (j = 0; j < TGSI_QUAD_SIZE; j++) {
       if (data->use_shader_stencil_refs)
@@ -435,11 +435,11 @@ do_stencil_test(struct depth_data *data,
  */
 static void
 apply_stencil_op(struct depth_data *data,
-                 unsigned mask, unsigned op, ubyte ref, ubyte wrtMask)
+                 unsigned mask, unsigned op, uint8_t ref, uint8_t wrtMask)
 {
    unsigned j;
-   ubyte newstencil[TGSI_QUAD_SIZE];
-   ubyte refs[TGSI_QUAD_SIZE];
+   uint8_t newstencil[TGSI_QUAD_SIZE];
+   uint8_t refs[TGSI_QUAD_SIZE];
 
    for (j = 0; j < TGSI_QUAD_SIZE; j++) {
       newstencil[j] = data->stencilVals[j];
@@ -621,7 +621,7 @@ depth_stencil_test_quad(struct quad_stage *qs,
 {
    struct softpipe_context *softpipe = qs->softpipe;
    unsigned func, zFailOp, zPassOp, failOp;
-   ubyte ref, wrtMask, valMask;
+   uint8_t ref, wrtMask, valMask;
    uint face = quad->input.facing;
 
    if (!softpipe->depth_stencil->stencil[1].enabled) {

@@ -300,15 +300,15 @@ struct svga_cs_variant
 
 struct svga_shader_info
 {
-   ubyte num_inputs;
-   ubyte num_outputs;
+   uint8_t num_inputs;
+   uint8_t num_outputs;
 
-   ubyte input_semantic_name[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_semantic_index[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_usage_mask[PIPE_MAX_SHADER_INPUTS];
-   ubyte output_semantic_name[PIPE_MAX_SHADER_OUTPUTS];
-   ubyte output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
-   ubyte output_usage_mask[PIPE_MAX_SHADER_OUTPUTS];
+   uint8_t input_semantic_name[PIPE_MAX_SHADER_INPUTS];
+   uint8_t input_semantic_index[PIPE_MAX_SHADER_INPUTS];
+   uint8_t input_usage_mask[PIPE_MAX_SHADER_INPUTS];
+   uint8_t output_semantic_name[PIPE_MAX_SHADER_OUTPUTS];
+   uint8_t output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
+   uint8_t output_usage_mask[PIPE_MAX_SHADER_OUTPUTS];
 
    uint64_t generic_inputs_mask;
    uint64_t generic_outputs_mask;

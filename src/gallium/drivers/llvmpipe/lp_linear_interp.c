@@ -48,7 +48,7 @@
 
 /* Translate floating point value to 1.15 unsigned fixed-point.
  */
-static inline ushort
+static inline uint16_t
 float_to_ufixed_1_15(float f)
 {
    return CLAMP((unsigned)(f * (float)FIXED15_ONE), 0, FIXED15_ONE);

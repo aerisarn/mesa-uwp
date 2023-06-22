@@ -395,7 +395,7 @@ struct pipe_blend_color
 
 struct pipe_stencil_ref
 {
-   ubyte ref_value[2];
+   uint8_t ref_value[2];
 };
 
 
@@ -409,10 +409,10 @@ struct pipe_framebuffer_state
 {
    uint16_t width, height;
    uint16_t layers;  /**< Number of layers  in a no-attachment framebuffer */
-   ubyte samples; /**< Number of samples in a no-attachment framebuffer */
+   uint8_t samples; /**< Number of samples in a no-attachment framebuffer */
 
    /** multiple color buffers for multiple render targets */
-   ubyte nr_cbufs;
+   uint8_t nr_cbufs;
    struct pipe_surface *cbufs[PIPE_MAX_COLOR_BUFS];
 
    struct pipe_surface *zsbuf;      /**< Z/stencil buffer */

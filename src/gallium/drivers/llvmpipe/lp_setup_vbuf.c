@@ -80,7 +80,7 @@ lp_setup_get_vertex_info(struct vbuf_render *vbr)
 
 static bool
 lp_setup_allocate_vertices(struct vbuf_render *vbr,
-                          ushort vertex_size, ushort nr_vertices)
+                          uint16_t vertex_size, uint16_t nr_vertices)
 {
    struct lp_setup_context *setup = lp_setup_context(vbr);
    unsigned size = vertex_size * nr_vertices;
@@ -115,8 +115,8 @@ lp_setup_map_vertices(struct vbuf_render *vbr)
 
 static void
 lp_setup_unmap_vertices(struct vbuf_render *vbr,
-                        ushort min_index,
-                        ushort max_index)
+                        uint16_t min_index,
+                        uint16_t max_index)
 {
    ASSERTED struct lp_setup_context *setup = lp_setup_context(vbr);
    assert(setup->vertex_buffer_size >= (max_index+1) * setup->vertex_size);
@@ -169,7 +169,7 @@ rect(struct lp_setup_context *setup,
  * draw elements / indexed primitives
  */
 static void
-lp_setup_draw_elements(struct vbuf_render *vbr, const ushort *indices, uint nr)
+lp_setup_draw_elements(struct vbuf_render *vbr, const uint16_t *indices, uint nr)
 {
    struct lp_setup_context *setup = lp_setup_context(vbr);
    const unsigned stride = setup->vertex_info->size * sizeof(float);

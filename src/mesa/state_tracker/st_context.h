@@ -77,7 +77,7 @@ struct st_bitmap_cache
    GLboolean empty;
 
    /** An I8 texture image: */
-   ubyte *buffer;
+   uint8_t *buffer;
 };
 
 struct st_bound_handles

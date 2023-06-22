@@ -106,7 +106,7 @@ struct softpipe_context {
    unsigned active_query_count;
 
    /** Mapped vertex buffers */
-   ubyte *mapped_vbuffer[PIPE_MAX_ATTRIBS];
+   uint8_t *mapped_vbuffer[PIPE_MAX_ATTRIBS];
 
    /** Mapped constant buffers */
    struct tgsi_exec_consts_info mapped_constants[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];

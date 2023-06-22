@@ -98,7 +98,7 @@ pipe_put_tile_raw(struct pipe_transfer *pt,
  * Return each Z value as four floats in [0,1].
  */
 static void
-z16_get_tile_rgba(const ushort *src,
+z16_get_tile_rgba(const uint16_t *src,
                   unsigned w, unsigned h,
                   float *p,
                   unsigned dst_stride)
@@ -404,7 +404,7 @@ pipe_get_tile_rgba(struct pipe_transfer *pt,
 
    switch (format) {
    case PIPE_FORMAT_Z16_UNORM:
-      z16_get_tile_rgba((ushort *) packed, w, h, dst, dst_stride);
+      z16_get_tile_rgba((uint16_t *) packed, w, h, dst, dst_stride);
       break;
    case PIPE_FORMAT_Z32_UNORM:
       z32_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
