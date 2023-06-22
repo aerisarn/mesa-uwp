@@ -1300,14 +1300,6 @@ emit_program(Program* program, std::vector<uint32_t>& code, std::vector<struct a
    /* Add end-of-code markers for the UMR disassembler. */
    code.resize(code.size() + 5, 0xbf9f0000u);
 
-   if (program->gfx_level >= GFX10) {
-      /* Pad output with s_code_end so instruction prefetching doesn't cause
-       * page faults */
-      unsigned final_size = align(code.size() + 3 * 16, program->gfx_level >= GFX11 ? 32 : 16);
-      while (code.size() < final_size)
-         code.push_back(0xbf9f0000u);
-   }
-
    fix_constaddrs(ctx, code);
 
    while (program->constant_data.size() % 4u)

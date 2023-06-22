@@ -1110,6 +1110,7 @@ insert_block(struct radv_device *device, union radv_shader_arena_block *hole, ui
 union radv_shader_arena_block *
 radv_alloc_shader_memory(struct radv_device *device, uint32_t size, bool replayable, void *ptr)
 {
+   size = ac_align_shader_binary_for_prefetch(&device->physical_device->rad_info, size);
    size = align(size, RADV_SHADER_ALLOC_ALIGNMENT);
 
    mtx_lock(&device->shader_arena_mutex);
