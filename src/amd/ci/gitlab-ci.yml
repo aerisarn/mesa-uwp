@@ -216,12 +216,14 @@ radeonsi-raven-va-full:x86_64:
 
 .kabini-test-valve:
   variables:
+    RUNNER_FARM_LOCATION: mupuf
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=8g'
   tags:
     - amdgpu:codename:KABINI
 
 .polaris10-test-valve:
   variables:
+    RUNNER_FARM_LOCATION: keywords
     FDO_CI_CONCURRENT: 16
     B2C_TIMEOUT_BOOT_RETRIES: 4
     # (2022-01) tsc=unstable was added in response to this message in kmsg,
@@ -232,6 +234,7 @@ radeonsi-raven-va-full:x86_64:
 
 .vega10-test-valve:
   variables:
+    RUNNER_FARM_LOCATION: keywords
     FDO_CI_CONCURRENT: 16
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g'
   tags:
@@ -239,6 +242,7 @@ radeonsi-raven-va-full:x86_64:
 
 .renoir-test-valve:
   variables:
+    RUNNER_FARM_LOCATION: mupuf
     FDO_CI_CONCURRENT: 24
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g'
     B2C_TIMEOUT_BOOT_MINUTES: 60
@@ -248,6 +252,7 @@ radeonsi-raven-va-full:x86_64:
 
 .navi10-test-valve:
   variables:
+    RUNNER_FARM_LOCATION: mupuf
     FDO_CI_CONCURRENT: 24
     # (2022-01) noapic is set because the serial adapter on this
     # machine is using non-MSI IRQs and is generating a lot of
@@ -259,6 +264,7 @@ radeonsi-raven-va-full:x86_64:
 
 .navi21-test-valve:
   variables:
+    RUNNER_FARM_LOCATION: keywords
     FDO_CI_CONCURRENT: 32
     B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g'
   tags:
@@ -266,6 +272,7 @@ radeonsi-raven-va-full:x86_64:
 
 .vangogh-test-valve:
   variables:
+    RUNNER_FARM_LOCATION: mupuf
     FDO_CI_CONCURRENT: 8
     B2C_TIMEOUT_BOOT_MINUTES: 85
     B2C_TIMEOUT_OVERALL_MINUTES: 120
