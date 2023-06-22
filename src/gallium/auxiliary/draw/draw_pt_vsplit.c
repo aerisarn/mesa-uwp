@@ -23,6 +23,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <stdbool.h>
+
 #include "util/macros.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
@@ -54,7 +56,7 @@ struct vsplit_frontend {
       /* map a fetch element to a draw element */
       unsigned fetches[MAP_SIZE];
       ushort draws[MAP_SIZE];
-      boolean has_max_fetch;
+      bool has_max_fetch;
 
       ushort num_fetch_elts;
       ushort num_draw_elts;
@@ -66,7 +68,7 @@ static void
 vsplit_clear_cache(struct vsplit_frontend *vsplit)
 {
    memset(vsplit->cache.fetches, 0xff, sizeof(vsplit->cache.fetches));
-   vsplit->cache.has_max_fetch = FALSE;
+   vsplit->cache.has_max_fetch = false;
    vsplit->cache.num_fetch_elts = 0;
    vsplit->cache.num_draw_elts = 0;
 }
@@ -130,7 +132,7 @@ vsplit_add_cache_ubyte(struct vsplit_frontend *vsplit, const ubyte *elts,
    if (elt_bias && elt_idx == DRAW_MAX_FETCH_IDX && !vsplit->cache.has_max_fetch) {
       unsigned hash = elt_idx % MAP_SIZE;
       vsplit->cache.fetches[hash] = 0;
-      vsplit->cache.has_max_fetch = TRUE;
+      vsplit->cache.has_max_fetch = true;
    }
    vsplit_add_cache(vsplit, elt_idx);
 }
@@ -148,7 +150,7 @@ vsplit_add_cache_ushort(struct vsplit_frontend *vsplit, const ushort *elts,
    if (elt_bias && elt_idx == DRAW_MAX_FETCH_IDX && !vsplit->cache.has_max_fetch) {
       unsigned hash = elt_idx % MAP_SIZE;
       vsplit->cache.fetches[hash] = 0;
-      vsplit->cache.has_max_fetch = TRUE;
+      vsplit->cache.has_max_fetch = true;
    }
    vsplit_add_cache(vsplit, elt_idx);
 }
@@ -174,7 +176,7 @@ vsplit_add_cache_uint(struct vsplit_frontend *vsplit, const uint *elts,
       unsigned hash = elt_idx % MAP_SIZE;
       /* force update - any value will do except DRAW_MAX_FETCH_IDX */
       vsplit->cache.fetches[hash] = 0;
-      vsplit->cache.has_max_fetch = TRUE;
+      vsplit->cache.has_max_fetch = true;
    }
    vsplit_add_cache(vsplit, elt_idx);
 }
