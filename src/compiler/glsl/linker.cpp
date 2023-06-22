@@ -3088,57 +3088,6 @@ assign_attribute_or_color_locations(void *mem_ctx,
    return true;
 }
 
-/**
- * Store the gl_FragDepth layout in the gl_shader_program struct.
- */
-static void
-store_fragdepth_layout(struct gl_shader_program *prog)
-{
-   if (prog->_LinkedShaders[MESA_SHADER_FRAGMENT] == NULL) {
-      return;
-   }
-
-   struct exec_list *ir = prog->_LinkedShaders[MESA_SHADER_FRAGMENT]->ir;
-
-   /* We don't look up the gl_FragDepth symbol directly because if
-    * gl_FragDepth is not used in the shader, it's removed from the IR.
-    * However, the symbol won't be removed from the symbol table.
-    *
-    * We're only interested in the cases where the variable is NOT removed
-    * from the IR.
-    */
-   foreach_in_list(ir_instruction, node, ir) {
-      ir_variable *const var = node->as_variable();
-
-      if (var == NULL || var->data.mode != ir_var_shader_out) {
-         continue;
-      }
-
-      if (strcmp(var->name, "gl_FragDepth") == 0) {
-         switch (var->data.depth_layout) {
-         case ir_depth_layout_none:
-            prog->FragDepthLayout = FRAG_DEPTH_LAYOUT_NONE;
-            return;
-         case ir_depth_layout_any:
-            prog->FragDepthLayout = FRAG_DEPTH_LAYOUT_ANY;
-            return;
-         case ir_depth_layout_greater:
-            prog->FragDepthLayout = FRAG_DEPTH_LAYOUT_GREATER;
-            return;
-         case ir_depth_layout_less:
-            prog->FragDepthLayout = FRAG_DEPTH_LAYOUT_LESS;
-            return;
-         case ir_depth_layout_unchanged:
-            prog->FragDepthLayout = FRAG_DEPTH_LAYOUT_UNCHANGED;
-            return;
-         default:
-            assert(0);
-            return;
-         }
-      }
-   }
-}
-
 
 /**
  * Initializes explicit location slots to INACTIVE_UNIFORM_EXPLICIT_LOCATION
@@ -3763,8 +3712,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 
    /* Check and validate stream emissions in geometry shaders */
    validate_geometry_shader_emissions(consts, prog);
-
-   store_fragdepth_layout(prog);
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (prog->_LinkedShaders[i] == NULL)

@@ -3653,6 +3653,43 @@ link_varyings(struct gl_shader_program *prog, unsigned first,
    return true;
 }
 
+/**
+ * Store the gl_FragDepth layout in the gl_shader_program struct.
+ */
+static void
+store_fragdepth_layout(struct gl_shader_program *prog)
+{
+   if (prog->_LinkedShaders[MESA_SHADER_FRAGMENT] == NULL) {
+      return;
+   }
+
+   nir_shader *nir = prog->_LinkedShaders[MESA_SHADER_FRAGMENT]->Program->nir;
+   nir_foreach_shader_out_variable(var, nir) {
+      if (strcmp(var->name, "gl_FragDepth") == 0) {
+         switch (var->data.depth_layout) {
+         case nir_depth_layout_none:
+            prog->FragDepthLayout = FRAG_DEPTH_LAYOUT_NONE;
+            return;
+         case nir_depth_layout_any:
+            prog->FragDepthLayout = FRAG_DEPTH_LAYOUT_ANY;
+            return;
+         case nir_depth_layout_greater:
+            prog->FragDepthLayout = FRAG_DEPTH_LAYOUT_GREATER;
+            return;
+         case nir_depth_layout_less:
+            prog->FragDepthLayout = FRAG_DEPTH_LAYOUT_LESS;
+            return;
+         case nir_depth_layout_unchanged:
+            prog->FragDepthLayout = FRAG_DEPTH_LAYOUT_UNCHANGED;
+            return;
+         default:
+            assert(0);
+            return;
+         }
+      }
+   }
+}
+
 bool
 gl_assign_attribute_or_color_locations(const struct gl_constants *consts,
                                        struct gl_shader_program *prog)
@@ -3685,6 +3722,8 @@ gl_nir_link_varyings(const struct gl_constants *consts,
    unsigned first, last;
 
    MESA_TRACE_FUNC();
+
+   store_fragdepth_layout(prog);
 
    first = MESA_SHADER_STAGES;
    last = 0;
