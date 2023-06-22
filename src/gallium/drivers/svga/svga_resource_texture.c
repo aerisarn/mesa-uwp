@@ -481,7 +481,7 @@ svga_texture_transfer_map(struct pipe_context *pipe,
    struct svga_transfer *st;
    struct svga_winsys_surface *surf = tex->handle;
    bool use_direct_map = svga_have_gb_objects(svga) &&
-       (!svga_have_gb_dma(svga) || (usage & PIPE_MAP_WRITE));
+                         (!svga_have_gb_dma(svga) || (usage & PIPE_MAP_WRITE));
    void *map = NULL;
    int64_t begin = svga_get_time(svga);
 
@@ -564,7 +564,7 @@ svga_texture_transfer_map(struct pipe_context *pipe,
    }
    else {
       bool can_use_upload = tex->can_use_upload &&
-                               !(st->base.usage & PIPE_MAP_READ);
+                            !(st->base.usage & PIPE_MAP_READ);
       bool was_rendered_to =
          svga_was_texture_rendered_to(svga_texture(texture));
       bool is_dirty = svga_is_texture_dirty(svga_texture(texture));

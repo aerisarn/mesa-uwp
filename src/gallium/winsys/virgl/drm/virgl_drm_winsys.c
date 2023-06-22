@@ -104,7 +104,7 @@ static void virgl_hw_res_destroy(struct virgl_drm_winsys *qdws,
 }
 
 static bool virgl_drm_resource_is_busy(struct virgl_winsys *vws,
-                                          struct virgl_hw_res *res)
+                                       struct virgl_hw_res *res)
 {
    struct virgl_drm_winsys *vdws = virgl_drm_winsys(vws);
    struct drm_virtgpu_3d_wait waitcmd;
@@ -629,9 +629,9 @@ virgl_drm_winsys_resource_set_type(struct virgl_winsys *qws,
 }
 
 static bool virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
-                                                    struct virgl_hw_res *res,
-                                                    uint32_t stride,
-                                                    struct winsys_handle *whandle)
+                                                 struct virgl_hw_res *res,
+                                                 uint32_t stride,
+                                                 struct winsys_handle *whandle)
  {
    struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
    struct drm_gem_flink flink;
@@ -747,7 +747,7 @@ static void virgl_drm_free_res_list(struct virgl_drm_cmd_buf *cbuf)
 }
 
 static bool virgl_drm_lookup_res(struct virgl_drm_cmd_buf *cbuf,
-                                    struct virgl_hw_res *res)
+                                 struct virgl_hw_res *res)
 {
    unsigned hash = res->res_handle & (sizeof(cbuf->is_handle_added)-1);
    int i;
@@ -839,8 +839,8 @@ static void virgl_drm_emit_res(struct virgl_winsys *qws,
 }
 
 static bool virgl_drm_res_is_ref(struct virgl_winsys *qws,
-                                    struct virgl_cmd_buf *_cbuf,
-                                    struct virgl_hw_res *res)
+                                 struct virgl_cmd_buf *_cbuf,
+                                 struct virgl_hw_res *res)
 {
    if (!p_atomic_read(&res->num_cs_references))
       return FALSE;

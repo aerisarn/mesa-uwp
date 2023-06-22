@@ -12,7 +12,7 @@ static inline bool util_blend_factor_is_dual_src(int factor)
 }
 
 static inline bool util_blend_state_is_dual(const struct pipe_blend_state *blend, 
-				  int index)
+                                            int index)
 {
    if (util_blend_factor_is_dual_src(blend->rt[index].rgb_src_factor) ||
        util_blend_factor_is_dual_src(blend->rt[index].alpha_src_factor) ||

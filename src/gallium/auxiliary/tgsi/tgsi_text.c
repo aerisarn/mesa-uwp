@@ -1173,7 +1173,7 @@ parse_instruction(
 /* parses a 4-touple of the form {x, y, z, w}
  * where x, y, z, w are numbers */
 static bool parse_immediate_data(struct translate_ctx *ctx, unsigned type,
-                                    union tgsi_immediate_data *values)
+                                 union tgsi_immediate_data *values)
 {
    unsigned i;
    int ret;

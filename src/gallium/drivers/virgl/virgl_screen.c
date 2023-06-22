@@ -753,10 +753,10 @@ virgl_is_format_supported( struct pipe_screen *screen,
    const struct util_format_description *format_desc;
    int i;
 
-   union virgl_caps *caps = &vscreen->caps.caps; 
+   union virgl_caps *caps = &vscreen->caps.caps;
    bool may_emulate_bgra = (caps->v2.capability_bits &
-                               VIRGL_CAP_APP_TWEAK_SUPPORT) &&
-                               vscreen->tweak_gles_emulate_bgra;
+                            VIRGL_CAP_APP_TWEAK_SUPPORT) &&
+                            vscreen->tweak_gles_emulate_bgra;
 
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;

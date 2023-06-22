@@ -399,7 +399,7 @@ static GLuint
 choose_pixel_format(XMesaVisual v)
 {
    bool native_byte_order = (host_byte_order() ==
-                                ImageByteOrder(v->display));
+                             ImageByteOrder(v->display));
 
    if (   GET_REDMASK(v)   == 0x0000ff
        && GET_GREENMASK(v) == 0x00ff00

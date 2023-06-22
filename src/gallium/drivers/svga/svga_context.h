@@ -1110,7 +1110,7 @@ svga_retry_exit(struct svga_context *svga)
  */
 #define SVGA_RETRY(_svga, _func)                \
    do {                                         \
-      UNUSED bool retried;                   \
+      UNUSED bool retried;                      \
                                                 \
       SVGA_RETRY_CHECK(_svga, _func, retried);  \
    } while(0)

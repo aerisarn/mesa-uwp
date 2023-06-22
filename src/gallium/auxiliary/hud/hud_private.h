@@ -180,8 +180,8 @@ void hud_pipe_query_install(struct hud_batch_query_context **pbq,
                             enum pipe_driver_query_result_type result_type,
                             unsigned flags);
 bool hud_driver_query_install(struct hud_batch_query_context **pbq,
-                                 struct hud_pane *pane,
-                                 struct pipe_screen *screen, const char *name);
+                              struct hud_pane *pane,
+                              struct pipe_screen *screen, const char *name);
 void hud_batch_query_begin(struct hud_batch_query_context *bq,
                            struct pipe_context *pipe);
 void hud_batch_query_update(struct hud_batch_query_context *bq,

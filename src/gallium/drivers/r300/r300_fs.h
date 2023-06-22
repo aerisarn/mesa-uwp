@@ -76,8 +76,8 @@ void r300_shader_read_fs_inputs(struct tgsi_shader_info* info,
 
 /* Return TRUE if the shader was switched and should be re-emitted. */
 bool r300_pick_fragment_shader(struct r300_context *r300,
-                                  struct r300_fragment_shader* fs,
-                                  struct r300_fragment_program_external_state *state);
+                               struct r300_fragment_shader* fs,
+                               struct r300_fragment_program_external_state *state);
 void r300_fragment_program_get_external_state(struct r300_context *r300,
                                               struct r300_fragment_program_external_state *state);
 

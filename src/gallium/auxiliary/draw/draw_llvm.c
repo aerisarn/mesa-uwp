@@ -1596,7 +1596,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
     * the values).
     */
    const bool bypass_viewport = key->has_gs_or_tes || key->bypass_viewport ||
-                                   vs_info->writes_viewport_index;
+                                vs_info->writes_viewport_index;
    const bool enable_cliptest = !key->has_gs_or_tes && (key->clip_xy ||
                                                     key->clip_z ||
                                                     key->clip_user ||

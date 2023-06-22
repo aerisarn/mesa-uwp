@@ -59,7 +59,7 @@
     }
 
 static bool blend_discard_if_src_alpha_0(unsigned srcRGB, unsigned srcA,
-                                            unsigned dstRGB, unsigned dstA)
+                                         unsigned dstRGB, unsigned dstA)
 {
     /* If the blend equation is ADD or REVERSE_SUBTRACT,
      * SRC_ALPHA == 0, and the following state is set, the colorbuffer
@@ -80,7 +80,7 @@ static bool blend_discard_if_src_alpha_0(unsigned srcRGB, unsigned srcA,
 }
 
 static bool blend_discard_if_src_alpha_1(unsigned srcRGB, unsigned srcA,
-                                            unsigned dstRGB, unsigned dstA)
+                                         unsigned dstRGB, unsigned dstA)
 {
     /* If the blend equation is ADD or REVERSE_SUBTRACT,
      * SRC_ALPHA == 1, and the following state is set, the colorbuffer
@@ -99,7 +99,7 @@ static bool blend_discard_if_src_alpha_1(unsigned srcRGB, unsigned srcA,
 }
 
 static bool blend_discard_if_src_color_0(unsigned srcRGB, unsigned srcA,
-                                            unsigned dstRGB, unsigned dstA)
+                                         unsigned dstRGB, unsigned dstA)
 {
     /* If the blend equation is ADD or REVERSE_SUBTRACT,
      * SRC_COLOR == (0,0,0), and the following state is set, the colorbuffer
@@ -114,7 +114,7 @@ static bool blend_discard_if_src_color_0(unsigned srcRGB, unsigned srcA,
 }
 
 static bool blend_discard_if_src_color_1(unsigned srcRGB, unsigned srcA,
-                                            unsigned dstRGB, unsigned dstA)
+                                         unsigned dstRGB, unsigned dstA)
 {
     /* If the blend equation is ADD or REVERSE_SUBTRACT,
      * SRC_COLOR == (1,1,1), and the following state is set, the colorbuffer
@@ -129,7 +129,7 @@ static bool blend_discard_if_src_color_1(unsigned srcRGB, unsigned srcA,
 }
 
 static bool blend_discard_if_src_alpha_color_0(unsigned srcRGB, unsigned srcA,
-                                                  unsigned dstRGB, unsigned dstA)
+                                               unsigned dstRGB, unsigned dstA)
 {
     /* If the blend equation is ADD or REVERSE_SUBTRACT,
      * SRC_ALPHA_COLOR == (0,0,0,0), and the following state is set,
@@ -152,7 +152,7 @@ static bool blend_discard_if_src_alpha_color_0(unsigned srcRGB, unsigned srcA,
 }
 
 static bool blend_discard_if_src_alpha_color_1(unsigned srcRGB, unsigned srcA,
-                                                  unsigned dstRGB, unsigned dstA)
+                                               unsigned dstRGB, unsigned dstA)
 {
     /* If the blend equation is ADD or REVERSE_SUBTRACT,
      * SRC_ALPHA_COLOR == (1,1,1,1), and the following state is set,

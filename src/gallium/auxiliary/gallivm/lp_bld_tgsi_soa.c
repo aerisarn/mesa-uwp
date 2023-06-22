@@ -347,7 +347,7 @@ static void lp_exec_default(struct lp_exec_mask *mask,
       enum tgsi_opcode opcode =
          bld_base->instructions[bld_base->pc - 1].Instruction.Opcode;
       bool ft_into = (opcode != TGSI_OPCODE_BRK &&
-                         opcode != TGSI_OPCODE_SWITCH);
+                      opcode != TGSI_OPCODE_SWITCH);
       /*
        * If it is not last statement and there was no fallthrough into it,
        * we record the PC and continue execution at next case (again, those

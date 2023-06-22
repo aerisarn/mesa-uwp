@@ -81,9 +81,9 @@ unsigned r300_get_pixel_alignment(enum pipe_format format,
 
 /* Return true if macrotiling should be enabled on the miplevel. */
 static bool r300_texture_macro_switch(struct r300_resource *tex,
-                                         unsigned level,
-                                         bool rv350_mode,
-                                         enum r300_dim dim)
+                                      unsigned level,
+                                      bool rv350_mode,
+                                      enum r300_dim dim)
 {
     unsigned tile, texdim;
 
@@ -117,8 +117,8 @@ static unsigned r300_texture_get_stride(struct r300_screen *screen,
 {
     unsigned tile_width, width, stride;
     bool is_rs690 = (screen->caps.family == CHIP_RS600 ||
-                        screen->caps.family == CHIP_RS690 ||
-                        screen->caps.family == CHIP_RS740);
+                     screen->caps.family == CHIP_RS690 ||
+                     screen->caps.family == CHIP_RS740);
 
     if (tex->tex.stride_in_bytes_override)
         return tex->tex.stride_in_bytes_override;

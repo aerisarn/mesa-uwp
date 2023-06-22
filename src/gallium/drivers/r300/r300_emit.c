@@ -1301,8 +1301,8 @@ void r300_emit_texture_cache_inval(struct r300_context* r300, unsigned size, voi
 }
 
 bool r300_emit_buffer_validate(struct r300_context *r300,
-                                  bool do_validate_vertex_buffers,
-                                  struct pipe_resource *index_buffer)
+                               bool do_validate_vertex_buffers,
+                               struct pipe_resource *index_buffer)
 {
     struct pipe_framebuffer_state *fb =
         (struct pipe_framebuffer_state*)r300->fb_state.state;

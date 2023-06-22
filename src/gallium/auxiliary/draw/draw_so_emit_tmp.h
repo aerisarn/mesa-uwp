@@ -7,9 +7,9 @@
 
 #define FUNC_ENTER                                                \
    /* declare more local vars */                                  \
-   const enum mesa_prim prim = input_prims->prim;            \
+   const enum mesa_prim prim = input_prims->prim;                 \
    const unsigned prim_flags = input_prims->flags;                \
-   const bool quads_flatshade_last = FALSE;                    \
+   const bool quads_flatshade_last = FALSE;                       \
    const bool last_vertex_last = !so->draw->rasterizer->flatshade_first;  \
    do {                                                           \
       switch (prim) {                                             \
@@ -17,7 +17,7 @@
       case MESA_PRIM_LINE_STRIP_ADJACENCY:                        \
       case MESA_PRIM_TRIANGLES_ADJACENCY:                         \
       case MESA_PRIM_TRIANGLE_STRIP_ADJACENCY:                    \
-         assert(!"unexpected primitive type in stream output"); \
+         assert(!"unexpected primitive type in stream output");   \
          return;                                                  \
       default:                                                    \
          break;                                                   \

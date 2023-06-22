@@ -323,7 +323,7 @@ static void r300_update_rs_block(struct r300_context *r300)
     void (*rX00_rs_tex)(struct r300_rs_block*, int, int, enum r300_rs_swizzle);
     void (*rX00_rs_tex_write)(struct r300_rs_block*, int, int);
     bool any_bcolor_used = vs_outputs->bcolor[0] != ATTR_UNUSED ||
-                              vs_outputs->bcolor[1] != ATTR_UNUSED;
+                           vs_outputs->bcolor[1] != ATTR_UNUSED;
     int *stream_loc_notcl = r300->stream_loc_notcl;
     uint32_t stuffing_enable = 0;
 

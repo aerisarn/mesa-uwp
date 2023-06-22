@@ -49,8 +49,8 @@ struct pt_post_vs {
    unsigned flags;
 
    bool (*run)(struct pt_post_vs *pvs,
-                  struct draw_vertex_info *info,
-                  const struct draw_prim_info *prim_info);
+               struct draw_vertex_info *info,
+               const struct draw_prim_info *prim_info);
 };
 
 

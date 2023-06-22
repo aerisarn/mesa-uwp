@@ -10361,7 +10361,7 @@ emit_load_instruction(struct svga_shader_emitter_v10 *emit,
  */
 static bool
 emit_load(struct svga_shader_emitter_v10 *emit,
-           const struct tgsi_full_instruction *inst)
+          const struct tgsi_full_instruction *inst)
 {
    enum tgsi_file_type resourceType = inst->Src[0].Register.File;
    unsigned resourceIndex = inst->Src[0].Register.Index;
@@ -10850,7 +10850,7 @@ emit_memory_barrier(struct svga_shader_emitter_v10 *emit,
  */
 static bool
 emit_resq(struct svga_shader_emitter_v10 *emit,
-         const struct tgsi_full_instruction *inst)
+          const struct tgsi_full_instruction *inst)
 {
    struct tgsi_full_src_register zero =
       make_immediate_reg_int(emit, 0);

@@ -133,7 +133,7 @@ static uint32_t r300_depth_clear_cb_value(enum pipe_format format,
 }
 
 static bool r300_cbzb_clear_allowed(struct r300_context *r300,
-                                       unsigned clear_buffers)
+                                    unsigned clear_buffers)
 {
     struct pipe_framebuffer_state *fb =
         (struct pipe_framebuffer_state*)r300->fb_state.state;
@@ -146,7 +146,7 @@ static bool r300_cbzb_clear_allowed(struct r300_context *r300,
 }
 
 static bool r300_fast_zclear_allowed(struct r300_context *r300,
-                                        unsigned clear_buffers)
+                                     unsigned clear_buffers)
 {
     struct pipe_framebuffer_state *fb =
         (struct pipe_framebuffer_state*)r300->fb_state.state;

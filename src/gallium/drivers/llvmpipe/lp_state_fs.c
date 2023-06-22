@@ -675,10 +675,10 @@ generate_fs_loop(struct gallivm_state *gallivm,
     * code since tests tend to take another codepath than real shaders.
     */
    bool simple_shader = (shader->info.base.file_count[TGSI_FILE_SAMPLER] == 0 &&
-                            shader->info.base.num_inputs < 3 &&
-                            shader->info.base.num_instructions < 8) && 0;
+                         shader->info.base.num_inputs < 3 &&
+                         shader->info.base.num_instructions < 8) && 0;
    const bool dual_source_blend = key->blend.rt[0].blend_enable &&
-                                     util_blend_state_is_dual(&key->blend, 0);
+                                  util_blend_state_is_dual(&key->blend, 0);
    const bool post_depth_coverage = shader->info.base.properties[TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE];
 
    struct lp_bld_tgsi_system_values system_values;
@@ -3135,7 +3135,7 @@ generate_fragment(struct llvmpipe_context *lp,
    LLVMValueRef facing;
    bool cbuf0_write_all;
    const bool dual_source_blend = key->blend.rt[0].blend_enable &&
-                                     util_blend_state_is_dual(&key->blend, 0);
+                                  util_blend_state_is_dual(&key->blend, 0);
 
    assert(lp_native_vector_width / 32 >= 4);
 
@@ -3486,9 +3486,9 @@ generate_fragment(struct llvmpipe_context *lp,
          LLVMValueRef index = lp_build_const_int32(gallivm, cbuf);
 
          bool do_branch = ((key->depth.enabled
-                               || key->stencil[0].enabled
-                               || key->alpha.enabled)
-                              && !shader->info.base.uses_kill);
+                            || key->stencil[0].enabled
+                            || key->alpha.enabled)
+                           && !shader->info.base.uses_kill);
 
          color_ptr = LLVMBuildLoad2(builder, int8p_type,
                                     LLVMBuildGEP2(builder, int8p_type, color_ptr_ptr,
@@ -4543,7 +4543,7 @@ make_variant_key(struct llvmpipe_context *lp,
              format_desc->swizzle[3] == format_desc->swizzle[0]) {
             // Doesn't cover mixed snorm/unorm but can't render to them anyway
             bool clamped_zero = !util_format_is_float(format) &&
-                                   !util_format_is_snorm(format);
+                                !util_format_is_snorm(format);
             blend_rt->rgb_src_factor =
                force_dst_alpha_one(blend_rt->rgb_src_factor, clamped_zero);
             blend_rt->rgb_dst_factor =

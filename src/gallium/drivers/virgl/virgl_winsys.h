@@ -82,7 +82,7 @@ struct virgl_winsys {
    void *(*resource_map)(struct virgl_winsys *vws, struct virgl_hw_res *res);
    void (*resource_wait)(struct virgl_winsys *vws, struct virgl_hw_res *res);
    bool (*resource_is_busy)(struct virgl_winsys *vws,
-                               struct virgl_hw_res *res);
+                            struct virgl_hw_res *res);
 
    struct virgl_hw_res *(*resource_create_from_handle)(struct virgl_winsys *vws,
                                                        struct winsys_handle *whandle,
@@ -101,9 +101,9 @@ struct virgl_winsys {
                              const uint32_t *plane_offsets);
 
    bool (*resource_get_handle)(struct virgl_winsys *vws,
-                                  struct virgl_hw_res *res,
-                                  uint32_t stride,
-                                  struct winsys_handle *whandle);
+                               struct virgl_hw_res *res,
+                               uint32_t stride,
+                               struct winsys_handle *whandle);
 
    uint32_t (*resource_get_storage_size)(struct virgl_winsys* vws,
                                          struct virgl_hw_res* res);
@@ -116,8 +116,8 @@ struct virgl_winsys {
                      struct pipe_fence_handle **fence);
 
    bool (*res_is_referenced)(struct virgl_winsys *vws,
-                                struct virgl_cmd_buf *buf,
-                                struct virgl_hw_res *res);
+                             struct virgl_cmd_buf *buf,
+                             struct virgl_hw_res *res);
 
    int (*get_caps)(struct virgl_winsys *vws, struct virgl_drm_caps *caps);
 

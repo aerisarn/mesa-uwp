@@ -6,7 +6,7 @@
 #include "vertexdeclaration9.h"
 
 bool nine_ff_init(struct NineDevice9 *);
-void    nine_ff_fini(struct NineDevice9 *);
+void nine_ff_fini(struct NineDevice9 *);
 
 void nine_ff_update(struct NineDevice9 *);
 

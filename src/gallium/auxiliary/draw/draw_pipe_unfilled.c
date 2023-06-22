@@ -266,8 +266,8 @@ draw_unfilled_prepare_outputs(struct draw_context *draw,
    struct unfilled_stage *unfilled = unfilled_stage(stage);
    const struct pipe_rasterizer_state *rast = draw ? draw->rasterizer : NULL;
    bool is_unfilled = (rast &&
-                          (rast->fill_front != PIPE_POLYGON_MODE_FILL ||
-                           rast->fill_back != PIPE_POLYGON_MODE_FILL));
+                       (rast->fill_front != PIPE_POLYGON_MODE_FILL ||
+                        rast->fill_back != PIPE_POLYGON_MODE_FILL));
    const struct draw_fragment_shader *fs = draw ? draw->fs.fragment_shader : NULL;
 
    if (is_unfilled && fs && fs->info.uses_frontface)  {

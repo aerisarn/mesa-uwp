@@ -66,8 +66,8 @@ struct vbuf_render {
     * Currently optional.
     */
    bool (*need_pipeline)(const struct vbuf_render *render,
-                            const struct pipe_rasterizer_state *rasterizer,
-                            unsigned int prim);
+                         const struct pipe_rasterizer_state *rasterizer,
+                         unsigned int prim);
 
 
    /**
@@ -83,8 +83,8 @@ struct vbuf_render {
     * something.
     */
    bool (*allocate_vertices)(struct vbuf_render *,
-                                ushort vertex_size,
-                                ushort nr_vertices);
+                             ushort vertex_size,
+                             ushort nr_vertices);
 
    void *(*map_vertices)(struct vbuf_render *);
    void (*unmap_vertices)(struct vbuf_render *,

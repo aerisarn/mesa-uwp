@@ -647,23 +647,23 @@ static bool r300_is_format_supported(struct pipe_screen* screen,
     bool is_r500 = r300_screen(screen)->caps.is_r500;
     bool is_r400 = r300_screen(screen)->caps.is_r400;
     bool is_color2101010 = format == PIPE_FORMAT_R10G10B10A2_UNORM ||
-                              format == PIPE_FORMAT_R10G10B10X2_SNORM ||
-                              format == PIPE_FORMAT_B10G10R10A2_UNORM ||
-                              format == PIPE_FORMAT_B10G10R10X2_UNORM ||
-                              format == PIPE_FORMAT_R10SG10SB10SA2U_NORM;
+                           format == PIPE_FORMAT_R10G10B10X2_SNORM ||
+                           format == PIPE_FORMAT_B10G10R10A2_UNORM ||
+                           format == PIPE_FORMAT_B10G10R10X2_UNORM ||
+                           format == PIPE_FORMAT_R10SG10SB10SA2U_NORM;
     bool is_ati1n = format == PIPE_FORMAT_RGTC1_UNORM ||
-                       format == PIPE_FORMAT_RGTC1_SNORM ||
-                       format == PIPE_FORMAT_LATC1_UNORM ||
-                       format == PIPE_FORMAT_LATC1_SNORM;
+                    format == PIPE_FORMAT_RGTC1_SNORM ||
+                    format == PIPE_FORMAT_LATC1_UNORM ||
+                    format == PIPE_FORMAT_LATC1_SNORM;
     bool is_ati2n = format == PIPE_FORMAT_RGTC2_UNORM ||
-                       format == PIPE_FORMAT_RGTC2_SNORM ||
-                       format == PIPE_FORMAT_LATC2_UNORM ||
-                       format == PIPE_FORMAT_LATC2_SNORM;
+                    format == PIPE_FORMAT_RGTC2_SNORM ||
+                    format == PIPE_FORMAT_LATC2_UNORM ||
+                    format == PIPE_FORMAT_LATC2_SNORM;
     bool is_half_float = format == PIPE_FORMAT_R16_FLOAT ||
-                            format == PIPE_FORMAT_R16G16_FLOAT ||
-                            format == PIPE_FORMAT_R16G16B16_FLOAT ||
-                            format == PIPE_FORMAT_R16G16B16A16_FLOAT ||
-                            format == PIPE_FORMAT_R16G16B16X16_FLOAT;
+                         format == PIPE_FORMAT_R16G16_FLOAT ||
+                         format == PIPE_FORMAT_R16G16B16_FLOAT ||
+                         format == PIPE_FORMAT_R16G16B16A16_FLOAT ||
+                         format == PIPE_FORMAT_R16G16B16X16_FLOAT;
     const struct util_format_description *desc;
 
     if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))

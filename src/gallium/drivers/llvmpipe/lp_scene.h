@@ -219,15 +219,15 @@ struct cmd_block *lp_scene_new_cmd_block(struct lp_scene *scene,
                                          struct cmd_bin *bin);
 
 bool lp_scene_add_resource_reference(struct lp_scene *scene,
-                                        struct pipe_resource *resource,
-                                        bool initializing_scene,
-                                        bool writeable);
+                                     struct pipe_resource *resource,
+                                     bool initializing_scene,
+                                     bool writeable);
 
 unsigned lp_scene_is_resource_referenced(const struct lp_scene *scene,
                                          const struct pipe_resource *resource);
 
 bool lp_scene_add_frag_shader_reference(struct lp_scene *scene,
-                                           struct lp_fragment_shader_variant *variant);
+                                        struct lp_fragment_shader_variant *variant);
 
 
 

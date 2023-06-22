@@ -738,7 +738,7 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
    GLfloat x0, y0, x1, y1;
    ASSERTED GLsizei maxSize;
    bool normalized = sv[0]->texture->target == PIPE_TEXTURE_2D ||
-                        (sv[0]->texture->target == PIPE_TEXTURE_RECT && st->lower_rect_tex);
+                     (sv[0]->texture->target == PIPE_TEXTURE_RECT && st->lower_rect_tex);
    unsigned cso_state_mask;
 
    assert(sv[0]->texture->target == st->internal_target);

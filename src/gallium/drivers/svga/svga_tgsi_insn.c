@@ -1354,12 +1354,12 @@ emit_cond_discard(struct svga_shader_emitter *emit,
    const struct tgsi_full_src_register *reg = &insn->Src[0];
    struct src_register src0, srcIn;
    const bool special = (reg->Register.Absolute ||
-                            reg->Register.Negate ||
-                            reg->Register.Indirect ||
-                            reg->Register.SwizzleX != 0 ||
-                            reg->Register.SwizzleY != 1 ||
-                            reg->Register.SwizzleZ != 2 ||
-                            reg->Register.File != TGSI_FILE_TEMPORARY);
+                         reg->Register.Negate ||
+                         reg->Register.Indirect ||
+                         reg->Register.SwizzleX != 0 ||
+                         reg->Register.SwizzleY != 1 ||
+                         reg->Register.SwizzleZ != 2 ||
+                         reg->Register.File != TGSI_FILE_TEMPORARY);
    SVGA3dShaderDestToken temp;
 
    src0 = srcIn = translate_src_register( emit, reg );
@@ -1812,13 +1812,13 @@ emit_tex(struct svga_shader_emitter *emit,
 
    /* check for shadow samplers */
    bool compare = (emit->key.tex[unit].compare_mode ==
-                      PIPE_TEX_COMPARE_R_TO_TEXTURE);
+                   PIPE_TEX_COMPARE_R_TO_TEXTURE);
 
    /* texture swizzle */
    bool swizzle = (emit->key.tex[unit].swizzle_r != PIPE_SWIZZLE_X ||
-                      emit->key.tex[unit].swizzle_g != PIPE_SWIZZLE_Y ||
-                      emit->key.tex[unit].swizzle_b != PIPE_SWIZZLE_Z ||
-                      emit->key.tex[unit].swizzle_a != PIPE_SWIZZLE_W);
+                   emit->key.tex[unit].swizzle_g != PIPE_SWIZZLE_Y ||
+                   emit->key.tex[unit].swizzle_b != PIPE_SWIZZLE_Z ||
+                   emit->key.tex[unit].swizzle_a != PIPE_SWIZZLE_W);
 
    bool saturate = insn->Instruction.Saturate;
 

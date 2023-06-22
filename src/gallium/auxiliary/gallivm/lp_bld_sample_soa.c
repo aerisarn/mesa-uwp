@@ -2555,9 +2555,9 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
     */
    if (target == PIPE_TEXTURE_CUBE || target == PIPE_TEXTURE_CUBE_ARRAY) {
       bool need_derivs = ((min_filter != mag_filter ||
-                              mip_filter != PIPE_TEX_MIPFILTER_NONE) &&
-                             !bld->static_sampler_state->min_max_lod_equal &&
-                             !explicit_lod);
+                           mip_filter != PIPE_TEX_MIPFILTER_NONE) &&
+                          !bld->static_sampler_state->min_max_lod_equal &&
+                          !explicit_lod);
       lp_build_cube_lookup(bld, coords, derivs, &cube_derivs, need_derivs);
       if (need_derivs)
          derivs = &cube_derivs;

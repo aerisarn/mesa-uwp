@@ -188,7 +188,7 @@ static void virgl_hw_res_destroy(struct virgl_vtest_winsys *vtws,
 }
 
 static bool virgl_vtest_resource_is_busy(struct virgl_winsys *vws,
-                                            struct virgl_hw_res *res)
+                                         struct virgl_hw_res *res)
 {
    struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
 
@@ -415,7 +415,7 @@ alloc:
 }
 
 static bool virgl_vtest_lookup_res(struct virgl_vtest_cmd_buf *cbuf,
-                                      struct virgl_hw_res *res)
+                                   struct virgl_hw_res *res)
 {
    unsigned hash = res->res_handle & (sizeof(cbuf->is_handle_added)-1);
    int i;
@@ -568,8 +568,8 @@ static void virgl_vtest_emit_res(struct virgl_winsys *vws,
 }
 
 static bool virgl_vtest_res_is_ref(struct virgl_winsys *vws,
-                                      struct virgl_cmd_buf *_cbuf,
-                                      struct virgl_hw_res *res)
+                                   struct virgl_cmd_buf *_cbuf,
+                                   struct virgl_hw_res *res)
 {
    if (!p_atomic_read(&res->num_cs_references))
       return FALSE;

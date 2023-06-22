@@ -218,8 +218,8 @@ struct Shader_xlate {
 
    struct {
       bool declared;
-      uint    writemask;
-      uint    siv_name;
+      uint writemask;
+      uint siv_name;
       bool overloaded;
       struct ureg_src reg;
    } inputs[SHADER_MAX_INPUTS];

@@ -194,8 +194,8 @@ enum r300_prepare_flags {
  * \return TRUE if the CS was flushed
  */
 static bool r300_reserve_cs_dwords(struct r300_context *r300,
-                                      enum r300_prepare_flags flags,
-                                      unsigned cs_dwords)
+                                   enum r300_prepare_flags flags,
+                                   unsigned cs_dwords)
 {
     bool flushed        = FALSE;
     bool emit_states    = flags & PREP_EMIT_STATES;
@@ -237,10 +237,10 @@ static bool r300_reserve_cs_dwords(struct r300_context *r300,
  * \return TRUE if rendering should be skipped
  */
 static bool r300_emit_states(struct r300_context *r300,
-                                enum r300_prepare_flags flags,
-                                struct pipe_resource *index_buffer,
-                                int buffer_offset,
-                                int index_bias, int instance_id)
+                             enum r300_prepare_flags flags,
+                             struct pipe_resource *index_buffer,
+                             int buffer_offset,
+                             int index_bias, int instance_id)
 {
     bool emit_states    = flags & PREP_EMIT_STATES;
     bool emit_vertex_arrays       = flags & PREP_EMIT_VARRAYS;
@@ -300,12 +300,12 @@ static bool r300_emit_states(struct r300_context *r300,
  * \return TRUE if rendering should be skipped
  */
 static bool r300_prepare_for_rendering(struct r300_context *r300,
-                                          enum r300_prepare_flags flags,
-                                          struct pipe_resource *index_buffer,
-                                          unsigned cs_dwords,
-                                          int buffer_offset,
-                                          int index_bias,
-                                          int instance_id)
+                                       enum r300_prepare_flags flags,
+                                       struct pipe_resource *index_buffer,
+                                       unsigned cs_dwords,
+                                       int buffer_offset,
+                                       int index_bias,
+                                       int instance_id)
 {
     /* Make sure there is enough space in the command stream and emit states. */
     if (r300_reserve_cs_dwords(r300, flags, cs_dwords))
@@ -316,7 +316,7 @@ static bool r300_prepare_for_rendering(struct r300_context *r300,
 }
 
 static bool immd_is_good_idea(struct r300_context *r300,
-                                 unsigned count)
+                              unsigned count)
 {
     if (DBG_ON(r300, DBG_NO_IMMD)) {
         return FALSE;
@@ -940,8 +940,8 @@ r300_render_get_vertex_info(struct vbuf_render* render)
 }
 
 static bool r300_render_allocate_vertices(struct vbuf_render* render,
-                                             ushort vertex_size,
-                                             ushort count)
+                                          ushort vertex_size,
+                                          ushort count)
 {
     struct r300_render* r300render = r300_render(render);
     struct r300_context* r300 = r300render->r300;
