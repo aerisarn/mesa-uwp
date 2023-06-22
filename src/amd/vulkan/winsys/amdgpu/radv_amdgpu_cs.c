@@ -278,12 +278,20 @@ radv_amdgpu_cs_get_new_ib(struct radeon_cmdbuf *_cs, uint32_t ib_size)
    return VK_SUCCESS;
 }
 
+static unsigned
+radv_amdgpu_cs_get_initial_size(struct radv_amdgpu_winsys *ws, enum amd_ip_type ip_type)
+{
+   uint32_t ib_pad_dw_mask = MAX2(3, ws->info.ib_pad_dw_mask[ip_type]);
+   assert(util_is_power_of_two_nonzero(ib_pad_dw_mask + 1));
+   return align(20 * 1024 * 4, ib_pad_dw_mask + 1);
+}
+
 static struct radeon_cmdbuf *
 radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type, bool is_secondary)
 {
    struct radv_amdgpu_cs *cs;
-   uint32_t ib_pad_dw_mask = MAX2(3, radv_amdgpu_winsys(ws)->info.ib_pad_dw_mask[ip_type]);
-   uint32_t ib_size = align(20 * 1024 * 4, ib_pad_dw_mask + 1);
+   uint32_t ib_size = radv_amdgpu_cs_get_initial_size(radv_amdgpu_winsys(ws), ip_type);
+
    cs = calloc(1, sizeof(struct radv_amdgpu_cs));
    if (!cs)
       return NULL;
@@ -351,6 +359,13 @@ radv_amdgpu_cs_add_ib_buffer(struct radv_amdgpu_cs *cs)
 }
 
 static void
+radv_amdgpu_restore_last_ib(struct radv_amdgpu_cs *cs)
+{
+   struct radv_amdgpu_ib *ib = &cs->ib_buffers[--cs->num_ib_buffers];
+   cs->ib_buffer = ib->bo;
+}
+
+static void
 radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 {
    struct radv_amdgpu_cs *cs = radv_amdgpu_cs(_cs);
@@ -375,7 +390,7 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    if (result != VK_SUCCESS) {
       cs->base.cdw = 0;
       cs->status = VK_ERROR_OUT_OF_DEVICE_MEMORY;
-      cs->ib_buffer = cs->ib_buffers[--cs->num_ib_buffers].bo;
+      radv_amdgpu_restore_last_ib(cs);
    }
 
    cs->ib_mapped = cs->ws->base.buffer_map(cs->ib_buffer);
@@ -385,7 +400,7 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 
       /* VK_ERROR_MEMORY_MAP_FAILED is not valid for vkEndCommandBuffer. */
       cs->status = VK_ERROR_OUT_OF_DEVICE_MEMORY;
-      cs->ib_buffer = cs->ib_buffers[--cs->num_ib_buffers].bo;
+      radv_amdgpu_restore_last_ib(cs);
    }
 
    cs->ws->base.cs_add_buffer(&cs->base, cs->ib_buffer);
@@ -474,7 +489,7 @@ radv_amdgpu_cs_reset(struct radeon_cmdbuf *_cs)
    /* When the CS is finalized and IBs are not allowed, use last IB. */
    assert(cs->ib_buffer || cs->num_ib_buffers);
    if (!cs->ib_buffer)
-      cs->ib_buffer = cs->ib_buffers[--cs->num_ib_buffers].bo;
+      radv_amdgpu_restore_last_ib(cs);
 
    cs->ws->base.cs_add_buffer(&cs->base, cs->ib_buffer);
 
