@@ -181,6 +181,9 @@ impl Device {
             return None;
         }
 
+        // Create before loading libclc as llvmpipe only creates the shader cache with the first
+        // context being created.
+        let helper_ctx = screen.create_context()?;
         let lib_clc = spirv::SPIRVBin::get_lib_clc(&screen);
         if lib_clc.is_none() {
             eprintln!("Libclc failed to load. Please make sure it is installed and provides spirv-mesa3d-.spv and/or spirv64-mesa3d-.spv");
@@ -188,7 +191,7 @@ impl Device {
 
         let mut d = Self {
             base: CLObjectBase::new(),
-            helper_ctx: Mutex::new(screen.create_context().unwrap()),
+            helper_ctx: Mutex::new(helper_ctx),
             screen: screen,
             cl_version: CLVersion::Cl3_0,
             clc_version: CLVersion::Cl3_0,
