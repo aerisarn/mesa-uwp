@@ -114,13 +114,13 @@ bool intel_gem_get_param(int fd, uint32_t param, int *value);
 bool intel_gem_wait_on_get_param(int fd, uint32_t param, int target_val,
                                  uint32_t timeout_ms);
 
-#ifdef __cplusplus
-}
-#endif
-
 bool intel_gem_create_context_ext(int fd, enum intel_gem_create_context_flags flags,
                                   uint32_t *ctx_id);
 bool intel_gem_supports_protected_context(int fd,
                                           enum intel_kmd_type kmd_type);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INTEL_GEM_H */
