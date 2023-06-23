@@ -767,7 +767,7 @@ clip_tri(struct draw_stage *stage, struct prim_header *header)
 static enum tgsi_interpolate_mode
 find_interp(const struct draw_fragment_shader *fs,
             enum tgsi_interpolate_mode *indexed_interp,
-            uint semantic_name, uint semantic_index)
+            enum tgsi_semantic semantic_name, uint semantic_index)
 {
    enum tgsi_interpolate_mode interp;
 

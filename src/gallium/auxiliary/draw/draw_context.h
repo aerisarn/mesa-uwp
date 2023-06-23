@@ -39,6 +39,7 @@
 
 
 #include "pipe/p_state.h"
+#include "pipe/p_shader_tokens.h"
 #include "nir.h"
 
 struct pipe_context;
@@ -167,7 +168,8 @@ draw_prepare_shader_outputs(struct draw_context *draw);
 
 int
 draw_find_shader_output(const struct draw_context *draw,
-                        uint semantic_name, uint semantic_index);
+                        enum tgsi_semantic semantic_name,
+                        uint semantic_index);
 
 boolean
 draw_will_inject_frontface(const struct draw_context *draw);

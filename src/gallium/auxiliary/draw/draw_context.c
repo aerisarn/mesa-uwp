@@ -552,7 +552,8 @@ draw_enable_point_sprites(struct draw_context *draw, boolean enable)
  */
 int
 draw_alloc_extra_vertex_attrib(struct draw_context *draw,
-                               uint semantic_name, uint semantic_index)
+                               enum tgsi_semantic semantic_name,
+                               uint semantic_index)
 {
    int slot = draw_find_shader_output(draw, semantic_name, semantic_index);
    if (slot >= 0) {
@@ -645,7 +646,8 @@ draw_prepare_shader_outputs(struct draw_context *draw)
  */
 int
 draw_find_shader_output(const struct draw_context *draw,
-                        uint semantic_name, uint semantic_index)
+                        enum tgsi_semantic semantic_name,
+                        uint semantic_index)
 {
    const struct tgsi_shader_info *info = draw_get_shader_info(draw);
 

@@ -168,7 +168,7 @@ flatshade_line_1(struct draw_stage *stage,
 
 static int
 find_interp(const struct draw_fragment_shader *fs, int *indexed_interp,
-            uint semantic_name, uint semantic_index)
+            enum tgsi_semantic semantic_name, uint semantic_index)
 {
    int interp;
    /* If it's gl_{Front,Back}{,Secondary}Color, pick up the mode

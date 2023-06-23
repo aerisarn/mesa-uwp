@@ -43,6 +43,7 @@
 
 #include "pipe/p_state.h"
 #include "pipe/p_defines.h"
+#include "pipe/p_shader_tokens.h"
 
 #include "draw_vertex_header.h"
 
@@ -357,7 +358,7 @@ struct draw_context
     */
    struct {
       uint num;
-      uint semantic_name[DRAW_MAX_EXTRA_SHADER_OUTPUTS];
+      enum tgsi_semantic semantic_name[DRAW_MAX_EXTRA_SHADER_OUTPUTS];
       uint semantic_index[DRAW_MAX_EXTRA_SHADER_OUTPUTS];
       uint slot[DRAW_MAX_EXTRA_SHADER_OUTPUTS];
    } extra_shader_outputs;
@@ -446,7 +447,8 @@ uint draw_current_shader_ccdistance_output(const struct draw_context *draw, int 
 uint draw_current_shader_num_written_clipdistances(const struct draw_context *draw);
 uint draw_current_shader_num_written_culldistances(const struct draw_context *draw);
 int draw_alloc_extra_vertex_attrib(struct draw_context *draw,
-                                   uint semantic_name, uint semantic_index);
+                                   enum tgsi_semantic semantic_name,
+                                   uint semantic_index);
 void draw_remove_extra_vertex_attribs(struct draw_context *draw);
 boolean draw_current_shader_uses_viewport_index(
    const struct draw_context *draw);
