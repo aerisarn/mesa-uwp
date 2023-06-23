@@ -102,7 +102,12 @@ struct isa_decode_options {
 	/**
 	 * Callback prior to instruction decode
 	 */
-	void (*instr_cb)(void *data, unsigned n, void *instr);
+	void (*pre_instr_cb)(void *data, unsigned n, void *instr);
+
+	/**
+	 * Callback after instruction decode
+	 */
+	void (*post_instr_cb)(void *data, unsigned n, void *instr);
 
 	/**
 	 * callback for undefined instructions

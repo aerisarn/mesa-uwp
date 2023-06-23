@@ -50,7 +50,7 @@ main(int argc, char **argv)
 	isa_decode(raw, sz, stdout, &(struct isa_decode_options) {
 		.show_errors = true,
 		.branch_labels = true,
-		.instr_cb = disasm_instr_cb,
+		.pre_instr_cb = disasm_instr_cb,
 	});
 
 	return 0;

@@ -768,8 +768,8 @@ decode(struct decode_state *state, void *bin, int sz)
 			 */
 			if ((BITSET_TEST(state->call_targets, state->n) || entrypoint) &&
 			    state->n != 0) {
-				if (state->options->instr_cb) {
-					state->options->instr_cb(state->options->cbdata,
+				if (state->options->pre_instr_cb) {
+					state->options->pre_instr_cb(state->options->cbdata,
 							state->n, instr.bitset);
 				}
 				isa_print(&state->print, "\n");
@@ -777,8 +777,8 @@ decode(struct decode_state *state, void *bin, int sz)
 
 			while (state->next_entrypoint != state->end_entrypoint &&
 			       state->next_entrypoint->offset == state->n) {
-				if (state->options->instr_cb) {
-					state->options->instr_cb(state->options->cbdata,
+				if (state->options->pre_instr_cb) {
+					state->options->pre_instr_cb(state->options->cbdata,
 							state->n, instr.bitset);
 				}
 				isa_print(&state->print, "%s:\n", state->next_entrypoint->name);
@@ -786,24 +786,24 @@ decode(struct decode_state *state, void *bin, int sz)
 			}
 
 			if (BITSET_TEST(state->call_targets, state->n)) {
-				if (state->options->instr_cb) {
-					state->options->instr_cb(state->options->cbdata,
+				if (state->options->pre_instr_cb) {
+					state->options->pre_instr_cb(state->options->cbdata,
 							state->n, instr.bitset);
 				}
 				isa_print(&state->print, "fxn%d:\n", state->n);
 			}
 
 			if (BITSET_TEST(state->branch_targets, state->n)) {
-				if (state->options->instr_cb) {
-					state->options->instr_cb(state->options->cbdata,
+				if (state->options->pre_instr_cb) {
+					state->options->pre_instr_cb(state->options->cbdata,
 							state->n, instr.bitset);
 				}
 				isa_print(&state->print, "l%d:\n", state->n);
 			}
 		}
 
-		if (state->options->instr_cb) {
-			state->options->instr_cb(state->options->cbdata, state->n, instr.bitset);
+		if (state->options->pre_instr_cb) {
+			state->options->pre_instr_cb(state->options->cbdata, state->n, instr.bitset);
 		}
 
 		const struct isa_bitset *b = find_bitset(state, __instruction, instr);
@@ -825,6 +825,11 @@ decode(struct decode_state *state, void *bin, int sz)
 		} else {
 			errors = 0;
 		}
+
+		if (state->options->post_instr_cb) {
+			state->options->post_instr_cb(state->options->cbdata, state->n, instr.bitset);
+		}
+
 		isa_print(&state->print, "\n");
 
 		pop_scope(scope);

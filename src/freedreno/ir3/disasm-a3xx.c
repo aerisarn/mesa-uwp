@@ -581,7 +581,7 @@ disasm_a3xx_stat(uint32_t *dwords, int sizedwords, int level, FILE *out,
       .max_errors = 5,
       .branch_labels = true,
       .field_cb = disasm_field_cb,
-      .instr_cb = disasm_instr_cb,
+      .pre_instr_cb = disasm_instr_cb,
    };
    struct disasm_ctx ctx = {
       .out = out,
