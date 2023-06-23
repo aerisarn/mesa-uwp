@@ -31,14 +31,33 @@ fn alloc_ssa_for_nir(b: &mut impl SSABuilder, ssa: &nir_def) -> Vec<SSAValue> {
     vec
 }
 
+struct PhiAllocMap<'a> {
+    alloc: &'a mut PhiAllocator,
+    map: HashMap<(u32, u8), u32>,
+}
+
+impl<'a> PhiAllocMap<'a> {
+    fn new(alloc: &'a mut PhiAllocator) -> PhiAllocMap<'a> {
+        PhiAllocMap {
+            alloc: alloc,
+            map: HashMap::new(),
+        }
+    }
+
+    fn get_phi_id(&mut self, phi: &nir_phi_instr, comp: u8) -> u32 {
+        *self
+            .map
+            .entry((phi.def.index, comp))
+            .or_insert_with(|| self.alloc.alloc())
+    }
+}
+
 struct ShaderFromNir<'a> {
     nir: &'a nir_shader,
     cfg: CFGBuilder<u32, BasicBlock>,
     fs_out_regs: Vec<Src>,
     end_block_id: u32,
     ssa_map: HashMap<u32, Vec<SSAValue>>,
-    num_phis: u32,
-    phi_map: HashMap<(u32, u8), u32>,
     saturated: HashSet<*const nir_def>,
 }
 
@@ -56,8 +75,6 @@ impl<'a> ShaderFromNir<'a> {
             fs_out_regs: fs_out_regs,
             end_block_id: 0,
             ssa_map: HashMap::new(),
-            num_phis: 0,
-            phi_map: HashMap::new(),
             saturated: HashSet::new(),
         }
     }
@@ -121,15 +138,6 @@ impl<'a> ShaderFromNir<'a> {
 
     fn set_dst(&mut self, def: &nir_def, ssa: SSARef) {
         self.set_ssa(def, (*ssa).into());
-    }
-
-    fn get_phi_id(&mut self, phi: &nir_phi_instr, comp: u8) -> u32 {
-        let ssa = phi.def.as_def();
-        *self.phi_map.entry((ssa.index, comp)).or_insert_with(|| {
-            let id = self.num_phis;
-            self.num_phis += 1;
-            id
-        })
     }
 
     fn try_saturate_alu_dst(&mut self, def: &nir_def) -> bool {
@@ -1542,8 +1550,13 @@ impl<'a> ShaderFromNir<'a> {
         self.set_ssa(&undef.def, dst);
     }
 
-    fn parse_block(&mut self, alloc: &mut SSAValueAllocator, nb: &nir_block) {
-        let mut b = SSAInstrBuilder::new(alloc);
+    fn parse_block<'b>(
+        &mut self,
+        ssa_alloc: &mut SSAValueAllocator,
+        phi_map: &mut PhiAllocMap<'b>,
+        nb: &nir_block,
+    ) {
+        let mut b = SSAInstrBuilder::new(ssa_alloc);
 
         let mut phi = OpPhiDsts::new();
         for ni in nb.iter_instr_list() {
@@ -1551,7 +1564,7 @@ impl<'a> ShaderFromNir<'a> {
                 let np = ni.as_phi().unwrap();
                 let dst = alloc_ssa_for_nir(&mut b, np.def.as_def());
                 for (i, dst) in dst.iter().enumerate() {
-                    let phi_id = self.get_phi_id(np, i.try_into().unwrap());
+                    let phi_id = phi_map.get_phi_id(np, i.try_into().unwrap());
                     phi.dsts.push(phi_id, (*dst).into());
                 }
                 self.set_ssa(np.def.as_def(), dst);
@@ -1609,7 +1622,7 @@ impl<'a> ShaderFromNir<'a> {
                         let src = *self.get_src(&ps.src).as_ssa().unwrap();
                         for (i, src) in src.iter().enumerate() {
                             let phi_id =
-                                self.get_phi_id(np, i.try_into().unwrap());
+                                phi_map.get_phi_id(np, i.try_into().unwrap());
                             phi.srcs.push(phi_id, (*src).into());
                         }
                         break;
@@ -1653,30 +1666,44 @@ impl<'a> ShaderFromNir<'a> {
         self.cfg.add_node(bb.id, bb);
     }
 
-    fn parse_if(&mut self, alloc: &mut SSAValueAllocator, ni: &nir_if) {
-        self.parse_cf_list(alloc, ni.iter_then_list());
-        self.parse_cf_list(alloc, ni.iter_else_list());
-    }
-
-    fn parse_loop(&mut self, alloc: &mut SSAValueAllocator, nl: &nir_loop) {
-        self.parse_cf_list(alloc, nl.iter_body());
-    }
-
-    fn parse_cf_list(
+    fn parse_if<'b>(
         &mut self,
-        alloc: &mut SSAValueAllocator,
+        ssa_alloc: &mut SSAValueAllocator,
+        phi_map: &mut PhiAllocMap<'b>,
+        ni: &nir_if,
+    ) {
+        self.parse_cf_list(ssa_alloc, phi_map, ni.iter_then_list());
+        self.parse_cf_list(ssa_alloc, phi_map, ni.iter_else_list());
+    }
+
+    fn parse_loop<'b>(
+        &mut self,
+        ssa_alloc: &mut SSAValueAllocator,
+        phi_map: &mut PhiAllocMap<'b>,
+        nl: &nir_loop,
+    ) {
+        self.parse_cf_list(ssa_alloc, phi_map, nl.iter_body());
+    }
+
+    fn parse_cf_list<'b>(
+        &mut self,
+        ssa_alloc: &mut SSAValueAllocator,
+        phi_map: &mut PhiAllocMap<'b>,
         list: ExecListIter<nir_cf_node>,
     ) {
         for node in list {
             match node.type_ {
                 nir_cf_node_block => {
-                    self.parse_block(alloc, node.as_block().unwrap());
+                    let nb = node.as_block().unwrap();
+                    self.parse_block(ssa_alloc, phi_map, nb);
                 }
                 nir_cf_node_if => {
-                    self.parse_if(alloc, node.as_if().unwrap());
+                    let ni = node.as_if().unwrap();
+                    self.parse_if(ssa_alloc, phi_map, ni);
                 }
                 nir_cf_node_loop => {
-                    self.parse_loop(alloc, node.as_loop().unwrap());
+                    let nl = node.as_loop().unwrap();
+                    self.parse_loop(ssa_alloc, phi_map, nl);
                 }
                 _ => panic!("Invalid inner CF node type"),
             }
@@ -1687,7 +1714,10 @@ impl<'a> ShaderFromNir<'a> {
         let mut ssa_alloc = SSAValueAllocator::new();
         self.end_block_id = nfi.end_block().index;
 
-        self.parse_cf_list(&mut ssa_alloc, nfi.iter_body());
+        let mut phi_alloc = PhiAllocator::new();
+        let mut phi_map = PhiAllocMap::new(&mut phi_alloc);
+
+        self.parse_cf_list(&mut ssa_alloc, &mut phi_map, nfi.iter_body());
 
         let mut cfg = std::mem::take(&mut self.cfg).as_cfg();
         assert!(cfg.len() > 0);
@@ -1711,6 +1741,7 @@ impl<'a> ShaderFromNir<'a> {
 
         Function {
             ssa_alloc: ssa_alloc,
+            phi_alloc: phi_alloc,
             blocks: cfg,
         }
     }

@@ -3085,6 +3085,22 @@ impl<A: Clone, B: Clone> VecPair<A, B> {
     }
 }
 
+pub struct PhiAllocator {
+    count: u32,
+}
+
+impl PhiAllocator {
+    pub fn new() -> PhiAllocator {
+        PhiAllocator { count: 0 }
+    }
+
+    pub fn alloc(&mut self) -> u32 {
+        let idx = self.count;
+        self.count = idx + 1;
+        idx
+    }
+}
+
 #[repr(C)]
 #[derive(DstsAsSlice)]
 pub struct OpPhiSrcs {
@@ -3998,6 +4014,7 @@ impl BasicBlock {
 
 pub struct Function {
     pub ssa_alloc: SSAValueAllocator,
+    pub phi_alloc: PhiAllocator,
     pub blocks: CFG<BasicBlock>,
 }
 
