@@ -1545,7 +1545,7 @@ cso_set_stream_outputs(struct cso_context *ctx,
                        const unsigned *offsets)
 {
    struct pipe_context *pipe = ctx->base.pipe;
-   uint i;
+   unsigned i;
 
    if (!ctx->has_streamout) {
       assert(num_targets == 0);
@@ -1592,7 +1592,7 @@ static void
 cso_restore_stream_outputs(struct cso_context *ctx)
 {
    struct pipe_context *pipe = ctx->base.pipe;
-   uint i;
+   unsigned i;
    unsigned offset[PIPE_MAX_SO_BUFFERS];
 
    if (!ctx->has_streamout) {
@@ -1783,7 +1783,7 @@ cso_restore_compute_state(struct cso_context *cso)
 /* drawing */
 
 void
-cso_draw_arrays(struct cso_context *cso, uint mode, uint start, uint count)
+cso_draw_arrays(struct cso_context *cso, unsigned mode, unsigned start, unsigned count)
 {
    struct pipe_draw_info info;
    struct pipe_draw_start_count_bias draw;
@@ -1804,9 +1804,9 @@ cso_draw_arrays(struct cso_context *cso, uint mode, uint start, uint count)
 
 
 void
-cso_draw_arrays_instanced(struct cso_context *cso, uint mode,
-                          uint start, uint count,
-                          uint start_instance, uint instance_count)
+cso_draw_arrays_instanced(struct cso_context *cso, unsigned mode,
+                          unsigned start, unsigned count,
+                          unsigned start_instance, unsigned instance_count)
 {
    struct pipe_draw_info info;
    struct pipe_draw_start_count_bias draw;

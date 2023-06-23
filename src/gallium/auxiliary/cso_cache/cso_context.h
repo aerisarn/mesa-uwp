@@ -219,12 +219,12 @@ cso_set_vertex_buffers_and_elements(struct cso_context *ctx,
                                     const struct pipe_vertex_buffer *vbuffers);
 
 void
-cso_draw_arrays_instanced(struct cso_context *cso, uint mode,
-                          uint start, uint count,
-                          uint start_instance, uint instance_count);
+cso_draw_arrays_instanced(struct cso_context *cso, unsigned mode,
+                          unsigned start, unsigned count,
+                          unsigned start_instance, unsigned instance_count);
 
 void
-cso_draw_arrays(struct cso_context *cso, uint mode, uint start, uint count);
+cso_draw_arrays(struct cso_context *cso, unsigned mode, unsigned start, unsigned count);
 
 /* Inline functions. */
 
