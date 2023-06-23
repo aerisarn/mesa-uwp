@@ -282,11 +282,11 @@ struct draw_context
    /** Vertex shader state */
    struct {
       struct draw_vertex_shader *vertex_shader;
-      uint num_vs_outputs;  /**< convenience, from vertex_shader */
-      uint position_output;
-      uint edgeflag_output;
-      uint clipvertex_output;
-      uint ccdistance_output[2];
+      unsigned num_vs_outputs;  /**< convenience, from vertex_shader */
+      unsigned position_output;
+      unsigned edgeflag_output;
+      unsigned clipvertex_output;
+      unsigned ccdistance_output[2];
 
       /** Fields for TGSI interpreter / execution */
       struct {
@@ -306,9 +306,9 @@ struct draw_context
    /** Geometry shader state */
    struct {
       struct draw_geometry_shader *geometry_shader;
-      uint num_gs_outputs;  /**< convenience, from geometry_shader */
-      uint position_output;
-      uint clipvertex_output;
+      unsigned num_gs_outputs;  /**< convenience, from geometry_shader */
+      unsigned position_output;
+      unsigned clipvertex_output;
 
       /** Fields for TGSI interpreter / execution */
       struct {
@@ -327,9 +327,9 @@ struct draw_context
 
    struct {
       struct draw_tess_eval_shader *tess_eval_shader;
-      uint num_tes_outputs;  /**< convenience, from tess_eval_shader */
-      uint position_output;
-      uint clipvertex_output;
+      unsigned num_tes_outputs;  /**< convenience, from tess_eval_shader */
+      unsigned position_output;
+      unsigned clipvertex_output;
    } tes;
 
    /** Fragment shader state */
@@ -339,15 +339,15 @@ struct draw_context
 
    struct {
       struct draw_mesh_shader *mesh_shader;
-      uint num_ms_outputs;  /**< convenience, from geometry_shader */
-      uint position_output;
-      uint clipvertex_output;
+      unsigned num_ms_outputs;  /**< convenience, from geometry_shader */
+      unsigned position_output;
+      unsigned clipvertex_output;
    } ms;
 
    /** Stream output (vertex feedback) state */
    struct {
       struct draw_so_target *targets[PIPE_MAX_SO_BUFFERS];
-      uint num_targets;
+      unsigned num_targets;
    } so;
 
    /* Clip derived state:
@@ -357,10 +357,10 @@ struct draw_context
    /* If a prim stage introduces new vertex attributes, they'll be stored here
     */
    struct {
-      uint num;
+      unsigned num;
       enum tgsi_semantic semantic_name[DRAW_MAX_EXTRA_SHADER_OUTPUTS];
-      uint semantic_index[DRAW_MAX_EXTRA_SHADER_OUTPUTS];
-      uint slot[DRAW_MAX_EXTRA_SHADER_OUTPUTS];
+      unsigned semantic_index[DRAW_MAX_EXTRA_SHADER_OUTPUTS];
+      unsigned slot[DRAW_MAX_EXTRA_SHADER_OUTPUTS];
    } extra_shader_outputs;
 
    unsigned instance_id;
@@ -439,16 +439,16 @@ void draw_gs_destroy(struct draw_context *draw);
 /*******************************************************************************
  * Common shading code:
  */
-uint draw_current_shader_outputs(const struct draw_context *draw);
-uint draw_current_shader_position_output(const struct draw_context *draw);
-uint draw_current_shader_viewport_index_output(const struct draw_context *draw);
-uint draw_current_shader_clipvertex_output(const struct draw_context *draw);
-uint draw_current_shader_ccdistance_output(const struct draw_context *draw, int index);
-uint draw_current_shader_num_written_clipdistances(const struct draw_context *draw);
-uint draw_current_shader_num_written_culldistances(const struct draw_context *draw);
+unsigned draw_current_shader_outputs(const struct draw_context *draw);
+unsigned draw_current_shader_position_output(const struct draw_context *draw);
+unsigned draw_current_shader_viewport_index_output(const struct draw_context *draw);
+unsigned draw_current_shader_clipvertex_output(const struct draw_context *draw);
+unsigned draw_current_shader_ccdistance_output(const struct draw_context *draw, int index);
+unsigned draw_current_shader_num_written_clipdistances(const struct draw_context *draw);
+unsigned draw_current_shader_num_written_culldistances(const struct draw_context *draw);
 int draw_alloc_extra_vertex_attrib(struct draw_context *draw,
                                    enum tgsi_semantic semantic_name,
-                                   uint semantic_index);
+                                   unsigned semantic_index);
 void draw_remove_extra_vertex_attribs(struct draw_context *draw);
 boolean draw_current_shader_uses_viewport_index(
    const struct draw_context *draw);

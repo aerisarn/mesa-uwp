@@ -251,13 +251,13 @@ draw_pt_destroy(struct draw_context *draw)
  */
 static void
 draw_print_arrays(struct draw_context *draw, enum mesa_prim prim,
-                  int start, uint count, int index_bias)
+                  int start, unsigned count, int index_bias)
 {
    debug_printf("Draw arrays(prim = %u, start = %u, count = %u)\n",
                 prim, start, count);
 
    for (unsigned i = 0; i < count; i++) {
-      uint ii = 0;
+      unsigned ii = 0;
 
       if (draw->pt.user.eltSize) {
          /* indexed arrays */
@@ -296,7 +296,7 @@ draw_print_arrays(struct draw_context *draw, enum mesa_prim prim,
       }
 
       for (unsigned j = 0; j < draw->pt.nr_vertex_elements; j++) {
-         uint buf = draw->pt.vertex_element[j].vertex_buffer_index;
+         unsigned buf = draw->pt.vertex_element[j].vertex_buffer_index;
          ubyte *ptr = (ubyte *) draw->pt.user.vbuffer[buf].map;
 
          if (draw->pt.vertex_element[j].instance_divisor) {

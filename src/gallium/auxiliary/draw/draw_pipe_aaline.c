@@ -77,9 +77,9 @@ struct aaline_stage
    float half_line_width;
 
    /** For AA lines, this is the vertex attrib slot for new generic */
-   uint coord_slot;
+   unsigned coord_slot;
    /** position, not necessarily output zero */
-   uint pos_slot;
+   unsigned pos_slot;
 
 
    /*
@@ -135,7 +135,7 @@ aa_transform_decl(struct tgsi_transform_context *ctx,
       }
    }
    else if (decl->Declaration.File == TGSI_FILE_TEMPORARY) {
-      uint i;
+      unsigned i;
       for (i = decl->Range.First;
            i <= decl->Range.Last; i++) {
          /*
@@ -285,7 +285,7 @@ aa_transform_inst(struct tgsi_transform_context *ctx,
                   struct tgsi_full_instruction *inst)
 {
    struct aa_transform_context *aactx = (struct aa_transform_context *) ctx;
-   uint i;
+   unsigned i;
 
    /*
     * Look for writes to result.color and replace with colorTemp reg.
@@ -314,7 +314,7 @@ generate_aaline_fs(struct aaline_stage *aaline)
    const struct pipe_shader_state *orig_fs = &aaline->fs->state;
    struct pipe_shader_state aaline_fs;
    struct aa_transform_context transform;
-   const uint newLen = tgsi_num_tokens(orig_fs->tokens) + NUM_NEW_TOKENS;
+   const unsigned newLen = tgsi_num_tokens(orig_fs->tokens) + NUM_NEW_TOKENS;
 
    aaline_fs = *orig_fs; /* copy to init */
 
@@ -415,8 +415,8 @@ aaline_line(struct draw_stage *stage, struct prim_header *header)
    const float half_width = aaline->half_line_width;
    struct prim_header tri;
    struct vertex_header *v[8];
-   uint coordPos = aaline->coord_slot;
-   uint posPos = aaline->pos_slot;
+   unsigned coordPos = aaline->coord_slot;
+   unsigned posPos = aaline->pos_slot;
    float *pos, *tex;
    float dx = header->v[1]->data[posPos][0] - header->v[0]->data[posPos][0];
    float dy = header->v[1]->data[posPos][1] - header->v[0]->data[posPos][1];
@@ -424,7 +424,7 @@ aaline_line(struct draw_stage *stage, struct prim_header *header)
    float c_a = dx / length, s_a = dy / length;
    float half_length = 0.5 * length;
    float t_l, t_w;
-   uint i;
+   unsigned i;
 
    half_length = half_length + 0.5f;
 

@@ -553,15 +553,15 @@ draw_enable_point_sprites(struct draw_context *draw, boolean enable)
 int
 draw_alloc_extra_vertex_attrib(struct draw_context *draw,
                                enum tgsi_semantic semantic_name,
-                               uint semantic_index)
+                               unsigned semantic_index)
 {
    int slot = draw_find_shader_output(draw, semantic_name, semantic_index);
    if (slot >= 0) {
       return slot;
    }
 
-   uint num_outputs = draw_current_shader_outputs(draw);
-   uint n = draw->extra_shader_outputs.num;
+   unsigned num_outputs = draw_current_shader_outputs(draw);
+   unsigned n = draw->extra_shader_outputs.num;
 
    assert(n < ARRAY_SIZE(draw->extra_shader_outputs.semantic_name));
 
@@ -647,7 +647,7 @@ draw_prepare_shader_outputs(struct draw_context *draw)
 int
 draw_find_shader_output(const struct draw_context *draw,
                         enum tgsi_semantic semantic_name,
-                        uint semantic_index)
+                        unsigned semantic_index)
 {
    const struct tgsi_shader_info *info = draw_get_shader_info(draw);
 
@@ -678,7 +678,7 @@ draw_find_shader_output(const struct draw_context *draw,
  * If geometry shader is present, its output will be returned,
  * if not vertex shader is used.
  */
-uint
+unsigned
 draw_num_shader_outputs(const struct draw_context *draw)
 {
    const struct tgsi_shader_info *info = draw_get_shader_info(draw);
@@ -692,7 +692,7 @@ draw_num_shader_outputs(const struct draw_context *draw)
  * be filled in by some draw stages (such as AA point, AA line,
  * front face).
  */
-uint
+unsigned
 draw_total_vs_outputs(const struct draw_context *draw)
 {
    const struct tgsi_shader_info *info = &draw->vs.vertex_shader->info;
@@ -707,7 +707,7 @@ draw_total_vs_outputs(const struct draw_context *draw)
  * be filled in by some draw stages (such as AA point, AA line, front
  * face).
  */
-uint
+unsigned
 draw_total_gs_outputs(const struct draw_context *draw)
 {
    if (!draw->gs.geometry_shader)
@@ -720,7 +720,7 @@ draw_total_gs_outputs(const struct draw_context *draw)
 /**
  * Return total number of the tess ctrl shader outputs.
  */
-uint
+unsigned
 draw_total_tcs_outputs(const struct draw_context *draw)
 {
    if (!draw->tcs.tess_ctrl_shader)
@@ -733,7 +733,7 @@ draw_total_tcs_outputs(const struct draw_context *draw)
 /**
  * Return total number of the tess eval shader outputs.
  */
-uint
+unsigned
 draw_total_tes_outputs(const struct draw_context *draw)
 {
    if (!draw->tes.tess_eval_shader)
@@ -869,7 +869,7 @@ void draw_do_flush(struct draw_context *draw, unsigned flags)
  * outputs from the vertex shader.
  * \sa draw_num_shader_outputs
  */
-uint
+unsigned
 draw_current_shader_outputs(const struct draw_context *draw)
 {
    if (draw->ms.mesh_shader)
@@ -886,7 +886,7 @@ draw_current_shader_outputs(const struct draw_context *draw)
  * Return the index of the shader output which will contain the
  * vertex position.
  */
-uint
+unsigned
 draw_current_shader_position_output(const struct draw_context *draw)
 {
    if (draw->ms.mesh_shader)
@@ -903,7 +903,7 @@ draw_current_shader_position_output(const struct draw_context *draw)
  * Return the index of the shader output which will contain the
  * viewport index.
  */
-uint
+unsigned
 draw_current_shader_viewport_index_output(const struct draw_context *draw)
 {
    if (draw->ms.mesh_shader)
@@ -939,7 +939,7 @@ draw_current_shader_uses_viewport_index(const struct draw_context *draw)
  * Note we don't support clipvertex output in the gs. For clipping
  * to work correctly hence we return ordinary position output instead.
  */
-uint
+unsigned
 draw_current_shader_clipvertex_output(const struct draw_context *draw)
 {
    if (draw->ms.mesh_shader)
@@ -952,7 +952,7 @@ draw_current_shader_clipvertex_output(const struct draw_context *draw)
 }
 
 
-uint
+unsigned
 draw_current_shader_ccdistance_output(const struct draw_context *draw, int index)
 {
    assert(index < PIPE_MAX_CLIP_OR_CULL_DISTANCE_ELEMENT_COUNT);
@@ -966,7 +966,7 @@ draw_current_shader_ccdistance_output(const struct draw_context *draw, int index
 }
 
 
-uint
+unsigned
 draw_current_shader_num_written_clipdistances(const struct draw_context *draw)
 {
    if (draw->ms.mesh_shader)
@@ -978,7 +978,7 @@ draw_current_shader_num_written_clipdistances(const struct draw_context *draw)
    return draw->vs.vertex_shader->info.num_written_clipdistance;
 }
 
-uint
+unsigned
 draw_current_shader_num_written_culldistances(const struct draw_context *draw)
 {
    if (draw->ms.mesh_shader)

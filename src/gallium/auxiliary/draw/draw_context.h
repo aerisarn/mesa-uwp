@@ -169,24 +169,24 @@ draw_prepare_shader_outputs(struct draw_context *draw);
 int
 draw_find_shader_output(const struct draw_context *draw,
                         enum tgsi_semantic semantic_name,
-                        uint semantic_index);
+                        unsigned semantic_index);
 
 boolean
 draw_will_inject_frontface(const struct draw_context *draw);
 
-uint
+unsigned
 draw_num_shader_outputs(const struct draw_context *draw);
 
-uint
+unsigned
 draw_total_vs_outputs(const struct draw_context *draw);
 
-uint
+unsigned
 draw_total_gs_outputs(const struct draw_context *draw);
 
-uint
+unsigned
 draw_total_tcs_outputs(const struct draw_context *draw);
 
-uint
+unsigned
 draw_total_tes_outputs(const struct draw_context *draw);
 
 void

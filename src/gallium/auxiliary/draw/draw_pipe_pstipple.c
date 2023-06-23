@@ -66,7 +66,7 @@ struct pstip_fragment_shader
    struct pipe_shader_state state;
    void *driver_fs;
    void *pstip_fs;
-   uint sampler_unit;
+   unsigned sampler_unit;
 };
 
 
@@ -80,8 +80,8 @@ struct pstip_stage
    void *sampler_cso;
    struct pipe_resource *texture;
    struct pipe_sampler_view *sampler_view;
-   uint num_samplers;
-   uint num_sampler_views;
+   unsigned num_samplers;
+   unsigned num_sampler_views;
 
    /*
     * Currently bound state
@@ -196,8 +196,8 @@ pstip_first_tri(struct draw_stage *stage, struct prim_header *header)
    struct pstip_stage *pstip = pstip_stage(stage);
    struct pipe_context *pipe = pstip->pipe;
    struct draw_context *draw = stage->draw;
-   uint num_samplers;
-   uint num_sampler_views;
+   unsigned num_samplers;
+   unsigned num_sampler_views;
 
    assert(stage->draw->rasterizer->poly_stipple_enable);
 

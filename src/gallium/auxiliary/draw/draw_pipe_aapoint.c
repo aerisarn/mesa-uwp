@@ -94,10 +94,10 @@ struct aapoint_stage
    int psize_slot;
 
    /** this is the vertex attrib slot for the new texcoords */
-   uint tex_slot;
+   unsigned tex_slot;
 
    /** vertex attrib slot containing position */
-   uint pos_slot;
+   unsigned pos_slot;
 
    /** Type of Boolean variables on this hardware. */
    nir_alu_type bool_type;
@@ -153,7 +153,7 @@ aa_transform_decl(struct tgsi_transform_context *ctx,
       }
    }
    else if (decl->Declaration.File == TGSI_FILE_TEMPORARY) {
-      uint i;
+      unsigned i;
       for (i = decl->Range.First;
            i <= decl->Range.Last; i++) {
          aactx->tempsUsed |= 1u << i;
@@ -176,7 +176,7 @@ aa_transform_prolog(struct tgsi_transform_context *ctx)
    struct tgsi_full_instruction newInst;
    const int texInput = aactx->maxInput + 1;
    int tmp0;
-   uint i;
+   unsigned i;
 
    /* find two free temp regs */
    for (i = 0; i < 32; i++) {
@@ -365,7 +365,7 @@ generate_aapoint_fs(struct aapoint_stage *aapoint)
    const struct pipe_shader_state *orig_fs = &aapoint->fs->state;
    struct pipe_shader_state aapoint_fs;
    struct aa_transform_context transform;
-   const uint newLen = tgsi_num_tokens(orig_fs->tokens) + NUM_NEW_TOKENS;
+   const unsigned newLen = tgsi_num_tokens(orig_fs->tokens) + NUM_NEW_TOKENS;
    struct pipe_context *pipe = aapoint->stage.draw->pipe;
 
    aapoint_fs = *orig_fs; /* copy to init */
@@ -475,8 +475,8 @@ aapoint_point(struct draw_stage *stage, struct prim_header *header)
    const struct aapoint_stage *aapoint = aapoint_stage(stage);
    struct prim_header tri;
    struct vertex_header *v[4];
-   const uint tex_slot = aapoint->tex_slot;
-   const uint pos_slot = aapoint->pos_slot;
+   const unsigned tex_slot = aapoint->tex_slot;
+   const unsigned pos_slot = aapoint->pos_slot;
    float radius, *pos, *tex;
    float k;
 

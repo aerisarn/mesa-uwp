@@ -72,8 +72,8 @@ struct widepoint_stage {
    float ybias;
 
    /** for automatic texcoord generation/replacement */
-   uint num_texcoord_gen;
-   uint texcoord_gen_slot[PIPE_MAX_SHADER_OUTPUTS];
+   unsigned num_texcoord_gen;
+   unsigned texcoord_gen_slot[PIPE_MAX_SHADER_OUTPUTS];
 
    /* TGSI_SEMANTIC to which sprite_coord_enable applies */
    enum tgsi_semantic sprite_coord_semantic;
@@ -101,10 +101,10 @@ set_texcoords(const struct widepoint_stage *wide,
 {
    const struct draw_context *draw = wide->stage.draw;
    const struct pipe_rasterizer_state *rast = draw->rasterizer;
-   const uint texcoord_mode = rast->sprite_coord_mode;
+   const unsigned texcoord_mode = rast->sprite_coord_mode;
 
    for (unsigned i = 0; i < wide->num_texcoord_gen; i++) {
-      const uint slot = wide->texcoord_gen_slot[i];
+      const unsigned slot = wide->texcoord_gen_slot[i];
       v->data[slot][0] = tc[0];
       if (texcoord_mode == PIPE_SPRITE_COORD_LOWER_LEFT)
          v->data[slot][1] = 1.0f - tc[1];

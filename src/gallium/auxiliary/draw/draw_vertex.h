@@ -66,9 +66,9 @@ enum attrib_emit {
  */
 struct vertex_info
 {
-   uint num_attribs;
+   unsigned num_attribs;
    uint32_t hwfmt[4];  /**< hardware format info for this format */
-   uint size;          /**< total vertex size in dwords */
+   unsigned size;      /**< total vertex size in dwords */
 
    /* Keep this small and at the end of the struct to allow quick
     * memcmp() comparisons.
@@ -117,7 +117,7 @@ draw_emit_vertex_attr(struct vertex_info *vinfo,
                       enum attrib_emit emit,
                       int src_index)
 {
-   const uint n = vinfo->num_attribs;
+   const unsigned n = vinfo->num_attribs;
 
    /* If the src_index is negative, meaning it hasn't been found
     * we'll assign it all zeros later - set to DRAW_ATTR_NONEXIST */

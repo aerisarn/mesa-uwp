@@ -58,13 +58,13 @@ struct clip_stage {
    int cv_attr;
 
    /* List of the attributes to be constant interpolated. */
-   uint num_const_attribs;
+   unsigned num_const_attribs;
    uint8_t const_attribs[PIPE_MAX_SHADER_OUTPUTS];
    /* List of the attributes to be linear interpolated. */
-   uint num_linear_attribs;
+   unsigned num_linear_attribs;
    uint8_t linear_attribs[PIPE_MAX_SHADER_OUTPUTS];
    /* List of the attributes to be perspective interpolated. */
-   uint num_perspect_attribs;
+   unsigned num_perspect_attribs;
    uint8_t perspect_attribs[PIPE_MAX_SHADER_OUTPUTS];
 
    float (*plane)[4];
@@ -123,7 +123,7 @@ copy_flat(struct draw_stage *stage,
 {
    const struct clip_stage *clipper = clip_stage(stage);
    for (unsigned i = 0; i < clipper->num_const_attribs; i++) {
-      const uint attr = clipper->const_attribs[i];
+      const unsigned attr = clipper->const_attribs[i];
       COPY_4FV(dst->data[attr], src->data[attr]);
    }
 }
@@ -767,7 +767,7 @@ clip_tri(struct draw_stage *stage, struct prim_header *header)
 static enum tgsi_interpolate_mode
 find_interp(const struct draw_fragment_shader *fs,
             enum tgsi_interpolate_mode *indexed_interp,
-            enum tgsi_semantic semantic_name, uint semantic_index)
+            enum tgsi_semantic semantic_name, unsigned semantic_index)
 {
    enum tgsi_interpolate_mode interp;
 
@@ -787,7 +787,7 @@ find_interp(const struct draw_fragment_shader *fs,
        * This probably only matters for layer, vpindex, culldist, maybe
        * front_face.
        */
-      uint j;
+      unsigned j;
       if (semantic_name == TGSI_SEMANTIC_LAYER ||
           semantic_name == TGSI_SEMANTIC_VIEWPORT_INDEX) {
          interp = TGSI_INTERPOLATE_CONSTANT;
