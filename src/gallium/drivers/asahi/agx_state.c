@@ -2261,6 +2261,12 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
       if (store) {
          /* TODO: Suppress stores to discarded render targets */
          key.op[rt] = AGX_META_OP_STORE;
+      } else if (batch->tilebuffer_layout.spilled[rt] && partial_render) {
+         /* Partial render programs exist only to store/load the tilebuffer to
+          * main memory. When render targets are already spilled to main memory,
+          * there's nothing to do.
+          */
+         key.op[rt] = AGX_META_OP_NONE;
       } else {
          struct agx_resource *rsrc = agx_resource(surf->texture);
          bool valid = agx_resource_valid(rsrc, surf->u.tex.level);
