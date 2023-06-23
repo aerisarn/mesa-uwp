@@ -63,8 +63,8 @@ struct vbuf_stage {
    /* FIXME: we have no guarantee that 'unsigned' is 32bit */
 
    /** Vertices in hardware format */
-   unsigned *vertices;
-   unsigned *vertex_ptr;
+   uint8_t *vertices;
+   uint8_t *vertex_ptr;
    unsigned max_vertices;
    unsigned nr_vertices;
 
@@ -130,7 +130,7 @@ emit_vertex(struct vbuf_stage *vbuf, struct vertex_header *vertex)
 
       if (0) draw_dump_emitted_vertex(vbuf->vinfo, (uint8_t *)vbuf->vertex_ptr);
 
-      vbuf->vertex_ptr += vbuf->vertex_size/4;
+      vbuf->vertex_ptr += vbuf->vertex_size;
       vertex->vertex_id = vbuf->nr_vertices++;
    }
 
@@ -365,9 +365,8 @@ vbuf_alloc_vertices(struct vbuf_stage *vbuf)
                                    (ushort) vbuf->vertex_size,
                                    (ushort) vbuf->max_vertices);
 
-   vbuf->vertices = (uint *) vbuf->render->map_vertices(vbuf->render);
-
-   vbuf->vertex_ptr = vbuf->vertices;
+   vbuf->vertex_ptr = vbuf->vertices =
+      vbuf->render->map_vertices(vbuf->render);
 }
 
 
@@ -439,8 +438,7 @@ draw_vbuf_stage(struct draw_context *draw, struct vbuf_render *render)
    if (!vbuf->cache)
       goto fail;
 
-   vbuf->vertices = NULL;
-   vbuf->vertex_ptr = vbuf->vertices;
+   vbuf->vertex_ptr = vbuf->vertices = NULL;
 
    vbuf->zero4[0] = vbuf->zero4[1] = vbuf->zero4[2] = vbuf->zero4[3] = 0.0f;
 
