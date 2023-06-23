@@ -44,7 +44,7 @@ util_draw_vertex_buffer(struct pipe_context *pipe,
                         struct pipe_resource *vbuf,
                         uint vbuf_slot,
                         uint offset,
-                        uint prim_type,
+                        enum mesa_prim prim_type,
                         uint num_verts,
                         uint num_attribs)
 {
@@ -76,7 +76,8 @@ util_draw_vertex_buffer(struct pipe_context *pipe,
  */
 void
 util_draw_user_vertex_buffer(struct cso_context *cso, void *buffer,
-                             uint prim_type, uint num_verts, uint num_attribs)
+                             enum mesa_prim prim_type, uint num_verts,
+                             uint num_attribs)
 {
    struct pipe_vertex_buffer vbuffer = {0};
 
