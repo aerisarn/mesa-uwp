@@ -42,7 +42,7 @@
  */
 
 
-#if !defined(DISPATCH_FUNCTION_SIZE) 
+#if !defined(DISPATCH_FUNCTION_SIZE)
 # define NEED_FUNCTION_POINTER
 #endif
 #include "glprocs.h"
@@ -53,14 +53,14 @@
  * and return the corresponding glprocs_table_t entry.
  */
 static const glprocs_table_t *
-get_static_proc( const char * n )
+get_static_proc(const char *n)
 {
    GLuint i;
    for (i = 0; static_functions[i].Name_offset >= 0; i++) {
       const char *testName = gl_string_table + static_functions[i].Name_offset;
       if (strcmp(testName, n) == 0)
       {
-	 return &static_functions[i];
+         return &static_functions[i];
       }
    }
    return NULL;
@@ -74,7 +74,7 @@ get_static_proc( const char * n )
 static GLint
 get_static_proc_offset(const char *funcName)
 {
-   const glprocs_table_t * const f = get_static_proc( funcName );
+   const glprocs_table_t *const f = get_static_proc(funcName);
    if (f == NULL) {
       return -1;
    }
@@ -159,7 +159,7 @@ _glapi_get_proc_address(const char *funcName)
 
    init_glapi_relocs_once();
 
-  if (!funcName || funcName[0] != 'g' || funcName[1] != 'l')
+   if (!funcName || funcName[0] != 'g' || funcName[1] != 'l')
       return NULL;
 
    /* search static functions */
