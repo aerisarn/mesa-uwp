@@ -110,7 +110,7 @@ struct cso_context {
    void *compute_shader, *compute_shader_saved;
    void *velements, *velements_saved;
    struct pipe_query *render_condition, *render_condition_saved;
-   uint render_condition_mode, render_condition_mode_saved;
+   enum pipe_render_cond_flag render_condition_mode, render_condition_mode_saved;
    boolean render_condition_cond, render_condition_cond_saved;
    bool flatshade_first, flatshade_first_saved;
 
