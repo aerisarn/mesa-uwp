@@ -110,13 +110,13 @@ struct vbuf_render {
     */
    void (*draw_elements)(struct vbuf_render *,
                          const ushort *indices,
-                         uint nr_indices);
+                         unsigned nr_indices);
 
    /* Draw non-indexed primitives.
     */
    void (*draw_arrays)(struct vbuf_render *,
                        unsigned start,
-                       uint nr);
+                       unsigned nr);
 
    /**
     * Called when vbuf is done with this set of vertices:
