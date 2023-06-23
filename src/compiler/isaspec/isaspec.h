@@ -51,6 +51,17 @@ struct isa_entrypoint {
 	uint32_t offset;
 };
 
+struct isa_print_state {
+	FILE *out;
+
+	/**
+	 * Column number of current line
+	 */
+	unsigned line_column;
+};
+
+void isa_print(struct isa_print_state *state, const char *fmt, ...) PRINTFLIKE(2, 3);
+
 struct isa_decode_options {
 	uint32_t gpu_id;
 
@@ -82,6 +93,11 @@ struct isa_decode_options {
 	 * Callback for field decode
 	 */
 	void (*field_cb)(void *data, const char *field_name, struct isa_decode_value *val);
+
+	/**
+	 * Callback for fields that need custom code to print their value.
+	 */
+	void (*field_print_cb)(struct isa_print_state *print, const char *field_name, uint64_t val);
 
 	/**
 	 * Callback prior to instruction decode

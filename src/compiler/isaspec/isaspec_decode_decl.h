@@ -90,6 +90,9 @@ struct isa_field {
 		TYPE_BOOL,
 		TYPE_ENUM,
 
+		/* For fields that must be printed via a user-provided callback */
+		TYPE_CUSTOM,
+
 		/* To assert a certain value in a given range of bits.. not
 		 * used for pattern matching, but allows an override to specify
 		 * that a certain bitpattern in some "unused" bits is expected
