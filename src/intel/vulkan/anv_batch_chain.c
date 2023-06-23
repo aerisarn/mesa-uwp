@@ -1412,7 +1412,8 @@ anv_queue_submit(struct vk_queue *vk_queue,
 
 VkResult
 anv_queue_submit_simple_batch(struct anv_queue *queue,
-                              struct anv_batch *batch)
+                              struct anv_batch *batch,
+                              bool is_companion_rcs_batch)
 {
    struct anv_device *device = queue->device;
    VkResult result = VK_SUCCESS;
@@ -1440,14 +1441,18 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
 
    if (INTEL_DEBUG(DEBUG_BATCH) &&
        intel_debug_batch_in_range(device->debug_frame_desc->frame_id)) {
-      intel_print_batch(queue->decoder,
-                        batch_bo->map,
-                        batch_bo->size,
-                        batch_bo->offset, false);
+      int render_queue_idx =
+         anv_get_first_render_queue_index(device->physical);
+      struct intel_batch_decode_ctx *ctx = is_companion_rcs_batch ?
+                                           &device->decoder[render_queue_idx] :
+                                           queue->decoder;
+      intel_print_batch(ctx, batch_bo->map, batch_bo->size, batch_bo->offset,
+                        false);
    }
 
    result = device->kmd_backend->execute_simple_batch(queue, batch_bo,
-                                                      batch_size);
+                                                      batch_size,
+                                                      is_companion_rcs_batch);
 
    anv_bo_pool_free(&device->batch_bo_pool, batch_bo);
 

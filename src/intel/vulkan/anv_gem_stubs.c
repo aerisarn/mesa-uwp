@@ -59,9 +59,8 @@ stub_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
 }
 
 static VkResult
-stub_execute_simple_batch(struct anv_queue *queue,
-                          struct anv_bo *batch_bo,
-                          uint32_t batch_bo_size)
+stub_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
+                          uint32_t batch_bo_size, bool is_companion_rcs_batch)
 {
    return VK_ERROR_UNKNOWN;
 }

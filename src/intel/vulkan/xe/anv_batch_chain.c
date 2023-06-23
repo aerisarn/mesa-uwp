@@ -30,13 +30,17 @@
 #include "drm-uapi/xe_drm.h"
 
 VkResult
-xe_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
-                        uint32_t batch_bo_size)
+xe_execute_simple_batch(struct anv_queue *queue,
+                        struct anv_bo *batch_bo,
+                        uint32_t batch_bo_size,
+                        bool is_companion_rcs_batch)
 {
    struct anv_device *device = queue->device;
    VkResult result = VK_SUCCESS;
    uint32_t syncobj_handle;
-
+   uint32_t exec_queue_id = is_companion_rcs_batch ?
+                            queue->companion_rcs_id :
+                            queue->exec_queue_id;
    if (drmSyncobjCreate(device->fd, 0, &syncobj_handle))
       return vk_errorf(device, VK_ERROR_UNKNOWN, "Unable to create sync obj");
 
@@ -45,7 +49,7 @@ xe_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
       .handle = syncobj_handle,
    };
    struct drm_xe_exec exec = {
-      .exec_queue_id = queue->exec_queue_id,
+      .exec_queue_id = exec_queue_id,
       .num_batch_buffer = 1,
       .address = batch_bo->offset,
       .num_syncs = 1,

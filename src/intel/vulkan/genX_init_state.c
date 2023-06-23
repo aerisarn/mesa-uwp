@@ -322,7 +322,7 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
 }
 
 static VkResult
-init_render_queue_state(struct anv_queue *queue)
+init_render_queue_state(struct anv_queue *queue, bool is_companion_rcs_batch)
 {
    struct anv_device *device = queue->device;
    UNUSED const struct intel_device_info *devinfo = queue->device->info;
@@ -589,7 +589,7 @@ init_render_queue_state(struct anv_queue *queue)
 
    assert(batch.next <= batch.end);
 
-   return anv_queue_submit_simple_batch(queue, &batch);
+   return anv_queue_submit_simple_batch(queue, &batch, is_companion_rcs_batch);
 }
 
 static VkResult
@@ -653,7 +653,8 @@ init_compute_queue_state(struct anv_queue *queue)
 
    assert(batch.next <= batch.end);
 
-   return anv_queue_submit_simple_batch(queue, &batch);
+   return anv_queue_submit_simple_batch(queue, &batch,
+                                        false /* is_companion_rcs_batch */);
 }
 
 void
@@ -678,11 +679,20 @@ genX(init_device_state)(struct anv_device *device)
       struct anv_queue *queue = &device->queues[i];
       switch (queue->family->engine_class) {
       case INTEL_ENGINE_CLASS_RENDER:
-         res = init_render_queue_state(queue);
+         res = init_render_queue_state(queue, false /* is_companion_rcs_batch */);
          break;
-      case INTEL_ENGINE_CLASS_COMPUTE:
+      case INTEL_ENGINE_CLASS_COMPUTE: {
          res = init_compute_queue_state(queue);
+         if (res != VK_SUCCESS)
+            return res;
+
+         /**
+          * Execute RCS init batch by default on the companion RCS command buffer in
+          * order to support MSAA copy/clear operations on compute queue.
+          */
+         res = init_render_queue_state(queue, true /* is_companion_rcs_batch */);
          break;
+      }
       case INTEL_ENGINE_CLASS_VIDEO:
          res = VK_SUCCESS;
          break;

@@ -320,17 +320,22 @@ pin_state_pool(struct anv_device *device,
 
 static void
 get_context_and_exec_flags(struct anv_queue *queue,
+                           bool is_companion_rcs_batch,
                            uint64_t *exec_flags,
                            uint32_t *context_id)
 {
    assert(queue != NULL);
 
    struct anv_device *device = queue->device;
-   /* Submit to index 0 which is the main (CCS/BCS etc) virtual engine. */
+
+   /** Submit batch to index 0 which is the main virtual engine */
    *exec_flags = device->physical->has_vm_control ? 0 : queue->exec_flags;
 
-   *context_id = device->physical->has_vm_control ? queue->context_id :
-                                                    device->context_id;
+   *context_id = device->physical->has_vm_control ?
+                 is_companion_rcs_batch ?
+                 queue->companion_rcs_id :
+                 queue->context_id :
+                 device->context_id;
 }
 
 static VkResult
@@ -444,7 +449,7 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
 
    uint64_t exec_flags = 0;
    uint32_t context_id;
-   get_context_and_exec_flags(queue, &exec_flags, &context_id);
+   get_context_and_exec_flags(queue, false, &exec_flags, &context_id);
 
    execbuf->execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf->objects,
@@ -478,7 +483,7 @@ setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_queue *queue)
 
    uint64_t exec_flags = 0;
    uint32_t context_id;
-   get_context_and_exec_flags(queue, &exec_flags, &context_id);
+   get_context_and_exec_flags(queue, false, &exec_flags, &context_id);
 
    execbuf->execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf->objects,
@@ -542,7 +547,7 @@ setup_utrace_execbuf(struct anv_execbuf *execbuf, struct anv_queue *queue,
 
    uint64_t exec_flags = 0;
    uint32_t context_id;
-   get_context_and_exec_flags(queue, &exec_flags, &context_id);
+   get_context_and_exec_flags(queue, false, &exec_flags, &context_id);
 
    execbuf->execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf->objects,
@@ -770,7 +775,7 @@ i915_queue_exec_locked(struct anv_queue *queue,
 
       uint64_t exec_flags = 0;
       uint32_t context_id;
-      get_context_and_exec_flags(queue, &exec_flags, &context_id);
+      get_context_and_exec_flags(queue, false, &exec_flags, &context_id);
 
       struct drm_i915_gem_execbuffer2 query_pass_execbuf = {
          .buffers_ptr = (uintptr_t) &query_pass_object,
@@ -812,7 +817,7 @@ i915_queue_exec_locked(struct anv_queue *queue,
 
 VkResult
 i915_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
-                          uint32_t batch_bo_size)
+                          uint32_t batch_bo_size, bool is_companion_rcs_batch)
 {
    struct anv_device *device = queue->device;
    struct anv_execbuf execbuf = {
@@ -826,7 +831,8 @@ i915_execute_simple_batch(struct anv_queue *queue, struct anv_bo *batch_bo,
 
    uint64_t exec_flags = 0;
    uint32_t context_id;
-   get_context_and_exec_flags(queue, &exec_flags, &context_id);
+   get_context_and_exec_flags(queue, is_companion_rcs_batch, &exec_flags,
+                              &context_id);
 
    execbuf.execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf.objects,
