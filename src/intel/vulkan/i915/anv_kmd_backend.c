@@ -28,6 +28,7 @@
 #include "i915/anv_batch_chain.h"
 
 #include "drm-uapi/i915_drm.h"
+#include "intel/common/i915/intel_gem.h"
 
 static uint32_t
 i915_gem_create(struct anv_device *device,

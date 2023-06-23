@@ -28,6 +28,7 @@
 
 #include "intel/dev/intel_hwconfig.h"
 #include "intel/common/intel_gem.h"
+#include "intel/common/i915/intel_gem.h"
 
 #include "util/bitscan.h"
 #include "util/log.h"
