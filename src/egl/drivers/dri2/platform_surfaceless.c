@@ -288,7 +288,7 @@ surfaceless_probe_device_sw(_EGLDisplay *disp)
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
 
    dri2_dpy->fd_render_gpu = -1;
-   disp->Device = _eglAddDevice(dri2_dpy->fd_render_gpu, true);
+   disp->Device = _eglFindDevice(dri2_dpy->fd_render_gpu, true);
    assert(disp->Device);
 
    dri2_dpy->driver_name = strdup(disp->Options.Zink ? "zink" : "swrast");

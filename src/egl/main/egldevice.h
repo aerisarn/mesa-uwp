@@ -58,7 +58,7 @@ _eglLookupDevice(EGLDeviceEXT device)
 }
 
 _EGLDevice *
-_eglAddDevice(int fd, bool software);
+_eglFindDevice(int fd, bool software);
 
 enum _egl_device_extension {
    _EGL_DEVICE_SOFTWARE,

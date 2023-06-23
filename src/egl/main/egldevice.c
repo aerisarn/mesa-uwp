@@ -163,7 +163,7 @@ _eglAddDRMDevice(drmDevicePtr device, _EGLDevice **out_dev)
  * If a software device, the fd is ignored.
  */
 _EGLDevice *
-_eglAddDevice(int fd, bool software)
+_eglFindDevice(int fd, bool software)
 {
    _EGLDevice *dev;
 
@@ -183,10 +183,6 @@ _eglAddDevice(int fd, bool software)
       dev = NULL;
       goto out;
    }
-
-   /* Device is not added - error or already present */
-   if (_eglAddDRMDevice(device, &dev) != 0)
-      drmFreeDevice(&device);
 #else
    _eglLog(_EGL_FATAL,
            "Driver bug: Built without libdrm, yet looking for HW device");
