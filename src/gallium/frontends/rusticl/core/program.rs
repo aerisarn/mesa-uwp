@@ -559,7 +559,11 @@ impl Program {
                     // has to match CL_DEVICE_MAX_PARAMETER_SIZE
                     limit_max_function_arg: dev.param_max_size() as u32,
                 };
-                spirv.clone_on_validate(&options)
+                if Platform::dbg().allow_invalid_spirv {
+                    (Some(spirv.clone()), String::new())
+                } else {
+                    spirv.clone_on_validate(&options)
+                }
             }
             ProgramSourceType::Src(src) => {
                 let args = prepare_options(&options, dev);
