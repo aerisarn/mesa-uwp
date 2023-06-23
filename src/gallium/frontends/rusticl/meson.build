@@ -94,6 +94,8 @@ rusticl_args = [
 rusticl_gen_args = [
   # can't do anything about it anyway
   '-Aclippy::all',
+  # Some bindgen versions assume `unsafe_op_in_unsafe_fn`
+  '-Aunused_unsafe',
   '-Anon_camel_case_types',
   '-Anon_snake_case',
   '-Anon_upper_case_globals',
