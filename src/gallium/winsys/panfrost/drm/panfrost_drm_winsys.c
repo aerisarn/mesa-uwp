@@ -45,6 +45,7 @@ panfrost_create_kms_dumb_buffer_for_resource(struct pipe_resource *rsc,
 {
    /* Find the smallest width alignment that gives us a 64byte aligned stride */
    unsigned blk_sz = util_format_get_blocksize(rsc->format);
+   struct renderonly_scanout *scanout = NULL;
 
    assert(blk_sz);
 
@@ -73,8 +74,6 @@ panfrost_create_kms_dumb_buffer_for_resource(struct pipe_resource *rsc,
 
    if (create_dumb.pitch % 64)
       goto free_dumb;
-
-   struct renderonly_scanout *scanout;
 
    simple_mtx_lock(&ro->bo_map_lock);
    scanout = util_sparse_array_get(&ro->bo_map, create_dumb.handle);
@@ -107,6 +106,12 @@ panfrost_create_kms_dumb_buffer_for_resource(struct pipe_resource *rsc,
    return scanout;
 
 free_dumb:
+   /* If an error occured, make sure we reset the scanout object before
+    * leaving.
+    */
+   if (scanout)
+      memset(scanout, 0, sizeof(*scanout));
+
    destroy_dumb.handle = create_dumb.handle;
    drmIoctl(ro->kms_fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_dumb);
 
