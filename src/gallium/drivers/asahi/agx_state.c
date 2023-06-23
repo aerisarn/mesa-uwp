@@ -1097,6 +1097,30 @@ image_view_for_surface(struct pipe_surface *surf)
    };
 }
 
+/* Similarly, to read render targets, surfaces are bound as textures */
+static struct pipe_sampler_view
+sampler_view_for_surface(struct pipe_surface *surf)
+{
+   return (struct pipe_sampler_view){
+      /* To reduce shader variants, we always use a 2D
+       * texture. For reloads of arrays and cube maps, we
+       * map a single layer as a 2D image.
+       */
+      .target = PIPE_TEXTURE_2D,
+      .swizzle_r = PIPE_SWIZZLE_X,
+      .swizzle_g = PIPE_SWIZZLE_Y,
+      .swizzle_b = PIPE_SWIZZLE_Z,
+      .swizzle_a = PIPE_SWIZZLE_W,
+      .u.tex =
+         {
+            .first_layer = surf->u.tex.first_layer,
+            .last_layer = surf->u.tex.last_layer,
+            .first_level = surf->u.tex.level,
+            .last_level = surf->u.tex.level,
+         },
+   };
+}
+
 static void
 agx_pack_image_atomic_data(void *packed, struct pipe_image_view *view)
 {
@@ -2273,27 +2297,9 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          assert(surf != NULL && "cannot load nonexistent attachment");
 
          struct agx_resource *rsrc = agx_resource(surf->texture);
+         struct pipe_sampler_view sampler_view = sampler_view_for_surface(surf);
 
-         agx_pack_texture(texture.cpu, rsrc, surf->format,
-                          &(struct pipe_sampler_view){
-                             /* To reduce shader variants, we always use a 2D
-                              * texture. For reloads of arrays and cube maps, we
-                              * map a single layer as a 2D image.
-                              */
-                             .target = PIPE_TEXTURE_2D,
-                             .swizzle_r = PIPE_SWIZZLE_X,
-                             .swizzle_g = PIPE_SWIZZLE_Y,
-                             .swizzle_b = PIPE_SWIZZLE_Z,
-                             .swizzle_a = PIPE_SWIZZLE_W,
-                             .u.tex =
-                                {
-                                   .first_layer = surf->u.tex.first_layer,
-                                   .last_layer = surf->u.tex.last_layer,
-                                   .first_level = surf->u.tex.level,
-                                   .last_level = surf->u.tex.level,
-                                },
-                          },
-                          true);
+         agx_pack_texture(texture.cpu, rsrc, surf->format, &sampler_view, true);
 
          agx_usc_pack(&b, TEXTURE, cfg) {
             cfg.start = rt;
