@@ -265,19 +265,19 @@ draw_print_arrays(struct draw_context *draw, enum mesa_prim prim,
          switch (draw->pt.user.eltSize) {
          case 1:
             {
-               const ubyte *elem = (const ubyte *) draw->pt.user.elts;
+               const uint8_t *elem = (const uint8_t *) draw->pt.user.elts;
                ii = elem[start + i];
             }
             break;
          case 2:
             {
-               const ushort *elem = (const ushort *) draw->pt.user.elts;
+               const uint16_t *elem = (const uint16_t *) draw->pt.user.elts;
                ii = elem[start + i];
             }
             break;
          case 4:
             {
-               const uint *elem = (const uint *) draw->pt.user.elts;
+               const uint32_t *elem = (const uint32_t *) draw->pt.user.elts;
                ii = elem[start + i];
             }
             break;
