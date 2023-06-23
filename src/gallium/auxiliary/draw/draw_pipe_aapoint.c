@@ -122,7 +122,7 @@ struct aapoint_stage
  */
 struct aa_transform_context {
    struct tgsi_transform_context base;
-   uint tempsUsed;  /**< bitmask */
+   uint32_t tempsUsed;  /**< bitmask */
    int colorOutput; /**< which output is the primary color */
    int maxInput, maxGeneric;  /**< max input index found */
    int tmp0, colorTemp;  /**< temp registers */
@@ -156,7 +156,7 @@ aa_transform_decl(struct tgsi_transform_context *ctx,
       uint i;
       for (i = decl->Range.First;
            i <= decl->Range.Last; i++) {
-         aactx->tempsUsed |= (1 << i);
+         aactx->tempsUsed |= 1u << i;
       }
    }
 
