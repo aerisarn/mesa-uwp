@@ -534,12 +534,18 @@ fixup_chv_device_info(struct intel_device_info *devinfo)
       memcpy(needle, bsw_model, 3);
 }
 
+void *
+intel_device_info_i915_query_hwconfig(int fd, int32_t *len)
+{
+   return intel_i915_query_alloc(fd, DRM_I915_QUERY_HWCONFIG_BLOB, len);
+}
+
 bool intel_device_info_i915_get_info_from_fd(int fd, struct intel_device_info *devinfo)
 {
    void *hwconfig_blob;
    int32_t len;
 
-   hwconfig_blob = intel_i915_query_alloc(fd, DRM_I915_QUERY_HWCONFIG_BLOB, &len);
+   hwconfig_blob = intel_device_info_i915_query_hwconfig(fd, &len);
    if (hwconfig_blob) {
       if (intel_hwconfig_process_table(devinfo, hwconfig_blob, len))
          intel_device_info_update_after_hwconfig(devinfo);

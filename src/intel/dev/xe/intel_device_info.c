@@ -146,11 +146,18 @@ xe_query_gts(int fd, struct intel_device_info *devinfo)
    return true;
 }
 
+void *
+intel_device_info_xe_query_hwconfig(int fd, int32_t *len)
+{
+   return xe_query_alloc_fetch(fd, DRM_XE_DEVICE_QUERY_HWCONFIG, len);
+}
+
 static bool
-xe_query_hwconfig(int fd, struct intel_device_info *devinfo)
+xe_query_process_hwconfig(int fd, struct intel_device_info *devinfo)
 {
    int32_t len;
-   void *data = xe_query_alloc_fetch(fd, DRM_XE_DEVICE_QUERY_HWCONFIG, &len);
+   void *data = intel_device_info_xe_query_hwconfig(fd, &len);
+
    if (!data)
       return false;
 
@@ -306,7 +313,7 @@ intel_device_info_xe_get_info_from_fd(int fd, struct intel_device_info *devinfo)
    if (!xe_query_gts(fd, devinfo))
       return false;
 
-   if (xe_query_hwconfig(fd, devinfo))
+   if (xe_query_process_hwconfig(fd, devinfo))
       intel_device_info_update_after_hwconfig(devinfo);
 
    if (!xe_query_topology(fd, devinfo))
