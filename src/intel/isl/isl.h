@@ -1120,6 +1120,7 @@ typedef uint64_t isl_surf_usage_flags_t;
 #define ISL_SURF_USAGE_CPB_BIT                 (1u << 15)
 #define ISL_SURF_USAGE_PROTECTED_BIT           (1u << 16)
 #define ISL_SURF_USAGE_VIDEO_DECODE_BIT        (1u << 17)
+#define ISL_SURF_USAGE_STREAM_OUT_BIT          (1u << 18)
 /** @} */
 
 /**
