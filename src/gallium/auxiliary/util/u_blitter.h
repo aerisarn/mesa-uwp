@@ -136,7 +136,7 @@ struct blitter_context
    struct pipe_stream_output_target *saved_so_targets[PIPE_MAX_SO_BUFFERS];
 
    struct pipe_query *saved_render_cond_query;
-   uint saved_render_cond_mode;
+   enum pipe_render_cond_flag saved_render_cond_mode;
    bool saved_render_cond_cond;
 
    bool saved_window_rectangles_include;
