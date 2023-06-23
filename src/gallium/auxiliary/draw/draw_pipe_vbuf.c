@@ -183,7 +183,7 @@ vbuf_point(struct draw_stage *stage, struct prim_header *prim)
  * will be flushed if needed and a new one allocated.
  */
 static void
-vbuf_start_prim(struct vbuf_stage *vbuf, uint prim)
+vbuf_start_prim(struct vbuf_stage *vbuf, enum mesa_prim prim)
 {
    struct translate_key hw_key;
    unsigned dst_offset;
