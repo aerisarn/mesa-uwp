@@ -744,7 +744,6 @@ struct rematerialize_deref_state {
    bool progress;
    nir_builder builder;
    nir_block *block;
-   struct hash_table *cache;
 };
 
 static nir_deref_instr *
@@ -753,14 +752,6 @@ rematerialize_deref_in_block(nir_deref_instr *deref,
 {
    if (deref->instr.block == state->block)
       return deref;
-
-   if (!state->cache) {
-      state->cache = _mesa_pointer_hash_table_create(NULL);
-   }
-
-   struct hash_entry *cached = _mesa_hash_table_search(state->cache, deref);
-   if (cached)
-      return cached->data;
 
    nir_builder *b = &state->builder;
    nir_deref_instr *new_deref =
@@ -850,10 +841,6 @@ nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl)
    nir_foreach_block_unstructured(block, impl) {
       state.block = block;
 
-      /* Start each block with a fresh cache */
-      if (state.cache)
-         _mesa_hash_table_clear(state.cache, NULL);
-
       nir_foreach_instr_safe(instr, block) {
          if (instr->type == nir_instr_type_deref &&
              nir_deref_instr_remove_if_unused(nir_instr_as_deref(instr)))
@@ -875,8 +862,6 @@ nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl)
          assert(!nir_src_as_deref(following_if->condition));
 #endif
    }
-
-   _mesa_hash_table_destroy(state.cache, NULL);
 
    return state.progress;
 }
