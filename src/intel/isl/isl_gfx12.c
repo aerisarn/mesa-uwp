@@ -107,6 +107,12 @@ isl_gfx125_filter_tiling(const struct isl_device *dev,
    if (isl_format_is_yuv(info->format))
       *flags &= ~ISL_TILING_64_BIT;
 
+   /* Tile64 tilings for 3D have a different swizzling than a 2D surface. So
+    * filter them out if the usage wants 2D/3D compatibility.
+    */
+   if (info->usage & ISL_SURF_USAGE_2D_3D_COMPATIBLE_BIT)
+      *flags &= ~ISL_TILING_64_BIT;
+
    /* From RENDER_SURFACE_STATE::NumberofMultisamples,
     *
     *    This field must not be programmed to anything other than
