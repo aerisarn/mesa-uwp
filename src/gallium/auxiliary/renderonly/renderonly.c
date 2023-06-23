@@ -114,7 +114,7 @@ renderonly_create_kms_dumb_buffer_for_resource(struct pipe_resource *rsc,
    return scanout;
 
 free_dumb:
-   destroy_dumb.handle = scanout->handle;
+   destroy_dumb.handle = create_dumb.handle;
    drmIoctl(ro->kms_fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_dumb);
 
    return NULL;
