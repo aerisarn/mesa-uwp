@@ -312,8 +312,8 @@ lp_build_tgsi_aos(struct gallivm_state *gallivm,
 struct lp_build_tgsi_inst_list
 {
    struct tgsi_full_instruction *instructions;
-   uint max_instructions;
-   uint num_instructions;
+   unsigned max_instructions;
+   unsigned num_instructions;
 };
 
 unsigned lp_bld_tgsi_list_init(struct lp_build_tgsi_context * bld_base);
@@ -401,8 +401,8 @@ struct lp_build_tgsi_context
    int pc;
 
    struct tgsi_full_instruction *instructions;
-   uint max_instructions;
-   uint num_instructions;
+   unsigned max_instructions;
+   unsigned num_instructions;
 
    /** This function allows the user to insert some instructions at the
      * beginning of the program.  It is optional and does not need to be
@@ -604,7 +604,7 @@ struct lp_build_tgsi_soa_context
    struct lp_build_mask_context *mask;
    struct lp_exec_mask exec_mask;
 
-   uint num_immediates;
+   unsigned num_immediates;
    bool use_immediates_array;
 };
 

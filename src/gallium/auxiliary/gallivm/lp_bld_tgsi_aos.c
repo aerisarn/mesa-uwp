@@ -867,7 +867,7 @@ lp_build_tgsi_aos(struct gallivm_state *gallivm,
 {
    struct lp_build_tgsi_aos_context bld;
    struct tgsi_parse_context parse;
-   uint num_immediates = 0;
+   unsigned num_immediates = 0;
    unsigned chan;
    int pc = 0;
 
@@ -923,7 +923,7 @@ lp_build_tgsi_aos(struct gallivm_state *gallivm,
       case TGSI_TOKEN_TYPE_IMMEDIATE:
          /* simply copy the immediate values into the next immediates[] slot */
          {
-            const uint size = parse.FullToken.FullImmediate.Immediate.NrTokens - 1;
+            const unsigned size = parse.FullToken.FullImmediate.Immediate.NrTokens - 1;
             float imm[4];
             assert(size <= 4);
             assert(num_immediates < LP_MAX_INLINED_IMMEDIATES);
