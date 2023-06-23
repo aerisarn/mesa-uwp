@@ -50,12 +50,12 @@ void yyerror(const char *error)
 	fprintf(stderr, "error at line %d: %s\n", yyget_lineno(), error);
 }
 
-static struct asm_instruction *instr;   /* current instruction */
+static struct afuc_instr *instr;   /* current instruction */
 
 static void
-new_instr(int tok)
+new_instr(afuc_opc opc)
 {
-	instr = next_instr(tok);
+	instr = next_instr(opc);
 }
 
 static void
@@ -182,9 +182,10 @@ instr_or_label:    instr_r
 |                  T_LABEL_DECL   { decl_label($1); }
 
 /* instructions that can optionally have (rep) flag: */
-instr_r:           alu_instr
+instr_r:           alu_instr        { instr->xmov = 0; }
 |                  T_XMOV alu_instr { instr->xmov = $1; }
-|                  config_instr
+|                  load_instr
+|                  store_instr
 
 /* need to special case:
  * - not (single src, possibly an immediate)
@@ -193,36 +194,36 @@ instr_r:           alu_instr
  * from the other ALU instructions:
  */
 
-alu_msb_instr:     T_OP_MSB reg ',' reg        { new_instr($1); dst($2); src2($4); }
+alu_msb_instr:     T_OP_MSB reg ',' reg        { new_instr(OPC_MSB); dst($2); src1($4); }
 
-alu_not_instr:     T_OP_NOT reg ',' reg        { new_instr($1); dst($2); src2($4); }
-|                  T_OP_NOT reg ',' immediate  { new_instr($1); dst($2); immed($4); }
+alu_not_instr:     T_OP_NOT reg ',' reg        { new_instr(OPC_NOT); dst($2); src1($4); }
+|                  T_OP_NOT reg ',' immediate  { new_instr(OPC_NOT); dst($2); immed($4); }
 
-alu_mov_instr:     T_OP_MOV reg ',' reg        { new_instr($1); dst($2); src1($4); }
+alu_mov_instr:     T_OP_MOV reg ',' reg        { new_instr(OPC_OR); dst($2); src1(0); src2($4); }
 |                  T_OP_MOV reg ',' immediate T_LSHIFT immediate {
-                       new_instr($1); dst($2); immed($4); shift($6);
+                       new_instr(OPC_MOVI); dst($2); immed($4); shift($6);
 }
-|                  T_OP_MOV reg ',' immediate  { new_instr($1); dst($2); immed($4); }
+|                  T_OP_MOV reg ',' immediate  { new_instr(OPC_MOVI); dst($2); immed($4); shift(0); }
 |                  T_OP_MOV reg ',' T_LABEL_REF T_LSHIFT immediate {
-                       new_instr($1); dst($2); label($4); shift($6);
+                       new_instr(OPC_MOVI); dst($2); label($4); shift($6);
 }
-|                  T_OP_MOV reg ',' T_LABEL_REF { new_instr($1); dst($2); label($4); }
+|                  T_OP_MOV reg ',' T_LABEL_REF { new_instr(OPC_MOVI); dst($2); label($4); shift(0); }
 
-alu_2src_op:       T_OP_ADD       { new_instr($1); }
-|                  T_OP_ADDHI     { new_instr($1); }
-|                  T_OP_SUB       { new_instr($1); }
-|                  T_OP_SUBHI     { new_instr($1); }
-|                  T_OP_AND       { new_instr($1); }
-|                  T_OP_OR        { new_instr($1); }
-|                  T_OP_XOR       { new_instr($1); }
-|                  T_OP_SHL       { new_instr($1); }
-|                  T_OP_USHR      { new_instr($1); }
-|                  T_OP_ISHR      { new_instr($1); }
-|                  T_OP_ROT       { new_instr($1); }
-|                  T_OP_MUL8      { new_instr($1); }
-|                  T_OP_MIN       { new_instr($1); }
-|                  T_OP_MAX       { new_instr($1); }
-|                  T_OP_CMP       { new_instr($1); }
+alu_2src_op:       T_OP_ADD       { new_instr(OPC_ADD); }
+|                  T_OP_ADDHI     { new_instr(OPC_ADDHI); }
+|                  T_OP_SUB       { new_instr(OPC_SUB); }
+|                  T_OP_SUBHI     { new_instr(OPC_SUBHI); }
+|                  T_OP_AND       { new_instr(OPC_AND); }
+|                  T_OP_OR        { new_instr(OPC_OR); }
+|                  T_OP_XOR       { new_instr(OPC_XOR); }
+|                  T_OP_SHL       { new_instr(OPC_SHL); }
+|                  T_OP_USHR      { new_instr(OPC_USHR); }
+|                  T_OP_ISHR      { new_instr(OPC_ISHR); }
+|                  T_OP_ROT       { new_instr(OPC_ROT); }
+|                  T_OP_MUL8      { new_instr(OPC_MUL8); }
+|                  T_OP_MIN       { new_instr(OPC_MIN); }
+|                  T_OP_MAX       { new_instr(OPC_MAX); }
+|                  T_OP_CMP       { new_instr(OPC_CMP); }
 
 alu_2src_instr:    alu_2src_op reg ',' reg ',' reg { dst($2); src1($4); src2($6); }
 |                  alu_2src_op reg ',' reg ',' immediate { dst($2); src1($4); immed($6); }
@@ -232,30 +233,33 @@ alu_instr:         alu_2src_instr
 |                  alu_not_instr
 |                  alu_mov_instr
 
-config_op:         T_OP_CWRITE    { new_instr($1); }
-|                  T_OP_CREAD     { new_instr($1); }
-|                  T_OP_LOAD      { new_instr($1); }
-|                  T_OP_STORE     { new_instr($1); }
+load_op:           T_OP_LOAD      { new_instr(OPC_LOAD); }
+|                  T_OP_CREAD     { new_instr(OPC_CREAD); }
+store_op:          T_OP_STORE     { new_instr(OPC_STORE); }
+|                  T_OP_CWRITE    { new_instr(OPC_CWRITE); }
 
-config_instr:      config_op reg ',' '[' reg '+' immediate ']' ',' immediate {
+load_instr:        load_op reg ',' '[' reg '+' immediate ']' ',' immediate {
+                       dst($2); src1($5); immed($7); bit($10);
+}
+store_instr:       store_op reg ',' '[' reg '+' immediate ']' ',' immediate {
                        src1($2); src2($5); immed($7); bit($10);
 }
 
-branch_op:         T_OP_BRNE      { new_instr($1); }
-|                  T_OP_BREQ      { new_instr($1); }
+branch_op:         T_OP_BRNE      { new_instr(OPC_BRNE); }
+|                  T_OP_BREQ      { new_instr(OPC_BREQ); }
 
 branch_instr:      branch_op reg ',' T_BIT ',' T_LABEL_REF     { src1($2); bit($4); label($6); }
 |                  branch_op reg ',' immediate ',' T_LABEL_REF { src1($2); immed($4); label($6); }
 
-other_instr:       T_OP_CALL T_LABEL_REF { new_instr($1); label($2); }
-|                  T_OP_PREEMPTLEAVE T_LABEL_REF { new_instr($1); label($2); }
-|                  T_OP_SETSECURE reg ',' T_LABEL_REF { new_instr($1); src1($2); label($4); }
-|                  T_OP_RET              { new_instr($1); }
-|                  T_OP_IRET             { new_instr($1); }
-|                  T_OP_JUMP T_LABEL_REF { new_instr($1); label($2); }
-|                  T_OP_WAITIN           { new_instr($1); }
-|                  T_OP_NOP              { new_instr($1); }
-|                  T_LITERAL             { new_instr($1); literal($1); }
+other_instr:       T_OP_CALL T_LABEL_REF { new_instr(OPC_CALL); label($2); }
+|                  T_OP_PREEMPTLEAVE T_LABEL_REF { new_instr(OPC_PREEMPTLEAVE); label($2); }
+|                  T_OP_SETSECURE reg ',' T_LABEL_REF { new_instr(OPC_SETSECURE); src1($2); label($4); }
+|                  T_OP_RET              { new_instr(OPC_RET); }
+|                  T_OP_IRET             { new_instr(OPC_IRET); }
+|                  T_OP_JUMP T_LABEL_REF { new_instr(OPC_JUMP); label($2); }
+|                  T_OP_WAITIN           { new_instr(OPC_WAITIN); }
+|                  T_OP_NOP              { new_instr(OPC_NOP); }
+|                  T_LITERAL             { new_instr(OPC_RAW_LITERAL); literal($1); }
 
 reg:               T_REGISTER
 
