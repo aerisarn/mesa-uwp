@@ -131,7 +131,7 @@ i915_vbuf_render_get_vertex_info(struct vbuf_render *render)
       i915_update_derived(i915);
    }
 
-   return &i915->current.vertex_info;
+   return &i915->current.vertex_info.draw;
 }
 
 /**

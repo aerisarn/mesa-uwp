@@ -67,7 +67,6 @@ enum attrib_emit {
 struct vertex_info
 {
    unsigned num_attribs;
-   uint32_t hwfmt[4];  /**< hardware format info for this format */
    unsigned size;      /**< total vertex size in dwords */
 
    /* Keep this small and at the end of the struct to allow quick
