@@ -96,6 +96,8 @@ r300_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
       NIR_PASS(progress, s, nir_opt_trivial_continues);
       NIR_PASS(progress, s, nir_opt_vectorize, r300_should_vectorize_instr, NULL);
       NIR_PASS(progress, s, nir_opt_undef);
+      if(!progress)
+         NIR_PASS(progress, s, nir_lower_undef_to_zero);
       NIR_PASS(progress, s, nir_opt_loop_unroll);
 
       /* Try to fold addressing math into ubo_vec4's base to avoid load_consts
