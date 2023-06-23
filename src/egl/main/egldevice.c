@@ -183,6 +183,16 @@ _eglFindDevice(int fd, bool software)
       dev = NULL;
       goto out;
    }
+
+   while (dev->Next) {
+      dev = dev->Next;
+
+      if (_eglDeviceSupports(dev, _EGL_DEVICE_DRM) &&
+          drmDevicesEqual(device, dev->device) != 0) {
+         goto out;
+      }
+   }
+
 #else
    _eglLog(_EGL_FATAL,
            "Driver bug: Built without libdrm, yet looking for HW device");
