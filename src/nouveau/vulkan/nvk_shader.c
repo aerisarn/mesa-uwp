@@ -1223,7 +1223,7 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
    shader->stage = nir->info.stage;
 
    if (pdev->info.cls_eng3d >= TURING_A)
-      shader->num_gprs = MIN2((unsigned)bin->info.num_gprs + 5, 255); //XXX: why?
+      shader->num_gprs = MAX2(4, bin->info.num_gprs + 2);
    else
       shader->num_gprs = MAX2(4, bin->info.num_gprs);
    shader->num_barriers = bin->info.num_barriers;

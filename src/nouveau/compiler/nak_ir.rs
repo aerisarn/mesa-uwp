@@ -76,7 +76,15 @@ impl RegFile {
 
     pub fn num_regs(&self, sm: u8) -> u32 {
         match self {
-            RegFile::GPR => 255,
+            RegFile::GPR => {
+                if sm >= 75 {
+                    // Turing+ has a maximum of 253 registers.  Presumably
+                    // because two registers get burned for UGPRs?
+                    253
+                } else {
+                    255
+                }
+            }
             RegFile::UGPR => {
                 if sm >= 75 {
                     63
