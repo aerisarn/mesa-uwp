@@ -273,7 +273,7 @@ load_sbt_entry(nir_builder *b, const struct rt_variables *vars, nir_def *idx, en
 /* This lowers all the RT instructions that we do not want to pass on to the combined shader and
  * that we can implement using the variables from the shader we are going to inline into. */
 static void
-lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned call_idx_base)
+lower_rt_instructions(nir_shader *shader, struct rt_variables *vars)
 {
    nir_builder b_shader = nir_builder_create(nir_shader_get_entrypoint(shader));
 
@@ -771,12 +771,8 @@ inline_constants(nir_shader *dst, nir_shader *src)
 }
 
 static void
-insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, nir_def *idx, uint32_t call_idx_base,
-               uint32_t call_idx, unsigned stage_idx, struct radv_ray_tracing_stage *stages)
+insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, nir_def *idx, uint32_t call_idx)
 {
-   uint32_t workgroup_size =
-      b->shader->info.workgroup_size[0] * b->shader->info.workgroup_size[1] * b->shader->info.workgroup_size[2];
-
    struct hash_table *var_remap = _mesa_pointer_hash_table_create(NULL);
 
    nir_opt_dead_cf(shader);
@@ -784,14 +780,10 @@ insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, ni
    struct rt_variables src_vars = create_rt_variables(shader, vars->flags);
    map_rt_variables(var_remap, &src_vars, vars);
 
-   NIR_PASS_V(shader, lower_rt_instructions, &src_vars, call_idx_base);
+   NIR_PASS_V(shader, lower_rt_instructions, &src_vars);
 
    NIR_PASS(_, shader, nir_lower_returns);
    NIR_PASS(_, shader, nir_opt_dce);
-
-   /* The traversal shader has a call_idx of 1 */
-   if (shader->info.stage == MESA_SHADER_CLOSEST_HIT || call_idx == 1)
-      NIR_PASS_V(shader, lower_hit_attribs, NULL, workgroup_size);
 
    src_vars.stack_size = MAX2(src_vars.stack_size, shader->scratch_size);
 
@@ -802,10 +794,6 @@ insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, ni
    nir_pop_if(b, NULL);
 
    ralloc_free(var_remap);
-
-   /* reserve stack size */
-   if (stages)
-      stages[stage_idx].stack_size = MAX2(stages[stage_idx].stack_size, src_vars.stack_size);
 }
 
 nir_shader *
@@ -1154,8 +1142,7 @@ visit_any_hit_shaders(struct radv_device *device, nir_builder *b, struct travers
       nir_shader *nir_stage = radv_pipeline_cache_handle_to_nir(device, data->pipeline->stages[shader_id].shader);
       assert(nir_stage);
 
-      insert_rt_case(b, nir_stage, vars, sbt_idx, 0, data->pipeline->groups[i].handle.any_hit_index, shader_id,
-                     data->pipeline->stages);
+      insert_rt_case(b, nir_stage, vars, sbt_idx, data->pipeline->groups[i].handle.any_hit_index);
       ralloc_free(nir_stage);
    }
 
@@ -1298,8 +1285,8 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
          ralloc_free(any_hit_stage);
       }
 
-      insert_rt_case(b, nir_stage, &inner_vars, nir_load_var(b, inner_vars.idx), 0,
-                     data->pipeline->groups[i].handle.intersection_index, shader_id, data->pipeline->stages);
+      insert_rt_case(b, nir_stage, &inner_vars, nir_load_var(b, inner_vars.idx),
+                     data->pipeline->groups[i].handle.intersection_index);
       ralloc_free(nir_stage);
    }
 
@@ -1535,7 +1522,7 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
    const VkPipelineCreateFlagBits2KHR create_flags = radv_get_pipeline_create_flags(pCreateInfo);
 
    struct rt_variables vars = create_rt_variables(shader, create_flags);
-   lower_rt_instructions(shader, &vars, 0);
+   lower_rt_instructions(shader, &vars);
 
    if (stack_size) {
       vars.stack_size = MAX2(vars.stack_size, shader->scratch_size);
