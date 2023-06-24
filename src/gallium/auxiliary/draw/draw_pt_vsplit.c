@@ -45,21 +45,21 @@ struct vsplit_frontend {
    struct draw_pt_middle_end *middle;
 
    unsigned max_vertices;
-   ushort segment_size;
+   uint16_t segment_size;
 
    /* buffers for splitting */
    unsigned fetch_elts[SEGMENT_SIZE];
-   ushort draw_elts[SEGMENT_SIZE];
-   ushort identity_draw_elts[SEGMENT_SIZE];
+   uint16_t draw_elts[SEGMENT_SIZE];
+   uint16_t identity_draw_elts[SEGMENT_SIZE];
 
    struct {
       /* map a fetch element to a draw element */
       unsigned fetches[MAP_SIZE];
-      ushort draws[MAP_SIZE];
+      uint16_t draws[MAP_SIZE];
       bool has_max_fetch;
 
-      ushort num_fetch_elts;
-      ushort num_draw_elts;
+      uint16_t num_fetch_elts;
+      uint16_t num_draw_elts;
    } cache;
 };
 
@@ -121,7 +121,7 @@ vsplit_get_base_idx(unsigned start, unsigned fetch)
 
 
 static inline void
-vsplit_add_cache_ubyte(struct vsplit_frontend *vsplit, const ubyte *elts,
+vsplit_add_cache_ubyte(struct vsplit_frontend *vsplit, const uint8_t *elts,
                        unsigned start, unsigned fetch, int elt_bias)
 {
    struct draw_context *draw = vsplit->draw;
@@ -139,7 +139,7 @@ vsplit_add_cache_ubyte(struct vsplit_frontend *vsplit, const ubyte *elts,
 
 
 static inline void
-vsplit_add_cache_ushort(struct vsplit_frontend *vsplit, const ushort *elts,
+vsplit_add_cache_ushort(struct vsplit_frontend *vsplit, const uint16_t *elts,
                        unsigned start, unsigned fetch, int elt_bias)
 {
    struct draw_context *draw = vsplit->draw;
@@ -161,7 +161,7 @@ vsplit_add_cache_ushort(struct vsplit_frontend *vsplit, const ushort *elts,
  * in full range (uint).
  */
 static inline void
-vsplit_add_cache_uint(struct vsplit_frontend *vsplit, const uint *elts,
+vsplit_add_cache_uint(struct vsplit_frontend *vsplit, const uint32_t *elts,
                       unsigned start, unsigned fetch, int elt_bias)
 {
    struct draw_context *draw = vsplit->draw;
@@ -186,17 +186,17 @@ vsplit_add_cache_uint(struct vsplit_frontend *vsplit, const uint *elts,
 #include "draw_pt_vsplit_tmp.h"
 
 #define FUNC vsplit_run_ubyte
-#define ELT_TYPE ubyte
+#define ELT_TYPE uint8_t
 #define ADD_CACHE(vsplit, ib, start, fetch, bias) vsplit_add_cache_ubyte(vsplit,ib,start,fetch,bias)
 #include "draw_pt_vsplit_tmp.h"
 
 #define FUNC vsplit_run_ushort
-#define ELT_TYPE ushort
+#define ELT_TYPE uint16_t
 #define ADD_CACHE(vsplit, ib, start, fetch, bias) vsplit_add_cache_ushort(vsplit,ib,start,fetch, bias)
 #include "draw_pt_vsplit_tmp.h"
 
 #define FUNC vsplit_run_uint
-#define ELT_TYPE uint
+#define ELT_TYPE uint32_t
 #define ADD_CACHE(vsplit, ib, start, fetch, bias) vsplit_add_cache_uint(vsplit, ib, start, fetch, bias)
 #include "draw_pt_vsplit_tmp.h"
 
