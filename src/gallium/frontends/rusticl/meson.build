@@ -94,6 +94,9 @@ rusticl_args = [
 rusticl_gen_args = [
   # can't do anything about it anyway
   '-Aclippy::all',
+  '-Anon_camel_case_types',
+  '-Anon_snake_case',
+  '-Anon_upper_case_globals',
 ]
 
 rusticl_bindgen_args = [
@@ -164,9 +167,6 @@ rusticl_opencl_gen = static_library(
   rust_crate_type : 'rlib',
   rust_args : [
     rusticl_gen_args,
-    '-Anon_snake_case',
-    '-Anon_camel_case_types',
-    '-Anon_upper_case_globals',
   ],
 )
 
@@ -307,9 +307,6 @@ libmesa_rust_gen = static_library(
   rust_crate_type : 'rlib',
   rust_args : [
     rusticl_gen_args,
-    '-Anon_snake_case',
-    '-Anon_camel_case_types',
-    '-Anon_upper_case_globals',
   ],
 )
 
