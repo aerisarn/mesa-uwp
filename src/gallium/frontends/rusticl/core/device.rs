@@ -37,6 +37,7 @@ pub struct Device {
     pub clc_versions: Vec<cl_name_version>,
     pub custom: bool,
     pub embedded: bool,
+    pub has_timestamp: bool, // Cached to keep API fast
     pub extension_string: String,
     pub extensions: Vec<cl_name_version>,
     pub spirv_extensions: Vec<CString>,
@@ -198,6 +199,7 @@ impl Device {
             clc_versions: Vec::new(),
             custom: false,
             embedded: false,
+            has_timestamp: false,
             extension_string: String::from(""),
             extensions: Vec::new(),
             spirv_extensions: Vec::new(),
@@ -213,6 +215,10 @@ impl Device {
 
         // check if we have to report it as a custom device
         d.custom = d.check_custom();
+
+        let cap_timestamp = d.screen.param(pipe_cap::PIPE_CAP_QUERY_TIMESTAMP);
+        let cap_timestamp_res = d.timer_resolution();
+        d.has_timestamp = cap_timestamp != 0 && cap_timestamp_res > 0;
 
         // query supported extensions
         d.fill_extensions();
@@ -848,6 +854,10 @@ impl Device {
 
     pub fn svm_supported(&self) -> bool {
         self.screen.param(pipe_cap::PIPE_CAP_SYSTEM_SVM) == 1
+    }
+
+    pub fn timer_resolution(&self) -> usize {
+        self.screen.param(pipe_cap::PIPE_CAP_TIMER_RESOLUTION) as usize
     }
 
     pub fn unified_memory(&self) -> bool {
