@@ -1132,7 +1132,7 @@ visit_any_hit_shaders(struct radv_device *device, nir_builder *b, struct travers
       if (is_dup)
          continue;
 
-      nir_shader *nir_stage = radv_pipeline_cache_handle_to_nir(device, data->pipeline->stages[shader_id].shader);
+      nir_shader *nir_stage = radv_pipeline_cache_handle_to_nir(device, data->pipeline->stages[shader_id].nir);
       assert(nir_stage);
 
       insert_rt_case(b, nir_stage, vars, sbt_idx, data->pipeline->groups[i].handle.any_hit_index);
@@ -1262,13 +1262,12 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
       if (is_dup)
          continue;
 
-      nir_shader *nir_stage = radv_pipeline_cache_handle_to_nir(data->device, data->pipeline->stages[shader_id].shader);
+      nir_shader *nir_stage = radv_pipeline_cache_handle_to_nir(data->device, data->pipeline->stages[shader_id].nir);
       assert(nir_stage);
 
       nir_shader *any_hit_stage = NULL;
       if (any_hit_shader_id != VK_SHADER_UNUSED_KHR) {
-         any_hit_stage =
-            radv_pipeline_cache_handle_to_nir(data->device, data->pipeline->stages[any_hit_shader_id].shader);
+         any_hit_stage = radv_pipeline_cache_handle_to_nir(data->device, data->pipeline->stages[any_hit_shader_id].nir);
          assert(any_hit_stage);
 
          /* reserve stack size for any_hit before it is inlined */
