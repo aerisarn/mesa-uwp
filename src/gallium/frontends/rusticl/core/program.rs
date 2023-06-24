@@ -525,6 +525,16 @@ impl Program {
         }
 
         let mut d = info.dev_build_mut(dev);
+
+        // skip compilation if we already have the right thing.
+        if self.is_bin() {
+            if d.bin_type == CL_PROGRAM_BINARY_TYPE_EXECUTABLE && !lib
+                || d.bin_type == CL_PROGRAM_BINARY_TYPE_LIBRARY && lib
+            {
+                return true;
+            }
+        }
+
         let spirvs = [d.spirv.as_ref().unwrap()];
         let (spirv, log) = spirv::SPIRVBin::link(&spirvs, lib);
 
@@ -688,6 +698,10 @@ impl Program {
             kernel_count: AtomicU32::new(0),
             build: Mutex::new(build),
         })
+    }
+
+    pub fn is_bin(&self) -> bool {
+        matches!(self.src, ProgramSourceType::Binary)
     }
 
     pub fn is_il(&self) -> bool {
