@@ -62,3 +62,8 @@ spec@arb_compute_variable_group_size@local-size
 
 # noticed in a stress test, after over 200 runs
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
+
+# Expects ordering between per-sample invocations generated from the same primitive,
+# contradicts the resolution of GL_ARB_fragment_shader_interlock issue 1.
+# https://gitlab.freedesktop.org/mesa/piglit/-/issues/93
+spec@arb_fragment_shader_interlock@arb_fragment_shader_interlock-image-load-store
