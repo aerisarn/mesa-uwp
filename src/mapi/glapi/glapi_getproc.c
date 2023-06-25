@@ -83,30 +83,6 @@ get_static_proc_offset(const char *funcName)
 }
 
 
-
-/**
- * Return dispatch function address for the named static (built-in) function.
- * Return NULL if function not found.
- */
-static _glapi_proc
-get_static_proc_address(const char *funcName)
-{
-   const glprocs_table_t * const f = get_static_proc( funcName );
-   if (f == NULL) {
-      return NULL;
-   }
-
-#if defined(DISPATCH_FUNCTION_SIZE) && defined(GLX_INDIRECT_RENDERING)
-   return (f->Address == NULL)
-      ? get_entrypoint_address(f->Offset)
-      : f->Address;
-#elif defined(DISPATCH_FUNCTION_SIZE)
-   return get_entrypoint_address(f->Offset);
-#else
-   return f->Address;
-#endif
-}
-
 /**********************************************************************
  * Extension function management.
  */
@@ -148,26 +124,31 @@ _glapi_get_proc_offset(const char *funcName)
 
 
 /**
- * Return pointer to the named function.  If the function name isn't found
- * in the name of static functions, try generating a new API entrypoint on
- * the fly with assembly language.
+ * Return dispatch function address for the named static (built-in) function.
+ * Return NULL if function not found.
  */
 _glapi_proc
 _glapi_get_proc_address(const char *funcName)
 {
-   _glapi_proc func;
-
    init_glapi_relocs_once();
 
    if (!funcName || funcName[0] != 'g' || funcName[1] != 'l')
       return NULL;
 
-   /* search static functions */
-   func = get_static_proc_address(funcName);
-   if (func)
-      return func;
+   const glprocs_table_t *const f = get_static_proc(funcName);
+   if (f == NULL) {
+      return NULL;
+   }
 
-   return NULL;
+#if defined(DISPATCH_FUNCTION_SIZE) && defined(GLX_INDIRECT_RENDERING)
+   return (f->Address == NULL)
+      ? get_entrypoint_address(f->Offset)
+      : f->Address;
+#elif defined(DISPATCH_FUNCTION_SIZE)
+   return get_entrypoint_address(f->Offset);
+#else
+   return f->Address;
+#endif
 }
 
 
