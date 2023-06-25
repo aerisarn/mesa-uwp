@@ -256,8 +256,7 @@ impl CLInfo<cl_device_info> for cl_device_id {
             } else {
                 "FULL_PROFILE"
             }),
-            // TODO
-            CL_DEVICE_PROFILING_TIMER_RESOLUTION => cl_prop::<usize>(0),
+            CL_DEVICE_PROFILING_TIMER_RESOLUTION => cl_prop::<usize>(dev.timer_resolution()),
             CL_DEVICE_QUEUE_ON_DEVICE_MAX_SIZE => cl_prop::<cl_uint>(0),
             CL_DEVICE_QUEUE_ON_DEVICE_PREFERRED_SIZE => cl_prop::<cl_uint>(0),
             CL_DEVICE_QUEUE_ON_DEVICE_PROPERTIES => cl_prop::<cl_command_queue_properties>(0),
