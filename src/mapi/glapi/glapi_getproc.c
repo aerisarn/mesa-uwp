@@ -87,18 +87,6 @@ get_static_proc_offset(const char *funcName)
  * Extension function management.
  */
 
-
-/**
- * Track information about a function added to the GL API.
- */
-struct _glapi_function {
-   /**
-    * Name of the function.
-    */
-   const char * name;
-};
-
-
 /**
  * Initializes the glapi relocs table, and returns the offset of the given
  * function in the dispatch table.
