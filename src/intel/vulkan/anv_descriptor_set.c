@@ -1676,6 +1676,7 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
             .vanilla = anv_surface_state_to_handle(
                device->physical,
                image_view->planes[0].storage.state),
+            .image_depth = image_view->vk.storage.z_slice_count,
          };
          memcpy(desc_map, &desc_data, sizeof(desc_data));
       } else {

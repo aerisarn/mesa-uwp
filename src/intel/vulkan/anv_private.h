@@ -1671,7 +1671,27 @@ struct anv_storage_image_descriptor {
     */
    uint32_t vanilla;
 
-   uint32_t pad;
+   /** Image depth
+    *
+    * By default the HW RESINFO message allows us to query the depth of an image :
+    *
+    * From the Kaby Lake docs for the RESINFO message:
+    *
+    *    "Surface Type | ... | Blue
+    *    --------------+-----+----------------
+    *    SURFTYPE_3D  | ... | (Depth+1)»LOD"
+    *
+    * With VK_EXT_sliced_view_of_3d, we have to support a slice of a 3D image,
+    * meaning at a depth offset with a new depth value potentially reduced
+    * from the original image. Unfortunately if we change the Depth value of
+    * the image, we then run into issues with Yf/Ys tilings where the HW fetch
+    * data at incorrect locations.
+    *
+    * To solve this, we put the slice depth in the descriptor and recompose
+    * the vec3 (width, height, depth) using this field for z and xy using the
+    * RESINFO result.
+    */
+   uint32_t image_depth;
 };
 
 /** Struct representing a address/range descriptor
