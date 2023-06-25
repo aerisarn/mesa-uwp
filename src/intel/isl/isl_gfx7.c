@@ -257,6 +257,24 @@ isl_gfx6_filter_tiling(const struct isl_device *dev,
    if (info->usage & ISL_SURF_USAGE_2D_3D_COMPATIBLE_BIT)
       *flags &= ~ISL_TILING_STD_Y_MASK;
 
+   /* For 3D storage images, we appear to have an undocumented dataport issue,
+    * where the RENDER_SURFACE_STATE::MinimumArrayElement is ignored with
+    * TileYs/TileYf.
+    *
+    * This is breaking VK_EXT_image_sliced_view_of_3d which is trying to
+    * access 3D images with an offset.
+    *
+    * It's unclear what the issue is but the behavior does not match
+    * simulation and there is no workaround related to 3D images & TileYs/Yf.
+    *
+    * We could workaround this issue by reading the offset from memory and add
+    * it to the imageLoad/Store() coordinates.
+    */
+   if (ISL_GFX_VER(dev) <= 11 &&
+       info->dim == ISL_SURF_DIM_3D &&
+       (info->usage & ISL_SURF_USAGE_STORAGE_BIT))
+      *flags &= ~ISL_TILING_STD_Y_MASK;
+
    if (isl_surf_usage_is_stencil(info->usage)) {
       if (ISL_GFX_VER(dev) >= 12) {
          /* Stencil requires Y. */
