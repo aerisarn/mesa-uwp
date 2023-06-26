@@ -75,8 +75,8 @@ union tgsi_exec_channel
 {
    alignas(16)
    float    f[TGSI_QUAD_SIZE];
-   int      i[TGSI_QUAD_SIZE];
-   unsigned u[TGSI_QUAD_SIZE];
+   int32_t  i[TGSI_QUAD_SIZE];
+   uint32_t u[TGSI_QUAD_SIZE];
 };
 
 /**

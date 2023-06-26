@@ -4467,10 +4467,10 @@ static void
 micro_f2u(union tgsi_exec_channel *dst,
           const union tgsi_exec_channel *src)
 {
-   dst->u[0] = (uint)src->f[0];
-   dst->u[1] = (uint)src->f[1];
-   dst->u[2] = (uint)src->f[2];
-   dst->u[3] = (uint)src->f[3];
+   dst->u[0] = (uint32_t)src->f[0];
+   dst->u[1] = (uint32_t)src->f[1];
+   dst->u[2] = (uint32_t)src->f[2];
+   dst->u[3] = (uint32_t)src->f[3];
 }
 
 static void
