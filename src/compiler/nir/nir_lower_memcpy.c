@@ -88,8 +88,7 @@ memcpy_store_deref_elem_imm(nir_builder *b, nir_deref_instr *parent,
 static bool
 lower_memcpy_impl(nir_function_impl *impl)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    bool found_const_memcpy = false, found_non_const_memcpy = false;
 

@@ -82,8 +82,7 @@ lower_coord_shift_unnormalized(nir_builder *b, nir_tex_instr *tex)
 static bool
 r600_nir_lower_int_tg4_impl(nir_function_impl *impl)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    bool progress = false;
    nir_foreach_block(block, impl)
@@ -201,8 +200,7 @@ lower_txl_txf_array_or_cube(nir_builder *b, nir_tex_instr *tex)
 static bool
 r600_nir_lower_txl_txf_array_or_cube_impl(nir_function_impl *impl)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    bool progress = false;
    nir_foreach_block(block, impl)

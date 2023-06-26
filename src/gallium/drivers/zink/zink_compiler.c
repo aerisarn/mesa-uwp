@@ -2819,8 +2819,7 @@ lower_64bit_vars_function(nir_shader *shader, nir_function *function, nir_variab
    bool func_progress = false;
    if (!function->impl)
       return false;
-   nir_builder b;
-   nir_builder_init(&b, function->impl);
+   nir_builder b = nir_builder_create(function->impl);
    nir_foreach_block(block, function->impl) {
       nir_foreach_instr_safe(instr, block) {
          switch (instr->type) {
@@ -3101,8 +3100,7 @@ split_blocks(nir_shader *nir)
             bool func_progress = false;
             if (!function->impl)
                continue;
-            nir_builder b;
-            nir_builder_init(&b, function->impl);
+            nir_builder b = nir_builder_create(function->impl);
             nir_foreach_block(block, function->impl) {
                nir_foreach_instr_safe(instr, block) {
                   switch (instr->type) {
@@ -5226,8 +5224,7 @@ zink_shader_tcs_create(struct zink_screen *screen, nir_shader *tes, unsigned ver
    fn->is_entrypoint = true;
    nir_function_impl *impl = nir_function_impl_create(fn);
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
    b.cursor = nir_before_block(nir_start_block(impl));
 
    nir_ssa_def *invocation_id = nir_load_invocation_id(&b);

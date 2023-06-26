@@ -78,8 +78,7 @@ emit_copies(nir_builder *b, struct exec_list *dest_vars,
 static void
 emit_output_copies_impl(struct lower_io_state *state, nir_function_impl *impl)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    if (state->shader->info.stage == MESA_SHADER_GEOMETRY) {
       /* For geometry shaders, we have to emit the output copies right
@@ -277,8 +276,7 @@ static void
 emit_input_copies_impl(struct lower_io_state *state, nir_function_impl *impl)
 {
    if (impl == state->entrypoint) {
-      nir_builder b;
-      nir_builder_init(&b, impl);
+      nir_builder b = nir_builder_create(impl);
       b.cursor = nir_before_block(nir_start_block(impl));
       emit_copies(&b, &state->old_inputs, &state->new_inputs);
       if (state->shader->info.stage == MESA_SHADER_FRAGMENT)

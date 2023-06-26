@@ -1067,8 +1067,7 @@ r600_nir_64_to_vec2(nir_shader *sh)
    nir_foreach_function(function, sh)
    {
       if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
+         nir_builder b = nir_builder_create(function->impl);
 
          nir_foreach_block(block, function->impl)
          {
@@ -1231,8 +1230,7 @@ StoreMerger::combine_one_slot(vector<nir_intrinsic_instr *>& stores)
 {
    nir_ssa_def *srcs[4] = {nullptr};
 
-   nir_builder b;
-   nir_builder_init(&b, nir_shader_get_entrypoint(sh));
+   nir_builder b = nir_builder_create(nir_shader_get_entrypoint(sh));
    auto last_store = *stores.rbegin();
 
    b.cursor = nir_before_instr(&last_store->instr);

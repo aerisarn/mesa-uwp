@@ -277,8 +277,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
       if (!function->impl)
          continue;
 
-      nir_builder b;
-      nir_builder_init(&b, function->impl);
+      nir_builder b = nir_builder_create(function->impl);
 
       nir_foreach_block(block, function->impl) {
          nir_foreach_instr_safe(instr, block) {
@@ -441,8 +440,7 @@ brw_nir_lower_tes_inputs(nir_shader *nir, const struct brw_vue_map *vue_map)
 
    nir_foreach_function(function, nir) {
       if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
+         nir_builder b = nir_builder_create(function->impl);
          nir_foreach_block(block, function->impl) {
             remap_patch_urb_offsets(block, &b, vue_map,
                                     nir->info.tess._primitive_mode);
@@ -597,8 +595,7 @@ brw_nir_lower_tcs_outputs(nir_shader *nir, const struct brw_vue_map *vue_map,
 
    nir_foreach_function(function, nir) {
       if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
+         nir_builder b = nir_builder_create(function->impl);
          nir_foreach_block(block, function->impl) {
             remap_patch_urb_offsets(block, &b, vue_map, tes_primitive_mode);
          }

@@ -115,8 +115,7 @@ r600_lower_scratch_addresses(nir_shader *shader)
    bool progress = false;
    nir_foreach_function(function, shader)
    {
-      nir_builder build;
-      nir_builder_init(&build, function->impl);
+      nir_builder build = nir_builder_create(function->impl);
 
       nir_foreach_block(block, function->impl)
       {
@@ -506,8 +505,7 @@ r600_get_natural_size_align_bytes(const struct glsl_type *type,
 static bool
 r600_lower_shared_io_impl(nir_function *func)
 {
-   nir_builder b;
-   nir_builder_init(&b, func->impl);
+   nir_builder b = nir_builder_create(func->impl);
 
    bool progress = false;
    nir_foreach_block(block, func->impl)

@@ -242,8 +242,7 @@ lower_impl(nir_function_impl *impl,
            nir_lower_bit_size_callback callback,
            void *callback_data)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
    bool progress = false;
 
    nir_foreach_block(block, impl) {

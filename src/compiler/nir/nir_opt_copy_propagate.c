@@ -62,8 +62,7 @@ rewrite_to_vec(nir_function_impl *impl, nir_alu_instr *mov, nir_alu_instr *vec)
    if (mov->op != nir_op_mov)
       return false;
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
    b.cursor = nir_after_instr(&mov->instr);
 
    unsigned num_comp = mov->dest.dest.ssa.num_components;

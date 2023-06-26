@@ -45,8 +45,7 @@ nir_lower_alpha_test(nir_shader *shader, enum compare_func func,
 
    nir_foreach_function(function, shader) {
       nir_function_impl *impl = function->impl;
-      nir_builder b;
-      nir_builder_init(&b, impl);
+      nir_builder b = nir_builder_create(impl);
       b.cursor = nir_before_cf_list(&impl->body);
 
       nir_foreach_block(block, impl) {

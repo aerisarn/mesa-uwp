@@ -1368,8 +1368,7 @@ copy_prop_vars_cf_node(struct copy_prop_var_state *state,
 
    case nir_cf_node_block: {
       nir_block *block = nir_cf_node_as_block(cf_node);
-      nir_builder b;
-      nir_builder_init(&b, state->impl);
+      nir_builder b = nir_builder_create(state->impl);
       copy_prop_vars_block(state, &b, block, copies);
       break;
    }

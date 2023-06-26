@@ -104,8 +104,7 @@ nir_opt_shrink_stores(nir_shader *shader, bool shrink_image_store)
       if (!function->impl)
          continue;
 
-      nir_builder b;
-      nir_builder_init(&b, function->impl);
+      nir_builder b = nir_builder_create(function->impl);
 
       nir_foreach_block(block, function->impl) {
          nir_foreach_instr(instr, block) {

@@ -462,8 +462,7 @@ nir_opt_phi_precision(nir_shader *shader)
       if (!function->impl)
          continue;
 
-      nir_builder b;
-      nir_builder_init(&b, function->impl);
+      nir_builder b = nir_builder_create(function->impl);
 
       nir_foreach_block (block, function->impl) {
          nir_foreach_phi_safe (phi, block)

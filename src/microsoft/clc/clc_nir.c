@@ -109,8 +109,7 @@ clc_nir_lower_system_values(nir_shader *nir, nir_variable *var)
          continue;
       assert(func->impl);
 
-      nir_builder b;
-      nir_builder_init(&b, func->impl);
+      nir_builder b = nir_builder_create(func->impl);
 
       nir_foreach_block(block, func->impl) {
          nir_foreach_instr_safe(instr, block) {
@@ -193,8 +192,7 @@ clc_nir_lower_kernel_input_loads(nir_shader *nir, nir_variable *var)
          continue;
       assert(func->impl);
 
-      nir_builder b;
-      nir_builder_init(&b, func->impl);
+      nir_builder b = nir_builder_create(func->impl);
 
       nir_foreach_block(block, func->impl) {
          nir_foreach_instr_safe(instr, block) {
@@ -233,8 +231,7 @@ clc_lower_printf_base(nir_shader *nir, unsigned uav_id)
    nir_variable *printf_var = NULL;
    nir_ssa_def *printf_deref = NULL;
    nir_foreach_function(func, nir) {
-      nir_builder b;
-      nir_builder_init(&b, func->impl);
+      nir_builder b = nir_builder_create(func->impl);
       b.cursor = nir_before_instr(nir_block_first_instr(nir_start_block(func->impl)));
       bool progress = false;
 

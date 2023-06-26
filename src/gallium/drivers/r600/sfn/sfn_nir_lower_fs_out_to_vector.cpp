@@ -148,8 +148,7 @@ NirLowerIOToVector::NirLowerIOToVector(int base_slot):
 bool
 NirLowerIOToVector::run(nir_function_impl *impl)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_metadata_require(impl, nir_metadata_dominance);
    create_new_io_vars(impl->function->shader);

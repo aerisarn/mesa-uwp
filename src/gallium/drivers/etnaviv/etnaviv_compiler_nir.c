@@ -748,8 +748,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
 {
    const nir_op_info *info = &nir_op_infos[alu->op];
 
-   nir_builder b;
-   nir_builder_init(&b, c->impl);
+   nir_builder b = nir_builder_create(c->impl);
    b.cursor = nir_before_instr(&alu->instr);
 
    switch (alu->op) {
@@ -898,8 +897,7 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
    bool have_indirect_uniform = false;
    unsigned indirect_max = 0;
 
-   nir_builder b;
-   nir_builder_init(&b, c->impl);
+   nir_builder b = nir_builder_create(c->impl);
 
    /* convert non-dynamic uniform loads to constants, etc */
    nir_foreach_block(block, c->impl) {

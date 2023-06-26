@@ -53,8 +53,7 @@ nir_fuse_io_16(nir_shader *shader)
       if (!function->impl)
          continue;
 
-      nir_builder b;
-      nir_builder_init(&b, function->impl);
+      nir_builder b = nir_builder_create(function->impl);
 
       nir_foreach_block(block, function->impl) {
          nir_foreach_instr_safe(instr, block) {
@@ -87,8 +86,7 @@ nir_fuse_io_16(nir_shader *shader)
 
             intr->dest.ssa.bit_size = 16;
 
-            nir_builder b;
-            nir_builder_init(&b, function->impl);
+            nir_builder b = nir_builder_create(function->impl);
             b.cursor = nir_after_instr(instr);
 
             /* The f2f32(f2fmp(x)) will cancel by opt_algebraic */

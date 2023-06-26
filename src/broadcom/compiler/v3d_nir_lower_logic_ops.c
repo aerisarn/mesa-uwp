@@ -388,8 +388,7 @@ v3d_nir_lower_logic_ops_block(nir_block *block, struct v3d_compile *c)
 
                         nir_function_impl *impl =
                                 nir_cf_node_get_function(&block->cf_node);
-                        nir_builder b;
-                        nir_builder_init(&b, impl);
+                        nir_builder b = nir_builder_create(impl);
                         b.cursor = nir_before_instr(&intr->instr);
                         v3d_nir_lower_logic_op_instr(c, &b, intr, rt);
 

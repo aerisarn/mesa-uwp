@@ -73,8 +73,7 @@ nir_lower_libclc_impl(nir_function_impl *impl,
                       const nir_shader *clc_shader,
                       struct hash_table *copy_vars)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    bool progress = false;
    nir_foreach_block_safe(block, impl) {

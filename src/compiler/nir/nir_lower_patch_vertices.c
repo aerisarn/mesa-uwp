@@ -65,8 +65,7 @@ nir_lower_patch_vertices(nir_shader *nir,
    nir_foreach_function(function, nir) {
       if (function->impl) {
          nir_foreach_block(block, function->impl) {
-            nir_builder b;
-            nir_builder_init(&b, function->impl);
+            nir_builder b = nir_builder_create(function->impl);
             nir_foreach_instr_safe(instr, block) {
                if (instr->type == nir_instr_type_intrinsic) {
                   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);

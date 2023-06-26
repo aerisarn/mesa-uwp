@@ -599,8 +599,7 @@ lower_flrp_impl(nir_function_impl *impl,
                 unsigned lowering_mask,
                 bool always_precise)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {

@@ -298,8 +298,7 @@ static bool
 opt_uniform_atomics(nir_function_impl *impl)
 {
    bool progress = false;
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
    b.update_divergence = true;
 
    nir_foreach_block(block, impl) {

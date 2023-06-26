@@ -136,8 +136,7 @@ visit_cf_list(nir_builder *b, struct exec_list *list, bool *repair_ssa)
 static bool
 lower_continue_constructs_impl(nir_function_impl *impl)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
    bool repair_ssa = false;
    bool progress = visit_cf_list(&b, &impl->body, &repair_ssa);
 

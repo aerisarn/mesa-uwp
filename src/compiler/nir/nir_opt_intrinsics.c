@@ -169,8 +169,7 @@ static bool
 opt_intrinsics_impl(nir_function_impl *impl,
                     const struct nir_shader_compiler_options *options)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
    bool progress = false;
 
    nir_foreach_block(block, impl) {

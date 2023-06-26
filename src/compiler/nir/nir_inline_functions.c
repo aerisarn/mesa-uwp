@@ -177,8 +177,7 @@ inline_function_impl(nir_function_impl *impl, struct set *inlined)
    if (_mesa_set_search(inlined, impl))
       return false; /* Already inlined */
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    bool progress = false;
    nir_foreach_block_safe(block, impl) {

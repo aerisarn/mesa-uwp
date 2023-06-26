@@ -167,8 +167,7 @@ brw_nir_lower_alpha_to_coverage(nir_shader *shader,
                        &sample_mask_write->instr);
    }
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    /* Combine dither_mask and the gl_SampleMask value */
    b.cursor = nir_before_instr(&sample_mask_write->instr);

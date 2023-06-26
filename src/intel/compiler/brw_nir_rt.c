@@ -78,8 +78,7 @@ lower_rt_io_derefs(nir_shader *shader)
     */
    assert(num_shader_call_vars <= 1);
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    b.cursor = nir_before_cf_list(&impl->body);
    nir_ssa_def *call_data_addr = NULL;
@@ -272,8 +271,7 @@ lower_ray_walk_intrinsics(nir_shader *shader,
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    bool progress = false;
    nir_foreach_block_safe(block, impl) {

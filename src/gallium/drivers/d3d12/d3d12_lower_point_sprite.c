@@ -287,8 +287,7 @@ d3d12_lower_point_sprite(nir_shader *shader,
 
    nir_foreach_function(function, shader) {
       if (function->impl) {
-         nir_builder builder;
-         nir_builder_init(&builder, function->impl);
+         nir_builder builder = nir_builder_create(function->impl);
          nir_foreach_block(block, function->impl) {
             nir_foreach_instr_safe(instr, block) {
                if (instr->type == nir_instr_type_intrinsic)

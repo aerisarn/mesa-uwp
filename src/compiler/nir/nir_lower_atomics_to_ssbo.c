@@ -188,8 +188,7 @@ nir_lower_atomics_to_ssbo(nir_shader *shader, unsigned offset_align_state)
 
    nir_foreach_function(function, shader) {
       if (function->impl) {
-         nir_builder builder;
-         nir_builder_init(&builder, function->impl);
+         nir_builder builder = nir_builder_create(function->impl);
          nir_foreach_block(block, function->impl) {
             nir_foreach_instr_safe(instr, block) {
                if (instr->type == nir_instr_type_intrinsic)

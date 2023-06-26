@@ -155,8 +155,7 @@ agx_nir_lower_sample_mask(nir_shader *shader, unsigned nr_samples)
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    nir_block *block = nir_impl_last_block(impl);
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    b.cursor = nir_after_block(block);
    nir_foreach_instr(instr, block) {

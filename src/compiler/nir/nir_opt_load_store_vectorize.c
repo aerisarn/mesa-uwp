@@ -1127,8 +1127,7 @@ try_vectorize(nir_function_impl *impl, struct vectorize_ctx *ctx,
    unsigned new_num_components = new_size / new_bit_size;
 
    /* vectorize the loads/stores */
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    if (first->is_store)
       vectorize_stores(&b, ctx, low, high, first, second,
@@ -1179,8 +1178,7 @@ try_vectorize_shared2(nir_function_impl *impl, struct vectorize_ctx *ctx,
    }
 
    /* vectorize the accesses */
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    b.cursor = nir_after_instr(first->is_store ? second->instr : first->instr);
 

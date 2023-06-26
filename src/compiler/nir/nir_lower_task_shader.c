@@ -140,8 +140,7 @@ nir_lower_nv_task_count(nir_shader *shader)
                                 nir_metadata_none, &state);
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
-   nir_builder builder;
-   nir_builder_init(&builder, impl);
+   nir_builder builder = nir_builder_create(impl);
 
    append_launch_mesh_workgroups_to_nv_task(&builder, &state);
    nir_metadata_preserve(impl, nir_metadata_none);
@@ -434,8 +433,7 @@ nir_lower_task_shader(nir_shader *shader,
       return false;
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
-   nir_builder builder;
-   nir_builder_init(&builder, impl);
+   nir_builder builder = nir_builder_create(impl);
 
    if (shader->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_TASK_COUNT)) {
       /* NV_mesh_shader:

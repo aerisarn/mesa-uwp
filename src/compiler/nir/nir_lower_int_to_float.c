@@ -206,8 +206,7 @@ nir_lower_int_to_float_impl(nir_function_impl *impl)
    bool progress = false;
    BITSET_WORD *float_types = NULL, *int_types = NULL;
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_index_ssa_defs(impl);
    float_types = calloc(BITSET_WORDS(impl->ssa_alloc),

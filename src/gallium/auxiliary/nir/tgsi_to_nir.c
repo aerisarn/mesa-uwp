@@ -2573,8 +2573,7 @@ lower_clipdistance_to_array(nir_shader *nir)
       bool func_progress = false;
       if (!function->impl)
          continue;
-      nir_builder b;
-      nir_builder_init(&b, function->impl);
+      nir_builder b = nir_builder_create(function->impl);
       b.cursor = nir_before_block(nir_start_block(function->impl));
       /* create a new deref for the arrayed clipdistance variable at the start of the function */
       nir_deref_instr *clipdist_deref = nir_build_deref_var(&b, dist0);

@@ -94,8 +94,7 @@ d3d12_lower_yflip(nir_shader *nir)
 
    nir_foreach_function(function, nir) {
       if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
+         nir_builder b = nir_builder_create(function->impl);
 
          nir_foreach_block(block, function->impl) {
             nir_foreach_instr_safe(instr, block) {
@@ -152,8 +151,7 @@ d3d12_lower_depth_range(nir_shader *nir)
    nir_variable *depth_transform = NULL;
    nir_foreach_function(function, nir) {
       if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
+         nir_builder b = nir_builder_create(function->impl);
 
          nir_foreach_block(block, function->impl) {
             nir_foreach_instr_safe(instr, block) {
@@ -249,8 +247,7 @@ d3d12_lower_uint_cast(nir_shader *nir, bool is_signed)
 
    nir_foreach_function(function, nir) {
       if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
+         nir_builder b = nir_builder_create(function->impl);
 
          nir_foreach_block(block, function->impl) {
             nir_foreach_instr_safe(instr, block) {
@@ -419,8 +416,7 @@ d3d12_nir_invert_depth(nir_shader *shader, unsigned viewport_mask, bool clip_hal
    struct invert_depth_state state = { viewport_mask, clip_halfz };
    nir_foreach_function(function, shader) {
       if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
+         nir_builder b = nir_builder_create(function->impl);
 
          nir_foreach_block(block, function->impl) {
             nir_foreach_instr_safe(instr, block) {
@@ -541,8 +537,7 @@ d3d12_lower_state_vars(nir_shader *nir, struct d3d12_shader *shader)
 
    nir_foreach_function(function, nir) {
       if (function->impl) {
-         nir_builder builder;
-         nir_builder_init(&builder, function->impl);
+         nir_builder builder = nir_builder_create(function->impl);
          nir_foreach_block(block, function->impl) {
             nir_foreach_instr_safe(instr, block) {
                if (instr->type == nir_instr_type_intrinsic)
@@ -1017,8 +1012,7 @@ d3d12_write_0_to_new_varying(nir_shader *s, nir_variable *var)
       if (!func->impl)
          continue;
 
-      nir_builder b;
-      nir_builder_init(&b, func->impl);
+      nir_builder b = nir_builder_create(func->impl);
 
       nir_foreach_block(block, func->impl) {
          b.cursor = nir_before_block(block);

@@ -1620,8 +1620,7 @@ nir_lower_tex_impl(nir_function_impl *impl,
                    const struct nir_shader_compiler_options *compiler_options)
 {
    bool progress = false;
-   nir_builder builder;
-   nir_builder_init(&builder, impl);
+   nir_builder builder = nir_builder_create(impl);
 
    nir_foreach_block(block, impl) {
       progress |= nir_lower_tex_block(block, &builder, options, compiler_options);

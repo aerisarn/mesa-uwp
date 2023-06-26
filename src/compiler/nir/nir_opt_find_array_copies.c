@@ -632,8 +632,7 @@ opt_find_array_copies_block(nir_builder *b, nir_block *block,
 static bool
 opt_find_array_copies_impl(nir_function_impl *impl)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    bool progress = false;
 

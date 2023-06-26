@@ -428,8 +428,7 @@ r600_create_new_io_vars(nir_shader *shader,
 static bool
 r600_vectorize_io_impl(nir_function_impl *impl)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_metadata_require(impl, nir_metadata_dominance);
 

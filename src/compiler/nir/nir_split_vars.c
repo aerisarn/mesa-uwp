@@ -236,8 +236,7 @@ split_struct_derefs_impl(nir_function_impl *impl,
                          nir_variable_mode modes,
                          void *mem_ctx)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
@@ -744,8 +743,7 @@ split_array_copies_impl(nir_function_impl *impl,
                         nir_variable_mode modes,
                         void *mem_ctx)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
@@ -789,8 +787,7 @@ split_array_access_impl(nir_function_impl *impl,
                         nir_variable_mode modes,
                         void *mem_ctx)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
@@ -1500,8 +1497,7 @@ shrink_vec_var_access_impl(nir_function_impl *impl,
                            struct hash_table *var_usage_map,
                            nir_variable_mode modes)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {

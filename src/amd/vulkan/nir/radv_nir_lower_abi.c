@@ -519,8 +519,7 @@ radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level, const struc
    if (shader->info.stage == MESA_SHADER_GEOMETRY && !info->is_ngg) {
       nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
-      nir_builder b;
-      nir_builder_init(&b, impl);
+      nir_builder b = nir_builder_create(impl);
       b.cursor = nir_before_cf_list(&impl->body);
 
       u_foreach_bit (i, shader->info.gs.active_stream_mask)

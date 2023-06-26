@@ -2194,8 +2194,7 @@ nir_lower_explicit_io_impl(nir_function_impl *impl, nir_variable_mode modes,
 {
    bool progress = false;
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    /* Walk in reverse order so that we can see the full deref chain when we
     * lower the access operations.  We lower them assuming that the derefs
@@ -2877,8 +2876,7 @@ nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode modes)
    nir_foreach_function(f, nir) {
       if (f->impl) {
          bool impl_progress = false;
-         nir_builder b;
-         nir_builder_init(&b, f->impl);
+         nir_builder b = nir_builder_create(f->impl);
          nir_foreach_block(block, f->impl) {
             impl_progress |= add_const_offset_to_base_block(block, &b, modes);
          }
@@ -2899,8 +2897,7 @@ nir_lower_color_inputs(nir_shader *nir)
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    bool progress = false;
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_foreach_block (block, impl) {
       nir_foreach_instr_safe (instr, block) {

@@ -662,8 +662,7 @@ remove_out_of_bounds_induction_use(nir_shader *shader, nir_loop *loop,
    nir_cf_reinsert(lp_header, nir_after_block(nir_loop_last_block(loop)));
    nir_cf_reinsert(lp_body, nir_after_block(nir_loop_last_block(loop)));
 
-   nir_builder b;
-   nir_builder_init(&b, nir_cf_node_get_function(&loop->cf_node));
+   nir_builder b = nir_builder_create(nir_cf_node_get_function(&loop->cf_node));
 
    nir_foreach_block_in_cf_node(block, &loop->cf_node) {
       nir_foreach_instr_safe(instr, block) {

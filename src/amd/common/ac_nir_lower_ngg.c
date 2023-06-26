@@ -869,8 +869,7 @@ cleanup_culling_shader_after_dce(nir_shader *shader,
    bool uses_tes_patch_id = false;
 
    bool progress = false;
-   nir_builder b;
-   nir_builder_init(&b, function_impl);
+   nir_builder b = nir_builder_create(function_impl);
 
    nir_foreach_block_reverse_safe(block, function_impl) {
       nir_foreach_instr_reverse_safe(instr, block) {

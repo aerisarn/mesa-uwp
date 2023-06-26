@@ -1680,8 +1680,7 @@ nir_opt_if(nir_shader *shader, nir_opt_if_options options)
       if (function->impl == NULL)
          continue;
 
-      nir_builder b;
-      nir_builder_init(&b, function->impl);
+      nir_builder b = nir_builder_create(function->impl);
 
       nir_metadata_require(function->impl, nir_metadata_block_index |
                            nir_metadata_dominance);

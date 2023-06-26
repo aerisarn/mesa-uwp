@@ -258,8 +258,7 @@ dxil_nir_lower_constant_to_temp(nir_shader *nir)
          continue;
       assert(func->impl);
 
-      nir_builder b;
-      nir_builder_init(&b, func->impl);
+      nir_builder b = nir_builder_create(func->impl);
       nir_foreach_block(block, func->impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_deref)
@@ -667,8 +666,7 @@ dxil_nir_lower_loads_stores_to_dxil(nir_shader *nir,
       if (!func->impl)
          continue;
 
-      nir_builder b;
-      nir_builder_init(&b, func->impl);
+      nir_builder b = nir_builder_create(func->impl);
 
       nir_variable *scratch_var = NULL;
       if (nir->scratch_size) {
@@ -750,8 +748,7 @@ dxil_nir_lower_deref_ssbo(nir_shader *nir)
          continue;
       assert(func->impl);
 
-      nir_builder b;
-      nir_builder_init(&b, func->impl);
+      nir_builder b = nir_builder_create(func->impl);
 
       nir_foreach_block(block, func->impl) {
          nir_foreach_instr_safe(instr, block) {
@@ -815,8 +812,7 @@ dxil_nir_opt_alu_deref_srcs(nir_shader *nir)
          continue;
       assert(func->impl);
 
-      nir_builder b;
-      nir_builder_init(&b, func->impl);
+      nir_builder b = nir_builder_create(func->impl);
 
       nir_foreach_block(block, func->impl) {
          nir_foreach_instr_safe(instr, block) {
@@ -866,8 +862,7 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
 static bool
 upcast_phi_impl(nir_function_impl *impl, unsigned min_bit_size)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
    bool progress = false;
 
    nir_foreach_block_reverse(block, impl) {
@@ -2094,8 +2089,7 @@ dxil_nir_split_unaligned_loads_stores(nir_shader *shader, nir_variable_mode mode
       if (!function->impl)
          continue;
 
-      nir_builder b;
-      nir_builder_init(&b, function->impl);
+      nir_builder b = nir_builder_create(function->impl);
 
       nir_foreach_block(block, function->impl) {
          nir_foreach_instr_safe(instr, block) {

@@ -535,8 +535,7 @@ lower_copies_to_load_store(struct deref_node *node,
    if (!node->copies)
       return;
 
-   nir_builder b;
-   nir_builder_init(&b, state->impl);
+   nir_builder b = nir_builder_create(state->impl);
 
    set_foreach(node->copies, copy_entry) {
       nir_intrinsic_instr *copy = (void *)copy_entry->key;
@@ -572,8 +571,7 @@ lower_copies_to_load_store(struct deref_node *node,
 static bool
 rename_variables(struct lower_variables_state *state)
 {
-   nir_builder b;
-   nir_builder_init(&b, state->impl);
+   nir_builder b = nir_builder_create(state->impl);
 
    nir_foreach_block(block, state->impl) {
       nir_foreach_instr_safe(instr, block) {

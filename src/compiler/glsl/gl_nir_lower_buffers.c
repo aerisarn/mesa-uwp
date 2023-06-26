@@ -164,8 +164,7 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
 {
    bool progress = false;
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    /* this must be a separate loop before the main pass in order to ensure that
     * access info is fully propagated prior to the info being lost during rewrites

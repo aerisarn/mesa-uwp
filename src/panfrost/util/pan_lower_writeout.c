@@ -154,8 +154,7 @@ pan_nir_lower_zs_store(nir_shader *nir)
 
             assert(nir_src_is_const(intr->src[1]) && "no indirect outputs");
 
-            nir_builder b;
-            nir_builder_init(&b, function->impl);
+            nir_builder b = nir_builder_create(function->impl);
             b.cursor = nir_after_block_before_jump(instr->block);
 
             /* Trying to write depth twice results in the
@@ -173,8 +172,7 @@ pan_nir_lower_zs_store(nir_shader *nir)
 
       /* Insert a store to the depth RT (0xff) if needed */
       if (!replaced) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
+         nir_builder b = nir_builder_create(function->impl);
          b.cursor = nir_after_block_before_jump(common_block);
 
          pan_nir_emit_combined_store(&b, NULL, writeout, stores);

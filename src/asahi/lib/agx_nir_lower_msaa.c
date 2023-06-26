@@ -67,8 +67,7 @@ agx_nir_wrap_per_sample_loop(nir_shader *shader, uint8_t nr_samples)
                   nir_after_block(nir_impl_last_block(impl)));
 
    /* Create a builder for the wrapped function */
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
    b.cursor = nir_after_block(nir_start_block(impl));
 
    nir_variable *i =

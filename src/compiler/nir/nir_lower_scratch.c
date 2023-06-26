@@ -183,8 +183,7 @@ nir_lower_vars_to_scratch(nir_shader *shader,
       if (!function->impl)
          continue;
 
-      nir_builder build;
-      nir_builder_init(&build, function->impl);
+      nir_builder build = nir_builder_create(function->impl);
 
       bool impl_progress = false;
       nir_foreach_block(block, function->impl) {

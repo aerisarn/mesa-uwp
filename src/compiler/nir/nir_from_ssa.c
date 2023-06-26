@@ -986,8 +986,7 @@ place_phi_read(nir_builder *b, nir_register *reg,
 bool
 nir_lower_phis_to_regs_block(nir_block *block)
 {
-   nir_builder b;
-   nir_builder_init(&b, nir_cf_node_get_function(&block->cf_node));
+   nir_builder b = nir_builder_create(nir_cf_node_get_function(&block->cf_node));
    struct set *visited_blocks = _mesa_set_create(NULL, _mesa_hash_pointer,
                                                  _mesa_key_pointer_equal);
 

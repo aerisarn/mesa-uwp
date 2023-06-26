@@ -717,8 +717,7 @@ v3d_nir_lower_io(nir_shader *s, struct v3d_compile *c)
 
         nir_foreach_function(function, s) {
                 if (function->impl) {
-                        nir_builder b;
-                        nir_builder_init(&b, function->impl);
+                        nir_builder b = nir_builder_create(function->impl);
 
                         if (c->s->info.stage == MESA_SHADER_GEOMETRY)
                                 emit_gs_prolog(c, &b, function->impl, &state);

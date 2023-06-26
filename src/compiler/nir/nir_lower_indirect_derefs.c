@@ -191,8 +191,7 @@ static bool
 lower_indirects_impl(nir_function_impl *impl, nir_variable_mode modes,
                      const struct set *vars, uint32_t max_lower_array_len)
 {
-   nir_builder builder;
-   nir_builder_init(&builder, impl);
+   nir_builder builder = nir_builder_create(impl);
    bool progress = false;
 
    nir_foreach_block_safe(block, impl) {

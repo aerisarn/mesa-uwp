@@ -483,8 +483,7 @@ ir3_nir_lower_ubo_loads(nir_shader *nir, struct ir3_shader_variant *v)
             nir_metadata_preserve(function->impl, nir_metadata_all);
             continue;
          }
-         nir_builder builder;
-         nir_builder_init(&builder, function->impl);
+         nir_builder builder = nir_builder_create(function->impl);
          nir_foreach_block (block, function->impl) {
             nir_foreach_instr_safe (instr, block) {
                if (!instr_is_load_ubo(instr))

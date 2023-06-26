@@ -482,8 +482,7 @@ r600_lower_tess_io(nir_shader *shader, enum mesa_prim prim_type)
    nir_foreach_function(function, shader)
    {
       if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
+         nir_builder b = nir_builder_create(function->impl);
 
          nir_foreach_block(block, function->impl)
          {

@@ -31,8 +31,7 @@ lower_zs_emit(nir_function_impl *impl, nir_block *block)
           sem.location != FRAG_RESULT_STENCIL)
          continue;
 
-      nir_builder b;
-      nir_builder_init(&b, impl);
+      nir_builder b = nir_builder_create(impl);
       b.cursor = nir_before_instr(instr);
 
       nir_ssa_def *value = intr->src[0].ssa;

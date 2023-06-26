@@ -158,8 +158,7 @@ nir_lower_ssbo(nir_shader *shader)
 
    nir_foreach_function(function, shader) {
       nir_function_impl *impl = function->impl;
-      nir_builder b;
-      nir_builder_init(&b, impl);
+      nir_builder b = nir_builder_create(impl);
 
       nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {

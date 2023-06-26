@@ -72,8 +72,7 @@ brw_nir_lower_shader_returns(nir_shader *shader)
    if (shader->info.stage != MESA_SHADER_RAYGEN)
       shader->scratch_size += BRW_BTD_STACK_CALLEE_DATA_SIZE;
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    set_foreach(impl->end_block->predecessors, block_entry) {
       struct nir_block *block = (void *)block_entry->key;

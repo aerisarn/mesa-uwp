@@ -88,8 +88,7 @@ nir_shader_instructions_pass(nir_shader *shader,
          continue;
 
       bool func_progress = false;
-      nir_builder b;
-      nir_builder_init(&b, function->impl);
+      nir_builder b = nir_builder_create(function->impl);
 
       nir_foreach_block_safe(block, function->impl) {
          nir_foreach_instr_safe(instr, block) {

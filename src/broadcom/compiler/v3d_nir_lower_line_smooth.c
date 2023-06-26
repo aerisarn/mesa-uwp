@@ -60,9 +60,7 @@ lower_line_smooth_func(struct lower_line_smooth_state *state,
 {
         bool progress = false;
 
-        nir_builder b;
-
-        nir_builder_init(&b, impl);
+        nir_builder b = nir_builder_create(impl);
 
         nir_foreach_block(block, impl) {
                 nir_foreach_instr_safe(instr, block) {
@@ -90,9 +88,7 @@ static void
 initialise_coverage_var(struct lower_line_smooth_state *state,
                         nir_function_impl *impl)
 {
-        nir_builder b;
-
-        nir_builder_init(&b, impl);
+        nir_builder b = nir_builder_create(impl);
 
         b.cursor = nir_before_block(nir_start_block(impl));
 

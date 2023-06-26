@@ -108,8 +108,7 @@ nir_lower_variable_initializers(nir_shader *shader, nir_variable_mode modes)
 
       bool impl_progress = false;
 
-      nir_builder builder;
-      nir_builder_init(&builder, function->impl);
+      nir_builder builder = nir_builder_create(function->impl);
 
       if ((modes & ~nir_var_function_temp) && function->is_entrypoint) {
          impl_progress |= lower_const_initializer(&builder,
@@ -150,8 +149,7 @@ nir_zero_initialize_shared_memory(nir_shader *shader,
    assert(chunk_size > 0);
    assert(chunk_size % 4 == 0);
 
-   nir_builder b;
-   nir_builder_init(&b, nir_shader_get_entrypoint(shader));
+   nir_builder b = nir_builder_create(nir_shader_get_entrypoint(shader));
    b.cursor = nir_before_cf_list(&b.impl->body);
 
    assert(!shader->info.workgroup_size_variable);

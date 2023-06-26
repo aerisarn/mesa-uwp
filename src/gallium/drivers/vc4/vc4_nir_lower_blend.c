@@ -595,8 +595,7 @@ vc4_nir_lower_blend_block(nir_block *block, struct vc4_compile *c)
 
                 nir_function_impl *impl =
                         nir_cf_node_get_function(&block->cf_node);
-                nir_builder b;
-                nir_builder_init(&b, impl);
+                nir_builder b = nir_builder_create(impl);
                 b.cursor = nir_before_instr(&intr->instr);
                 vc4_nir_lower_blend_instr(c, &b, intr);
         }
@@ -623,8 +622,7 @@ vc4_nir_lower_blend(nir_shader *s, struct vc4_compile *c)
          */
         if (c->fs_key->sample_coverage && !c->fs_key->sample_alpha_to_coverage) {
                 nir_function_impl *impl = nir_shader_get_entrypoint(s);
-                nir_builder b;
-                nir_builder_init(&b, impl);
+                nir_builder b = nir_builder_create(impl);
                 b.cursor = nir_after_block(nir_impl_last_block(impl));
 
                 vc4_nir_store_sample_mask(c, &b, nir_load_sample_mask_in(&b));

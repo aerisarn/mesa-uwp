@@ -154,8 +154,7 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    assert(impl);
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_foreach_block_safe (block, impl) {
       nir_foreach_instr_safe (instr, block) {
@@ -287,8 +286,7 @@ nir_force_mediump_io(nir_shader *nir, nir_variable_mode modes,
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    assert(impl);
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_foreach_block_safe (block, impl) {
       nir_foreach_instr_safe (instr, block) {
@@ -422,8 +420,7 @@ nir_lower_mediump_vars_impl(nir_function_impl *impl, nir_variable_mode modes,
    if (!any_lowered)
       return false;
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
@@ -661,8 +658,7 @@ nir_legalize_16bit_sampler_srcs(nir_shader *nir,
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    assert(impl);
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
 
    nir_foreach_block_safe (block, impl) {
       nir_foreach_instr_safe (instr, block) {

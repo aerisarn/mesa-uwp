@@ -60,8 +60,7 @@ try_lower_input_load(nir_function_impl *impl, nir_intrinsic_instr *load,
        image_dim != GLSL_SAMPLER_DIM_SUBPASS_MS)
       return false;
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_builder b = nir_builder_create(impl);
    b.cursor = nir_before_instr(&load->instr);
 
    nir_ssa_def *frag_coord = use_fragcoord_sysval ? nir_load_frag_coord(&b)

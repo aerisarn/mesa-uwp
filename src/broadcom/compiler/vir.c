@@ -1508,8 +1508,7 @@ v3d_nir_lower_subgroup_intrinsics(nir_shader *s, struct v3d_compile *c)
         bool progress = false;
         nir_foreach_function(function, s) {
                 if (function->impl) {
-                        nir_builder b;
-                        nir_builder_init(&b, function->impl);
+                        nir_builder b = nir_builder_create(function->impl);
 
                         nir_foreach_block(block, function->impl)
                                 progress |= lower_subgroup_intrinsics(c, block, &b);
