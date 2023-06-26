@@ -2683,9 +2683,9 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       struct vtn_pointer *array = vtn_pointer_dereference(b, ptr, &chain);
 
       nir_ssa_def *array_length =
-         nir_build_deref_buffer_array_length(&b->nb, 32,
-                                             vtn_pointer_to_ssa(b, array),
-                                             .access=ptr->access | ptr->type->access);
+         nir_deref_buffer_array_length(&b->nb, 32,
+                                       vtn_pointer_to_ssa(b, array),
+                                       .access=ptr->access | ptr->type->access);
 
       vtn_push_nir_ssa(b, w[2], array_length);
       break;

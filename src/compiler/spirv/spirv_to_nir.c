@@ -5939,13 +5939,13 @@ ray_query_load_intrinsic_create(struct vtn_builder *b, SpvOp opcode,
       struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, value.glsl_type);
       for (unsigned i = 0; i < elems; i++) {
          ssa->elems[i]->def =
-            nir_build_rq_load(&b->nb,
-                              glsl_get_vector_elements(elem_type),
-                              glsl_get_bit_size(elem_type),
-                              src0,
-                              .ray_query_value = value.nir_value,
-                              .committed = committed,
-                              .column = i);
+            nir_rq_load(&b->nb,
+                        glsl_get_vector_elements(elem_type),
+                        glsl_get_bit_size(elem_type),
+                        src0,
+                        .ray_query_value = value.nir_value,
+                        .committed = committed,
+                        .column = i);
       }
 
       vtn_push_ssa_value(b, w[2], ssa);
