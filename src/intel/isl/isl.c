@@ -991,13 +991,30 @@ isl_surf_choose_tiling(const struct isl_device *dev,
       CHOOSE(ISL_TILING_LINEAR);
    }
 
-   CHOOSE(ISL_TILING_4);
-   CHOOSE(ISL_TILING_64);
-   CHOOSE(ISL_TILING_ICL_Ys);
-   CHOOSE(ISL_TILING_SKL_Ys);
-   CHOOSE(ISL_TILING_ICL_Yf);
-   CHOOSE(ISL_TILING_SKL_Yf);
+   /* Choose suggested 4K tilings first, then 64K tilings:
+    *
+    * Then following quotes can be found in the SKL PRMs,
+    *   Volume 5: Memory Views, Address Tiling Function Introduction
+    * and from the ATS-M PRMs,
+    *   Volume 5: Memory Data Formats, Address Tiling Function Introduction
+    *
+    *    "TileY: Used for most tiled surfaces when TR_MODE=TR_NONE."
+    *    "Tile4: 4KB tiling mode based on previously-supported TileY"
+    *    "TileYF: 4KB tiling mode based on TileY"
+    *    "TileYS: 64KB tiling mode based on TileY"
+    *    "Tile64: 64KB tiling mode which support standard-tiling including
+    *     Mip Tails"
+    *
+    * When TileYF and TileYS are used TR_MODE != TR_NONE.
+    */
    CHOOSE(ISL_TILING_Y0);
+   CHOOSE(ISL_TILING_4);
+   CHOOSE(ISL_TILING_SKL_Yf);
+   CHOOSE(ISL_TILING_ICL_Yf);
+   CHOOSE(ISL_TILING_SKL_Ys);
+   CHOOSE(ISL_TILING_ICL_Ys);
+   CHOOSE(ISL_TILING_64);
+
    CHOOSE(ISL_TILING_X);
    CHOOSE(ISL_TILING_W);
    CHOOSE(ISL_TILING_LINEAR);
