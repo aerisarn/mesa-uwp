@@ -63,7 +63,7 @@ util_pstipple_update_stipple_texture(struct pipe_context *pipe,
                                      struct pipe_resource *tex,
                                      const uint32_t pattern[32])
 {
-   static const uint bit31 = 1u << 31;
+   static const unsigned bit31 = 1u << 31;
    struct pipe_transfer *transfer;
    uint8_t *data;
    int i, j;
@@ -174,14 +174,14 @@ util_pstipple_create_sampler(struct pipe_context *pipe)
 struct pstip_transform_context {
    struct tgsi_transform_context base;
    struct tgsi_shader_info info;
-   uint tempsUsed;  /**< bitmask */
+   unsigned tempsUsed;  /**< bitmask */
    int wincoordInput;
    unsigned wincoordFile;
    int maxInput;
-   uint samplersUsed;  /**< bitfield of samplers used */
+   unsigned samplersUsed;  /**< bitfield of samplers used */
    int freeSampler;  /** an available sampler for the pstipple */
    int numImmed;
-   uint coordOrigin;
+   unsigned coordOrigin;
    unsigned fixedUnit;
    bool hasFixedUnit;
 };
@@ -201,7 +201,7 @@ pstip_transform_decl(struct tgsi_transform_context *ctx,
    /* XXX we can use tgsi_shader_info instead of some of this */
 
    if (decl->Declaration.File == TGSI_FILE_SAMPLER) {
-      uint i;
+      unsigned i;
       for (i = decl->Range.First; i <= decl->Range.Last; i++) {
          pctx->samplersUsed |= 1u << i;
       }
@@ -212,7 +212,7 @@ pstip_transform_decl(struct tgsi_transform_context *ctx,
          pctx->wincoordInput = (int) decl->Range.First;
    }
    else if (decl->Declaration.File == TGSI_FILE_TEMPORARY) {
-      uint i;
+      unsigned i;
       for (i = decl->Range.First; i <= decl->Range.Last; i++) {
          pctx->tempsUsed |= (1 << i);
       }
@@ -237,7 +237,7 @@ pstip_transform_immed(struct tgsi_transform_context *ctx,
  * Find the lowest zero bit in the given word, or -1 if bitfield is all ones.
  */
 static int
-free_bit(uint bitfield)
+free_bit(unsigned bitfield)
 {
    return ffs(~bitfield) - 1;
 }
@@ -377,7 +377,7 @@ util_pstipple_create_fragment_shader(const struct tgsi_token *tokens,
                                      unsigned wincoordFile)
 {
    struct pstip_transform_context transform;
-   const uint newLen = tgsi_num_tokens(tokens) + NUM_NEW_TOKENS;
+   const unsigned newLen = tgsi_num_tokens(tokens) + NUM_NEW_TOKENS;
    struct tgsi_token *new_tokens;
 
    /* Setup shader transformation info/context.

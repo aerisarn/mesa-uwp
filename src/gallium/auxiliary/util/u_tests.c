@@ -160,7 +160,7 @@ util_set_passthrough_vertex_shader(struct cso_context *cso,
       TGSI_SEMANTIC_POSITION,
       TGSI_SEMANTIC_GENERIC
    };
-   static const uint vs_indices[] = {0, 0};
+   static const unsigned vs_indices[] = {0, 0};
    void *vs;
 
    vs = util_make_vertex_passthrough_shader(ctx, 2, vs_attribs, vs_indices,

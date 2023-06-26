@@ -48,7 +48,8 @@
 void
 pipe_get_tile_raw(struct pipe_transfer *pt,
                   const void *src,
-                  uint x, uint y, uint w, uint h,
+                  unsigned x, unsigned y,
+                  unsigned w, unsigned h,
                   void *dst, int dst_stride)
 {
    if (dst_stride == 0)
@@ -67,7 +68,8 @@ pipe_get_tile_raw(struct pipe_transfer *pt,
 void
 pipe_put_tile_raw(struct pipe_transfer *pt,
                   void *dst,
-                  uint x, uint y, uint w, uint h,
+                  unsigned x, unsigned y,
+                  unsigned w, unsigned h,
                   const void *src, int src_stride)
 {
    enum pipe_format format = pt->resource->format;
@@ -357,7 +359,7 @@ x32_s8_get_tile_rgba(const uint32_t *src,
 void
 pipe_put_tile_rgba(struct pipe_transfer *pt,
                    void *dst,
-                   uint x, uint y, uint w, uint h,
+                   unsigned x, unsigned y, unsigned w, unsigned h,
                    enum pipe_format format, const void *p)
 {
    unsigned src_stride = w * 4;
@@ -380,7 +382,7 @@ pipe_put_tile_rgba(struct pipe_transfer *pt,
 void
 pipe_get_tile_rgba(struct pipe_transfer *pt,
                    const void *src,
-                   uint x, uint y, uint w, uint h,
+                   unsigned x, unsigned y, unsigned w, unsigned h,
                    enum pipe_format format,
                    void *dst)
 {

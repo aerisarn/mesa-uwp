@@ -57,12 +57,14 @@
  */
 bool
 util_gen_mipmap(struct pipe_context *pipe, struct pipe_resource *pt,
-                enum pipe_format format, uint base_level, uint last_level,
-                uint first_layer, uint last_layer, uint filter)
+                enum pipe_format format,
+                unsigned base_level, unsigned last_level,
+                unsigned first_layer, unsigned last_layer,
+                unsigned filter)
 {
    struct pipe_screen *screen = pipe->screen;
    struct pipe_blit_info blit;
-   uint dstLevel;
+   unsigned dstLevel;
    bool is_zs = util_format_is_depth_or_stencil(format);
    bool has_depth =
       util_format_has_depth(util_format_description(format));

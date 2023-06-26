@@ -43,7 +43,8 @@ struct pipe_transfer;
  * \return TRUE if tile is totally clipped, FALSE otherwise
  */
 static inline bool
-u_clip_tile(uint x, uint y, uint *w, uint *h, const struct pipe_box *box)
+u_clip_tile(unsigned x, unsigned y, unsigned *w, unsigned *h,
+            const struct pipe_box *box)
 {
    if ((int) x >= box->width)
       return true;
@@ -63,27 +64,31 @@ extern "C" {
 void
 pipe_get_tile_raw(struct pipe_transfer *pt,
                   const void *src,
-                  uint x, uint y, uint w, uint h,
+                  unsigned x, unsigned y,
+                  unsigned w, unsigned h,
                   void *p, int dst_stride);
 
 void
 pipe_put_tile_raw(struct pipe_transfer *pt,
                   void *dst,
-                  uint x, uint y, uint w, uint h,
+                  unsigned x, unsigned y,
+                  unsigned w, unsigned h,
                   const void *p, int src_stride);
 
 
 void
 pipe_get_tile_rgba(struct pipe_transfer *pt,
                    const void *src,
-                   uint x, uint y, uint w, uint h,
+                   unsigned x, unsigned y,
+                   unsigned w, unsigned h,
                    enum pipe_format format,
                    void *dst);
 
 void
 pipe_put_tile_rgba(struct pipe_transfer *pt,
                    void *dst,
-                   uint x, uint y, uint w, uint h,
+                   unsigned x, unsigned y,
+                   unsigned w, unsigned h,
                    enum pipe_format format,
                    const void *src);
 

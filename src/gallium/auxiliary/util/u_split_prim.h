@@ -18,9 +18,9 @@ struct util_split_prim {
    unsigned p_start;
    unsigned p_end;
 
-   uint repeat_first:1;
-   uint close_first:1;
-   uint edgeflag_off:1;
+   unsigned repeat_first:1;
+   unsigned close_first:1;
+   unsigned edgeflag_off:1;
 };
 
 static inline void
