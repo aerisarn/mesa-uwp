@@ -235,7 +235,7 @@ lower_rect_tex_scale(nir_builder *b, nir_tex_instr *tex)
    b->cursor = nir_before_instr(&tex->instr);
 
    nir_ssa_def *idx = nir_imm_int(b, tex->texture_index);
-   nir_ssa_def *scale = nir_build_load_texture_rect_scaling(b, 32, idx);
+   nir_ssa_def *scale = nir_load_texture_rect_scaling(b, 32, idx);
    int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
 
    if (coord_index != -1) {

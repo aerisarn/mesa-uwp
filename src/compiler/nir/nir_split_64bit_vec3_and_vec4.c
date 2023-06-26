@@ -184,8 +184,7 @@ split_load_deref(nir_builder *b, nir_intrinsic_instr *intr,
    }
 
    nir_ssa_def *load1 = nir_build_load_deref(b, 2, 64, &deref1->dest.ssa, 0);
-   nir_ssa_def *load2 = nir_build_load_deref(b, old_components - 2, 64,
-                                             &deref2->dest.ssa, 0);
+   nir_ssa_def *load2 = nir_build_load_deref(b, old_components - 2, 64, &deref2->dest.ssa, 0);
 
    return merge_to_vec3_or_vec4(b, load1, load2);
 }
