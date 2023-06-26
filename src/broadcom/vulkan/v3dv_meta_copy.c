@@ -905,6 +905,107 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
    return true;
 }
 
+static bool
+copy_image_linear_texel_buffer(struct v3dv_cmd_buffer *cmd_buffer,
+                               struct v3dv_image *dst,
+                               struct v3dv_image *src,
+                               const VkImageCopy2 *region);
+
+static VkImageCopy2
+image_copy_region_for_image_to_buffer(const VkBufferImageCopy2 *region,
+                                      struct image_to_buffer_info *info,
+                                      uint32_t layer)
+{
+   VkImageCopy2 output = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_COPY_2,
+      .srcSubresource = {
+         .aspectMask = info->src_copy_aspect,
+         .mipLevel = region->imageSubresource.mipLevel,
+         .baseArrayLayer = region->imageSubresource.baseArrayLayer + layer,
+         .layerCount = 1,
+      },
+      .srcOffset = {
+            DIV_ROUND_UP(region->imageOffset.x, info->block_width),
+            DIV_ROUND_UP(region->imageOffset.y, info->block_height),
+            region->imageOffset.z,
+      },
+      .dstSubresource = {
+         .aspectMask = info->dst_copy_aspect,
+         .mipLevel = 0,
+         .baseArrayLayer = 0,
+         .layerCount = 1,
+      },
+      .dstOffset = { 0, 0, 0 },
+      .extent = {
+         DIV_ROUND_UP(region->imageExtent.width, info->block_width),
+         DIV_ROUND_UP(region->imageExtent.height, info->block_height),
+         1
+      },
+   };
+
+   return output;
+}
+
+/**
+ * Returns true if the implementation supports the requested operation (even if
+ * it failed to process it, for example, due to an out-of-memory error).
+ */
+static bool
+copy_image_to_buffer_texel_buffer(struct v3dv_cmd_buffer *cmd_buffer,
+                                  struct v3dv_buffer *dst_buffer,
+                                  struct v3dv_image *src_image,
+                                  const VkBufferImageCopy2 *region)
+{
+   bool handled = false;
+   VkImage dst_buffer_image;
+   struct image_to_buffer_info info;
+
+   /* This is a requirement for copy_image_linear_texel_buffer below. We check
+    * it in advance in order to do an early return
+    */
+   if (src_image->vk.tiling != VK_IMAGE_TILING_LINEAR)
+      return false;
+
+   handled =
+      gather_image_to_buffer_info(cmd_buffer, src_image, region,
+                                  &info);
+   if (!handled)
+      return handled;
+
+   /* At this point the implementation should support the copy, any possible
+    * error below are for different reasons, like out-of-memory error
+    */
+   handled = true;
+
+   uint32_t num_layers;
+   if (src_image->vk.image_type != VK_IMAGE_TYPE_3D)
+      num_layers = region->imageSubresource.layerCount;
+   else
+      num_layers = region->imageExtent.depth;
+   assert(num_layers > 0);
+
+   VkResult result;
+   VkImageCopy2 image_region;
+   for (uint32_t layer = 0; layer < num_layers; layer++) {
+      /* Create the destination image from the destination buffer */
+      result =
+         create_image_from_buffer(cmd_buffer, dst_buffer, region, &info,
+                                  layer, &dst_buffer_image);
+      if (result != VK_SUCCESS)
+         return handled;
+
+      image_region =
+         image_copy_region_for_image_to_buffer(region, &info, layer);
+
+      handled =
+         copy_image_linear_texel_buffer(cmd_buffer,
+                                        v3dv_image_from_handle(dst_buffer_image),
+                                        src_image, &image_region);
+   }
+
+   return handled;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdCopyImageToBuffer2KHR(VkCommandBuffer commandBuffer,
                               const VkCopyImageToBufferInfo2 *info)
@@ -925,6 +1026,9 @@ v3dv_CmdCopyImageToBuffer2KHR(VkCommandBuffer commandBuffer,
          continue;
 
       if (copy_image_to_buffer_blit(cmd_buffer, buffer, image, region))
+         continue;
+
+      if (copy_image_to_buffer_texel_buffer(cmd_buffer, buffer, image, region))
          continue;
 
       unreachable("Unsupported image to buffer copy.");
