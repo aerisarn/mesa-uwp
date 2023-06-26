@@ -86,6 +86,9 @@ void
 radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                       const VkAllocationCallbacks *allocator)
 {
+   if (pipeline->cache_object)
+      vk_pipeline_cache_object_unref(&device->vk, pipeline->cache_object);
+
    switch (pipeline->type) {
    case RADV_PIPELINE_GRAPHICS:
       radv_destroy_graphics_pipeline(device, radv_pipeline_to_graphics(pipeline));

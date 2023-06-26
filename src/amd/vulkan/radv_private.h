@@ -2200,6 +2200,8 @@ struct radv_pipeline {
    struct vk_object_base base;
    enum radv_pipeline_type type;
 
+   struct vk_pipeline_cache_object *cache_object;
+
    bool is_internal;
    bool need_indirect_descriptor_sets;
    struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];

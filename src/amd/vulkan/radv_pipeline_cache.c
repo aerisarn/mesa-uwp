@@ -396,7 +396,7 @@ radv_pipeline_cache_search(struct radv_device *device, struct vk_pipeline_cache 
          radv_pipeline_to_graphics_lib(pipeline)->base.ps_epilog = ps_epilog;
    }
 
-   vk_pipeline_cache_object_unref(&device->vk, object);
+   pipeline->cache_object = object;
    return true;
 }
 
@@ -447,8 +447,7 @@ radv_pipeline_cache_insert(struct radv_device *device, struct vk_pipeline_cache 
    }
 
    /* Add the object to the cache */
-   struct vk_pipeline_cache_object *object = vk_pipeline_cache_add_object(cache, &pipeline_obj->base);
-   vk_pipeline_cache_object_unref(&device->vk, object);
+   pipeline->cache_object = vk_pipeline_cache_add_object(cache, &pipeline_obj->base);
 }
 
 bool
@@ -502,6 +501,7 @@ radv_ray_tracing_pipeline_cache_search(struct radv_device *device, struct vk_pip
             VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
    }
 
+   pipeline->base.base.cache_object = object;
    return complete;
 }
 
@@ -515,6 +515,13 @@ radv_ray_tracing_pipeline_cache_insert(struct radv_device *device, struct vk_pip
 
    if (!cache)
       cache = device->mem_cache;
+
+   /* Skip insertion on cache hit.
+    * This branch can be triggered if a cache_object was found but not all NIR shaders could be
+    * looked up. The cache_object is already complete in that case.
+    */
+   if (pipeline->base.base.cache_object)
+      return;
 
    /* Count compiled shaders excl. library shaders */
    unsigned num_shaders = pipeline->base.base.shaders[MESA_SHADER_INTERSECTION] ? 1 : 0;
@@ -540,8 +547,7 @@ radv_ray_tracing_pipeline_cache_insert(struct radv_device *device, struct vk_pip
       stack_sizes[i] = pipeline->stages[i].stack_size;
 
    /* Add the object to the cache */
-   struct vk_pipeline_cache_object *object = vk_pipeline_cache_add_object(cache, &pipeline_obj->base);
-   vk_pipeline_cache_object_unref(&device->vk, object);
+   pipeline->base.base.cache_object = vk_pipeline_cache_add_object(cache, &pipeline_obj->base);
 }
 
 struct vk_pipeline_cache_object *
