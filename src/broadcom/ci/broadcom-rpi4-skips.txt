@@ -1,4 +1,5 @@
 # Slow tests (> 1 minute to run)
+spec@!opengl 1.0@depth-clear-precision-check
 spec@!opengl 1.0@gl-1.0-blend-func
 spec@!opengl 1.1@streaming-texture-leak
 spec@!opengl 1.2@tex3d-maxsize

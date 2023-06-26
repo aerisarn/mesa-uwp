@@ -519,8 +519,5 @@ spec@!opengl 1.1@line-smooth-stipple,Fail
 # Works when run individually, but fail consistently on the CI
 dEQP-GLES3.functional.texture.specification.teximage2d_pbo.rgba32i_cube,Fail
 
-# Debian bookworm update (2023-04-27)
-spec@!opengl 1.0@depth-clear-precision-check,Timeout
-
 # https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/818
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
