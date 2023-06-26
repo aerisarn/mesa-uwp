@@ -1,3 +1,7 @@
+variables:
+  LAVA_SSH_CLIENT_IMAGE: "${CI_REGISTRY_IMAGE}/alpine/x86_64_lava_ssh_client:${ALPINE_X86_64_LAVA_SSH_TAG}--${MESA_TEMPLATES_COMMIT}"
+
+
 .lava-test:
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
