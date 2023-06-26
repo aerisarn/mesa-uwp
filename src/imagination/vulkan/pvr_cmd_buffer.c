@@ -1387,29 +1387,49 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
    struct pvr_framebuffer *framebuffer = render_pass_info->framebuffer;
    struct pvr_spm_bgobj_state *spm_bgobj_state =
       &framebuffer->spm_bgobj_state_per_render[sub_cmd->hw_render_idx];
-   struct pvr_emit_state emit_state = { 0 };
    struct pvr_render_target *render_target;
    VkResult result;
 
-   pvr_setup_emit_state(dev_info, hw_render, render_pass_info, &emit_state);
+   if (sub_cmd->barrier_store) {
+      /* There can only ever be one frag job running on the hardware at any one
+       * time, and a context switch is not allowed mid-tile, so instead of
+       * allocating a new scratch buffer we can reuse the SPM scratch buffer to
+       * perform the store.
+       * So use the SPM EOT program with the SPM PBE reg words in order to store
+       * the render to the SPM scratch buffer.
+       */
 
-   memcpy(job->pbe_reg_words,
-          emit_state.pbe_reg_words,
-          sizeof(emit_state.pbe_reg_words));
+      memcpy(job->pbe_reg_words,
+             &framebuffer->spm_eot_state_per_render[0].pbe_reg_words,
+             sizeof(job->pbe_reg_words));
+      job->pds_pixel_event_data_offset =
+         framebuffer->spm_eot_state_per_render[0]
+            .pixel_event_program_data_offset;
+   } else {
+      struct pvr_emit_state emit_state = { 0 };
 
-   result = pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
-      cmd_buffer,
-      emit_state.emit_count,
-      emit_state.pbe_cs_words[0],
-      &pds_pixel_event_program);
-   if (result != VK_SUCCESS)
-      return result;
+      pvr_setup_emit_state(dev_info, hw_render, render_pass_info, &emit_state);
 
-   job->pds_pixel_event_data_offset = pds_pixel_event_program.data_offset;
+      memcpy(job->pbe_reg_words,
+             emit_state.pbe_reg_words,
+             sizeof(job->pbe_reg_words));
+
+      result = pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
+         cmd_buffer,
+         emit_state.emit_count,
+         emit_state.pbe_cs_words[0],
+         &pds_pixel_event_program);
+      if (result != VK_SUCCESS)
+         return result;
+
+      job->pds_pixel_event_data_offset = pds_pixel_event_program.data_offset;
+   }
 
    if (sub_cmd->barrier_load) {
       job->enable_bg_tag = true;
       job->process_empty_tiles = true;
+
+      /* Load the previously stored render from the SPM scratch buffer. */
 
       STATIC_ASSERT(ARRAY_SIZE(job->pds_bgnd_reg_values) ==
                     ARRAY_SIZE(spm_bgobj_state->pds_reg_values));
@@ -1683,10 +1703,6 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
     * case SPM is hit so set the flag unconditionally.
     */
    job->requires_spm_scratch_buffer = true;
-   /* FIXME: We should be using the SPM PBE reg words and the SPM EOT PDS data
-    * section instead of the regular, but for now we don't have an actual
-    * SPM EOT USC shader so that would cause problems.
-    */
 
    return VK_SUCCESS;
 }

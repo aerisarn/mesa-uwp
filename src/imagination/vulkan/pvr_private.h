@@ -459,7 +459,11 @@ struct pvr_sub_cmd_gfx {
    bool modifies_depth;
    bool modifies_stencil;
 
+   /* Store the render to a scratch buffer. */
    bool barrier_store;
+   /* Load the render (stored with a `barrier_store`) as a background to the
+    * current render.
+    */
    bool barrier_load;
 
    const struct pvr_query_pool *query_pool;
