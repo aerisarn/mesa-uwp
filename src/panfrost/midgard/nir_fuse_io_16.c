@@ -53,8 +53,6 @@ nir_fuse_io_16(nir_shader *shader)
       if (!function->impl)
          continue;
 
-      nir_builder b = nir_builder_create(function->impl);
-
       nir_foreach_block(block, function->impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)

@@ -380,7 +380,6 @@ static bool
 lower_gl_point_gs(nir_shader *shader)
 {
    struct lower_gl_point_state state;
-   nir_builder b;
 
    shader->info.gs.output_primitive = MESA_PRIM_TRIANGLE_STRIP;
    shader->info.gs.vertices_out *= 4;
@@ -396,10 +395,6 @@ lower_gl_point_gs(nir_shader *shader)
    // if position in or gl_PointSize aren't written, we have nothing to do
    if (!state.gl_pos_out || !state.gl_point_size)
       return false;
-
-   nir_function_impl *entry = nir_shader_get_entrypoint(shader);
-   b = nir_builder_create(entry);
-   b.cursor = nir_before_cf_list(&entry->body);
 
    return nir_shader_instructions_pass(shader, lower_gl_point_gs_instr,
                                        nir_metadata_dominance, &state);

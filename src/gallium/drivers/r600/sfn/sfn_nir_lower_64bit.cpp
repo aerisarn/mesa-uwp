@@ -1067,8 +1067,6 @@ r600_nir_64_to_vec2(nir_shader *sh)
    nir_foreach_function(function, sh)
    {
       if (function->impl) {
-         nir_builder b = nir_builder_create(function->impl);
-
          nir_foreach_block(block, function->impl)
          {
             nir_foreach_instr_safe(instr, block)

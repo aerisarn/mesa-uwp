@@ -1539,8 +1539,6 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
 
    bool progress = false;
 
-   nir_builder b = nir_builder_create(impl);
-
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
          if (instr->type != nir_instr_type_intrinsic)

@@ -1970,8 +1970,6 @@ nir_lower_shader_calls(nir_shader *shader,
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
-   nir_builder b = nir_builder_create(impl);
-
    int num_calls = 0;
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
