@@ -242,6 +242,14 @@ class BitSetEncode(object):
             if 'force' in map.attrib and map.attrib['force']  == 'true':
                 self.forced[name] = 'true'
 
+class BitSetDecode(object):
+    """Additional data that may be associated with a root bitset node
+       to provide additional information needed to generate helpers
+       to decode the bitset.
+    """
+    def __init__(self, xml):
+        pass
+
 class BitSet(object):
     """Class that encapsulates a single bitset rule
     """
@@ -266,6 +274,9 @@ class BitSet(object):
         self.encode = None
         if xml.find('encode') is not None:
             self.encode = BitSetEncode(xml.find('encode'))
+        self.decode = None
+        if xml.find('decode') is not None:
+            self.decode = BitSetDecode(xml.find('encode'))
 
         self.gen_min = 0
         self.gen_max = (1 << 32) - 1

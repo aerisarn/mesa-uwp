@@ -840,6 +840,117 @@ disasm(struct decode_state *state, void *bin, int sz)
 	}
 }
 
+static void
+decode_bitset_cb(void *out, struct decode_scope *scope, const struct isa_bitset *b)
+{
+	while (b) {
+		b->decode(out, scope);
+		b = b->parent;
+	}
+}
+
+static void
+decode_field(void *out, struct decode_scope *scope, const char *field_name)
+{
+	const struct isa_bitset *bitset = scope->bitset;
+	size_t field_name_len = strlen(field_name);
+
+	/* alignment handling */
+	const char *align = strstr(field_name, ":align=");
+
+	if (align) {
+		field_name_len = align - field_name;
+	}
+
+	if (field_name == align)
+		return;
+
+	if (!strncmp("NAME", field_name, field_name_len))
+		return;
+
+	bitmask_t v;
+	const struct isa_field *field = resolve_field(scope, field_name, field_name_len, &v);
+	if (!field) {
+		decode_error(scope->state, "no field '%.*s'", (int)field_name_len, field_name);
+		return;
+	}
+
+	uint64_t val = bitmask_to_uint64_t(v);
+
+	for (unsigned i = 0; i < bitset->num_decode_fields; i++) {
+		if (!strncmp(bitset->decode_fields[i].name, field_name, field_name_len)) {
+			bitset->decode_fields[i].decode(out, scope, val);
+			return;
+		}
+	}
+}
+
+static void
+decode_bitset(void *out, struct decode_scope *scope)
+{
+	const struct isa_bitset *bitset = scope->bitset;
+	decode_bitset_cb(out, scope, bitset);
+
+	const char *display = find_display(scope, bitset);
+
+	if (!display) {
+		decode_error(scope->state, "%s: no display template", bitset->name);
+		return;
+	}
+
+	const char *p = display;
+
+	while (*p != '\0') {
+		if (*p == '{') {
+			const char *e = ++p;
+			while (*e != '}') {
+				e++;
+			}
+
+			char *field_name = strndup(p, e-p);
+			decode_field(out, scope, field_name);
+			free(field_name);
+
+			p = e;
+		}
+		p++;
+	}
+}
+
+void
+isa_decode_bitset(void *out, const struct isa_bitset **bitsets, struct decode_scope *scope, bitmask_t val)
+{
+	struct decode_state *state = scope->state;
+
+	const struct isa_bitset *b = find_bitset(state, bitsets, val);
+	if (!b)
+		return;
+
+	struct decode_scope *new_scope = push_scope(state, b, val);
+
+	decode_bitset(out, new_scope);
+
+	pop_scope(new_scope);
+}
+
+static bool
+decode(void *out, struct decode_state *state, void *bin)
+{
+	bitmask_t instr = { 0 };
+	next_instruction(&instr, bin);
+
+	const struct isa_bitset *b = find_bitset(state, __instruction, instr);
+	if (!b)
+		return false;
+
+	struct decode_scope *scope = push_scope(state, b, instr);
+
+	decode_bitset(out, scope);
+
+	pop_scope(scope);
+	return true;
+}
+
 static int
 cmp_entrypoints(const void *_a, const void *_b)
 {
@@ -899,4 +1010,20 @@ isa_disasm(void *bin, int sz, FILE *out, const struct isa_decode_options *option
 	disasm(state, bin, sz);
 
 	ralloc_free(state);
+}
+
+bool
+isa_decode(void *out, void *bin, const struct isa_decode_options *options)
+{
+	struct decode_state *state = rzalloc_size(NULL, sizeof(*state));
+	state->options = options;
+
+	bool result = decode(out, state, bin);
+
+	if (flush_errors(state)) {
+		return false;
+	}
+
+	ralloc_free(state);
+	return result;
 }
