@@ -314,9 +314,7 @@ struct pvr_winsys_render_submit_info {
 
    uint32_t frame_num;
    uint32_t job_num;
-
-   /* FIXME: should this be flags instead? */
-   bool run_frag;
+   bool has_fragment_job;
 
    struct pvr_winsys_geometry_state {
       /* Firmware stream buffer. This is the maximum possible size taking into
@@ -351,7 +349,7 @@ struct pvr_winsys_render_submit_info {
       } flags;
 
       struct vk_sync *wait;
-   } fragment;
+   } fragment, fragment_pr;
 };
 
 struct pvr_winsys_ops {

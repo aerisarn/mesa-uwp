@@ -1064,6 +1064,55 @@ pvr_render_job_ws_geometry_state_init(struct pvr_render_ctx *ctx,
    pvr_geom_state_flags_init(job, &state->flags);
 }
 
+static inline uint32_t pvr_frag_km_stream_pbe_reg_words_offset(
+   const struct pvr_device_info *const dev_info)
+{
+   uint32_t offset = 0;
+
+   offset += pvr_cmd_length(KMD_STREAM_HDR);
+   offset += pvr_cmd_length(CR_ISP_SCISSOR_BASE);
+   offset += pvr_cmd_length(CR_ISP_DBIAS_BASE);
+   offset += pvr_cmd_length(CR_ISP_OCLQRY_BASE);
+   offset += pvr_cmd_length(CR_ISP_ZLSCTL);
+   offset += pvr_cmd_length(CR_ISP_ZLOAD_BASE);
+   offset += pvr_cmd_length(CR_ISP_STENCIL_LOAD_BASE);
+
+   if (PVR_HAS_FEATURE(dev_info, requires_fb_cdc_zls_setup))
+      offset += pvr_cmd_length(CR_FB_CDC_ZLS);
+
+   return PVR_DW_TO_BYTES(offset);
+}
+
+#define DWORDS_PER_U64 2
+
+static inline uint32_t pvr_frag_km_stream_pds_eot_data_addr_offset(
+   const struct pvr_device_info *const dev_info)
+{
+   uint32_t offset = 0;
+
+   offset += pvr_frag_km_stream_pbe_reg_words_offset(dev_info) / 4U;
+   offset +=
+      PVR_MAX_COLOR_ATTACHMENTS * ROGUE_NUM_PBESTATE_REG_WORDS * DWORDS_PER_U64;
+   offset += pvr_cmd_length(CR_TPU_BORDER_COLOUR_TABLE_PDM);
+   offset += ROGUE_NUM_CR_PDS_BGRND_WORDS * DWORDS_PER_U64;
+   offset += ROGUE_NUM_CR_PDS_BGRND_WORDS * DWORDS_PER_U64;
+   offset += PVRX(KMD_STREAM_USC_CLEAR_REGISTER_COUNT) *
+             pvr_cmd_length(CR_USC_CLEAR_REGISTER);
+   offset += pvr_cmd_length(CR_USC_PIXEL_OUTPUT_CTRL);
+   offset += pvr_cmd_length(CR_ISP_BGOBJDEPTH);
+   offset += pvr_cmd_length(CR_ISP_BGOBJVALS);
+   offset += pvr_cmd_length(CR_ISP_AA);
+   offset += pvr_cmd_length(CR_ISP_CTL);
+   offset += pvr_cmd_length(CR_EVENT_PIXEL_PDS_INFO);
+
+   if (PVR_HAS_FEATURE(dev_info, cluster_grouping))
+      offset += pvr_cmd_length(KMD_STREAM_PIXEL_PHANTOM);
+
+   offset += pvr_cmd_length(KMD_STREAM_VIEW_IDX);
+
+   return PVR_DW_TO_BYTES(offset);
+}
+
 static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
                                        struct pvr_render_job *job,
                                        struct pvr_winsys_fragment_state *state)
@@ -1197,7 +1246,11 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
       stream_ptr += pvr_cmd_length(CR_FB_CDC_ZLS);
    }
 
-#define DWORDS_PER_U64 2
+   /* Make sure that the pvr_frag_km_...() function is returning the correct
+    * offset.
+    */
+   assert((uint8_t *)stream_ptr - (uint8_t *)state->fw_stream ==
+          pvr_frag_km_stream_pbe_reg_words_offset(dev_info));
 
    STATIC_ASSERT(ARRAY_SIZE(job->pbe_reg_words) == PVR_MAX_COLOR_ATTACHMENTS);
    STATIC_ASSERT(ARRAY_SIZE(job->pbe_reg_words[0]) ==
@@ -1338,6 +1391,12 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    /* clang-format on */
    stream_ptr += pvr_cmd_length(KMD_STREAM_VIEW_IDX);
 
+   /* Make sure that the pvr_frag_km_...() function is returning the correct
+    * offset.
+    */
+   assert((uint8_t *)stream_ptr - (uint8_t *)state->fw_stream ==
+          pvr_frag_km_stream_pds_eot_data_addr_offset(dev_info));
+
    pvr_csb_pack (stream_ptr, CR_EVENT_PIXEL_PDS_DATA, value) {
       value.addr = PVR_DEV_ADDR(job->pds_pixel_event_data_offset);
    }
@@ -1387,6 +1446,8 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
       value.length = state->fw_stream_len;
    }
 }
+
+#undef DWORDS_PER_U64
 
 static void
 pvr_frag_state_stream_ext_init(struct pvr_render_ctx *ctx,
@@ -1452,6 +1513,53 @@ pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
    pvr_frag_state_flags_init(job, &state->flags);
 }
 
+/**
+ * \brief Sets up the fragment state for a Partial Render (PR) based on the
+ * state for a normal fragment job.
+ *
+ * The state of a fragment PR is almost the same as of that for a normal
+ * fragment job apart the PBE words and the EOT program, both of which are
+ * necessary for the render to use the SPM scratch buffer instead of the final
+ * render targets.
+ *
+ * By basing the fragment PR state on that of a normal fragment state,
+ * repacking of the same words can be avoided as we end up mostly doing copies
+ * instead.
+ */
+static void pvr_render_job_ws_fragment_pr_init_based_on_fragment_state(
+   const struct pvr_render_ctx *ctx,
+   struct pvr_render_job *job,
+   struct vk_sync *wait,
+   struct pvr_winsys_fragment_state *frag,
+   struct pvr_winsys_fragment_state *state)
+{
+   const struct pvr_device_info *const dev_info =
+      &ctx->device->pdevice->dev_info;
+   const uint32_t pbe_reg_byte_offset =
+      pvr_frag_km_stream_pbe_reg_words_offset(dev_info);
+   const uint32_t eot_data_addr_byte_offset =
+      pvr_frag_km_stream_pds_eot_data_addr_offset(dev_info);
+
+   /* Massive copy :( */
+   *state = *frag;
+
+   assert(state->fw_stream_len >=
+          pbe_reg_byte_offset + sizeof(job->pr_pbe_reg_words));
+   memcpy(&state->fw_stream[pbe_reg_byte_offset],
+          job->pr_pbe_reg_words,
+          sizeof(job->pr_pbe_reg_words));
+
+   /* TODO: Update this when csbgen is byte instead of dword granular. */
+   assert(state->fw_stream_len >=
+          eot_data_addr_byte_offset +
+             PVR_DW_TO_BYTES(pvr_cmd_length(CR_EVENT_PIXEL_PDS_DATA)));
+   pvr_csb_pack ((uint32_t *)&state->fw_stream[eot_data_addr_byte_offset],
+                 CR_EVENT_PIXEL_PDS_DATA,
+                 eot_pds_data) {
+      eot_pds_data.addr = PVR_DEV_ADDR(job->pr_pds_pixel_event_data_offset);
+   }
+}
+
 static void pvr_render_job_ws_submit_info_init(
    struct pvr_render_ctx *ctx,
    struct pvr_render_job *job,
@@ -1472,14 +1580,28 @@ static void pvr_render_job_ws_submit_info_init(
                                          wait_geom,
                                          &submit_info->geometry);
 
-   if (job->run_frag) {
-      submit_info->run_frag = true;
+   submit_info->has_fragment_job = job->run_frag;
 
-      pvr_render_job_ws_fragment_state_init(ctx,
-                                            job,
-                                            wait_frag,
-                                            &submit_info->fragment);
-   }
+   /* TODO: Move the job setup from queue submit into cmd_buffer if possible. */
+
+   /* TODO: See if it's worth avoiding setting up the fragment state and setup
+    * the pr state directly if `!job->run_frag`. For now we'll always set it up.
+    */
+   pvr_render_job_ws_fragment_state_init(ctx,
+                                         job,
+                                         wait_frag,
+                                         &submit_info->fragment);
+
+   /* TODO: In some cases we could eliminate the pr and use the frag directly in
+    * case we enter SPM. There's likely some performance improvement to be had
+    * there. For now we'll always setup the pr.
+    */
+   pvr_render_job_ws_fragment_pr_init_based_on_fragment_state(
+      ctx,
+      job,
+      wait_frag,
+      &submit_info->fragment,
+      &submit_info->fragment_pr);
 }
 
 VkResult pvr_render_job_submit(struct pvr_render_ctx *ctx,

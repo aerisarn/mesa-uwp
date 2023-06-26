@@ -86,6 +86,7 @@ struct pvr_render_job {
    };
 
    uint32_t pds_pixel_event_data_offset;
+   uint32_t pr_pds_pixel_event_data_offset;
 
    pvr_dev_addr_t ctrl_stream_addr;
 
@@ -147,6 +148,8 @@ struct pvr_render_job {
                  "Cannot store both PBESTATE_REG_WORD{0,1}");
    uint64_t pbe_reg_words[PVR_MAX_COLOR_ATTACHMENTS]
                          [ROGUE_NUM_PBESTATE_REG_WORDS];
+   uint64_t pr_pbe_reg_words[PVR_MAX_COLOR_ATTACHMENTS]
+                            [ROGUE_NUM_PBESTATE_REG_WORDS];
 
    static_assert(pvr_cmd_length(CR_PDS_BGRND0_BASE) == 2,
                  "CR_PDS_BGRND0_BASE cannot be stored in uint64_t");
