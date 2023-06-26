@@ -54,7 +54,7 @@ struct two_side_transform_context
    uint num_inputs;
    uint face_input;           /**< index of the FACE input */
    uint front_color_input[2]; /**< INPUT regs */
-   uint front_color_interp[2];/**< TGSI_INTERPOLATE_x */
+   enum tgsi_interpolate_mode front_color_interp[2];/**< TGSI_INTERPOLATE_x */
    uint back_color_input[2];  /**< INPUT regs */
    uint new_colors[2];        /**< TEMP regs */
 };
