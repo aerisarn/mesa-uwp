@@ -55,13 +55,6 @@ extern "C" {
 /*@}*/
 
 /**
- * If you add a new field, please add it to the STATIC_ASSERTs in
- * _math_matrix_set_identity().
- */
-#define MATRIX_M   0
-#define MATRIX_INV (MATRIX_M + 16 * 4)
-
-/**
  * Different kinds of 4x4 transformation matrices.
  * We use these to select specific optimized vertex transformation routines.
  */
