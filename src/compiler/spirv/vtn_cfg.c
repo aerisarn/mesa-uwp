@@ -225,7 +225,7 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
        * directly in our OpFunctionParameter handler.
        */
       nir_function_impl *impl = nir_function_impl_create(func);
-      nir_builder_init(&b->nb, impl);
+      b->nb = nir_builder_create(impl);
       b->nb.cursor = nir_before_cf_list(&impl->body);
       b->nb.exact = b->exact;
 
@@ -627,7 +627,7 @@ vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
    }
 
    nir_function_impl *impl = func->nir_func->impl;
-   nir_builder_init(&b->nb, impl);
+   b->nb = nir_builder_create(impl);
    b->func = func;
    b->nb.cursor = nir_after_cf_list(&impl->body);
    b->nb.exact = b->exact;

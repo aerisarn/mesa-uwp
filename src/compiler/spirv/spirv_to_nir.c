@@ -6629,7 +6629,7 @@ vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
 
    nir_function *main_entry_point = nir_function_create(b->shader, func_name);
    nir_function_impl *impl = nir_function_impl_create(main_entry_point);
-   nir_builder_init(&b->nb, impl);
+   b->nb = nir_builder_create(impl);
    b->nb.cursor = nir_after_cf_list(&impl->body);
    b->func_param_idx = 0;
 

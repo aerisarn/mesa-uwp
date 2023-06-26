@@ -224,7 +224,7 @@ anv_nir_lower_multiview(nir_shader *shader, uint32_t view_mask,
       .view_mask = view_mask,
    };
 
-   nir_builder_init(&state.builder, entrypoint);
+   state.builder = nir_builder_create(entrypoint);
 
    nir_foreach_block(block, entrypoint) {
       nir_foreach_instr_safe(instr, block) {

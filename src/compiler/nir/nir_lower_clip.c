@@ -328,7 +328,7 @@ nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables, bool use_vars,
    if (!ucp_enables)
       return false;
 
-   nir_builder_init(&b, impl);
+   b = nir_builder_create(impl);
 
    /* NIR should ensure that, even in case of loops/if-else, there
     * should be only a single predecessor block to end_block, which
@@ -409,7 +409,7 @@ nir_lower_clip_gs(nir_shader *shader, unsigned ucp_enables,
    create_clipdist_vars(shader, out, ucp_enables, true,
                         use_clipdist_array);
 
-   nir_builder_init(&b, impl);
+   b = nir_builder_create(impl);
 
    nir_foreach_block(block, impl)
       lower_clip_in_gs_block(&b, block, position, clipvertex, out,

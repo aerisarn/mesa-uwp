@@ -400,7 +400,7 @@ static bool
 combine_stores_impl(struct combine_stores_state *state, nir_function_impl *impl)
 {
    state->progress = false;
-   nir_builder_init(&state->b, impl);
+   state->b = nir_builder_create(impl);
 
    nir_foreach_block(block, impl)
       combine_stores_block(state, block);

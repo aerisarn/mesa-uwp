@@ -116,7 +116,7 @@ nir_lower_pntc_ytransform(nir_shader *shader,
 
    nir_foreach_function(function, shader) {
       if (function->impl) {
-         nir_builder_init(&state.b, function->impl);
+         state.b = nir_builder_create(function->impl);
 
          nir_foreach_block(block, function->impl) {
             lower_pntc_ytransform_block(&state, block);

@@ -640,7 +640,7 @@ opt_find_array_copies_impl(nir_function_impl *impl)
    s.dead_ctx = ralloc_context(NULL);
    s.var_nodes = _mesa_pointer_hash_table_create(s.dead_ctx);
    s.cast_nodes = _mesa_pointer_hash_table_create(s.dead_ctx);
-   nir_builder_init(&s.builder, impl);
+   s.builder = nir_builder_create(impl);
 
    nir_foreach_block(block, impl) {
       if (opt_find_array_copies_block(&b, block, &s))

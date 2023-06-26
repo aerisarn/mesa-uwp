@@ -167,7 +167,7 @@ insert_sample_mask_write(nir_shader *s)
 {
    nir_builder b;
    nir_function_impl *impl = nir_shader_get_entrypoint(s);
-   nir_builder_init(&b, impl);
+   b = nir_builder_create(impl);
    b.cursor = nir_before_block(nir_start_block(impl));
 
    /* Kill samples that are NOT covered by the mask */

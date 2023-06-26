@@ -277,7 +277,7 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
 static void
 lower_cs_intrinsics_convert_impl(struct lower_intrinsics_state *state)
 {
-   nir_builder_init(&state->builder, state->impl);
+   state->builder = nir_builder_create(state->impl);
 
    nir_foreach_block(block, state->impl) {
       lower_cs_intrinsics_convert_block(state, block);

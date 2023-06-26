@@ -718,7 +718,7 @@ nir_lower_io_impl(nir_function_impl *impl,
    struct lower_io_state state;
    bool progress = false;
 
-   nir_builder_init(&state.builder, impl);
+   state.builder = nir_builder_create(impl);
    state.dead_ctx = ralloc_context(NULL);
    state.modes = modes;
    state.type_size = type_size;

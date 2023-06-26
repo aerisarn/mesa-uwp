@@ -600,7 +600,7 @@ d3d12_add_missing_dual_src_target(struct nir_shader *s,
    assert(missing_mask != 0);
    nir_builder b;
    nir_function_impl *impl = nir_shader_get_entrypoint(s);
-   nir_builder_init(&b, impl);
+   b = nir_builder_create(impl);
    b.cursor = nir_before_cf_list(&impl->body);
 
    nir_ssa_def *zero = nir_imm_zero(&b, 4, 32);
@@ -629,7 +629,7 @@ d3d12_lower_primitive_id(nir_shader *shader)
    nir_builder b;
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    nir_ssa_def *primitive_id;
-   nir_builder_init(&b, impl);
+   b = nir_builder_create(impl);
 
    nir_variable *primitive_id_var = nir_variable_create(shader, nir_var_shader_out,
                                                         glsl_uint_type(), "primitive_id");
@@ -745,7 +745,7 @@ d3d12_lower_triangle_strip(nir_shader *shader)
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    nir_variable *tmp_vars[VARYING_SLOT_MAX] = {0};
    nir_variable *out_vars[VARYING_SLOT_MAX] = {0};
-   nir_builder_init(&b, impl);
+   b = nir_builder_create(impl);
 
    shader->info.gs.vertices_out = (shader->info.gs.vertices_out - 2) * 3;
 

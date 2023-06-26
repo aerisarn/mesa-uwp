@@ -1534,7 +1534,7 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
 {
    nir_builder b;
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
-   nir_builder_init(&b, impl);
+   b = nir_builder_create(impl);
 
    struct rt_variables vars = create_rt_variables(shader, pCreateInfo->flags);
    lower_rt_instructions(shader, &vars, 0);

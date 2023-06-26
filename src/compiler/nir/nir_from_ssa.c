@@ -856,7 +856,7 @@ nir_convert_from_ssa_impl(nir_function_impl *impl, bool phi_webs_only)
 
    struct from_ssa_state state;
 
-   nir_builder_init(&state.builder, impl);
+   state.builder = nir_builder_create(impl);
    state.dead_ctx = ralloc_context(NULL);
    state.phi_webs_only = phi_webs_only;
    state.merge_node_table = _mesa_pointer_hash_table_create(NULL);

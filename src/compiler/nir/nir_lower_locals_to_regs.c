@@ -298,7 +298,7 @@ nir_lower_locals_to_regs_impl(nir_function_impl *impl, uint8_t bool_bitsize)
 {
    struct locals_to_regs_state state;
 
-   nir_builder_init(&state.builder, impl);
+   state.builder = nir_builder_create(impl);
    state.progress = false;
    state.regs_table = _mesa_hash_table_create(NULL, hash_deref, derefs_equal);
    state.bool_bitsize = bool_bitsize;

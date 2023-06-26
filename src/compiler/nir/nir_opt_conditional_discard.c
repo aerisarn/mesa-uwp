@@ -124,7 +124,7 @@ nir_opt_conditional_discard(nir_shader *shader)
 
    nir_foreach_function(function, shader) {
       if (function->impl) {
-         nir_builder_init(&builder, function->impl);
+         builder = nir_builder_create(function->impl);
 
          bool impl_progress = false;
          nir_foreach_block_safe(block, function->impl) {

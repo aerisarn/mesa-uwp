@@ -379,7 +379,7 @@ nir_opt_comparison_pre_impl(nir_function_impl *impl)
    nir_builder bld;
 
    block_queue_init(&bq);
-   nir_builder_init(&bld, impl);
+   bld = nir_builder_create(impl);
 
    nir_metadata_require(impl, nir_metadata_dominance);
 

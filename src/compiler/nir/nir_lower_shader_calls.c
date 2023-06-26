@@ -560,8 +560,8 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
    }
 
    nir_builder before, after;
-   nir_builder_init(&before, impl);
-   nir_builder_init(&after, impl);
+   before = nir_builder_create(impl);
+   after = nir_builder_create(impl);
 
    call_idx = 0;
    unsigned max_scratch_size = shader->scratch_size;

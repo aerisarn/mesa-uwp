@@ -274,7 +274,7 @@ radv_nir_lower_fs_barycentric(nir_shader *shader, const struct radv_pipeline_key
       if (!function->impl)
          continue;
 
-      nir_builder_init(&b, function->impl);
+      b = nir_builder_create(function->impl);
 
       nir_foreach_block (block, impl) {
          nir_foreach_instr_safe (instr, block) {
