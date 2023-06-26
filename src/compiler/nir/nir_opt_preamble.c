@@ -332,6 +332,48 @@ candidate_sort(const void *data1, const void *data2)
       return 0;
 }
 
+static void
+calculate_can_move_for_block(opt_preamble_ctx *ctx, nir_block *block)
+{
+   nir_foreach_instr(instr, block) {
+      nir_def *def = nir_instr_def(instr);
+      if (!def)
+         continue;
+
+      def_state *state = &ctx->states[def->index];
+      state->can_move = can_move_instr(instr, ctx);
+   }
+}
+
+static void
+calculate_can_move_for_cf_list(opt_preamble_ctx *ctx, struct exec_list *list)
+{
+   foreach_list_typed(nir_cf_node, node, node, list) {
+      switch (node->type) {
+      case nir_cf_node_block: {
+         calculate_can_move_for_block(ctx, nir_cf_node_as_block(node));
+         break;
+      }
+
+      case nir_cf_node_if: {
+         nir_if *nif = nir_cf_node_as_if(node);
+         calculate_can_move_for_cf_list(ctx, &nif->then_list);
+         calculate_can_move_for_cf_list(ctx, &nif->else_list);
+         break;
+      }
+
+      case nir_cf_node_loop: {
+         nir_loop *loop = nir_cf_node_as_loop(node);
+         calculate_can_move_for_cf_list(ctx, &loop->body);
+         break;
+      }
+
+      default:
+         unreachable("Unexpected CF node type");
+      }
+   }
+}
+
 bool
 nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
                  unsigned *size)
@@ -344,17 +386,7 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
    ctx.states = calloc(impl->ssa_alloc, sizeof(*ctx.states));
 
    /* Step 1: Calculate can_move */
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr(instr, block) {
-         nir_def *def = nir_instr_def(instr);
-         if (!def)
-            continue;
-
-         def_state *state = &ctx.states[def->index];
-
-         state->can_move = can_move_instr(instr, &ctx);
-      }
-   }
+   calculate_can_move_for_cf_list(&ctx, &impl->body);
 
    /* Step 2: Calculate is_candidate. This is complicated by the presence of
     * non-candidate instructions like derefs whose users cannot be rewritten.
