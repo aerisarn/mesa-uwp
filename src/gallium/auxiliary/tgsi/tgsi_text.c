@@ -331,7 +331,7 @@ static void report_error( struct translate_ctx *ctx, const char *msg )
  */
 static bool parse_header( struct translate_ctx *ctx )
 {
-   uint processor;
+   enum pipe_shader_type processor;
 
    if (str_match_nocase_whole( &ctx->cur, "FRAG" ))
       processor = PIPE_SHADER_FRAGMENT;
