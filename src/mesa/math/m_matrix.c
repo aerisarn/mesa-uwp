@@ -931,12 +931,12 @@ void
 _math_matrix_viewport(GLmatrix *m, const float scale[3],
                       const float translate[3], double depthMax)
 {
-   m->m[MAT_SX] = scale[0];
-   m->m[MAT_TX] = translate[0];
-   m->m[MAT_SY] = scale[1];
-   m->m[MAT_TY] = translate[1];
-   m->m[MAT_SZ] = depthMax*scale[2];
-   m->m[MAT_TZ] = depthMax*translate[2];
+   m->m[0] = scale[0];
+   m->m[5] = scale[1];
+   m->m[10] = depthMax*scale[2];
+   m->m[12] = translate[0];
+   m->m[13] = translate[1];
+   m->m[14] = depthMax*translate[2];
    m->flags = MAT_FLAG_GENERAL_SCALE | MAT_FLAG_TRANSLATION;
    m->type = MATRIX_3D_NO_ROT;
 }

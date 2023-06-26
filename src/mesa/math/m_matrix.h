@@ -41,20 +41,6 @@ extern "C" {
 
 
 /**
- * \name Symbolic names to some of the entries in the matrix
- *
- * These are handy for the viewport mapping, which is expressed as a matrix.
- */
-/*@{*/
-#define MAT_SX 0
-#define MAT_SY 5
-#define MAT_SZ 10
-#define MAT_TX 12
-#define MAT_TY 13
-#define MAT_TZ 14
-/*@}*/
-
-/**
  * Different kinds of 4x4 transformation matrices.
  * We use these to select specific optimized vertex transformation routines.
  */
