@@ -746,9 +746,7 @@ radv_amdgpu_cs_execute_ib(struct radeon_cmdbuf *_cs, struct radeon_winsys_bo *bo
    if (cs->status != VK_SUCCESS)
       return;
 
-   assert(cs->hw_ip == AMD_IP_GFX);
-
-   if (cs->use_ib) {
+   if (cs->hw_ip == AMD_IP_GFX && cs->use_ib) {
       radeon_emit(&cs->base, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
       radeon_emit(&cs->base, va);
       radeon_emit(&cs->base, va >> 32);
