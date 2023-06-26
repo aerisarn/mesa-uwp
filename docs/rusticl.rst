@@ -1,6 +1,9 @@
 Rusticl
 =======
 
+Building
+--------
+
 To build Rusticl you need to satisfy the following build dependencies:
 
 -  ``rustc``
