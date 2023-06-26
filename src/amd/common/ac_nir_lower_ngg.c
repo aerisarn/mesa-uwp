@@ -1882,9 +1882,9 @@ ngg_build_streamout_buffer_info(nir_builder *b,
        */
       nir_if *if_any_overflow = nir_push_if(b, any_overflow);
       {
-         nir_build_xfb_counter_sub_amd(b, nir_vec(b, overflow_amount, 4),
-                                       /* mask of buffers to update */
-                                       .write_mask = info->buffers_written);
+         nir_xfb_counter_sub_amd(b, nir_vec(b, overflow_amount, 4),
+                                 /* mask of buffers to update */
+                                 .write_mask = info->buffers_written);
       }
       nir_pop_if(b, if_any_overflow);
 

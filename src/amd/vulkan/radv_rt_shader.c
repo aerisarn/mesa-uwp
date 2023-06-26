@@ -246,10 +246,10 @@ get_sbt_ptr(nir_builder *b, nir_ssa_def *idx, enum sbt_type binding)
 {
    nir_ssa_def *desc_base_addr = nir_load_sbt_base_amd(b);
 
-   nir_ssa_def *desc = nir_pack_64_2x32(b, nir_build_load_smem_amd(b, 2, desc_base_addr, nir_imm_int(b, binding)));
+   nir_ssa_def *desc = nir_pack_64_2x32(b, nir_load_smem_amd(b, 2, desc_base_addr, nir_imm_int(b, binding)));
 
    nir_ssa_def *stride_offset = nir_imm_int(b, binding + (binding == SBT_RAYGEN ? 8 : 16));
-   nir_ssa_def *stride = nir_pack_64_2x32(b, nir_build_load_smem_amd(b, 2, desc_base_addr, stride_offset));
+   nir_ssa_def *stride = nir_pack_64_2x32(b, nir_load_smem_amd(b, 2, desc_base_addr, stride_offset));
 
    return nir_iadd(b, desc, nir_imul(b, nir_u2u64(b, idx), stride));
 }
