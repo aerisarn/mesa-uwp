@@ -62,7 +62,7 @@ anv_nir_prim_count_store(nir_builder *b, nir_ssa_def *val)
    primitive_count->data.location = VARYING_SLOT_PRIMITIVE_COUNT;
    primitive_count->data.interpolation = INTERP_MODE_NONE;
 
-   nir_ssa_def *local_invocation_index = nir_build_load_local_invocation_index(b);
+   nir_ssa_def *local_invocation_index = nir_load_local_invocation_index(b);
 
    nir_ssa_def *cmp = nir_ieq_imm(b, local_invocation_index, 0);
    nir_if *if_stmt = nir_push_if(b, cmp);

@@ -162,7 +162,7 @@ anv_mesh_convert_attrs_prim_to_vert(struct nir_shader *nir,
 
    nir_ssa_def *zero = nir_imm_int(&b, 0);
 
-   nir_ssa_def *local_invocation_index = nir_build_load_local_invocation_index(&b);
+   nir_ssa_def *local_invocation_index = nir_load_local_invocation_index(&b);
 
    nir_ssa_def *cmp = nir_ieq(&b, local_invocation_index, zero);
    nir_if *if_stmt = nir_push_if(&b, cmp);
