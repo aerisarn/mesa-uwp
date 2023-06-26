@@ -50,6 +50,14 @@ typedef struct nir_builder {
 
 void nir_builder_init(nir_builder *build, nir_function_impl *impl);
 
+static inline nir_builder
+nir_builder_create(nir_function_impl *impl)
+{
+   nir_builder b;
+   nir_builder_init(&b, impl);
+   return b;
+}
+
 nir_builder MUST_CHECK PRINTFLIKE(3, 4)
 nir_builder_init_simple_shader(gl_shader_stage stage,
                                const nir_shader_compiler_options *options,
