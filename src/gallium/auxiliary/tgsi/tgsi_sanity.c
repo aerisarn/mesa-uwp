@@ -33,14 +33,15 @@
 #include "tgsi_info.h"
 #include "tgsi_iterate.h"
 
+#include <stdint.h>
 
 DEBUG_GET_ONCE_BOOL_OPTION(print_sanity, "TGSI_PRINT_SANITY", false)
 
 
 typedef struct {
-   uint file : 28;
+   uint32_t file : 28;
    /* max 2 dimensions */
-   uint dimensions : 4;
+   uint32_t dimensions : 4;
    uint indices[2];
 } scan_register;
 
