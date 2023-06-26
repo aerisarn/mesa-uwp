@@ -1077,6 +1077,7 @@ transition_resource(struct pipe_context *pctx, struct agx_resource *rsrc,
       agx_resource(pctx->screen->resource_create(pctx->screen, templ));
 
    assert(new_res);
+   assert(!(rsrc->base.bind & PIPE_BIND_SHARED) && "cannot swap BOs if shared");
 
    int level;
    BITSET_FOREACH_SET(level, rsrc->data_valid, PIPE_MAX_TEXTURE_LEVELS) {
