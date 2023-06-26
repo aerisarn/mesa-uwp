@@ -283,8 +283,8 @@ tgsi_add_aa_point(const struct tgsi_token *tokens_in,
                   const bool need_texcoord_semantic)
 {
    struct aa_transform_context transform;
-   const uint num_new_tokens = 200; /* should be enough */
-   const uint new_len = tgsi_num_tokens(tokens_in) + num_new_tokens;
+   const unsigned num_new_tokens = 200; /* should be enough */
+   const unsigned new_len = tgsi_num_tokens(tokens_in) + num_new_tokens;
 
    /* setup transformation context */
    memset(&transform, 0, sizeof(transform));

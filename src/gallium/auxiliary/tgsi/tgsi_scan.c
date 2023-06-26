@@ -606,7 +606,7 @@ scan_declaration(struct tgsi_shader_info *info,
 {
    enum tgsi_file_type file = fulldecl->Declaration.File;
    const unsigned procType = info->processor;
-   uint reg;
+   unsigned reg;
 
    if (fulldecl->Declaration.Array) {
       unsigned array_id = fulldecl->Array.ArrayID;
@@ -831,7 +831,7 @@ scan_declaration(struct tgsi_shader_info *info,
 static void
 scan_immediate(struct tgsi_shader_info *info)
 {
-   uint reg = info->immediate_count++;
+   unsigned reg = info->immediate_count++;
    enum tgsi_file_type file = TGSI_FILE_IMMEDIATE;
 
    info->file_mask[file] |= (1 << reg);
@@ -872,7 +872,7 @@ void
 tgsi_scan_shader(const struct tgsi_token *tokens,
                  struct tgsi_shader_info *info)
 {
-   uint procType, i;
+   unsigned procType, i;
    struct tgsi_parse_context parse;
    unsigned current_depth = 0;
 

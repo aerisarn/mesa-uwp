@@ -149,7 +149,7 @@ emit_property(struct tgsi_transform_context *ctx,
  */
 struct tgsi_token *
 tgsi_transform_shader(const struct tgsi_token *tokens_in,
-                      uint initial_tokens_len,
+                      unsigned initial_tokens_len,
                       struct tgsi_transform_context *ctx)
 {
    bool first_instruction = true;
@@ -340,7 +340,7 @@ tgsi_transform_shader(const struct tgsi_token *tokens_in,
 #include "tgsi_text.h"
 
 extern int tgsi_transform_foo( struct tgsi_token *tokens_out,
-                               uint max_tokens_out );
+                               unsigned max_tokens_out );
 
 /* This function exists only so that tgsi_text_translate() doesn't get
  * magic-ed out of the libtgsi.a archive by the build system.  Don't
@@ -349,7 +349,7 @@ extern int tgsi_transform_foo( struct tgsi_token *tokens_out,
  */
 int
 tgsi_transform_foo( struct tgsi_token *tokens_out,
-                    uint max_tokens_out )
+                    unsigned max_tokens_out )
 {
    const char *text = 
       "FRAG\n"

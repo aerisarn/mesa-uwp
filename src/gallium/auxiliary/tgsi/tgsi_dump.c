@@ -48,11 +48,11 @@ struct dump_ctx
 
    bool dump_float_as_hex;
 
-   uint instno;
-   uint immno;
+   unsigned instno;
+   unsigned immno;
    int indent;
    
-   uint indentation;
+   unsigned indentation;
    FILE *file;
 
    void (*dump_printf)(struct dump_ctx *ctx, const char *format, ...);
@@ -74,9 +74,9 @@ dump_ctx_printf(struct dump_ctx *ctx, const char *format, ...)
 static void
 dump_enum(
    struct dump_ctx *ctx,
-   uint e,
+   unsigned e,
    const char **enums,
-   uint enum_count )
+   unsigned enum_count )
 {
    if (e >= enum_count)
       ctx->dump_printf( ctx, "%u", e );
@@ -222,7 +222,7 @@ _dump_register_dst(
 static void
 _dump_writemask(
    struct dump_ctx *ctx,
-   uint writemask )
+   unsigned writemask )
 {
    if (writemask != TGSI_WRITEMASK_XYZW) {
       CHR( '.' );
@@ -514,9 +514,9 @@ iter_instruction(
    struct tgsi_full_instruction *inst )
 {
    struct dump_ctx *ctx = (struct dump_ctx *) iter;
-   uint instno = ctx->instno++;
+   unsigned instno = ctx->instno++;
    const struct tgsi_opcode_info *info = tgsi_get_opcode_info( inst->Instruction.Opcode );
-   uint i;
+   unsigned i;
    bool first_reg = true;
 
    INSTID( instno );
@@ -649,7 +649,7 @@ iter_instruction(
 void
 tgsi_dump_instruction(
    const struct tgsi_full_instruction *inst,
-   uint instno )
+   unsigned instno )
 {
    struct dump_ctx ctx;
    memset(&ctx, 0, sizeof(ctx));
@@ -675,7 +675,7 @@ prolog(
 }
 
 static void
-init_dump_ctx(struct dump_ctx *ctx, uint flags)
+init_dump_ctx(struct dump_ctx *ctx, unsigned flags)
 {
    memset(ctx, 0, sizeof(*ctx));
 
@@ -690,7 +690,7 @@ init_dump_ctx(struct dump_ctx *ctx, uint flags)
 }
 
 void
-tgsi_dump_to_file(const struct tgsi_token *tokens, uint flags, FILE *file)
+tgsi_dump_to_file(const struct tgsi_token *tokens, unsigned flags, FILE *file)
 {
    struct dump_ctx ctx;
    memset(&ctx, 0, sizeof(ctx));
@@ -704,7 +704,7 @@ tgsi_dump_to_file(const struct tgsi_token *tokens, uint flags, FILE *file)
 }
 
 void
-tgsi_dump(const struct tgsi_token *tokens, uint flags)
+tgsi_dump(const struct tgsi_token *tokens, unsigned flags)
 {
    tgsi_dump_to_file(tokens, flags, NULL);
 }
@@ -747,7 +747,7 @@ str_dump_ctx_printf(struct dump_ctx *ctx, const char *format, ...)
 bool
 tgsi_dump_str(
    const struct tgsi_token *tokens,
-   uint flags,
+   unsigned flags,
    char *str,
    size_t size)
 {
@@ -772,7 +772,7 @@ tgsi_dump_str(
 void
 tgsi_dump_instruction_str(
    const struct tgsi_full_instruction *inst,
-   uint instno,
+   unsigned instno,
    char *str,
    size_t size)
 {

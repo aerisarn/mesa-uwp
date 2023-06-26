@@ -536,7 +536,7 @@ ureg_DECL_constant2D(struct ureg_program *ureg,
    assert(index2D < PIPE_MAX_CONSTANT_BUFFERS);
 
    if (decl->nr_constant_ranges < UREG_MAX_CONSTANT_RANGE) {
-      uint i = decl->nr_constant_ranges++;
+      unsigned i = decl->nr_constant_ranges++;
 
       decl->constant_range[i].first = first;
       decl->constant_range[i].last = last;
@@ -622,7 +622,7 @@ ureg_DECL_hw_atomic(struct ureg_program *ureg,
    struct hw_atomic_decl *decl = &ureg->hw_atomic_decls[buffer_id];
 
    if (decl->nr_hw_atomic_ranges < UREG_MAX_HW_ATOMIC_RANGE) {
-      uint i = decl->nr_hw_atomic_ranges++;
+      unsigned i = decl->nr_hw_atomic_ranges++;
 
       decl->hw_atomic_range[i].first = first;
       decl->hw_atomic_range[i].last = last;
@@ -753,7 +753,7 @@ ureg_DECL_sampler_view(struct ureg_program *ureg,
                        enum tgsi_return_type return_type_w)
 {
    struct ureg_src reg = ureg_src_register(TGSI_FILE_SAMPLER_VIEW, index);
-   uint i;
+   unsigned i;
 
    for (i = 0; i < ureg->nr_sampler_views; i++) {
       if (ureg->sampler_view[i].index == index) {
@@ -1042,8 +1042,8 @@ ureg_DECL_immediate_block_uint( struct ureg_program *ureg,
                                 const unsigned *v,
                                 unsigned nr )
 {
-   uint index;
-   uint i;
+   unsigned index;
+   unsigned i;
 
    if (ureg->nr_immediates + (nr + 3) / 4 > UREG_MAX_IMMEDIATE) {
       set_bad(ureg);
@@ -1058,7 +1058,7 @@ ureg_DECL_immediate_block_uint( struct ureg_program *ureg,
       ureg->immediate[i].nr = nr > 4 ? 4 : nr;
       memcpy(ureg->immediate[i].value.u,
              &v[(i - index) * 4],
-             ureg->immediate[i].nr * sizeof(uint));
+             ureg->immediate[i].nr * sizeof(unsigned));
       nr -= 4;
    }
 
@@ -1265,7 +1265,7 @@ ureg_emit_insn(struct ureg_program *ureg,
                unsigned num_src)
 {
    union tgsi_any_token *out;
-   uint count = 1;
+   unsigned count = 1;
    struct ureg_emit_insn_result result;
 
    validate( opcode, num_dst, num_src );
@@ -2008,7 +2008,7 @@ static void emit_decls( struct ureg_program *ureg )
       struct const_decl *decl = &ureg->const_decls[i];
 
       if (decl->nr_constant_ranges) {
-         uint j;
+         unsigned j;
 
          for (j = 0; j < decl->nr_constant_ranges; j++) {
             emit_decl_range2D(ureg,
@@ -2024,7 +2024,7 @@ static void emit_decls( struct ureg_program *ureg )
       struct hw_atomic_decl *decl = &ureg->hw_atomic_decls[i];
 
       if (decl->nr_hw_atomic_ranges) {
-         uint j;
+         unsigned j;
 
          /* GLSL-to-TGSI generated HW atomic counters in order, and r600 depends
           * on it.
@@ -2236,7 +2236,7 @@ struct ureg_program *
 ureg_create_with_screen(enum pipe_shader_type processor,
                         struct pipe_screen *screen)
 {
-   uint i;
+   unsigned i;
    struct ureg_program *ureg = CALLOC_STRUCT( ureg_program );
    if (!ureg)
       goto no_ureg;

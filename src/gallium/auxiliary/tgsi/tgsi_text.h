@@ -40,7 +40,7 @@ bool
 tgsi_text_translate(
    const char *text,
    struct tgsi_token *tokens,
-   uint num_tokens );
+   unsigned num_tokens );
 
 #if defined __cplusplus
 }

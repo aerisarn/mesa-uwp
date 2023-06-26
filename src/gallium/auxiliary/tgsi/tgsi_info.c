@@ -226,7 +226,7 @@ tgsi_opcode_infer_type(enum tgsi_opcode opcode)
  * infer the source type of a TGSI opcode.
  */
 enum tgsi_opcode_type
-tgsi_opcode_infer_src_type(enum tgsi_opcode opcode, uint src_idx)
+tgsi_opcode_infer_src_type(enum tgsi_opcode opcode, unsigned src_idx)
 {
    if (src_idx == 1 &&
        (opcode == TGSI_OPCODE_DLDEXP || opcode == TGSI_OPCODE_LDEXP))
@@ -311,7 +311,7 @@ tgsi_opcode_infer_src_type(enum tgsi_opcode opcode, uint src_idx)
  * infer the destination type of a TGSI opcode.
  */
 enum tgsi_opcode_type
-tgsi_opcode_infer_dst_type(enum tgsi_opcode opcode, uint dst_idx)
+tgsi_opcode_infer_dst_type(enum tgsi_opcode opcode, unsigned dst_idx)
 {
    return tgsi_opcode_infer_type(opcode);
 }

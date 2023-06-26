@@ -42,7 +42,7 @@ extern "C" {
  */
 struct tgsi_shader_info
 {
-   uint num_tokens;
+   unsigned num_tokens;
 
    uint8_t num_inputs;
    uint8_t num_outputs;
@@ -62,7 +62,7 @@ struct tgsi_shader_info
    uint8_t processor;
 
    uint32_t file_mask[TGSI_FILE_COUNT];  /**< bitmask of declared registers */
-   uint file_count[TGSI_FILE_COUNT];  /**< number of declared registers */
+   unsigned file_count[TGSI_FILE_COUNT];  /**< number of declared registers */
    int file_max[TGSI_FILE_COUNT];  /**< highest index of declared registers */
    int const_file_max[PIPE_MAX_CONSTANT_BUFFERS];
    unsigned const_buffers_declared; /**< bitmask of declared const buffers */
@@ -75,11 +75,11 @@ struct tgsi_shader_info
    uint8_t output_array_first[PIPE_MAX_SHADER_OUTPUTS];
    unsigned array_max[TGSI_FILE_COUNT];  /**< highest index array per register file */
 
-   uint immediate_count; /**< number of immediates declared */
-   uint num_instructions;
-   uint num_memory_instructions; /**< sampler, buffer, and image instructions */
+   unsigned immediate_count; /**< number of immediates declared */
+   unsigned num_instructions;
+   unsigned num_memory_instructions; /**< sampler, buffer, and image instructions */
 
-   uint opcode_count[TGSI_OPCODE_LAST];  /**< opcode histogram */
+   unsigned opcode_count[TGSI_OPCODE_LAST];  /**< opcode histogram */
 
    /**
     * If a tessellation control shader reads outputs, this describes which ones.
