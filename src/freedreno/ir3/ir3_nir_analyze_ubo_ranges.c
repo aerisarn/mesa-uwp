@@ -137,9 +137,6 @@ gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
                   struct ir3_ubo_analysis_state *state, uint32_t alignment,
                   uint32_t *upload_remaining)
 {
-   if (ir3_shader_debug & IR3_DBG_NOUBOOPT)
-      return;
-
    struct ir3_ubo_info ubo = {};
    if (!get_ubo_info(instr, &ubo))
       return;
@@ -424,6 +421,9 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
       (ir3_max_const(v) - worst_case_const_state.offsets.immediate) * 16;
 
    memset(state, 0, sizeof(*state));
+
+   if (ir3_shader_debug & IR3_DBG_NOUBOOPT)
+      return;
 
    uint32_t upload_remaining = max_upload;
    bool push_ubos = compiler->options.push_ubo_with_preamble;
