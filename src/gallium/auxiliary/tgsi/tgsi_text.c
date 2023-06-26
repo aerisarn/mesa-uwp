@@ -379,9 +379,9 @@ static bool parse_label( struct translate_ctx *ctx, uint *val )
 }
 
 static bool
-parse_file( const char **pcur, uint *file )
+parse_file( const char **pcur, enum tgsi_file_type *file )
 {
-   uint i;
+   enum tgsi_file_type i;
 
    for (i = 0; i < TGSI_FILE_COUNT; i++) {
       const char *cur = *pcur;
@@ -444,7 +444,7 @@ parse_opt_writemask(
 static bool
 parse_register_file_bracket(
    struct translate_ctx *ctx,
-   uint *file )
+   enum tgsi_file_type *file )
 {
    if (!parse_file( &ctx->cur, file )) {
       report_error( ctx, "Unknown register file" );
@@ -464,7 +464,7 @@ parse_register_file_bracket(
 static bool
 parse_register_file_bracket_index(
    struct translate_ctx *ctx,
-   uint *file,
+   enum tgsi_file_type *file,
    int *index )
 {
    uint uindex;
@@ -485,7 +485,7 @@ parse_register_file_bracket_index(
  */
 static bool
 parse_register_1d(struct translate_ctx *ctx,
-                  uint *file,
+                  enum tgsi_file_type *file,
                   int *index )
 {
    if (!parse_register_file_bracket_index( ctx, file, index ))
@@ -502,7 +502,7 @@ parse_register_1d(struct translate_ctx *ctx,
 struct parsed_bracket {
    int index;
 
-   uint ind_file;
+   enum tgsi_file_type ind_file;
    int ind_index;
    uint ind_comp;
    uint ind_array;
@@ -624,7 +624,7 @@ parse_opt_register_src_bracket(
 static bool
 parse_register_src(
    struct translate_ctx *ctx,
-   uint *file,
+   enum tgsi_file_type *file,
    struct parsed_bracket *brackets)
 {
    brackets->ind_comp = TGSI_SWIZZLE_X;
@@ -698,7 +698,7 @@ cleanup:
 static bool
 parse_register_dcl(
    struct translate_ctx *ctx,
-   uint *file,
+   enum tgsi_file_type *file,
    struct parsed_dcl_bracket *brackets,
    int *num_brackets)
 {
@@ -749,7 +749,7 @@ parse_register_dcl(
 static bool
 parse_register_dst(
    struct translate_ctx *ctx,
-   uint *file,
+   enum tgsi_file_type *file,
    struct parsed_bracket *brackets)
 {
    brackets->ind_comp = TGSI_SWIZZLE_X;
@@ -766,7 +766,7 @@ parse_dst_operand(
    struct translate_ctx *ctx,
    struct tgsi_full_dst_register *dst )
 {
-   uint file;
+   enum tgsi_file_type file;
    uint writemask;
    const char *cur;
    struct parsed_bracket bracket[2];
@@ -854,7 +854,7 @@ parse_src_operand(
    struct translate_ctx *ctx,
    struct tgsi_full_src_register *src )
 {
-   uint file;
+   enum tgsi_file_type file;
    uint swizzle[4];
    bool parsed_swizzle;
    struct parsed_bracket bracket[2];
@@ -930,7 +930,7 @@ parse_texoffset_operand(
    struct translate_ctx *ctx,
    struct tgsi_texture_offset *src )
 {
-   uint file;
+   enum tgsi_file_type file;
    uint swizzle[3];
    bool parsed_swizzle;
    struct parsed_bracket bracket;
@@ -1241,7 +1241,7 @@ static bool parse_immediate_data(struct translate_ctx *ctx, unsigned type,
 static bool parse_declaration( struct translate_ctx *ctx )
 {
    struct tgsi_full_declaration decl;
-   uint file;
+   enum tgsi_file_type file;
    struct parsed_dcl_bracket brackets[2];
    int num_brackets;
    uint writemask;

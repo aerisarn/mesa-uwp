@@ -190,7 +190,7 @@ tgsi_scan_shader(const struct tgsi_token *tokens,
                  struct tgsi_shader_info *info);
 
 static inline bool
-tgsi_is_bindless_image_file(unsigned file)
+tgsi_is_bindless_image_file(enum tgsi_file_type file)
 {
    return file != TGSI_FILE_IMAGE &&
           file != TGSI_FILE_MEMORY &&

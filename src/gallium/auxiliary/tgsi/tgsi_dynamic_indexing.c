@@ -114,7 +114,8 @@ remove_dynamic_indexes(struct tgsi_transform_context *ctx,
    int imm_index = dc->orig_num_imm;
    struct tgsi_full_instruction inst;
    unsigned INVALID_INDEX = 99999;
-   unsigned file = TGSI_FILE_NULL, index = INVALID_INDEX;
+   enum tgsi_file_type file = TGSI_FILE_NULL;
+   unsigned index = INVALID_INDEX;
    unsigned imm_swz_index = INVALID_INDEX;
 
    /* calculate dynamic array index store it in tmp_arrayIdx.x */

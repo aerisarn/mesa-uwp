@@ -75,7 +75,7 @@ scan_register_key(const scan_register *reg)
 
 static void
 fill_scan_register1d(scan_register *reg,
-                     uint file, uint index)
+                     enum tgsi_file_type file, uint index)
 {
    reg->file = file;
    reg->dimensions = 1;
@@ -85,7 +85,7 @@ fill_scan_register1d(scan_register *reg,
 
 static void
 fill_scan_register2d(scan_register *reg,
-                     uint file, uint index1, uint index2)
+                     enum tgsi_file_type file, uint index1, uint index2)
 {
    reg->file = file;
    reg->dimensions = 2;
@@ -188,7 +188,7 @@ report_warning(
 static bool
 check_file_name(
    struct sanity_check_ctx *ctx,
-   uint file )
+   enum tgsi_file_type file )
 {
    if (file <= TGSI_FILE_NULL || file >= TGSI_FILE_COUNT) {
       report_error( ctx, "(%u): Invalid register file name", file );
@@ -211,7 +211,7 @@ is_register_declared(
 static bool
 is_any_register_declared(
    struct sanity_check_ctx *ctx,
-   uint file )
+   enum tgsi_file_type file )
 {
    struct cso_hash_iter iter =
       cso_hash_first_node(&ctx->regs_decl);
@@ -393,7 +393,7 @@ iter_declaration(
    struct tgsi_full_declaration *decl )
 {
    struct sanity_check_ctx *ctx = (struct sanity_check_ctx *) iter;
-   uint file;
+   enum tgsi_file_type file;
    uint i;
 
    /* No declarations allowed after the first instruction.

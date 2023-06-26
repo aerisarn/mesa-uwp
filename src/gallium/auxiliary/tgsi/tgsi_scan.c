@@ -45,7 +45,7 @@
 
 
 static bool
-is_memory_file(unsigned file)
+is_memory_file(enum tgsi_file_type file)
 {
    return file == TGSI_FILE_SAMPLER ||
           file == TGSI_FILE_SAMPLER_VIEW ||
@@ -604,7 +604,7 @@ static void
 scan_declaration(struct tgsi_shader_info *info,
                  const struct tgsi_full_declaration *fulldecl)
 {
-   const uint file = fulldecl->Declaration.File;
+   enum tgsi_file_type file = fulldecl->Declaration.File;
    const unsigned procType = info->processor;
    uint reg;
 
@@ -619,6 +619,12 @@ scan_declaration(struct tgsi_shader_info *info,
       case TGSI_FILE_OUTPUT:
          assert(array_id < ARRAY_SIZE(info->output_array_first));
          info->output_array_first[array_id] = fulldecl->Range.First;
+         break;
+
+      case TGSI_FILE_NULL:
+         unreachable("unexpected file");
+
+      default:
          break;
       }
       info->array_max[file] = MAX2(info->array_max[file], array_id);
@@ -811,6 +817,12 @@ scan_declaration(struct tgsi_shader_info *info,
             assert(info->sampler_type[reg] == type);
          }
          break;
+
+      case TGSI_FILE_NULL:
+         unreachable("unexpected file");
+
+      default:
+         break;
       }
    }
 }
@@ -820,7 +832,7 @@ static void
 scan_immediate(struct tgsi_shader_info *info)
 {
    uint reg = info->immediate_count++;
-   uint file = TGSI_FILE_IMMEDIATE;
+   enum tgsi_file_type file = TGSI_FILE_IMMEDIATE;
 
    info->file_mask[file] |= (1 << reg);
    info->file_count[file]++;
