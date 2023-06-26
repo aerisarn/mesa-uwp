@@ -121,7 +121,7 @@ struct isa_decode_options {
 	const struct isa_entrypoint *entrypoints;
 };
 
-void isa_decode(void *bin, int sz, FILE *out, const struct isa_decode_options *options);
+void isa_disasm(void *bin, int sz, FILE *out, const struct isa_decode_options *options);
 
 #ifdef __cplusplus
 }

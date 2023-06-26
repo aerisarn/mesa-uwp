@@ -741,7 +741,7 @@ display(struct decode_scope *scope)
 }
 
 static void
-decode(struct decode_state *state, void *bin, int sz)
+disasm(struct decode_state *state, void *bin, int sz)
 {
 	BITSET_WORD *instrs = bin;
 	unsigned errors = 0;   /* number of consecutive unmatched instructions */
@@ -848,7 +848,7 @@ cmp_entrypoints(const void *_a, const void *_b)
 }
 
 void
-isa_decode(void *bin, int sz, FILE *out, const struct isa_decode_options *options)
+isa_disasm(void *bin, int sz, FILE *out, const struct isa_decode_options *options)
 {
 	const struct isa_decode_options default_options = {
 		.gpu_id = options ? options->gpu_id : 0,
@@ -872,7 +872,7 @@ isa_decode(void *bin, int sz, FILE *out, const struct isa_decode_options *option
 		/* Do a pre-pass to find all the branch targets: */
 		state->print.out = fopen("/dev/null", "w");
 		state->options = &default_options;   /* skip hooks for prepass */
-		decode(state, bin, sz);
+		disasm(state, bin, sz);
 		fclose(state->print.out);
 		if (options) {
 			state->options = options;
@@ -896,7 +896,7 @@ isa_decode(void *bin, int sz, FILE *out, const struct isa_decode_options *option
 
 	state->print.out = out;
 
-	decode(state, bin, sz);
+	disasm(state, bin, sz);
 
 	ralloc_free(state);
 }

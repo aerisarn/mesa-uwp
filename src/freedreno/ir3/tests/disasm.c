@@ -496,7 +496,7 @@ main(int argc, char **argv)
          strtoll(&test->instr[9], NULL, 16),
          strtoll(&test->instr[0], NULL, 16),
       };
-      isa_decode(code, 8, fdisasm,
+      isa_disasm(code, 8, fdisasm,
                  &(struct isa_decode_options){
                     .gpu_id = test->gpu_id,
                     .show_errors = true,

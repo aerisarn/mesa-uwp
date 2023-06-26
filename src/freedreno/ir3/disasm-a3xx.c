@@ -595,7 +595,7 @@ disasm_a3xx_stat(uint32_t *dwords, int sizedwords, int level, FILE *out,
 
    decode_options.cbdata = &ctx;
 
-   isa_decode(dwords, sizedwords * 4, out, &decode_options);
+   isa_disasm(dwords, sizedwords * 4, out, &decode_options);
 
    disasm_handle_last(&ctx);
 
