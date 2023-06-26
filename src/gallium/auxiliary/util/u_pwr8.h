@@ -44,8 +44,8 @@ typedef VECTOR_ALIGN_16 union m128i {
    vector unsigned int m128ui;
    uint8_t ub[16];
    uint16_t us[8];
-   int i[4];
-   uint ui[4];
+   int32_t i[4];
+   uint32_t ui[4];
 } __m128i_union;
 
 static inline __m128i

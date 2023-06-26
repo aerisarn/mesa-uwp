@@ -50,7 +50,7 @@ union m128i {
    __m128i m;
    uint8_t ub[16];
    uint16_t us[8];
-   uint ui[4];
+   uint32_t ui[4];
 };
 
 /*

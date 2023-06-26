@@ -127,7 +127,7 @@ z16_get_tile_rgba(const uint16_t *src,
  * Return each Z value as four floats in [0,1].
  */
 static void
-z32_get_tile_rgba(const unsigned *src,
+z32_get_tile_rgba(const uint32_t *src,
                   unsigned w, unsigned h,
                   float *p,
                   unsigned dst_stride)
@@ -154,7 +154,7 @@ z32_get_tile_rgba(const unsigned *src,
  * Return Z component as four float in [0,1].  Stencil part ignored.
  */
 static void
-s8z24_get_tile_rgba(const unsigned *src,
+s8z24_get_tile_rgba(const uint32_t *src,
                     unsigned w, unsigned h,
                     float *p,
                     unsigned dst_stride)
@@ -181,7 +181,7 @@ s8z24_get_tile_rgba(const unsigned *src,
  * Return Z component as four float in [0,1].  Stencil part ignored.
  */
 static void
-z24s8_get_tile_rgba(const unsigned *src,
+z24s8_get_tile_rgba(const uint32_t *src,
                     unsigned w, unsigned h,
                     float *p,
                     unsigned dst_stride)
@@ -207,7 +207,7 @@ z24s8_get_tile_rgba(const unsigned *src,
  * Return S component as four uint32_t in [0..255].  Z part ignored.
  */
 static void
-s8x24_get_tile_rgba(const unsigned *src,
+s8x24_get_tile_rgba(const uint32_t *src,
                     unsigned w, unsigned h,
                     float *p,
                     unsigned dst_stride)
@@ -234,7 +234,7 @@ s8x24_get_tile_rgba(const unsigned *src,
  * Return S component as four uint32_t in [0..255].  Z part ignored.
  */
 static void
-x24s8_get_tile_rgba(const unsigned *src,
+x24s8_get_tile_rgba(const uint32_t *src,
                     unsigned w, unsigned h,
                     float *p,
                     unsigned dst_stride)
@@ -334,7 +334,7 @@ z32f_x24s8_get_tile_rgba(const float *src,
  * Return S component as four uint32_t in [0..255].  Z part ignored.
  */
 static void
-x32_s8_get_tile_rgba(const unsigned *src,
+x32_s8_get_tile_rgba(const uint32_t *src,
                      unsigned w, unsigned h,
                      float *p,
                      unsigned dst_stride)
@@ -407,24 +407,24 @@ pipe_get_tile_rgba(struct pipe_transfer *pt,
       z16_get_tile_rgba((uint16_t *) packed, w, h, dst, dst_stride);
       break;
    case PIPE_FORMAT_Z32_UNORM:
-      z32_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+      z32_get_tile_rgba((uint32_t *) packed, w, h, dst, dst_stride);
       break;
    case PIPE_FORMAT_Z24_UNORM_S8_UINT:
    case PIPE_FORMAT_Z24X8_UNORM:
-      s8z24_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+      s8z24_get_tile_rgba((uint32_t *) packed, w, h, dst, dst_stride);
       break;
    case PIPE_FORMAT_S8_UINT:
-      s8_get_tile_rgba((unsigned char *) packed, w, h, dst, dst_stride);
+      s8_get_tile_rgba((uint8_t *) packed, w, h, dst, dst_stride);
       break;
    case PIPE_FORMAT_X24S8_UINT:
-      s8x24_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+      s8x24_get_tile_rgba((uint32_t *) packed, w, h, dst, dst_stride);
       break;
    case PIPE_FORMAT_S8_UINT_Z24_UNORM:
    case PIPE_FORMAT_X8Z24_UNORM:
-      z24s8_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+      z24s8_get_tile_rgba((uint32_t *) packed, w, h, dst, dst_stride);
       break;
    case PIPE_FORMAT_S8X24_UINT:
-      x24s8_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+      x24s8_get_tile_rgba((uint32_t *) packed, w, h, dst, dst_stride);
       break;
    case PIPE_FORMAT_Z32_FLOAT:
       z32f_get_tile_rgba((float *) packed, w, h, dst, dst_stride);
@@ -433,7 +433,7 @@ pipe_get_tile_rgba(struct pipe_transfer *pt,
       z32f_x24s8_get_tile_rgba((float *) packed, w, h, dst, dst_stride);
       break;
    case PIPE_FORMAT_X32_S8X24_UINT:
-      x32_s8_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
+      x32_s8_get_tile_rgba((uint32_t *) packed, w, h, dst, dst_stride);
       break;
    default:
       util_format_read_4(format,
