@@ -35,6 +35,7 @@ SOFTWARE.
 		<map name="SRC1">src->src1</map>
 		<map name="SRC2">src->src2</map>
 		<map name="IMMED">src->immed</map>
+		<map name="BIT">src->bit</map>
 		<!-- RIMMED is an alias of IMMED for immediates that might be a GPU register -->
 		<map name="RIMMED">src->immed</map>
 	</encode>
@@ -351,6 +352,32 @@ SOFTWARE.
 	<pattern low="0" high="4">10100</pattern>
 </bitset>
 
+<bitset name="#setclrbit" extends="#instruction-rep">
+	<display>
+		{REP}{NAME} {DST}, {SRC}, b{BIT}
+	</display>
+
+	<field name="BIT" low="1" high="5" type="uint"/>
+	<pattern low="6" high="15">xxxxxxxxxx</pattern>
+	<field name="DST" low="16" high="20" type="#dst"/>
+	<field name="SRC" low="21" high="25" type="#src"/>
+	<pattern low="27" high="31">10010</pattern>
+
+	<encode>
+		<map name="SRC">src->src1</map>
+	</encode>
+</bitset>
+
+<bitset name="setbit" extends="#setclrbit">
+	<doc>Set a given bit to 1</doc>
+	<pattern pos="0">1</pattern>
+</bitset>
+
+<bitset name="clrbit" extends="#setclrbit">
+	<doc>Clear a given bit, i.e. set it to 0</doc>
+	<pattern pos="0">0</pattern>
+</bitset>
+
 <bitset name="movi" extends="#instruction-rep">
 	<doc>Special move-immediate instruction with a shift</doc>
 	<override>
@@ -489,10 +516,6 @@ SOFTWARE.
 		{NAME} {SRC}, b{BIT}, #{OFFSET}
 	</display>
 	<field name="BIT" low="16" high="20" type="uint"/>
-
-	<encode>
-		<map name="BIT">src->bit</map>
-	</encode>
 </bitset>
 
 <bitset name="brnei" displayname="brne" extends="#branch-immed">

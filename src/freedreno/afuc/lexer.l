@@ -70,6 +70,8 @@ extern YYSTYPE yylval;
 "max"                             return TOKEN(T_OP_MAX);
 "cmp"                             return TOKEN(T_OP_CMP);
 "msb"                             return TOKEN(T_OP_MSB);
+"setbit"                          return TOKEN(T_OP_SETBIT);
+"clrbit"                          return TOKEN(T_OP_CLRBIT);
 "mov"                             return TOKEN(T_OP_MOV);
 "cwrite"                          return TOKEN(T_OP_CWRITE);
 "cread"                           return TOKEN(T_OP_CREAD);

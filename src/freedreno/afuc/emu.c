@@ -180,6 +180,16 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
       emu_set_gpr_reg(emu, instr->dst, val);
       break;
    }
+   case OPC_SETBIT: {
+      uint32_t src = emu_get_gpr_reg(emu, instr->src1);
+      emu_set_gpr_reg(emu, instr->dst, src | (1u << instr->bit));
+      break;
+   }
+   case OPC_CLRBIT: {
+      uint32_t src = emu_get_gpr_reg(emu, instr->src1);
+      emu_set_gpr_reg(emu, instr->dst, src & ~(1u << instr->bit));
+      break;
+   }
    case OPC_CWRITE: {
       uint32_t src1 = emu_get_gpr_reg(emu, instr->src1);
       uint32_t src2 = emu_get_gpr_reg(emu, instr->src2);

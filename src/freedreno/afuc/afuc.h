@@ -61,6 +61,8 @@ typedef enum {
    ALU(MAX)
    ALU(CMP)   /* compare src to immed */
    OPC_MOVI,  /* move immediate */
+   OPC_SETBIT, /* Set a bit */
+   OPC_CLRBIT, /* Clear a bit */
 #undef ALU
 
    /* Return the most-significant bit of src2, or 0 if src2 == 0 (the
