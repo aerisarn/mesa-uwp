@@ -1724,7 +1724,7 @@ parse_property_next_shader( const char **pcur, uint *next_shader )
 static bool parse_property( struct translate_ctx *ctx )
 {
    struct tgsi_full_property prop;
-   uint property_name;
+   enum tgsi_property_name property_name;
    uint values[8];
    uint advance;
    char id[64];
