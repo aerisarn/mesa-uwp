@@ -1488,7 +1488,7 @@
     <field name="Command Type" start="29" end="31" type="uint" default="3" />
     <field name="Pointer to VS Binding Table" start="37" end="52" type="offset" />
   </instruction>
-  <instruction name="3DSTATE_BINDING_TABLE_POOL_ALLOC" bias="2" length="4" engine="render">
+  <instruction name="3DSTATE_BINDING_TABLE_POOL_ALLOC" bias="2" length="4" engine="render|compute">
     <field name="DWord Length" start="0" end="7" type="uint" default="2" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="25" />
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="1" />
@@ -1509,7 +1509,7 @@
     <field name="Blend State Pointer Valid" start="32" end="32" type="bool" />
     <field name="Blend State Pointer" start="38" end="63" type="offset" />
   </instruction>
-  <instruction name="3DSTATE_BTD" bias="2" length="6" engine="render">
+  <instruction name="3DSTATE_BTD" bias="2" length="6" engine="render|compute">
     <field name="DWord Length" start="0" end="7" type="uint" default="4" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="6" />
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="1" />
@@ -1540,7 +1540,7 @@
     <field name="Color Calc State Pointer Valid" start="32" end="32" type="bool" />
     <field name="Color Calc State Pointer" start="38" end="63" type="offset" />
   </instruction>
-  <instruction name="3DSTATE_CHROMA_KEY" bias="2" length="4" engine="render">
+  <instruction name="3DSTATE_CHROMA_KEY" bias="2" length="4" engine="render|compute">
     <field name="DWord Length" start="0" end="7" type="uint" default="2" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="4" />
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="1" />
@@ -2212,7 +2212,7 @@
       <field name="Inline Data" start="0" end="31" type="uint" />
     </group>
   </instruction>
-  <instruction name="3DSTATE_MONOFILTER_SIZE" bias="2" length="2" engine="render">
+  <instruction name="3DSTATE_MONOFILTER_SIZE" bias="2" length="2" engine="render|compute">
     <field name="DWord Length" start="0" end="7" type="uint" default="0" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="17" />
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="1" />
@@ -6215,7 +6215,7 @@
     <field name="Display Buffer Base Address" start="76" end="95" type="address" />
     <field name="Left Eye Display Buffer Base Address" start="108" end="127" type="address" />
   </instruction>
-  <instruction name="MI_FLUSH_DW" bias="2" length="5" engine="blitter|video">
+  <instruction name="MI_FLUSH_DW" bias="2" length="5" engine="blitter|compute|video">
     <field name="DWord Length" start="0" end="5" type="uint" default="3" />
     <field name="Video Pipeline Cache Invalidate" start="7" end="7" type="bool" />
     <field name="Notify Enable" start="8" end="8" type="bool" />
@@ -6345,7 +6345,7 @@
     <field name="MI Command Opcode" start="23" end="28" type="uint" default="7" />
     <field name="Command Type" start="29" end="31" type="uint" default="0" />
   </instruction>
-  <instruction name="MI_REPORT_PERF_COUNT" bias="2" length="4" engine="render">
+  <instruction name="MI_REPORT_PERF_COUNT" bias="2" length="4" engine="render|compute">
     <field name="DWord Length" start="0" end="5" type="uint" default="2" />
     <field name="MI Command Opcode" start="23" end="28" type="uint" default="40" />
     <field name="Command Type" start="29" end="31" type="uint" default="0" />
@@ -6531,7 +6531,7 @@
     <field name="MI Command Opcode" start="23" end="28" type="uint" default="4" />
     <field name="Command Type" start="29" end="31" type="uint" default="0" />
   </instruction>
-  <instruction name="PIPELINE_SELECT" bias="1" length="1" engine="render">
+  <instruction name="PIPELINE_SELECT" bias="1" length="1" engine="render|compute">
     <field name="Pipeline Selection" start="0" end="1" type="uint">
       <value name="3D" value="0" />
       <value name="Media" value="1" />
@@ -6545,7 +6545,7 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="1" />
     <field name="Command Type" start="29" end="31" type="uint" default="3" />
   </instruction>
-  <instruction name="PIPE_CONTROL" bias="2" length="6" engine="render">
+  <instruction name="PIPE_CONTROL" bias="2" length="6" engine="render|compute">
     <field name="DWord Length" start="0" end="7" type="uint" default="4" />
     <field name="HDC Pipeline Flush Enable" start="9" end="9" type="bool" />
     <field name="L3 Read Only Cache Invalidation Enable" start="10" end="10" type="bool" />
@@ -6791,7 +6791,7 @@
     <field name="Output Surface Y Offset for V" start="992" end="1005" type="uint" />
     <field name="Output Surface X Offset for V" start="1008" end="1021" type="uint" />
   </instruction>
-  <instruction name="STATE_BASE_ADDRESS" bias="2" length="22" engine="render">
+  <instruction name="STATE_BASE_ADDRESS" bias="2" length="22" engine="render|compute">
     <field name="DWord Length" start="0" end="7" type="uint" default="20" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="1" />
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="1" />
@@ -6837,7 +6837,7 @@
     <field name="Bindless Sampler State Base Address" start="620" end="671" type="address" />
     <field name="Bindless Sampler State Buffer Size" start="684" end="703" type="uint" />
   </instruction>
-  <instruction name="STATE_SIP" bias="2" length="3" engine="render">
+  <instruction name="STATE_SIP" bias="2" length="3" engine="render|compute">
     <field name="DWord Length" start="0" end="7" type="uint" default="1" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="2" />
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="1" />
