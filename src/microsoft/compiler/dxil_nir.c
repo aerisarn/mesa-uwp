@@ -141,8 +141,8 @@ lower_masked_store_vec32(nir_builder *b, nir_ssa_def *offset, nir_ssa_def *index
    if (var->data.mode == nir_var_mem_shared) {
       /* Use the dedicated masked intrinsic */
       nir_deref_instr *deref = nir_build_deref_array(b, nir_build_deref_var(b, var), index);
-      nir_build_deref_atomic(b, 32, &deref->dest.ssa, nir_inot(b, mask), .atomic_op = nir_atomic_op_iand);
-      nir_build_deref_atomic(b, 32, &deref->dest.ssa, vec32, .atomic_op = nir_atomic_op_ior);
+      nir_deref_atomic(b, 32, &deref->dest.ssa, nir_inot(b, mask), .atomic_op = nir_atomic_op_iand);
+      nir_deref_atomic(b, 32, &deref->dest.ssa, vec32, .atomic_op = nir_atomic_op_ior);
    } else {
       /* For scratch, since we don't need atomics, just generate the read-modify-write in NIR */
       nir_ssa_def *load = nir_load_array_var(b, var, index);
@@ -635,11 +635,11 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var
    nir_deref_instr *deref = nir_build_deref_array(b, nir_build_deref_var(b, var), index);
    nir_ssa_def *result;
    if (intr->intrinsic == nir_intrinsic_shared_atomic_swap)
-      result = nir_build_deref_atomic_swap(b, 32, &deref->dest.ssa, intr->src[1].ssa, intr->src[2].ssa,
-                                           .atomic_op = nir_intrinsic_atomic_op(intr));
+      result = nir_deref_atomic_swap(b, 32, &deref->dest.ssa, intr->src[1].ssa, intr->src[2].ssa,
+                                     .atomic_op = nir_intrinsic_atomic_op(intr));
    else
-      result = nir_build_deref_atomic(b, 32, &deref->dest.ssa, intr->src[1].ssa,
-                                      .atomic_op = nir_intrinsic_atomic_op(intr));
+      result = nir_deref_atomic(b, 32, &deref->dest.ssa, intr->src[1].ssa,
+                                .atomic_op = nir_intrinsic_atomic_op(intr));
 
    nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
    nir_instr_remove(&intr->instr);
@@ -1444,7 +1444,7 @@ lower_sysval_to_load_input_impl(nir_builder *b, nir_instr *instr, void *data)
       ? 32 : intr->dest.ssa.bit_size;
 
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *result = nir_build_load_input(b, intr->dest.ssa.num_components, bit_size, nir_imm_int(b, 0),
+   nir_ssa_def *result = nir_load_input(b, intr->dest.ssa.num_components, bit_size, nir_imm_int(b, 0),
       .base = var->data.driver_location, .dest_type = dest_type);
 
    /* The nir_type_uint32 is really a nir_type_bool32, but that type is very
@@ -2195,8 +2195,8 @@ lower_subgroup_scan(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_before_instr(instr);
    nir_op op = nir_intrinsic_reduction_op(intr);
-   nir_ssa_def *subgroup_id = nir_build_load_subgroup_invocation(b);
-   nir_ssa_def *active_threads = nir_build_ballot(b, 4, 32, nir_imm_true(b));
+   nir_ssa_def *subgroup_id = nir_load_subgroup_invocation(b);
+   nir_ssa_def *active_threads = nir_ballot(b, 4, 32, nir_imm_true(b));
    nir_ssa_def *base_value;
    uint32_t bit_size = intr->dest.ssa.bit_size;
    if (op == nir_op_iand || op == nir_op_umin)
@@ -2224,10 +2224,10 @@ lower_subgroup_scan(nir_builder *b, nir_instr *instr, void *data)
    nir_if *nif = nir_push_if(b, intr->intrinsic == nir_intrinsic_inclusive_scan ?
       nir_ige(b, subgroup_id, loop_counter) :
       nir_ilt(b, loop_counter, subgroup_id));
-   nir_if *if_active_thread = nir_push_if(b, nir_build_ballot_bitfield_extract(b, 32, active_threads, loop_counter));
+   nir_if *if_active_thread = nir_push_if(b, nir_ballot_bitfield_extract(b, 32, active_threads, loop_counter));
    nir_ssa_def *result = nir_build_alu2(b, op,
                                         nir_load_var(b, result_var),
-                                        nir_build_read_invocation(b, intr->src[0].ssa, loop_counter));
+                                        nir_read_invocation(b, intr->src[0].ssa, loop_counter));
    nir_store_var(b, result_var, result, 1);
    nir_pop_if(b, if_active_thread);
    nir_store_var(b, loop_counter_var, nir_iadd_imm(b, loop_counter, 1), 1);

@@ -34,15 +34,15 @@
 static nir_ssa_def *
 load_ubo(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var, unsigned offset)
 {
-   return nir_build_load_ubo(b,
-                             nir_dest_num_components(intr->dest),
-                             nir_dest_bit_size(intr->dest),
-                             nir_imm_int(b, var->data.binding),
-                             nir_imm_int(b, offset),
-                             .align_mul = 256,
-                             .align_offset = offset,
-                             .range_base = offset,
-                             .range = nir_dest_bit_size(intr->dest) * nir_dest_num_components(intr->dest) / 8);
+   return nir_load_ubo(b,
+                       nir_dest_num_components(intr->dest),
+                       nir_dest_bit_size(intr->dest),
+                       nir_imm_int(b, var->data.binding),
+                       nir_imm_int(b, offset),
+                       .align_mul = 256,
+                       .align_offset = offset,
+                       .range_base = offset,
+                       .range = nir_dest_bit_size(intr->dest) * nir_dest_num_components(intr->dest) / 8);
 }
 
 static bool

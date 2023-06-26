@@ -252,7 +252,7 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
       nir_address_format_bit_size(ubo_format),
       index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-   nir_ssa_def *load_data = nir_build_load_ubo(
+   nir_ssa_def *load_data = nir_load_ubo(
       builder, 
       nir_dest_num_components(intrin->dest),
       nir_dest_bit_size(intrin->dest),
@@ -341,7 +341,7 @@ lower_load_push_constant(struct nir_builder *builder, nir_instr *instr,
       index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
    nir_ssa_def *offset = nir_ssa_for_src(builder, intrin->src[0], 1);
-   nir_ssa_def *load_data = nir_build_load_ubo(
+   nir_ssa_def *load_data = nir_load_ubo(
       builder, 
       nir_dest_num_components(intrin->dest),
       nir_dest_bit_size(intrin->dest), 
@@ -437,7 +437,7 @@ lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
          index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
       dyn_yz_flip_mask =
-         nir_build_load_ubo(builder, 1, 32,
+         nir_load_ubo(builder, 1, 32,
                             nir_channel(builder, load_desc, 0),
                             nir_imm_int(builder, offset),
                             .align_mul = 256,
@@ -738,12 +738,12 @@ write_pntc_with_pos(nir_builder *b, nir_instr *instr, void *_data)
       index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
    nir_ssa_def *transform = nir_channels(b,
-                                         nir_build_load_ubo(b, 4, 32,
-                                                            nir_channel(b, load_desc, 0),
-                                                            nir_imm_int(b, offset),
-                                                            .align_mul = 16,
-                                                            .range_base = offset,
-                                                            .range = 16),
+                                         nir_load_ubo(b, 4, 32,
+                                                      nir_channel(b, load_desc, 0),
+                                                      nir_imm_int(b, offset),
+                                                      .align_mul = 16,
+                                                      .range_base = offset,
+                                                      .range = 16),
                                          0x6);
    nir_ssa_def *point_center_in_clip = nir_fmul(b, nir_trim_vector(b, pos, 2),
                                                 nir_frcp(b, nir_channel(b, pos, 3)));
