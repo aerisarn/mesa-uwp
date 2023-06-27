@@ -191,6 +191,8 @@ bool brw_nir_lower_conversions(nir_shader *nir);
 
 bool brw_nir_lower_shading_rate_output(nir_shader *nir);
 
+bool brw_nir_lower_sparse_intrinsics(nir_shader *nir);
+
 struct brw_nir_lower_storage_image_opts {
    const struct intel_device_info *devinfo;
 
