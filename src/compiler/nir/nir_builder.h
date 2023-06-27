@@ -58,6 +58,18 @@ nir_builder_create(nir_function_impl *impl)
    return b;
 }
 
+/* Requires the cursor to be inside a nir_function_impl. */
+static inline nir_builder
+nir_builder_at(nir_cursor cursor)
+{
+   nir_cf_node *current_block = &nir_cursor_current_block(cursor)->cf_node;
+
+   nir_builder b;
+   nir_builder_init(&b, nir_cf_node_get_function(current_block));
+   b.cursor = cursor;
+   return b;
+}
+
 nir_builder MUST_CHECK PRINTFLIKE(3, 4)
 nir_builder_init_simple_shader(gl_shader_stage stage,
                                const nir_shader_compiler_options *options,
