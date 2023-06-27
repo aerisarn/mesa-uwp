@@ -35,10 +35,8 @@
 
 struct emu_gpr_regs {
    BITSET_DECLARE(written, EMU_NUM_GPR_REGS);
-   union {
-      uint32_t pc;
-      uint32_t val[EMU_NUM_GPR_REGS];
-   };
+   uint32_t pc;
+   uint32_t val[EMU_NUM_GPR_REGS];
 };
 
 #define EMU_NUM_CONTROL_REGS 0x1000
