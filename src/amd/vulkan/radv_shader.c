@@ -111,10 +111,8 @@ get_nir_options_for_stage(struct radv_physical_device *device, gl_shader_stage s
       .max_unroll_iterations_aggressive = 128,
       .use_interpolated_input_intrinsics = true,
       .vectorize_vec2_16bit = true,
-      /* nir_lower_int64() isn't actually called for the LLVM backend,
-       * but this helps the loop unrolling heuristics. */
       .lower_int64_options = nir_lower_imul64 | nir_lower_imul_high64 | nir_lower_imul_2x32_64 | nir_lower_divmod64 |
-                             nir_lower_minmax64 | nir_lower_iabs64 | nir_lower_iadd_sat64,
+                             nir_lower_minmax64 | nir_lower_iabs64 | nir_lower_iadd_sat64 | nir_lower_conv64,
       .lower_doubles_options = nir_lower_drcp | nir_lower_dsqrt | nir_lower_drsq | nir_lower_ddiv,
       .divergence_analysis_options = nir_divergence_view_index_uniform,
       .optimize_quad_vote_to_reduce = true,
