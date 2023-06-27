@@ -62,12 +62,14 @@ nir_${name}(nir_builder *build, ${src_decl_list(opcode.num_inputs)})
 % endfor
 
 % for name, opcode in sorted(INTR_OPCODES.items()):
+% if opcode.indices:
 struct _nir_${name}_indices {
    int _; /* exists to avoid empty initializers */
 % for index in opcode.indices:
    ${index.c_data_type} ${index.name};
 % endfor
 };
+% endif
 % endfor
 
 <%
