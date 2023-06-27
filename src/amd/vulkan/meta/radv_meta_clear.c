@@ -1781,15 +1781,43 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *clear_at
       VkClearDepthStencilValue clear_value = clear_att->clearValue.depthStencil;
 
       assert(aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+      bool can_fast_clear_depth = false;
+      bool can_fast_clear_stencil = false;
+      if (aspects == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) &&
+          ds_att->layout != ds_att->stencil_layout) {
+         can_fast_clear_depth = radv_can_fast_clear_depth(cmd_buffer, ds_att->iview, ds_att->layout, aspects,
+                                                          clear_rect, clear_value, view_mask);
+         can_fast_clear_stencil = radv_can_fast_clear_depth(cmd_buffer, ds_att->iview, ds_att->stencil_layout, aspects,
+                                                            clear_rect, clear_value, view_mask);
+      } else {
+         VkImageLayout layout = aspects & VK_IMAGE_ASPECT_DEPTH_BIT ? ds_att->layout : ds_att->stencil_layout;
+         can_fast_clear_depth =
+            radv_can_fast_clear_depth(cmd_buffer, ds_att->iview, layout, aspects, clear_rect, clear_value, view_mask);
+         can_fast_clear_stencil = can_fast_clear_depth;
+      }
 
-      bool can_fast_clear = radv_can_fast_clear_depth(cmd_buffer, ds_att->iview, ds_att->layout, aspects, clear_rect,
-                                                      clear_value, view_mask);
-      if (can_fast_clear) {
+      if (can_fast_clear_depth && can_fast_clear_stencil) {
          radv_fast_clear_depth(cmd_buffer, ds_att->iview, clear_att->clearValue.depthStencil, clear_att->aspectMask,
                                pre_flush, post_flush);
-      } else {
+      } else if (!can_fast_clear_depth && !can_fast_clear_stencil) {
          emit_depthstencil_clear(cmd_buffer, clear_att->clearValue.depthStencil, clear_att->aspectMask, clear_rect,
-                                 view_mask, can_fast_clear);
+                                 view_mask, false);
+      } else {
+         if (can_fast_clear_depth) {
+            radv_fast_clear_depth(cmd_buffer, ds_att->iview, clear_att->clearValue.depthStencil,
+                                  VK_IMAGE_ASPECT_DEPTH_BIT, pre_flush, post_flush);
+         } else {
+            emit_depthstencil_clear(cmd_buffer, clear_att->clearValue.depthStencil, VK_IMAGE_ASPECT_DEPTH_BIT,
+                                    clear_rect, view_mask, can_fast_clear_depth);
+         }
+
+         if (can_fast_clear_stencil) {
+            radv_fast_clear_depth(cmd_buffer, ds_att->iview, clear_att->clearValue.depthStencil,
+                                  VK_IMAGE_ASPECT_STENCIL_BIT, pre_flush, post_flush);
+         } else {
+            emit_depthstencil_clear(cmd_buffer, clear_att->clearValue.depthStencil, VK_IMAGE_ASPECT_STENCIL_BIT,
+                                    clear_rect, view_mask, can_fast_clear_stencil);
+         }
       }
    }
 }
