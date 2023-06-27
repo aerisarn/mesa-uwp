@@ -315,8 +315,7 @@ st_nir_zero_initialize_clip_distance(nir_shader *nir)
       return false;
    nir_builder b;
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-   b = nir_builder_create(impl);
-   b.cursor = nir_before_block(nir_start_block(impl));
+   b = nir_builder_at(nir_before_block(nir_start_block(impl)));
    if (clip_dist0)
       zero_array_members(&b, clip_dist0);
    if (clip_dist1)

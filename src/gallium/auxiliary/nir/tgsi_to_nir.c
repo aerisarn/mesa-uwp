@@ -2571,8 +2571,7 @@ lower_clipdistance_to_array(nir_shader *nir)
    struct set *deletes = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
    nir_foreach_function_impl(impl, nir) {
       bool func_progress = false;
-      nir_builder b = nir_builder_create(impl);
-      b.cursor = nir_before_block(nir_start_block(impl));
+      nir_builder b = nir_builder_at(nir_before_block(nir_start_block(impl)));
       /* create a new deref for the arrayed clipdistance variable at the start of the function */
       nir_deref_instr *clipdist_deref = nir_build_deref_var(&b, dist0);
       nir_ssa_def *zero = nir_imm_zero(&b, 1, 32);
