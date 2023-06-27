@@ -446,7 +446,6 @@ generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *scree
       variant_hash ^= prog->module_hash[i];
    }
 
-   p_atomic_dec(&prog->base.reference.count);
    state->modules_changed = true;
 
    prog->last_variant_hash = variant_hash;
@@ -469,7 +468,6 @@ generate_gfx_program_modules_optimal(struct zink_context *ctx, struct zink_scree
       prog->objects[i] = zm->obj.obj;
    }
 
-   p_atomic_dec(&prog->base.reference.count);
    state->modules_changed = true;
    prog->last_variant_hash = state->shader_keys_optimal.key.val;
 }
@@ -1136,6 +1134,7 @@ zink_create_gfx_program(struct zink_context *ctx,
       }
    }
    _mesa_sha1_final(&sctx, prog->base.sha1);
+   p_atomic_dec(&prog->base.reference.count);
 
    if (!zink_descriptor_program_init(ctx, &prog->base))
       goto fail;
