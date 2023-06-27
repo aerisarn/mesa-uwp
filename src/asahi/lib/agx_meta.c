@@ -44,7 +44,7 @@ build_background_op(nir_builder *b, enum agx_meta_op op, unsigned rt,
       /* The type doesn't matter as long as it matches the store */
       tex->dest_type = nir_type_uint32;
       tex->sampler_dim = msaa ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
-      tex->op = nir_texop_txf;
+      tex->op = msaa ? nir_texop_txf_ms : nir_texop_txf;
       tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                         nir_u2u32(b, nir_load_pixel_coord(b)));
 
