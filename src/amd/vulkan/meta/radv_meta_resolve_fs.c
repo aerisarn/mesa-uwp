@@ -888,7 +888,8 @@ radv_depth_stencil_resolve_rendering_fs(struct radv_cmd_buffer *cmd_buffer, VkIm
    radv_emit_resolve_barrier(cmd_buffer, &barrier);
 
    struct radv_image_view *src_iview = cmd_buffer->state.render.ds_att.iview;
-   VkImageLayout src_layout = cmd_buffer->state.render.ds_att.layout;
+   VkImageLayout src_layout =
+      aspects & VK_IMAGE_ASPECT_DEPTH_BIT ? render->ds_att.layout : render->ds_att.stencil_layout;
    struct radv_image *src_image = src_iview->image;
 
    VkImageResolve2 region = {0};

@@ -716,7 +716,8 @@ radv_depth_stencil_resolve_rendering_cs(struct radv_cmd_buffer *cmd_buffer, VkIm
       radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_WRITE_BIT, NULL);
 
    struct radv_image_view *src_iview = render->ds_att.iview;
-   VkImageLayout src_layout = render->ds_att.layout;
+   VkImageLayout src_layout =
+      aspects & VK_IMAGE_ASPECT_DEPTH_BIT ? render->ds_att.layout : render->ds_att.stencil_layout;
    struct radv_image *src_image = src_iview->image;
 
    VkImageResolve2 region = {0};
@@ -731,7 +732,8 @@ radv_depth_stencil_resolve_rendering_cs(struct radv_cmd_buffer *cmd_buffer, VkIm
    radv_meta_save(&saved_state, cmd_buffer, RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS);
 
    struct radv_image_view *dst_iview = render->ds_att.resolve_iview;
-   VkImageLayout dst_layout = render->ds_att.resolve_layout;
+   VkImageLayout dst_layout =
+      aspects & VK_IMAGE_ASPECT_DEPTH_BIT ? render->ds_att.resolve_layout : render->ds_att.stencil_resolve_layout;
    struct radv_image *dst_image = dst_iview->image;
 
    struct radv_image_view tsrc_iview;
