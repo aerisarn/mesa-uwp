@@ -1224,10 +1224,9 @@ StoreMerger::combine_one_slot(vector<nir_intrinsic_instr *>& stores)
 {
    nir_ssa_def *srcs[4] = {nullptr};
 
-   nir_builder b = nir_builder_create(nir_shader_get_entrypoint(sh));
    auto last_store = *stores.rbegin();
 
-   b.cursor = nir_before_instr(&last_store->instr);
+   nir_builder b = nir_builder_at(nir_before_instr(&last_store->instr));
 
    unsigned comps = 0;
    unsigned writemask = 0;
