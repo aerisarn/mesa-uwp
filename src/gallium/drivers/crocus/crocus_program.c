@@ -448,9 +448,8 @@ crocus_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
 
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   nir_builder b = nir_builder_create(impl);
+   nir_builder b = nir_builder_at(nir_before_block(nir_start_block(impl)));
 
-   b.cursor = nir_before_block(nir_start_block(impl));
    nir_ssa_def *temp_ubo_name = nir_ssa_undef(&b, 1, 32);
    nir_ssa_def *temp_const_ubo_name = NULL;
 
@@ -1143,9 +1142,8 @@ crocus_lower_default_edgeflags(struct nir_shader *nir)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   nir_builder b = nir_builder_create(impl);
+   nir_builder b = nir_builder_at(nir_after_cf_list(&impl->body));
 
-   b.cursor = nir_after_cf_list(&b.impl->body);
    nir_variable *var = nir_variable_create(nir, nir_var_shader_out,
                                            glsl_float_type(),
                                            "edgeflag");
