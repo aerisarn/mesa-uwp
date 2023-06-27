@@ -700,8 +700,7 @@ ac_nir_lower_legacy_vs(nir_shader *nir,
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    nir_metadata preserved = nir_metadata_block_index | nir_metadata_dominance;
 
-   nir_builder b = nir_builder_create(impl);
-   b.cursor = nir_after_cf_list(&impl->body);
+   nir_builder b = nir_builder_at(nir_after_cf_list(&impl->body));
 
    nir_alu_type output_types_16bit_lo[16][4];
    nir_alu_type output_types_16bit_hi[16][4];
