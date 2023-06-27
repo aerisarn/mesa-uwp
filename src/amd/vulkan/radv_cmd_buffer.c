@@ -2796,16 +2796,15 @@ radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_
 
 static void
 radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_buffer_info *ds, struct radv_image_view *iview,
-                      VkImageLayout layout)
+                      bool depth_compressed, bool stencil_compressed)
 {
-   const struct radv_image *image = iview->image;
    uint32_t db_htile_surface = ds->db_htile_surface;
    uint32_t db_render_control = ds->db_render_control | cmd_buffer->state.db_render_control;
 
-   if (!radv_layout_is_htile_compressed(cmd_buffer->device, image, layout,
-                                        radv_image_queue_family_mask(image, cmd_buffer->qf, cmd_buffer->qf))) {
-      db_render_control |= S_028000_DEPTH_COMPRESS_DISABLE(1) | S_028000_STENCIL_COMPRESS_DISABLE(1);
-   }
+   if (!depth_compressed)
+      db_render_control |= S_028000_DEPTH_COMPRESS_DISABLE(1);
+   if (!stencil_compressed)
+      db_render_control |= S_028000_STENCIL_COMPRESS_DISABLE(1);
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX10_3 && !cmd_buffer->state.render.vrs_att.iview) {
       db_htile_surface &= C_028ABC_VRS_HTILE_ENCODING;
@@ -3436,14 +3435,19 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.last_subpass_color_count = render->color_att_count;
 
    if (render->ds_att.iview) {
-      VkImageLayout layout = render->ds_att.layout;
       struct radv_image_view *iview = render->ds_att.iview;
-      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, iview->image->bindings[0].bo);
+      const struct radv_image *image = iview->image;
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, image->bindings[0].bo);
 
-      radv_emit_fb_ds_state(cmd_buffer, &render->ds_att.ds, iview, layout);
+      uint32_t qf_mask = radv_image_queue_family_mask(image, cmd_buffer->qf, cmd_buffer->qf);
+      bool depth_compressed =
+         radv_layout_is_htile_compressed(cmd_buffer->device, image, render->ds_att.layout, qf_mask);
+      bool stencil_compressed =
+         radv_layout_is_htile_compressed(cmd_buffer->device, image, render->ds_att.stencil_layout, qf_mask);
 
-      if (radv_layout_is_htile_compressed(cmd_buffer->device, iview->image, layout,
-                                          radv_image_queue_family_mask(iview->image, cmd_buffer->qf, cmd_buffer->qf))) {
+      radv_emit_fb_ds_state(cmd_buffer, &render->ds_att.ds, iview, depth_compressed, stencil_compressed);
+
+      if (depth_compressed || stencil_compressed) {
          /* Only load the depth/stencil fast clear values when
           * compressed rendering is enabled.
           */
@@ -3484,7 +3488,9 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, htile_buffer->bo);
 
-      radv_emit_fb_ds_state(cmd_buffer, &ds, &iview, layout);
+      bool depth_compressed = radv_layout_is_htile_compressed(
+         cmd_buffer->device, image, layout, radv_image_queue_family_mask(image, cmd_buffer->qf, cmd_buffer->qf));
+      radv_emit_fb_ds_state(cmd_buffer, &ds, &iview, depth_compressed, false);
 
       radv_image_view_finish(&iview);
    } else {
