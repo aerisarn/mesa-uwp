@@ -412,12 +412,9 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_op_f2u16:
                case nir_op_f2i32:
                case nir_op_f2u32:
-               case nir_op_f2i64:
-               case nir_op_f2u64:
                case nir_op_b2i8:
                case nir_op_b2i16:
                case nir_op_b2i32:
-               case nir_op_b2i64:
                case nir_op_b2b32:
                case nir_op_b2f16:
                case nir_op_b2f32:
