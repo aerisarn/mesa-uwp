@@ -896,7 +896,7 @@
     - !reference [.vulkan-manual-rules, rules]
     - changes:
       - src/intel/**/*
-      when: on_success
+      when: manual
 
 .hasvk-rules:
   stage: intel
