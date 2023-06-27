@@ -198,6 +198,7 @@ files_libnir = files(
   'nir_lower_regs_to_ssa.c',
   'nir_lower_readonly_images_to_tex.c',
   'nir_lower_returns.c',
+  'nir_lower_robust_access.c',
   'nir_lower_samplers.c',
   'nir_lower_scratch.c',
   'nir_lower_shader_calls.c',

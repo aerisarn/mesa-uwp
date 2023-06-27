@@ -5181,6 +5181,47 @@ typedef struct {
 bool nir_lower_mem_access_bit_sizes(nir_shader *shader,
                                     const nir_lower_mem_access_bit_sizes_options *options);
 
+typedef struct {
+   /* Lower load_ubo to be robust. Out-of-bounds loads will return UNDEFINED
+    * values (not necessarily zero).
+    */
+   bool lower_ubo;
+
+   /* Lower load_ssbo/store_ssbo/ssbo_atomic(_swap) to be robust. Out-of-bounds
+    * loads and atomics will return UNDEFINED values (not necessarily zero).
+    * Out-of-bounds stores and atomics CORRUPT the contents of the SSBO.
+    *
+    * This suffices for robustBufferAccess but not robustBufferAccess2.
+    */
+   bool lower_ssbo;
+
+   /* Lower all image_load/image_store/image_atomic(_swap) instructions to be
+    * robust.  Out-of-bounds loads will return ZERO.
+    *
+    * This suffices for robustImageAccess but not robustImageAccess2.
+    */
+   bool lower_image;
+
+   /* Lower all buffer image instructions as above. Implied by lower_image. */
+   bool lower_buffer_image;
+
+   /* Lower image_atomic(_swap) for all dimensions. Implied by lower_image. */
+   bool lower_image_atomic;
+
+   /* Subtract one from the UBO index */
+   bool skip_ubo_0;
+
+   /* Vulkan's robustBufferAccess feature is only concerned with buffers that
+    * are bound through descriptor sets, so shared memory is not included, but
+    * it may be useful to enable this for debugging.
+    */
+   bool lower_shared;
+} nir_lower_robust_access_options;
+
+
+bool nir_lower_robust_access(nir_shader *s,
+                             const nir_lower_robust_access_options *opts);
+
 typedef bool (*nir_should_vectorize_mem_func)(unsigned align_mul,
                                               unsigned align_offset,
                                               unsigned bit_size,
