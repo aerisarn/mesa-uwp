@@ -142,14 +142,9 @@ vk_pipeline_cache_object_ref(struct vk_pipeline_cache_object *object)
    return object;
 }
 
-static inline void
+void
 vk_pipeline_cache_object_unref(struct vk_device *device,
-                               struct vk_pipeline_cache_object *object)
-{
-   assert(object && p_atomic_read(&object->ref_cnt) >= 1);
-   if (p_atomic_dec_zero(&object->ref_cnt))
-      object->ops->destroy(device, object);
-}
+                               struct vk_pipeline_cache_object *object);
 
 /** A generic implementation of VkPipelineCache */
 struct vk_pipeline_cache {

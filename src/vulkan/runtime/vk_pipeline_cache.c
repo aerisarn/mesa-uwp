@@ -165,6 +165,15 @@ vk_pipeline_cache_remove_object(struct vk_pipeline_cache *cache,
    }
 }
 
+void
+vk_pipeline_cache_object_unref(struct vk_device *device,
+                               struct vk_pipeline_cache_object *object)
+{
+   assert(object && p_atomic_read(&object->ref_cnt) >= 1);
+   if (p_atomic_dec_zero(&object->ref_cnt))
+      object->ops->destroy(device, object);
+}
+
 static bool
 vk_pipeline_cache_object_serialize(struct vk_pipeline_cache *cache,
                                    struct vk_pipeline_cache_object *object,
