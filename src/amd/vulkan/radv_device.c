@@ -1049,7 +1049,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    if (!(device->instance->debug_flags & RADV_DEBUG_NO_IBS))
       radv_create_gfx_config(device);
 
-   struct vk_pipeline_cache_create_info info = {0};
+   struct vk_pipeline_cache_create_info info = {.weak_ref = true};
    device->mem_cache = vk_pipeline_cache_create(&device->vk, &info, NULL);
    if (!device->mem_cache)
       goto fail_meta;
