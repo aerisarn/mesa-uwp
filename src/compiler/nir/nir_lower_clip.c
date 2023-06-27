@@ -428,8 +428,7 @@ lower_clip_fs(nir_function_impl *impl, unsigned ucp_enables,
               nir_variable **in, bool use_clipdist_array)
 {
    nir_ssa_def *clipdist[MAX_CLIP_PLANES];
-   nir_builder b = nir_builder_create(impl);
-   b.cursor = nir_before_cf_list(&impl->body);
+   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
 
    if (!use_clipdist_array) {
       if (ucp_enables & 0x0f)

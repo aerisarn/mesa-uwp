@@ -201,8 +201,7 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
    if (total_components > instr1->pass_flags)
       return NULL;
 
-   nir_builder b = nir_builder_create(nir_cf_node_get_function(&instr1->block->cf_node));
-   b.cursor = nir_after_instr(instr1);
+   nir_builder b = nir_builder_at(nir_after_instr(instr1));
 
    nir_alu_instr *new_alu = nir_alu_instr_create(b.shader, alu1->op);
    nir_ssa_dest_init(&new_alu->instr, &new_alu->dest.dest, total_components,

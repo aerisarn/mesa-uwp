@@ -1102,8 +1102,7 @@ flatten_resume_if_ladder(nir_builder *b,
             /* We want to place anything re-materialized from inside the loop
              * at the top of the resume half of the loop.
              */
-            nir_builder bl = nir_builder_create(b->impl);
-            bl.cursor = nir_before_cf_list(&_if->then_list);
+            nir_builder bl = nir_builder_at(nir_before_cf_list(&_if->then_list));
 
             ASSERTED bool found =
                flatten_resume_if_ladder(&bl, &_if->cf_node, &_if->then_list,
@@ -1273,8 +1272,7 @@ lower_resume(nir_shader *shader, int call_idx)
    /* Create a nop instruction to use as a cursor as we extract and re-insert
     * stuff into the CFG.
     */
-   nir_builder b = nir_builder_create(impl);
-   b.cursor = nir_before_cf_list(&impl->body);
+   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
    ASSERTED bool found =
       flatten_resume_if_ladder(&b, &impl->cf_node, &impl->body,
                                true, resume_instr, &remat);
@@ -1517,8 +1515,7 @@ nir_opt_trim_stack_values(nir_shader *shader)
             continue;
          }
 
-         nir_builder b = nir_builder_create(impl);
-         b.cursor = nir_before_instr(instr);
+         nir_builder b = nir_builder_at(nir_before_instr(instr));
 
          nir_ssa_def *value = nir_channels(&b, intrin->src[0].ssa, read_mask);
          nir_instr_rewrite_src_ssa(instr, &intrin->src[0], value);

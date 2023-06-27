@@ -145,8 +145,8 @@ nir_zero_initialize_shared_memory(nir_shader *shader,
    assert(chunk_size > 0);
    assert(chunk_size % 4 == 0);
 
-   nir_builder b = nir_builder_create(nir_shader_get_entrypoint(shader));
-   b.cursor = nir_before_cf_list(&b.impl->body);
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
 
    assert(!shader->info.workgroup_size_variable);
    const unsigned local_count = shader->info.workgroup_size[0] *

@@ -1140,7 +1140,7 @@ try_vectorize(nir_function_impl *impl, struct vectorize_ctx *ctx,
 }
 
 static bool
-try_vectorize_shared2(nir_function_impl *impl, struct vectorize_ctx *ctx,
+try_vectorize_shared2(struct vectorize_ctx *ctx,
                       struct entry *low, struct entry *high,
                       struct entry *first, struct entry *second)
 {
@@ -1178,9 +1178,7 @@ try_vectorize_shared2(nir_function_impl *impl, struct vectorize_ctx *ctx,
    }
 
    /* vectorize the accesses */
-   nir_builder b = nir_builder_create(impl);
-
-   b.cursor = nir_after_instr(first->is_store ? second->instr : first->instr);
+   nir_builder b = nir_builder_at(nir_after_instr(first->is_store ? second->instr : first->instr));
 
    nir_ssa_def *offset = first->intrin->src[first->is_store].ssa;
    offset = nir_iadd_imm(&b, offset, nir_intrinsic_base(first->intrin));
@@ -1247,7 +1245,7 @@ vectorize_sorted_entries(struct vectorize_ctx *ctx, nir_function_impl *impl,
                 get_variable_mode(first) != nir_var_mem_shared)
                break;
 
-            if (try_vectorize_shared2(impl, ctx, low, high, first, second)) {
+            if (try_vectorize_shared2(ctx, low, high, first, second)) {
                low = NULL;
                *util_dynarray_element(arr, struct entry *, second_idx) = NULL;
                progress = true;

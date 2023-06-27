@@ -41,8 +41,7 @@ lower_load_const_instr_scalar(nir_load_const_instr *lower)
    if (lower->def.num_components == 1)
       return false;
 
-   nir_builder b = nir_builder_create(nir_cf_node_get_function(&lower->instr.block->cf_node));
-   b.cursor = nir_before_instr(&lower->instr);
+   nir_builder b = nir_builder_at(nir_before_instr(&lower->instr));
 
    /* Emit the individual loads. */
    nir_ssa_def *loads[NIR_MAX_VEC_COMPONENTS];

@@ -63,8 +63,7 @@ nir_lower_texcoord_replace_impl(nir_function_impl *impl,
                                 bool point_coord_is_sysval,
                                 bool yinvert)
 {
-   nir_builder b = nir_builder_create(impl);
-   b.cursor = nir_before_cf_list(&impl->body);
+   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
 
    nir_ssa_def *new_coord;
    if (point_coord_is_sysval) {
