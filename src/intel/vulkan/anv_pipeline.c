@@ -122,8 +122,7 @@ anv_nir_lower_set_vtx_and_prim_count(nir_shader *nir)
    if (state.primitive_count == NULL) {
       nir_builder b;
       nir_function_impl *entrypoint = nir_shader_get_entrypoint(nir);
-      b = nir_builder_create(entrypoint);
-      b.cursor = nir_before_block(nir_start_block(entrypoint));
+      b = nir_builder_at(nir_before_block(nir_start_block(entrypoint)));
       nir_ssa_def *zero = nir_imm_int(&b, 0);
       state.primitive_count = anv_nir_prim_count_store(&b, zero);
    }

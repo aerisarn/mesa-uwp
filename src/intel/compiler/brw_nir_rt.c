@@ -78,9 +78,8 @@ lower_rt_io_derefs(nir_shader *shader)
     */
    assert(num_shader_call_vars <= 1);
 
-   nir_builder b = nir_builder_create(impl);
+   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
 
-   b.cursor = nir_before_cf_list(&impl->body);
    nir_ssa_def *call_data_addr = NULL;
    if (num_shader_call_vars > 0) {
       assert(shader->scratch_size >= BRW_BTD_STACK_CALLEE_DATA_SIZE);

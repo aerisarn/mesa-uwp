@@ -204,8 +204,7 @@ anv_nir_lower_multiview(nir_shader *shader, uint32_t view_mask,
       bool progress = nir_lower_multiview(shader, view_mask);
 
       if (progress) {
-         nir_builder b = nir_builder_create(entrypoint);
-         b.cursor = nir_before_cf_list(&entrypoint->body);
+         nir_builder b = nir_builder_at(nir_before_cf_list(&entrypoint->body));
 
          /* Fill Layer ID with zero. Replication will use that as base to
           * apply the RTAI offsets.

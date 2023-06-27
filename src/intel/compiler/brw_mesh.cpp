@@ -639,8 +639,7 @@ brw_nir_initialize_mue(nir_shader *nir,
 
    nir_builder b;
    nir_function_impl *entrypoint = nir_shader_get_entrypoint(nir);
-   b = nir_builder_create(entrypoint);
-   b.cursor = nir_before_block(nir_start_block(entrypoint));
+   b = nir_builder_at(nir_before_block(nir_start_block(entrypoint)));
 
    nir_ssa_def *dw_off = nir_imm_int(&b, 0);
    nir_ssa_def *zerovec = nir_imm_vec4(&b, 0, 0, 0, 0);
