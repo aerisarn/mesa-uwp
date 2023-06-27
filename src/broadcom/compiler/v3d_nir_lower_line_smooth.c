@@ -88,9 +88,7 @@ static void
 initialise_coverage_var(struct lower_line_smooth_state *state,
                         nir_function_impl *impl)
 {
-        nir_builder b = nir_builder_create(impl);
-
-        b.cursor = nir_before_block(nir_start_block(impl));
+        nir_builder b = nir_builder_at(nir_before_block(nir_start_block(impl)));
 
         nir_ssa_def *line_width = nir_load_line_width(&b);
 
