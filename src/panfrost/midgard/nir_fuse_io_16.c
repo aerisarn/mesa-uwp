@@ -81,8 +81,7 @@ nir_fuse_io_16(nir_shader *shader)
 
             intr->dest.ssa.bit_size = 16;
 
-            nir_builder b = nir_builder_create(impl);
-            b.cursor = nir_after_instr(instr);
+            nir_builder b = nir_builder_at(nir_after_instr(instr));
 
             /* The f2f32(f2fmp(x)) will cancel by opt_algebraic */
             nir_ssa_def *conv = nir_f2f32(&b, &intr->dest.ssa);
