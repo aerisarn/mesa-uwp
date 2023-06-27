@@ -917,16 +917,12 @@
       - src/intel/**/*
       when: on_success
 
+# ruleset to trigger on changes affecting either anv or iris, for jobs using both (piglit, skqp)
 .intel-rules:
   stage: intel
   rules:
-    - !reference [.collabora-farm-rules, rules]
-    # Note that we trigger on changes both anv and iris, because piglit and skqp jobs test both.
-    - !reference [.vulkan-rules, rules]
-    - !reference [.gl-rules, rules]
-    - changes:
-        *iris_file_list
-      when: on_success
+    - !reference [.iris-rules, rules]
+    - !reference [.anv-rules, rules]
 
 .virgl-rules:
   stage: layered-backends
