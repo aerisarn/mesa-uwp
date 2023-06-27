@@ -20,14 +20,34 @@
 
 /* buffer commands */
 
-static inline bool
-vn_buffer_create_info_can_be_cached(const VkBufferCreateInfo *create_info,
-                                    struct vn_buffer_cache *cache)
+static inline uint64_t
+vn_buffer_get_cache_index(const VkBufferCreateInfo *create_info,
+                          struct vn_buffer_cache *cache)
 {
-   /* cache only VK_SHARING_MODE_EXCLUSIVE and without pNext for simplicity */
-   return (create_info->size <= cache->max_buffer_size) &&
-          (create_info->pNext == NULL) &&
-          (create_info->sharingMode == VK_SHARING_MODE_EXCLUSIVE);
+   /* For simplicity, cache only when below conditions are met:
+    * - pNext is NULL
+    * - VK_SHARING_MODE_EXCLUSIVE or VK_SHARING_MODE_CONCURRENT across all
+    *
+    * Combine sharing mode, flags and usage bits to form a unique index.
+    *
+    * Btw, we assume VkBufferCreateFlagBits won't exhaust all 32bits, at least
+    * no earlier than VkBufferUsageFlagBits.
+    */
+   assert(!(create_info->flags & 0x80000000));
+
+   const bool is_exclusive =
+      create_info->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
+   const bool is_concurrent =
+      create_info->sharingMode == VK_SHARING_MODE_CONCURRENT &&
+      create_info->queueFamilyIndexCount == cache->queue_family_count;
+   if (create_info->size <= cache->max_buffer_size &&
+       create_info->pNext == NULL && (is_exclusive || is_concurrent)) {
+      return (uint64_t)is_concurrent << 63 |
+             (uint64_t)create_info->flags << 32 | create_info->usage;
+   }
+
+   /* index being zero suggests uncachable since usage must not be zero */
+   return 0;
 }
 
 static inline uint64_t
@@ -49,8 +69,12 @@ vn_buffer_get_max_buffer_size(struct vn_physical_device *physical_dev)
 void
 vn_buffer_cache_init(struct vn_device *dev)
 {
+   assert(dev->physical_device->queue_family_count);
+
    dev->buffer_cache.max_buffer_size =
       vn_buffer_get_max_buffer_size(dev->physical_device);
+   dev->buffer_cache.queue_family_count =
+      dev->physical_device->queue_family_count;
 
    simple_mtx_init(&dev->buffer_cache.mutex, mtx_plain);
    util_sparse_array_init(&dev->buffer_cache.entries,
@@ -119,11 +143,8 @@ vn_buffer_get_cached_memory_requirements(
     * VkBufferCreateInfo structure and the handleTypes member of the
     * VkExternalMemoryBufferCreateInfo structure passed to vkCreateBuffer.
     */
-   if (vn_buffer_create_info_can_be_cached(create_info, cache)) {
-      /* Combine flags and usage bits to form a unique index. */
-      const uint64_t idx =
-         (uint64_t)create_info->flags << 32 | create_info->usage;
-
+   const uint64_t idx = vn_buffer_get_cache_index(create_info, cache);
+   if (idx) {
       struct vn_buffer_cache_entry *entry =
          util_sparse_array_get(&cache->entries, idx);
 
