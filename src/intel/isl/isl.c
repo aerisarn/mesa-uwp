@@ -1540,6 +1540,15 @@ isl_choose_miptail_start_level(const struct isl_device *dev,
    if (tile_info->max_miptail_levels == 0)
       return info->levels;
 
+   /* SKL PRMs, Volume 5: Memory Views, YUV 4:2:0 Format Memory Organization :
+    *
+    *    "Planar YUV does not support MIP Tails as part of Standard Tiling.
+    *     The MIP Tail Start field in RENDER_SURFACE_STATE must be programmed
+    *     to 15."
+    */
+   if (isl_format_is_planar(info->format))
+      return 15;
+
    assert(tile_info->tiling == ISL_TILING_64 || isl_tiling_is_std_y(tile_info->tiling));
    assert(info->samples == 1);
 
