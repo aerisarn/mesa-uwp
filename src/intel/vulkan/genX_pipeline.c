@@ -1635,7 +1635,7 @@ compute_kill_pixel(struct anv_graphics_pipeline *pipeline,
       (ms && ms->alpha_to_coverage_enable);
 }
 
-#if GFX_VER == 12
+#if GFX_VER >= 12
 static void
 emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline,
                                    const struct vk_render_pass_state *rp)
@@ -1827,7 +1827,7 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
 
    emit_3dstate_clip(pipeline, state->ia, state->vp, state->rs);
 
-#if GFX_VER == 12
+#if GFX_VER >= 12
    emit_3dstate_primitive_replication(pipeline, state->rp);
 #endif
 
