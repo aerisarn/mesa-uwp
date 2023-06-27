@@ -930,6 +930,14 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
       }
    }
 
+   bool msaa = (instr->sampler_dim == GLSL_SAMPLER_DIM_MS ||
+                instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
+
+   if (msaa)
+      validate_assert(state, instr->op != nir_texop_txf);
+   else
+      validate_assert(state, instr->op != nir_texop_txf_ms);
+
    if (instr->op != nir_texop_tg4)
       validate_assert(state, instr->component == 0);
 
