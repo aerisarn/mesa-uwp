@@ -92,6 +92,7 @@ fi
 apt-get update
 apt-get install -y --no-remove \
 		   -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' \
+                   ${EXTRA_LOCAL_PACKAGES} \
                    ${ARCH_PACKAGES} \
                    automake \
                    bc \
