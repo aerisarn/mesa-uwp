@@ -635,8 +635,7 @@ lower_pv_mode_gs(nir_shader *shader, unsigned prim)
    memset(state.varyings, 0, sizeof(state.varyings));
 
    nir_function_impl *entry = nir_shader_get_entrypoint(shader);
-   b = nir_builder_create(entry);
-   b.cursor = nir_before_cf_list(&entry->body);
+   b = nir_builder_at(nir_before_cf_list(&entry->body));
 
    state.primitive_vert_count =
       lower_pv_mode_vertices_for_prim(shader->info.gs.output_primitive);
@@ -788,8 +787,7 @@ lower_line_stipple_gs(nir_shader *shader, bool line_rectangular)
    state.line_rectangular = line_rectangular;
    // initialize pos_counter and stipple_counter
    nir_function_impl *entry = nir_shader_get_entrypoint(shader);
-   b = nir_builder_create(entry);
-   b.cursor = nir_before_cf_list(&entry->body);
+   b = nir_builder_at(nir_before_cf_list(&entry->body));
    nir_store_var(&b, state.pos_counter, nir_imm_int(&b, 0), 1);
    nir_store_var(&b, state.stipple_counter, nir_imm_float(&b, 0), 1);
 
@@ -802,7 +800,7 @@ lower_line_stipple_fs(nir_shader *shader)
 {
    nir_builder b;
    nir_function_impl *entry = nir_shader_get_entrypoint(shader);
-   b = nir_builder_create(entry);
+   b = nir_builder_at(nir_after_cf_list(&entry->body));
 
    // create stipple counter
    nir_variable *stipple = nir_variable_create(shader, nir_var_shader_in,
@@ -822,8 +820,6 @@ lower_line_stipple_fs(nir_shader *shader)
       sample_mask_out->data.driver_location = shader->num_outputs++;
       sample_mask_out->data.location = FRAG_RESULT_SAMPLE_MASK;
    }
-
-   b.cursor = nir_after_cf_list(&entry->body);
 
    nir_ssa_def *pattern = nir_load_push_constant(&b, 1, 32,
                                                  nir_imm_int(&b, ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN),
@@ -1117,8 +1113,7 @@ lower_line_smooth_gs(nir_shader *shader)
 
    // initialize pos_counter
    nir_function_impl *entry = nir_shader_get_entrypoint(shader);
-   b = nir_builder_create(entry);
-   b.cursor = nir_before_cf_list(&entry->body);
+   b = nir_builder_at(nir_before_cf_list(&entry->body));
    nir_store_var(&b, state.pos_counter, nir_imm_int(&b, 0), 1);
 
    shader->info.gs.vertices_out = 8 * shader->info.gs.vertices_out;
@@ -1151,8 +1146,7 @@ lower_line_smooth_fs(nir_shader *shader, bool lower_stipple)
 
       // initialize stipple_pattern
       nir_function_impl *entry = nir_shader_get_entrypoint(shader);
-      b = nir_builder_create(entry);
-      b.cursor = nir_before_cf_list(&entry->body);
+      b = nir_builder_at(nir_before_cf_list(&entry->body));
       nir_ssa_def *pattern = nir_load_push_constant(&b, 1, 32,
                                                    nir_imm_int(&b, ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN),
                                                    .base = 1);
@@ -2535,9 +2529,8 @@ clamp_layer_output(nir_shader *vs, nir_shader *fs, unsigned *next_location)
    } else {
       nir_builder b;
       nir_function_impl *impl = nir_shader_get_entrypoint(vs);
-      b = nir_builder_create(impl);
+      b = nir_builder_at(nir_after_cf_list(&impl->body));
       assert(impl->end_block->predecessors->entries == 1);
-      b.cursor = nir_after_cf_list(&impl->body);
       clamp_layer_output_emit(&b, &state);
       nir_metadata_preserve(impl, nir_metadata_dominance);
    }
@@ -5219,8 +5212,7 @@ zink_shader_tcs_create(struct zink_screen *screen, nir_shader *tes, unsigned ver
    fn->is_entrypoint = true;
    nir_function_impl *impl = nir_function_impl_create(fn);
 
-   nir_builder b = nir_builder_create(impl);
-   b.cursor = nir_before_block(nir_start_block(impl));
+   nir_builder b = nir_builder_at(nir_before_block(nir_start_block(impl)));
 
    nir_ssa_def *invocation_id = nir_load_invocation_id(&b);
 
