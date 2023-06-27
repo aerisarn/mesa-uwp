@@ -1549,6 +1549,12 @@ isl_choose_miptail_start_level(const struct isl_device *dev,
    if (isl_format_is_planar(info->format))
       return 15;
 
+   /* TODO: figure out why having YUV formats in the miptail on Gfx12 does not
+    *       work.
+    */
+   if (ISL_GFX_VER(dev) == 12 && isl_format_is_yuv(info->format))
+      return 15;
+
    assert(tile_info->tiling == ISL_TILING_64 || isl_tiling_is_std_y(tile_info->tiling));
    assert(info->samples == 1);
 
