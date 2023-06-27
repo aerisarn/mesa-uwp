@@ -748,8 +748,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
 {
    const nir_op_info *info = &nir_op_infos[alu->op];
 
-   nir_builder b = nir_builder_create(c->impl);
-   b.cursor = nir_before_instr(&alu->instr);
+   nir_builder b = nir_builder_at(nir_before_instr(&alu->instr));
 
    switch (alu->op) {
    case nir_op_vec2:
