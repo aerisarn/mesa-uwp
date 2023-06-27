@@ -484,7 +484,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
    };
 
    if (device->robust_buffer_access2) {
-      vectorize_opts.robust_modes = nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_push_const;
+      vectorize_opts.robust_modes = nir_var_mem_ubo | nir_var_mem_ssbo;
    }
 
    if (!pipeline_key->optimisations_disabled) {
