@@ -149,12 +149,12 @@ vk_pipeline_cache_unlock(struct vk_pipeline_cache *cache)
       simple_mtx_unlock(&cache->lock);
 }
 
+/* cache->lock must be held when calling */
 static void
 vk_pipeline_cache_remove_object(struct vk_pipeline_cache *cache,
                                 uint32_t hash,
                                 struct vk_pipeline_cache_object *object)
 {
-   vk_pipeline_cache_lock(cache);
    struct set_entry *entry =
       _mesa_set_search_pre_hashed(cache->object_cache, hash, object);
    if (entry && entry->key == (const void *)object) {
@@ -163,7 +163,6 @@ vk_pipeline_cache_remove_object(struct vk_pipeline_cache *cache,
 
       _mesa_set_remove(cache->object_cache, entry);
    }
-   vk_pipeline_cache_unlock(cache);
 }
 
 static bool
@@ -363,7 +362,9 @@ vk_pipeline_cache_lookup_object(struct vk_pipeline_cache *cache,
          vk_pipeline_cache_log(cache,
                                "Deserializing pipeline cache object failed");
 
+         vk_pipeline_cache_lock(cache);
          vk_pipeline_cache_remove_object(cache, hash, object);
+         vk_pipeline_cache_unlock(cache);
          vk_pipeline_cache_object_unref(cache->base.device, object);
          return NULL;
       }
