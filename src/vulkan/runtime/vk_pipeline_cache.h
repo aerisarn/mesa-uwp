@@ -154,6 +154,7 @@ struct vk_pipeline_cache {
    /* pCreateInfo::flags */
    VkPipelineCacheCreateFlags flags;
    bool weak_ref;
+   bool skip_disk_cache;
 
    struct vk_pipeline_cache_header header;
 
@@ -194,6 +195,9 @@ struct vk_pipeline_cache_create_info {
     *   owner when it's destroyed.
     */
    bool weak_ref;
+
+   /** If true, do not attempt to use the disk cache */
+   bool skip_disk_cache;
 };
 
 struct vk_pipeline_cache *
