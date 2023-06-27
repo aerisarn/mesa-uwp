@@ -107,6 +107,7 @@ struct vk_pipeline_cache_object_ops {
  */
 struct vk_pipeline_cache_object {
    const struct vk_pipeline_cache_object_ops *ops;
+   struct vk_pipeline_cache *weak_owner;
    uint32_t ref_cnt;
 
    uint32_t data_size;
@@ -152,6 +153,7 @@ struct vk_pipeline_cache {
 
    /* pCreateInfo::flags */
    VkPipelineCacheCreateFlags flags;
+   bool weak_ref;
 
    struct vk_pipeline_cache_header header;
 
@@ -173,6 +175,25 @@ struct vk_pipeline_cache_create_info {
 
    /** If true, ignore VK_ENABLE_PIPELINE_CACHE and enable anyway */
    bool force_enable;
+
+   /** If true, the cache operates in weak reference mode.
+    *
+    * The weak reference mode is designed for device-global caches for the
+    * purpose of de-duplicating identical shaders and pipelines.  In the weak
+    * reference mode, an object's reference count is not incremented when it is
+    * added to the cache.  Therefore the object will be destroyed as soon as
+    * there's no external references to it, and the runtime will perform the
+    * necessary bookkeeping to remove the dead reference from this cache's table.
+    *
+    * As the weak reference mode is designed for driver-internal use, it has
+    * several limitations:
+    * - Merging against a weak reference mode cache is not supported.
+    * - Lazy deserialization from vk_raw_data_cache_object_ops is not supported.
+    * - An object can only belong to up to one weak reference mode cache.
+    * - The cache must outlive the object, as the object will try to access its
+    *   owner when it's destroyed.
+    */
+   bool weak_ref;
 };
 
 struct vk_pipeline_cache *

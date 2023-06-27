@@ -159,19 +159,42 @@ vk_pipeline_cache_remove_object(struct vk_pipeline_cache *cache,
       _mesa_set_search_pre_hashed(cache->object_cache, hash, object);
    if (entry && entry->key == (const void *)object) {
       /* Drop the reference owned by the cache */
-      vk_pipeline_cache_object_unref(cache->base.device, object);
+      if (!cache->weak_ref)
+         vk_pipeline_cache_object_unref(cache->base.device, object);
 
       _mesa_set_remove(cache->object_cache, entry);
    }
 }
 
+static inline struct vk_pipeline_cache_object *
+vk_pipeline_cache_object_weak_ref(struct vk_pipeline_cache *cache,
+                                  struct vk_pipeline_cache_object *object)
+{
+   assert(!object->weak_owner);
+   p_atomic_set(&object->weak_owner, cache);
+   return object;
+}
+
 void
-vk_pipeline_cache_object_unref(struct vk_device *device,
-                               struct vk_pipeline_cache_object *object)
+vk_pipeline_cache_object_unref(struct vk_device *device, struct vk_pipeline_cache_object *object)
 {
    assert(object && p_atomic_read(&object->ref_cnt) >= 1);
-   if (p_atomic_dec_zero(&object->ref_cnt))
-      object->ops->destroy(device, object);
+
+   struct vk_pipeline_cache *weak_owner = p_atomic_read(&object->weak_owner);
+   if (!weak_owner) {
+      if (p_atomic_dec_zero(&object->ref_cnt))
+         object->ops->destroy(device, object);
+   } else {
+      vk_pipeline_cache_lock(weak_owner);
+      bool destroy = p_atomic_dec_zero(&object->ref_cnt);
+      if (destroy) {
+         uint32_t hash = object_key_hash(object);
+         vk_pipeline_cache_remove_object(weak_owner, hash, object);
+      }
+      vk_pipeline_cache_unlock(weak_owner);
+      if (destroy)
+         object->ops->destroy(device, object);
+   }
 }
 
 static bool
@@ -277,6 +300,7 @@ vk_pipeline_cache_insert_object(struct vk_pipeline_cache *cache,
        struct vk_pipeline_cache_object *found_object = (void *)entry->key;
        if (found_object->ops != object->ops) {
           /* The found object in the cache isn't fully formed. Replace it. */
+          assert(!cache->weak_ref);
           assert(found_object->ops == &vk_raw_data_cache_object_ops);
           assert(object->ref_cnt == 1);
           entry->key = object;
@@ -285,7 +309,11 @@ vk_pipeline_cache_insert_object(struct vk_pipeline_cache *cache,
 
       result = vk_pipeline_cache_object_ref((void *)entry->key);
    } else {
-      result = vk_pipeline_cache_object_ref(object);
+      result = object;
+      if (!cache->weak_ref)
+         vk_pipeline_cache_object_ref(result);
+      else
+         vk_pipeline_cache_object_weak_ref(cache, result);
    }
    vk_pipeline_cache_unlock(cache);
 
@@ -596,6 +624,7 @@ vk_pipeline_cache_create(struct vk_device *device,
       return NULL;
 
    cache->flags = pCreateInfo->flags;
+   cache->weak_ref = info->weak_ref;
 
    struct VkPhysicalDeviceProperties pdevice_props;
    device->physical->dispatch_table.GetPhysicalDeviceProperties(
@@ -630,9 +659,12 @@ vk_pipeline_cache_destroy(struct vk_pipeline_cache *cache,
                           const VkAllocationCallbacks *pAllocator)
 {
    if (cache->object_cache) {
-      set_foreach_remove(cache->object_cache, entry) {
-         vk_pipeline_cache_object_unref(cache->base.device,
-                                        (void *)entry->key);
+      if (!cache->weak_ref) {
+         set_foreach_remove(cache->object_cache, entry) {
+            vk_pipeline_cache_object_unref(cache->base.device, (void *)entry->key);
+         }
+      } else {
+         assert(cache->object_cache->entries == 0);
       }
       _mesa_set_destroy(cache->object_cache, NULL);
    }
@@ -767,6 +799,7 @@ vk_common_MergePipelineCaches(VkDevice _device,
    VK_FROM_HANDLE(vk_pipeline_cache, dst, dstCache);
    VK_FROM_HANDLE(vk_device, device, _device);
    assert(dst->base.device == device);
+   assert(!dst->weak_ref);
 
    if (!dst->object_cache)
       return VK_SUCCESS;
