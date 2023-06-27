@@ -1696,6 +1696,20 @@ agx_shader_initialize(struct agx_uncompiled_shader *so, nir_shader *nir)
 {
    so->type = pipe_shader_type_from_mesa(nir->info.stage);
 
+   nir_lower_robust_access_options robustness = {
+      /* Images accessed through the texture or PBE hardware are robust, so we
+       * don't set lower_image. However, buffer images and image atomics are
+       * lowered so require robustness lowering.
+       */
+      .lower_buffer_image = true,
+      .lower_image_atomic = true,
+   };
+
+   /* We need to lower robustness before bindings, since robustness lowering
+    * affects the bindings used.
+    */
+   NIR_PASS_V(nir, nir_lower_robust_access, &robustness);
+
    /* We need to lower binding tables before calling agx_preprocess_nir, since
     * that does texture lowering that needs to know the binding model.
     */
