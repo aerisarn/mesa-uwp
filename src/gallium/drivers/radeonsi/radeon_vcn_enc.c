@@ -7,7 +7,7 @@
  **************************************************************************/
 
 #include "radeon_vcn_enc.h"
-#include "radeon_vcn_enc_av1_default_cdf.h"
+#include "ac_vcn_enc_av1_default_cdf.h"
 
 #include "pipe/p_video_codec.h"
 #include "radeon_video.h"
