@@ -164,9 +164,6 @@ vk_pipeline_cache_remove_object(struct vk_pipeline_cache *cache,
       _mesa_set_remove(cache->object_cache, entry);
    }
    vk_pipeline_cache_unlock(cache);
-
-   /* Drop our reference */
-   vk_pipeline_cache_object_unref(cache->base.device, object);
 }
 
 static bool
@@ -367,6 +364,7 @@ vk_pipeline_cache_lookup_object(struct vk_pipeline_cache *cache,
                                "Deserializing pipeline cache object failed");
 
          vk_pipeline_cache_remove_object(cache, hash, object);
+         vk_pipeline_cache_object_unref(cache->base.device, object);
          return NULL;
       }
 
