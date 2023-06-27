@@ -32,8 +32,6 @@
  * 2x2 quad.
  */
 
-#define V3D_MAX_SAMPLES 4
-
 static nir_ssa_def *
 v3d_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *in_instr, void *data)
 {
