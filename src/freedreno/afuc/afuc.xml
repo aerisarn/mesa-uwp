@@ -184,6 +184,17 @@ SOFTWARE.
 	<field name="SRC1" low="21" high="25" type="#src"/>
 </bitset>
 
+<bitset name="#alu-2src-immed12" extends="#instruction-rep">
+	<display>
+		{REP}{NAME} {DST}, {SRC1}, 0x{RIMMED}
+	</display>
+
+	<field name="RIMMED" low="0" high="11" type="hex"/>
+	<field name="DST" low="16" high="20" type="#dst"/>
+	<field name="SRC1" low="21" high="25" type="#src"/>
+	<pattern low="27" high="31">10010</pattern>
+</bitset>
+
 <bitset name="#alu-1src-immed" extends="#instruction-rep">
 	<display>
 		{REP}{NAME} {DST}, 0x{IMMED}
@@ -270,65 +281,149 @@ SOFTWARE.
 </bitset>
 
 <bitset name="shl" extends="#alu-2src">
+	<gen max="6"/>
 	<pattern low="0" high="4">01001</pattern>
 </bitset>
 
 <bitset name="shli" displayname="shl" extends="#alu-2src-immed">
+	<gen max="6"/>
 	<pattern low="27" high="31">01001</pattern>
+</bitset>
+
+<bitset name="shl" extends="#alu-2src">
+	<gen min="7"/>
+	<pattern low="0" high="4">10010</pattern>
+</bitset>
+
+<bitset name="shli" displayname="shl" extends="#alu-2src-immed12">
+	<gen min="7"/>
+	<pattern low="12" high="15">0010</pattern>
 </bitset>
 
 <bitset name="ushr" extends="#alu-2src">
 	<doc>0-extending right shift</doc>
+	<gen max="6"/>
 	<pattern low="0" high="4">01010</pattern>
 </bitset>
 
 <bitset name="ushri" displayname="ushr" extends="#alu-2src-immed">
+	<gen max="6"/>
 	<pattern low="27" high="31">01010</pattern>
+</bitset>
+
+<bitset name="ushr" extends="#alu-2src">
+	<gen min="7"/>
+	<pattern low="0" high="4">10011</pattern>
+</bitset>
+
+<bitset name="ushri" displayname="ushr" extends="#alu-2src-immed12">
+	<gen min="7"/>
+	<pattern low="12" high="15">0011</pattern>
 </bitset>
 
 <bitset name="ishr" extends="#alu-2src">
 	<doc>sign-extending right shift</doc>
+	<gen max="6"/>
 	<pattern low="0" high="4">01011</pattern>
 </bitset>
 
 <bitset name="ishri" displayname="ishr" extends="#alu-2src-immed">
+	<gen max="6"/>
 	<pattern low="27" high="31">01011</pattern>
+</bitset>
+
+<bitset name="ishr" extends="#alu-2src">
+	<gen min="7"/>
+	<pattern low="0" high="4">10100</pattern>
+</bitset>
+
+<bitset name="ishri" displayname="ishr" extends="#alu-2src-immed12">
+	<gen min="7"/>
+	<pattern low="12" high="15">0100</pattern>
 </bitset>
 
 <bitset name="rot" extends="#alu-2src">
 	<doc>Rotate left (left shift with wraparound)</doc>
+	<gen max="6"/>
 	<pattern low="0" high="4">01100</pattern>
 </bitset>
 
 <bitset name="roti" displayname="rot" extends="#alu-2src-immed">
+	<gen max="6"/>
 	<pattern low="27" high="31">01100</pattern>
+</bitset>
+
+<bitset name="rot" extends="#alu-2src">
+	<gen min="7"/>
+	<pattern low="0" high="4">10101</pattern>
+</bitset>
+
+<bitset name="roti" displayname="rot" extends="#alu-2src-immed12">
+	<gen min="7"/>
+	<pattern low="12" high="15">0101</pattern>
 </bitset>
 
 <bitset name="mul8" extends="#alu-2src">
 	<doc>Multiply low 8 bits of each source to produce a 16-bit result</doc>
+	<gen max="6"/>
 	<pattern low="0" high="4">01101</pattern>
 </bitset>
 
 <bitset name="mul8i" displayname="mul8" extends="#alu-2src-immed">
+	<gen max="6"/>
 	<pattern low="27" high="31">01101</pattern>
+</bitset>
+
+<bitset name="mul8" extends="#alu-2src">
+	<gen min="7"/>
+	<pattern low="0" high="4">01100</pattern>
+</bitset>
+
+<bitset name="mul8i" displayname="mul8" extends="#alu-2src-immed">
+	<gen min="7"/>
+	<pattern low="27" high="31">01100</pattern>
 </bitset>
 
 <bitset name="min" extends="#alu-2src">
 	<doc>Unsigned minimum</doc>
+	<gen max="6"/>
 	<pattern low="0" high="4">01110</pattern>
 </bitset>
 
 <bitset name="mini" displayname="min" extends="#alu-2src-immed">
+	<gen max="6"/>
 	<pattern low="27" high="31">01110</pattern>
+</bitset>
+
+<bitset name="min" extends="#alu-2src">
+	<gen min="7"/>
+	<pattern low="0" high="4">01010</pattern>
+</bitset>
+
+<bitset name="mini" displayname="min" extends="#alu-2src-immed">
+	<gen min="7"/>
+	<pattern low="27" high="31">01010</pattern>
 </bitset>
 
 <bitset name="max" extends="#alu-2src">
 	<doc>Unsigned maximum</doc>
+	<gen max="6"/>
 	<pattern low="0" high="4">01111</pattern>
 </bitset>
 
 <bitset name="maxi" displayname="max" extends="#alu-2src-immed">
+	<gen max="6"/>
 	<pattern low="27" high="31">01111</pattern>
+</bitset>
+
+<bitset name="max" extends="#alu-2src">
+	<gen min="7"/>
+	<pattern low="0" high="4">01011</pattern>
+</bitset>
+
+<bitset name="maxi" displayname="max" extends="#alu-2src-immed">
+	<gen min="7"/>
+	<pattern low="27" high="31">01011</pattern>
 </bitset>
 
 <bitset name="cmp" extends="#alu-2src">
@@ -340,19 +435,47 @@ SOFTWARE.
 		Often a "branch on bit set/unset" instruction is used on the
 		result to implement a compare-and-branch macro.
 	</doc>
+	<gen max="6"/>
 	<pattern low="0" high="4">10000</pattern>
 </bitset>
 
 <bitset name="cmpi" displayname="cmp" extends="#alu-2src-immed">
+	<gen max="6"/>
 	<pattern low="27" high="31">10000</pattern>
+</bitset>
+
+<bitset name="cmp" extends="#alu-2src">
+	<gen min="7"/>
+	<pattern low="0" high="4">01101</pattern>
+</bitset>
+
+<bitset name="cmpi" displayname="cmp" extends="#alu-2src-immed">
+	<gen min="7"/>
+	<pattern low="27" high="31">01101</pattern>
+</bitset>
+
+<bitset name="bic" extends="#alu-2src">
+	<gen min="7"/>
+	<pattern low="0" high="4">01001</pattern>
+</bitset>
+
+<bitset name="bici" displayname="bic" extends="#alu-2src-immed">
+	<gen min="7"/>
+	<pattern low="27" high="31">01001</pattern>
 </bitset>
 
 <bitset name="msb" extends="#alu-1src">
 	<doc>Return the most-significant bit of src2, or 0 if src2 == 0</doc>
+	<gen max="6"/>
 	<pattern low="0" high="4">10100</pattern>
 </bitset>
 
-<bitset name="#setclrbit" extends="#instruction-rep">
+<bitset name="msb" extends="#alu-1src">
+	<gen min="7"/>
+	<pattern low="0" high="4">11001</pattern>
+</bitset>
+
+<bitset name="#setclrbit6" extends="#instruction-rep">
 	<display>
 		{REP}{NAME} {DST}, {SRC}, b{BIT}
 	</display>
@@ -368,17 +491,87 @@ SOFTWARE.
 	</encode>
 </bitset>
 
-<bitset name="setbit" extends="#setclrbit">
+<bitset name="#setclrbit7" extends="#instruction-rep">
+	<display>
+		{REP}{NAME} {DST}, {SRC}, b{BIT}
+	</display>
+
+	<field name="BIT" low="1" high="5" type="uint"/>
+	<pattern low="6" high="11">xxxxxx</pattern>
+	<pattern low="12" high="15">0110</pattern>
+	<field name="DST" low="16" high="20" type="#dst"/>
+	<field name="SRC" low="21" high="25" type="#src"/>
+	<pattern low="27" high="31">10010</pattern>
+
+	<encode>
+		<map name="SRC">src->src1</map>
+	</encode>
+</bitset>
+
+<bitset name="setbiti" displayname="setbit" extends="#setclrbit6">
 	<doc>Set a given bit to 1</doc>
+	<gen max="6"/>
 	<pattern pos="0">1</pattern>
 </bitset>
 
-<bitset name="clrbit" extends="#setclrbit">
+<bitset name="clrbit" extends="#setclrbit6">
 	<doc>Clear a given bit, i.e. set it to 0</doc>
+	<gen max="6"/>
 	<pattern pos="0">0</pattern>
 </bitset>
 
-<bitset name="movi" extends="#instruction-rep">
+<bitset name="setbiti" displayname="setbit" extends="#setclrbit7">
+	<gen min="7"/>
+	<pattern pos="0">1</pattern>
+</bitset>
+
+<bitset name="clrbit" extends="#setclrbit7">
+	<gen min="7"/>
+	<pattern pos="0">0</pattern>
+</bitset>
+
+<bitset name="setbit" extends="#alu-2src">
+	<doc>
+		Set or clear a given bit. This is the non-immediate form of
+		setbit/clrbit. Bits 1-5 of src2 are the bit to set, bit 0 is the
+		value to set it to.
+	</doc>
+	<gen min="7"/>
+	<pattern low="0" high="4">10110</pattern>
+</bitset>
+
+<bitset name="#bitfield-immed" extends="#instruction-rep">
+	<display>
+		{REP}{NAME} {DST}, {SRC}, b{LO}, b{HI}
+	</display>
+
+	<field name="LO" low="0" high="4" type="uint"/>
+	<field name="HI" low="5" high="9" type="uint"/>
+	<pattern low="10" high="11">xx</pattern>
+	<field name="DST" low="16" high="20" type="#dst"/>
+	<field name="SRC" low="21" high="25" type="#src"/>
+	<pattern low="27" high="31">10010</pattern>
+
+	<encode>
+		<map name="LO">src->bit</map>
+		<map name="HI">src->immed</map>
+		<map name="SRC">src->src1</map>
+	</encode>
+</bitset>
+
+<bitset name="ubfx" extends="#bitfield-immed">
+	<doc>Unsigned BitField eXtract</doc>
+	<gen min="7"/>
+	<pattern low="12" high="15">0111</pattern>
+</bitset>
+
+<bitset name="bfi" extends="#bitfield-immed">
+	<doc>BitField Insert</doc>
+	<gen min="7"/>
+	<pattern low="12" high="15">1000</pattern>
+</bitset>
+
+<bitset name="#movi" extends="#instruction-rep">
 	<doc>Special move-immediate instruction with a shift</doc>
 	<override>
 		<expr>{SHIFT} == 0</expr>
@@ -393,11 +586,20 @@ SOFTWARE.
 	<field name="RIMMED" low="0" high="15" type="hex"/>
 	<field name="DST" low="16" high="20" type="#dst"/>
 	<field name="SHIFT" low="21" high="25" type="uint"/>
-	<pattern low="27" high="31">10001</pattern>
 
 	<encode>
 		<map name="SHIFT">src->shift</map>
 	</encode>
+</bitset>
+
+<bitset name="movi" extends="#movi">
+	<gen max="6"/>
+	<pattern low="27" high="31">10001</pattern>
+</bitset>
+
+<bitset name="movi" extends="#movi">
+	<gen min="7"/>
+	<pattern low="27" high="31">01110</pattern>
 </bitset>
 
 <bitset name="#control" extends="#instruction-rep">

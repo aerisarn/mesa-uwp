@@ -31,6 +31,8 @@
 
 #include "afuc.h"
 
+extern int gpuver;
+
 #define EMU_NUM_GPR_REGS 32
 
 struct emu_gpr_regs {
@@ -153,7 +155,11 @@ struct emu {
     */
    bool quiet;
 
-   bool lpac;
+   enum {
+      EMU_PROC_SQE,
+      EMU_PROC_BV,
+      EMU_PROC_LPAC,
+   } processor;
 
    uint32_t *instrs;
    unsigned sizedwords;

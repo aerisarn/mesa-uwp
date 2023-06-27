@@ -39,8 +39,6 @@
 #include "emu.h"
 #include "util.h"
 
-extern int gpuver;
-
 #define rotl32(x,r) (((x) << (r)) | ((x) >> (32 - (r))))
 #define rotl64(x,r) (((x) << (r)) | ((x) >> (64 - (r))))
 
@@ -99,10 +97,17 @@ emu_alu(struct emu *emu, afuc_opc opc, uint32_t src1, uint32_t src2)
       else if (src1 == src2)
          return 0x2b;
       return 0x1e;
+   case OPC_BIC:
+      return src1 & ~src2;
    case OPC_MSB:
       if (!src2)
          return 0;
       return util_last_bit(src2) - 1;
+   case OPC_SETBIT: {
+      unsigned bit = src2 >> 1;
+      unsigned val = src2 & 1;
+      return (src1 & ~(1u << bit)) | (val << bit);
+   }
    default:
       printf("unhandled alu opc: 0x%02x\n", opc);
       exit(1);
@@ -132,7 +137,7 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
    case OPC_NOP:
       break;
    case OPC_MSB:
-   case OPC_ADD ... OPC_CMP: {
+   case OPC_ADD ... OPC_BIC: {
       uint32_t val = emu_alu(emu, instr->opc,
                              emu_get_gpr_reg(emu, instr->src1),
                              instr->has_immed ? instr->immed : 
@@ -180,7 +185,7 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
       emu_set_gpr_reg(emu, instr->dst, val);
       break;
    }
-   case OPC_SETBIT: {
+   case OPC_SETBITI: {
       uint32_t src = emu_get_gpr_reg(emu, instr->src1);
       emu_set_gpr_reg(emu, instr->dst, src | (1u << instr->bit));
       break;
@@ -188,6 +193,20 @@ emu_instr(struct emu *emu, struct afuc_instr *instr)
    case OPC_CLRBIT: {
       uint32_t src = emu_get_gpr_reg(emu, instr->src1);
       emu_set_gpr_reg(emu, instr->dst, src & ~(1u << instr->bit));
+      break;
+   }
+   case OPC_UBFX: {
+      uint32_t src = emu_get_gpr_reg(emu, instr->src1);
+      unsigned lo = instr->bit, hi = instr->immed;
+      uint32_t dst = (src >> lo) & BITFIELD_MASK(hi - lo + 1);
+      emu_set_gpr_reg(emu, instr->dst, dst);
+      break;
+   }
+   case OPC_BFI: {
+      uint32_t src = emu_get_gpr_reg(emu, instr->src1);
+      unsigned lo = instr->bit, hi = instr->immed;
+      src = (src & BITFIELD_MASK(hi - lo + 1)) << lo;
+      emu_set_gpr_reg(emu, instr->dst, emu_get_gpr_reg(emu, instr->dst) | src);
       break;
    }
    case OPC_CWRITE: {
@@ -473,15 +492,29 @@ emu_init(struct emu *emu)
 
    EMU_GPU_REG(CP_SQE_INSTR_BASE);
    EMU_GPU_REG(CP_LPAC_SQE_INSTR_BASE);
+   EMU_CONTROL_REG(BV_INSTR_BASE);
+   EMU_CONTROL_REG(LPAC_INSTR_BASE);
 
    /* Setup the address of the SQE fw, just use the normal CPU ptr address: */
-   if (emu->lpac) {
-      emu_set_reg64(emu, &CP_LPAC_SQE_INSTR_BASE, EMU_INSTR_BASE);
-   } else {
+   switch (emu->processor) {
+   case EMU_PROC_SQE:
       emu_set_reg64(emu, &CP_SQE_INSTR_BASE, EMU_INSTR_BASE);
+      break;
+   case EMU_PROC_BV:
+      emu_set_reg64(emu, &BV_INSTR_BASE, EMU_INSTR_BASE);
+      break;
+   case EMU_PROC_LPAC:
+      if (gpuver >= 7)
+         emu_set_reg64(emu, &LPAC_INSTR_BASE, EMU_INSTR_BASE);
+      else
+         emu_set_reg64(emu, &CP_LPAC_SQE_INSTR_BASE, EMU_INSTR_BASE);
+      break;
    }
 
-   if (emu->gpu_id == 660) {
+   if (emu->gpu_id == 730) {
+      emu_set_control_reg(emu, 0xef, 1 << 21);
+      emu_set_control_reg(emu, 0, 7 << 28);
+   } else if (emu->gpu_id == 660) {
       emu_set_control_reg(emu, 0, 3 << 28);
    } else if (emu->gpu_id == 650) {
       emu_set_control_reg(emu, 0, 1 << 28);

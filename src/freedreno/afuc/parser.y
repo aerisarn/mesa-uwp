@@ -144,9 +144,12 @@ label(const char *str)
 %token <tok> T_OP_MIN
 %token <tok> T_OP_MAX
 %token <tok> T_OP_CMP
+%token <tok> T_OP_BIC
 %token <tok> T_OP_MSB
 %token <tok> T_OP_SETBIT
 %token <tok> T_OP_CLRBIT
+%token <tok> T_OP_BFI
+%token <tok> T_OP_UBFX
 %token <tok> T_OP_MOV
 %token <tok> T_OP_CWRITE
 %token <tok> T_OP_CREAD
@@ -226,20 +229,28 @@ alu_2src_op:       T_OP_ADD       { new_instr(OPC_ADD); }
 |                  T_OP_MIN       { new_instr(OPC_MIN); }
 |                  T_OP_MAX       { new_instr(OPC_MAX); }
 |                  T_OP_CMP       { new_instr(OPC_CMP); }
+|                  T_OP_BIC       { new_instr(OPC_BIC); }
 
 alu_2src_instr:    alu_2src_op reg ',' reg ',' reg { dst($2); src1($4); src2($6); }
 |                  alu_2src_op reg ',' reg ',' immediate { dst($2); src1($4); immed($6); }
 
-alu_clrsetbit_op:  T_OP_SETBIT { new_instr(OPC_SETBIT); }
-|                  T_OP_CLRBIT { new_instr(OPC_CLRBIT); }
+alu_setbit_src2:    T_BIT { bit($1); instr->opc = OPC_SETBITI; }
+|                   reg   { src2($1); }
 
-alu_clrsetbit_instr: alu_clrsetbit_op reg ',' reg ',' T_BIT { dst($2); src1($4); bit($6); }
+alu_clrsetbit_instr: T_OP_SETBIT reg ',' reg ',' alu_setbit_src2 { new_instr(OPC_SETBIT); dst($2); src1($4); }
+|                    T_OP_CLRBIT reg ',' reg ',' T_BIT { new_instr(OPC_CLRBIT); dst($2); src1($4); bit($6); }
+
+alu_bitfield_op:  T_OP_UBFX { new_instr(OPC_UBFX); }
+|                 T_OP_BFI  { new_instr(OPC_BFI); }
+
+alu_bitfield_instr: alu_bitfield_op reg ',' reg ',' T_BIT ',' T_BIT { dst($2); src1($4); bit($6); immed($8); }
 
 alu_instr:         alu_2src_instr
 |                  alu_msb_instr
 |                  alu_not_instr
 |                  alu_mov_instr
 |                  alu_clrsetbit_instr
+|                  alu_bitfield_instr
 
 load_op:           T_OP_LOAD      { new_instr(OPC_LOAD); }
 |                  T_OP_CREAD     { new_instr(OPC_CREAD); }

@@ -60,9 +60,13 @@ typedef enum {
    ALU(MIN)
    ALU(MAX)
    ALU(CMP)   /* compare src to immed */
+   ALU(BIC)   /* AND with second source negated */
+   OPC_SETBIT, /* Set or clear a bit dynamically */
    OPC_MOVI,  /* move immediate */
-   OPC_SETBIT, /* Set a bit */
+   OPC_SETBITI, /* Set a bit */
    OPC_CLRBIT, /* Clear a bit */
+   OPC_UBFX, /* Unsigned BitField eXtract */
+   OPC_BFI,  /* BitField Insert */
 #undef ALU
 
    /* Return the most-significant bit of src2, or 0 if src2 == 0 (the

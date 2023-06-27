@@ -225,12 +225,15 @@ static void
 disasm(struct emu *emu)
 {
    uint32_t sizedwords = emu->sizedwords;
-   uint32_t lpac_offset = 0;
+   uint32_t lpac_offset = 0, bv_offset = 0;
 
    EMU_GPU_REG(CP_SQE_INSTR_BASE);
    EMU_GPU_REG(CP_LPAC_SQE_INSTR_BASE);
+   EMU_CONTROL_REG(BV_INSTR_BASE);
+   EMU_CONTROL_REG(LPAC_INSTR_BASE);
 
    emu_init(emu);
+   emu->processor = EMU_PROC_SQE;
 
    struct isa_decode_options options;
    struct decode_state state;
@@ -246,12 +249,22 @@ disasm(struct emu *emu)
 
    emu_run_bootstrap(emu);
 
-   /* Figure out if we have LPAC SQE appended: */
-   if (emu_get_reg64(emu, &CP_LPAC_SQE_INSTR_BASE)) {
-      lpac_offset = emu_get_reg64(emu, &CP_LPAC_SQE_INSTR_BASE) -
-            emu_get_reg64(emu, &CP_SQE_INSTR_BASE);
+   /* Figure out if we have BV/LPAC SQE appended: */
+   if (gpuver >= 7) {
+      bv_offset = emu_get_reg64(emu, &BV_INSTR_BASE) -
+         emu_get_reg64(emu, &CP_SQE_INSTR_BASE);
+      bv_offset /= 4;
+      lpac_offset = emu_get_reg64(emu, &LPAC_INSTR_BASE) -
+         emu_get_reg64(emu, &CP_SQE_INSTR_BASE);
       lpac_offset /= 4;
-      sizedwords = lpac_offset;
+      sizedwords = MIN2(bv_offset, lpac_offset);
+   } else {
+      if (emu_get_reg64(emu, &CP_LPAC_SQE_INSTR_BASE)) {
+         lpac_offset = emu_get_reg64(emu, &CP_LPAC_SQE_INSTR_BASE) -
+               emu_get_reg64(emu, &CP_SQE_INSTR_BASE);
+         lpac_offset /= 4;
+         sizedwords = lpac_offset;
+      }
    }
 
    setup_packet_table(&options, emu->jmptbl, ARRAY_SIZE(emu->jmptbl));
@@ -271,25 +284,51 @@ disasm(struct emu *emu)
    /* print instructions: */
    isa_disasm(emu->instrs, sizedwords * 4, stdout, &options);
 
-   if (!lpac_offset)
-      return;
+   if (bv_offset) {
+      printf(";\n");
+      printf("; BV microcode:\n");
+      printf(";\n");
 
-   printf(";\n");
-   printf("; LPAC microcode:\n");
-   printf(";\n");
+      emu_fini(emu);
 
-   emu_fini(emu);
+      emu->processor = EMU_PROC_BV;
+      emu->instrs += bv_offset;
+      emu->sizedwords -= bv_offset;
 
-   emu->lpac = true;
-   emu->instrs += lpac_offset;
-   emu->sizedwords -= lpac_offset;
+      emu_init(emu);
+      emu_run_bootstrap(emu);
 
-   emu_init(emu);
-   emu_run_bootstrap(emu);
+      setup_packet_table(&options, emu->jmptbl, ARRAY_SIZE(emu->jmptbl));
 
-   setup_packet_table(&options, emu->jmptbl, ARRAY_SIZE(emu->jmptbl));
+      uint32_t sizedwords = lpac_offset - bv_offset;
 
-   isa_disasm(emu->instrs, emu->sizedwords * 4, stdout, &options);
+      isa_disasm(emu->instrs, sizedwords * 4, stdout, &options);
+
+      emu->instrs -= bv_offset;
+      emu->sizedwords += bv_offset;
+   }
+
+   if (lpac_offset) {
+      printf(";\n");
+      printf("; LPAC microcode:\n");
+      printf(";\n");
+
+      emu_fini(emu);
+
+      emu->processor = EMU_PROC_LPAC;
+      emu->instrs += lpac_offset;
+      emu->sizedwords -= lpac_offset;
+
+      emu_init(emu);
+      emu_run_bootstrap(emu);
+
+      setup_packet_table(&options, emu->jmptbl, ARRAY_SIZE(emu->jmptbl));
+
+      isa_disasm(emu->instrs, emu->sizedwords * 4, stdout, &options);
+
+      emu->instrs -= lpac_offset;
+      emu->sizedwords += lpac_offset;
+   }
 }
 
 static void
