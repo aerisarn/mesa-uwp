@@ -13,7 +13,7 @@
 #define BASE_S      2
 
 static bool
-lower_zs_emit(nir_function_impl *impl, nir_block *block)
+lower_zs_emit(nir_block *block)
 {
    nir_intrinsic_instr *zs_emit = NULL;
    bool progress = false;
@@ -31,8 +31,7 @@ lower_zs_emit(nir_function_impl *impl, nir_block *block)
           sem.location != FRAG_RESULT_STENCIL)
          continue;
 
-      nir_builder b = nir_builder_create(impl);
-      b.cursor = nir_before_instr(instr);
+      nir_builder b = nir_builder_at(nir_before_instr(instr));
 
       nir_ssa_def *value = intr->src[0].ssa;
       bool z = (sem.location == FRAG_RESULT_DEPTH);
@@ -122,7 +121,7 @@ agx_nir_lower_zs_emit(nir_shader *s)
       bool progress = false;
 
       nir_foreach_block(block, impl) {
-         progress |= lower_zs_emit(impl, block);
+         progress |= lower_zs_emit(block);
       }
 
       if (progress) {
