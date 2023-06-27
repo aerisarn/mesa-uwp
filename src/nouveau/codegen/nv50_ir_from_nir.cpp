@@ -3405,7 +3405,7 @@ nvir_nir_shader_compiler_options(int chipset, uint8_t shader_type)
       ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_isign64 : 0) |
       nir_lower_divmod64 |
       ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_imul_high64 : 0) |
-      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_mov64 : 0) |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_bcsel64 : 0) |
       ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_icmp64 : 0) |
       ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_iabs64 : 0) |
       ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_ineg64 : 0) |
@@ -3414,7 +3414,8 @@ nvir_nir_shader_compiler_options(int chipset, uint8_t shader_type)
       ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_shift64 : 0) |
       nir_lower_imul_2x32_64 |
       ((chipset >= NVISA_GM107_CHIPSET) ? nir_lower_extract64 : 0) |
-      nir_lower_ufind_msb64
+      nir_lower_ufind_msb64 |
+      ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_conv64 : 0)
    );
    op.lower_doubles_options = (nir_lower_doubles_options) (
       ((chipset >= NVISA_GV100_CHIPSET) ? nir_lower_drcp : 0) |

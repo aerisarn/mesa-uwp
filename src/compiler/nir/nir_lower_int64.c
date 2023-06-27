@@ -909,8 +909,9 @@ nir_lower_int64_op_to_options_mask(nir_op opcode)
    case nir_op_u2f16:
    case nir_op_f2i64:
    case nir_op_f2u64:
+      return nir_lower_conv64;
    case nir_op_bcsel:
-      return nir_lower_mov64;
+      return nir_lower_bcsel64;
    case nir_op_ieq:
    case nir_op_ine:
    case nir_op_ult:
