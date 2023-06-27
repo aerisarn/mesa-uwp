@@ -39,10 +39,8 @@ v3d_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *in_instr, void *data)
 
         b->cursor = nir_before_instr(&instr->instr);
 
-        int coord_index = nir_tex_instr_src_index(instr, nir_tex_src_coord);
-        int sample_index = nir_tex_instr_src_index(instr, nir_tex_src_ms_index);
-        nir_ssa_def *coord = instr->src[coord_index].src.ssa;
-        nir_ssa_def *sample = instr->src[sample_index].src.ssa;
+        nir_ssa_def *coord = nir_steal_tex_src(instr, nir_tex_src_coord);
+        nir_ssa_def *sample = nir_steal_tex_src(instr, nir_tex_src_ms_index);
 
         nir_ssa_def *one = nir_imm_int(b, 1);
         nir_ssa_def *x = nir_iadd(b,
@@ -56,10 +54,7 @@ v3d_nir_lower_txf_ms_instr(nir_builder *b, nir_instr *in_instr, void *data)
         else
                 coord = nir_vec2(b, x, y);
 
-        nir_instr_rewrite_src(&instr->instr,
-                              &instr->src[nir_tex_src_coord].src,
-                              nir_src_for_ssa(coord));
-        nir_tex_instr_remove_src(instr, sample_index);
+        nir_tex_instr_add_src(instr, nir_tex_src_coord, nir_src_for_ssa(coord));
         instr->op = nir_texop_txf;
         instr->sampler_dim = GLSL_SAMPLER_DIM_2D;
 
