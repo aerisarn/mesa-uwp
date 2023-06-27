@@ -231,8 +231,7 @@ clc_lower_printf_base(nir_shader *nir, unsigned uav_id)
    nir_variable *printf_var = NULL;
    nir_ssa_def *printf_deref = NULL;
    nir_foreach_function(func, nir) {
-      nir_builder b = nir_builder_create(func->impl);
-      b.cursor = nir_before_instr(nir_block_first_instr(nir_start_block(func->impl)));
+      nir_builder b = nir_builder_at(nir_before_instr(nir_block_first_instr(nir_start_block(func->impl))));
       bool progress = false;
 
       nir_foreach_block(block, func->impl) {

@@ -590,8 +590,7 @@ d3d12_add_missing_dual_src_target(struct nir_shader *s,
    assert(missing_mask != 0);
    nir_builder b;
    nir_function_impl *impl = nir_shader_get_entrypoint(s);
-   b = nir_builder_create(impl);
-   b.cursor = nir_before_cf_list(&impl->body);
+   b = nir_builder_at(nir_before_cf_list(&impl->body));
 
    nir_ssa_def *zero = nir_imm_zero(&b, 4, 32);
    for (unsigned i = 0; i < 2; ++i) {
