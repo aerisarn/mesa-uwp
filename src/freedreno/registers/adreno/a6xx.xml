@@ -3588,13 +3588,14 @@ to upconvert to 32b float internally?
 	</array>
 	<array offset="0xa99f" name="SP_FS_PREFETCH" stride="1" length="4" variants="A7XX-">
 		<reg32 offset="0" name="CMD" variants="A7XX-">
-			<bitfield name="SAMP_DESC_ID" low="7" high="9" type="uint"/>
-			<bitfield name="TEX_DESC_ID" low="10" high="12" type="uint"/>
+			<bitfield name="SRC" low="0" high="6" type="uint"/>
+			<bitfield name="SAMP_ID" low="7" high="9" type="uint"/>
+			<bitfield name="TEX_ID" low="10" high="12" type="uint"/>
 			<bitfield name="DST" low="13" high="18" type="a3xx_regid"/>
 			<bitfield name="WRMASK" low="19" high="22" type="hex"/>
 			<bitfield name="HALF" pos="23" type="boolean"/>
 			<bitfield name="BINDLESS" pos="25" type="boolean"/>
-			<bitfield name="OPCODE" low="26" high="29"/>  <!-- Same as CMD ? -->
+			<bitfield name="CMD" low="26" high="29" type="a6xx_tex_prefetch_cmd"/>
 		</reg32>
 	</array>
 	<array offset="0xa9a3" name="SP_FS_BINDLESS_PREFETCH" stride="1" length="4">
