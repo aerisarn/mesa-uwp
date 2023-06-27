@@ -301,8 +301,7 @@ ir3_nir_lower_to_explicit_output(nir_shader *shader,
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    assert(impl);
 
-   nir_builder b = nir_builder_create(impl);
-   b.cursor = nir_before_cf_list(&impl->body);
+   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
 
    if (v->type == MESA_SHADER_VERTEX && topology != IR3_TESS_NONE)
       state.header = nir_load_tcs_header_ir3(&b);
@@ -376,8 +375,7 @@ ir3_nir_lower_to_explicit_input(nir_shader *shader,
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    assert(impl);
 
-   nir_builder b = nir_builder_create(impl);
-   b.cursor = nir_before_cf_list(&impl->body);
+   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
 
    if (shader->info.stage == MESA_SHADER_GEOMETRY)
       state.header = nir_load_gs_header_ir3(&b);
@@ -680,8 +678,7 @@ ir3_nir_lower_tess_ctrl(nir_shader *shader, struct ir3_shader_variant *v,
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    assert(impl);
 
-   nir_builder b = nir_builder_create(impl);
-   b.cursor = nir_before_cf_list(&impl->body);
+   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
 
    state.header = nir_load_tcs_header_ir3(&b);
 
@@ -944,8 +941,7 @@ ir3_nir_lower_gs(nir_shader *shader)
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    assert(impl);
 
-   nir_builder b = nir_builder_create(impl);
-   b.cursor = nir_before_cf_list(&impl->body);
+   nir_builder b = nir_builder_at(nir_before_cf_list(&impl->body));
 
    state.header = nir_load_gs_header_ir3(&b);
 
