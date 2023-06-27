@@ -2760,7 +2760,7 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index, struct r
 
 static void
 radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_buffer_info *ds,
-                             const struct radv_image_view *iview, VkImageLayout layout, bool requires_cond_exec)
+                             const struct radv_image_view *iview, bool requires_cond_exec)
 {
    const struct radv_image *image = iview->image;
    uint32_t db_z_info = ds->db_z_info;
@@ -2768,11 +2768,6 @@ radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_
 
    if (!cmd_buffer->device->physical_device->rad_info.has_tc_compat_zrange_bug || !radv_image_is_tc_compat_htile(image))
       return;
-
-   if (!radv_layout_is_htile_compressed(cmd_buffer->device, image, layout,
-                                        radv_image_queue_family_mask(image, cmd_buffer->qf, cmd_buffer->qf))) {
-      db_z_info &= C_028040_TILE_SURFACE_ENABLE;
-   }
 
    db_z_info &= C_028040_ZRANGE_PRECISION;
 
@@ -2883,7 +2878,7 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_buffer_
    }
 
    /* Update the ZRANGE_PRECISION value for the TC-compat bug. */
-   radv_update_zrange_precision(cmd_buffer, ds, iview, layout, true);
+   radv_update_zrange_precision(cmd_buffer, ds, iview, true);
 }
 
 static void
@@ -2943,8 +2938,7 @@ radv_update_bound_fast_clear_ds(struct radv_cmd_buffer *cmd_buffer, const struct
     * only needed when clearing Z to 0.0.
     */
    if ((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) && ds_clear_value.depth == 0.0) {
-      radv_update_zrange_precision(cmd_buffer, &cmd_buffer->state.render.ds_att.ds, iview,
-                                   cmd_buffer->state.render.ds_att.layout, false);
+      radv_update_zrange_precision(cmd_buffer, &cmd_buffer->state.render.ds_att.ds, iview, false);
    }
 
    cmd_buffer->state.context_roll_without_scissor_emitted = true;
