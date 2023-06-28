@@ -1118,8 +1118,8 @@ analyze_shader_before_culling(nir_shader *shader, lower_ngg_nogs_state *s)
    /* We need divergence info for culling shaders. */
    nir_divergence_analysis(shader);
 
-   nir_foreach_function(func, shader) {
-      nir_foreach_block(block, func->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             instr->pass_flags = 0;
 
