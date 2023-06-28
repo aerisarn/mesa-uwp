@@ -874,8 +874,8 @@ validate_sampler_array_indexing(const struct gl_constants *consts,
          consts->ShaderCompilerOptions[i].NirOptions->force_indirect_unrolling_sampler;
 
       bool uses_indirect_sampler_array_indexing = false;
-      nir_foreach_function(function, prog->_LinkedShaders[i]->Program->nir) {
-         nir_foreach_block(block, function->impl) {
+      nir_foreach_function_impl(impl, prog->_LinkedShaders[i]->Program->nir) {
+         nir_foreach_block(block, impl) {
             nir_foreach_instr(instr, block) {
                /* Check if a sampler array is accessed indirectly */
                if (instr->type == nir_instr_type_tex) {

@@ -60,9 +60,9 @@ namespace
          if (!nir)
             return NULL;
 
-         nir_foreach_function(func, nir)
+         nir_foreach_function_impl(impl, nir)
          {
-            nir_foreach_block(block, func->impl)
+            nir_foreach_block(block, impl)
             {
                nir_foreach_instr(instr, block)
                {

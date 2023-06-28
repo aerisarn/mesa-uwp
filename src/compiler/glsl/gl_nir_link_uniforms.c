@@ -517,9 +517,9 @@ add_var_use_shader(nir_shader *shader, struct hash_table *live)
    /* Size of the derefs buffer in bytes. */
    unsigned derefs_size = 0;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_foreach_block(block, function->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      {
+         nir_foreach_block(block, impl) {
             nir_foreach_instr(instr, block) {
                if (instr->type == nir_instr_type_intrinsic) {
                   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
