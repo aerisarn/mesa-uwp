@@ -118,21 +118,18 @@ agx_nir_lower_zs_emit(nir_shader *s)
 
    bool any_progress = false;
 
-   nir_foreach_function(function, s) {
-      if (!function->impl)
-         continue;
-
+   nir_foreach_function_impl(impl, s) {
       bool progress = false;
 
-      nir_foreach_block(block, function->impl) {
-         progress |= lower_zs_emit(function->impl, block);
+      nir_foreach_block(block, impl) {
+         progress |= lower_zs_emit(impl, block);
       }
 
       if (progress) {
          nir_metadata_preserve(
-            function->impl, nir_metadata_block_index | nir_metadata_dominance);
+            impl, nir_metadata_block_index | nir_metadata_dominance);
       } else {
-         nir_metadata_preserve(function->impl, nir_metadata_all);
+         nir_metadata_preserve(impl, nir_metadata_all);
       }
 
       any_progress |= progress;
