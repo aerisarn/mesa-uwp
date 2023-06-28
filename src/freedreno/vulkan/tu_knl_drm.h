@@ -26,6 +26,11 @@ tu_sync_cache_bo(struct tu_device *dev,
                  VkDeviceSize size,
                  enum tu_mem_sync_op op);
 
+VkResult tu_allocate_userspace_iova(struct tu_device *dev,
+                                    uint64_t size,
+                                    uint64_t client_iova,
+                                    enum tu_bo_alloc_flags flags,
+                                    uint64_t *iova);
 int tu_drm_export_dmabuf(struct tu_device *dev, struct tu_bo *bo);
 void tu_drm_bo_finish(struct tu_device *dev, struct tu_bo *bo);
 

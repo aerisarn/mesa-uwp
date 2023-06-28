@@ -107,6 +107,41 @@ tu_InvalidateMappedMemoryRanges(VkDevice _device,
                      pMemoryRanges);
 }
 
+VkResult
+tu_allocate_userspace_iova(struct tu_device *dev,
+                           uint64_t size,
+                           uint64_t client_iova,
+                           enum tu_bo_alloc_flags flags,
+                           uint64_t *iova)
+{
+   *iova = 0;
+
+   if (flags & TU_BO_ALLOC_REPLAYABLE) {
+      if (client_iova) {
+         if (util_vma_heap_alloc_addr(&dev->vma, client_iova, size)) {
+            *iova = client_iova;
+         } else {
+            return VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
+         }
+      } else {
+         /* We have to separate replayable IOVAs from ordinary one in order to
+          * for them not to clash. The easiest way to do this is to allocate
+          * them from the other end of the address space.
+          */
+         dev->vma.alloc_high = true;
+         *iova = util_vma_heap_alloc(&dev->vma, size, 0x1000);
+      }
+   } else {
+      dev->vma.alloc_high = false;
+      *iova = util_vma_heap_alloc(&dev->vma, size, 0x1000);
+   }
+
+   if (!*iova)
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
+   return VK_SUCCESS;
+}
+
 int
 tu_drm_export_dmabuf(struct tu_device *dev, struct tu_bo *bo)
 {

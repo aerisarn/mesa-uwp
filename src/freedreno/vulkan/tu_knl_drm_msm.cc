@@ -345,54 +345,36 @@ tu_free_zombie_vma_locked(struct tu_device *dev, bool wait)
 }
 
 static VkResult
-tu_allocate_userspace_iova(struct tu_device *dev,
-                           uint32_t gem_handle,
-                           uint64_t size,
-                           uint64_t client_iova,
-                           enum tu_bo_alloc_flags flags,
-                           uint64_t *iova)
+msm_allocate_userspace_iova(struct tu_device *dev,
+                            uint32_t gem_handle,
+                            uint64_t size,
+                            uint64_t client_iova,
+                            enum tu_bo_alloc_flags flags,
+                            uint64_t *iova)
 {
+   VkResult result;
+
    mtx_lock(&dev->vma_mutex);
 
    *iova = 0;
 
    tu_free_zombie_vma_locked(dev, false);
 
-   if (flags & TU_BO_ALLOC_REPLAYABLE) {
-      if (client_iova) {
-         if (util_vma_heap_alloc_addr(&dev->vma, client_iova, size)) {
-            *iova = client_iova;
-         } else {
-            /* Address may be already freed by us, but not considered as
-             * freed by the kernel. We have to wait until all work that
-             * may hold the address is done. Since addresses are meant to
-             * be replayed only by debug tooling, it should be ok to wait.
-             */
-            if (tu_free_zombie_vma_locked(dev, true) == VK_SUCCESS &&
-                util_vma_heap_alloc_addr(&dev->vma, client_iova, size)) {
-               *iova = client_iova;
-            } else {
-               mtx_unlock(&dev->vma_mutex);
-               return VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
-            }
-         }
-      } else {
-         /* We have to separate replayable IOVAs from ordinary one in order to
-          * for them not to clash. The easiest way to do this is to allocate
-          * them from the other end of the address space.
-          */
-         dev->vma.alloc_high = true;
-         *iova = util_vma_heap_alloc(&dev->vma, size, 0x1000);
-      }
-   } else {
-      dev->vma.alloc_high = false;
-      *iova = util_vma_heap_alloc(&dev->vma, size, 0x1000);
+   result = tu_allocate_userspace_iova(dev, size, client_iova, flags, iova);
+   if (result == VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS) {
+      /* Address may be already freed by us, but not considered as
+       * freed by the kernel. We have to wait until all work that
+       * may hold the address is done. Since addresses are meant to
+       * be replayed only by debug tooling, it should be ok to wait.
+       */
+      tu_free_zombie_vma_locked(dev, true);
+      result = tu_allocate_userspace_iova(dev, size, client_iova, flags, iova);
    }
 
    mtx_unlock(&dev->vma_mutex);
 
-   if (!*iova)
-      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   if (result != VK_SUCCESS)
+      return result;
 
    struct drm_msm_gem_info req = {
       .handle = gem_handle,
@@ -437,8 +419,8 @@ tu_bo_init(struct tu_device *dev,
    assert(!client_iova || dev->physical_device->has_set_iova);
 
    if (dev->physical_device->has_set_iova) {
-      result = tu_allocate_userspace_iova(dev, gem_handle, size, client_iova,
-                                          flags, &iova);
+      result = msm_allocate_userspace_iova(dev, gem_handle, size, client_iova,
+                                           flags, &iova);
    } else {
       result = tu_allocate_kernel_iova(dev, gem_handle, &iova);
    }
