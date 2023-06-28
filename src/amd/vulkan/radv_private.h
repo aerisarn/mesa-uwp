@@ -2115,20 +2115,18 @@ struct radv_event {
    uint64_t *map;
 };
 
-#define RADV_HASH_SHADER_CS_WAVE32             (1 << 1)
-#define RADV_HASH_SHADER_PS_WAVE32             (1 << 2)
-#define RADV_HASH_SHADER_GE_WAVE32             (1 << 3)
-#define RADV_HASH_SHADER_LLVM                  (1 << 4)
-#define RADV_HASH_SHADER_KEEP_STATISTICS       (1 << 8)
-#define RADV_HASH_SHADER_USE_NGG_CULLING       (1 << 13)
-#define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS  (1 << 14)
-#define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS2 (1 << 15)
-#define RADV_HASH_SHADER_EMULATE_RT            (1 << 16)
-#define RADV_HASH_SHADER_SPLIT_FMA             (1 << 17)
-#define RADV_HASH_SHADER_RT_WAVE64             (1 << 18)
-#define RADV_HASH_SHADER_NO_FMASK              (1 << 19)
-#define RADV_HASH_SHADER_NGG_STREAMOUT         (1 << 20)
-#define RADV_HASH_SHADER_NO_RT                 (1 << 21)
+#define RADV_HASH_SHADER_CS_WAVE32       (1 << 1)
+#define RADV_HASH_SHADER_PS_WAVE32       (1 << 2)
+#define RADV_HASH_SHADER_GE_WAVE32       (1 << 3)
+#define RADV_HASH_SHADER_LLVM            (1 << 4)
+#define RADV_HASH_SHADER_KEEP_STATISTICS (1 << 8)
+#define RADV_HASH_SHADER_USE_NGG_CULLING (1 << 13)
+#define RADV_HASH_SHADER_EMULATE_RT      (1 << 16)
+#define RADV_HASH_SHADER_SPLIT_FMA       (1 << 17)
+#define RADV_HASH_SHADER_RT_WAVE64       (1 << 18)
+#define RADV_HASH_SHADER_NO_FMASK        (1 << 19)
+#define RADV_HASH_SHADER_NGG_STREAMOUT   (1 << 20)
+#define RADV_HASH_SHADER_NO_RT           (1 << 21)
 
 struct radv_pipeline_key;
 struct radv_ray_tracing_group;

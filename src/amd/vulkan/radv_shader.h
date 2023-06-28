@@ -93,6 +93,9 @@ struct radv_pipeline_key {
    uint32_t unknown_rast_prim : 1;
 
    struct radv_required_subgroup_info subgroups[MESA_VULKAN_SHADER_STAGES];
+   uint32_t storage_robustness : 2;
+   uint32_t uniform_robustness : 2;
+   uint32_t vertex_robustness : 2;
 
    struct {
       uint32_t instance_rate_inputs;

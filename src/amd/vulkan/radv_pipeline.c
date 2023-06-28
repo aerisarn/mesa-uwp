@@ -179,6 +179,10 @@ radv_generate_pipeline_key(const struct radv_device *device, const struct radv_p
       }
    }
 
+   key.storage_robustness = device->buffer_robustness;
+   key.uniform_robustness = device->buffer_robustness;
+   key.vertex_robustness = device->buffer_robustness;
+
    return key;
 }
 
@@ -203,10 +207,6 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
       hash_flags |= RADV_HASH_SHADER_LLVM;
    if (stats)
       hash_flags |= RADV_HASH_SHADER_KEEP_STATISTICS;
-   if (device->buffer_robustness >= RADV_BUFFER_ROBUSTNESS_1) /* forces per-attribute vertex descriptors */
-      hash_flags |= RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS;
-   if (device->buffer_robustness >= RADV_BUFFER_ROBUSTNESS_2) /* affects load/store vectorizer */
-      hash_flags |= RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS2;
    if (device->instance->debug_flags & RADV_DEBUG_SPLIT_FMA)
       hash_flags |= RADV_HASH_SHADER_SPLIT_FMA;
    if (device->instance->debug_flags & RADV_DEBUG_NO_FMASK)
@@ -509,9 +509,11 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
       .has_shared2_amd = gfx_level >= GFX7,
    };
 
-   if (device->buffer_robustness >= RADV_BUFFER_ROBUSTNESS_2) {
-      vectorize_opts.robust_modes = nir_var_mem_ubo | nir_var_mem_ssbo;
-   }
+   if (pipeline_key->uniform_robustness >= RADV_BUFFER_ROBUSTNESS_2)
+      vectorize_opts.robust_modes |= nir_var_mem_ubo;
+
+   if (pipeline_key->storage_robustness >= RADV_BUFFER_ROBUSTNESS_2)
+      vectorize_opts.robust_modes |= nir_var_mem_ssbo;
 
    if (!pipeline_key->optimisations_disabled) {
       progress = false;

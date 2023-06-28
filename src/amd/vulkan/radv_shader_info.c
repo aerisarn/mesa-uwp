@@ -415,7 +415,7 @@ gather_shader_info_vs(struct radv_device *device, const nir_shader *nir, const s
 
    /* Use per-attribute vertex descriptors to prevent faults and for correct bounds checking. */
    info->vs.use_per_attribute_vb_descs =
-      device->buffer_robustness >= RADV_BUFFER_ROBUSTNESS_1 || info->vs.dynamic_inputs;
+      pipeline_key->vertex_robustness >= RADV_BUFFER_ROBUSTNESS_1 || info->vs.dynamic_inputs;
 
    /* We have to ensure consistent input register assignments between the main shader and the
     * prolog.
