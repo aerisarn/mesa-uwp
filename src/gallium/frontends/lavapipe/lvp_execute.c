@@ -3016,13 +3016,18 @@ static void handle_begin_query(struct vk_cmd_queue_entry *cmd,
 
    emit_state(state);
 
-   if (!pool->queries[qcmd->query]) {
-      enum pipe_query_type qtype = pool->base_type;
-      pool->queries[qcmd->query] = state->pctx->create_query(state->pctx,
-                                                             qtype, 0);
-   }
+   uint32_t count = util_bitcount(state->info.view_mask ? state->info.view_mask : BITFIELD_BIT(0));
+   for (unsigned idx = 0; idx < count; idx++) {
+      if (!pool->queries[qcmd->query + idx]) {
+         enum pipe_query_type qtype = pool->base_type;
+         pool->queries[qcmd->query + idx] = state->pctx->create_query(state->pctx,
+                                                               qtype, 0);
+      }
 
-   state->pctx->begin_query(state->pctx, pool->queries[qcmd->query]);
+      state->pctx->begin_query(state->pctx, pool->queries[qcmd->query + idx]);
+      if (idx)
+         state->pctx->end_query(state->pctx, pool->queries[qcmd->query + idx]);
+   }
 }
 
 static void handle_end_query(struct vk_cmd_queue_entry *cmd,
@@ -3048,13 +3053,18 @@ static void handle_begin_query_indexed_ext(struct vk_cmd_queue_entry *cmd,
 
    emit_state(state);
 
-   if (!pool->queries[qcmd->query]) {
-      enum pipe_query_type qtype = pool->base_type;
-      pool->queries[qcmd->query] = state->pctx->create_query(state->pctx,
-                                                             qtype, qcmd->index);
-   }
+   uint32_t count = util_bitcount(state->info.view_mask ? state->info.view_mask : BITFIELD_BIT(0));
+   for (unsigned idx = 0; idx < count; idx++) {
+      if (!pool->queries[qcmd->query + idx]) {
+         enum pipe_query_type qtype = pool->base_type;
+         pool->queries[qcmd->query + idx] = state->pctx->create_query(state->pctx,
+                                                                      qtype, qcmd->index);
+      }
 
-   state->pctx->begin_query(state->pctx, pool->queries[qcmd->query]);
+      state->pctx->begin_query(state->pctx, pool->queries[qcmd->query + idx]);
+      if (idx)
+         state->pctx->end_query(state->pctx, pool->queries[qcmd->query + idx]);
+   }
 }
 
 static void handle_end_query_indexed_ext(struct vk_cmd_queue_entry *cmd,
@@ -3085,15 +3095,18 @@ static void handle_write_timestamp2(struct vk_cmd_queue_entry *cmd,
 {
    struct vk_cmd_write_timestamp2 *qcmd = &cmd->u.write_timestamp2;
    LVP_FROM_HANDLE(lvp_query_pool, pool, qcmd->query_pool);
-   if (!pool->queries[qcmd->query]) {
-      pool->queries[qcmd->query] = state->pctx->create_query(state->pctx,
-                                                             PIPE_QUERY_TIMESTAMP, 0);
-   }
 
    if (!(qcmd->stage == VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT))
       state->pctx->flush(state->pctx, NULL, 0);
-   state->pctx->end_query(state->pctx, pool->queries[qcmd->query]);
 
+   uint32_t count = util_bitcount(state->info.view_mask ? state->info.view_mask : BITFIELD_BIT(0));
+   for (unsigned idx = 0; idx < count; idx++) {
+      if (!pool->queries[qcmd->query + idx]) {
+         pool->queries[qcmd->query + idx] = state->pctx->create_query(state->pctx, PIPE_QUERY_TIMESTAMP, 0);
+      }
+
+      state->pctx->end_query(state->pctx, pool->queries[qcmd->query + idx]);
+   }
 }
 
 static void handle_copy_query_pool_results(struct vk_cmd_queue_entry *cmd,
