@@ -46,7 +46,7 @@ vn_buffer_get_max_buffer_size(struct vn_physical_device *physical_dev)
              : safe_max_buffer_size;
 }
 
-VkResult
+void
 vn_buffer_cache_init(struct vn_device *dev)
 {
    dev->buffer_cache.max_buffer_size =
@@ -55,8 +55,6 @@ vn_buffer_cache_init(struct vn_device *dev)
    simple_mtx_init(&dev->buffer_cache.mutex, mtx_plain);
    util_sparse_array_init(&dev->buffer_cache.entries,
                           sizeof(struct vn_buffer_cache_entry), 64);
-
-   return VK_SUCCESS;
 }
 
 static void

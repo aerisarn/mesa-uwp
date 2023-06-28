@@ -67,7 +67,7 @@ vn_buffer_create(struct vn_device *dev,
                  const VkAllocationCallbacks *alloc,
                  struct vn_buffer **out_buf);
 
-VkResult
+void
 vn_buffer_cache_init(struct vn_device *dev);
 
 void
