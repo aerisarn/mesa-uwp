@@ -651,6 +651,7 @@ struct anv_pipeline_stage {
    const VkPipelineShaderStageCreateInfo *info;
 
    unsigned char shader_sha1[20];
+   uint32_t      source_hash;
 
    union brw_any_prog_key key;
 
@@ -691,6 +692,16 @@ struct anv_pipeline_stage {
 
    struct anv_shader_bin *bin;
 };
+
+static void
+anv_stage_write_shader_hash(struct anv_pipeline_stage *stage,
+                            const VkPipelineShaderStageCreateInfo *sinfo)
+{
+   vk_pipeline_hash_shader_stage(sinfo, NULL, stage->shader_sha1);
+
+   /* Use lowest dword of source shader sha1 for shader hash. */
+   stage->source_hash = ((uint32_t*)stage->shader_sha1)[0];
+}
 
 static bool
 anv_graphics_pipeline_stage_fragment_dynamic(const struct anv_pipeline_stage *stage)
@@ -1828,6 +1839,7 @@ anv_graphics_pipeline_load_cached_shaders(struct anv_graphics_base_pipeline *pip
 
          anv_pipeline_add_executables(&pipeline->base, &stages[s],
                                       pipeline->shaders[s]);
+         pipeline->source_hashes[s] = stages[s].source_hash;
       }
       return true;
    } else if (found > 0) {
@@ -2073,7 +2085,7 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
       stages[stage].info = &info->pStages[i];
       stages[stage].feedback_idx = shader_count++;
 
-      vk_pipeline_hash_shader_stage(stages[stage].info, NULL, stages[stage].shader_sha1);
+      anv_stage_write_shader_hash(&stages[stage], stages[stage].info);
    }
 
    /* Prepare shader keys for all shaders in pipeline->base.active_stages
@@ -2407,8 +2419,9 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
       }
 
       anv_pipeline_add_executables(&pipeline->base, stage, bin);
-
+      pipeline->source_hashes[s] = stage->source_hash;
       pipeline->shaders[s] = bin;
+
       ralloc_free(stage_ctx);
 
       stage->feedback.duration += os_time_get_nano() - stage_start;
@@ -2432,6 +2445,7 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
       struct anv_pipeline_stage *stage = &stages[s];
 
       anv_pipeline_add_executables(&pipeline->base, stage, stage->imported.bin);
+      pipeline->source_hashes[s] = stage->source_hash;
       pipeline->shaders[s] = anv_shader_bin_ref(stage->imported.bin);
    }
 
@@ -2495,7 +2509,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
          .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
       },
    };
-   vk_pipeline_hash_shader_stage(&info->stage, NULL, stage.shader_sha1);
+   anv_stage_write_shader_hash(&stage, &info->stage);
 
    struct anv_shader_bin *bin = NULL;
 
@@ -2595,6 +2609,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
    }
 
    anv_pipeline_add_executables(&pipeline->base, &stage, bin);
+   pipeline->source_hash = stage.source_hash;
 
    ralloc_free(mem_ctx);
 
@@ -2907,6 +2922,7 @@ anv_graphics_pipeline_import_lib(struct anv_graphics_base_pipeline *pipeline,
       /* Always import the shader sha1, this will be used for cache lookup. */
       memcpy(stages[s].shader_sha1, lib->retained_shaders[s].shader_sha1,
              sizeof(stages[s].shader_sha1));
+      stages[s].source_hash = lib->base.source_hashes[s];
 
       stages[s].subgroup_size_type = lib->retained_shaders[s].subgroup_size_type;
       stages[s].imported.nir = lib->retained_shaders[s].nir;
@@ -3431,7 +3447,7 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
                            ray_flags,
                            &stages[i].key.bs);
 
-      vk_pipeline_hash_shader_stage(sinfo, NULL, stages[i].shader_sha1);
+      anv_stage_write_shader_hash(&stages[i], sinfo);
 
       if (stages[i].stage != MESA_SHADER_INTERSECTION) {
          anv_pipeline_hash_ray_tracing_shader(pipeline, &stages[i],
