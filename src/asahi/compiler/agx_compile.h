@@ -146,6 +146,17 @@ enum agx_format {
    AGX_NUM_FORMATS,
 };
 
+struct agx_vs_shader_key {
+   /* The GPU ABI requires all smooth shaded varyings to come first, then all
+    * flat shaded varyings, then all linear shaded varyings, as written by the
+    * VS. In order to correctly remap the varyings into the right order in the
+    * VS, we need to propagate the mask of flat/linear shaded varyings into the
+    * compiler.
+    */
+   uint64_t outputs_flat_shaded;
+   uint64_t outputs_linear_shaded;
+};
+
 struct agx_fs_shader_key {
    /* Normally, access to the tilebuffer must be guarded by appropriate fencing
     * instructions to ensure correct results in the presence of out-of-order
@@ -172,6 +183,7 @@ struct agx_shader_key {
    unsigned reserved_preamble;
 
    union {
+      struct agx_vs_shader_key vs;
       struct agx_fs_shader_key fs;
    };
 };

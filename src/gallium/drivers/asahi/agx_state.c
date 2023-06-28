@@ -1455,7 +1455,9 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       }
 
       /* Clip plane lowering creates discard instructions, so run that before
-       * lowering discards.
+       * lowering discards. Note: this introduces extra loads from the clip
+       * plane outputs, but they use smooth interpolation so it does not affect
+       * the flat/linear masks that get propagated back to the VS.
        */
       if (key->clip_plane_enable) {
          NIR_PASS_V(nir, nir_lower_clip_fs, key->clip_plane_enable, false);
@@ -1493,6 +1495,11 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       base_key.fs.nr_samples = key_->fs.nr_samples;
+
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
+      base_key.vs.outputs_flat_shaded = key_->vs.outputs_flat_shaded;
+      base_key.vs.outputs_linear_shaded = key_->vs.outputs_linear_shaded;
+   }
 
    NIR_PASS_V(nir, agx_nir_lower_sysvals, compiled,
               &base_key.reserved_preamble);
@@ -1713,13 +1720,19 @@ agx_update_vs(struct agx_context *ctx)
     *
     * vb_mask, attributes, vertex_buffers: VERTEX
     * streamout.active: XFB
+    * outputs_{flat,linear}_shaded: FS_PROG
     */
-   if (!(ctx->dirty & (AGX_DIRTY_VS_PROG | AGX_DIRTY_VERTEX | AGX_DIRTY_XFB)))
+   if (!(ctx->dirty & (AGX_DIRTY_VS_PROG | AGX_DIRTY_VERTEX | AGX_DIRTY_XFB |
+                       AGX_DIRTY_FS_PROG)))
       return false;
 
    struct asahi_vs_shader_key key = {
       .vbuf.count = util_last_bit(ctx->vb_mask),
       .xfb = ctx->streamout.key,
+      .outputs_flat_shaded =
+         ctx->stage[PIPE_SHADER_FRAGMENT].shader->info.inputs_flat_shaded,
+      .outputs_linear_shaded =
+         ctx->stage[PIPE_SHADER_FRAGMENT].shader->info.inputs_linear_shaded,
    };
 
    memcpy(key.vbuf.attributes, ctx->attributes,

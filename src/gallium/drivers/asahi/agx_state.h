@@ -286,6 +286,8 @@ struct agx_blend {
 struct asahi_vs_shader_key {
    struct agx_vbufs vbuf;
    struct agx_xfb_key xfb;
+   uint64_t outputs_flat_shaded;
+   uint64_t outputs_linear_shaded;
 };
 
 struct asahi_fs_shader_key {
