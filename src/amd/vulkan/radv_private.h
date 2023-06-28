@@ -942,6 +942,12 @@ struct radv_layer_dispatch_tables {
    struct vk_device_dispatch_table rmv;
 };
 
+enum radv_buffer_robustness {
+   RADV_BUFFER_ROBUSTNESS_DISABLED,
+   RADV_BUFFER_ROBUSTNESS_1, /* robustBufferAccess */
+   RADV_BUFFER_ROBUSTNESS_2, /* robustBufferAccess2 */
+};
+
 struct radv_device {
    struct vk_device vk;
 
@@ -1013,8 +1019,7 @@ struct radv_device {
    uint64_t dmesg_timestamp;
 
    /* Whether the app has enabled the robustBufferAccess/robustBufferAccess2 features. */
-   bool robust_buffer_access;
-   bool robust_buffer_access2;
+   enum radv_buffer_robustness buffer_robustness;
 
    /* Whether to inline the compute dispatch size in user sgprs. */
    bool load_grid_size_from_user_sgpr;

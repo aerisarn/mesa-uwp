@@ -647,9 +647,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    VkResult result;
    struct radv_device *device;
 
+   enum radv_buffer_robustness buffer_robustness = RADV_BUFFER_ROBUSTNESS_DISABLED;
    bool keep_shader_info = false;
-   bool robust_buffer_access = false;
-   bool robust_buffer_access2 = false;
    bool overallocation_disallowed = false;
    bool custom_border_colors = false;
    bool attachment_vrs_enabled = false;
@@ -666,7 +665,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
       if (pCreateInfo->pEnabledFeatures->robustBufferAccess)
-         robust_buffer_access = true;
+         buffer_robustness = MAX2(buffer_robustness, RADV_BUFFER_ROBUSTNESS_1);
    }
 
    vk_foreach_struct_const (ext, pCreateInfo->pNext) {
@@ -674,7 +673,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
          const VkPhysicalDeviceFeatures2 *features = (const void *)ext;
          if (features->features.robustBufferAccess)
-            robust_buffer_access = true;
+            buffer_robustness = MAX2(buffer_robustness, RADV_BUFFER_ROBUSTNESS_1);
          break;
       }
       case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD: {
@@ -696,7 +695,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
          const VkPhysicalDeviceRobustness2FeaturesEXT *features = (const void *)ext;
          if (features->robustBufferAccess2)
-            robust_buffer_access2 = true;
+            buffer_robustness = MAX2(buffer_robustness, RADV_BUFFER_ROBUSTNESS_2);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
@@ -812,8 +811,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
                                 device->vk.enabled_extensions.KHR_acceleration_structure ||
                                 device->vk.enabled_extensions.VALVE_descriptor_set_host_mapping;
 
-   device->robust_buffer_access = robust_buffer_access || robust_buffer_access2;
-   device->robust_buffer_access2 = robust_buffer_access2;
+   device->buffer_robustness = buffer_robustness;
 
    device->attachment_vrs_enabled = attachment_vrs_enabled;
 
