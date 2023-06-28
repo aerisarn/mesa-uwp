@@ -339,13 +339,11 @@ crocus_fix_edge_flags(nir_shader *nir)
    nir->info.inputs_read &= ~VERT_BIT_EDGEFLAG;
    nir_fixup_deref_modes(nir);
 
-   nir_foreach_function(f, nir) {
-      if (f->impl) {
-         nir_metadata_preserve(f->impl, nir_metadata_block_index |
-                               nir_metadata_dominance |
-                               nir_metadata_live_ssa_defs |
-                               nir_metadata_loop_analysis);
-      }
+   nir_foreach_function_impl(impl, nir) {
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                            nir_metadata_dominance |
+                            nir_metadata_live_ssa_defs |
+                            nir_metadata_loop_analysis);
    }
 
    return true;
