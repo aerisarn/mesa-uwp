@@ -503,7 +503,6 @@ static uint64_t pvr_spm_setup_pbe_eight_dword_write(
    uint32_t pbe_state_word_1_out[static const ROGUE_NUM_PBESTATE_STATE_WORDS],
    uint64_t pbe_reg_word_0_out[static const ROGUE_NUM_PBESTATE_REG_WORDS],
    uint64_t pbe_reg_word_1_out[static const ROGUE_NUM_PBESTATE_REG_WORDS],
-   struct usc_mrt_resource mrt_resources[static const 2],
    uint32_t *render_target_used_out)
 {
    const uint32_t max_pbe_write_size_dw = 4;
@@ -529,19 +528,6 @@ static uint64_t pvr_spm_setup_pbe_eight_dword_write(
 
    PVR_DEV_ADDR_ADVANCE(scratch_buffer_addr, mem_stored);
 
-   mrt_resources[render_target_used] = (struct usc_mrt_resource){
-      .mrt_desc = {
-         .intermediate_size = PVR_DW_TO_BYTES(max_pbe_write_size_dw),
-      },
-      .type = source_type,
-      .intermediate_size = PVR_DW_TO_BYTES(max_pbe_write_size_dw),
-   };
-
-   if (source_type == USC_MRT_RESOURCE_TYPE_MEMORY)
-      mrt_resources[render_target_used].mem.tile_buffer = tile_buffer_idx;
-
-   pvr_set_pbe_all_valid_mask(&mrt_resources[render_target_used].mrt_desc);
-
    render_target_used++;
 
    mem_stored += pvr_spm_setup_pbe_state(dev_info,
@@ -554,24 +540,6 @@ static uint64_t pvr_spm_setup_pbe_eight_dword_write(
                                          pbe_reg_word_1_out);
 
    PVR_DEV_ADDR_ADVANCE(scratch_buffer_addr, mem_stored);
-
-   mrt_resources[render_target_used] = (struct usc_mrt_resource){
-      .mrt_desc = {
-         .intermediate_size = PVR_DW_TO_BYTES(max_pbe_write_size_dw),
-      },
-      .type = source_type,
-      .intermediate_size = PVR_DW_TO_BYTES(max_pbe_write_size_dw),
-   };
-
-   if (source_type == USC_MRT_RESOURCE_TYPE_OUTPUT_REG) {
-      /* Start from o4. */
-      mrt_resources[render_target_used].reg.output_reg = max_pbe_write_size_dw;
-   } else {
-      mrt_resources[render_target_used].mem.tile_buffer = tile_buffer_idx;
-      mrt_resources[render_target_used].mem.offset_dw = max_pbe_write_size_dw;
-   }
-
-   pvr_set_pbe_all_valid_mask(&mrt_resources[render_target_used].mrt_desc);
 
    render_target_used++;
    *render_target_used_out = render_target_used;
@@ -651,18 +619,10 @@ pvr_spm_init_eot_state(struct pvr_device *device,
       .width = framebuffer->width,
       .height = framebuffer->height,
    };
+   uint32_t total_render_target_used = 0;
+
    pvr_dev_addr_t next_scratch_buffer_addr =
       framebuffer->scratch_buffer->bo->vma->dev_addr;
-
-   /* TODO: These are only setup but not used for now. They will be used by the
-    * compiler once it's hooked up to generate the eot shader.
-    */
-   struct usc_mrt_resource mrt_resources[PVR_MAX_COLOR_ATTACHMENTS];
-   struct usc_mrt_setup mrt_setup = {
-      .num_output_regs = hw_render->output_regs_count,
-      .tile_buffer_size = pvr_get_tile_buffer_size(device),
-      .mrt_resources = mrt_resources,
-   };
 
    /* FIXME: Remove this hard coding. */
    uint32_t empty_eot_program[8] = { 0 };
@@ -685,21 +645,23 @@ pvr_spm_init_eot_state(struct pvr_device *device,
          USC_MRT_RESOURCE_TYPE_OUTPUT_REG,
          0,
          next_scratch_buffer_addr,
-         spm_eot_state->pbe_cs_words[mrt_setup.num_render_targets],
-         spm_eot_state->pbe_cs_words[mrt_setup.num_render_targets + 1],
-         spm_eot_state->pbe_reg_words[mrt_setup.num_render_targets],
-         spm_eot_state->pbe_reg_words[mrt_setup.num_render_targets + 1],
-         &mrt_resources[mrt_setup.num_render_targets],
+         spm_eot_state->pbe_cs_words[total_render_target_used],
+         spm_eot_state->pbe_cs_words[total_render_target_used + 1],
+         spm_eot_state->pbe_reg_words[total_render_target_used],
+         spm_eot_state->pbe_reg_words[total_render_target_used + 1],
          &render_targets_used);
 
       PVR_DEV_ADDR_ADVANCE(next_scratch_buffer_addr, mem_stored);
-      mrt_setup.num_render_targets += render_targets_used;
+      total_render_target_used += render_targets_used;
 
       /* Store off-chip tile data (i.e. tile buffers). */
 
       for (uint32_t i = 0; i < hw_render->tile_buffers_count; i++) {
+         assert(!"Add support for tile buffers in EOT");
+         pvr_finishme("Add support for tile buffers in EOT");
+
          /* `+ 1` since we have 2 emits per tile buffer. */
-         assert(mrt_setup.num_render_targets + 1 < PVR_MAX_COLOR_ATTACHMENTS);
+         assert(total_render_target_used + 1 < PVR_MAX_COLOR_ATTACHMENTS);
 
          mem_stored = pvr_spm_setup_pbe_eight_dword_write(
             dev_info,
@@ -708,15 +670,14 @@ pvr_spm_init_eot_state(struct pvr_device *device,
             USC_MRT_RESOURCE_TYPE_MEMORY,
             i,
             next_scratch_buffer_addr,
-            spm_eot_state->pbe_cs_words[mrt_setup.num_render_targets],
-            spm_eot_state->pbe_cs_words[mrt_setup.num_render_targets + 1],
-            spm_eot_state->pbe_reg_words[mrt_setup.num_render_targets],
-            spm_eot_state->pbe_reg_words[mrt_setup.num_render_targets + 1],
-            &mrt_resources[mrt_setup.num_render_targets],
+            spm_eot_state->pbe_cs_words[total_render_target_used],
+            spm_eot_state->pbe_cs_words[total_render_target_used + 1],
+            spm_eot_state->pbe_reg_words[total_render_target_used],
+            spm_eot_state->pbe_reg_words[total_render_target_used + 1],
             &render_targets_used);
 
          PVR_DEV_ADDR_ADVANCE(next_scratch_buffer_addr, mem_stored);
-         mrt_setup.num_render_targets += render_targets_used;
+         total_render_target_used += render_targets_used;
       }
    } else {
       /* Store on-chip tile data (i.e. output regs). */
@@ -728,28 +689,20 @@ pvr_spm_init_eot_state(struct pvr_device *device,
          PVR_PBE_STARTPOS_BIT0,
          hw_render->sample_count,
          next_scratch_buffer_addr,
-         spm_eot_state->pbe_cs_words[mrt_setup.num_render_targets],
-         spm_eot_state->pbe_reg_words[mrt_setup.num_render_targets]);
+         spm_eot_state->pbe_cs_words[total_render_target_used],
+         spm_eot_state->pbe_reg_words[total_render_target_used]);
 
       PVR_DEV_ADDR_ADVANCE(next_scratch_buffer_addr, mem_stored);
 
-      mrt_resources[mrt_setup.num_render_targets] = (struct usc_mrt_resource){
-         .mrt_desc = {
-            .intermediate_size = hw_render->output_regs_count * sizeof(uint32_t),
-         },
-         .type = USC_MRT_RESOURCE_TYPE_OUTPUT_REG,
-         .intermediate_size = hw_render->output_regs_count * sizeof(uint32_t),
-      };
-
-      pvr_set_pbe_all_valid_mask(
-         &mrt_resources[mrt_setup.num_render_targets].mrt_desc);
-
-      mrt_setup.num_render_targets++;
+      total_render_target_used++;
 
       /* Store off-chip tile data (i.e. tile buffers). */
 
       for (uint32_t i = 0; i < hw_render->tile_buffers_count; i++) {
-         assert(mrt_setup.num_render_targets < PVR_MAX_COLOR_ATTACHMENTS);
+         assert(!"Add support for tile buffers in EOT");
+         pvr_finishme("Add support for tile buffers in EOT");
+
+         assert(total_render_target_used < PVR_MAX_COLOR_ATTACHMENTS);
 
          mem_stored = pvr_spm_setup_pbe_state(
             dev_info,
@@ -758,25 +711,12 @@ pvr_spm_init_eot_state(struct pvr_device *device,
             PVR_PBE_STARTPOS_BIT0,
             hw_render->sample_count,
             next_scratch_buffer_addr,
-            spm_eot_state->pbe_cs_words[mrt_setup.num_render_targets],
-            spm_eot_state->pbe_reg_words[mrt_setup.num_render_targets]);
+            spm_eot_state->pbe_cs_words[total_render_target_used],
+            spm_eot_state->pbe_reg_words[total_render_target_used]);
 
          PVR_DEV_ADDR_ADVANCE(next_scratch_buffer_addr, mem_stored);
 
-         mrt_resources[mrt_setup.num_render_targets] = (struct usc_mrt_resource){
-            .mrt_desc = {
-               .intermediate_size =
-                  hw_render->output_regs_count * sizeof(uint32_t),
-            },
-            .type = USC_MRT_RESOURCE_TYPE_MEMORY,
-            .intermediate_size = hw_render->output_regs_count * sizeof(uint32_t),
-            .mem = { .tile_buffer = i, },
-         };
-
-         pvr_set_pbe_all_valid_mask(
-            &mrt_resources[mrt_setup.num_render_targets].mrt_desc);
-
-         mrt_setup.num_render_targets++;
+         total_render_target_used++;
       }
    }
 
@@ -808,7 +748,7 @@ pvr_spm_init_eot_state(struct pvr_device *device,
    spm_eot_state->pixel_event_program_data_upload = pds_eot_program.pvr_bo;
    spm_eot_state->pixel_event_program_data_offset = pds_eot_program.data_offset;
 
-   *emit_count_out = mrt_setup.num_render_targets;
+   *emit_count_out = total_render_target_used;
 
    return VK_SUCCESS;
 }
