@@ -2199,7 +2199,7 @@ agx_batch_init_state(struct agx_batch *batch)
    struct agx_ppp_update ppp =
       agx_new_ppp_update(&batch->pool, (struct AGX_PPP_HEADER){
                                           .w_clamp = true,
-                                          .varying_word_1 = true,
+                                          .varying_counts_16 = true,
                                           .cull_2 = true,
                                           .occlusion_query_2 = true,
                                           .output_unknown = true,
@@ -2208,7 +2208,7 @@ agx_batch_init_state(struct agx_batch *batch)
 
    /* clang-format off */
    agx_ppp_push(&ppp, W_CLAMP, cfg) cfg.w_clamp = 1e-10;
-   agx_ppp_push(&ppp, VARYING_1, cfg);
+   agx_ppp_push(&ppp, VARYING_COUNTS, cfg);
    agx_ppp_push(&ppp, CULL_2, cfg);
    agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
    agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
@@ -2402,7 +2402,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       .fragment_back_face_2 = object_type_dirty || IS_DIRTY(FS_PROG),
       .fragment_back_stencil = IS_DIRTY(ZS),
       .output_select = IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG),
-      .varying_word_0 = IS_DIRTY(VS_PROG),
+      .varying_counts_32 = IS_DIRTY(VS_PROG),
       .cull = IS_DIRTY(RS),
       .fragment_shader =
          IS_DIRTY(FS) || varyings_dirty || IS_DIRTY(SAMPLE_MASK),
@@ -2493,9 +2493,9 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       }
    }
 
-   if (dirty.varying_word_0) {
-      agx_ppp_push(&ppp, VARYING_0, cfg) {
-         cfg.count = agx_num_general_outputs(&ctx->vs->info.varyings.vs);
+   if (dirty.varying_counts_32) {
+      agx_ppp_push(&ppp, VARYING_COUNTS, cfg) {
+         cfg.smooth = agx_num_general_outputs(&ctx->vs->info.varyings.vs);
       }
    }
 

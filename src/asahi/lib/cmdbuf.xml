@@ -361,8 +361,8 @@
     <field name="Viewport" size="1" start="11" type="bool"/>
     <field name="W clamp" size="1" start="16" type="bool"/>
     <field name="Output select" size="1" start="17" type="bool"/>
-    <field name="Varying word 0" size="1" start="18" type="bool"/>
-    <field name="Varying word 1" size="1" start="19" type="bool"/>
+    <field name="Varying counts 32" size="1" start="18" type="bool"/>
+    <field name="Varying counts 16" size="1" start="19" type="bool"/>
     <field name="Cull" size="1" start="21" type="bool"/>
     <field name="Cull 2" size="1" start="22" type="bool"/>
     <field name="Fragment shader" size="1" start="23" type="bool"/>
@@ -485,13 +485,10 @@
     <field name="Rasterizer discard" size="1" start="17" type="bool"/>
   </struct>
 
-  <struct name="Varying 0" size="4">
-    <!-- TODO: 16-bit is separate AFAIU -->
-    <field name="Count" size="32" start="0" type="uint"/>
-  </struct>
-
-  <struct name="Varying 1" size="4">
-    <!-- TODO -->
+  <struct name="Varying Counts" size="4">
+    <field name="Smooth" size="8" start="0" type="uint"/>
+    <field name="Flat" size="8" start="8" type="uint"/>
+    <field name="Linear" size="8" start="16" type="uint"/>
   </struct>
 
   <struct name="Varying 2" size="8">
