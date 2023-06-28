@@ -8,3 +8,4 @@ VK_KHR_fragment_shader_barycentric on RADV/GFX10.3+
 VK_KHR_ray_tracing_pipeline on RADV/GFX10.3+
 VK_EXT_depth_bias_control on RADV
 VK_EXT_fragment_shader_interlock on RADV/GFX9+
+VK_EXT_pipeline_robustness on RADV

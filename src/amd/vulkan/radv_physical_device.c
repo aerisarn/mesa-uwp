@@ -514,6 +514,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_pipeline_creation_cache_control = true,
       .EXT_pipeline_creation_feedback = true,
       .EXT_pipeline_library_group_handles = radv_enable_rt(device, true),
+      .EXT_pipeline_robustness = !device->use_llvm,
       .EXT_post_depth_coverage = device->rad_info.gfx_level >= GFX10,
       .EXT_primitive_topology_list_restart = true,
       .EXT_primitives_generated_query = true,
@@ -1021,6 +1022,9 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
       .fragmentShaderSampleInterlock = has_fragment_shader_interlock,
       .fragmentShaderPixelInterlock = has_fragment_shader_interlock,
       .fragmentShaderShadingRateInterlock = false,
+
+      /* VK_EXT_pipeline_robustness */
+      .pipelineRobustness = true,
    };
 }
 
@@ -1819,6 +1823,15 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice, VkPhysicalDev
          VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR *properties =
             (VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR *)ext;
          properties->triStripVertexOrderIndependentOfProvokingVertex = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_ROBUSTNESS_PROPERTIES_EXT: {
+         VkPhysicalDevicePipelineRobustnessPropertiesEXT *properties =
+            (VkPhysicalDevicePipelineRobustnessPropertiesEXT *)ext;
+         properties->defaultRobustnessStorageBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_EXT;
+         properties->defaultRobustnessUniformBuffers = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_EXT;
+         properties->defaultRobustnessVertexInputs = VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT;
+         properties->defaultRobustnessImages = VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_ROBUST_IMAGE_ACCESS_2_EXT;
          break;
       }
       default:
