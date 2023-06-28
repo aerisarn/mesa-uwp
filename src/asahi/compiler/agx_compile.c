@@ -2455,9 +2455,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
     * Note: when epilogs are used, special handling is required since the sample
     * count is dynamic when the main fragment shader is compiled.
     */
-   if (key->fs.nr_samples) {
-      assert(nir->info.stage == MESA_SHADER_FRAGMENT);
-
+   if (nir->info.stage == MESA_SHADER_FRAGMENT && key->fs.nr_samples) {
       if (agx_nir_lower_sample_mask(nir, key->fs.nr_samples)) {
          /* Clean up ixor(bcsel) patterns created from sample mask lowering.
           * If this succeeds, we'll have expressions to constant fold to get the
