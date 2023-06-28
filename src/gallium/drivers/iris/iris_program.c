@@ -2429,6 +2429,9 @@ iris_create_uncompiled_shader(struct iris_screen *screen,
       update_so_info(&ish->stream_output, nir->info.outputs_written);
    }
 
+   /* Use lowest dword of source shader sha1 for shader hash. */
+   ish->source_hash = *(uint32_t*)nir->info.source_sha1;
+
    if (screen->disk_cache) {
       /* Serialize the NIR to a binary blob that we can hash for the disk
        * cache.  Drop unnecessary information (like variable names)

@@ -434,6 +434,9 @@ struct iris_uncompiled_shader {
    /* A SHA1 of the serialized NIR for the disk cache. */
    unsigned char nir_sha1[20];
 
+   /* Hash value based on shader source program */
+   unsigned source_hash;
+
    unsigned program_id;
 
    /** Bitfield of (1 << IRIS_NOS_*) flags. */
