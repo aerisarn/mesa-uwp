@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include "asahi/compiler/agx_compile.h"
+#include "asahi/layout/layout.h"
 #include "asahi/lib/agx_formats.h"
 #include "asahi/lib/agx_helpers.h"
 #include "asahi/lib/agx_pack.h"
@@ -30,6 +31,7 @@
 #include "pipe/p_state.h"
 #include "util/blob.h"
 #include "util/compiler.h"
+#include "util/format/u_format.h"
 #include "util/format_srgb.h"
 #include "util/half_float.h"
 #include "util/u_inlines.h"
@@ -1096,22 +1098,63 @@ image_view_for_surface(struct pipe_surface *surf)
 }
 
 static void
-agx_batch_upload_pbe(struct agx_pbe_packed *out, struct pipe_image_view *view)
+agx_pack_image_atomic_data(void *packed, struct pipe_image_view *view)
+{
+   struct agx_resource *tex = agx_resource(view->resource);
+
+   if (tex->base.target == PIPE_BUFFER) {
+      agx_pack(packed, PBE_BUFFER_SOFTWARE, cfg) {
+         cfg.base = tex->bo->ptr.gpu + view->u.buf.offset;
+      }
+   } else if (tex->layout.writeable_image) {
+      unsigned level = view->u.tex.level;
+      unsigned blocksize_B = util_format_get_blocksize(tex->layout.format);
+
+      agx_pack(packed, ATOMIC_SOFTWARE, cfg) {
+         cfg.base =
+            tex->bo->ptr.gpu +
+            ail_get_layer_level_B(&tex->layout, view->u.tex.first_layer, level);
+
+         cfg.sample_count = MAX2(util_res_sample_count(view->resource), 1);
+
+         if (tex->layout.tiling == AIL_TILING_TWIDDLED) {
+            struct ail_tile tile_size = tex->layout.tilesize_el[level];
+            cfg.tile_width = tile_size.width_el;
+            cfg.tile_height = tile_size.height_el;
+
+            unsigned width_el = u_minify(tex->base.width0, level);
+            cfg.tiles_per_row = DIV_ROUND_UP(width_el, tile_size.width_el);
+
+            cfg.layer_stride_elements =
+               DIV_ROUND_UP(tex->layout.layer_stride_B, blocksize_B);
+         }
+      }
+   }
+}
+
+static void
+agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
+                     struct pipe_image_view *view, bool block_access)
 {
    struct agx_resource *tex = agx_resource(view->resource);
    const struct util_format_description *desc =
       util_format_description(view->format);
-   unsigned level = view->u.tex.level;
-   unsigned layer = view->u.tex.first_layer;
+   enum pipe_texture_target target = tex->base.target;
+   bool is_buffer = (target == PIPE_BUFFER);
 
-   assert(view->u.tex.last_layer == layer);
+   if (!is_buffer && view->u.tex.single_layer_view)
+      target = PIPE_TEXTURE_2D;
+
+   unsigned level = is_buffer ? 0 : view->u.tex.level;
+   unsigned layer = is_buffer ? 0 : view->u.tex.first_layer;
 
    agx_pack(out, PBE, cfg) {
-      cfg.dimension = agx_translate_tex_dim(PIPE_TEXTURE_2D,
-                                            util_res_sample_count(&tex->base));
+      cfg.dimension =
+         agx_translate_tex_dim(target, util_res_sample_count(&tex->base));
       cfg.layout = agx_translate_layout(tex->layout.tiling);
       cfg.channels = agx_pixel_format[view->format].channels;
       cfg.type = agx_pixel_format[view->format].type;
+      cfg.srgb = util_format_is_srgb(view->format);
 
       assert(desc->nr_channels >= 1 && desc->nr_channels <= 4);
       cfg.swizzle_r = agx_channel_from_pipe(desc->swizzle[0]) & 3;
@@ -1125,11 +1168,71 @@ agx_batch_upload_pbe(struct agx_pbe_packed *out, struct pipe_image_view *view)
       if (desc->nr_channels >= 4)
          cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]) & 3;
 
-      cfg.width = view->resource->width0;
-      cfg.height = view->resource->height0;
-      cfg.level = level;
       cfg.buffer = agx_map_texture_gpu(tex, layer);
       cfg.unk_mipmapped = tex->mipmapped;
+
+      if (is_buffer) {
+         unsigned size_el =
+            agx_texture_buffer_size_el(view->format, view->u.buf.size);
+
+         /* Buffers uniquely have offsets (in bytes, not texels) */
+         cfg.buffer += view->u.buf.offset;
+
+         /* Use a 2D texture to increase the maximum size */
+         cfg.width = 1024;
+         cfg.height = DIV_ROUND_UP(size_el, cfg.width);
+         cfg.level = 0;
+         cfg.stride = (cfg.width * util_format_get_blocksize(view->format)) - 4;
+         cfg.layers = 1;
+         cfg.levels = 1;
+      } else if (util_res_sample_count(&tex->base) > 1 && !block_access) {
+         /* Multisampled images are bound like buffer textures, with
+          * addressing arithmetic to determine the texel to write.
+          *
+          * Note that the end-of-tile program uses real multisample images with
+          * image_write_block instructions.
+          */
+         unsigned blocksize_B = util_format_get_blocksize(view->format);
+         unsigned size_px = tex->layout.size_B / blocksize_B;
+
+         cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
+         cfg.layout = AGX_LAYOUT_LINEAR;
+         cfg.width = 1024;
+         cfg.height = DIV_ROUND_UP(size_px, cfg.width);
+         cfg.stride = (cfg.width * blocksize_B) - 4;
+         cfg.layers = 1;
+         cfg.levels = 1;
+
+         cfg.buffer += tex->layout.level_offsets_B[level];
+         cfg.level = 0;
+      } else {
+         cfg.width = view->resource->width0;
+         cfg.height = view->resource->height0;
+         cfg.level = level;
+
+         unsigned layers = view->u.tex.last_layer - layer + 1;
+
+         if (tex->layout.tiling == AIL_TILING_LINEAR &&
+             tex->base.target == PIPE_TEXTURE_2D_ARRAY) {
+            cfg.depth_linear = layers;
+            cfg.layer_stride_linear = (tex->layout.layer_stride_B - 0x80);
+            cfg.extended = true;
+         } else {
+            assert((tex->layout.tiling != AIL_TILING_LINEAR) || (layers == 1));
+            cfg.layers = layers;
+         }
+
+         if (tex->layout.tiling == AIL_TILING_LINEAR) {
+            cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
+            cfg.levels = 1;
+         } else {
+            cfg.page_aligned_layers = tex->layout.page_aligned_layers;
+            cfg.levels = tex->base.last_level + 1;
+         }
+
+         if (tex->base.nr_samples > 1)
+            cfg.samples = agx_translate_sample_count(tex->base.nr_samples);
+      }
 
       if (ail_is_compressed(&tex->layout)) {
          cfg.compressed_1 = true;
@@ -1140,15 +1243,27 @@ agx_batch_upload_pbe(struct agx_pbe_packed *out, struct pipe_image_view *view)
             (layer * tex->layout.compression_layer_stride_B);
       }
 
-      if (tex->base.nr_samples > 1)
-         cfg.samples = agx_translate_sample_count(tex->base.nr_samples);
+      /* When the descriptor isn't extended architecturally, we can use the last
+       * 8 bytes as a sideband. We use it to provide metadata for image atomics.
+       */
+      if (!cfg.extended) {
+         bool compact =
+            (target == PIPE_BUFFER || target == PIPE_TEXTURE_1D ||
+             target == PIPE_TEXTURE_2D || target == PIPE_TEXTURE_RECT);
 
-      if (tex->layout.tiling == AIL_TILING_LINEAR) {
-         cfg.stride = ail_get_linear_stride_B(&tex->layout, level) - 4;
-         cfg.levels = 1;
-      } else {
-         cfg.page_aligned_layers = tex->layout.page_aligned_layers;
-         cfg.levels = tex->base.last_level + 1;
+         if (compact) {
+            struct agx_atomic_software_packed packed;
+            agx_pack_image_atomic_data(&packed, view);
+
+            STATIC_ASSERT(sizeof(cfg.software_defined) == 8);
+            memcpy(&cfg.software_defined, packed.opaque, 8);
+         } else {
+            struct agx_ptr desc = agx_pool_alloc_aligned(
+               &batch->pool, AGX_ATOMIC_SOFTWARE_LENGTH, 8);
+
+            agx_pack_image_atomic_data(desc.cpu, view);
+            cfg.software_defined = desc.gpu;
+         }
       }
    };
 }
@@ -1973,7 +2088,7 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
       struct pipe_sampler_view sampler_view = util_image_to_sampler_view(view);
       agx_pack_texture(texture, agx_resource(view->resource), view->format,
                        &sampler_view, true);
-      agx_batch_upload_pbe(pbe, view);
+      agx_batch_upload_pbe(batch, pbe, view, false);
    }
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
@@ -2181,7 +2296,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          /* The tilebuffer is already in sRGB space if needed. Do not convert */
          view.format = util_format_linear(view.format);
 
-         agx_batch_upload_pbe(pbe.cpu, &view);
+         agx_batch_upload_pbe(batch, pbe.cpu, &view, true);
 
          agx_usc_pack(&b, TEXTURE, cfg) {
             cfg.start = rt;
