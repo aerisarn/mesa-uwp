@@ -1167,8 +1167,12 @@ d3d12_video_encoder_update_current_frame_pic_params_info_av1(struct d3d12_video_
       picParams.pAV1PicData->Flags |= D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_FLAG_ENABLE_WARPED_MOTION;
    }
 
-   if (pAV1Pic->reduced_tx_set)
+   // Only enable if supported (there is no PIPE/VA cap flag for reduced_tx_set)
+   if ((pAV1Pic->reduced_tx_set) &&
+       (pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_AV1CodecCaps.SupportedFeatureFlags &
+        D3D12_VIDEO_ENCODER_AV1_FEATURE_FLAG_REDUCED_TX_SET) != 0) {
       picParams.pAV1PicData->Flags |= D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_FLAG_REDUCED_TX_SET;
+   }
 
    // Override if required feature
    if ((pD3D12Enc->m_currentEncodeCapabilities.m_encoderCodecSpecificConfigCaps.m_AV1CodecCaps.RequiredFeatureFlags &
