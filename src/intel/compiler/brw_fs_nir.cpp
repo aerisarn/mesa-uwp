@@ -5420,7 +5420,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          const fs_builder ubld = bld.exec_all().group(1, 0);
          fs_reg handle = component(ubld.vgrf(BRW_REGISTER_TYPE_UD), 0);
          ubld.AND(handle, retype(brw_vec1_grf(0, 5), BRW_REGISTER_TYPE_UD),
-                          brw_imm_ud(~0x3ffu));
+                          brw_imm_ud(INTEL_MASK(31, 10)));
          srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GFX125_NON_BINDLESS);
          srcs[SURFACE_LOGICAL_SRC_SURFACE_HANDLE] = handle;
       } else if (devinfo->ver >= 8) {
@@ -5487,7 +5487,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          const fs_builder ubld = bld.exec_all().group(1, 0);
          fs_reg handle = component(ubld.vgrf(BRW_REGISTER_TYPE_UD), 0);
          ubld.AND(handle, retype(brw_vec1_grf(0, 5), BRW_REGISTER_TYPE_UD),
-                          brw_imm_ud(~0x3ffu));
+                          brw_imm_ud(INTEL_MASK(31, 10)));
          srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GFX125_NON_BINDLESS);
          srcs[SURFACE_LOGICAL_SRC_SURFACE_HANDLE] = handle;
       } else if (devinfo->ver >= 8) {
