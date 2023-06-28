@@ -501,9 +501,9 @@ nir_lower_clip_fs(nir_shader *shader, unsigned ucp_enables,
    else
       assert(use_clipdist_array);
 
-   nir_foreach_function(function, shader) {
+   nir_foreach_function_with_impl(function, impl, shader) {
       if (!strcmp(function->name, "main"))
-         lower_clip_fs(function->impl, ucp_enables, in, use_clipdist_array);
+         lower_clip_fs(impl, ucp_enables, in, use_clipdist_array);
    }
 
    return true;

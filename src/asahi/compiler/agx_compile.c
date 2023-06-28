@@ -2421,12 +2421,9 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
       nir_print_shader(nir, stdout);
 
-   nir_foreach_function(func, nir) {
-      if (!func->impl)
-         continue;
-
+   nir_foreach_function_with_impl(func, impl, nir) {
       unsigned offset =
-         agx_compile_function_nir(nir, func->impl, key, debug, binary, out);
+         agx_compile_function_nir(nir, impl, key, debug, binary, out);
 
       if (func->is_preamble) {
          out->preamble_offset = offset;

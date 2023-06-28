@@ -102,11 +102,11 @@ nir_lower_variable_initializers(nir_shader *shader, nir_variable_mode modes)
             nir_var_function_temp |
             nir_var_system_value;
 
-   nir_foreach_function_impl(impl, shader) {
+   nir_foreach_function_with_impl(func, impl, shader) {
       bool impl_progress = false;
       nir_builder builder = nir_builder_create(impl);
 
-      if ((modes & ~nir_var_function_temp) && impl->function->is_entrypoint) {
+      if ((modes & ~nir_var_function_temp) && func->is_entrypoint) {
          impl_progress |= lower_const_initializer(&builder,
                                                   &shader->variables,
                                                   modes);
