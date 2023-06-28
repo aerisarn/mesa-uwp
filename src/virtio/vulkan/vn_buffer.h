@@ -24,13 +24,16 @@ struct vn_buffer_cache_entry {
 };
 
 struct vn_buffer_cache {
+   uint64_t max_buffer_size;
+
    /* cache memory type requirement for AHB backed VkBuffer */
    uint32_t ahb_mem_type_bits;
-
-   uint64_t max_buffer_size;
+   atomic_bool ahb_mem_type_bits_valid;
 
    /* lazily cache memory requirements for native buffer infos */
    struct util_sparse_array entries;
+
+   /* protect both entries and ahb_mem_type_bits */
    simple_mtx_t mutex;
 
    struct {

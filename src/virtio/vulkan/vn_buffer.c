@@ -49,19 +49,6 @@ vn_buffer_get_max_buffer_size(struct vn_physical_device *physical_dev)
 VkResult
 vn_buffer_cache_init(struct vn_device *dev)
 {
-   uint32_t ahb_mem_type_bits = 0;
-   VkResult result;
-
-   /* TODO lazily initialize ahb buffer cache */
-   if (dev->base.base.enabled_extensions
-          .ANDROID_external_memory_android_hardware_buffer) {
-      result =
-         vn_android_get_ahb_buffer_memory_type_bits(dev, &ahb_mem_type_bits);
-      if (result != VK_SUCCESS)
-         return result;
-   }
-
-   dev->buffer_cache.ahb_mem_type_bits = ahb_mem_type_bits;
    dev->buffer_cache.max_buffer_size =
       vn_buffer_get_max_buffer_size(dev->physical_device);
 
@@ -89,6 +76,21 @@ vn_buffer_cache_fini(struct vn_device *dev)
 
    if (VN_DEBUG(CACHE))
       vn_buffer_cache_debug_dump(&dev->buffer_cache);
+}
+
+static inline uint32_t
+vn_buffer_get_ahb_memory_type_bits(struct vn_device *dev)
+{
+   struct vn_buffer_cache *cache = &dev->buffer_cache;
+   if (unlikely(!cache->ahb_mem_type_bits_valid)) {
+      simple_mtx_lock(&cache->mutex);
+      cache->ahb_mem_type_bits =
+         vn_android_get_ahb_buffer_memory_type_bits(dev);
+      cache->ahb_mem_type_bits_valid = true;
+      simple_mtx_unlock(&cache->mutex);
+   }
+
+   return cache->ahb_mem_type_bits;
 }
 
 static inline VkDeviceSize
@@ -363,7 +365,7 @@ vn_CreateBuffer(VkDevice device,
        * and renderer external memory properties.
        */
       buf->requirements.memory.memoryRequirements.memoryTypeBits &=
-         dev->buffer_cache.ahb_mem_type_bits;
+         vn_buffer_get_ahb_memory_type_bits(dev);
 
       assert(buf->requirements.memory.memoryRequirements.memoryTypeBits);
    }
