@@ -2334,6 +2334,9 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          bool clear = (batch->clear & (PIPE_CLEAR_COLOR0 << rt));
          bool load = valid && !clear;
 
+         /* Don't read back spilled render targets, they're already in memory */
+         load &= !batch->tilebuffer_layout.spilled[rt];
+
          /* The background program used for partial renders must always load
           * whatever was stored in the mid-frame end-of-tile program.
           */
