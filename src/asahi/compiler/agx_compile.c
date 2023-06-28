@@ -2018,7 +2018,8 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
 
 /* ABI: position first, then user, then psiz */
 static void
-agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings)
+agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings,
+                      struct agx_shader_key *key)
 {
    unsigned base = 0;
 
@@ -2033,16 +2034,47 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings)
    varyings->slots[VARYING_SLOT_POS] = base;
    base += 4;
 
-   u_foreach_bit64(loc, nir->info.outputs_written) {
+   assert(!(key->vs.outputs_flat_shaded & key->vs.outputs_linear_shaded));
+
+   /* Smooth 32-bit user bindings go next */
+   u_foreach_bit64(loc, nir->info.outputs_written &
+                           ~key->vs.outputs_flat_shaded &
+                           ~key->vs.outputs_linear_shaded) {
       if (loc == VARYING_SLOT_POS || loc == VARYING_SLOT_PSIZ)
          continue;
 
       varyings->slots[loc] = base;
       base += 4;
+      varyings->num_32_smooth += 4;
+   }
+
+   /* Flat 32-bit user bindings go next */
+   u_foreach_bit64(loc,
+                   nir->info.outputs_written & key->vs.outputs_flat_shaded) {
+      if (loc == VARYING_SLOT_POS || loc == VARYING_SLOT_PSIZ)
+         continue;
+
+      varyings->slots[loc] = base;
+      base += 4;
+      varyings->num_32_flat += 4;
+   }
+
+   /* Linear 32-bit user bindings go next */
+   u_foreach_bit64(loc,
+                   nir->info.outputs_written & key->vs.outputs_linear_shaded) {
+      if (loc == VARYING_SLOT_POS || loc == VARYING_SLOT_PSIZ)
+         continue;
+
+      varyings->slots[loc] = base;
+      base += 4;
+      varyings->num_32_linear += 4;
    }
 
    /* TODO: Link FP16 varyings */
    varyings->base_index_fp16 = base;
+   varyings->num_16_smooth = 0;
+   varyings->num_16_flat = 0;
+   varyings->num_16_linear = 0;
 
    if (nir->info.outputs_written & VARYING_BIT_PSIZ) {
       varyings->slots[VARYING_SLOT_PSIZ] = base;
@@ -2471,7 +2503,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 
    /* Must be last since NIR passes can remap driver_location freely */
    if (nir->info.stage == MESA_SHADER_VERTEX)
-      agx_remap_varyings_vs(nir, &out->varyings.vs);
+      agx_remap_varyings_vs(nir, &out->varyings.vs, key);
 
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
       nir_print_shader(nir, stdout);

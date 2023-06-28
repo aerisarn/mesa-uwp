@@ -10,6 +10,17 @@
 #include "util/u_dynarray.h"
 
 struct agx_varyings_vs {
+   /* The number of user varyings of each type. The varyings must be allocated
+    * in this order ({smooth, flat, linear} × {32, 16}), which may require
+    * remapping.
+    */
+   unsigned num_32_smooth;
+   unsigned num_32_flat;
+   unsigned num_32_linear;
+   unsigned num_16_smooth;
+   unsigned num_16_flat;
+   unsigned num_16_linear;
+
    /* The first index used for FP16 varyings. Indices less than this are treated
     * as FP32. This may require remapping slots to guarantee.
     */
