@@ -92,19 +92,17 @@ d3d12_lower_yflip(nir_shader *nir)
        nir->info.stage != MESA_SHADER_GEOMETRY)
       return;
 
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         nir_builder b = nir_builder_create(function->impl);
+   nir_foreach_function_impl(impl, nir) {
+      nir_builder b = nir_builder_create(impl);
 
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               lower_pos_write(&b, instr, &flip);
-            }
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            lower_pos_write(&b, instr, &flip);
          }
-
-         nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
       }
+
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                                  nir_metadata_dominance);
    }
 }
 
@@ -149,19 +147,17 @@ d3d12_lower_depth_range(nir_shader *nir)
 {
    assert(nir->info.stage == MESA_SHADER_FRAGMENT);
    nir_variable *depth_transform = NULL;
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         nir_builder b = nir_builder_create(function->impl);
+   nir_foreach_function_impl(impl, nir) {
+      nir_builder b = nir_builder_create(impl);
 
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               lower_pos_read(&b, instr, &depth_transform);
-            }
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            lower_pos_read(&b, instr, &depth_transform);
          }
-
-         nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
       }
+
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                                  nir_metadata_dominance);
    }
 }
 
@@ -245,19 +241,17 @@ d3d12_lower_uint_cast(nir_shader *nir, bool is_signed)
    if (nir->info.stage != MESA_SHADER_FRAGMENT)
       return;
 
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         nir_builder b = nir_builder_create(function->impl);
+   nir_foreach_function_impl(impl, nir) {
+      nir_builder b = nir_builder_create(impl);
 
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               lower_uint_color_write(&b, instr, is_signed);
-            }
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            lower_uint_color_write(&b, instr, is_signed);
          }
-
-         nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
       }
+
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                                  nir_metadata_dominance);
    }
 }
 
@@ -414,24 +408,22 @@ d3d12_nir_invert_depth(nir_shader *shader, unsigned viewport_mask, bool clip_hal
       return;
 
    struct invert_depth_state state = { viewport_mask, clip_halfz };
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_builder b = nir_builder_create(function->impl);
+   nir_foreach_function_impl(impl, shader) {
+      nir_builder b = nir_builder_create(impl);
 
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               invert_depth_instr(&b, instr, &state);
-            }
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            invert_depth_instr(&b, instr, &state);
          }
-
-         if (state.store_pos_instr) {
-            b.cursor = nir_after_block(function->impl->end_block);
-            invert_depth_impl(&b, &state);
-         }
-
-         nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
       }
+
+      if (state.store_pos_instr) {
+         b.cursor = nir_after_block(impl->end_block);
+         invert_depth_impl(&b, &state);
+      }
+
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                                  nir_metadata_dominance);
    }
 }
 
@@ -535,22 +527,20 @@ d3d12_lower_state_vars(nir_shader *nir, struct d3d12_shader *shader)
       }
    }
 
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         nir_builder builder = nir_builder_create(function->impl);
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               if (instr->type == nir_instr_type_intrinsic)
-                  progress |= lower_instr(nir_instr_as_intrinsic(instr),
-                                          &builder,
-                                          shader,
-                                          binding);
-            }
+   nir_foreach_function_impl(impl, nir) {
+      nir_builder builder = nir_builder_create(impl);
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type == nir_instr_type_intrinsic)
+               progress |= lower_instr(nir_instr_as_intrinsic(instr),
+                                       &builder,
+                                       shader,
+                                       binding);
          }
-
-         nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
       }
+
+      nir_metadata_preserve(impl, nir_metadata_block_index |
+                                  nir_metadata_dominance);
    }
 
    if (progress) {
@@ -1008,13 +998,10 @@ d3d12_write_0_to_new_varying(nir_shader *s, nir_variable *var)
    if (s->info.stage == MESA_SHADER_TESS_CTRL && !var->data.patch)
       return;
 
-   nir_foreach_function(func, s) {
-      if (!func->impl)
-         continue;
+   nir_foreach_function_impl(impl, s) {
+      nir_builder b = nir_builder_create(impl);
 
-      nir_builder b = nir_builder_create(func->impl);
-
-      nir_foreach_block(block, func->impl) {
+      nir_foreach_block(block, impl) {
          b.cursor = nir_before_block(block);
          if (s->info.stage != MESA_SHADER_GEOMETRY) {
             write_0(&b, nir_build_deref_var(&b, var));
@@ -1033,6 +1020,6 @@ d3d12_write_0_to_new_varying(nir_shader *s, nir_variable *var)
          }
       }
 
-      nir_metadata_preserve(func->impl, nir_metadata_block_index | nir_metadata_dominance);
+      nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
    }
 }
