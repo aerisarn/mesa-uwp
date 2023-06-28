@@ -4005,6 +4005,9 @@ typedef struct nir_shader {
 #define nir_foreach_function(func, shader) \
    foreach_list_typed(nir_function, func, node, &(shader)->functions)
 
+#define nir_foreach_function_safe(func, shader) \
+   foreach_list_typed_safe(nir_function, func, node, &(shader)->functions)
+
 static inline nir_function *
 nir_foreach_function_with_impl_first(const nir_shader *shader)
 {

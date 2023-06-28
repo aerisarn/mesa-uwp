@@ -3735,7 +3735,7 @@ void nir_remove_sysval_output(nir_intrinsic_instr *intr)
 
 void nir_remove_non_entrypoints(nir_shader *nir)
 {
-   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
+   nir_foreach_function_safe(func, nir) {
       if (!func->is_entrypoint)
          exec_node_remove(&func->node);
    }
