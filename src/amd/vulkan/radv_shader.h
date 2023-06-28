@@ -28,6 +28,7 @@
 #ifndef RADV_SHADER_H
 #define RADV_SHADER_H
 
+#include "util/mesa-blake3.h"
 #include "util/u_math.h"
 #include "vulkan/runtime/vk_pipeline_cache.h"
 #include "vulkan/vulkan.h"
@@ -566,7 +567,7 @@ struct radv_shader {
    uint32_t exec_size;
    struct radv_shader_info info;
 
-   uint8_t sha1[SHA1_DIGEST_LENGTH];
+   blake3_hash hash;
    void *code;
 
    /* debug only */

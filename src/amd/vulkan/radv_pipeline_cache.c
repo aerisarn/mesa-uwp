@@ -23,6 +23,7 @@
 
 #include "util/disk_cache.h"
 #include "util/macros.h"
+#include "util/mesa-blake3.h"
 #include "util/mesa-sha1.h"
 #include "util/u_atomic.h"
 #include "util/u_debug.h"
@@ -153,14 +154,14 @@ radv_shader_deserialize(struct vk_pipeline_cache *cache, const void *key_data, s
 {
    struct radv_device *device = container_of(cache->base.device, struct radv_device, vk);
    const struct radv_shader_binary *binary = blob_read_bytes(blob, sizeof(struct radv_shader_binary));
-   assert(key_size == SHA1_DIGEST_LENGTH);
 
    struct radv_shader *shader;
    radv_shader_create_uncached(device, binary, false, NULL, &shader);
    if (!shader)
       return NULL;
 
-   memcpy(shader->sha1, key_data, key_size);
+   assert(key_size == sizeof(shader->hash));
+   memcpy(shader->hash, key_data, key_size);
    blob_skip_bytes(blob, binary->total_size - sizeof(struct radv_shader_binary));
 
    return &shader->base;
@@ -209,11 +210,11 @@ radv_shader_create(struct radv_device *device, struct vk_pipeline_cache *cache, 
    if (!cache)
       cache = device->mem_cache;
 
-   uint8_t hash[SHA1_DIGEST_LENGTH];
-   _mesa_sha1_compute(binary, binary->total_size, hash);
+   blake3_hash hash;
+   _mesa_blake3_compute(binary, binary->total_size, hash);
 
    struct vk_pipeline_cache_object *shader_obj;
-   shader_obj = vk_pipeline_cache_create_and_insert_object(cache, hash, SHA1_DIGEST_LENGTH, binary, binary->total_size,
+   shader_obj = vk_pipeline_cache_create_and_insert_object(cache, hash, sizeof(hash), binary, binary->total_size,
                                                            &radv_shader_ops);
 
    return shader_obj ? container_of(shader_obj, struct radv_shader, base) : NULL;
@@ -299,9 +300,9 @@ radv_pipeline_cache_object_deserialize(struct vk_pipeline_cache *cache, const vo
    object->base.data_size = total_size;
 
    for (unsigned i = 0; i < num_shaders; i++) {
-      const unsigned char *hash = blob_read_bytes(blob, SHA1_DIGEST_LENGTH);
+      const uint8_t *hash = blob_read_bytes(blob, sizeof(blake3_hash));
       struct vk_pipeline_cache_object *shader =
-         vk_pipeline_cache_lookup_object(cache, hash, SHA1_DIGEST_LENGTH, &radv_shader_ops, NULL);
+         vk_pipeline_cache_lookup_object(cache, hash, sizeof(blake3_hash), &radv_shader_ops, NULL);
 
       if (!shader) {
          /* If some shader could not be created from cache, better return NULL here than having
@@ -341,7 +342,7 @@ radv_pipeline_cache_object_serialize(struct vk_pipeline_cache_object *object, st
    blob_write_uint32(blob, pipeline_obj->ps_epilog_binary_size);
 
    for (unsigned i = 0; i < pipeline_obj->num_shaders; i++)
-      blob_write_bytes(blob, pipeline_obj->shaders[i]->sha1, SHA1_DIGEST_LENGTH);
+      blob_write_bytes(blob, pipeline_obj->shaders[i]->hash, sizeof(pipeline_obj->shaders[i]->hash));
 
    const size_t data_size = pipeline_obj->ps_epilog_binary_size + (pipeline_obj->num_stack_sizes * sizeof(uint32_t));
    blob_write_bytes(blob, pipeline_obj->data, data_size);

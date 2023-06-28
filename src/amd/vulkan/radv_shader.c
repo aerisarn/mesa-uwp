@@ -2038,7 +2038,7 @@ radv_shader_create_uncached(struct radv_device *device, const struct radv_shader
    }
    simple_mtx_init(&shader->replay_mtx, mtx_plain);
 
-   vk_pipeline_cache_object_init(&device->vk, &shader->base, &radv_shader_ops, shader->sha1, SHA1_DIGEST_LENGTH);
+   vk_pipeline_cache_object_init(&device->vk, &shader->base, &radv_shader_ops, shader->hash, sizeof(shader->hash));
 
    shader->info = binary->info;
 
