@@ -212,8 +212,6 @@ radv_shader_create(struct radv_device *device, struct vk_pipeline_cache *cache, 
    uint8_t hash[SHA1_DIGEST_LENGTH];
    _mesa_sha1_compute(binary, binary->total_size, hash);
 
-   /* TODO: Skip disk-cache for meta-shaders because they are stored in a different cache file */
-
    struct vk_pipeline_cache_object *shader_obj;
    shader_obj = vk_pipeline_cache_create_and_insert_object(cache, hash, SHA1_DIGEST_LENGTH, binary, binary->total_size,
                                                            &radv_shader_ops);
