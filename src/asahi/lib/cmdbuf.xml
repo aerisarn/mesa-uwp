@@ -196,6 +196,36 @@
     <value name="4" value="1"/>
   </enum>
 
+  <!-- Beginning of software-defined metadata used to implement image atomics
+     and multisampled image writes. For atomics, information could be
+     recovered from the PBE descriptor, but it is convenient to compute on the
+     CPU where we have ail.
+
+     This descriptor (or a pointer to it, if the extended form is used) is stashed
+     in the last 8 bytes of a PBE descriptor. Ordinarily used for
+     acceleration buffers or linear layer stride. We forbid atomics and
+     multisampled writes to compressed images and linear 2D arrays, leaving this
+     area free.
+   -->
+
+  <struct name="Atomic (software)" size="16">
+    <field name="Base" size="33" start="0" type="address" modifier="shr(7)"/>
+    <field name="Tile width" size="3" start="33" type="uint" modifier="log2" default="1"/>
+    <field name="Tile height" size="3" start="36" type="uint" modifier="log2" default="1"/>
+    <field name="Tiles per row" size="15" start="39" type="uint"/>
+    <field name="Sample count" size="2" start="54" type="uint" modifier="log2" default="1"/>
+
+    <!-- Extended fields begin here -->
+    <field name="Layer stride (elements)" size="32" start="64" type="uint"/>
+  </struct>
+
+  <struct name="PBE Buffer (software)" size="8">
+     <!-- Not necessarily aligned -->
+     <field name="Base" size="40" start="0" type="address"/>
+  </struct>
+
+  <!-- End of software defined data structures -->
+
   <struct name="PBE" size="24">
     <field name="Dimension" size="4" start="0" type="Texture dimension" default="2D"/>
     <field name="Layout" size="2" start="4" type="Layout"/>
@@ -240,6 +270,9 @@
     <!-- If layout is linear, stride has the minus 1 encoded -->
     <field name="Depth (linear)" size="11" start="128" type="uint" modifier="minus(1)" default="1"/>
     <field name="Layer stride (linear)" size="27" start="139" type="uint" modifier="shr(7)"/>
+
+    <!-- If neither, for software use -->
+    <field name="Software-defined" size="64" start="128" type="hex"/>
   </struct>
 
   <struct name="Texture" size="24">
