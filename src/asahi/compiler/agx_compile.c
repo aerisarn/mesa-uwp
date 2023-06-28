@@ -2663,6 +2663,9 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       out->tag_write_disable = !nir->info.writes_memory;
 
+   /* Late tilebuffer lowering creates multisampled image stores */
+   NIR_PASS_V(nir, agx_nir_lower_multisampled_image_store);
+
    /* Late sysval lowering creates large loads. Load lowering creates unpacks */
    nir_lower_mem_access_bit_sizes_options lower_mem_access_options = {
       .modes = nir_var_mem_ssbo | nir_var_mem_constant |

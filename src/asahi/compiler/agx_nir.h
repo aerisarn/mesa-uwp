@@ -13,5 +13,6 @@ bool agx_nir_opt_ixor_bcsel(struct nir_shader *shader);
 bool agx_nir_lower_algebraic_late(struct nir_shader *shader);
 bool agx_nir_fuse_algebraic_late(struct nir_shader *shader);
 bool agx_nir_fence_images(struct nir_shader *shader);
+bool agx_nir_lower_multisampled_image_store(struct nir_shader *s);
 
 #endif

@@ -627,11 +627,13 @@ calculate_twiddled_coordinates(nir_builder *b, nir_ssa_def *coord,
 }
 
 static nir_ssa_def *
-image_texel_address(nir_builder *b, nir_intrinsic_instr *intr)
+image_texel_address(nir_builder *b, nir_intrinsic_instr *intr,
+                    bool return_index)
 {
    /* First, calculate the address of the PBE descriptor */
    nir_ssa_def *desc_address;
-   if (intr->intrinsic == nir_intrinsic_bindless_image_texel_address)
+   if (intr->intrinsic == nir_intrinsic_bindless_image_texel_address ||
+       intr->intrinsic == nir_intrinsic_bindless_image_store)
       desc_address = texture_descriptor_ptr_for_handle(b, intr->src[0].ssa);
    else
       desc_address = texture_descriptor_ptr_for_index(b, intr->src[0].ssa);
@@ -685,13 +687,29 @@ image_texel_address(nir_builder *b, nir_intrinsic_instr *intr)
          b, coord, tile_w_px_log2, tile_h_px_log2, width_tl, layer_stride_el);
    }
 
+   nir_ssa_def *total_sa;
+
+   if (dim == GLSL_SAMPLER_DIM_MS) {
+      nir_ssa_def *sample_idx = intr->src[2].ssa;
+      nir_ssa_def *samples_log2 =
+         nir_ubitfield_extract_imm(b, meta_hi, 54 - 32, 2);
+
+      total_sa = nir_iadd(b, nir_ishl(b, total_px, samples_log2), sample_idx);
+   } else {
+      total_sa = total_px /* * 1 sa/px */;
+   }
+
+   /* Early return if we just want a linearized texel index */
+   if (return_index)
+      return total_sa;
+
    /* Calculate the full texel address. This sequence is written carefully to
     * ensure it will be entirely folded into the atomic's addressing arithmetic.
     */
    enum pipe_format format = nir_intrinsic_format(intr);
-   unsigned bytes_per_pixel_B = util_format_get_blocksize(format);
+   unsigned bytes_per_sample_B = util_format_get_blocksize(format);
 
-   nir_ssa_def *total_B = nir_imul_imm(b, total_px, bytes_per_pixel_B);
+   nir_ssa_def *total_B = nir_imul_imm(b, total_sa, bytes_per_sample_B);
    return nir_iadd(b, base, nir_u2u64(b, total_B));
 }
 
@@ -739,7 +757,8 @@ lower_images(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    case nir_intrinsic_image_texel_address:
    case nir_intrinsic_bindless_image_texel_address:
-      nir_ssa_def_rewrite_uses(&intr->dest.ssa, image_texel_address(b, intr));
+      nir_ssa_def_rewrite_uses(&intr->dest.ssa,
+                               image_texel_address(b, intr, false));
       return true;
 
    default:
@@ -805,4 +824,36 @@ agx_nir_lower_texture(nir_shader *s, bool support_lod_bias)
             nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    return progress;
+}
+
+static bool
+lower_multisampled_store(nir_builder *b, nir_instr *instr, UNUSED void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   b->cursor = nir_before_instr(instr);
+
+   if (intr->intrinsic != nir_intrinsic_image_store &&
+       intr->intrinsic != nir_intrinsic_bindless_image_store)
+      return false;
+
+   if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_MS)
+      return false;
+
+   nir_ssa_def *index_px = image_texel_address(b, intr, true);
+   nir_ssa_def *coord2d = coords_for_buffer_texture(b, index_px);
+
+   nir_src_rewrite_ssa(&intr->src[1], nir_pad_vector(b, coord2d, 4));
+   nir_intrinsic_set_image_dim(intr, GLSL_SAMPLER_DIM_2D);
+   return true;
+}
+
+bool
+agx_nir_lower_multisampled_image_store(nir_shader *s)
+{
+   return nir_shader_instructions_pass(
+      s, lower_multisampled_store,
+      nir_metadata_block_index | nir_metadata_dominance, NULL);
 }
