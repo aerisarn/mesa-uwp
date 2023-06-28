@@ -716,31 +716,29 @@ v3d_nir_lower_io(nir_shader *s, struct v3d_compile *c)
                 unreachable("Unsupported shader stage");
         }
 
-        nir_foreach_function(function, s) {
-                if (function->impl) {
-                        nir_builder b = nir_builder_create(function->impl);
+        nir_foreach_function_impl(impl, s) {
+                nir_builder b = nir_builder_create(impl);
 
-                        if (c->s->info.stage == MESA_SHADER_GEOMETRY)
-                                emit_gs_prolog(c, &b, function->impl, &state);
+                if (c->s->info.stage == MESA_SHADER_GEOMETRY)
+                        emit_gs_prolog(c, &b, impl, &state);
 
-                        nir_foreach_block(block, function->impl) {
-                                nir_foreach_instr_safe(instr, block)
-                                        v3d_nir_lower_io_instr(c, &b, instr,
-                                                               &state);
-                        }
-
-                        nir_block *last = nir_impl_last_block(function->impl);
-                        b.cursor = nir_after_block(last);
-                        if (s->info.stage == MESA_SHADER_VERTEX) {
-                                v3d_nir_emit_ff_vpm_outputs(c, &b, &state);
-                        } else if (s->info.stage == MESA_SHADER_GEOMETRY) {
-                                emit_gs_vpm_output_header_prolog(c, &b, &state);
-                        }
-
-                        nir_metadata_preserve(function->impl,
-                                              nir_metadata_block_index |
-                                              nir_metadata_dominance);
+                nir_foreach_block(block, impl) {
+                        nir_foreach_instr_safe(instr, block)
+                                v3d_nir_lower_io_instr(c, &b, instr,
+                                                       &state);
                 }
+
+                nir_block *last = nir_impl_last_block(impl);
+                b.cursor = nir_after_block(last);
+                if (s->info.stage == MESA_SHADER_VERTEX) {
+                        v3d_nir_emit_ff_vpm_outputs(c, &b, &state);
+                } else if (s->info.stage == MESA_SHADER_GEOMETRY) {
+                        emit_gs_vpm_output_header_prolog(c, &b, &state);
+                }
+
+                nir_metadata_preserve(impl,
+                                      nir_metadata_block_index |
+                                      nir_metadata_dominance);
         }
 
         if (s->info.stage == MESA_SHADER_VERTEX ||
