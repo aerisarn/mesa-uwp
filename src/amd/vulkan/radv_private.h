@@ -2340,6 +2340,10 @@ struct radv_ray_tracing_pipeline {
 
    uint8_t sha1[SHA1_DIGEST_LENGTH];
    uint32_t stack_size;
+
+   /* set if any shaders from this pipeline require robustness2 in the merged traversal shader */
+   bool traversal_storage_robustness2 : 1;
+   bool traversal_uniform_robustness2 : 1;
 };
 
 struct radv_graphics_lib_pipeline {
@@ -2437,7 +2441,8 @@ struct radv_graphics_pipeline_create_info {
 struct radv_pipeline_key radv_generate_pipeline_key(const struct radv_device *device,
                                                     const struct radv_pipeline *pipeline,
                                                     const VkPipelineShaderStageCreateInfo *stages,
-                                                    const unsigned num_stages, VkPipelineCreateFlags flags);
+                                                    const unsigned num_stages, VkPipelineCreateFlags flags,
+                                                    const void *pNext);
 
 void radv_pipeline_init(struct radv_device *device, struct radv_pipeline *pipeline, enum radv_pipeline_type type);
 

@@ -140,10 +140,27 @@ radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipelin
    pipeline->max_waves = MAX2(pipeline->max_waves, max_stage_waves);
 }
 
+static enum radv_buffer_robustness
+radv_convert_buffer_robustness(const struct radv_device *device, VkPipelineRobustnessBufferBehaviorEXT behaviour)
+{
+   switch (behaviour) {
+   case VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DEVICE_DEFAULT_EXT:
+      return device->buffer_robustness;
+   case VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT:
+      return RADV_BUFFER_ROBUSTNESS_DISABLED;
+   case VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_EXT:
+      return RADV_BUFFER_ROBUSTNESS_1;
+   case VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_2_EXT:
+      return RADV_BUFFER_ROBUSTNESS_2;
+   default:
+      unreachable("Invalid pipeline robustness behavior");
+   }
+}
+
 struct radv_pipeline_key
 radv_generate_pipeline_key(const struct radv_device *device, const struct radv_pipeline *pipeline,
                            const VkPipelineShaderStageCreateInfo *stages, const unsigned num_stages,
-                           VkPipelineCreateFlags flags)
+                           VkPipelineCreateFlags flags, const void *pNext)
 {
    struct radv_pipeline_key key;
 
@@ -179,9 +196,38 @@ radv_generate_pipeline_key(const struct radv_device *device, const struct radv_p
       }
    }
 
-   key.storage_robustness = device->buffer_robustness;
-   key.uniform_robustness = device->buffer_robustness;
-   key.vertex_robustness = device->buffer_robustness;
+   const VkPipelineRobustnessCreateInfoEXT *pipeline_robust_info =
+      vk_find_struct_const(pNext, PIPELINE_ROBUSTNESS_CREATE_INFO_EXT);
+
+   for (uint32_t i = 0; i < num_stages; i++) {
+      gl_shader_stage stage = vk_to_mesa_shader_stage(stages[i].stage);
+      const VkPipelineRobustnessCreateInfoEXT *stage_robust_info =
+         vk_find_struct_const(stages[i].pNext, PIPELINE_ROBUSTNESS_CREATE_INFO_EXT);
+
+      /* map any hit to intersection as these shaders get merged */
+      if (stage == MESA_SHADER_ANY_HIT)
+         stage = MESA_SHADER_INTERSECTION;
+
+      enum radv_buffer_robustness storage_robustness = device->buffer_robustness;
+      enum radv_buffer_robustness uniform_robustness = device->buffer_robustness;
+      enum radv_buffer_robustness vertex_robustness = device->buffer_robustness;
+
+      const VkPipelineRobustnessCreateInfoEXT *robust_info =
+         stage_robust_info ? stage_robust_info : pipeline_robust_info;
+
+      if (robust_info) {
+         storage_robustness = radv_convert_buffer_robustness(device, robust_info->storageBuffers);
+         uniform_robustness = radv_convert_buffer_robustness(device, robust_info->uniformBuffers);
+         vertex_robustness = radv_convert_buffer_robustness(device, robust_info->vertexInputs);
+      }
+
+      if (storage_robustness >= RADV_BUFFER_ROBUSTNESS_2)
+         key.stage_info[stage].storage_robustness2 = 1;
+      if (uniform_robustness >= RADV_BUFFER_ROBUSTNESS_2)
+         key.stage_info[stage].uniform_robustness2 = 1;
+      if (stage == MESA_SHADER_VERTEX && vertex_robustness >= RADV_BUFFER_ROBUSTNESS_1)
+         key.vertex_robustness1 = 1u;
+   }
 
    return key;
 }
@@ -509,10 +555,10 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
       .has_shared2_amd = gfx_level >= GFX7,
    };
 
-   if (pipeline_key->uniform_robustness >= RADV_BUFFER_ROBUSTNESS_2)
+   if (pipeline_key->stage_info[stage->stage].uniform_robustness2)
       vectorize_opts.robust_modes |= nir_var_mem_ubo;
 
-   if (pipeline_key->storage_robustness >= RADV_BUFFER_ROBUSTNESS_2)
+   if (pipeline_key->stage_info[stage->stage].storage_robustness2)
       vectorize_opts.robust_modes |= nir_var_mem_ssbo;
 
    if (!pipeline_key->optimisations_disabled) {

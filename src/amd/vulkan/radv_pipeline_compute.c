@@ -116,7 +116,8 @@ static struct radv_pipeline_key
 radv_generate_compute_pipeline_key(const struct radv_device *device, struct radv_compute_pipeline *pipeline,
                                    const VkComputePipelineCreateInfo *pCreateInfo)
 {
-   return radv_generate_pipeline_key(device, &pipeline->base, &pCreateInfo->stage, 1, pCreateInfo->flags);
+   return radv_generate_pipeline_key(device, &pipeline->base, &pCreateInfo->stage, 1, pCreateInfo->flags,
+                                     pCreateInfo->pNext);
 }
 
 void
