@@ -477,13 +477,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
       NIR_PASS(_, nir, nir_opt_deref);
 
       /* Pick off the single entrypoint that we want */
-      foreach_list_typed_safe (nir_function, func, node, &nir->functions) {
-         if (func->is_entrypoint)
-            func->name = ralloc_strdup(func, "main");
-         else
-            exec_node_remove(&func->node);
-      }
-      assert(exec_list_length(&nir->functions) == 1);
+      nir_remove_non_entrypoints(nir);
 
       /* Make sure we lower constant initializers on output variables so that
        * nir_remove_dead_variables below sees the corresponding stores
