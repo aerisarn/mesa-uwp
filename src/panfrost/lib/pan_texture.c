@@ -670,6 +670,16 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
       memcpy(swizzle, iview->swizzle, sizeof(swizzle));
    }
 
+   if ((dev->debug & PAN_DBG_YUV) && PAN_ARCH == 7 &&
+       panfrost_needs_multiplanar_descriptor(desc->layout)) {
+      if (desc->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED) {
+         swizzle[2] = PIPE_SWIZZLE_1;
+      } else if (desc->layout == UTIL_FORMAT_LAYOUT_PLANAR2) {
+         swizzle[1] = PIPE_SWIZZLE_0;
+         swizzle[2] = PIPE_SWIZZLE_0;
+      }
+   }
+
    panfrost_emit_texture_payload(iview, format, payload->cpu);
 
    unsigned array_size = iview->last_layer - iview->first_layer + 1;
