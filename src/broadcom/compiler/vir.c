@@ -1437,16 +1437,14 @@ v3d_nir_sort_constant_ubo_loads_block(struct v3d_compile *c,
 static bool
 v3d_nir_sort_constant_ubo_loads(nir_shader *s, struct v3d_compile *c)
 {
-        nir_foreach_function(function, s) {
-                if (function->impl) {
-                        nir_foreach_block(block, function->impl) {
-                                c->sorted_any_ubo_loads |=
-                                        v3d_nir_sort_constant_ubo_loads_block(c, block);
-                        }
-                        nir_metadata_preserve(function->impl,
-                                              nir_metadata_block_index |
-                                              nir_metadata_dominance);
+        nir_foreach_function_impl(impl, s) {
+                nir_foreach_block(block, impl) {
+                        c->sorted_any_ubo_loads |=
+                                v3d_nir_sort_constant_ubo_loads_block(c, block);
                 }
+                nir_metadata_preserve(impl,
+                                      nir_metadata_block_index |
+                                      nir_metadata_dominance);
         }
         return c->sorted_any_ubo_loads;
 }
@@ -1506,17 +1504,15 @@ static bool
 v3d_nir_lower_subgroup_intrinsics(nir_shader *s, struct v3d_compile *c)
 {
         bool progress = false;
-        nir_foreach_function(function, s) {
-                if (function->impl) {
-                        nir_builder b = nir_builder_create(function->impl);
+        nir_foreach_function_impl(impl, s) {
+                nir_builder b = nir_builder_create(impl);
 
-                        nir_foreach_block(block, function->impl)
-                                progress |= lower_subgroup_intrinsics(c, block, &b);
+                nir_foreach_block(block, impl)
+                        progress |= lower_subgroup_intrinsics(c, block, &b);
 
-                        nir_metadata_preserve(function->impl,
-                                              nir_metadata_block_index |
-                                              nir_metadata_dominance);
-                }
+                nir_metadata_preserve(impl,
+                                      nir_metadata_block_index |
+                                      nir_metadata_dominance);
         }
         return progress;
 }
