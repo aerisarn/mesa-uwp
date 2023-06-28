@@ -105,9 +105,8 @@ nir_lower_libclc(nir_shader *shader,
    /* do progress passes inside the pass */
    do {
       progress = false;
-      nir_foreach_function(function, shader) {
-         if (function->impl)
-            progress |= nir_lower_libclc_impl(function->impl, clc_shader, copy_vars);
+      nir_foreach_function_impl(impl, shader) {
+         progress |= nir_lower_libclc_impl(impl, clc_shader, copy_vars);
       }
       overall_progress |= progress;
    } while (progress);
