@@ -246,11 +246,7 @@ inline_function_impl(nir_function_impl *impl, struct set *inlined)
  *
  *     In the Intel Vulkan driver this looks like this:
  *
- *        foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
- *           if (func != entry_point)
- *              exec_node_remove(&func->node);
- *        }
- *        assert(exec_list_length(&nir->functions) == 1);
+ *        nir_remove_non_entrypoints(nir);
  *
  *    While nir_inline_functions does get rid of all call instructions, it
  *    doesn't get rid of any functions because it doesn't know what the "root
