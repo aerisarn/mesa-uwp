@@ -35,12 +35,10 @@
 #ifndef U_STRING_H_
 #define U_STRING_H_
 
-#if !defined(XF86_LIBC_H)
-#include <stdio.h>
-#endif
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 #include <limits.h>
 
