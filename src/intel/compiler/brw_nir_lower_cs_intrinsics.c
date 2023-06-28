@@ -311,11 +311,9 @@ brw_nir_lower_cs_intrinsics(nir_shader *nir)
       }
    }
 
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         state.impl = function->impl;
-         lower_cs_intrinsics_convert_impl(&state);
-      }
+   nir_foreach_function_impl(impl, nir) {
+      state.impl = impl;
+      lower_cs_intrinsics_convert_impl(&state);
    }
 
    return state.progress;

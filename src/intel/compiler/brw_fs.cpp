@@ -7150,11 +7150,8 @@ brw_compute_barycentric_interp_modes(const struct intel_device_info *devinfo,
 {
    unsigned barycentric_interp_modes = 0;
 
-   nir_foreach_function(f, shader) {
-      if (!f->impl)
-         continue;
-
-      nir_foreach_block(block, f->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;
@@ -7255,11 +7252,8 @@ brw_nir_move_interpolation_to_top(nir_shader *nir)
 {
    bool progress = false;
 
-   nir_foreach_function(f, nir) {
-      if (!f->impl)
-         continue;
-
-      nir_block *top = nir_start_block(f->impl);
+   nir_foreach_function_impl(impl, nir) {
+      nir_block *top = nir_start_block(impl);
       nir_cursor cursor = nir_before_instr(nir_block_first_instr(top));
       bool impl_progress = false;
 
@@ -7300,7 +7294,7 @@ brw_nir_move_interpolation_to_top(nir_shader *nir)
 
       progress = progress || impl_progress;
 
-      nir_metadata_preserve(f->impl, impl_progress ? (nir_metadata_block_index |
+      nir_metadata_preserve(impl, impl_progress ? (nir_metadata_block_index |
                                                       nir_metadata_dominance)
                                                    : nir_metadata_all);
    }

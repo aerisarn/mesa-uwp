@@ -820,11 +820,8 @@ brw_can_pack_primitive_indices(nir_shader *nir, struct index_packing_state *stat
    assert(type->without_array()->is_vector());
    assert(type->without_array()->vector_elements == state->vertices_per_primitive);
 
-   nir_foreach_function(function, nir) {
-      if (!function->impl)
-         continue;
-
-      nir_foreach_block(block, function->impl) {
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;

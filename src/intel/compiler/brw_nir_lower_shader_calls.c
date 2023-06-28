@@ -28,11 +28,8 @@
 UNUSED static bool
 no_load_scratch_base_ptr_intrinsic(nir_shader *shader)
 {
-   nir_foreach_function(func, shader) {
-      if (!func->impl)
-         continue;
-
-      nir_foreach_block(block, func->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;

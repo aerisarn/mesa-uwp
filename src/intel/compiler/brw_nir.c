@@ -273,13 +273,10 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
 
    const unsigned num_inputs = util_bitcount64(nir->info.inputs_read);
 
-   nir_foreach_function(function, nir) {
-      if (!function->impl)
-         continue;
+   nir_foreach_function_impl(impl, nir) {
+      nir_builder b = nir_builder_create(impl);
 
-      nir_builder b = nir_builder_create(function->impl);
-
-      nir_foreach_block(block, function->impl) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;
@@ -387,11 +384,8 @@ brw_nir_lower_vue_inputs(nir_shader *nir,
 
    nir_io_add_const_offset_to_base(nir, nir_var_shader_in);
 
-   nir_foreach_function(function, nir) {
-      if (!function->impl)
-         continue;
-
-      nir_foreach_block(block, function->impl) {
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;
@@ -438,13 +432,11 @@ brw_nir_lower_tes_inputs(nir_shader *nir, const struct brw_vue_map *vue_map)
 
    nir_io_add_const_offset_to_base(nir, nir_var_shader_in);
 
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         nir_builder b = nir_builder_create(function->impl);
-         nir_foreach_block(block, function->impl) {
-            remap_patch_urb_offsets(block, &b, vue_map,
-                                    nir->info.tess._primitive_mode);
-         }
+   nir_foreach_function_impl(impl, nir) {
+      nir_builder b = nir_builder_create(impl);
+      nir_foreach_block(block, impl) {
+         remap_patch_urb_offsets(block, &b, vue_map,
+                                 nir->info.tess._primitive_mode);
       }
    }
 }
@@ -593,12 +585,10 @@ brw_nir_lower_tcs_outputs(nir_shader *nir, const struct brw_vue_map *vue_map,
 
    nir_io_add_const_offset_to_base(nir, nir_var_shader_out);
 
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         nir_builder b = nir_builder_create(function->impl);
-         nir_foreach_block(block, function->impl) {
-            remap_patch_urb_offsets(block, &b, vue_map, tes_primitive_mode);
-         }
+   nir_foreach_function_impl(impl, nir) {
+      nir_builder b = nir_builder_create(impl);
+      nir_foreach_block(block, impl) {
+         remap_patch_urb_offsets(block, &b, vue_map, tes_primitive_mode);
       }
    }
 }
@@ -1528,8 +1518,8 @@ brw_vectorize_lower_mem_access(nir_shader *nir,
 static bool
 nir_shader_has_local_variables(const nir_shader *nir)
 {
-   nir_foreach_function(func, nir) {
-      if (func->impl && !exec_list_is_empty(&func->impl->locals))
+   nir_foreach_function_impl(impl, nir) {
+      if (!exec_list_is_empty(&impl->locals))
          return true;
    }
 
@@ -1702,9 +1692,8 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
 
    if (unlikely(debug_enabled)) {
       /* Re-index SSA defs so we print more sensible numbers. */
-      nir_foreach_function(function, nir) {
-         if (function->impl)
-            nir_index_ssa_defs(function->impl);
+      nir_foreach_function_impl(impl, nir) {
+         nir_index_ssa_defs(impl);
       }
 
       fprintf(stderr, "NIR (SSA form) for %s shader:\n",

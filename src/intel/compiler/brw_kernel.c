@@ -312,9 +312,8 @@ brw_kernel_from_spirv(struct brw_compiler *compiler,
 
    if (INTEL_DEBUG(DEBUG_CS)) {
       /* Re-index SSA defs so we print more sensible numbers. */
-      nir_foreach_function(function, nir) {
-         if (function->impl)
-            nir_index_ssa_defs(function->impl);
+      nir_foreach_function_impl(impl, nir) {
+         nir_index_ssa_defs(impl);
       }
 
       fprintf(stderr, "NIR (from SPIR-V) for kernel\n");
@@ -413,9 +412,8 @@ brw_kernel_from_spirv(struct brw_compiler *compiler,
 
    if (INTEL_DEBUG(DEBUG_CS)) {
       /* Re-index SSA defs so we print more sensible numbers. */
-      nir_foreach_function(function, nir) {
-         if (function->impl)
-            nir_index_ssa_defs(function->impl);
+      nir_foreach_function_impl(impl, nir) {
+         nir_index_ssa_defs(impl);
       }
 
       fprintf(stderr, "NIR (before I/O lowering) for kernel\n");

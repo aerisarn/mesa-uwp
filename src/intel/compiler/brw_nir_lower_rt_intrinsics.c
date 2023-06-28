@@ -382,8 +382,7 @@ void
 brw_nir_lower_rt_intrinsics(nir_shader *nir,
                             const struct intel_device_info *devinfo)
 {
-   nir_foreach_function(function, nir) {
-      if (function->impl)
-         lower_rt_intrinsics_impl(function->impl, devinfo);
+   nir_foreach_function_impl(impl, nir) {
+      lower_rt_intrinsics_impl(impl, devinfo);
    }
 }
