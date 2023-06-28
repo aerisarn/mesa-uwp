@@ -249,14 +249,12 @@ glsl_to_nir(const struct gl_constants *consts,
 
    nir_validate_shader(shader, "after function inlining and return lowering");
 
-   /* Now that we have inlined everything remove all of the functions except
-    * main().
+   /* We set func->is_entrypoint after nir_function_create if the function
+    * is named "main", so we can use nir_remove_non_entrypoints() for this.
+    * Now that we have inlined everything remove all of the functions except
+    * func->is_entrypoint.
     */
-   foreach_list_typed_safe(nir_function, function, node, &(shader)->functions){
-      if (strcmp("main", function->name) != 0) {
-         exec_node_remove(&function->node);
-      }
-   }
+   nir_remove_non_entrypoints(shader);
 
    shader->info.name = ralloc_asprintf(shader, "GLSL%d", shader_prog->Name);
    if (shader_prog->Label)
