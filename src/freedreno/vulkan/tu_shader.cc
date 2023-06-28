@@ -666,11 +666,8 @@ static void
 gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
 {
    uint32_t min = UINT32_MAX, max = 0;
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
-
-      nir_foreach_block(block, function->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;
