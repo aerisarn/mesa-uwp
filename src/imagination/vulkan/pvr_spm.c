@@ -42,6 +42,7 @@
 #include "pvr_static_shaders.h"
 #include "pvr_tex_state.h"
 #include "pvr_types.h"
+#include "pvr_uscgen.h"
 #include "util/bitscan.h"
 #include "util/macros.h"
 #include "util/simple_mtx.h"
@@ -610,23 +611,22 @@ pvr_spm_init_eot_state(struct pvr_device *device,
                        const struct pvr_renderpass_hwsetup_render *hw_render,
                        uint32_t *emit_count_out)
 {
-   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
-   struct pvr_pds_upload pds_eot_program;
-   uint64_t mem_stored;
-   VkResult result;
-
    const VkExtent2D framebuffer_size = {
       .width = framebuffer->width,
       .height = framebuffer->height,
    };
+   uint32_t pbe_state_words[PVR_MAX_COLOR_ATTACHMENTS]
+                           [ROGUE_NUM_PBESTATE_STATE_WORDS];
+   const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
    uint32_t total_render_target_used = 0;
+   struct pvr_pds_upload pds_eot_program;
+   struct util_dynarray usc_shader_binary;
+   uint32_t usc_temp_count;
+   VkResult result;
 
    pvr_dev_addr_t next_scratch_buffer_addr =
       framebuffer->scratch_buffer->bo->vma->dev_addr;
-
-   /* FIXME: Remove this hard coding. */
-   uint32_t empty_eot_program[8] = { 0 };
-   uint32_t usc_temp_count = 0;
+   uint64_t mem_stored;
 
    /* TODO: See if instead of having a separate path for devices with 8 output
     * regs we can instead do this in a loop and dedup some stuff.
@@ -645,8 +645,8 @@ pvr_spm_init_eot_state(struct pvr_device *device,
          USC_MRT_RESOURCE_TYPE_OUTPUT_REG,
          0,
          next_scratch_buffer_addr,
-         spm_eot_state->pbe_cs_words[total_render_target_used],
-         spm_eot_state->pbe_cs_words[total_render_target_used + 1],
+         pbe_state_words[total_render_target_used],
+         pbe_state_words[total_render_target_used + 1],
          spm_eot_state->pbe_reg_words[total_render_target_used],
          spm_eot_state->pbe_reg_words[total_render_target_used + 1],
          &render_targets_used);
@@ -670,8 +670,8 @@ pvr_spm_init_eot_state(struct pvr_device *device,
             USC_MRT_RESOURCE_TYPE_MEMORY,
             i,
             next_scratch_buffer_addr,
-            spm_eot_state->pbe_cs_words[total_render_target_used],
-            spm_eot_state->pbe_cs_words[total_render_target_used + 1],
+            pbe_state_words[total_render_target_used],
+            pbe_state_words[total_render_target_used + 1],
             spm_eot_state->pbe_reg_words[total_render_target_used],
             spm_eot_state->pbe_reg_words[total_render_target_used + 1],
             &render_targets_used);
@@ -689,7 +689,7 @@ pvr_spm_init_eot_state(struct pvr_device *device,
          PVR_PBE_STARTPOS_BIT0,
          hw_render->sample_count,
          next_scratch_buffer_addr,
-         spm_eot_state->pbe_cs_words[total_render_target_used],
+         pbe_state_words[total_render_target_used],
          spm_eot_state->pbe_reg_words[total_render_target_used]);
 
       PVR_DEV_ADDR_ADVANCE(next_scratch_buffer_addr, mem_stored);
@@ -711,7 +711,7 @@ pvr_spm_init_eot_state(struct pvr_device *device,
             PVR_PBE_STARTPOS_BIT0,
             hw_render->sample_count,
             next_scratch_buffer_addr,
-            spm_eot_state->pbe_cs_words[total_render_target_used],
+            pbe_state_words[total_render_target_used],
             spm_eot_state->pbe_reg_words[total_render_target_used]);
 
          PVR_DEV_ADDR_ADVANCE(next_scratch_buffer_addr, mem_stored);
@@ -720,16 +720,16 @@ pvr_spm_init_eot_state(struct pvr_device *device,
       }
    }
 
-   /* TODO: The PBE state words likely only get used by the compiler to be
-    * embedded into the shader so we should probably remove it from
-    * spm_eot_state.
-    */
-   /* FIXME: Compile the EOT shader based on the mrt_setup configured above. */
+   pvr_uscgen_eot("SPM EOT",
+                  total_render_target_used,
+                  pbe_state_words[0],
+                  &usc_temp_count,
+                  &usc_shader_binary);
 
    /* TODO: Create a #define in the compiler code to replace the 16. */
    result = pvr_gpu_upload_usc(device,
-                               empty_eot_program,
-                               sizeof(empty_eot_program),
+                               usc_shader_binary.data,
+                               usc_shader_binary.size,
                                16,
                                &spm_eot_state->usc_eot_program);
    if (result != VK_SUCCESS)

@@ -506,10 +506,11 @@ static VkResult pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
 
    assert(emit_count > 0);
 
-   pvr_uscgen_per_job_eot(emit_count,
-                          pbe_cs_words,
-                          &usc_temp_count,
-                          &eot_program_bin);
+   pvr_uscgen_eot("per-job EOT",
+                  emit_count,
+                  pbe_cs_words,
+                  &usc_temp_count,
+                  &eot_program_bin);
 
    result = pvr_cmd_buffer_upload_usc(cmd_buffer,
                                       eot_program_bin.data,
