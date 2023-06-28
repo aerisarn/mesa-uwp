@@ -24,6 +24,7 @@
 
 #include "si_shader_internal.h"
 #include "si_pipe.h"
+#include "ac_hw_stage.h"
 #include "aco_interface.h"
 
 static void

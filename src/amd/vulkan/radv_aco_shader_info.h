@@ -29,6 +29,7 @@
 
 /* this will convert from radv shader info to the ACO one. */
 
+#include "ac_hw_stage.h"
 #include "aco_shader_info.h"
 
 #define ASSIGN_FIELD(x)    aco_info->x = radv->x

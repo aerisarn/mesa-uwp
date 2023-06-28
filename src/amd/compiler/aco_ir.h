@@ -32,7 +32,7 @@
 #include "util/compiler.h"
 
 #include "ac_binary.h"
-#include "ac_shader_util.h"
+#include "ac_hw_stage.h"
 #include "amd_family.h"
 #include <algorithm>
 #include <bitset>
