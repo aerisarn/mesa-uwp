@@ -147,6 +147,8 @@ ForEachMacros:
   - nir_foreach_function
   - nir_foreach_function_with_impl
 
+  - nir_foreach_function_impl
+
   - nir_foreach_block_unstructured
   - nir_foreach_block_unstructured_safe
 
