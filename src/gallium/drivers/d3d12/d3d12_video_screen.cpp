@@ -1149,40 +1149,30 @@ d3d12_has_video_encode_support(struct pipe_screen *pscreen,
                codecSupport.av1_support.features_ext2.bits.obu_size_bytes_minus1 = 4 - 1; // Default 4 bytes (reported minus 1)
 
                // tx_mode_support query cap
-               // Disregarding the VA mask definition for tx_mode_support, some apps use it as directly the value to be used
-               // in VAEncPictureParameterBufferAV1.mode_control_flags.bits.tx_mode
-               // So only return one based on preference order / driver support
                {
-                  // Check the mode is supported for all frame types, then report by preference priority
+                  // libva tx_mode_support, PIPE_XX and D3D12 flags are defined with the same numerical values.
+                  static_assert(static_cast<uint32_t>(D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAG_SELECT) ==
+                     static_cast<uint32_t>(PIPE_VIDEO_CAP_ENC_AV1_TX_MODE_SELECT));
+                  static_assert(static_cast<uint32_t>(D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAG_LARGEST) ==
+                     static_cast<uint32_t>(PIPE_VIDEO_CAP_ENC_AV1_TX_MODE_LARGEST));
+                  static_assert(static_cast<uint32_t>(D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAG_ONLY4x4) ==
+                     static_cast<uint32_t>(PIPE_VIDEO_CAP_ENC_AV1_TX_MODE_ONLY_4X4));
 
-                  bool tx_mode_select_supported = true;
-                  for(uint8_t i = D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_KEY_FRAME; i <= D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_SWITCH_FRAME; i++)
-                     tx_mode_select_supported &= ((codecSupport.av1_support.d3d12_caps.SupportedTxModes[i] & D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAG_SELECT) != 0);
+                  // Iterate over the tx_modes and generate the D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAGS d3d12SupportFlag
+                  for(uint8_t i = D3D12_VIDEO_ENCODER_AV1_TX_MODE_ONLY4x4; i <= D3D12_VIDEO_ENCODER_AV1_TX_MODE_SELECT; i++)
+                  {
+                     uint32_t d3d12SupportFlag = (1 << i); // See definition of D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAGS
+                     // Check the current d3d12SupportFlag (ie. D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAG_XXX) is supported for all frame types
+                     bool tx_mode_supported = true;
+                     for(uint8_t j = D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_KEY_FRAME; j <= D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_SWITCH_FRAME; j++)
+                        tx_mode_supported &= ((codecSupport.av1_support.d3d12_caps.SupportedTxModes[j] & d3d12SupportFlag) != 0);
 
-                  if (tx_mode_select_supported) {
-                     // Workaround for apps consuming the tx_mode_support cap directly as the tx_mode param to be used
-                     codecSupport.av1_support.features_ext2.bits.tx_mode_support = std::log2(static_cast<uint32_t>(PIPE_VIDEO_CAP_ENC_AV1_TX_MODE_SELECT));
-                  } else {
-                     bool tx_mode_largest_supported = true;
-                     for(uint8_t i = D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_KEY_FRAME; i <= D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_SWITCH_FRAME; i++)
-                        tx_mode_largest_supported &= ((codecSupport.av1_support.d3d12_caps.SupportedTxModes[i] & D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAG_LARGEST) != 0);
-
-                     if (tx_mode_largest_supported) {
-                        // Workaround for apps consuming the tx_mode_support cap directly as the tx_mode param to be used.
-                        codecSupport.av1_support.features_ext2.bits.tx_mode_support = std::log2(static_cast<uint32_t>(PIPE_VIDEO_CAP_ENC_AV1_TX_MODE_LARGEST));
-                     } else {
-                        bool tx_mode_only_4x4_supported = true;
-                        for(uint8_t i = D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_KEY_FRAME; i <= D3D12_VIDEO_ENCODER_AV1_FRAME_TYPE_SWITCH_FRAME; i++)
-                           tx_mode_only_4x4_supported &= ((codecSupport.av1_support.d3d12_caps.SupportedTxModes[i] & D3D12_VIDEO_ENCODER_AV1_TX_MODE_FLAG_ONLY4x4) != 0);
-
-                        if (tx_mode_only_4x4_supported) {
-                           // Workaround for apps consuming the tx_mode_support cap directly as the tx_mode param to be used.
-                           codecSupport.av1_support.features_ext2.bits.tx_mode_support = std::log2(static_cast<uint32_t>(PIPE_VIDEO_CAP_ENC_AV1_TX_MODE_ONLY_4X4));
-                        } else {
-                           assert(false); // As per d3d12 spec, driver must support at least one default mode for all frame types
-                        }
-                     }
+                     // When supported for all frames, report it as part of the bitmask
+                     if (tx_mode_supported)
+                        codecSupport.av1_support.features_ext2.bits.tx_mode_support |= d3d12SupportFlag;
                   }
+
+                  assert(codecSupport.av1_support.features_ext2.bits.tx_mode_support); // As per d3d12 spec, driver must support at least one default mode for all frame types
                }
 
                supportsProfile = supportsProfile &&
