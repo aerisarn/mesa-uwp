@@ -417,6 +417,28 @@ vn_feedback_event_cmd_record(VkCommandBuffer cmd_handle,
    vn_cmd_buffer_memory_barrier(cmd_handle, &dep_after, sync2);
 }
 
+static inline void
+vn_feedback_cmd_record_flush_barrier(VkCommandBuffer cmd_handle,
+                                     VkBuffer buffer,
+                                     VkDeviceSize offset,
+                                     VkDeviceSize size)
+{
+   const VkBufferMemoryBarrier buf_flush_barrier = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+      .pNext = NULL,
+      .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_HOST_READ_BIT | VK_ACCESS_HOST_WRITE_BIT,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .buffer = buffer,
+      .offset = offset,
+      .size = size,
+   };
+   vn_CmdPipelineBarrier(cmd_handle, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_HOST_BIT, 0, 0, NULL, 1,
+                         &buf_flush_barrier, 0, NULL);
+}
+
 static VkResult
 vn_feedback_cmd_record(VkCommandBuffer cmd_handle,
                        struct vn_feedback_slot *dst_slot,
@@ -493,20 +515,8 @@ vn_feedback_cmd_record(VkCommandBuffer cmd_handle,
                        buf_size, VK_SUCCESS);
    }
 
-   const VkBufferMemoryBarrier buf_barrier_after = {
-      .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-      .pNext = NULL,
-      .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-      .dstAccessMask = VK_ACCESS_HOST_READ_BIT | VK_ACCESS_HOST_WRITE_BIT,
-      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .buffer = dst_slot->buffer,
-      .offset = dst_slot->offset,
-      .size = buf_size,
-   };
-   vn_CmdPipelineBarrier(cmd_handle, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         VK_PIPELINE_STAGE_HOST_BIT, 0, 0, NULL, 1,
-                         &buf_barrier_after, 0, NULL);
+   vn_feedback_cmd_record_flush_barrier(cmd_handle, dst_slot->buffer,
+                                        dst_slot->offset, buf_size);
 
    return vn_EndCommandBuffer(cmd_handle);
 }
