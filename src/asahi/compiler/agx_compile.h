@@ -76,6 +76,11 @@ union agx_varyings {
    struct agx_varyings_fs fs;
 };
 
+struct agx_uncompiled_shader_info {
+   uint64_t inputs_flat_shaded;
+   uint64_t inputs_linear_shaded;
+};
+
 struct agx_shader_info {
    union agx_varyings varyings;
 
@@ -171,7 +176,8 @@ struct agx_shader_key {
    };
 };
 
-void agx_preprocess_nir(nir_shader *nir, bool support_lod_bias);
+void agx_preprocess_nir(nir_shader *nir, bool support_lod_bias,
+                        struct agx_uncompiled_shader_info *out);
 
 bool agx_nir_lower_discard_zs_emit(nir_shader *s);
 

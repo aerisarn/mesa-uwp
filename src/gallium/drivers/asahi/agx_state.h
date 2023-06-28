@@ -171,6 +171,7 @@ struct agx_uncompiled_shader {
    enum pipe_shader_type type;
    const struct nir_shader *nir;
    uint8_t nir_sha1[20];
+   struct agx_uncompiled_shader_info info;
    struct hash_table *variants;
 
    /* For compute kernels */

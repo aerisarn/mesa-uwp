@@ -2094,33 +2094,60 @@ agx_gather_texcoords(nir_builder *b, nir_instr *instr, void *data)
    return false;
 }
 
+struct interp_masks {
+   uint64_t flat;
+   uint64_t linear;
+};
+
 static bool
-agx_gather_flat(nir_builder *b, nir_instr *instr, void *data)
+agx_gather_interp(nir_builder *b, nir_instr *instr, void *data)
 {
-   uint64_t *mask = data;
+   struct interp_masks *masks = data;
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_load_input)
-      return false;
 
-   nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
-   *mask |= BITFIELD64_BIT(sem.location);
+   if (intr->intrinsic == nir_intrinsic_load_input) {
+      nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+      masks->flat |= BITFIELD64_BIT(sem.location);
+   } else if (intr->intrinsic == nir_intrinsic_load_interpolated_input &&
+              nir_intrinsic_interp_mode(nir_src_as_intrinsic(intr->src[0])) ==
+                 INTERP_MODE_NOPERSPECTIVE) {
+      nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+      masks->linear |= BITFIELD64_BIT(sem.location);
+   }
+
    return false;
 }
 
 /*
- * Build a bit mask of varyings (by location) that are flatshaded or used as
- * texture coordinates. This information is needed by lower_mediump_io.
+ * Build a bit mask of varyings (by location) that are flatshaded and linear
+ * shaded. This information is needed by lower_mediump_io and
+ * agx_uncompiled_shader_info.
+ */
+static struct interp_masks
+agx_interp_masks(nir_shader *nir)
+{
+   assert(nir->info.stage == MESA_SHADER_FRAGMENT);
+
+   struct interp_masks masks = {0};
+   nir_shader_instructions_pass(nir, agx_gather_interp, nir_metadata_all,
+                                &masks);
+
+   return masks;
+}
+
+/*
+ * Build a bit mask of varyings (by location) that are used as texture
+ * coordinates. This information is needed by lower_mediump_io.
  */
 static uint64_t
-agx_fp32_varying_mask(nir_shader *nir)
+agx_texcoord_mask(nir_shader *nir)
 {
    assert(nir->info.stage == MESA_SHADER_FRAGMENT);
 
    uint64_t mask = 0;
-   nir_shader_instructions_pass(nir, agx_gather_flat, nir_metadata_all, &mask);
    nir_shader_instructions_pass(nir, agx_gather_texcoords, nir_metadata_all,
                                 &mask);
    return mask;
@@ -2287,8 +2314,12 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
  * lowered here to avoid duplicate work with shader variants.
  */
 void
-agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
+agx_preprocess_nir(nir_shader *nir, bool support_lod_bias,
+                   struct agx_uncompiled_shader_info *out)
 {
+   if (out)
+      memset(out, 0, sizeof(*out));
+
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
    if (nir->info.stage == MESA_SHADER_VERTEX) {
@@ -2313,6 +2344,9 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
               glsl_type_size, 0);
    NIR_PASS_V(nir, nir_lower_ssbo);
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      uint64_t texcoord = agx_texcoord_mask(nir);
+      struct interp_masks masks = agx_interp_masks(nir);
+
       NIR_PASS_V(nir, agx_nir_lower_frag_sidefx);
 
       /* Interpolate varyings at fp16 and write to the tilebuffer at fp16. As an
@@ -2322,7 +2356,12 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
        */
       NIR_PASS_V(nir, nir_lower_mediump_io,
                  nir_var_shader_in | nir_var_shader_out,
-                 ~agx_fp32_varying_mask(nir), false);
+                 ~(masks.flat | texcoord), false);
+
+      if (out) {
+         out->inputs_flat_shaded = masks.flat;
+         out->inputs_linear_shaded = masks.linear;
+      }
    }
 
    /* Clean up deref gunk after lowering I/O */
