@@ -625,6 +625,13 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<!-- similar to CP_CONTEXT_REG_BUNCH, but discards first two dwords?? -->
 	<value name="CP_CONTEXT_REG_BUNCH2" value="0x5d" variants="A7XX-"/>
 	<value name="CP_UNK49" value="0x49" variants="A7XX-"/>  <!-- payload 4 dwords, last two address of something -->
+
+	<doc>
+		Executes an array of fixed-size command buffers where each
+		buffer is assumed to have one draw call, skipping buffers with
+		non-visible draw calls.
+	</doc>
+	<value name="CP_FIXED_STRIDE_DRAW_TABLE" value="0x7f" variants="A7XX-"/>
 </enum>
 
 
@@ -1978,6 +1985,18 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<bitfield low="0" high="1" name="THREAD" type="cp_thread"/>
 		<bitfield pos="27" name="CONCURRENT_BIN_DISABLE" type="boolean"/>
 		<bitfield pos="31" name="SYNC_THREADS" type="boolean"/>
+	</reg32>
+</domain>
+
+<domain name="CP_FIXED_STRIDE_DRAW_TABLE" width="32">
+	<reg64 offset="0" name="IB_BASE"/>
+	<reg32 offset="2" name="2">
+		<!-- STRIDE * COUNT -->
+		<bitfield name="IB_SIZE" low="0" high="11"/>
+		<bitfield name="STRIDE" low="20" high="31"/>
+	</reg32>
+	<reg32 offset="3" name="3">
+		<bitfield name="COUNT" low="0" high="31"/>
 	</reg32>
 </domain>
 
