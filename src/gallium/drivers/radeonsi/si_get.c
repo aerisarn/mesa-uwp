@@ -1294,7 +1294,6 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .lower_to_scalar = true,
       .lower_to_scalar_filter = sscreen->info.has_packed_math_16bit ?
                                    si_alu_to_scalar_packed_math_filter : NULL,
-      .lower_int64_options = nir_lower_imul_2x32_64 | nir_lower_imul_high64,
       .has_sdot_4x8 = sscreen->info.has_accelerated_dot_product,
       .has_sudot_4x8 = sscreen->info.has_accelerated_dot_product && sscreen->info.gfx_level >= GFX11,
       .has_udot_4x8 = sscreen->info.has_accelerated_dot_product,
@@ -1330,7 +1329,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .lower_int64_options =
          nir_lower_imul64 | nir_lower_imul_high64 | nir_lower_imul_2x32_64 |
          nir_lower_divmod64 | nir_lower_minmax64 | nir_lower_iabs64 |
-         nir_lower_iadd_sat64,
+         nir_lower_iadd_sat64 | nir_lower_conv64,
    };
    *sscreen->nir_options = nir_options;
 }
