@@ -2636,7 +2636,7 @@ agx_scissor_culls_everything(struct agx_context *ctx)
                            ctx->rast->base.scissor ? &ctx->scissor : NULL,
                            &ctx->framebuffer, &minx, &miny, &maxx, &maxy);
 
-   return (minx == maxx) || (miny == maxy);
+   return (minx >= maxx) || (miny >= maxy);
 }
 
 static void
