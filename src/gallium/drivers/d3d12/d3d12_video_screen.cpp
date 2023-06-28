@@ -478,8 +478,8 @@ d3d12_video_encode_support_caps(const D3D12_VIDEO_ENCODER_CODEC &argTargetCodec,
    capEncoderSupportData1.ResolutionsListCount = 1;
    capEncoderSupportData1.pResolutionList = &maxResolution;
    capEncoderSupportData1.MaxReferenceFramesInDPB = 1;
-   D3D12_VIDEO_ENCODER_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_SLICES sliceData = { };
 #if D3D12_PREVIEW_SDK_VERSION >= 711
+   D3D12_VIDEO_ENCODER_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_SLICES sliceData = { };
    // Assume single tile for feature query support  / entrypoint enumeration purposes
    D3D12_VIDEO_ENCODER_AV1_PICTURE_CONTROL_SUBREGIONS_LAYOUT_DATA_TILES tileData = { };
    tileData.ColCount = 1;
