@@ -2569,16 +2569,14 @@ lower_clipdistance_to_array(nir_shader *nir)
    /* resize VARYING_SLOT_CLIP_DIST0 to the full array size */
    dist0->type = glsl_array_type(glsl_float_type(), nir->info.clip_distance_array_size, sizeof(float));
    struct set *deletes = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
-   nir_foreach_function(function, nir) {
+   nir_foreach_function_impl(impl, nir) {
       bool func_progress = false;
-      if (!function->impl)
-         continue;
-      nir_builder b = nir_builder_create(function->impl);
-      b.cursor = nir_before_block(nir_start_block(function->impl));
+      nir_builder b = nir_builder_create(impl);
+      b.cursor = nir_before_block(nir_start_block(impl));
       /* create a new deref for the arrayed clipdistance variable at the start of the function */
       nir_deref_instr *clipdist_deref = nir_build_deref_var(&b, dist0);
       nir_ssa_def *zero = nir_imm_zero(&b, 1, 32);
-      nir_foreach_block(block, function->impl) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             /* filter through until a clipdistance store is reached */
             if (instr->type != nir_instr_type_intrinsic)
@@ -2609,7 +2607,7 @@ lower_clipdistance_to_array(nir_shader *nir)
          }
       }
       if (func_progress)
-         nir_metadata_preserve(function->impl, nir_metadata_none);
+         nir_metadata_preserve(impl, nir_metadata_none);
       /* derefs must be queued for deletion to avoid deleting the same deref repeatedly */
       set_foreach_remove(deletes, he)
          nir_instr_remove((void*)he->key);

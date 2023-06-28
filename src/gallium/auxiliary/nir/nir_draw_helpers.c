@@ -150,10 +150,8 @@ nir_lower_pstipple_fs(struct nir_shader *shader,
    BITSET_SET(shader->info.samplers_used, binding);
    state.stip_tex = tex_var;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_lower_pstipple_impl(function->impl, &state);
-      }
+   nir_foreach_function_impl(impl, shader) {
+      nir_lower_pstipple_impl(impl, &state);
    }
    *samplerUnitOut = binding;
 }
@@ -440,9 +438,7 @@ nir_lower_aapoint_fs(struct nir_shader *shader, int *varying, const nir_alu_type
    *varying = tgsi_get_generic_gl_varying_index(aapoint_input->data.location, true);
    state.input = aapoint_input;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_lower_aapoint_impl(function->impl, &state, bool_type);
-      }
+   nir_foreach_function_impl(impl, shader) {
+      nir_lower_aapoint_impl(impl, &state, bool_type);
    }
 }
