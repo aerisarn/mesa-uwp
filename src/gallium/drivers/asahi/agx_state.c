@@ -2348,15 +2348,12 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
       }
    }
 
-   /* Get the shader */
-   struct agx_meta_shader *shader = agx_get_meta_shader(&ctx->meta, &key);
-   agx_batch_add_bo(batch, shader->bo);
-
    /* Begin building the pipeline */
    struct agx_usc_builder b =
       agx_alloc_usc_control(&batch->pipeline_pool, 1 + PIPE_MAX_COLOR_BUFS);
 
    bool needs_sampler = false;
+   unsigned uniforms = 0;
 
    for (unsigned rt = 0; rt < PIPE_MAX_COLOR_BUFS; ++rt) {
       if (key.op[rt] == AGX_META_OP_LOAD) {
@@ -2381,6 +2378,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
       } else if (key.op[rt] == AGX_META_OP_CLEAR) {
          assert(batch->uploaded_clear_color[rt] && "set when cleared");
          agx_usc_uniform(&b, 4 + (8 * rt), 8, batch->uploaded_clear_color[rt]);
+         uniforms = MAX2(uniforms, 4 + (8 * rt) + 8);
       } else if (key.op[rt] == AGX_META_OP_STORE) {
          struct pipe_image_view view =
             image_view_for_surface(batch->key.cbufs[rt]);
@@ -2418,6 +2416,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
       /* Bind the base as u0_u1 for bindless access */
       agx_usc_uniform(&b, 0, 4,
                       agx_pool_upload_aligned(&batch->pool, &descs.gpu, 8, 8));
+      uniforms = MAX2(uniforms, 4);
    }
 
    /* All render targets share a sampler */
@@ -2445,6 +2444,11 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
 
    agx_usc_tilebuffer(&b, &batch->tilebuffer_layout);
 
+   /* Get the shader */
+   key.reserved_preamble = uniforms;
+   struct agx_meta_shader *shader = agx_get_meta_shader(&ctx->meta, &key);
+   agx_batch_add_bo(batch, shader->bo);
+
    agx_usc_pack(&b, SHADER, cfg) {
       cfg.code = shader->ptr;
       cfg.unk_2 = 0;
@@ -2452,8 +2456,15 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
 
    agx_usc_pack(&b, REGISTERS, cfg)
       cfg.register_count = shader->info.nr_gprs;
-   agx_usc_pack(&b, NO_PRESHADER, cfg)
-      ;
+
+   if (shader->info.has_preamble) {
+      agx_usc_pack(&b, PRESHADER, cfg) {
+         cfg.code = shader->ptr + shader->info.preamble_offset;
+      }
+   } else {
+      agx_usc_pack(&b, NO_PRESHADER, cfg)
+         ;
+   }
 
    return agx_usc_fini(&b);
 }
