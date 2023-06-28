@@ -2178,6 +2178,9 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          struct agx_ptr pbe =
             agx_pool_alloc_aligned(&batch->pool, AGX_PBE_LENGTH, 256);
 
+         /* The tilebuffer is already in sRGB space if needed. Do not convert */
+         view.format = util_format_linear(view.format);
+
          agx_batch_upload_pbe(pbe.cpu, &view);
 
          agx_usc_pack(&b, TEXTURE, cfg) {
