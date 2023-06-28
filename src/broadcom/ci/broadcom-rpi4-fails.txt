@@ -502,6 +502,10 @@ spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_RGBA8I,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth16,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth24,Fail
 
+# This fails the subtest for GL_ALPHA16 because we don't support a 16-bit unorm format for rendering
+# so gallium falls back to using an 8-bit unorm format and we lose some precision in the result.
+spec@arb_clear_texture@arb_clear_texture-sized-formats,Fail
+
 # These fail because the shaders use indirect indexing on samplers which we
 # don't support (the GLSL linker fails to link the shaders because of this).
 # If loop unrolling kicks-in for these tests it removes the indirect indexing
