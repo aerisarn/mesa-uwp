@@ -673,7 +673,7 @@ d3d12_video_encoder_get_current_rate_control_settings(struct d3d12_video_encoder
       case D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_QVBR:
       {
 #if D3D12_PREVIEW_SDK_VERSION >= 711
-         if ((curRateControlDesc.Flags & D3D12_VIDEO_ENCODER_SUPPORT_FLAG_RATE_CONTROL_EXTENDED_QVBR1_SUPPORT) != 0)
+         if ((curRateControlDesc.Flags & D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_EXTENDED_QVBR1_SUPPORT) != 0)
          {
             curRateControlDesc.ConfigParams.pConfiguration_QVBR1 =
                &pD3D12Enc->m_currentEncodeConfig.m_encoderRateControlDesc.m_Config.m_Configuration_QVBR1;
