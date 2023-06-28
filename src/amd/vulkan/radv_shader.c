@@ -2041,7 +2041,8 @@ radv_fill_nir_compiler_options(struct radv_nir_compiler_options *options, struct
    if (key)
       options->key = *key;
 
-   options->robust_buffer_access = device->buffer_robustness >= RADV_BUFFER_ROBUSTNESS_1;
+   /* robust_buffer_access_llvm here used by LLVM only, pipeline robustness is not exposed there. */
+   options->robust_buffer_access_llvm = device->buffer_robustness >= RADV_BUFFER_ROBUSTNESS_1;
    options->wgp_mode = should_use_wgp;
    options->info = &device->physical_device->rad_info;
    options->dump_shader = can_dump_shader;

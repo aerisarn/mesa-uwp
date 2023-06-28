@@ -132,7 +132,7 @@ struct radv_pipeline_key {
 
 struct radv_nir_compiler_options {
    struct radv_pipeline_key key;
-   bool robust_buffer_access;
+   bool robust_buffer_access_llvm;
    bool dump_shader;
    bool dump_preoptir;
    bool record_ir;
