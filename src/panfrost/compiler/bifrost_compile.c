@@ -4811,19 +4811,16 @@ bi_compile_variant_nir(nir_shader *nir,
 
    ctx->allocated_vec = _mesa_hash_table_u64_create(ctx);
 
-   nir_foreach_function(func, nir) {
-      if (!func->impl)
-         continue;
-
-      nir_index_blocks(func->impl);
+   nir_foreach_function_impl(impl, nir) {
+      nir_index_blocks(impl);
 
       ctx->indexed_nir_blocks =
-         rzalloc_array(ctx, bi_block *, func->impl->num_blocks);
+         rzalloc_array(ctx, bi_block *, impl->num_blocks);
 
-      ctx->ssa_alloc += func->impl->ssa_alloc;
-      ctx->reg_alloc += func->impl->reg_alloc;
+      ctx->ssa_alloc += impl->ssa_alloc;
+      ctx->reg_alloc += impl->reg_alloc;
 
-      emit_cf_list(ctx, &func->impl->body);
+      emit_cf_list(ctx, &impl->body);
       bi_emit_phis_deferred(ctx);
       break; /* TODO: Multi-function shaders */
    }
