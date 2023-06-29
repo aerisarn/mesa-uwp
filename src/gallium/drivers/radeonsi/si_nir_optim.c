@@ -78,8 +78,8 @@ check_instr_depends_on_tex(nir_intrinsic_instr *store)
 static bool
 get_output_as_const_value(nir_shader *shader, float values[4])
 {
-   nir_foreach_function(function, shader) {
-      nir_foreach_block_reverse(block, function->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block_reverse(block, impl) {
          nir_foreach_instr_reverse_safe(instr, block) {
             switch (instr->type) {
                case nir_instr_type_intrinsic: {
