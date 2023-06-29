@@ -189,8 +189,7 @@ st_nir_lower_tex_src_plane(struct nir_shader *shader, unsigned free_slots,
 
    assign_extra_samplers(&state, free_slots);
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         lower_tex_src_plane_impl(&state, function->impl);
+   nir_foreach_function_impl(impl, shader) {
+      lower_tex_src_plane_impl(&state, impl);
    }
 }
