@@ -1392,6 +1392,13 @@ iris_init_compute_context(struct iris_batch *batch)
    init_aux_map_state(batch);
 #endif
 
+#if GFX_VERx10 >= 125
+   iris_emit_cmd(batch, GENX(CFE_STATE), cfe) {
+      cfe.MaximumNumberofThreads =
+         devinfo->max_cs_threads * devinfo->subslice_total;
+   }
+#endif
+
    iris_batch_sync_region_end(batch);
 }
 

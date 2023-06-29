@@ -2161,12 +2161,6 @@ blorp_exec_compute(struct blorp_batch *batch, const struct blorp_params *params)
 #endif /* GFX_VER >= 7 */
 
 #if GFX_VERx10 >= 125
-
-   blorp_emit(batch, GENX(CFE_STATE), cfe) {
-      cfe.MaximumNumberofThreads =
-         devinfo->max_cs_threads * devinfo->subslice_total;
-   }
-
    assert(cs_prog_data->push.per_thread.regs == 0);
    blorp_emit(batch, GENX(COMPUTE_WALKER), cw) {
       cw.SIMDSize                       = dispatch.simd_size / 16;

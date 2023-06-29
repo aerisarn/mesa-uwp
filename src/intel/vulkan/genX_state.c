@@ -343,6 +343,7 @@ static VkResult
 init_render_queue_state(struct anv_queue *queue)
 {
    struct anv_device *device = queue->device;
+   UNUSED const struct intel_device_info *devinfo = queue->device->info;
    uint32_t cmds[128];
    struct anv_batch batch = {
       .start = cmds,
@@ -586,6 +587,20 @@ init_render_queue_state(struct anv_queue *queue)
 #if GFX_VERx10 >= 125
    anv_batch_emit(&batch, GENX(3DSTATE_MESH_CONTROL), zero);
    anv_batch_emit(&batch, GENX(3DSTATE_TASK_CONTROL), zero);
+   genX(batch_emit_pipe_control_write)(&batch, device->info, NoWrite,
+                                       ANV_NULL_ADDRESS,
+                                       0,
+                                       ANV_PIPE_FLUSH_BITS | ANV_PIPE_INVALIDATE_BITS);
+   genX(emit_pipeline_select)(&batch, GPGPU);
+   anv_batch_emit(&batch, GENX(CFE_STATE), cfe) {
+      cfe.MaximumNumberofThreads =
+         devinfo->max_cs_threads * devinfo->subslice_total;
+   }
+   genX(batch_emit_pipe_control_write)(&batch, device->info, NoWrite,
+                                       ANV_NULL_ADDRESS,
+                                       0,
+                                       ANV_PIPE_FLUSH_BITS | ANV_PIPE_INVALIDATE_BITS);
+   genX(emit_pipeline_select)(&batch, _3D);
 #endif
 
    anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
@@ -599,6 +614,7 @@ static VkResult
 init_compute_queue_state(struct anv_queue *queue)
 {
    struct anv_batch batch;
+   UNUSED const struct intel_device_info *devinfo = queue->device->info;
 
    uint32_t cmds[64];
    batch.start = batch.next = cmds;
@@ -625,6 +641,13 @@ init_compute_queue_state(struct anv_queue *queue)
 #endif
 
    init_common_queue_state(queue, &batch);
+
+#if GFX_VERx10 >= 125
+   anv_batch_emit(&batch, GENX(CFE_STATE), cfe) {
+      cfe.MaximumNumberofThreads =
+         devinfo->max_cs_threads * devinfo->subslice_total;
+   }
+#endif
 
    anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
 
