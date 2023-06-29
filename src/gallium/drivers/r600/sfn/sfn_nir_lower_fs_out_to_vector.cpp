@@ -128,10 +128,8 @@ r600_lower_fs_out_to_vector(nir_shader *shader)
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
    bool progress = false;
 
-   nir_foreach_function(function, shader)
-   {
-      if (function->impl)
-         progress |= processor.run(function->impl);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= processor.run(impl);
    }
    return progress;
 }

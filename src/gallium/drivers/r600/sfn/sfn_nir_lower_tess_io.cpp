@@ -479,12 +479,11 @@ bool
 r600_lower_tess_io(nir_shader *shader, enum mesa_prim prim_type)
 {
    bool progress = false;
-   nir_foreach_function(function, shader)
+   nir_foreach_function_impl(impl, shader)
    {
-      if (function->impl) {
-         nir_builder b = nir_builder_create(function->impl);
+         nir_builder b = nir_builder_create(impl);
 
-         nir_foreach_block(block, function->impl)
+         nir_foreach_block(block, impl)
          {
             nir_foreach_instr_safe(instr, block)
             {
@@ -495,7 +494,6 @@ r600_lower_tess_io(nir_shader *shader, enum mesa_prim prim_type)
                   progress |= r600_lower_tess_io_impl(&b, instr, prim_type);
             }
          }
-      }
    }
    return progress;
 }
@@ -517,9 +515,9 @@ r600_append_tcs_TF_emission(nir_shader *shader, enum mesa_prim prim_type)
    if (shader->info.stage != MESA_SHADER_TESS_CTRL)
       return false;
 
-   nir_foreach_function(function, shader)
+   nir_foreach_function_impl(impl, shader)
    {
-      nir_foreach_block(block, function->impl)
+      nir_foreach_block(block, impl)
       {
          nir_foreach_instr_safe(instr, block)
          {

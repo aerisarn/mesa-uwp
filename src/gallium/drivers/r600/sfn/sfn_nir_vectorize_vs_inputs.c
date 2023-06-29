@@ -459,10 +459,9 @@ r600_vectorize_vs_inputs(nir_shader *shader)
    if (shader->info.stage != MESA_SHADER_VERTEX)
       return false;
 
-   nir_foreach_function(function, shader)
+   nir_foreach_function_impl(impl, shader)
    {
-      if (function->impl)
-         progress |= r600_vectorize_io_impl(function->impl);
+      progress |= r600_vectorize_io_impl(impl);
    }
 
    return progress;

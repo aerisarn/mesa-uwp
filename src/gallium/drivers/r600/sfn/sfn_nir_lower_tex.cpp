@@ -134,9 +134,9 @@ r600_nir_lower_int_tg4(nir_shader *shader)
    }
 
    if (need_lowering) {
-      nir_foreach_function(function, shader)
+      nir_foreach_function_impl(impl, shader)
       {
-         if (function->impl && r600_nir_lower_int_tg4_impl(function->impl))
+         if (r600_nir_lower_int_tg4_impl(impl))
             progress = true;
       }
    }
@@ -224,9 +224,9 @@ bool
 r600_nir_lower_txl_txf_array_or_cube(nir_shader *shader)
 {
    bool progress = false;
-   nir_foreach_function(function, shader)
+   nir_foreach_function_impl(impl, shader)
    {
-      if (function->impl && r600_nir_lower_txl_txf_array_or_cube_impl(function->impl))
+      if (r600_nir_lower_txl_txf_array_or_cube_impl(impl))
          progress = true;
    }
    return progress;

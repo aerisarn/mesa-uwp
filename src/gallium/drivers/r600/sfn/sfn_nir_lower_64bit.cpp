@@ -1064,10 +1064,9 @@ bool
 r600_nir_64_to_vec2(nir_shader *sh)
 {
    vector<nir_instr *> intr64bit;
-   nir_foreach_function(function, sh)
+   nir_foreach_function_impl(impl, sh)
    {
-      if (function->impl) {
-         nir_foreach_block(block, function->impl)
+         nir_foreach_block(block, impl)
          {
             nir_foreach_instr_safe(instr, block)
             {
@@ -1101,7 +1100,6 @@ r600_nir_64_to_vec2(nir_shader *sh)
                }
             }
          }
-      }
    }
 
    bool result = Lower64BitToVec2().run(sh);
@@ -1181,10 +1179,9 @@ void
 StoreMerger::collect_stores()
 {
    unsigned vertex = 0;
-   nir_foreach_function(function, sh)
+   nir_foreach_function_impl(impl, sh)
    {
-      if (function->impl) {
-         nir_foreach_block(block, function->impl)
+         nir_foreach_block(block, impl)
          {
             nir_foreach_instr_safe(instr, block)
             {
@@ -1205,7 +1202,6 @@ StoreMerger::collect_stores()
                m_stores[index].push_back(ir);
             }
          }
-      }
    }
 }
 
