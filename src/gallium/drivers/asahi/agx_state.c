@@ -28,6 +28,7 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
+#include "util/blob.h"
 #include "util/compiler.h"
 #include "util/format_srgb.h"
 #include "util/half_float.h"
@@ -1401,7 +1402,9 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
    struct util_dynarray binary;
    util_dynarray_init(&binary, NULL);
 
-   nir_shader *nir = nir_shader_clone(NULL, so->nir);
+   struct blob_reader reader;
+   blob_reader_init(&reader, so->serialized_nir.data, so->serialized_nir.size);
+   nir_shader *nir = nir_deserialize(NULL, &agx_nir_options, &reader);
 
    /* This can happen at inopportune times and cause jank, log it */
    perf_debug(dev, "Compiling shader variant #%u",
@@ -1572,14 +1575,14 @@ agx_shader_initialize(struct agx_uncompiled_shader *so, nir_shader *nir)
 {
    so->type = pipe_shader_type_from_mesa(nir->info.stage);
 
-   struct blob blob;
-   blob_init(&blob);
-   nir_serialize(&blob, nir, true);
-   _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
-   blob_finish(&blob);
-
-   so->nir = nir;
    agx_preprocess_nir(nir, true, &so->info);
+
+   blob_init(&so->serialized_nir);
+   nir_serialize(&so->serialized_nir, nir, true);
+   _mesa_sha1_compute(so->serialized_nir.data, so->serialized_nir.size,
+                      so->nir_sha1);
+
+   so->has_xfb_info = (nir->xfb_info != NULL);
 }
 
 static void *
@@ -1599,11 +1602,6 @@ agx_create_shader_state(struct pipe_context *pctx,
                         ? cso->ir.nir
                         : tgsi_to_nir(cso->tokens, pctx->screen, false);
 
-   /* The driver gets ownership of the nir_shader for graphics. The NIR is
-    * ralloc'd. Free the NIR when we free the uncompiled shader.
-    */
-   ralloc_steal(so, nir);
-
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       so->variants = _mesa_hash_table_create(so, asahi_vs_shader_key_hash,
                                              asahi_vs_shader_key_equal);
@@ -1614,14 +1612,18 @@ agx_create_shader_state(struct pipe_context *pctx,
 
    agx_shader_initialize(so, nir);
 
+   /* We're done with the NIR, throw it away */
+   ralloc_free(nir);
+   nir = NULL;
+
    /* For shader-db, precompile a shader with a default key. This could be
     * improved but hopefully this is acceptable for now.
     */
    if (dev->debug & AGX_DBG_PRECOMPILE) {
       union asahi_shader_key key = {0};
 
-      switch (so->nir->info.stage) {
-      case MESA_SHADER_VERTEX: {
+      switch (so->type) {
+      case PIPE_SHADER_VERTEX: {
          key.vs.vbuf.count = AGX_MAX_VBUFS;
          for (unsigned i = 0; i < AGX_MAX_VBUFS; ++i) {
             key.vs.vbuf.strides[i] = 16;
@@ -1633,7 +1635,7 @@ agx_create_shader_state(struct pipe_context *pctx,
 
          break;
       }
-      case MESA_SHADER_FRAGMENT:
+      case PIPE_SHADER_FRAGMENT:
          key.fs.nr_cbufs = 1;
          key.fs.nr_samples = 1;
          for (unsigned i = 0; i < key.fs.nr_cbufs; ++i) {
@@ -1684,7 +1686,6 @@ agx_create_compute_state(struct pipe_context *pctx,
    agx_get_shader_variant(agx_screen(pctx->screen), so, &pctx->debug, &key);
 
    /* We're done with the NIR, throw it away */
-   so->nir = NULL;
    ralloc_free(nir);
    return so;
 }
@@ -1824,6 +1825,7 @@ agx_delete_shader_state(struct pipe_context *ctx, void *cso)
 {
    struct agx_uncompiled_shader *so = cso;
    _mesa_hash_table_destroy(so->variants, agx_delete_compiled_shader);
+   blob_finish(&so->serialized_nir);
    ralloc_free(so);
 }
 
@@ -2705,8 +2707,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       return;
    }
 
-   const nir_shader *nir_vs = ctx->stage[PIPE_SHADER_VERTEX].shader->nir;
-   bool uses_xfb = nir_vs->xfb_info && ctx->streamout.num_targets;
+   bool has_xfb_info = ctx->stage[PIPE_SHADER_VERTEX].shader->has_xfb_info;
+   bool uses_xfb = has_xfb_info && ctx->streamout.num_targets;
    bool uses_prims_generated = ctx->active_queries && ctx->prims_generated;
 
    if (indirect && (uses_prims_generated || uses_xfb)) {
