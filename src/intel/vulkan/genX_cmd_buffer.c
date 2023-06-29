@@ -138,7 +138,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
        ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
        ANV_PIPE_CS_STALL_BIT);
 
-#if GFX_VERx10 == 120
+#if INTEL_NEEDS_WA_1607854226
    /* Wa_1607854226:
     *
     *  Workaround the non pipelined state not applying in MEDIA/GPGPU pipeline
@@ -228,7 +228,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 #endif
    }
 
-#if GFX_VERx10 == 120
+#if INTEL_NEEDS_WA_1607854226
    /* Wa_1607854226:
     *
     *  Put the pipeline back into its current mode.
