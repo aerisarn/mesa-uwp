@@ -505,11 +505,9 @@ static bool
 llvmpipe_nir_is_linear_compat(struct nir_shader *shader,
                               struct lp_tgsi_info *info)
 {
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         if (!llvmpipe_nir_fn_is_linear_compat(shader, function->impl, info))
-            return false;
-      }
+   nir_foreach_function_impl(impl, shader) {
+      if (!llvmpipe_nir_fn_is_linear_compat(shader, impl, info))
+         return false;
    }
    return true;
 }
