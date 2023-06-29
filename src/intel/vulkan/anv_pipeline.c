@@ -4286,6 +4286,20 @@ VkResult anv_GetPipelineExecutableStatisticsKHR(
          stat->value.u64 = 0;
    }
 
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
+      uint32_t hash = pipeline->type == ANV_PIPELINE_COMPUTE ?
+                      anv_pipeline_to_compute(pipeline)->source_hash :
+                      (pipeline->type == ANV_PIPELINE_GRAPHICS_LIB ||
+                       pipeline->type == ANV_PIPELINE_GRAPHICS) ?
+                      anv_pipeline_to_graphics_base(pipeline)->source_hashes[exe->stage] :
+                      0 /* No source hash for ray tracing */;
+      WRITE_STR(stat->name, "Source hash");
+      WRITE_STR(stat->description,
+                "hash = 0x%08x. Hash generated from shader source.", hash);
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = hash;
+   }
+
    return vk_outarray_status(&out);
 }
 
