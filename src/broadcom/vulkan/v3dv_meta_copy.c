@@ -703,8 +703,8 @@ gather_image_to_buffer_info(struct v3dv_cmd_buffer *cmd_buffer,
       vk_format_get_blockwidth(image->planes[plane].vk_format);
    uint32_t block_height =
       vk_format_get_blockheight(image->planes[plane].vk_format);
-   buf_width = buf_width / block_width;
-   buf_height = buf_height / block_height;
+   buf_width = DIV_ROUND_UP(buf_width, block_width);
+   buf_height = DIV_ROUND_UP(buf_height, block_height);
 
    out_info->src_format = src_format;
    out_info->dst_format = dst_format;
