@@ -1586,10 +1586,10 @@ agx_create_shader_state(struct pipe_context *pctx,
    ralloc_steal(so, nir);
 
    if (nir->info.stage == MESA_SHADER_VERTEX) {
-      so->variants = _mesa_hash_table_create(NULL, asahi_vs_shader_key_hash,
+      so->variants = _mesa_hash_table_create(so, asahi_vs_shader_key_hash,
                                              asahi_vs_shader_key_equal);
    } else {
-      so->variants = _mesa_hash_table_create(NULL, asahi_fs_shader_key_hash,
+      so->variants = _mesa_hash_table_create(so, asahi_fs_shader_key_hash,
                                              asahi_fs_shader_key_equal);
    }
 
@@ -1664,7 +1664,7 @@ agx_create_compute_state(struct pipe_context *pctx,
 
    so->static_shared_mem = cso->static_shared_mem;
 
-   so->variants = _mesa_hash_table_create(NULL, asahi_cs_shader_key_hash,
+   so->variants = _mesa_hash_table_create(so, asahi_cs_shader_key_hash,
                                           asahi_cs_shader_key_equal);
 
    union asahi_shader_key key = {0};
