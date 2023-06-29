@@ -2498,21 +2498,15 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       emit_idot_instruction(ctx, instr, aco_opcode::v_dot2_u32_u16, dst, true);
       break;
    }
-   case nir_op_cube_face_coord_amd: {
+   case nir_op_cube_amd: {
       Temp in = get_alu_src(ctx, instr->src[0], 3);
       Temp src[3] = {emit_extract_vector(ctx, in, 0, v1), emit_extract_vector(ctx, in, 1, v1),
                      emit_extract_vector(ctx, in, 2, v1)};
       Temp ma = bld.vop3(aco_opcode::v_cubema_f32, bld.def(v1), src[0], src[1], src[2]);
       Temp sc = bld.vop3(aco_opcode::v_cubesc_f32, bld.def(v1), src[0], src[1], src[2]);
       Temp tc = bld.vop3(aco_opcode::v_cubetc_f32, bld.def(v1), src[0], src[1], src[2]);
-      bld.pseudo(aco_opcode::p_create_vector, Definition(dst), sc, tc, ma);
-      break;
-   }
-   case nir_op_cube_face_index_amd: {
-      Temp in = get_alu_src(ctx, instr->src[0], 3);
-      Temp src[3] = {emit_extract_vector(ctx, in, 0, v1), emit_extract_vector(ctx, in, 1, v1),
-                     emit_extract_vector(ctx, in, 2, v1)};
-      bld.vop3(aco_opcode::v_cubeid_f32, Definition(dst), src[0], src[1], src[2]);
+      Temp id = bld.vop3(aco_opcode::v_cubeid_f32, bld.def(v1), src[0], src[1], src[2]);
+      bld.pseudo(aco_opcode::p_create_vector, Definition(dst), tc, sc, ma, id);
       break;
    }
    case nir_op_bcsel: {

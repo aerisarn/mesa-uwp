@@ -98,12 +98,12 @@ prepare_cube_coords(nir_builder *b, nir_tex_instr *tex, nir_ssa_def **coord, nir
    if (tex->is_array && options->gfx_level <= GFX8 && coords[3])
       coords[3] = nir_fmax(b, coords[3], nir_imm_float(b, 0.0));
 
-   nir_ssa_def *cube_coords = nir_cube_face_coord_amd(b, nir_vec(b, coords, 3));
-   nir_ssa_def *sc = nir_channel(b, cube_coords, 0);
-   nir_ssa_def *tc = nir_channel(b, cube_coords, 1);
+   nir_ssa_def *cube_coords = nir_cube_amd(b, nir_vec(b, coords, 3));
+   nir_ssa_def *sc = nir_channel(b, cube_coords, 1);
+   nir_ssa_def *tc = nir_channel(b, cube_coords, 0);
    nir_ssa_def *ma = nir_channel(b, cube_coords, 2);
    nir_ssa_def *invma = nir_frcp(b, nir_fabs(b, ma));
-   nir_ssa_def *id = nir_cube_face_index_amd(b, nir_vec(b, coords, 3));
+   nir_ssa_def *id = nir_channel(b, cube_coords, 3);
 
    if (ddx || ddy) {
       sc = nir_fmul(b, sc, invma);

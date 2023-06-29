@@ -536,38 +536,6 @@ for (unsigned bit = 0; bit < bit_size; bit++) {
 }
 """)
 
-# AMD_gcn_shader extended instructions
-unop_horiz("cube_face_coord_amd", 3, tfloat32, 3, tfloat32, """
-dst.x = dst.y = dst.z = 0.0;
-float absX = fabsf(src0.x);
-float absY = fabsf(src0.y);
-float absZ = fabsf(src0.z);
-
-if (absX >= absY && absX >= absZ) { dst.z = 2 * src0.x; }
-if (absY >= absX && absY >= absZ) { dst.z = 2 * src0.y; }
-if (absZ >= absX && absZ >= absY) { dst.z = 2 * src0.z; }
-
-if (src0.x >= 0 && absX >= absY && absX >= absZ) { dst.x = -src0.z; dst.y = -src0.y; }
-if (src0.x < 0 && absX >= absY && absX >= absZ) { dst.x = src0.z; dst.y = -src0.y; }
-if (src0.y >= 0 && absY >= absX && absY >= absZ) { dst.x = src0.x; dst.y = src0.z; }
-if (src0.y < 0 && absY >= absX && absY >= absZ) { dst.x = src0.x; dst.y = -src0.z; }
-if (src0.z >= 0 && absZ >= absX && absZ >= absY) { dst.x = src0.x; dst.y = -src0.y; }
-if (src0.z < 0 && absZ >= absX && absZ >= absY) { dst.x = -src0.x; dst.y = -src0.y; }
-""")
-
-unop_horiz("cube_face_index_amd", 1, tfloat32, 3, tfloat32, """
-dst.x = 0.0;
-float absX = fabsf(src0.x);
-float absY = fabsf(src0.y);
-float absZ = fabsf(src0.z);
-if (src0.x >= 0 && absX >= absY && absX >= absZ) dst.x = 0;
-if (src0.x < 0 && absX >= absY && absX >= absZ) dst.x = 1;
-if (src0.y >= 0 && absY >= absX && absY >= absZ) dst.x = 2;
-if (src0.y < 0 && absY >= absX && absY >= absZ) dst.x = 3;
-if (src0.z >= 0 && absZ >= absX && absZ >= absY) dst.x = 4;
-if (src0.z < 0 && absZ >= absX && absZ >= absY) dst.x = 5;
-""")
-
 unop_reduce("fsum", 1, tfloat, tfloat, "{src}", "{src0} + {src1}", "{src}",
             description = "Sum of vector components")
 
@@ -1267,11 +1235,11 @@ dst = ((((src0 & 0xffff0000) >> 16) * (src1 & 0x0000ffff)) << 16) + src2;
 triop("imad24_ir3", tint32, _2src_commutative,
       "(((int32_t)src0 << 8) >> 8) * (((int32_t)src1 << 8) >> 8) + src2")
 
-# r600-specific instruction that evaluates unnormalized cube texture coordinates
+# r600/gcn specific instruction that evaluates unnormalized cube texture coordinates
 # and face index
 # The actual texture coordinates are evaluated from this according to
 #    dst.yx / abs(dst.z) + 1.5
-unop_horiz("cube_r600", 4, tfloat32, 3, tfloat32, """
+unop_horiz("cube_amd", 4, tfloat32, 3, tfloat32, """
    dst.x = dst.y = dst.z = 0.0;
    float absX = fabsf(src0.x);
    float absY = fabsf(src0.y);

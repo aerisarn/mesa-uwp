@@ -734,8 +734,6 @@ r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *)
    case nir_op_fddy_coarse:
    case nir_op_fddy_fine:
       return nir_src_bit_size(alu->src[0].src) == 64;
-   case nir_op_cube_r600:
-      return false;
    default:
       return true;
    }

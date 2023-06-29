@@ -265,8 +265,8 @@ r600_nir_lower_cube_to_2darray_impl(nir_builder *b, nir_instr *instr, void *_opt
    int coord_idx = nir_tex_instr_src_index(tex, nir_tex_src_coord);
    assert(coord_idx >= 0);
 
-   auto cubed = nir_cube_r600(b,
-                              nir_trim_vector(b, tex->src[coord_idx].src.ssa, 3));
+   auto cubed = nir_cube_amd(b,
+                             nir_trim_vector(b, tex->src[coord_idx].src.ssa, 3));
    auto xy = nir_fmad(b,
                       nir_vec2(b, nir_channel(b, cubed, 1), nir_channel(b, cubed, 0)),
                       nir_frcp(b, nir_fabs(b, nir_channel(b, cubed, 2))),
