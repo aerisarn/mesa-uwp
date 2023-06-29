@@ -1276,16 +1276,8 @@ blorp_emit_3dstate_multisample(struct blorp_batch *batch,
 {
    blorp_emit(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
       ms.NumberofMultisamples       = __builtin_ffs(params->num_samples) - 1;
-
-#if GFX_VER >= 8
-      /* The PRM says that this bit is valid only for DX9:
-       *
-       *    SW can choose to set this bit only for DX9 API. DX10/OGL API's
-       *    should not have any effect by setting or not setting this bit.
-       */
-      ms.PixelPositionOffsetEnable  = false;
-#elif GFX_VER >= 7
-
+      ms.PixelLocation              = CENTER;
+#if GFX_VER >= 7 && GFX_VER < 8
       switch (params->num_samples) {
       case 1:
          INTEL_SAMPLE_POS_1X(ms.Sample);
@@ -1302,10 +1294,9 @@ blorp_emit_3dstate_multisample(struct blorp_batch *batch,
       default:
          break;
       }
-#else
+#elif GFX_VER < 7
       INTEL_SAMPLE_POS_4X(ms.Sample);
 #endif
-      ms.PixelLocation              = CENTER;
    }
 }
 
