@@ -877,11 +877,8 @@ anv_nir_compute_dynamic_push_bits(nir_shader *shader)
 {
    enum anv_dynamic_push_bits ret = 0;
 
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
-
-      nir_foreach_block(block, function->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;

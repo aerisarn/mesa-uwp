@@ -1821,11 +1821,8 @@ static void
 anv_validate_pipeline_layout(const struct anv_pipeline_sets_layout *layout,
                              nir_shader *shader)
 {
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
-
-      nir_foreach_block(block, function->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;

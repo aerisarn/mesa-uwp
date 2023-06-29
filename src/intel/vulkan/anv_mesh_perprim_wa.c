@@ -228,11 +228,8 @@ anv_mesh_convert_attrs_prim_to_vert(struct nir_shader *nir,
 
       /* Update types of derefs to match type of variables they (de)reference. */
       if (dup_vertices) {
-         nir_foreach_function(function, b.shader) {
-            if (!function->impl)
-               continue;
-
-            nir_foreach_block(block, function->impl) {
+         nir_foreach_function_impl(impl, b.shader) {
+            nir_foreach_block(block, impl) {
                nir_foreach_instr(instr, block) {
                   if (instr->type != nir_instr_type_deref)
                      continue;
