@@ -2912,10 +2912,7 @@ midgard_compile_shader_nir(nir_shader *nir,
 
    info->tls_size = nir->scratch_size;
 
-   nir_foreach_function(func, nir) {
-      if (!func->impl)
-         continue;
-
+   nir_foreach_function_with_impl(func, impl, nir) {
       list_inithead(&ctx->blocks);
       ctx->block_count = 0;
       ctx->func = func;
@@ -2931,7 +2928,7 @@ midgard_compile_shader_nir(nir_shader *nir,
          ++ctx->instruction_count;
       }
 
-      emit_cf_list(ctx, &func->impl->body);
+      emit_cf_list(ctx, &impl->body);
       break; /* TODO: Multi-function shaders */
    }
 
