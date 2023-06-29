@@ -117,9 +117,7 @@ lima_nir_duplicate_load_consts_impl(nir_shader *shader, nir_function_impl *impl)
 void
 lima_nir_duplicate_load_consts(nir_shader *shader)
 {
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         lima_nir_duplicate_load_consts_impl(shader, function->impl);
-      }
+   nir_foreach_function_impl(impl, shader) {
+      lima_nir_duplicate_load_consts_impl(shader, impl);
    }
 }

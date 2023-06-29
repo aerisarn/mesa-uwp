@@ -139,10 +139,8 @@ lima_nir_duplicate_intrinsic_impl(nir_shader *shader, nir_function_impl *impl,
 void
 lima_nir_duplicate_load_uniforms(nir_shader *shader)
 {
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         lima_nir_duplicate_intrinsic_impl(shader, function->impl, nir_intrinsic_load_uniform);
-      }
+   nir_foreach_function_impl(impl, shader) {
+      lima_nir_duplicate_intrinsic_impl(shader, impl, nir_intrinsic_load_uniform);
    }
 }
 
@@ -152,9 +150,7 @@ lima_nir_duplicate_load_uniforms(nir_shader *shader)
 void
 lima_nir_duplicate_load_inputs(nir_shader *shader)
 {
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         lima_nir_duplicate_intrinsic_impl(shader, function->impl, nir_intrinsic_load_input);
-      }
+   nir_foreach_function_impl(impl, shader) {
+      lima_nir_duplicate_intrinsic_impl(shader, impl, nir_intrinsic_load_input);
    }
 }

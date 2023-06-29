@@ -126,18 +126,16 @@ lima_nir_split_loads(nir_shader *shader)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_builder b = nir_builder_create(function->impl);
+   nir_foreach_function_impl(impl, shader) {
+      nir_builder b = nir_builder_create(impl);
 
-         nir_foreach_block_reverse(block, function->impl) {
-            nir_foreach_instr_reverse_safe(instr, block) {
-               if (instr->type == nir_instr_type_load_const) {
-                  replace_load_const(&b, nir_instr_as_load_const(instr));
-                  progress = true;
-               } else if (instr->type == nir_instr_type_intrinsic) {
-                  progress |= replace_intrinsic(&b, nir_instr_as_intrinsic(instr));
-               }
+      nir_foreach_block_reverse(block, impl) {
+         nir_foreach_instr_reverse_safe(instr, block) {
+            if (instr->type == nir_instr_type_load_const) {
+               replace_load_const(&b, nir_instr_as_load_const(instr));
+               progress = true;
+            } else if (instr->type == nir_instr_type_intrinsic) {
+               progress |= replace_intrinsic(&b, nir_instr_as_intrinsic(instr));
             }
          }
       }
