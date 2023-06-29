@@ -660,7 +660,7 @@ v3d_lower_nir(struct v3d_compile *c)
                  */
                 const unsigned chunk_size = 16; /* max single store size */
                 NIR_PASS(_, c->s, nir_zero_initialize_shared_memory,
-                         ALIGN(c->s->info.shared_size, chunk_size), chunk_size);
+                         align(c->s->info.shared_size, chunk_size), chunk_size);
         }
 
         NIR_PASS(_, c->s, nir_lower_compute_system_values, NULL);

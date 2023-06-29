@@ -2357,7 +2357,7 @@ v3dv_AllocateMemory(VkDevice _device,
    /* We always allocate device memory in multiples of a page, so round up
     * requested size to that.
     */
-   const VkDeviceSize alloc_size = ALIGN(pAllocateInfo->allocationSize, 4096);
+   const VkDeviceSize alloc_size = align64(pAllocateInfo->allocationSize, 4096);
 
    if (unlikely(alloc_size > MAX_MEMORY_ALLOCATION_SIZE))
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
