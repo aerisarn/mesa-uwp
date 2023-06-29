@@ -1386,6 +1386,10 @@ radv_get_physical_device_properties_1_3(struct radv_physical_device *pdevice, Vk
       /* Only GFX10+ supports wave32. */
       p->minSubgroupSize = 32;
       p->requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT;
+
+      if (radv_taskmesh_enabled(pdevice)) {
+         p->requiredSubgroupSizeStages |= VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT;
+      }
    }
 
    p->maxInlineUniformBlockSize = MAX_INLINE_UNIFORM_BLOCK_SIZE;
