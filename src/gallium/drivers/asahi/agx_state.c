@@ -1670,7 +1670,7 @@ agx_create_compute_state(struct pipe_context *pctx,
    union asahi_shader_key key = {0};
 
    assert(cso->ir_type == PIPE_SHADER_IR_NIR && "TGSI kernels unsupported");
-   nir_shader *nir = nir_shader_clone(NULL, cso->prog);
+   nir_shader *nir = (void *)cso->prog;
 
    so->type = pipe_shader_type_from_mesa(nir->info.stage);
 
