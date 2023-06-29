@@ -990,9 +990,10 @@ static void pvr_geom_state_stream_init(struct pvr_render_ctx *ctx,
    }
    stream_ptr += pvr_cmd_length(VDMCTRL_PDS_STATE0);
 
-   /* Set up view_idx to 0 */
-   *stream_ptr = 0;
-   stream_ptr++;
+   /* clang-format off */
+   pvr_csb_pack (stream_ptr, KMD_STREAM_VIEW_IDX, value);
+   /* clang-format on */
+   stream_ptr += pvr_cmd_length(KMD_STREAM_VIEW_IDX);
 
    state->fw_stream_len = (uint8_t *)stream_ptr - (uint8_t *)state->fw_stream;
    assert(state->fw_stream_len <= ARRAY_SIZE(state->fw_stream));
@@ -1196,11 +1197,15 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
       stream_ptr += pvr_cmd_length(CR_FB_CDC_ZLS);
    }
 
-   STATIC_ASSERT(ARRAY_SIZE(job->pbe_reg_words) == 8U);
-   STATIC_ASSERT(ARRAY_SIZE(job->pbe_reg_words[0]) == 3U);
+#define DWORDS_PER_U64 2
+
+   STATIC_ASSERT(ARRAY_SIZE(job->pbe_reg_words) == PVR_MAX_COLOR_ATTACHMENTS);
+   STATIC_ASSERT(ARRAY_SIZE(job->pbe_reg_words[0]) ==
+                 ROGUE_NUM_PBESTATE_REG_WORDS);
    STATIC_ASSERT(sizeof(job->pbe_reg_words[0][0]) == sizeof(uint64_t));
    memcpy(stream_ptr, job->pbe_reg_words, sizeof(job->pbe_reg_words));
-   stream_ptr += 8U * 3U * 2U;
+   stream_ptr +=
+      PVR_MAX_COLOR_ATTACHMENTS * ROGUE_NUM_PBESTATE_REG_WORDS * DWORDS_PER_U64;
 
    pvr_csb_pack ((uint64_t *)stream_ptr,
                  CR_TPU_BORDER_COLOUR_TABLE_PDM,
@@ -1210,26 +1215,33 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    }
    stream_ptr += pvr_cmd_length(CR_TPU_BORDER_COLOUR_TABLE_PDM);
 
-   STATIC_ASSERT(ARRAY_SIZE(job->pds_bgnd_reg_values) == 3U);
+   STATIC_ASSERT(ARRAY_SIZE(job->pds_bgnd_reg_values) ==
+                 ROGUE_NUM_CR_PDS_BGRND_WORDS);
    STATIC_ASSERT(sizeof(job->pds_bgnd_reg_values[0]) == sizeof(uint64_t));
    memcpy(stream_ptr,
           job->pds_bgnd_reg_values,
           sizeof(job->pds_bgnd_reg_values));
-   stream_ptr += 3U * 2U;
+   stream_ptr += ROGUE_NUM_CR_PDS_BGRND_WORDS * DWORDS_PER_U64;
 
-   STATIC_ASSERT(ARRAY_SIZE(job->pds_pr_bgnd_reg_values) == 3U);
+   STATIC_ASSERT(ARRAY_SIZE(job->pds_pr_bgnd_reg_values) ==
+                 ROGUE_NUM_CR_PDS_BGRND_WORDS);
    STATIC_ASSERT(sizeof(job->pds_pr_bgnd_reg_values[0]) == sizeof(uint64_t));
    memcpy(stream_ptr,
           job->pds_pr_bgnd_reg_values,
           sizeof(job->pds_pr_bgnd_reg_values));
-   stream_ptr += 3U * 2U;
+   stream_ptr += ROGUE_NUM_CR_PDS_BGRND_WORDS * DWORDS_PER_U64;
 
-   /* Set usc_clear_register array to 0 */
-   memset(stream_ptr, 0, 8U * sizeof(uint32_t));
-   stream_ptr += 8U;
+#undef DWORDS_PER_U64
+
+   memset(stream_ptr,
+          0,
+          PVRX(KMD_STREAM_USC_CLEAR_REGISTER_COUNT) *
+             PVR_DW_TO_BYTES(pvr_cmd_length(CR_USC_CLEAR_REGISTER)));
+   stream_ptr += PVRX(KMD_STREAM_USC_CLEAR_REGISTER_COUNT) *
+                 pvr_cmd_length(CR_USC_CLEAR_REGISTER);
 
    *stream_ptr = pixel_ctl;
-   stream_ptr++;
+   stream_ptr += pvr_cmd_length(CR_USC_PIXEL_OUTPUT_CTRL);
 
    pvr_csb_pack (stream_ptr, CR_ISP_BGOBJDEPTH, value) {
       const float depth_clear = job->ds_clear_value.depth;
@@ -1301,10 +1313,7 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    stream_ptr += pvr_cmd_length(CR_EVENT_PIXEL_PDS_INFO);
 
    if (PVR_HAS_FEATURE(dev_info, cluster_grouping)) {
-      uint32_t pixel_phantom = 0;
-
-      if (PVR_HAS_FEATURE(dev_info, slc_mcu_cache_controls) &&
-          dev_runtime_info->num_phantoms > 1 && job->frag_uses_atomic_ops) {
+      pvr_csb_pack (stream_ptr, KMD_STREAM_PIXEL_PHANTOM, value) {
          /* Each phantom has its own MCU, so atomicity can only be guaranteed
           * when all work items are processed on the same phantom. This means
           * we need to disable all USCs other than those of the first
@@ -1312,16 +1321,22 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
           * for atomic operations in fragment shaders, since hardware
           * prevents the TA to run on more than one phantom anyway.
           */
-         pixel_phantom = 0xF;
+         /* Note that leaving all phantoms disabled (as csbgen will do by
+          * default since it will zero out things) will set them to their
+          * default state (i.e. enabled) instead of disabling them.
+          */
+         if (PVR_HAS_FEATURE(dev_info, slc_mcu_cache_controls) &&
+             dev_runtime_info->num_phantoms > 1 && job->frag_uses_atomic_ops) {
+            value.phantom_0 = PVRX(KMD_STREAM_PIXEL_PHANTOM_STATE_ENABLED);
+         }
       }
-
-      *stream_ptr = pixel_phantom;
-      stream_ptr++;
+      stream_ptr += pvr_cmd_length(KMD_STREAM_PIXEL_PHANTOM);
    }
 
-   /* Set up view_idx to 0 */
-   *stream_ptr = 0;
-   stream_ptr++;
+   /* clang-format off */
+   pvr_csb_pack (stream_ptr, KMD_STREAM_VIEW_IDX, value);
+   /* clang-format on */
+   stream_ptr += pvr_cmd_length(KMD_STREAM_VIEW_IDX);
 
    pvr_csb_pack (stream_ptr, CR_EVENT_PIXEL_PDS_DATA, value) {
       value.addr = PVR_DEV_ADDR(job->pds_pixel_event_data_offset);

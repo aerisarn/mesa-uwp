@@ -31,6 +31,12 @@ TODO: Once the kernel driver is merged upstream, check to see if this comment
 needs updating.
 -->
 
+<!--
+TODO: Currently the sizes for fields are in bits. Those should be changed to
+bytes. Might want to do this in conjunction with csbgen being changed from
+dword to bytes granular.
+-->
+
 <csbgen name="ROGUE" prefix="KMD_STREAM">
 
   <struct name="HDR" length="2">
@@ -69,5 +75,36 @@ needs updating.
     <field name="continuation" start="28" end="28" type="bool"/>
     <field name="has_brn49927" start="0" end="0" type="bool"/>
   </struct>
+
+  <enum name="PIXEL_PHANTOM_STATE">
+    <value name="DISABLED" value="0x0"/>
+    <value name="ENABLED"  value="0xF"/>
+  </enum>
+
+  <!--
+    Note: if there's an attempt to disable all phantoms, they will all be set
+    to their default states (i.e. all enabled).
+  -->
+  <struct name="PIXEL_PHANTOM" length="1">
+    <field name="phantom_1" start="4" end="7" type="PIXEL_PHANTOM_STATE"/>
+    <field name="phantom_0" start="0" end="3" type="PIXEL_PHANTOM_STATE"/>
+  </struct>
+
+  <struct name="VIEW_IDX" length="1">
+    <field name="idx" start="0" end="7" type="uint"/>
+  </struct>
+
+  <!--
+    Note: this does not depend on
+    \ref pvr_device_features.has_eight_output_registers .
+    It's always 8 catering for the largest size.
+  -->
+  <!--
+    TODO: Instead of defining this, see if we can use something like anvil's
+    "group" where a field is repeated n times. That would allow us to get the
+    total length of the whole group instead of the driver calculating it by
+    multiplying this with the size of the usc reg.
+  -->
+  <define name="USC_CLEAR_REGISTER_COUNT" value="8"/>
 
 </csbgen>
