@@ -2200,10 +2200,8 @@ static int
 count_nir_instrs(nir_shader *nir)
 {
         int count = 0;
-        nir_foreach_function(function, nir) {
-                if (!function->impl)
-                        continue;
-                nir_foreach_block(block, function->impl) {
+        nir_foreach_function_impl(impl, nir) {
+                nir_foreach_block(block, impl) {
                         nir_foreach_instr(instr, block)
                                 count++;
                 }

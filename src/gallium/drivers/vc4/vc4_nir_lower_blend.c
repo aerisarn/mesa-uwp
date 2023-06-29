@@ -598,16 +598,14 @@ vc4_nir_lower_blend_block(nir_block *block, struct vc4_compile *c)
 void
 vc4_nir_lower_blend(nir_shader *s, struct vc4_compile *c)
 {
-        nir_foreach_function(function, s) {
-                if (function->impl) {
-                        nir_foreach_block(block, function->impl) {
-                                vc4_nir_lower_blend_block(block, c);
-                        }
-
-                        nir_metadata_preserve(function->impl,
-                                              nir_metadata_block_index |
-                                              nir_metadata_dominance);
+        nir_foreach_function_impl(impl, s) {
+                nir_foreach_block(block, impl) {
+                        vc4_nir_lower_blend_block(block, c);
                 }
+
+                nir_metadata_preserve(impl,
+                                      nir_metadata_block_index |
+                                      nir_metadata_dominance);
         }
 
         /* If we didn't do alpha-to-coverage on the output color, we still

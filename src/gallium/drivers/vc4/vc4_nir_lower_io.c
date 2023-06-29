@@ -372,8 +372,7 @@ vc4_nir_lower_io_impl(struct vc4_compile *c, nir_function_impl *impl)
 void
 vc4_nir_lower_io(nir_shader *s, struct vc4_compile *c)
 {
-        nir_foreach_function(function, s) {
-                if (function->impl)
-                        vc4_nir_lower_io_impl(c, function->impl);
+        nir_foreach_function_impl(impl, s) {
+                vc4_nir_lower_io_impl(c, impl);
         }
 }
