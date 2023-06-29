@@ -505,30 +505,31 @@ struct image_to_buffer_info {
 };
 
 static VkImageBlit2
-blit_region_for_image_to_buffer(const VkBufferImageCopy2 *region,
-                                struct image_to_buffer_info *info,
-                                uint32_t layer)
+blit_region_for_image_to_buffer(const VkOffset3D *offset,
+                                const VkExtent3D *extent,
+                                uint32_t mip_level,
+                                uint32_t base_layer,
+                                uint32_t layer_offset,
+                                struct image_to_buffer_info *info)
 {
    VkImageBlit2 output = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
       .srcSubresource = {
          .aspectMask = info->src_copy_aspect,
-         .mipLevel = region->imageSubresource.mipLevel,
-         .baseArrayLayer = region->imageSubresource.baseArrayLayer + layer,
+         .mipLevel = mip_level,
+         .baseArrayLayer = base_layer + layer_offset,
          .layerCount = 1,
       },
       .srcOffsets = {
          {
-            DIV_ROUND_UP(region->imageOffset.x, info->block_width),
-            DIV_ROUND_UP(region->imageOffset.y, info->block_height),
-            region->imageOffset.z + layer,
+            DIV_ROUND_UP(offset->x, info->block_width),
+            DIV_ROUND_UP(offset->y, info->block_height),
+            offset->z + layer_offset,
          },
          {
-            DIV_ROUND_UP(region->imageOffset.x + region->imageExtent.width,
-                         info->block_width),
-            DIV_ROUND_UP(region->imageOffset.y + region->imageExtent.height,
-                         info->block_height),
-            region->imageOffset.z + layer + 1,
+            DIV_ROUND_UP(offset->x + extent->width, info->block_width),
+            DIV_ROUND_UP(offset->y + extent->height, info->block_height),
+            offset->z + layer_offset + 1,
          },
       },
       .dstSubresource = {
@@ -540,8 +541,8 @@ blit_region_for_image_to_buffer(const VkBufferImageCopy2 *region,
       .dstOffsets = {
          { 0, 0, 0 },
          {
-            DIV_ROUND_UP(region->imageExtent.width, info->block_width),
-            DIV_ROUND_UP(region->imageExtent.height, info->block_height),
+            DIV_ROUND_UP(extent->width, info->block_width),
+            DIV_ROUND_UP(extent->height, info->block_height),
             1
          },
       },
@@ -781,6 +782,85 @@ create_image_from_buffer(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 /**
+ * Creates an image with a single mip level that aliases the memory of a
+ * mip level in another image, re-interpreting the memory with an uncompressed
+ * format. The image is added to the command buffer as a private object for
+ * disposal.
+ */
+static bool
+create_image_mip_level_alias(struct v3dv_cmd_buffer *cmd_buffer,
+                             struct v3dv_image *image,
+                             VkFormat format,
+                             uint32_t plane,
+                             uint32_t mip_level,
+                             uint32_t layer,
+                             VkImage *alias)
+{
+   VkResult result;
+   assert(!vk_format_is_compressed(format));
+
+   struct v3dv_device *device = cmd_buffer->device;
+   VkDevice vk_device = v3dv_device_to_handle(device);
+   uint32_t mip_width = image->planes[plane].slices[mip_level].width;
+   uint32_t mip_height = image->planes[plane].slices[mip_level].height;
+
+   uint32_t block_width =
+      vk_format_get_blockwidth(image->planes[plane].vk_format);
+   uint32_t block_height =
+      vk_format_get_blockheight(image->planes[plane].vk_format);
+
+   VkImageCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .imageType = image->vk.image_type,
+      .format = format,
+      .extent = { DIV_ROUND_UP(mip_width, block_width),
+                  DIV_ROUND_UP(mip_height, block_height),
+                  1 },
+      .mipLevels = 1,
+      .arrayLayers = 1,
+      .samples = image->vk.samples,
+      .tiling = image->vk.tiling,
+      .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+      .queueFamilyIndexCount = 0,
+      .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
+   };
+   result = v3dv_CreateImage(vk_device, &info, &device->vk.alloc, alias);
+   if (result != VK_SUCCESS)
+      return false;
+
+   /* The alias we have just created has just one mip, but we may be aliasing
+    * any mip in the original image. Because the slice setup changes based on
+    * the mip (particularly, for mips >= 2 it uses power of 2 sizes internally)
+    * and this can influence the tiling layout selected for the slice, we want
+    * to make sure we copy the slice description from the actual mip level in
+    * the original image, and then rewrite any fields that we need for the
+    * alias. Particularly, we want to make the offset 0 because we are going to
+    * bind the underlying image memory exactly at the start of the selected mip.
+    * We also want to relax the image alignment requirements to the minimum
+    * (the one imposed by the Texture Base Address field) since we may not be
+    * aliasing a level 0 (for which we typically want a page alignment for
+    * optimal performance).
+    */
+   V3DV_FROM_HANDLE(v3dv_image, v3dv_alias, *alias);
+   v3dv_alias->planes[plane].slices[0] = image->planes[plane].slices[mip_level];
+   v3dv_alias->planes[plane].slices[0].width = info.extent.width;
+   v3dv_alias->planes[plane].slices[0].height = info.extent.height;
+   v3dv_alias->planes[plane].slices[0].offset = 0;
+   v3dv_alias->planes[plane].alignment = 64;
+
+   v3dv_cmd_buffer_add_private_obj(
+      cmd_buffer, (uintptr_t)*alias,
+      (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
+
+   result =
+      vk_common_BindImageMemory(vk_device, *alias,
+                                v3dv_device_memory_to_handle(image->planes[plane].mem),
+                                v3dv_layer_offset(image, mip_level, layer, plane));
+   return result == VK_SUCCESS;
+}
+
+/**
  * Returns true if the implementation supports the requested operation (even if
  * it failed to process it, for example, due to an out-of-memory error).
  */
@@ -819,58 +899,49 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
       num_layers = region->imageExtent.depth;
    assert(num_layers > 0);
 
-   /* Our blit interface can see the real format of the images to detect
-    * copies between compressed and uncompressed images and adapt the
-    * blit region accordingly. Here we are just doing a raw copy of
-    * compressed data, but we are passing an uncompressed view of the
-    * buffer for the blit destination image (since compressed formats are
-    * not renderable), so we also want to provide an uncompressed view of
-    * the source image.
-    */
-   VkResult result;
-   struct v3dv_device *device = cmd_buffer->device;
-   VkDevice _device = v3dv_device_to_handle(device);
-   if (vk_format_is_compressed(image->vk.format)) {
-      assert(image->plane_count == 1);
-      VkImage uiview;
-      VkImageCreateInfo uiview_info = {
-         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-         .imageType = VK_IMAGE_TYPE_3D,
-         .format = info.dst_format,
-         .extent = { info.buf_width, info.buf_height, image->vk.extent.depth },
-         .mipLevels = image->vk.mip_levels,
-         .arrayLayers = image->vk.array_layers,
-         .samples = image->vk.samples,
-         .tiling = image->vk.tiling,
-         .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-         .queueFamilyIndexCount = 0,
-         .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
-      };
-      result = v3dv_CreateImage(_device, &uiview_info, &device->vk.alloc, &uiview);
-      if (result != VK_SUCCESS)
-         return handled;
-
-      v3dv_cmd_buffer_add_private_obj(
-         cmd_buffer, (uintptr_t)uiview,
-         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
-
-      result =
-         vk_common_BindImageMemory(_device, uiview,
-                                   v3dv_device_memory_to_handle(image->planes[info.plane].mem),
-                                   image->planes[info.plane].mem_offset);
-      if (result != VK_SUCCESS)
-         return handled;
-
-      image = v3dv_image_from_handle(uiview);
-   }
-
-   VkImageBlit2 blit_region;
    /* Copy requested layers */
+   VkResult result;
+   VkImageBlit2 blit_region;
+   uint32_t mip_level = region->imageSubresource.mipLevel;
+   uint32_t base_layer = region->imageSubresource.baseArrayLayer;
    for (uint32_t i = 0; i < num_layers; i++) {
-      VkImage buffer_image;
+      uint32_t layer_offset = i;
+
+      if (vk_format_is_compressed(image->vk.format)) {
+         /* Our blit interface can see the real format of the images to detect
+          * copies between compressed and uncompressed images and adapt the
+          * blit region accordingly. Here we are just doing a raw copy of
+          * compressed data, but we are passing an uncompressed view of the
+          * buffer for the blit destination image (since compressed formats are
+          * not renderable), so we also want to provide an uncompressed view of
+          * the source image.
+          *
+          * It is important that we create the alias over the selected mip
+          * level (instead of aliasing the entire image) because an uncompressed
+          * view of the image won't have the same number of mip levels as the
+          * original image and the implicit mip size calculations the hw will
+          * do to sample from a non-zero mip level may not match exactly between
+          * compressed and uncompressed views.
+          */
+         VkImage alias;
+         if (!create_image_mip_level_alias(cmd_buffer, image, info.dst_format,
+                                           info.plane, mip_level,
+                                           base_layer + layer_offset,
+                                           &alias)) {
+            return handled;
+         }
+
+         /* We are aliasing the selected mip level and layer with a
+          * single-mip and single-layer image.
+          */
+         image = v3dv_image_from_handle(alias);
+         mip_level = 0;
+         base_layer = 0;
+         layer_offset = 0;
+      }
 
       /* Create the destination blit image from the destination buffer */
+      VkImage buffer_image;
       result =
          create_image_from_buffer(cmd_buffer, buffer, region, &info,
                                   i, &buffer_image);
@@ -886,7 +957,10 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
        * stencil format we support).
        */
       blit_region =
-         blit_region_for_image_to_buffer(region, &info, i);
+         blit_region_for_image_to_buffer(&region->imageOffset,
+                                         &region->imageExtent,
+                                         mip_level, base_layer, layer_offset,
+                                         &info);
 
       handled = blit_shader(cmd_buffer,
                             v3dv_image_from_handle(buffer_image),
