@@ -139,6 +139,7 @@ radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipelin
 
 struct radv_pipeline_key
 radv_generate_pipeline_key(const struct radv_device *device, const struct radv_pipeline *pipeline,
+                           const VkPipelineShaderStageCreateInfo *stages, const unsigned num_stages,
                            VkPipelineCreateFlags flags)
 {
    struct radv_pipeline_key key;
@@ -154,6 +155,26 @@ radv_generate_pipeline_key(const struct radv_device *device, const struct radv_p
    key.image_2d_view_of_3d = device->image_2d_view_of_3d && device->physical_device->rad_info.gfx_level == GFX9;
 
    key.tex_non_uniform = device->instance->tex_non_uniform;
+
+   for (unsigned i = 0; i < num_stages; ++i) {
+      const VkPipelineShaderStageCreateInfo *const stage = &stages[i];
+      const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *const subgroup_size =
+         vk_find_struct_const(stage->pNext, PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
+      const gl_shader_stage s = vk_to_mesa_shader_stage(stage->stage);
+
+      if (subgroup_size) {
+         if (subgroup_size->requiredSubgroupSize == 32)
+            key.subgroups[s].required_size = RADV_REQUIRED_WAVE32;
+         else if (subgroup_size->requiredSubgroupSize == 64)
+            key.subgroups[s].required_size = RADV_REQUIRED_WAVE64;
+         else
+            unreachable("Unsupported required subgroup size.");
+      }
+
+      if (stage->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT) {
+         key.subgroups[s].require_full = 1;
+      }
+   }
 
    return key;
 }

@@ -116,20 +116,7 @@ static struct radv_pipeline_key
 radv_generate_compute_pipeline_key(const struct radv_device *device, struct radv_compute_pipeline *pipeline,
                                    const VkComputePipelineCreateInfo *pCreateInfo)
 {
-   const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->stage;
-   struct radv_pipeline_key key = radv_generate_pipeline_key(device, &pipeline->base, pCreateInfo->flags);
-
-   const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *subgroup_size =
-      vk_find_struct_const(stage->pNext, PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
-
-   if (subgroup_size) {
-      assert(subgroup_size->requiredSubgroupSize == 32 || subgroup_size->requiredSubgroupSize == 64);
-      key.cs.compute_subgroup_size = subgroup_size->requiredSubgroupSize;
-   } else if (stage->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT) {
-      key.cs.require_full_subgroups = true;
-   }
-
-   return key;
+   return radv_generate_pipeline_key(device, &pipeline->base, &pCreateInfo->stage, 1, pCreateInfo->flags);
 }
 
 void

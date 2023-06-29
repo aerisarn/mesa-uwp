@@ -332,13 +332,14 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
                          const struct radv_pipeline_key *key, bool is_internal)
 {
    unsigned subgroup_size = 64, ballot_bit_size = 64;
-   if (key->cs.compute_subgroup_size) {
-      /* Only compute shaders currently support requiring a
+   const unsigned required_subgroup_size = key->subgroups[stage->stage].required_size * 32;
+   if (required_subgroup_size) {
+      /* Only compute/mesh/task shaders currently support requiring a
        * specific subgroup size.
        */
       assert(stage->stage >= MESA_SHADER_COMPUTE);
-      subgroup_size = key->cs.compute_subgroup_size;
-      ballot_bit_size = key->cs.compute_subgroup_size;
+      subgroup_size = required_subgroup_size;
+      ballot_bit_size = required_subgroup_size;
    }
 
    nir_shader *nir;

@@ -712,12 +712,14 @@ gather_shader_info_cs(struct radv_device *device, const nir_shader *nir, const s
    /* Games don't always request full subgroups when they should, which can cause bugs if cswave32
     * is enabled.
     */
-   bool require_full_subgroups =
-      pipeline_key->cs.require_full_subgroups ||
+   const bool require_full_subgroups =
+      pipeline_key->subgroups[MESA_SHADER_COMPUTE].require_full ||
       (default_wave_size == 32 && nir->info.uses_wide_subgroup_intrinsics && local_size % RADV_SUBGROUP_SIZE == 0);
 
-   if (pipeline_key->cs.compute_subgroup_size) {
-      info->cs.subgroup_size = pipeline_key->cs.compute_subgroup_size;
+   const unsigned required_subgroup_size = pipeline_key->subgroups[MESA_SHADER_COMPUTE].required_size * 32;
+
+   if (required_subgroup_size) {
+      info->cs.subgroup_size = required_subgroup_size;
    } else if (require_full_subgroups) {
       info->cs.subgroup_size = RADV_SUBGROUP_SIZE;
    } else if (device->physical_device->rad_info.gfx_level >= GFX10 && local_size <= 32) {

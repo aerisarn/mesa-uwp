@@ -549,7 +549,8 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
    pipeline->stages = stages;
    pipeline->groups = groups;
 
-   struct radv_pipeline_key key = radv_generate_pipeline_key(device, &pipeline->base.base, pCreateInfo->flags);
+   struct radv_pipeline_key key = radv_generate_pipeline_key(device, &pipeline->base.base, pCreateInfo->pStages,
+                                                             pCreateInfo->stageCount, pCreateInfo->flags);
 
    radv_rt_fill_stage_info(device, pCreateInfo, stages, &key);
    result = radv_rt_fill_group_info(device, pCreateInfo, stages, pipeline->groups);

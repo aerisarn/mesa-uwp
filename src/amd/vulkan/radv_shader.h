@@ -49,6 +49,17 @@ struct radv_shader_args;
 struct radv_vs_input_state;
 struct radv_shader_args;
 
+enum radv_required_subgroup_size {
+   RADV_REQUIRED_NONE = 0,
+   RADV_REQUIRED_WAVE32 = 1,
+   RADV_REQUIRED_WAVE64 = 2,
+};
+
+struct radv_required_subgroup_info {
+   uint8_t required_size : 2; /* radv_required_subgroup_size */
+   uint8_t require_full : 1;  /* whether full subgroups are required */
+};
+
 struct radv_ps_epilog_key {
    uint32_t spi_shader_col_format;
 
@@ -80,6 +91,8 @@ struct radv_pipeline_key {
    uint32_t tex_non_uniform : 1;
    uint32_t enable_remove_point_size : 1;
    uint32_t unknown_rast_prim : 1;
+
+   struct radv_required_subgroup_info subgroups[MESA_VULKAN_SHADER_STAGES];
 
    struct {
       uint32_t instance_rate_inputs;
@@ -115,14 +128,6 @@ struct radv_pipeline_key {
 
       bool line_smooth_enabled;
    } ps;
-
-   struct {
-      /* Non-zero if a required subgroup size is specified via
-       * VK_EXT_subgroup_size_control.
-       */
-      uint8_t compute_subgroup_size;
-      bool require_full_subgroups;
-   } cs;
 };
 
 struct radv_nir_compiler_options {
