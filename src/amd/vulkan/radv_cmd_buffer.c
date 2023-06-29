@@ -3389,8 +3389,9 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
    unsigned color_invalid = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11
                                ? S_028C70_FORMAT_GFX11(V_028C70_COLOR_INVALID)
                                : S_028C70_FORMAT_GFX6(V_028C70_COLOR_INVALID);
+   VkExtent2D extent = {MAX_FRAMEBUFFER_WIDTH, MAX_FRAMEBUFFER_HEIGHT};
 
-   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 48 + MAX_RTS * 70);
+   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 51 + MAX_RTS * 70);
 
    for (i = 0; i < render->color_att_count; ++i) {
       struct radv_image_view *iview = render->color_att[i].iview;
@@ -3425,6 +3426,9 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
           */
          disable_constant_encode_ac01 = true;
       }
+
+      extent.width = MIN2(extent.width, iview->vk.extent.width);
+      extent.height = MIN2(extent.height, iview->vk.extent.height);
    }
    for (; i < cmd_buffer->state.last_subpass_color_count; i++) {
       radeon_set_context_reg(cmd_buffer->cs, R_028C70_CB_COLOR0_INFO + i * 0x3C, color_invalid);
@@ -3445,6 +3449,9 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
           */
          radv_load_ds_clear_metadata(cmd_buffer, iview);
       }
+
+      extent.width = MIN2(extent.width, iview->vk.extent.width);
+      extent.height = MIN2(extent.height, iview->vk.extent.height);
    } else if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX10_3 && render->vrs_att.iview &&
               radv_cmd_buffer_get_vrs_image(cmd_buffer)) {
       /* When a subpass uses a VRS attachment without binding a depth/stencil attachment, we have to
@@ -3524,6 +3531,9 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
                                    S_028424_DISABLE_CONSTANT_ENCODE_REG(disable_constant_encode));
       }
    }
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028034_PA_SC_SCREEN_SCISSOR_BR,
+                          S_028034_BR_X(extent.width) | S_028034_BR_Y(extent.height));
 
    assert(cmd_buffer->cs->cdw <= cdw_max);
 
