@@ -338,8 +338,12 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask, unsign
 }
 
 static uint8_t
-radv_get_wave_size(struct radv_device *device, gl_shader_stage stage, const struct radv_shader_info *info)
+radv_get_wave_size(struct radv_device *device, gl_shader_stage stage, const struct radv_shader_info *info,
+                   const struct radv_required_subgroup_info *required)
 {
+   if (required->required_size)
+      return required->required_size * 32;
+
    if (stage == MESA_SHADER_GEOMETRY && !info->is_ngg)
       return 64;
    else if (stage == MESA_SHADER_COMPUTE)
@@ -355,10 +359,14 @@ radv_get_wave_size(struct radv_device *device, gl_shader_stage stage, const stru
 }
 
 static uint8_t
-radv_get_ballot_bit_size(struct radv_device *device, gl_shader_stage stage, const struct radv_shader_info *info)
+radv_get_ballot_bit_size(struct radv_device *device, gl_shader_stage stage, const struct radv_shader_info *info,
+                         const struct radv_required_subgroup_info *required)
 {
    if (stage == MESA_SHADER_COMPUTE && info->cs.subgroup_size)
       return info->cs.subgroup_size;
+
+   if (required->required_size)
+      return required->required_size * 32;
 
    return 64;
 }
@@ -969,8 +977,9 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       break;
    }
 
-   info->wave_size = radv_get_wave_size(device, nir->info.stage, info);
-   info->ballot_bit_size = radv_get_ballot_bit_size(device, nir->info.stage, info);
+   const struct radv_required_subgroup_info *req = &pipeline_key->subgroups[nir->info.stage];
+   info->wave_size = radv_get_wave_size(device, nir->info.stage, info, req);
+   info->ballot_bit_size = radv_get_ballot_bit_size(device, nir->info.stage, info, req);
 
    switch (nir->info.stage) {
    case MESA_SHADER_COMPUTE:
