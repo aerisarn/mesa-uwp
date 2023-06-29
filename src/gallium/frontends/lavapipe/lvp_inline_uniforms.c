@@ -133,13 +133,11 @@ lvp_find_inlinable_uniforms(struct lvp_shader *shader, nir_shader *nir)
 {
    bool ret = false;
    struct set *stores = _mesa_set_create(nir, _mesa_hash_pointer, _mesa_key_pointer_equal);
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         nir_metadata_require(function->impl, nir_metadata_loop_analysis, nir_var_all);
+   nir_foreach_function_impl(impl, nir) {
+      nir_metadata_require(impl, nir_metadata_loop_analysis, nir_var_all);
 
-         foreach_list_typed(nir_cf_node, node, node, &function->impl->body)
-            process_node(node, NULL, (uint32_t*)shader->inlines.uniform_offsets, shader->inlines.count, stores);
-      }
+      foreach_list_typed(nir_cf_node, node, node, &impl->body)
+         process_node(node, NULL, (uint32_t*)shader->inlines.uniform_offsets, shader->inlines.count, stores);
    }
    const unsigned threshold = 5;
    set_foreach(stores, entry) {
@@ -179,10 +177,9 @@ lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint
    if (!shader->inlines.can_inline)
       return;
 
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         nir_builder b = nir_builder_create(function->impl);
-         nir_foreach_block(block, function->impl) {
+   nir_foreach_function_impl(impl, nir) {
+         nir_builder b = nir_builder_create(impl);
+         nir_foreach_block(block, impl) {
             nir_foreach_instr_safe(instr, block) {
                if (instr->type != nir_instr_type_intrinsic)
                   continue;
@@ -259,8 +256,7 @@ lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint
             }
          }
 
-         nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
-      }
+         nir_metadata_preserve(impl, nir_metadata_block_index |
+                                     nir_metadata_dominance);
    }
 }

@@ -82,11 +82,8 @@ lvp_lower_input_attachments(nir_shader *shader, bool use_fragcoord_sysval)
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
-
-      nir_foreach_block(block, function->impl) {
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;
