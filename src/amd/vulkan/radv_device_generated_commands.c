@@ -32,7 +32,6 @@ static void
 radv_get_sequence_size(const struct radv_indirect_command_layout *layout, const struct radv_graphics_pipeline *pipeline,
                        uint32_t *cmd_size, uint32_t *upload_size)
 {
-   const struct radv_device *device = container_of(layout->base.device, struct radv_device, vk);
    const struct radv_shader *vs = radv_get_shader(pipeline->base.shaders, MESA_SHADER_VERTEX);
    *cmd_size = 0;
    *upload_size = 0;
@@ -79,16 +78,6 @@ radv_get_sequence_size(const struct radv_indirect_command_layout *layout, const 
    } else {
       /* userdata writes + instance count + non-indexed draw */
       *cmd_size += (5 + 2 + 3) * 4;
-   }
-
-   if (layout->binds_state) {
-      /* One PKT3_SET_CONTEXT_REG (PA_SU_SC_MODE_CNTL) */
-      *cmd_size += 3 * 4;
-
-      if (device->physical_device->rad_info.has_gfx9_scissor_bug) {
-         /* 1 reg write of 4 regs + 1 reg write of 2 regs per scissor */
-         *cmd_size += (8 + 2 * MAX_SCISSORS) * 4;
-      }
    }
 }
 
@@ -147,12 +136,6 @@ struct radv_dgc_params {
    uint32_t ibo_type_8;
 
    uint16_t push_constant_shader_cnt;
-
-   uint16_t emit_state;
-   uint32_t pa_su_sc_mode_cntl_base;
-   uint16_t state_offset;
-   uint16_t scissor_count;
-   uint16_t scissor_offset; /* in parameter buffer. */
 };
 
 enum {
@@ -423,53 +406,6 @@ dgc_emit_index_buffer(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream
    cmd_values[7] = max_index_count;
 
    dgc_emit(b, cs, nir_vec(b, cmd_values, 8));
-}
-
-/**
- * Emit VK_INDIRECT_COMMANDS_TOKEN_TYPE_STATE_FLAGS_NV.
- */
-static void
-dgc_emit_state(nir_builder *b, struct dgc_cmdbuf *cs, nir_ssa_def *stream_buf, nir_ssa_def *stream_base,
-               nir_ssa_def *state_offset)
-{
-   nir_ssa_def *stream_offset = nir_iadd(b, state_offset, stream_base);
-   nir_ssa_def *state = nir_load_ssbo(b, 1, 32, stream_buf, stream_offset);
-   state = nir_iand_imm(b, state, 1);
-
-   nir_ssa_def *reg = nir_ior(b, load_param32(b, pa_su_sc_mode_cntl_base), nir_ishl_imm(b, state, 2));
-
-   nir_ssa_def *cmd_values[3] = {nir_imm_int(b, PKT3(PKT3_SET_CONTEXT_REG, 1, 0)),
-                                 nir_imm_int(b, (R_028814_PA_SU_SC_MODE_CNTL - SI_CONTEXT_REG_OFFSET) >> 2), reg};
-
-   dgc_emit(b, cs, nir_vec(b, cmd_values, 3));
-
-   nir_ssa_def *scissor_count = load_param16(b, scissor_count);
-   nir_push_if(b, nir_ine_imm(b, scissor_count, 0));
-   {
-      nir_ssa_def *scissor_offset = load_param16(b, scissor_offset);
-      nir_variable *idx = nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "scissor_copy_idx");
-      nir_store_var(b, idx, nir_imm_int(b, 0), 1);
-
-      nir_push_loop(b);
-      {
-         nir_ssa_def *cur_idx = nir_load_var(b, idx);
-         nir_push_if(b, nir_uge(b, cur_idx, scissor_count));
-         {
-            nir_jump(b, nir_jump_break);
-         }
-         nir_pop_if(b, NULL);
-
-         nir_ssa_def *param_buf = radv_meta_load_descriptor(b, 0, DGC_DESC_PARAMS);
-         nir_ssa_def *param_offset = nir_iadd(b, scissor_offset, nir_imul_imm(b, cur_idx, 4));
-         nir_ssa_def *value = nir_load_ssbo(b, 1, 32, param_buf, param_offset);
-
-         dgc_emit(b, cs, value);
-
-         nir_store_var(b, idx, nir_iadd_imm(b, cur_idx, 1), 1);
-      }
-      nir_pop_loop(b, NULL);
-   }
-   nir_pop_if(b, NULL);
 }
 
 /**
@@ -828,12 +764,6 @@ build_dgc_prepare_shader(struct radv_device *dev)
       }
       nir_pop_if(&b, 0);
 
-      nir_push_if(&b, nir_ieq_imm(&b, load_param16(&b, emit_state), 1));
-      {
-         dgc_emit_state(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, state_offset));
-      }
-      nir_pop_if(&b, NULL);
-
       nir_push_if(&b, nir_ieq_imm(&b, load_param16(&b, draw_indexed), 0));
       {
          dgc_emit_draw(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset), sequence_id, dev);
@@ -1046,10 +976,6 @@ radv_CreateIndirectCommandsLayoutNV(VkDevice _device, const VkIndirectCommandsLa
             layout->push_constant_offsets[j] = pCreateInfo->pTokens[i].offset + k * 4;
          }
          break;
-      case VK_INDIRECT_COMMANDS_TOKEN_TYPE_STATE_FLAGS_NV:
-         layout->binds_state = true;
-         layout->state_offset = pCreateInfo->pTokens[i].offset;
-         break;
       default:
          unreachable("Unhandled token type");
       }
@@ -1130,12 +1056,7 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
    if (!layout->push_constant_mask)
       const_size = 0;
 
-   unsigned scissor_size = (8 + 2 * cmd_buffer->state.dynamic.vk.vp.scissor_count) * 4;
-   if (!layout->binds_state || !cmd_buffer->state.dynamic.vk.vp.scissor_count ||
-       !cmd_buffer->device->physical_device->rad_info.has_gfx9_scissor_bug)
-      scissor_size = 0;
-
-   unsigned upload_size = MAX2(vb_size + const_size + scissor_size, 16);
+   unsigned upload_size = MAX2(vb_size + const_size, 16);
 
    void *upload_data;
    unsigned upload_offset;
@@ -1143,8 +1064,6 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
       vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return;
    }
-
-   void *upload_data_base = upload_data;
 
    radv_buffer_init(&token_buffer, cmd_buffer->device, cmd_buffer->upload.upload_bo, upload_size, upload_offset);
 
@@ -1178,9 +1097,6 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
       .vbo_reg = vbo_sgpr,
       .ibo_type_32 = layout->ibo_type_32,
       .ibo_type_8 = layout->ibo_type_8,
-      .emit_state = layout->binds_state,
-      .pa_su_sc_mode_cntl_base = radv_get_pa_su_sc_mode_cntl(cmd_buffer) & C_028814_FACE,
-      .state_offset = layout->state_offset,
    };
 
    if (layout->bind_vbo_mask) {
@@ -1261,17 +1177,6 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
          radv_get_descriptors_state(cmd_buffer, pGeneratedCommandsInfo->pipelineBindPoint);
       memcpy(upload_data, descriptors_state->dynamic_buffers, 16 * graphics_pipeline->base.dynamic_offset_count);
       upload_data = (char *)upload_data + 16 * graphics_pipeline->base.dynamic_offset_count;
-   }
-
-   if (scissor_size) {
-      params.scissor_offset = (char *)upload_data - (char *)upload_data_base;
-      params.scissor_count = scissor_size / 4;
-
-      struct radeon_cmdbuf scissor_cs = {.buf = upload_data, .cdw = 0, .max_dw = scissor_size / 4};
-
-      radv_write_scissors(cmd_buffer, &scissor_cs);
-      assert(scissor_cs.cdw * 4 == scissor_size);
-      upload_data = (char *)upload_data + scissor_size;
    }
 
    VkWriteDescriptorSet ds_writes[5];
