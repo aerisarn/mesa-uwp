@@ -481,19 +481,19 @@ r600_lower_tess_io(nir_shader *shader, enum mesa_prim prim_type)
    bool progress = false;
    nir_foreach_function_impl(impl, shader)
    {
-         nir_builder b = nir_builder_create(impl);
+      nir_builder b = nir_builder_create(impl);
 
-         nir_foreach_block(block, impl)
+      nir_foreach_block(block, impl)
+      {
+         nir_foreach_instr_safe(instr, block)
          {
-            nir_foreach_instr_safe(instr, block)
-            {
-               if (instr->type != nir_instr_type_intrinsic)
-                  continue;
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
 
-               if (r600_lower_tess_io_filter(instr, shader->info.stage))
-                  progress |= r600_lower_tess_io_impl(&b, instr, prim_type);
-            }
+            if (r600_lower_tess_io_filter(instr, shader->info.stage))
+               progress |= r600_lower_tess_io_impl(&b, instr, prim_type);
          }
+      }
    }
    return progress;
 }
