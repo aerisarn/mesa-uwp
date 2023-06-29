@@ -413,10 +413,8 @@ dxil_nir_flatten_var_arrays(nir_shader *shader, nir_variable_mode modes)
       progress |= flatten_var_array_types(var);
 
    if (modes & nir_var_function_temp) {
-      nir_foreach_function(func, shader) {
-         if (!func->impl)
-            continue;
-         nir_foreach_function_temp_variable(var, func->impl)
+      nir_foreach_function_impl(impl, shader) {
+         nir_foreach_function_temp_variable(var, impl)
             progress |= flatten_var_array_types(var);
       }
    }
@@ -601,10 +599,8 @@ dxil_nir_lower_var_bit_size(nir_shader *shader, nir_variable_mode modes,
       progress |= lower_var_bit_size_types(var, min_bit_size, max_bit_size);
 
    if (modes & nir_var_function_temp) {
-      nir_foreach_function(func, shader) {
-         if (!func->impl)
-            continue;
-         nir_foreach_function_temp_variable(var, func->impl)
+      nir_foreach_function_impl(impl, shader) {
+         nir_foreach_function_temp_variable(var, impl)
             progress |= lower_var_bit_size_types(var, min_bit_size, max_bit_size);
       }
    }
@@ -662,19 +658,16 @@ dxil_nir_lower_loads_stores_to_dxil(nir_shader *nir,
       /* All the derefs created here will be used as GEP indices so force 32-bit */
       nir->info.cs.ptr_size = 32;
    }
-   nir_foreach_function(func, nir) {
-      if (!func->impl)
-         continue;
-
-      nir_builder b = nir_builder_create(func->impl);
+   nir_foreach_function_impl(impl, nir) {
+      nir_builder b = nir_builder_create(impl);
 
       nir_variable *scratch_var = NULL;
       if (nir->scratch_size) {
          const struct glsl_type *scratch_type = glsl_array_type(glsl_uint_type(), DIV_ROUND_UP(nir->scratch_size, 4), 4);
-         scratch_var = nir_local_variable_create(func->impl, scratch_type, "lowered_scratch_mem");
+         scratch_var = nir_local_variable_create(impl, scratch_type, "lowered_scratch_mem");
       }
 
-      nir_foreach_block(block, func->impl) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;
@@ -893,9 +886,8 @@ dxil_nir_lower_upcast_phis(nir_shader *shader, unsigned min_bit_size)
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= upcast_phi_impl(function->impl, min_bit_size);
+   nir_foreach_function_impl(impl, shader) {
+      progress |= upcast_phi_impl(impl, min_bit_size);
    }
 
    return progress;
@@ -2085,13 +2077,10 @@ dxil_nir_split_unaligned_loads_stores(nir_shader *shader, nir_variable_mode mode
 {
    bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (!function->impl)
-         continue;
+   nir_foreach_function_impl(impl, shader) {
+      nir_builder b = nir_builder_create(impl);
 
-      nir_builder b = nir_builder_create(function->impl);
-
-      nir_foreach_block(block, function->impl) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;
@@ -2586,10 +2575,8 @@ guess_image_format_for_var(nir_shader *s, nir_variable *var)
    if (var->data.image.format != PIPE_FORMAT_NONE)
       return false;
 
-   nir_foreach_function(func, s) {
-      if (!func->impl)
-         continue;
-      nir_foreach_block(block, func->impl) {
+   nir_foreach_function_impl(impl, s) {
+      nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
                continue;
