@@ -273,7 +273,7 @@ a618-traces-performance:
     GPU_VERSION: freedreno-a660
     RUNNER_TAG: mesa-ci-x86-64-lava-sm8350-hdk
 
-a660_gl:
+.a660_gl:
   extends:
     - .lava-test-deqp:arm64
     - .freedreno-rules
