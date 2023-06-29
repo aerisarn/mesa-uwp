@@ -181,7 +181,7 @@ nouveau_ws_bo_new_locked(struct nouveau_ws_device *dev,
       align = 0x1000;
 
    /* Align the size */
-   size = ALIGN(size, align);
+   size = align64(size, align);
 
    req.info.domain = 0;
 
@@ -300,7 +300,7 @@ nouveau_ws_bo_from_dma_buf_locked(struct nouveau_ws_device *dev, int fd)
    if (info.domain & NOUVEAU_GEM_DOMAIN_VRAM)
       align = (1ULL << 16);
 
-   assert(bo->size == ALIGN(bo->size, align));
+   assert(bo->size == align64(bo->size, align));
 
    bo->offset = nouveau_ws_alloc_vma(dev, 0, bo->size, align, false, false);
    if (bo->offset == 0)

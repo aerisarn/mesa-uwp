@@ -483,7 +483,7 @@ nil_image_init(struct nv_device_info *dev,
       image->align_B = MAX2(image->align_B, 128);
    }
 
-   image->size_B = ALIGN(image->size_B, image->align_B);
+   image->size_B = align64(image->size_B, image->align_B);
    return true;
 }
 
