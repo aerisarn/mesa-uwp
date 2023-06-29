@@ -1013,6 +1013,7 @@ mir_schedule_condition(compiler_context *ctx,
 
    predicate->exclude = cond->dest;
    cond->dest = SSA_FIXED_REGISTER(31);
+   last->src[condition_index] = cond->dest;
 
    if (!vector) {
       cond->mask = (1 << COMPONENT_W);
@@ -1024,6 +1025,8 @@ mir_schedule_condition(compiler_context *ctx,
          for (unsigned q = 0; q < 4; ++q)
             cond->swizzle[s][q + COMPONENT_W] = cond->swizzle[s][q];
       }
+
+      last->swizzle[condition_index][0] = COMPONENT_W;
    }
 
    /* Schedule the unit: csel is always in the latter pipeline, so a csel
