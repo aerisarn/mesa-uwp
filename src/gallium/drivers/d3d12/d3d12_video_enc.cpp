@@ -78,6 +78,10 @@ d3d12_video_encoder_flush(struct pipe_video_codec *codec)
    pD3D12Enc->m_spEncodeCommandQueue->Wait(casted_completion_fence->cmdqueue_fence, casted_completion_fence->value);
    pD3D12Enc->m_pD3D12Screen->base.fence_reference(&pD3D12Enc->m_pD3D12Screen->base, &completion_fence, NULL);
 
+   struct d3d12_fence *input_surface_fence = pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_InputSurfaceFence;
+   if (input_surface_fence)
+      pD3D12Enc->m_spEncodeCommandQueue->Wait(input_surface_fence->cmdqueue_fence, input_surface_fence->value);
+
    if (!pD3D12Enc->m_bPendingWorkNotFlushed) {
       debug_printf("[d3d12_video_encoder] d3d12_video_encoder_flush started. Nothing to flush, all up to date.\n");
    } else {
@@ -198,6 +202,7 @@ d3d12_video_encoder_sync_completion(struct pipe_video_codec *codec, uint64_t fen
       pD3D12Enc->m_inflightResourcesPool[fenceValueToWaitOn % D3D12_VIDEO_ENC_ASYNC_DEPTH].m_spEncoder.Reset();
       pD3D12Enc->m_inflightResourcesPool[fenceValueToWaitOn % D3D12_VIDEO_ENC_ASYNC_DEPTH].m_spEncoderHeap.Reset();
       pD3D12Enc->m_inflightResourcesPool[fenceValueToWaitOn % D3D12_VIDEO_ENC_ASYNC_DEPTH].m_References.reset();
+      pD3D12Enc->m_inflightResourcesPool[fenceValueToWaitOn % D3D12_VIDEO_ENC_ASYNC_DEPTH].m_InputSurfaceFence = NULL;
 
       // Validate device was not removed
       hr = pD3D12Enc->m_pD3D12Screen->dev->GetDeviceRemovedReason();
@@ -1538,6 +1543,8 @@ d3d12_video_encoder_begin_frame(struct pipe_video_codec * codec,
          hr);
       goto fail;
    }
+
+   pD3D12Enc->m_inflightResourcesPool[d3d12_video_encoder_pool_current_index(pD3D12Enc)].m_InputSurfaceFence = (struct d3d12_fence*) *picture->fence;
 
    debug_printf("[d3d12_video_encoder] d3d12_video_encoder_begin_frame finalized for fenceValue: %" PRIu64 "\n",
                  pD3D12Enc->m_fenceValue);

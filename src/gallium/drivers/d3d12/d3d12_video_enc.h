@@ -386,6 +386,8 @@ struct d3d12_video_encoder
       std::shared_ptr<d3d12_video_dpb_storage_manager_interface> m_References;
 
       ComPtr<ID3D12CommandAllocator> m_spCommandAllocator;
+
+      struct d3d12_fence* m_InputSurfaceFence = NULL;
    };
 
    std::vector<InFlightEncodeResources> m_inflightResourcesPool;
