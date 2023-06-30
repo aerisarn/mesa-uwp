@@ -1926,12 +1926,14 @@ fetch_texel( struct tgsi_sampler *sampler,
 }
 
 
-#define TEX_MODIFIER_NONE           0
-#define TEX_MODIFIER_PROJECTED      1
-#define TEX_MODIFIER_LOD_BIAS       2
-#define TEX_MODIFIER_EXPLICIT_LOD   3
-#define TEX_MODIFIER_LEVEL_ZERO     4
-#define TEX_MODIFIER_GATHER         5
+enum tex_modifier {
+   TEX_MODIFIER_NONE         = 0,
+   TEX_MODIFIER_PROJECTED    = 1,
+   TEX_MODIFIER_LOD_BIAS     = 2,
+   TEX_MODIFIER_EXPLICIT_LOD = 3,
+   TEX_MODIFIER_LEVEL_ZERO   = 4,
+   TEX_MODIFIER_GATHER       = 5,
+};
 
 /*
  * Fetch all 3 (for s,t,r coords) texel offsets, put them into int array.
@@ -2030,7 +2032,7 @@ fetch_sampler_unit(struct tgsi_exec_machine *mach,
 static void
 exec_tex(struct tgsi_exec_machine *mach,
          const struct tgsi_full_instruction *inst,
-         uint modifier, uint sampler)
+         enum tex_modifier modifier, uint sampler)
 {
    const union tgsi_exec_channel *args[5], *proj = NULL;
    union tgsi_exec_channel r[5];
@@ -2433,7 +2435,7 @@ exec_txq(struct tgsi_exec_machine *mach,
 static void
 exec_sample(struct tgsi_exec_machine *mach,
             const struct tgsi_full_instruction *inst,
-            uint modifier, bool compare)
+            enum tex_modifier modifier, bool compare)
 {
    const uint resource_unit = inst->Src[1].Register.Index;
    const uint sampler_unit = inst->Src[2].Register.Index;
