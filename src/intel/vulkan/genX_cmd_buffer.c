@@ -6367,7 +6367,7 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 
-#if GFX_VER >= 125
+#if GFX_VERx10 == 125
    /* Wa_14014427904 - We need additional invalidate/flush when
     * emitting NP state commands with ATS-M in compute mode.
     */

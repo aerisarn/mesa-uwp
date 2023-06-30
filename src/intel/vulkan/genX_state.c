@@ -194,7 +194,7 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
    }
 #endif
 
-#if GFX_VER >= 125
+#if GFX_VERx10 == 125
    /* Wa_14014427904 - We need additional invalidate/flush when
     * emitting NP state commands with ATS-M in compute mode.
     */
@@ -210,7 +210,6 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
           ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT |
           ANV_PIPE_HDC_PIPELINE_FLUSH_BIT);
       }
-   }
 #endif
 
    /* Emit STATE_BASE_ADDRESS on Gfx12+ because we set a default CPS_STATE and
