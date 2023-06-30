@@ -1053,6 +1053,7 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
    }
 
    if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) {
+      context->desc.base.fence = &surf->fence;
       struct pipe_screen *screen = context->decoder->context->screen;
       coded_buf = context->coded_buf;
       if (u_reduce_video_profile(context->templat.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC)
