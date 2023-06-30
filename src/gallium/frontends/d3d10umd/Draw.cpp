@@ -52,6 +52,17 @@ ClampedUAdd(unsigned a,
 }
 
 
+static void
+update_velems(Device *pDevice)
+{
+   if (!pDevice->velems_changed)
+      return;
+
+   cso_set_vertex_elements(pDevice->cso, &pDevice->element_layout->velems);
+
+   pDevice->velems_changed = false;
+}
+
 /*
  * We have to resolve the stream output state for empty geometry shaders.
  * In particular we've remapped the output indices when translating the
@@ -85,6 +96,7 @@ ResolveState(Device *pDevice)
       }
       pipe->bind_gs_state(pipe, gs->handle);
    }
+   update_velems(pDevice);
 }
 
 
