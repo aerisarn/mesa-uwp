@@ -754,7 +754,6 @@ Clover OpenCL 3.0 -- all DONE:
 Clover extensions that are not part of any OpenCL version:
   cl_khr_async_copy_fence                               not started
   cl_khr_async_work_group_copy_fence                    not started
-  cl_khr_byte_addressable_store                         not started
   cl_khr_device_enqueue_local_arg_types                 not started
   cl_khr_device_uuid                                    not started
   cl_khr_egl_event                                      not started
@@ -910,7 +909,6 @@ Rusticl OpenCL 3.0 -- all DONE: iris/gen12
 Rusticl extensions that are not part of any OpenCL version:
   cl_khr_async_copy_fence                               not started
   cl_khr_async_work_group_copy_fence                    not started
-  cl_khr_byte_addressable_store                         DONE
   cl_khr_device_enqueue_local_arg_types                 not started
   cl_khr_device_uuid                                    DONE (iris, llvmpipe, radeonsi)
   cl_khr_egl_event                                      not started
