@@ -2962,20 +2962,39 @@ nir_block_ends_in_break(nir_block *block)
    foreach_list_typed_reverse_safe(nir_instr, instr, node, &(block)->instr_list)
 
 /* Phis come first in the block */
-#define nir_foreach_phi_internal(instr, phi) \
-   if (instr->type != nir_instr_type_phi) \
-      break; \
-   else \
-      for (nir_phi_instr *phi = nir_instr_as_phi(instr); phi != NULL; \
-           phi = NULL)
+static inline nir_phi_instr *
+nir_first_phi_in_block(nir_block *block)
+{
+   nir_foreach_instr(instr, block) {
+      if (instr->type == nir_instr_type_phi)
+         return nir_instr_as_phi(instr);
+      else
+         return NULL;
+   }
 
-#define nir_foreach_phi(instr, block) \
-   nir_foreach_instr(nir_foreach_phi_##instr, block) \
-      nir_foreach_phi_internal(nir_foreach_phi_##instr, instr)
+   return NULL;
+}
 
-#define nir_foreach_phi_safe(instr, block) \
-   nir_foreach_instr_safe(nir_foreach_phi_safe_##instr, block) \
-      nir_foreach_phi_internal(nir_foreach_phi_safe_##instr, instr)
+static inline nir_phi_instr *
+nir_next_phi(nir_phi_instr *phi)
+{
+   nir_instr *next = nir_instr_next(&phi->instr);
+
+   if (next && next->type == nir_instr_type_phi)
+      return nir_instr_as_phi(next);
+   else
+      return NULL;
+}
+
+#define nir_foreach_phi(instr, block)                                          \
+   for (nir_phi_instr *instr = nir_first_phi_in_block(block); instr != NULL;   \
+        instr = nir_next_phi(instr))
+
+#define nir_foreach_phi_safe(instr, block)                                     \
+   for (nir_phi_instr *instr = nir_first_phi_in_block(block),                  \
+                      *__next = instr ? nir_next_phi(instr) : NULL;            \
+        instr != NULL;                                                         \
+        instr = __next, __next = instr ? nir_next_phi(instr) : NULL)
 
 static inline nir_phi_instr *
 nir_block_last_phi_instr(nir_block *block)
