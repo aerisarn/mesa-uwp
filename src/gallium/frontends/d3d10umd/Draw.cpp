@@ -52,12 +52,15 @@ ClampedUAdd(unsigned a,
 }
 
 
+/* stride is required in order to set the element data */
 static void
 update_velems(Device *pDevice)
 {
    if (!pDevice->velems_changed)
       return;
 
+   for (unsigned i = 0; i < pDevice->velems.count; i++)
+      pDevice->element_layout->velems.velems[i].src_stride = pDevice->vertex_strides[pDevice->element_layout->velems.velems[i].vertex_buffer_index];
    cso_set_vertex_elements(pDevice->cso, &pDevice->element_layout->velems);
 
    pDevice->velems_changed = false;

@@ -1994,11 +1994,12 @@ static void ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems
    }
 
    uint64_t va = buf->gpu_address + offset;
+   unsigned stride = velems->src_stride[index];
 
    int64_t num_records = (int64_t)buf->b.b.width0 - offset;
-   if (GFX_VERSION != GFX8 && vb->stride) {
+   if (GFX_VERSION != GFX8 && stride) {
       /* Round up by rounding down and adding 1 */
-      num_records = (num_records - velems->format_size[index]) / vb->stride + 1;
+      num_records = (num_records - velems->format_size[index]) / stride + 1;
    }
    assert(num_records >= 0 && num_records <= UINT_MAX);
 
@@ -2009,11 +2010,11 @@ static void ALWAYS_INLINE si_set_vb_descriptor(struct si_vertex_elements *velems
     *  - 3: offset >= NUM_RECORDS (Raw)
     */
    if (GFX_VERSION >= GFX10)
-      rsrc_word3 |= S_008F0C_OOB_SELECT(vb->stride ? V_008F0C_OOB_SELECT_STRUCTURED
-                                                   : V_008F0C_OOB_SELECT_RAW);
+      rsrc_word3 |= S_008F0C_OOB_SELECT(stride ? V_008F0C_OOB_SELECT_STRUCTURED
+                                               : V_008F0C_OOB_SELECT_RAW);
 
    desc[0] = va;
-   desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(vb->stride);
+   desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
    desc[2] = num_records;
    desc[3] = rsrc_word3;
 }

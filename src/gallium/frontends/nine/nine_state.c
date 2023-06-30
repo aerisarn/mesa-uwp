@@ -921,6 +921,7 @@ update_vertex_elements(struct NineDevice9 *device)
             ve.velems[n].vertex_buffer_index =
                 vtxbuf_holes_map[ve.velems[n].vertex_buffer_index];
             b = ve.velems[n].vertex_buffer_index;
+            ve.velems[n].src_stride = context->vtxstride[b];
             context->stream_usage_mask |= 1 << b;
             /* XXX wine just uses 1 here: */
             if (context->stream_freq[b] & D3DSTREAMSOURCE_INSTANCEDATA)
@@ -933,6 +934,7 @@ update_vertex_elements(struct NineDevice9 *device)
             ve.velems[n].vertex_buffer_index = vtxbuf_holes_map[dummy_vbo_stream];
             ve.velems[n].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
             ve.velems[n].src_offset = 0;
+            ve.velems[n].src_stride = 0;
             ve.velems[n].instance_divisor = 0;
             ve.velems[n].dual_slot = false;
         }
@@ -969,7 +971,6 @@ update_vertex_buffers(struct NineDevice9 *device)
         vtxbuf_i = u_bit_scan(&mask);
         if (vtxbuf_i == context->dummy_vbo_bound_at) {
             vbuffer[i].buffer.resource = device->dummy_vbo;
-            vbuffer[i].stride = 0;
             vbuffer[i].is_user_buffer = false;
             vbuffer[i].buffer_offset = 0;
         } else {
@@ -1615,10 +1616,13 @@ CSMT_ITEM_NO_WAIT(nine_context_set_stream_source_apply,
      * but not for *Up draws */
     if (context->vtxbuf[i].buffer.resource == res &&
         context->vtxbuf[i].buffer_offset == OffsetInBytes &&
-        context->vtxbuf[i].stride == Stride)
+        context->vtxstride[i] == Stride)
         return;
 
-    context->vtxbuf[i].stride = Stride;
+    if (context->vtxstride[i] != Stride) {
+        context->vtxstride[i] = Stride;
+        context->changed.group |= NINE_STATE_VDECL;
+    }
     context->vtxbuf[i].buffer_offset = OffsetInBytes;
     pipe_resource_reference(&context->vtxbuf[i].buffer.resource, res);
 
@@ -2145,7 +2149,7 @@ nine_context_apply_stateblock(struct NineDevice9 *device,
         uint32_t m = src->changed.vtxbuf | src->changed.stream_freq;
         for (i = 0; m; ++i, m >>= 1) {
             if (src->changed.vtxbuf & (1 << i))
-                nine_context_set_stream_source(device, i, src->stream[i], src->vtxbuf[i].buffer_offset, src->vtxbuf[i].stride);
+                nine_context_set_stream_source(device, i, src->stream[i], src->vtxbuf[i].buffer_offset, src->vtxstride[i]);
             if (src->changed.stream_freq & (1 << i))
                 nine_context_set_stream_source_freq(device, i, src->stream_freq[i]);
         }
@@ -2505,6 +2509,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive_from_vtxbuf_idxbuf,
                   ARG_VAL(UINT, MinVertexIndex),
                   ARG_VAL(UINT, NumVertices),
                   ARG_VAL(UINT, PrimitiveCount),
+                  ARG_VAL(UINT, vbuf_stride),
                   ARG_BIND_VBUF(struct pipe_vertex_buffer, vbuf),
                   ARG_BIND_RES(struct pipe_resource, ibuf),
                   ARG_VAL(void *, user_ibuf),
@@ -2517,6 +2522,14 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive_from_vtxbuf_idxbuf,
 
     if (context->vs && context->vs->swvp_only && !context->swvp)
         return;
+
+    if (context->vtxstride[0] != vbuf_stride) {
+        context->vtxstride[0] = vbuf_stride;
+        /* force elements update for stride.
+         * We don't need to restore the old value,
+         * as the caller set its to 0 after the call */
+        context->changed.group |= NINE_STATE_VDECL;
+    }
 
     nine_update_state(device);
 
@@ -3220,7 +3233,6 @@ update_vertex_buffers_sw(struct NineDevice9 *device, int dummy_vbo_stream,
         if (dummy_vbo_stream == i) {
             vbuffer[j].buffer.resource = NULL;
             pipe_resource_reference(&vbuffer[j].buffer.resource, device->dummy_vbo_sw);
-            vbuffer[j].stride = 0;
             vbuffer[j].is_user_buffer = false;
             vbuffer[j].buffer_offset = 0;
             j++;
@@ -3234,10 +3246,10 @@ update_vertex_buffers_sw(struct NineDevice9 *device, int dummy_vbo_stream,
             buf = NineVertexBuffer9_GetResource(state->stream[i], &offset);
 
             DBG("Locking %p (offset %d, length %d)\n", buf,
-                vbuffer[j].buffer_offset, num_vertices * vbuffer[j].stride);
+                vbuffer[j].buffer_offset, num_vertices * state->vtxstride[i]);
 
             u_box_1d(vbuffer[j].buffer_offset + offset + start_vertice *
-                     vbuffer[j].stride, num_vertices * vbuffer[j].stride, &box);
+                     state->vtxstride[i], num_vertices * state->vtxstride[i], &box);
 
             userbuf = pipe->buffer_map(pipe, buf, 0, PIPE_MAP_READ, &box,
                                        &(sw_internal->transfers_so[i]));

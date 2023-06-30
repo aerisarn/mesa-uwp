@@ -531,6 +531,8 @@ static void *virgl_create_vertex_elements_state(struct pipe_context *ctx,
          break;
       }
    }
+   for (int i = 0; i < num_elements; ++i)
+      state->strides[elements[i].vertex_buffer_index] = elements[i].src_stride;
 
    state->handle = virgl_object_assign_handle();
    virgl_encoder_create_vertex_elements(vctx, state->handle,
@@ -589,7 +591,7 @@ static void virgl_set_vertex_buffers(struct pipe_context *ctx,
 static void virgl_hw_set_vertex_buffers(struct virgl_context *vctx)
 {
    if (vctx->vertex_array_dirty) {
-      struct virgl_vertex_elements_state *ve = vctx->vertex_elements;
+      const struct virgl_vertex_elements_state *ve = vctx->vertex_elements;
 
       if (ve->num_bindings) {
          struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];

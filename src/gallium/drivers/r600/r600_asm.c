@@ -2815,6 +2815,7 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 	uint32_t *bytecode;
 	int i, j, r, fs_size;
 	struct r600_fetch_shader *shader;
+	unsigned strides[PIPE_MAX_ATTRIBS];
 
 	assert(count < 32);
 
@@ -2862,6 +2863,7 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 				}
 			}
 		}
+		strides[elements[i].vertex_buffer_index] = elements[i].src_stride;
 	}
 
 	for (i = 0; i < count; i++) {
@@ -2926,6 +2928,7 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 		r600_bytecode_clear(&bc);
 		return NULL;
 	}
+	memcpy(shader->strides, strides, sizeof(strides));
 
 	u_suballocator_alloc(&rctx->allocator_fetch_shader, fs_size, 256,
 			     &shader->offset,

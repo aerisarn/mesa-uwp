@@ -84,7 +84,7 @@ check_vertex_strides(struct zink_context *ctx)
    const struct zink_vertex_elements_state *ves = ctx->element_state;
    for (unsigned i = 0; i < ves->hw_state.num_bindings; i++) {
       const struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ves->hw_state.binding_map[i];
-      unsigned stride = vb->buffer.resource ? vb->stride : 0;
+      unsigned stride = vb->buffer.resource ? ves->hw_state.b.strides[ves->hw_state.binding_map[i]] : 0;
       if (stride && stride < ves->min_stride[i])
          return false;
    }
@@ -147,7 +147,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          for (unsigned i = 0; i < state->element_state->num_bindings; i++) {
             const unsigned buffer_id = ctx->element_state->hw_state.binding_map[i];
             struct pipe_vertex_buffer *vb = ctx->vertex_buffers + buffer_id;
-            state->vertex_strides[buffer_id] = vb->buffer.resource ? vb->stride : 0;
+            state->vertex_strides[buffer_id] = vb->buffer.resource ? state->element_state->b.strides[buffer_id] : 0;
             hash = XXH32(&state->vertex_strides[buffer_id], sizeof(uint32_t), hash);
          }
          state->vertex_hash = hash ^ state->element_state->hash;

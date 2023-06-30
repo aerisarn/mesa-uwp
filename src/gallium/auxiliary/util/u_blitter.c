@@ -320,6 +320,7 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
    memset(&velem[0], 0, sizeof(velem[0]) * 2);
    for (i = 0; i < 2; i++) {
       velem[i].src_offset = i * 4 * sizeof(float);
+      velem[i].src_stride = 8 * sizeof(float);
       velem[i].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
       velem[i].vertex_buffer_index = 0;
    }
@@ -336,6 +337,7 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
       for (i = 0; i < 4; i++) {
          velem[0].src_format = formats[i];
          velem[0].vertex_buffer_index = 0;
+         velem[0].src_stride = 0;
          ctx->velem_state_readbuf[i] =
                pipe->create_vertex_elements_state(pipe, 1, &velem[0]);
       }
@@ -1400,8 +1402,6 @@ static void blitter_draw(struct blitter_context_priv *ctx,
    struct pipe_vertex_buffer vb = {0};
 
    blitter_set_rectangle(ctx, x1, y1, x2, y2, depth);
-
-   vb.stride = 8 * sizeof(float);
 
    u_upload_data(pipe->stream_uploader, 0, sizeof(ctx->vertices), 4, ctx->vertices,
                  &vb.buffer_offset, &vb.buffer.resource);
@@ -2626,8 +2626,6 @@ void util_blitter_clear_buffer(struct blitter_context *blitter,
                  &vb.buffer_offset, &vb.buffer.resource);
    if (!vb.buffer.resource)
       goto out;
-
-   vb.stride = 0;
 
    util_blitter_set_running_flag(blitter);
    blitter_check_saved_vertex_states(ctx);

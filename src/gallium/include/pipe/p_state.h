@@ -650,7 +650,6 @@ struct pipe_transfer
  */
 struct pipe_vertex_buffer
 {
-   uint16_t stride;    /**< stride to same attrib in next vertex, in bytes */
    bool is_user_buffer;
    unsigned buffer_offset;  /**< offset to start of data in buffer, in bytes */
 
@@ -741,6 +740,9 @@ struct pipe_vertex_element
     * This has only 8 bits because all vertex formats should be <= 255.
     */
    uint8_t src_format; /* low 8 bits of enum pipe_format. */
+
+   /**< stride to same attrib in next vertex, in bytes */
+   uint32_t src_stride; /* technically only uint16_t, expanded for struct padding */
 
    /** Instance data rate divisor. 0 means this is per-vertex data,
     *  n means per-instance data used for n consecutive instances (n > 0).

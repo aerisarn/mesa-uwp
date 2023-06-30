@@ -261,6 +261,8 @@ svga_create_vertex_elements_state(struct pipe_context *pipe,
       else {
          translate_vertex_decls(svga, velems);
       }
+      for (unsigned i = 0; i < count; i++)
+         velems->strides[attribs[i].vertex_buffer_index] = attribs[i].src_stride;
    }
 
    svga->hud.num_vertexelement_objects++;

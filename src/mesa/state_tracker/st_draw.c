@@ -422,8 +422,6 @@ st_draw_quad(struct st_context *st,
    struct pipe_vertex_buffer vb = {0};
    struct st_util_vertex *verts;
 
-   vb.stride = sizeof(struct st_util_vertex);
-
    u_upload_alloc(st->pipe->stream_uploader, 0,
                   4 * sizeof(struct st_util_vertex), 4,
                   &vb.buffer_offset, &vb.buffer.resource, (void **) &verts);

@@ -380,6 +380,8 @@ emit_state(struct iris_batch *batch,
 #define cso_changed(x) (!old_cso || (old_cso->x != new_cso->x))
 #define cso_changed_memcmp(x) \
    (!old_cso || memcmp(old_cso->x, new_cso->x, sizeof(old_cso->x)) != 0)
+#define cso_changed_memcmp_elts(x, n) \
+   (!old_cso || memcmp(old_cso->x, new_cso->x, n * sizeof(old_cso->x[0])) != 0)
 
 static void
 flush_before_state_base_change(struct iris_batch *batch)
@@ -3990,7 +3992,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
       iris_pack_state(GENX(VERTEX_BUFFER_STATE), state->state, vb) {
          vb.VertexBufferIndex = i;
          vb.AddressModifyEnable = true;
-         vb.BufferPitch = buffer->stride;
+         /* vb.BufferPitch is merged in dynamically from VE state later */
          if (res) {
             vb.BufferSize = res->base.b.width0 - (int) buffer->buffer_offset;
             vb.BufferStartingAddress =
@@ -4026,6 +4028,8 @@ struct iris_vertex_element_state {
    uint32_t vf_instancing[33 * GENX(3DSTATE_VF_INSTANCING_length)];
    uint32_t edgeflag_ve[GENX(VERTEX_ELEMENT_STATE_length)];
    uint32_t edgeflag_vfi[GENX(3DSTATE_VF_INSTANCING_length)];
+   uint32_t stride[PIPE_MAX_ATTRIBS];
+   unsigned vb_count;
    unsigned count;
 };
 
@@ -4048,9 +4052,10 @@ iris_create_vertex_elements(struct pipe_context *ctx,
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    const struct intel_device_info *devinfo = screen->devinfo;
    struct iris_vertex_element_state *cso =
-      malloc(sizeof(struct iris_vertex_element_state));
+      calloc(1, sizeof(struct iris_vertex_element_state));
 
    cso->count = count;
+   cso->vb_count = 0;
 
    iris_pack_command(GENX(3DSTATE_VERTEX_ELEMENTS), cso->vertex_elements, ve) {
       ve.DWordLength =
@@ -4109,6 +4114,8 @@ iris_create_vertex_elements(struct pipe_context *ctx,
 
       ve_pack_dest += GENX(VERTEX_ELEMENT_STATE_length);
       vfi_pack_dest += GENX(3DSTATE_VF_INSTANCING_length);
+      cso->stride[state[i].vertex_buffer_index] = state[i].src_stride;
+      cso->vb_count = MAX2(state[i].vertex_buffer_index + 1, cso->vb_count);
    }
 
    /* An alternative version of the last VE and VFI is stored so it
@@ -4159,6 +4166,12 @@ iris_bind_vertex_elements_state(struct pipe_context *ctx, void *state)
 
    ice->state.cso_vertex_elements = state;
    ice->state.dirty |= IRIS_DIRTY_VERTEX_ELEMENTS;
+   if (new_cso) {
+      /* re-emit vertex buffer state if stride changes */
+      if (cso_changed(vb_count) ||
+          cso_changed_memcmp_elts(stride, new_cso->vb_count))
+         ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS;
+   }
 }
 
 /**
@@ -7369,11 +7382,25 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          }
          map += 1;
 
+         const struct iris_vertex_element_state *cso_ve =
+            ice->state.cso_vertex_elements;
+
          bound = dynamic_bound;
          while (bound) {
             const int i = u_bit_scan64(&bound);
-            memcpy(map, genx->vertex_buffers[i].state,
-                   sizeof(uint32_t) * vb_dwords);
+
+            uint32_t vb_stride[GENX(VERTEX_BUFFER_STATE_length)];
+            struct iris_bo *bo =
+               iris_resource_bo(genx->vertex_buffers[i].resource);
+            iris_pack_state(GENX(VERTEX_BUFFER_STATE), &vb_stride, vbs) {
+               vbs.BufferPitch = cso_ve->stride[i];
+               /* Unnecessary except to defeat the genxml nonzero checker */
+               vbs.MOCS = iris_mocs(bo, &screen->isl_dev,
+                                    ISL_SURF_USAGE_VERTEX_BUFFER_BIT);
+            }
+            for (unsigned d = 0; d < vb_dwords; d++)
+               map[d] = genx->vertex_buffers[i].state[d] | vb_stride[d];
+
             map += vb_dwords;
          }
       }

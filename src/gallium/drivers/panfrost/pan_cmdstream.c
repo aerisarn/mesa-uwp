@@ -109,6 +109,7 @@ struct panfrost_sampler_view {
 struct panfrost_vertex_state {
    unsigned num_elements;
    struct pipe_vertex_element pipe[PIPE_MAX_ATTRIBS];
+   uint16_t strides[PIPE_MAX_ATTRIBS];
 
 #if PAN_ARCH >= 9
    /* Packed attribute descriptor. All fields are set at CSO create time
@@ -955,10 +956,9 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch)
 
    for (unsigned i = 0; i < vtx->num_elements; ++i) {
       struct mali_attribute_packed packed;
-      unsigned vbi = vtx->pipe[i].vertex_buffer_index;
 
       pan_pack(&packed, ATTRIBUTE, cfg) {
-         cfg.stride = ctx->vertex_buffers[vbi].stride;
+         cfg.stride = vtx->pipe[i].src_stride;
       }
 
       pan_merge(packed, vtx->attributes[i], ATTRIBUTE);
@@ -2054,7 +2054,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch, mali_ptr *buffers)
 
       /* When there is a divisor, the hardware-level divisor is
        * the product of the instance divisor and the padded count */
-      unsigned stride = buf->stride;
+      unsigned stride = so->strides[vbi];
       unsigned hw_divisor = ctx->padded_count * divisor;
 
       if (ctx->instance_count <= 1) {
@@ -2172,15 +2172,15 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch, mali_ptr *buffers)
 
       /* Base instance offset */
       if (ctx->base_instance && so->pipe[i].instance_divisor) {
-         src_offset +=
-            (ctx->base_instance * buf->stride) / so->pipe[i].instance_divisor;
+         src_offset += (ctx->base_instance * so->pipe[i].src_stride) /
+                       so->pipe[i].instance_divisor;
       }
 
       /* Also, somewhat obscurely per-instance data needs to be
        * offset in response to a delayed start in an indexed draw */
 
       if (so->pipe[i].instance_divisor && ctx->instance_count > 1)
-         src_offset -= buf->stride * ctx->offset_start;
+         src_offset -= so->pipe[i].src_stride * ctx->offset_start;
 
       pan_pack(out + i, ATTRIBUTE, cfg) {
          cfg.buffer_index = attrib_to_buffer[so->element_buffer[i]];
@@ -3981,6 +3981,8 @@ panfrost_create_vertex_elements_state(struct pipe_context *pctx,
    so->num_elements = num_elements;
    memcpy(so->pipe, elements, sizeof(*elements) * num_elements);
 
+   for (unsigned i = 0; i < num_elements; ++i)
+      so->strides[elements[i].vertex_buffer_index] = elements[i].src_stride;
 #if PAN_ARCH >= 9
    for (unsigned i = 0; i < num_elements; ++i)
       panfrost_pack_attribute(dev, elements[i], &so->attributes[i]);

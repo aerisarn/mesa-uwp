@@ -219,8 +219,6 @@ st_pbo_draw(struct st_context *st, const struct st_pbo_addresses *addr,
 
       float *verts = NULL;
 
-      vbo.stride = 2 * sizeof(float);
-
       u_upload_alloc(st->pipe->stream_uploader, 0, 8 * sizeof(float), 4,
                      &vbo.buffer_offset, &vbo.buffer.resource, (void **) &verts);
       if (!verts)
@@ -239,6 +237,7 @@ st_pbo_draw(struct st_context *st, const struct st_pbo_addresses *addr,
 
       velem.count = 1;
       velem.velems[0].src_offset = 0;
+      velem.velems[0].src_stride = 2 * sizeof(float);
       velem.velems[0].instance_divisor = 0;
       velem.velems[0].vertex_buffer_index = 0;
       velem.velems[0].src_format = PIPE_FORMAT_R32G32_FLOAT;

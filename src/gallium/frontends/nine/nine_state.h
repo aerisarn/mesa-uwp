@@ -218,6 +218,7 @@ struct nine_state
     uint32_t stream_mask; /* i bit set for *stream[i] not NULL */
     struct pipe_vertex_buffer  vtxbuf[PIPE_MAX_ATTRIBS]; /* vtxbuf.buffer unused */
     unsigned last_vtxbuf_count;
+    uint16_t                   vtxstride[PIPE_MAX_ATTRIBS];
     UINT stream_freq[PIPE_MAX_ATTRIBS];
 
     struct pipe_clip_state clip;
@@ -287,6 +288,7 @@ struct nine_context {
     struct pipe_vertex_buffer vtxbuf[PIPE_MAX_ATTRIBS];
     uint32_t vtxbuf_mask; /* i bit set for context->vtxbuf[i].buffer.resource not NULL */
     uint32_t last_vtxbuf_count;
+    uint16_t vtxstride[PIPE_MAX_ATTRIBS];
     UINT stream_freq[PIPE_MAX_ATTRIBS];
     uint32_t stream_instancedata_mask; /* derived from stream_freq */
     uint32_t stream_usage_mask; /* derived from VS and vdecl */
@@ -549,11 +551,12 @@ nine_context_draw_indexed_primitive_from_vtxbuf_idxbuf(struct NineDevice9 *devic
                                                        UINT MinVertexIndex,
                                                        UINT NumVertices,
                                                        UINT PrimitiveCount,
+                                                       unsigned vbuf_stride,
                                                        struct pipe_vertex_buffer *vbuf,
                                                        struct pipe_resource *ibuf,
                                                        void *user_ibuf,
                                                        unsigned index_offset,
-						       unsigned index_size);
+                                                       unsigned index_size);
 
 void
 nine_context_resource_copy_region(struct NineDevice9 *device,

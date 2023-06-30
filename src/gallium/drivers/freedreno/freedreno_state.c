@@ -468,9 +468,7 @@ fd_set_vertex_buffers(struct pipe_context *pctx,
       for (i = 0; i < count; i++) {
          bool new_enabled = vb && vb[i].buffer.resource;
          bool old_enabled = so->vb[i].buffer.resource != NULL;
-         uint32_t new_stride = vb ? vb[i].stride : 0;
-         uint32_t old_stride = so->vb[i].stride;
-         if ((new_enabled != old_enabled) || (new_stride != old_stride)) {
+         if (new_enabled != old_enabled) {
             fd_context_dirty(ctx, FD_DIRTY_VTXSTATE);
             break;
          }
@@ -595,6 +593,8 @@ fd_vertex_state_create(struct pipe_context *pctx, unsigned num_elements,
 
    memcpy(so->pipe, elements, sizeof(*elements) * num_elements);
    so->num_elements = num_elements;
+   for (unsigned i = 0; i < num_elements; i++)
+      so->strides[elements[i].vertex_buffer_index] = elements[i].src_stride;
 
    return so;
 }

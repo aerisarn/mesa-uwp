@@ -145,7 +145,7 @@ IaSetVertexBuffers(D3D10DDI_HDEVICE hDevice,                                    
       }
 
       if (resource) {
-         vb->stride = pStrides[i];
+         pDevice->vertex_strides[StartBuffer + i] = pStrides[i];
          vb->buffer_offset = pOffsets[i];
          if (vb->is_user_buffer) {
             vb->buffer.resource = NULL;
@@ -154,7 +154,7 @@ IaSetVertexBuffers(D3D10DDI_HDEVICE hDevice,                                    
          pipe_resource_reference(&vb->buffer.resource, resource);
       }
       else {
-         vb->stride = 0;
+         pDevice->vertex_strides[StartBuffer + i] = 0;
          vb->buffer_offset = 0;
          if (!vb->is_user_buffer) {
             pipe_resource_reference(&vb->buffer.resource, NULL);
@@ -169,7 +169,7 @@ IaSetVertexBuffers(D3D10DDI_HDEVICE hDevice,                                    
 
       /* XXX this is odd... */
       if (!vb->is_user_buffer && !vb->buffer.resource) {
-         vb->stride = 0;
+         pDevice->vertex_strides[i]->stride = 0;
          vb->buffer_offset = 0;
          vb->is_user_buffer = true;
          vb->buffer.user = dummy;

@@ -430,6 +430,8 @@ draw_set_vertex_elements(struct draw_context *draw,
 
    memcpy(draw->pt.vertex_element, elements, count * sizeof(elements[0]));
    draw->pt.nr_vertex_elements = count;
+   for (unsigned i = 0; i < count; i++)
+      draw->pt.vertex_strides[elements[i].vertex_buffer_index] = elements[i].src_stride;
 }
 
 

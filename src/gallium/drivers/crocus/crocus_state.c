@@ -3751,6 +3751,7 @@ struct crocus_vertex_element_state {
 #endif
    uint32_t step_rate[16];
    uint8_t wa_flags[33];
+   uint16_t strides[16];
    unsigned count;
 };
 
@@ -3773,7 +3774,7 @@ crocus_create_vertex_elements(struct pipe_context *ctx,
    struct crocus_screen *screen = (struct crocus_screen *)ctx->screen;
    const struct intel_device_info *devinfo = &screen->devinfo;
    struct crocus_vertex_element_state *cso =
-      malloc(sizeof(struct crocus_vertex_element_state));
+      calloc(1, sizeof(struct crocus_vertex_element_state));
 
    cso->count = count;
 
@@ -3835,6 +3836,7 @@ crocus_create_vertex_elements(struct pipe_context *ctx,
 #endif
 
       cso->step_rate[state[i].vertex_buffer_index] = state[i].instance_divisor;
+      cso->strides[state[i].vertex_buffer_index] = state[i].src_stride;
 
       switch (isl_format_get_num_channels(fmt.fmt)) {
       case 0: comp[0] = VFCOMP_STORE_0; FALLTHROUGH;
@@ -7607,7 +7609,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             emit_vertex_buffer_state(batch, i, bo,
                                      buf->buffer_offset,
                                      ice->state.vb_end[i],
-                                     buf->stride,
+                                     ice->state.cso_vertex_elements->strides[i],
                                      step_rate,
                                      &map);
          }

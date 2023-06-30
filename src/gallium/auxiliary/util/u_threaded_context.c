@@ -2101,7 +2101,6 @@ tc_set_vertex_buffers(struct pipe_context *_pipe,
             struct pipe_resource *buf = src->buffer.resource;
 
             tc_assert(!src->is_user_buffer);
-            dst->stride = src->stride;
             dst->is_user_buffer = false;
             tc_set_resource_reference(&dst->buffer.resource, buf);
             dst->buffer_offset = src->buffer_offset;

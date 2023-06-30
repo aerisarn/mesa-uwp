@@ -434,6 +434,7 @@ struct r600_cso_state
 struct r600_fetch_shader {
 	struct r600_resource		*buffer;
 	unsigned			offset;
+	unsigned                        strides[PIPE_MAX_ATTRIBS];
 };
 
 struct r600_shader_state {

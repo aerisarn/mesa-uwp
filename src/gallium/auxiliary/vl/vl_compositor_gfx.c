@@ -608,7 +608,7 @@ gen_vertex_data(struct vl_compositor *c, struct vl_compositor_state *s, struct u
 
    /* Allocate new memory for vertices. */
    u_upload_alloc(c->pipe->stream_uploader, 0,
-                  c->vertex_buf.stride * VL_COMPOSITOR_MAX_LAYERS * 4, /* size */
+                  VL_COMPOSITOR_VB_STRIDE * VL_COMPOSITOR_MAX_LAYERS * 4, /* size */
                   4, /* alignment */
                   &c->vertex_buf.buffer_offset, &c->vertex_buf.buffer.resource,
                   (void **)&vb);

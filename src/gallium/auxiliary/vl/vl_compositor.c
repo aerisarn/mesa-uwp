@@ -243,21 +243,23 @@ init_buffers(struct vl_compositor *c)
    /*
     * Create our vertex buffer and vertex buffer elements
     */
-   c->vertex_buf.stride = sizeof(struct vertex2f) + sizeof(struct vertex4f) * 2;
    c->vertex_buf.buffer_offset = 0;
    c->vertex_buf.buffer.resource = NULL;
    c->vertex_buf.is_user_buffer = false;
 
    if (c->pipe_gfx_supported) {
            vertex_elems[0].src_offset = 0;
+           vertex_elems[0].src_stride = VL_COMPOSITOR_VB_STRIDE;
            vertex_elems[0].instance_divisor = 0;
            vertex_elems[0].vertex_buffer_index = 0;
            vertex_elems[0].src_format = PIPE_FORMAT_R32G32_FLOAT;
            vertex_elems[1].src_offset = sizeof(struct vertex2f);
+           vertex_elems[1].src_stride = VL_COMPOSITOR_VB_STRIDE;
            vertex_elems[1].instance_divisor = 0;
            vertex_elems[1].vertex_buffer_index = 0;
            vertex_elems[1].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
            vertex_elems[2].src_offset = sizeof(struct vertex2f) + sizeof(struct vertex4f);
+           vertex_elems[1].src_stride = VL_COMPOSITOR_VB_STRIDE;
            vertex_elems[2].instance_divisor = 0;
            vertex_elems[2].vertex_buffer_index = 0;
            vertex_elems[2].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;

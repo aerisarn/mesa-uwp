@@ -486,7 +486,7 @@ fd5_emit_vertex_bufs(struct fd_ringbuffer *ring, struct fd5_emit *emit)
          OUT_PKT4(ring, REG_A5XX_VFD_FETCH(j), 4);
          OUT_RELOC(ring, rsc->bo, off, 0, 0);
          OUT_RING(ring, size);       /* VFD_FETCH[j].SIZE */
-         OUT_RING(ring, vb->stride); /* VFD_FETCH[j].STRIDE */
+         OUT_RING(ring, elem->src_stride); /* VFD_FETCH[j].STRIDE */
 
          OUT_PKT4(ring, REG_A5XX_VFD_DECODE(j), 2);
          OUT_RING(

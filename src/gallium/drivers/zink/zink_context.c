@@ -1284,13 +1284,11 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
    uint32_t enabled_buffers = ctx->gfx_pipeline_state.vertex_buffers_enabled_mask;
    enabled_buffers |= u_bit_consecutive(0, num_buffers);
    enabled_buffers &= ~u_bit_consecutive(num_buffers, unbind_num_trailing_slots);
-   bool stride_changed = false;
 
    if (buffers) {
       for (unsigned i = 0; i < num_buffers; ++i) {
          const struct pipe_vertex_buffer *vb = buffers + i;
          struct pipe_vertex_buffer *ctx_vb = &ctx->vertex_buffers[i];
-         stride_changed |= ctx_vb->stride != vb->stride;
          update_existing_vbo(ctx, i);
          if (!take_ownership)
             pipe_resource_reference(&ctx_vb->buffer.resource, vb->buffer.resource);
@@ -1305,7 +1303,6 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             res->gfx_barrier |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
             res->barrier_access[0] |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
             update_res_bind_count(ctx, res, false, false);
-            ctx_vb->stride = vb->stride;
             ctx_vb->buffer_offset = vb->buffer_offset;
             /* always barrier before possible rebind */
             zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
@@ -1328,7 +1325,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
    }
    if (need_state_change)
       ctx->vertex_state_changed = true;
-   else if (!have_input_state && (stride_changed || ctx->gfx_pipeline_state.vertex_buffers_enabled_mask != enabled_buffers))
+   else if (!have_input_state && ctx->gfx_pipeline_state.vertex_buffers_enabled_mask != enabled_buffers)
       ctx->vertex_state_changed = true;
    ctx->gfx_pipeline_state.vertex_buffers_enabled_mask = enabled_buffers;
    ctx->vertex_buffers_dirty = num_buffers > 0;

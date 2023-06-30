@@ -119,7 +119,7 @@ pass(struct nir_builder *b, nir_instr *instr, void *data)
    unsigned index = nir_intrinsic_base(intr) + nir_src_as_uint(*offset_src);
 
    struct agx_attribute attrib = vbufs->attributes[index];
-   uint32_t stride = vbufs->strides[attrib.buf];
+   uint32_t stride = attrib.stride;
    uint16_t offset = attrib.src_offset;
 
    const struct util_format_description *desc =

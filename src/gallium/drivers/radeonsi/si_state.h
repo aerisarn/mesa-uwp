@@ -126,6 +126,7 @@ struct si_vertex_elements {
    struct si_resource *instance_divisor_factor_buffer;
    uint32_t rsrc_word3[SI_MAX_ATTRIBS];
    uint16_t src_offset[SI_MAX_ATTRIBS];
+   uint16_t src_stride[SI_MAX_ATTRIBS];
    uint8_t fix_fetch[SI_MAX_ATTRIBS];
    uint8_t format_size[SI_MAX_ATTRIBS];
    uint8_t vertex_buffer_index[SI_MAX_ATTRIBS];

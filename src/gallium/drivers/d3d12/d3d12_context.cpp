@@ -136,6 +136,7 @@ d3d12_create_vertex_elements_state(struct pipe_context *pctx,
    if (!cso)
       return NULL;
 
+   unsigned max_vb = 0;
    for (unsigned i = 0; i < num_elements; ++i) {
       cso->elements[i].SemanticName = "TEXCOORD";
       cso->elements[i].SemanticIndex = i;
@@ -159,9 +160,12 @@ d3d12_create_vertex_elements_state(struct pipe_context *pctx,
          cso->elements[i].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
          cso->elements[i].InstanceDataStepRate = 0;
       }
+      max_vb = MAX2(max_vb, elements[i].vertex_buffer_index);
+      cso->strides[elements[i].vertex_buffer_index] = elements[i].src_stride;
    }
 
    cso->num_elements = num_elements;
+   cso->num_buffers = num_elements ? max_vb + 1 : 0;
    return cso;
 }
 
@@ -1326,7 +1330,6 @@ d3d12_set_vertex_buffers(struct pipe_context *pctx,
          continue;
       struct d3d12_resource *res = d3d12_resource(buf->buffer.resource);
       ctx->vbvs[i].BufferLocation = d3d12_resource_gpu_virtual_address(res) + buf->buffer_offset;
-      ctx->vbvs[i].StrideInBytes = buf->stride;
       ctx->vbvs[i].SizeInBytes = res->base.b.width0 - buf->buffer_offset;
    }
    ctx->state_dirty |= D3D12_DIRTY_VERTEX_BUFFERS;

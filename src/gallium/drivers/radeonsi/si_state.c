@@ -4946,6 +4946,7 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
       v->format_size[i] = desc->block.bits / 8;
       v->src_offset[i] = elements[i].src_offset;
       v->vertex_buffer_index[i] = vbo_index;
+      v->src_stride[i] = elements[i].src_stride;
 
       bool always_fix = false;
       union si_vs_fix_fetch fix_fetch;
@@ -5049,7 +5050,7 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
             (sscreen->info.gfx_level == GFX6 || sscreen->info.gfx_level >= GFX10);
       bool opencode = sscreen->options.vs_fetch_always_opencode;
 
-      if (check_alignment && (elements[i].src_offset & ((1 << log_hw_load_size) - 1)) != 0)
+      if (check_alignment && ((elements[i].src_offset & ((1 << log_hw_load_size) - 1)) != 0 || elements[i].src_stride & 3))
          opencode = true;
 
       if (always_fix || check_alignment || opencode)
@@ -5180,7 +5181,7 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned count,
             /* Only unreference bound vertex buffers. (take_ownership) */
             pipe_resource_reference(&dst->buffer.resource, NULL);
 
-            if (src->buffer_offset & 3 || src->stride & 3)
+            if (src->buffer_offset & 3)
                unaligned |= slot_bit;
 
             if (buf) {
@@ -5200,9 +5201,8 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned count,
 
             pipe_resource_reference(&dst->buffer.resource, buf);
             dst->buffer_offset = src->buffer_offset;
-            dst->stride = src->stride;
 
-            if (dst->buffer_offset & 3 || dst->stride & 3)
+            if (dst->buffer_offset & 3)
                unaligned |= slot_bit;
 
             if (buf) {
@@ -5263,12 +5263,12 @@ si_create_vertex_state(struct pipe_screen *screen,
    assert(!state->velems.instance_divisor_is_one);
    assert(!state->velems.instance_divisor_is_fetched);
    assert(!state->velems.fix_fetch_always);
-   assert(buffer->stride % 4 == 0);
    assert(buffer->buffer_offset % 4 == 0);
    assert(!buffer->is_user_buffer);
    for (unsigned i = 0; i < num_elements; i++) {
       assert(elements[i].src_offset % 4 == 0);
       assert(!elements[i].dual_slot);
+      assert(elements[i].src_stride % 4 == 0);
    }
 
    for (unsigned i = 0; i < num_elements; i++) {

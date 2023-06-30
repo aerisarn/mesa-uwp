@@ -585,11 +585,9 @@ static void r600_set_vertex_buffers(struct pipe_context *ctx,
 	if (input) {
 		for (i = 0; i < count; i++) {
 			if (likely((input[i].buffer.resource != vb[i].buffer.resource) ||
-				   (vb[i].stride != input[i].stride) ||
 				   (vb[i].buffer_offset != input[i].buffer_offset) ||
 				   (vb[i].is_user_buffer != input[i].is_user_buffer))) {
 				if (input[i].buffer.resource) {
-					vb[i].stride = input[i].stride;
 					vb[i].buffer_offset = input[i].buffer_offset;
 					if (take_ownership) {
 						pipe_resource_reference(&vb[i].buffer.resource, NULL);

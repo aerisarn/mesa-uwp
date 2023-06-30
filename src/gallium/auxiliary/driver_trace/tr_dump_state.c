@@ -701,7 +701,6 @@ void trace_dump_vertex_buffer(const struct pipe_vertex_buffer *state)
 
    trace_dump_struct_begin("pipe_vertex_buffer");
 
-   trace_dump_member(uint, state, stride);
    trace_dump_member(bool, state, is_user_buffer);
    trace_dump_member(uint, state, buffer_offset);
    trace_dump_member(ptr, state, buffer.resource);
@@ -731,6 +730,7 @@ void trace_dump_vertex_element(const struct pipe_vertex_element *state)
    trace_dump_member(bool, state, dual_slot);
 
    trace_dump_member(format, state, src_format);
+   trace_dump_member(uint, state, src_stride);
 
    trace_dump_struct_end();
 }

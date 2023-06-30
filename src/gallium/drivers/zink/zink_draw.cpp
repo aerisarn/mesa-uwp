@@ -132,7 +132,7 @@ bind_vertex_buffers_dgc(struct zink_context *ctx)
          assert(res->obj->bda);
          ptr->bufferAddress = res->obj->bda + vb->buffer_offset;
          ptr->size = res->base.b.width0;
-         ptr->stride = vb->stride;
+         ptr->stride = ctx->element_state->hw_state.b.strides[ctx->element_state->hw_state.binding_map[i]];
       } else {
          ptr->bufferAddress = 0;
          ptr->size = 0;
@@ -147,7 +147,6 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
 {
    VkBuffer buffers[PIPE_MAX_ATTRIBS];
    VkDeviceSize buffer_offsets[PIPE_MAX_ATTRIBS];
-   VkDeviceSize buffer_strides[PIPE_MAX_ATTRIBS];
    struct zink_vertex_elements_state *elems = ctx->element_state;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
 
@@ -159,15 +158,9 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
          assert(res->obj->buffer);
          buffers[i] = res->obj->buffer;
          buffer_offsets[i] = vb->buffer_offset;
-         buffer_strides[i] = vb->stride;
-         if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2 || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT)
-            elems->hw_state.dynbindings[i].stride = vb->stride;
       } else {
          buffers[i] = zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
          buffer_offsets[i] = 0;
-         buffer_strides[i] = 0;
-         if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2 || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT)
-            elems->hw_state.dynbindings[i].stride = 0;
       }
    }
 
@@ -177,7 +170,7 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
       if (elems->hw_state.num_bindings)
          VKCTX(CmdBindVertexBuffers2EXT)(batch->state->cmdbuf, 0,
                                              elems->hw_state.num_bindings,
-                                             buffers, buffer_offsets, NULL, buffer_strides);
+                                             buffers, buffer_offsets, NULL, (VkDeviceSize*)elems->hw_state.b.strides);
    } else if (elems->hw_state.num_bindings)
       VKSCR(CmdBindVertexBuffers)(batch->state->cmdbuf, 0,
                              elems->hw_state.num_bindings,

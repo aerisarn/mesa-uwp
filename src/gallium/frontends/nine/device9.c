@@ -3045,7 +3045,7 @@ NineDevice9_DrawPrimitive( struct NineDevice9 *This,
 
     /* Tracking for dynamic SYSTEMMEM */
     for (i = 0; i < This->caps.MaxStreams; i++) {
-        unsigned stride = This->state.vtxbuf[i].stride;
+        unsigned stride = This->state.vtxstride[i];
         if (IS_SYSTEMMEM_DYNAMIC((struct NineBuffer9*)This->state.stream[i])) {
             unsigned start = This->state.vtxbuf[i].buffer_offset + StartVertex * stride;
             unsigned full_size = This->state.stream[i]->base.size;
@@ -3092,7 +3092,7 @@ NineDevice9_DrawIndexedPrimitive( struct NineDevice9 *This,
 
     for (i = 0; i < This->caps.MaxStreams; i++) {
         if (IS_SYSTEMMEM_DYNAMIC((struct NineBuffer9*)This->state.stream[i])) {
-            uint32_t stride = This->state.vtxbuf[i].stride;
+            uint32_t stride = This->state.vtxstride[i];
             uint32_t full_size = This->state.stream[i]->base.size;
             uint32_t start, stop;
 
@@ -3198,7 +3198,6 @@ NineDevice9_DrawIndexedPrimitiveUP( struct NineDevice9 *This,
     base = MinVertexIndex * VertexStreamZeroStride;
     vbuf.is_user_buffer = false;
     vbuf.buffer.resource = NULL;
-    vbuf.stride = VertexStreamZeroStride;
     u_upload_data(This->vertex_uploader,
                   base,
                   NumVertices * VertexStreamZeroStride, /* XXX */
@@ -3225,6 +3224,7 @@ NineDevice9_DrawIndexedPrimitiveUP( struct NineDevice9 *This,
                                                            MinVertexIndex,
                                                            NumVertices,
                                                            PrimitiveCount,
+                                                           VertexStreamZeroStride,
                                                            &vbuf,
                                                            ibuf,
                                                            ibuf ? NULL : (void*)pIndexData,
@@ -3758,17 +3758,17 @@ NineDevice9_SetStreamSource( struct NineDevice9 *This,
     if (unlikely(This->is_recording)) {
         nine_bind(&state->stream[i], pStreamData);
         state->changed.vtxbuf |= 1 << StreamNumber;
-        state->vtxbuf[i].stride = Stride;
+        state->vtxstride[i] = Stride;
         state->vtxbuf[i].buffer_offset = OffsetInBytes;
         return D3D_OK;
     }
 
     if (state->stream[i] == NineVertexBuffer9(pStreamData) &&
-        state->vtxbuf[i].stride == Stride &&
+        state->vtxstride[i] == Stride &&
         state->vtxbuf[i].buffer_offset == OffsetInBytes)
         return D3D_OK;
 
-    state->vtxbuf[i].stride = Stride;
+    state->vtxstride[i] = Stride;
     state->vtxbuf[i].buffer_offset = OffsetInBytes;
 
     NineBindBufferToDevice(This,
@@ -3791,7 +3791,7 @@ NineDevice9_SetStreamSourceNULL( struct NineDevice9 *This )
 
     DBG("This=%p\n", This);
 
-    state->vtxbuf[0].stride = 0;
+    state->vtxstride[0] = 0;
     state->vtxbuf[0].buffer_offset = 0;
 
     if (!state->stream[0])
@@ -3816,7 +3816,7 @@ NineDevice9_GetStreamSource( struct NineDevice9 *This,
     user_assert(ppStreamData && pOffsetInBytes && pStride, D3DERR_INVALIDCALL);
 
     nine_reference_set(ppStreamData, state->stream[i]);
-    *pStride = state->vtxbuf[i].stride;
+    *pStride = state->vtxstride[i];
     *pOffsetInBytes = state->vtxbuf[i].buffer_offset;
 
     return D3D_OK;

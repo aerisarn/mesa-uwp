@@ -146,6 +146,8 @@ struct rendering_state {
    int num_const_bufs[LVP_SHADER_STAGES];
    int num_vb;
    unsigned start_vb;
+   bool vb_strides_dirty;
+   unsigned vb_strides[PIPE_MAX_ATTRIBS];
    struct pipe_vertex_buffer vb[PIPE_MAX_ATTRIBS];
    size_t vb_sizes[PIPE_MAX_ATTRIBS]; //UINT32_MAX for unset
    uint8_t vertex_buffer_index[PIPE_MAX_ATTRIBS]; /* temp storage to sort for start_vb */
@@ -487,6 +489,12 @@ static void emit_state(struct rendering_state *state)
    if (state->stencil_ref_dirty) {
       cso_set_stencil_ref(state->cso, state->stencil_ref);
       state->stencil_ref_dirty = false;
+   }
+
+   if (state->vb_strides_dirty) {
+      for (unsigned i = 0; i < state->velem.count; i++)
+         state->velem.velems[i].src_stride = state->vb_strides[state->velem.velems[i].vertex_buffer_index];
+      state->vb_strides_dirty = false;
    }
 
    if (state->vb_dirty) {
@@ -961,8 +969,10 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
 
    if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_VI_BINDING_STRIDES)) {
       if (ps->vi) {
-         u_foreach_bit(b, ps->vi->bindings_valid)
-            state->vb[b].stride = ps->vi->bindings[b].stride;
+         u_foreach_bit(a, ps->vi->attributes_valid) {
+            uint32_t b = ps->vi->attributes[a].binding;
+            state->velem.velems[a].src_stride = ps->vi->bindings[b].stride;
+         }
          state->vb_dirty = true;
       }
    }
@@ -1098,8 +1108,10 @@ static void handle_vertex_buffers2(struct vk_cmd_queue_entry *cmd,
          state->vb_sizes[idx] = UINT32_MAX;
       }
 
-      if (vcb->strides)
-         state->vb[idx].stride = vcb->strides[i];
+      if (vcb->strides) {
+         state->vb_strides[idx] = vcb->strides[i];
+         state->vb_strides_dirty = true;
+      }
    }
    if (vcb->first_binding < state->start_vb)
       state->start_vb = vcb->first_binding;
@@ -3307,7 +3319,7 @@ static void handle_set_vertex_input(struct vk_cmd_queue_entry *cmd,
       state->velem.velems[location].src_offset = attrs[i].offset;
       state->vertex_buffer_index[location] = attrs[i].binding;
       state->velem.velems[location].src_format = lvp_vk_format_to_pipe_format(attrs[i].format);
-      state->vb[attrs[i].binding].stride = binding->stride;
+      state->velem.velems[location].src_stride = binding->stride;
       uint32_t d = binding->divisor;
       switch (binding->inputRate) {
       case VK_VERTEX_INPUT_RATE_VERTEX:

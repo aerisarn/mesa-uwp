@@ -1791,9 +1791,9 @@ agx_create_shader_state(struct pipe_context *pctx,
       case PIPE_SHADER_VERTEX: {
          key.vs.vbuf.count = AGX_MAX_VBUFS;
          for (unsigned i = 0; i < AGX_MAX_VBUFS; ++i) {
-            key.vs.vbuf.strides[i] = 16;
             key.vs.vbuf.attributes[i] = (struct agx_attribute){
                .buf = i,
+               .stride = 16,
                .format = PIPE_FORMAT_R32G32B32A32_FLOAT,
             };
          }
@@ -1903,10 +1903,6 @@ agx_update_vs(struct agx_context *ctx)
 
    memcpy(key.vbuf.attributes, ctx->attributes,
           sizeof(key.vbuf.attributes[0]) * AGX_MAX_ATTRIBS);
-
-   u_foreach_bit(i, ctx->vb_mask) {
-      key.vbuf.strides[i] = ctx->vertex_buffers[i].stride;
-   }
 
    return agx_update_shader(ctx, &ctx->vs, PIPE_SHADER_VERTEX,
                             (union asahi_shader_key *)&key);
