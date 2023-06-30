@@ -513,6 +513,12 @@ vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
    cmd->builder.render_pass = pass;
    cmd->builder.framebuffer = fb;
 
+   if (begin_info) {
+      cmd->render_pass = pass;
+      cmd->subpass_index = 0;
+      cmd->view_mask = cmd->render_pass->subpasses[0].view_mask;
+   }
+
    if (!pass->present_count ||
        cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
       return;
@@ -562,6 +568,10 @@ vn_cmd_end_render_pass(struct vn_command_buffer *cmd)
 
    cmd->builder.render_pass = NULL;
    cmd->builder.framebuffer = NULL;
+
+   cmd->render_pass = NULL;
+   cmd->subpass_index = 0;
+   cmd->view_mask = 0;
 
    if (!pass->present_count || !cmd->builder.present_src_images)
       return;
@@ -651,6 +661,10 @@ vn_cmd_reset(struct vn_command_buffer *cmd)
    vn_cs_encoder_reset(&cmd->cs);
    cmd->state = VN_COMMAND_BUFFER_STATE_INITIAL;
    cmd->draw_cmd_batched = 0;
+
+   cmd->render_pass = NULL;
+   cmd->subpass_index = 0;
+   cmd->view_mask = 0;
 }
 
 VkResult
@@ -898,12 +912,34 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    cmd->state = VN_COMMAND_BUFFER_STATE_RECORDING;
 
-   if (local_begin_info.has_inherited_pass) {
-      const VkCommandBufferInheritanceInfo *inheritance_info =
-         pBeginInfo->pInheritanceInfo;
-      vn_cmd_begin_render_pass(
-         cmd, vn_render_pass_from_handle(inheritance_info->renderPass),
-         vn_framebuffer_from_handle(inheritance_info->framebuffer), NULL);
+   const VkCommandBufferInheritanceInfo *inheritance_info =
+      pBeginInfo->pInheritanceInfo;
+
+   if (inheritance_info) {
+      if (local_begin_info.has_inherited_pass) {
+         vn_cmd_begin_render_pass(
+            cmd, vn_render_pass_from_handle(inheritance_info->renderPass),
+            vn_framebuffer_from_handle(inheritance_info->framebuffer), NULL);
+
+         /* Store the viewMask from the inherited render pass subpass for
+          * query feedback.
+          */
+         const struct vn_render_pass *pass =
+            vn_render_pass_from_handle(inheritance_info->renderPass);
+         cmd->view_mask =
+            pass->subpasses[inheritance_info->subpass].view_mask;
+      } else {
+         /* Store the viewMask from the
+          * VkCommandBufferInheritanceRenderingInfo.
+          */
+         const VkCommandBufferInheritanceRenderingInfo
+            *inheritance_rendering_info = vk_find_struct_const(
+               inheritance_info->pNext,
+               COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
+
+         if (inheritance_rendering_info)
+            cmd->view_mask = inheritance_rendering_info->viewMask;
+      }
    }
 
    return VK_SUCCESS;
@@ -1111,13 +1147,23 @@ void
 vn_CmdBeginRendering(VkCommandBuffer commandBuffer,
                      const VkRenderingInfo *pRenderingInfo)
 {
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+
+   cmd->view_mask = pRenderingInfo->viewMask;
+
    VN_CMD_ENQUEUE(vkCmdBeginRendering, commandBuffer, pRenderingInfo);
 }
 
 void
 vn_CmdEndRendering(VkCommandBuffer commandBuffer)
 {
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+
    VN_CMD_ENQUEUE(vkCmdEndRendering, commandBuffer);
+
+   cmd->view_mask = 0;
 }
 
 void
@@ -1694,6 +1740,11 @@ vn_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
 void
 vn_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
 {
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   cmd->view_mask =
+      cmd->render_pass->subpasses[++cmd->subpass_index].view_mask;
+
    VN_CMD_ENQUEUE(vkCmdNextSubpass, commandBuffer, contents);
 }
 
@@ -1730,6 +1781,11 @@ vn_CmdNextSubpass2(VkCommandBuffer commandBuffer,
                    const VkSubpassBeginInfo *pSubpassBeginInfo,
                    const VkSubpassEndInfo *pSubpassEndInfo)
 {
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   cmd->view_mask =
+      cmd->render_pass->subpasses[++cmd->subpass_index].view_mask;
+
    VN_CMD_ENQUEUE(vkCmdNextSubpass2, commandBuffer, pSubpassBeginInfo,
                   pSubpassEndInfo);
 }

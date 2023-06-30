@@ -67,6 +67,16 @@ struct vn_command_buffer {
    struct vn_cs_encoder cs;
 
    uint32_t draw_cmd_batched;
+
+   /* For batching query feedback in render passes */
+   /* viewMask is stored per subpass for legacy render pass */
+   const struct vn_render_pass *render_pass;
+   uint32_t subpass_index;
+   /* view_mask is set when passed in by dynamic rendering/secondary cmd
+    * buffers or on each subpass iteration for legacy render pass with
+    * the above variables.
+    */
+   uint32_t view_mask;
 };
 VK_DEFINE_HANDLE_CASTS(vn_command_buffer,
                        base.base,
