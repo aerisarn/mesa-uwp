@@ -1083,6 +1083,8 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
       coded_buf->associated_encode_input_surf = context->target_id;
    } else if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_BITSTREAM) {
       context->desc.base.fence = &surf->fence;
+   } else if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
+      context->desc.base.fence = &surf->fence;
    }
 
    context->decoder->end_frame(context->decoder, context->target, &context->desc.base);

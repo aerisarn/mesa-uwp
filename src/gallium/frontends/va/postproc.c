@@ -490,6 +490,11 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
    src_region = vlVaRegionDefault(param->surface_region, src_surface, &def_src_region);
    dst_region = vlVaRegionDefault(param->output_region, dst_surface, &def_dst_region);
 
+   /* Insert a GPU Wait on the input surface fence to ensure
+      any pending work is finished before performing the VPBlit */
+   if (src_surface->fence && drv->pipe->fence_server_sync)
+      drv->pipe->fence_server_sync(drv->pipe, src_surface->fence);
+
    /* If the driver supports video engine post proc, attempt to do that
     * if it fails, fallback to the other existing implementations below
     */
@@ -503,6 +508,7 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
             return VA_STATUS_ERROR_ALLOCATION_FAILED;
       }
 
+      context->desc.vidproc.src_surface_fence = src_surface->fence;
       /* Perform VPBlit, if fail, fallback to other implementations below */
       if (VA_STATUS_SUCCESS == vlVaVidEngineBlit(drv, context, src_region, dst_region,
                                                  src, context->target, deinterlace, param))

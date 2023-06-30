@@ -137,7 +137,18 @@ vlVaSyncSurface(VADriverContextP ctx, VASurfaceID render_target)
       return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
    }
 
-   if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_BITSTREAM) {
+   if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
+      int ret = 0;
+
+      if (context->decoder->get_processor_fence)
+         ret = context->decoder->get_processor_fence(context->decoder,
+                                                     surf->fence,
+                                                     PIPE_DEFAULT_DECODER_FEEDBACK_TIMEOUT_NS);
+
+      mtx_unlock(&drv->mutex);
+      // Assume that the GPU has hung otherwise.
+      return ret ? VA_STATUS_SUCCESS : VA_STATUS_ERROR_TIMEDOUT;
+   } else if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_BITSTREAM) {
       int ret = 0;
 
       if (context->decoder->get_decoder_fence)
@@ -233,6 +244,25 @@ vlVaQuerySurfaceStatus(VADriverContextP ctx, VASurfaceID render_target, VASurfac
       if (context->decoder->get_decoder_fence)
          ret = context->decoder->get_decoder_fence(context->decoder,
                                                    surf->fence, 0);
+
+      if (ret)
+         *status = VASurfaceReady;
+      else
+      /* An approach could be to just tell the client that this is not
+       * implemented, but this breaks other code.  Compromise by at least
+       * conservatively setting the status to VASurfaceRendering if we can't
+       * query the hardware.  Note that we _must_ set the status here, otherwise
+       * it comes out of the function unchanged. As we are returning
+       * VA_STATUS_SUCCESS, the client would be within his/her rights to use a
+       * potentially uninitialized/invalid status value unknowingly.
+       */
+         *status = VASurfaceRendering;
+   } else if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
+      int ret = 0;
+
+      if (context->decoder->get_processor_fence)
+         ret = context->decoder->get_processor_fence(context->decoder,
+                                                     surf->fence, 0);
 
       if (ret)
          *status = VASurfaceReady;

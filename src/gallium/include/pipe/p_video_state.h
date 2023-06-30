@@ -187,7 +187,7 @@ struct pipe_picture_desc
    uint32_t key_size;
    enum pipe_format input_format;
    enum pipe_format output_format;
-   /* A fence used on PIPE_VIDEO_ENTRYPOINT_DECODE to signal job completion */
+   /* A fence used on PIPE_VIDEO_ENTRYPOINT_DECODE/PROCESSING to signal job completion */
    struct pipe_fence_handle **fence;
 };
 
@@ -1379,6 +1379,9 @@ struct pipe_vpp_desc
    struct u_rect dst_region;
    enum pipe_video_vpp_orientation orientation;
    struct pipe_vpp_blend blend;
+
+   /* Fence to wait on for the src surface */
+   struct pipe_fence_handle *src_surface_fence;
 };
 
 
