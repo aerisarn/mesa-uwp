@@ -514,6 +514,7 @@ vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
    cmd->builder.framebuffer = fb;
 
    if (begin_info) {
+      cmd->in_render_pass = true;
       cmd->render_pass = pass;
       cmd->subpass_index = 0;
       cmd->view_mask = cmd->render_pass->subpasses[0].view_mask;
@@ -569,6 +570,7 @@ vn_cmd_end_render_pass(struct vn_command_buffer *cmd)
    cmd->builder.render_pass = NULL;
    cmd->builder.framebuffer = NULL;
 
+   cmd->in_render_pass = false;
    cmd->render_pass = NULL;
    cmd->subpass_index = 0;
    cmd->view_mask = 0;
@@ -662,6 +664,8 @@ vn_cmd_reset(struct vn_command_buffer *cmd)
    cmd->state = VN_COMMAND_BUFFER_STATE_INITIAL;
    cmd->draw_cmd_batched = 0;
 
+   cmd->in_render_pass = false;
+   cmd->suspends = false;
    cmd->render_pass = NULL;
    cmd->subpass_index = 0;
    cmd->view_mask = 0;
@@ -803,6 +807,7 @@ struct vn_command_buffer_begin_info {
    VkCommandBufferInheritanceConditionalRenderingInfoEXT conditional_rendering;
 
    bool has_inherited_pass;
+   bool in_render_pass;
 };
 
 static const VkCommandBufferBeginInfo *
@@ -822,6 +827,13 @@ vn_fix_command_buffer_begin_info(struct vn_command_buffer *cmd,
    const bool has_renderpass =
       is_cmd_secondary &&
       begin_info->pInheritanceInfo->renderPass != VK_NULL_HANDLE;
+
+   /* Per spec 1.3.255: "VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT
+    * specifies that a secondary command buffer is considered to be
+    * entirely inside a render pass. If this is a primary command buffer,
+    * then this bit is ignored."
+    */
+   local->in_render_pass = has_continue && is_cmd_secondary;
 
    /* Can early-return if dynamic rendering is used and no structures need to
     * be dropped from the pNext chain of VkCommandBufferInheritanceInfo.
@@ -916,6 +928,7 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       pBeginInfo->pInheritanceInfo;
 
    if (inheritance_info) {
+      cmd->in_render_pass = local_begin_info.in_render_pass;
       if (local_begin_info.has_inherited_pass) {
          vn_cmd_begin_render_pass(
             cmd, vn_render_pass_from_handle(inheritance_info->renderPass),
@@ -1150,7 +1163,10 @@ vn_CmdBeginRendering(VkCommandBuffer commandBuffer,
    struct vn_command_buffer *cmd =
       vn_command_buffer_from_handle(commandBuffer);
 
+   cmd->in_render_pass = true;
    cmd->view_mask = pRenderingInfo->viewMask;
+
+   cmd->suspends = pRenderingInfo->flags & VK_RENDERING_SUSPENDING_BIT;
 
    VN_CMD_ENQUEUE(vkCmdBeginRendering, commandBuffer, pRenderingInfo);
 }
@@ -1163,7 +1179,13 @@ vn_CmdEndRendering(VkCommandBuffer commandBuffer)
 
    VN_CMD_ENQUEUE(vkCmdEndRendering, commandBuffer);
 
-   cmd->view_mask = 0;
+   /* Feedback commands not allowed during suspended render pass either
+    * so defer until it actually ends.
+    */
+   if (!cmd->suspends) {
+      cmd->in_render_pass = false;
+      cmd->view_mask = 0;
+   }
 }
 
 void

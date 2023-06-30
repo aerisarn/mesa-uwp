@@ -69,6 +69,9 @@ struct vn_command_buffer {
    uint32_t draw_cmd_batched;
 
    /* For batching query feedback in render passes */
+   /* in_render_pass remains true when a render pass is suspended */
+   bool in_render_pass;
+   bool suspends;
    /* viewMask is stored per subpass for legacy render pass */
    const struct vn_render_pass *render_pass;
    uint32_t subpass_index;
