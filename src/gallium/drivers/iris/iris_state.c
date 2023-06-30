@@ -5962,7 +5962,7 @@ invalidate_aux_map_state_per_engine(struct iris_batch *batch)
                                  (GFX_VERx10 == 125 ?
                                   PIPE_CONTROL_CCS_CACHE_FLUSH : 0));
 
-      register_addr = GENX(CCS_CCS_AUX_INV_num);
+      register_addr = GENX(COMPCS0_CCS_AUX_INV_num);
       break;
    }
    case IRIS_BATCH_BLITTER: {
