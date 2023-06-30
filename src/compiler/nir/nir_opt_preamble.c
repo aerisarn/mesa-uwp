@@ -416,25 +416,26 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
          bool is_candidate = !avoid_instr(instr, options);
          state->candidate = false;
          state->must_stay = false;
-         nir_foreach_use(use, def) {
-            nir_def *use_def = nir_instr_def(nir_src_parent_instr(use));
-            if (!use_def || !ctx.states[use_def->index].can_move ||
-                ctx.states[use_def->index].must_stay) {
+         nir_foreach_use_including_if(use, def) {
+            bool is_can_move_user;
+
+            if (nir_src_is_if(use)) {
+               is_can_move_user = false;
+            } else {
+               nir_def *use_def = nir_instr_def(nir_src_parent_instr(use));
+               is_can_move_user = use_def != NULL &&
+                                  ctx.states[use_def->index].can_move &&
+                                  !ctx.states[use_def->index].must_stay;
+            }
+
+            if (is_can_move_user) {
+               state->can_move_users++;
+            } else {
                if (is_candidate)
                   state->candidate = true;
                else
                   state->must_stay = true;
-            } else {
-               state->can_move_users++;
             }
-         }
-
-         nir_foreach_if_use(use, def) {
-            if (is_candidate)
-               state->candidate = true;
-            else
-               state->must_stay = true;
-            break;
          }
 
          if (state->candidate)
