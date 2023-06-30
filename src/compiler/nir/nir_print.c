@@ -802,6 +802,7 @@ print_access(enum gl_access_qualifier access, print_state *state, const char *se
       { ACCESS_NON_WRITEABLE, "readonly" },
       { ACCESS_NON_READABLE, "writeonly" },
       { ACCESS_CAN_REORDER, "reorderable" },
+      { ACCESS_CAN_SPECULATE, "speculatable" },
       { ACCESS_NON_TEMPORAL, "non-temporal" },
       { ACCESS_INCLUDE_HELPERS, "include-helpers" },
    };

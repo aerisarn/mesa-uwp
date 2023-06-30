@@ -1111,6 +1111,17 @@ enum gl_access_qualifier
     * from fragment mask buffer.
     */
    ACCESS_FMASK_LOWERED_AMD = (1 << 11),
+
+   /**
+    * Whether it is safe to speculatively execute this load. This allows
+    * hoisting loads out of conditional control flow (including out of software
+    * bounds checks). Setting this optimally depends on knowledge of the
+    * hardware. Speculation is safe if out-of-bounds access does not trigger
+    * undefined behaviour (even though the returned value of the speculated load
+    * is bogus). This is the case if there is hardware-level bounds checking, or
+    * if MMU faults are suppressed for the load.
+    */
+   ACCESS_CAN_SPECULATE = (1 << 12),
 };
 
 /**
