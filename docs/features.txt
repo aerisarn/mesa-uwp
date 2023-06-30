@@ -664,8 +664,8 @@ Clover OpenCL 1.1 -- all DONE:
   clSetEventCallback                                    DONE
   Minimum requirement changes for clGetDeviceInfo       DONE (nvc0, r600, radeonsi)
   Arg prerequisite change for clEnqueueNDRangeKernel    DONE ()
-  3-component vector data types                         DONE (nvc0, r600, radeonsi)
   OpenCL C 1.1                                          DONE (nvc0, r600, radeonsi)
+  - 3-component vector data types                       DONE (nvc0, r600, radeonsi)
   - cl_khr_byte_addressable_store                       DONE (nvc0, r600, radeonsi)
   - cl_khr_global_int32_base_atomics                    DONE (nvc0, r600, radeonsi)
   - cl_khr_global_int32_extended_atomics                DONE (nvc0, r600, radeonsi)
@@ -819,8 +819,8 @@ Rusticl OpenCL 1.1 -- all DONE:
   clSetEventCallback                                    DONE
   Minimum requirement changes for clGetDeviceInfo       DONE
   Arg prerequisite change for clEnqueueNDRangeKernel    DONE
-  3-component vector data types                         DONE
   OpenCL C 1.1                                          DONE
+  - 3-component vector data types                       DONE
   - cl_khr_byte_addressable_store                       DONE
   - cl_khr_global_int32_base_atomics                    DONE
   - cl_khr_global_int32_extended_atomics                DONE
