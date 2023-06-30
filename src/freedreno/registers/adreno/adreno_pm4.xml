@@ -626,7 +626,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="CP_THREAD_CONTROL" value="0x17" variants="A7XX-"/>
 	<!-- payload 4 dwords, last two could be render target addr (one pkt per MRT), possibly used for GMEM save/restore?-->
 	<value name="CP_RESOURCE_LIST" value="0x18" variants="A7XX-"/>
-	<value name="CP_BV_BR_COUNT_OPS" value="0x1b" variants="A7XX-"/>  <!-- payload 1 or 2 dwords -->
+	<doc> Can clear BV/BR counters, or wait until one catches up to another </doc>
+	<value name="CP_BV_BR_COUNT_OPS" value="0x1b" variants="A7XX-"/>
 	<doc> Clears, adds to local, or adds to global timestamp </doc>
 	<value name="CP_MODIFY_TIMESTAMP" value="0x1c" variants="A7XX-"/>
 	<!-- similar to CP_CONTEXT_REG_BUNCH, but discards first two dwords?? -->
@@ -2157,6 +2158,23 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 
 	<reg32 offset="3" name="SRC_0"/>
 	<reg32 offset="4" name="SRC_1"/>
+</domain>
+
+<domain name="CP_BV_BR_COUNT_OPS" width="32">
+	<enum name="pipe_count_op">
+		<value name="PIPE_CLEAR_BV_BR" value="0x1"/>
+		<value name="PIPE_SET_BR_OFFSET" value="0x2"/>
+		<!-- Wait until for BV_counter > BR_counter -->
+		<value name="PIPE_BR_WAIT_FOR_BV" value="0x3"/>
+		<!-- Wait until (BR_counter + BR_OFFSET) > BV_counter -->
+		<value name="PIPE_BV_WAIT_FOR_BR" value="0x4"/>
+	</enum>
+	<reg32 offset="0" name="0">
+		<bitfield name="OP" low="0" high="3" type="pipe_count_op"/>
+	</reg32>
+	<reg32 offset="1" name="1">
+		<bitfield name="BR_OFFSET" low="0" high="15" type="uint"/>
+	</reg32>
 </domain>
 
 <domain name="CP_MODIFY_TIMESTAMP" width="32">
