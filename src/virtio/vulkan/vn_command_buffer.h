@@ -80,6 +80,7 @@ struct vn_command_buffer {
     * the above variables.
     */
    uint32_t view_mask;
+   struct list_head query_batches;
 };
 VK_DEFINE_HANDLE_CASTS(vn_command_buffer,
                        base.base,
