@@ -876,7 +876,7 @@ Rusticl OpenCL 2.1 -- all DONE:
   Sub groups                                            in progress
   - cl_khr_subgroups                                    in progress
   cl_khr_il_program                                     DONE
-  Device and host timer synchronization                 not started
+  Device and host timer synchronization                 DONE (iris, llvmpipe, radeonsi)
   clEnqueueSVMMigrateMem                                in progress (nvc0/gp100, broken)
   clCloneKernel                                         DONE
   Default device command queue                          not started
