@@ -592,17 +592,22 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
    nir_builder builder = nir_builder_create(impl);
    b = &builder;
 
+   unsigned max_index = impl->ssa_alloc;
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
          nir_def *def = nir_instr_def(instr);
          if (!def)
             continue;
 
+         /* Ignore new load_preamble instructions */
+         if (def->index >= max_index)
+            continue;
+
          def_state *state = &ctx.states[def->index];
          if (!state->replace)
             continue;
 
-         b->cursor = nir_before_instr(instr);
+         b->cursor = nir_after_instr_and_phis(instr);
 
          nir_def *new_def =
             nir_load_preamble(b, def->num_components, def->bit_size,
