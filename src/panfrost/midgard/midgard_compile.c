@@ -2471,8 +2471,17 @@ inline_alu_constants(compiler_context *ctx, midgard_block *block)
             /* Set the source */
             alu->src[1] = scratch;
 
-            /* Inject us -before- the last instruction which set r31 */
-            mir_insert_instruction_before(ctx, mir_prev_op(alu), ins);
+            /* Inject us -before- the last instruction which set r31, if
+             * possible.
+             */
+            midgard_instruction *first = list_first_entry(
+               &block->base.instructions, midgard_instruction, link);
+
+            if (alu == first) {
+               mir_insert_instruction_before(ctx, alu, ins);
+            } else {
+               mir_insert_instruction_before(ctx, mir_prev_op(alu), ins);
+            }
          }
       }
    }
