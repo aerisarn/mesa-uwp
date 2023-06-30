@@ -243,7 +243,8 @@ lower_cmat_load_store(nir_builder *b, nir_intrinsic_instr *intrin,
    }
 
    if (load)
-      nir_store_deref(b, slice, nir_vec(b, results, num_components), 0xffff);
+      nir_store_deref(b, slice, nir_vec(b, results, num_components),
+                      nir_component_mask(num_components));
 }
 
 static void
@@ -392,8 +393,6 @@ lower_cmat_instr(nir_builder *b, nir_instr *instr, void *_state)
       return NIR_LOWER_INSTR_PROGRESS_REPLACE;
 
    case nir_intrinsic_cmat_bitcast:
-   case nir_intrinsic_cmat_insert:
-   case nir_intrinsic_cmat_extract:
       /* FINISHME. */
       return NIR_LOWER_INSTR_PROGRESS_REPLACE;
 
@@ -402,6 +401,75 @@ lower_cmat_instr(nir_builder *b, nir_instr *instr, void *_state)
                      nir_src_as_deref(intrin->src[0]),
                      nir_src_as_deref(intrin->src[1]));
       return NIR_LOWER_INSTR_PROGRESS_REPLACE;
+
+   case nir_intrinsic_cmat_insert: {
+      nir_deref_instr *dst_slice = nir_src_as_deref(intrin->src[0]);
+      nir_def *scalar = intrin->src[1].ssa;
+      nir_deref_instr *src_slice = nir_src_as_deref(intrin->src[2]);
+      nir_def *dst_index = intrin->src[3].ssa;
+
+      const struct glsl_type *dst_mat_type = get_coop_type_for_slice(state, dst_slice);
+      ASSERTED const struct glsl_type *src_mat_type = get_coop_type_for_slice(state, src_slice);
+      assert(dst_mat_type == src_mat_type);
+
+      const struct glsl_cmat_description desc =
+         *glsl_get_cmat_description(dst_mat_type);
+
+      const unsigned bits = glsl_base_type_bit_size(desc.element_type);
+      const unsigned packing_factor = get_packing_factor(desc, dst_slice->type);
+      const unsigned num_components = glsl_get_vector_elements(dst_slice->type);
+
+      nir_def *slice_index = nir_udiv_imm(b, dst_index, packing_factor);
+      nir_def *vector_index = nir_umod_imm(b, dst_index, packing_factor);
+      nir_def *results[NIR_MAX_VEC_COMPONENTS];
+
+      for (unsigned i = 0; i < num_components; i++) {
+         nir_def *val = nir_channel(b, nir_load_deref(b, src_slice), i);
+         nir_def *insert;
+
+         if (packing_factor == 1) {
+            insert = scalar;
+         } else {
+            nir_def *unpacked = nir_unpack_bits(b, val, bits);
+            nir_def *v = nir_vector_insert(b, unpacked, scalar, vector_index);
+
+            insert = nir_pack_bits(b, v, bits * packing_factor);
+         }
+
+         results[i] = nir_bcsel(b, nir_ieq_imm(b, slice_index, i), insert, val);
+      }
+
+      nir_store_deref(b, dst_slice, nir_vec(b, results, num_components),
+                      nir_component_mask(num_components));
+
+      return NIR_LOWER_INSTR_PROGRESS_REPLACE;
+   }
+
+   case nir_intrinsic_cmat_extract: {
+      nir_deref_instr *slice = nir_src_as_deref(intrin->src[0]);
+      const struct glsl_type *mat_type = get_coop_type_for_slice(state, slice);
+      nir_def *index = intrin->src[1].ssa;
+
+      const struct glsl_cmat_description desc =
+         *glsl_get_cmat_description(mat_type);
+
+      const unsigned bits = glsl_base_type_bit_size(desc.element_type);
+      const unsigned packing_factor = get_packing_factor(desc, slice->type);
+
+      nir_def *src =
+         nir_vector_extract(b, nir_load_deref(b, slice),
+                            nir_udiv_imm(b, index, packing_factor));
+
+      if (packing_factor == 1) {
+         return src;
+      } else {
+         return nir_vector_extract(b,
+                                   nir_unpack_bits(b, src, bits),
+                                   nir_umod_imm(b, index, packing_factor));
+      }
+
+      return NIR_LOWER_INSTR_PROGRESS_REPLACE;
+   }
 
    default:
       unreachable("invalid cooperative matrix intrinsic");
