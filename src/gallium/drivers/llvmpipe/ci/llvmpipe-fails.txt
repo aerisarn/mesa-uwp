@@ -197,13 +197,6 @@ spec@glsl-4.00@execution@conversion@vert-conversion-explicit-dvec4-vec4,Fail
 spec@glsl-4.50@execution@ssbo-atomiccompswap-int,Fail
 spec@!opengl 1.0@depth-clear-precision-check,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@r8ui_texture_buffer_size_via_image,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@r8ui_texture_buffer_size_via_sampler,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@rg8ui_texture_buffer_size_via_image,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@rg8ui_texture_buffer_size_via_sampler,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@rgba8ui_texture_buffer_size_via_image,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@rgba8ui_texture_buffer_size_via_sampler,Fail
 
 # [...]
 # Image comparison failed: reference = -0.000488281, expected = 0:0:0:0, result = 0:0:0:3
