@@ -473,7 +473,7 @@ init_render_queue_state(struct anv_queue *queue)
 #endif
    }
 
-#if GFX_VERx10 == 120
+#if INTEL_NEEDS_WA_1806527549
    /* Wa_1806527549 says to disable the following HiZ optimization when the
     * depth buffer is D16_UNORM. We've found the WA to help with more depth
     * buffer configurations however, so we always disable it just to be safe.
@@ -775,14 +775,14 @@ genX(emit_l3_config)(struct anv_batch *batch,
 #if GFX_VER < 11
          l3cr.SLMEnable = cfg->n[INTEL_L3P_SLM];
 #endif
-#if GFX_VER == 11
+#if INTEL_NEEDS_WA_1406697149
          /* Wa_1406697149: Bit 9 "Error Detection Behavior Control" must be
           * set in L3CNTLREG register. The default setting of the bit is not
           * the desirable behavior.
           */
          l3cr.ErrorDetectionBehaviorControl = true;
          l3cr.UseFullWays = true;
-#endif /* GFX_VER == 11 */
+#endif /* INTEL_NEEDS_WA_1406697149 */
          assert(cfg->n[INTEL_L3P_IS] == 0);
          assert(cfg->n[INTEL_L3P_C] == 0);
          assert(cfg->n[INTEL_L3P_T] == 0);
@@ -1156,9 +1156,7 @@ VkResult genX(CreateSampler)(
 void
 genX(apply_task_urb_workaround)(struct anv_cmd_buffer *cmd_buffer)
 {
-#if GFX_VERx10 != 125
-   return;
-#else
+#if INTEL_NEEDS_WA_16014390852
    if (cmd_buffer->state.current_pipeline != _3D ||
        !cmd_buffer->state.gfx.used_task_shader)
       return;
