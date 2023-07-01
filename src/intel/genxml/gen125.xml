@@ -6540,7 +6540,7 @@
     <field name="HDC Pipeline Flush Enable" start="9" end="9" type="bool" />
     <field name="L3 Read Only Cache Invalidation Enable" start="10" end="10" type="bool" />
     <field name="Untyped Data Port Cache Flush Enable" start="11" end="11" type="bool" />
-    <field name="CCSFlushEnable" start="13" end="13" type="bool" />
+    <field name="CCS Flush Enable" start="13" end="13" type="bool" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="0" />
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="2" />
     <field name="Command SubType" start="27" end="28" type="uint" default="3" />
