@@ -769,6 +769,18 @@ pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
 
    unsigned align = count;
 
+   /* Try to allocate phis compatibly with their sources */
+   if (I->op == AGX_OPCODE_PHI) {
+      agx_foreach_ssa_src(I, s) {
+         /* Loop headers have phis with a source preceding the definition */
+         bool may_be_unvisited = rctx->block->loop_header;
+
+         unsigned out;
+         if (try_coalesce_with(rctx, I->src[s], count, may_be_unvisited, &out))
+            return out;
+      }
+   }
+
    /* Try to allocate collects compatibly with their sources */
    if (I->op == AGX_OPCODE_COLLECT) {
       agx_foreach_ssa_src(I, s) {
