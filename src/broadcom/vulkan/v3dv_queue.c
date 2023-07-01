@@ -123,6 +123,172 @@ queue_wait_idle(struct v3dv_queue *queue,
    return VK_SUCCESS;
 }
 
+static void
+multisync_free(struct v3dv_device *device,
+               struct drm_v3d_multi_sync *ms)
+{
+   vk_free(&device->vk.alloc, (void *)(uintptr_t)ms->out_syncs);
+   vk_free(&device->vk.alloc, (void *)(uintptr_t)ms->in_syncs);
+}
+
+static struct drm_v3d_sem *
+set_in_syncs(struct v3dv_queue *queue,
+             struct v3dv_job *job,
+             enum v3dv_queue_type queue_sync,
+             uint32_t *count,
+             struct v3dv_submit_sync_info *sync_info)
+{
+   struct v3dv_device *device = queue->device;
+   uint32_t n_syncs = 0;
+
+   /* If this is the first job submitted to a given GPU queue in this cmd buf
+    * batch, it has to wait on wait semaphores (if any) before running.
+    */
+   if (queue->last_job_syncs.first[queue_sync])
+      n_syncs = sync_info->wait_count;
+
+   /* If the serialize flag is set the job needs to be serialized in the
+    * corresponding queues. Notice that we may implement transfer operations
+    * as both CL or TFU jobs.
+    *
+    * FIXME: maybe we could track more precisely if the source of a transfer
+    * barrier is a CL and/or a TFU job.
+    */
+   bool sync_csd  = job->serialize & V3DV_BARRIER_COMPUTE_BIT;
+   bool sync_tfu  = job->serialize & V3DV_BARRIER_TRANSFER_BIT;
+   bool sync_cl   = job->serialize & (V3DV_BARRIER_GRAPHICS_BIT |
+                                      V3DV_BARRIER_TRANSFER_BIT);
+   *count = n_syncs;
+   if (sync_cl)
+      (*count)++;
+   if (sync_tfu)
+      (*count)++;
+   if (sync_csd)
+      (*count)++;
+
+   if (!*count)
+      return NULL;
+
+   struct drm_v3d_sem *syncs =
+      vk_zalloc(&device->vk.alloc, *count * sizeof(struct drm_v3d_sem),
+                8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+
+   if (!syncs)
+      return NULL;
+
+   for (int i = 0; i < n_syncs; i++) {
+      syncs[i].handle =
+         vk_sync_as_drm_syncobj(sync_info->waits[i].sync)->syncobj;
+   }
+
+   if (sync_cl)
+      syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_CL];
+
+   if (sync_csd)
+      syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_CSD];
+
+   if (sync_tfu)
+      syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_TFU];
+
+   assert(n_syncs == *count);
+   return syncs;
+}
+
+static struct drm_v3d_sem *
+set_out_syncs(struct v3dv_queue *queue,
+              struct v3dv_job *job,
+              enum v3dv_queue_type queue_sync,
+              uint32_t *count,
+              struct v3dv_submit_sync_info *sync_info,
+              bool signal_syncs)
+{
+   struct v3dv_device *device = queue->device;
+
+   uint32_t n_vk_syncs = signal_syncs ? sync_info->signal_count : 0;
+
+   /* We always signal the syncobj from `device->last_job_syncs` related to
+    * this v3dv_queue_type to track the last job submitted to this queue.
+    */
+   (*count) = n_vk_syncs + 1;
+
+   struct drm_v3d_sem *syncs =
+      vk_zalloc(&device->vk.alloc, *count * sizeof(struct drm_v3d_sem),
+                8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+
+   if (!syncs)
+      return NULL;
+
+   if (n_vk_syncs) {
+      for (unsigned i = 0; i < n_vk_syncs; i++) {
+         syncs[i].handle =
+            vk_sync_as_drm_syncobj(sync_info->signals[i].sync)->syncobj;
+      }
+   }
+
+   syncs[n_vk_syncs].handle = queue->last_job_syncs.syncs[queue_sync];
+
+   return syncs;
+}
+
+static void
+set_ext(struct drm_v3d_extension *ext,
+	struct drm_v3d_extension *next,
+	uint32_t id,
+	uintptr_t flags)
+{
+   ext->next = (uintptr_t)(void *)next;
+   ext->id = id;
+   ext->flags = flags;
+}
+
+/* This function sets the extension for multiple in/out syncobjs. When it is
+ * successful, it sets the extension id to DRM_V3D_EXT_ID_MULTI_SYNC.
+ * Otherwise, the extension id is 0, which means an out-of-memory error.
+ */
+static void
+set_multisync(struct drm_v3d_multi_sync *ms,
+              struct v3dv_submit_sync_info *sync_info,
+              struct drm_v3d_extension *next,
+              struct v3dv_device *device,
+              struct v3dv_job *job,
+              enum v3dv_queue_type queue_sync,
+              enum v3d_queue wait_stage,
+              bool signal_syncs)
+{
+   struct v3dv_queue *queue = &device->queue;
+   uint32_t out_sync_count = 0, in_sync_count = 0;
+   struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
+
+   in_syncs = set_in_syncs(queue, job, queue_sync,
+                           &in_sync_count, sync_info);
+   if (!in_syncs && in_sync_count)
+      goto fail;
+
+   out_syncs = set_out_syncs(queue, job, queue_sync,
+                             &out_sync_count, sync_info, signal_syncs);
+
+   assert(out_sync_count > 0);
+
+   if (!out_syncs)
+      goto fail;
+
+   set_ext(&ms->base, next, DRM_V3D_EXT_ID_MULTI_SYNC, 0);
+   ms->wait_stage = wait_stage;
+   ms->out_sync_count = out_sync_count;
+   ms->out_syncs = (uintptr_t)(void *)out_syncs;
+   ms->in_sync_count = in_sync_count;
+   ms->in_syncs = (uintptr_t)(void *)in_syncs;
+
+   return;
+
+fail:
+   if (in_syncs)
+      vk_free(&device->vk.alloc, in_syncs);
+   assert(!out_syncs);
+
+   return;
+}
+
 static VkResult
 handle_reset_query_cpu_job(struct v3dv_queue *queue, struct v3dv_job *job,
                            struct v3dv_submit_sync_info *sync_info)
@@ -462,172 +628,6 @@ process_singlesync_signals(struct v3dv_queue *queue,
    close(fd);
 
    return result;
-}
-
-static void
-multisync_free(struct v3dv_device *device,
-               struct drm_v3d_multi_sync *ms)
-{
-   vk_free(&device->vk.alloc, (void *)(uintptr_t)ms->out_syncs);
-   vk_free(&device->vk.alloc, (void *)(uintptr_t)ms->in_syncs);
-}
-
-static struct drm_v3d_sem *
-set_in_syncs(struct v3dv_queue *queue,
-             struct v3dv_job *job,
-             enum v3dv_queue_type queue_sync,
-             uint32_t *count,
-             struct v3dv_submit_sync_info *sync_info)
-{
-   struct v3dv_device *device = queue->device;
-   uint32_t n_syncs = 0;
-
-   /* If this is the first job submitted to a given GPU queue in this cmd buf
-    * batch, it has to wait on wait semaphores (if any) before running.
-    */
-   if (queue->last_job_syncs.first[queue_sync])
-      n_syncs = sync_info->wait_count;
-
-   /* If the serialize flag is set the job needs to be serialized in the
-    * corresponding queues. Notice that we may implement transfer operations
-    * as both CL or TFU jobs.
-    *
-    * FIXME: maybe we could track more precisely if the source of a transfer
-    * barrier is a CL and/or a TFU job.
-    */
-   bool sync_csd  = job->serialize & V3DV_BARRIER_COMPUTE_BIT;
-   bool sync_tfu  = job->serialize & V3DV_BARRIER_TRANSFER_BIT;
-   bool sync_cl   = job->serialize & (V3DV_BARRIER_GRAPHICS_BIT |
-                                      V3DV_BARRIER_TRANSFER_BIT);
-   *count = n_syncs;
-   if (sync_cl)
-      (*count)++;
-   if (sync_tfu)
-      (*count)++;
-   if (sync_csd)
-      (*count)++;
-
-   if (!*count)
-      return NULL;
-
-   struct drm_v3d_sem *syncs =
-      vk_zalloc(&device->vk.alloc, *count * sizeof(struct drm_v3d_sem),
-                8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-
-   if (!syncs)
-      return NULL;
-
-   for (int i = 0; i < n_syncs; i++) {
-      syncs[i].handle =
-         vk_sync_as_drm_syncobj(sync_info->waits[i].sync)->syncobj;
-   }
-
-   if (sync_cl)
-      syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_CL];
-
-   if (sync_csd)
-      syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_CSD];
-
-   if (sync_tfu)
-      syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_TFU];
-
-   assert(n_syncs == *count);
-   return syncs;
-}
-
-static struct drm_v3d_sem *
-set_out_syncs(struct v3dv_queue *queue,
-              struct v3dv_job *job,
-              enum v3dv_queue_type queue_sync,
-              uint32_t *count,
-              struct v3dv_submit_sync_info *sync_info,
-              bool signal_syncs)
-{
-   struct v3dv_device *device = queue->device;
-
-   uint32_t n_vk_syncs = signal_syncs ? sync_info->signal_count : 0;
-
-   /* We always signal the syncobj from `device->last_job_syncs` related to
-    * this v3dv_queue_type to track the last job submitted to this queue.
-    */
-   (*count) = n_vk_syncs + 1;
-
-   struct drm_v3d_sem *syncs =
-      vk_zalloc(&device->vk.alloc, *count * sizeof(struct drm_v3d_sem),
-                8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-
-   if (!syncs)
-      return NULL;
-
-   if (n_vk_syncs) {
-      for (unsigned i = 0; i < n_vk_syncs; i++) {
-         syncs[i].handle =
-            vk_sync_as_drm_syncobj(sync_info->signals[i].sync)->syncobj;
-      }
-   }
-
-   syncs[n_vk_syncs].handle = queue->last_job_syncs.syncs[queue_sync];
-
-   return syncs;
-}
-
-static void
-set_ext(struct drm_v3d_extension *ext,
-	struct drm_v3d_extension *next,
-	uint32_t id,
-	uintptr_t flags)
-{
-   ext->next = (uintptr_t)(void *)next;
-   ext->id = id;
-   ext->flags = flags;
-}
-
-/* This function sets the extension for multiple in/out syncobjs. When it is
- * successful, it sets the extension id to DRM_V3D_EXT_ID_MULTI_SYNC.
- * Otherwise, the extension id is 0, which means an out-of-memory error.
- */
-static void
-set_multisync(struct drm_v3d_multi_sync *ms,
-              struct v3dv_submit_sync_info *sync_info,
-              struct drm_v3d_extension *next,
-              struct v3dv_device *device,
-              struct v3dv_job *job,
-              enum v3dv_queue_type queue_sync,
-              enum v3d_queue wait_stage,
-              bool signal_syncs)
-{
-   struct v3dv_queue *queue = &device->queue;
-   uint32_t out_sync_count = 0, in_sync_count = 0;
-   struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
-
-   in_syncs = set_in_syncs(queue, job, queue_sync,
-                           &in_sync_count, sync_info);
-   if (!in_syncs && in_sync_count)
-      goto fail;
-
-   out_syncs = set_out_syncs(queue, job, queue_sync,
-                             &out_sync_count, sync_info, signal_syncs);
-
-   assert(out_sync_count > 0);
-
-   if (!out_syncs)
-      goto fail;
-
-   set_ext(&ms->base, next, DRM_V3D_EXT_ID_MULTI_SYNC, 0);
-   ms->wait_stage = wait_stage;
-   ms->out_sync_count = out_sync_count;
-   ms->out_syncs = (uintptr_t)(void *)out_syncs;
-   ms->in_sync_count = in_sync_count;
-   ms->in_syncs = (uintptr_t)(void *)in_syncs;
-
-   return;
-
-fail:
-   if (in_syncs)
-      vk_free(&device->vk.alloc, in_syncs);
-   assert(!out_syncs);
-
-   return;
 }
 
 /* This must be called after every submission in the single-sync path to
