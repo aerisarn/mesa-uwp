@@ -20,7 +20,7 @@ struct ra_ctx {
    BITSET_WORD *used_regs;
 
    /* For affinities */
-   agx_instr **src_to_collect;
+   agx_instr **src_to_collect_phi;
 
    /* If bit i of used_regs is set, and register i is the first consecutive
     * register holding an SSA value, then reg_to_ssa[i] is the SSA index of the
@@ -802,8 +802,9 @@ pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
    }
 
    /* Try to allocate sources of collects contiguously */
-   if (rctx->src_to_collect[idx.value] != NULL) {
-      agx_instr *collect = rctx->src_to_collect[idx.value];
+   agx_instr *collect_phi = rctx->src_to_collect_phi[idx.value];
+   if (collect_phi && collect_phi->op == AGX_OPCODE_COLLECT) {
+      agx_instr *collect = collect_phi;
 
       assert(count == align && "collect sources are scalar");
 
@@ -864,6 +865,17 @@ pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
             if (!BITSET_TEST_RANGE(rctx->used_regs, reg, reg + count - 1))
                return reg;
          }
+      }
+   }
+
+   /* Try to allocate phi sources compatibly with their phis */
+   if (collect_phi && collect_phi->op == AGX_OPCODE_PHI) {
+      agx_instr *phi = collect_phi;
+      unsigned out;
+
+      agx_foreach_ssa_src(phi, s) {
+         if (try_coalesce_with(rctx, phi->src[s], count, true, &out))
+            return out;
       }
    }
 
@@ -1047,15 +1059,15 @@ agx_ra(agx_context *ctx)
    agx_compute_liveness(ctx);
    uint8_t *ssa_to_reg = calloc(ctx->alloc, sizeof(uint8_t));
    uint8_t *ncomps = calloc(ctx->alloc, sizeof(uint8_t));
-   agx_instr **src_to_collect = calloc(ctx->alloc, sizeof(agx_instr *));
+   agx_instr **src_to_collect_phi = calloc(ctx->alloc, sizeof(agx_instr *));
    enum agx_size *sizes = calloc(ctx->alloc, sizeof(enum agx_size));
    BITSET_WORD *visited = calloc(BITSET_WORDS(ctx->alloc), sizeof(BITSET_WORD));
 
    agx_foreach_instr_global(ctx, I) {
-      /* Record collects so we can coalesce when assigning */
-      if (I->op == AGX_OPCODE_COLLECT) {
+      /* Record collects/phis so we can coalesce when assigning */
+      if (I->op == AGX_OPCODE_COLLECT || I->op == AGX_OPCODE_PHI) {
          agx_foreach_ssa_src(I, s) {
-            src_to_collect[I->src[s].value] = I;
+            src_to_collect_phi[I->src[s].value] = I;
          }
       }
 
@@ -1092,7 +1104,7 @@ agx_ra(agx_context *ctx)
          .shader = ctx,
          .block = block,
          .ssa_to_reg = ssa_to_reg,
-         .src_to_collect = src_to_collect,
+         .src_to_collect_phi = src_to_collect_phi,
          .ncomps = ncomps,
          .sizes = sizes,
          .visited = visited,
@@ -1228,7 +1240,7 @@ agx_ra(agx_context *ctx)
       block->ssa_to_reg_out = NULL;
    }
 
-   free(src_to_collect);
+   free(src_to_collect_phi);
    free(ssa_to_reg);
    free(ncomps);
    free(sizes);
