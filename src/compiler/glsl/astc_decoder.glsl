@@ -29,6 +29,27 @@ precision highp uimage2D;
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifdef VULKAN
+
+precision highp utextureBuffer;
+precision highp utexture2D;
+
+#extension GL_EXT_samplerless_texture_functions : require
+layout(local_size_x_id = 0, local_size_y_id = 1, local_size_z = 4) in;
+
+layout(set = 0, binding = 0) writeonly uniform uimage2D OutputImage;
+layout(set = 0, binding = 1) uniform utexture2D PayloadInput;
+layout(set = 0, binding = 2) uniform utextureBuffer LUTRemainingBitsToEndpointQuantizer;
+layout(set = 0, binding = 3) uniform utextureBuffer LUTEndpointUnquantize;
+layout(set = 0, binding = 4) uniform utextureBuffer LUTWeightQuantizer;
+layout(set = 0, binding = 5) uniform utextureBuffer LUTWeightUnquantize;
+layout(set = 0, binding = 6) uniform utextureBuffer LUTTritQuintDecode;
+layout(set = 0, binding = 7) uniform utexture2D LUTPartitionTable;
+
+layout(constant_id = 2) const bool DECODE_8BIT = false;
+
+#else /* VULKAN */
+
 layout(local_size_x = %u, local_size_y = %u, local_size_z = 4) in;
 
 #define utextureBuffer usamplerBuffer
@@ -44,6 +65,8 @@ layout(binding = 6) uniform utexture2D PayloadInput;
 
 layout(rgba8ui, binding = 7) writeonly uniform uimage2D OutputImage;
 const bool DECODE_8BIT = true;
+
+#endif /* VULKAN */
 
 const int MODE_LDR = 0;
 const int MODE_HDR = 1;
@@ -502,8 +525,7 @@ int decode_integer_sequence(uvec4 payload, int start_bit, int index, ivec3 quant
 
 ivec2 normalize_coord(ivec2 pixel_coord)
 {
-    // This resolves to a compile-time constant.
-    const ivec2 D = ivec2((vec2((1024 + ivec2(gl_WorkGroupSize.xy >> 1u))) + 0.5) / vec2(gl_WorkGroupSize.xy - 1u));
+    ivec2 D = ivec2((vec2((1024 + ivec2(gl_WorkGroupSize.xy >> 1u))) + 0.5) / vec2(gl_WorkGroupSize.xy - 1u));
     ivec2 c = D * pixel_coord;
     return c;
 }
