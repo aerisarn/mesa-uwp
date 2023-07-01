@@ -2187,18 +2187,20 @@ agx_texcoord_mask(nir_shader *nir)
 
 static nir_mem_access_size_align
 mem_access_size_align_cb(nir_intrinsic_op intrin, uint8_t bytes,
-                         uint8_t input_bit_size, uint32_t align,
+                         uint8_t bit_size, uint32_t align,
                          uint32_t align_offset, bool offset_is_const,
                          const void *cb_data)
 {
    align = nir_combined_align(align, align_offset);
 
    assert(util_is_power_of_two_nonzero(align));
-   unsigned bit_size = (bytes & 1) ? 8 : (bytes & 2) ? 16 : 32;
-   if (align == 2)
-      bit_size = MIN2(bit_size, 16);
-   else if (align == 1)
+
+   if ((bytes & 1) || (align == 1))
       bit_size = 8;
+   else if ((bytes & 2) || (align == 2))
+      bit_size = 16;
+   else if (bit_size >= 32)
+      bit_size = 32;
 
    return (nir_mem_access_size_align){
       .num_components = bytes / (bit_size / 8),
