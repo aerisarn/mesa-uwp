@@ -99,6 +99,12 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device, const VkImageCrea
        */
       if (format != VK_FORMAT_D32_SFLOAT_S8_UINT && format != VK_FORMAT_D32_SFLOAT && format != VK_FORMAT_D16_UNORM)
          return false;
+
+      /* TC-compat HTILE for layered images can have interleaved slices (see sliceInterleaved flag
+       * in addrlib).  radv_clear_htile does not work.
+       */
+      if (pCreateInfo->arrayLayers > 1)
+         return false;
    }
 
    return true;
