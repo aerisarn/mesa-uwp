@@ -877,6 +877,14 @@ pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
          if (try_coalesce_with(rctx, phi->src[s], count, true, &out))
             return out;
       }
+
+      /* If we're in a loop, we may have already allocated the phi. Try that. */
+      if (phi->dest[0].type == AGX_INDEX_REGISTER) {
+         unsigned base = phi->dest[0].value;
+
+         if (!BITSET_TEST_RANGE(rctx->used_regs, base, base + count - 1))
+            return base;
+      }
    }
 
    /* Default to any contiguous sequence of registers */
