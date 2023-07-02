@@ -739,6 +739,25 @@ affinity_base_of_collect(struct ra_ctx *rctx, agx_instr *collect, unsigned src)
       return ~0;
 }
 
+static bool
+try_coalesce_with(struct ra_ctx *rctx, agx_index ssa, unsigned count,
+                  bool may_be_unvisited, unsigned *out)
+{
+   assert(ssa.type == AGX_INDEX_NORMAL);
+   if (!BITSET_TEST(rctx->visited, ssa.value)) {
+      assert(may_be_unvisited);
+      return false;
+   }
+
+   unsigned base = rctx->ssa_to_reg[ssa.value];
+   if (BITSET_TEST_RANGE(rctx->used_regs, base, base + count - 1))
+      return false;
+
+   assert(base + count <= rctx->bound && "invariant");
+   *out = base;
+   return true;
+}
+
 static unsigned
 pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
 {
