@@ -197,6 +197,22 @@ TEST_F(LowerParallelCopy, TwoSwaps)
    });
 }
 
+TEST_F(LowerParallelCopy, VectorizeAlignedHalfRegs)
+{
+   struct agx_copy test[] = {
+      {.dest = 0, .src = agx_register(10, AGX_SIZE_16)},
+      {.dest = 1, .src = agx_register(11, AGX_SIZE_16)},
+      {.dest = 2, .src = agx_uniform(8, AGX_SIZE_16)},
+      {.dest = 3, .src = agx_uniform(9, AGX_SIZE_16)},
+   };
+
+   CASE(test, {
+      agx_mov_to(b, agx_register(0, AGX_SIZE_32),
+                 agx_register(10, AGX_SIZE_32));
+      agx_mov_to(b, agx_register(2, AGX_SIZE_32), agx_uniform(8, AGX_SIZE_32));
+   });
+}
+
 #if 0
 TEST_F(LowerParallelCopy, LooksLikeASwap) {
    struct agx_copy test[] = {
