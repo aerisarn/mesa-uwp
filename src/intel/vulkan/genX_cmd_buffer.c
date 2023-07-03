@@ -5676,9 +5676,7 @@ genX(cmd_buffer_ensure_cfe_state)(struct anv_cmd_buffer *cmd_buffer,
 
    const struct intel_device_info *devinfo = cmd_buffer->device->info;
    anv_batch_emit(&cmd_buffer->batch, GENX(CFE_STATE), cfe) {
-      const uint32_t subslices = MAX2(devinfo->subslice_total, 1);
-      cfe.MaximumNumberofThreads =
-         devinfo->max_cs_threads * subslices - 1;
+      cfe.MaximumNumberofThreads = devinfo->max_cs_threads * devinfo->subslice_total;
 
       uint32_t scratch_surf = 0xffffffff;
       if (total_scratch > 0) {
