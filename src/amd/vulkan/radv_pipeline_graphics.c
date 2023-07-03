@@ -493,15 +493,18 @@ radv_dynamic_state_mask(VkDynamicState state)
 static bool
 radv_pipeline_is_blend_enabled(const struct radv_graphics_pipeline *pipeline, const struct vk_color_blend_state *cb)
 {
+   /* If we don't know then we have to assume that blend may be enabled. cb may also be NULL in this
+    * case.
+    */
+   if (pipeline->dynamic_states & (RADV_DYNAMIC_COLOR_BLEND_ENABLE | RADV_DYNAMIC_COLOR_WRITE_MASK))
+      return true;
+
+   /* If we have the blend enable state, then cb being NULL indicates no attachments are written. */
    if (cb) {
       for (uint32_t i = 0; i < cb->attachment_count; i++) {
          if (cb->attachments[i].write_mask && cb->attachments[i].blend_enable)
             return true;
       }
-   } else {
-      /* When all color blend states are dynamic, it's allowed to be NULL. */
-      if ((pipeline->dynamic_states & RADV_DYNAMIC_CB_STATES) == RADV_DYNAMIC_CB_STATES)
-         return true;
    }
 
    return false;
