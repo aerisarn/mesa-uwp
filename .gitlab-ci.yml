@@ -4,14 +4,17 @@ workflow:
     - if: $GITLAB_USER_LOGIN == "marge-bot" && $CI_COMMIT_BRANCH == null
       variables:
         MESA_CI_PERFORMANCE_ENABLED: 1
+        VALVE_INFRA_VANGOGH_JOB_PRIORITY: ""  # Empty tags are ignored by gitlab
     # post-merge pipeline
     - if: $GITLAB_USER_LOGIN == "marge-bot" && $CI_COMMIT_BRANCH
       variables:
         LAVA_JOB_PRIORITY: 40
+        VALVE_INFRA_VANGOGH_JOB_PRIORITY: priority:low
     # any other pipeline
     - if: $GITLAB_USER_LOGIN != "marge-bot"
       variables:
         LAVA_JOB_PRIORITY: 50
+        VALVE_INFRA_VANGOGH_JOB_PRIORITY: priority:low
     - when: always
 
 variables:
