@@ -83,12 +83,10 @@ handle_from_stages(struct radv_device *device, struct radv_ray_tracing_stage *st
 }
 
 static struct radv_pipeline_key
-radv_generate_rt_pipeline_key(const struct radv_device *device, const struct radv_ray_tracing_pipeline *rt_pipeline,
-                              const VkRayTracingPipelineCreateInfoKHR *pCreateInfo)
+radv_generate_rt_pipeline_key(const struct radv_device *device, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo)
 {
-   struct radv_pipeline_key key =
-      radv_generate_pipeline_key(device, &rt_pipeline->base.base, pCreateInfo->pStages, pCreateInfo->stageCount,
-                                 pCreateInfo->flags, pCreateInfo->pNext);
+   struct radv_pipeline_key key = radv_generate_pipeline_key(device, pCreateInfo->pStages, pCreateInfo->stageCount,
+                                                             pCreateInfo->flags, pCreateInfo->pNext);
 
    if (pCreateInfo->pLibraryInfo) {
       for (unsigned i = 0; i < pCreateInfo->pLibraryInfo->libraryCount; ++i) {
@@ -573,7 +571,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
    pipeline->stages = stages;
    pipeline->groups = groups;
 
-   struct radv_pipeline_key key = radv_generate_rt_pipeline_key(device, pipeline, pCreateInfo);
+   struct radv_pipeline_key key = radv_generate_rt_pipeline_key(device, pCreateInfo);
 
    /* cache robustness state for making merged shaders */
    if (key.stage_info[MESA_SHADER_INTERSECTION].storage_robustness2)

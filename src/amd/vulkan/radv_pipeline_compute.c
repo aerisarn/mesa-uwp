@@ -113,11 +113,9 @@ radv_compute_generate_pm4(const struct radv_device *device, struct radv_compute_
 }
 
 static struct radv_pipeline_key
-radv_generate_compute_pipeline_key(const struct radv_device *device, struct radv_compute_pipeline *pipeline,
-                                   const VkComputePipelineCreateInfo *pCreateInfo)
+radv_generate_compute_pipeline_key(const struct radv_device *device, const VkComputePipelineCreateInfo *pCreateInfo)
 {
-   return radv_generate_pipeline_key(device, &pipeline->base, &pCreateInfo->stage, 1, pCreateInfo->flags,
-                                     pCreateInfo->pNext);
+   return radv_generate_pipeline_key(device, &pCreateInfo->stage, 1, pCreateInfo->flags, pCreateInfo->pNext);
 }
 
 void
@@ -268,7 +266,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkC
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
-   struct radv_pipeline_key key = radv_generate_compute_pipeline_key(device, pipeline, pCreateInfo);
+   struct radv_pipeline_key key = radv_generate_compute_pipeline_key(device, pCreateInfo);
 
    result = radv_compute_pipeline_compile(pipeline, pipeline_layout, device, cache, &key, &pCreateInfo->stage,
                                           pCreateInfo->flags, creation_feedback);

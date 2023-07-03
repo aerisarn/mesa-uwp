@@ -158,9 +158,8 @@ radv_convert_buffer_robustness(const struct radv_device *device, VkPipelineRobus
 }
 
 struct radv_pipeline_key
-radv_generate_pipeline_key(const struct radv_device *device, const struct radv_pipeline *pipeline,
-                           const VkPipelineShaderStageCreateInfo *stages, const unsigned num_stages,
-                           VkPipelineCreateFlags flags, const void *pNext)
+radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineShaderStageCreateInfo *stages,
+                           const unsigned num_stages, VkPipelineCreateFlags flags, const void *pNext)
 {
    struct radv_pipeline_key key;
 

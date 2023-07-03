@@ -2439,7 +2439,6 @@ struct radv_graphics_pipeline_create_info {
 };
 
 struct radv_pipeline_key radv_generate_pipeline_key(const struct radv_device *device,
-                                                    const struct radv_pipeline *pipeline,
                                                     const VkPipelineShaderStageCreateInfo *stages,
                                                     const unsigned num_stages, VkPipelineCreateFlags flags,
                                                     const void *pNext);
