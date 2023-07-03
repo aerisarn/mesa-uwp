@@ -197,7 +197,8 @@ d3d12_video_decoder_begin_frame(struct pipe_video_codec *codec,
                 "sets with previous work with fenceValue: %" PRIu64 "\n",
                 fenceValueToWaitOn);
 
-   ASSERTED bool wait_res = d3d12_video_decoder_sync_completion(codec, pD3D12Dec->m_spFence.Get(), fenceValueToWaitOn, OS_TIMEOUT_INFINITE);
+   ASSERTED bool wait_res =
+      d3d12_video_decoder_sync_completion(codec, pD3D12Dec->m_spFence.Get(), fenceValueToWaitOn, OS_TIMEOUT_INFINITE);
    assert(wait_res);
 
    HRESULT hr = pD3D12Dec->m_spDecodeCommandList->Reset(
@@ -309,19 +310,15 @@ d3d12_video_decoder_decode_bitstream(struct pipe_video_codec *codec,
       }
 
       // Bytes of data pre-staged before this decode_frame call
-      size_t preStagedDataSize = pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-                                    .m_stagingDecodeBitstream.size();
+      auto &inFlightResources = pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)];
+      size_t preStagedDataSize = inFlightResources.m_stagingDecodeBitstream.size();
 
       // Extend the staging buffer size, as decode_frame can be called several times before end_frame
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-         .m_stagingDecodeBitstream.resize(preStagedDataSize + totalReceivedBuffersSize);
+      inFlightResources.m_stagingDecodeBitstream.resize(preStagedDataSize + totalReceivedBuffersSize);
 
       // Point newSliceDataPositionDstBase to the end of the pre-staged data in m_stagingDecodeBitstream, where the new
       // buffers will be appended
-      uint8_t *newSliceDataPositionDstBase =
-         pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-            .m_stagingDecodeBitstream.data() +
-         preStagedDataSize;
+      uint8_t *newSliceDataPositionDstBase = inFlightResources.m_stagingDecodeBitstream.data() + preStagedDataSize;
 
       // Append new data at the end.
       size_t dstOffset = 0u;
@@ -401,34 +398,28 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
    /// Codec header picture parameters buffers
    ///
 
+   auto &inFlightResources = pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)];
+
    d3d12_video_decoder_store_converted_dxva_picparams_from_pipe_input(pD3D12Dec, picture, pD3D12VideoBuffer);
-   assert(
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_picParamsBuffer.size() >
-      0);
+   assert(inFlightResources.m_picParamsBuffer.size() > 0);
 
    ///
    /// Prepare Slice control buffers before clearing staging buffer
    ///
-   assert(pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-             .m_stagingDecodeBitstream.size() > 0);   // Make sure the staging wasn't cleared yet in end_frame
+   assert(inFlightResources.m_stagingDecodeBitstream.size() >
+          0);   // Make sure the staging wasn't cleared yet in end_frame
    d3d12_video_decoder_prepare_dxva_slices_control(pD3D12Dec, picture);
-   assert(pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-             .m_SliceControlBuffer.size() > 0);
+   assert(inFlightResources.m_SliceControlBuffer.size() > 0);
 
    ///
    /// Upload m_stagingDecodeBitstream to GPU memory now that end_frame is called and clear staging buffer
    ///
 
-   uint64_t sliceDataStagingBufferSize =
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-         .m_stagingDecodeBitstream.size();
-   uint8_t *sliceDataStagingBufferPtr =
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-         .m_stagingDecodeBitstream.data();
+   uint64_t sliceDataStagingBufferSize = inFlightResources.m_stagingDecodeBitstream.size();
+   uint8_t *sliceDataStagingBufferPtr = inFlightResources.m_stagingDecodeBitstream.data();
 
    // Reallocate if necessary to accomodate the current frame bitstream buffer in GPU memory
-   if (pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-          .m_curFrameCompressedBitstreamBufferAllocatedSize < sliceDataStagingBufferSize) {
+   if (inFlightResources.m_curFrameCompressedBitstreamBufferAllocatedSize < sliceDataStagingBufferSize) {
       if (!d3d12_video_decoder_create_staging_bitstream_buffer(pD3D12Screen, pD3D12Dec, sliceDataStagingBufferSize)) {
          debug_printf("[d3d12_video_decoder] d3d12_video_decoder_end_frame - Failure on "
                       "d3d12_video_decoder_create_staging_bitstream_buffer\n");
@@ -440,42 +431,32 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
    }
 
    // Upload frame bitstream CPU data to ID3D12Resource buffer
-   pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-      .m_curFrameCompressedBitstreamBufferPayloadSize =
+   inFlightResources.m_curFrameCompressedBitstreamBufferPayloadSize =
       sliceDataStagingBufferSize;   // This can be less than m_curFrameCompressedBitstreamBufferAllocatedSize.
-   assert(pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-             .m_curFrameCompressedBitstreamBufferPayloadSize <=
-          pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-             .m_curFrameCompressedBitstreamBufferAllocatedSize);
+   assert(inFlightResources.m_curFrameCompressedBitstreamBufferPayloadSize <=
+          inFlightResources.m_curFrameCompressedBitstreamBufferAllocatedSize);
 
    /* One-shot transfer operation with data supplied in a user
     * pointer.
     */
-   pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].pPipeCompressedBufferObj =
-      d3d12_resource_from_resource(&pD3D12Screen->base,
-                                   pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-                                      .m_curFrameCompressedBitstreamBuffer.Get());
-   assert(
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].pPipeCompressedBufferObj);
-   pD3D12Dec->base.context->buffer_subdata(
-      pD3D12Dec->base.context,                                           // context
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-         .pPipeCompressedBufferObj,                                      // dst buffer
-      PIPE_MAP_WRITE,                                                    // usage PIPE_MAP_x
-      0,                                                                 // offset
-      sizeof(*sliceDataStagingBufferPtr) * sliceDataStagingBufferSize,   // size
-      sliceDataStagingBufferPtr                                          // data
+   inFlightResources.pPipeCompressedBufferObj =
+      d3d12_resource_from_resource(&pD3D12Screen->base, inFlightResources.m_curFrameCompressedBitstreamBuffer.Get());
+   assert(inFlightResources.pPipeCompressedBufferObj);
+   pD3D12Dec->base.context->buffer_subdata(pD3D12Dec->base.context,                      // context
+                                           inFlightResources.pPipeCompressedBufferObj,   // dst buffer
+                                           PIPE_MAP_WRITE,                               // usage PIPE_MAP_x
+                                           0,                                            // offset
+                                           sizeof(*sliceDataStagingBufferPtr) * sliceDataStagingBufferSize,   // size
+                                           sliceDataStagingBufferPtr                                          // data
    );
 
    // Flush buffer_subdata batch
    // before deleting the source CPU buffer below
 
    pD3D12Dec->base.context->flush(pD3D12Dec->base.context,
-                                  &pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-                                      .m_pBitstreamUploadGPUCompletionFence,
+                                  &inFlightResources.m_pBitstreamUploadGPUCompletionFence,
                                   PIPE_FLUSH_ASYNC | PIPE_FLUSH_HINT_FINISH);
-   assert(pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-             .m_pBitstreamUploadGPUCompletionFence);
+   assert(inFlightResources.m_pBitstreamUploadGPUCompletionFence);
    // To be waited on GPU fence before flushing current frame DecodeFrame to GPU
 
    ///
@@ -492,18 +473,14 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
    // Translate input D3D12 structure
    D3D12_VIDEO_DECODE_INPUT_STREAM_ARGUMENTS d3d12InputArguments = {};
 
-   d3d12InputArguments.CompressedBitstream.pBuffer =
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-         .m_curFrameCompressedBitstreamBuffer.Get();
+   d3d12InputArguments.CompressedBitstream.pBuffer = inFlightResources.m_curFrameCompressedBitstreamBuffer.Get();
    d3d12InputArguments.CompressedBitstream.Offset = 0u;
    ASSERTED constexpr uint64_t d3d12BitstreamOffsetAlignment =
       128u;   // specified in
               // https://docs.microsoft.com/en-us/windows/win32/api/d3d12video/ne-d3d12video-d3d12_video_decode_tier
    assert((d3d12InputArguments.CompressedBitstream.Offset == 0) ||
           ((d3d12InputArguments.CompressedBitstream.Offset % d3d12BitstreamOffsetAlignment) == 0));
-   d3d12InputArguments.CompressedBitstream.Size =
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-         .m_curFrameCompressedBitstreamBufferPayloadSize;
+   d3d12InputArguments.CompressedBitstream.Size = inFlightResources.m_curFrameCompressedBitstreamBufferPayloadSize;
 
    D3D12_RESOURCE_BARRIER resourceBarrierCommonToDecode[1] = {
       CD3DX12_RESOURCE_BARRIER::Transition(d3d12InputArguments.CompressedBitstream.pBuffer,
@@ -556,34 +533,26 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
       1u;   // Only the codec data received from the above layer with picture params
    d3d12InputArguments.FrameArguments[d3d12InputArguments.NumFrameArguments - 1] = {
       D3D12_VIDEO_DECODE_ARGUMENT_TYPE_PICTURE_PARAMETERS,
-      static_cast<uint32_t>(
-         pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_picParamsBuffer.size()),
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_picParamsBuffer.data(),
+      static_cast<uint32_t>(inFlightResources.m_picParamsBuffer.size()),
+      inFlightResources.m_picParamsBuffer.data(),
    };
 
-   if (pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-          .m_SliceControlBuffer.size() > 0) {
+   if (inFlightResources.m_SliceControlBuffer.size() > 0) {
       d3d12InputArguments.NumFrameArguments++;
       d3d12InputArguments.FrameArguments[d3d12InputArguments.NumFrameArguments - 1] = {
          D3D12_VIDEO_DECODE_ARGUMENT_TYPE_SLICE_CONTROL,
-         static_cast<uint32_t>(pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-                                  .m_SliceControlBuffer.size()),
-         pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-            .m_SliceControlBuffer.data(),
+         static_cast<uint32_t>(inFlightResources.m_SliceControlBuffer.size()),
+         inFlightResources.m_SliceControlBuffer.data(),
       };
    }
 
-   if (pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-          .qp_matrix_frame_argument_enabled &&
-       (pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-           .m_InverseQuantMatrixBuffer.size() > 0)) {
+   if (inFlightResources.qp_matrix_frame_argument_enabled &&
+       (inFlightResources.m_InverseQuantMatrixBuffer.size() > 0)) {
       d3d12InputArguments.NumFrameArguments++;
       d3d12InputArguments.FrameArguments[d3d12InputArguments.NumFrameArguments - 1] = {
          D3D12_VIDEO_DECODE_ARGUMENT_TYPE_INVERSE_QUANTIZATION_MATRIX,
-         static_cast<uint32_t>(pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-                                  .m_InverseQuantMatrixBuffer.size()),
-         pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-            .m_InverseQuantMatrixBuffer.data(),
+         static_cast<uint32_t>(inFlightResources.m_InverseQuantMatrixBuffer.size()),
+         inFlightResources.m_InverseQuantMatrixBuffer.data(),
       };
    }
 
@@ -673,12 +642,9 @@ d3d12_video_decoder_end_frame(struct pipe_video_codec *codec,
 
    // Save extra references of Decoder, DecoderHeap and DPB allocations in case
    // there's a reconfiguration that trigers the construction of new objects
-   pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_spDecoder =
-      pD3D12Dec->m_spVideoDecoder;
-   pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_spDecoderHeap =
-      pD3D12Dec->m_spVideoDecoderHeap;
-   pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_References =
-      pD3D12Dec->m_spDPBManager;
+   inFlightResources.m_spDecoder = pD3D12Dec->m_spVideoDecoder;
+   inFlightResources.m_spDecoderHeap = pD3D12Dec->m_spVideoDecoderHeap;
+   inFlightResources.m_References = pD3D12Dec->m_spDPBManager;
 
    ///
    /// Flush work to the GPU
@@ -749,7 +715,8 @@ d3d12_video_decoder_get_decoder_fence(struct pipe_video_codec *codec, struct pip
    struct d3d12_fence *fenceValueToWaitOn = (struct d3d12_fence *) fence;
    assert(fenceValueToWaitOn);
 
-   ASSERTED bool wait_res = d3d12_video_decoder_sync_completion(codec, fenceValueToWaitOn->cmdqueue_fence, fenceValueToWaitOn->value, timeout);
+   ASSERTED bool wait_res =
+      d3d12_video_decoder_sync_completion(codec, fenceValueToWaitOn->cmdqueue_fence, fenceValueToWaitOn->value, timeout);
 
    // Return semantics based on p_video_codec interface
    // ret == 0 -> Decode in progress
@@ -796,10 +763,9 @@ d3d12_video_decoder_flush(struct pipe_video_codec *codec)
          goto flush_fail;
       }
 
+      auto &inFlightResources = pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)];
       ID3D12CommandList *ppCommandLists[1] = { pD3D12Dec->m_spDecodeCommandList.Get() };
-      struct d3d12_fence *pUploadBitstreamFence =
-         d3d12_fence(pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-                        .m_pBitstreamUploadGPUCompletionFence);
+      struct d3d12_fence *pUploadBitstreamFence = d3d12_fence(inFlightResources.m_pBitstreamUploadGPUCompletionFence);
       pD3D12Dec->m_spDecodeCommandQueue->Wait(pUploadBitstreamFence->cmdqueue_fence, pUploadBitstreamFence->value);
       pD3D12Dec->m_spDecodeCommandQueue->ExecuteCommandLists(1, ppCommandLists);
       pD3D12Dec->m_spDecodeCommandQueue->Signal(pD3D12Dec->m_spFence.Get(), pD3D12Dec->m_fenceValue);
@@ -815,14 +781,10 @@ d3d12_video_decoder_flush(struct pipe_video_codec *codec)
       }
 
       // Set async fence info
-      memset(&pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_FenceData,
-             0,
-             sizeof(pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_FenceData));
+      memset(&inFlightResources.m_FenceData, 0, sizeof(inFlightResources.m_FenceData));
 
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_FenceData.value =
-         pD3D12Dec->m_fenceValue;
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_FenceData.cmdqueue_fence =
-         pD3D12Dec->m_spFence.Get();
+      inFlightResources.m_FenceData.value = pD3D12Dec->m_fenceValue;
+      inFlightResources.m_FenceData.cmdqueue_fence = pD3D12Dec->m_spFence.Get();
 
       pD3D12Dec->m_fenceValue++;
       pD3D12Dec->m_needsGPUFlush = false;
@@ -984,11 +946,9 @@ d3d12_video_decoder_create_staging_bitstream_buffer(const struct d3d12_screen *p
                                                     uint64_t bufSize)
 {
    assert(pD3D12Dec->m_spD3D12VideoDevice);
-
-   if (pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-          .m_curFrameCompressedBitstreamBuffer.Get() != nullptr) {
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-         .m_curFrameCompressedBitstreamBuffer.Reset();
+   auto &inFlightResources = pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)];
+   if (inFlightResources.m_curFrameCompressedBitstreamBuffer.Get() != nullptr) {
+      inFlightResources.m_curFrameCompressedBitstreamBuffer.Reset();
    }
 
    auto descHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT, pD3D12Dec->m_NodeMask, pD3D12Dec->m_NodeMask);
@@ -999,8 +959,7 @@ d3d12_video_decoder_create_staging_bitstream_buffer(const struct d3d12_screen *p
       &descResource,
       D3D12_RESOURCE_STATE_COMMON,
       nullptr,
-      IID_PPV_ARGS(pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-                      .m_curFrameCompressedBitstreamBuffer.GetAddressOf()));
+      IID_PPV_ARGS(inFlightResources.m_curFrameCompressedBitstreamBuffer.GetAddressOf()));
    if (FAILED(hr)) {
       debug_printf("[d3d12_video_decoder] d3d12_video_decoder_create_staging_bitstream_buffer - "
                    "CreateCommittedResource failed with HR %x\n",
@@ -1008,8 +967,7 @@ d3d12_video_decoder_create_staging_bitstream_buffer(const struct d3d12_screen *p
       return false;
    }
 
-   pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-      .m_curFrameCompressedBitstreamBufferAllocatedSize = bufSize;
+   inFlightResources.m_curFrameCompressedBitstreamBufferAllocatedSize = bufSize;
    return true;
 }
 
@@ -1319,8 +1277,8 @@ d3d12_video_decoder_store_converted_dxva_picparams_from_pipe_input(
       d3d12_video_decoder_convert_pipe_video_profile_to_profile_type(codec->base.profile);
    ID3D12Resource *pPipeD3D12DstResource = d3d12_resource_resource(pD3D12VideoBuffer->texture);
    D3D12_RESOURCE_DESC outputResourceDesc = GetDesc(pPipeD3D12DstResource);
-   pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-      .qp_matrix_frame_argument_enabled = false;
+   auto &inFlightResources = pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)];
+   inFlightResources.qp_matrix_frame_argument_enabled = false;
    switch (profileType) {
       case d3d12_video_decode_profile_type_h264:
       {
@@ -1340,8 +1298,7 @@ d3d12_video_decoder_store_converted_dxva_picparams_from_pipe_input(
          size_t dxvaQMatrixBufferSize = sizeof(DXVA_Qmatrix_H264);
          DXVA_Qmatrix_H264 dxvaQmatrixH264 = {};
          d3d12_video_decoder_dxva_qmatrix_from_pipe_picparams_h264((pipe_h264_picture_desc *) picture, dxvaQmatrixH264);
-         pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-            .qp_matrix_frame_argument_enabled =
+         inFlightResources.qp_matrix_frame_argument_enabled =
             true;   // We don't have a way of knowing from the pipe params so send always
          d3d12_video_decoder_store_dxva_qmatrix_in_qmatrix_buffer(codec, &dxvaQmatrixH264, dxvaQMatrixBufferSize);
       } break;
@@ -1359,13 +1316,10 @@ d3d12_video_decoder_store_converted_dxva_picparams_from_pipe_input(
 
          size_t dxvaQMatrixBufferSize = sizeof(DXVA_Qmatrix_HEVC);
          DXVA_Qmatrix_HEVC dxvaQmatrixHEVC = {};
-         pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-            .qp_matrix_frame_argument_enabled = false;
-         d3d12_video_decoder_dxva_qmatrix_from_pipe_picparams_hevc(
-            (pipe_h265_picture_desc *) picture,
-            dxvaQmatrixHEVC,
-            pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-               .qp_matrix_frame_argument_enabled);
+         inFlightResources.qp_matrix_frame_argument_enabled = false;
+         d3d12_video_decoder_dxva_qmatrix_from_pipe_picparams_hevc((pipe_h265_picture_desc *) picture,
+                                                                   dxvaQmatrixHEVC,
+                                                                   inFlightResources.qp_matrix_frame_argument_enabled);
          d3d12_video_decoder_store_dxva_qmatrix_in_qmatrix_buffer(codec, &dxvaQmatrixHEVC, dxvaQMatrixBufferSize);
       } break;
       case d3d12_video_decode_profile_type_av1:
@@ -1378,8 +1332,7 @@ d3d12_video_decoder_store_converted_dxva_picparams_from_pipe_input(
                                                                        pPicControlAV1);
 
          d3d12_video_decoder_store_dxva_picparams_in_picparams_buffer(codec, &dxvaPicParamsAV1, dxvaPicParamsBufferSize);
-         pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-            .qp_matrix_frame_argument_enabled = false;
+         inFlightResources.qp_matrix_frame_argument_enabled = false;
       } break;
       case d3d12_video_decode_profile_type_vp9:
       {
@@ -1389,8 +1342,7 @@ d3d12_video_decoder_store_converted_dxva_picparams_from_pipe_input(
             d3d12_video_decoder_dxva_picparams_from_pipe_picparams_vp9(pD3D12Dec, codec->base.profile, pPicControlVP9);
 
          d3d12_video_decoder_store_dxva_picparams_in_picparams_buffer(codec, &dxvaPicParamsVP9, dxvaPicParamsBufferSize);
-         pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-            .qp_matrix_frame_argument_enabled = false;
+         inFlightResources.qp_matrix_frame_argument_enabled = false;
       } break;
       default:
       {
@@ -1404,37 +1356,34 @@ d3d12_video_decoder_prepare_dxva_slices_control(
    struct d3d12_video_decoder *pD3D12Dec,   // input argument, current decoder
    struct pipe_picture_desc *picture)
 {
+   auto &inFlightResources = pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)];
    d3d12_video_decode_profile_type profileType =
       d3d12_video_decoder_convert_pipe_video_profile_to_profile_type(pD3D12Dec->base.profile);
    switch (profileType) {
       case d3d12_video_decode_profile_type_h264:
       {
-         d3d12_video_decoder_prepare_dxva_slices_control_h264(
-            pD3D12Dec,
-            pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_SliceControlBuffer,
-            (struct pipe_h264_picture_desc *) picture);
+         d3d12_video_decoder_prepare_dxva_slices_control_h264(pD3D12Dec,
+                                                              inFlightResources.m_SliceControlBuffer,
+                                                              (struct pipe_h264_picture_desc *) picture);
       } break;
 
       case d3d12_video_decode_profile_type_hevc:
       {
-         d3d12_video_decoder_prepare_dxva_slices_control_hevc(
-            pD3D12Dec,
-            pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_SliceControlBuffer,
-            (struct pipe_h265_picture_desc *) picture);
+         d3d12_video_decoder_prepare_dxva_slices_control_hevc(pD3D12Dec,
+                                                              inFlightResources.m_SliceControlBuffer,
+                                                              (struct pipe_h265_picture_desc *) picture);
       } break;
       case d3d12_video_decode_profile_type_av1:
       {
-         d3d12_video_decoder_prepare_dxva_slices_control_av1(
-            pD3D12Dec,
-            pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_SliceControlBuffer,
-            (struct pipe_av1_picture_desc *) picture);
+         d3d12_video_decoder_prepare_dxva_slices_control_av1(pD3D12Dec,
+                                                             inFlightResources.m_SliceControlBuffer,
+                                                             (struct pipe_av1_picture_desc *) picture);
       } break;
       case d3d12_video_decode_profile_type_vp9:
       {
-         d3d12_video_decoder_prepare_dxva_slices_control_vp9(
-            pD3D12Dec,
-            pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_SliceControlBuffer,
-            (struct pipe_vp9_picture_desc *) picture);
+         d3d12_video_decoder_prepare_dxva_slices_control_vp9(pD3D12Dec,
+                                                             inFlightResources.m_SliceControlBuffer,
+                                                             (struct pipe_vp9_picture_desc *) picture);
       } break;
 
       default:
@@ -1449,18 +1398,13 @@ d3d12_video_decoder_store_dxva_qmatrix_in_qmatrix_buffer(struct d3d12_video_deco
                                                          void *pDXVAStruct,
                                                          uint64_t DXVAStructSize)
 {
-   if (pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-          .m_InverseQuantMatrixBuffer.capacity() < DXVAStructSize) {
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-         .m_InverseQuantMatrixBuffer.reserve(DXVAStructSize);
+   auto &inFlightResources = pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)];
+   if (inFlightResources.m_InverseQuantMatrixBuffer.capacity() < DXVAStructSize) {
+      inFlightResources.m_InverseQuantMatrixBuffer.reserve(DXVAStructSize);
    }
 
-   pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-      .m_InverseQuantMatrixBuffer.resize(DXVAStructSize);
-   memcpy(pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-             .m_InverseQuantMatrixBuffer.data(),
-          pDXVAStruct,
-          DXVAStructSize);
+   inFlightResources.m_InverseQuantMatrixBuffer.resize(DXVAStructSize);
+   memcpy(inFlightResources.m_InverseQuantMatrixBuffer.data(), pDXVAStruct, DXVAStructSize);
 }
 
 void
@@ -1468,18 +1412,13 @@ d3d12_video_decoder_store_dxva_picparams_in_picparams_buffer(struct d3d12_video_
                                                              void *pDXVAStruct,
                                                              uint64_t DXVAStructSize)
 {
-   if (pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)]
-          .m_picParamsBuffer.capacity() < DXVAStructSize) {
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_picParamsBuffer.reserve(
-         DXVAStructSize);
+   auto &inFlightResources = pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)];
+   if (inFlightResources.m_picParamsBuffer.capacity() < DXVAStructSize) {
+      inFlightResources.m_picParamsBuffer.reserve(DXVAStructSize);
    }
 
-   pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_picParamsBuffer.resize(
-      DXVAStructSize);
-   memcpy(
-      pD3D12Dec->m_inflightResourcesPool[d3d12_video_decoder_pool_current_index(pD3D12Dec)].m_picParamsBuffer.data(),
-      pDXVAStruct,
-      DXVAStructSize);
+   inFlightResources.m_picParamsBuffer.resize(DXVAStructSize);
+   memcpy(inFlightResources.m_picParamsBuffer.data(), pDXVAStruct, DXVAStructSize);
 }
 
 bool
@@ -1598,7 +1537,7 @@ d3d12_video_decoder_resolve_profile(d3d12_video_decode_profile_type profileType,
 
 bool
 d3d12_video_decoder_ensure_fence_finished(struct pipe_video_codec *codec,
-                                          ID3D12Fence* fence,
+                                          ID3D12Fence *fence,
                                           uint64_t fenceValueToWaitOn,
                                           uint64_t timeout_ns)
 {
@@ -1626,7 +1565,7 @@ d3d12_video_decoder_ensure_fence_finished(struct pipe_video_codec *codec,
                       "fenceValue %" PRIu64 " failed with HR %x\n",
                       fenceValueToWaitOn,
                       hr);
-         goto ensure_fence_finished_fail;
+         return false;
       }
 
       wait_result = d3d12_fence_wait_event(event, event_fd, timeout_ns);
@@ -1643,16 +1582,13 @@ d3d12_video_decoder_ensure_fence_finished(struct pipe_video_codec *codec,
                    completedValue);
    }
    return wait_result;
-
-ensure_fence_finished_fail:
-   debug_printf("[d3d12_video_decoder] d3d12_video_decoder_sync_completion failed for fenceValue: %" PRIu64 "\n",
-                fenceValueToWaitOn);
-   assert(false);
-   return false;
 }
 
 bool
-d3d12_video_decoder_sync_completion(struct pipe_video_codec *codec, ID3D12Fence* fence, uint64_t fenceValueToWaitOn, uint64_t timeout_ns)
+d3d12_video_decoder_sync_completion(struct pipe_video_codec *codec,
+                                    ID3D12Fence *fence,
+                                    uint64_t fenceValueToWaitOn,
+                                    uint64_t timeout_ns)
 {
    struct d3d12_video_decoder *pD3D12Dec = (struct d3d12_video_decoder *) codec;
    assert(pD3D12Dec);
