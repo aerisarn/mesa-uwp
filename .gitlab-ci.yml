@@ -1,11 +1,14 @@
 workflow:
   rules:
+    # merge pipeline
     - if: $GITLAB_USER_LOGIN == "marge-bot" && $CI_COMMIT_BRANCH == null
       variables:
         MESA_CI_PERFORMANCE_ENABLED: 1
+    # post-merge pipeline
     - if: $GITLAB_USER_LOGIN == "marge-bot" && $CI_COMMIT_BRANCH
       variables:
         LAVA_JOB_PRIORITY: 40
+    # any other pipeline
     - if: $GITLAB_USER_LOGIN != "marge-bot"
       variables:
         LAVA_JOB_PRIORITY: 50
