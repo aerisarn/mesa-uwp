@@ -346,7 +346,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_OES_texture_float                                  DONE (freedreno, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe, panfrost, v3d, zink, asahi, iris, crocus)
   GL_OES_texture_float_linear                           DONE (freedreno, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe, panfrost, zink, asahi, iris, crocus)
   GL_OES_texture_half_float                             DONE (freedreno, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe, panfrost, v3d, zink, lima, asahi, iris, crocus, etnaviv/HALF_FLOAT)
-  GL_OES_texture_half_float_linear                      DONE (freedreno, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe, panfrost, v3d, zink, lima, asahi, iris, crocus)
+  GL_OES_texture_half_float_linear                      DONE (freedreno, r300, r600, radeonsi, nv30, nv50, nvc0, softpipe, llvmpipe, panfrost, v3d, zink, lima, asahi, iris, crocus, etnaviv/HALF_FLOAT)
   GL_OES_texture_view                                   DONE (freedreno, r600, radeonsi, nv50, nvc0, softpipe, llvmpipe, v3d, zink, iris, crocus/gen7+)
   GL_OES_viewport_array                                 DONE (freedreno/a6xx, nvc0, r600, radeonsi, softpipe, zink, iris, crocus/gen7.5+)
   GLX_ARB_context_flush_control                         DONE (all drivers)
