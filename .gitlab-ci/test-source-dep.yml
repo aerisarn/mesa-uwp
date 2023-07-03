@@ -286,7 +286,7 @@
     - exists: [ .ci-farms-disabled/microsoft ]
       when: never
     - changes: [ .ci-farms-disabled/microsoft ]
-      when: manual
+      when: never
     - !reference [.microsoft-farm-rules, rules]
 
 .collabora-farm-rules:
@@ -308,7 +308,7 @@
       when: never
     - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
       changes: [ .ci-farms-disabled/collabora ]
-      when: manual
+      when: never
     - !reference [.collabora-farm-rules, rules]
 
 .igalia-farm-rules:
@@ -325,7 +325,7 @@
     - exists: [ .ci-farms-disabled/igalia ]
       when: never
     - changes: [ .ci-farms-disabled/igalia ]
-      when: manual
+      when: never
     - !reference [.igalia-farm-rules, rules]
 
 .lima-farm-rules:
@@ -342,7 +342,7 @@
     - exists: [ .ci-farms-disabled/lima ]
       when: never
     - changes: [ .ci-farms-disabled/lima ]
-      when: manual
+      when: never
     - !reference [.lima-farm-rules, rules]
 
 .anholt-farm-rules:
@@ -359,7 +359,7 @@
     - exists: [ .ci-farms-disabled/anholt ]
       when: never
     - changes: [ .ci-farms-disabled/anholt ]
-      when: manual
+      when: never
     - !reference [.anholt-farm-rules, rules]
 
 .valve-farm-rules:
@@ -384,7 +384,7 @@
     - exists: [ .ci-farms-disabled/valve ]
       when: never
     - changes: [ .ci-farms-disabled/valve ]
-      when: manual
+      when: never
     - !reference [.valve-farm-rules, rules]
 
 .austriancoder-farm-rules:
@@ -401,7 +401,7 @@
     - exists: [ .ci-farms-disabled/austriancoder ]
       when: never
     - changes: [ .ci-farms-disabled/austriancoder ]
-      when: manual
+      when: never
     - !reference [.austriancoder-farm-rules, rules]
 
 .freedreno-farm-rules:
@@ -418,7 +418,7 @@
     - exists: [ .ci-farms-disabled/freedreno ]
       when: never
     - changes: [ .ci-farms-disabled/freedreno ]
-      when: manual
+      when: never
     - !reference [.freedreno-farm-rules, rules]
 
 # Rules for changes that impact either freedreno or turnip.
