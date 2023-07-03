@@ -39,7 +39,6 @@ struct apply_pipeline_layout_state {
    const struct anv_physical_device *pdevice;
 
    const struct anv_pipeline_layout *layout;
-   bool add_bounds_checks;
    nir_address_format ssbo_addr_format;
    nir_address_format ubo_addr_format;
 
@@ -442,11 +441,7 @@ build_buffer_addr_for_res_index(nir_builder *b,
    } else if (addr_format == nir_address_format_32bit_index_offset) {
       nir_ssa_def *array_index = nir_channel(b, res_index, 0);
       nir_ssa_def *packed = nir_channel(b, res_index, 1);
-      nir_ssa_def *array_max = nir_extract_u16(b, packed, nir_imm_int(b, 1));
       nir_ssa_def *surface_index = nir_extract_u16(b, packed, nir_imm_int(b, 0));
-
-      if (state->add_bounds_checks)
-         array_index = nir_umin(b, array_index, array_max);
 
       return nir_vec2(b, nir_iadd(b, surface_index, array_index),
                          nir_imm_int(b, 0));
@@ -466,10 +461,6 @@ build_buffer_addr_for_res_index(nir_builder *b,
        */
       nir_ssa_def *dyn_offset_idx =
          nir_iadd(b, res.dyn_offset_base, res.array_index);
-      if (state->add_bounds_checks) {
-         dyn_offset_idx = nir_umin(b, dyn_offset_idx,
-                                      nir_imm_int(b, MAX_DYNAMIC_BUFFERS));
-      }
 
       nir_ssa_def *dyn_load =
          nir_load_push_constant(b, 1, 32, nir_imul_imm(b, dyn_offset_idx, 4),
@@ -885,15 +876,10 @@ lower_image_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
    } else {
-      unsigned array_size =
-         state->layout->set[set].layout->binding[binding].array_size;
-
       nir_ssa_def *index = NULL;
       if (deref->deref_type != nir_deref_type_var) {
          assert(deref->deref_type == nir_deref_type_array);
          index = nir_ssa_for_src(b, deref->arr.index, 1);
-         if (state->add_bounds_checks)
-            index = nir_umin(b, index, nir_imm_int(b, array_size - 1));
       } else {
          index = nir_imm_int(b, 0);
       }
@@ -1052,9 +1038,6 @@ lower_tex_deref(nir_builder *b, nir_tex_instr *tex,
             assert(nir_tex_instr_src_index(tex, nir_tex_src_plane) == -1);
 
             index = nir_ssa_for_src(b, deref->arr.index, 1);
-
-            if (state->add_bounds_checks)
-               index = nir_umin(b, index, nir_imm_int(b, array_size - 1));
          }
       }
    }
@@ -1260,7 +1243,6 @@ anv_nir_apply_pipeline_layout(nir_shader *shader,
    struct apply_pipeline_layout_state state = {
       .pdevice = pdevice,
       .layout = layout,
-      .add_bounds_checks = robust_buffer_access,
       .ssbo_addr_format = anv_nir_ssbo_addr_format(pdevice, robust_buffer_access),
       .ubo_addr_format = anv_nir_ubo_addr_format(pdevice, robust_buffer_access),
       .lowered_instrs = _mesa_pointer_set_create(mem_ctx),
