@@ -517,7 +517,7 @@ impl<'a> ShaderFromNir<'a> {
                     shift: srcs[1],
                     right: false,
                     wrap: true,
-                    data_type: IntType::U32,
+                    data_type: IntType::I32,
                     dst_high: false,
                 });
                 dst
