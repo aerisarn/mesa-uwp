@@ -419,7 +419,7 @@ struct anv_bo {
 
    /* Last known offset.  This value is provided by the kernel when we
     * execbuf and is used as the presumed offset for the next bunch of
-    * relocations.
+    * relocations, in canonical address format.
     */
    uint64_t offset;
 
@@ -596,7 +596,7 @@ struct anv_block_pool {
 
    uint64_t size;
 
-   /* The address where the start of the pool is pinned. The various bos that
+   /* The canonical address where the start of the pool is pinned. The various bos that
     * are created as the pool grows will have addresses in the range
     * [start_address, start_address + BLOCK_POOL_MEMFD_SIZE).
     */

@@ -436,7 +436,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool, uint32_t size)
                                          pool->name,
                                          new_bo_size,
                                          pool->bo_alloc_flags,
-                                         pool->start_address + pool->size,
+                                         intel_48b_address(pool->start_address + pool->size),
                                          &new_bo);
    if (result != VK_SUCCESS)
       return result;
@@ -1422,7 +1422,7 @@ anv_bo_vma_alloc_or_close(struct anv_device *device,
 
    if (alloc_flags & ANV_BO_ALLOC_FIXED_ADDRESS) {
       bo->has_fixed_address = true;
-      bo->offset = explicit_address;
+      bo->offset = intel_canonical_address(explicit_address);
    } else {
       bo->offset = anv_vma_alloc(device, bo->size + bo->_ccs_size,
                                  align, alloc_flags, explicit_address,
