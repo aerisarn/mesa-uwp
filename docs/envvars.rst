@@ -1269,8 +1269,6 @@ RADV driver environment variables
       enable NGG streamout
    ``nggc``
       enable NGG culling on GPUs where it's not enabled by default (GFX10.1 only).
-   ``rt``
-      enable rt pipelines whose implementation is still experimental.
    ``sam``
       enable optimizations to move more driver internal objects to VRAM.
    ``rtwave64``

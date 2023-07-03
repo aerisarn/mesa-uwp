@@ -38,13 +38,8 @@ radv_enable_rt(const struct radv_physical_device *pdevice, bool rt_pipelines)
    if (pdevice->rad_info.gfx_level < GFX10_3 && !radv_emulate_rt(pdevice))
       return false;
 
-   if (rt_pipelines) {
-      if (pdevice->use_llvm)
-         return false;
-
-      return (pdevice->instance->perftest_flags & RADV_PERFTEST_RT) ||
-             driQueryOptionb(&pdevice->instance->dri_options, "radv_rt");
-   }
+   if (rt_pipelines && pdevice->use_llvm)
+      return false;
 
    return true;
 }
