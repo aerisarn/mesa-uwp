@@ -2210,6 +2210,8 @@ radv_pipeline_create_gs_copy_shader(struct radv_device *device, struct radv_pipe
    gs_copy_stage.info.user_sgprs_locs = gs_copy_stage.args.user_sgprs_locs;
    gs_copy_stage.info.inline_push_constant_mask = gs_copy_stage.args.ac.inline_push_const_mask;
 
+   NIR_PASS_V(nir, ac_nir_lower_intrinsics_to_args, device->physical_device->rad_info.gfx_level, AC_HW_VERTEX_SHADER,
+              &gs_copy_stage.args.ac);
    NIR_PASS_V(nir, radv_nir_lower_abi, device->physical_device->rad_info.gfx_level, &gs_copy_stage.info,
               &gs_copy_stage.args, pipeline_key, device->physical_device->rad_info.address32_hi);
 
