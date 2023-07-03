@@ -150,7 +150,7 @@ d3d12_video_decoder_destroy(struct pipe_video_codec *codec)
    uint64_t curBatchFence = pD3D12Dec->m_fenceValue;
    if (pD3D12Dec->m_needsGPUFlush) {
       d3d12_video_decoder_flush(codec);
-      d3d12_video_decoder_sync_completion(codec, curBatchFence, OS_TIMEOUT_INFINITE);
+      d3d12_video_decoder_sync_completion(codec, pD3D12Dec->m_spFence.Get(), curBatchFence, OS_TIMEOUT_INFINITE);
    }
 
    //
@@ -197,7 +197,7 @@ d3d12_video_decoder_begin_frame(struct pipe_video_codec *codec,
                 "sets with previous work with fenceValue: %" PRIu64 "\n",
                 fenceValueToWaitOn);
 
-   ASSERTED bool wait_res = d3d12_video_decoder_sync_completion(codec, fenceValueToWaitOn, OS_TIMEOUT_INFINITE);
+   ASSERTED bool wait_res = d3d12_video_decoder_sync_completion(codec, pD3D12Dec->m_spFence.Get(), fenceValueToWaitOn, OS_TIMEOUT_INFINITE);
    assert(wait_res);
 
    HRESULT hr = pD3D12Dec->m_spDecodeCommandList->Reset(
@@ -749,7 +749,7 @@ d3d12_video_decoder_get_decoder_fence(struct pipe_video_codec *codec, struct pip
    struct d3d12_fence *fenceValueToWaitOn = (struct d3d12_fence *) fence;
    assert(fenceValueToWaitOn);
 
-   ASSERTED bool wait_res = d3d12_video_decoder_sync_completion(codec, fenceValueToWaitOn->value, timeout);
+   ASSERTED bool wait_res = d3d12_video_decoder_sync_completion(codec, fenceValueToWaitOn->cmdqueue_fence, fenceValueToWaitOn->value, timeout);
 
    // Return semantics based on p_video_codec interface
    // ret == 0 -> Decode in progress
@@ -1598,13 +1598,13 @@ d3d12_video_decoder_resolve_profile(d3d12_video_decode_profile_type profileType,
 
 bool
 d3d12_video_decoder_ensure_fence_finished(struct pipe_video_codec *codec,
+                                          ID3D12Fence* fence,
                                           uint64_t fenceValueToWaitOn,
                                           uint64_t timeout_ns)
 {
    bool wait_result = true;
-   struct d3d12_video_decoder *pD3D12Dec = (struct d3d12_video_decoder *) codec;
    HRESULT hr = S_OK;
-   uint64_t completedValue = pD3D12Dec->m_spFence->GetCompletedValue();
+   uint64_t completedValue = fence->GetCompletedValue();
 
    debug_printf(
       "[d3d12_video_decoder] d3d12_video_decoder_ensure_fence_finished - Waiting for fence (with timeout_ns %" PRIu64
@@ -1620,7 +1620,7 @@ d3d12_video_decoder_ensure_fence_finished(struct pipe_video_codec *codec,
       int event_fd = 0;
       event = d3d12_fence_create_event(&event_fd);
 
-      hr = pD3D12Dec->m_spFence->SetEventOnCompletion(fenceValueToWaitOn, event);
+      hr = fence->SetEventOnCompletion(fenceValueToWaitOn, event);
       if (FAILED(hr)) {
          debug_printf("[d3d12_video_decoder] d3d12_video_decoder_ensure_fence_finished - SetEventOnCompletion for "
                       "fenceValue %" PRIu64 " failed with HR %x\n",
@@ -1652,7 +1652,7 @@ ensure_fence_finished_fail:
 }
 
 bool
-d3d12_video_decoder_sync_completion(struct pipe_video_codec *codec, uint64_t fenceValueToWaitOn, uint64_t timeout_ns)
+d3d12_video_decoder_sync_completion(struct pipe_video_codec *codec, ID3D12Fence* fence, uint64_t fenceValueToWaitOn, uint64_t timeout_ns)
 {
    struct d3d12_video_decoder *pD3D12Dec = (struct d3d12_video_decoder *) codec;
    assert(pD3D12Dec);
@@ -1660,7 +1660,7 @@ d3d12_video_decoder_sync_completion(struct pipe_video_codec *codec, uint64_t fen
    assert(pD3D12Dec->m_spDecodeCommandQueue);
    HRESULT hr = S_OK;
 
-   ASSERTED bool wait_result = d3d12_video_decoder_ensure_fence_finished(codec, fenceValueToWaitOn, timeout_ns);
+   ASSERTED bool wait_result = d3d12_video_decoder_ensure_fence_finished(codec, fence, fenceValueToWaitOn, timeout_ns);
    assert(wait_result);
 
    // Release references granted on end_frame for this inflight operations

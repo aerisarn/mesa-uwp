@@ -276,10 +276,10 @@ void
 d3d12_video_decoder_prepare_dxva_slices_control(struct d3d12_video_decoder *pD3D12Dec, struct pipe_picture_desc *picture);
 
 bool
-d3d12_video_decoder_ensure_fence_finished(struct pipe_video_codec *codec, uint64_t fenceValueToWaitOn, uint64_t timeout_ns);
+d3d12_video_decoder_ensure_fence_finished(struct pipe_video_codec *codec, ID3D12Fence* fence, uint64_t fenceValueToWaitOn, uint64_t timeout_ns);
 
 bool
-d3d12_video_decoder_sync_completion(struct pipe_video_codec *codec, uint64_t fenceValueToWaitOn, uint64_t timeout_ns);
+d3d12_video_decoder_sync_completion(struct pipe_video_codec *codec, ID3D12Fence* fence, uint64_t fenceValueToWaitOn, uint64_t timeout_ns);
 
 ///
 /// d3d12_video_decoder functions ends
