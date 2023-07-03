@@ -40,7 +40,10 @@ ac_nir_unpack_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct a
                   unsigned rshift, unsigned bitwidth)
 {
    nir_ssa_def *value = ac_nir_load_arg(b, ac_args, arg);
-   return nir_ubfe_imm(b, value, rshift, bitwidth);
+   if (rshift)
+      return nir_ubfe_imm(b, value, rshift, bitwidth);
+   else
+      return nir_iand_imm(b, value, BITFIELD_MASK(bitwidth));
 }
 
 static bool
