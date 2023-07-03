@@ -42,12 +42,6 @@ radv_enable_rt(const struct radv_physical_device *pdevice, bool rt_pipelines)
       if (pdevice->use_llvm)
          return false;
 
-      /* TODO: Enable ray tracing pipelines by default, once
-       * https://gitlab.freedesktop.org/mesa/mesa/-/issues/9208 is resolved.
-       */
-      if (pdevice->rad_info.family != CHIP_VANGOGH)
-         return true;
-
       return (pdevice->instance->perftest_flags & RADV_PERFTEST_RT) ||
              driQueryOptionb(&pdevice->instance->dri_options, "radv_rt");
    }
