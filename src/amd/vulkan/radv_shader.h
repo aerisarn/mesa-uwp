@@ -55,9 +55,9 @@ enum radv_required_subgroup_size {
    RADV_REQUIRED_WAVE64 = 2,
 };
 
-struct radv_required_subgroup_info {
-   uint8_t required_size : 2; /* radv_required_subgroup_size */
-   uint8_t require_full : 1;  /* whether full subgroups are required */
+struct radv_shader_stage_key {
+   uint8_t subgroup_required_size : 2; /* radv_required_subgroup_size */
+   uint8_t subgroup_require_full : 1;  /* whether full subgroups are required */
 };
 
 struct radv_ps_epilog_key {
@@ -92,7 +92,7 @@ struct radv_pipeline_key {
    uint32_t enable_remove_point_size : 1;
    uint32_t unknown_rast_prim : 1;
 
-   struct radv_required_subgroup_info subgroups[MESA_VULKAN_SHADER_STAGES];
+   struct radv_shader_stage_key stage_info[MESA_VULKAN_SHADER_STAGES];
    uint32_t storage_robustness : 2;
    uint32_t uniform_robustness : 2;
    uint32_t vertex_robustness : 2;

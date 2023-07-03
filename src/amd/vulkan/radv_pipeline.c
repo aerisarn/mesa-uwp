@@ -167,15 +167,15 @@ radv_generate_pipeline_key(const struct radv_device *device, const struct radv_p
 
       if (subgroup_size) {
          if (subgroup_size->requiredSubgroupSize == 32)
-            key.subgroups[s].required_size = RADV_REQUIRED_WAVE32;
+            key.stage_info[s].subgroup_required_size = RADV_REQUIRED_WAVE32;
          else if (subgroup_size->requiredSubgroupSize == 64)
-            key.subgroups[s].required_size = RADV_REQUIRED_WAVE64;
+            key.stage_info[s].subgroup_required_size = RADV_REQUIRED_WAVE64;
          else
             unreachable("Unsupported required subgroup size.");
       }
 
       if (stage->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT) {
-         key.subgroups[s].require_full = 1;
+         key.stage_info[s].subgroup_require_full = 1;
       }
    }
 

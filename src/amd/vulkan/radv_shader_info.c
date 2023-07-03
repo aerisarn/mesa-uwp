@@ -339,10 +339,10 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask, unsign
 
 static uint8_t
 radv_get_wave_size(struct radv_device *device, gl_shader_stage stage, const struct radv_shader_info *info,
-                   const struct radv_required_subgroup_info *required)
+                   const struct radv_shader_stage_key *stage_key)
 {
-   if (required->required_size)
-      return required->required_size * 32;
+   if (stage_key->subgroup_required_size)
+      return stage_key->subgroup_required_size * 32;
 
    if (stage == MESA_SHADER_GEOMETRY && !info->is_ngg)
       return 64;
@@ -360,13 +360,13 @@ radv_get_wave_size(struct radv_device *device, gl_shader_stage stage, const stru
 
 static uint8_t
 radv_get_ballot_bit_size(struct radv_device *device, gl_shader_stage stage, const struct radv_shader_info *info,
-                         const struct radv_required_subgroup_info *required)
+                         const struct radv_shader_stage_key *stage_key)
 {
    if (stage == MESA_SHADER_COMPUTE && info->cs.subgroup_size)
       return info->cs.subgroup_size;
 
-   if (required->required_size)
-      return required->required_size * 32;
+   if (stage_key->subgroup_required_size)
+      return stage_key->subgroup_required_size * 32;
 
    return 64;
 }
@@ -722,10 +722,10 @@ gather_shader_info_cs(struct radv_device *device, const nir_shader *nir, const s
     * is enabled.
     */
    const bool require_full_subgroups =
-      pipeline_key->subgroups[MESA_SHADER_COMPUTE].require_full ||
+      pipeline_key->stage_info[MESA_SHADER_COMPUTE].subgroup_require_full ||
       (default_wave_size == 32 && nir->info.uses_wide_subgroup_intrinsics && local_size % RADV_SUBGROUP_SIZE == 0);
 
-   const unsigned required_subgroup_size = pipeline_key->subgroups[MESA_SHADER_COMPUTE].required_size * 32;
+   const unsigned required_subgroup_size = pipeline_key->stage_info[MESA_SHADER_COMPUTE].subgroup_required_size * 32;
 
    if (required_subgroup_size) {
       info->cs.subgroup_size = required_subgroup_size;
@@ -978,9 +978,9 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       break;
    }
 
-   const struct radv_required_subgroup_info *req = &pipeline_key->subgroups[nir->info.stage];
-   info->wave_size = radv_get_wave_size(device, nir->info.stage, info, req);
-   info->ballot_bit_size = radv_get_ballot_bit_size(device, nir->info.stage, info, req);
+   const struct radv_shader_stage_key *stage_key = &pipeline_key->stage_info[nir->info.stage];
+   info->wave_size = radv_get_wave_size(device, nir->info.stage, info, stage_key);
+   info->ballot_bit_size = radv_get_ballot_bit_size(device, nir->info.stage, info, stage_key);
 
    switch (nir->info.stage) {
    case MESA_SHADER_COMPUTE:
