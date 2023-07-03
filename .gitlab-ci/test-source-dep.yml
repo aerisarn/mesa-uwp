@@ -289,6 +289,16 @@
       when: never
     - !reference [.microsoft-farm-rules, rules]
 
+.microsoft-farm-container-rules:
+  rules:
+    # Allow triggering jobs manually in other cases if any files affecting the
+    # pipeline were changed
+    - exists: [ .ci-farms-disabled/microsoft ]
+      when: never
+    - changes: [ .ci-farms-disabled/microsoft ]
+      when: manual
+    - !reference [.microsoft-farm-rules, rules]
+
 .collabora-farm-rules:
   rules:
     - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
