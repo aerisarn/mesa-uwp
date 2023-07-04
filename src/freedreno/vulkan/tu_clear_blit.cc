@@ -851,6 +851,11 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
    }
    tu_cs_emit_regs(cs, A6XX_VFD_MULTIVIEW_CNTL());
 
+   if (CHIP >= A7XX) {
+      tu_cs_emit_regs(cs, A7XX_VPC_MULTIVIEW_MASK());
+      tu_cs_emit_regs(cs, A7XX_VPC_MULTIVIEW_CNTL());
+   }
+
    tu6_emit_vpc<CHIP>(cs, vs, NULL, NULL, NULL, fs);
 
    if (CHIP >= A7XX) {
