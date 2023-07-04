@@ -359,7 +359,7 @@ if with_tests
         'tests/opt_if_tests.cpp',
         'tests/opt_shrink_vectors_tests.cpp',
         'tests/serialize_tests.cpp',
-        'tests/ssa_def_bits_used_tests.cpp',
+        'tests/range_analysis_tests.cpp',
         'tests/vars_tests.cpp',
       ),
       cpp_args : [cpp_msvc_compat_args],

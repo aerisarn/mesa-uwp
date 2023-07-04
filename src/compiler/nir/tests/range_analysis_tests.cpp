@@ -47,6 +47,26 @@ protected:
    struct nir_builder bld;
 };
 
+class unsigned_upper_bound_test : public ::testing::Test {
+protected:
+   unsigned_upper_bound_test()
+   {
+      glsl_type_singleton_init_or_ref();
+
+      static const nir_shader_compiler_options options = { };
+      bld = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, &options,
+                                           "unsigned_upper_bound test");
+   }
+
+   ~unsigned_upper_bound_test()
+   {
+      ralloc_free(bld.shader);
+      glsl_type_singleton_decref();
+   }
+
+   struct nir_builder bld;
+};
+
 static bool
 is_used_once(const nir_ssa_def *def)
 {
@@ -253,4 +273,50 @@ TEST_F(ssa_def_bits_used_test, extract_u8_with_const_index)
 
       EXPECT_EQ(0xffu << (8 * src1_imm[i]), bits_used);
    }
+}
+
+/* Unsigned upper bound analysis should look through a bcsel which uses the phi. */
+TEST_F(unsigned_upper_bound_test, loop_phi_bcsel)
+{
+   /*
+    * impl main {
+    *     block b0:  // preds:
+    *     32    %0 = load_const (0x00000000 = 0.000000)
+    *     32    %1 = load_const (0x00000002 = 0.000000)
+    *     1     %2 = load_const (false)
+    *                // succs: b1
+    *     loop {
+    *         block b1:  // preds: b0 b1
+    *         32    %4 = phi b0: %0 (0x0), b1: %3
+    *         32    %3 = bcsel %2 (false), %4, %1 (0x2)
+    *                    // succs: b1
+    *     }
+    *     block b2:  // preds: , succs: b3
+    *     block b3:
+    * }
+    */
+   nir_ssa_def *zero = nir_imm_int(&bld, 0);
+   nir_ssa_def *two = nir_imm_int(&bld, 2);
+   nir_ssa_def *cond = nir_imm_false(&bld);
+
+   nir_phi_instr *const phi = nir_phi_instr_create(bld.shader);
+   nir_ssa_dest_init(&phi->instr, &phi->dest, 1, 32);
+
+   nir_push_loop(&bld);
+   nir_ssa_def *sel = nir_bcsel(&bld, cond, &phi->dest.ssa, two);
+   nir_pop_loop(&bld, NULL);
+
+   nir_phi_instr_add_src(phi, zero->parent_instr->block,
+                         nir_src_for_ssa(zero));
+   nir_phi_instr_add_src(phi, sel->parent_instr->block,
+                         nir_src_for_ssa(sel));
+   bld.cursor = nir_before_instr(sel->parent_instr);
+   nir_builder_instr_insert(&bld, &phi->instr);
+
+   nir_validate_shader(bld.shader, NULL);
+
+   struct hash_table *range_ht = _mesa_pointer_hash_table_create(NULL);
+   nir_ssa_scalar scalar = nir_get_ssa_scalar(&phi->dest.ssa, 0);
+   EXPECT_EQ(nir_unsigned_upper_bound(bld.shader, range_ht, scalar, NULL), 2);
+   _mesa_hash_table_destroy(range_ht, NULL);
 }
