@@ -56,7 +56,6 @@ struct vn_command_buffer {
 
    struct vn_command_pool *pool;
 
-   VkAllocationCallbacks allocator;
    VkCommandBufferLevel level;
    uint32_t queue_family_index;
 
