@@ -358,6 +358,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_push_descriptor = true,
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
+      .KHR_sampler_ycbcr_conversion = true,
       .KHR_separate_depth_stencil_layouts = true,
       .KHR_shader_draw_parameters = true,
       .KHR_shader_non_semantic_info = true,
@@ -399,6 +400,8 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_transform_feedback = true,
       .EXT_vertex_attribute_divisor = true,
       .EXT_vertex_input_dynamic_state = true,
+      .EXT_ycbcr_2plane_444_formats = true,
+      .EXT_ycbcr_image_arrays = true,
    };
 }
 
@@ -462,6 +465,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .multiviewGeometryShader = true,
       .multiviewTessellationShader = true,
       .shaderDrawParameters = true,
+      .samplerYcbcrConversion = true,
 
       /* Vulkan 1.2 */
       .samplerMirrorClampToEdge = true,
@@ -592,6 +596,12 @@ nvk_get_device_features(const struct nv_device_info *info,
 
       /* VK_EXT_vertex_input_dynamic_state */
       .vertexInputDynamicState = true,
+
+      /* VK_EXT_ycbcr_2plane_444_formats */
+      .ycbcr2plane444Formats = true,
+
+      /* VK_EXT_ycbcr_image_arrays */
+      .ycbcrImageArrays = true,
 
       /* VALVE_mutable_descriptor_type */
       .mutableDescriptorType = true,

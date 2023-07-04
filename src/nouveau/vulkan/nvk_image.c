@@ -11,9 +11,9 @@
 #include "clb097.h"
 #include "clb197.h"
 
-VkFormatFeatureFlags2
-nvk_get_image_format_features(struct nvk_physical_device *pdev,
-                              VkFormat vk_format, VkImageTiling tiling)
+static VkFormatFeatureFlags2
+nvk_get_image_plane_format_features(struct nvk_physical_device *pdev,
+                                    VkFormat vk_format, VkImageTiling tiling)
 {
    VkFormatFeatureFlags2 features = 0;
 
@@ -74,6 +74,44 @@ nvk_get_image_format_features(struct nvk_physical_device *pdev,
    return features;
 }
 
+VkFormatFeatureFlags2
+nvk_get_image_format_features(struct nvk_physical_device *pdev,
+                              VkFormat vk_format, VkImageTiling tiling)
+{
+   const struct vk_format_ycbcr_info *ycbcr_info =
+         vk_format_get_ycbcr_info(vk_format);
+   if (ycbcr_info == NULL)
+      return nvk_get_image_plane_format_features(pdev, vk_format, tiling);
+
+   /* For multi-plane, we get the feature flags of each plane separately,
+    * then take their intersection as the overall format feature flags
+    */
+   VkFormatFeatureFlags2 features = ~0ull;
+   bool cosited_chroma = false;
+   for (uint8_t plane = 0; plane < ycbcr_info->n_planes; plane++) {
+      const struct vk_format_ycbcr_plane *plane_info = &ycbcr_info->planes[plane];
+      features &= nvk_get_image_plane_format_features(pdev, plane_info->format,
+                                                      tiling);
+      if (plane_info->denominator_scales[0] > 1 ||
+          plane_info->denominator_scales[1] > 1)
+         cosited_chroma = true;
+   }
+   if (features == 0)
+      return 0;
+
+   features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT |
+               VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT |
+               VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT;
+
+   if (ycbcr_info->n_planes > 1)
+      features |= VK_FORMAT_FEATURE_DISJOINT_BIT;
+
+   if (cosited_chroma)
+      features |= VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT;
+
+   return features;
+}
+
 static VkFormatFeatureFlags2KHR
 vk_image_usage_to_format_features(VkImageUsageFlagBits usage_flag)
 {
@@ -124,6 +162,11 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
        pImageFormatInfo->type != VK_IMAGE_TYPE_2D)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
+   const struct vk_format_ycbcr_info *ycbcr_info =
+         vk_format_get_ycbcr_info(pImageFormatInfo->format);
+   if (ycbcr_info && pImageFormatInfo->type != VK_IMAGE_TYPE_2D)
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
    VkExtent3D maxExtent;
    uint32_t maxMipLevels;
    uint32_t maxArraySize;
@@ -137,12 +180,17 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
       break;
    case VK_IMAGE_TYPE_2D:
       maxExtent = (VkExtent3D) { 16384, 16384, 1 };
-      maxMipLevels = 15;
       maxArraySize = 2048;
-      sampleCounts = VK_SAMPLE_COUNT_1_BIT |
-                     VK_SAMPLE_COUNT_2_BIT |
-                     VK_SAMPLE_COUNT_4_BIT |
-                     VK_SAMPLE_COUNT_8_BIT;
+      if(ycbcr_info) {
+         maxMipLevels = 1;
+         sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+      } else {
+         maxMipLevels = 15;
+         sampleCounts = VK_SAMPLE_COUNT_1_BIT |
+                        VK_SAMPLE_COUNT_2_BIT |
+                        VK_SAMPLE_COUNT_4_BIT |
+                        VK_SAMPLE_COUNT_8_BIT;
+      }
       break;
    case VK_IMAGE_TYPE_3D:
       maxExtent = (VkExtent3D) { 2048, 2048, 2048 };
@@ -230,6 +278,32 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
       }
    }
 
+   const unsigned plane_count =
+      vk_format_get_plane_count(pImageFormatInfo->format);
+
+   if (pImageFormatInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT) {
+      /* From the Vulkan 1.2.149 spec, VkImageCreateInfo:
+       *
+       *    If format is a multi-planar format, and if imageCreateFormatFeatures
+       *    (as defined in Image Creation Limits) does not contain
+       *    VK_FORMAT_FEATURE_2_DISJOINT_BIT, then flags must not contain
+       *    VK_IMAGE_CREATE_DISJOINT_BIT.
+       */
+      if (plane_count > 1 &&
+          !(features & VK_FORMAT_FEATURE_2_DISJOINT_BIT))
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
+      /* From the Vulkan 1.2.149 spec, VkImageCreateInfo:
+       *
+       * If format is not a multi-planar format, and flags does not include
+       * VK_IMAGE_CREATE_ALIAS_BIT, flags must not contain
+       * VK_IMAGE_CREATE_DISJOINT_BIT.
+       */
+      if (plane_count == 1 &&
+          !(pImageFormatInfo->flags & VK_IMAGE_CREATE_ALIAS_BIT))
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+   }
+
    pImageFormatProperties->imageFormatProperties = (VkImageFormatProperties) {
       .maxExtent = maxExtent,
       .maxMipLevels = maxMipLevels,
@@ -253,6 +327,11 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
           */
          if (ext_mem_props != NULL)
             p->externalMemoryProperties = *ext_mem_props;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: {
+         VkSamplerYcbcrConversionImageFormatProperties *ycbcr_props = (void *) s;
+         ycbcr_props->combinedImageSamplerDescriptorCount = plane_count;
          break;
       }
       default:

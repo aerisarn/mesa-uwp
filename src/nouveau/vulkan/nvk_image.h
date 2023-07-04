@@ -10,6 +10,10 @@
 
 struct nvk_physical_device;
 
+static VkFormatFeatureFlags2
+nvk_get_image_plane_format_features(struct nvk_physical_device *pdev,
+                                    VkFormat vk_format, VkImageTiling tiling);
+
 VkFormatFeatureFlags2
 nvk_get_image_format_features(struct nvk_physical_device *pdevice,
                               VkFormat format, VkImageTiling tiling);
