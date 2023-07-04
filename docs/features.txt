@@ -638,6 +638,9 @@ Khronos extensions that are not part of any Vulkan version:
   VK_ARM_rasterization_order_attachment_access          DONE (lvp, tu)
   VK_EXT_mutable_descriptor_type                        DONE (anv, lvp, radv, tu, vn)
   VK_EXT_swapchain_colorspace                           DONE (radv, anv, tu)
+  VK_EXT_depth_clamp_zero_one                           DONE (anv)
+  VK_INTEL_shader_integer_functions2                    DONE (anv)
+  VK_KHR_map_memory2                                    DONE (anv, radv)
 
 
 
