@@ -3800,6 +3800,10 @@ tu_CmdBeginRendering(VkCommandBuffer commandBuffer,
    cmd->state.suspending = suspending;
    cmd->state.resuming = resuming;
 
+   if (!resuming && cmd->device->dbg_renderpass_stomp_cs) {
+      tu_cs_emit_call(&cmd->cs, cmd->device->dbg_renderpass_stomp_cs);
+   }
+
    /* We can't track LRZ across command buffer boundaries, so we have to
     * disable LRZ when resuming/suspending unless we can track on the GPU.
     */
