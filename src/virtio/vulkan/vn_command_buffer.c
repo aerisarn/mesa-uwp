@@ -662,6 +662,7 @@ vn_CreateCommandPool(VkDevice device,
    vn_object_base_init(&pool->base, VK_OBJECT_TYPE_COMMAND_POOL, &dev->base);
 
    pool->allocator = *alloc;
+   pool->device = dev;
    pool->queue_family_index = pCreateInfo->queueFamilyIndex;
    list_inithead(&pool->command_buffers);
 
@@ -806,7 +807,7 @@ vn_AllocateCommandBuffers(VkDevice device,
 
       vn_object_base_init(&cmd->base, VK_OBJECT_TYPE_COMMAND_BUFFER,
                           &dev->base);
-      cmd->device = dev;
+      cmd->pool = pool;
       cmd->allocator = pool->allocator;
       cmd->level = pAllocateInfo->level;
       cmd->queue_family_index = pool->queue_family_index;
@@ -877,10 +878,11 @@ vn_ResetCommandBuffer(VkCommandBuffer commandBuffer,
    VN_TRACE_FUNC();
    struct vn_command_buffer *cmd =
       vn_command_buffer_from_handle(commandBuffer);
+   struct vn_instance *instance = cmd->pool->device->instance;
 
    vn_cmd_reset(cmd);
 
-   vn_async_vkResetCommandBuffer(cmd->device->instance, commandBuffer, flags);
+   vn_async_vkResetCommandBuffer(instance, commandBuffer, flags);
 
    return VK_SUCCESS;
 }
@@ -988,7 +990,7 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    VN_TRACE_FUNC();
    struct vn_command_buffer *cmd =
       vn_command_buffer_from_handle(commandBuffer);
-   struct vn_instance *instance = cmd->device->instance;
+   struct vn_instance *instance = cmd->pool->device->instance;
    size_t cmd_size;
 
    vn_cs_encoder_reset(&cmd->cs);
@@ -1045,7 +1047,7 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 static void
 vn_cmd_submit(struct vn_command_buffer *cmd)
 {
-   struct vn_instance *instance = cmd->device->instance;
+   struct vn_instance *instance = cmd->pool->device->instance;
 
    if (cmd->state != VN_COMMAND_BUFFER_STATE_RECORDING)
       return;
@@ -1079,7 +1081,7 @@ vn_EndCommandBuffer(VkCommandBuffer commandBuffer)
    VN_TRACE_FUNC();
    struct vn_command_buffer *cmd =
       vn_command_buffer_from_handle(commandBuffer);
-   struct vn_instance *instance = cmd->device->instance;
+   struct vn_instance *instance = cmd->pool->device->instance;
    size_t cmd_size;
 
    if (cmd->state != VN_COMMAND_BUFFER_STATE_RECORDING)
@@ -2302,8 +2304,6 @@ vn_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
             descriptorWriteCount, pDescriptorWrites, &cmd->allocator, layout);
       if (!update) {
          cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
-         vn_log(cmd->device->instance,
-                "descriptor set push ignored due to OOM");
          return;
       }
 
