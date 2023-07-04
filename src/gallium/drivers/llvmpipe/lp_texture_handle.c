@@ -343,8 +343,15 @@ compile_sample_function(struct llvmpipe_context *ctx, struct lp_static_texture_s
          if ((sampler->compare_mode == PIPE_TEX_COMPARE_NONE) == !!(sample_key & LP_SAMPLER_SHADOW))
             return NULL;
 
+      /* Skip integer formats which would cause a type mismatch in the compare function. */
       const struct util_format_description *desc = util_format_description(texture->format);
-      if ((sample_key & LP_SAMPLER_SHADOW) && !util_format_has_depth(desc))
+      struct lp_type texel_type = {
+         .floating = true,
+         .width = 32,
+         .length = 1,
+      };
+      texel_type = lp_build_texel_type(texel_type, desc);
+      if ((sample_key & LP_SAMPLER_SHADOW) && !texel_type.floating)
          return NULL;
 
       if (texture_dims(texture->target) != 2 && op_type == LP_SAMPLER_OP_GATHER)
