@@ -350,9 +350,8 @@ copy_ubo_to_uniform(nir_shader *nir, const struct ir3_const_state *const_state)
       return false;
 
    nir_function_impl *preamble = nir_shader_get_preamble(nir);
-   nir_builder _b, *b = &_b;
-   nir_builder_init(b, preamble);
-   b->cursor = nir_after_cf_list(&preamble->body);
+   nir_builder _b = nir_builder_at(nir_after_cf_list(&preamble->body));
+   nir_builder *b = &_b;
 
    for (unsigned i = 0; i < state->num_enabled; i++) {
       const struct ir3_ubo_range *range = &state->range[i];

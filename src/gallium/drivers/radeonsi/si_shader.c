@@ -1931,11 +1931,8 @@ static void si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shade
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   nir_builder builder;
+   nir_builder builder = nir_builder_at(nir_before_cf_list(&impl->body));
    nir_builder *b = &builder;
-   nir_builder_init(b, impl);
-
-   b->cursor = nir_before_cf_list(&impl->body);
 
    const struct si_shader_selector *sel = shader->selector;
    const union si_shader_key *key = &shader->key;
@@ -2015,11 +2012,8 @@ static void si_nir_emit_polygon_stipple(nir_shader *nir, struct si_shader_args *
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   nir_builder builder;
+   nir_builder builder = nir_builder_at(nir_before_cf_list(&impl->body));
    nir_builder *b = &builder;
-   nir_builder_init(b, impl);
-
-   b->cursor = nir_before_cf_list(&impl->body);
 
    /* Load the buffer descriptor. */
    nir_ssa_def *desc =

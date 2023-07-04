@@ -2363,9 +2363,8 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       shader->info.outputs_written |= VARYING_BIT_PRIMITIVE_ID;
    }
 
-   nir_builder builder;
+   nir_builder builder = nir_builder_create(impl);
    nir_builder *b = &builder; /* This is to avoid the & */
-   nir_builder_init(b, impl);
 
    if (options->can_cull) {
       analyze_shader_before_culling(shader, &state);
@@ -3440,10 +3439,8 @@ ac_nir_lower_ngg_gs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
    nir_cf_list extracted;
    nir_cf_extract(&extracted, nir_before_cf_list(&impl->body), nir_after_cf_list(&impl->body));
 
-   nir_builder builder;
+   nir_builder builder = nir_builder_at(nir_before_cf_list(&impl->body));
    nir_builder *b = &builder; /* This is to avoid the & */
-   nir_builder_init(b, impl);
-   b->cursor = nir_before_cf_list(&impl->body);
 
    /* Workgroup barrier: wait for ES threads */
    nir_scoped_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
@@ -4767,10 +4764,8 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    state.primitive_count_var =
       nir_local_variable_create(impl, glsl_uint_type(), "primitive_count_var");
 
-   nir_builder builder;
+   nir_builder builder = nir_builder_at(nir_before_cf_list(&impl->body));
    nir_builder *b = &builder; /* This is to avoid the & */
-   nir_builder_init(b, impl);
-   b->cursor = nir_before_cf_list(&impl->body);
 
    handle_smaller_ms_api_workgroup(b, &state);
    ms_emit_legacy_workgroup_index(b, &state);

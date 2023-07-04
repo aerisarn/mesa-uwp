@@ -530,12 +530,11 @@ r600_append_tcs_TF_emission(nir_shader *shader, enum mesa_prim prim_type)
          }
       }
    }
-   nir_builder builder;
-   nir_builder *b = &builder;
 
    assert(exec_list_length(&shader->functions) == 1);
    nir_function *f = (nir_function *)shader->functions.get_head();
-   nir_builder_init(b, f->impl);
+   nir_builder builder = nir_builder_create(f->impl);
+   nir_builder *b = &builder;
 
    auto outer_comps = outer_tf_components(prim_type);
    if (!outer_comps)

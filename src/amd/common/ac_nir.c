@@ -1080,11 +1080,8 @@ ac_nir_lower_legacy_gs(nir_shader *nir,
 
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   nir_builder builder;
+   nir_builder builder = nir_builder_at(nir_after_cf_list(&impl->body));
    nir_builder *b = &builder;
-   nir_builder_init(b, impl);
-
-   b->cursor = nir_after_cf_list(&impl->body);
 
    /* Emit shader query for mix use legacy/NGG GS */
    bool progress = ac_nir_gs_shader_query(b,

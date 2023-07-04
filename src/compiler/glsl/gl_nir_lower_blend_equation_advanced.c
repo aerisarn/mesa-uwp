@@ -495,9 +495,7 @@ gl_nir_lower_blend_equation_advanced(nir_shader *sh, bool coherent)
 
    sh->info.fs.uses_sample_shading = true;
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
-   b.cursor = nir_after_block(nir_impl_last_block(impl));
+   nir_builder b = nir_builder_at(nir_after_block(nir_impl_last_block(impl)));
 
    nir_variable *fb = nir_variable_create(sh, nir_var_shader_out,
                                           glsl_vec4_type(),

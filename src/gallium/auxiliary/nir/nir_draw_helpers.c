@@ -104,9 +104,7 @@ static void
 nir_lower_pstipple_impl(nir_function_impl *impl,
                         lower_pstipple *state)
 {
-   nir_builder *b = &state->b;
-
-   nir_builder_init(b, impl);
+   state->b = nir_builder_create(impl);
 
    nir_block *start = nir_start_block(impl);
    nir_lower_pstipple_block(start, state);
@@ -313,13 +311,10 @@ static void
 nir_lower_aapoint_impl(nir_function_impl *impl, lower_aapoint *state,
                        nir_alu_type bool_type)
 {
-   nir_builder *b = &state->b;
-
-   nir_builder_init(b, impl);
-
    nir_block *block = nir_start_block(impl);
-   b->cursor = nir_before_block(block);
+   state->b = nir_builder_at(nir_before_block(block));
 
+   nir_builder *b = &state->b;
    nir_ssa_def *aainput = nir_load_var(b, state->input);
 
    nir_ssa_def *dist = nir_fadd(b, nir_fmul(b, nir_channel(b, aainput, 0), nir_channel(b, aainput, 0)),

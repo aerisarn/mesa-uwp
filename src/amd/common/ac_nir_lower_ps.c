@@ -853,9 +853,8 @@ ac_nir_lower_ps(nir_shader *nir, const ac_nir_lower_ps_options *options)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
 
-   nir_builder builder;
+   nir_builder builder = nir_builder_create(impl);
    nir_builder *b = &builder;
-   nir_builder_init(b, impl);
 
    lower_ps_state state = {
       .options = options,
