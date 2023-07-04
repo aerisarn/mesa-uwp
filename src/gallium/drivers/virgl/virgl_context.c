@@ -50,12 +50,6 @@
 #include "virgl_staging_mgr.h"
 #include "virgl_video.h"
 
-struct virgl_vertex_elements_state {
-   uint32_t handle;
-   uint8_t binding_map[PIPE_MAX_ATTRIBS];
-   uint8_t num_bindings;
-};
-
 static uint32_t next_handle;
 uint32_t virgl_object_assign_handle(void)
 {
