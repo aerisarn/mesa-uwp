@@ -1131,7 +1131,7 @@ apply_dynamic_offsets(struct lvp_descriptor_set **out_set, uint32_t *offsets, ui
           binding->type != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
          continue;
 
-      union lp_descriptor *desc = set->map;
+      struct lp_descriptor *desc = set->map;
       desc += binding->descriptor_index;
 
       for (uint32_t j = 0; j < binding->array_size; j++) {
@@ -4015,7 +4015,7 @@ bind_db_samplers(struct rendering_state *state, bool is_compute, unsigned set)
       if (!bind_layout->immutable_samplers)
          continue;
 
-      union lp_descriptor *desc = (void*)db;
+      struct lp_descriptor *desc = (void*)db;
       desc += bind_layout->descriptor_index;
 
       for (uint32_t sampler_index = 0; sampler_index < bind_layout->array_size; sampler_index++) {

@@ -276,7 +276,7 @@ struct lvp_image_view {
 
 struct lvp_sampler {
    struct vk_object_base base;
-   union lp_descriptor desc;
+   struct lp_descriptor desc;
 
    struct lp_texture_handle *texture_handle;
 };
@@ -294,7 +294,7 @@ struct lvp_descriptor_set_binding_layout {
    uint32_t uniform_block_size;
 
    /* Immutable samplers (or NULL if no immutable samplers) */
-   union lp_descriptor **immutable_samplers;
+   struct lp_descriptor **immutable_samplers;
 };
 
 struct lvp_descriptor_set_layout {

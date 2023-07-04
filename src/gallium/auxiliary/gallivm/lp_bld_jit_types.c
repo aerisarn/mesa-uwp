@@ -72,7 +72,7 @@ lp_llvm_descriptor_base(struct gallivm_state *gallivm,
    if (LLVMGetTypeKind(LLVMTypeOf(binding_index)) == LLVMVectorTypeKind)
       binding_index = LLVMBuildExtractElement(builder, binding_index, lp_build_const_int32(gallivm, 0), "");
 
-   LLVMValueRef binding_offset = LLVMBuildMul(builder, binding_index, lp_build_const_int32(gallivm, sizeof(union lp_descriptor)), "");
+   LLVMValueRef binding_offset = LLVMBuildMul(builder, binding_index, lp_build_const_int32(gallivm, sizeof(struct lp_descriptor)), "");
    LLVMTypeRef int64_type = LLVMInt64TypeInContext(gallivm->context);
    binding_offset = LLVMBuildIntCast2(builder, binding_offset, int64_type, false, "");
 
@@ -352,7 +352,7 @@ lp_build_llvm_texture_member(struct gallivm_state *gallivm,
 
    LLVMValueRef ptr;
    if (gallivm->texture_descriptor) {
-      static_assert(offsetof(union lp_descriptor, texture) == 0, "Invalid texture offset!");
+      static_assert(offsetof(struct lp_descriptor, texture) == 0, "Invalid texture offset!");
       LLVMValueRef texture_ptr = gallivm->texture_descriptor;
 
       LLVMTypeRef texture_ptr_type = LLVMStructGetTypeAtIndex(resources_type, LP_JIT_RES_TEXTURES);
@@ -484,7 +484,7 @@ lp_build_llvm_sampler_member(struct gallivm_state *gallivm,
 
    LLVMValueRef ptr;
    if (gallivm->sampler_descriptor) {
-      LLVMValueRef sampler_offset = lp_build_const_int64(gallivm, offsetof(union lp_descriptor, sampler));
+      LLVMValueRef sampler_offset = lp_build_const_int64(gallivm, offsetof(struct lp_descriptor, sampler));
       LLVMValueRef sampler_ptr = LLVMBuildAdd(builder, gallivm->sampler_descriptor, sampler_offset, "");
 
       LLVMTypeRef sampler_ptr_type = LLVMStructGetTypeAtIndex(resources_type, LP_JIT_RES_SAMPLERS);
@@ -569,7 +569,7 @@ lp_build_llvm_image_member(struct gallivm_state *gallivm,
 
    LLVMValueRef ptr;
    if (gallivm->texture_descriptor) {
-      LLVMValueRef image_offset = lp_build_const_int64(gallivm, offsetof(union lp_descriptor, image));
+      LLVMValueRef image_offset = lp_build_const_int64(gallivm, offsetof(struct lp_descriptor, image));
       LLVMValueRef image_ptr = LLVMBuildAdd(builder, gallivm->texture_descriptor, image_offset, "");
 
       LLVMTypeRef image_ptr_type = LLVMStructGetTypeAtIndex(resources_type, LP_JIT_RES_IMAGES);

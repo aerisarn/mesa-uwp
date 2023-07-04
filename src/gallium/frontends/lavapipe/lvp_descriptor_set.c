@@ -73,7 +73,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
 
    size_t size = sizeof(struct lvp_descriptor_set_layout) +
                  num_bindings * sizeof(set_layout->binding[0]) +
-                 immutable_sampler_count * sizeof(union lp_descriptor*);
+                 immutable_sampler_count * sizeof(struct lp_descriptor*);
 
    set_layout = vk_descriptor_set_layout_zalloc(&device->vk, size);
    if (!set_layout)
@@ -81,8 +81,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
 
    set_layout->immutable_sampler_count = immutable_sampler_count;
    /* We just allocate all the samplers at the end of the struct */
-   union lp_descriptor **samplers =
-      (union lp_descriptor **)&set_layout->binding[num_bindings];
+   struct lp_descriptor **samplers =
+      (struct lp_descriptor **)&set_layout->binding[num_bindings];
 
    set_layout->binding_count = num_bindings;
    set_layout->shader_stages = 0;
@@ -171,7 +171,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    }
 
    for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++)
-      set_layout->binding[i].uniform_block_offset += set_layout->size * sizeof(union lp_descriptor);
+      set_layout->binding[i].uniform_block_offset += set_layout->size * sizeof(struct lp_descriptor);
 
    free(bindings);
 
@@ -316,7 +316,7 @@ lvp_descriptor_set_create(struct lvp_device *device,
    set->layout = layout;
    vk_descriptor_set_layout_ref(&layout->vk);
 
-   uint64_t bo_size = layout->size * sizeof(union lp_descriptor);
+   uint64_t bo_size = layout->size * sizeof(struct lp_descriptor);
 
    for (unsigned i = 0; i < layout->binding_count; i++)
       bo_size += layout->binding[i].uniform_block_size;
@@ -346,7 +346,7 @@ lvp_descriptor_set_create(struct lvp_device *device,
       if (!bind_layout->immutable_samplers)
          continue;
    
-      union lp_descriptor *desc = set->map;
+      struct lp_descriptor *desc = set->map;
       desc += bind_layout->descriptor_index;
 
       for (uint32_t sampler_index = 0; sampler_index < bind_layout->array_size; sampler_index++) {
@@ -444,7 +444,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
          continue;
       }
 
-      union lp_descriptor *desc = set->map;
+      struct lp_descriptor *desc = set->map;
       desc += bind_layout->descriptor_index + write->dstArrayElement;
 
       switch (write->descriptorType) {
@@ -464,7 +464,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
                             write->pImageInfo[j].imageView);
             if (iview) {
                lp_jit_texture_from_pipe(&desc[j].texture, iview->sv);
-               desc[j].sample_functions = iview->texture_handle->functions;
+               desc[j].functions = iview->texture_handle->functions;
 
                if (!bind_layout->immutable_samplers) {
                   LVP_FROM_HANDLE(lvp_sampler, sampler,
@@ -474,7 +474,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
                   desc[j].sampler_index = sampler->desc.sampler_index;
                }
             } else {
-               desc[j].sample_functions = device->null_texture_handle->functions;
+               desc[j].functions = device->null_texture_handle->functions;
                desc[j].sampler_index = 0;
             }
          }
@@ -487,9 +487,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
 
             if (iview) {
                lp_jit_texture_from_pipe(&desc[j].texture, iview->sv);
-               desc[j].sample_functions = iview->texture_handle->functions;
+               desc[j].functions = iview->texture_handle->functions;
             } else {
-               desc[j].sample_functions = device->null_texture_handle->functions;
+               desc[j].functions = device->null_texture_handle->functions;
                desc[j].sampler_index = 0;
             }
          }
@@ -502,9 +502,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
 
             if (iview) {
                lp_jit_image_from_pipe(&desc[j].image, &iview->iv);
-               desc[j].image_functions = iview->image_handle->functions;
+               desc[j].functions = iview->image_handle->functions;
             } else {
-               desc[j].image_functions = device->null_image_handle->functions;
+               desc[j].functions = device->null_image_handle->functions;
             }
          }
          break;
@@ -516,9 +516,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
 
             if (bview) {
                lp_jit_texture_from_pipe(&desc[j].texture, bview->sv);
-               desc[j].sample_functions = bview->texture_handle->functions;
+               desc[j].functions = bview->texture_handle->functions;
             } else {
-               desc[j].sample_functions = device->null_texture_handle->functions;
+               desc[j].functions = device->null_texture_handle->functions;
                desc[j].sampler_index = 0;
             }
          }
@@ -531,9 +531,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
 
             if (bview) {
                lp_jit_image_from_pipe(&desc[j].image, &bview->iv);
-               desc[j].image_functions = bview->image_handle->functions;
+               desc[j].functions = bview->image_handle->functions;
             } else {
-               desc[j].image_functions = device->null_image_handle->functions;
+               desc[j].functions = device->null_image_handle->functions;
             }
          }
          break;
@@ -594,12 +594,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
 
       const struct lvp_descriptor_set_binding_layout *src_layout =
          &src->layout->binding[copy->srcBinding];
-      union lp_descriptor *src_desc = src->map;
+      struct lp_descriptor *src_desc = src->map;
       src_desc += src_layout->descriptor_index;
 
       const struct lvp_descriptor_set_binding_layout *dst_layout =
          &dst->layout->binding[copy->dstBinding];
-      union lp_descriptor *dst_desc = dst->map;
+      struct lp_descriptor *dst_desc = dst->map;
       dst_desc += dst_layout->descriptor_index;
 
       if (src_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
@@ -789,7 +789,7 @@ lvp_descriptor_set_update_with_template(VkDevice _device, VkDescriptorSet descri
          continue;
       }
 
-      union lp_descriptor *desc = set->map;
+      struct lp_descriptor *desc = set->map;
       desc += bind_layout->descriptor_index;
 
       for (j = 0; j < entry->descriptorCount; ++j) {
@@ -809,7 +809,7 @@ lvp_descriptor_set_update_with_template(VkDevice _device, VkDescriptorSet descri
 
             if (iview) {
                lp_jit_texture_from_pipe(&desc[idx].texture, iview->sv);
-               desc[idx].sample_functions = iview->texture_handle->functions;
+               desc[idx].functions = iview->texture_handle->functions;
 
                if (!bind_layout->immutable_samplers) {
                   LVP_FROM_HANDLE(lvp_sampler, sampler, info->sampler);
@@ -818,7 +818,7 @@ lvp_descriptor_set_update_with_template(VkDevice _device, VkDescriptorSet descri
                   desc[idx].sampler_index = sampler->desc.sampler_index;
                }
             } else {
-               desc[j].sample_functions = device->null_texture_handle->functions;
+               desc[j].functions = device->null_texture_handle->functions;
                desc[j].sampler_index = 0;
             }
             break;
@@ -829,9 +829,9 @@ lvp_descriptor_set_update_with_template(VkDevice _device, VkDescriptorSet descri
 
             if (iview) {
                lp_jit_texture_from_pipe(&desc[idx].texture, iview->sv);
-               desc[idx].sample_functions = iview->texture_handle->functions;
+               desc[idx].functions = iview->texture_handle->functions;
             } else {
-               desc[j].sample_functions = device->null_texture_handle->functions;
+               desc[j].functions = device->null_texture_handle->functions;
                desc[j].sampler_index = 0;
             }
             break;
@@ -843,9 +843,9 @@ lvp_descriptor_set_update_with_template(VkDevice _device, VkDescriptorSet descri
 
             if (iview) {
                lp_jit_image_from_pipe(&desc[idx].image, &iview->iv);
-               desc[idx].image_functions = iview->image_handle->functions;
+               desc[idx].functions = iview->image_handle->functions;
             } else {
-               desc[idx].image_functions = device->null_image_handle->functions;
+               desc[idx].functions = device->null_image_handle->functions;
             }
             break;
          }
@@ -855,9 +855,9 @@ lvp_descriptor_set_update_with_template(VkDevice _device, VkDescriptorSet descri
 
             if (bview) {
                lp_jit_texture_from_pipe(&desc[idx].texture, bview->sv);
-               desc[idx].sample_functions = bview->texture_handle->functions;
+               desc[idx].functions = bview->texture_handle->functions;
             } else {
-               desc[j].sample_functions = device->null_texture_handle->functions;
+               desc[j].functions = device->null_texture_handle->functions;
                desc[j].sampler_index = 0;
             }
             break;
@@ -868,9 +868,9 @@ lvp_descriptor_set_update_with_template(VkDevice _device, VkDescriptorSet descri
 
             if (bview) {
                lp_jit_image_from_pipe(&desc[idx].image, &bview->iv);
-               desc[idx].image_functions = bview->image_handle->functions;
+               desc[idx].functions = bview->image_handle->functions;
             } else {
-               desc[idx].image_functions = device->null_image_handle->functions;
+               desc[idx].functions = device->null_image_handle->functions;
             }
             break;
          }
@@ -945,7 +945,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorSetLayoutSizeEXT(
 {
    LVP_FROM_HANDLE(lvp_descriptor_set_layout, layout, _layout);
 
-   *pSize = layout->size * sizeof(union lp_descriptor);
+   *pSize = layout->size * sizeof(struct lp_descriptor);
 
    for (unsigned i = 0; i < layout->binding_count; i++)
       *pSize += layout->binding[i].uniform_block_size;
@@ -964,7 +964,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorSetLayoutBindingOffsetEXT(
    if (bind_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
       *pOffset = bind_layout->uniform_block_offset;
    else
-      *pOffset = bind_layout->descriptor_index * sizeof(union lp_descriptor);
+      *pOffset = bind_layout->descriptor_index * sizeof(struct lp_descriptor);
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
@@ -975,7 +975,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
 
-   union lp_descriptor *desc = pDescriptor;
+   struct lp_descriptor *desc = pDescriptor;
 
    struct pipe_sampler_state sampler = {
       .seamless_cube_map = 1,
@@ -1005,7 +1005,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
          LVP_FROM_HANDLE(lvp_image_view, iview, info->imageView);
 
          lp_jit_texture_from_pipe(&desc->texture, iview->sv);
-         desc->sample_functions = iview->texture_handle->functions;
+         desc->functions = iview->texture_handle->functions;
 
          if (info->sampler) {
             LVP_FROM_HANDLE(lvp_sampler, sampler, info->sampler);
@@ -1016,7 +1016,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
             desc->sampler_index = 0;
          }
       } else {
-         desc->sample_functions = device->null_texture_handle->functions;
+         desc->functions = device->null_texture_handle->functions;
          desc->sampler_index = 0;
       }
 
@@ -1027,9 +1027,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
       if (pCreateInfo->data.pSampledImage && pCreateInfo->data.pSampledImage->imageView) {
          LVP_FROM_HANDLE(lvp_image_view, iview, pCreateInfo->data.pSampledImage->imageView);
          lp_jit_texture_from_pipe(&desc->texture, iview->sv);
-         desc->sample_functions = iview->texture_handle->functions;
+         desc->functions = iview->texture_handle->functions;
       } else {
-         desc->sample_functions = device->null_texture_handle->functions;
+         desc->functions = device->null_texture_handle->functions;
          desc->sampler_index = 0;
       }
       break;
@@ -1041,9 +1041,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
       if (pCreateInfo->data.pStorageImage && pCreateInfo->data.pStorageImage->imageView) {
          LVP_FROM_HANDLE(lvp_image_view, iview, pCreateInfo->data.pStorageImage->imageView);
          lp_jit_image_from_pipe(&desc->image, &iview->iv);
-         desc->image_functions = iview->image_handle->functions;
+         desc->functions = iview->image_handle->functions;
       } else {
-         desc->image_functions = device->null_image_handle->functions;
+         desc->functions = device->null_image_handle->functions;
       }
       break;
    }
@@ -1052,9 +1052,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
       if (bda && bda->address) {
          enum pipe_format pformat = vk_format_to_pipe_format(bda->format);
          lp_jit_texture_buffer_from_bda(&desc->texture, (void*)(uintptr_t)bda->address, bda->range, pformat);
-         desc->sample_functions = get_texture_handle_bda(device, bda, pformat).functions;
+         desc->functions = get_texture_handle_bda(device, bda, pformat).functions;
       } else {
-         desc->sample_functions = device->null_texture_handle->functions;
+         desc->functions = device->null_texture_handle->functions;
          desc->sampler_index = 0;
       }
       break;
@@ -1064,9 +1064,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorEXT(
       if (bda && bda->address) {
          enum pipe_format pformat = vk_format_to_pipe_format(bda->format);
          lp_jit_image_buffer_from_bda(&desc->image, (void *)(uintptr_t)bda->address, bda->range, pformat);
-         desc->image_functions = get_image_handle_bda(device, bda, pformat).functions;
+         desc->functions = get_image_handle_bda(device, bda, pformat).functions;
       } else {
-         desc->image_functions = device->null_image_handle->functions;
+         desc->functions = device->null_image_handle->functions;
       }
       break;
    }

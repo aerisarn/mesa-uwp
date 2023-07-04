@@ -226,18 +226,23 @@ struct lp_texture_handle {
    uint32_t sampler_index;
 };
 
-union lp_descriptor {
-   struct {
-      struct lp_jit_texture texture;
-      struct lp_jit_sampler sampler;
-      void *sample_functions;
-      uint32_t sampler_index;
+struct lp_descriptor {
+   union {
+      struct {
+         struct lp_jit_texture texture;
+         struct lp_jit_sampler sampler;
+      };
+      struct {
+         struct lp_jit_image image;
+      };
+      struct lp_jit_buffer buffer;
    };
-   struct {
-      struct lp_jit_image image;
-      void *image_functions;
-   };
-   struct lp_jit_buffer buffer;
+
+   /* Store sample/image functions in the same location since some d3d12 games
+    * rely on mismatched descriptor types with null descriptors.
+    */
+   uint32_t sampler_index;
+   void *functions;
 };
 
 #define LP_MAX_TEX_FUNC_ARGS 32
