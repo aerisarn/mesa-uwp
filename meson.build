@@ -2216,7 +2216,7 @@ if with_any_vk
     vulkan_summary += {'Layers': get_option('vulkan-layers')}
   endif
   vulkan_summary += {'Video codecs': _codecs.length() != 0 ? _codecs : false}
-  vulkan_summary += {'Ray tracing': with_intel_vk_rt ? 'intel' : false}
+  vulkan_summary += {'Intel Ray tracing': with_intel_vk_rt}
 endif
 summary(vulkan_summary, section: 'Vulkan', bool_yn: true, list_sep: ' ')
 
