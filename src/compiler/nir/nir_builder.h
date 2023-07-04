@@ -48,13 +48,14 @@ typedef struct nir_builder {
    nir_function_impl *impl;
 } nir_builder;
 
-void nir_builder_init(nir_builder *build, nir_function_impl *impl);
-
 static inline nir_builder
 nir_builder_create(nir_function_impl *impl)
 {
    nir_builder b;
-   nir_builder_init(&b, impl);
+   memset(&b, 0, sizeof(b));
+   b.exact = false;
+   b.impl = impl;
+   b.shader = impl->function->shader;
    return b;
 }
 
@@ -64,8 +65,7 @@ nir_builder_at(nir_cursor cursor)
 {
    nir_cf_node *current_block = &nir_cursor_current_block(cursor)->cf_node;
 
-   nir_builder b;
-   nir_builder_init(&b, nir_cf_node_get_function(current_block));
+   nir_builder b = nir_builder_create(nir_cf_node_get_function(current_block));
    b.cursor = cursor;
    return b;
 }
