@@ -172,7 +172,7 @@ anv_GetPhysicalDeviceVideoCapabilitiesKHR(VkPhysicalDevice physicalDevice,
       /* Skylake only supports the main profile */
       if (h265_profile->stdProfileIdc != STD_VIDEO_H265_PROFILE_IDC_MAIN &&
           h265_profile->stdProfileIdc != STD_VIDEO_H265_PROFILE_IDC_MAIN_STILL_PICTURE &&
-          pdevice->info.ver <= 9)
+          pdevice->info.platform <= INTEL_PLATFORM_SKL)
          return VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR;
 
       /* Gfx10 and under don't support the range extension profile */
