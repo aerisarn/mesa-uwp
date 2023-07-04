@@ -2266,6 +2266,9 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
                .allow_fp16 = sel->screen->info.gfx_level >= GFX9,
             });
 
+   NIR_PASS(progress2, nir, ac_nir_lower_intrinsics_to_args, sel->screen->info.gfx_level,
+            si_select_hw_stage(nir->info.stage, key, sel->screen->info.gfx_level),
+            &args->ac);
    NIR_PASS(progress2, nir, si_nir_lower_abi, shader, args);
 
    if (progress2 || opt_offsets)
@@ -2407,6 +2410,7 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
    struct si_shader_args args;
    si_init_shader_args(shader, &args);
 
+   NIR_PASS_V(nir, ac_nir_lower_intrinsics_to_args, sscreen->info.gfx_level, AC_HW_VERTEX_SHADER, &args.ac);
    NIR_PASS_V(nir, si_nir_lower_abi, shader, &args);
 
    si_nir_opts(gs_selector->screen, nir, false);
