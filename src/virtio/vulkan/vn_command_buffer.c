@@ -701,6 +701,9 @@ vn_DestroyCommandPool(VkDevice device,
       vn_cs_encoder_fini(&cmd->cs);
       vn_object_base_fini(&cmd->base);
 
+      if (cmd->builder.tmp.data)
+         vk_free(&cmd->allocator, cmd->builder.tmp.data);
+
       list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
                                &cmd->query_batches, head) {
          list_del(&batch->head);
