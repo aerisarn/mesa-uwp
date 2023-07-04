@@ -828,7 +828,7 @@ iris_slab_alloc(void *priv,
       bo->bufmgr = bufmgr;
       bo->hash = _mesa_hash_pointer(bo);
       bo->gem_handle = 0;
-      bo->address = slab->bo->address + i * entry_size;
+      bo->address = intel_canonical_address(slab->bo->address + i * entry_size);
       bo->aux_map_address = 0;
       bo->index = -1;
       bo->refcount = 0;

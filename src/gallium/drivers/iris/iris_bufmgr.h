@@ -190,7 +190,7 @@ struct iris_bo {
    uint32_t gem_handle;
 
    /**
-    * Virtual address of the buffer inside the PPGTT (Per-Process Graphics
+    * Canonical virtual address of the buffer inside the PPGTT (Per-Process Graphics
     * Translation Table).
     *
     * Although each hardware context has its own VMA, we assign BO's to the
