@@ -168,7 +168,7 @@ struct v3dv_physical_device {
    const struct v3d_compiler *compiler;
    uint32_t next_program_id;
 
-   uint64_t heap_used;
+   alignas(8) uint64_t heap_used;
 
    /* This array holds all our 'struct v3dv_bo' allocations. We use this
     * so we can add a refcount to our BOs and check if a particular BO
