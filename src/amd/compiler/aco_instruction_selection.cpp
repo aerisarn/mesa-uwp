@@ -8233,36 +8233,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       }
       break;
    }
-   case nir_intrinsic_load_subgroup_id: {
-      if (ctx->stage.hw == AC_HW_COMPUTE_SHADER) {
-         const unsigned bfe_const =
-            ctx->program->gfx_level >= GFX10_3 ? (0x14u | 0x5u << 16) : (0x6u | (0x6u << 16));
-         bld.sop2(aco_opcode::s_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-                  bld.def(s1, scc), get_arg(ctx, ctx->args->tg_size), Operand::c32(bfe_const));
-      } else if (ctx->stage.hw == AC_HW_NEXT_GEN_GEOMETRY_SHADER) {
-         /* Get the id of the current wave within the threadgroup (workgroup) */
-         bld.sop2(aco_opcode::s_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-                  bld.def(s1, scc), get_arg(ctx, ctx->args->merged_wave_info),
-                  Operand::c32(24u | (4u << 16)));
-      } else {
-         bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), Operand::zero());
-      }
-      break;
-   }
    case nir_intrinsic_load_subgroup_invocation: {
       emit_mbcnt(ctx, get_ssa_temp(ctx, &instr->dest.ssa));
-      break;
-   }
-   case nir_intrinsic_load_num_subgroups: {
-      if (ctx->stage.hw == AC_HW_COMPUTE_SHADER)
-         bld.sop2(aco_opcode::s_and_b32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-                  bld.def(s1, scc), Operand::c32(0x3fu), get_arg(ctx, ctx->args->tg_size));
-      else if (ctx->stage.hw == AC_HW_NEXT_GEN_GEOMETRY_SHADER)
-         bld.sop2(aco_opcode::s_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-                  bld.def(s1, scc), get_arg(ctx, ctx->args->merged_wave_info),
-                  Operand::c32(28u | (4u << 16)));
-      else
-         bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), Operand::c32(0x1u));
       break;
    }
    case nir_intrinsic_ballot: {
