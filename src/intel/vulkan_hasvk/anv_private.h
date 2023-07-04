@@ -536,7 +536,7 @@ union anv_free_list {
    /* Make sure it's aligned to 64 bits. This will make atomic operations
     * faster on 32 bit platforms.
     */
-   uint64_t u64 __attribute__ ((aligned (8)));
+   alignas(8) uint64_t u64;
 };
 
 #define ANV_FREE_LIST_EMPTY ((union anv_free_list) { { UINT32_MAX, 0 } })
@@ -550,7 +550,7 @@ struct anv_block_state {
       /* Make sure it's aligned to 64 bits. This will make atomic operations
        * faster on 32 bit platforms.
        */
-      uint64_t u64 __attribute__ ((aligned (8)));
+      alignas(8) uint64_t u64;
    };
 };
 
@@ -836,7 +836,7 @@ struct anv_memory_heap {
     *
     * Align it to 64 bits to make atomic operations faster on 32 bit platforms.
     */
-   VkDeviceSize      used __attribute__ ((aligned (8)));
+   alignas(8) VkDeviceSize used;
 };
 
 struct anv_memregion {

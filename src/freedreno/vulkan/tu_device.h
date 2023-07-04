@@ -58,7 +58,7 @@ struct tu_memory_heap {
     *
     * Align it to 64 bits to make atomic operations faster on 32 bit platforms.
     */
-   VkDeviceSize      used __attribute__ ((aligned (8)));
+   alignas(8) VkDeviceSize used;
 };
 
 struct tu_physical_device
