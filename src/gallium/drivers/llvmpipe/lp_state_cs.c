@@ -692,10 +692,9 @@ generate_compute(struct llvmpipe_context *lp,
       LLVMValueRef subgroup_cmp = LLVMBuildICmp(gallivm->builder, LLVMIntEQ, num_subgroups, lp_build_const_int32(gallivm, 0), "");
       system_values.num_subgroups = LLVMBuildSelect(builder, subgroup_cmp, lp_build_const_int32(gallivm, 1), num_subgroups, "");
 
-      LLVMValueRef bsize[3] = { block_x_size_arg, block_y_size_arg, block_z_size_arg };
-      system_values.block_size = LLVMGetUndef(LLVMVectorType(int32_type, 3));
-      for (i = 0; i < 3; i++)
-         system_values.block_size = LLVMBuildInsertElement(builder, system_values.block_size, bsize[i], lp_build_const_int32(gallivm, i), "");
+      system_values.block_size[0] = block_x_size_arg;
+      system_values.block_size[1] = block_y_size_arg;
+      system_values.block_size[2] = block_z_size_arg;
 
       LLVMValueRef last_x_loop = LLVMBuildICmp(gallivm->builder, LLVMIntEQ, x_size_arg, LLVMBuildSub(gallivm->builder, num_x_loop, lp_build_const_int32(gallivm, 1), ""), "");
       LLVMValueRef use_partial_mask = LLVMBuildAnd(gallivm->builder, last_x_loop, has_partials, "");
