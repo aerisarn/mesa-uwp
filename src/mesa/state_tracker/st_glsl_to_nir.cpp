@@ -486,10 +486,54 @@ st_link_nir(struct gl_context *ctx,
             struct gl_shader_program *shader_program)
 {
    struct st_context *st = st_context(ctx);
+   struct pipe_screen *pscreen = st->screen;
    struct gl_linked_shader *linked_shader[MESA_SHADER_STAGES];
    unsigned num_shaders = 0;
 
+   /* Return early if we are loading the shader from on-disk cache */
+   if (st_load_nir_from_disk_cache(ctx, shader_program)) {
+      return GL_TRUE;
+   }
+
    MESA_TRACE_FUNC();
+
+   assert(shader_program->data->LinkStatus);
+
+   /* Skip the GLSL steps when using SPIR-V. */
+   if (!shader_program->data->spirv) {
+      for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+         if (shader_program->_LinkedShaders[i] == NULL)
+            continue;
+
+         struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
+         exec_list *ir = shader->ir;
+         gl_shader_stage stage = shader->Stage;
+         const struct gl_shader_compiler_options *options =
+               &ctx->Const.ShaderCompilerOptions[stage];
+
+         enum pipe_shader_type ptarget = pipe_shader_type_from_mesa(stage);
+         bool have_dround = pscreen->get_shader_param(pscreen, ptarget,
+                                                      PIPE_SHADER_CAP_DROUND_SUPPORTED);
+
+         if (!pscreen->get_param(pscreen, PIPE_CAP_INT64_DIVMOD))
+            lower_64bit_integer_instructions(ir, DIV64 | MOD64);
+
+         lower_packing_builtins(ir, ctx->Extensions.ARB_shading_language_packing,
+                                ctx->Extensions.ARB_gpu_shader5,
+                                ctx->st->has_half_float_packing);
+         do_mat_op_to_vec(ir);
+
+         lower_instructions(ir, have_dround,
+                            ctx->Extensions.ARB_gpu_shader5);
+
+         do_vec_index_to_cond_assign(ir);
+         if (options->MaxIfDepth == 0) {
+            lower_discard(ir);
+         }
+
+         validate_ir_tree(ir);
+      }
+   }
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (shader_program->_LinkedShaders[i])

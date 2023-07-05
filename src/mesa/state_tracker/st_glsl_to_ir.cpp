@@ -38,65 +38,6 @@
 #include "main/shaderapi.h"
 #include "main/shaderobj.h"
 
-static GLboolean
-link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
-{
-   GLboolean ret;
-   struct st_context *sctx = st_context(ctx);
-   struct pipe_screen *pscreen = sctx->screen;
-
-   /* Return early if we are loading the shader from on-disk cache */
-   if (st_load_nir_from_disk_cache(ctx, prog)) {
-      return GL_TRUE;
-   }
-
-   MESA_TRACE_FUNC();
-
-   assert(prog->data->LinkStatus);
-
-   /* Skip the GLSL steps when using SPIR-V. */
-   if (prog->data->spirv) {
-      return st_link_nir(ctx, prog);
-   }
-
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (prog->_LinkedShaders[i] == NULL)
-         continue;
-
-      struct gl_linked_shader *shader = prog->_LinkedShaders[i];
-      exec_list *ir = shader->ir;
-      gl_shader_stage stage = shader->Stage;
-      const struct gl_shader_compiler_options *options =
-            &ctx->Const.ShaderCompilerOptions[stage];
-
-      enum pipe_shader_type ptarget = pipe_shader_type_from_mesa(stage);
-      bool have_dround = pscreen->get_shader_param(pscreen, ptarget,
-                                                   PIPE_SHADER_CAP_DROUND_SUPPORTED);
-
-      if (!pscreen->get_param(pscreen, PIPE_CAP_INT64_DIVMOD))
-         lower_64bit_integer_instructions(ir, DIV64 | MOD64);
-
-      lower_packing_builtins(ir, ctx->Extensions.ARB_shading_language_packing,
-                             ctx->Extensions.ARB_gpu_shader5,
-                             ctx->st->has_half_float_packing);
-      do_mat_op_to_vec(ir);
-
-      lower_instructions(ir, have_dround,
-                         ctx->Extensions.ARB_gpu_shader5);
-
-      do_vec_index_to_cond_assign(ir);
-      if (options->MaxIfDepth == 0) {
-         lower_discard(ir);
-      }
-
-      validate_ir_tree(ir);
-   }
-
-   ret = st_link_nir(ctx, prog);
-
-   return ret;
-}
-
 extern "C" {
 
 /**
@@ -109,7 +50,7 @@ st_link_glsl_to_nir(struct gl_context *ctx, struct gl_shader_program *prog)
 
    MESA_TRACE_FUNC();
 
-   GLboolean ret = link_shader(ctx, prog);
+   GLboolean ret = st_link_nir(ctx, prog);
     
    if (pctx->link_shader) {
       void *driver_handles[PIPE_SHADER_TYPES];
