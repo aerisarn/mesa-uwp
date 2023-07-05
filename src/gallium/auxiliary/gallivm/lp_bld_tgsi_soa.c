@@ -1538,7 +1538,7 @@ emit_fetch_system_value(
       break;
 
    case TGSI_SEMANTIC_THREAD_ID:
-      res = LLVMBuildExtractValue(gallivm->builder, bld->system_values.thread_id, swizzle, "");
+      res = bld->system_values.thread_id[swizzle];
       atype = TGSI_TYPE_UNSIGNED;
       break;
 

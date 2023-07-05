@@ -644,7 +644,6 @@ generate_compute(struct llvmpipe_context *lp,
       alloced_ptr = LLVMBuildGEP2(gallivm->builder, mem_ptr_type, alloced_ptr, &coro_entry, 1, "");
       LLVMValueRef coro_hdl = lp_build_coro_begin(gallivm, coro_id, alloced_ptr);
       LLVMValueRef has_partials = LLVMBuildICmp(gallivm->builder, LLVMIntNE, partials, lp_build_const_int32(gallivm, 0), "");
-      LLVMValueRef tid_vals[3];
       LLVMValueRef tids_x[LP_MAX_VECTOR_LENGTH], tids_y[LP_MAX_VECTOR_LENGTH], tids_z[LP_MAX_VECTOR_LENGTH];
       LLVMValueRef base_val = LLVMBuildMul(gallivm->builder, x_size_arg, vec_length, "");
       for (i = 0; i < cs_type.length; i++) {
@@ -652,12 +651,9 @@ generate_compute(struct llvmpipe_context *lp,
          tids_y[i] = y_size_arg;
          tids_z[i] = z_size_arg;
       }
-      tid_vals[0] = lp_build_gather_values(gallivm, tids_x, cs_type.length);
-      tid_vals[1] = lp_build_gather_values(gallivm, tids_y, cs_type.length);
-      tid_vals[2] = lp_build_gather_values(gallivm, tids_z, cs_type.length);
-      system_values.thread_id = LLVMGetUndef(LLVMArrayType(LLVMVectorType(int32_type, cs_type.length), 3));
-      for (i = 0; i < 3; i++)
-         system_values.thread_id = LLVMBuildInsertValue(builder, system_values.thread_id, tid_vals[i], i, "");
+      system_values.thread_id[0] = lp_build_gather_values(gallivm, tids_x, cs_type.length);
+      system_values.thread_id[1] = lp_build_gather_values(gallivm, tids_y, cs_type.length);
+      system_values.thread_id[2] = lp_build_gather_values(gallivm, tids_z, cs_type.length);
 
       LLVMValueRef gtids[3] = { grid_x_arg, grid_y_arg, grid_z_arg };
       system_values.block_id = LLVMGetUndef(LLVMVectorType(int32_type, 3));
