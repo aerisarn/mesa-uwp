@@ -481,14 +481,14 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
             ac_add_return(&args->ac, AC_ARG_VGPR);
 
          /* VS outputs passed via VGPRs to TCS. */
-         if (shader->key.ge.opt.same_patch_vertices) {
+         if (shader->key.ge.opt.same_patch_vertices && !shader->use_aco) {
             unsigned num_outputs = util_last_bit64(shader->selector->info.outputs_written);
             for (i = 0; i < num_outputs * 4; i++)
                ac_add_return(&args->ac, AC_ARG_VGPR);
          }
       } else {
          /* TCS inputs are passed via VGPRs from VS. */
-         if (shader->key.ge.opt.same_patch_vertices) {
+         if (shader->key.ge.opt.same_patch_vertices && !shader->use_aco) {
             unsigned num_inputs = util_last_bit64(shader->previous_stage_sel->info.outputs_written);
             for (i = 0; i < num_inputs * 4; i++)
                ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
