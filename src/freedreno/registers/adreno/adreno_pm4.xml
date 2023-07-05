@@ -6,7 +6,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 <enum name="vgt_event_type" varset="chip">
 	<value name="VS_DEALLOC" value="0"/>
-	<value name="PS_DEALLOC" value="1"/>
+	<value name="PS_DEALLOC" value="1" variants="A2XX-A6XX"/>
 	<value name="VS_DONE_TS" value="2"/>
 	<value name="PS_DONE_TS" value="3"/>
 	<doc>
@@ -111,7 +111,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 	<value name="LRZ_FLUSH" value="38" variants="A5XX-"/>
 	<value name="BLIT_OP_FILL_2D" value="39" variants="A5XX-"/>
-	<value name="BLIT_OP_COPY_2D" value="40" variants="A5XX-"/>
+	<value name="BLIT_OP_COPY_2D" value="40" variants="A5XX-A6XX"/>
+	<value name="UNK_40" value="40" variants="A7XX"/>
 	<value name="BLIT_OP_SCALE_2D" value="42" variants="A5XX-"/>
 	<value name="CONTEXT_DONE_2D" value="43" variants="A5XX-"/>
 	<value name="UNK_2C" value="44" variants="A5XX-"/>
@@ -126,6 +127,9 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="LABEL" value="63" variants="A6XX-"/>
 
 	<!-- note, some of these are the same as a6xx, just named differently -->
+
+	<doc> Doesn't seem to do anything </doc>
+	<value name="DUMMY_EVENT" value="1" variants="A7XX"/>
 	<value name="CCU_INVALIDATE_DEPTH" value="24" variants="A7XX"/>
 	<value name="CCU_INVALIDATE_COLOR" value="25" variants="A7XX"/>
 	<value name="CCU_RESOLVE_CLEAN" value="26" variants="A7XX"/>
