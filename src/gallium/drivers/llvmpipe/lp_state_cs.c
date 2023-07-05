@@ -655,10 +655,9 @@ generate_compute(struct llvmpipe_context *lp,
       system_values.thread_id[1] = lp_build_gather_values(gallivm, tids_y, cs_type.length);
       system_values.thread_id[2] = lp_build_gather_values(gallivm, tids_z, cs_type.length);
 
-      LLVMValueRef gtids[3] = { grid_x_arg, grid_y_arg, grid_z_arg };
-      system_values.block_id = LLVMGetUndef(LLVMVectorType(int32_type, 3));
-      for (i = 0; i < 3; i++)
-         system_values.block_id = LLVMBuildInsertElement(builder, system_values.block_id, gtids[i], lp_build_const_int32(gallivm, i), "");
+      system_values.block_id[0] = grid_x_arg;
+      system_values.block_id[1] = grid_y_arg;
+      system_values.block_id[2] = grid_z_arg;
 
       LLVMValueRef gstids[3] = { grid_size_x_arg, grid_size_y_arg, grid_size_z_arg };
       system_values.grid_size = LLVMGetUndef(LLVMVectorType(int32_type, 3));
