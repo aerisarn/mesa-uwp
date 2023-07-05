@@ -24,7 +24,6 @@ use std::convert::TryInto;
 use std::os::raw::c_void;
 use std::ptr;
 use std::slice;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 // ugh, we are not allowed to take refs, so...
@@ -809,9 +808,6 @@ impl Kernel {
             .map(|_| RefCell::new(None))
             .collect();
 
-        // increase ref
-        prog.kernel_count.fetch_add(1, Ordering::Relaxed);
-
         Arc::new(Self {
             base: CLObjectBase::new(),
             prog: prog,
@@ -1225,12 +1221,5 @@ impl Clone for Kernel {
             build: self.build.clone(),
             dev_state: self.dev_state.clone(),
         }
-    }
-}
-
-impl Drop for Kernel {
-    fn drop(&mut self) {
-        // decrease ref
-        self.prog.kernel_count.fetch_sub(1, Ordering::Relaxed);
     }
 }

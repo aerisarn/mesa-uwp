@@ -18,8 +18,6 @@ use std::ffi::CString;
 use std::mem::size_of;
 use std::ptr;
 use std::slice;
-use std::sync::atomic::AtomicU32;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
@@ -64,7 +62,6 @@ pub struct Program {
     pub context: Arc<Context>,
     pub devs: Vec<Arc<Device>>,
     pub src: ProgramSourceType,
-    pub kernel_count: AtomicU32,
     build: Mutex<ProgramBuild>,
 }
 
@@ -311,7 +308,6 @@ impl Program {
             context: context.clone(),
             devs: devs.to_vec(),
             src: ProgramSourceType::Src(src),
-            kernel_count: AtomicU32::new(0),
             build: Mutex::new(ProgramBuild {
                 builds: Self::create_default_builds(devs),
                 spec_constants: HashMap::new(),
@@ -392,7 +388,6 @@ impl Program {
             context: context,
             devs: devs,
             src: ProgramSourceType::Binary,
-            kernel_count: AtomicU32::new(0),
             build: Mutex::new(build),
         })
     }
@@ -404,7 +399,6 @@ impl Program {
             devs: context.devs.clone(),
             context: context,
             src: ProgramSourceType::Il(SPIRVBin::from_bin(spirv)),
-            kernel_count: AtomicU32::new(0),
             build: Mutex::new(ProgramBuild {
                 builds: builds,
                 spec_constants: HashMap::new(),
@@ -514,7 +508,10 @@ impl Program {
     }
 
     pub fn active_kernels(&self) -> bool {
-        self.kernel_count.load(Ordering::Relaxed) != 0
+        self.build_info()
+            .kernel_builds
+            .values()
+            .any(|b| Arc::strong_count(b) > 1)
     }
 
     pub fn build(&self, dev: &Arc<Device>, options: String) -> bool {
@@ -695,7 +692,6 @@ impl Program {
             context: context,
             devs: devs,
             src: ProgramSourceType::Linked,
-            kernel_count: AtomicU32::new(0),
             build: Mutex::new(build),
         })
     }
