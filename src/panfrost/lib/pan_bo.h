@@ -52,6 +52,10 @@
  * cached locally */
 #define PAN_BO_SHARED (1 << 4)
 
+/* BO might be exported at some point. PAN_BO_SHAREABLE does not imply
+ * PAN_BO_SHARED if the BO has not been exported yet */
+#define PAN_BO_SHAREABLE (1 << 5)
+
 /* GPU access flags */
 
 /* BO is either shared (can be accessed by more than one GPU batch) or private

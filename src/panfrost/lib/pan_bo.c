@@ -73,11 +73,13 @@ static struct panfrost_bo *
 panfrost_bo_alloc(struct panfrost_device *dev, size_t size, uint32_t flags,
                   const char *label)
 {
+   struct pan_kmod_vm *exclusive_vm =
+      !(flags & PAN_BO_SHAREABLE) ? dev->kmod.vm : NULL;
    struct pan_kmod_bo *kmod_bo;
    struct panfrost_bo *bo;
 
-   kmod_bo =
-      pan_kmod_bo_alloc(dev->kmod.dev, NULL, size, to_kmod_bo_flags(flags));
+   kmod_bo = pan_kmod_bo_alloc(dev->kmod.dev, exclusive_vm, size,
+                               to_kmod_bo_flags(flags));
    assert(kmod_bo);
 
    bo = pan_lookup_bo(dev, kmod_bo->handle);
