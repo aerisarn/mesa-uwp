@@ -1422,6 +1422,9 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       struct agx_tilebuffer_layout tib = agx_build_tilebuffer_layout(
          key->rt_formats, key->nr_cbufs, key->nr_samples);
 
+      if (dev->debug & AGX_DBG_SMALLTILE)
+         tib.tile_size = (struct agx_tile_size){16, 16};
+
       nir_lower_blend_options opts = {
          .scalar_blend_const = true,
          .logicop_enable = key->blend.logicop_enable,
@@ -2249,6 +2252,9 @@ agx_batch_init_state(struct agx_batch *batch)
    batch->tilebuffer_layout = agx_build_tilebuffer_layout(
       formats, batch->key.nr_cbufs,
       util_framebuffer_get_num_samples(&batch->key));
+
+   if (agx_device(batch->ctx->base.screen)->debug & AGX_DBG_SMALLTILE)
+      batch->tilebuffer_layout.tile_size = (struct agx_tile_size){16, 16};
 
    if (batch->key.zsbuf) {
       struct agx_resource *rsrc = agx_resource(batch->key.zsbuf->texture);
