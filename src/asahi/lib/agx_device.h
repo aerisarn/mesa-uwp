@@ -26,6 +26,7 @@ enum agx_dbg {
    AGX_DBG_RESOURCE = BITFIELD_BIT(10),
    AGX_DBG_BATCH = BITFIELD_BIT(11),
    AGX_DBG_NOWC = BITFIELD_BIT(12),
+   AGX_DBG_SYNCTVB = BITFIELD_BIT(13),
 };
 
 /* Dummy partial declarations, pending real UAPI */

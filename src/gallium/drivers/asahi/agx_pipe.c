@@ -64,6 +64,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"resource",  AGX_DBG_RESOURCE, "Log resource operations"},
    {"batch",     AGX_DBG_BATCH,    "Log batches"},
    {"nowc",      AGX_DBG_NOWC,     "Disable write-combining"},
+   {"synctvb",   AGX_DBG_SYNCTVB,  "Synchronous TVB growth"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
