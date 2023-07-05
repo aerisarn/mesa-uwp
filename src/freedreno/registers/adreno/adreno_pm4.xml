@@ -1726,10 +1726,38 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<value value="2" name="SECURE_SAVE_ADDR"/>
 		<value value="3" name="NON_PRIV_SAVE_ADDR"/>
 		<value value="4" name="COUNTER"/>
+
+		<!--
+			On a6xx the registers are set directly and CP_SET_BIN_DATA5_OFFSET reads them,
+			but that doesn't work with concurrent binning because BR will be reading from
+			a different set of streams than BV is writing, so on a7xx we have these
+			pseudo-regs instead, which do the right thing.
+
+			The corresponding VSC registers exist, and they're written by BV when it
+			encounters CP_SET_PSEUDO_REG. When BR later encounters the same CP_SET_PSEUDO_REG
+			it will only write some private scratch registers which are read by
+			CP_SET_BIN_DATA5_OFFSET.
+
+			If concurrent binning is disabled then BR also does binning so it will also
+			write the "real" registers in BR.
+		-->
+		<value value="8" name="DRAW_STRM_ADDRESS"/>
+		<value value="9" name="DRAW_STRM_SIZE_ADDRESS"/>
+		<value value="10" name="PRIM_STRM_ADDRESS"/>
+		<value value="11" name="UNK_STRM_ADDRESS"/>
+		<value value="12" name="UNK_STRM_SIZE_ADDRESS"/>
+
+		<value value="16" name="BINDLESS_BASE_0_ADDR"/>
+		<value value="17" name="BINDLESS_BASE_1_ADDR"/>
+		<value value="18" name="BINDLESS_BASE_2_ADDR"/>
+		<value value="19" name="BINDLESS_BASE_3_ADDR"/>
+		<value value="20" name="BINDLESS_BASE_4_ADDR"/>
+		<value value="21" name="BINDLESS_BASE_5_ADDR"/>
+		<value value="22" name="BINDLESS_BASE_6_ADDR"/>
 	</enum>
 	<array offset="0" stride="3" length="100">
 		<reg32 offset="0" name="0">
-			<bitfield name="PSEUDO_REG" low="0" high="2" type="pseudo_reg"/>
+			<bitfield name="PSEUDO_REG" low="0" high="10" type="pseudo_reg"/>
 		</reg32>
 		<reg32 offset="1" name="1">
 			<bitfield name="LO" low="0" high="31"/>
