@@ -430,40 +430,6 @@ pan_rt_init_format(const struct panfrost_device *dev,
    cfg->swizzle = panfrost_translate_swizzle_4(swizzle);
 }
 
-#if PAN_ARCH >= 9
-enum mali_afbc_compression_mode
-pan_afbc_compression_mode(enum pipe_format format)
-{
-   /* There's a special case for texturing the stencil part from a combined
-    * depth/stencil texture, handle it separately.
-    */
-   if (format == PIPE_FORMAT_X24S8_UINT)
-      return MALI_AFBC_COMPRESSION_MODE_X24S8;
-
-   /* Otherwise, map canonical formats to the hardware enum. This only
-    * needs to handle the subset of formats returned by
-    * panfrost_afbc_format.
-    */
-   /* clang-format off */
-   switch (panfrost_afbc_format(PAN_ARCH, format)) {
-   case PAN_AFBC_MODE_R8:          return MALI_AFBC_COMPRESSION_MODE_R8;
-   case PAN_AFBC_MODE_R8G8:        return MALI_AFBC_COMPRESSION_MODE_R8G8;
-   case PAN_AFBC_MODE_R5G6B5:      return MALI_AFBC_COMPRESSION_MODE_R5G6B5;
-   case PAN_AFBC_MODE_R4G4B4A4:    return MALI_AFBC_COMPRESSION_MODE_R4G4B4A4;
-   case PAN_AFBC_MODE_R5G5B5A1:    return MALI_AFBC_COMPRESSION_MODE_R5G5B5A1;
-   case PAN_AFBC_MODE_R8G8B8:      return MALI_AFBC_COMPRESSION_MODE_R8G8B8;
-   case PAN_AFBC_MODE_R8G8B8A8:    return MALI_AFBC_COMPRESSION_MODE_R8G8B8A8;
-   case PAN_AFBC_MODE_R10G10B10A2: return MALI_AFBC_COMPRESSION_MODE_R10G10B10A2;
-   case PAN_AFBC_MODE_R11G11B10:   return MALI_AFBC_COMPRESSION_MODE_R11G11B10;
-   case PAN_AFBC_MODE_S8:          return MALI_AFBC_COMPRESSION_MODE_S8;
-   case PAN_AFBC_MODE_INVALID:     unreachable("Invalid AFBC format");
-   }
-   /* clang-format on */
-
-   unreachable("all AFBC formats handled");
-}
-#endif
-
 static void
 pan_prepare_rt(const struct panfrost_device *dev, const struct pan_fb_info *fb,
                unsigned idx, unsigned cbuf_offset,
@@ -525,7 +491,7 @@ pan_prepare_rt(const struct panfrost_device *dev, const struct pan_fb_info *fb,
       cfg->afbc.body_offset = surf.afbc.body - surf.afbc.header;
       assert(surf.afbc.body >= surf.afbc.header);
 
-      cfg->afbc.compression_mode = pan_afbc_compression_mode(rt->format);
+      cfg->afbc.compression_mode = GENX(pan_afbc_compression_mode)(rt->format);
       cfg->afbc.row_stride = row_stride;
 #else
       const struct pan_image_slice_layout *slice = &image->layout.slices[level];
