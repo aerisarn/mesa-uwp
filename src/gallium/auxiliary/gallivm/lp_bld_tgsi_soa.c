@@ -1548,7 +1548,7 @@ emit_fetch_system_value(
       break;
 
    case TGSI_SEMANTIC_GRID_SIZE:
-      res = lp_build_extract_broadcast(gallivm, lp_type_int_vec(32, 96), bld_base->uint_bld.type, bld->system_values.grid_size, lp_build_const_int32(gallivm, swizzle));
+      res = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.grid_size[swizzle]);
       atype = TGSI_TYPE_UNSIGNED;
       break;
 
