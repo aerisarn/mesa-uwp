@@ -857,6 +857,11 @@ void radv_queue_finish(struct radv_queue *queue);
 
 enum radeon_ctx_priority radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoKHR *pObj);
 
+struct radv_shader_free_list {
+   uint8_t size_mask;
+   struct list_head free_lists[RADV_SHADER_ALLOC_NUM_FREE_LISTS];
+};
+
 struct radv_shader_dma_submission {
    struct list_head list;
 
@@ -999,8 +1004,7 @@ struct radv_device {
 
    struct list_head shader_arenas;
    unsigned shader_arena_shift;
-   uint8_t shader_free_list_mask;
-   struct list_head shader_free_lists[RADV_SHADER_ALLOC_NUM_FREE_LISTS];
+   struct radv_shader_free_list shader_free_list;
    struct list_head shader_block_obj_pool;
    mtx_t shader_arena_mutex;
 

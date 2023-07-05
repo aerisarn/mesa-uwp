@@ -917,16 +917,16 @@ remove_hole(struct radv_device *device, union radv_shader_arena_block *hole)
 {
    unsigned size_class = get_size_class(hole->size, false);
    list_del(&hole->freelist);
-   if (list_is_empty(&device->shader_free_lists[size_class]))
-      device->shader_free_list_mask &= ~(1u << size_class);
+   if (list_is_empty(&device->shader_free_list.free_lists[size_class]))
+      device->shader_free_list.size_mask &= ~(1u << size_class);
 }
 
 static void
 add_hole(struct radv_device *device, union radv_shader_arena_block *hole)
 {
    unsigned size_class = get_size_class(hole->size, false);
-   list_addtail(&hole->freelist, &device->shader_free_lists[size_class]);
-   device->shader_free_list_mask |= 1u << size_class;
+   list_addtail(&hole->freelist, &device->shader_free_list.free_lists[size_class]);
+   device->shader_free_list.size_mask |= 1u << size_class;
 }
 
 static union radv_shader_arena_block *
@@ -986,11 +986,12 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
     * at the first one available.
     */
    unsigned free_list_mask = BITFIELD_MASK(RADV_SHADER_ALLOC_NUM_FREE_LISTS);
-   unsigned size_class = ffs(device->shader_free_list_mask & (free_list_mask << get_size_class(size, true)));
+   unsigned size_class = ffs(device->shader_free_list.size_mask & (free_list_mask << get_size_class(size, true)));
    if (size_class) {
       size_class--;
 
-      list_for_each_entry (union radv_shader_arena_block, hole, &device->shader_free_lists[size_class], freelist) {
+      list_for_each_entry (union radv_shader_arena_block, hole, &device->shader_free_list.free_lists[size_class],
+                           freelist) {
          if (hole->size < size)
             continue;
 
@@ -1156,12 +1157,12 @@ radv_init_shader_arenas(struct radv_device *device)
 {
    mtx_init(&device->shader_arena_mutex, mtx_plain);
 
-   device->shader_free_list_mask = 0;
+   device->shader_free_list.size_mask = 0;
 
    list_inithead(&device->shader_arenas);
    list_inithead(&device->shader_block_obj_pool);
    for (unsigned i = 0; i < RADV_SHADER_ALLOC_NUM_FREE_LISTS; i++)
-      list_inithead(&device->shader_free_lists[i]);
+      list_inithead(&device->shader_free_list.free_lists[i]);
 }
 
 void
