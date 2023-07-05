@@ -1783,9 +1783,17 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		Will execute the CP_INDIRECT_BUFFER only if b0 in the register at
 		offset 0x0c10 is 1
 	</doc>
+	<enum name="source_type">
+		<value value="0" name="SOURCE_REG"/>
+		<!-- Don't confuse with scratch registers, this is a separate memory
+			 written into by CP_MEM_TO_SCRATCH_MEM. -->
+		<value value="1" name="SOURCE_SCRATCH_MEM" varset="chip" variants="A7XX-"/>
+	</enum>
 	<reg32 offset="0" name="0">
 		<!-- the register to test -->
-		<bitfield name="REG" low="0" high="17"/>
+		<bitfield name="REG" low="0" high="17" varset="source_type" variants="SOURCE_REG"/>
+		<bitfield name="SCRATCH_MEM_OFFSET" low="0" high="17" varset="source_type" variants="SOURCE_SCRATCH_MEM"/>
+		<bitfield name="SOURCE" pos="18" type="source_type" addvariant="yes"/>
 		<!-- the bit to test -->
 		<bitfield name="BIT" low="20" high="24" type="uint"/>
 		<!-- skip implied CP_WAIT_FOR_ME -->
