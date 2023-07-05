@@ -1339,6 +1339,11 @@ iris_init_render_context(struct iris_batch *batch)
    /* TODO: may need to set an offset for origin-UL framebuffers */
    iris_emit_cmd(batch, GENX(3DSTATE_POLY_STIPPLE_OFFSET), foo);
 
+#if GFX_VERx10 >= 125
+   iris_emit_cmd(batch, GENX(3DSTATE_MESH_CONTROL), foo);
+   iris_emit_cmd(batch, GENX(3DSTATE_TASK_CONTROL), foo);
+#endif
+
    iris_alloc_push_constants(batch);
 
 
