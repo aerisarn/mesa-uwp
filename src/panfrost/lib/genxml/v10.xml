@@ -602,8 +602,8 @@
   <struct name="CEU FINISH_FRAGMENT" size="2">
     <field name="Increment Fragment Completed" size="1" start="0" type="bool"/>
     <field name="Wait mask" size="16" start="16" type="hex"/>
-    <field name="First Heap Chunk" size="8" start="32" type="hex"/>
-    <field name="Last Heap Chunk" size="8" start="40" type="hex"/>
+    <field name="Last Heap Chunk" size="8" start="32" type="hex"/>
+    <field name="First Heap Chunk" size="8" start="40" type="hex"/>
     <field name="Scoreboard entry" size="4" start="48" type="hex"/>
     <field name="Opcode" size="8" start="56" type="CEU Opcode" default="FINISH_FRAGMENT"/>
   </struct>
