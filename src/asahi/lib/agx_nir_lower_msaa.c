@@ -8,8 +8,6 @@
 #include "nir.h"
 #include "nir_builder.h"
 
-#define ALL_SAMPLES (0xFF)
-
 static bool
 lower_wrapped(nir_builder *b, nir_instr *instr, void *data)
 {

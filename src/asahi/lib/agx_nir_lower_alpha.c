@@ -7,8 +7,6 @@
 #include "agx_tilebuffer.h"
 #include "nir_builder.h"
 
-#define ALL_SAMPLES (0xFF)
-
 /*
  * Lower alpha-to-coverage to sample_mask and some math. May run on either a
  * monolithic pixel shader or a fragment epilogue.
