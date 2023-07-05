@@ -584,6 +584,11 @@ init_render_queue_state(struct anv_queue *queue)
    }
 #endif
 
+#if GFX_VERx10 >= 125
+   anv_batch_emit(&batch, GENX(3DSTATE_MESH_CONTROL), zero);
+   anv_batch_emit(&batch, GENX(3DSTATE_TASK_CONTROL), zero);
+#endif
+
    anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
 
    assert(batch.next <= batch.end);
