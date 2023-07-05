@@ -517,18 +517,18 @@ static void *virgl_create_vertex_elements_state(struct pipe_context *ctx,
 
    for (int i = 0; i < num_elements; ++i) {
       if (elements[i].instance_divisor) {
-	 /* Virglrenderer doesn't deal with instance_divisor correctly if
-	  * there isn't a 1:1 relationship between elements and bindings.
-	  * So let's make sure there is, by duplicating bindings.
-	  */
-	 for (int j = 0; j < num_elements; ++j) {
+         /* Virglrenderer doesn't deal with instance_divisor correctly if
+         * there isn't a 1:1 relationship between elements and bindings.
+         * So let's make sure there is, by duplicating bindings.
+         */
+         for (int j = 0; j < num_elements; ++j) {
             new_elements[j] = elements[j];
             new_elements[j].vertex_buffer_index = j;
             state->binding_map[j] = elements[j].vertex_buffer_index;
-	 }
-	 elements = new_elements;
-	 state->num_bindings = num_elements;
-	 break;
+         }
+         elements = new_elements;
+         state->num_bindings = num_elements;
+         break;
       }
    }
 
