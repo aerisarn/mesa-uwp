@@ -622,6 +622,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<!-- payload 4 dwords, last two could be render target addr (one pkt per MRT), possibly used for GMEM save/restore?-->
 	<value name="CP_RESOURCE_LIST" value="0x18" variants="A7XX-"/>
 	<value name="CP_BV_BR_COUNT_OPS" value="0x1b" variants="A7XX-"/>  <!-- payload 1 or 2 dwords -->
+	<doc> Clears, adds to local, or adds to global timestamp </doc>
+	<value name="CP_MODIFY_TIMESTAMP" value="0x1c" variants="A7XX-"/>
 	<!-- similar to CP_CONTEXT_REG_BUNCH, but discards first two dwords?? -->
 	<value name="CP_CONTEXT_REG_BUNCH2" value="0x5d" variants="A7XX-"/>
 	<doc>
@@ -1978,6 +1980,18 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	</reg32>
 	<reg64 offset="1" name="ADDR" type="address"/>
 	<reg32 offset="3" name="TIMESTAMP" type="uint"/>
+</domain>
+
+<domain name="CP_MODIFY_TIMESTAMP" width="32">
+	<enum name="timestamp_op">
+		<value name="MODIFY_TIMESTAMP_CLEAR" value="0"/>
+		<value name="MODIFY_TIMESTAMP_ADD_GLOBAL" value="1"/>
+		<value name="MODIFY_TIMESTAMP_ADD_LOCAL" value="2"/>
+	</enum>
+	<reg32 offset="0" name="0">
+		<bitfield name="ADD" low="0" high="7" type="uint"/>
+		<bitfield name="OP" low="28" high="31" type="timestamp_op"/>
+	</reg32>
 </domain>
 
 <domain name="CP_MEM_TO_SCRATCH_MEM" width="32">
