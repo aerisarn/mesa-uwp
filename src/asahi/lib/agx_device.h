@@ -28,6 +28,7 @@ enum agx_dbg {
    AGX_DBG_NOWC = BITFIELD_BIT(12),
    AGX_DBG_SYNCTVB = BITFIELD_BIT(13),
    AGX_DBG_SMALLTILE = BITFIELD_BIT(14),
+   AGX_DBG_NOMSAA = BITFIELD_BIT(15),
 };
 
 /* Dummy partial declarations, pending real UAPI */

@@ -66,6 +66,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"nowc",      AGX_DBG_NOWC,     "Disable write-combining"},
    {"synctvb",   AGX_DBG_SYNCTVB,  "Synchronous TVB growth"},
    {"smalltile", AGX_DBG_SMALLTILE,"Force 16x16 tiles"},
+   {"nomsaa",    AGX_DBG_NOMSAA,   "Force disable MSAA"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
@@ -1882,6 +1883,9 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
           target == PIPE_TEXTURE_CUBE_ARRAY);
 
    if (sample_count > 1 && sample_count != 4 && sample_count != 2)
+      return false;
+
+   if (sample_count > 1 && agx_device(pscreen)->debug & AGX_DBG_NOMSAA)
       return false;
 
    if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
