@@ -856,7 +856,7 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
    if (!sctx->shader.tes.cso || !sctx->shader.tcs.current)
       return;
 
-   if (sctx->gfx_level >= GFX11) {
+   if (sctx->screen->info.has_set_pairs_packets) {
       radeon_opt_push_gfx_sh_reg(R_00B42C_SPI_SHADER_PGM_RSRC2_HS,
                                  SI_TRACKED_SPI_SHADER_PGM_RSRC2_HS, sctx->ls_hs_rsrc2);
 
@@ -904,7 +904,7 @@ static void si_emit_tess_io_layout_state(struct si_context *sctx)
    /* These can't be optimized because the user data SGPRs may have different meaning
     * without tessellation. (they are VS and ES/GS user data SGPRs)
     */
-   if (sctx->gfx_level >= GFX11) {
+   if (sctx->screen->info.has_set_pairs_packets) {
       radeon_push_gfx_sh_reg(tes_sh_base + SI_SGPR_TES_OFFCHIP_LAYOUT * 4,
                              sctx->tcs_offchip_layout);
       radeon_push_gfx_sh_reg(tes_sh_base + SI_SGPR_TES_OFFCHIP_ADDR * 4,
@@ -1107,6 +1107,11 @@ enum si_is_draw_vertex_state {
    DRAW_VERTEX_STATE_ON,
 };
 
+enum si_has_pairs {
+   HAS_PAIRS_OFF,
+   HAS_PAIRS_ON,
+};
+
 template <si_is_draw_vertex_state IS_DRAW_VERTEX_STATE> ALWAYS_INLINE
 static bool num_instanced_prims_less_than(const struct pipe_draw_indirect_info *indirect,
                                           enum mesa_prim prim,
@@ -1223,7 +1228,7 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 }
 
 template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
-          si_is_draw_vertex_state IS_DRAW_VERTEX_STATE> ALWAYS_INLINE
+          si_is_draw_vertex_state IS_DRAW_VERTEX_STATE, si_has_pairs HAS_PAIRS> ALWAYS_INLINE
 static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
 {
    if (!IS_DRAW_VERTEX_STATE && sctx->num_vs_blit_sgprs) {
@@ -1538,8 +1543,8 @@ void gfx11_emit_buffered_compute_sh_regs(struct si_context *sctx)
     }                                                                          \
   } while (0)
 
-template <amd_gfx_level GFX_VERSION, si_has_ngg NGG, si_is_draw_vertex_state IS_DRAW_VERTEX_STATE>
-ALWAYS_INLINE
+template <amd_gfx_level GFX_VERSION, si_has_ngg NGG, si_is_draw_vertex_state IS_DRAW_VERTEX_STATE,
+          si_has_pairs HAS_PAIRS> ALWAYS_INLINE
 static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw_info *info,
                                  unsigned drawid_base,
                                  const struct pipe_draw_indirect_info *indirect,
@@ -1679,7 +1684,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
       assert(indirect_va % 8 == 0);
 
-      if (GFX_VERSION >= GFX11) {
+      if (HAS_PAIRS) {
          radeon_end();
          gfx11_emit_buffered_sh_regs_inline(sctx, &sctx->num_buffered_gfx_sh_regs,
                                             sctx->buffered_gfx_sh_regs);
@@ -1759,7 +1764,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
       if (!is_blit) {
          /* Prefer SET_SH_REG_PAIRS_PACKED* on Gfx11+. */
-         if (GFX_VERSION >= GFX11) {
+         if (HAS_PAIRS) {
             if (base_vertex != sctx->last_base_vertex ||
                 sctx->last_base_vertex == SI_BASE_VERTEX_UNKNOWN) {
                radeon_push_gfx_sh_reg(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, base_vertex);
@@ -1812,7 +1817,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
          }
       }
 
-      if (GFX_VERSION >= GFX11) {
+      if (HAS_PAIRS) {
          radeon_end();
          gfx11_emit_buffered_sh_regs_inline(sctx, &sctx->num_buffered_gfx_sh_regs,
                                             sctx->buffered_gfx_sh_regs);
@@ -2066,7 +2071,8 @@ static unsigned get_vb_descriptor_sgpr_ptr_offset(void)
 }
 
 template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
-          si_is_draw_vertex_state IS_DRAW_VERTEX_STATE, util_popcnt POPCNT> ALWAYS_INLINE
+          si_is_draw_vertex_state IS_DRAW_VERTEX_STATE, si_has_pairs HAS_PAIRS,
+          util_popcnt POPCNT> ALWAYS_INLINE
 static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
                                                   struct pipe_vertex_state *state,
                                                   uint32_t partial_velem_mask)
@@ -2313,7 +2319,8 @@ static void si_emit_all_states(struct si_context *sctx, unsigned skip_atom_mask)
    } while (0)
 
 template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
-          si_is_draw_vertex_state IS_DRAW_VERTEX_STATE, util_popcnt POPCNT> ALWAYS_INLINE
+          si_is_draw_vertex_state IS_DRAW_VERTEX_STATE, si_has_pairs HAS_PAIRS,
+          util_popcnt POPCNT> ALWAYS_INLINE
 static void si_draw(struct pipe_context *ctx,
                     const struct pipe_draw_info *info,
                     unsigned drawid_offset,
@@ -2606,7 +2613,8 @@ static void si_draw(struct pipe_context *ctx,
    si_emit_all_states<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx, masked_atoms);
 
    /* Emit draw states. */
-   si_emit_vs_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE>(sctx, index_size);
+   si_emit_vs_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE, HAS_PAIRS>
+         (sctx, index_size);
    si_emit_draw_registers<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE>
          (sctx, indirect, prim, index_size, instance_count, primitive_restart,
           info->restart_index, min_direct_count);
@@ -2635,13 +2643,13 @@ static void si_draw(struct pipe_context *ctx,
     * It should done after cache flushing.
     */
    if (unlikely((!si_upload_and_prefetch_VB_descriptors
-                     <GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE, POPCNT>
+                     <GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE, HAS_PAIRS, POPCNT>
                      (sctx, state, partial_velem_mask)))) {
       DRAW_CLEANUP;
       return;
    }
 
-   si_emit_draw_packets<GFX_VERSION, NGG, IS_DRAW_VERTEX_STATE>
+   si_emit_draw_packets<GFX_VERSION, NGG, IS_DRAW_VERTEX_STATE, HAS_PAIRS>
          (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf,
           index_size, index_offset, instance_count);
    /* <-- CUs start to get busy here if we waited. */
@@ -2686,7 +2694,8 @@ static void si_draw(struct pipe_context *ctx,
    DRAW_CLEANUP;
 }
 
-template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG>
+template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
+          si_has_pairs HAS_PAIRS>
 static void si_draw_vbo(struct pipe_context *ctx,
                         const struct pipe_draw_info *info,
                         unsigned drawid_offset,
@@ -2694,12 +2703,12 @@ static void si_draw_vbo(struct pipe_context *ctx,
                         const struct pipe_draw_start_count_bias *draws,
                         unsigned num_draws)
 {
-   si_draw<GFX_VERSION, HAS_TESS, HAS_GS, NGG, DRAW_VERTEX_STATE_OFF, POPCNT_NO>
+   si_draw<GFX_VERSION, HAS_TESS, HAS_GS, NGG, DRAW_VERTEX_STATE_OFF, HAS_PAIRS, POPCNT_NO>
       (ctx, info, drawid_offset, indirect, draws, num_draws, NULL, 0);
 }
 
 template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
-          util_popcnt POPCNT>
+          si_has_pairs HAS_PAIRS, util_popcnt POPCNT>
 static void si_draw_vertex_state(struct pipe_context *ctx,
                                  struct pipe_vertex_state *vstate,
                                  uint32_t partial_velem_mask,
@@ -2715,7 +2724,7 @@ static void si_draw_vertex_state(struct pipe_context *ctx,
    dinfo.instance_count = 1;
    dinfo.index.resource = state->b.input.indexbuf;
 
-   si_draw<GFX_VERSION, HAS_TESS, HAS_GS, NGG, DRAW_VERTEX_STATE_ON, POPCNT>
+   si_draw<GFX_VERSION, HAS_TESS, HAS_GS, NGG, DRAW_VERTEX_STATE_ON, HAS_PAIRS, POPCNT>
       (ctx, &dinfo, 0, NULL, draws, num_draws, vstate, partial_velem_mask);
 
    if (info.take_vertex_state_ownership)
@@ -2773,15 +2782,28 @@ static void si_init_draw_vbo(struct si_context *sctx)
    if (!NGG && GFX_VERSION >= GFX11)
       return;
 
-   sctx->draw_vbo[HAS_TESS][HAS_GS][NGG] =
-      si_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG>;
+   if (GFX_VERSION >= GFX11 && sctx->screen->info.has_set_pairs_packets) {
+      sctx->draw_vbo[HAS_TESS][HAS_GS][NGG] =
+         si_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG, HAS_PAIRS_ON>;
 
-   if (util_get_cpu_caps()->has_popcnt) {
-      sctx->draw_vertex_state[HAS_TESS][HAS_GS][NGG] =
-         si_draw_vertex_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, POPCNT_YES>;
+      if (util_get_cpu_caps()->has_popcnt) {
+         sctx->draw_vertex_state[HAS_TESS][HAS_GS][NGG] =
+            si_draw_vertex_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, HAS_PAIRS_ON, POPCNT_YES>;
+      } else {
+         sctx->draw_vertex_state[HAS_TESS][HAS_GS][NGG] =
+            si_draw_vertex_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, HAS_PAIRS_ON, POPCNT_NO>;
+      }
    } else {
-      sctx->draw_vertex_state[HAS_TESS][HAS_GS][NGG] =
-         si_draw_vertex_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, POPCNT_NO>;
+      sctx->draw_vbo[HAS_TESS][HAS_GS][NGG] =
+         si_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG, HAS_PAIRS_OFF>;
+
+      if (util_get_cpu_caps()->has_popcnt) {
+         sctx->draw_vertex_state[HAS_TESS][HAS_GS][NGG] =
+            si_draw_vertex_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, HAS_PAIRS_OFF, POPCNT_YES>;
+      } else {
+         sctx->draw_vertex_state[HAS_TESS][HAS_GS][NGG] =
+            si_draw_vertex_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, HAS_PAIRS_OFF, POPCNT_NO>;
+      }
    }
 }
 

@@ -1187,7 +1187,7 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
    radeon_begin_again(&sctx->gfx_cs);
    radeon_opt_set_uconfig_reg(sctx, R_030980_GE_PC_ALLOC, SI_TRACKED_GE_PC_ALLOC,
                               shader->ngg.ge_pc_alloc);
-   if (sctx->gfx_level >= GFX11) {
+   if (sctx->screen->info.has_set_pairs_packets) {
       assert(!sctx->screen->info.uses_kernel_cu_mask);
       radeon_opt_push_gfx_sh_reg(R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
                                  SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,

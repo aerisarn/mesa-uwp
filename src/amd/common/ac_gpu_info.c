@@ -1210,6 +1210,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
 
    info->has_export_conflict_bug = info->gfx_level == GFX11;
 
+   /* Only dGPUs have SET_*_PAIRS packets for now.
+    * Register shadowing is only required by SET_SH_REG_PAIRS*, but we require it
+    * for SET_CONTEXT_REG_PAIRS* as well for simplicity.
+    */
+   info->has_set_pairs_packets = info->gfx_level >= GFX11 &&
+                                 info->register_shadowing_required &&
+                                 info->has_dedicated_vram;
+
    /* Get the number of good compute units. */
    info->num_cu = 0;
    for (i = 0; i < info->max_se; i++) {
@@ -1680,6 +1688,7 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
    fprintf(f, "    never_send_perfcounter_stop = %i\n", info->never_send_perfcounter_stop);
    fprintf(f, "    discardable_allows_big_page = %i\n", info->discardable_allows_big_page);
    fprintf(f, "    has_taskmesh_indirect0_bug = %i\n", info->has_taskmesh_indirect0_bug);
+   fprintf(f, "    has_set_pairs_packets = %i\n", info->has_set_pairs_packets);
    fprintf(f, "    conformant_trunc_coord = %i\n", info->conformant_trunc_coord);
 
    fprintf(f, "Display features:\n");
