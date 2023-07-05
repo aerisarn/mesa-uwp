@@ -697,11 +697,14 @@
 
   <struct name="VDM Barrier">
     <field name="USC cache inval" size="1" start="3" type="bool" default="false"/>
+    <field name="Unk 4" size="1" start="4" type="bool" default="false"/>
     <field name="Unk 5" size="1" start="5" type="bool" default="false"/>
     <field name="Unk 6" size="1" start="6" type="bool" default="false"/>
     <field name="Unk 8" size="1" start="8" type="bool" default="false"/>
     <field name="Unk 11" size="1" start="11" type="bool" default="false"/>
     <field name="Unk 20" size="1" start="20" type="bool" default="false"/>
+    <field name="Unk 24" size="1" start="24" type="bool" default="false"/>
+    <field name="Unk 26" size="1" start="26" type="bool" default="false"/>
     <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Barrier"/>
   </struct>
 

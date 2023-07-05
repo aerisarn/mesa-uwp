@@ -2904,12 +2904,20 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
     * consumed by a subsequent vertex shader.
     */
    if (ctx->streamout.key.active) {
+      struct agx_device *dev = agx_device(pctx->screen);
       agx_pack(out, VDM_BARRIER, cfg) {
          cfg.unk_5 = true;
          cfg.unk_6 = true;
          cfg.unk_8 = true;
          cfg.unk_11 = true;
          cfg.unk_20 = true;
+         if (dev->params.num_clusters_total > 1) {
+            cfg.unk_24 = true;
+            if (dev->params.gpu_generation == 13) {
+               cfg.unk_4 = true;
+               cfg.unk_26 = true;
+            }
+         }
       }
 
       out += AGX_VDM_BARRIER_LENGTH;
