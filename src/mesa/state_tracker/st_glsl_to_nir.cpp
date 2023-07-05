@@ -753,6 +753,25 @@ st_link_nir(struct gl_context *ctx,
       st_finalize_program(st, prog);
    }
 
+   struct pipe_context *pctx = st_context(ctx)->pipe;
+   if (pctx->link_shader) {
+      void *driver_handles[PIPE_SHADER_TYPES];
+      memset(driver_handles, 0, sizeof(driver_handles));
+
+      for (uint32_t i = 0; i < MESA_SHADER_STAGES; ++i) {
+         struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
+         if (shader) {
+            struct gl_program *p = shader->Program;
+            if (p && p->variants) {
+               enum pipe_shader_type type = pipe_shader_type_from_mesa(shader->Stage);
+               driver_handles[type] = p->variants->driver_shader;
+            }
+         }
+      }
+
+      pctx->link_shader(pctx, driver_handles);
+   }
+
    return true;
 }
 

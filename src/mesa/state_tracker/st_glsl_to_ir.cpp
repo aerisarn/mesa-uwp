@@ -41,39 +41,6 @@
 extern "C" {
 
 /**
- * Link a shader.
- */
-static bool
-st_link_glsl_to_nir(struct gl_context *ctx, struct gl_shader_program *prog)
-{
-   struct pipe_context *pctx = st_context(ctx)->pipe;
-
-   MESA_TRACE_FUNC();
-
-   GLboolean ret = st_link_nir(ctx, prog);
-    
-   if (pctx->link_shader) {
-      void *driver_handles[PIPE_SHADER_TYPES];
-      memset(driver_handles, 0, sizeof(driver_handles));
-
-      for (uint32_t i = 0; i < MESA_SHADER_STAGES; ++i) {
-         struct gl_linked_shader *shader = prog->_LinkedShaders[i];
-         if (shader) {
-            struct gl_program *p = shader->Program;
-            if (p && p->variants) {
-               enum pipe_shader_type type = pipe_shader_type_from_mesa(shader->Stage);
-               driver_handles[type] = p->variants->driver_shader;
-            }
-         }
-      }
-
-      pctx->link_shader(pctx, driver_handles);
-   }
-
-   return ret;
-}
-
-/**
  * Link a GLSL shader program.  Called via glLinkProgram().
  */
 void
@@ -127,7 +94,7 @@ st_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       prog->SamplersValidated = GL_TRUE;
    }
 
-   if (prog->data->LinkStatus && !st_link_glsl_to_nir(ctx, prog)) {
+   if (prog->data->LinkStatus && !st_link_nir(ctx, prog)) {
       prog->data->LinkStatus = LINKING_FAILURE;
    }
 
