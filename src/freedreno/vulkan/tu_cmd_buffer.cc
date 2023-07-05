@@ -452,7 +452,7 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
       tu_cs_emit_pkt7(cs, CP_COND_REG_EXEC, 2);
       tu_cs_emit(cs, CP_COND_REG_EXEC_0_MODE(RENDER_MODE) |
                      CP_COND_REG_EXEC_0_GMEM | CP_COND_REG_EXEC_0_SYSMEM);
-      tu_cs_emit(cs, CP_COND_REG_EXEC_1_DWORDS(4));
+      tu_cs_emit(cs, RENDER_MODE_CP_COND_REG_EXEC_1_DWORDS(4));
    }
 
    tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);

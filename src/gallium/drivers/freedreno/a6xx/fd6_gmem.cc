@@ -770,7 +770,7 @@ emit_conditional_ib(struct fd_batch *batch, const struct fd_tile *tile,
 
    OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
    OUT_RING(ring, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
-   OUT_RING(ring, CP_COND_REG_EXEC_1_DWORDS(4 * count));
+   OUT_RING(ring, PRED_TEST_CP_COND_REG_EXEC_1_DWORDS(4 * count));
 
    for (unsigned i = 0; i < count; i++) {
       uint32_t dwords;
