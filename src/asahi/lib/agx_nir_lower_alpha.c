@@ -20,9 +20,6 @@ agx_nir_lower_alpha_to_coverage(nir_shader *shader, uint8_t nr_samples)
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    nir_block *block = nir_impl_last_block(impl);
 
-   nir_builder _b = nir_builder_create(impl);
-   nir_builder *b = &_b;
-
    /* The store is probably at the end of the block, so search in reverse. */
    nir_intrinsic_instr *store = NULL;
    nir_foreach_instr_reverse(instr, block) {
@@ -55,7 +52,8 @@ agx_nir_lower_alpha_to_coverage(nir_shader *shader, uint8_t nr_samples)
    if (rgba->num_components < 4)
       return;
 
-   b->cursor = nir_before_instr(&store->instr);
+   nir_builder _b = nir_builder_at(nir_before_instr(&store->instr));
+   nir_builder *b = &_b;
 
    /* Calculate a coverage mask (alpha * nr_samples) bits set. The way we do
     * this isn't particularly clever:
@@ -85,9 +83,6 @@ agx_nir_lower_alpha_to_one(nir_shader *shader)
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    nir_block *block = nir_impl_last_block(impl);
 
-   nir_builder _b = nir_builder_create(impl);
-   nir_builder *b = &_b;
-
    nir_foreach_instr(instr, block) {
       if (instr->type != nir_instr_type_intrinsic)
          continue;
@@ -111,9 +106,9 @@ agx_nir_lower_alpha_to_one(nir_shader *shader)
       if (rgba->num_components < 4)
          continue;
 
-      b->cursor = nir_before_instr(instr);
+      nir_builder b = nir_builder_at(nir_before_instr(instr));
       nir_ssa_def *rgb1 = nir_vector_insert_imm(
-         b, rgba, nir_imm_floatN_t(b, 1.0, rgba->bit_size), 3);
+         &b, rgba, nir_imm_floatN_t(&b, 1.0, rgba->bit_size), 3);
 
       nir_instr_rewrite_src_ssa(instr, &intr->src[0], rgb1);
    }
