@@ -82,7 +82,7 @@ pub(super) struct ProgramBuild {
     builds: HashMap<Arc<Device>, ProgramDevBuild>,
     spec_constants: HashMap<u32, nir_const_value>,
     kernels: Vec<String>,
-    kernel_builds: HashMap<String, NirKernelBuild>,
+    kernel_builds: HashMap<String, Arc<NirKernelBuild>>,
 }
 
 impl ProgramBuild {
@@ -148,12 +148,12 @@ impl ProgramBuild {
 
             self.kernel_builds.insert(
                 kernel_name.clone(),
-                NirKernelBuild {
+                Arc::new(NirKernelBuild {
                     nirs: nirs,
                     args: args,
                     internal_args: internal_args,
                     attributes_string: attributes_string,
-                },
+                }),
             );
         }
     }
@@ -418,7 +418,7 @@ impl Program {
         self.build.lock().unwrap()
     }
 
-    pub fn get_nir_kernel_build(&self, name: &str) -> NirKernelBuild {
+    pub fn get_nir_kernel_build(&self, name: &str) -> Arc<NirKernelBuild> {
         let info = self.build_info();
         info.kernel_builds.get(name).unwrap().clone()
     }
