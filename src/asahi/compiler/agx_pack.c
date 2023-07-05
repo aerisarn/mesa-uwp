@@ -469,7 +469,7 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
 
 static void
 agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
-               agx_instr *I)
+               agx_instr *I, bool needs_g13x_coherency)
 {
    switch (I->op) {
    case AGX_OPCODE_LD_TILE:
@@ -693,8 +693,10 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
          (I->scoreboard << 30) |
          (((uint64_t)((O >> 4) & BITFIELD_MASK(4))) << 32) |
          (((uint64_t)((A >> 4) & BITFIELD_MASK(4))) << 36) |
-         (((uint64_t)(R >> 6)) << 40) | (Rt ? BITFIELD64_BIT(47) : 0) |
-         (((uint64_t)S) << 48) | (((uint64_t)(O >> 8)) << 56);
+         (((uint64_t)(R >> 6)) << 40) |
+         (needs_g13x_coherency ? BITFIELD64_BIT(45) : 0) |
+         (Rt ? BITFIELD64_BIT(47) : 0) | (((uint64_t)S) << 48) |
+         (((uint64_t)(O >> 8)) << 56);
 
       memcpy(util_dynarray_grow_bytes(emission, 1, 8), &raw, 8);
       break;
@@ -896,7 +898,7 @@ agx_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       block->offset = emission->size;
 
       agx_foreach_instr_in_block(block, ins) {
-         agx_pack_instr(emission, &fixups, ins);
+         agx_pack_instr(emission, &fixups, ins, ctx->key->needs_g13x_coherency);
       }
    }
 

@@ -193,6 +193,11 @@ struct agx_shader_key {
    /* Number of reserved preamble slots at the start */
    unsigned reserved_preamble;
 
+   /* Does the target GPU need explicit cluster coherency for atomics?
+    * Only used on G13X.
+    */
+   bool needs_g13x_coherency;
+
    union {
       struct agx_vs_shader_key vs;
       struct agx_fs_shader_key fs;
