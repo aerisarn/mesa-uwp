@@ -1387,13 +1387,19 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	</reg32>
 </domain>
 
+<enum name="poll_memory_type">
+	<value value="0" name="POLL_REGISTER"/>
+	<value value="1" name="POLL_MEMORY"/>
+	<value value="2" name="POLL_SCRATCH"/>
+	<value value="3" name="POLL_ON_CHIP" varset="chip" variants="A7XX-"/>
+</enum>
+
 <domain name="CP_COND_WRITE5" width="32">
 	<reg32 offset="0" name="0">
 		<bitfield name="FUNCTION" low="0" high="2" type="cp_cond_function"/>
 		<bitfield name="SIGNED_COMPARE" pos="3" type="boolean"/>
-                <!-- if both POLL_MEMORY and POLL_SCRATCH are false, it polls a register at POLL_ADDR_LO instead. -->
-		<bitfield name="POLL_MEMORY" pos="4" type="boolean"/>
-		<bitfield name="POLL_SCRATCH" pos="5" type="boolean"/>
+		<!-- POLL_REGISTER polls a register at POLL_ADDR_LO. -->
+		<bitfield name="POLL" low="4" high="5" type="poll_memory_type"/>
 		<bitfield name="WRITE_MEMORY" pos="8" type="boolean"/>
 	</reg32>
 	<reg32 offset="1" name="1">
@@ -1448,8 +1454,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	<reg32 offset="0" name="0">
 		<bitfield name="FUNCTION" low="0" high="2" type="cp_cond_function"/>
 		<bitfield name="SIGNED_COMPARE" pos="3" type="boolean"/>
-		<bitfield name="POLL_MEMORY" pos="4" type="boolean"/>
-		<bitfield name="POLL_SCRATCH" pos="5" type="boolean"/>
+		<bitfield name="POLL" low="4" high="5" type="poll_memory_type"/>
 		<bitfield name="WRITE_MEMORY" pos="8" type="boolean"/>
 	</reg32>
 	<reg32 offset="1" name="1">

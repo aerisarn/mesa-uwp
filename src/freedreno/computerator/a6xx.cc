@@ -394,7 +394,7 @@ cache_flush(struct fd_ringbuffer *ring, struct kernel *kernel)
 
    OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
    OUT_RING(ring, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
-                     CP_WAIT_REG_MEM_0_POLL_MEMORY);
+                     CP_WAIT_REG_MEM_0_POLL(POLL_MEMORY));
    OUT_RELOC(ring, control_ptr(a6xx_backend, seqno));
    OUT_RING(ring, CP_WAIT_REG_MEM_3_REF(seqno));
    OUT_RING(ring, CP_WAIT_REG_MEM_4_MASK(~0));
