@@ -11302,12 +11302,10 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
                                  ctx.tcs_temp_only_inputs == nir->info.inputs_read;
 
          if (!ngg_gs && !tcs_skip_barrier) {
-            sync_scope scope =
-               ctx.stage == vertex_tess_control_hs &&
-                     ctx.program->info.tcs.tess_input_vertices == nir->info.tess.tcs_vertices_out &&
-                     program->wave_size % ctx.program->info.tcs.tess_input_vertices == 0
-                  ? scope_subgroup
-                  : scope_workgroup;
+            sync_scope scope = ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq &&
+                                     program->wave_size % nir->info.tess.tcs_vertices_out == 0
+                                  ? scope_subgroup
+                                  : scope_workgroup;
             bld.barrier(aco_opcode::p_barrier,
                         memory_sync_info(storage_shared, semantic_acqrel, scope), scope);
          }
