@@ -3421,3 +3421,48 @@ void si_shader_destroy(struct si_shader *shader)
 
    free(shader->shader_log);
 }
+
+nir_shader *si_get_prev_stage_nir_shader(struct si_shader *shader,
+                                         struct si_shader *prev_shader,
+                                         struct si_shader_args *args,
+                                         bool *free_nir)
+{
+   const struct si_shader_selector *sel = shader->selector;
+   const union si_shader_key *key = &shader->key;
+
+   if (sel->stage == MESA_SHADER_TESS_CTRL) {
+      struct si_shader_selector *ls = key->ge.part.tcs.ls;
+
+      prev_shader->selector = ls;
+      prev_shader->key.ge.part.vs.prolog = key->ge.part.tcs.ls_prolog;
+      prev_shader->key.ge.as_ls = 1;
+   } else {
+      struct si_shader_selector *es = key->ge.part.gs.es;
+
+      prev_shader->selector = es;
+      prev_shader->key.ge.part.vs.prolog = key->ge.part.gs.vs_prolog;
+      prev_shader->key.ge.as_es = 1;
+      prev_shader->key.ge.as_ngg = key->ge.as_ngg;
+   }
+
+   prev_shader->key.ge.mono = key->ge.mono;
+   prev_shader->key.ge.opt = key->ge.opt;
+   prev_shader->key.ge.opt.inline_uniforms = false; /* only TCS/GS can inline uniforms */
+   /* kill_outputs was computed based on second shader's outputs so we can't use it to
+    * kill first shader's outputs.
+    */
+   prev_shader->key.ge.opt.kill_outputs = 0;
+   prev_shader->is_monolithic = true;
+
+   si_init_shader_args(prev_shader, args);
+
+   nir_shader *nir = si_get_nir_shader(prev_shader, args, free_nir,
+                                       sel->info.tcs_vgpr_only_inputs, NULL);
+
+   si_update_shader_binary_info(shader, nir);
+
+   shader->info.uses_instanceid |=
+      prev_shader->selector->info.uses_instanceid || prev_shader->info.uses_instanceid;
+
+   return nir;
+}

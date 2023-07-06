@@ -1039,42 +1039,9 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
        (sel->stage == MESA_SHADER_TESS_CTRL || sel->stage == MESA_SHADER_GEOMETRY)) {
       /* LS or ES shader. */
       struct si_shader prev_shader = {};
-      uint64_t tcs_vgpr_only_inputs = 0;
-      bool same_thread_count = false;
-
-      if (sel->stage == MESA_SHADER_TESS_CTRL) {
-         struct si_shader_selector *ls = shader->key.ge.part.tcs.ls;
-
-         prev_shader.selector = ls;
-         prev_shader.key.ge.part.vs.prolog = shader->key.ge.part.tcs.ls_prolog;
-         prev_shader.key.ge.as_ls = 1;
-
-         tcs_vgpr_only_inputs = sel->info.tcs_vgpr_only_inputs;
-         same_thread_count = shader->key.ge.opt.same_patch_vertices;
-      } else {
-         struct si_shader_selector *es = shader->key.ge.part.gs.es;
-
-         prev_shader.selector = es;
-         prev_shader.key.ge.part.vs.prolog = shader->key.ge.part.gs.vs_prolog;
-         prev_shader.key.ge.as_es = 1;
-         prev_shader.key.ge.as_ngg = shader->key.ge.as_ngg;
-      }
-
-      prev_shader.key.ge.mono = shader->key.ge.mono;
-      prev_shader.key.ge.opt = shader->key.ge.opt;
-      prev_shader.key.ge.opt.inline_uniforms = false; /* only TCS/GS can inline uniforms */
-      /* kill_outputs was computed based on second shader's outputs so we can't use it to
-       * kill first shader's outputs.
-       */
-      prev_shader.key.ge.opt.kill_outputs = 0;
-      prev_shader.is_monolithic = true;
-
-      si_init_shader_args(&prev_shader, ctx.args);
 
       bool free_nir;
-      nir = si_get_nir_shader(&prev_shader, ctx.args, &free_nir,
-                              tcs_vgpr_only_inputs, NULL);
-      si_update_shader_binary_info(shader, nir);
+      nir = si_get_prev_stage_nir_shader(shader, &prev_shader, ctx.args, &free_nir);
 
       struct ac_llvm_pointer parts[2];
       parts[1] = ctx.main_fn;
@@ -1083,9 +1050,6 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          si_llvm_dispose(&ctx);
          return false;
       }
-
-      shader->info.uses_instanceid |=
-         prev_shader.selector->info.uses_instanceid || prev_shader.info.uses_instanceid;
 
       parts[0] = ctx.main_fn;
 
@@ -1099,6 +1063,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
       ctx.shader = shader;
       ctx.stage = sel->stage;
 
+      bool same_thread_count = shader->key.ge.opt.same_patch_vertices;
       si_build_wrapper_function(&ctx, parts, 2, 0, 1, main_arg_types,
                                 same_thread_count);
    }

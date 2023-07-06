@@ -131,6 +131,10 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
 void si_get_ps_epilog_key(struct si_shader *shader, union si_shader_part_key *key);
 enum ac_hw_stage si_select_hw_stage(const gl_shader_stage stage, const union si_shader_key *const key,
                                     const enum amd_gfx_level gfx_level);
+nir_shader *si_get_prev_stage_nir_shader(struct si_shader *shader,
+                                         struct si_shader *prev_shader,
+                                         struct si_shader_args *args,
+                                         bool *free_nir);
 
 /* gfx10_shader_ngg.c */
 unsigned gfx10_ngg_get_vertices_per_prim(struct si_shader *shader);
