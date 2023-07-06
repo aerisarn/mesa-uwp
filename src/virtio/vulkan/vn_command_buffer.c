@@ -514,26 +514,37 @@ struct vn_command_buffer_query_batch {
    struct list_head head;
 };
 
-static inline struct vn_command_buffer_query_batch *
-vn_cmd_query_batch_alloc(struct vn_command_pool *pool)
+static bool
+vn_cmd_query_batch_push(struct vn_command_buffer *cmd,
+                        struct vn_query_pool *query_pool,
+                        uint32_t query,
+                        uint32_t query_count)
 {
-   if (list_is_empty(&pool->free_query_batches)) {
-      return vk_alloc(&pool->allocator,
-                      sizeof(struct vn_command_buffer_query_batch),
-                      VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   struct vn_command_buffer_query_batch *batch;
+   if (list_is_empty(&cmd->pool->free_query_batches)) {
+      batch = vk_alloc(&cmd->pool->allocator, sizeof(*batch),
+                       VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (!batch)
+         return false;
+   } else {
+      batch = list_first_entry(&cmd->pool->free_query_batches,
+                               struct vn_command_buffer_query_batch, head);
+      list_del(&batch->head);
    }
 
-   struct vn_command_buffer_query_batch *batch = list_first_entry(
-      &pool->free_query_batches, struct vn_command_buffer_query_batch, head);
-   list_del(&batch->head);
-   return batch;
+   batch->query_pool = query_pool;
+   batch->query = query;
+   batch->query_count = query_count;
+   list_add(&batch->head, &cmd->query_batches);
+
+   return true;
 }
 
 static inline void
-vn_cmd_query_batch_free(struct vn_command_pool *pool,
-                        struct vn_command_buffer_query_batch *batch)
+vn_cmd_query_batch_pop(struct vn_command_buffer *cmd,
+                       struct vn_command_buffer_query_batch *batch)
 {
-   list_add(&batch->head, &pool->free_query_batches);
+   list_move_to(&batch->head, &cmd->pool->free_query_batches);
 }
 
 static void
@@ -546,27 +557,23 @@ vn_cmd_record_batched_query_feedback(struct vn_command_buffer *cmd)
          vn_query_pool_to_handle(batch->query_pool), batch->query,
          batch->query_count);
 
-      list_del(&batch->head);
-      vn_cmd_query_batch_free(cmd->pool, batch);
+      vn_cmd_query_batch_pop(cmd, batch);
    }
 }
 
-static void
+static inline void
 vn_cmd_merge_batched_query_feedback(struct vn_command_buffer *primary_cmd,
                                     struct vn_command_buffer *secondary_cmd)
 {
    list_for_each_entry_safe(struct vn_command_buffer_query_batch,
                             secondary_batch, &secondary_cmd->query_batches,
                             head) {
-      struct vn_command_buffer_query_batch *primary_batch =
-         vn_cmd_query_batch_alloc(primary_cmd->pool);
-      if (!primary_batch) {
+      if (!vn_cmd_query_batch_push(primary_cmd, secondary_batch->query_pool,
+                                   secondary_batch->query,
+                                   secondary_batch->query_count)) {
          primary_cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
          return;
       }
-
-      *primary_batch = *secondary_batch;
-      list_add(&primary_batch->head, &primary_cmd->query_batches);
    }
 }
 
@@ -759,10 +766,8 @@ vn_cmd_reset(struct vn_command_buffer *cmd)
    cmd->subpass_index = 0;
    cmd->view_mask = 0;
    list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
-                            &cmd->query_batches, head) {
-      list_del(&batch->head);
-      vn_cmd_query_batch_free(cmd->pool, batch);
-   }
+                            &cmd->query_batches, head)
+      vn_cmd_query_batch_pop(cmd, batch);
 }
 
 VkResult
@@ -879,10 +884,8 @@ vn_FreeCommandBuffers(VkDevice device,
       list_del(&cmd->head);
 
       list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
-                               &cmd->query_batches, head) {
-         list_del(&batch->head);
-         vn_cmd_query_batch_free(pool, batch);
-      }
+                               &cmd->query_batches, head)
+         vn_cmd_query_batch_pop(cmd, batch);
 
       vn_object_base_fini(&cmd->base);
       vk_free(alloc, cmd);
@@ -1782,7 +1785,7 @@ vn_CmdBeginQuery(VkCommandBuffer commandBuffer,
    VN_CMD_ENQUEUE(vkCmdBeginQuery, commandBuffer, queryPool, query, flags);
 }
 
-static void
+static inline void
 vn_cmd_add_query_feedback(VkCommandBuffer cmd_handle,
                           VkQueryPool pool_handle,
                           uint32_t query)
@@ -1801,23 +1804,15 @@ vn_cmd_add_query_feedback(VkCommandBuffer cmd_handle,
    if (!pool->feedback)
       return;
 
-   struct vn_command_buffer_query_batch *batch =
-      vn_cmd_query_batch_alloc(cmd->pool);
-   if (!batch) {
-      cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
-      return;
-   }
-
    /* Per 1.3.255 spec "If queries are used while executing a render pass
     * instance that has multiview enabled, the query uses N consecutive query
     * indices in the query pool (starting at query) where N is the number of
     * bits set in the view mask in the subpass the query is used in."
     */
-   batch->query_pool = pool;
-   batch->query = query;
-   batch->query_count = cmd->view_mask ? util_bitcount(cmd->view_mask) : 1;
-
-   list_add(&batch->head, &cmd->query_batches);
+   const uint32_t query_count =
+      cmd->view_mask ? util_bitcount(cmd->view_mask) : 1;
+   if (!vn_cmd_query_batch_push(cmd, pool, query, query_count))
+      cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
 }
 
 void
