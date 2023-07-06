@@ -2405,6 +2405,23 @@ mem_access_size_align_cb(nir_intrinsic_op intrin, uint8_t bytes,
    };
 }
 
+static unsigned
+lower_bit_size_callback(const nir_instr *instr, UNUSED void *_)
+{
+   if (instr->type != nir_instr_type_alu)
+      return 0;
+
+   /* Lower 8-bit ALU to 16-bit. We check the destination, as we do not want to
+    * lower conversions from 8-bit to larger types. Those conversions get
+    * implemented natively.
+    */
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   if (alu->dest.dest.ssa.bit_size == 8)
+      return 16;
+   else
+      return 0;
+}
+
 static bool
 agx_should_dump(nir_shader *nir, unsigned agx_dbg_bit)
 {
@@ -2665,6 +2682,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       .callback = mem_access_size_align_cb,
    };
    NIR_PASS_V(nir, nir_lower_mem_access_bit_sizes, &lower_mem_access_options);
+   NIR_PASS_V(nir, nir_lower_bit_size, lower_bit_size_callback, NULL);
    NIR_PASS_V(nir, nir_lower_pack);
 
    /* Late blend lowering creates vectors */
