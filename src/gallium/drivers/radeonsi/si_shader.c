@@ -2347,7 +2347,7 @@ static void si_determine_use_aco(struct si_shader *shader)
    switch (sel->stage) {
    case MESA_SHADER_VERTEX:
    case MESA_SHADER_TESS_CTRL:
-      shader->use_aco = shader->is_monolithic && !si_is_multi_part_shader(shader);
+      shader->use_aco = shader->is_monolithic;
       break;
    case MESA_SHADER_TESS_EVAL:
    case MESA_SHADER_GEOMETRY:
