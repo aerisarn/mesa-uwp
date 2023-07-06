@@ -945,10 +945,7 @@ check_memory_bindings(const struct anv_device *device,
  * Ideally, if vkGetPhysicalDeviceImageFormatProperties2() succeeds with a given
  * modifier, then vkCreateImage() produces an image that is compatible with the
  * modifier. However, it is difficult to reconcile the two functions to agree
- * due to their complexity. For example, isl_surf_get_ccs_surf() may
- * unexpectedly fail in vkCreateImage(), eliminating the image's aux surface
- * even when the modifier requires one. (Maybe we should reconcile the two
- * functions despite the difficulty).
+ * due to their complexity.
  */
 static VkResult MUST_CHECK
 check_drm_format_mod(const struct anv_device *device,
@@ -985,21 +982,7 @@ check_drm_format_mod(const struct anv_device *device,
       assert(isl_layout->colorspace == ISL_COLORSPACE_LINEAR ||
              isl_layout->colorspace == ISL_COLORSPACE_SRGB);
       assert(!anv_surface_is_valid(&plane->shadow_surface));
-
-      if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
-         /* Reject DISJOINT for consistency with the GL driver. */
-         assert(!image->disjoint);
-
-         /* The modifier's required aux usage mandates the image's aux usage.
-          * The inverse, however, does not hold; if the modifier has no aux
-          * usage, then we may enable a private aux surface.
-          */
-         if (plane->aux_usage != isl_mod_info->aux_usage) {
-            return vk_errorf(device, VK_ERROR_UNKNOWN,
-                             "image with modifier unexpectedly has wrong aux "
-                             "usage");
-         }
-      }
+      assert(!isl_drm_modifier_has_aux(isl_mod_info->modifier));
    }
 
    return VK_SUCCESS;
