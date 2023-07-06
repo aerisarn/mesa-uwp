@@ -81,6 +81,10 @@ si_fill_aco_shader_info(struct si_shader *shader, struct aco_shader_info *info)
    }
 
    switch (stage) {
+   case MESA_SHADER_TESS_CTRL:
+      info->vs.tcs_in_out_eq = key->ge.opt.same_patch_vertices;
+      info->vs.tcs_temp_only_input_mask = sel->info.tcs_vgpr_only_inputs;
+      break;
    case MESA_SHADER_FRAGMENT:
       info->ps.num_interp = si_get_ps_num_interp(shader);
       info->ps.spi_ps_input = shader->config.spi_ps_input_ena;
