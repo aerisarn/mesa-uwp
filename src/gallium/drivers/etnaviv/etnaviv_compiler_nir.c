@@ -1322,11 +1322,11 @@ etna_link_shader(struct etna_shader_link_info *info,
 	  * but that one removes all FS inputs ... why?
 	  */
       } else {
-         if (vsio == NULL) { /* not found -- link error */
-            BUG("Semantic value not found in vertex shader outputs\n");
-            return true;
-         }
-         varying->reg = vsio->reg;
+         /* pick a random register to use if there is no VS output */
+         if (vsio == NULL)
+            varying->reg = 0;
+         else
+            varying->reg = vsio->reg;
       }
 
       comp_ofs += varying->num_components;

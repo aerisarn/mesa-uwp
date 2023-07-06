@@ -167,7 +167,6 @@ shaders@glsl-kwin-blur-2,Crash
 shaders@glsl-max-varyings,Crash
 shaders@glsl-max-varyings >max_varying_components,Crash
 shaders@glsl-novertexdata,Fail
-shaders@glsl-routing,Crash
 shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Timeout
 shaders@glsl-uniform-interstage-limits@subdivide 5,Timeout
 shaders@glsl-vs-point-size,Fail
