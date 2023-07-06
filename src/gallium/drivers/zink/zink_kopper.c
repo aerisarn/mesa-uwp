@@ -484,6 +484,7 @@ zink_kopper_displaytarget_create(struct zink_screen *screen, unsigned tex_usage,
 
 //moar cleanup
 out:
+   FREE(cdt);
    return NULL;
 }
 
