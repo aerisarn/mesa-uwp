@@ -490,11 +490,6 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
    src_region = vlVaRegionDefault(param->surface_region, src_surface, &def_src_region);
    dst_region = vlVaRegionDefault(param->output_region, dst_surface, &def_dst_region);
 
-   /* Insert a GPU Wait on the input surface fence to ensure
-      any pending work is finished before performing the VPBlit */
-   if (src_surface->fence && drv->pipe->fence_server_sync)
-      drv->pipe->fence_server_sync(drv->pipe, src_surface->fence);
-
    /* If the driver supports video engine post proc, attempt to do that
     * if it fails, fallback to the other existing implementations below
     */
