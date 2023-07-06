@@ -25,10 +25,16 @@ static_assert!(CL_QUEUED == 3);
 
 pub type EventSig = Box<dyn Fn(&Arc<Queue>, &PipeContext) -> CLResult<()>>;
 
+pub enum EventTimes {
+    Queued = CL_PROFILING_COMMAND_QUEUED as isize,
+}
+
+#[derive(Default)]
 struct EventMutState {
     status: cl_int,
     cbs: [Vec<(EventCB, *mut c_void)>; 3],
     work: Option<EventSig>,
+    time_queued: cl_ulong,
 }
 
 pub struct Event {
@@ -62,8 +68,8 @@ impl Event {
             deps: deps,
             state: Mutex::new(EventMutState {
                 status: CL_QUEUED as cl_int,
-                cbs: [Vec::new(), Vec::new(), Vec::new()],
                 work: Some(work),
+                ..Default::default()
             }),
             cv: Condvar::new(),
         })
@@ -78,8 +84,7 @@ impl Event {
             deps: Vec::new(),
             state: Mutex::new(EventMutState {
                 status: CL_SUBMITTED as cl_int,
-                cbs: [Vec::new(), Vec::new(), Vec::new()],
-                work: None,
+                ..Default::default()
             }),
             cv: Condvar::new(),
         })
@@ -125,6 +130,21 @@ impl Event {
 
     pub fn is_user(&self) -> bool {
         self.cmd_type == CL_COMMAND_USER
+    }
+
+    pub fn set_time(&self, which: EventTimes, value: cl_ulong) {
+        let mut lock = self.state();
+        match which {
+            EventTimes::Queued => lock.time_queued = value,
+        }
+    }
+
+    pub fn get_time(&self, which: EventTimes) -> cl_ulong {
+        let lock = self.state();
+
+        match which {
+            EventTimes::Queued => lock.time_queued,
+        }
     }
 
     pub fn add_cb(&self, state: cl_int, cb: EventCB, data: *mut c_void) {
