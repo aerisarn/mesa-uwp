@@ -464,8 +464,6 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.start_instance);
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_offchip_layout);
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tes_offchip_addr);
-      if (stage == MESA_SHADER_VERTEX)
-         declare_vb_descriptor_input_sgprs(args, shader);
 
       /* VGPRs (first TCS, then VS) */
       ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tcs_patch_id);
@@ -473,6 +471,11 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
 
       if (stage == MESA_SHADER_VERTEX) {
          declare_vs_input_vgprs(args, shader, &num_prolog_vgprs);
+
+         /* Need to keep LS/HS arg index same for shared args when ACO,
+          * so this is not able to be before shared VGPRs.
+          */
+         declare_vb_descriptor_input_sgprs(args, shader);
 
          /* LS return values are inputs to the TCS main shader part. */
          for (i = 0; i < 8 + GFX9_TCS_NUM_USER_SGPR; i++)
@@ -563,9 +566,6 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->gs_attr_address);
          else
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
-
-         if (stage == MESA_SHADER_VERTEX)
-            declare_vb_descriptor_input_sgprs(args, shader);
       }
 
       /* VGPRs (first GS, then VS/TES) */
@@ -577,6 +577,12 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
 
       if (stage == MESA_SHADER_VERTEX) {
          declare_vs_input_vgprs(args, shader, &num_prolog_vgprs);
+
+         /* Need to keep ES/GS arg index same for shared args when ACO,
+          * so this is not able to be before shared VGPRs.
+          */
+         if (!sel->info.base.vs.blit_sgprs_amd)
+            declare_vb_descriptor_input_sgprs(args, shader);
       } else if (stage == MESA_SHADER_TESS_EVAL) {
          declare_tes_input_vgprs(args);
       }
