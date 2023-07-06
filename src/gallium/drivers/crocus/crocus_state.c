@@ -2800,12 +2800,6 @@ crocus_create_sampler_view(struct pipe_context *ctx,
    }
 #endif
 #endif
-   /* Fill out SURFACE_STATE for this view. */
-   if (tmpl->target != PIPE_BUFFER) {
-      if (crocus_resource_unfinished_aux_import(isv->res))
-         crocus_resource_finish_aux_import(&screen->base, isv->res);
-
-   }
 
    return &isv->base;
 }
@@ -2904,9 +2898,6 @@ crocus_create_surface(struct pipe_context *ctx,
       return psurf;
 
    if (!isl_format_is_compressed(res->surf.format)) {
-      if (crocus_resource_unfinished_aux_import(res))
-         crocus_resource_finish_aux_import(&screen->base, res);
-
       memcpy(&surf->surf, &res->surf, sizeof(surf->surf));
       uint64_t temp_offset;
       uint32_t temp_x, temp_y;
