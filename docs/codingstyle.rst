@@ -92,7 +92,7 @@ commit`` by adding the following in your ``.git/hooks/pre-commit``:
 .. code:: sh
 
    shopt -s globstar
-   git clang-format $upstream -- $(grep -oE '[^#]' .clang-format-include)
+   git clang-format $upstream -- $(grep -E '^[^#]' .clang-format-include)
    # replace $upstream with the name of the remote tracking upstream mesa
    # if you don't know, it's probably `origin`
 
