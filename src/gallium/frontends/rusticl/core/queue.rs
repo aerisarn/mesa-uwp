@@ -118,6 +118,9 @@ impl Queue {
     }
 
     pub fn queue(&self, e: Arc<Event>) {
+        if self.is_profiling_enabled() {
+            e.set_time(EventTimes::Queued, self.device.screen().get_timestamp());
+        }
         self.state.lock().unwrap().pending.push(e);
     }
 
@@ -148,6 +151,10 @@ impl Queue {
         let mut queues = Event::deep_unflushed_queues(&state.pending);
         queues.remove(self);
         queues
+    }
+
+    pub fn is_profiling_enabled(&self) -> bool {
+        (self.props & (CL_QUEUE_PROFILING_ENABLE as u64)) != 0
     }
 }
 
