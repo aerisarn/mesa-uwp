@@ -23,6 +23,8 @@ struct vn_command_pool {
    uint32_t queue_family_index;
 
    struct list_head command_buffers;
+
+   struct list_head free_query_batches;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_command_pool,
                                base.base,

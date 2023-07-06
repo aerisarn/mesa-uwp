@@ -514,6 +514,28 @@ struct vn_command_buffer_query_batch {
    struct list_head head;
 };
 
+static inline struct vn_command_buffer_query_batch *
+vn_cmd_query_batch_alloc(struct vn_command_pool *pool)
+{
+   if (list_is_empty(&pool->free_query_batches)) {
+      return vk_alloc(&pool->allocator,
+                      sizeof(struct vn_command_buffer_query_batch),
+                      VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   }
+
+   struct vn_command_buffer_query_batch *batch = list_first_entry(
+      &pool->free_query_batches, struct vn_command_buffer_query_batch, head);
+   list_del(&batch->head);
+   return batch;
+}
+
+static inline void
+vn_cmd_query_batch_free(struct vn_command_pool *pool,
+                        struct vn_command_buffer_query_batch *batch)
+{
+   list_add(&batch->head, &pool->free_query_batches);
+}
+
 static void
 vn_cmd_record_batched_query_feedback(struct vn_command_buffer *cmd)
 {
@@ -525,7 +547,7 @@ vn_cmd_record_batched_query_feedback(struct vn_command_buffer *cmd)
          batch->query_count);
 
       list_del(&batch->head);
-      vk_free(&cmd->pool->allocator, batch);
+      vn_cmd_query_batch_free(cmd->pool, batch);
    }
 }
 
@@ -536,10 +558,8 @@ vn_cmd_merge_batched_query_feedback(struct vn_command_buffer *primary_cmd,
    list_for_each_entry_safe(struct vn_command_buffer_query_batch,
                             secondary_batch, &secondary_cmd->query_batches,
                             head) {
-      /* TODO: add a cache for batch allocs inside cmd pool */
       struct vn_command_buffer_query_batch *primary_batch =
-         vk_alloc(&primary_cmd->pool->allocator, sizeof(*primary_batch),
-                  VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+         vn_cmd_query_batch_alloc(primary_cmd->pool);
       if (!primary_batch) {
          primary_cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
          return;
@@ -662,6 +682,7 @@ vn_CreateCommandPool(VkDevice device,
    pool->device = dev;
    pool->queue_family_index = pCreateInfo->queueFamilyIndex;
    list_inithead(&pool->command_buffers);
+   list_inithead(&pool->free_query_batches);
 
    VkCommandPool pool_handle = vn_command_pool_to_handle(pool);
    vn_async_vkCreateCommandPool(dev->instance, device, pCreateInfo, NULL,
@@ -712,6 +733,10 @@ vn_DestroyCommandPool(VkDevice device,
       vk_free(alloc, cmd);
    }
 
+   list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
+                            &pool->free_query_batches, head)
+      vk_free(alloc, batch);
+
    vn_object_base_fini(&pool->base);
    vk_free(alloc, pool);
 }
@@ -736,7 +761,7 @@ vn_cmd_reset(struct vn_command_buffer *cmd)
    list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
                             &cmd->query_batches, head) {
       list_del(&batch->head);
-      vk_free(&cmd->pool->allocator, batch);
+      vn_cmd_query_batch_free(cmd->pool, batch);
    }
 }
 
@@ -856,7 +881,7 @@ vn_FreeCommandBuffers(VkDevice device,
       list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
                                &cmd->query_batches, head) {
          list_del(&batch->head);
-         vk_free(alloc, batch);
+         vn_cmd_query_batch_free(pool, batch);
       }
 
       vn_object_base_fini(&cmd->base);
@@ -1776,10 +1801,8 @@ vn_cmd_add_query_feedback(VkCommandBuffer cmd_handle,
    if (!pool->feedback)
       return;
 
-   /* TODO: add a cache for batch allocs inside cmd pool */
    struct vn_command_buffer_query_batch *batch =
-      vk_alloc(&cmd->pool->allocator, sizeof(*batch), VN_DEFAULT_ALIGN,
-               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      vn_cmd_query_batch_alloc(cmd->pool);
    if (!batch) {
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
       return;
