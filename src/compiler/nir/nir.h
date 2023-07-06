@@ -1889,7 +1889,7 @@ typedef struct {
 } nir_intrinsic_instr;
 
 static inline nir_variable *
-nir_intrinsic_get_var(nir_intrinsic_instr *intrin, unsigned i)
+nir_intrinsic_get_var(const nir_intrinsic_instr *intrin, unsigned i)
 {
    return nir_deref_instr_get_variable(nir_src_as_deref(intrin->src[i]));
 }
