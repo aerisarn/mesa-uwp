@@ -1202,7 +1202,8 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    ASSERTED unsigned comps = nir_dest_num_components(instr->dest.dest);
 
    assert(comps == 1 || nir_op_is_vec(instr->op));
-   assert(sz == 1 || sz == 16 || sz == 32 || sz == 64);
+   assert(sz == 1 || (nir_op_is_vec(instr->op) && sz == 8) || sz == 16 ||
+          sz == 32 || sz == 64);
 
    agx_index dst = agx_dest_index(&instr->dest.dest);
    agx_index s0 = srcs > 0 ? agx_alu_src_index(b, instr->src[0]) : agx_null();
