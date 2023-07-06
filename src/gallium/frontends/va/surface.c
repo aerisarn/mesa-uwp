@@ -138,7 +138,10 @@ vlVaSyncSurface(VADriverContextP ctx, VASurfaceID render_target)
    }
 
    if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
-      int ret = 0;
+      /* If driver does not implement get_processor_fence assume no
+       * async work needed to be waited on and return success
+       */
+      int ret = (context->decoder->get_processor_fence) ? 0 : 1;
 
       if (context->decoder->get_processor_fence)
          ret = context->decoder->get_processor_fence(context->decoder,
@@ -258,23 +261,17 @@ vlVaQuerySurfaceStatus(VADriverContextP ctx, VASurfaceID render_target, VASurfac
        */
          *status = VASurfaceRendering;
    } else if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_PROCESSING) {
-      int ret = 0;
+      /* If driver does not implement get_processor_fence assume no
+       * async work needed to be waited on and return surface ready
+       */
+      int ret = (context->decoder->get_processor_fence) ? 0 : 1;
 
       if (context->decoder->get_processor_fence)
          ret = context->decoder->get_processor_fence(context->decoder,
                                                      surf->fence, 0);
-
       if (ret)
          *status = VASurfaceReady;
       else
-      /* An approach could be to just tell the client that this is not
-       * implemented, but this breaks other code.  Compromise by at least
-       * conservatively setting the status to VASurfaceRendering if we can't
-       * query the hardware.  Note that we _must_ set the status here, otherwise
-       * it comes out of the function unchanged. As we are returning
-       * VA_STATUS_SUCCESS, the client would be within his/her rights to use a
-       * potentially uninitialized/invalid status value unknowingly.
-       */
          *status = VASurfaceRendering;
    }
 
