@@ -106,9 +106,11 @@ vn_buffer_get_ahb_memory_type_bits(struct vn_device *dev)
    struct vn_buffer_cache *cache = &dev->buffer_cache;
    if (unlikely(!cache->ahb_mem_type_bits_valid)) {
       simple_mtx_lock(&cache->mutex);
-      cache->ahb_mem_type_bits =
-         vn_android_get_ahb_buffer_memory_type_bits(dev);
-      cache->ahb_mem_type_bits_valid = true;
+      if (!cache->ahb_mem_type_bits_valid) {
+         cache->ahb_mem_type_bits =
+            vn_android_get_ahb_buffer_memory_type_bits(dev);
+         cache->ahb_mem_type_bits_valid = true;
+      }
       simple_mtx_unlock(&cache->mutex);
    }
 
