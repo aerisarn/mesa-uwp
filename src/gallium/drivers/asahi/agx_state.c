@@ -346,12 +346,6 @@ agx_create_rs_state(struct pipe_context *ctx,
    struct agx_rasterizer *so = CALLOC_STRUCT(agx_rasterizer);
    so->base = *cso;
 
-   /* Line width is packed in a 4:4 fixed point format */
-   unsigned line_width_fixed = ((unsigned)(cso->line_width * 16.0f)) - 1;
-
-   /* Clamp to maximum line width */
-   so->line_width = MIN2(line_width_fixed, 0xFF);
-
    agx_pack(so->cull, CULL, cfg) {
       cfg.cull_front = cso->cull_face & PIPE_FACE_FRONT;
       cfg.cull_back = cso->cull_face & PIPE_FACE_BACK;
@@ -372,6 +366,7 @@ agx_create_rs_state(struct pipe_context *ctx,
    }
 
    so->polygon_mode = agx_translate_polygon_mode(cso->fill_front);
+   so->line_width = agx_pack_line_width(cso->line_width);
 
    return so;
 }
@@ -552,41 +547,6 @@ agx_bind_sampler_states(struct pipe_context *pctx, enum pipe_shader_type shader,
       if (ctx->stage[shader].samplers[i]->uses_custom_border)
          ctx->stage[shader].custom_borders = true;
    }
-}
-
-/* Channels agree for RGBA but are weird for force 0/1 */
-
-static enum agx_channel
-agx_channel_from_pipe(enum pipe_swizzle in)
-{
-   STATIC_ASSERT((enum agx_channel)PIPE_SWIZZLE_X == AGX_CHANNEL_R);
-   STATIC_ASSERT((enum agx_channel)PIPE_SWIZZLE_Y == AGX_CHANNEL_G);
-   STATIC_ASSERT((enum agx_channel)PIPE_SWIZZLE_Z == AGX_CHANNEL_B);
-   STATIC_ASSERT((enum agx_channel)PIPE_SWIZZLE_W == AGX_CHANNEL_A);
-   STATIC_ASSERT((enum agx_channel)PIPE_SWIZZLE_0 & 0x4);
-   STATIC_ASSERT((enum agx_channel)PIPE_SWIZZLE_1 & 0x4);
-   STATIC_ASSERT((enum agx_channel)PIPE_SWIZZLE_NONE & 0x4);
-
-   if ((in & 0x4) == 0)
-      return (enum agx_channel)in;
-   else if (in == PIPE_SWIZZLE_1)
-      return AGX_CHANNEL_1;
-   else
-      return AGX_CHANNEL_0;
-}
-
-static enum agx_layout
-agx_translate_layout(enum ail_tiling tiling)
-{
-   switch (tiling) {
-   case AIL_TILING_TWIDDLED:
-   case AIL_TILING_TWIDDLED_COMPRESSED:
-      return AGX_LAYOUT_TWIDDLED;
-   case AIL_TILING_LINEAR:
-      return AGX_LAYOUT_LINEAR;
-   }
-
-   unreachable("Invalid tiling");
 }
 
 static enum agx_texture_dimension
@@ -2589,47 +2549,6 @@ agx_point_object_type(struct agx_rasterizer *rast)
              : AGX_OBJECT_TYPE_POINT_SPRITE_UV10;
 }
 
-static enum agx_pass_type
-agx_pass_type_for_shader(struct agx_shader_info *info)
-{
-   if (info->reads_tib && info->writes_sample_mask)
-      return AGX_PASS_TYPE_TRANSLUCENT_PUNCH_THROUGH;
-   else if (info->reads_tib)
-      return AGX_PASS_TYPE_TRANSLUCENT;
-   else if (info->writes_sample_mask)
-      return AGX_PASS_TYPE_PUNCH_THROUGH;
-   else
-      return AGX_PASS_TYPE_OPAQUE;
-}
-
-static enum agx_conservative_depth
-agx_translate_depth_layout(enum gl_frag_depth_layout layout)
-{
-   switch (layout) {
-   case FRAG_DEPTH_LAYOUT_ANY:
-      return AGX_CONSERVATIVE_DEPTH_ANY;
-   case FRAG_DEPTH_LAYOUT_LESS:
-      return AGX_CONSERVATIVE_DEPTH_LESS;
-   case FRAG_DEPTH_LAYOUT_GREATER:
-      return AGX_CONSERVATIVE_DEPTH_GREATER;
-   case FRAG_DEPTH_LAYOUT_UNCHANGED:
-      return AGX_CONSERVATIVE_DEPTH_UNCHANGED;
-   default:
-      unreachable("depth layout should have been canonicalized");
-   }
-}
-
-static void
-agx_ppp_fragment_face_2(struct agx_ppp_update *ppp,
-                        enum agx_object_type object_type,
-                        struct agx_shader_info *info)
-{
-   agx_ppp_push(ppp, FRAGMENT_FACE_2, cfg) {
-      cfg.object_type = object_type;
-      cfg.conservative_depth = agx_translate_depth_layout(info->depth_layout);
-   }
-}
-
 #define MAX_PPP_UPDATES 2
 
 static uint8_t *
@@ -3123,12 +3042,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    enum agx_primitive prim = agx_primitive_for_pipe(info->mode);
    if (idx_size) {
-      /* Index sizes are encoded logarithmically */
-      STATIC_ASSERT(__builtin_ctz(1) == AGX_INDEX_SIZE_U8);
-      STATIC_ASSERT(__builtin_ctz(2) == AGX_INDEX_SIZE_U16);
-      STATIC_ASSERT(__builtin_ctz(4) == AGX_INDEX_SIZE_U32);
-      assert((idx_size == 1) || (idx_size == 2) || (idx_size == 4));
-
       agx_pack(out, VDM_STATE, cfg)
          cfg.restart_index_present = true;
       out += AGX_VDM_STATE_LENGTH;
@@ -3162,7 +3075,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       if (idx_size) {
          cfg.restart_enable = info->primitive_restart;
          cfg.index_buffer_hi = (ib >> 32);
-         cfg.index_size = __builtin_ctz(idx_size);
+         cfg.index_size = agx_translate_index_size(idx_size);
          cfg.index_buffer_present = true;
          cfg.index_buffer_size_present = true;
       }
