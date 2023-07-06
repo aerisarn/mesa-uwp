@@ -1268,7 +1268,7 @@ etna_shader_vs_lookup(const struct etna_shader_variant *sobj,
    return NULL;
 }
 
-bool
+void
 etna_link_shader(struct etna_shader_link_info *info,
                  const struct etna_shader_variant *vs,
                  const struct etna_shader_variant *fs)
@@ -1333,6 +1333,4 @@ etna_link_shader(struct etna_shader_link_info *info,
    }
 
    assert(info->num_varyings == fs->infile.num_reg);
-
-   return false;
 }

@@ -161,7 +161,7 @@ etna_compile_shader(struct etna_shader_variant *shader);
 void
 etna_dump_shader(const struct etna_shader_variant *shader);
 
-bool
+void
 etna_link_shader(struct etna_shader_link_info *info,
                  const struct etna_shader_variant *vs,
                  const struct etna_shader_variant *fs);
