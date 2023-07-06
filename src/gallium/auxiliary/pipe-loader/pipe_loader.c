@@ -171,6 +171,8 @@ pipe_loader_create_screen_vk(struct pipe_loader_device *dev, bool sw_vk)
    pipe_loader_load_options(dev);
    config.options_info = &dev->option_info;
    config.options = &dev->option_cache;
+   config.dev_major = dev->dev_major;
+   config.dev_minor = dev->dev_minor;
 
    return dev->ops->create_screen(dev, &config, sw_vk);
 }

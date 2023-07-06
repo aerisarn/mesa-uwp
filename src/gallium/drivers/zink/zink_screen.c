@@ -1512,13 +1512,59 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    glsl_type_singleton_decref();
 }
 
+static int
+zink_get_display_device(const struct zink_screen *screen, uint32_t pdev_count,
+                        const VkPhysicalDevice *pdevs, int64_t dev_major,
+                        int64_t dev_minor)
+{
+   VkPhysicalDeviceDrmPropertiesEXT drm_props = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT,
+   };
+   VkPhysicalDeviceProperties2 props = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+      .pNext = &drm_props,
+   };
+
+   for (uint32_t i = 0; i < pdev_count; ++i) {
+      VKSCR(GetPhysicalDeviceProperties2)(pdevs[i], &props);
+      if (drm_props.renderMajor == dev_major &&
+          drm_props.renderMinor == dev_minor)
+         return i;
+   }
+
+   mesa_loge("ZINK: could not find the Display GPU, choosing default device!");
+
+   return 0;
+}
+
+static int
+zink_get_cpu_device_type(const struct zink_screen *screen, uint32_t pdev_count,
+                         const VkPhysicalDevice *pdevs)
+{
+   VkPhysicalDeviceProperties props;
+
+   for (uint32_t i = 0; i < pdev_count; ++i) {
+      VKSCR(GetPhysicalDeviceProperties)(pdevs[i], &props);
+
+      /* if user wants cpu, only give them cpu */
+      if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
+         return i;
+   }
+
+   mesa_loge("ZINK: CPU device requested but none found!");
+
+   return -1;
+}
+
 static void
-choose_pdev(struct zink_screen *screen)
+choose_pdev(struct zink_screen *screen, int64_t dev_major, int64_t dev_minor)
 {
    bool cpu = debug_get_bool_option("LIBGL_ALWAYS_SOFTWARE", false) ||
               debug_get_bool_option("D3D_ALWAYS_SOFTWARE", false);
-   if (cpu) {
-      uint32_t i, pdev_count;
+
+   if (cpu || (dev_major > 0 && dev_major < 255)) {
+      uint32_t pdev_count;
+      int idx;
       VkPhysicalDevice *pdevs;
       VkResult result = VKSCR(EnumeratePhysicalDevices)(screen->instance, &pdev_count, NULL);
       if (result != VK_SUCCESS) {
@@ -1537,25 +1583,21 @@ choose_pdev(struct zink_screen *screen)
       assert(result == VK_SUCCESS);
       assert(pdev_count > 0);
 
-      VkPhysicalDeviceProperties props;
-      int idx = -1;
-      for (i = 0; i < pdev_count; ++i) {
-         VKSCR(GetPhysicalDeviceProperties)(pdevs[i], &props);
+      if (cpu)
+         idx = zink_get_cpu_device_type(screen, pdev_count, pdevs);
+      else
+         idx = zink_get_display_device(screen, pdev_count, pdevs, dev_major,
+                                       dev_minor);
 
-         /* if user wants cpu, only give them cpu */
-         if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
-            idx = i;
-            break;
-         }
-      }
       if (idx != -1)
          /* valid cpu device */
          screen->pdev = pdevs[idx];
+
       free(pdevs);
-      if (idx == -1) {
-         mesa_loge("ZINK: CPU device requested but none found!");
+
+      if (idx == -1)
          return;
-      }
+
    } else {
       VkPhysicalDevice pdev;
       unsigned pdev_count = 1;
@@ -2838,7 +2880,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->instance_info.disable_xcb_surface = driQueryOptionb(config->options, "disable_xcb_surface");
    }
 
-   if (!zink_create_instance(screen))
+   if (!zink_create_instance(screen, config->dev_major > 0 && config->dev_major < 255))
       goto fail;
 
    if (zink_debug & ZINK_DEBUG_VALIDATION) {
@@ -2862,7 +2904,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       (zink_debug & ZINK_DEBUG_VALIDATION) && !create_debug(screen))
       debug_printf("ZINK: failed to setup debug utils\n");
 
-   choose_pdev(screen);
+   choose_pdev(screen, config->dev_major, config->dev_minor);
    if (screen->pdev == VK_NULL_HANDLE) {
       mesa_loge("ZINK: failed to choose pdev");
       goto fail;

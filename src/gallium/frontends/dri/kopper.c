@@ -43,6 +43,13 @@
 
 #include <vulkan/vulkan.h>
 
+#ifdef HAVE_LIBDRM
+#include <xf86drm.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+#endif
+
 #ifdef VK_USE_PLATFORM_XCB_KHR
 #include <xcb/xcb.h>
 #include <xcb/dri3.h>
@@ -109,6 +116,43 @@ static const __DRIextension *drivk_sw_screen_extensions[] = {
    NULL
 };
 
+static int
+kopper_render_rdev(int fd, struct pipe_loader_device *pipe_loader)
+{
+   int ret = 0;
+   pipe_loader->dev_major = -1;
+   pipe_loader->dev_minor = -1;
+
+#ifdef HAVE_LIBDRM
+   struct stat stx;
+   drmDevicePtr dev;
+
+   if (fd == -1)
+      return 0;
+
+   if (drmGetDevice2(fd, 0, &dev))
+      return -1;
+
+   if(!(dev->available_nodes & (1 << DRM_NODE_RENDER))) {
+      ret = -1;
+      goto free_device;
+   }
+
+   if(stat(dev->nodes[DRM_NODE_RENDER], &stx)) {
+      ret = -1;
+      goto free_device;
+   }
+
+   pipe_loader->dev_major = major(stx.st_rdev);
+   pipe_loader->dev_minor = minor(stx.st_rdev);
+
+free_device:
+   drmFreeDevice(&dev);
+#endif //HAVE_LIBDRM
+
+   return ret;
+}
+
 static const __DRIconfig **
 kopper_init_screen(struct dri_screen *screen)
 {
@@ -130,8 +174,11 @@ kopper_init_screen(struct dri_screen *screen)
    else
       success = pipe_loader_vk_probe_dri(&screen->dev, NULL);
 
-   if (success)
+   if (success) {
+      if (kopper_render_rdev(screen->fd, screen->dev))
+         goto fail;
       pscreen = pipe_loader_create_screen(screen->dev);
+   }
 
    if (!pscreen)
       goto fail;

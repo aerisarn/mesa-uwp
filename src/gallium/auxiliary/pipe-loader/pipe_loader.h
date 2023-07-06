@@ -64,6 +64,8 @@ struct pipe_loader_device {
       } pci;
    } u; /**< Discriminated by \a type */
 
+   int64_t dev_major;
+   int64_t dev_minor;
    char *driver_name;
    const struct pipe_loader_ops *ops;
 
