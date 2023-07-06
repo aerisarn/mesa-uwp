@@ -50,7 +50,6 @@ enum vn_command_buffer_state {
 
 struct vn_command_buffer_builder {
    const struct vn_render_pass *render_pass;
-   const struct vn_framebuffer *framebuffer;
    const struct vn_image **present_src_images;
 };
 

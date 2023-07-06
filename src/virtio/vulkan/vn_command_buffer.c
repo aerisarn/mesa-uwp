@@ -584,7 +584,6 @@ vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
                          const VkRenderPassBeginInfo *begin_info)
 {
    cmd->builder.render_pass = pass;
-   cmd->builder.framebuffer = fb;
 
    if (begin_info) {
       cmd->in_render_pass = true;
@@ -641,7 +640,6 @@ vn_cmd_end_render_pass(struct vn_command_buffer *cmd)
    const struct vn_render_pass *pass = cmd->builder.render_pass;
 
    cmd->builder.render_pass = NULL;
-   cmd->builder.framebuffer = NULL;
 
    vn_cmd_record_batched_query_feedback(cmd);
    cmd->in_render_pass = false;
