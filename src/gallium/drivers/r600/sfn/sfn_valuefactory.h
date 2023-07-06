@@ -178,6 +178,7 @@ struct register_key_hash {
 class ChannelCounts {
 public:
    void inc_count(int chan) { ++m_counts[chan]; }
+   void inc_count(int chan, int n) { m_counts[chan] += n; }
    int least_used(uint8_t mask) const
    {
       int least_used = 0;
@@ -222,8 +223,9 @@ public:
 
    int new_register_index();
 
-   bool allocate_registers(const exec_list *registers);
+   bool allocate_registers(const std::list<nir_intrinsic_instr *>& regs);
    PRegister allocate_pinned_register(int sel, int chan);
+
    RegisterVec4 allocate_pinned_vec4(int sel, bool is_ssa);
 
    void inject_value(const nir_dest& dest, int chan, PVirtualValue value);
@@ -291,11 +293,6 @@ public:
 
 private:
    PVirtualValue ssa_src(const nir_ssa_def& dest, int chan);
-
-   PRegister local_register(const nir_register_dest& dest, int chan);
-   PRegister local_register(const nir_register_src& dest, int chan);
-   PRegister
-   resolve_array(nir_register *reg, nir_src *indirect, int base_offset, int chan);
 
    int m_next_register_index;
    int m_next_temp_channel{0};

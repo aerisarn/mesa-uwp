@@ -373,14 +373,18 @@ CopyPropFwdVisitor::visit(AluInstr *instr)
    auto ii = dest->uses().begin();
    auto ie = dest->uses().end();
 
+   auto mov_block_id = instr->block_id();
+
    while(ii != ie) {
       auto i = *ii;
+      auto target_block_id = i->block_id();
+
       ++ii;
       /* SSA can always be propagated, registers only in the same block
        * and only if they are assigned in the same block */
-      bool can_propagate = dest->has_flag(Register::ssa);
+      bool dest_can_propagate = dest->has_flag(Register::ssa);
 
-      if (!can_propagate) {
+      if (!dest_can_propagate) {
 
          /* Register can propagate if the assignment was in the same
           * block, and we don't have a second assignment coming later
@@ -391,12 +395,12 @@ CopyPropFwdVisitor::visit(AluInstr *instr)
           * 3: MOV SN.x, R0.x
           *
           * Here we can't prpagate the move in 1 to SN.x in 3 */
-         if ((instr->block_id() == i->block_id() && instr->index() < i->index())) {
-            can_propagate = true;
+         if ((mov_block_id == target_block_id && instr->index() < i->index())) {
+            dest_can_propagate = true;
             if (dest->parents().size() > 1) {
                for (auto p : dest->parents()) {
                   if (p->block_id() == i->block_id() && p->index() > instr->index()) {
-                     can_propagate = false;
+                     dest_can_propagate = false;
                      break;
                   }
                }
@@ -404,7 +408,32 @@ CopyPropFwdVisitor::visit(AluInstr *instr)
          }
       }
 
-      if (can_propagate) {
+      bool src_can_propagate = false;
+      if (auto rsrc = src->as_register()) {
+         if (rsrc->has_flag(Register::ssa)) {
+            src_can_propagate = true;
+         } else if (mov_block_id == target_block_id) {
+            if (rsrc->addr()) {
+               if (i->block_id() == mov_block_id &&
+                   i->index() == instr->index() + 1)
+                  src_can_propagate = true;
+            } else {
+               src_can_propagate = true;
+               for (auto p : rsrc->parents()) {
+                  if (p->block_id() == mov_block_id &&
+                      p->index() > instr->index() &&
+                      p->index() < i->index()) {
+                     src_can_propagate = false;
+                     break;
+                  }
+               }
+            }
+         }
+      } else {
+         src_can_propagate = true;
+      }
+
+      if (dest_can_propagate && src_can_propagate) {
          sfn_log << SfnLog::opt << "   Try replace in " << i->block_id() << ":"
                  << i->index() << *i << "\n";
 

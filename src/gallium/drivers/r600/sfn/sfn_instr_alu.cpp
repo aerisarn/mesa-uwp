@@ -503,7 +503,7 @@ bool AluInstr::can_replace_source(PRegister old_src, PVirtualValue new_src)
    /* If the old or new source is an array element, we assume that there
     * might have been an (untracked) indirect access, so don't replace
     * this source */
-   if (old_src->pin() == pin_array || new_src->pin() == pin_array)
+   if (old_src->pin() == pin_array && new_src->pin() == pin_array)
       return false;
 
    auto [addr, dummy, index] = indirect_addr();

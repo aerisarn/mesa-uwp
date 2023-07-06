@@ -552,7 +552,8 @@ Shader::process(nir_shader *nir)
 
    allocate_reserved_registers();
 
-   allocate_local_registers(&func->impl->registers);
+   value_factory().allocate_registers(m_register_allocations);
+   m_required_registers = value_factory().array_registers();
 
    sfn_log << SfnLog::trans << "Process shader \n";
    foreach_list_typed(nir_cf_node, node, node, &func->impl->body)
@@ -564,14 +565,6 @@ Shader::process(nir_shader *nir)
    finalize();
 
    return true;
-}
-
-void
-Shader::allocate_local_registers(const exec_list *registers)
-{
-   if (value_factory().allocate_registers(registers))
-      m_indirect_files |= 1 << TGSI_FILE_TEMPORARY;
-   m_required_registers = value_factory().array_registers();
 }
 
 bool
@@ -681,6 +674,9 @@ Shader::scan_instruction(nir_instr *instr)
             (nir_intrinsic_memory_modes(intr) &
              (nir_var_mem_ssbo | nir_var_mem_global | nir_var_image) &&
              nir_intrinsic_memory_scope(intr) != SCOPE_NONE);
+      break;
+   case nir_intrinsic_decl_reg:
+      m_register_allocations.push_back(intr);
       break;
    default:;
    }
@@ -918,7 +914,18 @@ Shader::process_intrinsic(nir_intrinsic_instr *intr)
       return emit_atomic_local_shared(intr);
    case nir_intrinsic_shader_clock:
       return emit_shader_clock(intr);
-
+   case nir_intrinsic_load_reg:
+      return emit_load_reg(intr);
+   case nir_intrinsic_load_reg_indirect:
+      return emit_load_reg_indirect(intr);
+   case nir_intrinsic_store_reg:
+      return emit_store_reg(intr);
+   case nir_intrinsic_store_reg_indirect:
+      return emit_store_reg_indirect(intr);
+   case nir_intrinsic_decl_reg:
+      // Registers and arrays are allocated at
+      // conversion startup time
+      return true;
    default:
       return false;
    }
@@ -964,6 +971,130 @@ Shader::emit_load_to_register(PVirtualValue src)
       emit_instruction(new AluInstr(op1_mov, dest, src, AluInstr::last_write));
    }
    return dest;
+}
+
+// add visitor to resolve array and register
+class RegisterAccessHandler : public RegisterVisitor {
+
+public:
+   RegisterAccessHandler(Shader& shader, nir_intrinsic_instr *intr);
+
+   void visit(LocalArrayValue& value) override {(void)value; assert(0);}
+   void visit(UniformValue& value) override {(void)value; assert(0);}
+   void visit(LiteralConstant& value) override {(void)value; assert(0);}
+   void visit(InlineConstant& value) override {(void)value; assert(0);}
+
+   Shader& sh;
+   nir_intrinsic_instr *ir;
+   PVirtualValue addr{nullptr};
+   bool success{true};
+};
+
+class RegisterReadHandler : public RegisterAccessHandler {
+
+public:
+   using RegisterAccessHandler::RegisterAccessHandler;
+   using RegisterAccessHandler::visit;
+
+   void visit(LocalArray& value) override;
+   void visit(Register& value) override;
+};
+
+bool Shader::emit_load_reg(nir_intrinsic_instr *intr)
+{
+   RegisterReadHandler visitor(*this, intr);
+   auto handle = value_factory().src(intr->src[0], 0);
+   handle->accept(visitor);
+   return visitor.success;
+}
+
+bool Shader::emit_load_reg_indirect(nir_intrinsic_instr *intr)
+{
+   RegisterReadHandler visitor(*this, intr);
+   visitor.addr =  value_factory().src(intr->src[1], 0);
+   auto handle = value_factory().src(intr->src[0], 0);
+   handle->accept(visitor);
+   return visitor.success;
+}
+
+class RegisterWriteHandler : public RegisterAccessHandler {
+
+public:
+   using RegisterAccessHandler::RegisterAccessHandler;
+   using RegisterAccessHandler::visit;
+
+   void visit(LocalArray& value) override;
+   void visit(Register& value) override;
+};
+
+
+bool Shader::emit_store_reg(nir_intrinsic_instr *intr)
+{
+   RegisterWriteHandler visitor(*this, intr);
+   auto handle = value_factory().src(intr->src[1], 0);
+   handle->accept(visitor);
+   return visitor.success;
+}
+
+bool Shader::emit_store_reg_indirect(nir_intrinsic_instr *intr)
+{
+   RegisterWriteHandler visitor(*this, intr);
+   visitor.addr =  value_factory().src(intr->src[2], 0);
+
+   auto handle = value_factory().src(intr->src[1], 0);
+   handle->accept(visitor);
+   return visitor.success;
+}
+
+RegisterAccessHandler::RegisterAccessHandler(Shader& shader, nir_intrinsic_instr *intr):
+   sh(shader),
+   ir(intr)
+{}
+
+void RegisterReadHandler::visit(LocalArray& array)
+{
+   int slots =  ir->dest.ssa.bit_size / 32;
+   auto pin = ir->dest.ssa.num_components > 1 ? pin_none : pin_free;
+   for (int i = 0; i < ir->dest.ssa.num_components; ++i) {
+      for (int s = 0; s < slots; ++s) {
+         int chan = i * slots + s;
+         auto dest = sh.value_factory().dest(ir->dest, chan, pin);
+         auto src = array.element(nir_intrinsic_base(ir), addr, chan);
+         sh.emit_instruction(new AluInstr(op1_mov, dest, src, AluInstr::write));
+      }
+   }
+}
+
+void RegisterReadHandler::visit(Register& reg)
+{
+   auto dest = sh.value_factory().dest(ir->dest, 0, pin_free);
+   sh.emit_instruction(new AluInstr(op1_mov, dest, &reg, AluInstr::write));
+}
+
+void RegisterWriteHandler::visit(LocalArray& array)
+{
+   int writemask = nir_intrinsic_write_mask(ir);
+   int slots =  ir->src->ssa->bit_size / 32;
+
+   for (int i = 0; i < ir->num_components; ++i) {
+      if (!(writemask & (1 << i)))
+         continue;
+      for (int s = 0; s < slots; ++s) {
+         int chan = i * slots + s;
+
+         auto dest = array.element(nir_intrinsic_base(ir), addr, chan);
+         auto src = sh.value_factory().src(ir->src[0], chan);
+         sh.emit_instruction(new AluInstr(op1_mov, dest, src, AluInstr::write));
+      }
+   }
+}
+
+void RegisterWriteHandler::visit(Register& dest)
+{
+   int writemask = nir_intrinsic_write_mask(ir);
+   assert(writemask == 1);
+   auto src = sh.value_factory().src(ir->src[0], 0);
+   sh.emit_instruction(new AluInstr(op1_mov, &dest, src, AluInstr::write));
 }
 
 bool

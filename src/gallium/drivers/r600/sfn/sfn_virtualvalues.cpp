@@ -873,9 +873,10 @@ LocalArray::LocalArray(int base_sel, int nchannels, int size, int frac):
    sfn_log << SfnLog::reg << "Allocate array A" << base_sel << "(" << size << ", " << frac
            << ", " << nchannels << ")\n";
 
+   auto pin = m_size > 1 ? pin_array : (nchannels > 1 ? pin_none : pin_free);
    for (int c = 0; c < nchannels; ++c) {
       for (unsigned i = 0; i < m_size; ++i) {
-         PRegister reg = new Register(base_sel + i, c + frac, pin_array);
+         PRegister reg = new Register(base_sel + i, c + frac, pin);
          m_values[m_size * c + i] = new LocalArrayValue(reg, *this);
       }
    }

@@ -934,8 +934,8 @@ r600_shader_from_nir(struct r600_context *rctx,
 
    NIR_PASS_V(sh, nir_lower_bool_to_int32);
 
-   NIR_PASS_V(sh, nir_lower_locals_to_regs, 32);
-   NIR_PASS_V(sh, nir_convert_from_ssa, true, false);
+   NIR_PASS_V(sh, nir_lower_locals_to_reg_intrinsics, 32);
+   NIR_PASS_V(sh, nir_convert_from_ssa, true, true);
    NIR_PASS_V(sh, nir_opt_dce);
 
    if (rctx->screen->b.debug_flags & DBG_ALL_SHADERS) {

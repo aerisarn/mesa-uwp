@@ -298,8 +298,6 @@ private:
    bool scan_uniforms(nir_variable *uniform);
    void allocate_reserved_registers();
 
-   void allocate_local_registers(const exec_list *registers);
-
    virtual int do_allocate_reserved_registers() = 0;
 
    bool scan_instruction(nir_instr *instr);
@@ -323,6 +321,10 @@ private:
    bool emit_shader_clock(nir_intrinsic_instr *instr);
    bool emit_wait_ack();
    bool emit_scoped_barrier(nir_intrinsic_instr *instr);
+   bool emit_load_reg(nir_intrinsic_instr *intr);
+   bool emit_load_reg_indirect(nir_intrinsic_instr *intr);
+   bool emit_store_reg(nir_intrinsic_instr *intr);
+   bool emit_store_reg_indirect(nir_intrinsic_instr *intr);
 
    bool equal_to(const Shader& other) const;
    void finalize();
@@ -400,6 +402,8 @@ private:
    InstructionChain m_chain_instr;
    std::list<Instr *, Allocator<Instr *>> m_loops;
    int m_control_flow_depth{0};
+   std::list<nir_intrinsic_instr*> m_register_allocations;
+
 };
 
 std::pair<unsigned, unsigned>
