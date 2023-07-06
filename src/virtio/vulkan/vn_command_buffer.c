@@ -751,6 +751,8 @@ static void
 vn_cmd_reset(struct vn_command_buffer *cmd)
 {
    vn_cs_encoder_reset(&cmd->cs);
+
+   cmd->builder.render_pass = NULL;
    if (cmd->builder.present_src_images) {
       vk_free(&cmd->pool->allocator, cmd->builder.present_src_images);
       cmd->builder.present_src_images = NULL;
