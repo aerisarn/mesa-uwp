@@ -3461,6 +3461,7 @@ nir_shader *si_get_prev_stage_nir_shader(struct si_shader *shader,
     */
    prev_shader->key.ge.opt.kill_outputs = 0;
    prev_shader->is_monolithic = true;
+   prev_shader->use_aco = shader->use_aco;
 
    si_init_shader_args(prev_shader, args);
 

@@ -145,8 +145,32 @@ si_aco_compile_shader(struct si_shader *shader,
    struct aco_shader_info info = {0};
    si_fill_aco_shader_info(shader, &info);
 
-   aco_compile_shader(&options, &info, 1, &nir, &args->ac,
+   nir_shader *shaders[2];
+   unsigned num_shaders = 0;
+
+   bool free_nir = false;
+   struct si_shader prev_shader = {};
+   struct si_shader_args prev_args;
+
+   const struct si_shader_selector *sel = shader->selector;
+
+   /* For merged shader stage. */
+   if (shader->is_monolithic && sel->screen->info.gfx_level >= GFX9 &&
+       (sel->stage == MESA_SHADER_TESS_CTRL || sel->stage == MESA_SHADER_GEOMETRY)) {
+
+      shaders[num_shaders++] =
+         si_get_prev_stage_nir_shader(shader, &prev_shader, &prev_args, &free_nir);
+
+      args = &prev_args;
+   }
+
+   shaders[num_shaders++] = nir;
+
+   aco_compile_shader(&options, &info, num_shaders, shaders, &args->ac,
                       si_aco_build_shader_binary, (void **)shader);
+
+   if (free_nir)
+      ralloc_free(shaders[0]);
 
    return true;
 }
