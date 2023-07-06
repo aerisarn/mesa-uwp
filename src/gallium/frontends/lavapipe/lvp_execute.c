@@ -44,6 +44,7 @@
 #include "util/format/u_format_zs.h"
 #include "util/ptralloc.h"
 #include "tgsi/tgsi_from_mesa.h"
+#include "vulkan/util/vk_util.h"
 
 #include "vk_cmd_enqueue_entrypoints.h"
 #include "vk_util.h"
@@ -2543,19 +2544,8 @@ static void handle_index_buffer(struct vk_cmd_queue_entry *cmd,
                                 struct rendering_state *state)
 {
    struct vk_cmd_bind_index_buffer *ib = &cmd->u.bind_index_buffer;
-   switch (ib->index_type) {
-   case VK_INDEX_TYPE_UINT8_EXT:
-      state->index_size = 1;
-      break;
-   case VK_INDEX_TYPE_UINT16:
-      state->index_size = 2;
-      break;
-   case VK_INDEX_TYPE_UINT32:
-      state->index_size = 4;
-      break;
-   default:
-      break;
-   }
+   state->index_size = vk_index_type_to_bytes(ib->index_type);
+
    if (ib->buffer) {
       state->index_offset = ib->offset;
       state->index_buffer = lvp_buffer_from_handle(ib->buffer)->bo;
