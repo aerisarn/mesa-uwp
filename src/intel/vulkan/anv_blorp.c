@@ -1562,11 +1562,20 @@ anv_fast_clear_depth_stencil(struct anv_cmd_buffer *cmd_buffer,
     * Even though the PRM provides a bunch of conditions under which this is
     * supposedly unnecessary, we choose to perform the flush unconditionally
     * just to be safe.
+    *
+    * From Bspec 46959, a programming note applicable to Gfx12+:
+    *
+    *    "Since HZ_OP has to be sent twice (first time set the clear/resolve state
+    *    and 2nd time to clear the state), and HW internally flushes the depth
+    *    cache on HZ_OP, there is no need to explicitly send a Depth Cache flush
+    *    after Clear or Resolve."
     */
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
-                             ANV_PIPE_DEPTH_STALL_BIT,
-                             "after clear hiz");
+   if (cmd_buffer->device->info->verx10 < 120) {
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                                ANV_PIPE_DEPTH_STALL_BIT,
+                                "after clear hiz");
+   }
 }
 
 static bool
