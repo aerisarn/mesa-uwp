@@ -2351,7 +2351,9 @@ static void si_determine_use_aco(struct si_shader *shader)
       break;
    case MESA_SHADER_TESS_EVAL:
    case MESA_SHADER_GEOMETRY:
-      shader->use_aco = !si_is_multi_part_shader(shader) || shader->is_gs_copy_shader;
+      shader->use_aco =
+         !si_is_multi_part_shader(shader) || shader->is_monolithic ||
+         shader->is_gs_copy_shader;
       break;
    case MESA_SHADER_FRAGMENT:
       shader->use_aco = shader->is_monolithic;
