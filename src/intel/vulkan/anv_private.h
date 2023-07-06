@@ -3538,6 +3538,7 @@ struct anv_graphics_pipeline {
       uint32_t                                  wm[2];
       uint32_t                                  streamout_state[5];
       uint32_t                                  hs[9];
+      uint32_t                                  ds[11];
    } gfx8;
 };
 

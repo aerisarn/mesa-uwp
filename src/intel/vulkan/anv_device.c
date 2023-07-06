@@ -196,8 +196,8 @@ get_device_extensions(const struct anv_physical_device *device,
 
    const bool rt_enabled = ANV_SUPPORT_RT && device->info.has_ray_tracing;
 
-   /* We are seeing hangs on other workloads when something using mesh
-    * shaders runs at the same time, so it's disabled by default.
+   /* We are still seeing some failures with mesh and graphics pipeline
+    * libraries used together, so disable mesh by default.
     */
    const bool mesh_shader_enabled = device->info.has_mesh_shading &&
       debug_get_bool_option("ANV_MESH_SHADER", false);

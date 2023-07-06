@@ -3334,6 +3334,35 @@ genX(emit_hs)(struct anv_cmd_buffer *cmd_buffer)
 }
 
 ALWAYS_INLINE static void
+genX(emit_ds)(struct anv_cmd_buffer *cmd_buffer)
+{
+#if GFX_VERx10 >= 125
+   /* Wa_14019750404:
+    *   In any 3D enabled context, just before any Tessellation enabled draw
+    *   call (3D Primitive), re-send the last programmed 3DSTATE_DS again.
+    *   This will make sure that the 3DSTATE_INT generated just before the
+    *   draw call will have TDS dirty which will make sure TDS will launch the
+    *   state thread before the draw call.
+    *
+    * This fixes a hang resulting from running anything using tessellation
+    * after a switch away from the mesh pipeline.
+    * We don't need to track said switch, as it matters at the HW level, and
+    * can be triggered even across processes, so we apply the Wa at all times.
+    *
+    * FIXME: Use INTEL_NEEDS_WA_14019750404 once the tool picks it up.
+    */
+   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
+      return;
+
+   uint32_t *dw =
+      anv_batch_emitn(&cmd_buffer->batch, GENX(3DSTATE_DS_length),
+                         GENX(3DSTATE_DS));
+   memcpy(dw, &pipeline->gfx8.ds, sizeof(pipeline->gfx8.ds));
+#endif
+}
+
+ALWAYS_INLINE static void
 genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
@@ -4274,6 +4303,7 @@ void genX(CmdDraw)(
 #endif
 
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
+   genX(emit_ds)(cmd_buffer);
 
    anv_batch_emit(&cmd_buffer->batch,
 #if GFX_VER < 11
@@ -4361,6 +4391,7 @@ void genX(CmdDrawMultiEXT)(
        */
       if (i && (INTEL_NEEDS_WA_1306463417 || INTEL_NEEDS_WA_16011107343))
          genX(emit_hs)(cmd_buffer);
+      genX(emit_ds)(cmd_buffer);
 
       const uint32_t count = draw->vertexCount * instanceCount;
       anv_measure_snapshot(cmd_buffer,
@@ -4594,6 +4625,7 @@ void genX(CmdDrawMultiIndexedEXT)(
        */
       if (i && (INTEL_NEEDS_WA_1306463417 || INTEL_NEEDS_WA_16011107343))
          genX(emit_hs)(cmd_buffer);
+      genX(emit_ds)(cmd_buffer);
 
       const uint32_t count =
          draw->indexCount * instanceCount * pipeline->instance_multiplier;
@@ -4853,6 +4885,7 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
        */
       if (i && (INTEL_NEEDS_WA_1306463417 || INTEL_NEEDS_WA_16011107343))
          genX(emit_hs)(cmd_buffer);
+      genX(emit_ds)(cmd_buffer);
 
       anv_batch_emit(&cmd_buffer->batch,
 #if GFX_VER < 11
@@ -5078,6 +5111,7 @@ emit_indirect_count_draws(struct anv_cmd_buffer *cmd_buffer,
        */
       if (i && (INTEL_NEEDS_WA_1306463417 || INTEL_NEEDS_WA_16011107343))
          genX(emit_hs)(cmd_buffer);
+      genX(emit_ds)(cmd_buffer);
 
       anv_batch_emit(&cmd_buffer->batch,
 #if GFX_VER < 11

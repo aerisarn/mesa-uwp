@@ -1316,52 +1316,67 @@ emit_3dstate_hs_ds(struct anv_graphics_pipeline *pipeline,
    hs.DispatchMode = tcs_prog_data->base.dispatch_mode;
    hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
 
+   STATIC_ASSERT(ARRAY_SIZE(pipeline->gfx8.hs) == GENX(3DSTATE_HS_length));
    GENX(3DSTATE_HS_pack)(&pipeline->base.base.batch, pipeline->gfx8.hs, &hs);
 
-   anv_batch_emit(batch, GENX(3DSTATE_DS), ds) {
-      ds.Enable = true;
-      ds.StatisticsEnable = true;
-      ds.KernelStartPointer = tes_bin->kernel.offset;
-      /* Wa_1606682166 */
-      ds.SamplerCount = GFX_VER == 11 ? 0 : get_sampler_count(tes_bin);
-      ds.BindingTableEntryCount = tes_bin->bind_map.surface_count;
-      ds.MaximumNumberofThreads = devinfo->max_tes_threads - 1;
+   struct GENX(3DSTATE_DS) ds = {
+      GENX(3DSTATE_DS_header),
+   };
 
-      ds.ComputeWCoordinateEnable =
-         tes_prog_data->domain == BRW_TESS_DOMAIN_TRI;
+   ds.Enable = true;
+   ds.StatisticsEnable = true;
+   ds.KernelStartPointer = tes_bin->kernel.offset;
+   /* Wa_1606682166 */
+   ds.SamplerCount = GFX_VER == 11 ? 0 : get_sampler_count(tes_bin);
+   ds.BindingTableEntryCount = tes_bin->bind_map.surface_count;
+   ds.MaximumNumberofThreads = devinfo->max_tes_threads - 1;
 
-      ds.PatchURBEntryReadLength = tes_prog_data->base.urb_read_length;
-      ds.PatchURBEntryReadOffset = 0;
-      ds.DispatchGRFStartRegisterForURBData =
-         tes_prog_data->base.base.dispatch_grf_start_reg;
+   ds.ComputeWCoordinateEnable =
+      tes_prog_data->domain == BRW_TESS_DOMAIN_TRI;
+
+   ds.PatchURBEntryReadLength = tes_prog_data->base.urb_read_length;
+   ds.PatchURBEntryReadOffset = 0;
+   ds.DispatchGRFStartRegisterForURBData =
+      tes_prog_data->base.base.dispatch_grf_start_reg;
 
 #if GFX_VER < 11
-      ds.DispatchMode =
-         tes_prog_data->base.dispatch_mode == DISPATCH_MODE_SIMD8 ?
-            DISPATCH_MODE_SIMD8_SINGLE_PATCH :
-            DISPATCH_MODE_SIMD4X2;
+   ds.DispatchMode =
+      tes_prog_data->base.dispatch_mode == DISPATCH_MODE_SIMD8 ?
+      DISPATCH_MODE_SIMD8_SINGLE_PATCH :
+      DISPATCH_MODE_SIMD4X2;
 #else
-      assert(tes_prog_data->base.dispatch_mode == DISPATCH_MODE_SIMD8);
-      ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
+   assert(tes_prog_data->base.dispatch_mode == DISPATCH_MODE_SIMD8);
+   ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
 #endif
 
-      ds.UserClipDistanceClipTestEnableBitmask =
-         tes_prog_data->base.clip_distance_mask;
-      ds.UserClipDistanceCullTestEnableBitmask =
-         tes_prog_data->base.cull_distance_mask;
+   ds.UserClipDistanceClipTestEnableBitmask =
+      tes_prog_data->base.clip_distance_mask;
+   ds.UserClipDistanceCullTestEnableBitmask =
+      tes_prog_data->base.cull_distance_mask;
 
 #if GFX_VER >= 12
-      ds.PrimitiveIDNotRequired = !tes_prog_data->include_primitive_id;
+   ds.PrimitiveIDNotRequired = !tes_prog_data->include_primitive_id;
 #endif
 #if GFX_VERx10 >= 125
-      ds.ScratchSpaceBuffer =
-         get_scratch_surf(&pipeline->base.base, MESA_SHADER_TESS_EVAL, tes_bin);
+   ds.ScratchSpaceBuffer =
+      get_scratch_surf(&pipeline->base.base, MESA_SHADER_TESS_EVAL, tes_bin);
 #else
-      ds.PerThreadScratchSpace = get_scratch_space(tes_bin);
-      ds.ScratchSpaceBasePointer =
-         get_scratch_address(&pipeline->base.base, MESA_SHADER_TESS_EVAL, tes_bin);
+   ds.PerThreadScratchSpace = get_scratch_space(tes_bin);
+   ds.ScratchSpaceBasePointer =
+      get_scratch_address(&pipeline->base.base, MESA_SHADER_TESS_EVAL, tes_bin);
 #endif
-   }
+
+   /* Wa_14019750404:
+    * See genX(emit_ds)().
+    * We need to both emit 3DSTATE_DS now, and before each 3DPRIMITIVE, so
+    * we pack it to have it later, and memcpy into the current batch.
+    */
+   STATIC_ASSERT(ARRAY_SIZE(pipeline->gfx8.ds) == GENX(3DSTATE_DS_length));
+   GENX(3DSTATE_DS_pack)(&pipeline->base.base.batch, pipeline->gfx8.ds, &ds);
+
+   uint32_t *dw =
+      anv_batch_emitn(batch, GENX(3DSTATE_DS_length), GENX(3DSTATE_DS));
+   memcpy(dw, &pipeline->gfx8.ds, sizeof(pipeline->gfx8.ds));
 }
 
 static void
