@@ -103,6 +103,7 @@ static const struct debug_control debug_control[] = {
    { "swsb-stall",  DEBUG_SWSB_STALL },
    { "heaps",       DEBUG_HEAPS },
    { "isl",         DEBUG_ISL },
+   { "sparse",      DEBUG_SPARSE },
    { NULL,    0 }
 };
 

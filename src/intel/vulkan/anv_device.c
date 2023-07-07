@@ -4243,6 +4243,9 @@ VkResult anv_QueueBindSparse(
    if (vk_device_is_lost(&queue->device->vk))
       return VK_ERROR_DEVICE_LOST;
 
+   if (INTEL_DEBUG(DEBUG_SPARSE))
+      fprintf(stderr, "=== [%s:%d] [%s]\n", __FILE__, __LINE__, __func__);
+
    return vk_error(queue, VK_ERROR_FEATURE_NOT_PRESENT);
 }
 
@@ -4385,6 +4388,13 @@ void anv_GetDeviceBufferMemoryRequirementsKHR(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
 
+   if (INTEL_DEBUG(DEBUG_SPARSE) && pInfo->pCreateInfo->flags &
+           (VK_BUFFER_CREATE_SPARSE_BINDING_BIT |
+            VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT |
+            VK_BUFFER_CREATE_SPARSE_ALIASED_BIT))
+      fprintf(stderr, "=== %s %s:%d flags:0x%08x\n", __func__, __FILE__,
+              __LINE__, pInfo->pCreateInfo->flags);
+
    anv_get_buffer_memory_requirements(device,
                                       pInfo->pCreateInfo->size,
                                       pInfo->pCreateInfo->usage,
@@ -4399,6 +4409,13 @@ VkResult anv_CreateBuffer(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    struct anv_buffer *buffer;
+
+   if (INTEL_DEBUG(DEBUG_SPARSE) && (pCreateInfo->flags &
+           (VK_BUFFER_CREATE_SPARSE_BINDING_BIT |
+            VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT |
+            VK_BUFFER_CREATE_SPARSE_ALIASED_BIT)))
+      fprintf(stderr, "=== %s %s:%d flags:0x%08x\n", __func__, __FILE__,
+              __LINE__, pCreateInfo->flags);
 
    /* Don't allow creating buffers bigger than our address space.  The real
     * issue here is that we may align up the buffer size and we don't want

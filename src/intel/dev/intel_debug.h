@@ -93,6 +93,7 @@ extern uint64_t intel_debug;
 #define DEBUG_SWSB_STALL          (1ull << 45)
 #define DEBUG_HEAPS               (1ull << 46)
 #define DEBUG_ISL                 (1ull << 47)
+#define DEBUG_SPARSE              (1ull << 48)
 
 #define DEBUG_ANY                 (~0ull)
 

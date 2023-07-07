@@ -1540,6 +1540,13 @@ VkResult anv_CreateImage(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
 
+   if (INTEL_DEBUG(DEBUG_SPARSE) && (pCreateInfo->flags &
+         (VK_IMAGE_CREATE_SPARSE_BINDING_BIT |
+          VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT |
+          VK_IMAGE_CREATE_SPARSE_ALIASED_BIT)))
+      fprintf(stderr, "=== %s %s:%d flags:0x%08x\n", __func__, __FILE__,
+              __LINE__, pCreateInfo->flags);
+
 #ifndef VK_USE_PLATFORM_ANDROID_KHR
    /* Ignore swapchain creation info on Android. Since we don't have an
     * implementation in Mesa, we're guaranteed to access an Android object
@@ -1754,6 +1761,13 @@ void anv_GetDeviceImageMemoryRequirementsKHR(
    ANV_FROM_HANDLE(anv_device, device, _device);
    struct anv_image image = { 0 };
 
+   if (INTEL_DEBUG(DEBUG_SPARSE) && (pInfo->pCreateInfo->flags &
+         (VK_IMAGE_CREATE_SPARSE_BINDING_BIT |
+          VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT |
+          VK_IMAGE_CREATE_SPARSE_ALIASED_BIT)))
+      fprintf(stderr, "=== %s %s:%d flags:0x%08x\n", __func__, __FILE__,
+              __LINE__, pInfo->pCreateInfo->flags);
+
    ASSERTED VkResult result =
       anv_image_init_from_create_info(device, &image, pInfo->pCreateInfo, true);
    assert(result == VK_SUCCESS);
@@ -1771,6 +1785,8 @@ void anv_GetImageSparseMemoryRequirements(
     uint32_t*                                   pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements*            pSparseMemoryRequirements)
 {
+   if (INTEL_DEBUG(DEBUG_SPARSE))
+      fprintf(stderr, "=== [%s:%d] [%s]\n", __FILE__, __LINE__, __func__);
    *pSparseMemoryRequirementCount = 0;
 }
 
@@ -1780,6 +1796,8 @@ void anv_GetImageSparseMemoryRequirements2(
     uint32_t*                                   pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements)
 {
+   if (INTEL_DEBUG(DEBUG_SPARSE))
+      fprintf(stderr, "=== [%s:%d] [%s]\n", __FILE__, __LINE__, __func__);
    *pSparseMemoryRequirementCount = 0;
 }
 
@@ -1789,6 +1807,8 @@ void anv_GetDeviceImageSparseMemoryRequirementsKHR(
     uint32_t*                                   pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements)
 {
+   if (INTEL_DEBUG(DEBUG_SPARSE))
+      fprintf(stderr, "=== [%s:%d] [%s]\n", __FILE__, __LINE__, __func__);
    *pSparseMemoryRequirementCount = 0;
 }
 

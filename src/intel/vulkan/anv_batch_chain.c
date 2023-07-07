@@ -1258,6 +1258,17 @@ anv_queue_submit_locked(struct anv_queue *queue,
 {
    VkResult result;
 
+   if (unlikely((submit->buffer_bind_count ||
+                 submit->image_opaque_bind_count ||
+                 submit->image_bind_count))) {
+      if (INTEL_DEBUG(DEBUG_SPARSE))
+         fprintf(stderr, "=== application submitting sparse operations: "
+               "buffer_bind:%d image_opaque_bind:%d image_bind:%d\n",
+               submit->buffer_bind_count, submit->image_opaque_bind_count,
+               submit->image_bind_count);
+      fprintf(stderr, "Error: Using sparse operation. Sparse binding not supported.\n");
+   }
+
    if (submit->command_buffer_count == 0) {
       result = anv_queue_exec_locked(queue, submit->wait_count, submit->waits,
                                      0 /* cmd_buffer_count */,
