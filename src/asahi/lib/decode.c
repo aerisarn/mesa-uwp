@@ -20,6 +20,14 @@
 #include "agx_iokit.h"
 #endif
 
+/* Pending UAPI */
+struct drm_asahi_params_global {
+   int gpu_generation;
+   int gpu_variant;
+   int chip_id;
+   int num_clusters_total;
+};
+
 UNUSED static const char *agx_alloc_types[AGX_NUM_ALLOC] = {"mem", "map",
                                                             "cmd"};
 
@@ -254,16 +262,18 @@ agxdecode_map_read_write(void)
 
 unsigned agxdecode_indent = 0;
 
+typedef struct drm_asahi_params_global decoder_params;
+
 /* Abstraction for command stream parsing */
 typedef unsigned (*decode_cmd)(const uint8_t *map, uint64_t *link, bool verbose,
-                               void *data);
+                               decoder_params *params, void *data);
 
 #define STATE_DONE (0xFFFFFFFFu)
 #define STATE_LINK (0xFFFFFFFEu)
 
 static void
 agxdecode_stateful(uint64_t va, const char *label, decode_cmd decoder,
-                   bool verbose, void *data)
+                   bool verbose, decoder_params *params, void *data)
 {
    struct agx_bo *alloc = agxdecode_find_mapped_gpu_mem_containing(va);
    assert(alloc != NULL && "nonexistent object");
@@ -278,7 +288,7 @@ agxdecode_stateful(uint64_t va, const char *label, decode_cmd decoder,
    fflush(agxdecode_dump_stream);
 
    while (map < end) {
-      unsigned count = decoder(map, &link, verbose, data);
+      unsigned count = decoder(map, &link, verbose, params, data);
 
       /* If we fail to decode, default to a hexdump (don't hang) */
       if (count == 0) {
@@ -301,7 +311,7 @@ agxdecode_stateful(uint64_t va, const char *label, decode_cmd decoder,
 
 static unsigned
 agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
-              UNUSED void *data)
+              decoder_params *params, UNUSED void *data)
 {
    enum agx_sampler_states *sampler_states = data;
    enum agx_usc_control type = map[0];
@@ -417,7 +427,7 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
    }
 
 static void
-agxdecode_record(uint64_t va, size_t size, bool verbose)
+agxdecode_record(uint64_t va, size_t size, bool verbose, decoder_params *params)
 {
    uint8_t *base = agxdecode_fetch_gpu_mem(va, size);
    uint8_t *map = base;
@@ -446,7 +456,7 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
    if (hdr.fragment_shader) {
       agx_unpack(agxdecode_dump_stream, map, FRAGMENT_SHADER, frag);
       agxdecode_stateful(frag.pipeline, "Fragment pipeline", agxdecode_usc,
-                         verbose, &frag.sampler_state_register_count);
+                         verbose, params, &frag.sampler_state_register_count);
 
       if (frag.cf_bindings) {
          uint8_t *cf = agxdecode_fetch_gpu_mem(frag.cf_bindings, 128);
@@ -478,7 +488,7 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
 
 static unsigned
 agxdecode_cdm(const uint8_t *map, uint64_t *link, bool verbose,
-              UNUSED void *data)
+              decoder_params *params, UNUSED void *data)
 {
    /* Bits 29-31 contain the block type */
    enum agx_cdm_block_type block_type = (map[3] >> 5);
@@ -494,7 +504,7 @@ agxdecode_cdm(const uint8_t *map, uint64_t *link, bool verbose,
 
       agx_unpack(agxdecode_dump_stream, map, CDM_HEADER, hdr);
       agxdecode_stateful(hdr.pipeline, "Pipeline", agxdecode_usc, verbose,
-                         &hdr.sampler_state_register_count);
+                         params, &hdr.sampler_state_register_count);
       DUMP_UNPACKED(CDM_HEADER, hdr, "Compute\n");
       map += AGX_CDM_HEADER_LENGTH;
 
@@ -545,7 +555,7 @@ agxdecode_cdm(const uint8_t *map, uint64_t *link, bool verbose,
 
 static unsigned
 agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
-              UNUSED void *data)
+              decoder_params *params, UNUSED void *data)
 {
    /* Bits 29-31 contain the block type */
    enum agx_vdm_block_type block_type = (map[3] >> 5);
@@ -563,7 +573,7 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
       struct agx_bo *mem = agxdecode_find_mapped_gpu_mem_containing(address);
 
       if (mem)
-         agxdecode_record(address, cmd.size_words * 4, verbose);
+         agxdecode_record(address, cmd.size_words * 4, verbose, params);
       else
          DUMP_UNPACKED(PPP_STATE, cmd, "Non-existent record (XXX)\n");
 
@@ -602,7 +612,7 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
          fprintf(agxdecode_dump_stream, "Pipeline %X\n",
                  (uint32_t)word_1.pipeline);
          agxdecode_stateful(word_1.pipeline, "Pipeline", agxdecode_usc, verbose,
-                            &sampler_states);
+                            params, &sampler_states);
       }
 
       VDM_PRINT(vertex_shader_word_1, VERTEX_SHADER_WORD_1,
@@ -659,12 +669,13 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
 }
 
 static void
-agxdecode_cs(uint32_t *cmdbuf, uint64_t encoder, bool verbose)
+agxdecode_cs(uint32_t *cmdbuf, uint64_t encoder, bool verbose,
+             decoder_params *params)
 {
    agx_unpack(agxdecode_dump_stream, cmdbuf + 16, IOGPU_COMPUTE, cs);
    DUMP_UNPACKED(IOGPU_COMPUTE, cs, "Compute\n");
 
-   agxdecode_stateful(encoder, "Encoder", agxdecode_cdm, verbose, NULL);
+   agxdecode_stateful(encoder, "Encoder", agxdecode_cdm, verbose, params, NULL);
 
    fprintf(agxdecode_dump_stream, "Context switch program:\n");
    agx_disassemble(agxdecode_fetch_gpu_mem(cs.context_switch_program, 1024),
@@ -672,34 +683,35 @@ agxdecode_cs(uint32_t *cmdbuf, uint64_t encoder, bool verbose)
 }
 
 static void
-agxdecode_gfx(uint32_t *cmdbuf, uint64_t encoder, bool verbose)
+agxdecode_gfx(uint32_t *cmdbuf, uint64_t encoder, bool verbose,
+              decoder_params *params)
 {
    agx_unpack(agxdecode_dump_stream, cmdbuf + 16, IOGPU_GRAPHICS, gfx);
    DUMP_UNPACKED(IOGPU_GRAPHICS, gfx, "Graphics\n");
 
-   agxdecode_stateful(encoder, "Encoder", agxdecode_vdm, verbose, NULL);
+   agxdecode_stateful(encoder, "Encoder", agxdecode_vdm, verbose, params, NULL);
 
    if (gfx.clear_pipeline_unk) {
       fprintf(agxdecode_dump_stream, "Unk: %X\n", gfx.clear_pipeline_unk);
       agxdecode_stateful(gfx.clear_pipeline, "Clear pipeline", agxdecode_usc,
-                         verbose, NULL);
+                         verbose, params, NULL);
    }
 
    if (gfx.store_pipeline_unk) {
       assert(gfx.store_pipeline_unk == 0x4);
       agxdecode_stateful(gfx.store_pipeline, "Store pipeline", agxdecode_usc,
-                         verbose, NULL);
+                         verbose, params, NULL);
    }
 
    assert((gfx.partial_reload_pipeline_unk & 0xF) == 0x4);
    if (gfx.partial_reload_pipeline) {
       agxdecode_stateful(gfx.partial_reload_pipeline, "Partial reload pipeline",
-                         agxdecode_usc, verbose, NULL);
+                         agxdecode_usc, verbose, params, NULL);
    }
 
    if (gfx.partial_store_pipeline) {
       agxdecode_stateful(gfx.partial_store_pipeline, "Partial store pipeline",
-                         agxdecode_usc, verbose, NULL);
+                         agxdecode_usc, verbose, params, NULL);
    }
 }
 
@@ -735,10 +747,17 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
       DUMP_CL(IOGPU_ATTACHMENT, ptr, "Attachment");
    }
 
+   struct drm_asahi_params_global params = {
+      .gpu_generation = 13,
+      .gpu_variant = 'G',
+      .chip_id = 0x8103,
+      .num_clusters_total = 1,
+   };
+
    if (cmd.unk_5 == 3)
-      agxdecode_cs((uint32_t *)cmdbuf->ptr.cpu, cmd.encoder, verbose);
+      agxdecode_cs((uint32_t *)cmdbuf->ptr.cpu, cmd.encoder, verbose, &params);
    else
-      agxdecode_gfx((uint32_t *)cmdbuf->ptr.cpu, cmd.encoder, verbose);
+      agxdecode_gfx((uint32_t *)cmdbuf->ptr.cpu, cmd.encoder, verbose, &params);
 
    agxdecode_map_read_write();
 }
