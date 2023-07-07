@@ -88,6 +88,7 @@ static const driOptionDescription anv_dri_options[] = {
       DRI_CONF_LIMIT_TRIG_INPUT_RANGE(false)
       DRI_CONF_ANV_MESH_CONV_PRIM_ATTRS_TO_VERT_ATTRS(-2)
       DRI_CONF_FORCE_VK_VENDOR(0)
+      DRI_CONF_FAKE_SPARSE(false)
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_QUALITY
@@ -453,7 +454,17 @@ get_features(const struct anv_physical_device *pdevice,
       .shaderFloat64                            = pdevice->info.has_64bit_float,
       .shaderInt64                              = true,
       .shaderInt16                              = true,
+      .shaderResourceResidency                  = pdevice->instance->has_fake_sparse,
       .shaderResourceMinLod                     = true,
+      .sparseBinding                            = pdevice->instance->has_fake_sparse,
+      .sparseResidencyBuffer                    = pdevice->instance->has_fake_sparse,
+      .sparseResidencyImage2D                   = pdevice->instance->has_fake_sparse,
+      .sparseResidencyImage3D                   = pdevice->instance->has_fake_sparse,
+      .sparseResidency2Samples                  = false,
+      .sparseResidency4Samples                  = false,
+      .sparseResidency8Samples                  = false,
+      .sparseResidency16Samples                 = false,
+      .sparseResidencyAliased                   = pdevice->instance->has_fake_sparse,
       .variableMultisampleRate                  = true,
       .inheritedQueries                         = true,
 
@@ -1099,6 +1110,8 @@ static void
 anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
 {
    uint32_t family_count = 0;
+   VkQueueFlags sparse_flags = pdevice->instance->has_fake_sparse ?
+                               VK_QUEUE_SPARSE_BINDING_BIT : 0;
 
    if (pdevice->engine_info) {
       int gc_count =
@@ -1120,7 +1133,8 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
          pdevice->queue.families[family_count++] = (struct anv_queue_family) {
             .queueFlags = VK_QUEUE_GRAPHICS_BIT |
                           VK_QUEUE_COMPUTE_BIT |
-                          VK_QUEUE_TRANSFER_BIT,
+                          VK_QUEUE_TRANSFER_BIT |
+                          sparse_flags,
             .queueCount = gc_count,
             .engine_class = INTEL_ENGINE_CLASS_RENDER,
          };
@@ -1128,7 +1142,8 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
       if (g_count > 0) {
          pdevice->queue.families[family_count++] = (struct anv_queue_family) {
             .queueFlags = VK_QUEUE_GRAPHICS_BIT |
-                          VK_QUEUE_TRANSFER_BIT,
+                          VK_QUEUE_TRANSFER_BIT |
+                          sparse_flags,
             .queueCount = g_count,
             .engine_class = INTEL_ENGINE_CLASS_RENDER,
          };
@@ -1136,7 +1151,8 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
       if (c_count > 0) {
          pdevice->queue.families[family_count++] = (struct anv_queue_family) {
             .queueFlags = VK_QUEUE_COMPUTE_BIT |
-                          VK_QUEUE_TRANSFER_BIT,
+                          VK_QUEUE_TRANSFER_BIT |
+                          sparse_flags,
             .queueCount = c_count,
             .engine_class = compute_class,
          };
@@ -1168,7 +1184,8 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
       pdevice->queue.families[family_count++] = (struct anv_queue_family) {
          .queueFlags = VK_QUEUE_GRAPHICS_BIT |
                        VK_QUEUE_COMPUTE_BIT |
-                       VK_QUEUE_TRANSFER_BIT,
+                       VK_QUEUE_TRANSFER_BIT |
+                       sparse_flags,
          .queueCount = 1,
          .engine_class = INTEL_ENGINE_CLASS_RENDER,
       };
@@ -1530,6 +1547,8 @@ anv_init_dri_options(struct anv_instance *instance)
        driQueryOptioni(&instance->dri_options, "query_copy_with_shader_threshold");
     instance->force_vk_vendor =
        driQueryOptioni(&instance->dri_options, "force_vk_vendor");
+    instance->has_fake_sparse =
+       driQueryOptionb(&instance->dri_options, "fake_sparse");
 }
 
 VkResult anv_CreateInstance(
@@ -1651,7 +1670,7 @@ void anv_GetPhysicalDeviceProperties(
       .maxMemoryAllocationCount                 = UINT32_MAX,
       .maxSamplerAllocationCount                = 64 * 1024,
       .bufferImageGranularity                   = 1,
-      .sparseAddressSpaceSize                   = 0,
+      .sparseAddressSpaceSize                   = pdevice->instance->has_fake_sparse ? (1uLL << 48) : 0,
       .maxBoundDescriptorSets                   = MAX_SETS,
       .maxPerStageDescriptorSamplers            = max_samplers,
       .maxPerStageDescriptorUniformBuffers      = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BUFFERS,
@@ -1776,7 +1795,13 @@ void anv_GetPhysicalDeviceProperties(
                     VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU :
                     VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
       .limits = limits,
-      .sparseProperties = {0}, /* Broadwell doesn't do sparse. */
+      .sparseProperties = {
+         .residencyStandard2DBlockShape = pdevice->instance->has_fake_sparse,
+         .residencyStandard2DMultisampleBlockShape = pdevice->instance->has_fake_sparse,
+         .residencyStandard3DBlockShape = pdevice->instance->has_fake_sparse,
+         .residencyAlignedMipSize = false,
+         .residencyNonResidentStrict = pdevice->instance->has_fake_sparse,
+      },
    };
 
    if (unlikely(pdevice->instance->force_vk_vendor))

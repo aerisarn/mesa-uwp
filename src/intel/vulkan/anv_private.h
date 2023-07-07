@@ -1045,6 +1045,7 @@ struct anv_instance {
     unsigned                                    query_clear_with_blorp_threshold;
     unsigned                                    query_copy_with_shader_threshold;
     unsigned                                    force_vk_vendor;
+    bool                                        has_fake_sparse;
 
     /* HW workarounds */
     bool                                        no_16bit;
