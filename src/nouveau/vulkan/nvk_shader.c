@@ -304,6 +304,61 @@ assign_io_locations(nir_shader *nir)
    }
 }
 
+static void
+nvk_optimize_nir(nir_shader *nir)
+{
+   bool progress;
+
+   do {
+      progress = false;
+
+      NIR_PASS(progress, nir, nir_split_array_vars, nir_var_function_temp);
+      NIR_PASS(progress, nir, nir_shrink_vec_array_vars, nir_var_function_temp);
+
+      if (!nir->info.var_copies_lowered) {
+         /* Only run this pass if nir_lower_var_copies was not called
+          * yet. That would lower away any copy_deref instructions and we
+          * don't want to introduce any more.
+          */
+         NIR_PASS(progress, nir, nir_opt_find_array_copies);
+      }
+      NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
+      NIR_PASS(progress, nir, nir_opt_dead_write_vars);
+      NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
+      NIR_PASS(progress, nir, nir_copy_prop);
+      NIR_PASS(progress, nir, nir_opt_remove_phis);
+      NIR_PASS(progress, nir, nir_opt_dce);
+      if (nir_opt_trivial_continues(nir)) {
+         progress = true;
+         NIR_PASS(progress, nir, nir_copy_prop);
+         NIR_PASS(progress, nir, nir_opt_remove_phis);
+         NIR_PASS(progress, nir, nir_opt_dce);
+      }
+      NIR_PASS(progress, nir, nir_opt_if,
+               nir_opt_if_aggressive_last_continue | nir_opt_if_optimize_phi_true_false);
+      NIR_PASS(progress, nir, nir_opt_dead_cf);
+      NIR_PASS(progress, nir, nir_opt_cse);
+      /*
+       * this should be fine, likely a backend problem,
+       * but a bunch of tessellation shaders blow up.
+       * we should revisit this when NAK is merged.
+       */
+      NIR_PASS(progress, nir, nir_opt_peephole_select, 2, true, true);
+      NIR_PASS(progress, nir, nir_opt_constant_folding);
+      NIR_PASS(progress, nir, nir_opt_algebraic);
+
+      NIR_PASS(progress, nir, nir_opt_undef);
+
+      if (nir->options->max_unroll_iterations) {
+         NIR_PASS(progress, nir, nir_opt_loop_unroll);
+      }
+   } while (progress);
+
+   NIR_PASS(progress, nir, nir_opt_shrink_vectors);
+   NIR_PASS(progress, nir, nir_remove_dead_variables,
+            nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
+}
+
 void
 nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,
@@ -313,20 +368,12 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
    NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);
 
-   if (nir->info.stage == MESA_SHADER_VERTEX ||
-       nir->info.stage == MESA_SHADER_GEOMETRY ||
-       nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, true);
-   } else if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, false);
-   }
-
    NIR_PASS(_, nir, nir_split_var_copies);
-   NIR_PASS(_, nir, nir_lower_var_copies);
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);
 
    NIR_PASS(_, nir, nir_lower_global_vars_to_local);
    NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+
    NIR_PASS(_, nir, nir_lower_system_values);
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       // codegen does not support SYSTEM_VALUE_FIRST_VERTEX
@@ -353,6 +400,23 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
 
+   if (nir->info.stage == MESA_SHADER_VERTEX ||
+       nir->info.stage == MESA_SHADER_GEOMETRY ||
+       nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, true);
+   } else if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
+      NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, false);
+   }
+   NIR_PASS(_, nir, nir_split_var_copies);
+
+   NIR_PASS(_, nir, nir_lower_global_vars_to_local);
+   NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+
+
+   nvk_optimize_nir(nir);
+
+   NIR_PASS(_, nir, nir_lower_var_copies);
+
    /* Lower push constants before lower_descriptors */
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
             nir_address_format_32bit_offset);
@@ -378,9 +442,12 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_shared,
             nir_address_format_32bit_offset);
 
-   NIR_PASS(_, nir, nir_copy_prop);
-   NIR_PASS(_, nir, nir_opt_dce);
 
+   uint32_t indirect_mask = nir_var_function_temp;
+
+   NIR_PASS(_, nir, nir_lower_indirect_derefs, indirect_mask, 16);
+
+   nvk_optimize_nir(nir);
    if (nir->info.stage != MESA_SHADER_COMPUTE)
       assign_io_locations(nir);
 
