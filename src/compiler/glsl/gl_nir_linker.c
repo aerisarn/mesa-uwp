@@ -873,6 +873,17 @@ can_remove_varying_before_linking(nir_variable *var, void *data)
       return true;
 }
 
+static void
+remove_dead_varyings_pre_linking(nir_shader *nir)
+{
+   struct nir_remove_dead_variables_options opts;
+   bool is_sso = nir->info.separate_shader;
+   opts.can_remove_var_data = &is_sso;
+   opts.can_remove_var = &can_remove_varying_before_linking;
+   nir_variable_mode mask = nir_var_shader_in | nir_var_shader_out;
+   nir_remove_dead_variables(nir, mask, &opts);
+}
+
 /* - create a gl_PointSize variable
  * - find every gl_Position write
  * - store 1.0 to gl_PointSize after every gl_Position write
@@ -1015,13 +1026,6 @@ preprocess_shader(const struct gl_constants *consts,
        (nir->info.outputs_written & (VARYING_BIT_CLIP_DIST0 | VARYING_BIT_CLIP_DIST1)))
       NIR_PASS_V(nir, gl_nir_zero_initialize_clip_distance);
 
-   struct nir_remove_dead_variables_options opts;
-   bool is_sso = nir->info.separate_shader;
-   opts.can_remove_var_data = &is_sso;
-   opts.can_remove_var = &can_remove_varying_before_linking;
-   nir_variable_mode mask = nir_var_shader_in | nir_var_shader_out;
-   nir_remove_dead_variables(nir, mask, &opts);
-
    if (options->lower_all_io_to_temps ||
        nir->info.stage == MESA_SHADER_VERTEX ||
        nir->info.stage == MESA_SHADER_GEOMETRY) {
@@ -1134,8 +1138,11 @@ gl_nir_link_spirv(const struct gl_constants *consts,
    MESA_TRACE_FUNC();
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (prog->_LinkedShaders[i])
+      if (prog->_LinkedShaders[i]) {
          linked_shader[num_shaders++] = prog->_LinkedShaders[i];
+
+         remove_dead_varyings_pre_linking(prog->_LinkedShaders[i]->Program->nir);
+      }
    }
 
    if (!prelink_lowering(consts, exts, prog, linked_shader, num_shaders))
@@ -1318,8 +1325,11 @@ gl_nir_link_glsl(const struct gl_constants *consts,
    unsigned num_shaders = 0;
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (prog->_LinkedShaders[i])
+      if (prog->_LinkedShaders[i]) {
          linked_shader[num_shaders++] = prog->_LinkedShaders[i];
+
+         remove_dead_varyings_pre_linking(prog->_LinkedShaders[i]->Program->nir);
+      }
    }
 
    if (!gl_assign_attribute_or_color_locations(consts, prog))
