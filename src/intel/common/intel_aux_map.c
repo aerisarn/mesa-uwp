@@ -502,7 +502,7 @@ get_aux_entry(struct intel_aux_map_context *ctx, uint64_t address,
       } else {
          unreachable("Failed to add L2 Aux-Map Page Table!");
       }
-      *l3_entry = (l2_gpu & 0xffffffff8000ULL) | 1;
+      *l3_entry = (l2_gpu & 0xffffffff8000ULL) | INTEL_AUX_MAP_ENTRY_VALID_BIT;
    } else {
       uint64_t l2_addr = intel_canonical_address(*l3_entry & ~0x7fffULL);
       l2_map = get_u64_entry_ptr(ctx, l2_addr);
@@ -519,7 +519,7 @@ get_aux_entry(struct intel_aux_map_context *ctx, uint64_t address,
       } else {
          unreachable("Failed to add L1 Aux-Map Page Table!");
       }
-      *l2_entry = (l1_addr & ~get_page_mask(l1_page_size)) | 1;
+      *l2_entry = (l1_addr & ~get_page_mask(l1_page_size)) | INTEL_AUX_MAP_ENTRY_VALID_BIT;
    } else {
       l1_addr = intel_canonical_address(
             *l2_entry & ~get_page_mask(l1_page_size));
@@ -627,7 +627,7 @@ remove_mapping(struct intel_aux_map_context *ctx, uint64_t address,
    get_aux_entry(ctx, address, NULL, NULL, &l1_entry);
 
    const uint64_t current_l1_data = *l1_entry;
-   const uint64_t l1_data = current_l1_data & ~1ull;
+   const uint64_t l1_data = current_l1_data & ~INTEL_AUX_MAP_ENTRY_VALID_BIT;
 
    if ((current_l1_data & INTEL_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       return;
