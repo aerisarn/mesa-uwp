@@ -167,7 +167,6 @@ struct st_context
    bool has_pipeline_stat;
    bool has_indep_blend_enable;
    bool has_indep_blend_func;
-   bool needs_rgb_dst_alpha_override;
    bool can_dither;
    bool can_bind_const_buffer_as_vertex;
    bool lower_flatshade;
