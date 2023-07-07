@@ -230,7 +230,7 @@ a618_gl:
     # Note that piglit has GL+VK integration testing.
     - .freedreno-turnip-rules
   variables:
-    HWCI_START_XORG: 1
+    HWCI_START_WESTON: 1
     DEQP_VER: gles2
     PIGLIT_PROFILES: gpu
 
@@ -343,7 +343,7 @@ a630_skqp:
     # SKQP tests both the GL and VK drivers.
     - .freedreno-turnip-rules
   variables:
-    HWCI_START_XORG: 1
+    HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a630-skqp
 
 a630_vk:
@@ -387,7 +387,7 @@ a630_piglit:
     # Note that piglit has GL+VK integration testing.
     - .freedreno-turnip-rules
   variables:
-    HWCI_START_XORG: 1
+    HWCI_START_WESTON: 1
     DEQP_SUITE: freedreno-a630-piglit
 
 a630-traces:
