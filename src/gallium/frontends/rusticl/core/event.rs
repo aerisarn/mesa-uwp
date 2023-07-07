@@ -27,6 +27,7 @@ pub type EventSig = Box<dyn Fn(&Arc<Queue>, &PipeContext) -> CLResult<()>>;
 
 pub enum EventTimes {
     Queued = CL_PROFILING_COMMAND_QUEUED as isize,
+    Submit = CL_PROFILING_COMMAND_SUBMIT as isize,
 }
 
 #[derive(Default)]
@@ -35,6 +36,7 @@ struct EventMutState {
     cbs: [Vec<(EventCB, *mut c_void)>; 3],
     work: Option<EventSig>,
     time_queued: cl_ulong,
+    time_submit: cl_ulong,
 }
 
 pub struct Event {
@@ -136,6 +138,7 @@ impl Event {
         let mut lock = self.state();
         match which {
             EventTimes::Queued => lock.time_queued = value,
+            EventTimes::Submit => lock.time_submit = value,
         }
     }
 
@@ -144,6 +147,7 @@ impl Event {
 
         match which {
             EventTimes::Queued => lock.time_queued,
+            EventTimes::Submit => lock.time_submit,
         }
     }
 
@@ -185,13 +189,19 @@ impl Event {
     pub fn call(&self, ctx: &PipeContext) {
         let mut lock = self.state();
         let status = lock.status;
+        let queue = self.queue.as_ref().unwrap();
+        let profiling_enabled = queue.is_profiling_enabled();
         if status == CL_QUEUED as cl_int {
+            if profiling_enabled {
+                // We already have the lock so can't call set_time on the event
+                lock.time_submit = queue.device.screen().get_timestamp();
+            }
             let work = lock.work.take();
             let new = work.as_ref().map_or(
                 // if there is no work
                 CL_SUBMITTED as cl_int,
                 |w| {
-                    let res = w(self.queue.as_ref().unwrap(), ctx).err().map_or(
+                    let res = w(queue, ctx).err().map_or(
                         // if there is an error, negate it
                         CL_SUBMITTED as cl_int,
                         |e| e,
