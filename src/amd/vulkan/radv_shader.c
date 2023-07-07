@@ -2047,7 +2047,7 @@ radv_shader_create_uncached(struct radv_device *device, const struct radv_shader
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
 #if !defined(USE_LIBELF)
-      goto fail;
+      goto out;
 #else
       struct ac_rtld_binary rtld_binary = {0};
 
