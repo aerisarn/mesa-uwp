@@ -3001,6 +3001,7 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 {
    struct agx_context *ctx = agx_context(pipe);
    struct agx_batch *batch = agx_get_compute_batch(ctx);
+   struct agx_device *dev = agx_device(pipe->screen);
 
    agx_batch_init_state(batch);
 
@@ -3053,6 +3054,13 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
                                         info->variable_shared_mem);
    }
    out += AGX_CDM_HEADER_LENGTH;
+
+   /* Added in G14X */
+   if (dev->params.gpu_generation >= 14 && dev->params.num_clusters_total > 1) {
+      agx_pack(out, CDM_UNK_G14X, cfg)
+         ;
+      out += AGX_CDM_UNK_G14X_LENGTH;
+   }
 
    if (info->indirect) {
       agx_pack(out, CDM_INDIRECT, cfg) {

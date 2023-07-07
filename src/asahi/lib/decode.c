@@ -498,15 +498,21 @@ agxdecode_cdm(const uint8_t *map, uint64_t *link, bool verbose,
       size_t length = AGX_CDM_HEADER_LENGTH;
 
 #define CDM_PRINT(STRUCT_NAME, human)                                          \
-   DUMP_CL(CDM_##STRUCT_NAME, map, human);                                     \
-   map += AGX_CDM_##STRUCT_NAME##_LENGTH;                                      \
-   length += AGX_CDM_##STRUCT_NAME##_LENGTH;
+   do {                                                                        \
+      DUMP_CL(CDM_##STRUCT_NAME, map, human);                                  \
+      map += AGX_CDM_##STRUCT_NAME##_LENGTH;                                   \
+      length += AGX_CDM_##STRUCT_NAME##_LENGTH;                                \
+   } while (0);
 
       agx_unpack(agxdecode_dump_stream, map, CDM_HEADER, hdr);
       agxdecode_stateful(hdr.pipeline, "Pipeline", agxdecode_usc, verbose,
                          params, &hdr.sampler_state_register_count);
       DUMP_UNPACKED(CDM_HEADER, hdr, "Compute\n");
       map += AGX_CDM_HEADER_LENGTH;
+
+      /* Added in G14X */
+      if (params->gpu_generation >= 14 && params->num_clusters_total > 1)
+         CDM_PRINT(UNK_G14X, "Unknown G14X");
 
       switch (hdr.mode) {
       case AGX_CDM_MODE_DIRECT:

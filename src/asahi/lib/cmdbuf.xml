@@ -855,6 +855,10 @@
     <field name="Pipeline" size="26" start="1:6" type="address" modifier="shr(6)"/>
   </struct>
 
+  <struct name="CDM Unk G14X" size="8">
+    <field name="Unknown 30" size="1" start="1:30" type="bool" default="true"/>
+  </struct>
+
   <struct name="CDM Indirect" size="8">
     <field name="Address hi" size="8" start="0" type="hex"/>
     <field name="Address lo" size="30" start="34" type="hex" modifier="shr(2)"/>
