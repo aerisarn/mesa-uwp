@@ -583,17 +583,17 @@ vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
                          const struct vn_framebuffer *fb,
                          const VkRenderPassBeginInfo *begin_info)
 {
+   assert(begin_info);
+   assert(cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
    cmd->builder.render_pass = pass;
 
-   if (begin_info) {
-      cmd->in_render_pass = true;
-      cmd->render_pass = pass;
-      cmd->subpass_index = 0;
-      cmd->view_mask = cmd->render_pass->subpasses[0].view_mask;
-   }
+   cmd->in_render_pass = true;
+   cmd->render_pass = pass;
+   cmd->subpass_index = 0;
+   cmd->view_mask = cmd->render_pass->subpasses[0].view_mask;
 
-   if (!pass->present_count ||
-       cmd->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+   if (!pass->present_count)
       return;
 
    /* find fb attachments */
@@ -1033,15 +1033,17 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    if (inheritance_info) {
       cmd->in_render_pass = local_begin_info.in_render_pass;
       if (local_begin_info.has_inherited_pass) {
-         vn_cmd_begin_render_pass(
-            cmd, vn_render_pass_from_handle(inheritance_info->renderPass),
-            vn_framebuffer_from_handle(inheritance_info->framebuffer), NULL);
+         const struct vn_render_pass *pass =
+            vn_render_pass_from_handle(inheritance_info->renderPass);
+
+         /* Track the inherited render pass in the secondary cmd to fix wsi
+          * image ownership and layout transitions.
+          */
+         cmd->builder.render_pass = pass;
 
          /* Store the viewMask from the inherited render pass subpass for
           * query feedback.
           */
-         const struct vn_render_pass *pass =
-            vn_render_pass_from_handle(inheritance_info->renderPass);
          cmd->view_mask =
             pass->subpasses[inheritance_info->subpass].view_mask;
       } else {
