@@ -375,6 +375,10 @@ opcode("p_interp_gfx11")
 # performs dual source MRTs swizzling and emits exports on GFX11
 opcode("p_dual_src_export_gfx11")
 
+# Let shader end with specific registers set to wanted value, used by multi part
+# shader to pass arguments to next part.
+opcode("p_end_with_regs")
+
 # SOP2 instructions: 2 scalar inputs, 1 scalar output (+optional scc)
 SOP2 = {
   # GFX6, GFX7, GFX8, GFX9, GFX10,GFX11,name
