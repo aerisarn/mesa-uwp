@@ -409,3 +409,6 @@ spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x223344ff,Fail
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x76356278,Fail
 spec@nv_copy_image@nv_copy_image-formats,Crash
 wgl@wgl-multi-context-single-window,Fail
+
+# Introduced while CI was disabled
+spec@arb_draw_buffers@fbo-mrt-new-bind,Fail
