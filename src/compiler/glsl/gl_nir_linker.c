@@ -1082,6 +1082,12 @@ prelink_lowering(const struct gl_constants *consts,
          consts->ShaderCompilerOptions[shader->Stage].NirOptions;
       struct gl_program *prog = shader->Program;
 
+      /* ES vertex shaders still have dead varyings but its now safe to remove
+       * them as validation is now done according to the spec.
+       */
+      if (shader_program->IsES && i == MESA_SHADER_VERTEX)
+         remove_dead_varyings_pre_linking(prog->nir);
+
       preprocess_shader(consts, exts, prog, shader_program, shader->Stage);
 
       if (prog->nir->info.shared_size > consts->MaxComputeSharedMemorySize) {
@@ -1328,7 +1334,22 @@ gl_nir_link_glsl(const struct gl_constants *consts,
       if (prog->_LinkedShaders[i]) {
          linked_shader[num_shaders++] = prog->_LinkedShaders[i];
 
-         remove_dead_varyings_pre_linking(prog->_LinkedShaders[i]->Program->nir);
+         /* Section 13.46 (Vertex Attribute Aliasing) of the OpenGL ES 3.2
+          * specification says:
+          *
+          *    "In general, the behavior of GLSL ES should not depend on
+          *    compiler optimizations which might be implementation-dependent.
+          *    Name matching rules in most languages, including C++ from which
+          *    GLSL ES is derived, are based on declarations rather than use.
+          *
+          *    RESOLUTION: The existence of aliasing is determined by
+          *    declarations present after preprocessing."
+          *
+          * Because of this rule, we don't remove dead attributes before
+          * attribute assignment for vertex shader inputs here.
+          */
+         if (!(prog->IsES && i == MESA_SHADER_VERTEX))
+            remove_dead_varyings_pre_linking(prog->_LinkedShaders[i]->Program->nir);
       }
    }
 
