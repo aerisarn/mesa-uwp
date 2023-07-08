@@ -226,15 +226,22 @@ panfrost-g72-gl:arm64:
   variables:
     DEQP_SUITE: panfrost-g72
 
-.panfrost-t820-gles2:arm64:
+.lava-mt8192-asurada-spherion-r0:
   extends:
-    - .lava-test-deqp:arm64
-    - .panfrost-midgard-rules
+    - .panfrost-bifrost-rules
     - .panfrost-test
   variables:
-    DEVICE_TYPE: meson-gxm-khadas-vim2
-    DTB: $DEVICE_TYPE
-    GPU_VERSION: panfrost-t820
-    FDO_CI_CONCURRENT: 6
-    DEQP_SUITE: panfrost-t720
-    RUNNER_TAG: mesa-ci-aarch64-lava-baylibre
+    DEVICE_TYPE: mt8192-asurada-spherion-r0
+    DTB: mt8192-asurada-spherion-r0
+    BOOT_METHOD: depthcharge
+    KERNEL_IMAGE_TYPE: ""
+    GPU_VERSION: panfrost-g57
+    RUNNER_TAG: mesa-ci-x86-64-lava-mt8192-asurada-spherion-r0
+
+panfrost-g57-gl:arm64:
+  extends:
+    - .lava-test-deqp:arm64
+    - .lava-mt8192-asurada-spherion-r0
+  parallel: 6
+  variables:
+    DEQP_SUITE: panfrost-g57
