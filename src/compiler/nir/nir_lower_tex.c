@@ -176,8 +176,15 @@ lower_offset(nir_builder *b, nir_tex_instr *tex)
       if (tex->sampler_dim == GLSL_SAMPLER_DIM_RECT) {
          offset_coord = nir_fadd(b, coord, nir_i2f32(b, offset));
       } else {
-         nir_ssa_def *txs = nir_i2f32(b, nir_get_texture_size(b, tex));
-         nir_ssa_def *scale = nir_frcp(b, txs);
+         nir_ssa_def *scale = NULL;
+
+         if (b->shader->options->has_texture_scaling) {
+            nir_ssa_def *idx = nir_imm_int(b, tex->texture_index);
+            scale = nir_load_texture_scale(b, 32, idx);
+         } else {
+            nir_ssa_def *txs = nir_i2f32(b, nir_get_texture_size(b, tex));
+            scale = nir_frcp(b, txs);
+         }
 
          offset_coord = nir_fadd(b, coord,
                                  nir_fmul(b,
