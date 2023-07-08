@@ -287,6 +287,7 @@ a660_gl:
   variables:
     DEQP_SUITE: freedreno-a660
 
+# 6 devices (2023-07-06)
 .a630-test:
   extends:
     - .google-freedreno-test
