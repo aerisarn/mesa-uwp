@@ -4454,7 +4454,16 @@ cmd_buffer_dispatch_indirect(struct v3dv_cmd_buffer *cmd_buffer,
       job->cpu.csd_indirect.wg_uniform_offsets[2];
 
    list_addtail(&job->list_link, &cmd_buffer->jobs);
-   list_addtail(&csd_job->list_link, &cmd_buffer->jobs);
+
+   /* If we have a CPU queue we submit the CPU job directly to the
+    * queue and the CSD job will be dispatched from within the kernel
+    * queue, otherwise we will have to dispatch the CSD job manually
+    * right after the CPU job by adding it to the list of jobs in the
+    * command buffer.
+    */
+   if (!cmd_buffer->device->pdevice->caps.cpu_queue)
+      list_addtail(&csd_job->list_link, &cmd_buffer->jobs);
+
    cmd_buffer->state.job = NULL;
 }
 

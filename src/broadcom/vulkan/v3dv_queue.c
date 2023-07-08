@@ -515,32 +515,100 @@ handle_timestamp_query_cpu_job(struct v3dv_queue *queue, struct v3dv_job *job,
 static VkResult
 handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
                             struct v3dv_job *job,
-                            struct v3dv_submit_sync_info *sync_info)
+                            struct v3dv_submit_sync_info *sync_info,
+                            bool signal_syncs)
 {
+   struct v3dv_device *device = queue->device;
+
    assert(job->type == V3DV_JOB_TYPE_CPU_CSD_INDIRECT);
    struct v3dv_csd_indirect_cpu_job_info *info = &job->cpu.csd_indirect;
    assert(info->csd_job);
 
-   /* Make sure the GPU is no longer using the indirect buffer*/
-   assert(info->buffer && info->buffer->mem && info->buffer->mem->bo);
-   v3dv_bo_wait(queue->device, info->buffer->mem->bo, OS_TIMEOUT_INFINITE);
-
-   /* Map the indirect buffer and read the dispatch parameters */
    assert(info->buffer && info->buffer->mem && info->buffer->mem->bo);
    struct v3dv_bo *bo = info->buffer->mem->bo;
-   if (!bo->map && !v3dv_bo_map(job->device, bo, bo->size))
-      return vk_error(job->device, VK_ERROR_OUT_OF_HOST_MEMORY);
-   assert(bo->map);
 
-   const uint32_t offset = info->buffer->mem_offset + info->offset;
-   const uint32_t *group_counts = (uint32_t *) (bo->map + offset);
-   if (group_counts[0] == 0 || group_counts[1] == 0|| group_counts[2] == 0)
+   if (!device->pdevice->caps.cpu_queue) {
+      /* Make sure the GPU is no longer using the indirect buffer*/
+      v3dv_bo_wait(queue->device, bo, OS_TIMEOUT_INFINITE);
+
+      /* Map the indirect buffer and read the dispatch parameters */
+      if (!bo->map && !v3dv_bo_map(job->device, bo, bo->size))
+         return vk_error(job->device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      assert(bo->map);
+
+      const uint32_t offset = info->buffer->mem_offset + info->offset;
+      const uint32_t *group_counts = (uint32_t *) (bo->map + offset);
+      if (group_counts[0] == 0 || group_counts[1] == 0|| group_counts[2] == 0)
+         return VK_SUCCESS;
+
+      if (memcmp(group_counts, info->csd_job->csd.wg_count,
+		 sizeof(info->csd_job->csd.wg_count)) != 0) {
+         v3dv_cmd_buffer_rewrite_indirect_csd_job(queue->device, info, group_counts);
+      }
+
       return VK_SUCCESS;
-
-   if (memcmp(group_counts, info->csd_job->csd.wg_count,
-              sizeof(info->csd_job->csd.wg_count)) != 0) {
-      v3dv_cmd_buffer_rewrite_indirect_csd_job(queue->device, info, group_counts);
    }
+
+   struct v3dv_job *csd_job = info->csd_job;
+
+   struct drm_v3d_submit_cpu submit = {0};
+
+   submit.bo_handle_count = 1;
+   submit.bo_handles = (uintptr_t)(void *)&bo->handle;
+
+   csd_job->csd.submit.bo_handle_count = csd_job->bo_count;
+   uint32_t *bo_handles = (uint32_t *) malloc(sizeof(uint32_t) * csd_job->bo_count);
+   uint32_t bo_idx = 0;
+   set_foreach (csd_job->bos, entry) {
+      struct v3dv_bo *bo = (struct v3dv_bo *)entry->key;
+      bo_handles[bo_idx++] = bo->handle;
+   }
+   csd_job->csd.submit.bo_handles = (uintptr_t)(void *)bo_handles;
+
+   struct drm_v3d_indirect_csd indirect = {0};
+
+   set_ext(&indirect.base, NULL, DRM_V3D_EXT_ID_CPU_INDIRECT_CSD, 0);
+
+   indirect.submit = csd_job->csd.submit;
+   indirect.offset = info->buffer->mem_offset + info->offset;
+   indirect.wg_size = info->wg_size;
+
+   for (int i = 0; i < 3; i++) {
+      if (info->wg_uniform_offsets[i]) {
+         assert(info->wg_uniform_offsets[i] >= (uint32_t *) csd_job->indirect.base);
+         indirect.wg_uniform_offsets[i] = info->wg_uniform_offsets[i] - (uint32_t *) csd_job->indirect.base;
+      } else {
+         indirect.wg_uniform_offsets[i] = 0xffffffff; /* No rewrite */
+      }
+   }
+
+   indirect.indirect = csd_job->indirect.bo->handle;
+
+   struct drm_v3d_multi_sync ms = {0};
+
+   /* We need to configure the semaphores of this job with the indirect
+    * CSD job, as the CPU job must obey to the CSD job synchronization
+    * demands, such as barriers.
+    */
+   set_multisync(&ms, sync_info, NULL, 0, (void *)&indirect, device, csd_job,
+	         V3DV_QUEUE_CPU, V3DV_QUEUE_CSD, V3D_CPU, signal_syncs);
+   if (!ms.base.id)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   submit.flags |= DRM_V3D_SUBMIT_EXTENSION;
+   submit.extensions = (uintptr_t)(void *)&ms;
+
+   int ret = v3dv_ioctl(device->pdevice->render_fd,
+			DRM_IOCTL_V3D_SUBMIT_CPU, &submit);
+
+   free(bo_handles);
+   multisync_free(device, &ms);
+
+   queue->last_job_syncs.first[V3DV_QUEUE_CPU] = false;
+   queue->last_job_syncs.first[V3DV_QUEUE_CSD] = false;
+
+   if (ret)
+      return vk_queue_set_lost(&queue->vk, "V3D_SUBMIT_CPU failed: %m");
 
    return VK_SUCCESS;
 }
@@ -980,7 +1048,7 @@ queue_handle_job(struct v3dv_queue *queue,
    case V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS:
       return handle_copy_query_results_cpu_job(job);
    case V3DV_JOB_TYPE_CPU_CSD_INDIRECT:
-      return handle_csd_indirect_cpu_job(queue, job, sync_info);
+      return handle_csd_indirect_cpu_job(queue, job, sync_info, signal_syncs);
    case V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY:
       return handle_timestamp_query_cpu_job(queue, job, sync_info);
    default:
