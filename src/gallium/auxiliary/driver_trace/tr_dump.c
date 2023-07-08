@@ -457,7 +457,7 @@ void trace_dump_int(int64_t value)
    if (!dumping)
       return;
 
-   trace_dump_writef("<int>" PRIi64 "</int>", value);
+   trace_dump_writef("<int>%" PRIi64 "</int>", value);
 }
 
 void trace_dump_uint(uint64_t value)
@@ -465,7 +465,7 @@ void trace_dump_uint(uint64_t value)
    if (!dumping)
       return;
 
-   trace_dump_writef("<uint>" PRIu64 "</uint>", value);
+   trace_dump_writef("<uint>%" PRIu64 "</uint>", value);
 }
 
 void trace_dump_float(double value)
