@@ -320,10 +320,11 @@ fn devs() -> &'static Vec<Arc<Device>> {
     &Platform::get().devs
 }
 
-pub fn get_devs_for_type(device_type: cl_device_type) -> Vec<&'static Arc<Device>> {
+pub fn get_devs_for_type(device_type: cl_device_type) -> Vec<&'static Device> {
     devs()
         .iter()
         .filter(|d| device_type & d.device_type(true) != 0)
+        .map(Arc::as_ref)
         .collect()
 }
 
@@ -367,8 +368,7 @@ fn get_device_ids(
         #[allow(clippy::needless_range_loop)]
         for i in 0..n {
             unsafe {
-                // Note we use as_ptr here which doesn't increase the reference count.
-                *devices.add(i) = cl_device_id::from_ptr(Arc::as_ptr(devs[i]));
+                *devices.add(i) = cl_device_id::from_ptr(devs[i]);
             }
         }
     }

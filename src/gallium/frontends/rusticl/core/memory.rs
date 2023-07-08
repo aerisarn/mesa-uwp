@@ -577,7 +577,7 @@ impl Mem {
         self.get_parent().res.as_ref().ok_or(CL_OUT_OF_HOST_MEMORY)
     }
 
-    pub fn get_res_of_dev(&self, dev: &Arc<Device>) -> CLResult<&Arc<PipeResource>> {
+    pub fn get_res_of_dev(&self, dev: &Device) -> CLResult<&Arc<PipeResource>> {
         Ok(self.get_res()?.get(dev).unwrap())
     }
 

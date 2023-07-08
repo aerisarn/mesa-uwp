@@ -734,7 +734,7 @@ pub(super) fn convert_spirv_to_nir(
     build: &ProgramBuild,
     name: &str,
     args: &[spirv::SPIRVKernelArg],
-    dev: &Arc<Device>,
+    dev: &Device,
 ) -> (NirShader, Vec<KernelArg>, Vec<InternalKernelArg>) {
     let cache = dev.screen().shader_cache();
     let key = build.hash_key(dev, name);
@@ -1192,7 +1192,7 @@ impl Kernel {
         &self.build.args[idx as usize].spirv.type_name
     }
 
-    pub fn priv_mem_size(&self, dev: &Arc<Device>) -> cl_ulong {
+    pub fn priv_mem_size(&self, dev: &Device) -> cl_ulong {
         self.dev_state.get(dev).info.private_memory.into()
     }
 
@@ -1204,7 +1204,7 @@ impl Kernel {
         self.dev_state.get(dev).info.preferred_simd_size as usize
     }
 
-    pub fn local_mem_size(&self, dev: &Arc<Device>) -> cl_ulong {
+    pub fn local_mem_size(&self, dev: &Device) -> cl_ulong {
         // TODO include args
         self.dev_state.get(dev).nir.shared_size() as cl_ulong
     }

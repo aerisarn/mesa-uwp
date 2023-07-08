@@ -83,7 +83,7 @@ pub(super) struct ProgramBuild {
 }
 
 impl ProgramBuild {
-    fn attribute_str(&self, kernel: &str, d: &Arc<Device>) -> String {
+    fn attribute_str(&self, kernel: &str, d: &Device) -> String {
         let info = self.dev_build(d);
 
         let attributes_strings = [
@@ -100,7 +100,7 @@ impl ProgramBuild {
         attributes_strings.join(",")
     }
 
-    fn args(&self, dev: &Arc<Device>, kernel: &str) -> Vec<spirv::SPIRVKernelArg> {
+    fn args(&self, dev: &Device, kernel: &str) -> Vec<spirv::SPIRVKernelArg> {
         self.dev_build(dev).spirv.as_ref().unwrap().args(kernel)
     }
 
@@ -171,7 +171,7 @@ impl ProgramBuild {
             .collect()
     }
 
-    pub fn hash_key(&self, dev: &Arc<Device>, name: &str) -> Option<cache_key> {
+    pub fn hash_key(&self, dev: &Device, name: &str) -> Option<cache_key> {
         if let Some(cache) = dev.screen().shader_cache() {
             let info = self.dev_build(dev);
             assert_eq!(info.status, CL_BUILD_SUCCESS as cl_build_status);
@@ -194,7 +194,7 @@ impl ProgramBuild {
         }
     }
 
-    pub fn to_nir(&self, kernel: &str, d: &Arc<Device>) -> NirShader {
+    pub fn to_nir(&self, kernel: &str, d: &Device) -> NirShader {
         let mut spec_constants: Vec<_> = self
             .spec_constants
             .iter()
@@ -417,19 +417,19 @@ impl Program {
         info.kernel_builds.get(name).unwrap().clone()
     }
 
-    pub fn status(&self, dev: &Arc<Device>) -> cl_build_status {
+    pub fn status(&self, dev: &Device) -> cl_build_status {
         self.build_info().dev_build(dev).status
     }
 
-    pub fn log(&self, dev: &Arc<Device>) -> String {
+    pub fn log(&self, dev: &Device) -> String {
         self.build_info().dev_build(dev).log.clone()
     }
 
-    pub fn bin_type(&self, dev: &Arc<Device>) -> cl_program_binary_type {
+    pub fn bin_type(&self, dev: &Device) -> cl_program_binary_type {
         self.build_info().dev_build(dev).bin_type
     }
 
-    pub fn options(&self, dev: &Arc<Device>) -> String {
+    pub fn options(&self, dev: &Device) -> String {
         self.build_info().dev_build(dev).options.clone()
     }
 
@@ -514,7 +514,7 @@ impl Program {
             .any(|b| Arc::strong_count(b) > 1)
     }
 
-    pub fn build(&self, dev: &Arc<Device>, options: String) -> bool {
+    pub fn build(&self, dev: &Device, options: String) -> bool {
         let lib = options.contains("-create-library");
         let mut info = self.build_info();
         if !self.do_compile(dev, options, &Vec::new(), &mut info) {
@@ -557,7 +557,7 @@ impl Program {
 
     fn do_compile(
         &self,
-        dev: &Arc<Device>,
+        dev: &Device,
         options: String,
         headers: &[spirv::CLCHeader],
         info: &mut MutexGuard<ProgramBuild>,
@@ -619,12 +619,7 @@ impl Program {
         }
     }
 
-    pub fn compile(
-        &self,
-        dev: &Arc<Device>,
-        options: String,
-        headers: &[spirv::CLCHeader],
-    ) -> bool {
+    pub fn compile(&self, dev: &Device, options: String, headers: &[spirv::CLCHeader]) -> bool {
         self.do_compile(dev, options, headers, &mut self.build_info())
     }
 

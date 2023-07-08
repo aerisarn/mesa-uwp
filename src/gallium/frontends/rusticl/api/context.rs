@@ -97,8 +97,8 @@ fn create_context_from_type(
     check_cl_device_type(device_type)?;
 
     let devs: Vec<_> = get_devs_for_type(device_type)
-        .iter()
-        .map(|d| cl_device_id::from_ptr(Arc::as_ptr(d)))
+        .into_iter()
+        .map(|d| cl_device_id::from_ptr(d))
         .collect();
 
     // CL_DEVICE_NOT_FOUND if no devices that match device_type and property values specified in properties were found.
