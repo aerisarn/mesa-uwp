@@ -154,27 +154,6 @@ opt_undef_store(nir_intrinsic_instr *intrin)
    return true;
 }
 
-static bool
-opt_undef_pack(nir_builder *b, nir_alu_instr *alu)
-{
-   switch (alu->op) {
-   case nir_op_unpack_64_2x32_split_x:
-   case nir_op_unpack_64_2x32_split_y:
-   case nir_op_unpack_64_2x32:
-      if (nir_src_is_undef(alu->src[0].src))
-         break;
-      return false;
-   default:
-      return false;
-   }
-   unsigned num_components = alu->def.num_components;
-   b->cursor = nir_before_instr(&alu->instr);
-   nir_def *def = nir_undef(b, num_components, 32);
-   nir_def_rewrite_uses_after(&alu->def, def, &alu->instr);
-   nir_instr_remove(&alu->instr);
-   return true;
-}
-
 struct visit_info {
    bool replace_undef_with_constant;
    bool prefer_nan;
@@ -297,8 +276,7 @@ nir_opt_undef_instr(nir_builder *b, nir_instr *instr, void *data)
    } else if (instr->type == nir_instr_type_alu) {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
       return opt_undef_csel(b, alu) ||
-             opt_undef_vecN(b, alu) ||
-             opt_undef_pack(b, alu);
+             opt_undef_vecN(b, alu);
    } else if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       return opt_undef_store(intrin);
