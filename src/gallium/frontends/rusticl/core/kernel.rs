@@ -258,7 +258,7 @@ struct KernelDevStateInner {
 }
 
 struct KernelDevState {
-    states: HashMap<Arc<Device>, KernelDevStateInner>,
+    states: HashMap<&'static Device, KernelDevStateInner>,
 }
 
 impl Drop for KernelDevState {
@@ -272,10 +272,10 @@ impl Drop for KernelDevState {
 }
 
 impl KernelDevState {
-    fn new(nirs: &HashMap<Arc<Device>, Arc<NirShader>>) -> Arc<Self> {
+    fn new(nirs: &HashMap<&'static Device, Arc<NirShader>>) -> Arc<Self> {
         let states = nirs
             .iter()
-            .map(|(dev, nir)| {
+            .map(|(&dev, nir)| {
                 let mut cso = dev
                     .helper_ctx()
                     .create_compute_state(nir, nir.shared_size());
@@ -289,7 +289,7 @@ impl KernelDevState {
                 };
 
                 (
-                    dev.clone(),
+                    dev,
                     KernelDevStateInner {
                         nir: nir.clone(),
                         constant_buffer: cb,
@@ -871,7 +871,7 @@ impl Kernel {
         grid: &[usize],
         offsets: &[usize],
     ) -> CLResult<EventSig> {
-        let dev_state = self.dev_state.get(&q.device);
+        let dev_state = self.dev_state.get(q.device);
         let mut block = create_kernel_arr::<u32>(block, 1);
         let mut grid = create_kernel_arr::<u32>(grid, 1);
         let offsets = create_kernel_arr::<u64>(offsets, 0);
@@ -894,7 +894,7 @@ impl Kernel {
             &[0; 4]
         };
 
-        self.optimize_local_size(&q.device, &mut grid, &mut block);
+        self.optimize_local_size(q.device, &mut grid, &mut block);
 
         for (arg, val) in self.build.args.iter().zip(&self.values) {
             if arg.dead {
@@ -911,7 +911,7 @@ impl Kernel {
             match val.borrow().as_ref().unwrap() {
                 KernelArgValue::Constant(c) => input.extend_from_slice(c),
                 KernelArgValue::MemObject(mem) => {
-                    let res = mem.get_res_of_dev(&q.device)?;
+                    let res = mem.get_res_of_dev(q.device)?;
                     // If resource is a buffer and mem a 2D image, the 2d image was created from a
                     // buffer. Use strides and dimensions of 2d image
                     let app_img_info =
@@ -1038,7 +1038,7 @@ impl Kernel {
 
         let k = Arc::clone(self);
         Ok(Box::new(move |q, ctx| {
-            let dev_state = k.dev_state.get(&q.device);
+            let dev_state = k.dev_state.get(q.device);
             let mut input = input.clone();
             let mut resources = Vec::with_capacity(resource_info.len());
             let mut globals: Vec<*mut u32> = Vec::new();

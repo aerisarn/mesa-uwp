@@ -60,7 +60,7 @@ pub enum ProgramSourceType {
 pub struct Program {
     pub base: CLObjectBase<CL_INVALID_PROGRAM>,
     pub context: Arc<Context>,
-    pub devs: Vec<Arc<Device>>,
+    pub devs: Vec<&'static Device>,
     pub src: ProgramSourceType,
     build: Mutex<ProgramBuild>,
 }
@@ -69,14 +69,14 @@ impl_cl_type_trait!(cl_program, Program, CL_INVALID_PROGRAM);
 
 #[derive(Clone)]
 pub struct NirKernelBuild {
-    pub nirs: HashMap<Arc<Device>, Arc<NirShader>>,
+    pub nirs: HashMap<&'static Device, Arc<NirShader>>,
     pub args: Vec<KernelArg>,
     pub internal_args: Vec<InternalKernelArg>,
     pub attributes_string: String,
 }
 
 pub(super) struct ProgramBuild {
-    builds: HashMap<Arc<Device>, ProgramDevBuild>,
+    builds: HashMap<&'static Device, ProgramDevBuild>,
     spec_constants: HashMap<u32, nir_const_value>,
     kernels: Vec<String>,
     kernel_builds: HashMap<String, Arc<NirKernelBuild>>,
@@ -122,7 +122,7 @@ impl ProgramBuild {
             for d in self.devs_with_build() {
                 let (nir, args, internal_args) = convert_spirv_to_nir(self, kernel_name, &args, d);
                 let attributes_string = self.attribute_str(kernel_name, d);
-                nirs.insert(d.clone(), Arc::new(nir));
+                nirs.insert(d, Arc::new(nir));
                 args_set.insert(args);
                 internal_args_set.insert(internal_args);
                 attributes_string_set.insert(attributes_string);
@@ -163,11 +163,11 @@ impl ProgramBuild {
         self.builds.get_mut(dev).unwrap()
     }
 
-    fn devs_with_build(&self) -> Vec<&Arc<Device>> {
+    fn devs_with_build(&self) -> Vec<&'static Device> {
         self.builds
             .iter()
             .filter(|(_, build)| build.status == CL_BUILD_SUCCESS as cl_build_status)
-            .map(|(d, _)| d)
+            .map(|(&d, _)| d)
             .collect()
     }
 
@@ -285,11 +285,13 @@ fn prepare_options(options: &str, dev: &Device) -> Vec<CString> {
 }
 
 impl Program {
-    fn create_default_builds(devs: &[Arc<Device>]) -> HashMap<Arc<Device>, ProgramDevBuild> {
+    fn create_default_builds(
+        devs: &[&'static Device],
+    ) -> HashMap<&'static Device, ProgramDevBuild> {
         devs.iter()
-            .map(|d| {
+            .map(|&d| {
                 (
-                    d.clone(),
+                    d,
                     ProgramDevBuild {
                         spirv: None,
                         status: CL_BUILD_NONE,
@@ -302,7 +304,7 @@ impl Program {
             .collect()
     }
 
-    pub fn new(context: &Arc<Context>, devs: &[Arc<Device>], src: CString) -> Arc<Program> {
+    pub fn new(context: &Arc<Context>, devs: &[&'static Device], src: CString) -> Arc<Program> {
         Arc::new(Self {
             base: CLObjectBase::new(),
             context: context.clone(),
@@ -319,13 +321,13 @@ impl Program {
 
     pub fn from_bins(
         context: Arc<Context>,
-        devs: Vec<Arc<Device>>,
+        devs: Vec<&'static Device>,
         bins: &[&[u8]],
     ) -> Arc<Program> {
         let mut builds = HashMap::new();
         let mut kernels = HashSet::new();
 
-        for (d, b) in devs.iter().zip(bins) {
+        for (&d, b) in devs.iter().zip(bins) {
             let mut ptr = b.as_ptr();
             let bin_type;
             let spirv;
@@ -364,7 +366,7 @@ impl Program {
             }
 
             builds.insert(
-                d.clone(),
+                d,
                 ProgramDevBuild {
                     spirv: spirv,
                     status: CL_BUILD_SUCCESS as cl_build_status,
@@ -625,17 +627,16 @@ impl Program {
 
     pub fn link(
         context: Arc<Context>,
-        devs: &[Arc<Device>],
+        devs: &[&'static Device],
         progs: &[Arc<Program>],
         options: String,
     ) -> Arc<Program> {
-        let devs: Vec<Arc<Device>> = devs.iter().map(|d| (*d).clone()).collect();
         let mut builds = HashMap::new();
         let mut kernels = HashSet::new();
         let mut locks: Vec<_> = progs.iter().map(|p| p.build_info()).collect();
         let lib = options.contains("-create-library");
 
-        for d in &devs {
+        for &d in devs {
             let bins: Vec<_> = locks
                 .iter_mut()
                 .map(|l| l.dev_build(d).spirv.as_ref().unwrap())
@@ -661,7 +662,7 @@ impl Program {
             };
 
             builds.insert(
-                d.clone(),
+                d,
                 ProgramDevBuild {
                     spirv: spirv,
                     status: status,
@@ -685,7 +686,7 @@ impl Program {
         Arc::new(Self {
             base: CLObjectBase::new(),
             context: context,
-            devs: devs,
+            devs: devs.to_owned(),
             src: ProgramSourceType::Linked,
             build: Mutex::new(build),
         })

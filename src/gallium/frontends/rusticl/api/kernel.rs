@@ -82,10 +82,10 @@ impl CLInfoObj<cl_kernel_work_group_info, cl_device_id> for cl_kernel {
             if kernel.prog.devs.len() > 1 {
                 return Err(CL_INVALID_DEVICE);
             } else {
-                kernel.prog.devs[0].clone()
+                kernel.prog.devs[0]
             }
         } else {
-            dev.get_arc()?
+            dev.get_ref()?
         };
 
         // CL_INVALID_DEVICE if device is not in the list of devices associated with kernel
@@ -95,12 +95,12 @@ impl CLInfoObj<cl_kernel_work_group_info, cl_device_id> for cl_kernel {
 
         Ok(match *q {
             CL_KERNEL_COMPILE_WORK_GROUP_SIZE => cl_prop::<[usize; 3]>(kernel.work_group_size),
-            CL_KERNEL_LOCAL_MEM_SIZE => cl_prop::<cl_ulong>(kernel.local_mem_size(&dev)),
+            CL_KERNEL_LOCAL_MEM_SIZE => cl_prop::<cl_ulong>(kernel.local_mem_size(dev)),
             CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE => {
-                cl_prop::<usize>(kernel.preferred_simd_size(&dev))
+                cl_prop::<usize>(kernel.preferred_simd_size(dev))
             }
-            CL_KERNEL_PRIVATE_MEM_SIZE => cl_prop::<cl_ulong>(kernel.priv_mem_size(&dev)),
-            CL_KERNEL_WORK_GROUP_SIZE => cl_prop::<usize>(kernel.max_threads_per_block(&dev)),
+            CL_KERNEL_PRIVATE_MEM_SIZE => cl_prop::<cl_ulong>(kernel.priv_mem_size(dev)),
+            CL_KERNEL_WORK_GROUP_SIZE => cl_prop::<usize>(kernel.max_threads_per_block(dev)),
             // CL_INVALID_VALUE if param_name is not one of the supported values
             _ => return Err(CL_INVALID_VALUE),
         })
@@ -128,10 +128,10 @@ impl CLInfoObj<cl_kernel_sub_group_info, (cl_device_id, usize, *const c_void, us
             if kernel.prog.devs.len() > 1 {
                 return Err(CL_INVALID_DEVICE);
             } else {
-                kernel.prog.devs[0].clone()
+                kernel.prog.devs[0]
             }
         } else {
-            dev.get_arc()?
+            dev.get_ref()?
         };
 
         // CL_INVALID_DEVICE if device is not in the list of devices associated with kernel
@@ -172,16 +172,16 @@ impl CLInfoObj<cl_kernel_sub_group_info, (cl_device_id, usize, *const c_void, us
 
         Ok(match q {
             CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE => {
-                cl_prop::<usize>(kernel.subgroups_for_block(&dev, input))
+                cl_prop::<usize>(kernel.subgroups_for_block(dev, input))
             }
             CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE => {
-                cl_prop::<usize>(kernel.subgroup_size_for_block(&dev, input))
+                cl_prop::<usize>(kernel.subgroup_size_for_block(dev, input))
             }
             CL_KERNEL_LOCAL_SIZE_FOR_SUB_GROUP_COUNT => {
                 let subgroups = input[0];
                 let mut res = vec![0; 3];
 
-                for subgroup_size in kernel.subgroup_sizes(&dev) {
+                for subgroup_size in kernel.subgroup_sizes(dev) {
                     let threads = subgroups * subgroup_size;
 
                     if threads > dev.max_threads_per_block() {
@@ -189,7 +189,7 @@ impl CLInfoObj<cl_kernel_sub_group_info, (cl_device_id, usize, *const c_void, us
                     }
 
                     let block = [threads, 1, 1];
-                    let real_subgroups = kernel.subgroups_for_block(&dev, &block);
+                    let real_subgroups = kernel.subgroups_for_block(dev, &block);
 
                     if real_subgroups == subgroups {
                         res = block.to_vec();
@@ -201,11 +201,11 @@ impl CLInfoObj<cl_kernel_sub_group_info, (cl_device_id, usize, *const c_void, us
                 cl_prop::<Vec<usize>>(res)
             }
             CL_KERNEL_MAX_NUM_SUB_GROUPS => {
-                let threads = kernel.max_threads_per_block(&dev);
+                let threads = kernel.max_threads_per_block(dev);
                 let max_groups = dev.max_subgroups();
 
                 let mut result = 0;
-                for sgs in kernel.subgroup_sizes(&dev) {
+                for sgs in kernel.subgroup_sizes(dev) {
                     result = cmp::max(result, threads / sgs);
                     result = cmp::min(result, max_groups as usize);
                 }
@@ -512,7 +512,7 @@ fn enqueue_ndrange_kernel(
 
     // CL_INVALID_PROGRAM_EXECUTABLE if there is no successfully built program executable available
     // for device associated with command_queue.
-    if k.prog.status(&q.device) != CL_BUILD_SUCCESS as cl_build_status {
+    if k.prog.status(q.device) != CL_BUILD_SUCCESS as cl_build_status {
         return Err(CL_INVALID_PROGRAM_EXECUTABLE);
     }
 

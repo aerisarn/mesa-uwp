@@ -15,7 +15,6 @@ use std::cmp::min;
 use std::ffi::CStr;
 use std::mem::{size_of, MaybeUninit};
 use std::ptr;
-use std::sync::Arc;
 
 const SPIRV_SUPPORT_STRING: &str = "SPIR-V_1.0 SPIR-V_1.1 SPIR-V_1.2 SPIR-V_1.3 SPIR-V_1.4";
 const SPIRV_SUPPORT: [cl_name_version; 5] = [
@@ -314,18 +313,6 @@ impl CLInfo<cl_device_info> for cl_device_id {
             _ => return Err(CL_INVALID_VALUE),
         })
     }
-}
-
-fn devs() -> &'static Vec<Arc<Device>> {
-    &Platform::get().devs
-}
-
-pub fn get_devs_for_type(device_type: cl_device_type) -> Vec<&'static Device> {
-    devs()
-        .iter()
-        .filter(|d| device_type & d.device_type(true) != 0)
-        .map(Arc::as_ref)
-        .collect()
 }
 
 #[cl_entrypoint]

@@ -235,6 +235,19 @@ impl Device {
         Some(Arc::new(d))
     }
 
+    /// Converts a temporary reference to a static if and only if this device lives inside static
+    /// memory.
+    pub fn to_static(&self) -> Option<&'static Self> {
+        for dev in devs() {
+            let dev = dev.as_ref();
+            if self == dev {
+                return Some(dev);
+            }
+        }
+
+        None
+    }
+
     fn fill_format_tables(&mut self) {
         for f in FORMATS {
             let mut fs = HashMap::new();
@@ -936,4 +949,16 @@ impl Device {
             subgroups_ifp: false,
         }
     }
+}
+
+fn devs() -> &'static Vec<Arc<Device>> {
+    &Platform::get().devs
+}
+
+pub fn get_devs_for_type(device_type: cl_device_type) -> Vec<&'static Device> {
+    devs()
+        .iter()
+        .filter(|d| device_type & d.device_type(true) != 0)
+        .map(Arc::as_ref)
+        .collect()
 }
