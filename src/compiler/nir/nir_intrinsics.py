@@ -1009,7 +1009,7 @@ intrinsic("load_persp_center_rhw_ir3", dest_comp=1,
 #
 # Takes a sampler # and returns 1/size values for multiplying to normalize
 # texture coordinates.  Used for lowering rect textures.
-intrinsic("load_texture_rect_scaling", src_comp=[1], dest_comp=2,
+intrinsic("load_texture_scale", src_comp=[1], dest_comp=2,
           flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # Fragment shader input interpolation delta intrinsic.

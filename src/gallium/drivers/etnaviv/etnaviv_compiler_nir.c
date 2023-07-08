@@ -371,7 +371,7 @@ get_src(struct etna_compile *c, nir_src *src)
          return (hw_src) { .use = 1, .rgroup = INST_RGROUP_INTERNAL };
       case nir_intrinsic_load_frag_coord:
          return SRC_REG(0, INST_SWIZ_IDENTITY);
-      case nir_intrinsic_load_texture_rect_scaling: {
+      case nir_intrinsic_load_texture_scale: {
          int sampler = nir_src_as_int(intr->src[0]);
          nir_const_value values[] = {
             TEXSCALE(sampler, 0),
@@ -600,7 +600,7 @@ emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
       break;
    case nir_intrinsic_load_input:
    case nir_intrinsic_load_instance_id:
-   case nir_intrinsic_load_texture_rect_scaling:
+   case nir_intrinsic_load_texture_scale:
       break;
    default:
       compile_error(c, "Unhandled NIR intrinsic type: %s\n",

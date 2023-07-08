@@ -1853,7 +1853,7 @@ ntq_emit_intrinsic(struct vc4_compile *c, nir_intrinsic_instr *instr)
                 break;
         }
 
-        case nir_intrinsic_load_texture_rect_scaling: {
+        case nir_intrinsic_load_texture_scale: {
                 assert(nir_src_is_const(instr->src[0]));
                 int sampler = nir_src_as_int(instr->src[0]);
 
