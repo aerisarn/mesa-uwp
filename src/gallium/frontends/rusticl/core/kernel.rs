@@ -250,6 +250,34 @@ impl InternalKernelArg {
     }
 }
 
+struct CSOWrapper {
+    pub cso_ptr: *mut c_void,
+    dev: &'static Device,
+}
+
+impl CSOWrapper {
+    pub fn new(dev: &'static Device, nir: &Arc<NirShader>) -> Arc<Self> {
+        let cso_ptr = dev
+            .helper_ctx()
+            .create_compute_state(nir, nir.shared_size());
+
+        Arc::new(Self {
+            cso_ptr: cso_ptr,
+            dev: dev,
+        })
+    }
+
+    pub fn get_cso_info(&self) -> pipe_compute_state_object_info {
+        self.dev.helper_ctx().compute_state_info(self.cso_ptr)
+    }
+}
+
+impl Drop for CSOWrapper {
+    fn drop(&mut self) {
+        self.dev.helper_ctx().delete_compute_state(self.cso_ptr);
+    }
+}
+
 struct KernelDevStateInner {
     nir: Arc<NirShader>,
     constant_buffer: Option<Arc<PipeResource>>,
