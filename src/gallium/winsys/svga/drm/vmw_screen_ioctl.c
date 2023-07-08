@@ -159,7 +159,7 @@ vmw_ioctl_surface_create(struct vmw_winsys_screen *vws,
    req->flags = (uint32_t) flags;
    req->scanout = !!(usage & SVGA_SURFACE_USAGE_SCANOUT);
    req->format = (uint32_t) format;
-   req->shareable = TRUE;
+   req->shareable = true;
 
    assert(numFaces * numMipLevels < DRM_VMW_MAX_SURFACE_FACES*
 	  DRM_VMW_MAX_MIP_LEVELS);
