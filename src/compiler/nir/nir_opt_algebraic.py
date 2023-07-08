@@ -35,6 +35,7 @@ b = 'b'
 c = 'c'
 d = 'd'
 e = 'e'
+NAN = math.nan
 
 signed_zero_inf_nan_preserve_16 = 'nir_is_float_control_signed_zero_inf_nan_preserve(info->float_controls_execution_mode, 16)'
 signed_zero_inf_nan_preserve_32 = 'nir_is_float_control_signed_zero_inf_nan_preserve(info->float_controls_execution_mode, 32)'
@@ -2756,6 +2757,48 @@ for s in range(0, 31):
         (('bfi', mask, a, '#b'), ('iadd', ('ishl', a, s), ('iand', b, ~mask)),
          'options->avoid_ternary_with_two_constants'),
     ])
+
+# NaN propagation: Binary opcodes. If any operand is NaN, replace it with NaN.
+# (unary opcodes with NaN are evaluated by nir_opt_constant_folding, not here)
+for op in ['fadd', 'fdiv', 'fmod', 'fmul', 'fpow', 'frem', 'fsub']:
+    optimizations += [((op, '#a(is_nan)', b), NAN)]
+    optimizations += [((op, a, '#b(is_nan)'), NAN)] # some opcodes are not commutative
+
+# NaN propagation: Trinary opcodes. If any operand is NaN, replace it with NaN.
+for op in ['ffma', 'flrp']:
+    optimizations += [((op, '#a(is_nan)', b, c), NAN)]
+    optimizations += [((op, a, '#b(is_nan)', c), NAN)] # some opcodes are not commutative
+    optimizations += [((op, a, b, '#c(is_nan)'), NAN)]
+
+# NaN propagation: FP min/max. Pick the non-NaN operand.
+for op in ['fmin', 'fmax']:
+    optimizations += [((op, '#a(is_nan)', b), b)] # commutative
+
+# NaN propagation: ldexp is NaN if the first operand is NaN.
+optimizations += [(('ldexp', '#a(is_nan)', b), NAN)]
+
+# NaN propagation: Dot opcodes. If any component is NaN, replace it with NaN.
+for op in ['fdot2', 'fdot3', 'fdot4', 'fdot5', 'fdot8', 'fdot16']:
+    optimizations += [((op, '#a(is_any_comp_nan)', b), NAN)] # commutative
+
+# NaN propagation: FP comparison opcodes except !=. Replace it with false.
+for op in ['feq', 'fge', 'flt']:
+    optimizations += [((op, '#a(is_nan)', b), False)]
+    optimizations += [((op, a, '#b(is_nan)'), False)] # some opcodes are not commutative
+
+# NaN propagation: FP comparison opcodes using !=. Replace it with true.
+# Operator != is the only opcode where a comparison with NaN returns true.
+for op in ['fneu']:
+    optimizations += [((op, '#a(is_nan)', b), True)] # commutative
+
+# NaN propagation: FP comparison opcodes except != returning FP 0 or 1.
+for op in ['seq', 'sge', 'slt']:
+    optimizations += [((op, '#a(is_nan)', b), 0.0)]
+    optimizations += [((op, a, '#b(is_nan)'), 0.0)] # some opcodes are not commutative
+
+# NaN propagation: FP comparison opcodes using != returning FP 0 or 1.
+# Operator != is the only opcode where a comparison with NaN returns true.
+optimizations += [(('sne', '#a(is_nan)', b), 1.0)] # commutative
 
 # This section contains optimizations to propagate downsizing conversions of
 # constructed vectors into vectors of downsized components. Whether this is

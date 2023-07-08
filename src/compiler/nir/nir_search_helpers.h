@@ -111,6 +111,38 @@ is_bitcount2(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
    return true;
 }
 
+static inline bool
+is_nan(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
+       unsigned src, unsigned num_components, const uint8_t *swizzle)
+{
+   /* only constant srcs: */
+   if (!nir_src_is_const(instr->src[src].src))
+      return false;
+
+   for (unsigned i = 0; i < num_components; i++) {
+      if (!isnan(nir_src_comp_as_float(instr->src[src].src, swizzle[i])))
+         return false;
+   }
+
+   return true;
+}
+
+static inline bool
+is_any_comp_nan(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
+                unsigned src, unsigned num_components, const uint8_t *swizzle)
+{
+   /* only constant srcs: */
+   if (!nir_src_is_const(instr->src[src].src))
+      return false;
+
+   for (unsigned i = 0; i < num_components; i++) {
+      if (isnan(nir_src_comp_as_float(instr->src[src].src, swizzle[i])))
+         return true;
+   }
+
+   return false;
+}
+
 #define MULTIPLE(test)                                                         \
    static inline bool                                                          \
       is_unsigned_multiple_of_##test(UNUSED struct hash_table *ht,             \
