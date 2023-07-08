@@ -579,7 +579,7 @@ sqtt_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
    VkResult result;
 
    result = queue->device->layer_dispatch.rgp.QueuePresentKHR(_queue, pPresentInfo);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
       return result;
 
    radv_handle_sqtt(_queue);
