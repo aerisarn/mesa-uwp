@@ -231,7 +231,7 @@ pub trait ReferenceCountedAPIPointer<T, const ERR: i32> {
         }
     }
 
-    fn get_ref(&self) -> CLResult<&'static T> {
+    fn get_ref(&self) -> CLResult<&T> {
         unsafe { Ok(self.get_ptr()?.as_ref().unwrap()) }
     }
 
@@ -272,9 +272,9 @@ pub trait ReferenceCountedAPIPointer<T, const ERR: i32> {
         Ok(res)
     }
 
-    fn get_ref_vec_from_arr(objs: *const Self, count: u32) -> CLResult<Vec<&'static T>>
+    fn get_ref_vec_from_arr<'a>(objs: *const Self, count: u32) -> CLResult<Vec<&'a T>>
     where
-        Self: Sized,
+        Self: Sized + 'a,
     {
         // CL spec requires validation for obj arrays, both values have to make sense
         if objs.is_null() && count > 0 || !objs.is_null() && count == 0 {
