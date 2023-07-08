@@ -127,11 +127,26 @@ class PKKHeaderParser:
         self.mdata = []
         self.start = 0
         self.name = None
+        self.in_multiline_comment = False
 
     def error(self, msg):
         pkk_fatal(f"{self.filename}:{self.nline} : {msg}")
 
-    def parse_line(self, sline):
+    def parse_line(self, sline: str):
+        start = sline.find('/*')
+        end = sline.find('*/')
+        if not self.in_multiline_comment and start >= 0:
+            if end >= 0:
+                assert end > start
+                sline = sline[:start] + sline[end + 2:]
+            else:
+                sline = sline[:start]
+                self.in_multiline_comment = True
+        elif self.in_multiline_comment and end >= 0:
+            self.in_multiline_comment = False
+            sline = sline[end + 2:]
+        elif self.in_multiline_comment:
+            return
         # A kingdom for Py3.8 := operator ...
         smatch = re.match(r'^enum\s+([A-Za-z0-9_]+)\s+.*;', sline)
         if smatch:
