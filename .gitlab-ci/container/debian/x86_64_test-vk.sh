@@ -63,6 +63,8 @@ apt-get install -y --no-remove --no-install-recommends \
       python3-lxml \
       python3-simplejson \
       sysvinit-core \
+      weston \
+      xwayland \
       xinit \
       xserver-xorg-video-amdgpu \
       xserver-xorg-video-ati
