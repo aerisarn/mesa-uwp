@@ -94,7 +94,7 @@ impl CLInfoObj<cl_kernel_work_group_info, cl_device_id> for cl_kernel {
         }
 
         Ok(match *q {
-            CL_KERNEL_COMPILE_WORK_GROUP_SIZE => cl_prop::<[usize; 3]>(kernel.work_group_size),
+            CL_KERNEL_COMPILE_WORK_GROUP_SIZE => cl_prop::<[usize; 3]>(kernel.work_group_size()),
             CL_KERNEL_LOCAL_MEM_SIZE => cl_prop::<cl_ulong>(kernel.local_mem_size(dev)),
             CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE => {
                 cl_prop::<usize>(kernel.preferred_simd_size(dev))
@@ -211,8 +211,8 @@ impl CLInfoObj<cl_kernel_sub_group_info, (cl_device_id, usize, *const c_void, us
                 }
                 cl_prop::<usize>(result)
             }
-            CL_KERNEL_COMPILE_NUM_SUB_GROUPS => cl_prop::<usize>(kernel.num_subgroups),
-            CL_KERNEL_COMPILE_SUB_GROUP_SIZE_INTEL => cl_prop::<usize>(kernel.subgroup_size),
+            CL_KERNEL_COMPILE_NUM_SUB_GROUPS => cl_prop::<usize>(kernel.num_subgroups()),
+            CL_KERNEL_COMPILE_SUB_GROUP_SIZE_INTEL => cl_prop::<usize>(kernel.subgroup_size()),
             // CL_INVALID_VALUE if param_name is not one of the supported values
             _ => return Err(CL_INVALID_VALUE),
         })
@@ -557,7 +557,7 @@ fn enqueue_ndrange_kernel(
 
         // CL_INVALID_WORK_GROUP_SIZE if local_work_size is specified and does not match the
         // required work-group size for kernel in the program source.
-        if lws != 0 && k.work_group_size[i] != 0 && lws != k.work_group_size[i] {
+        if lws != 0 && k.work_group_size()[i] != 0 && lws != k.work_group_size()[i] {
             return Err(CL_INVALID_WORK_GROUP_SIZE);
         }
 

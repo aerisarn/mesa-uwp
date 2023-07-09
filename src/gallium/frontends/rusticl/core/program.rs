@@ -67,9 +67,8 @@ pub struct Program {
 
 impl_cl_type_trait!(cl_program, Program, CL_INVALID_PROGRAM);
 
-#[derive(Clone)]
 pub struct NirKernelBuild {
-    pub nirs: HashMap<&'static Device, Arc<NirShader>>,
+    pub dev_state: Arc<KernelDevState>,
     pub args: Vec<KernelArg>,
     pub internal_args: Vec<InternalKernelArg>,
     pub attributes_string: String,
@@ -122,7 +121,7 @@ impl ProgramBuild {
             for d in self.devs_with_build() {
                 let (nir, args, internal_args) = convert_spirv_to_nir(self, kernel_name, &args, d);
                 let attributes_string = self.attribute_str(kernel_name, d);
-                nirs.insert(d, Arc::new(nir));
+                nirs.insert(d, nir);
                 args_set.insert(args);
                 internal_args_set.insert(internal_args);
                 attributes_string_set.insert(attributes_string);
@@ -146,7 +145,7 @@ impl ProgramBuild {
             self.kernel_builds.insert(
                 kernel_name.clone(),
                 Arc::new(NirKernelBuild {
-                    nirs: nirs,
+                    dev_state: KernelDevState::new(nirs),
                     args: args,
                     internal_args: internal_args,
                     attributes_string: attributes_string,
