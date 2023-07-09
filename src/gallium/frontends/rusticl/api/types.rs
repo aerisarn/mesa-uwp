@@ -13,17 +13,6 @@ use std::ffi::c_void;
 use std::ffi::CStr;
 use std::iter::Product;
 
-#[macro_export]
-macro_rules! cl_closure {
-    (|$obj:ident| $cb:ident($($arg:ident$(,)?)*)) => {
-        Box::new(
-            unsafe {
-                move|$obj| $cb.unwrap()($($arg,)*)
-            }
-        )
-    }
-}
-
 macro_rules! cl_callback {
     ($cb:ident($fn_alias:ident) {
         $($p:ident : $ty:ty,)*
