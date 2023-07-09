@@ -2080,7 +2080,7 @@ d3d12_clear_depth_stencil(struct pipe_context *pctx,
    if (clear_flags & PIPE_CLEAR_STENCIL)
       flags |= D3D12_CLEAR_FLAG_STENCIL;
 
-   struct d3d12_resource *res = d3d12_resource(ctx->fb.zsbuf->texture);
+   struct d3d12_resource *res = d3d12_resource(psurf->texture);
    d3d12_transition_resource_state(ctx, res,
                                    D3D12_RESOURCE_STATE_DEPTH_WRITE,
                                    D3D12_TRANSITION_FLAG_INVALIDATE_BINDINGS);
