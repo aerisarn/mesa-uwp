@@ -70,19 +70,20 @@ vn_dependency_info_has_present_src(uint32_t dep_count,
 static void *
 vn_cmd_get_tmp_data(struct vn_command_buffer *cmd, size_t size)
 {
+   struct vn_command_pool *pool = cmd->pool;
    /* avoid shrinking in case of non efficient reallocation implementation */
-   if (size > cmd->builder.tmp.size) {
+   if (size > pool->tmp.size) {
       void *data =
-         vk_realloc(&cmd->pool->allocator, cmd->builder.tmp.data, size,
-                    VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+         vk_realloc(&pool->allocator, pool->tmp.data, size, VN_DEFAULT_ALIGN,
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (!data)
          return NULL;
 
-      cmd->builder.tmp.data = data;
-      cmd->builder.tmp.size = size;
+      pool->tmp.data = data;
+      pool->tmp.size = size;
    }
 
-   return cmd->builder.tmp.data;
+   return pool->tmp.data;
 }
 
 static inline VkImageMemoryBarrier *
@@ -729,9 +730,6 @@ vn_DestroyCommandPool(VkDevice device,
       if (cmd->builder.present_src_images)
          vk_free(alloc, cmd->builder.present_src_images);
 
-      if (cmd->builder.tmp.data)
-         vk_free(alloc, cmd->builder.tmp.data);
-
       list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
                                &cmd->query_batches, head)
          vk_free(alloc, batch);
@@ -742,6 +740,9 @@ vn_DestroyCommandPool(VkDevice device,
    list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
                             &pool->free_query_batches, head)
       vk_free(alloc, batch);
+
+   if (pool->tmp.data)
+      vk_free(alloc, pool->tmp.data);
 
    vn_object_base_fini(&pool->base);
    vk_free(alloc, pool);
@@ -874,9 +875,6 @@ vn_FreeCommandBuffers(VkDevice device,
 
       if (!cmd)
          continue;
-
-      if (cmd->builder.tmp.data)
-         vk_free(alloc, cmd->builder.tmp.data);
 
       if (cmd->builder.present_src_images)
          vk_free(alloc, cmd->builder.present_src_images);
