@@ -283,16 +283,6 @@ impl NirShader {
         }
     }
 
-    pub fn printf_format(&self) -> &[u_printf_info] {
-        if self.has_printf() {
-            unsafe {
-                let nir = self.nir.as_ref();
-                slice::from_raw_parts(nir.printf_info, nir.printf_info_count as usize)
-            }
-        } else {
-            &[]
-        }
-    }
     pub fn take_printf_info(&mut self) -> Option<NirPrintfInfo> {
         let nir = unsafe { self.nir.as_mut() };
 
@@ -353,14 +343,6 @@ impl NirShader {
             let var = nir_variable_create(self.nir.as_ptr(), mode, glsl_type, name.as_ptr());
             (*var).data.location = loc.try_into().unwrap();
             var
-        }
-    }
-}
-
-impl Clone for NirShader {
-    fn clone(&self) -> Self {
-        Self {
-            nir: NonNull::new(self.dup_for_driver()).unwrap(),
         }
     }
 }
