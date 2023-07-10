@@ -195,9 +195,9 @@ vn_cmd_fix_image_memory_barrier(const struct vn_command_buffer *cmd,
          out_barrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
          out_barrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       } else if (dst_qfi == out_barrier->srcQueueFamilyIndex ||
-                 dst_qfi == cmd->queue_family_index) {
+                 dst_qfi == cmd->pool->queue_family_index) {
          out_barrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
-         out_barrier->dstQueueFamilyIndex = cmd->queue_family_index;
+         out_barrier->dstQueueFamilyIndex = cmd->pool->queue_family_index;
       } else {
          /* The barrier also defines a queue family ownership transfer, and
           * this is the one that gets submitted to the source queue family to
@@ -218,8 +218,8 @@ vn_cmd_fix_image_memory_barrier(const struct vn_command_buffer *cmd,
          out_barrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
          out_barrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
       } else if (src_qfi == out_barrier->dstQueueFamilyIndex ||
-                 src_qfi == cmd->queue_family_index) {
-         out_barrier->srcQueueFamilyIndex = cmd->queue_family_index;
+                 src_qfi == cmd->pool->queue_family_index) {
+         out_barrier->srcQueueFamilyIndex = cmd->pool->queue_family_index;
          out_barrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
       } else {
          /* The barrier also defines a queue family ownership transfer, and
@@ -268,9 +268,9 @@ vn_cmd_fix_image_memory_barrier2(const struct vn_command_buffer *cmd,
          b->srcQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
          b->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       } else if (b->dstQueueFamilyIndex == b->srcQueueFamilyIndex ||
-                 b->dstQueueFamilyIndex == cmd->queue_family_index) {
+                 b->dstQueueFamilyIndex == cmd->pool->queue_family_index) {
          b->srcQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
-         b->dstQueueFamilyIndex = cmd->queue_family_index;
+         b->dstQueueFamilyIndex = cmd->pool->queue_family_index;
       } else {
          /* The barrier also defines a queue family ownership transfer, and
           * this is the one that gets submitted to the source queue family to
@@ -291,8 +291,8 @@ vn_cmd_fix_image_memory_barrier2(const struct vn_command_buffer *cmd,
          b->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
          b->dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
       } else if (b->srcQueueFamilyIndex == b->dstQueueFamilyIndex ||
-                 b->srcQueueFamilyIndex == cmd->queue_family_index) {
-         b->srcQueueFamilyIndex = cmd->queue_family_index;
+                 b->srcQueueFamilyIndex == cmd->pool->queue_family_index) {
+         b->srcQueueFamilyIndex = cmd->pool->queue_family_index;
          b->dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT;
       } else {
          /* The barrier also defines a queue family ownership transfer, and
@@ -833,7 +833,6 @@ vn_AllocateCommandBuffers(VkDevice device,
                           &dev->base);
       cmd->pool = pool;
       cmd->level = pAllocateInfo->level;
-      cmd->queue_family_index = pool->queue_family_index;
 
       list_addtail(&cmd->head, &pool->command_buffers);
 
@@ -1500,7 +1499,7 @@ vn_transition_prime_layout(struct vn_command_buffer *cmd, VkBuffer dst_buffer)
    const VkBufferMemoryBarrier buf_barrier = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
       .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-      .srcQueueFamilyIndex = cmd->queue_family_index,
+      .srcQueueFamilyIndex = cmd->pool->queue_family_index,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_FOREIGN_EXT,
       .buffer = dst_buffer,
       .size = VK_WHOLE_SIZE,

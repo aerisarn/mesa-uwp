@@ -59,7 +59,6 @@ struct vn_command_buffer {
    struct vn_command_pool *pool;
 
    VkCommandBufferLevel level;
-   uint32_t queue_family_index;
 
    struct list_head head;
 
