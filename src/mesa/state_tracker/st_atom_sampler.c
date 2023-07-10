@@ -270,7 +270,7 @@ update_shader_samplers(struct st_context *st,
             break;
          FALLTHROUGH;
       case PIPE_FORMAT_NV21:
-         if (stObj->pt->format == PIPE_FORMAT_G8_B8R8_420_UNORM)
+         if (stObj->pt->format == PIPE_FORMAT_R8_B8G8_420_UNORM)
             /* no additional views needed */
             break;
          FALLTHROUGH;
