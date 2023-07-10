@@ -86,6 +86,28 @@ rgbx(uint32_t src_val)
    return src_val | 0xff000000;
 }
 
+/* swap red/blue channels of a 32-bit rgba value. */
+static inline uint32_t
+rb_swap(uint32_t src_val)
+{
+   uint32_t dst_val = src_val & 0xff00ff00;
+   dst_val |= (src_val & 0xff) << 16;
+   dst_val |= (src_val & 0xff0000) >> 16;
+   return dst_val;
+}
+
+/* swap red/blue channels and set alpha to 0xff
+ * of a 32-bit rgbx value. */
+static inline uint32_t
+rbx_swap(uint32_t src_val)
+{
+   uint32_t dst_val = 0xff000000;
+   dst_val |= src_val & 0xff00;
+   dst_val |= (src_val & 0xff) << 16;
+   dst_val |= (src_val & 0xff0000) >> 16;
+   return dst_val;
+}
+
 /* set alpha channel of 128-bit 4xrgba values to 0xff. */
 static inline __m128i
 rgbx_128(const __m128i src_val)
@@ -93,6 +115,44 @@ rgbx_128(const __m128i src_val)
    const __m128i mask = _mm_set1_epi32(0xff000000);
    __m128i bgrx = _mm_or_si128(src_val, mask);
    return bgrx;
+}
+
+/* swap red/blue channels of a 128-bit 4xrgba value. */
+/* ssse3 could use pshufb */
+static inline __m128i
+rb_swap_128(const __m128i src_val)
+{
+   const __m128i mask = _mm_set1_epi32(0xff00ff00);
+   const __m128i mask_r = _mm_set1_epi32(0xff);
+
+   __m128i rgba = _mm_and_si128(src_val, mask);
+   __m128i r = _mm_srli_epi32(src_val, 16);
+   __m128i b = _mm_and_si128(src_val, mask_r);
+   r = _mm_and_si128(r, mask_r);
+   b = _mm_slli_epi32(b, 16);
+   rgba = _mm_or_si128(rgba, r);
+   rgba = _mm_or_si128(rgba, b);
+   return rgba;
+}
+
+/* swap red/blue channels and set alpha to 0xff
+ * of a 128-bit 4xrgbx value. */
+static inline __m128i
+rbx_swap_128(const __m128i src_val)
+{
+   const __m128i mask_a = _mm_set1_epi32(0xff000000);
+   const __m128i mask_g = _mm_set1_epi32(0xff00);
+   const __m128i mask_r = _mm_set1_epi32(0xff);
+
+   __m128i rgbx = _mm_and_si128(src_val, mask_g);
+   __m128i r = _mm_srli_epi32(src_val, 16);
+   __m128i b = _mm_and_si128(src_val, mask_r);
+   r = _mm_and_si128(r, mask_r);
+   b = _mm_slli_epi32(b, 16);
+   rgbx = _mm_or_si128(rgbx, mask_a);
+   rgbx = _mm_or_si128(rgbx, r);
+   rgbx = _mm_or_si128(rgbx, b);
+   return rgbx;
 }
 
 /*
@@ -405,6 +465,16 @@ fetch_clamp_linear_bgra(struct lp_linear_elem *elem)
 #define OP128 rgbx_128
 #include "lp_linear_sampler_tmp.h"
 
+#define FETCH_TYPE bgra_swapped
+#define OP rb_swap
+#define OP128 rb_swap_128
+#include "lp_linear_sampler_tmp.h"
+
+#define FETCH_TYPE bgrx_swapped
+#define OP rbx_swap
+#define OP128 rbx_swap_128
+#include "lp_linear_sampler_tmp.h"
+
 static bool
 sampler_is_nearest(const struct lp_linear_sampler *samp,
                    const struct lp_sampler_static_state *sampler_state,
@@ -642,6 +712,26 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
          else
             samp->base.fetch = fetch_memcpy_bgrx;
          return true;
+      case PIPE_FORMAT_R8G8B8A8_UNORM:
+         if (need_wrap)
+            samp->base.fetch = fetch_clamp_bgra_swapped;
+         else if (!samp->axis_aligned)
+            samp->base.fetch = fetch_bgra_swapped;
+         else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
+            samp->base.fetch = fetch_axis_aligned_bgra_swapped;
+         else
+            samp->base.fetch = fetch_memcpy_bgra_swapped;
+         return true;
+      case PIPE_FORMAT_R8G8B8X8_UNORM:
+         if (need_wrap)
+            samp->base.fetch = fetch_clamp_bgrx_swapped;
+         else if (!samp->axis_aligned)
+            samp->base.fetch = fetch_bgrx_swapped;
+         else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
+            samp->base.fetch = fetch_axis_aligned_bgrx_swapped;
+         else
+            samp->base.fetch = fetch_memcpy_bgrx_swapped;
+         return true;
       default:
          break;
       }
@@ -668,6 +758,22 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
             samp->base.fetch = fetch_linear_bgrx;
          else
             samp->base.fetch = fetch_axis_aligned_linear_bgrx;
+         return true;
+      case PIPE_FORMAT_R8G8B8A8_UNORM:
+         if (need_wrap)
+            samp->base.fetch = fetch_clamp_linear_bgra_swapped;
+         else if (!samp->axis_aligned)
+            samp->base.fetch = fetch_linear_bgra_swapped;
+         else
+            samp->base.fetch = fetch_axis_aligned_linear_bgra_swapped;
+         return true;
+      case PIPE_FORMAT_R8G8B8X8_UNORM:
+         if (need_wrap)
+            samp->base.fetch = fetch_clamp_linear_bgrx_swapped;
+         else if (!samp->axis_aligned)
+            samp->base.fetch = fetch_linear_bgrx_swapped;
+         else
+            samp->base.fetch = fetch_axis_aligned_linear_bgrx_swapped;
          return true;
       default:
          break;
@@ -723,7 +829,9 @@ lp_linear_check_sampler(const struct lp_sampler_static_state *sampler,
    /* These are the only texture formats we support at the moment
     */
    if (sampler->texture_state.format != PIPE_FORMAT_B8G8R8A8_UNORM &&
-       sampler->texture_state.format != PIPE_FORMAT_B8G8R8X8_UNORM)
+       sampler->texture_state.format != PIPE_FORMAT_B8G8R8X8_UNORM &&
+       sampler->texture_state.format != PIPE_FORMAT_R8G8B8A8_UNORM &&
+       sampler->texture_state.format != PIPE_FORMAT_R8G8B8X8_UNORM)
       return false;
 
    /* We don't support sampler view swizzling on the linear path */
