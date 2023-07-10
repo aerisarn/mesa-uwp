@@ -5,6 +5,8 @@ use crate::core::queue::*;
 use crate::impl_cl_type_trait;
 
 use mesa_rust::pipe::context::*;
+use mesa_rust::pipe::query::*;
+use mesa_rust_gen::*;
 use mesa_rust_util::static_assert;
 use rusticl_opencl_gen::*;
 
@@ -28,6 +30,8 @@ pub type EventSig = Box<dyn Fn(&Arc<Queue>, &PipeContext) -> CLResult<()>>;
 pub enum EventTimes {
     Queued = CL_PROFILING_COMMAND_QUEUED as isize,
     Submit = CL_PROFILING_COMMAND_SUBMIT as isize,
+    Start = CL_PROFILING_COMMAND_START as isize,
+    End = CL_PROFILING_COMMAND_END as isize,
 }
 
 #[derive(Default)]
@@ -37,6 +41,8 @@ struct EventMutState {
     work: Option<EventSig>,
     time_queued: cl_ulong,
     time_submit: cl_ulong,
+    time_start: cl_ulong,
+    time_end: cl_ulong,
 }
 
 pub struct Event {
@@ -139,6 +145,8 @@ impl Event {
         match which {
             EventTimes::Queued => lock.time_queued = value,
             EventTimes::Submit => lock.time_submit = value,
+            EventTimes::Start => lock.time_start = value,
+            EventTimes::End => lock.time_end = value,
         }
     }
 
@@ -148,6 +156,8 @@ impl Event {
         match which {
             EventTimes::Queued => lock.time_queued,
             EventTimes::Submit => lock.time_submit,
+            EventTimes::Start => lock.time_start,
+            EventTimes::End => lock.time_end,
         }
     }
 
@@ -197,15 +207,26 @@ impl Event {
                 lock.time_submit = queue.device.screen().get_timestamp();
             }
             let work = lock.work.take();
+            let mut query_start = None;
+            let mut query_end = None;
             let new = work.as_ref().map_or(
                 // if there is no work
                 CL_SUBMITTED as cl_int,
                 |w| {
+                    if profiling_enabled {
+                        query_start =
+                            PipeQueryGen::<{ pipe_query_type::PIPE_QUERY_TIMESTAMP }>::new(ctx);
+                    }
+
                     let res = w(queue, ctx).err().map_or(
                         // if there is an error, negate it
                         CL_SUBMITTED as cl_int,
                         |e| e,
                     );
+                    if profiling_enabled {
+                        query_end =
+                            PipeQueryGen::<{ pipe_query_type::PIPE_QUERY_TIMESTAMP }>::new(ctx);
+                    }
                     res
                 },
             );
@@ -213,6 +234,10 @@ impl Event {
             // status change. It's probably fine to move the value above, but we have to be
             // absolutely sure it happens before the status update.
             drop(work);
+            if profiling_enabled {
+                lock.time_start = query_start.unwrap().read_blocked();
+                lock.time_end = query_end.unwrap().read_blocked();
+            }
             self.set_status(&mut lock, new);
         }
     }
