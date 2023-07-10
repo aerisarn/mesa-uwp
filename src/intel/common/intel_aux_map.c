@@ -99,6 +99,8 @@
 /* Mask with the firt 48bits set */
 #define VALID_ADDRESS_MASK ((1ull << 48) - 1)
 
+#define L3_ENTRY_L2_ADDR_MASK 0xffffffff8000ull
+
 #define L3_L2_BITS_PER_LEVEL 12
 #define L3_L2_SUB_TABLE_LEN (sizeof(uint64_t) * (1ull << L3_L2_BITS_PER_LEVEL))
 
@@ -490,6 +492,13 @@ intel_aux_map_format_bits_for_isl_surf(const struct isl_surf *isl_surf)
    return intel_aux_map_format_bits(isl_surf->tiling, isl_surf->format, 0);
 }
 
+static uint64_t
+get_l1_addr_mask(struct intel_aux_map_context *ctx)
+{
+   uint64_t l1_addr = ~get_page_mask(ctx->format->l1_page_size);
+   return l1_addr & VALID_ADDRESS_MASK;
+}
+
 static void
 get_aux_entry(struct intel_aux_map_context *ctx, uint64_t main_address,
               uint32_t *l1_index_out, uint64_t *l1_entry_addr_out,
@@ -509,9 +518,9 @@ get_aux_entry(struct intel_aux_map_context *ctx, uint64_t main_address,
       } else {
          unreachable("Failed to add L2 Aux-Map Page Table!");
       }
-      *l3_entry = (l2_addr & 0xffffffff8000ULL) | INTEL_AUX_MAP_ENTRY_VALID_BIT;
+      *l3_entry = (l2_addr & L3_ENTRY_L2_ADDR_MASK) | INTEL_AUX_MAP_ENTRY_VALID_BIT;
    } else {
-      uint64_t l2_addr = intel_canonical_address(*l3_entry & ~0x7fffULL);
+      uint64_t l2_addr = intel_canonical_address(*l3_entry & L3_ENTRY_L2_ADDR_MASK);
       l2_map = get_u64_entry_ptr(ctx, l2_addr);
    }
    uint32_t l2_index = (main_address >> 24) & 0xfff;
@@ -526,9 +535,9 @@ get_aux_entry(struct intel_aux_map_context *ctx, uint64_t main_address,
       } else {
          unreachable("Failed to add L1 Aux-Map Page Table!");
       }
-      *l2_entry = (l1_addr & ~get_page_mask(l1_page_size)) | INTEL_AUX_MAP_ENTRY_VALID_BIT;
+      *l2_entry = (l1_addr & get_l1_addr_mask(ctx)) | INTEL_AUX_MAP_ENTRY_VALID_BIT;
    } else {
-      l1_addr = intel_canonical_address(*l2_entry & ~get_page_mask(l1_page_size));
+      l1_addr = intel_canonical_address(*l2_entry & get_l1_addr_mask(ctx));
       l1_map = get_u64_entry_ptr(ctx, l1_addr);
    }
    uint32_t l1_index = get_index(main_address, ctx->format->l1_index_mask,
