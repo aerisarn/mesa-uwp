@@ -125,6 +125,42 @@ EXPORT_DONE PIXEL 0 S2.xyzw
    check(sh, shader_expect);
 }
 
+TEST_F(TestShaderFromNir, CopyPropRegDest)
+{
+const char *shader_input =
+   R"(FS
+CHIPCLASS EVERGREEN
+REGISTERS R0.x
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+OUTPUT LOC:0 NAME:1 MASK:15
+SHADER
+ALU MOV S2.x : R0.x {W}
+ALU MUL S3.x : S2.x S2.x {W}
+EXPORT_DONE PIXEL 0 S3.xxxx
+)";
+
+const char *shader_expect =
+   R"(FS
+CHIPCLASS EVERGREEN
+REGISTERS R0.x
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+OUTPUT LOC:0 NAME:1 MASK:15
+SHADER
+ALU MUL S3.x : R0.x R0.x {W}
+EXPORT_DONE PIXEL 0 S3.xxxx
+)";
+
+   auto sh = from_string(shader_input);
+
+   optimize(*sh);
+
+   check(sh, shader_expect);
+}
+
 TEST_F(TestShaderFromNir, OptimizeWithDestArrayValue)
 {
    auto sh = from_string(shader_with_dest_array);
