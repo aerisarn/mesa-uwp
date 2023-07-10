@@ -512,10 +512,13 @@ static bool
 llvmpipe_nir_is_linear_compat(struct nir_shader *shader,
                               struct lp_tgsi_info *info)
 {
+   int num_tex = info->num_texs;
+   info->num_texs = 0;
    nir_foreach_function_impl(impl, shader) {
       if (!llvmpipe_nir_fn_is_linear_compat(shader, impl, info))
          return false;
    }
+   info->num_texs = num_tex;
    return true;
 }
 

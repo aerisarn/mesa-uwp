@@ -193,6 +193,8 @@ static void scan_instruction(const struct nir_shader *nir,
 
       switch (tex->op) {
       case nir_texop_tex:
+         info->opcode_count[TGSI_OPCODE_TEX]++;
+         FALLTHROUGH;
       case nir_texop_txb:
       case nir_texop_lod:
          info->uses_derivatives = true;
