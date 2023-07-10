@@ -368,8 +368,8 @@ st_prog_to_nir_postprocess(struct st_context *st, nir_shader *nir,
 {
    struct pipe_screen *screen = st->screen;
 
-   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
-   nir_validate_shader(nir, "after st/ptn lower_regs_to_ssa");
+   NIR_PASS_V(nir, nir_lower_reg_intrinsics_to_ssa);
+   nir_validate_shader(nir, "after st/ptn lower_reg_intrinsics_to_ssa");
 
    /* Lower outputs to temporaries to avoid reading from output variables (which
     * is permitted by the language but generally not implemented in HW).

@@ -57,10 +57,10 @@ struct ptn_compile {
    nir_variable *output_vars[VARYING_SLOT_MAX];
    nir_variable *sysval_vars[SYSTEM_VALUE_MAX];
    nir_variable *sampler_vars[32]; /* matches number of bits in TexSrcUnit */
-   nir_register **output_regs;
-   nir_register **temp_regs;
+   nir_ssa_def **output_regs;
+   nir_ssa_def **temp_regs;
 
-   nir_register *addr_reg;
+   nir_ssa_def *addr_reg;
 };
 
 #define SWIZ(X, Y, Z, W) \
@@ -80,7 +80,7 @@ ptn_get_src(struct ptn_compile *c, const struct prog_src_register *prog_src)
       return nir_imm_float(b, 0.0);
    case PROGRAM_TEMPORARY:
       assert(!prog_src->RelAddr && prog_src->Index >= 0);
-      src.src.reg.reg = c->temp_regs[prog_src->Index];
+      src.src = nir_src_for_ssa(nir_load_reg(b, c->temp_regs[prog_src->Index]));
       break;
    case PROGRAM_INPUT: {
       /* ARB_vertex_program doesn't allow relative addressing on vertex
@@ -129,10 +129,14 @@ ptn_get_src(struct ptn_compile *c, const struct prog_src_register *prog_src)
          nir_deref_instr *deref = nir_build_deref_var(b, c->parameters);
 
          nir_ssa_def *index = nir_imm_int(b, prog_src->Index);
-         if (prog_src->RelAddr)
-            index = nir_iadd(b, index, nir_load_register(b, c->addr_reg));
-         deref = nir_build_deref_array(b, deref, nir_channel(b, index, 0));
 
+         /* Add the address register. Note this is (uniquely) a scalar, so the
+          * component sizes match.
+          */
+         if (prog_src->RelAddr)
+            index = nir_iadd(b, index, nir_load_reg(b, c->addr_reg));
+
+         deref = nir_build_deref_array(b, deref, index);
          src.src = nir_src_for_ssa(nir_load_deref(b, deref));
          break;
       }
@@ -669,7 +673,9 @@ ptn_emit_instruction(struct ptn_compile *c, struct prog_instruction *prog_inst)
    const struct prog_dst_register *prog_dst = &prog_inst->DstReg;
    assert(!prog_dst->RelAddr);
 
-   nir_register *reg = NULL;
+   nir_ssa_def *reg = NULL;
+   unsigned write_mask = prog_dst->WriteMask;
+
    switch (prog_dst->File) {
    case PROGRAM_TEMPORARY:
       reg = c->temp_regs[prog_dst->Index];
@@ -680,13 +686,21 @@ ptn_emit_instruction(struct ptn_compile *c, struct prog_instruction *prog_inst)
    case PROGRAM_ADDRESS:
       assert(prog_dst->Index == 0);
       reg = c->addr_reg;
+
+      /* The address register (uniquely) is scalar. */
+      dst = nir_channel(b, dst, 0);
+      write_mask &= 1;
       break;
    case PROGRAM_UNDEFINED:
       return;
    }
 
+   /* In case there was some silly .y write to the scalar address reg */
+   if (write_mask == 0)
+      return;
+
    assert(reg != NULL);
-   nir_store_register(b, reg, dst, prog_dst->WriteMask);
+   nir_build_store_reg(b, dst, reg, .write_mask = write_mask);
 }
 
 /**
@@ -703,7 +717,7 @@ ptn_add_output_stores(struct ptn_compile *c)
    nir_builder *b = &c->build;
 
    nir_foreach_shader_out_variable(var, b->shader) {
-      nir_ssa_def *src = nir_load_register(b, c->output_regs[var->data.location]);
+      nir_ssa_def *src = nir_load_reg(b, c->output_regs[var->data.location]);
       if (c->prog->Target == GL_FRAGMENT_PROGRAM_ARB &&
           var->data.location == FRAG_RESULT_DEPTH) {
          /* result.depth has this strange convention of being the .z component of
@@ -786,7 +800,7 @@ setup_registers_and_variables(struct ptn_compile *c)
 
    /* Create output registers and variables. */
    int max_outputs = util_last_bit64(c->prog->info.outputs_written);
-   c->output_regs = rzalloc_array(c, nir_register *, max_outputs);
+   c->output_regs = rzalloc_array(c, nir_ssa_def *, max_outputs);
 
    uint64_t outputs_written = c->prog->info.outputs_written;
    while (outputs_written) {
@@ -796,8 +810,7 @@ setup_registers_and_variables(struct ptn_compile *c)
        * for the outputs and emit stores to the real outputs at the end of
        * the shader.
        */
-      nir_register *reg = nir_local_reg_create(b->impl);
-      reg->num_components = 4;
+      nir_ssa_def *reg = nir_decl_reg(b, 4, 32, 0);
 
       const struct glsl_type *type;
       if ((c->prog->Target == GL_FRAGMENT_PROGRAM_ARB && i == FRAG_RESULT_DEPTH) ||
@@ -818,28 +831,17 @@ setup_registers_and_variables(struct ptn_compile *c)
    }
 
    /* Create temporary registers. */
-   c->temp_regs = rzalloc_array(c, nir_register *,
+   c->temp_regs = rzalloc_array(c, nir_ssa_def *,
                                 c->prog->arb.NumTemporaries);
 
-   nir_register *reg;
    for (unsigned i = 0; i < c->prog->arb.NumTemporaries; i++) {
-      reg = nir_local_reg_create(b->impl);
-      if (!reg) {
-         c->error = true;
-         return;
-      }
-      reg->num_components = 4;
-      c->temp_regs[i] = reg;
+      c->temp_regs[i] = nir_decl_reg(b, 4, 32, 0);
    }
 
-   /* Create the address register (for ARB_vertex_program). */
-   reg = nir_local_reg_create(b->impl);
-   if (!reg) {
-      c->error = true;
-      return;
-   }
-   reg->num_components = 1;
-   c->addr_reg = reg;
+   /* Create the address register (for ARB_vertex_program). This is uniquely a
+    * scalar, requiring special handling for stores.
+    */
+   c->addr_reg = nir_decl_reg(b, 1, 32, 0);
 }
 
 struct nir_shader *
