@@ -151,3 +151,4 @@ spec@glsl-1.30@execution@built-in-functions@vs-op-assign-lshift-uvec2-ivec2
 spec@glsl-1.30@execution@built-in-functions@vs-op-bitand-abs-neg-ivec3-ivec3
 spec@glsl-1.30@execution@built-in-functions@vs-op-bitor-abs-neg-ivec2-int
 spec@glsl-1.30@execution@interpolation@interpolation-smooth-other-flat-distance
+spec@glsl-es-3.00@execution@varying-struct-copy-return-vs
