@@ -1240,7 +1240,7 @@ impl Kernel {
         }
 
         let block = [
-            *block.get(0).unwrap_or(&1) as u32,
+            *block.first().unwrap_or(&1) as u32,
             *block.get(1).unwrap_or(&1) as u32,
             *block.get(2).unwrap_or(&1) as u32,
         ];
