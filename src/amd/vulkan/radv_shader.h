@@ -698,6 +698,8 @@ VkResult radv_dump_shader_stats(struct radv_device *device, struct radv_pipeline
 /* Returns true on success and false on failure */
 bool radv_shader_reupload(struct radv_device *device, struct radv_shader *shader);
 
+enum ac_hw_stage radv_select_hw_stage(const struct radv_shader_info *const info, const enum amd_gfx_level gfx_level);
+
 extern const struct vk_pipeline_cache_object_ops radv_shader_ops;
 
 static inline struct radv_shader *
