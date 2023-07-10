@@ -99,6 +99,9 @@
 /* Mask with the firt 48bits set */
 #define VALID_ADDRESS_MASK ((1ull << 48) - 1)
 
+#define L3_L2_BITS_PER_LEVEL 12
+#define L3_L2_SUB_TABLE_LEN (sizeof(uint64_t) * (1ull << L3_L2_BITS_PER_LEVEL))
+
 static const bool aux_map_debug = false;
 
 /**
@@ -356,8 +359,8 @@ intel_aux_map_init(void *driver_ctx,
    ctx->tail_remaining = 0;
    ctx->state_num = 0;
 
-   if (add_sub_table(ctx, 32 * 1024, 32 * 1024, &ctx->level3_base_addr,
-                     &ctx->level3_map)) {
+   if (add_sub_table(ctx, L3_L2_SUB_TABLE_LEN, L3_L2_SUB_TABLE_LEN,
+                     &ctx->level3_base_addr, &ctx->level3_map)) {
       if (aux_map_debug)
          fprintf(stderr, "AUX-MAP L3: 0x%"PRIx64", map=%p\n",
                  ctx->level3_base_addr, ctx->level3_map);
@@ -498,7 +501,8 @@ get_aux_entry(struct intel_aux_map_context *ctx, uint64_t main_address,
    uint64_t *l2_map;
    if ((*l3_entry & INTEL_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       uint64_t l2_addr;
-      if (add_sub_table(ctx, 32 * 1024, 32 * 1024, &l2_addr, &l2_map)) {
+      if (add_sub_table(ctx, L3_L2_SUB_TABLE_LEN, L3_L2_SUB_TABLE_LEN,
+                        &l2_addr, &l2_map)) {
          if (aux_map_debug)
             fprintf(stderr, "AUX-MAP L3[0x%x]: 0x%"PRIx64", map=%p\n",
                     l3_index, l2_addr, l2_map);
