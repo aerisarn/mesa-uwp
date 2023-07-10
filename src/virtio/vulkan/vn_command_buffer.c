@@ -589,7 +589,6 @@ vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
    cmd->builder.render_pass = pass;
 
    cmd->in_render_pass = true;
-   cmd->render_pass = pass;
    cmd->subpass_index = 0;
    cmd->view_mask = vn_render_pass_get_subpass_view_mask(pass, 0);
 
@@ -643,7 +642,6 @@ vn_cmd_end_render_pass(struct vn_command_buffer *cmd)
 
    vn_cmd_record_batched_query_feedback(cmd);
    cmd->in_render_pass = false;
-   cmd->render_pass = NULL;
    cmd->subpass_index = 0;
    cmd->view_mask = 0;
 
@@ -666,7 +664,7 @@ static inline void
 vn_cmd_next_subpass(struct vn_command_buffer *cmd)
 {
    cmd->view_mask = vn_render_pass_get_subpass_view_mask(
-      cmd->render_pass, ++cmd->subpass_index);
+      cmd->builder.render_pass, ++cmd->subpass_index);
 }
 
 /* command pool commands */
@@ -769,7 +767,6 @@ vn_cmd_reset(struct vn_command_buffer *cmd)
 
    cmd->in_render_pass = false;
    cmd->suspends = false;
-   cmd->render_pass = NULL;
    cmd->subpass_index = 0;
    cmd->view_mask = 0;
    list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,

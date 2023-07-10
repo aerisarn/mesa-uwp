@@ -74,7 +74,6 @@ struct vn_command_buffer {
    bool in_render_pass;
    bool suspends;
    /* viewMask is stored per subpass for legacy render pass */
-   const struct vn_render_pass *render_pass;
    uint32_t subpass_index;
    /* view_mask is set when passed in by dynamic rendering/secondary cmd
     * buffers or on each subpass iteration for legacy render pass with
