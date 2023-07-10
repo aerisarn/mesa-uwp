@@ -51,8 +51,8 @@
    }
 
 struct ttn_reg_info {
-   /** nir register containing this TGSI index. */
-   nir_register *reg;
+   /** nir register handle containing this TGSI index. */
+   nir_ssa_def *reg;
    nir_variable *var;
    /** Offset (in vec4s) from the start of var for this TGSI index. */
    int offset;
@@ -70,7 +70,7 @@ struct ttn_compile {
    unsigned num_samp_types;
    nir_alu_type *samp_types;
 
-   nir_register *addr_reg;
+   nir_ssa_def *addr_reg;
 
    nir_variable **inputs;
    nir_variable **outputs;
@@ -225,16 +225,14 @@ ttn_emit_declaration(struct ttn_compile *c)
          }
       } else {
          for (i = 0; i < array_size; i++) {
-            nir_register *reg = nir_local_reg_create(b->impl);
-            reg->num_components = 4;
+            nir_ssa_def *reg = nir_decl_reg(b, 4, 32, 0);
             c->temp_regs[decl->Range.First + i].reg = reg;
             c->temp_regs[decl->Range.First + i].var = NULL;
             c->temp_regs[decl->Range.First + i].offset = 0;
          }
       }
    } else if (file == TGSI_FILE_ADDRESS) {
-      c->addr_reg = nir_local_reg_create(b->impl);
-      c->addr_reg->num_components = 4;
+      c->addr_reg = nir_decl_reg(b, 4, 32, 0);
    } else if (file == TGSI_FILE_SYSTEM_VALUE) {
       /* Nothing to record for system values. */
    } else if (file == TGSI_FILE_BUFFER) {
@@ -357,10 +355,8 @@ ttn_emit_declaration(struct ttn_compile *c)
              * for the outputs and emit stores to the real outputs at the end of
              * the shader.
              */
-            nir_register *reg = nir_local_reg_create(b->impl);
-            reg->num_components = 4;
-            if (is_array)
-               reg->num_array_elems = array_size;
+            nir_ssa_def *reg = nir_decl_reg(b, 4, 32,
+                                            is_array ? array_size : 0);
 
             var->data.mode = nir_var_shader_out;
             var->name = ralloc_asprintf(var, "out_%d", idx);
@@ -567,13 +563,13 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
          src = nir_src_for_ssa(load);
       } else {
          assert(!indirect);
-         src.reg.reg = c->temp_regs[index].reg;
+         src = nir_src_for_ssa(nir_load_reg(b, c->temp_regs[index].reg));
       }
       assert(!dim);
       break;
 
    case TGSI_FILE_ADDRESS:
-      src.reg.reg = c->addr_reg;
+      src = nir_src_for_ssa(nir_load_reg(b, c->addr_reg));
       assert(!dim);
       break;
 
@@ -2048,7 +2044,7 @@ ttn_emit_instruction(struct ttn_compile *c)
                       tgsi_dst->Register.WriteMask);
    } else {
       unsigned index = tgsi_dst->Register.Index;
-      nir_register *reg = NULL;
+      nir_ssa_def *reg = NULL;
       unsigned base_offset = 0;
 
       if (tgsi_dst->Register.File == TGSI_FILE_TEMPORARY) {
@@ -2065,22 +2061,14 @@ ttn_emit_instruction(struct ttn_compile *c)
          reg = c->addr_reg;
       }
 
-      nir_src *indirect = NULL;
       if (tgsi_dst->Register.Indirect) {
-         nir_ssa_def *ind_def = ttn_src_for_indirect(c, &tgsi_dst->Indirect);
-         indirect = malloc(sizeof(nir_src));
-         *indirect = nir_src_for_ssa(ind_def);
+         nir_ssa_def *indirect = ttn_src_for_indirect(c, &tgsi_dst->Indirect);
+         nir_store_reg_indirect(b, dst, reg, indirect, .base = base_offset,
+                                .write_mask = tgsi_dst->Register.WriteMask);
+      } else {
+         nir_build_store_reg(b, dst, reg, .base = base_offset,
+                             .write_mask = tgsi_dst->Register.WriteMask);
       }
-
-      nir_alu_instr *mov = nir_alu_instr_create(b->shader, nir_op_mov);
-      mov->dest.dest = nir_dest_for_reg(reg);
-      mov->dest.dest.reg.base_offset = base_offset;
-      mov->dest.dest.reg.indirect = indirect;
-      mov->dest.write_mask = tgsi_dst->Register.WriteMask;
-      mov->src[0].src = nir_src_for_ssa(dst);
-      for (unsigned i = dst->num_components; i < 4; i++)
-         mov->src[0].swizzle[i] = dst->num_components - 1;
-      nir_builder_instr_insert(b, &mov->instr);
    }
 }
 
@@ -2102,10 +2090,10 @@ ttn_add_output_stores(struct ttn_compile *c)
       if (!var)
          continue;
 
-      nir_src src = nir_src_for_reg(c->output_regs[i].reg);
-      src.reg.base_offset = c->output_regs[i].offset;
+      nir_ssa_def *store_value =
+         nir_build_load_reg(b, 4, 32, c->output_regs[i].reg,
+                            .base = c->output_regs[i].offset);
 
-      nir_ssa_def *store_value = nir_ssa_for_src(b, src, 4);
       uint32_t store_mask = BITFIELD_MASK(store_value->num_components);
       if (c->build.shader->info.stage == MESA_SHADER_FRAGMENT) {
          /* TGSI uses TGSI_SEMANTIC_POSITION.z for the depth output
@@ -2511,7 +2499,7 @@ ttn_finalize_nir(struct ttn_compile *c, struct pipe_screen *screen)
    MESA_TRACE_FUNC();
 
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
+   NIR_PASS_V(nir, nir_lower_reg_intrinsics_to_ssa);
 
    NIR_PASS_V(nir, nir_lower_global_vars_to_local);
    NIR_PASS_V(nir, nir_split_var_copies);
