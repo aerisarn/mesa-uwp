@@ -206,3 +206,6 @@ spec@!opengl 1.1@max-texture-size
 
 # First seen 2023-05-05
 gmem-unaligned-dEQP-VK.renderpass.suballocation.load_store_op_none.depthstencil_d32_sfloat_s8_uint_load_op_depth_load_stencil_none_store_op_depth_store_stencil_none_stencil_write_off
+
+KHR-GL46.buffer_storage.map_persistent_dispatch
+KHR-GL46.buffer_storage.map_persistent_flush
