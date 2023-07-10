@@ -2183,6 +2183,7 @@ static const nir_shader_compiler_options nir_options = {
         .lower_isign = true,
         .has_fsub = true,
         .has_isub = true,
+        .has_texture_scaling = true,
         .lower_mul_high = true,
         .max_unroll_iterations = 32,
         .force_indirect_unrolling = (nir_var_shader_in | nir_var_shader_out | nir_var_function_temp),

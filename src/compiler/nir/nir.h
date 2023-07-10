@@ -3854,9 +3854,9 @@ typedef struct nir_shader_compiler_options {
    /** Backend supports pack_32_4x8 or pack_32_4x8_split. */
    bool has_pack_32_4x8;
 
-   /** Backend supports txs, if not nir_lower_tex(..) uses txs-free variants
-    * for rect texture lowering. */
-   bool has_txs;
+   /** Backend supports nir_load_texture_scale and prefers it over txs for nir
+    * lowerings. */
+   bool has_texture_scaling;
 
    /** Backend supports sdot_4x8 opcodes. */
    bool has_sdot_4x8;

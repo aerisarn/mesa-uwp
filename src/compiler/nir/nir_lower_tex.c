@@ -1494,10 +1494,10 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
           tex->op != nir_texop_txf) {
          if (nir_tex_instr_is_query(tex))
             tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
-         else if (compiler_options->has_txs)
-            lower_rect(b, tex);
-         else
+         else if (compiler_options->has_texture_scaling)
             lower_rect_tex_scale(b, tex);
+         else
+            lower_rect(b, tex);
 
          progress = true;
       }
