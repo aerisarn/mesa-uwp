@@ -308,7 +308,7 @@ ptn_exp(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 
 /* LOG - Approximate Logarithm Base 2
  *  dst.x = \lfloor\log_2{|src.x|}\rfloor
- *  dst.y = |src.x| * 2^{-\lfloor\log_2{|src.x|}\rfloor}}
+ *  dst.y = \frac{|src.x|}{2^{\lfloor\log_2{|src.x|}\rfloor}}
  *  dst.z = \log_2{|src.x|}
  *  dst.w = 1.0
  */
@@ -321,8 +321,7 @@ ptn_log(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 
    ptn_move_dest_masked(b, dest, floor_log2, WRITEMASK_X);
    ptn_move_dest_masked(b, dest,
-                        nir_fmul(b, abs_srcx,
-                                 nir_fexp2(b, nir_fneg(b, floor_log2))),
+                        nir_fdiv(b, abs_srcx, nir_fexp2(b, floor_log2)),
                         WRITEMASK_Y);
    ptn_move_dest_masked(b, dest, log2, WRITEMASK_Z);
    ptn_move_dest_masked(b, dest, nir_imm_float(b, 1.0), WRITEMASK_W);
