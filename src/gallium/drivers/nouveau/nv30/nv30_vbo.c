@@ -262,7 +262,7 @@ nv30_vertex_state_create(struct pipe_context *pipe, unsigned num_elements,
     struct translate_key transkey;
     unsigned i;
 
-    so = MALLOC(sizeof(*so) + sizeof(*so->element) * num_elements);
+    so = CALLOC(1, sizeof(*so) + sizeof(*so->element) * num_elements);
     if (!so)
         return NULL;
     memcpy(so->pipe, elements, sizeof(*elements) * num_elements);

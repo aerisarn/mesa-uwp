@@ -56,7 +56,7 @@ nvc0_vertex_state_create(struct pipe_context *pipe,
     unsigned i;
     unsigned src_offset_max = 0;
 
-    so = MALLOC(sizeof(*so) +
+    so = CALLOC(1, sizeof(*so) +
                 num_elements * sizeof(struct nvc0_vertex_element));
     if (!so)
         return NULL;
