@@ -22,7 +22,7 @@ variables:
    ALPINE_X86_64_LAVA_SSH_TAG: "2023-06-26-first-version"
    FEDORA_X86_64_BUILD_TAG: "2023-05-05-ccache-on"
    KERNEL_ROOTFS_TAG: "2023-07-11-dekernelize"
-   KERNEL_TAG: "v6.3-rc6-for-mesa-ci-a8016765452e"
+   KERNEL_TAG: "v6.3.13-for-mesa-ci-bbe75e512c76"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
    WINDOWS_X64_VS_TAG: "2022-10-20-upgrade-zlib"
