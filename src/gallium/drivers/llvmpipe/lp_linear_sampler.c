@@ -546,7 +546,8 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
                        int x0, int y0, int width, int height,
                        const float (*a0)[4],
                        const float (*dadx)[4],
-                       const float (*dady)[4])
+                       const float (*dady)[4],
+                       bool rgba_order)
 {
    const struct lp_tgsi_channel_info *schan = &info->coord[0];
    const struct lp_tgsi_channel_info *tchan = &info->coord[1];
@@ -693,44 +694,88 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
    if (is_nearest) {
       switch (sampler_state->texture_state.format) {
       case PIPE_FORMAT_B8G8R8A8_UNORM:
-         if (need_wrap)
-            samp->base.fetch = fetch_clamp_bgra;
-         else if (!samp->axis_aligned)
-            samp->base.fetch = fetch_bgra;
-         else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
-            samp->base.fetch = fetch_axis_aligned_bgra;
-         else
-            samp->base.fetch = fetch_memcpy_bgra;
+         if (rgba_order) {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_bgra_swapped;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_bgra_swapped;
+            else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
+               samp->base.fetch = fetch_axis_aligned_bgra_swapped;
+            else
+               samp->base.fetch = fetch_memcpy_bgra_swapped;
+         } else {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_bgra;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_bgra;
+            else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
+               samp->base.fetch = fetch_axis_aligned_bgra;
+            else
+               samp->base.fetch = fetch_memcpy_bgra;
+         }
          return true;
       case PIPE_FORMAT_B8G8R8X8_UNORM:
-         if (need_wrap)
-            samp->base.fetch = fetch_clamp_bgrx;
-         else if (!samp->axis_aligned)
-            samp->base.fetch = fetch_bgrx;
-         else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
-            samp->base.fetch = fetch_axis_aligned_bgrx;
-         else
-            samp->base.fetch = fetch_memcpy_bgrx;
+         if (rgba_order) {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_bgrx_swapped;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_bgrx_swapped;
+            else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
+               samp->base.fetch = fetch_axis_aligned_bgrx_swapped;
+            else
+               samp->base.fetch = fetch_memcpy_bgrx_swapped;
+         } else {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_bgrx;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_bgrx;
+            else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
+               samp->base.fetch = fetch_axis_aligned_bgrx;
+            else
+               samp->base.fetch = fetch_memcpy_bgrx;
+         }
          return true;
       case PIPE_FORMAT_R8G8B8A8_UNORM:
-         if (need_wrap)
-            samp->base.fetch = fetch_clamp_bgra_swapped;
-         else if (!samp->axis_aligned)
-            samp->base.fetch = fetch_bgra_swapped;
-         else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
-            samp->base.fetch = fetch_axis_aligned_bgra_swapped;
-         else
-            samp->base.fetch = fetch_memcpy_bgra_swapped;
+         if (!rgba_order) {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_bgra_swapped;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_bgra_swapped;
+            else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
+               samp->base.fetch = fetch_axis_aligned_bgra_swapped;
+            else
+               samp->base.fetch = fetch_memcpy_bgra_swapped;
+         } else {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_bgra;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_bgra;
+            else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
+               samp->base.fetch = fetch_axis_aligned_bgra;
+            else
+               samp->base.fetch = fetch_memcpy_bgra;
+         }
          return true;
       case PIPE_FORMAT_R8G8B8X8_UNORM:
-         if (need_wrap)
-            samp->base.fetch = fetch_clamp_bgrx_swapped;
-         else if (!samp->axis_aligned)
-            samp->base.fetch = fetch_bgrx_swapped;
-         else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
-            samp->base.fetch = fetch_axis_aligned_bgrx_swapped;
-         else
-            samp->base.fetch = fetch_memcpy_bgrx_swapped;
+         if (!rgba_order) {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_bgrx_swapped;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_bgrx_swapped;
+            else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
+               samp->base.fetch = fetch_axis_aligned_bgrx_swapped;
+            else
+               samp->base.fetch = fetch_memcpy_bgrx_swapped;
+         } else {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_bgrx;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_bgrx;
+            else if (samp->dsdx != FIXED16_ONE) // TODO: could be relaxed
+               samp->base.fetch = fetch_axis_aligned_bgrx;
+            else
+               samp->base.fetch = fetch_memcpy_bgrx;
+         }
          return true;
       default:
          break;
@@ -744,36 +789,72 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
 
       switch (sampler_state->texture_state.format) {
       case PIPE_FORMAT_B8G8R8A8_UNORM:
-         if (need_wrap)
-            samp->base.fetch = fetch_clamp_linear_bgra;
-         else if (!samp->axis_aligned)
-            samp->base.fetch = fetch_linear_bgra;
-         else
-            samp->base.fetch = fetch_axis_aligned_linear_bgra;
+         if (rgba_order) {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_linear_bgra_swapped;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_linear_bgra_swapped;
+            else
+               samp->base.fetch = fetch_axis_aligned_linear_bgra_swapped;
+         } else {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_linear_bgra;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_linear_bgra;
+            else
+               samp->base.fetch = fetch_axis_aligned_linear_bgra;
+         }
          return true;
       case PIPE_FORMAT_B8G8R8X8_UNORM:
-         if (need_wrap)
-            samp->base.fetch = fetch_clamp_linear_bgrx;
-         else if (!samp->axis_aligned)
-            samp->base.fetch = fetch_linear_bgrx;
-         else
-            samp->base.fetch = fetch_axis_aligned_linear_bgrx;
+         if (rgba_order) {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_linear_bgrx_swapped;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_linear_bgrx_swapped;
+            else
+               samp->base.fetch = fetch_axis_aligned_linear_bgrx_swapped;
+         } else {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_linear_bgrx;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_linear_bgrx;
+            else
+               samp->base.fetch = fetch_axis_aligned_linear_bgrx;
+         }
          return true;
       case PIPE_FORMAT_R8G8B8A8_UNORM:
-         if (need_wrap)
-            samp->base.fetch = fetch_clamp_linear_bgra_swapped;
-         else if (!samp->axis_aligned)
-            samp->base.fetch = fetch_linear_bgra_swapped;
-         else
-            samp->base.fetch = fetch_axis_aligned_linear_bgra_swapped;
+         if (!rgba_order) {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_linear_bgra_swapped;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_linear_bgra_swapped;
+            else
+               samp->base.fetch = fetch_axis_aligned_linear_bgra_swapped;
+         } else {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_linear_bgra;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_linear_bgra;
+            else
+               samp->base.fetch = fetch_axis_aligned_linear_bgra;
+         }
          return true;
       case PIPE_FORMAT_R8G8B8X8_UNORM:
-         if (need_wrap)
-            samp->base.fetch = fetch_clamp_linear_bgrx_swapped;
-         else if (!samp->axis_aligned)
-            samp->base.fetch = fetch_linear_bgrx_swapped;
-         else
-            samp->base.fetch = fetch_axis_aligned_linear_bgrx_swapped;
+         if (!rgba_order) {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_linear_bgrx_swapped;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_linear_bgrx_swapped;
+            else
+               samp->base.fetch = fetch_axis_aligned_linear_bgrx_swapped;
+         } else {
+            if (need_wrap)
+               samp->base.fetch = fetch_clamp_linear_bgrx;
+            else if (!samp->axis_aligned)
+               samp->base.fetch = fetch_linear_bgrx;
+            else
+               samp->base.fetch = fetch_axis_aligned_linear_bgrx;
+         }
          return true;
       default:
          break;

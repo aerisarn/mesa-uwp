@@ -144,7 +144,7 @@ lp_linear_init_sampler(struct lp_linear_sampler *samp,
                        int x0, int y0, int width, int height,
                        const float (*a0)[4],
                        const float (*dadx)[4],
-                       const float (*dady)[4]);
+                       const float (*dady)[4], bool rgba_order);
 
 
 bool

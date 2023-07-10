@@ -85,6 +85,9 @@ lp_fs_linear_run(const struct lp_rast_state *state,
 {
    const struct lp_fragment_shader_variant *variant = state->variant;
    const struct lp_tgsi_info *info = &variant->shader->info;
+   const struct lp_fragment_shader_variant_key *key = &variant->key;
+   bool rgba_order = (key->cbuf_format[0] == PIPE_FORMAT_R8G8B8A8_UNORM ||
+                      key->cbuf_format[0] == PIPE_FORMAT_R8G8B8X8_UNORM);
    uint8_t constants[LP_MAX_LINEAR_CONSTANTS * 4];
 
    LP_DBG(DEBUG_RAST, "%s\n", __func__);
@@ -182,7 +185,7 @@ lp_fs_linear_run(const struct lp_rast_state *state,
       if (!lp_linear_init_sampler(&samp[i], tex_info,
                   lp_fs_variant_key_sampler_idx(&variant->key, samp_unit),
                   &state->jit_resources.textures[tex_unit],
-                  x, y, width, height, a0, dadx, dady)) {
+                  x, y, width, height, a0, dadx, dady, rgba_order)) {
          if (LP_DEBUG & DEBUG_LINEAR2)
             debug_printf("  -- init_sampler(%d) failed\n", i);
          goto fail;
