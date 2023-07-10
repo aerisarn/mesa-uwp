@@ -623,30 +623,8 @@ static void
 remove_mapping(struct intel_aux_map_context *ctx, uint64_t address,
                bool *state_changed)
 {
-   uint32_t l3_index = (address >> 36) & 0xfff;
-   uint64_t *l3_entry = &ctx->level3_map[l3_index];
-
-   uint64_t *l2_map;
-   if ((*l3_entry & INTEL_AUX_MAP_ENTRY_VALID_BIT) == 0) {
-      return;
-   } else {
-      uint64_t l2_addr = intel_canonical_address(*l3_entry & ~0x7fffULL);
-      l2_map = get_u64_entry_ptr(ctx, l2_addr);
-   }
-   uint32_t l2_index = (address >> 24) & 0xfff;
-   uint64_t *l2_entry = &l2_map[l2_index];
-
-   uint64_t *l1_map;
-   if ((*l2_entry & INTEL_AUX_MAP_ENTRY_VALID_BIT) == 0) {
-      return;
-   } else {
-      uint64_t l1_addr = intel_canonical_address(
-            *l2_entry & ~get_page_mask(ctx->format->l1_page_size));
-      l1_map = get_u64_entry_ptr(ctx, l1_addr);
-   }
-   uint32_t l1_index = get_index(address, ctx->format->l1_index_mask,
-         ctx->format->l1_index_offset);
-   uint64_t *l1_entry = &l1_map[l1_index];
+   uint64_t *l1_entry;
+   get_aux_entry(ctx, address, NULL, NULL, &l1_entry);
 
    const uint64_t current_l1_data = *l1_entry;
    const uint64_t l1_data = current_l1_data & ~1ull;
@@ -654,9 +632,6 @@ remove_mapping(struct intel_aux_map_context *ctx, uint64_t address,
    if ((current_l1_data & INTEL_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       return;
    } else {
-      if (aux_map_debug)
-         fprintf(stderr, "AUX-MAP [0x%x][0x%x][0x%x] L1 entry removed!\n",
-                 l3_index, l2_index, l1_index);
       /**
        * We use non-zero bits in 63:1 to indicate the entry had been filled
        * previously. In the unlikely event that these are all zero, we force a
