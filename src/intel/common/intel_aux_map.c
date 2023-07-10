@@ -96,6 +96,9 @@
 
 #define INTEL_AUX_MAP_FORMAT_BITS_MASK   0xfff0000000000000ull
 
+/* Mask with the firt 48bits set */
+#define VALID_ADDRESS_MASK ((1ull << 48) - 1)
+
 static const bool aux_map_debug = false;
 
 /**
@@ -210,7 +213,7 @@ get_index(const uint64_t main_address,
 uint64_t
 intel_aux_get_meta_address_mask(struct intel_aux_map_context *ctx)
 {
-   return ~get_page_mask(get_meta_page_size(ctx->format)) << 16 >> 16;
+   return (~get_page_mask(get_meta_page_size(ctx->format))) & VALID_ADDRESS_MASK;
 }
 
 uint64_t
