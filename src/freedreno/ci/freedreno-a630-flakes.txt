@@ -70,6 +70,9 @@ dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 dEQP-GLES3.functional.fbo.blit.conversion.rg8i_to_r16i
 dEQP-GLES3.functional.fbo.blit.conversion.rg8_to_r16f
 
+# Noticed on July 2023
+KHR-GL46.buffer_storage.map_persistent_flush
+
 # First noticed Jun 1 2020 on an innocent branch.
 KHR-GL46.packed_depth_stencil.verify_copy_tex_image.depth32f_stencil8
 
