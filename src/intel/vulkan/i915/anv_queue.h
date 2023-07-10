@@ -22,19 +22,14 @@
 
 #pragma once
 
-#include <stdbool.h>
-
 #include "vulkan/vulkan_core.h"
-#include "vk_device.h"
 
 struct anv_device;
-struct anv_physical_device;
-
-bool anv_xe_device_destroy_vm(struct anv_device *device);
-VkResult anv_xe_device_setup_vm(struct anv_device *device);
-VkResult anv_xe_device_check_status(struct vk_device *vk_device);
+struct anv_queue;
 
 VkResult
-anv_xe_physical_device_get_parameters(struct anv_physical_device *device);
-VkResult
-anv_xe_physical_device_init_memory_types(struct anv_physical_device *device);
+anv_i915_create_engine(struct anv_device *device,
+                       struct anv_queue *queue,
+                       const VkDeviceQueueCreateInfo *pCreateInfo);
+void
+anv_i915_destroy_engine(struct anv_device *device, struct anv_queue *queue);

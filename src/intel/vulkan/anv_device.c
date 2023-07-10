@@ -3128,15 +3128,8 @@ VkResult anv_CreateDevice(
          &pCreateInfo->pQueueCreateInfos[i];
 
       for (uint32_t j = 0; j < queueCreateInfo->queueCount; j++) {
-         /* When using legacy contexts, we use I915_EXEC_RENDER but, with
-          * engine-based contexts, the bottom 6 bits of exec_flags are used
-          * for the engine ID.
-          */
-         uint32_t exec_flags = device->physical->engine_info ?
-                               device->queue_count : I915_EXEC_RENDER;
-
          result = anv_queue_init(device, &device->queues[device->queue_count],
-                                 exec_flags, queueCreateInfo, j);
+                                 queueCreateInfo, j);
          if (result != VK_SUCCESS)
             goto fail_queues;
 
