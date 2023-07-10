@@ -62,7 +62,7 @@ spec@arb_compute_variable_group_size@execution@separate-global-id-2
 spec@arb_compute_variable_group_size@local-size
 
 # noticed in a stress test, after over 200 runs
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv
 
 # Expects ordering between per-sample invocations generated from the same primitive,
 # contradicts the resolution of GL_ARB_fragment_shader_interlock issue 1.
