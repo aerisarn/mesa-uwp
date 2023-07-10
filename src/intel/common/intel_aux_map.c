@@ -532,7 +532,7 @@ get_aux_entry(struct intel_aux_map_context *ctx, uint64_t main_address,
    if (l1_index_out)
       *l1_index_out = l1_index;
    if (l1_entry_addr_out)
-      *l1_entry_addr_out = l1_addr + l1_index * sizeof(*l1_map);
+      *l1_entry_addr_out = intel_canonical_address(l1_addr + l1_index * sizeof(*l1_map));
    if (l1_entry_map_out)
       *l1_entry_map_out = &l1_map[l1_index];
 }
