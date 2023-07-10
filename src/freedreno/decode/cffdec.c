@@ -2203,6 +2203,17 @@ cp_draw_indirect_multi(uint32_t *dwords, uint32_t sizedwords, int level)
 }
 
 static void
+cp_draw_auto(uint32_t *dwords, uint32_t sizedwords, int level)
+{
+   uint32_t prim_type = dwords[0] & 0x1f;
+
+   do_query(rnn_enumname(rnn, "pc_di_primtype", prim_type), 0);
+   print_mode(level);
+
+   dump_register_summary(level);
+}
+
+static void
 cp_run_cl(uint32_t *dwords, uint32_t sizedwords, int level)
 {
    do_query("COMPUTE", 1);
@@ -2928,6 +2939,7 @@ static const struct type3_op {
    CP(SET_MODE, cp_set_mode),
    CP(SET_MARKER, cp_set_marker),
    CP(REG_WRITE, cp_reg_write),
+   CP(DRAW_AUTO, cp_draw_auto, {.load_all_groups = true}),
 
    CP(SET_CTXSWITCH_IB, cp_set_ctxswitch_ib),
 

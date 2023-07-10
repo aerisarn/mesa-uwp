@@ -1018,6 +1018,20 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	</stripe>
 </domain>
 
+<domain name="CP_DRAW_AUTO" width="32">
+	<reg32 offset="0" name="0" type="vgt_draw_initiator_a4xx"/>
+	<reg32 offset="1" name="1">
+		<bitfield name="NUM_INSTANCES" low="0" high="31" type="uint"/>
+	</reg32>
+	<reg64 offset="2" name="NUM_VERTICES_BASE" type="address"/>
+	<reg32 offset="4" name="4">
+		<bitfield name="NUM_VERTICES_OFFSET" low="0" high="31" type="uint"/>
+	</reg32>
+	<reg32 offset="5" name="5">
+		<bitfield name="STRIDE" low="0" high="31" type="uint"/>
+	</reg32>
+</domain>
+
 <domain name="CP_DRAW_PRED_ENABLE_GLOBAL" width="32" varset="chip">
 	<reg32 offset="0" name="0">
 		<bitfield name="ENABLE" pos="0" type="boolean"/>
