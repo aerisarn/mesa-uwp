@@ -2284,7 +2284,8 @@ pvr_graphics_pipeline_init(struct pvr_device *device,
 {
    struct vk_dynamic_graphics_state *const dynamic_state =
       &gfx_pipeline->dynamic_state;
-   const struct vk_render_pass_state rp_state = pvr_create_renderpass_state(pCreateInfo);
+   const struct vk_render_pass_state rp_state =
+      pvr_create_renderpass_state(pCreateInfo);
 
    struct vk_graphics_pipeline_all_state all_state;
    struct vk_graphics_pipeline_state state = { 0 };

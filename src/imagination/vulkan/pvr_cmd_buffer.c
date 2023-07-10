@@ -3390,7 +3390,8 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
 
          if (binding->buffer->vk.size <
              (attribute->offset + attribute->component_size_in_bytes)) {
-            /* Replace with load from robustness buffer when no attribute is in range
+            /* Replace with load from robustness buffer when no attribute is in
+             * range
              */
             addr = PVR_DEV_ADDR_OFFSET(
                cmd_buffer->device->robustness_buffer->vma->dev_addr,

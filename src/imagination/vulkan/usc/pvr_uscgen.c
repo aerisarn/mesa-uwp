@@ -29,12 +29,13 @@
 
 #include <stdbool.h>
 
-void pvr_uscgen_per_job_eot(uint32_t emit_count,
-                            const uint32_t *emit_state, /* Expects emit_count *
-                                                           ROGUE_NUM_PBESTATE_STATE_WORDS
-                                                           entries */
-                            unsigned *temps_used,
-                            struct util_dynarray *binary)
+void pvr_uscgen_per_job_eot(
+   uint32_t emit_count,
+   const uint32_t *emit_state, /* Expects emit_count *
+                                  ROGUE_NUM_PBESTATE_STATE_WORDS
+                                  entries */
+   unsigned *temps_used,
+   struct util_dynarray *binary)
 {
    rogue_builder b;
    rogue_shader *shader = rogue_shader_create(NULL, MESA_SHADER_NONE);
