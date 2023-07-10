@@ -5201,7 +5201,15 @@ tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
    tu6_draw_common<CHIP>(cmd, cs, false, 0);
 
    tu_cs_emit_pkt7(cs, CP_DRAW_AUTO, 6);
-   tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_XFB));
+   if (CHIP == A6XX) {
+      tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_XFB));
+   } else {
+      tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_INDEX));
+      /* On a7xx the counter value and offset are shifted right by 2, so
+       * the vertexStride should also be in units of dwords.
+       */
+      vertexStride = vertexStride >> 2;
+   }
    tu_cs_emit(cs, instanceCount);
    tu_cs_emit_qw(cs, buf->iova + counterBufferOffset);
    tu_cs_emit(cs, counterOffset);
