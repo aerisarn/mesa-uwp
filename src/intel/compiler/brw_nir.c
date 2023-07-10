@@ -1174,7 +1174,7 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
    if (producer->info.stage == MESA_SHADER_MESH &&
        consumer->info.stage == MESA_SHADER_FRAGMENT) {
       uint64_t fs_inputs = 0, ms_outputs = 0;
-      /* gl_MeshPerPrimitiveNV[].gl_ViewportIndex, gl_PrimitiveID and gl_Layer
+      /* gl_MeshPerPrimitiveEXT[].gl_ViewportIndex, gl_PrimitiveID and gl_Layer
        * are per primitive, but fragment shader does not have them marked as
        * such. Add the annotation here.
        */
@@ -1286,8 +1286,7 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
    }
 
    if (producer->info.stage == MESA_SHADER_TASK &&
-         consumer->info.stage == MESA_SHADER_MESH &&
-         !consumer->info.mesh.nv) {
+         consumer->info.stage == MESA_SHADER_MESH) {
 
       for (unsigned i = 0; i < 3; ++i)
          assert(producer->info.mesh.ts_mesh_dispatch_dimensions[i] <= UINT16_MAX);

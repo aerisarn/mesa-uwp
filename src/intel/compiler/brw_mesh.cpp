@@ -788,12 +788,6 @@ struct index_packing_state {
 static bool
 brw_can_pack_primitive_indices(nir_shader *nir, struct index_packing_state *state)
 {
-   /* NV_mesh_shader primitive indices are stored as a flat array instead
-    * of an array of primitives. Don't bother with this for now.
-    */
-   if (nir->info.mesh.nv)
-      return false;
-
    /* can single index fit into one byte of U888X format? */
    if (nir->info.mesh.max_vertices_out > 255)
       return false;
@@ -1549,19 +1543,16 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
       bld.MOV(dest, payload.extended_parameter_0);
       break;
 
-   case nir_intrinsic_load_local_invocation_index:
    case nir_intrinsic_load_local_invocation_id:
+      unreachable("local invocation id should have been lowered earlier");
+      break;
+
+   case nir_intrinsic_load_local_invocation_index:
       dest = retype(dest, BRW_REGISTER_TYPE_UD);
       bld.MOV(dest, payload.local_index);
-      /* Task/Mesh only use one dimension. */
-      if (instr->intrinsic == nir_intrinsic_load_local_invocation_id) {
-         bld.MOV(offset(dest, bld, 1), brw_imm_uw(0));
-         bld.MOV(offset(dest, bld, 2), brw_imm_uw(0));
-      }
       break;
 
    case nir_intrinsic_load_num_workgroups:
-      assert(!nir->info.mesh.nv);
       dest = retype(dest, BRW_REGISTER_TYPE_UD);
       bld.MOV(offset(dest, bld, 0), brw_uw1_grf(0, 13)); /* g0.6 >> 16 */
       bld.MOV(offset(dest, bld, 1), brw_uw1_grf(0, 8));  /* g0.4 & 0xffff */

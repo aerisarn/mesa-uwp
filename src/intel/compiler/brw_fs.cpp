@@ -7715,11 +7715,7 @@ fs_visitor::emit_work_group_id_setup()
       bld.MOV(offset(id, bld, 1), r0_6);
       bld.MOV(offset(id, bld, 2), r0_7);
    } else {
-      /* NV Task/Mesh have a single Workgroup ID dimension in the HW. */
-      assert(gl_shader_stage_is_mesh(stage));
-      assert(nir->info.mesh.nv);
-      bld.MOV(offset(id, bld, 1), brw_imm_ud(0));
-      bld.MOV(offset(id, bld, 2), brw_imm_ud(0));
+      unreachable("workgroup id should not be used in non-compute stage");
    }
 
    return id;
