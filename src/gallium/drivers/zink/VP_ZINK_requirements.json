@@ -332,9 +332,6 @@
                 },
                 "VK_FORMAT_D32_SFLOAT_S8_UINT": {
                     "VkFormatProperties": {
-                        "linearTilingFeatures": [ 
-                            "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
-                        ],
                         "optimalTilingFeatures": [ 
                             "VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT"
                         ]
