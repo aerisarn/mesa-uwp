@@ -755,6 +755,46 @@ agxdecode_gfx(uint32_t *cmdbuf, uint64_t encoder, bool verbose,
    }
 }
 
+static void
+chip_id_to_params(decoder_params *params, uint32_t chip_id)
+{
+   switch (chip_id) {
+   case 0x6000 ... 0x6002:
+      *params = (decoder_params){
+         .gpu_generation = 13,
+         .gpu_variant = "SCD"[chip_id & 15],
+         .chip_id = chip_id,
+         .num_clusters_total = 2 << (chip_id & 15),
+      };
+      break;
+   case 0x6020 ... 0x6022:
+      *params = (decoder_params){
+         .gpu_generation = 14,
+         .gpu_variant = "SCD"[chip_id & 15],
+         .chip_id = chip_id,
+         .num_clusters_total = 2 << (chip_id & 15),
+      };
+      break;
+   case 0x8112:
+      *params = (decoder_params){
+         .gpu_generation = 14,
+         .gpu_variant = 'G',
+         .chip_id = chip_id,
+         .num_clusters_total = 1,
+      };
+      break;
+   case 0x8103:
+   default:
+      *params = (decoder_params){
+         .gpu_generation = 13,
+         .gpu_variant = 'G',
+         .chip_id = chip_id,
+         .num_clusters_total = 1,
+      };
+      break;
+   }
+}
+
 #ifdef __APPLE__
 
 void
@@ -787,12 +827,9 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
       DUMP_CL(IOGPU_ATTACHMENT, ptr, "Attachment");
    }
 
-   struct drm_asahi_params_global params = {
-      .gpu_generation = 13,
-      .gpu_variant = 'G',
-      .chip_id = 0x8103,
-      .num_clusters_total = 1,
-   };
+   struct drm_asahi_params_global params;
+
+   chip_id_to_params(&params, 0x8103);
 
    if (cmd.unk_5 == 3)
       agxdecode_cs((uint32_t *)cmdbuf->ptr.cpu, cmd.encoder, verbose, &params);
