@@ -591,7 +591,7 @@ vn_cmd_begin_render_pass(struct vn_command_buffer *cmd,
    cmd->in_render_pass = true;
    cmd->render_pass = pass;
    cmd->subpass_index = 0;
-   cmd->view_mask = cmd->render_pass->subpasses[0].view_mask;
+   cmd->view_mask = vn_render_pass_get_subpass_view_mask(pass, 0);
 
    if (!pass->present_count)
       return;
@@ -660,6 +660,13 @@ vn_cmd_end_render_pass(struct vn_command_buffer *cmd)
    }
 
    vk_free(&cmd->pool->allocator, images);
+}
+
+static inline void
+vn_cmd_next_subpass(struct vn_command_buffer *cmd)
+{
+   cmd->view_mask = vn_render_pass_get_subpass_view_mask(
+      cmd->render_pass, ++cmd->subpass_index);
 }
 
 /* command pool commands */
@@ -1044,8 +1051,8 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
          /* Store the viewMask from the inherited render pass subpass for
           * query feedback.
           */
-         cmd->view_mask =
-            pass->subpasses[inheritance_info->subpass].view_mask;
+         cmd->view_mask = vn_render_pass_get_subpass_view_mask(
+            pass, inheritance_info->subpass);
       } else {
          /* Store the viewMask from the
           * VkCommandBufferInheritanceRenderingInfo.
@@ -1919,10 +1926,7 @@ vn_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
 void
 vn_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
 {
-   struct vn_command_buffer *cmd =
-      vn_command_buffer_from_handle(commandBuffer);
-   cmd->view_mask =
-      cmd->render_pass->subpasses[++cmd->subpass_index].view_mask;
+   vn_cmd_next_subpass(vn_command_buffer_from_handle(commandBuffer));
 
    VN_CMD_ENQUEUE(vkCmdNextSubpass, commandBuffer, contents);
 }
@@ -1930,12 +1934,9 @@ vn_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
 void
 vn_CmdEndRenderPass(VkCommandBuffer commandBuffer)
 {
-   struct vn_command_buffer *cmd =
-      vn_command_buffer_from_handle(commandBuffer);
-
    VN_CMD_ENQUEUE(vkCmdEndRenderPass, commandBuffer);
 
-   vn_cmd_end_render_pass(cmd);
+   vn_cmd_end_render_pass(vn_command_buffer_from_handle(commandBuffer));
 }
 
 void
@@ -1960,10 +1961,7 @@ vn_CmdNextSubpass2(VkCommandBuffer commandBuffer,
                    const VkSubpassBeginInfo *pSubpassBeginInfo,
                    const VkSubpassEndInfo *pSubpassEndInfo)
 {
-   struct vn_command_buffer *cmd =
-      vn_command_buffer_from_handle(commandBuffer);
-   cmd->view_mask =
-      cmd->render_pass->subpasses[++cmd->subpass_index].view_mask;
+   vn_cmd_next_subpass(vn_command_buffer_from_handle(commandBuffer));
 
    VN_CMD_ENQUEUE(vkCmdNextSubpass2, commandBuffer, pSubpassBeginInfo,
                   pSubpassEndInfo);
@@ -1973,12 +1971,9 @@ void
 vn_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
                      const VkSubpassEndInfo *pSubpassEndInfo)
 {
-   struct vn_command_buffer *cmd =
-      vn_command_buffer_from_handle(commandBuffer);
-
    VN_CMD_ENQUEUE(vkCmdEndRenderPass2, commandBuffer, pSubpassEndInfo);
 
-   vn_cmd_end_render_pass(cmd);
+   vn_cmd_end_render_pass(vn_command_buffer_from_handle(commandBuffer));
 }
 
 void
@@ -1986,11 +1981,11 @@ vn_CmdExecuteCommands(VkCommandBuffer commandBuffer,
                       uint32_t commandBufferCount,
                       const VkCommandBuffer *pCommandBuffers)
 {
-   struct vn_command_buffer *primary_cmd =
-      vn_command_buffer_from_handle(commandBuffer);
    VN_CMD_ENQUEUE(vkCmdExecuteCommands, commandBuffer, commandBufferCount,
                   pCommandBuffers);
 
+   struct vn_command_buffer *primary_cmd =
+      vn_command_buffer_from_handle(commandBuffer);
    if (primary_cmd->in_render_pass) {
       for (uint32_t i = 0; i < commandBufferCount; i++) {
          struct vn_command_buffer *secondary_cmd =
