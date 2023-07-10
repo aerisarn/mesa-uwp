@@ -818,7 +818,8 @@ agxdecode_track_free(struct agx_bo *bo)
 
    for (unsigned i = 0; i < mmap_count; ++i) {
       if (mmap_array[i].handle == bo->handle &&
-          mmap_array[i].type == bo->type) {
+          (mmap_array[i].type == AGX_ALLOC_REGULAR) ==
+             (bo->type == AGX_ALLOC_REGULAR)) {
          assert(!found && "mapped multiple times!");
          found = true;
 
