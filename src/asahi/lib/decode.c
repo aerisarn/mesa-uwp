@@ -208,9 +208,10 @@ agxdecode_decode_segment_list(void *segment_list)
 
 #endif
 
-static inline void *
+static size_t
 __agxdecode_fetch_gpu_mem(const struct agx_bo *mem, uint64_t gpu_va,
-                          size_t size, int line, const char *filename)
+                          size_t size, void *buf, int line,
+                          const char *filename)
 {
    if (!mem)
       mem = agxdecode_find_mapped_gpu_mem_containing(gpu_va);
@@ -225,11 +226,16 @@ __agxdecode_fetch_gpu_mem(const struct agx_bo *mem, uint64_t gpu_va,
    assert(mem);
    assert(size + (gpu_va - mem->ptr.gpu) <= mem->size);
 
-   return mem->ptr.cpu + gpu_va - mem->ptr.gpu;
+   memcpy(buf, mem->ptr.cpu + gpu_va - mem->ptr.gpu, size);
+
+   return size;
 }
 
-#define agxdecode_fetch_gpu_mem(gpu_va, size)                                  \
-   __agxdecode_fetch_gpu_mem(NULL, gpu_va, size, __LINE__, __FILE__)
+#define agxdecode_fetch_gpu_mem(gpu_va, size, buf)                             \
+   __agxdecode_fetch_gpu_mem(NULL, gpu_va, size, buf, __LINE__, __FILE__)
+
+#define agxdecode_fetch_gpu_array(gpu_va, buf)                                 \
+   agxdecode_fetch_gpu_mem(gpu_va, sizeof(buf), buf)
 
 static void
 agxdecode_map_read_write(void)
@@ -275,19 +281,28 @@ static void
 agxdecode_stateful(uint64_t va, const char *label, decode_cmd decoder,
                    bool verbose, decoder_params *params, void *data)
 {
+   uint8_t buf[1024];
    struct agx_bo *alloc = agxdecode_find_mapped_gpu_mem_containing(va);
    assert(alloc != NULL && "nonexistent object");
    fprintf(agxdecode_dump_stream, "%s (%" PRIx64 ", handle %u)\n", label, va,
            alloc->handle);
    fflush(agxdecode_dump_stream);
 
-   uint8_t *map = agxdecode_fetch_gpu_mem(va, 64);
-   uint8_t *end = (uint8_t *)alloc->ptr.cpu + alloc->size;
+   int len = agxdecode_fetch_gpu_array(va, buf);
+
+   int left = len;
+   uint8_t *map = buf;
    uint64_t link = 0;
 
    fflush(agxdecode_dump_stream);
 
-   while (map < end) {
+   while (left) {
+      if (len <= 0) {
+         fprintf(agxdecode_dump_stream, "!! Failed to read GPU memory\n");
+         fflush(agxdecode_dump_stream);
+         return;
+      }
+
       unsigned count = decoder(map, &link, verbose, params, data);
 
       /* If we fail to decode, default to a hexdump (don't hang) */
@@ -296,15 +311,20 @@ agxdecode_stateful(uint64_t va, const char *label, decode_cmd decoder,
          count = 8;
       }
 
+      va += count;
       map += count;
+      left -= count;
       fflush(agxdecode_dump_stream);
 
       if (count == STATE_DONE) {
          break;
       } else if (count == STATE_LINK) {
-         alloc = agxdecode_find_mapped_gpu_mem_containing(link);
-         map = agxdecode_fetch_gpu_mem(link, 64);
-         end = (uint8_t *)alloc->ptr.cpu + alloc->size;
+         va = link;
+         left = len = agxdecode_fetch_gpu_array(va, buf);
+         map = buf;
+      } else if (left < 512 && len == sizeof(buf)) {
+         left = len = agxdecode_fetch_gpu_array(va, buf);
+         map = buf;
       }
    }
 }
@@ -315,6 +335,7 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
 {
    enum agx_sampler_states *sampler_states = data;
    enum agx_usc_control type = map[0];
+   uint8_t buf[8192];
 
    bool extended_samplers =
       (sampler_states != NULL) &&
@@ -337,7 +358,7 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
       agx_unpack(agxdecode_dump_stream, map, USC_PRESHADER, ctrl);
       DUMP_UNPACKED(USC_PRESHADER, ctrl, "Preshader\n");
 
-      agx_disassemble(agxdecode_fetch_gpu_mem(ctrl.code, 2048), 8192,
+      agx_disassemble(buf, agxdecode_fetch_gpu_array(ctrl.code, buf),
                       agxdecode_dump_stream);
 
       return STATE_DONE;
@@ -348,7 +369,7 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
       DUMP_UNPACKED(USC_SHADER, ctrl, "Shader\n");
 
       agxdecode_log("\n");
-      agx_disassemble(agxdecode_fetch_gpu_mem(ctrl.code, 2048), 8192,
+      agx_disassemble(buf, agxdecode_fetch_gpu_array(ctrl.code, buf),
                       agxdecode_dump_stream);
       agxdecode_log("\n");
 
@@ -359,8 +380,10 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
       agx_unpack(agxdecode_dump_stream, map, USC_SAMPLER, temp);
       DUMP_UNPACKED(USC_SAMPLER, temp, "Sampler state\n");
 
-      uint8_t *samp =
-         agxdecode_fetch_gpu_mem(temp.buffer, AGX_SAMPLER_LENGTH * temp.count);
+      uint8_t buf[AGX_SAMPLER_LENGTH * temp.count];
+      uint8_t *samp = buf;
+
+      agxdecode_fetch_gpu_array(temp.buffer, buf);
 
       for (unsigned i = 0; i < temp.count; ++i) {
          DUMP_CL(SAMPLER, samp, "Sampler");
@@ -379,8 +402,10 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
       agx_unpack(agxdecode_dump_stream, map, USC_TEXTURE, temp);
       DUMP_UNPACKED(USC_TEXTURE, temp, "Texture state\n");
 
-      uint8_t *tex =
-         agxdecode_fetch_gpu_mem(temp.buffer, AGX_TEXTURE_LENGTH * temp.count);
+      uint8_t buf[AGX_TEXTURE_LENGTH * temp.count];
+      uint8_t *tex = buf;
+
+      agxdecode_fetch_gpu_array(temp.buffer, buf);
 
       /* Note: samplers only need 8 byte alignment? */
       for (unsigned i = 0; i < temp.count; ++i) {
@@ -398,8 +423,9 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
       agx_unpack(agxdecode_dump_stream, map, USC_UNIFORM, temp);
       DUMP_UNPACKED(USC_UNIFORM, temp, "Uniform\n");
 
-      uint8_t *raw = agxdecode_fetch_gpu_mem(temp.buffer, 2 * temp.size_halfs);
-      u_hexdump(agxdecode_dump_stream, raw, 2 * temp.size_halfs, false);
+      uint8_t buf[2 * temp.size_halfs];
+      agxdecode_fetch_gpu_array(temp.buffer, buf);
+      u_hexdump(agxdecode_dump_stream, buf, 2 * temp.size_halfs, false);
 
       return AGX_USC_UNIFORM_LENGTH;
    }
@@ -429,8 +455,11 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
 static void
 agxdecode_record(uint64_t va, size_t size, bool verbose, decoder_params *params)
 {
-   uint8_t *base = agxdecode_fetch_gpu_mem(va, size);
+   uint8_t buf[size];
+   uint8_t *base = buf;
    uint8_t *map = base;
+
+   agxdecode_fetch_gpu_array(va, buf);
 
    agx_unpack(agxdecode_dump_stream, map, PPP_HEADER, hdr);
    map += AGX_PPP_HEADER_LENGTH;
@@ -459,7 +488,10 @@ agxdecode_record(uint64_t va, size_t size, bool verbose, decoder_params *params)
                          verbose, params, &frag.sampler_state_register_count);
 
       if (frag.cf_bindings) {
-         uint8_t *cf = agxdecode_fetch_gpu_mem(frag.cf_bindings, 128);
+         uint8_t buf[128];
+         uint8_t *cf = buf;
+
+         agxdecode_fetch_gpu_array(frag.cf_bindings, buf);
          u_hexdump(agxdecode_dump_stream, cf, 128, false);
 
          DUMP_CL(CF_BINDING_HEADER, cf, "Coefficient binding header:");
@@ -684,8 +716,10 @@ agxdecode_cs(uint32_t *cmdbuf, uint64_t encoder, bool verbose,
    agxdecode_stateful(encoder, "Encoder", agxdecode_cdm, verbose, params, NULL);
 
    fprintf(agxdecode_dump_stream, "Context switch program:\n");
-   agx_disassemble(agxdecode_fetch_gpu_mem(cs.context_switch_program, 1024),
-                   1024, agxdecode_dump_stream);
+   uint8_t buf[1024];
+   agx_disassemble(buf,
+                   agxdecode_fetch_gpu_array(cs.context_switch_program, buf),
+                   agxdecode_dump_stream);
 }
 
 static void
