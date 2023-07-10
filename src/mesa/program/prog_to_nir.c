@@ -68,58 +68,6 @@ struct ptn_compile {
 #define ptn_channel(b, src, ch) nir_channel(b, src, SWIZZLE_##ch)
 
 static nir_ssa_def *
-ptn_src_for_dest(struct ptn_compile *c, nir_alu_dest *dest)
-{
-   nir_builder *b = &c->build;
-
-   nir_alu_src src;
-   memset(&src, 0, sizeof(src));
-
-   if (dest->dest.is_ssa)
-      src.src = nir_src_for_ssa(&dest->dest.ssa);
-   else {
-      assert(!dest->dest.reg.indirect);
-      src.src = nir_src_for_reg(dest->dest.reg.reg);
-      src.src.reg.base_offset = dest->dest.reg.base_offset;
-   }
-
-   for (int i = 0; i < 4; i++)
-      src.swizzle[i] = i;
-
-   return nir_mov_alu(b, src, 4);
-}
-
-static nir_alu_dest
-ptn_get_dest(struct ptn_compile *c, const struct prog_dst_register *prog_dst)
-{
-   nir_alu_dest dest;
-
-   memset(&dest, 0, sizeof(dest));
-
-   switch (prog_dst->File) {
-   case PROGRAM_TEMPORARY:
-      dest.dest.reg.reg = c->temp_regs[prog_dst->Index];
-      break;
-   case PROGRAM_OUTPUT:
-      dest.dest.reg.reg = c->output_regs[prog_dst->Index];
-      break;
-   case PROGRAM_ADDRESS:
-      assert(prog_dst->Index == 0);
-      dest.dest.reg.reg = c->addr_reg;
-      break;
-   case PROGRAM_UNDEFINED:
-      break;
-   }
-
-   dest.write_mask = prog_dst->WriteMask;
-   dest.saturate = false;
-
-   assert(!prog_dst->RelAddr);
-
-   return dest;
-}
-
-static nir_ssa_def *
 ptn_get_src(struct ptn_compile *c, const struct prog_src_register *prog_src)
 {
    nir_builder *b = &c->build;
@@ -244,66 +192,21 @@ ptn_get_src(struct ptn_compile *c, const struct prog_src_register *prog_src)
    return def;
 }
 
-static void
-ptn_alu(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
-{
-   unsigned num_srcs = nir_op_infos[op].num_inputs;
-   nir_alu_instr *instr = nir_alu_instr_create(b->shader, op);
-   unsigned i;
-
-   for (i = 0; i < num_srcs; i++)
-      instr->src[i].src = nir_src_for_ssa(src[i]);
-
-   instr->dest = dest;
-   nir_builder_instr_insert(b, &instr->instr);
-}
-
-static void
-ptn_move_dest_masked(nir_builder *b, nir_alu_dest dest,
-                     nir_ssa_def *def, unsigned write_mask)
-{
-   if (!(dest.write_mask & write_mask))
-      return;
-
-   nir_alu_instr *mov = nir_alu_instr_create(b->shader, nir_op_mov);
-   if (!mov)
-      return;
-
-   mov->dest = dest;
-   mov->dest.write_mask &= write_mask;
-   mov->src[0].src = nir_src_for_ssa(def);
-   for (unsigned i = def->num_components; i < 4; i++)
-      mov->src[0].swizzle[i] = def->num_components - 1;
-   nir_builder_instr_insert(b, &mov->instr);
-}
-
-static void
-ptn_move_dest(nir_builder *b, nir_alu_dest dest, nir_ssa_def *def)
-{
-   ptn_move_dest_masked(b, dest, def, WRITEMASK_XYZW);
-}
-
-static void
-ptn_arl(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
-{
-   ptn_move_dest(b, dest, nir_f2i32(b, nir_ffloor(b, src[0])));
-}
-
 /* EXP - Approximate Exponential Base 2
  *  dst.x = 2^{\lfloor src.x\rfloor}
  *  dst.y = src.x - \lfloor src.x\rfloor
  *  dst.z = 2^{src.x}
  *  dst.w = 1.0
  */
-static void
-ptn_exp(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
+static nir_ssa_def *
+ptn_exp(nir_builder *b, nir_ssa_def **src)
 {
    nir_ssa_def *srcx = ptn_channel(b, src[0], X);
 
-   ptn_move_dest_masked(b, dest, nir_fexp2(b, nir_ffloor(b, srcx)), WRITEMASK_X);
-   ptn_move_dest_masked(b, dest, nir_fsub(b, srcx, nir_ffloor(b, srcx)), WRITEMASK_Y);
-   ptn_move_dest_masked(b, dest, nir_fexp2(b, srcx), WRITEMASK_Z);
-   ptn_move_dest_masked(b, dest, nir_imm_float(b, 1.0), WRITEMASK_W);
+   return nir_vec4(b, nir_fexp2(b, nir_ffloor(b, srcx)),
+                      nir_fsub(b, srcx, nir_ffloor(b, srcx)),
+                      nir_fexp2(b, srcx),
+                      nir_imm_float(b, 1.0));
 }
 
 /* LOG - Approximate Logarithm Base 2
@@ -312,19 +215,16 @@ ptn_exp(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
  *  dst.z = \log_2{|src.x|}
  *  dst.w = 1.0
  */
-static void
-ptn_log(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
+static nir_ssa_def *
+ptn_log(nir_builder *b, nir_ssa_def **src)
 {
    nir_ssa_def *abs_srcx = nir_fabs(b, ptn_channel(b, src[0], X));
    nir_ssa_def *log2 = nir_flog2(b, abs_srcx);
-   nir_ssa_def *floor_log2 = nir_ffloor(b, log2);
 
-   ptn_move_dest_masked(b, dest, floor_log2, WRITEMASK_X);
-   ptn_move_dest_masked(b, dest,
-                        nir_fdiv(b, abs_srcx, nir_fexp2(b, floor_log2)),
-                        WRITEMASK_Y);
-   ptn_move_dest_masked(b, dest, log2, WRITEMASK_Z);
-   ptn_move_dest_masked(b, dest, nir_imm_float(b, 1.0), WRITEMASK_W);
+   return nir_vec4(b, nir_ffloor(b, log2),
+                      nir_fdiv(b, abs_srcx, nir_fexp2(b, nir_ffloor(b, log2))),
+                      nir_flog2(b, abs_srcx),
+                      nir_imm_float(b, 1.0));
 }
 
 /* DST - Distance Vector
@@ -333,13 +233,14 @@ ptn_log(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
  *   dst.z = src0.z
  *   dst.w = src1.w
  */
-static void
-ptn_dst(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
+static nir_ssa_def *
+ptn_dst(nir_builder *b, nir_ssa_def **src)
 {
-   ptn_move_dest_masked(b, dest, nir_imm_float(b, 1.0), WRITEMASK_X);
-   ptn_move_dest_masked(b, dest, nir_fmul(b, src[0], src[1]), WRITEMASK_Y);
-   ptn_move_dest_masked(b, dest, nir_mov(b, src[0]), WRITEMASK_Z);
-   ptn_move_dest_masked(b, dest, nir_mov(b, src[1]), WRITEMASK_W);
+   return nir_vec4(b, nir_imm_float(b, 1.0),
+                      nir_fmul(b, ptn_channel(b, src[0], Y),
+                                  ptn_channel(b, src[1], Y)),
+                      ptn_channel(b, src[0], Z),
+                      ptn_channel(b, src[1], W));
 }
 
 /* LIT - Light Coefficients
@@ -348,29 +249,24 @@ ptn_dst(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
  *  dst.z = (src.x > 0.0) ? max(src.y, 0.0)^{clamp(src.w, -128.0, 128.0))} : 0
  *  dst.w = 1.0
  */
-static void
-ptn_lit(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
+static nir_ssa_def *
+ptn_lit(nir_builder *b, nir_ssa_def **src)
 {
-   ptn_move_dest_masked(b, dest, nir_imm_float(b, 1.0), WRITEMASK_XW);
+   nir_ssa_def *src0_y = ptn_channel(b, src[0], Y);
+   nir_ssa_def *wclamp = nir_fmax(b, nir_fmin(b, ptn_channel(b, src[0], W),
+                                              nir_imm_float(b, 128.0)),
+                                  nir_imm_float(b, -128.0));
+   nir_ssa_def *pow = nir_fpow(b, nir_fmax(b, src0_y, nir_imm_float(b, 0.0)),
+                               wclamp);
 
-   ptn_move_dest_masked(b, dest, nir_fmax(b, ptn_channel(b, src[0], X),
-                                          nir_imm_float(b, 0.0)), WRITEMASK_Y);
+   nir_ssa_def *z = nir_bcsel(b, nir_fle_imm(b, ptn_channel(b, src[0], X), 0.0),
+                              nir_imm_float(b, 0.0), pow);
 
-   if (dest.write_mask & WRITEMASK_Z) {
-      nir_ssa_def *src0_y = ptn_channel(b, src[0], Y);
-      nir_ssa_def *wclamp = nir_fmax(b, nir_fmin(b, ptn_channel(b, src[0], W),
-                                                 nir_imm_float(b, 128.0)),
-                                     nir_imm_float(b, -128.0));
-      nir_ssa_def *pow = nir_fpow(b, nir_fmax(b, src0_y, nir_imm_float(b, 0.0)),
-                                  wclamp);
-
-      nir_ssa_def *z = nir_bcsel(b,
-                                 nir_fle_imm(b, ptn_channel(b, src[0], X), 0.0),
-                                 nir_imm_float(b, 0.0),
-                                 pow);
-
-      ptn_move_dest_masked(b, dest, z, WRITEMASK_Z);
-   }
+   return nir_vec4(b, nir_imm_float(b, 1.0),
+                      nir_fmax(b, ptn_channel(b, src[0], X),
+                                  nir_imm_float(b, 0.0)),
+                      z,
+                      nir_imm_float(b, 1.0));
 }
 
 /* SCS - Sine Cosine
@@ -379,80 +275,28 @@ ptn_lit(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
  *   dst.z = 0.0
  *   dst.w = 1.0
  */
-static void
-ptn_scs(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
+static nir_ssa_def *
+ptn_scs(nir_builder *b, nir_ssa_def **src)
 {
-   ptn_move_dest_masked(b, dest, nir_fcos(b, ptn_channel(b, src[0], X)),
-                        WRITEMASK_X);
-   ptn_move_dest_masked(b, dest, nir_fsin(b, ptn_channel(b, src[0], X)),
-                        WRITEMASK_Y);
-   ptn_move_dest_masked(b, dest, nir_imm_float(b, 0.0), WRITEMASK_Z);
-   ptn_move_dest_masked(b, dest, nir_imm_float(b, 1.0), WRITEMASK_W);
+   return nir_vec4(b, nir_fcos(b, ptn_channel(b, src[0], X)),
+                      nir_fsin(b, ptn_channel(b, src[0], X)),
+                      nir_imm_float(b, 0.0),
+                      nir_imm_float(b, 1.0));
 }
 
-static void
-ptn_slt(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
+static nir_ssa_def *
+ptn_xpd(nir_builder *b, nir_ssa_def **src)
 {
-   ptn_move_dest(b, dest, nir_slt(b, src[0], src[1]));
-}
+   nir_ssa_def *vec =
+      nir_fsub(b, nir_fmul(b, nir_swizzle(b, src[0], SWIZ(Y, Z, X, W), 3),
+                              nir_swizzle(b, src[1], SWIZ(Z, X, Y, W), 3)),
+                  nir_fmul(b, nir_swizzle(b, src[1], SWIZ(Y, Z, X, W), 3),
+                              nir_swizzle(b, src[0], SWIZ(Z, X, Y, W), 3)));
 
-static void
-ptn_sge(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
-{
-   ptn_move_dest(b, dest, nir_sge(b, src[0], src[1]));
-}
-
-static void
-ptn_xpd(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
-{
-   ptn_move_dest_masked(b, dest,
-                        nir_fsub(b,
-                                 nir_fmul(b,
-                                          nir_swizzle(b, src[0], SWIZ(Y, Z, X, W), 3),
-                                          nir_swizzle(b, src[1], SWIZ(Z, X, Y, W), 3)),
-                                 nir_fmul(b,
-                                          nir_swizzle(b, src[1], SWIZ(Y, Z, X, W), 3),
-                                          nir_swizzle(b, src[0], SWIZ(Z, X, Y, W), 3))),
-                        WRITEMASK_XYZ);
-   ptn_move_dest_masked(b, dest, nir_imm_float(b, 1.0), WRITEMASK_W);
-}
-
-static void
-ptn_dp2(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
-{
-   ptn_move_dest(b, dest, nir_fdot2(b, src[0], src[1]));
-}
-
-static void
-ptn_dp3(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
-{
-   ptn_move_dest(b, dest, nir_fdot3(b, src[0], src[1]));
-}
-
-static void
-ptn_dp4(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
-{
-   ptn_move_dest(b, dest, nir_fdot4(b, src[0], src[1]));
-}
-
-static void
-ptn_dph(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
-{
-   ptn_move_dest(b, dest, nir_fdph(b, src[0], src[1]));
-}
-
-static void
-ptn_cmp(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
-{
-   ptn_move_dest(b, dest, nir_bcsel(b,
-                                    nir_flt_imm(b, src[0], 0.0),
-                                    src[1], src[2]));
-}
-
-static void
-ptn_lrp(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
-{
-   ptn_move_dest(b, dest, nir_flrp(b, src[2], src[1], src[0]));
+   return nir_vec4(b, nir_channel(b, vec, 0),
+                      nir_channel(b, vec, 1),
+                      nir_channel(b, vec, 2),
+                      nir_imm_float(b, 1.0));
 }
 
 static void
@@ -506,8 +350,8 @@ _mesa_texture_index_to_sampler_dim(gl_texture_index index, bool *is_array)
    unreachable("unknown texture target");
 }
 
-static void
-ptn_tex(struct ptn_compile *c, nir_alu_dest dest, nir_ssa_def **src,
+static nir_ssa_def *
+ptn_tex(struct ptn_compile *c, nir_ssa_def **src,
         struct prog_instruction *prog_inst)
 {
    nir_builder *b = &c->build;
@@ -619,8 +463,7 @@ ptn_tex(struct ptn_compile *c, nir_alu_dest dest, nir_ssa_def **src,
    nir_ssa_dest_init(&instr->instr, &instr->dest, 4, 32);
    nir_builder_instr_insert(b, &instr->instr);
 
-   /* Resolve the writemask on the texture op. */
-   ptn_move_dest(b, dest, &instr->dest.ssa);
+   return &instr->dest.ssa;
 }
 
 static const nir_op op_trans[MAX_OPCODE] = {
@@ -684,88 +527,86 @@ ptn_emit_instruction(struct ptn_compile *c, struct prog_instruction *prog_inst)
    for (i = 0; i < 3; i++) {
       src[i] = ptn_get_src(c, &prog_inst->SrcReg[i]);
    }
-   nir_alu_dest dest = ptn_get_dest(c, &prog_inst->DstReg);
+
+   nir_ssa_def *dst = NULL;
    if (c->error)
       return;
 
    switch (op) {
    case OPCODE_RSQ:
-      ptn_move_dest(b, dest,
-                    nir_frsq(b, nir_fabs(b, ptn_channel(b, src[0], X))));
+      dst = nir_frsq(b, nir_fabs(b, ptn_channel(b, src[0], X)));
       break;
 
    case OPCODE_RCP:
-      ptn_move_dest(b, dest, nir_frcp(b, ptn_channel(b, src[0], X)));
+      dst = nir_frcp(b, ptn_channel(b, src[0], X));
       break;
 
    case OPCODE_EX2:
-      ptn_move_dest(b, dest, nir_fexp2(b, ptn_channel(b, src[0], X)));
+      dst = nir_fexp2(b, ptn_channel(b, src[0], X));
       break;
 
    case OPCODE_LG2:
-      ptn_move_dest(b, dest, nir_flog2(b, ptn_channel(b, src[0], X)));
+      dst = nir_flog2(b, ptn_channel(b, src[0], X));
       break;
 
    case OPCODE_POW:
-      ptn_move_dest(b, dest, nir_fpow(b,
-                                      ptn_channel(b, src[0], X),
-                                      ptn_channel(b, src[1], X)));
+      dst = nir_fpow(b, ptn_channel(b, src[0], X), ptn_channel(b, src[1], X));
       break;
 
    case OPCODE_COS:
-      ptn_move_dest(b, dest, nir_fcos(b, ptn_channel(b, src[0], X)));
+      dst = nir_fcos(b, ptn_channel(b, src[0], X));
       break;
 
    case OPCODE_SIN:
-      ptn_move_dest(b, dest, nir_fsin(b, ptn_channel(b, src[0], X)));
+      dst = nir_fsin(b, ptn_channel(b, src[0], X));
       break;
 
    case OPCODE_ARL:
-      ptn_arl(b, dest, src);
+      dst = nir_f2i32(b, nir_ffloor(b, src[0]));
       break;
 
    case OPCODE_EXP:
-      ptn_exp(b, dest, src);
+      dst = ptn_exp(b, src);
       break;
 
    case OPCODE_LOG:
-      ptn_log(b, dest, src);
+      dst = ptn_log(b, src);
       break;
 
    case OPCODE_LRP:
-      ptn_lrp(b, dest, src);
+      dst = nir_flrp(b, src[2], src[1], src[0]);
       break;
 
    case OPCODE_MAD:
-      ptn_move_dest(b, dest, nir_fadd(b, nir_fmul(b, src[0], src[1]), src[2]));
+      dst = nir_fadd(b, nir_fmul(b, src[0], src[1]), src[2]);
       break;
 
    case OPCODE_DST:
-      ptn_dst(b, dest, src);
+      dst = ptn_dst(b, src);
       break;
 
    case OPCODE_LIT:
-      ptn_lit(b, dest, src);
+      dst = ptn_lit(b, src);
       break;
 
    case OPCODE_XPD:
-      ptn_xpd(b, dest, src);
+      dst = ptn_xpd(b, src);
       break;
 
    case OPCODE_DP2:
-      ptn_dp2(b, dest, src);
+      dst = nir_fdot2(b, src[0], src[1]);
       break;
 
    case OPCODE_DP3:
-      ptn_dp3(b, dest, src);
+      dst = nir_fdot3(b, src[0], src[1]);
       break;
 
    case OPCODE_DP4:
-      ptn_dp4(b, dest, src);
+      dst = nir_fdot4(b, src[0], src[1]);
       break;
 
    case OPCODE_DPH:
-      ptn_dph(b, dest, src);
+      dst = nir_fdph(b, src[0], src[1]);
       break;
 
    case OPCODE_KIL:
@@ -773,19 +614,19 @@ ptn_emit_instruction(struct ptn_compile *c, struct prog_instruction *prog_inst)
       break;
 
    case OPCODE_CMP:
-      ptn_cmp(b, dest, src);
+      dst = nir_bcsel(b, nir_flt_imm(b, src[0], 0.0), src[1], src[2]);
       break;
 
    case OPCODE_SCS:
-      ptn_scs(b, dest, src);
+      dst = ptn_scs(b, src);
       break;
 
    case OPCODE_SLT:
-      ptn_slt(b, dest, src);
+      dst = nir_slt(b, src[0], src[1]);
       break;
 
    case OPCODE_SGE:
-      ptn_sge(b, dest, src);
+      dst = nir_sge(b, src[0], src[1]);
       break;
 
    case OPCODE_TEX:
@@ -793,12 +634,12 @@ ptn_emit_instruction(struct ptn_compile *c, struct prog_instruction *prog_inst)
    case OPCODE_TXD:
    case OPCODE_TXL:
    case OPCODE_TXP:
-      ptn_tex(c, dest, src, prog_inst);
+      dst = ptn_tex(c, src, prog_inst);
       break;
 
    case OPCODE_SWZ:
       /* Extended swizzles were already handled in ptn_get_src(). */
-      ptn_alu(b, nir_op_mov, dest, src);
+      dst = nir_build_alu_src_arr(b, nir_op_mov, src);
       break;
 
    case OPCODE_NOP:
@@ -806,7 +647,7 @@ ptn_emit_instruction(struct ptn_compile *c, struct prog_instruction *prog_inst)
 
    default:
       if (op_trans[op] != 0) {
-         ptn_alu(b, op_trans[op], dest, src);
+         dst = nir_build_alu_src_arr(b, op_trans[op], src);
       } else {
          fprintf(stderr, "unknown opcode: %s\n", _mesa_opcode_string(op));
          abort();
@@ -814,11 +655,38 @@ ptn_emit_instruction(struct ptn_compile *c, struct prog_instruction *prog_inst)
       break;
    }
 
-   if (prog_inst->Saturate) {
-      assert(prog_inst->Saturate);
-      assert(!dest.dest.is_ssa);
-      ptn_move_dest(b, dest, nir_fsat(b, ptn_src_for_dest(c, &dest)));
+   if (dst == NULL)
+      return;
+
+   if (dst->num_components == 1)
+      dst = nir_replicate(b, dst, 4);
+
+   assert(dst->num_components == 4);
+
+   if (prog_inst->Saturate)
+      dst = nir_fsat(b, dst);
+
+   const struct prog_dst_register *prog_dst = &prog_inst->DstReg;
+   assert(!prog_dst->RelAddr);
+
+   nir_register *reg = NULL;
+   switch (prog_dst->File) {
+   case PROGRAM_TEMPORARY:
+      reg = c->temp_regs[prog_dst->Index];
+      break;
+   case PROGRAM_OUTPUT:
+      reg = c->output_regs[prog_dst->Index];
+      break;
+   case PROGRAM_ADDRESS:
+      assert(prog_dst->Index == 0);
+      reg = c->addr_reg;
+      break;
+   case PROGRAM_UNDEFINED:
+      return;
    }
+
+   assert(reg != NULL);
+   nir_store_register(b, reg, dst, prog_dst->WriteMask);
 }
 
 /**
