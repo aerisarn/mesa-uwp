@@ -521,6 +521,18 @@ impl PipeContext {
         }
     }
 
+    pub fn create_query(&self, query_type: c_uint, index: c_uint) -> *mut pipe_query {
+        unsafe { self.pipe.as_ref().create_query.unwrap()(self.pipe.as_ptr(), query_type, index) }
+    }
+
+    pub fn end_query(&self, pq: *mut pipe_query) -> bool {
+        unsafe { self.pipe.as_ref().end_query.unwrap()(self.pipe.as_ptr(), pq) }
+    }
+
+    pub fn destroy_query(&self, pq: *mut pipe_query) {
+        unsafe { self.pipe.as_ref().destroy_query.unwrap()(self.pipe.as_ptr(), pq) }
+    }
+
     pub fn memory_barrier(&self, barriers: u32) {
         unsafe { self.pipe.as_ref().memory_barrier.unwrap()(self.pipe.as_ptr(), barriers) }
     }
@@ -577,8 +589,11 @@ fn has_required_cbs(context: &pipe_context) -> bool {
         & has_required_feature!(context, buffer_unmap)
         & has_required_feature!(context, clear_buffer)
         & has_required_feature!(context, create_compute_state)
+        & has_required_feature!(context, create_query)
         & has_required_feature!(context, delete_compute_state)
         & has_required_feature!(context, delete_sampler_state)
+        & has_required_feature!(context, destroy_query)
+        & has_required_feature!(context, end_query)
         & has_required_feature!(context, flush)
         & has_required_feature!(context, get_compute_state_info)
         & has_required_feature!(context, launch_grid)
