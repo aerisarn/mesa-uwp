@@ -46,6 +46,7 @@
 #include "tgsi/tgsi_from_mesa.h"
 #include "vulkan/util/vk_util.h"
 
+#include "vk_blend.h"
 #include "vk_cmd_enqueue_entrypoints.h"
 #include "vk_util.h"
 
@@ -855,7 +856,7 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE))
          state->blend_state.logicop_enable = ps->cb->logic_op_enable;
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP))
-         state->blend_state.logicop_func = vk_conv_logic_op(ps->cb->logic_op);
+         state->blend_state.logicop_func = vk_logic_op_to_pipe(ps->cb->logic_op);
 
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES))
          state->color_write_disables = ~ps->cb->color_write_enables;
@@ -875,12 +876,12 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
             state->blend_state.rt[i].alpha_src_factor = 0;
             state->blend_state.rt[i].alpha_dst_factor = 0;
          } else if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS)) {
-            state->blend_state.rt[i].rgb_func = vk_conv_blend_func(att->color_blend_op);
-            state->blend_state.rt[i].rgb_src_factor = vk_conv_blend_factor(att->src_color_blend_factor);
-            state->blend_state.rt[i].rgb_dst_factor = vk_conv_blend_factor(att->dst_color_blend_factor);
-            state->blend_state.rt[i].alpha_func = vk_conv_blend_func(att->alpha_blend_op);
-            state->blend_state.rt[i].alpha_src_factor = vk_conv_blend_factor(att->src_alpha_blend_factor);
-            state->blend_state.rt[i].alpha_dst_factor = vk_conv_blend_factor(att->dst_alpha_blend_factor);
+            state->blend_state.rt[i].rgb_func = vk_blend_op_to_pipe(att->color_blend_op);
+            state->blend_state.rt[i].rgb_src_factor = vk_blend_factor_to_pipe(att->src_color_blend_factor);
+            state->blend_state.rt[i].rgb_dst_factor = vk_blend_factor_to_pipe(att->dst_color_blend_factor);
+            state->blend_state.rt[i].alpha_func = vk_blend_op_to_pipe(att->alpha_blend_op);
+            state->blend_state.rt[i].alpha_src_factor = vk_blend_factor_to_pipe(att->src_alpha_blend_factor);
+            state->blend_state.rt[i].alpha_dst_factor = vk_blend_factor_to_pipe(att->dst_alpha_blend_factor);
          }
 
          /* At least llvmpipe applies the blend factor prior to the blend function,
@@ -3367,7 +3368,7 @@ static void handle_set_depth_bias_enable(struct vk_cmd_queue_entry *cmd,
 static void handle_set_logic_op(struct vk_cmd_queue_entry *cmd,
                                 struct rendering_state *state)
 {
-   unsigned op = vk_conv_logic_op(cmd->u.set_logic_op_ext.logic_op);
+   unsigned op = vk_logic_op_to_pipe(cmd->u.set_logic_op_ext.logic_op);
    state->rs_dirty |= state->blend_state.logicop_func != op;
    state->blend_state.logicop_func = op;
 }
@@ -3555,12 +3556,12 @@ static void handle_set_color_blend_equation(struct vk_cmd_queue_entry *cmd,
    const VkColorBlendEquationEXT *cb = cmd->u.set_color_blend_equation_ext.color_blend_equations;
    state->blend_dirty = true;
    for (unsigned i = 0; i < cmd->u.set_color_blend_equation_ext.attachment_count; i++) {
-      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_func = vk_conv_blend_func(cb[i].colorBlendOp);
-      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_src_factor = vk_conv_blend_factor(cb[i].srcColorBlendFactor);
-      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_dst_factor = vk_conv_blend_factor(cb[i].dstColorBlendFactor);
-      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_func = vk_conv_blend_func(cb[i].alphaBlendOp);
-      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_src_factor = vk_conv_blend_factor(cb[i].srcAlphaBlendFactor);
-      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_dst_factor = vk_conv_blend_factor(cb[i].dstAlphaBlendFactor);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_func = vk_blend_op_to_pipe(cb[i].colorBlendOp);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_src_factor = vk_blend_factor_to_pipe(cb[i].srcColorBlendFactor);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].rgb_dst_factor = vk_blend_factor_to_pipe(cb[i].dstColorBlendFactor);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_func = vk_blend_op_to_pipe(cb[i].alphaBlendOp);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_src_factor = vk_blend_factor_to_pipe(cb[i].srcAlphaBlendFactor);
+      state->blend_state.rt[cmd->u.set_color_blend_equation_ext.first_attachment + i].alpha_dst_factor = vk_blend_factor_to_pipe(cb[i].dstAlphaBlendFactor);
 
       /* At least llvmpipe applies the blend factor prior to the blend function,
        * regardless of what function is used. (like i965 hardware).
