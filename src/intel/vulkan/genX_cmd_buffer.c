@@ -5311,42 +5311,6 @@ void genX(CmdEndTransformFeedbackEXT)(
 }
 
 #if GFX_VERx10 >= 125
-void
-genX(CmdDrawMeshTasksNV)(
-    VkCommandBuffer                             commandBuffer,
-    uint32_t                                    taskCount,
-    uint32_t                                    firstTask)
-{
-   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-
-   if (anv_batch_has_error(&cmd_buffer->batch))
-      return;
-
-   anv_measure_snapshot(cmd_buffer,
-                        INTEL_SNAPSHOT_DRAW,
-                        "draw mesh", taskCount);
-
-   trace_intel_begin_draw_mesh(&cmd_buffer->trace);
-
-   /* TODO(mesh): Check if this is not emitting more packets than we need. */
-   genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
-
-   if (cmd_buffer->state.conditional_render_enabled)
-      genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
-
-   /* BSpec 54016 says: "The values passed for Starting ThreadGroup ID X
-    * and ThreadGroup Count X shall not cause TGIDs to exceed (2^32)-1."
-    */
-   assert((int64_t)firstTask + taskCount - 1 <= UINT32_MAX);
-
-   anv_batch_emit(&cmd_buffer->batch, GENX(3DMESH_1D), m) {
-      m.PredicateEnable = cmd_buffer->state.conditional_render_enabled;
-      m.ThreadGroupCountX = taskCount;
-      m.StartingThreadGroupIDX = firstTask;
-   }
-
-   trace_intel_end_draw_mesh(&cmd_buffer->trace, taskCount, 1, 1);
-}
 
 void
 genX(CmdDrawMeshTasksEXT)(
@@ -5383,42 +5347,7 @@ genX(CmdDrawMeshTasksEXT)(
 }
 
 #define GFX125_3DMESH_TG_COUNT 0x26F0
-#define GFX125_3DMESH_STARTING_TGID 0x26F4
 #define GFX10_3DPRIM_XP(n) (0x2690 + (n) * 4) /* n = { 0, 1, 2 } */
-
-static void
-mesh_load_indirect_parameters_3dmesh_1d(struct anv_cmd_buffer *cmd_buffer,
-                                        struct mi_builder *b,
-                                        struct anv_address addr,
-                                        bool emit_xp0,
-                                        uint32_t xp0)
-{
-   const size_t taskCountOff = offsetof(VkDrawMeshTasksIndirectCommandNV, taskCount);
-   const size_t firstTaskOff = offsetof(VkDrawMeshTasksIndirectCommandNV, firstTask);
-
-   mi_store(b, mi_reg32(GFX125_3DMESH_TG_COUNT),
-               mi_mem32(anv_address_add(addr, taskCountOff)));
-
-   mi_store(b, mi_reg32(GFX125_3DMESH_STARTING_TGID),
-               mi_mem32(anv_address_add(addr, firstTaskOff)));
-
-   if (emit_xp0)
-      mi_store(b, mi_reg32(GFX10_3DPRIM_XP(0)), mi_imm(xp0));
-}
-
-static void
-emit_indirect_3dmesh_1d(struct anv_batch *batch,
-                        bool predicate_enable,
-                        bool uses_drawid)
-{
-   uint32_t len = GENX(3DMESH_1D_length) + uses_drawid;
-   uint32_t *dw = anv_batch_emitn(batch, len, GENX(3DMESH_1D),
-                   .PredicateEnable           = predicate_enable,
-                   .IndirectParameterEnable   = true,
-                   .ExtendedParameter0Present = uses_drawid);
-   if (uses_drawid)
-      dw[len - 1] = 0;
-}
 
 static void
 mesh_load_indirect_parameters_3dmesh_3d(struct anv_cmd_buffer *cmd_buffer,
@@ -5456,54 +5385,6 @@ emit_indirect_3dmesh_3d(struct anv_batch *batch,
                    .ExtendedParameter0Present = uses_drawid);
    if (uses_drawid)
       dw[len - 1] = 0;
-}
-
-void
-genX(CmdDrawMeshTasksIndirectNV)(
-    VkCommandBuffer                             commandBuffer,
-    VkBuffer                                    _buffer,
-    VkDeviceSize                                offset,
-    uint32_t                                    drawCount,
-    uint32_t                                    stride)
-{
-   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-   ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
-   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
-   const struct brw_task_prog_data *task_prog_data = get_task_prog_data(pipeline);
-   const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
-   struct anv_cmd_state *cmd_state = &cmd_buffer->state;
-
-   if (anv_batch_has_error(&cmd_buffer->batch))
-      return;
-
-   anv_measure_snapshot(cmd_buffer,
-                        INTEL_SNAPSHOT_DRAW,
-                        "draw mesh indirect", drawCount);
-
-   trace_intel_begin_draw_mesh_indirect(&cmd_buffer->trace);
-
-   genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
-
-   if (cmd_state->conditional_render_enabled)
-      genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
-
-   bool uses_drawid = (task_prog_data && task_prog_data->uses_drawid) ||
-                       mesh_prog_data->uses_drawid;
-   struct mi_builder b;
-   mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
-
-   for (uint32_t i = 0; i < drawCount; i++) {
-      struct anv_address draw = anv_address_add(buffer->address, offset);
-
-      mesh_load_indirect_parameters_3dmesh_1d(cmd_buffer, &b, draw, uses_drawid, i);
-
-      emit_indirect_3dmesh_1d(&cmd_buffer->batch,
-            cmd_state->conditional_render_enabled, uses_drawid);
-
-      offset += stride;
-   }
-
-   trace_intel_end_draw_mesh_indirect(&cmd_buffer->trace, drawCount);
 }
 
 void
@@ -5552,60 +5433,6 @@ genX(CmdDrawMeshTasksIndirectEXT)(
    }
 
    trace_intel_end_draw_mesh_indirect(&cmd_buffer->trace, drawCount);
-}
-
-void
-genX(CmdDrawMeshTasksIndirectCountNV)(
-    VkCommandBuffer                             commandBuffer,
-    VkBuffer                                    _buffer,
-    VkDeviceSize                                offset,
-    VkBuffer                                    _countBuffer,
-    VkDeviceSize                                countBufferOffset,
-    uint32_t                                    maxDrawCount,
-    uint32_t                                    stride)
-{
-   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-   ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
-   ANV_FROM_HANDLE(anv_buffer, count_buffer, _countBuffer);
-   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
-   const struct brw_task_prog_data *task_prog_data = get_task_prog_data(pipeline);
-   const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
-
-   if (anv_batch_has_error(&cmd_buffer->batch))
-      return;
-
-   anv_measure_snapshot(cmd_buffer,
-                        INTEL_SNAPSHOT_DRAW,
-                        "draw mesh indirect count", 0);
-
-   trace_intel_begin_draw_mesh_indirect_count(&cmd_buffer->trace);
-
-   genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
-
-   bool uses_drawid = (task_prog_data && task_prog_data->uses_drawid) ||
-                       mesh_prog_data->uses_drawid;
-
-   struct mi_builder b;
-   mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
-
-   struct mi_value max =
-         prepare_for_draw_count_predicate(
-            cmd_buffer, &b,
-            anv_address_add(count_buffer->address, countBufferOffset));
-
-   for (uint32_t i = 0; i < maxDrawCount; i++) {
-      struct anv_address draw = anv_address_add(buffer->address, offset);
-
-      emit_draw_count_predicate_cond(cmd_buffer, &b, i, max);
-
-      mesh_load_indirect_parameters_3dmesh_1d(cmd_buffer, &b, draw, uses_drawid, i);
-
-      emit_indirect_3dmesh_1d(&cmd_buffer->batch, true, uses_drawid);
-
-      offset += stride;
-   }
-
-   trace_intel_end_draw_mesh_indirect_count(&cmd_buffer->trace, maxDrawCount);
 }
 
 void

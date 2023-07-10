@@ -345,20 +345,10 @@ anv_mesh_convert_attrs_prim_to_vert(struct nir_shader *nir,
          nir_ssa_def *src_vertex;
          nir_ssa_def *prim_indices;
 
-         if (nir->info.mesh.nv) {
-            /* flat array, but we can deref each index directly */
-            nir_ssa_def *index_index =
-                  nir_imul(&b, primitive, nir_imm_int(&b, vertices_per_primitive));
-            index_index = nir_iadd(&b, index_index, nir_imm_int(&b, provoking_vertex));
-            indexed_primitive_indices_deref = nir_build_deref_array(&b, primitive_indices_deref, index_index);
-            src_vertex = nir_load_deref(&b, indexed_primitive_indices_deref);
-            prim_indices = NULL;
-         } else {
-            /* array of vectors, we have to extract index out of array deref */
-            indexed_primitive_indices_deref = nir_build_deref_array(&b, primitive_indices_deref, primitive);
-            prim_indices = nir_load_deref(&b, indexed_primitive_indices_deref);
-            src_vertex = nir_channel(&b, prim_indices, provoking_vertex);
-         }
+         /* array of vectors, we have to extract index out of array deref */
+         indexed_primitive_indices_deref = nir_build_deref_array(&b, primitive_indices_deref, primitive);
+         prim_indices = nir_load_deref(&b, indexed_primitive_indices_deref);
+         src_vertex = nir_channel(&b, prim_indices, provoking_vertex);
 
          nir_ssa_def *dst_vertex = nir_load_deref(&b, vertex_deref);
 
@@ -378,17 +368,13 @@ anv_mesh_convert_attrs_prim_to_vert(struct nir_shader *nir,
                nir_copy_deref(&b, dst, src);
             }
 
-            if (nir->info.mesh.nv) {
-               nir_store_deref(&b, indexed_primitive_indices_deref, dst_vertex, 1);
-            } else {
-               /* replace one component of primitive indices vector */
-               nir_ssa_def *new_val =
-                     nir_vector_insert_imm(&b, prim_indices, dst_vertex, provoking_vertex);
+            /* replace one component of primitive indices vector */
+            nir_ssa_def *new_val =
+                  nir_vector_insert_imm(&b, prim_indices, dst_vertex, provoking_vertex);
 
-               /* and store complete vector */
-               nir_store_deref(&b, indexed_primitive_indices_deref, new_val,
-                               BITFIELD_MASK(vertices_per_primitive));
-            }
+            /* and store complete vector */
+            nir_store_deref(&b, indexed_primitive_indices_deref, new_val,
+                            BITFIELD_MASK(vertices_per_primitive));
 
             nir_store_deref(&b, vertex_deref, nir_iadd_imm(&b, dst_vertex, 1), 1);
 

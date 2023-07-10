@@ -76,8 +76,7 @@ emit_common_so_memcpy(struct anv_batch *batch, struct anv_device *device,
    /* Disable Mesh, we can't have this and streamout enabled at the same
     * time.
     */
-   if (device->vk.enabled_extensions.NV_mesh_shader ||
-       device->vk.enabled_extensions.EXT_mesh_shader) {
+   if (device->vk.enabled_extensions.EXT_mesh_shader) {
       anv_batch_emit(batch, GENX(3DSTATE_MESH_CONTROL), mesh);
       anv_batch_emit(batch, GENX(3DSTATE_TASK_CONTROL), task);
    }
