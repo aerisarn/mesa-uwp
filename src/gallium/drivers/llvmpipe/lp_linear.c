@@ -122,15 +122,19 @@ lp_fs_linear_run(const struct lp_rast_state *state,
    struct lp_jit_linear_context jit;
    jit.constants = (const uint8_t (*)[4])constants;
 
-   /* We assume BGRA ordering */
-   assert(variant->key.cbuf_format[0] == PIPE_FORMAT_B8G8R8X8_UNORM ||
-          variant->key.cbuf_format[0] == PIPE_FORMAT_B8G8R8A8_UNORM);
-
-   jit.blend_color =
+   if (!rgba_order) {
+      jit.blend_color =
          state->jit_context.u8_blend_color[32] +
          (state->jit_context.u8_blend_color[16] << 8) +
          (state->jit_context.u8_blend_color[0] << 16) +
          (state->jit_context.u8_blend_color[48] << 24);
+   } else {
+      jit.blend_color =
+         (state->jit_context.u8_blend_color[32] << 24) +
+         (state->jit_context.u8_blend_color[16] << 16) +
+         (state->jit_context.u8_blend_color[0] << 8) +
+         (state->jit_context.u8_blend_color[48] << 0);
+   }
 
    jit.alpha_ref_value = float_to_ubyte(state->jit_context.alpha_ref_value);
 

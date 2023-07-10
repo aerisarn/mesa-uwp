@@ -137,11 +137,14 @@ llvm_fragment_body(struct lp_build_context *bld,
                    LLVMValueRef dst)
 {
    static const unsigned char bgra_swizzles[4] = {2, 1, 0, 3};
+   static const unsigned char rgba_swizzles[4] = {0, 1, 2, 3};
    LLVMValueRef inputs[PIPE_MAX_SHADER_INPUTS];
    LLVMValueRef outputs[PIPE_MAX_SHADER_OUTPUTS];
    LLVMBuilderRef builder = bld->gallivm->builder;
    struct gallivm_state *gallivm = bld->gallivm;
    LLVMValueRef result = NULL;
+   bool rgba_order = (variant->key.cbuf_format[0] == PIPE_FORMAT_R8G8B8A8_UNORM ||
+                      variant->key.cbuf_format[0] == PIPE_FORMAT_R8G8B8X8_UNORM);
 
    sampler->instance = 0;
 
@@ -164,14 +167,14 @@ llvm_fragment_body(struct lp_build_context *bld,
 
    if (shader->base.type == PIPE_SHADER_IR_TGSI) {
       lp_build_tgsi_aos(gallivm, shader->base.tokens, fs_type,
-                        bgra_swizzles,
+                        rgba_order ? rgba_swizzles : bgra_swizzles,
                         consts_ptr, inputs, outputs,
                         &sampler->base,
                         &shader->info.base);
    } else {
       nir_shader *clone = nir_shader_clone(NULL, shader->base.ir.nir);
       lp_build_nir_aos(gallivm, clone, fs_type,
-                       bgra_swizzles,
+                       rgba_order ? rgba_swizzles : bgra_swizzles,
                        consts_ptr, inputs, outputs,
                        &sampler->base,
                        &shader->info.base);
@@ -226,7 +229,7 @@ llvm_fragment_body(struct lp_build_context *bld,
                                   mask,
                                   blend_color,  /* const_ */
                                   NULL,         /* const_alpha */
-                                  bgra_swizzles,
+                                  rgba_order ? rgba_swizzles : bgra_swizzles,
                                   4);
    }
 

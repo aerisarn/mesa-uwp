@@ -3863,7 +3863,9 @@ generate_variant(struct llvmpipe_context *lp,
          !shader->info.base.uses_kill &&
          !key->blend.logicop_enable &&
          (key->cbuf_format[0] == PIPE_FORMAT_B8G8R8A8_UNORM ||
-          key->cbuf_format[0] == PIPE_FORMAT_B8G8R8X8_UNORM);
+          key->cbuf_format[0] == PIPE_FORMAT_B8G8R8X8_UNORM ||
+          key->cbuf_format[0] == PIPE_FORMAT_R8G8B8A8_UNORM ||
+          key->cbuf_format[0] == PIPE_FORMAT_R8G8B8X8_UNORM);
 
    memcpy(&variant->key, key, sizeof *key);
 

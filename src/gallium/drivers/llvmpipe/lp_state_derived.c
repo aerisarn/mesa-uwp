@@ -186,18 +186,20 @@ compute_vertex_info(struct llvmpipe_context *llvmpipe)
 static void
 check_linear_rasterizer(struct llvmpipe_context *lp)
 {
-   const bool bgr8 =
+   const bool valid_cb_format =
       (lp->framebuffer.nr_cbufs == 1 && lp->framebuffer.cbufs[0] &&
        util_res_sample_count(lp->framebuffer.cbufs[0]->texture) == 1 &&
        lp->framebuffer.cbufs[0]->texture->target == PIPE_TEXTURE_2D &&
        (lp->framebuffer.cbufs[0]->format == PIPE_FORMAT_B8G8R8A8_UNORM ||
-        lp->framebuffer.cbufs[0]->format == PIPE_FORMAT_B8G8R8X8_UNORM));
+        lp->framebuffer.cbufs[0]->format == PIPE_FORMAT_B8G8R8X8_UNORM ||
+        lp->framebuffer.cbufs[0]->format == PIPE_FORMAT_R8G8B8A8_UNORM ||
+        lp->framebuffer.cbufs[0]->format == PIPE_FORMAT_R8G8B8X8_UNORM));
 
    /* permit_linear means guardband, hence fake scissor, which we can only
     * handle if there's just one vp. */
    const bool single_vp = lp->viewport_index_slot < 0;
    const bool permit_linear = (!lp->framebuffer.zsbuf &&
-                               bgr8 &&
+                               valid_cb_format &&
                                single_vp);
 
    /* Tell draw that we're happy doing our own x/y clipping.
