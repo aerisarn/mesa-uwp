@@ -311,7 +311,7 @@ dead_cf_list(struct exec_list *list, bool *list_ends_in_jump)
       switch (cur->type) {
       case nir_cf_node_block: {
          nir_block *block = nir_cf_node_as_block(cur);
-         if (dead_cf_block(block)) {
+         while (dead_cf_block(block)) {
             /* We just deleted the if or loop after this block, so we may have
              * deleted the block before or after it -- which one is an
              * implementation detail. Therefore, to recover the place we were
