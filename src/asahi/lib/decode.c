@@ -28,6 +28,8 @@ struct drm_asahi_params_global {
    int num_clusters_total;
 };
 
+struct libagxdecode_config lib_config;
+
 UNUSED static const char *agx_alloc_types[AGX_NUM_ALLOC] = {"mem", "map",
                                                             "cmd"};
 
@@ -213,6 +215,9 @@ __agxdecode_fetch_gpu_mem(const struct agx_bo *mem, uint64_t gpu_va,
                           size_t size, void *buf, int line,
                           const char *filename)
 {
+   if (lib_config.read_gpu_mem)
+      return lib_config.read_gpu_mem(gpu_va, size, buf);
+
    if (!mem)
       mem = agxdecode_find_mapped_gpu_mem_containing(gpu_va);
 
@@ -282,10 +287,14 @@ agxdecode_stateful(uint64_t va, const char *label, decode_cmd decoder,
                    bool verbose, decoder_params *params, void *data)
 {
    uint8_t buf[1024];
-   struct agx_bo *alloc = agxdecode_find_mapped_gpu_mem_containing(va);
-   assert(alloc != NULL && "nonexistent object");
-   fprintf(agxdecode_dump_stream, "%s (%" PRIx64 ", handle %u)\n", label, va,
-           alloc->handle);
+   if (!lib_config.read_gpu_mem) {
+      struct agx_bo *alloc = agxdecode_find_mapped_gpu_mem_containing(va);
+      assert(alloc != NULL && "nonexistent object");
+      fprintf(agxdecode_dump_stream, "%s (%" PRIx64 ", handle %u)\n", label, va,
+              alloc->handle);
+   } else {
+      fprintf(agxdecode_dump_stream, "%s (%" PRIx64 ")\n", label, va);
+   }
    fflush(agxdecode_dump_stream);
 
    int len = agxdecode_fetch_gpu_array(va, buf);
@@ -608,13 +617,17 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
       agx_unpack(agxdecode_dump_stream, map, PPP_STATE, cmd);
 
       uint64_t address = (((uint64_t)cmd.pointer_hi) << 32) | cmd.pointer_lo;
-      struct agx_bo *mem = agxdecode_find_mapped_gpu_mem_containing(address);
 
-      if (mem)
-         agxdecode_record(address, cmd.size_words * 4, verbose, params);
-      else
-         DUMP_UNPACKED(PPP_STATE, cmd, "Non-existent record (XXX)\n");
+      if (!lib_config.read_gpu_mem) {
+         struct agx_bo *mem = agxdecode_find_mapped_gpu_mem_containing(address);
 
+         if (!mem) {
+            DUMP_UNPACKED(PPP_STATE, cmd, "Non-existent record (XXX)\n");
+            return AGX_PPP_STATE_LENGTH;
+         }
+      }
+
+      agxdecode_record(address, cmd.size_words * 4, verbose, params);
       return AGX_PPP_STATE_LENGTH;
    }
 
@@ -948,6 +961,47 @@ agxdecode_next_frame(void)
 
 void
 agxdecode_close(void)
+{
+   agxdecode_dump_file_close();
+}
+
+static ssize_t
+libagxdecode_writer(void *cookie, const char *buffer, size_t size)
+{
+   return lib_config.stream_write(buffer, size);
+}
+
+static cookie_io_functions_t funcs = {.write = libagxdecode_writer};
+
+static decoder_params lib_params;
+
+void
+libagxdecode_init(struct libagxdecode_config *config)
+{
+   lib_config = *config;
+   agxdecode_dump_stream = fopencookie(NULL, "w", funcs);
+
+   chip_id_to_params(&lib_params, config->chip_id);
+}
+
+void
+libagxdecode_vdm(uint64_t addr, const char *label, bool verbose)
+{
+   agxdecode_stateful(addr, label, agxdecode_vdm, verbose, &lib_params, NULL);
+}
+
+void
+libagxdecode_cdm(uint64_t addr, const char *label, bool verbose)
+{
+   agxdecode_stateful(addr, label, agxdecode_cdm, verbose, &lib_params, NULL);
+}
+void
+libagxdecode_usc(uint64_t addr, const char *label, bool verbose)
+{
+   agxdecode_stateful(addr, label, agxdecode_usc, verbose, &lib_params, NULL);
+}
+void
+libagxdecode_shutdown(void)
 {
    agxdecode_dump_file_close();
 }

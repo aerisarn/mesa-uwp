@@ -48,6 +48,15 @@ libasahi_decode = static_library(
   build_by_default : false,
 )
 
+libasahi_decode_shared = shared_library(
+  'asahi_decode',
+  [libasahi_decode_files, agx_pack],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_asahi],
+  dependencies : [dep_valgrind, idep_mesautil],
+  c_args : [no_override_init_args],
+  build_by_default : with_tools.contains('asahi'),
+)
+
 libasahi_lib = static_library(
   'asahi_lib',
   [libasahi_lib_files, agx_pack],
