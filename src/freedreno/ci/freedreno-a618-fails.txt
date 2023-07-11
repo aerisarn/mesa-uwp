@@ -374,3 +374,8 @@ spec@arb_vertex_attrib_64bit@execution@unused-sub-dvec4-02,Crash
 
 # Debian bookworm migration
 dEQP-VK.api.driver_properties.conformance_version,Fail
+
+# After switch from 6.3.1 to 6.3.13
+dEQP-VK.binding_model.descriptor_buffer.basic.limits,Fail
+dEQP-VK.api.object_management.multithreaded_per_thread_resources.event,Crash
+gmem-dEQP-VK.api.object_management.multithreaded_per_thread_resources.descriptor_pool_free_descriptor_set,Crash
