@@ -14,15 +14,12 @@ spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_ust_test,Fai
 
 
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag,Fail
-dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag_reverse_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag_reverse_src_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag_reverse_src_dst_y,Fail
-dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag_reverse_src_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_y,Fail
-dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail
 
 # this test tries to be error-compatible with nvidia. spoiler: mesa isn't, and no driver can pass it
 glx@glx_arb_create_context@invalid flag,Fail

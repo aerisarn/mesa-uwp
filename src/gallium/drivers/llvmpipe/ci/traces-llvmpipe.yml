@@ -75,7 +75,7 @@ traces:
       checksum: 015201fe000d6a323b0f7d3f218d3e47
   bgfx/31-rsm.rdc:
     gl-vmware-llvmpipe:
-      checksum: b59d323511488d5c098ebfa9b434c2dc
+      checksum: 4be8fda5d2289296fee9540306aef92e
   bgfx/32-particles.rdc:
     gl-vmware-llvmpipe:
       checksum: 018418bdd7f60a186cce532613b0c7ab
