@@ -1383,21 +1383,25 @@ copy_prop_vars_cf_node(struct copy_prop_var_state *state,
        * that they both see the same state of available copies, but do not
        * interfere to each other.
        */
-      struct copies *then_copies = get_copies_structure(state);
-      clone_copies(state, then_copies, copies);
+      if (!exec_list_is_empty(&if_stmt->then_list)) {
+         struct copies *then_copies = get_copies_structure(state);
+         clone_copies(state, then_copies, copies);
 
-      foreach_list_typed_safe(nir_cf_node, cf_node, node, &if_stmt->then_list)
-         copy_prop_vars_cf_node(state, then_copies, cf_node);
+         foreach_list_typed_safe(nir_cf_node, cf_node, node, &if_stmt->then_list)
+            copy_prop_vars_cf_node(state, then_copies, cf_node);
 
-      clear_copies_structure(state, then_copies);
+         clear_copies_structure(state, then_copies);
+      }
 
-      struct copies *else_copies = get_copies_structure(state);
-      clone_copies(state, else_copies, copies);
+      if (!exec_list_is_empty(&if_stmt->else_list)) {
+         struct copies *else_copies = get_copies_structure(state);
+         clone_copies(state, else_copies, copies);
 
-      foreach_list_typed_safe(nir_cf_node, cf_node, node, &if_stmt->else_list)
-         copy_prop_vars_cf_node(state, else_copies, cf_node);
+         foreach_list_typed_safe(nir_cf_node, cf_node, node, &if_stmt->else_list)
+            copy_prop_vars_cf_node(state, else_copies, cf_node);
 
-      clear_copies_structure(state, else_copies);
+         clear_copies_structure(state, else_copies);
+      }
 
       /* Both branches copies can be ignored, since the effect of running both
        * branches was captured in the first pass that collects vars_written.
