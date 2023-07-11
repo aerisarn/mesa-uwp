@@ -197,15 +197,6 @@
         *vulkan_file_list
       when: manual
 
-.softpipe-rules:
-  stage: software-renderer
-  rules:
-    - !reference [.gl-rules, rules]
-    - changes: &softpipe_file_list
-      - src/gallium/drivers/softpipe/**/*
-      - src/gallium/winsys/sw/**/*
-      when: on_success
-
 .lavapipe-rules:
   stage: software-renderer
   rules:
