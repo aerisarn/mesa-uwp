@@ -277,28 +277,6 @@
       - src/gallium/frontends/rusticl/**/*
       when: on_success
 
-.nouveau-rules:
-  stage: nouveau
-  rules:
-    - !reference [.anholt-farm-rules, rules]
-    - !reference [.gl-rules, rules]
-    - changes: &nouveau_file_list
-      - src/nouveau/**/*
-      - src/gallium/drivers/nouveau/**/*
-      - src/gallium/winsys/kmsro/**/*
-      - src/gallium/winsys/nouveau/**/*
-      when: on_success
-
-.nouveau-manual-rules:
-  stage: nouveau
-  retry: !reference [.scheduled_pipeline-rules, retry]
-  rules:
-    - !reference [.anholt-farm-manual-rules, rules]
-    - !reference [.gl-manual-rules, rules]
-    - changes:
-        *nouveau_file_list
-      when: manual
-
 .panfrost-midgard-rules:
   stage: arm
   rules:
