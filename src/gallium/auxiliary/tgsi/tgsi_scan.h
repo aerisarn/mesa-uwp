@@ -94,7 +94,6 @@ struct tgsi_shader_info
    bool uses_vertexid;
    bool uses_vertexid_nobase;
    bool uses_basevertex;
-   bool uses_drawid;
    bool uses_primid;
    bool uses_frontface;
    bool uses_invocationid;
