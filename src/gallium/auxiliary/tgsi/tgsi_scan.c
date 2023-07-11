@@ -76,33 +76,6 @@ is_texture_inst(enum tgsi_opcode opcode)
 }
 
 
-/**
- * Is the opcode an instruction which computes a derivative explicitly or
- * implicitly?
- */
-static bool
-computes_derivative(enum tgsi_opcode opcode)
-{
-   if (tgsi_get_opcode_info(opcode)->is_tex) {
-      return opcode != TGSI_OPCODE_TG4 &&
-             opcode != TGSI_OPCODE_TXD &&
-             opcode != TGSI_OPCODE_TXF &&
-             opcode != TGSI_OPCODE_TXF_LZ &&
-             opcode != TGSI_OPCODE_TEX_LZ &&
-             opcode != TGSI_OPCODE_TXL &&
-             opcode != TGSI_OPCODE_TXL2 &&
-             opcode != TGSI_OPCODE_TXQ &&
-             opcode != TGSI_OPCODE_TXQS;
-   }
-
-   return opcode == TGSI_OPCODE_DDX || opcode == TGSI_OPCODE_DDX_FINE ||
-          opcode == TGSI_OPCODE_DDY || opcode == TGSI_OPCODE_DDY_FINE ||
-          opcode == TGSI_OPCODE_SAMPLE ||
-          opcode == TGSI_OPCODE_SAMPLE_B ||
-          opcode == TGSI_OPCODE_SAMPLE_C;
-}
-
-
 static void
 scan_src_operand(struct tgsi_shader_info *info,
                  const struct tgsi_full_instruction *fullinst,
@@ -463,9 +436,6 @@ scan_instruction(struct tgsi_shader_info *info,
          }
       }
    }
-
-   if (computes_derivative(fullinst->Instruction.Opcode))
-      info->uses_derivatives = true;
 
    info->num_instructions++;
 }

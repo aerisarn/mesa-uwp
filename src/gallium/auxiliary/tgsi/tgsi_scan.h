@@ -104,7 +104,6 @@ struct tgsi_shader_info
    bool writes_viewport_index;
    bool writes_layer;
    bool writes_memory; /**< contains stores or atomics to buffers or images */
-   bool uses_derivatives;
    bool uses_bindless_samplers;
    bool uses_bindless_images;
    bool uses_fbfetch;

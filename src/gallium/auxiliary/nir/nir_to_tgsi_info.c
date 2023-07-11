@@ -164,22 +164,7 @@ static void scan_instruction(const struct nir_shader *nir,
 {
    info->num_instructions = 2;
 
-   if (instr->type == nir_instr_type_alu) {
-      const nir_alu_instr *alu = nir_instr_as_alu(instr);
-
-      switch (alu->op) {
-      case nir_op_fddx:
-      case nir_op_fddy:
-      case nir_op_fddx_fine:
-      case nir_op_fddy_fine:
-      case nir_op_fddx_coarse:
-      case nir_op_fddy_coarse:
-         info->uses_derivatives = true;
-         break;
-      default:
-         break;
-      }
-   } else if (instr->type == nir_instr_type_tex) {
+   if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
       const nir_variable *texture = tex_get_texture_var(tex);
 
@@ -190,10 +175,6 @@ static void scan_instruction(const struct nir_shader *nir,
       case nir_texop_tex:
          info->opcode_count[TGSI_OPCODE_TEX]++;
          FALLTHROUGH;
-      case nir_texop_txb:
-      case nir_texop_lod:
-         info->uses_derivatives = true;
-         break;
       default:
          break;
       }
