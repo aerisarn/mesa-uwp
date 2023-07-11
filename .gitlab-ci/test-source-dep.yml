@@ -969,9 +969,7 @@
     - !reference [.lavapipe-rules, rules]
     - !reference [.radv-rules, rules]
     - !reference [.radeonsi-rules, rules]
-    - changes:
-        *virgl_file_list
-      when: on_success
+    - !reference [.virgl-rules, rules]
     - !reference [.nouveau-rules, rules]
 
 .s390x-rules:
