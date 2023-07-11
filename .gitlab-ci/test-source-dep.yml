@@ -891,9 +891,7 @@
     - !reference [.microsoft-farm-rules, rules]
     - !reference [.zink-common-rules, rules]
     - !reference [.vulkan-rules, rules]
-    - changes:
-        *softpipe_file_list
-      when: on_success
+    - !reference [.softpipe-rules, rules]
     - changes:
         *lavapipe_file_list
       when: on_success
@@ -972,9 +970,7 @@
    rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.zink-common-rules, rules]
-    - changes:
-        *softpipe_file_list
-      when: on_success
+    - !reference [.softpipe-rules, rules]
     - !reference [.llvmpipe-rules, rules]
     - changes:
         *lavapipe_file_list
@@ -994,9 +990,7 @@
    rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.zink-common-rules, rules]
-    - changes:
-        *softpipe_file_list
-      when: on_success
+    - !reference [.softpipe-rules, rules]
     - !reference [.llvmpipe-rules, rules]
     - changes:
         *lavapipe_file_list
