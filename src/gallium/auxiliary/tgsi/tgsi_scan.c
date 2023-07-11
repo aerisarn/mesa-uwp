@@ -713,9 +713,6 @@ scan_declaration(struct tgsi_shader_info *info,
          case TGSI_SEMANTIC_FACE:
             info->uses_frontface = true;
             break;
-         case TGSI_SEMANTIC_SAMPLEMASK:
-            info->reads_samplemask = true;
-            break;
          case TGSI_SEMANTIC_TESSINNER:
          case TGSI_SEMANTIC_TESSOUTER:
             info->reads_tess_factors = true;
