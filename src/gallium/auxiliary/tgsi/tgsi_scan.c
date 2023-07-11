@@ -317,7 +317,6 @@ scan_instruction(struct tgsi_shader_info *info,
                           1 << dst->Indirect.Swizzle, NULL);
 
          info->indirect_files |= (1 << dst->Register.File);
-         info->indirect_files_written |= (1 << dst->Register.File);
       }
 
       if (dst->Register.Dimension && dst->Dimension.Indirect) {
