@@ -63,3 +63,28 @@ impl<'a, R> Drop for PipeQuery<'a, R> {
         self.ctx.destroy_query(self.query);
     }
 }
+
+pub trait QueryReadTrait {
+    type ResType;
+    fn read(&mut self, wait: bool) -> Option<Self::ResType>;
+
+    fn read_blocked(&mut self) -> Self::ResType {
+        self.read(true).unwrap()
+    }
+}
+
+impl QueryReadTrait for PipeQuery<'_, u64> {
+    type ResType = u64;
+
+    fn read(&mut self, wait: bool) -> Option<u64> {
+        let mut raw_result = pipe_query_result::default();
+        if self.ctx.get_query_result(self.query, wait, &mut raw_result) {
+            // SAFETY: We know this is the right type
+            // because of the trait bound on PipeQueryGen binds the
+            // query type with the result type.
+            Some(unsafe { raw_result.u64_ })
+        } else {
+            None
+        }
+    }
+}

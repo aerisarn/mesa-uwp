@@ -529,6 +529,15 @@ impl PipeContext {
         unsafe { self.pipe.as_ref().end_query.unwrap()(self.pipe.as_ptr(), pq) }
     }
 
+    pub fn get_query_result(
+        &self,
+        pq: *mut pipe_query,
+        wait: bool,
+        pqr: *mut pipe_query_result,
+    ) -> bool {
+        unsafe { self.pipe.as_ref().get_query_result.unwrap()(self.pipe.as_ptr(), pq, wait, pqr) }
+    }
+
     pub fn destroy_query(&self, pq: *mut pipe_query) {
         unsafe { self.pipe.as_ref().destroy_query.unwrap()(self.pipe.as_ptr(), pq) }
     }
