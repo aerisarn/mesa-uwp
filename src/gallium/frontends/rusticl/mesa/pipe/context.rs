@@ -572,8 +572,6 @@ impl PipeContext {
                     to_device,
                     content_undefined,
                 );
-            } else {
-                panic!("svm_migrate not implemented but called!");
             }
         }
     }
