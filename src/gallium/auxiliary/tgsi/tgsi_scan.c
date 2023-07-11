@@ -232,7 +232,6 @@ scan_instruction(struct tgsi_shader_info *info,
    case TGSI_OPCODE_UIF:
    case TGSI_OPCODE_BGNLOOP:
       (*current_depth)++;
-      info->max_depth = MAX2(info->max_depth, *current_depth);
       break;
    case TGSI_OPCODE_ENDIF:
    case TGSI_OPCODE_ENDLOOP:
