@@ -23,6 +23,7 @@
  */
 
 #include "pan_blend.h"
+#include "util/blend.h"
 
 #ifdef PAN_ARCH
 #include "pan_shader.h"
@@ -35,6 +36,67 @@
 #include "panfrost/util/pan_lower_framebuffer.h"
 #include "util/format/u_format.h"
 #include "pan_texture.h"
+
+static inline enum pipe_blend_func
+to_pipe_blend_func(enum blend_func func)
+{
+   switch (func) {
+   case BLEND_FUNC_ADD:
+      return PIPE_BLEND_ADD;
+   case BLEND_FUNC_SUBTRACT:
+      return PIPE_BLEND_SUBTRACT;
+   case BLEND_FUNC_REVERSE_SUBTRACT:
+      return PIPE_BLEND_REVERSE_SUBTRACT;
+   case BLEND_FUNC_MIN:
+      return PIPE_BLEND_MIN;
+   case BLEND_FUNC_MAX:
+      return PIPE_BLEND_MAX;
+   }
+
+   unreachable("invalid");
+}
+
+static inline enum pipe_blendfactor
+to_pipe_blendfactor_uninverted(enum blend_factor factor)
+{
+   switch (factor) {
+   case BLEND_FACTOR_SRC_COLOR:
+      return PIPE_BLENDFACTOR_SRC_COLOR;
+   case BLEND_FACTOR_SRC1_COLOR:
+      return PIPE_BLENDFACTOR_SRC1_COLOR;
+   case BLEND_FACTOR_DST_COLOR:
+      return PIPE_BLENDFACTOR_DST_COLOR;
+   case BLEND_FACTOR_SRC_ALPHA:
+      return PIPE_BLENDFACTOR_SRC_ALPHA;
+   case BLEND_FACTOR_SRC1_ALPHA:
+      return PIPE_BLENDFACTOR_SRC1_ALPHA;
+   case BLEND_FACTOR_DST_ALPHA:
+      return PIPE_BLENDFACTOR_DST_ALPHA;
+   case BLEND_FACTOR_CONSTANT_COLOR:
+      return PIPE_BLENDFACTOR_CONST_COLOR;
+   case BLEND_FACTOR_CONSTANT_ALPHA:
+      return PIPE_BLENDFACTOR_CONST_ALPHA;
+   case BLEND_FACTOR_SRC_ALPHA_SATURATE:
+      return PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE;
+   default:
+      unreachable("Invalid");
+   }
+}
+
+static inline enum pipe_blendfactor
+to_pipe_blendfactor(enum blend_factor factor, bool inverted)
+{
+   /* Flipped so handle special */
+   if (factor == BLEND_FACTOR_ZERO)
+      return inverted ? PIPE_BLENDFACTOR_ONE : PIPE_BLENDFACTOR_ZERO;
+
+   enum pipe_blendfactor pipe = to_pipe_blendfactor_uninverted(factor);
+
+   if (inverted)
+      pipe |= PIPE_BLENDFACTOR_INVERT_BIT;
+
+   return pipe;
+}
 
 #ifndef PAN_ARCH
 
@@ -637,30 +699,29 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
 
    if (!rt_state->equation.blend_enable) {
       static const nir_lower_blend_channel replace = {
-         .func = BLEND_FUNC_ADD,
-         .src_factor = BLEND_FACTOR_ZERO,
-         .invert_src_factor = true,
-         .dst_factor = BLEND_FACTOR_ZERO,
-         .invert_dst_factor = false,
+         .func = PIPE_BLEND_ADD,
+         .src_factor = PIPE_BLENDFACTOR_ONE,
+         .dst_factor = PIPE_BLENDFACTOR_ZERO,
       };
 
       options.rt[rt].rgb = replace;
       options.rt[rt].alpha = replace;
    } else {
-      options.rt[rt].rgb.func = rt_state->equation.rgb_func;
-      options.rt[rt].rgb.src_factor = rt_state->equation.rgb_src_factor;
-      options.rt[rt].rgb.invert_src_factor =
-         rt_state->equation.rgb_invert_src_factor;
-      options.rt[rt].rgb.dst_factor = rt_state->equation.rgb_dst_factor;
-      options.rt[rt].rgb.invert_dst_factor =
-         rt_state->equation.rgb_invert_dst_factor;
-      options.rt[rt].alpha.func = rt_state->equation.alpha_func;
-      options.rt[rt].alpha.src_factor = rt_state->equation.alpha_src_factor;
-      options.rt[rt].alpha.invert_src_factor =
-         rt_state->equation.alpha_invert_src_factor;
-      options.rt[rt].alpha.dst_factor = rt_state->equation.alpha_dst_factor;
-      options.rt[rt].alpha.invert_dst_factor =
-         rt_state->equation.alpha_invert_dst_factor;
+      options.rt[rt].rgb.func = to_pipe_blend_func(rt_state->equation.rgb_func);
+      options.rt[rt].rgb.src_factor =
+         to_pipe_blendfactor(rt_state->equation.rgb_src_factor,
+                             rt_state->equation.rgb_invert_src_factor);
+      options.rt[rt].rgb.dst_factor =
+         to_pipe_blendfactor(rt_state->equation.rgb_dst_factor,
+                             rt_state->equation.rgb_invert_dst_factor);
+      options.rt[rt].alpha.func =
+         to_pipe_blend_func(rt_state->equation.alpha_func);
+      options.rt[rt].alpha.src_factor =
+         to_pipe_blendfactor(rt_state->equation.alpha_src_factor,
+                             rt_state->equation.alpha_invert_src_factor);
+      options.rt[rt].alpha.dst_factor =
+         to_pipe_blendfactor(rt_state->equation.alpha_dst_factor,
+                             rt_state->equation.alpha_invert_dst_factor);
    }
 
    nir_ssa_def *pixel = nir_load_barycentric_pixel(&b, 32, .interp_mode = 1);

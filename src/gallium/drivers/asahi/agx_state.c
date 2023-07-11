@@ -181,35 +181,21 @@ agx_create_blend_state(struct pipe_context *ctx,
          /* No blending, but we get the colour mask below */
       } else if (!rt.blend_enable) {
          static const nir_lower_blend_channel replace = {
-            .func = BLEND_FUNC_ADD,
-            .src_factor = BLEND_FACTOR_ZERO,
-            .invert_src_factor = true,
-            .dst_factor = BLEND_FACTOR_ZERO,
-            .invert_dst_factor = false,
+            .func = PIPE_BLEND_ADD,
+            .src_factor = PIPE_BLENDFACTOR_ONE,
+            .dst_factor = PIPE_BLENDFACTOR_ZERO,
          };
 
          so->rt[i].rgb = replace;
          so->rt[i].alpha = replace;
       } else {
-         so->rt[i].rgb.func = util_blend_func_to_shader(rt.rgb_func);
-         so->rt[i].rgb.src_factor =
-            util_blend_factor_to_shader(rt.rgb_src_factor);
-         so->rt[i].rgb.invert_src_factor =
-            util_blend_factor_is_inverted(rt.rgb_src_factor);
-         so->rt[i].rgb.dst_factor =
-            util_blend_factor_to_shader(rt.rgb_dst_factor);
-         so->rt[i].rgb.invert_dst_factor =
-            util_blend_factor_is_inverted(rt.rgb_dst_factor);
+         so->rt[i].rgb.func = rt.rgb_func;
+         so->rt[i].rgb.src_factor = rt.rgb_src_factor;
+         so->rt[i].rgb.dst_factor = rt.rgb_dst_factor;
 
-         so->rt[i].alpha.func = util_blend_func_to_shader(rt.alpha_func);
-         so->rt[i].alpha.src_factor =
-            util_blend_factor_to_shader(rt.alpha_src_factor);
-         so->rt[i].alpha.invert_src_factor =
-            util_blend_factor_is_inverted(rt.alpha_src_factor);
-         so->rt[i].alpha.dst_factor =
-            util_blend_factor_to_shader(rt.alpha_dst_factor);
-         so->rt[i].alpha.invert_dst_factor =
-            util_blend_factor_is_inverted(rt.alpha_dst_factor);
+         so->rt[i].alpha.func = rt.alpha_func;
+         so->rt[i].alpha.src_factor = rt.alpha_src_factor;
+         so->rt[i].alpha.dst_factor = rt.alpha_dst_factor;
 
          so->blend_enable = true;
       }
@@ -1631,11 +1617,9 @@ agx_create_shader_state(struct pipe_context *pctx,
             key.fs.blend.rt[i].colormask = 0xF;
 
             const nir_lower_blend_channel replace = {
-               .func = BLEND_FUNC_ADD,
-               .src_factor = BLEND_FACTOR_ZERO,
-               .invert_src_factor = true,
-               .dst_factor = BLEND_FACTOR_ZERO,
-               .invert_dst_factor = false,
+               .func = PIPE_BLEND_ADD,
+               .src_factor = PIPE_BLENDFACTOR_ONE,
+               .dst_factor = PIPE_BLENDFACTOR_ZERO,
             };
 
             key.fs.blend.rt[i].rgb = replace;
