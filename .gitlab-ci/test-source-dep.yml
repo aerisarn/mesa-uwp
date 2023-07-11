@@ -197,27 +197,6 @@
         *vulkan_file_list
       when: manual
 
-.lavapipe-rules:
-  stage: software-renderer
-  rules:
-    - !reference [.vulkan-rules, rules]
-    # One could probably be a little more clever here and skip non-gallium Mesa changes (see also .llvmpipe-cl-rules).
-    - !reference [.gl-rules, rules]
-    - changes: &lavapipe_file_list
-      - src/gallium/drivers/llvmpipe/**/*
-      - src/gallium/frontends/lavapipe/**/*
-      - src/gallium/winsys/sw/**/*
-      when: on_success
-
-.lavapipe-manual-rules:
-  stage: software-renderer
-  retry: !reference [.scheduled_pipeline-rules, retry]
-  rules:
-    - !reference [.vulkan-manual-rules, rules]
-    - !reference [.gl-manual-rules, rules]
-    - changes: *lavapipe_file_list
-      when: manual
-
 # Rules for unusual architectures that only build a subset of drivers
 .ppc64el-rules:
    rules:
