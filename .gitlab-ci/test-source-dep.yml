@@ -892,9 +892,7 @@
     - !reference [.zink-common-rules, rules]
     - !reference [.vulkan-rules, rules]
     - !reference [.softpipe-rules, rules]
-    - changes:
-        *lavapipe_file_list
-      when: on_success
+    - !reference [.lavapipe-rules, rules]
     - changes: &d3d12_file_list
       - src/gallium/drivers/d3d12/**/*
       - src/gallium/frontends/wgl/*
@@ -972,9 +970,7 @@
     - !reference [.zink-common-rules, rules]
     - !reference [.softpipe-rules, rules]
     - !reference [.llvmpipe-rules, rules]
-    - changes:
-        *lavapipe_file_list
-      when: on_success
+    - !reference [.lavapipe-rules, rules]
     - changes:
         *radv_file_list
       when: on_success
@@ -992,9 +988,7 @@
     - !reference [.zink-common-rules, rules]
     - !reference [.softpipe-rules, rules]
     - !reference [.llvmpipe-rules, rules]
-    - changes:
-        *lavapipe_file_list
-      when: on_success
+    - !reference [.lavapipe-rules, rules]
 
 # Rules for linters
 .lint-rustfmt-rules:
