@@ -58,4 +58,23 @@ enum pipe_logicop {
    PIPE_LOGICOP_SET,
 };
 
+/**
+ * When faking RGBX render target formats with RGBA ones, the blender is still
+ * supposed to treat the destination's alpha channel as 1 instead of the
+ * garbage that's there. Return a blend factor that will take that into
+ * account.
+ */
+static inline enum pipe_blendfactor
+util_blend_dst_alpha_to_one(enum pipe_blendfactor factor)
+{
+   switch (factor) {
+   case PIPE_BLENDFACTOR_DST_ALPHA:
+      return PIPE_BLENDFACTOR_ONE;
+   case PIPE_BLENDFACTOR_INV_DST_ALPHA:
+      return PIPE_BLENDFACTOR_ZERO;
+   default:
+      return factor;
+   }
+}
+
 #endif
