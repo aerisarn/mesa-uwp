@@ -254,9 +254,7 @@ scan_instruction(struct tgsi_shader_info *info,
       break;
    case TGSI_OPCODE_LOAD:
       if (tgsi_is_bindless_image_file(fullinst->Src[0].Register.File)) {
-         if (fullinst->Memory.Texture == TGSI_TEXTURE_BUFFER)
-            info->uses_bindless_buffer_load = true;
-         else
+         if (fullinst->Memory.Texture != TGSI_TEXTURE_BUFFER)
             info->uses_bindless_image_load = true;
       }
       break;
