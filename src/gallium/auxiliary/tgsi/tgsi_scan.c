@@ -157,7 +157,7 @@ scan_src_operand(struct tgsi_shader_info *info,
       }
 
       if (info->processor == PIPE_SHADER_FRAGMENT) {
-         unsigned name, index, input;
+         unsigned name, input;
 
          if (src->Register.Indirect && src->Indirect.ArrayID)
             input = info->input_array_first[src->Indirect.ArrayID];
@@ -165,14 +165,10 @@ scan_src_operand(struct tgsi_shader_info *info,
             input = src->Register.Index;
 
          name = info->input_semantic_name[input];
-         index = info->input_semantic_index[input];
 
          if (name == TGSI_SEMANTIC_POSITION &&
              usage_mask_after_swizzle & TGSI_WRITEMASK_Z)
             info->reads_z = true;
-
-         if (name == TGSI_SEMANTIC_COLOR)
-            info->colors_read |= usage_mask_after_swizzle << (index * 4);
 
          /* Process only interpolated varyings. Don't include POSITION.
           * Don't include integer varyings, because they are not

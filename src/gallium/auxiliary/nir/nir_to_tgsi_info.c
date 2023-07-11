@@ -149,10 +149,6 @@ static void gather_intrinsic_load_deref_info(const nir_shader *nir,
       tgsi_get_gl_varying_semantic(var->data.location, need_texcoord,
                                    &semantic_name, &semantic_index);
 
-      if (semantic_name == TGSI_SEMANTIC_COLOR) {
-         uint8_t mask = nir_ssa_def_components_read(&instr->dest.ssa);
-         info->colors_read |= mask << (semantic_index * 4);
-      }
       if (semantic_name == TGSI_SEMANTIC_FACE) {
          info->uses_frontface = true;
       }

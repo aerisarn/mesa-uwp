@@ -84,7 +84,6 @@ struct tgsi_shader_info
    bool reads_perpatch_outputs;
    bool reads_tessfactor_outputs;
 
-   uint8_t colors_read; /**< which color components are read by the FS */
    uint8_t colors_written;
    bool reads_position; /**< does fragment shader read position? */
    bool reads_z; /**< does fragment shader read depth? */
