@@ -350,6 +350,10 @@ vk_format_aspects(VkFormat format)
    case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16:
    case VK_FORMAT_G16_B16R16_2PLANE_420_UNORM:
    case VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
+   case VK_FORMAT_G8_B8R8_2PLANE_444_UNORM_EXT:
+   case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16_EXT:
+   case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16_EXT:
+   case VK_FORMAT_G16_B16R16_2PLANE_444_UNORM_EXT:
       return (VK_IMAGE_ASPECT_PLANE_0_BIT |
               VK_IMAGE_ASPECT_PLANE_1_BIT);
 
@@ -575,19 +579,49 @@ static const struct vk_format_ycbcr_info ycbcr_infos[] = {
              c_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(R, ZERO, ZERO, ZERO), 1, 1)),
 };
 
+static const struct vk_format_ycbcr_info ycbcr_2plane_444_infos[] = {
+   ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_444_UNORM_EXT, 2,
+             y_plane(VK_FORMAT_R8_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R8G8_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 1, 1)),
+
+   ycbcr_fmt(VK_FORMAT_G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16_EXT, 2,
+             y_plane(VK_FORMAT_R10X6_UNORM_PACK16, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R10X6G10X6_UNORM_2PACK16, YCBCR_SWIZ(B, R, ZERO, ZERO), 1, 1)),
+
+   ycbcr_fmt(VK_FORMAT_G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16_EXT, 2,
+             y_plane(VK_FORMAT_R12X4_UNORM_PACK16, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R12X4G12X4_UNORM_2PACK16, YCBCR_SWIZ(B, R, ZERO, ZERO), 1, 1)),
+
+   ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_444_UNORM_EXT, 2,
+             y_plane(VK_FORMAT_R16_UNORM, YCBCR_SWIZ(G, ZERO, ZERO, ZERO), 1, 1),
+             c_plane(VK_FORMAT_R16G16_UNORM, YCBCR_SWIZ(B, R, ZERO, ZERO), 1, 1)),
+};
+
 const struct vk_format_ycbcr_info *
 vk_format_get_ycbcr_info(VkFormat format)
 {
    uint32_t enum_offset = VK_ENUM_OFFSET(format);
    uint32_t ext_number = VK_ENUM_EXTENSION(format);
-   if (ext_number != _VK_KHR_sampler_ycbcr_conversion_number)
+   const struct vk_format_ycbcr_info *info;
+   switch (ext_number) {
+   case _VK_KHR_sampler_ycbcr_conversion_number:
+      if (enum_offset >= ARRAY_SIZE(ycbcr_infos))
+         return NULL;
+      info = &ycbcr_infos[enum_offset];
+      break;
+
+   case _VK_EXT_ycbcr_2plane_444_formats_number:
+      if (enum_offset >= ARRAY_SIZE(ycbcr_2plane_444_infos))
+         return NULL;
+      info = &ycbcr_2plane_444_infos[enum_offset];
+      break;
+
+   default:
+      return NULL;
+   }
+
+   if (info->n_planes == 0)
       return NULL;
 
-   if (enum_offset >= ARRAY_SIZE(ycbcr_infos))
-      return NULL;
-
-   if (ycbcr_infos[enum_offset].n_planes == 0)
-      return NULL;
-
-   return &ycbcr_infos[enum_offset];
+   return info;
 }
