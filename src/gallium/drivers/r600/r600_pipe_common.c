@@ -1034,7 +1034,6 @@ static int r600_get_compute_param(struct pipe_screen *screen,
 		}
 		return sizeof(uint32_t);
 	case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
-	case PIPE_COMPUTE_CAP_MAX_SUBGROUPS:
 		break; /* unused */
 	case PIPE_COMPUTE_CAP_SUBGROUP_SIZES:
 		if (ret) {
@@ -1048,6 +1047,8 @@ static int r600_get_compute_param(struct pipe_screen *screen,
 			*max_variable_threads_per_block = 0;
 		}
 		return sizeof(uint64_t);
+        case PIPE_COMPUTE_CAP_MAX_SUBGROUPS:
+           return 0;
 	}
 
         fprintf(stderr, "unknown PIPE_COMPUTE_CAP %d\n", param);
