@@ -791,9 +791,7 @@
     - changes:
         *virgl_file_list
       when: manual
-    - changes:
-        *iris_file_list
-      when: manual
+    - !reference [.iris-manual-rules, rules]
 
 .virgl-iris-rules-performance:
   stage: layered-backends
