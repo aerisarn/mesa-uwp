@@ -298,43 +298,13 @@ static void scan_instruction(const struct nir_shader *nir,
          const nir_variable *var = nir_intrinsic_get_var(intr, 0);
          const nir_variable_mode mode = var->data.mode;
          nir_deref_instr *const deref = nir_src_as_deref(intr->src[0]);
-         enum glsl_base_type base_type =
-            glsl_get_base_type(glsl_without_array(var->type));
 
          if (nir_deref_instr_has_indirect(deref)) {
             if (mode == nir_var_shader_in)
                info->indirect_files |= (1 << TGSI_FILE_INPUT);
          }
-         if (mode == nir_var_shader_in) {
+         if (mode == nir_var_shader_in)
             gather_intrinsic_load_deref_info(nir, intr, deref, need_texcoord, var, info);
-
-            switch (var->data.interpolation) {
-            case INTERP_MODE_NONE:
-               if (glsl_base_type_is_integer(base_type))
-                  break;
-               if (var->data.per_primitive)
-                  break;
-
-               FALLTHROUGH;
-            case INTERP_MODE_SMOOTH:
-               if (var->data.sample)
-                  info->uses_persp_sample = true;
-               else if (var->data.centroid)
-                  info->uses_persp_centroid = true;
-               else
-                  info->uses_persp_center = true;
-               break;
-
-            case INTERP_MODE_NOPERSPECTIVE:
-               if (var->data.sample)
-                  info->uses_linear_sample = true;
-               else if (var->data.centroid)
-                  info->uses_linear_centroid = true;
-               else
-                  info->uses_linear_center = true;
-               break;
-            }
-         }
          break;
       }
       case nir_intrinsic_interp_deref_at_centroid:

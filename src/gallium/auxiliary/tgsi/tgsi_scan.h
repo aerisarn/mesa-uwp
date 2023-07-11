@@ -90,12 +90,6 @@ struct tgsi_shader_info
    bool writes_samplemask; /**< does fragment shader write sample mask? */
    bool writes_edgeflag; /**< vertex shader outputs edgeflag */
    bool uses_kill;  /**< KILL or KILL_IF instruction used? */
-   bool uses_persp_center;
-   bool uses_persp_centroid;
-   bool uses_persp_sample;
-   bool uses_linear_center;
-   bool uses_linear_centroid;
-   bool uses_linear_sample;
    bool uses_persp_opcode_interp_centroid;
    bool uses_persp_opcode_interp_offset;
    bool uses_persp_opcode_interp_sample;

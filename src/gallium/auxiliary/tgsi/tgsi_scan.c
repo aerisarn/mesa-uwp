@@ -169,50 +169,6 @@ scan_src_operand(struct tgsi_shader_info *info,
          if (name == TGSI_SEMANTIC_POSITION &&
              usage_mask_after_swizzle & TGSI_WRITEMASK_Z)
             info->reads_z = true;
-
-         /* Process only interpolated varyings. Don't include POSITION.
-          * Don't include integer varyings, because they are not
-          * interpolated. Don't process inputs interpolated by INTERP
-          * opcodes. Those are tracked separately.
-          */
-         if ((!is_interp_instruction || src_index != 0) &&
-             (name == TGSI_SEMANTIC_GENERIC ||
-              name == TGSI_SEMANTIC_TEXCOORD ||
-              name == TGSI_SEMANTIC_COLOR ||
-              name == TGSI_SEMANTIC_BCOLOR ||
-              name == TGSI_SEMANTIC_FOG ||
-              name == TGSI_SEMANTIC_CLIPDIST)) {
-            switch (info->input_interpolate[input]) {
-            case TGSI_INTERPOLATE_COLOR:
-            case TGSI_INTERPOLATE_PERSPECTIVE:
-               switch (info->input_interpolate_loc[input]) {
-               case TGSI_INTERPOLATE_LOC_CENTER:
-                  info->uses_persp_center = true;
-                  break;
-               case TGSI_INTERPOLATE_LOC_CENTROID:
-                  info->uses_persp_centroid = true;
-                  break;
-               case TGSI_INTERPOLATE_LOC_SAMPLE:
-                  info->uses_persp_sample = true;
-                  break;
-               }
-               break;
-            case TGSI_INTERPOLATE_LINEAR:
-               switch (info->input_interpolate_loc[input]) {
-               case TGSI_INTERPOLATE_LOC_CENTER:
-                  info->uses_linear_center = true;
-                  break;
-               case TGSI_INTERPOLATE_LOC_CENTROID:
-                  info->uses_linear_centroid = true;
-                  break;
-               case TGSI_INTERPOLATE_LOC_SAMPLE:
-                  info->uses_linear_sample = true;
-                  break;
-               }
-               break;
-               /* TGSI_INTERPOLATE_CONSTANT doesn't do any interpolation. */
-            }
-         }
       }
    }
 
