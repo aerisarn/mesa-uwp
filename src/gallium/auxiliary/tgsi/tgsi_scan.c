@@ -676,9 +676,6 @@ scan_declaration(struct tgsi_shader_info *info,
          case TGSI_SEMANTIC_PRIMID:
             info->uses_primid = true;
             break;
-         case TGSI_SEMANTIC_POSITION:
-            info->reads_position = true;
-            break;
          case TGSI_SEMANTIC_FACE:
             info->uses_frontface = true;
             break;
@@ -712,9 +709,6 @@ scan_declaration(struct tgsi_shader_info *info,
             break;
          case TGSI_SEMANTIC_INVOCATIONID:
             info->uses_invocationid = true;
-            break;
-         case TGSI_SEMANTIC_POSITION:
-            info->reads_position = true;
             break;
          case TGSI_SEMANTIC_FACE:
             info->uses_frontface = true;
