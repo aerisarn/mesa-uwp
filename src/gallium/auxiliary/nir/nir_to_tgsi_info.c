@@ -203,20 +203,12 @@ static void scan_instruction(const struct nir_shader *nir,
          info->uses_primid = 1;
          break;
       case nir_intrinsic_bindless_image_load:
-         info->uses_bindless_images = true;
-
          if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF)
             info->uses_bindless_buffer_load = true;
          else
             info->uses_bindless_image_load = true;
          break;
-      case nir_intrinsic_bindless_image_size:
-      case nir_intrinsic_bindless_image_samples:
-         info->uses_bindless_images = true;
-         break;
       case nir_intrinsic_bindless_image_store:
-         info->uses_bindless_images = true;
-
          if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF)
             info->uses_bindless_buffer_store = true;
          else
@@ -230,8 +222,6 @@ static void scan_instruction(const struct nir_shader *nir,
          break;
       case nir_intrinsic_bindless_image_atomic:
       case nir_intrinsic_bindless_image_atomic_swap:
-         info->uses_bindless_images = true;
-
          if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF)
             info->uses_bindless_buffer_atomic = true;
          else

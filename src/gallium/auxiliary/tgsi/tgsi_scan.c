@@ -262,14 +262,8 @@ scan_instruction(struct tgsi_shader_info *info,
    case TGSI_OPCODE_ENDLOOP:
       (*current_depth)--;
       break;
-   case TGSI_OPCODE_RESQ:
-      if (tgsi_is_bindless_image_file(fullinst->Src[0].Register.File))
-         info->uses_bindless_images = true;
-      break;
    case TGSI_OPCODE_LOAD:
       if (tgsi_is_bindless_image_file(fullinst->Src[0].Register.File)) {
-         info->uses_bindless_images = true;
-
          if (fullinst->Memory.Texture == TGSI_TEXTURE_BUFFER)
             info->uses_bindless_buffer_load = true;
          else
@@ -290,8 +284,6 @@ scan_instruction(struct tgsi_shader_info *info,
    case TGSI_OPCODE_ATOMINC_WRAP:
    case TGSI_OPCODE_ATOMDEC_WRAP:
       if (tgsi_is_bindless_image_file(fullinst->Src[0].Register.File)) {
-         info->uses_bindless_images = true;
-
          if (fullinst->Memory.Texture == TGSI_TEXTURE_BUFFER)
             info->uses_bindless_buffer_atomic = true;
          else
@@ -300,8 +292,6 @@ scan_instruction(struct tgsi_shader_info *info,
       break;
    case TGSI_OPCODE_STORE:
       if (tgsi_is_bindless_image_file(fullinst->Dst[0].Register.File)) {
-         info->uses_bindless_images = true;
-
          if (fullinst->Memory.Texture == TGSI_TEXTURE_BUFFER)
             info->uses_bindless_buffer_store = true;
          else
