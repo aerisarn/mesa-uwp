@@ -109,7 +109,6 @@ scan_src_operand(struct tgsi_shader_info *info,
                  const struct tgsi_full_src_register *src,
                  unsigned src_index,
                  unsigned usage_mask_after_swizzle,
-                 bool is_interp_instruction,
                  bool *is_mem_inst)
 {
    int ind = src->Register.Index;
@@ -292,7 +291,6 @@ scan_instruction(struct tgsi_shader_info *info,
 {
    unsigned i;
    bool is_mem_inst = false;
-   bool is_interp_instruction = false;
    unsigned sampler_src;
 
    assert(fullinst->Instruction.Opcode < TGSI_OPCODE_LAST);
@@ -381,55 +379,6 @@ scan_instruction(struct tgsi_shader_info *info,
       break;
    }
 
-   if (fullinst->Instruction.Opcode == TGSI_OPCODE_INTERP_CENTROID ||
-       fullinst->Instruction.Opcode == TGSI_OPCODE_INTERP_OFFSET ||
-       fullinst->Instruction.Opcode == TGSI_OPCODE_INTERP_SAMPLE) {
-      const struct tgsi_full_src_register *src0 = &fullinst->Src[0];
-      unsigned input;
-
-      is_interp_instruction = true;
-
-      if (src0->Register.Indirect && src0->Indirect.ArrayID)
-         input = info->input_array_first[src0->Indirect.ArrayID];
-      else
-         input = src0->Register.Index;
-
-      /* For the INTERP opcodes, the interpolation is always
-       * PERSPECTIVE unless LINEAR is specified.
-       */
-      switch (info->input_interpolate[input]) {
-      case TGSI_INTERPOLATE_COLOR:
-      case TGSI_INTERPOLATE_CONSTANT:
-      case TGSI_INTERPOLATE_PERSPECTIVE:
-         switch (fullinst->Instruction.Opcode) {
-         case TGSI_OPCODE_INTERP_CENTROID:
-            info->uses_persp_opcode_interp_centroid = true;
-            break;
-         case TGSI_OPCODE_INTERP_OFFSET:
-            info->uses_persp_opcode_interp_offset = true;
-            break;
-         case TGSI_OPCODE_INTERP_SAMPLE:
-            info->uses_persp_opcode_interp_sample = true;
-            break;
-         }
-         break;
-
-      case TGSI_INTERPOLATE_LINEAR:
-         switch (fullinst->Instruction.Opcode) {
-         case TGSI_OPCODE_INTERP_CENTROID:
-            info->uses_linear_opcode_interp_centroid = true;
-            break;
-         case TGSI_OPCODE_INTERP_OFFSET:
-            info->uses_linear_opcode_interp_offset = true;
-            break;
-         case TGSI_OPCODE_INTERP_SAMPLE:
-            info->uses_linear_opcode_interp_sample = true;
-            break;
-         }
-         break;
-      }
-   }
-
    if ((fullinst->Instruction.Opcode >= TGSI_OPCODE_F2D &&
         fullinst->Instruction.Opcode <= TGSI_OPCODE_DSSG) ||
        fullinst->Instruction.Opcode == TGSI_OPCODE_DFMA ||
@@ -443,7 +392,7 @@ scan_instruction(struct tgsi_shader_info *info,
    for (i = 0; i < fullinst->Instruction.NumSrcRegs; i++) {
       scan_src_operand(info, fullinst, &fullinst->Src[i], i,
                        tgsi_util_get_inst_usage_mask(fullinst, i),
-                       is_interp_instruction, &is_mem_inst);
+                       &is_mem_inst);
 
       if (fullinst->Src[i].Register.Indirect) {
          struct tgsi_full_src_register src = {{0}};
@@ -453,7 +402,7 @@ scan_instruction(struct tgsi_shader_info *info,
 
          scan_src_operand(info, fullinst, &src, -1,
                           1 << fullinst->Src[i].Indirect.Swizzle,
-                          false, NULL);
+                          NULL);
       }
 
       if (fullinst->Src[i].Register.Dimension &&
@@ -465,7 +414,7 @@ scan_instruction(struct tgsi_shader_info *info,
 
          scan_src_operand(info, fullinst, &src, -1,
                           1 << fullinst->Src[i].DimIndirect.Swizzle,
-                          false, NULL);
+                          NULL);
       }
    }
 
@@ -481,7 +430,7 @@ scan_instruction(struct tgsi_shader_info *info,
                           (1 << fullinst->TexOffsets[i].SwizzleX) |
                           (1 << fullinst->TexOffsets[i].SwizzleY) |
                           (1 << fullinst->TexOffsets[i].SwizzleZ),
-                          false, &is_mem_inst);
+                          &is_mem_inst);
       }
    }
 
@@ -496,7 +445,7 @@ scan_instruction(struct tgsi_shader_info *info,
          src.Register.Index = dst->Indirect.Index;
 
          scan_src_operand(info, fullinst, &src, -1,
-                          1 << dst->Indirect.Swizzle, false, NULL);
+                          1 << dst->Indirect.Swizzle, NULL);
 
          info->indirect_files |= (1 << dst->Register.File);
          info->indirect_files_written |= (1 << dst->Register.File);
@@ -509,7 +458,7 @@ scan_instruction(struct tgsi_shader_info *info,
          src.Register.Index = dst->DimIndirect.Index;
 
          scan_src_operand(info, fullinst, &src, -1,
-                          1 << dst->DimIndirect.Swizzle, false, NULL);
+                          1 << dst->DimIndirect.Swizzle, NULL);
 
          info->dim_indirect_files |= 1u << dst->Register.File;
       }

@@ -307,35 +307,6 @@ static void scan_instruction(const struct nir_shader *nir,
             gather_intrinsic_load_deref_info(nir, intr, deref, need_texcoord, var, info);
          break;
       }
-      case nir_intrinsic_interp_deref_at_centroid:
-      case nir_intrinsic_interp_deref_at_sample:
-      case nir_intrinsic_interp_deref_at_offset: {
-         enum glsl_interp_mode interp = nir_intrinsic_get_var(intr, 0)->data.interpolation;
-         switch (interp) {
-         case INTERP_MODE_SMOOTH:
-         case INTERP_MODE_NONE:
-            if (intr->intrinsic == nir_intrinsic_interp_deref_at_centroid)
-               info->uses_persp_opcode_interp_centroid = true;
-            else if (intr->intrinsic == nir_intrinsic_interp_deref_at_sample)
-               info->uses_persp_opcode_interp_sample = true;
-            else
-               info->uses_persp_opcode_interp_offset = true;
-            break;
-         case INTERP_MODE_NOPERSPECTIVE:
-            if (intr->intrinsic == nir_intrinsic_interp_deref_at_centroid)
-               info->uses_linear_opcode_interp_centroid = true;
-            else if (intr->intrinsic == nir_intrinsic_interp_deref_at_sample)
-               info->uses_linear_opcode_interp_sample = true;
-            else
-               info->uses_linear_opcode_interp_offset = true;
-            break;
-         case INTERP_MODE_FLAT:
-            break;
-         default:
-            unreachable("Unsupported interpoation type");
-         }
-         break;
-      }
       default:
          break;
       }
