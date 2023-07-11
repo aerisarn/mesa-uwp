@@ -48,6 +48,7 @@ files_llvmpipe = files(
   'lp_linear_fastpath.c',
   'lp_linear_interp.c',
   'lp_linear_sampler.c',
+  'lp_linear_sampler_tmp.h',
   'lp_memory.c',
   'lp_memory.h',
   'lp_perf.c',
