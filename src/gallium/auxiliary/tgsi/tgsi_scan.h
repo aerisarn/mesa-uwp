@@ -131,7 +131,6 @@ struct tgsi_shader_info
     * indirect addressing.  The bits are (1 << TGSI_FILE_x).
     */
    unsigned dim_indirect_files; /**< shader resource indexing */
-   unsigned const_buffers_indirect; /**< const buffers using indirect addressing */
 
    unsigned properties[TGSI_PROPERTY_COUNT]; /* index with TGSI_PROPERTY_ */
 

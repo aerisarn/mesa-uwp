@@ -150,21 +150,8 @@ scan_src_operand(struct tgsi_shader_info *info,
    }
 
    /* check for indirect register reads */
-   if (src->Register.Indirect) {
+   if (src->Register.Indirect)
       info->indirect_files |= (1 << src->Register.File);
-
-      /* record indirect constant buffer indexing */
-      if (src->Register.File == TGSI_FILE_CONSTANT) {
-         if (src->Register.Dimension) {
-            if (src->Dimension.Indirect)
-               info->const_buffers_indirect = info->const_buffers_declared;
-            else
-               info->const_buffers_indirect |= 1u << src->Dimension.Index;
-         } else {
-            info->const_buffers_indirect |= 1;
-         }
-      }
-   }
 
    if (src->Register.Dimension && src->Dimension.Indirect)
       info->dim_indirect_files |= 1u << src->Register.File;
