@@ -166,10 +166,6 @@ static void scan_instruction(const struct nir_shader *nir,
 
    if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
-      const nir_variable *texture = tex_get_texture_var(tex);
-
-      if (texture && texture->data.bindless)
-         info->uses_bindless_samplers = true;
 
       switch (tex->op) {
       case nir_texop_tex:

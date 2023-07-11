@@ -247,7 +247,6 @@ scan_instruction(struct tgsi_shader_info *info,
 {
    unsigned i;
    bool is_mem_inst = false;
-   unsigned sampler_src;
 
    assert(fullinst->Instruction.Opcode < TGSI_OPCODE_LAST);
    info->opcode_count[fullinst->Instruction.Opcode]++;
@@ -262,25 +261,6 @@ scan_instruction(struct tgsi_shader_info *info,
    case TGSI_OPCODE_ENDIF:
    case TGSI_OPCODE_ENDLOOP:
       (*current_depth)--;
-      break;
-   case TGSI_OPCODE_TEX:
-   case TGSI_OPCODE_TEX_LZ:
-   case TGSI_OPCODE_TXB:
-   case TGSI_OPCODE_TXD:
-   case TGSI_OPCODE_TXL:
-   case TGSI_OPCODE_TXP:
-   case TGSI_OPCODE_TXQ:
-   case TGSI_OPCODE_TXQS:
-   case TGSI_OPCODE_TXF:
-   case TGSI_OPCODE_TXF_LZ:
-   case TGSI_OPCODE_TEX2:
-   case TGSI_OPCODE_TXB2:
-   case TGSI_OPCODE_TXL2:
-   case TGSI_OPCODE_TG4:
-   case TGSI_OPCODE_LODQ:
-      sampler_src = fullinst->Instruction.NumSrcRegs - 1;
-      if (fullinst->Src[sampler_src].Register.File != TGSI_FILE_SAMPLER)
-         info->uses_bindless_samplers = true;
       break;
    case TGSI_OPCODE_RESQ:
       if (tgsi_is_bindless_image_file(fullinst->Src[0].Register.File))
