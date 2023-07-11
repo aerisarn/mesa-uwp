@@ -391,9 +391,17 @@
 
 .valve-farm-manual-rules:
   rules:
-    - exists: [ .ci-farms-disabled/valve ]
+    - exists: [ .ci-farms-disabled/valve-mupuf ]
+      if: '$RUNNER_FARM_LOCATION == "mupuf"'
       when: never
-    - changes: [ .ci-farms-disabled/valve ]
+    - exists: [ .ci-farms-disabled/valve-kws ]
+      if: '$RUNNER_FARM_LOCATION == "keywords"'
+      when: never
+    - changes: [ .ci-farms-disabled/valve-mupuf ]
+      if: '$RUNNER_FARM_LOCATION == "mupuf"'
+      when: never
+    - changes: [ .ci-farms-disabled/valve-kws ]
+      if: '$RUNNER_FARM_LOCATION == "keywords"'
       when: never
     - !reference [.valve-farm-rules, rules]
 
