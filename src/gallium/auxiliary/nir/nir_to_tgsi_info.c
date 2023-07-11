@@ -687,9 +687,6 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
          case TGSI_SEMANTIC_CLIPVERTEX:
             info->writes_clipvertex = true;
             break;
-         case TGSI_SEMANTIC_COLOR:
-            info->colors_written |= 1 << semantic_index;
-            break;
          case TGSI_SEMANTIC_STENCIL:
             if (!variable->data.fb_fetch_output)
                info->writes_stencil = true;

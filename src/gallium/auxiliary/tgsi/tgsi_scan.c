@@ -768,9 +768,6 @@ scan_declaration(struct tgsi_shader_info *info,
          case TGSI_SEMANTIC_CLIPVERTEX:
             info->writes_clipvertex = true;
             break;
-         case TGSI_SEMANTIC_COLOR:
-            info->colors_written |= 1 << semIndex;
-            break;
          case TGSI_SEMANTIC_STENCIL:
             info->writes_stencil = true;
             break;
