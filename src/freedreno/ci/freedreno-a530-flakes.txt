@@ -132,6 +132,8 @@ dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_vertex_array_as_i
 dEQP-GLES31.functional.texture.texture_buffer.render_modify.as_vertex_array_as_vertex_texture.mapbuffer_readwrite
 
 # 1/10 run flake
+dEQP-GLES31.functional.atomic_counter.layout.default_offset_set.inc_dec.8_counters_5_calls_1_thread
+
 KHR-GLES31.core.explicit_uniform_location.uniform-loc-types-samplers
 KHR-GLES31.core.internalformat.copy_tex_image.alpha
 KHR-GLES31.core.internalformat.texture2d.red_integer_int_r32i
@@ -145,10 +147,15 @@ KHR-GLES31.shaders.layout_location.sampler_2d
 
 spec@glsl-1.10@execution@built-in-functions@fs-op-assign-add-ivec4-int
 spec@glsl-1.10@execution@built-in-functions@vs-dot-vec3-vec3
+spec@glsl-1.10@execution@built-in-functions@vs-mod-float-float
+spec@glsl-1.20@execution@const-builtin@glsl-const-builtin-distance
 spec@glsl-1.20@execution@uniform-initializer@fs-int-set-by-other-stage
 spec@glsl-1.20@execution@built-in-functions@vs-op-assign-add-mat4x2-mat4x2
+spec@glsl-1.30@execution@built-in-functions@fs-op-bitxor-uint-uvec3
 spec@glsl-1.30@execution@built-in-functions@vs-op-assign-lshift-uvec2-ivec2
 spec@glsl-1.30@execution@built-in-functions@vs-op-bitand-abs-neg-ivec3-ivec3
 spec@glsl-1.30@execution@built-in-functions@vs-op-bitor-abs-neg-ivec2-int
 spec@glsl-1.30@execution@interpolation@interpolation-smooth-other-flat-distance
+spec@glsl-es-3.00@execution@built-in-functions@const-packhalf2x16
 spec@glsl-es-3.00@execution@varying-struct-copy-return-vs
+spec@mesa_shader_integer_functions@execution@built-in-functions@fs-umulextended-only-msb-nonuniform
