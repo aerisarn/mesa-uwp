@@ -1,3 +1,27 @@
+.etnaviv-rules:
+  stage: etnaviv
+  rules:
+    - !reference [.austriancoder-farm-rules, rules]
+    - !reference [.gl-rules, rules]
+    - changes: &etnaviv_file_list
+      - src/etnaviv/**/*
+      - src/gallium/drivers/etnaviv/**/*
+      - src/gallium/winsys/etnaviv/**/*
+      - src/gallium/auxiliary/renderonly/**/*
+      - src/gallium/winsys/kmsro/**/*
+      when: on_success
+
+.etnaviv-manual-rules:
+  stage: etnaviv
+  retry: !reference [.scheduled_pipeline-rules, retry]
+  rules:
+    - !reference [.austriancoder-farm-manual-rules, rules]
+    - !reference [.gl-manual-rules, rules]
+    - changes:
+        *etnaviv_file_list
+      when: manual
+
+
 .etnaviv-test:arm32:
   extends:
     - .baremetal-test-arm32
