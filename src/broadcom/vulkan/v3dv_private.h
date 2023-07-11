@@ -1650,8 +1650,14 @@ struct v3dv_query {
          uint32_t offset;
       } occlusion;
 
-      /* Used by CPU queries (timestamp) */
-      uint64_t value;
+      /* Used by timestamp queries */
+      struct {
+         /* Offset of this query in the timestamp BO for its value */
+         uint32_t offset;
+
+         /* Syncobj to signal timestamp query availability */
+         struct vk_sync *sync;
+      } timestamp;
 
       /* Used by performance queries */
       struct v3dv_perf_query perf;
@@ -1683,6 +1689,12 @@ struct v3dv_query_pool {
       /* Offset of the availability info in the BO */
       uint32_t avail_offset;
    } occlusion;
+
+   /* Only used with timestamp queries */
+   struct {
+      /* BO with the query timestamp values */
+      struct v3dv_bo *bo;
+   } timestamp;
 
    /* Only used with performance queries */
    struct {

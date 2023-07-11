@@ -316,11 +316,18 @@ handle_reset_query_cpu_job(struct v3dv_queue *queue, struct v3dv_job *job,
    assert(info->pool);
 
    /* We are about to reset query counters so we need to make sure that
-    * The GPU is not using them. The exception is timestamp queries, since
-    * we handle those in the CPU.
+    * The GPU is not using them.
     */
    if (info->pool->query_type == VK_QUERY_TYPE_OCCLUSION)
       v3dv_bo_wait(job->device, info->pool->occlusion.bo, OS_TIMEOUT_INFINITE);
+
+   if (info->pool->query_type == VK_QUERY_TYPE_TIMESTAMP) {
+      VkResult result = queue_wait_idle(queue, sync_info);
+      if (result != VK_SUCCESS)
+         return result;
+
+      v3dv_bo_wait(job->device, info->pool->timestamp.bo, OS_TIMEOUT_INFINITE);
+   }
 
    if (info->pool->query_type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR) {
       struct vk_sync_wait waits[info->count];
@@ -409,8 +416,7 @@ handle_end_query_cpu_job(struct v3dv_job *job, uint32_t counter_pass_idx)
    int err = 0;
    int fd = -1;
 
-   assert(info->pool->query_type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR ||
-          info->pool->query_type == VK_QUERY_TYPE_TIMESTAMP);
+   assert(info->pool->query_type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR);
 
    if (info->pool->query_type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR) {
       result = export_perfmon_last_job_sync(queue, job, &fd);
@@ -502,14 +508,20 @@ handle_timestamp_query_cpu_job(struct v3dv_queue *queue, struct v3dv_job *job,
       assert(info->query + i < info->pool->query_count);
       struct v3dv_query *query = &info->pool->queries[info->query + i];
       query->maybe_available = true;
-      if (i == 0)
-         query->value = t.tv_sec * 1000000000ull + t.tv_nsec;
+
+      /* Value */
+      uint8_t *value_addr =
+         ((uint8_t *) info->pool->timestamp.bo->map) + query->timestamp.offset;
+      *((uint64_t*)value_addr) = (i == 0) ? t.tv_sec * 1000000000ull + t.tv_nsec : 0ull;
+
+      /* Availability */
+      result = vk_sync_signal(&job->device->vk, query->timestamp.sync, 0);
    }
 
    cnd_broadcast(&job->device->query_ended);
    mtx_unlock(&job->device->query_mutex);
 
-   return VK_SUCCESS;
+   return result;
 }
 
 static VkResult
