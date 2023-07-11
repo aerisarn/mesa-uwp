@@ -85,7 +85,6 @@ struct tgsi_shader_info
    bool reads_tessfactor_outputs;
 
    bool reads_z; /**< does fragment shader read depth? */
-   bool reads_tess_factors; /**< If TES reads TESSINNER or TESSOUTER */
    bool writes_z;  /**< does fragment shader write Z value? */
    bool writes_stencil; /**< does fragment shader write stencil value? */
    bool writes_samplemask; /**< does fragment shader write sample mask? */

@@ -246,10 +246,6 @@ static void scan_instruction(const struct nir_shader *nir,
       case nir_intrinsic_load_primitive_id:
          info->uses_primid = 1;
          break;
-      case nir_intrinsic_load_tess_level_inner:
-      case nir_intrinsic_load_tess_level_outer:
-         info->reads_tess_factors = true;
-         break;
       case nir_intrinsic_bindless_image_load:
          info->uses_bindless_images = true;
 
