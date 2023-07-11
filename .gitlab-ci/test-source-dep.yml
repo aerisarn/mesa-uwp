@@ -134,6 +134,20 @@
     - debian-release
 
 # Mesa source file dependencies that may impact any GL driver test job.
+.gallium-core-rules:
+  rules:
+    - changes: &gallium_core_file_list
+      - src/gallium/*
+      - src/gallium/auxiliary/**/*
+      - src/gallium/drivers/*
+      - src/gallium/include/**/*
+      - src/gallium/frontends/dri/*
+      - src/gallium/frontends/glx/**/*
+      - src/gallium/targets/**/*
+      - src/gallium/tests/**/*
+      - src/gallium/winsys/*
+      when: on_success
+
 .gl-rules:
   rules:
     - !reference [.core-rules, rules]
@@ -154,17 +168,7 @@
       - src/mesa/x86/**/*
       - src/mesa/x86-64/**/*
       when: on_success
-    - changes: &gallium_core_file_list
-      - src/gallium/*
-      - src/gallium/auxiliary/**/*
-      - src/gallium/drivers/*
-      - src/gallium/include/**/*
-      - src/gallium/frontends/dri/*
-      - src/gallium/frontends/glx/**/*
-      - src/gallium/targets/**/*
-      - src/gallium/tests/**/*
-      - src/gallium/winsys/*
-      when: on_success
+    - !reference [.gallium-core-rules, rules]
 
 .gl-manual-rules:
   retry: !reference [.scheduled_pipeline-rules, retry]
@@ -253,9 +257,7 @@
       - src/include/**/*
       - src/util/**/*
       when: on_success
-    - changes:
-        *gallium_core_file_list
-      when: on_success
+    - !reference [.gallium-core-rules, rules]
     - changes:
         *llvmpipe_file_list
       when: on_success
