@@ -202,10 +202,6 @@ static void scan_instruction(const struct nir_shader *nir,
       case nir_intrinsic_load_primitive_id:
          info->uses_primid = 1;
          break;
-      case nir_intrinsic_bindless_image_load:
-         if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_BUF)
-            info->uses_bindless_image_load = true;
-         break;
       case nir_intrinsic_bindless_image_store:
          if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_BUF)
             info->uses_bindless_image_store = true;

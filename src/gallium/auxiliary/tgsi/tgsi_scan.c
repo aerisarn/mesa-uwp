@@ -252,12 +252,6 @@ scan_instruction(struct tgsi_shader_info *info,
    case TGSI_OPCODE_ENDLOOP:
       (*current_depth)--;
       break;
-   case TGSI_OPCODE_LOAD:
-      if (tgsi_is_bindless_image_file(fullinst->Src[0].Register.File)) {
-         if (fullinst->Memory.Texture != TGSI_TEXTURE_BUFFER)
-            info->uses_bindless_image_load = true;
-      }
-      break;
    case TGSI_OPCODE_ATOMUADD:
    case TGSI_OPCODE_ATOMXCHG:
    case TGSI_OPCODE_ATOMCAS:
