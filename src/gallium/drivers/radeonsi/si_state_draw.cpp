@@ -1765,26 +1765,33 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       if (!is_blit) {
          /* Prefer SET_SH_REG_PAIRS_PACKED* on Gfx11+. */
          if (HAS_PAIRS) {
-            if (base_vertex != sctx->last_base_vertex ||
+            bool shader_switch = sh_base_reg != sctx->last_sh_base_reg;
+
+            if (shader_switch ||
+                base_vertex != sctx->last_base_vertex ||
                 sctx->last_base_vertex == SI_BASE_VERTEX_UNKNOWN) {
                radeon_push_gfx_sh_reg(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, base_vertex);
                sctx->last_base_vertex = base_vertex;
             }
 
             if (set_draw_id &&
-                (drawid_base != sctx->last_drawid ||
+                (shader_switch ||
+                 drawid_base != sctx->last_drawid ||
                  sctx->last_drawid == SI_DRAW_ID_UNKNOWN)) {
                radeon_push_gfx_sh_reg(sh_base_reg + SI_SGPR_DRAWID * 4, drawid_base);
                sctx->last_drawid = drawid_base;
             }
 
             if (set_base_instance &&
-                (info->start_instance != sctx->last_start_instance ||
+                (shader_switch ||
+                 info->start_instance != sctx->last_start_instance ||
                  sctx->last_start_instance == SI_START_INSTANCE_UNKNOWN)) {
                radeon_push_gfx_sh_reg(sh_base_reg + SI_SGPR_START_INSTANCE * 4,
                                       info->start_instance);
                sctx->last_start_instance = info->start_instance;
             }
+
+            sctx->last_sh_base_reg = sh_base_reg;
          } else if (base_vertex != sctx->last_base_vertex ||
                     sctx->last_base_vertex == SI_BASE_VERTEX_UNKNOWN ||
                     (set_base_instance &&
