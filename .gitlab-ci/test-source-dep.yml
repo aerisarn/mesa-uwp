@@ -277,17 +277,6 @@
       - src/gallium/frontends/rusticl/**/*
       when: on_success
 
-.lima-rules:
-  stage: arm
-  rules:
-    - !reference [.lima-farm-rules, rules]
-    - !reference [.gl-rules, rules]
-    - changes:
-      - src/gallium/drivers/lima/**/*
-      - src/gallium/winsys/lima/**/*
-      - src/lima/**/*
-      when: on_success
-
 .radv-rules:
   stage: amd
   rules:
