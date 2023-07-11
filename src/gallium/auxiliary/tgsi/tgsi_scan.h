@@ -98,7 +98,6 @@ struct tgsi_shader_info
    bool uses_frontface;
    bool uses_invocationid;
    bool uses_grid_size;
-   bool uses_subgroup_info;
    bool writes_position;
    bool writes_psize;
    bool writes_clipvertex;
