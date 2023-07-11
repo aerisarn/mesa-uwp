@@ -627,7 +627,6 @@ scan_declaration(struct tgsi_shader_info *info,
       default:
          break;
       }
-      info->array_max[file] = MAX2(info->array_max[file], array_id);
    }
 
    for (reg = fulldecl->Range.First; reg <= fulldecl->Range.Last; reg++) {

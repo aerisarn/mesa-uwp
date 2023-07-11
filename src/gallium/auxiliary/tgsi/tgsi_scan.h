@@ -71,7 +71,6 @@ struct tgsi_shader_info
 
    uint8_t input_array_first[PIPE_MAX_SHADER_INPUTS];
    uint8_t output_array_first[PIPE_MAX_SHADER_OUTPUTS];
-   unsigned array_max[TGSI_FILE_COUNT];  /**< highest index array per register file */
 
    unsigned immediate_count; /**< number of immediates declared */
    unsigned num_instructions;
