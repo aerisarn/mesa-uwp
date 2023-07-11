@@ -31,12 +31,10 @@ struct ac_llvm_compiler;
 /* special primitive types */
 #define SI_PRIM_RECTANGLE_LIST MESA_PRIM_COUNT
 
-/* The base vertex and primitive restart can be any number, but we must pick
- * one which will mean "unknown" for the purpose of state tracking and
- * the number shouldn't be a commonly-used one. */
-#define SI_BASE_VERTEX_UNKNOWN    INT_MIN
-#define SI_START_INSTANCE_UNKNOWN ((unsigned)INT_MIN)
-#define SI_DRAW_ID_UNKNOWN        ((unsigned)INT_MIN)
+/* The primitive restart can be any number, but we must pick one which will
+ * mean "unknown" for the purpose of state tracking and the number shouldn't
+ * be a commonly-used one.
+ */
 #define SI_RESTART_INDEX_UNKNOWN  ((unsigned)INT_MIN)
 #define SI_INSTANCE_COUNT_UNKNOWN ((unsigned)INT_MIN)
 #define SI_NUM_SMOOTH_AA_SAMPLES  4
@@ -1167,11 +1165,7 @@ struct si_context {
    bool disable_instance_packing : 1;
    uint16_t ngg_culling;
    unsigned last_index_size;
-   int last_base_vertex;
-   unsigned last_start_instance;
    unsigned last_instance_count;
-   unsigned last_drawid;
-   unsigned last_sh_base_reg;
    int last_primitive_restart_en;
    unsigned last_restart_index;
    unsigned last_prim;
@@ -1751,19 +1745,6 @@ static inline void si_context_add_resource_size(struct si_context *sctx, struct 
       /* Add memory usage for need_gfx_cs_space */
       sctx->memory_usage_kb += si_resource(r)->memory_usage_kb;
    }
-}
-
-static inline void si_invalidate_draw_sh_constants(struct si_context *sctx)
-{
-   sctx->last_base_vertex = SI_BASE_VERTEX_UNKNOWN;
-   sctx->last_start_instance = SI_START_INSTANCE_UNKNOWN;
-   sctx->last_drawid = SI_DRAW_ID_UNKNOWN;
-}
-
-static inline void si_invalidate_draw_constants(struct si_context *sctx)
-{
-   si_invalidate_draw_sh_constants(sctx);
-   sctx->last_instance_count = SI_INSTANCE_COUNT_UNKNOWN;
 }
 
 static inline unsigned si_get_atom_bit(struct si_context *sctx, struct si_atom *atom)
