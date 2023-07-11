@@ -211,6 +211,13 @@
       - src/gallium/winsys/sw/**/*
       when: on_success
 
+.llvmpipe-manual-rules:
+  stage: software-renderer
+  rules:
+    - !reference [.gl-manual-rules, rules]
+    - changes: *llvmpipe_file_list
+      when: manual
+
 .lavapipe-rules:
   stage: software-renderer
   rules:
@@ -795,9 +802,7 @@
     - !reference [.collabora-farm-manual-rules, rules]
     - !reference [.performance-rules, rules]
     - !reference [.gl-manual-rules, rules]
-    - changes:
-        *llvmpipe_file_list
-      when: manual
+    - !reference [.llvmpipe-manual-rules, rules]
     - changes:
         *virgl_file_list
       when: manual
