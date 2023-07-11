@@ -32,14 +32,6 @@
         *llvmpipe_file_list
       when: on_success
 
-# TODO: remove together with Clover
-.llvmpipe-clover-rules:
-  rules:
-    - !reference [.llvmpipe-cl-rules, rules]
-    - changes:
-      - src/gallium/frontends/clover/**/*
-      when: on_success
-
 .llvmpipe-rusticl-rules:
   rules:
     - !reference [.llvmpipe-cl-rules, rules]
@@ -65,19 +57,6 @@
   variables:
     LP_NUM_THREADS: 1
     PIGLIT_PROFILES: cl
-
-# TODO: remove together with Clover
-.llvmpipe-piglit-clover:
-  extends:
-    - .llvmpipe-piglit-cl
-    - .llvmpipe-clover-rules
-  needs:
-    - .debian-clover-testing
-    - debian/x86_64_test-gl
-  variables:
-    LP_CL: 1
-    DEQP_SUITE: llvmpipe-clover
-    GPU_VERSION: llvmpipe-clover
 
 llvmpipe-piglit-rusticl:
   extends:

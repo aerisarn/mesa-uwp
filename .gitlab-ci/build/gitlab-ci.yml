@@ -147,15 +147,6 @@ debian-testing-msan:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
-# TODO: remove together with Clover
-.debian-clover-testing:
-  extends:
-    - .debian-cl-testing
-  variables:
-    GALLIUM_ST: >
-      -D gallium-opencl=icd
-      -D opencl-spirv=true
-
 debian-rusticl-testing:
   extends:
     - .debian-cl-testing
@@ -606,21 +597,6 @@ windows-vs2019:
       -D gbm=disabled
     EXTRA_OPTION: >
       -D valgrind=disabled
-
-# TODO: remove with Clover
-.debian-clover:
-  extends: .debian-cl
-  variables:
-    GALLIUM_DRIVERS: "r600,radeonsi,swrast"
-    GALLIUM_ST: >
-      -D dri3=disabled
-      -D gallium-vdpau=disabled
-      -D gallium-omx=disabled
-      -D gallium-va=disabled
-      -D gallium-xa=disabled
-      -D gallium-nine=false
-      -D gallium-opencl=icd
-      -D gallium-rusticl=false
 
 debian-rusticl:
   extends: .debian-cl
