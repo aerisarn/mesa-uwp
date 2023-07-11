@@ -968,9 +968,7 @@
     - !reference [.llvmpipe-rules, rules]
     - !reference [.lavapipe-rules, rules]
     - !reference [.radv-rules, rules]
-    - changes:
-        *radeonsi_file_list
-      when: on_success
+    - !reference [.radeonsi-rules, rules]
     - changes:
         *virgl_file_list
       when: on_success
