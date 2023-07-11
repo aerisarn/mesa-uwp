@@ -221,6 +221,7 @@ src_swizzle(hw_src src, unsigned swizzle)
 #define CONST(x) CONST_VAL(ETNA_UNIFORM_CONSTANT, x)
 #define UNIFORM(x) CONST_VAL(ETNA_UNIFORM_UNIFORM, x)
 #define TEXSCALE(x, i) CONST_VAL(ETNA_UNIFORM_TEXRECT_SCALE_X + (i), x)
+#define TEXSIZE(x, i) CONST_VAL(ETNA_UNIFORM_TEXTURE_WIDTH + (i), x)
 
 static int
 const_add(uint64_t *c, uint64_t value)
@@ -379,6 +380,16 @@ get_src(struct etna_compile *c, nir_src *src)
          };
 
          return src_swizzle(const_src(c, values, 2), SWIZZLE(X,Y,X,X));
+      }
+      case nir_intrinsic_load_texture_size_etna: {
+         int sampler = nir_src_as_int(intr->src[0]);
+         nir_const_value values[] = {
+            TEXSIZE(sampler, 0),
+            TEXSIZE(sampler, 1),
+            TEXSIZE(sampler, 2),
+         };
+
+         return src_swizzle(const_src(c, values, 3), SWIZZLE(X,Y,Z,X));
       }
       default:
          compile_error(c, "Unhandled NIR intrinsic type: %s\n",
@@ -601,6 +612,7 @@ emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
    case nir_intrinsic_load_input:
    case nir_intrinsic_load_instance_id:
    case nir_intrinsic_load_texture_scale:
+   case nir_intrinsic_load_texture_size_etna:
       break;
    default:
       compile_error(c, "Unhandled NIR intrinsic type: %s\n",
