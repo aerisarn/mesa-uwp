@@ -130,7 +130,6 @@ struct tgsi_shader_info
     * Bitmask indicating which register files are read / written with
     * indirect addressing.  The bits are (1 << TGSI_FILE_x).
     */
-   unsigned indirect_files_read;
    unsigned indirect_files_written;
    unsigned dim_indirect_files; /**< shader resource indexing */
    unsigned const_buffers_indirect; /**< const buffers using indirect addressing */

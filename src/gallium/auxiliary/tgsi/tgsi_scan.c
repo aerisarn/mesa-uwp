@@ -152,7 +152,6 @@ scan_src_operand(struct tgsi_shader_info *info,
    /* check for indirect register reads */
    if (src->Register.Indirect) {
       info->indirect_files |= (1 << src->Register.File);
-      info->indirect_files_read |= (1 << src->Register.File);
 
       /* record indirect constant buffer indexing */
       if (src->Register.File == TGSI_FILE_CONSTANT) {
