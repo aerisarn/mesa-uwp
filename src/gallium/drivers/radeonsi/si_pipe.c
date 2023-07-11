@@ -192,7 +192,7 @@ static void si_destroy_context(struct pipe_context *context)
    si_release_all_descriptors(sctx);
 
    if (sctx->gfx_level >= GFX10 && sctx->has_graphics)
-      gfx11_destroy_query(sctx);
+      si_gfx11_destroy_query(sctx);
 
    if (sctx->sqtt) {
       struct si_screen *sscreen = sctx->screen;
@@ -637,7 +637,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    /* Initialize graphics-only context functions. */
    if (sctx->has_graphics) {
       if (sctx->gfx_level >= GFX10)
-         gfx11_init_query(sctx);
+         si_gfx11_init_query(sctx);
       si_init_msaa_functions(sctx);
       si_init_shader_functions(sctx);
       si_init_state_functions(sctx);

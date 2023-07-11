@@ -1616,8 +1616,8 @@ void *si_create_query_result_cs(struct si_context *sctx);
 void *gfx11_create_sh_query_result_cs(struct si_context *sctx);
 
 /* gfx11_query.c */
-void gfx11_init_query(struct si_context *sctx);
-void gfx11_destroy_query(struct si_context *sctx);
+void si_gfx11_init_query(struct si_context *sctx);
+void si_gfx11_destroy_query(struct si_context *sctx);
 
 /* si_test_image_copy_region.c */
 void si_test_image_copy_region(struct si_screen *sscreen);
