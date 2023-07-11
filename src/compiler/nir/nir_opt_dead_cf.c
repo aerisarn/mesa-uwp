@@ -312,10 +312,11 @@ dead_cf_list(struct exec_list *list, bool *list_ends_in_jump)
       case nir_cf_node_block: {
          nir_block *block = nir_cf_node_as_block(cur);
          while (dead_cf_block(block)) {
-            /* We just deleted the if or loop after this block, so we may have
-             * deleted the block before or after it -- which one is an
-             * implementation detail. Therefore, to recover the place we were
-             * at, we have to use the previous cf_node.
+            /* We just deleted the if or loop after this block.
+             * nir_cf_node_remove may have deleted the block before
+             * or after it -- which one is an implementation detail.
+             * Therefore, to recover the place we were at, we have
+             * to use the previous cf_node.
              */
 
             if (prev) {
