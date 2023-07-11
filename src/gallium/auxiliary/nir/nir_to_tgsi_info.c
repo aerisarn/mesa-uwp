@@ -213,24 +213,6 @@ static void scan_instruction(const struct nir_shader *nir,
       case nir_intrinsic_load_num_workgroups:
          info->uses_grid_size = true;
          break;
-      case nir_intrinsic_load_workgroup_size:
-         /* The block size is translated to IMM with a fixed block size. */
-         if (info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] == 0)
-            info->uses_block_size = true;
-         break;
-      case nir_intrinsic_load_local_invocation_id:
-      case nir_intrinsic_load_workgroup_id: {
-         unsigned mask = nir_ssa_def_components_read(&intr->dest.ssa);
-         while (mask) {
-            unsigned i = u_bit_scan(&mask);
-
-            if (intr->intrinsic == nir_intrinsic_load_workgroup_id)
-               info->uses_block_id[i] = true;
-            else
-               info->uses_thread_id[i] = true;
-         }
-         break;
-      }
       case nir_intrinsic_load_vertex_id:
          info->uses_vertexid = 1;
          break;

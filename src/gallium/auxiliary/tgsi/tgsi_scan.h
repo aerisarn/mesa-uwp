@@ -97,9 +97,6 @@ struct tgsi_shader_info
    bool uses_primid;
    bool uses_frontface;
    bool uses_invocationid;
-   bool uses_thread_id[3];
-   bool uses_block_id[3];
-   bool uses_block_size;
    bool uses_grid_size;
    bool uses_subgroup_info;
    bool writes_position;

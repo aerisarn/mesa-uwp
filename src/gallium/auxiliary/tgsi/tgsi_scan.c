@@ -115,28 +115,11 @@ scan_src_operand(struct tgsi_shader_info *info,
 
    if (info->processor == PIPE_SHADER_COMPUTE &&
        src->Register.File == TGSI_FILE_SYSTEM_VALUE) {
-      unsigned name, mask;
+      unsigned name;
 
       name = info->system_value_semantic_name[src->Register.Index];
 
       switch (name) {
-      case TGSI_SEMANTIC_THREAD_ID:
-      case TGSI_SEMANTIC_BLOCK_ID:
-         mask = usage_mask_after_swizzle & TGSI_WRITEMASK_XYZ;
-         while (mask) {
-            unsigned i = u_bit_scan(&mask);
-
-            if (name == TGSI_SEMANTIC_THREAD_ID)
-               info->uses_thread_id[i] = true;
-            else
-               info->uses_block_id[i] = true;
-         }
-         break;
-      case TGSI_SEMANTIC_BLOCK_SIZE:
-         /* The block size is translated to IMM with a fixed block size. */
-         if (info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] == 0)
-            info->uses_block_size = true;
-         break;
       case TGSI_SEMANTIC_GRID_SIZE:
          info->uses_grid_size = true;
          break;
