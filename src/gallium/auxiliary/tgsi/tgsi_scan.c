@@ -899,7 +899,6 @@ tgsi_scan_shader(const struct tgsi_token *tokens,
           procType == PIPE_SHADER_TESS_EVAL ||
           procType == PIPE_SHADER_COMPUTE);
    info->processor = procType;
-   info->num_tokens = tgsi_num_tokens(parse.Tokens);
 
    if (procType == PIPE_SHADER_GEOMETRY)
       info->properties[TGSI_PROPERTY_GS_INVOCATIONS] = 1;

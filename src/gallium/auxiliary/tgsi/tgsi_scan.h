@@ -42,8 +42,6 @@ extern "C" {
  */
 struct tgsi_shader_info
 {
-   unsigned num_tokens;
-
    uint8_t num_inputs;
    uint8_t num_outputs;
    uint8_t input_semantic_name[PIPE_MAX_SHADER_INPUTS]; /**< TGSI_SEMANTIC_x */
