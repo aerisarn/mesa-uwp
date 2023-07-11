@@ -224,12 +224,7 @@ scan_src_operand(struct tgsi_shader_info *info,
                info->shader_buffers_atomic |= 1 << src->Register.Index;
          }
       } else {
-         if (src->Register.File == TGSI_FILE_IMAGE) {
-            if (src->Register.Indirect)
-               info->images_load = info->images_declared;
-            else
-               info->images_load |= 1 << src->Register.Index;
-         } else if (src->Register.File == TGSI_FILE_BUFFER) {
+         if (src->Register.File == TGSI_FILE_BUFFER) {
             if (src->Register.Indirect)
                info->shader_buffers_load = info->shader_buffers_declared;
             else
