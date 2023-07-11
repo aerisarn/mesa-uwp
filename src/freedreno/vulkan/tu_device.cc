@@ -2109,6 +2109,17 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    /* Initialize sparse array for refcounting imported BOs */
    util_sparse_array_init(&device->bo_map, sizeof(struct tu_bo), 512);
 
+   if (physical_device->has_set_iova) {
+      STATIC_ASSERT(TU_MAX_QUEUE_FAMILIES == 1);
+      if (!u_vector_init(&device->zombie_vmas, 64,
+                         sizeof(struct tu_zombie_vma))) {
+         result = vk_startup_errorf(physical_device->instance,
+                                    VK_ERROR_INITIALIZATION_FAILED,
+                                    "zombie_vmas create failed");
+         goto fail_free_zombie_vma;
+      }
+   }
+
    /* initial sizes, these will increase if there is overflow */
    device->vsc_draw_strm_pitch = 0x1000 + VSC_PAD;
    device->vsc_prim_strm_pitch = 0x4000 + VSC_PAD;
@@ -2242,17 +2253,6 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_timeline_cond;
    }
 
-   if (physical_device->has_set_iova) {
-      STATIC_ASSERT(TU_MAX_QUEUE_FAMILIES == 1);
-      if (!u_vector_init(&device->zombie_vmas, 64,
-                         sizeof(struct tu_zombie_vma))) {
-         result = vk_startup_errorf(physical_device->instance,
-                                    VK_ERROR_INITIALIZATION_FAILED,
-                                    "zombie_vmas create failed");
-         goto fail_free_zombie_vma;
-      }
-   }
-
    for (unsigned i = 0; i < ARRAY_SIZE(device->scratch_bos); i++)
       mtx_init(&device->scratch_bos[i].construct_mtx, mtx_plain);
 
@@ -2280,8 +2280,6 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    *pDevice = tu_device_to_handle(device);
    return VK_SUCCESS;
 
-fail_free_zombie_vma:
-   u_vector_finish(&device->zombie_vmas);
 fail_timeline_cond:
 fail_prepare_perfcntrs_pass_cs:
    free(device->perfcntrs_pass_cs_entries);
@@ -2302,7 +2300,8 @@ fail_global_bo:
    util_sparse_array_finish(&device->bo_map);
    if (physical_device->has_set_iova)
       util_vma_heap_finish(&device->vma);
-
+fail_free_zombie_vma:
+   u_vector_finish(&device->zombie_vmas);
 fail_queues:
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
       for (unsigned q = 0; q < device->queue_count[i]; q++)
