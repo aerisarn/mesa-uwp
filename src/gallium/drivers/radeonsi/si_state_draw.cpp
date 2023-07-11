@@ -1339,7 +1339,7 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
    if (GFX_VERSION == GFX9) {
       /* Workaround for SpecviewPerf13 Catia hang on GFX9. */
       if (prim != sctx->last_prim)
-         sctx->tracked_regs.other_reg_saved_mask &= ~BITFIELD64_BIT(SI_TRACKED_IA_MULTI_VGT_PARAM);
+         sctx->tracked_regs.other_reg_saved_mask &= ~BITFIELD64_BIT(SI_TRACKED_IA_MULTI_VGT_PARAM_UCONFIG);
 
       radeon_opt_set_uconfig_reg_idx(sctx, GFX_VERSION, R_030960_IA_MULTI_VGT_PARAM,
                                      SI_TRACKED_IA_MULTI_VGT_PARAM_UCONFIG,
