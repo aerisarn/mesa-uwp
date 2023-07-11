@@ -701,7 +701,7 @@ Clover OpenCL 1.2 -- all DONE:
 
 Clover OpenCL 2.0 -- all DONE:
 
-  Shared virtual memory                                 DONE (nvc0)
+  Shared virtual memory                                 DONE (nvc0, llvmpipe)
   Device queues                                         not started
   - cl_khr_create_command_queue                         not started
   - Additional queries for clGetDeviceInfo              not started
@@ -856,7 +856,7 @@ Rusticl OpenCL 1.2 -- all DONE:
 
 Rusticl OpenCL 2.0 -- all DONE:
 
-  Shared virtual memory                                 in progress (nvc0)
+  Shared virtual memory                                 in progress (nvc0, llvmpipe)
   Device queues                                         not started
   - cl_khr_create_command_queue                         DONE
   - Additional queries for clGetDeviceInfo              DONE
