@@ -5120,6 +5120,13 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
       pipeline->instrlen >
       cmd->device->physical_device->info->a6xx.instr_cache_size;
 
+   /* We don't use draw states for dispatches, so the bound pipeline
+    * could be overwritten by reg stomping in a renderpass or blit.
+    */
+   if (cmd->device->dbg_renderpass_stomp_cs) {
+      tu_cs_emit_state_ib(&cmd->cs, cmd->state.compute_pipeline->base.program.state);
+   }
+
    /* There appears to be a HW bug where in some rare circumstances it appears
     * to accidentally use the FS instrlen instead of the CS instrlen, which
     * affects all known gens. Based on various experiments it appears that the
