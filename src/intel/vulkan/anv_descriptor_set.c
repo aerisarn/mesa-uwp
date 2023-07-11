@@ -1783,7 +1783,10 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
                     element * bind_layout->descriptor_stride;
 
    if (buffer_view == NULL) {
-      memset(desc_map, 0, bind_layout->descriptor_stride);
+      if (data & ANV_DESCRIPTOR_SURFACE)
+         memcpy(desc_map, device->null_surface_state.map, ANV_SURFACE_STATE_SIZE);
+      else
+         memset(desc_map, 0, bind_layout->descriptor_stride);
       return;
    }
 
@@ -1804,13 +1807,9 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
    }
 
    if (data & ANV_DESCRIPTOR_SURFACE) {
-      if (buffer_view != NULL) {
-         memcpy(desc_map,
-                anv_buffer_view_surface_data(buffer_view, type),
-                ANV_SURFACE_STATE_SIZE);
-      } else {
-         memcpy(desc_map, device->null_surface_state.map, ANV_SURFACE_STATE_SIZE);
-      }
+      memcpy(desc_map,
+             anv_buffer_view_surface_data(buffer_view, type),
+             ANV_SURFACE_STATE_SIZE);
    }
 }
 
