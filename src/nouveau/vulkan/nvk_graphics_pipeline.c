@@ -228,6 +228,50 @@ emit_tessellation_paramaters(struct nv_push *p,
    });
 }
 
+static void
+merge_tess_info(struct shader_info *tes_info, struct shader_info *tcs_info)
+{
+   /* The Vulkan 1.0.38 spec, section 21.1 Tessellator says:
+    *
+    *    "PointMode. Controls generation of points rather than triangles
+    *     or lines. This functionality defaults to disabled, and is
+    *     enabled if either shader stage includes the execution mode.
+    *
+    * and about Triangles, Quads, IsoLines, VertexOrderCw, VertexOrderCcw,
+    * PointMode, SpacingEqual, SpacingFractionalEven, SpacingFractionalOdd,
+    * and OutputVertices, it says:
+    *
+    *    "One mode must be set in at least one of the tessellation
+    *     shader stages."
+    *
+    * So, the fields can be set in either the TCS or TES, but they must
+    * agree if set in both.  Our backend looks at TES, so bitwise-or in
+    * the values from the TCS.
+    */
+   assert(tcs_info->tess.tcs_vertices_out == 0 || tes_info->tess.tcs_vertices_out == 0 ||
+          tcs_info->tess.tcs_vertices_out == tes_info->tess.tcs_vertices_out);
+   tes_info->tess.tcs_vertices_out |= tcs_info->tess.tcs_vertices_out;
+
+   assert(tcs_info->tess.spacing == TESS_SPACING_UNSPECIFIED ||
+          tes_info->tess.spacing == TESS_SPACING_UNSPECIFIED ||
+          tcs_info->tess.spacing == tes_info->tess.spacing);
+   tes_info->tess.spacing |= tcs_info->tess.spacing;
+
+   assert(tcs_info->tess._primitive_mode == TESS_PRIMITIVE_UNSPECIFIED ||
+          tes_info->tess._primitive_mode == TESS_PRIMITIVE_UNSPECIFIED ||
+          tcs_info->tess._primitive_mode == tes_info->tess._primitive_mode);
+   tes_info->tess._primitive_mode |= tcs_info->tess._primitive_mode;
+   tes_info->tess.ccw |= tcs_info->tess.ccw;
+   tes_info->tess.point_mode |= tcs_info->tess.point_mode;
+
+   /* Copy the merged info back to the TCS */
+   tcs_info->tess.tcs_vertices_out = tes_info->tess.tcs_vertices_out;
+   tcs_info->tess.spacing = tes_info->tess.spacing;
+   tcs_info->tess._primitive_mode = tes_info->tess._primitive_mode;
+   tcs_info->tess.ccw = tes_info->tess.ccw;
+   tcs_info->tess.point_mode = tes_info->tess.point_mode;
+}
+
 VkResult
 nvk_graphics_pipeline_create(struct nvk_device *device,
                              struct vk_pipeline_cache *cache,
@@ -254,26 +298,36 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
    assert(result == VK_SUCCESS);
 
    nir_shader *nir[MESA_SHADER_STAGES] = {};
+   struct vk_pipeline_robustness_state robustness[MESA_SHADER_STAGES];
+
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
-      struct vk_pipeline_robustness_state robustness;
-      vk_pipeline_robustness_state_fill(&device->vk, &robustness,
+      vk_pipeline_robustness_state_fill(&device->vk, &robustness[stage],
                                         pCreateInfo->pNext, sinfo->pNext);
 
       const nir_shader_compiler_options *nir_options =
          nvk_physical_device_nir_options(pdevice, stage);
       const struct spirv_to_nir_options spirv_options =
-         nvk_physical_device_spirv_options(pdevice, &robustness);
+         nvk_physical_device_spirv_options(pdevice, &robustness[stage]);
 
       result = vk_pipeline_shader_stage_to_nir(&device->vk, sinfo,
                                                &spirv_options, nir_options,
                                                NULL, &nir[stage]);
       if (result != VK_SUCCESS)
          goto fail;
+   }
 
-      nvk_lower_nir(device, nir[stage], &robustness,
+   if (nir[MESA_SHADER_TESS_CTRL] && nir[MESA_SHADER_TESS_EVAL]) {
+      nir_lower_patch_vertices(nir[MESA_SHADER_TESS_EVAL], nir[MESA_SHADER_TESS_CTRL]->info.tess.tcs_vertices_out, NULL);
+      merge_tess_info(&nir[MESA_SHADER_TESS_EVAL]->info, &nir[MESA_SHADER_TESS_CTRL]->info);
+   }
+
+   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+      const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
+      gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
+      nvk_lower_nir(device, nir[stage], &robustness[stage],
                     state.rp->view_mask != 0, pipeline_layout);
    }
 
