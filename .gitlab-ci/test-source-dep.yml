@@ -985,10 +985,7 @@
     - changes:
         *virgl_file_list
       when: on_success
-    - changes:
-      - src/gallium/drivers/nouveau/**/*
-      - src/gallium/winsys/nouveau/**/*
-      when: on_success
+    - !reference [.nouveau-rules, rules]
 
 .s390x-rules:
    rules:
