@@ -320,25 +320,25 @@ add_surface_reloc(struct anv_cmd_buffer *cmd_buffer,
 
 static void
 add_surface_state_relocs(struct anv_cmd_buffer *cmd_buffer,
-                         struct anv_surface_state state)
+                         const struct anv_surface_state *state)
 {
-   assert(!anv_address_is_null(state.address));
-   add_surface_reloc(cmd_buffer, state.address);
+   assert(!anv_address_is_null(state->address));
+   add_surface_reloc(cmd_buffer, state->address);
 
-   if (!anv_address_is_null(state.aux_address)) {
+   if (!anv_address_is_null(state->aux_address)) {
       VkResult result =
          anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
                                &cmd_buffer->vk.pool->alloc,
-                               state.aux_address.bo);
+                               state->aux_address.bo);
       if (result != VK_SUCCESS)
          anv_batch_set_error(&cmd_buffer->batch, result);
    }
 
-   if (!anv_address_is_null(state.clear_address)) {
+   if (!anv_address_is_null(state->clear_address)) {
       VkResult result =
          anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
                                &cmd_buffer->vk.pool->alloc,
-                               state.clear_address.bo);
+                               state->clear_address.bo);
       if (result != VK_SUCCESS)
          anv_batch_set_error(&cmd_buffer->batch, result);
    }
@@ -7468,7 +7468,7 @@ void genX(CmdBeginRendering)(
                                    0, /* anv_image_view_state_flags */
                                    &gfx->color_att[i].surface_state);
 
-      add_surface_state_relocs(cmd_buffer, gfx->color_att[i].surface_state);
+      add_surface_state_relocs(cmd_buffer, &gfx->color_att[i].surface_state);
 
       if (GFX_VER < 10 &&
           (att->loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
