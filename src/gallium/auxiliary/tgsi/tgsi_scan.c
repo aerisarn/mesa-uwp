@@ -252,24 +252,6 @@ scan_instruction(struct tgsi_shader_info *info,
    case TGSI_OPCODE_ENDLOOP:
       (*current_depth)--;
       break;
-   case TGSI_OPCODE_ATOMUADD:
-   case TGSI_OPCODE_ATOMXCHG:
-   case TGSI_OPCODE_ATOMCAS:
-   case TGSI_OPCODE_ATOMAND:
-   case TGSI_OPCODE_ATOMOR:
-   case TGSI_OPCODE_ATOMXOR:
-   case TGSI_OPCODE_ATOMUMIN:
-   case TGSI_OPCODE_ATOMUMAX:
-   case TGSI_OPCODE_ATOMIMIN:
-   case TGSI_OPCODE_ATOMIMAX:
-   case TGSI_OPCODE_ATOMFADD:
-   case TGSI_OPCODE_ATOMINC_WRAP:
-   case TGSI_OPCODE_ATOMDEC_WRAP:
-      if (tgsi_is_bindless_image_file(fullinst->Src[0].Register.File)) {
-         if (fullinst->Memory.Texture != TGSI_TEXTURE_BUFFER)
-            info->uses_bindless_image_atomic = true;
-      }
-      break;
    case TGSI_OPCODE_FBFETCH:
       info->uses_fbfetch = true;
       break;

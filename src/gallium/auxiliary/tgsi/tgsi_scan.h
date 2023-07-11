@@ -119,7 +119,6 @@ struct tgsi_shader_info
    unsigned shader_buffers_load; /**< bitmask of shader buffers using loads */
    unsigned shader_buffers_store; /**< bitmask of shader buffers using stores */
    unsigned shader_buffers_atomic; /**< bitmask of shader buffers using atomics */
-   bool uses_bindless_image_atomic;
 
    unsigned hw_atomic_declared; /**< bitmask of declared atomic_counter */
    /**
