@@ -267,8 +267,9 @@ i915_batch_submit(struct iris_batch *batch)
    struct drm_i915_gem_exec_object2 *validation_list =
       malloc(batch->exec_count * sizeof(*validation_list));
 
-   unsigned *index_for_handle =
-      calloc(batch->max_gem_handle + 1, sizeof(unsigned));
+   size_t sz = (batch->max_gem_handle + 1) * sizeof(int);
+   int *index_for_handle = malloc(sz);
+   memset(index_for_handle, -1, sz);
 
    unsigned validation_count = 0;
    for (int i = 0; i < batch->exec_count; i++) {
@@ -276,8 +277,8 @@ i915_batch_submit(struct iris_batch *batch)
       assert(bo->gem_handle != 0);
 
       bool written = BITSET_TEST(batch->bos_written, i);
-      unsigned prev_index = index_for_handle[bo->gem_handle];
-      if (prev_index > 0) {
+      int prev_index = index_for_handle[bo->gem_handle];
+      if (prev_index != -1) {
          if (written)
             validation_list[prev_index].flags |= EXEC_OBJECT_WRITE;
       } else {
