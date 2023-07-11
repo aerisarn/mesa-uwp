@@ -641,7 +641,6 @@ scan_property(struct tgsi_shader_info *info,
    switch (name) {
    case TGSI_PROPERTY_NUM_CLIPDIST_ENABLED:
       info->num_written_clipdistance = value;
-      info->clipdist_writemask |= (1 << value) - 1;
       break;
    case TGSI_PROPERTY_NUM_CULLDIST_ENABLED:
       info->num_written_culldistance = value;

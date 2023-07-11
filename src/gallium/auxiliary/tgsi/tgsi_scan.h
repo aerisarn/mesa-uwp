@@ -105,7 +105,6 @@ struct tgsi_shader_info
    bool writes_layer;
    bool writes_memory; /**< contains stores or atomics to buffers or images */
    bool uses_fbfetch;
-   unsigned clipdist_writemask;
    unsigned culldist_writemask;
    unsigned num_written_culldistance;
    unsigned num_written_clipdistance;
