@@ -903,9 +903,7 @@
       - src/gallium/frontends/va/*
       - src/gallium/targets/va/*
       when: on_success
-    - changes:
-        *radv_file_list
-      when: on_success
+    - !reference [.radv-rules, rules]
 
 .glon12-test-rules:
   rules:
@@ -969,9 +967,7 @@
     - !reference [.softpipe-rules, rules]
     - !reference [.llvmpipe-rules, rules]
     - !reference [.lavapipe-rules, rules]
-    - changes:
-        *radv_file_list
-      when: on_success
+    - !reference [.radv-rules, rules]
     - changes:
         *radeonsi_file_list
       when: on_success
