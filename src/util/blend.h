@@ -7,6 +7,10 @@
 #ifndef UTIL_BLEND_H
 #define UTIL_BLEND_H
 
+#include <stdbool.h>
+
+#define PIPE_BLENDFACTOR_INVERT_BIT (0x10)
+
 enum pipe_blendfactor {
    PIPE_BLENDFACTOR_ONE = 1,
    PIPE_BLENDFACTOR_SRC_COLOR,
@@ -19,17 +23,33 @@ enum pipe_blendfactor {
    PIPE_BLENDFACTOR_SRC1_COLOR,
    PIPE_BLENDFACTOR_SRC1_ALPHA,
 
-   PIPE_BLENDFACTOR_ZERO = 0x11,
+   PIPE_BLENDFACTOR_ZERO = PIPE_BLENDFACTOR_INVERT_BIT | PIPE_BLENDFACTOR_ONE,
    PIPE_BLENDFACTOR_INV_SRC_COLOR,
    PIPE_BLENDFACTOR_INV_SRC_ALPHA,
    PIPE_BLENDFACTOR_INV_DST_ALPHA,
    PIPE_BLENDFACTOR_INV_DST_COLOR,
 
-   PIPE_BLENDFACTOR_INV_CONST_COLOR = 0x17,
+   /* Intentionally weird wrapping due to Gallium trace parsing this file */
+   PIPE_BLENDFACTOR_INV_CONST_COLOR = PIPE_BLENDFACTOR_INVERT_BIT
+                                    | PIPE_BLENDFACTOR_CONST_COLOR,
    PIPE_BLENDFACTOR_INV_CONST_ALPHA,
    PIPE_BLENDFACTOR_INV_SRC1_COLOR,
    PIPE_BLENDFACTOR_INV_SRC1_ALPHA,
 };
+
+static inline bool
+util_blendfactor_is_inverted(enum pipe_blendfactor factor)
+{
+   /* By construction of the enum */
+   return (factor & PIPE_BLENDFACTOR_INVERT_BIT);
+}
+
+static inline enum pipe_blendfactor
+util_blendfactor_without_invert(enum pipe_blendfactor factor)
+{
+   /* By construction of the enum */
+   return (enum pipe_blendfactor)(factor & ~PIPE_BLENDFACTOR_INVERT_BIT);
+}
 
 enum pipe_blend_func {
    PIPE_BLEND_ADD,
