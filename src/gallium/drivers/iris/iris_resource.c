@@ -1464,20 +1464,21 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    if (!res->bo)
       goto fail;
 
+   uint64_t modifier;
+   if (whandle->modifier == DRM_FORMAT_MOD_INVALID) {
+      /* We don't have a modifier; match whatever GEM_GET_TILING says */
+      uint32_t tiling;
+      iris_gem_get_tiling(res->bo, &tiling);
+      modifier = tiling_to_modifier(tiling);
+   } else {
+      modifier = whandle->modifier;
+   }
+
    res->offset = whandle->offset;
    res->external_format = whandle->format;
 
    /* Create a surface for each plane specified by the external format. */
    if (whandle->plane < util_format_get_num_planes(whandle->format)) {
-      uint64_t modifier = whandle->modifier;
-
-      if (whandle->modifier == DRM_FORMAT_MOD_INVALID) {
-         /* We don't have a modifier; match whatever GEM_GET_TILING says */
-         uint32_t tiling;
-         iris_gem_get_tiling(res->bo, &tiling);
-         modifier = tiling_to_modifier(tiling);
-      }
-
       const bool isl_surf_created_successfully =
          iris_resource_configure_main(screen, res, templ, modifier,
                                       whandle->stride);
@@ -1491,7 +1492,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
        * aux image. iris_resource_finish_aux_import will merge the separate aux
        * parameters back into a single iris_resource.
        */
-   } else if (mod_plane_is_clear_color(whandle->modifier, whandle->plane)) {
+   } else if (mod_plane_is_clear_color(modifier, whandle->plane)) {
       res->aux.clear_color_offset = whandle->offset;
       res->aux.clear_color_bo = res->bo;
       res->bo = NULL;
@@ -1507,8 +1508,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    }
 
    if (get_num_planes(&res->base.b) ==
-       iris_get_dmabuf_modifier_planes(pscreen, whandle->modifier,
-                                       whandle->format)) {
+       iris_get_dmabuf_modifier_planes(pscreen, modifier, whandle->format)) {
       iris_resource_finish_aux_import(pscreen, res);
    }
 
