@@ -101,7 +101,6 @@ struct tgsi_shader_info
    bool writes_position;
    bool writes_psize;
    bool writes_clipvertex;
-   bool writes_primid;
    bool writes_viewport_index;
    bool writes_layer;
    bool writes_memory; /**< contains stores or atomics to buffers or images */

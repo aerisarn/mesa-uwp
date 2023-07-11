@@ -585,9 +585,6 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
          info->output_semantic_index[i] = semantic_index;
 
          switch (semantic_name) {
-         case TGSI_SEMANTIC_PRIMID:
-            info->writes_primid = true;
-            break;
          case TGSI_SEMANTIC_VIEWPORT_INDEX:
             info->writes_viewport_index = true;
             break;

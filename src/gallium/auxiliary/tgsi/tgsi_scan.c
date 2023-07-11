@@ -625,9 +625,6 @@ scan_declaration(struct tgsi_shader_info *info,
          }
 
          switch (semName) {
-         case TGSI_SEMANTIC_PRIMID:
-            info->writes_primid = true;
-            break;
          case TGSI_SEMANTIC_VIEWPORT_INDEX:
             info->writes_viewport_index = true;
             break;
