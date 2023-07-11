@@ -1843,7 +1843,9 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
          key.vs.vertex_attribute_offsets[i] = offset;
          key.vs.instance_rate_divisors[i] = state->vi->bindings[binding].divisor;
 
-         if (!(pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE)) {
+         /* vertex_attribute_strides is only needed to workaround GFX6/7 offset>=stride checks. */
+         if (!(pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE) &&
+             pdevice->rad_info.gfx_level < GFX8) {
             /* From the Vulkan spec 1.2.157:
              *
              * "If the bound pipeline state object was created with the
