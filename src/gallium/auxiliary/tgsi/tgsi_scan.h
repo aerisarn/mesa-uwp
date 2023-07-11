@@ -115,7 +115,6 @@ struct tgsi_shader_info
     * Bitmask indicating which declared image is a buffer.
     */
    unsigned images_buffers;
-   unsigned images_store; /**< bitmask of images using stores */
    unsigned images_atomic; /**< bitmask of images using atomics */
    unsigned shader_buffers_declared; /**< bitmask of declared shader buffers */
    unsigned shader_buffers_load; /**< bitmask of shader buffers using loads */

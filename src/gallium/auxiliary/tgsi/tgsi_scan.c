@@ -388,11 +388,6 @@ scan_instruction(struct tgsi_shader_info *info,
                else
                   info->msaa_images_declared |= 1 << dst->Register.Index;
             }
-
-            if (dst->Register.Indirect)
-               info->images_store = info->images_declared;
-            else
-               info->images_store |= 1 << dst->Register.Index;
          } else if (dst->Register.File == TGSI_FILE_BUFFER) {
             if (dst->Register.Indirect)
                info->shader_buffers_store = info->shader_buffers_declared;
