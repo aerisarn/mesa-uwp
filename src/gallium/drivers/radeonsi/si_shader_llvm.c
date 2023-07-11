@@ -472,24 +472,9 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
        * tionally, so we can't consume it in the main
        * block.
        */
-      unsigned num_part_params = LLVMCountParams(parts[1].value);
-      for (unsigned i = 0, j = 0; i < num_part_params; i++) {
-         LLVMValueRef param = LLVMGetParam(parts[1].value, i);
-         LLVMTypeRef type = LLVMTypeOf(param);
 
-         bool found = false;
-         for ( ; j < num_params; j++) {
-            /* skip different type params */
-            if (LLVMTypeOf(params[j]) == type) {
-               params[i] = params[j++];
-               found = true;
-               break;
-            }
-         }
-         assert(found);
-      }
-
-      num_params = num_part_params;
+      /* Second part params are same as the preceeding params of the first part. */
+      num_params = LLVMCountParams(parts[1].value);
    }
 
    ac_build_call(&ctx->ac, parts[1].pointee_type, parts[1].value, params, num_params);
