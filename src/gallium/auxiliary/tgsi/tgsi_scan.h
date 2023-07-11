@@ -74,7 +74,6 @@ struct tgsi_shader_info
 
    unsigned immediate_count; /**< number of immediates declared */
    unsigned num_instructions;
-   unsigned num_memory_instructions; /**< sampler, buffer, and image instructions */
 
    unsigned opcode_count[TGSI_OPCODE_LAST];  /**< opcode histogram */
 

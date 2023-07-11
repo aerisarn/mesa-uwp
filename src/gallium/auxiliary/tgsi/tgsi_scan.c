@@ -590,9 +590,6 @@ scan_instruction(struct tgsi_shader_info *info,
       }
    }
 
-   if (is_mem_inst)
-      info->num_memory_instructions++;
-
    if (computes_derivative(fullinst->Instruction.Opcode))
       info->uses_derivatives = true;
 
