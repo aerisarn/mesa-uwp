@@ -644,7 +644,6 @@ scan_property(struct tgsi_shader_info *info,
       break;
    case TGSI_PROPERTY_NUM_CULLDIST_ENABLED:
       info->num_written_culldistance = value;
-      info->culldist_writemask |= (1 << value) - 1;
       break;
    }
 }

@@ -644,7 +644,6 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
 
    info->num_written_clipdistance = nir->info.clip_distance_array_size;
    info->num_written_culldistance = nir->info.cull_distance_array_size;
-   info->culldist_writemask = u_bit_consecutive(0, info->num_written_culldistance);
 
    if (info->processor == PIPE_SHADER_FRAGMENT)
       info->uses_kill = nir->info.fs.uses_discard;
