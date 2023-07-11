@@ -776,9 +776,7 @@
   stage: layered-backends
   rules:
     - !reference [.gl-rules, rules]
-    - changes:
-        *llvmpipe_file_list
-      when: on_success
+    - !reference [.llvmpipe-rules, rules]
     - changes: &virgl_file_list
       - src/gallium/drivers/virgl/**/*
       - src/gallium/winsys/virgl/**/*
@@ -977,9 +975,7 @@
     - changes:
         *softpipe_file_list
       when: on_success
-    - changes:
-        *llvmpipe_file_list
-      when: on_success
+    - !reference [.llvmpipe-rules, rules]
     - changes:
         *lavapipe_file_list
       when: on_success
@@ -1001,9 +997,7 @@
     - changes:
         *softpipe_file_list
       when: on_success
-    - changes:
-        *llvmpipe_file_list
-      when: on_success
+    - !reference [.llvmpipe-rules, rules]
     - changes:
         *lavapipe_file_list
       when: on_success
