@@ -1647,12 +1647,12 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
 
       if (image_view) {
          for (unsigned p = 0; p < image_view->n_planes; p++) {
-            struct anv_surface_state sstate =
+            const struct anv_surface_state *sstate =
                (desc->layout == VK_IMAGE_LAYOUT_GENERAL) ?
-               image_view->planes[p].general_sampler :
-               image_view->planes[p].optimal_sampler;
+               &image_view->planes[p].general_sampler :
+               &image_view->planes[p].optimal_sampler;
             desc_data[p].image =
-               anv_surface_state_to_handle(device->physical, sstate.state);
+               anv_surface_state_to_handle(device->physical, sstate->state);
          }
       }
 

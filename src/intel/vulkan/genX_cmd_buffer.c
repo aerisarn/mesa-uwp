@@ -1924,12 +1924,12 @@ emit_indirect_descriptor_binding_table_entry(struct anv_cmd_buffer *cmd_buffer,
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
       if (desc->image_view) {
-         struct anv_surface_state sstate =
+         const struct anv_surface_state *sstate =
             (desc->layout == VK_IMAGE_LAYOUT_GENERAL) ?
-            desc->image_view->planes[binding->plane].general_sampler :
-            desc->image_view->planes[binding->plane].optimal_sampler;
+            &desc->image_view->planes[binding->plane].general_sampler :
+            &desc->image_view->planes[binding->plane].optimal_sampler;
          surface_state =
-            anv_bindless_state_for_binding_table(device, sstate.state);
+            anv_bindless_state_for_binding_table(device, sstate->state);
          assert(surface_state.alloc_size);
       } else {
          surface_state = anv_null_surface_state_for_binding_table(device);
@@ -1939,10 +1939,10 @@ emit_indirect_descriptor_binding_table_entry(struct anv_cmd_buffer *cmd_buffer,
 
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
       if (desc->image_view) {
-         struct anv_surface_state sstate =
-            desc->image_view->planes[binding->plane].storage;
+         const struct anv_surface_state *sstate =
+            &desc->image_view->planes[binding->plane].storage;
          surface_state = anv_bindless_state_for_binding_table(
-            device, sstate.state);
+            device, sstate->state);
          assert(surface_state.alloc_size);
       } else {
          surface_state =
