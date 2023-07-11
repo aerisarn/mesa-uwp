@@ -218,9 +218,7 @@ static void scan_instruction(const struct nir_shader *nir,
          break;
       case nir_intrinsic_bindless_image_atomic:
       case nir_intrinsic_bindless_image_atomic_swap:
-         if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF)
-            info->uses_bindless_buffer_atomic = true;
-         else
+         if (nir_intrinsic_image_dim(intr) != GLSL_SAMPLER_DIM_BUF)
             info->uses_bindless_image_atomic = true;
 
          info->writes_memory = true;
