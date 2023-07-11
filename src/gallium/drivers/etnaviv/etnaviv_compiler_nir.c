@@ -1133,12 +1133,7 @@ etna_compile_shader(struct etna_shader_variant *v)
 
    NIR_PASS_V(s, nir_lower_vars_to_ssa);
    NIR_PASS_V(s, nir_lower_indirect_derefs, nir_var_all, UINT32_MAX);
-   NIR_PASS_V(s, nir_lower_tex, &(struct nir_lower_tex_options) { .lower_txp = ~0u, .lower_invalid_implicit_lod = true, });
-
-   if (v->key.has_sample_tex_compare)
-      NIR_PASS_V(s, nir_lower_tex_shadow, v->key.num_texture_states,
-                                          v->key.tex_compare_func,
-                                          v->key.tex_swizzle);
+   NIR_PASS_V(s, etna_nir_lower_texture, &v->key);
 
    NIR_PASS_V(s, nir_lower_alu_to_scalar, etna_alu_to_scalar_filter_cb, specs);
    if (c->specs->halti >= 2) {
