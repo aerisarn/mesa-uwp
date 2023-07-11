@@ -48,7 +48,7 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, nv50, nvc0, r600, radeonsi, llvmpipe,
   GL_ARB_depth_buffer_float (Float depth buffers)       DONE (v3d)
   GL_ARB_framebuffer_object (Framebuffer objects)       DONE (v3d, vc4, etnaviv)
   GL_ARB_half_float_pixel                               DONE (all drivers)
-  GL_ARB_half_float_vertex                              DONE (v3d, vc4, lima)
+  GL_ARB_half_float_vertex                              DONE (v3d, vc4, lima, etnaviv)
   GL_EXT_texture_integer                                DONE (v3d)
   GL_EXT_texture_array                                  DONE (v3d, etnaviv/HALTI0)
   GL_EXT_draw_buffers2 (Per-buffer blend and masks)     DONE (v3d)
@@ -77,7 +77,7 @@ GL 3.1, GLSL 1.40 --- all DONE: freedreno, nv50, nvc0, r600, radeonsi, llvmpipe,
   GL_NV_primitive_restart (Primitive restart)           DONE (v3d, crocus)
   16 vertex texture image units                         DONE ()
   GL_ARB_texture_buffer_object (Texture buffer objs)    DONE (v3d)
-  GL_ARB_texture_rectangle (Rectangular textures)       DONE (v3d, vc4, lima, crocus)
+  GL_ARB_texture_rectangle (Rectangular textures)       DONE (v3d, vc4, lima, crocus, etnaviv)
   GL_ARB_uniform_buffer_object (Uniform buffer objs)    DONE (v3d, crocus)
   GL_EXT_texture_snorm (Signed normalized textures)     DONE (v3d, crocus)
 
