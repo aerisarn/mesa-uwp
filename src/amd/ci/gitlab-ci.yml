@@ -116,6 +116,7 @@ radeonsi-stoney-traces:x86_64:
   extends:
     - .radv-collabora-rules
   variables:
+    DRIVER_NAME: radv
     GPU_VERSION: radv-raven
     VK_DRIVER: radeon
 
