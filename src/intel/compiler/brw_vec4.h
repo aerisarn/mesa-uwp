@@ -324,7 +324,6 @@ public:
    src_reg get_nir_src_imm(const nir_src &src);
    src_reg get_indirect_offset(nir_intrinsic_instr *instr);
 
-   dst_reg *nir_locals;
    dst_reg *nir_ssa_values;
 
 protected:

@@ -58,21 +58,6 @@ vec4_visitor::nir_setup_uniforms()
 void
 vec4_visitor::nir_emit_impl(nir_function_impl *impl)
 {
-   nir_locals = ralloc_array(mem_ctx, dst_reg, impl->reg_alloc);
-   for (unsigned i = 0; i < impl->reg_alloc; i++) {
-      nir_locals[i] = dst_reg();
-   }
-
-   foreach_list_typed(nir_register, reg, node, &impl->registers) {
-      unsigned array_elems =
-         reg->num_array_elems == 0 ? 1 : reg->num_array_elems;
-      const unsigned num_regs = array_elems * DIV_ROUND_UP(reg->bit_size, 32);
-      nir_locals[reg->index] = dst_reg(VGRF, alloc.allocate(num_regs));
-
-      if (reg->bit_size == 64)
-         nir_locals[reg->index].type = BRW_REGISTER_TYPE_DF;
-   }
-
    nir_ssa_values = ralloc_array(mem_ctx, dst_reg, impl->ssa_alloc);
 
    nir_emit_cf_list(&impl->body);
@@ -179,27 +164,8 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
 }
 
 static dst_reg
-dst_reg_for_nir_reg(vec4_visitor *v, nir_register *nir_reg,
+dst_reg_for_nir_reg(vec4_visitor *v, nir_ssa_def *handle,
                     unsigned base_offset, nir_src *indirect)
-{
-   dst_reg reg;
-
-   reg = v->nir_locals[nir_reg->index];
-   if (nir_reg->bit_size == 64)
-      reg.type = BRW_REGISTER_TYPE_DF;
-   reg = offset(reg, 8, base_offset);
-   if (indirect) {
-      reg.reladdr =
-         new(v->mem_ctx) src_reg(v->get_nir_src(*indirect,
-                                                BRW_REGISTER_TYPE_D,
-                                                1));
-   }
-   return reg;
-}
-
-static dst_reg
-dst_reg_for_nir_reg_decl(vec4_visitor *v, nir_ssa_def *handle,
-                         unsigned base_offset, nir_src *indirect)
 {
    nir_intrinsic_instr *decl = nir_reg_get_decl(handle);
    dst_reg reg = v->nir_ssa_values[handle->index];
@@ -219,29 +185,25 @@ dst_reg_for_nir_reg_decl(vec4_visitor *v, nir_ssa_def *handle,
 dst_reg
 vec4_visitor::get_nir_dest(const nir_dest &dest)
 {
-   if (dest.is_ssa) {
-      nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.ssa);
-      if (!store_reg) {
-         dst_reg dst =
-            dst_reg(VGRF, alloc.allocate(DIV_ROUND_UP(dest.ssa.bit_size, 32)));
-         if (dest.ssa.bit_size == 64)
-            dst.type = BRW_REGISTER_TYPE_DF;
-         nir_ssa_values[dest.ssa.index] = dst;
-         return dst;
-      } else {
-         nir_src *indirect =
-            (store_reg->intrinsic == nir_intrinsic_store_reg_indirect) ?
-            &store_reg->src[2] : NULL;
-
-         dst_reg dst = dst_reg_for_nir_reg_decl(this, store_reg->src[1].ssa,
-                                                nir_intrinsic_base(store_reg),
-                                                indirect);
-         dst.writemask = nir_intrinsic_write_mask(store_reg);
-         return dst;
-      }
+   assert(dest.is_ssa);
+   nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.ssa);
+   if (!store_reg) {
+      dst_reg dst =
+         dst_reg(VGRF, alloc.allocate(DIV_ROUND_UP(dest.ssa.bit_size, 32)));
+      if (dest.ssa.bit_size == 64)
+         dst.type = BRW_REGISTER_TYPE_DF;
+      nir_ssa_values[dest.ssa.index] = dst;
+      return dst;
    } else {
-      return dst_reg_for_nir_reg(this, dest.reg.reg, dest.reg.base_offset,
-                                 dest.reg.indirect);
+      nir_src *indirect =
+         (store_reg->intrinsic == nir_intrinsic_store_reg_indirect) ?
+         &store_reg->src[2] : NULL;
+
+      dst_reg dst = dst_reg_for_nir_reg(this, store_reg->src[1].ssa,
+                                        nir_intrinsic_base(store_reg),
+                                        indirect);
+      dst.writemask = nir_intrinsic_write_mask(store_reg);
+      return dst;
    }
 }
 
@@ -261,24 +223,20 @@ src_reg
 vec4_visitor::get_nir_src(const nir_src &src, enum brw_reg_type type,
                           unsigned num_components)
 {
+   assert(src.is_ssa);
+   nir_intrinsic_instr *load_reg = nir_load_reg_for_def(src.ssa);
+
    dst_reg reg;
+   if (load_reg) {
+      nir_src *indirect =
+         (load_reg->intrinsic == nir_intrinsic_load_reg_indirect) ?
+         &load_reg->src[1] : NULL;
 
-   if (src.is_ssa) {
-      nir_intrinsic_instr *load_reg = nir_load_reg_for_def(src.ssa);
-      if (load_reg) {
-         nir_src *indirect =
-            (load_reg->intrinsic == nir_intrinsic_load_reg_indirect) ?
-            &load_reg->src[1] : NULL;
-
-         reg = dst_reg_for_nir_reg_decl(this, load_reg->src[0].ssa,
-                                              nir_intrinsic_base(load_reg),
-                                              indirect);
-      } else {
-         reg = nir_ssa_values[src.ssa->index];
-      }
+      reg = dst_reg_for_nir_reg(this, load_reg->src[0].ssa,
+                                      nir_intrinsic_base(load_reg),
+                                      indirect);
    } else {
-      reg = dst_reg_for_nir_reg(this, src.reg.reg, src.reg.base_offset,
-                                src.reg.indirect);
+      reg = nir_ssa_values[src.ssa->index];
    }
 
    reg = retype(reg, type);
