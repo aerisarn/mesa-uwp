@@ -306,20 +306,6 @@ fs_visitor::nir_emit_system_values()
 void
 fs_visitor::nir_emit_impl(nir_function_impl *impl)
 {
-   nir_locals = ralloc_array(mem_ctx, fs_reg, impl->reg_alloc);
-   for (unsigned i = 0; i < impl->reg_alloc; i++) {
-      nir_locals[i] = fs_reg();
-   }
-
-   foreach_list_typed(nir_register, reg, node, &impl->registers) {
-      unsigned array_elems =
-         reg->num_array_elems == 0 ? 1 : reg->num_array_elems;
-      unsigned size = array_elems * reg->num_components;
-      const brw_reg_type reg_type = reg->bit_size == 8 ? BRW_REGISTER_TYPE_B :
-         brw_reg_type_from_bit_size(reg->bit_size, BRW_REGISTER_TYPE_F);
-      nir_locals[reg->index] = bld.vgrf(reg_type, size);
-   }
-
    nir_ssa_values = reralloc(mem_ctx, nir_ssa_values, fs_reg,
                              impl->ssa_alloc);
 
@@ -2014,33 +2000,28 @@ fs_visitor::get_resource_nir_src(const nir_src &src)
 fs_reg
 fs_visitor::get_nir_src(const nir_src &src)
 {
+   assert(src.is_ssa);
+   nir_intrinsic_instr *load_reg = nir_load_reg_for_def(src.ssa);
+
    fs_reg reg;
-   if (src.is_ssa) {
-      nir_intrinsic_instr *load_reg = nir_load_reg_for_def(src.ssa);
-      if (!load_reg) {
-         if (nir_src_is_undef(src)) {
-            const brw_reg_type reg_type =
-               brw_reg_type_from_bit_size(src.ssa->bit_size,
-                                          BRW_REGISTER_TYPE_D);
-            reg = bld.vgrf(reg_type, src.ssa->num_components);
-         } else {
-            reg = nir_ssa_values[src.ssa->index];
-         }
+   if (!load_reg) {
+      if (nir_src_is_undef(src)) {
+         const brw_reg_type reg_type =
+            brw_reg_type_from_bit_size(src.ssa->bit_size,
+                                       BRW_REGISTER_TYPE_D);
+         reg = bld.vgrf(reg_type, src.ssa->num_components);
       } else {
-         nir_intrinsic_instr *decl_reg = nir_reg_get_decl(load_reg->src[0].ssa);
-         const unsigned num_components =
-            nir_intrinsic_num_components(decl_reg);
-         /* We don't handle indirects on locals */
-         assert(nir_intrinsic_base(load_reg) == 0);
-         assert(load_reg->intrinsic != nir_intrinsic_load_reg_indirect);
-         reg = offset(nir_ssa_values[decl_reg->dest.ssa.index], bld,
-                      src.reg.base_offset * num_components);
+         reg = nir_ssa_values[src.ssa->index];
       }
    } else {
+      nir_intrinsic_instr *decl_reg = nir_reg_get_decl(load_reg->src[0].ssa);
+      const unsigned num_components =
+         nir_intrinsic_num_components(decl_reg);
       /* We don't handle indirects on locals */
-      assert(src.reg.indirect == NULL);
-      reg = offset(nir_locals[src.reg.reg->index], bld,
-                   src.reg.base_offset * src.reg.reg->num_components);
+      assert(nir_intrinsic_base(load_reg) == 0);
+      assert(load_reg->intrinsic != nir_intrinsic_load_reg_indirect);
+      reg = offset(nir_ssa_values[decl_reg->dest.ssa.index], bld,
+                   src.reg.base_offset * num_components);
    }
 
    if (nir_src_bit_size(src) == 64 && devinfo->ver == 7) {
@@ -2078,34 +2059,28 @@ fs_visitor::get_nir_src_imm(const nir_src &src)
 fs_reg
 fs_visitor::get_nir_dest(const nir_dest &dest)
 {
-   if (dest.is_ssa) {
-      nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.ssa);
-      if (!store_reg) {
-         const brw_reg_type reg_type =
-            brw_reg_type_from_bit_size(dest.ssa.bit_size,
-                                       dest.ssa.bit_size == 8 ?
-                                       BRW_REGISTER_TYPE_D :
-                                       BRW_REGISTER_TYPE_F);
-         nir_ssa_values[dest.ssa.index] =
-            bld.vgrf(reg_type, dest.ssa.num_components);
-         bld.UNDEF(nir_ssa_values[dest.ssa.index]);
-         return nir_ssa_values[dest.ssa.index];
-      } else {
-         nir_intrinsic_instr *decl_reg =
-            nir_reg_get_decl(store_reg->src[1].ssa);
-         const unsigned num_components =
-            nir_intrinsic_num_components(decl_reg);
-         /* We don't handle indirects on locals */
-         assert(nir_intrinsic_base(store_reg) == 0);
-         assert(store_reg->intrinsic != nir_intrinsic_store_reg_indirect);
-         return offset(nir_ssa_values[decl_reg->dest.ssa.index], bld,
-                       dest.reg.base_offset * num_components);
-      }
+   assert(dest.is_ssa);
+   nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.ssa);
+   if (!store_reg) {
+      const brw_reg_type reg_type =
+         brw_reg_type_from_bit_size(dest.ssa.bit_size,
+                                    dest.ssa.bit_size == 8 ?
+                                    BRW_REGISTER_TYPE_D :
+                                    BRW_REGISTER_TYPE_F);
+      nir_ssa_values[dest.ssa.index] =
+         bld.vgrf(reg_type, dest.ssa.num_components);
+      bld.UNDEF(nir_ssa_values[dest.ssa.index]);
+      return nir_ssa_values[dest.ssa.index];
    } else {
+      nir_intrinsic_instr *decl_reg =
+         nir_reg_get_decl(store_reg->src[1].ssa);
+      const unsigned num_components =
+         nir_intrinsic_num_components(decl_reg);
       /* We don't handle indirects on locals */
-      assert(dest.reg.indirect == NULL);
-      return offset(nir_locals[dest.reg.reg->index], bld,
-                    dest.reg.base_offset * dest.reg.reg->num_components);
+      assert(nir_intrinsic_base(store_reg) == 0);
+      assert(store_reg->intrinsic != nir_intrinsic_store_reg_indirect);
+      return offset(nir_ssa_values[decl_reg->dest.ssa.index], bld,
+                    dest.reg.base_offset * num_components);
    }
 }
 

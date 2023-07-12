@@ -475,7 +475,6 @@ public:
    /** Either BRW_MAX_GRF or GFX7_MRF_HACK_START */
    unsigned max_grf;
 
-   fs_reg *nir_locals;
    fs_reg *nir_ssa_values;
    fs_inst **nir_resource_insts;
    struct brw_fs_bind_info *nir_ssa_bind_infos;

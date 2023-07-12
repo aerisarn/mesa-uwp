@@ -1410,7 +1410,6 @@ fs_visitor::init()
    this->failed = false;
    this->fail_msg = NULL;
 
-   this->nir_locals = NULL;
    this->nir_ssa_values = NULL;
    this->nir_resource_insts = NULL;
    this->nir_ssa_bind_infos = NULL;
