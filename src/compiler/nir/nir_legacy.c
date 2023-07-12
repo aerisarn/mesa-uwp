@@ -8,54 +8,6 @@
 #include "nir_builder.h"
 #include "nir_legacy.h"
 
-static inline bool
-chase_source_mod(nir_ssa_def **ssa, nir_op op, uint8_t *swizzle)
-{
-   if ((*ssa)->parent_instr->type != nir_instr_type_alu)
-      return false;
-
-   nir_alu_instr *alu = nir_instr_as_alu((*ssa)->parent_instr);
-   if (alu->op != op)
-      return false;
-
-   /* This only works for unary ops */
-   assert(nir_op_infos[op].num_inputs == 1);
-
-   /* To fuse the source mod in, we need to compose the swizzles and string
-    * through the source.
-    */
-   for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; ++i)
-      swizzle[i] = alu->src[0].swizzle[swizzle[i]];
-
-   assert(alu->src[0].src.is_ssa && "registers lowered to intrinsics");
-   *ssa = alu->src[0].src.ssa;
-   return true;
-}
-
-static inline bool
-accepts_source_mod(const nir_src *src)
-{
-   /* No legacy user supports fp64 modifiers */
-   if (nir_src_bit_size(*src) == 64)
-      return false;
-
-   if (src->is_if)
-      return false;
-
-   nir_instr *parent = src->parent_instr;
-   if (parent->type != nir_instr_type_alu)
-      return false;
-
-   nir_alu_instr *alu = nir_instr_as_alu(parent);
-   nir_alu_src *alu_src = list_entry(src, nir_alu_src, src);
-   unsigned src_index = alu_src - alu->src;
-
-   assert(src_index < nir_op_infos[alu->op].num_inputs);
-   nir_alu_type src_type = nir_op_infos[alu->op].input_types[src_index];
-
-   return nir_alu_type_get_base_type(src_type) == nir_type_float;
-}
-
 bool
 nir_legacy_float_mod_folds(nir_alu_instr *mod)
 {
@@ -66,8 +18,22 @@ nir_legacy_float_mod_folds(nir_alu_instr *mod)
    if (mod->dest.dest.ssa.bit_size == 64)
       return false;
 
-   nir_foreach_use_including_if(use, &mod->dest.dest.ssa) {
-      if (!accepts_source_mod(use))
+   nir_foreach_use_including_if(src, &mod->dest.dest.ssa) {
+      if (src->is_if)
+         return false;
+
+      nir_instr *parent = src->parent_instr;
+      if (parent->type != nir_instr_type_alu)
+         return false;
+
+      nir_alu_instr *alu = nir_instr_as_alu(parent);
+      nir_alu_src *alu_src = list_entry(src, nir_alu_src, src);
+      unsigned src_index = alu_src - alu->src;
+
+      assert(src_index < nir_op_infos[alu->op].num_inputs);
+      nir_alu_type src_type = nir_op_infos[alu->op].input_types[src_index];
+
+      if (nir_alu_type_get_base_type(src_type) != nir_type_float)
          return false;
    }
 
@@ -101,6 +67,37 @@ chase_alu_src_helper(const nir_src *src)
    }
 }
 
+static inline bool
+chase_source_mod(nir_ssa_def **ssa, nir_op op, uint8_t *swizzle)
+{
+   if ((*ssa)->parent_instr->type != nir_instr_type_alu)
+      return false;
+
+   nir_alu_instr *alu = nir_instr_as_alu((*ssa)->parent_instr);
+   if (alu->op != op)
+      return false;
+
+   /* If there are other uses of the modifier that don't fold, we can't fold it
+    * here either, in case of it's reading from a load_reg that won't be
+    * emitted.
+    */
+   if (!nir_legacy_float_mod_folds(alu))
+      return false;
+
+   /* This only works for unary ops */
+   assert(nir_op_infos[op].num_inputs == 1);
+
+   /* To fuse the source mod in, we need to compose the swizzles and string
+    * through the source.
+    */
+   for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; ++i)
+      swizzle[i] = alu->src[0].swizzle[swizzle[i]];
+
+   assert(alu->src[0].src.is_ssa && "registers lowered to intrinsics");
+   *ssa = alu->src[0].src.ssa;
+   return true;
+}
+
 nir_legacy_alu_src
 nir_legacy_chase_alu_src(const nir_alu_src *src, bool fuse_fabs)
 {
@@ -120,11 +117,9 @@ nir_legacy_chase_alu_src(const nir_alu_src *src, bool fuse_fabs)
        * fabs, since we chase from bottom-up. We don't handle fabs(fneg(x))
        * since nir_opt_algebraic should have eliminated that.
        */
-      if (accepts_source_mod(&src->src)) {
-         out.fneg = chase_source_mod(&out.src.ssa, nir_op_fneg, out.swizzle);
-         out.fabs = fuse_fabs && chase_source_mod(&out.src.ssa, nir_op_fabs,
-                                                  out.swizzle);
-      }
+      out.fneg = chase_source_mod(&out.src.ssa, nir_op_fneg, out.swizzle);
+      if (fuse_fabs)
+         out.fabs = chase_source_mod(&out.src.ssa, nir_op_fabs, out.swizzle);
 
       return out;
    } else {
