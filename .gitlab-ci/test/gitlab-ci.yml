@@ -17,28 +17,28 @@
     paths:
       - results/
 
-rustfmt:
+.formatting-check:
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
   stage: lint
   extends:
     - .use-debian/x86_64_build
-    - .lint-rustfmt-rules
   variables:
     GIT_STRATEGY: fetch
+
+rustfmt:
+  extends:
+    - .formatting-check
+    - .lint-rustfmt-rules
   script:
     - shopt -s globstar
     - rustfmt --check --verbose src/**/lib.rs
 
 clang-format:
-  # Cancel job if a newer commit is pushed to the same branch
-  interruptible: true
-  stage: lint
   extends:
-    - .use-debian/x86_64_build
+    - .formatting-check
     - .lint-clang-format-rules
   variables:
-    GIT_STRATEGY: fetch
     LLVM_VERSION: 15
   script:
     - shopt -s globstar
