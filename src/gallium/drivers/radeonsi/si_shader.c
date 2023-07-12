@@ -589,7 +589,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
          declare_tes_input_vgprs(args);
       }
 
-      if (shader->key.ge.as_es &&
+      if (shader->key.ge.as_es && !shader->is_monolithic &&
           (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL)) {
          /* ES return values are inputs to GS. */
          for (i = 0; i < 8 + GFX9_GS_NUM_USER_SGPR; i++)
