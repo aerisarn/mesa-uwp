@@ -948,7 +948,6 @@
       - src/gallium/winsys/etnaviv/**/*
       - src/gallium/auxiliary/renderonly/**/*
       - src/gallium/winsys/kmsro/**/*
-      - src/gallium/winsys/etnaviv/**/*
       when: on_success
 
 .etnaviv-manual-rules:
