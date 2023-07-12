@@ -528,6 +528,25 @@ vn_feedback_query_copy_cmd_record(VkCommandBuffer cmd_handle,
    const size_t slot_size = (pool->result_array_size * 8) + 8;
    const size_t offset = slot_size * query;
 
+   /* The first synchronization scope of vkCmdCopyQueryPoolResults does not
+    * include the query feedback buffer. Insert a barrier to ensure ordering
+    * against feedback buffer fill cmd injected in vkCmdResetQueryPool.
+    */
+   const VkBufferMemoryBarrier buf_barrier_before = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+      .pNext = NULL,
+      .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+      .buffer = pool->feedback->buffer,
+      .offset = offset,
+      .size = slot_size * count,
+   };
+   vn_CmdPipelineBarrier(cmd_handle, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 1,
+                         &buf_barrier_before, 0, NULL);
+
    /* Per spec: "The first synchronization scope includes all commands
     * which reference the queries in queryPool indicated by query that
     * occur earlier in submission order. If flags does not include
