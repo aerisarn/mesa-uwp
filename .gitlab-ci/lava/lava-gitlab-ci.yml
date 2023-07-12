@@ -38,6 +38,7 @@ variables:
     - curl -L --retry 4 -f --retry-all-errors --retry-delay 60 -s "https://${JOB_RESULTS_PATH}" | tar --zstd -x
   needs:
     - alpine/x86_64_lava_ssh_client
+    - !reference [.required-for-hardware-jobs, needs]
 
 .lava-test:arm32:
   variables:
