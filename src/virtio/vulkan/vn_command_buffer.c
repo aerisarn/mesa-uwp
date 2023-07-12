@@ -316,7 +316,7 @@ vn_cmd_wait_events_fix_image_memory_barriers(
 {
    *out_transfer_count = 0;
 
-   if (cmd->builder.render_pass ||
+   if (cmd->builder.in_render_pass ||
        !vn_image_memory_barrier_has_present_src(src_barriers, count))
       return src_barriers;
 
@@ -369,7 +369,7 @@ vn_cmd_pipeline_barrier_fix_image_memory_barriers(
    const VkImageMemoryBarrier *src_barriers,
    uint32_t count)
 {
-   if (cmd->builder.render_pass ||
+   if (cmd->builder.in_render_pass ||
        !vn_image_memory_barrier_has_present_src(src_barriers, count))
       return src_barriers;
 
@@ -393,7 +393,7 @@ vn_cmd_fix_dependency_infos(struct vn_command_buffer *cmd,
                             uint32_t dep_count,
                             const VkDependencyInfo *dep_infos)
 {
-   if (cmd->builder.render_pass ||
+   if (cmd->builder.in_render_pass ||
        !vn_dependency_info_has_present_src(dep_count, dep_infos))
       return dep_infos;
 
@@ -636,19 +636,18 @@ static void
 vn_cmd_end_render_pass(struct vn_command_buffer *cmd)
 {
    const struct vn_render_pass *pass = cmd->builder.render_pass;
+   const struct vn_image **images = cmd->builder.present_src_images;
 
    vn_cmd_record_batched_query_feedback(cmd);
 
    cmd->builder.render_pass = NULL;
+   cmd->builder.present_src_images = NULL;
    cmd->builder.in_render_pass = false;
    cmd->builder.subpass_index = 0;
    cmd->builder.view_mask = 0;
 
-   if (!pass->present_count || !cmd->builder.present_src_images)
+   if (!pass->present_count || !images)
       return;
-
-   const struct vn_image **images = cmd->builder.present_src_images;
-   cmd->builder.present_src_images = NULL;
 
    if (pass->present_release_count) {
       vn_cmd_transfer_present_src_images(
@@ -1066,20 +1065,14 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    if (inheritance_info) {
       cmd->builder.in_render_pass = local_begin_info.in_render_pass;
+
       if (local_begin_info.has_inherited_pass) {
-         const struct vn_render_pass *pass =
-            vn_render_pass_from_handle(inheritance_info->renderPass);
-
-         /* Track the inherited render pass in the secondary cmd to fix wsi
-          * image ownership and layout transitions.
-          */
-         cmd->builder.render_pass = pass;
-
          /* Store the viewMask from the inherited render pass subpass for
           * query feedback.
           */
          cmd->builder.view_mask = vn_render_pass_get_subpass_view_mask(
-            pass, inheritance_info->subpass);
+            vn_render_pass_from_handle(inheritance_info->renderPass),
+            inheritance_info->subpass);
       } else {
          /* Store the viewMask from the
           * VkCommandBufferInheritanceRenderingInfo.
@@ -1088,7 +1081,6 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
             *inheritance_rendering_info = vk_find_struct_const(
                inheritance_info->pNext,
                COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
-
          if (inheritance_rendering_info)
             cmd->builder.view_mask = inheritance_rendering_info->viewMask;
       }
