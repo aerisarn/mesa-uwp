@@ -28,6 +28,7 @@
 
 #include "fd2_program.h"
 #include "freedreno_util.h"
+#include "nir_legacy.h"
 
 static const nir_shader_compiler_options options = {
    .lower_fpow = true,
@@ -227,22 +228,26 @@ update_range(struct ir2_context *ctx, struct ir2_reg *reg)
 }
 
 static struct ir2_src
-make_src(struct ir2_context *ctx, nir_src src)
+make_legacy_src(struct ir2_context *ctx, nir_legacy_src src)
 {
    struct ir2_src res = {};
    struct ir2_reg *reg;
 
-   nir_const_value *const_value = nir_src_as_const_value(src);
+   /* Handle constants specially */
+   if (src.is_ssa) {
+      nir_const_value *const_value =
+         nir_src_as_const_value(nir_src_for_ssa(src.ssa));
 
-   if (const_value) {
-      assert(src.is_ssa);
-      float c[src.ssa->num_components];
-      nir_const_value_to_array(c, const_value, src.ssa->num_components, f32);
-      return load_const(ctx, c, src.ssa->num_components);
+      if (const_value) {
+         float c[src.ssa->num_components];
+         nir_const_value_to_array(c, const_value, src.ssa->num_components, f32);
+         return load_const(ctx, c, src.ssa->num_components);
+      }
    }
 
+   /* Otherwise translate the SSA def or register */
    if (!src.is_ssa) {
-      res.num = src.reg.reg->index;
+      res.num = src.reg.handle->index;
       res.type = IR2_SRC_REG;
       reg = &ctx->reg[res.num];
    } else {
@@ -256,21 +261,34 @@ make_src(struct ir2_context *ctx, nir_src src)
    return res;
 }
 
+static struct ir2_src
+make_src(struct ir2_context *ctx, nir_src src)
+{
+   return make_legacy_src(ctx, nir_legacy_chase_src(&src));
+}
+
 static void
-set_index(struct ir2_context *ctx, nir_dest *dst, struct ir2_instr *instr)
+set_legacy_index(struct ir2_context *ctx, nir_legacy_dest dst,
+                 struct ir2_instr *instr)
 {
    struct ir2_reg *reg = &instr->ssa;
 
-   if (dst->is_ssa) {
-      ctx->ssa_map[dst->ssa.index] = instr->idx;
+   if (dst.is_ssa) {
+      ctx->ssa_map[dst.ssa->index] = instr->idx;
    } else {
       assert(instr->is_ssa);
-      reg = &ctx->reg[dst->reg.reg->index];
+      reg = &ctx->reg[dst.reg.handle->index];
 
       instr->is_ssa = false;
       instr->reg = reg;
    }
    update_range(ctx, reg);
+}
+
+static void
+set_index(struct ir2_context *ctx, nir_dest *dst, struct ir2_instr *instr)
+{
+   set_legacy_index(ctx, nir_legacy_chase_dest(dst), instr);
 }
 
 static struct ir2_instr *
@@ -408,6 +426,14 @@ emit_alu(struct ir2_context *ctx, nir_alu_instr *alu)
    struct ir2_src tmp;
    unsigned ncomp;
 
+   /* Don't emit modifiers that are totally folded */
+   if (((alu->op == nir_op_fneg) || (alu->op == nir_op_fabs)) &&
+       nir_legacy_float_mod_folds(alu))
+      return;
+
+   if ((alu->op == nir_op_fsat) && nir_legacy_fsat_folds(alu))
+      return;
+
    /* get the number of dst components */
    if (dst->is_ssa) {
       ncomp = dst->ssa.num_components;
@@ -418,9 +444,11 @@ emit_alu(struct ir2_context *ctx, nir_alu_instr *alu)
    }
 
    instr = instr_create_alu(ctx, alu->op, ncomp);
-   set_index(ctx, dst, instr);
-   instr->alu.saturate = alu->dest.saturate;
-   instr->alu.write_mask = alu->dest.write_mask;
+
+   nir_legacy_alu_dest legacy_dest = nir_legacy_chase_alu_dest(&alu->dest.dest);
+   set_legacy_index(ctx, legacy_dest.dest, instr);
+   instr->alu.saturate = legacy_dest.fsat;
+   instr->alu.write_mask = legacy_dest.write_mask;
 
    for (int i = 0; i < info->num_inputs; i++) {
       nir_alu_src *src = &alu->src[i];
@@ -428,15 +456,18 @@ emit_alu(struct ir2_context *ctx, nir_alu_instr *alu)
       /* compress swizzle with writemask when applicable */
       unsigned swiz = 0, j = 0;
       for (int i = 0; i < 4; i++) {
-         if (!(alu->dest.write_mask & 1 << i) && !info->output_size)
+         if (!(legacy_dest.write_mask & 1 << i) && !info->output_size)
             continue;
          swiz |= swiz_set(src->swizzle[i], j++);
       }
 
-      instr->src[i] = make_src(ctx, src->src);
+      nir_legacy_alu_src legacy_src =
+         nir_legacy_chase_alu_src(src, true /* fuse_abs */);
+
+      instr->src[i] = make_legacy_src(ctx, legacy_src.src);
       instr->src[i].swizzle = swiz_merge(instr->src[i].swizzle, swiz);
-      instr->src[i].negate = src->negate;
-      instr->src[i].abs = src->abs;
+      instr->src[i].negate = legacy_src.fneg;
+      instr->src[i].abs = legacy_src.fabs;
    }
 
    /* workarounds for NIR ops that don't map directly to a2xx ops */
@@ -599,6 +630,12 @@ emit_intrinsic(struct ir2_context *ctx, nir_intrinsic_instr *intr)
    unsigned idx;
 
    switch (intr->intrinsic) {
+   case nir_intrinsic_decl_reg:
+   case nir_intrinsic_load_reg:
+   case nir_intrinsic_store_reg:
+      /* Nothing to do for these */
+      break;
+
    case nir_intrinsic_load_input:
       load_input(ctx, &intr->dest, nir_intrinsic_base(intr));
       break;
@@ -1115,14 +1152,14 @@ ir2_nir_compile(struct ir2_context *ctx, bool binning)
    while (OPT(ctx->nir, nir_opt_algebraic))
       ;
    OPT_V(ctx->nir, nir_opt_algebraic_late);
-   OPT_V(ctx->nir, nir_lower_to_source_mods, nir_lower_all_source_mods);
-
    OPT_V(ctx->nir, nir_lower_alu_to_scalar, ir2_alu_to_scalar_filter_cb, NULL);
 
-   OPT_V(ctx->nir, nir_convert_from_ssa, true, false);
+   OPT_V(ctx->nir, nir_convert_from_ssa, true, true);
 
    OPT_V(ctx->nir, nir_move_vec_src_uses_to_dest);
-   OPT_V(ctx->nir, nir_lower_vec_to_movs, NULL, NULL);
+   OPT_V(ctx->nir, nir_lower_vec_to_regs, NULL, NULL);
+
+   OPT_V(ctx->nir, nir_legacy_trivialize, true);
 
    OPT_V(ctx->nir, nir_opt_dce);
 
@@ -1164,9 +1201,10 @@ ir2_nir_compile(struct ir2_context *ctx, bool binning)
    /* And emit the body: */
    nir_function_impl *fxn = nir_shader_get_entrypoint(ctx->nir);
 
-   nir_foreach_register (reg, &fxn->registers) {
-      ctx->reg[reg->index].ncomp = reg->num_components;
-      ctx->reg_count = MAX2(ctx->reg_count, reg->index + 1);
+   nir_foreach_reg_decl (decl, fxn) {
+      assert(decl->dest.ssa.index < ARRAY_SIZE(ctx->reg));
+      ctx->reg[decl->dest.ssa.index].ncomp = nir_intrinsic_num_components(decl);
+      ctx->reg_count = MAX2(ctx->reg_count, decl->dest.ssa.index + 1);
    }
 
    nir_metadata_require(fxn, nir_metadata_block_index);
