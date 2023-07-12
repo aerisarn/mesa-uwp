@@ -1287,14 +1287,26 @@ vn_CmdEndRendering(VkCommandBuffer commandBuffer)
 
    VN_CMD_ENQUEUE(vkCmdEndRendering, commandBuffer);
 
-   /* Feedback commands not allowed during suspended render pass either
-    * so defer until it actually ends.
+   /* XXX query feedback is broken for suspended render pass instance
+    *
+    * If resume occurs in a different cmd (only needed for parallel render
+    * pass recording), the batched query feedbacks here are never recorded.
+    * Query result retrieval will end up with device lost.
+    *
+    * In practice, explicit query usages within the suspended render pass
+    * instance is a minor (not seeing any so far). Will fix once hit. The
+    * potential options are:
+    * - doing a synchronous query pool results retrieval as a fallback
+    * - store the deferred query feedback in a cmd and inject upon submit
     */
-   if (!cmd->suspends) {
+   if (!cmd->suspends)
       vn_cmd_record_batched_query_feedback(cmd);
-      cmd->in_render_pass = false;
-      cmd->view_mask = 0;
-   }
+   else
+      vn_log(cmd->pool->device->instance, "query dropped by suspended pass");
+
+   cmd->in_render_pass = false;
+   cmd->suspends = false;
+   cmd->view_mask = 0;
 }
 
 void
