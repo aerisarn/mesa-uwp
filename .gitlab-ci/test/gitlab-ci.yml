@@ -25,14 +25,16 @@
     - .use-debian/x86_64_build
   variables:
     GIT_STRATEGY: fetch
+  script:
+    - git diff --color=always --exit-code  # Fails if there are diffs
 
 rustfmt:
   extends:
     - .formatting-check
     - .lint-rustfmt-rules
-  script:
+  before_script:
     - shopt -s globstar
-    - rustfmt --check --verbose src/**/lib.rs
+    - rustfmt --verbose src/**/lib.rs
 
 clang-format:
   extends:
@@ -40,13 +42,12 @@ clang-format:
     - .lint-clang-format-rules
   variables:
     LLVM_VERSION: 15
-  script:
+  before_script:
     - shopt -s globstar
     # We need a meson build dir, but its config doesn't actually matter, so
     # let's just use the default.
     - meson setup build
     - ninja -C build clang-format
-    - git diff --color=always --exit-code  # Fails if there are diffs
 
 .test-gl:
   extends:
