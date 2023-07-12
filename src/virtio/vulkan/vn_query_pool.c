@@ -14,6 +14,7 @@
 
 #include "vn_device.h"
 #include "vn_feedback.h"
+#include "vn_physical_device.h"
 
 /* query pool commands */
 
@@ -99,6 +100,26 @@ vn_CreateQueryPool(VkDevice device,
          return vn_error(dev->instance, result);
       }
    }
+
+   /* Venus has to handle overflow behavior with query feedback to keep
+    * consistency between vkCmdCopyQueryPoolResults and vkGetQueryPoolResults.
+    * The default query feedback behavior is to wrap on overflow. However, per
+    * spec:
+    *
+    * If an unsigned integer query’s value overflows the result type, the
+    * value may either wrap or saturate.
+    *
+    * We detect the renderer side implementation to align with the
+    * implementation specific behavior.
+    */
+   switch (dev->physical_device->renderer_driver_id) {
+   case VK_DRIVER_ID_ARM_PROPRIETARY:
+   case VK_DRIVER_ID_MESA_TURNIP:
+      pool->saturate_on_overflow = true;
+      break;
+   default:
+      break;
+   };
 
    VkQueryPool pool_handle = vn_query_pool_to_handle(pool);
    vn_async_vkCreateQueryPool(dev->instance, device, pCreateInfo, NULL,
@@ -205,8 +226,13 @@ vn_get_query_pool_feedback(struct vn_query_pool *pool,
          const uint32_t avail =
             (uint32_t)src[src_index + pool->result_array_size];
          if (avail) {
-            for (uint32_t j = 0; j < pool->result_array_size; j++)
-               dst[dst_index + j] = (uint32_t)src[src_index + j];
+            for (uint32_t j = 0; j < pool->result_array_size; j++) {
+               const uint64_t src_val = src[src_index + j];
+               dst[dst_index + j] =
+                  src_val > UINT32_MAX && pool->saturate_on_overflow
+                     ? UINT32_MAX
+                     : (uint32_t)src_val;
+            }
          } else {
             result = VK_NOT_READY;
             /* valid to return result of 0 if partial bit is set */
