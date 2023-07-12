@@ -316,7 +316,7 @@ option(
   'opengl',
   type : 'boolean',
   value : true,
-  description : 'Build support for OpenGL (all versions)'
+  description : 'Build support for desktop OpenGL'
 )
 
 option(
