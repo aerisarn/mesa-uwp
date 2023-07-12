@@ -552,10 +552,9 @@ vn_cmd_record_batched_query_feedback(struct vn_command_buffer *cmd)
 {
    list_for_each_entry_safe(struct vn_command_buffer_query_batch, batch,
                             &cmd->query_batches, head) {
-      vn_feedback_query_copy_cmd_record(
-         vn_command_buffer_to_handle(cmd),
-         vn_query_pool_to_handle(batch->query_pool), batch->query,
-         batch->query_count);
+      vn_feedback_query_cmd_record(vn_command_buffer_to_handle(cmd),
+                                   vn_query_pool_to_handle(batch->query_pool),
+                                   batch->query, batch->query_count, true);
 
       vn_cmd_query_batch_pop(cmd, batch);
    }
@@ -1796,7 +1795,7 @@ vn_cmd_add_query_feedback(VkCommandBuffer cmd_handle,
     * directly appended. Otherwise, defer the copy cmd until outside.
     */
    if (!cmd->in_render_pass) {
-      vn_feedback_query_copy_cmd_record(cmd_handle, pool_handle, query, 1);
+      vn_feedback_query_cmd_record(cmd_handle, pool_handle, query, 1, true);
       return;
    }
 
@@ -1834,8 +1833,8 @@ vn_CmdResetQueryPool(VkCommandBuffer commandBuffer,
    VN_CMD_ENQUEUE(vkCmdResetQueryPool, commandBuffer, queryPool, firstQuery,
                   queryCount);
 
-   vn_feedback_query_reset_cmd_record(commandBuffer, queryPool, firstQuery,
-                                      queryCount);
+   vn_feedback_query_cmd_record(commandBuffer, queryPool, firstQuery,
+                                queryCount, false);
 }
 
 void
