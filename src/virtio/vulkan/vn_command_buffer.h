@@ -48,39 +48,41 @@ enum vn_command_buffer_state {
    VN_COMMAND_BUFFER_STATE_INVALID,
 };
 
+/* command buffer builder to:
+ * - fix wsi image ownership and layout transitions
+ * - scrub ignored bits in VkCommandBufferBeginInfo
+ * - support asynchronization query optimization (query feedback)
+ */
 struct vn_command_buffer_builder {
+   /* track the active legacy render pass */
    const struct vn_render_pass *render_pass;
+   /* track the wsi images requiring layout fixes */
    const struct vn_image **present_src_images;
+   /* track if inside a render pass instance */
+   bool in_render_pass;
+   /* track whether the active render pass instance is suspending */
+   bool suspending;
+   /* track the active subpass for view mask used in the subpass */
+   uint32_t subpass_index;
+   /* track the active view mask inside a render pass instance */
+   uint32_t view_mask;
+   /* track the query feedbacks deferred outside the render pass instance */
+   struct list_head query_batches;
 };
 
 struct vn_command_buffer {
    struct vn_object_base base;
 
    struct vn_command_pool *pool;
-
    VkCommandBufferLevel level;
-
-   struct list_head head;
-
-   struct vn_command_buffer_builder builder;
-
    enum vn_command_buffer_state state;
    struct vn_cs_encoder cs;
 
    uint32_t draw_cmd_batched;
 
-   /* For batching query feedback in render passes */
-   /* in_render_pass remains true when a render pass is suspended */
-   bool in_render_pass;
-   bool suspends;
-   /* viewMask is stored per subpass for legacy render pass */
-   uint32_t subpass_index;
-   /* view_mask is set when passed in by dynamic rendering/secondary cmd
-    * buffers or on each subpass iteration for legacy render pass with
-    * the above variables.
-    */
-   uint32_t view_mask;
-   struct list_head query_batches;
+   struct vn_command_buffer_builder builder;
+
+   struct list_head head;
 };
 VK_DEFINE_HANDLE_CASTS(vn_command_buffer,
                        base.base,
