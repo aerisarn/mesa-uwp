@@ -91,8 +91,13 @@ vn_CreateQueryPool(VkDevice device,
        * (also 64 bit)
        */
       const uint32_t slot_size = (pool->result_array_size * 8) + 8;
-      vn_feedback_buffer_create(dev, slot_size * pCreateInfo->queryCount,
-                                alloc, &pool->feedback);
+      VkResult result = vn_feedback_buffer_create(
+         dev, slot_size * pCreateInfo->queryCount, alloc, &pool->feedback);
+      if (result != VK_SUCCESS) {
+         vn_object_base_fini(&pool->base);
+         vk_free(alloc, pool);
+         return vn_error(dev->instance, result);
+      }
    }
 
    VkQueryPool pool_handle = vn_query_pool_to_handle(pool);
