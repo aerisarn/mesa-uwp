@@ -478,16 +478,18 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
          declare_vb_descriptor_input_sgprs(args, shader);
 
          /* LS return values are inputs to the TCS main shader part. */
-         for (i = 0; i < 8 + GFX9_TCS_NUM_USER_SGPR; i++)
-            ac_add_return(&args->ac, AC_ARG_SGPR);
-         for (i = 0; i < 2; i++)
-            ac_add_return(&args->ac, AC_ARG_VGPR);
-
-         /* VS outputs passed via VGPRs to TCS. */
-         if (shader->key.ge.opt.same_patch_vertices && !shader->use_aco) {
-            unsigned num_outputs = util_last_bit64(shader->selector->info.outputs_written);
-            for (i = 0; i < num_outputs * 4; i++)
+         if (!shader->is_monolithic || shader->key.ge.opt.same_patch_vertices) {
+            for (i = 0; i < 8 + GFX9_TCS_NUM_USER_SGPR; i++)
+               ac_add_return(&args->ac, AC_ARG_SGPR);
+            for (i = 0; i < 2; i++)
                ac_add_return(&args->ac, AC_ARG_VGPR);
+
+            /* VS outputs passed via VGPRs to TCS. */
+            if (shader->key.ge.opt.same_patch_vertices && !shader->use_aco) {
+               unsigned num_outputs = util_last_bit64(shader->selector->info.outputs_written);
+               for (i = 0; i < num_outputs * 4; i++)
+                  ac_add_return(&args->ac, AC_ARG_VGPR);
+            }
          }
       } else {
          /* TCS inputs are passed via VGPRs from VS. */

@@ -482,9 +482,15 @@ void si_llvm_tcs_build_end(struct si_shader_context *ctx)
    ctx->return_value = ret;
 }
 
-/* Pass TCS inputs from LS to TCS on GFX9. */
-static void si_set_ls_return_value_for_tcs(struct si_shader_context *ctx)
+void si_llvm_ls_build_end(struct si_shader_context *ctx)
 {
+   struct si_shader *shader = ctx->shader;
+   bool same_thread_count = shader->key.ge.opt.same_patch_vertices;
+
+   /* Only need return value when merged shader on part mode or mono mode with same thread count. */
+   if (ctx->screen->info.gfx_level < GFX9 || (shader->is_monolithic && !same_thread_count))
+      return;
+
    if (!ctx->shader->is_monolithic)
       ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 
@@ -508,23 +514,16 @@ static void si_set_ls_return_value_for_tcs(struct si_shader_context *ctx)
    ret = si_insert_input_ret(ctx, ret, ctx->args->tes_offchip_addr, 8 + GFX9_SGPR_TCS_OFFCHIP_ADDR);
 
    unsigned vgpr = 8 + GFX9_TCS_NUM_USER_SGPR;
-   ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-                              ac_to_float(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.tcs_patch_id)),
-                              vgpr++, "");
-   ret = LLVMBuildInsertValue(ctx->ac.builder, ret,
-                              ac_to_float(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.tcs_rel_ids)),
-                              vgpr++, "");
-   ctx->return_value = ret;
-}
+   ret = si_insert_input_ret_float(ctx, ret, ctx->args->ac.tcs_patch_id, vgpr++);
+   ret = si_insert_input_ret_float(ctx, ret, ctx->args->ac.tcs_rel_ids, vgpr++);
 
-void si_llvm_ls_build_end(struct si_shader_context *ctx)
-{
-   struct si_shader *shader = ctx->shader;
-   struct si_shader_info *info = &shader->selector->info;
-   LLVMValueRef *addrs = ctx->abi.outputs;
-   unsigned ret_offset = 8 + GFX9_TCS_NUM_USER_SGPR + 2;
+   if (same_thread_count) {
+      /* Same thread count is set only when mono mode. */
+      assert(shader->is_monolithic);
 
-   if (shader->key.ge.opt.same_patch_vertices) {
+      struct si_shader_info *info = &shader->selector->info;
+      LLVMValueRef *addrs = ctx->abi.outputs;
+
       for (unsigned i = 0; i < info->num_outputs; i++) {
          unsigned semantic = info->output_semantic[i];
          int param = si_shader_io_get_unique_index(semantic);
@@ -535,14 +534,12 @@ void si_llvm_ls_build_end(struct si_shader_context *ctx)
 
             LLVMValueRef value = LLVMBuildLoad2(ctx->ac.builder, ctx->ac.f32, addrs[4 * i + chan], "");
 
-            ctx->return_value = LLVMBuildInsertValue(ctx->ac.builder, ctx->return_value,
-                                                     value, ret_offset + param * 4 + chan, "");
+            ret = LLVMBuildInsertValue(ctx->ac.builder, ret, value, vgpr + param * 4 + chan, "");
          }
       }
    }
 
-   if (ctx->screen->info.gfx_level >= GFX9)
-      si_set_ls_return_value_for_tcs(ctx);
+   ctx->return_value = ret;
 }
 
 /**
