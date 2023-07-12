@@ -176,7 +176,8 @@ lower_tex_coords(nir_builder *b, nir_tex_instr *tex, nir_ssa_def **coords,
                  const ac_nir_lower_tex_options *options)
 {
    bool progress = false;
-   if (options->lower_array_layer_round_even && tex->is_array && tex->op != nir_texop_lod)
+   if ((options->lower_array_layer_round_even || tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE) &&
+       tex->is_array && tex->op != nir_texop_lod)
       progress |= lower_array_layer_round_even(b, tex, coords);
 
    if (tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE &&
