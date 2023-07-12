@@ -477,8 +477,9 @@
     - !reference [.broadcom-common-rules, rules]
     - changes:
       - src/gallium/drivers/vc4/**/*
-      - src/gallium/winsys/kmsro/**/*
       - src/gallium/winsys/vc4/**/*
+      - src/gallium/auxiliary/renderonly/**/*
+      - src/gallium/winsys/kmsro/**/*
       when: on_success
 
 .v3d-rules:
@@ -489,8 +490,9 @@
     - !reference [.broadcom-common-rules, rules]
     - changes: &v3d_file_list
       - src/gallium/drivers/v3d/**/*
-      - src/gallium/winsys/kmsro/**/*
       - src/gallium/winsys/v3d/**/*
+      - src/gallium/auxiliary/renderonly/**/*
+      - src/gallium/winsys/kmsro/**/*
       when: on_success
 
 .v3d-manual-rules:
