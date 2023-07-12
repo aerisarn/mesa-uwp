@@ -164,6 +164,11 @@ nvk_CreateSampler(VkDevice _device,
    if (!sampler)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   /* Hard-coded as 1 as a placeholder until YCbCr conversion
+    * structs are implemented
+    */
+   sampler->plane_count = 1;
+
    uint32_t samp[8] = {};
    SAMP_SET_U(samp, NV9097, 0, ADDRESS_U,
               vk_to_9097_address_mode(pCreateInfo->addressModeU));

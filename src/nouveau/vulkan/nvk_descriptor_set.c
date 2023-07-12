@@ -48,26 +48,34 @@ write_image_view_desc(struct nvk_descriptor_set *set,
                       uint32_t binding, uint32_t elem,
                       VkDescriptorType descriptor_type)
 {
-   struct nvk_image_descriptor desc = { };
+   struct nvk_image_descriptor desc[3] = { };
+   uint8_t plane_count = 1;
 
    if (descriptor_type != VK_DESCRIPTOR_TYPE_SAMPLER &&
        info && info->imageView != VK_NULL_HANDLE) {
       VK_FROM_HANDLE(nvk_image_view, view, info->imageView);
+      plane_count = view->plane_count;
       if (descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-         assert(view->storage_desc_index > 0);
-         assert(view->storage_desc_index < (1 << 20));
+         /* Storage images are always single plane */
+         assert(plane_count == 1);
+         uint8_t plane = 0;
+
+         assert(view->planes[plane].storage_desc_index > 0);
+         assert(view->planes[plane].storage_desc_index < (1 << 20));
 
          /* The nv50 compiler currently does some whacky stuff with images.
           * For now, just assert that we never do storage on 3D images and
           * that our descriptor index is at most 11 bits.
           */
-         assert(view->storage_desc_index < (1 << 11));
+         assert(view->planes[plane].storage_desc_index < (1 << 11));
 
-         desc.image_index = view->storage_desc_index;
+         desc[plane].image_index = view->planes[plane].storage_desc_index;
       } else {
-         assert(view->sampled_desc_index > 0);
-         assert(view->sampled_desc_index < (1 << 20));
-         desc.image_index = view->sampled_desc_index;
+         for (uint8_t plane = 0; plane < plane_count; plane++) {
+            assert(view->planes[plane].sampled_desc_index > 0);
+            assert(view->planes[plane].sampled_desc_index < (1 << 20));
+            desc[plane].image_index = view->planes[plane].sampled_desc_index;
+         }
       }
    }
 
@@ -83,10 +91,12 @@ write_image_view_desc(struct nvk_descriptor_set *set,
          sampler = nvk_sampler_from_handle(info->sampler);
       }
       assert(sampler->desc_index < (1 << 12));
-      desc.sampler_index = sampler->desc_index;
+      assert(sampler->plane_count == plane_count);
+      for (uint8_t plane = 0; plane < plane_count; plane++) {
+         desc[plane].sampler_index = sampler->desc_index;
+      }
    }
-
-   write_desc(set, binding, elem, &desc, sizeof(desc));
+   write_desc(set, binding, elem, desc, sizeof(desc[0]) * plane_count);
 }
 
 static void

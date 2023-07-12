@@ -249,23 +249,37 @@ nvk_image_init(struct nvk_device *device,
    if (image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT)
       usage |= NIL_IMAGE_USAGE_2D_VIEW_BIT;
 
-   struct nil_image_init_info nil_info = {
-      .dim = vk_image_type_to_nil_dim(pCreateInfo->imageType),
-      .format = vk_format_to_pipe_format(pCreateInfo->format),
-      .extent_px = {
-         .w = pCreateInfo->extent.width,
-         .h = pCreateInfo->extent.height,
-         .d = pCreateInfo->extent.depth,
-         .a = pCreateInfo->arrayLayers,
-      },
-      .levels = pCreateInfo->mipLevels,
-      .samples = pCreateInfo->samples,
-      .usage = usage,
-   };
+   image->plane_count = vk_format_get_plane_count(pCreateInfo->format);
+   image->disjoint = image->plane_count > 1 &&
+                     (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT);
 
-   ASSERTED bool ok = nil_image_init(&nvk_device_physical(device)->info,
-                                     &image->nil, &nil_info);
-   assert(ok);
+   const struct vk_format_ycbcr_info *ycbcr_info =
+      vk_format_get_ycbcr_info(pCreateInfo->format);
+   for (uint8_t plane = 0; plane < image->plane_count; plane++) {
+      VkFormat format = ycbcr_info ?
+         ycbcr_info->planes[plane].format : pCreateInfo->format;
+      const uint8_t width_scale = ycbcr_info ?
+         ycbcr_info->planes[plane].denominator_scales[0] : 1;
+      const uint8_t height_scale = ycbcr_info ?
+         ycbcr_info->planes[plane].denominator_scales[1] : 1;
+      struct nil_image_init_info nil_info = {
+         .dim = vk_image_type_to_nil_dim(pCreateInfo->imageType),
+         .format = vk_format_to_pipe_format(format),
+         .extent_px = {
+            .w = pCreateInfo->extent.width / width_scale,
+            .h = pCreateInfo->extent.height / height_scale,
+            .d = pCreateInfo->extent.depth,
+            .a = pCreateInfo->arrayLayers,
+         },
+         .levels = pCreateInfo->mipLevels,
+         .samples = pCreateInfo->samples,
+         .usage = usage,
+      };
+
+      ASSERTED bool ok = nil_image_init(&nvk_device_physical(device)->info,
+                                       &image->planes[plane].nil, &nil_info);
+      assert(ok);
+   }
 
    return VK_SUCCESS;
 }
@@ -295,31 +309,31 @@ nvk_CreateImage(VkDevice _device,
       vk_free2(&device->vk.alloc, pAllocator, image);
       return result;
    }
-
-   if (image->nil.pte_kind) {
-      assert(device->pdev->mem_heaps[0].flags &
+   for (uint8_t plane = 0; plane < image->plane_count; plane++) {
+      if (image->planes[plane].nil.pte_kind) {
+         assert(device->pdev->mem_heaps[0].flags &
              VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
 
-      const VkMemoryAllocateInfo alloc_info = {
-         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-         .allocationSize = image->nil.size_B,
-         .memoryTypeIndex = 0,
-      };
-      const struct nvk_memory_tiling_info tile_info = {
-         .tile_mode = image->nil.tile_mode,
-         .pte_kind = image->nil.pte_kind,
-      };
+         const VkMemoryAllocateInfo alloc_info = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = image->planes[plane].nil.size_B,
+            .memoryTypeIndex = 0,
+         };
+         const struct nvk_memory_tiling_info tile_info = {
+            .tile_mode = image->planes[plane].nil.tile_mode,
+            .pte_kind = image->planes[plane].nil.pte_kind,
+         };
+         result = nvk_allocate_memory(device, &alloc_info, &tile_info,
+                                   pAllocator, &image->planes[plane].internal);
+         if (result != VK_SUCCESS) {
+            nvk_image_finish(image);
+            vk_free2(&device->vk.alloc, pAllocator, image);
+            return result;
+         }
 
-      result = nvk_allocate_memory(device, &alloc_info, &tile_info,
-                                   pAllocator, &image->internal);
-      if (result != VK_SUCCESS) {
-         nvk_image_finish(image);
-         vk_free2(&device->vk.alloc, pAllocator, image);
-         return result;
+         image->planes[plane].mem = image->planes[plane].internal;
+         image->planes[plane].offset = 0;
       }
-
-      image->mem = image->internal;
-      image->offset = 0;
    }
 
    *pImage = nvk_image_to_handle(image);
@@ -338,8 +352,10 @@ nvk_DestroyImage(VkDevice _device,
    if (!image)
       return;
 
-   if (image->internal)
-      nvk_free_memory(device, image->internal, pAllocator);
+   for (uint8_t plane = 0; plane < image->plane_count; plane++) {
+      if (image->planes[plane].internal)
+         nvk_free_memory(device, image->planes[plane].internal, pAllocator);
+   }
 
    nvk_image_finish(image);
    vk_free2(&device->vk.alloc, pAllocator, image);
@@ -357,9 +373,28 @@ nvk_GetImageMemoryRequirements2(VkDevice _device,
 
    // TODO hope for the best?
 
+   VkImageAspectFlags aspects = image->vk.aspects;
+
+   uint64_t size_B, align_B;
+   if (image->disjoint) {
+      const VkImagePlaneMemoryRequirementsInfo *plane_memory_req_info =
+        vk_find_struct_const(pInfo->pNext, IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO);
+      aspects = plane_memory_req_info->planeAspect;
+      uint8_t plane = nvk_image_aspects_to_plane(image, aspects);
+      size_B = image->planes[plane].nil.size_B;
+      align_B = image->planes[plane].nil.align_B;
+   } else {
+      size_B = align_B = 0;
+      for (unsigned plane = 0; plane < image->plane_count; plane++) {
+         align_B = MAX2(align_B, image->planes[plane].nil.align_B);
+         size_B = ALIGN_POT(size_B, image->planes[plane].nil.align_B);
+         size_B += image->planes[plane].nil.size_B;
+      }
+   }
+
    pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
-   pMemoryRequirements->memoryRequirements.alignment = image->nil.align_B;
-   pMemoryRequirements->memoryRequirements.size = image->nil.size_B;
+   pMemoryRequirements->memoryRequirements.alignment = align_B;
+   pMemoryRequirements->memoryRequirements.size = size_B;
 
    vk_foreach_struct_const(ext, pMemoryRequirements->pNext) {
       switch (ext->sType) {
@@ -425,14 +460,16 @@ nvk_GetImageSubresourceLayout(VkDevice device,
 {
    VK_FROM_HANDLE(nvk_image, image, _image);
 
+   uint8_t plane = nvk_image_aspects_to_plane(image, pSubresource->aspectMask);
+
    *pLayout = (VkSubresourceLayout) {
-      .offset = nil_image_level_layer_offset_B(&image->nil,
+      .offset = nil_image_level_layer_offset_B(&image->planes[plane].nil,
                                                pSubresource->mipLevel,
                                                pSubresource->arrayLayer),
-      .size = nil_image_level_size_B(&image->nil, pSubresource->mipLevel),
-      .rowPitch = image->nil.levels[pSubresource->mipLevel].row_stride_B,
-      .arrayPitch = image->nil.array_stride_B,
-      .depthPitch = nil_image_level_depth_stride_B(&image->nil,
+      .size = nil_image_level_size_B(&image->planes[plane].nil, pSubresource->mipLevel),
+      .rowPitch = image->planes[plane].nil.levels[pSubresource->mipLevel].row_stride_B,
+      .arrayPitch = image->planes[plane].nil.array_stride_B,
+      .depthPitch = nil_image_level_depth_stride_B(&image->planes[plane].nil,
                                                    pSubresource->mipLevel),
    };
 }
@@ -446,11 +483,26 @@ nvk_BindImageMemory2(VkDevice _device,
       VK_FROM_HANDLE(nvk_device_memory, mem, pBindInfos[i].memory);
       VK_FROM_HANDLE(nvk_image, image, pBindInfos[i].image);
 
-      if (image->internal)
-         continue;
-
-      image->mem = mem;
-      image->offset = pBindInfos[i].memoryOffset;
+      if (image->disjoint) {
+         const VkBindImagePlaneMemoryInfo *plane_info =
+            vk_find_struct_const(pBindInfos[i].pNext, BIND_IMAGE_PLANE_MEMORY_INFO);
+         uint8_t plane = nvk_image_aspects_to_plane(image, plane_info->planeAspect);
+         if (image->planes[plane].internal == NULL) {
+            image->planes[plane].mem = mem;
+            image->planes[plane].offset = pBindInfos[i].memoryOffset;
+         }
+      } else {
+         uint64_t offset_B = 0;
+         for (unsigned plane = 0; plane < image->plane_count; plane++) {
+            offset_B = ALIGN_POT(offset_B, image->planes[plane].nil.align_B);
+            if (image->planes[plane].internal == NULL) {
+               image->planes[plane].mem = mem;
+               image->planes[plane].offset = pBindInfos[i].memoryOffset + offset_B;
+            }
+            offset_B += image->planes[plane].nil.size_B;
+         }
+      }
    }
+
    return VK_SUCCESS;
 }

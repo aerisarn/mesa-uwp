@@ -193,6 +193,21 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
       nvk_descriptor_stride_align_for_type(binding->descriptorType, type_list,
                                            &stride, &align);
 
+      uint8_t max_plane_count = 1;
+
+      if (binding_has_immutable_samplers(binding)) {
+         layout->binding[b].immutable_samplers = samplers;
+         samplers += binding->descriptorCount;
+         for (uint32_t i = 0; i < binding->descriptorCount; i++) {
+            VK_FROM_HANDLE(nvk_sampler, sampler, binding->pImmutableSamplers[i]);
+            layout->binding[b].immutable_samplers[i] = sampler;
+            if (max_plane_count < sampler->plane_count)
+               max_plane_count = sampler->plane_count;
+         }
+      }
+
+      stride *= max_plane_count;
+
       if (stride > 0) {
          assert(stride <= UINT8_MAX);
          assert(util_is_power_of_two_nonzero(align));
@@ -202,14 +217,6 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
          buffer_size += stride * binding->descriptorCount;
       }
 
-      if (binding_has_immutable_samplers(binding)) {
-         layout->binding[b].immutable_samplers = samplers;
-         samplers += binding->descriptorCount;
-         for (uint32_t i = 0; i < binding->descriptorCount; i++) {
-            VK_FROM_HANDLE(nvk_sampler, sampler, binding->pImmutableSamplers[i]);
-            layout->binding[b].immutable_samplers[i] = sampler;
-         }
-      }
    }
 
    layout->descriptor_buffer_size = buffer_size;

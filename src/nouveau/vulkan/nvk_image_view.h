@@ -10,11 +10,16 @@ struct nvk_device;
 struct nvk_image_view {
    struct vk_image_view vk;
 
-   /** Index in the image descriptor table for the sampled image descriptor */
-   uint32_t sampled_desc_index;
+   uint8_t plane_count;
+   struct {
+      uint8_t image_plane;
 
-   /** Index in the image descriptor table for the storage image descriptor */
-   uint32_t storage_desc_index;
+      /** Index in the image descriptor table for the sampled image descriptor */
+      uint32_t sampled_desc_index;
+
+      /** Index in the image descriptor table for the storage image descriptor */
+      uint32_t storage_desc_index;
+   } planes[3];
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_image_view, vk.base, VkImageView,

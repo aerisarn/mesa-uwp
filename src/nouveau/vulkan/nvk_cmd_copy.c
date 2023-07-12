@@ -69,7 +69,8 @@ static struct nouveau_copy_buffer
 nouveau_copy_rect_image(
    struct nvk_image *img,
    VkOffset3D offset_px,
-   const VkImageSubresourceLayers *sub_res)
+   const VkImageSubresourceLayers *sub_res,
+   const uint8_t plane)
 {
    const VkExtent3D lvl_extent_px =
       vk_image_mip_level_extent(&img->vk, sub_res->mipLevel);
@@ -81,17 +82,17 @@ nouveau_copy_rect_image(
       vk_to_nil_offset(offset_px, sub_res->baseArrayLayer);
 
    struct nouveau_copy_buffer buf = {
-      .base_addr = nvk_image_base_address(img) +
-                   img->nil.levels[sub_res->mipLevel].offset_B,
+      .base_addr = nvk_image_base_address(img, plane) +
+                   img->planes[plane].nil.levels[sub_res->mipLevel].offset_B,
       .image_type = img->vk.image_type,
-      .offset_el = nil_offset4d_px_to_el(offset4d_px, img->nil.format,
-                                         img->nil.sample_layout),
-      .extent_el = nil_extent4d_px_to_el(lvl_extent4d_px, img->nil.format,
-                                         img->nil.sample_layout),
-      .bpp = vk_format_get_blocksize(img->vk.format),
-      .row_stride = img->nil.levels[sub_res->mipLevel].row_stride_B,
-      .array_stride = img->nil.array_stride_B,
-      .tiling = img->nil.levels[sub_res->mipLevel].tiling,
+      .offset_el = nil_offset4d_px_to_el(offset4d_px, img->planes[plane].nil.format,
+                                         img->planes[plane].nil.sample_layout),
+      .extent_el = nil_extent4d_px_to_el(lvl_extent4d_px, img->planes[plane].nil.format,
+                                         img->planes[plane].nil.sample_layout),
+      .bpp = util_format_get_blocksize(img->planes[plane].nil.format),
+      .row_stride = img->planes[plane].nil.levels[sub_res->mipLevel].row_stride_B,
+      .array_stride = img->planes[plane].nil.array_stride_B,
+      .tiling = img->planes[plane].nil.levels[sub_res->mipLevel].tiling,
    };
 
    return buf;
@@ -366,16 +367,18 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
       const struct nil_extent4d extent4d_px =
          vk_to_nil_extent(extent_px, region->imageSubresource.layerCount);
 
+      const VkImageAspectFlagBits aspects = region->imageSubresource.aspectMask;
+      uint8_t plane = nvk_image_aspects_to_plane(dst, aspects);
+
       struct nouveau_copy copy = {
          .src = nouveau_copy_rect_buffer(src, region->bufferOffset,
                                          buffer_layout),
          .dst = nouveau_copy_rect_image(dst, region->imageOffset,
-                                        &region->imageSubresource),
-         .extent_el = nil_extent4d_px_to_el(extent4d_px, dst->nil.format,
-                                            dst->nil.sample_layout),
+                                        &region->imageSubresource, plane),
+         .extent_el = nil_extent4d_px_to_el(extent4d_px, dst->planes[plane].nil.format,
+                                            dst->planes[plane].nil.sample_layout),
       };
 
-      const VkImageAspectFlagBits aspects = region->imageSubresource.aspectMask;
       switch (dst->vk.format) {
       case VK_FORMAT_D24_UNORM_S8_UINT:
          if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
@@ -436,16 +439,18 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
       const struct nil_extent4d extent4d_px =
          vk_to_nil_extent(extent_px, region->imageSubresource.layerCount);
 
+      const VkImageAspectFlagBits aspects = region->imageSubresource.aspectMask;
+      uint8_t plane = nvk_image_aspects_to_plane(src, aspects);
+
       struct nouveau_copy copy = {
          .src = nouveau_copy_rect_image(src, region->imageOffset,
-                                        &region->imageSubresource),
+                                        &region->imageSubresource, plane),
          .dst = nouveau_copy_rect_buffer(dst, region->bufferOffset,
                                          buffer_layout),
-         .extent_el = nil_extent4d_px_to_el(extent4d_px, src->nil.format,
-                                            src->nil.sample_layout),
+         .extent_el = nil_extent4d_px_to_el(extent4d_px, src->planes[plane].nil.format,
+                                            src->planes[plane].nil.sample_layout),
       };
 
-      const VkImageAspectFlagBits aspects = region->imageSubresource.aspectMask;
       switch (src->vk.format) {
       case VK_FORMAT_D24_UNORM_S8_UINT:
          if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
@@ -510,26 +515,31 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
       const struct nil_extent4d extent4d_px =
          vk_to_nil_extent(extent_px, region->srcSubresource.layerCount);
 
+      const VkImageAspectFlagBits src_aspects = region->srcSubresource.aspectMask;
+      uint8_t src_plane = nvk_image_aspects_to_plane(src, src_aspects);
+
+      const VkImageAspectFlagBits dst_aspects = region->dstSubresource.aspectMask;
+      uint8_t dst_plane = nvk_image_aspects_to_plane(dst, dst_aspects);
+
       struct nouveau_copy copy = {
          .src = nouveau_copy_rect_image(src, region->srcOffset,
-                                        &region->srcSubresource),
+                                        &region->srcSubresource, src_plane),
          .dst = nouveau_copy_rect_image(dst, region->dstOffset,
-                                        &region->dstSubresource),
-         .extent_el = nil_extent4d_px_to_el(extent4d_px, src->nil.format,
-                                            src->nil.sample_layout),
+                                        &region->dstSubresource, dst_plane),
+         .extent_el = nil_extent4d_px_to_el(extent4d_px, src->planes[src_plane].nil.format,
+                                            src->planes[src_plane].nil.sample_layout),
       };
 
-      const VkImageAspectFlagBits aspects = region->srcSubresource.aspectMask;
-      assert(aspects == region->dstSubresource.aspectMask);
+      assert(src_aspects == region->srcSubresource.aspectMask);
       switch (src->vk.format) {
       case VK_FORMAT_D24_UNORM_S8_UINT:
-         if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
+         if (src_aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
             copy.remap.comp_size = 1;
             copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_W_SRC_X;
             copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_SRC_Y;
             copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_SRC_Z;
             copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
-         } else if (aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         } else if (src_aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
             copy.remap.comp_size = 1;
             copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_NO_WRITE;
             copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
@@ -537,7 +547,7 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
             copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_SRC_W;
          } else {
             /* If we're copying both, there's nothing special to do */
-            assert(aspects == (VK_IMAGE_ASPECT_DEPTH_BIT |
+            assert(src_aspects == (VK_IMAGE_ASPECT_DEPTH_BIT |
                                VK_IMAGE_ASPECT_STENCIL_BIT));
          }
          break;
