@@ -2254,7 +2254,7 @@ if with_gallium
     gallium_frontends += 'rusticl'
   endif
   gallium_summary += {'Frontends': gallium_frontends}
-  gallium_summary += {'Off-screen rendering': with_osmesa ? 'lib' + osmesa_lib_name : false}
+  gallium_summary += {'Off-screen rendering (OSMesa)': with_osmesa ? 'lib' + osmesa_lib_name : false}
   gallium_summary += {'HUD lm-sensors': dep_lmsensors.found()}
 endif
 summary(gallium_summary, section: 'Gallium', bool_yn: true, list_sep: ' ')
