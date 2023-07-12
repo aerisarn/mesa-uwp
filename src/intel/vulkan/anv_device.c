@@ -1146,12 +1146,23 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
          };
       }
       if (v_count > 0 && pdevice->video_decode_enabled) {
+         /* HEVC support on Gfx9 is only available on VCS0. So limit the number of video queues
+          * to the first VCS engine instance.
+          *
+          * We should be able to query HEVC support from the kernel using the engine query uAPI,
+          * but this appears to be broken :
+          *    https://gitlab.freedesktop.org/drm/intel/-/issues/8832
+          *
+          * When this bug is fixed we should be able to check HEVC support to determine the
+          * correct number of queues.
+          */
          pdevice->queue.families[family_count++] = (struct anv_queue_family) {
             .queueFlags = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
-            .queueCount = v_count,
+            .queueCount = pdevice->info.ver == 9 ? MIN2(1, v_count) : v_count,
             .engine_class = INTEL_ENGINE_CLASS_VIDEO,
          };
       }
+
       /* Increase count below when other families are added as a reminder to
        * increase the ANV_MAX_QUEUE_FAMILIES value.
        */
