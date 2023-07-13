@@ -177,7 +177,7 @@
 
 #define RENCODE_COLOR_SPACE_YUV                                                     0
 
-#define PIPE_ALIGN_IN_BLOCK_SIZE(value, alignment) ALIGN_POT(value, alignment)
+#define PIPE_ALIGN_IN_BLOCK_SIZE(value, alignment) DIV_ROUND_UP(value, alignment)
 
 #define RADEON_ENC_CS(value) (enc->cs.current.buf[enc->cs.current.cdw++] = (value))
 #define RADEON_ENC_BEGIN(cmd)                                                                    \
