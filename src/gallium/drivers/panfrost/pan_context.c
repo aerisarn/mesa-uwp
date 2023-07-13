@@ -114,7 +114,7 @@ panfrost_flush(struct pipe_context *pipe, struct pipe_fence_handle **fence,
    }
 
    if (dev->debug & PAN_DBG_TRACE)
-      pandecode_next_frame();
+      pandecode_next_frame(dev->decode_ctx);
 }
 
 static void

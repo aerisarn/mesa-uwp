@@ -685,14 +685,14 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
       drmSyncobjWait(dev->fd, &out_sync, 1, INT64_MAX, 0, NULL);
 
       if (dev->debug & PAN_DBG_TRACE)
-         pandecode_jc(submit.jc, dev->gpu_id);
+         pandecode_jc(dev->decode_ctx, submit.jc, dev->gpu_id);
 
       if (dev->debug & PAN_DBG_DUMP)
-         pandecode_dump_mappings();
+         pandecode_dump_mappings(dev->decode_ctx);
 
       /* Jobs won't be complete if blackhole rendering, that's ok */
       if (!ctx->is_noop && dev->debug & PAN_DBG_SYNC)
-         pandecode_abort_on_fault(submit.jc, dev->gpu_id);
+         pandecode_abort_on_fault(dev->decode_ctx, submit.jc, dev->gpu_id);
    }
 
    return 0;

@@ -1004,7 +1004,8 @@ panfrost_ptr_map(struct pipe_context *pctx, struct pipe_resource *resource,
    panfrost_bo_mmap(bo);
 
    if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
-      pandecode_inject_mmap(bo->ptr.gpu, bo->ptr.cpu, bo->size, NULL);
+      pandecode_inject_mmap(dev->decode_ctx, bo->ptr.gpu, bo->ptr.cpu, bo->size,
+                            NULL);
 
    /* Upgrade writes to uninitialized ranges to UNSYNCHRONIZED */
    if ((usage & PIPE_MAP_WRITE) && resource->target == PIPE_BUFFER &&

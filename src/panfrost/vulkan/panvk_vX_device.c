@@ -77,10 +77,11 @@ panvk_queue_submit_batch(struct panvk_queue *queue, struct panvk_batch *batch,
       }
 
       if (debug & PANVK_DEBUG_TRACE)
-         pandecode_jc(batch->scoreboard.first_job, pdev->gpu_id);
+         pandecode_jc(pdev->decode_ctx, batch->scoreboard.first_job,
+                      pdev->gpu_id);
 
       if (debug & PANVK_DEBUG_DUMP)
-         pandecode_dump_mappings();
+         pandecode_dump_mappings(pdev->decode_ctx);
    }
 
    if (batch->fragment_job) {
@@ -109,14 +110,14 @@ panvk_queue_submit_batch(struct panvk_queue *queue, struct panvk_batch *batch,
       }
 
       if (debug & PANVK_DEBUG_TRACE)
-         pandecode_jc(batch->fragment_job, pdev->gpu_id);
+         pandecode_jc(pdev->decode_ctx, batch->fragment_job, pdev->gpu_id);
 
       if (debug & PANVK_DEBUG_DUMP)
-         pandecode_dump_mappings();
+         pandecode_dump_mappings(pdev->decode_ctx);
    }
 
    if (debug & PANVK_DEBUG_TRACE)
-      pandecode_next_frame();
+      pandecode_next_frame(0);
 
    batch->issued = true;
 }
