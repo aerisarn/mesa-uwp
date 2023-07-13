@@ -54,9 +54,6 @@ nvk_get_image_format_features(struct nvk_physical_device *pdev,
    }
 
    if (vk_format_is_depth_or_stencil(vk_format)) {
-      if (vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT)
-         return 0; /* TODO */
-
       if (!nil_format_supports_depth_stencil(&pdev->info, p_format))
          return 0;
 
@@ -281,6 +278,27 @@ nvk_image_init(struct nvk_device *dev,
       assert(ok);
    }
 
+   if (image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+      struct nil_image_init_info stencil_nil_info = {
+         .dim = vk_image_type_to_nil_dim(pCreateInfo->imageType),
+         .format = PIPE_FORMAT_R32_UINT,
+         .extent_px = {
+            .w = pCreateInfo->extent.width,
+            .h = pCreateInfo->extent.height,
+            .d = pCreateInfo->extent.depth,
+            .a = pCreateInfo->arrayLayers,
+         },
+         .levels = pCreateInfo->mipLevels,
+         .samples = pCreateInfo->samples,
+         .usage = usage,
+      };
+
+      ASSERTED bool ok = nil_image_init(&nvk_device_physical(dev)->info,
+                                        &image->stencil_copy_temp.nil,
+                                        &stencil_nil_info);
+      assert(ok);
+   }
+
    return VK_SUCCESS;
 }
 
@@ -292,6 +310,9 @@ nvk_image_finish(struct nvk_device *dev, struct nvk_image *image,
       if (image->planes[plane].internal)
          nvk_free_memory(dev, image->planes[plane].internal, pAllocator);
    }
+
+   if (image->stencil_copy_temp.internal)
+      nvk_free_memory(dev, image->stencil_copy_temp.internal, pAllocator);
 
    vk_image_finish(&image->vk);
 }
@@ -357,6 +378,15 @@ nvk_CreateImage(VkDevice device,
       }
    }
 
+   if (image->stencil_copy_temp.nil.size_B > 0) {
+      result = nvk_image_plane_alloc_internal(dev, &image->stencil_copy_temp,
+                                              pAllocator);
+      if (result != VK_SUCCESS) {
+         nvk_image_finish(dev, image, pAllocator);
+         vk_free2(&dev->vk.alloc, pAllocator, image);
+         return result;
+      }
+   }
 
    *pImage = nvk_image_to_handle(image);
 
@@ -373,7 +403,6 @@ nvk_DestroyImage(VkDevice device,
 
    if (!image)
       return;
-
 
    nvk_image_finish(dev, image, pAllocator);
    vk_free2(&dev->vk.alloc, pAllocator, image);
@@ -417,6 +446,9 @@ nvk_GetImageMemoryRequirements2(VkDevice device,
       for (unsigned plane = 0; plane < image->plane_count; plane++)
          nvk_image_plane_add_req(&image->planes[plane], &size_B, &align_B);
    }
+
+   if (image->stencil_copy_temp.nil.size_B > 0)
+      nvk_image_plane_add_req(&image->stencil_copy_temp, &size_B, &align_B);
 
    pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
    pMemoryRequirements->memoryRequirements.alignment = align_B;
@@ -533,6 +565,9 @@ nvk_BindImageMemory2(VkDevice device,
             nvk_image_plane_bind(&image->planes[plane], mem, &offset_B);
          }
       }
+
+      if (image->stencil_copy_temp.nil.size_B > 0)
+         nvk_image_plane_bind(&image->stencil_copy_temp, mem, &offset_B);
    }
 
    return VK_SUCCESS;

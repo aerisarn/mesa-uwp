@@ -34,6 +34,14 @@ struct nvk_image {
 
    uint8_t plane_count;
    struct nvk_image_plane planes[3];
+
+   /* In order to support D32_SFLOAT_S8_UINT, a temp area is
+    * needed. The stencil plane can't be a copied using the DMA
+    * engine in a single pass since it would need 8 components support.
+    * Instead we allocate a 16-bit temp, that gets copied into, then
+    * copied again down to the 8-bit result.
+    */
+   struct nvk_image_plane stencil_copy_temp;
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)

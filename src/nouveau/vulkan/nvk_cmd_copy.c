@@ -379,8 +379,40 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
          .extent_el = nil_extent4d_px_to_el(extent4d_px, dst->planes[plane].nil.format,
                                             dst->planes[plane].nil.sample_layout),
       };
+      struct nouveau_copy copy2 = { 0 };
 
       switch (dst->vk.format) {
+      case VK_FORMAT_D32_SFLOAT_S8_UINT:
+         if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
+            copy.remap.comp_size = 4;
+            copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_SRC_X;
+            copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
+            copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
+            copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
+            //copy.dst.bpp = 8;
+         } else {
+            assert(aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
+            copy2.dst = copy.dst;
+            copy2.extent_el = copy.extent_el;
+            copy.dst = copy2.src =
+               nouveau_copy_rect_image(dst, &dst->stencil_copy_temp,
+                                       region->imageOffset,
+                                       &region->imageSubresource);
+
+            copy.remap.comp_size = 1;
+            copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_SRC_X;
+            copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
+            copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
+            copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
+
+            copy2.remap.comp_size = 2;
+            copy2.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_NO_WRITE;
+            copy2.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
+            copy2.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_SRC_X;
+            copy2.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
+            //copy2.dst.bpp = 8;
+         }
+         break;
       case VK_FORMAT_D24_UNORM_S8_UINT:
          if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
             copy.remap.comp_size = 1;
@@ -403,6 +435,8 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
       }
 
       nouveau_copy_rect(cmd, &copy);
+      if (copy2.extent_el.w > 0)
+         nouveau_copy_rect(cmd, &copy2);
 
       vk_foreach_struct_const(ext, region->pNext) {
          switch (ext->sType) {
@@ -452,8 +486,40 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
          .extent_el = nil_extent4d_px_to_el(extent4d_px, src->planes[plane].nil.format,
                                             src->planes[plane].nil.sample_layout),
       };
+      struct nouveau_copy copy2 = { 0 };
 
       switch (src->vk.format) {
+      case VK_FORMAT_D32_SFLOAT_S8_UINT:
+         if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
+            copy.remap.comp_size = 4;
+            copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_SRC_X;
+            copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
+            copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
+            copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
+            //copy.src.bpp = 8;
+         } else {
+            assert(aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
+            copy2.dst = copy.dst;
+            copy2.extent_el = copy.extent_el;
+            copy.dst = copy2.src =
+               nouveau_copy_rect_image(src, &src->stencil_copy_temp,
+                                       region->imageOffset,
+                                       &region->imageSubresource);
+
+            copy.remap.comp_size = 2;
+            copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_SRC_Z;
+            copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
+            copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
+            copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
+            //copy.src.bpp = 8;
+
+            copy2.remap.comp_size = 1;
+            copy2.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_SRC_X;
+            copy2.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
+            copy2.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
+            copy2.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
+         }
+         break;
       case VK_FORMAT_D24_UNORM_S8_UINT:
          if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
             copy.remap.comp_size = 1;
@@ -476,6 +542,8 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
       }
 
       nouveau_copy_rect(cmd, &copy);
+      if (copy2.extent_el.w > 0)
+         nouveau_copy_rect(cmd, &copy2);
 
       vk_foreach_struct_const(ext, region->pNext) {
          switch (ext->sType) {
