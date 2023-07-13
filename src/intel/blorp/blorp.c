@@ -303,17 +303,19 @@ blorp_compile_fs(struct blorp_context *blorp, void *mem_ctx,
    }
 
    struct brw_compile_fs_params params = {
-      .nir = nir,
+      .base = {
+         .mem_ctx = mem_ctx,
+         .nir = nir,
+         .log_data = blorp->driver_ctx,
+         .debug_flag = DEBUG_BLORP,
+      },
       .key = wm_key,
       .prog_data = wm_prog_data,
 
       .use_rep_send = use_repclear,
-      .log_data = blorp->driver_ctx,
-
-      .debug_flag = DEBUG_BLORP,
    };
 
-   return brw_compile_fs(compiler, mem_ctx, &params);
+   return brw_compile_fs(compiler, &params);
 }
 
 const unsigned *
@@ -340,15 +342,17 @@ blorp_compile_vs(struct blorp_context *blorp, void *mem_ctx,
    struct brw_vs_prog_key vs_key = { 0, };
 
    struct brw_compile_vs_params params = {
-      .nir = nir,
+      .base = {
+         .mem_ctx = mem_ctx,
+         .nir = nir,
+         .log_data = blorp->driver_ctx,
+         .debug_flag = DEBUG_BLORP,
+      },
       .key = &vs_key,
       .prog_data = vs_prog_data,
-      .log_data = blorp->driver_ctx,
-
-      .debug_flag = DEBUG_BLORP,
    };
 
-   return brw_compile_vs(compiler, mem_ctx, &params);
+   return brw_compile_vs(compiler, &params);
 }
 
 static bool
@@ -398,14 +402,17 @@ blorp_compile_cs(struct blorp_context *blorp, void *mem_ctx,
               nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    struct brw_compile_cs_params params = {
-      .nir = nir,
+      .base = {
+         .mem_ctx = mem_ctx,
+         .nir = nir,
+         .log_data = blorp->driver_ctx,
+         .debug_flag = DEBUG_BLORP,
+      },
       .key = cs_key,
       .prog_data = cs_prog_data,
-      .log_data = blorp->driver_ctx,
-      .debug_flag = DEBUG_BLORP,
    };
 
-   const unsigned *program = brw_compile_cs(compiler, mem_ctx, &params);
+   const unsigned *program = brw_compile_cs(compiler, &params);
 
    ralloc_free(cs_prog_data->base.param);
    cs_prog_data->base.param = NULL;

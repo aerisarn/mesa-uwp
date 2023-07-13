@@ -1369,15 +1369,13 @@ vec4_visitor::emit_shader_float_controls_execution_mode()
 }
 
 vec4_visitor::vec4_visitor(const struct brw_compiler *compiler,
-                           void *log_data,
+                           const struct brw_compile_params *params,
                            const struct brw_sampler_prog_key_data *key_tex,
                            struct brw_vue_prog_data *prog_data,
                            const nir_shader *shader,
-			   void *mem_ctx,
                            bool no_spills,
                            bool debug_enabled)
-   : backend_shader(compiler, log_data, mem_ctx, shader, &prog_data->base,
-                    debug_enabled),
+   : backend_shader(compiler, params, shader, &prog_data->base, debug_enabled),
      key_tex(key_tex),
      prog_data(prog_data),
      fail_msg(NULL),

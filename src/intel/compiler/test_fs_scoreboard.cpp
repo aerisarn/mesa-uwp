@@ -34,6 +34,7 @@ class scoreboard_test : public ::testing::Test {
 
 public:
    struct brw_compiler *compiler;
+   struct brw_compile_params params;
    struct intel_device_info *devinfo;
    void *ctx;
    struct brw_wm_prog_data *prog_data;
@@ -48,11 +49,14 @@ void scoreboard_test::SetUp()
    devinfo = rzalloc(ctx, struct intel_device_info);
    compiler->devinfo = devinfo;
 
+   params = {};
+   params.mem_ctx = ctx;
+
    prog_data = ralloc(ctx, struct brw_wm_prog_data);
    nir_shader *shader =
       nir_shader_create(ctx, MESA_SHADER_FRAGMENT, NULL, NULL);
 
-   v = new fs_visitor(compiler, NULL, ctx, NULL, &prog_data->base, shader, 8,
+   v = new fs_visitor(compiler, &params, NULL, &prog_data->base, shader, 8,
                       false, false);
 
    devinfo->ver = 12;

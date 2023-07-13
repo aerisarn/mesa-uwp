@@ -271,10 +271,9 @@ brw_nir_align_launch_mesh_workgroups(nir_shader *nir)
 
 const unsigned *
 brw_compile_task(const struct brw_compiler *compiler,
-                 void *mem_ctx,
                  struct brw_compile_task_params *params)
 {
-   struct nir_shader *nir = params->nir;
+   struct nir_shader *nir = params->base.nir;
    const struct brw_task_prog_key *key = params->key;
    struct brw_task_prog_data *prog_data = params->prog_data;
    const bool debug_enabled = brw_should_print_shader(nir, DEBUG_TASK);
@@ -307,7 +306,7 @@ brw_compile_task(const struct brw_compiler *compiler,
       BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
 
    brw_simd_selection_state simd_state{
-      .mem_ctx = mem_ctx,
+      .mem_ctx = params->base.mem_ctx,
       .devinfo = compiler->devinfo,
       .prog_data = &prog_data->base,
       .required_width = brw_required_dispatch_width(&nir->info),
@@ -321,7 +320,7 @@ brw_compile_task(const struct brw_compiler *compiler,
 
       const unsigned dispatch_width = 8 << simd;
 
-      nir_shader *shader = nir_shader_clone(mem_ctx, nir);
+      nir_shader *shader = nir_shader_clone(params->base.mem_ctx, nir);
       brw_nir_apply_key(shader, compiler, &key->base, dispatch_width);
 
       NIR_PASS(_, shader, brw_nir_lower_load_uniforms);
@@ -332,9 +331,11 @@ brw_compile_task(const struct brw_compiler *compiler,
 
       brw_nir_adjust_payload(shader, compiler);
 
-      v[simd] = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
-                                             &prog_data->base.base, shader, dispatch_width,
-                                             params->stats != NULL,
+      v[simd] = std::make_unique<fs_visitor>(compiler, &params->base,
+                                             &key->base,
+                                             &prog_data->base.base,
+                                             shader, dispatch_width,
+                                             params->base.stats != NULL,
                                              debug_enabled);
 
       if (prog_data->base.prog_mask) {
@@ -346,14 +347,16 @@ brw_compile_task(const struct brw_compiler *compiler,
       if (v[simd]->run_task(allow_spilling))
          brw_simd_mark_compiled(simd_state, simd, v[simd]->spilled_any_registers);
       else
-         simd_state.error[simd] = ralloc_strdup(mem_ctx, v[simd]->fail_msg);
+         simd_state.error[simd] = ralloc_strdup(params->base.mem_ctx, v[simd]->fail_msg);
    }
 
    int selected_simd = brw_simd_select(simd_state);
    if (selected_simd < 0) {
-      params->error_str = ralloc_asprintf(mem_ctx, "Can't compile shader: %s, %s and %s.\n",
-                                          simd_state.error[0], simd_state.error[1],
-                                          simd_state.error[2]);
+      params->base.error_str =
+         ralloc_asprintf(params->base.mem_ctx,
+                         "Can't compile shader: %s, %s and %s.\n",
+                         simd_state.error[0], simd_state.error[1],
+                         simd_state.error[2]);
       return NULL;
    }
 
@@ -365,10 +368,10 @@ brw_compile_task(const struct brw_compiler *compiler,
       brw_print_tue_map(stderr, &prog_data->map);
    }
 
-   fs_generator g(compiler, params->log_data, mem_ctx,
-                  &prog_data->base.base, false, MESA_SHADER_TASK);
+   fs_generator g(compiler, &params->base, &prog_data->base.base,
+                  false, MESA_SHADER_TASK);
    if (unlikely(debug_enabled)) {
-      g.enable_debug(ralloc_asprintf(mem_ctx,
+      g.enable_debug(ralloc_asprintf(params->base.mem_ctx,
                                      "%s task shader %s",
                                      nir->info.label ? nir->info.label
                                                      : "unnamed",
@@ -376,7 +379,7 @@ brw_compile_task(const struct brw_compiler *compiler,
    }
 
    g.generate_code(selected->cfg, selected->dispatch_width, selected->shader_stats,
-                   selected->performance_analysis.require(), params->stats);
+                   selected->performance_analysis.require(), params->base.stats);
    g.add_const_data(nir->constant_data, nir->constant_data_size);
    return g.get_assembly();
 }
@@ -953,10 +956,9 @@ brw_pack_primitive_indices(nir_shader *nir, void *data)
 
 const unsigned *
 brw_compile_mesh(const struct brw_compiler *compiler,
-                 void *mem_ctx,
                  struct brw_compile_mesh_params *params)
 {
-   struct nir_shader *nir = params->nir;
+   struct nir_shader *nir = params->base.nir;
    const struct brw_mesh_prog_key *key = params->key;
    struct brw_mesh_prog_data *prog_data = params->prog_data;
    const bool debug_enabled = brw_should_print_shader(nir, DEBUG_MESH);
@@ -993,7 +995,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
    brw_nir_lower_mue_outputs(nir, &prog_data->map);
 
    brw_simd_selection_state simd_state{
-      .mem_ctx = mem_ctx,
+      .mem_ctx = params->base.mem_ctx,
       .devinfo = compiler->devinfo,
       .prog_data = &prog_data->base,
       .required_width = brw_required_dispatch_width(&nir->info),
@@ -1007,7 +1009,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
 
       const unsigned dispatch_width = 8 << simd;
 
-      nir_shader *shader = nir_shader_clone(mem_ctx, nir);
+      nir_shader *shader = nir_shader_clone(params->base.mem_ctx, nir);
 
       /*
        * When Primitive Header is enabled, we may not generates writes to all
@@ -1030,9 +1032,11 @@ brw_compile_mesh(const struct brw_compiler *compiler,
 
       brw_nir_adjust_payload(shader, compiler);
 
-      v[simd] = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
-                                             &prog_data->base.base, shader, dispatch_width,
-                                             params->stats != NULL,
+      v[simd] = std::make_unique<fs_visitor>(compiler, &params->base,
+                                             &key->base,
+                                             &prog_data->base.base,
+                                             shader, dispatch_width,
+                                             params->base.stats != NULL,
                                              debug_enabled);
 
       if (prog_data->base.prog_mask) {
@@ -1044,14 +1048,16 @@ brw_compile_mesh(const struct brw_compiler *compiler,
       if (v[simd]->run_mesh(allow_spilling))
          brw_simd_mark_compiled(simd_state, simd, v[simd]->spilled_any_registers);
       else
-         simd_state.error[simd] = ralloc_strdup(mem_ctx, v[simd]->fail_msg);
+         simd_state.error[simd] = ralloc_strdup(params->base.mem_ctx, v[simd]->fail_msg);
    }
 
    int selected_simd = brw_simd_select(simd_state);
    if (selected_simd < 0) {
-      params->error_str = ralloc_asprintf(mem_ctx, "Can't compile shader: %s, %s and %s.\n",
-                                          simd_state.error[0], simd_state.error[1],
-                                          simd_state.error[2]);;
+      params->base.error_str =
+         ralloc_asprintf(params->base.mem_ctx,
+                         "Can't compile shader: %s, %s and %s.\n",
+                         simd_state.error[0], simd_state.error[1],
+                         simd_state.error[2]);;
       return NULL;
    }
 
@@ -1067,10 +1073,10 @@ brw_compile_mesh(const struct brw_compiler *compiler,
       brw_print_mue_map(stderr, &prog_data->map);
    }
 
-   fs_generator g(compiler, params->log_data, mem_ctx,
-                  &prog_data->base.base, false, MESA_SHADER_MESH);
+   fs_generator g(compiler, &params->base, &prog_data->base.base,
+                  false, MESA_SHADER_MESH);
    if (unlikely(debug_enabled)) {
-      g.enable_debug(ralloc_asprintf(mem_ctx,
+      g.enable_debug(ralloc_asprintf(params->base.mem_ctx,
                                      "%s mesh shader %s",
                                      nir->info.label ? nir->info.label
                                                      : "unnamed",
@@ -1078,7 +1084,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
    }
 
    g.generate_code(selected->cfg, selected->dispatch_width, selected->shader_stats,
-                   selected->performance_analysis.require(), params->stats);
+                   selected->performance_analysis.require(), params->base.stats);
    g.add_const_data(nir->constant_data, nir->constant_data_size);
    return g.get_assembly();
 }

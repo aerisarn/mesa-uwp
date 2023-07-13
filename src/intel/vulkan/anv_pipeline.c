@@ -1124,14 +1124,17 @@ anv_pipeline_compile_vs(const struct brw_compiler *compiler,
    vs_stage->num_stats = 1;
 
    struct brw_compile_vs_params params = {
-      .nir = vs_stage->nir,
+      .base = {
+         .nir = vs_stage->nir,
+         .stats = vs_stage->stats,
+         .log_data = pipeline->base.device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &vs_stage->key.vs,
       .prog_data = &vs_stage->prog_data.vs,
-      .stats = vs_stage->stats,
-      .log_data = pipeline->base.device,
    };
 
-   vs_stage->code = brw_compile_vs(compiler, mem_ctx, &params);
+   vs_stage->code = brw_compile_vs(compiler, &params);
 }
 
 static void
@@ -1212,14 +1215,17 @@ anv_pipeline_compile_tcs(const struct brw_compiler *compiler,
    tcs_stage->num_stats = 1;
 
    struct brw_compile_tcs_params params = {
-      .nir = tcs_stage->nir,
+      .base = {
+         .nir = tcs_stage->nir,
+         .stats = tcs_stage->stats,
+         .log_data = device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &tcs_stage->key.tcs,
       .prog_data = &tcs_stage->prog_data.tcs,
-      .stats = tcs_stage->stats,
-      .log_data = device,
    };
 
-   tcs_stage->code = brw_compile_tcs(compiler, mem_ctx, &params);
+   tcs_stage->code = brw_compile_tcs(compiler, &params);
 }
 
 static void
@@ -1246,15 +1252,18 @@ anv_pipeline_compile_tes(const struct brw_compiler *compiler,
    tes_stage->num_stats = 1;
 
    struct brw_compile_tes_params params = {
-      .nir = tes_stage->nir,
+      .base = {
+         .nir = tes_stage->nir,
+         .stats = tes_stage->stats,
+         .log_data = device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &tes_stage->key.tes,
       .prog_data = &tes_stage->prog_data.tes,
       .input_vue_map = &tcs_stage->prog_data.tcs.base.vue_map,
-      .stats = tes_stage->stats,
-      .log_data = device,
    };
 
-   tes_stage->code = brw_compile_tes(compiler, mem_ctx, &params);
+   tes_stage->code = brw_compile_tes(compiler, &params);
 }
 
 static void
@@ -1281,14 +1290,17 @@ anv_pipeline_compile_gs(const struct brw_compiler *compiler,
    gs_stage->num_stats = 1;
 
    struct brw_compile_gs_params params = {
-      .nir = gs_stage->nir,
+      .base = {
+         .nir = gs_stage->nir,
+         .stats = gs_stage->stats,
+         .log_data = device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &gs_stage->key.gs,
       .prog_data = &gs_stage->prog_data.gs,
-      .stats = gs_stage->stats,
-      .log_data = device,
    };
 
-   gs_stage->code = brw_compile_gs(compiler, mem_ctx, &params);
+   gs_stage->code = brw_compile_gs(compiler, &params);
 }
 
 static void
@@ -1310,14 +1322,17 @@ anv_pipeline_compile_task(const struct brw_compiler *compiler,
    task_stage->num_stats = 1;
 
    struct brw_compile_task_params params = {
-      .nir = task_stage->nir,
+      .base = {
+         .nir = task_stage->nir,
+         .stats = task_stage->stats,
+         .log_data = device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &task_stage->key.task,
       .prog_data = &task_stage->prog_data.task,
-      .stats = task_stage->stats,
-      .log_data = device,
    };
 
-   task_stage->code = brw_compile_task(compiler, mem_ctx, &params);
+   task_stage->code = brw_compile_task(compiler, &params);
 }
 
 static void
@@ -1340,11 +1355,14 @@ anv_pipeline_compile_mesh(const struct brw_compiler *compiler,
    mesh_stage->num_stats = 1;
 
    struct brw_compile_mesh_params params = {
-      .nir = mesh_stage->nir,
+      .base = {
+         .nir = mesh_stage->nir,
+         .stats = mesh_stage->stats,
+         .log_data = device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &mesh_stage->key.mesh,
       .prog_data = &mesh_stage->prog_data.mesh,
-      .stats = mesh_stage->stats,
-      .log_data = device,
    };
 
    if (prev_stage) {
@@ -1352,7 +1370,7 @@ anv_pipeline_compile_mesh(const struct brw_compiler *compiler,
       params.tue_map = &prev_stage->prog_data.task.map;
    }
 
-   mesh_stage->code = brw_compile_mesh(compiler, mem_ctx, &params);
+   mesh_stage->code = brw_compile_mesh(compiler, &params);
 }
 
 static void
@@ -1453,13 +1471,16 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
    }
 
    struct brw_compile_fs_params params = {
-      .nir = fs_stage->nir,
+      .base = {
+         .nir = fs_stage->nir,
+         .stats = fs_stage->stats,
+         .log_data = device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &fs_stage->key.wm,
       .prog_data = &fs_stage->prog_data.wm,
 
       .allow_spilling = true,
-      .stats = fs_stage->stats,
-      .log_data = device,
    };
 
    if (prev_stage && prev_stage->stage == MESA_SHADER_MESH) {
@@ -1467,7 +1488,7 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
       /* TODO(mesh): Slots valid, do we even use/rely on it? */
    }
 
-   fs_stage->code = brw_compile_fs(compiler, mem_ctx, &params);
+   fs_stage->code = brw_compile_fs(compiler, &params);
 
    fs_stage->num_stats = (uint32_t)fs_stage->prog_data.wm.dispatch_8 +
                          (uint32_t)fs_stage->prog_data.wm.dispatch_16 +
@@ -2530,14 +2551,17 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       stage.num_stats = 1;
 
       struct brw_compile_cs_params params = {
-         .nir = stage.nir,
+         .base = {
+            .nir = stage.nir,
+            .stats = stage.stats,
+            .log_data = device,
+            .mem_ctx = mem_ctx,
+         },
          .key = &stage.key.cs,
          .prog_data = &stage.prog_data.cs,
-         .stats = stage.stats,
-         .log_data = device,
       };
 
-      stage.code = brw_compile_cs(compiler, mem_ctx, &params);
+      stage.code = brw_compile_cs(compiler, &params);
       if (stage.code == NULL) {
          ralloc_free(mem_ctx);
          return vk_error(pipeline, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -3244,17 +3268,19 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
    }
 
    struct brw_compile_bs_params params = {
-      .nir = nir,
+      .base = {
+         .nir = nir,
+         .stats = stage->stats,
+         .log_data = pipeline->base.device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &stage->key.bs,
       .prog_data = &stage->prog_data.bs,
       .num_resume_shaders = num_resume_shaders,
       .resume_shaders = resume_shaders,
-
-      .stats = stage->stats,
-      .log_data = pipeline->base.device,
    };
 
-   stage->code = brw_compile_bs(compiler, mem_ctx, &params);
+   stage->code = brw_compile_bs(compiler, &params);
    if (stage->code == NULL)
       return vk_error(pipeline, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -3736,13 +3762,16 @@ anv_device_init_rt_shaders(struct anv_device *device)
          .uses_btd_stack_ids = true,
       };
       struct brw_compile_cs_params params = {
-         .nir = trampoline_nir,
+         .base = {
+            .nir = trampoline_nir,
+            .log_data = device,
+            .mem_ctx = tmp_ctx,
+         },
          .key = &trampoline_key.key,
          .prog_data = &trampoline_prog_data,
-         .log_data = device,
       };
       const unsigned *tramp_data =
-         brw_compile_cs(device->physical->compiler, tmp_ctx, &params);
+         brw_compile_cs(device->physical->compiler, &params);
 
       device->rt_trampoline =
          anv_device_upload_kernel(device, device->internal_cache,
@@ -3791,14 +3820,16 @@ anv_device_init_rt_shaders(struct anv_device *device)
       };
       struct brw_bs_prog_data return_prog_data = { 0, };
       struct brw_compile_bs_params params = {
-         .nir = trivial_return_nir,
+         .base = {
+            .nir = trivial_return_nir,
+            .log_data = device,
+            .mem_ctx = tmp_ctx,
+         },
          .key = &return_key.key,
          .prog_data = &return_prog_data,
-
-         .log_data = device,
       };
       const unsigned *return_data =
-         brw_compile_bs(device->physical->compiler, tmp_ctx, &params);
+         brw_compile_bs(device->physical->compiler, &params);
 
       device->rt_trivial_return =
          anv_device_upload_kernel(device, device->internal_cache,

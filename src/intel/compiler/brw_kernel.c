@@ -439,17 +439,20 @@ brw_kernel_from_spirv(struct brw_compiler *compiler,
    kernel->prog_data.base.nr_params = DIV_ROUND_UP(nir->num_uniforms, 4);
 
    struct brw_compile_cs_params params = {
-      .nir = nir,
+      .base = {
+         .nir = nir,
+         .stats = kernel->stats,
+         .log_data = log_data,
+         .mem_ctx = mem_ctx,
+      },
       .key = &key,
       .prog_data = &kernel->prog_data,
-      .stats = kernel->stats,
-      .log_data = log_data,
    };
 
-   kernel->code = brw_compile_cs(compiler, mem_ctx, &params);
+   kernel->code = brw_compile_cs(compiler, &params);
 
    if (error_str)
-      *error_str = params.error_str;
+      *error_str = params.base.error_str;
 
    return kernel->code != NULL;
 }

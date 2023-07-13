@@ -43,13 +43,11 @@ extern "C" {
 
 const unsigned *
 brw_vec4_generate_assembly(const struct brw_compiler *compiler,
-                           void *log_data,
-                           void *mem_ctx,
+                           const struct brw_compile_params *params,
                            const nir_shader *nir,
                            struct brw_vue_prog_data *prog_data,
                            const struct cfg_t *cfg,
                            const brw::performance &perf,
-                           struct brw_compile_stats *stats,
                            bool debug_enabled);
 
 #ifdef __cplusplus
@@ -66,11 +64,10 @@ class vec4_visitor : public backend_shader
 {
 public:
    vec4_visitor(const struct brw_compiler *compiler,
-                void *log_data,
+                const struct brw_compile_params *params,
                 const struct brw_sampler_prog_key_data *key,
                 struct brw_vue_prog_data *prog_data,
                 const nir_shader *shader,
-		void *mem_ctx,
                 bool no_spills,
                 bool debug_enabled);
 
@@ -345,6 +342,8 @@ private:
    const bool no_spills;
 
    unsigned last_scratch; /**< measured in 32-byte (register size) units */
+
+   const struct brw_compile_params *params;
 };
 
 } /* namespace brw */

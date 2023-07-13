@@ -1347,16 +1347,15 @@ fs_visitor::emit_tcs_barrier()
    bld.emit(SHADER_OPCODE_BARRIER, bld.null_reg_ud(), m0);
 }
 
-fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
-                       void *mem_ctx,
+fs_visitor::fs_visitor(const struct brw_compiler *compiler,
+                       const struct brw_compile_params *params,
                        const brw_base_prog_key *key,
                        struct brw_stage_prog_data *prog_data,
                        const nir_shader *shader,
                        unsigned dispatch_width,
                        bool needs_register_pressure,
                        bool debug_enabled)
-   : backend_shader(compiler, log_data, mem_ctx, shader, prog_data,
-                    debug_enabled),
+   : backend_shader(compiler, params, shader, prog_data, debug_enabled),
      key(key), gs_compile(NULL), prog_data(prog_data),
      live_analysis(this), regpressure_analysis(this),
      performance_analysis(this),
@@ -1372,15 +1371,15 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
           api_subgroup_size == 32);
 }
 
-fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
-                       void *mem_ctx,
+fs_visitor::fs_visitor(const struct brw_compiler *compiler,
+                       const struct brw_compile_params *params,
                        struct brw_gs_compile *c,
                        struct brw_gs_prog_data *prog_data,
                        const nir_shader *shader,
                        bool needs_register_pressure,
                        bool debug_enabled)
-   : backend_shader(compiler, log_data, mem_ctx, shader,
-                    &prog_data->base.base, debug_enabled),
+   : backend_shader(compiler, params, shader, &prog_data->base.base,
+                    debug_enabled),
      key(&c->key.base), gs_compile(c),
      prog_data(&prog_data->base.base),
      live_analysis(this), regpressure_analysis(this),

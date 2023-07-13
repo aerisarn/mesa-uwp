@@ -691,14 +691,17 @@ anv_pipeline_compile_vs(const struct brw_compiler *compiler,
    vs_stage->num_stats = 1;
 
    struct brw_compile_vs_params params = {
-      .nir = vs_stage->nir,
+      .base = {
+         .nir = vs_stage->nir,
+         .stats = vs_stage->stats,
+         .log_data = pipeline->base.device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &vs_stage->key.vs,
       .prog_data = &vs_stage->prog_data.vs,
-      .stats = vs_stage->stats,
-      .log_data = pipeline->base.device,
    };
 
-   vs_stage->code = brw_compile_vs(compiler, mem_ctx, &params);
+   vs_stage->code = brw_compile_vs(compiler, &params);
 }
 
 static void
@@ -783,14 +786,17 @@ anv_pipeline_compile_tcs(const struct brw_compiler *compiler,
    tcs_stage->num_stats = 1;
 
    struct brw_compile_tcs_params params = {
-      .nir = tcs_stage->nir,
+      .base = {
+         .nir = tcs_stage->nir,
+         .stats = tcs_stage->stats,
+         .log_data = device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &tcs_stage->key.tcs,
       .prog_data = &tcs_stage->prog_data.tcs,
-      .stats = tcs_stage->stats,
-      .log_data = device,
    };
 
-   tcs_stage->code = brw_compile_tcs(compiler, mem_ctx, &params);
+   tcs_stage->code = brw_compile_tcs(compiler, &params);
 }
 
 static void
@@ -817,15 +823,18 @@ anv_pipeline_compile_tes(const struct brw_compiler *compiler,
    tes_stage->num_stats = 1;
 
    struct brw_compile_tes_params params = {
-      .nir = tes_stage->nir,
+      .base = {
+         .nir = tes_stage->nir,
+         .stats = tes_stage->stats,
+         .log_data = device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &tes_stage->key.tes,
       .prog_data = &tes_stage->prog_data.tes,
       .input_vue_map = &tcs_stage->prog_data.tcs.base.vue_map,
-      .stats = tes_stage->stats,
-      .log_data = device,
    };
 
-   tes_stage->code = brw_compile_tes(compiler, mem_ctx, &params);
+   tes_stage->code = brw_compile_tes(compiler, &params);
 }
 
 static void
@@ -852,14 +861,17 @@ anv_pipeline_compile_gs(const struct brw_compiler *compiler,
    gs_stage->num_stats = 1;
 
    struct brw_compile_gs_params params = {
-      .nir = gs_stage->nir,
+      .base = {
+         .nir = gs_stage->nir,
+         .stats = gs_stage->stats,
+         .log_data = device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &gs_stage->key.gs,
       .prog_data = &gs_stage->prog_data.gs,
-      .stats = gs_stage->stats,
-      .log_data = device,
    };
 
-   gs_stage->code = brw_compile_gs(compiler, mem_ctx, &params);
+   gs_stage->code = brw_compile_gs(compiler, &params);
 }
 
 static void
@@ -937,19 +949,22 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
    assert(prev_stage);
 
    struct brw_compile_fs_params params = {
-      .nir = fs_stage->nir,
+      .base = {
+         .nir = fs_stage->nir,
+         .stats = fs_stage->stats,
+         .log_data = device,
+         .mem_ctx = mem_ctx,
+      },
       .key = &fs_stage->key.wm,
       .prog_data = &fs_stage->prog_data.wm,
 
       .allow_spilling = true,
-      .stats = fs_stage->stats,
-      .log_data = device,
    };
 
    fs_stage->key.wm.input_slots_valid =
       prev_stage->prog_data.vue.vue_map.slots_valid;
 
-   fs_stage->code = brw_compile_fs(compiler, mem_ctx, &params);
+   fs_stage->code = brw_compile_fs(compiler, &params);
 
    fs_stage->num_stats = (uint32_t)fs_stage->prog_data.wm.dispatch_8 +
                          (uint32_t)fs_stage->prog_data.wm.dispatch_16 +
@@ -1573,14 +1588,17 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       stage.num_stats = 1;
 
       struct brw_compile_cs_params params = {
-         .nir = stage.nir,
+         .base = {
+            .nir = stage.nir,
+            .stats = stage.stats,
+            .log_data = device,
+            .mem_ctx = mem_ctx,
+         },
          .key = &stage.key.cs,
          .prog_data = &stage.prog_data.cs,
-         .stats = stage.stats,
-         .log_data = device,
       };
 
-      stage.code = brw_compile_cs(compiler, mem_ctx, &params);
+      stage.code = brw_compile_cs(compiler, &params);
       if (stage.code == NULL) {
          ralloc_free(mem_ctx);
          return vk_error(pipeline, VK_ERROR_OUT_OF_HOST_MEMORY);

@@ -34,14 +34,13 @@
 namespace brw {
 
 vec4_tes_visitor::vec4_tes_visitor(const struct brw_compiler *compiler,
-                                  void *log_data,
+                                   const struct brw_compile_params *params,
                                   const struct brw_tes_prog_key *key,
                                   struct brw_tes_prog_data *prog_data,
                                   const nir_shader *shader,
-                                  void *mem_ctx,
                                   bool debug_enabled)
-   : vec4_visitor(compiler, log_data, &key->base.tex, &prog_data->base,
-                  shader, mem_ctx, false, debug_enabled)
+   : vec4_visitor(compiler, params, &key->base.tex, &prog_data->base,
+                  shader, false, debug_enabled)
 {
 }
 

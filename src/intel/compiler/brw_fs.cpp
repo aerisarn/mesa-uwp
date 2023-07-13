@@ -7475,15 +7475,15 @@ brw_register_blocks(int reg_count)
 
 const unsigned *
 brw_compile_fs(const struct brw_compiler *compiler,
-               void *mem_ctx,
                struct brw_compile_fs_params *params)
 {
-   struct nir_shader *nir = params->nir;
+   struct nir_shader *nir = params->base.nir;
    const struct brw_wm_prog_key *key = params->key;
    struct brw_wm_prog_data *prog_data = params->prog_data;
    bool allow_spilling = params->allow_spilling;
    const bool debug_enabled =
-      brw_should_print_shader(nir, params->debug_flag ? params->debug_flag : DEBUG_WM);
+      brw_should_print_shader(nir, params->base.debug_flag ?
+                                   params->base.debug_flag : DEBUG_WM);
 
    prog_data->base.stage = MESA_SHADER_FRAGMENT;
    prog_data->base.ray_queries = nir->info.ray_queries;
@@ -7524,12 +7524,12 @@ brw_compile_fs(const struct brw_compiler *compiler,
    float throughput = 0;
    bool has_spilled = false;
 
-   v8 = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
+   v8 = std::make_unique<fs_visitor>(compiler, &params->base, &key->base,
                                      &prog_data->base, nir, 8,
-                                     params->stats != NULL,
+                                     params->base.stats != NULL,
                                      debug_enabled);
    if (!v8->run_fs(allow_spilling, false /* do_rep_send */)) {
-      params->error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
+      params->base.error_str = ralloc_strdup(params->base.mem_ctx, v8->fail_msg);
       return NULL;
    } else if (INTEL_SIMD(FS, 8)) {
       simd8_cfg = v8->cfg;
@@ -7567,13 +7567,13 @@ brw_compile_fs(const struct brw_compiler *compiler,
        v8->max_dispatch_width >= 16 &&
        (INTEL_SIMD(FS, 16) || params->use_rep_send)) {
       /* Try a SIMD16 compile */
-      v16 = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
+      v16 = std::make_unique<fs_visitor>(compiler, &params->base, &key->base,
                                          &prog_data->base, nir, 16,
-                                         params->stats != NULL,
+                                         params->base.stats != NULL,
                                          debug_enabled);
       v16->import_uniforms(v8.get());
       if (!v16->run_fs(allow_spilling, params->use_rep_send)) {
-         brw_shader_perf_log(compiler, params->log_data,
+         brw_shader_perf_log(compiler, params->base.log_data,
                              "SIMD16 shader failed to compile: %s\n",
                              v16->fail_msg);
       } else {
@@ -7595,20 +7595,20 @@ brw_compile_fs(const struct brw_compiler *compiler,
        devinfo->ver >= 6 && !simd16_failed &&
        INTEL_SIMD(FS, 32)) {
       /* Try a SIMD32 compile */
-      v32 = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
+      v32 = std::make_unique<fs_visitor>(compiler, &params->base, &key->base,
                                          &prog_data->base, nir, 32,
-                                         params->stats != NULL,
+                                         params->base.stats != NULL,
                                          debug_enabled);
       v32->import_uniforms(v8.get());
       if (!v32->run_fs(allow_spilling, false)) {
-         brw_shader_perf_log(compiler, params->log_data,
+         brw_shader_perf_log(compiler, params->base.log_data,
                              "SIMD32 shader failed to compile: %s\n",
                              v32->fail_msg);
       } else {
          const performance &perf = v32->performance_analysis.require();
 
          if (!INTEL_DEBUG(DEBUG_DO32) && throughput > perf.throughput) {
-            brw_shader_perf_log(compiler, params->log_data,
+            brw_shader_perf_log(compiler, params->base.log_data,
                                 "SIMD32 shader inefficient\n");
          } else {
             simd32_cfg = v32->cfg;
@@ -7653,17 +7653,18 @@ brw_compile_fs(const struct brw_compiler *compiler,
       }
    }
 
-   fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
+   fs_generator g(compiler, &params->base, &prog_data->base,
                   v8->runtime_check_aads_emit, MESA_SHADER_FRAGMENT);
 
    if (unlikely(debug_enabled)) {
-      g.enable_debug(ralloc_asprintf(mem_ctx, "%s fragment shader %s",
+      g.enable_debug(ralloc_asprintf(params->base.mem_ctx,
+                                     "%s fragment shader %s",
                                      nir->info.label ?
                                         nir->info.label : "unnamed",
                                      nir->info.name));
    }
 
-   struct brw_compile_stats *stats = params->stats;
+   struct brw_compile_stats *stats = params->base.stats;
    uint32_t max_dispatch_width = 0;
 
    if (simd8_cfg) {
@@ -7692,7 +7693,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
       max_dispatch_width = 32;
    }
 
-   for (struct brw_compile_stats *s = params->stats; s != NULL && s != stats; s++)
+   for (struct brw_compile_stats *s = params->base.stats; s != NULL && s != stats; s++)
       s->max_dispatch_width = max_dispatch_width;
 
    g.add_const_data(nir->constant_data, nir->constant_data_size);
@@ -7828,15 +7829,15 @@ brw_nir_lower_simd(nir_shader *nir, unsigned dispatch_width)
 
 const unsigned *
 brw_compile_cs(const struct brw_compiler *compiler,
-               void *mem_ctx,
                struct brw_compile_cs_params *params)
 {
-   const nir_shader *nir = params->nir;
+   const nir_shader *nir = params->base.nir;
    const struct brw_cs_prog_key *key = params->key;
    struct brw_cs_prog_data *prog_data = params->prog_data;
 
    const bool debug_enabled =
-      brw_should_print_shader(nir, params->debug_flag ? params->debug_flag : DEBUG_CS);
+      brw_should_print_shader(nir, params->base.debug_flag ?
+                                   params->base.debug_flag : DEBUG_CS);
 
    prog_data->base.stage = MESA_SHADER_COMPUTE;
    prog_data->base.total_shared = nir->info.shared_size;
@@ -7850,7 +7851,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
    }
 
    brw_simd_selection_state simd_state{
-      .mem_ctx = mem_ctx,
+      .mem_ctx = params->base.mem_ctx,
       .devinfo = compiler->devinfo,
       .prog_data = prog_data,
       .required_width = brw_required_dispatch_width(&nir->info),
@@ -7864,7 +7865,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
 
       const unsigned dispatch_width = 8u << simd;
 
-      nir_shader *shader = nir_shader_clone(mem_ctx, nir);
+      nir_shader *shader = nir_shader_clone(params->base.mem_ctx, nir);
       brw_nir_apply_key(shader, compiler, &key->base,
                         dispatch_width);
 
@@ -7877,9 +7878,11 @@ brw_compile_cs(const struct brw_compiler *compiler,
       brw_postprocess_nir(shader, compiler, debug_enabled,
                           key->base.robust_buffer_access);
 
-      v[simd] = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
-                                             &prog_data->base, shader, dispatch_width,
-                                             params->stats != NULL,
+      v[simd] = std::make_unique<fs_visitor>(compiler, &params->base,
+                                             &key->base,
+                                             &prog_data->base,
+                                             shader, dispatch_width,
+                                             params->base.stats != NULL,
                                              debug_enabled);
 
       const int first = brw_simd_first_compiled(simd_state);
@@ -7893,9 +7896,9 @@ brw_compile_cs(const struct brw_compiler *compiler,
 
          brw_simd_mark_compiled(simd_state, simd, v[simd]->spilled_any_registers);
       } else {
-         simd_state.error[simd] = ralloc_strdup(mem_ctx, v[simd]->fail_msg);
+         simd_state.error[simd] = ralloc_strdup(params->base.mem_ctx, v[simd]->fail_msg);
          if (simd > 0) {
-            brw_shader_perf_log(compiler, params->log_data,
+            brw_shader_perf_log(compiler, params->base.log_data,
                                 "SIMD%u shader failed to compile: %s\n",
                                 dispatch_width, v[simd]->fail_msg);
          }
@@ -7904,9 +7907,11 @@ brw_compile_cs(const struct brw_compiler *compiler,
 
    const int selected_simd = brw_simd_select(simd_state);
    if (selected_simd < 0) {
-      params->error_str = ralloc_asprintf(mem_ctx, "Can't compile shader: %s, %s and %s.\n",
-                                          simd_state.error[0], simd_state.error[1],
-                                          simd_state.error[2]);
+      params->base.error_str =
+         ralloc_asprintf(params->base.mem_ctx,
+                         "Can't compile shader: %s, %s and %s.\n",
+                         simd_state.error[0], simd_state.error[1],
+                         simd_state.error[2]);
       return NULL;
    }
 
@@ -7916,10 +7921,11 @@ brw_compile_cs(const struct brw_compiler *compiler,
    if (!nir->info.workgroup_size_variable)
       prog_data->prog_mask = 1 << selected_simd;
 
-   fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
+   fs_generator g(compiler, &params->base, &prog_data->base,
                   selected->runtime_check_aads_emit, MESA_SHADER_COMPUTE);
    if (unlikely(debug_enabled)) {
-      char *name = ralloc_asprintf(mem_ctx, "%s compute shader %s",
+      char *name = ralloc_asprintf(params->base.mem_ctx,
+                                   "%s compute shader %s",
                                    nir->info.label ?
                                    nir->info.label : "unnamed",
                                    nir->info.name);
@@ -7928,7 +7934,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
 
    uint32_t max_dispatch_width = 8u << (util_last_bit(prog_data->prog_mask) - 1);
 
-   struct brw_compile_stats *stats = params->stats;
+   struct brw_compile_stats *stats = params->base.stats;
    for (unsigned simd = 0; simd < 3; simd++) {
       if (prog_data->prog_mask & (1u << simd)) {
          assert(v[simd]);
@@ -7975,15 +7981,14 @@ brw_cs_get_dispatch_info(const struct intel_device_info *devinfo,
 }
 
 static uint8_t
-compile_single_bs(const struct brw_compiler *compiler, void *log_data,
-                  void *mem_ctx,
+compile_single_bs(const struct brw_compiler *compiler,
+                  struct brw_compile_bs_params *params,
                   const struct brw_bs_prog_key *key,
                   struct brw_bs_prog_data *prog_data,
                   nir_shader *shader,
                   fs_generator *g,
                   struct brw_compile_stats *stats,
-                  int *prog_offset,
-                  char **error_str)
+                  int *prog_offset)
 {
    const bool debug_enabled = brw_should_print_shader(shader, DEBUG_RT);
 
@@ -7997,7 +8002,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
                        key->base.robust_buffer_access);
 
    brw_simd_selection_state simd_state{
-      .mem_ctx = mem_ctx,
+      .mem_ctx = params->base.mem_ctx,
       .devinfo = compiler->devinfo,
       .prog_data = prog_data,
 
@@ -8015,7 +8020,8 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
 
       const unsigned dispatch_width = 8u << simd;
 
-      v[simd] = std::make_unique<fs_visitor>(compiler, log_data, mem_ctx, &key->base,
+      v[simd] = std::make_unique<fs_visitor>(compiler, &params->base,
+                                             &key->base,
                                              &prog_data->base, shader,
                                              dispatch_width,
                                              stats != NULL,
@@ -8025,9 +8031,10 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
       if (v[simd]->run_bs(allow_spilling)) {
          brw_simd_mark_compiled(simd_state, simd, v[simd]->spilled_any_registers);
       } else {
-         simd_state.error[simd] = ralloc_strdup(mem_ctx, v[simd]->fail_msg);
+         simd_state.error[simd] = ralloc_strdup(params->base.mem_ctx,
+                                                v[simd]->fail_msg);
          if (simd > 0) {
-            brw_shader_perf_log(compiler, log_data,
+            brw_shader_perf_log(compiler, params->base.log_data,
                                 "SIMD%u shader failed to compile: %s",
                                 dispatch_width, v[simd]->fail_msg);
          }
@@ -8036,8 +8043,10 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
 
    const int selected_simd = brw_simd_select(simd_state);
    if (selected_simd < 0) {
-      *error_str = ralloc_asprintf(mem_ctx, "Can't compile shader: %s and %s.",
-                                   simd_state.error[0], simd_state.error[1]);
+      params->base.error_str =
+         ralloc_asprintf(params->base.mem_ctx,
+                         "Can't compile shader: %s and %s.",
+                         simd_state.error[0], simd_state.error[1]);
       return 0;
    }
 
@@ -8072,10 +8081,9 @@ brw_bsr(const struct intel_device_info *devinfo,
 
 const unsigned *
 brw_compile_bs(const struct brw_compiler *compiler,
-               void *mem_ctx,
                struct brw_compile_bs_params *params)
 {
-   nir_shader *shader = params->nir;
+   nir_shader *shader = params->base.nir;
    struct brw_bs_prog_data *prog_data = params->prog_data;
    unsigned num_resume_shaders = params->num_resume_shaders;
    nir_shader **resume_shaders = params->resume_shaders;
@@ -8088,10 +8096,11 @@ brw_compile_bs(const struct brw_compiler *compiler,
    prog_data->max_stack_size = 0;
    prog_data->num_resume_shaders = num_resume_shaders;
 
-   fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
+   fs_generator g(compiler, &params->base, &prog_data->base,
                   false, shader->info.stage);
    if (unlikely(debug_enabled)) {
-      char *name = ralloc_asprintf(mem_ctx, "%s %s shader %s",
+      char *name = ralloc_asprintf(params->base.mem_ctx,
+                                   "%s %s shader %s",
                                    shader->info.label ?
                                       shader->info.label : "unnamed",
                                    gl_shader_stage_name(shader->info.stage),
@@ -8100,16 +8109,17 @@ brw_compile_bs(const struct brw_compiler *compiler,
    }
 
    prog_data->simd_size =
-      compile_single_bs(compiler, params->log_data, mem_ctx,
-                        params->key, prog_data,
-                        shader, &g, params->stats, NULL, &params->error_str);
+      compile_single_bs(compiler, params, params->key, prog_data,
+                        shader, &g, params->base.stats, NULL);
    if (prog_data->simd_size == 0)
       return NULL;
 
-   uint64_t *resume_sbt = ralloc_array(mem_ctx, uint64_t, num_resume_shaders);
+   uint64_t *resume_sbt = ralloc_array(params->base.mem_ctx,
+                                       uint64_t, num_resume_shaders);
    for (unsigned i = 0; i < num_resume_shaders; i++) {
       if (INTEL_DEBUG(DEBUG_RT)) {
-         char *name = ralloc_asprintf(mem_ctx, "%s %s resume(%u) shader %s",
+         char *name = ralloc_asprintf(params->base.mem_ctx,
+                                      "%s %s resume(%u) shader %s",
                                       shader->info.label ?
                                          shader->info.label : "unnamed",
                                       gl_shader_stage_name(shader->info.stage),
@@ -8120,9 +8130,8 @@ brw_compile_bs(const struct brw_compiler *compiler,
       /* TODO: Figure out shader stats etc. for resume shaders */
       int offset = 0;
       uint8_t simd_size =
-         compile_single_bs(compiler, params->log_data, mem_ctx, params->key,
-                           prog_data, resume_shaders[i], &g, NULL, &offset,
-                           &params->error_str);
+         compile_single_bs(compiler, params, params->key,
+                           prog_data, resume_shaders[i], &g, NULL, &offset);
       if (simd_size == 0)
          return NULL;
 

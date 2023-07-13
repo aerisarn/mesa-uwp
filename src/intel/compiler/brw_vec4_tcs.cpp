@@ -36,14 +36,13 @@
 namespace brw {
 
 vec4_tcs_visitor::vec4_tcs_visitor(const struct brw_compiler *compiler,
-                                   void *log_data,
+                                   const struct brw_compile_params *params,
                                    const struct brw_tcs_prog_key *key,
                                    struct brw_tcs_prog_data *prog_data,
                                    const nir_shader *nir,
-                                   void *mem_ctx,
                                    bool debug_enabled)
-   : vec4_visitor(compiler, log_data, &key->base.tex, &prog_data->base,
-                  nir, mem_ctx, false, debug_enabled),
+   : vec4_visitor(compiler, params, &key->base.tex, &prog_data->base,
+                  nir, false, debug_enabled),
      key(key)
 {
 }
@@ -353,11 +352,10 @@ get_patch_count_threshold(int input_control_points)
 
 extern "C" const unsigned *
 brw_compile_tcs(const struct brw_compiler *compiler,
-                void *mem_ctx,
                 struct brw_compile_tcs_params *params)
 {
    const struct intel_device_info *devinfo = compiler->devinfo;
-   nir_shader *nir = params->nir;
+   nir_shader *nir = params->base.nir;
    const struct brw_tcs_prog_key *key = params->key;
    struct brw_tcs_prog_data *prog_data = params->prog_data;
    struct brw_vue_prog_data *vue_prog_data = &prog_data->base;
@@ -449,20 +447,21 @@ brw_compile_tcs(const struct brw_compiler *compiler,
    }
 
    if (is_scalar) {
-      fs_visitor v(compiler, params->log_data, mem_ctx, &key->base,
-                   &prog_data->base.base, nir, 8, params->stats != NULL,
+      fs_visitor v(compiler, &params->base, &key->base,
+                   &prog_data->base.base, nir, 8, params->base.stats != NULL,
                    debug_enabled);
       if (!v.run_tcs()) {
-         params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);
+         params->base.error_str =
+            ralloc_strdup(params->base.mem_ctx, v.fail_msg);
          return NULL;
       }
 
       prog_data->base.base.dispatch_grf_start_reg = v.payload().num_regs;
 
-      fs_generator g(compiler, params->log_data, mem_ctx,
+      fs_generator g(compiler, &params->base,
                      &prog_data->base.base, false, MESA_SHADER_TESS_CTRL);
       if (unlikely(debug_enabled)) {
-         g.enable_debug(ralloc_asprintf(mem_ctx,
+         g.enable_debug(ralloc_asprintf(params->base.mem_ctx,
                                         "%s tessellation control shader %s",
                                         nir->info.label ? nir->info.label
                                                         : "unnamed",
@@ -470,16 +469,17 @@ brw_compile_tcs(const struct brw_compiler *compiler,
       }
 
       g.generate_code(v.cfg, 8, v.shader_stats,
-                      v.performance_analysis.require(), params->stats);
+                      v.performance_analysis.require(), params->base.stats);
 
       g.add_const_data(nir->constant_data, nir->constant_data_size);
 
       assembly = g.get_assembly();
    } else {
-      brw::vec4_tcs_visitor v(compiler, params->log_data, key, prog_data,
-                              nir, mem_ctx, debug_enabled);
+      brw::vec4_tcs_visitor v(compiler, &params->base, key, prog_data,
+                              nir, debug_enabled);
       if (!v.run()) {
-         params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);
+         params->base.error_str =
+            ralloc_strdup(params->base.mem_ctx, v.fail_msg);
          return NULL;
       }
 
@@ -487,10 +487,10 @@ brw_compile_tcs(const struct brw_compiler *compiler,
          v.dump_instructions();
 
 
-      assembly = brw_vec4_generate_assembly(compiler, params->log_data, mem_ctx, nir,
+      assembly = brw_vec4_generate_assembly(compiler, &params->base, nir,
                                             &prog_data->base, v.cfg,
                                             v.performance_analysis.require(),
-                                            params->stats, debug_enabled);
+                                            debug_enabled);
    }
 
    return assembly;

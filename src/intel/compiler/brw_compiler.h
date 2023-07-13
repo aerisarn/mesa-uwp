@@ -1754,18 +1754,10 @@ brw_prog_data_size(gl_shader_stage stage);
 unsigned
 brw_prog_key_size(gl_shader_stage stage);
 
-/**
- * Parameters for compiling a vertex shader.
- *
- * Some of these will be modified during the shader compilation.
- */
-struct brw_compile_vs_params {
+struct brw_compile_params {
+   void *mem_ctx;
+
    nir_shader *nir;
-
-   const struct brw_vs_prog_key *key;
-   struct brw_vs_prog_data *prog_data;
-
-   bool edgeflag_is_last; /* true for gallium */
 
    struct brw_compile_stats *stats;
 
@@ -1773,8 +1765,21 @@ struct brw_compile_vs_params {
 
    char *error_str;
 
-   /* If unset, DEBUG_VS is used. */
    uint64_t debug_flag;
+};
+
+/**
+ * Parameters for compiling a vertex shader.
+ *
+ * Some of these will be modified during the shader compilation.
+ */
+struct brw_compile_vs_params {
+   struct brw_compile_params base;
+
+   const struct brw_vs_prog_key *key;
+   struct brw_vs_prog_data *prog_data;
+
+   bool edgeflag_is_last; /* true for gallium */
 };
 
 /**
@@ -1784,7 +1789,6 @@ struct brw_compile_vs_params {
  */
 const unsigned *
 brw_compile_vs(const struct brw_compiler *compiler,
-               void *mem_ctx,
                struct brw_compile_vs_params *params);
 
 /**
@@ -1793,16 +1797,10 @@ brw_compile_vs(const struct brw_compiler *compiler,
  * Some of these will be modified during the shader compilation.
  */
 struct brw_compile_tcs_params {
-   nir_shader *nir;
+   struct brw_compile_params base;
 
    const struct brw_tcs_prog_key *key;
    struct brw_tcs_prog_data *prog_data;
-
-   struct brw_compile_stats *stats;
-
-   void *log_data;
-
-   char *error_str;
 };
 
 /**
@@ -1812,7 +1810,6 @@ struct brw_compile_tcs_params {
  */
 const unsigned *
 brw_compile_tcs(const struct brw_compiler *compiler,
-                void *mem_ctx,
                 struct brw_compile_tcs_params *params);
 
 /**
@@ -1821,17 +1818,11 @@ brw_compile_tcs(const struct brw_compiler *compiler,
  * Some of these will be modified during the shader compilation.
  */
 struct brw_compile_tes_params {
-   nir_shader *nir;
+   struct brw_compile_params base;
 
    const struct brw_tes_prog_key *key;
    struct brw_tes_prog_data *prog_data;
    const struct brw_vue_map *input_vue_map;
-
-   struct brw_compile_stats *stats;
-
-   void *log_data;
-
-   char *error_str;
 };
 
 /**
@@ -1841,7 +1832,6 @@ struct brw_compile_tes_params {
  */
 const unsigned *
 brw_compile_tes(const struct brw_compiler *compiler,
-                void *mem_ctx,
                 struct brw_compile_tes_params *params);
 
 /**
@@ -1850,16 +1840,10 @@ brw_compile_tes(const struct brw_compiler *compiler,
  * Some of these will be modified during the shader compilation.
  */
 struct brw_compile_gs_params {
-   nir_shader *nir;
+   struct brw_compile_params base;
 
    const struct brw_gs_prog_key *key;
    struct brw_gs_prog_data *prog_data;
-
-   struct brw_compile_stats *stats;
-
-   void *log_data;
-
-   char *error_str;
 };
 
 /**
@@ -1869,7 +1853,6 @@ struct brw_compile_gs_params {
  */
 const unsigned *
 brw_compile_gs(const struct brw_compiler *compiler,
-               void *mem_ctx,
                struct brw_compile_gs_params *params);
 
 /**
@@ -1905,38 +1888,26 @@ brw_compile_clip(const struct brw_compiler *compiler,
                  unsigned *final_assembly_size);
 
 struct brw_compile_task_params {
-   struct nir_shader *nir;
+   struct brw_compile_params base;
 
    const struct brw_task_prog_key *key;
    struct brw_task_prog_data *prog_data;
-
-   struct brw_compile_stats *stats;
-
-   char *error_str;
-   void *log_data;
 };
 
 const unsigned *
 brw_compile_task(const struct brw_compiler *compiler,
-                 void *mem_ctx,
                  struct brw_compile_task_params *params);
 
 struct brw_compile_mesh_params {
-   struct nir_shader *nir;
+   struct brw_compile_params base;
 
    const struct brw_mesh_prog_key *key;
    struct brw_mesh_prog_data *prog_data;
    const struct brw_tue_map *tue_map;
-
-   struct brw_compile_stats *stats;
-
-   char *error_str;
-   void *log_data;
 };
 
 const unsigned *
 brw_compile_mesh(const struct brw_compiler *compiler,
-                 void *mem_ctx,
                  struct brw_compile_mesh_params *params);
 
 /**
@@ -1945,7 +1916,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
  * Some of these will be modified during the shader compilation.
  */
 struct brw_compile_fs_params {
-   nir_shader *nir;
+   struct brw_compile_params base;
 
    const struct brw_wm_prog_key *key;
    struct brw_wm_prog_data *prog_data;
@@ -1955,15 +1926,6 @@ struct brw_compile_fs_params {
 
    bool allow_spilling;
    bool use_rep_send;
-
-   struct brw_compile_stats *stats;
-
-   void *log_data;
-
-   char *error_str;
-
-   /* If unset, DEBUG_WM is used. */
-   uint64_t debug_flag;
 };
 
 /**
@@ -1973,7 +1935,6 @@ struct brw_compile_fs_params {
  */
 const unsigned *
 brw_compile_fs(const struct brw_compiler *compiler,
-               void *mem_ctx,
                struct brw_compile_fs_params *params);
 
 /**
@@ -1982,19 +1943,10 @@ brw_compile_fs(const struct brw_compiler *compiler,
  * Some of these will be modified during the shader compilation.
  */
 struct brw_compile_cs_params {
-   nir_shader *nir;
+   struct brw_compile_params base;
 
    const struct brw_cs_prog_key *key;
    struct brw_cs_prog_data *prog_data;
-
-   struct brw_compile_stats *stats;
-
-   void *log_data;
-
-   char *error_str;
-
-   /* If unset, DEBUG_CS is used. */
-   uint64_t debug_flag;
 };
 
 /**
@@ -2004,7 +1956,6 @@ struct brw_compile_cs_params {
  */
 const unsigned *
 brw_compile_cs(const struct brw_compiler *compiler,
-               void *mem_ctx,
                struct brw_compile_cs_params *params);
 
 /**
@@ -2013,19 +1964,13 @@ brw_compile_cs(const struct brw_compiler *compiler,
  * Some of these will be modified during the shader compilation.
  */
 struct brw_compile_bs_params {
-   nir_shader *nir;
+   struct brw_compile_params base;
 
    const struct brw_bs_prog_key *key;
    struct brw_bs_prog_data *prog_data;
 
    unsigned num_resume_shaders;
    struct nir_shader **resume_shaders;
-
-   struct brw_compile_stats *stats;
-
-   void *log_data;
-
-   char *error_str;
 };
 
 /**
@@ -2035,7 +1980,6 @@ struct brw_compile_bs_params {
  */
 const unsigned *
 brw_compile_bs(const struct brw_compiler *compiler,
-               void *mem_ctx,
                struct brw_compile_bs_params *params);
 
 /**

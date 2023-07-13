@@ -1219,16 +1219,19 @@ crocus_compile_vs(struct crocus_context *ice,
    crocus_sanitize_tex_key(&key_no_ucp.base.tex);
 
    struct brw_compile_vs_params params = {
-      .nir = nir,
+      .base = {
+         .mem_ctx = mem_ctx,
+         .nir = nir,
+         .log_data = &ice->dbg,
+      },
       .key = &key_no_ucp,
       .prog_data = vs_prog_data,
       .edgeflag_is_last = devinfo->ver < 6,
-      .log_data = &ice->dbg,
    };
    const unsigned *program =
-      brw_compile_vs(compiler, mem_ctx, &params);
+      brw_compile_vs(compiler, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile vertex shader: %s\n", params.error_str);
+      dbg_printf("Failed to compile vertex shader: %s\n", params.base.error_str);
       ralloc_free(mem_ctx);
       return false;
    }
@@ -1414,15 +1417,18 @@ crocus_compile_tcs(struct crocus_context *ice,
    crocus_sanitize_tex_key(&key_clean.base.tex);
 
    struct brw_compile_tcs_params params = {
-      .nir = nir,
+      .base = {
+         .mem_ctx = mem_ctx,
+         .nir = nir,
+         .log_data = &ice->dbg,
+      },
       .key = &key_clean,
       .prog_data = tcs_prog_data,
-      .log_data = &ice->dbg,
    };
 
-   const unsigned *program = brw_compile_tcs(compiler, mem_ctx, &params);
+   const unsigned *program = brw_compile_tcs(compiler, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile control shader: %s\n", params.error_str);
+      dbg_printf("Failed to compile control shader: %s\n", params.base.error_str);
       ralloc_free(mem_ctx);
       return false;
    }
@@ -1555,16 +1561,19 @@ crocus_compile_tes(struct crocus_context *ice,
    crocus_sanitize_tex_key(&key_clean.base.tex);
 
    struct brw_compile_tes_params params = {
-      .nir = nir,
+      .base = {
+         .mem_ctx = mem_ctx,
+         .nir = nir,
+         .log_data = &ice->dbg,
+      },
       .key = &key_clean,
       .prog_data = tes_prog_data,
       .input_vue_map = &input_vue_map,
-      .log_data = &ice->dbg,
    };
 
-   const unsigned *program = brw_compile_tes(compiler, mem_ctx, &params);
+   const unsigned *program = brw_compile_tes(compiler, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile evaluation shader: %s\n", params.error_str);
+      dbg_printf("Failed to compile evaluation shader: %s\n", params.base.error_str);
       ralloc_free(mem_ctx);
       return false;
    }
@@ -1697,15 +1706,18 @@ crocus_compile_gs(struct crocus_context *ice,
    crocus_sanitize_tex_key(&key_clean.base.tex);
 
    struct brw_compile_gs_params params = {
-      .nir = nir,
+      .base = {
+         .mem_ctx = mem_ctx,
+         .nir = nir,
+         .log_data = &ice->dbg,
+      },
       .key = &key_clean,
       .prog_data = gs_prog_data,
-      .log_data = &ice->dbg,
    };
 
-   const unsigned *program = brw_compile_gs(compiler, mem_ctx, &params);
+   const unsigned *program = brw_compile_gs(compiler, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile geometry shader: %s\n", params.error_str);
+      dbg_printf("Failed to compile geometry shader: %s\n", params.base.error_str);
       ralloc_free(mem_ctx);
       return false;
    }
@@ -1830,19 +1842,21 @@ crocus_compile_fs(struct crocus_context *ice,
    crocus_sanitize_tex_key(&key_clean.base.tex);
 
    struct brw_compile_fs_params params = {
-      .nir = nir,
+      .base = {
+         .mem_ctx = mem_ctx,
+         .nir = nir,
+         .log_data = &ice->dbg,
+      },
       .key = &key_clean,
       .prog_data = fs_prog_data,
 
       .allow_spilling = true,
       .vue_map = vue_map,
-
-      .log_data = &ice->dbg,
    };
    const unsigned *program =
-      brw_compile_fs(compiler, mem_ctx, &params);
+      brw_compile_fs(compiler, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile fragment shader: %s\n", params.error_str);
+      dbg_printf("Failed to compile fragment shader: %s\n", params.base.error_str);
       ralloc_free(mem_ctx);
       return false;
    }
@@ -2508,16 +2522,19 @@ crocus_compile_cs(struct crocus_context *ice,
                               num_system_values, num_cbufs, &key->base.tex);
 
    struct brw_compile_cs_params params = {
-      .nir = nir,
+      .base = {
+         .mem_ctx = mem_ctx,
+         .nir = nir,
+         .log_data = &ice->dbg,
+      },
       .key = key,
       .prog_data = cs_prog_data,
-      .log_data = &ice->dbg,
    };
 
    const unsigned *program =
-      brw_compile_cs(compiler, mem_ctx, &params);
+      brw_compile_cs(compiler, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile compute shader: %s\n", params.error_str);
+      dbg_printf("Failed to compile compute shader: %s\n", params.base.error_str);
       ralloc_free(mem_ctx);
       return false;
    }

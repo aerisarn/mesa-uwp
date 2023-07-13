@@ -259,14 +259,16 @@ compile_upload_spirv(struct anv_device *device,
    if (stage == MESA_SHADER_FRAGMENT) {
       struct brw_compile_stats stats[3];
       struct brw_compile_fs_params params = {
-         .nir = nir,
+         .base = {
+            .nir = nir,
+            .log_data = device,
+            .debug_flag = DEBUG_WM,
+            .stats = stats,
+         },
          .key = &key.wm,
          .prog_data = &prog_data.wm,
-         .stats = stats,
-         .log_data = device,
-         .debug_flag = DEBUG_WM,
       };
-      program = brw_compile_fs(compiler, nir, &params);
+      program = brw_compile_fs(compiler, &params);
 
       unsigned stat_idx = 0;
       if (prog_data.wm.dispatch_8) {
@@ -290,14 +292,16 @@ compile_upload_spirv(struct anv_device *device,
    } else {
       struct brw_compile_stats stats;
       struct brw_compile_cs_params params = {
-         .nir = nir,
+         .base = {
+            .nir = nir,
+            .stats = &stats,
+            .log_data = device,
+            .debug_flag = DEBUG_CS,
+         },
          .key = &key.cs,
          .prog_data = &prog_data.cs,
-         .stats = &stats,
-         .log_data = device,
-         .debug_flag = DEBUG_CS,
       };
-      program = brw_compile_cs(compiler, nir, &params);
+      program = brw_compile_cs(compiler, &params);
 
       assert(stats.spills == 0);
       assert(stats.fills == 0);
