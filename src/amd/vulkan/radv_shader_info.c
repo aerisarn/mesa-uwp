@@ -362,9 +362,6 @@ static uint8_t
 radv_get_ballot_bit_size(struct radv_device *device, gl_shader_stage stage, const struct radv_shader_info *info,
                          const struct radv_shader_stage_key *stage_key)
 {
-   if (stage == MESA_SHADER_COMPUTE && info->cs.subgroup_size)
-      return info->cs.subgroup_size;
-
    if (stage_key->subgroup_required_size)
       return stage_key->subgroup_required_size * 32;
 
