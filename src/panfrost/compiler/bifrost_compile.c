@@ -1672,7 +1672,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
       bi_u16_to_u32_to(b, dst, bi_half(bi_preload(b, 61), false));
       break;
 
-   case nir_intrinsic_load_coverage_mask_pan:
+   case nir_intrinsic_load_sample_mask:
       bi_mov_i32_to(b, dst, bi_coverage(b));
       break;
 
@@ -4601,7 +4601,7 @@ bi_lower_sample_mask_writes(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *orig = nir_load_coverage_mask_pan(b);
+   nir_ssa_def *orig = nir_load_sample_mask(b);
 
    nir_instr_rewrite_src_ssa(
       instr, &intr->src[0],

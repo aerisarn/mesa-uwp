@@ -958,6 +958,14 @@ system_value("color1", 4)
 # System value for internal compute shaders in radeonsi.
 system_value("user_data_amd", 4)
 
+# In a fragment shader, the current sample mask. At the beginning of the shader,
+# this is the same as load_sample_mask_in, but as the shader is executed, it may
+# be affected by writes, discards, etc.
+#
+# No frontend generates this, but drivers may use it for internal lowerings.
+intrinsic("load_sample_mask", [], 1, [], flags=[CAN_ELIMINATE], sysval=True,
+          bit_sizes=[32])
+
 # Barycentric coordinate intrinsics.
 #
 # These set up the barycentric coordinates for a particular interpolation.
@@ -1326,10 +1334,6 @@ system_value("sample_positions_pan", 1, bit_sizes=[64])
 
 # In a fragment shader, is the framebuffer single-sampled? 0/~0 bool
 system_value("multisampled_pan", 1, bit_sizes=[32])
-
-# In a fragment shader, the current coverage mask. Affected by writes.
-intrinsic("load_coverage_mask_pan", [], 1, [], flags=[CAN_ELIMINATE],
-          sysval=True, bit_sizes=[32])
 
 # R600 specific instrincs
 #
