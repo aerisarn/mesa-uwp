@@ -214,7 +214,7 @@ virtio_device_new(int fd, drmVersionPtr version)
 }
 
 void *
-virtio_alloc_rsp(struct fd_device *dev, struct msm_ccmd_req *req, uint32_t sz)
+virtio_alloc_rsp(struct fd_device *dev, struct vdrm_ccmd_req *req, uint32_t sz)
 {
    struct virtio_device *virtio_dev = to_virtio_device(dev);
    unsigned off;
@@ -233,7 +233,7 @@ virtio_alloc_rsp(struct fd_device *dev, struct msm_ccmd_req *req, uint32_t sz)
 
    req->rsp_off = off;
 
-   struct msm_ccmd_rsp *rsp = (void *)&virtio_dev->rsp_mem[off];
+   struct vdrm_ccmd_rsp *rsp = (void *)&virtio_dev->rsp_mem[off];
    rsp->len = sz;
 
    return rsp;
@@ -280,7 +280,7 @@ execbuf_locked(struct fd_device *dev, void *cmd, uint32_t cmd_size,
  * guest and host CPU.
  */
 int
-virtio_execbuf_fenced(struct fd_device *dev, struct msm_ccmd_req *req,
+virtio_execbuf_fenced(struct fd_device *dev, struct vdrm_ccmd_req *req,
                       uint32_t *handles, uint32_t num_handles,
                       int in_fence_fd, int *out_fence_fd, int ring_idx)
 {
@@ -338,7 +338,7 @@ virtio_execbuf_flush_locked(struct fd_device *dev)
 }
 
 int
-virtio_execbuf(struct fd_device *dev, struct msm_ccmd_req *req, bool sync)
+virtio_execbuf(struct fd_device *dev, struct vdrm_ccmd_req *req, bool sync)
 {
    MESA_TRACE_FUNC();
    struct virtio_device *virtio_dev = to_virtio_device(dev);
@@ -382,11 +382,11 @@ out_unlock:
  * Wait until host as processed the specified request.
  */
 void
-virtio_host_sync(struct fd_device *dev, const struct msm_ccmd_req *req)
+virtio_host_sync(struct fd_device *dev, const struct vdrm_ccmd_req *req)
 {
    struct virtio_device *virtio_dev = to_virtio_device(dev);
 
-   while (fd_fence_before(virtio_dev->shmem->seqno, req->seqno))
+   while (fd_fence_before(virtio_dev->shmem->base.seqno, req->seqno))
       sched_yield();
 }
 

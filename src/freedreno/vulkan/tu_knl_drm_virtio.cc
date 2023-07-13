@@ -204,7 +204,7 @@ execbuf_flush(struct tu_device *device)
 }
 
 static int
-send_ccmd(struct tu_device *device, struct msm_ccmd_req *req, bool sync)
+send_ccmd(struct tu_device *device, struct vdrm_ccmd_req *req, bool sync)
 {
    MESA_TRACE_FUNC();
    struct tu_virtio_device *vdev = device->vdev;
@@ -244,7 +244,7 @@ out_unlock:
 }
 
 static void *
-virtio_alloc_rsp(struct tu_device *dev, struct msm_ccmd_req *req, uint32_t sz)
+virtio_alloc_rsp(struct tu_device *dev, struct vdrm_ccmd_req *req, uint32_t sz)
 {
    struct tu_virtio_device *vdev = dev->vdev;
    unsigned off;
@@ -263,7 +263,7 @@ virtio_alloc_rsp(struct tu_device *dev, struct msm_ccmd_req *req, uint32_t sz)
 
    req->rsp_off = off;
 
-   struct msm_ccmd_rsp *rsp = (struct msm_ccmd_rsp *)&vdev->rsp_mem[off];
+   struct vdrm_ccmd_rsp *rsp = (struct vdrm_ccmd_rsp *)&vdev->rsp_mem[off];
    rsp->len = sz;
 
    return rsp;
@@ -347,7 +347,7 @@ init_shmem(struct tu_device *dev, struct tu_virtio_device *vdev)
       return vk_startup_errorf(instance, result, "failed to map shmem buffer");
    }
 
-   uint32_t offset = vdev->shmem->rsp_mem_offset;
+   uint32_t offset = vdev->shmem->base.rsp_mem_offset;
    vdev->rsp_mem_len = args.size - offset;
    vdev->rsp_mem = &((uint8_t *)vdev->shmem)[offset];
 
@@ -361,10 +361,10 @@ query_faults(struct tu_device *dev, uint64_t *value)
    uint32_t async_error = 0;
    uint64_t global_faults;
 
-   if (msm_shmem_has_field(vdev->shmem, async_error))
+   if (vdrm_shmem_has_field(vdev->shmem, async_error))
       async_error = vdev->shmem->async_error;
 
-   if (msm_shmem_has_field(vdev->shmem, global_faults)) {
+   if (vdrm_shmem_has_field(vdev->shmem, global_faults)) {
       global_faults = vdev->shmem->global_faults;
    } else {
       int ret = tu_drm_get_param(dev, MSM_PARAM_FAULTS, &global_faults);

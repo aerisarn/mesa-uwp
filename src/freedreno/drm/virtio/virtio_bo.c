@@ -62,7 +62,7 @@ virtio_bo_offset(struct fd_bo *bo, uint64_t *offset)
    if (virtio_bo->has_upload_seqno) {
       virtio_bo->has_upload_seqno = false;
       virtio_execbuf_flush(bo->dev);
-      virtio_host_sync(bo->dev, &(struct msm_ccmd_req) {
+      virtio_host_sync(bo->dev, &(struct vdrm_ccmd_req) {
          .seqno = virtio_bo->upload_seqno,
       });
    }

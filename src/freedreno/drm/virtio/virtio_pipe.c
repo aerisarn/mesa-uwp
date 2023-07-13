@@ -53,10 +53,10 @@ query_faults(struct fd_pipe *pipe, uint64_t *value)
    uint32_t async_error = 0;
    uint64_t global_faults;
 
-   if (msm_shmem_has_field(virtio_dev->shmem, async_error))
+   if (vdrm_shmem_has_field(virtio_dev->shmem, async_error))
       async_error = virtio_dev->shmem->async_error;
 
-   if (msm_shmem_has_field(virtio_dev->shmem, global_faults)) {
+   if (vdrm_shmem_has_field(virtio_dev->shmem, global_faults)) {
       global_faults = virtio_dev->shmem->global_faults;
    } else {
       int ret = query_param(pipe, MSM_PARAM_FAULTS, &global_faults);
@@ -229,7 +229,7 @@ init_shmem(struct fd_device *dev)
       virtio_dev->shmem = fd_bo_map(virtio_dev->shmem_bo);
       virtio_dev->shmem_bo->bo_reuse = NO_CACHE;
 
-      uint32_t offset = virtio_dev->shmem->rsp_mem_offset;
+      uint32_t offset = virtio_dev->shmem->base.rsp_mem_offset;
       virtio_dev->rsp_mem_len = fd_bo_size(virtio_dev->shmem_bo) - offset;
       virtio_dev->rsp_mem = &((uint8_t *)virtio_dev->shmem)[offset];
    }

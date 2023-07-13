@@ -177,14 +177,14 @@ struct fd_bo *virtio_bo_from_handle(struct fd_device *dev, uint32_t size,
 /*
  * Internal helpers:
  */
-void *virtio_alloc_rsp(struct fd_device *dev, struct msm_ccmd_req *hdr, uint32_t sz);
-int virtio_execbuf_fenced(struct fd_device *dev, struct msm_ccmd_req *req,
+void *virtio_alloc_rsp(struct fd_device *dev, struct vdrm_ccmd_req *hdr, uint32_t sz);
+int virtio_execbuf_fenced(struct fd_device *dev, struct vdrm_ccmd_req *req,
                           uint32_t *handles, uint32_t num_handles,
                           int in_fence_fd, int *out_fence_fd, int ring_idx);
 int virtio_execbuf_flush(struct fd_device *dev);
 int virtio_execbuf_flush_locked(struct fd_device *dev);
-int virtio_execbuf(struct fd_device *dev, struct msm_ccmd_req *req, bool sync);
-void virtio_host_sync(struct fd_device *dev, const struct msm_ccmd_req *req);
+int virtio_execbuf(struct fd_device *dev, struct vdrm_ccmd_req *req, bool sync);
+void virtio_host_sync(struct fd_device *dev, const struct vdrm_ccmd_req *req);
 int virtio_simple_ioctl(struct fd_device *dev, unsigned cmd, void *req);
 
 #endif /* VIRTIO_PRIV_H_ */
