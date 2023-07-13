@@ -75,6 +75,94 @@ lower_cmat_filter(const nir_instr *instr, const void *_state)
    }
 }
 
+/**
+ * Get number of matrix elements packed in each component of the slice.
+ */
+static unsigned
+get_packing_factor(const struct glsl_cmat_description desc,
+                   const struct glsl_type *slice_type)
+{
+   const struct glsl_type *slice_element_type = glsl_without_array(slice_type);
+
+   assert(!glsl_type_is_cmat(slice_type));
+
+   assert(glsl_get_bit_size(slice_element_type) >= glsl_base_type_get_bit_size(desc.element_type));
+   assert(glsl_get_bit_size(slice_element_type) % glsl_base_type_get_bit_size(desc.element_type) == 0);
+
+   return glsl_get_bit_size(slice_element_type) / glsl_base_type_get_bit_size(desc.element_type);
+}
+
+static const struct glsl_type *
+get_slice_type_from_desc(const struct lower_cmat_state *state,
+                         const struct glsl_cmat_description desc)
+{
+   enum glsl_base_type base_type;
+
+   /* Number of matrix elements stored by each subgroup invocation. If the
+    * data is packed, the slice size will be less than this.
+    */
+   const unsigned elements_per_invocation =
+      (desc.rows * desc.cols) / state->subgroup_size;
+
+   assert(elements_per_invocation > 0);
+
+   const unsigned element_bits = 32;
+   const unsigned bits = glsl_base_type_get_bit_size(desc.element_type);
+   unsigned packing_factor = MIN2(elements_per_invocation,
+                                  element_bits / bits);
+
+   /* Adjust the packing factor so that each row of the matrix fills and
+    * entire GRF.
+    */
+   const unsigned actual_cols = desc.use != GLSL_CMAT_USE_B ? desc.cols : desc.rows;
+   while ((actual_cols / packing_factor) < 8) {
+      assert(packing_factor > 1);
+      packing_factor /= 2;
+   }
+
+   switch (desc.element_type) {
+   case GLSL_TYPE_FLOAT:
+      base_type = GLSL_TYPE_FLOAT;
+      break;
+   case GLSL_TYPE_UINT:
+   case GLSL_TYPE_FLOAT16:
+   case GLSL_TYPE_UINT8:
+   case GLSL_TYPE_UINT16:
+      base_type = glsl_get_base_type(glsl_uintN_t_type(packing_factor * bits));
+      break;
+   case GLSL_TYPE_INT:
+   case GLSL_TYPE_INT8:
+   case GLSL_TYPE_INT16:
+      base_type = glsl_get_base_type(glsl_intN_t_type(packing_factor * bits));
+      break;
+   default:
+      unreachable("Invalid cooperative matrix element type.");
+   }
+
+   unsigned len = elements_per_invocation / packing_factor;
+
+   /* Supported matrix sizes are designed to fill either 4 or 8 SIMD8
+    * registers. That means:
+    *
+    *          4 regsiters   8 registers
+    * SIMD32     len = 1       len = 2
+    * SIMD16     len = 2       len = 4
+    * SIMD8      len = 4       len = 8
+    *
+    * If configurations are added that result in other values of len, at the
+    * very least this assertion will need to be updated. The only value of len
+    * that makes sense to add would be 16, and that would be a lot of
+    * registers.
+    */
+   assert(len == 1 || len == 2 || len == 4 || len == 8);
+
+   const struct glsl_type *slice_type = glsl_vector_type(base_type, len);
+
+   assert(packing_factor == get_packing_factor(desc, slice_type));
+
+   return slice_type;
+}
+
 static const struct glsl_type *
 get_slice_type(const struct lower_cmat_state *state,
                const struct glsl_type *type)
@@ -87,10 +175,9 @@ get_slice_type(const struct lower_cmat_state *state,
    }
 
    assert(glsl_type_is_cmat(type));
-   const struct glsl_cmat_description *desc = glsl_get_cmat_description(type);
-   unsigned int len = (desc->rows * desc->cols) / state->subgroup_size;
-   assert(len > 0);
-   return glsl_vector_type(desc->element_type, len);
+
+   return get_slice_type_from_desc(state,
+                                   *glsl_get_cmat_description(type));
 }
 
 static nir_deref_instr *
