@@ -871,10 +871,11 @@ iris_resource_configure_aux(struct iris_screen *screen,
          res->aux.usage = ISL_AUX_USAGE_HIZ_CCS;
       }
    } else if (has_ccs) {
-      if (res->mod_info) {
-         res->aux.usage = res->mod_info->aux_usage;
-      } else if (isl_surf_usage_is_stencil(res->surf.usage)) {
+      if (isl_surf_usage_is_stencil(res->surf.usage)) {
+         assert(!res->mod_info);
          res->aux.usage = ISL_AUX_USAGE_STC_CCS;
+      } else if (res->mod_info) {
+         res->aux.usage = res->mod_info->aux_usage;
       } else if (want_ccs_e_for_format(devinfo, res->surf.format)) {
          res->aux.usage = devinfo->ver < 12 ?
             ISL_AUX_USAGE_CCS_E : ISL_AUX_USAGE_FCV_CCS_E;
