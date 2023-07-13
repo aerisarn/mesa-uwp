@@ -933,6 +933,9 @@ nvk_fill_transform_feedback_state(struct nir_shader *nir,
    }
    memset(xfb->varying_index, 0xff, sizeof(xfb->varying_index)); /* = skip */
 
+   if (info->numOutputs == 0)
+      return xfb;
+
    for (uint32_t i = 0; i < nx->output_count; ++i) {
       const nir_xfb_output_info output = nx->outputs[i];
       const uint8_t b = output.buffer;
