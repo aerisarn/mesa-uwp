@@ -38,6 +38,7 @@
 #include "compiler/valhall/disassemble.h"
 #include "midgard/disassemble.h"
 #include "util/set.h"
+#include "pan_format.h"
 
 #if PAN_ARCH <= 5
 /* Midgard's tiler descriptor is embedded within the
@@ -216,6 +217,19 @@ GENX(pandecode_blend)(void *descs, int rt_no, mali_ptr frag_shader)
 #endif
 
 #if PAN_ARCH <= 7
+static bool
+panfrost_is_yuv_format(uint32_t packed)
+{
+#if PAN_ARCH == 7
+   enum mali_format mali_fmt = packed >> 12;
+   return mali_fmt >= MALI_YUV8 && mali_fmt <= MALI_CUSTOM_YUV_5;
+#else
+   /* Currently only supported by panfrost on v7 */
+   assert(0);
+   return false;
+#endif
+}
+
 static void
 pandecode_texture_payload(mali_ptr payload, const struct MALI_TEXTURE *tex)
 {
@@ -267,8 +281,16 @@ pandecode_texture_payload(mali_ptr payload, const struct MALI_TEXTURE *tex)
               tex->surface_type);
       break;
    }
-#else
+#elif PAN_ARCH == 6
    PANDECODE_EMIT_TEX_PAYLOAD_DESC(SURFACE_WITH_STRIDE, "Surface With Stride");
+#else
+   STATIC_ASSERT(PAN_ARCH == 7);
+   if (panfrost_is_yuv_format(tex->format)) {
+      PANDECODE_EMIT_TEX_PAYLOAD_DESC(MULTIPLANAR_SURFACE, "Surface YUV");
+   } else {
+      PANDECODE_EMIT_TEX_PAYLOAD_DESC(SURFACE_WITH_STRIDE,
+                                      "Surface With Stride");
+   }
 #endif
 
 #undef PANDECODE_EMIT_TEX_PAYLOAD_DESC
