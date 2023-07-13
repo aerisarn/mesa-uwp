@@ -68,9 +68,9 @@ vk_to_nil_extent(VkExtent3D extent, uint32_t array_layers)
 static struct nouveau_copy_buffer
 nouveau_copy_rect_image(
    struct nvk_image *img,
+   struct nvk_image_plane *plane,
    VkOffset3D offset_px,
-   const VkImageSubresourceLayers *sub_res,
-   const uint8_t plane)
+   const VkImageSubresourceLayers *sub_res)
 {
    const VkExtent3D lvl_extent_px =
       vk_image_mip_level_extent(&img->vk, sub_res->mipLevel);
@@ -82,17 +82,17 @@ nouveau_copy_rect_image(
       vk_to_nil_offset(offset_px, sub_res->baseArrayLayer);
 
    struct nouveau_copy_buffer buf = {
-      .base_addr = nvk_image_base_address(img, plane) +
-                   img->planes[plane].nil.levels[sub_res->mipLevel].offset_B,
+      .base_addr = nvk_image_plane_base_address(plane) +
+                   plane->nil.levels[sub_res->mipLevel].offset_B,
       .image_type = img->vk.image_type,
-      .offset_el = nil_offset4d_px_to_el(offset4d_px, img->planes[plane].nil.format,
-                                         img->planes[plane].nil.sample_layout),
-      .extent_el = nil_extent4d_px_to_el(lvl_extent4d_px, img->planes[plane].nil.format,
-                                         img->planes[plane].nil.sample_layout),
-      .bpp = util_format_get_blocksize(img->planes[plane].nil.format),
-      .row_stride = img->planes[plane].nil.levels[sub_res->mipLevel].row_stride_B,
-      .array_stride = img->planes[plane].nil.array_stride_B,
-      .tiling = img->planes[plane].nil.levels[sub_res->mipLevel].tiling,
+      .offset_el = nil_offset4d_px_to_el(offset4d_px, plane->nil.format,
+                                         plane->nil.sample_layout),
+      .extent_el = nil_extent4d_px_to_el(lvl_extent4d_px, plane->nil.format,
+                                         plane->nil.sample_layout),
+      .bpp = util_format_get_blocksize(plane->nil.format),
+      .row_stride = plane->nil.levels[sub_res->mipLevel].row_stride_B,
+      .array_stride = plane->nil.array_stride_B,
+      .tiling = plane->nil.levels[sub_res->mipLevel].tiling,
    };
 
    return buf;
@@ -373,8 +373,9 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
       struct nouveau_copy copy = {
          .src = nouveau_copy_rect_buffer(src, region->bufferOffset,
                                          buffer_layout),
-         .dst = nouveau_copy_rect_image(dst, region->imageOffset,
-                                        &region->imageSubresource, plane),
+         .dst = nouveau_copy_rect_image(dst, &dst->planes[plane],
+                                        region->imageOffset,
+                                        &region->imageSubresource),
          .extent_el = nil_extent4d_px_to_el(extent4d_px, dst->planes[plane].nil.format,
                                             dst->planes[plane].nil.sample_layout),
       };
@@ -443,8 +444,9 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
       uint8_t plane = nvk_image_aspects_to_plane(src, aspects);
 
       struct nouveau_copy copy = {
-         .src = nouveau_copy_rect_image(src, region->imageOffset,
-                                        &region->imageSubresource, plane),
+         .src = nouveau_copy_rect_image(src, &src->planes[plane],
+                                        region->imageOffset,
+                                        &region->imageSubresource),
          .dst = nouveau_copy_rect_buffer(dst, region->bufferOffset,
                                          buffer_layout),
          .extent_el = nil_extent4d_px_to_el(extent4d_px, src->planes[plane].nil.format,
@@ -522,10 +524,12 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
       uint8_t dst_plane = nvk_image_aspects_to_plane(dst, dst_aspects);
 
       struct nouveau_copy copy = {
-         .src = nouveau_copy_rect_image(src, region->srcOffset,
-                                        &region->srcSubresource, src_plane),
-         .dst = nouveau_copy_rect_image(dst, region->dstOffset,
-                                        &region->dstSubresource, dst_plane),
+         .src = nouveau_copy_rect_image(src, &src->planes[src_plane],
+                                        region->srcOffset,
+                                        &region->srcSubresource),
+         .dst = nouveau_copy_rect_image(dst, &dst->planes[dst_plane],
+                                        region->dstOffset,
+                                        &region->dstSubresource),
          .extent_el = nil_extent4d_px_to_el(extent4d_px, src->planes[src_plane].nil.format,
                                             src->planes[src_plane].nil.sample_layout),
       };
