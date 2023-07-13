@@ -105,15 +105,15 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
    const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo,
    VkImageFormatProperties2 *pImageFormatProperties)
 {
-   VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
+   VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
 
    /* Initialize to zero in case we return VK_ERROR_FORMAT_NOT_SUPPORTED */
    memset(&pImageFormatProperties->imageFormatProperties, 0,
           sizeof(pImageFormatProperties->imageFormatProperties));
 
    VkFormatFeatureFlags2KHR features =
-      nvk_get_image_format_features(pdevice, pImageFormatInfo->format,
-                                             pImageFormatInfo->tiling);
+      nvk_get_image_format_features(pdev, pImageFormatInfo->format,
+                                          pImageFormatInfo->tiling);
    if (features == 0)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
@@ -217,11 +217,11 @@ vk_image_type_to_nil_dim(VkImageType type)
 }
 
 static VkResult
-nvk_image_init(struct nvk_device *device,
+nvk_image_init(struct nvk_device *dev,
                struct nvk_image *image,
                const VkImageCreateInfo *pCreateInfo)
 {
-   vk_image_init(&device->vk, &image->vk, pCreateInfo);
+   vk_image_init(&dev->vk, &image->vk, pCreateInfo);
 
    if ((image->vk.usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
@@ -276,8 +276,8 @@ nvk_image_init(struct nvk_device *device,
          .usage = usage,
       };
 
-      ASSERTED bool ok = nil_image_init(&nvk_device_physical(device)->info,
-                                       &image->planes[plane].nil, &nil_info);
+      ASSERTED bool ok = nil_image_init(&nvk_device_physical(dev)->info,
+                                        &image->planes[plane].nil, &nil_info);
       assert(ok);
    }
 
@@ -290,29 +290,29 @@ static void nvk_image_finish(struct nvk_image *image)
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_CreateImage(VkDevice _device,
+nvk_CreateImage(VkDevice device,
                 const VkImageCreateInfo *pCreateInfo,
                 const VkAllocationCallbacks *pAllocator,
                 VkImage *pImage)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    struct nvk_image *image;
    VkResult result;
 
-   image = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*image), 8,
+   image = vk_zalloc2(&dev->vk.alloc, pAllocator, sizeof(*image), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!image)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = nvk_image_init(device, image, pCreateInfo);
+   result = nvk_image_init(dev, image, pCreateInfo);
    if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, pAllocator, image);
+      vk_free2(&dev->vk.alloc, pAllocator, image);
       return result;
    }
    for (uint8_t plane = 0; plane < image->plane_count; plane++) {
       if (image->planes[plane].nil.pte_kind) {
-         assert(device->pdev->mem_heaps[0].flags &
-             VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
+         assert(dev->pdev->mem_heaps[0].flags &
+                VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
 
          const VkMemoryAllocateInfo alloc_info = {
             .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
@@ -323,11 +323,11 @@ nvk_CreateImage(VkDevice _device,
             .tile_mode = image->planes[plane].nil.tile_mode,
             .pte_kind = image->planes[plane].nil.pte_kind,
          };
-         result = nvk_allocate_memory(device, &alloc_info, &tile_info,
-                                   pAllocator, &image->planes[plane].internal);
+         result = nvk_allocate_memory(dev, &alloc_info, &tile_info, pAllocator,
+                                      &image->planes[plane].internal);
          if (result != VK_SUCCESS) {
             nvk_image_finish(image);
-            vk_free2(&device->vk.alloc, pAllocator, image);
+            vk_free2(&dev->vk.alloc, pAllocator, image);
             return result;
          }
 
@@ -342,11 +342,11 @@ nvk_CreateImage(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_DestroyImage(VkDevice _device,
+nvk_DestroyImage(VkDevice device,
                  VkImage _image,
                  const VkAllocationCallbacks *pAllocator)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_image, image, _image);
 
    if (!image)
@@ -354,22 +354,22 @@ nvk_DestroyImage(VkDevice _device,
 
    for (uint8_t plane = 0; plane < image->plane_count; plane++) {
       if (image->planes[plane].internal)
-         nvk_free_memory(device, image->planes[plane].internal, pAllocator);
+         nvk_free_memory(dev, image->planes[plane].internal, pAllocator);
    }
 
    nvk_image_finish(image);
-   vk_free2(&device->vk.alloc, pAllocator, image);
+   vk_free2(&dev->vk.alloc, pAllocator, image);
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_GetImageMemoryRequirements2(VkDevice _device,
+nvk_GetImageMemoryRequirements2(VkDevice device,
                                 const VkImageMemoryRequirementsInfo2 *pInfo,
                                 VkMemoryRequirements2 *pMemoryRequirements)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_image, image, pInfo->image);
 
-   uint32_t memory_types = (1 << device->pdev->mem_type_cnt) - 1;
+   uint32_t memory_types = (1 << dev->pdev->mem_type_cnt) - 1;
 
    // TODO hope for the best?
 
@@ -412,15 +412,15 @@ nvk_GetImageMemoryRequirements2(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL 
-nvk_GetDeviceImageMemoryRequirements(VkDevice _device,
+nvk_GetDeviceImageMemoryRequirements(VkDevice device,
                                      const VkDeviceImageMemoryRequirementsKHR *pInfo,
                                      VkMemoryRequirements2 *pMemoryRequirements)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    ASSERTED VkResult result;
    struct nvk_image image;
 
-   result = nvk_image_init(device, &image, pInfo->pCreateInfo);
+   result = nvk_image_init(dev, &image, pInfo->pCreateInfo);
    assert(result == VK_SUCCESS);
 
    VkImageMemoryRequirementsInfo2 info2 = {
@@ -428,7 +428,7 @@ nvk_GetDeviceImageMemoryRequirements(VkDevice _device,
       .image = nvk_image_to_handle(&image),
    };
 
-   nvk_GetImageMemoryRequirements2(_device, &info2, pMemoryRequirements);
+   nvk_GetImageMemoryRequirements2(device, &info2, pMemoryRequirements);
    nvk_image_finish(&image);
 }
 
@@ -475,7 +475,7 @@ nvk_GetImageSubresourceLayout(VkDevice device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_BindImageMemory2(VkDevice _device,
+nvk_BindImageMemory2(VkDevice device,
                      uint32_t bindInfoCount,
                      const VkBindImageMemoryInfo *pBindInfos)
 {
