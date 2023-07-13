@@ -183,6 +183,12 @@ nir_legacy_fsat_folds(nir_alu_instr *fsat)
    if (dest_type != nir_type_float)
       return false;
 
+   /* If we are a saturating a source modifier fsat(fabs(x)), we need to emit
+    * either the fsat or the modifier or else the sequence disappears.
+    */
+   if (generate_alu->op == nir_op_fabs || generate_alu->op == nir_op_fneg)
+      return false;
+
    /* We can't do expansions without a move in the middle */
    unsigned nr_components = nir_dest_num_components(generate_alu->dest.dest);
    if (fsat->dest.dest.ssa.num_components != nr_components)
