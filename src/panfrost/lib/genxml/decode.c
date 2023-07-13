@@ -217,13 +217,10 @@ GENX(pandecode_blend)(void *descs, int rt_no, mali_ptr frag_shader)
 
 #if PAN_ARCH <= 7
 static void
-pandecode_texture_payload(mali_ptr payload, enum mali_texture_dimension dim,
-                          enum mali_texture_layout layout, bool manual_stride,
-                          uint8_t levels, uint16_t nr_samples,
-                          uint16_t array_size)
+pandecode_texture_payload(mali_ptr payload, const struct MALI_TEXTURE *tex)
 {
-   pandecode_log(".payload = {\n");
-   pandecode_indent++;
+   unsigned nr_samples =
+      tex->dimension == MALI_TEXTURE_DIMENSION_3D ? 1 : tex->sample_count;
 
    /* A bunch of bitmap pointers follow.
     * We work out the correct number,
@@ -231,44 +228,50 @@ pandecode_texture_payload(mali_ptr payload, enum mali_texture_dimension dim,
     * properties, but dump extra
     * possibilities to futureproof */
 
-   int bitmap_count = levels;
+   int bitmap_count = tex->levels;
 
    /* Miptree for each face */
-   if (dim == MALI_TEXTURE_DIMENSION_CUBE)
+   if (tex->dimension == MALI_TEXTURE_DIMENSION_CUBE)
       bitmap_count *= 6;
 
    /* Array of layers */
    bitmap_count *= nr_samples;
 
    /* Array of textures */
-   bitmap_count *= array_size;
+   bitmap_count *= tex->array_size;
 
-   /* Stride for each element */
-   if (manual_stride)
-      bitmap_count *= 2;
-
-   mali_ptr *pointers_and_strides =
-      pandecode_fetch_gpu_mem(payload, sizeof(mali_ptr) * bitmap_count);
-   for (int i = 0; i < bitmap_count; ++i) {
-      /* How we dump depends if this is a stride or a pointer */
-
-      if (manual_stride && (i & 1)) {
-         /* signed 32-bit snuck in as a 64-bit pointer */
-         uint64_t stride_set = pointers_and_strides[i];
-         int32_t row_stride = stride_set;
-         int32_t surface_stride = stride_set >> 32;
-         pandecode_log(
-            "(mali_ptr) %d /* surface stride */ %d /* row stride */, \n",
-            surface_stride, row_stride);
-      } else {
-         char *a = pointer_as_memory_reference(pointers_and_strides[i]);
-         pandecode_log("%s, \n", a);
-         free(a);
-      }
+#define PANDECODE_EMIT_TEX_PAYLOAD_DESC(T, msg)                                \
+   for (int i = 0; i < bitmap_count; ++i) {                                    \
+      uint64_t addr = payload + pan_size(T) * i;                               \
+      pan_unpack(PANDECODE_PTR(addr, void), T, s);                             \
+      DUMP_UNPACKED(T, s, msg " @%" PRIx64 ":\n", addr)                        \
    }
 
-   pandecode_indent--;
-   pandecode_log("},\n");
+#if PAN_ARCH <= 5
+   switch (tex->surface_type) {
+   case MALI_SURFACE_TYPE_32:
+      PANDECODE_EMIT_TEX_PAYLOAD_DESC(SURFACE_32, "Surface 32");
+      break;
+   case MALI_SURFACE_TYPE_64:
+      PANDECODE_EMIT_TEX_PAYLOAD_DESC(SURFACE, "Surface");
+      break;
+   case MALI_SURFACE_TYPE_32_WITH_ROW_STRIDE:
+      PANDECODE_EMIT_TEX_PAYLOAD_DESC(SURFACE_32, "Surface 32 With Row Stride");
+      break;
+   case MALI_SURFACE_TYPE_64_WITH_STRIDES:
+      PANDECODE_EMIT_TEX_PAYLOAD_DESC(SURFACE_WITH_STRIDE,
+                                      "Surface With Stride");
+      break;
+   default:
+      fprintf(pandecode_dump_stream, "Unknown surface descriptor type %X\n",
+              tex->surface_type);
+      break;
+   }
+#else
+   PANDECODE_EMIT_TEX_PAYLOAD_DESC(SURFACE_WITH_STRIDE, "Surface With Stride");
+#endif
+
+#undef PANDECODE_EMIT_TEX_PAYLOAD_DESC
 }
 #endif
 
@@ -282,11 +285,7 @@ GENX(pandecode_texture)(mali_ptr u, unsigned tex)
    DUMP_UNPACKED(TEXTURE, temp, "Texture:\n")
 
    pandecode_indent++;
-   unsigned nr_samples =
-      temp.dimension == MALI_TEXTURE_DIMENSION_3D ? 1 : temp.sample_count;
-   pandecode_texture_payload(u + pan_size(TEXTURE), temp.dimension,
-                             temp.texel_ordering, temp.manual_stride,
-                             temp.levels, nr_samples, temp.array_size);
+   pandecode_texture_payload(u + pan_size(TEXTURE), &temp);
    pandecode_indent--;
 }
 #else
@@ -308,11 +307,7 @@ GENX(pandecode_texture)(const void *cl, unsigned tex)
    for (unsigned i = 0; i < plane_count; ++i)
       DUMP_ADDR(PLANE, temp.surfaces + i * pan_size(PLANE), "Plane %u:\n", i);
 #else
-   unsigned nr_samples =
-      temp.dimension == MALI_TEXTURE_DIMENSION_3D ? 1 : temp.sample_count;
-
-   pandecode_texture_payload(temp.surfaces, temp.dimension, temp.texel_ordering,
-                             true, temp.levels, nr_samples, temp.array_size);
+   pandecode_texture_payload(temp.surfaces, &temp);
 #endif
    pandecode_indent--;
 }

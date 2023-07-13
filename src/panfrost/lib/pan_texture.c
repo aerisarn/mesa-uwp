@@ -637,8 +637,6 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
        */
       cfg.minimum_lod = 0;
       cfg.maximum_lod = cfg.levels - 1;
-#else
-      cfg.manual_stride = true;
 #endif
    }
 }
