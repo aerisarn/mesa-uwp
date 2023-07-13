@@ -4056,7 +4056,6 @@ genX(CmdExecuteCommands)(
    primary->state.current_l3_config = NULL;
    primary->state.current_hash_scale = 0;
    primary->state.gfx.push_constant_stages = 0;
-   primary->state.compute.cfe_state_valid = false;
    vk_dynamic_graphics_state_dirty_all(&primary->vk.dynamic_graphics_state);
 
    /* Each of the secondary command buffers will use its own state base
@@ -5536,13 +5535,13 @@ genX(cmd_buffer_ensure_cfe_state)(struct anv_cmd_buffer *cmd_buffer,
 
    struct anv_cmd_compute_state *comp_state = &cmd_buffer->state.compute;
 
-   if (comp_state->cfe_state_valid &&
-       total_scratch <= comp_state->scratch_size)
+   if (total_scratch <= comp_state->scratch_size)
       return;
 
    const struct intel_device_info *devinfo = cmd_buffer->device->info;
    anv_batch_emit(&cmd_buffer->batch, GENX(CFE_STATE), cfe) {
-      cfe.MaximumNumberofThreads = devinfo->max_cs_threads * devinfo->subslice_total;
+      cfe.MaximumNumberofThreads =
+         devinfo->max_cs_threads * devinfo->subslice_total;
 
       uint32_t scratch_surf = 0xffffffff;
       if (total_scratch > 0) {
@@ -5565,7 +5564,6 @@ genX(cmd_buffer_ensure_cfe_state)(struct anv_cmd_buffer *cmd_buffer,
    }
 
    comp_state->scratch_size = total_scratch;
-   comp_state->cfe_state_valid = true;
 #else
    unreachable("Invalid call");
 #endif
