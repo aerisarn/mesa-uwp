@@ -3726,3 +3726,23 @@ isl_aux_op_to_name(enum isl_aux_op op)
    assert(op < ARRAY_SIZE(names));
    return names[op];
 }
+
+const char *
+isl_tiling_to_name(enum isl_tiling tiling)
+{
+   static const char *names[] = {
+      [ISL_TILING_LINEAR]    = "linear",
+      [ISL_TILING_W]         = "W",
+      [ISL_TILING_X]         = "X",
+      [ISL_TILING_Y0]        = "Y0",
+      [ISL_TILING_Yf]        = "Yf",
+      [ISL_TILING_Ys]        = "Ys",
+      [ISL_TILING_4]         = "4",
+      [ISL_TILING_64]        = "64",
+      [ISL_TILING_HIZ]       = "hiz",
+      [ISL_TILING_CCS]       = "ccs",
+      [ISL_TILING_GFX12_CCS] = "gfx12-ccs",
+   };
+   assert(tiling < ARRAY_SIZE(names));
+   return names[tiling];
+}

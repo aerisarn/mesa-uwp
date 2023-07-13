@@ -145,6 +145,19 @@ libisl = static_library(
   gnu_symbol_visibility : 'hidden',
 )
 
+if with_intel_tools
+isl_query = executable(
+  'isl_query',
+  files('isl_query.c'),
+  dependencies : [idep_mesautil, dep_m, idep_intel_dev],
+  include_directories : [inc_include, inc_src, inc_intel],
+  link_with : [libisl],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
+  install : false
+)
+endif
+
 if with_tests
   test(
     'isl_surf_get_image_offset',

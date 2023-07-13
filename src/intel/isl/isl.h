@@ -3012,6 +3012,9 @@ isl_get_tile_masks(enum isl_tiling tiling, uint32_t cpp,
 const char *
 isl_aux_op_to_name(enum isl_aux_op op);
 
+const char *
+isl_tiling_to_name(enum isl_tiling tiling);
+
 #ifdef __cplusplus
 }
 #endif
