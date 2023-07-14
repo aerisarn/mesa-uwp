@@ -106,7 +106,7 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
    struct etna_context *ctx = etna_context(pctx);
    struct etna_transfer *trans = etna_transfer(ptrans);
    struct etna_resource *rsc = etna_resource(ptrans->resource);
-   struct etna_resource_level *res_level;
+   struct etna_resource_level *res_level = &rsc->levels[ptrans->level];
 
    /* XXX
     * When writing to a resource that is already in use, replace the resource
@@ -114,12 +114,9 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
     * and free the old one using a fenced free.
     * The most tricky case to implement will be: tiled or supertiled surface,
     * partial write, target not aligned to 4/64. */
-   assert(ptrans->level <= rsc->base.last_level);
 
    if (rsc->texture && !etna_resource_newer(rsc, etna_resource(rsc->texture)))
       rsc = etna_resource(rsc->texture); /* switch to using the texture resource */
-
-   res_level = &rsc->levels[ptrans->level];
 
    /*
     * Temporary resources are always pulled into the CPU domain, must push them
