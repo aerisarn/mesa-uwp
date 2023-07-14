@@ -72,6 +72,7 @@
     <value name="Line" value="1"/>
     <value name="Point sprite UV=10" value="2"/>
     <value name="Point sprite UV=01" value="4"/>
+    <!-- Line-filled tri. Point-filled tri. UV. Rect. Match RGX. -->
   </enum>
 
   <enum name="Layout">
@@ -167,14 +168,20 @@
     <value name="Gouraud" value="3"/>
   </enum>
 
+  <enum name="Coefficient source">
+    <value name="Varying" value="0"/>
+    <value name="Fragcoord Z" value="1"/>
+    <value name="Point coord" value="2"/>
+    <value name="Primitive ID" value="3"/> 
+    <!-- Vec2 only -->
+    <value name="Barycentric coord" value="5"/>
+  </enum>
+
   <struct name="CF binding" size="4">
     <field name="Components" size="2" start="0" type="uint" modifier="minus(1)"/>
     <field name="Shade model" size="2" start="2" type="Shade model"/>
     <field name="Perspective" size="1" start="4" type="bool"/>
-    <field name="Fragcoord Z" size="1" start="5" type="bool"/>
-    <field name="Point sprite" size="1" start="6" type="bool"/>
-    <!-- Set with fragcoord Z for a vec2 of bary coords -->
-    <field name="Barycentric coordinates" size="1" start="7" type="bool"/>
+    <field name="Source" size="3" start="5" type="Coefficient source"/>
     <field name="Base slot" size="8" start="8" type="uint"/>
     <field name="Base coefficient register" size="8" start="16" type="uint"/>
   </struct>
@@ -538,6 +545,7 @@
   <struct name="Cull 2" size="4">
     <field name="Unknown 2" size="8" start="0" type="hex" default="0xa0"/>
     <field name="Draw clipped edges" size="1" start="9" type="bool"/>
+    <field name="Needs Primitive ID" size="1" start="12" type="bool"/>
     <field name="Primitive MSAA" size="1" start="15" type="bool"/>
     <field name="Rasterizer discard" size="1" start="17" type="bool"/>
   </struct>
@@ -840,6 +848,7 @@
     <field name="Flat shading control" start="0" size="2" type="VDM Vertex"/>
     <field name="Unknown 4" size="1" start="4" type="bool"/>
     <field name="Unknown 5" size="1" start="5" type="bool"/>
+    <field name="Generate primitive ID" size="1" start="6" type="bool"/>
   </struct>
 
   <!--- Command to issue a direct non-indexed draw -->

@@ -1564,7 +1564,7 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
 
          if (fs->bindings[i].slot == VARYING_SLOT_PNTC) {
             assert(fs->bindings[i].offset == 0);
-            cfg.point_sprite = true;
+            cfg.source = AGX_COEFFICIENT_SOURCE_POINT_COORD;
          } else {
             cfg.base_slot = agx_find_linked_slot(vs, fs, fs->bindings[i].slot,
                                                  fs->bindings[i].offset);
@@ -1575,7 +1575,7 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
 
          if (fs->bindings[i].slot == VARYING_SLOT_POS) {
             if (fs->bindings[i].offset == 2)
-               cfg.fragcoord_z = true;
+               cfg.source = AGX_COEFFICIENT_SOURCE_FRAGCOORD_Z;
             else
                assert(!cfg.perspective && "W must not be perspective divided");
          }
