@@ -233,7 +233,6 @@ static void radeon_vcn_enc_get_input_format_param(struct radeon_encoder *enc,
       enc->enc_pic.enc_input_format.input_color_packing_format = RENCODE_COLOR_PACKING_FORMAT_A8R8G8B8;
       enc->enc_pic.enc_input_format.input_color_space = RENCODE_COLOR_SPACE_RGB;
       break;
-      break;
    case PIPE_FORMAT_R8G8B8A8_UNORM:
    case PIPE_FORMAT_R8G8B8X8_UNORM:
       enc->enc_pic.enc_input_format.input_color_bit_depth = RENCODE_COLOR_BIT_DEPTH_8_BIT;
