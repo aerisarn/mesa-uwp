@@ -423,8 +423,10 @@ pvr_process_event_cmd_barrier(struct pvr_device *device,
    uint32_t src_wait_count = 0;
    VkResult result;
 
-   assert(!(src_mask & ~PVR_PIPELINE_STAGE_ALL_BITS));
-   assert(!(dst_mask & ~PVR_PIPELINE_STAGE_ALL_BITS));
+   assert(!(src_mask & ~(PVR_PIPELINE_STAGE_ALL_BITS |
+                         PVR_PIPELINE_STAGE_OCCLUSION_QUERY_BIT)));
+   assert(!(dst_mask & ~(PVR_PIPELINE_STAGE_ALL_BITS |
+                         PVR_PIPELINE_STAGE_OCCLUSION_QUERY_BIT)));
 
    u_foreach_bit (stage, src_mask) {
       if (queue->last_job_signal_sync[stage]) {
