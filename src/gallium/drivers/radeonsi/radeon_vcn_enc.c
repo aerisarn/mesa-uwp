@@ -223,18 +223,36 @@ static void radeon_vcn_enc_get_input_format_param(struct radeon_encoder *enc,
    case PIPE_FORMAT_P010:
       enc->enc_pic.enc_input_format.input_color_bit_depth = RENCODE_COLOR_BIT_DEPTH_10_BIT;
       enc->enc_pic.enc_input_format.input_color_packing_format = RENCODE_COLOR_PACKING_FORMAT_P010;
+      enc->enc_pic.enc_input_format.input_chroma_subsampling = RENCODE_CHROMA_SUBSAMPLING_4_2_0;
+      enc->enc_pic.enc_input_format.input_color_space = RENCODE_COLOR_SPACE_YUV;
+      break;
+   case PIPE_FORMAT_B8G8R8A8_UNORM:
+   case PIPE_FORMAT_B8G8R8X8_UNORM:
+      enc->enc_pic.enc_input_format.input_color_bit_depth = RENCODE_COLOR_BIT_DEPTH_8_BIT;
+      enc->enc_pic.enc_input_format.input_chroma_subsampling = RENCODE_CHROMA_SUBSAMPLING_4_4_4;
+      enc->enc_pic.enc_input_format.input_color_packing_format = RENCODE_COLOR_PACKING_FORMAT_A8R8G8B8;
+      enc->enc_pic.enc_input_format.input_color_space = RENCODE_COLOR_SPACE_RGB;
+      break;
+      break;
+   case PIPE_FORMAT_R8G8B8A8_UNORM:
+   case PIPE_FORMAT_R8G8B8X8_UNORM:
+      enc->enc_pic.enc_input_format.input_color_bit_depth = RENCODE_COLOR_BIT_DEPTH_8_BIT;
+      enc->enc_pic.enc_input_format.input_chroma_subsampling = RENCODE_CHROMA_SUBSAMPLING_4_4_4;
+      enc->enc_pic.enc_input_format.input_color_packing_format = RENCODE_COLOR_PACKING_FORMAT_A8B8G8R8;
+      enc->enc_pic.enc_input_format.input_color_space = RENCODE_COLOR_SPACE_RGB;
       break;
    case PIPE_FORMAT_NV12: /* FALL THROUGH */
    default:
       enc->enc_pic.enc_input_format.input_color_bit_depth = RENCODE_COLOR_BIT_DEPTH_8_BIT;
       enc->enc_pic.enc_input_format.input_color_packing_format = RENCODE_COLOR_PACKING_FORMAT_NV12;
+      enc->enc_pic.enc_input_format.input_chroma_subsampling = RENCODE_CHROMA_SUBSAMPLING_4_2_0;
+      enc->enc_pic.enc_input_format.input_color_space = RENCODE_COLOR_SPACE_YUV;
       break;
    }
-   enc->enc_pic.enc_input_format.input_color_volume = RENCODE_COLOR_VOLUME_G22_BT709;
-   enc->enc_pic.enc_input_format.input_color_range = RENCODE_COLOR_RANGE_FULL;
-   enc->enc_pic.enc_input_format.input_chroma_subsampling = RENCODE_CHROMA_SUBSAMPLING_4_2_0;
+
+  enc->enc_pic.enc_input_format.input_color_volume = RENCODE_COLOR_VOLUME_G22_BT709;
+  enc->enc_pic.enc_input_format.input_color_range = RENCODE_COLOR_RANGE_FULL;
    enc->enc_pic.enc_input_format.input_chroma_location = RENCODE_CHROMA_LOCATION_INTERSTITIAL;
-   enc->enc_pic.enc_input_format.input_color_space = RENCODE_COLOR_SPACE_YUV;
 }
 
 static void radeon_vcn_enc_h264_get_param(struct radeon_encoder *enc,
@@ -817,8 +835,16 @@ static void radeon_enc_begin_frame(struct pipe_video_codec *encoder,
       }
    }
 
-   enc->get_buffer(vid_buf->resources[0], &enc->handle, &enc->luma);
-   enc->get_buffer(vid_buf->resources[1], NULL, &enc->chroma);
+   if (source->buffer_format == PIPE_FORMAT_NV12 ||
+       source->buffer_format == PIPE_FORMAT_P010 ||
+       source->buffer_format == PIPE_FORMAT_P016) {
+      enc->get_buffer(vid_buf->resources[0], &enc->handle, &enc->luma);
+      enc->get_buffer(vid_buf->resources[1], NULL, &enc->chroma);
+   }
+   else {
+      enc->get_buffer(vid_buf->resources[0], &enc->handle, &enc->luma);
+      enc->chroma = NULL;
+   }
 
    enc->need_feedback = false;
 

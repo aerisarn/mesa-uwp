@@ -171,11 +171,15 @@
 #define RENCODE_COLOR_BIT_DEPTH_10_BIT                                              1
 
 #define RENCODE_CHROMA_SUBSAMPLING_4_2_0                                            0
+#define RENCODE_CHROMA_SUBSAMPLING_4_4_4                                            1
 
 #define RENCODE_COLOR_PACKING_FORMAT_NV12                                           0
 #define RENCODE_COLOR_PACKING_FORMAT_P010                                           1
+#define RENCODE_COLOR_PACKING_FORMAT_A8R8G8B8                                       4
+#define RENCODE_COLOR_PACKING_FORMAT_A8B8G8R8                                       7
 
 #define RENCODE_COLOR_SPACE_YUV                                                     0
+#define RENCODE_COLOR_SPACE_RGB                                                     1
 
 #define PIPE_ALIGN_IN_BLOCK_SIZE(value, alignment) DIV_ROUND_UP(value, alignment)
 

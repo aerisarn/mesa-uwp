@@ -748,7 +748,9 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
             return 1;
          else
             return 0;
-
+      case PIPE_VIDEO_CAP_EFC_SUPPORTED:
+         return ((sscreen->info.family >= CHIP_RENOIR) &&
+                 !(sscreen->debug_flags & DBG(NO_EFC)));
       default:
          return 0;
       }
