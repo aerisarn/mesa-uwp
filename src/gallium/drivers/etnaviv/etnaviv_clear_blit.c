@@ -251,7 +251,7 @@ etna_copy_resource(struct pipe_context *pctx, struct pipe_resource *dst,
 
 void
 etna_copy_resource_box(struct pipe_context *pctx, struct pipe_resource *dst,
-                       struct pipe_resource *src, int level,
+                       struct pipe_resource *src, int dst_level, int src_level,
                        struct pipe_box *box)
 {
    struct etna_resource *src_priv = etna_resource(src);
@@ -259,7 +259,7 @@ etna_copy_resource_box(struct pipe_context *pctx, struct pipe_resource *dst,
 
    assert(src->format == dst->format);
    assert(src->array_size == dst->array_size);
-   assert(!etna_resource_level_needs_flush(&dst_priv->levels[level]));
+   assert(!etna_resource_level_needs_flush(&dst_priv->levels[dst_level]));
 
    struct pipe_blit_info blit = {};
    blit.mask = util_format_get_mask(dst->format);
@@ -272,7 +272,8 @@ etna_copy_resource_box(struct pipe_context *pctx, struct pipe_resource *dst,
    blit.dst.box = *box;
 
    blit.dst.box.depth = blit.src.box.depth = 1;
-   blit.src.level = blit.dst.level = level;
+   blit.src.level = src_level;
+   blit.dst.level = dst_level;
 
    for (int z = 0; z < box->depth; z++) {
       blit.src.box.z = blit.dst.box.z = box->z + z;
@@ -280,9 +281,10 @@ etna_copy_resource_box(struct pipe_context *pctx, struct pipe_resource *dst,
    }
 
    if (src == dst)
-      etna_resource_level_mark_flushed(&dst_priv->levels[level]);
+      etna_resource_level_mark_flushed(&dst_priv->levels[dst_level]);
    else
-      etna_resource_level_copy_seqno(&dst_priv->levels[level], &src_priv->levels[level]);
+      etna_resource_level_copy_seqno(&dst_priv->levels[dst_level],
+                                     &src_priv->levels[src_level]);
 }
 
 void

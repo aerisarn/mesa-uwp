@@ -140,7 +140,8 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
          /* We have a temporary resource due to either tile status or
           * tiling format. Write back the updated buffer contents.
           */
-         etna_copy_resource_box(pctx, ptrans->resource, trans->rsc, ptrans->level, &ptrans->box);
+         etna_copy_resource_box(pctx, ptrans->resource, trans->rsc,
+                                ptrans->level, ptrans->level, &ptrans->box);
       } else if (trans->staging) {
          /* map buffer object */
          if (rsc->layout == ETNA_LAYOUT_TILED) {
@@ -324,7 +325,7 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
       }
 
       if ((usage & PIPE_MAP_READ) || !(usage & ETNA_PIPE_MAP_DISCARD_LEVEL))
-         etna_copy_resource_box(pctx, trans->rsc, &rsc->base, level, &ptrans->box);
+         etna_copy_resource_box(pctx, trans->rsc, &rsc->base, level, level, &ptrans->box);
 
       /* Switch to using the temporary resource instead */
       rsc = etna_resource(trans->rsc);
