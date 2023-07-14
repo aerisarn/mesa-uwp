@@ -468,6 +468,9 @@ etna_reset_gpu_state(struct etna_context *ctx)
       etna_set_state(stream, VIVS_GL_UNK03854, 0x00000000);
    }
 
+   if (VIV_FEATURE(screen, chipMinorFeatures4, BUG_FIXES18))
+      etna_set_state(stream, VIVS_GL_BUG_FIXES, 0x6);
+
    if (!screen->specs.use_blt) {
       /* Enable SINGLE_BUFFER for resolve, if supported */
       etna_set_state(stream, VIVS_RS_SINGLE_BUFFER, COND(screen->specs.single_buffer, VIVS_RS_SINGLE_BUFFER_ENABLE));
