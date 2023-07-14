@@ -116,6 +116,7 @@ v3d-rpi4-traces:arm64:
     - .piglit-traces-test
     - .broadcom-test:arm64
     - .v3d-rules
+  timeout: 30m  # standard run time between 5 and 8 minutes
   variables:
     GPU_VERSION: broadcom-rpi4
     HWCI_KERNEL_MODULES: v3d,vc4
