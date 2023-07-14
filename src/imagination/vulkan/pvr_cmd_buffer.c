@@ -4425,7 +4425,7 @@ void pvr_compute_update_kernel_private(
       .sd_type = PVRX(CDMCTRL_SD_TYPE_NONE),
 
       .usc_unified_size =
-         DIV_ROUND_UP(pipeline->coeff_regs_count << 2U,
+         DIV_ROUND_UP(pipeline->unified_store_regs_count << 2U,
                       PVRX(CDMCTRL_KERNEL0_USC_UNIFIED_SIZE_UNIT_SIZE)),
 
       /* clang-format off */
