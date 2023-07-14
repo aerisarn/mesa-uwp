@@ -275,7 +275,7 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
        * render resource. Use the texture resource, which avoids bouncing
        * pixels between the two resources, and we can de-tile it in s/w. */
       rsc = etna_resource(rsc->texture);
-   } else if (rsc->ts_bo ||
+   } else if (etna_resource_level_ts_valid(res_level) ||
               (rsc->layout != ETNA_LAYOUT_LINEAR &&
                etna_resource_hw_tileable(screen->specs.use_blt, prsc) &&
                /* HALIGN 4 resources are incompatible with the resolve engine,
