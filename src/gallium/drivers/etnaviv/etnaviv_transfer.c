@@ -167,6 +167,10 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
          FREE(trans->staging);
       }
 
+      if (ptrans->resource->target == PIPE_BUFFER)
+         util_range_add(&rsc->base, &rsc->valid_buffer_range,
+                        ptrans->box.x, ptrans->box.x + ptrans->box.width);
+
       etna_resource_level_ts_mark_invalid(res_level);
       etna_resource_level_mark_changed(res_level);
 
@@ -185,14 +189,6 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
     */
    if (!trans->rsc && !(ptrans->usage & PIPE_MAP_UNSYNCHRONIZED))
       etna_bo_cpu_fini(rsc->bo);
-
-   if ((ptrans->resource->target == PIPE_BUFFER) &&
-       (ptrans->usage & PIPE_MAP_WRITE)) {
-      util_range_add(&rsc->base,
-                     &rsc->valid_buffer_range,
-                     ptrans->box.x,
-                     ptrans->box.x + ptrans->box.width);
-      }
 
    pipe_resource_reference(&trans->rsc, NULL);
    pipe_resource_reference(&ptrans->resource, NULL);
