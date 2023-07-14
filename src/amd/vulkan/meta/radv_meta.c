@@ -604,9 +604,6 @@ nir_builder PRINTFLIKE(3, 4)
    }
 
    b.shader->options = &dev->physical_device->nir_options[stage];
-   b.shader->info.workgroup_size[0] = 1;
-   b.shader->info.workgroup_size[1] = 1;
-   b.shader->info.workgroup_size[2] = 1;
 
    return b;
 }
