@@ -3568,7 +3568,20 @@ genX(EndCommandBuffer)(
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   return end_command_buffer(cmd_buffer);
+   VkResult status = end_command_buffer(cmd_buffer);
+   if (status != VK_SUCCESS)
+      return status;
+
+   /* If there is MSAA access over the compute/transfer queue, we can use the
+    * companion RCS command buffer and end it properly.
+    */
+   if (cmd_buffer->companion_rcs_cmd_buffer) {
+       assert(anv_cmd_buffer_is_compute_queue(cmd_buffer) ||
+              anv_cmd_buffer_is_blitter_queue(cmd_buffer));
+       status = end_command_buffer(cmd_buffer->companion_rcs_cmd_buffer);
+   }
+
+   return status;
 }
 
 static void

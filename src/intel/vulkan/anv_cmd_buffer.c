@@ -231,7 +231,14 @@ anv_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
    struct anv_cmd_buffer *cmd_buffer =
       container_of(vk_cmd_buffer, struct anv_cmd_buffer, vk);
 
+   pthread_mutex_lock(&cmd_buffer->device->mutex);
+   if (cmd_buffer->companion_rcs_cmd_buffer) {
+      destroy_cmd_buffer(cmd_buffer->companion_rcs_cmd_buffer);
+      cmd_buffer->companion_rcs_cmd_buffer = NULL;
+   }
+
    destroy_cmd_buffer(cmd_buffer);
+   pthread_mutex_unlock(&cmd_buffer->device->mutex);
 }
 
 static void
@@ -285,6 +292,12 @@ anv_cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
 {
    struct anv_cmd_buffer *cmd_buffer =
       container_of(vk_cmd_buffer, struct anv_cmd_buffer, vk);
+
+   if (cmd_buffer->companion_rcs_cmd_buffer) {
+      reset_cmd_buffer(cmd_buffer->companion_rcs_cmd_buffer, flags);
+      destroy_cmd_buffer(cmd_buffer->companion_rcs_cmd_buffer);
+      cmd_buffer->companion_rcs_cmd_buffer = NULL;
+   }
 
    reset_cmd_buffer(cmd_buffer, flags);
 }
