@@ -1951,27 +1951,36 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
             }
          }
       } else {
-         for (unsigned i = 0; i < num_draws; i++) {
-            if (i > 0) {
-               if (increment_draw_id) {
+         if (increment_draw_id) {
+            for (unsigned i = 0; i < num_draws; i++) {
+               if (i > 0) {
                   unsigned draw_id = drawid_base + i;
 
                   radeon_set_sh_reg_seq(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 2);
                   radeon_emit(draws[i].start);
                   radeon_emit(draw_id);
-
-                  sctx->last_drawid = draw_id;
-               } else {
-                  radeon_set_sh_reg(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, draws[i].start);
                }
-            }
 
-            radeon_emit(PKT3(PKT3_DRAW_INDEX_AUTO, 1, render_cond_bit));
-            radeon_emit(draws[i].count);
-            radeon_emit(V_0287F0_DI_SRC_SEL_AUTO_INDEX | use_opaque);
+               radeon_emit(PKT3(PKT3_DRAW_INDEX_AUTO, 1, render_cond_bit));
+               radeon_emit(draws[i].count);
+               radeon_emit(V_0287F0_DI_SRC_SEL_AUTO_INDEX | use_opaque);
+            }
+            if (num_draws > 1 && (IS_DRAW_VERTEX_STATE || !sctx->num_vs_blit_sgprs)) {
+               sctx->last_base_vertex = draws[num_draws - 1].start;
+               sctx->last_drawid = drawid_base + num_draws - 1;
+            }
+         } else {
+            for (unsigned i = 0; i < num_draws; i++) {
+               if (i > 0)
+                  radeon_set_sh_reg(sh_base_reg + SI_SGPR_BASE_VERTEX * 4, draws[i].start);
+
+               radeon_emit(PKT3(PKT3_DRAW_INDEX_AUTO, 1, render_cond_bit));
+               radeon_emit(draws[i].count);
+               radeon_emit(V_0287F0_DI_SRC_SEL_AUTO_INDEX | use_opaque);
+            }
+            if (num_draws > 1 && (IS_DRAW_VERTEX_STATE || !sctx->num_vs_blit_sgprs))
+               sctx->last_base_vertex = draws[num_draws - 1].start;
          }
-         if (num_draws > 1 && (IS_DRAW_VERTEX_STATE || !sctx->num_vs_blit_sgprs))
-            sctx->last_base_vertex = draws[num_draws - 1].start;
       }
    }
    radeon_end();
