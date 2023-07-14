@@ -281,11 +281,12 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
                /* HALIGN 4 resources are incompatible with the resolve engine,
                 * so fall back to using software to detile this resource. */
                rsc->halign != TEXTURE_HALIGN_FOUR)) {
-      /* If the surface has tile status, we need to resolve it first.
-       * The strategy we implement here is to use the RS to copy the
-       * depth buffer, filling in the "holes" where the tile status
-       * indicates that it's clear. We also do this for tiled
-       * resources, but only if the RS can blit them. */
+
+      /* If the resource level has valid tile status, we copy the transfer
+       * region to a staging resource using the BLT or RS engine, which will
+       * resolve the TS information. We also do this for tiled resources without
+       * TS, but only if the dedicated blit engines can handle them. */
+
       if (usage & PIPE_MAP_DIRECTLY) {
          slab_free(&ctx->transfer_pool, trans);
          BUG("unsupported map flags %#x with tile status/tiled layout", usage);
