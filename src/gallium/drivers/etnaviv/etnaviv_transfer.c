@@ -344,48 +344,6 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
     * a no-op) instead of unmap. Need to handle this to support
     * ARB_map_buffer_range extension at least.
     */
-   /* XXX we don't take care of current operations on the resource; which can
-      be, at some point in the pipeline
-      which is not yet executed:
-
-      - bound as surface
-      - bound through vertex buffer
-      - bound through index buffer
-      - bound in sampler view
-      - used in clear_render_target / clear_depth_stencil operation
-      - used in blit
-      - used in resource_copy_region
-
-      How do other drivers record this information over course of the rendering
-      pipeline?
-      Is it necessary at all? Only in case we want to provide a fast path and
-      map the resource directly
-      (and for PIPE_MAP_DIRECTLY) and we don't want to force a sync.
-      We also need to know whether the resource is in use to determine if a sync
-      is needed (or just do it
-      always, but that comes at the expense of performance).
-
-      A conservative approximation without too much overhead would be to mark
-      all resources that have
-      been bound at some point as busy. A drawback would be that accessing
-      resources that have
-      been bound but are no longer in use for a while still carry a performance
-      penalty. On the other hand,
-      the program could be using PIPE_MAP_DISCARD_WHOLE_RESOURCE or
-      PIPE_MAP_UNSYNCHRONIZED to
-      avoid this in the first place...
-
-      A) We use an in-pipe copy engine, and queue the copy operation after unmap
-      so that the copy
-         will be performed when all current commands have been executed.
-         Using the RS is possible, not sure if always efficient. This can also
-      do any kind of tiling for us.
-         Only possible when PIPE_MAP_DISCARD_RANGE is set.
-      B) We discard the entire resource (or at least, the mipmap level) and
-      allocate new memory for it.
-         Only possible when mapping the entire resource or
-      PIPE_MAP_DISCARD_WHOLE_RESOURCE is set.
-    */
 
    /*
     * Pull resources into the CPU domain. Only skipped for unsynchronized
