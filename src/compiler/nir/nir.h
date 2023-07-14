@@ -5864,6 +5864,8 @@ typedef enum {
 
 bool nir_lower_gs_intrinsics(nir_shader *shader, nir_lower_gs_intrinsics_flags options);
 
+bool nir_lower_tess_coord_z(nir_shader *shader, bool triangles);
+
 typedef struct {
    bool payload_to_shared_for_atomics : 1;
    bool payload_to_shared_for_small_types : 1;
