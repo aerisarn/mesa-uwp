@@ -745,24 +745,6 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
       switch (intr->intrinsic) {
-      case nir_intrinsic_load_tess_coord: {
-         b->cursor = nir_after_instr(&intr->instr);
-         nir_ssa_def *x = nir_channel(b, &intr->dest.ssa, 0);
-         nir_ssa_def *y = nir_channel(b, &intr->dest.ssa, 1);
-         nir_ssa_def *z;
-
-         if (state->topology == IR3_TESS_TRIANGLES)
-            z = nir_fsub(b, nir_fsub_imm(b, 1.0f, y), x);
-         else
-            z = nir_imm_float(b, 0.0f);
-
-         nir_ssa_def *coord = nir_vec3(b, x, y, z);
-
-         nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, coord,
-                                        b->cursor.instr);
-         break;
-      }
-
       case nir_intrinsic_load_per_vertex_input: {
          // src[] = { vertex, offset }.
 
@@ -826,6 +808,8 @@ ir3_nir_lower_tess_eval(nir_shader *shader, struct ir3_shader_variant *v,
                 _mesa_shader_stage_to_string(shader->info.stage));
       nir_log_shaderi(shader);
    }
+
+   NIR_PASS_V(shader, nir_lower_tess_coord_z, topology == IR3_TESS_TRIANGLES);
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    assert(impl);
