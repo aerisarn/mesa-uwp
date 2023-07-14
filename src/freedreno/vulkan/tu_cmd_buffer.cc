@@ -3207,52 +3207,38 @@ sanitize_dst_stage(VkPipelineStageFlags2 stage_mask)
 static enum tu_stage
 vk2tu_single_stage(VkPipelineStageFlags2 vk_stage, bool dst)
 {
+   /* If the destination stage is executed on the CP, then the CP also has to
+    * wait for any WFI's to finish. This is already done for draw calls,
+    * including before indirect param reads, for the most part, so we just
+    * need to WFI and can use TU_STAGE_GPU.
+    *
+    * However, some indirect draw opcodes, depending on firmware, don't have
+    * implicit CP_WAIT_FOR_ME so we have to handle it manually.
+    *
+    * Transform feedback counters are read via CP_MEM_TO_REG, which implicitly
+    * does CP_WAIT_FOR_ME, so we don't include them here.
+    *
+    * Currently we read the draw predicate using CP_MEM_TO_MEM, which
+    * also implicitly does CP_WAIT_FOR_ME. However CP_DRAW_PRED_SET does *not*
+    * implicitly do CP_WAIT_FOR_ME, it seems to only wait for counters to
+    * complete since it's written for DX11 where you can only predicate on the
+    * result of a query object. So if we implement 64-bit comparisons in the
+    * future, or if CP_DRAW_PRED_SET grows the capability to do 32-bit
+    * comparisons, then this will have to be dealt with.
+    */
    if (vk_stage == VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT ||
        vk_stage == VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT ||
        vk_stage == VK_PIPELINE_STAGE_2_FRAGMENT_DENSITY_PROCESS_BIT_EXT)
       return TU_STAGE_CP;
 
-   if (vk_stage == VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT)
-      return TU_STAGE_FE;
-
-   if (vk_stage == VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT)
-      return TU_STAGE_SP_VS;
-
-   if (vk_stage == VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
-      return TU_STAGE_SP_PS;
-
-   if (vk_stage == VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT || /* Yes, really */
-   /* See comment in TU_STAGE_GRAS about early fragment tests */
-       vk_stage == VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)
-
-      return TU_STAGE_PS;
-
-   if (vk_stage == VK_PIPELINE_STAGE_2_COPY_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_BLIT_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_RESOLVE_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_CLEAR_BIT ||
-       vk_stage == VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT)
-      /* Blits read in SP_PS and write in PS, in both 2d and 3d cases */
-      return dst ? TU_STAGE_SP_PS : TU_STAGE_PS;
-
    if (vk_stage == VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT ||
        vk_stage == VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
-      /* Be conservative */
-      return dst ? TU_STAGE_CP : TU_STAGE_PS;
+      return dst ? TU_STAGE_CP : TU_STAGE_GPU;
 
    if (vk_stage == VK_PIPELINE_STAGE_2_HOST_BIT)
-      return dst ? TU_STAGE_PS : TU_STAGE_CP;
+      return dst ? TU_STAGE_BOTTOM : TU_STAGE_CP;
 
-   unreachable("unknown pipeline stage");
+   return TU_STAGE_GPU;
 }
 
 static enum tu_stage
@@ -3270,7 +3256,7 @@ vk2tu_src_stage(VkPipelineStageFlags2 vk_stages)
 static enum tu_stage
 vk2tu_dst_stage(VkPipelineStageFlags2 vk_stages)
 {
-   enum tu_stage stage = TU_STAGE_PS;
+   enum tu_stage stage = TU_STAGE_BOTTOM;
    u_foreach_bit64 (bit, vk_stages) {
       enum tu_stage new_stage = vk2tu_single_stage(1ull << bit, true);
       stage = MIN2(stage, new_stage);
@@ -3283,34 +3269,14 @@ static void
 tu_flush_for_stage(struct tu_cache_state *cache,
                    enum tu_stage src_stage, enum tu_stage dst_stage)
 {
-   /* As far as we know, flushes take place in the last stage so if there are
-    * any pending flushes then we have to move down the source stage, because
-    * the data only becomes available when the flush finishes. In particular
-    * this can matter when the CP writes something and we need to invalidate
-    * UCHE to read it.
+   /* Even if the source is the host or CP, the destination access could
+    * generate invalidates that we have to wait to complete.
     */
-   if (cache->flush_bits & (TU_CMD_FLAG_ALL_FLUSH | TU_CMD_FLAG_ALL_INVALIDATE))
-      src_stage = TU_STAGE_PS;
+   if (src_stage == TU_STAGE_CP &&
+       (cache->flush_bits & TU_CMD_FLAG_ALL_INVALIDATE))
+      src_stage = TU_STAGE_GPU;
 
-   /* Note: if the destination stage is the CP, then the CP also has to wait
-    * for any WFI's to finish. This is already done for draw calls, including
-    * before indirect param reads, for the most part, so we just need to WFI.
-    *
-    * However, some indirect draw opcodes, depending on firmware, don't have
-    * implicit CP_WAIT_FOR_ME so we have to handle it manually.
-    *
-    * Transform feedback counters are read via CP_MEM_TO_REG, which implicitly
-    * does CP_WAIT_FOR_ME, but we still need a WFI if the GPU writes it.
-    *
-    * Currently we read the draw predicate using CP_MEM_TO_MEM, which
-    * also implicitly does CP_WAIT_FOR_ME. However CP_DRAW_PRED_SET does *not*
-    * implicitly do CP_WAIT_FOR_ME, it seems to only wait for counters to
-    * complete since it's written for DX11 where you can only predicate on the
-    * result of a query object. So if we implement 64-bit comparisons in the
-    * future, or if CP_DRAW_PRED_SET grows the capability to do 32-bit
-    * comparisons, then this will have to be dealt with.
-    */
-   if (src_stage > dst_stage) {
+   if (src_stage >= dst_stage) {
       cache->flush_bits |= TU_CMD_FLAG_WAIT_FOR_IDLE;
       if (dst_stage == TU_STAGE_CP)
          cache->pending_flush_bits |= TU_CMD_FLAG_WAIT_FOR_ME;

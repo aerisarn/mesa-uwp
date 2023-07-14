@@ -149,55 +149,28 @@ enum tu_cmd_access_mask {
       TU_ACCESS_WRITE,
 };
 
-/* Starting with a6xx, the pipeline is split into several "clusters" (really
- * pipeline stages). Each stage has its own pair of register banks and can
- * switch them independently, so that earlier stages can run ahead of later
- * ones. e.g. the FS of draw N and the VS of draw N + 1 can be executing at
- * the same time.
+/* From the driver's point of view, we only need to distinguish between things
+ * which won't start until a WFI is complete and things which additionally
+ * need a WAIT_FOR_ME.
  *
- * As a result of this, we need to insert a WFI when an earlier stage depends
- * on the result of a later stage. CP_DRAW_* and CP_BLIT will wait for any
- * pending WFI's to complete before starting, and usually before reading
- * indirect params even, so a WFI also acts as a full "pipeline stall".
- *
- * Note, the names of the stages come from CLUSTER_* in devcoredump. We
- * include all the stages for completeness, even ones which do not read/write
- * anything.
+ * TODO: This will get more complicated with concurrent binning.
  */
-
 enum tu_stage {
-   /* This doesn't correspond to a cluster, but we need it for tracking
-    * indirect draw parameter reads etc.
+   /* As a destination stage, this is for operations on the CP which don't
+    * wait for pending WFIs to complete and therefore need a CP_WAIT_FOR_ME.
+    * As a source stage, it is for things needing no waits. 
     */
    TU_STAGE_CP,
 
-   /* - Fetch index buffer
-    * - Fetch vertex attributes, dispatch VS
+   /* This is for most operations, which WFI will wait to finish and will not
+    * start until any pending WFIs are finished.
     */
-   TU_STAGE_FE,
+   TU_STAGE_GPU,
 
-   /* Execute all geometry stages (VS thru GS) */
-   TU_STAGE_SP_VS,
-
-   /* Write to VPC, do primitive assembly. */
-   TU_STAGE_PC_VS,
-
-   /* Rasterization. RB_DEPTH_BUFFER_BASE only exists in CLUSTER_PS according
-    * to devcoredump so presumably this stage stalls for TU_STAGE_PS when
-    * early depth testing is enabled before dispatching fragments? However
-    * GRAS reads and writes LRZ directly.
+   /* This is only used as a destination stage and is for things needing no
+    * waits on the GPU (e.g. host operations).
     */
-   TU_STAGE_GRAS,
-
-   /* Execute FS */
-   TU_STAGE_SP_PS,
-
-   /* - Fragment tests
-    * - Write color/depth
-    * - Streamout writes (???)
-    * - Varying interpolation (???)
-    */
-   TU_STAGE_PS,
+   TU_STAGE_BOTTOM,
 };
 
 enum tu_cmd_flush_bits {
