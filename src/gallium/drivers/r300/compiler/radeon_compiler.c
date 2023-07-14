@@ -366,8 +366,6 @@ void rc_get_stats(struct radeon_compiler *c, struct rc_program_stats *s)
 			info = rc_get_opcode_info(tmp->U.I.Opcode);
 			if (info->Opcode == RC_OPCODE_BEGIN_TEX)
 				continue;
-			if (tmp->U.I.PreSub.Opcode != RC_PRESUB_NONE)
-				s->num_presub_ops++;
 		} else {
 			if (tmp->U.P.RGB.Src[RC_PAIR_PRESUB_SRC].Used)
 				s->num_presub_ops++;
