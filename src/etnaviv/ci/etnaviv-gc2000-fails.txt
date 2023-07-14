@@ -173,6 +173,11 @@ shaders@glsl-vs-point-size,Fail
 shaders@glsl-vs-statechange-1,Fail
 
 spec@arb_arrays_of_arrays@execution@glsl-arrays-copy-size-mismatch,Fail
+# Expects DEPTH_COMPONENT_32F, which is given by ARB_depth_buffer_float.
+spec@arb_clear_texture@arb_clear_texture-depth,Fail
+# Expects that some format/internal_format combinations should be supported when they currently aren't.
+spec@arb_clear_texture@arb_clear_texture-sized-formats,Fail
+spec@arb_clear_texture@arb_clear_texture-supported-formats,Fail
 spec@arb_depth_texture@fbo-depth-gl_depth_component16-tex1d,Fail
 spec@arb_depth_texture@fbo-depth-gl_depth_component24-blit,Fail
 spec@arb_depth_texture@texwrap formats bordercolor,Fail
