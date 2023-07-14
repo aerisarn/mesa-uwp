@@ -572,7 +572,8 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
    enum pipe_video_format codec = u_reduce_video_profile(profile);
    bool fully_supported_profile = ((profile >= PIPE_VIDEO_PROFILE_MPEG4_AVC_BASELINE) &&
                                    (profile <= PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH)) ||
-                                  (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN);
+                                  (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN) ||
+                                  (profile == PIPE_VIDEO_PROFILE_AV1_MAIN);
 
    if (entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) {
       if (!(sscreen->info.ip[AMD_IP_VCE].num_queues ||
