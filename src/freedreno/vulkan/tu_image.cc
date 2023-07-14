@@ -615,8 +615,7 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
    }
 
    const struct util_format_description *desc = util_format_description(image->layout[0].format);
-   if (util_format_has_depth(desc) && !TU_DEBUG(NOLRZ))
-   {
+   if (util_format_has_depth(desc) && device->use_lrz) {
       /* Depth plane is the first one */
       struct fdl_layout *layout = &image->layout[0];
       unsigned width = layout->width0;

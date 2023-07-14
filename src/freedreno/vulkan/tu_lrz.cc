@@ -113,7 +113,7 @@ tu_lrz_init_state(struct tu_cmd_buffer *cmd,
                   const struct tu_image_view *view)
 {
    if (!view->image->lrz_height) {
-      assert(TU_DEBUG(NOLRZ) || !vk_format_has_depth(att->format));
+      assert(!cmd->device->use_lrz || !vk_format_has_depth(att->format));
       return;
    }
 
@@ -162,7 +162,7 @@ tu_lrz_init_secondary(struct tu_cmd_buffer *cmd,
    if (!has_gpu_tracking)
       return;
 
-   if (TU_DEBUG(NOLRZ))
+   if (!cmd->device->use_lrz)
       return;
 
    if (!vk_format_has_depth(att->format))
@@ -574,7 +574,7 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    /* If depth test is disabled we shouldn't touch LRZ.
     * Same if there is no depth attachment.
     */
-   if (a == VK_ATTACHMENT_UNUSED || !z_test_enable || TU_DEBUG(NOLRZ))
+   if (a == VK_ATTACHMENT_UNUSED || !z_test_enable || !cmd->device->use_lrz)
       return gras_lrz_cntl;
 
    if (!cmd->state.lrz.gpu_dir_tracking && !cmd->state.attachments) {

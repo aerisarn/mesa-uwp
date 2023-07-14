@@ -371,6 +371,7 @@ struct tu_device
    #endif
 
    bool use_z24uint_s8uint;
+   bool use_lrz;
 };
 VK_DEFINE_HANDLE_CASTS(tu_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
 
