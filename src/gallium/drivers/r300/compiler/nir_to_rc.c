@@ -2971,42 +2971,6 @@ nir_to_rc(struct nir_shader *s,
    return nir_to_rc_options(s, screen, &default_ntr_options);
 }
 
-/* Prevent lower_vec_to_mov from coalescing 64-to-32 conversions and comparisons
- * into unsupported channels of registers.
- */
-static bool
-ntr_vec_to_mov_writemask_cb(const nir_instr *instr, unsigned writemask, UNUSED const void *_data)
-{
-   if (instr->type != nir_instr_type_alu)
-      return false;
-
-   nir_alu_instr *alu = nir_instr_as_alu(instr);
-   int dst_32 = alu->def.bit_size == 32;
-   int src_64 = nir_src_bit_size(alu->src[0].src) == 64;
-
-   if (src_64 && dst_32) {
-      int num_srcs = nir_op_infos[alu->op].num_inputs;
-
-      if (num_srcs == 2 || nir_op_infos[alu->op].output_type == nir_type_bool32) {
-         /* TGSI's 64 bit compares storing to 32-bit are weird and write .xz
-          * instead of .xy.  Just support scalar compares storing to .x,
-          * GLSL-to-TGSI only ever emitted scalar ops anyway.
-          */
-        if (writemask != TGSI_WRITEMASK_X)
-           return false;
-      } else {
-         /* TGSI's 64-to-32-bit conversions can only store to .xy (since a TGSI
-          * register can only store a dvec2).  Don't try to coalesce to write to
-          * .zw.
-          */
-         if (writemask & ~(TGSI_WRITEMASK_XY))
-            return false;
-      }
-   }
-
-   return true;
-}
-
 /**
  * Translates the NIR shader to TGSI.
  *
@@ -3107,7 +3071,7 @@ const void *nir_to_rc_options(struct nir_shader *s,
    NIR_PASS_V(s, nir_opt_move, move_all);
 
    NIR_PASS_V(s, nir_convert_from_ssa, true);
-   NIR_PASS_V(s, nir_lower_vec_to_regs, ntr_vec_to_mov_writemask_cb, NULL);
+   NIR_PASS_V(s, nir_lower_vec_to_regs, NULL, NULL);
 
    /* locals_to_reg_intrinsics will leave dead derefs that are good to clean up.
     */
