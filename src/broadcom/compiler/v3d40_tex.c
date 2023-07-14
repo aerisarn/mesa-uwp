@@ -244,10 +244,17 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         /* Limit the number of channels returned to both how many the NIR
          * instruction writes and how many the instruction could produce.
          */
-        if (instr->dest.is_ssa) {
+        assert(instr->dest.is_ssa);
+        nir_intrinsic_instr *store = nir_store_reg_for_def(&instr->dest.ssa);
+        if (store == NULL) {
                 p0_unpacked.return_words_of_texture_data =
                         nir_ssa_def_components_read(&instr->dest.ssa);
         } else {
+                nir_ssa_def *reg = store->src[1].ssa;
+                nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
+                unsigned reg_num_components =
+                        nir_intrinsic_num_components(decl);
+
                 /* For the non-ssa case we don't have a full equivalent to
                  * nir_ssa_def_components_read. This is a problem for the 16
                  * bit case. nir_lower_tex will not change the destination as
@@ -256,8 +263,8 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                  * manually ensure that here.
                  */
                 uint32_t num_components = output_type_32_bit ?
-                        MIN2(instr->dest.reg.reg->num_components, 4) :
-                        MIN2(instr->dest.reg.reg->num_components, 2);
+                        MIN2(reg_num_components, 4) :
+                        MIN2(reg_num_components, 2);
 
                 p0_unpacked.return_words_of_texture_data = (1 << num_components) - 1;
         }

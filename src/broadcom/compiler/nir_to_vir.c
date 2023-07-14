@@ -307,8 +307,13 @@ ntq_add_pending_tmu_flush(struct v3d_compile *c,
 
         if (num_components > 0) {
                 c->tmu.output_fifo_size += num_components;
-                if (!dest->is_ssa)
-                        _mesa_set_add(c->tmu.outstanding_regs, dest->reg.reg);
+
+                assert(dest->is_ssa);
+                nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
+                if (store != NULL) {
+                        nir_ssa_def *reg = store->src[1].ssa;
+                        _mesa_set_add(c->tmu.outstanding_regs, reg);
+                }
         }
 
         c->tmu.flush[c->tmu.flush_count].dest = dest;
@@ -772,7 +777,9 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
         assert(result.file == QFILE_TEMP && last_inst &&
                (last_inst == c->defs[result.index] || is_reused_uniform));
 
-        if (dest->is_ssa) {
+        assert(dest->is_ssa);
+        nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
+        if (store == NULL) {
                 assert(chan < dest->ssa.num_components);
 
                 struct qreg *qregs;
@@ -786,8 +793,10 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
 
                 qregs[chan] = result;
         } else {
-                nir_register *reg = dest->reg.reg;
-                assert(reg->num_array_elems == 0);
+                nir_ssa_def *reg = store->src[1].ssa;
+                ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
+                assert(nir_intrinsic_base(store) == 0);
+                assert(nir_intrinsic_num_array_elems(decl) == 0);
                 struct hash_entry *entry =
                         _mesa_hash_table_search(c->def_ht, reg);
                 struct qreg *qregs = entry->data;
@@ -842,7 +851,10 @@ struct qreg
 ntq_get_src(struct v3d_compile *c, nir_src src, int i)
 {
         struct hash_entry *entry;
-        if (src.is_ssa) {
+
+        assert(src.is_ssa);
+        nir_intrinsic_instr *load = nir_load_reg_for_def(src.ssa);
+        if (load == NULL) {
                 assert(i < src.ssa->num_components);
 
                 entry = _mesa_hash_table_search(c->def_ht, src.ssa);
@@ -851,9 +863,11 @@ ntq_get_src(struct v3d_compile *c, nir_src src, int i)
                         entry = _mesa_hash_table_search(c->def_ht, src.ssa);
                 }
         } else {
-                nir_register *reg = src.reg.reg;
-                assert(reg->num_array_elems == 0);
-                assert(i < reg->num_components);
+                nir_ssa_def *reg = load->src[0].ssa;
+                ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
+                assert(nir_intrinsic_base(load) == 0);
+                assert(nir_intrinsic_num_array_elems(decl) == 0);
+                assert(i < nir_intrinsic_num_components(decl));
 
                 if (_mesa_set_search(c->tmu.outstanding_regs, reg))
                         ntq_flush_tmu(c);
@@ -1218,7 +1232,8 @@ ntq_emit_comparison(struct v3d_compile *c,
 static struct nir_alu_instr *
 ntq_get_alu_parent(nir_src src)
 {
-        if (!src.is_ssa || src.ssa->parent_instr->type != nir_instr_type_alu)
+        assert(src.is_ssa);
+        if (src.ssa->parent_instr->type != nir_instr_type_alu)
                 return NULL;
         nir_alu_instr *instr = nir_instr_as_alu(src.ssa->parent_instr);
         if (!instr)
@@ -1229,7 +1244,8 @@ ntq_get_alu_parent(nir_src src)
          * src.
          */
         for (int i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-                if (!instr->src[i].src.is_ssa)
+                assert(instr->src[i].src.is_ssa);
+                if (nir_load_reg_for_def(instr->src[i].src.ssa))
                         return NULL;
         }
 
@@ -2466,17 +2482,19 @@ ntq_setup_outputs(struct v3d_compile *c)
  * Each nir_register gets a struct qreg per 32-bit component being stored.
  */
 static void
-ntq_setup_registers(struct v3d_compile *c, struct exec_list *list)
+ntq_setup_registers(struct v3d_compile *c, nir_function_impl *impl)
 {
-        foreach_list_typed(nir_register, nir_reg, node, list) {
-                unsigned array_len = MAX2(nir_reg->num_array_elems, 1);
+        nir_foreach_reg_decl(decl, impl) {
+                unsigned num_components = nir_intrinsic_num_components(decl);
+                unsigned array_len = nir_intrinsic_num_array_elems(decl);
+                array_len = MAX2(array_len, 1);
                 struct qreg *qregs = ralloc_array(c->def_ht, struct qreg,
-                                                  array_len *
-                                                  nir_reg->num_components);
+                                                  array_len * num_components);
 
+                nir_ssa_def *nir_reg = &decl->dest.ssa;
                 _mesa_hash_table_insert(c->def_ht, nir_reg, qregs);
 
-                for (int i = 0; i < array_len * nir_reg->num_components; i++)
+                for (int i = 0; i < array_len * num_components; i++)
                         qregs[i] = vir_get_temp(c);
         }
 }
@@ -3299,6 +3317,11 @@ static void
 ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
         switch (instr->intrinsic) {
+        case nir_intrinsic_decl_reg:
+        case nir_intrinsic_load_reg:
+        case nir_intrinsic_store_reg:
+                break; /* Ignore these */
+
         case nir_intrinsic_load_uniform:
                 ntq_emit_load_uniform(c, instr);
                 break;
@@ -3827,6 +3850,17 @@ is_cheap_block(nir_block *block)
                         if (--cost <= 0)
                                 return false;
                 break;
+                case nir_instr_type_intrinsic: {
+                        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+                        switch (intr->intrinsic) {
+                        case nir_intrinsic_decl_reg:
+                        case nir_intrinsic_load_reg:
+                        case nir_intrinsic_store_reg:
+                                continue;
+                        default:
+                                return false;
+                        }
+                }
                 default:
                         return false;
                 }
@@ -4310,7 +4344,7 @@ ntq_emit_cf_list(struct v3d_compile *c, struct exec_list *list)
 static void
 ntq_emit_impl(struct v3d_compile *c, nir_function_impl *impl)
 {
-        ntq_setup_registers(c, &impl->registers);
+        ntq_setup_registers(c, impl);
         ntq_emit_cf_list(c, &impl->body);
 }
 

@@ -1167,9 +1167,13 @@ v3d_instr_delay_cb(nir_instr *instr, void *data)
     * we are trying to strike a balance based on empirical testing.
     */
    case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
       if (!c->disable_general_tmu_sched) {
-         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
          switch (intr->intrinsic) {
+         case nir_intrinsic_decl_reg:
+         case nir_intrinsic_load_reg:
+         case nir_intrinsic_store_reg:
+            return 0;
          case nir_intrinsic_load_ssbo:
          case nir_intrinsic_load_scratch:
          case nir_intrinsic_load_shared:
@@ -1183,7 +1187,14 @@ v3d_instr_delay_cb(nir_instr *instr, void *data)
             return 1;
          }
       } else {
-         return 1;
+         switch (intr->intrinsic) {
+         case nir_intrinsic_decl_reg:
+         case nir_intrinsic_load_reg:
+         case nir_intrinsic_store_reg:
+            return 0;
+         default:
+            return 1;
+         }
       }
       break;
    }
@@ -1624,7 +1635,7 @@ v3d_attempt_compile(struct v3d_compile *c)
         NIR_PASS(_, c->s, nir_lower_bool_to_int32);
         NIR_PASS(_, c->s, nir_convert_to_lcssa, true, true);
         NIR_PASS_V(c->s, nir_divergence_analysis);
-        NIR_PASS(_, c->s, nir_convert_from_ssa, true, false);
+        NIR_PASS(_, c->s, nir_convert_from_ssa, true, true);
 
         struct nir_schedule_options schedule_options = {
                 /* Schedule for about half our register space, to enable more
@@ -1658,6 +1669,8 @@ v3d_attempt_compile(struct v3d_compile *c)
         NIR_PASS(_, c->s, nir_opt_move, nir_move_load_uniform |
                                         nir_move_const_undef |
                                         buffer_opts);
+
+        NIR_PASS_V(c->s, nir_trivialize_registers);
 
         v3d_nir_to_vir(c);
 }

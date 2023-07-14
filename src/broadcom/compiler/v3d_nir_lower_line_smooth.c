@@ -72,9 +72,10 @@ lower_line_smooth_func(struct lower_line_smooth_state *state,
 
                         if (intr->intrinsic != nir_intrinsic_store_output ||
                             nir_intrinsic_base(intr) != 0 ||
-                            intr->num_components != 4 ||
-                            !intr->src[0].is_ssa)
+                            intr->num_components != 4)
                                 continue;
+
+                        assert(intr->src[0].is_ssa);
 
                         lower_line_smooth_intrinsic(state, &b, intr);
                         progress = true;
