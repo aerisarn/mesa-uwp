@@ -210,10 +210,7 @@ mark_whole_variable(nir_shader *shader, nir_variable *var,
       type = glsl_get_array_element(type);
    }
 
-   const unsigned slots =
-      var->data.compact ? DIV_ROUND_UP(var->data.location_frac + glsl_get_length(type), 4)
-                        : glsl_count_attribute_slots(type, false);
-
+   const unsigned slots = nir_variable_count_slots(var, type);
    set_io_mask(shader, var, 0, slots, deref, is_output_read);
 }
 
@@ -287,10 +284,7 @@ try_mask_partial_io(nir_shader *shader, nir_variable *var,
    if (offset == -1)
       return false;
 
-   const unsigned slots =
-      var->data.compact ? DIV_ROUND_UP(var->data.location_frac + glsl_get_length(type), 4)
-                        : glsl_count_attribute_slots(type, false);
-
+   const unsigned slots = nir_variable_count_slots(var, type);
    if (offset >= slots) {
       /* Constant index outside the bounds of the matrix/array.  This could
        * arise as a result of constant folding of a legal GLSL program.

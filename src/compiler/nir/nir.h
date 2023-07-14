@@ -6190,6 +6190,14 @@ nir_variable_is_in_block(const nir_variable *var)
    return nir_variable_is_in_ubo(var) || nir_variable_is_in_ssbo(var);
 }
 
+static inline unsigned
+nir_variable_count_slots(const nir_variable *var, const struct glsl_type *type)
+{
+   return var->data.compact ?
+          DIV_ROUND_UP(var->data.location_frac + glsl_get_length(type), 4) :
+          glsl_count_attribute_slots(type, false);
+}
+
 /* See default_ub_config in nir_range_analysis.c for documentation. */
 typedef struct nir_unsigned_upper_bound_config {
    unsigned min_subgroup_size;
