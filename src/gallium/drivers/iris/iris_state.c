@@ -430,6 +430,7 @@ flush_before_state_base_change(struct iris_batch *batch)
 static void
 flush_after_state_base_change(struct iris_batch *batch)
 {
+   const struct intel_device_info *devinfo = batch->screen->devinfo;
    /* After re-setting the surface state base address, we have to do some
     * cache flusing so that the sampler engine will pick up the new
     * SURFACE_STATE objects and binding tables. From the Broadwell PRM,
@@ -467,7 +468,7 @@ flush_after_state_base_change(struct iris_batch *batch)
     * units cache the binding table in the texture cache.  However, we have
     * yet to be able to actually confirm this.
     *
-    * Wa_14013910100:
+    * Wa_16013000631:
     *
     *  "DG2 128/256/512-A/B: S/W must program STATE_BASE_ADDRESS command twice
     *   or program pipe control with Instruction cache invalidate post
@@ -478,7 +479,7 @@ flush_after_state_base_change(struct iris_batch *batch)
                               PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
                               PIPE_CONTROL_CONST_CACHE_INVALIDATE |
                               PIPE_CONTROL_STATE_CACHE_INVALIDATE |
-                              (GFX_VERx10 != 125 ? 0 :
+                              (intel_needs_workaround(devinfo, 16013000631) ? 0 :
                                PIPE_CONTROL_INSTRUCTION_INVALIDATE));
 }
 
