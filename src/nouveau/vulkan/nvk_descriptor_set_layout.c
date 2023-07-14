@@ -257,6 +257,23 @@ nvk_GetDescriptorSetLayoutSupport(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext,
                            MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT);
 
+   /* Figure out the maximum alignment up-front.  Otherwise, we need to sort
+    * the list of descriptors by binding number in order to get the size
+    * accumulation right.
+    */
+   uint32_t max_align = 0;
+   for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+      const VkDescriptorSetLayoutBinding *binding = &pCreateInfo->pBindings[i];
+      const VkMutableDescriptorTypeListEXT *type_list =
+         nvk_descriptor_get_type_list(binding->descriptorType,
+                                      mutable_info, i);
+
+      uint32_t stride, align;
+      nvk_descriptor_stride_align_for_type(binding->descriptorType, type_list,
+                                           &stride, &align);
+      max_align = MAX2(max_align, align);
+   }
+
    uint32_t buffer_size = 0;
    uint8_t dynamic_buffer_count = 0;
    for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
@@ -285,8 +302,13 @@ nvk_GetDescriptorSetLayoutSupport(VkDevice _device,
       if (stride > 0) {
          assert(stride <= UINT8_MAX);
          assert(util_is_power_of_two_nonzero(align));
-         buffer_size = ALIGN_POT(buffer_size, align);
+
+         /* Since we're aligning to the maximum and since this is just a
+          * check for whether or not the max buffer size is big enough, we
+          * keep buffer_size aligned to max_align.
+          */
          buffer_size += stride * binding->descriptorCount;
+         buffer_size = ALIGN_POT(buffer_size, max_align);
       }
    }
 
