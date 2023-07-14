@@ -7511,6 +7511,7 @@ iris_upload_render_state(struct iris_context *ice,
                          const struct pipe_draw_indirect_info *indirect,
                          const struct pipe_draw_start_count_bias *sc)
 {
+   UNUSED const struct intel_device_info *devinfo = batch->screen->devinfo;
    bool use_predicate = ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
 
    trace_intel_begin_draw(&batch->trace);
@@ -7735,9 +7736,10 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
 #if GFX_VERx10 == 125
-   if (point_or_line_list(ice->state.prim_mode) ||
-       indirect || (sc->count == 1 || sc->count == 2)) {
-         iris_emit_pipe_control_write(batch, "Wa_14016118574",
+   if (intel_needs_workaround(devinfo, 22014412737) &&
+       (point_or_line_list(ice->state.prim_mode) || indirect ||
+        (sc->count == 1 || sc->count == 2))) {
+         iris_emit_pipe_control_write(batch, "Wa_22014412737",
                                       PIPE_CONTROL_WRITE_IMMEDIATE,
                                       batch->screen->workaround_bo,
                                       batch->screen->workaround_address.offset,
