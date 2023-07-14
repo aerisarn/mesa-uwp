@@ -455,6 +455,11 @@ static const enum agx_compare_func agx_compare_funcs[PIPE_FUNC_ALWAYS + 1] = {
    [PIPE_FUNC_ALWAYS] = AGX_COMPARE_FUNC_ALWAYS,
 };
 
+static const enum agx_filter agx_filters[] = {
+   [PIPE_TEX_FILTER_LINEAR] = AGX_FILTER_LINEAR,
+   [PIPE_TEX_FILTER_NEAREST] = AGX_FILTER_NEAREST,
+};
+
 static enum pipe_format
 fixup_border_zs(enum pipe_format orig, union pipe_color_union *c)
 {
@@ -494,8 +499,8 @@ agx_create_sampler_state(struct pipe_context *pctx,
       cfg.maximum_lod = state->max_lod;
       cfg.maximum_anisotropy =
          util_next_power_of_two(MAX2(state->max_anisotropy, 1));
-      cfg.magnify_linear = (state->mag_img_filter == PIPE_TEX_FILTER_LINEAR);
-      cfg.minify_linear = (state->min_img_filter == PIPE_TEX_FILTER_LINEAR);
+      cfg.magnify = agx_filters[state->mag_img_filter];
+      cfg.minify = agx_filters[state->min_img_filter];
       cfg.mip_filter = agx_mip_filter_from_pipe(state->min_mip_filter);
       cfg.wrap_s = agx_wrap_from_pipe(state->wrap_s);
       cfg.wrap_t = agx_wrap_from_pipe(state->wrap_t);
@@ -2799,8 +2804,8 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          agx_pool_alloc_aligned(&batch->pool, AGX_SAMPLER_LENGTH, 64);
 
       agx_pack(sampler.cpu, SAMPLER, cfg) {
-         cfg.magnify_linear = true;
-         cfg.minify_linear = false;
+         cfg.magnify = AGX_FILTER_LINEAR;
+         cfg.minify = AGX_FILTER_NEAREST;
          cfg.mip_filter = AGX_MIP_FILTER_NONE;
          cfg.wrap_s = AGX_WRAP_CLAMP_TO_EDGE;
          cfg.wrap_t = AGX_WRAP_CLAMP_TO_EDGE;

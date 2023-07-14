@@ -348,12 +348,18 @@
     <value name="Custom" value="3"/>
   </enum>
 
+  <enum name="Filter">
+    <value name="Nearest" value="0"/>
+    <value name="Linear" value="1"/>
+    <value name="Bicubic" value="2"/>
+  </enum>
+
   <struct name="Sampler" size="8">
     <field name="Minimum LOD" size="10" start="0" type="lod" default="0.0"/>
     <field name="Maximum LOD" size="10" start="10" type="lod" default="INFINITY"/>
     <field name="Maximum anisotropy" size="3" start="20" type="uint" default="1" modifier="log2"/>
-    <field name="Magnify linear" size="1" start="23" type="bool"/>
-    <field name="Minify linear" size="1" start="25" type="bool"/>
+    <field name="Magnify" size="2" start="23" type="Filter"/>
+    <field name="Minify" size="2" start="25" type="Filter"/>
     <field name="Mip filter" size="2" start="27" type="Mip filter"/>
     <field name="Wrap S" size="3" start="29" type="Wrap"/>
     <field name="Wrap T" size="3" start="32" type="Wrap"/>
