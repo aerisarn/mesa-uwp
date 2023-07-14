@@ -50,6 +50,13 @@ nir_builder_init_simple_shader(gl_shader_stage stage,
    /* Simple shaders are typically internal, e.g. blit shaders */
    b.shader->info.internal = true;
 
+   /* Compute shaders on Vulkan require some workgroup size initialized, pick
+    * a safe default value. This relies on merging workgroups for efficiency.
+    */
+   b.shader->info.workgroup_size[0] = 1;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+
    return b;
 }
 
