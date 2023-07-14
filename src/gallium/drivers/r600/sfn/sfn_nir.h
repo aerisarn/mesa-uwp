@@ -107,8 +107,6 @@ bool
 r600_lower_tess_io(nir_shader *shader, enum mesa_prim prim_type);
 bool
 r600_append_tcs_TF_emission(nir_shader *shader, enum mesa_prim prim_type);
-bool
-r600_lower_tess_coord(nir_shader *sh, enum mesa_prim prim_type);
 
 bool
 r600_legalize_image_load_store(nir_shader *shader);

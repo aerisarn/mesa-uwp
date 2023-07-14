@@ -874,9 +874,8 @@ r600_shader_from_nir(struct r600_context *rctx,
       NIR_PASS_V(sh, r600_append_tcs_TF_emission, (mesa_prim)key->tcs.prim_mode);
 
    if (sh->info.stage == MESA_SHADER_TESS_EVAL) {
-      NIR_PASS_V(sh,
-                 r600_lower_tess_coord,
-                 u_tess_prim_from_shader(sh->info.tess._primitive_mode));
+      NIR_PASS_V(sh, nir_lower_tess_coord_z,
+                 sh->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES);
    }
 
    NIR_PASS_V(sh, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
