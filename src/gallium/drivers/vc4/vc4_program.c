@@ -196,7 +196,9 @@ ntq_store_dest(struct vc4_compile *c, nir_dest *dest, int chan,
                (result.file == QFILE_TEMP &&
                 last_inst && last_inst == c->defs[result.index]));
 
-        if (dest->is_ssa) {
+        assert(dest->is_ssa);
+        nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
+        if (store == NULL) {
                 assert(chan < dest->ssa.num_components);
 
                 struct qreg *qregs;
@@ -210,8 +212,10 @@ ntq_store_dest(struct vc4_compile *c, nir_dest *dest, int chan,
 
                 qregs[chan] = result;
         } else {
-                nir_register *reg = dest->reg.reg;
-                assert(reg->num_array_elems == 0);
+                nir_ssa_def *reg = store->src[1].ssa;
+                ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
+                assert(nir_intrinsic_base(store) == 0);
+                assert(nir_intrinsic_num_array_elems(decl) == 0);
                 struct hash_entry *entry =
                         _mesa_hash_table_search(c->def_ht, reg);
                 struct qreg *qregs = entry->data;
@@ -252,14 +256,19 @@ static struct qreg
 ntq_get_src(struct vc4_compile *c, nir_src src, int i)
 {
         struct hash_entry *entry;
-        if (src.is_ssa) {
+
+        assert(src.is_ssa);
+        nir_intrinsic_instr *load = nir_load_reg_for_def(src.ssa);
+        if (load == NULL) {
                 entry = _mesa_hash_table_search(c->def_ht, src.ssa);
                 assert(i < src.ssa->num_components);
         } else {
-                nir_register *reg = src.reg.reg;
+                nir_ssa_def *reg = load->src[0].ssa;
+                ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
+                assert(nir_intrinsic_base(load) == 0);
+                assert(nir_intrinsic_num_array_elems(decl) == 0);
                 entry = _mesa_hash_table_search(c->def_ht, reg);
-                assert(reg->num_array_elems == 0);
-                assert(i < reg->num_components);
+                assert(i < nir_intrinsic_num_components(decl));
         }
 
         struct qreg *qregs = entry->data;
@@ -803,7 +812,8 @@ add_output(struct vc4_compile *c,
 static bool
 ntq_src_is_only_ssa_def_user(nir_src *src)
 {
-        return src->is_ssa && list_is_singular(&src->ssa->uses);
+        return list_is_singular(&src->ssa->uses) &&
+               nir_load_reg_for_def(src->ssa) == NULL;
 }
 
 /**
@@ -822,8 +832,8 @@ ntq_emit_pack_unorm_4x8(struct vc4_compile *c, nir_alu_instr *instr)
         /* If packing from a vec4 op (as expected), identify it so that we can
          * peek back at what generated its sources.
          */
-        if (instr->src[0].src.is_ssa &&
-            instr->src[0].src.ssa->parent_instr->type == nir_instr_type_alu &&
+        assert(instr->src[0].src.is_ssa);
+        if (instr->src[0].src.ssa->parent_instr->type == nir_instr_type_alu &&
             nir_instr_as_alu(instr->src[0].src.ssa->parent_instr)->op ==
             nir_op_vec4) {
                 vec4 = nir_instr_as_alu(instr->src[0].src.ssa->parent_instr);
@@ -989,7 +999,8 @@ ntq_emit_comparison(struct vc4_compile *c, struct qreg *dest,
 static struct qreg ntq_emit_bcsel(struct vc4_compile *c, nir_alu_instr *instr,
                                   struct qreg *src)
 {
-        if (!instr->src[0].src.is_ssa)
+        assert(instr->src[0].src.is_ssa);
+        if (nir_load_reg_for_def(instr->src[0].src.ssa))
                 goto out;
         if (instr->src[0].src.ssa->parent_instr->type != nir_instr_type_alu)
                 goto out;
@@ -1640,17 +1651,19 @@ ntq_setup_outputs(struct vc4_compile *c)
  * Each nir_register gets a struct qreg per 32-bit component being stored.
  */
 static void
-ntq_setup_registers(struct vc4_compile *c, struct exec_list *list)
+ntq_setup_registers(struct vc4_compile *c, nir_function_impl *impl)
 {
-        foreach_list_typed(nir_register, nir_reg, node, list) {
-                unsigned array_len = MAX2(nir_reg->num_array_elems, 1);
+        nir_foreach_reg_decl(decl, impl) {
+                unsigned num_components = nir_intrinsic_num_components(decl);
+                unsigned array_len = nir_intrinsic_num_array_elems(decl);
+                array_len = MAX2(array_len, 1);
                 struct qreg *qregs = ralloc_array(c->def_ht, struct qreg,
-                                                  array_len *
-                                                  nir_reg->num_components);
+                                                  array_len * num_components);
 
+                nir_ssa_def *nir_reg = &decl->dest.ssa;
                 _mesa_hash_table_insert(c->def_ht, nir_reg, qregs);
 
-                for (int i = 0; i < array_len * nir_reg->num_components; i++)
+                for (int i = 0; i < array_len * num_components; i++)
                         qregs[i] = qir_get_temp(c);
         }
 }
@@ -1723,6 +1736,11 @@ ntq_emit_intrinsic(struct vc4_compile *c, nir_intrinsic_instr *instr)
         unsigned offset;
 
         switch (instr->intrinsic) {
+        case nir_intrinsic_decl_reg:
+        case nir_intrinsic_load_reg:
+        case nir_intrinsic_store_reg:
+                break; /* Ignore these */
+
         case nir_intrinsic_load_uniform:
                 assert(instr->num_components == 1);
                 if (nir_src_is_const(instr->src[0])) {
@@ -2134,7 +2152,7 @@ ntq_emit_cf_list(struct vc4_compile *c, struct exec_list *list)
 static void
 ntq_emit_impl(struct vc4_compile *c, nir_function_impl *impl)
 {
-        ntq_setup_registers(c, &impl->registers);
+        ntq_setup_registers(c, impl);
         ntq_emit_cf_list(c, &impl->body);
 }
 
@@ -2332,7 +2350,8 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
 
         NIR_PASS_V(c->s, nir_lower_bool_to_int32);
 
-        NIR_PASS_V(c->s, nir_convert_from_ssa, true, false);
+        NIR_PASS_V(c->s, nir_convert_from_ssa, true, true);
+        NIR_PASS_V(c->s, nir_trivialize_registers);
 
         if (VC4_DBG(NIR)) {
                 fprintf(stderr, "%s prog %d/%d NIR:\n",
