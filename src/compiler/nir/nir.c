@@ -2653,6 +2653,7 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
    case nir_intrinsic_load_primitive_id:
       return SYSTEM_VALUE_PRIMITIVE_ID;
    case nir_intrinsic_load_tess_coord:
+   case nir_intrinsic_load_tess_coord_xy:
       return SYSTEM_VALUE_TESS_COORD;
    case nir_intrinsic_load_tess_level_outer:
       return SYSTEM_VALUE_TESS_LEVEL_OUTER;

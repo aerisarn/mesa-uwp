@@ -655,7 +655,7 @@ r600_lower_tess_coord_impl(nir_builder *b, UNUSED nir_instr *instr, void *_optio
 {
    mesa_prim prim_type = *(mesa_prim *)_options;
 
-   auto tc_xy = nir_load_tess_coord_r600(b);
+   auto tc_xy = nir_load_tess_coord_xy(b);
 
    auto tc_x = nir_channel(b, tc_xy, 0);
    auto tc_y = nir_channel(b, tc_xy, 1);

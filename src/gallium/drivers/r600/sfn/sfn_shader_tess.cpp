@@ -176,7 +176,7 @@ TESShader::do_scan_instruction(nir_instr *instr)
    auto intr = nir_instr_as_intrinsic(instr);
 
    switch (intr->intrinsic) {
-   case nir_intrinsic_load_tess_coord_r600:
+   case nir_intrinsic_load_tess_coord_xy:
       m_sv_values.set(es_tess_coord);
       break;
    case nir_intrinsic_load_primitive_id:
@@ -245,7 +245,7 @@ bool
 TESShader::process_stage_intrinsic(nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
-   case nir_intrinsic_load_tess_coord_r600:
+   case nir_intrinsic_load_tess_coord_xy:
       return emit_simple_mov(intr->dest, 0, m_tess_coord[0], pin_none) &&
              emit_simple_mov(intr->dest, 1, m_tess_coord[1], pin_none);
    case nir_intrinsic_load_primitive_id:

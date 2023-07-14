@@ -2991,7 +2991,7 @@ impl main {
    block block_0:
    /* preds: */
    vec1 32 ssa_0 = load_const (0x40000000)
-   vec2 32 ssa_1 = intrinsic load_tess_coord_r600 () ()
+   vec2 32 ssa_1 = intrinsic load_tess_coord_xy () ()
    vec1 32 ssa_2 = fadd ssa_1.x, ssa_1.y
    vec1 32 ssa_3 = load_const (0x3f800000)
    vec1 32 ssa_4 = fsub ssa_3, ssa_2
