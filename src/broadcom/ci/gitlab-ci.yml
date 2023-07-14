@@ -102,6 +102,7 @@ v3d-rpi4-gl:arm32:
     - .v3d-rules
   tags:
     - igalia-rpi4
+  timeout: 30m  # standard run time between 8 and 11 minutes
   parallel: 10
   variables:
     GPU_VERSION: broadcom-rpi4
