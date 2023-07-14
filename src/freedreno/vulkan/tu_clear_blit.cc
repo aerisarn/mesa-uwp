@@ -3193,8 +3193,7 @@ tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
       tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
    }
 
-   if (cmd->device->physical_device->info->a6xx.has_ccu_flush_bug)
-      tu_cs_emit_wfi(cs);
+   tu_cs_emit_wfi(cs);
 }
 
 void
