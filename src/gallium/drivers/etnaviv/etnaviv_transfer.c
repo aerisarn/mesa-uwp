@@ -108,13 +108,6 @@ etna_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
    struct etna_resource *rsc = etna_resource(ptrans->resource);
    struct etna_resource_level *res_level = &rsc->levels[ptrans->level];
 
-   /* XXX
-    * When writing to a resource that is already in use, replace the resource
-    * with a completely new buffer
-    * and free the old one using a fenced free.
-    * The most tricky case to implement will be: tiled or supertiled surface,
-    * partial write, target not aligned to 4/64. */
-
    if (rsc->texture && !etna_resource_newer(rsc, etna_resource(rsc->texture)))
       rsc = etna_resource(rsc->texture); /* switch to using the texture resource */
 
