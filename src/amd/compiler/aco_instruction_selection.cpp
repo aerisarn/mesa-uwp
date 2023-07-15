@@ -8087,6 +8087,48 @@ create_fs_dual_src_export_gfx11(isel_context* ctx, const struct aco_export_mrt* 
    ctx->program->has_color_exports = true;
 }
 
+static void
+visit_cmat_muladd(isel_context* ctx, nir_intrinsic_instr* instr)
+{
+   aco_opcode opcode = aco_opcode::num_opcodes;
+   unsigned signed_mask = 0;
+   bool clamp = false;
+
+   switch (instr->src[0].ssa->bit_size) {
+   case 16:
+      switch (instr->def.bit_size) {
+      case 32: opcode = aco_opcode::v_wmma_f32_16x16x16_f16; break;
+      case 16: opcode = aco_opcode::v_wmma_f16_16x16x16_f16; break;
+      }
+      break;
+   case 8:
+      opcode = aco_opcode::v_wmma_i32_16x16x16_iu8;
+      signed_mask = nir_intrinsic_cmat_signed_mask(instr);
+      clamp = nir_intrinsic_saturate(instr);
+      break;
+   }
+
+   if (opcode == aco_opcode::num_opcodes)
+      unreachable("visit_cmat_muladd: invalid bit size combination");
+
+   Builder bld(ctx->program, ctx->block);
+
+   Temp dst = get_ssa_temp(ctx, &instr->def);
+   Operand A(as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa)));
+   Operand B(as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa)));
+   Operand C(as_vgpr(ctx, get_ssa_temp(ctx, instr->src[2].ssa)));
+
+   A.setLateKill(true);
+   B.setLateKill(true);
+
+   VALU_instruction& vop3p = bld.vop3p(opcode, Definition(dst), A, B, C, 0, 0)->valu();
+   vop3p.neg_lo[0] = (signed_mask & 0x1) != 0;
+   vop3p.neg_lo[1] = (signed_mask & 0x2) != 0;
+   vop3p.clamp = clamp;
+
+   emit_split_vector(ctx, dst, instr->def.num_components);
+}
+
 void
 visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 {
@@ -9174,6 +9216,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          bld.pseudo(aco_opcode::p_pops_gfx9_ordered_section_done);
       break;
    }
+   case nir_intrinsic_cmat_muladd_amd: visit_cmat_muladd(ctx, instr); break;
    default:
       isel_err(&instr->instr, "Unimplemented intrinsic instr");
       abort();

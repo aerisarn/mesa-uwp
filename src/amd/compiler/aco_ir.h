@@ -133,6 +133,7 @@ enum class instr_class : uint8_t {
    vmem = 17,
    waitcnt = 18,
    other = 19,
+   wmma = 20,
    count,
 };
 

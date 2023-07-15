@@ -48,6 +48,7 @@ class InstrClass(Enum):
    VMem = 17
    Waitcnt = 18
    Other = 19
+   WMMA = 20
 
 class Format(Enum):
    PSEUDO = 0
@@ -1051,6 +1052,12 @@ opcode("v_dot8_i32_iu4", -1, -1, -1, 0x18, Format.VOP3P, InstrClass.Valu32)
 opcode("v_dot8_u32_u4", -1, 0x2b, 0x19, 0x19, Format.VOP3P, InstrClass.Valu32)
 opcode("v_dot2_f32_f16", -1, 0x23, 0x13, 0x13, Format.VOP3P, InstrClass.Valu32)
 opcode("v_dot2_f32_bf16", -1, -1, -1, 0x1a, Format.VOP3P, InstrClass.Valu32)
+opcode("v_wmma_f32_16x16x16_f16", -1, -1, -1, 0x40, Format.VOP3P, InstrClass.WMMA, False, False)
+opcode("v_wmma_f32_16x16x16_bf16", -1, -1, -1, 0x41, Format.VOP3P, InstrClass.WMMA, False, False)
+opcode("v_wmma_f16_16x16x16_f16", -1, -1, -1, 0x42, Format.VOP3P, InstrClass.WMMA, False, False)
+opcode("v_wmma_bf16_16x16x16_bf16", -1, -1, -1, 0x43, Format.VOP3P, InstrClass.WMMA, False, False)
+opcode("v_wmma_i32_16x16x16_iu8", -1, -1, -1, 0x44, Format.VOP3P, InstrClass.WMMA, False, False)
+opcode("v_wmma_i32_16x16x16_iu4", -1, -1, -1, 0x45, Format.VOP3P, InstrClass.WMMA, False, False)
 
 
 # VINTRP (GFX6 - GFX10.3) instructions:
