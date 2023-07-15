@@ -1671,6 +1671,9 @@ system_value("barycentric_optimize_amd", dest_comp=1, bit_sizes=[1])
 intrinsic("strict_wqm_coord_amd", src_comp=[0], dest_comp=0, bit_sizes=[32], indices=[BASE],
           flags=[CAN_ELIMINATE])
 
+intrinsic("cmat_muladd_amd", src_comp=[16, 16, 0], dest_comp=0, bit_sizes=src2,
+          indices=[SATURATE, CMAT_SIGNED_MASK], flags=[CAN_ELIMINATE])
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel

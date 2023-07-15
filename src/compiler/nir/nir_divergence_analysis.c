@@ -610,6 +610,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_rq_load:
    case nir_intrinsic_load_ray_triangle_vertex_positions:
    case nir_intrinsic_cmat_extract:
+   case nir_intrinsic_cmat_muladd_amd:
       is_divergent = true;
       break;
 
