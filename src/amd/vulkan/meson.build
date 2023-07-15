@@ -76,6 +76,7 @@ libradv_files = files(
   'nir/radv_nir_apply_pipeline_layout.c',
   'nir/radv_nir_export_multiview.c',
   'nir/radv_nir_lower_abi.c',
+  'nir/radv_nir_lower_cooperative_matrix.c',
   'nir/radv_nir_lower_fs_barycentric.c',
   'nir/radv_nir_lower_fs_intrinsics.c',
   'nir/radv_nir_lower_intrinsics_early.c',

@@ -78,6 +78,8 @@ bool radv_nir_lower_io_to_mem(struct radv_device *device, struct radv_shader_sta
 
 void radv_nir_lower_poly_line_smooth(nir_shader *nir, const struct radv_pipeline_key *key);
 
+bool radv_nir_lower_cooperative_matrix(nir_shader *shader, unsigned wave_size);
+
 #ifdef __cplusplus
 }
 #endif

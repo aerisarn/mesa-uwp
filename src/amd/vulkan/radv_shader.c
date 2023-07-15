@@ -447,6 +447,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
                .vk_memory_model_device_scope = true,
                .fragment_shading_rate = device->physical_device->rad_info.gfx_level >= GFX10_3,
                .workgroup_memory_explicit_layout = true,
+               .cooperative_matrix = true,
             },
          .ubo_addr_format = nir_address_format_vec2_index_32bit_offset,
          .ssbo_addr_format = nir_address_format_vec2_index_32bit_offset,
@@ -504,6 +505,8 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
        */
       NIR_PASS(_, nir, nir_lower_variable_initializers, ~0);
 
+      NIR_PASS(_, nir, radv_nir_lower_cooperative_matrix, subgroup_size);
+
       /* Split member structs.  We do this before lower_io_to_temporaries so that
        * it doesn't lower system values to temporaries by accident.
        */
@@ -533,6 +536,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
        * than it needs to be.
        */
       NIR_PASS(_, nir, nir_lower_global_vars_to_local);
+
       NIR_PASS(_, nir, nir_lower_vars_to_ssa);
 
       NIR_PASS(_, nir, nir_propagate_invariant, key->invariant_geom);
