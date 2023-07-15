@@ -479,8 +479,8 @@ flush_after_state_base_change(struct iris_batch *batch)
                               PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
                               PIPE_CONTROL_CONST_CACHE_INVALIDATE |
                               PIPE_CONTROL_STATE_CACHE_INVALIDATE |
-                              (intel_needs_workaround(devinfo, 16013000631) ? 0 :
-                               PIPE_CONTROL_INSTRUCTION_INVALIDATE));
+                              (intel_needs_workaround(devinfo, 16013000631) ?
+                               PIPE_CONTROL_INSTRUCTION_INVALIDATE : 0));
 }
 
 static void
