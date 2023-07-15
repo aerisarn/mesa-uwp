@@ -80,6 +80,40 @@ typedef bool (*nir_intrinsic_pass_cb)(struct nir_builder *,
                                       nir_intrinsic_instr *, void *);
 
 /**
+ * Iterates over all the instructions in a NIR function and calls the given pass
+ * on them.
+ *
+ * The pass should return true if it modified the function.  In that case, only
+ * the preserved metadata flags will be preserved in the function impl.
+ *
+ * The builder will be initialized to point at the function impl, but its
+ * cursor is unset.
+ */
+static inline bool
+nir_function_instructions_pass(nir_function_impl *impl,
+                               nir_instr_pass_cb pass,
+                               nir_metadata preserved,
+                               void *cb_data)
+{
+   bool progress = false;
+   nir_builder b = nir_builder_create(impl);
+
+   nir_foreach_block_safe(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         progress |= pass(&b, instr, cb_data);
+      }
+   }
+
+   if (progress) {
+      nir_metadata_preserve(impl, preserved);
+   } else {
+      nir_metadata_preserve(impl, nir_metadata_all);
+   }
+
+   return progress;
+}
+
+/**
  * Iterates over all the instructions in a NIR shader and calls the given pass
  * on them.
  *
@@ -98,21 +132,8 @@ nir_shader_instructions_pass(nir_shader *shader,
    bool progress = false;
 
    nir_foreach_function_impl(impl, shader) {
-      bool func_progress = false;
-      nir_builder b = nir_builder_create(impl);
-
-      nir_foreach_block_safe(block, impl) {
-         nir_foreach_instr_safe(instr, block) {
-            func_progress |= pass(&b, instr, cb_data);
-         }
-      }
-
-      if (func_progress) {
-         nir_metadata_preserve(impl, preserved);
-         progress = true;
-      } else {
-         nir_metadata_preserve(impl, nir_metadata_all);
-      }
+      progress |= nir_function_instructions_pass(impl, pass,
+                                                 preserved, cb_data);
    }
 
    return progress;
