@@ -421,7 +421,13 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
 
    pscreen = drv->vscreen->pscreen;
 
-   if (can_convert_with_efc(src_surface, dst_surface) &&
+   src_region = vlVaRegionDefault(param->surface_region, src_surface, &def_src_region);
+   dst_region = vlVaRegionDefault(param->output_region, dst_surface, &def_dst_region);
+
+   if (!param->num_filters &&
+       src_region->width == dst_region->width &&
+       src_region->height == dst_region->height &&
+       can_convert_with_efc(src_surface, dst_surface) &&
        pscreen->get_video_param(pscreen,
                                 PIPE_VIDEO_PROFILE_UNKNOWN,
                                 PIPE_VIDEO_ENTRYPOINT_ENCODE,
@@ -504,9 +510,6 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
          return VA_STATUS_ERROR_UNIMPLEMENTED;
       }
    }
-
-   src_region = vlVaRegionDefault(param->surface_region, src_surface, &def_src_region);
-   dst_region = vlVaRegionDefault(param->output_region, dst_surface, &def_dst_region);
 
    /* If the driver supports video engine post proc, attempt to do that
     * if it fails, fallback to the other existing implementations below
