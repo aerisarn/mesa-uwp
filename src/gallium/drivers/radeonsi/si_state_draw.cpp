@@ -837,16 +837,15 @@ template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS,
           si_is_draw_vertex_state IS_DRAW_VERTEX_STATE> ALWAYS_INLINE
 static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
                                           const struct pipe_draw_indirect_info *indirect,
-                                          enum mesa_prim prim, unsigned num_patches,
-                                          unsigned instance_count, bool primitive_restart,
-                                          unsigned min_vertex_count)
+                                          enum mesa_prim prim, unsigned instance_count,
+                                          bool primitive_restart, unsigned min_vertex_count)
 {
    union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
    unsigned primgroup_size;
    unsigned ia_multi_vgt_param;
 
    if (HAS_TESS) {
-      primgroup_size = num_patches; /* must be a multiple of NUM_PATCHES */
+      primgroup_size = sctx->num_patches_per_workgroup;
    } else if (HAS_GS) {
       primgroup_size = 64; /* recommended with a GS */
    } else {
@@ -1027,17 +1026,15 @@ template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS,
           si_is_draw_vertex_state IS_DRAW_VERTEX_STATE> ALWAYS_INLINE
 static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
                                        const struct pipe_draw_indirect_info *indirect,
-                                       enum mesa_prim prim, unsigned num_patches,
-                                       unsigned instance_count, bool primitive_restart,
-                                       unsigned min_vertex_count)
+                                       enum mesa_prim prim, unsigned instance_count,
+                                       bool primitive_restart, unsigned min_vertex_count)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned ia_multi_vgt_param;
 
    ia_multi_vgt_param =
       si_get_ia_multi_vgt_param<GFX_VERSION, HAS_TESS, HAS_GS, IS_DRAW_VERTEX_STATE>
-         (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
-          min_vertex_count);
+         (sctx, indirect, prim, instance_count, primitive_restart, min_vertex_count);
 
    radeon_begin(cs);
    if (GFX_VERSION == GFX9) {
@@ -1067,12 +1064,10 @@ static void si_emit_draw_registers(struct si_context *sctx,
                                    unsigned restart_index, unsigned min_vertex_count)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-   unsigned num_patches = HAS_TESS ? sctx->num_patches_per_workgroup : 0;
 
    if (GFX_VERSION <= GFX9) {
       si_emit_ia_multi_vgt_param<GFX_VERSION, HAS_TESS, HAS_GS, IS_DRAW_VERTEX_STATE>
-         (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
-          min_vertex_count);
+         (sctx, indirect, prim, instance_count, primitive_restart, min_vertex_count);
    }
 
    radeon_begin(cs);
