@@ -87,6 +87,7 @@ rewrite_emit_vertex(nir_intrinsic_instr *intrin, struct state *state)
    assert(state->vertex_count_vars[stream] != NULL);
    nir_def *count = nir_load_var(b, state->vertex_count_vars[stream]);
    nir_def *count_per_primitive;
+   nir_def *primitive_count;
 
    if (state->count_vtx_per_prim)
       count_per_primitive = nir_load_var(b, state->vtxcnt_per_prim_vars[stream]);
@@ -95,6 +96,11 @@ rewrite_emit_vertex(nir_intrinsic_instr *intrin, struct state *state)
    else
       count_per_primitive = nir_undef(b, 1, 32);
 
+   if (state->count_prims)
+      primitive_count = nir_load_var(b, state->primitive_count_vars[stream]);
+   else
+      primitive_count = nir_undef(b, 1, 32);
+
    /* Create: if (vertex_count < max_vertices) and insert it.
     *
     * The new if statement needs to be hooked up to the control flow graph
@@ -102,7 +108,8 @@ rewrite_emit_vertex(nir_intrinsic_instr *intrin, struct state *state)
     */
    nir_push_if(b, nir_ilt_imm(b, count, b->shader->info.gs.vertices_out));
 
-   nir_emit_vertex_with_counter(b, count, count_per_primitive, stream);
+   nir_emit_vertex_with_counter(b, count, count_per_primitive, primitive_count,
+                                stream);
 
    /* Increment the vertex count by 1 */
    nir_store_var(b, state->vertex_count_vars[stream],
@@ -213,13 +220,20 @@ rewrite_end_primitive(nir_intrinsic_instr *intrin, struct state *state)
    assert(state->vertex_count_vars[stream] != NULL);
    nir_def *count = nir_load_var(b, state->vertex_count_vars[stream]);
    nir_def *count_per_primitive;
+   nir_def *primitive_count;
 
    if (state->count_vtx_per_prim)
       count_per_primitive = nir_load_var(b, state->vtxcnt_per_prim_vars[stream]);
    else
       count_per_primitive = nir_undef(b, count->num_components, count->bit_size);
 
-   nir_end_primitive_with_counter(b, count, count_per_primitive, stream);
+   if (state->count_prims)
+      primitive_count = nir_load_var(b, state->primitive_count_vars[stream]);
+   else
+      primitive_count = nir_undef(b, 1, 32);
+
+   nir_end_primitive_with_counter(b, count, count_per_primitive,
+                                  primitive_count, stream);
 
    if (state->count_prims) {
       /* Increment the primitive count by 1 */

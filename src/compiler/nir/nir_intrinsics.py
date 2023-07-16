@@ -536,12 +536,13 @@ intrinsic("end_primitive", indices=[STREAM_ID])
 # Alternatively, drivers may implement these intrinsics, and use
 # nir_lower_gs_intrinsics() to convert from the basic intrinsics.
 #
-# These contain two additional unsigned integer sources:
+# These contain three additional unsigned integer sources:
 # 1. The total number of vertices emitted so far.
 # 2. The number of vertices emitted for the current primitive
 #    so far if we're counting, otherwise undef.
-intrinsic("emit_vertex_with_counter", src_comp=[1, 1], indices=[STREAM_ID])
-intrinsic("end_primitive_with_counter", src_comp=[1, 1], indices=[STREAM_ID])
+# 3. The total number of primitives emitted so far.
+intrinsic("emit_vertex_with_counter", src_comp=[1, 1, 1], indices=[STREAM_ID])
+intrinsic("end_primitive_with_counter", src_comp=[1, 1, 1], indices=[STREAM_ID])
 # Contains the final total vertex and primitive counts in the current GS thread.
 intrinsic("set_vertex_and_primitive_count", src_comp=[1, 1], indices=[STREAM_ID])
 
