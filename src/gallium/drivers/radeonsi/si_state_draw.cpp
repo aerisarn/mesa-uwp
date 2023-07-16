@@ -2240,17 +2240,13 @@ static void si_draw(struct pipe_context *ctx,
     * It's better to draw before prefetches because we want to start fetching indices before
     * shaders. The idea is to minimize the time when the CUs are idle.
     */
-   uint64_t masked_atoms = 0;
-   if (unlikely(sctx->flags & SI_CONTEXT_FLUSH_FOR_RENDER_COND)) {
-      /* The render condition state should be emitted after cache flushes. */
-      masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
-   }
 
    /* Vega10/Raven scissor bug workaround. When any context register is
     * written (i.e. the GPU rolls the context), PA_SC_VPORT_SCISSOR
     * registers must be written too.
     */
    bool gfx9_scissor_bug = false;
+   uint64_t masked_atoms = 0;
 
    if (GFX_VERSION == GFX9 && sctx->screen->info.has_gfx9_scissor_bug) {
       masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.scissors);
@@ -2263,7 +2259,7 @@ static void si_draw(struct pipe_context *ctx,
 
    bool primitive_restart = !IS_DRAW_VERTEX_STATE && info->primitive_restart;
 
-   /* Emit all states except possibly render condition. */
+   /* Emit states. */
    si_emit_rasterizer_prim_state<GFX_VERSION, HAS_GS, NGG, IS_BLIT>(sctx);
    /* This must be done before si_emit_all_states because it can set cache flush flags. */
    si_emit_draw_registers<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE>
@@ -2276,14 +2272,6 @@ static void si_draw(struct pipe_context *ctx,
    /* This must be done after si_emit_all_states, which can affect this. */
    si_emit_vs_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_BLIT, HAS_PAIRS>
          (sctx, index_size);
-
-   /* If we haven't emitted the render condition state (because it depends on cache flushes),
-    * do it now.
-    */
-   if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
-      sctx->atoms.s.render_cond.emit(sctx, -1);
-      sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
-   }
 
    /* This needs to be done after cache flushes because ACQUIRE_MEM rolls the context. */
    if (GFX_VERSION == GFX9 && gfx9_scissor_bug &&

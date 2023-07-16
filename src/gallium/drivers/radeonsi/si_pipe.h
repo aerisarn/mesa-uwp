@@ -51,7 +51,7 @@ struct ac_llvm_compiler;
 /* Pipeline & streamout query controls. */
 #define SI_CONTEXT_START_PIPELINE_STATS  (1 << 0)
 #define SI_CONTEXT_STOP_PIPELINE_STATS   (1 << 1)
-#define SI_CONTEXT_FLUSH_FOR_RENDER_COND (1 << 2)
+/* gap */
 /* Instruction cache. */
 #define SI_CONTEXT_INV_ICACHE (1 << 3)
 /* Scalar cache. (GFX6-9: scalar L1; GFX10: scalar L0)

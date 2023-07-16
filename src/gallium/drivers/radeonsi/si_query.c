@@ -1666,7 +1666,7 @@ static void si_render_condition(struct pipe_context *ctx, struct pipe_query *que
 
          /* Settings this in the render cond atom is too late,
           * so set it here. */
-         sctx->flags |= sctx->screen->barrier_flags.L2_to_cp | SI_CONTEXT_FLUSH_FOR_RENDER_COND;
+         sctx->flags |= sctx->screen->barrier_flags.L2_to_cp;
          si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
 
          sctx->render_cond_enabled = old_render_cond_enabled;

@@ -183,7 +183,6 @@ union si_state_atoms {
    struct si_atoms_s {
       /* This must be first. */
       struct si_atom pm4_states[SI_NUM_STATES];
-      struct si_atom render_cond;
       struct si_atom streamout_begin;
       struct si_atom streamout_enable; /* must be after streamout_begin */
       struct si_atom framebuffer;
@@ -209,6 +208,7 @@ union si_state_atoms {
       struct si_atom vgt_pipeline_state;
       struct si_atom tess_io_layout;
       struct si_atom cache_flush;
+      struct si_atom render_cond; /* this must be after cache_flush */
    } s;
    struct si_atom array[sizeof(struct si_atoms_s) / sizeof(struct si_atom)];
 };
