@@ -196,8 +196,7 @@ static void si_release_sampler_views(struct si_samplers *samplers)
 }
 
 static void si_sampler_view_add_buffer(struct si_context *sctx, struct pipe_resource *resource,
-                                       unsigned usage, bool is_stencil_sampler,
-                                       bool check_mem)
+                                       unsigned usage, bool is_stencil_sampler)
 {
    struct si_texture *tex = (struct si_texture *)resource;
    unsigned priority;
@@ -224,7 +223,7 @@ static void si_sampler_views_begin_new_cs(struct si_context *sctx, struct si_sam
       struct si_sampler_view *sview = (struct si_sampler_view *)samplers->views[i];
 
       si_sampler_view_add_buffer(sctx, sview->base.texture, RADEON_USAGE_READ,
-                                 sview->is_stencil_sampler, false);
+                                 sview->is_stencil_sampler);
    }
 }
 
@@ -598,7 +597,7 @@ static void si_set_sampler_views(struct si_context *sctx, unsigned shader,
             /* Since this can flush, it must be done after enabled_mask is
              * updated. */
             si_sampler_view_add_buffer(sctx, &tex->buffer.b.b, RADEON_USAGE_READ,
-                                       sview->is_stencil_sampler, true);
+                                       sview->is_stencil_sampler);
          } else {
             si_reset_sampler_view_slot(samplers, slot, desc);
             unbound_mask |= 1u << slot;
@@ -703,7 +702,7 @@ static void si_image_views_begin_new_cs(struct si_context *sctx, struct si_image
 
       assert(view->resource);
 
-      si_sampler_view_add_buffer(sctx, view->resource, RADEON_USAGE_READWRITE, false, false);
+      si_sampler_view_add_buffer(sctx, view->resource, RADEON_USAGE_READWRITE, false);
    }
 }
 
@@ -890,10 +889,9 @@ static void si_set_shader_image(struct si_context *ctx, unsigned shader, unsigne
    ctx->descriptors_dirty |= 1u << si_sampler_and_image_descriptors_idx(shader);
 
    /* Since this can flush, it must be done after enabled_mask is updated. */
-   si_sampler_view_add_buffer(
-      ctx, &res->b.b,
-      (view->access & PIPE_IMAGE_ACCESS_WRITE) ? RADEON_USAGE_READWRITE : RADEON_USAGE_READ, false,
-      true);
+   si_sampler_view_add_buffer(ctx, &res->b.b,
+                              (view->access & PIPE_IMAGE_ACCESS_WRITE) ?
+                                 RADEON_USAGE_READWRITE : RADEON_USAGE_READ, false);
 }
 
 static void si_set_shader_images(struct pipe_context *pipe, enum pipe_shader_type shader,
@@ -2553,7 +2551,7 @@ static void si_make_texture_handle_resident(struct pipe_context *ctx, uint64_t h
        * is not going to be called.
        */
       si_sampler_view_add_buffer(sctx, sview->base.texture, RADEON_USAGE_READ,
-                                 sview->is_stencil_sampler, false);
+                                 sview->is_stencil_sampler);
    } else {
       /* Remove the texture handle from the per-context list. */
       util_dynarray_delete_unordered(&sctx->resident_tex_handles, struct si_texture_handle *,
@@ -2673,10 +2671,9 @@ static void si_make_image_handle_resident(struct pipe_context *ctx, uint64_t han
       /* Add the buffers to the current CS in case si_begin_new_cs()
        * is not going to be called.
        */
-      si_sampler_view_add_buffer(
-         sctx, view->resource,
-         (access & PIPE_IMAGE_ACCESS_WRITE) ? RADEON_USAGE_READWRITE : RADEON_USAGE_READ, false,
-         false);
+      si_sampler_view_add_buffer(sctx, view->resource,
+                                 (access & PIPE_IMAGE_ACCESS_WRITE) ?
+                                    RADEON_USAGE_READWRITE : RADEON_USAGE_READ, false);
    } else {
       /* Remove the image handle from the per-context list. */
       util_dynarray_delete_unordered(&sctx->resident_img_handles, struct si_image_handle *,
@@ -2701,14 +2698,14 @@ static void si_resident_buffers_add_all_to_bo_list(struct si_context *sctx)
       struct si_sampler_view *sview = (struct si_sampler_view *)(*tex_handle)->view;
 
       si_sampler_view_add_buffer(sctx, sview->base.texture, RADEON_USAGE_READ,
-                                 sview->is_stencil_sampler, false);
+                                 sview->is_stencil_sampler);
    }
 
    /* Add all resident image handles. */
    util_dynarray_foreach (&sctx->resident_img_handles, struct si_image_handle *, img_handle) {
       struct pipe_image_view *view = &(*img_handle)->view;
 
-      si_sampler_view_add_buffer(sctx, view->resource, RADEON_USAGE_READWRITE, false, false);
+      si_sampler_view_add_buffer(sctx, view->resource, RADEON_USAGE_READWRITE, false);
    }
 
    sctx->num_resident_handles += num_resident_tex_handles + num_resident_img_handles;
