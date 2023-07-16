@@ -542,8 +542,6 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource
                         unsigned stride, unsigned num_records, bool add_tid, bool swizzle,
                         unsigned element_size, unsigned index_stride, uint64_t offset);
 void si_init_all_descriptors(struct si_context *sctx);
-void si_upload_graphics_shader_descriptors(struct si_context *sctx);
-void si_upload_compute_shader_descriptors(struct si_context *sctx);
 void si_release_all_descriptors(struct si_context *sctx);
 void si_gfx_resources_add_all_to_bo_list(struct si_context *sctx);
 void si_compute_resources_add_all_to_bo_list(struct si_context *sctx);

@@ -2226,11 +2226,6 @@ static void si_draw(struct pipe_context *ctx,
    if (sctx->bo_list_add_all_gfx_resources)
       si_gfx_resources_add_all_to_bo_list(sctx);
 
-   /* Graphics shader descriptors must be uploaded after si_update_shaders because
-    * si_update_shaders binds tess and GS ring buffers.
-    */
-   si_upload_graphics_shader_descriptors(sctx);
-
    /* This is the optimal packet order:
     * Set all states first, so that all SET packets are processed in parallel with previous
     * draw calls. Then flush caches and wait if needed. Then draw and prefetch at the end.
@@ -2412,8 +2407,7 @@ static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elem
    draw.start = 0;
    draw.count = 3;
 
-   /* Don't set per-stage shader pointers for VS. */
-   sctx->shader_pointers_dirty &= ~SI_DESCS_SHADER_MASK(VERTEX);
+   /* Blits don't use vertex buffers. */
    sctx->vertex_buffers_dirty = false;
 
    si_draw<GFX_VERSION, TESS_OFF, GS_OFF, NGG, DRAW_VERTEX_STATE_OFF, BLIT_ON, HAS_PAIRS, POPCNT_NO>

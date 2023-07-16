@@ -1008,7 +1008,6 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
                                  info->variable_shared_mem))
       return;
 
-   si_upload_compute_shader_descriptors(sctx);
    si_emit_compute_shader_pointers(sctx);
 
    if (program->ir_type == PIPE_SHADER_IR_NATIVE &&
