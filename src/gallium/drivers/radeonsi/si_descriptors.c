@@ -2062,14 +2062,14 @@ static void si_mark_shader_pointers_dirty(struct si_context *sctx, unsigned shad
    if (shader == PIPE_SHADER_VERTEX)
       sctx->vertex_buffers_dirty = sctx->num_vertex_elements > 0;
 
-   si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.gfx_shader_pointers);
 }
 
 void si_shader_pointers_mark_dirty(struct si_context *sctx)
 {
    sctx->shader_pointers_dirty = u_bit_consecutive(0, SI_NUM_DESCS);
    sctx->vertex_buffers_dirty = sctx->num_vertex_elements > 0;
-   si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.gfx_shader_pointers);
    sctx->graphics_bindless_pointer_dirty = sctx->bindless_descriptors.buffer != NULL;
    sctx->compute_bindless_pointer_dirty = sctx->bindless_descriptors.buffer != NULL;
    sctx->compute_shaderbuf_sgprs_dirty = true;
@@ -2402,7 +2402,7 @@ static unsigned si_create_bindless_descriptor(struct si_context *sctx, uint32_t 
    /* Make sure to re-emit the shader pointers for all stages. */
    sctx->graphics_bindless_pointer_dirty = true;
    sctx->compute_bindless_pointer_dirty = true;
-   si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.gfx_shader_pointers);
 
    return desc_slot;
 }
@@ -2817,7 +2817,7 @@ void si_init_all_descriptors(struct si_context *sctx)
    sctx->b.set_polygon_stipple = si_set_polygon_stipple;
 
    /* Shader user data. */
-   sctx->atoms.s.shader_pointers.emit = si_emit_graphics_shader_pointers;
+   sctx->atoms.s.gfx_shader_pointers.emit = si_emit_graphics_shader_pointers;
 
    /* Set default and immutable mappings. */
    si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
@@ -2848,7 +2848,7 @@ static void si_upload_shader_descriptors(struct si_context *sctx, unsigned mask)
 
       sctx->descriptors_dirty &= ~dirty;
       sctx->shader_pointers_dirty |= dirty;
-      si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.gfx_shader_pointers);
    }
 
    si_upload_bindless_descriptors(sctx);

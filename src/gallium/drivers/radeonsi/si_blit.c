@@ -99,7 +99,7 @@ void si_blitter_end(struct si_context *sctx)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.ngg_cull_state);
 
    sctx->vertex_buffers_dirty = sctx->num_vertex_elements > 0;
-   si_mark_atom_dirty(sctx, &sctx->atoms.s.shader_pointers);
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.gfx_shader_pointers);
 
    /* We force-disabled fbfetch for u_blitter, so recompute the state. */
    si_update_ps_colorbuf0_slot(sctx);

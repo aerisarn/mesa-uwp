@@ -195,7 +195,7 @@ union si_state_atoms {
       struct si_atom blend_color;
       struct si_atom clip_regs;
       struct si_atom clip_state;
-      struct si_atom shader_pointers;
+      struct si_atom gfx_shader_pointers;
       struct si_atom guardband;
       struct si_atom scissors;
       struct si_atom viewports;
