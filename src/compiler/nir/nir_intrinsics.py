@@ -1826,6 +1826,15 @@ barrier("fence_mem_to_tex_agx")
 # act like render target writes, in conjunction with fragment interlock.
 barrier("fence_pbe_to_tex_pixel_agx")
 
+# Address of the parameter buffer for AGX geometry shaders
+system_value("geometry_param_buffer_agx", 1, bit_sizes=[64])
+
+# Loads the vertex index within the current decomposed primitive. For a
+# triangle, this will be in [0, 2], where 2 is the last vertex. This is defined
+# only when the vertex shader is reinvoked for the same vertex in each
+# primitive, as occurs in the geometry shader lowering.
+system_value("vertex_id_in_primitive_agx", 1, bit_sizes=[32])
+
 # Intel-specific query for loading from the brw_image_param struct passed
 # into the shader as a uniform.  The variable is a deref to the image
 # variable. The const index specifies which of the six parameters to load.
