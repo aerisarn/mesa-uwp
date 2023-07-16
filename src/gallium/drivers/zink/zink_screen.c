@@ -3025,7 +3025,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       goto fail;
    }
    if (!util_queue_init(&screen->cache_get_thread, "zcfq", 8, 4,
-                        UTIL_QUEUE_INIT_RESIZE_IF_FULL | UTIL_QUEUE_INIT_SCALE_THREADS, screen))
+                        UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen))
       goto fail;
    populate_format_props(screen);
 
