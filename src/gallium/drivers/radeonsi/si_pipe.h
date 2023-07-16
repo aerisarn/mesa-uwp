@@ -1033,11 +1033,9 @@ struct si_context {
    unsigned last_num_draw_calls;
    unsigned flags; /* flush flags */
 
-   /* Atoms (direct states). */
+   /* Atoms (state emit functions). */
    union si_state_atoms atoms;
-   unsigned dirty_atoms; /* mask */
-   /* PM4 states (precomputed immutable states) */
-   unsigned dirty_states;
+   uint64_t dirty_atoms; /* mask */
    union si_state queued;
    union si_state emitted;
    /* Gfx11+: Buffered SH registers for SET_SH_REG_PAIRS_PACKED*. */
@@ -1759,14 +1757,14 @@ static inline unsigned si_get_minimum_num_gfx_cs_dwords(struct si_context *sctx,
    return 2048 + sctx->num_cs_dw_queries_suspend + num_draws * 10;
 }
 
-static inline unsigned si_get_atom_bit(struct si_context *sctx, struct si_atom *atom)
+static inline uint64_t si_get_atom_bit(struct si_context *sctx, struct si_atom *atom)
 {
-   return 1 << (atom - sctx->atoms.array);
+   return 1ull << (atom - sctx->atoms.array);
 }
 
 static inline void si_set_atom_dirty(struct si_context *sctx, struct si_atom *atom, bool dirty)
 {
-   unsigned bit = si_get_atom_bit(sctx, atom);
+   uint64_t bit = si_get_atom_bit(sctx, atom);
 
    if (dirty)
       sctx->dirty_atoms |= bit;

@@ -176,18 +176,13 @@ union si_state {
 };
 
 #define SI_STATE_IDX(name) (offsetof(union si_state, named.name) / sizeof(struct si_pm4_state *))
-#define SI_STATE_BIT(name) (1 << SI_STATE_IDX(name))
+#define SI_STATE_BIT(name) (1ull << SI_STATE_IDX(name))
 #define SI_NUM_STATES      (sizeof(union si_state) / sizeof(struct si_pm4_state *))
-
-static inline unsigned si_states_that_always_roll_context(void)
-{
-   return (SI_STATE_BIT(blend) | SI_STATE_BIT(rasterizer) | SI_STATE_BIT(dsa) |
-           SI_STATE_BIT(poly_offset));
-}
 
 union si_state_atoms {
    struct si_atoms_s {
-      /* The order matters. */
+      /* This must be first. */
+      struct si_atom pm4_states[SI_NUM_STATES];
       struct si_atom render_cond;
       struct si_atom streamout_begin;
       struct si_atom streamout_enable; /* must be after streamout_begin */
@@ -217,15 +212,17 @@ union si_state_atoms {
    struct si_atom array[sizeof(struct si_atoms_s) / sizeof(struct si_atom)];
 };
 
-#define SI_ATOM_BIT(name) (1 << (offsetof(union si_state_atoms, s.name) / sizeof(struct si_atom)))
+#define SI_ATOM_BIT(name) (1ull << (offsetof(union si_state_atoms, s.name) / sizeof(struct si_atom)))
 #define SI_NUM_ATOMS      (sizeof(union si_state_atoms) / sizeof(struct si_atom))
 
-static inline unsigned si_atoms_that_always_roll_context(void)
+static inline uint64_t si_atoms_that_always_roll_context(void)
 {
-   return (SI_ATOM_BIT(streamout_begin) | SI_ATOM_BIT(streamout_enable) | SI_ATOM_BIT(framebuffer) |
-           SI_ATOM_BIT(sample_locations) | SI_ATOM_BIT(sample_mask) | SI_ATOM_BIT(blend_color) |
-           SI_ATOM_BIT(clip_state) | SI_ATOM_BIT(scissors) | SI_ATOM_BIT(viewports) |
-           SI_ATOM_BIT(stencil_ref) | SI_ATOM_BIT(scratch_state) | SI_ATOM_BIT(window_rectangles));
+   return SI_STATE_BIT(blend) | SI_STATE_BIT(rasterizer) | SI_STATE_BIT(dsa) |
+          SI_STATE_BIT(poly_offset) |
+          SI_ATOM_BIT(streamout_begin) | SI_ATOM_BIT(streamout_enable) | SI_ATOM_BIT(framebuffer) |
+          SI_ATOM_BIT(sample_locations) | SI_ATOM_BIT(sample_mask) | SI_ATOM_BIT(blend_color)|
+          SI_ATOM_BIT(clip_state) | SI_ATOM_BIT(scissors) | SI_ATOM_BIT(viewports)|
+          SI_ATOM_BIT(stencil_ref) | SI_ATOM_BIT(scratch_state) | SI_ATOM_BIT(window_rectangles);
 }
 
 struct si_shader_data {
@@ -516,9 +513,9 @@ struct si_buffer_resources {
    do {                                                                                            \
       (sctx)->queued.named.member = (value);                                                       \
       if (value && value != (sctx)->emitted.named.member)                                          \
-         (sctx)->dirty_states |= SI_STATE_BIT(member);                                             \
+         (sctx)->dirty_atoms |= SI_STATE_BIT(member);                                              \
       else                                                                                         \
-         (sctx)->dirty_states &= ~SI_STATE_BIT(member);                                            \
+         (sctx)->dirty_atoms &= ~SI_STATE_BIT(member);                                             \
    } while (0)
 
 /* si_descriptors.c */

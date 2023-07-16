@@ -316,7 +316,7 @@ void si_pm4_free_state(struct si_context *sctx, struct si_pm4_state *state, unsi
 
       if (sctx->queued.array[idx] == state) {
          sctx->queued.array[idx] = NULL;
-         sctx->dirty_states &= ~BITFIELD_BIT(idx);
+         sctx->dirty_atoms &= ~BITFIELD64_BIT(idx);
       }
    }
 
@@ -361,7 +361,7 @@ void si_pm4_reset_emitted(struct si_context *sctx)
 
    for (unsigned i = 0; i < SI_NUM_STATES; i++) {
       if (sctx->queued.array[i])
-         sctx->dirty_states |= BITFIELD_BIT(i);
+         sctx->dirty_atoms |= BITFIELD64_BIT(i);
    }
 }
 

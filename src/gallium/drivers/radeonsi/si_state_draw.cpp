@@ -1936,28 +1936,33 @@ static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_d
 }
 
 ALWAYS_INLINE
-static void si_emit_all_states(struct si_context *sctx, unsigned skip_atom_mask)
+static void si_emit_all_states(struct si_context *sctx, uint64_t skip_atom_mask)
 {
-   /* Emit state atoms. */
-   unsigned mask = sctx->dirty_atoms & ~skip_atom_mask;
-   if (mask) {
-      do {
-         unsigned i = u_bit_scan(&mask);
-         sctx->atoms.array[i].emit(sctx, i);
-      } while (mask);
+   /* Emit states by calling their emit functions. */
+   uint64_t dirty = sctx->dirty_atoms & ~skip_atom_mask;
 
+   if (dirty) {
       sctx->dirty_atoms &= skip_atom_mask;
-   }
 
-   /* Emit states. */
-   mask = sctx->dirty_states;
-   if (mask) {
-      do {
-         unsigned i = u_bit_scan(&mask);
-         si_pm4_emit_state(sctx, i);
-      } while (mask);
+      /* u_bit_scan64 is too slow on i386. */
+      if (sizeof(void*) == 8) {
+         do {
+            unsigned i = u_bit_scan64(&dirty);
+            sctx->atoms.array[i].emit(sctx, i);
+         } while (dirty);
+      } else {
+         unsigned dirty_lo = dirty;
+         unsigned dirty_hi = dirty >> 32;
 
-      sctx->dirty_states = 0;
+         while (dirty_lo) {
+            unsigned i = u_bit_scan(&dirty_lo);
+            sctx->atoms.array[i].emit(sctx, i);
+         }
+         while (dirty_hi) {
+            unsigned i = 32 + u_bit_scan(&dirty_hi);
+            sctx->atoms.array[i].emit(sctx, i);
+         }
+      }
    }
 }
 
@@ -2230,7 +2235,7 @@ static void si_draw(struct pipe_context *ctx,
     * It's better to draw before prefetches because we want to start fetching indices before
     * shaders. The idea is to minimize the time when the CUs are idle.
     */
-   unsigned masked_atoms = 0;
+   uint64_t masked_atoms = 0;
    if (unlikely(sctx->flags & SI_CONTEXT_FLUSH_FOR_RENDER_COND)) {
       /* The render condition state should be emitted after cache flushes. */
       masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
@@ -2247,8 +2252,7 @@ static void si_draw(struct pipe_context *ctx,
       gfx9_scissor_bug = true;
 
       if ((!IS_DRAW_VERTEX_STATE && indirect && indirect->count_from_stream_output) ||
-          sctx->dirty_atoms & si_atoms_that_always_roll_context() ||
-          sctx->dirty_states & si_states_that_always_roll_context())
+          sctx->dirty_atoms & si_atoms_that_always_roll_context())
          sctx->context_roll = true;
    }
 
