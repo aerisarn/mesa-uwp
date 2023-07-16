@@ -146,10 +146,12 @@ KHR-GLES31.core.texture_buffer.texture_buffer_operations_ssbo_writes
 KHR-GLES31.shaders.layout_location.isampler_2d
 KHR-GLES31.shaders.layout_location.sampler_2d
 
+spec@glsl-1.10@execution@built-in-functions@fs-all-bvec4
 spec@glsl-1.10@execution@built-in-functions@fs-op-assign-add-ivec4-int
 spec@glsl-1.10@execution@built-in-functions@vs-dot-vec3-vec3
 spec@glsl-1.10@execution@built-in-functions@vs-mod-float-float
 spec@glsl-1.20@execution@const-builtin@glsl-const-builtin-distance
+spec@glsl-1.20@execution@const-builtin@glsl-const-builtin-derivatives
 spec@glsl-1.20@execution@vs-outerproduct-const-mat3x4
 spec@glsl-1.20@execution@uniform-initializer@fs-int-set-by-other-stage
 spec@glsl-1.20@execution@built-in-functions@vs-op-assign-add-mat4x2-mat4x2
