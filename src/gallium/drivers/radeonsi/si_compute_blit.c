@@ -163,6 +163,9 @@ static void si_launch_grid_internal(struct si_context *sctx, const struct pipe_g
    if (sctx->num_hw_pipestat_streamout_queries)
       sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
 
+   if (sctx->flags)
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
+
    if (!(flags & SI_OP_CS_RENDER_COND_ENABLE))
       sctx->render_cond_enabled = false;
 
@@ -213,6 +216,9 @@ static void si_launch_grid_internal(struct si_context *sctx, const struct pipe_g
          sctx->flags |= SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE | SI_CONTEXT_PFP_SYNC_ME;
       }
    }
+
+   if (sctx->flags)
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
 }
 
 void si_launch_grid_internal_ssbos(struct si_context *sctx, struct pipe_grid_info *info,
@@ -220,8 +226,10 @@ void si_launch_grid_internal_ssbos(struct si_context *sctx, struct pipe_grid_inf
                                    unsigned num_buffers, const struct pipe_shader_buffer *buffers,
                                    unsigned writeable_bitmask)
 {
-   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
+   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE)) {
       sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
+   }
 
    /* Save states. */
    struct pipe_shader_buffer saved_sb[3] = {};
@@ -243,8 +251,10 @@ void si_launch_grid_internal_ssbos(struct si_context *sctx, struct pipe_grid_inf
 
    /* Do cache flushing at the end. */
    if (get_cache_policy(sctx, coher, 0) == L2_BYPASS) {
-      if (flags & SI_OP_SYNC_AFTER)
+      if (flags & SI_OP_SYNC_AFTER) {
          sctx->flags |= SI_CONTEXT_WB_L2;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
+      }
    } else {
       while (writeable_bitmask)
          si_resource(buffers[u_bit_scan(&writeable_bitmask)].buffer)->TC_L2_dirty = true;

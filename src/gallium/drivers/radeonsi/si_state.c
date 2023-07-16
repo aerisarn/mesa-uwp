@@ -1494,11 +1494,13 @@ static void si_set_active_query_state(struct pipe_context *ctx, bool enable)
       if (sctx->num_hw_pipestat_streamout_queries) {
          sctx->flags &= ~SI_CONTEXT_STOP_PIPELINE_STATS;
          sctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
       }
    } else {
       if (sctx->num_hw_pipestat_streamout_queries) {
          sctx->flags &= ~SI_CONTEXT_START_PIPELINE_STATS;
          sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
       }
    }
 
@@ -2893,6 +2895,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
    }
 
    sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH | SI_CONTEXT_PS_PARTIAL_FLUSH;
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
 
    /* u_blitter doesn't invoke depth decompression when it does multiple
     * blits in a row, but the only case when it matters for DB is when
@@ -2910,6 +2913,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
        * Flushing DB metadata works around the problem.
        */
       sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_DB_META;
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
    }
 
    /* Take the maximum of the old and new count. If the new count is lower,
@@ -5390,6 +5394,8 @@ static void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
    /* Indirect buffers use TC L2 on GFX9, but not older hw. */
    if (sctx->screen->info.gfx_level <= GFX8 && flags & PIPE_BARRIER_INDIRECT_BUFFER)
       sctx->flags |= SI_CONTEXT_WB_L2;
+
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
 }
 
 static void *si_create_blend_custom(struct si_context *sctx, unsigned mode)
@@ -5400,6 +5406,11 @@ static void *si_create_blend_custom(struct si_context *sctx, unsigned mode)
    blend.independent_blend_enable = true;
    blend.rt[0].colormask = 0xf;
    return si_create_blend_state_mode(&sctx->b, &blend, mode);
+}
+
+static void si_emit_cache_flush_state(struct si_context *sctx, unsigned index)
+{
+   sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
 }
 
 void si_init_state_compute_functions(struct si_context *sctx)
@@ -5434,6 +5445,7 @@ void si_init_state_functions(struct si_context *sctx)
    sctx->atoms.s.clip_regs.emit = si_emit_clip_regs;
    sctx->atoms.s.clip_state.emit = si_emit_clip_state;
    sctx->atoms.s.stencil_ref.emit = si_emit_stencil_ref;
+   sctx->atoms.s.cache_flush.emit = si_emit_cache_flush_state;
 
    sctx->b.create_blend_state = si_create_blend_state;
    sctx->b.bind_blend_state = si_bind_blend_state;

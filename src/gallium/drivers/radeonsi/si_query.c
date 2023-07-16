@@ -859,9 +859,11 @@ static void si_update_hw_pipeline_stats(struct si_context *sctx, unsigned type, 
       if (diff == 1 && sctx->num_hw_pipestat_streamout_queries == 1) {
          sctx->flags &= ~SI_CONTEXT_STOP_PIPELINE_STATS;
          sctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
       } else if (diff == -1 && sctx->num_hw_pipestat_streamout_queries == 0) {
          sctx->flags &= ~SI_CONTEXT_START_PIPELINE_STATS;
          sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
       }
    }
 }
@@ -1569,6 +1571,7 @@ static void si_query_hw_get_result_resource(struct si_context *sctx, struct si_q
    }
 
    sctx->flags |= sctx->screen->barrier_flags.cp_to_L2;
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
 
    for (qbuf = &query->buffer; qbuf; qbuf = qbuf_prev) {
       if (query->b.type != PIPE_QUERY_TIMESTAMP) {
@@ -1664,6 +1667,7 @@ static void si_render_condition(struct pipe_context *ctx, struct pipe_query *que
          /* Settings this in the render cond atom is too late,
           * so set it here. */
          sctx->flags |= sctx->screen->barrier_flags.L2_to_cp | SI_CONTEXT_FLUSH_FOR_RENDER_COND;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
 
          sctx->render_cond_enabled = old_render_cond_enabled;
       }

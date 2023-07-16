@@ -1926,7 +1926,7 @@ static void si_upload_bindless_descriptors(struct si_context *sctx)
     * descriptors directly in memory, in case the GPU is using them.
     */
    sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH;
-   sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
+   si_emit_cache_flush_direct(sctx);
 
    util_dynarray_foreach (&sctx->resident_tex_handles, struct si_texture_handle *, tex_handle) {
       unsigned desc_slot = (*tex_handle)->desc_slot;
@@ -1950,6 +1950,7 @@ static void si_upload_bindless_descriptors(struct si_context *sctx)
 
    /* Invalidate scalar L0 because the cache doesn't know that L2 changed. */
    sctx->flags |= SI_CONTEXT_INV_SCACHE;
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
    sctx->bindless_descriptors_dirty = false;
 }
 

@@ -947,8 +947,10 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
    bool cs_regalloc_hang = sscreen->info.has_cs_regalloc_hang_bug &&
                            info->block[0] * info->block[1] * info->block[2] > 256;
 
-   if (cs_regalloc_hang)
+   if (cs_regalloc_hang) {
       sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH;
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
+   }
 
    if (program->ir_type != PIPE_SHADER_IR_NATIVE && program->shader.compilation_failed)
       return;
@@ -976,6 +978,7 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
       /* Indirect buffers use TC L2 on GFX9, but not older hw. */
       if (sctx->gfx_level <= GFX8 && si_resource(info->indirect)->TC_L2_dirty) {
          sctx->flags |= SI_CONTEXT_WB_L2;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
          si_resource(info->indirect)->TC_L2_dirty = false;
       }
    }
@@ -1024,7 +1027,7 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
 
    /* Registers that are not read from memory should be set before this: */
    if (sctx->flags)
-      sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
+      si_emit_cache_flush_direct(sctx);
 
    if (sctx->has_graphics && si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
       sctx->atoms.s.render_cond.emit(sctx, -1);
@@ -1060,8 +1063,10 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
    sctx->compute_is_busy = true;
    sctx->num_compute_calls++;
 
-   if (cs_regalloc_hang)
+   if (cs_regalloc_hang) {
       sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
+   }
 }
 
 void si_destroy_compute(struct si_compute *program)

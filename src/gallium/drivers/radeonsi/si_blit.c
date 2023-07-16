@@ -496,16 +496,20 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
 
          /* Required before and after FMASK and DCC_DECOMPRESS. */
          if (custom_blend == sctx->custom_blend_fmask_decompress ||
-             custom_blend == sctx->custom_blend_dcc_decompress)
+             custom_blend == sctx->custom_blend_dcc_decompress) {
             sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_CB;
+            si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
+         }
 
          si_blitter_begin(sctx, SI_DECOMPRESS);
          util_blitter_custom_color(sctx->blitter, cbsurf, custom_blend);
          si_blitter_end(sctx);
 
          if (custom_blend == sctx->custom_blend_fmask_decompress ||
-             custom_blend == sctx->custom_blend_dcc_decompress)
+             custom_blend == sctx->custom_blend_dcc_decompress) {
             sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_CB;
+            si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
+         }
 
          /* When running FMASK decompression with DCC, we need to run the "eliminate fast clear" pass
           * separately because FMASK decompression doesn't eliminate DCC fast clear. This makes
@@ -1036,6 +1040,7 @@ static void si_do_CB_resolve(struct si_context *sctx, const struct pipe_blit_inf
 {
    /* Required before and after CB_RESOLVE. */
    sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_CB;
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
 
    si_blitter_begin(
       sctx, SI_COLOR_RESOLVE | (info->render_condition_enable ? 0 : SI_DISABLE_RENDER_COND));

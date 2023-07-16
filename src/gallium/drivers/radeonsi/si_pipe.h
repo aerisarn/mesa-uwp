@@ -1531,7 +1531,7 @@ void si_trace_emit(struct si_context *sctx);
 void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs,
                           unsigned cp_coher_cntl);
 void gfx10_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
-void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
+void gfx6_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
 /* Replace the sctx->b.draw_vbo function with a wrapper. This can be use to implement
  * optimizations without affecting the normal draw_vbo functions perf.
  */
@@ -1851,6 +1851,8 @@ static inline void si_make_CB_shader_coherent(struct si_context *sctx, unsigned 
       /* GFX6-GFX8 */
       sctx->flags |= SI_CONTEXT_INV_L2;
    }
+
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
 }
 
 static inline void si_make_DB_shader_coherent(struct si_context *sctx, unsigned num_samples,
@@ -1876,6 +1878,8 @@ static inline void si_make_DB_shader_coherent(struct si_context *sctx, unsigned 
       /* GFX6-GFX8 */
       sctx->flags |= SI_CONTEXT_INV_L2;
    }
+
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
 }
 
 static inline bool si_can_sample_zs(struct si_texture *tex, bool stencil_sampler)
@@ -2114,6 +2118,23 @@ si_set_rasterized_prim(struct si_context *sctx, enum mesa_prim rast_prim,
       sctx->do_update_shaders = true;
       si_update_ngg_prim_state_sgpr(sctx, hw_vs, ngg);
    }
+}
+
+/* There are 3 ways to flush caches and all of them are correct.
+ *
+ * 1) sctx->flags |= ...;
+ *    si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush); // deferred
+ *
+ * 2) sctx->flags |= ...;
+ *    si_emit_cache_flush_direct(sctx); // immediate
+ *
+ * 3) sctx->flags |= ...;
+ *    sctx->emit_cache_flush(sctx, cs); // immediate (2 is better though)
+ */
+static inline void si_emit_cache_flush_direct(struct si_context *sctx)
+{
+   sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
+   sctx->dirty_atoms &= ~SI_ATOM_BIT(cache_flush);
 }
 
 #define PRINT_ERR(fmt, args...)                                                                    \

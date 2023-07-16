@@ -833,8 +833,10 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
       if (GFX_VERSION == GFX7 &&
           sctx->family == CHIP_HAWAII && G_028AA8_SWITCH_ON_EOI(ia_multi_vgt_param) &&
           num_instanced_prims_less_than<IS_DRAW_VERTEX_STATE>(indirect, prim, min_vertex_count,
-                                                              instance_count, 2, sctx->patch_vertices))
+                                                              instance_count, 2, sctx->patch_vertices)) {
          sctx->flags |= SI_CONTEXT_VGT_FLUSH;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
+      }
    }
 
    return ia_multi_vgt_param;
@@ -2086,6 +2088,7 @@ static void si_draw(struct pipe_context *ctx,
          /* GFX8 reads index buffers through TC L2, so it doesn't
           * need this. */
          sctx->flags |= SI_CONTEXT_WB_L2;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
          si_resource(indexbuf)->TC_L2_dirty = false;
       }
    }
@@ -2098,12 +2101,14 @@ static void si_draw(struct pipe_context *ctx,
       if (GFX_VERSION <= GFX8) {
          if (indirect->buffer && si_resource(indirect->buffer)->TC_L2_dirty) {
             sctx->flags |= SI_CONTEXT_WB_L2;
+            si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
             si_resource(indirect->buffer)->TC_L2_dirty = false;
          }
 
          if (indirect->indirect_draw_count &&
              si_resource(indirect->indirect_draw_count)->TC_L2_dirty) {
             sctx->flags |= SI_CONTEXT_WB_L2;
+            si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
             si_resource(indirect->indirect_draw_count)->TC_L2_dirty = false;
          }
       }
@@ -2260,18 +2265,17 @@ static void si_draw(struct pipe_context *ctx,
 
    /* Emit all states except possibly render condition. */
    si_emit_rasterizer_prim_state<GFX_VERSION, HAS_GS, NGG, IS_BLIT>(sctx);
-   si_emit_all_states(sctx, masked_atoms);
-
-   /* Emit draw states. */
-   si_emit_vs_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_BLIT, HAS_PAIRS>
-         (sctx, index_size);
+   /* This must be done before si_emit_all_states because it can set cache flush flags. */
    si_emit_draw_registers<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_DRAW_VERTEX_STATE>
          (sctx, indirect, prim, index_size, instance_count, primitive_restart,
           info->restart_index, min_direct_count);
+   /* This emits states and flushes caches. */
+   si_emit_all_states(sctx, masked_atoms);
+   /* <-- CUs are idle here if the cache_flush state waited. */
 
-   if (sctx->flags)
-      sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
-   /* <-- CUs are idle here if we waited. */
+   /* This must be done after si_emit_all_states, which can affect this. */
+   si_emit_vs_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG, IS_BLIT, HAS_PAIRS>
+         (sctx, index_size);
 
    /* If we haven't emitted the render condition state (because it depends on cache flushes),
     * do it now.
@@ -2328,6 +2332,7 @@ static void si_draw(struct pipe_context *ctx,
         (GFX_VERSION == GFX8 && (sctx->family == CHIP_TONGA || sctx->family == CHIP_FIJI))) &&
        si_get_strmout_en(sctx)) {
       sctx->flags |= SI_CONTEXT_VGT_STREAMOUT_SYNC;
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);
    }
 
    if (unlikely(IS_BLIT && sctx->decompression_enabled)) {

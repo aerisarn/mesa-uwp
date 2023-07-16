@@ -108,7 +108,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    /* Wait for draw calls to finish if needed. */
    if (wait_flags) {
       ctx->flags |= wait_flags;
-      ctx->emit_cache_flush(ctx, &ctx->gfx_cs);
+      si_emit_cache_flush_direct(ctx);
    }
    ctx->gfx_last_ib_is_busy = (wait_flags & wait_ps_cs) != wait_ps_cs;
 
@@ -396,6 +396,8 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    if (ctx->screen->info.has_vgt_flush_ngg_legacy_bug && !ctx->ngg)
       ctx->flags |= SI_CONTEXT_VGT_FLUSH;
 
+   si_mark_atom_dirty(ctx, &ctx->atoms.s.cache_flush);
+
    if (ctx->screen->attribute_ring) {
       radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, ctx->screen->attribute_ring,
                                 RADEON_USAGE_READWRITE | RADEON_PRIO_SHADER_RINGS);
@@ -658,6 +660,9 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
    unsigned cb_db_event = 0;
    unsigned flags = ctx->flags;
 
+   if (!flags)
+      return;
+
    if (!ctx->has_graphics) {
       /* Only process compute flags. */
       flags &= SI_CONTEXT_INV_ICACHE | SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE |
@@ -911,9 +916,12 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
    ctx->flags = 0;
 }
 
-void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
+void gfx6_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
 {
    uint32_t flags = sctx->flags;
+
+   if (!flags)
+      return;
 
    if (!sctx->has_graphics) {
       /* Only process compute flags. */

@@ -208,6 +208,7 @@ union si_state_atoms {
       struct si_atom ngg_cull_state;
       struct si_atom vgt_pipeline_state;
       struct si_atom tess_io_layout;
+      struct si_atom cache_flush;
    } s;
    struct si_atom array[sizeof(struct si_atoms_s) / sizeof(struct si_atom)];
 };
