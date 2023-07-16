@@ -201,15 +201,21 @@ rewrite_end_primitive(nir_intrinsic_instr *intrin, struct state *state)
    nir_builder *b = state->builder;
    unsigned stream = nir_intrinsic_stream_id(intrin);
 
-   b->cursor = nir_before_instr(&intrin->instr);
+   b->cursor = nir_instr_remove(&intrin->instr);
+   state->progress = true;
+
+   /* end_primitive doesn't do anything for points, remove without replacing */
+   if (state->is_points) {
+      b->shader->info.gs.uses_end_primitive = false;
+      return;
+   }
+
    assert(state->vertex_count_vars[stream] != NULL);
    nir_def *count = nir_load_var(b, state->vertex_count_vars[stream]);
    nir_def *count_per_primitive;
 
    if (state->count_vtx_per_prim)
       count_per_primitive = nir_load_var(b, state->vtxcnt_per_prim_vars[stream]);
-   else if (state->is_points)
-      count_per_primitive = nir_imm_int(b, 0);
    else
       count_per_primitive = nir_undef(b, count->num_components, count->bit_size);
 
@@ -232,10 +238,6 @@ rewrite_end_primitive(nir_intrinsic_instr *intrin, struct state *state)
                     nir_imm_int(b, 0),
                     0x1); /* .x */
    }
-
-   nir_instr_remove(&intrin->instr);
-
-   state->progress = true;
 }
 
 static bool
