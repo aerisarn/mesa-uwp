@@ -323,12 +323,21 @@ void si_pm4_free_state(struct si_context *sctx, struct si_pm4_state *state, unsi
    FREE(state);
 }
 
-void si_pm4_emit(struct si_context *sctx, struct si_pm4_state *state)
+void si_pm4_emit_commands(struct si_context *sctx, struct si_pm4_state *state)
+{
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+
+   radeon_begin(cs);
+   radeon_emit_array(state->pm4, state->ndw);
+   radeon_end();
+}
+
+void si_pm4_emit_state(struct si_context *sctx, struct si_pm4_state *state)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    if (state->is_shader) {
-      radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, ((struct si_shader*)state)->bo,
+      radeon_add_to_buffer_list(sctx, cs, ((struct si_shader*)state)->bo,
                                 RADEON_USAGE_READ | RADEON_PRIO_SHADER_BINARY);
    }
 

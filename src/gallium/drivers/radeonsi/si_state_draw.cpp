@@ -1959,7 +1959,7 @@ static void si_emit_all_states(struct si_context *sctx, unsigned skip_atom_mask)
          /* All places should unset dirty_states if this doesn't pass. */
          assert(state && state != sctx->emitted.array[i]);
 
-         si_pm4_emit(sctx, state);
+         si_pm4_emit_state(sctx, state);
          sctx->emitted.array[i] = state;
       } while (mask);
 
