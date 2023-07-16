@@ -671,14 +671,14 @@ struct si_screen {
 
    /* Shader compiler queue for multithreaded compilation. */
    struct util_queue shader_compiler_queue;
-   /* Use at most 3 normal compiler threads on quadcore and better.
-    * Hyperthreaded CPUs report the number of threads, but we want
-    * the number of cores. We only need this many threads for shader-db. */
+   /* Compiler instances for asynchronous shader compilation of new shader CSOs,
+    * one for each thread of the shader compiler queue.
+    */
    struct ac_llvm_compiler *compiler[24]; /* used by the queue only */
 
    struct util_queue shader_compiler_queue_low_priority;
-   /* Use at most 2 low priority threads on quadcore and better.
-    * We want to minimize the impact on multithreaded Mesa. */
+   /* Compiler instances for asynchronous shader compilation of optimized shader variants,
+    * one for each thread of the low-priority shader compiler queue. */
    struct ac_llvm_compiler *compiler_lowp[10];
 
    struct util_idalloc_mt buffer_ids;
