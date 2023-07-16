@@ -4604,6 +4604,62 @@ void si_init_screen_live_shader_cache(struct si_screen *sscreen)
                                si_destroy_shader_selector);
 }
 
+template<int NUM_INTERP>
+static void si_emit_spi_map(struct si_context *sctx)
+{
+   struct si_shader *ps = sctx->shader.ps.current;
+   struct si_shader_info *psinfo = ps ? &ps->selector->info : NULL;
+   unsigned spi_ps_input_cntl[NUM_INTERP];
+
+   STATIC_ASSERT(NUM_INTERP >= 0 && NUM_INTERP <= 32);
+
+   if (!NUM_INTERP)
+      return;
+
+   struct si_shader *vs = si_get_vs(sctx)->current;
+   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+
+   for (unsigned i = 0; i < NUM_INTERP; i++) {
+      union si_input_info input = psinfo->input[i];
+      unsigned ps_input_cntl = vs->info.vs_output_ps_input_cntl[input.semantic];
+      bool non_default_val = G_028644_OFFSET(ps_input_cntl) != 0x20;
+
+      if (non_default_val) {
+         if (input.interpolate == INTERP_MODE_FLAT ||
+             (input.interpolate == INTERP_MODE_COLOR && rs->flatshade))
+            ps_input_cntl |= S_028644_FLAT_SHADE(1);
+
+         if (input.fp16_lo_hi_valid) {
+            ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
+                             S_028644_ATTR0_VALID(1) | /* this must be set if FP16_INTERP_MODE is set */
+                             S_028644_ATTR1_VALID(!!(input.fp16_lo_hi_valid & 0x2));
+         }
+      }
+
+      if (input.semantic == VARYING_SLOT_PNTC ||
+          (input.semantic >= VARYING_SLOT_TEX0 && input.semantic <= VARYING_SLOT_TEX7 &&
+           rs->sprite_coord_enable & (1 << (input.semantic - VARYING_SLOT_TEX0)))) {
+         /* Overwrite the whole value (except OFFSET) for sprite coordinates. */
+         ps_input_cntl &= ~C_028644_OFFSET;
+         ps_input_cntl |= S_028644_PT_SPRITE_TEX(1);
+         if (input.fp16_lo_hi_valid & 0x1) {
+            ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
+                             S_028644_ATTR0_VALID(1);
+         }
+      }
+
+      spi_ps_input_cntl[i] = ps_input_cntl;
+   }
+
+   /* R_028644_SPI_PS_INPUT_CNTL_0 */
+   /* Dota 2: Only ~16% of SPI map updates set different values. */
+   /* Talos: Only ~9% of SPI map updates set different values. */
+   radeon_begin(&sctx->gfx_cs);
+   radeon_opt_set_context_regn(sctx, R_028644_SPI_PS_INPUT_CNTL_0, spi_ps_input_cntl,
+                               sctx->tracked_regs.spi_ps_input_cntl, NUM_INTERP);
+   radeon_end_update_context_roll(sctx);
+}
+
 void si_init_shader_functions(struct si_context *sctx)
 {
    sctx->atoms.s.vgt_pipeline_state.emit = si_emit_vgt_pipeline_state;
@@ -4629,4 +4685,41 @@ void si_init_shader_functions(struct si_context *sctx)
    sctx->b.delete_fs_state = si_delete_shader_selector;
 
    sctx->b.set_patch_vertices = si_set_patch_vertices;
+
+   /* This unrolls the loops in si_emit_spi_map and inlines memcmp and memcpys.
+    * It improves performance for viewperf/snx.
+    */
+   sctx->emit_spi_map[0] = si_emit_spi_map<0>;
+   sctx->emit_spi_map[1] = si_emit_spi_map<1>;
+   sctx->emit_spi_map[2] = si_emit_spi_map<2>;
+   sctx->emit_spi_map[3] = si_emit_spi_map<3>;
+   sctx->emit_spi_map[4] = si_emit_spi_map<4>;
+   sctx->emit_spi_map[5] = si_emit_spi_map<5>;
+   sctx->emit_spi_map[6] = si_emit_spi_map<6>;
+   sctx->emit_spi_map[7] = si_emit_spi_map<7>;
+   sctx->emit_spi_map[8] = si_emit_spi_map<8>;
+   sctx->emit_spi_map[9] = si_emit_spi_map<9>;
+   sctx->emit_spi_map[10] = si_emit_spi_map<10>;
+   sctx->emit_spi_map[11] = si_emit_spi_map<11>;
+   sctx->emit_spi_map[12] = si_emit_spi_map<12>;
+   sctx->emit_spi_map[13] = si_emit_spi_map<13>;
+   sctx->emit_spi_map[14] = si_emit_spi_map<14>;
+   sctx->emit_spi_map[15] = si_emit_spi_map<15>;
+   sctx->emit_spi_map[16] = si_emit_spi_map<16>;
+   sctx->emit_spi_map[17] = si_emit_spi_map<17>;
+   sctx->emit_spi_map[18] = si_emit_spi_map<18>;
+   sctx->emit_spi_map[19] = si_emit_spi_map<19>;
+   sctx->emit_spi_map[20] = si_emit_spi_map<20>;
+   sctx->emit_spi_map[21] = si_emit_spi_map<21>;
+   sctx->emit_spi_map[22] = si_emit_spi_map<22>;
+   sctx->emit_spi_map[23] = si_emit_spi_map<23>;
+   sctx->emit_spi_map[24] = si_emit_spi_map<24>;
+   sctx->emit_spi_map[25] = si_emit_spi_map<25>;
+   sctx->emit_spi_map[26] = si_emit_spi_map<26>;
+   sctx->emit_spi_map[27] = si_emit_spi_map<27>;
+   sctx->emit_spi_map[28] = si_emit_spi_map<28>;
+   sctx->emit_spi_map[29] = si_emit_spi_map<29>;
+   sctx->emit_spi_map[30] = si_emit_spi_map<30>;
+   sctx->emit_spi_map[31] = si_emit_spi_map<31>;
+   sctx->emit_spi_map[32] = si_emit_spi_map<32>;
 }
