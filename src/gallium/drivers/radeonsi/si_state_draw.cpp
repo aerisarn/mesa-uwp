@@ -522,6 +522,7 @@ static void si_prefetch_shader_async(struct si_context *sctx, struct si_shader *
  * Prefetch shaders.
  */
 template<amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG>
+ALWAYS_INLINE
 static void si_prefetch_shaders(struct si_context *sctx)
 {
    unsigned mask = sctx->prefetch_L2_mask;
