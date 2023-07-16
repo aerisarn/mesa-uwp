@@ -22,7 +22,6 @@
 extern "C" {
 #endif
 
-struct si_compute;
 struct ac_llvm_compiler;
 
 #define ATI_VENDOR_ID         0x1002
@@ -689,6 +688,17 @@ struct si_screen {
    /* NGG streamout. */
    simple_mtx_t gds_mutex;
    struct pb_buffer *gds_oa;
+};
+
+struct si_compute {
+   struct si_shader_selector sel;
+   struct si_shader shader;
+
+   unsigned ir_type;
+   unsigned input_size;
+
+   int max_global_buffers;
+   struct pipe_resource **global_buffers;
 };
 
 struct si_sampler_view {
@@ -1408,6 +1418,9 @@ void si_execute_clears(struct si_context *sctx, struct si_clear_info *info,
                        unsigned num_clears, unsigned types);
 void si_init_clear_functions(struct si_context *sctx);
 
+/* si_compute.c */
+void si_destroy_compute(struct si_compute *program);
+
 /* si_compute_blit.c */
 #define SI_OP_SYNC_CS_BEFORE              (1 << 0)
 #define SI_OP_SYNC_PS_BEFORE              (1 << 1)
@@ -1688,6 +1701,14 @@ void si_handle_sqtt(struct si_context *sctx, struct radeon_cmdbuf *rcs);
 /*
  * common helpers
  */
+
+static inline void si_compute_reference(struct si_compute **dst, struct si_compute *src)
+{
+   if (pipe_reference(&(*dst)->sel.base.reference, &src->sel.base.reference))
+      si_destroy_compute(*dst);
+
+   *dst = src;
+}
 
 static inline struct si_resource *si_resource(struct pipe_resource *r)
 {

@@ -7,7 +7,6 @@
 
 #include "si_pipe.h"
 #include "si_build_pm4.h"
-#include "si_compute.h"
 
 #include "ac_rgp.h"
 #include "ac_sqtt.h"

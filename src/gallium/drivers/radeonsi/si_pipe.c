@@ -9,7 +9,6 @@
 
 #include "driver_ddebug/dd_util.h"
 #include "radeon_uvd.h"
-#include "si_compute.h"
 #include "si_public.h"
 #include "si_shader_internal.h"
 #include "sid.h"

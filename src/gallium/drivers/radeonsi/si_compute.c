@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "si_compute.h"
-
 #include "ac_rtld.h"
 #include "amd_kernel_code_t.h"
 #include "nir/tgsi_to_nir.h"

@@ -5,7 +5,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "si_compute.h"
 #include "si_pipe.h"
 #include "util/format/u_format.h"
 #include "util/u_log.h"
