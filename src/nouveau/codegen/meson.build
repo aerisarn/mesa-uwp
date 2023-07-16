@@ -28,7 +28,6 @@ files_libnouveau_codegen = files(
   'nv50_ir_from_common.cpp',
   'nv50_ir_from_common.h',
   'nv50_ir_from_nir.cpp',
-  'nv50_ir_from_tgsi.cpp',
   'nv50_ir_graph.cpp',
   'nv50_ir_graph.h',
   'nv50_ir.h',

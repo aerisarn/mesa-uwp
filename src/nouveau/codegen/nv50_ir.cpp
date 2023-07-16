@@ -1313,9 +1313,6 @@ nv50_ir_generate_code(struct nv50_ir_prog_info *info,
    case PIPE_SHADER_IR_NIR:
       ret = prog->makeFromNIR(info, info_out) ? 0 : -2;
       break;
-   case PIPE_SHADER_IR_TGSI:
-      ret = prog->makeFromTGSI(info, info_out) ? 0 : -2;
-      break;
    default:
       ret = -1;
       break;

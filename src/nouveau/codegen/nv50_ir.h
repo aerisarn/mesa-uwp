@@ -1340,8 +1340,6 @@ public:
 
    bool makeFromNIR(struct nv50_ir_prog_info *,
                     struct nv50_ir_prog_info_out *);
-   bool makeFromTGSI(struct nv50_ir_prog_info *,
-                     struct nv50_ir_prog_info_out *);
    bool convertToSSA();
    bool optimizeSSA(int level);
    bool optimizePostRA(int level);
