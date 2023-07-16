@@ -334,6 +334,32 @@ append_set_vertex_and_primitive_count(nir_block *end_block, struct state *state)
    }
 }
 
+/*
+ * Append an EndPrimitive intrinsic to the end of the geometry shader. This
+ * allows the backend to emit primitives only when EndPrimitive is used. If this
+ * EndPrimitive is not needed, it will be predicated out via
+ * overwrite_incomplete_primitives.
+ */
+static void
+append_end_primitive(nir_block *end_block, struct state *state)
+{
+   nir_builder *b = state->builder;
+
+   /* Only end a primitive if there is a primitive to end */
+   if (b->shader->info.gs.active_stream_mask == 0)
+      return;
+
+   /* Insert the new intrinsic in all of the predecessors of the end block,
+    * but before any jump instructions (return).
+    */
+   set_foreach(end_block->predecessors, entry) {
+      nir_block *pred = (nir_block *) entry->key;
+      b->cursor = nir_after_block_before_jump(pred);
+
+      nir_end_primitive(b);
+   }
+}
+
 /**
  * Check to see if there are any blocks that need set_vertex_and_primitive_count
  *
@@ -381,6 +407,7 @@ nir_lower_gs_intrinsics(nir_shader *shader, nir_lower_gs_intrinsics_flags option
    bool per_stream = options & nir_lower_gs_intrinsics_per_stream;
    bool count_primitives = options & nir_lower_gs_intrinsics_count_primitives;
    bool overwrite_incomplete = options & nir_lower_gs_intrinsics_overwrite_incomplete;
+   bool always_end_primitive_non_points = options & nir_lower_gs_intrinsics_always_end_primitive;
    bool count_vtx_per_prim =
       overwrite_incomplete ||
       (options & nir_lower_gs_intrinsics_count_vertices_per_primitive);
@@ -447,6 +474,9 @@ nir_lower_gs_intrinsics(nir_shader *shader, nir_lower_gs_intrinsics_flags option
             state.vtxcnt_per_prim_vars[i] = state.vtxcnt_per_prim_vars[0];
       }
    }
+
+   if (always_end_primitive_non_points && !is_points)
+      append_end_primitive(impl->end_block, &state);
 
    nir_foreach_block_safe(block, impl)
       rewrite_intrinsics(block, &state);
