@@ -5413,8 +5413,16 @@ void si_init_state_compute_functions(struct si_context *sctx)
 
 void si_init_state_functions(struct si_context *sctx)
 {
-   for (unsigned i = 0; i < ARRAY_SIZE(sctx->atoms.s.pm4_states); i++)
-      sctx->atoms.s.pm4_states[i].emit = si_pm4_emit_state;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(blend)].emit = si_pm4_emit_state;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(rasterizer)].emit = si_pm4_emit_state;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(dsa)].emit = si_pm4_emit_state;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(poly_offset)].emit = si_pm4_emit_state;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(ls)].emit = si_pm4_emit_shader;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(hs)].emit = si_pm4_emit_shader;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(es)].emit = si_pm4_emit_shader;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(gs)].emit = si_pm4_emit_shader;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(vs)].emit = si_pm4_emit_shader;
+   sctx->atoms.s.pm4_states[SI_STATE_IDX(ps)].emit = si_pm4_emit_shader;
 
    sctx->atoms.s.framebuffer.emit = si_emit_framebuffer_state;
    sctx->atoms.s.db_render_state.emit = si_emit_db_render_state;

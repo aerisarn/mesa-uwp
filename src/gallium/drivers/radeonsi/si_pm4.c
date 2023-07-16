@@ -340,19 +340,23 @@ void si_pm4_emit_state(struct si_context *sctx, unsigned index)
    /* All places should unset dirty_states if this doesn't pass. */
    assert(state && state != sctx->emitted.array[index]);
 
-   if (state->is_shader) {
-      radeon_add_to_buffer_list(sctx, cs, ((struct si_shader*)state)->bo,
-                                RADEON_USAGE_READ | RADEON_PRIO_SHADER_BINARY);
-   }
-
    radeon_begin(cs);
    radeon_emit_array(state->pm4, state->ndw);
    radeon_end();
 
+   sctx->emitted.array[index] = state;
+}
+
+void si_pm4_emit_shader(struct si_context *sctx, unsigned index)
+{
+   struct si_pm4_state *state = sctx->queued.array[index];
+
+   si_pm4_emit_state(sctx, index);
+
+   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, ((struct si_shader*)state)->bo,
+                             RADEON_USAGE_READ | RADEON_PRIO_SHADER_BINARY);
    if (state->atom.emit)
       state->atom.emit(sctx, -1);
-
-   sctx->emitted.array[index] = state;
 }
 
 void si_pm4_reset_emitted(struct si_context *sctx)
