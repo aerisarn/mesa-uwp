@@ -2993,8 +2993,6 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
             sctx->framebuffer.has_dcc_msaa = true;
       }
 
-      si_context_add_resource_size(sctx, surf->base.texture);
-
       p_atomic_inc(&tex->framebuffers_bound);
 
       /* Update the minimum but don't keep 0. */
@@ -3015,8 +3013,6 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 
       if (vi_tc_compat_htile_enabled(zstex, surf->base.u.tex.level, PIPE_MASK_ZS))
          sctx->framebuffer.DB_has_shader_readable_metadata = true;
-
-      si_context_add_resource_size(sctx, surf->base.texture);
 
       /* Update the minimum but don't keep 0. */
       if (!sctx->framebuffer.min_bytes_per_pixel ||

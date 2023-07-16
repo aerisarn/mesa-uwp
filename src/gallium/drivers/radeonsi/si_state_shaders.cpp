@@ -4044,8 +4044,6 @@ bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes)
             sctx->screen->info.pte_fragment_size);
          if (!sctx->scratch_buffer)
             return false;
-
-         si_context_add_resource_size(sctx, &sctx->scratch_buffer->b.b);
       }
 
       if (sctx->gfx_level < GFX11 && !si_update_scratch_relocs(sctx))

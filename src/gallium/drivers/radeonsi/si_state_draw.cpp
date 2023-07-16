@@ -2085,10 +2085,6 @@ static void si_draw(struct pipe_context *ctx,
    unsigned total_direct_count = 0;
 
    if (!IS_DRAW_VERTEX_STATE && indirect) {
-      /* Add the buffer size for memory checking in need_cs_space. */
-      if (indirect->buffer)
-         si_context_add_resource_size(sctx, indirect->buffer);
-
       /* Indirect buffers use TC L2 on GFX9, but not older hw. */
       if (GFX_VERSION <= GFX8) {
          if (indirect->buffer && si_resource(indirect->buffer)->TC_L2_dirty) {
@@ -2207,8 +2203,7 @@ static void si_draw(struct pipe_context *ctx,
       }
    }
 
-   /* Since we've called si_context_add_resource_size for vertex buffers,
-    * this must be called after si_need_cs_space, because we must let
+   /* This must be called after si_need_cs_space, because we must let
     * need_cs_space flush before we add buffers to the buffer list.
     *
     * This must be done after si_update_shaders because si_update_shaders can

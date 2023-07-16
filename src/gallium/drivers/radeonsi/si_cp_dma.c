@@ -129,12 +129,6 @@ static void si_cp_dma_prepare(struct si_context *sctx, struct pipe_resource *dst
                               uint64_t remaining_size, unsigned user_flags, enum si_coherency coher,
                               bool *is_first, unsigned *packet_flags)
 {
-   /* Count memory usage in so that need_cs_space can take it into account. */
-   if (dst)
-      si_context_add_resource_size(sctx, dst);
-   if (src)
-      si_context_add_resource_size(sctx, src);
-
    if (!(user_flags & SI_OP_CPDMA_SKIP_CHECK_CS_SPACE))
       si_need_gfx_cs_space(sctx, 0);
 

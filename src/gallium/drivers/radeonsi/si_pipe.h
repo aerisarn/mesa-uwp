@@ -311,8 +311,6 @@ struct si_resource {
    /* Winsys objects. */
    struct pb_buffer *buf;
    uint64_t gpu_address;
-   /* Memory usage if the buffer placement is optimal. */
-   uint32_t memory_usage_kb;
 
    /* Resource properties. */
    uint64_t bo_size;
@@ -547,7 +545,6 @@ struct si_screen {
                                    unsigned width, unsigned height, unsigned depth,
                                    bool get_bo_metadata, uint32_t *state, uint32_t *fmask_state);
 
-   unsigned max_memory_usage_kb;
    unsigned pa_sc_raster_config;
    unsigned pa_sc_raster_config_1;
    unsigned se_tile_repeat;
@@ -1030,8 +1027,6 @@ struct si_context {
    unsigned last_compressed_colortex_counter;
    unsigned last_num_draw_calls;
    unsigned flags; /* flush flags */
-   /* Current unaccounted memory usage. */
-   uint32_t memory_usage_kb;
 
    /* Atoms (direct states). */
    union si_state_atoms atoms;
@@ -1760,14 +1755,6 @@ static inline unsigned si_get_minimum_num_gfx_cs_dwords(struct si_context *sctx,
    return 2048 + sctx->num_cs_dw_queries_suspend + num_draws * 10;
 }
 
-static inline void si_context_add_resource_size(struct si_context *sctx, struct pipe_resource *r)
-{
-   if (r) {
-      /* Add memory usage for need_gfx_cs_space */
-      sctx->memory_usage_kb += si_resource(r)->memory_usage_kb;
-   }
-}
-
 static inline unsigned si_get_atom_bit(struct si_context *sctx, struct si_atom *atom)
 {
    return 1 << (atom - sctx->atoms.array);
@@ -1982,35 +1969,12 @@ static inline bool util_rast_prim_is_lines_or_triangles(unsigned prim)
    return ((1 << prim) & (UTIL_ALL_PRIM_LINE_MODES | UTIL_ALL_PRIM_TRIANGLE_MODES)) != 0;
 }
 
-/**
- * Return true if there is enough memory in VRAM and GTT for the buffers
- * added so far.
- *
- * \param vram      VRAM memory size not added to the buffer list yet
- * \param gtt       GTT memory size not added to the buffer list yet
- */
-static inline bool radeon_cs_memory_below_limit(struct si_screen *screen, struct radeon_cmdbuf *cs,
-                                                uint32_t kb)
-{
-   return kb + cs->used_vram_kb + cs->used_gart_kb < screen->max_memory_usage_kb;
-}
-
 static inline void si_need_gfx_cs_space(struct si_context *ctx, unsigned num_draws)
 {
    struct radeon_cmdbuf *cs = &ctx->gfx_cs;
 
-   /* There are two memory usage counters in the winsys for all buffers
-    * that have been added (cs_add_buffer) and one counter in the pipe
-    * driver for those that haven't been added yet.
-    */
-   uint32_t kb = ctx->memory_usage_kb;
-   ctx->memory_usage_kb = 0;
-
-   if (radeon_cs_memory_below_limit(ctx->screen, &ctx->gfx_cs, kb) &&
-       ctx->ws->cs_check_space(cs, si_get_minimum_num_gfx_cs_dwords(ctx, num_draws)))
-      return;
-
-   si_flush_gfx_cs(ctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
+   if (!ctx->ws->cs_check_space(cs, si_get_minimum_num_gfx_cs_dwords(ctx, num_draws)))
+      si_flush_gfx_cs(ctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 }
 
 /**
@@ -2029,33 +1993,6 @@ static inline void radeon_add_to_buffer_list(struct si_context *sctx, struct rad
    assert(usage);
    sctx->ws->cs_add_buffer(cs, bo->buf, usage | RADEON_USAGE_SYNCHRONIZED,
                            bo->domains);
-}
-
-/**
- * Same as above, but also checks memory usage and flushes the context
- * accordingly.
- *
- * When this SHOULD NOT be used:
- *
- * - if si_context_add_resource_size has been called for the buffer
- *   followed by *_need_cs_space for checking the memory usage
- *
- * - when emitting state packets and draw packets (because preceding packets
- *   can't be re-emitted at that point)
- *
- * - if shader resource "enabled_mask" is not up-to-date or there is
- *   a different constraint disallowing a context flush
- */
-static inline void radeon_add_to_gfx_buffer_list_check_mem(struct si_context *sctx,
-                                                           struct si_resource *bo,
-                                                           unsigned usage,
-                                                           bool check_mem)
-{
-   if (check_mem &&
-       !radeon_cs_memory_below_limit(sctx->screen, &sctx->gfx_cs, sctx->memory_usage_kb + bo->memory_usage_kb))
-      si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
-
-   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, bo, usage);
 }
 
 static inline void si_select_draw_vbo(struct si_context *sctx)

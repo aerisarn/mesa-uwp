@@ -550,10 +550,8 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    ctx->num_buffered_gfx_sh_regs = 0;
    ctx->num_buffered_compute_sh_regs = 0;
 
-   if (ctx->scratch_buffer) {
-      si_context_add_resource_size(ctx, &ctx->scratch_buffer->b.b);
+   if (ctx->scratch_buffer)
       si_mark_atom_dirty(ctx, &ctx->atoms.s.scratch_state);
-   }
 
    if (ctx->streamout.suspended) {
       ctx->streamout.append_bitmask = ctx->streamout.enabled_mask;
