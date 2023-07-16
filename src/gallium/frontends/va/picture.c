@@ -702,6 +702,12 @@ handleVAEncPackedHeaderParameterBufferType(vlVaContext *context, vlVaBuffer *buf
    VAEncPackedHeaderParameterBuffer *param = buf->data;
 
    switch (u_reduce_video_profile(context->templat.profile)) {
+   case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+      if (param->type == VAEncPackedHeaderSequence)
+         context->packed_header_type = param->type;
+      else
+         status = VA_STATUS_ERROR_UNIMPLEMENTED;
+      break;
    case PIPE_VIDEO_FORMAT_HEVC:
       if (param->type == VAEncPackedHeaderSequence)
          context->packed_header_type = param->type;
@@ -725,6 +731,13 @@ handleVAEncPackedHeaderDataBufferType(vlVaContext *context, vlVaBuffer *buf)
    VAStatus status = VA_STATUS_SUCCESS;
 
    switch (u_reduce_video_profile(context->templat.profile)) {
+   case PIPE_VIDEO_FORMAT_MPEG4_AVC:
+      if (context->packed_header_type != VAEncPackedHeaderSequence)
+         return VA_STATUS_ERROR_UNIMPLEMENTED;
+
+      status = vlVaHandleVAEncPackedHeaderDataBufferTypeH264(context, buf);
+      break;
+
    case PIPE_VIDEO_FORMAT_HEVC:
       if (context->packed_header_type != VAEncPackedHeaderSequence)
          return VA_STATUS_ERROR_UNIMPLEMENTED;

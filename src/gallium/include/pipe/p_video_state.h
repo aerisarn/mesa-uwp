@@ -511,12 +511,19 @@ struct pipe_h264_enc_seq_param
    struct {
       uint32_t aspect_ratio_info_present_flag: 1;
       uint32_t timing_info_present_flag: 1;
+      uint32_t video_signal_type_present_flag: 1;
+      uint32_t colour_description_present_flag: 1;
    } vui_flags;
    uint32_t aspect_ratio_idc;
    uint32_t sar_width;
    uint32_t sar_height;
    uint32_t num_units_in_tick;
    uint32_t time_scale;
+   uint32_t video_format;
+   uint32_t video_full_range_flag;
+   uint32_t colour_primaries;
+   uint32_t transfer_characteristics;
+   uint32_t matrix_coefficients;
 };
 
 struct pipe_h264_enc_picture_desc

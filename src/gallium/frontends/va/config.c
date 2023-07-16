@@ -235,6 +235,8 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
             break;
          case VAConfigAttribEncPackedHeaders:
             value = VA_ENC_PACKED_HEADER_NONE;
+            if ((u_reduce_video_profile(ProfileToPipe(profile)) == PIPE_VIDEO_FORMAT_MPEG4_AVC))
+               value |= VA_ENC_PACKED_HEADER_SEQUENCE;
             if ((u_reduce_video_profile(ProfileToPipe(profile)) == PIPE_VIDEO_FORMAT_HEVC))
                value |= VA_ENC_PACKED_HEADER_SEQUENCE;
             else if (u_reduce_video_profile(ProfileToPipe(profile)) == PIPE_VIDEO_FORMAT_AV1)
@@ -620,6 +622,8 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
       if (attrib_list[i].type == VAConfigAttribEncPackedHeaders) {
          if (config->entrypoint != PIPE_VIDEO_ENTRYPOINT_ENCODE ||
              (((attrib_list[i].value != 0)) &&
+              ((attrib_list[i].value != 1) || u_reduce_video_profile(ProfileToPipe(profile))
+               != PIPE_VIDEO_FORMAT_MPEG4_AVC) &&
               ((attrib_list[i].value != 1) || u_reduce_video_profile(ProfileToPipe(profile))
                != PIPE_VIDEO_FORMAT_HEVC) &&
               ((attrib_list[i].value != 3) || u_reduce_video_profile(ProfileToPipe(profile))
