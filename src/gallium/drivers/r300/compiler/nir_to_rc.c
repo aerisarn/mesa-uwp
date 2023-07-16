@@ -2221,73 +2221,6 @@ ntr_no_indirects_mask(nir_shader *s, struct pipe_screen *screen)
    return indirect_mask;
 }
 
-static void
-ntr_optimize_nir(struct nir_shader *s, struct pipe_screen *screen,
-                 const struct nir_to_rc_options *options)
-{
-   bool progress;
-   unsigned pipe_stage = pipe_shader_type_from_mesa(s->info.stage);
-   unsigned control_flow_depth =
-      screen->get_shader_param(screen, pipe_stage,
-                               PIPE_SHADER_CAP_MAX_CONTROL_FLOW_DEPTH);
-   do {
-      progress = false;
-
-      NIR_PASS_V(s, nir_lower_vars_to_ssa);
-
-      NIR_PASS(progress, s, nir_copy_prop);
-      NIR_PASS(progress, s, nir_opt_algebraic);
-      NIR_PASS(progress, s, nir_opt_constant_folding);
-      NIR_PASS(progress, s, nir_opt_remove_phis);
-      NIR_PASS(progress, s, nir_opt_conditional_discard);
-      NIR_PASS(progress, s, nir_opt_dce);
-      NIR_PASS(progress, s, nir_opt_dead_cf);
-      NIR_PASS(progress, s, nir_opt_cse);
-      NIR_PASS(progress, s, nir_opt_find_array_copies);
-      NIR_PASS(progress, s, nir_opt_copy_prop_vars);
-      NIR_PASS(progress, s, nir_opt_dead_write_vars);
-
-      NIR_PASS(progress, s, nir_opt_if, nir_opt_if_aggressive_last_continue | nir_opt_if_optimize_phi_true_false);
-      NIR_PASS(progress, s, nir_opt_peephole_select,
-               control_flow_depth == 0 ? ~0 : 8, true, true);
-      NIR_PASS(progress, s, nir_opt_algebraic);
-      NIR_PASS(progress, s, nir_opt_constant_folding);
-      nir_load_store_vectorize_options vectorize_opts = {
-         .modes = nir_var_mem_ubo,
-         .callback = ntr_should_vectorize_io,
-         .robust_modes = 0,
-      };
-      NIR_PASS(progress, s, nir_opt_load_store_vectorize, &vectorize_opts);
-      NIR_PASS(progress, s, nir_opt_shrink_stores, true);
-      NIR_PASS(progress, s, nir_opt_shrink_vectors);
-      NIR_PASS(progress, s, nir_opt_trivial_continues);
-      NIR_PASS(progress, s, nir_opt_vectorize, ntr_should_vectorize_instr, NULL);
-      NIR_PASS(progress, s, nir_opt_undef);
-      NIR_PASS(progress, s, nir_opt_loop_unroll);
-
-      /* Try to fold addressing math into ubo_vec4's base to avoid load_consts
-       * and ALU ops for it.
-       */
-      nir_opt_offsets_options offset_options = {
-         .ubo_vec4_max = ~0,
-
-         /* No const offset in TGSI for shared accesses. */
-         .shared_max = 0,
-
-         /* unused intrinsics */
-         .uniform_max = 0,
-         .buffer_max = 0,
-      };
-
-      if (options->ubo_vec4_max)
-         offset_options.ubo_vec4_max = options->ubo_vec4_max;
-
-      NIR_PASS(progress, s, nir_opt_offsets, &offset_options);
-   } while (progress);
-
-   NIR_PASS_V(s, nir_lower_var_copies);
-}
-
 struct ntr_lower_tex_state {
    nir_scalar channels[8];
    unsigned i;
@@ -2469,7 +2402,19 @@ const void *nir_to_rc_options(struct nir_shader *s,
    if (!screen->get_param(screen, PIPE_CAP_LOAD_CONSTBUF))
       NIR_PASS_V(s, nir_lower_ubo_vec4);
 
-   ntr_optimize_nir(s, screen, options);
+   bool progress;
+   NIR_PASS_V(s, nir_opt_constant_folding);
+
+   /* Clean up after triginometric input normalization. */
+   NIR_PASS_V(s, nir_opt_vectorize, ntr_should_vectorize_instr, NULL);
+   do {
+      progress = false;
+      NIR_PASS(progress, s, nir_opt_shrink_vectors);
+   } while (progress);
+   NIR_PASS_V(s, nir_copy_prop);
+   NIR_PASS_V(s, nir_opt_cse);
+   NIR_PASS_V(s, nir_opt_dce);
+   NIR_PASS_V(s, nir_opt_shrink_stores, true);
 
    NIR_PASS_V(s, nir_lower_indirect_derefs, no_indirects_mask, UINT32_MAX);
 
@@ -2478,7 +2423,6 @@ const void *nir_to_rc_options(struct nir_shader *s,
 
    NIR_PASS_V(s, nir_lower_frexp);
 
-   bool progress;
    do {
       progress = false;
       NIR_PASS(progress, s, nir_opt_algebraic_late);
