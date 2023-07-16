@@ -2221,7 +2221,7 @@ static void si_emit_global_shader_pointers(struct si_context *sctx, struct si_de
    radeon_end();
 }
 
-void si_emit_graphics_shader_pointers(struct si_context *sctx)
+void si_emit_graphics_shader_pointers(struct si_context *sctx, unsigned index)
 {
    uint32_t *sh_base = sctx->shader_pointers.sh_base;
 

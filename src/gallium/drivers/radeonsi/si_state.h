@@ -556,7 +556,7 @@ void si_add_all_descriptors_to_bo_list(struct si_context *sctx);
 void si_update_all_texture_descriptors(struct si_context *sctx);
 void si_shader_change_notify(struct si_context *sctx);
 void si_update_needs_color_decompress_masks(struct si_context *sctx);
-void si_emit_graphics_shader_pointers(struct si_context *sctx);
+void si_emit_graphics_shader_pointers(struct si_context *sctx, unsigned index);
 void si_emit_compute_shader_pointers(struct si_context *sctx);
 void si_set_internal_const_buffer(struct si_context *sctx, uint slot,
                                   const struct pipe_constant_buffer *input);
@@ -598,7 +598,7 @@ struct si_fast_udiv_info32 {
 struct si_fast_udiv_info32 si_compute_fast_udiv_info32(uint32_t D, unsigned num_bits);
 
 /* si_state_binning.c */
-void si_emit_dpbb_state(struct si_context *sctx);
+void si_emit_dpbb_state(struct si_context *sctx, unsigned index);
 
 /* si_state_shaders.cpp */
 void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,

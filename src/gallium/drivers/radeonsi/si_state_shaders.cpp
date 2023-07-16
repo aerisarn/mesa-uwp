@@ -607,8 +607,9 @@ static void polaris_set_vgt_vertex_reuse(struct si_screen *sscreen, struct si_sh
    }
 }
 
-static struct si_pm4_state *si_get_shader_pm4_state(struct si_shader *shader,
-                                                    void (*emit_func)(struct si_context *ctx))
+static struct si_pm4_state *
+si_get_shader_pm4_state(struct si_shader *shader,
+                        void (*emit_func)(struct si_context *ctx, unsigned index))
 {
    si_pm4_clear_state(&shader->pm4, shader->selector->screen, false);
    shader->pm4.is_shader = true;
@@ -753,7 +754,7 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
    si_pm4_finalize(pm4);
 }
 
-static void si_emit_shader_es(struct si_context *sctx)
+static void si_emit_shader_es(struct si_context *sctx, unsigned index)
 {
    struct si_shader *shader = sctx->queued.named.es;
 
@@ -913,7 +914,7 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
    assert(out->max_prims_per_subgroup <= max_out_prims);
 }
 
-static void si_emit_shader_gs(struct si_context *sctx)
+static void si_emit_shader_gs(struct si_context *sctx, unsigned index)
 {
    struct si_shader *shader = sctx->queued.named.gs;
 
@@ -1208,14 +1209,14 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
    radeon_end();
 }
 
-static void gfx10_emit_shader_ngg_notess_nogs(struct si_context *sctx)
+static void gfx10_emit_shader_ngg_notess_nogs(struct si_context *sctx, unsigned index)
 {
    struct si_shader *shader = sctx->queued.named.gs;
 
    gfx10_emit_shader_ngg_tail(sctx, shader);
 }
 
-static void gfx10_emit_shader_ngg_tess_nogs(struct si_context *sctx)
+static void gfx10_emit_shader_ngg_tess_nogs(struct si_context *sctx, unsigned index)
 {
    struct si_shader *shader = sctx->queued.named.gs;
 
@@ -1227,7 +1228,7 @@ static void gfx10_emit_shader_ngg_tess_nogs(struct si_context *sctx)
    gfx10_emit_shader_ngg_tail(sctx, shader);
 }
 
-static void gfx10_emit_shader_ngg_notess_gs(struct si_context *sctx)
+static void gfx10_emit_shader_ngg_notess_gs(struct si_context *sctx, unsigned index)
 {
    struct si_shader *shader = sctx->queued.named.gs;
 
@@ -1239,7 +1240,7 @@ static void gfx10_emit_shader_ngg_notess_gs(struct si_context *sctx)
    gfx10_emit_shader_ngg_tail(sctx, shader);
 }
 
-static void gfx10_emit_shader_ngg_tess_gs(struct si_context *sctx)
+static void gfx10_emit_shader_ngg_tess_gs(struct si_context *sctx, unsigned index)
 {
    struct si_shader *shader = sctx->queued.named.gs;
 
@@ -1521,7 +1522,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    si_pm4_finalize(pm4);
 }
 
-static void si_emit_shader_vs(struct si_context *sctx)
+static void si_emit_shader_vs(struct si_context *sctx, unsigned index)
 {
    struct si_shader *shader = sctx->queued.named.vs;
 
@@ -1746,7 +1747,7 @@ static unsigned si_get_spi_shader_col_format(struct si_shader *shader)
    return value;
 }
 
-static void si_emit_shader_ps(struct si_context *sctx)
+static void si_emit_shader_ps(struct si_context *sctx, unsigned index)
 {
    struct si_shader *shader = sctx->queued.named.ps;
 
@@ -4163,7 +4164,7 @@ void si_init_tess_factor_ring(struct si_context *sctx)
    si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 }
 
-static void si_emit_vgt_pipeline_state(struct si_context *sctx)
+static void si_emit_vgt_pipeline_state(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
@@ -4173,7 +4174,7 @@ static void si_emit_vgt_pipeline_state(struct si_context *sctx)
    radeon_end_update_context_roll(sctx);
 }
 
-static void si_emit_scratch_state(struct si_context *sctx)
+static void si_emit_scratch_state(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
@@ -4511,7 +4512,7 @@ void si_update_tess_io_layout_state(struct si_context *sctx)
    si_mark_atom_dirty(sctx, &sctx->atoms.s.tess_io_layout);
 }
 
-static void si_emit_tess_io_layout_state(struct si_context *sctx)
+static void si_emit_tess_io_layout_state(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    radeon_begin(cs);
@@ -4603,7 +4604,7 @@ void si_init_screen_live_shader_cache(struct si_screen *sscreen)
 }
 
 template<int NUM_INTERP>
-static void si_emit_spi_map(struct si_context *sctx)
+static void si_emit_spi_map(struct si_context *sctx, unsigned index)
 {
    struct si_shader *ps = sctx->shader.ps.current;
    struct si_shader_info *psinfo = ps ? &ps->selector->info : NULL;

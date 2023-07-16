@@ -22,7 +22,8 @@ struct si_context;
  * command buffer (AKA indirect buffer, AKA IB, AKA command stream, AKA CS).
  */
 struct si_atom {
-   void (*emit)(struct si_context *ctx);
+   /* The index is only used by si_pm4_emit_state. Non-pm4 atoms don't use it. */
+   void (*emit)(struct si_context *ctx, unsigned index);
 };
 
 struct si_pm4_state {

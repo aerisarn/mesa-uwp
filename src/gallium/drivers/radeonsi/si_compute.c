@@ -1027,7 +1027,7 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
       sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
 
    if (sctx->has_graphics && si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
-      sctx->atoms.s.render_cond.emit(sctx);
+      sctx->atoms.s.render_cond.emit(sctx, -1);
       si_set_atom_dirty(sctx, &sctx->atoms.s.render_cond, false);
    }
 

@@ -1323,7 +1323,7 @@ struct si_context {
    /* When b.draw_vbo is a wrapper, real_draw_vbo is the real draw_vbo function */
    pipe_draw_vbo_func real_draw_vbo;
    pipe_draw_vertex_state_func real_draw_vertex_state;
-   void (*emit_spi_map[33])(struct si_context *sctx);
+   void (*emit_spi_map[33])(struct si_context *sctx, unsigned index);
 
    /* SQTT */
    struct ac_sqtt *sqtt;

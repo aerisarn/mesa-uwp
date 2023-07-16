@@ -12,7 +12,7 @@
 
 #include <stddef.h>
 
-static void emit_shader_query(struct si_context *sctx)
+static void emit_shader_query(struct si_context *sctx, unsigned index)
 {
    assert(!list_is_empty(&sctx->shader_query_buffers));
 

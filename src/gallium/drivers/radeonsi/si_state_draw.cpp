@@ -1942,7 +1942,8 @@ static void si_emit_all_states(struct si_context *sctx, unsigned skip_atom_mask)
    unsigned mask = sctx->dirty_atoms & ~skip_atom_mask;
    if (mask) {
       do {
-         sctx->atoms.array[u_bit_scan(&mask)].emit(sctx);
+         unsigned i = u_bit_scan(&mask);
+         sctx->atoms.array[i].emit(sctx, i);
       } while (mask);
 
       sctx->dirty_atoms &= skip_atom_mask;
@@ -2278,14 +2279,14 @@ static void si_draw(struct pipe_context *ctx,
     * do it now.
     */
    if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
-      sctx->atoms.s.render_cond.emit(sctx);
+      sctx->atoms.s.render_cond.emit(sctx, -1);
       sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
    }
 
    /* This needs to be done after cache flushes because ACQUIRE_MEM rolls the context. */
    if (GFX_VERSION == GFX9 && gfx9_scissor_bug &&
        (sctx->context_roll || si_is_atom_dirty(sctx, &sctx->atoms.s.scissors))) {
-      sctx->atoms.s.scissors.emit(sctx);
+      sctx->atoms.s.scissors.emit(sctx, -1);
       sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.scissors);
    }
    assert(sctx->dirty_atoms == 0);

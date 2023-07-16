@@ -1027,7 +1027,7 @@ static void emit_set_predicate(struct si_context *ctx, struct si_resource *buf, 
    radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, buf, RADEON_USAGE_READ | RADEON_PRIO_QUERY);
 }
 
-static void si_emit_query_predication(struct si_context *ctx)
+static void si_emit_query_predication(struct si_context *ctx, unsigned index)
 {
    uint32_t op;
    bool flag_wait, invert;

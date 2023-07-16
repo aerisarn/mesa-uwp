@@ -50,7 +50,7 @@ static unsigned si_pack_float_12p4(float x)
  * CB_TARGET_MASK is emitted here to avoid a hang with dual source blending
  * if there is not enough PS outputs.
  */
-static void si_emit_cb_render_state(struct si_context *sctx)
+static void si_emit_cb_render_state(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    struct si_state_blend *blend = sctx->queued.named.blend;
@@ -806,7 +806,7 @@ static void si_set_blend_color(struct pipe_context *ctx, const struct pipe_blend
    si_mark_atom_dirty(sctx, &sctx->atoms.s.blend_color);
 }
 
-static void si_emit_blend_color(struct si_context *sctx)
+static void si_emit_blend_color(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
@@ -840,7 +840,7 @@ static void si_set_clip_state(struct pipe_context *ctx, const struct pipe_clip_s
    si_set_internal_const_buffer(sctx, SI_VS_CONST_CLIP_PLANES, &cb);
 }
 
-static void si_emit_clip_state(struct si_context *sctx)
+static void si_emit_clip_state(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
@@ -850,7 +850,7 @@ static void si_emit_clip_state(struct si_context *sctx)
    radeon_end();
 }
 
-static void si_emit_clip_regs(struct si_context *sctx)
+static void si_emit_clip_regs(struct si_context *sctx, unsigned index)
 {
    struct si_shader *vs = si_get_vs(sctx)->current;
    struct si_shader_selector *vs_sel = vs->selector;
@@ -1253,7 +1253,7 @@ static void si_delete_rs_state(struct pipe_context *ctx, void *state)
 /*
  * inferred state between dsa and stencil ref
  */
-static void si_emit_stencil_ref(struct si_context *sctx)
+static void si_emit_stencil_ref(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    struct pipe_stencil_ref *ref = &sctx->stencil_ref.state;
@@ -1529,7 +1529,7 @@ void si_restore_qbo_state(struct si_context *sctx, struct si_qbo_state *st)
    sctx->b.set_constant_buffer(&sctx->b, PIPE_SHADER_COMPUTE, 0, true, &st->saved_const0);
 }
 
-static void si_emit_db_render_state(struct si_context *sctx)
+static void si_emit_db_render_state(struct si_context *sctx, unsigned index)
 {
    unsigned db_shader_control, db_render_control, db_count_control, vrs_override_cntl = 0;
 
@@ -3099,7 +3099,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
    }
 }
 
-static void si_emit_framebuffer_state(struct si_context *sctx)
+static void si_emit_framebuffer_state(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    struct pipe_framebuffer_state *state = &sctx->framebuffer.state;
@@ -3617,7 +3617,7 @@ static bool si_out_of_order_rasterization(struct si_context *sctx)
    return true;
 }
 
-static void si_emit_msaa_config(struct si_context *sctx)
+static void si_emit_msaa_config(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned num_tile_pipes = sctx->screen->info.num_tile_pipes;
@@ -4834,7 +4834,7 @@ static void si_set_sample_mask(struct pipe_context *ctx, unsigned sample_mask)
    si_mark_atom_dirty(sctx, &sctx->atoms.s.sample_mask);
 }
 
-static void si_emit_sample_mask(struct si_context *sctx)
+static void si_emit_sample_mask(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned mask = sctx->sample_mask;

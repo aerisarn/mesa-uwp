@@ -337,7 +337,7 @@ void si_pm4_emit(struct si_context *sctx, struct si_pm4_state *state)
    radeon_end();
 
    if (state->atom.emit)
-      state->atom.emit(sctx);
+      state->atom.emit(sctx, -1);
 }
 
 void si_pm4_reset_emitted(struct si_context *sctx)

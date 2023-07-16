@@ -232,7 +232,7 @@ static void si_flush_vgt_streamout(struct si_context *sctx)
    radeon_end();
 }
 
-static void si_emit_streamout_begin(struct si_context *sctx)
+static void si_emit_streamout_begin(struct si_context *sctx, unsigned index)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    struct si_streamout_target **t = sctx->streamout.targets;
@@ -360,7 +360,7 @@ void si_emit_streamout_end(struct si_context *sctx)
  * are no buffers bound.
  */
 
-static void si_emit_streamout_enable(struct si_context *sctx)
+static void si_emit_streamout_enable(struct si_context *sctx, unsigned index)
 {
    assert(sctx->gfx_level < GFX11);
 
