@@ -2227,12 +2227,9 @@ static void si_draw(struct pipe_context *ctx,
       si_gfx_resources_add_all_to_bo_list(sctx);
 
    /* Graphics shader descriptors must be uploaded after si_update_shaders because
-    * it binds tess and GS ring buffers.
+    * si_update_shaders binds tess and GS ring buffers.
     */
-   if (unlikely(!si_upload_graphics_shader_descriptors(sctx))) {
-      DRAW_CLEANUP;
-      return;
-   }
+   si_upload_graphics_shader_descriptors(sctx);
 
    /* This is the optimal packet order:
     * Set all states first, so that all SET packets are processed in parallel with previous

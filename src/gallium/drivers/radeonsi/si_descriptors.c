@@ -106,7 +106,7 @@ static void si_release_descriptors(struct si_descriptors *desc)
    FREE(desc->list);
 }
 
-static bool si_upload_descriptors(struct si_context *sctx, struct si_descriptors *desc)
+static void si_upload_descriptors(struct si_context *sctx, struct si_descriptors *desc)
 {
    unsigned slot_size = desc->element_dw_size * 4;
    unsigned first_slot_offset = desc->first_active_slot * slot_size;
@@ -117,7 +117,7 @@ static bool si_upload_descriptors(struct si_context *sctx, struct si_descriptors
     * a shader using them.
     */
    if (!upload_size)
-      return true;
+      return;
 
    /* If there is just one active descriptor, bind it directly. */
    if ((int)desc->first_active_slot == desc->slot_index_to_bind_directly &&
@@ -128,7 +128,7 @@ static bool si_upload_descriptors(struct si_context *sctx, struct si_descriptors
       si_resource_reference(&desc->buffer, NULL);
       desc->gpu_list = NULL;
       desc->gpu_address = si_desc_extract_buffer_address(descriptor);
-      return true;
+      return;
    }
 
    uint32_t *ptr;
@@ -137,8 +137,9 @@ static bool si_upload_descriptors(struct si_context *sctx, struct si_descriptors
                   si_optimal_tcc_alignment(sctx, upload_size), &buffer_offset,
                   (struct pipe_resource **)&desc->buffer, (void **)&ptr);
    if (!desc->buffer) {
-      desc->gpu_address = 0;
-      return false; /* skip the draw call */
+      fprintf(stderr, "radeonsi: not enough memory to upload descriptors\n");
+      abort();
+      return;
    }
 
    util_memcpy_cpu_to_le32(ptr, (char *)desc->list + first_slot_offset, upload_size);
@@ -154,7 +155,6 @@ static bool si_upload_descriptors(struct si_context *sctx, struct si_descriptors
    assert(desc->buffer->flags & RADEON_FLAG_32BIT);
    assert((desc->buffer->gpu_address >> 32) == sctx->screen->info.address32_hi);
    assert((desc->gpu_address >> 32) == sctx->screen->info.address32_hi);
-   return true;
 }
 
 static void
@@ -2397,8 +2397,7 @@ static unsigned si_create_bindless_descriptor(struct si_context *sctx, uint32_t 
 
    /* Re-upload the whole array of bindless descriptors into a new buffer.
     */
-   if (!si_upload_descriptors(sctx, desc))
-      return 0;
+   si_upload_descriptors(sctx, desc);
 
    /* Make sure to re-emit the shader pointers for all stages. */
    sctx->graphics_bindless_pointer_dirty = true;
@@ -2836,7 +2835,7 @@ void si_init_all_descriptors(struct si_context *sctx)
                       0, ~0u, false, true, 16, 32, 0);
 }
 
-static bool si_upload_shader_descriptors(struct si_context *sctx, unsigned mask)
+static void si_upload_shader_descriptors(struct si_context *sctx, unsigned mask)
 {
    unsigned dirty = sctx->descriptors_dirty & mask;
 
@@ -2844,8 +2843,7 @@ static bool si_upload_shader_descriptors(struct si_context *sctx, unsigned mask)
       unsigned iter_mask = dirty;
 
       do {
-         if (!si_upload_descriptors(sctx, &sctx->descriptors[u_bit_scan(&iter_mask)]))
-            return false;
+         si_upload_descriptors(sctx, &sctx->descriptors[u_bit_scan(&iter_mask)]);
       } while (iter_mask);
 
       sctx->descriptors_dirty &= ~dirty;
@@ -2854,23 +2852,22 @@ static bool si_upload_shader_descriptors(struct si_context *sctx, unsigned mask)
    }
 
    si_upload_bindless_descriptors(sctx);
-   return true;
 }
 
-bool si_upload_graphics_shader_descriptors(struct si_context *sctx)
+void si_upload_graphics_shader_descriptors(struct si_context *sctx)
 {
    const unsigned mask = u_bit_consecutive(0, SI_DESCS_FIRST_COMPUTE);
-   return si_upload_shader_descriptors(sctx, mask);
+   si_upload_shader_descriptors(sctx, mask);
 }
 
-bool si_upload_compute_shader_descriptors(struct si_context *sctx)
+void si_upload_compute_shader_descriptors(struct si_context *sctx)
 {
    /* This does not update internal bindings as that is not needed for compute shaders
     * and the input buffer is using the same SGPR's anyway.
     */
    const unsigned mask =
       u_bit_consecutive(SI_DESCS_FIRST_COMPUTE, SI_NUM_DESCS - SI_DESCS_FIRST_COMPUTE);
-   return si_upload_shader_descriptors(sctx, mask);
+   si_upload_shader_descriptors(sctx, mask);
 }
 
 void si_release_all_descriptors(struct si_context *sctx)
