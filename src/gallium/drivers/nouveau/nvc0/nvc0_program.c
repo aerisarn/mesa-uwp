@@ -590,19 +590,8 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
    info->type = prog->type;
    info->target = chipset;
 
-   info->bin.sourceRep = prog->pipe.type;
-   switch (prog->pipe.type) {
-   case PIPE_SHADER_IR_TGSI:
-      info->bin.source = (void *)prog->pipe.tokens;
-      break;
-   case PIPE_SHADER_IR_NIR:
-      info->bin.source = (void *)nir_shader_clone(NULL, prog->pipe.ir.nir);
-      break;
-   default:
-      assert(!"unsupported IR!");
-      free(info);
-      return false;
-   }
+   info->bin.sourceRep = PIPE_SHADER_IR_NIR;
+   info->bin.source = (void *)nir_shader_clone(NULL, prog->nir);
 
 #ifndef NDEBUG
    info->target = debug_get_num_option("NV50_PROG_CHIPSET", chipset);
@@ -747,9 +736,9 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
    if (info_out.io.fp64)
       prog->hdr[0] |= 1 << 27;
 
-   if (prog->pipe.stream_output.num_outputs)
+   if (prog->stream_output.num_outputs)
       prog->tfb = nvc0_program_create_tfb_state(&info_out,
-                                                &prog->pipe.stream_output);
+                                                &prog->stream_output);
 
    util_debug_message(debug, SHADER_INFO,
                       "type: %d, local: %d, shared: %d, gpr: %d, inst: %d, bytes: %d, cached: %zd",
@@ -988,7 +977,7 @@ nvc0_program_library_upload(struct nvc0_context *nvc0)
 void
 nvc0_program_destroy(struct nvc0_context *nvc0, struct nvc0_program *prog)
 {
-   const struct pipe_shader_state pipe = prog->pipe;
+   struct nir_shader *nir = prog->nir;
    const uint8_t type = prog->type;
 
    if (prog->mem) {
@@ -1007,7 +996,7 @@ nvc0_program_destroy(struct nvc0_context *nvc0, struct nvc0_program *prog)
 
    memset(prog, 0, sizeof(*prog));
 
-   prog->pipe = pipe;
+   prog->nir = nir;
    prog->type = type;
 }
 

@@ -607,15 +607,13 @@ nvc0_sp_state_create(struct pipe_context *pipe,
       return NULL;
 
    prog->type = type;
-   prog->pipe.type = cso->type;
 
    switch(cso->type) {
    case PIPE_SHADER_IR_TGSI:
-      prog->pipe.type = PIPE_SHADER_IR_NIR;
-      prog->pipe.ir.nir = tgsi_to_nir(cso->tokens, pipe->screen, false);
+      prog->nir = tgsi_to_nir(cso->tokens, pipe->screen, false);
       break;
    case PIPE_SHADER_IR_NIR:
-      prog->pipe.ir.nir = cso->ir.nir;
+      prog->nir = cso->ir.nir;
       break;
    default:
       assert(!"unsupported IR!");
@@ -624,7 +622,7 @@ nvc0_sp_state_create(struct pipe_context *pipe,
    }
 
    if (cso->stream_output.num_outputs)
-      prog->pipe.stream_output = cso->stream_output;
+      prog->stream_output = cso->stream_output;
 
    prog->translated = nvc0_program_translate(
       prog, nvc0_context(pipe)->screen->base.device->chipset,
@@ -644,10 +642,7 @@ nvc0_sp_state_delete(struct pipe_context *pipe, void *hwcso)
    nvc0_program_destroy(nvc0_context(pipe), prog);
    simple_mtx_unlock(&nvc0->screen->state_lock);
 
-   if (prog->pipe.type == PIPE_SHADER_IR_TGSI)
-      FREE((void *)prog->pipe.tokens);
-   else if (prog->pipe.type == PIPE_SHADER_IR_NIR)
-      ralloc_free(prog->pipe.ir.nir);
+   ralloc_free(prog->nir);
    FREE(prog);
 }
 
@@ -741,7 +736,6 @@ nvc0_cp_state_create(struct pipe_context *pipe,
    if (!prog)
       return NULL;
    prog->type = PIPE_SHADER_COMPUTE;
-   prog->pipe.type = cso->ir_type;
 
    prog->cp.smem_size = cso->static_shared_mem;
    prog->parm_size = cso->req_input_mem;
@@ -749,20 +743,18 @@ nvc0_cp_state_create(struct pipe_context *pipe,
    switch(cso->ir_type) {
    case PIPE_SHADER_IR_TGSI: {
       const struct tgsi_token *tokens = cso->prog;
-      prog->pipe.type = PIPE_SHADER_IR_NIR;
-      prog->pipe.ir.nir = tgsi_to_nir(tokens, pipe->screen, false);
+      prog->nir = tgsi_to_nir(tokens, pipe->screen, false);
       break;
    }
    case PIPE_SHADER_IR_NIR:
-      prog->pipe.ir.nir = (nir_shader *)cso->prog;
+      prog->nir = (nir_shader *)cso->prog;
       break;
    case PIPE_SHADER_IR_NIR_SERIALIZED: {
       struct blob_reader reader;
       const struct pipe_binary_program_header *hdr = cso->prog;
 
       blob_reader_init(&reader, hdr->blob, hdr->num_bytes);
-      prog->pipe.ir.nir = nir_deserialize(NULL, pipe->screen->get_compiler_options(pipe->screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE), &reader);
-      prog->pipe.type = PIPE_SHADER_IR_NIR;
+      prog->nir = nir_deserialize(NULL, pipe->screen->get_compiler_options(pipe->screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE), &reader);
       break;
    }
    default:
