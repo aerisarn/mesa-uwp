@@ -2217,15 +2217,6 @@ static void si_draw(struct pipe_context *ctx,
       }
    }
 
-   /* This must be called after si_need_cs_space, because we must let
-    * need_cs_space flush before we add buffers to the buffer list.
-    *
-    * This must be done after si_update_shaders because si_update_shaders can
-    * flush the CS when enabling tess and GS rings.
-    */
-   if (sctx->bo_list_add_all_gfx_resources)
-      si_gfx_resources_add_all_to_bo_list(sctx);
-
    /* This is the optimal packet order:
     * Set all states first, so that all SET packets are processed in parallel with previous
     * draw calls. Then flush caches and wait if needed. Then draw and prefetch at the end.

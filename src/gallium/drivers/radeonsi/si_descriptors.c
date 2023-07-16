@@ -2778,6 +2778,8 @@ static void si_resident_buffers_add_all_to_bo_list(struct si_context *sctx)
    sctx->bo_list_add_all_resident_resources = false;
 }
 
+static void si_emit_gfx_resources_add_all_to_bo_list(struct si_context *sctx, unsigned index);
+
 /* INIT/DEINIT/UPLOAD */
 
 void si_init_all_descriptors(struct si_context *sctx)
@@ -2881,7 +2883,7 @@ void si_init_all_descriptors(struct si_context *sctx)
 
    sctx->b.set_polygon_stipple = si_set_polygon_stipple;
 
-   /* Shader user data. */
+   sctx->atoms.s.gfx_add_all_to_bo_list.emit = si_emit_gfx_resources_add_all_to_bo_list;
    sctx->atoms.s.gfx_shader_pointers.emit = si_emit_graphics_shader_pointers;
 
    /* Set default and immutable mappings. */
@@ -2986,7 +2988,7 @@ bool si_gfx_resources_check_encrypted(struct si_context *sctx)
    return use_encrypted_bo;
 }
 
-void si_gfx_resources_add_all_to_bo_list(struct si_context *sctx)
+static void si_emit_gfx_resources_add_all_to_bo_list(struct si_context *sctx, unsigned index)
 {
    for (unsigned i = 0; i < SI_NUM_GRAPHICS_SHADERS; i++) {
       si_buffer_resources_begin_new_cs(sctx, &sctx->const_and_shader_buffers[i]);
@@ -3005,9 +3007,6 @@ void si_gfx_resources_add_all_to_bo_list(struct si_context *sctx)
 
    if (sctx->bo_list_add_all_resident_resources)
       si_resident_buffers_add_all_to_bo_list(sctx);
-
-   assert(sctx->bo_list_add_all_gfx_resources);
-   sctx->bo_list_add_all_gfx_resources = false;
 }
 
 bool si_compute_resources_check_encrypted(struct si_context *sctx)
@@ -3048,7 +3047,7 @@ void si_add_all_descriptors_to_bo_list(struct si_context *sctx)
    si_add_descriptors_to_bo_list(sctx, &sctx->bindless_descriptors);
 
    sctx->bo_list_add_all_resident_resources = true;
-   sctx->bo_list_add_all_gfx_resources = true;
+   si_mark_atom_dirty(sctx, &sctx->atoms.s.gfx_add_all_to_bo_list);
    sctx->bo_list_add_all_compute_resources = true;
 }
 

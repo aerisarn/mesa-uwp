@@ -1117,7 +1117,6 @@ struct si_context {
    struct si_samplers samplers[SI_NUM_SHADERS];
    struct si_images images[SI_NUM_SHADERS];
    bool bo_list_add_all_resident_resources;
-   bool bo_list_add_all_gfx_resources;
    bool bo_list_add_all_compute_resources;
 
    /* other shader resources */

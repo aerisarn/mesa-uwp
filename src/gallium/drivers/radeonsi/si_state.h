@@ -183,6 +183,7 @@ union si_state_atoms {
    struct si_atoms_s {
       /* This must be first. */
       struct si_atom pm4_states[SI_NUM_STATES];
+      struct si_atom gfx_add_all_to_bo_list;
       struct si_atom streamout_begin;
       struct si_atom streamout_enable; /* must be after streamout_begin */
       struct si_atom framebuffer;
@@ -543,7 +544,6 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource
                         unsigned element_size, unsigned index_stride, uint64_t offset);
 void si_init_all_descriptors(struct si_context *sctx);
 void si_release_all_descriptors(struct si_context *sctx);
-void si_gfx_resources_add_all_to_bo_list(struct si_context *sctx);
 void si_compute_resources_add_all_to_bo_list(struct si_context *sctx);
 bool si_gfx_resources_check_encrypted(struct si_context *sctx);
 bool si_compute_resources_check_encrypted(struct si_context *sctx);
