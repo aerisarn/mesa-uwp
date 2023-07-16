@@ -4173,6 +4173,19 @@ static void si_emit_vgt_pipeline_state(struct si_context *sctx, unsigned index)
    radeon_opt_set_context_reg(sctx, R_028B54_VGT_SHADER_STAGES_EN, SI_TRACKED_VGT_SHADER_STAGES_EN,
                               sctx->vgt_shader_stages_en);
    radeon_end_update_context_roll(sctx);
+
+   if (sctx->gfx_level >= GFX10) {
+      uint32_t ge_cntl = sctx->ge_cntl;
+
+      if (sctx->gfx_level < GFX11 && sctx->shader.tes.cso) {
+         /* This must be a multiple of VGT_LS_HS_CONFIG.NUM_PATCHES. */
+         ge_cntl |= S_03096C_PRIM_GRP_SIZE_GFX10(sctx->num_patches_per_workgroup);
+      }
+
+      radeon_begin_again(cs);
+      radeon_opt_set_uconfig_reg(sctx, R_03096C_GE_CNTL, SI_TRACKED_GE_CNTL, ge_cntl);
+      radeon_end();
+   }
 }
 
 static void si_emit_scratch_state(struct si_context *sctx, unsigned index)
@@ -4446,7 +4459,10 @@ void si_update_tess_io_layout_state(struct si_context *sctx)
    if (has_primid_instancing_bug && tess_uses_primid)
       num_patches = 1;
 
-   sctx->num_patches_per_workgroup = num_patches;
+   if (sctx->num_patches_per_workgroup != num_patches) {
+      sctx->num_patches_per_workgroup = num_patches;
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.vgt_pipeline_state);
+   }
 
    unsigned output_patch0_offset = input_patch_size * num_patches;
    unsigned perpatch_output_offset = output_patch0_offset + pervertex_output_patch_size;

@@ -1071,6 +1071,7 @@ struct si_context {
    bool cs_preamble_has_vgt_flush;
    bool cs_preamble_has_vgt_flush_tmz;
    uint32_t vgt_shader_stages_en;
+   uint32_t ge_cntl;
 
    /* shaders */
    union {

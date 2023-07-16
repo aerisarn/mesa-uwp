@@ -183,8 +183,56 @@ static bool si_update_shaders(struct si_context *sctx)
                                        si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->wave_size == 32);
    }
 
-   if (vgt_stages != sctx->vgt_shader_stages_en) {
+   /* Update GE_CNTL. */
+   uint32_t ge_cntl = 0;
+
+   if (GFX_VERSION >= GFX10) {
+      union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
+
+      if (NGG) {
+         if (HAS_TESS) {
+            if (GFX_VERSION >= GFX11) {
+               ge_cntl = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ge_cntl |
+                         S_03096C_BREAK_PRIMGRP_AT_EOI(key.u.tess_uses_prim_id);
+            } else {
+               /* PRIM_GRP_SIZE_GFX10 is set by si_emit_vgt_pipeline_state. */
+               ge_cntl = S_03096C_VERT_GRP_SIZE(0) |
+                         S_03096C_BREAK_WAVE_AT_EOI(key.u.tess_uses_prim_id);
+            }
+         } else {
+            ge_cntl = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ge_cntl;
+         }
+      } else {
+         unsigned primgroup_size;
+         unsigned vertgroup_size;
+         assert(GFX_VERSION < GFX11);
+
+         if (HAS_TESS) {
+            primgroup_size = 0; /* this is set by si_emit_vgt_pipeline_state */
+            vertgroup_size = 0;
+         } else if (HAS_GS) {
+            unsigned vgt_gs_onchip_cntl = sctx->shader.gs.current->gs.vgt_gs_onchip_cntl;
+            primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(vgt_gs_onchip_cntl);
+            vertgroup_size = G_028A44_ES_VERTS_PER_SUBGRP(vgt_gs_onchip_cntl);
+         } else {
+            primgroup_size = 128; /* recommended without a GS and tess */
+            vertgroup_size = 0;
+         }
+
+         ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(primgroup_size) |
+                   S_03096C_VERT_GRP_SIZE(vertgroup_size) |
+                   S_03096C_BREAK_WAVE_AT_EOI(key.u.uses_tess && key.u.tess_uses_prim_id);
+      }
+
+      /* Note: GE_CNTL.PACKET_TO_ONE_PA should only be set if LINE_STIPPLE_TEX_ENA == 1.
+       * Since we don't use that, we don't have to do anything.
+       */
+   }
+
+   if (vgt_stages != sctx->vgt_shader_stages_en ||
+       (GFX_VERSION >= GFX10 && ge_cntl != sctx->ge_cntl)) {
       sctx->vgt_shader_stages_en = vgt_stages;
+      sctx->ge_cntl = ge_cntl;
       si_mark_atom_dirty(sctx, &sctx->atoms.s.vgt_pipeline_state);
    }
 
@@ -1010,59 +1058,6 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
    radeon_end();
 }
 
-/* GFX10 removed IA_MULTI_VGT_PARAM in exchange for GE_CNTL.
- * We overload last_multi_vgt_param.
- */
-template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG> ALWAYS_INLINE
-static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
-{
-   union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
-   unsigned ge_cntl;
-
-   if (NGG) {
-      if (HAS_TESS) {
-         if (GFX_VERSION >= GFX11) {
-            ge_cntl = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ge_cntl |
-                      S_03096C_BREAK_PRIMGRP_AT_EOI(key.u.tess_uses_prim_id);
-         } else {
-            ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(num_patches) |
-                      S_03096C_VERT_GRP_SIZE(0) |
-                      S_03096C_BREAK_WAVE_AT_EOI(key.u.tess_uses_prim_id);
-         }
-      } else {
-         ge_cntl = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ge_cntl;
-      }
-   } else {
-      unsigned primgroup_size;
-      unsigned vertgroup_size;
-      assert(GFX_VERSION < GFX11);
-
-      if (HAS_TESS) {
-         primgroup_size = num_patches; /* must be a multiple of NUM_PATCHES */
-         vertgroup_size = 0;
-      } else if (HAS_GS) {
-         unsigned vgt_gs_onchip_cntl = sctx->shader.gs.current->gs.vgt_gs_onchip_cntl;
-         primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(vgt_gs_onchip_cntl);
-         vertgroup_size = G_028A44_ES_VERTS_PER_SUBGRP(vgt_gs_onchip_cntl);
-      } else {
-         primgroup_size = 128; /* recommended without a GS and tess */
-         vertgroup_size = 0;
-      }
-
-      ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(primgroup_size) |
-                S_03096C_VERT_GRP_SIZE(vertgroup_size) |
-                S_03096C_BREAK_WAVE_AT_EOI(key.u.uses_tess && key.u.tess_uses_prim_id);
-   }
-
-   /* Note: GE_CNTL.PACKET_TO_ONE_PA should only be set if LINE_STIPPLE_TEX_ENA == 1.
-    * Since we don't use that, we don't have to do anything.
-    */
-
-   radeon_begin(&sctx->gfx_cs);
-   radeon_opt_set_uconfig_reg(sctx, R_03096C_GE_CNTL, SI_TRACKED_GE_CNTL, ge_cntl);
-   radeon_end();
-}
-
 template <amd_gfx_level GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
           si_is_draw_vertex_state IS_DRAW_VERTEX_STATE> ALWAYS_INLINE
 static void si_emit_draw_registers(struct si_context *sctx,
@@ -1074,12 +1069,11 @@ static void si_emit_draw_registers(struct si_context *sctx,
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned num_patches = HAS_TESS ? sctx->num_patches_per_workgroup : 0;
 
-   if (GFX_VERSION >= GFX10)
-      gfx10_emit_ge_cntl<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx, num_patches);
-   else
+   if (GFX_VERSION <= GFX9) {
       si_emit_ia_multi_vgt_param<GFX_VERSION, HAS_TESS, HAS_GS, IS_DRAW_VERTEX_STATE>
          (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
           min_vertex_count);
+   }
 
    radeon_begin(cs);
 
