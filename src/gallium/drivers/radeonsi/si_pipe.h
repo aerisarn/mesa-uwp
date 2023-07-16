@@ -1272,7 +1272,6 @@ struct si_context {
    /* Misc stats. */
    unsigned num_draw_calls;
    unsigned num_decompress_calls;
-   unsigned num_prim_restart_calls;
    unsigned num_compute_calls;
    unsigned num_cp_dma_calls;
    unsigned num_vs_flushes;

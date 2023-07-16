@@ -2324,8 +2324,6 @@ static void si_draw(struct pipe_context *ctx,
       sctx->num_decompress_calls++;
    } else {
       sctx->num_draw_calls += num_draws;
-      if (primitive_restart)
-         sctx->num_prim_restart_calls += num_draws;
    }
 
    if (sctx->framebuffer.state.zsbuf) {
