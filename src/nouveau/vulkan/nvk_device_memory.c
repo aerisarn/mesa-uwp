@@ -12,6 +12,30 @@
 #include "nvtypes.h"
 #include "nvk_cl902d.h"
 
+/* Supports opaque fd only */
+const VkExternalMemoryProperties nvk_opaque_fd_mem_props = {
+   .externalMemoryFeatures =
+      VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+      VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT,
+   .exportFromImportedHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+   .compatibleHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+};
+
+/* Supports opaque fd and dma_buf. */
+const VkExternalMemoryProperties nvk_dma_buf_mem_props = {
+   .externalMemoryFeatures =
+      VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+      VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT,
+   .exportFromImportedHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+   .compatibleHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+};
+
 static VkResult
 zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
 {

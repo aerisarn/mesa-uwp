@@ -36,4 +36,7 @@ void nvk_free_memory(struct nvk_device *device,
                      struct nvk_device_memory *mem,
                      const VkAllocationCallbacks *pAllocator);
 
+extern const VkExternalMemoryProperties nvk_opaque_fd_mem_props;
+extern const VkExternalMemoryProperties nvk_dma_buf_mem_props;
+
 #endif

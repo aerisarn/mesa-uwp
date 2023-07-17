@@ -104,6 +104,10 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
 {
    VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
 
+   const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
+      vk_find_struct_const(pImageFormatInfo->pNext,
+                           PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO);
+
    /* Initialize to zero in case we return VK_ERROR_FORMAT_NOT_SUPPORTED */
    memset(&pImageFormatProperties->imageFormatProperties, 0,
           sizeof(pImageFormatProperties->imageFormatProperties));
@@ -171,6 +175,59 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
          return VK_ERROR_FORMAT_NOT_SUPPORTED;
    }
 
+   const VkExternalMemoryProperties *ext_mem_props = NULL;
+   if (external_info != NULL && external_info->handleType != 0) {
+      bool tiling_has_explicit_layout;
+      switch (pImageFormatInfo->tiling) {
+      case VK_IMAGE_TILING_LINEAR:
+      case VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT:
+         tiling_has_explicit_layout = true;
+         break;
+      case VK_IMAGE_TILING_OPTIMAL:
+         tiling_has_explicit_layout = false;
+         break;
+      default:
+         unreachable("Unsupported VkImageTiling");
+      }
+
+      switch (external_info->handleType) {
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+         /* No special restrictions */
+         if (tiling_has_explicit_layout) {
+            /* With an explicit memory layout, we don't care which type of
+             * fd the image belongs too. Both OPAQUE_FD and DMA_BUF are
+             * interchangeable here.
+             */
+            ext_mem_props = &nvk_dma_buf_mem_props;
+         } else {
+            ext_mem_props = &nvk_opaque_fd_mem_props;
+         }
+         break;
+
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+         if (!tiling_has_explicit_layout) {
+            return vk_errorf(pdev, VK_ERROR_FORMAT_NOT_SUPPORTED,
+                             "VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT "
+                             "requires VK_IMAGE_TILING_LINEAR or "
+                             "VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT");
+         }
+         ext_mem_props = &nvk_dma_buf_mem_props;
+         break;
+
+      default:
+         /* From the Vulkan 1.3.256 spec:
+          *
+          *    "If handleType is not compatible with the [parameters] in
+          *    VkPhysicalDeviceImageFormatInfo2, then
+          *    vkGetPhysicalDeviceImageFormatProperties2 returns
+          *    VK_ERROR_FORMAT_NOT_SUPPORTED."
+          */
+         return vk_errorf(pdev, VK_ERROR_FORMAT_NOT_SUPPORTED,
+                          "unsupported VkExternalMemoryTypeFlagBits 0x%x",
+                          external_info->handleType);
+      }
+   }
+
    pImageFormatProperties->imageFormatProperties = (VkImageFormatProperties) {
       .maxExtent = maxExtent,
       .maxMipLevels = maxMipLevels,
@@ -181,6 +238,21 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
 
    vk_foreach_struct(s, pImageFormatProperties->pNext) {
       switch (s->sType) {
+      case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES: {
+         VkExternalImageFormatProperties *p = (void *)s;
+         /* From the Vulkan 1.3.256 spec:
+          *
+          *    "If handleType is 0, vkGetPhysicalDeviceImageFormatProperties2
+          *    will behave as if VkPhysicalDeviceExternalImageFormatInfo was
+          *    not present, and VkExternalImageFormatProperties will be
+          *    ignored."
+          *
+          * This is true if and only if ext_mem_props == NULL
+          */
+         if (ext_mem_props != NULL)
+            p->externalMemoryProperties = *ext_mem_props;
+         break;
+      }
       default:
          nvk_debug_ignored_stype(s->sType);
          break;
