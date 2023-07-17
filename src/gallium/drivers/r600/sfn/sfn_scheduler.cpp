@@ -1001,6 +1001,8 @@ BlockScheduler::collect_ready_alu_vec(std::list<AluInstr *>& ready,
 
          if ((*i)->has_lds_access()) {
             priority = 100000;
+            if ((*i)->has_alu_flag(alu_is_lds))
+               priority += 100000;
          } else if (addr) {
             priority = 10000;
          } else if (AluGroup::has_t()) {
