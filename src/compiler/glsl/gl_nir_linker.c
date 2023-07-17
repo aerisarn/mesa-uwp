@@ -151,7 +151,7 @@ gl_nir_can_add_pointsize_to_program(const struct gl_constants *consts,
    }
 
    /* Ensure that there is enough attribute space to emit at least one primitive */
-   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+   if (num_components && nir->info.stage == MESA_SHADER_GEOMETRY) {
       if (num_components + needed_components > consts->Program[nir->info.stage].MaxOutputComponents)
          return false;
       num_components *= nir->info.gs.vertices_out;
