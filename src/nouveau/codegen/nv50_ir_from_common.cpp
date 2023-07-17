@@ -30,30 +30,6 @@ ConverterCommon::ConverterCommon(Program *prog, nv50_ir_prog_info *info,
       info(info),
       info_out(info_out) {}
 
-ConverterCommon::Subroutine *
-ConverterCommon::getSubroutine(unsigned ip)
-{
-   std::map<unsigned, Subroutine>::iterator it = sub.map.find(ip);
-
-   if (it == sub.map.end())
-      it = sub.map.insert(std::make_pair(
-              ip, Subroutine(new Function(prog, "SUB", ip)))).first;
-
-   return &it->second;
-}
-
-ConverterCommon::Subroutine *
-ConverterCommon::getSubroutine(Function *f)
-{
-   unsigned ip = f->getLabel();
-   std::map<unsigned, Subroutine>::iterator it = sub.map.find(ip);
-
-   if (it == sub.map.end())
-      it = sub.map.insert(std::make_pair(ip, Subroutine(f))).first;
-
-   return &it->second;
-}
-
 uint8_t
 ConverterCommon::translateInterpMode(const struct nv50_ir_varying *var, operation& op)
 {
