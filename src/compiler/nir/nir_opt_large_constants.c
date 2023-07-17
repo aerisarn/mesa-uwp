@@ -113,6 +113,7 @@ write_const_values(void *dst, const nir_const_value *src,
 struct small_constant {
    uint64_t data;
    uint32_t bit_size;
+   bool is_float;
    uint32_t bit_stride;
 };
 
@@ -251,9 +252,26 @@ get_small_constant(struct var_info *info, glsl_type_size_align_func size_align)
    nir_const_value values[64];
    read_const_values(values, info->constant_data, array_len, bit_size);
 
+   bool is_float = true;
+   if (bit_size < 16) {
+      is_float = false;
+   } else {
+      for (unsigned i = 0; i < array_len; i++) {
+         /* See if it's an easily convertible float.
+          * TODO: Compute greatest common divisor to support non-integer floats.
+          * TODO: Compute min value and add it to the result of
+          *       build_small_constant_load for handling negative floats.
+          */
+         uint64_t u = nir_const_value_as_float(values[i], bit_size);
+         nir_const_value fc = nir_const_value_for_float(u, bit_size);
+         is_float &= !memcmp(&fc, &values[i], bit_size / 8);
+      }
+   }
+
    uint32_t used_bits = 0;
    for (unsigned i = 0; i < array_len; i++) {
-      uint64_t u64_elem = nir_const_value_as_uint(values[i], bit_size);
+      uint64_t u64_elem = is_float ? nir_const_value_as_float(values[i], bit_size)
+                                   : nir_const_value_as_uint(values[i], bit_size);
       if (!u64_elem)
          continue;
 
@@ -272,13 +290,16 @@ get_small_constant(struct var_info *info, glsl_type_size_align_func size_align)
    info->is_small = true;
 
    for (unsigned i = 0; i < array_len; i++) {
-      uint64_t u64_elem = nir_const_value_as_uint(values[i], bit_size);
+      uint64_t u64_elem = is_float ? nir_const_value_as_float(values[i], bit_size)
+                                   : nir_const_value_as_uint(values[i], bit_size);
+
       info->small_constant.data |= u64_elem << (i * used_bits);
    }
 
    /* Limit bit_size >= 32 to avoid unnecessary conversions.  */
    info->small_constant.bit_size =
       MAX2(util_next_power_of_two(used_bits * array_len), 32);
+   info->small_constant.is_float = is_float;
    info->small_constant.bit_stride = used_bits;
 }
 
@@ -303,8 +324,11 @@ build_small_constant_load(nir_builder *b, nir_deref_instr *deref,
       /* Booleans are special-cased to be 32-bit */
       assert(glsl_type_is_boolean(deref->type));
       ret = nir_ine_imm(b, ret, 0);
-   } else if (bit_size != constant->bit_size) {
-      ret = nir_u2uN(b, ret, bit_size);
+   } else {
+      if (constant->is_float)
+         ret = nir_u2fN(b, ret, bit_size);
+      else if (bit_size != constant->bit_size)
+         ret = nir_u2uN(b, ret, bit_size);
    }
 
    return ret;
