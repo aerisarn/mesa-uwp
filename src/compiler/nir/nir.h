@@ -4883,6 +4883,51 @@ should_print_nir(UNUSED nir_shader *shader)
       nir_print_shader(nir, stdout);                         \
 })
 
+#define _NIR_LOOP_PASS(progress, idempotent, skip, nir, pass, ...)   \
+do {                                                                 \
+   bool nir_loop_pass_progress = false;                              \
+   if (!_mesa_set_search(skip, (void (*)())&pass))                   \
+      NIR_PASS(nir_loop_pass_progress, nir, pass, ##__VA_ARGS__);    \
+   if (nir_loop_pass_progress)                                       \
+      _mesa_set_clear(skip, NULL);                                   \
+   if (idempotent || !nir_loop_pass_progress)                        \
+      _mesa_set_add(skip, (void (*)())&pass);                        \
+   UNUSED bool _ = false;                                            \
+   progress |= nir_loop_pass_progress;                               \
+} while (0)
+
+/* Helper to skip a pass if no different passes have made progress since it was
+ * previously run. Note that two passes are considered the same if they have
+ * the same function pointer, even if they used different options.
+ *
+ * The usage of this is mostly identical to NIR_PASS. "skip" is a "struct set *"
+ * (created by _mesa_pointer_set_create) which the macro uses to keep track of
+ * already run passes.
+ *
+ * Example:
+ * bool progress = true;
+ * struct set *skip = _mesa_pointer_set_create(NULL);
+ * while (progress) {
+ *    progress = false;
+ *    NIR_LOOP_PASS(progress, skip, nir, pass1);
+ *    NIR_LOOP_PASS_NOT_IDEMPOTENT(progress, skip, nir, nir_opt_algebraic);
+ *    NIR_LOOP_PASS(progress, skip, nir, pass2);
+ *    ...
+ * }
+ * _mesa_set_destroy(skip, NULL);
+ *
+ * You shouldn't mix usage of this with the NIR_PASS set of helpers, without
+ * using a new "skip" in-between.
+ */
+#define NIR_LOOP_PASS(progress, skip, nir, pass, ...) \
+   _NIR_LOOP_PASS(progress, true, skip, nir, pass, ##__VA_ARGS__)
+
+/* Like NIR_LOOP_PASS, but use this for passes which may make further progress
+ * when repeated.
+ */
+#define NIR_LOOP_PASS_NOT_IDEMPOTENT(progress, skip, nir, pass, ...) \
+   _NIR_LOOP_PASS(progress, false, skip, nir, pass, ##__VA_ARGS__)
+
 #define NIR_SKIP(name) should_skip_nir(#name)
 
 /** An instruction filtering callback with writemask
