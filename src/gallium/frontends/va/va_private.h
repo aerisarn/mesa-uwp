@@ -391,6 +391,7 @@ typedef struct {
    bool force_flushed;
    struct pipe_video_buffer *obsolete_buf;
    enum pipe_format encoder_format;
+   bool full_range;
    struct pipe_fence_handle *fence;
 } vlVaSurface;
 

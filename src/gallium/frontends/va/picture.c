@@ -1089,6 +1089,7 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
       }
 
       context->desc.base.input_format = surf->buffer->buffer_format;
+      context->desc.base.input_full_range = surf->full_range;
       context->desc.base.output_format = surf->encoder_format;
 
       context->decoder->begin_frame(context->decoder, context->target, &context->desc.base);

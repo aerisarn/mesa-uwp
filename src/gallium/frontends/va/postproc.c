@@ -191,7 +191,8 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
                                  const VARectangle *dst_region,
                                  struct pipe_video_buffer *src,
                                  struct pipe_video_buffer *dst,
-                                 enum vl_compositor_deinterlace deinterlace)
+                                 enum vl_compositor_deinterlace deinterlace,
+                                 bool full_range)
 {
    struct pipe_surface **src_surfaces;
    struct pipe_surface **dst_surfaces;
@@ -248,7 +249,7 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
    if (grab) {
       vl_compositor_convert_rgb_to_yuv(&drv->cstate, &drv->compositor, 0,
                                        ((struct vl_video_buffer *)src)->resources[0],
-                                       dst, &src_rect, &dst_rect);
+                                       dst, &src_rect, &dst_rect, full_range);
 
       return VA_STATUS_SUCCESS;
    }
@@ -419,6 +420,13 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
    if (!src_surface->buffer || !dst_surface->buffer)
       return VA_STATUS_ERROR_INVALID_SURFACE;
 
+   /* Assume full range input when not set */
+   src_surface->full_range =
+      param->input_color_properties.color_range != VA_SOURCE_RANGE_REDUCED;
+   /* Assume limited range output when not set */
+   dst_surface->full_range =
+      param->output_color_properties.color_range == VA_SOURCE_RANGE_FULL;
+
    pscreen = drv->vscreen->pscreen;
 
    src_region = vlVaRegionDefault(param->surface_region, src_surface, &def_src_region);
@@ -539,5 +547,6 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
                                     src, context->target, deinterlace);
    else
       return vlVaPostProcBlit(drv, context, src_region, dst_region,
-                              src, context->target, deinterlace);
+                              src, context->target, deinterlace,
+                              dst_surface->full_range);
 }

@@ -382,7 +382,8 @@ set_yuv_layer(struct vl_compositor_state *s, struct vl_compositor *c,
 static void
 set_rgb_to_yuv_layer(struct vl_compositor_state *s, struct vl_compositor *c,
                      unsigned layer, struct pipe_sampler_view *v,
-                     struct u_rect *src_rect, struct u_rect *dst_rect, bool y)
+                     struct u_rect *src_rect, struct u_rect *dst_rect, bool y,
+                     bool full_range)
 {
    vl_csc_matrix csc_matrix;
 
@@ -394,7 +395,7 @@ set_rgb_to_yuv_layer(struct vl_compositor_state *s, struct vl_compositor *c,
 
    s->layers[layer].fs = y? c->fs_rgb_yuv.y : c->fs_rgb_yuv.uv;
 
-   vl_csc_get_matrix(VL_CSC_COLOR_STANDARD_BT_709_REV, NULL, false, &csc_matrix);
+   vl_csc_get_matrix(VL_CSC_COLOR_STANDARD_BT_709_REV, NULL, full_range, &csc_matrix);
    vl_compositor_set_csc_matrix(s, (const vl_csc_matrix *)&csc_matrix, 1.0f, 0.0f);
 
    s->layers[layer].samplers[0] = c->sampler_linear;
@@ -725,7 +726,8 @@ vl_compositor_convert_rgb_to_yuv(struct vl_compositor_state *s,
                                  struct pipe_resource *src_res,
                                  struct pipe_video_buffer *dst,
                                  struct u_rect *src_rect,
-                                 struct u_rect *dst_rect)
+                                 struct u_rect *dst_rect,
+                                 bool full_range)
 {
    struct pipe_sampler_view *sv, sv_templ;
    struct pipe_surface **dst_surfaces;
@@ -738,7 +740,7 @@ vl_compositor_convert_rgb_to_yuv(struct vl_compositor_state *s,
 
    vl_compositor_clear_layers(s);
 
-   set_rgb_to_yuv_layer(s, c, 0, sv, src_rect, NULL, true);
+   set_rgb_to_yuv_layer(s, c, 0, sv, src_rect, NULL, true, full_range);
    vl_compositor_set_layer_dst_area(s, 0, dst_rect);
    vl_compositor_render(s, c, dst_surfaces[0], NULL, false);
 
@@ -747,7 +749,7 @@ vl_compositor_convert_rgb_to_yuv(struct vl_compositor_state *s,
       dst_rect->y1 /= 2;
    }
 
-   set_rgb_to_yuv_layer(s, c, 0, sv, src_rect, NULL, false);
+   set_rgb_to_yuv_layer(s, c, 0, sv, src_rect, NULL, false, full_range);
    vl_compositor_set_layer_dst_area(s, 0, dst_rect);
    vl_compositor_render(s, c, dst_surfaces[1], NULL, false);
    pipe_sampler_view_reference(&sv, NULL);
