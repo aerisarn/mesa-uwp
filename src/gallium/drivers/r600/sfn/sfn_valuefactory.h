@@ -223,29 +223,38 @@ public:
 
    int new_register_index();
 
+
+   /* Allocate registers */
    bool allocate_registers(const std::list<nir_intrinsic_instr *>& regs);
    PRegister allocate_pinned_register(int sel, int chan);
-
    RegisterVec4 allocate_pinned_vec4(int sel, bool is_ssa);
 
+   /* Inject a predefined value for a given dest value
+    * (usually the result of a sysvalue load) */
    void inject_value(const nir_dest& dest, int chan, PVirtualValue value);
 
-   std::vector<PRegister, Allocator<PRegister>> dest_vec(const nir_dest& dest,
-                                                         int num_components);
-   std::vector<PRegister, Allocator<PRegister>>
-   dest_vector(const nir_src& src, const std::vector<int>& components);
-
+   /* Get or create a destination value of vector of values */
    PRegister
    dest(const nir_alu_dest& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
+
    PRegister
    dest(const nir_dest& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
+
    PRegister
    dest(const nir_ssa_def& dest, int chan, Pin pin_channel, uint8_t chan_mask = 0xf);
 
+   RegisterVec4 dest_vec4(const nir_dest& dest, Pin pin);
+
+   std::vector<PRegister, Allocator<PRegister>> dest_vec(const nir_dest& dest,
+                                                         int num_components);
+
    PRegister dummy_dest(unsigned chan);
+
+
+   /* Create and get a temporary value */
    PRegister temp_register(int pinned_channel = -1, bool is_ssa = true);
    RegisterVec4 temp_vec4(Pin pin, const RegisterVec4::Swizzle& swizzle = {0, 1, 2, 3});
-   RegisterVec4 dest_vec4(const nir_dest& dest, Pin pin);
+
 
    RegisterVec4
    src_vec4(const nir_src& src, Pin pin, const RegisterVec4::Swizzle& swz = {0, 1, 2, 3});
@@ -257,6 +266,9 @@ public:
    PVirtualValue literal(uint32_t value);
    PVirtualValue uniform(nir_intrinsic_instr *load_uniform, int chan);
    PVirtualValue uniform(uint32_t index, int chan, int kcache);
+   std::vector<PVirtualValue, Allocator<PVirtualValue>> src_vec(const nir_src& src,
+                                                                int components);
+
 
    void allocate_const(nir_load_const_instr *load_const);
 
@@ -269,8 +281,6 @@ public:
 
    LocalArray *array_from_string(const std::string& s);
 
-   std::vector<PVirtualValue, Allocator<PVirtualValue>> src_vec(const nir_src& src,
-                                                                int components);
 
    PInlineConstant inline_const(AluInlineConstants sel, int chan);
 
