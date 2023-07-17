@@ -55,7 +55,7 @@ VK_DEFINE_HANDLE_CASTS(nvk_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
 VkResult nvk_device_ensure_slm(struct nvk_device *dev,
                                uint32_t bytes_per_thread);
 
-static struct nvk_physical_device *
+static inline struct nvk_physical_device *
 nvk_device_physical(struct nvk_device *device)
 {
    return (struct nvk_physical_device *)device->vk.physical;

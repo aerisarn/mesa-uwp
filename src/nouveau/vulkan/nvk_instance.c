@@ -1,6 +1,7 @@
 #include "nvk_instance.h"
 
 #include "nvk_physical_device.h"
+#include "util/build_id.h"
 
 #include "vulkan/wsi/wsi_common.h"
 
@@ -126,17 +127,40 @@ nvk_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    result = vk_instance_init(&instance->vk, &instance_extensions,
                              &dispatch_table, pCreateInfo, pAllocator);
-   if (result != VK_SUCCESS) {
-      vk_free(pAllocator, instance);
-      return result;
-   }
+   if (result != VK_SUCCESS)
+      goto fail_alloc;
 
    instance->vk.physical_devices.try_create_for_drm =
       nvk_create_drm_physical_device;
    instance->vk.physical_devices.destroy = nvk_physical_device_destroy;
 
+   const struct build_id_note *note =
+      build_id_find_nhdr_for_addr(nvk_CreateInstance);
+   if (!note) {
+      result = vk_errorf(NULL, VK_ERROR_INITIALIZATION_FAILED,
+                         "Failed to find build-id");
+      goto fail_init;
+   }
+
+   unsigned build_id_len = build_id_length(note);
+   if (build_id_len < 20) {
+      result = vk_errorf(NULL, VK_ERROR_INITIALIZATION_FAILED,
+                        "build-id too short.  It needs to be a SHA");
+      goto fail_init;
+   }
+
+   assert(build_id_len >= VK_UUID_SIZE);
+   memcpy(instance->driver_uuid, build_id_data(note), VK_UUID_SIZE);
+
    *pInstance = nvk_instance_to_handle(instance);
    return VK_SUCCESS;
+
+fail_init:
+   vk_instance_finish(&instance->vk);
+fail_alloc:
+   vk_free(pAllocator, instance);
+
+   return result;
 }
 
 VKAPI_ATTR void VKAPI_CALL

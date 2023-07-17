@@ -19,6 +19,8 @@ struct nvk_physical_device {
    struct nv_device_info info;
    struct wsi_device wsi_device;
 
+   uint8_t device_uuid[VK_UUID_SIZE];
+
    // TODO: add mapable VRAM heap if possible
    VkMemoryHeap mem_heaps[2];
    VkMemoryType mem_types[2];
@@ -32,6 +34,12 @@ VK_DEFINE_HANDLE_CASTS(nvk_physical_device,
    vk.base,
    VkPhysicalDevice,
    VK_OBJECT_TYPE_PHYSICAL_DEVICE)
+
+static inline struct nvk_instance *
+nvk_physical_device_instance(struct nvk_physical_device *pdev)
+{
+   return (struct nvk_instance *)pdev->vk.instance;
+}
 
 VkResult nvk_create_drm_physical_device(struct vk_instance *vk_instance,
                                         struct _drmDevice *device,

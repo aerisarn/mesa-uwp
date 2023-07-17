@@ -8,6 +8,7 @@
 #include "nvk_shader.h"
 #include "nvk_wsi.h"
 #include "git_sha1.h"
+#include "util/mesa-sha1.h"
 
 #include "vulkan/runtime/vk_device.h"
 #include "vulkan/wsi/wsi_common.h"
@@ -164,6 +165,9 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .maxPerSetDescriptors = UINT32_MAX,
       .maxMemoryAllocationSize = (1u << 31),
    };
+   memcpy(core_1_1.deviceUUID, pdev->device_uuid, VK_UUID_SIZE);
+   struct nvk_instance *instance = nvk_physical_device_instance(pdev);
+   memcpy(core_1_1.driverUUID, instance->driver_uuid, VK_UUID_SIZE);
 
    VkPhysicalDeviceVulkan12Properties core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
@@ -614,6 +618,17 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    device->instance = instance;
    device->dev = ndev;
    device->info = ndev->info;
+
+   const struct {
+      uint16_t vendor_id;
+      uint16_t device_id;
+      uint8_t pad[12];
+   } dev_uuid = {
+      .vendor_id = NVIDIA_VENDOR_ID,
+      .device_id = device->info.pci_device_id,
+   };
+   STATIC_ASSERT(sizeof(dev_uuid) == VK_UUID_SIZE);
+   memcpy(device->device_uuid, &dev_uuid, VK_UUID_SIZE);
 
    device->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
    device->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
