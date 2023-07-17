@@ -103,7 +103,7 @@ build_constant_load(nir_builder *b, nir_deref_instr *deref,
 static void
 handle_constant_store(void *mem_ctx, struct var_info *info,
                       nir_deref_instr *deref, nir_const_value *val,
-                      unsigned writemask,
+                      nir_component_mask_t write_mask,
                       glsl_type_size_align_func size_align)
 {
    assert(!nir_deref_instr_has_indirect(deref));
@@ -124,7 +124,7 @@ handle_constant_store(void *mem_ctx, struct var_info *info,
    char *dst = (char *)info->constant_data + offset;
 
    for (unsigned i = 0; i < num_components; i++) {
-      if (!(writemask & (1 << i)))
+      if (!(write_mask & (1 << i)))
          continue;
 
       switch (bit_size) {
@@ -218,12 +218,12 @@ nir_opt_large_constants(nir_shader *shader,
 
          bool src_is_const = false;
          nir_deref_instr *src_deref = NULL, *dst_deref = NULL;
-         unsigned writemask = 0;
+         nir_component_mask_t write_mask = 0;
          switch (intrin->intrinsic) {
          case nir_intrinsic_store_deref:
             dst_deref = nir_src_as_deref(intrin->src[0]);
             src_is_const = nir_src_is_const(intrin->src[1]);
-            writemask = nir_intrinsic_write_mask(intrin);
+            write_mask = nir_intrinsic_write_mask(intrin);
             break;
 
          case nir_intrinsic_load_deref:
@@ -261,7 +261,7 @@ nir_opt_large_constants(nir_shader *shader,
                info->is_constant = false;
             } else {
                nir_const_value *val = nir_src_as_const_value(intrin->src[1]);
-               handle_constant_store(var_infos, info, dst_deref, val, writemask,
+               handle_constant_store(var_infos, info, dst_deref, val, write_mask,
                                      size_align);
             }
          }
