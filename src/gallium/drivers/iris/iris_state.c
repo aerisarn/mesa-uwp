@@ -7647,6 +7647,7 @@ iris_upload_render_state(struct iris_context *ice,
 #define _3DPRIM_BASE_VERTEX         0x2440
 
    struct mi_builder b;
+   uint32_t mocs;
    mi_builder_init(&b, batch->screen->devinfo, batch);
 
    if (indirect && !indirect->count_from_stream_output) {
@@ -7657,6 +7658,8 @@ iris_upload_render_state(struct iris_context *ice,
             iris_resource_bo(indirect->indirect_draw_count);
          unsigned draw_count_offset =
             indirect->indirect_draw_count_offset;
+         mocs = iris_mocs(draw_count_bo, &batch->screen->isl_dev, 0);
+         mi_builder_set_mocs(&b, mocs);
 
          if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
             /* comparison = draw id < draw count */
@@ -7701,6 +7704,9 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_bo *bo = iris_resource_bo(indirect->buffer);
       assert(bo);
 
+      mocs = iris_mocs(bo, &batch->screen->isl_dev, 0);
+      mi_builder_set_mocs(&b, mocs);
+
       mi_store(&b, mi_reg32(_3DPRIM_VERTEX_COUNT),
                mi_mem32(ro_bo(bo, indirect->offset + 0)));
       mi_store(&b, mi_reg32(_3DPRIM_INSTANCE_COUNT),
@@ -7721,6 +7727,9 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_stream_output_target *so =
          (void *) indirect->count_from_stream_output;
       struct iris_bo *so_bo = iris_resource_bo(so->offset.res);
+
+      mocs = iris_mocs(so_bo, &batch->screen->isl_dev, 0);
+      mi_builder_set_mocs(&b, mocs);
 
       iris_emit_buffer_barrier_for(batch, so_bo, IRIS_DOMAIN_OTHER_READ);
 
