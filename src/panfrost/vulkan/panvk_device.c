@@ -814,7 +814,7 @@ panvk_queue_init(struct panvk_device *device, struct panvk_queue *queue,
       queue->vk.driver_submit = panvk_v7_queue_submit;
       break;
    default:
-      unreachable("Invalid arch");
+      unreachable("Unsupported architecture");
    }
 
    queue->sync = create.handle;
