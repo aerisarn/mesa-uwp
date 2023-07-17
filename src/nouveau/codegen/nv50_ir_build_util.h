@@ -110,31 +110,6 @@ public:
    static Instruction *split64BitOpPostRA(Function *, Instruction *,
                                           Value *zero, Value *carry);
 
-   struct Location
-   {
-      Location(unsigned array, unsigned arrayIdx, unsigned i, unsigned c)
-         : array(array), arrayIdx(arrayIdx), i(i), c(c) { }
-      Location(const Location &l)
-         : array(l.array), arrayIdx(l.arrayIdx), i(l.i), c(l.c) { }
-
-      bool operator==(const Location &l) const
-      {
-         return
-            array == l.array && arrayIdx == l.arrayIdx && i == l.i && c == l.c;
-      }
-
-      bool operator<(const Location &l) const
-      {
-         return array != l.array ? array < l.array :
-            arrayIdx != l.arrayIdx ? arrayIdx < l.arrayIdx :
-            i != l.i ? i < l.i :
-            c != l.c ? c < l.c :
-            false;
-      }
-
-      unsigned array, arrayIdx, i, c;
-   };
-
    Symbol *mkSymbol(DataFile file, int8_t fileIndex,
                     DataType ty, uint32_t baseAddress);
 
