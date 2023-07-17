@@ -73,7 +73,6 @@ struct ntr_compile {
    struct ureg_program *ureg;
 
    bool needs_texcoord_semantic;
-   bool has_txf_lz;
 
    bool addr_declared[3];
    struct ureg_dst addr_reg[3];
@@ -1800,19 +1799,6 @@ ntr_emit_texture(struct ntr_compile *c, nir_tex_instr *instr)
       else
          tex_opcode = TGSI_OPCODE_TEX;
       break;
-   case nir_texop_txf:
-   case nir_texop_txf_ms:
-      tex_opcode = TGSI_OPCODE_TXF;
-
-      if (c->has_txf_lz) {
-         int lod_src = nir_tex_instr_src_index(instr, nir_tex_src_lod);
-         if (lod_src >= 0 &&
-             nir_src_is_const(instr->src[lod_src].src) &&
-             ntr_src_as_uint(c, instr->src[lod_src].src) == 0) {
-            tex_opcode = TGSI_OPCODE_TXF_LZ;
-         }
-      }
-      break;
    case nir_texop_txl:
       tex_opcode = TGSI_OPCODE_TXL;
       break;
@@ -2604,8 +2590,6 @@ const void *nir_to_rc_options(struct nir_shader *s,
 
    c->needs_texcoord_semantic =
       screen->get_param(screen, PIPE_CAP_TGSI_TEXCOORD);
-   c->has_txf_lz =
-      screen->get_param(screen, PIPE_CAP_TGSI_TEX_TXF_LZ);
 
    c->s = s;
    c->ureg = ureg_create(pipe_shader_type_from_mesa(s->info.stage));
