@@ -29,7 +29,7 @@
       when: never
     - changes: [ .ci-farms-disabled/microsoft ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
-      when: manual
+      when: on_success
     - !reference [.microsoft-farm-rules, rules]
 
 
