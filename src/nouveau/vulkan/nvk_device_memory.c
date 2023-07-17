@@ -68,19 +68,20 @@ zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
 }
 
 VkResult
-nvk_allocate_memory(struct nvk_device *device,
+nvk_allocate_memory(struct nvk_device *dev,
                     const VkMemoryAllocateInfo *pAllocateInfo,
                     const struct nvk_memory_tiling_info *tile_info,
                     const VkAllocationCallbacks *pAllocator,
                     struct nvk_device_memory **mem_out)
 {
-   VkMemoryType *type = &device->pdev->mem_types[pAllocateInfo->memoryTypeIndex];
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
+   VkMemoryType *type = &pdev->mem_types[pAllocateInfo->memoryTypeIndex];
    struct nvk_device_memory *mem;
 
-   mem = vk_device_memory_create(&device->vk, pAllocateInfo,
+   mem = vk_device_memory_create(&dev->vk, pAllocateInfo,
                                  pAllocator, sizeof(*mem));
    if (!mem)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    enum nouveau_ws_bo_flags flags;
    if (type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
@@ -93,41 +94,41 @@ nvk_allocate_memory(struct nvk_device *device,
 
    mem->map = NULL;
    if (tile_info) {
-      mem->bo = nouveau_ws_bo_new_tiled(device->pdev->dev,
+      mem->bo = nouveau_ws_bo_new_tiled(pdev->dev,
                                         pAllocateInfo->allocationSize, 0,
                                         tile_info->pte_kind,
                                         tile_info->tile_mode,
                                         flags);
    } else {
-      mem->bo = nouveau_ws_bo_new(device->pdev->dev,
+      mem->bo = nouveau_ws_bo_new(pdev->dev,
                                   pAllocateInfo->allocationSize, 0, flags);
    }
    if (!mem->bo) {
-      vk_object_free(&device->vk, pAllocator, mem);
-      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      vk_object_free(&dev->vk, pAllocator, mem);
+      return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
 
    VkResult result;
-   if (device->pdev->dev->debug_flags & NVK_DEBUG_ZERO_MEMORY) {
+   if (pdev->dev->debug_flags & NVK_DEBUG_ZERO_MEMORY) {
       if (type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
          void *map = nouveau_ws_bo_map(mem->bo, NOUVEAU_WS_BO_RDWR);
          if (map == NULL) {
-            result = vk_errorf(device, VK_ERROR_OUT_OF_HOST_MEMORY,
+            result = vk_errorf(dev, VK_ERROR_OUT_OF_HOST_MEMORY,
                                "Memory map failed");
             goto fail_bo;
          }
          memset(map, 0, mem->bo->size);
          nouveau_ws_bo_unmap(mem->bo, map);
       } else {
-         result = zero_vram(device, mem->bo);
+         result = zero_vram(dev, mem->bo);
          if (result != VK_SUCCESS)
             goto fail_bo;
       }
    }
 
-   pthread_mutex_lock(&device->mutex);
-   list_addtail(&mem->link, &device->memory_objects);
-   pthread_mutex_unlock(&device->mutex);
+   pthread_mutex_lock(&dev->mutex);
+   list_addtail(&mem->link, &dev->memory_objects);
+   pthread_mutex_unlock(&dev->mutex);
 
    *mem_out = mem;
 
@@ -135,38 +136,38 @@ nvk_allocate_memory(struct nvk_device *device,
 
 fail_bo:
    nouveau_ws_bo_destroy(mem->bo);
-   vk_device_memory_destroy(&device->vk, pAllocator, &mem->vk);
+   vk_device_memory_destroy(&dev->vk, pAllocator, &mem->vk);
    return result;
 }
 
 void
-nvk_free_memory(struct nvk_device *device,
+nvk_free_memory(struct nvk_device *dev,
                 struct nvk_device_memory *mem,
                 const VkAllocationCallbacks *pAllocator)
 {
    if (mem->map)
       nouveau_ws_bo_unmap(mem->bo, mem->map);
 
-   pthread_mutex_lock(&device->mutex);
+   pthread_mutex_lock(&dev->mutex);
    list_del(&mem->link);
-   pthread_mutex_unlock(&device->mutex);
+   pthread_mutex_unlock(&dev->mutex);
 
    nouveau_ws_bo_destroy(mem->bo);
 
-   vk_device_memory_destroy(&device->vk, pAllocator, &mem->vk);
+   vk_device_memory_destroy(&dev->vk, pAllocator, &mem->vk);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_AllocateMemory(VkDevice _device,
+nvk_AllocateMemory(VkDevice device,
                    const VkMemoryAllocateInfo *pAllocateInfo,
                    const VkAllocationCallbacks *pAllocator,
                    VkDeviceMemory *pMem)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    struct nvk_device_memory *mem;
    VkResult result;
 
-   result = nvk_allocate_memory(device, pAllocateInfo, NULL, pAllocator, &mem);
+   result = nvk_allocate_memory(dev, pAllocateInfo, NULL, pAllocator, &mem);
    if (result != VK_SUCCESS)
       return result;
 
@@ -176,25 +177,25 @@ nvk_AllocateMemory(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_FreeMemory(VkDevice _device,
+nvk_FreeMemory(VkDevice device,
                VkDeviceMemory _mem,
                const VkAllocationCallbacks *pAllocator)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_device_memory, mem, _mem);
 
    if (!mem)
       return;
 
-   nvk_free_memory(device, mem, pAllocator);
+   nvk_free_memory(dev, mem, pAllocator);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_MapMemory2KHR(VkDevice _device,
+nvk_MapMemory2KHR(VkDevice device,
                   const VkMemoryMapInfoKHR *pMemoryMapInfo,
                   void **ppData)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_device_memory, mem, pMemoryMapInfo->memory);
 
    if (mem == NULL) {
@@ -218,7 +219,7 @@ nvk_MapMemory2KHR(VkDevice _device,
    assert(offset + size <= mem->bo->size);
 
    if (size != (size_t)size) {
-      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED,
+      return vk_errorf(dev, VK_ERROR_MEMORY_MAP_FAILED,
                        "requested size 0x%"PRIx64" does not fit in %u bits",
                        size, (unsigned)(sizeof(size_t) * 8));
    }
@@ -228,13 +229,13 @@ nvk_MapMemory2KHR(VkDevice _device,
     *    "memory must not be currently host mapped"
     */
    if (mem->map != NULL) {
-      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED,
+      return vk_errorf(dev, VK_ERROR_MEMORY_MAP_FAILED,
                        "Memory object already mapped.");
    }
 
    mem->map = nouveau_ws_bo_map(mem->bo, NOUVEAU_WS_BO_RDWR);
    if (mem->map == NULL) {
-      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED,
+      return vk_errorf(dev, VK_ERROR_MEMORY_MAP_FAILED,
                        "Memory object couldn't be mapped.");
    }
 
@@ -244,7 +245,7 @@ nvk_MapMemory2KHR(VkDevice _device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_UnmapMemory2KHR(VkDevice _device,
+nvk_UnmapMemory2KHR(VkDevice device,
                     const VkMemoryUnmapInfoKHR *pMemoryUnmapInfo)
 {
    VK_FROM_HANDLE(nvk_device_memory, mem, pMemoryUnmapInfo->memory);
@@ -259,7 +260,7 @@ nvk_UnmapMemory2KHR(VkDevice _device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_FlushMappedMemoryRanges(VkDevice _device,
+nvk_FlushMappedMemoryRanges(VkDevice device,
                             uint32_t memoryRangeCount,
                             const VkMappedMemoryRange *pMemoryRanges)
 {
@@ -267,7 +268,7 @@ nvk_FlushMappedMemoryRanges(VkDevice _device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_InvalidateMappedMemoryRanges(VkDevice _device,
+nvk_InvalidateMappedMemoryRanges(VkDevice device,
                                  uint32_t memoryRangeCount,
                                  const VkMappedMemoryRange *pMemoryRanges)
 {
@@ -285,21 +286,21 @@ nvk_GetDeviceMemoryCommitment(VkDevice device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_GetMemoryFdKHR(VkDevice _device,
+nvk_GetMemoryFdKHR(VkDevice device,
                    const VkMemoryGetFdInfoKHR *pGetFdInfo,
                    int *pFD)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_device_memory, memory, pGetFdInfo->memory);
 
    switch (pGetFdInfo->handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
       if (nouveau_ws_bo_dma_buf(memory->bo, pFD))
-         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       return VK_SUCCESS;
    default:
       assert(!"unsupported handle type");
-      return vk_error(device, VK_ERROR_FEATURE_NOT_PRESENT);
+      return vk_error(dev, VK_ERROR_FEATURE_NOT_PRESENT);
    }
 }
 
