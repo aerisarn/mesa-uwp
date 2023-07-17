@@ -542,9 +542,9 @@ static void radeon_vcn_enc_av1_color_description(struct radeon_encoder *enc,
       enc->enc_pic.av1_color_description.color_primaries = pic->seq.color_config.color_primaries;
       enc->enc_pic.av1_color_description.transfer_characteristics = pic->seq.color_config.transfer_characteristics;
       enc->enc_pic.av1_color_description.maxtrix_coefficients = pic->seq.color_config.matrix_coefficients;
-      enc->enc_pic.av1_color_description.color_range = pic->seq.color_config.color_range;
-      enc->enc_pic.av1_color_description.chroma_sample_position = pic->seq.color_config.chroma_sample_position;
    }
+   enc->enc_pic.av1_color_description.color_range = pic->seq.color_config.color_range;
+   enc->enc_pic.av1_color_description.chroma_sample_position = pic->seq.color_config.chroma_sample_position;
 }
 
 static void radeon_vcn_enc_av1_get_rc_param(struct radeon_encoder *enc,
