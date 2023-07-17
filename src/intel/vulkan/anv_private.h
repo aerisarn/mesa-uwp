@@ -1335,6 +1335,13 @@ anv_mocs(const struct anv_device *device,
    return isl_mocs(&device->isl_dev, usage, bo && bo->is_external);
 }
 
+static inline uint32_t
+anv_mocs_for_address(const struct anv_device *device,
+                     struct anv_address *addr)
+{
+   return anv_mocs(device, addr->bo, 0);
+}
+
 void anv_device_init_blorp(struct anv_device *device);
 void anv_device_finish_blorp(struct anv_device *device);
 

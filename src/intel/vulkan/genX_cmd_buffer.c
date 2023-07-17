@@ -640,12 +640,14 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
                                   enum isl_aux_op resolve_op,
                                   enum anv_fast_clear_type fast_clear_supported)
 {
+   struct anv_address addr = anv_image_get_fast_clear_type_addr(cmd_buffer->device,
+                                                                image, aspect);
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+   const uint32_t mocs = anv_mocs_for_address(cmd_buffer->device, &addr);
+   mi_builder_set_mocs(&b, mocs);
 
-   const struct mi_value fast_clear_type =
-      mi_mem32(anv_image_get_fast_clear_type_addr(cmd_buffer->device,
-                                                  image, aspect));
+   const struct mi_value fast_clear_type = mi_mem32(addr);
 
    if (resolve_op == ISL_AUX_OP_FULL_RESOLVE) {
       /* In this case, we're doing a full resolve which means we want the
@@ -4782,6 +4784,8 @@ void genX(CmdDrawIndirectByteCountEXT)(
 
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+   const uint32_t mocs = anv_mocs_for_address(cmd_buffer->device, &counter_buffer->address);
+   mi_builder_set_mocs(&b, mocs);
    struct mi_value count =
       mi_mem32(anv_address_add(counter_buffer->address,
                                    counterBufferOffset));
@@ -4838,6 +4842,8 @@ load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,
 
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+   const uint32_t mocs = anv_mocs_for_address(cmd_buffer->device, &addr);
+   mi_builder_set_mocs(&b, mocs);
 
    mi_store(&b, mi_reg32(GFX7_3DPRIM_VERTEX_COUNT),
                 mi_mem32(anv_address_add(addr, 0)));
@@ -5127,6 +5133,8 @@ emit_indirect_count_draws(struct anv_cmd_buffer *cmd_buffer,
 
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+   const uint32_t mocs = anv_mocs_for_address(cmd_buffer->device, &draw_count_addr);
+   mi_builder_set_mocs(&b, mocs);
    struct mi_value max =
       prepare_for_draw_count_predicate(cmd_buffer, &b, draw_count_addr);
 
@@ -5549,6 +5557,8 @@ genX(CmdDrawMeshTasksIndirectCountEXT)(
 
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+   const uint32_t mocs = anv_mocs_for_address(cmd_buffer->device, &count_buffer->address);
+   mi_builder_set_mocs(&b, mocs);
 
    struct mi_value max =
          prepare_for_draw_count_predicate(
@@ -6250,6 +6260,8 @@ cmd_buffer_emit_rt_dispatch_globals_indirect(struct anv_cmd_buffer *cmd_buffer,
 
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+   const uint32_t mocs = anv_mocs_for_address(cmd_buffer->device, &rtdg_addr);
+   mi_builder_set_mocs(&b, mocs);
 
    /* Fill the MissGroupTable, HitGroupTable & CallableGroupTable fields of
     * RT_DISPATCH_GLOBALS using the mi_builder.
@@ -6362,6 +6374,8 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
 
       struct mi_builder b;
       mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+      const uint32_t mocs = anv_mocs_for_address(cmd_buffer->device, &rtdg_addr);
+      mi_builder_set_mocs(&b, mocs);
 
       struct mi_value launch_size[3] = {
          mi_mem32(anv_address_from_u64(params->launch_size_addr + 0)),
@@ -7930,6 +7944,8 @@ void genX(CmdBeginConditionalRenderingEXT)(
 
    struct mi_builder b;
    mi_builder_init(&b, cmd_buffer->device->info, &cmd_buffer->batch);
+   const uint32_t mocs = anv_mocs_for_address(cmd_buffer->device, &value_address);
+   mi_builder_set_mocs(&b, mocs);
 
    /* Section 19.4 of the Vulkan 1.1.85 spec says:
     *
