@@ -72,8 +72,6 @@ struct ntr_compile {
    struct pipe_screen *screen;
    struct ureg_program *ureg;
 
-   bool needs_texcoord_semantic;
-
    bool addr_declared[3];
    struct ureg_dst addr_reg[3];
 
@@ -521,24 +519,6 @@ ntr_allocate_regs_unoptimized(struct ntr_compile *c, nir_function_impl *impl)
       ureg_DECL_temporary(c->ureg);
 }
 
-static void
-ntr_get_gl_varying_semantic(struct ntr_compile *c, unsigned location,
-                            unsigned *semantic_name, unsigned *semantic_index)
-{
-   /* We want to use most of tgsi_get_gl_varying_semantic(), but the
-    * !texcoord shifting has already been applied, so avoid that.
-    */
-   if (!c->needs_texcoord_semantic &&
-       (location >= VARYING_SLOT_VAR0 && location < VARYING_SLOT_PATCH0)) {
-      *semantic_name = TGSI_SEMANTIC_GENERIC;
-      *semantic_index = location - VARYING_SLOT_VAR0;
-      return;
-   }
-
-   tgsi_get_gl_varying_semantic(location, true,
-                                semantic_name, semantic_index);
-}
-
 /* TGSI varying declarations have a component usage mask associated (used by
  * r600 and svga).
  */
@@ -583,8 +563,8 @@ ntr_output_decl(struct ntr_compile *c, nir_intrinsic_instr *instr, uint32_t *fra
    } else {
       unsigned semantic_name, semantic_index;
 
-      ntr_get_gl_varying_semantic(c, semantics.location,
-                                  &semantic_name, &semantic_index);
+      tgsi_get_gl_varying_semantic(semantics.location, true,
+                                   &semantic_name, &semantic_index);
 
       uint32_t usage_mask = u_bit_consecutive(*frac, instr->num_components);
       uint32_t gs_streams = semantics.gs_streams;
@@ -736,8 +716,8 @@ ntr_setup_inputs(struct ntr_compile *c)
       }
 
       unsigned semantic_name, semantic_index;
-      ntr_get_gl_varying_semantic(c, var->data.location,
-                                  &semantic_name, &semantic_index);
+      tgsi_get_gl_varying_semantic(var->data.location, true,
+                                   &semantic_name, &semantic_index);
 
       if (var->data.sample) {
          sample_loc = TGSI_INTERPOLATE_LOC_SAMPLE;
@@ -2541,9 +2521,6 @@ const void *nir_to_rc_options(struct nir_shader *s,
    c = rzalloc(NULL, struct ntr_compile);
    c->screen = screen;
    c->options = options;
-
-   c->needs_texcoord_semantic =
-      screen->get_param(screen, PIPE_CAP_TGSI_TEXCOORD);
 
    c->s = s;
    c->ureg = ureg_create(pipe_shader_type_from_mesa(s->info.stage));
