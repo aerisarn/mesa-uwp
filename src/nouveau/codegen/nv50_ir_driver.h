@@ -27,6 +27,7 @@
 #include "util/blob.h"
 
 #define NV50_CODEGEN_MAX_VARYINGS 80
+struct nir_shader;
 struct nir_shader_compiler_options;
 
 /*
@@ -93,8 +94,7 @@ struct nv50_ir_prog_info
 
    struct {
       uint32_t smemSize;  /* required shared memory per block */
-      uint8_t sourceRep;  /* PIPE_SHADER_IR_* */
-      const void *source;
+      struct nir_shader *nir;
    } bin;
 
    union {

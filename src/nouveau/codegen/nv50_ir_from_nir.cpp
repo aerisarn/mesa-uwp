@@ -3291,7 +3291,7 @@ bool
 Program::makeFromNIR(struct nv50_ir_prog_info *info,
                      struct nv50_ir_prog_info_out *info_out)
 {
-   nir_shader *nir = (nir_shader*)info->bin.source;
+   nir_shader *nir = info->bin.nir;
    Converter converter(this, nir, info, info_out);
    bool result = converter.run();
    if (!result)

@@ -590,8 +590,7 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
    info->type = prog->type;
    info->target = chipset;
 
-   info->bin.sourceRep = PIPE_SHADER_IR_NIR;
-   info->bin.source = (void *)nir_shader_clone(NULL, prog->nir);
+   info->bin.nir = nir_shader_clone(NULL, prog->nir);
 
 #ifndef NDEBUG
    info->target = debug_get_num_option("NV50_PROG_CHIPSET", chipset);
@@ -752,8 +751,7 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
 #endif
 
 out:
-   if (info->bin.sourceRep == PIPE_SHADER_IR_NIR)
-      ralloc_free((void *)info->bin.source);
+   ralloc_free((void *)info->bin.nir);
    FREE(info);
    return !ret;
 }

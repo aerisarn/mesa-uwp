@@ -1309,14 +1309,7 @@ nv50_ir_generate_code(struct nv50_ir_prog_info *info,
    prog->dbgFlags = info->dbgFlags;
    prog->optLevel = info->optLevel;
 
-   switch (info->bin.sourceRep) {
-   case PIPE_SHADER_IR_NIR:
-      ret = prog->makeFromNIR(info, info_out) ? 0 : -2;
-      break;
-   default:
-      ret = -1;
-      break;
-   }
+   ret = prog->makeFromNIR(info, info_out) ? 0 : -2;
    if (ret < 0)
       goto out;
    if (prog->dbgFlags & NV50_IR_DEBUG_VERBOSE)
