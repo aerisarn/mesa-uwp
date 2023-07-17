@@ -975,6 +975,13 @@ LocalArray::element(size_t offset, PVirtualValue indirect, uint32_t chan)
    return reg;
 }
 
+void LocalArray::add_parent_to_elements(int chan, Instr *instr)
+{
+   for (auto& e : m_values)
+      if (e->chan() == chan)
+         e->add_parent(instr);
+}
+
 bool
 LocalArray::ready_for_direct(int block, int index, int chan) const
 {
@@ -1069,7 +1076,8 @@ LocalArrayValue::accept(ConstRegisterVisitor& vistor) const
 void
 LocalArrayValue::add_parent_to_array(Instr *instr)
 {
-   m_array.add_parent(instr);
+   if (m_addr)
+      m_array.add_parent_to_elements(chan(), instr);
 }
 
 void

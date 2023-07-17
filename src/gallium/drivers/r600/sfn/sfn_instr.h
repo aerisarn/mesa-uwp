@@ -135,9 +135,10 @@ public:
       (void)addr;
       unreachable("Instruction type has no indirect addess");
    };
+   const InstrList& required_instr() const { return m_required_instr; }
 
 protected:
-   const InstrList& required_instr() const { return m_required_instr; }
+
 
 private:
    virtual void forward_set_blockid(int id, int index);

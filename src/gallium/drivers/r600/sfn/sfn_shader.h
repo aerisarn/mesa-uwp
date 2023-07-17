@@ -396,6 +396,7 @@ private:
       Instr *last_gds_instr{nullptr};
       Instr *last_ssbo_instr{nullptr};
       Instr *last_kill_instr{nullptr};
+      std::unordered_map<int, Instr * > last_alu_with_indirect_reg;
       bool prepare_mem_barrier{false};
    };
 

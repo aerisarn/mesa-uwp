@@ -1338,6 +1338,13 @@ Shader::emit_wait_ack()
    return true;
 }
 
+static uint32_t get_array_hash(const VirtualValue& value)
+{
+   assert (value.pin() == pin_array);
+   const LocalArrayValue& av = static_cast<const LocalArrayValue&>(value);
+   return av.chan() | (av.array().base_sel() << 2);
+}
+
 void Shader::InstructionChain::visit(AluInstr *instr)
 {
    if (instr->is_kill()) {
@@ -1350,6 +1357,35 @@ void Shader::InstructionChain::visit(AluInstr *instr)
 
       if (last_ssbo_instr)
          instr->add_required_instr(last_ssbo_instr);
+   }
+
+   /* Make sure array reads and writes depends on the last indirect access
+    * so that we don't overwrite array elements too early */
+
+   if (auto d = instr->dest()) {
+      if (d->pin() == pin_array) {
+         if (d->addr()) {
+            last_alu_with_indirect_reg[get_array_hash(*d)] = instr;
+            return;
+         }
+         auto pos = last_alu_with_indirect_reg.find(get_array_hash(*d));
+         if (pos != last_alu_with_indirect_reg.end()) {
+            instr->add_required_instr(pos->second);
+         }
+      }
+   }
+
+   for (auto& s : instr->sources()) {
+      if (s->pin() == pin_array) {
+         if (s->get_addr()) {
+            last_alu_with_indirect_reg[get_array_hash(*s)] = instr;
+            return;
+         }
+         auto pos = last_alu_with_indirect_reg.find(get_array_hash(*s));
+         if (pos != last_alu_with_indirect_reg.end()) {
+            instr->add_required_instr(pos->second);
+         }
+      }
    }
 }
 
