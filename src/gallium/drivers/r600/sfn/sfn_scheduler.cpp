@@ -446,7 +446,11 @@ BlockScheduler::schedule_block(Block& in_block,
    if (!cir.alu_vec.empty()) {
       std::cerr << "Unscheduled ALU vec ops:\n";
       for (auto& a : cir.alu_vec) {
-         std::cerr << "   " << *a << "\n";
+         std::cerr << "   [" << a->block_id() << ":"
+                   << a->index() <<"]:" << *a << "\n";
+         for (auto& d : a->required_instr())
+            std::cerr << "      R["<< d->block_id() << ":" << d->index() <<"]:"
+                      << *d << "\n";
       }
       fail = true;
    }
@@ -454,7 +458,10 @@ BlockScheduler::schedule_block(Block& in_block,
    if (!cir.alu_trans.empty()) {
       std::cerr << "Unscheduled ALU trans ops:\n";
       for (auto& a : cir.alu_trans) {
-         std::cerr << "   " << *a << "\n";
+         std::cerr << "   " << "   [" << a->block_id() << ":"
+                   << a->index() <<"]:" << *a << "\n";
+         for (auto& d : a->required_instr())
+            std::cerr << "      R:" << *d << "\n";
       }
       fail = true;
    }
