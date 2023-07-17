@@ -452,7 +452,7 @@ AssamblerVisitor::visit(const AluGroup& group)
          m_last_addr = nullptr;
       }
    } else if (m_bc->cf_last) {
-      if (m_bc->cf_last->ndw + 2 * group.slots() > 240) {
+      if (m_bc->cf_last->ndw + 2 * group.slots() > 248) {
          assert(m_bc->cf_last->nlds_read == 0);
          m_bc->force_add_cf = 1;
          m_last_addr = nullptr;
