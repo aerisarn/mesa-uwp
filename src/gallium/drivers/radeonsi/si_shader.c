@@ -936,16 +936,27 @@ static bool upload_binary_elf(struct si_screen *sscreen, struct si_shader *shade
 
 static void calculate_needed_lds_size(struct si_screen *sscreen, struct si_shader *shader)
 {
-   if ((shader->selector->stage == MESA_SHADER_VERTEX && !shader->key.ge.as_ls) ||
-       shader->selector->stage == MESA_SHADER_TESS_EVAL) {
-      unsigned size_in_dw = 0;
-      if (shader->key.ge.as_es || shader->key.ge.as_ngg)
-         size_in_dw += shader->gs_info.esgs_ring_size;
-      if (shader->key.ge.as_ngg)
-         size_in_dw += gfx10_ngg_get_scratch_dw_size(shader);
+   gl_shader_stage stage =
+      shader->is_gs_copy_shader ? MESA_SHADER_VERTEX : shader->selector->stage;
+
+   if (sscreen->info.gfx_level >= GFX9 && stage <= MESA_SHADER_GEOMETRY &&
+       (stage == MESA_SHADER_GEOMETRY || shader->key.ge.as_ngg)) {
+      unsigned size_in_dw = shader->gs_info.esgs_ring_size;
+
+      if (stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg)
+         size_in_dw += shader->ngg.ngg_emit_size;
+
+      if (shader->key.ge.as_ngg) {
+         unsigned scratch_dw_size = gfx10_ngg_get_scratch_dw_size(shader);
+         if (scratch_dw_size) {
+            /* scratch base address needs to be 8 byte aligned */
+            size_in_dw = ALIGN(size_in_dw, 2);
+            size_in_dw += scratch_dw_size;
+         }
+      }
 
       shader->config.lds_size =
-         DIV_ROUND_UP(size_in_dw * 4, get_lds_granularity(sscreen, shader->selector->stage));
+         DIV_ROUND_UP(size_in_dw * 4, get_lds_granularity(sscreen, stage));
    }
 }
 
