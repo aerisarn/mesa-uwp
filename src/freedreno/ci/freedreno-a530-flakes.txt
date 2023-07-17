@@ -154,6 +154,7 @@ spec@glsl-1.20@execution@const-builtin@glsl-const-builtin-distance
 spec@glsl-1.20@execution@const-builtin@glsl-const-builtin-derivatives
 spec@glsl-1.20@execution@vs-outerproduct-const-mat3x4
 spec@glsl-1.20@execution@uniform-initializer@fs-int-set-by-other-stage
+spec@glsl-1.30@execution@built-in-functions@fs-cosh-vec4
 spec@glsl-1.20@execution@built-in-functions@vs-op-assign-add-mat4x2-mat4x2
 spec@glsl-1.30@execution@built-in-functions@fs-op-bitxor-uint-uvec3
 spec@glsl-1.30@execution@built-in-functions@vs-op-assign-lshift-uvec2-ivec2
