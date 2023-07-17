@@ -25,6 +25,8 @@
 #include "nir_builder.h"
 #include "nir_deref.h"
 
+#include "util/u_math.h"
+
 static void
 read_const_values(nir_const_value *dst, const void *src,
                   unsigned num_components, unsigned bit_size)
@@ -108,10 +110,17 @@ write_const_values(void *dst, const nir_const_value *src,
    }
 }
 
+struct small_constant {
+   uint64_t data;
+   uint32_t bit_size;
+   uint32_t bit_stride;
+};
+
 struct var_info {
    nir_variable *var;
 
    bool is_constant;
+   bool is_small;
    bool found_read;
    bool duplicate;
 
@@ -123,6 +132,8 @@ struct var_info {
    /* If is_constant, hold the collected constant data for this var. */
    uint32_t constant_data_size;
    void *constant_data;
+
+   struct small_constant small_constant;
 };
 
 static int
@@ -207,6 +218,96 @@ handle_constant_store(void *mem_ctx, struct var_info *info,
    write_const_values((char *)info->constant_data + offset, val,
                       write_mask & nir_component_mask(num_components),
                       bit_size);
+}
+
+static void
+get_small_constant(struct var_info *info, glsl_type_size_align_func size_align)
+{
+   if (!glsl_type_is_array(info->var->type))
+      return;
+
+   const struct glsl_type *elem_type = glsl_get_array_element(info->var->type);
+   if (!glsl_type_is_scalar(elem_type))
+      return;
+
+   uint32_t array_len = glsl_get_length(info->var->type);
+   uint32_t bit_size = glsl_get_bit_size(elem_type);
+
+   /* If our array is large, don't even bother */
+   if (array_len > 64)
+      return;
+
+   /* Skip cases that can be lowered to a bcsel ladder more efficiently. */
+   if (array_len <= 3)
+      return;
+
+   uint32_t elem_size, elem_align;
+   size_align(elem_type, &elem_size, &elem_align);
+   uint32_t stride = ALIGN_POT(elem_size, elem_align);
+
+   if (stride != (bit_size == 1 ? 4 : bit_size / 8))
+      return;
+
+   nir_const_value values[64];
+   read_const_values(values, info->constant_data, array_len, bit_size);
+
+   uint32_t used_bits = 0;
+   for (unsigned i = 0; i < array_len; i++) {
+      uint64_t u64_elem = nir_const_value_as_uint(values[i], bit_size);
+      if (!u64_elem)
+         continue;
+
+      uint32_t elem_bits = util_logbase2_64(u64_elem) + 1;
+      used_bits = MAX2(used_bits, elem_bits);
+   }
+
+   /* Only use power-of-two numbers of bits so we end up with a shift
+    * instead of a multiply on our index.
+    */
+   used_bits = util_next_power_of_two(used_bits);
+
+   if (used_bits * array_len > 64)
+      return;
+
+   info->is_small = true;
+
+   for (unsigned i = 0; i < array_len; i++) {
+      uint64_t u64_elem = nir_const_value_as_uint(values[i], bit_size);
+      info->small_constant.data |= u64_elem << (i * used_bits);
+   }
+
+   /* Limit bit_size >= 32 to avoid unnecessary conversions.  */
+   info->small_constant.bit_size =
+      MAX2(util_next_power_of_two(used_bits * array_len), 32);
+   info->small_constant.bit_stride = used_bits;
+}
+
+static nir_def *
+build_small_constant_load(nir_builder *b, nir_deref_instr *deref,
+                          struct var_info *info, glsl_type_size_align_func size_align)
+{
+   struct small_constant *constant = &info->small_constant;
+
+   nir_def *imm = nir_imm_intN_t(b, constant->data, constant->bit_size);
+
+   assert(deref->deref_type == nir_deref_type_array);
+   nir_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
+
+   nir_def *shift = nir_imul_imm(b, index, constant->bit_stride);
+
+   nir_def *ret = nir_ushr(b, imm, nir_u2u32(b, shift));
+   ret = nir_iand_imm(b, ret, BITFIELD64_MASK(constant->bit_stride));
+
+   const unsigned bit_size = glsl_get_bit_size(deref->type);
+   if (bit_size < 8) {
+      /* Booleans are special-cased to be 32-bit */
+      assert(glsl_type_is_boolean(deref->type));
+      ret = nir_ine_imm(b, ret, 0);
+   } else if (bit_size != constant->bit_size) {
+      ret = nir_u2uN(b, ret, bit_size);
+   }
+
+   return ret;
 }
 
 /** Lower large constant variables to shader constant data
@@ -342,6 +443,8 @@ nir_opt_large_constants(nir_shader *shader,
       }
    }
 
+   bool has_constant = false;
+
    /* Allocate constant data space for each variable that just has constant
     * data.  We sort them by size and content so we can easily find
     * duplicates.
@@ -357,9 +460,11 @@ nir_opt_large_constants(nir_shader *shader,
       if (!info->is_constant)
          continue;
 
+      get_small_constant(info, size_align);
+
       unsigned var_size, var_align;
       size_align(info->var->type, &var_size, &var_align);
-      if (var_size <= threshold || !info->found_read) {
+      if ((var_size <= threshold && !info->is_small) || !info->found_read) {
          /* Don't bother lowering small stuff or data that's never read */
          info->is_constant = false;
          continue;
@@ -372,23 +477,27 @@ nir_opt_large_constants(nir_shader *shader,
          info->var->data.location = ALIGN_POT(shader->constant_data_size, var_align);
          shader->constant_data_size = info->var->data.location + var_size;
       }
+
+      has_constant |= info->is_constant;
    }
 
-   if (shader->constant_data_size == old_constant_data_size) {
+   if (!has_constant) {
       nir_shader_preserve_all_metadata(shader);
       ralloc_free(var_infos);
       return false;
    }
 
-   assert(shader->constant_data_size > old_constant_data_size);
-   shader->constant_data = rerzalloc_size(shader, shader->constant_data,
-                                          old_constant_data_size,
-                                          shader->constant_data_size);
-   for (int i = 0; i < num_locals; i++) {
-      struct var_info *info = &var_infos[i];
-      if (!info->duplicate && info->is_constant) {
-         memcpy((char *)shader->constant_data + info->var->data.location,
-                info->constant_data, info->constant_data_size);
+   if (shader->constant_data_size != old_constant_data_size) {
+      assert(shader->constant_data_size > old_constant_data_size);
+      shader->constant_data = rerzalloc_size(shader, shader->constant_data,
+                                             old_constant_data_size,
+                                             shader->constant_data_size);
+      for (int i = 0; i < num_locals; i++) {
+         struct var_info *info = &var_infos[i];
+         if (!info->duplicate && info->is_constant) {
+            memcpy((char *)shader->constant_data + info->var->data.location,
+                   info->constant_data, info->constant_data_size);
+         }
       }
    }
 
@@ -412,7 +521,13 @@ nir_opt_large_constants(nir_shader *shader,
                continue;
 
             struct var_info *info = &var_infos[var->index];
-            if (info->is_constant) {
+            if (info->is_small) {
+               b.cursor = nir_after_instr(&intrin->instr);
+               nir_def *val = build_small_constant_load(&b, deref, info, size_align);
+               nir_def_rewrite_uses(&intrin->def, val);
+               nir_instr_remove(&intrin->instr);
+               nir_deref_instr_remove_if_unused(deref);
+            } else if (info->is_constant) {
                b.cursor = nir_after_instr(&intrin->instr);
                nir_def *val = build_constant_load(&b, deref, size_align);
                nir_def_rewrite_uses(&intrin->def,
