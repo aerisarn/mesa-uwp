@@ -1968,7 +1968,6 @@ void si_cp_dma_prefetch(struct radv_cmd_buffer *cmd_buffer, uint64_t va, unsigne
 void si_cp_dma_clear_buffer(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t size, unsigned value);
 void si_cp_dma_wait_for_idle(struct radv_cmd_buffer *cmd_buffer);
 
-uint32_t radv_get_pa_su_sc_mode_cntl(const struct radv_cmd_buffer *cmd_buffer);
 uint32_t radv_get_vgt_index_size(uint32_t type);
 
 unsigned radv_instance_rate_prolog_index(unsigned num_attributes, uint32_t instance_rate_inputs);

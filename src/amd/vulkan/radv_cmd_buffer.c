@@ -2129,7 +2129,7 @@ radv_emit_line_stipple(struct radv_cmd_buffer *cmd_buffer)
                              S_028A0C_AUTO_RESET_CNTL(auto_reset_cntl));
 }
 
-uint32_t
+static uint32_t
 radv_get_pa_su_sc_mode_cntl(const struct radv_cmd_buffer *cmd_buffer)
 {
    enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
