@@ -92,23 +92,10 @@ zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
                                   push_data, 1, &bo, false /* sync */);
 }
 
-VkResult
-nvk_allocate_memory(struct nvk_device *dev,
-                    const VkMemoryAllocateInfo *pAllocateInfo,
-                    const struct nvk_memory_tiling_info *tile_info,
-                    const VkAllocationCallbacks *pAllocator,
-                    struct nvk_device_memory **mem_out)
+static enum nouveau_ws_bo_flags
+nvk_memory_type_flags(const VkMemoryType *type)
 {
-   struct nvk_physical_device *pdev = nvk_device_physical(dev);
-   VkMemoryType *type = &pdev->mem_types[pAllocateInfo->memoryTypeIndex];
-   struct nvk_device_memory *mem;
-
-   mem = vk_device_memory_create(&dev->vk, pAllocateInfo,
-                                 pAllocator, sizeof(*mem));
-   if (!mem)
-      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   enum nouveau_ws_bo_flags flags;
+   enum nouveau_ws_bo_flags flags = 0;
    if (type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
       flags = NOUVEAU_WS_BO_LOCAL;
    else
@@ -117,23 +104,101 @@ nvk_allocate_memory(struct nvk_device *dev,
    if (type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
       flags |= NOUVEAU_WS_BO_MAP;
 
+   return flags;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_GetMemoryFdPropertiesKHR(VkDevice device,
+                             VkExternalMemoryHandleTypeFlagBits handleType,
+                             int fd,
+                             VkMemoryFdPropertiesKHR *pMemoryFdProperties)
+{
+   VK_FROM_HANDLE(nvk_device, dev, device);
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
+   struct nouveau_ws_bo *bo;
+
+   switch (handleType) {
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+      bo = nouveau_ws_bo_from_dma_buf(pdev->dev, fd);
+      if (bo == NULL)
+         return vk_error(dev, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+      break;
+   default:
+      return vk_error(dev, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+   }
+
+   uint32_t type_bits = 0;
+   for (unsigned t = 0; t < ARRAY_SIZE(pdev->mem_types); t++) {
+      const enum nouveau_ws_bo_flags flags =
+         nvk_memory_type_flags(&pdev->mem_types[t]);
+      if (!(flags & ~bo->flags))
+         type_bits |= (1 << t);
+   }
+
+   pMemoryFdProperties->memoryTypeBits = type_bits;
+
+   nouveau_ws_bo_destroy(bo);
+
+   return VK_SUCCESS;
+}
+
+VkResult
+nvk_allocate_memory(struct nvk_device *dev,
+                    const VkMemoryAllocateInfo *pAllocateInfo,
+                    const struct nvk_memory_tiling_info *tile_info,
+                    const VkAllocationCallbacks *pAllocator,
+                    struct nvk_device_memory **mem_out)
+{
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
+   struct nvk_device_memory *mem;
+   VkResult result = VK_SUCCESS;
+
+   const VkImportMemoryFdInfoKHR *fd_info =
+      vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_FD_INFO_KHR);
+
+   const VkMemoryType *type =
+      &pdev->mem_types[pAllocateInfo->memoryTypeIndex];
+   const enum nouveau_ws_bo_flags flags = nvk_memory_type_flags(type);
+
+   mem = vk_device_memory_create(&dev->vk, pAllocateInfo,
+                                 pAllocator, sizeof(*mem));
+   if (!mem)
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+
    mem->map = NULL;
-   if (tile_info) {
+   if (fd_info && fd_info->handleType) {
+      assert(fd_info->handleType ==
+               VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
+             fd_info->handleType ==
+               VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
+
+      mem->bo = nouveau_ws_bo_from_dma_buf(pdev->dev, fd_info->fd);
+      if (mem->bo == NULL) {
+         result = vk_error(dev, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+         goto fail_alloc;
+      }
+      assert(!(flags & ~mem->bo->flags));
+   } else if (tile_info) {
       mem->bo = nouveau_ws_bo_new_tiled(pdev->dev,
                                         pAllocateInfo->allocationSize, 0,
                                         tile_info->pte_kind,
                                         tile_info->tile_mode,
                                         flags);
+      if (!mem->bo) {
+         result = vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         goto fail_alloc;
+      }
    } else {
       mem->bo = nouveau_ws_bo_new(pdev->dev,
                                   pAllocateInfo->allocationSize, 0, flags);
-   }
-   if (!mem->bo) {
-      vk_object_free(&dev->vk, pAllocator, mem);
-      return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      if (!mem->bo) {
+         result = vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         goto fail_alloc;
+      }
    }
 
-   VkResult result;
    if (pdev->dev->debug_flags & NVK_DEBUG_ZERO_MEMORY) {
       if (type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
          void *map = nouveau_ws_bo_map(mem->bo, NOUVEAU_WS_BO_RDWR);
@@ -151,6 +216,19 @@ nvk_allocate_memory(struct nvk_device *dev,
       }
    }
 
+   if (fd_info && fd_info->handleType) {
+      /* From the Vulkan spec:
+       *
+       *    "Importing memory from a file descriptor transfers ownership of
+       *    the file descriptor from the application to the Vulkan
+       *    implementation. The application must not perform any operations on
+       *    the file descriptor after a successful import."
+       *
+       * If the import fails, we leave the file descriptor open.
+       */
+      close(fd_info->fd);
+   }
+
    pthread_mutex_lock(&dev->mutex);
    list_addtail(&mem->link, &dev->memory_objects);
    pthread_mutex_unlock(&dev->mutex);
@@ -161,6 +239,7 @@ nvk_allocate_memory(struct nvk_device *dev,
 
 fail_bo:
    nouveau_ws_bo_destroy(mem->bo);
+fail_alloc:
    vk_device_memory_destroy(&dev->vk, pAllocator, &mem->vk);
    return result;
 }
