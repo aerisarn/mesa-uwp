@@ -127,6 +127,15 @@ if [ "$HWCI_FREQ_MAX" = "true" ]; then
   /intel-gpu-freq.sh -s 70% --cpu-set-max 65% -g all -d
 fi
 
+# Start a little daemon to capture sysfs records and produce a JSON file
+if [ -x /kdl.sh ]; then
+  echo "launch kdl.sh!"
+  /kdl.sh &
+  BACKGROUND_PIDS="$! $BACKGROUND_PIDS"
+else
+  echo "kdl.sh not found!"
+fi
+
 # Increase freedreno hangcheck timer because it's right at the edge of the
 # spilling tests timing out (and some traces, too)
 if [ -n "$FREEDRENO_HANGCHECK_MS" ]; then

@@ -130,6 +130,7 @@ apt-get install -y --no-remove \
                    python3-mako \
                    python3-numpy \
                    python3-serial \
+                   python3-venv \
                    unzip \
                    zstd
 
@@ -290,6 +291,12 @@ if [[ ${DEBIAN_ARCH} = "amd64" ]]; then
     mkdir -p $ROOTFS/usr/local/libexec/
     mv /usr/local/libexec/virgl* $ROOTFS/usr/local/libexec/
 fi
+
+############### Build ci-kdl
+section_start kdl "Prepare a venv for kdl"
+. .gitlab-ci/container/build-kdl.sh
+mv ci-kdl.venv $ROOTFS
+section_end kdl
 
 ############### Build local stuff for use by igt and kernel testing, which
 ############### will reuse most of our container build process from a specific
