@@ -17,6 +17,7 @@
 #include "util/u_vertex_state_cache.h"
 #include "ac_sqtt.h"
 #include "ac_spm.h"
+#include "si_perfetto.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -1361,6 +1362,8 @@ struct si_context {
    /* TODO: move other shaders here too */
    /* Only used for DCC MSAA clears with 4-8 fragments and 4-16 samples. */
    void *cs_clear_dcc_msaa[32][5][2][3][2]; /* [swizzle_mode][log2(bpe)][fragments == 8][log2(samples)-2][is_array] */
+   
+   struct si_ds_device ds;
 };
 
 /* si_blit.c */
