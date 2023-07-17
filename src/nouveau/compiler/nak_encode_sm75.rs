@@ -1481,6 +1481,19 @@ impl SM75Instr {
         self.set_field(72..80, op.idx);
     }
 
+    fn encode_popc(&mut self, op: &OpPopC) {
+        self.encode_alu(
+            0x109,
+            Some(op.dst),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.src),
+            ALUSrc::None,
+        );
+
+        let not_mod = matches!(op.src.src_mod, SrcMod::BNot);
+        self.set_field(63..64, not_mod)
+    }
+
     pub fn encode(
         instr: &Instr,
         sm: u8,
@@ -1539,6 +1552,7 @@ impl SM75Instr {
             Op::Exit(op) => si.encode_exit(&op),
             Op::Bar(op) => si.encode_bar(&op),
             Op::S2R(op) => si.encode_s2r(&op),
+            Op::PopC(op) => si.encode_popc(&op),
             _ => panic!("Unhandled instruction"),
         }
 

@@ -208,6 +208,14 @@ impl<'a> ShaderFromNir<'a> {
                 Src::new_imm_u32(0x3f800000),
             ),
             nir_op_bcsel => b.sel(srcs[0], srcs[1], srcs[2]),
+            nir_op_bit_count => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpPopC {
+                    dst: dst.into(),
+                    src: srcs[0],
+                });
+                dst
+            }
             nir_op_f2i32 | nir_op_f2u32 => {
                 let src_bits = usize::from(alu.get_src(0).bit_size());
                 let dst_bits = alu.def.bit_size();
