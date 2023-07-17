@@ -165,6 +165,7 @@
 #define RENCODE_COLOR_VOLUME_G22_BT709                                              0
 
 #define RENCODE_COLOR_RANGE_FULL                                                    0
+#define RENCODE_COLOR_RANGE_STUDIO                                                  1
 #define RENCODE_CHROMA_LOCATION_INTERSTITIAL                                        0
 
 #define RENCODE_COLOR_BIT_DEPTH_8_BIT                                               0
