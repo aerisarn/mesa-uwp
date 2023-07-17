@@ -169,11 +169,20 @@ static void radeon_vcn_enc_h264_get_vui_param(struct radeon_encoder *enc,
       pic->seq.vui_flags.aspect_ratio_info_present_flag;
    enc->enc_pic.vui_info.flags.timing_info_present_flag =
       pic->seq.vui_flags.timing_info_present_flag;
+   enc->enc_pic.vui_info.flags.video_signal_type_present_flag =
+      pic->seq.vui_flags.video_signal_type_present_flag;
+   enc->enc_pic.vui_info.flags.colour_description_present_flag =
+      pic->seq.vui_flags.colour_description_present_flag;
    enc->enc_pic.vui_info.aspect_ratio_idc = pic->seq.aspect_ratio_idc;
    enc->enc_pic.vui_info.sar_width = pic->seq.sar_width;
    enc->enc_pic.vui_info.sar_height = pic->seq.sar_height;
    enc->enc_pic.vui_info.num_units_in_tick = pic->seq.num_units_in_tick;
    enc->enc_pic.vui_info.time_scale = pic->seq.time_scale;
+   enc->enc_pic.vui_info.video_format = pic->seq.video_format;
+   enc->enc_pic.vui_info.video_full_range_flag = pic->seq.video_full_range_flag;
+   enc->enc_pic.vui_info.colour_primaries = pic->seq.colour_primaries;
+   enc->enc_pic.vui_info.transfer_characteristics = pic->seq.transfer_characteristics;
+   enc->enc_pic.vui_info.matrix_coefficients = pic->seq.matrix_coefficients;
 }
 
 /* only checking the first slice to get num of mbs in slice to
