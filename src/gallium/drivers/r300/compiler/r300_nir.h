@@ -36,4 +36,8 @@ extern bool r300_nir_fuse_fround_d3d9(struct nir_shader *shader);
 
 extern bool r300_nir_lower_bool_to_float(struct nir_shader *shader);
 
+extern bool r300_nir_prepare_presubtract(struct nir_shader *shader);
+
+extern bool r300_nir_clean_double_fneg(struct nir_shader *shader);
+
 #endif /* R300_NIR_H */

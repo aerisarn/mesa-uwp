@@ -26,6 +26,7 @@
 #include "compiler/nir/nir_legacy.h"
 #include "compiler/nir/nir_worklist.h"
 #include "nir_to_rc.h"
+#include "r300_nir.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
 #include "tgsi/tgsi_dump.h"
@@ -2432,6 +2433,11 @@ const void *nir_to_rc_options(struct nir_shader *s,
          NIR_PASS_V(s, nir_opt_cse);
       }
    } while (progress);
+
+   if (s->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(s, r300_nir_prepare_presubtract);
+      NIR_PASS_V(s, r300_nir_clean_double_fneg);
+   }
 
    NIR_PASS_V(s, nir_lower_int_to_float);
    NIR_PASS_V(s, nir_lower_bool_to_float,

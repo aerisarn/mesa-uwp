@@ -63,6 +63,22 @@ r300_nir_fuse_fround_d3d9 = [
          ('fround_even', 'a'))
 ]
 
+# Here are some specific optimizations for code reordering such that the backend
+# has easier task of recognizing output modifiers and presubtract patterns.
+r300_nir_prepare_presubtract = [
+        # Backend can only recognize 1 - x pattern.
+        (('fadd', ('fneg', a), 1.0), ('fadd', 1.0, ('fneg', a))),
+        (('fadd', a, -1.0), ('fneg', ('fadd', 1.0, ('fneg', a)))),
+        (('fadd', -1.0, a), ('fneg', ('fadd', 1.0, ('fneg', a)))),
+]
+
+# Previous prepare_presubtract pass can sometimes produce double fneg patterns.
+# The backend copy propagate could handle it, but the nir to tgsi translation
+# does not and blows up. Just run a simple pass to clean it up.
+r300_nir_clean_double_fneg = [
+        (('fneg', ('fneg', a)), a)
+]
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--import-path', required=True)
@@ -102,6 +118,12 @@ def main():
 
         f.write(nir_algebraic.AlgebraicPass("r300_nir_lower_bool_to_float",
                                             r300_nir_lower_bool_to_float).render())
+
+        f.write(nir_algebraic.AlgebraicPass("r300_nir_prepare_presubtract",
+                                            r300_nir_prepare_presubtract).render())
+
+        f.write(nir_algebraic.AlgebraicPass("r300_nir_clean_double_fneg",
+                                            r300_nir_clean_double_fneg).render())
 
 if __name__ == '__main__':
     main()
