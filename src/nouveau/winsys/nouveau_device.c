@@ -7,6 +7,7 @@
 #include <nouveau/nvif/ioctl.h>
 #include <nvif/cl0080.h>
 #include <nvif/class.h>
+#include <util/hash_table.h>
 
 #include "nouveau_context.h"
 
@@ -266,6 +267,9 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
 
    nouveau_ws_context_destroy(tmp_ctx);
 
+   simple_mtx_init(&device->bos_lock, mtx_plain);
+   device->bos = _mesa_pointer_hash_table_create(NULL);
+
    return device;
 
 out_err:
@@ -282,6 +286,8 @@ nouveau_ws_device_destroy(struct nouveau_ws_device *device)
    if (!device)
       return;
 
+   _mesa_hash_table_destroy(device->bos, NULL);
+   simple_mtx_destroy(&device->bos_lock);
    close(device->fd);
    FREE(device->chipset_name);
    FREE(device->device_name);

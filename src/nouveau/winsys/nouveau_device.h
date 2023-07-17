@@ -3,10 +3,12 @@
 
 #include "nouveau_private.h"
 #include "nv_device_info.h"
+#include "util/simple_mtx.h"
 
 #include <stddef.h>
 
 struct _drmDevice;
+struct hash_table;
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,6 +54,9 @@ struct nouveau_ws_device {
    uint16_t mp_count;
 
    enum nvk_debug debug_flags;
+
+   simple_mtx_t bos_lock;
+   struct hash_table *bos;
 };
 
 struct nouveau_ws_device *nouveau_ws_device_new(struct _drmDevice *drm_device);

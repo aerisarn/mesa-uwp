@@ -1,5 +1,7 @@
 #include "nouveau_bo.h"
 
+#include <util/hash_table.h>
+
 #include <nouveau_drm.h>
 #include <xf86drm.h>
 
@@ -67,19 +69,71 @@ nouveau_ws_bo_new_tiled(struct nouveau_ws_device *dev,
    req.info.size = size;
    req.align = align;
 
+   simple_mtx_lock(&dev->bos_lock);
+
    int ret = drmCommandWriteRead(dev->fd, DRM_NOUVEAU_GEM_NEW, &req, sizeof(req));
-   if (ret) {
+   if (ret == 0) {
+      bo->size = req.info.size;
+      bo->offset = req.info.offset;
+      bo->handle = req.info.handle;
+      bo->map_handle = req.info.map_handle;
+      bo->dev = dev;
+      bo->flags = flags;
+      bo->refcnt = 1;
+
+      _mesa_hash_table_insert(dev->bos, (void *)(uintptr_t)bo->handle, bo);
+   } else {
       FREE(bo);
-      return NULL;
+      bo = NULL;
    }
 
-   bo->size = req.info.size;
-   bo->offset = req.info.offset;
-   bo->handle = req.info.handle;
-   bo->map_handle = req.info.map_handle;
-   bo->dev = dev;
-   bo->flags = flags;
-   bo->refcnt = 1;
+   simple_mtx_unlock(&dev->bos_lock);
+
+   return bo;
+}
+
+struct nouveau_ws_bo *
+nouveau_ws_bo_from_dma_buf(struct nouveau_ws_device *dev, int fd)
+{
+   struct nouveau_ws_bo *bo = NULL;
+
+   simple_mtx_lock(&dev->bos_lock);
+
+   uint32_t handle;
+   int ret = drmPrimeFDToHandle(dev->fd, fd, &handle);
+   if (ret == 0) {
+      struct hash_entry *entry =
+         _mesa_hash_table_search(dev->bos, (void *)(uintptr_t)handle);
+      if (entry != NULL) {
+         bo = entry->data;
+      } else {
+         struct drm_nouveau_gem_info info = {
+            .handle = handle
+         };
+         ret = drmCommandWriteRead(dev->fd, DRM_NOUVEAU_GEM_INFO,
+                                   &info, sizeof(info));
+         if (ret == 0) {
+            enum nouveau_ws_bo_flags flags = 0;
+            if (info.domain & NOUVEAU_GEM_DOMAIN_GART)
+               flags |= NOUVEAU_WS_BO_GART;
+            if (info.map_handle)
+               flags |= NOUVEAU_WS_BO_MAP;
+
+            bo = CALLOC_STRUCT(nouveau_ws_bo);
+            bo->size = info.size;
+            bo->offset = info.offset;
+            bo->handle = info.handle;
+            bo->map_handle = info.map_handle;
+            bo->dev = dev;
+            bo->flags = flags;
+            bo->refcnt = 1;
+
+            _mesa_hash_table_insert(dev->bos, (void *)(uintptr_t)handle, bo);
+         }
+      }
+   }
+
+   simple_mtx_unlock(&dev->bos_lock);
 
    return bo;
 }
@@ -90,8 +144,15 @@ nouveau_ws_bo_destroy(struct nouveau_ws_bo *bo)
    if (--bo->refcnt)
       return;
 
+   struct nouveau_ws_device *dev = bo->dev;
+
+   simple_mtx_lock(&dev->bos_lock);
+
+   _mesa_hash_table_remove_key(dev->bos, (void *)(uintptr_t)bo->handle);
    drmCloseBufferHandle(bo->dev->fd, bo->handle);
    FREE(bo);
+
+   simple_mtx_unlock(&dev->bos_lock);
 }
 
 void *
