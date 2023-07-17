@@ -308,6 +308,11 @@ enum si_coherency
 struct si_resource {
    struct threaded_resource b;
 
+   /* If we remove this seemingly useless padding, performance in Viewperf2020/catiav5test1
+    * decreases by 8%.
+    */
+   uint32_t _pad;
+
    /* Winsys objects. */
    struct pb_buffer *buf;
    uint64_t gpu_address;
