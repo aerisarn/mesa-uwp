@@ -87,6 +87,8 @@ files_libradeonsi = files(
   'si_test_image_copy_region.c',
   'si_test_dma_perf.c',
   'si_texture.c',
+  'si_utrace.c',
+  'si_utrace.h',
   'si_uvd.c',
   'pspdecryptionparam.h',
   'radeon_temporal.h',

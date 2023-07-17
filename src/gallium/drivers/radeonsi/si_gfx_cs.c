@@ -590,6 +590,15 @@ void si_trace_emit(struct si_context *sctx)
       u_log_flush(sctx->log);
 }
 
+/* timestamp logging for u_trace: */
+void si_emit_ts(struct si_context *sctx, struct si_resource* buffer, unsigned int offset)
+{
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+   uint64_t va = buffer->gpu_address + offset;
+   si_cp_release_mem(sctx, cs, V_028A90_BOTTOM_OF_PIPE_TS, 0, EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
+                        EOP_DATA_SEL_TIMESTAMP, NULL, va, 0, PIPE_QUERY_TIMESTAMP);
+}
+
 void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs, unsigned cp_coher_cntl)
 {
    bool compute_ib = !sctx->has_graphics;
