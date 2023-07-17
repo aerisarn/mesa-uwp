@@ -1798,7 +1798,7 @@ nv50_blitter_destroy(struct nv50_screen *screen)
          struct nv50_program *prog = blitter->fp[i][m];
          if (prog) {
             nv50_program_destroy(NULL, prog);
-            ralloc_free((void *)prog->pipe.ir.nir);
+            ralloc_free((void *)prog->nir);
             FREE(prog);
          }
       }

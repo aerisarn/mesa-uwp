@@ -855,11 +855,11 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
     * means counting vertices in a vertex shader when it has so outputs.
     */
    if (nv50->screen->base.class_3d < NVA0_3D_CLASS &&
-       nv50->vertprog->pipe.stream_output.num_outputs) {
+       nv50->vertprog->stream_output.num_outputs) {
       for (int i = 0; i < nv50->num_so_targets; i++) {
          nv50->so_used[i] += info->instance_count *
             u_stream_outputs_for_vertices(info->mode, draws[0].count) *
-            nv50->vertprog->pipe.stream_output.stride[i] * 4;
+            nv50->vertprog->stream_output.stride[i] * 4;
       }
    }
 

@@ -747,15 +747,13 @@ nv50_sp_state_create(struct pipe_context *pipe,
       return NULL;
 
    prog->type = type;
-   prog->pipe.type = cso->type;
 
    switch (cso->type) {
    case PIPE_SHADER_IR_TGSI:
-      prog->pipe.type = PIPE_SHADER_IR_NIR;
-      prog->pipe.ir.nir = tgsi_to_nir(cso->tokens, pipe->screen, false);
+      prog->nir = tgsi_to_nir(cso->tokens, pipe->screen, false);
       break;
    case PIPE_SHADER_IR_NIR:
-      prog->pipe.ir.nir = cso->ir.nir;
+      prog->nir = cso->ir.nir;
       break;
    default:
       assert(!"unsupported IR!");
@@ -764,7 +762,7 @@ nv50_sp_state_create(struct pipe_context *pipe,
    }
 
    if (cso->stream_output.num_outputs)
-      prog->pipe.stream_output = cso->stream_output;
+      prog->stream_output = cso->stream_output;
 
    prog->translated = nv50_program_translate(
          prog, nv50_context(pipe)->screen->base.device->chipset,
@@ -783,10 +781,7 @@ nv50_sp_state_delete(struct pipe_context *pipe, void *hwcso)
    nv50_program_destroy(nv50, prog);
    simple_mtx_unlock(&nv50->screen->state_lock);
 
-   if (prog->pipe.type == PIPE_SHADER_IR_TGSI)
-      FREE((void *)prog->pipe.tokens);
-   else if (prog->pipe.type == PIPE_SHADER_IR_NIR)
-      ralloc_free(prog->pipe.ir.nir);
+   ralloc_free(prog->nir);
    FREE(prog);
 }
 
@@ -848,17 +843,15 @@ nv50_cp_state_create(struct pipe_context *pipe,
    if (!prog)
       return NULL;
    prog->type = PIPE_SHADER_COMPUTE;
-   prog->pipe.type = cso->ir_type;
 
    switch(cso->ir_type) {
    case PIPE_SHADER_IR_TGSI: {
       const struct tgsi_token *tokens = cso->prog;
-      prog->pipe.type = PIPE_SHADER_IR_NIR;
-      prog->pipe.ir.nir = tgsi_to_nir(tokens, pipe->screen, false);
+      prog->nir = tgsi_to_nir(tokens, pipe->screen, false);
       break;
    }
    case PIPE_SHADER_IR_NIR:
-      prog->pipe.ir.nir = (nir_shader *)cso->prog;
+      prog->nir = (nir_shader *)cso->prog;
       break;
    default:
       assert(!"unsupported IR!");
