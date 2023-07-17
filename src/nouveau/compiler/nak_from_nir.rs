@@ -537,6 +537,82 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
+            nir_op_isign => {
+                let gt_pred = b.alloc_ssa(RegFile::Pred, 1);
+                let lt_pred = b.alloc_ssa(RegFile::Pred, 1);
+                let gt = b.alloc_ssa(RegFile::GPR, 1);
+                let lt = b.alloc_ssa(RegFile::GPR, 1);
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpISetP {
+                    dst: gt_pred.into(),
+                    set_op: PredSetOp::And,
+                    cmp_op: IntCmpOp::Gt,
+                    cmp_type: IntCmpType::I32,
+                    srcs: [srcs[0], Src::new_zero()],
+                    accum: Src::new_imm_bool(true),
+                });
+
+                let cond = Src::from(gt_pred).bnot();
+                b.push_op(OpSel {
+                    dst: gt.into(),
+                    cond,
+                    srcs: [Src::new_zero(), Src::new_imm_u32(u32::MAX)],
+                });
+                b.push_op(OpISetP {
+                    dst: lt_pred.into(),
+                    set_op: PredSetOp::And,
+                    cmp_op: IntCmpOp::Lt,
+                    cmp_type: IntCmpType::I32,
+                    srcs: [srcs[0], Src::new_zero()],
+                    accum: Src::new_imm_bool(true),
+                });
+
+                let cond = Src::from(lt_pred).bnot();
+                b.push_op(OpSel {
+                    dst: lt.into(),
+                    cond,
+                    srcs: [Src::new_zero(), Src::new_imm_u32(u32::MAX)],
+                });
+
+                let dst_is_signed = alu.info().output_type & 2 != 0;
+                let dst_type = IntType::from_bits(
+                    alu.def.bit_size().into(),
+                    dst_is_signed,
+                );
+                match dst_type {
+                    IntType::I32 => {
+                        let gt_neg = b.ineg(gt.into());
+                        b.push_op(OpIAdd3 {
+                            dst: dst.into(),
+                            overflow: Dst::None,
+                            srcs: [lt.into(), gt_neg.into(), Src::new_zero()],
+                            carry: Src::new_imm_bool(false),
+                        });
+                    }
+                    IntType::I64 => {
+                        let high = b.alloc_ssa(RegFile::GPR, 1);
+                        let gt_neg = b.ineg(gt.into());
+                        b.push_op(OpIAdd3 {
+                            dst: high.into(),
+                            overflow: Dst::None,
+                            srcs: [lt.into(), gt_neg.into(), Src::new_zero()],
+                            carry: Src::new_imm_bool(false),
+                        });
+                        b.push_op(OpShf {
+                            dst: dst.into(),
+                            low: Src::new_zero(),
+                            high: high.into(),
+                            shift: Src::new_imm_u32(31),
+                            right: true,
+                            wrap: true,
+                            data_type: dst_type,
+                            dst_high: true,
+                        })
+                    }
+                    _ => panic!("Invalid IntType {}", dst_type),
+                }
+                dst
+            }
             nir_op_ixor => {
                 b.lop2(LogicOp::new_lut(&|x, y, _| x ^ y), srcs[0], srcs[1])
             }
