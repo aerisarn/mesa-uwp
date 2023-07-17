@@ -250,6 +250,7 @@ enum v3dv_queue_type {
    V3DV_QUEUE_CL = 0,
    V3DV_QUEUE_CSD,
    V3DV_QUEUE_TFU,
+   V3DV_QUEUE_CPU,
    V3DV_QUEUE_ANY,
    V3DV_QUEUE_COUNT,
 };
@@ -1440,10 +1441,12 @@ enum {
    V3DV_BARRIER_GRAPHICS_BIT = (1 << 0),
    V3DV_BARRIER_COMPUTE_BIT  = (1 << 1),
    V3DV_BARRIER_TRANSFER_BIT = (1 << 2),
+   V3DV_BARRIER_CPU_BIT      = (1 << 3),
 };
 #define V3DV_BARRIER_ALL (V3DV_BARRIER_GRAPHICS_BIT | \
                           V3DV_BARRIER_TRANSFER_BIT | \
-                          V3DV_BARRIER_COMPUTE_BIT);
+                          V3DV_BARRIER_COMPUTE_BIT | \
+                          V3DV_BARRIER_CPU_BIT);
 
 struct v3dv_barrier_state {
    /* Mask of V3DV_BARRIER_* indicating where we consume a barrier. */

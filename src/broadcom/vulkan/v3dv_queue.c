@@ -76,7 +76,7 @@ queue_wait_idle(struct v3dv_queue *queue,
 {
    if (queue->device->pdevice->caps.multisync) {
       int ret = drmSyncobjWait(queue->device->pdevice->render_fd,
-                               queue->last_job_syncs.syncs, 3,
+                               queue->last_job_syncs.syncs, 4,
                                INT64_MAX, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL,
                                NULL);
       if (ret) {
@@ -85,7 +85,7 @@ queue_wait_idle(struct v3dv_queue *queue,
       }
 
       bool first = true;
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < 4; i++) {
          if (!queue->last_job_syncs.first[i])
             first = false;
       }
@@ -117,7 +117,7 @@ queue_wait_idle(struct v3dv_queue *queue,
       }
    }
 
-   for (int i = 0; i < 3; i++)
+   for (int i = 0; i < 4; i++)
       queue->last_job_syncs.first[i] = false;
 
    return VK_SUCCESS;
@@ -160,12 +160,16 @@ set_in_syncs(struct v3dv_queue *queue,
    bool sync_tfu  = job->serialize & V3DV_BARRIER_TRANSFER_BIT;
    bool sync_cl   = job->serialize & (V3DV_BARRIER_GRAPHICS_BIT |
                                       V3DV_BARRIER_TRANSFER_BIT);
+   bool sync_cpu  = job->serialize & V3DV_BARRIER_CPU_BIT;
+
    *count = n_syncs;
    if (sync_cl)
       (*count)++;
    if (sync_tfu)
       (*count)++;
    if (sync_csd)
+      (*count)++;
+   if (sync_cpu)
       (*count)++;
 
    *count += wait_count;
@@ -198,6 +202,9 @@ set_in_syncs(struct v3dv_queue *queue,
 
    if (sync_tfu)
       syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_TFU];
+
+   if (sync_cpu)
+      syncs[n_syncs++].handle = queue->last_job_syncs.syncs[V3DV_QUEUE_CPU];
 
    assert(n_syncs == *count);
    return syncs;
