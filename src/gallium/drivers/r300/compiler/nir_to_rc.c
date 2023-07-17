@@ -1631,50 +1631,6 @@ ntr_emit_load_sysval(struct ntr_compile *c, nir_intrinsic_instr *instr)
 }
 
 static void
-ntr_emit_barrier(struct ntr_compile *c, nir_intrinsic_instr *intr)
-{
-   bool compute = gl_shader_stage_is_compute(c->s->info.stage);
-
-   if (nir_intrinsic_memory_scope(intr) != SCOPE_NONE) {
-      nir_variable_mode modes = nir_intrinsic_memory_modes(intr);
-      unsigned membar = 0;
-
-      if (modes & nir_var_image)
-         membar |= TGSI_MEMBAR_SHADER_IMAGE;
-
-      if (modes & nir_var_mem_shared)
-         membar |= TGSI_MEMBAR_SHARED;
-
-      /* Atomic counters are lowered to SSBOs, there's no NIR mode corresponding
-       * exactly to atomics. Take the closest match.
-       */
-      if (modes & nir_var_mem_ssbo)
-         membar |= TGSI_MEMBAR_SHADER_BUFFER | TGSI_MEMBAR_ATOMIC_BUFFER;
-
-      if (modes & nir_var_mem_global)
-         membar |= TGSI_MEMBAR_SHADER_BUFFER;
-
-      /* If we only need workgroup scope (not device-scope), we might be able to
-       * optimize a bit.
-       */
-      if (membar && compute &&
-          nir_intrinsic_memory_scope(intr) == SCOPE_WORKGROUP) {
-
-         membar |= TGSI_MEMBAR_THREAD_GROUP;
-      }
-
-      /* Only emit a memory barrier if there are any relevant modes */
-      if (membar)
-         ntr_MEMBAR(c, ureg_imm1u(c->ureg, membar));
-   }
-
-   if (nir_intrinsic_execution_scope(intr) != SCOPE_NONE) {
-      assert(compute || c->s->info.stage == MESA_SHADER_TESS_CTRL);
-      ntr_BARRIER(c);
-   }
-}
-
-static void
 ntr_emit_intrinsic(struct ntr_compile *c, nir_intrinsic_instr *instr)
 {
    switch (instr->intrinsic) {
@@ -2552,8 +2508,6 @@ const void *nir_to_rc_options(struct nir_shader *s,
          NIR_PASS_V(s, nir_opt_cse);
       }
    } while (progress);
-
-   NIR_PASS_V(s, nir_opt_combine_barriers, NULL, NULL);
 
    NIR_PASS_V(s, nir_lower_int_to_float);
    NIR_PASS_V(s, nir_lower_bool_to_float,
