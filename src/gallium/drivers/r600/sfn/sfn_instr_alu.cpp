@@ -635,7 +635,7 @@ AluInstr::replace_dest(PRegister new_dest, AluInstr *move_instr)
    if (m_dest->pin() == pin_chan) {
       if (new_dest->pin() == pin_group)
          new_dest->set_pin(pin_chgr);
-      else
+      else if (new_dest->pin() != pin_chgr)
          new_dest->set_pin(pin_chan);
    }
 
