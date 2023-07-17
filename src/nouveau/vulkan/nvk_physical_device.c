@@ -574,7 +574,7 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
 
    if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)) ||
        drm_device->bustype != DRM_BUS_PCI ||
-       drm_device->deviceinfo.pci->vendor_id != 0x10de)
+       drm_device->deviceinfo.pci->vendor_id != NVIDIA_VENDOR_ID)
       return VK_ERROR_INCOMPATIBLE_DRIVER;
 
    struct nouveau_ws_device *ndev = nouveau_ws_device_new(drm_device);
