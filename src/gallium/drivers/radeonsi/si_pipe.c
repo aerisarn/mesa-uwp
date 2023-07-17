@@ -24,6 +24,7 @@
 #include "util/u_upload_mgr.h"
 #include "util/xmlconfig.h"
 #include "vl/vl_decoder.h"
+#include "si_utrace.h"
 
 #include <xf86drm.h>
 
@@ -203,6 +204,8 @@ static void si_destroy_context(struct pipe_context *context)
 
       si_destroy_sqtt(sctx);
    }
+
+   si_utrace_fini(sctx);
 
    pipe_resource_reference(&sctx->esgs_ring, NULL);
    pipe_resource_reference(&sctx->gsvs_ring, NULL);
@@ -779,6 +782,8 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       sctx->shader.gs.key.ge.opt.prefer_mono = 1;
    }
 
+   si_utrace_init(sctx);
+
    si_begin_new_gfx_cs(sctx, true);
    assert(sctx->gfx_cs.current.cdw == sctx->initial_gfx_cs_size);
 
@@ -850,6 +855,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    }
 
    sctx->initial_gfx_cs_size = sctx->gfx_cs.current.cdw;
+   sctx->last_timestamp_cmd = NULL;
 
    sctx->cs_blit_shaders = _mesa_hash_table_create_u32_keys(NULL);
    if (!sctx->cs_blit_shaders)
@@ -1521,6 +1527,8 @@ struct pipe_screen *radeonsi_screen_create(int fd, const struct pipe_screen_conf
       rw = amdgpu_winsys_create(fd, config, radeonsi_screen_create_impl);
       break;
    }
+
+   si_driver_ds_init();
 
    drmFreeVersion(version);
    return rw ? rw->screen : NULL;

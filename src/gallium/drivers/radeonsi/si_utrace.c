@@ -12,13 +12,15 @@
 #include "util/hash_table.h"
 
 
-static void si_utrace_record_ts(struct u_trace *trace, void *cs, void *timestamps, unsigned idx, bool end_of_pipe)
+static void si_utrace_record_ts(struct u_trace *trace, void *cs, void *timestamps, 
+                                unsigned idx, bool end_of_pipe)
 {
    struct si_context *ctx = container_of(trace, struct si_context, trace);
    struct pipe_resource *buffer = timestamps;
    struct si_resource *ts_bo = si_resource(buffer);
 
-   if (ctx->gfx_cs.current.buf == ctx->last_timestamp_cmd && ctx->gfx_cs.current.cdw == ctx->last_timestamp_cmd_cdw) {
+   if (ctx->gfx_cs.current.buf == ctx->last_timestamp_cmd && 
+       ctx->gfx_cs.current.cdw == ctx->last_timestamp_cmd_cdw) {
       uint64_t *ts = si_buffer_map(ctx, ts_bo, PIPE_MAP_READ);
       ts[idx] = U_TRACE_NO_TIMESTAMP;
       return;
@@ -31,7 +33,8 @@ static void si_utrace_record_ts(struct u_trace *trace, void *cs, void *timestamp
    ctx->last_timestamp_cmd_cdw = ctx->gfx_cs.current.cdw;
 }
 
-static uint64_t si_utrace_read_ts(struct u_trace_context *utctx, void *timestamps, unsigned idx, void *flush_data)
+static uint64_t si_utrace_read_ts(struct u_trace_context *utctx, void *timestamps, 
+                                  unsigned idx, void *flush_data)
 {
    struct si_context *ctx = container_of(utctx, struct si_context, ds.trace_context);
    struct pipe_resource *buffer = timestamps;

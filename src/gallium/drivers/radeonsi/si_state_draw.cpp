@@ -14,6 +14,8 @@
 #include "util/u_prim.h"
 #include "util/u_upload_mgr.h"
 #include "ac_rtld.h"
+#include "si_build_pm4.h"
+#include "si_tracepoints.h"
 
 #if (GFX_VER == 6)
 #define GFX(name) name##GFX6
@@ -1985,6 +1987,9 @@ static void si_draw(struct pipe_context *ctx,
 
    si_need_gfx_cs_space(sctx, num_draws);
 
+   if (u_trace_perfetto_active(&sctx->ds.trace_context))
+      trace_si_begin_draw(&sctx->trace);
+   
    unsigned instance_count = info->instance_count;
 
    /* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is
@@ -2294,6 +2299,10 @@ static void si_draw(struct pipe_context *ctx,
    if (sctx->framebuffer.state.zsbuf) {
       struct si_texture *zstex = (struct si_texture *)sctx->framebuffer.state.zsbuf->texture;
       zstex->depth_cleared_level_mask &= ~BITFIELD_BIT(sctx->framebuffer.state.zsbuf->u.tex.level);
+   }
+
+   if (u_trace_perfetto_active(&sctx->ds.trace_context)) {
+      trace_si_end_draw(&sctx->trace, total_direct_count);
    }
 
    DRAW_CLEANUP;

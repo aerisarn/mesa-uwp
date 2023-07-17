@@ -12,6 +12,7 @@
 #include "util/u_async_debug.h"
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
+#include "si_tracepoints.h"
 
 #define COMPUTE_DBG(sscreen, fmt, args...)                                                         \
    do {                                                                                            \
@@ -996,7 +997,10 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
                          NULL);
       }
    }
-
+   
+   if (u_trace_perfetto_active(&sctx->ds.trace_context))
+      trace_si_begin_compute(&sctx->trace);
+   
    if (sctx->bo_list_add_all_compute_resources)
       si_compute_resources_add_all_to_bo_list(sctx);
 
@@ -1064,6 +1068,9 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
    sctx->compute_is_busy = true;
    sctx->num_compute_calls++;
 
+   if (u_trace_perfetto_active(&sctx->ds.trace_context))
+      trace_si_end_compute(&sctx->trace, info->grid[0], info->grid[1], info->grid[2]);
+   
    if (cs_regalloc_hang) {
       sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
       si_mark_atom_dirty(sctx, &sctx->atoms.s.cache_flush);

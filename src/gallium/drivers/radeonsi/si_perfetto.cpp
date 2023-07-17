@@ -58,7 +58,8 @@ struct SIRenderpassTraits : public perfetto::DefaultDataSourceTraits {
    using IncrementalStateType = SIRenderpassIncrementalState;
 };
 
-class SIRenderpassDataSource : public MesaRenderpassDataSource<SIRenderpassDataSource, SIRenderpassTraits> {
+class SIRenderpassDataSource : public MesaRenderpassDataSource<SIRenderpassDataSource, 
+                                                               SIRenderpassTraits> {
 };
 
 PERFETTO_DECLARE_DATA_SOURCE_STATIC_MEMBERS(SIRenderpassDataSource);
@@ -84,10 +85,12 @@ static void sync_timestamp(SIRenderpassDataSource::TraceContext &ctx, struct si_
 
    device->sync_gpu_ts = gpu_ts;
    device->next_clock_sync_ns = cpu_ts + 1000000000ull;
-   MesaRenderpassDataSource<SIRenderpassDataSource, SIRenderpassTraits>::EmitClockSync(ctx, cpu_ts, gpu_ts, device->gpu_clock_id);
+   MesaRenderpassDataSource<SIRenderpassDataSource, SIRenderpassTraits>::
+      EmitClockSync(ctx, cpu_ts, gpu_ts, device->gpu_clock_id);
 }
 
-static void send_descriptors(SIRenderpassDataSource::TraceContext &ctx, struct si_ds_device *device)
+static void send_descriptors(SIRenderpassDataSource::TraceContext &ctx, 
+                             struct si_ds_device *device)
 {
    PERFETTO_LOG("Sending renderstage descriptors");
 
@@ -131,7 +134,8 @@ static void send_descriptors(SIRenderpassDataSource::TraceContext &ctx, struct s
                 * by si_ds_queue_stage.
                 */
                char name[100];
-               snprintf(name, sizeof(name), "%.10s-%s-%u-%s", util_get_process_name(), queue->name, s, si_queue_stage_desc[s].name);
+               snprintf(name, sizeof(name), "%.10s-%s-%u-%s", util_get_process_name(), 
+                        queue->name, s, si_queue_stage_desc[s].name);
 
                auto desc = interned_data->add_gpu_specifications();
                desc->set_iid(queue->stages[s].queue_iid);
@@ -150,7 +154,8 @@ static void send_descriptors(SIRenderpassDataSource::TraceContext &ctx, struct s
    sync_timestamp(ctx, device);
 }
 
-typedef void (*trace_payload_as_extra_func)(perfetto::protos::pbzero::GpuRenderStageEvent *, const void*);
+typedef void (*trace_payload_as_extra_func)(perfetto::protos::pbzero::GpuRenderStageEvent *, 
+                                            const void*);
 
 static void begin_event(struct si_ds_queue *queue, uint64_t ts_ns, enum si_ds_queue_stage stage_id)
 {
@@ -172,7 +177,9 @@ static void begin_event(struct si_ds_queue *queue, uint64_t ts_ns, enum si_ds_qu
    queue->stages[stage_id].level++;
 }
 
-static void end_event(struct si_ds_queue *queue, uint64_t ts_ns, enum si_ds_queue_stage stage_id, uint32_t submission_id, const char *app_event, const void* payload = nullptr, trace_payload_as_extra_func payload_as_extra = nullptr)
+static void end_event(struct si_ds_queue *queue, uint64_t ts_ns, enum si_ds_queue_stage stage_id,
+                      uint32_t submission_id, const char *app_event, const void* payload = nullptr,
+                      trace_payload_as_extra_func payload_as_extra = nullptr)
 {
    PERFETTO_LOG("end event called - ts_ns=%lu", ts_ns);
    struct si_ds_device *device = queue->device;
@@ -208,7 +215,9 @@ static void end_event(struct si_ds_queue *queue, uint64_t ts_ns, enum si_ds_queu
        * stage_iid if not already seen. Otherwise, it's a driver event and we
        * have use the internal stage_iid.
        */
-      uint64_t stage_iid = app_event ? tctx.GetDataSourceLocked()->debug_marker_stage(tctx, app_event) : stage->stage_iid;
+      uint64_t stage_iid = app_event ? 
+                           tctx.GetDataSourceLocked()->debug_marker_stage(tctx, app_event) : 
+                           stage->stage_iid;
 
       auto packet = tctx.NewTracePacket();
 
@@ -340,7 +349,8 @@ void si_driver_ds_init(void)
    si_gpu_tracepoint_config_variable();
 }
 
-void si_ds_device_init(struct si_ds_device *device, const struct radeon_info *devinfo, uint32_t gpu_id, enum amd_ds_api api)
+void si_ds_device_init(struct si_ds_device *device, const struct radeon_info *devinfo,
+                       uint32_t gpu_id, enum amd_ds_api api)
 {
    device->gpu_id = gpu_id;
    device->gpu_clock_id = si_pps_clock_id(gpu_id);
@@ -355,7 +365,9 @@ void si_ds_device_fini(struct si_ds_device *device)
    u_trace_context_fini(&device->trace_context);
 }
 
-struct si_ds_queue * si_ds_device_init_queue(struct si_ds_device *device, struct si_ds_queue *queue, const char *fmt_name, ...)
+struct si_ds_queue * si_ds_device_init_queue(struct si_ds_device *device, 
+                                             struct si_ds_queue *queue, 
+                                             const char *fmt_name, ...)
 {
    va_list ap;
    queue->device = device;
@@ -374,7 +386,8 @@ struct si_ds_queue * si_ds_device_init_queue(struct si_ds_device *device, struct
    return queue;
 }
 
-void si_ds_flush_data_init(struct si_ds_flush_data *data, struct si_ds_queue *queue, uint64_t submission_id)
+void si_ds_flush_data_init(struct si_ds_flush_data *data, struct si_ds_queue *queue, 
+                           uint64_t submission_id)
 {
    memset(data, 0, sizeof(*data));
 
