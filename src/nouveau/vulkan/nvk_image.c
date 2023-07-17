@@ -409,15 +409,8 @@ nvk_image_plane_alloc_internal(struct nvk_device *dev,
       .tile_mode = plane->nil.tile_mode,
       .pte_kind = plane->nil.pte_kind,
    };
-   VkResult result = nvk_allocate_memory(dev, &alloc_info, &tile_info,
-                                         pAllocator, &plane->internal);
-   if (result != VK_SUCCESS)
-      return result;
-
-   plane->mem = plane->internal;
-   plane->offset = 0;
-
-   return VK_SUCCESS;
+   return nvk_allocate_memory(dev, &alloc_info, &tile_info,
+                              pAllocator, &plane->internal);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -610,7 +603,14 @@ nvk_image_plane_bind(struct nvk_image_plane *plane,
                      uint64_t *offset_B)
 {
    *offset_B = ALIGN_POT(*offset_B, plane->nil.align_B);
-   if (plane->internal == NULL) {
+   if (mem->dedicated_image_plane == plane) {
+      assert(*offset_B == 0);
+      plane->mem = mem;
+      plane->offset = 0;
+   } else if (plane->internal != NULL) {
+      plane->mem = plane->internal;
+      plane->offset = 0;
+   } else {
       plane->mem = mem;
       plane->offset = *offset_B;
    }

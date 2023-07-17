@@ -3,6 +3,7 @@
 #include "nouveau_bo.h"
 
 #include "nvk_device.h"
+#include "nvk_image.h"
 #include "nvk_physical_device.h"
 #include "nv_push.h"
 
@@ -191,9 +192,30 @@ nvk_AllocateMemory(VkDevice device,
    struct nvk_device_memory *mem;
    VkResult result;
 
-   result = nvk_allocate_memory(dev, pAllocateInfo, NULL, pAllocator, &mem);
+   const VkMemoryDedicatedAllocateInfo *dedicated_info =
+      vk_find_struct_const(pAllocateInfo->pNext,
+                           MEMORY_DEDICATED_ALLOCATE_INFO);
+
+   struct nvk_image_plane *dedicated_image_plane = NULL;
+   struct nvk_memory_tiling_info tile_info, *p_tile_info = NULL;
+   if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
+      VK_FROM_HANDLE(nvk_image, image, dedicated_info->image);
+      if (image->plane_count == 1 && image->planes[0].nil.pte_kind) {
+         dedicated_image_plane = &image->planes[0];
+         tile_info = (struct nvk_memory_tiling_info) {
+            .tile_mode = image->planes[0].nil.tile_mode,
+            .pte_kind = image->planes[0].nil.pte_kind,
+         };
+         p_tile_info = &tile_info;
+      }
+   }
+
+   result = nvk_allocate_memory(dev, pAllocateInfo, p_tile_info,
+                                pAllocator, &mem);
    if (result != VK_SUCCESS)
       return result;
+
+   mem->dedicated_image_plane = dedicated_image_plane;
 
    *pMem = nvk_device_memory_to_handle(mem);
 
