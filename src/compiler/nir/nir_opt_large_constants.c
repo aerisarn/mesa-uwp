@@ -25,6 +25,89 @@
 #include "nir_builder.h"
 #include "nir_deref.h"
 
+static void
+read_const_values(nir_const_value *dst, const void *src,
+                  unsigned num_components, unsigned bit_size)
+{
+   memset(dst, 0, num_components * sizeof(*dst));
+
+   switch (bit_size) {
+   case 1:
+      /* Booleans are special-cased to be 32-bit */
+      assert(((uintptr_t)src & 0x3) == 0);
+      for (unsigned i = 0; i < num_components; i++)
+         dst[i].b = ((int32_t *)src)[i] != 0;
+      break;
+
+   case 8:
+      for (unsigned i = 0; i < num_components; i++)
+         dst[i].u8 = ((int8_t *)src)[i];
+      break;
+
+   case 16:
+      assert(((uintptr_t)src & 0x1) == 0);
+      for (unsigned i = 0; i < num_components; i++)
+         dst[i].u16 = ((int16_t *)src)[i];
+      break;
+
+   case 32:
+      assert(((uintptr_t)src & 0x3) == 0);
+      for (unsigned i = 0; i < num_components; i++)
+         dst[i].u32 = ((int32_t *)src)[i];
+      break;
+
+   case 64:
+      assert(((uintptr_t)src & 0x7) == 0);
+      for (unsigned i = 0; i < num_components; i++)
+         dst[i].u64 = ((int64_t *)src)[i];
+      break;
+
+   default:
+      unreachable("Invalid bit size");
+   }
+}
+
+static void
+write_const_values(void *dst, const nir_const_value *src,
+                   nir_component_mask_t write_mask,
+                   unsigned bit_size)
+{
+   switch (bit_size) {
+   case 1:
+      /* Booleans are special-cased to be 32-bit */
+      assert(((uintptr_t)dst & 0x3) == 0);
+      u_foreach_bit(i, write_mask)
+         ((int32_t *)dst)[i] = -(int)src[i].b;
+      break;
+
+   case 8:
+      u_foreach_bit(i, write_mask)
+         ((int8_t *)dst)[i] = src[i].u8;
+      break;
+
+   case 16:
+      assert(((uintptr_t)dst & 0x1) == 0);
+      u_foreach_bit(i, write_mask)
+         ((int16_t *)dst)[i] = src[i].u16;
+      break;
+
+   case 32:
+      assert(((uintptr_t)dst & 0x3) == 0);
+      u_foreach_bit(i, write_mask)
+         ((int32_t *)dst)[i] = src[i].u32;
+      break;
+
+   case 64:
+      assert(((uintptr_t)dst & 0x7) == 0);
+      u_foreach_bit(i, write_mask)
+         ((int64_t *)dst)[i] = src[i].u64;
+      break;
+
+   default:
+      unreachable("Invalid bit size");
+   }
+}
+
 struct var_info {
    nir_variable *var;
 
@@ -121,38 +204,9 @@ handle_constant_store(void *mem_ctx, struct var_info *info,
    if (offset >= info->constant_data_size)
       return;
 
-   char *dst = (char *)info->constant_data + offset;
-
-   for (unsigned i = 0; i < num_components; i++) {
-      if (!(write_mask & (1 << i)))
-         continue;
-
-      switch (bit_size) {
-      case 1:
-         /* Booleans are special-cased to be 32-bit */
-         ((int32_t *)dst)[i] = -(int)val[i].b;
-         break;
-
-      case 8:
-         ((uint8_t *)dst)[i] = val[i].u8;
-         break;
-
-      case 16:
-         ((uint16_t *)dst)[i] = val[i].u16;
-         break;
-
-      case 32:
-         ((uint32_t *)dst)[i] = val[i].u32;
-         break;
-
-      case 64:
-         ((uint64_t *)dst)[i] = val[i].u64;
-         break;
-
-      default:
-         unreachable("Invalid bit size");
-      }
-   }
+   write_const_values((char *)info->constant_data + offset, val,
+                      write_mask & nir_component_mask(num_components),
+                      bit_size);
 }
 
 /** Lower large constant variables to shader constant data
