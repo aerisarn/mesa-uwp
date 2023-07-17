@@ -2301,8 +2301,6 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       dst[0] = ctx->instance_id;
       break;
    case nir_intrinsic_load_sample_id:
-      ctx->so->per_samp = true;
-      FALLTHROUGH;
    case nir_intrinsic_load_sample_id_no_per_sample:
       if (!ctx->samp_id) {
          ctx->samp_id = create_sysval_input(ctx, SYSTEM_VALUE_SAMPLE_ID, 0x1);
@@ -4297,12 +4295,6 @@ emit_instructions(struct ir3_context *ctx)
    /* some varying setup which can't be done in setup_input(): */
    if (ctx->so->type == MESA_SHADER_FRAGMENT) {
       nir_foreach_shader_in_variable (var, ctx->s) {
-         /* if any varyings have 'sample' qualifer, that triggers us
-          * to run in per-sample mode:
-          */
-         if (var->data.sample)
-            ctx->so->per_samp = true;
-
          /* set rasterflat flag for front/back color */
          if (var->data.interpolation == INTERP_MODE_NONE) {
             switch (var->data.location) {
@@ -5027,6 +5019,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
    if ((ctx->so->type == MESA_SHADER_FRAGMENT) &&
        ctx->s->info.fs.post_depth_coverage)
       so->post_depth_coverage = true;
+
+   ctx->so->per_samp = ctx->s->info.fs.uses_sample_shading;
 
 out:
    if (ret) {
