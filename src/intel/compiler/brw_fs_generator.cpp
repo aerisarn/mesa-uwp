@@ -2388,13 +2388,13 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                          after_size, sha1);
       _mesa_sha1_format(sha1buf, sha1);
 
-      fprintf(stderr, "Native code for %s (sha1 %s)\n"
+      fprintf(stderr, "Native code for %s (src_hash 0x%08x) (sha1 %s)\n"
               "SIMD%d shader: %d instructions. %d loops. %u cycles. "
               "%d:%d spills:fills, %u sends, "
               "scheduled with mode %s. "
               "Promoted %u constants. "
               "Compacted %d to %d bytes (%.0f%%)\n",
-              shader_name, sha1buf,
+              shader_name, params->source_hash, sha1buf,
               dispatch_width, before_size / 16,
               loop_count, perf.latency,
               shader_stats.spill_count,

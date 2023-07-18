@@ -1513,7 +1513,7 @@ generate_zero_oob_push_regs(struct brw_codegen *p,
 static void
 generate_code(struct brw_codegen *p,
               const struct brw_compiler *compiler,
-              void *log_data,
+              const struct brw_compile_params *params,
               const nir_shader *nir,
               struct brw_vue_prog_data *prog_data,
               const struct cfg_t *cfg,
@@ -2238,10 +2238,10 @@ generate_code(struct brw_codegen *p,
       _mesa_sha1_compute(p->store, p->next_insn_offset, sha1);
       _mesa_sha1_format(sha1buf, sha1);
 
-      fprintf(stderr, "Native code for %s %s shader %s (sha1 %s):\n",
+      fprintf(stderr, "Native code for %s %s shader %s (src_hash 0x%08x) (sha1 %s):\n",
             nir->info.label ? nir->info.label : "unnamed",
             _mesa_shader_stage_to_string(nir->info.stage), nir->info.name,
-            sha1buf);
+            params->source_hash, sha1buf);
 
       fprintf(stderr, "%s vec4 shader: %d instructions. %d loops. %u cycles. %d:%d "
                      "spills:fills, %u sends. Compacted %d to %d bytes (%.0f%%)\n",
@@ -2260,7 +2260,7 @@ generate_code(struct brw_codegen *p,
    ralloc_free(disasm_info);
    assert(validated);
 
-   brw_shader_debug_log(compiler, log_data,
+   brw_shader_debug_log(compiler, params->log_data,
                         "%s vec4 shader: %d inst, %d loops, %u cycles, "
                         "%d:%d spills:fills, %u sends, "
                         "compacted %d to %d bytes.\n",
@@ -2292,7 +2292,7 @@ brw_vec4_generate_assembly(const struct brw_compiler *compiler,
    brw_init_codegen(&compiler->isa, p, params->mem_ctx);
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
-   generate_code(p, compiler, params->log_data,
+   generate_code(p, compiler, params,
                  nir, prog_data, cfg, perf,
                  params->stats, debug_enabled);
 

@@ -1337,6 +1337,7 @@ iris_compile_vs(struct iris_screen *screen,
          .mem_ctx = mem_ctx,
          .nir = nir,
          .log_data = dbg,
+         .source_hash = ish->source_hash,
       },
       .key = &brw_key,
       .prog_data = vs_prog_data,
@@ -1491,11 +1492,14 @@ iris_compile_tcs(struct iris_screen *screen,
 
    const struct iris_tcs_prog_key *const key = &shader->key.tcs;
    struct brw_tcs_prog_key brw_key = iris_to_brw_tcs_key(screen, key);
+   uint32_t source_hash;
 
    if (ish) {
       nir = nir_shader_clone(mem_ctx, ish->nir);
+      source_hash = ish->source_hash;
    } else {
       nir = brw_nir_create_passthrough_tcs(mem_ctx, compiler, &brw_key);
+      source_hash = *(uint32_t*)nir->info.source_sha1;
    }
 
    iris_setup_uniforms(devinfo, mem_ctx, nir, prog_data, 0, &system_values,
@@ -1509,6 +1513,7 @@ iris_compile_tcs(struct iris_screen *screen,
          .mem_ctx = mem_ctx,
          .nir = nir,
          .log_data = dbg,
+         .source_hash = source_hash,
       },
       .key = &brw_key,
       .prog_data = tcs_prog_data,
@@ -1674,6 +1679,7 @@ iris_compile_tes(struct iris_screen *screen,
          .mem_ctx = mem_ctx,
          .nir = nir,
          .log_data = dbg,
+         .source_hash = ish->source_hash,
       },
       .key = &brw_key,
       .prog_data = tes_prog_data,
@@ -1816,6 +1822,7 @@ iris_compile_gs(struct iris_screen *screen,
          .mem_ctx = mem_ctx,
          .nir = nir,
          .log_data = dbg,
+         .source_hash = ish->source_hash,
       },
       .key = &brw_key,
       .prog_data = gs_prog_data,
@@ -1955,6 +1962,7 @@ iris_compile_fs(struct iris_screen *screen,
          .mem_ctx = mem_ctx,
          .nir = nir,
          .log_data = dbg,
+         .source_hash = ish->source_hash,
       },
       .key = &brw_key,
       .prog_data = fs_prog_data,
@@ -2234,6 +2242,7 @@ iris_compile_cs(struct iris_screen *screen,
          .mem_ctx = mem_ctx,
          .nir = nir,
          .log_data = dbg,
+         .source_hash = ish->source_hash,
       },
       .key = &brw_key,
       .prog_data = cs_prog_data,

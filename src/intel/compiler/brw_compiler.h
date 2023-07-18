@@ -1766,6 +1766,8 @@ struct brw_compile_params {
    char *error_str;
 
    uint64_t debug_flag;
+
+   uint32_t source_hash;
 };
 
 /**
