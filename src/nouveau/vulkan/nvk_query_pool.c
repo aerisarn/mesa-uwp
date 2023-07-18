@@ -775,7 +775,7 @@ nvk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
       }
    }
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 13);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
    P_1INC(p, NVC597, CALL_MME_MACRO(NVK_MME_COPY_QUERIES));
 
