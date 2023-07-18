@@ -703,7 +703,7 @@ replace_separable_prog(struct zink_screen *screen, struct hash_entry *entry, str
    entry->data = real;
    entry->key = real->shaders;
    real->base.removed = false;
-   prog->full_prog = NULL;
+   zink_gfx_program_reference(screen, &prog->full_prog, NULL);
    prog->base.removed = true;
    return real;
 }
