@@ -8182,10 +8182,9 @@ genX(batch_emit_dummy_post_sync_op)(struct anv_batch *batch,
                                     uint32_t primitive_topology,
                                     uint32_t vertex_count)
 {
-#if GFX_VERx10 != 125
-   return;
-#endif
-   /* Wa_14016118574 */
+   if (!intel_needs_workaround(device->info, 22014412737))
+      return;
+
    if ((primitive_topology == _3DPRIM_POINTLIST ||
         primitive_topology == _3DPRIM_LINELIST ||
         primitive_topology == _3DPRIM_LINESTRIP ||
