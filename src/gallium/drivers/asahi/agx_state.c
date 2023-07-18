@@ -40,6 +40,8 @@
 #include "util/u_resource.h"
 #include "util/u_transfer.h"
 #include "agx_disk_cache.h"
+#include "agx_tilebuffer.h"
+#include "pool.h"
 
 static void
 agx_legalize_compression(struct agx_context *ctx, struct agx_resource *rsrc,
@@ -1624,8 +1626,17 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
          NIR_PASS_V(nir, agx_nir_lower_alpha_to_one);
 
       NIR_PASS_V(nir, nir_lower_blend, &opts);
-      NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib, colormasks,
+
+      /* XXX: don't replicate this all over the driver */
+      unsigned rt_spill_base = BITSET_LAST_BIT(nir->info.textures_used) +
+                               (2 * BITSET_LAST_BIT(nir->info.images_used));
+      unsigned rt_spill = rt_spill_base;
+      NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib, colormasks, &rt_spill,
                  &force_translucent);
+
+      /* If anything spilled, we have bindless texture */
+      so->internal_bindless |= (rt_spill != rt_spill_base);
+
       NIR_PASS_V(nir, agx_nir_lower_sample_intrinsics);
       NIR_PASS_V(nir, agx_nir_lower_monolithic_msaa,
                  &(struct agx_msaa_state){
@@ -2038,10 +2049,50 @@ agx_set_null_texture(struct agx_texture_packed *tex, uint64_t valid_address)
 }
 
 static uint32_t
-agx_nr_tex_descriptors(const struct agx_compiled_shader *cs)
+agx_nr_tex_descriptors_without_spilled_rts(const struct agx_compiled_shader *cs)
 {
    /* 2 descriptors per image, 1 descriptor per texture */
    return cs->info.nr_bindful_textures + (2 * cs->info.nr_bindful_images);
+}
+
+static uint32_t
+agx_nr_tex_descriptors(struct agx_batch *batch, enum pipe_shader_type stage,
+                       const struct agx_compiled_shader *cs)
+{
+   unsigned n = agx_nr_tex_descriptors_without_spilled_rts(cs);
+
+   /* We add on texture/PBE descriptors for spilled render targets */
+   bool spilled_rt = stage == PIPE_SHADER_FRAGMENT &&
+                     agx_tilebuffer_spills(&batch->tilebuffer_layout);
+   if (spilled_rt)
+      n += (batch->key.nr_cbufs * 2);
+
+   return n;
+}
+
+/*
+ * For spilled render targets, upload a texture/PBE pair for each surface to
+ * allow loading/storing to the render target from the shader.
+ */
+static void
+agx_upload_spilled_rt_descriptors(struct agx_texture_packed *out,
+                                  struct agx_batch *batch)
+{
+   for (unsigned rt = 0; rt < batch->key.nr_cbufs; ++rt) {
+      struct agx_texture_packed *texture = out + (2 * rt);
+      struct agx_pbe_packed *pbe = (struct agx_pbe_packed *)(texture + 1);
+
+      struct pipe_surface *surf = batch->key.cbufs[rt];
+      if (!surf)
+         continue;
+
+      struct agx_resource *rsrc = agx_resource(surf->texture);
+      struct pipe_image_view view = image_view_for_surface(surf);
+      struct pipe_sampler_view sampler_view = sampler_view_for_surface(surf);
+
+      agx_pack_texture(texture, rsrc, surf->format, &sampler_view, true);
+      agx_batch_upload_pbe(batch, pbe, &view, false);
+   }
 }
 
 static uint32_t
@@ -2053,7 +2104,7 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    unsigned nr_active_textures = ctx->stage[stage].texture_count;
    unsigned nr_samplers = sampler_count(ctx, cs, stage);
    unsigned nr_images = cs->info.nr_bindful_images;
-   unsigned nr_tex_descriptors = agx_nr_tex_descriptors(cs);
+   unsigned nr_tex_descriptors = agx_nr_tex_descriptors(batch, stage, cs);
    bool custom_borders = ctx->stage[stage].custom_borders;
 
    struct agx_ptr T_tex = agx_pool_alloc_aligned(
@@ -2127,6 +2178,16 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
       agx_pack_texture(texture, agx_resource(view->resource), view->format,
                        &sampler_view, true);
       agx_batch_upload_pbe(batch, pbe, view, false);
+   }
+
+   if (stage == PIPE_SHADER_FRAGMENT &&
+       agx_tilebuffer_spills(&batch->tilebuffer_layout)) {
+
+      struct agx_texture_packed *out =
+         ((struct agx_texture_packed *)T_tex.cpu) +
+         agx_nr_tex_descriptors_without_spilled_rts(cs);
+
+      agx_upload_spilled_rt_descriptors(out, batch);
    }
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
@@ -2336,6 +2397,26 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
       }
    }
 
+   if (agx_tilebuffer_spills(&batch->tilebuffer_layout) && !partial_render &&
+       !store) {
+      /* Upload texture/PBE descriptors for each render target so we can clear
+       * spilled render targets.
+       */
+      struct agx_ptr descs = agx_pool_alloc_aligned(
+         &batch->pool, AGX_TEXTURE_LENGTH * 2 * batch->key.nr_cbufs, 64);
+      agx_upload_spilled_rt_descriptors(descs.cpu, batch);
+
+      agx_usc_pack(&b, TEXTURE, cfg) {
+         cfg.start = 0;
+         cfg.count = 2 * batch->key.nr_cbufs;
+         cfg.buffer = descs.gpu;
+      }
+
+      /* Bind the base as u0_u1 for bindless access */
+      agx_usc_uniform(&b, 0, 4,
+                      agx_pool_upload_aligned(&batch->pool, &descs.gpu, 8, 8));
+   }
+
    /* All render targets share a sampler */
    if (needs_sampler) {
       struct agx_ptr sampler =
@@ -2445,6 +2526,30 @@ agx_batch_init_state(struct agx_batch *batch)
    if (agx_device(batch->ctx->base.screen)->debug & AGX_DBG_SMALLTILE)
       batch->tilebuffer_layout.tile_size = (struct agx_tile_size){16, 16};
 
+   /* If the layout spilled render targets, we need to decompress those render
+    * targets to ensure we can write to them.
+    */
+   if (agx_tilebuffer_spills(&batch->tilebuffer_layout)) {
+      for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
+         if (!batch->tilebuffer_layout.spilled[i])
+            continue;
+
+         struct pipe_surface *surf = batch->key.cbufs[i];
+         if (!surf)
+            continue;
+
+         struct agx_resource *rsrc = agx_resource(surf->texture);
+         if (rsrc->layout.writeable_image)
+            continue;
+
+         /* Decompress if we can and shadow if we can't. */
+         if (rsrc->base.bind & PIPE_BIND_SHARED)
+            unreachable("TODO");
+         else
+            agx_decompress(batch->ctx, rsrc, "Render target spilled");
+      }
+   }
+
    if (batch->key.zsbuf) {
       struct agx_resource *rsrc = agx_resource(batch->key.zsbuf->texture);
       agx_batch_writes(batch, rsrc);
@@ -2536,7 +2641,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_0, cfg) {
          cfg.uniform_register_count = ctx->vs->info.push_count;
          cfg.preshader_register_count = ctx->vs->info.nr_preamble_gprs;
-         cfg.texture_state_register_count = agx_nr_tex_descriptors(ctx->vs);
+         cfg.texture_state_register_count =
+            agx_nr_tex_descriptors(batch, PIPE_SHADER_VERTEX, ctx->vs);
          cfg.sampler_state_register_count =
             translate_sampler_state_count(ctx, ctx->vs, PIPE_SHADER_VERTEX);
       }
@@ -2732,7 +2838,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
             agx_build_pipeline(batch, ctx->fs, PIPE_SHADER_FRAGMENT, 0),
          cfg.uniform_register_count = ctx->fs->info.push_count;
          cfg.preshader_register_count = ctx->fs->info.nr_preamble_gprs;
-         cfg.texture_state_register_count = agx_nr_tex_descriptors(ctx->fs);
+         cfg.texture_state_register_count =
+            agx_nr_tex_descriptors(batch, PIPE_SHADER_FRAGMENT, ctx->fs);
          cfg.sampler_state_register_count =
             translate_sampler_state_count(ctx, ctx->fs, PIPE_SHADER_FRAGMENT);
          cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
@@ -3192,7 +3299,8 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 
       cfg.uniform_register_count = cs->info.push_count;
       cfg.preshader_register_count = cs->info.nr_preamble_gprs;
-      cfg.texture_state_register_count = agx_nr_tex_descriptors(cs);
+      cfg.texture_state_register_count =
+         agx_nr_tex_descriptors(batch, PIPE_SHADER_COMPUTE, cs);
       cfg.sampler_state_register_count =
          translate_sampler_state_count(ctx, cs, PIPE_SHADER_COMPUTE);
       cfg.pipeline = agx_build_pipeline(batch, cs, PIPE_SHADER_COMPUTE,

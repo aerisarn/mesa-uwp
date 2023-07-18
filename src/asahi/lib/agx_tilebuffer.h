@@ -85,7 +85,8 @@ agx_build_tilebuffer_layout(enum pipe_format *formats, uint8_t nr_cbufs,
 
 bool agx_nir_lower_tilebuffer(struct nir_shader *shader,
                               struct agx_tilebuffer_layout *tib,
-                              uint8_t *colormasks, bool *translucent);
+                              uint8_t *colormasks, unsigned *bindless_base,
+                              bool *translucent);
 
 struct agx_msaa_state {
    uint8_t nr_samples;

@@ -38,6 +38,7 @@
 #include "agx_fence.h"
 #include "agx_public.h"
 #include "agx_state.h"
+#include "agx_tilebuffer.h"
 
 /* Fake values, pending UAPI upstreaming */
 #ifndef DRM_FORMAT_MOD_APPLE_TWIDDLED
@@ -1251,7 +1252,8 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
    uint64_t pipeline_background_partial = agx_build_meta(batch, false, true);
    uint64_t pipeline_store = agx_build_meta(batch, true, false);
 
-   bool clear_pipeline_textures = false;
+   bool clear_pipeline_textures =
+      agx_tilebuffer_spills(&batch->tilebuffer_layout);
 
    for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
       struct pipe_surface *surf = batch->key.cbufs[i];

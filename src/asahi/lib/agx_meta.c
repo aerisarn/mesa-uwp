@@ -19,7 +19,8 @@ agx_compile_meta_shader(struct agx_meta_cache *cache, nir_shader *shader,
 
    agx_preprocess_nir(shader, false, NULL);
    if (tib) {
-      agx_nir_lower_tilebuffer(shader, tib, NULL, NULL);
+      unsigned bindless_base = 0;
+      agx_nir_lower_tilebuffer(shader, tib, NULL, &bindless_base, NULL);
       agx_nir_lower_monolithic_msaa(
          shader, &(struct agx_msaa_state){.nr_samples = tib->nr_samples});
    }
