@@ -28,9 +28,9 @@
 #include "anv_private.h"
 
 static void
-stub_gem_close(struct anv_device *device, uint32_t gem_handle)
+stub_gem_close(struct anv_device *device, struct anv_bo *bo)
 {
-   close(gem_handle);
+   close(bo->gem_handle);
 }
 
 static uint32_t

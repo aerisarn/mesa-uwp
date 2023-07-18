@@ -60,10 +60,13 @@ xe_gem_create(struct anv_device *device,
 }
 
 static void
-xe_gem_close(struct anv_device *device, uint32_t handle)
+xe_gem_close(struct anv_device *device, struct anv_bo *bo)
 {
+   if (bo->from_host_ptr)
+      return;
+
    struct drm_gem_close close = {
-      .handle = handle,
+      .handle = bo->gem_handle,
    };
    intel_ioctl(device->fd, DRM_IOCTL_GEM_CLOSE, &close);
 }

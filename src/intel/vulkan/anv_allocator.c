@@ -1371,7 +1371,7 @@ anv_bo_unmap_close(struct anv_device *device, struct anv_bo *bo)
       anv_device_unmap_bo(device, bo, bo->map, bo->size);
 
    assert(bo->gem_handle != 0);
-   device->kmd_backend->gem_close(device, bo->gem_handle);
+   device->kmd_backend->gem_close(device, bo);
 }
 
 static void
@@ -1525,7 +1525,7 @@ anv_device_alloc_bo(struct anv_device *device,
       VkResult result = anv_device_map_bo(device, &new_bo, 0, size,
                                           0 /* propertyFlags */, &new_bo.map);
       if (unlikely(result != VK_SUCCESS)) {
-         device->kmd_backend->gem_close(device, new_bo.gem_handle);
+         device->kmd_backend->gem_close(device, &new_bo);
          return result;
       }
    }
@@ -1789,25 +1789,25 @@ anv_device_import_bo(struct anv_device *device,
 
       __sync_fetch_and_add(&bo->refcount, 1);
    } else {
-      off_t size = lseek(fd, 0, SEEK_END);
-      if (size == (off_t)-1) {
-         device->kmd_backend->gem_close(device, gem_handle);
-         pthread_mutex_unlock(&cache->mutex);
-         return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
-      }
-
       struct anv_bo new_bo = {
          .name = "imported",
          .gem_handle = gem_handle,
          .refcount = 1,
          .offset = -1,
-         .size = size,
-         .actual_size = size,
          .flags = bo_flags,
          .is_external = true,
          .has_client_visible_address =
             (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       };
+
+      off_t size = lseek(fd, 0, SEEK_END);
+      if (size == (off_t)-1) {
+         device->kmd_backend->gem_close(device, &new_bo);
+         pthread_mutex_unlock(&cache->mutex);
+         return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+      }
+      new_bo.size = size;
+      new_bo.actual_size = size;
 
       assert(new_bo._ccs_size == 0);
       VkResult result = anv_bo_vma_alloc_or_close(device, &new_bo,

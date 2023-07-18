@@ -97,10 +97,10 @@ i915_gem_create(struct anv_device *device,
 }
 
 static void
-i915_gem_close(struct anv_device *device, uint32_t handle)
+i915_gem_close(struct anv_device *device, struct anv_bo *bo)
 {
    struct drm_gem_close close = {
-      .handle = handle,
+      .handle = bo->gem_handle,
    };
 
    intel_ioctl(device->fd, DRM_IOCTL_GEM_CLOSE, &close);
