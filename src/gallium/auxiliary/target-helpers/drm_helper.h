@@ -440,11 +440,15 @@ pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
    screen = kmsro_drm_screen_create(fd, config);
    return screen ? debug_screen_wrap(screen) : NULL;
 }
+const driOptionDescription kmsro_driconf[] = {
 #if defined(GALLIUM_VC4) || defined(GALLIUM_V3D)
-DRM_DRIVER_DESCRIPTOR(kmsro, v3d_driconf, ARRAY_SIZE(v3d_driconf))
-#else
-DRM_DRIVER_DESCRIPTOR(kmsro, NULL, 0)
+      #include "v3d/driinfo_v3d.h"
 #endif
+#ifdef GALLIUM_FREEDRENO
+      #include "freedreno/driinfo_freedreno.h"
+#endif
+};
+DRM_DRIVER_DESCRIPTOR(kmsro, kmsro_driconf, ARRAY_SIZE(kmsro_driconf))
 
 #else
 DRM_DRIVER_DESCRIPTOR_STUB(kmsro)
