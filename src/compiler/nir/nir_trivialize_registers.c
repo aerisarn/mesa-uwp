@@ -76,10 +76,15 @@ trivialize_load(nir_intrinsic_instr *load)
    assert(list_is_singular(&load->dest.ssa.uses));
 }
 
+struct trivialize_src_state {
+   nir_block *block;
+   BITSET_WORD *trivial_regs;
+};
+
 static bool
-trivialize_src(nir_src *src, void *trivial_regs_)
+trivialize_src(nir_src *src, void *state_)
 {
-   BITSET_WORD *trivial_regs = trivial_regs_;
+   struct trivialize_src_state *state = state_;
 
    assert(src->is_ssa && "register intrinsics only");
    nir_instr *parent = src->ssa->parent_instr;
@@ -91,7 +96,8 @@ trivialize_src(nir_src *src, void *trivial_regs_)
       return true;
 
    unsigned reg_index = intr->src[0].ssa->index;
-   if (!BITSET_TEST(trivial_regs, reg_index))
+   if (intr->instr.block != state->block ||
+       !BITSET_TEST(state->trivial_regs, reg_index))
       trivialize_load(intr);
 
    return true;
@@ -100,11 +106,17 @@ trivialize_src(nir_src *src, void *trivial_regs_)
 static void
 trivialize_loads(nir_function_impl *impl, nir_block *block)
 {
-   BITSET_WORD *trivial_regs =
-         calloc(BITSET_WORDS(impl->ssa_alloc), sizeof(BITSET_WORD));
+   struct trivialize_src_state state = {
+      .block = block,
+      .trivial_regs = calloc(BITSET_WORDS(impl->ssa_alloc),
+                             sizeof(BITSET_WORD)),
+   };
 
    nir_foreach_instr_safe(instr, block) {
-      nir_foreach_src(instr, trivialize_src, trivial_regs);
+      /* Our cross-block serialization can't handle phis */
+      assert(instr->type != nir_instr_type_phi);
+
+      nir_foreach_src(instr, trivialize_src, &state);
 
       /* We maintain a set of registers which can be accessed trivially. When we
        * hit a load, the register becomes trivial. When the register is stored,
@@ -118,18 +130,18 @@ trivialize_loads(nir_function_impl *impl, nir_block *block)
          if (intr->intrinsic == nir_intrinsic_load_reg_indirect)
             trivialize_load(intr);
          else if (intr->intrinsic == nir_intrinsic_load_reg)
-            BITSET_SET(trivial_regs, intr->src[0].ssa->index);
+            BITSET_SET(state.trivial_regs, intr->src[0].ssa->index);
          else if (nir_is_store_reg(intr))
-            BITSET_CLEAR(trivial_regs, intr->src[1].ssa->index);
+            BITSET_CLEAR(state.trivial_regs, intr->src[1].ssa->index);
       }
    }
 
    /* Also check the condition of the next if */
    nir_if *nif = nir_block_get_following_if(block);
    if (nif)
-      trivialize_src(&nif->condition, trivial_regs);
+      trivialize_src(&nif->condition, &state);
 
-   free(trivial_regs);
+   free(state.trivial_regs);
 }
 
 /*
