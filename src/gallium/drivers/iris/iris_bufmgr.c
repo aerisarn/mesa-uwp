@@ -1290,6 +1290,7 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
    bo->name = name;
    bo->size = size;
    bo->real.map = ptr;
+   bo->real.userptr = true;
 
    bo->bufmgr = bufmgr;
    bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
@@ -1305,15 +1306,19 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
       goto err_close;
 
    p_atomic_set(&bo->refcount, 1);
-   bo->real.userptr = true;
    bo->index = -1;
    bo->idle = true;
    bo->real.heap = IRIS_HEAP_SYSTEM_MEMORY;
    bo->real.mmap_mode = iris_bo_create_userptr_get_mmap_mode(bufmgr);
    bo->real.prime_fd = -1;
 
+   if (!bufmgr->kmd_backend->gem_vm_bind(bo))
+      goto err_vma_free;
+
    return bo;
 
+err_vma_free:
+   vma_free(bufmgr, bo->address, bo->size);
 err_close:
    bufmgr->kmd_backend->gem_close(bufmgr, bo);
 err_free:

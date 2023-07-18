@@ -430,6 +430,9 @@ error_implicit_sync_import:
 static int
 xe_gem_close(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
 {
+   if (bo->real.userptr)
+      return 0;
+
    struct drm_gem_close close = {
       .handle = bo->gem_handle,
    };
@@ -439,8 +442,13 @@ xe_gem_close(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
 static uint32_t
 xe_gem_create_userptr(struct iris_bufmgr *bufmgr, void *ptr, uint64_t size)
 {
-   /* We return 0, because Xe doesn't create handles for userptrs. */
-   return 0;
+   /* We return UINT32_MAX, because Xe doesn't create handles for userptrs but
+    * it needs a gem_handle different than 0 so iris_bo_is_real() returns true
+    * for userptr bos.
+    * UINT32_MAX handle here will not conflict with an actual gem handle with
+    * same id as userptr bos are not put to slab or bo cache.
+    */
+   return UINT32_MAX;
 }
 
 const struct iris_kmd_backend *xe_get_backend(void)
