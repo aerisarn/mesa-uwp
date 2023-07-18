@@ -22,6 +22,7 @@
 #include "cla097.h"
 #include "cla0c0.h"
 #include "cla1c0.h"
+#include "clb097.h"
 #include "clb0c0.h"
 #include "clb197.h"
 #include "clb1c0.h"
@@ -438,7 +439,7 @@ nvk_get_device_features(const struct nv_device_info *info,
       .shaderImageGatherExtended = true,
       .shaderStorageImageExtendedFormats = true,
       /* TODO: shaderStorageImageMultisample */
-      .shaderStorageImageReadWithoutFormat = true,
+      .shaderStorageImageReadWithoutFormat = info->cls_eng3d >= MAXWELL_A,
       .shaderStorageImageWriteWithoutFormat = true,
       .shaderUniformBufferArrayDynamicIndexing = true,
       .shaderSampledImageArrayDynamicIndexing = true,

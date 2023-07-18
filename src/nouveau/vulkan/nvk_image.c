@@ -8,6 +8,7 @@
 #include "nil_format.h"
 #include "vulkan/util/vk_format.h"
 
+#include "clb097.h"
 #include "clb197.h"
 
 VkFormatFeatureFlags2
@@ -62,8 +63,9 @@ nvk_get_image_format_features(struct nvk_physical_device *pdev,
 
    if (nil_format_supports_storage(&pdev->info, p_format)) {
       features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
-                  VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
                   VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
+      if (pdev->info.cls_eng3d >= MAXWELL_A)
+         features |= VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT;
    }
 
    if (p_format == PIPE_FORMAT_R32_UINT || p_format == PIPE_FORMAT_R32_SINT)
