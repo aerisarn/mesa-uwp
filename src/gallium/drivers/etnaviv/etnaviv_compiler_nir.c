@@ -367,6 +367,7 @@ get_src(struct etna_compile *c, nir_src *src)
       case nir_intrinsic_load_instance_id:
       case nir_intrinsic_load_uniform:
       case nir_intrinsic_load_ubo:
+      case nir_intrinsic_load_reg:
          return ra_src(c, src);
       case nir_intrinsic_load_front_face:
          return (hw_src) { .use = 1, .rgroup = INST_RGROUP_INTERNAL };
@@ -616,6 +617,9 @@ emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
    case nir_intrinsic_load_instance_id:
    case nir_intrinsic_load_texture_scale:
    case nir_intrinsic_load_texture_size_etna:
+   case nir_intrinsic_decl_reg:
+   case nir_intrinsic_load_reg:
+   case nir_intrinsic_store_reg:
       break;
    default:
       compile_error(c, "Unhandled NIR intrinsic type: %s\n",
@@ -1038,7 +1042,8 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
    }
 
    /* call directly to avoid validation (load_const don't pass validation at this point) */
-   nir_convert_from_ssa(shader, true, false);
+   nir_convert_from_ssa(shader, true, true);
+   nir_trivialize_registers(shader);
 
    etna_ra_assign(c, shader);
 

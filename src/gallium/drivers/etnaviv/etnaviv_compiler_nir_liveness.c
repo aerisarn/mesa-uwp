@@ -214,7 +214,17 @@ etna_live_defs(nir_function_impl *impl, struct live_def *defs, unsigned *live_ma
                state.index = ~0u;
          }
 
-         nir_foreach_src(instr, set_src_live, &state);
+         bool processed = false;
+
+         if (instr->type == nir_instr_type_intrinsic) {
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic == nir_intrinsic_decl_reg ||
+               intr->intrinsic == nir_intrinsic_store_reg)
+               processed = true;
+         }
+
+         if (!processed)
+            nir_foreach_src(instr, set_src_live, &state);
 
          state.index = index;
       }

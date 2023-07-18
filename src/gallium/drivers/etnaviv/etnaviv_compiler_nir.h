@@ -141,14 +141,40 @@ static inline bool is_sysval(nir_instr *instr)
 static inline unsigned
 src_index(nir_function_impl *impl, nir_src *src)
 {
-   return src->is_ssa ? src->ssa->index : (src->reg.reg->index + impl->ssa_alloc);
+   assert(src->is_ssa);
+
+   nir_intrinsic_instr *load = nir_load_reg_for_def(src->ssa);
+
+   if (load) {
+      nir_ssa_def *reg = load->src[0].ssa;
+      ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
+      assert(nir_intrinsic_base(load) == 0);
+      assert(nir_intrinsic_num_array_elems(decl) == 0);
+
+      return reg->index;
+   }
+
+   return src->ssa->index;
 }
 
 /* get unique ssa/reg index for nir_dest */
 static inline unsigned
 dest_index(nir_function_impl *impl, nir_dest *dest)
 {
-   return dest->is_ssa ? dest->ssa.index : (dest->reg.reg->index + impl->ssa_alloc);
+   assert(dest->is_ssa);
+
+   nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
+
+   if (store) {
+      nir_ssa_def *reg = store->src[1].ssa;
+      ASSERTED nir_intrinsic_instr *decl = nir_reg_get_decl(reg);
+      assert(nir_intrinsic_base(store) == 0);
+      assert(nir_intrinsic_num_array_elems(decl) == 0);
+
+      return reg->index;
+   }
+
+   return dest->ssa.index;
 }
 
 static inline void
