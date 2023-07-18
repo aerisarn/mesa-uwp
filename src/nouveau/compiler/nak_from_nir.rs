@@ -216,6 +216,14 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
+            nir_op_bitfield_reverse => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpBrev {
+                    dst: dst.into(),
+                    src: srcs[0],
+                });
+                dst
+            }
             nir_op_f2i32 | nir_op_f2u32 => {
                 let src_bits = usize::from(alu.get_src(0).bit_size());
                 let dst_bits = alu.def.bit_size();

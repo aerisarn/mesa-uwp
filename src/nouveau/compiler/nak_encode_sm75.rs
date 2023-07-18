@@ -1494,6 +1494,16 @@ impl SM75Instr {
         self.set_field(63..64, not_mod)
     }
 
+    fn encode_brev(&mut self, op: &OpBrev) {
+        self.encode_alu(
+            0x101,
+            Some(op.dst),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.src),
+            ALUSrc::None,
+        );
+    }
+
     pub fn encode(
         instr: &Instr,
         sm: u8,
@@ -1553,6 +1563,7 @@ impl SM75Instr {
             Op::Bar(op) => si.encode_bar(&op),
             Op::S2R(op) => si.encode_s2r(&op),
             Op::PopC(op) => si.encode_popc(&op),
+            Op::Brev(op) => si.encode_brev(&op),
             _ => panic!("Unhandled instruction"),
         }
 

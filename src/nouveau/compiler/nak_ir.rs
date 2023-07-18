@@ -3150,6 +3150,21 @@ impl fmt::Display for OpPopC {
     }
 }
 
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpBrev {
+    pub dst: Dst,
+
+    #[src_type(ALU)]
+    pub src: Src,
+}
+
+impl fmt::Display for OpBrev {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BREV {} {}", self.dst, self.src,)
+    }
+}
+
 #[derive(Display, DstsAsSlice, SrcsAsSlice, FromVariants)]
 pub enum Op {
     FAdd(OpFAdd),
@@ -3205,6 +3220,7 @@ pub enum Op {
     ParCopy(OpParCopy),
     FSOut(OpFSOut),
     PopC(OpPopC),
+    Brev(OpBrev),
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -3521,7 +3537,7 @@ impl Instr {
             | Op::FSOut(_) => {
                 panic!("Not a hardware opcode")
             }
-            Op::PopC(_) => Some(15),
+            Op::PopC(_) | Op::Brev(_) => Some(15),
         }
     }
 }
