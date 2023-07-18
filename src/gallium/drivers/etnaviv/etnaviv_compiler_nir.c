@@ -501,27 +501,30 @@ emit_alu(struct etna_compile *c, nir_alu_instr * alu)
       nir_alu_src *asrc = &alu->src[i];
       hw_src src;
 
+      assert(!asrc->negate);
+      assert(!asrc->abs);
+
       src = src_swizzle(get_src(c, &asrc->src), ALU_SWIZ(asrc));
       src = src_swizzle(src, dst_swiz);
 
       if (src.rgroup != INST_RGROUP_IMMEDIATE) {
-         src.neg = asrc->negate || (alu->op == nir_op_fneg);
-         src.abs = asrc->abs || (alu->op == nir_op_fabs);
+         src.neg = is_src_mod_neg(&alu->instr, i) || (alu->op == nir_op_fneg);
+         src.abs = is_src_mod_abs(&alu->instr, i) || (alu->op == nir_op_fabs);
       } else {
-         assert(alu->op != nir_op_fneg);
-         assert(!asrc->abs && alu->op != nir_op_fabs);
+         assert(alu->op != nir_op_fabs);
+         assert(!is_src_mod_abs(&alu->instr, i) && alu->op != nir_op_fabs);
 
          if (src.imm_type > 0)
-            assert(!asrc->negate);
+            assert(!is_src_mod_neg(&alu->instr, i));
 
-         if (asrc->negate && src.imm_type == 0)
+         if (is_src_mod_neg(&alu->instr, i) && src.imm_type == 0)
             src.imm_val ^= 0x80000;
       }
 
       srcs[i] = src;
    }
 
-   etna_emit_alu(c, alu->op, dst, srcs, alu->dest.saturate || (alu->op == nir_op_fsat));
+   etna_emit_alu(c, alu->op, dst, srcs, alu->op == nir_op_fsat);
 }
 
 static void
@@ -711,9 +714,16 @@ insert_vec_mov(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
    nir_alu_instr *mov = nir_alu_instr_create(shader, nir_op_mov);
    nir_alu_src_copy(&mov->src[0], &vec->src[start_idx], mov);
 
+   assert(!vec->src[start_idx].negate);
+   assert(!vec->src[start_idx].abs);
+
    mov->src[0].swizzle[0] = vec->src[start_idx].swizzle[0];
-   mov->src[0].negate = vec->src[start_idx].negate;
-   mov->src[0].abs = vec->src[start_idx].abs;
+
+   if (is_src_mod_neg(&vec->instr, start_idx))
+      set_src_mod_neg(&mov->instr, 0);
+
+   if (is_src_mod_abs(&vec->instr, start_idx))
+      set_src_mod_abs(&mov->instr, 0);
 
    unsigned num_components = 1;
 
@@ -722,8 +732,8 @@ insert_vec_mov(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
          continue;
 
       if (nir_srcs_equal(vec->src[i].src, vec->src[start_idx].src) &&
-          vec->src[i].negate == vec->src[start_idx].negate &&
-          vec->src[i].abs == vec->src[start_idx].abs) {
+         is_src_mod_neg(&vec->instr, i) == is_src_mod_neg(&vec->instr, start_idx) &&
+         is_src_mod_abs(&vec->instr, i) == is_src_mod_neg(&vec->instr, start_idx)) {
          write_mask |= (1 << i);
          mov->src[0].swizzle[num_components] = vec->src[i].swizzle[0];
          num_components++;
@@ -1029,7 +1039,6 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
 
    /* call directly to avoid validation (load_const don't pass validation at this point) */
    nir_convert_from_ssa(shader, true, false);
-   nir_opt_dce(shader);
 
    etna_ra_assign(c, shader);
 
@@ -1221,7 +1230,6 @@ etna_compile_shader(struct etna_shader_variant *v)
 
    NIR_PASS_V(s, nir_move_vec_src_uses_to_dest);
    NIR_PASS_V(s, nir_copy_prop);
-   NIR_PASS_V(s, nir_lower_to_source_mods, nir_lower_all_source_mods);
    /* need copy prop after uses_to_dest, and before src mods: see
     * dEQP-GLES2.functional.shaders.random.all_features.fragment.95
     */
@@ -1231,6 +1239,9 @@ etna_compile_shader(struct etna_shader_variant *v)
 
    NIR_PASS_V(s, nir_lower_bool_to_bitsize);
    NIR_PASS_V(s, etna_lower_alu, c->specs->has_new_transcendentals);
+
+   /* needs to be the last pass that touches pass_flags! */
+   NIR_PASS_V(s, etna_nir_lower_to_source_mods);
 
    if (DBG_ENABLED(ETNA_DBG_DUMP_SHADERS))
       nir_print_shader(s, stdout);

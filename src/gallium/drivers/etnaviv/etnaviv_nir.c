@@ -192,9 +192,6 @@ etna_lower_alu_impl(nir_function_impl *impl, bool has_new_transcendentals)
 
             ssa->num_components = 2;
 
-            mul->dest.saturate = alu->dest.saturate;
-            alu->dest.saturate = 0;
-
             nir_instr_insert_after(instr, &mul->instr);
 
             nir_ssa_def_rewrite_uses_after(ssa, &mul->dest.dest.ssa,
