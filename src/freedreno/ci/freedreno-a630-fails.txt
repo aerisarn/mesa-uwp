@@ -173,8 +173,6 @@ spec@ext_external_objects@vk-semaphores-2,Fail
 spec@ext_external_objects@vk-stencil-display,Fail
 spec@ext_external_objects@vk-stencil-display@D24S8,Fail
 
-spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
-
 spec@ext_framebuffer_multisample@alpha-to-coverage-dual-src-blend 2,Fail
 spec@ext_framebuffer_multisample@alpha-to-coverage-dual-src-blend 4,Fail
 spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 2,Fail
