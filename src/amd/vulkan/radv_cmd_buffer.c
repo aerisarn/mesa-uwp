@@ -9492,9 +9492,9 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer, const struct radv
          remainder[1] = blocks[1] + cs_block_size[1] - align_u32_npot(blocks[1], cs_block_size[1]);
          remainder[2] = blocks[2] + cs_block_size[2] - align_u32_npot(blocks[2], cs_block_size[2]);
 
-         blocks[0] = round_up_u32(blocks[0], cs_block_size[0]);
-         blocks[1] = round_up_u32(blocks[1], cs_block_size[1]);
-         blocks[2] = round_up_u32(blocks[2], cs_block_size[2]);
+         blocks[0] = DIV_ROUND_UP(blocks[0], cs_block_size[0]);
+         blocks[1] = DIV_ROUND_UP(blocks[1], cs_block_size[1]);
+         blocks[2] = DIV_ROUND_UP(blocks[2], cs_block_size[2]);
 
          for (unsigned i = 0; i < 3; ++i) {
             assert(offsets[i] % cs_block_size[i] == 0);

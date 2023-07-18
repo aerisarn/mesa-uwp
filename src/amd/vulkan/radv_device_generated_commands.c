@@ -1242,7 +1242,7 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
    radv_meta_push_descriptor_set(cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                                  cmd_buffer->device->meta_state.dgc_prepare.p_layout, 0, ds_cnt, ds_writes);
 
-   unsigned block_count = MAX2(1, round_up_u32(pGeneratedCommandsInfo->sequencesCount, 64));
+   unsigned block_count = MAX2(1, DIV_ROUND_UP(pGeneratedCommandsInfo->sequencesCount, 64));
    vk_common_CmdDispatch(radv_cmd_buffer_to_handle(cmd_buffer), block_count, 1, 1);
 
    radv_buffer_finish(&token_buffer);

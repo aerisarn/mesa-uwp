@@ -597,7 +597,7 @@ clear_htile_mask(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_meta_state *state = &device->meta_state;
-   uint64_t block_count = round_up_u64(size, 1024);
+   uint64_t block_count = DIV_ROUND_UP(size, 1024);
    struct radv_meta_saved_state saved_state;
    struct radv_buffer dst_buffer;
 

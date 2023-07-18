@@ -2216,8 +2216,8 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
       unsigned img_bw = vk_format_get_blockwidth(image->planes[iview->plane_id].format);
       unsigned img_bh = vk_format_get_blockheight(image->planes[iview->plane_id].format);
 
-      iview->extent.width = round_up_u32(iview->extent.width * view_bw, img_bw);
-      iview->extent.height = round_up_u32(iview->extent.height * view_bh, img_bh);
+      iview->extent.width = DIV_ROUND_UP(iview->extent.width * view_bw, img_bw);
+      iview->extent.height = DIV_ROUND_UP(iview->extent.height * view_bh, img_bh);
 
       /* Comment ported from amdvlk -
        * If we have the following image:
@@ -2257,8 +2257,8 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
             unsigned lvl_width = radv_minify(image->vk.extent.width, range->baseMipLevel);
             unsigned lvl_height = radv_minify(image->vk.extent.height, range->baseMipLevel);
 
-            lvl_width = round_up_u32(lvl_width * view_bw, img_bw);
-            lvl_height = round_up_u32(lvl_height * view_bh, img_bh);
+            lvl_width = DIV_ROUND_UP(lvl_width * view_bw, img_bw);
+            lvl_height = DIV_ROUND_UP(lvl_height * view_bh, img_bh);
 
             iview->extent.width = CLAMP(lvl_width << range->baseMipLevel, iview->extent.width,
                                         iview->image->planes[0].surface.u.gfx9.base_mip_width);
