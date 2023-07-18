@@ -122,9 +122,6 @@ struct copy_prop_var_state {
    /* List of copy structures ready for reuse */
    struct list_head unused_copy_structs_list;
 
-   /* List of dynamic arrays ready for reuse */
-   struct list_head unused_copy_dynarray_list;
-
    bool progress;
 };
 
@@ -313,21 +310,13 @@ gather_vars_written(struct copy_prop_var_state *state,
    }
 }
 
-/* Creates a fresh dynarray or grabs one from the pool for reuse */
+/* Creates a fresh dynarray */
 static struct copies_dynarray *
 get_copies_dynarray(struct copy_prop_var_state *state)
 {
-   struct copies_dynarray *cp_arr;
-   if (list_is_empty(&state->unused_copy_dynarray_list)) {
-      cp_arr = ralloc(state->mem_ctx, struct copies_dynarray);
-      util_dynarray_init(&cp_arr->arr, state->mem_ctx);
-   } else {
-      cp_arr = list_entry(state->unused_copy_dynarray_list.next,
-                          struct copies_dynarray, node);
-      list_del(&cp_arr->node);
-      util_dynarray_clear(&cp_arr->arr);
-   }
-
+   struct copies_dynarray *cp_arr =
+      ralloc(state->mem_ctx, struct copies_dynarray);
+   util_dynarray_init(&cp_arr->arr, state->mem_ctx);
    return cp_arr;
 }
 
@@ -561,7 +550,6 @@ lookup_entry_and_kill_aliases(struct copy_prop_var_state *state,
 
          if (copies_array->arr.size == 0) {
             _mesa_hash_table_remove(copies->ht, ht_entry);
-            list_add(&copies_array->node, &state->unused_copy_dynarray_list);
          }
       }
 
@@ -579,7 +567,6 @@ lookup_entry_and_kill_aliases(struct copy_prop_var_state *state,
 
       if (copies_array->size == 0) {
          _mesa_hash_table_remove_key(copies->ht, deref->_path->path[0]->var);
-         list_add(&cpda->node, &state->unused_copy_dynarray_list);
       }
    }
 
@@ -943,7 +930,6 @@ invalidate_copies_for_cf_node(struct copy_prop_var_state *state,
 
          if (copies_array->arr.size == 0) {
             _mesa_hash_table_remove(copies->ht, ht_entry);
-            list_add(&copies_array->node, &state->unused_copy_dynarray_list);
          }
       }
 
@@ -1405,13 +1391,6 @@ static void
 clear_copies_structure(struct copy_prop_var_state *state,
                        struct copies *copies)
 {
-   hash_table_foreach(copies->ht, entry) {
-      if (copies_owns_ht_entry(copies, entry)) {
-         struct copies_dynarray *cp_arr =
-           (struct copies_dynarray *) entry->data;
-         list_add(&cp_arr->node, &state->unused_copy_dynarray_list);
-      }
-   }
    ralloc_free(copies->ht);
    copies->ht = NULL;
 
@@ -1529,7 +1508,6 @@ nir_copy_prop_vars_impl(nir_function_impl *impl)
       .vars_written_map = _mesa_pointer_hash_table_create(mem_ctx),
    };
    list_inithead(&state.unused_copy_structs_list);
-   list_inithead(&state.unused_copy_dynarray_list);
 
    gather_vars_written(&state, NULL, &impl->cf_node);
 
