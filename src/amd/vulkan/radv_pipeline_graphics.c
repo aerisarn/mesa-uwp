@@ -1907,14 +1907,14 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
    if (device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
       key.ps.lower_discard_to_demote = true;
 
-   key.ps.force_vrs_enabled = device->force_vrs_enabled;
+   key.ps.force_vrs_enabled = device->force_vrs_enabled && !radv_is_static_vrs_enabled(pipeline, state);
 
    if (device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM)
       key.invariant_geom = true;
 
    key.use_ngg = device->physical_device->use_ngg;
 
-   if ((radv_is_vrs_enabled(pipeline, state) || device->force_vrs_enabled) &&
+   if ((radv_is_vrs_enabled(pipeline, state) || key.ps.force_vrs_enabled) &&
        (device->physical_device->rad_info.family == CHIP_NAVI21 ||
         device->physical_device->rad_info.family == CHIP_NAVI22 ||
         device->physical_device->rad_info.family == CHIP_VANGOGH))
@@ -2053,10 +2053,10 @@ radv_fill_shader_info_ngg(struct radv_device *device, const struct radv_pipeline
 }
 
 static bool
-radv_consider_force_vrs(const struct radv_device *device, const struct radv_shader_stage *last_vgt_stage,
+radv_consider_force_vrs(const struct radv_pipeline_key *pipeline_key, const struct radv_shader_stage *last_vgt_stage,
                         const struct radv_shader_stage *fs_stage)
 {
-   if (!device->force_vrs_enabled)
+   if (!pipeline_key->ps.force_vrs_enabled)
       return false;
 
    /* Mesh shaders aren't considered. */
@@ -2134,7 +2134,7 @@ radv_fill_shader_info(struct radv_device *device, const enum radv_pipeline_type 
       bool consider_force_vrs = false;
 
       if (radv_is_last_vgt_stage(&stages[i])) {
-         consider_force_vrs = radv_consider_force_vrs(device, &stages[i], &stages[MESA_SHADER_FRAGMENT]);
+         consider_force_vrs = radv_consider_force_vrs(pipeline_key, &stages[i], &stages[MESA_SHADER_FRAGMENT]);
       }
 
       radv_nir_shader_info_pass(device, stages[i].nir, &stages[i].layout, pipeline_key, pipeline_type,
@@ -3608,7 +3608,7 @@ gfx103_pipeline_emit_vrs_state(const struct radv_device *device, struct radeon_c
        */
       mode = V_028064_SC_VRS_COMB_MODE_OVERRIDE;
       rate_x = rate_y = 1;
-   } else if (!radv_is_static_vrs_enabled(pipeline, state) && pipeline->force_vrs_per_vertex) {
+   } else if (pipeline->force_vrs_per_vertex) {
       /* Otherwise, if per-draw VRS is not enabled statically, try forcing per-vertex VRS if
        * requested by the user. Note that vkd3d-proton always has to declare VRS as dynamic because
        * in DX12 it's fully dynamic.
