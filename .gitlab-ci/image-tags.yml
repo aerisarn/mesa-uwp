@@ -15,13 +15,13 @@ variables:
    DEBIAN_X86_64_TEST_ANDROID_IMAGE_PATH: "debian/x86_64_test-android"
 
    DEBIAN_X86_64_TEST_ANDROID_TAG: "2023-06-07-deqp"
-   DEBIAN_X86_64_TEST_GL_TAG: "2023-07-02-apitrace-lto"
+   DEBIAN_X86_64_TEST_GL_TAG: "2023-07-18-vvl"
    DEBIAN_X86_64_TEST_VK_TAG: "2023-07-08-weston-0"
 
    ALPINE_X86_64_BUILD_TAG: "2023-05-01-3.18-bump-1"
    ALPINE_X86_64_LAVA_SSH_TAG: "2023-06-26-first-version"
    FEDORA_X86_64_BUILD_TAG: "2023-05-05-ccache-on"
-   KERNEL_ROOTFS_TAG: "2023-07-11-dekernelize"
+   KERNEL_ROOTFS_TAG: "2023-07-18-vvl"
    KERNEL_TAG: "v6.3.13-for-mesa-ci-bbe75e512c76"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
