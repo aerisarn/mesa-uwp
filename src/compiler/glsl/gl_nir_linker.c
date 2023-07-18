@@ -1082,10 +1082,11 @@ prelink_lowering(const struct gl_constants *consts,
          consts->ShaderCompilerOptions[shader->Stage].NirOptions;
       struct gl_program *prog = shader->Program;
 
-      /* ES vertex shaders still have dead varyings but its now safe to remove
-       * them as validation is now done according to the spec.
+      /* ES 3.0+ vertex shaders may still have dead varyings but its now safe
+       * to remove them as validation is now done according to the spec.
        */
-      if (shader_program->IsES && i == MESA_SHADER_VERTEX)
+      if (shader_program->IsES && shader_program->GLSL_Version >= 300 &&
+          i == MESA_SHADER_VERTEX)
          remove_dead_varyings_pre_linking(prog->nir);
 
       preprocess_shader(consts, exts, prog, shader_program, shader->Stage);
@@ -1348,7 +1349,7 @@ gl_nir_link_glsl(const struct gl_constants *consts,
           * Because of this rule, we don't remove dead attributes before
           * attribute assignment for vertex shader inputs here.
           */
-         if (!(prog->IsES && i == MESA_SHADER_VERTEX))
+         if (!(prog->IsES && prog->GLSL_Version >= 300 && i == MESA_SHADER_VERTEX))
             remove_dead_varyings_pre_linking(prog->_LinkedShaders[i]->Program->nir);
       }
    }
