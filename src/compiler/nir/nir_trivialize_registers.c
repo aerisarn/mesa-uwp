@@ -34,22 +34,28 @@
  * register source read, leading to quadratic compile time. Instead, we ensure
  * this hazard does not happen and then use the simple O(1) translation.
  *
- * We say that a load_register is "trivial" if every use is in the same
- * block and there is no intervening store_register (write-after-read) between
- * the load and the use.
+ * We say that a load_register is "trivial" if:
+ *
+ *  1. every use is in the same block as the load_reg
+ *
+ *  2. there is no intervening store_register (write-after-read) between the
+ *     load and the use.
  *
  * Similar, a store_register is trivial if:
  *
  * 1. the value stored has exactly one use (the store)
  *
- * 2. the value is written in the same block as the store, and there does not
- * exist any intervening load_reg (read-after-write) from that register or
- * store_register (write-after-write) to that register with intersecting write
- * masks.
+ * 2. the value is written in the same block as the store
  *
- * 3. the producer is not a load_const or ssa_undef (as these historically could
- * not write to registers so backends are expecting SSA here), or a load_reg
- * (since backends need a move to copy between registers)
+ * 3. the live range of the components of the value being stored does not
+ *    overlap the live range of the destination of any load_reg or the data
+ *    source components of any store_reg operating on that same register.  The
+ *    live ranges of the data portions of two store_reg intrinscis may overlap
+ *    if they have non-intersecting write masks.
+ *
+ * 3. the producer is not a load_const or ssa_undef (as these historically
+ *    could not write to registers so backends are expecting SSA here), or a
+ *    load_reg (since backends need a move to copy between registers)
  *
  * 4. if indirect, the indirect index is live at the producer.
  *
@@ -265,6 +271,21 @@ trivialize_reg_stores(nir_ssa_def *reg, nir_component_mask_t mask,
    }
 }
 
+/*
+ * Trivialize for read-after-write hazards, given a load that is between the def
+ * and store.
+ */
+static void
+trivialize_read_after_write(nir_intrinsic_instr *load,
+                            struct hash_table *possibly_trivial_stores)
+{
+   assert(nir_is_load_reg(load));
+
+   unsigned nr = load->dest.ssa.num_components;
+   trivialize_reg_stores(load->src[0].ssa, nir_component_mask(nr),
+                         possibly_trivial_stores);
+}
+
 static bool
 clear_def(nir_ssa_def *def, void *state)
 {
@@ -305,6 +326,23 @@ clear_def(nir_ssa_def *def, void *state)
    return false;
 }
 
+/*
+ * If a load_reg will be folded into this instruction, we need to handle
+ * read-after-write hazards, the same as if we hit a load_reg directly.
+ */
+static bool
+trivialize_source(nir_src *src, void *state)
+{
+   struct hash_table *possibly_trivial_stores = state;
+
+   nir_intrinsic_instr *load_reg = nir_load_reg_for_def(src->ssa);
+   if (load_reg)
+      trivialize_read_after_write(load_reg, possibly_trivial_stores);
+
+   return true;
+
+}
+
 static void
 trivialize_stores(nir_function_impl *impl, nir_block *block)
 {
@@ -318,6 +356,13 @@ trivialize_stores(nir_function_impl *impl, nir_block *block)
    struct hash_table *possibly_trivial_stores =
       _mesa_pointer_hash_table_create(NULL);
 
+   /* Following the algorithm directly, we would call trivialize_source() on
+    * the following if source here because we are walking instructions
+    * backwards so you process the following if before instructions in that
+    * case.  However, we know a priori that possibly_trivial_stores is empty
+    * at this point so trivialize_source() is a no-op.
+    */
+
    nir_foreach_instr_reverse_safe(instr, block) {
       nir_foreach_ssa_def(instr, clear_def, possibly_trivial_stores);
 
@@ -326,9 +371,7 @@ trivialize_stores(nir_function_impl *impl, nir_block *block)
 
          if (nir_is_load_reg(intr)) {
             /* Read-after-write: there is a load between the def and store. */
-            unsigned nr = intr->dest.ssa.num_components;
-            trivialize_reg_stores(intr->src[0].ssa, nir_component_mask(nr),
-                                  possibly_trivial_stores);
+            trivialize_read_after_write(intr, possibly_trivial_stores);
          } else if (nir_is_store_reg(intr)) {
             nir_ssa_def *value = intr->src[0].ssa;
             nir_ssa_def *reg = intr->src[1].ssa;
@@ -392,6 +435,21 @@ trivialize_stores(nir_function_impl *impl, nir_block *block)
             }
          }
       }
+
+      /* Once we have trivialized loads, we are guaranteed that no store_reg
+       * exists in the live range of the destination of a load_reg for the
+       * same register.  When trivializing stores, we must further ensure that
+       * this holds for the entire live range of the data source of the
+       * store_reg and not just for the store_reg instruction itself.  Because
+       * values are always killed by sources, we can determine live range
+       * interference when walking backwards by looking at the sources of each
+       * instruction which read from a load_reg and trivializing any store_reg
+       * which interfere with that load.
+       *
+       * We trivialize sources at the end, because we iterate backwards and in
+       * program order the sources are read first.
+       */
+      nir_foreach_src(instr, trivialize_source, possibly_trivial_stores);
    }
 
    _mesa_hash_table_destroy(possibly_trivial_stores, NULL);
