@@ -98,6 +98,23 @@ typedef struct {
    const nir_opt_preamble_options *options;
 } opt_preamble_ctx;
 
+static bool
+instr_can_speculate(nir_instr *instr)
+{
+   /* Intrinsics with an ACCESS index can only be speculated if they are
+    * explicitly CAN_SPECULATE.
+    */
+   if (instr->type == nir_instr_type_intrinsic) {
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+      if (nir_intrinsic_has_access(intr))
+         return nir_intrinsic_access(intr) & ACCESS_CAN_SPECULATE;
+   }
+
+   /* For now, everything else can be speculated. TODO: Bindless textures. */
+   return true;
+}
+
 static float
 get_instr_cost(nir_instr *instr, const nir_opt_preamble_options *options)
 {
@@ -235,6 +252,13 @@ can_move_intrinsic(nir_intrinsic_instr *instr, opt_preamble_ctx *ctx)
 static bool
 can_move_instr(nir_instr *instr, opt_preamble_ctx *ctx)
 {
+   /* If we are only contained within uniform control flow, no speculation is
+    * needed since the control flow will be reconstructed in the preamble. But
+    * if we are not, we must be able to speculate instructions to move them.
+    */
+   if (ctx->nonuniform_cf_nesting > 0 && !instr_can_speculate(instr))
+      return false;
+
    switch (instr->type) {
    case nir_instr_type_tex: {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
@@ -582,6 +606,69 @@ replace_for_cf_list(nir_builder *b, opt_preamble_ctx *ctx,
    }
 }
 
+/*
+ * If an if-statement contains an instruction that cannot be speculated, the
+ * if-statement must be reconstructed so we avoid the speculation. This applies
+ * even for nested if-statements. Determine which if-statements must be
+ * reconstructed for this reason by walking the program forward and looking
+ * inside uniform if's.
+ *
+ * Returns whether the CF list contains a reconstructed instruction that would
+ * otherwise be speculated, updating the reconstructed_ifs set. This depends on
+ * reconstructed_defs being correctly set by analyze_reconstructed.
+ */
+static bool
+analyze_speculation_for_cf_list(opt_preamble_ctx *ctx, struct exec_list *list)
+{
+   bool reconstruct_cf_list = false;
+
+   foreach_list_typed(nir_cf_node, node, node, list) {
+      switch (node->type) {
+      case nir_cf_node_block: {
+         nir_foreach_instr(instr, nir_cf_node_as_block(node)) {
+            nir_def *def = nir_instr_def(instr);
+            if (!def)
+               continue;
+
+            if (!BITSET_TEST(ctx->reconstructed_defs, def->index))
+               continue;
+
+            if (!instr_can_speculate(instr)) {
+               reconstruct_cf_list = true;
+               break;
+            }
+         }
+
+         break;
+      }
+
+      case nir_cf_node_if: {
+         nir_if *nif = nir_cf_node_as_if(node);
+
+         /* If we can move the if, we might need to reconstruct */
+         if (can_move_src(&nif->condition, ctx)) {
+            bool any = false;
+            any |= analyze_speculation_for_cf_list(ctx, &nif->then_list);
+            any |= analyze_speculation_for_cf_list(ctx, &nif->else_list);
+
+            if (any)
+               _mesa_set_add(ctx->reconstructed_ifs, nif);
+
+            reconstruct_cf_list |= any;
+         }
+
+         break;
+      }
+
+      /* We don't reconstruct loops */
+      default:
+         break;
+      }
+   }
+
+   return reconstruct_cf_list;
+}
+
 static bool
 mark_reconstructed(nir_src *src, void *state)
 {
@@ -830,6 +917,12 @@ nir_opt_preamble(nir_shader *shader, const nir_opt_preamble_options *options,
    ctx.reconstructed_defs = calloc(BITSET_WORDS(impl->ssa_alloc),
                                    sizeof(BITSET_WORD));
    analyze_reconstructed(&ctx, impl);
+
+   /* If we make progress analyzing speculation, we need to re-analyze
+    * reconstructed defs to get the if-conditions in there.
+    */
+   if (analyze_speculation_for_cf_list(&ctx, &impl->body))
+      analyze_reconstructed(&ctx, impl);
 
    /* Step 5: Actually do the replacement. */
    struct hash_table *remap_table =
