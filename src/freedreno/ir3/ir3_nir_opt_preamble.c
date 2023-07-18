@@ -209,6 +209,18 @@ instr_cost(nir_instr *instr, const void *data)
       }
    }
 
+   case nir_instr_type_phi:
+      /* Although we can often coalesce phis, the cost of a phi is a proxy for
+       * the cost of the if-else statement... If all phis are moved, then the
+       * branches move too. So this needs to have a nonzero cost, even if we're
+       * optimistic about coalescing.
+       *
+       * Value chosen empirically. On Rob's shader-db, cost of 2 performs better
+       * across the board than a cost of 1. Values greater than 2 do not seem to
+       * have any change, so sticking with 2.
+       */
+      return 2;
+
    default:
       return 0;
    }
