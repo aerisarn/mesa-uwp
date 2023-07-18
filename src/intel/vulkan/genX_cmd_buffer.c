@@ -6380,6 +6380,8 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 
+   genX(cmd_buffer_ensure_cfe_state)(cmd_buffer, pipeline->scratch_size);
+
    const struct brw_cs_prog_data *cs_prog_data =
       brw_cs_prog_data_const(device->rt_trampoline->prog_data);
    struct brw_cs_dispatch_info dispatch =
