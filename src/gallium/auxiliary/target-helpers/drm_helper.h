@@ -156,27 +156,6 @@ const driOptionDescription v3d_driconf[] = {
 };
 #endif
 
-#ifdef GALLIUM_KMSRO
-#include "kmsro/drm/kmsro_drm_public.h"
-
-static struct pipe_screen *
-pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   struct pipe_screen *screen;
-
-   screen = kmsro_drm_screen_create(fd, config);
-   return screen ? debug_screen_wrap(screen) : NULL;
-}
-#if defined(GALLIUM_VC4) || defined(GALLIUM_V3D)
-DRM_DRIVER_DESCRIPTOR(kmsro, v3d_driconf, ARRAY_SIZE(v3d_driconf))
-#else
-DRM_DRIVER_DESCRIPTOR(kmsro, NULL, 0)
-#endif
-
-#else
-DRM_DRIVER_DESCRIPTOR_STUB(kmsro)
-#endif
-
 #ifdef GALLIUM_R300
 #include "winsys/radeon_winsys.h"
 #include "r300/r300_public.h"
@@ -449,5 +428,28 @@ DRM_DRIVER_DESCRIPTOR(zink, zink_driconf, ARRAY_SIZE(zink_driconf))
 #else
 DRM_DRIVER_DESCRIPTOR_STUB(zink)
 #endif
+
+#ifdef GALLIUM_KMSRO
+#include "kmsro/drm/kmsro_drm_public.h"
+
+static struct pipe_screen *
+pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
+{
+   struct pipe_screen *screen;
+
+   screen = kmsro_drm_screen_create(fd, config);
+   return screen ? debug_screen_wrap(screen) : NULL;
+}
+#if defined(GALLIUM_VC4) || defined(GALLIUM_V3D)
+DRM_DRIVER_DESCRIPTOR(kmsro, v3d_driconf, ARRAY_SIZE(v3d_driconf))
+#else
+DRM_DRIVER_DESCRIPTOR(kmsro, NULL, 0)
+#endif
+
+#else
+DRM_DRIVER_DESCRIPTOR_STUB(kmsro)
+#endif
+
+/* kmsro should be the last entry in the file. */
 
 #endif /* DRM_HELPER_H */
