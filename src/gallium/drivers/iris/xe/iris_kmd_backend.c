@@ -427,10 +427,20 @@ error_implicit_sync_import:
    return ret;
 }
 
+static int
+xe_gem_close(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
+{
+   struct drm_gem_close close = {
+      .handle = bo->gem_handle,
+   };
+   return intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_GEM_CLOSE, &close);
+}
+
 const struct iris_kmd_backend *xe_get_backend(void)
 {
    static const struct iris_kmd_backend xe_backend = {
       .gem_create = xe_gem_create,
+      .gem_close = xe_gem_close,
       .gem_mmap = xe_gem_mmap,
       .gem_vm_bind = xe_gem_vm_bind,
       .gem_vm_unbind = xe_gem_vm_unbind,

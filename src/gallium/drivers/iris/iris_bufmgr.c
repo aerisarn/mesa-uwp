@@ -1272,12 +1272,6 @@ iris_bo_close(int fd, uint32_t gem_handle)
    return intel_ioctl(fd, DRM_IOCTL_GEM_CLOSE, &close);
 }
 
-static int
-iris_bufmgr_bo_close(struct iris_bufmgr *bufmgr, uint32_t gem_handle)
-{
-   return iris_bo_close(bufmgr->fd, gem_handle);
-}
-
 static enum iris_mmap_mode
 iris_bo_create_userptr_get_mmap_mode(struct iris_bufmgr *bufmgr)
 {
@@ -1345,7 +1339,7 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
    return bo;
 
 err_close:
-   iris_bufmgr_bo_close(bufmgr, bo->gem_handle);
+   bufmgr->kmd_backend->gem_close(bufmgr, bo);
 err_free:
    free(bo);
    return NULL;
@@ -1415,7 +1409,10 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
 
    bo = bo_calloc();
    if (!bo) {
-      iris_bufmgr_bo_close(bufmgr, open_arg.handle);
+      struct iris_bo close_bo = {
+            .gem_handle = open_arg.handle,
+      };
+      bufmgr->kmd_backend->gem_close(bufmgr, &close_bo);
       goto out;
    }
 
@@ -1500,7 +1497,7 @@ bo_close(struct iris_bo *bo)
       close(bo->real.prime_fd);
 
    /* Close this object */
-   if (iris_bufmgr_bo_close(bufmgr, bo->gem_handle) != 0) {
+   if (bufmgr->kmd_backend->gem_close(bufmgr, bo) != 0) {
       DBG("DRM_IOCTL_GEM_CLOSE %d failed (%s): %s\n",
           bo->gem_handle, bo->name, strerror(errno));
    }
