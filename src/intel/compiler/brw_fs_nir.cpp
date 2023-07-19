@@ -4059,7 +4059,9 @@ fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_ssa_def *resour
          if (nir_op_infos[alu->op].num_inputs != 2)
             break;
 
-         if (alu->src[0].negate ||
+         if (!alu->src[0].src.is_ssa ||
+             !alu->src[1].src.is_ssa ||
+             alu->src[0].negate ||
              alu->src[0].abs ||
              alu->src[0].swizzle[0] != 0 ||
              alu->src[1].negate ||
