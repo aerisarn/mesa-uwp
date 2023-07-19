@@ -17,8 +17,14 @@ nvk_get_buffer_alignment(const struct nvk_physical_device *pdev,
 
 struct nvk_buffer {
    struct vk_buffer vk;
-   struct nvk_device_memory *mem;
    uint64_t addr;
+
+#if NVK_NEW_UAPI == 1
+   /** Size of the reserved VMA range for sparse buffers, zero otherwise. */
+   uint64_t vma_size_B;
+#else
+   struct nvk_device_memory *mem;
+#endif
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_buffer, vk.base, VkBuffer, VK_OBJECT_TYPE_BUFFER)

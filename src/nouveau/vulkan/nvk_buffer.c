@@ -7,7 +7,7 @@
 uint32_t
 nvk_get_buffer_alignment(UNUSED const struct nvk_physical_device *pdev,
                          VkBufferUsageFlags2KHR usage_flags,
-                         UNUSED VkBufferCreateFlags create_flags)
+                         VkBufferCreateFlags create_flags)
 {
    uint32_t alignment = 16;
 
@@ -20,6 +20,9 @@ nvk_get_buffer_alignment(UNUSED const struct nvk_physical_device *pdev,
    if (usage_flags & (VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR |
                       VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR))
       alignment = MAX2(alignment, NVK_MIN_UBO_ALIGNMENT);
+
+   if (create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
+      alignment = MAX2(alignment, 4096);
 
    return alignment;
 }
@@ -38,6 +41,23 @@ nvk_CreateBuffer(VkDevice device,
    if (!buffer)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+#if NVK_NEW_UAPI == 1
+   if (buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) {
+      const uint32_t alignment =
+         nvk_get_buffer_alignment(nvk_device_physical(dev),
+                                  buffer->vk.usage,
+                                  buffer->vk.create_flags);
+      assert(alignment >= 4096);
+      buffer->vma_size_B = ALIGN_POT(buffer->vk.size, alignment);
+
+      const bool sparse_residency =
+         buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT;
+
+      buffer->addr = nouveau_ws_alloc_vma(dev->ws_dev, buffer->vma_size_B,
+                                          alignment, sparse_residency);
+   }
+#endif
+
    *pBuffer = nvk_buffer_to_handle(buffer);
 
    return VK_SUCCESS;
@@ -53,6 +73,17 @@ nvk_DestroyBuffer(VkDevice device,
 
    if (!buffer)
       return;
+
+#if NVK_NEW_UAPI == 1
+   if (buffer->vma_size_B > 0) {
+      const bool sparse_residency =
+         buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT;
+
+      nouveau_ws_bo_unbind_vma(dev->ws_dev, buffer->addr, buffer->vma_size_B);
+      nouveau_ws_free_vma(dev->ws_dev, buffer->addr, buffer->vma_size_B,
+                          sparse_residency);
+   }
+#endif
 
    vk_buffer_destroy(&dev->vk, pAllocator, &buffer->vk);
 }
@@ -145,8 +176,22 @@ nvk_BindBufferMemory2(VkDevice device,
       VK_FROM_HANDLE(nvk_device_memory, mem, pBindInfos[i].memory);
       VK_FROM_HANDLE(nvk_buffer, buffer, pBindInfos[i].buffer);
 
+#if NVK_NEW_UAPI == 1
+      if (buffer->vma_size_B) {
+         VK_FROM_HANDLE(nvk_device, dev, device);
+         nouveau_ws_bo_bind_vma(dev->ws_dev,
+                                mem->bo,
+                                buffer->addr,
+                                buffer->vma_size_B,
+                                pBindInfos[i].memoryOffset,
+                                0 /* pte_kind */);
+      } else {
+         buffer->addr = mem->bo->offset + pBindInfos[i].memoryOffset;
+      }
+#else
       buffer->mem = mem;
       buffer->addr = mem->bo->offset + pBindInfos[i].memoryOffset;
+#endif
    }
    return VK_SUCCESS;
 }

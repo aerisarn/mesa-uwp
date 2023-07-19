@@ -153,6 +153,9 @@ nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
 {
    nvk_cmd_buffer_flush_push(cmd);
 
+#if NVK_NEW_UAPI == 1
+   unreachable("Does not yet support sparse");
+#else
    /* TODO: The new uAPI should just take addresses */
    struct nouveau_ws_bo *bo = buffer->mem->bo;
    uint64_t bo_offset = nvk_buffer_address(buffer, offset) - bo->offset;
@@ -164,6 +167,7 @@ nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
       .range = NVC0_IB_ENTRY_1_NO_PREFETCH | range,
    };
    util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
+#endif
 }
 
 VkResult
