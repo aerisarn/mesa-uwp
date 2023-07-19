@@ -1,7 +1,3 @@
-multisample-dEQP-GLES3.functional.depth_stencil_clear.depth_scissored_masked,Fail
-multisample-dEQP-GLES3.functional.depth_stencil_clear.depth_scissored,Fail
-multisample-dEQP-GLES3.functional.depth_stencil_clear.depth_stencil_scissored,Fail
-
 # "Fail, buffer content is not well preserved when age > 0 (Fail)"
 dEQP-EGL.functional.buffer_age.no_preserve.no_resize.odd_clear_clear_even_clear_clear,Fail
 dEQP-EGL.functional.buffer_age.no_preserve.no_resize.odd_clear_clear_even_clear,Fail
