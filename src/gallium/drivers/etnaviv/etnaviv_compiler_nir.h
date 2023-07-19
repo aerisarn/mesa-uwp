@@ -67,7 +67,7 @@ struct etna_compile {
    abort(); \
 })
 
-enum {
+enum etna_pass_flags {
    BYPASS_DST = BITFIELD_BIT(0),
    BYPASS_SRC = BITFIELD_BIT(1),
 };
