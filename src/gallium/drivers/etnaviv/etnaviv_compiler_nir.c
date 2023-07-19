@@ -748,6 +748,38 @@ insert_vec_mov(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
 }
 
 /*
+ * Get the nir_const_value from an alu src.  Also look at
+ * the parent instruction as it could be a fabs/fneg.
+ */
+static nir_const_value *get_alu_cv(nir_alu_src *src)
+ {
+   nir_const_value *cv = nir_src_as_const_value(src->src);
+
+   if (!cv &&
+       src->src.is_ssa &&
+       (src->src.ssa->parent_instr->type == nir_instr_type_alu)) {
+      nir_alu_instr *parent = nir_instr_as_alu(src->src.ssa->parent_instr);
+
+      if ((parent->op == nir_op_fabs) ||
+          (parent->op == nir_op_fneg)) {
+         cv = nir_src_as_const_value(parent->src[0].src);
+
+         if (cv) {
+            /* Validate that we are only using ETNA_UNIFORM_CONSTANT const_values. */
+            for (unsigned i = 0; i < parent->dest.dest.ssa.num_components; i++) {
+               if (cv[i].u64 >> 32 != ETNA_UNIFORM_CONSTANT) {
+                  cv = NULL;
+                  break;
+               }
+            }
+         }
+      }
+   }
+
+   return cv;
+ }
+
+/*
  * for vecN instructions:
  * -merge constant sources into a single src
  * -insert movs (nir_lower_vec_to_movs equivalent)
@@ -777,7 +809,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
       int first_const = -1;
 
       for (unsigned i = 0; i < info->num_inputs; i++) {
-         nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
+         nir_const_value *cv = get_alu_cv(&alu->src[i]);
          if (!cv)
             continue;
 
@@ -804,7 +836,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
          nir_ssa_def *def = nir_build_imm(&b, swiz_max + 1, 32, value);
 
          for (unsigned i = 0; i < info->num_inputs; i++) {
-            nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
+            nir_const_value *cv = get_alu_cv(&alu->src[i]);
             if (!cv)
                continue;
 
@@ -819,7 +851,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
       /* resolve with movs */
       unsigned num_const = 0;
       for (unsigned i = 0; i < info->num_inputs; i++) {
-         nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
+         nir_const_value *cv = get_alu_cv(&alu->src[i]);
          if (!cv)
             continue;
 
@@ -837,7 +869,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
    unsigned num_components = 0;
 
    for (unsigned i = 0; i < info->num_inputs; i++) {
-      nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
+      nir_const_value *cv = get_alu_cv(&alu->src[i]);
       if (cv)
          value[num_components++] = cv[alu->src[i].swizzle[0]];
    }
@@ -856,7 +888,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
       }
 
       for (unsigned i = 0, j = 0; i < info->num_inputs; i++) {
-         nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
+         nir_const_value *cv = get_alu_cv(&alu->src[i]);
          if (!cv)
             continue;
 
