@@ -1738,7 +1738,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
          va += gs_prim_offset;
 
          /* pipeline statistics counter for all streams */
-         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PIPELINE_STAT_OFFSET, va);
+         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_GS_PRIM_EMIT_OFFSET, va);
 
          /* Record that the command buffer needs GDS. */
          cmd_buffer->gds_needed = true;
@@ -1882,7 +1882,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
          va += gs_prim_offset;
 
          /* pipeline statistics counter for all streams */
-         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PIPELINE_STAT_OFFSET, va);
+         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_GS_PRIM_EMIT_OFFSET, va);
 
          cmd_buffer->state.active_pipeline_gds_queries--;
 

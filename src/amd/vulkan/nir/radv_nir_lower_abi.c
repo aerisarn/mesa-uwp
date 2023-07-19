@@ -347,7 +347,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       break;
    }
    case nir_intrinsic_atomic_add_gs_emit_prim_count_amd:
-      nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa, nir_imm_int(b, RADV_SHADER_QUERY_PIPELINE_STAT_OFFSET),
+      nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa, nir_imm_int(b, RADV_SHADER_QUERY_GS_PRIM_EMIT_OFFSET),
                              nir_imm_int(b, 0x100));
       break;
    case nir_intrinsic_atomic_add_gen_prim_count_amd:
