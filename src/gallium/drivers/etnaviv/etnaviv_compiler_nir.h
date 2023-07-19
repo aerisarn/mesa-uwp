@@ -72,6 +72,15 @@ enum etna_pass_flags {
    BYPASS_SRC = BITFIELD_BIT(1),
 };
 
+#define PASS_FLAGS_IS_DEAD_MASK     BITFIELD_RANGE(0, 2)
+
+static_assert(PASS_FLAGS_IS_DEAD_MASK == (BYPASS_DST | BYPASS_SRC));
+
+static inline bool is_dead_instruction(nir_instr *instr)
+{
+   return instr->pass_flags & PASS_FLAGS_IS_DEAD_MASK;
+}
+
 static inline bool is_sysval(nir_instr *instr)
 {
    if (instr->type != nir_instr_type_intrinsic)

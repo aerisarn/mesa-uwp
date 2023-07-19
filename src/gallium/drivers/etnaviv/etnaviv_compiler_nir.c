@@ -472,7 +472,7 @@ emit_alu(struct etna_compile *c, nir_alu_instr * alu)
    const nir_op_info *info = &nir_op_infos[alu->op];
 
    /* marked as dead instruction (vecN and other bypassed instr) */
-   if (alu->instr.pass_flags)
+   if (is_dead_instruction(&alu->instr))
       return;
 
    assert(!(alu->op >= nir_op_vec2 && alu->op <= nir_op_vec4));

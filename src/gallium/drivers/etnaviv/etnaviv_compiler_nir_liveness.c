@@ -202,7 +202,7 @@ etna_live_defs(nir_function_impl *impl, struct live_def *defs, unsigned *live_ma
          }
 
          /* don't set_src_live for not-emitted instructions */
-         if (instr->pass_flags)
+         if (is_dead_instruction(instr))
             continue;
 
          unsigned index = state.index;
