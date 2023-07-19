@@ -1017,16 +1017,18 @@ static void pvr_setup_pbe_state(
       break;
    }
 
+#define PVR_DEC_IF_NOT_ZERO(_v) (((_v) > 0) ? (_v)-1 : 0)
+
    render_params.min_x_clip = MAX2(0, render_area->offset.x);
    render_params.min_y_clip = MAX2(0, render_area->offset.y);
-   render_params.max_x_clip =
-      MIN2(framebuffer->width,
-           render_area->offset.x + render_area->extent.width) -
-      1;
-   render_params.max_y_clip =
-      MIN2(framebuffer->height,
-           render_area->offset.y + render_area->extent.height) -
-      1;
+   render_params.max_x_clip = MIN2(
+      framebuffer->width - 1,
+      PVR_DEC_IF_NOT_ZERO(render_area->offset.x + render_area->extent.width));
+   render_params.max_y_clip = MIN2(
+      framebuffer->height - 1,
+      PVR_DEC_IF_NOT_ZERO(render_area->offset.y + render_area->extent.height));
+
+#undef PVR_DEC_IF_NOT_ZERO
 
    render_params.slice = 0;
    render_params.mrt_index = mrt_index;
