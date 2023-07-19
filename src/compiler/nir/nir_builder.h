@@ -1697,6 +1697,7 @@ nir_decl_reg(nir_builder *b, unsigned num_components, unsigned bit_size,
    nir_intrinsic_set_num_components(decl, num_components);
    nir_intrinsic_set_bit_size(decl, bit_size);
    nir_intrinsic_set_num_array_elems(decl, num_array_elems);
+   nir_intrinsic_set_divergent(decl, true);
    nir_ssa_dest_init(&decl->instr, &decl->dest, 1, 32);
 
    nir_instr_insert(nir_before_cf_list(&b->impl->body), &decl->instr);
@@ -1712,7 +1713,10 @@ nir_load_reg(nir_builder *b, nir_ssa_def *reg)
    unsigned num_components = nir_intrinsic_num_components(decl);
    unsigned bit_size = nir_intrinsic_bit_size(decl);
 
-   return nir_build_load_reg(b, num_components, bit_size, reg);
+   nir_ssa_def *res = nir_build_load_reg(b, num_components, bit_size, reg);
+   res->divergent = nir_intrinsic_divergent(decl);
+
+   return res;
 }
 
 #undef nir_store_reg
