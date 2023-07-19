@@ -46,7 +46,7 @@ EXTENSIONS = [
     Extension("VK_KHR_wayland_surface",
               conditions=["!display_dev"]),
     Extension("VK_KHR_xcb_surface",
-              conditions=["!instance_info->disable_xcb_surface && !display_dev"]),
+              conditions=["!display_dev"]),
     Extension("VK_KHR_win32_surface"),
 ]
 
@@ -82,7 +82,6 @@ struct zink_screen;
 
 struct zink_instance_info {
    uint32_t loader_version;
-   bool disable_xcb_surface;
 
 %for ext in extensions:
    bool have_${ext.name_with_vendor()};
