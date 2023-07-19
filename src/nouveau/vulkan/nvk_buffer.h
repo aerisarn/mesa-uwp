@@ -8,6 +8,12 @@
 #include "vulkan/runtime/vk_buffer.h"
 
 struct nvk_device_memory;
+struct nvk_physical_device;
+
+uint32_t ATTRIBUTE_PURE
+nvk_get_buffer_alignment(const struct nvk_physical_device *pdev,
+                         VkBufferUsageFlags usage_flags,
+                         VkBufferCreateFlags create_flags);
 
 struct nvk_buffer {
    struct vk_buffer vk;

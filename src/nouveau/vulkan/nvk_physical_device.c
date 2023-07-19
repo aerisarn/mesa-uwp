@@ -1,6 +1,7 @@
 #include "nvk_physical_device.h"
 
 #include "nvk_bo_sync.h"
+#include "nvk_buffer.h"
 #include "nvk_entrypoints.h"
 #include "nvk_format.h"
 #include "nvk_image.h"
@@ -110,9 +111,14 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .lineWidthGranularity = 0.0625,
          .nonCoherentAtomSize = 64,
          .minMemoryMapAlignment = 64,
-         .minUniformBufferOffsetAlignment = NVK_MIN_UBO_ALIGNMENT,
-         .minTexelBufferOffsetAlignment = NVK_MIN_UBO_ALIGNMENT,
-         .minStorageBufferOffsetAlignment = NVK_MIN_SSBO_ALIGNMENT,
+         .minUniformBufferOffsetAlignment =
+            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 0),
+         .minTexelBufferOffsetAlignment =
+            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+                                           VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
+                                     0),
+         .minStorageBufferOffsetAlignment =
+            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 0),
          .maxVertexInputAttributeOffset = 2047,
          .maxVertexInputAttributes = 32,
          .maxVertexInputBindingStride = 2048,

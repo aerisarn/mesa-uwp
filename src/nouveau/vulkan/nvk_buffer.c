@@ -4,6 +4,26 @@
 #include "nvk_device_memory.h"
 #include "nvk_physical_device.h"
 
+uint32_t
+nvk_get_buffer_alignment(UNUSED const struct nvk_physical_device *pdev,
+                         VkBufferUsageFlags usage_flags,
+                         UNUSED VkBufferCreateFlags create_flags)
+{
+   uint32_t alignment = 16;
+
+   if (usage_flags & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+      alignment = MAX2(alignment, NVK_MIN_UBO_ALIGNMENT);
+
+   if (usage_flags & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+      alignment = MAX2(alignment, NVK_MIN_SSBO_ALIGNMENT);
+
+   if (usage_flags & (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+                      VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT))
+      alignment = MAX2(alignment, NVK_MIN_UBO_ALIGNMENT);
+
+   return alignment;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_CreateBuffer(VkDevice device,
                  const VkBufferCreateInfo *pCreateInfo,
@@ -45,9 +65,14 @@ nvk_GetDeviceBufferMemoryRequirements(
 {
    VK_FROM_HANDLE(nvk_device, dev, device);
 
+   const uint32_t alignment =
+      nvk_get_buffer_alignment(nvk_device_physical(dev),
+                               pInfo->pCreateInfo->usage,
+                               pInfo->pCreateInfo->flags);
+
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
-      .size = pInfo->pCreateInfo->size,
-      .alignment = 64, /* TODO */
+      .size = ALIGN_POT(pInfo->pCreateInfo->size, alignment),
+      .alignment = alignment,
       .memoryTypeBits = BITFIELD_MASK(dev->pdev->mem_type_cnt),
    };
 
