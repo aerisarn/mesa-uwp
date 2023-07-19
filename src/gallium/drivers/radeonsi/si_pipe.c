@@ -1327,8 +1327,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    if (sscreen->info.gfx_level >= GFX11) {
       sscreen->use_ngg = true;
-      /* TODO: Disable for now. Investigate if it helps.  */
-      sscreen->use_ngg_culling = (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL)) &&
+      sscreen->use_ngg_culling = sscreen->info.max_render_backends >= 2 &&
                                  !(sscreen->debug_flags & DBG(NO_NGG_CULLING));
    } else {
       sscreen->use_ngg = !(sscreen->debug_flags & DBG(NO_NGG)) &&
