@@ -70,15 +70,61 @@ struct etna_compile {
 enum etna_pass_flags {
    BYPASS_DST = BITFIELD_BIT(0),
    BYPASS_SRC = BITFIELD_BIT(1),
+
+   /* source modifier */
+   SRC0_MOD_NEG = BITFIELD_BIT(2),
+   SRC1_MOD_NEG = BITFIELD_BIT(3),
+   SRC2_MOD_NEG = BITFIELD_BIT(4),
+   SRC0_MOD_ABS = BITFIELD_BIT(5),
+   SRC1_MOD_ABS = BITFIELD_BIT(6),
+   SRC2_MOD_ABS = BITFIELD_BIT(7),
 };
 
 #define PASS_FLAGS_IS_DEAD_MASK     BITFIELD_RANGE(0, 2)
+#define PASS_FLAGS_SRC_MOD_NEG_MASK BITFIELD_RANGE(2, 3)
+#define PASS_FLAGS_SRC_MOD_ABS_MASK BITFIELD_RANGE(5, 3)
 
-static_assert(PASS_FLAGS_IS_DEAD_MASK == (BYPASS_DST | BYPASS_SRC));
+static_assert(PASS_FLAGS_IS_DEAD_MASK == (BYPASS_DST | BYPASS_SRC), "is_dead_mask is wrong");
+static_assert(PASS_FLAGS_SRC_MOD_NEG_MASK == (SRC0_MOD_NEG | SRC1_MOD_NEG | SRC2_MOD_NEG), "src_mod_neg_mask is wrong");
+static_assert(PASS_FLAGS_SRC_MOD_ABS_MASK == (SRC0_MOD_ABS | SRC1_MOD_ABS | SRC2_MOD_ABS), "src_mod_abs_mask is wrong");
 
 static inline bool is_dead_instruction(nir_instr *instr)
 {
    return instr->pass_flags & PASS_FLAGS_IS_DEAD_MASK;
+}
+
+static inline void set_src_mod_abs(nir_instr *instr, unsigned idx)
+{
+   assert(idx < 3);
+   instr->pass_flags |= (SRC0_MOD_ABS << idx);
+}
+
+static inline void set_src_mod_neg(nir_instr *instr, unsigned idx)
+{
+   assert(idx < 3);
+   instr->pass_flags |= (SRC0_MOD_NEG << idx);
+}
+
+static inline void toggle_src_mod_neg(nir_instr *instr, unsigned idx)
+{
+   assert(idx < 3);
+   instr->pass_flags ^= (SRC0_MOD_NEG << idx);
+}
+
+static inline bool is_src_mod_abs(nir_instr *instr, unsigned idx)
+{
+   if (idx < 3)
+      return instr->pass_flags & (SRC0_MOD_ABS << idx);
+
+   return false;
+}
+
+static inline bool is_src_mod_neg(nir_instr *instr, unsigned idx)
+{
+   if (idx < 3)
+      return instr->pass_flags & (SRC0_MOD_NEG << idx);
+
+   return false;
 }
 
 static inline bool is_sysval(nir_instr *instr)
