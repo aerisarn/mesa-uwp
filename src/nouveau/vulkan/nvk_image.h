@@ -14,15 +14,14 @@ VkFormatFeatureFlags2
 nvk_get_image_format_features(struct nvk_physical_device *pdevice,
                               VkFormat format, VkImageTiling tiling);
 
-
 struct nvk_image_plane {
    struct nil_image nil;
-   struct nvk_device_memory *mem;
-   VkDeviceSize offset;
+   uint64_t addr;
 
    /* Used for internal dedicated allocations */
    struct nvk_device_memory *internal;
 };
+
 struct nvk_image {
    struct vk_image vk;
 
@@ -49,7 +48,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE
 static inline uint64_t
 nvk_image_plane_base_address(const struct nvk_image_plane *plane)
 {
-   return plane->mem->bo->offset + plane->offset;
+   return plane->addr;
 }
 
 static inline uint64_t

@@ -610,14 +610,11 @@ nvk_image_plane_bind(struct nvk_image_plane *plane,
    *offset_B = ALIGN_POT(*offset_B, plane->nil.align_B);
    if (mem->dedicated_image_plane == plane) {
       assert(*offset_B == 0);
-      plane->mem = mem;
-      plane->offset = 0;
+      plane->addr = mem->bo->offset;
    } else if (plane->internal != NULL) {
-      plane->mem = plane->internal;
-      plane->offset = 0;
+      plane->addr = plane->internal->bo->offset;
    } else {
-      plane->mem = mem;
-      plane->offset = *offset_B;
+      plane->addr = mem->bo->offset + *offset_B;
    }
    *offset_B += plane->nil.size_B;
 }
