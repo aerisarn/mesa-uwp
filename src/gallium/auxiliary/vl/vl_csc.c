@@ -137,10 +137,10 @@ static const vl_csc_matrix bt_709_rev  = {
    { 0.439f, -0.399f, -0.040f, 0.5f   }
 };
 
-static const vl_csc_matrix bt_709_full  = {
-   { 0.0f,  1.0f, 0.0f, 0.0f },
-   { 0.0f, -0.5f, 0.5f, 0.5f },
-   { 0.5f, -0.5f, 0.0f, 0.5f }
+static const vl_csc_matrix bt_709_rev_full = {
+   { 0.213f,  0.715f,  0.072f, 0.0f },
+   {-0.115f, -0.385f,  0.5f,   0.5f },
+   { 0.5f,   -0.454f, -0.046f, 0.5f }
 };
 
 static const vl_csc_matrix identity =
@@ -197,7 +197,7 @@ void vl_csc_get_matrix(enum VL_CSC_COLOR_STANDARD cs,
          cstd = &smpte240m;
          break;
       case VL_CSC_COLOR_STANDARD_BT_709_REV:
-         memcpy(matrix, full_range ? bt_709_full : bt_709_rev, sizeof(vl_csc_matrix));
+         memcpy(matrix, full_range ? bt_709_rev_full : bt_709_rev, sizeof(vl_csc_matrix));
          return;
       case VL_CSC_COLOR_STANDARD_IDENTITY:
       default:
