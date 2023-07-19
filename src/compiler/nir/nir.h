@@ -89,6 +89,7 @@ extern bool nir_debug_print_shader[MESA_SHADER_KERNEL + 1];
 #define NIR_DEBUG_PRINT_KS               (1u << 19)
 #define NIR_DEBUG_PRINT_NO_INLINE_CONSTS (1u << 20)
 #define NIR_DEBUG_PRINT_INTERNAL         (1u << 21)
+#define NIR_DEBUG_PRINT_PASS_FLAGS       (1u << 22)
 
 #define NIR_DEBUG_PRINT (NIR_DEBUG_PRINT_VS  | \
                          NIR_DEBUG_PRINT_TCS | \

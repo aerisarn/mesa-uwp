@@ -89,6 +89,8 @@ static const struct debug_named_value nir_debug_control[] = {
      "Do not print const value near each use of const SSA variable" },
    { "print_internal", NIR_DEBUG_PRINT_INTERNAL,
      "Print shaders even if they are marked as internal" },
+   { "print_pass_flags", NIR_DEBUG_PRINT_PASS_FLAGS,
+     "Print pass_flags for every instruction when pass_flags are non-zero" },
    DEBUG_NAMED_VALUE_END
 };
 

@@ -1829,6 +1829,9 @@ print_instr(const nir_instr *instr, print_state *state, unsigned tabs)
       unreachable("Invalid instruction type");
       break;
    }
+
+   if (NIR_DEBUG(PRINT_PASS_FLAGS) && instr->pass_flags)
+      fprintf(fp, " (pass_flags: 0x%x)", instr->pass_flags);
 }
 
 static bool
