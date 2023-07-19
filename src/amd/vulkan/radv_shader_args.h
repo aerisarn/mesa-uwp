@@ -42,8 +42,10 @@ struct radv_shader_args {
    /* Streamout */
    struct ac_arg streamout_buffers;
 
+   /* Emulated query */
+   struct ac_arg shader_query_state;
+
    /* NGG */
-   struct ac_arg ngg_query_state;
    struct ac_arg ngg_provoking_vtx;
 
    /* NGG GS */

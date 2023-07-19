@@ -1354,7 +1354,7 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 54,
    RADV_CMD_DIRTY_GUARDBAND = 1ull << 55,
    RADV_CMD_DIRTY_RBPLUS = 1ull << 56,
-   RADV_CMD_DIRTY_NGG_QUERY = 1ull << 57,
+   RADV_CMD_DIRTY_SHADER_QUERY = 1ull << 57,
    RADV_CMD_DIRTY_OCCLUSION_QUERY = 1ull << 58,
    RADV_CMD_DIRTY_DB_SHADER_CONTROL = 1ull << 59,
 };
@@ -1406,11 +1406,11 @@ enum radv_nggc_settings {
    radv_nggc_small_primitives = 1 << 3,
 };
 
-enum radv_ngg_query_state {
-   radv_ngg_query_none = 0,
-   radv_ngg_query_pipeline_stat = 1 << 0,
-   radv_ngg_query_prim_gen = 1 << 1,
-   radv_ngg_query_prim_xfb = 1 << 2,
+enum radv_shader_query_state {
+   radv_shader_query_none = 0,
+   radv_shader_query_pipeline_stat = 1 << 0,
+   radv_shader_query_prim_gen = 1 << 1,
+   radv_shader_query_prim_xfb = 1 << 2,
 };
 
 struct radv_vertex_binding {

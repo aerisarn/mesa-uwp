@@ -866,8 +866,8 @@ radv_lower_ngg(struct radv_device *device, struct radv_shader_stage *ngg_stage, 
    options.has_param_exports = info->outinfo.param_exports || info->outinfo.prim_param_exports;
    options.can_cull = nir->info.stage != MESA_SHADER_GEOMETRY && info->has_ngg_culling;
    options.disable_streamout = !device->physical_device->use_ngg_streamout;
-   options.has_gen_prim_query = info->has_ngg_prim_query;
-   options.has_xfb_prim_query = info->has_ngg_xfb_query;
+   options.has_gen_prim_query = info->has_prim_query;
+   options.has_xfb_prim_query = info->has_xfb_query;
    options.force_vrs = info->force_vrs_per_vertex;
 
    if (nir->info.stage == MESA_SHADER_VERTEX || nir->info.stage == MESA_SHADER_TESS_EVAL) {

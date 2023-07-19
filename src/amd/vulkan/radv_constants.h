@@ -141,15 +141,15 @@
  */
 #define RADV_SHADER_UPLOAD_CS_COUNT 32
 
-/* NGG GDS counters:
+/* Shader GDS counters:
  *   offset  0| 4| 8|12  - reserved for NGG streamout counters
  *   offset 16           - pipeline statistics counter for all streams
  *   offset 20|24|28|32  - generated primitive counter for stream 0|1|2|3
  *   offset 36|40|44|48  - written primitive counter for stream 0|1|2|3
  */
-#define RADV_NGG_QUERY_PIPELINE_STAT_OFFSET    16
-#define RADV_NGG_QUERY_PRIM_GEN_OFFSET(stream) (20 + stream * 4)
-#define RADV_NGG_QUERY_PRIM_XFB_OFFSET(stream) (36 + stream * 4)
+#define RADV_SHADER_QUERY_PIPELINE_STAT_OFFSET    16
+#define RADV_SHADER_QUERY_PRIM_GEN_OFFSET(stream) (20 + stream * 4)
+#define RADV_SHADER_QUERY_PRIM_XFB_OFFSET(stream) (36 + stream * 4)
 
 /* Number of samples for line smooth lowering (hw requirement). */
 #define RADV_NUM_SMOOTH_AA_SAMPLES 4

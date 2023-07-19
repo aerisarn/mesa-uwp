@@ -286,11 +286,11 @@ declare_ps_input_vgprs(const struct radv_shader_info *info, struct radv_shader_a
 }
 
 static void
-declare_ngg_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args, bool has_ngg_query,
+declare_ngg_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args, bool has_shader_query,
                   bool has_ngg_provoking_vtx)
 {
-   if (has_ngg_query)
-      add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_query_state, AC_UD_NGG_QUERY_STATE);
+   if (has_shader_query)
+      add_ud_arg(args, 1, AC_ARG_INT, &args->shader_query_state, AC_UD_SHADER_QUERY_STATE);
 
    if (has_ngg_provoking_vtx)
       add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_provoking_vtx, AC_UD_NGG_PROVOKING_VTX);
@@ -382,8 +382,8 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    bool needs_view_index = info->uses_view_index;
-   bool has_ngg_query = info->has_ngg_prim_query || info->has_ngg_xfb_query ||
-                        (stage == MESA_SHADER_GEOMETRY && info->gs.has_ngg_pipeline_stat_query);
+   bool has_shader_query = info->has_prim_query || info->has_xfb_query ||
+                           (stage == MESA_SHADER_GEOMETRY && info->gs.has_pipeline_stat_query);
    bool has_ngg_provoking_vtx =
       (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_GEOMETRY) && key->dynamic_provoking_vtx_mode;
 
@@ -614,7 +614,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
          }
 
          if (info->is_ngg) {
-            declare_ngg_sgprs(info, args, has_ngg_query, has_ngg_provoking_vtx);
+            declare_ngg_sgprs(info, args, has_shader_query, has_ngg_provoking_vtx);
          }
 
          ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[0]);

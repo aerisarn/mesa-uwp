@@ -5035,39 +5035,39 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_flush_ngg_query_state(struct radv_cmd_buffer *cmd_buffer)
+radv_flush_shader_query_state(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
-   const struct radv_userdata_info *loc = radv_get_user_sgpr(last_vgt_shader, AC_UD_NGG_QUERY_STATE);
-   enum radv_ngg_query_state ngg_query_state = radv_ngg_query_none;
+   const struct radv_userdata_info *loc = radv_get_user_sgpr(last_vgt_shader, AC_UD_SHADER_QUERY_STATE);
+   enum radv_shader_query_state shader_query_state = radv_shader_query_none;
    uint32_t base_reg;
 
-   cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_NGG_QUERY;
+   cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_SHADER_QUERY;
 
    if (loc->sgpr_idx == -1)
       return;
 
    assert(last_vgt_shader->info.is_ngg);
 
-   /* By default NGG queries are disabled but they are enabled if the command buffer has active GDS
+   /* By default shader queries are disabled but they are enabled if the command buffer has active GDS
     * queries or if it's a secondary command buffer that inherits the number of generated
     * primitives.
     */
    if (cmd_buffer->state.active_pipeline_gds_queries ||
        (cmd_buffer->state.inherited_pipeline_statistics & VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT))
-      ngg_query_state |= radv_ngg_query_pipeline_stat;
+      shader_query_state |= radv_shader_query_pipeline_stat;
 
    if (cmd_buffer->state.active_prims_gen_gds_queries)
-      ngg_query_state |= radv_ngg_query_prim_gen;
+      shader_query_state |= radv_shader_query_prim_gen;
 
    if (cmd_buffer->state.active_prims_xfb_gds_queries && radv_is_streamout_enabled(cmd_buffer)) {
-      ngg_query_state |= radv_ngg_query_prim_xfb | radv_ngg_query_prim_gen;
+      shader_query_state |= radv_shader_query_prim_xfb | radv_shader_query_prim_gen;
    }
 
    base_reg = last_vgt_shader->info.user_data_0;
    assert(loc->sgpr_idx != -1);
 
-   radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, ngg_query_state);
+   radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, shader_query_state);
 }
 
 static void
@@ -5753,7 +5753,7 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
       cmd_buffer->state.inherited_pipeline_statistics = pBeginInfo->pInheritanceInfo->pipelineStatistics;
 
       if (cmd_buffer->state.inherited_pipeline_statistics & VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT)
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
 
       cmd_buffer->state.inherited_occlusion_queries = pBeginInfo->pInheritanceInfo->occlusionQueryEnable;
       cmd_buffer->state.inherited_query_control_flags = pBeginInfo->pInheritanceInfo->queryFlags;
@@ -6248,9 +6248,9 @@ radv_bind_pre_rast_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
    }
 
-   if (radv_get_user_sgpr(shader, AC_UD_NGG_QUERY_STATE)->sgpr_idx != -1) {
-      /* Re-emit NGG query state when SGPR exists but location potentially changed. */
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+   if (radv_get_user_sgpr(shader, AC_UD_SHADER_QUERY_STATE)->sgpr_idx != -1) {
+      /* Re-emit shader query state when SGPR exists but location potentially changed. */
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
    }
 
    loc = radv_get_user_sgpr(shader, AC_UD_VS_BASE_VERTEX_START_INSTANCE);
@@ -7470,7 +7470,7 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
     * some states.
     */
    primary->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_INDEX_BUFFER | RADV_CMD_DIRTY_GUARDBAND |
-                           RADV_CMD_DIRTY_DYNAMIC_ALL | RADV_CMD_DIRTY_NGG_QUERY | RADV_CMD_DIRTY_OCCLUSION_QUERY |
+                           RADV_CMD_DIRTY_DYNAMIC_ALL | RADV_CMD_DIRTY_SHADER_QUERY | RADV_CMD_DIRTY_OCCLUSION_QUERY |
                            RADV_CMD_DIRTY_DB_SHADER_CONTROL;
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_GRAPHICS);
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_COMPUTE);
@@ -8806,8 +8806,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_RBPLUS)
       radv_emit_rbplus_state(cmd_buffer);
 
-   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_NGG_QUERY)
-      radv_flush_ngg_query_state(cmd_buffer);
+   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_SHADER_QUERY)
+      radv_flush_shader_query_state(cmd_buffer);
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_OCCLUSION_QUERY)
       radv_flush_occlusion_query_state(cmd_buffer);
@@ -10617,7 +10617,7 @@ radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
       radv_emit_streamout_enable(cmd_buffer);
 
    if (cmd_buffer->device->physical_device->use_ngg_streamout) {
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
 
       /* Re-emit streamout buffers to unbind them. */
       if (!enable)

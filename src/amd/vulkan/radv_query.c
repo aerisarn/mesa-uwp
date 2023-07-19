@@ -1781,13 +1781,13 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
          va += pipelinestat_block_size * 2;
 
          /* pipeline statistics counter for all streams */
-         gfx10_copy_gds_query(cmd_buffer, RADV_NGG_QUERY_PIPELINE_STAT_OFFSET, va);
+         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PIPELINE_STAT_OFFSET, va);
 
          /* Record that the command buffer needs GDS. */
          cmd_buffer->gds_needed = true;
 
          if (!cmd_buffer->state.active_pipeline_gds_queries)
-            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
 
          cmd_buffer->state.active_pipeline_gds_queries++;
       }
@@ -1796,15 +1796,15 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       if (cmd_buffer->device->physical_device->use_ngg_streamout) {
          /* generated prim counter */
-         gfx10_copy_gds_query(cmd_buffer, RADV_NGG_QUERY_PRIM_GEN_OFFSET(index), va);
+         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va);
          radv_emit_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
 
          /* written prim counter */
-         gfx10_copy_gds_query(cmd_buffer, RADV_NGG_QUERY_PRIM_XFB_OFFSET(index), va + 8);
+         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(index), va + 8);
          radv_emit_write_data_imm(cs, V_370_ME, va + 12, 0x80000000);
 
          if (!cmd_buffer->state.active_prims_xfb_gds_queries)
-            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
 
          cmd_buffer->state.active_prims_xfb_gds_queries++;
       } else {
@@ -1814,14 +1814,14 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
          /* On GFX11+, primitives generated query always use GDS. */
-         gfx10_copy_gds_query(cmd_buffer, RADV_NGG_QUERY_PRIM_GEN_OFFSET(index), va);
+         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va);
          radv_emit_write_data_imm(cs, V_370_ME, va + 4, 0x80000000);
 
          /* Record that the command buffer needs GDS. */
          cmd_buffer->gds_needed = true;
 
          if (!cmd_buffer->state.active_prims_gen_gds_queries)
-            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
 
          cmd_buffer->state.active_prims_gen_gds_queries++;
       } else {
@@ -1839,13 +1839,13 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
 
          if (pool->uses_gds) {
             /* generated prim counter */
-            gfx10_copy_gds_query(cmd_buffer, RADV_NGG_QUERY_PRIM_GEN_OFFSET(index), va + 32);
+            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 32);
 
             /* Record that the command buffer needs GDS. */
             cmd_buffer->gds_needed = true;
 
             if (!cmd_buffer->state.active_prims_gen_gds_queries)
-               cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+               cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
 
             cmd_buffer->state.active_prims_gen_gds_queries++;
          }
@@ -1922,29 +1922,29 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
          va += pipelinestat_block_size + 8;
 
          /* pipeline statistics counter for all streams */
-         gfx10_copy_gds_query(cmd_buffer, RADV_NGG_QUERY_PIPELINE_STAT_OFFSET, va);
+         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PIPELINE_STAT_OFFSET, va);
 
          cmd_buffer->state.active_pipeline_gds_queries--;
 
          if (!cmd_buffer->state.active_pipeline_gds_queries)
-            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
       }
       break;
    }
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       if (cmd_buffer->device->physical_device->use_ngg_streamout) {
          /* generated prim counter */
-         gfx10_copy_gds_query(cmd_buffer, RADV_NGG_QUERY_PRIM_GEN_OFFSET(index), va + 16);
+         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 16);
          radv_emit_write_data_imm(cs, V_370_ME, va + 20, 0x80000000);
 
          /* written prim counter */
-         gfx10_copy_gds_query(cmd_buffer, RADV_NGG_QUERY_PRIM_XFB_OFFSET(index), va + 24);
+         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(index), va + 24);
          radv_emit_write_data_imm(cs, V_370_ME, va + 28, 0x80000000);
 
          cmd_buffer->state.active_prims_xfb_gds_queries--;
 
          if (!cmd_buffer->state.active_prims_xfb_gds_queries)
-            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
       } else {
          emit_sample_streamout(cmd_buffer, va + 16, index);
       }
@@ -1952,13 +1952,13 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
    case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
          /* On GFX11+, primitives generated query always use GDS. */
-         gfx10_copy_gds_query(cmd_buffer, RADV_NGG_QUERY_PRIM_GEN_OFFSET(index), va + 16);
+         gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 16);
          radv_emit_write_data_imm(cs, V_370_ME, va + 20, 0x80000000);
 
          cmd_buffer->state.active_prims_gen_gds_queries--;
 
          if (!cmd_buffer->state.active_prims_gen_gds_queries)
-            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
       } else {
          if (cmd_buffer->state.active_prims_gen_queries == 1) {
             bool old_streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
@@ -1974,12 +1974,12 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
 
          if (pool->uses_gds) {
             /* generated prim counter */
-            gfx10_copy_gds_query(cmd_buffer, RADV_NGG_QUERY_PRIM_GEN_OFFSET(index), va + 36);
+            gfx10_copy_gds_query(cmd_buffer, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(index), va + 36);
 
             cmd_buffer->state.active_prims_gen_gds_queries--;
 
             if (!cmd_buffer->state.active_prims_gen_gds_queries)
-               cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+               cmd_buffer->state.dirty |= RADV_CMD_DIRTY_SHADER_QUERY;
          }
 
          emit_sample_streamout(cmd_buffer, va + 16, index);

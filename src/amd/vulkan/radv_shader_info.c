@@ -1447,9 +1447,9 @@ gfx10_get_ngg_query_info(const struct radv_device *device, struct radv_shader_st
 {
    struct radv_shader_info *info = gs_stage ? &gs_stage->info : &es_stage->info;
 
-   info->gs.has_ngg_pipeline_stat_query = device->physical_device->emulate_ngg_gs_query_pipeline_stat && !!gs_stage;
-   info->has_ngg_xfb_query = gs_stage ? !!gs_stage->nir->xfb_info : !!es_stage->nir->xfb_info;
-   info->has_ngg_prim_query = pipeline_key->primitives_generated_query || info->has_ngg_xfb_query;
+   info->gs.has_pipeline_stat_query = device->physical_device->emulate_ngg_gs_query_pipeline_stat && !!gs_stage;
+   info->has_xfb_query = gs_stage ? !!gs_stage->nir->xfb_info : !!es_stage->nir->xfb_info;
+   info->has_prim_query = pipeline_key->primitives_generated_query || info->has_xfb_query;
 }
 
 static void

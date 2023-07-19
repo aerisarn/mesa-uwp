@@ -61,9 +61,9 @@ nggc_bool_setting(nir_builder *b, unsigned mask, lower_abi_state *s)
 }
 
 static nir_ssa_def *
-ngg_query_bool_setting(nir_builder *b, unsigned mask, lower_abi_state *s)
+shader_query_bool_setting(nir_builder *b, unsigned mask, lower_abi_state *s)
 {
-   nir_ssa_def *settings = ac_nir_load_arg(b, &s->args->ac, s->args->ngg_query_state);
+   nir_ssa_def *settings = ac_nir_load_arg(b, &s->args->ac, s->args->shader_query_state);
    return nir_test_mask(b, settings, mask);
 }
 
@@ -183,13 +183,13 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_vtx_offset[0]);
       break;
    case nir_intrinsic_load_pipeline_stat_query_enabled_amd:
-      replacement = ngg_query_bool_setting(b, radv_ngg_query_pipeline_stat, s);
+      replacement = shader_query_bool_setting(b, radv_shader_query_pipeline_stat, s);
       break;
    case nir_intrinsic_load_prim_gen_query_enabled_amd:
-      replacement = ngg_query_bool_setting(b, radv_ngg_query_prim_gen, s);
+      replacement = shader_query_bool_setting(b, radv_shader_query_prim_gen, s);
       break;
    case nir_intrinsic_load_prim_xfb_query_enabled_amd:
-      replacement = ngg_query_bool_setting(b, radv_ngg_query_prim_xfb, s);
+      replacement = shader_query_bool_setting(b, radv_shader_query_prim_xfb, s);
       break;
    case nir_intrinsic_load_merged_wave_info_amd:
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.merged_wave_info);
@@ -347,17 +347,17 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       break;
    }
    case nir_intrinsic_atomic_add_gs_emit_prim_count_amd:
-      nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa, nir_imm_int(b, RADV_NGG_QUERY_PIPELINE_STAT_OFFSET),
+      nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa, nir_imm_int(b, RADV_SHADER_QUERY_PIPELINE_STAT_OFFSET),
                              nir_imm_int(b, 0x100));
       break;
    case nir_intrinsic_atomic_add_gen_prim_count_amd:
       nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa,
-                             nir_imm_int(b, RADV_NGG_QUERY_PRIM_GEN_OFFSET(nir_intrinsic_stream_id(intrin))),
+                             nir_imm_int(b, RADV_SHADER_QUERY_PRIM_GEN_OFFSET(nir_intrinsic_stream_id(intrin))),
                              nir_imm_int(b, 0x100));
       break;
    case nir_intrinsic_atomic_add_xfb_prim_count_amd:
       nir_gds_atomic_add_amd(b, 32, intrin->src[0].ssa,
-                             nir_imm_int(b, RADV_NGG_QUERY_PRIM_XFB_OFFSET(nir_intrinsic_stream_id(intrin))),
+                             nir_imm_int(b, RADV_SHADER_QUERY_PRIM_XFB_OFFSET(nir_intrinsic_stream_id(intrin))),
                              nir_imm_int(b, 0x100));
       break;
    case nir_intrinsic_atomic_add_gs_invocation_count_amd:
