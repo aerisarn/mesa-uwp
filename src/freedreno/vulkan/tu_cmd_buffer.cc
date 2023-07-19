@@ -184,7 +184,7 @@ tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
 }
 
 /* "Normal" cache flushes outside the renderpass, that don't require any special handling */
-static void
+void
 tu_emit_cache_flush(struct tu_cmd_buffer *cmd_buffer)
 {
    tu6_emit_flushes(cmd_buffer, &cmd_buffer->cs, &cmd_buffer->state.cache);
