@@ -494,7 +494,7 @@ gather_shader_info_tes(struct radv_device *device, const nir_shader *nir, struct
 }
 
 static void
-gather_shader_info_gs(const nir_shader *nir, struct radv_shader_info *info)
+gather_shader_info_gs(struct radv_device *device, const nir_shader *nir, struct radv_shader_info *info)
 {
    unsigned add_clip = nir->info.clip_distance_array_size + nir->info.cull_distance_array_size > 4;
    info->gs.gsvs_vertex_size = (util_bitcount64(nir->info.outputs_written) + add_clip) * 16;
@@ -515,6 +515,8 @@ gather_shader_info_gs(const nir_shader *nir, struct radv_shader_info *info)
 
       info->gs.num_stream_output_components[stream] += num_components;
    }
+
+   info->gs.has_pipeline_stat_query = device->physical_device->emulate_ngg_gs_query_pipeline_stat;
 }
 
 static void
@@ -982,7 +984,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_shader_info_fs(device, nir, pipeline_key, info);
       break;
    case MESA_SHADER_GEOMETRY:
-      gather_shader_info_gs(nir, info);
+      gather_shader_info_gs(device, nir, info);
       break;
    case MESA_SHADER_TESS_EVAL:
       gather_shader_info_tes(device, nir, info);

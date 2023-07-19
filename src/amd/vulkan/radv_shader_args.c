@@ -286,12 +286,8 @@ declare_ps_input_vgprs(const struct radv_shader_info *info, struct radv_shader_a
 }
 
 static void
-declare_ngg_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args, bool has_shader_query,
-                  bool has_ngg_provoking_vtx)
+declare_ngg_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args, bool has_ngg_provoking_vtx)
 {
-   if (has_shader_query)
-      add_ud_arg(args, 1, AC_ARG_INT, &args->shader_query_state, AC_UD_SHADER_QUERY_STATE);
-
    if (has_ngg_provoking_vtx)
       add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_provoking_vtx, AC_UD_NGG_PROVOKING_VTX);
 
@@ -613,8 +609,11 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.force_vrs_rates, AC_UD_FORCE_VRS_RATES);
          }
 
+         if (has_shader_query)
+            add_ud_arg(args, 1, AC_ARG_INT, &args->shader_query_state, AC_UD_SHADER_QUERY_STATE);
+
          if (info->is_ngg) {
-            declare_ngg_sgprs(info, args, has_shader_query, has_ngg_provoking_vtx);
+            declare_ngg_sgprs(info, args, has_ngg_provoking_vtx);
          }
 
          ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.gs_vtx_offset[0]);

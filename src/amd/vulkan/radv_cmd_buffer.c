@@ -5047,7 +5047,7 @@ radv_flush_shader_query_state(struct radv_cmd_buffer *cmd_buffer)
    if (loc->sgpr_idx == -1)
       return;
 
-   assert(last_vgt_shader->info.is_ngg);
+   assert(last_vgt_shader->info.is_ngg || last_vgt_shader->info.stage == MESA_SHADER_GEOMETRY);
 
    /* By default shader queries are disabled but they are enabled if the command buffer has active GDS
     * queries or if it's a secondary command buffer that inherits the number of generated
