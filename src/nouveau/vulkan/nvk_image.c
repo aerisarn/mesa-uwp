@@ -546,7 +546,7 @@ nvk_GetDeviceImageMemoryRequirements(VkDevice device,
 {
    VK_FROM_HANDLE(nvk_device, dev, device);
    ASSERTED VkResult result;
-   struct nvk_image image;
+   struct nvk_image image = {0};
 
    result = nvk_image_init(dev, &image, pInfo->pCreateInfo);
    assert(result == VK_SUCCESS);
