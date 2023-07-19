@@ -475,10 +475,8 @@ bool AluInstr::replace_src(int i, PVirtualValue new_src, uint32_t to_set,
    auto old_src = m_src[i]->as_register();
    assert(old_src);
 
-   if (!can_replace_source(old_src, new_src)) {
-      std::cerr << "Can't replace src " << *old_src << " with " << *new_src << "\n";
+   if (!can_replace_source(old_src, new_src))
       return false;
-   }
 
    assert(old_src);
    old_src->del_use(this);
