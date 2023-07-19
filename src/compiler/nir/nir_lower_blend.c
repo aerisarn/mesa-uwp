@@ -280,7 +280,7 @@ nir_logicop_func(
    case PIPE_LOGICOP_EQUIV:
       return nir_ixor(b, nir_ixor(b, src, dst), bitmask);
    case PIPE_LOGICOP_NOOP:
-      return dst;
+      unreachable("optimized out");
    case PIPE_LOGICOP_OR_INVERTED:
       return nir_ior(b, nir_ixor(b, src, bitmask), dst);
    case PIPE_LOGICOP_COPY:
@@ -531,7 +531,9 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    b->cursor = nir_after_block(instr->block);
 
    /* Don't bother copying the destination to the source for disabled RTs */
-   if (options->rt[rt].colormask == 0) {
+   if (options->rt[rt].colormask == 0 ||
+       (options->logicop_enable && options->logicop_func == PIPE_LOGICOP_NOOP)) {
+
       nir_instr_remove(instr);
       return true;
    }
