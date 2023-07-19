@@ -5,17 +5,18 @@
 #include "nvk_physical_device.h"
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_CreateBuffer(VkDevice _device,
+nvk_CreateBuffer(VkDevice device,
                  const VkBufferCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks *pAllocator,
                  VkBuffer *pBuffer)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    struct nvk_buffer *buffer;
 
-   buffer = vk_buffer_create(&device->vk, pCreateInfo, pAllocator, sizeof(*buffer));
+   buffer = vk_buffer_create(&dev->vk, pCreateInfo, pAllocator,
+                             sizeof(*buffer));
    if (!buffer)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    *pBuffer = nvk_buffer_to_handle(buffer);
 
@@ -23,30 +24,31 @@ nvk_CreateBuffer(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_DestroyBuffer(VkDevice _device,
+nvk_DestroyBuffer(VkDevice device,
                   VkBuffer _buffer,
                   const VkAllocationCallbacks *pAllocator)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
 
    if (!buffer)
       return;
 
-   vk_buffer_destroy(&device->vk, pAllocator, &buffer->vk);
+   vk_buffer_destroy(&dev->vk, pAllocator, &buffer->vk);
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_GetDeviceBufferMemoryRequirements(VkDevice _device,
-                                      const VkDeviceBufferMemoryRequirements *pInfo,
-                                      VkMemoryRequirements2 *pMemoryRequirements)
+nvk_GetDeviceBufferMemoryRequirements(
+   VkDevice device,
+   const VkDeviceBufferMemoryRequirements *pInfo,
+   VkMemoryRequirements2 *pMemoryRequirements)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
 
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
       .size = pInfo->pCreateInfo->size,
       .alignment = 64, /* TODO */
-      .memoryTypeBits = BITFIELD_MASK(device->pdev->mem_type_cnt),
+      .memoryTypeBits = BITFIELD_MASK(dev->pdev->mem_type_cnt),
    };
 
    vk_foreach_struct_const(ext, pMemoryRequirements->pNext) {
@@ -109,7 +111,7 @@ unsupported:
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_BindBufferMemory2(VkDevice _device,
+nvk_BindBufferMemory2(VkDevice device,
                       uint32_t bindInfoCount,
                       const VkBindBufferMemoryInfo *pBindInfos)
 {
