@@ -32,6 +32,7 @@
 #include "etnaviv_compiler.h"
 #include "util/compiler.h"
 #include "util/log.h"
+#include "util/macros.h"
 
 struct etna_compile {
    nir_shader *nir;
@@ -67,8 +68,8 @@ struct etna_compile {
 })
 
 enum {
-   BYPASS_DST = 1,
-   BYPASS_SRC = 2,
+   BYPASS_DST = BITFIELD_BIT(0),
+   BYPASS_SRC = BITFIELD_BIT(1),
 };
 
 static inline bool is_sysval(nir_instr *instr)
