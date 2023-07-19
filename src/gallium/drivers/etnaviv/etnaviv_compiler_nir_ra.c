@@ -124,7 +124,14 @@ etna_ra_assign(struct etna_compile *c, nir_shader *shader)
 
    nir_index_blocks(impl);
    nir_index_ssa_defs(impl);
-   nir_shader_clear_pass_flags(shader);
+
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            instr->pass_flags &= ~PASS_FLAGS_IS_DEAD_MASK;
+         }
+      }
+   }
 
    /* this gives an approximation/upper limit on how many nodes are needed
     * (some ssa values do not represent an allocated register)
