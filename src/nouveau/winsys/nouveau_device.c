@@ -18,7 +18,10 @@
 static uint8_t
 sm_for_chipset(uint16_t chipset)
 {
-   if (chipset >= 0x180)
+   if (chipset >= 0x190)
+      return 0x89;
+   // GH100 is older than AD10X, but is SM90
+   else if (chipset >= 0x180)
       return 0x90;
    else if (chipset == 0x17b)
       return 0x87;
