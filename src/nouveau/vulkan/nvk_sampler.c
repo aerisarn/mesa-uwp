@@ -150,19 +150,19 @@ vk_sampler_create_reduction_mode(const VkSamplerCreateInfo *pCreateInfo)
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_CreateSampler(VkDevice _device,
+nvk_CreateSampler(VkDevice device,
                   const VkSamplerCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator,
                   VkSampler *pSampler)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    struct nvk_sampler *sampler;
    VkResult result;
 
-   sampler = vk_object_zalloc(&device->vk, pAllocator, sizeof(*sampler),
+   sampler = vk_object_zalloc(&dev->vk, pAllocator, sizeof(*sampler),
                               VK_OBJECT_TYPE_SAMPLER);
    if (!sampler)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* Hard-coded as 1 as a placeholder until YCbCr conversion
     * structs are implemented
@@ -228,14 +228,14 @@ nvk_CreateSampler(VkDevice _device,
       unreachable("Invalid mipmap mode");
    }
 
-   assert(device->ctx->eng3d.cls >= KEPLER_A);
+   assert(dev->ctx->eng3d.cls >= KEPLER_A);
    if (pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT) {
       SAMP_SET_E(samp, NVA097, 1, CUBEMAP_INTERFACE_FILTERING, USE_WRAP);
    } else {
       SAMP_SET_E(samp, NVA097, 1, CUBEMAP_INTERFACE_FILTERING, AUTO_SPAN_SEAM);
    }
 
-   if (device->ctx->eng3d.cls >= MAXWELL_B) {
+   if (dev->ctx->eng3d.cls >= MAXWELL_B) {
       switch (vk_sampler_create_reduction_mode(pCreateInfo)) {
       case VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE:
          SAMP_SET_E(samp, NVB197, 1, REDUCTION_FILTER, RED_NONE);
@@ -253,7 +253,7 @@ nvk_CreateSampler(VkDevice _device,
 
    SAMP_SET_SF(samp, NV9097, 1, MIP_LOD_BIAS, pCreateInfo->mipLodBias);
 
-   assert(device->ctx->eng3d.cls >= KEPLER_A);
+   assert(dev->ctx->eng3d.cls >= KEPLER_A);
    if (pCreateInfo->unnormalizedCoordinates) {
       SAMP_SET_E(samp, NVA097, 1, FLOAT_COORD_NORMALIZATION,
                                   FORCE_UNNORMALIZED_COORDS);
@@ -302,11 +302,11 @@ nvk_CreateSampler(VkDevice _device,
    SAMP_SET_U(samp, NV9097, 6, BORDER_COLOR_B, bc.uint32[2]);
    SAMP_SET_U(samp, NV9097, 7, BORDER_COLOR_A, bc.uint32[3]);
 
-   result = nvk_descriptor_table_add(device, &device->samplers,
+   result = nvk_descriptor_table_add(dev, &dev->samplers,
                                      samp, sizeof(samp),
                                      &sampler->desc_index);
    if (result != VK_SUCCESS) {
-      vk_object_free(&device->vk, pAllocator, sampler);
+      vk_object_free(&dev->vk, pAllocator, sampler);
       return result;
    }
 
@@ -316,16 +316,16 @@ nvk_CreateSampler(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_DestroySampler(VkDevice _device,
+nvk_DestroySampler(VkDevice device,
                    VkSampler _sampler,
                    const VkAllocationCallbacks *pAllocator)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_sampler, sampler, _sampler);
 
    if (!sampler)
       return;
 
-   nvk_descriptor_table_remove(device, &device->samplers, sampler->desc_index);
-   vk_object_free(&device->vk, pAllocator, sampler);
+   nvk_descriptor_table_remove(dev, &dev->samplers, sampler->desc_index);
+   vk_object_free(&dev->vk, pAllocator, sampler);
 }
