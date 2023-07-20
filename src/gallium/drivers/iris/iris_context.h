@@ -755,6 +755,9 @@ struct iris_context {
    /** Frame number for debug prints */
    uint32_t frame;
 
+   /** Track draw call count for adding GPU breakpoint on 3DPRIMITIVE */
+   uint32_t draw_call_count;
+
    struct {
       uint64_t dirty;
       uint64_t stage_dirty;
@@ -1136,8 +1139,6 @@ int iris_get_driver_query_group_info(struct pipe_screen *pscreen,
 void gfx9_toggle_preemption(struct iris_context *ice,
                             struct iris_batch *batch,
                             const struct pipe_draw_info *draw);
-
-
 
 #ifdef genX
 #  include "iris_genx_protos.h"

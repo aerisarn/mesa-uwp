@@ -7525,6 +7525,28 @@ point_or_line_list(enum mesa_prim prim_type)
    return false;
 }
 
+void
+genX(emit_breakpoint)(struct iris_batch *batch, bool emit_before_draw)
+{
+   struct iris_context *ice = batch->ice;
+   uint32_t draw_count = emit_before_draw ?
+                         p_atomic_inc_return(&ice->draw_call_count) :
+                         p_atomic_read(&ice->draw_call_count);
+
+   if (((draw_count == intel_debug_bkp_before_draw_count &&
+         emit_before_draw) ||
+        (draw_count == intel_debug_bkp_after_draw_count &&
+         !emit_before_draw)))  {
+      iris_emit_cmd(batch, GENX(MI_SEMAPHORE_WAIT), sem) {
+         sem.WaitMode            = PollingMode;
+         sem.CompareOperation    = COMPARE_SAD_EQUAL_SDD;
+         sem.SemaphoreDataDword  = 0x1;
+         sem.SemaphoreAddress    = rw_bo(batch->screen->breakpoint_bo, 0,
+                                         IRIS_DOMAIN_OTHER_WRITE);
+      };
+   }
+}
+
 static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
@@ -7747,6 +7769,8 @@ iris_upload_render_state(struct iris_context *ice,
 
    iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_DRAW, draw, indirect, sc);
 
+   genX(maybe_emit_breakpoint)(batch, true);
+
    iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
       prim.VertexAccessType = draw->index_size > 0 ? RANDOM : SEQUENTIAL;
       prim.PredicateEnable = use_predicate;
@@ -7765,6 +7789,8 @@ iris_upload_render_state(struct iris_context *ice,
          }
       }
    }
+
+   genX(maybe_emit_breakpoint)(batch, false);
 
 #if GFX_VERx10 == 125
    if (intel_needs_workaround(devinfo, 22014412737) &&
