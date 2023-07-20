@@ -251,6 +251,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
          VkPhysicalDevicePCIBusInfoPropertiesEXT *p = (void *)ext;
+         assert(pdev->info.type == NV_DEVICE_TYPE_DIS);
          p->pciDomain = pdev->info.pci_domain;
          p->pciBus = pdev->info.pci_bus;
          p->pciDevice = pdev->info.pci_dev;
@@ -367,7 +368,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_inline_uniform_block = true,
       .EXT_mutable_descriptor_type = true,
       .EXT_non_seamless_cube_map = true,
-      .EXT_pci_bus_info = true,
+      .EXT_pci_bus_info = info->type == NV_DEVICE_TYPE_DIS,
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
       .EXT_robustness2 = true,
