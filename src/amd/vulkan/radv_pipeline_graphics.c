@@ -3458,8 +3458,7 @@ radv_emit_vgt_shader_config(const struct radv_device *device, struct radeon_cmdb
 }
 
 static void
-radv_pipeline_emit_vgt_gs_out(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                              const struct radv_graphics_pipeline *pipeline, uint32_t vgt_gs_out_prim_type)
+radv_emit_vgt_gs_out(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs, uint32_t vgt_gs_out_prim_type)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
 
@@ -3606,7 +3605,7 @@ radv_pipeline_emit_pm4(const struct radv_device *device, struct radv_graphics_pi
 
    radv_emit_vgt_vertex_reuse(device, ctx_cs, radv_get_shader(pipeline->base.shaders, MESA_SHADER_TESS_EVAL));
    radv_emit_vgt_shader_config(device, ctx_cs, &vgt_shader_key);
-   radv_pipeline_emit_vgt_gs_out(device, ctx_cs, pipeline, vgt_gs_out_prim_type);
+   radv_emit_vgt_gs_out(device, ctx_cs, vgt_gs_out_prim_type);
 
    if (pdevice->rad_info.gfx_level >= GFX10_3) {
       gfx103_pipeline_emit_vgt_draw_payload_cntl(ctx_cs, pipeline, state);
