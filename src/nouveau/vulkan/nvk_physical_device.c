@@ -42,8 +42,9 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .driverVersion = vk_get_driver_version(),
       .vendorID = pdev->dev->vendor_id,
       .deviceID = pdev->dev->device_id,
-      .deviceType = pdev->dev->is_integrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
-                                             : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
+      .deviceType = pdev->info.type == NV_DEVICE_TYPE_DIS ?
+                    VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU :
+                    VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
       .limits = (VkPhysicalDeviceLimits) {
          .maxImageArrayLayers = 2048,
          .maxImageDimension1D = pdev->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
