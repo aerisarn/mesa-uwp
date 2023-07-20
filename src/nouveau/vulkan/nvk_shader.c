@@ -53,15 +53,15 @@ pipe_shader_type_from_mesa(gl_shader_stage stage)
 }
 
 const nir_shader_compiler_options *
-nvk_physical_device_nir_options(const struct nvk_physical_device *pdevice,
+nvk_physical_device_nir_options(const struct nvk_physical_device *pdev,
                                 gl_shader_stage stage)
 {
    enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(stage);
-   return nv50_ir_nir_shader_compiler_options(pdevice->dev->chipset, p_stage);
+   return nv50_ir_nir_shader_compiler_options(pdev->dev->chipset, p_stage);
 }
 
 struct spirv_to_nir_options
-nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
+nvk_physical_device_spirv_options(const struct nvk_physical_device *pdev,
                                   const struct vk_pipeline_robustness_state *rs)
 {
    return (struct spirv_to_nir_options) {
@@ -364,12 +364,12 @@ nvk_optimize_nir(nir_shader *nir)
 }
 
 void
-nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
+nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,
               bool is_multiview,
               const struct vk_pipeline_layout *layout)
 {
-   struct nvk_physical_device *pdev = nvk_device_physical(device);
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
 
    NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);
@@ -1053,7 +1053,7 @@ nvk_fill_transform_feedback_state(struct nir_shader *nir,
 }
 
 VkResult
-nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
+nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
                 const struct nvk_fs_key *fs_key,
                 struct nvk_shader *shader,
                 struct nvk_pipeline_compilation_ctx *ctx)
@@ -1067,7 +1067,7 @@ nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
       return false;
 
    info->type = pipe_shader_type_from_mesa(nir->info.stage);
-   info->target = device->dev->chipset;
+   info->target = pdev->dev->chipset;
    info->bin.nir = nir;
 
    for (unsigned i = 0; i < 3; i++)
