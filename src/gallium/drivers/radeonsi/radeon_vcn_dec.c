@@ -2529,7 +2529,7 @@ static void send_msg_buf(struct radeon_decoder *dec)
 static void next_buffer(struct radeon_decoder *dec)
 {
    ++dec->cur_buffer;
-   dec->cur_buffer %= NUM_BUFFERS;
+   dec->cur_buffer %= dec->num_dec_bufs;
 }
 
 static unsigned calc_ctx_size_h264_perf(struct radeon_decoder *dec)
@@ -2751,10 +2751,15 @@ static void radeon_dec_destroy(struct pipe_video_codec *decoder)
       }
    }
 
-   for (i = 0; i < NUM_BUFFERS; ++i) {
-      si_vid_destroy_buffer(&dec->msg_fb_it_probs_buffers[i]);
-      si_vid_destroy_buffer(&dec->bs_buffers[i]);
+   if (dec->msg_fb_it_probs_buffers && dec->bs_buffers) {
+      for (i = 0; i < dec->num_dec_bufs; ++i) {
+            si_vid_destroy_buffer(&dec->msg_fb_it_probs_buffers[i]);
+            si_vid_destroy_buffer(&dec->bs_buffers[i]);
+      }
+      FREE(dec->msg_fb_it_probs_buffers);
+      FREE(dec->bs_buffers);
    }
+   dec->num_dec_bufs = 0;
 
    if (dec->dpb_type != DPB_DYNAMIC_TIER_2) {
       si_vid_destroy_buffer(&dec->dpb);
@@ -3110,8 +3115,14 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
          dec->h264_valid_poc_num[i] = (unsigned) -1;
    }
 
+   dec->num_dec_bufs = NUM_BUFFERS;
    bs_buf_size = align(width * height / 32, 128);
-   for (i = 0; i < NUM_BUFFERS; ++i) {
+   dec->msg_fb_it_probs_buffers = (struct rvid_buffer *) CALLOC(dec->num_dec_bufs, sizeof(struct rvid_buffer));
+   dec->bs_buffers = (struct rvid_buffer *) CALLOC(dec->num_dec_bufs, sizeof(struct rvid_buffer));
+   if(!dec->msg_fb_it_probs_buffers || !dec->bs_buffers)
+      goto error;
+
+   for (i = 0; i < dec->num_dec_bufs; ++i) {
       unsigned msg_fb_it_probs_size = FB_BUFFER_OFFSET + FB_BUFFER_SIZE;
       if (have_it(dec))
          msg_fb_it_probs_size += IT_SCALING_TABLE_SIZE;
@@ -3308,9 +3319,13 @@ error:
       }
    }
 
-   for (i = 0; i < NUM_BUFFERS; ++i) {
-      si_vid_destroy_buffer(&dec->msg_fb_it_probs_buffers[i]);
-      si_vid_destroy_buffer(&dec->bs_buffers[i]);
+   if (dec->msg_fb_it_probs_buffers && dec->bs_buffers) {
+      for (i = 0; i < dec->num_dec_bufs; ++i) {
+            si_vid_destroy_buffer(&dec->msg_fb_it_probs_buffers[i]);
+            si_vid_destroy_buffer(&dec->bs_buffers[i]);
+      }
+      FREE(dec->msg_fb_it_probs_buffers);
+      FREE(dec->bs_buffers);
    }
 
    if (dec->dpb_type != DPB_DYNAMIC_TIER_2)
