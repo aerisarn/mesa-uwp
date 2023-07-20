@@ -15,6 +15,7 @@
 #include "vulkan/wsi/wsi_common.h"
 
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 
 #include "cl90c0.h"
 #include "cl91c0.h"
@@ -247,6 +248,17 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          continue;
 
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: {
+         VkPhysicalDeviceDrmPropertiesEXT *p = (void *)ext;
+         p->hasPrimary = pdev->primary_dev != 0;
+         p->primaryMajor = major(pdev->primary_dev);
+         p->primaryMinor = minor(pdev->primary_dev);
+         p->hasRender = pdev->render_dev != 0;
+         p->renderMajor = major(pdev->render_dev);
+         p->renderMinor = minor(pdev->render_dev);
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT: {
          VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *p = (void *)ext;
          p->dynamicPrimitiveTopologyUnrestricted = true;
@@ -373,6 +385,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_mutable_descriptor_type = true,
       .EXT_non_seamless_cube_map = true,
       .EXT_pci_bus_info = info->type == NV_DEVICE_TYPE_DIS,
+      .EXT_physical_device_drm = true,
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
       .EXT_robustness2 = true,
@@ -673,6 +686,10 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
 
    pdev->render_dev = render_dev;
    pdev->info = info;
+
+   if ((drm_device->available_nodes & (1 << DRM_NODE_PRIMARY)) &&
+       !stat(drm_device->nodes[DRM_NODE_PRIMARY], &st))
+      pdev->primary_dev = st.st_rdev;
 
    const struct {
       uint16_t vendor_id;

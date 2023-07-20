@@ -18,6 +18,7 @@ struct nvk_physical_device {
    struct vk_physical_device vk;
    struct nv_device_info info;
    dev_t render_dev;
+   dev_t primary_dev;
    struct wsi_device wsi_device;
 
    uint8_t device_uuid[VK_UUID_SIZE];
