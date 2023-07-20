@@ -351,6 +351,8 @@ if with_tests
         'tests/comparison_pre_tests.cpp',
         'tests/control_flow_tests.cpp',
         'tests/core_tests.cpp',
+        'tests/dce_tests.cpp',
+        'tests/load_store_vectorizer_tests.cpp',
         'tests/loop_analyze_tests.cpp',
         'tests/loop_unroll_tests.cpp',
         'tests/lower_alu_width_tests.cpp',
@@ -378,35 +380,6 @@ if with_tests
     args : [
       files('tests/algebraic_parser_test.py')
     ],
-    suite : ['compiler', 'nir'],
-  )
-
-  test(
-    'load_store_vectorizer',
-    executable(
-      'load_store_vectorizer',
-      files('tests/load_store_vectorizer_tests.cpp'),
-      cpp_args : [cpp_msvc_compat_args],
-      gnu_symbol_visibility : 'hidden',
-      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-      dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
-    ),
-    suite : ['compiler', 'nir'],
-    # TODO: Use a negative filter for gtest instead of the expect failure here.
-    should_fail : meson.get_external_property('xfail', '').contains('load_store_vectorizer'),
-    protocol : 'gtest',
-  )
-
-  test(
-    'nir_opt_dce',
-    executable(
-      'nir_opt_dce_tests',
-      files('tests/dce_tests.cpp'),
-      cpp_args : [cpp_msvc_compat_args],
-      gnu_symbol_visibility : 'hidden',
-      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-      dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
-    ),
     suite : ['compiler', 'nir'],
   )
 endif
