@@ -253,7 +253,7 @@ static uint32_t *si_get_shader_binary(struct si_shader *shader)
    unsigned size = sizeof(struct si_shader_blob_head) +
                    align(sizeof(shader->config), 4) +
                    align(sizeof(shader->info), 4) +
-                   4 + align(shader->binary.code_size, 4) +
+                   4 + 4 + align(shader->binary.code_size, 4) +
                    4 + shader->binary.num_symbols * 8 +
                    4 + align(llvm_ir_size, 4);
    uint32_t *buffer = (uint32_t*)CALLOC(1, size);
@@ -269,6 +269,7 @@ static uint32_t *si_get_shader_binary(struct si_shader *shader)
 
    ptr = write_data(ptr, &shader->config, sizeof(shader->config));
    ptr = write_data(ptr, &shader->info, sizeof(shader->info));
+   ptr = write_data(ptr, &shader->binary.exec_size, 4);
    ptr = write_chunk(ptr, shader->binary.code_buffer, shader->binary.code_size);
    ptr = write_chunk(ptr, shader->binary.symbols, shader->binary.num_symbols * 8);
    ptr = write_chunk(ptr, shader->binary.llvm_ir_string, llvm_ir_size);
@@ -295,6 +296,7 @@ static bool si_load_shader_binary(struct si_shader *shader, void *binary)
    shader->binary.type = (enum si_shader_binary_type)head->type;
    ptr = read_data(ptr, &shader->config, sizeof(shader->config));
    ptr = read_data(ptr, &shader->info, sizeof(shader->info));
+   ptr = read_data(ptr, &shader->binary.exec_size, 4);
    ptr = read_chunk(ptr, (void **)&shader->binary.code_buffer, &code_size);
    shader->binary.code_size = code_size;
    ptr = read_chunk(ptr, (void **)&shader->binary.symbols, &chunk_size);

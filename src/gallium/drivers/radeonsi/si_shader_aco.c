@@ -110,6 +110,7 @@ si_aco_build_shader_binary(void **data, const struct ac_shader_config *config,
    shader->binary.type = SI_SHADER_BINARY_RAW;
    shader->binary.code_buffer = buffer;
    shader->binary.code_size = code_size;
+   shader->binary.exec_size = exec_size;
 
    if (disasm_size) {
       memcpy(buffer + code_size, disasm_str, disasm_size);

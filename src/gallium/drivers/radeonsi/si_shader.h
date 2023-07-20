@@ -842,6 +842,7 @@ struct si_shader_binary {
    /* Depends on binary type, either ELF or raw buffer. */
    const char *code_buffer;
    size_t code_size;
+   uint32_t exec_size;
 
    char *uploaded_code;
    size_t uploaded_code_size;
