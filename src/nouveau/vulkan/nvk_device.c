@@ -30,14 +30,14 @@ nvk_slm_area_finish(struct nvk_slm_area *area)
 struct nouveau_ws_bo *
 nvk_slm_area_get_bo_ref(struct nvk_slm_area *area,
                         uint32_t *bytes_per_warp_out,
-                        uint32_t *bytes_per_mp_out)
+                        uint32_t *bytes_per_tpc_out)
 {
    simple_mtx_lock(&area->mutex);
    struct nouveau_ws_bo *bo = area->bo;
    if (bo)
       nouveau_ws_bo_ref(bo);
    *bytes_per_warp_out = area->bytes_per_warp;
-   *bytes_per_mp_out = area->bytes_per_mp;
+   *bytes_per_tpc_out = area->bytes_per_tpc;
    simple_mtx_unlock(&area->mutex);
 
    return bo;
@@ -60,7 +60,7 @@ nvk_slm_area_ensure(struct nvk_device *dev,
     */
    bytes_per_warp = ALIGN(bytes_per_warp, 0x200);
 
-   uint64_t bytes_per_mp = bytes_per_warp * 64; /* max warps */
+   uint64_t bytes_per_tpc = bytes_per_warp * 64; /* max warps */
 
    /* The hardware seems to require this alignment for
     * NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_A_SIZE_LOWER.
@@ -69,7 +69,7 @@ nvk_slm_area_ensure(struct nvk_device *dev,
     * by the number of warps, 64.  It might matter for real on a GPU with 48
     * warps but we don't support any of those yet.
     */
-   assert(bytes_per_mp == ALIGN(bytes_per_mp, 0x8000));
+   assert(bytes_per_tpc == ALIGN(bytes_per_tpc, 0x8000));
 
    /* nvk_slm_area::bytes_per_mp only ever increases so we can check this
     * outside the lock and exit early in the common case.  We only need to
@@ -78,10 +78,10 @@ nvk_slm_area_ensure(struct nvk_device *dev,
     * Also, we only care about bytes_per_mp and not bytes_per_warp because
     * they are integer multiples of each other.
     */
-   if (likely(bytes_per_mp <= area->bytes_per_mp))
+   if (likely(bytes_per_tpc <= area->bytes_per_tpc))
       return VK_SUCCESS;
 
-   uint64_t size = bytes_per_mp * dev->ws_dev->mp_count;
+   uint64_t size = bytes_per_tpc * dev->ws_dev->tpc_count;
 
    /* The hardware seems to require this alignment for
     * NV9097_SET_SHADER_LOCAL_MEMORY_D_SIZE_LOWER.
@@ -95,7 +95,7 @@ nvk_slm_area_ensure(struct nvk_device *dev,
 
    struct nouveau_ws_bo *unref_bo;
    simple_mtx_lock(&area->mutex);
-   if (bytes_per_mp <= area->bytes_per_mp) {
+   if (bytes_per_tpc <= area->bytes_per_tpc) {
       /* We lost the race, throw away our BO */
       assert(area->bytes_per_warp == bytes_per_warp);
       unref_bo = bo;
@@ -103,7 +103,7 @@ nvk_slm_area_ensure(struct nvk_device *dev,
       unref_bo = area->bo;
       area->bo = bo;
       area->bytes_per_warp = bytes_per_warp;
-      area->bytes_per_mp = bytes_per_mp;
+      area->bytes_per_tpc = bytes_per_tpc;
    }
    simple_mtx_unlock(&area->mutex);
 

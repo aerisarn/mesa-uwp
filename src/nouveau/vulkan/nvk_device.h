@@ -17,7 +17,7 @@ struct nvk_slm_area {
    simple_mtx_t mutex;
    struct nouveau_ws_bo *bo;
    uint32_t bytes_per_warp;
-   uint32_t bytes_per_mp;
+   uint32_t bytes_per_tpc;
 };
 
 struct nouveau_ws_bo *

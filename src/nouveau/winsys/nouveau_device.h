@@ -38,7 +38,7 @@ struct nouveau_ws_device {
    uint32_t local_mem_domain;
 
    uint8_t gpc_count;
-   uint16_t mp_count;
+   uint16_t tpc_count;
 
    enum nvk_debug debug_flags;
 

@@ -54,7 +54,7 @@ nvk_queue_state_update(struct nvk_device *dev,
                        struct nvk_queue_state *qs)
 {
    struct nouveau_ws_bo *bo;
-   uint32_t alloc_count, bytes_per_warp, bytes_per_mp;
+   uint32_t alloc_count, bytes_per_warp, bytes_per_tpc;
    bool dirty = false;
 
    bo = nvk_descriptor_table_get_bo_ref(&dev->images, &alloc_count);
@@ -96,14 +96,14 @@ nvk_queue_state_update(struct nvk_device *dev,
       }
    }
 
-   bo = nvk_slm_area_get_bo_ref(&dev->slm, &bytes_per_warp, &bytes_per_mp);
+   bo = nvk_slm_area_get_bo_ref(&dev->slm, &bytes_per_warp, &bytes_per_tpc);
    if (qs->slm.bo != bo || qs->slm.bytes_per_warp != bytes_per_warp ||
-       qs->slm.bytes_per_mp != bytes_per_mp) {
+       qs->slm.bytes_per_tpc != bytes_per_tpc) {
       if (qs->slm.bo)
          nouveau_ws_bo_destroy(qs->slm.bo);
       qs->slm.bo = bo;
       qs->slm.bytes_per_warp = bytes_per_warp;
-      qs->slm.bytes_per_mp = bytes_per_mp;
+      qs->slm.bytes_per_tpc = bytes_per_tpc;
       dirty = true;
    } else {
       /* No change */
@@ -191,8 +191,8 @@ nvk_queue_state_update(struct nvk_device *dev,
       const uint64_t slm_addr = qs->slm.bo->offset;
       const uint64_t slm_size = qs->slm.bo->size;
       const uint64_t slm_per_warp = qs->slm.bytes_per_warp;
-      const uint64_t slm_per_mp = qs->slm.bytes_per_mp;
-      assert(!(slm_per_mp & 0x7fff));
+      const uint64_t slm_per_tpc = qs->slm.bytes_per_tpc;
+      assert(!(slm_per_tpc & 0x7fff));
 
       /* Compute */
       P_MTHD(p, NVA0C0, SET_SHADER_LOCAL_MEMORY_A);
@@ -200,14 +200,14 @@ nvk_queue_state_update(struct nvk_device *dev,
       P_NVA0C0_SET_SHADER_LOCAL_MEMORY_B(p, slm_addr);
 
       P_MTHD(p, NVA0C0, SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_A);
-      P_NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_A(p, slm_per_mp >> 32);
-      P_NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_B(p, slm_per_mp);
+      P_NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_A(p, slm_per_tpc >> 32);
+      P_NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_B(p, slm_per_tpc);
       P_NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_C(p, 0xff);
 
       if (dev->pdev->info.cls_compute < VOLTA_COMPUTE_A) {
          P_MTHD(p, NVA0C0, SET_SHADER_LOCAL_MEMORY_THROTTLED_A);
-         P_NVA0C0_SET_SHADER_LOCAL_MEMORY_THROTTLED_A(p, slm_per_mp >> 32);
-         P_NVA0C0_SET_SHADER_LOCAL_MEMORY_THROTTLED_B(p, slm_per_mp);
+         P_NVA0C0_SET_SHADER_LOCAL_MEMORY_THROTTLED_A(p, slm_per_tpc >> 32);
+         P_NVA0C0_SET_SHADER_LOCAL_MEMORY_THROTTLED_B(p, slm_per_tpc);
          P_NVA0C0_SET_SHADER_LOCAL_MEMORY_THROTTLED_C(p, 0xff);
       }
 

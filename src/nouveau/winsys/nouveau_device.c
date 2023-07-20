@@ -257,7 +257,7 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_GRAPH_UNITS, &value))
       goto out_err;
    device->gpc_count = value & 0x000000ff;
-   device->mp_count = value >> 8;
+   device->tpc_count = value >> 8;
 
    nouveau_ws_device_set_dbg_flags(device);
 
