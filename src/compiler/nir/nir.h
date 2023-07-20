@@ -4954,7 +4954,6 @@ bool nir_lower_indirect_derefs(nir_shader *shader, nir_variable_mode modes,
 bool nir_lower_indirect_var_derefs(nir_shader *shader,
                                    const struct set *vars);
 
-bool nir_lower_locals_to_regs(nir_shader *shader, uint8_t bool_bitsize);
 bool nir_lower_locals_to_reg_intrinsics(nir_shader *shader, uint8_t bool_bitsize);
 
 void nir_lower_io_to_temporaries(nir_shader *shader,
