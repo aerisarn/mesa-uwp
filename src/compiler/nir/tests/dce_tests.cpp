@@ -20,31 +20,16 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#include <gtest/gtest.h>
-#include "nir.h"
-#include "nir_builder.h"
 
-class nir_opt_dce_test : public ::testing::Test {
+#include "nir_test.h"
+
+class nir_opt_dce_test : public nir_test {
 protected:
-   nir_opt_dce_test();
-   ~nir_opt_dce_test();
-
-   nir_builder bld;
+   nir_opt_dce_test()
+      : nir_test::nir_test("nir_opt_dce_test")
+   {
+   }
 };
-
-nir_opt_dce_test::nir_opt_dce_test()
-{
-   glsl_type_singleton_init_or_ref();
-
-   static const nir_shader_compiler_options options = { };
-   bld = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, &options, "dce test");
-}
-
-nir_opt_dce_test::~nir_opt_dce_test()
-{
-   ralloc_free(bld.shader);
-   glsl_type_singleton_decref();
-}
 
 nir_phi_instr *create_one_source_phi(nir_shader *shader, nir_block *pred,
                                      nir_ssa_def *def)
@@ -84,22 +69,22 @@ TEST_F(nir_opt_dce_test, return_before_loop)
     * If the fast path is taken here, ssa_0 will be incorrectly DCE'd.
     */
 
-   nir_variable *var = nir_variable_create(bld.shader, nir_var_shader_out, glsl_int_type(), "out");
+   nir_variable *var = nir_variable_create(b->shader, nir_var_shader_out, glsl_int_type(), "out");
 
-   nir_jump(&bld, nir_jump_return);
+   nir_jump(b, nir_jump_return);
 
-   nir_loop *loop = nir_push_loop(&bld);
+   nir_loop *loop = nir_push_loop(b);
 
-   nir_ssa_def *one = nir_imm_int(&bld, 1);
+   nir_ssa_def *one = nir_imm_int(b, 1);
 
-   nir_phi_instr *phi = create_one_source_phi(bld.shader, one->parent_instr->block, one);
+   nir_phi_instr *phi = create_one_source_phi(b->shader, one->parent_instr->block, one);
    nir_instr_insert_before_block(one->parent_instr->block, &phi->instr);
 
-   nir_store_var(&bld, var, &phi->dest.ssa, 0x1);
+   nir_store_var(b, var, &phi->dest.ssa, 0x1);
 
-   nir_pop_loop(&bld, loop);
+   nir_pop_loop(b, loop);
 
-   ASSERT_FALSE(nir_opt_dce(bld.shader));
+   ASSERT_FALSE(nir_opt_dce(b->shader));
 
-   nir_validate_shader(bld.shader, NULL);
+   nir_validate_shader(b->shader, NULL);
 }

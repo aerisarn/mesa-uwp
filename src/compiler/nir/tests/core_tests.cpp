@@ -21,43 +21,19 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <gtest/gtest.h>
-
-#include "nir.h"
-#include "nir_builder.h"
+#include "nir_test.h"
 
 namespace {
 
-class nir_core_test : public ::testing::Test {
+class nir_core_test : public nir_test {
 protected:
-   nir_core_test();
-   ~nir_core_test();
-
-   bool shader_contains_def(nir_ssa_def *def);
-
-   nir_builder *b, _b;
-};
-
-nir_core_test::nir_core_test()
-{
-   glsl_type_singleton_init_or_ref();
-
-   static const nir_shader_compiler_options options = { };
-   _b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options, "builder test");
-   b = &_b;
-}
-
-nir_core_test::~nir_core_test()
-{
-   if (HasFailure()) {
-      printf("\nShader from the failed test:\n\n");
-      nir_print_shader(b->shader, stdout);
+   nir_core_test()
+      : nir_test::nir_test("nir_core_test")
+   {
    }
 
-   ralloc_free(b->shader);
-
-   glsl_type_singleton_decref();
-}
+   bool shader_contains_def(nir_ssa_def *def);
+};
 
 struct contains_def_state {
    nir_ssa_def *def;

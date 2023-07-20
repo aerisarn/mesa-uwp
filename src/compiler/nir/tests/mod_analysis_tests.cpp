@@ -21,10 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <gtest/gtest.h>
-
-#include "nir.h"
-#include "nir_builder.h"
+#include "nir_test.h"
 #include "util/u_math.h"
 
 static inline bool
@@ -33,30 +30,22 @@ nir_mod_analysis_comp0(nir_ssa_def *val, nir_alu_type val_type, unsigned div, un
    return nir_mod_analysis(nir_get_ssa_scalar(val, 0), val_type, div, mod);
 }
 
-class nir_mod_analysis_test : public ::testing::Test {
+class nir_mod_analysis_test : public nir_test {
 protected:
    nir_mod_analysis_test();
-   ~nir_mod_analysis_test();
+
    nir_ssa_def *nir_imul_vec2y(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1);
 
-   nir_builder b;
    nir_ssa_def *v[50];
    nir_ssa_def *invocation;
 };
 
 nir_mod_analysis_test::nir_mod_analysis_test()
+   : nir_test::nir_test("nir_mod_analysis_test")
 {
-   static const nir_shader_compiler_options options = { };
-   b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options,
-                                      "mod analysis");
    for (int i = 0; i < 50; ++i)
-      v[i] = nir_imm_int(&b, i);
-   invocation = nir_load_local_invocation_index(&b);
-}
-
-nir_mod_analysis_test::~nir_mod_analysis_test()
-{
-   ralloc_free(b.shader);
+      v[i] = nir_imm_int(b, i);
+   invocation = nir_load_local_invocation_index(b);
 }
 
 /* returns src0 * src1.y */
@@ -108,7 +97,7 @@ TEST_F(nir_mod_analysis_test, const_plus_const)
    for (unsigned const_mod = 1; const_mod <= 1024; const_mod *= 2) {
       for (unsigned c1 = 0; c1 < 10; ++c1) {
          for (unsigned c2 = 0; c2 < 10; ++c2) {
-            nir_ssa_def *sum = nir_iadd(&b, v[c1], v[c2]);
+            nir_ssa_def *sum = nir_iadd(b, v[c1], v[c2]);
 
             unsigned mod = INT32_MAX;
 
@@ -124,7 +113,7 @@ TEST_F(nir_mod_analysis_test, dynamic_plus_const)
    /* (invocation + const) % const_mod should never be known unless const_mod is 1 */
    for (unsigned const_mod = 1; const_mod <= 1024; const_mod *= 2) {
       for (unsigned c = 0; c < 10; ++c) {
-         nir_ssa_def *sum = nir_iadd(&b, invocation, v[c]);
+         nir_ssa_def *sum = nir_iadd(b, invocation, v[c]);
 
          unsigned mod = INT32_MAX;
 
@@ -144,7 +133,7 @@ TEST_F(nir_mod_analysis_test, const_mul_const)
    for (unsigned const_mod = 1; const_mod <= 1024; const_mod *= 2) {
       for (unsigned c1 = 0; c1 < 10; ++c1) {
          for (unsigned c2 = 0; c2 < 10; ++c2) {
-            nir_ssa_def *mul = nir_imul(&b, v[c1], v[c2]);
+            nir_ssa_def *mul = nir_imul(b, v[c1], v[c2]);
 
             unsigned mod = INT32_MAX;
 
@@ -160,7 +149,7 @@ TEST_F(nir_mod_analysis_test, dynamic_mul_const)
    /* (invocation * const) % const_mod == 0 only if const % const_mod == 0, unknown otherwise */
    for (unsigned const_mod = 2; const_mod <= 1024; const_mod *= 2) {
       for (unsigned c = 0; c < 10; ++c) {
-         nir_ssa_def *mul = nir_imul(&b, invocation, v[c]);
+         nir_ssa_def *mul = nir_imul(b, invocation, v[c]);
 
          unsigned mod = INT32_MAX;
 
@@ -179,8 +168,8 @@ TEST_F(nir_mod_analysis_test, dynamic_mul_const_swizzled)
    /* (invocation * const.y) % const_mod == 0 only if const.y % const_mod == 0, unknown otherwise */
    for (unsigned const_mod = 2; const_mod <= 1024; const_mod *= 2) {
       for (unsigned c = 0; c < 10; ++c) {
-         nir_ssa_def *vec2 = nir_imm_ivec2(&b, 10 - c, c);
-         nir_ssa_def *mul = nir_imul_vec2y(&b, invocation, vec2);
+         nir_ssa_def *vec2 = nir_imm_ivec2(b, 10 - c, c);
+         nir_ssa_def *mul = nir_imul_vec2y(b, invocation, vec2);
 
          unsigned mod = INT32_MAX;
 
@@ -201,7 +190,7 @@ TEST_F(nir_mod_analysis_test, dynamic_mul32x16_const)
     */
    for (unsigned const_mod = 1; const_mod <= (1u << 24); const_mod *= 2) {
       for (unsigned c = 0; c < 10; ++c) {
-         nir_ssa_def *mul = nir_imul_32x16(&b, invocation, v[c]);
+         nir_ssa_def *mul = nir_imul_32x16(b, invocation, v[c]);
 
          unsigned mod = INT32_MAX;
 
@@ -220,7 +209,7 @@ TEST_F(nir_mod_analysis_test, dynamic_shl_const)
    /* (invocation << const) % const_mod == 0 only if const >= log2(const_mod), unknown otherwise */
    for (unsigned const_mod = 1; const_mod <= 1024; const_mod *= 2) {
       for (unsigned c = 0; c < 10; ++c) {
-         nir_ssa_def *shl = nir_ishl(&b, invocation, v[c]);
+         nir_ssa_def *shl = nir_ishl(b, invocation, v[c]);
 
          unsigned mod = INT32_MAX;
 
@@ -239,7 +228,7 @@ TEST_F(nir_mod_analysis_test, dynamic_shr_const)
    /* (invocation >> const) % const_mod should never be known, unless const_mod is 1 */
    for (unsigned const_mod = 1; const_mod <= 1024; const_mod *= 2) {
       for (unsigned i = 0; i < 10; ++i) {
-         nir_ssa_def *shr = nir_ishr(&b, invocation, v[i]);
+         nir_ssa_def *shr = nir_ishr(b, invocation, v[i]);
 
          unsigned mod = INT32_MAX;
 
@@ -260,10 +249,10 @@ TEST_F(nir_mod_analysis_test, dynamic_mul_const_shr_const)
     *   (32 >> const) is not 0 and (32 >> const) % const_mod == 0
     *
     */
-   nir_ssa_def *inv_mul_32 = nir_imul(&b, invocation, v[32]);
+   nir_ssa_def *inv_mul_32 = nir_imul(b, invocation, v[32]);
    for (unsigned const_mod = 1; const_mod <= 1024; const_mod *= 2) {
       for (unsigned c = 0; c < 8; ++c) {
-         nir_ssa_def *shr = nir_ishr(&b, inv_mul_32, v[c]);
+         nir_ssa_def *shr = nir_ishr(b, inv_mul_32, v[c]);
 
          unsigned mod = INT32_MAX;
 
@@ -284,12 +273,12 @@ TEST_F(nir_mod_analysis_test, dynamic_mul_const_swizzled_shr_const)
     *   (32 >> const) is not 0 and (32 >> const) % const_mod == 0
     *
     */
-   nir_ssa_def *vec2 = nir_imm_ivec2(&b, 31, 32);
-   nir_ssa_def *inv_mul_32 = nir_imul_vec2y(&b, invocation, vec2);
+   nir_ssa_def *vec2 = nir_imm_ivec2(b, 31, 32);
+   nir_ssa_def *inv_mul_32 = nir_imul_vec2y(b, invocation, vec2);
 
    for (unsigned const_mod = 1; const_mod <= 1024; const_mod *= 2) {
       for (unsigned c = 0; c < 8; ++c) {
-         nir_ssa_def *shr = nir_ishr(&b, inv_mul_32, v[c]);
+         nir_ssa_def *shr = nir_ishr(b, inv_mul_32, v[c]);
 
          unsigned mod = INT32_MAX;
 
@@ -309,7 +298,7 @@ TEST_F(nir_mod_analysis_test, const_shr_const)
    for (unsigned const_mod = 1; const_mod <= 1024; const_mod *= 2) {
       for (unsigned i = 0; i < 50; ++i) {
          for (unsigned j = 0; j < 6; ++j) {
-            nir_ssa_def *shr = nir_ishr(&b, v[i], v[j]);
+            nir_ssa_def *shr = nir_ishr(b, v[i], v[j]);
 
             unsigned mod = INT32_MAX;
 
@@ -326,10 +315,10 @@ TEST_F(nir_mod_analysis_test, const_shr_const_overflow)
     * const_mod << const_shr is still below UINT32_MAX.
     */
    unsigned large_const_int = 0x12345678;
-   nir_ssa_def *large_const = nir_imm_int(&b, large_const_int);
+   nir_ssa_def *large_const = nir_imm_int(b, large_const_int);
 
    for (unsigned shift = 0; shift < 30; ++shift) {
-      nir_ssa_def *shr = nir_ishr(&b, large_const, v[shift]);
+      nir_ssa_def *shr = nir_ishr(b, large_const, v[shift]);
 
       for (unsigned const_mod = 1; const_mod <= 1024; const_mod *= 2) {
          unsigned mod = INT32_MAX;

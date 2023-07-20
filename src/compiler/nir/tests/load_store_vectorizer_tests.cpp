@@ -21,10 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <gtest/gtest.h>
-
-#include "nir.h"
-#include "nir_builder.h"
+#include "nir_test.h"
 
 /* This is a macro so you get good line numbers */
 #define EXPECT_INSTR_SWIZZLES(instr, load, expected_swizzle)    \
@@ -33,10 +30,12 @@
 
 namespace {
 
-class nir_load_store_vectorize_test : public ::testing::Test {
+class nir_load_store_vectorize_test : public nir_test {
 protected:
-   nir_load_store_vectorize_test();
-   ~nir_load_store_vectorize_test();
+   nir_load_store_vectorize_test()
+      : nir_test::nir_test("nir_load_store_vectorize_test")
+   {
+   }
 
    unsigned count_intrinsics(nir_intrinsic_op intrinsic);
 
@@ -79,32 +78,10 @@ protected:
 
    std::string swizzle(nir_alu_instr *instr, int src);
 
-   nir_builder *b, _b;
    std::map<unsigned, nir_alu_instr*> movs;
    std::map<unsigned, nir_alu_src*> loads;
    std::map<unsigned, nir_ssa_def*> res_map;
 };
-
-nir_load_store_vectorize_test::nir_load_store_vectorize_test()
-{
-   glsl_type_singleton_init_or_ref();
-
-   static const nir_shader_compiler_options options = { };
-   _b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options, "load store tests");
-   b = &_b;
-}
-
-nir_load_store_vectorize_test::~nir_load_store_vectorize_test()
-{
-   if (HasFailure()) {
-      printf("\nShader from the failed test:\n\n");
-      nir_print_shader(b->shader, stdout);
-   }
-
-   ralloc_free(b->shader);
-
-   glsl_type_singleton_decref();
-}
 
 std::string
 nir_load_store_vectorize_test::swizzle(nir_alu_instr *instr, int src)

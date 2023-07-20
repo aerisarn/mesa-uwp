@@ -21,15 +21,12 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <gtest/gtest.h>
-
-#include "nir.h"
-#include "nir_builder.h"
+#include "nir_test.h"
 #include "nir_deref.h"
 
 namespace {
 
-class nir_vars_test : public ::testing::Test {
+class nir_vars_test : public nir_test {
 protected:
    nir_vars_test();
    ~nir_vars_test();
@@ -94,18 +91,11 @@ protected:
    nir_deref_instr *get_deref(nir_deref_type deref_type,
                               unsigned index);
    void *lin_ctx;
-
-   nir_builder *b, _b;
 };
 
 nir_vars_test::nir_vars_test()
+   : nir_test::nir_test("nir_vars_test")
 {
-   glsl_type_singleton_init_or_ref();
-
-   static const nir_shader_compiler_options options = { };
-   _b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options,
-                                       "vars test");
-   b = &_b;
    lin_ctx = linear_alloc_parent(b->shader, 0);
 }
 
@@ -115,10 +105,6 @@ nir_vars_test::~nir_vars_test()
       printf("\nShader from the failed test:\n\n");
       nir_print_shader(b->shader, stdout);
    }
-
-   ralloc_free(b->shader);
-
-   glsl_type_singleton_decref();
 }
 
 unsigned

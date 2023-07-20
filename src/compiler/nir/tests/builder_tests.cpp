@@ -21,14 +21,11 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <gtest/gtest.h>
-
-#include "nir.h"
-#include "nir_builder.h"
+#include "nir_test.h"
 
 namespace {
 
-class nir_builder_test : public ::testing::Test {
+class nir_builder_test : public nir_test {
 private:
    const glsl_type *type_for_def(nir_ssa_def *def)
    {
@@ -42,8 +39,10 @@ private:
    }
 
 protected:
-   nir_builder_test();
-   ~nir_builder_test();
+   nir_builder_test()
+      : nir_test::nir_test("nir_builder_test")
+   {
+   }
 
    void store_test_val(nir_ssa_def *val)
    {
@@ -66,30 +65,7 @@ protected:
    }
 
    std::vector<nir_intrinsic_instr *> stores;
-
-   nir_builder *b, _b;
 };
-
-nir_builder_test::nir_builder_test()
-{
-   glsl_type_singleton_init_or_ref();
-
-   static const nir_shader_compiler_options options = { };
-   _b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, &options, "builder test");
-   b = &_b;
-}
-
-nir_builder_test::~nir_builder_test()
-{
-   if (HasFailure()) {
-      printf("\nShader from the failed test:\n\n");
-      nir_print_shader(b->shader, stdout);
-   }
-
-   ralloc_free(b->shader);
-
-   glsl_type_singleton_decref();
-}
 
 /* Allow grouping the tests while still sharing the helpers. */
 class nir_extract_bits_test : public nir_builder_test {};
