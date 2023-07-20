@@ -309,7 +309,7 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
 }
 
 static void
-nvk_get_device_extensions(const struct nv_device_info *dev,
+nvk_get_device_extensions(const struct nv_device_info *info,
                           struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
@@ -321,7 +321,7 @@ nvk_get_device_extensions(const struct nv_device_info *dev,
       .KHR_depth_stencil_resolve = true,
       .KHR_descriptor_update_template = true,
       .KHR_device_group = true,
-      .KHR_draw_indirect_count = dev->cls_eng3d >= TURING_A,
+      .KHR_draw_indirect_count = info->cls_eng3d >= TURING_A,
       .KHR_driver_properties = true,
       .KHR_dynamic_rendering = true,
       .KHR_external_memory = true,
@@ -371,11 +371,11 @@ nvk_get_device_extensions(const struct nv_device_info *dev,
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
       .EXT_robustness2 = true,
-      .EXT_sample_locations = dev->cls_eng3d >= MAXWELL_B,
-      .EXT_sampler_filter_minmax = dev->cls_eng3d >= MAXWELL_B,
+      .EXT_sample_locations = info->cls_eng3d >= MAXWELL_B,
+      .EXT_sampler_filter_minmax = info->cls_eng3d >= MAXWELL_B,
       .EXT_separate_stencil_usage = true,
       .EXT_shader_demote_to_helper_invocation = true,
-      .EXT_shader_viewport_index_layer = dev->cls_eng3d >= MAXWELL_B,
+      .EXT_shader_viewport_index_layer = info->cls_eng3d >= MAXWELL_B,
       .EXT_transform_feedback = true,
       .EXT_vertex_attribute_divisor = true,
       .EXT_vertex_input_dynamic_state = true,
@@ -383,7 +383,7 @@ nvk_get_device_extensions(const struct nv_device_info *dev,
 }
 
 static void
-nvk_get_device_features(const struct nv_device_info *dev,
+nvk_get_device_features(const struct nv_device_info *info,
                         struct vk_features *features)
 {
    *features = (struct vk_features) {
@@ -472,8 +472,8 @@ nvk_get_device_features(const struct nv_device_info *dev,
       .bufferDeviceAddress = true,
       .bufferDeviceAddressCaptureReplay = false,
       .bufferDeviceAddressMultiDevice = false,
-      .drawIndirectCount = dev->cls_eng3d >= TURING_A,
-      .samplerFilterMinmax = dev->cls_eng3d >= MAXWELL_B,
+      .drawIndirectCount = info->cls_eng3d >= TURING_A,
+      .samplerFilterMinmax = info->cls_eng3d >= MAXWELL_B,
 
       /* Vulkan 1.3 */
       .robustImageAccess = true,
@@ -619,10 +619,11 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
 
    vk_warn_non_conformant_implementation("NVK");
 
-   struct nvk_physical_device *device =
-      vk_zalloc(&instance->vk.alloc, sizeof(*device), 8, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   struct nvk_physical_device *pdev =
+      vk_zalloc(&instance->vk.alloc, sizeof(*pdev),
+                8, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
 
-   if (device == NULL) {
+   if (pdev == NULL) {
       result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto fail_dev_alloc;
    }
@@ -639,7 +640,7 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    struct vk_features supported_features;
    nvk_get_device_features(&ndev->info, &supported_features);
 
-   result = vk_physical_device_init(&device->vk, &instance->vk,
+   result = vk_physical_device_init(&pdev->vk, &instance->vk,
                                     &supported_extensions,
                                     &supported_features,
                                     &dispatch_table);
@@ -647,9 +648,9 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   device->instance = instance;
-   device->dev = ndev;
-   device->info = ndev->info;
+   pdev->instance = instance;
+   pdev->dev = ndev;
+   pdev->info = ndev->info;
 
    const struct {
       uint16_t vendor_id;
@@ -657,66 +658,67 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       uint8_t pad[12];
    } dev_uuid = {
       .vendor_id = NVIDIA_VENDOR_ID,
-      .device_id = device->info.pci_device_id,
+      .device_id = pdev->info.pci_device_id,
    };
    STATIC_ASSERT(sizeof(dev_uuid) == VK_UUID_SIZE);
-   memcpy(device->device_uuid, &dev_uuid, VK_UUID_SIZE);
+   memcpy(pdev->device_uuid, &dev_uuid, VK_UUID_SIZE);
 
-   device->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-   device->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-   device->mem_types[0].heapIndex = 0;
+   pdev->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+   pdev->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+   pdev->mem_types[0].heapIndex = 0;
 
    if (ndev->vram_size) {
-      device->mem_type_cnt = 2;
-      device->mem_heap_cnt = 2;
+      pdev->mem_type_cnt = 2;
+      pdev->mem_heap_cnt = 2;
 
-      device->mem_heaps[0].size = ndev->vram_size;
-      device->mem_heaps[1].size = ndev->gart_size;
-      device->mem_heaps[1].flags = 0;
-      device->mem_types[1].heapIndex = 1;
-      device->mem_types[1].propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+      pdev->mem_heaps[0].size = ndev->vram_size;
+      pdev->mem_heaps[1].size = ndev->gart_size;
+      pdev->mem_heaps[1].flags = 0;
+      pdev->mem_types[1].heapIndex = 1;
+      pdev->mem_types[1].propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
    } else {
-      device->mem_type_cnt = 1;
-      device->mem_heap_cnt = 1;
+      pdev->mem_type_cnt = 1;
+      pdev->mem_heap_cnt = 1;
 
-      device->mem_heaps[0].size = ndev->gart_size;
-      device->mem_types[0].propertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+      pdev->mem_heaps[0].size = ndev->gart_size;
+      pdev->mem_types[0].propertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
    }
 
    unsigned st_idx = 0;
-   device->sync_types[st_idx++] = &nvk_bo_sync_type;
-   device->sync_types[st_idx++] = NULL;
-   assert(st_idx <= ARRAY_SIZE(device->sync_types));
-   device->vk.supported_sync_types = device->sync_types;
+   pdev->sync_types[st_idx++] = &nvk_bo_sync_type;
+   pdev->sync_types[st_idx++] = NULL;
+   assert(st_idx <= ARRAY_SIZE(pdev->sync_types));
+   pdev->vk.supported_sync_types = pdev->sync_types;
 
-   result = nvk_init_wsi(device);
+   result = nvk_init_wsi(pdev);
    if (result != VK_SUCCESS)
       goto fail_init;
 
-   *device_out = &device->vk;
+   *device_out = &pdev->vk;
 
    return VK_SUCCESS;
 
 fail_init:
-   vk_physical_device_finish(&device->vk);
+   vk_physical_device_finish(&pdev->vk);
 fail_alloc:
-   vk_free(&instance->vk.alloc, device);
+   vk_free(&instance->vk.alloc, pdev);
 fail_dev_alloc:
    nouveau_ws_device_destroy(ndev);
    return result;
 }
 
 void
-nvk_physical_device_destroy(struct vk_physical_device *vk_device)
+nvk_physical_device_destroy(struct vk_physical_device *vk_pdev)
 {
-   struct nvk_physical_device *device = container_of(vk_device, struct nvk_physical_device, vk);
+   struct nvk_physical_device *pdev =
+      container_of(vk_pdev, struct nvk_physical_device, vk);
 
-   nvk_finish_wsi(device);
-   nouveau_ws_device_destroy(device->dev);
-   vk_physical_device_finish(&device->vk);
-   vk_free(&device->instance->vk.alloc, device);
+   nvk_finish_wsi(pdev);
+   nouveau_ws_device_destroy(pdev->dev);
+   vk_physical_device_finish(&pdev->vk);
+   vk_free(&pdev->instance->vk.alloc, pdev);
 }
 
 VKAPI_ATTR void VKAPI_CALL
