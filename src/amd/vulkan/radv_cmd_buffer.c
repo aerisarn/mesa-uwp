@@ -3768,7 +3768,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
    key.as_ls = vs_shader->info.vs.as_ls && instance_rate_inputs;
    key.is_ngg = vs_shader->info.is_ngg;
    key.wave32 = vs_shader->info.wave_size == 32;
-   key.next_stage = ffs(cmd_buffer->state.active_stages) - 1;
+   key.next_stage = vs_shader->info.stage;
 
    union vs_prolog_key_header header;
    header.v = 0;
