@@ -183,7 +183,7 @@ GENX(panfrost_estimate_texture_payload_size)(const struct pan_image_view *iview)
 
    unsigned elements = panfrost_texture_num_elements(
       iview->first_level, iview->last_level, iview->first_layer,
-      iview->last_layer, iview->image->layout.nr_samples,
+      iview->last_layer, pan_image_view_get_nr_samples(iview),
       iview->dim == MALI_TEXTURE_DIMENSION_CUBE);
 
    return element_size * elements;
@@ -458,11 +458,11 @@ static void
 panfrost_emit_texture_payload(const struct pan_image_view *iview,
                               enum pipe_format format, void *payload)
 {
-   const struct pan_image_layout *layout = &iview->image->layout;
+   const struct pan_image *base_image = pan_image_view_get_plane(iview, 0);
+   const struct pan_image_layout *layout = &base_image->layout;
    ASSERTED const struct util_format_description *desc =
       util_format_description(format);
-
-   mali_ptr base = iview->image->data.bo->ptr.gpu + iview->image->data.offset;
+   mali_ptr base = base_image->data.bo->ptr.gpu + base_image->data.offset;
 
    if (iview->buf.size) {
       assert(iview->dim == MALI_TEXTURE_DIMENSION_1D);
@@ -548,7 +548,8 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
                            const struct pan_image_view *iview, void *out,
                            const struct panfrost_ptr *payload)
 {
-   const struct pan_image_layout *layout = &iview->image->layout;
+   const struct pan_image *base_image = pan_image_view_get_plane(iview, 0);
+   const struct pan_image_layout *layout = &base_image->layout;
    enum pipe_format format = iview->format;
    uint32_t mali_format = dev->formats[format].hw;
    unsigned char swizzle[4];

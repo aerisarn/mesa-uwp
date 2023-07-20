@@ -1393,6 +1393,18 @@ panfrost_resource_get_internal_format(struct pipe_resource *rsrc)
    return prsrc->image.layout.format;
 }
 
+void
+panfrost_set_image_view_planes(struct pan_image_view *iview,
+                               struct pipe_resource *texture)
+{
+   struct panfrost_resource *prsrc_plane = (struct panfrost_resource *)texture;
+
+   for (int i = 0; i < MAX_IMAGE_PLANES && prsrc_plane; i++) {
+      iview->planes[i] = &prsrc_plane->image;
+      prsrc_plane = (struct panfrost_resource *)prsrc_plane->base.next;
+   }
+}
+
 static bool
 panfrost_generate_mipmap(struct pipe_context *pctx, struct pipe_resource *prsrc,
                          enum pipe_format format, unsigned base_level,

@@ -183,15 +183,15 @@ pan_blitter_is_ms(struct pan_blitter_views *views)
 {
    for (unsigned i = 0; i < views->rt_count; i++) {
       if (views->dst_rts[i]) {
-         if (views->dst_rts[i]->image->layout.nr_samples > 1)
+         if (pan_image_view_get_nr_samples(views->dst_rts[i]) > 1)
             return true;
       }
    }
 
-   if (views->dst_z && views->dst_z->image->layout.nr_samples > 1)
+   if (views->dst_z && pan_image_view_get_nr_samples(views->dst_z) > 1)
       return true;
 
-   if (views->dst_s && views->dst_s->image->layout.nr_samples > 1)
+   if (views->dst_s && pan_image_view_get_nr_samples(views->dst_s) > 1)
       return true;
 
    return false;
@@ -329,7 +329,7 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev, unsigned rt_count,
       struct pan_blit_blend_shader_key key = {
          .format = rts[i]->format,
          .rt = i,
-         .nr_samples = rts[i]->image->layout.nr_samples,
+         .nr_samples = pan_image_view_get_nr_samples(rts[i]),
          .type = blit_shader->blend_types[i],
       };
 
@@ -349,7 +349,7 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev, unsigned rt_count,
 
       blend_state.rts[i] = (struct pan_blend_rt_state){
          .format = rts[i]->format,
-         .nr_samples = rts[i]->image->layout.nr_samples,
+         .nr_samples = pan_image_view_get_nr_samples(rts[i]),
          .equation =
             {
                .blend_enable = false,
@@ -667,8 +667,8 @@ pan_blitter_get_key(struct pan_blitter_views *views)
       assert(views->dst_z);
       key.surfaces[0].loc = FRAG_RESULT_DEPTH;
       key.surfaces[0].type = nir_type_float32;
-      key.surfaces[0].src_samples = views->src_z->image->layout.nr_samples;
-      key.surfaces[0].dst_samples = views->dst_z->image->layout.nr_samples;
+      key.surfaces[0].src_samples = pan_image_view_get_nr_samples(views->src_z);
+      key.surfaces[0].dst_samples = pan_image_view_get_nr_samples(views->dst_z);
       key.surfaces[0].dim = views->src_z->dim;
       key.surfaces[0].array =
          views->src_z->first_layer != views->src_z->last_layer;
@@ -678,8 +678,8 @@ pan_blitter_get_key(struct pan_blitter_views *views)
       assert(views->dst_s);
       key.surfaces[1].loc = FRAG_RESULT_STENCIL;
       key.surfaces[1].type = nir_type_uint32;
-      key.surfaces[1].src_samples = views->src_s->image->layout.nr_samples;
-      key.surfaces[1].dst_samples = views->dst_s->image->layout.nr_samples;
+      key.surfaces[1].src_samples = pan_image_view_get_nr_samples(views->src_s);
+      key.surfaces[1].dst_samples = pan_image_view_get_nr_samples(views->dst_s);
       key.surfaces[1].dim = views->src_s->dim;
       key.surfaces[1].array =
          views->src_s->first_layer != views->src_s->last_layer;
@@ -696,8 +696,10 @@ pan_blitter_get_key(struct pan_blitter_views *views)
          : util_format_is_pure_sint(views->src_rts[i]->format)
             ? nir_type_int32
             : nir_type_float32;
-      key.surfaces[i].src_samples = views->src_rts[i]->image->layout.nr_samples;
-      key.surfaces[i].dst_samples = views->dst_rts[i]->image->layout.nr_samples;
+      key.surfaces[i].src_samples =
+         pan_image_view_get_nr_samples(views->src_rts[i]);
+      key.surfaces[i].dst_samples =
+         pan_image_view_get_nr_samples(views->dst_rts[i]);
       key.surfaces[i].dim = views->src_rts[i]->dim;
       key.surfaces[i].array =
          views->src_rts[i]->first_layer != views->src_rts[i]->last_layer;
@@ -1295,8 +1297,8 @@ pan_preload_emit_pre_frame_dcd(struct pan_pool *desc_pool,
    pan_preload_emit_dcd(desc_pool, fb, zs, coords, tsd, dcd, always_write);
    if (zs) {
       enum pipe_format fmt = fb->zs.view.zs
-                                ? fb->zs.view.zs->image->layout.format
-                                : fb->zs.view.s->image->layout.format;
+                                ? fb->zs.view.zs->planes[0]->layout.format
+                                : fb->zs.view.s->planes[0]->layout.format;
       bool always = false;
 
       /* If we're dealing with a combined ZS resource and only one
@@ -1422,7 +1424,12 @@ GENX(pan_blit_ctx_init)(struct panfrost_device *dev,
    struct pan_image_view sviews[2] = {
       {
          .format = info->src.planes[0].format,
-         .image = info->src.planes[0].image,
+         .planes =
+            {
+               info->src.planes[0].image,
+               info->src.planes[1].image,
+               info->src.planes[2].image,
+            },
          .dim =
             info->src.planes[0].image->layout.dim == MALI_TEXTURE_DIMENSION_CUBE
                ? MALI_TEXTURE_DIMENSION_2D
@@ -1443,7 +1450,12 @@ GENX(pan_blit_ctx_init)(struct panfrost_device *dev,
 
    struct pan_image_view dview = {
       .format = info->dst.planes[0].format,
-      .image = info->dst.planes[0].image,
+      .planes =
+         {
+            info->dst.planes[0].image,
+            info->dst.planes[1].image,
+            info->dst.planes[2].image,
+         },
       .dim = info->dst.planes[0].image->layout.dim == MALI_TEXTURE_DIMENSION_1D
                 ? MALI_TEXTURE_DIMENSION_1D
                 : MALI_TEXTURE_DIMENSION_2D,
@@ -1508,7 +1520,7 @@ GENX(pan_blit_ctx_init)(struct panfrost_device *dev,
    } else if (info->src.planes[1].format) {
       sviews[1] = sviews[0];
       sviews[1].format = info->src.planes[1].format;
-      sviews[1].image = info->src.planes[1].image;
+      sviews[1].planes[0] = info->src.planes[1].image;
    }
 
    ctx->rsd = pan_blit_get_rsd(dev, sviews, &dview);

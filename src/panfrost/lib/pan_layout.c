@@ -406,37 +406,38 @@ void
 pan_iview_get_surface(const struct pan_image_view *iview, unsigned level,
                       unsigned layer, unsigned sample, struct pan_surface *surf)
 {
+   const struct pan_image *image = pan_image_view_get_plane(iview, 0);
+
    level += iview->first_level;
-   assert(level < iview->image->layout.nr_slices);
+   assert(level < image->layout.nr_slices);
 
    layer += iview->first_layer;
 
-   bool is_3d = iview->image->layout.dim == MALI_TEXTURE_DIMENSION_3D;
-   const struct pan_image_slice_layout *slice =
-      &iview->image->layout.slices[level];
-   mali_ptr base = iview->image->data.bo->ptr.gpu + iview->image->data.offset;
+   bool is_3d = image->layout.dim == MALI_TEXTURE_DIMENSION_3D;
+   const struct pan_image_slice_layout *slice = &image->layout.slices[level];
+   mali_ptr base = image->data.bo->ptr.gpu + image->data.offset;
 
-   if (drm_is_afbc(iview->image->layout.modifier)) {
+   if (drm_is_afbc(image->layout.modifier)) {
       assert(!sample);
 
       if (is_3d) {
-         ASSERTED unsigned depth = u_minify(iview->image->layout.depth, level);
+         ASSERTED unsigned depth = u_minify(image->layout.depth, level);
          assert(layer < depth);
          surf->afbc.header =
             base + slice->offset + (layer * slice->afbc.surface_stride);
          surf->afbc.body = base + slice->offset + slice->afbc.header_size +
                            (slice->surface_stride * layer);
       } else {
-         assert(layer < iview->image->layout.array_size);
-         surf->afbc.header = base + panfrost_texture_offset(
-                                       &iview->image->layout, level, layer, 0);
+         assert(layer < image->layout.array_size);
+         surf->afbc.header =
+            base + panfrost_texture_offset(&image->layout, level, layer, 0);
          surf->afbc.body = surf->afbc.header + slice->afbc.header_size;
       }
    } else {
       unsigned array_idx = is_3d ? 0 : layer;
       unsigned surface_idx = is_3d ? layer : sample;
 
-      surf->data = base + panfrost_texture_offset(&iview->image->layout, level,
+      surf->data = base + panfrost_texture_offset(&image->layout, level,
                                                   array_idx, surface_idx);
    }
 }

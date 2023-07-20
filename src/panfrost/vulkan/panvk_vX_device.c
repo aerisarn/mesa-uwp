@@ -243,8 +243,9 @@ panvk_per_arch(queue_submit)(struct vk_queue *vk_queue,
 
          if (batch->fb.info) {
             for (unsigned i = 0; i < batch->fb.info->attachment_count; i++) {
-               bos[bo_idx++] = batch->fb.info->attachments[i]
-                                  .iview->pview.image->data.bo->gem_handle;
+               const struct pan_image *image = pan_image_view_get_plane(
+                  &batch->fb.info->attachments[i].iview->pview, 0);
+               bos[bo_idx++] = image->data.bo->gem_handle;
             }
          }
 

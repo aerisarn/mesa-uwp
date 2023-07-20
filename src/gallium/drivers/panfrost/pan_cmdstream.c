@@ -1671,11 +1671,12 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
             so->base.swizzle_b,
             so->base.swizzle_a,
          },
-      .image = &prsrc->image,
-
+      .planes = {NULL},
       .buf.offset = buf_offset,
       .buf.size = buf_size,
    };
+
+   panfrost_set_image_view_planes(&iview, texture);
 
    unsigned size = (PAN_ARCH <= 5 ? pan_size(TEXTURE) : 0) +
                    GENX(panfrost_estimate_texture_payload_size)(&iview);
