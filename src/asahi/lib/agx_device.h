@@ -41,6 +41,10 @@ struct drm_asahi_params_global {
    uint64_t vm_user_end;
    uint64_t vm_shader_start;
    uint64_t vm_shader_end;
+   uint32_t chip_id;
+   uint32_t num_clusters_total;
+   uint32_t gpu_generation;
+   uint32_t gpu_variant;
 };
 
 /* How many power-of-two levels in the BO cache do we want? 2^14 minimum chosen
