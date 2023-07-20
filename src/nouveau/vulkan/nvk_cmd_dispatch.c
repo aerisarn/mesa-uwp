@@ -160,7 +160,7 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
    memset(qmd, 0, sizeof(qmd));
    memcpy(qmd, pipeline->qmd_template, sizeof(pipeline->qmd_template));
 
-   if (dev->ctx->compute.cls >= AMPERE_COMPUTE_A) {
+   if (dev->pdev->info.cls_compute >= AMPERE_COMPUTE_A) {
       nvc6c0_qmd_set_dispatch_size(nvk_cmd_buffer_device(cmd), qmd,
                                    desc->root.cs.group_count[0],
                                    desc->root.cs.group_count[1],
@@ -168,7 +168,7 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
 
       nvc6c0_cp_launch_desc_set_cb(qmd, 0, sizeof(desc->root), root_desc_addr);
       nvc6c0_cp_launch_desc_set_cb(qmd, 1, sizeof(desc->root), root_desc_addr);
-   } else if (dev->ctx->compute.cls >= PASCAL_COMPUTE_A) {
+   } else if (dev->pdev->info.cls_compute >= PASCAL_COMPUTE_A) {
       nvc0c0_qmd_set_dispatch_size(nvk_cmd_buffer_device(cmd), qmd,
                                    desc->root.cs.group_count[0],
                                    desc->root.cs.group_count[1],
@@ -177,7 +177,7 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
       nvc0c0_cp_launch_desc_set_cb(qmd, 0, sizeof(desc->root), root_desc_addr);
       nvc0c0_cp_launch_desc_set_cb(qmd, 1, sizeof(desc->root), root_desc_addr);
    } else {
-      assert(dev->ctx->compute.cls >= KEPLER_COMPUTE_A);
+      assert(dev->pdev->info.cls_compute >= KEPLER_COMPUTE_A);
       nva0c0_qmd_set_dispatch_size(nvk_cmd_buffer_device(cmd), qmd,
                                    desc->root.cs.group_count[0],
                                    desc->root.cs.group_count[1],
@@ -355,7 +355,7 @@ nvk_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
 
    /* TODO: Indirect dispatch pre-Turing */
-   assert(nvk_cmd_buffer_device(cmd)->ctx->eng3d.cls >= TURING_A);
+   assert(nvk_cmd_buffer_device(cmd)->pdev->info.cls_eng3d >= TURING_A);
 
    desc->root.cs.base_group[0] = 0;
    desc->root.cs.base_group[1] = 0;

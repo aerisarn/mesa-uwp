@@ -32,7 +32,7 @@
 static inline uint16_t
 nvk_cmd_buffer_3d_cls(struct nvk_cmd_buffer *cmd)
 {
-   return nvk_cmd_buffer_device(cmd)->ctx->eng3d.cls;
+   return nvk_cmd_buffer_device(cmd)->pdev->info.cls_eng3d;
 }
 
 void
@@ -84,13 +84,13 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    struct nv_push *p = &push;
 
    /* M2MF state */
-   if (dev->ctx->m2mf.cls <= FERMI_MEMORY_TO_MEMORY_FORMAT_A) {
+   if (dev->pdev->info.cls_m2mf <= FERMI_MEMORY_TO_MEMORY_FORMAT_A) {
       /* we absolutely do not support Fermi, but if somebody wants to toy
        * around with it, this is a must
        */
       P_MTHD(p, NV9039, SET_OBJECT);
       P_NV9039_SET_OBJECT(p, {
-         .class_id = dev->ctx->m2mf.cls,
+         .class_id = dev->pdev->info.cls_m2mf,
          .engine_id = 0,
       });
    }
@@ -98,14 +98,14 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    /* 2D state */
    P_MTHD(p, NV902D, SET_OBJECT);
    P_NV902D_SET_OBJECT(p, {
-      .class_id = dev->ctx->eng2d.cls,
+      .class_id = dev->pdev->info.cls_eng2d,
       .engine_id = 0,
    });
 
    /* 3D state */
    P_MTHD(p, NV9097, SET_OBJECT);
    P_NV9097_SET_OBJECT(p, {
-      .class_id = dev->ctx->eng3d.cls,
+      .class_id = dev->pdev->info.cls_eng3d,
       .engine_id = 0,
    });
 
@@ -136,7 +136,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
     * On older generations we'll let the kernel do it, but starting with GSP we
     * have to do it this way.
     */
-   if (dev->ctx->eng3d.cls >= TURING_A) {
+   if (dev->pdev->info.cls_eng3d >= TURING_A) {
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_SET_PRIV_REG));
       P_INLINE_DATA(p, 0);
       P_INLINE_DATA(p, BITFIELD_BIT(3));
@@ -194,7 +194,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       .all_covered_all_hit_once = 0xff,
    });
 
-   if (dev->ctx->eng3d.cls < VOLTA_A)
+   if (dev->pdev->info.cls_eng3d < VOLTA_A)
       P_IMMD(p, NV9097, SET_ALPHA_FRACTION, 0x3f);
 
    P_IMMD(p, NV9097, CHECK_SPH_VERSION, {
@@ -206,7 +206,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       .oldest_supported = 2,
    });
 
-   if (dev->ctx->eng3d.cls < MAXWELL_A)
+   if (dev->pdev->info.cls_eng3d < MAXWELL_A)
       P_IMMD(p, NV9097, SET_SHADER_SCHEDULING, MODE_OLDEST_THREAD_FIRST);
 
    P_IMMD(p, NV9097, SET_L2_CACHE_CONTROL_FOR_ROP_PREFETCH_READ_REQUESTS,
@@ -241,17 +241,17 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       .qualify_by_anti_alias_enable = QUALIFY_BY_ANTI_ALIAS_ENABLE_ENABLE,
    });
 
-   if (dev->ctx->eng3d.cls < VOLTA_A)
+   if (dev->pdev->info.cls_eng3d < VOLTA_A)
       P_IMMD(p, NV9097, SET_PRIM_CIRCULAR_BUFFER_THROTTLE, 0x3fffff);
 
    P_IMMD(p, NV9097, SET_BLEND_OPT_CONTROL, ALLOW_FLOAT_PIXEL_KILLS_TRUE);
    P_IMMD(p, NV9097, SET_BLEND_FLOAT_OPTION, ZERO_TIMES_ANYTHING_IS_ZERO_TRUE);
 
-   if (dev->ctx->eng3d.cls < MAXWELL_A)
+   if (dev->pdev->info.cls_eng3d < MAXWELL_A)
       P_IMMD(p, NV9097, SET_MAX_TI_WARPS_PER_BATCH, 3);
 
-   if (dev->ctx->eng3d.cls >= KEPLER_A &&
-       dev->ctx->eng3d.cls < MAXWELL_A) {
+   if (dev->pdev->info.cls_eng3d >= KEPLER_A &&
+       dev->pdev->info.cls_eng3d < MAXWELL_A) {
       P_IMMD(p, NVA097, SET_TEXTURE_INSTRUCTION_OPERAND,
                         ORDERING_KEPLER_ORDER);
    }
@@ -322,7 +322,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    /* OpenGL's GL_POINT_SMOOTH */
    P_IMMD(p, NV9097, SET_ANTI_ALIASED_POINT, ENABLE_FALSE);
 
-   if (dev->ctx->eng3d.cls >= MAXWELL_B)
+   if (dev->pdev->info.cls_eng3d >= MAXWELL_B)
       P_IMMD(p, NVB197, SET_FILL_VIA_TRIANGLE, MODE_DISABLED);
 
    P_IMMD(p, NV9097, SET_POLY_SMOOTH, ENABLE_FALSE);
@@ -334,7 +334,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       .centroid   = CENTROID_PER_FRAGMENT,
    });
 
-   if (dev->ctx->eng3d.cls >= MAXWELL_B) {
+   if (dev->pdev->info.cls_eng3d >= MAXWELL_B) {
       P_IMMD(p, NVB197, SET_OFFSET_RENDER_TARGET_INDEX,
                         BY_VIEWPORT_INDEX_FALSE);
    }
@@ -401,8 +401,8 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_A(p, zero_addr >> 32);
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_B(p, zero_addr);
 
-   if (dev->ctx->eng3d.cls >= FERMI_A &&
-       dev->ctx->eng3d.cls < MAXWELL_A) {
+   if (dev->pdev->info.cls_eng3d >= FERMI_A &&
+       dev->pdev->info.cls_eng3d < MAXWELL_A) {
       assert(dev->vab_memory);
       uint64_t vab_addr = dev->vab_memory->offset;
       P_MTHD(p, NV9097, SET_VAB_MEMORY_AREA_A);
@@ -411,17 +411,17 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       P_NV9097_SET_VAB_MEMORY_AREA_C(p, SIZE_BYTES_256K);
    }
 
-   if (dev->ctx->eng3d.cls == MAXWELL_A)
+   if (dev->pdev->info.cls_eng3d == MAXWELL_A)
       P_IMMD(p, NVB097, SET_SELECT_MAXWELL_TEXTURE_HEADERS, V_TRUE);
 
    /* Compute state */
    P_MTHD(p, NV90C0, SET_OBJECT);
    P_NV90C0_SET_OBJECT(p, {
-      .class_id = dev->ctx->compute.cls,
+      .class_id = dev->pdev->info.cls_compute,
       .engine_id = 0,
    });
 
-   if (dev->ctx->compute.cls == MAXWELL_COMPUTE_A)
+   if (dev->pdev->info.cls_compute == MAXWELL_COMPUTE_A)
       P_IMMD(p, NVB0C0, SET_SELECT_MAXWELL_TEXTURE_HEADERS, V_TRUE);
 
    return nvk_queue_submit_simple(queue, nv_push_dw_count(&push), push_data,

@@ -1,6 +1,7 @@
 #include "nvk_pipeline.h"
 
 #include "nvk_device.h"
+#include "nvk_physical_device.h"
 #include "nvk_shader.h"
 #include "nv_push.h"
 #include "vk_nir.h"
@@ -379,7 +380,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
          last_geom = shader;
 
       uint64_t addr = nvk_shader_address(shader);
-      if (device->ctx->eng3d.cls >= VOLTA_A) {
+      if (device->pdev->info.cls_eng3d >= VOLTA_A) {
          P_MTHD(p, NVC397, SET_PIPELINE_PROGRAM_ADDRESS_A(idx));
          P_NVC397_SET_PIPELINE_PROGRAM_ADDRESS_A(p, idx, addr >> 32);
          P_NVC397_SET_PIPELINE_PROGRAM_ADDRESS_B(p, idx, addr);
@@ -406,7 +407,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
 
          P_IMMD(p, NV9097, SET_API_MANDATED_EARLY_Z, shader->fs.early_z);
 
-         if (device->ctx->eng3d.cls >= MAXWELL_B) {
+         if (device->pdev->info.cls_eng3d >= MAXWELL_B) {
             P_IMMD(p, NVB197, SET_POST_Z_PS_IMASK,
                    shader->fs.post_depth_coverage);
          } else {

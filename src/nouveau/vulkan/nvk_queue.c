@@ -175,13 +175,13 @@ nvk_queue_state_update(struct nvk_device *dev,
 
    if (qs->shaders.bo) {
       /* Compute */
-      assert(dev->ctx->compute.cls < VOLTA_COMPUTE_A);
+      assert(dev->pdev->info.cls_compute < VOLTA_COMPUTE_A);
       P_MTHD(p, NVA0C0, SET_PROGRAM_REGION_A);
       P_NVA0C0_SET_PROGRAM_REGION_A(p, qs->shaders.bo->offset >> 32);
       P_NVA0C0_SET_PROGRAM_REGION_B(p, qs->shaders.bo->offset);
 
       /* 3D */
-      assert(dev->ctx->eng3d.cls < VOLTA_A);
+      assert(dev->pdev->info.cls_eng3d < VOLTA_A);
       P_MTHD(p, NV9097, SET_PROGRAM_REGION_A);
       P_NV9097_SET_PROGRAM_REGION_A(p, qs->shaders.bo->offset >> 32);
       P_NV9097_SET_PROGRAM_REGION_B(p, qs->shaders.bo->offset);
@@ -204,7 +204,7 @@ nvk_queue_state_update(struct nvk_device *dev,
       P_NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_B(p, slm_per_mp);
       P_NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_C(p, 0xff);
 
-      if (dev->ctx->compute.cls < VOLTA_COMPUTE_A) {
+      if (dev->pdev->info.cls_compute < VOLTA_COMPUTE_A) {
          P_MTHD(p, NVA0C0, SET_SHADER_LOCAL_MEMORY_THROTTLED_A);
          P_NVA0C0_SET_SHADER_LOCAL_MEMORY_THROTTLED_A(p, slm_per_mp >> 32);
          P_NVA0C0_SET_SHADER_LOCAL_MEMORY_THROTTLED_B(p, slm_per_mp);
@@ -223,7 +223,7 @@ nvk_queue_state_update(struct nvk_device *dev,
    /* We set memory windows unconditionally.  Otherwise, the memory window
     * might be in a random place and cause us to fault off into nowhere.
     */
-   if (dev->ctx->compute.cls >= VOLTA_COMPUTE_A) {
+   if (dev->pdev->info.cls_compute >= VOLTA_COMPUTE_A) {
       uint64_t temp = 0xfeULL << 24;
       P_MTHD(p, NVC3C0, SET_SHADER_SHARED_MEMORY_WINDOW_A);
       P_NVC3C0_SET_SHADER_SHARED_MEMORY_WINDOW_A(p, temp >> 32);

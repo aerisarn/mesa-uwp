@@ -1,6 +1,7 @@
 #include "nvk_sampler.h"
 
 #include "nvk_device.h"
+#include "nvk_physical_device.h"
 #include "nouveau_context.h"
 
 #include "util/bitpack_helpers.h"
@@ -228,14 +229,14 @@ nvk_CreateSampler(VkDevice device,
       unreachable("Invalid mipmap mode");
    }
 
-   assert(dev->ctx->eng3d.cls >= KEPLER_A);
+   assert(dev->pdev->info.cls_eng3d >= KEPLER_A);
    if (pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT) {
       SAMP_SET_E(samp, NVA097, 1, CUBEMAP_INTERFACE_FILTERING, USE_WRAP);
    } else {
       SAMP_SET_E(samp, NVA097, 1, CUBEMAP_INTERFACE_FILTERING, AUTO_SPAN_SEAM);
    }
 
-   if (dev->ctx->eng3d.cls >= MAXWELL_B) {
+   if (dev->pdev->info.cls_eng3d >= MAXWELL_B) {
       switch (vk_sampler_create_reduction_mode(pCreateInfo)) {
       case VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE:
          SAMP_SET_E(samp, NVB197, 1, REDUCTION_FILTER, RED_NONE);
@@ -253,7 +254,7 @@ nvk_CreateSampler(VkDevice device,
 
    SAMP_SET_SF(samp, NV9097, 1, MIP_LOD_BIAS, pCreateInfo->mipLodBias);
 
-   assert(dev->ctx->eng3d.cls >= KEPLER_A);
+   assert(dev->pdev->info.cls_eng3d >= KEPLER_A);
    if (pCreateInfo->unnormalizedCoordinates) {
       SAMP_SET_E(samp, NVA097, 1, FLOAT_COORD_NORMALIZATION,
                                   FORCE_UNNORMALIZED_COORDS);

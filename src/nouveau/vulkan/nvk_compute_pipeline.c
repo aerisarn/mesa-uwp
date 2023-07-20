@@ -203,13 +203,13 @@ nvk_compute_pipeline_create(struct nvk_device *device,
       goto fail;
 
    struct nvk_shader *shader = &pipeline->base.shaders[MESA_SHADER_COMPUTE];
-   if (device->ctx->compute.cls >= AMPERE_COMPUTE_A)
+   if (device->pdev->info.cls_compute >= AMPERE_COMPUTE_A)
       nvc6c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
-   else if (device->ctx->compute.cls >= VOLTA_COMPUTE_A)
+   else if (device->pdev->info.cls_compute >= VOLTA_COMPUTE_A)
       nvc3c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
-   else if (device->ctx->compute.cls >= PASCAL_COMPUTE_A)
+   else if (device->pdev->info.cls_compute >= PASCAL_COMPUTE_A)
       nvc0c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
-   else if (device->ctx->compute.cls >= KEPLER_COMPUTE_A)
+   else if (device->pdev->info.cls_compute >= KEPLER_COMPUTE_A)
       nva0c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
    else
       unreachable("Fermi and older not supported!");

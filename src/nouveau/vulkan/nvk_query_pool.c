@@ -754,7 +754,7 @@ nvk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_buffer, dst_buffer, dstBuffer);
 
    /* TODO: vkCmdCopyQueryPoolResults() with a compute shader */
-   assert(nvk_cmd_buffer_device(cmd)->ctx->eng3d.cls >= TURING_A);
+   assert(nvk_cmd_buffer_device(cmd)->pdev->info.cls_eng3d >= TURING_A);
 
    nvk_cmd_buffer_ref_bo(cmd, pool->bo);
 

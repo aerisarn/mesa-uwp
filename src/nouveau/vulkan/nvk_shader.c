@@ -1167,7 +1167,7 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
 {
    uint32_t hdr_size = 0;
    if (shader->stage != MESA_SHADER_COMPUTE) {
-      if (dev->ctx->eng3d.cls >= TURING_A)
+      if (dev->pdev->info.cls_eng3d >= TURING_A)
          hdr_size = TU102_SHADER_HEADER_SIZE;
       else
          hdr_size = GF100_SHADER_HEADER_SIZE;
@@ -1176,10 +1176,12 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
    /* Fermi   needs 0x40 alignment
     * Kepler+ needs the first instruction to be 0x80 aligned, so we waste 0x30 bytes
     */
-   int alignment = dev->ctx->eng3d.cls >= KEPLER_A ? 0x80 : 0x40;
+   int alignment = dev->pdev->info.cls_eng3d >= KEPLER_A ? 0x80 : 0x40;
    int offset = 0;
 
-   if (dev->ctx->eng3d.cls >= KEPLER_A && dev->ctx->eng3d.cls < TURING_A && hdr_size) {
+   if (dev->pdev->info.cls_eng3d >= KEPLER_A &&
+       dev->pdev->info.cls_eng3d < TURING_A &&
+       hdr_size > 0) {
       /* offset will be 0x30 */
       offset = alignment - hdr_size;
    }

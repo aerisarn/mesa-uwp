@@ -181,7 +181,7 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    result = nvk_heap_init(dev, &dev->shader_heap,
                           NOUVEAU_WS_BO_LOCAL, NOUVEAU_WS_BO_WR,
                           4096 /* overalloc */,
-                          dev->ctx->eng3d.cls < VOLTA_A);
+                          dev->pdev->info.cls_eng3d < VOLTA_A);
    if (result != VK_SUCCESS)
       goto fail_samplers;
 
@@ -225,8 +225,8 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    memset(zero_map, 0, 0x1000);
    nouveau_ws_bo_unmap(dev->zero_page, zero_map);
 
-   if (dev->ctx->eng3d.cls >= FERMI_A &&
-       dev->ctx->eng3d.cls < MAXWELL_A) {
+   if (dev->pdev->info.cls_eng3d >= FERMI_A &&
+       dev->pdev->info.cls_eng3d < MAXWELL_A) {
       /* max size is 256k */
       dev->vab_memory = nouveau_ws_bo_new(dev->pdev->dev, 1 << 17, 1 << 20,
                                           NOUVEAU_WS_BO_LOCAL);
