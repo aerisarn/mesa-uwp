@@ -603,7 +603,7 @@ static const char *compute_shader_yuv_y =
       "DCL TEMP[0..4]\n"
 
       "IMM[0] UINT32 { 8, 8, 1, 0}\n"
-      "IMM[1] FLT32 { 1.0, 2.0, 0.0, 0.0}\n"
+      "IMM[1] FLT32 { 1.0, 2.0, 0.5, 0.0}\n"
 
       "UMAD TEMP[0], SV[1], IMM[0], SV[0]\n"
 
@@ -620,6 +620,10 @@ static const char *compute_shader_yuv_y =
          /* Translate */
          "UADD TEMP[2].xy, TEMP[2], -CONST[5].xyxy\n"
          "U2F TEMP[2], TEMP[2]\n"
+
+         /* Texture offset */
+         "ADD TEMP[2].x, TEMP[2].xxxx, IMM[1].zzzz\n"
+         "ADD TEMP[2].y, TEMP[2].yyyy, IMM[1].zzzz\n"
 
          /* Scale */
          "DIV TEMP[2], TEMP[2], CONST[3].zwzw\n"
@@ -656,7 +660,7 @@ static const char *compute_shader_yuv_uv =
       "DCL TEMP[0..5]\n"
 
       "IMM[0] UINT32 { 8, 8, 1, 0}\n"
-      "IMM[1] FLT32 { 1.0, 2.0, 0.0, 0.0}\n"
+      "IMM[1] FLT32 { 1.0, 2.0, 0.5, 0.0}\n"
 
       "UMAD TEMP[0], SV[1], IMM[0], SV[0]\n"
 
@@ -673,6 +677,11 @@ static const char *compute_shader_yuv_uv =
          /* Translate */
          "UADD TEMP[2].xy, TEMP[2], -CONST[5].xyxy\n"
          "U2F TEMP[2], TEMP[2]\n"
+
+         /* Texture offset */
+         "ADD TEMP[2].x, TEMP[2].xxxx, IMM[1].zzzz\n"
+         "ADD TEMP[2].y, TEMP[2].yyyy, IMM[1].zzzz\n"
+
          "MUL TEMP[2].xy, TEMP[2].xyyy, CONST[6].xyyy\n"
 
          /* Scale */
