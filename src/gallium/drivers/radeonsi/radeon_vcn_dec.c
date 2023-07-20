@@ -3115,7 +3115,14 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
          dec->h264_valid_poc_num[i] = (unsigned) -1;
    }
 
-   dec->num_dec_bufs = NUM_BUFFERS;
+   if (dec->stream_type == RDECODE_CODEC_JPEG) {
+      if (sctx->vcn_ip_ver == VCN_4_0_3)
+         dec->num_dec_bufs = dec->njctx;
+      else
+         dec->num_dec_bufs = dec->njctx * NUM_BUFFERS;
+   } else
+      dec->num_dec_bufs = NUM_BUFFERS;
+
    bs_buf_size = align(width * height / 32, 128);
    dec->msg_fb_it_probs_buffers = (struct rvid_buffer *) CALLOC(dec->num_dec_bufs, sizeof(struct rvid_buffer));
    dec->bs_buffers = (struct rvid_buffer *) CALLOC(dec->num_dec_bufs, sizeof(struct rvid_buffer));
