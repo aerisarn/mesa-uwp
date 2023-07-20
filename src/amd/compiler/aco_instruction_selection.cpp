@@ -10847,10 +10847,87 @@ create_fs_jump_to_epilog(isel_context* ctx)
    ctx->block->instructions.emplace_back(std::move(jump));
 }
 
+PhysReg
+get_arg_reg(const struct ac_shader_args* args, struct ac_arg arg)
+{
+   assert(arg.used);
+   enum ac_arg_regfile file = args->args[arg.arg_index].file;
+   unsigned reg = args->args[arg.arg_index].offset;
+   return PhysReg(file == AC_ARG_SGPR ? reg : reg + 256);
+}
+
+static Operand
+get_arg_for_end(isel_context* ctx, struct ac_arg arg)
+{
+   return Operand(get_arg(ctx, arg), get_arg_reg(ctx->args, arg));
+}
+
 static void
 create_tcs_jump_to_epilog(isel_context* ctx)
 {
    /* TODO */
+}
+
+static void
+create_tcs_end_for_epilog(isel_context* ctx)
+{
+   std::vector<Operand> regs;
+
+   regs.emplace_back(get_arg_for_end(ctx, ctx->program->info.tcs.tcs_offchip_layout));
+   regs.emplace_back(get_arg_for_end(ctx, ctx->program->info.tcs.tes_offchip_addr));
+   regs.emplace_back(get_arg_for_end(ctx, ctx->args->tess_offchip_offset));
+   regs.emplace_back(get_arg_for_end(ctx, ctx->args->tcs_factor_offset));
+
+   Builder bld(ctx->program, ctx->block);
+
+   /* Leave a hole corresponding to the two input VGPRs. This ensures that
+    * the invocation_id output does not alias the tcs_rel_ids input,
+    * which saves a V_MOV on gfx9.
+    */
+   unsigned vgpr = 256 + ctx->args->num_vgprs_used;
+
+   Temp rel_patch_id =
+      bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), get_arg(ctx, ctx->args->tcs_rel_ids),
+               Operand::c32(0u), Operand::c32(8u));
+   regs.emplace_back(Operand(rel_patch_id, PhysReg{vgpr++}));
+
+   Temp invocation_id =
+      bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), get_arg(ctx, ctx->args->tcs_rel_ids),
+               Operand::c32(8u), Operand::c32(5u));
+   regs.emplace_back(Operand(invocation_id, PhysReg{vgpr++}));
+
+   if (ctx->program->info.tcs.pass_tessfactors_by_reg) {
+      vgpr++; /* skip the tess factor LDS offset */
+
+      unsigned slot = VARYING_SLOT_TESS_LEVEL_OUTER;
+      u_foreach_bit (i, ctx->outputs.mask[slot]) {
+         regs.emplace_back(Operand(ctx->outputs.temps[slot * 4 + i], PhysReg{vgpr + i}));
+      }
+      vgpr += 4;
+
+      slot = VARYING_SLOT_TESS_LEVEL_INNER;
+      u_foreach_bit (i, ctx->outputs.mask[slot]) {
+         regs.emplace_back(Operand(ctx->outputs.temps[slot * 4 + i], PhysReg{vgpr + i}));
+      }
+   } else {
+      Temp patch0_patch_data_offset =
+         bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                  get_arg(ctx, ctx->program->info.tcs.vs_state_bits), Operand::c32(0xe000a));
+
+      Temp tf_lds_offset =
+         bld.v_mul24_imm(bld.def(v1), rel_patch_id, ctx->program->info.tcs.patch_stride);
+      tf_lds_offset = bld.nuw().vadd32(bld.def(v1), tf_lds_offset, patch0_patch_data_offset);
+
+      regs.emplace_back(Operand(tf_lds_offset, PhysReg{vgpr}));
+   }
+
+   aco_ptr<Pseudo_instruction> end{create_instruction<Pseudo_instruction>(
+      aco_opcode::p_end_with_regs, Format::PSEUDO, regs.size(), 0)};
+
+   for (unsigned i = 0; i < regs.size(); i++)
+      end->operands[i] = regs[i];
+
+   ctx->block->instructions.emplace_back(std::move(end));
 }
 
 Pseudo_instruction*
@@ -11301,7 +11378,10 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
          ctx.block->kind |= block_kind_export_end;
       } else {
          assert(ctx.stage == tess_control_hs);
-         create_tcs_jump_to_epilog(&ctx);
+         if (ctx.options->is_opengl)
+            create_tcs_end_for_epilog(&ctx);
+         else
+            create_tcs_jump_to_epilog(&ctx);
       }
    }
 
@@ -11441,15 +11521,6 @@ select_trap_handler_shader(Program* program, struct nir_shader* shader, ac_shade
    bld.sopp(aco_opcode::s_endpgm);
 
    cleanup_cfg(program);
-}
-
-PhysReg
-get_arg_reg(const struct ac_shader_args* args, struct ac_arg arg)
-{
-   assert(arg.used);
-   enum ac_arg_regfile file = args->args[arg.arg_index].file;
-   unsigned reg = args->args[arg.arg_index].offset;
-   return PhysReg(file == AC_ARG_SGPR ? reg : reg + 256);
 }
 
 Operand
