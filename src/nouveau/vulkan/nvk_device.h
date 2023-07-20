@@ -29,7 +29,7 @@ struct nvk_device {
    struct vk_device vk;
    struct nvk_physical_device *pdev;
 
-   struct nouveau_ws_context *ctx;
+   struct nouveau_ws_context *ws_ctx;
 
    /* Protected by nvk_device::mutex */
    struct list_head memory_objects;

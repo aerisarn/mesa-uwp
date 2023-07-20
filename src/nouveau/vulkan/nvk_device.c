@@ -143,7 +143,7 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    dev->vk.command_buffer_ops = &nvk_cmd_buffer_ops;
    dev->pdev = pdev;
 
-   int ret = nouveau_ws_context_create(pdev->dev, &dev->ctx);
+   int ret = nouveau_ws_context_create(pdev->dev, &dev->ws_ctx);
    if (ret) {
       if (ret == -ENOSPC)
          result = vk_error(dev, VK_ERROR_TOO_MANY_OBJECTS);
@@ -268,7 +268,7 @@ fail_samplers:
 fail_images:
    nvk_descriptor_table_finish(dev, &dev->images);
 fail_memory_objects:
-   nouveau_ws_context_destroy(dev->ctx);
+   nouveau_ws_context_destroy(dev->ws_ctx);
 fail_init:
    vk_device_finish(&dev->vk);
 fail_alloc:
@@ -299,7 +299,7 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    nvk_descriptor_table_finish(dev, &dev->samplers);
    nvk_descriptor_table_finish(dev, &dev->images);
    assert(list_is_empty(&dev->memory_objects));
-   nouveau_ws_context_destroy(dev->ctx);
+   nouveau_ws_context_destroy(dev->ws_ctx);
    vk_free(&dev->vk.alloc, dev);
 }
 

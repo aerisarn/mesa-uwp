@@ -24,7 +24,7 @@ push_builder_init(struct nvk_device *dev, struct push_builder *pb)
 {
    pb->dev = dev;
    pb->req = (struct drm_nouveau_gem_pushbuf) {
-      .channel = dev->ctx->channel,
+      .channel = dev->ws_ctx->channel,
       .nr_buffers = 0,
       .buffers = (uintptr_t)&pb->req_bo,
       .nr_push = 0,
