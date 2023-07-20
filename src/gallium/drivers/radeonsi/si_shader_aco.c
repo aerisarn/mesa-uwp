@@ -208,6 +208,8 @@ si_aco_resolve_symbols(struct si_shader *shader, uint32_t *code, uint64_t scratc
          assert(sel->stage == MESA_SHADER_GEOMETRY && key->ge.as_ngg);
          value = shader->gs_info.esgs_ring_size * 4;
          break;
+      case aco_symbol_const_data_addr:
+         continue;
       default:
          unreachable("invalid aco symbol");
          break;

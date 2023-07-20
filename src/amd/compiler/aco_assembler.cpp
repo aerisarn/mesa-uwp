@@ -1209,6 +1209,13 @@ fix_constaddrs(asm_context& ctx, std::vector<uint32_t>& out)
    for (auto& constaddr : ctx.constaddrs) {
       constaddr_info& info = constaddr.second;
       out[info.add_literal] += (out.size() - info.getpc_end) * 4u;
+
+      if (ctx.symbols) {
+         struct aco_symbol sym;
+         sym.id = aco_symbol_const_data_addr;
+         sym.offset = info.add_literal;
+         ctx.symbols->push_back(sym);
+      }
    }
    for (auto& addr : ctx.resumeaddrs) {
       constaddr_info& info = addr.second;
