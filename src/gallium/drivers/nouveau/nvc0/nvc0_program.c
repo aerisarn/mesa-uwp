@@ -686,9 +686,9 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
    prog->relocs = info_out.bin.relocData;
    prog->fixups = info_out.bin.fixupData;
    if (info_out.target >= NVISA_GV100_CHIPSET)
-      prog->num_gprs = MIN2(info_out.bin.maxGPR + 5, 255); //XXX: why?
+      prog->num_gprs = MAX2(4, info_out.bin.maxGPR + 3);
    else
-      prog->num_gprs = MAX2(4, (info_out.bin.maxGPR + 1));
+      prog->num_gprs = MAX2(4, info_out.bin.maxGPR + 1);
    prog->cp.smem_size = info_out.bin.smemSize;
    prog->num_barriers = info_out.numBarriers;
 
