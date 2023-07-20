@@ -62,6 +62,30 @@
  * This pass inserts copies to ensure that all load_reg/store_reg are trivial.
  */
 
+/*
+ * In order to allow for greater freedom elsewhere in the pass, move all
+ * reg_decl intrinsics to the top of their block.  This ensures in particular
+ * that decl_reg intrinsics occur before the producer of the SSA value
+ * consumed by a store_reg whenever they're all in the same block.
+ */
+static void
+move_reg_decls(nir_block *block)
+{
+   nir_cursor cursor = nir_before_block(block);
+
+   nir_foreach_instr_safe(instr, block) {
+      if (instr->type != nir_instr_type_intrinsic)
+         continue;
+
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+      if (intr->intrinsic != nir_intrinsic_decl_reg)
+         continue;
+
+      nir_instr_move(cursor, instr);
+      cursor = nir_after_instr(instr);
+   }
+}
+
  /*
  * Any load can be trivialized by copying immediately after the load and then
  * rewriting uses of the load to read from the copy. That has no functional
@@ -459,6 +483,9 @@ void
 nir_trivialize_registers(nir_shader *s)
 {
    nir_foreach_function_impl(impl, s) {
+      /* All decl_reg intrinsics are in the start block. */
+      move_reg_decls(nir_start_block(impl));
+
       nir_foreach_block(block, impl) {
          trivialize_loads(impl, block);
          trivialize_stores(impl, block);
