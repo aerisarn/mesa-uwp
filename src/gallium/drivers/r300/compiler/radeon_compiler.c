@@ -358,7 +358,7 @@ void rc_get_stats(struct radeon_compiler *c, struct rc_program_stats *s)
 	struct rc_instruction * tmp;
 	memset(s, 0, sizeof(*s));
 	unsigned ip = 0;
-	unsigned last_begintex = 0;
+	int last_begintex = -1;
 
 	for(tmp = c->Program.Instructions.Next; tmp != &c->Program.Instructions;
 							tmp = tmp->Next, ip++){
@@ -399,8 +399,10 @@ void rc_get_stats(struct radeon_compiler *c, struct rc_program_stats *s)
 			/* SemWait has effect only on R500, the more instructions we can put
 			 * between the tex block and the first texture semaphore, the better.
 			 */
-			if (tmp->U.P.SemWait && c->is_r500)
-				s->num_cycles -= ip - last_begintex;
+			if (tmp->U.P.SemWait && c->is_r500 && last_begintex != -1) {
+				s->num_cycles -= MIN2(30, ip - last_begintex);
+				last_begintex = -1;
+			}
 			info = rc_get_opcode_info(tmp->U.P.RGB.Opcode);
 		}
 		if (info->IsFlowControl) {
