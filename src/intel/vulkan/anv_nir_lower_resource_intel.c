@@ -74,34 +74,6 @@ anv_nir_update_resource_intel_block(nir_shader *shader)
                                        NULL);
 }
 
-static bool
-intrinsic_dont_need_rewrite(nir_intrinsic_instr *instr)
-{
-   switch (instr->intrinsic) {
-   case nir_intrinsic_load_ubo:
-   case nir_intrinsic_load_ssbo:
-   case nir_intrinsic_store_ssbo:
-      return true;
-   case nir_intrinsic_image_load:
-   case nir_intrinsic_image_store:
-   case nir_intrinsic_image_atomic:
-   case nir_intrinsic_image_atomic_swap:
-   case nir_intrinsic_image_size:
-   case nir_intrinsic_image_load_raw_intel:
-   case nir_intrinsic_image_store_raw_intel:
-   case nir_intrinsic_image_samples:
-   case nir_intrinsic_bindless_image_load:
-   case nir_intrinsic_bindless_image_store:
-   case nir_intrinsic_bindless_image_atomic:
-   case nir_intrinsic_bindless_image_atomic_swap:
-   case nir_intrinsic_bindless_image_size:
-      return true;
-
-   default:
-      return false;
-   }
-}
-
 struct lower_resource_state {
    enum anv_descriptor_set_layout_type desc_type;
    const struct anv_physical_device *device;
