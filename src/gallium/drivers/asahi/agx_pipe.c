@@ -1969,8 +1969,8 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
 
    if (usage & PIPE_BIND_DEPTH_STENCIL) {
       switch (format) {
-      /* natively supported
-       * TODO: we could also support Z16_UNORM */
+      /* natively supported */
+      case PIPE_FORMAT_Z16_UNORM:
       case PIPE_FORMAT_Z32_FLOAT:
       case PIPE_FORMAT_S8_UINT:
 
