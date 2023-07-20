@@ -35,7 +35,6 @@ struct nouveau_ws_device {
 
    struct nv_device_info info;
 
-   uint64_t gart_size;
    uint32_t local_mem_domain;
 
    uint8_t gpc_count;

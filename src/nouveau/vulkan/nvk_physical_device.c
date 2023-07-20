@@ -668,12 +668,20 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    pdev->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
    pdev->mem_types[0].heapIndex = 0;
 
+   uint64_t sysmem_size_B = 0;
+   if (!os_get_available_system_memory(&sysmem_size_B)) {
+      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                         "Failed to query available system memory");
+      goto fail_init;
+   }
+   sysmem_size_B = MIN2(sysmem_size_B, pdev->info.gart_size_B);
+
    if (pdev->info.vram_size_B) {
       pdev->mem_type_cnt = 2;
       pdev->mem_heap_cnt = 2;
 
       pdev->mem_heaps[0].size = pdev->info.vram_size_B;
-      pdev->mem_heaps[1].size = ndev->gart_size;
+      pdev->mem_heaps[1].size = sysmem_size_B;
       pdev->mem_heaps[1].flags = 0;
       pdev->mem_types[1].heapIndex = 1;
       pdev->mem_types[1].propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -682,7 +690,7 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       pdev->mem_type_cnt = 1;
       pdev->mem_heap_cnt = 1;
 
-      pdev->mem_heaps[0].size = ndev->gart_size;
+      pdev->mem_heaps[0].size = sysmem_size_B;
       pdev->mem_types[0].propertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
    }

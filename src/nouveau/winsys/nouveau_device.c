@@ -245,8 +245,7 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_AGP_SIZE, &value))
       goto out_err;
 
-   os_get_available_system_memory(&device->gart_size);
-   device->gart_size = MIN2(device->gart_size, value);
+   device->info.gart_size_B = value;
 
    device->fd = fd;
 
