@@ -75,6 +75,52 @@ sm_for_chipset(uint16_t chipset)
    return 0x00;
 }
 
+static uint8_t
+max_warps_per_mp_for_sm(uint8_t sm)
+{
+   switch (sm) {
+   case 10:
+   case 11:
+      return 24;
+   case 12:
+   case 13:
+   case 75:
+      return 32;
+   case 20:
+   case 21:
+   case 86:
+   case 87:
+   case 89:
+      return 48;
+   case 30:
+   case 32:
+   case 35:
+   case 37:
+   case 50:
+   case 52:
+   case 53:
+   case 60:
+   case 61:
+   case 62:
+   case 70:
+   case 72:
+   case 80:
+   case 90:
+      return 64;
+   default:
+      assert(!"unkown SM version");
+   }
+}
+
+static uint8_t
+mp_per_tpc_for_chipset(uint16_t chipset)
+{
+   // GP100 is special and has two, otherwise it's a Volta and newer thing to have two
+   if (chipset == 0x130 || chipset >= 0x140)
+      return 2;
+   return 1;
+}
+
 static void
 nouveau_ws_device_set_dbg_flags(struct nouveau_ws_device *dev)
 {
@@ -256,8 +302,9 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
 
    if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_GRAPH_UNITS, &value))
       goto out_err;
-   device->gpc_count = value & 0x000000ff;
-   device->tpc_count = value >> 8;
+
+   device->gpc_count = (value >> 0) & 0x000000ff;
+   device->tpc_count = (value >> 8) & 0x0000ffff;
 
    nouveau_ws_device_set_dbg_flags(device);
 
@@ -271,6 +318,11 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    device->info.cls_eng3d = tmp_ctx->eng3d.cls;
    device->info.cls_m2mf = tmp_ctx->m2mf.cls;
    device->info.cls_compute = tmp_ctx->compute.cls;
+
+   // for now we hardcode those values, but in the future Nouveau could provide that information to
+   // us instead.
+   device->max_warps_per_mp = max_warps_per_mp_for_sm(device->info.sm);
+   device->mp_per_tpc = mp_per_tpc_for_chipset(device->info.chipset);
 
    nouveau_ws_context_destroy(tmp_ctx);
 

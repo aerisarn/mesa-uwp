@@ -60,16 +60,13 @@ nvk_slm_area_ensure(struct nvk_device *dev,
     */
    bytes_per_warp = ALIGN(bytes_per_warp, 0x200);
 
-   uint64_t bytes_per_tpc = bytes_per_warp * 64; /* max warps */
+   uint64_t bytes_per_mp = bytes_per_warp * dev->ws_dev->max_warps_per_mp;
+   uint64_t bytes_per_tpc = bytes_per_mp * dev->ws_dev->mp_per_tpc;
 
    /* The hardware seems to require this alignment for
     * NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_A_SIZE_LOWER.
-    *
-    * Fortunately, this is just the alignment for bytes_per_warp multiplied
-    * by the number of warps, 64.  It might matter for real on a GPU with 48
-    * warps but we don't support any of those yet.
     */
-   assert(bytes_per_tpc == ALIGN(bytes_per_tpc, 0x8000));
+   bytes_per_tpc = ALIGN(bytes_per_tpc, 0x8000);
 
    /* nvk_slm_area::bytes_per_mp only ever increases so we can check this
     * outside the lock and exit early in the common case.  We only need to
