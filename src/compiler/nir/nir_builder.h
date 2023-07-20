@@ -727,7 +727,7 @@ static inline nir_ssa_def *
 nir_replicate(nir_builder *b, nir_ssa_def *scalar, unsigned num_components)
 {
    assert(scalar->num_components == 1);
-   assert(num_components < NIR_MAX_VEC_COMPONENTS);
+   assert(num_components <= NIR_MAX_VEC_COMPONENTS);
 
    nir_ssa_def *copies[NIR_MAX_VEC_COMPONENTS] = {NULL};
    for (unsigned i = 0; i < num_components; ++i)
