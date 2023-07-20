@@ -3350,8 +3350,8 @@ radv_emit_fragment_shader(const struct radv_device *device, struct radeon_cmdbuf
 }
 
 static void
-radv_pipeline_emit_vgt_vertex_reuse(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                                    const struct radv_graphics_pipeline *pipeline)
+radv_emit_vgt_vertex_reuse(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
+                           const struct radv_shader *tes)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
 
@@ -3359,9 +3359,7 @@ radv_pipeline_emit_vgt_vertex_reuse(const struct radv_device *device, struct rad
       return;
 
    unsigned vtx_reuse_depth = 30;
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL) &&
-       radv_get_shader(pipeline->base.shaders, MESA_SHADER_TESS_EVAL)->info.tes.spacing ==
-          TESS_SPACING_FRACTIONAL_ODD) {
+   if (tes && tes->info.tes.spacing == TESS_SPACING_FRACTIONAL_ODD) {
       vtx_reuse_depth = 14;
    }
    radeon_set_context_reg(ctx_cs, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, S_028C58_VTX_REUSE_DEPTH(vtx_reuse_depth));
@@ -3606,7 +3604,7 @@ radv_pipeline_emit_pm4(const struct radv_device *device, struct radv_graphics_pi
       radv_emit_ps_inputs(device, ctx_cs, last_vgt_shader, ps);
    }
 
-   radv_pipeline_emit_vgt_vertex_reuse(device, ctx_cs, pipeline);
+   radv_emit_vgt_vertex_reuse(device, ctx_cs, radv_get_shader(pipeline->base.shaders, MESA_SHADER_TESS_EVAL));
    radv_emit_vgt_shader_config(device, ctx_cs, &vgt_shader_key);
    radv_pipeline_emit_vgt_gs_out(device, ctx_cs, pipeline, vgt_gs_out_prim_type);
 
