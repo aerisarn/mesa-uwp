@@ -1582,8 +1582,7 @@ radv_emit_shader_prefetch(struct radv_cmd_buffer *cmd_buffer, struct radv_shader
 }
 
 ALWAYS_INLINE static void
-radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer, struct radv_graphics_pipeline *pipeline,
-                      bool first_stage_only)
+radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer, bool first_stage_only)
 {
    struct radv_cmd_state *state = &cmd_buffer->state;
    uint32_t mask = state->prefetch_L2_mask;
@@ -1615,8 +1614,8 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer, struct radv_graphics_p
 
    if (mask & RADV_PREFETCH_PS) {
       radv_emit_shader_prefetch(cmd_buffer, cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]);
-      if (pipeline->ps_epilog) {
-         struct radv_shader_part *ps_epilog = pipeline->ps_epilog;
+      if (cmd_buffer->state.ps_epilog) {
+         struct radv_shader_part *ps_epilog = cmd_buffer->state.ps_epilog;
 
          si_cp_dma_prefetch(cmd_buffer, ps_epilog->va, ps_epilog->code_size);
       }
@@ -6494,6 +6493,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       }
 
       cmd_buffer->state.gs_copy_shader = graphics_pipeline->base.gs_copy_shader;
+      cmd_buffer->state.ps_epilog = graphics_pipeline->ps_epilog;
       cmd_buffer->state.last_vgt_shader = graphics_pipeline->base.shaders[graphics_pipeline->last_vgt_api_stage];
 
       cmd_buffer->state.graphics_pipeline = graphics_pipeline;
@@ -8771,8 +8771,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 
    if (cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT] &&
        cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog) {
-      if (cmd_buffer->state.graphics_pipeline->ps_epilog) {
-         ps_epilog = cmd_buffer->state.graphics_pipeline->ps_epilog;
+      if (cmd_buffer->state.ps_epilog) {
+         ps_epilog = cmd_buffer->state.ps_epilog;
       } else if ((cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline ||
                   (cmd_buffer->state.dirty &
                    (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK | RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE |
@@ -8928,7 +8928,7 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
          /* Only prefetch the vertex shader and VBO descriptors
           * in order to start the draw as soon as possible.
           */
-         radv_emit_prefetch_L2(cmd_buffer, cmd_buffer->state.graphics_pipeline, true);
+         radv_emit_prefetch_L2(cmd_buffer, true);
       }
 
       radv_upload_graphics_shader_descriptors(cmd_buffer);
@@ -9032,7 +9032,7 @@ radv_after_draw(struct radv_cmd_buffer *cmd_buffer)
     * important.
     */
    if (has_prefetch && cmd_buffer->state.prefetch_L2_mask) {
-      radv_emit_prefetch_L2(cmd_buffer, cmd_buffer->state.graphics_pipeline, false);
+      radv_emit_prefetch_L2(cmd_buffer, false);
    }
 
    /* Workaround for a VGT hang when streamout is enabled.
