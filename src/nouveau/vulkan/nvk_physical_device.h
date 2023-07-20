@@ -10,12 +10,14 @@
 
 #include "wsi_common.h"
 
+#include <sys/types.h>
+
 struct nvk_instance;
 
 struct nvk_physical_device {
    struct vk_physical_device vk;
-   struct nouveau_ws_device *ws_dev;
    struct nv_device_info info;
+   dev_t render_dev;
    struct wsi_device wsi_device;
 
    uint8_t device_uuid[VK_UUID_SIZE];

@@ -14,6 +14,8 @@
 #include "vulkan/runtime/vk_device.h"
 #include "vulkan/wsi/wsi_common.h"
 
+#include <sys/stat.h>
+
 #include "cl90c0.h"
 #include "cl91c0.h"
 #include "cla0c0.h"
@@ -619,16 +621,31 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    if (!ws_dev)
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
 
+   const struct nv_device_info info = ws_dev->info;
+
+   nouveau_ws_device_destroy(ws_dev);
+
+   if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER))) {
+      return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                       "NVK requires a render node");
+   }
+
+   struct stat st;
+   if (stat(drm_device->nodes[DRM_NODE_RENDER], &st)) {
+      return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                       "fstat() failed on %s: %m",
+                       drm_device->nodes[DRM_NODE_RENDER]);
+   }
+   const dev_t render_dev = st.st_rdev;
+
    vk_warn_non_conformant_implementation("NVK");
 
    struct nvk_physical_device *pdev =
       vk_zalloc(&instance->vk.alloc, sizeof(*pdev),
                 8, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
 
-   if (pdev == NULL) {
-      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-      goto fail_dev_alloc;
-   }
+   if (pdev == NULL)
+      return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    struct vk_physical_device_dispatch_table dispatch_table;
    vk_physical_device_dispatch_table_from_entrypoints(
@@ -637,21 +654,20 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       &dispatch_table, &wsi_physical_device_entrypoints, false);
 
    struct vk_device_extension_table supported_extensions;
-   nvk_get_device_extensions(&ws_dev->info, &supported_extensions);
+   nvk_get_device_extensions(&info, &supported_extensions);
 
    struct vk_features supported_features;
-   nvk_get_device_features(&ws_dev->info, &supported_features);
+   nvk_get_device_features(&info, &supported_features);
 
    result = vk_physical_device_init(&pdev->vk, &instance->vk,
                                     &supported_extensions,
                                     &supported_features,
                                     &dispatch_table);
-
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   pdev->ws_dev = ws_dev;
-   pdev->info = ws_dev->info;
+   pdev->render_dev = render_dev;
+   pdev->info = info;
 
    const struct {
       uint16_t vendor_id;
@@ -713,8 +729,6 @@ fail_init:
    vk_physical_device_finish(&pdev->vk);
 fail_alloc:
    vk_free(&instance->vk.alloc, pdev);
-fail_dev_alloc:
-   nouveau_ws_device_destroy(ws_dev);
    return result;
 }
 
@@ -725,7 +739,6 @@ nvk_physical_device_destroy(struct vk_physical_device *vk_pdev)
       container_of(vk_pdev, struct nvk_physical_device, vk);
 
    nvk_finish_wsi(pdev);
-   nouveau_ws_device_destroy(pdev->ws_dev);
    vk_physical_device_finish(&pdev->vk);
    vk_free(&pdev->vk.instance->alloc, pdev);
 }

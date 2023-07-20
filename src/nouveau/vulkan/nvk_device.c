@@ -139,18 +139,33 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   vk_device_set_drm_fd(&dev->vk, pdev->ws_dev->fd);
+   drmDevicePtr drm_device = NULL;
+   int ret = drmGetDeviceFromDevId(pdev->render_dev, 0, &drm_device);
+   if (ret != 0) {
+      result = vk_errorf(dev, VK_ERROR_INITIALIZATION_FAILED,
+                         "Failed to get DRM device: %m");
+      goto fail_init;
+   }
+
+   dev->ws_dev = nouveau_ws_device_new(drm_device);
+   drmFreeDevice(&drm_device);
+   if (dev->ws_dev == NULL) {
+      result = vk_errorf(dev, VK_ERROR_INITIALIZATION_FAILED,
+                         "Failed to get DRM device: %m");
+      goto fail_init;
+   }
+
+   vk_device_set_drm_fd(&dev->vk, dev->ws_dev->fd);
    dev->vk.command_buffer_ops = &nvk_cmd_buffer_ops;
    dev->pdev = pdev;
-   dev->ws_dev = pdev->ws_dev;
 
-   int ret = nouveau_ws_context_create(dev->ws_dev, &dev->ws_ctx);
+   ret = nouveau_ws_context_create(dev->ws_dev, &dev->ws_ctx);
    if (ret) {
       if (ret == -ENOSPC)
          result = vk_error(dev, VK_ERROR_TOO_MANY_OBJECTS);
       else
          result = vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
-      goto fail_init;
+      goto fail_ws_dev;
    }
 
    list_inithead(&dev->memory_objects);
@@ -159,7 +174,7 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
                                       8 * 4 /* tic entry size */,
                                       1024, 1024 * 1024);
    if (result != VK_SUCCESS)
-      goto fail_memory_objects;
+      goto fail_ws_ctx;
 
    /* Reserve the descriptor at offset 0 to be the null descriptor */
    uint32_t null_image[8] = { 0, };
@@ -268,8 +283,10 @@ fail_samplers:
    nvk_descriptor_table_finish(dev, &dev->samplers);
 fail_images:
    nvk_descriptor_table_finish(dev, &dev->images);
-fail_memory_objects:
+fail_ws_ctx:
    nouveau_ws_context_destroy(dev->ws_ctx);
+fail_ws_dev:
+   nouveau_ws_device_destroy(dev->ws_dev);
 fail_init:
    vk_device_finish(&dev->vk);
 fail_alloc:
@@ -301,6 +318,7 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    nvk_descriptor_table_finish(dev, &dev->images);
    assert(list_is_empty(&dev->memory_objects));
    nouveau_ws_context_destroy(dev->ws_ctx);
+   nouveau_ws_device_destroy(dev->ws_dev);
    vk_free(&dev->vk.alloc, dev);
 }
 
