@@ -195,9 +195,11 @@ format_minimum_alignment(const struct panfrost_device *dev,
       return 63;
 
    switch (format) {
-   /* For v7+, NV12 and NV21 have a looser alignment requirement of 16 bytes */
+   /* For v7+, NV12/NV21/I420 have a looser alignment requirement of 16 bytes */
    case PIPE_FORMAT_R8_G8B8_420_UNORM:
    case PIPE_FORMAT_G8_B8R8_420_UNORM:
+   case PIPE_FORMAT_R8_G8_B8_420_UNORM:
+   case PIPE_FORMAT_R8_B8_G8_420_UNORM:
       return 16;
    default:
       return 64;
