@@ -5257,9 +5257,13 @@ visit_store_output(isel_context* ctx, nir_intrinsic_instr* instr)
    bool ls_need_output = ctx->stage == vertex_tess_control_hs &&
                          ctx->shader->info.stage == MESA_SHADER_VERTEX && ctx->tcs_in_out_eq;
 
+   bool tcs_need_output = ctx->shader->info.stage == MESA_SHADER_TESS_CTRL &&
+                          ctx->program->info.has_epilog &&
+                          ctx->program->info.tcs.pass_tessfactors_by_reg;
+
    bool ps_need_output = ctx->stage == fragment_fs;
 
-   if (ls_need_output || ps_need_output) {
+   if (ls_need_output || tcs_need_output || ps_need_output) {
       bool stored_to_temps = store_output_to_temps(ctx, instr);
       if (!stored_to_temps) {
          isel_err(instr->src[1].ssa->parent_instr, "Unimplemented output offset instruction");
