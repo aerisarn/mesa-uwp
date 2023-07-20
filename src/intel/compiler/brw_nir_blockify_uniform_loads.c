@@ -78,12 +78,6 @@ brw_nir_blockify_uniform_loads_instr(nir_builder *b,
       if (nir_dest_bit_size(intrin->dest) != 32)
          return false;
 
-      /* Without the LSC, we can only do block loads of at least 4dwords (1
-       * oword).
-       */
-      if (!devinfo->has_lsc && nir_dest_num_components(intrin->dest) < 4)
-         return false;
-
       intrin->intrinsic = nir_intrinsic_load_shared_uniform_block_intel;
       return true;
 
