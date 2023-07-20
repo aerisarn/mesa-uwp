@@ -578,35 +578,33 @@ radv_pipeline_needed_dynamic_state(const struct radv_device *device, const struc
 }
 
 static struct radv_ia_multi_vgt_param_helpers
-radv_compute_ia_multi_vgt_param_helpers(const struct radv_device *device, struct radv_graphics_pipeline *pipeline)
+radv_compute_ia_multi_vgt_param(const struct radv_device *device, struct radv_shader *const *shaders)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
    struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param = {0};
 
    ia_multi_vgt_param.ia_switch_on_eoi = false;
-   if (pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
-       pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.prim_id_input)
+   if (shaders[MESA_SHADER_FRAGMENT] && shaders[MESA_SHADER_FRAGMENT]->info.ps.prim_id_input)
       ia_multi_vgt_param.ia_switch_on_eoi = true;
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) &&
-       pipeline->base.shaders[MESA_SHADER_GEOMETRY]->info.uses_prim_id)
+   if (shaders[MESA_SHADER_GEOMETRY] && shaders[MESA_SHADER_GEOMETRY]->info.uses_prim_id)
       ia_multi_vgt_param.ia_switch_on_eoi = true;
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
+   if (shaders[MESA_SHADER_TESS_CTRL]) {
       /* SWITCH_ON_EOI must be set if PrimID is used. */
-      if (pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.uses_prim_id ||
-          radv_get_shader(pipeline->base.shaders, MESA_SHADER_TESS_EVAL)->info.uses_prim_id)
+      if (shaders[MESA_SHADER_TESS_CTRL]->info.uses_prim_id ||
+          radv_get_shader(shaders, MESA_SHADER_TESS_EVAL)->info.uses_prim_id)
          ia_multi_vgt_param.ia_switch_on_eoi = true;
    }
 
    ia_multi_vgt_param.partial_vs_wave = false;
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
+   if (shaders[MESA_SHADER_TESS_CTRL]) {
       /* Bug with tessellation and GS on Bonaire and older 2 SE chips. */
       if ((pdevice->rad_info.family == CHIP_TAHITI || pdevice->rad_info.family == CHIP_PITCAIRN ||
            pdevice->rad_info.family == CHIP_BONAIRE) &&
-          radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY))
+          shaders[MESA_SHADER_GEOMETRY])
          ia_multi_vgt_param.partial_vs_wave = true;
       /* Needed for 028B6C_DISTRIBUTION_MODE != 0 */
       if (pdevice->rad_info.has_distributed_tess) {
-         if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
+         if (shaders[MESA_SHADER_GEOMETRY]) {
             if (pdevice->rad_info.gfx_level <= GFX8)
                ia_multi_vgt_param.partial_es_wave = true;
          } else {
@@ -615,7 +613,7 @@ radv_compute_ia_multi_vgt_param_helpers(const struct radv_device *device, struct
       }
    }
 
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
+   if (shaders[MESA_SHADER_GEOMETRY]) {
       /* On these chips there is the possibility of a hang if the
        * pipeline uses a GS and partial_vs_wave is not set.
        *
@@ -822,7 +820,7 @@ radv_graphics_pipeline_import_lib(const struct radv_device *device, struct radv_
 static void
 radv_pipeline_init_input_assembly_state(const struct radv_device *device, struct radv_graphics_pipeline *pipeline)
 {
-   pipeline->ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(device, pipeline);
+   pipeline->ia_multi_vgt_param = radv_compute_ia_multi_vgt_param(device, pipeline->base.shaders);
 }
 
 static bool
