@@ -1103,9 +1103,9 @@ nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
    shader->code_size = info_out.bin.codeSize;
 
    if (info_out.target >= NVISA_GV100_CHIPSET)
-      shader->num_gprs = MIN2(info_out.bin.maxGPR + 5, 256); //XXX: why?
+      shader->num_gprs = MAX2(4, info_out.bin.maxGPR + 3);
    else
-      shader->num_gprs = MAX2(4, (info_out.bin.maxGPR + 1));
+      shader->num_gprs = MAX2(4, info_out.bin.maxGPR + 1);
    shader->cp.smem_size = info_out.bin.smemSize;
    shader->num_barriers = info_out.numBarriers;
 
