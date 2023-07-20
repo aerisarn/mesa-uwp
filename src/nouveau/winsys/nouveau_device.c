@@ -217,15 +217,6 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (version < 0x01000301)
       goto out_err;
 
-   device->info = (struct nv_device_info) {
-      .pci_domain       = drm_device->businfo.pci->domain,
-      .pci_bus          = drm_device->businfo.pci->bus,
-      .pci_dev          = drm_device->businfo.pci->dev,
-      .pci_func         = drm_device->businfo.pci->func,
-      .pci_device_id    = drm_device->deviceinfo.pci->device_id,
-      .pci_revision_id  = drm_device->deviceinfo.pci->revision_id,
-   };
-
    if (nouveau_ws_device_alloc(fd, device))
       goto out_err;
 
@@ -235,6 +226,18 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_PCI_DEVICE, &value))
       goto out_err;
    device->device_id = value;
+
+   device->info.device_id = value;
+   if (drm_device->bustype == DRM_BUS_PCI) {
+      assert(device->info.type == NV_DEVICE_TYPE_DIS);
+      assert(device->info.device_id == drm_device->deviceinfo.pci->device_id);
+
+      device->info.pci.domain       = drm_device->businfo.pci->domain;
+      device->info.pci.bus          = drm_device->businfo.pci->bus;
+      device->info.pci.dev          = drm_device->businfo.pci->dev;
+      device->info.pci.func         = drm_device->businfo.pci->func;
+      device->info.pci.revision_id  = drm_device->deviceinfo.pci->revision_id;
+   };
 
    if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_AGP_SIZE, &value))
       goto out_err;

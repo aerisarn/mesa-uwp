@@ -252,10 +252,10 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
          VkPhysicalDevicePCIBusInfoPropertiesEXT *p = (void *)ext;
          assert(pdev->info.type == NV_DEVICE_TYPE_DIS);
-         p->pciDomain = pdev->info.pci_domain;
-         p->pciBus = pdev->info.pci_bus;
-         p->pciDevice = pdev->info.pci_dev;
-         p->pciFunction = pdev->info.pci_func;
+         p->pciDomain   = pdev->info.pci.domain;
+         p->pciBus      = pdev->info.pci.bus;
+         p->pciDevice   = pdev->info.pci.dev;
+         p->pciFunction = pdev->info.pci.func;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
@@ -658,7 +658,7 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       uint8_t pad[12];
    } dev_uuid = {
       .vendor_id = NVIDIA_VENDOR_ID,
-      .device_id = pdev->info.pci_device_id,
+      .device_id = pdev->info.device_id,
    };
    STATIC_ASSERT(sizeof(dev_uuid) == VK_UUID_SIZE);
    memcpy(pdev->device_uuid, &dev_uuid, VK_UUID_SIZE);
