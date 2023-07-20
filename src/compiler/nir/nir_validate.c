@@ -174,18 +174,6 @@ validate_reg_src(nir_src *src, validate_state *state,
       validate_assert(state, src->reg.reg->bit_size & bit_sizes);
    if (num_components)
       validate_assert(state, src->reg.reg->num_components == num_components);
-
-   validate_assert(state, (src->reg.reg->num_array_elems == 0 ||
-          src->reg.base_offset < src->reg.reg->num_array_elems) &&
-          "definitely out-of-bounds array access");
-
-   if (src->reg.indirect) {
-      validate_assert(state, src->reg.reg->num_array_elems != 0);
-      validate_assert(state, (src->reg.indirect->is_ssa ||
-              src->reg.indirect->reg.indirect == NULL) &&
-             "only one level of indirection allowed");
-      validate_src(src->reg.indirect, state, 32, 1);
-   }
 }
 
 static void
@@ -269,17 +257,6 @@ validate_reg_dest(nir_register_dest *dest, validate_state *state,
       validate_assert(state, dest->reg->bit_size & bit_sizes);
    if (num_components)
       validate_assert(state, dest->reg->num_components == num_components);
-
-   validate_assert(state, (dest->reg->num_array_elems == 0 ||
-          dest->base_offset < dest->reg->num_array_elems) &&
-          "definitely out-of-bounds array access");
-
-   if (dest->indirect) {
-      validate_assert(state, dest->reg->num_array_elems != 0);
-      validate_assert(state, (dest->indirect->is_ssa || dest->indirect->reg.indirect == NULL) &&
-             "only one level of indirection allowed");
-      validate_src(dest->indirect, state, 32, 1);
-   }
 }
 
 static void

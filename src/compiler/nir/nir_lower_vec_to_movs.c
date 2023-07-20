@@ -40,10 +40,7 @@ src_matches_dest_reg(nir_dest *dest, nir_src *src)
    if (dest->is_ssa || src->is_ssa)
       return false;
 
-   return (dest->reg.reg == src->reg.reg &&
-           dest->reg.base_offset == src->reg.base_offset &&
-           !dest->reg.indirect &&
-           !src->reg.indirect);
+   return (dest->reg.reg == src->reg.reg);
 }
 
 /**

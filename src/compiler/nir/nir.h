@@ -994,8 +994,6 @@ struct nir_src;
 
 typedef struct {
    nir_register *reg;
-   struct nir_src *indirect; /** < NULL for no indirect offset */
-   unsigned base_offset;
 } nir_register_src;
 
 typedef struct {
@@ -1003,8 +1001,6 @@ typedef struct {
    struct list_head def_link;
 
    nir_register *reg;
-   struct nir_src *indirect; /** < NULL for no indirect offset */
-   unsigned base_offset;
 } nir_register_dest;
 
 struct nir_if;
@@ -1123,8 +1119,6 @@ nir_src_for_reg(nir_register *reg)
 
    src.is_ssa = false;
    src.reg.reg = reg;
-   src.reg.indirect = NULL;
-   src.reg.base_offset = 0;
 
    return src;
 }

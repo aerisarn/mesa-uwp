@@ -243,11 +243,6 @@ __clone_src(clone_state *state, void *ninstr_or_if,
       nsrc->ssa = remap_local(state, src->ssa);
    } else {
       nsrc->reg.reg = remap_reg(state, src->reg.reg);
-      if (src->reg.indirect) {
-         nsrc->reg.indirect = gc_alloc(state->ns->gctx, nir_src, 1);
-         __clone_src(state, ninstr_or_if, nsrc->reg.indirect, src->reg.indirect);
-      }
-      nsrc->reg.base_offset = src->reg.base_offset;
    }
 }
 
@@ -263,11 +258,6 @@ __clone_dst(clone_state *state, nir_instr *ninstr,
          add_remap(state, &ndst->ssa, &dst->ssa);
    } else {
       ndst->reg.reg = remap_reg(state, dst->reg.reg);
-      if (dst->reg.indirect) {
-         ndst->reg.indirect = gc_alloc(state->ns->gctx, nir_src, 1);
-         __clone_src(state, ninstr, ndst->reg.indirect, dst->reg.indirect);
-      }
-      ndst->reg.base_offset = dst->reg.base_offset;
    }
 }
 

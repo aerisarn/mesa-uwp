@@ -211,7 +211,6 @@ ntq_store_dest(struct vc4_compile *c, nir_dest *dest, int chan,
                 qregs[chan] = result;
         } else {
                 nir_register *reg = dest->reg.reg;
-                assert(dest->reg.base_offset == 0);
                 assert(reg->num_array_elems == 0);
                 struct hash_entry *entry =
                         _mesa_hash_table_search(c->def_ht, reg);
@@ -260,7 +259,6 @@ ntq_get_src(struct vc4_compile *c, nir_src src, int i)
                 nir_register *reg = src.reg.reg;
                 entry = _mesa_hash_table_search(c->def_ht, reg);
                 assert(reg->num_array_elems == 0);
-                assert(src.reg.base_offset == 0);
                 assert(i < reg->num_components);
         }
 

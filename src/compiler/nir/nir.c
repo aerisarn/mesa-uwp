@@ -517,46 +517,14 @@ nir_function_create(nir_shader *shader, const char *name)
    return func;
 }
 
-static bool src_has_indirect(nir_src *src)
-{
-   return !src->is_ssa && src->reg.indirect;
-}
-
-static void src_free_indirects(nir_src *src)
-{
-   if (src_has_indirect(src)) {
-      assert(src->reg.indirect->is_ssa || !src->reg.indirect->reg.indirect);
-      gc_free(src->reg.indirect);
-      src->reg.indirect = NULL;
-   }
-}
-
-static void dest_free_indirects(nir_dest *dest)
-{
-   if (!dest->is_ssa && dest->reg.indirect) {
-      assert(dest->reg.indirect->is_ssa || !dest->reg.indirect->reg.indirect);
-      gc_free(dest->reg.indirect);
-      dest->reg.indirect = NULL;
-   }
-}
-
 static void
 src_copy(nir_src *dest, const nir_src *src, gc_ctx *ctx)
 {
-   src_free_indirects(dest);
-
    dest->is_ssa = src->is_ssa;
    if (src->is_ssa) {
       dest->ssa = src->ssa;
    } else {
-      dest->reg.base_offset = src->reg.base_offset;
       dest->reg.reg = src->reg.reg;
-      if (src->reg.indirect) {
-         dest->reg.indirect = gc_zalloc(ctx, nir_src, 1);
-         src_copy(dest->reg.indirect, src->reg.indirect, ctx);
-      } else {
-         dest->reg.indirect = NULL;
-      }
    }
 }
 
@@ -573,18 +541,9 @@ void nir_dest_copy(nir_dest *dest, const nir_dest *src, nir_instr *instr)
    /* Copying an SSA definition makes no sense whatsoever. */
    assert(!src->is_ssa);
 
-   dest_free_indirects(dest);
-
    dest->is_ssa = false;
 
-   dest->reg.base_offset = src->reg.base_offset;
    dest->reg.reg = src->reg.reg;
-   if (src->reg.indirect) {
-      dest->reg.indirect = gc_zalloc(gc_get_context(instr), nir_src, 1);
-      nir_src_copy(dest->reg.indirect, src->reg.indirect, instr);
-   } else {
-      dest->reg.indirect = NULL;
-   }
 }
 
 void
@@ -703,8 +662,6 @@ src_init(nir_src *src)
 {
    src->is_ssa = false;
    src->reg.reg = NULL;
-   src->reg.indirect = NULL;
-   src->reg.base_offset = 0;
 }
 
 nir_if *
@@ -765,8 +722,6 @@ dest_init(nir_dest *dest)
 {
    dest->is_ssa = false;
    dest->reg.reg = NULL;
-   dest->reg.indirect = NULL;
-   dest->reg.base_offset = 0;
 }
 
 static void
@@ -1312,23 +1267,8 @@ void nir_instr_remove_v(nir_instr *instr)
    }
 }
 
-static bool free_src_indirects_cb(nir_src *src, void *state)
-{
-   src_free_indirects(src);
-   return true;
-}
-
-static bool free_dest_indirects_cb(nir_dest *dest, void *state)
-{
-   dest_free_indirects(dest);
-   return true;
-}
-
 void nir_instr_free(nir_instr *instr)
 {
-   nir_foreach_src(instr, free_src_indirects_cb, NULL);
-   nir_foreach_dest(instr, free_dest_indirects_cb, NULL);
-
    switch (instr->type) {
    case nir_instr_type_tex:
       gc_free(nir_instr_as_tex(instr)->src);
@@ -1711,33 +1651,30 @@ nir_src_is_always_uniform(nir_src src)
 static void
 src_remove_all_uses(nir_src *src)
 {
-   for (; src; src = src->is_ssa ? NULL : src->reg.indirect) {
-      if (!src_is_valid(src))
-         continue;
-
+   if (src && src_is_valid(src))
       list_del(&src->use_link);
-   }
 }
 
 static void
 src_add_all_uses(nir_src *src, nir_instr *parent_instr, nir_if *parent_if)
 {
-   for (; src; src = src->is_ssa ? NULL : src->reg.indirect) {
-      if (!src_is_valid(src))
-         continue;
+   if (!src)
+      return;
 
-      if (parent_instr) {
-         nir_src_set_parent_instr(src, parent_instr);
-      } else {
-         assert(parent_if);
-         nir_src_set_parent_if(src, parent_if);
-      }
+   if (!src_is_valid(src))
+      return;
 
-      if (src->is_ssa)
-         list_addtail(&src->use_link, &src->ssa->uses);
-      else
-         list_addtail(&src->use_link, &src->reg.reg->uses);
+   if (parent_instr) {
+      nir_src_set_parent_instr(src, parent_instr);
+   } else {
+      assert(parent_if);
+      nir_src_set_parent_if(src, parent_if);
    }
+
+   if (src->is_ssa)
+      list_addtail(&src->use_link, &src->ssa->uses);
+   else
+      list_addtail(&src->use_link, &src->reg.reg->uses);
 }
 
 void
@@ -1756,7 +1693,6 @@ nir_instr_move_src(nir_instr *dest_instr, nir_src *dest, nir_src *src)
    assert(!src_is_valid(dest) || dest->parent_instr == dest_instr);
 
    src_remove_all_uses(dest);
-   src_free_indirects(dest);
    src_remove_all_uses(src);
    *dest = *src;
    *src = NIR_SRC_INIT;
@@ -1783,8 +1719,6 @@ nir_instr_rewrite_dest(nir_instr *instr, nir_dest *dest, nir_dest new_dest)
       assert(nir_ssa_def_is_unused(&dest->ssa));
    } else {
       list_del(&dest->reg.def_link);
-      if (dest->reg.indirect)
-         src_remove_all_uses(dest->reg.indirect);
    }
 
    /* We can't re-write with an SSA def */
@@ -1794,9 +1728,6 @@ nir_instr_rewrite_dest(nir_instr *instr, nir_dest *dest, nir_dest new_dest)
 
    dest->reg.parent_instr = instr;
    list_addtail(&dest->reg.def_link, &new_dest.reg.reg->defs);
-
-   if (dest->reg.indirect)
-      src_add_all_uses(dest->reg.indirect, instr, NULL);
 }
 
 void

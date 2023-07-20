@@ -531,13 +531,8 @@ write_src_full(write_ctx *ctx, const nir_src *src, union packed_src header)
       blob_write_uint32(ctx->blob, header.u32);
    } else {
       header.any.object_idx = write_lookup_object(ctx, src->reg.reg);
-      header.any.is_indirect = !!src->reg.indirect;
+      header.any.is_indirect = false;
       blob_write_uint32(ctx->blob, header.u32);
-      blob_write_uint32(ctx->blob, src->reg.base_offset);
-      if (src->reg.indirect) {
-         union packed_src header = {0};
-         write_src_full(ctx, src->reg.indirect, header);
-      }
    }
 }
 
@@ -560,13 +555,6 @@ read_src(read_ctx *ctx, nir_src *src)
       src->ssa = read_lookup_object(ctx, header.any.object_idx);
    } else {
       src->reg.reg = read_lookup_object(ctx, header.any.object_idx);
-      src->reg.base_offset = blob_read_uint32(ctx->blob);
-      if (header.any.is_indirect) {
-         src->reg.indirect = gc_alloc(ctx->nir->gctx, nir_src, 1);
-         read_src(ctx, src->reg.indirect);
-      } else {
-         src->reg.indirect = NULL;
-      }
    }
    return header;
 }
@@ -581,8 +569,7 @@ union packed_dest {
    } ssa;
    struct {
       uint8_t is_ssa:1;
-      uint8_t is_indirect:1;
-      uint8_t _pad:6;
+      uint8_t _pad:7;
    } reg;
 };
 
@@ -704,8 +691,6 @@ write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
          encode_num_components_in_3bits(dst->ssa.num_components);
       dest.ssa.bit_size = encode_bit_size_3bits(dst->ssa.bit_size);
       dest.ssa.divergent = dst->ssa.divergent;
-   } else {
-      dest.reg.is_indirect = !!(dst->reg.indirect);
    }
    header.any.dest = dest.u8;
 
@@ -756,9 +741,6 @@ write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
       write_add_object(ctx, &dst->ssa);
    } else {
       blob_write_uint32(ctx->blob, write_lookup_object(ctx, dst->reg.reg));
-      blob_write_uint32(ctx->blob, dst->reg.base_offset);
-      if (dst->reg.indirect)
-         write_src(ctx, dst->reg.indirect);
    }
 }
 
@@ -781,11 +763,6 @@ read_dest(read_ctx *ctx, nir_dest *dst, nir_instr *instr,
       read_add_object(ctx, &dst->ssa);
    } else {
       dst->reg.reg = read_object(ctx);
-      dst->reg.base_offset = blob_read_uint32(ctx->blob);
-      if (dest.reg.is_indirect) {
-         dst->reg.indirect = gc_alloc(ctx->nir->gctx, nir_src, 1);
-         read_src(ctx, dst->reg.indirect);
-      }
    }
 }
 

@@ -858,10 +858,7 @@ resolve_registers_impl(nir_function_impl *impl, struct from_ssa_state *state)
 static void
 emit_copy(nir_builder *b, nir_src src, nir_src dest_src)
 {
-   assert(!dest_src.is_ssa &&
-          dest_src.reg.indirect == NULL &&
-          dest_src.reg.base_offset == 0);
-
+   assert(!dest_src.is_ssa);
    assert(!nir_src_is_divergent(src) || nir_src_is_divergent(dest_src));
 
    if (src.is_ssa)

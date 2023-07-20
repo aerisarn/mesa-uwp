@@ -405,16 +405,7 @@ static void print_src(const nir_src *src, print_state *state, nir_alu_type src_t
 static void
 print_reg_src(const nir_register_src *src, print_state *state)
 {
-   FILE *fp = state->fp;
    print_register(src->reg, state);
-   if (src->reg->num_array_elems != 0) {
-      fprintf(fp, "[%u", src->base_offset);
-      if (src->indirect != NULL) {
-         fprintf(fp, " + ");
-         print_src(src->indirect, state, nir_type_invalid);
-      }
-      fprintf(fp, "]");
-   }
 }
 
 static void
@@ -428,15 +419,6 @@ print_reg_dest(nir_register_dest *dest, print_state *state)
    count_digits(state->max_dest_index) - count_digits(dest->reg->index) : 0;
    fprintf(fp, "%s      %*sr%u", divergence_status(state, dest->reg->divergent),
            padding, "", dest->reg->index);
-
-   if (dest->reg->num_array_elems != 0) {
-      fprintf(fp, "[%u", dest->base_offset);
-      if (dest->indirect != NULL) {
-         fprintf(fp, " + ");
-         print_src(dest->indirect, state, nir_type_invalid);
-      }
-      fprintf(fp, "]");
-   }
 }
 
 static void

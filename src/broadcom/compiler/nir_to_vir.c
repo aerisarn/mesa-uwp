@@ -787,7 +787,6 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
                 qregs[chan] = result;
         } else {
                 nir_register *reg = dest->reg.reg;
-                assert(dest->reg.base_offset == 0);
                 assert(reg->num_array_elems == 0);
                 struct hash_entry *entry =
                         _mesa_hash_table_search(c->def_ht, reg);
@@ -854,7 +853,6 @@ ntq_get_src(struct v3d_compile *c, nir_src src, int i)
         } else {
                 nir_register *reg = src.reg.reg;
                 assert(reg->num_array_elems == 0);
-                assert(src.reg.base_offset == 0);
                 assert(i < reg->num_components);
 
                 if (_mesa_set_search(c->tmu.outstanding_regs, reg))

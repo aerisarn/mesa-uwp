@@ -338,16 +338,7 @@ nir_srcs_equal(nir_src src1, nir_src src2)
       if (src2.is_ssa) {
          return false;
       } else {
-         if ((src1.reg.indirect == NULL) != (src2.reg.indirect == NULL))
-            return false;
-
-         if (src1.reg.indirect) {
-            if (!nir_srcs_equal(*src1.reg.indirect, *src2.reg.indirect))
-               return false;
-         }
-
-         return src1.reg.reg == src2.reg.reg &&
-                src1.reg.base_offset == src2.reg.base_offset;
+         return src1.reg.reg == src2.reg.reg;
       }
    }
 }
