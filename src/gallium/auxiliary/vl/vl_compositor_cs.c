@@ -628,7 +628,6 @@ static const char *compute_shader_yuv_y =
          "MOV TEMP[4].xy, CONST[6].zwww\n"
          "I2F TEMP[4], TEMP[4]\n"
          "ADD TEMP[2], TEMP[2], TEMP[4]\n"
-         "ADD TEMP[2].y, TEMP[2].yyyy, IMM[1].xxxx\n"
 
          /* Fetch texels */
          "TEX_LZ TEMP[4].x, TEMP[2], SAMP[0], RECT\n"
@@ -674,6 +673,7 @@ static const char *compute_shader_yuv_uv =
          /* Translate */
          "UADD TEMP[2].xy, TEMP[2], -CONST[5].xyxy\n"
          "U2F TEMP[2], TEMP[2]\n"
+         "MUL TEMP[2].xy, TEMP[2].xyyy, CONST[6].xyyy\n"
 
          /* Scale */
          "DIV TEMP[2], TEMP[2], CONST[3].zwzw\n"
@@ -682,7 +682,6 @@ static const char *compute_shader_yuv_uv =
          "MOV TEMP[4].xy, CONST[6].zwww\n"
          "I2F TEMP[4], TEMP[4]\n"
          "ADD TEMP[2], TEMP[2], TEMP[4]\n"
-         "ADD TEMP[2].y, TEMP[2].yyyy, IMM[1].xxxx\n"
 
          /* Fetch texels */
          "TEX_LZ TEMP[4].y, TEMP[2], SAMP[1], RECT\n"
