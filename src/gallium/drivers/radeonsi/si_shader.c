@@ -830,6 +830,24 @@ bool si_shader_binary_open(struct si_screen *screen, struct si_shader *shader,
    return ok;
 }
 
+static unsigned get_shader_binaries(struct si_shader *shader, struct si_shader_binary *bin[4])
+{
+   unsigned num_bin = 0;
+
+   if (shader->prolog)
+      bin[num_bin++] = &shader->prolog->binary;
+
+   if (shader->previous_stage)
+      bin[num_bin++] = &shader->previous_stage->binary;
+
+   bin[num_bin++] = &shader->binary;
+
+   if (shader->epilog)
+      bin[num_bin++] = &shader->epilog->binary;
+
+   return num_bin;
+}
+
 static unsigned si_get_shader_binary_size(struct si_screen *screen, struct si_shader *shader)
 {
    if (shader->binary.type == SI_SHADER_BINARY_ELF) {
@@ -839,8 +857,15 @@ static unsigned si_get_shader_binary_size(struct si_screen *screen, struct si_sh
       ac_rtld_close(&rtld);
       return size;
    } else {
-      assert(shader->binary.type == SI_SHADER_BINARY_RAW);
-      return shader->binary.code_size;
+      struct si_shader_binary *bin[4];
+      unsigned num_bin = get_shader_binaries(shader, bin);
+
+      unsigned size = 0;
+      for (unsigned i = 0; i < num_bin; i++) {
+         assert(bin[i]->type == SI_SHADER_BINARY_RAW);
+         size += bin[i]->exec_size;
+      }
+      return size;
    }
 }
 
@@ -942,8 +967,17 @@ static void calculate_needed_lds_size(struct si_screen *sscreen, struct si_shade
 static bool upload_binary_raw(struct si_screen *sscreen, struct si_shader *shader,
                               uint64_t scratch_va)
 {
-   unsigned rx_size =
-      ac_align_shader_binary_for_prefetch(&sscreen->info, shader->binary.code_size);
+   struct si_shader_binary *bin[4];
+   unsigned num_bin = get_shader_binaries(shader, bin);
+
+   unsigned code_size = 0, exec_size = 0;
+   for (unsigned i = 0; i < num_bin; i++) {
+      assert(bin[i]->type == SI_SHADER_BINARY_RAW);
+      code_size += bin[i]->code_size;
+      exec_size += bin[i]->exec_size;
+   }
+
+   unsigned rx_size = ac_align_shader_binary_for_prefetch(&sscreen->info, code_size);
 
    si_resource_reference(&shader->bo, NULL);
    shader->bo =
@@ -965,9 +999,32 @@ static bool upload_binary_raw(struct si_screen *sscreen, struct si_shader *shade
    if (!rx_ptr)
       return false;
 
-   memcpy(rx_ptr, shader->binary.code_buffer, shader->binary.code_size);
+   unsigned exec_offset = 0, data_offset = exec_size;
+   for (unsigned i = 0; i < num_bin; i++) {
+      memcpy(rx_ptr + exec_offset, bin[i]->code_buffer, bin[i]->exec_size);
 
-   si_aco_resolve_symbols(shader, rx_ptr, scratch_va);
+      if (bin[i]->num_symbols) {
+         /* Offset needed to add to const data symbol because of inserting other
+          * shader part between exec code and const data.
+          */
+         unsigned const_offset = data_offset - exec_offset - bin[i]->exec_size;
+
+         /* Prolog and epilog have no symbols. */
+         struct si_shader *sh = bin[i] == &shader->binary ? shader : shader->previous_stage;
+         assert(sh && bin[i] == &sh->binary);
+
+         si_aco_resolve_symbols(sh, rx_ptr + exec_offset, (const uint32_t *)bin[i]->code_buffer,
+                                scratch_va, const_offset);
+      }
+
+      exec_offset += bin[i]->exec_size;
+
+      unsigned data_size = bin[i]->code_size - bin[i]->exec_size;
+      if (data_size) {
+         memcpy(rx_ptr + data_offset, bin[i]->code_buffer + bin[i]->exec_size, data_size);
+         data_offset += data_size;
+      }
+   }
 
    sscreen->ws->buffer_unmap(sscreen->ws, shader->bo->buf);
    shader->gpu_address = shader->bo->gpu_address;

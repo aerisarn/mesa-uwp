@@ -177,7 +177,8 @@ si_aco_compile_shader(struct si_shader *shader,
 }
 
 void
-si_aco_resolve_symbols(struct si_shader *shader, uint32_t *code, uint64_t scratch_va)
+si_aco_resolve_symbols(struct si_shader *shader, uint32_t *code_for_write,
+                       const uint32_t *code_for_read, uint64_t scratch_va, uint32_t const_offset)
 {
    const struct aco_symbol *symbols = (struct aco_symbol *)shader->binary.symbols;
    const struct si_shader_selector *sel = shader->selector;
@@ -210,12 +211,15 @@ si_aco_resolve_symbols(struct si_shader *shader, uint32_t *code, uint64_t scratc
          value = shader->gs_info.esgs_ring_size * 4;
          break;
       case aco_symbol_const_data_addr:
-         continue;
+         if (!const_offset)
+            continue;
+         value = code_for_read[symbols[i].offset] + const_offset;
+         break;
       default:
          unreachable("invalid aco symbol");
          break;
       }
 
-      code[symbols[i].offset] = value;
+      code_for_write[symbols[i].offset] = value;
    }
 }
