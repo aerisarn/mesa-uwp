@@ -2015,13 +2015,10 @@ fs_visitor::get_nir_src(const nir_src &src)
       }
    } else {
       nir_intrinsic_instr *decl_reg = nir_reg_get_decl(load_reg->src[0].ssa);
-      const unsigned num_components =
-         nir_intrinsic_num_components(decl_reg);
       /* We don't handle indirects on locals */
       assert(nir_intrinsic_base(load_reg) == 0);
       assert(load_reg->intrinsic != nir_intrinsic_load_reg_indirect);
-      reg = offset(nir_ssa_values[decl_reg->dest.ssa.index], bld,
-                   src.reg.base_offset * num_components);
+      reg = nir_ssa_values[decl_reg->dest.ssa.index];
    }
 
    if (nir_src_bit_size(src) == 64 && devinfo->ver == 7) {
@@ -2074,13 +2071,10 @@ fs_visitor::get_nir_dest(const nir_dest &dest)
    } else {
       nir_intrinsic_instr *decl_reg =
          nir_reg_get_decl(store_reg->src[1].ssa);
-      const unsigned num_components =
-         nir_intrinsic_num_components(decl_reg);
       /* We don't handle indirects on locals */
       assert(nir_intrinsic_base(store_reg) == 0);
       assert(store_reg->intrinsic != nir_intrinsic_store_reg_indirect);
-      return offset(nir_ssa_values[decl_reg->dest.ssa.index], bld,
-                    dest.reg.base_offset * num_components);
+      return nir_ssa_values[decl_reg->dest.ssa.index];
    }
 }
 
