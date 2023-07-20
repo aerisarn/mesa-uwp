@@ -42,32 +42,32 @@ to_nvk_bo_sync(struct vk_sync *sync)
 }
 
 static VkResult
-nvk_bo_sync_init(struct vk_device *vk_device,
+nvk_bo_sync_init(struct vk_device *vk_dev,
                  struct vk_sync *vk_sync,
                  uint64_t initial_value)
 {
-   struct nvk_device *device = container_of(vk_device, struct nvk_device, vk);
+   struct nvk_device *dev = container_of(vk_dev, struct nvk_device, vk);
    struct nvk_bo_sync *sync = to_nvk_bo_sync(vk_sync);
 
    sync->state = initial_value ? NVK_BO_SYNC_STATE_SIGNALED :
                                  NVK_BO_SYNC_STATE_RESET;
 
-   sync->bo = nouveau_ws_bo_new(device->pdev->dev, 0x1000, 0,
+   sync->bo = nouveau_ws_bo_new(dev->pdev->dev, 0x1000, 0,
                                 NOUVEAU_WS_BO_GART);
    if (!sync->bo)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    int err = nouveau_ws_bo_dma_buf(sync->bo, &sync->dmabuf_fd);
    if (err) {
       nouveau_ws_bo_destroy(sync->bo);
-      return vk_errorf(device, VK_ERROR_UNKNOWN, "dma-buf export failed: %m");
+      return vk_errorf(dev, VK_ERROR_UNKNOWN, "dma-buf export failed: %m");
    }
 
    return VK_SUCCESS;
 }
 
 static void
-nvk_bo_sync_finish(struct vk_device *vk_device,
+nvk_bo_sync_finish(struct vk_device *vk_dev,
                    struct vk_sync *vk_sync)
 {
    struct nvk_bo_sync *sync = to_nvk_bo_sync(vk_sync);
@@ -77,7 +77,7 @@ nvk_bo_sync_finish(struct vk_device *vk_device,
 }
 
 static VkResult
-nvk_bo_sync_reset(struct vk_device *vk_device,
+nvk_bo_sync_reset(struct vk_device *vk_dev,
                   struct vk_sync *vk_sync)
 {
    struct nvk_bo_sync *sync = to_nvk_bo_sync(vk_sync);
@@ -113,7 +113,7 @@ nvk_get_relative_timeout(uint64_t abs_timeout)
 }
 
 static VkResult
-nvk_wait_dmabuf(struct nvk_device *device, int dmabuf_fd,
+nvk_wait_dmabuf(struct nvk_device *dev, int dmabuf_fd,
                 uint64_t abs_timeout_ns)
 {
    uint64_t now = os_time_get_nano();
@@ -132,7 +132,7 @@ nvk_wait_dmabuf(struct nvk_device *device, int dmabuf_fd,
 
    int ret = ppoll(&fd, 1, &rel_timeout_ts, NULL);
    if (ret < 0) {
-      return vk_errorf(device, VK_ERROR_UNKNOWN,
+      return vk_errorf(dev, VK_ERROR_UNKNOWN,
                        "poll() failed: %m");
    } else if (ret == 0) {
       return VK_TIMEOUT;
@@ -142,13 +142,13 @@ nvk_wait_dmabuf(struct nvk_device *device, int dmabuf_fd,
 }
 
 static VkResult
-nvk_bo_sync_wait(struct vk_device *vk_device,
+nvk_bo_sync_wait(struct vk_device *vk_dev,
                  uint32_t wait_count,
                  const struct vk_sync_wait *waits,
                  enum vk_sync_wait_flags wait_flags,
                  uint64_t abs_timeout_ns)
 {
-   struct nvk_device *device = container_of(vk_device, struct nvk_device, vk);
+   struct nvk_device *dev = container_of(vk_dev, struct nvk_device, vk);
    VkResult result;
 
    uint32_t pending = wait_count;
@@ -181,7 +181,7 @@ nvk_bo_sync_wait(struct vk_device *vk_device,
              * on it until we hit a timeout.
              */
             if (!(wait_flags & VK_SYNC_WAIT_PENDING)) {
-               result = nvk_wait_dmabuf(device, sync->dmabuf_fd, abs_timeout_ns);
+               result = nvk_wait_dmabuf(dev, sync->dmabuf_fd, abs_timeout_ns);
                /* This also covers VK_TIMEOUT */
                if (result != VK_SUCCESS)
                   return result;
@@ -204,7 +204,7 @@ nvk_bo_sync_wait(struct vk_device *vk_device,
           * fairly pessimal case, so it's ok to lock here and use a standard
           * pthreads condition variable.
           */
-         pthread_mutex_lock(&device->mutex);
+         pthread_mutex_lock(&dev->mutex);
 
          /* It's possible that some of the fences have changed state since the
           * last time we checked.  Now that we have the lock, check for
@@ -225,16 +225,16 @@ nvk_bo_sync_wait(struct vk_device *vk_device,
             };
 
             ASSERTED int ret;
-            ret = pthread_cond_timedwait(&device->queue_submit,
-                                         &device->mutex, &abstime);
+            ret = pthread_cond_timedwait(&dev->queue_submit,
+                                         &dev->mutex, &abstime);
             assert(ret != EINVAL);
             if (os_time_get_nano() >= abs_timeout_ns) {
-               pthread_mutex_unlock(&device->mutex);
+               pthread_mutex_unlock(&dev->mutex);
                return VK_TIMEOUT;
             }
          }
 
-         pthread_mutex_unlock(&device->mutex);
+         pthread_mutex_unlock(&dev->mutex);
       }
    }
 
@@ -257,7 +257,7 @@ const struct vk_sync_type nvk_bo_sync_type = {
 };
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_create_sync_for_memory(struct vk_device *device,
+nvk_create_sync_for_memory(struct vk_device *vk_dev,
                            VkDeviceMemory memory,
                            bool signal_memory,
                            struct vk_sync **sync_out)
@@ -265,10 +265,10 @@ nvk_create_sync_for_memory(struct vk_device *device,
    VK_FROM_HANDLE(nvk_device_memory, mem, memory);
    struct nvk_bo_sync *bo_sync;
 
-   bo_sync = vk_zalloc(&device->alloc, sizeof(*bo_sync), 8,
+   bo_sync = vk_zalloc(&vk_dev->alloc, sizeof(*bo_sync), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (bo_sync == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(vk_dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    bo_sync->sync.type = &nvk_bo_sync_type;
    bo_sync->state = signal_memory ? NVK_BO_SYNC_STATE_RESET :
