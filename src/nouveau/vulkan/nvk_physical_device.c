@@ -18,6 +18,7 @@
 
 #include "cl90c0.h"
 #include "cl91c0.h"
+#include "cla097.h"
 #include "cla0c0.h"
 #include "cla1c0.h"
 #include "clb0c0.h"
@@ -624,6 +625,10 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    const struct nv_device_info info = ws_dev->info;
 
    nouveau_ws_device_destroy(ws_dev);
+
+   /* We don't support anything pre-Kepler */
+   if (info.cls_eng3d < KEPLER_A)
+      return VK_ERROR_INCOMPATIBLE_DRIVER;
 
    if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER))) {
       return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
