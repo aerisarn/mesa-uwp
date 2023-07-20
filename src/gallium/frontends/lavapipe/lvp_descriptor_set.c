@@ -449,12 +449,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
 
       switch (write->descriptorType) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
-         for (uint32_t j = 0; j < write->descriptorCount; j++) {
-            LVP_FROM_HANDLE(lvp_sampler, sampler,
-                            write->pImageInfo[j].sampler);
+         if (!bind_layout->immutable_samplers) {
+            for (uint32_t j = 0; j < write->descriptorCount; j++) {
+               LVP_FROM_HANDLE(lvp_sampler, sampler, write->pImageInfo[j].sampler);
 
-            desc[j].sampler = sampler->desc.sampler;
-            desc[j].sampler_index = sampler->desc.sampler_index;
+               desc[j].sampler = sampler->desc.sampler;
+               desc[j].sampler_index = sampler->desc.sampler_index;
+            }
          }
          break;
 
