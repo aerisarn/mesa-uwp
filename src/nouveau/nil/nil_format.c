@@ -34,8 +34,8 @@ struct nil_format_info {
  * I: image / surface, implies T
  */
 #define U_T   NIL_FORMAT_SUPPORTS_TEXTURE_BIT
-#define U_I   U_T | NIL_FORMAT_SUPPORTS_BUFFER_BIT | \
-                    NIL_FORMAT_SUPPORTS_STORAGE_BIT
+#define U_B   U_T | NIL_FORMAT_SUPPORTS_BUFFER_BIT
+#define U_I   U_B | NIL_FORMAT_SUPPORTS_STORAGE_BIT
 #define U_TR  NIL_FORMAT_SUPPORTS_RENDER_BIT | U_T
 #define U_IR  NIL_FORMAT_SUPPORTS_RENDER_BIT | U_I
 #define U_TB  NIL_FORMAT_SUPPORTS_BLEND_BIT | U_TR
@@ -280,9 +280,9 @@ static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
    I3(A, R32G32B32X32_SINT,   RS32_GS32_BS32_X32,  R, G, B, x, SINT,    R32_G32_B32_A32, TR),
    I3(A, R32G32B32X32_UINT,   RU32_GU32_BU32_X32,  R, G, B, x, UINT,    R32_G32_B32_A32, TR),
 
-   F3(C, R32G32B32_FLOAT, NONE, R, G, B, xx, FLOAT, R32_G32_B32, t),
-   I3(C, R32G32B32_SINT, NONE, R, G, B, xx, SINT, R32_G32_B32, t),
-   I3(C, R32G32B32_UINT, NONE, R, G, B, xx, UINT, R32_G32_B32, t),
+   F3(C, R32G32B32_FLOAT, NONE, R, G, B, xx, FLOAT, R32_G32_B32, B),
+   I3(C, R32G32B32_SINT, NONE, R, G, B, xx, SINT, R32_G32_B32, B),
+   I3(C, R32G32B32_UINT, NONE, R, G, B, xx, UINT, R32_G32_B32, B),
 
    F2(A, R32G32_FLOAT,  RF32_GF32,  R, G, x, x,    FLOAT,   R32_G32, IB),
    F2(A, R32G32_UNORM,  NONE,       R, G, x, x,    UNORM,   R32_G32, T),
