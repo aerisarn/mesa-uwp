@@ -2655,7 +2655,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
    {
       int64_t stage_start = os_time_get_nano();
 
-      radv_postprocess_nir(device, pipeline_layout, pipeline_key, pipeline->last_vgt_api_stage, &stages[i]);
+      radv_postprocess_nir(device, pipeline_layout, pipeline_key, &stages[i]);
 
       stages[i].feedback.duration += os_time_get_nano() - stage_start;
 

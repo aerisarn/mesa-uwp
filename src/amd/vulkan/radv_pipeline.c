@@ -503,8 +503,7 @@ non_uniform_access_callback(const nir_src *src, void *_)
 
 void
 radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layout *pipeline_layout,
-                     const struct radv_pipeline_key *pipeline_key, unsigned last_vgt_api_stage,
-                     struct radv_pipeline_stage *stage)
+                     const struct radv_pipeline_key *pipeline_key, struct radv_pipeline_stage *stage)
 {
    enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    bool progress;
@@ -628,10 +627,10 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
 
    /* Lower I/O intrinsics to memory instructions. */
    bool io_to_mem = radv_nir_lower_io_to_mem(device, stage);
-   bool lowered_ngg = stage->info.is_ngg && stage->stage == last_vgt_api_stage;
+   bool lowered_ngg = stage->info.is_ngg && stage->info.next_stage == MESA_SHADER_FRAGMENT;
    if (lowered_ngg) {
       radv_lower_ngg(device, stage, pipeline_key);
-   } else if (stage->stage == last_vgt_api_stage) {
+   } else if (stage->info.next_stage == MESA_SHADER_FRAGMENT) {
       if (stage->stage != MESA_SHADER_GEOMETRY) {
          NIR_PASS_V(stage->nir, ac_nir_lower_legacy_vs, gfx_level,
                     stage->info.outinfo.clip_dist_mask | stage->info.outinfo.cull_dist_mask,

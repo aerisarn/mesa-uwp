@@ -603,8 +603,7 @@ void radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively);
 void radv_optimize_nir_algebraic(nir_shader *shader, bool opt_offsets);
 
 void radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layout *pipeline_layout,
-                          const struct radv_pipeline_key *pipeline_key, unsigned last_vgt_api_stage,
-                          struct radv_pipeline_stage *stage);
+                          const struct radv_pipeline_key *pipeline_key, struct radv_pipeline_stage *stage);
 
 nir_shader *radv_parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *sinfo,
                                 const struct radv_pipeline_key *key);

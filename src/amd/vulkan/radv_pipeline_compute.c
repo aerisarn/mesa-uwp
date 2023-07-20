@@ -161,7 +161,7 @@ radv_compile_cs(struct radv_device *device, struct vk_pipeline_cache *cache, str
    cs_stage->info.inline_push_constant_mask = cs_stage->args.ac.inline_push_const_mask;
 
    /* Postprocess NIR. */
-   radv_postprocess_nir(device, pipeline_layout, pipeline_key, MESA_SHADER_NONE, cs_stage);
+   radv_postprocess_nir(device, pipeline_layout, pipeline_key, cs_stage);
 
    if (radv_can_dump_shader(device, cs_stage->nir, false))
       nir_print_shader(cs_stage->nir, stderr);
