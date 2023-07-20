@@ -123,7 +123,7 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    VkResult result = VK_ERROR_OUT_OF_HOST_MEMORY;
    struct nvk_device *dev;
 
-   dev = vk_zalloc2(&pdev->instance->vk.alloc, pAllocator,
+   dev = vk_zalloc2(&pdev->vk.instance->alloc, pAllocator,
                     sizeof(*dev), 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!dev)
       return vk_error(pdev, VK_ERROR_OUT_OF_HOST_MEMORY);

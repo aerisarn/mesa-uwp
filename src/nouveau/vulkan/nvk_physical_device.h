@@ -14,7 +14,6 @@ struct nvk_instance;
 
 struct nvk_physical_device {
    struct vk_physical_device vk;
-   struct nvk_instance *instance;
    struct nouveau_ws_device *dev;
    struct nv_device_info info;
    struct wsi_device wsi_device;

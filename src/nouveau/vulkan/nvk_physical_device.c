@@ -648,7 +648,6 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   pdev->instance = instance;
    pdev->dev = ndev;
    pdev->info = ndev->info;
 
@@ -718,7 +717,7 @@ nvk_physical_device_destroy(struct vk_physical_device *vk_pdev)
    nvk_finish_wsi(pdev);
    nouveau_ws_device_destroy(pdev->dev);
    vk_physical_device_finish(&pdev->vk);
-   vk_free(&pdev->instance->vk.alloc, pdev);
+   vk_free(&pdev->vk.instance->alloc, pdev);
 }
 
 VKAPI_ATTR void VKAPI_CALL
