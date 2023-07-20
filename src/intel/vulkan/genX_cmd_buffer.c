@@ -4306,6 +4306,33 @@ void genX(CmdPipelineBarrier2)(
    cmd_buffer_barrier(cmd_buffer, pDependencyInfo, "pipe barrier");
 }
 
+void
+genX(batch_emit_breakpoint)(struct anv_batch *batch,
+                            struct anv_device *device,
+                            bool emit_before_draw)
+{
+   /* Update draw call count once */
+   uint32_t draw_count = emit_before_draw ?
+                         p_atomic_inc_return(&device->draw_call_count) :
+                         p_atomic_read(&device->draw_call_count);
+
+   if (((draw_count == intel_debug_bkp_before_draw_count &&
+        emit_before_draw) ||
+       (draw_count == intel_debug_bkp_after_draw_count &&
+        !emit_before_draw))) {
+      struct anv_address wait_addr =
+         anv_state_pool_state_address(&device->dynamic_state_pool,
+                                      device->breakpoint);
+
+      anv_batch_emit(batch, GENX(MI_SEMAPHORE_WAIT), sem) {
+         sem.WaitMode            = PollingMode;
+         sem.CompareOperation    = COMPARE_SAD_EQUAL_SDD;
+         sem.SemaphoreDataDword  = 0x1;
+         sem.SemaphoreAddress    = wait_addr;
+      };
+   }
+}
+
 #if GFX_VER >= 11
 #define _3DPRIMITIVE_DIRECT GENX(3DPRIMITIVE_EXTENDED)
 #else
@@ -4351,6 +4378,8 @@ void genX(CmdDraw)(
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
    genX(emit_ds)(cmd_buffer);
 
+   genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
+
    anv_batch_emit(&cmd_buffer->batch,
 #if GFX_VER < 11
                   GENX(3DPRIMITIVE),
@@ -4373,6 +4402,8 @@ void genX(CmdDraw)(
       prim.ExtendedParameter2       = 0;
 #endif
    }
+
+   genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
 
 #if GFX_VERx10 == 125
    genX(emit_dummy_post_sync_op)(cmd_buffer, vertexCount);
@@ -4417,6 +4448,8 @@ void genX(CmdDrawMultiEXT)(
                            "draw multi", count);
       trace_intel_begin_draw_multi(&cmd_buffer->trace);
 
+      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
+
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = SEQUENTIAL;
@@ -4427,6 +4460,8 @@ void genX(CmdDrawMultiEXT)(
          prim.StartInstanceLocation    = firstInstance;
          prim.BaseVertexLocation       = 0;
       }
+
+      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
       trace_intel_end_draw_multi(&cmd_buffer->trace, count);
    }
 #else
@@ -4445,6 +4480,8 @@ void genX(CmdDrawMultiEXT)(
                            "draw multi", count);
       trace_intel_begin_draw_multi(&cmd_buffer->trace);
 
+      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
+
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE_EXTENDED), prim) {
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = SEQUENTIAL;
@@ -4458,6 +4495,8 @@ void genX(CmdDrawMultiEXT)(
          prim.ExtendedParameter1       = firstInstance;
          prim.ExtendedParameter2       = i;
       }
+
+      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
       trace_intel_end_draw_multi(&cmd_buffer->trace, count);
    }
 #endif
@@ -4509,6 +4548,7 @@ void genX(CmdDrawIndexed)(
 #endif
 
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
+   genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
 
    anv_batch_emit(&cmd_buffer->batch,
 #if GFX_VER < 11
@@ -4532,6 +4572,8 @@ void genX(CmdDrawIndexed)(
       prim.ExtendedParameter2       = 0;
 #endif
    }
+
+   genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
 
 #if GFX_VERx10 == 125
    genX(emit_dummy_post_sync_op)(cmd_buffer, indexCount);
@@ -4591,6 +4633,8 @@ void genX(CmdDrawMultiIndexedEXT)(
                                  "draw indexed multi",
                                  count);
             trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace);
+            genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device,
+                                  true);
 
             anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
                prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -4602,6 +4646,8 @@ void genX(CmdDrawMultiIndexedEXT)(
                prim.StartInstanceLocation    = firstInstance;
                prim.BaseVertexLocation       = *pVertexOffset;
             }
+            genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device,
+                                  false);
             trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, count);
             emitted = false;
          }
@@ -4622,6 +4668,8 @@ void genX(CmdDrawMultiIndexedEXT)(
                                  "draw indexed multi",
                                  count);
             trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace);
+            genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device,
+                                  true);
 
             anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
                prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -4633,6 +4681,8 @@ void genX(CmdDrawMultiIndexedEXT)(
                prim.StartInstanceLocation    = firstInstance;
                prim.BaseVertexLocation       = *pVertexOffset;
             }
+            genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device,
+                                  false);
             trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, count);
          }
       }
@@ -4649,6 +4699,7 @@ void genX(CmdDrawMultiIndexedEXT)(
                               "draw indexed multi",
                               count);
          trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace);
+         genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
 
          anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
             prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -4660,6 +4711,7 @@ void genX(CmdDrawMultiIndexedEXT)(
             prim.StartInstanceLocation    = firstInstance;
             prim.BaseVertexLocation       = draw->vertexOffset;
          }
+         genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
          trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, count);
       }
    }
@@ -4680,6 +4732,7 @@ void genX(CmdDrawMultiIndexedEXT)(
                            "draw indexed multi",
                            count);
       trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace);
+      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE_EXTENDED), prim) {
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -4695,6 +4748,7 @@ void genX(CmdDrawMultiIndexedEXT)(
          prim.ExtendedParameter1       = firstInstance;
          prim.ExtendedParameter2       = i;
       }
+      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
       trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, count);
    }
 #endif
@@ -4804,6 +4858,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
    mi_store(&b, mi_reg32(GEN11_3DPRIM_XP_DRAW_ID), mi_imm(0));
 #endif
 
+   genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
    anv_batch_emit(&cmd_buffer->batch,
 #if GFX_VER < 11
                   GENX(3DPRIMITIVE),
@@ -4819,6 +4874,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
 #endif
    }
 
+   genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
 #if GFX_VERx10 == 125
    genX(emit_dummy_post_sync_op)(cmd_buffer, 1);
 #endif
@@ -4937,6 +4993,7 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
          genX(emit_hs)(cmd_buffer);
       genX(emit_ds)(cmd_buffer);
 
+      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
       anv_batch_emit(&cmd_buffer->batch,
 #if GFX_VER < 11
                      GENX(3DPRIMITIVE),
@@ -4952,6 +5009,7 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
 #endif
       }
 
+      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
 #if GFX_VERx10 == 125
       genX(emit_dummy_post_sync_op)(cmd_buffer, 1);
 #endif
@@ -5165,6 +5223,7 @@ emit_indirect_count_draws(struct anv_cmd_buffer *cmd_buffer,
          genX(emit_hs)(cmd_buffer);
       genX(emit_ds)(cmd_buffer);
 
+      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
       anv_batch_emit(&cmd_buffer->batch,
 #if GFX_VER < 11
                      GENX(3DPRIMITIVE),
@@ -5180,6 +5239,7 @@ emit_indirect_count_draws(struct anv_cmd_buffer *cmd_buffer,
 #endif
       }
 
+      genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
 #if GFX_VERx10 == 125
       genX(emit_dummy_post_sync_op)(cmd_buffer, 1);
 #endif

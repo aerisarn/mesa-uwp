@@ -227,6 +227,7 @@ emit_so_memcpy(struct anv_batch *batch, struct anv_device *device,
       so.Buffer0SurfacePitch = bs;
    }
 
+   genX(emit_breakpoint)(batch, device, true);
    anv_batch_emit(batch, GENX(3DPRIMITIVE), prim) {
       prim.VertexAccessType         = SEQUENTIAL;
       prim.VertexCountPerInstance   = size / bs;
@@ -235,6 +236,7 @@ emit_so_memcpy(struct anv_batch *batch, struct anv_device *device,
       prim.StartInstanceLocation    = 0;
       prim.BaseVertexLocation       = 0;
    }
+   genX(emit_breakpoint)(batch, device, false);
 
 #if GFX_VERx10 == 125
    genX(batch_emit_dummy_post_sync_op)(batch, device, _3DPRIM_POINTLIST,

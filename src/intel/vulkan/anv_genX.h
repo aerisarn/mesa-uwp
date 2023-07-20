@@ -235,3 +235,16 @@ genX(batch_emit_pipe_control_write)(struct anv_batch *batch,
                                     struct anv_address address,
                                     uint32_t imm_data,
                                     enum anv_pipe_bits bits);
+
+void genX(batch_emit_breakpoint)(struct anv_batch *batch,
+                                 struct anv_device *device,
+                                 bool emit_before_draw);
+
+static inline void
+genX(emit_breakpoint)(struct anv_batch *batch,
+                      struct anv_device *device,
+                      bool emit_before_draw)
+{
+   if (INTEL_DEBUG(DEBUG_DRAW_BKP))
+      genX(batch_emit_breakpoint)(batch, device, emit_before_draw);
+}

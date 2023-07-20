@@ -1295,6 +1295,9 @@ struct anv_device {
     struct intel_ds_device                       ds;
 
     nir_shader                                  *fp64_nir;
+
+    uint32_t                                    draw_call_count;
+    struct anv_state                            breakpoint;
 };
 
 static inline struct anv_state

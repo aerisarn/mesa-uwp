@@ -3417,6 +3417,10 @@ VkResult anv_CreateDevice(
       device->vk.enabled_features.robustBufferAccess ||
       device->vk.enabled_features.nullDescriptor;
 
+   device->breakpoint = anv_state_pool_alloc(&device->dynamic_state_pool, 4,
+                                             4);
+   p_atomic_set(&device->draw_call_count, 0);
+
    anv_device_init_blorp(device);
 
    anv_device_init_border_colors(device);
@@ -3532,6 +3536,7 @@ void anv_DestroyDevice(
    anv_state_pool_free(&device->dynamic_state_pool, device->border_colors);
    anv_state_pool_free(&device->dynamic_state_pool, device->slice_hash);
    anv_state_pool_free(&device->dynamic_state_pool, device->cps_states);
+   anv_state_pool_free(&device->dynamic_state_pool, device->breakpoint);
 #endif
 
    for (unsigned i = 0; i < ARRAY_SIZE(device->rt_scratch_bos); i++) {
