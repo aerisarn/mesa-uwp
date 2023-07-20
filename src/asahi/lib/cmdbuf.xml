@@ -346,6 +346,27 @@
     <field name="Clamp" size="32" start="2:0" type="float"/>
   </struct>
 
+  <enum name="Sampler states">
+    <value name="0" value="0"/>
+    <value name="4 compact" value="1"/>
+    <value name="8 compact" value="2"/>
+    <value name="12 compact" value="3"/>
+    <value name="16 compact" value="4"/>
+    <value name="8 extended" value="6"/>
+    <value name="16 extended" value="7"/>
+  </enum>
+
+  <struct name="Counts" size="4">
+    <field name="Unknown 0" size="1" start="0" type="hex" default="0"/>
+    <field name="Uniforms" size="3" start="1" type="uint" modifier="groups(64)"/>
+    <field name="Texture states" size="5" start="4" type="uint" modifier="groups(8)"/>
+    <field name="Sampler states" size="3" start="9" type="Sampler states"/>
+    <field name="Preshader GPRs" size="4" start="12" type="uint" modifier="groups(16)"/>
+
+    <!-- Only for fragment shaders -->
+    <field name="Unknown" size="16" start="16" type="hex"/>
+  </struct>
+
   <!-- PPP state starts -->
   <struct name="PPP Header" size="4">
     <field name="Fragment control" size="1" start="0" type="bool"/>
@@ -537,16 +558,6 @@
     <field name="Scissor" size="16" start="0" type="uint"/>
     <field name="Depth bias" size="16" start="16" type="uint"/>
   </struct>
-
-  <enum name="Sampler states">
-    <value name="0" value="0"/>
-    <value name="4 compact" value="1"/>
-    <value name="8 compact" value="2"/>
-    <value name="12 compact" value="3"/>
-    <value name="16 compact" value="4"/>
-    <value name="8 extended" value="6"/>
-    <value name="16 extended" value="7"/>
-  </enum>
 
   <struct name="Fragment shader" size="16">
     <field name="Unknown 0" size="1" start="0" type="hex" default="0"/>
