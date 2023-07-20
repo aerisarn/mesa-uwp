@@ -70,6 +70,7 @@ trivialize_load(nir_intrinsic_instr *load)
 
    nir_builder b = nir_builder_at(nir_after_instr(&load->instr));
    nir_ssa_def *copy = nir_mov(&b, &load->dest.ssa);
+   copy->divergent = load->dest.ssa.divergent;
    nir_ssa_def_rewrite_uses_after(&load->dest.ssa, copy, copy->parent_instr);
 
    assert(list_is_singular(&load->dest.ssa.uses));
@@ -152,6 +153,7 @@ isolate_store(nir_intrinsic_instr *store)
 
    nir_builder b = nir_builder_at(nir_before_instr(&store->instr));
    nir_ssa_def *copy = nir_mov(&b, store->src[0].ssa);
+   copy->divergent = store->src[0].ssa->divergent;
    nir_instr_rewrite_src_ssa(&store->instr, &store->src[0], copy);
 }
 
