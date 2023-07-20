@@ -1368,6 +1368,15 @@ anv_queue_submit_sparse_bind_locked(struct anv_queue *queue,
 
    assert(submit->command_buffer_count == 0);
 
+   if (INTEL_DEBUG(DEBUG_SPARSE)) {
+      fprintf(stderr, "[sparse submission, buffers:%u opaque_images:%u "
+              "images:%u waits:%u signals:%u]\n",
+              submit->buffer_bind_count,
+              submit->image_opaque_bind_count,
+              submit->image_bind_count,
+              submit->wait_count, submit->signal_count);
+   }
+
    /* TODO: make both the syncs and signals be passed as part of the vm_bind
     * ioctl so they can be waited asynchronously. For now this doesn't matter
     * as we're doing synchronous vm_bind, but later when we make it async this
