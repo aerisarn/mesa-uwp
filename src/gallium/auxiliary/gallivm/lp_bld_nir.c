@@ -2894,7 +2894,7 @@ bool lp_build_nir_llvm(struct lp_build_nir_context *bld_base,
    struct nir_function *func;
 
    NIR_PASS_V(nir, nir_convert_from_ssa, true, true);
-   NIR_PASS_V(nir, nir_lower_locals_to_reg_intrinsics, 32);
+   NIR_PASS_V(nir, nir_lower_locals_to_regs, 32);
    NIR_PASS_V(nir, nir_remove_dead_derefs);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
 

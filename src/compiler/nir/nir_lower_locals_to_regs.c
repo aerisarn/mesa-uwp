@@ -309,7 +309,7 @@ impl(nir_function_impl *impl, uint8_t bool_bitsize)
 }
 
 bool
-nir_lower_locals_to_reg_intrinsics(nir_shader *shader, uint8_t bool_bitsize)
+nir_lower_locals_to_regs(nir_shader *shader, uint8_t bool_bitsize)
 {
    bool progress = false;
 

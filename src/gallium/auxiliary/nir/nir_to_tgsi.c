@@ -3977,7 +3977,7 @@ const void *nir_to_tgsi_options(struct nir_shader *s,
 
    /* locals_to_reg_intrinsics will leave dead derefs that are good to clean up.
     */
-   NIR_PASS_V(s, nir_lower_locals_to_reg_intrinsics, 32);
+   NIR_PASS_V(s, nir_lower_locals_to_regs, 32);
    NIR_PASS_V(s, nir_opt_dce);
 
    /* See comment in ntt_get_alu_src for supported modifiers */
