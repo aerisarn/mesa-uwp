@@ -1462,11 +1462,14 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
 
          if (dst.size() == 1)
             bld.copy(Definition(dst), packed[0]);
-         else if (dst.size() == 2)
-            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), packed[0], packed[1]);
-         else
-            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), packed[0], packed[1],
-                       packed[2]);
+         else {
+            aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
+               aco_opcode::p_create_vector, Format::PSEUDO, dst.size(), 1)};
+            vec->definitions[0] = Definition(dst);
+            for (unsigned i = 0; i < dst.size(); ++i)
+               vec->operands[i] = Operand(packed[i]);
+            bld.insert(std::move(vec));
+         }
       }
       break;
    }
