@@ -39,7 +39,7 @@ push_add_bo(struct push_builder *pb,
 {
    const uint32_t domain = (bo->flags & NOUVEAU_WS_BO_GART) ?
                            NOUVEAU_GEM_DOMAIN_GART :
-                           pb->dev->pdev->dev->local_mem_domain;
+                           pb->dev->ws_dev->local_mem_domain;
 
    for (uint32_t i = 0; i < pb->req.nr_buffers; i++) {
       if (pb->req_bo[i].handle == bo->handle) {
@@ -88,7 +88,7 @@ push_add_push(struct push_builder *pb, struct nouveau_ws_bo *bo,
 static VkResult
 push_submit(struct push_builder *pb, struct nvk_queue *queue, bool sync)
 {
-   int err = drmCommandWriteRead(pb->dev->pdev->dev->fd,
+   int err = drmCommandWriteRead(pb->dev->ws_dev->fd,
                                  DRM_NOUVEAU_GEM_PUSHBUF,
                                  &pb->req, sizeof(pb->req));
    if (err) {
@@ -100,7 +100,7 @@ push_submit(struct push_builder *pb, struct nvk_queue *queue, bool sync)
       struct drm_nouveau_gem_cpu_prep req = {};
       req.handle = pb->req_bo[0].handle;
       req.flags = NOUVEAU_GEM_CPU_PREP_WRITE;
-      err = drmCommandWrite(pb->dev->pdev->dev->fd,
+      err = drmCommandWrite(pb->dev->ws_dev->fd,
                             DRM_NOUVEAU_GEM_CPU_PREP,
                             &req, sizeof(req));
       if (err) {

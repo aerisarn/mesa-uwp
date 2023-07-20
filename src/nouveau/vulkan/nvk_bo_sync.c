@@ -52,7 +52,7 @@ nvk_bo_sync_init(struct vk_device *vk_dev,
    sync->state = initial_value ? NVK_BO_SYNC_STATE_SIGNALED :
                                  NVK_BO_SYNC_STATE_RESET;
 
-   sync->bo = nouveau_ws_bo_new(dev->pdev->dev, 0x1000, 0,
+   sync->bo = nouveau_ws_bo_new(dev->ws_dev, 0x1000, 0,
                                 NOUVEAU_WS_BO_GART);
    if (!sync->bo)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);

@@ -120,7 +120,7 @@ nvk_GetMemoryFdPropertiesKHR(VkDevice device,
    switch (handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
-      bo = nouveau_ws_bo_from_dma_buf(pdev->dev, fd);
+      bo = nouveau_ws_bo_from_dma_buf(dev->ws_dev, fd);
       if (bo == NULL)
          return vk_error(dev, VK_ERROR_INVALID_EXTERNAL_HANDLE);
       break;
@@ -181,14 +181,14 @@ nvk_allocate_memory(struct nvk_device *dev,
              fd_info->handleType ==
                VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 
-      mem->bo = nouveau_ws_bo_from_dma_buf(pdev->dev, fd_info->fd);
+      mem->bo = nouveau_ws_bo_from_dma_buf(dev->ws_dev, fd_info->fd);
       if (mem->bo == NULL) {
          result = vk_error(dev, VK_ERROR_INVALID_EXTERNAL_HANDLE);
          goto fail_alloc;
       }
       assert(!(flags & ~mem->bo->flags));
    } else if (tile_info) {
-      mem->bo = nouveau_ws_bo_new_tiled(pdev->dev,
+      mem->bo = nouveau_ws_bo_new_tiled(dev->ws_dev,
                                         pAllocateInfo->allocationSize, 0,
                                         tile_info->pte_kind,
                                         tile_info->tile_mode,
@@ -198,14 +198,14 @@ nvk_allocate_memory(struct nvk_device *dev,
          goto fail_alloc;
       }
    } else {
-      mem->bo = nouveau_ws_bo_new(pdev->dev, aligned_size, alignment, flags);
+      mem->bo = nouveau_ws_bo_new(dev->ws_dev, aligned_size, alignment, flags);
       if (!mem->bo) {
          result = vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
          goto fail_alloc;
       }
    }
 
-   if (pdev->dev->debug_flags & NVK_DEBUG_ZERO_MEMORY) {
+   if (dev->ws_dev->debug_flags & NVK_DEBUG_ZERO_MEMORY) {
       if (type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
          void *map = nouveau_ws_bo_map(mem->bo, NOUVEAU_WS_BO_RDWR);
          if (map == NULL) {

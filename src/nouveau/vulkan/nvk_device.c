@@ -81,7 +81,7 @@ nvk_slm_area_ensure(struct nvk_device *dev,
    if (likely(bytes_per_mp <= area->bytes_per_mp))
       return VK_SUCCESS;
 
-   uint64_t size = bytes_per_mp * dev->pdev->dev->mp_count;
+   uint64_t size = bytes_per_mp * dev->ws_dev->mp_count;
 
    /* The hardware seems to require this alignment for
     * NV9097_SET_SHADER_LOCAL_MEMORY_D_SIZE_LOWER.
@@ -89,7 +89,7 @@ nvk_slm_area_ensure(struct nvk_device *dev,
    size = ALIGN(size, 0x20000);
 
    struct nouveau_ws_bo *bo =
-      nouveau_ws_bo_new(dev->pdev->dev, size, 0, NOUVEAU_WS_BO_LOCAL);
+      nouveau_ws_bo_new(dev->ws_dev, size, 0, NOUVEAU_WS_BO_LOCAL);
    if (bo == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
@@ -139,11 +139,12 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   vk_device_set_drm_fd(&dev->vk, pdev->dev->fd);
+   vk_device_set_drm_fd(&dev->vk, pdev->ws_dev->fd);
    dev->vk.command_buffer_ops = &nvk_cmd_buffer_ops;
    dev->pdev = pdev;
+   dev->ws_dev = pdev->ws_dev;
 
-   int ret = nouveau_ws_context_create(pdev->dev, &dev->ws_ctx);
+   int ret = nouveau_ws_context_create(dev->ws_dev, &dev->ws_ctx);
    if (ret) {
       if (ret == -ENOSPC)
          result = vk_error(dev, VK_ERROR_TOO_MANY_OBJECTS);
@@ -216,9 +217,9 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    pthread_condattr_destroy(&condattr);
 
    void *zero_map;
-   dev->zero_page = nouveau_ws_bo_new_mapped(dev->pdev->dev, 0x1000, 0,
-                                                NOUVEAU_WS_BO_LOCAL,
-                                                NOUVEAU_WS_BO_WR, &zero_map);
+   dev->zero_page = nouveau_ws_bo_new_mapped(dev->ws_dev, 0x1000, 0,
+                                             NOUVEAU_WS_BO_LOCAL,
+                                             NOUVEAU_WS_BO_WR, &zero_map);
    if (dev->zero_page == NULL)
       goto fail_queue_submit;
 
@@ -228,7 +229,7 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (dev->pdev->info.cls_eng3d >= FERMI_A &&
        dev->pdev->info.cls_eng3d < MAXWELL_A) {
       /* max size is 256k */
-      dev->vab_memory = nouveau_ws_bo_new(dev->pdev->dev, 1 << 17, 1 << 20,
+      dev->vab_memory = nouveau_ws_bo_new(dev->ws_dev, 1 << 17, 1 << 20,
                                           NOUVEAU_WS_BO_LOCAL);
       if (dev->vab_memory == NULL)
          goto fail_zero_page;

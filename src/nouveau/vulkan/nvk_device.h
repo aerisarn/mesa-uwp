@@ -29,6 +29,7 @@ struct nvk_device {
    struct vk_device vk;
    struct nvk_physical_device *pdev;
 
+   struct nouveau_ws_device *ws_dev;
    struct nouveau_ws_context *ws_ctx;
 
    /* Protected by nvk_device::mutex */

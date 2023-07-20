@@ -123,7 +123,7 @@ nvk_queue_state_update(struct nvk_device *dev,
 
    struct nouveau_ws_bo *push_bo;
    void *push_map;
-   push_bo = nouveau_ws_bo_new_mapped(dev->pdev->dev, 256 * 4, 0,
+   push_bo = nouveau_ws_bo_new_mapped(dev->ws_dev, 256 * 4, 0,
                                       NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP,
                                       NOUVEAU_WS_BO_WR, &push_map);
    if (push_bo == NULL)
@@ -282,12 +282,12 @@ nvk_queue_submit(struct vk_queue *vk_queue,
                                            "pointers pushbuf");
    }
 
-   const bool sync = dev->pdev->dev->debug_flags & NVK_DEBUG_PUSH_SYNC;
+   const bool sync = dev->ws_dev->debug_flags & NVK_DEBUG_PUSH_SYNC;
 
    result = nvk_queue_submit_drm_nouveau(queue, submit, sync);
 
    if ((sync && result != VK_SUCCESS) ||
-       (dev->pdev->dev->debug_flags & NVK_DEBUG_PUSH_DUMP)) {
+       (dev->ws_dev->debug_flags & NVK_DEBUG_PUSH_DUMP)) {
       nvk_queue_state_dump_push(dev, &queue->state, stderr);
 
       for (unsigned i = 0; i < submit->command_buffer_count; i++) {
@@ -320,7 +320,7 @@ nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
    queue->vk.driver_submit = nvk_queue_submit;
 
    void *empty_push_map;
-   queue->empty_push = nouveau_ws_bo_new_mapped(dev->pdev->dev, 4096, 0,
+   queue->empty_push = nouveau_ws_bo_new_mapped(dev->ws_dev, 4096, 0,
                                                 NOUVEAU_WS_BO_GART |
                                                 NOUVEAU_WS_BO_MAP,
                                                 NOUVEAU_WS_BO_WR,
@@ -376,7 +376,7 @@ nvk_queue_submit_simple(struct nvk_queue *queue,
       return VK_ERROR_DEVICE_LOST;
 
    void *push_map;
-   push_bo = nouveau_ws_bo_new_mapped(dev->pdev->dev, dw_count * 4, 0,
+   push_bo = nouveau_ws_bo_new_mapped(dev->ws_dev, dw_count * 4, 0,
                                       NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP,
                                       NOUVEAU_WS_BO_WR, &push_map);
    if (push_bo == NULL)
@@ -384,14 +384,14 @@ nvk_queue_submit_simple(struct nvk_queue *queue,
 
    memcpy(push_map, dw, dw_count * 4);
 
-   const bool debug_sync = dev->pdev->dev->debug_flags & NVK_DEBUG_PUSH_SYNC;
+   const bool debug_sync = dev->ws_dev->debug_flags & NVK_DEBUG_PUSH_SYNC;
 
    result = nvk_queue_submit_simple_drm_nouveau(queue, dw_count, push_bo,
                                                 extra_bo_count, extra_bos,
                                                 sync || debug_sync);
 
    if ((debug_sync && result != VK_SUCCESS) ||
-       (dev->pdev->dev->debug_flags & NVK_DEBUG_PUSH_DUMP)) {
+       (dev->ws_dev->debug_flags & NVK_DEBUG_PUSH_DUMP)) {
       struct nv_push push = {
          .start = (uint32_t *)dw,
          .end = (uint32_t *)dw + dw_count,

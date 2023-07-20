@@ -615,8 +615,8 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       return VK_ERROR_INCOMPATIBLE_DRIVER;
    }
 
-   struct nouveau_ws_device *ndev = nouveau_ws_device_new(drm_device);
-   if (!ndev)
+   struct nouveau_ws_device *ws_dev = nouveau_ws_device_new(drm_device);
+   if (!ws_dev)
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
 
    vk_warn_non_conformant_implementation("NVK");
@@ -637,10 +637,10 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       &dispatch_table, &wsi_physical_device_entrypoints, false);
 
    struct vk_device_extension_table supported_extensions;
-   nvk_get_device_extensions(&ndev->info, &supported_extensions);
+   nvk_get_device_extensions(&ws_dev->info, &supported_extensions);
 
    struct vk_features supported_features;
-   nvk_get_device_features(&ndev->info, &supported_features);
+   nvk_get_device_features(&ws_dev->info, &supported_features);
 
    result = vk_physical_device_init(&pdev->vk, &instance->vk,
                                     &supported_extensions,
@@ -650,8 +650,8 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   pdev->dev = ndev;
-   pdev->info = ndev->info;
+   pdev->ws_dev = ws_dev;
+   pdev->info = ws_dev->info;
 
    const struct {
       uint16_t vendor_id;
@@ -714,7 +714,7 @@ fail_init:
 fail_alloc:
    vk_free(&instance->vk.alloc, pdev);
 fail_dev_alloc:
-   nouveau_ws_device_destroy(ndev);
+   nouveau_ws_device_destroy(ws_dev);
    return result;
 }
 
@@ -725,7 +725,7 @@ nvk_physical_device_destroy(struct vk_physical_device *vk_pdev)
       container_of(vk_pdev, struct nvk_physical_device, vk);
 
    nvk_finish_wsi(pdev);
-   nouveau_ws_device_destroy(pdev->dev);
+   nouveau_ws_device_destroy(pdev->ws_dev);
    vk_physical_device_finish(&pdev->vk);
    vk_free(&pdev->vk.instance->alloc, pdev);
 }

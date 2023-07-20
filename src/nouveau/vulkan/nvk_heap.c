@@ -83,7 +83,7 @@ nvk_heap_grow_locked(struct nvk_device *dev, struct nvk_heap *heap)
 
       void *new_bo_map;
       struct nouveau_ws_bo *new_bo =
-         nouveau_ws_bo_new_mapped(dev->pdev->dev,
+         nouveau_ws_bo_new_mapped(dev->ws_dev,
                                   new_bo_size + heap->overalloc, 0,
                                   heap->bo_flags, heap->map_flags,
                                   &new_bo_map);
@@ -163,7 +163,7 @@ nvk_heap_grow_locked(struct nvk_device *dev, struct nvk_heap *heap)
          NVK_HEAP_MIN_SIZE << (MAX2(heap->bo_count, 1) - 1);
 
       heap->bos[heap->bo_count].bo =
-         nouveau_ws_bo_new_mapped(dev->pdev->dev,
+         nouveau_ws_bo_new_mapped(dev->ws_dev,
                                   new_bo_size + heap->overalloc, 0,
                                   heap->bo_flags, heap->map_flags,
                                   &heap->bos[heap->bo_count].map);

@@ -10,7 +10,6 @@ nvk_descriptor_table_grow_locked(struct nvk_device *dev,
                                  struct nvk_descriptor_table *table,
                                  uint32_t new_alloc)
 {
-   struct nvk_physical_device *pdev = nvk_device_physical(dev);
    struct nouveau_ws_bo *new_bo;
    void *new_map;
    uint32_t *new_free_table;
@@ -18,7 +17,7 @@ nvk_descriptor_table_grow_locked(struct nvk_device *dev,
    assert(new_alloc > table->alloc && new_alloc <= table->max_alloc);
 
    const uint32_t new_bo_size = new_alloc * table->desc_size;
-   new_bo = nouveau_ws_bo_new(pdev->dev, new_bo_size, 256,
+   new_bo = nouveau_ws_bo_new(dev->ws_dev, new_bo_size, 256,
                               NOUVEAU_WS_BO_LOCAL | NOUVEAU_WS_BO_MAP);
    if (new_bo == NULL) {
       return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,

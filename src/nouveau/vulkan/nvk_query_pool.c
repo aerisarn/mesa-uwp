@@ -62,7 +62,7 @@ nvk_CreateQueryPool(VkDevice device,
    if (pool->vk.query_count > 0) {
       uint32_t bo_size = pool->query_start +
                          pool->query_stride * pool->vk.query_count;
-      pool->bo = nouveau_ws_bo_new_mapped(dev->pdev->dev, bo_size, 0,
+      pool->bo = nouveau_ws_bo_new_mapped(dev->ws_dev, bo_size, 0,
                                           NOUVEAU_WS_BO_GART,
                                           NOUVEAU_WS_BO_RDWR,
                                           &pool->bo_map);
@@ -71,7 +71,7 @@ nvk_CreateQueryPool(VkDevice device,
          return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       }
 
-      if (dev->pdev->dev->debug_flags & NVK_DEBUG_ZERO_MEMORY)
+      if (dev->ws_dev->debug_flags & NVK_DEBUG_ZERO_MEMORY)
          memset(pool->bo_map, 0, bo_size);
    }
 

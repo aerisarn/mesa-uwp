@@ -424,7 +424,7 @@ nvk_CreateDescriptorPool(VkDevice _device,
 
    if (bo_size) {
       uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
-      pool->bo = nouveau_ws_bo_new(device->pdev->dev, bo_size, 0, flags);
+      pool->bo = nouveau_ws_bo_new(device->ws_dev, bo_size, 0, flags);
       if (!pool->bo) {
          nvk_destroy_descriptor_pool(device, pAllocator, pool);
          return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
