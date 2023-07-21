@@ -33,7 +33,7 @@ lower_hit_attrib_deref(nir_builder *b, nir_instr *instr, void *data)
       nir_def *components[NIR_MAX_VEC_COMPONENTS];
 
       for (uint32_t comp = 0; comp < num_components; comp++) {
-         uint32_t offset = deref->var->data.driver_location + comp * bit_size / 8;
+         uint32_t offset = deref->var->data.driver_location + comp * DIV_ROUND_UP(bit_size, 8);
          uint32_t base = offset / 4;
          uint32_t comp_offset = offset % 4;
 
@@ -49,7 +49,8 @@ lower_hit_attrib_deref(nir_builder *b, nir_instr *instr, void *data)
             components[comp] =
                nir_channel(b, nir_unpack_bits(b, nir_load_hit_attrib_amd(b, .base = base), 8), comp_offset);
          } else {
-            unreachable("Invalid bit_size");
+            assert(bit_size == 1);
+            components[comp] = nir_i2b(b, nir_load_hit_attrib_amd(b, .base = base));
          }
       }
 
@@ -60,7 +61,7 @@ lower_hit_attrib_deref(nir_builder *b, nir_instr *instr, void *data)
       uint32_t bit_size = value->bit_size;
 
       for (uint32_t comp = 0; comp < num_components; comp++) {
-         uint32_t offset = deref->var->data.driver_location + comp * bit_size / 8;
+         uint32_t offset = deref->var->data.driver_location + comp * DIV_ROUND_UP(bit_size, 8);
          uint32_t base = offset / 4;
          uint32_t comp_offset = offset % 4;
 
@@ -84,7 +85,8 @@ lower_hit_attrib_deref(nir_builder *b, nir_instr *instr, void *data)
                components[byte] = (byte == comp_offset) ? nir_channel(b, value, comp) : nir_channel(b, prev, byte);
             nir_store_hit_attrib_amd(b, nir_pack_32_4x8(b, nir_vec(b, components, 4)), .base = base);
          } else {
-            unreachable("Invalid bit_size");
+            assert(bit_size == 1);
+            nir_store_hit_attrib_amd(b, nir_b2i32(b, component), .base = base);
          }
       }
    }
