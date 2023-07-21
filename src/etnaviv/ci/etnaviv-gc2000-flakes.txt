@@ -63,6 +63,7 @@ spec@arb_texture_storage@texture-storage
 spec@arb_texture_storage@texture-storage@2D mipmap rendering
 spec@arb_texture_storage@texture-storage@cube array texture
 spec@ext_framebuffer_object@fbo-generatemipmap-viewport
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_ayuv
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv
 spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-copypixels
 spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-blit
@@ -175,6 +176,7 @@ spec@glsl-1.10@execution@built-in-functions@fs-op-assign-div-ivec4-int
 spec@glsl-1.10@execution@built-in-functions@fs-op-assign-div-ivec4-ivec4
 spec@glsl-1.10@execution@built-in-functions@fs-op-div-vec3-vec3
 spec@glsl-1.10@execution@built-in-functions@fs-op-ne-bool-bool
+spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-vec3-vec3-vec3
 spec@glsl-1.10@execution@built-in-functions@vs-floor-vec2
 spec@glsl-1.10@execution@built-in-functions@vs-greaterthanequal-ivec3-ivec3
 spec@glsl-1.10@execution@built-in-functions@vs-op-assign-mult-vec2-vec2
