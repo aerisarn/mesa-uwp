@@ -129,6 +129,11 @@ struct brw_compiler {
    bool use_bindless_sampler_offset;
 
    struct nir_shader *clc_shader;
+
+   struct {
+      unsigned mue_header_packing;
+      bool mue_compaction;
+   } mesh;
 };
 
 #define brw_shader_debug_log(compiler, data, fmt, ... ) do {    \

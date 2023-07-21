@@ -503,7 +503,8 @@ brw_sum_size(const std::list<struct attr_desc> &orders)
  * of URB read/write messages (which operate on vec4-aligned memory).
  */
 static void
-brw_compute_mue_layout(std::list<struct attr_desc> *orders,
+brw_compute_mue_layout(const struct brw_compiler *compiler,
+                       std::list<struct attr_desc> *orders,
                        uint64_t outputs_written,
                        struct nir_shader *nir,
                        bool *pack_prim_data_into_header,
@@ -512,12 +513,10 @@ brw_compute_mue_layout(std::list<struct attr_desc> *orders,
    const struct shader_info *info = &nir->info;
 
    struct attr_type_info data[3];
-   bool no_compact = !debug_get_bool_option("BRW_MESH_COMPACTION", true);
-   unsigned header_packing = (unsigned)debug_get_num_option("BRW_MESH_HEADER_PACKING", 3);
 
-   if ((header_packing & 1) == 0)
+   if ((compiler->mesh.mue_header_packing & 1) == 0)
       *pack_prim_data_into_header = false;
-   if ((header_packing & 2) == 0)
+   if ((compiler->mesh.mue_header_packing & 2) == 0)
       *pack_vert_data_into_header = false;
 
    for (unsigned i = PRIM; i <= VERT_FLAT; ++i)
@@ -612,7 +611,7 @@ brw_compute_mue_layout(std::list<struct attr_desc> *orders,
       h.dwords = 4 - mod;
       h.slots = 0;
 
-      if (no_compact) {
+      if (!compiler->mesh.mue_compaction) {
          order->push_back(d);
          order->push_back(h);
          continue;
@@ -774,7 +773,8 @@ brw_compute_mue_layout(std::list<struct attr_desc> *orders,
  * the pitch.
  */
 static void
-brw_compute_mue_map(struct nir_shader *nir, struct brw_mue_map *map,
+brw_compute_mue_map(const struct brw_compiler *compiler,
+                    struct nir_shader *nir, struct brw_mue_map *map,
                     enum brw_mesh_index_format index_format)
 {
    memset(map, 0, sizeof(*map));
@@ -846,7 +846,7 @@ brw_compute_mue_map(struct nir_shader *nir, struct brw_mue_map *map,
          (outputs_written & per_vertex_header_bits) ==
                BITFIELD64_BIT(VARYING_SLOT_POS);
 
-   brw_compute_mue_layout(orders, regular_outputs, nir,
+   brw_compute_mue_layout(compiler, orders, regular_outputs, nir,
                           &map->user_data_in_primitive_header,
                           &map->user_data_in_vertex_header);
 
@@ -1455,7 +1455,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
 
    brw_nir_lower_tue_inputs(nir, params->tue_map);
 
-   brw_compute_mue_map(nir, &prog_data->map, prog_data->index_format);
+   brw_compute_mue_map(compiler, nir, &prog_data->map, prog_data->index_format);
    brw_nir_lower_mue_outputs(nir, &prog_data->map);
 
    brw_simd_selection_state simd_state{
