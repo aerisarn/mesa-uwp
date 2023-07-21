@@ -494,9 +494,18 @@ lower_cmat_instr(nir_builder *b, nir_instr *instr, void *_state)
       /* FINISHME. */
       return NIR_LOWER_INSTR_PROGRESS_REPLACE;
 
-   case nir_intrinsic_cmat_bitcast:
-      /* FINISHME. */
+   case nir_intrinsic_cmat_bitcast: {
+      nir_deref_instr *dst_slice = nir_src_as_deref(intrin->src[0]);
+      nir_deref_instr *src_slice = nir_src_as_deref(intrin->src[1]);
+
+      const unsigned num_components = glsl_get_vector_elements(dst_slice->type);
+
+      assert(glsl_get_vector_elements(src_slice->type) == num_components);
+
+      nir_store_deref(b, dst_slice, nir_load_deref(b, src_slice),
+                      nir_component_mask(num_components));
       return NIR_LOWER_INSTR_PROGRESS_REPLACE;
+   }
 
    case nir_intrinsic_cmat_copy:
       nir_copy_deref(b,
