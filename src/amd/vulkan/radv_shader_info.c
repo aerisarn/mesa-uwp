@@ -1070,7 +1070,7 @@ radv_get_legacy_gs_info(const struct radv_device *device, struct radv_pipeline_s
    /* We can't allow using the whole LDS, because GS waves compete with
     * other shader stages for LDS space. */
    const unsigned max_lds_size = 8 * 1024;
-   const unsigned esgs_itemsize = es_info->esgs_itemsize / 4;
+   const unsigned esgs_itemsize = radv_compute_esgs_itemsize(device, gs_stage->info.gs.num_linked_inputs) / 4;
    unsigned esgs_lds_size;
 
    /* All these are per subgroup: */
