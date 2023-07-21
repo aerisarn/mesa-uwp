@@ -231,10 +231,16 @@ lower_store_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
    nir_instr_remove(&intr->instr);
 }
 
+struct scalarize_state {
+   nir_variable_mode mask;
+   nir_instr_filter_cb filter;
+   void *filter_data;
+};
+
 static bool
 nir_lower_io_to_scalar_instr(nir_builder *b, nir_instr *instr, void *data)
 {
-   nir_variable_mode mask = *(nir_variable_mode *)data;
+   struct scalarize_state *state = data;
 
    if (instr->type != nir_instr_type_intrinsic)
       return false;
@@ -247,36 +253,41 @@ nir_lower_io_to_scalar_instr(nir_builder *b, nir_instr *instr, void *data)
    if ((intr->intrinsic == nir_intrinsic_load_input ||
         intr->intrinsic == nir_intrinsic_load_per_vertex_input ||
         intr->intrinsic == nir_intrinsic_load_interpolated_input) &&
-       (mask & nir_var_shader_in)) {
+       (state->mask & nir_var_shader_in) &&
+       (!state->filter || state->filter(instr, state->filter_data))) {
       lower_load_input_to_scalar(b, intr);
       return true;
    }
 
    if ((intr->intrinsic == nir_intrinsic_load_output ||
         intr->intrinsic == nir_intrinsic_load_per_vertex_output) &&
-      (mask & nir_var_shader_out)) {
+      (state->mask & nir_var_shader_out) &&
+      (!state->filter || state->filter(instr, state->filter_data))) {
       lower_load_input_to_scalar(b, intr);
       return true;
    }
 
-   if ((intr->intrinsic == nir_intrinsic_load_ubo && (mask & nir_var_mem_ubo)) ||
-       (intr->intrinsic == nir_intrinsic_load_ssbo && (mask & nir_var_mem_ssbo)) ||
-       (intr->intrinsic == nir_intrinsic_load_global && (mask & nir_var_mem_global)) ||
-       (intr->intrinsic == nir_intrinsic_load_shared && (mask & nir_var_mem_shared))) {
+   if (((intr->intrinsic == nir_intrinsic_load_ubo && (state->mask & nir_var_mem_ubo)) ||
+        (intr->intrinsic == nir_intrinsic_load_ssbo && (state->mask & nir_var_mem_ssbo)) ||
+        (intr->intrinsic == nir_intrinsic_load_global && (state->mask & nir_var_mem_global)) ||
+        (intr->intrinsic == nir_intrinsic_load_shared && (state->mask & nir_var_mem_shared))) &&
+       (!state->filter || state->filter(instr, state->filter_data))) {
       lower_load_to_scalar(b, intr);
       return true;
    }
 
    if ((intr->intrinsic == nir_intrinsic_store_output ||
         intr->intrinsic == nir_intrinsic_store_per_vertex_output) &&
-       mask & nir_var_shader_out) {
+       state->mask & nir_var_shader_out &&
+       (!state->filter || state->filter(instr, state->filter_data))) {
       lower_store_output_to_scalar(b, intr);
       return true;
    }
 
-   if ((intr->intrinsic == nir_intrinsic_store_ssbo && (mask & nir_var_mem_ssbo)) ||
-       (intr->intrinsic == nir_intrinsic_store_global && (mask & nir_var_mem_global)) ||
-       (intr->intrinsic == nir_intrinsic_store_shared && (mask & nir_var_mem_shared))) {
+   if (((intr->intrinsic == nir_intrinsic_store_ssbo && (state->mask & nir_var_mem_ssbo)) ||
+        (intr->intrinsic == nir_intrinsic_store_global && (state->mask & nir_var_mem_global)) ||
+        (intr->intrinsic == nir_intrinsic_store_shared && (state->mask & nir_var_mem_shared))) &&
+       (!state->filter || state->filter(instr, state->filter_data))) {
       lower_store_to_scalar(b, intr);
       return true;
    }
@@ -285,13 +296,18 @@ nir_lower_io_to_scalar_instr(nir_builder *b, nir_instr *instr, void *data)
 }
 
 bool
-nir_lower_io_to_scalar(nir_shader *shader, nir_variable_mode mask)
+nir_lower_io_to_scalar(nir_shader *shader, nir_variable_mode mask, nir_instr_filter_cb filter, void *filter_data)
 {
+   struct scalarize_state state = {
+      mask,
+      filter,
+      filter_data
+   };
    return nir_shader_instructions_pass(shader,
                                        nir_lower_io_to_scalar_instr,
                                        nir_metadata_block_index |
                                        nir_metadata_dominance,
-                                       &mask);
+                                       &state);
 }
 
 static nir_variable **

@@ -1774,7 +1774,7 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_subgroups, &si_nir_subgroups_options);
 
    /* may generate some vector output store */
-   NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out);
+   NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
 }
 
 struct nir_shader *si_deserialize_shader(struct si_shader_selector *sel)

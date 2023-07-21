@@ -2293,7 +2293,7 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
                         NIR_PASS_V(c->s, nir_lower_clip_vs,
                                    c->key->ucp_enables, false, false, NULL);
                         NIR_PASS_V(c->s, nir_lower_io_to_scalar,
-                                   nir_var_shader_out);
+                                   nir_var_shader_out, NULL, NULL);
                 }
         }
 
@@ -2302,9 +2302,9 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
          * scalarizing must happen after nir_lower_clip_vs.
          */
         if (c->stage == QSTAGE_FRAG)
-                NIR_PASS_V(c->s, nir_lower_io_to_scalar, nir_var_shader_in);
+                NIR_PASS_V(c->s, nir_lower_io_to_scalar, nir_var_shader_in, NULL, NULL);
         else
-                NIR_PASS_V(c->s, nir_lower_io_to_scalar, nir_var_shader_out);
+                NIR_PASS_V(c->s, nir_lower_io_to_scalar, nir_var_shader_out, NULL, NULL);
 
         NIR_PASS_V(c->s, vc4_nir_lower_io, c);
         NIR_PASS_V(c->s, vc4_nir_lower_txf_ms, c);
