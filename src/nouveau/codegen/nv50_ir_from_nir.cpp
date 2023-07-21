@@ -2838,6 +2838,14 @@ Converter::visit(nir_alu_instr *insn)
       mkOp3(OP_PERMT, TYPE_U32, newDefs[0], getSrc(&insn->src[0]), prmt, loadImm(NULL, 0));
       break;
    }
+   case nir_op_fquantize2f16: {
+      DEFAULT_CHECKS;
+      LValues &newDefs = convert(&insn->dest);
+      Value *tmp = getSSA();
+      mkCvt(OP_CVT, TYPE_F16, tmp, TYPE_F32, getSrc(&insn->src[0]))->ftz = 1;
+      mkCvt(OP_CVT, TYPE_F32, newDefs[0], TYPE_F16, tmp);
+      break;
+   }
    case nir_op_urol: {
       DEFAULT_CHECKS;
       LValues &newDefs = convert(&insn->dest);
