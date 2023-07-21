@@ -137,6 +137,8 @@ public:
    };
    const InstrList& required_instr() const { return m_required_instr; }
 
+   virtual AluGroup *as_alu_group() { return nullptr;}
+
 protected:
 
 
