@@ -858,6 +858,17 @@ dri2_update_tex_buffer(struct dri_drawable *drawable,
    /* no-op */
 }
 
+static const struct dri2_format_mapping r8_b8_g8_mapping = {
+   DRM_FORMAT_YVU420,
+   __DRI_IMAGE_FORMAT_NONE,
+   __DRI_IMAGE_COMPONENTS_Y_U_V,
+   PIPE_FORMAT_R8_B8_G8_420_UNORM,
+   3,
+   { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8 },
+     { 2, 1, 1, __DRI_IMAGE_FORMAT_R8 },
+     { 1, 1, 1, __DRI_IMAGE_FORMAT_R8 } }
+};
+
 static const struct dri2_format_mapping r8_g8_b8_mapping = {
    DRM_FORMAT_YUV420,
    __DRI_IMAGE_FORMAT_NONE,
@@ -964,13 +975,19 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
       tex_usage |= PIPE_BIND_SAMPLER_VIEW;
    }
 
-   /* For I420, see if we have support for sampling r8_g8_b8 */
-   if (!tex_usage && map->pipe_format == PIPE_FORMAT_IYUV &&
-       map->dri_fourcc == DRM_FORMAT_YUV420 &&
-       pscreen->is_format_supported(pscreen, PIPE_FORMAT_R8_G8_B8_420_UNORM,
-                                    screen->target, 0, 0, PIPE_BIND_SAMPLER_VIEW)) {
-      map = &r8_g8_b8_mapping;
-      tex_usage |= PIPE_BIND_SAMPLER_VIEW;
+   /* For YV12 and I420, see if we have support for sampling r8_b8_g8 or r8_g8_b8 */
+   if (!tex_usage && map->pipe_format == PIPE_FORMAT_IYUV) {
+      if (map->dri_fourcc == DRM_FORMAT_YUV420 &&
+          pscreen->is_format_supported(pscreen, PIPE_FORMAT_R8_G8_B8_420_UNORM,
+                                       screen->target, 0, 0, PIPE_BIND_SAMPLER_VIEW)) {
+         map = &r8_g8_b8_mapping;
+         tex_usage |= PIPE_BIND_SAMPLER_VIEW;
+      } else if (map->dri_fourcc == DRM_FORMAT_YVU420 &&
+          pscreen->is_format_supported(pscreen, PIPE_FORMAT_R8_B8_G8_420_UNORM,
+                                       screen->target, 0, 0, PIPE_BIND_SAMPLER_VIEW)) {
+         map = &r8_b8_g8_mapping;
+         tex_usage |= PIPE_BIND_SAMPLER_VIEW;
+      }
    }
 
    /* If the hardware supports R8G8_R8B8 style subsampled RGB formats, these

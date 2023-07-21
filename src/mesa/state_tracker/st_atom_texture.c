@@ -210,7 +210,8 @@ st_get_sampler_views(struct st_context *st,
                pipe->create_sampler_view(pipe, stObj->pt->next, &tmpl);
          break;
       case PIPE_FORMAT_IYUV:
-         if (stObj->pt->format == PIPE_FORMAT_R8_G8_B8_420_UNORM)
+         if (stObj->pt->format == PIPE_FORMAT_R8_G8_B8_420_UNORM ||
+             stObj->pt->format == PIPE_FORMAT_R8_B8_G8_420_UNORM)
             /* no additional views needed */
             break;
 

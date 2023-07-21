@@ -210,6 +210,17 @@ is_i420_as_r8_g8_b8_420_supported(struct pipe_screen *screen,
       return true;
    }
 
+   if (out->format == PIPE_FORMAT_IYUV &&
+       out->texture->format == PIPE_FORMAT_R8_B8_G8_420_UNORM &&
+       screen->is_format_supported(screen, PIPE_FORMAT_R8_B8_G8_420_UNORM,
+                                   PIPE_TEXTURE_2D,
+                                   out->texture->nr_samples,
+                                   out->texture->nr_storage_samples,
+                                   usage)) {
+      *native_supported = false;
+      return true;
+   }
+
    return false;
 }
 
@@ -391,7 +402,8 @@ st_bind_egl_image(struct gl_context *ctx,
          texObj->RequiredTextureImageUnits = 1;
          break;
       case PIPE_FORMAT_IYUV:
-         if (stimg->texture->format == PIPE_FORMAT_R8_G8_B8_420_UNORM) {
+         if (stimg->texture->format == PIPE_FORMAT_R8_G8_B8_420_UNORM ||
+             stimg->texture->format == PIPE_FORMAT_R8_B8_G8_420_UNORM) {
             texFormat = MESA_FORMAT_R8G8B8X8_UNORM;
             texObj->RequiredTextureImageUnits = 1;
          } else {
