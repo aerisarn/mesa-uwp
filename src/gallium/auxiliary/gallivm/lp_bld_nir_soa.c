@@ -1111,7 +1111,7 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
       val = LLVMBuildBitCast(builder, val, atom_bld->vec_type, "");
 
    LLVMValueRef atom_res = lp_build_alloca(gallivm,
-                                           LLVMTypeOf(val), "");
+                                           atom_bld->vec_type, "");
    LLVMValueRef exec_mask = mask_vec(bld_base);
    struct lp_build_loop_state loop_state;
    lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
