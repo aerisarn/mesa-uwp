@@ -1285,13 +1285,16 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 		 	(bc->cf_last->op == CF_OP_ALU_PUSH_BEFORE && type == CF_OP_ALU)) {
 		 	LIST_FOR_EACH_ENTRY(lalu, &bc->cf_last->alu, list) {
 		 		if (lalu->execute_mask) {
+                                        assert(bc->force_add_cf || !"no force cf");
 					bc->force_add_cf = 1;
 					break;
 				}
 		 		type = CF_OP_ALU_PUSH_BEFORE;
 			}
-		} else
+		} else  {
+                   assert(bc->force_add_cf ||!"no force cf");
 			bc->force_add_cf = 1;
+                }
 	}
 
 	/* cf can contains only alu or only vtx or only tex */
