@@ -298,7 +298,7 @@ Block::erase(iterator node)
 void
 Block::set_type(Type t, r600_chip_class chip_class)
 {
-   m_blocK_type = t;
+   m_block_type = t;
    switch (t) {
    case vtx:
       /* In theory on >= EG VTX support 16 slots, but with vertex fetch

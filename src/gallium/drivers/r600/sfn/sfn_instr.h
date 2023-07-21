@@ -203,7 +203,7 @@ public:
 
    int id() const { return m_id; }
 
-   auto type() const { return m_blocK_type; }
+   auto type() const {return m_block_type; }
    void set_type(Type t, r600_chip_class chip_class);
    int32_t remaining_slots() const { return m_remaining_slots;}
 
@@ -243,7 +243,7 @@ private:
    int m_id;
    int m_next_index;
 
-   Type m_blocK_type{unknown};
+   Type m_block_type{unknown};
    uint32_t m_remaining_slots{0xffff};
 
    std::array<KCacheLine, 4> m_kcache;
