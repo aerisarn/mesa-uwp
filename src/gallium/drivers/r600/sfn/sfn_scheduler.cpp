@@ -554,6 +554,9 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
    bool has_lds_ready =
       !alu_vec_ready.empty() && (*alu_vec_ready.begin())->has_lds_access();
 
+   bool has_ar_read_ready = !alu_vec_ready.empty() &&
+                            std::get<0>((*alu_vec_ready.begin())->indirect_addr());
+
    /* If we have ready ALU instructions we have to start a new ALU block */
    if (has_alu_ready || !alu_groups_ready.empty()) {
       if (m_current_block->type() != Block::alu) {
@@ -565,7 +568,7 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
    /* Schedule groups first. unless we have a pending LDS instruction
     * We don't want the LDS instructions to be too far apart because the
     * fetch + read from queue has to be in the same ALU CF block */
-   if (!alu_groups_ready.empty() && !has_lds_ready) {
+   if (!alu_groups_ready.empty() && !has_lds_ready && !has_ar_read_ready) {
       group = *alu_groups_ready.begin();
 
       if (!check_array_reads(*group)) {
