@@ -22,6 +22,8 @@
  */
 #include "nir_serialize.h"
 #include "pipe/p_defines.h"
+#include "r600_asm.h"
+#include "r600_isa.h"
 #include "r600_sq.h"
 #include "r600_formats.h"
 #include "r600_opcodes.h"
@@ -510,6 +512,9 @@ static int emit_streamout(struct r600_shader_ctx *ctx, struct pipe_stream_output
 		}
 	}
 
+	if (so->num_outputs && ctx->bc->cf_last->op != CF_OP_ALU &&
+            ctx->bc->cf_last->op != CF_OP_ALU_PUSH_BEFORE)
+		ctx->bc->force_add_cf = 1;
 	/* Initialize locations where the outputs are stored. */
 	for (i = 0; i < so->num_outputs; i++) {
 
@@ -728,6 +733,7 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 		alu.execute_mask = 1;
 		alu.update_pred = 1;
 		alu.last = 1;
+		ctx.bc->force_add_cf = 1;
 		r600_bytecode_add_alu_type(ctx.bc, &alu, CF_OP_ALU_PUSH_BEFORE);
 
 		r600_bytecode_add_cfinst(ctx.bc, CF_OP_JUMP);
