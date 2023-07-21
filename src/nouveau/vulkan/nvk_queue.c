@@ -325,6 +325,8 @@ nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
       goto fail_init;
    }
 #endif
+
+#if NVK_NEW_UAPI == 0
    void *empty_push_map;
    queue->empty_push = nouveau_ws_bo_new_mapped(dev->ws_dev, 4096, 0,
                                                 NOUVEAU_WS_BO_GART |
@@ -344,6 +346,7 @@ nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
       queue->empty_push_dw_count = nv_push_dw_count(&push);
    }
    nouveau_ws_bo_unmap(queue->empty_push, empty_push_map);
+#endif
 
    result = nvk_queue_init_context_draw_state(queue);
    if (result != VK_SUCCESS)
@@ -352,7 +355,9 @@ nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
    return VK_SUCCESS;
 
 fail_empty_push:
+#if NVK_NEW_UAPI == 0
    nouveau_ws_bo_destroy(queue->empty_push);
+#endif
 fail_init:
    vk_queue_finish(&queue->vk);
 
@@ -367,7 +372,9 @@ nvk_queue_finish(struct nvk_device *dev, struct nvk_queue *queue)
    ASSERTED int err = drmSyncobjDestroy(dev->ws_dev->fd, queue->syncobj_handle);
    assert(err == 0);
 #endif
+#if NVK_NEW_UAPI == 0
    nouveau_ws_bo_destroy(queue->empty_push);
+#endif
    vk_queue_finish(&queue->vk);
 }
 

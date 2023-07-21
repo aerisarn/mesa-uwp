@@ -458,8 +458,10 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
    if (is_vmbind) {
       assert(submit->command_buffer_count == 0);
    } else if (submit->command_buffer_count == 0) {
+#if NVK_NEW_UAPI == 0
       push_add_push_bo(&pb, queue->empty_push, 0,
                        queue->empty_push_dw_count * 4);
+#endif
    } else {
       push_add_queue_state(&pb, &queue->state);
 
