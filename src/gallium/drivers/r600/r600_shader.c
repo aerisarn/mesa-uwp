@@ -288,11 +288,8 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 	if (shader->gs_copy_shader) {
 		if (dump) {
 			// dump copy shader
-			r = r600_sb_bytecode_process(rctx, &shader->gs_copy_shader->shader.bc,
-						     &shader->gs_copy_shader->shader, dump, 0);
-			if (r)
-				goto error;
-		}
+			r600_bytecode_disasm(&shader->gs_copy_shader->shader.bc);
+                }
 
 		if ((r = store_shader(ctx, shader->gs_copy_shader)))
 			goto error;
