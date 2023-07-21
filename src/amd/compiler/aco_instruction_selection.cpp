@@ -1444,6 +1444,8 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
                else if (packed[i * 2].id())
                   packed[i] = bld.sop2(aco_opcode::s_pack_ll_b32_b16, bld.def(s1), packed[i * 2],
                                        Operand::c32(const_vals[i * 2 + 1]));
+               else
+                  packed[i] = Temp(); /* Both constants, so reset the entry */
 
                if (same)
                   const_vals[i] = const_vals[i * 2] | (const_vals[i * 2 + 1] << 16);
