@@ -445,24 +445,38 @@ AssamblerVisitor::visit(const AluGroup& group)
    if (group.slots() == 0)
       return;
 
-   if (group.has_lds_group_start()) {
-      if (m_bc->cf_last->ndw + 2 * (*group.begin())->required_slots() > 220) {
-         assert(m_bc->cf_last->nlds_read == 0);
-         m_bc->force_add_cf = 1;
-         m_last_addr = nullptr;
-      }
-   } else if (m_bc->cf_last) {
-      if (m_bc->cf_last->ndw + 2 * group.slots() > 248) {
-         assert(m_bc->cf_last->nlds_read == 0);
-         m_bc->force_add_cf = 1;
-         m_last_addr = nullptr;
-      } else {
-         auto instr = *group.begin();
-         if (instr && !instr->has_alu_flag(alu_is_lds) &&
-             instr->opcode() == op0_group_barrier && m_bc->cf_last->ndw + 14 > 240) {
+
+   static const unsigned slot_limit = r600::sfn_log.has_debug_flag(r600::SfnLog::noaddrsplit) ?
+                                         248 : 256;
+
+   if (m_bc->cf_last && !m_bc->force_add_cf) {
+      if (group.has_lds_group_start()) {
+         if (m_bc->cf_last->ndw + 2 * (*group.begin())->required_slots() > slot_limit) {
             assert(m_bc->cf_last->nlds_read == 0);
+            assert(0 && "Not allowed to start new alu group here");
             m_bc->force_add_cf = 1;
             m_last_addr = nullptr;
+         }
+      } else {
+         if (m_bc->cf_last->ndw + 2 * group.slots() > slot_limit) {
+            std::cerr << "m_bc->cf_last->ndw = " << m_bc->cf_last->ndw
+                      << " group.slots() = " << group.slots()
+                      << " -> " << m_bc->cf_last->ndw + 2 * group.slots()
+                      << "> slot_limit = " << slot_limit << "\n";
+            assert(m_bc->cf_last->nlds_read == 0);
+            assert(0 && "Not allowed to start new alu group here");
+            m_bc->force_add_cf = 1;
+            m_last_addr = nullptr;
+         } else {
+            auto instr = *group.begin();
+            if (instr && !instr->has_alu_flag(alu_is_lds) &&
+                instr->opcode() == op0_group_barrier && m_bc->cf_last->ndw + 14 > slot_limit) {
+               assert(0 && "Not allowed to start new alu group here");
+               assert(m_bc->cf_last->nlds_read == 0);
+               assert(r600::sfn_log.has_debug_flag(r600::SfnLog::noaddrsplit));
+               m_bc->force_add_cf = 1;
+               m_last_addr = nullptr;
+            }
          }
       }
    }
@@ -876,7 +890,11 @@ AssamblerVisitor::visit(const Block& block)
    if (block.empty())
       return;
 
-   m_bc->force_add_cf = block.has_instr_flag(Instr::force_cf);
+   if (block.has_instr_flag(Instr::force_cf)) {
+      m_bc->force_add_cf = 1;
+      m_bc->ar_loaded = 0;
+      m_last_addr = nullptr;
+   }
    sfn_log << SfnLog::assembly << "Translate block  size: " << block.size()
            << " new_cf:" << m_bc->force_add_cf << "\n";
 
@@ -927,6 +945,7 @@ AssamblerVisitor::visit(const IfInstr& instr)
    if (needs_workaround) {
       r600_bytecode_add_cfinst(m_bc, CF_OP_PUSH);
       m_bc->cf_last->cf_addr = m_bc->cf_last->id + 2;
+      r600_bytecode_add_cfinst(m_bc, CF_OP_ALU);
       pred->set_cf_type(cf_alu);
    }
 
