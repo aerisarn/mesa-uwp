@@ -53,8 +53,7 @@
    .prefix.limit_trig_input_range = screen->driconf.limit_trig_input_range
 #define BRW_KEY_INIT(gen, prog_id, limit_trig_input)       \
    .base.program_string_id = prog_id,                      \
-   .base.limit_trig_input_range = limit_trig_input,        \
-   .base.tex.swizzles[0 ... BRW_MAX_SAMPLERS - 1] = 0x688
+   .base.limit_trig_input_range = limit_trig_input
 
 struct iris_threaded_compile_job {
    struct iris_screen *screen;

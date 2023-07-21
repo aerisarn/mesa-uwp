@@ -44,9 +44,6 @@
 #include "vk_render_pass.h"
 #include "vk_util.h"
 
-/* Needed for SWIZZLE macros */
-#include "program/prog_instruction.h"
-
 struct lower_set_vtx_and_prim_count_state {
    nir_variable *primitive_count;
 };
@@ -383,16 +380,6 @@ void anv_DestroyPipeline(
 }
 
 static void
-populate_sampler_prog_key(const struct intel_device_info *devinfo,
-                          struct brw_sampler_prog_key_data *key)
-{
-   for (int i = 0; i < BRW_MAX_SAMPLERS; i++) {
-      /* Assume color sampler, no swizzling. (Works for BDW+) */
-      key->swizzles[i] = SWIZZLE_XYZW;
-   }
-}
-
-static void
 populate_base_prog_key(const struct anv_device *device,
                        bool robust_buffer_acccess,
                        struct brw_base_prog_key *key)
@@ -400,8 +387,6 @@ populate_base_prog_key(const struct anv_device *device,
    key->robust_buffer_access = robust_buffer_acccess;
    key->limit_trig_input_range =
       device->physical->instance->limit_trig_input_range;
-
-   populate_sampler_prog_key(device->info, &key->tex);
 }
 
 static void

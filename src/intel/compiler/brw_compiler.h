@@ -209,6 +209,9 @@ PRAGMA_DIAGNOSTIC_ERROR(-Wpadded)
 struct brw_sampler_prog_key_data {
    /**
     * EXT_texture_swizzle and DEPTH_TEXTURE_MODE swizzles.
+    *
+    * This field is not consumed by the back-end compiler and is only relevant
+    * for the crocus OpenGL driver for Broadwell and earlier hardware.
     */
    uint16_t swizzles[BRW_MAX_SAMPLERS];
 
