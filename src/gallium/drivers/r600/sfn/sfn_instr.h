@@ -204,8 +204,8 @@ public:
    int id() const { return m_id; }
 
    auto type() const { return m_blocK_type; }
-   void set_type(Type t);
-   uint32_t remaining_slots() const { return m_remaining_slots; }
+   void set_type(Type t, r600_chip_class chip_class);
+   int32_t remaining_slots() const { return m_remaining_slots;}
 
    bool try_reserve_kcache(const AluGroup& instr);
    bool try_reserve_kcache(const AluInstr& group);

@@ -754,8 +754,9 @@ BlockScheduler::start_new_block(Shader::ShaderBlocks& out_blocks, Block::Type ty
          new Block(m_current_block->nesting_depth(), m_current_block->id());
       m_current_block->set_instr_flag(Instr::force_cf);
       m_idx0_pending = m_idx1_pending = false;
+
    }
-   m_current_block->set_type(type);
+   m_current_block->set_type(type, m_chip_class);
 }
 
 template <typename I>

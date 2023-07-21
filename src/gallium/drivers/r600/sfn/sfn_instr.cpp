@@ -296,15 +296,27 @@ Block::erase(iterator node)
 }
 
 void
-Block::set_type(Type t)
+Block::set_type(Type t, r600_chip_class chip_class)
 {
    m_blocK_type = t;
    switch (t) {
    case vtx:
+      /* In theory on >= EG VTX support 16 slots, but with vertex fetch
+       * instructions the register pressure increases fast - i.e. in the worst
+       * case four register more get used, so stick to 8 slots for now.
+       * TODO: think about some trickery in the schedler to make use of up
+       * to 16 slots if the register pressure doesn't get too high.
+       */
+      m_remaining_slots = 8;
+      break;
    case gds:
    case tex:
-      m_remaining_slots = 8;
-      break; /* TODO: 16 for >= EVERGREEN */
+      m_remaining_slots = chip_class >= ISA_CC_EVERGREEN ? 16 : 8;
+      break;
+   case alu:
+      /* 128 but a follow up block might need to emit and ADDR + INDEX load */
+      m_remaining_slots = 118;
+      break;
    default:
       m_remaining_slots = 0xffff;
    }
