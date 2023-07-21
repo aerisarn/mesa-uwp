@@ -449,7 +449,9 @@ gather_shader_info_vs(struct radv_device *device, const nir_shader *nir, const s
    info->vs.dynamic_num_verts_per_prim =
       pipeline_key->vs.topology == V_008958_DI_PT_NONE && info->is_ngg && nir->xfb_info;
 
-   if (info->next_stage == MESA_SHADER_GEOMETRY) {
+   if (info->next_stage == MESA_SHADER_TESS_CTRL) {
+      info->vs.as_ls = true;
+   } else if (info->next_stage == MESA_SHADER_GEOMETRY) {
       info->vs.as_es = true;
       info->esgs_itemsize = radv_compute_esgs_itemsize(device, info->vs.num_linked_outputs);
    }
@@ -1534,8 +1536,6 @@ radv_link_shaders_info(struct radv_device *device, struct radv_pipeline_stage *p
    if (producer->stage == MESA_SHADER_VERTEX && consumer && consumer->stage == MESA_SHADER_TESS_CTRL) {
       struct radv_pipeline_stage *vs_stage = producer;
       struct radv_pipeline_stage *tcs_stage = consumer;
-
-      vs_stage->info.vs.as_ls = true;
 
       if (pipeline_key->dynamic_patch_control_points) {
          /* Set the workgroup size to the maximum possible value to ensure that compilers don't
