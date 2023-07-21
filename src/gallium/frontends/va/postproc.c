@@ -255,7 +255,9 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
    }
 
    if (src->buffer_format == PIPE_FORMAT_YUYV ||
-       src->buffer_format == PIPE_FORMAT_UYVY) {
+       src->buffer_format == PIPE_FORMAT_UYVY ||
+       src->buffer_format == PIPE_FORMAT_YV12 ||
+       src->buffer_format == PIPE_FORMAT_IYUV) {
       vl_compositor_yuv_deint_full(&drv->cstate, &drv->compositor,
                                    src, dst, &src_rect, &dst_rect,
                                    VL_COMPOSITOR_NONE);
