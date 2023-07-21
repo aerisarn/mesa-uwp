@@ -140,7 +140,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
                               const VkPipelineShaderStageCreateInfo *pStage, const VkPipelineCreateFlags flags,
                               const VkPipelineCreationFeedbackCreateInfo *creation_feedback)
 {
-   struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
+   struct radv_shader_binary *cs_binary = NULL;
    unsigned char hash[20];
    bool keep_executable_info = radv_pipeline_capture_shaders(device, flags);
    bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, flags);
@@ -205,12 +205,12 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
    /* Compile NIR shader to AMD assembly. */
    bool dump_shader = radv_can_dump_shader(device, cs_stage.nir, false);
 
-   binaries[MESA_SHADER_COMPUTE] = radv_shader_nir_to_asm(device, &cs_stage, &cs_stage.nir, 1, pipeline_key,
-                                                          keep_executable_info, keep_statistic_info);
+   cs_binary = radv_shader_nir_to_asm(device, &cs_stage, &cs_stage.nir, 1, pipeline_key, keep_executable_info,
+                                      keep_statistic_info);
    pipeline->base.shaders[MESA_SHADER_COMPUTE] =
-      radv_shader_create(device, cache, binaries[MESA_SHADER_COMPUTE], keep_executable_info || dump_shader);
-   radv_shader_generate_debug_info(device, dump_shader, binaries[MESA_SHADER_COMPUTE],
-                                   pipeline->base.shaders[MESA_SHADER_COMPUTE], &cs_stage.nir, 1, &cs_stage.info);
+      radv_shader_create(device, cache, cs_binary, keep_executable_info || dump_shader);
+   radv_shader_generate_debug_info(device, dump_shader, cs_binary, pipeline->base.shaders[MESA_SHADER_COMPUTE],
+                                   &cs_stage.nir, 1, &cs_stage.info);
 
    cs_stage.feedback.duration += os_time_get_nano() - stage_start;
 
@@ -228,7 +228,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
       radv_pipeline_cache_insert(device, cache, &pipeline->base, NULL, hash);
    }
 
-   free(binaries[MESA_SHADER_COMPUTE]);
+   free(cs_binary);
    if (radv_can_dump_shader_stats(device, cs_stage.nir)) {
       radv_dump_shader_stats(device, &pipeline->base, pipeline->base.shaders[MESA_SHADER_COMPUTE], MESA_SHADER_COMPUTE,
                              stderr);
