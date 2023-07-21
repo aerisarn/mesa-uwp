@@ -3505,6 +3505,12 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
 
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
+   if (zink_debug & ZINK_DEBUG_NIR) {
+      fprintf(stderr, "NIR shader:\n---8<---\n");
+      nir_print_shader(nir, stderr);
+      fprintf(stderr, "---8<---\n");
+   }
+
    struct zink_shader_object obj;
    struct spirv_shader *spirv = nir_to_spirv(nir, sinfo, screen->spirv_version);
    if (spirv)
@@ -4880,12 +4886,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_global | nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
       NIR_PASS_V(nir, rewrite_bo_access, screen);
       NIR_PASS_V(nir, remove_bo_access, ret);
-   }
-
-   if (zink_debug & ZINK_DEBUG_NIR) {
-      fprintf(stderr, "NIR shader:\n---8<---\n");
-      nir_print_shader(nir, stderr);
-      fprintf(stderr, "---8<---\n");
    }
 
    struct zink_bindless_info bindless = {0};
