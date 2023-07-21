@@ -1122,8 +1122,13 @@ nir_pack_bits(nir_builder *b, nir_def *src, unsigned dest_bit_size)
       break;
 
    case 32:
-      if (src->bit_size == 16)
-         return nir_pack_32_2x16(b, src);
+      switch (src->bit_size) {
+      case 32: return src;
+      case 16: return nir_pack_32_2x16(b, src);
+      case 8: return nir_pack_32_4x8(b, src);
+      default: break;
+      }
+
       break;
 
    default:
@@ -1144,7 +1149,7 @@ static inline nir_def *
 nir_unpack_bits(nir_builder *b, nir_def *src, unsigned dest_bit_size)
 {
    assert(src->num_components == 1);
-   assert(src->bit_size > dest_bit_size);
+   assert(src->bit_size >= dest_bit_size);
    const unsigned dest_num_components = src->bit_size / dest_bit_size;
    assert(dest_num_components <= NIR_MAX_VEC_COMPONENTS);
 
@@ -1161,8 +1166,13 @@ nir_unpack_bits(nir_builder *b, nir_def *src, unsigned dest_bit_size)
       break;
 
    case 32:
-      if (dest_bit_size == 16)
-         return nir_unpack_32_2x16(b, src);
+      switch (dest_bit_size) {
+      case 32: return src;
+      case 16: return nir_unpack_32_2x16(b, src);
+      case 8: return nir_unpack_32_4x8(b, src);
+      default: break;
+      }
+
       break;
 
    default:
