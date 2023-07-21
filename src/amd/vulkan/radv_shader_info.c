@@ -448,6 +448,11 @@ gather_shader_info_vs(struct radv_device *device, const nir_shader *nir, const s
     */
    info->vs.dynamic_num_verts_per_prim =
       pipeline_key->vs.topology == V_008958_DI_PT_NONE && info->is_ngg && nir->xfb_info;
+
+   if (info->next_stage == MESA_SHADER_GEOMETRY) {
+      info->vs.as_es = true;
+      info->esgs_itemsize = radv_compute_esgs_itemsize(device, info->vs.num_linked_outputs);
+   }
 }
 
 static void
@@ -473,12 +478,17 @@ gather_shader_info_tcs(struct radv_device *device, const nir_shader *nir, const 
 }
 
 static void
-gather_shader_info_tes(const nir_shader *nir, struct radv_shader_info *info)
+gather_shader_info_tes(struct radv_device *device, const nir_shader *nir, struct radv_shader_info *info)
 {
    info->tes._primitive_mode = nir->info.tess._primitive_mode;
    info->tes.spacing = nir->info.tess.spacing;
    info->tes.ccw = nir->info.tess.ccw;
    info->tes.point_mode = nir->info.tess.point_mode;
+
+   if (info->next_stage == MESA_SHADER_GEOMETRY) {
+      info->tes.as_es = true;
+      info->esgs_itemsize = radv_compute_esgs_itemsize(device, info->tes.num_linked_outputs);
+   }
 }
 
 static void
@@ -973,7 +983,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_shader_info_gs(nir, info);
       break;
    case MESA_SHADER_TESS_EVAL:
-      gather_shader_info_tes(nir, info);
+      gather_shader_info_tes(device, nir, info);
       break;
    case MESA_SHADER_TESS_CTRL:
       gather_shader_info_tcs(device, nir, pipeline_key, info);
@@ -1505,21 +1515,6 @@ radv_link_shaders_info(struct radv_device *device, struct radv_pipeline_stage *p
    }
 
    if (producer->stage == MESA_SHADER_VERTEX || producer->stage == MESA_SHADER_TESS_EVAL) {
-      if (consumer && consumer->stage == MESA_SHADER_GEOMETRY) {
-         uint32_t num_outputs_written;
-
-         if (producer->stage == MESA_SHADER_TESS_EVAL) {
-            num_outputs_written = producer->info.tes.num_linked_outputs;
-            producer->info.tes.as_es = true;
-         } else {
-            num_outputs_written = producer->info.vs.num_linked_outputs;
-            producer->info.vs.as_es = true;
-         }
-
-         /* Compute the ESGS item size for VS or TES as ES. */
-         producer->info.esgs_itemsize = radv_compute_esgs_itemsize(device, num_outputs_written);
-      }
-
       /* Compute NGG info (GFX10+) or GS info. */
       if (producer->info.is_ngg) {
          struct radv_pipeline_stage *gs_stage = consumer && consumer->stage == MESA_SHADER_GEOMETRY ? consumer : NULL;
