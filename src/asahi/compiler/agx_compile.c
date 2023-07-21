@@ -2613,12 +2613,12 @@ agx_gather_interp(nir_builder *b, nir_instr *instr, void *data)
 
    if (intr->intrinsic == nir_intrinsic_load_input) {
       nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
-      masks->flat |= BITFIELD64_BIT(sem.location);
+      masks->flat |= BITFIELD64_RANGE(sem.location, sem.num_slots);
    } else if (intr->intrinsic == nir_intrinsic_load_interpolated_input &&
               nir_intrinsic_interp_mode(nir_src_as_intrinsic(intr->src[0])) ==
                  INTERP_MODE_NOPERSPECTIVE) {
       nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
-      masks->linear |= BITFIELD64_BIT(sem.location);
+      masks->linear |= BITFIELD64_RANGE(sem.location, sem.num_slots);
    }
 
    return false;
