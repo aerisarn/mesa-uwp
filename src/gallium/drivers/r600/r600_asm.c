@@ -1389,12 +1389,6 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 		}
 		bc->cf_last->ndw += align(nliteral, 2);
 
-		/* at most 128 slots, one add alu can add 5 slots + 4 constants(2 slots)
-		 * worst case */
-		if ((bc->cf_last->ndw >> 1) >= 120) {
-			bc->force_add_cf = 1;
-		}
-
 		bc->cf_last->prev2_bs_head = bc->cf_last->prev_bs_head;
 		bc->cf_last->prev_bs_head = bc->cf_last->curr_bs_head;
 		bc->cf_last->curr_bs_head = NULL;
