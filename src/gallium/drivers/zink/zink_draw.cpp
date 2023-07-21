@@ -52,9 +52,9 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_batch *batch = &ctx->batch;
-   VkBuffer buffers[PIPE_MAX_SO_OUTPUTS] = {0};
-   VkDeviceSize buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {0};
-   VkDeviceSize buffer_sizes[PIPE_MAX_SO_OUTPUTS] = {0};
+   VkBuffer buffers[PIPE_MAX_SO_BUFFERS] = {0};
+   VkDeviceSize buffer_offsets[PIPE_MAX_SO_BUFFERS] = {0};
+   VkDeviceSize buffer_sizes[PIPE_MAX_SO_BUFFERS] = {0};
 
    for (unsigned i = 0; i < ctx->num_so_targets; i++) {
       struct zink_so_target *t = (struct zink_so_target *)ctx->so_targets[i];
@@ -502,8 +502,8 @@ zink_draw(struct pipe_context *pctx,
    struct zink_so_target *so_target =
       dindirect && dindirect->count_from_stream_output ?
          zink_so_target(dindirect->count_from_stream_output) : NULL;
-   VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
-   VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS];
+   VkBuffer counter_buffers[PIPE_MAX_SO_BUFFERS];
+   VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_BUFFERS];
    bool need_index_buffer_unref = false;
    bool mode_changed = ctx->gfx_pipeline_state.gfx_prim_mode != dinfo->mode;
    bool reads_drawid = ctx->shader_reads_drawid;

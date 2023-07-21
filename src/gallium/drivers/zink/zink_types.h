@@ -1982,7 +1982,7 @@ struct zink_context {
    uint32_t ds3_states;
 
    uint32_t num_so_targets;
-   struct pipe_stream_output_target *so_targets[PIPE_MAX_SO_OUTPUTS];
+   struct pipe_stream_output_target *so_targets[PIPE_MAX_SO_BUFFERS];
    bool dirty_so_targets;
 
    bool gfx_dirty;
