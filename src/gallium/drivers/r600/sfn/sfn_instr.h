@@ -71,6 +71,7 @@ public:
       force_cf,
       ack_rat_return_write,
       helper,
+      no_lds_or_addr_group,
       nflags
    };
 
@@ -101,6 +102,8 @@ public:
    bool is_dead() const { return m_instr_flags.test(dead); }
    bool is_scheduled() const { return m_instr_flags.test(scheduled); }
    bool keep() const { return m_instr_flags.test(always_keep); }
+   bool can_start_alu_block() { return m_instr_flags.test(no_lds_or_addr_group);}
+   bool group_force_alu_cf() { return m_instr_flags.test(force_cf);}
 
    bool has_instr_flag(Flags f) const { return m_instr_flags.test(f); }
    void set_instr_flag(Flags f) { m_instr_flags.set(f); }
