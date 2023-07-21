@@ -48,7 +48,7 @@
 #define MAX_VIEWS                      8
 #define MAX_SO_STREAMS                 4
 #define MAX_SO_BUFFERS                 4
-#define MAX_SO_OUTPUTS                 64
+#define MAX_SO_OUTPUTS                 128
 #define MAX_INLINE_UNIFORM_BLOCK_SIZE  (4ull * 1024 * 1024)
 #define MAX_INLINE_UNIFORM_BLOCK_COUNT 64
 #define MAX_BIND_POINTS                3 /* compute + graphics + raytracing */

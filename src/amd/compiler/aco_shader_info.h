@@ -36,7 +36,7 @@
 extern "C" {
 #endif
 
-#define ACO_MAX_SO_OUTPUTS     64
+#define ACO_MAX_SO_OUTPUTS     128
 #define ACO_MAX_SO_BUFFERS     4
 #define ACO_MAX_VERTEX_ATTRIBS 32
 #define ACO_MAX_VBS            32
