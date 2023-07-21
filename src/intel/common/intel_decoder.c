@@ -469,13 +469,15 @@ end_element(void *data, const char *name)
 
       ctx->group = ctx->group->parent;
 
-      while (list && list->end <= 31) {
-         if (list->start >= 16 && list->has_default) {
-            group->opcode_mask |=
-               mask(list->start % 32, list->end % 32);
-            group->opcode |= list->default_value << list->start;
+      if (strcmp(name, "instruction") == 0) {
+         while (list && list->end <= 31) {
+            if (list->start >= 16 && list->has_default) {
+               group->opcode_mask |=
+                  mask(list->start % 32, list->end % 32);
+               group->opcode |= list->default_value << list->start;
+            }
+            list = list->next;
          }
-         list = list->next;
       }
 
       if (strcmp(name, "instruction") == 0)
