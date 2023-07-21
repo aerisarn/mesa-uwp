@@ -298,6 +298,10 @@ update_shader_samplers(struct st_context *st,
          states[extra] = sampler;
          break;
       case PIPE_FORMAT_IYUV:
+         if (stObj->pt->format == PIPE_FORMAT_R8_G8_B8_420_UNORM) {
+            /* no additional views needed */
+            break;
+         }
          /* we need two additional samplers: */
          extra = u_bit_scan(&free_slots);
          states[extra] = sampler;

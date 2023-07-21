@@ -210,6 +210,10 @@ st_get_sampler_views(struct st_context *st,
                pipe->create_sampler_view(pipe, stObj->pt->next, &tmpl);
          break;
       case PIPE_FORMAT_IYUV:
+         if (stObj->pt->format == PIPE_FORMAT_R8_G8_B8_420_UNORM)
+            /* no additional views needed */
+            break;
+
          /* we need two additional R8 views: */
          tmpl.format = PIPE_FORMAT_R8_UNORM;
          extra = u_bit_scan(&free_slots);
