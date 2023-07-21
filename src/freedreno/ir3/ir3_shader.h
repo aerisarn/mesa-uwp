@@ -98,7 +98,7 @@ enum ir3_driver_param {
 #define IR3_MAX_SHADER_IMAGES   32
 #define IR3_MAX_SO_BUFFERS      4
 #define IR3_MAX_SO_STREAMS      4
-#define IR3_MAX_SO_OUTPUTS      64
+#define IR3_MAX_SO_OUTPUTS      128
 #define IR3_MAX_UBO_PUSH_RANGES 32
 
 /* mirrors SYSTEM_VALUE_BARYCENTRIC_ but starting from 0 */
