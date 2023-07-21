@@ -2170,19 +2170,18 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
 }
 
 static struct radv_shader *
-radv_pipeline_create_gs_copy_shader(struct radv_device *device, struct radv_pipeline *pipeline,
-                                    struct vk_pipeline_cache *cache, struct radv_pipeline_stage *stages,
-                                    const struct radv_pipeline_key *pipeline_key,
-                                    const struct radv_pipeline_layout *pipeline_layout, bool keep_executable_info,
-                                    bool keep_statistic_info, struct radv_shader_binary **gs_copy_binary)
+radv_create_gs_copy_shader(struct radv_device *device, struct vk_pipeline_cache *cache,
+                           struct radv_pipeline_stage *gs_stage, const struct radv_pipeline_key *pipeline_key,
+                           const struct radv_pipeline_layout *pipeline_layout, bool keep_executable_info,
+                           bool keep_statistic_info, struct radv_shader_binary **gs_copy_binary)
 {
-   const struct radv_shader_info *gs_info = &stages[MESA_SHADER_GEOMETRY].info;
+   const struct radv_shader_info *gs_info = &gs_stage->info;
    ac_nir_gs_output_info output_info = {
       .streams = gs_info->gs.output_streams,
       .usage_mask = gs_info->gs.output_usage_mask,
    };
    nir_shader *nir = ac_nir_create_gs_copy_shader(
-      stages[MESA_SHADER_GEOMETRY].nir, device->physical_device->rad_info.gfx_level,
+      gs_stage->nir, device->physical_device->rad_info.gfx_level,
       gs_info->outinfo.clip_dist_mask | gs_info->outinfo.cull_dist_mask, gs_info->outinfo.vs_output_param_offset,
       gs_info->outinfo.param_exports, false, false, gs_info->force_vrs_per_vertex, &output_info);
 
@@ -2194,8 +2193,8 @@ radv_pipeline_create_gs_copy_shader(struct radv_device *device, struct radv_pipe
       .shader_sha1 = {0},
    };
    radv_nir_shader_info_init(&gs_copy_stage.info);
-   radv_nir_shader_info_pass(device, nir, MESA_SHADER_FRAGMENT, pipeline_layout, pipeline_key, pipeline->type, false,
-                             &gs_copy_stage.info);
+   radv_nir_shader_info_pass(device, nir, MESA_SHADER_FRAGMENT, pipeline_layout, pipeline_key, RADV_PIPELINE_GRAPHICS,
+                             false, &gs_copy_stage.info);
    gs_copy_stage.info.wave_size = 64;      /* Wave32 not supported. */
    gs_copy_stage.info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
    gs_copy_stage.info.so = gs_info->so;
@@ -2271,8 +2270,8 @@ radv_pipeline_nir_to_asm(struct radv_device *device, struct radv_graphics_pipeli
 
       if (s == MESA_SHADER_GEOMETRY && !stages[s].info.is_ngg) {
          pipeline->base.gs_copy_shader =
-            radv_pipeline_create_gs_copy_shader(device, &pipeline->base, cache, stages, pipeline_key, pipeline_layout,
-                                                keep_executable_info, keep_statistic_info, gs_copy_binary);
+            radv_create_gs_copy_shader(device, cache, &stages[MESA_SHADER_GEOMETRY], pipeline_key, pipeline_layout,
+                                       keep_executable_info, keep_statistic_info, gs_copy_binary);
       }
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
