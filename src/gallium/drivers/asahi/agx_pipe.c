@@ -688,6 +688,7 @@ agx_shadow(struct agx_context *ctx, struct agx_resource *rsrc, bool needs_copy)
    if (needs_copy) {
       perf_debug_ctx(ctx, "Shadowing %zu bytes on the CPU (%s)", size,
                      (old->flags & AGX_BO_WRITEBACK) ? "cached" : "uncached");
+      agx_resource_debug(rsrc, "Shadowed: ");
 
       memcpy(new_->ptr.cpu, old->ptr.cpu, size);
    }
