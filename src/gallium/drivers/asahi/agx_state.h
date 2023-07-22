@@ -615,6 +615,11 @@ struct agx_resource {
 
    /* Valid buffer range tracking, to optimize buffer appends */
    struct util_range valid_buffer_range;
+
+   /* Cumulative shadowed byte count for this resource, that is, the number of
+    * times multiplied by the resource size.
+    */
+   size_t shadowed_bytes;
 };
 
 static inline struct agx_resource *

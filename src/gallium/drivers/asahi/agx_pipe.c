@@ -79,6 +79,20 @@ uint64_t agx_best_modifiers[] = {
    DRM_FORMAT_MOD_LINEAR,
 };
 
+/* These limits are arbitrarily chosen and subject to change as
+ * we discover more workloads with heavy shadowing.
+ *
+ * Maximum size of a shadowed object in bytes.
+ * Hint: 1024x1024xRGBA8 = 4 MiB. Go higher for compression.
+ */
+#define MAX_SHADOW_BYTES (6 * 1024 * 1024)
+
+/* Maximum cumulative size to shadow an object before we flush.
+ * Allows shadowing a 4MiB + meta object 8 times with the logic
+ * below (+1 shadow offset implied).
+ */
+#define MAX_TOTAL_SHADOW_BYTES (32 * 1024 * 1024)
+
 void agx_init_state_functions(struct pipe_context *ctx);
 
 /*
@@ -670,6 +684,16 @@ agx_shadow(struct agx_context *ctx, struct agx_resource *rsrc, bool needs_copy)
    if (flags & (AGX_BO_SHARED | AGX_BO_SHAREABLE))
       return false;
 
+   /* Do not shadow resources that are too large */
+   if (size > MAX_SHADOW_BYTES)
+      return false;
+
+   /* Do not shadow resources too much */
+   if (rsrc->shadowed_bytes >= MAX_TOTAL_SHADOW_BYTES)
+      return false;
+
+   rsrc->shadowed_bytes += size;
+
    /* If we need to copy, we reallocate the resource with cached-coherent
     * memory. This is a heuristic: it assumes that if the app needs a shadows
     * (with a copy) now, it will again need to shadow-and-copy the same resource
@@ -754,8 +778,10 @@ agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
    /* If there are no readers, we're done. We check at the start to
     * avoid expensive shadowing paths or duplicated checks in this hapyp path.
     */
-   if (!agx_any_batch_uses_resource(ctx, rsrc))
+   if (!agx_any_batch_uses_resource(ctx, rsrc)) {
+      rsrc->shadowed_bytes = 0;
       return;
+   }
 
    /* There are readers. Try to shadow the resource to avoid a sync */
    if (!(rsrc->base.flags & PIPE_RESOURCE_FLAG_MAP_PERSISTENT) &&
@@ -764,6 +790,8 @@ agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
 
    /* Otherwise, we need to sync */
    agx_sync_readers(ctx, rsrc, "Unsynchronized write");
+
+   rsrc->shadowed_bytes = 0;
 }
 
 /*
