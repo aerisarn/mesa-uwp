@@ -2602,6 +2602,9 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
       case nir_tex_src_sampler_handle:
          sampler_resource = get_src(bld_base, instr->src[i].src);
          break;
+      case nir_tex_src_plane:
+         assert(nir_src_is_const(instr->src[i].src) && !nir_src_as_uint(instr->src[i].src));
+         break;
       default:
          assert(0);
          break;
