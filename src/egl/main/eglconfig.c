@@ -699,7 +699,7 @@ _eglSortConfigs(const _EGLConfig **configs, EGLint count,
  * A helper function for implementing eglChooseConfig.  See _eglFilterArray and
  * _eglSortConfigs for the meanings of match and compare.
  */
-EGLBoolean
+static EGLBoolean
 _eglFilterConfigArray(_EGLArray *array, EGLConfig *configs, EGLint config_size,
                       EGLint *num_configs,
                       EGLBoolean (*match)(const _EGLConfig *, void *),
