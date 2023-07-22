@@ -971,17 +971,24 @@ libagxdecode_writer(void *cookie, const char *buffer, size_t size)
    return lib_config.stream_write(buffer, size);
 }
 
+#ifdef _GNU_SOURCE
 static cookie_io_functions_t funcs = {.write = libagxdecode_writer};
+#endif
 
 static decoder_params lib_params;
 
 void
 libagxdecode_init(struct libagxdecode_config *config)
 {
+#ifdef _GNU_SOURCE
    lib_config = *config;
    agxdecode_dump_stream = fopencookie(NULL, "w", funcs);
 
    chip_id_to_params(&lib_params, config->chip_id);
+#else
+   /* fopencookie is a glibc extension */
+   unreachable("libagxdecode only available with glibc");
+#endif
 }
 
 void
