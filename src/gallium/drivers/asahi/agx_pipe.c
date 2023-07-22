@@ -658,6 +658,7 @@ agx_shadow(struct agx_context *ctx, struct agx_resource *rsrc, bool needs_copy)
 {
    struct agx_device *dev = agx_device(ctx->base.screen);
    struct agx_bo *old = rsrc->bo;
+   size_t size = rsrc->layout.size_B;
    unsigned flags = old->flags;
 
    if (dev->debug & AGX_DBG_NOSHADOW)
@@ -678,17 +679,17 @@ agx_shadow(struct agx_context *ctx, struct agx_resource *rsrc, bool needs_copy)
    if (needs_copy)
       flags |= AGX_BO_WRITEBACK;
 
-   struct agx_bo *new_ = agx_bo_create(dev, old->size, flags, old->label);
+   struct agx_bo *new_ = agx_bo_create(dev, size, flags, old->label);
 
    /* If allocation failed, we can fallback on a flush gracefully*/
    if (new_ == NULL)
       return false;
 
    if (needs_copy) {
-      perf_debug_ctx(ctx, "Shadowing %zu bytes on the CPU (%s)", old->size,
+      perf_debug_ctx(ctx, "Shadowing %zu bytes on the CPU (%s)", size,
                      (old->flags & AGX_BO_WRITEBACK) ? "cached" : "uncached");
 
-      memcpy(new_->ptr.cpu, old->ptr.cpu, old->size);
+      memcpy(new_->ptr.cpu, old->ptr.cpu, size);
    }
 
    /* Swap the pointers, dropping a reference */
