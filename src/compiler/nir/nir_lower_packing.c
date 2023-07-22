@@ -108,6 +108,26 @@ lower_pack_32_from_8(nir_builder *b, nir_def *src)
    }
 }
 
+static nir_def *
+lower_unpack_32_to_8(nir_builder *b, nir_def *src)
+{
+   /* Some drivers call nir_lower_pack after the last time nir_opt_algebraic
+    * is called. To prevent issues there, don't generate byte extraction
+    * instructions when the lowering flag is set.
+    */
+   if (b->shader->options->lower_extract_byte) {
+      return nir_vec4(b, nir_u2u8(b,                 src     ),
+                         nir_u2u8(b, nir_ushr_imm(b, src,  8)),
+                         nir_u2u8(b, nir_ushr_imm(b, src, 16)),
+                         nir_u2u8(b, nir_ushr_imm(b, src, 24)));
+   } else {
+      return nir_vec4(b, nir_u2u8(b, nir_extract_u8_imm(b, src, 0)),
+                         nir_u2u8(b, nir_extract_u8_imm(b, src, 1)),
+                         nir_u2u8(b, nir_extract_u8_imm(b, src, 2)),
+                         nir_u2u8(b, nir_extract_u8_imm(b, src, 3)));
+   }
+}
+
 static bool
 lower_pack_instr(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -122,7 +142,8 @@ lower_pack_instr(nir_builder *b, nir_instr *instr, void *data)
        alu_instr->op != nir_op_unpack_64_4x16 &&
        alu_instr->op != nir_op_pack_32_2x16 &&
        alu_instr->op != nir_op_unpack_32_2x16 &&
-       alu_instr->op != nir_op_pack_32_4x8)
+       alu_instr->op != nir_op_pack_32_4x8 &&
+       alu_instr->op != nir_op_unpack_32_4x8)
       return false;
 
    b->cursor = nir_before_instr(&alu_instr->instr);
@@ -151,6 +172,9 @@ lower_pack_instr(nir_builder *b, nir_instr *instr, void *data)
       break;
    case nir_op_pack_32_4x8:
       dest = lower_pack_32_from_8(b, src);
+      break;
+   case nir_op_unpack_32_4x8:
+      dest = lower_unpack_32_to_8(b, src);
       break;
    default:
       unreachable("Impossible opcode");
