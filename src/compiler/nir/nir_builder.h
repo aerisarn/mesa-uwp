@@ -1021,6 +1021,18 @@ nir_ubitfield_extract_imm(nir_builder *build, nir_def *x, uint32_t offset, uint3
 }
 
 static inline nir_def *
+nir_extract_u8_imm(nir_builder *b, nir_def *a, unsigned i)
+{
+   return nir_extract_u8(b, a, nir_imm_intN_t(b, i, a->bit_size));
+}
+
+static inline nir_def *
+nir_extract_i8_imm(nir_builder *b, nir_def *a, unsigned i)
+{
+   return nir_extract_i8(b, a, nir_imm_intN_t(b, i, a->bit_size));
+}
+
+static inline nir_def *
 nir_fclamp(nir_builder *b,
            nir_def *x, nir_def *min_val, nir_def *max_val)
 {
