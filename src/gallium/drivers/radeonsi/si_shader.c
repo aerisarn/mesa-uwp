@@ -3524,3 +3524,12 @@ nir_shader *si_get_prev_stage_nir_shader(struct si_shader *shader,
 
    return nir;
 }
+
+unsigned si_get_tcs_out_patch_stride(const struct si_shader_info *info)
+{
+   unsigned tcs_out_vertices = info->base.tess.tcs_vertices_out;
+   unsigned vertex_stride = util_last_bit64(info->outputs_written) * 4;
+   unsigned num_patch_outputs = util_last_bit64(info->patch_outputs_written);
+
+   return tcs_out_vertices * vertex_stride + num_patch_outputs * 4;
+}

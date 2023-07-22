@@ -135,6 +135,7 @@ nir_shader *si_get_prev_stage_nir_shader(struct si_shader *shader,
                                          struct si_shader *prev_shader,
                                          struct si_shader_args *args,
                                          bool *free_nir);
+unsigned si_get_tcs_out_patch_stride(const struct si_shader_info *info);
 
 /* gfx10_shader_ngg.c */
 unsigned gfx10_ngg_get_vertices_per_prim(struct si_shader *shader);

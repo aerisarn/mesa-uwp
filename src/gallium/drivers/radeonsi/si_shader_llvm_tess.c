@@ -46,23 +46,6 @@ LLVMValueRef si_get_rel_patch_id(struct si_shader_context *ctx)
  * All three shaders VS(LS), TCS, TES share the same LDS space.
  */
 
-static unsigned get_tcs_out_vertex_dw_stride_constant(struct si_shader_context *ctx)
-{
-   assert(ctx->stage == MESA_SHADER_TESS_CTRL);
-
-   return util_last_bit64(ctx->shader->selector->info.outputs_written) * 4;
-}
-
-static LLVMValueRef get_tcs_out_patch_stride(struct si_shader_context *ctx)
-{
-   const struct si_shader_info *info = &ctx->shader->selector->info;
-   unsigned tcs_out_vertices = info->base.tess.tcs_vertices_out;
-   unsigned vertex_dw_stride = get_tcs_out_vertex_dw_stride_constant(ctx);
-   unsigned num_patch_outputs = util_last_bit64(ctx->shader->selector->info.patch_outputs_written);
-   unsigned patch_dw_stride = tcs_out_vertices * vertex_dw_stride + num_patch_outputs * 4;
-   return LLVMConstInt(ctx->ac.i32, patch_dw_stride, 0);
-}
-
 static LLVMValueRef get_tcs_out_patch0_patch_data_offset(struct si_shader_context *ctx)
 {
    return si_unpack_param(ctx, ctx->args->vs_state_bits, 10, 14);
@@ -71,7 +54,8 @@ static LLVMValueRef get_tcs_out_patch0_patch_data_offset(struct si_shader_contex
 static LLVMValueRef get_tcs_out_current_patch_data_offset(struct si_shader_context *ctx)
 {
    LLVMValueRef patch0_patch_data_offset = get_tcs_out_patch0_patch_data_offset(ctx);
-   LLVMValueRef patch_stride = get_tcs_out_patch_stride(ctx);
+   unsigned patch_dw_stride = si_get_tcs_out_patch_stride(&ctx->shader->selector->info);
+   LLVMValueRef patch_stride = LLVMConstInt(ctx->ac.i32, patch_dw_stride, 0);
    LLVMValueRef rel_patch_id = si_get_rel_patch_id(ctx);
 
    return ac_build_imad(&ctx->ac, patch_stride, rel_patch_id, patch0_patch_data_offset);
