@@ -304,7 +304,7 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
       .variablePointersStorageBuffer       = true,
       .variablePointers                    = true,
       .protectedMemory                     = false,
-      .samplerYcbcrConversion              = false,
+      .samplerYcbcrConversion              = true,
       .shaderDrawParameters                = true,
 
       /* Vulkan 1.2 */

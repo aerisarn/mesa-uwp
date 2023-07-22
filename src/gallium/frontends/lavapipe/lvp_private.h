@@ -626,8 +626,6 @@ lvp_vk_format_to_pipe_format(VkFormat format)
        format == VK_FORMAT_R64G64B64_SFLOAT ||
        format == VK_FORMAT_A2R10G10B10_SINT_PACK32 ||
        format == VK_FORMAT_A2B10G10R10_SINT_PACK32 ||
-       format == VK_FORMAT_G8B8G8R8_422_UNORM ||
-       format == VK_FORMAT_B8G8R8G8_422_UNORM ||
        format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM ||
        format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
        format == VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM ||

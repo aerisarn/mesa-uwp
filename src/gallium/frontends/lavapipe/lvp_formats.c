@@ -136,6 +136,15 @@ lvp_physical_device_get_format_properties(struct lvp_physical_device *physical_d
          features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
       if (lvp_is_filter_minmax_format_supported(format))
          features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
+      if (vk_format_get_ycbcr_info(format)) {
+         features |= VK_FORMAT_FEATURE_2_COSITED_CHROMA_SAMPLES_BIT |
+                     VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT;
+
+         /* The subsampled formats have no support for linear filters. */
+         const struct util_format_description *desc = util_format_description(pformat);
+         if (desc->layout != UTIL_FORMAT_LAYOUT_SUBSAMPLED)
+            features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT;
+      }
    }
 
    if (pscreen->is_format_supported(pscreen, pformat, PIPE_TEXTURE_2D, 0, 0,
@@ -408,7 +417,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_GetPhysicalDeviceImageFormatProperties2(
       };
    }
    if (ycbcr_props)
-      ycbcr_props->combinedImageSamplerDescriptorCount = 0;
+      ycbcr_props->combinedImageSamplerDescriptorCount = vk_format_get_plane_count(base_info->format);
    return VK_SUCCESS;
 }
 
