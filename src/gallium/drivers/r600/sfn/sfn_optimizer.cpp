@@ -407,25 +407,29 @@ CopyPropFwdVisitor::visit(AluInstr *instr)
             }
          }
       }
-
+      bool move_addr_use = false;
       bool src_can_propagate = false;
       if (auto rsrc = src->as_register()) {
          if (rsrc->has_flag(Register::ssa)) {
             src_can_propagate = true;
          } else if (mov_block_id == target_block_id) {
-            if (rsrc->addr()) {
-               if (i->block_id() == mov_block_id &&
-                   i->index() == instr->index() + 1)
+            if (auto a = rsrc->addr()) {
+               if (a->as_register() &&
+                   !a->as_register()->has_flag(Register::addr_or_idx) &&
+                   i->block_id() == mov_block_id &&
+                   i->index() == instr->index() + 1) {
                   src_can_propagate = true;
+                  move_addr_use = true;
+               }
             } else {
                src_can_propagate = true;
-               for (auto p : rsrc->parents()) {
-                  if (p->block_id() == mov_block_id &&
-                      p->index() > instr->index() &&
-                      p->index() < i->index()) {
-                     src_can_propagate = false;
-                     break;
-                  }
+            }
+            for (auto p : rsrc->parents()) {
+               if (p->block_id() == mov_block_id &&
+                   p->index() > instr->index() &&
+                   p->index() < i->index()) {
+                  src_can_propagate = false;
+                  break;
                }
             }
          }
@@ -439,8 +443,16 @@ CopyPropFwdVisitor::visit(AluInstr *instr)
 
          if (i->as_alu() && i->as_alu()->parent_group()) {
             progress |= i->as_alu()->parent_group()->replace_source(dest, src);
-         } else
-            progress |= i->replace_source(dest, src);
+         } else {
+            bool success = i->replace_source(dest, src);
+            if (success && move_addr_use) {
+               for (auto r : instr->required_instr()){
+                  std::cerr << "add " << *r << " to " << *i << "\n";
+                  i->add_required_instr(r);
+               }
+            }
+            progress |= success;
+         }
       }
    }
    if (instr->dest()) {
