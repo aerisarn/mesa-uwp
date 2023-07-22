@@ -956,7 +956,7 @@ bool si_llvm_build_shader_part(struct si_screen *sscreen, gl_shader_stage stage,
    struct si_shader_args args;
    ctx.args = &args;
 
-   void (*build)(struct si_shader_context *, union si_shader_part_key *, bool);
+   void (*build)(struct si_shader_context *, union si_shader_part_key *);
 
    switch (stage) {
    case MESA_SHADER_VERTEX:
@@ -972,7 +972,7 @@ bool si_llvm_build_shader_part(struct si_screen *sscreen, gl_shader_stage stage,
       unreachable("bad shader part");
    }
 
-   build(&ctx, key, true);
+   build(&ctx, key);
 
    /* Compile. */
    si_llvm_optimize_module(&ctx);
