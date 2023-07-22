@@ -4011,7 +4011,9 @@ bind_db_samplers(struct rendering_state *state, bool is_compute, unsigned set)
 
       for (uint32_t sampler_index = 0; sampler_index < bind_layout->array_size; sampler_index++) {
          if (bind_layout->immutable_samplers[sampler_index]) {
-            desc[sampler_index].sampler = bind_layout->immutable_samplers[sampler_index]->desc.sampler;
+            struct lp_descriptor *immutable_desc = &bind_layout->immutable_samplers[sampler_index]->desc;
+            desc[sampler_index].sampler = immutable_desc->sampler;
+            desc[sampler_index].sampler_index = immutable_desc->sampler_index;
             u_foreach_bit(stage, set_layout->shader_stages)
                did_update |= BITFIELD_BIT(vk_to_mesa_shader_stage(1<<stage));
          }
