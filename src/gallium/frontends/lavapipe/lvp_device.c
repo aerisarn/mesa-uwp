@@ -2361,22 +2361,6 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroySampler(
    vk_free2(&device->vk.alloc, pAllocator, sampler);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSamplerYcbcrConversionKHR(
-    VkDevice                                    device,
-    const VkSamplerYcbcrConversionCreateInfo*   pCreateInfo,
-    const VkAllocationCallbacks*                pAllocator,
-    VkSamplerYcbcrConversion*                   pYcbcrConversion)
-{
-   return VK_ERROR_OUT_OF_HOST_MEMORY;
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_DestroySamplerYcbcrConversionKHR(
-    VkDevice                                    device,
-    VkSamplerYcbcrConversion                    ycbcrConversion,
-    const VkAllocationCallbacks*                pAllocator)
-{
-}
-
 /* vk_icd.h does not declare this function, so we declare it here to
  * suppress Wmissing-prototypes.
  */
