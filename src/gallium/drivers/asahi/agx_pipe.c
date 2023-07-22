@@ -68,6 +68,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"synctvb",   AGX_DBG_SYNCTVB,  "Synchronous TVB growth"},
    {"smalltile", AGX_DBG_SMALLTILE,"Force 16x16 tiles"},
    {"nomsaa",    AGX_DBG_NOMSAA,   "Force disable MSAA"},
+   {"noshadow",  AGX_DBG_NOSHADOW, "Force disable resource shadowing"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
@@ -658,6 +659,9 @@ agx_shadow(struct agx_context *ctx, struct agx_resource *rsrc, bool needs_copy)
    struct agx_device *dev = agx_device(ctx->base.screen);
    struct agx_bo *old = rsrc->bo;
    unsigned flags = old->flags;
+
+   if (dev->debug & AGX_DBG_NOSHADOW)
+      return false;
 
    /* If a resource is (or could be) shared, shadowing would desync across
     * processes. (It's also not what this path is for.)
