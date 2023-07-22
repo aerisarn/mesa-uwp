@@ -22,6 +22,7 @@
  */
 
 #include "lvp_private.h"
+#include "vk_nir_convert_ycbcr.h"
 #include "vk_pipeline.h"
 #include "vk_render_pass.h"
 #include "vk_util.h"
@@ -352,6 +353,20 @@ inline_variant_equals(const void *a, const void *b)
    return true;
 }
 
+static const struct vk_ycbcr_conversion_state *
+lvp_ycbcr_conversion_lookup(const void *data, uint32_t set, uint32_t binding, uint32_t array_index)
+{
+   const struct lvp_pipeline_layout *layout = data;
+
+   const struct lvp_descriptor_set_layout *set_layout = container_of(layout->vk.set_layouts[set], struct lvp_descriptor_set_layout, vk);
+   const struct lvp_descriptor_set_binding_layout *binding_layout = &set_layout->binding[binding];
+   if (!binding_layout->immutable_samplers)
+      return NULL;
+
+   struct vk_ycbcr_conversion *ycbcr_conversion = binding_layout->immutable_samplers[array_index]->ycbcr_conversion;
+   return ycbcr_conversion ? &ycbcr_conversion->state : NULL;
+}
+
 static void
 lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader *shader, struct lvp_pipeline_layout *layout)
 {
@@ -397,6 +412,8 @@ lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader 
    NIR_PASS_V(nir, nir_lower_explicit_io,
               nir_var_mem_global,
               nir_address_format_64bit_global);
+
+   NIR_PASS(_, nir, nir_vk_lower_ycbcr_tex, lvp_ycbcr_conversion_lookup, layout);
 
    nir_lower_non_uniform_access_options options = {
       .types = nir_lower_non_uniform_ubo_access | nir_lower_non_uniform_texture_access | nir_lower_non_uniform_image_access,

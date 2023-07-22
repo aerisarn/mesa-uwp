@@ -2288,6 +2288,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
    const VkSamplerReductionModeCreateInfo *reduction_mode_create_info =
       vk_find_struct_const(pCreateInfo->pNext,
                            SAMPLER_REDUCTION_MODE_CREATE_INFO);
+   const struct VkSamplerYcbcrConversionInfo *ycbcr_conversion =
+      vk_find_struct_const(pCreateInfo->pNext, SAMPLER_YCBCR_CONVERSION_INFO);
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
 
@@ -2336,6 +2338,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
 
    lp_jit_sampler_from_pipe(&sampler->desc.sampler, &state);
    sampler->desc.sampler_index = sampler->texture_handle->sampler_index;
+
+   sampler->ycbcr_conversion = ycbcr_conversion ? vk_ycbcr_conversion_from_handle(ycbcr_conversion->conversion) : NULL;
 
    *pSampler = lvp_sampler_to_handle(sampler);
 

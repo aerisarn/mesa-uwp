@@ -73,6 +73,7 @@ typedef uint32_t xcb_window_t;
 #include "vk_queue.h"
 #include "vk_sync.h"
 #include "vk_sync_timeline.h"
+#include "vk_ycbcr_conversion.h"
 #include "lp_jit.h"
 
 #include "wsi_common.h"
@@ -279,6 +280,8 @@ struct lvp_sampler {
    struct lp_descriptor desc;
 
    struct lp_texture_handle *texture_handle;
+
+   struct vk_ycbcr_conversion *ycbcr_conversion;
 };
 
 struct lvp_descriptor_set_binding_layout {
