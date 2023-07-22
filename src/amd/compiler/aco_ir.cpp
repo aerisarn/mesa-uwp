@@ -688,11 +688,10 @@ get_gfx11_true16_mask(aco_opcode op)
    case aco_opcode::v_and_b16:
    case aco_opcode::v_or_b16:
    case aco_opcode::v_xor_b16: return 0x3 | 0x8;
-   case aco_opcode::v_cmp_class_f16:
-   case aco_opcode::v_cmpx_class_f16:
    case aco_opcode::v_cvt_f32_f16:
    case aco_opcode::v_cvt_i32_i16:
    case aco_opcode::v_cvt_u32_u16: return 0x1;
+   case aco_opcode::v_cmp_class_f16:
    case aco_opcode::v_cmp_eq_f16:
    case aco_opcode::v_cmp_eq_i16:
    case aco_opcode::v_cmp_eq_u16:
@@ -719,6 +718,7 @@ get_gfx11_true16_mask(aco_opcode op)
    case aco_opcode::v_cmp_nlt_f16:
    case aco_opcode::v_cmp_o_f16:
    case aco_opcode::v_cmp_u_f16:
+   case aco_opcode::v_cmpx_class_f16:
    case aco_opcode::v_cmpx_eq_f16:
    case aco_opcode::v_cmpx_eq_i16:
    case aco_opcode::v_cmpx_eq_u16:
