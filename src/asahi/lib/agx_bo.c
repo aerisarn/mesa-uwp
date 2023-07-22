@@ -63,6 +63,10 @@ agx_bo_cache_fetch(struct agx_device *dev, size_t size, uint32_t flags,
       if (entry->size < size || entry->flags != flags)
          continue;
 
+      /* Do not return more than 2x oversized BOs. */
+      if (entry->size > 2 * size)
+         continue;
+
       /* If the oldest BO in the cache is busy, likely so is
        * everything newer, so bail. */
       if (!agx_bo_wait(entry, dontwait ? 0 : INT64_MAX))
