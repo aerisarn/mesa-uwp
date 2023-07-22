@@ -185,6 +185,10 @@ LLVMValueRef si_unpack_param(struct si_shader_context *ctx, struct ac_arg param,
 bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                             struct si_shader *shader, struct si_shader_args *args,
                             struct util_debug_callback *debug, struct nir_shader *nir);
+bool si_llvm_build_shader_part(struct si_screen *sscreen, gl_shader_stage stage,
+                               bool prolog, struct ac_llvm_compiler *compiler,
+                               struct util_debug_callback *debug, const char *name,
+                               struct si_shader_part *result);
 
 /* si_shader_llvm_gs.c */
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);

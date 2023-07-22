@@ -898,3 +898,88 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
    si_llvm_dispose(&ctx);
    return true;
 }
+
+bool si_llvm_build_shader_part(struct si_screen *sscreen, gl_shader_stage stage,
+                               bool prolog, struct ac_llvm_compiler *compiler,
+                               struct util_debug_callback *debug, const char *name,
+                               struct si_shader_part *result)
+{
+   union si_shader_part_key *key = &result->key;
+
+   struct si_shader_selector sel = {};
+   sel.screen = sscreen;
+
+   struct si_shader shader = {};
+   shader.selector = &sel;
+   bool wave32 = false;
+   bool exports_color_null = false;
+   bool exports_mrtz = false;
+
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      shader.key.ge.as_ls = key->vs_prolog.as_ls;
+      shader.key.ge.as_es = key->vs_prolog.as_es;
+      shader.key.ge.as_ngg = key->vs_prolog.as_ngg;
+      wave32 = key->vs_prolog.wave32;
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      assert(!prolog);
+      shader.key.ge.part.tcs.epilog = key->tcs_epilog.states;
+      wave32 = key->tcs_epilog.wave32;
+      break;
+   case MESA_SHADER_FRAGMENT:
+      if (prolog) {
+         shader.key.ps.part.prolog = key->ps_prolog.states;
+         wave32 = key->ps_prolog.wave32;
+         exports_color_null = key->ps_prolog.states.poly_stipple;
+      } else {
+         shader.key.ps.part.epilog = key->ps_epilog.states;
+         wave32 = key->ps_epilog.wave32;
+         exports_color_null = key->ps_epilog.colors_written;
+         exports_mrtz = key->ps_epilog.writes_z || key->ps_epilog.writes_stencil ||
+                        key->ps_epilog.writes_samplemask;
+         if (!exports_mrtz && !exports_color_null)
+            exports_color_null = key->ps_epilog.uses_discard || sscreen->info.gfx_level < GFX10;
+      }
+      break;
+   default:
+      unreachable("bad shader part");
+   }
+
+   struct si_shader_context ctx;
+   si_llvm_context_init(&ctx, sscreen, compiler, wave32 ? 32 : 64, exports_color_null, exports_mrtz,
+                        AC_FLOAT_MODE_DEFAULT_OPENGL);
+
+   ctx.shader = &shader;
+   ctx.stage = stage;
+
+   struct si_shader_args args;
+   ctx.args = &args;
+
+   void (*build)(struct si_shader_context *, union si_shader_part_key *, bool);
+
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      build = si_llvm_build_vs_prolog;
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      build = si_llvm_build_tcs_epilog;
+      break;
+   case MESA_SHADER_FRAGMENT:
+      build = prolog ? si_llvm_build_ps_prolog : si_llvm_build_ps_epilog;
+      break;
+   default:
+      unreachable("bad shader part");
+   }
+
+   build(&ctx, key, true);
+
+   /* Compile. */
+   si_llvm_optimize_module(&ctx);
+
+   bool ret = si_compile_llvm(sscreen, &result->binary, &result->config, compiler,
+                              &ctx.ac, debug, ctx.stage, name, false);
+
+   si_llvm_dispose(&ctx);
+   return ret;
+}
