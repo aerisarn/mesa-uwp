@@ -59,7 +59,8 @@ si_fill_aco_options(struct si_shader *shader, struct aco_compiler_options *optio
 }
 
 static void
-si_fill_aco_shader_info(struct si_shader *shader, struct aco_shader_info *info)
+si_fill_aco_shader_info(struct si_shader *shader, struct aco_shader_info *info,
+                        struct si_shader_args *args)
 {
    const struct si_shader_selector *sel = shader->selector;
    const union si_shader_key *key = &shader->key;
@@ -84,6 +85,12 @@ si_fill_aco_shader_info(struct si_shader *shader, struct aco_shader_info *info)
    case MESA_SHADER_TESS_CTRL:
       info->vs.tcs_in_out_eq = key->ge.opt.same_patch_vertices;
       info->vs.tcs_temp_only_input_mask = sel->info.tcs_vgpr_only_inputs;
+      info->has_epilog = !shader->is_monolithic;
+      info->tcs.pass_tessfactors_by_reg = sel->info.tessfactors_are_def_in_all_invocs;
+      info->tcs.patch_stride = si_get_tcs_out_patch_stride(&sel->info);
+      info->tcs.tcs_offchip_layout = args->tcs_offchip_layout;
+      info->tcs.tes_offchip_addr = args->tes_offchip_addr;
+      info->tcs.vs_state_bits = args->vs_state_bits;
       break;
    case MESA_SHADER_FRAGMENT:
       info->ps.num_interp = si_get_ps_num_interp(shader);
@@ -144,7 +151,7 @@ si_aco_compile_shader(struct si_shader *shader,
    si_fill_aco_options(shader, &options, debug);
 
    struct aco_shader_info info = {0};
-   si_fill_aco_shader_info(shader, &info);
+   si_fill_aco_shader_info(shader, &info, args);
 
    nir_shader *shaders[2];
    unsigned num_shaders = 0;
