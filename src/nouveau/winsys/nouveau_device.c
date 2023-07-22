@@ -109,6 +109,8 @@ max_warps_per_mp_for_sm(uint8_t sm)
       return 64;
    default:
       assert(!"unkown SM version");
+      // return the biggest known value
+      return 64;
    }
 }
 
