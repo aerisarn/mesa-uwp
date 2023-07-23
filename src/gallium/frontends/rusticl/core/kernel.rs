@@ -250,7 +250,17 @@ impl InternalKernelArg {
     }
 }
 
-struct CSOWrapper {
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct KernelInfo {
+    pub args: Vec<KernelArg>,
+    pub internal_args: Vec<InternalKernelArg>,
+    pub attributes_string: String,
+    pub work_group_size: [usize; 3],
+    pub subgroup_size: usize,
+    pub num_subgroups: usize,
+}
+
+pub struct CSOWrapper {
     pub cso_ptr: *mut c_void,
     dev: &'static Device,
 }
@@ -286,7 +296,7 @@ impl Drop for CSOWrapper {
     }
 }
 
-enum KernelDevStateVariant {
+pub enum KernelDevStateVariant {
     Cso(Arc<CSOWrapper>),
     Nir(Arc<NirShader>),
 }
@@ -341,7 +351,7 @@ impl KernelDevState {
         Arc::new(Self { states: states })
     }
 
-    fn create_nir_constant_buffer(dev: &Device, nir: &NirShader) -> Option<Arc<PipeResource>> {
+    pub fn create_nir_constant_buffer(dev: &Device, nir: &NirShader) -> Option<Arc<PipeResource>> {
         let buf = nir.get_constant_buffer();
         let len = buf.len() as u32;
 
@@ -371,7 +381,8 @@ pub struct Kernel {
     pub prog: Arc<Program>,
     pub name: String,
     pub values: Vec<RefCell<Option<KernelArgValue>>>,
-    pub build: Arc<NirKernelBuild>,
+    pub builds: HashMap<&'static Device, Arc<NirKernelBuild>>,
+    pub kernel_info: KernelInfo,
 }
 
 impl_cl_type_trait!(cl_kernel, Kernel, CL_INVALID_KERNEL);
@@ -830,10 +841,16 @@ fn extract<'a, const S: usize>(buf: &'a mut &[u8]) -> &'a [u8; S] {
 
 impl Kernel {
     pub fn new(name: String, prog: Arc<Program>) -> Arc<Kernel> {
-        let nir_kernel_build = prog.get_nir_kernel_build(&name);
+        let prog_build = prog.build_info();
+        let kernel_info = prog_build.kernel_info.get(&name).unwrap().clone();
+        let builds = prog_build
+            .builds
+            .iter()
+            .map(|(k, v)| (*k, v.kernels.get(&name).unwrap().clone()))
+            .collect();
 
         // can't use vec!...
-        let values = nir_kernel_build
+        let values = kernel_info
             .args
             .iter()
             .map(|_| RefCell::new(None))
@@ -841,10 +858,11 @@ impl Kernel {
 
         Arc::new(Self {
             base: CLObjectBase::new(),
-            prog: prog,
+            prog: prog.clone(),
             name: name,
             values: values,
-            build: nir_kernel_build,
+            builds: builds,
+            kernel_info: kernel_info,
         })
     }
 
@@ -896,14 +914,14 @@ impl Kernel {
         grid: &[usize],
         offsets: &[usize],
     ) -> CLResult<EventSig> {
-        let dev_state = self.build.dev_state.get(q.device);
+        let nir_kernel_build = self.builds.get(q.device).unwrap().clone();
         let mut block = create_kernel_arr::<u32>(block, 1);
         let mut grid = create_kernel_arr::<u32>(grid, 1);
         let offsets = create_kernel_arr::<u64>(offsets, 0);
         let mut input: Vec<u8> = Vec::new();
         let mut resource_info = Vec::new();
         // Set it once so we get the alignment padding right
-        let static_local_size: u64 = dev_state.nir_internal_info.shared_size;
+        let static_local_size: u64 = nir_kernel_build.shared_size;
         let mut variable_local_size: u64 = static_local_size;
         let printf_size = q.device.printf_buffer_size() as u32;
         let mut samplers = Vec::new();
@@ -921,7 +939,7 @@ impl Kernel {
 
         self.optimize_local_size(q.device, &mut grid, &mut block);
 
-        for (arg, val) in self.build.args.iter().zip(&self.values) {
+        for (arg, val) in self.kernel_info.args.iter().zip(&self.values) {
             if arg.dead {
                 continue;
             }
@@ -1005,18 +1023,21 @@ impl Kernel {
         }
 
         // subtract the shader local_size as we only request something on top of that.
-        variable_local_size -= dev_state.nir_internal_info.shared_size;
+        variable_local_size -= static_local_size;
 
         let mut printf_buf = None;
-        for arg in &self.build.internal_args {
+        for arg in &self.kernel_info.internal_args {
             if arg.offset > input.len() {
                 input.resize(arg.offset, 0);
             }
             match arg.kind {
                 InternalKernelArgType::ConstantBuffer => {
-                    assert!(dev_state.constant_buffer.is_some());
+                    assert!(nir_kernel_build.constant_buffer.is_some());
                     input.extend_from_slice(null_ptr);
-                    resource_info.push((dev_state.constant_buffer.clone().unwrap(), arg.offset));
+                    resource_info.push((
+                        nir_kernel_build.constant_buffer.clone().unwrap(),
+                        arg.offset,
+                    ));
                 }
                 InternalKernelArgType::GlobalWorkOffsets => {
                     if q.device.address_bits() == 64 {
@@ -1061,13 +1082,11 @@ impl Kernel {
             }
         }
 
-        let k = Arc::clone(self);
         Ok(Box::new(move |q, ctx| {
-            let dev_state = k.build.dev_state.get(q.device);
             let mut input = input.clone();
             let mut resources = Vec::with_capacity(resource_info.len());
             let mut globals: Vec<*mut u32> = Vec::new();
-            let printf_format = &dev_state.nir_internal_info.printf_info;
+            let printf_format = &nir_kernel_build.printf_info;
 
             let mut sviews: Vec<_> = sviews
                 .iter()
@@ -1093,7 +1112,7 @@ impl Kernel {
                 );
             }
 
-            let cso = match &dev_state.nir_or_cso {
+            let cso = match &nir_kernel_build.nir_or_cso {
                 KernelDevStateVariant::Cso(cso) => cso.clone(),
                 KernelDevStateVariant::Nir(nir) => CSOWrapper::new(q.device, nir),
             };
@@ -1145,7 +1164,7 @@ impl Kernel {
     }
 
     pub fn access_qualifier(&self, idx: cl_uint) -> cl_kernel_arg_access_qualifier {
-        let aq = self.build.args[idx as usize].spirv.access_qualifier;
+        let aq = self.kernel_info.args[idx as usize].spirv.access_qualifier;
 
         if aq
             == clc_kernel_arg_access_qualifier::CLC_KERNEL_ARG_ACCESS_READ
@@ -1162,7 +1181,7 @@ impl Kernel {
     }
 
     pub fn address_qualifier(&self, idx: cl_uint) -> cl_kernel_arg_address_qualifier {
-        match self.build.args[idx as usize].spirv.address_qualifier {
+        match self.kernel_info.args[idx as usize].spirv.address_qualifier {
             clc_kernel_arg_address_qualifier::CLC_KERNEL_ARG_ADDRESS_PRIVATE => {
                 CL_KERNEL_ARG_ADDRESS_PRIVATE
             }
@@ -1179,7 +1198,7 @@ impl Kernel {
     }
 
     pub fn type_qualifier(&self, idx: cl_uint) -> cl_kernel_arg_type_qualifier {
-        let tq = self.build.args[idx as usize].spirv.type_qualifier;
+        let tq = self.kernel_info.args[idx as usize].spirv.type_qualifier;
         let zero = clc_kernel_arg_type_qualifier(0);
         let mut res = CL_KERNEL_ARG_TYPE_NONE;
 
@@ -1199,61 +1218,40 @@ impl Kernel {
     }
 
     pub fn work_group_size(&self) -> [usize; 3] {
-        self.build
-            .dev_state
-            .states
-            .values()
-            .next()
-            .unwrap()
-            .nir_internal_info
-            .work_group_size
+        self.kernel_info.work_group_size
     }
 
     pub fn num_subgroups(&self) -> usize {
-        self.build
-            .dev_state
-            .states
-            .values()
-            .next()
-            .unwrap()
-            .nir_internal_info
-            .num_subgroups
+        self.kernel_info.num_subgroups
     }
 
     pub fn subgroup_size(&self) -> usize {
-        self.build
-            .dev_state
-            .states
-            .values()
-            .next()
-            .unwrap()
-            .nir_internal_info
-            .subgroup_size
+        self.kernel_info.subgroup_size
     }
 
     pub fn arg_name(&self, idx: cl_uint) -> &String {
-        &self.build.args[idx as usize].spirv.name
+        &self.kernel_info.args[idx as usize].spirv.name
     }
 
     pub fn arg_type_name(&self, idx: cl_uint) -> &String {
-        &self.build.args[idx as usize].spirv.type_name
+        &self.kernel_info.args[idx as usize].spirv.type_name
     }
 
     pub fn priv_mem_size(&self, dev: &Device) -> cl_ulong {
-        self.build.dev_state.get(dev).info.private_memory.into()
+        self.builds.get(dev).unwrap().info.private_memory as cl_ulong
     }
 
     pub fn max_threads_per_block(&self, dev: &Device) -> usize {
-        self.build.dev_state.get(dev).info.max_threads as usize
+        self.builds.get(dev).unwrap().info.max_threads as usize
     }
 
     pub fn preferred_simd_size(&self, dev: &Device) -> usize {
-        self.build.dev_state.get(dev).info.preferred_simd_size as usize
+        self.builds.get(dev).unwrap().info.preferred_simd_size as usize
     }
 
     pub fn local_mem_size(&self, dev: &Device) -> cl_ulong {
         // TODO include args
-        self.build.dev_state.get(dev).nir_internal_info.shared_size as cl_ulong
+        self.builds.get(dev).unwrap().shared_size as cl_ulong
     }
 
     pub fn has_svm_devs(&self) -> bool {
@@ -1261,7 +1259,7 @@ impl Kernel {
     }
 
     pub fn subgroup_sizes(&self, dev: &Device) -> Vec<usize> {
-        SetBitIndices::from_msb(self.build.dev_state.get(dev).info.simd_sizes)
+        SetBitIndices::from_msb(self.builds.get(dev).unwrap().info.simd_sizes)
             .map(|bit| 1 << bit)
             .collect()
     }
@@ -1292,7 +1290,7 @@ impl Kernel {
             *block.get(2).unwrap_or(&1) as u32,
         ];
 
-        match &self.build.dev_state.get(dev).nir_or_cso {
+        match &self.builds.get(dev).unwrap().nir_or_cso {
             KernelDevStateVariant::Cso(cso) => {
                 dev.helper_ctx()
                     .compute_state_subgroup_size(cso.cso_ptr, &block) as usize
@@ -1311,7 +1309,8 @@ impl Clone for Kernel {
             prog: self.prog.clone(),
             name: self.name.clone(),
             values: self.values.clone(),
-            build: self.build.clone(),
+            builds: self.builds.clone(),
+            kernel_info: self.kernel_info.clone(),
         }
     }
 }

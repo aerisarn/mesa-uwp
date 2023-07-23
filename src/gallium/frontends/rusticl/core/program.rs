@@ -8,6 +8,7 @@ use crate::impl_cl_type_trait;
 use mesa_rust::compiler::clc::spirv::SPIRVBin;
 use mesa_rust::compiler::clc::*;
 use mesa_rust::compiler::nir::*;
+use mesa_rust::pipe::resource::*;
 use mesa_rust::util::disk_cache::*;
 use mesa_rust_gen::*;
 use rusticl_opencl_gen::*;
@@ -68,17 +69,18 @@ pub struct Program {
 impl_cl_type_trait!(cl_program, Program, CL_INVALID_PROGRAM);
 
 pub struct NirKernelBuild {
-    pub dev_state: Arc<KernelDevState>,
-    pub args: Vec<KernelArg>,
-    pub internal_args: Vec<InternalKernelArg>,
-    pub attributes_string: String,
+    pub nir_or_cso: KernelDevStateVariant,
+    pub constant_buffer: Option<Arc<PipeResource>>,
+    pub info: pipe_compute_state_object_info,
+    pub shared_size: u64,
+    pub printf_info: Option<NirPrintfInfo>,
 }
 
-pub(super) struct ProgramBuild {
-    builds: HashMap<&'static Device, ProgramDevBuild>,
+pub struct ProgramBuild {
+    pub builds: HashMap<&'static Device, ProgramDevBuild>,
+    pub kernel_info: HashMap<String, KernelInfo>,
     spec_constants: HashMap<u32, nir_const_value>,
     kernels: Vec<String>,
-    kernel_builds: HashMap<String, Arc<NirKernelBuild>>,
 }
 
 impl ProgramBuild {
@@ -104,7 +106,7 @@ impl ProgramBuild {
     }
 
     fn build_nirs(&mut self, is_src: bool) {
-        for kernel_name in &self.kernels {
+        for kernel_name in &self.kernels.clone() {
             let kernel_args: HashSet<_> = self
                 .devs_with_build()
                 .iter()
@@ -112,45 +114,64 @@ impl ProgramBuild {
                 .collect();
 
             let args = kernel_args.into_iter().next().unwrap();
-            let mut nirs = HashMap::new();
-            let mut args_set = HashSet::new();
-            let mut internal_args_set = HashSet::new();
-            let mut attributes_string_set = HashSet::new();
+            let mut kernel_info_set = HashSet::new();
 
             // TODO: we could run this in parallel?
-            for d in self.devs_with_build() {
-                let (nir, args, internal_args) = convert_spirv_to_nir(self, kernel_name, &args, d);
-                let attributes_string = self.attribute_str(kernel_name, d);
-                nirs.insert(d, nir);
-                args_set.insert(args);
-                internal_args_set.insert(internal_args);
-                attributes_string_set.insert(attributes_string);
-            }
+            for dev in self.devs_with_build() {
+                let (mut nir, args, internal_args) =
+                    convert_spirv_to_nir(self, kernel_name, &args, dev);
+                let attributes_string = self.attribute_str(kernel_name, dev);
+                let wgs = nir.workgroup_size();
+                let shared_size = nir.shared_size() as u64;
+                let printf_info = nir.take_printf_info();
 
-            // we want the same (internal) args for every compiled kernel, for now
-            assert!(args_set.len() == 1);
-            assert!(internal_args_set.len() == 1);
-            assert!(attributes_string_set.len() == 1);
-            let args = args_set.into_iter().next().unwrap();
-            let internal_args = internal_args_set.into_iter().next().unwrap();
-
-            // spec: For kernels not created from OpenCL C source and the clCreateProgramWithSource
-            // API call the string returned from this query [CL_KERNEL_ATTRIBUTES] will be empty.
-            let attributes_string = if is_src {
-                attributes_string_set.into_iter().next().unwrap()
-            } else {
-                String::new()
-            };
-
-            self.kernel_builds.insert(
-                kernel_name.clone(),
-                Arc::new(NirKernelBuild {
-                    dev_state: KernelDevState::new(nirs),
+                let kernel_info = KernelInfo {
                     args: args,
                     internal_args: internal_args,
                     attributes_string: attributes_string,
-                }),
-            );
+                    work_group_size: [wgs[0] as usize, wgs[1] as usize, wgs[2] as usize],
+                    subgroup_size: nir.subgroup_size() as usize,
+                    num_subgroups: nir.num_subgroups() as usize,
+                };
+
+                kernel_info_set.insert(kernel_info);
+
+                let cso = CSOWrapper::new(dev, &nir);
+                let info = cso.get_cso_info();
+                let cb = KernelDevState::create_nir_constant_buffer(dev, &nir);
+
+                let nir_or_cso = if !dev.shareable_shaders() {
+                    KernelDevStateVariant::Nir(Arc::new(nir))
+                } else {
+                    KernelDevStateVariant::Cso(cso)
+                };
+
+                let nir_kernel_build = NirKernelBuild {
+                    nir_or_cso: nir_or_cso,
+                    constant_buffer: cb,
+                    info: info,
+                    shared_size: shared_size,
+                    printf_info: printf_info,
+                };
+
+                self.builds
+                    .get_mut(dev)
+                    .unwrap()
+                    .kernels
+                    .insert(kernel_name.clone(), Arc::new(nir_kernel_build));
+            }
+
+            // we want the same (internal) args for every compiled kernel, for now
+            assert!(kernel_info_set.len() == 1);
+            let mut kernel_info = kernel_info_set.into_iter().next().unwrap();
+
+            // spec: For kernels not created from OpenCL C source and the clCreateProgramWithSource
+            // API call the string returned from this query [CL_KERNEL_ATTRIBUTES] will be empty.
+            if !is_src {
+                kernel_info.attributes_string = String::new();
+            }
+
+            self.kernel_info.insert(kernel_name.clone(), kernel_info);
         }
     }
 
@@ -228,12 +249,13 @@ impl ProgramBuild {
     }
 }
 
-struct ProgramDevBuild {
+pub struct ProgramDevBuild {
     spirv: Option<spirv::SPIRVBin>,
     status: cl_build_status,
     options: String,
     log: String,
     bin_type: cl_program_binary_type,
+    pub kernels: HashMap<String, Arc<NirKernelBuild>>,
 }
 
 fn prepare_options(options: &str, dev: &Device) -> Vec<CString> {
@@ -297,6 +319,7 @@ impl Program {
                         log: String::from(""),
                         options: String::from(""),
                         bin_type: CL_PROGRAM_BINARY_TYPE_NONE,
+                        kernels: HashMap::new(),
                     },
                 )
             })
@@ -313,7 +336,7 @@ impl Program {
                 builds: Self::create_default_builds(devs),
                 spec_constants: HashMap::new(),
                 kernels: Vec::new(),
-                kernel_builds: HashMap::new(),
+                kernel_info: HashMap::new(),
             }),
         })
     }
@@ -372,6 +395,7 @@ impl Program {
                     log: String::from(""),
                     options: String::from(""),
                     bin_type: bin_type,
+                    kernels: HashMap::new(),
                 },
             );
         }
@@ -380,7 +404,7 @@ impl Program {
             builds: builds,
             spec_constants: HashMap::new(),
             kernels: kernels.into_iter().collect(),
-            kernel_builds: HashMap::new(),
+            kernel_info: HashMap::new(),
         };
         build.build_nirs(false);
 
@@ -404,18 +428,13 @@ impl Program {
                 builds: builds,
                 spec_constants: HashMap::new(),
                 kernels: Vec::new(),
-                kernel_builds: HashMap::new(),
+                kernel_info: HashMap::new(),
             }),
         })
     }
 
-    fn build_info(&self) -> MutexGuard<ProgramBuild> {
+    pub fn build_info(&self) -> MutexGuard<ProgramBuild> {
         self.build.lock().unwrap()
-    }
-
-    pub fn get_nir_kernel_build(&self, name: &str) -> Arc<NirKernelBuild> {
-        let info = self.build_info();
-        info.kernel_builds.get(name).unwrap().clone()
     }
 
     pub fn status(&self, dev: &Device) -> cl_build_status {
@@ -510,9 +529,9 @@ impl Program {
 
     pub fn active_kernels(&self) -> bool {
         self.build_info()
-            .kernel_builds
+            .builds
             .values()
-            .any(|b| Arc::strong_count(b) > 1)
+            .any(|b| b.kernels.values().any(|b| Arc::strong_count(b) > 1))
     }
 
     pub fn build(&self, dev: &Device, options: String) -> bool {
@@ -668,6 +687,7 @@ impl Program {
                     log: log,
                     options: String::from(""),
                     bin_type: bin_type,
+                    kernels: HashMap::new(),
                 },
             );
         }
@@ -676,7 +696,7 @@ impl Program {
             builds: builds,
             spec_constants: HashMap::new(),
             kernels: kernels.into_iter().collect(),
-            kernel_builds: HashMap::new(),
+            kernel_info: HashMap::new(),
         };
 
         // Pre build nir kernels

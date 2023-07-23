@@ -22,13 +22,13 @@ impl CLInfo<cl_kernel_info> for cl_kernel {
     fn query(&self, q: cl_kernel_info, _: &[u8]) -> CLResult<Vec<MaybeUninit<u8>>> {
         let kernel = self.get_ref()?;
         Ok(match q {
-            CL_KERNEL_ATTRIBUTES => cl_prop::<&str>(&kernel.build.attributes_string),
+            CL_KERNEL_ATTRIBUTES => cl_prop::<&str>(&kernel.kernel_info.attributes_string),
             CL_KERNEL_CONTEXT => {
                 let ptr = Arc::as_ptr(&kernel.prog.context);
                 cl_prop::<cl_context>(cl_context::from_ptr(ptr))
             }
             CL_KERNEL_FUNCTION_NAME => cl_prop::<&str>(&kernel.name),
-            CL_KERNEL_NUM_ARGS => cl_prop::<cl_uint>(kernel.build.args.len() as cl_uint),
+            CL_KERNEL_NUM_ARGS => cl_prop::<cl_uint>(kernel.kernel_info.args.len() as cl_uint),
             CL_KERNEL_PROGRAM => {
                 let ptr = Arc::as_ptr(&kernel.prog);
                 cl_prop::<cl_program>(cl_program::from_ptr(ptr))
@@ -46,7 +46,7 @@ impl CLInfoObj<cl_kernel_arg_info, cl_uint> for cl_kernel {
         let kernel = self.get_ref()?;
 
         // CL_INVALID_ARG_INDEX if arg_index is not a valid argument index.
-        if idx as usize >= kernel.build.args.len() {
+        if idx as usize >= kernel.kernel_info.args.len() {
             return Err(CL_INVALID_ARG_INDEX);
         }
 
@@ -329,7 +329,7 @@ fn set_kernel_arg(
     let k = kernel.get_arc()?;
 
     // CL_INVALID_ARG_INDEX if arg_index is not a valid argument index.
-    if let Some(arg) = k.build.args.get(arg_index as usize) {
+    if let Some(arg) = k.kernel_info.args.get(arg_index as usize) {
         // CL_INVALID_ARG_SIZE if arg_size does not match the size of the data type for an argument
         // that is not a memory object or if the argument is a memory object and
         // arg_size != sizeof(cl_mem) or if arg_size is zero and the argument is declared with the
@@ -429,7 +429,7 @@ fn set_kernel_arg_svm_pointer(
         return Err(CL_INVALID_OPERATION);
     }
 
-    if let Some(arg) = kernel.build.args.get(arg_index) {
+    if let Some(arg) = kernel.kernel_info.args.get(arg_index) {
         if !matches!(
             arg.kind,
             KernelArgType::MemConstant | KernelArgType::MemGlobal
