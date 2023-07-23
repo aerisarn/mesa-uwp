@@ -282,14 +282,6 @@ impl CSOWrapper {
     }
 }
 
-struct NirInternalInfo {
-    shared_size: u64,
-    printf_info: Option<NirPrintfInfo>,
-    work_group_size: [usize; 3],
-    subgroup_size: usize,
-    num_subgroups: usize,
-}
-
 impl Drop for CSOWrapper {
     fn drop(&mut self) {
         self.dev.helper_ctx().delete_compute_state(self.cso_ptr);
@@ -299,81 +291,6 @@ impl Drop for CSOWrapper {
 pub enum KernelDevStateVariant {
     Cso(Arc<CSOWrapper>),
     Nir(Arc<NirShader>),
-}
-
-struct KernelDevStateInner {
-    nir_or_cso: KernelDevStateVariant,
-    nir_internal_info: NirInternalInfo,
-    constant_buffer: Option<Arc<PipeResource>>,
-    info: pipe_compute_state_object_info,
-}
-
-pub struct KernelDevState {
-    states: HashMap<&'static Device, KernelDevStateInner>,
-}
-
-impl KernelDevState {
-    pub fn new(nirs: HashMap<&'static Device, NirShader>) -> Arc<Self> {
-        let states = nirs
-            .into_iter()
-            .map(|(dev, mut nir)| {
-                let wgs = nir.workgroup_size();
-                let nir_internal_info = NirInternalInfo {
-                    shared_size: nir.shared_size() as u64,
-                    printf_info: nir.take_printf_info(),
-                    work_group_size: [wgs[0] as usize, wgs[1] as usize, wgs[2] as usize],
-                    subgroup_size: nir.subgroup_size() as usize,
-                    num_subgroups: nir.num_subgroups() as usize,
-                };
-
-                let cso = CSOWrapper::new(dev, &nir);
-                let info = cso.get_cso_info();
-                let cb = Self::create_nir_constant_buffer(dev, &nir);
-
-                let nir_or_cso = if !dev.shareable_shaders() {
-                    KernelDevStateVariant::Nir(Arc::new(nir))
-                } else {
-                    KernelDevStateVariant::Cso(cso)
-                };
-
-                (
-                    dev,
-                    KernelDevStateInner {
-                        nir_or_cso: nir_or_cso,
-                        nir_internal_info: nir_internal_info,
-                        constant_buffer: cb,
-                        info: info,
-                    },
-                )
-            })
-            .collect();
-
-        Arc::new(Self { states: states })
-    }
-
-    pub fn create_nir_constant_buffer(dev: &Device, nir: &NirShader) -> Option<Arc<PipeResource>> {
-        let buf = nir.get_constant_buffer();
-        let len = buf.len() as u32;
-
-        if len > 0 {
-            let res = dev
-                .screen()
-                .resource_create_buffer(len, ResourceType::Normal)
-                .unwrap();
-
-            dev.helper_ctx()
-                .exec(|ctx| ctx.buffer_subdata(&res, 0, buf.as_ptr().cast(), len))
-                .wait();
-
-            Some(Arc::new(res))
-        } else {
-            None
-        }
-    }
-
-    fn get(&self, dev: &Device) -> &KernelDevStateInner {
-        self.states.get(dev).unwrap()
-    }
 }
 
 pub struct Kernel {

@@ -163,7 +163,7 @@ impl ProgramBuild {
 
             // TODO: we could run this in parallel?
             for dev in self.devs_with_build() {
-                let (mut nir, args, internal_args) =
+                let (nir, args, internal_args) =
                     convert_spirv_to_nir(self, kernel_name, &args, dev);
                 let attributes_string = self.attribute_str(kernel_name, dev);
                 let wgs = nir.workgroup_size();
