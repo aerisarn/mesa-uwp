@@ -9,6 +9,7 @@ use mesa_rust::compiler::clc::spirv::SPIRVBin;
 use mesa_rust::compiler::clc::*;
 use mesa_rust::compiler::nir::*;
 use mesa_rust::pipe::resource::*;
+use mesa_rust::pipe::screen::ResourceType;
 use mesa_rust::util::disk_cache::*;
 use mesa_rust_gen::*;
 use rusticl_opencl_gen::*;
@@ -83,6 +84,50 @@ pub struct ProgramBuild {
     kernels: Vec<String>,
 }
 
+impl NirKernelBuild {
+    pub fn new(dev: &'static Device, mut nir: NirShader) -> Self {
+        let cso = CSOWrapper::new(dev, &nir);
+        let info = cso.get_cso_info();
+        let cb = Self::create_nir_constant_buffer(dev, &nir);
+        let shared_size = nir.shared_size() as u64;
+        let printf_info = nir.take_printf_info();
+
+        let nir_or_cso = if !dev.shareable_shaders() {
+            KernelDevStateVariant::Nir(Arc::new(nir))
+        } else {
+            KernelDevStateVariant::Cso(cso)
+        };
+
+        NirKernelBuild {
+            nir_or_cso: nir_or_cso,
+            constant_buffer: cb,
+            info: info,
+            shared_size: shared_size,
+            printf_info: printf_info,
+        }
+    }
+
+    fn create_nir_constant_buffer(dev: &Device, nir: &NirShader) -> Option<Arc<PipeResource>> {
+        let buf = nir.get_constant_buffer();
+        let len = buf.len() as u32;
+
+        if len > 0 {
+            let res = dev
+                .screen()
+                .resource_create_buffer(len, ResourceType::Normal)
+                .unwrap();
+
+            dev.helper_ctx()
+                .exec(|ctx| ctx.buffer_subdata(&res, 0, buf.as_ptr().cast(), len))
+                .wait();
+
+            Some(Arc::new(res))
+        } else {
+            None
+        }
+    }
+}
+
 impl ProgramBuild {
     fn attribute_str(&self, kernel: &str, d: &Device) -> String {
         let info = self.dev_build(d);
@@ -122,8 +167,6 @@ impl ProgramBuild {
                     convert_spirv_to_nir(self, kernel_name, &args, dev);
                 let attributes_string = self.attribute_str(kernel_name, dev);
                 let wgs = nir.workgroup_size();
-                let shared_size = nir.shared_size() as u64;
-                let printf_info = nir.take_printf_info();
 
                 let kernel_info = KernelInfo {
                     args: args,
@@ -133,32 +176,13 @@ impl ProgramBuild {
                     subgroup_size: nir.subgroup_size() as usize,
                     num_subgroups: nir.num_subgroups() as usize,
                 };
-
                 kernel_info_set.insert(kernel_info);
-
-                let cso = CSOWrapper::new(dev, &nir);
-                let info = cso.get_cso_info();
-                let cb = KernelDevState::create_nir_constant_buffer(dev, &nir);
-
-                let nir_or_cso = if !dev.shareable_shaders() {
-                    KernelDevStateVariant::Nir(Arc::new(nir))
-                } else {
-                    KernelDevStateVariant::Cso(cso)
-                };
-
-                let nir_kernel_build = NirKernelBuild {
-                    nir_or_cso: nir_or_cso,
-                    constant_buffer: cb,
-                    info: info,
-                    shared_size: shared_size,
-                    printf_info: printf_info,
-                };
 
                 self.builds
                     .get_mut(dev)
                     .unwrap()
                     .kernels
-                    .insert(kernel_name.clone(), Arc::new(nir_kernel_build));
+                    .insert(kernel_name.clone(), Arc::new(NirKernelBuild::new(dev, nir)));
             }
 
             // we want the same (internal) args for every compiled kernel, for now
