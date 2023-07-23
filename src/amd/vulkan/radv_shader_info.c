@@ -911,10 +911,11 @@ gather_shader_info_cs(struct radv_device *device, const nir_shader *nir, const s
    unsigned local_size = nir->info.workgroup_size[0] * nir->info.workgroup_size[1] * nir->info.workgroup_size[2];
 
    /* Games don't always request full subgroups when they should, which can cause bugs if cswave32
-    * is enabled.
+    * is enabled. Furthermore, if cooperative matrices or subgroup info are used, we can't transparently change
+    * the subgroup size.
     */
    const bool require_full_subgroups =
-      pipeline_key->stage_info[MESA_SHADER_COMPUTE].subgroup_require_full ||
+      pipeline_key->stage_info[MESA_SHADER_COMPUTE].subgroup_require_full || nir->info.cs.has_cooperative_matrix ||
       (default_wave_size == 32 && nir->info.uses_wide_subgroup_intrinsics && local_size % RADV_SUBGROUP_SIZE == 0);
 
    const unsigned required_subgroup_size = pipeline_key->stage_info[MESA_SHADER_COMPUTE].subgroup_required_size * 32;
