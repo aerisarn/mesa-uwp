@@ -124,7 +124,9 @@ nvk_queue_state_update(struct nvk_device *dev,
    struct nouveau_ws_bo *push_bo;
    void *push_map;
    push_bo = nouveau_ws_bo_new_mapped(dev->ws_dev, 256 * 4, 0,
-                                      NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP,
+                                      NOUVEAU_WS_BO_GART |
+                                      NOUVEAU_WS_BO_MAP |
+                                      NOUVEAU_WS_BO_NO_SHARE,
                                       NOUVEAU_WS_BO_WR, &push_map);
    if (push_bo == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -330,7 +332,8 @@ nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
    void *empty_push_map;
    queue->empty_push = nouveau_ws_bo_new_mapped(dev->ws_dev, 4096, 0,
                                                 NOUVEAU_WS_BO_GART |
-                                                NOUVEAU_WS_BO_MAP,
+                                                NOUVEAU_WS_BO_MAP  |
+                                                NOUVEAU_WS_BO_NO_SHARE,
                                                 NOUVEAU_WS_BO_WR,
                                                 &empty_push_map);
    if (queue->empty_push == NULL) {
@@ -393,7 +396,9 @@ nvk_queue_submit_simple(struct nvk_queue *queue,
 
    void *push_map;
    push_bo = nouveau_ws_bo_new_mapped(dev->ws_dev, dw_count * 4, 0,
-                                      NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP,
+                                      NOUVEAU_WS_BO_GART |
+                                      NOUVEAU_WS_BO_MAP |
+                                      NOUVEAU_WS_BO_NO_SHARE,
                                       NOUVEAU_WS_BO_WR, &push_map);
    if (push_bo == NULL)
       return vk_error(queue, VK_ERROR_OUT_OF_DEVICE_MEMORY);

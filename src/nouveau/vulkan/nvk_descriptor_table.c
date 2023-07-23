@@ -18,7 +18,9 @@ nvk_descriptor_table_grow_locked(struct nvk_device *dev,
 
    const uint32_t new_bo_size = new_alloc * table->desc_size;
    new_bo = nouveau_ws_bo_new(dev->ws_dev, new_bo_size, 256,
-                              NOUVEAU_WS_BO_LOCAL | NOUVEAU_WS_BO_MAP);
+                              NOUVEAU_WS_BO_LOCAL |
+                              NOUVEAU_WS_BO_MAP |
+                              NOUVEAU_WS_BO_NO_SHARE);
    if (new_bo == NULL) {
       return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                        "Failed to allocate the image descriptor table");

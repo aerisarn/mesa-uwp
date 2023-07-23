@@ -86,7 +86,8 @@ nvk_slm_area_ensure(struct nvk_device *dev,
    size = ALIGN(size, 0x20000);
 
    struct nouveau_ws_bo *bo =
-      nouveau_ws_bo_new(dev->ws_dev, size, 0, NOUVEAU_WS_BO_LOCAL);
+      nouveau_ws_bo_new(dev->ws_dev, size, 0,
+                        NOUVEAU_WS_BO_LOCAL | NOUVEAU_WS_BO_NO_SHARE);
    if (bo == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
@@ -192,14 +193,16 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
     * allocate shader BOs by 4K to ensure we don't run past.
     */
    result = nvk_heap_init(dev, &dev->shader_heap,
-                          NOUVEAU_WS_BO_LOCAL, NOUVEAU_WS_BO_WR,
+                          NOUVEAU_WS_BO_LOCAL | NOUVEAU_WS_BO_NO_SHARE,
+                          NOUVEAU_WS_BO_WR,
                           4096 /* overalloc */,
                           dev->pdev->info.cls_eng3d < VOLTA_A);
    if (result != VK_SUCCESS)
       goto fail_samplers;
 
    result = nvk_heap_init(dev, &dev->event_heap,
-                          NOUVEAU_WS_BO_LOCAL, NOUVEAU_WS_BO_WR,
+                          NOUVEAU_WS_BO_LOCAL | NOUVEAU_WS_BO_NO_SHARE,
+                          NOUVEAU_WS_BO_WR,
                           0 /* overalloc */, false /* contiguous */);
    if (result != VK_SUCCESS)
       goto fail_shader_heap;
@@ -230,7 +233,8 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    void *zero_map;
    dev->zero_page = nouveau_ws_bo_new_mapped(dev->ws_dev, 0x1000, 0,
-                                             NOUVEAU_WS_BO_LOCAL,
+                                             NOUVEAU_WS_BO_LOCAL |
+                                             NOUVEAU_WS_BO_NO_SHARE,
                                              NOUVEAU_WS_BO_WR, &zero_map);
    if (dev->zero_page == NULL)
       goto fail_queue_submit;
@@ -242,7 +246,8 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
        dev->pdev->info.cls_eng3d < MAXWELL_A) {
       /* max size is 256k */
       dev->vab_memory = nouveau_ws_bo_new(dev->ws_dev, 1 << 17, 1 << 20,
-                                          NOUVEAU_WS_BO_LOCAL);
+                                          NOUVEAU_WS_BO_LOCAL |
+                                          NOUVEAU_WS_BO_NO_SHARE);
       if (dev->vab_memory == NULL)
          goto fail_zero_page;
    }

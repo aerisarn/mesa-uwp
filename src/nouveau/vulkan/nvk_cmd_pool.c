@@ -14,7 +14,7 @@ nvk_cmd_bo_create(struct nvk_cmd_pool *pool, struct nvk_cmd_bo **bo_out)
    if (bo == NULL)
       return vk_error(pool, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
+   uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP | NOUVEAU_WS_BO_NO_SHARE;
    bo->bo = nouveau_ws_bo_new_mapped(dev->ws_dev, NVK_CMD_BO_SIZE, 0,
                                      flags, NOUVEAU_WS_BO_WR, &bo->map);
    if (bo->bo == NULL) {

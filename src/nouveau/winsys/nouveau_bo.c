@@ -178,6 +178,11 @@ nouveau_ws_bo_new_tiled(struct nouveau_ws_device *dev,
    if (flags & NOUVEAU_WS_BO_MAP)
       req.info.domain |= NOUVEAU_GEM_DOMAIN_MAPPABLE;
 
+#if NVK_NEW_UAPI == 1
+   if (flags & NOUVEAU_WS_BO_NO_SHARE)
+      req.info.domain |= NOUVEAU_GEM_DOMAIN_NO_SHARE;
+#endif
+
 #if NVK_NEW_UAPI == 0
    assert(pte_kind == 0 || !(flags & NOUVEAU_WS_BO_GART));
    assert(tile_mode == 0 || !(flags & NOUVEAU_WS_BO_GART));

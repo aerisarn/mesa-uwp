@@ -68,7 +68,8 @@ nvk_CreateQueryPool(VkDevice device,
       uint32_t bo_size = pool->query_start +
                          pool->query_stride * pool->vk.query_count;
       pool->bo = nouveau_ws_bo_new_mapped(dev->ws_dev, bo_size, 0,
-                                          NOUVEAU_WS_BO_GART,
+                                          NOUVEAU_WS_BO_GART |
+                                          NOUVEAU_WS_BO_NO_SHARE,
                                           NOUVEAU_WS_BO_RDWR,
                                           &pool->bo_map);
       if (!pool->bo) {

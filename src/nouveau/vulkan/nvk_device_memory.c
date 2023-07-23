@@ -93,7 +93,8 @@ zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
 }
 
 static enum nouveau_ws_bo_flags
-nvk_memory_type_flags(const VkMemoryType *type)
+nvk_memory_type_flags(const VkMemoryType *type,
+                      VkExternalMemoryHandleTypeFlagBits handle_types)
 {
    enum nouveau_ws_bo_flags flags = 0;
    if (type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
@@ -103,6 +104,9 @@ nvk_memory_type_flags(const VkMemoryType *type)
 
    if (type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
       flags |= NOUVEAU_WS_BO_MAP;
+
+   if (handle_types == 0)
+      flags |= NOUVEAU_WS_BO_NO_SHARE;
 
    return flags;
 }
@@ -131,7 +135,7 @@ nvk_GetMemoryFdPropertiesKHR(VkDevice device,
    uint32_t type_bits = 0;
    for (unsigned t = 0; t < ARRAY_SIZE(pdev->mem_types); t++) {
       const enum nouveau_ws_bo_flags flags =
-         nvk_memory_type_flags(&pdev->mem_types[t]);
+         nvk_memory_type_flags(&pdev->mem_types[t], handleType);
       if (!(flags & ~bo->flags))
          type_bits |= (1 << t);
    }
@@ -156,10 +160,19 @@ nvk_allocate_memory(struct nvk_device *dev,
 
    const VkImportMemoryFdInfoKHR *fd_info =
       vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_FD_INFO_KHR);
-
+   const VkExportMemoryAllocateInfo *export_info =
+      vk_find_struct_const(pAllocateInfo->pNext, EXPORT_MEMORY_ALLOCATE_INFO);
    const VkMemoryType *type =
       &pdev->mem_types[pAllocateInfo->memoryTypeIndex];
-   const enum nouveau_ws_bo_flags flags = nvk_memory_type_flags(type);
+
+   VkExternalMemoryHandleTypeFlagBits handle_types = 0;
+   if (export_info != NULL)
+      handle_types |= export_info->handleTypes;
+   if (fd_info != NULL)
+      handle_types |= fd_info->handleType;
+
+   const enum nouveau_ws_bo_flags flags =
+      nvk_memory_type_flags(type, handle_types);
 
    uint32_t alignment = (1ULL << 12);
    if (flags & NOUVEAU_WS_BO_LOCAL)

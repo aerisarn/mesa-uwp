@@ -23,6 +23,7 @@ enum nouveau_ws_bo_flags {
    NOUVEAU_WS_BO_LOCAL = 0 << 0,
    NOUVEAU_WS_BO_GART  = 1 << 0,
    NOUVEAU_WS_BO_MAP   = 1 << 1,
+   NOUVEAU_WS_BO_NO_SHARE = 1 << 2,
 };
 
 enum nouveau_ws_bo_map_flags {
