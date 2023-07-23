@@ -76,7 +76,7 @@ agx_batch_mark_complete(struct agx_batch *batch)
    BITSET_CLEAR(batch->ctx->batches.submitted, batch_idx);
 }
 
-static struct agx_encoder
+struct agx_encoder
 agx_encoder_allocate(struct agx_batch *batch, struct agx_device *dev)
 {
    struct agx_bo *bo = agx_bo_create(dev, 0x80000, 0, "Encoder");

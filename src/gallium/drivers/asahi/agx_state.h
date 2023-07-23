@@ -876,6 +876,9 @@ void agx_blit(struct pipe_context *pipe, const struct pipe_blit_info *info);
 
 /* Batch logic */
 
+struct agx_encoder agx_encoder_allocate(struct agx_batch *batch,
+                                        struct agx_device *dev);
+
 void agx_batch_init_state(struct agx_batch *batch);
 
 uint64_t agx_build_meta(struct agx_batch *batch, bool store,
