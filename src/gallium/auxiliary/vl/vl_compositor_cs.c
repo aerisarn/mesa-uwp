@@ -61,7 +61,7 @@ const char *compute_shader_video_buffer =
       "DCL TEMP[0..7]\n"
 
       "IMM[0] UINT32 { 8, 8, 1, 0}\n"
-      "IMM[1] FLT32 { 1.0, 0.0, 0.0, 0.0}\n"
+      "IMM[1] FLT32 { 1.0, 0.5, 0.0, 0.0}\n"
 
       "UMAD TEMP[0].xy, SV[1].xyyy, IMM[0].xyyy, SV[0].xyyy\n"
 
@@ -77,6 +77,11 @@ const char *compute_shader_video_buffer =
          "UADD TEMP[2].xy, TEMP[0].xyyy, -CONST[5].xyxy\n"
          "U2F TEMP[2].xy, TEMP[2].xyyy\n"
          "MUL TEMP[3].xy, TEMP[2].xyyy, CONST[6].xyyy\n"
+         "TRUNC TEMP[3].xy, TEMP[3].xyyy\n"
+
+         /* Texture offset */
+         "ADD TEMP[2].xy, TEMP[2].xyxy, IMM[1].yyyy\n"
+         "ADD TEMP[3].xy, TEMP[3].xyxy, IMM[1].yyyy\n"
 
          /* Scale */
          "DIV TEMP[2].xy, TEMP[2].xyyy, CONST[3].zwww\n"
