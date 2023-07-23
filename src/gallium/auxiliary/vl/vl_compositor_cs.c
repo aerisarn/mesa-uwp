@@ -129,7 +129,7 @@ const char *compute_shader_weave =
       "IMM[0] UINT32 { 8, 8, 1, 0}\n"
       "IMM[1] FLT32 { 1.0, 2.0, 0.0, 0.0}\n"
       "IMM[2] UINT32 { 1, 2, 4, 0}\n"
-      "IMM[3] FLT32 { 0.25, 0.5, 0.125, 0.125}\n"
+      "IMM[3] FLT32 { 0.25, 0.5, 0.0, 0.0}\n"
 
       "UMAD TEMP[0].xy, SV[1].xyyy, IMM[0].xyyy, SV[0].xyyy\n"
 
@@ -145,17 +145,20 @@ const char *compute_shader_weave =
          /* Translate */
          "UADD TEMP[2].xy, TEMP[2].xyyy, -CONST[5].xyxy\n"
 
-         /* Top Y */
          "U2F TEMP[2].xy, TEMP[2].xyyy\n"
-         "DIV TEMP[2].y, TEMP[2].yyyy, IMM[1].yyyy\n"
-         /* Down Y */
-         "MOV TEMP[12].xy, TEMP[2].xyyy\n"
 
          /* Top UV */
          "MOV TEMP[3].xy, TEMP[2].xyyy\n"
          "DIV TEMP[3].xy, TEMP[3], IMM[1].yyyy\n"
+         "TRUNC TEMP[3].xy, TEMP[3].xyyy\n"
+         "DIV TEMP[3].y, TEMP[3].yyyy, IMM[1].yyyy\n"
          /* Down UV */
          "MOV TEMP[13].xy, TEMP[3].xyyy\n"
+
+         /* Top Y */
+         "DIV TEMP[2].y, TEMP[2].yyyy, IMM[1].yyyy\n"
+         /* Down Y */
+         "MOV TEMP[12].xy, TEMP[2].xyyy\n"
 
          /* Texture offset */
          "ADD TEMP[2].x, TEMP[2].xxxx, IMM[3].yyyy\n"
@@ -163,10 +166,10 @@ const char *compute_shader_weave =
          "ADD TEMP[12].x, TEMP[12].xxxx, IMM[3].yyyy\n"
          "ADD TEMP[12].y, TEMP[12].yyyy, IMM[3].xxxx\n"
 
-         "ADD TEMP[3].x, TEMP[3].xxxx, IMM[3].xxxx\n"
-         "ADD TEMP[3].y, TEMP[3].yyyy, IMM[3].wwww\n"
-         "ADD TEMP[13].x, TEMP[13].xxxx, IMM[3].xxxx\n"
-         "ADD TEMP[13].y, TEMP[13].yyyy, IMM[3].wwww\n"
+         "ADD TEMP[3].x, TEMP[3].xxxx, IMM[3].yyyy\n"
+         "ADD TEMP[3].y, TEMP[3].yyyy, IMM[3].xxxx\n"
+         "ADD TEMP[13].x, TEMP[13].xxxx, IMM[3].yyyy\n"
+         "ADD TEMP[13].y, TEMP[13].yyyy, IMM[3].xxxx\n"
 
          /* Scale */
          "DIV TEMP[2].xy, TEMP[2].xyyy, CONST[3].zwzw\n"
