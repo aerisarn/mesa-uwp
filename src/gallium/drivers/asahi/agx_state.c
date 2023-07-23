@@ -3384,19 +3384,12 @@ agx_texture_barrier(struct pipe_context *pipe, unsigned flags)
    agx_flush_all(ctx, "Texture barrier");
 }
 
-static void
-agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
+void
+agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
+           struct agx_compiled_shader *cs)
 {
-   struct agx_context *ctx = agx_context(pipe);
-   struct agx_batch *batch = agx_get_compute_batch(ctx);
-   struct agx_device *dev = agx_device(pipe->screen);
-
-   agx_batch_init_state(batch);
-
-   /* Consider compute launches as "draws" for the purposes of sanity
-    * checking batch state.
-    */
-   batch->any_draws = true;
+   struct agx_context *ctx = batch->ctx;
+   struct agx_device *dev = agx_device(ctx->base.screen);
 
    /* To implement load_num_workgroups, the number of workgroups needs to be
     * available in GPU memory. This is either the indirect buffer, or just a
@@ -3423,13 +3416,6 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
       struct agx_resource *buffer = agx_resource(*res);
       agx_batch_writes(batch, buffer);
    }
-
-   struct agx_uncompiled_shader *uncompiled =
-      ctx->stage[PIPE_SHADER_COMPUTE].shader;
-
-   /* There is exactly one variant, get it */
-   struct agx_compiled_shader *cs =
-      _mesa_hash_table_next_entry(uncompiled->variants, NULL)->data;
 
    agx_batch_add_bo(batch, cs->bo);
 
@@ -3493,6 +3479,30 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    batch->cdm.current = out;
    assert(batch->cdm.current <= batch->cdm.end &&
           "Failed to reserve sufficient space in encoder");
+}
+
+static void
+agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
+{
+   struct agx_context *ctx = agx_context(pipe);
+   struct agx_batch *batch = agx_get_compute_batch(ctx);
+
+   agx_batch_init_state(batch);
+
+   /* Consider compute launches as "draws" for the purposes of sanity
+    * checking batch state.
+    */
+   batch->any_draws = true;
+
+   struct agx_uncompiled_shader *uncompiled =
+      ctx->stage[PIPE_SHADER_COMPUTE].shader;
+
+   /* There is exactly one variant, get it */
+   struct agx_compiled_shader *cs =
+      _mesa_hash_table_next_entry(uncompiled->variants, NULL)->data;
+
+   agx_launch(batch, info, cs);
+
    /* TODO: Dirty tracking? */
 
    /* TODO: Allow multiple kernels in a batch? */

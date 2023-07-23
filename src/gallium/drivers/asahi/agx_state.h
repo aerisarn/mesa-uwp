@@ -540,6 +540,9 @@ agx_context(struct pipe_context *pctx)
    return (struct agx_context *)pctx;
 }
 
+void agx_launch(struct agx_batch *batch, const struct pipe_grid_info *info,
+                struct agx_compiled_shader *cs);
+
 void agx_init_query_functions(struct pipe_context *ctx);
 
 void
