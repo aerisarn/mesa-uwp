@@ -82,6 +82,9 @@ spec@arb_copy_buffer@copy_buffer_coherency
 # Flakes since introduction of piglit testing, possibly increased in frequency
 # around Apr 16 or more likely Apr 23
 spec@arb_texture_gather@texturegather.*
+# random unexpected pass of bunnch dEQP-GLES31.functional.texture
+# See: https://gitlab.freedesktop.org/mesa/mesa/-/issues/9333
+dEQP-GLES31.functional.texture.gather.*
 
 # Flakes since around Apr 30th on a clearly innocent MR.
 .*texwrap.formats.*bordercolor
@@ -113,27 +116,6 @@ spec@arb_direct_state_access@gettextureimage-formats
 spec@ext_polygon_offset_clamp@ext_polygon_offset_clamp-draw_gles2
 spec@ext_polygon_offset_clamp@ext_polygon_offset_clamp-draw_gles2@negative clamp
 
-# random unexpected pass of bunnch dEQP-GLES31.functional.texture
-# See: https://gitlab.freedesktop.org/mesa/mesa/-/issues/9333
-dEQP-GLES31.functional.texture.gather.basic.2d.rgba8i.texture_swizzle.red_green_blue_alpha
-dEQP-GLES31.functional.texture.gather.basic.cube.depth32f.no_corners.size_pot.compare_greater.clamp_to_edge_repeat
-dEQP-GLES31.functional.texture.gather.basic.cube.rgba8.size_npot.clamp_to_edge_repeat
-dEQP-GLES31.functional.texture.gather.basic.cube.rgba8i.filter_mode.min_nearest_mipmap_nearest_mag_nearest
-dEQP-GLES31.functional.texture.gather.offset.implementation_offset.2d.depth32f.filter_mode.min_nearest_mipmap_linear_mag_linear
-dEQP-GLES31.functional.texture.gather.offset.implementation_offset.2d.rgba8i.size_npot.clamp_to_edge_repeat
-dEQP-GLES31.functional.texture.gather.offset.implementation_offset.2d_array.depth32f.size_pot.compare_greater.repeat_mirrored_repeat
-dEQP-GLES31.functional.texture.gather.offset.implementation_offset.2d_array.rgba8.base_level.level_1
-dEQP-GLES31.functional.texture.gather.offset.implementation_offset.2d_array.rgba8.size_pot.clamp_to_edge_repeat
-dEQP-GLES31.functional.texture.gather.offset.min_required_offset.2d_array.depth32f.size_npot.compare_less.repeat_mirrored_repeat
-dEQP-GLES31.functional.texture.gather.offset.min_required_offset.2d_array.rgba8ui.size_npot.clamp_to_edge_repeat
-dEQP-GLES31.functional.texture.gather.offset_dynamic.implementation_offset.2d.rgba8i.size_pot.repeat_mirrored_repeat
-dEQP-GLES31.functional.texture.gather.offset_dynamic.implementation_offset.2d_array.depth32f.size_npot.compare_less.repeat_mirrored_repeat
-dEQP-GLES31.functional.texture.gather.offset_dynamic.implementation_offset.2d_array.rgba8ui.filter_mode.min_nearest_mipmap_nearest_mag_nearest
-dEQP-GLES31.functional.texture.gather.offset_dynamic.implementation_offset.2d_array.rgba8i.base_level.level_2
-dEQP-GLES31.functional.texture.gather.offset_dynamic.min_required_offset.2d_array.rgba8.size_pot.clamp_to_edge_repeat
-dEQP-GLES31.functional.texture.gather.offsets.implementation_offset.2d_array.rgba8i.texture_swizzle.one_red_green_blue
-dEQP-GLES31.functional.texture.gather.offsets.implementation_offset.2d_array.rgba8.texture_swizzle.one_red_green_blue
-dEQP-GLES31.functional.texture.gather.offsets.min_required_offset.2d.rgba8.size_npot.clamp_to_edge_repeat
 dEQP-GLES31.functional.texture.multisample.samples_1.use_texture_depth_2d
 dEQP-GLES31.functional.texture.texture_buffer.render.as_vertex_array_as_index_array_as_fragment_texture.offset_1_alignments
 dEQP-GLES31.functional.texture.texture_buffer.render.as_vertex_array_as_index_array_as_vertex_texture_as_fragment_texture.offset_1_alignments
