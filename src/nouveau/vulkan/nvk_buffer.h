@@ -25,6 +25,7 @@ struct nvk_buffer {
 #else
    struct nvk_device_memory *mem;
 #endif
+   bool is_local;
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_buffer, vk.base, VkBuffer, VK_OBJECT_TYPE_BUFFER)

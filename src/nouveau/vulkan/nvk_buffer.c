@@ -176,6 +176,7 @@ nvk_BindBufferMemory2(VkDevice device,
       VK_FROM_HANDLE(nvk_device_memory, mem, pBindInfos[i].memory);
       VK_FROM_HANDLE(nvk_buffer, buffer, pBindInfos[i].buffer);
 
+      buffer->is_local = !(mem->bo->flags & NOUVEAU_WS_BO_GART);
 #if NVK_NEW_UAPI == 1
       if (buffer->vma_size_B) {
          VK_FROM_HANDLE(nvk_device, dev, device);

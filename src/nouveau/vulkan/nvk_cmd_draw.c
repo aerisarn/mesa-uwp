@@ -18,6 +18,7 @@
 #include "nvk_cl902d.h"
 #include "nvk_cl9039.h"
 #include "nvk_cl906f.h"
+#include "nvk_cl90b5.h"
 #include "nvk_cl90c0.h"
 #include "nvk_clb0c0.h"
 
@@ -557,7 +558,7 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
        render->stencil_att.iview == NULL)
       render->color_att_count = 1;
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, render->color_att_count * 10 + 25);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, render->color_att_count * 10 + 27);
 
    P_IMMD(p, NV9097, SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_VIEW_MASK),
           render->view_mask);
@@ -767,8 +768,15 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
          .baseArrayLayer = 0,
          .layerCount = render->view_mask ? 1 : render->layer_count,
       };
+
+      P_MTHD(p, NV9097, SET_RENDER_ENABLE_OVERRIDE);
+      P_NV9097_SET_RENDER_ENABLE_OVERRIDE(p, MODE_ALWAYS_RENDER);
+
       nvk_CmdClearAttachments(nvk_cmd_buffer_to_handle(cmd),
                               clear_count, clear_att, 1, &clear_rect);
+      p = nvk_cmd_buffer_push(cmd, 2);
+      P_MTHD(p, NV9097, SET_RENDER_ENABLE_OVERRIDE);
+      P_NV9097_SET_RENDER_ENABLE_OVERRIDE(p, MODE_USE_RENDER_ENABLE);
    }
 
    /* TODO: Attachment clears */
@@ -2457,4 +2465,75 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
       nvk_cmd_buffer_push_indirect_buffer(cmd, counter_buffer,
             counterBufferOffset, 4);
    }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer,
+                                    const VkConditionalRenderingBeginInfoEXT *pConditionalRenderingBegin)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_buffer, buffer, pConditionalRenderingBegin->buffer);
+
+   uint64_t addr = nvk_buffer_address(buffer, pConditionalRenderingBegin->offset);
+   bool inverted = pConditionalRenderingBegin->flags &
+      VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
+
+   nvk_flush_descriptors(cmd);
+
+   if (addr & 0x3f || buffer->is_local) {
+      uint64_t tmp_addr;
+      VkResult result = nvk_cmd_buffer_cond_render_alloc(cmd, &tmp_addr);
+      if (result != VK_SUCCESS) {
+         vk_command_buffer_set_error(&cmd->vk, result);
+         return;
+      }
+
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+      P_MTHD(p, NV90B5, OFFSET_IN_UPPER);
+      P_NV90B5_OFFSET_IN_UPPER(p, addr >> 32);
+      P_NV90B5_OFFSET_IN_LOWER(p, addr & 0xffffffff);
+      P_NV90B5_OFFSET_OUT_UPPER(p, tmp_addr >> 32);
+      P_NV90B5_OFFSET_OUT_LOWER(p, tmp_addr & 0xffffffff);
+      P_NV90B5_PITCH_IN(p, 4);
+      P_NV90B5_PITCH_OUT(p, 4);
+      P_NV90B5_LINE_LENGTH_IN(p, 4);
+      P_NV90B5_LINE_COUNT(p, 1);
+
+      P_IMMD(p, NV90B5, LAUNCH_DMA, {
+            .data_transfer_type = DATA_TRANSFER_TYPE_PIPELINED,
+            .multi_line_enable = MULTI_LINE_ENABLE_TRUE,
+            .flush_enable = FLUSH_ENABLE_TRUE,
+            .src_memory_layout = SRC_MEMORY_LAYOUT_PITCH,
+            .dst_memory_layout = DST_MEMORY_LAYOUT_PITCH,
+         });
+      addr = tmp_addr;
+   }
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+   P_MTHD(p, NV9097, SET_RENDER_ENABLE_A);
+   P_NV9097_SET_RENDER_ENABLE_A(p, addr >> 32);
+   P_NV9097_SET_RENDER_ENABLE_B(p, addr & 0xfffffff0);
+   P_NV9097_SET_RENDER_ENABLE_C(p, inverted ? MODE_RENDER_IF_EQUAL : MODE_RENDER_IF_NOT_EQUAL);
+
+   P_MTHD(p, NV90C0, SET_RENDER_ENABLE_A);
+   P_NV90C0_SET_RENDER_ENABLE_A(p, addr >> 32);
+   P_NV90C0_SET_RENDER_ENABLE_B(p, addr & 0xfffffff0);
+   P_NV90C0_SET_RENDER_ENABLE_C(p, inverted ? MODE_RENDER_IF_EQUAL : MODE_RENDER_IF_NOT_EQUAL);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdEndConditionalRenderingEXT(VkCommandBuffer commandBuffer)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+   P_MTHD(p, NV9097, SET_RENDER_ENABLE_A);
+   P_NV9097_SET_RENDER_ENABLE_A(p, 0);
+   P_NV9097_SET_RENDER_ENABLE_B(p, 0);
+   P_NV9097_SET_RENDER_ENABLE_C(p, MODE_TRUE);
+
+   P_MTHD(p, NV90C0, SET_RENDER_ENABLE_A);
+   P_NV90C0_SET_RENDER_ENABLE_A(p, 0);
+   P_NV90C0_SET_RENDER_ENABLE_B(p, 0);
+   P_NV90C0_SET_RENDER_ENABLE_C(p, MODE_TRUE);
 }
