@@ -688,8 +688,9 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
       /* Since NIR is doing the scalarizing for us, we should only ever see
        * vectorized operations with a single channel.
        */
-      assert(util_bitcount(instr->dest.write_mask) == 1);
-      channel = ffs(instr->dest.write_mask) - 1;
+      nir_component_mask_t write_mask = get_nir_write_mask(instr->dest);
+      assert(util_bitcount(write_mask) == 1);
+      channel = ffs(write_mask) - 1;
 
       result = offset(result, bld, channel);
    }
@@ -799,8 +800,9 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
          /* Since NIR is doing the scalarizing for us, we should only ever see
           * vectorized operations with a single channel.
           */
-         assert(util_bitcount(instr->dest.write_mask) == 1);
-         channel = ffs(instr->dest.write_mask) - 1;
+         nir_component_mask_t write_mask = get_nir_write_mask(instr->dest);
+         assert(util_bitcount(write_mask) == 1);
+         channel = ffs(write_mask) - 1;
       }
 
       op[0] = offset(op[0], bld, fsign_instr->src[0].swizzle[channel]);
@@ -992,10 +994,11 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
          }
       }
 
-      unsigned last_bit = util_last_bit(instr->dest.write_mask);
+      nir_component_mask_t write_mask = get_nir_write_mask(instr->dest);
+      unsigned last_bit = util_last_bit(write_mask);
 
       for (unsigned i = 0; i < last_bit; i++) {
-         if (!(instr->dest.write_mask & (1 << i)))
+         if (!(write_mask & (1 << i)))
             continue;
 
          if (instr->op == nir_op_mov) {
@@ -1013,7 +1016,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
        */
       if (need_extra_copy) {
          for (unsigned i = 0; i < last_bit; i++) {
-            if (!(instr->dest.write_mask & (1 << i)))
+            if (!(write_mask & (1 << i)))
                continue;
 
             bld.MOV(offset(result, bld, i), offset(temp, bld, i));
@@ -2075,6 +2078,20 @@ fs_visitor::get_nir_dest(const nir_dest &dest)
       assert(nir_intrinsic_base(store_reg) == 0);
       assert(store_reg->intrinsic != nir_intrinsic_store_reg_indirect);
       return nir_ssa_values[decl_reg->dest.ssa.index];
+   }
+}
+
+nir_component_mask_t
+fs_visitor::get_nir_write_mask(const nir_alu_dest &dest)
+{
+   assert(dest.dest.is_ssa);
+   assert(dest.write_mask == nir_component_mask(dest.dest.ssa.num_components));
+
+   nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.dest.ssa);
+   if (!store_reg) {
+      return nir_component_mask(dest.dest.ssa.num_components);
+   } else {
+      return nir_intrinsic_write_mask(store_reg);
    }
 }
 

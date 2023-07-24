@@ -386,6 +386,7 @@ public:
    fs_reg get_nir_src(const nir_src &src);
    fs_reg get_nir_src_imm(const nir_src &src);
    fs_reg get_nir_dest(const nir_dest &dest);
+   nir_component_mask_t get_nir_write_mask(const nir_alu_dest &dest);
    fs_reg get_resource_nir_src(const nir_src &src);
    fs_reg try_rebuild_resource(const brw::fs_builder &bld,
                                nir_ssa_def *resource_def);
