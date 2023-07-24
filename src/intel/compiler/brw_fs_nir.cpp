@@ -498,8 +498,8 @@ bool
 fs_visitor::optimize_extract_to_float(nir_alu_instr *instr,
                                       const fs_reg &result)
 {
-   if (!instr->src[0].src.is_ssa ||
-       !instr->src[0].src.ssa->parent_instr)
+   assert(instr->src[0].src.is_ssa);
+   if (!instr->src[0].src.ssa->parent_instr)
       return false;
 
    if (instr->src[0].src.ssa->parent_instr->type != nir_instr_type_alu)
@@ -1999,8 +1999,8 @@ fs_visitor::get_nir_src_block(const nir_src &src)
 static bool
 is_resource_src(nir_src src)
 {
-   return src.is_ssa &&
-          src.ssa->parent_instr->type == nir_instr_type_intrinsic &&
+   assert(src.is_ssa);
+   return src.ssa->parent_instr->type == nir_instr_type_intrinsic &&
           nir_instr_as_intrinsic(src.ssa->parent_instr)->intrinsic == nir_intrinsic_resource_intel;
 }
 
@@ -4020,9 +4020,7 @@ add_rebuild_src(nir_src *src, void *state)
 {
    struct rebuild_resource *res = (struct rebuild_resource *) state;
 
-   if (!src->is_ssa)
-      return false;
-
+   assert(src->is_ssa);
    for (nir_ssa_def *def : res->array) {
       if (def == src->ssa)
          return true;
@@ -4384,9 +4382,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       nir_ssa_bind_infos[instr->dest.ssa.index].binding =
          nir_intrinsic_binding(instr);
 
-      if ((nir_intrinsic_resource_access_intel(instr) &
-           nir_resource_intel_non_uniform) ||
-          !instr->src[1].is_ssa) {
+      assert(instr->src[1].is_ssa);
+      if (nir_intrinsic_resource_access_intel(instr) &
+           nir_resource_intel_non_uniform) {
          nir_resource_values[instr->dest.ssa.index] = fs_reg();
       } else {
          nir_resource_values[instr->dest.ssa.index] =
@@ -6709,9 +6707,8 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    const unsigned dest_size = nir_tex_instr_dest_size(instr);
    if (devinfo->ver >= 9 &&
        instr->op != nir_texop_tg4 && instr->op != nir_texop_query_levels) {
-      unsigned write_mask = instr->dest.is_ssa ?
-                            nir_ssa_def_components_read(&instr->dest.ssa):
-                            (1 << dest_size) - 1;
+      assert(instr->dest.is_ssa);
+      unsigned write_mask = nir_ssa_def_components_read(&instr->dest.ssa);
       assert(write_mask != 0); /* dead code should have been eliminated */
       inst->size_written = util_last_bit(write_mask) *
                            inst->dst.component_size(inst->exec_size);
