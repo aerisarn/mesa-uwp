@@ -985,12 +985,24 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_vec16: {
       fs_reg temp = result;
       bool need_extra_copy = false;
-      for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-         if (!instr->src[i].src.is_ssa &&
-             instr->dest.dest.reg.reg == instr->src[i].src.reg.reg) {
-            need_extra_copy = true;
-            temp = bld.vgrf(result.type, 4);
-            break;
+
+      assert(instr->dest.dest.is_ssa);
+      nir_intrinsic_instr *store_reg =
+         nir_store_reg_for_def(&instr->dest.dest.ssa);
+      if (store_reg != NULL) {
+         nir_ssa_def *dest_reg = store_reg->src[1].ssa;
+         for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
+            assert(instr->src[i].src.is_ssa);
+            nir_intrinsic_instr *load_reg =
+               nir_load_reg_for_def(instr->src[i].src.ssa);
+            if (load_reg == NULL)
+               continue;
+
+            if (load_reg->src[0].ssa == dest_reg) {
+               need_extra_copy = true;
+               temp = bld.vgrf(result.type, 4);
+               break;
+            }
          }
       }
 
