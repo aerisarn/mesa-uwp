@@ -26,7 +26,11 @@ mme_runner::~mme_runner()
 
 mme_hw_runner::mme_hw_runner() :
   mme_runner(), p(NULL), dev(NULL), ctx(NULL),
-  data_bo(NULL), push_bo(NULL), push_map(NULL)
+  data_bo(NULL), push_bo(NULL),
+#if NVK_NEW_UAPI == 1
+  syncobj(0),
+#endif
+  push_map(NULL)
 {
    memset(&push, 0, sizeof(push));
 }
@@ -40,6 +44,10 @@ mme_runner::mme_store_data(mme_builder *b, uint32_t dw_idx,
 
 mme_hw_runner::~mme_hw_runner()
 {
+#if NVK_NEW_UAPI == 1
+   if (syncobj)
+      drmSyncobjDestroy(dev->fd, syncobj);
+#endif
    if (push_bo) {
       nouveau_ws_bo_unmap(push_bo, push_map);
       nouveau_ws_bo_destroy(push_bo);
@@ -104,6 +112,12 @@ mme_hw_runner::set_up_hw(uint16_t min_cls, uint16_t max_cls)
    if (push_bo == NULL)
       return false;
 
+#if NVK_NEW_UAPI == 1
+   ret = drmSyncobjCreate(dev->fd, 0, &syncobj);
+   if (ret < 0)
+      return false;
+#endif
+
    reset_push();
 
    return true;
@@ -125,6 +139,34 @@ mme_hw_runner::reset_push()
 void
 mme_hw_runner::submit_push()
 {
+#if NVK_NEW_UAPI == 1
+   struct drm_nouveau_exec_push push = {
+      .va = push_bo->offset,
+      .va_len = nv_push_dw_count(&this->push) * 4,
+   };
+
+   struct drm_nouveau_sync sync = {
+      .flags = DRM_NOUVEAU_SYNC_SYNCOBJ,
+      .handle = syncobj,
+      .timeline_value = 0,
+   };
+
+   struct drm_nouveau_exec req = {
+      .channel = (uint32_t)ctx->channel,
+      .push_count = 1,
+      .sig_count = 1,
+      .sig_ptr = (uintptr_t)&sync,
+      .push_ptr = (uintptr_t)&push,
+   };
+
+   int ret = drmCommandWriteRead(dev->fd, DRM_NOUVEAU_EXEC,
+                                 &req, sizeof(req));
+   ASSERT_EQ(ret, 0);
+
+   ret = drmSyncobjWait(dev->fd, &syncobj, 1, INT64_MAX,
+                        DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
+   ASSERT_EQ(ret, 0);
+#else
    struct drm_nouveau_gem_pushbuf_bo bos[2];
    memset(bos, 0, sizeof(bos));
 
@@ -159,6 +201,7 @@ mme_hw_runner::submit_push()
 
    bool ok = nouveau_ws_bo_wait(data_bo, NOUVEAU_WS_BO_RDWR);
    ASSERT_TRUE(ok);
+#endif
 }
 
 void
