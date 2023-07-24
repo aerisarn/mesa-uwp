@@ -225,5 +225,8 @@ bool si_aco_compile_shader(struct si_shader *shader,
 void si_aco_resolve_symbols(struct si_shader *shader, uint32_t *code_for_write,
                             const uint32_t *code_for_read, uint64_t scratch_va,
                             uint32_t const_offset);
+bool si_aco_build_shader_part(struct si_screen *screen, gl_shader_stage stage, bool prolog,
+                              struct util_debug_callback *debug, const char *name,
+                              struct si_shader_part *result);
 
 #endif
