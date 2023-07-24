@@ -626,10 +626,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
    }
 
    /* Lower I/O intrinsics to memory instructions. */
-   bool is_last_vgt_stage =
-      (stage->info.stage == MESA_SHADER_VERTEX || stage->info.stage == MESA_SHADER_TESS_EVAL ||
-       stage->info.stage == MESA_SHADER_GEOMETRY || stage->info.stage == MESA_SHADER_MESH) &&
-      (stage->info.next_stage == MESA_SHADER_FRAGMENT || stage->info.next_stage == MESA_SHADER_NONE);
+   bool is_last_vgt_stage = radv_is_last_vgt_stage(stage);
    bool io_to_mem = radv_nir_lower_io_to_mem(device, stage);
    bool lowered_ngg = stage->info.is_ngg && is_last_vgt_stage;
    if (lowered_ngg) {

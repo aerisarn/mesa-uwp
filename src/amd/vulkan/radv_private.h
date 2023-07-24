@@ -2410,6 +2410,14 @@ struct radv_pipeline_stage {
 };
 
 static inline bool
+radv_is_last_vgt_stage(const struct radv_pipeline_stage *stage)
+{
+   return (stage->info.stage == MESA_SHADER_VERTEX || stage->info.stage == MESA_SHADER_TESS_EVAL ||
+           stage->info.stage == MESA_SHADER_GEOMETRY || stage->info.stage == MESA_SHADER_MESH) &&
+          (stage->info.next_stage == MESA_SHADER_FRAGMENT || stage->info.next_stage == MESA_SHADER_NONE);
+}
+
+static inline bool
 radv_pipeline_has_stage(const struct radv_graphics_pipeline *pipeline, gl_shader_stage stage)
 {
    return pipeline->base.shaders[stage];

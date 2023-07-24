@@ -2043,29 +2043,28 @@ radv_fill_shader_info_ngg(struct radv_device *device, struct radv_graphics_pipel
 }
 
 static bool
-radv_consider_force_vrs(const struct radv_device *device, const struct radv_graphics_pipeline *pipeline,
-                        const struct radv_pipeline_stage *stages)
+radv_consider_force_vrs(const struct radv_device *device, const struct radv_pipeline_stage *last_vgt_stage,
+                        const struct radv_pipeline_stage *fs_stage)
 {
    if (!device->force_vrs_enabled)
       return false;
 
-   if (pipeline->last_vgt_api_stage != MESA_SHADER_VERTEX && pipeline->last_vgt_api_stage != MESA_SHADER_TESS_EVAL &&
-       pipeline->last_vgt_api_stage != MESA_SHADER_GEOMETRY)
+   /* Mesh shaders aren't considered. */
+   if (last_vgt_stage->info.stage == MESA_SHADER_MESH)
       return false;
 
-   nir_shader *last_vgt_shader = stages[pipeline->last_vgt_api_stage].nir;
-   if (last_vgt_shader->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE))
+   if (last_vgt_stage->nir->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE))
       return false;
 
    /* VRS has no effect if there is no pixel shader. */
-   if (!(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT))
+   if (last_vgt_stage->info.next_stage == MESA_SHADER_NONE)
       return false;
 
    /* Do not enable if the PS uses gl_FragCoord because it breaks postprocessing in some games, or with Primitive
     * Ordered Pixel Shading (regardless of whether per-pixel data is addressed with gl_FragCoord or a custom
     * interpolator) as that'd result in races between adjacent primitives with no common fine pixels.
     */
-   nir_shader *fs_shader = stages[MESA_SHADER_FRAGMENT].nir;
+   nir_shader *fs_shader = fs_stage->nir;
    if (fs_shader && (BITSET_TEST(fs_shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) ||
                      fs_shader->info.fs.sample_interlock_ordered || fs_shader->info.fs.sample_interlock_unordered ||
                      fs_shader->info.fs.pixel_interlock_ordered || fs_shader->info.fs.pixel_interlock_unordered)) {
@@ -2120,12 +2119,16 @@ radv_fill_shader_info(struct radv_device *device, struct radv_graphics_pipeline 
                       struct radv_pipeline_layout *pipeline_layout, const struct radv_pipeline_key *pipeline_key,
                       struct radv_pipeline_stage *stages, VkShaderStageFlagBits active_nir_stages)
 {
-   bool consider_force_vrs = radv_consider_force_vrs(device, pipeline, stages);
-
    radv_foreach_stage(i, active_nir_stages)
    {
+      bool consider_force_vrs = false;
+
+      if (radv_is_last_vgt_stage(&stages[i])) {
+         consider_force_vrs = radv_consider_force_vrs(device, &stages[i], &stages[MESA_SHADER_FRAGMENT]);
+      }
+
       radv_nir_shader_info_pass(device, stages[i].nir, pipeline_layout, pipeline_key, pipeline->base.type,
-                                i == pipeline->last_vgt_api_stage && consider_force_vrs, &stages[i].info);
+                                consider_force_vrs, &stages[i].info);
    }
 
    radv_nir_shader_info_link(device, pipeline_key, stages);
