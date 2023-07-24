@@ -2613,10 +2613,9 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
    radv_fill_shader_info_ngg(device, pipeline, pipeline_key, stages);
 
    if (stages[MESA_SHADER_GEOMETRY].nir) {
-      gl_shader_stage pre_stage = stages[MESA_SHADER_TESS_EVAL].nir ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
       unsigned nir_gs_flags = nir_lower_gs_intrinsics_per_stream;
 
-      if (stages[pre_stage].info.is_ngg) {
+      if (stages[MESA_SHADER_GEOMETRY].info.is_ngg) {
          nir_gs_flags |= nir_lower_gs_intrinsics_count_primitives |
                          nir_lower_gs_intrinsics_count_vertices_per_primitive |
                          nir_lower_gs_intrinsics_overwrite_incomplete;
