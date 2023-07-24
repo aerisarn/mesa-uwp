@@ -2819,6 +2819,17 @@ update_layered_rendering_state(struct zink_context *ctx)
          &framebffer_is_layered);
 }
 
+ALWAYS_INLINE static void
+batch_ref_fb_surface(struct zink_context *ctx, struct pipe_surface *psurf)
+{
+   if (!psurf)
+      return;
+   zink_batch_reference_resource(&ctx->batch, zink_resource(psurf->texture));
+   struct zink_surface *transient = zink_transient_surface(psurf);
+   if (transient)
+      zink_batch_reference_resource(&ctx->batch, zink_resource(transient->base.texture));
+}
+
 void
 zink_batch_rp(struct zink_context *ctx)
 {
@@ -2877,12 +2888,9 @@ zink_batch_rp(struct zink_context *ctx)
          zink_start_conditional_render(ctx);
       zink_clear_framebuffer(ctx, clear_buffers);
       if (ctx->pipeline_changed[0]) {
-         for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
-            if (ctx->fb_state.cbufs[i])
-               zink_batch_reference_resource(&ctx->batch, zink_resource(ctx->fb_state.cbufs[i]->texture));
-         }
-         if (ctx->fb_state.zsbuf)
-            zink_batch_reference_resource(&ctx->batch, zink_resource(ctx->fb_state.zsbuf->texture));
+         for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++)
+            batch_ref_fb_surface(ctx, ctx->fb_state.cbufs[i]);
+         batch_ref_fb_surface(ctx, ctx->fb_state.zsbuf);
       }
    }
    /* unable to previously determine that queries didn't split renderpasses: ensure queries start inside renderpass */
@@ -3498,7 +3506,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
          }
          res->fb_bind_count++;
          res->fb_binds |= BITFIELD_BIT(i);
-         zink_batch_reference_resource(&ctx->batch, res);
+         batch_ref_fb_surface(ctx, ctx->fb_state.cbufs[i]);
          if (util_format_has_alpha1(psurf->format)) {
             if (!res->valid && !zink_fb_clear_full_exists(ctx, i))
                ctx->void_clears |= (PIPE_CLEAR_COLOR0 << i);
@@ -3510,7 +3518,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       struct pipe_surface *psurf = ctx->fb_state.zsbuf;
       struct zink_surface *transient = zink_transient_surface(psurf);
       check_framebuffer_surface_mutable(pctx, psurf);
-      zink_batch_reference_resource(&ctx->batch, zink_resource(psurf->texture));
+      batch_ref_fb_surface(ctx, ctx->fb_state.zsbuf);
       if (transient || psurf->nr_samples)
          ctx->transient_attachments |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
       if (!samples)
