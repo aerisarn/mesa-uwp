@@ -665,6 +665,57 @@ impl<'a> ShaderFromNir<'a> {
                 b.push_op(pcopy);
                 dst
             }
+            nir_op_pack_half_2x16_split => {
+                assert!(alu.get_src(0).bit_size() == 32);
+                let low = b.alloc_ssa(RegFile::GPR, 1);
+                let high = b.alloc_ssa(RegFile::GPR, 1);
+
+                b.push_op(OpF2F {
+                    dst: low.into(),
+                    src: srcs[0],
+                    src_type: FloatType::F32,
+                    dst_type: FloatType::F16,
+                    rnd_mode: FRndMode::NearestEven,
+                    ftz: false,
+                });
+
+                let src_bits = usize::from(alu.get_src(1).bit_size());
+                let src_type = FloatType::from_bits(src_bits);
+                assert!(matches!(src_type, FloatType::F32));
+                b.push_op(OpF2F {
+                    dst: high.into(),
+                    src: srcs[1],
+                    src_type: FloatType::F32,
+                    dst_type: FloatType::F16,
+                    rnd_mode: FRndMode::NearestEven,
+                    ftz: false,
+                });
+
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpPrmt {
+                    dst: dst.into(),
+                    srcs: [low.into(), high.into()],
+                    selection: PrmtSelectionEval::from([
+                        PrmtSelection {
+                            src: PrmtSrc::Byte5,
+                            sign_extend: false,
+                        },
+                        PrmtSelection {
+                            src: PrmtSrc::Byte4,
+                            sign_extend: false,
+                        },
+                        PrmtSelection {
+                            src: PrmtSrc::Byte1,
+                            sign_extend: false,
+                        },
+                        PrmtSelection {
+                            src: PrmtSrc::Byte0,
+                            sign_extend: false,
+                        },
+                    ]),
+                });
+                dst
+            }
             nir_op_u2f32 => {
                 assert!(alu.def.bit_size() == 32);
                 let dst = b.alloc_ssa(RegFile::GPR, 1);

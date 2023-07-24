@@ -3187,6 +3187,130 @@ impl fmt::Display for OpBFind {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum PrmtSrc {
+    Byte0 = 0,
+    Byte1 = 1,
+    Byte2 = 2,
+    Byte3 = 3,
+    Byte4 = 4,
+    Byte5 = 5,
+    Byte6 = 6,
+    Byte7 = 7,
+}
+
+impl TryFrom<u32> for PrmtSrc {
+    type Error = String;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Byte0),
+            1 => Ok(Self::Byte1),
+            2 => Ok(Self::Byte2),
+            3 => Ok(Self::Byte3),
+            4 => Ok(Self::Byte4),
+            5 => Ok(Self::Byte5),
+            6 => Ok(Self::Byte6),
+            7 => Ok(Self::Byte7),
+            _ => Err(format!("Invalid value {}", value)),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct PrmtSelection {
+    pub src: PrmtSrc,
+    pub sign_extend: bool,
+}
+
+impl From<PrmtSelectionEval> for [PrmtSelection; 4] {
+    fn from(value: PrmtSelectionEval) -> Self {
+        let sel0 = value.0 & 0x7;
+        let sel1 = (value.0 & 0x70) >> 4;
+        let sel2 = (value.0 & 0x700) >> 8;
+        let sel3 = (value.0 & 0x7000) >> 12;
+
+        let sign0 = value.0 & 0x8;
+        let sign1 = value.0 & 0x80;
+        let sign2 = value.0 & 0x800;
+        let sign3 = value.0 & 0x8000;
+
+        [
+            PrmtSelection {
+                src: sel3.try_into().unwrap(),
+                sign_extend: sign3 != 0,
+            },
+            PrmtSelection {
+                src: sel2.try_into().unwrap(),
+                sign_extend: sign2 != 0,
+            },
+            PrmtSelection {
+                src: sel1.try_into().unwrap(),
+                sign_extend: sign1 != 0,
+            },
+            PrmtSelection {
+                src: sel0.try_into().unwrap(),
+                sign_extend: sign0 != 0,
+            },
+        ]
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct PrmtSelectionEval(u32);
+
+impl PrmtSelectionEval {
+    pub fn inner(&self) -> u32 {
+        self.0
+    }
+}
+
+impl From<[PrmtSelection; 4]> for PrmtSelectionEval {
+    fn from(selections: [PrmtSelection; 4]) -> Self {
+        let mut selection = 0;
+
+        for v in selections {
+            let src = if v.sign_extend {
+                v.src as u32 | 0x8
+            } else {
+                v.src as u32
+            };
+            selection = selection << 4 | src;
+        }
+
+        Self(selection)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+/// Permutes `srcs` into `dst` using `selection`.
+pub struct OpPrmt {
+    pub dst: Dst,
+
+    #[src_type(ALU)]
+    pub srcs: [Src; 2],
+
+    pub selection: PrmtSelectionEval,
+}
+
+impl fmt::Display for OpPrmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let sel: [PrmtSelection; 4] = self.selection.into();
+        write!(
+            f,
+            "PRMT {}, {} [{:?}, {:?}, {:?}, {:?}], {}",
+            self.dst,
+            self.srcs[0],
+            sel[0].src,
+            sel[1].src,
+            sel[2].src,
+            sel[3].src,
+            self.srcs[1],
+        )
+    }
+}
+
 #[derive(Display, DstsAsSlice, SrcsAsSlice, FromVariants)]
 pub enum Op {
     FAdd(OpFAdd),
@@ -3244,6 +3368,7 @@ pub enum Op {
     PopC(OpPopC),
     Brev(OpBrev),
     BFind(OpBFind),
+    Prmt(OpPrmt),
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -3560,7 +3685,7 @@ impl Instr {
             | Op::FSOut(_) => {
                 panic!("Not a hardware opcode")
             }
-            Op::PopC(_) | Op::Brev(_) | Op::BFind(_) => Some(15),
+            Op::PopC(_) | Op::Brev(_) | Op::BFind(_) | Op::Prmt(_) => Some(15),
         }
     }
 }

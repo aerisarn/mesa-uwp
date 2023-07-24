@@ -1519,6 +1519,16 @@ impl SM75Instr {
         self.set_field(63..64, not_mod)
     }
 
+    fn encode_prmt(&mut self, op: &OpPrmt) {
+        self.encode_alu(
+            0x16,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::Imm32(op.selection.inner()),
+            ALUSrc::from_src(&op.srcs[1]),
+        );
+    }
+
     pub fn encode(
         instr: &Instr,
         sm: u8,
@@ -1580,6 +1590,7 @@ impl SM75Instr {
             Op::PopC(op) => si.encode_popc(&op),
             Op::Brev(op) => si.encode_brev(&op),
             Op::BFind(op) => si.encode_bfind(&op),
+            Op::Prmt(op) => si.encode_prmt(&op),
             _ => panic!("Unhandled instruction"),
         }
 
