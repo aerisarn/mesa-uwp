@@ -39,6 +39,7 @@ rustfmt:
     - .lint-rustfmt-rules
   before_script:
     - shopt -s globstar
+    - rustfmt --version
     - rustfmt --verbose src/**/lib.rs
 
 clang-format:
