@@ -2084,20 +2084,28 @@ radv_get_next_stage(gl_shader_stage stage, VkShaderStageFlagBits active_nir_stag
          return MESA_SHADER_TESS_CTRL;
       } else if (active_nir_stages & VK_SHADER_STAGE_GEOMETRY_BIT) {
          return MESA_SHADER_GEOMETRY;
-      } else {
+      } else if (active_nir_stages & VK_SHADER_STAGE_FRAGMENT_BIT) {
          return MESA_SHADER_FRAGMENT;
+      } else {
+         return MESA_SHADER_NONE;
       }
    case MESA_SHADER_TESS_CTRL:
       return MESA_SHADER_TESS_EVAL;
    case MESA_SHADER_TESS_EVAL:
       if (active_nir_stages & VK_SHADER_STAGE_GEOMETRY_BIT) {
          return MESA_SHADER_GEOMETRY;
-      } else {
+      } else if (active_nir_stages & VK_SHADER_STAGE_FRAGMENT_BIT) {
          return MESA_SHADER_FRAGMENT;
+      } else {
+         return MESA_SHADER_NONE;
       }
    case MESA_SHADER_GEOMETRY:
    case MESA_SHADER_MESH:
-      return MESA_SHADER_FRAGMENT;
+      if (active_nir_stages & VK_SHADER_STAGE_FRAGMENT_BIT) {
+         return MESA_SHADER_FRAGMENT;
+      } else {
+         return MESA_SHADER_NONE;
+      }
    case MESA_SHADER_TASK:
       return MESA_SHADER_MESH;
    case MESA_SHADER_FRAGMENT:
