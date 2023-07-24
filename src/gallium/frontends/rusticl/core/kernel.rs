@@ -697,7 +697,7 @@ pub(super) fn convert_spirv_to_nir(
     name: &str,
     args: &[spirv::SPIRVKernelArg],
     dev: &Device,
-) -> (NirShader, Vec<KernelArg>, Vec<InternalKernelArg>) {
+) -> (KernelInfo, NirShader) {
     let cache = dev.screen().shader_cache();
     let key = build.hash_key(dev, name);
 
@@ -710,7 +710,7 @@ pub(super) fn convert_spirv_to_nir(
         None
     };
 
-    if let Some(res) = res {
+    let (nir, args, internal_args) = if let Some(res) = res {
         res
     } else {
         let mut nir = build.to_nir(name, dev);
@@ -745,7 +745,20 @@ pub(super) fn convert_spirv_to_nir(
         }
 
         (nir, args, internal_args)
-    }
+    };
+
+    let attributes_string = build.attribute_str(name, dev);
+    let wgs = nir.workgroup_size();
+    let kernel_info = KernelInfo {
+        args: args,
+        internal_args: internal_args,
+        attributes_string: attributes_string,
+        work_group_size: [wgs[0] as usize, wgs[1] as usize, wgs[2] as usize],
+        subgroup_size: nir.subgroup_size() as usize,
+        num_subgroups: nir.num_subgroups() as usize,
+    };
+
+    (kernel_info, nir)
 }
 
 fn extract<'a, const S: usize>(buf: &'a mut &[u8]) -> &'a [u8; S] {

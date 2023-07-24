@@ -129,7 +129,7 @@ impl NirKernelBuild {
 }
 
 impl ProgramBuild {
-    fn attribute_str(&self, kernel: &str, d: &Device) -> String {
+    pub fn attribute_str(&self, kernel: &str, d: &Device) -> String {
         let info = self.dev_build(d);
 
         let attributes_strings = [
@@ -163,19 +163,7 @@ impl ProgramBuild {
 
             // TODO: we could run this in parallel?
             for dev in self.devs_with_build() {
-                let (nir, args, internal_args) =
-                    convert_spirv_to_nir(self, kernel_name, &args, dev);
-                let attributes_string = self.attribute_str(kernel_name, dev);
-                let wgs = nir.workgroup_size();
-
-                let kernel_info = KernelInfo {
-                    args: args,
-                    internal_args: internal_args,
-                    attributes_string: attributes_string,
-                    work_group_size: [wgs[0] as usize, wgs[1] as usize, wgs[2] as usize],
-                    subgroup_size: nir.subgroup_size() as usize,
-                    num_subgroups: nir.num_subgroups() as usize,
-                };
+                let (kernel_info, nir) = convert_spirv_to_nir(self, kernel_name, &args, dev);
                 kernel_info_set.insert(kernel_info);
 
                 self.builds
