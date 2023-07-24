@@ -188,7 +188,8 @@ impl<'a> LegalizeInstr<'a> {
             | Op::Mov(_)
             | Op::FRnd(_)
             | Op::PopC(_)
-            | Op::Brev(_) => (),
+            | Op::Brev(_)
+            | Op::BFind(_) => (),
             Op::Sel(op) => {
                 let [ref mut src0, ref mut src1] = op.srcs;
                 if !src_is_reg(src0) && src_is_reg(src1) {

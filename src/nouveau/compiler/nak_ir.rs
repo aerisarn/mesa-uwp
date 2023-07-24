@@ -3165,6 +3165,28 @@ impl fmt::Display for OpBrev {
     }
 }
 
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpBFind {
+    pub dst: Dst,
+
+    #[src_type(ALU)]
+    pub src: Src,
+
+    pub signed: bool,
+    pub return_shift_amount: bool,
+}
+
+impl fmt::Display for OpBFind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BFIND")?;
+        if self.return_shift_amount {
+            write!(f, ".SAMT")?;
+        }
+        write!(f, " {} {}", self.dst, self.src)
+    }
+}
+
 #[derive(Display, DstsAsSlice, SrcsAsSlice, FromVariants)]
 pub enum Op {
     FAdd(OpFAdd),
@@ -3221,6 +3243,7 @@ pub enum Op {
     FSOut(OpFSOut),
     PopC(OpPopC),
     Brev(OpBrev),
+    BFind(OpBFind),
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -3537,7 +3560,7 @@ impl Instr {
             | Op::FSOut(_) => {
                 panic!("Not a hardware opcode")
             }
-            Op::PopC(_) | Op::Brev(_) => Some(15),
+            Op::PopC(_) | Op::Brev(_) | Op::BFind(_) => Some(15),
         }
     }
 }

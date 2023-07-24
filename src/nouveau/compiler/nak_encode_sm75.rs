@@ -1504,6 +1504,21 @@ impl SM75Instr {
         );
     }
 
+    fn encode_bfind(&mut self, op: &OpBFind) {
+        self.encode_alu(
+            0x100,
+            Some(op.dst),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.src),
+            ALUSrc::None,
+        );
+        self.set_pred_dst(81..84, Dst::None);
+        self.set_field(74..75, op.return_shift_amount as u8);
+        self.set_field(73..74, op.signed as u8);
+        let not_mod = matches!(op.src.src_mod, SrcMod::BNot);
+        self.set_field(63..64, not_mod)
+    }
+
     pub fn encode(
         instr: &Instr,
         sm: u8,
@@ -1564,6 +1579,7 @@ impl SM75Instr {
             Op::S2R(op) => si.encode_s2r(&op),
             Op::PopC(op) => si.encode_popc(&op),
             Op::Brev(op) => si.encode_brev(&op),
+            Op::BFind(op) => si.encode_bfind(&op),
             _ => panic!("Unhandled instruction"),
         }
 

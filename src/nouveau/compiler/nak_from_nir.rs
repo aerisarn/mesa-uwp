@@ -224,6 +224,21 @@ impl<'a> ShaderFromNir<'a> {
                 });
                 dst
             }
+            nir_op_find_lsb => {
+                let tmp = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpBrev {
+                    dst: tmp.into(),
+                    src: srcs[0],
+                });
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpBFind {
+                    dst: dst.into(),
+                    src: tmp.into(),
+                    signed: alu.op == nir_op_ifind_msb,
+                    return_shift_amount: true,
+                });
+                dst
+            }
             nir_op_f2i32 | nir_op_f2u32 => {
                 let src_bits = usize::from(alu.get_src(0).bit_size());
                 let dst_bits = alu.def.bit_size();
@@ -449,6 +464,16 @@ impl<'a> ShaderFromNir<'a> {
                 } else {
                     b.isetp(IntCmpType::I32, IntCmpOp::Eq, srcs[0], srcs[1])
                 }
+            }
+            nir_op_ifind_msb | nir_op_ufind_msb => {
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+                b.push_op(OpBFind {
+                    dst: dst.into(),
+                    src: srcs[0],
+                    signed: alu.op == nir_op_ifind_msb,
+                    return_shift_amount: false,
+                });
+                dst
             }
             nir_op_ige => {
                 b.isetp(IntCmpType::I32, IntCmpOp::Ge, srcs[0], srcs[1])
