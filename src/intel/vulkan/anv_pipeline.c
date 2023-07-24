@@ -712,6 +712,9 @@ anv_pipeline_hash_common(struct mesa_sha1 *ctx,
 
    const bool rba = device->robust_buffer_access;
    _mesa_sha1_update(ctx, &rba, sizeof(rba));
+
+   const int spilling_rate = device->physical->compiler->spilling_rate;
+   _mesa_sha1_update(ctx, &spilling_rate, sizeof(spilling_rate));
 }
 
 static void

@@ -79,6 +79,7 @@ static const driOptionDescription anv_dri_options[] = {
       DRI_CONF_ANV_QUERY_CLEAR_WITH_BLORP_THRESHOLD(6)
       DRI_CONF_ANV_QUERY_COPY_WITH_SHADER_THRESHOLD(6)
       DRI_CONF_ANV_FORCE_INDIRECT_DESCRIPTORS(false)
+      DRI_CONF_SHADER_SPILLING_RATE(0)
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_DEBUG
@@ -1373,6 +1374,8 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->compiler->indirect_ubos_use_sampler = device->info.ver < 12;
    device->compiler->extended_bindless_surface_offset = device->uses_ex_bso;
    device->compiler->use_bindless_sampler_offset = !device->indirect_descriptors;
+   device->compiler->spilling_rate =
+      driQueryOptioni(&instance->dri_options, "shader_spilling_rate");
 
    isl_device_init(&device->isl_dev, &device->info);
    device->isl_dev.buffer_length_in_aux_addr = true;
