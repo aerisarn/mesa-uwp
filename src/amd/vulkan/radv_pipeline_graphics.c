@@ -1987,8 +1987,8 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device, const stru
 }
 
 static void
-radv_fill_shader_info_ngg(struct radv_device *device, struct radv_graphics_pipeline *pipeline,
-                          const struct radv_pipeline_key *pipeline_key, struct radv_pipeline_stage *stages)
+radv_fill_shader_info_ngg(struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
+                          struct radv_pipeline_stage *stages, VkShaderStageFlagBits active_nir_stages)
 {
    if (pipeline_key->use_ngg) {
       if (stages[MESA_SHADER_TESS_CTRL].nir) {
@@ -2012,8 +2012,15 @@ radv_fill_shader_info_ngg(struct radv_device *device, struct radv_graphics_pipel
          stages[MESA_SHADER_TESS_EVAL].info.is_ngg = false;
       }
 
-      bool uses_xfb = pipeline->last_vgt_api_stage != MESA_SHADER_NONE && stages[pipeline->last_vgt_api_stage].nir &&
-                      stages[pipeline->last_vgt_api_stage].nir->xfb_info;
+      struct radv_pipeline_stage *last_vgt_stage = NULL;
+      radv_foreach_stage(i, active_nir_stages)
+      {
+         if (radv_is_last_vgt_stage(&stages[i])) {
+            last_vgt_stage = &stages[i];
+         }
+      }
+
+      bool uses_xfb = last_vgt_stage && last_vgt_stage->nir->xfb_info;
 
       if (!device->physical_device->use_ngg_streamout && uses_xfb) {
          /* GFX11+ requires NGG. */
@@ -2610,7 +2617,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
    }
 
    /* Determine if shaders uses NGG before linking because it's needed for some NIR pass. */
-   radv_fill_shader_info_ngg(device, pipeline, pipeline_key, stages);
+   radv_fill_shader_info_ngg(device, pipeline_key, stages, active_nir_stages);
 
    if (stages[MESA_SHADER_GEOMETRY].nir) {
       unsigned nir_gs_flags = nir_lower_gs_intrinsics_per_stream;
