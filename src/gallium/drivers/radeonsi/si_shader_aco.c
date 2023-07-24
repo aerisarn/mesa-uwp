@@ -37,22 +37,21 @@ si_aco_compiler_debug(void *private_data, enum aco_compiler_debug_level level,
 }
 
 static void
-si_fill_aco_options(struct si_shader *shader, struct aco_compiler_options *options,
+si_fill_aco_options(struct si_screen *screen, gl_shader_stage stage,
+                    struct aco_compiler_options *options,
                     struct util_debug_callback *debug)
 {
-   const struct si_shader_selector *sel = shader->selector;
-
    options->dump_shader =
-      si_can_dump_shader(sel->screen, sel->stage, SI_DUMP_ACO_IR) ||
-      si_can_dump_shader(sel->screen, sel->stage, SI_DUMP_ASM);
-   options->dump_preoptir = si_can_dump_shader(sel->screen, sel->stage, SI_DUMP_INIT_ACO_IR);
-   options->record_ir = sel->screen->record_llvm_ir;
+      si_can_dump_shader(screen, stage, SI_DUMP_ACO_IR) ||
+      si_can_dump_shader(screen, stage, SI_DUMP_ASM);
+   options->dump_preoptir = si_can_dump_shader(screen, stage, SI_DUMP_INIT_ACO_IR);
+   options->record_ir = screen->record_llvm_ir;
    options->is_opengl = true;
 
    options->load_grid_size_from_user_sgpr = true;
-   options->family = sel->screen->info.family;
-   options->gfx_level = sel->screen->info.gfx_level;
-   options->address32_hi = sel->screen->info.address32_hi;
+   options->family = screen->info.family;
+   options->gfx_level = screen->info.gfx_level;
+   options->address32_hi = screen->info.address32_hi;
 
    options->debug.func = si_aco_compiler_debug;
    options->debug.private_data = debug;
@@ -147,8 +146,10 @@ si_aco_compile_shader(struct si_shader *shader,
                       struct nir_shader *nir,
                       struct util_debug_callback *debug)
 {
+   const struct si_shader_selector *sel = shader->selector;
+
    struct aco_compiler_options options = {0};
-   si_fill_aco_options(shader, &options, debug);
+   si_fill_aco_options(sel->screen, sel->stage, &options, debug);
 
    struct aco_shader_info info = {0};
    si_fill_aco_shader_info(shader, &info, args);
@@ -159,8 +160,6 @@ si_aco_compile_shader(struct si_shader *shader,
    bool free_nir = false;
    struct si_shader prev_shader = {};
    struct si_shader_args prev_args;
-
-   const struct si_shader_selector *sel = shader->selector;
 
    /* For merged shader stage. */
    if (shader->is_monolithic && sel->screen->info.gfx_level >= GFX9 &&
