@@ -2115,7 +2115,7 @@ radv_get_next_stage(gl_shader_stage stage, VkShaderStageFlagBits active_nir_stag
 }
 
 static void
-radv_fill_shader_info(struct radv_device *device, struct radv_graphics_pipeline *pipeline,
+radv_fill_shader_info(struct radv_device *device, const enum radv_pipeline_type pipeline_type,
                       struct radv_pipeline_layout *pipeline_layout, const struct radv_pipeline_key *pipeline_key,
                       struct radv_pipeline_stage *stages, VkShaderStageFlagBits active_nir_stages)
 {
@@ -2127,8 +2127,8 @@ radv_fill_shader_info(struct radv_device *device, struct radv_graphics_pipeline 
          consider_force_vrs = radv_consider_force_vrs(device, &stages[i], &stages[MESA_SHADER_FRAGMENT]);
       }
 
-      radv_nir_shader_info_pass(device, stages[i].nir, pipeline_layout, pipeline_key, pipeline->base.type,
-                                consider_force_vrs, &stages[i].info);
+      radv_nir_shader_info_pass(device, stages[i].nir, pipeline_layout, pipeline_key, pipeline_type, consider_force_vrs,
+                                &stages[i].info);
    }
 
    radv_nir_shader_info_link(device, pipeline_key, stages);
@@ -2658,7 +2658,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
       radv_nir_lower_poly_line_smooth(stages[MESA_SHADER_FRAGMENT].nir, pipeline_key);
    }
 
-   radv_fill_shader_info(device, pipeline, pipeline_layout, pipeline_key, stages, active_nir_stages);
+   radv_fill_shader_info(device, pipeline->base.type, pipeline_layout, pipeline_key, stages, active_nir_stages);
 
    radv_declare_pipeline_args(device, stages, pipeline_key, active_nir_stages);
 
