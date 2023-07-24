@@ -1742,6 +1742,16 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
       brw_nir_analyze_boolean_resolves(nir);
 
    OPT(nir_opt_dce);
+
+   /* The mesh stages require this pass to be called at the last minute,
+    * but if anything is done by it, it will also constant fold, and that
+    * undoes the work done by nir_trivialize_registers, so call it right
+    * before that one instead.
+    */
+   if (nir->info.stage == MESA_SHADER_MESH ||
+       nir->info.stage == MESA_SHADER_TASK)
+      brw_nir_adjust_payload(nir, compiler);
+
    nir_trivialize_registers(nir);
    nir_sweep(nir);
 

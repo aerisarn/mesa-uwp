@@ -228,7 +228,7 @@ brw_nir_adjust_task_payload_offsets(nir_shader *nir)
                                        NULL);
 }
 
-static void
+void
 brw_nir_adjust_payload(nir_shader *shader, const struct brw_compiler *compiler)
 {
    /* Adjustment of task payload offsets must be performed *after* last pass
@@ -330,8 +330,6 @@ brw_compile_task(const struct brw_compiler *compiler,
 
       brw_postprocess_nir(shader, compiler, debug_enabled,
                           key->base.robust_buffer_access);
-
-      brw_nir_adjust_payload(shader, compiler);
 
       v[simd] = std::make_unique<fs_visitor>(compiler, &params->base,
                                              &key->base,
@@ -1493,8 +1491,6 @@ brw_compile_mesh(const struct brw_compiler *compiler,
 
       brw_postprocess_nir(shader, compiler, debug_enabled,
                           key->base.robust_buffer_access);
-
-      brw_nir_adjust_payload(shader, compiler);
 
       v[simd] = std::make_unique<fs_visitor>(compiler, &params->base,
                                              &key->base,
