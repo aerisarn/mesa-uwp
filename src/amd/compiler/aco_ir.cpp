@@ -648,6 +648,7 @@ instr_is_16bit(amd_gfx_level gfx_level, aco_opcode op)
 
 /* On GFX11, for some instructions, bit 7 of the destination/operand vgpr is opsel and the field
  * only supports v0-v127.
+ * The first three bits are used for operands 0-2, and the 4th bit is used for the destination.
  */
 uint8_t
 get_gfx11_true16_mask(aco_opcode op)
