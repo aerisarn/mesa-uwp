@@ -1052,43 +1052,23 @@ radv_CmdPreprocessGeneratedCommandsNV(VkCommandBuffer commandBuffer,
 }
 
 /* Always need to call this directly before draw due to dependence on bound state. */
-void
-radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
+static void
+radv_prepare_dgc_graphics(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo,
+                          unsigned *upload_size, unsigned *upload_offset, void **upload_data,
+                          struct radv_dgc_params *params)
 {
    VK_FROM_HANDLE(radv_indirect_command_layout, layout, pGeneratedCommandsInfo->indirectCommandsLayout);
    VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
-   VK_FROM_HANDLE(radv_buffer, prep_buffer, pGeneratedCommandsInfo->preprocessBuffer);
    struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
    struct radv_shader *vs = radv_get_shader(graphics_pipeline->base.shaders, MESA_SHADER_VERTEX);
-   struct radv_meta_saved_state saved_state;
-   struct radv_buffer token_buffer;
-
-   uint32_t cmd_stride, upload_stride;
-   radv_get_sequence_size(layout, pipeline, &cmd_stride, &upload_stride);
-
-   unsigned cmd_buf_size =
-      radv_align_cmdbuf_size(cmd_buffer->device, cmd_stride * pGeneratedCommandsInfo->sequencesCount);
-
    unsigned vb_size = layout->bind_vbo_mask ? util_bitcount(vs->info.vs.vb_desc_usage_mask) * 24 : 0;
-   unsigned const_size = graphics_pipeline->base.push_constant_size +
-                         16 * graphics_pipeline->base.dynamic_offset_count + sizeof(layout->push_constant_offsets) +
-                         ARRAY_SIZE(graphics_pipeline->base.shaders) * 12;
-   if (!layout->push_constant_mask)
-      const_size = 0;
 
-   unsigned upload_size = MAX2(vb_size + const_size, 16);
+   *upload_size = MAX2(*upload_size + vb_size, 16);
 
-   void *upload_data;
-   unsigned upload_offset;
-   if (!radv_cmd_buffer_upload_alloc(cmd_buffer, upload_size, &upload_offset, &upload_data)) {
+   if (!radv_cmd_buffer_upload_alloc(cmd_buffer, *upload_size, upload_offset, upload_data)) {
       vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return;
    }
-
-   radv_buffer_init(&token_buffer, cmd_buffer->device, cmd_buffer->upload.upload_bo, upload_size, upload_offset);
-
-   uint64_t upload_addr =
-      radv_buffer_get_va(prep_buffer->bo) + prep_buffer->offset + pGeneratedCommandsInfo->preprocessOffset;
 
    uint16_t vtx_base_sgpr = (cmd_buffer->state.graphics_pipeline->vtx_base_sgpr - SI_SH_REG_OFFSET) >> 2;
    if (cmd_buffer->state.graphics_pipeline->uses_drawid)
@@ -1101,31 +1081,24 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
       ((radv_get_user_sgpr(vertex_shader, AC_UD_VS_VERTEX_BUFFERS)->sgpr_idx * 4 + vertex_shader->info.user_data_0) -
        SI_SH_REG_OFFSET) >>
       2;
-   struct radv_dgc_params params = {
-      .cmd_buf_stride = cmd_stride,
-      .cmd_buf_size = cmd_buf_size,
-      .upload_addr = (uint32_t)upload_addr,
-      .upload_stride = upload_stride,
-      .sequence_count = pGeneratedCommandsInfo->sequencesCount,
-      .stream_stride = layout->input_stride,
-      .draw_indexed = layout->indexed,
-      .draw_params_offset = layout->draw_params_offset,
-      .base_index_size = layout->binds_index_buffer ? 0 : radv_get_vgt_index_size(cmd_buffer->state.index_type),
-      .vtx_base_sgpr = vtx_base_sgpr,
-      .max_index_count = cmd_buffer->state.max_index_count,
-      .index_buffer_offset = layout->index_buffer_offset,
-      .vbo_reg = vbo_sgpr,
-      .ibo_type_32 = layout->ibo_type_32,
-      .ibo_type_8 = layout->ibo_type_8,
-   };
+
+   params->draw_indexed = layout->indexed;
+   params->draw_params_offset = layout->draw_params_offset;
+   params->base_index_size = layout->binds_index_buffer ? 0 : radv_get_vgt_index_size(cmd_buffer->state.index_type);
+   params->vtx_base_sgpr = vtx_base_sgpr;
+   params->max_index_count = cmd_buffer->state.max_index_count;
+   params->index_buffer_offset = layout->index_buffer_offset;
+   params->vbo_reg = vbo_sgpr;
+   params->ibo_type_32 = layout->ibo_type_32;
+   params->ibo_type_8 = layout->ibo_type_8;
 
    if (layout->bind_vbo_mask) {
       uint32_t mask = vertex_shader->info.vs.vb_desc_usage_mask;
       unsigned vb_desc_alloc_size = util_bitcount(mask) * 16;
 
-      radv_write_vertex_descriptors(cmd_buffer, graphics_pipeline, true, upload_data);
+      radv_write_vertex_descriptors(cmd_buffer, graphics_pipeline, true, *upload_data);
 
-      uint32_t *vbo_info = (uint32_t *)((char *)upload_data + vb_desc_alloc_size);
+      uint32_t *vbo_info = (uint32_t *)((char *)*upload_data + vb_desc_alloc_size);
 
       unsigned idx = 0;
       while (mask) {
@@ -1134,26 +1107,77 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
             vertex_shader->info.vs.use_per_attribute_vb_descs ? graphics_pipeline->attrib_bindings[i] : i;
          uint32_t attrib_end = graphics_pipeline->attrib_ends[i];
 
-         params.vbo_bind_mask |= ((layout->bind_vbo_mask >> binding) & 1u) << idx;
+         params->vbo_bind_mask |= ((layout->bind_vbo_mask >> binding) & 1u) << idx;
          vbo_info[2 * idx] =
             ((vertex_shader->info.vs.use_per_attribute_vb_descs ? 1u : 0u) << 31) | layout->vbo_offsets[binding];
          vbo_info[2 * idx + 1] = graphics_pipeline->attrib_index_offset[i] | (attrib_end << 16);
          ++idx;
       }
-      params.vbo_cnt = idx;
-      upload_data = (char *)upload_data + vb_size;
+      params->vbo_cnt = idx;
+      *upload_data = (char *)*upload_data + vb_size;
+   }
+}
+
+static void
+radv_prepare_dgc_compute(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo,
+                         unsigned *upload_size, unsigned *upload_offset, void **upload_data,
+                         struct radv_dgc_params *params)
+{
+   /* TODO */
+}
+
+void
+radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
+{
+   VK_FROM_HANDLE(radv_indirect_command_layout, layout, pGeneratedCommandsInfo->indirectCommandsLayout);
+   VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
+   VK_FROM_HANDLE(radv_buffer, prep_buffer, pGeneratedCommandsInfo->preprocessBuffer);
+   struct radv_meta_saved_state saved_state;
+   unsigned upload_offset, upload_size;
+   struct radv_buffer token_buffer;
+   void *upload_data;
+
+   uint32_t cmd_stride, upload_stride;
+   radv_get_sequence_size(layout, pipeline, &cmd_stride, &upload_stride);
+
+   unsigned cmd_buf_size =
+      radv_align_cmdbuf_size(cmd_buffer->device, cmd_stride * pGeneratedCommandsInfo->sequencesCount);
+
+   uint64_t upload_addr =
+      radv_buffer_get_va(prep_buffer->bo) + prep_buffer->offset + pGeneratedCommandsInfo->preprocessOffset;
+
+   struct radv_dgc_params params = {
+      .cmd_buf_stride = cmd_stride,
+      .cmd_buf_size = cmd_buf_size,
+      .upload_addr = (uint32_t)upload_addr,
+      .upload_stride = upload_stride,
+      .sequence_count = pGeneratedCommandsInfo->sequencesCount,
+      .stream_stride = layout->input_stride,
+   };
+
+   upload_size = pipeline->push_constant_size + 16 * pipeline->dynamic_offset_count +
+                 sizeof(layout->push_constant_offsets) + ARRAY_SIZE(pipeline->shaders) * 12;
+   if (!layout->push_constant_mask)
+      upload_size = 0;
+
+   if (layout->pipeline_bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+      radv_prepare_dgc_graphics(cmd_buffer, pGeneratedCommandsInfo, &upload_size, &upload_offset, &upload_data,
+                                &params);
+   } else {
+      assert(layout->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE);
+      radv_prepare_dgc_compute(cmd_buffer, pGeneratedCommandsInfo, &upload_size, &upload_offset, &upload_data, &params);
    }
 
    if (layout->push_constant_mask) {
       uint32_t *desc = upload_data;
-      upload_data = (char *)upload_data + ARRAY_SIZE(graphics_pipeline->base.shaders) * 12;
+      upload_data = (char *)upload_data + ARRAY_SIZE(pipeline->shaders) * 12;
 
       unsigned idx = 0;
-      for (unsigned i = 0; i < ARRAY_SIZE(graphics_pipeline->base.shaders); ++i) {
-         if (!graphics_pipeline->base.shaders[i])
+      for (unsigned i = 0; i < ARRAY_SIZE(pipeline->shaders); ++i) {
+         if (!pipeline->shaders[i])
             continue;
 
-         const struct radv_shader *shader = graphics_pipeline->base.shaders[i];
+         const struct radv_shader *shader = pipeline->shaders[i];
          const struct radv_userdata_locations *locs = &shader->info.user_sgprs_locs;
          if (locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx >= 0)
             params.const_copy = 1;
@@ -1173,8 +1197,8 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
                inline_sgpr = (shader->info.user_data_0 + 4 * locs->shader_data[AC_UD_INLINE_PUSH_CONSTANTS].sgpr_idx -
                               SI_SH_REG_OFFSET) >>
                              2;
-               desc[idx * 3 + 1] = graphics_pipeline->base.shaders[i]->info.inline_push_constant_mask;
-               desc[idx * 3 + 2] = graphics_pipeline->base.shaders[i]->info.inline_push_constant_mask >> 32;
+               desc[idx * 3 + 1] = pipeline->shaders[i]->info.inline_push_constant_mask;
+               desc[idx * 3 + 2] = pipeline->shaders[i]->info.inline_push_constant_mask >> 32;
             }
             desc[idx * 3] = upload_sgpr | (inline_sgpr << 16);
             ++idx;
@@ -1183,21 +1207,22 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
 
       params.push_constant_shader_cnt = idx;
 
-      params.const_copy_size =
-         graphics_pipeline->base.push_constant_size + 16 * graphics_pipeline->base.dynamic_offset_count;
+      params.const_copy_size = pipeline->push_constant_size + 16 * pipeline->dynamic_offset_count;
       params.push_constant_mask = layout->push_constant_mask;
 
       memcpy(upload_data, layout->push_constant_offsets, sizeof(layout->push_constant_offsets));
       upload_data = (char *)upload_data + sizeof(layout->push_constant_offsets);
 
-      memcpy(upload_data, cmd_buffer->push_constants, graphics_pipeline->base.push_constant_size);
-      upload_data = (char *)upload_data + graphics_pipeline->base.push_constant_size;
+      memcpy(upload_data, cmd_buffer->push_constants, pipeline->push_constant_size);
+      upload_data = (char *)upload_data + pipeline->push_constant_size;
 
       struct radv_descriptor_state *descriptors_state =
          radv_get_descriptors_state(cmd_buffer, pGeneratedCommandsInfo->pipelineBindPoint);
-      memcpy(upload_data, descriptors_state->dynamic_buffers, 16 * graphics_pipeline->base.dynamic_offset_count);
-      upload_data = (char *)upload_data + 16 * graphics_pipeline->base.dynamic_offset_count;
+      memcpy(upload_data, descriptors_state->dynamic_buffers, 16 * pipeline->dynamic_offset_count);
+      upload_data = (char *)upload_data + 16 * pipeline->dynamic_offset_count;
    }
+
+   radv_buffer_init(&token_buffer, cmd_buffer->device, cmd_buffer->upload.upload_bo, upload_size, upload_offset);
 
    VkWriteDescriptorSet ds_writes[5];
    VkDescriptorBufferInfo buf_info[ARRAY_SIZE(ds_writes)];
