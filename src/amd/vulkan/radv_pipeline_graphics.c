@@ -1319,8 +1319,8 @@ merge_tess_info(struct shader_info *tes_info, struct shader_info *tcs_info)
 }
 
 static void
-radv_pipeline_link_shaders(const struct radv_device *device, nir_shader *producer, nir_shader *consumer,
-                           const struct radv_pipeline_key *pipeline_key)
+radv_link_shaders(const struct radv_device *device, nir_shader *producer, nir_shader *consumer,
+                  const struct radv_pipeline_key *pipeline_key)
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    bool progress;
@@ -1434,8 +1434,8 @@ static const gl_shader_stage graphics_shader_order[] = {
 };
 
 static void
-radv_pipeline_link_vs(const struct radv_device *device, struct radv_pipeline_stage *vs_stage,
-                      struct radv_pipeline_stage *next_stage, const struct radv_pipeline_key *pipeline_key)
+radv_link_vs(const struct radv_device *device, struct radv_pipeline_stage *vs_stage,
+             struct radv_pipeline_stage *next_stage, const struct radv_pipeline_key *pipeline_key)
 {
    assert(vs_stage->nir->info.stage == MESA_SHADER_VERTEX);
 
@@ -1448,7 +1448,7 @@ radv_pipeline_link_vs(const struct radv_device *device, struct radv_pipeline_sta
              next_stage->nir->info.stage == MESA_SHADER_GEOMETRY ||
              next_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
-      radv_pipeline_link_shaders(device, vs_stage->nir, next_stage->nir, pipeline_key);
+      radv_link_shaders(device, vs_stage->nir, next_stage->nir, pipeline_key);
    }
 
    nir_foreach_shader_in_variable (var, vs_stage->nir) {
@@ -1473,13 +1473,13 @@ radv_pipeline_link_vs(const struct radv_device *device, struct radv_pipeline_sta
 }
 
 static void
-radv_pipeline_link_tcs(const struct radv_device *device, struct radv_pipeline_stage *tcs_stage,
-                       struct radv_pipeline_stage *tes_stage, const struct radv_pipeline_key *pipeline_key)
+radv_link_tcs(const struct radv_device *device, struct radv_pipeline_stage *tcs_stage,
+              struct radv_pipeline_stage *tes_stage, const struct radv_pipeline_key *pipeline_key)
 {
    assert(tcs_stage->nir->info.stage == MESA_SHADER_TESS_CTRL);
    assert(tes_stage->nir->info.stage == MESA_SHADER_TESS_EVAL);
 
-   radv_pipeline_link_shaders(device, tcs_stage->nir, tes_stage->nir, pipeline_key);
+   radv_link_shaders(device, tcs_stage->nir, tes_stage->nir, pipeline_key);
 
    nir_lower_patch_vertices(tes_stage->nir, tcs_stage->nir->info.tess.tcs_vertices_out, NULL);
 
@@ -1495,8 +1495,8 @@ radv_pipeline_link_tcs(const struct radv_device *device, struct radv_pipeline_st
 }
 
 static void
-radv_pipeline_link_tes(const struct radv_device *device, struct radv_pipeline_stage *tes_stage,
-                       struct radv_pipeline_stage *next_stage, const struct radv_pipeline_key *pipeline_key)
+radv_link_tes(const struct radv_device *device, struct radv_pipeline_stage *tes_stage,
+              struct radv_pipeline_stage *next_stage, const struct radv_pipeline_key *pipeline_key)
 {
    assert(tes_stage->nir->info.stage == MESA_SHADER_TESS_EVAL);
 
@@ -1508,7 +1508,7 @@ radv_pipeline_link_tes(const struct radv_device *device, struct radv_pipeline_st
       assert(next_stage->nir->info.stage == MESA_SHADER_GEOMETRY ||
              next_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
-      radv_pipeline_link_shaders(device, tes_stage->nir, next_stage->nir, pipeline_key);
+      radv_link_shaders(device, tes_stage->nir, next_stage->nir, pipeline_key);
    }
 
    if (next_stage && next_stage->nir->info.stage == MESA_SHADER_GEOMETRY) {
@@ -1524,8 +1524,8 @@ radv_pipeline_link_tes(const struct radv_device *device, struct radv_pipeline_st
 }
 
 static void
-radv_pipeline_link_gs(const struct radv_device *device, struct radv_pipeline_stage *gs_stage,
-                      struct radv_pipeline_stage *fs_stage, const struct radv_pipeline_key *pipeline_key)
+radv_link_gs(const struct radv_device *device, struct radv_pipeline_stage *gs_stage,
+             struct radv_pipeline_stage *fs_stage, const struct radv_pipeline_key *pipeline_key)
 {
    assert(gs_stage->nir->info.stage == MESA_SHADER_GEOMETRY);
 
@@ -1536,7 +1536,7 @@ radv_pipeline_link_gs(const struct radv_device *device, struct radv_pipeline_sta
    if (fs_stage) {
       assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
-      radv_pipeline_link_shaders(device, gs_stage->nir, fs_stage->nir, pipeline_key);
+      radv_link_shaders(device, gs_stage->nir, fs_stage->nir, pipeline_key);
    }
 
    nir_foreach_shader_out_variable (var, gs_stage->nir) {
@@ -1545,19 +1545,19 @@ radv_pipeline_link_gs(const struct radv_device *device, struct radv_pipeline_sta
 }
 
 static void
-radv_pipeline_link_task(const struct radv_device *device, struct radv_pipeline_stage *task_stage,
-                        struct radv_pipeline_stage *mesh_stage, const struct radv_pipeline_key *pipeline_key)
+radv_link_task(const struct radv_device *device, struct radv_pipeline_stage *task_stage,
+               struct radv_pipeline_stage *mesh_stage, const struct radv_pipeline_key *pipeline_key)
 {
    assert(task_stage->nir->info.stage == MESA_SHADER_TASK);
    assert(mesh_stage->nir->info.stage == MESA_SHADER_MESH);
 
    /* Linking task and mesh shaders shouldn't do anything for now but keep it for consistency. */
-   radv_pipeline_link_shaders(device, task_stage->nir, mesh_stage->nir, pipeline_key);
+   radv_link_shaders(device, task_stage->nir, mesh_stage->nir, pipeline_key);
 }
 
 static void
-radv_pipeline_link_mesh(const struct radv_device *device, struct radv_pipeline_stage *mesh_stage,
-                        struct radv_pipeline_stage *fs_stage, const struct radv_pipeline_key *pipeline_key)
+radv_link_mesh(const struct radv_device *device, struct radv_pipeline_stage *mesh_stage,
+               struct radv_pipeline_stage *fs_stage, const struct radv_pipeline_key *pipeline_key)
 {
    assert(mesh_stage->nir->info.stage == MESA_SHADER_MESH);
 
@@ -1572,7 +1572,7 @@ radv_pipeline_link_mesh(const struct radv_device *device, struct radv_pipeline_s
          }
       }
 
-      radv_pipeline_link_shaders(device, mesh_stage->nir, fs_stage->nir, pipeline_key);
+      radv_link_shaders(device, mesh_stage->nir, fs_stage->nir, pipeline_key);
    }
 
    /* ac_nir_lower_ngg ignores driver locations for mesh shaders, but set them to all zero just to
@@ -1584,7 +1584,7 @@ radv_pipeline_link_mesh(const struct radv_device *device, struct radv_pipeline_s
 }
 
 static void
-radv_pipeline_link_fs(struct radv_pipeline_stage *fs_stage, const struct radv_pipeline_key *pipeline_key)
+radv_link_fs(struct radv_pipeline_stage *fs_stage, const struct radv_pipeline_key *pipeline_key)
 {
    assert(fs_stage->nir->info.stage == MESA_SHADER_FRAGMENT);
 
@@ -1636,8 +1636,8 @@ radv_remove_varyings(nir_shader *nir)
 }
 
 static void
-radv_graphics_pipeline_link(const struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
-                            struct radv_pipeline_stage *stages)
+radv_graphics_shaders_link(const struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
+                           struct radv_pipeline_stage *stages)
 {
    /* Walk backwards to link */
    struct radv_pipeline_stage *next_stage = NULL;
@@ -1648,25 +1648,25 @@ radv_graphics_pipeline_link(const struct radv_device *device, const struct radv_
 
       switch (s) {
       case MESA_SHADER_VERTEX:
-         radv_pipeline_link_vs(device, &stages[s], next_stage, pipeline_key);
+         radv_link_vs(device, &stages[s], next_stage, pipeline_key);
          break;
       case MESA_SHADER_TESS_CTRL:
-         radv_pipeline_link_tcs(device, &stages[s], next_stage, pipeline_key);
+         radv_link_tcs(device, &stages[s], next_stage, pipeline_key);
          break;
       case MESA_SHADER_TESS_EVAL:
-         radv_pipeline_link_tes(device, &stages[s], next_stage, pipeline_key);
+         radv_link_tes(device, &stages[s], next_stage, pipeline_key);
          break;
       case MESA_SHADER_GEOMETRY:
-         radv_pipeline_link_gs(device, &stages[s], next_stage, pipeline_key);
+         radv_link_gs(device, &stages[s], next_stage, pipeline_key);
          break;
       case MESA_SHADER_TASK:
-         radv_pipeline_link_task(device, &stages[s], next_stage, pipeline_key);
+         radv_link_task(device, &stages[s], next_stage, pipeline_key);
          break;
       case MESA_SHADER_MESH:
-         radv_pipeline_link_mesh(device, &stages[s], next_stage, pipeline_key);
+         radv_link_mesh(device, &stages[s], next_stage, pipeline_key);
          break;
       case MESA_SHADER_FRAGMENT:
-         radv_pipeline_link_fs(&stages[s], pipeline_key);
+         radv_link_fs(&stages[s], pipeline_key);
          break;
       default:
          unreachable("Invalid graphics shader stage");
@@ -2632,7 +2632,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
       radv_remove_varyings(nir);
    }
 
-   radv_graphics_pipeline_link(device, pipeline_key, stages);
+   radv_graphics_shaders_link(device, pipeline_key, stages);
 
    if (stages[MESA_SHADER_FRAGMENT].nir) {
       unsigned rast_prim = radv_get_rasterization_prim(stages, pipeline_key);
