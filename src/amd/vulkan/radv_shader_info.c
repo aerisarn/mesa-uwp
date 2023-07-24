@@ -847,23 +847,23 @@ radv_get_user_data_0(const struct radv_device *device, struct radv_shader_info *
 }
 
 void
-radv_nir_shader_info_init(struct radv_shader_info *info)
+radv_nir_shader_info_init(gl_shader_stage stage, gl_shader_stage next_stage, struct radv_shader_info *info)
 {
    memset(info, 0, sizeof(*info));
 
    /* Assume that shaders can inline all push constants by default. */
    info->can_inline_all_push_constants = true;
+
+   info->stage = stage;
+   info->next_stage = next_stage;
 }
 
 void
-radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir, gl_shader_stage next_stage,
+radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
                           const struct radv_pipeline_layout *layout, const struct radv_pipeline_key *pipeline_key,
                           const enum radv_pipeline_type pipeline_type, bool consider_force_vrs,
                           struct radv_shader_info *info)
 {
-   info->stage = nir->info.stage;
-   info->next_stage = next_stage;
-
    struct nir_function *func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
 
    if (layout && layout->dynamic_offset_count &&

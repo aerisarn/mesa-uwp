@@ -2116,9 +2116,7 @@ radv_fill_shader_info(struct radv_device *device, struct radv_graphics_pipeline 
 
    radv_foreach_stage(i, active_nir_stages)
    {
-      gl_shader_stage next_stage = radv_get_next_stage(i, active_nir_stages);
-
-      radv_nir_shader_info_pass(device, stages[i].nir, next_stage, pipeline_layout, pipeline_key, pipeline->base.type,
+      radv_nir_shader_info_pass(device, stages[i].nir, pipeline_layout, pipeline_key, pipeline->base.type,
                                 i == pipeline->last_vgt_api_stage && consider_force_vrs, &stages[i].info);
    }
 
@@ -2192,9 +2190,9 @@ radv_create_gs_copy_shader(struct radv_device *device, struct vk_pipeline_cache 
       .stage = MESA_SHADER_VERTEX,
       .shader_sha1 = {0},
    };
-   radv_nir_shader_info_init(&gs_copy_stage.info);
-   radv_nir_shader_info_pass(device, nir, MESA_SHADER_FRAGMENT, pipeline_layout, pipeline_key, RADV_PIPELINE_GRAPHICS,
-                             false, &gs_copy_stage.info);
+   radv_nir_shader_info_init(gs_copy_stage.stage, MESA_SHADER_FRAGMENT, &gs_copy_stage.info);
+   radv_nir_shader_info_pass(device, nir, pipeline_layout, pipeline_key, RADV_PIPELINE_GRAPHICS, false,
+                             &gs_copy_stage.info);
    gs_copy_stage.info.wave_size = 64;      /* Wave32 not supported. */
    gs_copy_stage.info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
    gs_copy_stage.info.so = gs_info->so;
@@ -2603,7 +2601,9 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
 
    radv_foreach_stage(i, active_nir_stages)
    {
-      radv_nir_shader_info_init(&stages[i].info);
+      gl_shader_stage next_stage = radv_get_next_stage(i, active_nir_stages);
+
+      radv_nir_shader_info_init(i, next_stage, &stages[i].info);
    }
 
    /* Determine if shaders uses NGG before linking because it's needed for some NIR pass. */

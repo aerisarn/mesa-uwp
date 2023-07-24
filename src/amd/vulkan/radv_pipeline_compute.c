@@ -150,9 +150,9 @@ radv_compile_cs(struct radv_device *device, struct vk_pipeline_cache *cache, str
    nir_shader_gather_info(cs_stage->nir, nir_shader_get_entrypoint(cs_stage->nir));
 
    /* Run the shader info pass. */
-   radv_nir_shader_info_init(&cs_stage->info);
-   radv_nir_shader_info_pass(device, cs_stage->nir, MESA_SHADER_NONE, pipeline_layout, pipeline_key,
-                             RADV_PIPELINE_COMPUTE, false, &cs_stage->info);
+   radv_nir_shader_info_init(cs_stage->stage, MESA_SHADER_NONE, &cs_stage->info);
+   radv_nir_shader_info_pass(device, cs_stage->nir, pipeline_layout, pipeline_key, RADV_PIPELINE_COMPUTE, false,
+                             &cs_stage->info);
 
    radv_declare_shader_args(device, pipeline_key, &cs_stage->info, MESA_SHADER_COMPUTE, MESA_SHADER_NONE,
                             &cs_stage->args);
