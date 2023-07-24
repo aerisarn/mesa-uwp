@@ -136,6 +136,12 @@ nir_shader *si_get_prev_stage_nir_shader(struct si_shader *shader,
                                          struct si_shader_args *args,
                                          bool *free_nir);
 unsigned si_get_tcs_out_patch_stride(const struct si_shader_info *info);
+void si_get_tcs_epilog_args(enum amd_gfx_level gfx_level,
+                            struct si_shader_args *args,
+                            struct ac_arg *rel_patch_id,
+                            struct ac_arg *invocation_id,
+                            struct ac_arg *tf_lds_offset,
+                            struct ac_arg tess_factors[6]);
 
 /* gfx10_shader_ngg.c */
 unsigned gfx10_ngg_get_vertices_per_prim(struct si_shader *shader);
