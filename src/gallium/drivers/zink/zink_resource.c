@@ -419,7 +419,7 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats
          usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
       else
          return 0;
-      if (screen->info.have_EXT_attachment_feedback_loop_layout)
+      if (screen->info.have_EXT_attachment_feedback_loop_layout && !(bind & ZINK_BIND_TRANSIENT))
          usage |= VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
    /* this is unlikely to occur and has been included for completeness */
    } else if (bind & PIPE_BIND_SAMPLER_VIEW && !(usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
