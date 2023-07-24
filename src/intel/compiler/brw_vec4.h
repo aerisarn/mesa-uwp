@@ -342,8 +342,6 @@ private:
    const bool no_spills;
 
    unsigned last_scratch; /**< measured in 32-byte (register size) units */
-
-   const struct brw_compile_params *params;
 };
 
 } /* namespace brw */
