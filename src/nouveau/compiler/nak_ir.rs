@@ -2100,6 +2100,8 @@ pub struct OpF2F {
     pub dst_type: FloatType,
     pub rnd_mode: FRndMode,
     pub ftz: bool,
+    /// Place the result into the upper 16 bits of the destination register
+    pub high: bool,
 }
 
 impl fmt::Display for OpF2F {

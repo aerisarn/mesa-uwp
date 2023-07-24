@@ -717,6 +717,11 @@ impl SM75Instr {
             ALUSrc::from_src(&op.src.into()),
             ALUSrc::None,
         );
+
+        if op.high {
+            self.set_field(60..62, 1_u8); // .H1
+        }
+
         self.set_field(75..77, (op.dst_type.bits() / 8).ilog2());
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_bit(80, op.ftz);

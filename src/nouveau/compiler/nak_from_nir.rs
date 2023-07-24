@@ -368,6 +368,7 @@ impl<'a> ShaderFromNir<'a> {
                     dst_type: FloatType::F16,
                     rnd_mode: FRndMode::NearestEven,
                     ftz: true,
+                    high: false,
                 });
                 assert!(alu.def.bit_size() == 32);
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
@@ -378,6 +379,7 @@ impl<'a> ShaderFromNir<'a> {
                     dst_type: FloatType::F32,
                     rnd_mode: FRndMode::NearestEven,
                     ftz: true,
+                    high: false,
                 });
                 dst
             }
@@ -677,6 +679,7 @@ impl<'a> ShaderFromNir<'a> {
                     dst_type: FloatType::F16,
                     rnd_mode: FRndMode::NearestEven,
                     ftz: false,
+                    high: false,
                 });
 
                 let src_bits = usize::from(alu.get_src(1).bit_size());
@@ -689,6 +692,7 @@ impl<'a> ShaderFromNir<'a> {
                     dst_type: FloatType::F16,
                     rnd_mode: FRndMode::NearestEven,
                     ftz: false,
+                    high: false,
                 });
 
                 let dst = b.alloc_ssa(RegFile::GPR, 1);
@@ -741,6 +745,23 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_unpack_64_2x32_split_y => {
                 let src0_y = srcs[0].as_ssa().unwrap()[1];
                 b.mov(src0_y.into())
+            }
+            nir_op_unpack_half_2x16_split_x
+            | nir_op_unpack_half_2x16_split_y => {
+                assert!(alu.def.bit_size() == 32);
+                let dst = b.alloc_ssa(RegFile::GPR, 1);
+
+                b.push_op(OpF2F {
+                    dst: dst[0].into(),
+                    src: srcs[0],
+                    src_type: FloatType::F16,
+                    dst_type: FloatType::F32,
+                    rnd_mode: FRndMode::NearestEven,
+                    ftz: false,
+                    high: alu.op == nir_op_unpack_half_2x16_split_y,
+                });
+
+                dst
             }
             nir_op_ushr => {
                 assert!(alu.def.bit_size() == 32);
