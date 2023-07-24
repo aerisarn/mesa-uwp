@@ -53,6 +53,7 @@ clang-format:
     # We need a meson build dir, but its config doesn't actually matter, so
     # let's just use the default.
     - meson setup build
+    - clang-format-${LLVM_VERSION} --version
     - ninja -C build clang-format
 
 .test-gl:
