@@ -824,6 +824,95 @@ ir3_nir_lower_tess_eval(nir_shader *shader, struct ir3_shader_variant *v,
    nir_metadata_preserve(impl, nir_metadata_none);
 }
 
+/* The hardware does not support incomplete primitives in multiple streams at
+ * once or ending the "wrong" stream, but Vulkan allows this. That is,
+ * EmitStreamVertex(N) followed by EmitStreamVertex(M) or EndStreamPrimitive(M)
+ * where N != M and there isn't a call to EndStreamPrimitive(N) in between isn't
+ * supported by the hardware. Fix this up by duplicating the entire shader per
+ * stream, removing EmitStreamVertex/EndStreamPrimitive calls for streams other
+ * than the current one.
+ */
+
+static void
+lower_mixed_streams(nir_shader *nir)
+{
+   /* We don't have to do anything for points because there is only one vertex
+    * per primitive and therefore no possibility of mixing.
+    */
+   if (nir->info.gs.output_primitive == MESA_PRIM_POINTS)
+      return;
+
+   nir_function_impl *entrypoint = nir_shader_get_entrypoint(nir);
+
+   uint8_t stream_mask = 0;
+
+   nir_foreach_block (block, entrypoint) {
+      nir_foreach_instr (instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+         if (intrin->intrinsic == nir_intrinsic_emit_vertex ||
+             intrin->intrinsic == nir_intrinsic_end_primitive)
+            stream_mask |= 1 << nir_intrinsic_stream_id(intrin);
+      }
+   }
+
+   if (util_is_power_of_two_or_zero(stream_mask))
+      return;
+
+   nir_cf_list body;
+   nir_cf_list_extract(&body, &entrypoint->body);
+
+   nir_builder b = nir_builder_create(entrypoint);
+
+   u_foreach_bit (stream, stream_mask) {
+      b.cursor = nir_after_cf_list(&entrypoint->body);
+      
+      /* Inserting the cloned body invalidates any cursor not using an
+       * instruction, so we need to emit this to keep track of where the new
+       * body is to iterate over it.
+       */
+      nir_instr *anchor = &nir_nop(&b)->instr;
+
+      nir_cf_list_clone_and_reinsert(&body, &entrypoint->cf_node, b.cursor, NULL);
+
+      /* We need to iterate over all instructions after the anchor, which is a
+       * bit tricky to do so we do it manually.
+       */
+      for (nir_block *block = anchor->block; block != NULL;
+           block = nir_block_cf_tree_next(block)) {
+         for (nir_instr *instr = 
+               (block == anchor->block) ? anchor : nir_block_first_instr(block),
+               *next = instr ? nir_instr_next(instr) : NULL;
+              instr != NULL; instr = next, next = next ? nir_instr_next(next) : NULL) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+
+            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+            if ((intrin->intrinsic == nir_intrinsic_emit_vertex ||
+                 intrin->intrinsic == nir_intrinsic_end_primitive) &&
+                nir_intrinsic_stream_id(intrin) != stream) {
+               nir_instr_remove(instr);
+            }
+         }
+      }
+
+      nir_instr_remove(anchor);
+
+      /* The user can omit the last EndStreamPrimitive(), so add an extra one
+       * here before potentially adding other copies of the body that emit to
+       * different streams. Our lowering means that redundant calls to
+       * EndStreamPrimitive are safe and should be optimized out.
+       */
+      b.cursor = nir_after_cf_list(&entrypoint->body);
+      nir_end_primitive(&b, .stream_id = stream);
+   }
+
+   nir_cf_delete(&body);
+}
+
 static void
 copy_vars(nir_builder *b, struct exec_list *dests, struct exec_list *srcs)
 {
@@ -845,10 +934,9 @@ lower_gs_block(nir_block *block, nir_builder *b, struct state *state)
 
       switch (intr->intrinsic) {
       case nir_intrinsic_end_primitive: {
-         /* Note: This ignores the stream, which seems to match the blob
-          * behavior. I'm guessing the HW ignores any extraneous cut
-          * signals from an EndPrimitive() that doesn't correspond to the
-          * rasterized stream.
+         /* The HW will use the stream from the preceding emitted vertices,
+          * which thanks to the lower_mixed_streams is the same as the stream
+          * for this instruction, so we can ignore it here.
           */
          b->cursor = nir_before_instr(&intr->instr);
          nir_store_var(b, state->vertex_flags_out, nir_imm_int(b, 4), 0x1);
@@ -911,6 +999,8 @@ ir3_nir_lower_gs(nir_shader *shader)
       mesa_logi("NIR (before gs lowering):");
       nir_log_shaderi(shader);
    }
+
+   lower_mixed_streams(shader);
 
    /* Create an output var for vertex_flags. This will be shadowed below,
     * same way regular outputs get shadowed, and this variable will become a
