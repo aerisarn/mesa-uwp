@@ -1636,17 +1636,9 @@ radv_remove_varyings(nir_shader *nir)
 }
 
 static void
-radv_graphics_pipeline_link(const struct radv_device *device, struct radv_graphics_pipeline *pipeline,
-                            const struct radv_pipeline_key *pipeline_key, struct radv_pipeline_stage *stages)
+radv_graphics_pipeline_link(const struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
+                            struct radv_pipeline_stage *stages)
 {
-   const bool noop_fs = radv_pipeline_needs_noop_fs(pipeline, pipeline_key);
-
-   /* Remove all varyings when the fragment shader is a noop. */
-   if (noop_fs && pipeline->last_vgt_api_stage != MESA_SHADER_NONE) {
-      nir_shader *nir = stages[pipeline->last_vgt_api_stage].nir;
-      radv_remove_varyings(nir);
-   }
-
    /* Walk backwards to link */
    struct radv_pipeline_stage *next_stage = NULL;
    for (int i = ARRAY_SIZE(graphics_shader_order) - 1; i >= 0; i--) {
@@ -2633,7 +2625,14 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
       NIR_PASS(_, stages[MESA_SHADER_GEOMETRY].nir, nir_lower_gs_intrinsics, nir_gs_flags);
    }
 
-   radv_graphics_pipeline_link(device, pipeline, pipeline_key, stages);
+   /* Remove all varyings when the fragment shader is a noop. */
+   const bool noop_fs = radv_pipeline_needs_noop_fs(pipeline, pipeline_key);
+   if (noop_fs && pipeline->last_vgt_api_stage != MESA_SHADER_NONE) {
+      nir_shader *nir = stages[pipeline->last_vgt_api_stage].nir;
+      radv_remove_varyings(nir);
+   }
+
+   radv_graphics_pipeline_link(device, pipeline_key, stages);
 
    if (stages[MESA_SHADER_FRAGMENT].nir) {
       unsigned rast_prim = radv_get_rasterization_prim(stages, pipeline_key);
