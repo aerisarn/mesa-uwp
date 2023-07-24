@@ -9455,6 +9455,10 @@ radv_CmdDrawMeshTasksIndirectCountEXT(VkCommandBuffer commandBuffer, VkBuffer _b
    radv_after_draw(cmd_buffer);
 }
 
+/* TODO: Use these functions with the normal dispatch path. */
+static void radv_dgc_before_dispatch(struct radv_cmd_buffer *cmd_buffer);
+static void radv_dgc_after_dispatch(struct radv_cmd_buffer *cmd_buffer);
+
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPreprocessed,
                                    const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo)
@@ -9463,7 +9467,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
    VK_FROM_HANDLE(radv_indirect_command_layout, layout, pGeneratedCommandsInfo->indirectCommandsLayout);
    VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
    VK_FROM_HANDLE(radv_buffer, prep_buffer, pGeneratedCommandsInfo->preprocessBuffer);
-   struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
+   const bool compute = layout->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
    const struct radv_device *device = cmd_buffer->device;
 
    /* The only actions that can be done are draws, so skip on other queues. */
@@ -9477,20 +9481,24 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
 
    radv_prepare_dgc(cmd_buffer, pGeneratedCommandsInfo);
 
-   struct radv_draw_info info;
+   if (compute) {
+      radv_dgc_before_dispatch(cmd_buffer);
+   } else {
+      struct radv_draw_info info;
 
-   info.count = pGeneratedCommandsInfo->sequencesCount;
-   info.indirect = prep_buffer; /* We're not really going use it this way, but a good signal
+      info.count = pGeneratedCommandsInfo->sequencesCount;
+      info.indirect = prep_buffer; /* We're not really going use it this way, but a good signal
                                    that this is not direct. */
-   info.indirect_offset = 0;
-   info.stride = 0;
-   info.strmout_buffer = NULL;
-   info.count_buffer = NULL;
-   info.indexed = layout->indexed;
-   info.instance_count = 0;
+      info.indirect_offset = 0;
+      info.stride = 0;
+      info.strmout_buffer = NULL;
+      info.count_buffer = NULL;
+      info.indexed = layout->indexed;
+      info.instance_count = 0;
 
-   if (!radv_before_draw(cmd_buffer, &info, 1))
-      return;
+      if (!radv_before_draw(cmd_buffer, &info, 1))
+         return;
+   }
 
    uint32_t cmdbuf_size = radv_get_indirect_cmdbuf_size(pGeneratedCommandsInfo);
    struct radeon_winsys_bo *ib_bo = prep_buffer->bo;
@@ -9500,7 +9508,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
    radeon_emit(cmd_buffer->cs, PKT3(PKT3_PFP_SYNC_ME, 0, cmd_buffer->state.predicating));
    radeon_emit(cmd_buffer->cs, 0);
 
-   if (!view_mask) {
+   if (compute || !view_mask) {
       device->ws->cs_execute_ib(cmd_buffer->cs, ib_bo, ib_offset, cmdbuf_size >> 2);
    } else {
       u_foreach_bit (view, view_mask) {
@@ -9510,32 +9518,40 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
       }
    }
 
-   if (layout->binds_index_buffer) {
-      cmd_buffer->state.last_index_type = -1;
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_INDEX_BUFFER;
+   if (compute) {
+      cmd_buffer->push_constant_stages |= VK_SHADER_STAGE_COMPUTE_BIT;
+
+      radv_dgc_after_dispatch(cmd_buffer);
+   } else {
+      struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
+
+      if (layout->binds_index_buffer) {
+         cmd_buffer->state.last_index_type = -1;
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_INDEX_BUFFER;
+      }
+
+      if (layout->bind_vbo_mask)
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
+
+      if (layout->binds_state)
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
+
+      cmd_buffer->push_constant_stages |= graphics_pipeline->active_stages;
+
+      if (!layout->indexed && cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
+         /* On GFX7 and later, non-indexed draws overwrite VGT_INDEX_TYPE, so the state must be
+          * re-emitted before the next indexed draw.
+          */
+         cmd_buffer->state.last_index_type = -1;
+      }
+
+      cmd_buffer->state.last_num_instances = -1;
+      cmd_buffer->state.last_vertex_offset_valid = false;
+      cmd_buffer->state.last_first_instance = -1;
+      cmd_buffer->state.last_drawid = -1;
+
+      radv_after_draw(cmd_buffer);
    }
-
-   if (layout->bind_vbo_mask)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
-
-   if (layout->binds_state)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
-
-   cmd_buffer->push_constant_stages |= graphics_pipeline->active_stages;
-
-   if (!layout->indexed && cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
-      /* On GFX7 and later, non-indexed draws overwrite VGT_INDEX_TYPE, so the state must be
-       * re-emitted before the next indexed draw.
-       */
-      cmd_buffer->state.last_index_type = -1;
-   }
-
-   cmd_buffer->state.last_num_instances = -1;
-   cmd_buffer->state.last_vertex_offset_valid = false;
-   cmd_buffer->state.last_first_instance = -1;
-   cmd_buffer->state.last_drawid = -1;
-
-   radv_after_draw(cmd_buffer);
 }
 
 static void
@@ -9759,6 +9775,54 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
       radv_mark_descriptor_sets_dirty(cmd_buffer, bind_point == VK_PIPELINE_BIND_POINT_COMPUTE
                                                      ? VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR
                                                      : VK_PIPELINE_BIND_POINT_COMPUTE);
+   }
+
+   if (compute_shader->info.cs.regalloc_hang_bug)
+      cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
+
+   radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_CS_PARTIAL_FLUSH);
+}
+
+static void
+radv_dgc_before_dispatch(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_compute_pipeline *pipeline = cmd_buffer->state.compute_pipeline;
+   struct radv_shader *compute_shader = cmd_buffer->state.shaders[MESA_SHADER_COMPUTE];
+
+   /* We will have run the DGC patch shaders before, so we can assume that there is something to
+    * flush. Otherwise, we just split radv_dispatch in two. One pre-dispatch and another one
+    * post-dispatch. */
+
+   if (compute_shader->info.cs.regalloc_hang_bug)
+      cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
+
+   radv_emit_compute_pipeline(cmd_buffer, pipeline);
+   si_emit_cache_flush(cmd_buffer);
+
+   radv_upload_compute_shader_descriptors(cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE);
+}
+
+static void
+radv_dgc_after_dispatch(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_compute_pipeline *pipeline = cmd_buffer->state.compute_pipeline;
+   struct radv_shader *compute_shader = cmd_buffer->state.shaders[MESA_SHADER_COMPUTE];
+   bool has_prefetch = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7;
+   bool pipeline_is_dirty = pipeline != cmd_buffer->state.emitted_compute_pipeline;
+
+   if (has_prefetch && pipeline_is_dirty) {
+      radv_emit_shader_prefetch(cmd_buffer, compute_shader);
+   }
+
+   if (pipeline_is_dirty) {
+      /* Raytracing uses compute shaders but has separate bind points and pipelines.
+       * So if we set compute userdata & shader registers we should dirty the raytracing
+       * ones and the other way around.
+       *
+       * We only need to do this when the pipeline is dirty because when we switch between
+       * the two we always need to switch pipelines.
+       */
+      radv_mark_descriptor_sets_dirty(cmd_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR);
    }
 
    if (compute_shader->info.cs.regalloc_hang_bug)
@@ -11053,6 +11117,14 @@ radv_CmdBindPipelineShaderGroupNV(VkCommandBuffer commandBuffer, VkPipelineBindP
 {
    fprintf(stderr, "radv: unimplemented vkCmdBindPipelineShaderGroupNV\n");
    abort();
+}
+
+/* VK_NV_device_generated_commands_compute */
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdUpdatePipelineIndirectBufferNV(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
+                                       VkPipeline pipeline)
+{
+   unreachable("radv: unimplemented vkCmdUpdatePipelineIndirectBufferNV");
 }
 
 /* VK_EXT_descriptor_buffer */

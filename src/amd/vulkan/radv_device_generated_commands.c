@@ -32,7 +32,22 @@ static void
 radv_get_sequence_size_compute(const struct radv_indirect_command_layout *layout,
                                const struct radv_compute_pipeline *pipeline, uint32_t *cmd_size)
 {
-   /* TODO */
+   const struct radv_device *device = container_of(layout->base.device, struct radv_device, vk);
+   struct radv_shader *cs = radv_get_shader(pipeline->base.shaders, MESA_SHADER_COMPUTE);
+
+   /* dispatch */
+   *cmd_size += 5 * 4;
+
+   const struct radv_userdata_info *loc = radv_get_user_sgpr(cs, AC_UD_CS_GRID_SIZE);
+   if (loc->sgpr_idx != -1) {
+      if (device->load_grid_size_from_user_sgpr) {
+         /* PKT3_SET_SH_REG for immediate values */
+         *cmd_size += 5 * 4;
+      } else {
+         /* PKT3_SET_SH_REG for pointer */
+         *cmd_size += 4 * 4;
+      }
+   }
 }
 
 static void
@@ -107,7 +122,8 @@ radv_get_sequence_size(const struct radv_indirect_command_layout *layout, struct
 static uint32_t
 radv_align_cmdbuf_size(const struct radv_device *device, uint32_t size)
 {
-   const uint32_t ib_pad_dw_mask = device->physical_device->rad_info.ib_pad_dw_mask[AMD_IP_GFX];
+   const uint32_t ib_pad_dw_mask = MAX2(device->physical_device->rad_info.ib_pad_dw_mask[AMD_IP_GFX],
+                                        device->physical_device->rad_info.ib_pad_dw_mask[AMD_IP_COMPUTE]);
 
    return align(size, ib_pad_dw_mask + 1);
 }
@@ -131,6 +147,7 @@ struct radv_dgc_params {
    uint32_t upload_addr;
    uint32_t sequence_count;
    uint32_t stream_stride;
+   uint64_t stream_addr;
 
    /* draw info */
    uint16_t draw_indexed;
@@ -138,6 +155,11 @@ struct radv_dgc_params {
    uint16_t base_index_size;
    uint16_t vtx_base_sgpr;
    uint32_t max_index_count;
+
+   /* dispatch info */
+   uint32_t dispatch_initiator;
+   uint16_t dispatch_params_offset;
+   uint16_t grid_base_sgpr;
 
    /* bind index buffer info. Valid if base_index_size == 0 && draw_indexed */
    uint16_t index_buffer_offset;
@@ -158,6 +180,8 @@ struct radv_dgc_params {
    uint32_t ibo_type_8;
 
    uint16_t push_constant_shader_cnt;
+
+   uint8_t is_dispatch;
 };
 
 enum {
@@ -276,6 +300,41 @@ dgc_emit_draw_index_auto(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *vertex_
                          nir_imm_int(b, V_0287F0_DI_SRC_SEL_AUTO_INDEX)};
 
    dgc_emit(b, cs, nir_vec(b, values, 3));
+}
+
+static void
+dgc_emit_dispatch_direct(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *wg_x, nir_def *wg_y, nir_def *wg_z,
+                         nir_def *dispatch_initiator)
+{
+   nir_def *values[5] = {nir_imm_int(b, PKT3(PKT3_DISPATCH_DIRECT, 3, false) | PKT3_SHADER_TYPE_S(1)), wg_x, wg_y, wg_z,
+                         dispatch_initiator};
+
+   dgc_emit(b, cs, nir_vec(b, values, 5));
+}
+
+static void
+dgc_emit_grid_size_user_sgpr(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *grid_base_sgpr, nir_def *wg_x,
+                             nir_def *wg_y, nir_def *wg_z)
+{
+   nir_def *values[5] = {
+      nir_imm_int(b, PKT3(PKT3_SET_SH_REG, 3, false)), grid_base_sgpr, wg_x, wg_y, wg_z,
+   };
+
+   dgc_emit(b, cs, nir_vec(b, values, 5));
+}
+
+static void
+dgc_emit_grid_size_pointer(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *grid_base_sgpr, nir_def *stream_offset)
+{
+   nir_def *stream_addr = load_param64(b, stream_addr);
+   nir_def *va = nir_iadd(b, stream_addr, nir_u2u64(b, stream_offset));
+
+   nir_def *va_lo = nir_unpack_64_2x32_split_x(b, va);
+   nir_def *va_hi = nir_unpack_64_2x32_split_y(b, va);
+
+   nir_def *values[4] = {nir_imm_int(b, PKT3(PKT3_SET_SH_REG, 2, false)), grid_base_sgpr, va_lo, va_hi};
+
+   dgc_emit(b, cs, nir_vec(b, values, 4));
 }
 
 static void
@@ -715,6 +774,38 @@ dgc_emit_vertex_buffer(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_bu
    nir_store_var(b, upload_offset, nir_iadd(b, nir_load_var(b, upload_offset), nir_imul_imm(b, vbo_cnt, 16)), 0x1);
 }
 
+/**
+ * For emitting VK_INDIRECT_COMMANDS_TOKEN_TYPE_DISPATCH_NV.
+ */
+static void
+dgc_emit_dispatch(nir_builder *b, struct dgc_cmdbuf *cs, nir_def *stream_buf, nir_def *stream_base,
+                  nir_def *dispatch_params_offset, const struct radv_device *device)
+{
+   nir_def *stream_offset = nir_iadd(b, dispatch_params_offset, stream_base);
+
+   nir_def *dispatch_data = nir_load_ssbo(b, 3, 32, stream_buf, stream_offset);
+   nir_def *wg_x = nir_channel(b, dispatch_data, 0);
+   nir_def *wg_y = nir_channel(b, dispatch_data, 1);
+   nir_def *wg_z = nir_channel(b, dispatch_data, 2);
+
+   nir_def *grid_sgpr = load_param16(b, grid_base_sgpr);
+   nir_push_if(b, nir_ine_imm(b, grid_sgpr, 0));
+   {
+      if (device->load_grid_size_from_user_sgpr) {
+         dgc_emit_grid_size_user_sgpr(b, cs, grid_sgpr, wg_x, wg_y, wg_z);
+      } else {
+         dgc_emit_grid_size_pointer(b, cs, grid_sgpr, stream_offset);
+      }
+   }
+   nir_pop_if(b, 0);
+
+   nir_push_if(b, nir_iand(b, nir_ine_imm(b, wg_x, 0), nir_iand(b, nir_ine_imm(b, wg_y, 0), nir_ine_imm(b, wg_z, 0))));
+   {
+      dgc_emit_dispatch_direct(b, cs, wg_x, wg_y, wg_z, load_param32(b, dispatch_initiator));
+   }
+   nir_pop_if(b, 0);
+}
+
 static nir_shader *
 build_dgc_prepare_shader(struct radv_device *dev)
 {
@@ -784,36 +875,45 @@ build_dgc_prepare_shader(struct radv_device *dev)
       }
       nir_pop_if(&b, 0);
 
-      nir_push_if(&b, nir_ieq_imm(&b, load_param16(&b, draw_indexed), 0));
+      nir_push_if(&b, nir_ieq_imm(&b, load_param8(&b, is_dispatch), 0));
       {
-         dgc_emit_draw(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset), sequence_id, dev);
+         nir_push_if(&b, nir_ieq_imm(&b, load_param16(&b, draw_indexed), 0));
+         {
+            dgc_emit_draw(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset), sequence_id,
+                          dev);
+         }
+         nir_push_else(&b, NULL);
+         {
+            nir_variable *index_size_var =
+               nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "index_size");
+            nir_store_var(&b, index_size_var, load_param16(&b, base_index_size), 0x1);
+            nir_variable *max_index_count_var =
+               nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "max_index_count");
+            nir_store_var(&b, max_index_count_var, load_param32(&b, max_index_count), 0x1);
+
+            nir_def *bind_index_buffer = nir_ieq_imm(&b, nir_load_var(&b, index_size_var), 0);
+            nir_push_if(&b, bind_index_buffer);
+            {
+               dgc_emit_index_buffer(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, index_buffer_offset),
+                                     load_param32(&b, ibo_type_32), load_param32(&b, ibo_type_8), index_size_var,
+                                     max_index_count_var, dev);
+            }
+            nir_pop_if(&b, NULL);
+
+            nir_def *index_size = nir_load_var(&b, index_size_var);
+            nir_def *max_index_count = nir_load_var(&b, max_index_count_var);
+
+            index_size = nir_bcsel(&b, bind_index_buffer, nir_load_var(&b, index_size_var), index_size);
+            max_index_count = nir_bcsel(&b, bind_index_buffer, nir_load_var(&b, max_index_count_var), max_index_count);
+
+            dgc_emit_draw_indexed(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset),
+                                  sequence_id, max_index_count, dev);
+         }
+         nir_pop_if(&b, NULL);
       }
       nir_push_else(&b, NULL);
       {
-         nir_variable *index_size_var =
-            nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "index_size");
-         nir_store_var(&b, index_size_var, load_param16(&b, base_index_size), 0x1);
-         nir_variable *max_index_count_var =
-            nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "max_index_count");
-         nir_store_var(&b, max_index_count_var, load_param32(&b, max_index_count), 0x1);
-
-         nir_def *bind_index_buffer = nir_ieq_imm(&b, nir_load_var(&b, index_size_var), 0);
-         nir_push_if(&b, bind_index_buffer);
-         {
-            dgc_emit_index_buffer(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, index_buffer_offset),
-                                  load_param32(&b, ibo_type_32), load_param32(&b, ibo_type_8), index_size_var,
-                                  max_index_count_var, dev);
-         }
-         nir_pop_if(&b, NULL);
-
-         nir_def *index_size = nir_load_var(&b, index_size_var);
-         nir_def *max_index_count = nir_load_var(&b, max_index_count_var);
-
-         index_size = nir_bcsel(&b, bind_index_buffer, nir_load_var(&b, index_size_var), index_size);
-         max_index_count = nir_bcsel(&b, bind_index_buffer, nir_load_var(&b, max_index_count_var), max_index_count);
-
-         dgc_emit_draw_indexed(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, draw_params_offset), sequence_id,
-                               max_index_count, dev);
+         dgc_emit_dispatch(&b, &cmd_buf, stream_buf, stream_base, load_param16(&b, dispatch_params_offset), dev);
       }
       nir_pop_if(&b, NULL);
 
@@ -973,6 +1073,9 @@ radv_CreateIndirectCommandsLayoutNV(VkDevice _device, const VkIndirectCommandsLa
          layout->indexed = true;
          layout->draw_params_offset = pCreateInfo->pTokens[i].offset;
          break;
+      case VK_INDIRECT_COMMANDS_TOKEN_TYPE_DISPATCH_NV:
+         layout->dispatch_params_offset = pCreateInfo->pTokens[i].offset;
+         break;
       case VK_INDIRECT_COMMANDS_TOKEN_TYPE_INDEX_BUFFER_NV:
          layout->binds_index_buffer = true;
          layout->index_buffer_offset = pCreateInfo->pTokens[i].offset;
@@ -1123,7 +1226,38 @@ radv_prepare_dgc_compute(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCo
                          unsigned *upload_size, unsigned *upload_offset, void **upload_data,
                          struct radv_dgc_params *params)
 {
-   /* TODO */
+   VK_FROM_HANDLE(radv_indirect_command_layout, layout, pGeneratedCommandsInfo->indirectCommandsLayout);
+   VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
+   VK_FROM_HANDLE(radv_buffer, stream_buffer, pGeneratedCommandsInfo->pStreams[0].buffer);
+   struct radv_compute_pipeline *compute_pipeline = radv_pipeline_to_compute(pipeline);
+   struct radv_shader *cs = radv_get_shader(compute_pipeline->base.shaders, MESA_SHADER_COMPUTE);
+
+   *upload_size = MAX2(*upload_size, 16);
+
+   if (!radv_cmd_buffer_upload_alloc(cmd_buffer, *upload_size, upload_offset, upload_data)) {
+      vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return;
+   }
+
+   uint32_t dispatch_initiator = cmd_buffer->device->dispatch_initiator;
+   dispatch_initiator |= S_00B800_FORCE_START_AT_000(1);
+   if (cs->info.wave_size == 32) {
+      assert(cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10);
+      dispatch_initiator |= S_00B800_CS_W32_EN(1);
+   }
+
+   uint64_t stream_addr =
+      radv_buffer_get_va(stream_buffer->bo) + stream_buffer->offset + pGeneratedCommandsInfo->pStreams[0].offset;
+
+   params->dispatch_params_offset = layout->dispatch_params_offset;
+   params->dispatch_initiator = dispatch_initiator;
+   params->is_dispatch = 1;
+   params->stream_addr = stream_addr;
+
+   const struct radv_userdata_info *loc = radv_get_user_sgpr(cs, AC_UD_CS_GRID_SIZE);
+   if (loc->sgpr_idx != -1) {
+      params->grid_base_sgpr = (cs->info.user_data_0 + 4 * loc->sgpr_idx - SI_SH_REG_OFFSET) >> 2;
+   }
 }
 
 void
@@ -1294,4 +1428,18 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer, const VkGeneratedCommandsIn
    radv_meta_restore(&saved_state, cmd_buffer);
 
    cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_VCACHE | RADV_CMD_FLAG_INV_L2;
+}
+
+/* VK_NV_device_generated_commands_compute */
+VKAPI_ATTR void VKAPI_CALL
+radv_GetPipelineIndirectMemoryRequirementsNV(VkDevice device, const VkComputePipelineCreateInfo *pCreateInfo,
+                                             VkMemoryRequirements2 *pMemoryRequirements)
+{
+   unreachable("radv: unimplemented vkGetPipelineIndirectMemoryRequirementsNV");
+}
+
+VKAPI_ATTR VkDeviceAddress VKAPI_CALL
+radv_GetPipelineIndirectDeviceAddressNV(VkDevice device, const VkPipelineIndirectDeviceAddressInfoNV *pInfo)
+{
+   unreachable("radv: unimplemented vkGetPipelineIndirectDeviceAddressNV");
 }
