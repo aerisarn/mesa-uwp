@@ -8983,8 +8983,7 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
 
    radv_emit_all_graphics_states(cmd_buffer, info);
    if (task_shader && pipeline_is_dirty) {
-      radv_pipeline_emit_hw_cs(pdevice, ace_cs, task_shader);
-      radv_pipeline_emit_compute_state(pdevice, ace_cs, task_shader);
+      radv_emit_compute_shader(pdevice, ace_cs, task_shader);
    }
 
    si_emit_cache_flush(cmd_buffer);

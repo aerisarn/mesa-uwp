@@ -2431,11 +2431,8 @@ const struct radv_userdata_info *radv_get_user_sgpr(const struct radv_shader *sh
 
 struct radv_shader *radv_get_shader(struct radv_shader *const *shaders, gl_shader_stage stage);
 
-void radv_pipeline_emit_hw_cs(const struct radv_physical_device *pdevice, struct radeon_cmdbuf *cs,
+void radv_emit_compute_shader(const struct radv_physical_device *pdevice, struct radeon_cmdbuf *cs,
                               const struct radv_shader *shader);
-
-void radv_pipeline_emit_compute_state(const struct radv_physical_device *pdevice, struct radeon_cmdbuf *cs,
-                                      const struct radv_shader *shader);
 
 bool radv_mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsigned bit_size, unsigned num_components,
                                  nir_intrinsic_instr *low, nir_intrinsic_instr *high, void *data);
