@@ -251,7 +251,8 @@ set_multisync(struct drm_v3d_multi_sync *ms,
               struct drm_v3d_extension *next,
               struct v3dv_device *device,
               struct v3dv_job *job,
-              enum v3dv_queue_type queue_sync,
+              enum v3dv_queue_type in_queue_sync,
+              enum v3dv_queue_type out_queue_sync,
               enum v3d_queue wait_stage,
               bool signal_syncs)
 {
@@ -259,12 +260,12 @@ set_multisync(struct drm_v3d_multi_sync *ms,
    uint32_t out_sync_count = 0, in_sync_count = 0;
    struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
 
-   in_syncs = set_in_syncs(queue, job, queue_sync,
+   in_syncs = set_in_syncs(queue, job, in_queue_sync,
                            &in_sync_count, sync_info);
    if (!in_syncs && in_sync_count)
       goto fail;
 
-   out_syncs = set_out_syncs(queue, job, queue_sync,
+   out_syncs = set_out_syncs(queue, job, out_queue_sync,
                              &out_sync_count, sync_info, signal_syncs);
 
    assert(out_sync_count > 0);
@@ -769,7 +770,7 @@ handle_cl_job(struct v3dv_queue *queue,
    if (device->pdevice->caps.multisync) {
       enum v3d_queue wait_stage = needs_rcl_sync ? V3D_RENDER : V3D_BIN;
       set_multisync(&ms, sync_info, NULL, device, job,
-                    V3DV_QUEUE_CL, wait_stage, signal_syncs);
+                    V3DV_QUEUE_CL, V3DV_QUEUE_CL, wait_stage, signal_syncs);
       if (!ms.base.id)
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -829,7 +830,7 @@ handle_tfu_job(struct v3dv_queue *queue,
    struct drm_v3d_multi_sync ms = { 0 };
    if (device->pdevice->caps.multisync) {
       set_multisync(&ms, sync_info, NULL, device, job,
-                    V3DV_QUEUE_TFU, V3D_TFU, signal_syncs);
+                    V3DV_QUEUE_TFU, V3DV_QUEUE_TFU, V3D_TFU, signal_syncs);
       if (!ms.base.id)
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -899,7 +900,7 @@ handle_csd_job(struct v3dv_queue *queue,
    struct drm_v3d_multi_sync ms = { 0 };
    if (device->pdevice->caps.multisync) {
       set_multisync(&ms, sync_info, NULL, device, job,
-                    V3DV_QUEUE_CSD, V3D_CSD, signal_syncs);
+                    V3DV_QUEUE_CSD, V3DV_QUEUE_CSD, V3D_CSD, signal_syncs);
       if (!ms.base.id)
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
