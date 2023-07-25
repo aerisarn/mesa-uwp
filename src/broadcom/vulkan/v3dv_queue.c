@@ -486,41 +486,104 @@ handle_copy_query_results_cpu_job(struct v3dv_job *job)
 }
 
 static VkResult
-handle_timestamp_query_cpu_job(struct v3dv_queue *queue, struct v3dv_job *job,
-                               struct v3dv_submit_sync_info *sync_info)
+handle_timestamp_query_cpu_job(struct v3dv_queue *queue,
+                               struct v3dv_job *job,
+                               struct v3dv_submit_sync_info *sync_info,
+                               bool signal_syncs)
 {
+   struct v3dv_device *device = queue->device;
+
    assert(job->type == V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY);
    struct v3dv_timestamp_query_cpu_job_info *info = &job->cpu.query_timestamp;
 
-   /* Wait for completion of all work queued before the timestamp query */
-   VkResult result = queue_wait_idle(queue, sync_info);
-   if (result != VK_SUCCESS)
+   if (!device->pdevice->caps.cpu_queue) {
+      /* Wait for completion of all work queued before the timestamp query */
+      VkResult result = queue_wait_idle(queue, sync_info);
+      if (result != VK_SUCCESS)
+         return result;
+
+      mtx_lock(&job->device->query_mutex);
+
+      /* Compute timestamp */
+      struct timespec t;
+      clock_gettime(CLOCK_MONOTONIC, &t);
+
+      for (uint32_t i = 0; i < info->count; i++) {
+         assert(info->query + i < info->pool->query_count);
+	 struct v3dv_query *query = &info->pool->queries[info->query + i];
+         query->maybe_available = true;
+
+         /* Value */
+         uint8_t *value_addr =
+            ((uint8_t *) info->pool->timestamp.bo->map) + query->timestamp.offset;
+         *((uint64_t*)value_addr) = (i == 0) ? t.tv_sec * 1000000000ull + t.tv_nsec : 0ull;
+
+         /* Availability */
+         result = vk_sync_signal(&job->device->vk, query->timestamp.sync, 0);
+      }
+
+      cnd_broadcast(&job->device->query_ended);
+      mtx_unlock(&job->device->query_mutex);
+
       return result;
+   }
 
-   mtx_lock(&job->device->query_mutex);
+   struct drm_v3d_submit_cpu submit = {0};
 
-   /* Compute timestamp */
-   struct timespec t;
-   clock_gettime(CLOCK_MONOTONIC, &t);
+   submit.bo_handle_count = 1;
+   submit.bo_handles = (uintptr_t)(void *)&info->pool->timestamp.bo->handle;
+
+   struct drm_v3d_timestamp_query timestamp = {0};
+
+   set_ext(&timestamp.base, NULL, DRM_V3D_EXT_ID_CPU_TIMESTAMP_QUERY, 0);
+
+   timestamp.count = info->count;
+
+   uint32_t *offsets =
+      (uint32_t *) malloc(sizeof(uint32_t) * info->count);
+   uint32_t *syncs =
+      (uint32_t *) malloc(sizeof(uint32_t) * info->count);
 
    for (uint32_t i = 0; i < info->count; i++) {
       assert(info->query + i < info->pool->query_count);
       struct v3dv_query *query = &info->pool->queries[info->query + i];
       query->maybe_available = true;
 
-      /* Value */
-      uint8_t *value_addr =
-         ((uint8_t *) info->pool->timestamp.bo->map) + query->timestamp.offset;
-      *((uint64_t*)value_addr) = (i == 0) ? t.tv_sec * 1000000000ull + t.tv_nsec : 0ull;
-
-      /* Availability */
-      result = vk_sync_signal(&job->device->vk, query->timestamp.sync, 0);
+      offsets[i] = query->timestamp.offset;
+      syncs[i] = vk_sync_as_drm_syncobj(query->timestamp.sync)->syncobj;
    }
 
-   cnd_broadcast(&job->device->query_ended);
-   mtx_unlock(&job->device->query_mutex);
+   timestamp.offsets = (uintptr_t)(void *)offsets;
+   timestamp.syncs = (uintptr_t)(void *)syncs;
 
-   return result;
+   struct drm_v3d_multi_sync ms = {0};
+
+   /* The CPU job should be serialized so it only executes after all previously
+    * submitted work has completed
+    */
+   job->serialize = V3DV_BARRIER_ALL;
+
+   set_multisync(&ms, sync_info, NULL, 0, (void *)&timestamp, device, job,
+	         V3DV_QUEUE_CPU, V3DV_QUEUE_CPU, V3D_CPU, signal_syncs);
+   if (!ms.base.id)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   submit.flags |= DRM_V3D_SUBMIT_EXTENSION;
+   submit.extensions = (uintptr_t)(void *)&ms;
+
+   int ret = v3dv_ioctl(device->pdevice->render_fd,
+			DRM_IOCTL_V3D_SUBMIT_CPU, &submit);
+
+   free(offsets);
+   free(syncs);
+   multisync_free(device, &ms);
+
+   queue->last_job_syncs.first[V3DV_QUEUE_CPU] = false;
+
+   if (ret)
+      return vk_queue_set_lost(&queue->vk, "V3D_SUBMIT_CPU failed: %m");
+
+   return VK_SUCCESS;
 }
 
 static VkResult
@@ -1061,7 +1124,7 @@ queue_handle_job(struct v3dv_queue *queue,
    case V3DV_JOB_TYPE_CPU_CSD_INDIRECT:
       return handle_csd_indirect_cpu_job(queue, job, sync_info, signal_syncs);
    case V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY:
-      return handle_timestamp_query_cpu_job(queue, job, sync_info);
+      return handle_timestamp_query_cpu_job(queue, job, sync_info, signal_syncs);
    default:
       unreachable("Unhandled job type");
    }
