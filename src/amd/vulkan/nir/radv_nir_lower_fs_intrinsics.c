@@ -29,7 +29,7 @@
 #include "radv_private.h"
 
 bool
-radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_stage,
+radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_shader_stage *fs_stage,
                              const struct radv_pipeline_key *key)
 {
    const struct radv_shader_info *info = &fs_stage->info;

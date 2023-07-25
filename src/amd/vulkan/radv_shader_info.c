@@ -1066,8 +1066,8 @@ radv_init_legacy_gs_ring_info(const struct radv_device *device, struct radv_shad
 }
 
 static void
-radv_get_legacy_gs_info(const struct radv_device *device, struct radv_pipeline_stage *es_stage,
-                        struct radv_pipeline_stage *gs_stage)
+radv_get_legacy_gs_info(const struct radv_device *device, struct radv_shader_stage *es_stage,
+                        struct radv_shader_stage *gs_stage)
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    struct radv_shader_info *gs_info = &gs_stage->info;
@@ -1185,7 +1185,7 @@ clamp_gsprims_to_esverts(unsigned *max_gsprims, unsigned max_esverts, unsigned m
 }
 
 static unsigned
-radv_get_num_input_vertices(const struct radv_pipeline_stage *es_stage, const struct radv_pipeline_stage *gs_stage)
+radv_get_num_input_vertices(const struct radv_shader_stage *es_stage, const struct radv_shader_stage *gs_stage)
 {
    if (gs_stage) {
       return gs_stage->nir->info.gs.vertices_in;
@@ -1203,7 +1203,7 @@ radv_get_num_input_vertices(const struct radv_pipeline_stage *es_stage, const st
 }
 
 static unsigned
-radv_get_pre_rast_input_topology(const struct radv_pipeline_stage *es_stage, const struct radv_pipeline_stage *gs_stage)
+radv_get_pre_rast_input_topology(const struct radv_shader_stage *es_stage, const struct radv_shader_stage *gs_stage)
 {
    if (gs_stage) {
       return gs_stage->nir->info.gs.input_primitive;
@@ -1221,8 +1221,8 @@ radv_get_pre_rast_input_topology(const struct radv_pipeline_stage *es_stage, con
 }
 
 static void
-gfx10_get_ngg_info(const struct radv_device *device, struct radv_pipeline_stage *es_stage,
-                   struct radv_pipeline_stage *gs_stage)
+gfx10_get_ngg_info(const struct radv_device *device, struct radv_shader_stage *es_stage,
+                   struct radv_shader_stage *gs_stage)
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    struct radv_shader_info *gs_info = gs_stage ? &gs_stage->info : NULL;
@@ -1442,8 +1442,8 @@ gfx10_get_ngg_info(const struct radv_device *device, struct radv_pipeline_stage 
 }
 
 static void
-gfx10_get_ngg_query_info(const struct radv_device *device, struct radv_pipeline_stage *es_stage,
-                         struct radv_pipeline_stage *gs_stage, const struct radv_pipeline_key *pipeline_key)
+gfx10_get_ngg_query_info(const struct radv_device *device, struct radv_shader_stage *es_stage,
+                         struct radv_shader_stage *gs_stage, const struct radv_pipeline_key *pipeline_key)
 {
    struct radv_shader_info *info = gs_stage ? &gs_stage->info : &es_stage->info;
 
@@ -1453,8 +1453,8 @@ gfx10_get_ngg_query_info(const struct radv_device *device, struct radv_pipeline_
 }
 
 static void
-radv_determine_ngg_settings(struct radv_device *device, struct radv_pipeline_stage *es_stage,
-                            struct radv_pipeline_stage *fs_stage, const struct radv_pipeline_key *pipeline_key)
+radv_determine_ngg_settings(struct radv_device *device, struct radv_shader_stage *es_stage,
+                            struct radv_shader_stage *fs_stage, const struct radv_pipeline_key *pipeline_key)
 {
    assert(es_stage->stage == MESA_SHADER_VERTEX || es_stage->stage == MESA_SHADER_TESS_EVAL);
    assert(!fs_stage || fs_stage->stage == MESA_SHADER_FRAGMENT);
@@ -1486,8 +1486,8 @@ radv_determine_ngg_settings(struct radv_device *device, struct radv_pipeline_sta
 }
 
 static void
-radv_link_shaders_info(struct radv_device *device, struct radv_pipeline_stage *producer,
-                       struct radv_pipeline_stage *consumer, const struct radv_pipeline_key *pipeline_key)
+radv_link_shaders_info(struct radv_device *device, struct radv_shader_stage *producer,
+                       struct radv_shader_stage *consumer, const struct radv_pipeline_key *pipeline_key)
 {
    /* Export primitive ID and clip/cull distances if read by the FS, or export unconditionally when
     * the next stage is unknown (with graphics pipeline library).
@@ -1519,7 +1519,7 @@ radv_link_shaders_info(struct radv_device *device, struct radv_pipeline_stage *p
    if (producer->stage == MESA_SHADER_VERTEX || producer->stage == MESA_SHADER_TESS_EVAL) {
       /* Compute NGG info (GFX10+) or GS info. */
       if (producer->info.is_ngg) {
-         struct radv_pipeline_stage *gs_stage = consumer && consumer->stage == MESA_SHADER_GEOMETRY ? consumer : NULL;
+         struct radv_shader_stage *gs_stage = consumer && consumer->stage == MESA_SHADER_GEOMETRY ? consumer : NULL;
 
          gfx10_get_ngg_info(device, producer, gs_stage);
          gfx10_get_ngg_query_info(device, producer, gs_stage, pipeline_key);
@@ -1534,8 +1534,8 @@ radv_link_shaders_info(struct radv_device *device, struct radv_pipeline_stage *p
    }
 
    if (producer->stage == MESA_SHADER_VERTEX && consumer && consumer->stage == MESA_SHADER_TESS_CTRL) {
-      struct radv_pipeline_stage *vs_stage = producer;
-      struct radv_pipeline_stage *tcs_stage = consumer;
+      struct radv_shader_stage *vs_stage = producer;
+      struct radv_shader_stage *tcs_stage = consumer;
 
       if (pipeline_key->dynamic_patch_control_points) {
          /* Set the workgroup size to the maximum possible value to ensure that compilers don't
@@ -1578,8 +1578,8 @@ radv_link_shaders_info(struct radv_device *device, struct radv_pipeline_stage *p
 
    /* Copy shader info between TCS<->TES. */
    if (producer->stage == MESA_SHADER_TESS_CTRL) {
-      struct radv_pipeline_stage *tcs_stage = producer;
-      struct radv_pipeline_stage *tes_stage = consumer;
+      struct radv_shader_stage *tcs_stage = producer;
+      struct radv_shader_stage *tes_stage = consumer;
 
       tcs_stage->info.tcs.tes_reads_tess_factors =
          !!(tes_stage->nir->info.inputs_read & (VARYING_BIT_TESS_LEVEL_INNER | VARYING_BIT_TESS_LEVEL_OUTER));
@@ -1596,7 +1596,7 @@ radv_link_shaders_info(struct radv_device *device, struct radv_pipeline_stage *p
 }
 
 static void
-radv_nir_shader_info_merge(const struct radv_pipeline_stage *src, struct radv_pipeline_stage *dst)
+radv_nir_shader_info_merge(const struct radv_shader_stage *src, struct radv_shader_stage *dst)
 {
    const struct radv_shader_info *src_info = &src->info;
    struct radv_shader_info *dst_info = &dst->info;
@@ -1634,10 +1634,10 @@ static const gl_shader_stage graphics_shader_order[] = {
 
 void
 radv_nir_shader_info_link(struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
-                          struct radv_pipeline_stage *stages)
+                          struct radv_shader_stage *stages)
 {
    /* Walk backwards to link */
-   struct radv_pipeline_stage *next_stage = stages[MESA_SHADER_FRAGMENT].nir ? &stages[MESA_SHADER_FRAGMENT] : NULL;
+   struct radv_shader_stage *next_stage = stages[MESA_SHADER_FRAGMENT].nir ? &stages[MESA_SHADER_FRAGMENT] : NULL;
 
    for (int i = ARRAY_SIZE(graphics_shader_order) - 1; i >= 0; i--) {
       gl_shader_stage s = graphics_shader_order[i];

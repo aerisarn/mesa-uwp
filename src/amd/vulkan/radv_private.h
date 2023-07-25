@@ -2126,10 +2126,10 @@ struct radv_event {
 struct radv_pipeline_key;
 struct radv_ray_tracing_group;
 
-void radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, struct radv_pipeline_stage *out_stage,
-                              gl_shader_stage stage);
+void radv_shader_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, struct radv_shader_stage *out_stage,
+                            gl_shader_stage stage);
 
-void radv_hash_shaders(unsigned char *hash, const struct radv_pipeline_stage *stages, uint32_t stage_count,
+void radv_hash_shaders(unsigned char *hash, const struct radv_shader_stage *stages, uint32_t stage_count,
                        const struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key, uint32_t flags);
 
 void radv_hash_rt_stages(struct mesa_sha1 *ctx, const VkPipelineShaderStageCreateInfo *stages, unsigned stage_count);
@@ -2386,7 +2386,7 @@ RADV_DECL_PIPELINE_DOWNCAST(graphics_lib, RADV_PIPELINE_GRAPHICS_LIB)
 RADV_DECL_PIPELINE_DOWNCAST(compute, RADV_PIPELINE_COMPUTE)
 RADV_DECL_PIPELINE_DOWNCAST(ray_tracing, RADV_PIPELINE_RAY_TRACING)
 
-struct radv_pipeline_stage {
+struct radv_shader_stage {
    gl_shader_stage stage;
 
    struct {
@@ -2410,7 +2410,7 @@ struct radv_pipeline_stage {
 };
 
 static inline bool
-radv_is_last_vgt_stage(const struct radv_pipeline_stage *stage)
+radv_is_last_vgt_stage(const struct radv_shader_stage *stage)
 {
    return (stage->info.stage == MESA_SHADER_VERTEX || stage->info.stage == MESA_SHADER_TESS_EVAL ||
            stage->info.stage == MESA_SHADER_GEOMETRY || stage->info.stage == MESA_SHADER_MESH) &&
@@ -3041,7 +3041,7 @@ void radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shad
 void radv_nir_shader_info_init(gl_shader_stage stage, gl_shader_stage next_stage, struct radv_shader_info *info);
 
 void radv_nir_shader_info_link(struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
-                               struct radv_pipeline_stage *stages);
+                               struct radv_shader_stage *stages);
 
 bool radv_sqtt_init(struct radv_device *device);
 void radv_sqtt_finish(struct radv_device *device);

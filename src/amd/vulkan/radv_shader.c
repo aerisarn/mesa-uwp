@@ -326,7 +326,7 @@ is_not_xfb_output(nir_variable *var, void *data)
 }
 
 nir_shader *
-radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_stage *stage,
+radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_stage *stage,
                          const struct radv_pipeline_key *key, bool is_internal)
 {
    unsigned subgroup_size = 64, ballot_bit_size = 64;
@@ -809,8 +809,7 @@ setup_ngg_lds_layout(struct radv_device *device, nir_shader *nir, struct radv_sh
 }
 
 void
-radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_stage,
-               const struct radv_pipeline_key *pl_key)
+radv_lower_ngg(struct radv_device *device, struct radv_shader_stage *ngg_stage, const struct radv_pipeline_key *pl_key)
 {
    const struct radv_shader_info *info = &ngg_stage->info;
    nir_shader *nir = ngg_stage->nir;
@@ -2349,7 +2348,7 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
 }
 
 struct radv_shader_binary *
-radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *pl_stage,
+radv_shader_nir_to_asm(struct radv_device *device, struct radv_shader_stage *pl_stage,
                        struct nir_shader *const *shaders, int shader_count, const struct radv_pipeline_key *key,
                        bool keep_shader_info, bool keep_statistic_info)
 {

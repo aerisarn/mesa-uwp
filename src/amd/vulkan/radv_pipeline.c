@@ -264,8 +264,8 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
 }
 
 void
-radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, struct radv_pipeline_stage *out_stage,
-                         gl_shader_stage stage)
+radv_shader_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, struct radv_shader_stage *out_stage,
+                       gl_shader_stage stage)
 {
    const VkShaderModuleCreateInfo *minfo = vk_find_struct_const(sinfo->pNext, SHADER_MODULE_CREATE_INFO);
    const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
@@ -503,7 +503,7 @@ non_uniform_access_callback(const nir_src *src, void *_)
 
 void
 radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layout *pipeline_layout,
-                     const struct radv_pipeline_key *pipeline_key, struct radv_pipeline_stage *stage)
+                     const struct radv_pipeline_key *pipeline_key, struct radv_shader_stage *stage)
 {
    enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    bool progress;

@@ -46,7 +46,7 @@ radv_is_cache_disabled(struct radv_device *device)
 }
 
 void
-radv_hash_shaders(unsigned char *hash, const struct radv_pipeline_stage *stages, uint32_t stage_count,
+radv_hash_shaders(unsigned char *hash, const struct radv_shader_stage *stages, uint32_t stage_count,
                   const struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key, uint32_t flags)
 {
    struct mesa_sha1 ctx;

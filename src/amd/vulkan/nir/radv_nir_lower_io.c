@@ -103,7 +103,7 @@ radv_nir_lower_io(struct radv_device *device, nir_shader *nir)
 }
 
 bool
-radv_nir_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *stage)
+radv_nir_lower_io_to_mem(struct radv_device *device, struct radv_shader_stage *stage)
 {
    const struct radv_shader_info *info = &stage->info;
    nir_shader *nir = stage->nir;

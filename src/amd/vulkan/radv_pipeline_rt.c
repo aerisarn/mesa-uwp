@@ -255,8 +255,8 @@ radv_rt_fill_stage_info(struct radv_device *device, const VkRayTracingPipelineCr
    for (idx = 0; idx < pCreateInfo->stageCount; idx++) {
       stages[idx].stage = vk_to_mesa_shader_stage(pCreateInfo->pStages[idx].stage);
 
-      struct radv_pipeline_stage stage;
-      radv_pipeline_stage_init(&pCreateInfo->pStages[idx], &stage, stages[idx].stage);
+      struct radv_shader_stage stage;
+      radv_shader_stage_init(&pCreateInfo->pStages[idx], &stage, stages[idx].stage);
 
       radv_hash_shaders(stages[idx].sha1, &stage, 1, NULL, key, radv_get_hash_flags(device, false));
    }
@@ -342,7 +342,7 @@ move_rt_instructions(nir_shader *shader)
 static VkResult
 radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
                    const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, const struct radv_pipeline_key *pipeline_key,
-                   struct radv_pipeline_stage *stage, uint32_t *stack_size,
+                   struct radv_shader_stage *stage, uint32_t *stack_size,
                    struct radv_serialized_shader_arena_block *replay_block, struct radv_shader **out_shader)
 {
    struct radv_shader_binary *binary;
@@ -387,7 +387,7 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
 
    /* Postprocess shader parts. */
    for (uint32_t i = 0; i < num_shaders; i++) {
-      struct radv_pipeline_stage temp_stage = *stage;
+      struct radv_shader_stage temp_stage = *stage;
       temp_stage.nir = shaders[i];
       radv_nir_lower_rt_abi(temp_stage.nir, pCreateInfo, &temp_stage.args, &stage->info, stack_size, i > 0);
       radv_optimize_nir(temp_stage.nir, pipeline_key->optimisations_disabled);
@@ -444,8 +444,8 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
 
    for (uint32_t idx = 0; idx < pCreateInfo->stageCount; idx++) {
       int64_t stage_start = os_time_get_nano();
-      struct radv_pipeline_stage stage;
-      radv_pipeline_stage_init(&pCreateInfo->pStages[idx], &stage, stages[idx].stage);
+      struct radv_shader_stage stage;
+      radv_shader_stage_init(&pCreateInfo->pStages[idx], &stage, stages[idx].stage);
 
       if (stages[idx].shader)
          goto feedback;
@@ -495,7 +495,7 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
       .module = vk_shader_module_to_handle(&traversal_module),
       .pName = "main",
    };
-   struct radv_pipeline_stage traversal_stage = {
+   struct radv_shader_stage traversal_stage = {
       .stage = MESA_SHADER_INTERSECTION,
       .nir = traversal_module.nir,
    };

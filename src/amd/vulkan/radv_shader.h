@@ -597,13 +597,13 @@ struct radv_shader_part {
 };
 
 struct radv_pipeline_layout;
-struct radv_pipeline_stage;
+struct radv_shader_stage;
 
 void radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively);
 void radv_optimize_nir_algebraic(nir_shader *shader, bool opt_offsets);
 
 void radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layout *pipeline_layout,
-                          const struct radv_pipeline_key *pipeline_key, struct radv_pipeline_stage *stage);
+                          const struct radv_pipeline_key *pipeline_key, struct radv_shader_stage *stage);
 
 nir_shader *radv_parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *sinfo,
                                 const struct radv_pipeline_key *key);
@@ -612,9 +612,9 @@ void radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateI
                            const struct radv_shader_args *args, const struct radv_shader_info *info,
                            uint32_t *stack_size, bool resume_shader);
 
-struct radv_pipeline_stage;
+struct radv_shader_stage;
 
-nir_shader *radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_stage *stage,
+nir_shader *radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_stage *stage,
                                      const struct radv_pipeline_key *key, bool is_internal);
 
 void radv_init_shader_arenas(struct radv_device *device);
@@ -631,7 +631,7 @@ VkResult radv_shader_create_uncached(struct radv_device *device, const struct ra
                                      bool replayable, struct radv_serialized_shader_arena_block *replay_block,
                                      struct radv_shader **out_shader);
 
-struct radv_shader_binary *radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *pl_stage,
+struct radv_shader_binary *radv_shader_nir_to_asm(struct radv_device *device, struct radv_shader_stage *pl_stage,
                                                   struct nir_shader *const *shaders, int shader_count,
                                                   const struct radv_pipeline_key *key, bool keep_shader_info,
                                                   bool keep_statistic_info);
@@ -817,7 +817,7 @@ get_tcs_num_patches(unsigned tcs_num_input_vertices, unsigned tcs_num_output_ver
    return num_patches;
 }
 
-void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_stage,
+void radv_lower_ngg(struct radv_device *device, struct radv_shader_stage *ngg_stage,
                     const struct radv_pipeline_key *pl_key);
 
 bool radv_consider_culling(const struct radv_physical_device *pdevice, struct nir_shader *nir, uint64_t ps_inputs_read,

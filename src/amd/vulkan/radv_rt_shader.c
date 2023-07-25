@@ -813,9 +813,9 @@ nir_shader *
 radv_parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *sinfo,
                     const struct radv_pipeline_key *key)
 {
-   struct radv_pipeline_stage rt_stage;
+   struct radv_shader_stage rt_stage;
 
-   radv_pipeline_stage_init(sinfo, &rt_stage, vk_to_mesa_shader_stage(sinfo->stage));
+   radv_shader_stage_init(sinfo, &rt_stage, vk_to_mesa_shader_stage(sinfo->stage));
 
    nir_shader *shader = radv_shader_spirv_to_nir(device, &rt_stage, key, false);
 

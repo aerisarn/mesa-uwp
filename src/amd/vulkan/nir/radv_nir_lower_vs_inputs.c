@@ -416,7 +416,7 @@ lower_vs_input_instr(nir_builder *b, nir_instr *instr, void *state)
 }
 
 bool
-radv_nir_lower_vs_inputs(nir_shader *shader, const struct radv_pipeline_stage *vs_stage,
+radv_nir_lower_vs_inputs(nir_shader *shader, const struct radv_shader_stage *vs_stage,
                          const struct radv_pipeline_key *pl_key, const struct radeon_info *rad_info)
 {
    assert(shader->info.stage == MESA_SHADER_VERTEX);
