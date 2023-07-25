@@ -3718,9 +3718,18 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
             break;
          }
 
-         /* For the bit==7 case, this is only faster than v_cmp_class if test0 && can_sdwa. */
+         /* Set max_bit lower to avoid +inf if we can use sdwa+qnan instead. */
          const bool can_sdwa = ctx->program->gfx_level >= GFX8 && ctx->program->gfx_level < GFX11;
-         if ((bit & 0x7) == 7 && ((test0 && can_sdwa) || bit != 7)) {
+         const unsigned max_bit = can_sdwa ? 0x8 : 0x9;
+         const bool use_opsel = bit > 0xf && (bit & 0xf) <= max_bit;
+         if (use_opsel) {
+            src0 = bld.pseudo(aco_opcode::p_extract, bld.def(v1), src0, Operand::c32(1),
+                              Operand::c32(16), Operand::c32(0));
+            bit &= 0xf;
+         }
+
+         /* If we can use sdwa the extract is free, while test0's s_not is not. */
+         if (bit == 7 && test0 && can_sdwa) {
             src0 = bld.pseudo(aco_opcode::p_extract, bld.def(v1), src0, Operand::c32(bit / 8),
                               Operand::c32(8), Operand::c32(1));
             bld.vopc(test0 ? aco_opcode::v_cmp_le_i32 : aco_opcode::v_cmp_gt_i32, Definition(dst),
@@ -3728,48 +3737,42 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
             break;
          }
 
-         /* Avoid snan for bit 24. */
-         if (bit == 24) {
-            src0 = bld.pseudo(aco_opcode::p_extract, bld.def(v1), src0, Operand::c32(1),
-                              Operand::c32(16), Operand::c32(0));
-            bit &= 0xf;
-         }
-
-         /* avoid +inf if we can use sdwa+qnan */
-         if (bit > (can_sdwa ? 0x8 : 0x9)) {
+         if (bit > max_bit) {
             src0 = bld.pseudo(aco_opcode::p_extract, bld.def(v1), src0, Operand::c32(bit / 8),
                               Operand::c32(8), Operand::c32(0));
             bit &= 0x7;
          }
 
          /* denorm and snan/qnan inputs are preserved using all float control modes. */
-         static const std::pair<uint32_t, bool> float_lut[10] = {
-            {0x7f800001, false}, /* snan */
-            {-1, false},         /* qnan */
-            {0xff800000, false}, /* -inf */
-            {0xbf800000, false}, /* -normal (-1.0) */
-            {1, true},           /* -denormal */
-            {0, true},           /* -0.0 */
-            {0, false},          /* +0.0 */
-            {1, false},          /* +denormal */
-            {0x3f800000, false}, /* +normal (+1.0) */
-            {0x7f800000, false}, /* +inf */
+         static const struct {
+            uint32_t fp32;
+            uint32_t fp16;
+            bool negate;
+         } float_lut[10] = {
+            {0x7f800001, 0x7c01, false}, /* snan */
+            {~0u, ~0u, false},           /* qnan */
+            {0xff800000, 0xfc00, false}, /* -inf */
+            {0xbf800000, 0xbc00, false}, /* -normal (-1.0) */
+            {1, 1, true},                /* -denormal */
+            {0, 0, true},                /* -0.0 */
+            {0, 0, false},               /* +0.0 */
+            {1, 1, false},               /* +denormal */
+            {0x3f800000, 0x3c00, false}, /* +normal (+1.0) */
+            {0x7f800000, 0x7c00, false}, /* +inf */
          };
 
          Temp tmp = test0 ? bld.tmp(bld.lm) : dst;
-         if (ctx->program->gfx_level >= GFX8 && bit == 0) {
-            /* this can use s_movk. */
-            bld.vopc(aco_opcode::v_cmp_class_f16, Definition(tmp),
-                     bld.copy(bld.def(s1), Operand::c32(0x7c01)), src0);
-         } else {
-            VALU_instruction& res =
-               bld.vopc(aco_opcode::v_cmp_class_f32, Definition(tmp),
-                        bld.copy(bld.def(s1), Operand::c32(float_lut[bit].first)), src0)
-                  ->valu();
-            if (float_lut[bit].second) {
-               res.format = asVOP3(res.format);
-               res.neg[0] = true;
-            }
+         /* fp16 can use s_movk for bit 0. It also supports opsel on gfx11. */
+         const bool use_fp16 = (ctx->program->gfx_level >= GFX8 && bit == 0) ||
+                               (ctx->program->gfx_level >= GFX11 && use_opsel);
+         const aco_opcode op = use_fp16 ? aco_opcode::v_cmp_class_f16 : aco_opcode::v_cmp_class_f32;
+         const uint32_t c = use_fp16 ? float_lut[bit].fp16 : float_lut[bit].fp32;
+
+         VALU_instruction& res =
+            bld.vopc(op, Definition(tmp), bld.copy(bld.def(s1), Operand::c32(c)), src0)->valu();
+         if (float_lut[bit].negate) {
+            res.format = asVOP3(res.format);
+            res.neg[0] = true;
          }
 
          if (test0)
