@@ -1,12 +1,17 @@
-#include "nvk_device.h"
 #include "nvk_shader.h"
+
+#include "nvk_descriptor_set_layout.h"
+#include "nvk_device.h"
 #include "nvk_physical_device.h"
 #include "nvk_pipeline.h"
+#include "nvk_sampler.h"
 
 #include "nouveau_bo.h"
 #include "nouveau_context.h"
+#include "vk_nir_convert_ycbcr.h"
 #include "vk_pipeline.h"
 #include "vk_shader_module.h"
+#include "vk_ycbcr_conversion.h"
 
 #include "nir.h"
 #include "nir_builder.h"
@@ -308,6 +313,31 @@ assign_io_locations(nir_shader *nir)
    }
 }
 
+static const struct vk_ycbcr_conversion_state *
+lookup_ycbcr_conversion(const void *_layout, uint32_t set,
+                        uint32_t binding, uint32_t array_index)
+{
+   const struct vk_pipeline_layout *pipeline_layout = _layout;
+   assert(set < pipeline_layout->set_count);
+   const struct nvk_descriptor_set_layout *set_layout =
+      vk_to_nvk_descriptor_set_layout(pipeline_layout->set_layouts[set]);
+   assert(binding < set_layout->binding_count);
+
+   const struct nvk_descriptor_set_binding_layout *bind_layout =
+      &set_layout->binding[binding];
+
+   if (bind_layout->immutable_samplers == NULL)
+      return NULL;
+
+   array_index = MIN2(array_index, bind_layout->array_size - 1);
+
+   const struct nvk_sampler *sampler =
+      bind_layout->immutable_samplers[array_index];
+
+   return sampler && sampler->vk.ycbcr_conversion ?
+          &sampler->vk.ycbcr_conversion->state : NULL;
+}
+
 static void
 nvk_optimize_nir(nir_shader *nir)
 {
@@ -397,6 +427,8 @@ nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
                   .use_view_id_for_layer = is_multiview,
                });
    }
+
+   NIR_PASS(_, nir, nir_vk_lower_ycbcr_tex, lookup_ycbcr_conversion, layout);
 
    nir_lower_compute_system_values_options csv_options = {
       .has_base_workgroup_id = true,
