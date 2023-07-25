@@ -148,11 +148,11 @@ spec@glsl-1.20@execution@const-builtin@glsl-const-builtin-derivatives
 spec@glsl-1.20@execution@vs-outerproduct-const-mat3x4
 spec@glsl-1.20@execution@uniform-initializer@fs-int-set-by-other-stage
 spec@glsl-1.30@execution@built-in-functions@fs-cosh-vec4
-spec@glsl-1.20@execution@built-in-functions@vs-op-assign-add-mat4x2-mat4x2
+spec@glsl-1.30@execution@built-in-functions@fs-op-bitand-not-abs-int-ivec3
 spec@glsl-1.30@execution@built-in-functions@fs-op-bitxor-uint-uvec3
+spec@glsl-1.30@execution@built-in-functions@vs-lessthanequal-uvec4-uvec4
 spec@glsl-1.30@execution@built-in-functions@vs-op-assign-lshift-uvec2-ivec2
 spec@glsl-1.30@execution@built-in-functions@vs-op-bitand-abs-neg-ivec3-ivec3
-spec@glsl-1.30@execution@built-in-functions@fs-op-bitand-not-abs-int-ivec3
 spec@glsl-1.30@execution@built-in-functions@vs-op-bitor-abs-neg-ivec2-int
 spec@glsl-1.30@execution@interpolation@interpolation-smooth-other-flat-distance
 spec@glsl-es-3.00@execution@built-in-functions@const-packhalf2x16
