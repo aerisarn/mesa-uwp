@@ -377,5 +377,6 @@ dEQP-VK.api.driver_properties.conformance_version,Fail
 
 # After switch from 6.3.1 to 6.3.13
 dEQP-VK.binding_model.descriptor_buffer.basic.limits,Fail
+gmem-dEQP-VK.binding_model.descriptor_buffer.basic.limits,Fail
 dEQP-VK.api.object_management.multithreaded_per_thread_resources.event,Crash
 gmem-dEQP-VK.api.object_management.multithreaded_per_thread_resources.descriptor_pool_free_descriptor_set,Crash
