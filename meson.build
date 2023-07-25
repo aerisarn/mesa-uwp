@@ -2165,6 +2165,7 @@ summary(
     'ES1': with_gles1,
     'ES2': with_gles2,
     'Shared glapi': with_shared_glapi,
+    'GLVND': with_glvnd,
   },
   section: 'OpenGL', bool_yn: true
 )
