@@ -132,6 +132,7 @@ struct nvk_cmd_buffer {
     * command buffer.
     */
    struct list_head bos;
+   struct list_head gart_bos;
 
    struct nvk_cmd_bo *upload_bo;
    uint32_t upload_offset;

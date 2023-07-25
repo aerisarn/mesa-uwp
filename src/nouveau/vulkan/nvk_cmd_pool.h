@@ -22,6 +22,7 @@ struct nvk_cmd_pool {
 
    /** List of nvk_cmd_bo */
    struct list_head free_bos;
+   struct list_head free_gart_bos;
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_cmd_pool, vk.base, VkCommandPool,
@@ -34,9 +35,11 @@ nvk_cmd_pool_device(struct nvk_cmd_pool *pool)
 }
 
 VkResult nvk_cmd_pool_alloc_bo(struct nvk_cmd_pool *pool,
+                               bool force_gart,
                                struct nvk_cmd_bo **bo_out);
 
 void nvk_cmd_pool_free_bo_list(struct nvk_cmd_pool *pool,
                                struct list_head *bos);
-
+void nvk_cmd_pool_free_gart_bo_list(struct nvk_cmd_pool *pool,
+                                    struct list_head *bos);
 #endif /* NVK_CMD_POOL_H */

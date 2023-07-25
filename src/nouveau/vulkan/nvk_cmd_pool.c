@@ -4,7 +4,7 @@
 #include "nvk_physical_device.h"
 
 static VkResult
-nvk_cmd_bo_create(struct nvk_cmd_pool *pool, struct nvk_cmd_bo **bo_out)
+nvk_cmd_bo_create(struct nvk_cmd_pool *pool, bool force_gart, struct nvk_cmd_bo **bo_out)
 {
    struct nvk_device *dev = nvk_cmd_pool_device(pool);
    struct nvk_cmd_bo *bo;
@@ -15,6 +15,8 @@ nvk_cmd_bo_create(struct nvk_cmd_pool *pool, struct nvk_cmd_bo **bo_out)
       return vk_error(pool, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP | NOUVEAU_WS_BO_NO_SHARE;
+   if (force_gart)
+      assert(flags & NOUVEAU_WS_BO_GART);
    bo->bo = nouveau_ws_bo_new_mapped(dev->ws_dev, NVK_CMD_BO_SIZE, 0,
                                      flags, NOUVEAU_WS_BO_WR, &bo->map);
    if (bo->bo == NULL) {
@@ -56,6 +58,7 @@ nvk_CreateCommandPool(VkDevice _device,
    }
 
    list_inithead(&pool->free_bos);
+   list_inithead(&pool->free_gart_bos);
 
    *pCmdPool = nvk_cmd_pool_to_handle(pool);
 
@@ -69,26 +72,44 @@ nvk_cmd_pool_destroy_bos(struct nvk_cmd_pool *pool)
       nvk_cmd_bo_destroy(pool, bo);
 
    list_inithead(&pool->free_bos);
+
+   list_for_each_entry_safe(struct nvk_cmd_bo, bo, &pool->free_gart_bos, link)
+      nvk_cmd_bo_destroy(pool, bo);
+
+   list_inithead(&pool->free_gart_bos);
 }
 
 VkResult
-nvk_cmd_pool_alloc_bo(struct nvk_cmd_pool *pool, struct nvk_cmd_bo **bo_out)
+nvk_cmd_pool_alloc_bo(struct nvk_cmd_pool *pool, bool force_gart, struct nvk_cmd_bo **bo_out)
 {
-   if (!list_is_empty(&pool->free_bos)) {
-      struct nvk_cmd_bo *bo =
-         list_first_entry(&pool->free_bos, struct nvk_cmd_bo, link);
+   struct nvk_cmd_bo *bo = NULL;
+   if (force_gart) {
+      if (!list_is_empty(&pool->free_gart_bos))
+         bo = list_first_entry(&pool->free_gart_bos, struct nvk_cmd_bo, link);
+   } else {
+      if (!list_is_empty(&pool->free_bos))
+         bo = list_first_entry(&pool->free_bos, struct nvk_cmd_bo, link);
+   }
+   if (bo) {
       list_del(&bo->link);
       *bo_out = bo;
       return VK_SUCCESS;
    }
 
-   return nvk_cmd_bo_create(pool, bo_out);
+   return nvk_cmd_bo_create(pool, force_gart, bo_out);
 }
 
 void
 nvk_cmd_pool_free_bo_list(struct nvk_cmd_pool *pool, struct list_head *bos)
 {
    list_splicetail(bos, &pool->free_bos);
+   list_inithead(bos);
+}
+
+void
+nvk_cmd_pool_free_gart_bo_list(struct nvk_cmd_pool *pool, struct list_head *bos)
+{
+   list_splicetail(bos, &pool->free_gart_bos);
    list_inithead(bos);
 }
 

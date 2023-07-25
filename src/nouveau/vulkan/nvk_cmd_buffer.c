@@ -27,6 +27,7 @@ nvk_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
    struct nvk_cmd_pool *pool = nvk_cmd_buffer_pool(cmd);
 
    nvk_cmd_pool_free_bo_list(pool, &cmd->bos);
+   nvk_cmd_pool_free_bo_list(pool, &cmd->gart_bos);
    util_dynarray_fini(&cmd->pushes);
    util_dynarray_fini(&cmd->bo_refs);
    vk_command_buffer_finish(&cmd->vk);
@@ -59,6 +60,7 @@ nvk_create_cmd_buffer(struct vk_command_pool *vk_pool,
       &cmd->state.gfx._dynamic_sl;
 
    list_inithead(&cmd->bos);
+   list_inithead(&cmd->gart_bos);
    util_dynarray_init(&cmd->pushes, NULL);
    util_dynarray_init(&cmd->bo_refs, NULL);
 
@@ -78,6 +80,7 @@ nvk_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    vk_command_buffer_reset(&cmd->vk);
 
    nvk_cmd_pool_free_bo_list(pool, &cmd->bos);
+   nvk_cmd_pool_free_gart_bo_list(pool, &cmd->gart_bos);
    cmd->upload_bo = NULL;
    cmd->push_bo = NULL;
    cmd->push_bo_limit = NULL;
@@ -99,13 +102,16 @@ const struct vk_command_buffer_ops nvk_cmd_buffer_ops = {
 static uint32_t push_runout[NVK_CMD_BUFFER_MAX_PUSH];
 
 static VkResult
-nvk_cmd_buffer_alloc_bo(struct nvk_cmd_buffer *cmd, struct nvk_cmd_bo **bo_out)
+nvk_cmd_buffer_alloc_bo(struct nvk_cmd_buffer *cmd, bool force_gart, struct nvk_cmd_bo **bo_out)
 {
-   VkResult result = nvk_cmd_pool_alloc_bo(nvk_cmd_buffer_pool(cmd), bo_out);
+   VkResult result = nvk_cmd_pool_alloc_bo(nvk_cmd_buffer_pool(cmd), force_gart, bo_out);
    if (result != VK_SUCCESS)
       return result;
 
-   list_addtail(&(*bo_out)->link, &cmd->bos);
+   if (force_gart)
+      list_addtail(&(*bo_out)->link, &cmd->gart_bos);
+   else
+      list_addtail(&(*bo_out)->link, &cmd->bos);
 
    return VK_SUCCESS;
 }
@@ -138,7 +144,7 @@ nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd)
 {
    nvk_cmd_buffer_flush_push(cmd);
 
-   VkResult result = nvk_cmd_buffer_alloc_bo(cmd, &cmd->push_bo);
+   VkResult result = nvk_cmd_buffer_alloc_bo(cmd, false, &cmd->push_bo);
    if (unlikely(result != VK_SUCCESS)) {
       STATIC_ASSERT(NVK_CMD_BUFFER_MAX_PUSH <= NVK_CMD_BO_SIZE / 4);
       cmd->push_bo = NULL;
@@ -204,7 +210,7 @@ nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd,
    }
 
    struct nvk_cmd_bo *bo;
-   VkResult result = nvk_cmd_buffer_alloc_bo(cmd, &bo);
+   VkResult result = nvk_cmd_buffer_alloc_bo(cmd, false, &bo);
    if (unlikely(result != VK_SUCCESS))
       return result;
 
