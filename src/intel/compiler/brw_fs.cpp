@@ -5826,6 +5826,7 @@ fs_visitor::lower_find_live_channel()
        */
       if (!(first && packed_dispatch)) {
          fs_reg mask = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+         ubld.UNDEF(mask);
          ubld.emit(SHADER_OPCODE_READ_SR_REG, mask, brw_imm_ud(vmask ? 3 : 2));
 
          /* Quarter control has the effect of magically shifting the value of
@@ -5843,6 +5844,7 @@ fs_visitor::lower_find_live_channel()
          ubld.FBL(inst->dst, exec_mask);
       } else {
          fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+         ubld.UNDEF(tmp);
          ubld.LZD(tmp, exec_mask);
          ubld.ADD(inst->dst, negate(tmp), brw_imm_uw(31));
       }

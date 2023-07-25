@@ -1344,6 +1344,7 @@ emit_predicate_on_vector_mask(const fs_builder &bld, fs_inst *inst)
 
    const fs_visitor *v = static_cast<const fs_visitor *>(bld.shader);
    const fs_reg vector_mask = ubld.vgrf(BRW_REGISTER_TYPE_UW);
+   ubld.UNDEF(vector_mask);
    ubld.emit(SHADER_OPCODE_READ_SR_REG, vector_mask, brw_imm_ud(3));
    const unsigned subreg = sample_mask_flag_subreg(v);
 
