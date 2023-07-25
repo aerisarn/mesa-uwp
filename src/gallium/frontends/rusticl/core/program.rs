@@ -553,7 +553,7 @@ impl Program {
             return false;
         }
 
-        let mut d = info.dev_build_mut(dev);
+        let d = info.dev_build_mut(dev);
 
         // skip compilation if we already have the right thing.
         if self.is_bin() {
@@ -594,7 +594,7 @@ impl Program {
         headers: &[spirv::CLCHeader],
         info: &mut MutexGuard<ProgramBuild>,
     ) -> bool {
-        let mut d = info.dev_build_mut(dev);
+        let d = info.dev_build_mut(dev);
 
         let (spirv, log) = match &self.src {
             ProgramSourceType::Il(spirv) => {
