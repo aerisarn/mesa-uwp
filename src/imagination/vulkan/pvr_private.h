@@ -70,6 +70,7 @@
 #include "vk_physical_device.h"
 #include "vk_queue.h"
 #include "vk_sync.h"
+#include "vulkan/util/vk_enum_to_str.h"
 #include "wsi_common.h"
 
 #ifdef HAVE_VALGRIND
@@ -1551,8 +1552,14 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_render_pass,
  *    sType and pNext members) any chained structures with sType values not
  *    defined by extensions supported by that component.
  */
-#define pvr_debug_ignored_stype(sType) \
-   mesa_logd("%s: ignored VkStructureType %u\n", __func__, (sType))
+#define pvr_debug_ignored_stype(sType)                  \
+   do {                                                 \
+      const VkStructureType _type = (sType);            \
+      mesa_logd("%s: ignored VkStructureType %s(%u)\n", \
+                __func__,                               \
+                vk_StructureType_to_str(_type),         \
+                _type);                                 \
+   } while (0)
 
 #define PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer)                  \
    do {                                                                      \
