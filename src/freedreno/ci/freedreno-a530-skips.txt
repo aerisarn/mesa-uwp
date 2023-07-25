@@ -86,6 +86,9 @@ spec@ext_gpu_shader4@execution@texelfetch.*
 #                 texwrap (/piglit/bin/texwrap GL_ARB_texture_float -auto -fbo)
 .*texwrap.*
 
+# offending task: shader_runner (/piglit/bin/shader_runner generated_tests/spec/arb_uniform_buffer_object/execution/shared-array-struct-array-struct.shader_test -auto -fbo)
+shared-array-struct-array-struct
+
 # offending task: fbo-clear-forma (/piglit/bin/fbo-clear-formats GL_ARB_depth_buffer_float -auto -fbo
 spec@arb_depth_buffer_float@fbo-clear-formats.*
 # offending task: attribs (/piglit/bin/attribs GL_ARB_vertex_type_2_10_10_10_rev -auto -fbo)
@@ -95,3 +98,4 @@ spec@glsl-1.30@execution@texelfetch.*
 
 # offending task: glx-visuals-ste (/piglit/bin/glx-visuals-stencil -auto)
 glx@glx-visuals-stencil.*
+
