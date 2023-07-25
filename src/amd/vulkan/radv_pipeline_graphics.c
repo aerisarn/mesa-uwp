@@ -2252,7 +2252,7 @@ radv_pipeline_nir_to_asm(struct radv_device *device, struct radv_graphics_pipeli
                          struct radv_shader_binary **binaries, struct radv_shader_binary **gs_copy_binary)
 {
    for (int s = MESA_VULKAN_SHADER_STAGES - 1; s >= 0; s--) {
-      if (!(active_nir_stages & (1 << s)) || pipeline->base.shaders[s])
+      if (!(active_nir_stages & (1 << s)))
          continue;
 
       nir_shader *shaders[2] = {stages[s].nir, NULL};
