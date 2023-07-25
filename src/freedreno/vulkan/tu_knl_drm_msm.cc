@@ -733,9 +733,13 @@ msm_bo_finish(struct tu_device *dev, struct tu_bo *bo)
       vma->iova = bo->iova;
       vma->size = bo->size;
       vma->fence = p_atomic_read(&dev->queues[0]->fence);
-      mtx_unlock(&dev->vma_mutex);
 
+      /* Must be cleared under the VMA mutex, or another thread could race to
+       * reap the VMA, closing the BO and letting a new GEM allocation produce
+       * this handle again.
+       */
       memset(bo, 0, sizeof(*bo));
+      mtx_unlock(&dev->vma_mutex);
    } else {
       /* Our BO structs are stored in a sparse array in the physical device,
        * so we don't want to free the BO pointer, instead we want to reset it

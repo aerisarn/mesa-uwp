@@ -383,13 +383,5 @@ dynamic-dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_32_32.samples_2.d32_s
 # since Debian 12 (bookworm) uprev
 dEQP-VK.api.driver_properties.conformance_version,Fail
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/9049
-dEQP-VK.api.object_management.multithreaded_per_thread_resources.descriptor_pool_free_descriptor_set,Crash
-dEQP-VK.api.object_management.multithreaded_per_thread_resources.descriptor_pool,Crash
-dEQP-VK.api.object_management.multithreaded_per_thread_resources.event,Crash
-dEQP-VK.api.object_management.multithreaded_shared_resources.descriptor_pool,Crash
-dEQP-VK.api.object_management.multithreaded_shared_resources.event,Crash
-dEQP-VK.api.object_management.multithreaded_shared_resources.descriptor_pool_free_descriptor_set,Crash
-dEQP-VK.api.object_management.multithreaded_shared_resources.query_pool,Crash
 dEQP-VK.binding_model.descriptor_buffer.basic.limits,Fail
 gmem-dEQP-VK.binding_model.descriptor_buffer.basic.limits,Fail

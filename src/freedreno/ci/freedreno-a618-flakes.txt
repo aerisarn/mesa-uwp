@@ -213,15 +213,3 @@ spec@!opengl 3.2@gl-3.2-adj-prims cull-front pv-last
 spec@!opengl 3.2@gl-3.2-adj-prims line cull-back pv-last
 spec@!opengl 3.2@gl-3.2-adj-prims line cull-front pv-last
 spec@!opengl 3.2@gl-3.2-adj-prims pv-last
-
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/9049
-dEQP-VK.api.object_management.multithreaded_per_thread_resources.descriptor_pool
-dEQP-VK.api.object_management.multithreaded_per_thread_resources.descriptor_pool_free_descriptor_set
-dEQP-VK.api.object_management.multithreaded_per_thread_resources.device_memory_small
-dEQP-VK.api.object_management.multithreaded_per_thread_resources.event
-dEQP-VK.api.object_management.multithreaded_per_thread_resources.query_pool
-dEQP-VK.api.object_management.multithreaded_shared_resources.descriptor_pool
-dEQP-VK.api.object_management.multithreaded_shared_resources.device_memory_small
-dEQP-VK.api.object_management.multithreaded_shared_resources.event
-dEQP-VK.api.object_management.multithreaded_shared_resources.query_pool
-gmem-dEQP-VK.api.object_management.multithreaded_per_thread_resources.descriptor_pool_free_descriptor_set
