@@ -250,6 +250,45 @@ nvk_cmd_buffer_upload_data(struct nvk_cmd_buffer *cmd,
    return VK_SUCCESS;
 }
 
+VkResult
+nvk_cmd_buffer_cond_render_alloc(struct nvk_cmd_buffer *cmd,
+                                 uint64_t *addr)
+{
+   uint32_t offset = cmd->cond_render_gart_offset;
+   uint32_t size = 64;
+
+   assert(offset <= NVK_CMD_BO_SIZE);
+   if (cmd->cond_render_gart_bo != NULL && size <= NVK_CMD_BO_SIZE - offset) {
+      *addr = cmd->cond_render_gart_bo->bo->offset + offset;
+
+      cmd->cond_render_gart_offset = offset + size;
+
+      return VK_SUCCESS;
+   }
+
+   struct nvk_cmd_bo *bo;
+   VkResult result = nvk_cmd_buffer_alloc_bo(cmd, true, &bo);
+   if (unlikely(result != VK_SUCCESS))
+      return result;
+
+   nvk_cmd_buffer_ref_bo(cmd, bo->bo);
+
+   *addr = bo->bo->offset;
+
+   /* Pick whichever of the current upload BO and the new BO will have more
+    * room left to be the BO for the next upload.  If our upload size is
+    * bigger than the old offset, we're better off burning the whole new
+    * upload BO on this one allocation and continuing on the current upload
+    * BO.
+    */
+   if (cmd->cond_render_gart_bo == NULL || size < cmd->cond_render_gart_offset) {
+      cmd->cond_render_gart_bo = bo;
+      cmd->cond_render_gart_offset = size;
+   }
+
+   return VK_SUCCESS;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                        const VkCommandBufferBeginInfo *pBeginInfo)

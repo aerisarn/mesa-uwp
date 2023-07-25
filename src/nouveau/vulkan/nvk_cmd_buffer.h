@@ -137,6 +137,9 @@ struct nvk_cmd_buffer {
    struct nvk_cmd_bo *upload_bo;
    uint32_t upload_offset;
 
+   struct nvk_cmd_bo *cond_render_gart_bo;
+   uint32_t cond_render_gart_offset;
+
    struct nvk_cmd_bo *push_bo;
    uint32_t *push_bo_limit;
    struct nv_push push;
@@ -241,6 +244,9 @@ VkResult nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd,
 VkResult nvk_cmd_buffer_upload_data(struct nvk_cmd_buffer *cmd,
                                     const void *data, uint32_t size,
                                     uint32_t alignment, uint64_t *addr);
+
+VkResult nvk_cmd_buffer_cond_render_alloc(struct nvk_cmd_buffer *cmd,
+					  uint64_t *addr);
 
 void
 nvk_cmd_buffer_flush_push_descriptors(struct nvk_cmd_buffer *cmd,
