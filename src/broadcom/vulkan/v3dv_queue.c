@@ -522,8 +522,12 @@ fail:
 }
 
 static VkResult
-handle_copy_query_results_cpu_job(struct v3dv_job *job)
+handle_copy_query_results_cpu_job(struct v3dv_queue *queue,
+                                  struct v3dv_job *job,
+                                  struct v3dv_submit_sync_info *sync_info,
+                                  bool signal_syncs)
 {
+   struct v3dv_device *device = queue->device;
    struct v3dv_copy_query_results_cpu_job_info *info =
       &job->cpu.query_copy_results;
 
@@ -532,6 +536,71 @@ handle_copy_query_results_cpu_job(struct v3dv_job *job)
 
    assert(info->dst && info->dst->mem && info->dst->mem->bo);
    struct v3dv_bo *bo = info->dst->mem->bo;
+
+   if (device->pdevice->caps.cpu_queue &&
+         info->pool->query_type == VK_QUERY_TYPE_TIMESTAMP) {
+      struct drm_v3d_submit_cpu submit = {0};
+      struct drm_v3d_multi_sync ms = {0};
+
+      uint32_t *offsets = (uint32_t *) malloc(sizeof(uint32_t) * info->count);
+      uint32_t *syncs = (uint32_t *) malloc(sizeof(uint32_t) * info->count);
+      uint32_t *bo_handles = NULL;
+
+      submit.bo_handle_count = 2;
+
+      bo_handles = (uint32_t *)
+         malloc(sizeof(uint32_t) * submit.bo_handle_count);
+
+      bo_handles[0] = bo->handle;
+      bo_handles[1] = info->pool->timestamp.bo->handle;
+      submit.bo_handles = (uintptr_t)(void *)bo_handles;
+
+      struct drm_v3d_copy_timestamp_query copy = {0};
+
+      set_ext(&copy.base, NULL, DRM_V3D_EXT_ID_CPU_COPY_TIMESTAMP_QUERY, 0);
+
+      copy.do_64bit = info->flags & VK_QUERY_RESULT_64_BIT;
+      copy.do_partial = info->flags & VK_QUERY_RESULT_PARTIAL_BIT;
+      copy.availability_bit = info->flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT;
+      copy.offset = info->offset + info->dst->mem_offset;
+      copy.stride = info->stride;
+      copy.count = info->count;
+
+      for (uint32_t i = 0; i < info->count; i++) {
+         assert(info->first < info->pool->query_count);
+         assert(info->first + info->count <= info->pool->query_count);
+         struct v3dv_query *query = &info->pool->queries[info->first + i];
+
+         offsets[i] = query->timestamp.offset;
+         syncs[i] = vk_sync_as_drm_syncobj(query->timestamp.sync)->syncobj;
+      }
+
+      copy.offsets = (uintptr_t)(void *)offsets;
+      copy.syncs = (uintptr_t)(void *)syncs;
+
+      set_multisync(&ms, sync_info, NULL, 0, (void *)&copy, device, job,
+                    V3DV_QUEUE_CPU, V3DV_QUEUE_CPU, V3D_CPU, signal_syncs);
+      if (!ms.base.id)
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      submit.flags |= DRM_V3D_SUBMIT_EXTENSION;
+      submit.extensions = (uintptr_t)(void *)&ms;
+
+      int ret = v3dv_ioctl(device->pdevice->render_fd,
+                           DRM_IOCTL_V3D_SUBMIT_CPU, &submit);
+
+      free(bo_handles);
+      free(offsets);
+      free(syncs);
+      multisync_free(device, &ms);
+
+      queue->last_job_syncs.first[V3DV_QUEUE_CPU] = false;
+
+      if (ret)
+         return vk_queue_set_lost(&queue->vk, "V3D_SUBMIT_CPU failed: %m");
+
+      return VK_SUCCESS;
+   }
 
    /* Map the entire dst buffer for the CPU copy if needed */
    assert(!bo->map || bo->map_size == bo->size);
@@ -1186,7 +1255,7 @@ queue_handle_job(struct v3dv_queue *queue,
    case V3DV_JOB_TYPE_CPU_END_QUERY:
       return handle_end_query_cpu_job(job, counter_pass_idx);
    case V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS:
-      return handle_copy_query_results_cpu_job(job);
+      return handle_copy_query_results_cpu_job(queue, job, sync_info, signal_syncs);
    case V3DV_JOB_TYPE_CPU_CSD_INDIRECT:
       return handle_csd_indirect_cpu_job(queue, job, sync_info, signal_syncs);
    case V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY:
