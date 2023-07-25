@@ -467,6 +467,9 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
 
       free(spec_entries);
 
+      /* TODO: This can be removed once GCM (which is more general) is used. */
+      NIR_PASS(_, nir, nir_opt_reuse_constants);
+
       const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
          .point_coord = true,
       };
