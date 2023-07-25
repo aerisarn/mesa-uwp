@@ -19,6 +19,7 @@
 #include "spirv/nir_spirv.h"
 #include "util/u_debug.h"
 #include "util/mesa-sha1.h"
+#include "vk_nir.h"
 #include "vk_pipeline.h"
 #include "vk_render_pass.h"
 #include "vk_util.h"
@@ -2250,12 +2251,6 @@ tu_append_executable(struct tu_pipeline *pipeline, struct ir3_shader_variant *va
    util_dynarray_append(&pipeline->executables, struct tu_pipeline_executable, exe);
 }
 
-static bool
-can_remove_out_var(nir_variable *var, void *data)
-{
-   return !var->data.explicit_xfb_buffer && !var->data.explicit_xfb_stride;
-}
-
 static void
 tu_link_shaders(struct tu_pipeline_builder *builder,
                 nir_shader **shaders, unsigned shaders_count)
@@ -2279,7 +2274,7 @@ tu_link_shaders(struct tu_pipeline_builder *builder,
       }
 
       const nir_remove_dead_variables_options out_var_opts = {
-         .can_remove_var = can_remove_out_var,
+         .can_remove_var = nir_vk_is_not_xfb_output,
       };
       NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_out, &out_var_opts);
 
