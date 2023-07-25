@@ -309,16 +309,82 @@ fail:
 }
 
 static VkResult
-handle_reset_query_cpu_job(struct v3dv_queue *queue, struct v3dv_job *job,
-                           struct v3dv_submit_sync_info *sync_info)
+handle_reset_query_cpu_job(struct v3dv_queue *queue,
+                           struct v3dv_job *job,
+                           struct v3dv_submit_sync_info *sync_info,
+                           bool signal_syncs)
 {
+   struct v3dv_device *device = queue->device;
    struct v3dv_reset_query_cpu_job_info *info = &job->cpu.query_reset;
    assert(info->pool);
 
    assert(info->pool->query_type != VK_QUERY_TYPE_OCCLUSION);
 
-   /* We are about to reset query counters so we need to make sure that
-    * The GPU is not using them.
+   if (device->pdevice->caps.cpu_queue &&
+         info->pool->query_type == VK_QUERY_TYPE_TIMESTAMP) {
+      assert(info->first + info->count <= info->pool->query_count);
+
+      struct drm_v3d_submit_cpu submit = {0};
+      struct drm_v3d_multi_sync ms = {0};
+
+      uint32_t *syncs = (uint32_t *) malloc(sizeof(uint32_t) * info->count);
+
+      submit.bo_handle_count = 1;
+      submit.bo_handles = (uintptr_t)(void *)&info->pool->timestamp.bo->handle;
+
+      struct drm_v3d_reset_timestamp_query reset = {0};
+
+      set_ext(&reset.base, NULL, DRM_V3D_EXT_ID_CPU_RESET_TIMESTAMP_QUERY, 0);
+
+      reset.count = info->count;
+      reset.offset = info->pool->queries[info->first].timestamp.offset;
+
+      for (uint32_t i = 0; i < info->count; i++) {
+         struct v3dv_query *query = &info->pool->queries[info->first + i];
+         syncs[i] = vk_sync_as_drm_syncobj(query->timestamp.sync)->syncobj;
+      }
+
+      reset.syncs = (uintptr_t)(void *)syncs;
+
+      set_multisync(&ms, sync_info, NULL, 0, (void *)&reset, device, job,
+                    V3DV_QUEUE_CPU, V3DV_QUEUE_CPU, V3D_CPU, signal_syncs);
+      if (!ms.base.id)
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      submit.flags |= DRM_V3D_SUBMIT_EXTENSION;
+      submit.extensions = (uintptr_t)(void *)&ms;
+
+      /* From the Vulkan spec for vkCmdResetQueryPool:
+       *
+       *    "This command defines an execution dependency between other query commands
+       *     that reference the same query.
+       *     ...
+       *     The second synchronization scope includes all commands which reference the
+       *     queries in queryPool indicated by firstQuery and queryCount that occur later
+       *     in submission order."
+       *
+       * This means we should ensure that any timestamps after a reset don't execute before
+       * the reset, however, for timestamps queries in particular we don't have to do
+       * anything special because timestamp queries have to wait for all previously
+       * submitted work to complete before executing (which we accomplish by using
+       * V3DV_BARRIER_ALL on them) and that includes reset jobs submitted to the CPU queue.
+       */
+      int ret = v3dv_ioctl(device->pdevice->render_fd,
+                           DRM_IOCTL_V3D_SUBMIT_CPU, &submit);
+
+      free(syncs);
+      multisync_free(device, &ms);
+
+      queue->last_job_syncs.first[V3DV_QUEUE_CPU] = false;
+
+      if (ret)
+         return vk_queue_set_lost(&queue->vk, "V3D_SUBMIT_CPU failed: %m");
+
+      return VK_SUCCESS;
+   }
+
+   /* We are about to reset query counters in user-space so we need to make
+    * sure that the GPU is not using them.
     */
    if (info->pool->query_type == VK_QUERY_TYPE_TIMESTAMP) {
       VkResult result = queue_wait_idle(queue, sync_info);
@@ -1116,7 +1182,7 @@ queue_handle_job(struct v3dv_queue *queue,
    case V3DV_JOB_TYPE_GPU_CSD:
       return handle_csd_job(queue, job, counter_pass_idx, sync_info, signal_syncs);
    case V3DV_JOB_TYPE_CPU_RESET_QUERIES:
-      return handle_reset_query_cpu_job(queue, job, sync_info);
+      return handle_reset_query_cpu_job(queue, job, sync_info, signal_syncs);
    case V3DV_JOB_TYPE_CPU_END_QUERY:
       return handle_end_query_cpu_job(job, counter_pass_idx);
    case V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS:
