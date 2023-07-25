@@ -6027,6 +6027,8 @@ bool nir_opt_ray_queries(nir_shader *shader);
 
 bool nir_opt_ray_query_ranges(nir_shader *shader);
 
+bool nir_opt_reuse_constants(nir_shader *shader);
+
 void nir_sweep(nir_shader *shader);
 
 void nir_remap_dual_slot_attributes(nir_shader *shader,
