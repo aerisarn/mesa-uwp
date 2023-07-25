@@ -1279,7 +1279,8 @@ align_block(asm_context& ctx, std::vector<uint32_t>& code, Block& block)
 }
 
 unsigned
-emit_program(Program* program, std::vector<uint32_t>& code, std::vector<struct aco_symbol>* symbols)
+emit_program(Program* program, std::vector<uint32_t>& code, std::vector<struct aco_symbol>* symbols,
+             bool append_endpgm)
 {
    asm_context ctx(program, symbols);
 
@@ -1298,7 +1299,8 @@ emit_program(Program* program, std::vector<uint32_t>& code, std::vector<struct a
    unsigned exec_size = code.size() * sizeof(uint32_t);
 
    /* Add end-of-code markers for the UMR disassembler. */
-   code.resize(code.size() + 5, 0xbf9f0000u);
+   if (append_endpgm)
+      code.resize(code.size() + 5, 0xbf9f0000u);
 
    fix_constaddrs(ctx, code);
 

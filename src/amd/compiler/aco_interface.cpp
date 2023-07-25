@@ -236,7 +236,11 @@ aco_compile_shader(const struct aco_compiler_options* options, const struct aco_
    /* assembly */
    std::vector<uint32_t> code;
    std::vector<struct aco_symbol> symbols;
-   unsigned exec_size = aco::emit_program(program.get(), code, &symbols);
+   /* OpenGL combine multi shader parts into one continous code block,
+    * so only last part need the s_endpgm instruction.
+    */
+   bool append_endpgm = !(options->is_opengl && info->has_epilog);
+   unsigned exec_size = aco::emit_program(program.get(), code, &symbols, append_endpgm);
 
    if (program->collect_statistics)
       aco::collect_postasm_stats(program.get(), code);
@@ -284,7 +288,7 @@ aco_compile_rt_prolog(const struct aco_compiler_options* options,
    /* assembly */
    std::vector<uint32_t> code;
    code.reserve(align(program->blocks[0].instructions.size() * 2, 16));
-   unsigned exec_size = aco::emit_program(program.get(), code, NULL);
+   unsigned exec_size = aco::emit_program(program.get(), code);
 
    bool get_disasm = options->dump_shader || options->record_ir;
 
@@ -322,7 +326,7 @@ aco_compile_vs_prolog(const struct aco_compiler_options* options,
    /* assembly */
    std::vector<uint32_t> code;
    code.reserve(align(program->blocks[0].instructions.size() * 2, 16));
-   unsigned exec_size = aco::emit_program(program.get(), code, NULL);
+   unsigned exec_size = aco::emit_program(program.get(), code);
 
    bool get_disasm = options->dump_shader || options->record_ir;
 
@@ -365,7 +369,7 @@ aco_compile_shader_part(const struct aco_compiler_options* options,
 
    /* assembly */
    std::vector<uint32_t> code;
-   unsigned exec_size = aco::emit_program(program.get(), code, NULL);
+   unsigned exec_size = aco::emit_program(program.get(), code);
 
    bool get_disasm = options->dump_shader || options->record_ir;
 

@@ -11518,8 +11518,11 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
 
    append_logical_end(ctx.block);
    ctx.block->kind |= block_kind_uniform;
-   Builder bld(ctx.program, ctx.block);
-   bld.sopp(aco_opcode::s_endpgm);
+
+   if (!ctx.program->info.has_epilog) {
+      Builder bld(ctx.program, ctx.block);
+      bld.sopp(aco_opcode::s_endpgm);
+   }
 
    cleanup_cfg(program);
 }

@@ -2262,7 +2262,7 @@ bool dealloc_vgprs(Program* program);
 void insert_NOPs(Program* program);
 void form_hard_clauses(Program* program);
 unsigned emit_program(Program* program, std::vector<uint32_t>& code,
-                      std::vector<struct aco_symbol>* symbols);
+                      std::vector<struct aco_symbol>* symbols = NULL, bool append_endpgm = true);
 /**
  * Returns true if print_asm can disassemble the given program for the current build/runtime
  * configuration
