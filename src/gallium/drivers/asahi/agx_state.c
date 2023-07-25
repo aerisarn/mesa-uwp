@@ -39,6 +39,7 @@
 #include "util/u_prim.h"
 #include "util/u_resource.h"
 #include "util/u_transfer.h"
+#include "agx_device.h"
 #include "agx_disk_cache.h"
 #include "agx_tilebuffer.h"
 #include "pool.h"
@@ -1686,7 +1687,8 @@ agx_get_shader_variant(struct agx_screen *screen,
 }
 
 static void
-agx_shader_initialize(struct agx_uncompiled_shader *so, nir_shader *nir)
+agx_shader_initialize(struct agx_device *dev, struct agx_uncompiled_shader *so,
+                      nir_shader *nir)
 {
    so->type = pipe_shader_type_from_mesa(nir->info.stage);
 
@@ -1709,7 +1711,8 @@ agx_shader_initialize(struct agx_uncompiled_shader *so, nir_shader *nir)
     */
    NIR_PASS_V(nir, agx_nir_lower_bindings, &so->internal_bindless);
 
-   agx_preprocess_nir(nir, true, &so->info);
+   bool allow_mediump = !(dev->debug & AGX_DBG_NO16);
+   agx_preprocess_nir(nir, true, allow_mediump, &so->info);
 
    blob_init(&so->serialized_nir);
    nir_serialize(&so->serialized_nir, nir, true);
@@ -1744,7 +1747,7 @@ agx_create_shader_state(struct pipe_context *pctx,
                                              asahi_fs_shader_key_equal);
    }
 
-   agx_shader_initialize(so, nir);
+   agx_shader_initialize(dev, so, nir);
 
    /* We're done with the NIR, throw it away */
    ralloc_free(nir);
@@ -1800,6 +1803,7 @@ static void *
 agx_create_compute_state(struct pipe_context *pctx,
                          const struct pipe_compute_state *cso)
 {
+   struct agx_device *dev = agx_device(pctx->screen);
    struct agx_uncompiled_shader *so =
       rzalloc(NULL, struct agx_uncompiled_shader);
 
@@ -1816,7 +1820,7 @@ agx_create_compute_state(struct pipe_context *pctx,
    assert(cso->ir_type == PIPE_SHADER_IR_NIR && "TGSI kernels unsupported");
    nir_shader *nir = (void *)cso->prog;
 
-   agx_shader_initialize(so, nir);
+   agx_shader_initialize(dev, so, nir);
    agx_get_shader_variant(agx_screen(pctx->screen), so, &pctx->debug, &key);
 
    /* We're done with the NIR, throw it away */

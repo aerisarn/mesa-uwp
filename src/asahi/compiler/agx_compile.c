@@ -2562,7 +2562,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
  * lowered here to avoid duplicate work with shader variants.
  */
 void
-agx_preprocess_nir(nir_shader *nir, bool support_lod_bias,
+agx_preprocess_nir(nir_shader *nir, bool support_lod_bias, bool allow_mediump,
                    struct agx_uncompiled_shader_info *out)
 {
    if (out)
@@ -2592,7 +2592,6 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias,
               glsl_type_size, 0);
    NIR_PASS_V(nir, nir_lower_ssbo);
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      uint64_t texcoord = agx_texcoord_mask(nir);
       struct interp_masks masks = agx_interp_masks(nir);
 
       NIR_PASS_V(nir, agx_nir_lower_frag_sidefx);
@@ -2602,9 +2601,13 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias,
        * hardware limitation. The resulting code (with an extra f2f16 at the end
        * if needed) matches what Metal produces.
        */
-      NIR_PASS_V(nir, nir_lower_mediump_io,
-                 nir_var_shader_in | nir_var_shader_out,
-                 ~(masks.flat | texcoord), false);
+      if (likely(allow_mediump)) {
+         uint64_t texcoord = agx_texcoord_mask(nir);
+
+         NIR_PASS_V(nir, nir_lower_mediump_io,
+                    nir_var_shader_in | nir_var_shader_out,
+                    ~(masks.flat | texcoord), false);
+      }
 
       if (out) {
          out->inputs_flat_shaded = masks.flat;
