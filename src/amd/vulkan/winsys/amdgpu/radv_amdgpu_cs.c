@@ -1316,21 +1316,20 @@ radv_amdgpu_winsys_cs_dump(struct radeon_cmdbuf *_cs, FILE *file, const int *tra
    struct radv_amdgpu_cs *cs = (struct radv_amdgpu_cs *)_cs;
    struct radv_amdgpu_winsys *ws = cs->ws;
    int num_dw = cs->base.cdw;
-   void *ib;
 
    if (cs->use_ib) {
       struct radv_amdgpu_cs_ib_info ib_info = radv_amdgpu_cs_ib_to_info(cs, cs->ib_buffers[0]);
-      ib = radv_amdgpu_winsys_get_cpu_addr(cs, ib_info.ib_mc_address);
+      void *ib = radv_amdgpu_winsys_get_cpu_addr(cs, ib_info.ib_mc_address);
       assert(ib);
       ac_parse_ib(file, ib, num_dw, trace_ids, trace_id_count, "main IB", ws->info.gfx_level, ws->info.family,
                   radv_amdgpu_winsys_get_cpu_addr, cs);
    } else {
       for (unsigned i = 0; i < cs->num_ib_buffers; i++) {
-         struct radv_amdgpu_ib *old_ib = &cs->ib_buffers[i];
+         struct radv_amdgpu_ib *ib = &cs->ib_buffers[i];
          char name[64];
          void *mapped;
 
-         mapped = ws->base.buffer_map(old_ib->bo);
+         mapped = ws->base.buffer_map(ib->bo);
          if (!mapped)
             continue;
 
@@ -1340,8 +1339,8 @@ radv_amdgpu_winsys_cs_dump(struct radeon_cmdbuf *_cs, FILE *file, const int *tra
             snprintf(name, sizeof(name), "main IB");
          }
 
-         ac_parse_ib(file, mapped, old_ib->cdw, trace_ids, trace_id_count, name, ws->info.gfx_level, ws->info.family,
-                     NULL, NULL);
+         ac_parse_ib(file, mapped, ib->cdw, trace_ids, trace_id_count, name, ws->info.gfx_level, ws->info.family, NULL,
+                     NULL);
       }
    }
 }
