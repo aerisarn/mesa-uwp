@@ -2244,18 +2244,18 @@ radv_create_gs_copy_shader(struct radv_device *device, struct vk_pipeline_cache 
 }
 
 static void
-radv_pipeline_nir_to_asm(struct radv_device *device, struct radv_graphics_pipeline *pipeline,
-                         struct vk_pipeline_cache *cache, struct radv_shader_stage *stages,
-                         const struct radv_pipeline_key *pipeline_key,
-                         const struct radv_pipeline_layout *pipeline_layout, bool keep_executable_info,
-                         bool keep_statistic_info, VkShaderStageFlagBits active_nir_stages,
-                         struct radv_shader_binary **binaries, struct radv_shader_binary **gs_copy_binary)
+radv_graphics_shaders_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
+                                 struct radv_shader_stage *stages, const struct radv_pipeline_key *pipeline_key,
+                                 const struct radv_pipeline_layout *pipeline_layout, bool keep_executable_info,
+                                 bool keep_statistic_info, VkShaderStageFlagBits active_nir_stages,
+                                 struct radv_shader **shaders, struct radv_shader_binary **binaries,
+                                 struct radv_shader **gs_copy_shader, struct radv_shader_binary **gs_copy_binary)
 {
    for (int s = MESA_VULKAN_SHADER_STAGES - 1; s >= 0; s--) {
       if (!(active_nir_stages & (1 << s)))
          continue;
 
-      nir_shader *shaders[2] = {stages[s].nir, NULL};
+      nir_shader *nir_shaders[2] = {stages[s].nir, NULL};
       unsigned shader_count = 1;
 
       /* On GFX9+, TES is merged with GS and VS is merged with TCS or GS. */
@@ -2269,32 +2269,32 @@ radv_pipeline_nir_to_asm(struct radv_device *device, struct radv_graphics_pipeli
             pre_stage = MESA_SHADER_VERTEX;
          }
 
-         shaders[0] = stages[pre_stage].nir;
-         shaders[1] = stages[s].nir;
+         nir_shaders[0] = stages[pre_stage].nir;
+         nir_shaders[1] = stages[s].nir;
          shader_count = 2;
       }
 
       int64_t stage_start = os_time_get_nano();
 
-      bool dump_shader = radv_can_dump_shader(device, shaders[0], false);
+      bool dump_shader = radv_can_dump_shader(device, nir_shaders[0], false);
 
-      binaries[s] = radv_shader_nir_to_asm(device, &stages[s], shaders, shader_count, pipeline_key,
+      binaries[s] = radv_shader_nir_to_asm(device, &stages[s], nir_shaders, shader_count, pipeline_key,
                                            keep_executable_info, keep_statistic_info);
-      pipeline->base.shaders[s] = radv_shader_create(device, cache, binaries[s], keep_executable_info || dump_shader);
-      radv_shader_generate_debug_info(device, dump_shader, binaries[s], pipeline->base.shaders[s], shaders,
-                                      shader_count, &stages[s].info);
+      shaders[s] = radv_shader_create(device, cache, binaries[s], keep_executable_info || dump_shader);
+      radv_shader_generate_debug_info(device, dump_shader, binaries[s], shaders[s], nir_shaders, shader_count,
+                                      &stages[s].info);
 
       if (s == MESA_SHADER_GEOMETRY && !stages[s].info.is_ngg) {
-         pipeline->base.gs_copy_shader =
+         *gs_copy_shader =
             radv_create_gs_copy_shader(device, cache, &stages[MESA_SHADER_GEOMETRY], pipeline_key, pipeline_layout,
                                        keep_executable_info, keep_statistic_info, gs_copy_binary);
       }
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
 
-      active_nir_stages &= ~(1 << shaders[0]->info.stage);
-      if (shaders[1])
-         active_nir_stages &= ~(1 << shaders[1]->info.stage);
+      active_nir_stages &= ~(1 << nir_shaders[0]->info.stage);
+      if (nir_shaders[1])
+         active_nir_stages &= ~(1 << nir_shaders[1]->info.stage);
    }
 }
 
@@ -2688,8 +2688,9 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
    }
 
    /* Compile NIR shaders to AMD assembly. */
-   radv_pipeline_nir_to_asm(device, pipeline, cache, stages, pipeline_key, pipeline_layout, keep_executable_info,
-                            keep_statistic_info, active_nir_stages, binaries, &gs_copy_binary);
+   radv_graphics_shaders_nir_to_asm(device, cache, stages, pipeline_key, pipeline_layout, keep_executable_info,
+                                    keep_statistic_info, active_nir_stages, pipeline->base.shaders, binaries,
+                                    &pipeline->base.gs_copy_shader, &gs_copy_binary);
 
    if (!radv_pipeline_create_ps_epilog(device, pipeline, pipeline_key, lib_flags, &ps_epilog_binary))
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
