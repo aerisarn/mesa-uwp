@@ -50,6 +50,7 @@
 #include "aco_interface.h"
 #include "sid.h"
 #include "vk_format.h"
+#include "vk_nir.h"
 #include "vk_semaphore.h"
 #include "vk_sync.h"
 
@@ -316,53 +317,6 @@ radv_compiler_debug(void *private_data, enum aco_compiler_debug_level level, con
    vk_debug_report(&instance->vk, vk_flags[level] | VK_DEBUG_REPORT_DEBUG_BIT_EXT, NULL, 0, 0, "radv", message);
 }
 
-static bool
-is_not_xfb_output(nir_variable *var, void *data)
-{
-   if (var->data.mode != nir_var_shader_out)
-      return true;
-
-   /* From the Vulkan 1.3.259 spec:
-    *
-    *    VUID-StandaloneSpirv-Offset-04716
-    *
-    *    "Only variables or block members in the output interface decorated
-    *    with Offset can be captured for transform feedback, and those
-    *    variables or block members must also be decorated with XfbBuffer
-    *    and XfbStride, or inherit XfbBuffer and XfbStride decorations from
-    *    a block containing them"
-    *
-    * glslang generates gl_PerVertex builtins when they are not declared,
-    * enabled XFB should not prevent them from being DCE'd.
-    *
-    * The logic should match nir_gather_xfb_info_with_varyings
-    */
-
-   if (!var->data.explicit_xfb_buffer)
-      return true;
-
-   bool is_array_block = var->interface_type != NULL &&
-      glsl_type_is_array(var->type) &&
-      glsl_without_array(var->type) == var->interface_type;
-
-   if (!is_array_block) {
-      return !var->data.explicit_offset;
-   } else {
-      /* For array of blocks we have to check each element */
-      unsigned aoa_size = glsl_get_aoa_size(var->type);
-      const struct glsl_type *itype = var->interface_type;
-      unsigned nfields = glsl_get_length(itype);
-      for (unsigned b = 0; b < aoa_size; b++) {
-         for (unsigned f = 0; f < nfields; f++) {
-            if (glsl_get_struct_field_offset(itype, f) >= 0)
-               return false;
-         }
-      }
-
-      return true;
-   }
-}
-
 /* If the shader doesn't have an index=1 output, then assume that it meant for a location=1 to be used. This works on
  * some older hardware because the MRT1 target is used for both location=1 and index=1, but GFX11 works differently.
  */
@@ -561,7 +515,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_shader_st
                   });
 
       nir_remove_dead_variables_options dead_vars_opts = {
-         .can_remove_var = is_not_xfb_output,
+         .can_remove_var = nir_vk_is_not_xfb_output,
       };
       NIR_PASS(_, nir, nir_remove_dead_variables,
                nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared, &dead_vars_opts);
