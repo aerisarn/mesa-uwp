@@ -4217,7 +4217,9 @@ panfrost_create_blend_state(struct pipe_context *pipe,
       unsigned constant_mask = pan_blend_constant_mask(equation);
       const bool supports_2src = pan_blend_supports_2src(PAN_ARCH);
       so->info[c] = (struct pan_blend_info){
-         .enabled = (equation.color_mask != 0),
+         .enabled = (equation.color_mask != 0) &&
+                    !(blend->logicop_enable &&
+                      blend->logicop_func == PIPE_LOGICOP_NOOP),
          .opaque = !blend->logicop_enable && pan_blend_is_opaque(equation),
          .constant_mask = constant_mask,
 
