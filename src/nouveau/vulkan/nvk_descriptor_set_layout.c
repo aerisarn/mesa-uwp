@@ -201,8 +201,10 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
          for (uint32_t i = 0; i < binding->descriptorCount; i++) {
             VK_FROM_HANDLE(nvk_sampler, sampler, binding->pImmutableSamplers[i]);
             layout->binding[b].immutable_samplers[i] = sampler;
-            if (max_plane_count < sampler->plane_count)
-               max_plane_count = sampler->plane_count;
+            const uint8_t sampler_plane_count = sampler->vk.ycbcr_conversion ?
+               vk_format_get_plane_count(sampler->vk.ycbcr_conversion->state.format) : 1;
+            if (max_plane_count < sampler_plane_count)
+               max_plane_count = sampler_plane_count;
          }
       }
 

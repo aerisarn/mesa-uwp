@@ -293,13 +293,49 @@ nvk_CreateSampler(VkDevice device,
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    uint32_t samp[8] = {};
+   sampler->plane_count = 1;
    nvk_sampler_fill_header(dev->pdev, pCreateInfo, &sampler->vk, samp);
    result = nvk_descriptor_table_add(dev, &dev->samplers,
                                      samp, sizeof(samp),
-                                     &sampler->desc_index);
+                                     &sampler->planes[0].desc_index);
    if (result != VK_SUCCESS) {
       vk_sampler_destroy(&dev->vk, pAllocator, &sampler->vk);
       return result;
+   }
+
+   /* In order to support CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT, we
+    * need multiple sampler planes: at minimum we will need one for luminance
+    * (the default), and one for chroma.  Each sampler plane needs its own
+    * sampler table entry.  However, sampler table entries are very rare on
+    * NVIDIA; we only have 4096 entries for the whole VkDevice, and each plane
+    * would burn one of those. So we make sure to allocate only the minimum
+    * amount that we actually need (i.e., either 1 or 2), and then just copy
+    * the last sampler plane out as far as we need to fill the number of image
+    * planes.
+    */
+
+   if (sampler->vk.ycbcr_conversion) {
+      const VkFilter chroma_filter =
+         sampler->vk.ycbcr_conversion->state.chroma_filter;
+      if (pCreateInfo->magFilter != chroma_filter ||
+          pCreateInfo->minFilter != chroma_filter) {
+         VkSamplerCreateInfo plane2_info = *pCreateInfo;
+         plane2_info.magFilter = chroma_filter;
+         plane2_info.minFilter = chroma_filter;
+
+         memset(samp, 0, sizeof(samp));
+         sampler->plane_count = 2;
+         nvk_sampler_fill_header(dev->pdev, &plane2_info, &sampler->vk, samp);
+         result = nvk_descriptor_table_add(dev, &dev->samplers,
+                                           samp, sizeof(samp),
+                                           &sampler->planes[1].desc_index);
+         if (result != VK_SUCCESS) {
+            nvk_descriptor_table_remove(dev, &dev->samplers,
+                                        sampler->planes[0].desc_index);
+            vk_sampler_destroy(&dev->vk, pAllocator, &sampler->vk);
+            return result;
+         }
+      }
    }
 
    *pSampler = nvk_sampler_to_handle(sampler);
@@ -318,6 +354,10 @@ nvk_DestroySampler(VkDevice device,
    if (!sampler)
       return;
 
-   nvk_descriptor_table_remove(dev, &dev->samplers, sampler->desc_index);
+   for (uint8_t plane = 0; plane < sampler->plane_count; plane++) {
+      nvk_descriptor_table_remove(dev, &dev->samplers,
+                                  sampler->planes[plane].desc_index);
+   }
+
    vk_sampler_destroy(&dev->vk, pAllocator, &sampler->vk);
 }

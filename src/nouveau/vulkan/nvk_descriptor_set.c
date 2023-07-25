@@ -90,10 +90,17 @@ write_image_view_desc(struct nvk_descriptor_set *set,
       } else {
          sampler = nvk_sampler_from_handle(info->sampler);
       }
-      assert(sampler->desc_index < (1 << 12));
-      assert(sampler->plane_count == plane_count);
+
+      plane_count = MAX2(plane_count, sampler->plane_count);
+
       for (uint8_t plane = 0; plane < plane_count; plane++) {
-         desc[plane].sampler_index = sampler->desc_index;
+         /* We need to replicate the last sampler plane out to all image
+          * planes due to sampler table entry limitations. See
+          * nvk_CreateSampler in nvk_sampler.c for more details.
+          */
+         uint8_t sampler_plane = MIN2(plane, sampler->plane_count - 1);
+         assert(sampler->planes[sampler_plane].desc_index < (1 << 12));
+         desc[plane].sampler_index = sampler->planes[sampler_plane].desc_index;
       }
    }
    write_desc(set, binding, elem, desc, sizeof(desc[0]) * plane_count);
