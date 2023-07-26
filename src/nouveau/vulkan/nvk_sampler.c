@@ -138,18 +138,6 @@ vk_to_9097_trilin_opt(float max_anisotropy)
    return 0;
 }
 
-static VkSamplerReductionMode
-vk_sampler_create_reduction_mode(const VkSamplerCreateInfo *pCreateInfo)
-{
-   const VkSamplerReductionModeCreateInfo *reduction =
-      vk_find_struct_const(pCreateInfo->pNext,
-                           SAMPLER_REDUCTION_MODE_CREATE_INFO);
-   if (reduction == NULL)
-      return VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
-
-   return reduction->reductionMode;
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_CreateSampler(VkDevice device,
                   const VkSamplerCreateInfo *pCreateInfo,
@@ -160,8 +148,8 @@ nvk_CreateSampler(VkDevice device,
    struct nvk_sampler *sampler;
    VkResult result;
 
-   sampler = vk_object_zalloc(&dev->vk, pAllocator, sizeof(*sampler),
-                              VK_OBJECT_TYPE_SAMPLER);
+   sampler = vk_sampler_create(&dev->vk, pCreateInfo,
+                               pAllocator, sizeof(*sampler));
    if (!sampler)
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -237,7 +225,7 @@ nvk_CreateSampler(VkDevice device,
    }
 
    if (dev->pdev->info.cls_eng3d >= MAXWELL_B) {
-      switch (vk_sampler_create_reduction_mode(pCreateInfo)) {
+      switch (sampler->vk.reduction_mode) {
       case VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE:
          SAMP_SET_E(samp, NVB197, 1, REDUCTION_FILTER, RED_NONE);
          break;
@@ -268,7 +256,7 @@ nvk_CreateSampler(VkDevice device,
    SAMP_SET_UF(samp, NV9097, 2, MIN_LOD_CLAMP, pCreateInfo->minLod);
    SAMP_SET_UF(samp, NV9097, 2, MAX_LOD_CLAMP, pCreateInfo->maxLod);
 
-   VkClearColorValue bc = vk_sampler_border_color_value(pCreateInfo, NULL);
+   VkClearColorValue bc = sampler->vk.border_color_value;
    uint8_t bc_srgb[3];
 
    const VkSamplerBorderColorComponentMappingCreateInfoEXT *swiz_info =
@@ -307,7 +295,7 @@ nvk_CreateSampler(VkDevice device,
                                      samp, sizeof(samp),
                                      &sampler->desc_index);
    if (result != VK_SUCCESS) {
-      vk_object_free(&dev->vk, pAllocator, sampler);
+      vk_sampler_destroy(&dev->vk, pAllocator, &sampler->vk);
       return result;
    }
 
@@ -328,5 +316,5 @@ nvk_DestroySampler(VkDevice device,
       return;
 
    nvk_descriptor_table_remove(dev, &dev->samplers, sampler->desc_index);
-   vk_object_free(&dev->vk, pAllocator, sampler);
+   vk_sampler_destroy(&dev->vk, pAllocator, &sampler->vk);
 }
