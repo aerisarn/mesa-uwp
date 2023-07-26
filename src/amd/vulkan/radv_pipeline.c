@@ -327,8 +327,19 @@ radv_mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsigned 
    if (num_components > 4)
       return false;
 
-   /* >128 bit loads are split except with SMEM */
-   if (bit_size * num_components > 128)
+   bool is_scratch = false;
+   switch (low->intrinsic) {
+   case nir_intrinsic_load_stack:
+   case nir_intrinsic_store_stack:
+      is_scratch = true;
+      break;
+   default:
+      break;
+   }
+
+   /* >128 bit loads are split except with SMEM. On GFX6-8, >32 bit scratch loads are split. */
+   enum amd_gfx_level gfx_level = *(enum amd_gfx_level *)data;
+   if (bit_size * num_components > (is_scratch && gfx_level <= GFX8 ? 32 : 128))
       return false;
 
    uint32_t align;
@@ -343,7 +354,9 @@ radv_mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsigned 
    case nir_intrinsic_store_ssbo:
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_ubo:
-   case nir_intrinsic_load_push_constant: {
+   case nir_intrinsic_load_push_constant:
+   case nir_intrinsic_load_stack:
+   case nir_intrinsic_store_stack: {
       unsigned max_components;
       if (align % 4 == 0)
          max_components = NIR_MAX_VEC_COMPONENTS;
@@ -554,6 +567,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
    nir_load_store_vectorize_options vectorize_opts = {
       .modes = nir_var_mem_ssbo | nir_var_mem_ubo | nir_var_mem_push_const | nir_var_mem_shared | nir_var_mem_global,
       .callback = radv_mem_vectorize_callback,
+      .cb_data = &gfx_level,
       .robust_modes = 0,
       /* On GFX6, read2/write2 is out-of-bounds if the offset register is negative, even if
        * the final offset is not.
