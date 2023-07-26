@@ -191,11 +191,20 @@ get_dri_format(enum pipe_format pf)
    case PIPE_FORMAT_R16G16B16X16_FLOAT:
       image_format = __DRI_IMAGE_FORMAT_XBGR16161616F;
       break;
+   case PIPE_FORMAT_B5G6R5_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_RGB565;
+      break;
    case PIPE_FORMAT_B5G5R5A1_UNORM:
       image_format = __DRI_IMAGE_FORMAT_ARGB1555;
       break;
-   case PIPE_FORMAT_B5G6R5_UNORM:
-      image_format = __DRI_IMAGE_FORMAT_RGB565;
+   case PIPE_FORMAT_R5G5B5A1_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_ABGR1555;
+      break;
+   case PIPE_FORMAT_B4G4R4A4_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_ARGB4444;
+      break;
+   case PIPE_FORMAT_R4G4B4A4_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_ABGR4444;
       break;
    case PIPE_FORMAT_BGRX8888_UNORM:
       image_format = __DRI_IMAGE_FORMAT_XRGB8888;
@@ -253,6 +262,10 @@ image_format_to_fourcc(int format)
    case __DRI_IMAGE_FORMAT_ABGR2101010: return DRM_FORMAT_ABGR2101010;
    case __DRI_IMAGE_FORMAT_XBGR16161616F: return DRM_FORMAT_XBGR16161616F;
    case __DRI_IMAGE_FORMAT_ABGR16161616F: return DRM_FORMAT_ABGR16161616F;
+   case __DRI_IMAGE_FORMAT_ARGB1555: return DRM_FORMAT_ARGB1555;
+   case __DRI_IMAGE_FORMAT_ABGR1555: return DRM_FORMAT_ABGR1555;
+   case __DRI_IMAGE_FORMAT_ARGB4444: return DRM_FORMAT_ARGB4444;
+   case __DRI_IMAGE_FORMAT_ABGR4444: return DRM_FORMAT_ABGR4444;
    }
    return 0;
 }

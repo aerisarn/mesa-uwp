@@ -292,6 +292,15 @@ dri_image_drawable_get_buffers(struct dri_drawable *drawable,
       case PIPE_FORMAT_R10G10B10A2_UNORM:
          image_format = __DRI_IMAGE_FORMAT_ABGR2101010;
          break;
+      case PIPE_FORMAT_R5G5B5A1_UNORM:
+         image_format = __DRI_IMAGE_FORMAT_ABGR1555;
+         break;
+      case PIPE_FORMAT_B4G4R4A4_UNORM:
+         image_format = __DRI_IMAGE_FORMAT_ARGB4444;
+         break;
+      case PIPE_FORMAT_R4G4B4A4_UNORM:
+         image_format = __DRI_IMAGE_FORMAT_ABGR4444;
+         break;
       default:
          image_format = __DRI_IMAGE_FORMAT_NONE;
          break;
