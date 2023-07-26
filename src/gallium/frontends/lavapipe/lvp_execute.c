@@ -1252,9 +1252,7 @@ static void add_img_view_surface(struct rendering_state *state,
                                  int layer_count)
 {
    if (imgv->surface) {
-      if (imgv->surface->width != width ||
-          imgv->surface->height != height ||
-          (imgv->surface->u.tex.last_layer - imgv->surface->u.tex.first_layer) != (layer_count - 1))
+      if ((imgv->surface->u.tex.last_layer - imgv->surface->u.tex.first_layer) != (layer_count - 1))
          pipe_surface_reference(&imgv->surface, NULL);
    }
 
