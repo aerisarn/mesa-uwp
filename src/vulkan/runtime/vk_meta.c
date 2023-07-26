@@ -243,6 +243,25 @@ vk_meta_create_descriptor_set_layout(struct vk_device *device,
    return VK_SUCCESS;
 }
 
+static VkResult
+vk_meta_get_descriptor_set_layout(struct vk_device *device,
+                                  struct vk_meta_device *meta,
+                                  const VkDescriptorSetLayoutCreateInfo *info,
+                                  const void *key_data, size_t key_size,
+                                  VkDescriptorSetLayout *layout_out)
+{
+   VkDescriptorSetLayout cached =
+      vk_meta_lookup_descriptor_set_layout(meta, key_data, key_size);
+   if (cached != VK_NULL_HANDLE) {
+      *layout_out = cached;
+      return VK_SUCCESS;
+   }
+
+   return vk_meta_create_descriptor_set_layout(device, meta, info,
+                                               key_data, key_size,
+                                               layout_out);
+}
+
 VkResult
 vk_meta_create_pipeline_layout(struct vk_device *device,
                                struct vk_meta_device *meta,
@@ -263,6 +282,42 @@ vk_meta_create_pipeline_layout(struct vk_device *device,
                            VK_OBJECT_TYPE_PIPELINE_LAYOUT,
                            (uint64_t)layout);
    return VK_SUCCESS;
+}
+
+VkResult
+vk_meta_get_pipeline_layout(struct vk_device *device,
+                            struct vk_meta_device *meta,
+                            const VkDescriptorSetLayoutCreateInfo *desc_info,
+                            const VkPushConstantRange *push_range,
+                            const void *key_data, size_t key_size,
+                            VkPipelineLayout *layout_out)
+{
+   VkPipelineLayout cached =
+      vk_meta_lookup_pipeline_layout(meta, key_data, key_size);
+   if (cached != VK_NULL_HANDLE) {
+      *layout_out = cached;
+      return VK_SUCCESS;
+   }
+
+   VkDescriptorSetLayout set_layout = VK_NULL_HANDLE;
+   if (desc_info != NULL) {
+      VkResult result =
+         vk_meta_get_descriptor_set_layout(device, meta, desc_info,
+                                           key_data, key_size, &set_layout);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   const VkPipelineLayoutCreateInfo layout_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = set_layout != VK_NULL_HANDLE ? 1 : 0,
+      .pSetLayouts = &set_layout,
+      .pushConstantRangeCount = push_range != NULL ? 1 : 0,
+      .pPushConstantRanges = push_range,
+   };
+
+   return vk_meta_create_pipeline_layout(device, meta, &layout_info,
+                                         key_data, key_size, layout_out);
 }
 
 static VkResult

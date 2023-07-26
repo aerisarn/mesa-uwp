@@ -152,6 +152,14 @@ vk_meta_create_pipeline_layout(struct vk_device *device,
                                VkPipelineLayout *layout_out);
 
 VkResult
+vk_meta_get_pipeline_layout(struct vk_device *device,
+                            struct vk_meta_device *meta,
+                            const VkDescriptorSetLayoutCreateInfo *desc_info,
+                            const VkPushConstantRange *push_range,
+                            const void *key_data, size_t key_size,
+                            VkPipelineLayout *layout_out);
+
+VkResult
 vk_meta_create_graphics_pipeline(struct vk_device *device,
                                  struct vk_meta_device *meta,
                                  const VkGraphicsPipelineCreateInfo *info,
