@@ -1593,7 +1593,7 @@ radv_link_shaders_info(struct radv_device *device, struct radv_shader_stage *pro
    }
 
    /* Copy shader info between TCS<->TES. */
-   if (producer->stage == MESA_SHADER_TESS_CTRL) {
+   if (producer->stage == MESA_SHADER_TESS_CTRL && consumer && consumer->stage == MESA_SHADER_TESS_EVAL) {
       struct radv_shader_stage *tcs_stage = producer;
       struct radv_shader_stage *tes_stage = consumer;
 

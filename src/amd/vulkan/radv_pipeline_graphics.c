@@ -1478,6 +1478,9 @@ static void
 radv_link_tcs(const struct radv_device *device, struct radv_shader_stage *tcs_stage,
               struct radv_shader_stage *tes_stage, const struct radv_pipeline_key *pipeline_key)
 {
+   if (!tes_stage)
+      return;
+
    assert(tcs_stage->nir->info.stage == MESA_SHADER_TESS_CTRL);
    assert(tes_stage->nir->info.stage == MESA_SHADER_TESS_EVAL);
 
