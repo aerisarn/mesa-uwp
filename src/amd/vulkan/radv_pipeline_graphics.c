@@ -1459,12 +1459,18 @@ radv_link_vs(const struct radv_device *device, struct radv_shader_stage *vs_stag
       nir_linked_io_var_info vs2tcs = nir_assign_linked_io_var_locations(vs_stage->nir, next_stage->nir);
 
       vs_stage->info.vs.num_linked_outputs = vs2tcs.num_linked_io_vars;
+      vs_stage->info.outputs_linked = true;
+
       next_stage->info.tcs.num_linked_inputs = vs2tcs.num_linked_io_vars;
+      next_stage->info.inputs_linked = true;
    } else if (next_stage && next_stage->nir->info.stage == MESA_SHADER_GEOMETRY) {
       nir_linked_io_var_info vs2gs = nir_assign_linked_io_var_locations(vs_stage->nir, next_stage->nir);
 
       vs_stage->info.vs.num_linked_outputs = vs2gs.num_linked_io_vars;
+      vs_stage->info.outputs_linked = true;
+
       next_stage->info.gs.num_linked_inputs = vs2gs.num_linked_io_vars;
+      next_stage->info.inputs_linked = true;
    } else {
       nir_foreach_shader_out_variable (var, vs_stage->nir) {
          var->data.driver_location = var->data.location;
@@ -1490,8 +1496,11 @@ radv_link_tcs(const struct radv_device *device, struct radv_shader_stage *tcs_st
 
    tcs_stage->info.tcs.num_linked_outputs = tcs2tes.num_linked_io_vars;
    tcs_stage->info.tcs.num_linked_patch_outputs = tcs2tes.num_linked_patch_io_vars;
+   tcs_stage->info.outputs_linked = true;
+
    tes_stage->info.tes.num_linked_inputs = tcs2tes.num_linked_io_vars;
    tes_stage->info.tes.num_linked_patch_inputs = tcs2tes.num_linked_patch_io_vars;
+   tes_stage->info.inputs_linked = true;
 }
 
 static void
@@ -1515,7 +1524,10 @@ radv_link_tes(const struct radv_device *device, struct radv_shader_stage *tes_st
       nir_linked_io_var_info tes2gs = nir_assign_linked_io_var_locations(tes_stage->nir, next_stage->nir);
 
       tes_stage->info.tes.num_linked_outputs = tes2gs.num_linked_io_vars;
+      tes_stage->info.outputs_linked = true;
+
       next_stage->info.gs.num_linked_inputs = tes2gs.num_linked_io_vars;
+      next_stage->info.inputs_linked = true;
    } else {
       nir_foreach_shader_out_variable (var, tes_stage->nir) {
          var->data.driver_location = var->data.location;

@@ -299,6 +299,8 @@ struct radv_shader_info {
    gl_shader_stage next_stage;
    enum radv_shader_type type;
    uint32_t user_data_0;
+   bool inputs_linked;
+   bool outputs_linked;
 
    struct {
       uint8_t input_usage_mask[RADV_VERT_ATTRIB_MAX];
