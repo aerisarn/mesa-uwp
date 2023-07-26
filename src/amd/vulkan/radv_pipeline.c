@@ -330,7 +330,9 @@ radv_mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsigned 
    bool is_scratch = false;
    switch (low->intrinsic) {
    case nir_intrinsic_load_stack:
+   case nir_intrinsic_load_scratch:
    case nir_intrinsic_store_stack:
+   case nir_intrinsic_store_scratch:
       is_scratch = true;
       break;
    default:
@@ -356,7 +358,9 @@ radv_mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsigned 
    case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_push_constant:
    case nir_intrinsic_load_stack:
-   case nir_intrinsic_store_stack: {
+   case nir_intrinsic_load_scratch:
+   case nir_intrinsic_store_stack:
+   case nir_intrinsic_store_scratch: {
       unsigned max_components;
       if (align % 4 == 0)
          max_components = NIR_MAX_VEC_COMPONENTS;
@@ -565,7 +569,8 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key 
    NIR_PASS(_, stage->nir, nir_lower_memory_model);
 
    nir_load_store_vectorize_options vectorize_opts = {
-      .modes = nir_var_mem_ssbo | nir_var_mem_ubo | nir_var_mem_push_const | nir_var_mem_shared | nir_var_mem_global,
+      .modes = nir_var_mem_ssbo | nir_var_mem_ubo | nir_var_mem_push_const | nir_var_mem_shared | nir_var_mem_global |
+               nir_var_shader_temp,
       .callback = radv_mem_vectorize_callback,
       .cb_data = &gfx_level,
       .robust_modes = 0,
