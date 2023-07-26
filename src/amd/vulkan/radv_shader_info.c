@@ -449,6 +449,9 @@ gather_shader_info_vs(struct radv_device *device, const nir_shader *nir, const s
    info->vs.dynamic_num_verts_per_prim =
       pipeline_key->vs.topology == V_008958_DI_PT_NONE && info->is_ngg && nir->xfb_info;
 
+   if (!info->outputs_linked)
+      info->vs.num_linked_outputs = util_last_bit64(nir->info.outputs_written);
+
    if (info->next_stage == MESA_SHADER_TESS_CTRL) {
       info->vs.as_ls = true;
    } else if (info->next_stage == MESA_SHADER_GEOMETRY) {
@@ -487,6 +490,9 @@ gather_shader_info_tes(struct radv_device *device, const nir_shader *nir, struct
    info->tes.ccw = nir->info.tess.ccw;
    info->tes.point_mode = nir->info.tess.point_mode;
 
+   if (!info->outputs_linked)
+      info->tes.num_linked_outputs = util_last_bit64(nir->info.outputs_written);
+
    if (info->next_stage == MESA_SHADER_GEOMETRY) {
       info->tes.as_es = true;
       info->esgs_itemsize = radv_compute_esgs_itemsize(device, info->tes.num_linked_outputs);
@@ -517,6 +523,9 @@ gather_shader_info_gs(struct radv_device *device, const nir_shader *nir, struct 
    }
 
    info->gs.has_pipeline_stat_query = device->physical_device->emulate_ngg_gs_query_pipeline_stat;
+
+   if (!info->inputs_linked)
+      info->gs.num_linked_inputs = util_last_bit64(nir->info.inputs_read);
 }
 
 static void

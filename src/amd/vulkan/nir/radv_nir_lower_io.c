@@ -102,6 +102,33 @@ radv_nir_lower_io(struct radv_device *device, nir_shader *nir)
    }
 }
 
+/* IO slot layout for stages that aren't linked. */
+enum {
+   RADV_IO_SLOT_POS = 0,
+   RADV_IO_SLOT_VAR0 = 1, /* 0..31 */
+   RADV_IO_SLOT_CLIP_DIST0 = 33,
+   RADV_IO_SLOT_CLIP_DIST1,
+   RADV_IO_SLOT_PSIZ,
+};
+
+static unsigned
+radv_map_io_driver_location(unsigned semantic)
+{
+   switch (semantic) {
+   case VARYING_SLOT_POS:
+      return RADV_IO_SLOT_POS;
+   case VARYING_SLOT_CLIP_DIST0:
+      return RADV_IO_SLOT_CLIP_DIST0;
+   case VARYING_SLOT_CLIP_DIST1:
+      return RADV_IO_SLOT_CLIP_DIST1;
+   case VARYING_SLOT_PSIZ:
+      return RADV_IO_SLOT_PSIZ;
+   default:
+      assert(semantic >= VARYING_SLOT_VAR0 && semantic <= VARYING_SLOT_VAR31);
+      return RADV_IO_SLOT_VAR0 + (semantic - VARYING_SLOT_VAR0);
+   }
+}
+
 bool
 radv_nir_lower_io_to_mem(struct radv_device *device, struct radv_shader_stage *stage)
 {
@@ -114,7 +141,9 @@ radv_nir_lower_io_to_mem(struct radv_device *device, struct radv_shader_stage *s
                     info->vs.tcs_temp_only_input_mask);
          return true;
       } else if (info->vs.as_es) {
-         NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem, NULL, device->physical_device->rad_info.gfx_level,
+         ac_nir_map_io_driver_location map_io = info->outputs_linked ? NULL : radv_map_io_driver_location;
+
+         NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem, map_io, device->physical_device->rad_info.gfx_level,
                     info->esgs_itemsize);
          return true;
       }
@@ -129,13 +158,17 @@ radv_nir_lower_io_to_mem(struct radv_device *device, struct radv_shader_stage *s
       NIR_PASS_V(nir, ac_nir_lower_tes_inputs_to_mem, NULL);
 
       if (info->tes.as_es) {
-         NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem, NULL, device->physical_device->rad_info.gfx_level,
+         ac_nir_map_io_driver_location map_io = info->outputs_linked ? NULL : radv_map_io_driver_location;
+
+         NIR_PASS_V(nir, ac_nir_lower_es_outputs_to_mem, map_io, device->physical_device->rad_info.gfx_level,
                     info->esgs_itemsize);
       }
 
       return true;
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
-      NIR_PASS_V(nir, ac_nir_lower_gs_inputs_to_mem, NULL, device->physical_device->rad_info.gfx_level, false);
+      ac_nir_map_io_driver_location map_io = info->inputs_linked ? NULL : radv_map_io_driver_location;
+
+      NIR_PASS_V(nir, ac_nir_lower_gs_inputs_to_mem, map_io, device->physical_device->rad_info.gfx_level, false);
       return true;
    } else if (nir->info.stage == MESA_SHADER_TASK) {
       ac_nir_lower_task_outputs_to_mem(nir, AC_TASK_PAYLOAD_ENTRY_BYTES,
