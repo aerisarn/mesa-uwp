@@ -21,7 +21,6 @@ class Enum(object):
 		return False
 
 	def dump(self):
-		prev = 0
 		use_hex = False
 		for (name, value) in self.values:
 			if value > 0x1000:
