@@ -1503,7 +1503,7 @@ radv_link_shaders_info(struct radv_device *device, struct radv_shader_stage *pro
    /* Export primitive ID and clip/cull distances if read by the FS, or export unconditionally when
     * the next stage is unknown (with graphics pipeline library).
     */
-   if ((consumer && consumer->stage == MESA_SHADER_FRAGMENT) ||
+   if (producer->info.next_stage == MESA_SHADER_FRAGMENT ||
        !(pipeline_key->lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
       struct radv_vs_output_info *outinfo = &producer->info.outinfo;
       const bool ps_prim_id_in = !consumer || consumer->info.ps.prim_id_input;
