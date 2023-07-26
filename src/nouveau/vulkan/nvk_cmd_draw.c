@@ -133,14 +133,16 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
 
    /* Enable FP hepler invocation memory loads
     *
-    * On older generations we'll let the kernel do it, but starting with GSP we
-    * have to do it this way.
+    * For generations with firmware support for our `SET_PRIV_REG` mme method
+    * we simply use that. On older generations we'll let the kernel do it.
+    * Starting with GSP we have to do it via the firmware anyway.
     */
-   if (dev->pdev->info.cls_eng3d >= TURING_A) {
+   if (dev->pdev->info.cls_eng3d >= MAXWELL_B) {
+      unsigned reg = dev->pdev->info.cls_eng3d >= VOLTA_A ? 0x419ba4 : 0x419f78;
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_SET_PRIV_REG));
       P_INLINE_DATA(p, 0);
       P_INLINE_DATA(p, BITFIELD_BIT(3));
-      P_INLINE_DATA(p, 0x419ba4);
+      P_INLINE_DATA(p, reg);
    }
 
    P_IMMD(p, NV9097, SET_RENDER_ENABLE_C, MODE_TRUE);
