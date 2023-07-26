@@ -2491,6 +2491,136 @@ radv_skip_graphics_pipeline_compile(const struct radv_device *device, const stru
    return binary_stages == pipeline->active_stages;
 }
 
+static void
+radv_graphics_shaders_compile(struct radv_device *device, struct vk_pipeline_cache *cache,
+                              struct radv_shader_stage *stages, const struct radv_pipeline_key *pipeline_key,
+                              struct radv_pipeline_layout *pipeline_layout, bool keep_executable_info,
+                              bool keep_statistic_info, bool is_internal,
+                              struct radv_retained_shaders *retained_shaders, bool noop_fs,
+                              struct radv_shader **shaders, struct radv_shader_binary **binaries,
+                              struct radv_shader **gs_copy_shader, struct radv_shader_binary **gs_copy_binary)
+{
+   for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
+      if (!stages[s].entrypoint)
+         continue;
+
+      int64_t stage_start = os_time_get_nano();
+
+      /* NIR might already have been imported from a library. */
+      if (!stages[s].nir) {
+         stages[s].nir = radv_shader_spirv_to_nir(device, &stages[s], pipeline_key, is_internal);
+      }
+
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
+   }
+
+   if (retained_shaders) {
+      radv_pipeline_retain_shaders(retained_shaders, stages);
+   }
+
+   VkShaderStageFlagBits active_nir_stages = 0;
+   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      if (stages[i].nir)
+         active_nir_stages |= mesa_to_vk_shader_stage(i);
+   }
+
+   bool optimize_conservatively = pipeline_key->optimisations_disabled;
+
+   radv_foreach_stage(i, active_nir_stages)
+   {
+      gl_shader_stage next_stage = radv_get_next_stage(i, active_nir_stages);
+
+      radv_nir_shader_info_init(i, next_stage, &stages[i].info);
+   }
+
+   /* Determine if shaders uses NGG before linking because it's needed for some NIR pass. */
+   radv_fill_shader_info_ngg(device, pipeline_key, stages, active_nir_stages);
+
+   if (stages[MESA_SHADER_GEOMETRY].nir) {
+      unsigned nir_gs_flags = nir_lower_gs_intrinsics_per_stream;
+
+      if (stages[MESA_SHADER_GEOMETRY].info.is_ngg) {
+         nir_gs_flags |= nir_lower_gs_intrinsics_count_primitives |
+                         nir_lower_gs_intrinsics_count_vertices_per_primitive |
+                         nir_lower_gs_intrinsics_overwrite_incomplete;
+      }
+
+      NIR_PASS(_, stages[MESA_SHADER_GEOMETRY].nir, nir_lower_gs_intrinsics, nir_gs_flags);
+   }
+
+   /* Remove all varyings when the fragment shader is a noop. */
+   if (noop_fs) {
+      radv_foreach_stage(i, active_nir_stages)
+      {
+         if (radv_is_last_vgt_stage(&stages[i])) {
+            radv_remove_varyings(stages[i].nir);
+            break;
+         }
+      }
+   }
+
+   radv_graphics_shaders_link(device, pipeline_key, stages);
+
+   if (stages[MESA_SHADER_FRAGMENT].nir) {
+      unsigned rast_prim = radv_get_rasterization_prim(stages, pipeline_key);
+
+      NIR_PASS(_, stages[MESA_SHADER_FRAGMENT].nir, radv_nir_lower_fs_barycentric, pipeline_key, rast_prim);
+   }
+
+   radv_foreach_stage(i, active_nir_stages)
+   {
+      int64_t stage_start = os_time_get_nano();
+
+      radv_optimize_nir(stages[i].nir, optimize_conservatively);
+
+      /* Gather info again, information such as outputs_read can be out-of-date. */
+      nir_shader_gather_info(stages[i].nir, nir_shader_get_entrypoint(stages[i].nir));
+      radv_nir_lower_io(device, stages[i].nir);
+
+      stages[i].feedback.duration += os_time_get_nano() - stage_start;
+   }
+
+   if (stages[MESA_SHADER_FRAGMENT].nir) {
+      radv_nir_lower_poly_line_smooth(stages[MESA_SHADER_FRAGMENT].nir, pipeline_key);
+   }
+
+   radv_fill_shader_info(device, RADV_PIPELINE_GRAPHICS, pipeline_layout, pipeline_key, stages, active_nir_stages);
+
+   radv_declare_pipeline_args(device, stages, pipeline_key, active_nir_stages);
+
+   radv_foreach_stage(i, active_nir_stages)
+   {
+      int64_t stage_start = os_time_get_nano();
+
+      radv_postprocess_nir(device, pipeline_layout, pipeline_key, &stages[i]);
+
+      stages[i].feedback.duration += os_time_get_nano() - stage_start;
+
+      if (radv_can_dump_shader(device, stages[i].nir, false))
+         nir_print_shader(stages[i].nir, stderr);
+   }
+
+   /* Compile NIR shaders to AMD assembly. */
+   radv_graphics_shaders_nir_to_asm(device, cache, stages, pipeline_key, pipeline_layout, keep_executable_info,
+                                    keep_statistic_info, active_nir_stages, shaders, binaries, gs_copy_shader,
+                                    gs_copy_binary);
+
+   if (keep_executable_info) {
+      for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
+         struct radv_shader *shader = shaders[i];
+         if (!shader)
+            continue;
+
+         if (!stages[i].spirv.size)
+            continue;
+
+         shader->spirv = malloc(stages[i].spirv.size);
+         memcpy(shader->spirv, stages[i].spirv.data, stages[i].spirv.size);
+         shader->spirv_size = stages[i].spirv.size;
+      }
+   }
+}
+
 static VkResult
 radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                struct radv_pipeline_layout *pipeline_layout, struct radv_device *device,
@@ -2512,6 +2642,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
    bool skip_shaders_cache = false;
    VkResult result = VK_SUCCESS;
    const bool retain_shaders = !!(pCreateInfo->flags & VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT);
+   struct radv_retained_shaders *retained_shaders = NULL;
 
    int64_t pipeline_start = os_time_get_nano();
 
@@ -2586,125 +2717,19 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
       return VK_PIPELINE_COMPILE_REQUIRED;
 
-   for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
-      if (!stages[s].entrypoint)
-         continue;
-
-      int64_t stage_start = os_time_get_nano();
-
-      /* NIR might already have been imported from a library. */
-      if (!stages[s].nir) {
-         stages[s].nir = radv_shader_spirv_to_nir(device, &stages[s], pipeline_key, pipeline->base.is_internal);
-      }
-
-      stages[s].feedback.duration += os_time_get_nano() - stage_start;
-   }
-
    if (retain_shaders) {
       struct radv_graphics_lib_pipeline *gfx_pipeline_lib = radv_pipeline_to_graphics_lib(&pipeline->base);
-      radv_pipeline_retain_shaders(&gfx_pipeline_lib->retained_shaders, stages);
+      retained_shaders = &gfx_pipeline_lib->retained_shaders;
    }
 
-   VkShaderStageFlagBits active_nir_stages = 0;
-   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
-      if (stages[i].nir)
-         active_nir_stages |= mesa_to_vk_shader_stage(i);
-   }
-
-   bool optimize_conservatively = pipeline_key->optimisations_disabled;
-
-   radv_foreach_stage(i, active_nir_stages)
-   {
-      gl_shader_stage next_stage = radv_get_next_stage(i, active_nir_stages);
-
-      radv_nir_shader_info_init(i, next_stage, &stages[i].info);
-   }
-
-   /* Determine if shaders uses NGG before linking because it's needed for some NIR pass. */
-   radv_fill_shader_info_ngg(device, pipeline_key, stages, active_nir_stages);
-
-   if (stages[MESA_SHADER_GEOMETRY].nir) {
-      unsigned nir_gs_flags = nir_lower_gs_intrinsics_per_stream;
-
-      if (stages[MESA_SHADER_GEOMETRY].info.is_ngg) {
-         nir_gs_flags |= nir_lower_gs_intrinsics_count_primitives |
-                         nir_lower_gs_intrinsics_count_vertices_per_primitive |
-                         nir_lower_gs_intrinsics_overwrite_incomplete;
-      }
-
-      NIR_PASS(_, stages[MESA_SHADER_GEOMETRY].nir, nir_lower_gs_intrinsics, nir_gs_flags);
-   }
-
-   /* Remove all varyings when the fragment shader is a noop. */
    const bool noop_fs = radv_pipeline_needs_noop_fs(pipeline, pipeline_key);
-   if (noop_fs && pipeline->last_vgt_api_stage != MESA_SHADER_NONE) {
-      nir_shader *nir = stages[pipeline->last_vgt_api_stage].nir;
-      radv_remove_varyings(nir);
-   }
 
-   radv_graphics_shaders_link(device, pipeline_key, stages);
-
-   if (stages[MESA_SHADER_FRAGMENT].nir) {
-      unsigned rast_prim = radv_get_rasterization_prim(stages, pipeline_key);
-
-      NIR_PASS(_, stages[MESA_SHADER_FRAGMENT].nir, radv_nir_lower_fs_barycentric, pipeline_key, rast_prim);
-   }
-
-   radv_foreach_stage(i, active_nir_stages)
-   {
-      int64_t stage_start = os_time_get_nano();
-
-      radv_optimize_nir(stages[i].nir, optimize_conservatively);
-
-      /* Gather info again, information such as outputs_read can be out-of-date. */
-      nir_shader_gather_info(stages[i].nir, nir_shader_get_entrypoint(stages[i].nir));
-      radv_nir_lower_io(device, stages[i].nir);
-
-      stages[i].feedback.duration += os_time_get_nano() - stage_start;
-   }
-
-   if (stages[MESA_SHADER_FRAGMENT].nir) {
-      radv_nir_lower_poly_line_smooth(stages[MESA_SHADER_FRAGMENT].nir, pipeline_key);
-   }
-
-   radv_fill_shader_info(device, pipeline->base.type, pipeline_layout, pipeline_key, stages, active_nir_stages);
-
-   radv_declare_pipeline_args(device, stages, pipeline_key, active_nir_stages);
-
-   radv_foreach_stage(i, active_nir_stages)
-   {
-      int64_t stage_start = os_time_get_nano();
-
-      radv_postprocess_nir(device, pipeline_layout, pipeline_key, &stages[i]);
-
-      stages[i].feedback.duration += os_time_get_nano() - stage_start;
-
-      if (radv_can_dump_shader(device, stages[i].nir, false))
-         nir_print_shader(stages[i].nir, stderr);
-   }
-
-   /* Compile NIR shaders to AMD assembly. */
-   radv_graphics_shaders_nir_to_asm(device, cache, stages, pipeline_key, pipeline_layout, keep_executable_info,
-                                    keep_statistic_info, active_nir_stages, pipeline->base.shaders, binaries,
-                                    &pipeline->base.gs_copy_shader, &gs_copy_binary);
+   radv_graphics_shaders_compile(device, cache, stages, pipeline_key, pipeline_layout, keep_executable_info,
+                                 keep_statistic_info, pipeline->base.is_internal, retained_shaders, noop_fs,
+                                 pipeline->base.shaders, binaries, &pipeline->base.gs_copy_shader, &gs_copy_binary);
 
    if (!radv_pipeline_create_ps_epilog(device, pipeline, pipeline_key, lib_flags, &ps_epilog_binary))
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-
-   if (keep_executable_info) {
-      for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-         struct radv_shader *shader = pipeline->base.shaders[i];
-         if (!shader)
-            continue;
-
-         if (!stages[i].spirv.size)
-            continue;
-
-         shader->spirv = malloc(stages[i].spirv.size);
-         memcpy(shader->spirv, stages[i].spirv.data, stages[i].spirv.size);
-         shader->spirv_size = stages[i].spirv.size;
-      }
-   }
 
    if (!skip_shaders_cache) {
       radv_pipeline_cache_insert(device, cache, &pipeline->base, ps_epilog_binary, hash);
