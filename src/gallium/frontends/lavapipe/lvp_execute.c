@@ -164,7 +164,7 @@ struct rendering_state {
    bool suspending;
    bool render_cond;
    uint32_t color_att_count;
-   struct lvp_render_attachment *color_att;
+   struct lvp_render_attachment color_att[PIPE_MAX_COLOR_BUFS];
    struct lvp_render_attachment depth_att;
    struct lvp_render_attachment stencil_att;
    struct lvp_image_view *ds_imgv;
@@ -1713,7 +1713,6 @@ handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
    state->framebuffer.nr_cbufs = info->colorAttachmentCount;
 
    state->color_att_count = info->colorAttachmentCount;
-   state->color_att = realloc(state->color_att, sizeof(*state->color_att) * state->color_att_count);
    for (unsigned i = 0; i < info->colorAttachmentCount; i++) {
       render_att_init(&state->color_att[i], &info->pColorAttachments[i], state->poison_mem, false);
       if (state->color_att[i].imgv) {
@@ -4613,7 +4612,6 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    for (unsigned i = 0; i < ARRAY_SIZE(state->desc_buffers); i++)
       pipe_resource_reference(&state->desc_buffers[i], NULL);
 
-   free(state->color_att);
    return VK_SUCCESS;
 }
 
