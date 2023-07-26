@@ -1043,9 +1043,11 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
                             AGX_ICOND_UEQ);
 
    case nir_intrinsic_load_vertex_id:
+      assert(b->shader->stage == MESA_SHADER_VERTEX);
       return agx_mov_to(b, dst, agx_abs(agx_vertex_id(b)));
 
    case nir_intrinsic_load_instance_id:
+      assert(b->shader->stage == MESA_SHADER_VERTEX);
       return agx_mov_to(b, dst, agx_abs(agx_instance_id(b)));
 
    case nir_intrinsic_load_preamble:
