@@ -1195,16 +1195,15 @@ get_vs_output_info(const struct radv_graphics_pipeline *pipeline)
 }
 
 static bool
-radv_should_export_multiview(const struct radv_shader_stage *producer, const struct radv_shader_stage *consumer,
-                             const struct radv_pipeline_key *pipeline_key)
+radv_should_export_multiview(const struct radv_shader_stage *stage, const struct radv_pipeline_key *pipeline_key)
 {
    /* Export the layer in the last VGT stage if multiview is used. When the next stage is unknown
     * (with graphics pipeline library), the layer is exported unconditionally.
     */
    return pipeline_key->has_multiview_view_index &&
-          ((consumer && consumer->stage == MESA_SHADER_FRAGMENT) ||
+          (stage->info.next_stage == MESA_SHADER_FRAGMENT ||
            !(pipeline_key->lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) &&
-          !(producer->nir->info.outputs_written & VARYING_BIT_LAYER);
+          !(stage->nir->info.outputs_written & VARYING_BIT_LAYER);
 }
 
 static void
@@ -1439,7 +1438,7 @@ radv_link_vs(const struct radv_device *device, struct radv_shader_stage *vs_stag
 {
    assert(vs_stage->nir->info.stage == MESA_SHADER_VERTEX);
 
-   if (radv_should_export_multiview(vs_stage, next_stage, pipeline_key)) {
+   if (radv_should_export_multiview(vs_stage, pipeline_key)) {
       NIR_PASS(_, vs_stage->nir, radv_nir_export_multiview);
    }
 
@@ -1509,7 +1508,7 @@ radv_link_tes(const struct radv_device *device, struct radv_shader_stage *tes_st
 {
    assert(tes_stage->nir->info.stage == MESA_SHADER_TESS_EVAL);
 
-   if (radv_should_export_multiview(tes_stage, next_stage, pipeline_key)) {
+   if (radv_should_export_multiview(tes_stage, pipeline_key)) {
       NIR_PASS(_, tes_stage->nir, radv_nir_export_multiview);
    }
 
@@ -1541,7 +1540,7 @@ radv_link_gs(const struct radv_device *device, struct radv_shader_stage *gs_stag
 {
    assert(gs_stage->nir->info.stage == MESA_SHADER_GEOMETRY);
 
-   if (radv_should_export_multiview(gs_stage, fs_stage, pipeline_key)) {
+   if (radv_should_export_multiview(gs_stage, pipeline_key)) {
       NIR_PASS(_, gs_stage->nir, radv_nir_export_multiview);
    }
 
