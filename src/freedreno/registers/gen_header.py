@@ -562,7 +562,6 @@ class Parser(object):
 			self.current_domain = None
 			self.current_prefix = None
 			self.current_prefix_type = None
-			self.current_domain = None
 		elif name == "stripe":
 			self.current_stripe = None
 		elif name == "bitset":
