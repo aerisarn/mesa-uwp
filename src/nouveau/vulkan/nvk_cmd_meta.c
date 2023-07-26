@@ -79,7 +79,12 @@ static void
 nvk_meta_end(struct nvk_cmd_buffer *cmd,
              struct nvk_meta_save *save)
 {
-   vk_cmd_set_dynamic_graphics_state(&cmd->vk, &save->dynamic);
+   /* Restore the dynamic state */
+   cmd->vk.dynamic_graphics_state = save->dynamic;
+   memcpy(cmd->vk.dynamic_graphics_state.dirty,
+          cmd->vk.dynamic_graphics_state.set,
+          sizeof(cmd->vk.dynamic_graphics_state.set));
+
    if (save->pipeline)
       nvk_cmd_bind_graphics_pipeline(cmd, save->pipeline);
 
