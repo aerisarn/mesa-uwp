@@ -97,14 +97,14 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.tess_offchip_offset);
       break;
    case nir_intrinsic_load_tcs_num_patches_amd:
-      if (s->pl_key->dynamic_patch_control_points) {
+      if (s->info->num_tess_patches) {
+         replacement = nir_imm_int(b, s->info->num_tess_patches);
+      } else {
          if (stage == MESA_SHADER_TESS_CTRL) {
             replacement = GET_SGPR_FIELD_NIR(s->args->tcs_offchip_layout, TCS_OFFCHIP_LAYOUT_NUM_PATCHES);
          } else {
             replacement = GET_SGPR_FIELD_NIR(s->args->tes_state, TES_STATE_NUM_PATCHES);
          }
-      } else {
-         replacement = nir_imm_int(b, s->info->num_tess_patches);
       }
       break;
    case nir_intrinsic_load_ring_esgs_amd:
@@ -158,10 +158,10 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       break;
    case nir_intrinsic_load_patch_vertices_in:
       if (stage == MESA_SHADER_TESS_CTRL) {
-         if (s->pl_key->dynamic_patch_control_points) {
-            replacement = GET_SGPR_FIELD_NIR(s->args->tcs_offchip_layout, TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS);
-         } else {
+         if (s->pl_key->tcs.tess_input_vertices) {
             replacement = nir_imm_int(b, s->pl_key->tcs.tess_input_vertices);
+         } else {
+            replacement = GET_SGPR_FIELD_NIR(s->args->tcs_offchip_layout, TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS);
          }
       } else if (stage == MESA_SHADER_TESS_EVAL) {
          replacement = nir_imm_int(b, b->shader->info.tess.tcs_vertices_out);
@@ -283,7 +283,10 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
          stage == MESA_SHADER_TESS_CTRL ? s->info->tcs.num_linked_outputs : s->info->tes.num_linked_inputs;
       int per_vertex_output_patch_size = out_vertices_per_patch * num_tcs_outputs * 16u;
 
-      if (s->pl_key->dynamic_patch_control_points) {
+      if (s->info->num_tess_patches) {
+         unsigned num_patches = s->info->num_tess_patches;
+         replacement = nir_imm_int(b, num_patches * per_vertex_output_patch_size);
+      } else {
          nir_ssa_def *num_patches;
 
          if (stage == MESA_SHADER_TESS_CTRL) {
@@ -292,9 +295,6 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
             num_patches = GET_SGPR_FIELD_NIR(s->args->tes_state, TES_STATE_NUM_PATCHES);
          }
          replacement = nir_imul_imm(b, num_patches, per_vertex_output_patch_size);
-      } else {
-         unsigned num_patches = s->info->num_tess_patches;
-         replacement = nir_imm_int(b, num_patches * per_vertex_output_patch_size);
       }
       break;
    }
