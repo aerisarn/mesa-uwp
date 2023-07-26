@@ -47,7 +47,7 @@ class Field(object):
 
 		builtin_types = [ None, "a3xx_regid", "boolean", "uint", "hex", "int", "fixed", "ufixed", "float", "address", "waddress" ]
 
-		maxpos = parser.current_bitsize - 1;
+		maxpos = parser.current_bitsize - 1
 
 		if low < 0 or low > maxpos:
 			raise parser.error("low attribute out of range: %d" % low)
@@ -56,11 +56,11 @@ class Field(object):
 		if high < low:
 			raise parser.error("low is greater than high: low=%d, high=%d" % (low, high))
 		if self.type == "boolean" and not low == high:
-			raise parser.error("booleans should be 1 bit fields");
+			raise parser.error("booleans should be 1 bit fields")
 		elif self.type == "float" and not (high - low == 31 or high - low == 15):
 			raise parser.error("floats should be 16 or 32 bit fields")
 		elif not self.type in builtin_types and not self.type in parser.enums:
-			raise parser.error("unknown type '%s'" % self.type);
+			raise parser.error("unknown type '%s'" % self.type)
 
 	def ctype(self, var_name):
 		if self.type == None:
@@ -206,10 +206,10 @@ class Bitset(object):
 
 		if reg.array:
 			print("static inline struct fd_reg_pair\npack_%s(uint32_t __i, struct %s fields)\n{" %
-				  (prefix, prefix));
+				  (prefix, prefix))
 		else:
 			print("static inline struct fd_reg_pair\npack_%s(struct %s fields)\n{" %
-				  (prefix, prefix));
+				  (prefix, prefix))
 
 		self.dump_regpair_builder(reg)
 
@@ -373,7 +373,7 @@ class Parser(object):
 
 			self.current_bitset.fields.append(b)
 		except ValueError as e:
-			raise self.error(e);
+			raise self.error(e)
 
 	def parse_varset(self, attrs):
 		# Inherit the varset from the enclosing domain if not overriden:
@@ -410,7 +410,7 @@ class Parser(object):
 			v = next(iter(self.variant_regs[reg.name]))
 			assert self.variant_regs[reg.name][v].bit_size == reg.bit_size
 
-		self.variant_regs[reg.name][variant] = reg;
+		self.variant_regs[reg.name][variant] = reg
 
 	def add_all_usages(self, reg, usages):
 		if not usages:
@@ -567,7 +567,7 @@ class Parser(object):
 		elif name == "reg32":
 			self.current_reg = None
 		elif name == "array":
-			self.current_array = None;
+			self.current_array = None
 		elif name == "enum":
 			self.current_enum = None
 
@@ -633,7 +633,7 @@ class Parser(object):
 		# Don't bother for things that only have a single variant:
 		if len(variants) == 1:
 			return
-		print("#ifdef __cplusplus");
+		print("#ifdef __cplusplus")
 		print("struct __%s {" % regname)
 		# TODO be more clever.. we should probably figure out which
 		# fields have the same type in all variants (in which they
@@ -722,7 +722,7 @@ def main():
 	print("#include <assert.h>")
 	print()
 
-	print("#ifdef __cplusplus");
+	print("#ifdef __cplusplus")
 	print("#define __struct_cast(X)")
 	print("#else")
 	print("#define __struct_cast(X) (struct X)")
