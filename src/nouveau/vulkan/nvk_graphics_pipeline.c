@@ -38,7 +38,7 @@ emit_pipeline_rs_state(struct nv_push *p,
       .pixel_max_z               = rs->depth_clamp_enable ? PIXEL_MAX_Z_CLAMP : PIXEL_MAX_Z_CLIP,
       .geometry_guardband        = GEOMETRY_GUARDBAND_SCALE_256,
       .line_point_cull_guardband = LINE_POINT_CULL_GUARDBAND_SCALE_256,
-      .geometry_clip             = GEOMETRY_CLIP_WZERO_CLIP,
+      .geometry_clip             = !rs->depth_clip_enable ? GEOMETRY_CLIP_WZERO_CLIP_NO_Z_CULL : GEOMETRY_CLIP_WZERO_CLIP,
       .geometry_guardband_z      = GEOMETRY_GUARDBAND_Z_SAME_AS_XY_GUARDBAND,
    });
 
