@@ -465,6 +465,8 @@ gather_shader_info_tcs(struct radv_device *device, const nir_shader *nir, const 
                        struct radv_shader_info *info)
 {
    info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
+   info->tcs.tes_inputs_read = ~0ULL;
+   info->tcs.tes_patch_inputs_read = ~0ULL;
 
    if (!(pipeline_key->dynamic_patch_control_points)) {
       /* Number of tessellation patches per workgroup processed by the current pipeline. */
