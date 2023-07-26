@@ -1314,80 +1314,6 @@ update_buffers_if_needed(struct dri2_egl_surface *dri2_surf)
    return update_buffers(dri2_surf);
 }
 
-static __DRIbuffer *
-dri2_wl_get_buffers_with_format(__DRIdrawable *driDrawable, int *width,
-                                int *height, unsigned int *attachments,
-                                int count, int *out_count, void *loaderPrivate)
-{
-   struct dri2_egl_surface *dri2_surf = loaderPrivate;
-   int i, j;
-
-   if (update_buffers_if_needed(dri2_surf) < 0)
-      return NULL;
-
-   for (i = 0, j = 0; i < 2 * count; i += 2, j++) {
-      __DRIbuffer *local;
-
-      switch (attachments[i]) {
-      case __DRI_BUFFER_BACK_LEFT:
-         back_bo_to_dri_buffer(dri2_surf, &dri2_surf->buffers[j]);
-         break;
-      default:
-         local = dri2_egl_surface_alloc_local_buffer(dri2_surf, attachments[i],
-                                                     attachments[i + 1]);
-
-         if (!local) {
-            _eglError(EGL_BAD_ALLOC, "failed to allocate local buffer");
-            return NULL;
-         }
-         dri2_surf->buffers[j] = *local;
-         break;
-      }
-   }
-
-   *out_count = j;
-   if (j == 0)
-      return NULL;
-
-   *width = dri2_surf->base.Width;
-   *height = dri2_surf->base.Height;
-
-   return dri2_surf->buffers;
-}
-
-static __DRIbuffer *
-dri2_wl_get_buffers(__DRIdrawable *driDrawable, int *width, int *height,
-                    unsigned int *attachments, int count, int *out_count,
-                    void *loaderPrivate)
-{
-   struct dri2_egl_surface *dri2_surf = loaderPrivate;
-   unsigned int *attachments_with_format;
-   __DRIbuffer *buffer;
-   int visual_idx = dri2_wl_visual_idx_from_fourcc(dri2_surf->format);
-
-   if (visual_idx == -1)
-      return NULL;
-
-   attachments_with_format = calloc(count, 2 * sizeof(unsigned int));
-   if (!attachments_with_format) {
-      *out_count = 0;
-      return NULL;
-   }
-
-   for (int i = 0; i < count; ++i) {
-      attachments_with_format[2 * i] = attachments[i];
-      attachments_with_format[2 * i + 1] = dri2_wl_visuals[visual_idx].bpp;
-   }
-
-   buffer = dri2_wl_get_buffers_with_format(driDrawable, width, height,
-                                            attachments_with_format, count,
-                                            out_count, loaderPrivate);
-
-   free(attachments_with_format);
-
-   return buffer;
-}
-
 static int
 image_get_buffers(__DRIdrawable *driDrawable, unsigned int format,
                   uint32_t *stamp, void *loaderPrivate, uint32_t buffer_mask,
@@ -1423,15 +1349,6 @@ dri2_wl_get_capability(void *loaderPrivate, enum dri_loader_cap cap)
       return 0;
    }
 }
-
-static const __DRIdri2LoaderExtension dri2_loader_extension = {
-   .base = {__DRI_DRI2_LOADER, 4},
-
-   .getBuffers = dri2_wl_get_buffers,
-   .flushFrontBuffer = dri2_wl_flush_front_buffer,
-   .getBuffersWithFormat = dri2_wl_get_buffers_with_format,
-   .getCapability = dri2_wl_get_capability,
-};
 
 static const __DRIimageLoaderExtension image_loader_extension = {
    .base = {__DRI_IMAGE_LOADER, 2},
@@ -2114,14 +2031,6 @@ static const struct dri2_egl_display_vtbl dri2_wl_display_vtbl = {
 };
 
 static const __DRIextension *dri2_loader_extensions[] = {
-   &dri2_loader_extension.base,
-   &image_loader_extension.base,
-   &image_lookup_extension.base,
-   &use_invalidate.base,
-   NULL,
-};
-
-static const __DRIextension *image_loader_extensions[] = {
    &image_loader_extension.base,
    &image_lookup_extension.base,
    &use_invalidate.base,
@@ -2324,20 +2233,10 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
       goto cleanup;
    }
 
-   /* render nodes cannot use Gem names, and thus do not support
-    * the __DRI_DRI2_LOADER extension */
-   if (!dri2_dpy->is_render_node) {
-      dri2_dpy->loader_extensions = dri2_loader_extensions;
-      if (!dri2_load_driver(disp)) {
-         _eglError(EGL_BAD_ALLOC, "DRI2: failed to load driver");
-         goto cleanup;
-      }
-   } else {
-      dri2_dpy->loader_extensions = image_loader_extensions;
-      if (!dri2_load_driver_dri3(disp)) {
-         _eglError(EGL_BAD_ALLOC, "DRI3: failed to load driver");
-         goto cleanup;
-      }
+   dri2_dpy->loader_extensions = dri2_loader_extensions;
+   if (!dri2_load_driver_dri3(disp)) {
+      _eglError(EGL_BAD_ALLOC, "DRI2: failed to load driver");
+      goto cleanup;
    }
 
    if (!dri2_create_screen(disp))
