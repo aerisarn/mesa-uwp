@@ -471,6 +471,7 @@ struct KCacheLine {
    int bank{0};
    int addr{0};
    int len{0};
+   int index_mode{0};
    enum KCacheLockMode {
       free,
       lock_1,

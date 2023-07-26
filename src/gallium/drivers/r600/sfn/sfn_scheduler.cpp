@@ -657,11 +657,13 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
          assert(!group->has_lds_group_start());
          assert(m_current_block->expected_ar_uses() == 0);
          start_new_block(out_blocks, Block::alu);
+         m_current_block->try_reserve_kcache(*group);
       }
       if (addr->sel() == AddressRegister::idx1 && m_idx1_pending) {
          assert(!group->has_lds_group_start());
          assert(m_current_block->expected_ar_uses() == 0);
          start_new_block(out_blocks, Block::alu);
+         m_current_block->try_reserve_kcache(*group);
       }
    }
 

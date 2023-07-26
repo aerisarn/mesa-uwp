@@ -408,6 +408,10 @@ Block::try_reserve_kcache(const UniformValue& u, std::array<KCacheLine, 4>& kcac
    int bank = u.kcache_bank();
    int sel = (u.sel() - 512);
    int line = sel >> 4;
+   EBufferIndexMode index_mode = bim_none;
+
+   if (auto addr = u.buf_addr())
+      index_mode = addr->sel() == AddressRegister::idx0 ?  bim_zero : bim_one;
 
    bool found = false;
 
@@ -416,6 +420,12 @@ Block::try_reserve_kcache(const UniformValue& u, std::array<KCacheLine, 4>& kcac
          if (kcache[i].bank < bank)
             continue;
 
+
+         if (kcache[i].bank == bank &&
+             kcache[i].index_mode != bim_none &&
+             kcache[i].index_mode != index_mode) {
+            return false;
+         }
          if ((kcache[i].bank == bank && kcache[i].addr > line + 1) ||
              kcache[i].bank > bank) {
             if (kcache[kcache_banks - 1].mode)
@@ -427,6 +437,7 @@ Block::try_reserve_kcache(const UniformValue& u, std::array<KCacheLine, 4>& kcac
             kcache[i].mode = KCacheLine::lock_1;
             kcache[i].bank = bank;
             kcache[i].addr = line;
+            kcache[i].index_mode = index_mode;
             return true;
          }
 
@@ -457,6 +468,7 @@ Block::try_reserve_kcache(const UniformValue& u, std::array<KCacheLine, 4>& kcac
          kcache[i].mode = KCacheLine::lock_1;
          kcache[i].bank = bank;
          kcache[i].addr = line;
+         kcache[i].index_mode = index_mode;
          return true;
       }
    }
