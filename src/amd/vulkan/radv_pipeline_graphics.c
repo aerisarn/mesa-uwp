@@ -1483,8 +1483,6 @@ radv_link_tcs(const struct radv_device *device, struct radv_shader_stage *tcs_st
 
    radv_link_shaders(device, tcs_stage->nir, tes_stage->nir, pipeline_key);
 
-   nir_lower_patch_vertices(tes_stage->nir, tcs_stage->nir->info.tess.tcs_vertices_out, NULL);
-
    /* Copy TCS info into the TES info */
    merge_tess_info(&tes_stage->nir->info, &tcs_stage->nir->info);
 
