@@ -497,7 +497,6 @@ tu_get_features(struct tu_physical_device *pdevice,
 
    /* VK_EXT_provoking_vertex */
    features->provokingVertexLast = true;
-   features->transformFeedbackPreservesProvokingVertex = true;
 
    /* VK_EXT_mutable_descriptor_type */
    features->mutableDescriptorType = true;
