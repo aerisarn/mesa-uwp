@@ -2077,8 +2077,8 @@ nir_lower_shader_calls(nir_shader *shader,
    nir_opt_cse(shader);
    for (unsigned i = 0; i < num_calls; i++) {
       if (options->vectorizer_callback != NULL) {
-         NIR_PASS_V(shader, nir_split_stack_components);
-         NIR_PASS_V(shader, nir_opt_load_store_vectorize, &vect_opts);
+         NIR_PASS_V(resume_shaders[i], nir_split_stack_components);
+         NIR_PASS_V(resume_shaders[i], nir_opt_load_store_vectorize, &vect_opts);
       }
       NIR_PASS_V(resume_shaders[i], nir_lower_stack_to_scratch,
                  options->address_format);
