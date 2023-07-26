@@ -1311,10 +1311,7 @@ merge_tess_info(struct shader_info *tes_info, struct shader_info *tcs_info)
 
    /* Copy the merged info back to the TCS */
    tcs_info->tess.tcs_vertices_out = tes_info->tess.tcs_vertices_out;
-   tcs_info->tess.spacing = tes_info->tess.spacing;
    tcs_info->tess._primitive_mode = tes_info->tess._primitive_mode;
-   tcs_info->tess.ccw = tes_info->tess.ccw;
-   tcs_info->tess.point_mode = tes_info->tess.point_mode;
 }
 
 static void
