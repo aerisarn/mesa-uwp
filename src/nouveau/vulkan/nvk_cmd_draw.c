@@ -926,18 +926,25 @@ nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
 
    /* Nothing to do for MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT */
 
-   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORTS)) {
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORTS) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE)) {
       for (uint32_t i = 0; i < dyn->vp.viewport_count; i++) {
          const VkViewport *vp = &dyn->vp.viewports[i];
 
          P_MTHD(p, NV9097, SET_VIEWPORT_SCALE_X(i));
          P_NV9097_SET_VIEWPORT_SCALE_X(p, i, fui(0.5f * vp->width));
          P_NV9097_SET_VIEWPORT_SCALE_Y(p, i, fui(0.5f * vp->height));
-         P_NV9097_SET_VIEWPORT_SCALE_Z(p, i, fui(vp->maxDepth - vp->minDepth));
+         if (dyn->vp.depth_clip_negative_one_to_one)
+            P_NV9097_SET_VIEWPORT_SCALE_Z(p, i, fui(0.5f * (vp->maxDepth - vp->minDepth)));
+         else
+            P_NV9097_SET_VIEWPORT_SCALE_Z(p, i, fui(vp->maxDepth - vp->minDepth));
 
          P_NV9097_SET_VIEWPORT_OFFSET_X(p, i, fui(vp->x + 0.5f * vp->width));
          P_NV9097_SET_VIEWPORT_OFFSET_Y(p, i, fui(vp->y + 0.5f * vp->height));
-         P_NV9097_SET_VIEWPORT_OFFSET_Z(p, i, fui(vp->minDepth));
+         if (dyn->vp.depth_clip_negative_one_to_one)
+            P_NV9097_SET_VIEWPORT_OFFSET_Z(p, i, fui(0.5f * (vp->minDepth + vp->maxDepth)));
+         else
+            P_NV9097_SET_VIEWPORT_OFFSET_Z(p, i, fui(vp->minDepth));
 
          float xmin = vp->x;
          float xmax = vp->x + vp->width;

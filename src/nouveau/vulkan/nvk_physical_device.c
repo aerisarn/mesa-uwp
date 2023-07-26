@@ -374,6 +374,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .EXT_border_color_swizzle = true,
       .EXT_buffer_device_address = true,
       .EXT_custom_border_color = true,
+      .EXT_depth_clip_control = true,
       .EXT_descriptor_indexing = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
@@ -524,6 +525,9 @@ nvk_get_device_features(const struct nv_device_info *info,
       /* VK_EXT_custom_border_color */
       .customBorderColors = true,
       .customBorderColorWithoutFormat = true,
+
+      /* VK_EXT_depth_clip_control */
+      .depthClipControl = true,
 
       /* VK_EXT_extended_dynamic_state */
       .extendedDynamicState = true,
