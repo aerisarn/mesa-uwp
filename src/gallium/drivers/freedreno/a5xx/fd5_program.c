@@ -82,11 +82,27 @@ fd5_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 }
 
 void
-fd5_emit_shader_obj(struct fd_ringbuffer *ring,
-                    const struct ir3_shader_variant *so, uint32_t shader_obj_reg)
+fd5_emit_shader_obj(struct fd_context *ctx, struct fd_ringbuffer *ring,
+                    const struct ir3_shader_variant *so,
+                    uint32_t shader_obj_reg)
 {
-   OUT_PKT4(ring, shader_obj_reg, 2);
+   ir3_get_private_mem(ctx, so);
+
+   OUT_PKT4(ring, shader_obj_reg, 6);
    OUT_RELOC(ring, so->bo, 0, 0, 0); /* SP_VS_OBJ_START_LO/HI */
+
+   uint32_t per_sp_size = ctx->pvtmem[so->pvtmem_per_wave].per_sp_size;
+   OUT_RING(ring, A5XX_SP_VS_PVT_MEM_PARAM_MEMSIZEPERITEM(
+                     ctx->pvtmem[so->pvtmem_per_wave].per_fiber_size) |
+                     A5XX_SP_VS_PVT_MEM_PARAM_HWSTACKOFFSET(per_sp_size));
+   if (so->pvtmem_size > 0) { /* SP_xS_PVT_MEM_ADDR */
+      OUT_RELOC(ring, ctx->pvtmem[so->pvtmem_per_wave].bo, 0, 0, 0);
+      fd_ringbuffer_attach_bo(ring, ctx->pvtmem[so->pvtmem_per_wave].bo);
+   } else {
+      OUT_RING(ring, 0);
+      OUT_RING(ring, 0);
+   }
+   OUT_RING(ring, A5XX_SP_VS_PVT_MEM_SIZE_TOTALPVTMEMSIZE(per_sp_size));
 }
 
 /* TODO maybe some of this we could pre-compute once rather than having
@@ -495,7 +511,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
       OUT_RING(ring, reg);
    }
 
-   fd5_emit_shader_obj(ring, s[VS].v, REG_A5XX_SP_VS_OBJ_START_LO);
+   fd5_emit_shader_obj(ctx, ring, s[VS].v, REG_A5XX_SP_VS_OBJ_START_LO);
 
    if (s[VS].instrlen)
       fd5_emit_shader(ring, s[VS].v);
@@ -519,7 +535,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
       OUT_RING(ring, 0x00000000); /* SP_FS_OBJ_START_LO */
       OUT_RING(ring, 0x00000000); /* SP_FS_OBJ_START_HI */
    } else {
-      fd5_emit_shader_obj(ring, s[FS].v, REG_A5XX_SP_FS_OBJ_START_LO);
+      fd5_emit_shader_obj(ctx, ring, s[FS].v, REG_A5XX_SP_FS_OBJ_START_LO);
    }
 
    OUT_PKT4(ring, REG_A5XX_HLSQ_CONTROL_0_REG, 5);

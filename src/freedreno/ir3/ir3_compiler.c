@@ -188,9 +188,6 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
       /* TODO: implement clip+cull distances on earlier gen's */
       compiler->has_clip_cull = true;
 
-      /* TODO: implement private memory on earlier gen's */
-      compiler->has_pvtmem = true;
-
       compiler->has_preamble = true;
 
       compiler->tess_use_shared = dev_info->a6xx.tess_use_shared;
@@ -219,6 +216,8 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
 
    /* This is just a guess for a4xx. */
    compiler->pvtmem_per_fiber_align = compiler->gen >= 4 ? 512 : 128;
+   /* TODO: implement private memory on earlier gen's */
+   compiler->has_pvtmem = compiler->gen >= 5;
 
    if (compiler->gen >= 6) {
       compiler->reg_size_vec4 = dev_info->a6xx.reg_size_vec4;

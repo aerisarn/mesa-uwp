@@ -274,7 +274,7 @@ add_gpus([
         cs_shared_mem_size = 32 * 1024,
         num_sp_cores = 4,
         wave_granularity = 2,
-        fibers_per_sp = 0, # TODO
+        fibers_per_sp = 64 * 16, # Lowest number that didn't fault on spillall fs-varying-array-mat4-col-row-rd.
     ))
 
 # a6xx can be divided into distinct sub-generations, where certain device-
