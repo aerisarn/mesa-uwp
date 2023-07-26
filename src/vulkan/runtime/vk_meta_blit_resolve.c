@@ -332,18 +332,11 @@ build_blit_shader(const struct vk_meta_blit_key *key)
 }
 
 static VkResult
-get_blit_descriptor_set_layout(struct vk_device *device,
-                               struct vk_meta_device *meta,
-                               VkDescriptorSetLayout *layout_out)
+get_blit_pipeline_layout(struct vk_device *device,
+                         struct vk_meta_device *meta,
+                         VkPipelineLayout *layout_out)
 {
-   const char key[] = "vk-meta-blit-descriptor-set-layout";
-
-   VkDescriptorSetLayout from_cache =
-      vk_meta_lookup_descriptor_set_layout(meta, key, sizeof(key));
-   if (from_cache != VK_NULL_HANDLE) {
-      *layout_out = from_cache;
-      return VK_SUCCESS;
-   }
+   const char key[] = "vk-meta-blit-pipeline-layout";
 
    const VkDescriptorSetLayoutBinding bindings[] = {{
       .binding = BLIT_DESC_BINDING_SAMPLER,
@@ -367,30 +360,11 @@ get_blit_descriptor_set_layout(struct vk_device *device,
       .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
    }};
 
-   const VkDescriptorSetLayoutCreateInfo info = {
+   const VkDescriptorSetLayoutCreateInfo desc_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
       .bindingCount = ARRAY_SIZE(bindings),
       .pBindings = bindings,
    };
-
-   return vk_meta_create_descriptor_set_layout(device, meta, &info,
-                                               key, sizeof(key), layout_out);
-}
-
-static VkResult
-get_blit_pipeline_layout(struct vk_device *device,
-                         struct vk_meta_device *meta,
-                         VkDescriptorSetLayout set_layout,
-                         VkPipelineLayout *layout_out)
-{
-   const char key[] = "vk-meta-blit-pipeline-layout";
-
-   VkPipelineLayout from_cache =
-      vk_meta_lookup_pipeline_layout(meta, key, sizeof(key));
-   if (from_cache != VK_NULL_HANDLE) {
-      *layout_out = from_cache;
-      return VK_SUCCESS;
-   }
 
    const VkPushConstantRange push_range = {
       .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -398,16 +372,8 @@ get_blit_pipeline_layout(struct vk_device *device,
       .size = sizeof(struct vk_meta_blit_push_data),
    };
 
-   const VkPipelineLayoutCreateInfo info = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .setLayoutCount = 1,
-      .pSetLayouts = &set_layout,
-      .pushConstantRangeCount = 1,
-      .pPushConstantRanges = &push_range,
-   };
-
-   return vk_meta_create_pipeline_layout(device, meta, &info,
-                                         key, sizeof(key), layout_out);
+   return vk_meta_get_pipeline_layout(device, meta, &desc_info, &push_range,
+                                      key, sizeof(key), layout_out);
 }
 
 static VkResult
@@ -545,16 +511,8 @@ do_blit(struct vk_command_buffer *cmd,
    const struct vk_device_dispatch_table *disp = &device->dispatch_table;
    VkResult result;
 
-   VkDescriptorSetLayout set_layout;
-   result = get_blit_descriptor_set_layout(device, meta, &set_layout);
-   if (unlikely(result != VK_SUCCESS)) {
-      vk_command_buffer_set_error(cmd, result);
-      return;
-   }
-
    VkPipelineLayout pipeline_layout;
-   result = get_blit_pipeline_layout(device, meta, set_layout,
-                                     &pipeline_layout);
+   result = get_blit_pipeline_layout(device, meta, &pipeline_layout);
    if (unlikely(result != VK_SUCCESS)) {
       vk_command_buffer_set_error(cmd, result);
       return;
