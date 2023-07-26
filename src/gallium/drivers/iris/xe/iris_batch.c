@@ -174,6 +174,7 @@ bool iris_xe_replace_batch(struct iris_batch *batch)
    if (ret) {
       iris_xe_destroy_batch(batch);
       batch->xe.engine_id = new_engine_id;
+      iris_lost_context_state(batch);
    }
 
    free(engines_info);
