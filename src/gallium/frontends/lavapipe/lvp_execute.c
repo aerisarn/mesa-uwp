@@ -1713,6 +1713,7 @@ handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
    state->framebuffer.nr_cbufs = info->colorAttachmentCount;
 
    state->color_att_count = info->colorAttachmentCount;
+   memset(state->framebuffer.cbufs, 0, sizeof(state->framebuffer.cbufs));
    for (unsigned i = 0; i < info->colorAttachmentCount; i++) {
       render_att_init(&state->color_att[i], &info->pColorAttachments[i], state->poison_mem, false);
       if (state->color_att[i].imgv) {
