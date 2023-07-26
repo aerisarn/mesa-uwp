@@ -533,7 +533,6 @@ class Parser(object):
 			else:
 				value = self.current_enum_value
 			self.current_enum.values.append((attrs["name"], value))
-			# self.current_enum_value = value + 1
 		elif name == "reg32":
 			self.parse_reg(attrs, 32)
 		elif name == "reg64":
