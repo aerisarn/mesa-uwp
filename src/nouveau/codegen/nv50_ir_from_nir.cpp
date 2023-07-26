@@ -2964,8 +2964,12 @@ Converter::visit(nir_tex_instr *insn)
          srcs.push_back(loadImm(NULL, 0));
       if (biasIdx != -1)
          srcs.push_back(getSrc(&insn->src[biasIdx].src, 0));
-      if (lodIdx != -1)
+      // TXQ requires a lod argument for all queries we care about here.
+      // For other ops on MS textures we skip it.
+      if (lodIdx != -1 && !target.isMS())
          srcs.push_back(getSrc(&insn->src[lodIdx].src, 0));
+      else if (op == OP_TXQ)
+         srcs.push_back(zero); // TXQ always needs an LOD
       else if (op == OP_TXF)
          lz = true;
       if (msIdx != -1)
@@ -3032,6 +3036,7 @@ Converter::visit(nir_tex_instr *insn)
          texi->tex.mask = 0x8;
          texi->tex.query = TXQ_DIMS;
          break;
+      // TODO: TXQ_SAMPLE_POSITION needs the sample id instead of the LOD emited further up.
       default:
          break;
       }
