@@ -1348,17 +1348,20 @@ lower_stack_instr_to_scratch(struct nir_builder *b, nir_instr *instr, void *data
          nir_def *addr = nir_iadd_imm(b,
                                       nir_load_scratch_base_ptr(b, 1, 64, 1),
                                       nir_intrinsic_base(stack));
-         data = nir_load_global(b, addr,
-                                nir_intrinsic_align_mul(stack),
-                                stack->def.num_components,
-                                stack->def.bit_size);
+         data = nir_build_load_global(b,
+                                      stack->def.num_components,
+                                      stack->def.bit_size,
+                                      addr,
+                                      .align_mul = nir_intrinsic_align_mul(stack),
+                                      .align_offset = nir_intrinsic_align_offset(stack));
       } else {
          assert(state->address_format == nir_address_format_32bit_offset);
          data = nir_load_scratch(b,
                                  old_data->num_components,
                                  old_data->bit_size,
                                  nir_imm_int(b, nir_intrinsic_base(stack)),
-                                 .align_mul = nir_intrinsic_align_mul(stack));
+                                 .align_mul = nir_intrinsic_align_mul(stack),
+                                 .align_offset = nir_intrinsic_align_offset(stack));
       }
       nir_def_rewrite_uses(old_data, data);
       break;
@@ -1863,17 +1866,20 @@ split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data
 
    b->cursor = nir_before_instr(instr);
 
+   unsigned align_mul = nir_intrinsic_align_mul(intrin);
+   unsigned align_offset = nir_intrinsic_align_offset(intrin);
    if (intrin->intrinsic == nir_intrinsic_load_stack) {
       nir_def *components[NIR_MAX_VEC_COMPONENTS] = {
          0,
       };
       for (unsigned c = 0; c < intrin->def.num_components; c++) {
+         unsigned offset = c * intrin->def.bit_size / 8;
          components[c] = nir_load_stack(b, 1, intrin->def.bit_size,
-                                        .base = nir_intrinsic_base(intrin) +
-                                                c * intrin->def.bit_size / 8,
+                                        .base = nir_intrinsic_base(intrin) + offset,
                                         .call_idx = nir_intrinsic_call_idx(intrin),
                                         .value_id = nir_intrinsic_value_id(intrin),
-                                        .align_mul = nir_intrinsic_align_mul(intrin));
+                                        .align_mul = align_mul,
+                                        .align_offset = (align_offset + offset) % align_mul);
       }
 
       nir_def_rewrite_uses(&intrin->def,
@@ -1882,11 +1888,12 @@ split_stack_components_instr(struct nir_builder *b, nir_instr *instr, void *data
    } else {
       assert(intrin->intrinsic == nir_intrinsic_store_stack);
       for (unsigned c = 0; c < intrin->src[0].ssa->num_components; c++) {
+         unsigned offset = c * intrin->src[0].ssa->bit_size / 8;
          nir_store_stack(b, nir_channel(b, intrin->src[0].ssa, c),
-                         .base = nir_intrinsic_base(intrin) +
-                                 c * intrin->src[0].ssa->bit_size / 8,
+                         .base = nir_intrinsic_base(intrin) + offset,
                          .call_idx = nir_intrinsic_call_idx(intrin),
-                         .align_mul = nir_intrinsic_align_mul(intrin),
+                         .align_mul = align_mul,
+                         .align_offset = (align_offset + offset) % align_mul,
                          .value_id = nir_intrinsic_value_id(intrin),
                          .write_mask = 0x1);
       }
