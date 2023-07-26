@@ -31,6 +31,7 @@
 #include "clc597.h"
 #include "clc5c0.h"
 #include "clc597.h"
+#include "clc997.h"
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
@@ -642,6 +643,15 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    /* We don't support anything pre-Kepler */
    if (info.cls_eng3d < KEPLER_A)
       return VK_ERROR_INCOMPATIBLE_DRIVER;
+
+   if ((info.cls_eng3d < TURING_A || info.cls_eng3d > ADA_A) &&
+       !debug_get_bool_option("NVK_I_WANT_A_BROKEN_VULKAN_DRIVER", false)) {
+      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                       "WARNING: NVK is not well-tested on %s, pass "
+                       "NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1 "
+                       "if you know what you're doing.",
+                       info.device_name);
+   }
 
    if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER))) {
       return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
