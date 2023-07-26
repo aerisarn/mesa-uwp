@@ -732,6 +732,7 @@ static const struct dri_extension_match swrast_driver_extensions[] = {
 
 static const struct dri_extension_match swrast_core_extensions[] = {
    {__DRI_TEX_BUFFER, 2, offsetof(struct dri2_egl_display, tex_buffer), false},
+   {__DRI_IMAGE, 6, offsetof(struct dri2_egl_display, image), true},
 };
 
 static const struct dri_extension_match optional_core_extensions[] = {
@@ -740,7 +741,6 @@ static const struct dri_extension_match optional_core_extensions[] = {
    {__DRI2_BUFFER_DAMAGE, 1, offsetof(struct dri2_egl_display, buffer_damage),
     true},
    {__DRI2_INTEROP, 1, offsetof(struct dri2_egl_display, interop), true},
-   {__DRI_IMAGE, 6, offsetof(struct dri2_egl_display, image), true},
    {__DRI2_FLUSH_CONTROL, 1, offsetof(struct dri2_egl_display, flush_control),
     true},
    {__DRI2_BLOB, 1, offsetof(struct dri2_egl_display, blob), true},
