@@ -3505,6 +3505,8 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
 
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
+   if (zink_debug & (ZINK_DEBUG_NIR | ZINK_DEBUG_SPIRV))
+      nir_index_ssa_defs(nir_shader_get_entrypoint(nir));
    if (zink_debug & ZINK_DEBUG_NIR) {
       fprintf(stderr, "NIR shader:\n---8<---\n");
       nir_print_shader(nir, stderr);
