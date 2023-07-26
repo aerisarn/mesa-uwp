@@ -29,6 +29,8 @@ vtn_handle_cooperative_type(struct vtn_builder *b, struct vtn_value *val,
 {
    vtn_assert(opcode == SpvOpTypeCooperativeMatrixKHR);
 
+   b->shader->info.cs.has_cooperative_matrix = true;
+
    struct vtn_type *component_type = vtn_get_type(b, w[2]);
 
    const mesa_scope scope = vtn_translate_scope(b, vtn_constant_uint(b, w[3]));

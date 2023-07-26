@@ -525,6 +525,12 @@ typedef struct shader_info {
          bool has_variable_shared_mem:1;
 
          /**
+          * If the shader has any use of a cooperative matrix. From
+          * SPV_KHR_cooperative_matrix.
+          */
+         bool has_cooperative_matrix:1;
+
+         /**
           * pointer size is:
           *   AddressingModelLogical:    0    (default)
           *   AddressingModelPhysical32: 32
