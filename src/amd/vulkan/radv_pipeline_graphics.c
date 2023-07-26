@@ -2299,25 +2299,6 @@ radv_graphics_shaders_nir_to_asm(struct radv_device *device, struct vk_pipeline_
 }
 
 static void
-radv_pipeline_get_nir(struct radv_device *device, struct radv_graphics_pipeline *pipeline,
-                      struct radv_shader_stage *stages, const struct radv_pipeline_key *pipeline_key)
-{
-   for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
-      if (!stages[s].entrypoint)
-         continue;
-
-      int64_t stage_start = os_time_get_nano();
-
-      /* NIR might already have been imported from a library. */
-      if (!stages[s].nir) {
-         stages[s].nir = radv_shader_spirv_to_nir(device, &stages[s], pipeline_key, pipeline->base.is_internal);
-      }
-
-      stages[s].feedback.duration += os_time_get_nano() - stage_start;
-   }
-}
-
-static void
 radv_pipeline_retain_shaders(struct radv_graphics_lib_pipeline *gfx_pipeline_lib, struct radv_shader_stage *stages)
 {
    for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
@@ -2603,7 +2584,19 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
       return VK_PIPELINE_COMPILE_REQUIRED;
 
-   radv_pipeline_get_nir(device, pipeline, stages, pipeline_key);
+   for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
+      if (!stages[s].entrypoint)
+         continue;
+
+      int64_t stage_start = os_time_get_nano();
+
+      /* NIR might already have been imported from a library. */
+      if (!stages[s].nir) {
+         stages[s].nir = radv_shader_spirv_to_nir(device, &stages[s], pipeline_key, pipeline->base.is_internal);
+      }
+
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
+   }
 
    if (retain_shaders) {
       radv_pipeline_retain_shaders(radv_pipeline_to_graphics_lib(&pipeline->base), stages);
