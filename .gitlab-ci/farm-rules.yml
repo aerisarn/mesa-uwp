@@ -2,14 +2,10 @@
   rules:
     - exists: [ .ci-farms-disabled/microsoft ]  # 1. Is disabled, never run
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/microsoft ]  # 2. Removed from disabled, run
-        compare_to: main
+    - changes: [ .ci-farms-disabled/microsoft ]  # 2. Removed from disabled, run
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: on_success
-    - changes:
-        paths: [ .ci-farms-disabled/* ]  # 3. We touched other farms in MR, do not run
-        compare_to: main
+    - changes: [ .ci-farms-disabled/* ]  # 3. We touched other farms in MR, do not run
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
     # 4. Fall-through (other rules or on_success)
@@ -20,9 +16,7 @@
     # pipeline were changed
     - exists: [ .ci-farms-disabled/microsoft ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/microsoft ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/microsoft ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
     - !reference [.microsoft-farm-rules, rules]
@@ -33,9 +27,7 @@
     # pipeline were changed
     - exists: [ .ci-farms-disabled/microsoft ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/microsoft ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/microsoft ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: on_success
     - !reference [.microsoft-farm-rules, rules]
@@ -47,14 +39,10 @@
       exists: [ .ci-farms-disabled/collabora ]
       when: never
     - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/ && $CI_PIPELINE_SOURCE != "schedule"'
-      changes:
-        paths: [ .ci-farms-disabled/collabora ]
-        compare_to: main
+      changes: [ .ci-farms-disabled/collabora ]
       when: on_success
     - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/ && $CI_PIPELINE_SOURCE != "schedule"'
-      changes:
-        paths: [ .ci-farms-disabled/* ]
-        compare_to: main
+      changes: [ .ci-farms-disabled/* ]
       when: never
 
 .collabora-farm-manual-rules:
@@ -63,9 +51,7 @@
       exists: [ .ci-farms-disabled/collabora ]
       when: never
     - if: '$RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/ && $CI_PIPELINE_SOURCE != "schedule"'
-      changes:
-        paths: [ .ci-farms-disabled/collabora ]
-        compare_to: main
+      changes: [ .ci-farms-disabled/collabora ]
       when: never
     - !reference [.collabora-farm-rules, rules]
 
@@ -74,14 +60,10 @@
   rules:
     - exists: [ .ci-farms-disabled/igalia ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/igalia ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/igalia ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: on_success
-    - changes:
-        paths: [ .ci-farms-disabled/* ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/* ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
 
@@ -89,9 +71,7 @@
   rules:
     - exists: [ .ci-farms-disabled/igalia ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/igalia ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/igalia ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
     - !reference [.igalia-farm-rules, rules]
@@ -101,14 +81,10 @@
   rules:
     - exists: [ .ci-farms-disabled/lima ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/lima ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/lima ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: on_success
-    - changes:
-        paths: [ .ci-farms-disabled/* ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/* ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
 
@@ -116,9 +92,7 @@
   rules:
     - exists: [ .ci-farms-disabled/lima ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/lima ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/lima ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
     - !reference [.lima-farm-rules, rules]
@@ -128,14 +102,10 @@
   rules:
     - exists: [ .ci-farms-disabled/anholt ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/anholt ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/anholt ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: on_success
-    - changes:
-        paths: [ .ci-farms-disabled/* ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/* ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
 
@@ -143,9 +113,7 @@
   rules:
     - exists: [ .ci-farms-disabled/anholt ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/anholt ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/anholt ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
     - !reference [.anholt-farm-rules, rules]
@@ -159,19 +127,13 @@
     - exists: [ .ci-farms-disabled/valve-kws ]
       if: '$RUNNER_FARM_LOCATION == "keywords"'
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/valve-mupuf ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/valve-mupuf ]
       if: '$RUNNER_FARM_LOCATION == "mupuf" && $CI_PIPELINE_SOURCE != "schedule"'
       when: on_success
-    - changes:
-        paths: [ .ci-farms-disabled/valve-kws ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/valve-kws ]
       if: '$RUNNER_FARM_LOCATION == "keywords" && $CI_PIPELINE_SOURCE != "schedule"'
       when: on_success
-    - changes:
-        paths: [ .ci-farms-disabled/* ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/* ]
       when: never
 
 .valve-farm-manual-rules:
@@ -182,14 +144,10 @@
     - exists: [ .ci-farms-disabled/valve-kws ]
       if: '$RUNNER_FARM_LOCATION == "keywords"'
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/valve-mupuf ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/valve-mupuf ]
       if: '$RUNNER_FARM_LOCATION == "mupuf" && $CI_PIPELINE_SOURCE != "schedule"'
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/valve-kws ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/valve-kws ]
       if: '$RUNNER_FARM_LOCATION == "keywords" && $CI_PIPELINE_SOURCE != "schedule"'
       when: never
     - !reference [.valve-farm-rules, rules]
@@ -199,14 +157,10 @@
   rules:
     - exists: [ .ci-farms-disabled/austriancoder ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/austriancoder ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/austriancoder ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: on_success
-    - changes:
-        paths: [ .ci-farms-disabled/* ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/* ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
 
@@ -214,9 +168,7 @@
   rules:
     - exists: [ .ci-farms-disabled/austriancoder ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/austriancoder ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/austriancoder ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
     - !reference [.austriancoder-farm-rules, rules]
@@ -226,14 +178,10 @@
   rules:
     - exists: [ .ci-farms-disabled/freedreno ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/freedreno ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/freedreno ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: on_success
-    - changes:
-        paths: [ .ci-farms-disabled/* ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/* ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
 
@@ -241,9 +189,7 @@
   rules:
     - exists: [ .ci-farms-disabled/freedreno ]
       when: never
-    - changes:
-        paths: [ .ci-farms-disabled/freedreno ]
-        compare_to: main
+    - changes: [ .ci-farms-disabled/freedreno ]
       if: '$CI_PIPELINE_SOURCE != "schedule"'
       when: never
     - !reference [.freedreno-farm-rules, rules]

@@ -228,14 +228,6 @@ Now go to
 `GitLab <https://gitlab.freedesktop.org/mesa/mesa/-/milestones>`__ and
 add the new Mesa version X.Y.
 
-Now you need to adjust CI, to not try to compare the changed files against `main` branch.
-
-.. code-block:: console
-
-   sed -i '/compare_to: main/d' .gitlab-ci/**/*.yml
-   git commit -asm 'ci: disable comparing against the main branch'
-
-
 Check that there are no distribution breaking changes and revert them if
 needed. For example: files being overwritten on install, etc. Happens
 extremely rarely - we had only one case so far (see commit
