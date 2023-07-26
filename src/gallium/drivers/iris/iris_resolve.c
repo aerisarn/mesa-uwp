@@ -1253,10 +1253,6 @@ iris_resource_prepare_render(struct iris_context *ice,
                              uint32_t start_layer, uint32_t layer_count,
                              enum isl_aux_usage aux_usage)
 {
-   iris_resource_prepare_access(ice, res, level, 1, start_layer,
-                                layer_count, aux_usage,
-                                isl_aux_usage_has_fast_clears(aux_usage));
-
    /* If the resource's clear color is incompatible with render_format,
     * replace it with one that is. This process keeps the aux buffer
     * compatible with render_format and the resource's format.
@@ -1304,6 +1300,14 @@ iris_resource_prepare_render(struct iris_context *ice,
          ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_BINDINGS;
       }
    }
+
+   /* Now, do the preparation requested by the caller. Doing this after the
+    * partial resolves above helps maintain the accuracy of the aux-usage
+    * tracking that happens within the preparation function.
+    */
+   iris_resource_prepare_access(ice, res, level, 1, start_layer,
+                                layer_count, aux_usage,
+                                isl_aux_usage_has_fast_clears(aux_usage));
 }
 
 void
