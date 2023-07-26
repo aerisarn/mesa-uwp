@@ -70,7 +70,9 @@ struct radv_shader_args {
    struct ac_arg tcs_offchip_layout;
 
    /* TES */
-   struct ac_arg tes_num_patches;
+   /* # [0:7] = the number of tessellation patches
+    */
+   struct ac_arg tes_state;
 
    /* NGG VS streamout */
    struct ac_arg num_verts_per_prim;
