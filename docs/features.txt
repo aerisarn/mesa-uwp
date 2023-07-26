@@ -563,7 +563,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_display_control                                DONE (anv, hasvk, radv, tu)
   VK_EXT_display_surface_counter                        DONE (anv, lvp, radv, tu)
   VK_EXT_dynamic_rendering_unused_attachments           DONE (anv, nvk, radv, vn)
-  VK_EXT_extended_dynamic_state3                        DONE (anv, lvp, nvk, radv, tu)
+  VK_EXT_extended_dynamic_state3                        DONE (anv, lvp, nvk, radv, tu, vn)
   VK_EXT_external_memory_acquire_unmodified             DONE (radv)
   VK_EXT_external_memory_dma_buf                        DONE (anv, hasvk, nvk, pvr, radv, tu, v3dv, vn)
   VK_EXT_external_memory_host                           DONE (anv, hasvk, lvp, radv)
