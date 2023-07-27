@@ -76,13 +76,7 @@ etna_log2_fixp88(unsigned width)
 static inline uint32_t
 etna_f32_to_fixp16(float f)
 {
-   if (f >= (32768.0f - 1.0f / 65536.0f))
-      return 0x7fffffff;
-
-   if (f < -32768.0f)
-      return 0x80000000;
-
-   return (int32_t)(f * 65536.0f + 0.5f);
+   return S_FIXED(f, 16);
 }
 
 #endif
