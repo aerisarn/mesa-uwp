@@ -3095,14 +3095,20 @@ shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 }
 
 static void
-lower_cs_shared(struct nir_shader *nir)
+lower_compute(struct nir_shader *nir)
 {
    if (!nir->info.shared_memory_explicit_layout) {
       NIR_PASS(_, nir, nir_lower_vars_to_explicit_types,
                nir_var_mem_shared, shared_type_info);
    }
+
    NIR_PASS(_, nir, nir_lower_explicit_io,
             nir_var_mem_shared, nir_address_format_32bit_offset);
+
+   struct nir_lower_compute_system_values_options sysval_options = {
+      .has_base_workgroup_id = true,
+   };
+   NIR_PASS_V(nir, nir_lower_compute_system_values, &sysval_options);
 }
 
 static VkResult
@@ -3190,7 +3196,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 
    v3d_optimize_nir(NULL, p_stage->nir);
    pipeline_lower_nir(pipeline, p_stage, pipeline->layout);
-   lower_cs_shared(p_stage->nir);
+   lower_compute(p_stage->nir);
 
    VkResult result = VK_SUCCESS;
 

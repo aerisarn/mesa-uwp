@@ -3567,29 +3567,31 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 }
                 break;
 
+        case nir_intrinsic_load_workgroup_id_zero_base:
         case nir_intrinsic_load_workgroup_id: {
                 struct qreg x = vir_AND(c, c->cs_payload[0],
                                          vir_uniform_ui(c, 0xffff));
+                ntq_store_dest(c, &instr->dest, 0, x);
 
                 struct qreg y = vir_SHR(c, c->cs_payload[0],
                                          vir_uniform_ui(c, 16));
+                ntq_store_dest(c, &instr->dest, 1, y);
 
                 struct qreg z = vir_AND(c, c->cs_payload[1],
                                          vir_uniform_ui(c, 0xffff));
+                ntq_store_dest(c, &instr->dest, 2, z);
+                break;
+        }
 
-                /* We only support dispatch base in Vulkan */
-                if (c->key->environment == V3D_ENVIRONMENT_VULKAN) {
-                        x = vir_ADD(c, x,
-                                    vir_uniform(c, QUNIFORM_WORK_GROUP_BASE, 0));
-                        y = vir_ADD(c, y,
-                                    vir_uniform(c, QUNIFORM_WORK_GROUP_BASE, 1));
-                        z = vir_ADD(c, z,
-                                    vir_uniform(c, QUNIFORM_WORK_GROUP_BASE, 2));
-                }
+        case nir_intrinsic_load_base_workgroup_id: {
+                struct qreg x = vir_uniform(c, QUNIFORM_WORK_GROUP_BASE, 0);
+                ntq_store_dest(c, &instr->dest, 0, x);
 
-                ntq_store_dest(c, &instr->dest, 0, vir_MOV(c, x));
-                ntq_store_dest(c, &instr->dest, 1, vir_MOV(c, y));
-                ntq_store_dest(c, &instr->dest, 2, vir_MOV(c, z));
+                struct qreg y = vir_uniform(c, QUNIFORM_WORK_GROUP_BASE, 1);
+                ntq_store_dest(c, &instr->dest, 1, y);
+
+                struct qreg z = vir_uniform(c, QUNIFORM_WORK_GROUP_BASE, 2);
+                ntq_store_dest(c, &instr->dest, 2, z);
                 break;
         }
 
