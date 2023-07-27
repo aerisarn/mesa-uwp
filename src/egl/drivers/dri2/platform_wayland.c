@@ -1404,6 +1404,7 @@ create_wl_buffer(struct dri2_egl_display *dri2_dpy,
    EGLBoolean query;
    int width, height, fourcc, num_planes;
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
+   int mod_hi, mod_lo;
 
    query = dri2_dpy->image->queryImage(image, __DRI_IMAGE_ATTRIB_WIDTH, &width);
    query &=
@@ -1417,16 +1418,12 @@ create_wl_buffer(struct dri2_egl_display *dri2_dpy,
    if (!query)
       num_planes = 1;
 
-   if (dri2_dpy->image->base.version >= 15) {
-      int mod_hi, mod_lo;
-
-      query = dri2_dpy->image->queryImage(
-         image, __DRI_IMAGE_ATTRIB_MODIFIER_UPPER, &mod_hi);
-      query &= dri2_dpy->image->queryImage(
-         image, __DRI_IMAGE_ATTRIB_MODIFIER_LOWER, &mod_lo);
-      if (query) {
-         modifier = combine_u32_into_u64(mod_hi, mod_lo);
-      }
+   query = dri2_dpy->image->queryImage(image, __DRI_IMAGE_ATTRIB_MODIFIER_UPPER,
+                                       &mod_hi);
+   query &= dri2_dpy->image->queryImage(
+      image, __DRI_IMAGE_ATTRIB_MODIFIER_LOWER, &mod_lo);
+   if (query) {
+      modifier = combine_u32_into_u64(mod_hi, mod_lo);
    }
 
    bool supported_modifier = false;
@@ -2255,7 +2252,6 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
        * We deprecated the support to GEM names API, so we bail out if the
        * driver does not support Prime. */
       if (!(dri2_dpy->capabilities & WL_DRM_CAPABILITY_PRIME) ||
-          (dri2_dpy->image->base.version < 7) ||
           (dri2_dpy->image->createImageFromFds == NULL)) {
          _eglLog(_EGL_WARNING, "wayland-egl: display does not support prime");
          goto cleanup;
@@ -2263,12 +2259,10 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
    }
 
    if (dri2_dpy->fd_render_gpu != dri2_dpy->fd_display_gpu &&
-       (dri2_dpy->image->base.version < 9 ||
-        dri2_dpy->image->blitImage == NULL)) {
+       dri2_dpy->image->blitImage == NULL) {
       _eglLog(_EGL_WARNING, "wayland-egl: Different GPU selected, but the "
                             "Image extension in the driver is not "
-                            "compatible. Version 9 or later and blitImage() "
-                            "are required");
+                            "compatible. blitImage() is required");
       goto cleanup;
    }
 
