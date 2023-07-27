@@ -96,6 +96,8 @@ KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls2,Fail
 KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-arrays,Fail
 KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-elements,Fail
 
+KHR-GLES31.core.layout_binding.buffer_layout_binding_atomicAdd_FragmentShader,Fail
+
 KHR-GLES31.core.shader_atomic_counters.advanced-usage-multidim-array-large,Fail
 
 
@@ -401,19 +403,30 @@ dEQP-GLES31.functional.compute.basic.image_atomic_op_local_size_1,Fail
 dEQP-GLES31.functional.compute.basic.image_atomic_op_local_size_8,Fail
 dEQP-GLES31.functional.compute.indirect_dispatch.gen_in_compute.multi_dispatch_reuse_command,Fail
 
+dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array,Fail
+dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_max_array,Fail
 dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_max,Fail
+dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_multiple,Fail
+dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_single,Fail
+
 dEQP-GLES31.functional.shaders.opaque_type_indexing.ssbo.const_expression_fragment,Fail
 dEQP-GLES31.functional.shaders.opaque_type_indexing.ssbo.const_literal_fragment,Fail
 dEQP-GLES31.functional.ssbo.layout.random.all_per_block_buffers.11,Fail
 dEQP-GLES31.functional.ssbo.layout.random.all_per_block_buffers.19,Fail
+dEQP-GLES31.functional.ssbo.layout.random.all_per_block_buffers.23,Fail
 dEQP-GLES31.functional.ssbo.layout.random.all_per_block_buffers.24,Fail
 dEQP-GLES31.functional.ssbo.layout.random.all_per_block_buffers.45,Fail
+dEQP-GLES31.functional.ssbo.layout.random.basic_arrays.10,Fail
 dEQP-GLES31.functional.ssbo.layout.random.basic_arrays.18,Fail
 dEQP-GLES31.functional.ssbo.layout.random.basic_instance_arrays.1,Fail
 dEQP-GLES31.functional.ssbo.layout.random.basic_instance_arrays.19,Fail
 dEQP-GLES31.functional.ssbo.layout.random.basic_instance_arrays.23,Fail
+dEQP-GLES31.functional.ssbo.layout.random.basic_types.15,Fail
+dEQP-GLES31.functional.ssbo.layout.random.nested_structs_arrays_instance_arrays.13,Fail
+dEQP-GLES31.functional.ssbo.layout.random.nested_structs_arrays_instance_arrays.22,Fail
 dEQP-GLES31.functional.ssbo.layout.random.nested_structs.7,Fail
 dEQP-GLES31.functional.ssbo.layout.random.nested_structs.9,Fail
+dEQP-GLES31.functional.ssbo.layout.random.unsized_arrays.23,Fail
 dEQP-GLES31.functional.ssbo.layout.random.vector_types.3,Fail
 dEQP-GLES31.functional.ssbo.layout.single_struct_array.per_block_buffer.packed_instance_array,Fail
 dEQP-GLES31.functional.ssbo.layout.single_struct_array.per_block_buffer.std430_instance_array,Fail
