@@ -165,6 +165,13 @@ enum si_clear_code
 #define SI_IMAGE_ACCESS_ALLOW_DCC_STORE      (1 << 9)
 #define SI_IMAGE_ACCESS_BLOCK_FORMAT_AS_UINT (1 << 10) /* for compressed/subsampled images */
 
+enum si_occlusion_query_mode {
+   SI_OCCLUSION_QUERY_MODE_DISABLE,
+   SI_OCCLUSION_QUERY_MODE_PRECISE_INTEGER,
+   SI_OCCLUSION_QUERY_MODE_PRECISE_BOOLEAN,
+   SI_OCCLUSION_QUERY_MODE_CONSERVATIVE_BOOLEAN,
+};
+
 /* Debug flags. */
 enum
 {
@@ -1286,8 +1293,10 @@ struct si_context {
 
    /* Queries. */
    /* Maintain the list of active queries for pausing between IBs. */
-   int num_occlusion_queries;
-   int num_perfect_occlusion_queries;
+   enum si_occlusion_query_mode occlusion_query_mode;
+   int num_integer_occlusion_queries;
+   int num_boolean_occlusion_queries;
+   int num_conservative_occlusion_queries;
    int num_pipeline_stat_queries;
    int num_pipeline_stat_emulated_queries;
    int num_hw_pipestat_streamout_queries;

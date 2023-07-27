@@ -739,8 +739,10 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
         sctx->framebuffer.has_dcc_msaa))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
 
-   if (sctx->screen->info.has_export_conflict_bug &&
-       old_blend->blend_enable_4bit != blend->blend_enable_4bit)
+   if ((sctx->screen->info.has_export_conflict_bug &&
+        old_blend->blend_enable_4bit != blend->blend_enable_4bit) ||
+       (sctx->occlusion_query_mode == SI_OCCLUSION_QUERY_MODE_PRECISE_BOOLEAN &&
+        !!old_blend->cb_target_mask != !!blend->cb_target_enabled_4bit))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
 
    if (old_blend->cb_target_enabled_4bit != blend->cb_target_enabled_4bit ||
@@ -1454,6 +1456,11 @@ static void si_bind_dsa_state(struct pipe_context *ctx, void *state)
       sctx->do_update_shaders = true;
    }
 
+   if (sctx->occlusion_query_mode == SI_OCCLUSION_QUERY_MODE_PRECISE_BOOLEAN &&
+       (old_dsa->depth_enabled != dsa->depth_enabled ||
+        old_dsa->depth_write_enabled != dsa->depth_write_enabled))
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
+
    if (sctx->screen->dpbb_allowed && ((old_dsa->depth_enabled != dsa->depth_enabled ||
                                        old_dsa->stencil_enabled != dsa->stencil_enabled ||
                                        old_dsa->db_can_write != dsa->db_can_write)))
@@ -1511,16 +1518,6 @@ static void si_set_active_query_state(struct pipe_context *ctx, bool enable)
    }
 }
 
-void si_set_occlusion_query_state(struct si_context *sctx, bool old_perfect_enable)
-{
-   si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
-
-   bool perfect_enable = sctx->num_perfect_occlusion_queries != 0;
-
-   if (perfect_enable != old_perfect_enable)
-      si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
-}
-
 void si_save_qbo_state(struct si_context *sctx, struct si_qbo_state *st)
 {
    si_get_pipe_constant_buffer(sctx, PIPE_SHADER_COMPUTE, 0, &st->saved_const0);
@@ -1574,29 +1571,40 @@ static void si_emit_db_render_state(struct si_context *sctx, unsigned index)
    }
 
    /* DB_COUNT_CONTROL (occlusion queries) */
-   if (sctx->num_occlusion_queries > 0 && !sctx->occlusion_queries_disabled) {
-      bool perfect = sctx->num_perfect_occlusion_queries > 0;
-      bool gfx10_perfect = sctx->gfx_level >= GFX10 && perfect;
-
-      if (sctx->gfx_level >= GFX7) {
-         unsigned log_sample_rate = sctx->framebuffer.log_samples;
-
-         db_count_control = S_028004_PERFECT_ZPASS_COUNTS(perfect) |
-                            S_028004_DISABLE_CONSERVATIVE_ZPASS_COUNTS(gfx10_perfect) |
-                            S_028004_SAMPLE_RATE(log_sample_rate) | S_028004_ZPASS_ENABLE(1) |
-                            S_028004_SLICE_EVEN_ENABLE(1) | S_028004_SLICE_ODD_ENABLE(1);
-      } else {
-         db_count_control = S_028004_PERFECT_ZPASS_COUNTS(perfect) |
-                            S_028004_SAMPLE_RATE(sctx->framebuffer.log_samples);
-      }
-   } else {
-      /* Disable occlusion queries. */
-      if (sctx->gfx_level >= GFX7) {
-         db_count_control = 0;
-      } else {
+   if (sctx->occlusion_query_mode == SI_OCCLUSION_QUERY_MODE_DISABLE ||
+       sctx->occlusion_queries_disabled) {
+      /* Occlusion queries disabled. */
+      if (sctx->gfx_level >= GFX7)
+         db_count_control = S_028004_ZPASS_ENABLE(0);
+      else
          db_count_control = S_028004_ZPASS_INCREMENT_DISABLE(1);
+   } else {
+      /* Occlusion queries enabled. */
+      db_count_control = S_028004_SAMPLE_RATE(sctx->framebuffer.log_samples);
+
+      if (sctx->gfx_level >= GFX7) {
+         db_count_control |= S_028004_ZPASS_ENABLE(1) |
+                             S_028004_SLICE_EVEN_ENABLE(1) |
+                             S_028004_SLICE_ODD_ENABLE(1);
       }
+
+      if (sctx->occlusion_query_mode == SI_OCCLUSION_QUERY_MODE_PRECISE_INTEGER ||
+          /* Boolean occlusion queries must set PERFECT_ZPASS_COUNTS for depth-only rendering
+           * without depth writes or when depth testing is disabled. */
+          (sctx->occlusion_query_mode == SI_OCCLUSION_QUERY_MODE_PRECISE_BOOLEAN &&
+           (!sctx->queued.named.dsa->depth_enabled ||
+            (!sctx->queued.named.blend->cb_target_mask &&
+             !sctx->queued.named.dsa->depth_write_enabled))))
+         db_count_control |= S_028004_PERFECT_ZPASS_COUNTS(1);
+
+      if (sctx->gfx_level >= GFX10 &&
+          sctx->occlusion_query_mode != SI_OCCLUSION_QUERY_MODE_CONSERVATIVE_BOOLEAN)
+         db_count_control |= S_028004_DISABLE_CONSERVATIVE_ZPASS_COUNTS(1);
    }
+
+   /* This should always be set on GFX11. */
+   if (sctx->gfx_level >= GFX11)
+      db_count_control |= S_028004_DISABLE_CONSERVATIVE_ZPASS_COUNTS(1);
 
    db_shader_control = sctx->ps_db_shader_control;
 
@@ -3597,7 +3605,8 @@ static bool si_out_of_order_rasterization(struct si_context *sctx)
           !dsa_order_invariant.pass_set)
          return false;
 
-      if (sctx->num_perfect_occlusion_queries != 0 && !dsa_order_invariant.pass_set)
+      if (sctx->occlusion_query_mode == SI_OCCLUSION_QUERY_MODE_PRECISE_INTEGER &&
+          !dsa_order_invariant.pass_set)
          return false;
    }
 

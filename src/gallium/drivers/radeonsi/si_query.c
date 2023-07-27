@@ -707,23 +707,45 @@ static void si_update_occlusion_query_state(struct si_context *sctx, unsigned ty
 {
    if (type == PIPE_QUERY_OCCLUSION_COUNTER || type == PIPE_QUERY_OCCLUSION_PREDICATE ||
        type == PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE) {
-      bool old_enable = sctx->num_occlusion_queries != 0;
-      bool old_perfect_enable = sctx->num_perfect_occlusion_queries != 0;
-      bool enable, perfect_enable;
-
-      sctx->num_occlusion_queries += diff;
-      assert(sctx->num_occlusion_queries >= 0);
-
-      if (type != PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE) {
-         sctx->num_perfect_occlusion_queries += diff;
-         assert(sctx->num_perfect_occlusion_queries >= 0);
+      switch (type) {
+      case PIPE_QUERY_OCCLUSION_COUNTER:
+         sctx->num_integer_occlusion_queries += diff;
+         break;
+      case PIPE_QUERY_OCCLUSION_PREDICATE:
+         sctx->num_boolean_occlusion_queries += diff;
+         break;
+      case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+         sctx->num_conservative_occlusion_queries += diff;
+         break;
       }
 
-      enable = sctx->num_occlusion_queries != 0;
-      perfect_enable = sctx->num_perfect_occlusion_queries != 0;
+      assert(sctx->num_integer_occlusion_queries >= 0);
+      assert(sctx->num_boolean_occlusion_queries >= 0);
+      assert(sctx->num_conservative_occlusion_queries >= 0);
 
-      if (enable != old_enable || perfect_enable != old_perfect_enable) {
-         si_set_occlusion_query_state(sctx, old_perfect_enable);
+      enum si_occlusion_query_mode new_mode =
+         sctx->num_integer_occlusion_queries ? SI_OCCLUSION_QUERY_MODE_PRECISE_INTEGER :
+         sctx->num_boolean_occlusion_queries ? SI_OCCLUSION_QUERY_MODE_PRECISE_BOOLEAN :
+         sctx->num_conservative_occlusion_queries ? SI_OCCLUSION_QUERY_MODE_CONSERVATIVE_BOOLEAN :
+         SI_OCCLUSION_QUERY_MODE_DISABLE;
+
+      /* Conservative queries are only available on gfx10+. On gfx11+, they perform worse
+       * with late Z, but not early Z. Instead of trying to detect late Z, never enable
+       * conservative queries to keep it simple. This is the recommended programming.
+       */
+      if (new_mode == SI_OCCLUSION_QUERY_MODE_CONSERVATIVE_BOOLEAN &&
+          (sctx->gfx_level < GFX10 || sctx ->gfx_level >= GFX11))
+         new_mode = SI_OCCLUSION_QUERY_MODE_PRECISE_BOOLEAN;
+
+      if (sctx->occlusion_query_mode != new_mode) {
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
+
+         if (sctx->screen->info.has_out_of_order_rast &&
+             (sctx->occlusion_query_mode == SI_OCCLUSION_QUERY_MODE_PRECISE_INTEGER) !=
+             (new_mode == SI_OCCLUSION_QUERY_MODE_PRECISE_INTEGER))
+            si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
+
+         sctx->occlusion_query_mode = new_mode;
       }
    }
 }

@@ -580,7 +580,6 @@ void si_mark_display_dcc_dirty(struct si_context *sctx, struct si_texture *tex);
 void si_update_ps_iter_samples(struct si_context *sctx);
 void si_save_qbo_state(struct si_context *sctx, struct si_qbo_state *st);
 void si_restore_qbo_state(struct si_context *sctx, struct si_qbo_state *st);
-void si_set_occlusion_query_state(struct si_context *sctx, bool old_perfect_enable);
 unsigned gfx103_get_cu_mask_ps(struct si_screen *sscreen);
 
 struct si_fast_udiv_info32 {
