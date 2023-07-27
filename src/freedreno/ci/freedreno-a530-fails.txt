@@ -85,6 +85,7 @@ dEQP-GLES31.functional.ubo.random.all_per_block_buffers.20,Fail
 KHR-GLES2.core.internalformat.copy_tex_image.alpha8_oes,Fail
 KHR-GLES2.core.internalformat.copy_tex_image.alpha,Fail
 KHR-GLES3.core.internalformat.copy_tex_image.alpha,Fail
+KHR-GLES31.core.internalformat.copy_tex_image.alpha,Fail
 
 # "Invalid array size was returned. at es31cArrayOfArraysTests.cpp:4779"
 # msm 900000.mdss: [drm:a5xx_irq] *ERROR* gpu fault ring 0 fence 2c54ef status E40801C1 rb 0162/0162 ib1 000000000104B000/0000 ib2 000000000104C000/0000
@@ -423,8 +424,6 @@ dEQP-GLES31.functional.ssbo.layout.unsized_struct_array.per_block_buffer.shared_
 dEQP-GLES31.functional.ssbo.layout.unsized_struct_array.per_block_buffer.std430_instance_array,Fail
 dEQP-GLES31.functional.ssbo.layout.unsized_struct_array.single_buffer.packed_instance_array,Fail
 dEQP-GLES31.functional.ssbo.layout.unsized_struct_array.single_buffer.std140_instance_array,Fail
-
-KHR-GLES31.core.internalformat.copy_tex_image.alpha,Fail
 
 KHR-GLES31.core.shader_image_load_store.basic-allTargets-loadStoreCS,Fail
 KHR-GLES31.core.shader_storage_buffer_object.advanced-usage-operators-cs,Fail
