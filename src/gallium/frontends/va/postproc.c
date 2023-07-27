@@ -354,7 +354,7 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
 
       if (drv->pipe->screen->get_param(drv->pipe->screen,
                                        PIPE_CAP_PREFER_COMPUTE_FOR_MULTIMEDIA))
-         util_compute_blit(drv->pipe, &blit, &context->blit_cs, !drv->compositor.deinterlace);
+         util_compute_blit(drv->pipe, &blit, &context->blit_cs);
       else
          drv->pipe->blit(drv->pipe, &blit);
    }
