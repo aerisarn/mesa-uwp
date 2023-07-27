@@ -51,6 +51,10 @@ fd5_program_state(struct ir3_program_state *state)
 void fd5_emit_shader(struct fd_ringbuffer *ring,
                      const struct ir3_shader_variant *so);
 
+void fd5_emit_shader_obj(struct fd_ringbuffer *ring,
+                         const struct ir3_shader_variant *so,
+                         uint32_t shader_obj_reg);
+
 void fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
                       struct fd5_emit *emit);
 

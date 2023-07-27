@@ -81,6 +81,14 @@ fd5_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
    }
 }
 
+void
+fd5_emit_shader_obj(struct fd_ringbuffer *ring,
+                    const struct ir3_shader_variant *so, uint32_t shader_obj_reg)
+{
+   OUT_PKT4(ring, shader_obj_reg, 2);
+   OUT_RELOC(ring, so->bo, 0, 0, 0); /* SP_VS_OBJ_START_LO/HI */
+}
+
 /* TODO maybe some of this we could pre-compute once rather than having
  * so much draw-time logic?
  */
@@ -487,8 +495,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
       OUT_RING(ring, reg);
    }
 
-   OUT_PKT4(ring, REG_A5XX_SP_VS_OBJ_START_LO, 2);
-   OUT_RELOC(ring, s[VS].v->bo, 0, 0, 0); /* SP_VS_OBJ_START_LO/HI */
+   fd5_emit_shader_obj(ring, s[VS].v, REG_A5XX_SP_VS_OBJ_START_LO);
 
    if (s[VS].instrlen)
       fd5_emit_shader(ring, s[VS].v);
@@ -512,8 +519,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
       OUT_RING(ring, 0x00000000); /* SP_FS_OBJ_START_LO */
       OUT_RING(ring, 0x00000000); /* SP_FS_OBJ_START_HI */
    } else {
-      OUT_PKT4(ring, REG_A5XX_SP_FS_OBJ_START_LO, 2);
-      OUT_RELOC(ring, s[FS].v->bo, 0, 0, 0); /* SP_FS_OBJ_START_LO/HI */
+      fd5_emit_shader_obj(ring, s[FS].v, REG_A5XX_SP_FS_OBJ_START_LO);
    }
 
    OUT_PKT4(ring, REG_A5XX_HLSQ_CONTROL_0_REG, 5);

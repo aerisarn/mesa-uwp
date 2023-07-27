@@ -83,8 +83,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct ir3_shader_variant *v)
    OUT_RING(ring, constlen); /* HLSQ_CS_CONSTLEN */
    OUT_RING(ring, instrlen); /* HLSQ_CS_INSTRLEN */
 
-   OUT_PKT4(ring, REG_A5XX_SP_CS_OBJ_START_LO, 2);
-   OUT_RELOC(ring, v->bo, 0, 0, 0); /* SP_CS_OBJ_START_LO/HI */
+   fd5_emit_shader_obj(ring, v, REG_A5XX_SP_CS_OBJ_START_LO);
 
    OUT_PKT4(ring, REG_A5XX_HLSQ_UPDATE_CNTL, 1);
    OUT_RING(ring, 0x1f00000);
