@@ -91,22 +91,6 @@ dri_lookup_egl_image_validated(void *image, void *data)
    return dri->lookup_image_validated(image, dri->lookup_user_data);
 }
 
-static __DRIbuffer *
-dri_get_buffers(__DRIdrawable * driDrawable,
-		 int *width, int *height,
-		 unsigned int *attachments, int count,
-		 int *out_count, void *data)
-{
-   struct gbm_dri_surface *surf = data;
-   struct gbm_dri_device *dri = gbm_dri_device(surf->base.gbm);
-
-   if (dri->get_buffers == NULL)
-      return NULL;
-
-   return dri->get_buffers(driDrawable, width, height, attachments,
-                           count, out_count, surf->dri_private);
-}
-
 static void
 dri_flush_front_buffer(__DRIdrawable * driDrawable, void *data)
 {
@@ -115,23 +99,6 @@ dri_flush_front_buffer(__DRIdrawable * driDrawable, void *data)
 
    if (dri->flush_front_buffer != NULL)
       dri->flush_front_buffer(driDrawable, surf->dri_private);
-}
-
-static __DRIbuffer *
-dri_get_buffers_with_format(__DRIdrawable * driDrawable,
-                            int *width, int *height,
-                            unsigned int *attachments, int count,
-                            int *out_count, void *data)
-{
-   struct gbm_dri_surface *surf = data;
-   struct gbm_dri_device *dri = gbm_dri_device(surf->base.gbm);
-
-   if (dri->get_buffers_with_format == NULL)
-      return NULL;
-
-   return
-      dri->get_buffers_with_format(driDrawable, width, height, attachments,
-                                   count, out_count, surf->dri_private);
 }
 
 static unsigned
@@ -244,15 +211,6 @@ static const __DRIimageLookupExtension image_lookup_extension = {
    .lookupEGLImageValidated = dri_lookup_egl_image_validated,
 };
 
-static const __DRIdri2LoaderExtension dri2_loader_extension = {
-   .base = { __DRI_DRI2_LOADER, 4 },
-
-   .getBuffers              = dri_get_buffers,
-   .flushFrontBuffer        = dri_flush_front_buffer,
-   .getBuffersWithFormat    = dri_get_buffers_with_format,
-   .getCapability           = dri_get_capability,
-};
-
 static const __DRIimageLoaderExtension image_loader_extension = {
    .base = { __DRI_IMAGE_LOADER, 2 },
 
@@ -279,7 +237,6 @@ static const __DRIkopperLoaderExtension kopper_loader_extension = {
 static const __DRIextension *gbm_dri_screen_extensions[] = {
    &image_lookup_extension.base,
    &use_invalidate.base,
-   &dri2_loader_extension.base,
    &image_loader_extension.base,
    &swrast_loader_extension.base,
    &kopper_loader_extension.base,
@@ -294,7 +251,7 @@ static struct dri_extension_match dri_core_extensions[] = {
 static struct dri_extension_match gbm_dri_device_extensions[] = {
    { __DRI_CORE, 1, offsetof(struct gbm_dri_device, core), false },
    { __DRI_MESA, 1, offsetof(struct gbm_dri_device, mesa), false },
-   { __DRI_DRI2, 4, offsetof(struct gbm_dri_device, dri2), false },
+   { __DRI_IMAGE_DRIVER, 1, offsetof(struct gbm_dri_device, image_driver), false },
 };
 
 static struct dri_extension_match gbm_swrast_device_extensions[] = {
@@ -1188,9 +1145,15 @@ gbm_dri_bo_map(struct gbm_bo *_bo,
    }
 
    mtx_lock(&dri->mutex);
-   if (!dri->context)
-      dri->context = dri->dri2->createNewContext(dri->screen, NULL,
-                                                 NULL, NULL);
+   if (!dri->context) {
+      unsigned error;
+
+      dri->context =
+         dri->image_driver->createContextAttribs(dri->screen,
+                                                 __DRI_API_OPENGL,
+                                                 NULL, NULL, 0, NULL,
+                                                 &error, NULL);
+   }
    assert(dri->context);
    mtx_unlock(&dri->mutex);
 
