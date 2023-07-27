@@ -729,6 +729,7 @@ driswCreateDrawable(struct glx_screen *base, XID xDrawable,
       pdp->driDrawable =
          kopper->createNewDrawable(psc->driScreen, config->driConfig, pdp,
          &(__DRIkopperDrawableInfo){
+            .multiplanes_available = psc->has_multibuffer,
             .is_pixmap = !(type & GLX_WINDOW_BIT),
          });
 

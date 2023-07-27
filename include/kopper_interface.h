@@ -50,6 +50,7 @@ typedef struct __DRIkopperDrawableInfoRec    __DRIkopperDrawableInfo;
 #define __DRI_KOPPER_VERSION 1
 
 struct __DRIkopperDrawableInfoRec {
+   bool multiplanes_available;
    int is_pixmap;
 };
 
