@@ -395,7 +395,7 @@ kopper_get_pixmap_buffer(struct dri_drawable *drawable,
    struct dri_screen *screen = drawable->screen;
 
 #ifdef HAVE_DRI3_MODIFIERS
-   if (screen->has_modifiers) {
+   if (drawable->has_modifiers) {
       xcb_dri3_buffers_from_pixmap_cookie_t bps_cookie;
       xcb_dri3_buffers_from_pixmap_reply_t *bps_reply;
       xcb_generic_error_t *error;
@@ -900,6 +900,8 @@ kopperCreateNewDrawable(__DRIscreen *psp,
     struct dri_screen *screen = dri_screen(psp);
     struct dri_drawable *drawable =
        screen->create_drawable(screen, &config->modes, info->is_pixmap, data);
+   if (drawable)
+      drawable->has_modifiers = screen->has_modifiers && info->multiplanes_available;
 
     return opaque_dri_drawable(drawable);
 }
