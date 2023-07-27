@@ -32,6 +32,7 @@
 #include <dlfcn.h>
 #include "dri_common.h"
 #include "drisw_priv.h"
+#include "dri3_priv.h"
 #include <X11/extensions/shmproto.h>
 #include <assert.h>
 #include <vulkan/vulkan_core.h>
@@ -997,6 +998,11 @@ driswCreateScreenDriver(int screen, struct glx_display *priv,
    psc->base.configs = configs;
    glx_config_destroy_list(psc->base.visuals);
    psc->base.visuals = visuals;
+
+   if (pdpyp->zink) {
+      bool err;
+      psc->has_multibuffer = dri3_check_multibuffer(priv->dpy, &err);
+   }
 
    psc->driver_configs = driver_configs;
 
