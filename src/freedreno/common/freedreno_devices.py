@@ -109,7 +109,7 @@ class GPUInfo(Struct):
     def __init__(self, chip, gmem_align_w, gmem_align_h,
                  tile_align_w, tile_align_h,
                  tile_max_w, tile_max_h, num_vsc_pipes,
-                 cs_shared_mem_size, wave_granularity, fibers_per_sp):
+                 cs_shared_mem_size, num_sp_cores, wave_granularity, fibers_per_sp):
         self.chip          = chip.value
         self.gmem_align_w  = gmem_align_w
         self.gmem_align_h  = gmem_align_h
@@ -119,6 +119,7 @@ class GPUInfo(Struct):
         self.tile_max_h    = tile_max_h
         self.num_vsc_pipes = num_vsc_pipes
         self.cs_shared_mem_size = cs_shared_mem_size
+        self.num_sp_cores  = num_sp_cores
         self.wave_granularity = wave_granularity
         self.fibers_per_sp = fibers_per_sp
 
@@ -138,10 +139,10 @@ class A6xxGPUInfo(GPUInfo):
                          tile_max_h   = max_bitfield_val(14, 8, 4),
                          num_vsc_pipes = num_vsc_pipes,
                          cs_shared_mem_size = cs_shared_mem_size,
+                         num_sp_cores = num_ccu, # The # of SP cores seems to always match # of CCU
                          wave_granularity   = wave_granularity,
                          fibers_per_sp      = fibers_per_sp)
-        # The # of SP cores seems to always match # of CCU
-        self.num_sp_cores = num_ccu
+
         self.num_ccu = num_ccu
 
         self.a6xx = Struct()
@@ -187,6 +188,7 @@ add_gpus([
         tile_max_h   = ~0, # TODO
         num_vsc_pipes = 8,
         cs_shared_mem_size = 0,
+        num_sp_cores = 0, # TODO
         wave_granularity = 2,
         fibers_per_sp = 0, # TODO
     ))
@@ -204,6 +206,7 @@ add_gpus([
         tile_max_h   = max_bitfield_val(9, 5, 5),
         num_vsc_pipes = 8,
         cs_shared_mem_size = 32 * 1024,
+        num_sp_cores = 0, # TODO
         wave_granularity = 2,
         fibers_per_sp = 0, # TODO
     ))
@@ -220,6 +223,7 @@ add_gpus([
         tile_max_h   = max_bitfield_val(9, 5, 5),
         num_vsc_pipes = 8,
         cs_shared_mem_size = 32 * 1024,
+        num_sp_cores = 0, # TODO
         wave_granularity = 2,
         fibers_per_sp = 0, # TODO
     ))
@@ -240,6 +244,7 @@ add_gpus([
         tile_max_h   = max_bitfield_val(16, 9, 5),
         num_vsc_pipes = 16,
         cs_shared_mem_size = 32 * 1024,
+        num_sp_cores = 0, # TODO
         wave_granularity = 2,
         fibers_per_sp = 0, # TODO
     ))
