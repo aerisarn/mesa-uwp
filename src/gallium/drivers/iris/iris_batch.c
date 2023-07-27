@@ -697,18 +697,19 @@ iris_batch_check_for_reset(struct iris_batch *batch)
 {
    struct iris_screen *screen = batch->screen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
+   struct iris_context *ice = batch->ice;
    const struct iris_kmd_backend *backend;
-   enum pipe_reset_status status;
+   enum pipe_reset_status status = PIPE_NO_RESET;
+
+   /* Banned context was already signalled to application */
+   if (ice->context_reset_signaled)
+      return status;
 
    backend = iris_bufmgr_get_kernel_driver_backend(bufmgr);
    status = backend->batch_check_for_reset(batch);
-   if (status != PIPE_NO_RESET) {
-      /* Our context is likely banned, or at least in an unknown state.
-       * Throw it away and start with a fresh context.  Ideally this may
-       * catch the problem before our next execbuf fails with -EIO.
-       */
-      replace_kernel_ctx(batch);
-   }
+
+   if (status != PIPE_NO_RESET)
+      ice->context_reset_signaled = true;
 
    return status;
 }
@@ -956,6 +957,10 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
     */
    if (ret && context_or_engine_was_banned(bufmgr, ret)) {
       enum pipe_reset_status status = iris_batch_check_for_reset(batch);
+
+      if (status != PIPE_NO_RESET || ice->context_reset_signaled)
+         replace_kernel_ctx(batch);
+
       if (batch->reset->reset) {
          /* Tell gallium frontends the device is lost and it was our fault. */
          batch->reset->reset(batch->reset->data, status);

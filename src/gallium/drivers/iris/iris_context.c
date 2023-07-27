@@ -99,9 +99,6 @@ iris_get_device_reset_status(struct pipe_context *ctx)
     * worst status (if one was guilty, proclaim guilt).
     */
    iris_foreach_batch(ice, batch) {
-      /* This will also recreate the hardware contexts as necessary, so any
-       * future queries will show no resets.  We only want to report once.
-       */
       enum pipe_reset_status batch_reset =
          iris_batch_check_for_reset(batch);
 

@@ -637,6 +637,9 @@ struct iris_context {
    /** Whether the context protected (through EGL_EXT_protected_content) */
    bool protected;
 
+   /** Whether a banned context was already signalled */
+   bool context_reset_signaled;
+
    /** A device reset status callback for notifying that the GPU is hosed. */
    struct pipe_device_reset_callback reset;
 
