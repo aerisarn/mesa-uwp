@@ -362,8 +362,8 @@ radv_tcs_needs_state_sgpr(const struct radv_shader_info *info, const struct radv
 static bool
 radv_tes_needs_state_sgpr(const struct radv_shader_info *info)
 {
-   /* When the number of tessellation patches is 0, it's loaded from a SGPR. */
-   return !info->num_tess_patches;
+   /* When the number of tessellation patches/TCS vertices out is 0, it's loaded from a SGPR. */
+   return !info->num_tess_patches || !info->tes.tcs_vertices_out;
 }
 
 static bool

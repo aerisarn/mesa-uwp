@@ -71,6 +71,7 @@ struct radv_shader_args {
 
    /* TES */
    /* # [0:7] = the number of tessellation patches
+    * # [8:15] = the number of TCS vertices output
     */
    struct ac_arg tes_state;
 

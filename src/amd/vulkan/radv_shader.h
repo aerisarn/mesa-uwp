@@ -203,6 +203,8 @@ enum radv_ud_index {
 
 #define TES_STATE_NUM_PATCHES__SHIFT      0
 #define TES_STATE_NUM_PATCHES__MASK       0xff
+#define TES_STATE_TCS_VERTICES_OUT__SHIFT 8
+#define TES_STATE_TCS_VERTICES_OUT__MASK  0xff
 
 #define PS_STATE_NUM_SAMPLES__SHIFT    0
 #define PS_STATE_NUM_SAMPLES__MASK     0xf

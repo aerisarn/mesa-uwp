@@ -149,8 +149,12 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
           * constant additions can be added to the const offset in memory load instructions.
           */
          nir_ssa_def *arg = ac_nir_load_arg(b, &s->args->ac, s->args->ac.tes_rel_patch_id);
-         nir_intrinsic_instr *load_arg = nir_instr_as_intrinsic(arg->parent_instr);
-         nir_intrinsic_set_arg_upper_bound_u32_amd(load_arg, 2048 / MAX2(s->info->tes.tcs_vertices_out, 1));
+
+         if (s->info->tes.tcs_vertices_out) {
+            nir_intrinsic_instr *load_arg = nir_instr_as_intrinsic(arg->parent_instr);
+            nir_intrinsic_set_arg_upper_bound_u32_amd(load_arg, 2048 / MAX2(s->info->tes.tcs_vertices_out, 1));
+         }
+
          replacement = arg;
       } else {
          unreachable("invalid tessellation shader stage");
@@ -164,7 +168,11 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
             replacement = GET_SGPR_FIELD_NIR(s->args->tcs_offchip_layout, TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS);
          }
       } else if (stage == MESA_SHADER_TESS_EVAL) {
-         replacement = nir_imm_int(b, s->info->tes.tcs_vertices_out);
+         if (s->info->tes.tcs_vertices_out) {
+            replacement = nir_imm_int(b, s->info->tes.tcs_vertices_out);
+         } else {
+            replacement = GET_SGPR_FIELD_NIR(s->args->tes_state, TES_STATE_TCS_VERTICES_OUT);
+         }
       } else
          unreachable("invalid tessellation shader stage");
       break;
@@ -278,21 +286,25 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       break;
    }
    case nir_intrinsic_load_hs_out_patch_data_offset_amd: {
-      unsigned out_vertices_per_patch;
+      nir_ssa_def *out_vertices_per_patch;
       unsigned num_tcs_outputs =
          stage == MESA_SHADER_TESS_CTRL ? s->info->tcs.num_linked_outputs : s->info->tes.num_linked_inputs;
 
       if (stage == MESA_SHADER_TESS_CTRL) {
-         out_vertices_per_patch = s->info->tcs.tcs_vertices_out;
+         out_vertices_per_patch = nir_imm_int(b, s->info->tcs.tcs_vertices_out);
       } else {
-         out_vertices_per_patch = s->info->tes.tcs_vertices_out;
+         if (s->info->tes.tcs_vertices_out) {
+            out_vertices_per_patch = nir_imm_int(b, s->info->tes.tcs_vertices_out);
+         } else {
+            out_vertices_per_patch = GET_SGPR_FIELD_NIR(s->args->tes_state, TES_STATE_TCS_VERTICES_OUT);
+         }
       }
 
-      int per_vertex_output_patch_size = out_vertices_per_patch * num_tcs_outputs * 16u;
+      nir_ssa_def *per_vertex_output_patch_size = nir_imul_imm(b, out_vertices_per_patch, num_tcs_outputs * 16u);
 
       if (s->info->num_tess_patches) {
          unsigned num_patches = s->info->num_tess_patches;
-         replacement = nir_imm_int(b, num_patches * per_vertex_output_patch_size);
+         replacement = nir_imul_imm(b, per_vertex_output_patch_size, num_patches);
       } else {
          nir_ssa_def *num_patches;
 
@@ -301,7 +313,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
          } else {
             num_patches = GET_SGPR_FIELD_NIR(s->args->tes_state, TES_STATE_NUM_PATCHES);
          }
-         replacement = nir_imul_imm(b, num_patches, per_vertex_output_patch_size);
+         replacement = nir_imul(b, per_vertex_output_patch_size, num_patches);
       }
       break;
    }
