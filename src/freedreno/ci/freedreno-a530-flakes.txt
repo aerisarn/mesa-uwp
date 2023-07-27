@@ -19,12 +19,7 @@ dEQP-GLES31.functional.image_load_store.3d.load_store.*_single_layer
 # Separate shader and atomics flakiness increased since bfeb0983d3b3 ("ci/freedreno: Disable flaky a530 for now.")
 dEQP-GLES31.functional.separate_shader.*
 
-# Flaky since running more of GLES31
-dEQP-GLES31.functional.texture.border_clamp.*
-
 KHR-GLES31.core.compute_shader.resource-image
-
-KHR-GLES31.core.texture_border_clamp.*
 
 # Occasionally passes
 dEQP-GLES31.functional.draw_base_vertex.draw_elements_instanced_base_vertex.builtin_variable.vertex_id
