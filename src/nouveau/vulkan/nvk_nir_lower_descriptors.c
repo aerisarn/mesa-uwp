@@ -30,7 +30,7 @@ load_descriptor_set_addr(nir_builder *b, uint32_t set,
 static nir_ssa_def *
 load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
                 uint32_t set, uint32_t binding, nir_ssa_def *index,
-                const struct lower_descriptors_ctx *ctx)
+                unsigned offset_B, const struct lower_descriptors_ctx *ctx)
 {
    assert(set < NVK_MAX_SETS);
 
@@ -83,7 +83,7 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
       assert(binding_layout->stride > 0);
       nir_ssa_def *desc_ubo_offset =
          nir_iadd_imm(b, nir_imul_imm(b, index, binding_layout->stride),
-                         binding_layout->offset);
+                         binding_layout->offset + offset_B);
 
       unsigned desc_align = (1 << (ffs(binding_layout->stride) - 1));
       desc_align = MIN2(desc_align, 16);
@@ -113,7 +113,7 @@ load_descriptor_for_idx_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
    uint32_t binding = nir_intrinsic_binding(intrin);
    index = nir_iadd(b, index, nir_ssa_for_src(b, intrin->src[0], 1));
 
-   return load_descriptor(b, 4, 32, set, binding, index, ctx);
+   return load_descriptor(b, 4, 32, set, binding, index, 0, ctx);
 }
 
 static bool
@@ -239,16 +239,16 @@ get_resource_deref_binding(nir_builder *b, nir_deref_instr *deref,
 }
 
 static nir_ssa_def *
-load_resource_deref_desc(nir_builder *b, nir_deref_instr *deref,
-                         unsigned desc_offset, unsigned num_components,
-                         unsigned bit_size,
+load_resource_deref_desc(nir_builder *b, 
+                         unsigned num_components, unsigned bit_size,
+                         nir_deref_instr *deref, unsigned offset_B,
                          const struct lower_descriptors_ctx *ctx)
 {
    uint32_t set, binding;
    nir_ssa_def *index;
    get_resource_deref_binding(b, deref, &set, &binding, &index);
    return load_descriptor(b, num_components, bit_size,
-                          set, binding, index, ctx);
+                          set, binding, index, offset_B, ctx);
 }
 
 static bool
@@ -257,7 +257,7 @@ lower_image_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
 {
    b->cursor = nir_before_instr(&intrin->instr);
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-   nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 1, 32, ctx);
+   nir_ssa_def *desc = load_resource_deref_desc(b, 1, 32, deref, 0, ctx);
    nir_rewrite_image_intrinsic(intrin, desc, true);
 
    /* We treat 3D images as 2D arrays */
@@ -333,18 +333,25 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
                               nir_src_as_deref(tex->src[sampler_src_idx].src);
    assert(texture);
 
+   const int plane_src_idx =
+      nir_tex_instr_src_index(tex, nir_tex_src_plane);
+
+   uint32_t plane = (plane_src_idx < 0) ? 0 : 
+      nir_src_as_uint(tex->src[plane_src_idx].src);
+   uint64_t plane_offset_B = plane * sizeof(struct nvk_image_descriptor);
+
    nir_ssa_def *combined_handle;
    if (texture == sampler) {
-      combined_handle = load_resource_deref_desc(b, texture, 0, 1, 32, ctx);
+      combined_handle = load_resource_deref_desc(b, 1, 32, texture, plane_offset_B, ctx);
    } else {
       nir_ssa_def *texture_desc =
-         load_resource_deref_desc(b, texture, 0, 1, 32, ctx);
+         load_resource_deref_desc(b, 1, 32, texture, plane_offset_B, ctx);
       combined_handle = nir_iand_imm(b, texture_desc,
                                      NVK_IMAGE_DESCRIPTOR_IMAGE_INDEX_MASK);
 
       if (sampler != NULL) {
          nir_ssa_def *sampler_desc =
-            load_resource_deref_desc(b, sampler, 0, 1, 32, ctx);
+            load_resource_deref_desc(b, 1, 32, sampler, plane_offset_B, ctx);
          nir_ssa_def *sampler_index =
             nir_iand_imm(b, sampler_desc,
                          NVK_IMAGE_DESCRIPTOR_SAMPLER_INDEX_MASK);
