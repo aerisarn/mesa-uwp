@@ -28,7 +28,9 @@
 
 #include "state_pool_test_helper.h"
 
-int main(void)
+void state_pool_test(void);
+
+void state_pool_test(void)
 {
    const unsigned num_threads = 8;
    const unsigned states_per_thread = 1 << 10;
