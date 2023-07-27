@@ -187,7 +187,7 @@ private:
    bool schedule_exports(Shader::ShaderBlocks& out_blocks,
                          std::list<ExportInstr *>& ready_list);
 
-   int maybe_split_alu_block(Shader::ShaderBlocks& out_blocks);
+   void maybe_split_alu_block(Shader::ShaderBlocks& out_blocks);
 
    template <typename I> bool schedule(std::list<I *>& ready_list);
 
@@ -237,6 +237,8 @@ private:
 
    bool m_nop_after_rel_dest{false};
    bool m_nop_befor_rel_src{false};
+   uint32_t m_next_block_id{1};
+
 
    ArrayCheckSet m_last_indirect_array_write;
    ArrayCheckSet m_last_direct_array_write;
@@ -327,7 +329,7 @@ BlockScheduler::schedule_block(Block& in_block,
 
    bool have_instr = collect_ready(cir);
 
-   m_current_block = new Block(in_block.nesting_depth(), in_block.id());
+   m_current_block = new Block(in_block.nesting_depth(), m_next_block_id++);
    m_current_block->set_instr_flag(Instr::force_cf);
    assert(m_current_block->id() >= 0);
 
@@ -768,12 +770,11 @@ BlockScheduler::start_new_block(Shader::ShaderBlocks& out_blocks, Block::Type ty
       sfn_log << SfnLog::schedule << "Start new block\n";
       assert(!m_current_block->lds_group_active());
 
-      int next_id = m_current_block->id() + 1;
       if (m_current_block->type() != Block::alu)
          out_blocks.push_back(m_current_block);
       else
-         next_id = maybe_split_alu_block(out_blocks);
-      m_current_block = new Block(m_current_block->nesting_depth(), next_id);
+         maybe_split_alu_block(out_blocks);
+      m_current_block = new Block(m_current_block->nesting_depth(), m_next_block_id++);
       m_current_block->set_instr_flag(Instr::force_cf);
       m_idx0_pending = m_idx1_pending = false;
 
@@ -781,12 +782,12 @@ BlockScheduler::start_new_block(Shader::ShaderBlocks& out_blocks, Block::Type ty
    m_current_block->set_type(type, m_chip_class);
 }
 
-int BlockScheduler::maybe_split_alu_block(Shader::ShaderBlocks& out_blocks)
+void BlockScheduler::maybe_split_alu_block(Shader::ShaderBlocks& out_blocks)
 {
    // TODO: needs fixing
    if (m_current_block->remaining_slots() > 0) {
       out_blocks.push_back(m_current_block);
-      return m_current_block->id() + 1;
+      return;
    }
 
    int used_slots = 0;
@@ -811,9 +812,8 @@ int BlockScheduler::maybe_split_alu_block(Shader::ShaderBlocks& out_blocks)
       }
    }
 
-   int sub_block_id = m_current_block->id();
    Block *sub_block = new Block(m_current_block->nesting_depth(),
-                                sub_block_id++);
+                                m_next_block_id++);
    sub_block->set_type(Block::alu, m_chip_class);
    sub_block->set_instr_flag(Instr::force_cf);
 
@@ -828,7 +828,7 @@ int BlockScheduler::maybe_split_alu_block(Shader::ShaderBlocks& out_blocks)
          assert(!sub_block->lds_group_active());
          out_blocks.push_back(sub_block);
          sub_block = new Block(m_current_block->nesting_depth(),
-                                         sub_block_id++);
+                                         m_next_block_id++);
          sub_block->set_type(Block::alu, m_chip_class);
          sub_block->set_instr_flag(Instr::force_cf);
       }
@@ -842,7 +842,6 @@ int BlockScheduler::maybe_split_alu_block(Shader::ShaderBlocks& out_blocks)
    }
    if (!sub_block->empty())
       out_blocks.push_back(sub_block);
-   return sub_block_id;
 }
 
 template <typename I>
