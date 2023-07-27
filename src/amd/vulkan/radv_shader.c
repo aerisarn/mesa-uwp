@@ -2282,9 +2282,7 @@ radv_fill_nir_compiler_options(struct radv_nir_compiler_options *options, struct
    options->record_ir = keep_shader_info;
    options->record_stats = keep_statistic_info;
    options->check_ir = device->instance->debug_flags & RADV_DEBUG_CHECKIR;
-
-   if (!is_meta_shader)
-      options->enable_mrt_output_nan_fixup = options->key.ps.epilog.enable_mrt_output_nan_fixup;
+   options->enable_mrt_output_nan_fixup = options->key.ps.epilog.enable_mrt_output_nan_fixup;
 }
 
 static void

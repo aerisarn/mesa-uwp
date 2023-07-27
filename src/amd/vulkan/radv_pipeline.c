@@ -668,7 +668,8 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
          .color_is_int10 = pipeline_key->ps.epilog.color_is_int10,
          .alpha_func = COMPARE_FUNC_ALWAYS,
 
-         .enable_mrt_output_nan_fixup = pipeline_key->ps.epilog.enable_mrt_output_nan_fixup,
+         .enable_mrt_output_nan_fixup =
+            pipeline_key->ps.epilog.enable_mrt_output_nan_fixup && !stage->nir->info.internal,
          .no_color_export = stage->info.ps.has_epilog,
 
          .bc_optimize_for_persp = G_0286CC_PERSP_CENTER_ENA(stage->info.ps.spi_ps_input) &&
