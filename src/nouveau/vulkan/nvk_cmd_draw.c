@@ -853,7 +853,8 @@ nvk_flush_vi_state(struct nvk_cmd_buffer *cmd)
 
    struct nv_push *p = nvk_cmd_buffer_push(cmd, 256);
 
-   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI)) {
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI_BINDINGS_VALID)) {
       u_foreach_bit(a, dyn->vi->attributes_valid) {
          const struct nvk_va_format *fmt =
             nvk_get_va_format(pdev, dyn->vi->attributes[a].format);
@@ -876,7 +877,8 @@ nvk_flush_vi_state(struct nvk_cmd_buffer *cmd)
       }
    }
 
-   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI_BINDING_STRIDES)) {
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI_BINDINGS_VALID) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI_BINDING_STRIDES)) {
       for (uint32_t b = 0; b < 32; b++) {
          P_IMMD(p, NV9097, SET_VERTEX_STREAM_A_FORMAT(b), {
             .stride = dyn->vi_binding_strides[b],
