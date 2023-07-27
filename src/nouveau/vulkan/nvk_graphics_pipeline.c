@@ -19,7 +19,6 @@ static void
 emit_pipeline_ts_state(struct nv_push *p,
                        const struct vk_tessellation_state *ts)
 {
-   P_IMMD(p, NV9097, SET_PATCH, ts->patch_control_points);
 }
 
 static void
