@@ -546,7 +546,7 @@ lower_vulkan_resource_index(nir_builder *b,
       uint32_t start_index = 0;
       if (binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
           binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
-         start_index = MAX_INLINE_UNIFORM_BUFFERS;
+         start_index += MAX_INLINE_UNIFORM_BUFFERS;
       }
 
       index = descriptor_map_add(descriptor_map, set, binding,
@@ -555,14 +555,6 @@ lower_vulkan_resource_index(nir_builder *b,
                                  start_index,
                                  32 /* return_size: doesn't really apply for this case */,
                                  0);
-
-      /* We always reserve index 0 for push constants */
-      if (binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
-          binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
-          binding_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
-         index++;
-      }
-
       break;
    }
 

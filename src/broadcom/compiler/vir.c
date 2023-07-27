@@ -1603,7 +1603,6 @@ v3d_attempt_compile(struct v3d_compile *c)
                    .lower_image = c->key->robust_image_access,
                    .lower_ssbo = c->key->robust_storage_access,
                    .lower_ubo = c->key->robust_uniform_access,
-                   .skip_ubo_0 = c->key->environment == V3D_ENVIRONMENT_VULKAN,
                 };
 
                 NIR_PASS(_, c->s, nir_lower_robust_access, &opts);

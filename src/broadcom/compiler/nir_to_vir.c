@@ -564,13 +564,11 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                           v3d_unit_data_create(0, const_offset));
                 const_offset = 0;
         } else if (instr->intrinsic == nir_intrinsic_load_ubo) {
-                uint32_t index = nir_src_as_uint(instr->src[0]);
-                /* On OpenGL QUNIFORM_UBO_ADDR takes a UBO index
-                 * shifted up by 1 (0 is gallium's constant buffer 0).
+                /* QUNIFORM_UBO_ADDR takes a UBO index shifted up by 1 (0
+                 * is gallium's constant buffer 0 in GL and push constants
+                 * in Vulkan)).
                  */
-                if (c->key->environment == V3D_ENVIRONMENT_OPENGL)
-                        index++;
-
+                uint32_t index = nir_src_as_uint(instr->src[0]) + 1;
                 base_offset =
                         vir_uniform(c, QUNIFORM_UBO_ADDR,
                                     v3d_unit_data_create(index, const_offset));
@@ -2741,13 +2739,10 @@ ntq_emit_inline_ubo_load(struct v3d_compile *c, nir_intrinsic_instr *instr)
         if (c->compiler->max_inline_uniform_buffers <= 0)
                 return false;
 
-        /* On Vulkan we use indices 1..MAX_INLINE_UNIFORM_BUFFERS for inline
-         * uniform buffers which we want to handle more like push constants
-         * than regular UBO. OpenGL doesn't implement this feature.
-         */
         assert(c->key->environment == V3D_ENVIRONMENT_VULKAN);
+        /* Regular UBOs start after inline UBOs */
         uint32_t index = nir_src_as_uint(instr->src[0]);
-        if (index == 0 || index > c->compiler->max_inline_uniform_buffers)
+        if (index >= c->compiler->max_inline_uniform_buffers)
                 return false;
 
         /* We scalarize general TMU access for anything that is not 32-bit */
@@ -2755,13 +2750,10 @@ ntq_emit_inline_ubo_load(struct v3d_compile *c, nir_intrinsic_instr *instr)
                instr->num_components == 1);
 
         if (nir_src_is_const(instr->src[1])) {
-                /* Index 0 is reserved for push constants */
-                assert(index > 0);
-                uint32_t inline_index = index - 1;
                 int offset = nir_src_as_uint(instr->src[1]);
                 if (try_emit_uniform(c, offset, instr->num_components,
                                      &instr->dest,
-                                     QUNIFORM_INLINE_UBO_0 + inline_index)) {
+                                     QUNIFORM_INLINE_UBO_0 + index)) {
                         return true;
                 }
         }
@@ -3159,10 +3151,11 @@ ntq_emit_load_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
          */
         uint32_t index = is_uniform ? 0 : nir_src_as_uint(instr->src[0]);
 
-        /* On OpenGL QUNIFORM_UBO_ADDR takes a UBO index
-         * shifted up by 1 (0 is gallium's constant buffer 0).
+        /* QUNIFORM_UBO_ADDR takes a UBO index shifted up by 1 since we use
+         * index 0 for Gallium's constant buffer (GL) or push constants
+         * (Vulkan).
          */
-        if (is_ubo && c->key->environment == V3D_ENVIRONMENT_OPENGL)
+        if (is_ubo)
                 index++;
 
         /* We can only keep track of the last unifa address we used with
