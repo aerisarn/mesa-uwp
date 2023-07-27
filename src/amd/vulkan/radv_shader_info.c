@@ -491,6 +491,7 @@ gather_shader_info_tes(struct radv_device *device, const nir_shader *nir, struct
    info->tes.spacing = nir->info.tess.spacing;
    info->tes.ccw = nir->info.tess.ccw;
    info->tes.point_mode = nir->info.tess.point_mode;
+   info->tes.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
 
    if (!info->outputs_linked)
       info->tes.num_linked_outputs = util_last_bit64(nir->info.outputs_written);

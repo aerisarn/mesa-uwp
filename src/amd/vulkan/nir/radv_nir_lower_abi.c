@@ -150,7 +150,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
           */
          nir_ssa_def *arg = ac_nir_load_arg(b, &s->args->ac, s->args->ac.tes_rel_patch_id);
          nir_intrinsic_instr *load_arg = nir_instr_as_intrinsic(arg->parent_instr);
-         nir_intrinsic_set_arg_upper_bound_u32_amd(load_arg, 2048 / MAX2(b->shader->info.tess.tcs_vertices_out, 1));
+         nir_intrinsic_set_arg_upper_bound_u32_amd(load_arg, 2048 / MAX2(s->info->tes.tcs_vertices_out, 1));
          replacement = arg;
       } else {
          unreachable("invalid tessellation shader stage");
@@ -164,7 +164,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
             replacement = GET_SGPR_FIELD_NIR(s->args->tcs_offchip_layout, TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS);
          }
       } else if (stage == MESA_SHADER_TESS_EVAL) {
-         replacement = nir_imm_int(b, b->shader->info.tess.tcs_vertices_out);
+         replacement = nir_imm_int(b, s->info->tes.tcs_vertices_out);
       } else
          unreachable("invalid tessellation shader stage");
       break;
@@ -278,9 +278,16 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       break;
    }
    case nir_intrinsic_load_hs_out_patch_data_offset_amd: {
-      unsigned out_vertices_per_patch = b->shader->info.tess.tcs_vertices_out;
+      unsigned out_vertices_per_patch;
       unsigned num_tcs_outputs =
          stage == MESA_SHADER_TESS_CTRL ? s->info->tcs.num_linked_outputs : s->info->tes.num_linked_inputs;
+
+      if (stage == MESA_SHADER_TESS_CTRL) {
+         out_vertices_per_patch = s->info->tcs.tcs_vertices_out;
+      } else {
+         out_vertices_per_patch = s->info->tes.tcs_vertices_out;
+      }
+
       int per_vertex_output_patch_size = out_vertices_per_patch * num_tcs_outputs * 16u;
 
       if (s->info->num_tess_patches) {
