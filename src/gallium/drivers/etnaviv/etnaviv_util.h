@@ -26,6 +26,7 @@
 #define H_ETNA_UTIL
 
 #include <math.h>
+#include "mesa/main/macros.h"
 
 /* for conditionally setting boolean flag(s): */
 #define COND(bool, val) ((bool) ? (val) : 0)
@@ -47,26 +48,14 @@ etna_cfloat_to_uint8(float f)
 static inline uint32_t
 etna_float_to_fixp55(float f)
 {
-   if (f >= 15.953125f)
-      return 511;
-
-   if (f < -16.0f)
-      return 512;
-
-   return (int32_t)(f * 32.0f + 0.5f);
+   return U_FIXED(f, 5);
 }
 
 /* float to fixp 8.8 */
 static inline uint32_t
 etna_float_to_fixp88(float f)
 {
-   if (f >= (32767.0 - 1.0f) / 256.0f)
-      return 32767;
-
-   if (f < -16.0f)
-      return 32768;
-
-   return (int32_t)(f * 256.0f + 0.5f);
+   return U_FIXED(f, 8);
 }
 
 /* texture size to log2 in fixp 5.5 format */
