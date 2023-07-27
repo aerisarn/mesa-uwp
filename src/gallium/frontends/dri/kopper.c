@@ -893,13 +893,13 @@ static __DRIdrawable *
 kopperCreateNewDrawable(__DRIscreen *psp,
                         const __DRIconfig *config,
                         void *data,
-                        int is_pixmap)
+                        __DRIkopperDrawableInfo *info)
 {
     assert(data != NULL);
 
     struct dri_screen *screen = dri_screen(psp);
     struct dri_drawable *drawable =
-       screen->create_drawable(screen, &config->modes, is_pixmap, data);
+       screen->create_drawable(screen, &config->modes, info->is_pixmap, data);
 
     return opaque_dri_drawable(drawable);
 }

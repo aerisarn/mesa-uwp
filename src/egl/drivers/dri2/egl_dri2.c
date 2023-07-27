@@ -1595,8 +1595,10 @@ dri2_create_drawable(struct dri2_egl_display *dri2_dpy,
    if (dri2_dpy->kopper) {
       dri2_surf->dri_drawable = dri2_dpy->kopper->createNewDrawable(
          dri2_dpy->dri_screen_render_gpu, config, loaderPrivate,
-         dri2_surf->base.Type == EGL_PBUFFER_BIT ||
-            dri2_surf->base.Type == EGL_PIXMAP_BIT);
+         &(__DRIkopperDrawableInfo){
+            .is_pixmap = dri2_surf->base.Type == EGL_PBUFFER_BIT ||
+                         dri2_surf->base.Type == EGL_PIXMAP_BIT,
+         });
    } else {
       __DRIcreateNewDrawableFunc createNewDrawable;
       if (dri2_dpy->image_driver)
