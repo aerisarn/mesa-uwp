@@ -324,10 +324,15 @@ static const char *amdgpu_get_marketing_name(amdgpu_device_handle dev)
 {
    return NULL;
 }
+static intptr_t readlink(const char *path, char *buf, size_t bufsiz)
+{
+   return -1;
+}
 #else
 #include "drm-uapi/amdgpu_drm.h"
 #include <amdgpu.h>
 #include <xf86drm.h>
+#include <unistd.h>
 #endif
 
 #define CIK_TILE_MODE_COLOR_2D 14
@@ -819,6 +824,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    memset(info->lowercase_name, 0, sizeof(info->lowercase_name));
    for (unsigned i = 0; info->name[i] && i < ARRAY_SIZE(info->lowercase_name) - 1; i++)
       info->lowercase_name[i] = tolower(info->name[i]);
+
+   char proc_fd[64];
+   snprintf(proc_fd, sizeof(proc_fd), "/proc/self/fd/%u", fd);
+   UNUSED int _result = readlink(proc_fd, info->dev_filename, sizeof(info->dev_filename));
 
    if (info->ip[AMD_IP_GFX].ver_major == 11)
       info->gfx_level = GFX11;
@@ -1593,6 +1602,7 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
    fprintf(f, "Device info:\n");
    fprintf(f, "    name = %s\n", info->name);
    fprintf(f, "    marketing_name = %s\n", info->marketing_name);
+   fprintf(f, "    dev_filename = %s\n", info->dev_filename);
    fprintf(f, "    num_se = %i\n", info->num_se);
    fprintf(f, "    num_rb = %i\n", info->num_rb);
    fprintf(f, "    num_cu = %i\n", info->num_cu);

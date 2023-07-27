@@ -32,6 +32,7 @@ struct radeon_info {
    const char *name;
    char lowercase_name[32];
    const char *marketing_name;
+   char dev_filename[32];
    uint32_t num_se;           /* only enabled SEs */
    uint32_t num_rb;           /* only enabled RBs */
    uint32_t num_cu;           /* only enabled CUs */
