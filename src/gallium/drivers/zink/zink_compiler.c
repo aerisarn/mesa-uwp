@@ -3538,6 +3538,7 @@ zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shad
    bool need_optimize = false;
    bool inlined_uniforms = false;
 
+   NIR_PASS_V(nir, nir_lower_fragcolor, nir->info.fs.color_is_dual_source ? 1 : 8);
    if (key) {
       if (key->inline_uniforms) {
          NIR_PASS_V(nir, nir_inline_uniforms,
@@ -3757,6 +3758,7 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
       default: break;
       }
    }
+   NIR_PASS_V(nir, nir_lower_fragcolor, nir->info.fs.color_is_dual_source ? 1 : 8);
    if (screen->driconf.inline_uniforms) {
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_global | nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared, NULL, NULL);
       NIR_PASS_V(nir, rewrite_bo_access, screen);
@@ -4902,8 +4904,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_discard_if, (nir_lower_discard_if_to_cf |
                                           nir_lower_demote_if_to_cf |
                                           nir_lower_terminate_if_to_cf));
-   NIR_PASS_V(nir, nir_lower_fragcolor,
-         nir->info.fs.color_is_dual_source ? 1 : 8);
 
    NIR_PASS_V(nir, lower_64bit_vertex_attribs);
    bool needs_size = analyze_io(ret, nir);
