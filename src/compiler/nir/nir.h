@@ -5243,9 +5243,6 @@ typedef struct {
    /* Lower image_atomic(_swap) for all dimensions. Implied by lower_image. */
    bool lower_image_atomic;
 
-   /* Subtract one from the UBO index */
-   bool skip_ubo_0;
-
    /* Vulkan's robustBufferAccess feature is only concerned with buffers that
     * are bound through descriptor sets, so shared memory is not included, but
     * it may be useful to enable this for debugging.

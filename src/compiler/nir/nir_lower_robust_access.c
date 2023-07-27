@@ -68,9 +68,6 @@ lower_buffer_load(nir_builder *b,
    nir_ssa_def *index = instr->src[0].ssa;
 
    if (instr->intrinsic == nir_intrinsic_load_ubo) {
-      if (opts->skip_ubo_0)
-         index = nir_iadd_imm(b, index, -1);
-
       size = nir_get_ubo_size(b, 32, index);
    } else {
       size = nir_get_ssbo_size(b, index);
