@@ -43,9 +43,6 @@ etna_cfloat_to_uint8(float f)
    return f * 256.0f;
 }
 
-/* 1/log10(2) */
-#define RCPLOG2 (1.4426950408889634f)
-
 /* float to fixp 5.5 */
 static inline uint32_t
 etna_float_to_fixp55(float f)
@@ -76,14 +73,14 @@ etna_float_to_fixp88(float f)
 static inline uint32_t
 etna_log2_fixp55(unsigned width)
 {
-   return etna_float_to_fixp55(logf((float)width) * RCPLOG2);
+   return etna_float_to_fixp55(log2f((float)width));
 }
 
 /* texture size to log2 in fixp 8.8 format */
 static inline uint32_t
 etna_log2_fixp88(unsigned width)
 {
-   return etna_float_to_fixp88(logf((float)width) * RCPLOG2);
+   return etna_float_to_fixp88(log2f((float)width));
 }
 
 /* float to fixp 16.16 */
