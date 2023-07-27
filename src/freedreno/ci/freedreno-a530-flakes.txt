@@ -22,7 +22,6 @@ dEQP-GLES31.functional.separate_shader.*
 KHR-GLES31.core.compute_shader.resource-image
 
 # Occasionally passes
-dEQP-GLES31.functional.draw_base_vertex.draw_elements_instanced_base_vertex.builtin_variable.vertex_id
 KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls1
 KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls2
 
