@@ -2739,7 +2739,6 @@ ntq_emit_inline_ubo_load(struct v3d_compile *c, nir_intrinsic_instr *instr)
         if (c->compiler->max_inline_uniform_buffers <= 0)
                 return false;
 
-        assert(c->key->environment == V3D_ENVIRONMENT_VULKAN);
         /* Regular UBOs start after inline UBOs */
         uint32_t index = nir_src_as_uint(instr->src[0]);
         if (index >= c->compiler->max_inline_uniform_buffers)
