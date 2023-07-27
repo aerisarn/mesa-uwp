@@ -681,6 +681,8 @@ replace_kernel_ctx(struct iris_batch *batch)
    struct iris_bufmgr *bufmgr = screen->bufmgr;
    const struct intel_device_info *devinfo = iris_bufmgr_get_device_info(bufmgr);
 
+   threaded_context_unwrap_sync(&batch->ice->ctx);
+
    switch (devinfo->kmd_type) {
    case INTEL_KMD_TYPE_I915:
       return iris_i915_replace_batch(batch);
