@@ -17,9 +17,8 @@ agx_dce(agx_context *ctx, bool partial)
       BITSET_WORD *seen = calloc(BITSET_WORDS(ctx->alloc), sizeof(BITSET_WORD));
 
       agx_foreach_instr_global(ctx, I) {
-         agx_foreach_src(I, s) {
-            if (I->src[s].type == AGX_INDEX_NORMAL)
-               BITSET_SET(seen, I->src[s].value);
+         agx_foreach_ssa_src(I, s) {
+            BITSET_SET(seen, I->src[s].value);
          }
       }
 
