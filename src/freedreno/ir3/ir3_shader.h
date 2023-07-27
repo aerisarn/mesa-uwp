@@ -573,7 +573,7 @@ struct ir3_shader_variant {
     */
    unsigned constlen;
 
-   /* The private memory size in bytes */
+   /* The private memory size in bytes per fiber */
    unsigned pvtmem_size;
    /* Whether we should use the new per-wave layout rather than per-fiber. */
    bool pvtmem_per_wave;

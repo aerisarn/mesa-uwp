@@ -107,7 +107,7 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
    uint32_t fibers_per_sp = ctx->screen->info->a6xx.fibers_per_sp;
    uint32_t num_sp_cores = ctx->screen->info->num_sp_cores;
 
-   uint32_t per_fiber_size = ALIGN(so->pvtmem_size, 512);
+   uint32_t per_fiber_size = so->pvtmem_size;
    if (per_fiber_size > ctx->pvtmem[so->pvtmem_per_wave].per_fiber_size) {
       if (ctx->pvtmem[so->pvtmem_per_wave].bo)
          fd_bo_del(ctx->pvtmem[so->pvtmem_per_wave].bo);

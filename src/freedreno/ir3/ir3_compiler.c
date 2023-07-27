@@ -217,6 +217,9 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
       compiler->max_const_safe = 256;
    }
 
+   /* This is just a guess for a4xx. */
+   compiler->pvtmem_per_fiber_align = compiler->gen >= 4 ? 512 : 128;
+
    if (compiler->gen >= 6) {
       compiler->reg_size_vec4 = dev_info->a6xx.reg_size_vec4;
    } else if (compiler->gen >= 4) {

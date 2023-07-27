@@ -191,6 +191,9 @@ struct ir3_compiler {
    /* The number of total branch stack entries, divided by wave_granularity. */
    uint32_t branchstack_size;
 
+   /* The byte increment of MEMSIZEPERITEM, the private memory per-fiber allocation. */
+   uint32_t pvtmem_per_fiber_align;
+
    /* Whether clip+cull distances are supported */
    bool has_clip_cull;
 
