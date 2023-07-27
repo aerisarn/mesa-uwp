@@ -1983,7 +1983,7 @@ tu_setup_pvtmem(struct tu_device *dev,
          util_next_power_of_two(ALIGN(pvtmem_bytes, 512));
       pvtmem_bo->per_sp_size =
          ALIGN(pvtmem_bo->per_fiber_size *
-                  dev->physical_device->info->a6xx.fibers_per_sp,
+                  dev->physical_device->info->fibers_per_sp,
                1 << 12);
       uint32_t total_size =
          dev->physical_device->info->num_sp_cores * pvtmem_bo->per_sp_size;

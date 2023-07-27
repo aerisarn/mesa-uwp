@@ -53,6 +53,9 @@ struct fd_dev_info {
 
    int wave_granularity;
 
+   /* Information for private memory calculations */
+   uint32_t fibers_per_sp;
+
    /* number of CCU is always equal to the number of SP */
    union {
       uint32_t num_sp_cores;
@@ -61,9 +64,6 @@ struct fd_dev_info {
 
    union {
       struct {
-         /* Information for private memory calculations */
-         uint32_t fibers_per_sp;
-
          uint32_t reg_size_vec4;
 
          /* The size (in instrlen units (128 bytes)) of instruction cache where
