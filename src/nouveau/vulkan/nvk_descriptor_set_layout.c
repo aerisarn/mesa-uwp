@@ -311,9 +311,6 @@ nvk_GetDescriptorSetLayoutSupport(VkDevice _device,
       if (binding_flags != NULL && binding_flags->bindingCount > 0)
          flags = binding_flags->pBindingFlags[i];
 
-      if (binding->descriptorCount == 0)
-         continue;
-
       switch (binding->descriptorType) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
