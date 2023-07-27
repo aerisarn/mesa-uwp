@@ -75,9 +75,9 @@ i915_gem_create(struct iris_bufmgr *bufmgr,
       .num_regions = regions_count,
       .regions = (uintptr_t)i915_regions,
    };
-   intel_gem_add_ext(&create.extensions,
-                     I915_GEM_CREATE_EXT_MEMORY_REGIONS,
-                     &ext_regions.base);
+   intel_i915_gem_add_ext(&create.extensions,
+                          I915_GEM_CREATE_EXT_MEMORY_REGIONS,
+                          &ext_regions.base);
 
    if (iris_bufmgr_vram_size(bufmgr) > 0 &&
        !intel_vram_all_mappable(devinfo) &&
@@ -89,9 +89,9 @@ i915_gem_create(struct iris_bufmgr *bufmgr,
       .flags = 0,
    };
    if (alloc_flags & BO_ALLOC_PROTECTED) {
-      intel_gem_add_ext(&create.extensions,
-                        I915_GEM_CREATE_EXT_PROTECTED_CONTENT,
-                        &protected_param.base);
+      intel_i915_gem_add_ext(&create.extensions,
+                             I915_GEM_CREATE_EXT_PROTECTED_CONTENT,
+                             &protected_param.base);
    }
 
    /* Set PAT param */
@@ -99,9 +99,9 @@ i915_gem_create(struct iris_bufmgr *bufmgr,
    if (devinfo->has_set_pat_uapi) {
       set_pat_param.pat_index =
          iris_pat_index_for_bo_flags(devinfo, alloc_flags);
-      intel_gem_add_ext(&create.extensions,
-                        I915_GEM_CREATE_EXT_SET_PAT,
-                        &set_pat_param.base);
+      intel_i915_gem_add_ext(&create.extensions,
+                             I915_GEM_CREATE_EXT_SET_PAT,
+                             &set_pat_param.base);
    }
 
    if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_CREATE_EXT,

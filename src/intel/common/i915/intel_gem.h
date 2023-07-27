@@ -125,7 +125,7 @@ intel_i915_query_alloc(int fd, uint64_t query_id, int32_t *query_length)
 }
 
 static inline void
-intel_gem_add_ext(__u64 *ptr, uint32_t ext_name,
+intel_i915_gem_add_ext(__u64 *ptr, uint32_t ext_name,
                   struct i915_user_extension *ext)
 {
    __u64 *iter = ptr;

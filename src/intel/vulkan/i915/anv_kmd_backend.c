@@ -85,9 +85,9 @@ i915_gem_create(struct anv_device *device,
          set_pat_param.pat_index = device->info->pat.scanout;
       else
          set_pat_param.pat_index = device->info->pat.writeback;
-      intel_gem_add_ext(&gem_create.extensions,
-                        I915_GEM_CREATE_EXT_SET_PAT,
-                        &set_pat_param.base);
+      intel_i915_gem_add_ext(&gem_create.extensions,
+                             I915_GEM_CREATE_EXT_SET_PAT,
+                             &set_pat_param.base);
    }
 
    if (intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_CREATE_EXT, &gem_create))
