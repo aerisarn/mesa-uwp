@@ -663,3 +663,25 @@ ir3_update_max_tf_vtx(struct fd_context *ctx,
 
    ctx->streamout.max_tf_vtx = maxvtxcnt;
 }
+
+void
+ir3_get_private_mem(struct fd_context *ctx, const struct ir3_shader_variant *so)
+{
+   uint32_t fibers_per_sp = ctx->screen->info->fibers_per_sp;
+   uint32_t num_sp_cores = ctx->screen->info->num_sp_cores;
+
+   uint32_t per_fiber_size = so->pvtmem_size;
+   if (per_fiber_size > ctx->pvtmem[so->pvtmem_per_wave].per_fiber_size) {
+      if (ctx->pvtmem[so->pvtmem_per_wave].bo)
+         fd_bo_del(ctx->pvtmem[so->pvtmem_per_wave].bo);
+
+      uint32_t per_sp_size = ALIGN(per_fiber_size * fibers_per_sp, 1 << 12);
+      uint32_t total_size = per_sp_size * num_sp_cores;
+
+      ctx->pvtmem[so->pvtmem_per_wave].per_fiber_size = per_fiber_size;
+      ctx->pvtmem[so->pvtmem_per_wave].per_sp_size = per_sp_size;
+      ctx->pvtmem[so->pvtmem_per_wave].bo = fd_bo_new(
+         ctx->screen->dev, total_size, FD_BO_NOMAP, "pvtmem_%s_%d",
+         so->pvtmem_per_wave ? "per_wave" : "per_fiber", per_fiber_size);
+   }
+}

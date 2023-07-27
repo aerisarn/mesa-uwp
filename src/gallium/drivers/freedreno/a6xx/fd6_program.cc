@@ -104,25 +104,9 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
       fd_emit_string5(ring, name, strlen(name));
 #endif
 
-   uint32_t fibers_per_sp = ctx->screen->info->fibers_per_sp;
-   uint32_t num_sp_cores = ctx->screen->info->num_sp_cores;
+   ir3_get_private_mem(ctx, so);
 
-   uint32_t per_fiber_size = so->pvtmem_size;
-   if (per_fiber_size > ctx->pvtmem[so->pvtmem_per_wave].per_fiber_size) {
-      if (ctx->pvtmem[so->pvtmem_per_wave].bo)
-         fd_bo_del(ctx->pvtmem[so->pvtmem_per_wave].bo);
-      ctx->pvtmem[so->pvtmem_per_wave].per_fiber_size = per_fiber_size;
-      uint32_t total_size =
-         ALIGN(per_fiber_size * fibers_per_sp, 1 << 12) * num_sp_cores;
-      ctx->pvtmem[so->pvtmem_per_wave].bo = fd_bo_new(
-         ctx->screen->dev, total_size, FD_BO_NOMAP,
-         "pvtmem_%s_%d", so->pvtmem_per_wave ? "per_wave" : "per_fiber",
-         per_fiber_size);
-   } else {
-      per_fiber_size = ctx->pvtmem[so->pvtmem_per_wave].per_fiber_size;
-   }
-
-   uint32_t per_sp_size = ALIGN(per_fiber_size * fibers_per_sp, 1 << 12);
+   uint32_t per_sp_size = ctx->pvtmem[so->pvtmem_per_wave].per_sp_size;
 
    OUT_PKT4(ring, instrlen, 1);
    OUT_RING(ring, so->instrlen);
@@ -130,7 +114,7 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
    OUT_PKT4(ring, first_exec_offset, 7);
    OUT_RING(ring, 0);                /* SP_xS_OBJ_FIRST_EXEC_OFFSET */
    OUT_RELOC(ring, so->bo, 0, 0, 0); /* SP_xS_OBJ_START_LO */
-   OUT_RING(ring, A6XX_SP_VS_PVT_MEM_PARAM_MEMSIZEPERITEM(per_fiber_size));
+   OUT_RING(ring, A6XX_SP_VS_PVT_MEM_PARAM_MEMSIZEPERITEM(ctx->pvtmem[so->pvtmem_per_wave].per_fiber_size));
    if (so->pvtmem_size > 0) { /* SP_xS_PVT_MEM_ADDR */
       OUT_RELOC(ring, ctx->pvtmem[so->pvtmem_per_wave].bo, 0, 0, 0);
       fd_ringbuffer_attach_bo(ring, ctx->pvtmem[so->pvtmem_per_wave].bo);

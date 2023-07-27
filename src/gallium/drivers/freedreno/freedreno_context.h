@@ -526,6 +526,7 @@ struct fd_context {
    struct {
       struct fd_bo *bo;
       uint32_t per_fiber_size;
+      uint32_t per_sp_size;
    } pvtmem[2] dt;
 
    /* maps per-shader-stage state plus variant key to hw
