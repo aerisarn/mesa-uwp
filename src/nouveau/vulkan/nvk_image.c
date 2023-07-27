@@ -318,6 +318,14 @@ nvk_image_init(struct nvk_device *dev,
    if (image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT)
       usage |= NIL_IMAGE_USAGE_2D_VIEW_BIT;
 
+   /* In order to be able to clear 3D depth/stencil images, we need to bind
+    * them as 2D arrays.  Fortunately, 3D depth/stencil shouldn't be common.
+    */
+   if ((image->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                             VK_IMAGE_ASPECT_STENCIL_BIT)) &&
+       pCreateInfo->imageType == VK_IMAGE_TYPE_3D)
+      usage |= NIL_IMAGE_USAGE_2D_VIEW_BIT;
+
    image->plane_count = vk_format_get_plane_count(pCreateInfo->format);
    image->disjoint = image->plane_count > 1 &&
                      (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT);

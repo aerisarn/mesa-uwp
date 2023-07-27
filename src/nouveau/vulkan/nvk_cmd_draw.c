@@ -641,16 +641,29 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       /* Depth/stencil are always single-plane */
       assert(iview->plane_count == 1);
       const uint8_t ip = iview->planes[0].image_plane;
-      const struct nil_image_level *level =
-         &image->planes[ip].nil.levels[iview->vk.base_mip_level];
-      struct nil_extent4d level_extent_sa =
-         nil_image_level_extent_sa(&image->planes[ip].nil, iview->vk.base_mip_level);
+      struct nil_image nil_image = image->planes[ip].nil;
+
+      uint64_t addr = nvk_image_base_address(image, ip);
+      uint32_t mip_level = iview->vk.base_mip_level;
+      uint32_t base_array_layer = iview->vk.base_array_layer;
+      uint32_t layer_count = iview->vk.layer_count;
+
+      if (nil_image.dim == NIL_IMAGE_DIM_3D) {
+         uint64_t level_offset_B;
+         nil_image_3d_level_as_2d_array(&nil_image, mip_level,
+                                        &nil_image, &level_offset_B);
+         addr += level_offset_B;
+         mip_level = 0;
+         base_array_layer = 0;
+         layer_count = iview->vk.extent.depth;
+      }
+
+      const struct nil_image_level *level = &nil_image.levels[mip_level];
+      addr += level->offset_B;
 
       assert(sample_layout == NIL_SAMPLE_LAYOUT_INVALID ||
-             sample_layout == image->planes[ip].nil.sample_layout);
-      sample_layout = image->planes[ip].nil.sample_layout;
-
-      uint64_t addr = nvk_image_base_address(image, ip) + level->offset_B;
+             sample_layout == nil_image.sample_layout);
+      sample_layout = nil_image.sample_layout;
 
       P_MTHD(p, NV9097, SET_ZT_A);
       P_NV9097_SET_ZT_A(p, addr >> 32);
@@ -659,28 +672,28 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
          vk_format_to_pipe_format(iview->vk.format);
       const uint8_t zs_format = nil_format_to_depth_stencil(p_format);
       P_NV9097_SET_ZT_FORMAT(p, zs_format);
-      assert(image->planes[ip].nil.dim != NIL_IMAGE_DIM_3D);
       assert(level->tiling.z_log2 == 0);
       P_NV9097_SET_ZT_BLOCK_SIZE(p, {
          .width = WIDTH_ONE_GOB,
          .height = level->tiling.y_log2,
          .depth = DEPTH_ONE_GOB,
       });
-      P_NV9097_SET_ZT_ARRAY_PITCH(p, image->planes[ip].nil.array_stride_B >> 2);
+      P_NV9097_SET_ZT_ARRAY_PITCH(p, nil_image.array_stride_B >> 2);
 
       P_IMMD(p, NV9097, SET_ZT_SELECT, 1 /* target_count */);
+
+      struct nil_extent4d level_extent_sa =
+         nil_image_level_extent_sa(&nil_image, mip_level);
 
       P_MTHD(p, NV9097, SET_ZT_SIZE_A);
       P_NV9097_SET_ZT_SIZE_A(p, level_extent_sa.w);
       P_NV9097_SET_ZT_SIZE_B(p, level_extent_sa.h);
       P_NV9097_SET_ZT_SIZE_C(p, {
-         .third_dimension  = iview->vk.base_array_layer + layer_count,
-         .control          = (image->planes[ip].nil.dim == NIL_IMAGE_DIM_3D) ?
-                             CONTROL_ARRAY_SIZE_IS_ONE :
-                             CONTROL_THIRD_DIMENSION_DEFINES_ARRAY_SIZE,
+         .third_dimension  = base_array_layer + layer_count,
+         .control          = CONTROL_THIRD_DIMENSION_DEFINES_ARRAY_SIZE,
       });
 
-      P_IMMD(p, NV9097, SET_ZT_LAYER, iview->vk.base_array_layer);
+      P_IMMD(p, NV9097, SET_ZT_LAYER, base_array_layer);
 
       if (nvk_cmd_buffer_3d_cls(cmd) >= MAXWELL_B) {
          P_IMMD(p, NVC597, SET_ZT_SPARSE, {
