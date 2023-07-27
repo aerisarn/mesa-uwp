@@ -26,12 +26,11 @@
 #include "anv_private.h"
 #include "test_common.h"
 
-#define STATES_PER_THREAD_LOG2 12
-#define STATES_PER_THREAD (1 << STATES_PER_THREAD_LOG2)
-
 #include "state_pool_test_helper.h"
 
-int main(void)
+void state_pool_free_list_only_test(void);
+
+void state_pool_free_list_only_test(void)
 {
    const unsigned num_threads = 8;
    const unsigned states_per_thread = 1 << 12;
