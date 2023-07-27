@@ -260,6 +260,8 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
       hash_flags |= RADV_HASH_SHADER_NGG_STREAMOUT;
    if (device->instance->debug_flags & RADV_DEBUG_NO_RT)
       hash_flags |= RADV_HASH_SHADER_NO_RT;
+   if (device->instance->dual_color_blend_by_location)
+      hash_flags |= RADV_HASH_SHADER_DUAL_BLEND_MRT1;
    return hash_flags;
 }
 
