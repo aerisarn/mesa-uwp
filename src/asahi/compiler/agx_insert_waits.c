@@ -121,6 +121,9 @@ agx_insert_waits_local(agx_context *ctx, agx_block *block)
       /* Record access */
       if (instr_is_async(I)) {
          agx_foreach_dest(I, d) {
+            if (agx_is_null(I->dest[d]))
+               continue;
+
             assert(I->dest[d].type == AGX_INDEX_REGISTER);
             BITSET_SET_RANGE(slots[I->scoreboard].writes, I->dest[d].value,
                              I->dest[d].value + agx_write_registers(I, d) - 1);

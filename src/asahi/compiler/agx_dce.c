@@ -23,9 +23,6 @@ agx_dce(agx_context *ctx, bool partial)
       }
 
       agx_foreach_instr_global_safe_rev(ctx, I) {
-         if (!agx_opcodes_info[I->op].can_eliminate)
-            continue;
-
          bool needed = false;
 
          agx_foreach_ssa_dest(I, d) {
@@ -34,13 +31,15 @@ agx_dce(agx_context *ctx, bool partial)
              * multiple destinations (splits) or that write a destination but
              * cannot be DCE'd (atomics).
              */
-            if (BITSET_TEST(seen, I->dest[d].value))
+            if (BITSET_TEST(seen, I->dest[d].value)) {
                needed = true;
-            else if (partial)
+            } else if (partial) {
                I->dest[d] = agx_null();
+               progress = true;
+            }
          }
 
-         if (!needed) {
+         if (!needed && agx_opcodes_info[I->op].can_eliminate) {
             agx_remove_instruction(I);
             progress = true;
          }
