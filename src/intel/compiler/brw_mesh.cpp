@@ -1168,7 +1168,7 @@ brw_nir_initialize_mue(nir_shader *nir,
     * may start filling MUE before other finished initializing.
     */
    if (workgroup_size > dispatch_width) {
-      nir_scoped_barrier(&b, SCOPE_WORKGROUP, SCOPE_WORKGROUP,
+      nir_barrier(&b, SCOPE_WORKGROUP, SCOPE_WORKGROUP,
                          NIR_MEMORY_ACQ_REL, nir_var_shader_out);
    }
 

@@ -156,7 +156,7 @@ anv_mesh_convert_attrs_prim_to_vert(struct nir_shader *nir,
    nir_builder b = nir_builder_at(nir_after_cf_list(&impl->body));
 
    /* wait for all subgroups to finish */
-   nir_scoped_barrier(&b, SCOPE_WORKGROUP);
+   nir_barrier(&b, SCOPE_WORKGROUP);
 
    nir_ssa_def *zero = nir_imm_int(&b, 0);
 

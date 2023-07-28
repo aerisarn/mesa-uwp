@@ -186,7 +186,7 @@ gather_vars_written(struct copy_prop_var_state *state,
 
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
          switch (intrin->intrinsic) {
-         case nir_intrinsic_scoped_barrier:
+         case nir_intrinsic_barrier:
             if (nir_intrinsic_memory_semantics(intrin) & NIR_MEMORY_ACQUIRE)
                written->modes |= nir_intrinsic_memory_modes(intrin);
             break;
@@ -1043,7 +1043,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
 
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       switch (intrin->intrinsic) {
-      case nir_intrinsic_scoped_barrier:
+      case nir_intrinsic_barrier:
          if (debug) dump_instr(instr);
 
          if (nir_intrinsic_memory_semantics(intrin) & NIR_MEMORY_ACQUIRE)

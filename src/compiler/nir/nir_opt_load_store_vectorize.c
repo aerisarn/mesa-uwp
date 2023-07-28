@@ -1318,7 +1318,7 @@ handle_barrier(struct vectorize_ctx *ctx, bool *progress, nir_function_impl *imp
          acquire = false;
          modes = nir_var_all;
          break;
-      case nir_intrinsic_scoped_barrier:
+      case nir_intrinsic_barrier:
          if (nir_intrinsic_memory_scope(intrin) == SCOPE_NONE)
             break;
 

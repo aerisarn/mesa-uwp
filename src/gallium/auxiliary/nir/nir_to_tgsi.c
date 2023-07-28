@@ -2644,7 +2644,7 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
       ntt_emit_image_load_store(c, instr);
       break;
 
-   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_barrier:
       ntt_emit_barrier(c, instr);
       break;
 

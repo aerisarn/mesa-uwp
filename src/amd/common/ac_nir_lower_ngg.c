@@ -358,7 +358,7 @@ repack_invocations_in_workgroup(nir_builder *b, nir_ssa_def *input_bool,
 
    nir_store_shared(b, nir_u2u8(b, surviving_invocations_in_current_wave), lds_offset);
 
-   nir_scoped_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
+   nir_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
                          .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
    nir_ssa_def *packed_counts =
@@ -564,7 +564,7 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *s, nir_ssa_def *
       /* pack user edge flag info into arg */
       if (s->has_user_edgeflags) {
          /* Workgroup barrier: wait for ES threads store user edge flags to LDS */
-         nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+         nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                             .memory_scope = SCOPE_WORKGROUP,
                             .memory_semantics = NIR_MEMORY_ACQ_REL,
                             .memory_modes = nir_var_mem_shared);
@@ -992,7 +992,7 @@ compact_vertices_after_culling(nir_builder *b,
     * Waves that have no vertices and primitives left can s_endpgm right here.
     */
 
-   nir_scoped_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
+   nir_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
                          .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
    nir_ssa_def *es_survived = nir_ilt(b, invocation_index, num_live_vertices_in_workgroup);
@@ -1538,7 +1538,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       }
       nir_pop_if(b, if_es_thread);
 
-      nir_scoped_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
+      nir_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
                             .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
       nir_store_var(b, s->gs_accepted_var, nir_imm_false(b), 0x1u);
@@ -1591,7 +1591,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       }
       nir_pop_if(b, if_gs_thread);
 
-      nir_scoped_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
+      nir_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
                             .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
       nir_store_var(b, s->es_accepted_var, nir_imm_false(b), 0x1u);
@@ -1931,7 +1931,7 @@ ngg_build_streamout_buffer_info(nir_builder *b,
    }
    nir_pop_if(b, if_invocation_0);
 
-   nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+   nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                       .memory_scope = SCOPE_WORKGROUP,
                       .memory_semantics = NIR_MEMORY_ACQ_REL,
                       .memory_modes = nir_var_mem_shared);
@@ -2409,7 +2409,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
 
       /* Wait for culling to finish using LDS. */
       if (need_prim_id_store_shared || has_user_edgeflags) {
-         nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+         nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                                .memory_scope = SCOPE_WORKGROUP,
                                .memory_semantics = NIR_MEMORY_ACQ_REL,
                                .memory_modes = nir_var_mem_shared);
@@ -2428,7 +2428,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       emit_ngg_nogs_prim_id_store_shared(b, &state);
 
       /* Wait for GS threads to store primitive ID in LDS. */
-      nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP, .memory_scope = SCOPE_WORKGROUP,
+      nir_barrier(b, .execution_scope = SCOPE_WORKGROUP, .memory_scope = SCOPE_WORKGROUP,
                             .memory_semantics = NIR_MEMORY_ACQ_REL, .memory_modes = nir_var_mem_shared);
    }
 
@@ -3182,7 +3182,7 @@ ngg_gs_cull_primitive(nir_builder *b, nir_ssa_def *tid_in_tg, nir_ssa_def *max_v
    nir_pop_if(b, if_prim_enable);
 
    /* Wait for LDS primflag access done. */
-   nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+   nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                          .memory_scope = SCOPE_WORKGROUP,
                          .memory_semantics = NIR_MEMORY_ACQ_REL,
                          .memory_modes = nir_var_mem_shared);
@@ -3276,7 +3276,7 @@ ngg_gs_build_streamout(nir_builder *b, lower_ngg_gs_state *s)
    }
 
    /* Workgroup barrier: wait for LDS scratch reads finish. */
-   nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+   nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                       .memory_scope = SCOPE_WORKGROUP,
                       .memory_semantics = NIR_MEMORY_ACQ_REL,
                       .memory_modes = nir_var_mem_shared);
@@ -3391,7 +3391,7 @@ ngg_gs_finale(nir_builder *b, lower_ngg_gs_state *s)
    ngg_gs_setup_vertex_compaction(b, vertex_live, tid_in_tg, exporter_tid_in_tg, s);
 
    /* Workgroup barrier: wait for all LDS stores to finish. */
-   nir_scoped_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
+   nir_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
                         .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
    ngg_gs_export_primitives(b, max_prmcnt, tid_in_tg, exporter_tid_in_tg, out_vtx_primflag_0, s);
@@ -3438,7 +3438,7 @@ ac_nir_lower_ngg_gs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
    nir_builder *b = &builder; /* This is to avoid the & */
 
    /* Workgroup barrier: wait for ES threads */
-   nir_scoped_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
+   nir_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
                          .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
    state.lds_addr_gs_out_vtx = nir_load_lds_ngg_gs_out_vertex_base_amd(b);
@@ -3452,7 +3452,7 @@ ac_nir_lower_ngg_gs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
    nir_pop_if(b, if_gs_thread);
 
    /* Workgroup barrier: wait for all GS threads to finish */
-   nir_scoped_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
+   nir_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
                          .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
    if (state.streamout_enabled)
@@ -3952,7 +3952,7 @@ lower_ms_set_vertex_and_primitive_count(nir_builder *b,
 }
 
 static nir_ssa_def *
-update_ms_scoped_barrier(nir_builder *b,
+update_ms_barrier(nir_builder *b,
                          nir_intrinsic_instr *intrin,
                          lower_ngg_ms_state *s)
 {
@@ -3988,8 +3988,8 @@ lower_ms_intrinsic(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_per_vertex_output:
    case nir_intrinsic_load_per_primitive_output:
       return ms_load_arrayed_output_intrin(b, intrin, s);
-   case nir_intrinsic_scoped_barrier:
-      return update_ms_scoped_barrier(b, intrin, s);
+   case nir_intrinsic_barrier:
+      return update_ms_barrier(b, intrin, s);
    case nir_intrinsic_load_workgroup_index:
       return lower_ms_load_workgroup_index(b, intrin, s);
    case nir_intrinsic_set_vertex_and_primitive_count:
@@ -4013,7 +4013,7 @@ filter_ms_intrinsic(const nir_instr *instr,
           intrin->intrinsic == nir_intrinsic_load_per_vertex_output ||
           intrin->intrinsic == nir_intrinsic_store_per_primitive_output ||
           intrin->intrinsic == nir_intrinsic_load_per_primitive_output ||
-          intrin->intrinsic == nir_intrinsic_scoped_barrier ||
+          intrin->intrinsic == nir_intrinsic_barrier ||
           intrin->intrinsic == nir_intrinsic_load_workgroup_index ||
           intrin->intrinsic == nir_intrinsic_set_vertex_and_primitive_count;
 }
@@ -4108,14 +4108,14 @@ ms_emit_legacy_workgroup_index(nir_builder *b, lower_ngg_ms_state *s)
       nir_if *if_wave_0 = nir_push_if(b, nir_ieq_imm(b, wave_id, 0));
       {
          nir_store_shared(b, workgroup_index, zero, .base = workgroup_index_lds_addr);
-         nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+         nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                                .memory_scope = SCOPE_WORKGROUP,
                                .memory_semantics = NIR_MEMORY_ACQ_REL,
                                .memory_modes = nir_var_mem_shared);
       }
       nir_push_else(b, if_wave_0);
       {
-         nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+         nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                                .memory_scope = SCOPE_WORKGROUP,
                                .memory_semantics = NIR_MEMORY_ACQ_REL,
                                .memory_modes = nir_var_mem_shared);
@@ -4174,7 +4174,7 @@ set_ms_final_output_counts(nir_builder *b,
       }
       nir_pop_if(b, if_elected);
 
-      nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+      nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                             .memory_scope = SCOPE_WORKGROUP,
                             .memory_semantics = NIR_MEMORY_ACQ_REL,
                             .memory_modes = nir_var_mem_shared);
@@ -4183,7 +4183,7 @@ set_ms_final_output_counts(nir_builder *b,
    }
    nir_push_else(b, if_wave_0);
    {
-      nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+      nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                             .memory_scope = SCOPE_WORKGROUP,
                             .memory_semantics = NIR_MEMORY_ACQ_REL,
                             .memory_modes = nir_var_mem_shared);
@@ -4305,7 +4305,7 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
    nir_block *last_block = nir_impl_last_block(b->impl);
    b->cursor = nir_after_block(last_block);
 
-   nir_scoped_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
+   nir_barrier(b, .execution_scope=SCOPE_WORKGROUP, .memory_scope=SCOPE_WORKGROUP,
                          .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_shader_out|nir_var_mem_shared);
 
    nir_ssa_def *num_prm;
@@ -4461,7 +4461,7 @@ handle_smaller_ms_api_workgroup(nir_builder *b,
 
             nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
             bool is_workgroup_barrier =
-               intrin->intrinsic == nir_intrinsic_scoped_barrier &&
+               intrin->intrinsic == nir_intrinsic_barrier &&
                nir_intrinsic_execution_scope(intrin) == SCOPE_WORKGROUP;
 
             if (!is_workgroup_barrier)
@@ -4500,7 +4500,7 @@ handle_smaller_ms_api_workgroup(nir_builder *b,
       }
       nir_pop_if(b, if_first_in_workgroup);
 
-      nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+      nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                             .memory_scope = SCOPE_WORKGROUP,
                             .memory_semantics = NIR_MEMORY_ACQ_REL,
                             .memory_modes = nir_var_shader_out | nir_var_mem_shared);
@@ -4522,7 +4522,7 @@ handle_smaller_ms_api_workgroup(nir_builder *b,
          }
          nir_pop_if(b, if_elected_again);
 
-         nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+         nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                                .memory_scope = SCOPE_WORKGROUP,
                                .memory_semantics = NIR_MEMORY_ACQ_REL,
                                .memory_modes = nir_var_shader_out | nir_var_mem_shared);
@@ -4545,7 +4545,7 @@ handle_smaller_ms_api_workgroup(nir_builder *b,
          {
             nir_loop *loop = nir_push_loop(b);
             {
-               nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+               nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                                      .memory_scope = SCOPE_WORKGROUP,
                                      .memory_semantics = NIR_MEMORY_ACQ_REL,
                                      .memory_modes = nir_var_shader_out | nir_var_mem_shared);

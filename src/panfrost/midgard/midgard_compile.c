@@ -1908,7 +1908,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       emit_special(ctx, instr, 97);
       break;
 
-   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_barrier:
       if (nir_intrinsic_execution_scope(instr) != SCOPE_NONE) {
          schedule_barrier(ctx);
          emit_control_barrier(ctx);

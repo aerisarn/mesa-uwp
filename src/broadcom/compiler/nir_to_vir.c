@@ -3526,7 +3526,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
         }
 
-        case nir_intrinsic_scoped_barrier:
+        case nir_intrinsic_barrier:
                 /* Ensure that the TMU operations before the barrier are flushed
                  * before the ones after the barrier.
                  */

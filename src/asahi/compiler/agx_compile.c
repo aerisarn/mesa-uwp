@@ -1073,7 +1073,7 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_load_compute_dimension(
          b, dst, instr, AGX_SR_THREAD_POSITION_IN_THREADGROUP_X);
 
-   case nir_intrinsic_scoped_barrier: {
+   case nir_intrinsic_barrier: {
       assert(!b->shader->is_preamble && "invalid");
 
       bool needs_image_barriers = false;

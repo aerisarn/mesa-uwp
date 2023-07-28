@@ -959,7 +959,7 @@ ttn_lit(nir_builder *b, nir_ssa_def **src)
 static void
 ttn_barrier(nir_builder *b)
 {
-   nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP);
+   nir_barrier(b, .execution_scope = SCOPE_WORKGROUP);
 }
 
 static void

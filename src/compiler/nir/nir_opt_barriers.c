@@ -53,7 +53,7 @@ nir_opt_combine_barriers_impl(
          }
 
          nir_intrinsic_instr *current = nir_instr_as_intrinsic(instr);
-         if (current->intrinsic != nir_intrinsic_scoped_barrier) {
+         if (current->intrinsic != nir_intrinsic_barrier) {
             prev = NULL;
             continue;
          }

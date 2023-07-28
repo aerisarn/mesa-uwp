@@ -758,7 +758,7 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
 
       break;
 
-   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_barrier:
       shader->info.uses_control_barrier |=
          nir_intrinsic_execution_scope(instr) != SCOPE_NONE;
 

@@ -153,7 +153,7 @@ lower_task_launch_mesh_workgroups(nir_builder *b,
     * always a waitcnt_vscnt instruction in order to avoid a race condition
     * between payload stores and their loads after mesh shaders launch.
     */
-   nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+   nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
                          .memory_scope = SCOPE_DEVICE,
                          .memory_semantics = NIR_MEMORY_ACQ_REL,
                          .memory_modes = nir_var_mem_task_payload | nir_var_shader_out |

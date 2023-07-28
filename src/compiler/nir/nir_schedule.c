@@ -407,7 +407,7 @@ nir_schedule_intrinsic_deps(nir_deps_state *state,
       add_write_dep(state, &state->store_shared, n);
       break;
 
-   case nir_intrinsic_scoped_barrier: {
+   case nir_intrinsic_barrier: {
       const nir_variable_mode modes = nir_intrinsic_memory_modes(instr);
 
       if (modes & nir_var_mem_shared)

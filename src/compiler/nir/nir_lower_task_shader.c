@@ -89,7 +89,7 @@ append_launch_mesh_workgroups_to_nv_task(nir_builder *b,
    nir_ssa_def *zero = nir_imm_int(b, 0);
    nir_store_shared(b, zero, zero, .base = s->task_count_shared_addr);
 
-   nir_scoped_barrier(b,
+   nir_barrier(b,
          .execution_scope = SCOPE_WORKGROUP,
          .memory_scope = SCOPE_WORKGROUP,
          .memory_semantics = NIR_MEMORY_RELEASE,
@@ -100,7 +100,7 @@ append_launch_mesh_workgroups_to_nv_task(nir_builder *b,
     */
    b->cursor = nir_after_cf_list(&b->impl->body);
 
-   nir_scoped_barrier(b,
+   nir_barrier(b,
          .execution_scope = SCOPE_WORKGROUP,
          .memory_scope = SCOPE_WORKGROUP,
          .memory_semantics = NIR_MEMORY_ACQUIRE,
@@ -232,10 +232,10 @@ emit_shared_to_payload_copy(nir_builder *b,
    /* Wait for all previous shared stores to finish.
     * This is necessary because we placed the payload in shared memory.
     */
-   nir_scoped_barrier(b, .execution_scope = SCOPE_WORKGROUP,
-                         .memory_scope = SCOPE_WORKGROUP,
-                         .memory_semantics = NIR_MEMORY_ACQ_REL,
-                         .memory_modes = nir_var_mem_shared);
+   nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+                  .memory_scope = SCOPE_WORKGROUP,
+                  .memory_semantics = NIR_MEMORY_ACQ_REL,
+                  .memory_modes = nir_var_mem_shared);
 
    /* Payload_size is a size of user-accessible payload, but on some
     * hardware (e.g. Intel) payload has a private header, which we have

@@ -3257,7 +3257,7 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_demote_if:
       emit_demote(ctx, instr);
       break;
-   case nir_intrinsic_scoped_barrier: {
+   case nir_intrinsic_barrier: {
       assert(!(nir_intrinsic_memory_semantics(instr) &
                (NIR_MEMORY_MAKE_AVAILABLE | NIR_MEMORY_MAKE_VISIBLE)));
 

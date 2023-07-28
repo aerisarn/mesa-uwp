@@ -2249,7 +2249,7 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_shared_atomic_swap:
       visit_shared_atomic(bld_base, instr, result);
       break;
-   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_barrier:
       visit_barrier(bld_base, instr);
       break;
    case nir_intrinsic_load_kernel_input:

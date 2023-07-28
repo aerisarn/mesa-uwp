@@ -415,7 +415,7 @@ barrier("terminate")
 # OpMemoryBarrier and OpControlBarrier, used to implement Vulkan Memory Model.
 # Storage that the barrier applies is represented using NIR variable modes.
 # For an OpMemoryBarrier, set EXECUTION_SCOPE to SCOPE_NONE.
-intrinsic("scoped_barrier",
+intrinsic("barrier",
           indices=[EXECUTION_SCOPE, MEMORY_SCOPE, MEMORY_SEMANTICS, MEMORY_MODES])
 
 # Shader clock intrinsic with semantics analogous to the clock2x32ARB()

@@ -1179,7 +1179,7 @@ ac_nir_lower_legacy_gs(nir_shader *nir,
                                           s.primitive_count);
 
    /* Wait for all stores to finish. */
-   nir_scoped_barrier(b, .execution_scope = SCOPE_INVOCATION,
+   nir_barrier(b, .execution_scope = SCOPE_INVOCATION,
                       .memory_scope = SCOPE_DEVICE,
                       .memory_semantics = NIR_MEMORY_RELEASE,
                       .memory_modes = nir_var_shader_out | nir_var_mem_ssbo |

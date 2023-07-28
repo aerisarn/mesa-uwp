@@ -484,7 +484,7 @@ lower_hs_output_load(nir_builder *b,
 }
 
 static void
-update_hs_scoped_barrier(nir_intrinsic_instr *intrin, lower_tess_io_state *st)
+update_hs_barrier(nir_intrinsic_instr *intrin, lower_tess_io_state *st)
 {
    /* Output loads and stores are lowered to shared memory access,
     * so we have to update the barriers to also reflect this.
@@ -519,8 +519,8 @@ lower_hs_output_access(nir_builder *b,
    } else if (intrin->intrinsic == nir_intrinsic_load_output ||
               intrin->intrinsic == nir_intrinsic_load_per_vertex_output) {
       return lower_hs_output_load(b, intrin, st);
-   } else if (intrin->intrinsic == nir_intrinsic_scoped_barrier) {
-      update_hs_scoped_barrier(intrin, st);
+   } else if (intrin->intrinsic == nir_intrinsic_barrier) {
+      update_hs_barrier(intrin, st);
       return NIR_LOWER_INSTR_PROGRESS;
    } else {
       unreachable("intrinsic not supported by lower_hs_output_access");
@@ -567,7 +567,7 @@ hs_emit_write_tess_factors(nir_shader *shader,
       mesa_scope scope = st->tcs_out_patch_fits_subgroup ?
                         SCOPE_SUBGROUP : SCOPE_WORKGROUP;
 
-      nir_scoped_barrier(b, .execution_scope = scope, .memory_scope = scope,
+      nir_barrier(b, .execution_scope = scope, .memory_scope = scope,
                          .memory_semantics = NIR_MEMORY_ACQ_REL, .memory_modes = nir_var_mem_shared);
    }
 
@@ -722,7 +722,7 @@ filter_hs_output_access(const nir_instr *instr,
           intrin->intrinsic == nir_intrinsic_store_per_vertex_output ||
           intrin->intrinsic == nir_intrinsic_load_output ||
           intrin->intrinsic == nir_intrinsic_load_per_vertex_output ||
-          intrin->intrinsic == nir_intrinsic_scoped_barrier;
+          intrin->intrinsic == nir_intrinsic_barrier;
 }
 
 static bool

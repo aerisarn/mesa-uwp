@@ -669,7 +669,7 @@ Shader::scan_instruction(nir_instr *instr)
       m_flags.set(sh_writes_memory);
       m_flags.set(sh_uses_images);
       break;
-   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_barrier:
       m_chain_instr.prepare_mem_barrier |=
             (nir_intrinsic_memory_modes(intr) &
              (nir_var_mem_ssbo | nir_var_mem_global | nir_var_image) &&
@@ -907,8 +907,8 @@ Shader::process_intrinsic(nir_intrinsic_instr *intr)
       return emit_load_tcs_param_base(intr, 0);
    case nir_intrinsic_load_tcs_out_param_base_r600:
       return emit_load_tcs_param_base(intr, 16);
-   case nir_intrinsic_scoped_barrier:
-      return emit_scoped_barrier(intr);
+   case nir_intrinsic_barrier:
+      return emit_barrier(intr);
    case nir_intrinsic_shared_atomic:
    case nir_intrinsic_shared_atomic_swap:
       return emit_atomic_local_shared(intr);
@@ -1497,7 +1497,7 @@ Shader::emit_group_barrier(nir_intrinsic_instr *intr)
    return true;
 }
 
-bool Shader::emit_scoped_barrier(nir_intrinsic_instr *intr)
+bool Shader::emit_barrier(nir_intrinsic_instr *intr)
 {
 
    if ((nir_intrinsic_execution_scope(intr) == SCOPE_WORKGROUP)) {

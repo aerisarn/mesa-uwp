@@ -30,7 +30,7 @@
 static bool
 is_memory_barrier_tcs_patch(const nir_intrinsic_instr *intr)
 {
-   if (intr->intrinsic == nir_intrinsic_scoped_barrier &&
+   if (intr->intrinsic == nir_intrinsic_barrier &&
        nir_intrinsic_memory_modes(intr) & nir_var_shader_out) {
       assert(nir_intrinsic_memory_modes(intr) == nir_var_shader_out);
       assert(nir_intrinsic_memory_scope(intr) == SCOPE_WORKGROUP);
@@ -259,7 +259,7 @@ dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func)
             nir_ssa_def_rewrite_uses(&intr->dest.ssa, state.count);
             break;
          }
-         case nir_intrinsic_scoped_barrier:
+         case nir_intrinsic_barrier:
             if (!is_memory_barrier_tcs_patch(intr))
                break;
 

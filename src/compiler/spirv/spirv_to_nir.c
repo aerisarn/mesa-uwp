@@ -2631,8 +2631,8 @@ vtn_emit_scoped_control_barrier(struct vtn_builder *b, SpvScope exec_scope,
    else
       nir_mem_scope = vtn_translate_scope(b, mem_scope);
 
-   nir_scoped_barrier(&b->nb, .execution_scope=nir_exec_scope, .memory_scope=nir_mem_scope,
-                              .memory_semantics=nir_semantics, .memory_modes=modes);
+   nir_barrier(&b->nb, .execution_scope=nir_exec_scope, .memory_scope=nir_mem_scope,
+                       .memory_semantics=nir_semantics, .memory_modes=modes);
 }
 
 void
@@ -2647,9 +2647,9 @@ vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
    if (nir_semantics == 0 || modes == 0)
       return;
 
-   nir_scoped_barrier(&b->nb, .memory_scope=vtn_translate_scope(b, scope),
-                              .memory_semantics=nir_semantics,
-                              .memory_modes=modes);
+   nir_barrier(&b->nb, .memory_scope=vtn_translate_scope(b, scope),
+                       .memory_semantics=nir_semantics,
+                       .memory_modes=modes);
 }
 
 struct vtn_ssa_value *

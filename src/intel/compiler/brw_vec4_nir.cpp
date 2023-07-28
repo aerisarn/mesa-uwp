@@ -728,7 +728,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       break;
    }
 
-   case nir_intrinsic_scoped_barrier: {
+   case nir_intrinsic_barrier: {
       if (nir_intrinsic_memory_scope(instr) == SCOPE_NONE)
          break;
       const vec4_builder bld =

@@ -598,12 +598,12 @@ handle_core(struct vtn_builder *b, uint32_t opcode,
        * The libclc we have uses a __local pointer but clang gives us generic
        * pointers.  Fortunately, the whole function is just a barrier.
        */
-      nir_scoped_barrier(&b->nb, .execution_scope = SCOPE_WORKGROUP,
-                                 .memory_scope = SCOPE_WORKGROUP,
-                                 .memory_semantics = NIR_MEMORY_ACQUIRE |
-                                                     NIR_MEMORY_RELEASE,
-                                 .memory_modes = nir_var_mem_shared |
-                                                 nir_var_mem_global);
+      nir_barrier(&b->nb, .execution_scope = SCOPE_WORKGROUP,
+                          .memory_scope = SCOPE_WORKGROUP,
+                          .memory_semantics = NIR_MEMORY_ACQUIRE |
+                                              NIR_MEMORY_RELEASE,
+                          .memory_modes = nir_var_mem_shared |
+                                          nir_var_mem_global);
       break;
    }
    default:

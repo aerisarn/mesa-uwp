@@ -2336,7 +2336,7 @@ Converter::visit(nir_intrinsic_instr *insn)
 
       break;
    }
-   case nir_intrinsic_scoped_barrier: {
+   case nir_intrinsic_barrier: {
       mesa_scope exec_scope = nir_intrinsic_execution_scope(insn);
       mesa_scope mem_scope = nir_intrinsic_memory_scope(insn);
       nir_variable_mode modes = nir_intrinsic_memory_modes(insn);

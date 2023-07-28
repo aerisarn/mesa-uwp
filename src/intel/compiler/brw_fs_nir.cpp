@@ -2779,7 +2779,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       bld.MOV(retype(dst, invocation_id.type), invocation_id);
       break;
 
-   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_barrier:
       if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE)
          nir_emit_intrinsic(bld, instr);
       if (nir_intrinsic_execution_scope(instr) == SCOPE_WORKGROUP) {
@@ -3708,7 +3708,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       dest = get_nir_dest(instr->dest);
 
    switch (instr->intrinsic) {
-   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_barrier:
       if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE)
          nir_emit_intrinsic(bld, instr);
       if (nir_intrinsic_execution_scope(instr) == SCOPE_WORKGROUP) {
@@ -4549,7 +4549,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
-   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_barrier:
    case nir_intrinsic_begin_invocation_interlock:
    case nir_intrinsic_end_invocation_interlock: {
       bool ugm_fence, slm_fence, tgm_fence, urb_fence;
@@ -4560,7 +4560,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        */
 
       switch (instr->intrinsic) {
-      case nir_intrinsic_scoped_barrier: {
+      case nir_intrinsic_barrier: {
          /* Note we only care about the memory part of the
           * barrier.  The execution part will be taken care
           * of by the stage specific intrinsic handler functions.

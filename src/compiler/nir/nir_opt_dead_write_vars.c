@@ -132,7 +132,7 @@ remove_dead_write_vars_local(void *mem_ctx, nir_shader *shader, nir_block *block
 
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       switch (intrin->intrinsic) {
-      case nir_intrinsic_scoped_barrier: {
+      case nir_intrinsic_barrier: {
          if (nir_intrinsic_memory_semantics(intrin) & NIR_MEMORY_RELEASE) {
             clear_unused_for_modes(&unused_writes,
                                    nir_intrinsic_memory_modes(intrin));

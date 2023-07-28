@@ -125,12 +125,12 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 }
 
 static bool
-remove_scoped_barriers_impl(nir_builder *b, nir_instr *instr, void *data)
+remove_barriers_impl(nir_builder *b, nir_instr *instr, void *data)
 {
    if (instr->type != nir_instr_type_intrinsic)
       return false;
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_scoped_barrier)
+   if (intr->intrinsic != nir_intrinsic_barrier)
       return false;
    if (data) {
       if (nir_intrinsic_memory_scope(intr) == SCOPE_WORKGROUP ||
@@ -143,9 +143,9 @@ remove_scoped_barriers_impl(nir_builder *b, nir_instr *instr, void *data)
 }
 
 static bool
-remove_scoped_barriers(nir_shader *nir, bool is_compute)
+remove_barriers(nir_shader *nir, bool is_compute)
 {
-   return nir_shader_instructions_pass(nir, remove_scoped_barriers_impl, nir_metadata_dominance, (void*)is_compute);
+   return nir_shader_instructions_pass(nir, remove_barriers_impl, nir_metadata_dominance, (void*)is_compute);
 }
 
 static bool
@@ -371,7 +371,7 @@ static void
 lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader *shader, struct lvp_pipeline_layout *layout)
 {
    if (nir->info.stage != MESA_SHADER_TESS_CTRL)
-      NIR_PASS_V(nir, remove_scoped_barriers, nir->info.stage == MESA_SHADER_COMPUTE || nir->info.stage == MESA_SHADER_MESH || nir->info.stage == MESA_SHADER_TASK);
+      NIR_PASS_V(nir, remove_barriers, nir->info.stage == MESA_SHADER_COMPUTE || nir->info.stage == MESA_SHADER_MESH || nir->info.stage == MESA_SHADER_TASK);
 
    const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
       .frag_coord = true,

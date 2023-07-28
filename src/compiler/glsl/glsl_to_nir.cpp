@@ -1131,7 +1131,7 @@ nir_visitor::visit(ir_call *ir)
       case ir_intrinsic_memory_barrier_shared:
       case ir_intrinsic_memory_barrier_atomic_counter:
       case ir_intrinsic_group_memory_barrier:
-         op = nir_intrinsic_scoped_barrier;
+         op = nir_intrinsic_barrier;
          break;
       case ir_intrinsic_image_size:
          op = nir_intrinsic_image_deref_size;
@@ -1387,8 +1387,8 @@ nir_visitor::visit(ir_call *ir)
          nir_builder_instr_insert(&b, &instr->instr);
          break;
       }
-      case nir_intrinsic_scoped_barrier: {
-         /* The nir_intrinsic_scoped_barrier follows the general
+      case nir_intrinsic_barrier: {
+         /* The nir_intrinsic_barrier follows the general
           * semantics of SPIR-V memory barriers, so this and other memory
           * barriers use the mapping based on GLSL->SPIR-V from
           *
@@ -2657,11 +2657,11 @@ void
 nir_visitor::visit(ir_barrier *)
 {
    if (shader->info.stage == MESA_SHADER_COMPUTE) {
-      nir_scoped_barrier(&b, SCOPE_WORKGROUP, SCOPE_WORKGROUP,
-                         NIR_MEMORY_ACQ_REL, nir_var_mem_shared);
+      nir_barrier(&b, SCOPE_WORKGROUP, SCOPE_WORKGROUP,
+                      NIR_MEMORY_ACQ_REL, nir_var_mem_shared);
    } else if (shader->info.stage == MESA_SHADER_TESS_CTRL) {
-      nir_scoped_barrier(&b, SCOPE_WORKGROUP, SCOPE_WORKGROUP,
-                         NIR_MEMORY_ACQ_REL, nir_var_shader_out);
+      nir_barrier(&b, SCOPE_WORKGROUP, SCOPE_WORKGROUP,
+                      NIR_MEMORY_ACQ_REL, nir_var_shader_out);
    }
 }
 

@@ -2243,7 +2243,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_bindless_image_atomic_swap:
       dst[0] = ctx->funcs->emit_intrinsic_atomic_image(ctx, intr);
       break;
-   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_barrier:
       emit_intrinsic_barrier(ctx, intr);
       /* note that blk ptr no longer valid, make that obvious: */
       b = NULL;

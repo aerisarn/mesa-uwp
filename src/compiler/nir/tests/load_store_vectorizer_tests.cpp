@@ -819,7 +819,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_memory_barrier)
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_barrier)
 {
    create_load(nir_var_mem_ssbo, 0, 0, 0x1);
-   nir_scoped_barrier(b, SCOPE_WORKGROUP, SCOPE_NONE,
+   nir_barrier(b, SCOPE_WORKGROUP, SCOPE_NONE,
                       (nir_memory_semantics)0, (nir_variable_mode)0);
    create_load(nir_var_mem_ssbo, 0, 4, 0x2);
 

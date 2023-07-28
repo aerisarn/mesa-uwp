@@ -7117,7 +7117,7 @@ translate_nir_scope(mesa_scope scope)
 }
 
 void
-emit_scoped_barrier(isel_context* ctx, nir_intrinsic_instr* instr)
+emit_barrier(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
 
@@ -8126,7 +8126,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_ssbo_atomic_swap: visit_atomic_ssbo(ctx, instr); break;
    case nir_intrinsic_load_scratch: visit_load_scratch(ctx, instr); break;
    case nir_intrinsic_store_scratch: visit_store_scratch(ctx, instr); break;
-   case nir_intrinsic_scoped_barrier: emit_scoped_barrier(ctx, instr); break;
+   case nir_intrinsic_barrier: emit_barrier(ctx, instr); break;
    case nir_intrinsic_load_num_workgroups: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       if (ctx->options->load_grid_size_from_user_sgpr) {

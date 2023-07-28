@@ -4850,7 +4850,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_emit_vertex(ctx, intr);
    case nir_intrinsic_end_primitive:
       return emit_end_primitive(ctx, intr);
-   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_barrier:
       return emit_barrier(ctx, intr);
    case nir_intrinsic_ssbo_atomic:
       return emit_ssbo_atomic(ctx, intr);
