@@ -3420,7 +3420,7 @@ struct anv_pipeline {
    enum anv_pipeline_type                       type;
    VkPipelineCreateFlags                        flags;
 
-   VkShaderStageFlags                           active_stages;
+   VkPipelineCreateFlags2KHR                    active_stages;
 
    uint32_t                                     ray_queries;
 
@@ -3738,17 +3738,6 @@ anv_device_init_rt_shaders(struct anv_device *device);
 
 void
 anv_device_finish_rt_shaders(struct anv_device *device);
-
-VkResult
-anv_pipeline_init(struct anv_pipeline *pipeline,
-                  struct anv_device *device,
-                  enum anv_pipeline_type type,
-                  VkPipelineCreateFlags flags,
-                  const VkAllocationCallbacks *pAllocator);
-
-void
-anv_pipeline_finish(struct anv_pipeline *pipeline,
-                    struct anv_device *device);
 
 struct anv_kernel_arg {
    bool is_ptr;
