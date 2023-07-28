@@ -1061,11 +1061,9 @@ sqtt_CmdInsertDebugUtilsLabelEXT(VkCommandBuffer commandBuffer, const VkDebugUti
 
 /* Pipelines */
 static enum rgp_hardware_stages
-radv_mesa_to_rgp_shader_stage(struct radv_pipeline *pipeline, gl_shader_stage stage)
+radv_get_rgp_shader_stage(struct radv_shader *shader)
 {
-   struct radv_shader *shader = pipeline->shaders[stage];
-
-   switch (stage) {
+   switch (shader->info.stage) {
    case MESA_SHADER_VERTEX:
       if (shader->info.vs.as_ls)
          return RGP_HW_STAGE_LS;
@@ -1103,6 +1101,25 @@ radv_mesa_to_rgp_shader_stage(struct radv_pipeline *pipeline, gl_shader_stage st
    }
 }
 
+static void
+radv_fill_code_object_record(struct radv_device *device, struct rgp_shader_data *shader_data,
+                             struct radv_shader *shader, uint64_t va)
+{
+   shader_data->hash[0] = (uint64_t)(uintptr_t)shader;
+   shader_data->hash[1] = (uint64_t)(uintptr_t)shader >> 32;
+   shader_data->code_size = shader->code_size;
+   shader_data->code = shader->code;
+   shader_data->vgpr_count = shader->config.num_vgprs;
+   shader_data->sgpr_count = shader->config.num_sgprs;
+   shader_data->scratch_memory_size = shader->config.scratch_bytes_per_wave;
+   shader_data->lds_size = 0;
+   shader_data->wavefront_size = shader->info.wave_size;
+   shader_data->base_address = va & 0xffffffffffff;
+   shader_data->elf_symbol_offset = 0;
+   shader_data->hw_stage = radv_get_rgp_shader_stage(shader);
+   shader_data->is_combined = false;
+}
+
 static VkResult
 radv_add_code_object(struct radv_device *device, struct radv_pipeline *pipeline)
 {
@@ -1122,26 +1139,11 @@ radv_add_code_object(struct radv_device *device, struct radv_pipeline *pipeline)
 
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       struct radv_shader *shader = pipeline->shaders[i];
-      uint64_t va;
 
       if (!shader)
          continue;
 
-      va = radv_sqtt_shader_get_va_reloc(pipeline, i);
-
-      record->shader_data[i].hash[0] = (uint64_t)(uintptr_t)shader;
-      record->shader_data[i].hash[1] = (uint64_t)(uintptr_t)shader >> 32;
-      record->shader_data[i].code_size = shader->code_size;
-      record->shader_data[i].code = shader->code;
-      record->shader_data[i].vgpr_count = shader->config.num_vgprs;
-      record->shader_data[i].sgpr_count = shader->config.num_sgprs;
-      record->shader_data[i].scratch_memory_size = shader->config.scratch_bytes_per_wave;
-      record->shader_data[i].lds_size = 0;
-      record->shader_data[i].wavefront_size = shader->info.wave_size;
-      record->shader_data[i].base_address = va & 0xffffffffffff;
-      record->shader_data[i].elf_symbol_offset = 0;
-      record->shader_data[i].hw_stage = radv_mesa_to_rgp_shader_stage(pipeline, i);
-      record->shader_data[i].is_combined = false;
+      radv_fill_code_object_record(device, &record->shader_data[i], shader, radv_sqtt_shader_get_va_reloc(pipeline, i));
 
       record->shader_stages_mask |= (1 << i);
       record->num_shaders_combined++;
