@@ -1790,6 +1790,20 @@ nir_txl_zero_deref(nir_builder *b, nir_deref_instr *t, nir_deref_instr *s,
    return nir_txl_deref(b, t, s, coord, nir_imm_float(b, 0));
 }
 
+static inline bool
+nir_tex_type_has_lod(const struct glsl_type *tex_type)
+{
+   switch (glsl_get_sampler_dim(tex_type)) {
+   case GLSL_SAMPLER_DIM_1D:
+   case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_3D:
+   case GLSL_SAMPLER_DIM_CUBE:
+      return true;
+   default:
+      return false;
+   }
+}
+
 static inline nir_ssa_def *
 nir_txf_deref(nir_builder *b, nir_deref_instr *t,
               nir_ssa_def *coord, nir_ssa_def *lod)
@@ -1799,18 +1813,8 @@ nir_txf_deref(nir_builder *b, nir_deref_instr *t,
 
    srcs[num_srcs++] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
 
-   if (lod == NULL) {
-      switch (glsl_get_sampler_dim(t->type)) {
-      case GLSL_SAMPLER_DIM_1D:
-      case GLSL_SAMPLER_DIM_2D:
-      case GLSL_SAMPLER_DIM_3D:
-      case GLSL_SAMPLER_DIM_CUBE:
-         lod = nir_imm_int(b, 0);
-         break;
-      default:
-         break;
-      }
-   }
+   if (lod == NULL && nir_tex_type_has_lod(t->type))
+      lod = nir_imm_int(b, 0);
 
    if (lod != NULL)
       srcs[num_srcs++] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
@@ -1830,6 +1834,22 @@ nir_txf_ms_deref(nir_builder *b, nir_deref_instr *t,
 
    return nir_build_tex_deref_instr(b, nir_texop_txf_ms, t, NULL,
                                     ARRAY_SIZE(srcs), srcs);
+}
+
+static inline nir_ssa_def *
+nir_txs_deref(nir_builder *b, nir_deref_instr *t, nir_ssa_def *lod)
+{
+   nir_tex_src srcs[1];
+   unsigned num_srcs = 0;
+
+   if (lod == NULL && nir_tex_type_has_lod(t->type))
+      lod = nir_imm_int(b, 0);
+
+   if (lod != NULL)
+      srcs[num_srcs++] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
+
+   return nir_build_tex_deref_instr(b, nir_texop_txs, t, NULL,
+                                    num_srcs, srcs);
 }
 
 static inline nir_ssa_def *
