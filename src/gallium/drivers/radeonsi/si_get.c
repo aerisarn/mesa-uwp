@@ -857,6 +857,7 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
          return PIPE_FORMAT_NV12;
 
    case PIPE_VIDEO_CAP_PREFERS_INTERLACED:
+      return false;
    case PIPE_VIDEO_CAP_SUPPORTS_INTERLACED: {
       enum pipe_video_format format = u_reduce_video_profile(profile);
 
