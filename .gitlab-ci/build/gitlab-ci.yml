@@ -346,7 +346,6 @@ debian-android:
       -Wno-error=enum-conversion
       -Wno-error=initializer-overrides
       -Wno-error=sometimes-uninitialized
-      -Wno-error=implicit-const-int-float-conversion
     CPP_ARGS: >
       -Wno-error=c99-designator
       -Wno-error=unused-variable
@@ -516,12 +515,10 @@ debian-clang:
     C_ARGS: >
       -Wno-error=constant-conversion
       -Wno-error=enum-conversion
-      -Wno-error=implicit-const-int-float-conversion
       -Wno-error=initializer-overrides
       -Wno-error=sometimes-uninitialized
     CPP_ARGS: >
       -Wno-error=c99-designator
-      -Wno-error=implicit-const-int-float-conversion
       -Wno-error=overloaded-virtual
       -Wno-error=tautological-constant-out-of-range-compare
       -Wno-error=unused-private-field
