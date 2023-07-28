@@ -2958,10 +2958,6 @@ Converter::visit(nir_tex_instr *insn)
             srcs.push_back(getSSA());
       }
 
-      if (insn->op == nir_texop_texture_samples)
-         srcs.push_back(zero);
-      else if (!insn->num_srcs)
-         srcs.push_back(loadImm(NULL, 0));
       if (biasIdx != -1)
          srcs.push_back(getSrc(&insn->src[biasIdx].src, 0));
       // TXQ requires a lod argument for all queries we care about here.
@@ -3009,6 +3005,10 @@ Converter::visit(nir_tex_instr *insn)
       }
       if (target.isMS() || (op == OP_TEX && prog->getType() != Program::TYPE_FRAGMENT))
          lz = true;
+
+      // TODO figure out which instructions still need this.
+      if (srcs.empty())
+         srcs.push_back(loadImm(NULL, 0));
 
       TexInstruction *texi = mkTex(op, target.getEnum(), r, s, defs, srcs);
       texi->tex.levelZero = lz;
