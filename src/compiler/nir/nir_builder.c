@@ -221,7 +221,8 @@ nir_build_tex_deref_instr(nir_builder *build, nir_texop op,
                           const nir_tex_src *extra_srcs)
 {
    assert(texture != NULL);
-   assert(glsl_type_is_texture(texture->type) ||
+   assert(glsl_type_is_image(texture->type) ||
+          glsl_type_is_texture(texture->type) ||
           glsl_type_is_sampler(texture->type));
 
    const unsigned num_srcs = 1 + (sampler != NULL) + num_extra_srcs;
