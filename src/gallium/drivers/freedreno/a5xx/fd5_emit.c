@@ -419,6 +419,9 @@ emit_ssbos(struct fd_context *ctx, struct fd_ringbuffer *ring,
 {
    unsigned count = util_last_bit(so->enabled_mask);
 
+   if (count == 0)
+      return;
+
    OUT_PKT7(ring, CP_LOAD_STATE4, 3 + 2 * count);
    OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(0) |
                      CP_LOAD_STATE4_0_STATE_SRC(SS4_DIRECT) |
