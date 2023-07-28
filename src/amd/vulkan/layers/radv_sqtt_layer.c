@@ -1159,7 +1159,7 @@ radv_register_pipeline(struct radv_device *device, struct radv_pipeline *pipelin
    bool result;
    uint64_t base_va = ~0;
 
-   result = ac_sqtt_add_pso_correlation(&device->sqtt, pipeline->pipeline_hash);
+   result = ac_sqtt_add_pso_correlation(&device->sqtt, pipeline->pipeline_hash, pipeline->pipeline_hash);
    if (!result)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 

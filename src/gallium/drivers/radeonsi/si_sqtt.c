@@ -1082,7 +1082,7 @@ si_sqtt_register_pipeline(struct si_context* sctx, struct si_sqtt_fake_pipeline 
 {
    assert(!si_sqtt_pipeline_is_registered(sctx->sqtt, pipeline->code_hash));
 
-   bool result = ac_sqtt_add_pso_correlation(sctx->sqtt, pipeline->code_hash);
+   bool result = ac_sqtt_add_pso_correlation(sctx->sqtt, pipeline->code_hash, pipeline->code_hash);
    if (!result)
       return false;
 
