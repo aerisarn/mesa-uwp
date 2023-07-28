@@ -2222,3 +2222,19 @@ radv_ReleaseProfilingLockKHR(VkDevice _device)
    RADV_FROM_HANDLE(radv_device, device, _device);
    radv_device_release_performance_counters(device);
 }
+
+VKAPI_ATTR void VKAPI_CALL
+radv_GetDeviceImageSubresourceLayoutKHR(VkDevice device, const VkDeviceImageSubresourceInfoKHR *pInfo,
+                                        VkSubresourceLayout2KHR *pLayout)
+{
+   UNUSED VkResult result;
+   VkImage image;
+
+   result =
+      radv_image_create(device, &(struct radv_image_create_info){.vk_info = pInfo->pCreateInfo}, NULL, &image, true);
+   assert(result == VK_SUCCESS);
+
+   radv_GetImageSubresourceLayout2KHR(device, image, pInfo->pSubresource, pLayout);
+
+   radv_DestroyImage(device, image, NULL);
+}
