@@ -2359,9 +2359,12 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
       fprintf(fp, "scratch: %u\n", shader->scratch_size);
    if (shader->constant_data_size)
       fprintf(fp, "constants: %u\n", shader->constant_data_size);
-
-   nir_foreach_variable_in_shader(var, shader)
-      print_var_decl(var, &state);
+   for (unsigned i = 0; i < nir_num_variable_modes; i++) {
+      if (BITFIELD_BIT(i) == nir_var_function_temp)
+         continue;
+      nir_foreach_variable_with_modes(var, shader, BITFIELD_BIT(i))
+         print_var_decl(var, &state);
+   }
 
    foreach_list_typed(nir_function, func, node, &shader->functions) {
       print_function(func, &state);
