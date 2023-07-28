@@ -75,6 +75,43 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
 }
 
 static bool
+lower_image_size_to_txs(nir_builder *b, nir_instr *instr, UNUSED void *_data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_image_deref_size)
+      return false;
+
+   b->cursor = nir_instr_remove(&intrin->instr);
+
+   nir_deref_instr *img = nir_src_as_deref(intrin->src[0]);
+   nir_ssa_def *lod = nir_tex_type_has_lod(img->type) ?
+                      intrin->src[1].ssa : NULL;
+   nir_ssa_def *size = nir_txs_deref(b, img, lod);
+
+   if (glsl_get_sampler_dim(img->type) == GLSL_SAMPLER_DIM_CUBE) {
+      /* Cube image descriptors are set up as simple arrays but SPIR-V wants
+       * the number of cubes.
+       */
+      if (glsl_sampler_type_is_array(img->type)) {
+         size = nir_vec3(b, nir_channel(b, size, 0),
+                            nir_channel(b, size, 1),
+                            nir_udiv_imm(b, nir_channel(b, size, 2), 6));
+      } else {
+         size = nir_vec3(b, nir_channel(b, size, 0),
+                            nir_channel(b, size, 1),
+                            nir_imm_int(b, 1));
+      }
+   }
+
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, size);
+
+   return true;
+}
+
+static bool
 lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
                                         UNUSED void *_data)
 {
@@ -248,6 +285,9 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
    /* Lower push constants before lower_descriptors */
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
             nir_address_format_32bit_offset);
+
+   NIR_PASS(_, nir, nir_shader_instructions_pass, lower_image_size_to_txs,
+            nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    NIR_PASS(_, nir, nvk_nir_lower_descriptors, rs, layout);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_global,
