@@ -1224,7 +1224,7 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image, con
 
 static uint32_t
 radv_clear_dcc_comp_to_single(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
-                              const VkImageSubresourceRange *range, uint32_t color_values[2])
+                              const VkImageSubresourceRange *range, uint32_t color_values[4])
 {
    struct radv_device *device = cmd_buffer->device;
    unsigned bytes_per_pixel = vk_format_get_blocksize(image->vk.format);
@@ -1307,9 +1307,9 @@ radv_clear_dcc_comp_to_single(struct radv_cmd_buffer *cmd_buffer, struct radv_im
          image->planes[0].surface.u.gfx9.color.dcc_block_width,
          image->planes[0].surface.u.gfx9.color.dcc_block_height,
          color_values[0],
-         color_values[bytes_per_pixel == 16 ? 0 : 1],
-         color_values[bytes_per_pixel == 16 ? 0 : 1],
          color_values[1],
+         color_values[2],
+         color_values[3],
       };
 
       radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer), device->meta_state.clear_dcc_comp_to_single_p_layout,
@@ -1628,13 +1628,15 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       return false;
 
    /* DCC */
-   if (!radv_format_pack_clear_color(iview->vk.format, clear_color, &clear_value))
-      return false;
 
    /* Images that support comp-to-single clears don't have clear values. */
-   if (!iview->image->support_comp_to_single && !radv_image_has_clear_value(iview->image) &&
-       (clear_color[0] != 0 || clear_color[1] != 0))
-      return false;
+   if (!iview->image->support_comp_to_single) {
+      if (!radv_format_pack_clear_color(iview->vk.format, clear_color, &clear_value))
+         return false;
+
+      if (!radv_image_has_clear_value(iview->image) && (clear_color[0] != 0 || clear_color[1] != 0))
+         return false;
+   }
 
    if (radv_dcc_enabled(iview->image, iview->vk.base_mip_level)) {
       bool can_avoid_fast_clear_elim;
@@ -1680,7 +1682,7 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_imag
                       enum radv_cmd_flush_bits *post_flush)
 {
    VkClearColorValue clear_value = clear_att->clearValue.color;
-   uint32_t clear_color[2], flush_bits = 0;
+   uint32_t clear_color[4], flush_bits = 0;
    uint32_t cmask_clear_value;
    VkImageSubresourceRange range = {
       .aspectMask = iview->vk.aspects,
@@ -1730,7 +1732,12 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_imag
          /* Write the clear color to the first byte of each 256B block when the image supports DCC
           * fast clears with comp-to-single.
           */
-         flush_bits |= radv_clear_dcc_comp_to_single(cmd_buffer, iview->image, &range, clear_color);
+         if (vk_format_get_blocksize(iview->image->vk.format) == 16) {
+            flush_bits |= radv_clear_dcc_comp_to_single(cmd_buffer, iview->image, &range, clear_value.uint32);
+         } else {
+            clear_color[2] = clear_color[3] = 0;
+            flush_bits |= radv_clear_dcc_comp_to_single(cmd_buffer, iview->image, &range, clear_color);
+         }
       }
    } else {
       flush_bits = radv_clear_cmask(cmd_buffer, iview->image, &range, cmask_clear_value);
