@@ -909,6 +909,23 @@ static bool vlVaQueryApplyFilmGrainAV1(vlVaContext *context,
    return true;
 }
 
+static bool vlVaQueryDecodeInterlacedH264(vlVaContext *context)
+{
+   struct pipe_h264_picture_desc *h264 = NULL;
+
+   if (u_reduce_video_profile(context->templat.profile) != PIPE_VIDEO_FORMAT_MPEG4_AVC ||
+       context->decoder->entrypoint != PIPE_VIDEO_ENTRYPOINT_BITSTREAM)
+      return false;
+
+   h264 = &context->desc.h264;
+
+   if (h264->pps->sps->frame_mbs_only_flag)
+      return false;
+
+   return h264->field_pic_flag || /* PAFF */
+      h264->pps->sps->mb_adaptive_frame_field_flag; /* MBAFF */
+}
+
 VAStatus
 vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
 {
@@ -924,6 +941,7 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
    enum pipe_format format;
    struct pipe_video_buffer **out_target;
    int output_id;
+   bool decode_interlaced;
 
    if (!ctx)
       return VA_STATUS_ERROR_INVALID_CONTEXT;
@@ -949,6 +967,7 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
    output_id = context->target_id;
    out_target = &context->target;
    apply_av1_fg = vlVaQueryApplyFilmGrainAV1(context, &output_id, &out_target);
+   decode_interlaced = vlVaQueryDecodeInterlacedH264(context);
 
    mtx_lock(&drv->mutex);
    surf = handle_table_get(drv->htab, output_id);
@@ -967,7 +986,7 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
    screen = context->decoder->context->screen;
    supported = screen->get_video_param(screen, context->decoder->profile,
                                        context->decoder->entrypoint,
-                                       surf->buffer->interlaced ?
+                                       decode_interlaced || surf->buffer->interlaced ?
                                        PIPE_VIDEO_CAP_SUPPORTS_INTERLACED :
                                        PIPE_VIDEO_CAP_SUPPORTS_PROGRESSIVE);
 
@@ -976,6 +995,9 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
                                        context->decoder->profile,
                                        context->decoder->entrypoint,
                                        PIPE_VIDEO_CAP_PREFERS_INTERLACED);
+      realloc = surf->templat.interlaced != surf->buffer->interlaced;
+   } else if (decode_interlaced && !surf->buffer->interlaced) {
+      surf->templat.interlaced = true;
       realloc = true;
    }
 
