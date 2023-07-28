@@ -5948,7 +5948,8 @@ radv_get_vgt_index_size(uint32_t type)
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkIndexType indexType)
+radv_CmdBindIndexBuffer2KHR(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkDeviceSize size,
+                            VkIndexType indexType)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_buffer, index_buffer, buffer);
@@ -5958,7 +5959,7 @@ radv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDevice
    cmd_buffer->state.index_va += index_buffer->offset + offset;
 
    int index_size = radv_get_vgt_index_size(vk_to_index_type(indexType));
-   cmd_buffer->state.max_index_count = (vk_buffer_range(&index_buffer->vk, offset, VK_WHOLE_SIZE)) / index_size;
+   cmd_buffer->state.max_index_count = (vk_buffer_range(&index_buffer->vk, offset, size)) / index_size;
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, index_buffer->bo);
 
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_INDEX_BUFFER;
