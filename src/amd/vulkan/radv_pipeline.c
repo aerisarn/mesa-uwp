@@ -61,16 +61,16 @@ radv_shader_need_indirect_descriptor_sets(const struct radv_shader *shader)
 }
 
 bool
-radv_pipeline_capture_shaders(const struct radv_device *device, VkPipelineCreateFlags flags)
+radv_pipeline_capture_shaders(const struct radv_device *device, VkPipelineCreateFlags2KHR flags)
 {
-   return (flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR) ||
+   return (flags & VK_PIPELINE_CREATE_2_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR) ||
           (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADERS) || device->keep_shader_info;
 }
 
 bool
-radv_pipeline_capture_shader_stats(const struct radv_device *device, VkPipelineCreateFlags flags)
+radv_pipeline_capture_shader_stats(const struct radv_device *device, VkPipelineCreateFlags2KHR flags)
 {
-   return (flags & VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR) ||
+   return (flags & VK_PIPELINE_CREATE_2_CAPTURE_STATISTICS_BIT_KHR) ||
           (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) || device->keep_shader_info;
 }
 
@@ -145,13 +145,13 @@ radv_convert_buffer_robustness(const struct radv_device *device, VkPipelineRobus
 
 struct radv_pipeline_key
 radv_generate_pipeline_key(const struct radv_device *device, const VkPipelineShaderStageCreateInfo *stages,
-                           const unsigned num_stages, VkPipelineCreateFlags flags, const void *pNext)
+                           const unsigned num_stages, VkPipelineCreateFlags2KHR flags, const void *pNext)
 {
    struct radv_pipeline_key key;
 
    memset(&key, 0, sizeof(key));
 
-   if (flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT)
+   if (flags & VK_PIPELINE_CREATE_2_DISABLE_OPTIMIZATION_BIT_KHR)
       key.optimisations_disabled = 1;
 
    key.disable_aniso_single_level =

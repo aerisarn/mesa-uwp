@@ -1911,6 +1911,36 @@ struct radv_dispatch_info {
 
 void radv_compute_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_info *info);
 
+static VkPipelineCreateFlagBits2KHR
+radv_get_pipeline_create_flags(const void *pCreateInfo)
+{
+   const VkBaseInStructure *base = pCreateInfo;
+   const VkPipelineCreateFlags2CreateInfoKHR *flags2 =
+      vk_find_struct_const(base->pNext, PIPELINE_CREATE_FLAGS_2_CREATE_INFO_KHR);
+
+   if (flags2)
+      return flags2->flags;
+
+   switch (((VkBaseInStructure *)pCreateInfo)->sType) {
+   case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO: {
+      const VkGraphicsPipelineCreateInfo *create_info = (VkGraphicsPipelineCreateInfo *)pCreateInfo;
+      return create_info->flags;
+   }
+   case VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO: {
+      const VkComputePipelineCreateInfo *create_info = (VkComputePipelineCreateInfo *)pCreateInfo;
+      return create_info->flags;
+   }
+   case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR: {
+      const VkRayTracingPipelineCreateInfoKHR *create_info = (VkRayTracingPipelineCreateInfoKHR *)pCreateInfo;
+      return create_info->flags;
+   }
+   default:
+      unreachable("invalid pCreateInfo pipeline struct");
+   }
+
+   return 0;
+}
+
 struct radv_image;
 struct radv_image_view;
 
@@ -2225,7 +2255,7 @@ struct radv_pipeline {
    struct vk_object_base base;
    enum radv_pipeline_type type;
 
-   VkPipelineCreateFlags create_flags;
+   VkPipelineCreateFlags2KHR create_flags;
 
    struct vk_pipeline_cache_object *cache_object;
 
@@ -2470,7 +2500,7 @@ struct radv_graphics_pipeline_create_info {
 
 struct radv_pipeline_key radv_generate_pipeline_key(const struct radv_device *device,
                                                     const VkPipelineShaderStageCreateInfo *stages,
-                                                    const unsigned num_stages, VkPipelineCreateFlags flags,
+                                                    const unsigned num_stages, VkPipelineCreateFlags2KHR flags,
                                                     const void *pNext);
 
 void radv_pipeline_init(struct radv_device *device, struct radv_pipeline *pipeline, enum radv_pipeline_type type);
@@ -2484,8 +2514,8 @@ VkResult radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                                       const VkComputePipelineCreateInfo *pCreateInfo,
                                       const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline);
 
-bool radv_pipeline_capture_shaders(const struct radv_device *device, VkPipelineCreateFlags flags);
-bool radv_pipeline_capture_shader_stats(const struct radv_device *device, VkPipelineCreateFlags flags);
+bool radv_pipeline_capture_shaders(const struct radv_device *device, VkPipelineCreateFlags2KHR flags);
+bool radv_pipeline_capture_shader_stats(const struct radv_device *device, VkPipelineCreateFlags2KHR flags);
 
 VkPipelineShaderStageCreateInfo *radv_copy_shader_stage_create_info(struct radv_device *device, uint32_t stageCount,
                                                                     const VkPipelineShaderStageCreateInfo *pStages,

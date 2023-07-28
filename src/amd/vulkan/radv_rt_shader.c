@@ -80,7 +80,7 @@ lower_rt_derefs(nir_shader *shader)
  * Global variables for an RT pipeline
  */
 struct rt_variables {
-   const VkPipelineCreateFlags flags;
+   const VkPipelineCreateFlags2KHR flags;
 
    /* idx of the next shader to run in the next iteration of the main loop.
     * During traversal, idx is used to store the SBT index and will contain
@@ -124,7 +124,7 @@ struct rt_variables {
 };
 
 static struct rt_variables
-create_rt_variables(nir_shader *shader, const VkPipelineCreateFlags flags)
+create_rt_variables(nir_shader *shader, const VkPipelineCreateFlags2KHR flags)
 {
    struct rt_variables vars = {
       .flags = flags,
@@ -524,7 +524,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                nir_ssa_def *should_return = nir_test_mask(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags),
                                                           SpvRayFlagsSkipClosestHitShaderKHRMask);
 
-               if (!(vars->flags & VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR)) {
+               if (!(vars->flags & VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR)) {
                   should_return = nir_ior(&b_shader, should_return,
                                           nir_ieq_imm(&b_shader, nir_load_var(&b_shader, vars->shader_va), 0));
                }
@@ -546,7 +546,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                nir_ssa_def *miss_index = nir_load_var(&b_shader, vars->miss_index);
                load_sbt_entry(&b_shader, vars, miss_index, SBT_MISS, SBT_RECURSIVE_PTR);
 
-               if (!(vars->flags & VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR)) {
+               if (!(vars->flags & VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR)) {
                   /* In case of a NULL miss shader, do nothing and just return. */
                   nir_push_if(&b_shader, nir_ieq_imm(&b_shader, nir_load_var(&b_shader, vars->shader_va), 0));
                   insert_rt_return(&b_shader, vars);
@@ -1126,7 +1126,7 @@ visit_any_hit_shaders(struct radv_device *device, nir_builder *b, struct travers
 {
    nir_ssa_def *sbt_idx = nir_load_var(b, vars->idx);
 
-   if (!(vars->flags & VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR))
+   if (!(vars->flags & VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR))
       nir_push_if(b, nir_ine_imm(b, sbt_idx, 0));
 
    for (unsigned i = 0; i < data->pipeline->group_count; ++i) {
@@ -1160,7 +1160,7 @@ visit_any_hit_shaders(struct radv_device *device, nir_builder *b, struct travers
       ralloc_free(nir_stage);
    }
 
-   if (!(vars->flags & VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR))
+   if (!(vars->flags & VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR))
       nir_pop_if(b, NULL);
 }
 
@@ -1255,7 +1255,7 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
    nir_store_var(b, data->vars->ahit_accept, nir_imm_false(b), 0x1);
    nir_store_var(b, data->vars->ahit_terminate, nir_imm_false(b), 0x1);
 
-   if (!(data->vars->flags & VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR))
+   if (!(data->vars->flags & VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR))
       nir_push_if(b, nir_ine_imm(b, nir_load_var(b, inner_vars.idx), 0));
 
    for (unsigned i = 0; i < data->pipeline->group_count; ++i) {
@@ -1304,7 +1304,7 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
       ralloc_free(nir_stage);
    }
 
-   if (!(data->vars->flags & VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR))
+   if (!(data->vars->flags & VK_PIPELINE_CREATE_2_RAY_TRACING_NO_NULL_INTERSECTION_SHADERS_BIT_KHR))
       nir_pop_if(b, NULL);
 
    nir_push_if(b, nir_load_var(b, data->vars->ahit_accept));
@@ -1344,6 +1344,8 @@ nir_shader *
 radv_build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_pipeline *pipeline,
                             const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, const struct radv_pipeline_key *key)
 {
+   const VkPipelineCreateFlagBits2KHR create_flags = radv_get_pipeline_create_flags(pCreateInfo);
+
    /* Create the traversal shader as an intersection shader to prevent validation failures due to
     * invalid variable modes.*/
    nir_builder b = radv_meta_init_shader(device, MESA_SHADER_INTERSECTION, "rt_traversal");
@@ -1351,7 +1353,7 @@ radv_build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = device->physical_device->rt_wave_size == 64 ? 8 : 4;
    b.shader->info.shared_size = device->physical_device->rt_wave_size * MAX_STACK_ENTRY_COUNT * sizeof(uint32_t);
-   struct rt_variables vars = create_rt_variables(b.shader, pCreateInfo->flags);
+   struct rt_variables vars = create_rt_variables(b.shader, create_flags);
 
    /* Register storage for hit attributes */
    nir_variable *hit_attribs[RADV_MAX_HIT_ATTRIB_SIZE / sizeof(uint32_t)];
@@ -1444,10 +1446,10 @@ radv_build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_
       .stack_base = 0,
       .stack_store_cb = store_stack_entry,
       .stack_load_cb = load_stack_entry,
-      .aabb_cb = (pipeline->base.base.create_flags & VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR)
+      .aabb_cb = (pipeline->base.base.create_flags & VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_AABBS_BIT_KHR)
                     ? NULL
                     : handle_candidate_aabb,
-      .triangle_cb = (pipeline->base.base.create_flags & VK_PIPELINE_CREATE_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR)
+      .triangle_cb = (pipeline->base.base.create_flags & VK_PIPELINE_CREATE_2_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR)
                         ? NULL
                         : handle_candidate_triangle,
       .data = &data,
@@ -1531,7 +1533,9 @@ radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKH
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
-   struct rt_variables vars = create_rt_variables(shader, pCreateInfo->flags);
+   const VkPipelineCreateFlagBits2KHR create_flags = radv_get_pipeline_create_flags(pCreateInfo);
+
+   struct rt_variables vars = create_rt_variables(shader, create_flags);
    lower_rt_instructions(shader, &vars, 0);
 
    if (stack_size) {
