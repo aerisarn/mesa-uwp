@@ -1135,6 +1135,7 @@ radv_add_code_object(struct radv_device *device, struct radv_pipeline *pipeline)
       record->shader_data[i].vgpr_count = shader->config.num_vgprs;
       record->shader_data[i].sgpr_count = shader->config.num_sgprs;
       record->shader_data[i].scratch_memory_size = shader->config.scratch_bytes_per_wave;
+      record->shader_data[i].lds_size = 0;
       record->shader_data[i].wavefront_size = shader->info.wave_size;
       record->shader_data[i].base_address = va & 0xffffffffffff;
       record->shader_data[i].elf_symbol_offset = 0;

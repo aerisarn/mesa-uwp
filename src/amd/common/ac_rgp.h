@@ -36,6 +36,7 @@ struct rgp_shader_data {
    uint32_t vgpr_count;
    uint32_t sgpr_count;
    uint32_t scratch_memory_size;
+   uint32_t lds_size;
    uint32_t wavefront_size;
    uint64_t base_address;
    uint32_t elf_symbol_offset;
