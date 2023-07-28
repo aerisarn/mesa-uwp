@@ -823,6 +823,34 @@ rematerialize_deref_src(nir_src *src, void *_state)
    return true;
 }
 
+bool
+nir_rematerialize_deref_in_use_blocks(nir_deref_instr *instr)
+{
+   if (nir_deref_instr_remove_if_unused(instr))
+      return true;
+
+   struct rematerialize_deref_state state = {
+      .builder = nir_builder_create(nir_cf_node_get_function(&instr->instr.block->cf_node)),
+   };
+
+   nir_foreach_use_safe(use, &instr->def) {
+      if (use->parent_instr->block == instr->instr.block)
+         continue;
+
+      /* If a deref is used in a phi, we can't rematerialize it, as the new
+       * derefs would appear before the phi, which is not valid.
+       */
+      if (use->parent_instr->type == nir_instr_type_phi)
+         continue;
+
+      state.block = use->parent_instr->block;
+      state.builder.cursor = nir_before_instr(use->parent_instr);
+      rematerialize_deref_src(use, &state);
+   }
+
+   return state.progress;
+}
+
 /** Re-materialize derefs in every block
  *
  * This pass re-materializes deref instructions in every block in which it is

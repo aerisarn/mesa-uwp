@@ -5955,6 +5955,8 @@ bool nir_convert_from_ssa(nir_shader *shader,
 
 bool nir_lower_phis_to_regs_block(nir_block *block);
 bool nir_lower_ssa_defs_to_regs_block(nir_block *block);
+
+bool nir_rematerialize_deref_in_use_blocks(nir_deref_instr *instr);
 bool nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl);
 
 bool nir_lower_samplers(nir_shader *shader);
