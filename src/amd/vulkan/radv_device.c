@@ -325,8 +325,12 @@ radv_device_init_vrs_state(struct radv_device *device)
 
    VkBufferCreateInfo buffer_create_info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .pNext =
+         &(VkBufferUsageFlags2CreateInfoKHR){
+            .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
+            .usage = VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR,
+         },
       .size = radv_image_from_handle(image)->planes[0].surface.meta_size,
-      .usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
    };
 

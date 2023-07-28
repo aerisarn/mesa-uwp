@@ -1099,7 +1099,7 @@ create_bview(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buffer, uns
 
 static void
 create_buffer_from_image(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_surf *surf,
-                         VkBufferUsageFlagBits usage, VkBuffer *buffer)
+                         VkBufferUsageFlagBits2KHR usage, VkBuffer *buffer)
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_device_memory mem;
@@ -1109,9 +1109,13 @@ create_buffer_from_image(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_bl
    radv_create_buffer(device,
                       &(VkBufferCreateInfo){
                          .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                         .pNext =
+                            &(VkBufferUsageFlags2CreateInfoKHR){
+                               .sType = VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR,
+                               .usage = usage,
+                            },
                          .flags = 0,
                          .size = surf->image->size,
-                         .usage = usage,
                          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
                       },
                       NULL, buffer, true);
@@ -1357,7 +1361,7 @@ radv_meta_buffer_to_image_cs_r32g32b32(struct radv_cmd_buffer *cmd_buffer, struc
     * image as a buffer with the same underlying memory. The compute
     * shader will copy all components separately using a R32 format.
     */
-   create_buffer_from_image(cmd_buffer, dst, VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, &buffer);
+   create_buffer_from_image(cmd_buffer, dst, VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR, &buffer);
 
    create_bview(cmd_buffer, src->buffer, src->offset, src->format, &src_view);
    create_bview_for_r32g32b32(cmd_buffer, radv_buffer_from_handle(buffer), dst_offset, dst->format, &dst_view);
@@ -1504,8 +1508,8 @@ radv_meta_image_to_image_cs_r32g32b32(struct radv_cmd_buffer *cmd_buffer, struct
     * image as a buffer with the same underlying memory. The compute
     * shader will copy all components separately using a R32 format.
     */
-   create_buffer_from_image(cmd_buffer, src, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT, &src_buffer);
-   create_buffer_from_image(cmd_buffer, dst, VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, &dst_buffer);
+   create_buffer_from_image(cmd_buffer, src, VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR, &src_buffer);
+   create_buffer_from_image(cmd_buffer, dst, VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR, &dst_buffer);
 
    create_bview_for_r32g32b32(cmd_buffer, radv_buffer_from_handle(src_buffer), src_offset, src->format, &src_view);
    create_bview_for_r32g32b32(cmd_buffer, radv_buffer_from_handle(dst_buffer), dst_offset, dst->format, &dst_view);
@@ -1647,7 +1651,7 @@ radv_meta_clear_image_cs_r32g32b32(struct radv_cmd_buffer *cmd_buffer, struct ra
     * image as a buffer with the same underlying memory. The compute
     * shader will clear all components separately using a R32 format.
     */
-   create_buffer_from_image(cmd_buffer, dst, VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT, &buffer);
+   create_buffer_from_image(cmd_buffer, dst, VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR, &buffer);
 
    create_bview_for_r32g32b32(cmd_buffer, radv_buffer_from_handle(buffer), 0, dst->format, &dst_view);
    cleari_r32g32b32_bind_descriptors(cmd_buffer, &dst_view);
