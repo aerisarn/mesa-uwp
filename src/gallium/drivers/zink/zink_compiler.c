@@ -1767,13 +1767,13 @@ check_psiz(struct nir_shader *s)
 }
 
 static nir_variable *
-find_var_with_location_frac(nir_shader *nir, unsigned location, unsigned location_frac, bool have_psiz)
+find_var_with_location_frac(nir_shader *nir, unsigned location, unsigned location_frac, bool have_psiz, nir_variable_mode mode)
 {
    assert((int)location >= 0);
 
    unsigned found = 0;
    if (!location_frac && location != VARYING_SLOT_PSIZ) {
-      nir_foreach_shader_out_variable(var, nir) {
+      nir_foreach_variable_with_modes(var, nir, mode) {
          if (var->data.location == location)
             found++;
       }
@@ -1782,7 +1782,7 @@ find_var_with_location_frac(nir_shader *nir, unsigned location, unsigned locatio
       /* multiple variables found for this location: find the biggest one */
       nir_variable *out = NULL;
       unsigned slots = 0;
-      nir_foreach_shader_out_variable(var, nir) {
+      nir_foreach_variable_with_modes(var, nir, mode) {
          if (var->data.location == location) {
             unsigned count_slots = glsl_count_vec4_slots(var->type, false, false);
             if (count_slots > slots) {
@@ -1794,7 +1794,7 @@ find_var_with_location_frac(nir_shader *nir, unsigned location, unsigned locatio
       return out;
    } else {
       /* only one variable found or this is location_frac */
-      nir_foreach_shader_out_variable(var, nir) {
+      nir_foreach_variable_with_modes(var, nir, mode) {
          if (var->data.location == location &&
              (var->data.location_frac == location_frac ||
               (glsl_type_is_array(var->type) ? glsl_array_size(var->type) : glsl_get_vector_elements(var->type)) >= location_frac + 1)) {
@@ -1946,7 +1946,7 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
          nir_variable *var = NULL;
          unsigned so_slot;
          while (!var)
-            var = find_var_with_location_frac(nir, slot--, output->start_component, have_psiz);
+            var = find_var_with_location_frac(nir, slot--, output->start_component, have_psiz, nir_var_shader_out);
          if (var->data.location == VARYING_SLOT_PSIZ)
             psiz = var;
          so_slot = slot + 1;
@@ -1995,7 +1995,7 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
       if (zs->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->info.gs.active_stream_mask) == 1) {
          nir_variable *var = NULL;
          while (!var)
-            var = find_var_with_location_frac(nir, slot--, output->start_component, have_psiz);
+            var = find_var_with_location_frac(nir, slot--, output->start_component, have_psiz, nir_var_shader_out);
          /* this is a lowered 64bit variable that can't be exported due to packing */
          if (var->data.is_xfb)
             goto out;
