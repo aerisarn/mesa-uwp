@@ -261,6 +261,8 @@ enum rgp_sqtt_marker_general_api_type
    ApiCmdDrawMeshTasksEXT = 47,
    ApiCmdDrawMeshTasksIndirectCountEXT = 48,
    ApiCmdDrawMeshTasksIndirectEXT = 49,
+
+   ApiRayTracingSeparateCompiled = 0x800000,
    ApiInvalid = 0xffffffff
 };
 

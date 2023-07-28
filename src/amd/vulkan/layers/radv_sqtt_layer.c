@@ -755,7 +755,8 @@ sqtt_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPoo
                 flags);
 }
 
-#define EVENT_RT_MARKER(cmd_name, ...) EVENT_MARKER_BASE(cmd_name, Dispatch, cmd_name, __VA_ARGS__);
+#define EVENT_RT_MARKER(cmd_name, ...)                                                                                 \
+   EVENT_MARKER_BASE(cmd_name, Dispatch, cmd_name | ApiRayTracingSeparateCompiled, __VA_ARGS__);
 
 #define EVENT_RT_MARKER_ALIAS(cmd_name, event_name, ...) EVENT_MARKER_BASE(cmd_name, Dispatch, event_name, __VA_ARGS__);
 
