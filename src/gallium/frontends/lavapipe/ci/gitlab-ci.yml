@@ -2,8 +2,7 @@
   stage: software-renderer
   rules:
     - !reference [.vulkan-rules, rules]
-    # One could probably be a little more clever here and skip non-gallium Mesa changes (see also .llvmpipe-cl-rules).
-    - !reference [.gl-rules, rules]
+    - !reference [.gallium-core-rules, rules]
     - changes: &lavapipe_file_list
       - src/gallium/drivers/llvmpipe/**/*
       - src/gallium/frontends/lavapipe/**/*
