@@ -194,24 +194,6 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
    }
 #endif
 
-#if GFX_VERx10 == 125
-   /* Wa_14014427904 - We need additional invalidate/flush when
-    * emitting NP state commands with ATS-M in compute mode.
-    */
-   if (intel_device_info_is_atsm(device->info) &&
-       queue->family->engine_class == INTEL_ENGINE_CLASS_COMPUTE) {
-      genX(batch_emit_pipe_control)
-         (batch, device->info,
-          ANV_PIPE_CS_STALL_BIT |
-          ANV_PIPE_STATE_CACHE_INVALIDATE_BIT |
-          ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT |
-          ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT |
-          ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
-          ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT |
-          ANV_PIPE_HDC_PIPELINE_FLUSH_BIT);
-      }
-#endif
-
    /* Emit STATE_BASE_ADDRESS on Gfx12+ because we set a default CPS_STATE and
     * those are relative to STATE_BASE_ADDRESS::DynamicStateBaseAddress.
     */
@@ -638,6 +620,24 @@ init_compute_queue_state(struct anv_queue *queue)
    }
 #else
    assert(!queue->device->info->has_aux_map);
+#endif
+
+#if GFX_VERx10 == 125
+   /* Wa_14014427904 - We need additional invalidate/flush when
+    * emitting NP state commands with ATS-M in compute mode.
+    */
+   if (intel_device_info_is_atsm(queue->device->info) &&
+       queue->family->engine_class == INTEL_ENGINE_CLASS_COMPUTE) {
+      genX(batch_emit_pipe_control)
+         (&batch, queue->device->info,
+          ANV_PIPE_CS_STALL_BIT |
+          ANV_PIPE_STATE_CACHE_INVALIDATE_BIT |
+          ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT |
+          ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT |
+          ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
+          ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT |
+          ANV_PIPE_HDC_PIPELINE_FLUSH_BIT);
+      }
 #endif
 
    init_common_queue_state(queue, &batch);
