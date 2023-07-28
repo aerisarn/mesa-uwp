@@ -1191,7 +1191,7 @@ radv_register_pipeline(struct radv_device *device, struct radv_pipeline *pipelin
 }
 
 static void
-radv_unregister_pipeline(struct radv_device *device, struct radv_pipeline *pipeline)
+radv_unregister_records(struct radv_device *device, uint64_t hash)
 {
    struct ac_sqtt *sqtt = &device->sqtt;
    struct rgp_pso_correlation *pso_correlation = &sqtt->rgp_pso_correlation;
@@ -1201,7 +1201,7 @@ radv_unregister_pipeline(struct radv_device *device, struct radv_pipeline *pipel
    /* Destroy the PSO correlation record. */
    simple_mtx_lock(&pso_correlation->lock);
    list_for_each_entry_safe (struct rgp_pso_correlation_record, record, &pso_correlation->record, list) {
-      if (record->pipeline_hash[0] == pipeline->pipeline_hash) {
+      if (record->pipeline_hash[0] == hash) {
          pso_correlation->record_count--;
          list_del(&record->list);
          free(record);
@@ -1213,7 +1213,7 @@ radv_unregister_pipeline(struct radv_device *device, struct radv_pipeline *pipel
    /* Destroy the code object loader record. */
    simple_mtx_lock(&loader_events->lock);
    list_for_each_entry_safe (struct rgp_loader_events_record, record, &loader_events->record, list) {
-      if (record->code_object_hash[0] == pipeline->pipeline_hash) {
+      if (record->code_object_hash[0] == hash) {
          loader_events->record_count--;
          list_del(&record->list);
          free(record);
@@ -1225,7 +1225,7 @@ radv_unregister_pipeline(struct radv_device *device, struct radv_pipeline *pipel
    /* Destroy the code object record. */
    simple_mtx_lock(&code_object->lock);
    list_for_each_entry_safe (struct rgp_code_object_record, record, &code_object->record, list) {
-      if (record->pipeline_hash[0] == pipeline->pipeline_hash) {
+      if (record->pipeline_hash[0] == hash) {
          code_object->record_count--;
          list_del(&record->list);
          free(record);
@@ -1359,7 +1359,7 @@ sqtt_DestroyPipeline(VkDevice _device, VkPipeline _pipeline, const VkAllocationC
    if (!_pipeline)
       return;
 
-   radv_unregister_pipeline(device, pipeline);
+   radv_unregister_records(device, pipeline->pipeline_hash);
 
    if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
       struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
