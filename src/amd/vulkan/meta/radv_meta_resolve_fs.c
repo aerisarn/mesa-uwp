@@ -726,7 +726,8 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
 
    assert(region->srcSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
    assert(region->dstSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
-   assert(region->srcSubresource.layerCount == region->dstSubresource.layerCount);
+   assert(vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource) ==
+          vk_image_subresource_layer_count(&dst_image->vk, &region->dstSubresource));
 
    const uint32_t src_base_layer = radv_meta_get_iview_layer(src_image, &region->srcSubresource, &region->srcOffset);
 
@@ -751,7 +752,9 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
 
    radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1, &resolve_area);
 
-   for (uint32_t layer = 0; layer < region->srcSubresource.layerCount; ++layer) {
+   const unsigned src_layer_count = vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource);
+
+   for (uint32_t layer = 0; layer < src_layer_count; ++layer) {
 
       struct radv_image_view src_iview;
       radv_image_view_init(&src_iview, cmd_buffer->device,

@@ -599,7 +599,7 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
                              .baseMipLevel = region->dstSubresource.mipLevel,
                              .levelCount = 1,
                              .baseArrayLayer = region->dstSubresource.baseArrayLayer,
-                             .layerCount = region->dstSubresource.layerCount,
+                             .layerCount = vk_image_subresource_layer_count(&dst_image->vk, &region->dstSubresource),
                           });
    }
 
@@ -608,7 +608,8 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
 
    assert(region->srcSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
    assert(region->dstSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
-   assert(region->srcSubresource.layerCount == region->dstSubresource.layerCount);
+   assert(vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource) ==
+          vk_image_subresource_layer_count(&dst_image->vk, &region->dstSubresource));
 
    const uint32_t src_base_layer = radv_meta_get_iview_layer(src_image, &region->srcSubresource, &region->srcOffset);
 
@@ -617,8 +618,9 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
    const struct VkExtent3D extent = vk_image_sanitize_extent(&src_image->vk, region->extent);
    const struct VkOffset3D srcOffset = vk_image_sanitize_offset(&src_image->vk, region->srcOffset);
    const struct VkOffset3D dstOffset = vk_image_sanitize_offset(&dst_image->vk, region->dstOffset);
+   const unsigned src_layer_count = vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource);
 
-   for (uint32_t layer = 0; layer < region->srcSubresource.layerCount; ++layer) {
+   for (uint32_t layer = 0; layer < src_layer_count; ++layer) {
 
       struct radv_image_view src_iview;
       radv_image_view_init(&src_iview, cmd_buffer->device,
@@ -676,7 +678,7 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
          .baseMipLevel = region->dstSubresource.mipLevel,
          .levelCount = 1,
          .baseArrayLayer = dst_base_layer,
-         .layerCount = region->dstSubresource.layerCount,
+         .layerCount = vk_image_subresource_layer_count(&dst_image->vk, &region->dstSubresource),
       };
 
       cmd_buffer->state.flush_bits |= radv_init_dcc(cmd_buffer, dst_image, &range, 0xffffffff);

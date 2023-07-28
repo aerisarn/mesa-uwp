@@ -350,7 +350,8 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
     */
    assert(region->srcSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
    assert(region->dstSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
-   assert(region->srcSubresource.layerCount == region->dstSubresource.layerCount);
+   assert(vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource) ==
+          vk_image_subresource_layer_count(&dst_image->vk, &region->dstSubresource));
 
    const uint32_t src_base_layer = radv_meta_get_iview_layer(src_image, &region->srcSubresource, &region->srcOffset);
 
@@ -381,7 +382,7 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
          .baseMipLevel = region->dstSubresource.mipLevel,
          .levelCount = 1,
          .baseArrayLayer = dst_base_layer,
-         .layerCount = region->dstSubresource.layerCount,
+         .layerCount = vk_image_subresource_layer_count(&dst_image->vk, &region->dstSubresource),
       };
 
       cmd_buffer->state.flush_bits |= radv_init_dcc(cmd_buffer, dst_image, &range, 0xffffffff);
@@ -402,7 +403,9 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
 
    radv_CmdSetScissor(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1, &resolve_area);
 
-   for (uint32_t layer = 0; layer < region->srcSubresource.layerCount; ++layer) {
+   const unsigned src_layer_count = vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource);
+
+   for (uint32_t layer = 0; layer < src_layer_count; ++layer) {
 
       VkResult ret = build_resolve_pipeline(device, fs_key);
       if (ret != VK_SUCCESS) {
@@ -836,15 +839,13 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
       .oldLayout = src_image_layout,
       .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
       .image = radv_image_to_handle(src_image),
-      .subresourceRange =
-         (VkImageSubresourceRange){
-            .aspectMask = region->srcSubresource.aspectMask,
-            .baseMipLevel = region->srcSubresource.mipLevel,
-            .levelCount = 1,
-            .baseArrayLayer = src_base_layer,
-            .layerCount = region->srcSubresource.layerCount,
-         },
-   };
+      .subresourceRange = (VkImageSubresourceRange){
+         .aspectMask = region->srcSubresource.aspectMask,
+         .baseMipLevel = region->srcSubresource.mipLevel,
+         .levelCount = 1,
+         .baseArrayLayer = src_base_layer,
+         .layerCount = vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource),
+      }};
 
    VkSampleLocationsInfoEXT sample_loc_info;
    if (src_image->vk.create_flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT) {

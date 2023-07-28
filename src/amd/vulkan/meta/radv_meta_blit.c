@@ -427,7 +427,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image, VkI
       dst_end = region->dstOffsets[1].z;
    } else {
       dst_start = dst_res->baseArrayLayer;
-      dst_end = dst_start + dst_res->layerCount;
+      dst_end = dst_start + vk_image_subresource_layer_count(&dst_image->vk, dst_res);
    }
 
    unsigned src_start, src_end;
@@ -437,7 +437,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image, VkI
       src_end = region->srcOffsets[1].z;
    } else {
       src_start = src_res->baseArrayLayer;
-      src_end = src_start + src_res->layerCount;
+      src_end = src_start + vk_image_subresource_layer_count(&src_image->vk, src_res);
    }
 
    bool flip_z = flip_coords(&src_start, &src_end, &dst_start, &dst_end);

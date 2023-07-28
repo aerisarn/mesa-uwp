@@ -632,7 +632,9 @@ radv_meta_decode_etc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
                      RADV_META_SUSPEND_PREDICATING);
 
    uint32_t base_slice = radv_meta_get_iview_layer(image, subresource, &offset);
-   uint32_t slice_count = image->vk.image_type == VK_IMAGE_TYPE_3D ? extent.depth : subresource->layerCount;
+   uint32_t slice_count = image->vk.image_type == VK_IMAGE_TYPE_3D
+                             ? extent.depth
+                             : vk_image_subresource_layer_count(&image->vk, subresource);
 
    extent = vk_image_sanitize_extent(&image->vk, extent);
    offset = vk_image_sanitize_offset(&image->vk, offset);
@@ -640,22 +642,23 @@ radv_meta_decode_etc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
    VkFormat load_format =
       vk_format_get_blocksize(image->vk.format) == 16 ? VK_FORMAT_R32G32B32A32_UINT : VK_FORMAT_R32G32_UINT;
    struct radv_image_view src_iview;
-   radv_image_view_init(&src_iview, cmd_buffer->device,
-                        &(VkImageViewCreateInfo){
-                           .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                           .image = radv_image_to_handle(image),
-                           .viewType = radv_meta_get_view_type(image),
-                           .format = load_format,
-                           .subresourceRange =
-                              {
-                                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                                 .baseMipLevel = subresource->mipLevel,
-                                 .levelCount = 1,
-                                 .baseArrayLayer = 0,
-                                 .layerCount = subresource->baseArrayLayer + subresource->layerCount,
-                              },
-                        },
-                        0, NULL);
+   radv_image_view_init(
+      &src_iview, cmd_buffer->device,
+      &(VkImageViewCreateInfo){
+         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+         .image = radv_image_to_handle(image),
+         .viewType = radv_meta_get_view_type(image),
+         .format = load_format,
+         .subresourceRange =
+            {
+               .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+               .baseMipLevel = subresource->mipLevel,
+               .levelCount = 1,
+               .baseArrayLayer = 0,
+               .layerCount = subresource->baseArrayLayer + vk_image_subresource_layer_count(&image->vk, subresource),
+            },
+      },
+      0, NULL);
 
    VkFormat store_format;
    switch (image->vk.format) {
@@ -675,22 +678,23 @@ radv_meta_decode_etc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
       store_format = VK_FORMAT_R8G8B8A8_UNORM;
    }
    struct radv_image_view dst_iview;
-   radv_image_view_init(&dst_iview, cmd_buffer->device,
-                        &(VkImageViewCreateInfo){
-                           .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                           .image = radv_image_to_handle(image),
-                           .viewType = radv_meta_get_view_type(image),
-                           .format = store_format,
-                           .subresourceRange =
-                              {
-                                 .aspectMask = VK_IMAGE_ASPECT_PLANE_1_BIT,
-                                 .baseMipLevel = subresource->mipLevel,
-                                 .levelCount = 1,
-                                 .baseArrayLayer = 0,
-                                 .layerCount = subresource->baseArrayLayer + subresource->layerCount,
-                              },
-                        },
-                        0, NULL);
+   radv_image_view_init(
+      &dst_iview, cmd_buffer->device,
+      &(VkImageViewCreateInfo){
+         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+         .image = radv_image_to_handle(image),
+         .viewType = radv_meta_get_view_type(image),
+         .format = store_format,
+         .subresourceRange =
+            {
+               .aspectMask = VK_IMAGE_ASPECT_PLANE_1_BIT,
+               .baseMipLevel = subresource->mipLevel,
+               .levelCount = 1,
+               .baseArrayLayer = 0,
+               .layerCount = subresource->baseArrayLayer + vk_image_subresource_layer_count(&image->vk, subresource),
+            },
+      },
+      0, NULL);
 
    decode_etc(cmd_buffer, &src_iview, &dst_iview, &(VkOffset3D){offset.x, offset.y, base_slice},
               &(VkExtent3D){extent.width, extent.height, slice_count});
