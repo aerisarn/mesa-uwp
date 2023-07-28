@@ -1118,6 +1118,7 @@ radv_add_code_object(struct radv_device *device, struct radv_pipeline *pipeline)
    record->num_shaders_combined = 0;
    record->pipeline_hash[0] = pipeline->pipeline_hash;
    record->pipeline_hash[1] = pipeline->pipeline_hash;
+   record->is_rt = false;
 
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       struct radv_shader *shader = pipeline->shaders[i];

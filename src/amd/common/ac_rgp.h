@@ -42,6 +42,8 @@ struct rgp_shader_data {
    uint32_t elf_symbol_offset;
    uint32_t hw_stage;
    uint32_t is_combined;
+   char rt_shader_name[32];
+   uint32_t rt_stack_size;
 };
 
 struct rgp_code_object_record {
@@ -49,6 +51,8 @@ struct rgp_code_object_record {
    struct rgp_shader_data shader_data[MESA_VULKAN_SHADER_STAGES];
    uint32_t num_shaders_combined; /* count combined shaders as one count */
    uint64_t pipeline_hash[2];
+
+   bool is_rt;
    struct list_head list;
 };
 
