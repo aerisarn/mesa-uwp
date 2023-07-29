@@ -5075,6 +5075,7 @@ typedef struct {
    uint16_t align;
 } nir_mem_access_size_align;
 
+/* clang-format off */
 typedef nir_mem_access_size_align
    (*nir_lower_mem_access_bit_sizes_cb)(nir_intrinsic_op intrin,
                                         uint8_t bytes,
@@ -5083,6 +5084,7 @@ typedef nir_mem_access_size_align
                                         uint32_t align_offset,
                                         bool offset_is_const,
                                         const void *cb_data);
+/* clang-format on */
 
 typedef struct {
    nir_lower_mem_access_bit_sizes_cb callback;
@@ -5132,12 +5134,15 @@ typedef struct {
 bool nir_lower_robust_access(nir_shader *s,
                              const nir_lower_robust_access_options *opts);
 
+/* clang-format off */
 typedef bool (*nir_should_vectorize_mem_func)(unsigned align_mul,
                                               unsigned align_offset,
                                               unsigned bit_size,
                                               unsigned num_components,
-                                              nir_intrinsic_instr *low, nir_intrinsic_instr *high,
+                                              nir_intrinsic_instr *low,
+                                              nir_intrinsic_instr *high,
                                               void *data);
+/* clang-format on */
 
 typedef struct {
    nir_should_vectorize_mem_func callback;
