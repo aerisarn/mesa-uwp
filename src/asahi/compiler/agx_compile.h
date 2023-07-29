@@ -246,7 +246,6 @@ static const nir_shader_compiler_options agx_nir_options = {
    .lower_extract_byte = true,
    .lower_insert_byte = true,
    .lower_insert_word = true,
-   .lower_cs_local_index_to_id = true,
    .has_cs_global_id = true,
    .vectorize_io = true,
    .use_interpolated_input_intrinsics = true,
