@@ -87,7 +87,7 @@ language = 'en'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = []
+exclude_patterns = ['header-stubs']
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
@@ -221,6 +221,7 @@ graphviz_output_format = 'svg'
 
 hawkmoth_root = os.path.abspath('..')
 hawkmoth_clang = [
+  '-Idocs/header-stubs/',
   '-Iinclude/',
   '-Isrc/',
   '-DHAVE_STRUCT_TIMESPEC',
