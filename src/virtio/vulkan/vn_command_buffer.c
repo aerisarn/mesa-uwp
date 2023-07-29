@@ -692,7 +692,7 @@ vn_cmd_end_rendering(struct vn_command_buffer *cmd)
     */
    if (!cmd->builder.suspending)
       vn_cmd_record_batched_query_feedback(cmd);
-   else
+   else if (VN_DEBUG(RESULT) && !list_is_empty(&cmd->builder.query_batches))
       vn_log(cmd->pool->device->instance, "query dropped by suspended pass");
 
    cmd->builder.in_render_pass = false;
