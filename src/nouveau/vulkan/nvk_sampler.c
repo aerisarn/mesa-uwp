@@ -138,50 +138,35 @@ vk_to_9097_trilin_opt(float max_anisotropy)
    return 0;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-nvk_CreateSampler(VkDevice device,
-                  const VkSamplerCreateInfo *pCreateInfo,
-                  const VkAllocationCallbacks *pAllocator,
-                  VkSampler *pSampler)
+static void
+nvk_sampler_fill_header(const struct nvk_physical_device *pdev,
+                        const struct VkSamplerCreateInfo *info,
+                        const struct vk_sampler *vk_sampler,
+                        uint32_t *samp)
 {
-   VK_FROM_HANDLE(nvk_device, dev, device);
-   struct nvk_sampler *sampler;
-   VkResult result;
-
-   sampler = vk_sampler_create(&dev->vk, pCreateInfo,
-                               pAllocator, sizeof(*sampler));
-   if (!sampler)
-      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   /* Hard-coded as 1 as a placeholder until YCbCr conversion
-    * structs are implemented
-    */
-   sampler->plane_count = 1;
-
-   uint32_t samp[8] = {};
    SAMP_SET_U(samp, NV9097, 0, ADDRESS_U,
-              vk_to_9097_address_mode(pCreateInfo->addressModeU));
+              vk_to_9097_address_mode(info->addressModeU));
    SAMP_SET_U(samp, NV9097, 0, ADDRESS_V,
-              vk_to_9097_address_mode(pCreateInfo->addressModeV));
+              vk_to_9097_address_mode(info->addressModeV));
    SAMP_SET_U(samp, NV9097, 0, ADDRESS_P,
-              vk_to_9097_address_mode(pCreateInfo->addressModeW));
+              vk_to_9097_address_mode(info->addressModeW));
 
-   if (pCreateInfo->compareEnable) {
+   if (info->compareEnable) {
       SAMP_SET_B(samp, NV9097, 0, DEPTH_COMPARE, true);
       SAMP_SET_U(samp, NV9097, 0, DEPTH_COMPARE_FUNC,
-                 vk_to_9097_texsamp_compare_op(pCreateInfo->compareOp));
+                 vk_to_9097_texsamp_compare_op(info->compareOp));
    }
 
    SAMP_SET_B(samp, NV9097, 0, S_R_G_B_CONVERSION, true);
    SAMP_SET_E(samp, NV9097, 0, FONT_FILTER_WIDTH, SIZE_2);
    SAMP_SET_E(samp, NV9097, 0, FONT_FILTER_HEIGHT, SIZE_2);
 
-   if (pCreateInfo->anisotropyEnable) {
+   if (info->anisotropyEnable) {
       SAMP_SET_U(samp, NV9097, 0, MAX_ANISOTROPY,
-                 vk_to_9097_max_anisotropy(pCreateInfo->maxAnisotropy));
+                 vk_to_9097_max_anisotropy(info->maxAnisotropy));
    }
 
-   switch (pCreateInfo->magFilter) {
+   switch (info->magFilter) {
    case VK_FILTER_NEAREST:
       SAMP_SET_E(samp, NV9097, 1, MAG_FILTER, MAG_POINT);
       break;
@@ -192,12 +177,12 @@ nvk_CreateSampler(VkDevice device,
       unreachable("Invalid filter");
    }
 
-   switch (pCreateInfo->minFilter) {
+   switch (info->minFilter) {
    case VK_FILTER_NEAREST:
       SAMP_SET_E(samp, NV9097, 1, MIN_FILTER, MIN_POINT);
       break;
    case VK_FILTER_LINEAR:
-      if (pCreateInfo->anisotropyEnable)
+      if (info->anisotropyEnable)
          SAMP_SET_E(samp, NV9097, 1, MIN_FILTER, MIN_ANISO);
       else
          SAMP_SET_E(samp, NV9097, 1, MIN_FILTER, MIN_LINEAR);
@@ -206,7 +191,7 @@ nvk_CreateSampler(VkDevice device,
       unreachable("Invalid filter");
    }
 
-   switch (pCreateInfo->mipmapMode) {
+   switch (info->mipmapMode) {
    case VK_SAMPLER_MIPMAP_MODE_NEAREST:
       SAMP_SET_E(samp, NV9097, 1, MIP_FILTER, MIP_POINT);
       break;
@@ -217,15 +202,15 @@ nvk_CreateSampler(VkDevice device,
       unreachable("Invalid mipmap mode");
    }
 
-   assert(dev->pdev->info.cls_eng3d >= KEPLER_A);
-   if (pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT) {
+   assert(pdev->info.cls_eng3d >= KEPLER_A);
+   if (info->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT) {
       SAMP_SET_E(samp, NVA097, 1, CUBEMAP_INTERFACE_FILTERING, USE_WRAP);
    } else {
       SAMP_SET_E(samp, NVA097, 1, CUBEMAP_INTERFACE_FILTERING, AUTO_SPAN_SEAM);
    }
 
-   if (dev->pdev->info.cls_eng3d >= MAXWELL_B) {
-      switch (sampler->vk.reduction_mode) {
+   if (pdev->info.cls_eng3d >= MAXWELL_B) {
+      switch (vk_sampler->reduction_mode) {
       case VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE:
          SAMP_SET_E(samp, NVB197, 1, REDUCTION_FILTER, RED_NONE);
          break;
@@ -240,10 +225,10 @@ nvk_CreateSampler(VkDevice device,
       }
    }
 
-   SAMP_SET_SF(samp, NV9097, 1, MIP_LOD_BIAS, pCreateInfo->mipLodBias);
+   SAMP_SET_SF(samp, NV9097, 1, MIP_LOD_BIAS, info->mipLodBias);
 
-   assert(dev->pdev->info.cls_eng3d >= KEPLER_A);
-   if (pCreateInfo->unnormalizedCoordinates) {
+   assert(pdev->info.cls_eng3d >= KEPLER_A);
+   if (info->unnormalizedCoordinates) {
       SAMP_SET_E(samp, NVA097, 1, FLOAT_COORD_NORMALIZATION,
                                   FORCE_UNNORMALIZED_COORDS);
    } else {
@@ -251,16 +236,16 @@ nvk_CreateSampler(VkDevice device,
                                   USE_HEADER_SETTING);
    }
    SAMP_SET_U(samp, NV9097, 1, TRILIN_OPT,
-              vk_to_9097_trilin_opt(pCreateInfo->maxAnisotropy));
+              vk_to_9097_trilin_opt(info->maxAnisotropy));
 
-   SAMP_SET_UF(samp, NV9097, 2, MIN_LOD_CLAMP, pCreateInfo->minLod);
-   SAMP_SET_UF(samp, NV9097, 2, MAX_LOD_CLAMP, pCreateInfo->maxLod);
+   SAMP_SET_UF(samp, NV9097, 2, MIN_LOD_CLAMP, info->minLod);
+   SAMP_SET_UF(samp, NV9097, 2, MAX_LOD_CLAMP, info->maxLod);
 
-   VkClearColorValue bc = sampler->vk.border_color_value;
+   VkClearColorValue bc = vk_sampler->border_color_value;
    uint8_t bc_srgb[3];
 
    const VkSamplerBorderColorComponentMappingCreateInfoEXT *swiz_info =
-      vk_find_struct_const(pCreateInfo->pNext,
+      vk_find_struct_const(info->pNext,
                            SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT);
    if (swiz_info) {
       if (swiz_info->srgb) {
@@ -268,7 +253,7 @@ nvk_CreateSampler(VkDevice device,
             bc.float32[i] = util_format_linear_to_srgb_float(bc.float32[i]);
       }
 
-      const bool is_int = vk_border_color_is_int(pCreateInfo->borderColor);
+      const bool is_int = vk_border_color_is_int(info->borderColor);
       bc = vk_swizzle_color_value(bc, swiz_info->components, is_int);
 
       for (uint32_t i = 0; i < 3; i++)
@@ -290,7 +275,25 @@ nvk_CreateSampler(VkDevice device,
    SAMP_SET_U(samp, NV9097, 5, BORDER_COLOR_G, bc.uint32[1]);
    SAMP_SET_U(samp, NV9097, 6, BORDER_COLOR_B, bc.uint32[2]);
    SAMP_SET_U(samp, NV9097, 7, BORDER_COLOR_A, bc.uint32[3]);
+}
 
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_CreateSampler(VkDevice device,
+                  const VkSamplerCreateInfo *pCreateInfo,
+                  const VkAllocationCallbacks *pAllocator,
+                  VkSampler *pSampler)
+{
+   VK_FROM_HANDLE(nvk_device, dev, device);
+   struct nvk_sampler *sampler;
+   VkResult result;
+
+   sampler = vk_sampler_create(&dev->vk, pCreateInfo,
+                               pAllocator, sizeof(*sampler));
+   if (!sampler)
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   uint32_t samp[8] = {};
+   nvk_sampler_fill_header(dev->pdev, pCreateInfo, &sampler->vk, samp);
    result = nvk_descriptor_table_add(dev, &dev->samplers,
                                      samp, sizeof(samp),
                                      &sampler->desc_index);

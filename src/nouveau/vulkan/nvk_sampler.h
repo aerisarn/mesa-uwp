@@ -2,6 +2,7 @@
 #define NVK_SAMPLER_H 1
 
 #include "nvk_private.h"
+#include "nvk_physical_device.h"
 
 #include "vulkan/runtime/vk_sampler.h"
 
@@ -19,5 +20,11 @@ struct nvk_sampler {
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_sampler, vk.base, VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
+
+static void
+nvk_sampler_fill_header(const struct nvk_physical_device *pdev,
+                        const struct VkSamplerCreateInfo *info,
+                        const struct vk_sampler *vk_sampler,
+                        uint32_t *samp);
 
 #endif
