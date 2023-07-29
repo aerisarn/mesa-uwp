@@ -1489,8 +1489,8 @@ agx_link_varyings_vs_fs(struct agx_pool *pool, struct agx_varyings_vs *vs,
 
    /* I don't understand why the data structures are repeated thrice */
    for (unsigned i = 0; i < 3; ++i) {
-      memcpy(((uint8_t *)ptr.cpu) + (i * linkage_size),
-             ((uint8_t *)tmp) + (i * linkage_size), linkage_size);
+      memcpy(((uint8_t *)ptr.cpu) + (i * linkage_size), (uint8_t *)tmp,
+             linkage_size);
    }
 
    return ptr.gpu;
