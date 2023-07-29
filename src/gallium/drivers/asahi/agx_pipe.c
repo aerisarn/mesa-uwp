@@ -483,11 +483,12 @@ agx_select_best_modifier(const struct agx_resource *pres)
    if (agx_linear_allowed(pres) && pres->base.usage == PIPE_USAGE_STAGING)
       return DRM_FORMAT_MOD_LINEAR;
 
-   /* For SCANOUT resources with no explicit modifier selection, assume we need
-    * linear.
+   /* For SCANOUT or SHARED resources with no explicit modifier selection, force
+    * linear since we cannot expect consumers to correctly pass through the
+    * modifier (unless linear is not allowed at all).
     */
-   if (pres->base.bind & PIPE_BIND_SCANOUT) {
-      assert(agx_linear_allowed(pres));
+   if (agx_linear_allowed(pres) &&
+       pres->base.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)) {
       return DRM_FORMAT_MOD_LINEAR;
    }
 
