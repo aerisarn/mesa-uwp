@@ -174,51 +174,54 @@ typedef struct {
    gl_state_index16 tokens[STATE_LENGTH];
 } nir_state_slot;
 
+/* clang-format off */
 typedef enum {
-   nir_var_system_value    = (1 << 0),
-   nir_var_uniform         = (1 << 1),
-   nir_var_shader_in       = (1 << 2),
-   nir_var_shader_out      = (1 << 3),
-   nir_var_image           = (1 << 4),
+   nir_var_system_value          = (1 << 0),
+   nir_var_uniform               = (1 << 1),
+   nir_var_shader_in             = (1 << 2),
+   nir_var_shader_out            = (1 << 3),
+   nir_var_image                 = (1 << 4),
    /** Incoming call or ray payload data for ray-tracing shaders */
-   nir_var_shader_call_data = (1 << 5),
+   nir_var_shader_call_data      = (1 << 5),
    /** Ray hit attributes */
-   nir_var_ray_hit_attrib  = (1 << 6),
+   nir_var_ray_hit_attrib        = (1 << 6),
 
    /* Modes named nir_var_mem_* have explicit data layout */
-   nir_var_mem_ubo          = (1 << 7),
-   nir_var_mem_push_const   = (1 << 8),
-   nir_var_mem_ssbo         = (1 << 9),
-   nir_var_mem_constant     = (1 << 10),
-   nir_var_mem_task_payload = (1 << 11),
+   nir_var_mem_ubo               = (1 << 7),
+   nir_var_mem_push_const        = (1 << 8),
+   nir_var_mem_ssbo              = (1 << 9),
+   nir_var_mem_constant          = (1 << 10),
+   nir_var_mem_task_payload      = (1 << 11),
 
    /* Generic modes intentionally come last. See encode_dref_modes() in
     * nir_serialize.c for more details.
     */
-   nir_var_shader_temp     = (1 << 12),
-   nir_var_function_temp   = (1 << 13),
-   nir_var_mem_shared      = (1 << 14),
-   nir_var_mem_global      = (1 << 15),
+   nir_var_shader_temp           = (1 << 12),
+   nir_var_function_temp         = (1 << 13),
+   nir_var_mem_shared            = (1 << 14),
+   nir_var_mem_global            = (1 << 15),
 
-   nir_var_mem_generic     = (nir_var_shader_temp |
-                              nir_var_function_temp |
-                              nir_var_mem_shared |
-                              nir_var_mem_global),
+   nir_var_mem_generic           = (nir_var_shader_temp |
+                                    nir_var_function_temp |
+                                    nir_var_mem_shared |
+                                    nir_var_mem_global),
 
-   nir_var_read_only_modes = nir_var_shader_in | nir_var_uniform |
-                             nir_var_system_value | nir_var_mem_constant |
-                             nir_var_mem_ubo,
-   /* Modes where vector derefs can be indexed as arrays. nir_var_shader_out is only for mesh
-    * stages.
+   nir_var_read_only_modes       = nir_var_shader_in | nir_var_uniform |
+                                   nir_var_system_value | nir_var_mem_constant |
+                                   nir_var_mem_ubo,
+   /* Modes where vector derefs can be indexed as arrays. nir_var_shader_out
+    * is only for mesh stages.
     */
-   nir_var_vec_indexable_modes = nir_var_mem_ubo | nir_var_mem_ssbo |
-                                 nir_var_mem_shared | nir_var_mem_global |
-                                 nir_var_mem_push_const | nir_var_mem_task_payload |
-                                 nir_var_shader_out,
-   nir_num_variable_modes  = 16,
-   nir_var_all             = (1 << nir_num_variable_modes) - 1,
+   nir_var_vec_indexable_modes   = nir_var_mem_ubo | nir_var_mem_ssbo |
+                                   nir_var_mem_shared | nir_var_mem_global |
+                                   nir_var_mem_push_const |
+                                   nir_var_mem_task_payload |
+                                   nir_var_shader_out,
+   nir_num_variable_modes        = 16,
+   nir_var_all                   = (1 << nir_num_variable_modes) - 1,
 } nir_variable_mode;
 MESA_DEFINE_CPP_ENUM_BITFIELD_OPERATORS(nir_variable_mode)
+/* clang-format on */
 
 /**
  * Rounding modes.
@@ -1149,8 +1152,9 @@ typedef struct {
  * The values in this enum are carefully chosen so that the sized type is
  * just the unsized type OR the number of bits.
  */
+/* clang-format off */
 typedef enum ENUM_PACKED {
-   nir_type_invalid = 0, /* Not a valid type */
+   nir_type_invalid =   0, /* Not a valid type */
    nir_type_int =       2,
    nir_type_uint =      4,
    nir_type_bool =      6,
@@ -1173,6 +1177,7 @@ typedef enum ENUM_PACKED {
    nir_type_float32 =   32 | nir_type_float,
    nir_type_float64 =   64 | nir_type_float,
 } nir_alu_type;
+/* clang-format on */
 
 #define NIR_ALU_TYPE_SIZE_MASK 0x79
 #define NIR_ALU_TYPE_BASE_TYPE_MASK 0x86
