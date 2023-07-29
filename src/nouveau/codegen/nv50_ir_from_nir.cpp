@@ -913,6 +913,12 @@ bool Converter::assignSlots() {
    uint8_t i;
    BITSET_FOREACH_SET(i, nir->info.system_values_read, SYSTEM_VALUE_MAX) {
       switch (i) {
+      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID:
+      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL:
+      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE:
+      case SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID:
+      case SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL:
+      case SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE:
       case SYSTEM_VALUE_BASE_GLOBAL_INVOCATION_ID:
          continue;
       default:
@@ -3269,6 +3275,8 @@ Converter::run()
 
    // Garbage collect dead instructions
    nir_sweep(nir);
+
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
    if (!parseNIR()) {
       ERROR("Couldn't prase NIR!\n");
