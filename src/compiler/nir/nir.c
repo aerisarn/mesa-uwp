@@ -886,6 +886,8 @@ const_value_float(double d, unsigned bit_size)
 {
    nir_const_value v;
    memset(&v, 0, sizeof(v));
+
+   /* clang-format off */
    switch (bit_size) {
    case 16: v.u16 = _mesa_float_to_half(d);  break;
    case 32: v.f32 = d;                       break;
@@ -893,6 +895,8 @@ const_value_float(double d, unsigned bit_size)
    default:
       unreachable("Invalid bit size");
    }
+   /* clang-format on */
+
    return v;
 }
 
@@ -901,15 +905,19 @@ const_value_int(int64_t i, unsigned bit_size)
 {
    nir_const_value v;
    memset(&v, 0, sizeof(v));
+
+   /* clang-format off */
    switch (bit_size) {
-   case 1:  v.b   = i & 1;  break;
-   case 8:  v.i8  = i;  break;
-   case 16: v.i16 = i;  break;
-   case 32: v.i32 = i;  break;
-   case 64: v.i64 = i;  break;
+   case 1:  v.b   = i & 1; break;
+   case 8:  v.i8  = i;     break;
+   case 16: v.i16 = i;     break;
+   case 32: v.i32 = i;     break;
+   case 64: v.i64 = i;     break;
    default:
       unreachable("Invalid bit size");
    }
+   /* clang-format on */
+
    return v;
 }
 
@@ -1380,19 +1388,14 @@ nir_const_value_for_float(double f, unsigned bit_size)
    nir_const_value v;
    memset(&v, 0, sizeof(v));
 
+   /* clang-format off */
    switch (bit_size) {
-   case 16:
-      v.u16 = _mesa_float_to_half(f);
-      break;
-   case 32:
-      v.f32 = f;
-      break;
-   case 64:
-      v.f64 = f;
-      break;
-   default:
-      unreachable("Invalid bit size");
+   case 16: v.u16 = _mesa_float_to_half(f);  break;
+   case 32: v.f32 = f;                       break;
+   case 64: v.f64 = f;                       break;
+   default: unreachable("Invalid bit size");
    }
+   /* clang-format on */
 
    return v;
 }
@@ -1400,13 +1403,14 @@ nir_const_value_for_float(double f, unsigned bit_size)
 double
 nir_const_value_as_float(nir_const_value value, unsigned bit_size)
 {
+   /* clang-format off */
    switch (bit_size) {
    case 16: return _mesa_half_to_float(value.u16);
    case 32: return value.f32;
    case 64: return value.f64;
-   default:
-      unreachable("Invalid bit size");
+   default: unreachable("Invalid bit size");
    }
+   /* clang-format on */
 }
 
 nir_const_value *

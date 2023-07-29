@@ -295,6 +295,7 @@ nir_const_value_for_raw_uint(uint64_t x, unsigned bit_size)
    nir_const_value v;
    memset(&v, 0, sizeof(v));
 
+   /* clang-format off */
    switch (bit_size) {
    case 1:  v.b   = x;  break;
    case 8:  v.u8  = x;  break;
@@ -304,6 +305,7 @@ nir_const_value_for_raw_uint(uint64_t x, unsigned bit_size)
    default:
       unreachable("Invalid bit size");
    }
+   /* clang-format on */
 
    return v;
 }
@@ -349,6 +351,7 @@ nir_const_value nir_const_value_for_float(double b, unsigned bit_size);
 static inline int64_t
 nir_const_value_as_int(nir_const_value value, unsigned bit_size)
 {
+   /* clang-format off */
    switch (bit_size) {
    /* int1_t uses 0/-1 convention */
    case 1:  return -(int)value.b;
@@ -359,11 +362,13 @@ nir_const_value_as_int(nir_const_value value, unsigned bit_size)
    default:
       unreachable("Invalid bit size");
    }
+   /* clang-format on */
 }
 
 static inline uint64_t
 nir_const_value_as_uint(nir_const_value value, unsigned bit_size)
 {
+   /* clang-format off */
    switch (bit_size) {
    case 1:  return value.b;
    case 8:  return value.u8;
@@ -373,6 +378,7 @@ nir_const_value_as_uint(nir_const_value value, unsigned bit_size)
    default:
       unreachable("Invalid bit size");
    }
+   /* clang-format on */
 }
 
 static inline bool
