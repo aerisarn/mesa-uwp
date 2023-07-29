@@ -49,10 +49,7 @@ void trace_dump_resource_template(const struct pipe_resource *templat)
 
    trace_dump_struct_begin("pipe_resource");
 
-   trace_dump_member_begin("target");
-   trace_dump_enum(tr_util_pipe_texture_target_name(templat->target));
-   trace_dump_member_end();
-
+   trace_dump_member_enum(pipe_texture_target, templat, target);
    trace_dump_member(format, templat, format);
 
    trace_dump_member_begin("width");
@@ -405,13 +402,13 @@ static void trace_dump_rt_blend_state(const struct pipe_rt_blend_state *state)
 
    trace_dump_member(uint, state, blend_enable);
 
-   trace_dump_member_enum(state, rgb_func, tr_util_pipe_blend_func_name(state->rgb_func));
-   trace_dump_member_enum(state, rgb_src_factor, tr_util_pipe_blendfactor_name(state->rgb_src_factor));
-   trace_dump_member_enum(state, rgb_dst_factor, tr_util_pipe_blendfactor_name(state->rgb_dst_factor));
+   trace_dump_member_enum(pipe_blend_func, state, rgb_func);
+   trace_dump_member_enum(pipe_blendfactor, state, rgb_src_factor);
+   trace_dump_member_enum(pipe_blendfactor, state, rgb_dst_factor);
 
-   trace_dump_member_enum(state, alpha_func, tr_util_pipe_blend_func_name(state->alpha_func));
-   trace_dump_member_enum(state, alpha_src_factor, tr_util_pipe_blendfactor_name(state->alpha_src_factor));
-   trace_dump_member_enum(state, alpha_dst_factor, tr_util_pipe_blendfactor_name(state->alpha_dst_factor));
+   trace_dump_member_enum(pipe_blend_func, state, alpha_func);
+   trace_dump_member_enum(pipe_blendfactor, state, alpha_src_factor);
+   trace_dump_member_enum(pipe_blendfactor, state, alpha_dst_factor);
 
    trace_dump_member(uint, state, colormask);
 
@@ -434,7 +431,7 @@ void trace_dump_blend_state(const struct pipe_blend_state *state)
 
    trace_dump_member(bool, state, independent_blend_enable);
    trace_dump_member(bool, state, logicop_enable);
-   trace_dump_member_enum(state, logicop_func, tr_util_pipe_logicop_name(state->logicop_func));
+   trace_dump_member_enum(pipe_logicop, state, logicop_func);
    trace_dump_member(bool, state, dither);
    trace_dump_member(bool, state, alpha_to_coverage);
    trace_dump_member(bool, state, alpha_to_coverage_dither);
@@ -570,10 +567,7 @@ void trace_dump_sampler_view_template(const struct pipe_sampler_view *state)
 
    trace_dump_member(format, state, format);
 
-   trace_dump_member_begin("target");
-   trace_dump_enum(tr_util_pipe_texture_target_name(state->target));
-   trace_dump_member_end();
-
+   trace_dump_member_enum(pipe_texture_target, state, target);
    trace_dump_member(ptr, state, texture);
 
    trace_dump_member_begin("u");

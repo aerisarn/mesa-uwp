@@ -510,7 +510,7 @@ trace_context_bind_sampler_states(struct pipe_context *_pipe,
    trace_dump_call_begin("pipe_context", "bind_sampler_states");
 
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg_enum(shader, tr_util_pipe_shader_type_name(shader));
+   trace_dump_arg_enum(pipe_shader_type, shader);
    trace_dump_arg(uint, start);
    trace_dump_arg(uint, num_states);
    trace_dump_arg_array(ptr, states, num_states);
@@ -956,7 +956,7 @@ trace_context_set_constant_buffer(struct pipe_context *_pipe,
    trace_dump_call_begin("pipe_context", "set_constant_buffer");
 
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg_enum(shader, tr_util_pipe_shader_type_name(shader));
+   trace_dump_arg_enum(pipe_shader_type, shader);
    trace_dump_arg(uint, index);
    trace_dump_arg(bool, take_ownership);
    trace_dump_arg(constant_buffer, constant_buffer);
@@ -999,7 +999,7 @@ trace_context_set_inlinable_constants(struct pipe_context *_pipe, enum pipe_shad
    trace_dump_call_begin("pipe_context", "set_inlinable_constants");
 
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg_enum(shader, tr_util_pipe_shader_type_name(shader));
+   trace_dump_arg_enum(pipe_shader_type, shader);
    trace_dump_arg(uint, num_values);
    trace_dump_arg_array(uint, values, num_values);
 
@@ -1244,7 +1244,7 @@ trace_context_set_sampler_views(struct pipe_context *_pipe,
    trace_dump_call_begin("pipe_context", "set_sampler_views");
 
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg_enum(shader, tr_util_pipe_shader_type_name(shader));
+   trace_dump_arg_enum(pipe_shader_type, shader);
    trace_dump_arg(uint, start);
    trace_dump_arg(uint, num);
    trace_dump_arg(uint, unbind_num_trailing_slots);
@@ -1625,7 +1625,7 @@ trace_context_create_fence_fd(struct pipe_context *_pipe,
    trace_dump_call_begin("pipe_context", "create_fence_fd");
 
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg_enum(fd, tr_util_pipe_fd_type_name(fd));
+   trace_dump_arg_enum(pipe_fd_type, fd);
    trace_dump_arg(uint, type);
 
    pipe->create_fence_fd(pipe, fence, fd, type);
