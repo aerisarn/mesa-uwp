@@ -1096,7 +1096,6 @@ trace_context_create_sampler_view(struct pipe_context *_pipe,
    struct trace_context *tr_ctx = trace_context(_pipe);
    struct pipe_context *pipe = tr_ctx->pipe;
    struct pipe_sampler_view *result;
-   struct trace_sampler_view *tr_view;
 
    trace_dump_call_begin("pipe_context", "create_sampler_view");
 
@@ -1113,19 +1112,7 @@ trace_context_create_sampler_view(struct pipe_context *_pipe,
 
    trace_dump_call_end();
 
-   /*
-    * Wrap pipe_sampler_view
-    */
-   tr_view = CALLOC_STRUCT(trace_sampler_view);
-   tr_view->base = *templ;
-   tr_view->base.reference.count = 1;
-   tr_view->base.texture = NULL;
-   pipe_resource_reference(&tr_view->base.texture, resource);
-   tr_view->base.context = _pipe;
-   tr_view->sampler_view = result;
-   result->reference.count += 100000000;
-   tr_view->refcount = 100000000;
-   result = &tr_view->base;
+   result = trace_sampler_view_create(tr_ctx, resource, result);
 
    return result;
 }
@@ -1145,13 +1132,9 @@ trace_context_sampler_view_destroy(struct pipe_context *_pipe,
    trace_dump_arg(ptr, pipe);
    trace_dump_arg(ptr, view);
 
-   p_atomic_add(&tr_view->sampler_view->reference.count, -tr_view->refcount);
-   pipe_sampler_view_reference(&tr_view->sampler_view, NULL);
+   trace_sampler_view_destroy(tr_view);
 
    trace_dump_call_end();
-
-   pipe_resource_reference(&_view->texture, NULL);
-   FREE(_view);
 }
 
 /********************************************************************
@@ -1230,14 +1213,7 @@ trace_context_set_sampler_views(struct pipe_context *_pipe,
 
    for (i = 0; i < num; ++i) {
       tr_view = trace_sampler_view(views[i]);
-      if (tr_view) {
-         tr_view->refcount--;
-         if (!tr_view->refcount) {
-            tr_view->refcount = 100000000;
-            p_atomic_add(&tr_view->sampler_view->reference.count, tr_view->refcount);
-         }
-      }
-      unwrapped_views[i] = tr_view ? tr_view->sampler_view : NULL;
+      unwrapped_views[i] = trace_sampler_view_unwrap(tr_view);
    }
    views = unwrapped_views;
 
