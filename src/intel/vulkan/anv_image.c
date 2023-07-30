@@ -1137,8 +1137,29 @@ add_all_surfaces_implicit_layout(
    if (ycbcr_info)
       assert(ycbcr_info->n_planes == image->n_planes);
 
+   unsigned num_aspects = 0;
+   VkImageAspectFlagBits aspects[3];
    u_foreach_bit(b, image->vk.aspects) {
-      VkImageAspectFlagBits aspect = 1 << b;
+      assert(num_aspects < 3);
+      aspects[num_aspects++] = 1 << b;
+   }
+   assert(num_aspects == image->n_planes);
+
+   /* The Android hardware buffer YV12 format has the planes ordered as Y-Cr-Cb,
+    * while Vulkan expects VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM to be in Y-Cb-Cr.
+    * Adjust the order we add the ISL surfaces accordingly so the implicit
+    * offset gets calculated correctly.
+    */
+   if (image->from_ahb && image->vk.format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
+      assert(num_aspects == 3);
+      assert(aspects[1] == VK_IMAGE_ASPECT_PLANE_1_BIT);
+      assert(aspects[2] == VK_IMAGE_ASPECT_PLANE_2_BIT);
+      aspects[1] = VK_IMAGE_ASPECT_PLANE_2_BIT;
+      aspects[2] = VK_IMAGE_ASPECT_PLANE_1_BIT;
+   }
+
+   for (unsigned i = 0; i < num_aspects; i++) {
+      VkImageAspectFlagBits aspect = aspects[i];
       const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
       const  struct anv_format_plane plane_format =
          anv_get_format_plane(devinfo, image->vk.format, plane, image->vk.tiling);
