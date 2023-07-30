@@ -1108,7 +1108,7 @@ agx_ra(agx_context *ctx)
 
    /* Or, we can bound tightly for debugging */
    if (agx_compiler_debug & AGX_DBG_DEMAND)
-      max_regs = ALIGN_POT(MAX2(max_regs, 12), 8);
+      max_regs = ALIGN_POT(MAX2(demand, 12), 8);
 
    /* ...but not too tightly */
    assert((max_regs % 8) == 0 && "occupancy limits are 8 register aligned");
