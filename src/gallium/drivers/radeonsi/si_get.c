@@ -902,6 +902,8 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
             return 0;
          }
       }
+   case PIPE_VIDEO_CAP_SUPPORTS_CONTIGUOUS_PLANES_MAP:
+      return true;
    default:
       return 0;
    }
