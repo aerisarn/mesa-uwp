@@ -1874,10 +1874,12 @@ emit_if(agx_context *ctx, nir_if *nif)
 
    _b.cursor = agx_after_block(ctx->current_block);
    agx_emit_logical_end(&_b);
-   agx_else_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, false);
 
    agx_block *else_block = emit_cf_list(ctx, &nif->else_list);
    agx_block *end_else = ctx->current_block;
+
+   _b.cursor = agx_before_block(else_block);
+   agx_else_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, false);
 
    ctx->after_block = agx_create_block(ctx);
 

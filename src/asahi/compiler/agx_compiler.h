@@ -569,17 +569,14 @@ agx_start_block(agx_context *ctx)
    agx_foreach_dest(ins, v)                                                    \
       if (ins->dest[v].type == AGX_INDEX_NORMAL)
 
-/* Phis only come at the start so we stop as soon as we hit a non-phi */
+/* Phis only come at the start (after else instructions) so we stop as soon as
+ * we hit a non-phi
+ */
 #define agx_foreach_phi_in_block(block, v)                                     \
    agx_foreach_instr_in_block(block, v)                                        \
-      if (v->op != AGX_OPCODE_PHI)                                             \
-         break;                                                                \
-      else
-
-/* Everything else comes after, so we stop as soon as we hit a phi in reverse */
-#define agx_foreach_non_phi_in_block_rev(block, v)                             \
-   agx_foreach_instr_in_block_rev(block, v)                                    \
-      if (v->op == AGX_OPCODE_PHI)                                             \
+      if (v->op == AGX_OPCODE_ELSE_ICMP || v->op == AGX_OPCODE_ELSE_FCMP)      \
+         continue;                                                             \
+      else if (v->op != AGX_OPCODE_PHI)                                        \
          break;                                                                \
       else
 
