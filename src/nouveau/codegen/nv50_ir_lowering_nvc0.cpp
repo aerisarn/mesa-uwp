@@ -2916,17 +2916,13 @@ NVC0LoweringPass::handleLDST(Instruction *i)
 void
 NVC0LoweringPass::readTessCoord(LValue *dst, int c)
 {
-   // GLSL requires domain qualifier to be defined in TES while SPIRV allows
-   // domain to be defined in TES and/or TCS
-   uint8_t domain = prog->driver_out->prop.tp.domain;
-   const bool tese_defined_domain =
+   // In case of SPIRV the domain can be specified in the tesc shader,
+   // but this should be passed to tese shader by merge_tess_info.
+   const uint8_t domain = prog->driver_out->prop.tp.domain;
+   assert(
       domain == MESA_PRIM_LINES ||
       domain == MESA_PRIM_TRIANGLES ||
-      domain == MESA_PRIM_QUADS;
-
-   if (!tese_defined_domain) {
-      domain = prog->driver->prop.tese.prespecified_domain;
-   }
+      domain == MESA_PRIM_QUADS);
 
    Value *laneid = bld.getSSA();
    Value *x, *y;
