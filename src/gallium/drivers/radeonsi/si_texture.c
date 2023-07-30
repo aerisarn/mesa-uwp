@@ -65,6 +65,44 @@ static void si_copy_region_with_blit(struct pipe_context *pipe, struct pipe_reso
    }
 }
 
+/* Copy all planes of multi-plane texture */
+static bool si_copy_multi_plane_texture(struct pipe_context *ctx, struct pipe_resource *dst,
+                                        unsigned dst_level, unsigned dstx, unsigned dsty, unsigned dstz,
+                                        struct pipe_resource *src, unsigned src_level,
+                                        const struct pipe_box *src_box)
+{
+   unsigned i;
+   struct si_texture *src_tex = (struct si_texture *)src;
+   struct si_texture *dst_tex = (struct si_texture *)dst;
+   struct pipe_box sbox;
+   const struct util_format_description *desc;
+
+   if (src_tex->multi_plane_format == PIPE_FORMAT_NONE || src_tex->plane_index != 0)
+      return false;
+
+   assert(src_tex->multi_plane_format == dst_tex->multi_plane_format);
+   assert(dst_tex->plane_index == 0 && src_tex->num_planes == dst_tex->num_planes);
+
+   sbox = *src_box;
+   desc = util_format_description(src_tex->multi_plane_format);
+
+   for (i = 0; i < src_tex->num_planes; ++i) {
+      if (!src || !dst)
+         break;
+      si_resource_copy_region(ctx, dst, dst_level, dstx, dsty, dstz, src, src_level, &sbox);
+      src = src->next;
+      dst = dst->next;
+      if (i == 0) {
+         dstx /= desc->block.width;
+         dsty /= desc->block.height;
+         sbox.width /= desc->block.width;
+         sbox.height /= desc->block.height;
+      }
+   }
+
+   return true;
+}
+
 /* Copy from a full GPU texture to a transfer's staging one. */
 static void si_copy_to_staging_texture(struct pipe_context *ctx, struct si_transfer *stransfer)
 {
@@ -78,6 +116,9 @@ static void si_copy_to_staging_texture(struct pipe_context *ctx, struct si_trans
       si_copy_region_with_blit(ctx, dst, 0, 0, 0, 0, 0, src, src_level, &transfer->box);
       return;
    }
+
+   if (si_copy_multi_plane_texture(ctx, dst, 0, 0, 0, 0, src, src_level, &transfer->box))
+      return;
 
    si_resource_copy_region(ctx, dst, 0, 0, 0, 0, src, src_level, &transfer->box);
 }
@@ -100,6 +141,10 @@ static void si_copy_from_staging_texture(struct pipe_context *ctx, struct si_tra
                                transfer->box.z, src, 0, &sbox);
       return;
    }
+
+   if (si_copy_multi_plane_texture(ctx, dst, transfer->level, transfer->box.x, transfer->box.y,
+                                   transfer->box.z, src, 0, &sbox))
+      return;
 
    if (util_format_is_compressed(dst->format)) {
       sbox.width = util_format_get_nblocksx(dst->format, sbox.width);
@@ -1331,6 +1376,9 @@ si_texture_create_with_modifier(struct pipe_screen *screen,
          si_set_tex_bo_metadata(sscreen, tex);
    }
 
+   if (num_planes >= 2)
+      plane0->multi_plane_format = templ->format;
+
    return (struct pipe_resource *)plane0;
 }
 
@@ -1753,8 +1801,12 @@ static void si_init_temp_resource_from_box(struct pipe_resource *res, struct pip
                                            const struct pipe_box *box, unsigned level,
                                            unsigned usage, unsigned flags)
 {
+   struct si_texture *tex = (struct si_texture *)orig;
+   enum pipe_format orig_format = tex->multi_plane_format != PIPE_FORMAT_NONE ?
+      tex->multi_plane_format : orig->format;
+
    memset(res, 0, sizeof(*res));
-   res->format = orig->format;
+   res->format = orig_format;
    res->width0 = box->width;
    res->height0 = box->height;
    res->depth0 = 1;
@@ -1762,11 +1814,11 @@ static void si_init_temp_resource_from_box(struct pipe_resource *res, struct pip
    res->usage = usage;
    res->flags = flags;
 
-   if (flags & SI_RESOURCE_FLAG_FORCE_LINEAR && util_format_is_compressed(orig->format)) {
+   if (flags & SI_RESOURCE_FLAG_FORCE_LINEAR && util_format_is_compressed(orig_format)) {
       /* Transfer resources are allocated with linear tiling, which is
        * not supported for compressed formats.
        */
-      unsigned blocksize = util_format_get_blocksize(orig->format);
+      unsigned blocksize = util_format_get_blocksize(orig_format);
 
       if (blocksize == 8) {
          res->format = PIPE_FORMAT_R16G16B16A16_UINT;
@@ -1775,8 +1827,8 @@ static void si_init_temp_resource_from_box(struct pipe_resource *res, struct pip
          res->format = PIPE_FORMAT_R32G32B32A32_UINT;
       }
 
-      res->width0 = util_format_get_nblocksx(orig->format, box->width);
-      res->height0 = util_format_get_nblocksy(orig->format, box->height);
+      res->width0 = util_format_get_nblocksx(orig_format, box->width);
+      res->height0 = util_format_get_nblocksy(orig_format, box->height);
    }
 
    /* We must set the correct texture target and dimensions for a 3D box. */

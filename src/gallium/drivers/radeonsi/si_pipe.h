@@ -383,6 +383,7 @@ struct si_texture {
    unsigned num_level0_transfers;
    unsigned plane_index; /* other planes are different pipe_resources */
    unsigned num_planes;
+   enum pipe_format multi_plane_format;
 
    /* Depth buffer compression and fast clear. */
    float depth_clear_value[RADEON_SURF_MAX_LEVELS];
