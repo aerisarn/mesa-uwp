@@ -39,6 +39,7 @@
 #include "util/u_prim.h"
 #include "util/u_resource.h"
 #include "util/u_transfer.h"
+#include "util/u_upload_mgr.h"
 #include "agx_device.h"
 #include "agx_disk_cache.h"
 #include "agx_tilebuffer.h"
@@ -1266,8 +1267,16 @@ agx_set_constant_buffer(struct pipe_context *pctx, enum pipe_shader_type shader,
 {
    struct agx_context *ctx = agx_context(pctx);
    struct agx_stage *s = &ctx->stage[shader];
+   struct pipe_constant_buffer *constants = &s->cb[index];
 
    util_copy_constant_buffer(&s->cb[index], cb, take_ownership);
+
+   /* Upload user buffer immediately */
+   if (constants->user_buffer && !constants->buffer) {
+      u_upload_data(ctx->base.const_uploader, 0, constants->buffer_size, 64,
+                    constants->user_buffer, &constants->buffer_offset,
+                    &constants->buffer);
+   }
 
    unsigned mask = (1 << index);
 
