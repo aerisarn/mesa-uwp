@@ -83,7 +83,6 @@ mkdir -p /nfs/results
 
 rm -rf /tftp/*
 if echo "$BM_KERNEL" | grep -q http; then
-  apt-get install -y curl
   curl -L --retry 4 -f --retry-all-errors --retry-delay 60 \
       $BM_KERNEL -o /tftp/vmlinuz
 else
