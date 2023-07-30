@@ -2509,6 +2509,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    agx_lower_pseudo(ctx);
    agx_insert_waits(ctx);
+   agx_opt_empty_else(ctx);
 
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
       agx_print_shader(ctx, stdout);
