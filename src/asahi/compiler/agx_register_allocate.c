@@ -1243,7 +1243,7 @@ agx_ra(agx_context *ctx)
       /* Writes to the nesting counter lowered to the real register */
       case AGX_OPCODE_NEST: {
          agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
-         agx_mov_to(&b, agx_register(0, AGX_SIZE_16), I->src[0]);
+         agx_mov_imm_to(&b, agx_register(0, AGX_SIZE_16), I->imm);
          agx_remove_instruction(I);
          break;
       }

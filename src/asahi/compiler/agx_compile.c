@@ -1706,7 +1706,7 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
    }
 
    /* Update the counter and flush */
-   agx_nest(b, agx_immediate(nestings));
+   agx_nest(b, nestings);
 
    /* Jumps must come at the end of a block */
    agx_emit_logical_end(b);
@@ -1960,7 +1960,7 @@ emit_first_cf(agx_context *ctx)
       return;
 
    agx_builder _b = agx_init_builder(ctx, agx_after_block(ctx->current_block));
-   agx_nest(&_b, agx_immediate(0));
+   agx_nest(&_b, 0);
    ctx->any_cf = true;
 }
 
