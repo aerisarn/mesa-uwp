@@ -126,8 +126,7 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
 VkResult
 nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
                 const struct nvk_fs_key *fs_key,
-                struct nvk_shader *shader,
-                struct nvk_pipeline_compilation_ctx *ctx);
+                struct nvk_shader *shader);
 
 VkResult
 nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader);

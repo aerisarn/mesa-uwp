@@ -1055,8 +1055,7 @@ nvk_fill_transform_feedback_state(struct nir_shader *nir,
 VkResult
 nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
                 const struct nvk_fs_key *fs_key,
-                struct nvk_shader *shader,
-                struct nvk_pipeline_compilation_ctx *ctx)
+                struct nvk_shader *shader)
 {
    struct nv50_ir_prog_info *info;
    struct nv50_ir_prog_info_out info_out = {};
@@ -1079,9 +1078,6 @@ nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
    info->io.auxCBSlot = 1;
    info->io.uboInfoBase = 0;
    info->io.drawInfoBase = 0;
-   if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      info->prop.tese.prespecified_domain = ctx->tesc_domain;
-   }
    if (nir->info.stage == MESA_SHADER_COMPUTE) {
       info->prop.cp.gridInfoBase = 0;
    } else {
@@ -1153,10 +1149,6 @@ nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
       if (shader->xfb == NULL) {
          return VK_ERROR_OUT_OF_HOST_MEMORY;
       }
-   }
-
-   if (info->type == PIPE_SHADER_TESS_CTRL) {
-      ctx->tesc_domain = info_out.prop.tp.domain;
    }
 
    return VK_SUCCESS;

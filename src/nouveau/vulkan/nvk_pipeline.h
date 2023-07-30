@@ -65,9 +65,4 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
                              const VkAllocationCallbacks *pAllocator,
                              VkPipeline *pPipeline);
 
-struct nvk_pipeline_compilation_ctx  {
-   uint8_t tesc_domain; // MESA_PRIM_{POINTS, QUADS, TRIANGLES, LINES}
-};
-
-
 #endif
