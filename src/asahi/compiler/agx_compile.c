@@ -1878,8 +1878,11 @@ emit_if(agx_context *ctx, nir_if *nif)
    agx_block *else_block = emit_cf_list(ctx, &nif->else_list);
    agx_block *end_else = ctx->current_block;
 
+   /* Insert an else instruction at the beginning of the else block. We use
+    * "else_fcmp 0.0, 0.0, eq" as unconditional else, matching the blob.
+    */
    _b.cursor = agx_before_block(else_block);
-   agx_else_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, false);
+   agx_else_fcmp(&_b, agx_zero(), agx_zero(), 1, AGX_FCOND_EQ, false);
 
    ctx->after_block = agx_create_block(ctx);
 
