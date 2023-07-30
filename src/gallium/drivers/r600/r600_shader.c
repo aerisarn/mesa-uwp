@@ -743,6 +743,7 @@ int generate_gs_copy_shader(struct r600_context *rctx,
 
 	/* bc adds nops - copy it */
 	if (ctx.bc->gfx_level == R600) {
+		ctx.bc->force_add_cf = 1;
 		memset(&alu, 0, sizeof(struct r600_bytecode_alu));
 		alu.op = ALU_OP0_NOP;
 		alu.last = 1;
