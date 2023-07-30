@@ -480,7 +480,7 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
 
    /* Determine length bit */
    unsigned length = encoding.length_short;
-   unsigned short_mask = (1 << length) - 1;
+   uint64_t short_mask = BITFIELD64_MASK(8 * length);
    bool length_bit = (extend || (raw & ~short_mask));
 
    if (encoding.extensible && length_bit) {
