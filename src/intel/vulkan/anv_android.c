@@ -369,13 +369,7 @@ anv_image_init_from_gralloc(struct anv_device *device,
    }
    anv_info.isl_tiling_flags = 1u << tiling;
 
-   enum isl_format format = anv_get_isl_format(device->info,
-                                               base_info->format,
-                                               VK_IMAGE_ASPECT_COLOR_BIT,
-                                               base_info->tiling);
-   assert(format != ISL_FORMAT_UNSUPPORTED);
-
-   anv_info.stride = gralloc_info->stride * (isl_format_get_layout(format)->bpb / 8);
+   anv_info.stride = gralloc_info->stride;
 
    result = anv_image_init(device, image, &anv_info);
    if (result != VK_SUCCESS)
