@@ -758,6 +758,8 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                            VkPipelineCreateFlagBits2KHR flags)
 {
+   pipeline->type = LVP_PIPELINE_GRAPHICS;
+
    VkResult result;
 
    const VkGraphicsPipelineLibraryCreateInfoEXT *libinfo = vk_find_struct_const(pCreateInfo,
@@ -1080,7 +1082,7 @@ lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
    vk_pipeline_layout_ref(&pipeline->layout->vk);
    pipeline->force_min_sample = false;
 
-   pipeline->is_compute_pipeline = true;
+   pipeline->type = LVP_PIPELINE_COMPUTE;
 
    VkResult result = lvp_shader_compile_to_ir(pipeline, &pCreateInfo->stage);
    if (result != VK_SUCCESS)

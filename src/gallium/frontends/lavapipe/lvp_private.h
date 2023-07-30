@@ -455,13 +455,34 @@ struct lvp_shader {
    struct blob blob; //preserved for GetShaderBinaryDataEXT
 };
 
+enum lvp_pipeline_type {
+   LVP_PIPELINE_GRAPHICS,
+   LVP_PIPELINE_COMPUTE,
+   LVP_PIPELINE_EXEC_GRAPH,
+   LVP_PIPELINE_TYPE_COUNT,
+};
+
+static inline enum lvp_pipeline_type
+lvp_pipeline_type_from_bind_point(VkPipelineBindPoint bind_point)
+{
+   switch (bind_point) {
+   case VK_PIPELINE_BIND_POINT_GRAPHICS: return LVP_PIPELINE_GRAPHICS;
+   case VK_PIPELINE_BIND_POINT_COMPUTE: return LVP_PIPELINE_COMPUTE;
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+   case VK_PIPELINE_BIND_POINT_EXECUTION_GRAPH_AMDX: return LVP_PIPELINE_EXEC_GRAPH;
+#endif
+   default: unreachable("Unsupported VkPipelineBindPoint");
+   }
+}
+
 struct lvp_pipeline {
    struct vk_object_base base;
    struct lvp_device *                          device;
    struct lvp_pipeline_layout *                 layout;
 
+   enum lvp_pipeline_type type;
+
    void *state_data;
-   bool is_compute_pipeline;
    bool force_min_sample;
    struct lvp_shader shaders[LVP_SHADER_STAGES];
    gl_shader_stage last_vertex;

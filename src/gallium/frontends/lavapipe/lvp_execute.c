@@ -139,10 +139,10 @@ struct rendering_state {
    unsigned index_buffer_size; //UINT32_MAX for unset
    struct pipe_resource *index_buffer;
    struct pipe_constant_buffer const_buffer[LVP_SHADER_STAGES][16];
-   struct lvp_descriptor_set *desc_sets[2][MAX_SETS];
+   struct lvp_descriptor_set *desc_sets[LVP_PIPELINE_TYPE_COUNT][MAX_SETS];
    struct pipe_resource *desc_buffers[MAX_SETS];
    uint8_t *desc_buffer_addrs[MAX_SETS];
-   struct descriptor_buffer_offset desc_buffer_offsets[2][MAX_SETS];
+   struct descriptor_buffer_offset desc_buffer_offsets[LVP_PIPELINE_TYPE_COUNT][MAX_SETS];
    int num_const_bufs[LVP_SHADER_STAGES];
    int num_vb;
    unsigned start_vb;
@@ -162,7 +162,7 @@ struct rendering_state {
    void *velems_cso;
 
    uint8_t push_constants[128 * 4];
-   uint16_t push_size[2]; //gfx, compute
+   uint16_t push_size[LVP_PIPELINE_TYPE_COUNT];
    uint16_t gfx_push_sizes[LVP_SHADER_STAGES];
 
    VkRect2D render_area;
@@ -1061,12 +1061,12 @@ static void handle_pipeline(struct vk_cmd_queue_entry *cmd,
 {
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
    pipeline->used = true;
-   if (pipeline->is_compute_pipeline) {
+   if (pipeline->type == LVP_PIPELINE_COMPUTE) {
       handle_compute_pipeline(cmd, state);
    } else {
       handle_graphics_pipeline(pipeline, state);
    }
-   state->push_size[pipeline->is_compute_pipeline] = pipeline->layout->push_constant_size;
+   state->push_size[pipeline->type] = pipeline->layout->push_constant_size;
 }
 
 static void
@@ -1077,7 +1077,7 @@ handle_graphics_pipeline_group(struct vk_cmd_queue_entry *cmd, struct rendering_
    if (cmd->u.bind_pipeline_shader_group_nv.group_index)
       pipeline = lvp_pipeline_from_handle(pipeline->groups[cmd->u.bind_pipeline_shader_group_nv.group_index - 1]);
    handle_graphics_pipeline(pipeline, state);
-   state->push_size[pipeline->is_compute_pipeline] = pipeline->layout->push_constant_size;
+   state->push_size[pipeline->type] = pipeline->layout->push_constant_size;
 }
 
 static void handle_vertex_buffers2(struct vk_cmd_queue_entry *cmd,
@@ -3139,8 +3139,7 @@ static void handle_push_descriptor_set(struct vk_cmd_queue_entry *cmd,
 
    util_dynarray_append(&state->push_desc_sets, struct lvp_descriptor_set *, set);
 
-   bool is_compute = pds->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
-   struct lvp_descriptor_set *base = state->desc_sets[is_compute][pds->set];
+   struct lvp_descriptor_set *base = state->desc_sets[lvp_pipeline_type_from_bind_point(pds->pipeline_bind_point)][pds->set];
    if (base)
       memcpy(set->map, base->map, MIN2(set->bo->width0, base->bo->width0));
 
@@ -3174,8 +3173,7 @@ static void handle_push_descriptor_set_with_template(struct vk_cmd_queue_entry *
 
    util_dynarray_append(&state->push_desc_sets, struct lvp_descriptor_set *, set);
 
-   bool is_compute = templ->bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
-   struct lvp_descriptor_set *base = state->desc_sets[is_compute][pds->set];
+   struct lvp_descriptor_set *base = state->desc_sets[lvp_pipeline_type_from_bind_point(templ->bind_point)][pds->set];
    if (base)
       memcpy(set->map, base->map, MIN2(set->bo->width0, base->bo->width0));
 
@@ -4027,25 +4025,25 @@ descriptor_layouts_equal(const struct lvp_descriptor_set_layout *a, const struct
 }
 
 static void
-check_db_compat(struct rendering_state *state, struct lvp_pipeline_layout *layout, bool is_compute, int first_set, int set_count)
+check_db_compat(struct rendering_state *state, struct lvp_pipeline_layout *layout, enum lvp_pipeline_type pipeline_type, int first_set, int set_count)
 {
    bool independent = (layout->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT) > 0;
    /* handle compatibility rules for unbinding */
    for (unsigned j = 0; j < ARRAY_SIZE(state->desc_buffers); j++) {
-      struct lvp_pipeline_layout *l2 = state->desc_buffer_offsets[is_compute][j].layout;
+      struct lvp_pipeline_layout *l2 = state->desc_buffer_offsets[pipeline_type][j].layout;
       if ((j >= first_set && j < first_set + set_count) || !l2 || l2 == layout)
          continue;
       bool independent_l2 = (l2->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT) > 0;
       if (independent != independent_l2) {
-         memset(&state->desc_buffer_offsets[is_compute][j], 0, sizeof(state->desc_buffer_offsets[is_compute][j]));
+         memset(&state->desc_buffer_offsets[pipeline_type][j], 0, sizeof(state->desc_buffer_offsets[pipeline_type][j]));
       } else {
          if (layout->vk.set_count != l2->vk.set_count) {
-            memset(&state->desc_buffer_offsets[is_compute][j], 0, sizeof(state->desc_buffer_offsets[is_compute][j]));
+            memset(&state->desc_buffer_offsets[pipeline_type][j], 0, sizeof(state->desc_buffer_offsets[pipeline_type][j]));
          } else {
             const struct lvp_descriptor_set_layout *a = get_set_layout(layout, j);
             const struct lvp_descriptor_set_layout *b = get_set_layout(l2, j);
             if (!!a != !!b || !descriptor_layouts_equal(a, b)) {
-               memset(&state->desc_buffer_offsets[is_compute][j], 0, sizeof(state->desc_buffer_offsets[is_compute][j]));
+               memset(&state->desc_buffer_offsets[pipeline_type][j], 0, sizeof(state->desc_buffer_offsets[pipeline_type][j]));
             }
          }
       }
@@ -4053,21 +4051,21 @@ check_db_compat(struct rendering_state *state, struct lvp_pipeline_layout *layou
 }
 
 static void
-bind_db_samplers(struct rendering_state *state, bool is_compute, unsigned set)
+bind_db_samplers(struct rendering_state *state, enum lvp_pipeline_type pipeline_type, unsigned set)
 {
-   const struct lvp_descriptor_set_layout *set_layout = state->desc_buffer_offsets[is_compute][set].sampler_layout;
+   const struct lvp_descriptor_set_layout *set_layout = state->desc_buffer_offsets[pipeline_type][set].sampler_layout;
    if (!set_layout)
       return;
-   unsigned buffer_index = state->desc_buffer_offsets[is_compute][set].buffer_index;
+   unsigned buffer_index = state->desc_buffer_offsets[pipeline_type][set].buffer_index;
    if (!state->desc_buffer_addrs[buffer_index]) {
       if (set_layout->immutable_set) {
-         state->desc_sets[is_compute][set] = set_layout->immutable_set;
+         state->desc_sets[pipeline_type][set] = set_layout->immutable_set;
          u_foreach_bit(stage, set_layout->shader_stages)
             handle_set_stage_buffer(state, set_layout->immutable_set->bo, 0, vk_to_mesa_shader_stage(1<<stage), set);
       }
       return;
    }
-   uint8_t *db = state->desc_buffer_addrs[buffer_index] + state->desc_buffer_offsets[is_compute][set].offset;
+   uint8_t *db = state->desc_buffer_addrs[buffer_index] + state->desc_buffer_offsets[pipeline_type][set].offset;
    uint8_t did_update = 0;
    for (uint32_t binding_index = 0; binding_index < set_layout->binding_count; binding_index++) {
       const struct lvp_descriptor_set_binding_layout *bind_layout = &set_layout->binding[binding_index];
@@ -4103,25 +4101,25 @@ handle_descriptor_buffer_embedded_samplers(struct vk_cmd_queue_entry *cmd, struc
    const struct lvp_descriptor_set_layout *set_layout = get_set_layout(layout, bind->set);
    if (!set_layout->immutable_sampler_count)
       return;
-   bool is_compute = bind->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
-   check_db_compat(state, layout, is_compute, bind->set, 1);
+   enum lvp_pipeline_type pipeline_type = lvp_pipeline_type_from_bind_point(bind->pipeline_bind_point);
+   check_db_compat(state, layout, pipeline_type, bind->set, 1);
 
-   state->desc_buffer_offsets[is_compute][bind->set].sampler_layout = set_layout;
-   bind_db_samplers(state, is_compute, bind->set);
+   state->desc_buffer_offsets[pipeline_type][bind->set].sampler_layout = set_layout;
+   bind_db_samplers(state, pipeline_type, bind->set);
 }
 
 static void
 handle_descriptor_buffer_offsets(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
 {
    struct vk_cmd_set_descriptor_buffer_offsets_ext *dbo = &cmd->u.set_descriptor_buffer_offsets_ext;
-   bool is_compute = dbo->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
+   enum lvp_pipeline_type pipeline_type = lvp_pipeline_type_from_bind_point(dbo->pipeline_bind_point);
    for (unsigned i = 0; i < dbo->set_count; i++) {
       LVP_FROM_HANDLE(lvp_pipeline_layout, layout, dbo->layout);
-      check_db_compat(state, layout, is_compute, dbo->first_set, dbo->set_count);
+      check_db_compat(state, layout, pipeline_type, dbo->first_set, dbo->set_count);
       unsigned idx = dbo->first_set + i;
-      state->desc_buffer_offsets[is_compute][idx].layout = layout;
-      state->desc_buffer_offsets[is_compute][idx].buffer_index = dbo->buffer_indices[i];
-      state->desc_buffer_offsets[is_compute][idx].offset = dbo->offsets[i];
+      state->desc_buffer_offsets[pipeline_type][idx].layout = layout;
+      state->desc_buffer_offsets[pipeline_type][idx].buffer_index = dbo->buffer_indices[i];
+      state->desc_buffer_offsets[pipeline_type][idx].offset = dbo->offsets[i];
       const struct lvp_descriptor_set_layout *set_layout = get_set_layout(layout, idx);
 
       /* set for all stages */
@@ -4129,7 +4127,7 @@ handle_descriptor_buffer_offsets(struct vk_cmd_queue_entry *cmd, struct renderin
          gl_shader_stage pstage = vk_to_mesa_shader_stage(1<<stage);
          handle_set_stage_buffer(state, state->desc_buffers[dbo->buffer_indices[i]], dbo->offsets[i], pstage, idx);
       }
-      bind_db_samplers(state, is_compute, idx);
+      bind_db_samplers(state, pipeline_type, idx);
    }
 }
 
