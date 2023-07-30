@@ -99,24 +99,21 @@ libanv_per_hw_ver_libs = []
 anv_per_hw_ver_files = files(
   'genX_blorp_exec.c',
   'genX_cmd_buffer.c',
+  'genX_gfx_state.c',
   'genX_gpu_memcpy.c',
+  'genX_init_state.c',
   'genX_pipeline.c',
   'genX_query.c',
-  'genX_state.c',
   'genX_video.c',
 )
 if with_intel_vk_rt
   anv_per_hw_ver_files += files('genX_acceleration_structure.c',)
 endif
 
-foreach g : [['90', ['gfx8_cmd_buffer.c']],
-             ['110', ['gfx8_cmd_buffer.c']],
-             ['120', ['gfx8_cmd_buffer.c']],
-             ['125', ['gfx8_cmd_buffer.c']]]
-  _gfx_ver = g[0]
+foreach _gfx_ver : ['90', '110', '120', '125']
   libanv_per_hw_ver_libs += static_library(
     'anv_per_hw_ver@0@'.format(_gfx_ver),
-    [anv_per_hw_ver_files, g[1], anv_entrypoints[0], anv_internal_spvs, ],
+    [anv_per_hw_ver_files, anv_entrypoints[0], anv_internal_spvs, ],
     include_directories : [
       inc_include, inc_src, inc_compiler, inc_intel,
     ],
