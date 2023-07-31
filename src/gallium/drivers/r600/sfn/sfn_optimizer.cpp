@@ -510,6 +510,9 @@ CopyPropFwdVisitor::propagate_to(RegisterVec4& value, Instr *instr)
          if (value[i]->parents().empty())
             return;
 
+         if (value[i]->uses().size() > 1)
+            return;
+
          assert(value[i]->parents().size() == 1);
          parents[i] = (*value[i]->parents().begin())->as_alu();
 
@@ -517,6 +520,7 @@ CopyPropFwdVisitor::propagate_to(RegisterVec4& value, Instr *instr)
             copy-propagate */
          if (!parents[i])
              return;
+
 
          if ((parents[i]->opcode() != op1_mov) ||
              parents[i]->has_source_mod(0, AluInstr::mod_neg) ||
