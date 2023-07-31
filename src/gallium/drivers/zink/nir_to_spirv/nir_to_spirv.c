@@ -2859,7 +2859,7 @@ emit_load_push_const(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    if (atype == nir_type_float)
       member = bitcast_to_uvec(ctx, member, nir_src_bit_size(intr->src[0]), 1);
    /* reuse the offset from ZINK_PUSH_CONST_OFFSET */
-   SpvId offset = emit_uint_const(ctx, 32, 0);
+   SpvId offset = emit_uint_const(ctx, 32, nir_intrinsic_component(intr));
    /* OpAccessChain takes an array of indices that drill into a hierarchy based on the type:
     * index 0 is accessing 'base'
     * index 1 is accessing 'base[index 1]'
@@ -3569,7 +3569,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_store_deref(ctx, intr);
       break;
 
-   case nir_intrinsic_load_push_constant:
+   case nir_intrinsic_load_push_constant_zink:
       emit_load_push_const(ctx, intr);
       break;
 

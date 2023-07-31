@@ -1922,3 +1922,8 @@ intrinsic("load_point_coord_maybe_flipped", dest_comp=2, bit_sizes=[32])
 # texture it returns width, height and array size.  Used for txs lowering.
 intrinsic("load_texture_size_etna", src_comp=[1], dest_comp=3,
           flags=[CAN_ELIMINATE, CAN_REORDER])
+
+# Zink specific intrinsics
+
+# src[] = { field }.
+load("push_constant_zink", [1], [COMPONENT], [CAN_ELIMINATE, CAN_REORDER])
