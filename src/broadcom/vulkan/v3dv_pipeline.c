@@ -1060,8 +1060,6 @@ pipeline_populate_v3d_key(struct v3d_key *key,
       p_stage->robustness.storage_buffers == robust_buffer_enabled;
    key->robust_image_access =
       p_stage->robustness.images == robust_image_enabled;
-
-   key->environment = V3D_ENVIRONMENT_VULKAN;
 }
 
 /* FIXME: anv maps to hw primitive type. Perhaps eventually we would do the

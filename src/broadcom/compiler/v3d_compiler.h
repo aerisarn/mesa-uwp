@@ -392,11 +392,6 @@ static inline uint8_t v3d_slot_get_component(struct v3d_varying_slot slot)
         return slot.slot_and_component & 3;
 }
 
-enum v3d_execution_environment {
-   V3D_ENVIRONMENT_OPENGL = 0,
-   V3D_ENVIRONMENT_VULKAN,
-};
-
 struct v3d_key {
         void *shader_state;
         struct {
@@ -414,8 +409,6 @@ struct v3d_key {
         bool robust_uniform_access;
         bool robust_storage_access;
         bool robust_image_access;
-
-        enum v3d_execution_environment environment;
 };
 
 struct v3d_fs_key {
