@@ -2838,6 +2838,11 @@ struct anv_cmd_graphics_state {
    bool object_preemption;
    bool has_uint_rt;
 
+   /**
+    * DEPTH and STENCIL attachment write state for Wa_18019816803.
+    */
+   bool ds_write_state;
+
    uint32_t n_occlusion_queries;
 };
 

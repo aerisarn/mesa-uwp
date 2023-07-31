@@ -294,6 +294,15 @@ blorp_exec_on_render(struct blorp_batch *batch,
    }
 #endif
 
+   /* Check if blorp ds state matches ours. */
+   if (intel_needs_workaround(cmd_buffer->device->info, 18019816803)) {
+      bool blorp_ds_state = params->depth.enabled || params->stencil.enabled;
+      if (cmd_buffer->state.gfx.ds_write_state != blorp_ds_state) {
+         batch->flags |= BLORP_BATCH_NEED_PSS_STALL_SYNC;
+         cmd_buffer->state.gfx.ds_write_state = blorp_ds_state;
+      }
+   }
+
    if (params->depth.enabled &&
        !(batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL))
       genX(cmd_buffer_emit_gfx12_depth_wa)(cmd_buffer, &params->depth.surf);
