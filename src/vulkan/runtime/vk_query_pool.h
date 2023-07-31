@@ -45,6 +45,10 @@ struct vk_query_pool {
    VkQueryPipelineStatisticFlags pipeline_statistics;
 };
 
+void vk_query_pool_init(struct vk_device *device,
+                        struct vk_query_pool *query_pool,
+                        const VkQueryPoolCreateInfo *pCreateInfo);
+void vk_query_pool_finish(struct vk_query_pool *query_pool);
 void *vk_query_pool_create(struct vk_device *device,
                            const VkQueryPoolCreateInfo *pCreateInfo,
                            const VkAllocationCallbacks *alloc,

@@ -23,9 +23,26 @@
 
 #include "vk_query_pool.h"
 
+#include "vk_alloc.h"
 #include "vk_command_buffer.h"
 #include "vk_common_entrypoints.h"
 #include "vk_device.h"
+
+void
+vk_query_pool_init(struct vk_device *device,
+                   struct vk_query_pool *query_pool,
+                   const VkQueryPoolCreateInfo *pCreateInfo)
+{
+   vk_object_base_init(device, &query_pool->base, VK_OBJECT_TYPE_QUERY_POOL);
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO);
+
+   query_pool->query_type = pCreateInfo->queryType;
+   query_pool->query_count = pCreateInfo->queryCount;
+   query_pool->pipeline_statistics =
+      pCreateInfo->queryType == VK_QUERY_TYPE_PIPELINE_STATISTICS ?
+      pCreateInfo->pipelineStatistics : 0;
+}
 
 void *
 vk_query_pool_create(struct vk_device *device,
@@ -33,21 +50,21 @@ vk_query_pool_create(struct vk_device *device,
                      const VkAllocationCallbacks *alloc,
                      size_t size)
 {
-   struct vk_query_pool *query_pool;
-
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO);
-
-   query_pool = vk_object_zalloc(device, alloc, size,
-                                 VK_OBJECT_TYPE_QUERY_POOL);
+   struct vk_query_pool *query_pool =
+      vk_zalloc2(&device->alloc, alloc, size, 8,
+                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (query_pool == NULL)
       return NULL;
 
-   query_pool->query_type = pCreateInfo->queryType;
-   query_pool->query_count = pCreateInfo->queryCount;
-   if (pCreateInfo->queryType == VK_QUERY_TYPE_PIPELINE_STATISTICS)
-      query_pool->pipeline_statistics = pCreateInfo->pipelineStatistics;
+   vk_query_pool_init(device, query_pool, pCreateInfo);
 
    return query_pool;
+}
+
+void
+vk_query_pool_finish(struct vk_query_pool *query_pool)
+{
+   vk_object_base_finish(&query_pool->base);
 }
 
 void
