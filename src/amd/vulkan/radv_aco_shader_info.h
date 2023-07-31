@@ -86,6 +86,14 @@ radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_info *aco_info, const struct
 }
 
 static inline void
+radv_aco_convert_tcs_epilog_key(struct aco_tcs_epilog_info *aco_info, const struct radv_tcs_epilog_key *radv,
+                                const struct radv_shader_args *radv_args)
+{
+   ASSIGN_FIELD(primitive_mode);
+   ASSIGN_FIELD(tes_reads_tessfactors);
+}
+
+static inline void
 radv_aco_convert_ps_epilog_key(struct aco_ps_epilog_info *aco_info, const struct radv_ps_epilog_key *radv,
                                const struct radv_shader_args *radv_args)
 {

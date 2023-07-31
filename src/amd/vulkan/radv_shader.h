@@ -482,6 +482,11 @@ struct radv_vs_prolog_key {
    gl_shader_stage next_stage;
 };
 
+struct radv_tcs_epilog_key {
+   enum tess_primitive_mode primitive_mode;
+   bool tes_reads_tessfactors;
+};
+
 enum radv_shader_binary_type { RADV_BINARY_TYPE_LEGACY, RADV_BINARY_TYPE_RTLD };
 
 struct radv_shader_binary {
