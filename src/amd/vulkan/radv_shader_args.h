@@ -68,6 +68,7 @@ struct radv_shader_args {
     * # [6:13] = the number of tessellation patches
     */
    struct ac_arg tcs_offchip_layout;
+   struct ac_arg tcs_epilog_pc;
 
    /* TES */
    /* # [0:7] = the number of tessellation patches
