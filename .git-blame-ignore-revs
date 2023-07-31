@@ -45,3 +45,6 @@ c7bf3b69ebc8f2252dbf724a4de638e6bb2ac402
 
 # egl: re-format using clang-format
 2f670d89db038d5a29f6b72732fd7ad63dfaf4c6
+
+# panfrost: clang-format the tree
+0afd691f29683f6e9dde60f79eca094373521806
