@@ -996,15 +996,6 @@ emit_query_clear_flush(struct anv_cmd_buffer *cmd_buffer,
 }
 
 
-void genX(CmdBeginQuery)(
-    VkCommandBuffer                             commandBuffer,
-    VkQueryPool                                 queryPool,
-    uint32_t                                    query,
-    VkQueryControlFlags                         flags)
-{
-   genX(CmdBeginQueryIndexedEXT)(commandBuffer, queryPool, query, flags, 0);
-}
-
 void genX(CmdBeginQueryIndexedEXT)(
     VkCommandBuffer                             commandBuffer,
     VkQueryPool                                 queryPool,
@@ -1188,14 +1179,6 @@ void genX(CmdBeginQueryIndexedEXT)(
    default:
       unreachable("");
    }
-}
-
-void genX(CmdEndQuery)(
-    VkCommandBuffer                             commandBuffer,
-    VkQueryPool                                 queryPool,
-    uint32_t                                    query)
-{
-   genX(CmdEndQueryIndexedEXT)(commandBuffer, queryPool, query, 0);
 }
 
 void genX(CmdEndQueryIndexedEXT)(
