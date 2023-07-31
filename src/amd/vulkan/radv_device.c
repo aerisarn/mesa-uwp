@@ -269,6 +269,30 @@ radv_device_finish_ps_epilogs(struct radv_device *device)
    }
 }
 
+static VkResult
+radv_device_init_tcs_epilogs(struct radv_device *device)
+{
+   u_rwlock_init(&device->tcs_epilogs_lock);
+
+   device->tcs_epilogs = _mesa_hash_table_create(NULL, &radv_hash_tcs_epilog, &radv_cmp_tcs_epilog);
+   if (!device->tcs_epilogs)
+      return vk_error(device->physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   return VK_SUCCESS;
+}
+
+static void
+radv_device_finish_tcs_epilogs(struct radv_device *device)
+{
+   if (device->tcs_epilogs) {
+      hash_table_foreach (device->tcs_epilogs, entry) {
+         free((void *)entry->key);
+         radv_shader_part_unref(device, entry->data);
+      }
+      _mesa_hash_table_destroy(device->tcs_epilogs, NULL);
+   }
+}
+
 VkResult
 radv_device_init_vrs_state(struct radv_device *device)
 {
@@ -654,6 +678,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    bool attachment_vrs_enabled = false;
    bool image_float32_atomics = false;
    bool vs_prologs = false;
+   UNUSED bool tcs_epilogs = false; /* TODO: Enable for shader object */
    bool ps_epilogs = false;
    bool global_bo_list = false;
    bool image_2d_view_of_3d = false;
@@ -1038,6 +1063,12 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
          goto fail;
    }
 
+   if (tcs_epilogs) {
+      result = radv_device_init_tcs_epilogs(device);
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
+
    if (ps_epilogs) {
       result = radv_device_init_ps_epilogs(device);
       if (result != VK_SUCCESS)
@@ -1108,6 +1139,7 @@ fail:
 
    radv_device_finish_notifier(device);
    radv_device_finish_vs_prologs(device);
+   radv_device_finish_tcs_epilogs(device);
    radv_device_finish_ps_epilogs(device);
    radv_device_finish_border_color(device);
 
@@ -1160,6 +1192,7 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    radv_device_finish_notifier(device);
    radv_device_finish_vs_prologs(device);
+   radv_device_finish_tcs_epilogs(device);
    radv_device_finish_ps_epilogs(device);
    radv_device_finish_border_color(device);
    radv_device_finish_vrs_image(device);

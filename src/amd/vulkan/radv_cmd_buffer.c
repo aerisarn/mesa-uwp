@@ -4268,6 +4268,21 @@ lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
    return epilog_entry->data;
 }
 
+uint32_t
+radv_hash_tcs_epilog(const void *key_)
+{
+   const struct radv_tcs_epilog_key *key = key_;
+   return _mesa_hash_data(key, sizeof(*key));
+}
+
+bool
+radv_cmp_tcs_epilog(const void *a_, const void *b_)
+{
+   const struct radv_tcs_epilog_key *a = a_;
+   const struct radv_tcs_epilog_key *b = b_;
+   return memcmp(a, b, sizeof(*a)) == 0;
+}
+
 static void
 radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
 {

@@ -1088,6 +1088,10 @@ struct radv_device {
    struct u_rwlock ps_epilogs_lock;
    struct hash_table *ps_epilogs;
 
+   /* TCS epilogs */
+   struct u_rwlock tcs_epilogs_lock;
+   struct hash_table *tcs_epilogs;
+
    simple_mtx_t trace_mtx;
 
    /* Whether per-vertex VRS is forced. */
@@ -1981,6 +1985,9 @@ struct radv_ps_epilog_state {
 struct radv_ps_epilog_key radv_generate_ps_epilog_key(const struct radv_device *device,
                                                       const struct radv_ps_epilog_state *state,
                                                       bool disable_mrt_compaction);
+
+uint32_t radv_hash_tcs_epilog(const void *key_);
+bool radv_cmp_tcs_epilog(const void *a_, const void *b_);
 
 bool radv_needs_null_export_workaround(const struct radv_device *device, const struct radv_shader *ps,
                                        unsigned custom_blend_mode);
