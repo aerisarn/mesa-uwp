@@ -692,6 +692,12 @@ ir3_start_block(struct ir3 *ir)
 }
 
 static inline struct ir3_block *
+ir3_end_block(struct ir3 *ir)
+{
+   return list_last_entry(&ir->block_list, struct ir3_block, node);
+}
+
+static inline struct ir3_block *
 ir3_after_preamble(struct ir3 *ir)
 {
    struct ir3_block *block = ir3_start_block(ir);
@@ -1069,6 +1075,53 @@ is_input(struct ir3_instruction *instr)
    case OPC_BARY_F:
    case OPC_FLAT_B:
       return true;
+   default:
+      return false;
+   }
+}
+
+/* Whether non-helper invocations can read the value of helper invocations. We
+ * cannot insert (eq) before these instructions.
+ */
+static inline bool
+uses_helpers(struct ir3_instruction *instr)
+{
+   switch (instr->opc) {
+   /* These require helper invocations to be present */
+   case OPC_SAM:
+   case OPC_SAMB:
+   case OPC_GETLOD:
+   case OPC_DSX:
+   case OPC_DSY:
+   case OPC_DSXPP_1:
+   case OPC_DSYPP_1:
+   case OPC_DSXPP_MACRO:
+   case OPC_DSYPP_MACRO:
+   case OPC_QUAD_SHUFFLE_BRCST:
+   case OPC_QUAD_SHUFFLE_HORIZ:
+   case OPC_QUAD_SHUFFLE_VERT:
+   case OPC_QUAD_SHUFFLE_DIAG:
+   case OPC_META_TEX_PREFETCH:
+      return true;
+
+   /* Subgroup operations don't require helper invocations to be present, but
+    * will use helper invocations if they are present.
+    */
+   case OPC_BALLOT_MACRO:
+   case OPC_ANY_MACRO:
+   case OPC_ALL_MACRO:
+   case OPC_ELECT_MACRO:
+   case OPC_READ_FIRST_MACRO:
+   case OPC_READ_COND_MACRO:
+   case OPC_MOVMSK:
+   case OPC_BRCST_ACTIVE:
+      return true;
+
+   /* Catch lowered READ_FIRST/READ_COND. */
+   case OPC_MOV:
+      return (instr->dsts[0]->flags & IR3_REG_SHARED) &&
+             !(instr->srcs[0]->flags & IR3_REG_SHARED);
+
    default:
       return false;
    }
@@ -1704,6 +1757,9 @@ __ssa_srcp_n(struct ir3_instruction *instr, unsigned n)
 /* iterators for instructions: */
 #define foreach_instr(__instr, __list)                                         \
    list_for_each_entry (struct ir3_instruction, __instr, __list, node)
+#define foreach_instr_from(__instr, __start, __list)                           \
+   list_for_each_entry_from(struct ir3_instruction, __instr, &(__start)->node, \
+                            __list, node)
 #define foreach_instr_rev(__instr, __list)                                     \
    list_for_each_entry_rev (struct ir3_instruction, __instr, __list, node)
 #define foreach_instr_safe(__instr, __list)                                    \
