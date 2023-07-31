@@ -349,6 +349,7 @@ struct radv_shader_info {
       enum gl_tess_spacing spacing;
       bool ccw;
       bool point_mode;
+      bool reads_tess_factors;
       unsigned tcs_vertices_out;
       uint8_t num_linked_inputs;
       uint8_t num_linked_outputs;

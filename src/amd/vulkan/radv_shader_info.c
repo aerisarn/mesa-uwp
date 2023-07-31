@@ -502,6 +502,8 @@ gather_shader_info_tes(struct radv_device *device, const nir_shader *nir, struct
    info->tes.ccw = nir->info.tess.ccw;
    info->tes.point_mode = nir->info.tess.point_mode;
    info->tes.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
+   info->tes.reads_tess_factors =
+      !!(nir->info.inputs_read & (VARYING_BIT_TESS_LEVEL_INNER | VARYING_BIT_TESS_LEVEL_OUTER));
 
    if (!info->inputs_linked)
       info->tes.num_linked_inputs = util_last_bit64(nir->info.inputs_read);
@@ -1611,8 +1613,7 @@ radv_link_shaders_info(struct radv_device *device, struct radv_shader_stage *pro
       struct radv_shader_stage *tes_stage = consumer;
 
       tcs_stage->info.has_epilog = false;
-      tcs_stage->info.tcs.tes_reads_tess_factors =
-         !!(tes_stage->nir->info.inputs_read & (VARYING_BIT_TESS_LEVEL_INNER | VARYING_BIT_TESS_LEVEL_OUTER));
+      tcs_stage->info.tcs.tes_reads_tess_factors = tes_stage->info.tes.reads_tess_factors;
       tcs_stage->info.tcs.tes_inputs_read = tes_stage->nir->info.inputs_read;
       tcs_stage->info.tcs.tes_patch_inputs_read = tes_stage->nir->info.patch_inputs_read;
 
