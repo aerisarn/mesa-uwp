@@ -1340,6 +1340,70 @@ emit_3dstate_hs_ds(struct anv_graphics_pipeline *pipeline,
    memcpy(dw, &pipeline->final.ds, sizeof(pipeline->final.ds));
 }
 
+static UNUSED bool
+geom_or_tess_prim_id_used(struct anv_graphics_pipeline *pipeline)
+{
+   const struct brw_tcs_prog_data *tcs_prog_data =
+      anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL) ?
+      get_tcs_prog_data(pipeline) : NULL;
+   const struct brw_tes_prog_data *tes_prog_data =
+      anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL) ?
+      get_tes_prog_data(pipeline) : NULL;
+   const struct brw_gs_prog_data *gs_prog_data =
+      anv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) ?
+      get_gs_prog_data(pipeline) : NULL;
+
+   return (tcs_prog_data && tcs_prog_data->include_primitive_id) ||
+          (tes_prog_data && tes_prog_data->include_primitive_id) ||
+          (gs_prog_data && gs_prog_data->include_primitive_id);
+}
+
+static void
+emit_3dstate_te(struct anv_graphics_pipeline *pipeline)
+{
+   struct GENX(3DSTATE_TE) te = {
+      GENX(3DSTATE_TE_header),
+   };
+
+   if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL)) {
+      const struct brw_tes_prog_data *tes_prog_data =
+         get_tes_prog_data(pipeline);
+
+      te.Partitioning = tes_prog_data->partitioning;
+      te.TEDomain = tes_prog_data->domain;
+      te.TEEnable = true;
+      te.MaximumTessellationFactorOdd = 63.0;
+      te.MaximumTessellationFactorNotOdd = 64.0;
+#if GFX_VERx10 >= 125
+      const struct anv_device *device = pipeline->base.base.device;
+      if (intel_needs_workaround(device->info, 22012699309))
+         te.TessellationDistributionMode = TEDMODE_RR_STRICT;
+      else
+         te.TessellationDistributionMode = TEDMODE_RR_FREE;
+
+      if (intel_needs_workaround(device->info, 14015055625)) {
+         /* Wa_14015055625:
+          *
+          * Disable Tessellation Distribution when primitive Id is enabled.
+          */
+         if (pipeline->primitive_id_override ||
+             geom_or_tess_prim_id_used(pipeline))
+            te.TessellationDistributionMode = TEDMODE_OFF;
+      }
+
+      te.TessellationDistributionLevel = TEDLEVEL_PATCH;
+      /* 64_TRIANGLES */
+      te.SmallPatchThreshold = 3;
+      /* 1K_TRIANGLES */
+      te.TargetBlockSize = 8;
+      /* 1K_TRIANGLES */
+      te.LocalBOPAccumulatorThreshold = 1;
+#endif
+   }
+
+   GENX(3DSTATE_TE_pack)(NULL, pipeline->partial.te, &te);
+}
+
 static void
 emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
 {
@@ -1835,6 +1899,7 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
 
       emit_3dstate_vs(pipeline);
       emit_3dstate_hs_ds(pipeline, state->ts);
+      emit_3dstate_te(pipeline);
       emit_3dstate_gs(pipeline);
 
       emit_3dstate_vf_statistics(pipeline);

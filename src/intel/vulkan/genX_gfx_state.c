@@ -205,24 +205,6 @@ want_stencil_pma_fix(struct anv_cmd_buffer *cmd_buffer,
           wm_prog_data->computed_depth_mode != PSCDEPTH_OFF;
 }
 
-static UNUSED bool
-geom_or_tess_prim_id_used(struct anv_graphics_pipeline *pipeline)
-{
-   const struct brw_tcs_prog_data *tcs_prog_data =
-      anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL) ?
-      get_tcs_prog_data(pipeline) : NULL;
-   const struct brw_tes_prog_data *tes_prog_data =
-      anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL) ?
-      get_tes_prog_data(pipeline) : NULL;
-   const struct brw_gs_prog_data *gs_prog_data =
-      anv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) ?
-      get_gs_prog_data(pipeline) : NULL;
-
-   return (tcs_prog_data && tcs_prog_data->include_primitive_id) ||
-          (tes_prog_data && tes_prog_data->include_primitive_id) ||
-          (gs_prog_data && gs_prog_data->include_primitive_id);
-}
-
 static void
 genX(cmd_emit_te)(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -233,40 +215,15 @@ genX(cmd_emit_te)(struct anv_cmd_buffer *cmd_buffer)
 
    if (!tes_prog_data ||
        !anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL)) {
-      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_TE), te);
+      uint32_t *dw =
+         anv_batch_emitn(&cmd_buffer->batch, GENX(3DSTATE_TE_length),
+                         GENX(3DSTATE_TE));
+      memcpy(dw, &pipeline->partial.te, sizeof(pipeline->partial.te));
       return;
    }
 
-   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_TE), te) {
-      te.Partitioning = tes_prog_data->partitioning;
-      te.TEDomain = tes_prog_data->domain;
-      te.TEEnable = true;
-      te.MaximumTessellationFactorOdd = 63.0;
-      te.MaximumTessellationFactorNotOdd = 64.0;
-#if GFX_VERx10 >= 125
-      if (intel_needs_workaround(cmd_buffer->device->info, 22012699309))
-         te.TessellationDistributionMode = TEDMODE_RR_STRICT;
-      else
-         te.TessellationDistributionMode = TEDMODE_RR_FREE;
-
-      if (intel_needs_workaround(cmd_buffer->device->info, 14015055625)) {
-         /* Wa_14015055625:
-          *
-          * Disable Tessellation Distribution when primitive Id is enabled.
-          */
-         if (pipeline->primitive_id_override ||
-             geom_or_tess_prim_id_used(pipeline))
-            te.TessellationDistributionMode = TEDMODE_OFF;
-      }
-
-      te.TessellationDistributionLevel = TEDLEVEL_PATCH;
-      /* 64_TRIANGLES */
-      te.SmallPatchThreshold = 3;
-      /* 1K_TRIANGLES */
-      te.TargetBlockSize = 8;
-      /* 1K_TRIANGLES */
-      te.LocalBOPAccumulatorThreshold = 1;
-#endif
+   anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_TE),
+                        pipeline->partial.te, te) {
       if (dyn->ts.domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT) {
          te.OutputTopology = tes_prog_data->output_topology;
       } else {
