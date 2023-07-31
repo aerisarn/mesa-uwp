@@ -47,7 +47,7 @@ if [[ "$DEBIAN_ARCH" = "arm64" ]]; then
     DEVICE_TREES+=" apq8016-sbc.dtb"
     DEVICE_TREES+=" apq8096-db820c.dtb"
     DEVICE_TREES+=" sc7180-trogdor-lazor-limozeen-nots-r5.dtb"
-    DEVICE_TREES+=" sc7180-trogdor-kingoftown-r1.dtb"
+    DEVICE_TREES+=" sc7180-trogdor-kingoftown.dtb"
     DEVICE_TREES+=" sm8350-hdk.dtb"
     KERNEL_IMAGE_NAME="Image"
 

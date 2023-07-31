@@ -312,12 +312,12 @@ a530-traces:
     GPU_VERSION: freedreno-a618
     VK_DRIVER: freedreno
 
-.a618-test-kingoftown-r1:
+.a618-test-kingoftown:
   extends:
     - .a618-test
   variables:
     DEVICE_TYPE: sc7180-trogdor-kingoftown
-    DTB: sc7180-trogdor-kingoftown-r1
+    DTB: sc7180-trogdor-kingoftown
     RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-kingoftown
 
 .a618-test-limozeen-nots-r5:
@@ -331,7 +331,7 @@ a530-traces:
 a618_vk:
   extends:
     - .lava-test-deqp:arm64
-    - .a618-test-kingoftown-r1
+    - .a618-test-kingoftown
     - .collabora-turnip-rules
   parallel: 12
   variables:
