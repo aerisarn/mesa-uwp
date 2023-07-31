@@ -64,6 +64,7 @@ static const struct test {
    /* cat0 */
    INSTR_6XX(00000000_00000000, "nop"),
    INSTR_6XX(00000200_00000000, "(rpt2)nop"),
+   INSTR_6XX(00010000_00000000, "(eq)nop"),
    INSTR_6XX(03000000_00000000, "end"),
    INSTR_6XX(00800000_00000004, "br p0.x, #4"),
    INSTR_6XX(00800000_fffffffc, "br p0.x, #-4"),

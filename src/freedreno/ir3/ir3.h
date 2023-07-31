@@ -313,24 +313,26 @@ typedef enum ir3_instruction_flags {
    /* (jp) flag is set on jump targets:
     */
    IR3_INSTR_JP = BIT(2),
-   IR3_INSTR_UL = BIT(3),
-   IR3_INSTR_3D = BIT(4),
-   IR3_INSTR_A = BIT(5),
-   IR3_INSTR_O = BIT(6),
-   IR3_INSTR_P = BIT(7),
-   IR3_INSTR_S = BIT(8),
-   IR3_INSTR_S2EN = BIT(9),
-   IR3_INSTR_SAT = BIT(10),
+   /* (eq) flag kills helper invocations when they are no longer needed */
+   IR3_INSTR_EQ = BIT(3),
+   IR3_INSTR_UL = BIT(4),
+   IR3_INSTR_3D = BIT(5),
+   IR3_INSTR_A = BIT(6),
+   IR3_INSTR_O = BIT(7),
+   IR3_INSTR_P = BIT(8),
+   IR3_INSTR_S = BIT(9),
+   IR3_INSTR_S2EN = BIT(10),
+   IR3_INSTR_SAT = BIT(11),
    /* (cat5/cat6) Bindless */
-   IR3_INSTR_B = BIT(11),
+   IR3_INSTR_B = BIT(12),
    /* (cat5/cat6) nonuniform */
-   IR3_INSTR_NONUNIF = BIT(12),
+   IR3_INSTR_NONUNIF = BIT(13),
    /* (cat5-only) Get some parts of the encoding from a1.x */
-   IR3_INSTR_A1EN = BIT(13),
+   IR3_INSTR_A1EN = BIT(14),
    /* meta-flags, for intermediate stages of IR, ie.
     * before register assignment is done:
     */
-   IR3_INSTR_MARK = BIT(14),
+   IR3_INSTR_MARK = BIT(15),
    IR3_INSTR_UNUSED = BIT(16),
 } ir3_instruction_flags;
 
