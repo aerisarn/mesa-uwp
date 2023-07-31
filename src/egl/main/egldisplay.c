@@ -508,7 +508,7 @@ _eglGetX11Display(Display *native_display, const EGLAttrib *attrib_list)
    }
 
    dpy = _eglFindDisplay(_EGL_PLATFORM_X11, native_display, attrib_list);
-   if (dpy && dev) {
+   if (dpy) {
       dpy->Device = dev;
    }
 
@@ -552,7 +552,7 @@ _eglGetXcbDisplay(xcb_connection_t *native_display,
    }
 
    dpy = _eglFindDisplay(_EGL_PLATFORM_XCB, native_display, attrib_list);
-   if (dpy && dev) {
+   if (dpy) {
       dpy->Device = dev;
    }
 
