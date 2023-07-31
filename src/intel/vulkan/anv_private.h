@@ -70,6 +70,7 @@
 #include "vk_acceleration_structure.h"
 #include "vk_alloc.h"
 #include "vk_buffer.h"
+#include "vk_buffer_view.h"
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
 #include "vk_debug_report.h"
@@ -1941,9 +1942,7 @@ struct anv_buffer_state {
 };
 
 struct anv_buffer_view {
-   struct vk_object_base base;
-
-   uint64_t range; /**< VkBufferViewCreateInfo::range */
+   struct vk_buffer_view vk;
 
    struct anv_address address;
 
@@ -4757,7 +4756,7 @@ VK_DEFINE_HANDLE_CASTS(anv_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer, vk.base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer_view, base, VkBufferView,
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer_view, vk.base, VkBufferView,
                                VK_OBJECT_TYPE_BUFFER_VIEW)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_pool, base, VkDescriptorPool,
                                VK_OBJECT_TYPE_DESCRIPTOR_POOL)

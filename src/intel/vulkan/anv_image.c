@@ -2899,8 +2899,8 @@ anv_CreateBufferView(VkDevice _device,
    ANV_FROM_HANDLE(anv_buffer, buffer, pCreateInfo->buffer);
    struct anv_buffer_view *view;
 
-   view = vk_object_alloc(&device->vk, pAllocator, sizeof(*view),
-                          VK_OBJECT_TYPE_BUFFER_VIEW);
+   view = vk_buffer_view_create(&device->vk, pCreateInfo,
+                                pAllocator, sizeof(*view));
    if (!view)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2909,9 +2909,8 @@ anv_CreateBufferView(VkDevice _device,
                                  0, VK_IMAGE_TILING_LINEAR);
 
    const uint32_t format_bs = isl_format_get_layout(format.isl_format)->bpb / 8;
-   view->range = vk_buffer_range(&buffer->vk, pCreateInfo->offset,
-                                              pCreateInfo->range);
-   view->range = align_down_npot_u32(view->range, format_bs);
+   const uint32_t align_range =
+      align_down_npot_u32(view->vk.range, format_bs);
 
    view->address = anv_address_add(buffer->address, pCreateInfo->offset);
 
@@ -2923,7 +2922,7 @@ anv_CreateBufferView(VkDevice _device,
                                          format.isl_format,
                                          format.swizzle,
                                          ISL_SURF_USAGE_TEXTURE_BIT,
-                                         view->address, view->range, format_bs);
+                                         view->address, align_range, format_bs);
    } else {
       view->general.state = ANV_STATE_NULL;
    }
@@ -2935,7 +2934,7 @@ anv_CreateBufferView(VkDevice _device,
                                          &view->storage,
                                          format.isl_format, format.swizzle,
                                          ISL_SURF_USAGE_STORAGE_BIT,
-                                         view->address, view->range, format_bs);
+                                         view->address, align_range, format_bs);
    } else {
       view->storage.state = ANV_STATE_NULL;
    }
@@ -2965,5 +2964,5 @@ anv_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
                           view->storage.state);
    }
 
-   vk_object_free(&device->vk, pAllocator, view);
+   vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
 }

@@ -1818,7 +1818,7 @@ anv_descriptor_write_surface_state(struct anv_device *device,
       anv_isl_format_for_descriptor_type(device, desc->type);
    anv_fill_buffer_surface_state(device, bview->general.state.map,
                                  format, ISL_SWIZZLE_IDENTITY,
-                                 usage, bview->address, bview->range, 1);
+                                 usage, bview->address, bview->vk.range, 1);
 }
 
 void
@@ -1909,7 +1909,7 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
 
       desc->set_buffer_view = bview;
 
-      bview->range = desc->bind_range;
+      bview->vk.range = desc->bind_range;
       bview->address = bind_addr;
 
       if (set->is_push)
@@ -2124,7 +2124,7 @@ void anv_UpdateDescriptorSets(
 
             dst_desc->set_buffer_view = dst_bview;
 
-            dst_bview->range = src_bview->range;
+            dst_bview->vk.range = src_bview->vk.range;
             dst_bview->address = src_bview->address;
 
             memcpy(dst_bview->general.state.map,
