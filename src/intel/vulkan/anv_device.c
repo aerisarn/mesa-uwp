@@ -4476,7 +4476,7 @@ void anv_DestroySampler(
                                    sampler->custom_border_color);
    }
 
-   vk_object_free(&device->vk, pAllocator, sampler);
+   vk_sampler_destroy(&device->vk, pAllocator, &sampler->vk);
 }
 
 static const VkTimeDomainEXT anv_time_domains[] = {

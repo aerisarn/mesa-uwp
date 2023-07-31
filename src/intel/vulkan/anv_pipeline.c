@@ -856,7 +856,8 @@ lookup_ycbcr_conversion(const void *_sets_layout, uint32_t set,
    const struct anv_sampler *sampler =
       bind_layout->immutable_samplers[array_index];
 
-   return sampler && sampler->conversion ? &sampler->conversion->state : NULL;
+   return sampler && sampler->vk.ycbcr_conversion ?
+          &sampler->vk.ycbcr_conversion->state : NULL;
 }
 
 static void

@@ -974,105 +974,51 @@ VkResult genX(CreateSampler)(
    ANV_FROM_HANDLE(anv_device, device, _device);
    struct anv_sampler *sampler;
 
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
-
-   sampler = vk_object_zalloc(&device->vk, pAllocator, sizeof(*sampler),
-                              VK_OBJECT_TYPE_SAMPLER);
+   sampler = vk_sampler_create(&device->vk, pCreateInfo,
+                               pAllocator, sizeof(*sampler));
    if (!sampler)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   sampler->n_planes = 1;
+   const struct vk_format_ycbcr_info *ycbcr_info =
+      sampler->vk.format != VK_FORMAT_UNDEFINED ?
+      vk_format_get_ycbcr_info(sampler->vk.format) : NULL;
+   assert((ycbcr_info == NULL) == (sampler->vk.ycbcr_conversion == NULL));
+
+   sampler->n_planes = ycbcr_info ? ycbcr_info->n_planes : 1;
 
    uint32_t border_color_stride = 64;
    uint32_t border_color_offset;
-   ASSERTED bool has_custom_color = false;
-   if (pCreateInfo->borderColor <= VK_BORDER_COLOR_INT_OPAQUE_WHITE) {
+   if (sampler->vk.border_color <= VK_BORDER_COLOR_INT_OPAQUE_WHITE) {
       border_color_offset = device->border_colors.offset +
                             pCreateInfo->borderColor *
                             border_color_stride;
    } else {
+      assert(vk_border_color_is_custom(sampler->vk.border_color));
       sampler->custom_border_color =
          anv_state_reserved_pool_alloc(&device->custom_border_colors);
       border_color_offset = sampler->custom_border_color.offset;
+
+      union isl_color_value color = { .u32 = {
+         sampler->vk.border_color_value.uint32[0],
+         sampler->vk.border_color_value.uint32[1],
+         sampler->vk.border_color_value.uint32[2],
+         sampler->vk.border_color_value.uint32[3],
+      } };
+
+      const struct anv_format *format_desc =
+         sampler->vk.format != VK_FORMAT_UNDEFINED ?
+         anv_get_format(sampler->vk.format) : NULL;
+
+      if (format_desc && format_desc->n_planes == 1 &&
+          !isl_swizzle_is_identity(format_desc->planes[0].swizzle)) {
+         const struct anv_format_plane *fmt_plane = &format_desc->planes[0];
+
+         assert(!isl_format_has_int_channel(fmt_plane->isl_format));
+         color = isl_color_value_swizzle(color, fmt_plane->swizzle, true);
+      }
+
+      memcpy(sampler->custom_border_color.map, color.u32, sizeof(color));
    }
-
-   unsigned sampler_reduction_mode = STD_FILTER;
-   bool enable_sampler_reduction = false;
-
-   const struct vk_format_ycbcr_info *ycbcr_info = NULL;
-   vk_foreach_struct_const(ext, pCreateInfo->pNext) {
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: {
-         VkSamplerYcbcrConversionInfo *pSamplerConversion =
-            (VkSamplerYcbcrConversionInfo *) ext;
-         VK_FROM_HANDLE(vk_ycbcr_conversion, conversion,
-                        pSamplerConversion->conversion);
-
-         /* Ignore conversion for non-YUV formats. This fulfills a requirement
-          * for clients that want to utilize same code path for images with
-          * external formats (VK_FORMAT_UNDEFINED) and "regular" RGBA images
-          * where format is known.
-          */
-         if (conversion == NULL)
-            break;
-
-         ycbcr_info = vk_format_get_ycbcr_info(conversion->state.format);
-         if (ycbcr_info == NULL)
-            break;
-
-         sampler->n_planes = ycbcr_info->n_planes;
-         sampler->conversion = conversion;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO: {
-         VkSamplerReductionModeCreateInfo *sampler_reduction =
-            (VkSamplerReductionModeCreateInfo *) ext;
-         sampler_reduction_mode =
-            vk_to_intel_sampler_reduction_mode[sampler_reduction->reductionMode];
-         enable_sampler_reduction = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT: {
-         VkSamplerCustomBorderColorCreateInfoEXT *custom_border_color =
-            (VkSamplerCustomBorderColorCreateInfoEXT *) ext;
-         if (sampler->custom_border_color.map == NULL)
-            break;
-
-         union isl_color_value color = { .u32 = {
-            custom_border_color->customBorderColor.uint32[0],
-            custom_border_color->customBorderColor.uint32[1],
-            custom_border_color->customBorderColor.uint32[2],
-            custom_border_color->customBorderColor.uint32[3],
-         } };
-
-         const struct anv_format *format_desc =
-            custom_border_color->format != VK_FORMAT_UNDEFINED ?
-            anv_get_format(custom_border_color->format) : NULL;
-
-         /* For formats with a swizzle, it does not carry over to the sampler
-          * for border colors, so we need to do the swizzle ourselves here.
-          */
-         if (format_desc && format_desc->n_planes == 1 &&
-             !isl_swizzle_is_identity(format_desc->planes[0].swizzle)) {
-            const struct anv_format_plane *fmt_plane = &format_desc->planes[0];
-
-            assert(!isl_format_has_int_channel(fmt_plane->isl_format));
-            color = isl_color_value_swizzle(color, fmt_plane->swizzle, true);
-         }
-
-         memcpy(sampler->custom_border_color.map, color.u32, sizeof(color));
-         has_custom_color = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT:
-         break;
-      default:
-         anv_debug_ignored_stype(ext->sType);
-         break;
-      }
-   }
-
-   assert((sampler->custom_border_color.map == NULL) || has_custom_color);
 
    /* If we have bindless, allocate enough samplers.  We allocate 32 bytes
     * for each sampler instead of 16 bytes because we want all bindless
@@ -1090,16 +1036,18 @@ VkResult genX(CreateSampler)(
       const bool plane_has_chroma =
          ycbcr_info && ycbcr_info->planes[p].has_chroma;
       const VkFilter min_filter =
-         plane_has_chroma ? sampler->conversion->state.chroma_filter : pCreateInfo->minFilter;
+         plane_has_chroma ? sampler->vk.ycbcr_conversion->state.chroma_filter :
+                            pCreateInfo->minFilter;
       const VkFilter mag_filter =
-         plane_has_chroma ? sampler->conversion->state.chroma_filter : pCreateInfo->magFilter;
+         plane_has_chroma ? sampler->vk.ycbcr_conversion->state.chroma_filter :
+                            pCreateInfo->magFilter;
       const bool enable_min_filter_addr_rounding = min_filter != VK_FILTER_NEAREST;
       const bool enable_mag_filter_addr_rounding = mag_filter != VK_FILTER_NEAREST;
       /* From Broadwell PRM, SAMPLER_STATE:
        *   "Mip Mode Filter must be set to MIPFILTER_NONE for Planar YUV surfaces."
        */
-      enum isl_format plane0_isl_format = sampler->conversion ?
-         anv_get_format(sampler->conversion->state.format)->planes[0].isl_format :
+      enum isl_format plane0_isl_format = sampler->vk.ycbcr_conversion ?
+         anv_get_format(sampler->vk.format)->planes[0].isl_format :
          ISL_FORMAT_UNSUPPORTED;
       const bool isl_format_is_planar_yuv =
          plane0_isl_format != ISL_FORMAT_UNSUPPORTED &&
@@ -1153,8 +1101,10 @@ VkResult genX(CreateSampler)(
          .TCYAddressControlMode = vk_to_intel_tex_address[pCreateInfo->addressModeV],
          .TCZAddressControlMode = vk_to_intel_tex_address[pCreateInfo->addressModeW],
 
-         .ReductionType = sampler_reduction_mode,
-         .ReductionTypeEnable = enable_sampler_reduction,
+         .ReductionType =
+            vk_to_intel_sampler_reduction_mode[sampler->vk.reduction_mode],
+         .ReductionTypeEnable =
+            sampler->vk.reduction_mode != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE,
       };
 
       GENX(SAMPLER_STATE_pack)(NULL, sampler->state[p], &sampler_state);

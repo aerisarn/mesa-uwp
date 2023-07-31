@@ -790,11 +790,11 @@ static void
 sha1_update_immutable_sampler(struct mesa_sha1 *ctx,
                               const struct anv_sampler *sampler)
 {
-   if (!sampler->conversion)
+   if (!sampler->vk.ycbcr_conversion)
       return;
 
    /* The only thing that affects the shader is ycbcr conversion */
-   SHA1_UPDATE_VALUE(ctx, sampler->conversion->state);
+   SHA1_UPDATE_VALUE(ctx, sampler->vk.ycbcr_conversion->state);
 }
 
 static void

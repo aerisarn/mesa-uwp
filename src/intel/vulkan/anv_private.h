@@ -85,6 +85,7 @@
 #include "vk_instance.h"
 #include "vk_pipeline_cache.h"
 #include "vk_physical_device.h"
+#include "vk_sampler.h"
 #include "vk_shader_module.h"
 #include "vk_sync.h"
 #include "vk_sync_timeline.h"
@@ -4530,11 +4531,10 @@ struct gfx8_border_color {
 };
 
 struct anv_sampler {
-   struct vk_object_base        base;
+   struct vk_sampler            vk;
 
    uint32_t                     state[3][4];
    uint32_t                     n_planes;
-   struct vk_ycbcr_conversion  *conversion;
 
    /* Blob of sampler state data which is guaranteed to be 32-byte aligned
     * and with a 32-byte stride for use as bindless samplers.
@@ -4778,7 +4778,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline_layout, base, VkPipelineLayout,
                                VK_OBJECT_TYPE_PIPELINE_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_query_pool, base, VkQueryPool,
                                VK_OBJECT_TYPE_QUERY_POOL)
-VK_DEFINE_NONDISP_HANDLE_CASTS(anv_sampler, base, VkSampler,
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_sampler, vk.base, VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
                                VkPerformanceConfigurationINTEL,
