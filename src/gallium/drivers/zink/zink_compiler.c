@@ -234,7 +234,6 @@ lower_basevertex_instr(nir_builder *b, nir_instr *in, void *data)
    b->cursor = nir_after_instr(&instr->instr);
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
    load->src[0] = nir_src_for_ssa(nir_imm_int(b, ZINK_GFX_PUSHCONST_DRAW_MODE_IS_INDEXED));
-   nir_intrinsic_set_range(load, 4);
    load->num_components = 1;
    nir_ssa_dest_init(&load->instr, &load->dest, 1, 32);
    nir_builder_instr_insert(b, &load->instr);
@@ -275,7 +274,6 @@ lower_drawid_instr(nir_builder *b, nir_instr *in, void *data)
    b->cursor = nir_before_instr(&instr->instr);
    nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
    load->src[0] = nir_src_for_ssa(nir_imm_int(b, ZINK_GFX_PUSHCONST_DRAW_ID));
-   nir_intrinsic_set_range(load, 4);
    load->num_components = 1;
    nir_ssa_dest_init(&load->instr, &load->dest, 1, 32);
    nir_builder_instr_insert(b, &load->instr);
@@ -329,7 +327,7 @@ lower_gl_point_gs_instr(nir_builder *b, nir_instr *instr, void *data)
 
    // viewport-map endpoints
    nir_ssa_def *vp_const_pos = nir_imm_int(b, ZINK_GFX_PUSHCONST_VIEWPORT_SCALE);
-   vp_scale = nir_load_push_constant(b, 2, 32, vp_const_pos, .base = 1, .range = 2);
+   vp_scale = nir_load_push_constant(b, 2, 32, vp_const_pos);
 
    // Load point info values
    nir_ssa_def *point_size = nir_load_var(b, state->gl_point_size);
@@ -715,9 +713,7 @@ lower_line_stipple_gs_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_push_if(b, nir_ine_imm(b, nir_load_var(b, state->pos_counter), 0));
    // viewport-map endpoints
    nir_ssa_def *vp_scale = nir_load_push_constant(b, 2, 32,
-                                                  nir_imm_int(b, ZINK_GFX_PUSHCONST_VIEWPORT_SCALE),
-                                                  .base = 1,
-                                                  .range = 2);
+                                                  nir_imm_int(b, ZINK_GFX_PUSHCONST_VIEWPORT_SCALE));
    nir_ssa_def *prev = nir_load_var(b, state->prev_pos);
    nir_ssa_def *curr = nir_load_var(b, state->pos_out);
    prev = viewport_map(b, prev, vp_scale);
@@ -820,8 +816,7 @@ lower_line_stipple_fs(nir_shader *shader)
    }
 
    nir_ssa_def *pattern = nir_load_push_constant(&b, 1, 32,
-                                                 nir_imm_int(&b, ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN),
-                                                 .base = 1);
+                                                 nir_imm_int(&b, ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN));
    nir_ssa_def *factor = nir_i2f32(&b, nir_ishr_imm(&b, pattern, 16));
    pattern = nir_iand_imm(&b, pattern, 0xffff);
 
@@ -907,17 +902,14 @@ lower_line_smooth_gs_emit_vertex(nir_builder *b,
 
    nir_push_if(b, nir_ine_imm(b, nir_load_var(b, state->pos_counter), 0));
    nir_ssa_def *vp_scale = nir_load_push_constant(b, 2, 32,
-                                                  nir_imm_int(b, ZINK_GFX_PUSHCONST_VIEWPORT_SCALE),
-                                                  .base = 1,
-                                                  .range = 2);
+                                                  nir_imm_int(b, ZINK_GFX_PUSHCONST_VIEWPORT_SCALE));
    nir_ssa_def *prev = nir_load_var(b, state->prev_pos);
    nir_ssa_def *curr = nir_load_var(b, state->pos_out);
    nir_ssa_def *prev_vp = viewport_map(b, prev, vp_scale);
    nir_ssa_def *curr_vp = viewport_map(b, curr, vp_scale);
 
    nir_ssa_def *width = nir_load_push_constant(b, 1, 32,
-                                               nir_imm_int(b, ZINK_GFX_PUSHCONST_LINE_WIDTH),
-                                               .base = 1);
+                                               nir_imm_int(b, ZINK_GFX_PUSHCONST_LINE_WIDTH));
    nir_ssa_def *half_width = nir_fadd_imm(b, nir_fmul_imm(b, width, 0.5), 0.5);
 
    const unsigned yx[2] = { 1, 0 };
@@ -1145,8 +1137,7 @@ lower_line_smooth_fs(nir_shader *shader, bool lower_stipple)
       nir_function_impl *entry = nir_shader_get_entrypoint(shader);
       b = nir_builder_at(nir_before_cf_list(&entry->body));
       nir_ssa_def *pattern = nir_load_push_constant(&b, 1, 32,
-                                                   nir_imm_int(&b, ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN),
-                                                   .base = 1);
+                                                   nir_imm_int(&b, ZINK_GFX_PUSHCONST_LINE_STIPPLE_PATTERN));
       nir_store_var(&b, stipple_pattern, pattern, 1);
    }
 
@@ -2451,8 +2442,7 @@ static void
 clamp_layer_output_emit(nir_builder *b, struct clamp_layer_output_state *state)
 {
    nir_ssa_def *is_layered = nir_load_push_constant(b, 1, 32,
-                                                    nir_imm_int(b, ZINK_GFX_PUSHCONST_FRAMEBUFFER_IS_LAYERED),
-                                                    .base = ZINK_GFX_PUSHCONST_FRAMEBUFFER_IS_LAYERED, .range = 4);
+                                                    nir_imm_int(b, ZINK_GFX_PUSHCONST_FRAMEBUFFER_IS_LAYERED));
    nir_deref_instr *original_deref = nir_build_deref_var(b, state->original);
    nir_deref_instr *clamped_deref = nir_build_deref_var(b, state->clamped);
    nir_ssa_def *layer = nir_bcsel(b, nir_ieq_imm(b, is_layered, 1),
@@ -5294,11 +5284,9 @@ zink_shader_tcs_create(struct zink_screen *screen, nir_shader *tes, unsigned ver
    create_gfx_pushconst(nir);
 
    nir_ssa_def *load_inner = nir_load_push_constant(&b, 2, 32,
-                                                    nir_imm_int(&b, ZINK_GFX_PUSHCONST_DEFAULT_INNER_LEVEL),
-                                                    .base = 1, .range = 8);
+                                                    nir_imm_int(&b, ZINK_GFX_PUSHCONST_DEFAULT_INNER_LEVEL));
    nir_ssa_def *load_outer = nir_load_push_constant(&b, 4, 32,
-                                                    nir_imm_int(&b, ZINK_GFX_PUSHCONST_DEFAULT_OUTER_LEVEL),
-                                                    .base = 2, .range = 16);
+                                                    nir_imm_int(&b, ZINK_GFX_PUSHCONST_DEFAULT_OUTER_LEVEL));
 
    for (unsigned i = 0; i < 2; i++) {
       nir_deref_instr *store_idx = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, gl_TessLevelInner), i);
