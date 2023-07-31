@@ -113,8 +113,6 @@ anv_reloc_list_grow_deps(struct anv_reloc_list *list,
    return VK_SUCCESS;
 }
 
-#define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
-
 VkResult
 anv_reloc_list_add_bo(struct anv_reloc_list *list,
                       const VkAllocationCallbacks *alloc,
