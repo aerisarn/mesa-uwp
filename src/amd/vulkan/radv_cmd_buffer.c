@@ -1820,6 +1820,36 @@ radv_emit_ps_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader
 }
 
 static void
+radv_emit_tcs_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_part *tcs_epilog)
+{
+   struct radv_shader *tcs_shader = cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL];
+
+   if (cmd_buffer->state.emitted_tcs_epilog == tcs_epilog)
+      return;
+
+   assert(tcs_shader->config.num_shared_vgprs == 0);
+   if (G_00B848_VGPRS(tcs_epilog->rsrc1) > G_00B848_VGPRS(tcs_shader->config.rsrc1)) {
+      uint32_t rsrc1 = tcs_shader->config.rsrc1;
+      rsrc1 = (rsrc1 & C_00B848_VGPRS) | (tcs_epilog->rsrc1 & ~C_00B848_VGPRS);
+      radeon_set_sh_reg(cmd_buffer->cs, R_00B428_SPI_SHADER_PGM_RSRC1_HS, rsrc1);
+   }
+
+   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, tcs_epilog->bo);
+
+   assert((tcs_epilog->va >> 32) == cmd_buffer->device->physical_device->rad_info.address32_hi);
+
+   struct radv_userdata_info *loc = &tcs_shader->info.user_sgprs_locs.shader_data[AC_UD_TCS_EPILOG_PC];
+   uint32_t base_reg = tcs_shader->info.user_data_0;
+   assert(loc->sgpr_idx != -1);
+   assert(loc->num_sgprs == 1);
+   radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, tcs_epilog->va, false);
+
+   cmd_buffer->shader_upload_seq = MAX2(cmd_buffer->shader_upload_seq, tcs_epilog->upload_seq);
+
+   cmd_buffer->state.emitted_tcs_epilog = tcs_epilog;
+}
+
+static void
 radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
@@ -4281,6 +4311,50 @@ radv_cmp_tcs_epilog(const void *a_, const void *b_)
    const struct radv_tcs_epilog_key *a = a_;
    const struct radv_tcs_epilog_key *b = b_;
    return memcmp(a, b, sizeof(*a)) == 0;
+}
+
+static struct radv_shader_part *
+lookup_tcs_epilog(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_shader *tes = cmd_buffer->state.shaders[MESA_SHADER_TESS_EVAL];
+   struct radv_device *device = cmd_buffer->device;
+   struct radv_shader_part *epilog = NULL;
+
+   struct radv_tcs_epilog_key key = {
+      .primitive_mode = tes->info.tes._primitive_mode,
+      .tes_reads_tessfactors = tes->info.tes.reads_tess_factors,
+   };
+
+   uint32_t hash = radv_hash_tcs_epilog(&key);
+
+   u_rwlock_rdlock(&device->tcs_epilogs_lock);
+   struct hash_entry *epilog_entry = _mesa_hash_table_search_pre_hashed(device->tcs_epilogs, hash, &key);
+   u_rwlock_rdunlock(&device->tcs_epilogs_lock);
+
+   if (!epilog_entry) {
+      u_rwlock_wrlock(&device->tcs_epilogs_lock);
+      epilog_entry = _mesa_hash_table_search_pre_hashed(device->tcs_epilogs, hash, &key);
+      if (epilog_entry) {
+         u_rwlock_wrunlock(&device->tcs_epilogs_lock);
+         return epilog_entry->data;
+      }
+
+      epilog = radv_create_tcs_epilog(device, &key);
+      struct radv_tcs_epilog_key *key2 = malloc(sizeof(*key2));
+      if (!epilog || !key2) {
+         radv_shader_part_unref(device, epilog);
+         free(key2);
+         u_rwlock_wrunlock(&device->tcs_epilogs_lock);
+         return NULL;
+      }
+      memcpy(key2, &key, sizeof(*key2));
+      _mesa_hash_table_insert_pre_hashed(device->tcs_epilogs, hash, key2, epilog);
+
+      u_rwlock_wrunlock(&device->tcs_epilogs_lock);
+      return epilog;
+   }
+
+   return epilog_entry->data;
 }
 
 static void
@@ -8788,7 +8862,7 @@ static void
 radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info)
 {
    const struct radv_device *device = cmd_buffer->device;
-   struct radv_shader_part *ps_epilog = NULL;
+   struct radv_shader_part *tcs_epilog = NULL, *ps_epilog = NULL;
 
    if (cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT] &&
        cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.has_epilog) {
@@ -8813,6 +8887,15 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
             cmd_buffer->state.col_format_non_compacted = V_028714_SPI_SHADER_32_R;
          if (device->physical_device->rad_info.rbplus_allowed)
             cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
+      }
+   }
+
+   if (cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL] &&
+       cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL]->info.has_epilog) {
+      tcs_epilog = lookup_tcs_epilog(cmd_buffer);
+      if (!tcs_epilog) {
+         vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+         return;
       }
    }
 
@@ -8852,6 +8935,9 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 
    if (ps_epilog)
       radv_emit_ps_epilog_state(cmd_buffer, ps_epilog);
+
+   if (tcs_epilog)
+      radv_emit_tcs_epilog_state(cmd_buffer, tcs_epilog);
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_FRAMEBUFFER)
       radv_emit_framebuffer_state(cmd_buffer);

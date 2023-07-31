@@ -1719,6 +1719,7 @@ struct radv_cmd_state {
    uint32_t vbo_misaligned_mask_invalid;
    uint32_t vbo_bound_mask;
 
+   struct radv_shader_part *emitted_tcs_epilog;
    struct radv_shader_part *emitted_ps_epilog;
 
    /* Per-vertex VRS state. */
