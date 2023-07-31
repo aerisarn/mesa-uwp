@@ -3589,6 +3589,7 @@ struct anv_graphics_pipeline {
       uint32_t                                  streamout_state[5];
       uint32_t                                  gs[10];
       uint32_t                                  te[4];
+      uint32_t                                  vfg[4];
    } partial;
 };
 

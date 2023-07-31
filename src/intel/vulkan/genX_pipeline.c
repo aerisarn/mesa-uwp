@@ -303,6 +303,36 @@ emit_vertex_input(struct anv_graphics_pipeline *pipeline,
       sgvs.XP2ElementOffset            = drawid_slot;
    }
 #endif
+
+#if GFX_VERx10 >= 125
+   struct anv_device *device = pipeline->base.base.device;
+   struct GENX(3DSTATE_VFG) vfg = {
+      GENX(3DSTATE_VFG_header),
+      /* If 3DSTATE_TE: TE Enable == 1 then RR_STRICT else RR_FREE*/
+      .DistributionMode =
+         anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL) ? RR_STRICT :
+         RR_FREE,
+      .DistributionGranularity = BatchLevelGranularity,
+   };
+   /* Wa_14014890652 */
+   if (intel_device_info_is_dg2(device->info))
+      vfg.GranularityThresholdDisable = 1;
+   /* 192 vertices for TRILIST_ADJ */
+   vfg.ListNBatchSizeScale = 0;
+   /* Batch size of 384 vertices */
+   vfg.List3BatchSizeScale = 2;
+   /* Batch size of 128 vertices */
+   vfg.List2BatchSizeScale = 1;
+   /* Batch size of 128 vertices */
+   vfg.List1BatchSizeScale = 2;
+   /* Batch size of 256 vertices for STRIP topologies */
+   vfg.StripBatchSizeScale = 3;
+   /* 192 control points for PATCHLIST_3 */
+   vfg.PatchBatchSizeScale = 1;
+   /* 192 control points for PATCHLIST_3 */
+   vfg.PatchBatchSizeMultiplier = 31;
+   GENX(3DSTATE_VFG_pack)(NULL, pipeline->partial.vfg, &vfg);
+#endif
 }
 
 void

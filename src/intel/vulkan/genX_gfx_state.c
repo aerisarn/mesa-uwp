@@ -1119,30 +1119,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 #if GFX_VERx10 >= 125
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE)) {
-      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VFG), vfg) {
-         /* If 3DSTATE_TE: TE Enable == 1 then RR_STRICT else RR_FREE*/
-         vfg.DistributionMode =
-            anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL) ? RR_STRICT :
-                                                                      RR_FREE;
-         vfg.DistributionGranularity = BatchLevelGranularity;
-         /* Wa_14014890652 */
-         if (intel_device_info_is_dg2(cmd_buffer->device->info))
-            vfg.GranularityThresholdDisable = 1;
+      anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_VFG),
+                           pipeline->partial.vfg, vfg) {
          vfg.ListCutIndexEnable = dyn->ia.primitive_restart_enable;
-         /* 192 vertices for TRILIST_ADJ */
-         vfg.ListNBatchSizeScale = 0;
-         /* Batch size of 384 vertices */
-         vfg.List3BatchSizeScale = 2;
-         /* Batch size of 128 vertices */
-         vfg.List2BatchSizeScale = 1;
-         /* Batch size of 128 vertices */
-         vfg.List1BatchSizeScale = 2;
-         /* Batch size of 256 vertices for STRIP topologies */
-         vfg.StripBatchSizeScale = 3;
-         /* 192 control points for PATCHLIST_3 */
-         vfg.PatchBatchSizeScale = 1;
-         /* 192 control points for PATCHLIST_3 */
-         vfg.PatchBatchSizeMultiplier = 31;
       }
    }
 #endif
