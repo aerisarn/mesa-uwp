@@ -113,8 +113,8 @@ if echo "$BM_KERNEL $BM_DTB" | grep -q http; then
   cat kernel dtb > Image.gz-dtb
   rm kernel
 else
-  cat $BM_KERNEL $BM_DTB > Image.gz-dtb
-  cp $BM_DTB dtb
+  cat /baremetal-files/"$BM_KERNEL" /baremetal-files/"$BM_DTB".dtb > Image.gz-dtb
+  cp /baremetal-files/"$BM_DTB".dtb dtb
 fi
 
 export PATH=$BM:$PATH

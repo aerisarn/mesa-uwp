@@ -129,8 +129,8 @@
   extends:
     - .google-freedreno-test
   variables:
-    BM_KERNEL: /baremetal-files/Image.gz
-    BM_DTB: /baremetal-files/apq8016-sbc.dtb
+    BM_KERNEL: Image.gz
+    BM_DTB: apq8016-sbc
     GPU_VERSION: freedreno-a307
 
 a306_gl:
@@ -181,8 +181,8 @@ a306-traces:
   extends:
     - .google-freedreno-test
   variables:
-    BM_KERNEL: /baremetal-files/Image.gz
-    BM_DTB: /baremetal-files/apq8096-db820c.dtb
+    BM_KERNEL: Image.gz
+    BM_DTB: apq8096-db820c
     GPU_VERSION: freedreno-a530
   tags:
     - google-freedreno-db820c
@@ -386,7 +386,7 @@ a660_gl:
     - .google-freedreno-test
   variables:
     FDO_CI_CONCURRENT: 10
-    BM_KERNEL: /baremetal-files/cheza-kernel
+    BM_KERNEL: cheza-kernel
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
     GPU_VERSION: freedreno-a630
   tags:

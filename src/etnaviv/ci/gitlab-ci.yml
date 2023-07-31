@@ -30,7 +30,7 @@
     - ./install/bare-metal/fastboot.sh
   variables:
     BM_CMDLINE: "ip=dhcp console=ttymxc0,115200n8 root=/dev/nfs rw nfsrootdebug init=/init $BM_KERNELARGS"
-    BM_KERNEL: /baremetal-files/zImage
+    BM_KERNEL: zImage
     FLAKES_CHANNEL: "#etnaviv-ci"
 
 .etnaviv-test:arm64:
@@ -41,14 +41,14 @@
     - ./install/bare-metal/fastboot.sh
   variables:
     BM_CMDLINE: "ip=dhcp console=ttymxc0,115200n8 root=/dev/nfs rw nfsrootdebug init=/init $BM_KERNELARGS"
-    BM_KERNEL: /baremetal-files/Image
+    BM_KERNEL: Image
     FLAKES_CHANNEL: "#etnaviv-ci"
 
 .etnaviv-gc2000:arm32:
   extends:
     - .etnaviv-test:arm32
   variables:
-    BM_DTB: /baremetal-files/imx6q-cubox-i.dtb
+    BM_DTB: imx6q-cubox-i
     DEQP_EXPECTED_RENDERER: GC2000
     GPU_VERSION: "etnaviv-gc2000"
   tags:
@@ -58,7 +58,7 @@
   extends:
     - .etnaviv-test:arm64
   variables:
-    BM_DTB: /baremetal-files/imx8mq-nitrogen.dtb
+    BM_DTB: imx8mq-nitrogen
     DEQP_EXPECTED_RENDERER: GC7000
     GPU_VERSION: "etnaviv-gc7000"
   tags:
