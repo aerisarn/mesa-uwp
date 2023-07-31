@@ -722,7 +722,6 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
                          "Failed to query available system memory");
       goto fail_init;
    }
-   sysmem_size_B = MIN2(sysmem_size_B, pdev->info.gart_size_B);
 
    if (pdev->info.vram_size_B) {
       pdev->mem_type_cnt = 2;

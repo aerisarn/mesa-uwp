@@ -290,11 +290,6 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
       device->info.pci.revision_id  = drm_device->deviceinfo.pci->revision_id;
    };
 
-   if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_AGP_SIZE, &value))
-      goto out_err;
-
-   device->info.gart_size_B = value;
-
    device->fd = fd;
 
    if (device->info.vram_size_B == 0)
