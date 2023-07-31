@@ -252,6 +252,7 @@ files_libnir = files(
   'nir_opt_intrinsics.c',
   'nir_opt_large_constants.c',
   'nir_opt_load_store_vectorize.c',
+  'nir_opt_loop.c',
   'nir_opt_loop_unroll.c',
   'nir_opt_memcpy.c',
   'nir_opt_move.c',
