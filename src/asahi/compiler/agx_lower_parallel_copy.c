@@ -36,6 +36,23 @@ do_swap(agx_builder *b, const struct agx_copy *copy)
    if (copy->dest == copy->src.value)
       return;
 
+   /* We can swap lo/hi halves of a 32-bit register with a 32-bit extr */
+   if (copy->src.size == AGX_SIZE_16 &&
+       (copy->dest >> 1) == (copy->src.value >> 1)) {
+
+      assert(((copy->dest & 1) == (1 - (copy->src.value & 1))) &&
+             "no trivial swaps, and only 2 halves of a register");
+
+      /* r0 = extr r0, r0, #16
+       *    = (((r0 << 32) | r0) >> 16) & 0xFFFFFFFF
+       *    = (((r0 << 32) >> 16) & 0xFFFFFFFF) | (r0 >> 16)
+       *    = (r0l << 16) | r0h
+       */
+      agx_index reg32 = agx_register(copy->dest & ~1, AGX_SIZE_32);
+      agx_extr_to(b, reg32, reg32, reg32, agx_immediate(16), 0);
+      return;
+   }
+
    agx_index x = agx_register(copy->dest, copy->src.size);
    agx_index y = copy->src;
 
