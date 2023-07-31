@@ -3182,12 +3182,17 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    assert(batch == agx_get_batch(ctx) && "batch should not change under us");
 
+   batch->draws++;
+
    /* The scissor/zbias arrays are indexed with 16-bit integers, imposigin a
     * maximum of UINT16_MAX descriptors. Flush if the next draw would overflow
     */
    if (unlikely((batch->scissor.size / AGX_SCISSOR_LENGTH) >= UINT16_MAX) ||
        (batch->depth_bias.size / AGX_DEPTH_BIAS_LENGTH) >= UINT16_MAX) {
       agx_flush_batch_for_reason(ctx, batch, "Scissor/depth bias overflow");
+   } else if (unlikely(batch->draws > 100000)) {
+      /* Mostly so drawoverhead doesn't OOM */
+      agx_flush_batch_for_reason(ctx, batch, "Absurd number of draws");
    }
 }
 

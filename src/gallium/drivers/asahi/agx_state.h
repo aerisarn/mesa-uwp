@@ -225,6 +225,7 @@ struct agx_batch {
    struct pipe_framebuffer_state key;
    uint64_t seqnum;
    uint32_t syncobj;
+   uint32_t draws;
 
    struct agx_tilebuffer_layout tilebuffer_layout;
 
