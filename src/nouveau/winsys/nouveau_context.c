@@ -1,11 +1,12 @@
 #include "nouveau_context.h"
 
-#include <xf86drm.h>
-#include <errno.h>
-#include <nouveau_drm.h>
-#include <nouveau/nvif/ioctl.h>
-
 #include "nouveau_device.h"
+
+#include "drm-uapi/nouveau_drm.h"
+
+#include <errno.h>
+#include <nouveau/nvif/ioctl.h>
+#include <xf86drm.h>
 
 static void
 nouveau_ws_subchan_dealloc(int fd, struct nouveau_ws_object *obj)

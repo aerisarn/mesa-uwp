@@ -1,19 +1,19 @@
 #include "nouveau_device.h"
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <xf86drm.h>
-#include <nouveau_drm.h>
-#include <nouveau/nvif/ioctl.h>
-#include <nvif/cl0080.h>
-#include <nvif/class.h>
-#include <util/hash_table.h>
-
 #include "nouveau_context.h"
 
+#include "drm-uapi/nouveau_drm.h"
+#include "util/hash_table.h"
 #include "util/u_debug.h"
 #include "util/os_file.h"
 #include "util/os_misc.h"
+
+#include <fcntl.h>
+#include <nouveau/nvif/ioctl.h>
+#include <nvif/cl0080.h>
+#include <nvif/class.h>
+#include <unistd.h>
+#include <xf86drm.h>
 
 static uint8_t
 sm_for_chipset(uint16_t chipset)

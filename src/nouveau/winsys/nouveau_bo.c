@@ -1,13 +1,12 @@
 #include "nouveau_bo.h"
 
-#include <util/hash_table.h>
-
-#include <nouveau_drm.h>
-#include <xf86drm.h>
+#include "drm-uapi/nouveau_drm.h"
+#include "util/hash_table.h"
 
 #include <fcntl.h>
 #include <stddef.h>
 #include <sys/mman.h>
+#include <xf86drm.h>
 
 struct nouveau_ws_bo *
 nouveau_ws_bo_new(struct nouveau_ws_device *dev,
