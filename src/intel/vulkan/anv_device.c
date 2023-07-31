@@ -1359,6 +1359,8 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
                                                                device->info.kmd_type,
                                                                &u64_ignore);
 
+   device->uses_relocs = device->info.kmd_type != INTEL_KMD_TYPE_XE;
+
    device->always_flush_cache = INTEL_DEBUG(DEBUG_STALL) ||
       driQueryOptionb(&instance->dri_options, "always_flush_cache");
 

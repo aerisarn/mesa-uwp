@@ -53,10 +53,12 @@
 
 VkResult
 anv_reloc_list_init(struct anv_reloc_list *list,
-                    const VkAllocationCallbacks *alloc)
+                    const VkAllocationCallbacks *alloc,
+                    bool uses_relocs)
 {
    assert(alloc != NULL);
    memset(list, 0, sizeof(*list));
+   list->uses_relocs = uses_relocs;
    list->alloc = alloc;
    return VK_SUCCESS;
 }
@@ -113,8 +115,8 @@ anv_reloc_list_grow_deps(struct anv_reloc_list *list,
 }
 
 VkResult
-anv_reloc_list_add_bo(struct anv_reloc_list *list,
-                      struct anv_bo *target_bo)
+anv_reloc_list_add_bo_impl(struct anv_reloc_list *list,
+                           struct anv_bo *target_bo)
 {
    uint32_t idx = target_bo->gem_handle;
    VkResult result = anv_reloc_list_grow_deps(list,
@@ -254,7 +256,8 @@ anv_batch_bo_create(struct anv_cmd_buffer *cmd_buffer,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   result = anv_reloc_list_init(&bbo->relocs, &cmd_buffer->vk.pool->alloc);
+   const bool uses_relocs = cmd_buffer->device->physical->uses_relocs;
+   result = anv_reloc_list_init(&bbo->relocs, &cmd_buffer->vk.pool->alloc, uses_relocs);
    if (result != VK_SUCCESS)
       goto fail_bo_alloc;
 
@@ -849,8 +852,9 @@ anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    if (!success)
       goto fail_seen_bbos;
 
+   const bool uses_relocs = cmd_buffer->device->physical->uses_relocs;
    result = anv_reloc_list_init(&cmd_buffer->surface_relocs,
-                                &cmd_buffer->vk.pool->alloc);
+                                &cmd_buffer->vk.pool->alloc, uses_relocs);
    if (result != VK_SUCCESS)
       goto fail_bt_blocks;
 

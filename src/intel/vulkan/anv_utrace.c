@@ -167,7 +167,8 @@ anv_device_utrace_flush_cmd_buffers(struct anv_queue *queue,
       if (result != VK_SUCCESS)
          goto error_batch_buf;
 
-      result = anv_reloc_list_init(&submit->relocs, &device->vk.alloc);
+      const bool uses_relocs = device->physical->uses_relocs;
+      result = anv_reloc_list_init(&submit->relocs, &device->vk.alloc, uses_relocs);
       if (result != VK_SUCCESS)
          goto error_reloc_list;
 
@@ -463,7 +464,8 @@ anv_queue_trace(struct anv_queue *queue, const char *label, bool frame, bool beg
    if (result != VK_SUCCESS)
       goto error_sync;
 
-   result = anv_reloc_list_init(&submit->relocs, &device->vk.alloc);
+   const bool uses_relocs = device->physical->uses_relocs;
+   result = anv_reloc_list_init(&submit->relocs, &device->vk.alloc, uses_relocs);
    if (result != VK_SUCCESS)
       goto error_batch_bo;
 

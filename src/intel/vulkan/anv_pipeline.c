@@ -264,8 +264,9 @@ anv_pipeline_init(struct anv_pipeline *pipeline,
    pipeline->batch.relocs = &pipeline->batch_relocs;
    pipeline->batch.status = VK_SUCCESS;
 
+   const bool uses_relocs = device->physical->uses_relocs;
    result = anv_reloc_list_init(&pipeline->batch_relocs,
-                                pipeline->batch.alloc);
+                                pipeline->batch.alloc, uses_relocs);
    if (result != VK_SUCCESS)
       return result;
 
