@@ -823,11 +823,11 @@ get_h264_msg(struct radv_video_session *vid, struct radv_video_session_params *p
    if (pps->flags.pic_scaling_matrix_present_flag) {
       memcpy(result.scaling_list_4x4, pps->pScalingLists->ScalingList4x4, 6 * 16);
       memcpy(result.scaling_list_8x8[0], pps->pScalingLists->ScalingList8x8[0], 64);
-      memcpy(result.scaling_list_8x8[1], pps->pScalingLists->ScalingList8x8[3], 64);
+      memcpy(result.scaling_list_8x8[1], pps->pScalingLists->ScalingList8x8[1], 64);
    } else if (sps->flags.seq_scaling_matrix_present_flag) {
       memcpy(result.scaling_list_4x4, sps->pScalingLists->ScalingList4x4, 6 * 16);
       memcpy(result.scaling_list_8x8[0], sps->pScalingLists->ScalingList8x8[0], 64);
-      memcpy(result.scaling_list_8x8[1], sps->pScalingLists->ScalingList8x8[3], 64);
+      memcpy(result.scaling_list_8x8[1], sps->pScalingLists->ScalingList8x8[1], 64);
    } else {
       memset(result.scaling_list_4x4, 0x10, 6 * 16);
       memset(result.scaling_list_8x8, 0x10, 2 * 64);
