@@ -236,19 +236,17 @@ v3d_emit_logic_op_raw(struct v3d_compile *c, nir_builder *b,
                         v3d_nir_get_swizzled_channel(b, dst_chans, fmt_swz[i]);
                 op_res[i] = v3d_logicop(b, c->fs_key->logicop_func, src, dst);
 
-                /* In Vulkan we configure our integer RTs to clamp, so we need
-                 * to ignore result bits that don't fit in the destination RT
-                 * component size.
+                /* We configure our integer RTs to clamp, so we need to ignore
+                 * result bits that don't fit in the destination RT component
+                 * size.
                  */
-                if (c->key->environment == V3D_ENVIRONMENT_VULKAN) {
-                        uint32_t bits =
-                                util_format_get_component_bits(
-                                        c->fs_key->color_fmt[rt].format,
-                                        UTIL_FORMAT_COLORSPACE_RGB, i);
-                        if (bits > 0 && bits < 32) {
-                                op_res[i] = nir_iand_imm(b, op_res[i],
-                                                         (1u << bits) - 1);
-                        }
+                uint32_t bits =
+                        util_format_get_component_bits(
+                                c->fs_key->color_fmt[rt].format,
+                                UTIL_FORMAT_COLORSPACE_RGB, i);
+                if (bits > 0 && bits < 32) {
+                        op_res[i] =
+                                nir_iand_imm(b, op_res[i], (1u << bits) - 1);
                 }
         }
 
