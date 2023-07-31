@@ -68,6 +68,7 @@ gk20a-gles:
   extends:
     - .gk20a-test
   parallel: 4
+  timeout: 30m
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     DEQP_SUITE: nouveau-gk20a
@@ -86,6 +87,6 @@ gk20a-gles:
 .gm20b-gles:
   extends:
     - .gm20b-gles-full
-  timeout: 60m
+  timeout: 30m
   variables:
     DEQP_FRACTION: 10
