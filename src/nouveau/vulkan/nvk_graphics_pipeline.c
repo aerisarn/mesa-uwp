@@ -145,6 +145,7 @@ static void
 emit_pipeline_cb_state(struct nv_push *p,
                        const struct vk_color_blend_state *cb)
 {
+   bool indep_color_masks = true;
    P_IMMD(p, NV9097, SET_BLEND_STATE_PER_TARGET, ENABLE_TRUE);
 
    for (uint32_t a = 0; a < cb->attachment_count; a++) {
@@ -172,7 +173,12 @@ emit_pipeline_cb_state(struct nv_push *p,
          .b_enable = (att->write_mask & BITFIELD_BIT(2)) != 0,
          .a_enable = (att->write_mask & BITFIELD_BIT(3)) != 0,
       });
+
+      if (att->write_mask != cb->attachments[0].write_mask)
+         indep_color_masks = false;
    }
+
+   P_IMMD(p, NV9097, SET_SINGLE_CT_WRITE_CONTROL, indep_color_masks);
 }
 
 static void
