@@ -9,7 +9,8 @@
 
 #include "nouveau_context.h"
 
-#include <nouveau_drm.h>
+#include "drm-uapi/nouveau_drm.h"
+
 #include <xf86drm.h>
 
 struct push_builder {

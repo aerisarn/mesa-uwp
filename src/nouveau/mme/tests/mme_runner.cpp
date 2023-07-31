@@ -14,7 +14,7 @@
 
 /* nouveau_drm.h isn't C++-friendly */
 #define class cls
-#include <nouveau_drm.h>
+#include "drm-uapi/nouveau_drm.h"
 #undef class
 
 mme_runner::mme_runner() :
