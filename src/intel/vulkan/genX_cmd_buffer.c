@@ -311,7 +311,6 @@ add_surface_reloc(struct anv_cmd_buffer *cmd_buffer,
                   struct anv_address addr)
 {
    VkResult result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
-                                           &cmd_buffer->vk.pool->alloc,
                                            addr.bo);
 
    if (unlikely(result != VK_SUCCESS))
@@ -328,7 +327,6 @@ add_surface_state_relocs(struct anv_cmd_buffer *cmd_buffer,
    if (!anv_address_is_null(state->aux_address)) {
       VkResult result =
          anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
-                               &cmd_buffer->vk.pool->alloc,
                                state->aux_address.bo);
       if (result != VK_SUCCESS)
          anv_batch_set_error(&cmd_buffer->batch, result);
@@ -337,7 +335,6 @@ add_surface_state_relocs(struct anv_cmd_buffer *cmd_buffer,
    if (!anv_address_is_null(state->clear_address)) {
       VkResult result =
          anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
-                               &cmd_buffer->vk.pool->alloc,
                                state->clear_address.bo);
       if (result != VK_SUCCESS)
          anv_batch_set_error(&cmd_buffer->batch, result);
@@ -5607,7 +5604,6 @@ genX(cmd_buffer_ensure_cfe_state)(struct anv_cmd_buffer *cmd_buffer,
                                       MESA_SHADER_COMPUTE,
                                       total_scratch);
          anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                               cmd_buffer->batch.alloc,
                                scratch_bo);
          scratch_surf =
             anv_scratch_pool_get_surf(cmd_buffer->device,
@@ -6337,10 +6333,8 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
     * TODO(RT): This is a bit of a hack
     */
    anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                         cmd_buffer->batch.alloc,
                          rt->scratch.bo);
    anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                         cmd_buffer->batch.alloc,
                          cmd_buffer->device->btd_fifo_bo);
 
    /* Allocate and set up our RT_DISPATCH_GLOBALS */
@@ -6464,7 +6458,6 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
                                    MESA_SHADER_COMPUTE,
                                    pipeline->scratch_size);
          anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                               cmd_buffer->batch.alloc,
                                scratch_bo);
          uint32_t scratch_surf =
             anv_scratch_pool_get_surf(cmd_buffer->device,
@@ -7064,8 +7057,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
       const struct anv_address depth_address =
          anv_image_address(image, &depth_surface->memory_range);
 
-      anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                            cmd_buffer->batch.alloc, depth_address.bo);
+      anv_reloc_list_add_bo(cmd_buffer->batch.relocs, depth_address.bo);
 
       info.depth_surf = &depth_surface->isl;
       info.depth_address = anv_address_physical(depth_address);
@@ -7081,8 +7073,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
          const struct anv_address hiz_address =
             anv_image_address(image, &hiz_surface->memory_range);
 
-         anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                               cmd_buffer->batch.alloc, hiz_address.bo);
+         anv_reloc_list_add_bo(cmd_buffer->batch.relocs, hiz_address.bo);
 
          info.hiz_surf = &hiz_surface->isl;
          info.hiz_address = anv_address_physical(hiz_address);
@@ -7102,8 +7093,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
       const struct anv_address stencil_address =
          anv_image_address(image, &stencil_surface->memory_range);
 
-      anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                            cmd_buffer->batch.alloc, stencil_address.bo);
+      anv_reloc_list_add_bo(cmd_buffer->batch.relocs, stencil_address.bo);
 
       info.stencil_surf = &stencil_surface->isl;
 
@@ -7161,8 +7151,7 @@ cmd_buffer_emit_cps_control_buffer(struct anv_cmd_buffer *cmd_buffer,
    if (fsr_iview) {
       const struct anv_image_binding *binding = &fsr_iview->image->bindings[0];
 
-      anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                            cmd_buffer->batch.alloc, binding->address.bo);
+      anv_reloc_list_add_bo(cmd_buffer->batch.relocs, binding->address.bo);
 
       struct anv_address addr =
          anv_address_add(binding->address, binding->memory_range.offset);

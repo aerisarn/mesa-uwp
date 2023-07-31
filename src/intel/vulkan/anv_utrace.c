@@ -84,7 +84,7 @@ anv_utrace_delete_submit(struct u_trace_context *utctx, void *submit_data)
       anv_bo_pool_free(&device->utrace_bo_pool, submit->trace_bo);
 
    if (submit->batch_bo) {
-      anv_reloc_list_finish(&submit->relocs, &device->vk.alloc);
+      anv_reloc_list_finish(&submit->relocs);
       anv_bo_pool_free(&device->utrace_bo_pool, submit->batch_bo);
    }
 
@@ -216,7 +216,7 @@ anv_device_utrace_flush_cmd_buffers(struct anv_queue *queue,
    return VK_SUCCESS;
 
  error_batch:
-   anv_reloc_list_finish(&submit->relocs, &device->vk.alloc);
+   anv_reloc_list_finish(&submit->relocs);
  error_reloc_list:
    anv_bo_pool_free(&device->utrace_bo_pool, submit->batch_bo);
  error_batch_buf:
@@ -507,7 +507,7 @@ anv_queue_trace(struct anv_queue *queue, const char *label, bool frame, bool beg
    return;
 
  error_reloc_list:
-   anv_reloc_list_finish(&submit->relocs, &device->vk.alloc);
+   anv_reloc_list_finish(&submit->relocs);
  error_batch_bo:
    anv_bo_pool_free(&device->utrace_bo_pool, submit->batch_bo);
  error_sync:

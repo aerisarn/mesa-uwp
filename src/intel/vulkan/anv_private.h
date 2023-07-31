@@ -1434,15 +1434,14 @@ void anv_vma_free(struct anv_device *device,
 struct anv_reloc_list {
    uint32_t                                     dep_words;
    BITSET_WORD *                                deps;
+   const VkAllocationCallbacks                  *alloc;
 };
 
 VkResult anv_reloc_list_init(struct anv_reloc_list *list,
                              const VkAllocationCallbacks *alloc);
-void anv_reloc_list_finish(struct anv_reloc_list *list,
-                           const VkAllocationCallbacks *alloc);
+void anv_reloc_list_finish(struct anv_reloc_list *list);
 
 VkResult anv_reloc_list_add_bo(struct anv_reloc_list *list,
-                               const VkAllocationCallbacks *alloc,
                                struct anv_bo *target_bo);
 
 struct anv_batch_bo {
@@ -1542,7 +1541,7 @@ _anv_combine_address(struct anv_batch *batch, void *location,
       return address.offset + delta;
 
    if (batch)
-      anv_reloc_list_add_bo(batch->relocs, batch->alloc, address.bo);
+      anv_reloc_list_add_bo(batch->relocs, address.bo);
 
    return anv_address_physical(anv_address_add(address, delta));
 }
@@ -3725,8 +3724,7 @@ anv_pipeline_init(struct anv_pipeline *pipeline,
 
 void
 anv_pipeline_finish(struct anv_pipeline *pipeline,
-                    struct anv_device *device,
-                    const VkAllocationCallbacks *pAllocator);
+                    struct anv_device *device);
 
 struct anv_kernel_arg {
    bool is_ptr;

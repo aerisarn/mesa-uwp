@@ -76,8 +76,7 @@ blorp_emit_reloc(struct blorp_batch *batch,
       .bo = address.buffer,
       .offset = address.offset,
    };
-   anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
-                         cmd_buffer->batch.alloc, anv_addr.bo);
+   anv_reloc_list_add_bo(cmd_buffer->batch.relocs, anv_addr.bo);
    return anv_address_physical(anv_address_add(anv_addr, delta));
 }
 
@@ -88,7 +87,6 @@ blorp_surface_reloc(struct blorp_batch *batch, uint32_t ss_offset,
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
 
    VkResult result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
-                                           &cmd_buffer->vk.pool->alloc,
                                            address.buffer);
    if (unlikely(result != VK_SUCCESS))
       anv_batch_set_error(&cmd_buffer->batch, result);

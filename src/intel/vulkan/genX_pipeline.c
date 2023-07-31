@@ -1159,8 +1159,7 @@ get_scratch_surf(struct anv_pipeline *pipeline,
       anv_scratch_pool_alloc(pipeline->device,
                              &pipeline->device->scratch_pool,
                              stage, bin->prog_data->total_scratch);
-   anv_reloc_list_add_bo(pipeline->batch.relocs,
-                         pipeline->batch.alloc, bo);
+   anv_reloc_list_add_bo(pipeline->batch.relocs, bo);
    return anv_scratch_pool_get_surf(pipeline->device,
                                     &pipeline->device->scratch_pool,
                                     bin->prog_data->total_scratch) >> 4;

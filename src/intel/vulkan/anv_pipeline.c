@@ -306,12 +306,10 @@ anv_pipeline_init_layout(struct anv_pipeline *pipeline,
 
 void
 anv_pipeline_finish(struct anv_pipeline *pipeline,
-                    struct anv_device *device,
-                    const VkAllocationCallbacks *pAllocator)
+                    struct anv_device *device)
 {
    anv_pipeline_sets_layout_fini(&pipeline->layout);
-   anv_reloc_list_finish(&pipeline->batch_relocs,
-                         pAllocator ? pAllocator : &device->vk.alloc);
+   anv_reloc_list_finish(&pipeline->batch_relocs);
    ralloc_free(pipeline->mem_ctx);
    vk_object_base_finish(&pipeline->base);
 }
@@ -375,7 +373,7 @@ void anv_DestroyPipeline(
       unreachable("invalid pipeline type");
    }
 
-   anv_pipeline_finish(pipeline, device, pAllocator);
+   anv_pipeline_finish(pipeline, device);
    vk_free2(&device->vk.alloc, pAllocator, pipeline);
 }
 
@@ -2669,7 +2667,7 @@ anv_compute_pipeline_create(struct anv_device *device,
 
    result = anv_pipeline_compile_cs(pipeline, cache, pCreateInfo);
    if (result != VK_SUCCESS) {
-      anv_pipeline_finish(&pipeline->base, device, pAllocator);
+      anv_pipeline_finish(&pipeline->base, device);
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
    }
@@ -3004,7 +3002,7 @@ anv_graphics_lib_pipeline_create(struct anv_device *device,
                                             NULL /* sp_info */,
                                             &pipeline->all_state, NULL, 0, NULL);
    if (result != VK_SUCCESS) {
-      anv_pipeline_finish(&pipeline->base.base, device, pAllocator);
+      anv_pipeline_finish(&pipeline->base.base, device);
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
    }
@@ -3030,7 +3028,7 @@ anv_graphics_lib_pipeline_create(struct anv_device *device,
                                              cache, &pipeline_feedback,
                                              pCreateInfo, &pipeline->state);
       if (result != VK_SUCCESS) {
-         anv_pipeline_finish(&pipeline->base.base, device, pAllocator);
+         anv_pipeline_finish(&pipeline->base.base, device);
          vk_free2(&device->vk.alloc, pAllocator, pipeline);
          return result;
       }
@@ -3117,7 +3115,7 @@ anv_graphics_pipeline_create(struct anv_device *device,
                                             NULL /* sp_info */,
                                             &all, NULL, 0, NULL);
    if (result != VK_SUCCESS) {
-      anv_pipeline_finish(&pipeline->base.base, device, pAllocator);
+      anv_pipeline_finish(&pipeline->base.base, device);
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
    }
@@ -3155,7 +3153,7 @@ anv_graphics_pipeline_create(struct anv_device *device,
                                           cache, &pipeline_feedback,
                                           pCreateInfo, &state);
    if (result != VK_SUCCESS) {
-      anv_pipeline_finish(&pipeline->base.base, device, pAllocator);
+      anv_pipeline_finish(&pipeline->base.base, device);
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
    }
@@ -4008,7 +4006,7 @@ anv_ray_tracing_pipeline_create(
    result = anv_ray_tracing_pipeline_init(pipeline, device, cache,
                                           pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
-      anv_pipeline_finish(&pipeline->base, device, pAllocator);
+      anv_pipeline_finish(&pipeline->base, device);
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
    }
