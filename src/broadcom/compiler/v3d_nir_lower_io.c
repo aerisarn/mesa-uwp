@@ -90,29 +90,6 @@ v3d_nir_store_output(nir_builder *b, int base, nir_ssa_def *offset,
         nir_store_output(b, chan, offset, .base = base, .write_mask = 0x1, .component = 0);
 }
 
-/* Convert the uniform offset to bytes.  If it happens to be a constant,
- * constant-folding will clean up the shift for us.
- */
-static void
-v3d_nir_lower_uniform(struct v3d_compile *c, nir_builder *b,
-                      nir_intrinsic_instr *intr)
-{
-        /* On SPIR-V/Vulkan we are already getting our offsets in
-         * bytes.
-         */
-        if (c->key->environment == V3D_ENVIRONMENT_VULKAN)
-                return;
-
-        b->cursor = nir_before_instr(&intr->instr);
-
-        nir_intrinsic_set_base(intr, nir_intrinsic_base(intr) * 16);
-
-        nir_instr_rewrite_src(&intr->instr,
-                              &intr->src[0],
-                              nir_src_for_ssa(nir_ishl_imm(b, intr->src[0].ssa,
-                                                           4)));
-}
-
 static int
 v3d_varying_slot_vpm_offset(struct v3d_compile *c, unsigned location, unsigned component)
 {
@@ -397,10 +374,6 @@ v3d_nir_lower_io_instr(struct v3d_compile *c, nir_builder *b,
                         v3d_nir_lower_vertex_input(c, b, intr);
                 else if (c->s->info.stage == MESA_SHADER_FRAGMENT)
                         v3d_nir_lower_fragment_input(c, b, intr);
-                break;
-
-        case nir_intrinsic_load_uniform:
-                v3d_nir_lower_uniform(c, b, intr);
                 break;
 
         case nir_intrinsic_store_output:

@@ -287,6 +287,33 @@ v3d_shader_precompile(struct v3d_context *v3d,
         }
 }
 
+static bool
+lower_uniform_offset_to_bytes_cb(nir_builder *b, nir_instr *instr, void *_state)
+{
+        if (instr->type != nir_instr_type_intrinsic)
+                return false;
+
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+        if (intr->intrinsic != nir_intrinsic_load_uniform)
+                return false;
+
+        b->cursor = nir_before_instr(&intr->instr);
+        nir_intrinsic_set_base(intr, nir_intrinsic_base(intr) * 16);
+        nir_instr_rewrite_src(&intr->instr,
+                              &intr->src[0],
+                              nir_src_for_ssa(nir_ishl_imm(b, intr->src[0].ssa,
+                                                           4)));
+        return true;
+}
+
+static bool
+v3d_nir_lower_uniform_offset_to_bytes(nir_shader *s)
+{
+        return nir_shader_instructions_pass(s, lower_uniform_offset_to_bytes_cb,
+                                            nir_metadata_block_index |
+                                            nir_metadata_dominance, NULL);
+}
+
 static void *
 v3d_uncompiled_shader_create(struct pipe_context *pctx,
                              enum pipe_shader_ir type, void *ir)
@@ -338,6 +365,12 @@ v3d_uncompiled_shader_create(struct pipe_context *pctx,
         NIR_PASS(_, s, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
         NIR_PASS(_, s, nir_lower_frexp);
+
+        /* Since we can't expose PIPE_CAP_PACKED_UNIFORMS the state tracker
+         * will produce uniform intrinsics with offsets in vec4 units but
+         * our compiler expects to work in units of bytes.
+         */
+        NIR_PASS(_, s, v3d_nir_lower_uniform_offset_to_bytes);
 
         /* Garbage collect dead instructions */
         nir_sweep(s);
