@@ -19,6 +19,9 @@ struct ra_ctx {
    BITSET_WORD *visited;
    BITSET_WORD *used_regs;
 
+   /* Maintained while assigning registers */
+   unsigned *max_reg;
+
    /* For affinities */
    agx_instr **src_to_collect_phi;
 
@@ -380,6 +383,13 @@ find_best_region_to_evict(struct ra_ctx *rctx, unsigned size,
    return best_base;
 }
 
+static void
+set_ssa_to_reg(struct ra_ctx *rctx, unsigned ssa, unsigned reg)
+{
+   *(rctx->max_reg) = MAX2(*(rctx->max_reg), reg + rctx->ncomps[ssa] - 1);
+   rctx->ssa_to_reg[ssa] = reg;
+}
+
 static unsigned
 assign_regs_by_copying(struct ra_ctx *rctx, unsigned npot_count, unsigned align,
                        const agx_instr *I, struct util_dynarray *copies,
@@ -467,7 +477,7 @@ assign_regs_by_copying(struct ra_ctx *rctx, unsigned npot_count, unsigned align,
       BITSET_SET_RANGE(clobbered, new_reg, new_reg + nr - 1);
 
       /* Update bookkeeping for this variable */
-      rctx->ssa_to_reg[ssa] = new_reg;
+      set_ssa_to_reg(rctx, ssa, new_reg);
       rctx->reg_to_ssa[new_reg] = ssa;
 
       /* Skip to the next variable */
@@ -574,7 +584,7 @@ insert_copies_for_clobbered_killed(struct ra_ctx *rctx, unsigned reg,
          util_dynarray_append(copies, struct agx_copy, copy);
       }
 
-      rctx->ssa_to_reg[var] = base;
+      set_ssa_to_reg(rctx, var, base);
       rctx->reg_to_ssa[base] = var;
 
       base += var_count;
@@ -683,7 +693,7 @@ reserve_live_in(struct ra_ctx *rctx)
           */
          phi->dest[0] = phi->src[0];
          base = phi->dest[0].value;
-         rctx->ssa_to_reg[i] = base;
+         set_ssa_to_reg(rctx, i, base);
       } else {
          /* If we don't emit a phi, there is already a unique register */
          base = rctx->ssa_to_reg[i];
@@ -701,7 +711,7 @@ assign_regs(struct ra_ctx *rctx, agx_index v, unsigned reg)
 {
    assert(reg < rctx->bound && "must not overflow register file");
    assert(v.type == AGX_INDEX_NORMAL && "only SSA gets registers allocated");
-   rctx->ssa_to_reg[v.value] = reg;
+   set_ssa_to_reg(rctx, v.value, reg);
 
    assert(!BITSET_TEST(rctx->visited, v.value) && "SSA violated");
    BITSET_SET(rctx->visited, v.value);
@@ -1127,12 +1137,8 @@ agx_ra(agx_context *ctx)
          .sizes = sizes,
          .visited = visited,
          .bound = max_regs,
+         .max_reg = &ctx->max_reg,
       });
-   }
-
-   for (unsigned i = 0; i < ctx->alloc; ++i) {
-      if (ncomps[i])
-         ctx->max_reg = MAX2(ctx->max_reg, ssa_to_reg[i] + ncomps[i] - 1);
    }
 
    /* Vertex shaders preload the vertex/instance IDs (r5, r6) even if the shader
