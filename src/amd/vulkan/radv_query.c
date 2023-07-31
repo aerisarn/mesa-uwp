@@ -1995,12 +1995,6 @@ radv_CmdBeginQueryIndexedEXT(VkCommandBuffer commandBuffer, VkQueryPool queryPoo
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdBeginQuery(VkCommandBuffer commandBuffer, VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags)
-{
-   radv_CmdBeginQueryIndexedEXT(commandBuffer, queryPool, query, flags, 0);
-}
-
-VKAPI_ATTR void VKAPI_CALL
 radv_CmdEndQueryIndexedEXT(VkCommandBuffer commandBuffer, VkQueryPool queryPool, uint32_t query, uint32_t index)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -2030,12 +2024,6 @@ radv_CmdEndQueryIndexedEXT(VkCommandBuffer commandBuffer, VkQueryPool queryPool,
          emit_end_query(cmd_buffer, pool, va, avail_va, pool->type, 0);
       }
    }
-}
-
-VKAPI_ATTR void VKAPI_CALL
-radv_CmdEndQuery(VkCommandBuffer commandBuffer, VkQueryPool queryPool, uint32_t query)
-{
-   radv_CmdEndQueryIndexedEXT(commandBuffer, queryPool, query, 0);
 }
 
 VKAPI_ATTR void VKAPI_CALL
