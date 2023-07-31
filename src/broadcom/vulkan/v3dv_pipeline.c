@@ -35,6 +35,7 @@
 #include "util/u_atomic.h"
 #include "util/u_prim.h"
 #include "util/os_time.h"
+#include "util/u_helpers.h"
 
 #include "vk_nir_convert_ycbcr.h"
 #include "vk_pipeline.h"
@@ -891,6 +892,38 @@ lower_pipeline_layout_info(nir_shader *shader,
    return progress;
 }
 
+/* This flips gl_PointCoord.y to match Vulkan requirements */
+static bool
+lower_point_coord_cb(nir_builder *b, nir_instr *instr, void *_state)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_input)
+      return false;
+
+   if (nir_intrinsic_io_semantics(intr).location != VARYING_SLOT_PNTC)
+      return false;
+
+   b->cursor = nir_after_instr(&intr->instr);
+   nir_ssa_def *result = &intr->dest.ssa;
+   result =
+      nir_vector_insert_imm(b, result,
+                            nir_fsub_imm(b, 1.0, nir_channel(b, result, 1)), 1);
+   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa,
+                                  result, result->parent_instr);
+   return true;
+}
+
+static bool
+v3d_nir_lower_point_coord(nir_shader *s)
+{
+   assert(s->info.stage == MESA_SHADER_FRAGMENT);
+   return nir_shader_instructions_pass(s, lower_point_coord_cb,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance, NULL);
+}
 
 static void
 lower_fs_io(nir_shader *nir)
@@ -1896,6 +1929,11 @@ pipeline_compile_fragment_shader(struct v3dv_pipeline *pipeline,
    pipeline_populate_v3d_fs_key(&key, pCreateInfo, p_stage_fs,
                                 p_stage_gs != NULL,
                                 get_ucp_enable_mask(p_stage_vs));
+
+   if (key.is_points) {
+      assert(key.point_coord_upper_left);
+      NIR_PASS(_, p_stage_fs->nir, v3d_nir_lower_point_coord);
+   }
 
    VkResult vk_result;
    pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT] =
