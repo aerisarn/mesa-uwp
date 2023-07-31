@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include <nouveau_drm.h>
+#include "drm-uapi/nouveau_drm.h"
 #include "nouveau/nvif/ioctl.h"
 #include "nouveau/nvif/cl0080.h"
 #include "drm-shim/drm_shim.h"
