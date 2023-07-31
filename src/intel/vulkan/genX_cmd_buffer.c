@@ -2997,7 +2997,7 @@ genX(emit_hs)(struct anv_cmd_buffer *cmd_buffer)
    uint32_t *dw =
       anv_batch_emitn(&cmd_buffer->batch, GENX(3DSTATE_HS_length),
                          GENX(3DSTATE_HS));
-   memcpy(dw, &pipeline->gfx8.hs, sizeof(pipeline->gfx8.hs));
+   memcpy(dw, &pipeline->final.hs, sizeof(pipeline->final.hs));
 }
 
 ALWAYS_INLINE static void
@@ -3025,7 +3025,7 @@ genX(emit_ds)(struct anv_cmd_buffer *cmd_buffer)
    uint32_t *dw =
       anv_batch_emitn(&cmd_buffer->batch, GENX(3DSTATE_DS_length),
                          GENX(3DSTATE_DS));
-   memcpy(dw, &pipeline->gfx8.ds, sizeof(pipeline->gfx8.ds));
+   memcpy(dw, &pipeline->final.ds, sizeof(pipeline->final.ds));
 #endif
 }
 

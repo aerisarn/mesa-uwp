@@ -746,8 +746,8 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 
    raster.ScissorRectangleEnable = true;
 
-   GENX(3DSTATE_SF_pack)(NULL, pipeline->gfx8.sf, &sf);
-   GENX(3DSTATE_RASTER_pack)(NULL, pipeline->gfx8.raster, &raster);
+   GENX(3DSTATE_SF_pack)(NULL, pipeline->partial.sf, &sf);
+   GENX(3DSTATE_RASTER_pack)(NULL, pipeline->partial.raster, &raster);
 }
 
 static void
@@ -890,7 +890,7 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
    clip.NonPerspectiveBarycentricEnable = wm_prog_data ?
       wm_prog_data->uses_nonperspective_interp_modes : 0;
 
-   GENX(3DSTATE_CLIP_pack)(NULL, pipeline->gfx8.clip, &clip);
+   GENX(3DSTATE_CLIP_pack)(NULL, pipeline->partial.clip, &clip);
 
 #if GFX_VERx10 >= 125
    if (anv_pipeline_is_mesh(pipeline)) {
@@ -1073,7 +1073,7 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
       so.Stream3VertexReadLength = urb_entry_read_length - 1;
    }
 
-   GENX(3DSTATE_STREAMOUT_pack)(NULL, pipeline->gfx8.streamout_state, &so);
+   GENX(3DSTATE_STREAMOUT_pack)(NULL, pipeline->partial.streamout_state, &so);
 }
 
 static uint32_t
@@ -1277,8 +1277,8 @@ emit_3dstate_hs_ds(struct anv_graphics_pipeline *pipeline,
    hs.DispatchMode = tcs_prog_data->base.dispatch_mode;
    hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
 
-   STATIC_ASSERT(ARRAY_SIZE(pipeline->gfx8.hs) == GENX(3DSTATE_HS_length));
-   GENX(3DSTATE_HS_pack)(&pipeline->base.base.batch, pipeline->gfx8.hs, &hs);
+   STATIC_ASSERT(ARRAY_SIZE(pipeline->final.hs) == GENX(3DSTATE_HS_length));
+   GENX(3DSTATE_HS_pack)(&pipeline->base.base.batch, pipeline->final.hs, &hs);
 
    struct GENX(3DSTATE_DS) ds = {
       GENX(3DSTATE_DS_header),
@@ -1332,12 +1332,12 @@ emit_3dstate_hs_ds(struct anv_graphics_pipeline *pipeline,
     * We need to both emit 3DSTATE_DS now, and before each 3DPRIMITIVE, so
     * we pack it to have it later, and memcpy into the current batch.
     */
-   STATIC_ASSERT(ARRAY_SIZE(pipeline->gfx8.ds) == GENX(3DSTATE_DS_length));
-   GENX(3DSTATE_DS_pack)(&pipeline->base.base.batch, pipeline->gfx8.ds, &ds);
+   STATIC_ASSERT(ARRAY_SIZE(pipeline->final.ds) == GENX(3DSTATE_DS_length));
+   GENX(3DSTATE_DS_pack)(&pipeline->base.base.batch, pipeline->final.ds, &ds);
 
    uint32_t *dw =
       anv_batch_emitn(batch, GENX(3DSTATE_DS_length), GENX(3DSTATE_DS));
-   memcpy(dw, &pipeline->gfx8.ds, sizeof(pipeline->gfx8.ds));
+   memcpy(dw, &pipeline->final.ds, sizeof(pipeline->final.ds));
 }
 
 static void
@@ -1400,7 +1400,7 @@ emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
 #endif
    }
 
-   GENX(3DSTATE_GS_pack)(&pipeline->base.base.batch, pipeline->gfx8.gs, &gs);
+   GENX(3DSTATE_GS_pack)(&pipeline->base.base.batch, pipeline->partial.gs, &gs);
 }
 
 static bool
@@ -1462,7 +1462,7 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
                                         pipeline->fs_msaa_flags);
    }
 
-   GENX(3DSTATE_WM_pack)(NULL, pipeline->gfx8.wm, &wm);
+   GENX(3DSTATE_WM_pack)(NULL, pipeline->partial.wm, &wm);
 }
 
 static void

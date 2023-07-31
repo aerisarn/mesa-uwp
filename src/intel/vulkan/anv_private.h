@@ -3572,6 +3572,12 @@ struct anv_graphics_pipeline {
     */
    uint32_t                                     batch_data[416];
 
+   /* Fully backed instructions, ready to be emitted in the anv_cmd_buffer */
+   struct {
+      uint32_t                                  hs[9];
+      uint32_t                                  ds[11];
+   } final;
+
    /* Pre packed CS instructions & structures that need to be merged later
     * with dynamic state.
     */
@@ -3581,10 +3587,8 @@ struct anv_graphics_pipeline {
       uint32_t                                  raster[5];
       uint32_t                                  wm[2];
       uint32_t                                  streamout_state[5];
-      uint32_t                                  hs[9];
-      uint32_t                                  ds[11];
       uint32_t                                  gs[10];
-   } gfx8;
+   } partial;
 };
 
 struct anv_compute_pipeline {

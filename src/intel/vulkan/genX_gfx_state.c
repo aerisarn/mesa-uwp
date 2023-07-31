@@ -294,7 +294,7 @@ genX(emit_gs)(struct anv_cmd_buffer *cmd_buffer)
    const struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
    anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_GS),
-                        pipeline->gfx8.gs, gs) {
+                        pipeline->partial.gs, gs) {
       switch (dyn->rs.provoking_vertex) {
       case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
          gs.ReorderMode = LEADING;
@@ -506,7 +506,7 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
       return;
 
    anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_CLIP),
-                        pipeline->gfx8.clip, clip) {
+                        pipeline->partial.clip, clip) {
       /* Take dynamic primitive topology in to account with
        *    3DSTATE_CLIP::ViewportXYClipTestEnable
        */
@@ -575,7 +575,7 @@ cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
    genX(streamout_prologue)(cmd_buffer);
 
    anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_STREAMOUT),
-                        pipeline->gfx8.streamout_state, so) {
+                        pipeline->partial.streamout_state, so) {
       so.RenderingDisable = dyn->rs.rasterizer_discard_enable;
       so.RenderStreamSelect = dyn->rs.rasterization_stream;
 #if INTEL_NEEDS_WA_18022508906
@@ -939,7 +939,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS)) {
       anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_SF),
-                           pipeline->gfx8.sf, sf) {
+                           pipeline->partial.sf, sf) {
          ANV_SETUP_PROVOKING_VERTEX(sf, dyn->rs.provoking_vertex);
 
          sf.LineWidth = dyn->rs.line.width;
@@ -1021,7 +1021,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          vk_rasterization_state_depth_clip_enable(&dyn->rs);
 
       anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_RASTER),
-                           pipeline->gfx8.raster, raster) {
+                           pipeline->partial.raster, raster) {
          raster.APIMode = api_mode;
          raster.DXMultisampleRasterizationEnable   = msaa_raster_enable;
          raster.AntialiasingEnable                 = aa_enable;
@@ -1205,7 +1205,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        * threads.
        */
       anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_WM),
-                           pipeline->gfx8.wm, wm) {
+                           pipeline->partial.wm, wm) {
          wm.ForceThreadDispatchEnable = anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
                                         (pipeline->force_fragment_thread_dispatch ||
                                         anv_cmd_buffer_all_color_write_masked(cmd_buffer)) ?
