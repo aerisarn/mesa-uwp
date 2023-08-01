@@ -734,8 +734,8 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
       if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
          /* Always reserve space for these. */
          info->patch_outputs_written |=
-            (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER)) |
-            (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER));
+            (1ull << ac_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER)) |
+            (1ull << ac_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER));
       }
       for (unsigned i = 0; i < info->num_outputs; i++) {
          unsigned semantic = info->output_semantic[i];
@@ -743,7 +743,7 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
          if (semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
              semantic == VARYING_SLOT_TESS_LEVEL_OUTER ||
              (semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_TESS_MAX)) {
-            info->patch_outputs_written |= 1ull << si_shader_io_get_unique_index_patch(semantic);
+            info->patch_outputs_written |= 1ull << ac_shader_io_get_unique_index_patch(semantic);
          } else if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
                     semantic != VARYING_SLOT_EDGE) {
             info->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic);

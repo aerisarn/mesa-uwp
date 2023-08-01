@@ -60,27 +60,6 @@ bool si_is_merged_shader(struct si_shader *shader)
 }
 
 /**
- * Returns a unique index for a per-patch semantic name and index. The index
- * must be less than 32, so that a 32-bit bitmask of used inputs or outputs
- * can be calculated.
- */
-unsigned si_shader_io_get_unique_index_patch(unsigned semantic)
-{
-   switch (semantic) {
-   case VARYING_SLOT_TESS_LEVEL_OUTER:
-      return 0;
-   case VARYING_SLOT_TESS_LEVEL_INNER:
-      return 1;
-   default:
-      if (semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_PATCH0 + 30)
-         return 2 + (semantic - VARYING_SLOT_PATCH0);
-
-      assert(!"invalid semantic");
-      return 0;
-   }
-}
-
-/**
  * Returns a unique index for a semantic name and index. The index must be
  * less than 64, so that a 64-bit bitmask of used inputs or outputs can be
  * calculated.
@@ -1663,7 +1642,7 @@ static unsigned si_map_io_driver_location(unsigned semantic)
    if ((semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_TESS_MAX) ||
        semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
        semantic == VARYING_SLOT_TESS_LEVEL_OUTER)
-      return si_shader_io_get_unique_index_patch(semantic);
+      return ac_shader_io_get_unique_index_patch(semantic);
 
    return si_shader_io_get_unique_index(semantic);
 }

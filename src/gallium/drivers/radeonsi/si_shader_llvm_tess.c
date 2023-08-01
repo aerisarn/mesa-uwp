@@ -294,8 +294,8 @@ static void si_write_tess_factors(struct si_shader_context *ctx, union si_shader
       /* Load tess_inner and tess_outer from LDS.
        * Any invocation can write them, so we can't get them from a temporary.
        */
-      tess_inner_index = si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER);
-      tess_outer_index = si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER);
+      tess_inner_index = ac_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER);
+      tess_outer_index = ac_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER);
 
       lds_base = tcs_out_current_patch_data_offset;
       lds_inner = LLVMBuildAdd(ctx->ac.builder, lds_base,
@@ -368,7 +368,7 @@ static void si_write_tess_factors(struct si_shader_context *ctx, union si_shader
       buf = get_tess_ring_descriptor(ctx, TESS_OFFCHIP_RING);
       base = ac_get_arg(&ctx->ac, ctx->args->ac.tess_offchip_offset);
 
-      param_outer = si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER);
+      param_outer = ac_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER);
       tf_outer_offset = get_tcs_tes_buffer_address(ctx, rel_patch_id, NULL,
                                                    LLVMConstInt(ctx->ac.i32, param_outer, 0));
 
@@ -377,7 +377,7 @@ static void si_write_tess_factors(struct si_shader_context *ctx, union si_shader
       ac_build_buffer_store_dword(&ctx->ac, buf, outer_vec, NULL, tf_outer_offset,
                                   base, ACCESS_COHERENT);
       if (inner_comps) {
-         param_inner = si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER);
+         param_inner = ac_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER);
          tf_inner_offset = get_tcs_tes_buffer_address(ctx, rel_patch_id, NULL,
                                                       LLVMConstInt(ctx->ac.i32, param_inner, 0));
 
