@@ -122,9 +122,7 @@ typedef struct merge_set {
    struct exec_list nodes;
    unsigned size;
    bool divergent;
-   union {
-      nir_ssa_def *decl;
-   } reg;
+   nir_ssa_def *reg_decl;
 } merge_set;
 
 #if 0
@@ -597,12 +595,12 @@ reg_for_ssa_def(nir_ssa_def *def, struct from_ssa_state *state)
        * the things in the merge set should be the same so it doesn't
        * matter which node's definition we use.
        */
-      if (node->set->reg.decl == NULL) {
-         node->set->reg.decl = decl_reg_for_ssa_def(&state->builder, def);
-         set_reg_divergent(node->set->reg.decl, node->set->divergent);
+      if (node->set->reg_decl == NULL) {
+         node->set->reg_decl = decl_reg_for_ssa_def(&state->builder, def);
+         set_reg_divergent(node->set->reg_decl, node->set->divergent);
       }
 
-      return node->set->reg.decl;
+      return node->set->reg_decl;
    } else {
       assert(state->phi_webs_only);
       return NULL;
