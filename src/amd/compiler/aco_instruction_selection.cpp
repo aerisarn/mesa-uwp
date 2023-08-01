@@ -1367,10 +1367,6 @@ usub32_sat(Builder& bld, Definition dst, Temp src0, Temp src1)
 void
 visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
 {
-   if (!instr->dest.dest.is_ssa) {
-      isel_err(&instr->instr, "nir alu dst not in ssa");
-      abort();
-   }
    Builder bld(ctx->program, ctx->block);
    bld.is_precise = instr->exact;
    Temp dst = get_ssa_temp(ctx, &instr->dest.dest.ssa);
