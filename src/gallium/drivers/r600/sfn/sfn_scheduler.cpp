@@ -357,7 +357,8 @@ BlockScheduler::schedule_block(Block& in_block,
          sfn_log << SfnLog::schedule << "  MEM_OPS:" << mem_ring_writes_ready.size()
                  << "\n";
 
-      if (!m_current_block->lds_group_active()) {
+      if (!m_current_block->lds_group_active() &&
+          m_current_block->expected_ar_uses() == 0) {
          if (last_shed != sched_free && memops_ready.size() > 8)
             current_shed = sched_free;
          else if (mem_ring_writes_ready.size() > 15)
