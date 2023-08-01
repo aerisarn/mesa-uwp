@@ -3790,7 +3790,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          else
             res = bld.vop3(aco_opcode::v_lshlrev_b16_e64, bld.def(v2b), src1, Operand::c32(1));
 
-         res = bld.vop2(aco_opcode::v_and_b32, bld.def(v2b), src0, src1);
+         res = bld.vop2(aco_opcode::v_and_b32, bld.def(v2b), src0, res);
       } else if (instr->src[0].src.ssa->bit_size == 32) {
          res = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), src0, src1, Operand::c32(1));
       } else if (instr->src[0].src.ssa->bit_size == 64) {
