@@ -1176,7 +1176,6 @@ nir_is_sequential_comp_swizzle(uint8_t *swiz, unsigned nr_comp)
 }
 
 void nir_src_copy(nir_src *dest, const nir_src *src, nir_instr *instr);
-void nir_dest_copy(nir_dest *dest, const nir_dest *src, nir_instr *instr);
 
 typedef struct {
    /** Base source */
@@ -1557,8 +1556,6 @@ typedef struct nir_alu_instr {
 
 void nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src,
                       nir_alu_instr *instr);
-void nir_alu_dest_copy(nir_alu_dest *dest, const nir_alu_dest *src,
-                       nir_alu_instr *instr);
 
 bool nir_alu_instr_is_copy(nir_alu_instr *instr);
 
@@ -4521,8 +4518,6 @@ void nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src);
 void nir_instr_move_src(nir_instr *dest_instr, nir_src *dest, nir_src *src);
 
 void nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src);
-void nir_instr_rewrite_dest(nir_instr *instr, nir_dest *dest,
-                            nir_dest new_dest);
 
 void nir_ssa_dest_init(nir_instr *instr, nir_dest *dest,
                        unsigned num_components, unsigned bit_size);
