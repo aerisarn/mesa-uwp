@@ -497,7 +497,7 @@ get_fp_key(struct analysis_query *q)
    struct fp_query *fp_q = (struct fp_query *)q;
    const nir_src *src = &fp_q->instr->src[fp_q->src].src;
 
-   if (!src->is_ssa || src->ssa->parent_instr->type != nir_instr_type_alu)
+   if (src->ssa->parent_instr->type != nir_instr_type_alu)
       return 0;
 
    uintptr_t type_encoding;
