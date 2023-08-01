@@ -185,7 +185,6 @@ dst_reg_for_nir_reg(vec4_visitor *v, nir_ssa_def *handle,
 dst_reg
 vec4_visitor::get_nir_dest(const nir_dest &dest)
 {
-   assert(dest.is_ssa);
    nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.ssa);
    if (!store_reg) {
       dst_reg dst =
@@ -223,7 +222,6 @@ src_reg
 vec4_visitor::get_nir_src(const nir_src &src, enum brw_reg_type type,
                           unsigned num_components)
 {
-   assert(src.is_ssa);
    nir_intrinsic_instr *load_reg = nir_load_reg_for_def(src.ssa);
 
    dst_reg reg;

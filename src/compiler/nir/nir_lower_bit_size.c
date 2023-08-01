@@ -219,13 +219,11 @@ static void
 lower_phi_instr(nir_builder *b, nir_phi_instr *phi, unsigned bit_size,
                 nir_phi_instr *last_phi)
 {
-   assert(phi->dest.is_ssa);
    unsigned old_bit_size = phi->dest.ssa.bit_size;
    assert(old_bit_size < bit_size);
 
    nir_foreach_phi_src(src, phi) {
       b->cursor = nir_after_block_before_jump(src->pred);
-      assert(src->src.is_ssa);
       nir_ssa_def *new_src = nir_u2uN(b, src->src.ssa, bit_size);
 
       nir_instr_rewrite_src(&phi->instr, &src->src, nir_src_for_ssa(new_src));
@@ -347,7 +345,6 @@ lower_64bit_phi_instr(nir_builder *b, nir_instr *instr, UNUSED void *cb_data)
       return false;
 
    nir_phi_instr *phi = nir_instr_as_phi(instr);
-   assert(phi->dest.is_ssa);
 
    if (phi->dest.ssa.bit_size <= 32)
       return false;

@@ -408,7 +408,6 @@ make_src_noconst(struct ir2_context *ctx, nir_src src)
    struct ir2_instr *instr;
 
    if (nir_src_as_const_value(src)) {
-      assert(src.is_ssa);
       instr = instr_create_alu(ctx, nir_op_mov, src.ssa->num_components);
       instr->src[0] = make_src(ctx, src);
       return ir2_src(instr->idx, 0, IR2_SRC_SSA);

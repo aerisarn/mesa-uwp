@@ -256,7 +256,6 @@ Converter::isResultSigned(nir_op op)
 DataType
 Converter::getDType(nir_alu_instr *insn)
 {
-   assert(insn->dest.dest.is_ssa);
    return getDType(insn->op, insn->dest.dest.ssa.bit_size);
 }
 
@@ -281,7 +280,6 @@ Converter::getDType(nir_intrinsic_instr *insn)
       break;
    }
 
-   assert(insn->dest.is_ssa);
    return typeOfSize(insn->dest.ssa.bit_size / 8, isFloat, isSigned);
 }
 
@@ -319,7 +317,6 @@ Converter::getSTypes(nir_alu_instr *insn)
 DataType
 Converter::getSType(nir_src &src, bool isFloat, bool isSigned)
 {
-   assert(src.is_ssa);
    const uint8_t bitSize = src.ssa->bit_size;
 
    DataType ty = typeOfSize(bitSize / 8, isFloat, isSigned);

@@ -131,7 +131,6 @@ combine_stores(struct combine_stores_state *state,
       nir_intrinsic_instr *store = combo->stores[i];
       if (combo->write_mask & (1 << i)) {
          assert(store);
-         assert(store->src[1].is_ssa);
 
          /* If store->num_components == 1 then we are in the deref-of-vec case
           * and store->src[1] is a scalar.  Otherwise, we're a regular vector

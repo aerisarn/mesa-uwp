@@ -234,7 +234,6 @@ static void
 nir_schedule_load_reg_deps(nir_intrinsic_instr *load,
                            nir_deps_state *state)
 {
-   assert(load->src[0].is_ssa);
    nir_ssa_def *reg = load->src[0].ssa;
    (void)nir_reg_get_decl(reg);
 
@@ -253,7 +252,6 @@ static void
 nir_schedule_store_reg_deps(nir_intrinsic_instr *store,
                             nir_deps_state *state)
 {
-   assert(store->src[1].is_ssa);
    nir_ssa_def *reg = store->src[1].ssa;
    (void)nir_reg_get_decl(reg);
 
@@ -554,7 +552,6 @@ nir_schedule_regs_freed_load_reg(nir_intrinsic_instr *load,
                                  nir_schedule_regs_freed_state *state)
 {
    assert(nir_is_load_reg(load));
-   assert(load->src[0].is_ssa);
 
    if (load->intrinsic == nir_intrinsic_load_reg_indirect)
       nir_schedule_regs_freed_src_cb(&load->src[1], state);
@@ -568,7 +565,6 @@ nir_schedule_regs_freed_load_reg(nir_intrinsic_instr *load,
       state->regs_freed += nir_schedule_reg_pressure(reg);
    }
 
-   assert(load->dest.is_ssa);
    nir_schedule_regs_freed_def_cb(&load->dest.ssa, state);
 }
 
@@ -950,7 +946,6 @@ nir_schedule_mark_load_reg_scheduled(nir_intrinsic_instr *load,
                                      nir_schedule_scoreboard *scoreboard)
 {
    assert(nir_is_load_reg(load));
-   assert(load->src[0].is_ssa);
    nir_ssa_def *reg = load->src[0].ssa;
 
    if (load->intrinsic == nir_intrinsic_load_reg_indirect)
@@ -959,7 +954,6 @@ nir_schedule_mark_load_reg_scheduled(nir_intrinsic_instr *load,
    nir_schedule_mark_use(scoreboard, reg, &load->instr,
                          nir_schedule_reg_pressure(reg));
 
-   assert(load->dest.is_ssa);
    nir_schedule_mark_def_scheduled(&load->dest.ssa, scoreboard);
 }
 

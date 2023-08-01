@@ -2341,7 +2341,6 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
       break;
    }
    if (result[0]) {
-      assert(instr->dest.is_ssa);
       assign_ssa_dest(bld_base, &instr->dest.ssa, result);
    }
 }
@@ -2388,7 +2387,6 @@ visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
    params.resource = resource;
 
    bld_base->tex_size(bld_base, &params);
-   assert(instr->dest.is_ssa);
    assign_ssa_dest(bld_base, &instr->dest.ssa,
                    &sizes_out[instr->op == nir_texop_query_levels ? 3 : 0]);
 }
@@ -2699,7 +2697,6 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
       }
    }
 
-   assert(instr->dest.is_ssa);
    assign_ssa_dest(bld_base, &instr->dest.ssa, texel);
 }
 

@@ -30,7 +30,6 @@ insert_store(nir_builder *b, nir_ssa_def *reg, nir_alu_instr *vec,
              unsigned start_idx)
 {
    assert(start_idx < nir_op_infos[vec->op].num_inputs);
-   assert(vec->src[start_idx].src.is_ssa);
    nir_ssa_def *src = vec->src[start_idx].src.ssa;
 
    unsigned num_components = nir_dest_num_components(vec->dest.dest);
@@ -74,7 +73,6 @@ try_coalesce(nir_builder *b, nir_ssa_def *reg, nir_alu_instr *vec,
              unsigned start_idx, struct data *data)
 {
    assert(start_idx < nir_op_infos[vec->op].num_inputs);
-   assert(vec->src[start_idx].src.is_ssa);
 
    /* If we are going to do a reswizzle, then the vecN operation must be the
     * only use of the source value.
@@ -201,7 +199,6 @@ lower(nir_builder *b, nir_instr *instr, void *data_)
    if (vec->op == nir_op_mov || !nir_op_is_vec(vec->op))
       return false;
 
-   assert(vec->dest.dest.is_ssa);
    unsigned num_components = nir_dest_num_components(vec->dest.dest);
 
    /* Special case: if all sources are the same, just swizzle instead to avoid
@@ -237,7 +234,6 @@ lower(nir_builder *b, nir_instr *instr, void *data_)
       unsigned swiz[NIR_MAX_VEC_COMPONENTS] = {0};
 
       for (unsigned i = 0; i < num_components; ++i) {
-         assert(vec->src[i].src.is_ssa);
          swiz[i] = vec->src[i].swizzle[0];
       }
 

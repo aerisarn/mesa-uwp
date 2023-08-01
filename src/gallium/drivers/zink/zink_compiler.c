@@ -433,7 +433,6 @@ replicate_derefs(nir_builder *b, nir_deref_instr *old, nir_deref_instr *new)
    case nir_deref_type_var:
       return new;
    case nir_deref_type_array:
-      assert(old->arr.index.is_ssa);
       return nir_build_deref_array(b, replicate_derefs(b, parent, new), old->arr.index.ssa);
    case nir_deref_type_struct:
       return nir_build_deref_struct(b, replicate_derefs(b, parent, new), old->strct.index);
@@ -458,7 +457,6 @@ lower_pv_mode_gs_store(nir_builder *b,
       gl_varying_slot location = var->data.location;
       unsigned location_frac = var->data.location_frac;
       assert(state->varyings[location][location_frac]);
-      assert(intrin->src[1].is_ssa);
       nir_ssa_def *pos_counter = nir_load_var(b, state->pos_counter);
       nir_ssa_def *index = lower_pv_mode_gs_ring_index(b, state, pos_counter);
       nir_deref_instr *varying_deref = nir_build_deref_var(b, state->varyings[location][location_frac]);
@@ -889,7 +887,6 @@ lower_line_smooth_gs_store(nir_builder *b,
       unsigned location_frac = var->data.location_frac;
       if (location != VARYING_SLOT_POS) {
          assert(state->varyings[location]);
-         assert(intrin->src[1].is_ssa);
          nir_store_var(b, state->varyings[location][location_frac],
                        intrin->src[1].ssa,
                        nir_intrinsic_write_mask(intrin));
@@ -1713,7 +1710,6 @@ lower_txf_lod_robustness_instr(nir_builder *b, nir_instr *in, void *data)
    if (nir_src_is_const(lod_src) && nir_src_as_const_value(lod_src)->u32 == 0)
       return false;
 
-   assert(lod_src.is_ssa);
    nir_ssa_def *lod = lod_src.ssa;
 
    int offset_idx = nir_tex_instr_src_index(txf, nir_tex_src_texture_offset);

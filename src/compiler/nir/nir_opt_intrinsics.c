@@ -45,9 +45,6 @@ src_is_single_use_shuffle(nir_src src, nir_ssa_def **data, nir_ssa_def **index)
    if (nir_ssa_def_used_by_if(&shuffle->dest.ssa))
       return false;
 
-   assert(shuffle->src[0].is_ssa);
-   assert(shuffle->src[1].is_ssa);
-
    *data = shuffle->src[0].ssa;
    *index = shuffle->src[1].ssa;
 

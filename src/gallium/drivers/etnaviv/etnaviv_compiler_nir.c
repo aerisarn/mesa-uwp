@@ -611,7 +611,6 @@ emit_intrinsic(struct etna_compile *c, nir_intrinsic_instr * intr)
    } break;
    case nir_intrinsic_load_front_face:
    case nir_intrinsic_load_frag_coord:
-      assert(intr->dest.is_ssa); /* TODO - lower phis could cause this */
       break;
    case nir_intrinsic_load_input:
    case nir_intrinsic_load_instance_id:

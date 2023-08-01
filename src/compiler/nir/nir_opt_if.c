@@ -1190,7 +1190,6 @@ clone_alu_and_replace_src_defs(nir_builder *b, const nir_alu_instr *alu,
    nalu->dest.write_mask = alu->dest.write_mask;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-      assert(alu->src[i].src.is_ssa);
       nalu->src[i].src = nir_src_for_ssa(src_defs[i]);
       nalu->src[i].negate = alu->src[i].negate;
       nalu->src[i].abs = alu->src[i].abs;
@@ -1336,7 +1335,6 @@ opt_if_evaluate_condition_use(nir_builder *b, nir_if *nif)
    bool progress = false;
 
    /* Evaluate any uses of the if condition inside the if branches */
-   assert(nif->condition.is_ssa);
    nir_foreach_use_including_if_safe(use_src, nif->condition.ssa) {
       if (!(use_src->is_if && use_src->parent_if == nif))
          progress |= evaluate_condition_use(b, nif, use_src);

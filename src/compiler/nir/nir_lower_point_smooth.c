@@ -59,7 +59,6 @@ lower_point_smooth(nir_builder *b, nir_instr *instr, UNUSED void *_state)
       out_src_idx = 1;
    }
 
-   assert(intr->src[out_src_idx].is_ssa);
    assert(intr->num_components == 4);
 
    b->cursor = nir_before_instr(&intr->instr);

@@ -178,7 +178,6 @@ static bool ppir_emit_alu(ppir_block *block, nir_instr *ni)
       /* Add parent node as a the folded dest ssa node to keep
        * the dependency chain */
       nir_alu_src *ns = &instr->src[0];
-      assert(ns->src.is_ssa);
       ppir_node *parent = block->comp->var_nodes[ns->src.ssa->index];
       assert(parent);
       block->comp->var_nodes[dst->ssa.index] = parent;
@@ -321,7 +320,6 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
    case nir_intrinsic_load_frag_coord:
    case nir_intrinsic_load_point_coord:
    case nir_intrinsic_load_front_face: {
-      assert(instr->dest.is_ssa);
       mask = u_bit_consecutive(0, instr->num_components);
 
       ppir_op op;

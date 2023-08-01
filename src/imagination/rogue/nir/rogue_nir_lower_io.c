@@ -59,7 +59,6 @@ static void lower_load_global_constant_to_scalar(nir_builder *b,
    /* Scalarize the load_global_constant. */
    b->cursor = nir_before_instr(&intr->instr);
 
-   assert(intr->dest.is_ssa);
    assert(intr->num_components > 1);
 
    nir_ssa_def *loads[NIR_MAX_VEC_COMPONENTS];

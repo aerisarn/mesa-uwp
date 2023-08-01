@@ -767,21 +767,16 @@ nir_instr_get_dest_ssa_def(nir_instr *instr)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
-      assert(nir_instr_as_alu(instr)->dest.dest.is_ssa);
       return &nir_instr_as_alu(instr)->dest.dest.ssa;
    case nir_instr_type_deref:
-      assert(nir_instr_as_deref(instr)->dest.is_ssa);
       return &nir_instr_as_deref(instr)->dest.ssa;
    case nir_instr_type_load_const:
       return &nir_instr_as_load_const(instr)->def;
    case nir_instr_type_phi:
-      assert(nir_instr_as_phi(instr)->dest.is_ssa);
       return &nir_instr_as_phi(instr)->dest.ssa;
    case nir_instr_type_intrinsic:
-      assert(nir_instr_as_intrinsic(instr)->dest.is_ssa);
       return &nir_instr_as_intrinsic(instr)->dest.ssa;
    case nir_instr_type_tex:
-      assert(nir_instr_as_tex(instr)->dest.is_ssa);
       return &nir_instr_as_tex(instr)->dest.ssa;
    default:
       unreachable("We never ask for any of these");

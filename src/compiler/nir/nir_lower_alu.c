@@ -49,8 +49,6 @@ lower_alu_instr(nir_builder *b, nir_instr *instr_, UNUSED void *cb_data)
 
    nir_ssa_def *lowered = NULL;
 
-   assert(instr->dest.dest.is_ssa);
-
    b->cursor = nir_before_instr(&instr->instr);
    b->exact = instr->exact;
 

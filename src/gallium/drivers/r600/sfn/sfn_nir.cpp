@@ -407,7 +407,6 @@ r600_lower_deref_instr(nir_builder *b, nir_instr *instr_, UNUSED void *cb_data)
    for (nir_deref_instr *d = deref; d->deref_type != nir_deref_type_var;
         d = nir_deref_instr_parent(d)) {
       assert(d->deref_type == nir_deref_type_array);
-      assert(d->arr.index.is_ssa);
 
       unsigned array_stride = 1;
       if (glsl_type_is_array(d->type))

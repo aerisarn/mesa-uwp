@@ -182,7 +182,6 @@ v3d_nir_lower_image_load(nir_builder *b, nir_intrinsic_instr *instr)
 
         b->cursor = nir_after_instr(&instr->instr);
 
-        assert(instr->dest.is_ssa);
         nir_ssa_def *result = &instr->dest.ssa;
         if (util_format_is_pure_uint(format)) {
                 result = nir_format_unpack_uint(b, result, bits16, 4);

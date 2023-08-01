@@ -99,7 +99,6 @@ bi_lower_divergent_indirects_impl(nir_builder *b, nir_instr *instr, void *data)
       nir_pop_if(b, NULL);
 
       if (has_dest) {
-         assert(c_intr->dest.is_ssa);
          nir_ssa_def *c_ssa = &c_intr->dest.ssa;
          res = nir_if_phi(b, c_ssa, res);
       }

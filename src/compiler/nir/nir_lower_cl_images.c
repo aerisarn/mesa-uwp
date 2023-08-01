@@ -215,7 +215,6 @@ nir_lower_cl_images(nir_shader *shader, bool lower_image_derefs, bool lower_samp
                                            NIR_SRC_INIT);
                      continue;
                   } else {
-                     assert(tex->src[i].src.is_ssa);
                      b.cursor = nir_before_instr(&tex->instr);
                      /* Back-ends expect a 32-bit thing, not 64-bit */
                      nir_ssa_def *offset = nir_u2u32(&b, tex->src[i].src.ssa);
@@ -254,7 +253,6 @@ nir_lower_cl_images(nir_shader *shader, bool lower_image_derefs, bool lower_samp
                if (!lower_image_derefs)
                   break;
 
-               assert(intrin->src[0].is_ssa);
                b.cursor = nir_before_instr(&intrin->instr);
                /* Back-ends expect a 32-bit thing, not 64-bit */
                nir_ssa_def *offset = nir_u2u32(&b, intrin->src[0].ssa);

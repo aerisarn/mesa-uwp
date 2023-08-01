@@ -48,7 +48,6 @@ are_all_uses_fadd(nir_ssa_def *def)
       case nir_op_mov:
       case nir_op_fneg:
       case nir_op_fabs:
-         assert(use_alu->dest.dest.is_ssa);
          if (!are_all_uses_fadd(&use_alu->dest.dest.ssa))
             return false;
          break;
@@ -167,7 +166,6 @@ brw_nir_opt_peephole_ffma_instr(nir_builder *b,
    if (add->op != nir_op_fadd)
       return false;
 
-   assert(add->dest.dest.is_ssa);
    if (add->exact)
       return false;
 
@@ -236,8 +234,6 @@ brw_nir_opt_peephole_ffma_instr(nir_builder *b,
          ffma->src[i].swizzle[j] = mul->src[i].swizzle[swizzle[j]];
    }
    nir_alu_src_copy(&ffma->src[2], &add->src[1 - add_mul_src], ffma);
-
-   assert(add->dest.dest.is_ssa);
 
    nir_ssa_dest_init(&ffma->instr, &ffma->dest.dest,
                      add->dest.dest.ssa.num_components, bit_size);

@@ -136,7 +136,6 @@ lower_memcpy_impl(nir_function_impl *impl)
             }
          } else {
             found_non_const_memcpy = true;
-            assert(cpy->src[2].is_ssa);
             nir_ssa_def *size = cpy->src[2].ssa;
 
             /* In this case, we don't have any idea what the size is so we

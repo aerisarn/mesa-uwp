@@ -3129,7 +3129,6 @@ static bool
 emit_load_global_invocation_id(struct ntd_context *ctx,
                                     nir_intrinsic_instr *intr)
 {
-   assert(intr->dest.is_ssa);
    nir_component_mask_t comps = nir_ssa_def_components_read(&intr->dest.ssa);
 
    for (int i = 0; i < nir_intrinsic_dest_components(intr); i++) {
@@ -3152,7 +3151,6 @@ static bool
 emit_load_local_invocation_id(struct ntd_context *ctx,
                               nir_intrinsic_instr *intr)
 {
-   assert(intr->dest.is_ssa);
    nir_component_mask_t comps = nir_ssa_def_components_read(&intr->dest.ssa);
 
    for (int i = 0; i < nir_intrinsic_dest_components(intr); i++) {
@@ -3175,8 +3173,6 @@ static bool
 emit_load_local_invocation_index(struct ntd_context *ctx,
                                  nir_intrinsic_instr *intr)
 {
-   assert(intr->dest.is_ssa);
-
    const struct dxil_value
       *flattenedthreadidingroup = emit_flattenedthreadidingroup_call(ctx);
    if (!flattenedthreadidingroup)
@@ -3190,7 +3186,6 @@ static bool
 emit_load_local_workgroup_id(struct ntd_context *ctx,
                               nir_intrinsic_instr *intr)
 {
-   assert(intr->dest.is_ssa);
    nir_component_mask_t comps = nir_ssa_def_components_read(&intr->dest.ssa);
 
    for (int i = 0; i < nir_intrinsic_dest_components(intr); i++) {
@@ -5136,7 +5131,6 @@ fixup_phi(struct ntd_context *ctx, nir_phi_instr *instr,
    for (unsigned i = 0; i < vphi->num_components; ++i) {
       size_t num_incoming = 0;
       nir_foreach_phi_src(src, instr) {
-         assert(src->src.is_ssa);
          const struct dxil_value *val = get_src_ssa(ctx, src->src.ssa, i);
          values[num_incoming] = val;
          blocks[num_incoming] = src->pred->index;

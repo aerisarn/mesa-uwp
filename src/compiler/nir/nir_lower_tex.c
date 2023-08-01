@@ -166,7 +166,6 @@ lower_offset(nir_builder *b, nir_tex_instr *tex)
    int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
    assert(coord_index >= 0);
 
-   assert(tex->src[coord_index].src.is_ssa);
    nir_ssa_def *coord = tex->src[coord_index].src.ssa;
 
    b->cursor = nir_before_instr(&tex->instr);
@@ -301,7 +300,6 @@ static nir_ssa_def *
 sample_plane(nir_builder *b, nir_tex_instr *tex, int plane,
              const nir_lower_tex_options *options)
 {
-   assert(tex->dest.is_ssa);
    assert(nir_tex_instr_dest_size(tex) == 4);
    assert(nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
    assert(tex->op == nir_texop_tex);
@@ -660,7 +658,6 @@ lower_gradient_cube_map(nir_builder *b, nir_tex_instr *tex)
 {
    assert(tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE);
    assert(tex->op == nir_texop_txd);
-   assert(tex->dest.is_ssa);
 
    /* Use textureSize() to get the width and height of LOD 0 */
    nir_ssa_def *size = nir_i2f32(b, nir_get_texture_size(b, tex));
@@ -813,7 +810,6 @@ lower_gradient(nir_builder *b, nir_tex_instr *tex)
 
    assert(tex->sampler_dim != GLSL_SAMPLER_DIM_CUBE);
    assert(tex->op == nir_texop_txd);
-   assert(tex->dest.is_ssa);
 
    /* Use textureSize() to get the width and height of LOD 0 */
    unsigned component_mask;
@@ -1015,8 +1011,6 @@ get_zero_or_one(nir_builder *b, nir_alu_type type, uint8_t swizzle_val)
 static void
 swizzle_tg4_broadcom(nir_builder *b, nir_tex_instr *tex)
 {
-   assert(tex->dest.is_ssa);
-
    b->cursor = nir_after_instr(&tex->instr);
 
    assert(nir_tex_instr_dest_size(tex) == 4);
@@ -1030,8 +1024,6 @@ swizzle_tg4_broadcom(nir_builder *b, nir_tex_instr *tex)
 static void
 swizzle_result(nir_builder *b, nir_tex_instr *tex, const uint8_t swizzle[4])
 {
-   assert(tex->dest.is_ssa);
-
    b->cursor = nir_after_instr(&tex->instr);
 
    nir_ssa_def *swizzled;
@@ -1070,7 +1062,6 @@ swizzle_result(nir_builder *b, nir_tex_instr *tex, const uint8_t swizzle[4])
 static void
 linearize_srgb_result(nir_builder *b, nir_tex_instr *tex)
 {
-   assert(tex->dest.is_ssa);
    assert(nir_tex_instr_dest_size(tex) == 4);
    assert(nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
 
@@ -1299,7 +1290,6 @@ nir_lower_txs_cube_array(nir_builder *b, nir_tex_instr *tex)
 
    b->cursor = nir_after_instr(&tex->instr);
 
-   assert(tex->dest.is_ssa);
    assert(tex->dest.ssa.num_components == 3);
    nir_ssa_def *size = &tex->dest.ssa;
    size = nir_vec3(b, nir_channel(b, size, 1),
@@ -1440,7 +1430,6 @@ lower_index_to_offset(nir_builder *b, nir_tex_instr *tex)
       if ((*index) == 0)
          continue;
 
-      assert(tex->src[i].src.is_ssa);
       nir_ssa_def *sum = nir_iadd_imm(b, tex->src[i].src.ssa, *index);
       nir_instr_rewrite_src(&tex->instr, &tex->src[i].src,
                             nir_src_for_ssa(sum));

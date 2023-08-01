@@ -3451,11 +3451,9 @@ emit_is_sparse_texels_resident(struct ntv_context *ctx, nir_intrinsic_instr *int
    SpvId type = get_dest_type(ctx, &intr->dest, nir_type_uint);
 
    /* this will always be stored with the ssa index of the parent instr */
-   assert(intr->src[0].is_ssa);
    nir_ssa_def *ssa = intr->src[0].ssa;
    assert(ssa->parent_instr->type == nir_instr_type_alu);
    nir_alu_instr *alu = nir_instr_as_alu(ssa->parent_instr);
-   assert(alu->src[0].src.is_ssa);
    unsigned index = alu->src[0].src.ssa->index;
    assert(index < ctx->num_defs);
    assert(ctx->resident_defs[index] != 0);

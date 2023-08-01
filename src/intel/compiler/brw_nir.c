@@ -41,10 +41,8 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
    nir_ssa_def *src = NULL, *dest = NULL;
 
    if (write) {
-      assert(intr->src[0].is_ssa);
       assert(intr->num_components == intr->src[0].ssa->num_components);
    } else {
-      assert(intr->dest.is_ssa);
       assert(intr->num_components == intr->dest.ssa.num_components);
    }
 
@@ -764,13 +762,11 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
           * 32-bit and so the bit size of the instruction is given by the
           * source.
           */
-         assert(alu->src[0].src.is_ssa);
          return alu->src[0].src.ssa->bit_size >= 32 ? 0 : 32;
       default:
          break;
       }
 
-      assert(alu->dest.dest.is_ssa);
       if (alu->dest.dest.ssa.bit_size >= 32)
          return 0;
 
@@ -2056,8 +2052,6 @@ brw_nir_load_global_const(nir_builder *b, nir_intrinsic_instr *load_uniform,
       nir_ssa_def *base_addr, unsigned off)
 {
    assert(load_uniform->intrinsic == nir_intrinsic_load_uniform);
-   assert(load_uniform->dest.is_ssa);
-   assert(load_uniform->src[0].is_ssa);
 
    unsigned bit_size = load_uniform->dest.ssa.bit_size;
    assert(bit_size >= 8 && bit_size % 8 == 0);

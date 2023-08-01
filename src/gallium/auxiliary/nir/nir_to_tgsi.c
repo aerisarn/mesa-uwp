@@ -3594,8 +3594,6 @@ nir_to_tgsi_lower_tex_instr_arg(nir_builder *b,
    if (tex_src < 0)
       return;
 
-   assert(instr->src[tex_src].src.is_ssa);
-
    nir_ssa_def *def = instr->src[tex_src].src.ssa;
    for (int i = 0; i < def->num_components; i++) {
       s->channels[s->i++] = nir_get_ssa_scalar(def, i);

@@ -75,7 +75,6 @@ emit_wpos_adjustment(lower_wpos_ytransform_state *state,
    nir_builder *b = &state->b;
    nir_ssa_def *wpostrans, *wpos_temp, *wpos_temp_y, *wpos_input;
 
-   assert(intr->dest.is_ssa);
    wpos_input = &intr->dest.ssa;
 
    b->cursor = nir_after_instr(&intr->instr);

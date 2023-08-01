@@ -562,7 +562,6 @@ nir_lower_io_to_vector_impl(nir_function_impl *impl, nir_variable_mode modes)
 
             nir_component_mask_t old_wrmask = nir_intrinsic_write_mask(intrin);
 
-            assert(intrin->src[1].is_ssa);
             nir_ssa_def *old_value = intrin->src[1].ssa;
             nir_ssa_scalar comps[4];
             for (unsigned c = 0; c < intrin->num_components; c++) {

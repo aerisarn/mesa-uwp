@@ -146,7 +146,6 @@ lower_subgroup_op_to_scalar(nir_builder *b, nir_intrinsic_instr *intrin,
 static nir_ssa_def *
 lower_vote_eq_to_scalar(nir_builder *b, nir_intrinsic_instr *intrin)
 {
-   assert(intrin->src[0].is_ssa);
    nir_ssa_def *value = intrin->src[0].ssa;
 
    nir_ssa_def *result = NULL;
@@ -172,7 +171,6 @@ lower_vote_eq_to_scalar(nir_builder *b, nir_intrinsic_instr *intrin)
 static nir_ssa_def *
 lower_vote_eq(nir_builder *b, nir_intrinsic_instr *intrin)
 {
-   assert(intrin->src[0].is_ssa);
    nir_ssa_def *value = intrin->src[0].ssa;
 
    /* We have to implicitly lower to scalar */
@@ -244,22 +242,18 @@ lower_to_shuffle(nir_builder *b, nir_intrinsic_instr *intrin,
    bool is_shuffle = false;
    switch (intrin->intrinsic) {
    case nir_intrinsic_shuffle_xor:
-      assert(intrin->src[1].is_ssa);
       index = nir_ixor(b, index, intrin->src[1].ssa);
       is_shuffle = true;
       break;
    case nir_intrinsic_shuffle_up:
-      assert(intrin->src[1].is_ssa);
       index = nir_isub(b, index, intrin->src[1].ssa);
       is_shuffle = true;
       break;
    case nir_intrinsic_shuffle_down:
-      assert(intrin->src[1].is_ssa);
       index = nir_iadd(b, index, intrin->src[1].ssa);
       is_shuffle = true;
       break;
    case nir_intrinsic_quad_broadcast:
-      assert(intrin->src[1].is_ssa);
       index = nir_ior(b, nir_iand_imm(b, index, ~0x3),
                          intrin->src[1].ssa);
       break;
@@ -335,8 +329,6 @@ glsl_type_for_ssa(nir_ssa_def *def)
 static nir_ssa_def *
 lower_shuffle(nir_builder *b, nir_intrinsic_instr *intrin)
 {
-   assert(intrin->src[0].is_ssa);
-   assert(intrin->src[1].is_ssa);
    nir_ssa_def *val = intrin->src[0].ssa;
    nir_ssa_def *id = intrin->src[1].ssa;
 
@@ -716,7 +708,6 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
    case nir_intrinsic_ballot_bit_count_reduce:
    case nir_intrinsic_ballot_find_lsb:
    case nir_intrinsic_ballot_find_msb: {
-      assert(intrin->src[0].is_ssa);
       nir_ssa_def *int_val = ballot_type_to_uint(b, intrin->src[0].ssa,
                                                  options);
 
@@ -746,7 +737,6 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
 
       switch (intrin->intrinsic) {
       case nir_intrinsic_ballot_bitfield_extract: {
-         assert(intrin->src[1].is_ssa);
          nir_ssa_def *idx = intrin->src[1].ssa;
          if (int_val->num_components > 1) {
             /* idx will be truncated by nir_ushr, so we just need to select
@@ -773,7 +763,6 @@ lower_subgroups_instr(nir_builder *b, nir_instr *instr, void *_options)
 
    case nir_intrinsic_ballot_bit_count_exclusive:
    case nir_intrinsic_ballot_bit_count_inclusive: {
-      assert(intrin->src[0].is_ssa);
       nir_ssa_def *int_val = ballot_type_to_uint(b, intrin->src[0].ssa,
                                                  options);
       if (options->lower_ballot_bit_count_to_mbcnt_amd) {

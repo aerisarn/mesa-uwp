@@ -914,7 +914,6 @@ rewrite_phis_to_pred(nir_block *block, nir_block *pred)
       nir_foreach_phi_src(phi_src, phi) {
          if (phi_src->pred == pred) {
             found = true;
-            assert(phi_src->src.is_ssa);
             nir_ssa_def_rewrite_uses(&phi->dest.ssa, phi_src->src.ssa);
             break;
          }

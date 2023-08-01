@@ -245,7 +245,6 @@ create_plane_tex_instr_implicit(struct ycbcr_state *state,
       switch (old_tex->src[i].src_type) {
       case nir_tex_src_coord:
          if (format_plane->has_chroma && conversion->chroma_reconstruction) {
-            assert(old_tex->src[i].src.is_ssa);
             tex->src[i].src =
                nir_src_for_ssa(implicit_downsampled_coords(state,
                                                            old_tex->src[i].src.ssa,

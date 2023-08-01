@@ -212,8 +212,6 @@ update_alu_mask(nir_src *src, void *data)
 static uint32_t
 get_dest_usee_mask(nir_intrinsic_instr *op)
 {
-   assert(op->dest.is_ssa);
-
    MaskQuery mq = {0};
    mq.full_mask = (1 << nir_dest_num_components(op->dest)) - 1;
 

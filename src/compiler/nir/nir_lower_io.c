@@ -345,7 +345,6 @@ lower_load(nir_intrinsic_instr *intrin, struct lower_io_state *state,
            nir_ssa_def *array_index, nir_variable *var, nir_ssa_def *offset,
            unsigned component, const struct glsl_type *type)
 {
-   assert(intrin->dest.is_ssa);
    if (intrin->dest.ssa.bit_size == 64 &&
        (state->options & nir_lower_io_lower_64bit_to_32)) {
       nir_builder *b = &state->builder;
@@ -457,7 +456,6 @@ lower_store(nir_intrinsic_instr *intrin, struct lower_io_state *state,
             nir_ssa_def *array_index, nir_variable *var, nir_ssa_def *offset,
             unsigned component, const struct glsl_type *type)
 {
-   assert(intrin->src[1].is_ssa);
    if (intrin->src[1].ssa->bit_size == 64 &&
        (state->options & nir_lower_io_lower_64bit_to_32)) {
       nir_builder *b = &state->builder;
@@ -572,7 +570,6 @@ lower_interpolate_at(nir_intrinsic_instr *intrin, struct lower_io_state *state,
       var->data.precision == GLSL_PRECISION_MEDIUM ||
       var->data.precision == GLSL_PRECISION_LOW;
 
-   assert(intrin->dest.is_ssa);
    nir_ssa_def *load =
       nir_load_interpolated_input(&state->builder,
                                   intrin->dest.ssa.num_components,
@@ -1478,7 +1475,6 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_intrinsic_set_range(load, range);
    }
 
-   assert(intrin->dest.is_ssa);
    load->num_components = num_components;
    nir_ssa_dest_init(&load->instr, &load->dest, num_components, bit_size);
 
@@ -1812,7 +1808,6 @@ nir_explicit_io_address_from_deref(nir_builder *b, nir_deref_instr *deref,
                                    nir_ssa_def *base_addr,
                                    nir_address_format addr_format)
 {
-   assert(deref->dest.is_ssa);
    switch (deref->deref_type) {
    case nir_deref_type_var:
       return build_addr_for_var(b, deref->var, addr_format);
@@ -1914,7 +1909,6 @@ nir_lower_explicit_io_instr(nir_builder *b,
    }
 
    case nir_intrinsic_store_deref: {
-      assert(intrin->src[1].is_ssa);
       nir_ssa_def *value = intrin->src[1].ssa;
       nir_component_mask_t write_mask = nir_intrinsic_write_mask(intrin);
       if (vec_stride > scalar_size) {
@@ -1949,7 +1943,6 @@ nir_lower_explicit_io_instr(nir_builder *b,
    }
 
    case nir_intrinsic_store_deref_block_intel: {
-      assert(intrin->src[1].is_ssa);
       nir_ssa_def *value = intrin->src[1].ssa;
       const nir_component_mask_t write_mask = 0;
       build_explicit_io_store(b, intrin, addr, addr_format,
@@ -2093,7 +2086,6 @@ lower_explicit_io_deref(nir_builder *b, nir_deref_instr *deref,
 
    nir_ssa_def *base_addr = NULL;
    if (deref->deref_type != nir_deref_type_var) {
-      assert(deref->parent.is_ssa);
       base_addr = deref->parent.ssa;
    }
 
@@ -2110,7 +2102,6 @@ static void
 lower_explicit_io_access(nir_builder *b, nir_intrinsic_instr *intrin,
                          nir_address_format addr_format)
 {
-   assert(intrin->src[0].is_ssa);
    nir_lower_explicit_io_instr(b, intrin, intrin->src[0].ssa, addr_format);
 }
 
@@ -2173,7 +2164,6 @@ lower_explicit_io_mode_check(nir_builder *b, nir_intrinsic_instr *intrin,
       return;
    }
 
-   assert(intrin->src[0].is_ssa);
    nir_ssa_def *addr = intrin->src[0].ssa;
 
    b->cursor = nir_instr_remove(&intrin->instr);

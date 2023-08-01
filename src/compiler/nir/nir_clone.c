@@ -587,7 +587,6 @@ fixup_phi_srcs(clone_state *state)
 
       /* Remove from this list */
       list_del(&src->src.use_link);
-      assert(src->src.is_ssa);
 
       src->src.ssa = remap_local(state, src->src.ssa);
       list_addtail(&src->src.use_link, &src->src.ssa->uses);

@@ -23,8 +23,6 @@ rusticl_lower_intrinsics_instr(
     switch (intrins->intrinsic) {
     case nir_intrinsic_image_deref_format:
     case nir_intrinsic_image_deref_order: {
-        assert(intrins->src[0].is_ssa);
-
         int32_t offset;
         nir_deref_instr *deref;
         nir_ssa_def *val;

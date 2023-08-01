@@ -42,7 +42,6 @@ struct lower_sysval_state {
 static nir_ssa_def *
 sanitize_32bit_sysval(nir_builder *b, nir_intrinsic_instr *intrin)
 {
-   assert(intrin->dest.is_ssa);
    const unsigned bit_size = intrin->dest.ssa.bit_size;
    if (bit_size == 32)
       return NULL;
@@ -498,7 +497,6 @@ lower_compute_system_value_instr(nir_builder *b,
    if (!nir_intrinsic_infos[intrin->intrinsic].has_dest)
       return NULL;
 
-   assert(intrin->dest.is_ssa);
    const unsigned bit_size = intrin->dest.ssa.bit_size;
 
    switch (intrin->intrinsic) {

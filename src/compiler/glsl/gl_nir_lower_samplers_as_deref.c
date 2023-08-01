@@ -281,8 +281,6 @@ lower_sampler(nir_tex_instr *instr, struct lower_samplers_as_deref_state *state,
    b->cursor = nir_before_instr(&instr->instr);
 
    if (texture_idx >= 0) {
-      assert(instr->src[texture_idx].src.is_ssa);
-
       nir_deref_instr *texture_deref =
          lower_deref(b, state, nir_src_as_deref(instr->src[texture_idx].src));
       /* only lower non-bindless: */
@@ -294,7 +292,6 @@ lower_sampler(nir_tex_instr *instr, struct lower_samplers_as_deref_state *state,
    }
 
    if (sampler_idx >= 0) {
-      assert(instr->src[sampler_idx].src.is_ssa);
       nir_deref_instr *sampler_deref =
          lower_deref(b, state, nir_src_as_deref(instr->src[sampler_idx].src));
       /* only lower non-bindless: */

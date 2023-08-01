@@ -196,8 +196,6 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
 {
    nir_op op = INVALID_OP;
 
-   assert(phi->dest.is_ssa);
-
    /* If the phi has already been narrowed, nothing more to do: */
    if (phi->dest.ssa.bit_size != 32)
       return false;
@@ -231,8 +229,6 @@ try_move_narrowing_dst(nir_builder *b, nir_phi_instr *phi)
 
    /* Push the conversion into the new phi sources: */
    nir_foreach_phi_src (src, phi) {
-      assert(src->src.is_ssa);
-
       /* insert new conversion instr in block of original phi src: */
       b->cursor = nir_after_instr_and_phis(src->src.ssa->parent_instr);
       nir_ssa_def *old_src = src->src.ssa;
@@ -306,8 +302,6 @@ find_widening_op(nir_phi_instr *phi, unsigned *bit_size)
    *bit_size = 0;
 
    nir_foreach_phi_src (src, phi) {
-      assert(src->src.is_ssa);
-
       nir_instr *instr = src->src.ssa->parent_instr;
       if (instr->type == nir_instr_type_load_const) {
          has_load_const = true;
@@ -344,8 +338,6 @@ find_widening_op(nir_phi_instr *phi, unsigned *bit_size)
     * sequence to make the rest of the transformation possible:
     */
    nir_foreach_phi_src (src, phi) {
-      assert(src->src.is_ssa);
-
       nir_instr *instr = src->src.ssa->parent_instr;
       if (instr->type != nir_instr_type_load_const)
          continue;
@@ -363,8 +355,6 @@ find_widening_op(nir_phi_instr *phi, unsigned *bit_size)
 static bool
 try_move_widening_src(nir_builder *b, nir_phi_instr *phi)
 {
-   assert(phi->dest.is_ssa);
-
    /* If the phi has already been narrowed, nothing more to do: */
    if (phi->dest.ssa.bit_size != 32)
       return false;
@@ -382,8 +372,6 @@ try_move_widening_src(nir_builder *b, nir_phi_instr *phi)
 
    /* Remove the widening conversions from the phi sources: */
    nir_foreach_phi_src (src, phi) {
-      assert(src->src.is_ssa);
-
       nir_instr *instr = src->src.ssa->parent_instr;
       nir_ssa_def *new_src;
 

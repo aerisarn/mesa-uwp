@@ -83,7 +83,6 @@ lower(nir_builder *b, nir_instr *instr, void *data)
    nir_pop_if(b, NULL);
 
    if (has_dest) {
-      assert(intr->dest.is_ssa);
       nir_ssa_def *phi = nir_if_phi(b, &intr->dest.ssa, undef);
 
       /* We can't use nir_ssa_def_rewrite_uses_after on phis, so use the global

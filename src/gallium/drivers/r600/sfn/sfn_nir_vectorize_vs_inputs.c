@@ -146,8 +146,6 @@ r600_create_new_load(nir_builder *b,
 
    b->cursor = nir_before_instr(&intr->instr);
 
-   assert(intr->dest.is_ssa);
-
    nir_intrinsic_instr *new_intr = nir_intrinsic_instr_create(b->shader, intr->intrinsic);
    nir_ssa_dest_init(&new_intr->instr, &new_intr->dest, num_comps,
                      intr->dest.ssa.bit_size);

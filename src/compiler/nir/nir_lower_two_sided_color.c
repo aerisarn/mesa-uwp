@@ -164,7 +164,6 @@ nir_lower_two_sided_color_instr(nir_builder *b, nir_instr *instr, void *data)
    }
    nir_ssa_def *color = nir_bcsel(b, face, front, back);
 
-   assert(intr->dest.is_ssa);
    nir_ssa_def_rewrite_uses(&intr->dest.ssa, color);
 
    return true;

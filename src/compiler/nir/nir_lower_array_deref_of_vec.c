@@ -106,7 +106,6 @@ nir_lower_array_deref_of_vec_impl(nir_function_impl *impl,
          b.cursor = nir_after_instr(&intrin->instr);
 
          if (intrin->intrinsic == nir_intrinsic_store_deref) {
-            assert(intrin->src[1].is_ssa);
             nir_ssa_def *value = intrin->src[1].ssa;
 
             if (nir_src_is_const(deref->arr.index)) {

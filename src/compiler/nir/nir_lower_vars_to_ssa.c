@@ -603,8 +603,6 @@ rename_variables(struct lower_variables_state *state)
             for (unsigned i = intrin->num_components; i < NIR_MAX_VEC_COMPONENTS; i++)
                mov->src[0].swizzle[i] = 0;
 
-            assert(intrin->dest.is_ssa);
-
             mov->dest.write_mask = (1 << intrin->num_components) - 1;
             nir_ssa_dest_init(&mov->instr, &mov->dest.dest,
                               intrin->num_components,
@@ -630,7 +628,6 @@ rename_variables(struct lower_variables_state *state)
             /* Should have been removed before rename_variables(). */
             assert(node != UNDEF_NODE);
 
-            assert(intrin->src[1].is_ssa);
             nir_ssa_def *value = intrin->src[1].ssa;
 
             if (!node->lower_to_ssa)

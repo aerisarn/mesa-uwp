@@ -151,7 +151,6 @@ find_output_in_block(nir_block *block, unsigned drvloc)
          nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
          if ((intr->intrinsic == nir_intrinsic_store_output) &&
              nir_intrinsic_base(intr) == drvloc) {
-            assert(intr->src[0].is_ssa);
             assert(nir_src_is_const(intr->src[1]));
             return intr->src[0].ssa;
          }

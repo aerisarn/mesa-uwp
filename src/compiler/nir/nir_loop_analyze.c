@@ -336,7 +336,6 @@ phi_instr_as_alu(nir_phi_instr *phi)
 {
    nir_alu_instr *first = NULL;
    nir_foreach_phi_src(src, phi) {
-      assert(src->src.is_ssa);
       if (src->src.ssa->parent_instr->type != nir_instr_type_alu)
          return NULL;
 
@@ -356,7 +355,6 @@ static bool
 alu_src_has_identity_swizzle(nir_alu_instr *alu, unsigned src_idx)
 {
    assert(nir_op_infos[alu->op].input_sizes[src_idx] == 0);
-   assert(alu->dest.dest.is_ssa);
    for (unsigned i = 0; i < alu->dest.dest.ssa.num_components; i++) {
       if (alu->src[src_idx].swizzle[i] != i)
          return false;
@@ -599,7 +597,6 @@ find_array_access_via_induction(loop_info_state *state,
       if (d->deref_type != nir_deref_type_array)
          continue;
 
-      assert(d->arr.index.is_ssa);
       nir_loop_variable *array_index = get_loop_var(d->arr.index.ssa, state);
 
       if (array_index->type != basic_induction)
@@ -1237,7 +1234,6 @@ find_trip_count(loop_info_state *state, unsigned execution_mode,
    list_for_each_entry(nir_loop_terminator, terminator,
                        &state->loop->info->loop_terminator_list,
                        loop_terminator_link) {
-      assert(terminator->nif->condition.is_ssa);
       nir_ssa_scalar cond = { terminator->nif->condition.ssa, 0 };
 
       if (!nir_ssa_scalar_is_alu(cond)) {

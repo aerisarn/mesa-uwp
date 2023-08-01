@@ -194,7 +194,6 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                break;
 
             /* We use nir_address_format_32bit_index_offset */
-            assert(deref->dest.is_ssa);
             assert(deref->dest.ssa.bit_size == 32);
             deref->dest.ssa.num_components = 2;
 
@@ -261,7 +260,6 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                 * from the SSBO.
                 */
                if (glsl_type_is_boolean(deref->type)) {
-                  assert(intrin->dest.is_ssa);
                   b.cursor = nir_after_instr(&intrin->instr);
                   intrin->dest.ssa.bit_size = 32;
                   nir_ssa_def *bval = nir_i2b(&b, &intrin->dest.ssa);
@@ -289,7 +287,6 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                 * step but in practice it doesn't cost much.
                 */
                if (glsl_type_is_boolean(deref->type)) {
-                  assert(intrin->src[1].is_ssa);
                   b.cursor = nir_before_instr(&intrin->instr);
                   nir_ssa_def *ival = nir_b2i32(&b, intrin->src[1].ssa);
                   nir_instr_rewrite_src(&intrin->instr, &intrin->src[1],

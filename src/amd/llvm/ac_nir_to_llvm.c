@@ -52,7 +52,6 @@ static LLVMTypeRef get_def_type(struct ac_nir_context *ctx, const nir_ssa_def *d
 
 static LLVMValueRef get_src(struct ac_nir_context *nir, nir_src src)
 {
-   assert(src.is_ssa);
    return nir->ssa_defs[src.ssa->index];
 }
 
@@ -1476,8 +1475,6 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
 
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
-
-      assert(instr->dest.is_ssa);
 
       /* Buffers don't support A16. */
       if (args->a16)

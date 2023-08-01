@@ -256,7 +256,6 @@ lower_res_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_ssa_def *res;
    switch (intrin->intrinsic) {
    case nir_intrinsic_vulkan_resource_index:
-      assert(intrin->src[0].is_ssa);
       res = build_res_index(b, nir_intrinsic_desc_set(intrin),
                             nir_intrinsic_binding(intrin), intrin->src[0].ssa,
                             addr_format, ctx);
@@ -269,7 +268,6 @@ lower_res_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       break;
 
    case nir_intrinsic_load_vulkan_descriptor:
-      assert(intrin->src[0].is_ssa);
       res = build_buffer_addr_for_res_index(b, intrin->src[0].ssa, addr_format,
                                             ctx);
       break;
@@ -278,7 +276,6 @@ lower_res_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       unreachable("Unhandled resource intrinsic");
    }
 
-   assert(intrin->dest.is_ssa);
    assert(intrin->dest.ssa.bit_size == res->bit_size);
    assert(intrin->dest.ssa.num_components == res->num_components);
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, res);
@@ -296,7 +293,6 @@ get_resource_deref_binding(nir_deref_instr *deref, uint32_t *set,
    *index_ssa = NULL;
 
    if (deref->deref_type == nir_deref_type_array) {
-      assert(deref->arr.index.is_ssa);
       if (index_imm != NULL && nir_src_is_const(deref->arr.index))
          *index_imm = nir_src_as_uint(deref->arr.index);
       else
@@ -506,8 +502,6 @@ lower_img_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
 
    if (intr->intrinsic == nir_intrinsic_image_deref_size ||
        intr->intrinsic == nir_intrinsic_image_deref_samples) {
-      assert(intr->dest.is_ssa);
-
       const enum glsl_sampler_dim dim = nir_intrinsic_image_dim(intr);
 
       nir_ssa_def *res;

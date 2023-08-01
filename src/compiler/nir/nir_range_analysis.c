@@ -2106,7 +2106,6 @@ ssa_def_bits_used(const nir_ssa_def *def, int recur)
          case nir_intrinsic_quad_swap_vertical:
          case nir_intrinsic_quad_swap_diagonal:
             if (src_idx == 0) {
-               assert(use_intrin->dest.is_ssa);
                bits_used |= ssa_def_bits_used(&use_intrin->dest.ssa, recur);
             } else {
                if (use_intrin->intrinsic == nir_intrinsic_quad_broadcast) {

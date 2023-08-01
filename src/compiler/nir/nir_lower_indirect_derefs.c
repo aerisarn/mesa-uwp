@@ -169,7 +169,6 @@ lower_indirect_derefs_block(nir_block *block, nir_builder *b,
       assert(path.path[0] == base);
 
       if (intrin->intrinsic == nir_intrinsic_store_deref) {
-         assert(intrin->src[1].is_ssa);
          emit_load_store_deref(b, intrin, base, &path.path[1],
                                NULL, intrin->src[1].ssa);
       } else {

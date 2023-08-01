@@ -170,7 +170,6 @@ ValueFactory::allocate_pinned_vec4(int sel, bool is_ssa)
 void
 ValueFactory::inject_value(const nir_dest& dest, int chan, PVirtualValue value)
 {
-   assert(dest.is_ssa);
    RegisterKey key(dest.ssa.index, chan, vp_ssa);
    sfn_log << SfnLog::reg << "Inject value with key " << key << "\n";
    assert(m_values.find(key) == m_values.end());
@@ -211,7 +210,6 @@ public:
 PRegister
 ValueFactory::dest(const nir_dest& dst, int chan, Pin pin_channel, uint8_t chan_mask)
 {
-   assert(dst.is_ssa);
    return dest(dst.ssa, chan, pin_channel, chan_mask);
 }
 
@@ -283,7 +281,6 @@ ValueFactory::dest_vec4(const nir_dest& dst, Pin pin)
 {
    if (pin != pin_group && pin != pin_chgr)
       pin = pin_chan;
-   assert(dst.is_ssa);
    PRegister x = dest(dst, 0, pin);
    PRegister y = dest(dst, 1, pin);
    PRegister z = dest(dst, 2, pin);
@@ -331,7 +328,6 @@ ValueFactory::src(const nir_src& src, int chan)
 {
    sfn_log << SfnLog::reg << "search (ref) " << (void *)&src << "\n";
 
-   assert(src.is_ssa);
    sfn_log << SfnLog::reg << "search ssa " << src.ssa->index << " c:" << chan
            << " got ";
    auto val = ssa_src(*src.ssa, chan);

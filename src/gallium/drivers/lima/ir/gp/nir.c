@@ -251,8 +251,6 @@ static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
    {
       gpir_node *child = gpir_node_find(block, &instr->src[0], 0);
       assert(child);
-      assert(instr->src[0].is_ssa);
-      assert(instr->src[1].is_ssa);
       register_node_reg(block, child, instr->src[1].ssa->index);
       return true;
    }

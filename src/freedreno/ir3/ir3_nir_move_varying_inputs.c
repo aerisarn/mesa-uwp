@@ -169,8 +169,6 @@ move_varying_inputs_block(state *state, nir_block *block)
          continue;
       }
 
-      assert(intr->dest.is_ssa);
-
       move_instruction_to_start_block(state, instr);
 
       progress = true;

@@ -54,7 +54,6 @@ lower_vec3_to_vec4_instr(nir_builder *b, nir_instr *instr, void *data)
          if (!nir_deref_mode_is_in_set(deref, modes))
             break;
 
-         assert(intrin->dest.is_ssa);
          intrin->num_components = 4;
          intrin->dest.ssa.num_components = 4;
 
@@ -74,7 +73,6 @@ lower_vec3_to_vec4_instr(nir_builder *b, nir_instr *instr, void *data)
          if (!nir_deref_mode_is_in_set(deref, modes))
             break;
 
-         assert(intrin->src[1].is_ssa);
          nir_ssa_def *data = intrin->src[1].ssa;
 
          b->cursor = nir_before_instr(&intrin->instr);

@@ -137,13 +137,11 @@ lower_readonly_image_instr_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
 
    switch (intrin->intrinsic) {
    case nir_intrinsic_image_deref_load: {
-      assert(intrin->src[1].is_ssa);
       nir_ssa_def *coord =
          nir_trim_vector(b, intrin->src[1].ssa, coord_components);
       tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
       tex->coord_components = coord_components;
 
-      assert(intrin->src[3].is_ssa);
       nir_ssa_def *lod = intrin->src[3].ssa;
       tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
@@ -155,7 +153,6 @@ lower_readonly_image_instr_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin
    }
 
    case nir_intrinsic_image_deref_size: {
-      assert(intrin->src[1].is_ssa);
       nir_ssa_def *lod = intrin->src[1].ssa;
       tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 

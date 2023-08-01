@@ -121,7 +121,6 @@ LowerLoad64Uniform::lower(nir_instr *instr)
    auto intr = nir_instr_as_intrinsic(instr);
    int old_components = nir_dest_num_components(intr->dest);
    assert(old_components <= 2);
-   assert(intr->dest.is_ssa);
    intr->dest.ssa.num_components *= 2;
    intr->dest.ssa.bit_size = 32;
    intr->num_components *= 2;

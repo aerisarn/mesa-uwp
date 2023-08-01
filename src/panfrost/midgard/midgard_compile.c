@@ -231,7 +231,6 @@ midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr,
 
    b->cursor = nir_before_instr(instr);
 
-   assert(intr->src[0].is_ssa);
    nir_ssa_def *addr = intr->src[0].ssa;
 
    nir_ssa_def *comps[MIR_VEC_COMPONENTS];
@@ -1553,7 +1552,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
        * up with unconsumed load_register instructions. Translate them here. 99%
        * of the time, these moves will be DCE'd away.
        */
-      assert(instr->src[0].is_ssa);
       nir_ssa_def *handle = instr->src[0].ssa;
 
       midgard_instruction ins =

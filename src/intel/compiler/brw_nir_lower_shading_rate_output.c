@@ -72,7 +72,6 @@ lower_shading_rate_output_instr(nir_builder *b, nir_instr *instr,
    b->cursor = is_store ? nir_before_instr(instr) : nir_after_instr(instr);
 
    if (is_store) {
-      assert(intrin->src[0].is_ssa);
       nir_ssa_def *bit_field = intrin->src[0].ssa;
       nir_ssa_def *fp16_x =
          nir_i2f16(b,

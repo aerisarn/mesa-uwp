@@ -28,7 +28,6 @@ static bool
 resize_deref(nir_builder *b, nir_deref_instr *deref,
              unsigned num_components, unsigned bit_size)
 {
-   assert(deref->dest.is_ssa);
    if (deref->dest.ssa.num_components == num_components &&
        deref->dest.ssa.bit_size == bit_size)
       return false;
@@ -38,7 +37,6 @@ resize_deref(nir_builder *b, nir_deref_instr *deref,
        (deref->deref_type == nir_deref_type_array ||
         deref->deref_type == nir_deref_type_ptr_as_array)) {
       b->cursor = nir_before_instr(&deref->instr);
-      assert(deref->arr.index.is_ssa);
       nir_ssa_def *idx;
       if (nir_src_is_const(deref->arr.index)) {
          idx = nir_imm_intN_t(b, nir_src_as_int(deref->arr.index), bit_size);
@@ -522,7 +520,6 @@ brw_nir_create_raygen_trampoline(const struct brw_compiler *compiler,
          b.cursor = nir_before_instr(&intrin->instr);
          nir_ssa_def *global_arg_addr =
             load_trampoline_param(&b, rt_disp_globals_addr, 1, 64);
-         assert(intrin->dest.is_ssa);
          nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
                                   global_arg_addr);
          nir_instr_remove(instr);

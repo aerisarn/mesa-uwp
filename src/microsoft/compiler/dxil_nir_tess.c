@@ -90,7 +90,6 @@ prune_patch_function_to_intrinsic_and_srcs(nir_function_impl *impl)
    nir_foreach_block(block, impl) {
       nir_if *following_if = nir_block_get_following_if(block);
       if (following_if) {
-         assert(following_if->condition.is_ssa);
          add_instr_and_srcs_to_set(instr_set, following_if->condition.ssa->parent_instr);
       }
       nir_foreach_instr_safe(instr, block) {

@@ -257,7 +257,6 @@ ntq_get_src(struct vc4_compile *c, nir_src src, int i)
 {
         struct hash_entry *entry;
 
-        assert(src.is_ssa);
         nir_intrinsic_instr *load = nir_load_reg_for_def(src.ssa);
         if (load == NULL) {
                 entry = _mesa_hash_table_search(c->def_ht, src.ssa);
@@ -830,7 +829,6 @@ ntq_emit_pack_unorm_4x8(struct vc4_compile *c, nir_alu_instr *instr)
         /* If packing from a vec4 op (as expected), identify it so that we can
          * peek back at what generated its sources.
          */
-        assert(instr->src[0].src.is_ssa);
         if (instr->src[0].src.ssa->parent_instr->type == nir_instr_type_alu &&
             nir_instr_as_alu(instr->src[0].src.ssa->parent_instr)->op ==
             nir_op_vec4) {
@@ -997,7 +995,6 @@ ntq_emit_comparison(struct vc4_compile *c, struct qreg *dest,
 static struct qreg ntq_emit_bcsel(struct vc4_compile *c, nir_alu_instr *instr,
                                   struct qreg *src)
 {
-        assert(instr->src[0].src.is_ssa);
         if (nir_load_reg_for_def(instr->src[0].src.ssa))
                 goto out;
         if (instr->src[0].src.ssa->parent_instr->type != nir_instr_type_alu)

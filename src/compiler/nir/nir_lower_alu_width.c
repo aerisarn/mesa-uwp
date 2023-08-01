@@ -51,8 +51,6 @@ inst_is_vector_alu(const nir_instr *instr, const void *_state)
    /* There is no ALU instruction which has a scalar destination, scalar
     * src[0], and some other vector source.
     */
-   assert(alu->dest.dest.is_ssa);
-   assert(alu->src[0].src.is_ssa);
    return alu->dest.dest.ssa.num_components > 1 ||
           nir_op_infos[alu->op].input_sizes[0] > 1;
 }
@@ -189,7 +187,6 @@ lower_alu_instr_width(nir_builder *b, nir_instr *instr, void *_data)
    unsigned num_src = nir_op_infos[alu->op].num_inputs;
    unsigned i, chan;
 
-   assert(alu->dest.dest.is_ssa);
    assert(alu->dest.write_mask != 0);
 
    b->exact = alu->exact;

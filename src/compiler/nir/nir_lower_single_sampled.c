@@ -60,7 +60,6 @@ lower_single_sampled_instr(nir_builder *b,
    case nir_intrinsic_interp_deref_at_centroid:
    case nir_intrinsic_interp_deref_at_sample:
       b->cursor = nir_before_instr(instr);
-      assert(intrin->src[0].is_ssa);
       lowered = nir_load_deref(b, nir_src_as_deref(intrin->src[0]));
       break;
 

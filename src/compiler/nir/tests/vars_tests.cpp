@@ -1975,7 +1975,6 @@ vec_src_comp_as_int(nir_src src, unsigned comp)
    if (nir_src_is_const(src))
       return nir_src_comp_as_int(src, comp);
 
-   assert(src.is_ssa);
    nir_ssa_scalar s = { src.ssa, comp };
    assert(nir_op_is_vec(nir_ssa_scalar_alu_op(s)));
    return nir_ssa_scalar_as_int(nir_ssa_scalar_chase_alu_src(s, comp));

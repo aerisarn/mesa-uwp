@@ -1043,7 +1043,6 @@ build_load_var_deref_surface_handle(nir_builder *b, nir_deref_instr *deref,
    if (deref->deref_type != nir_deref_type_var) {
       assert(deref->deref_type == nir_deref_type_array);
       assert(nir_deref_instr_parent(deref)->deref_type == nir_deref_type_var);
-      assert(deref->arr.index.is_ssa);
       array_index = deref->arr.index.ssa;
    } else {
       array_index = nir_imm_int(b, 0);
@@ -1068,7 +1067,6 @@ build_res_index_for_chain(nir_builder *b, nir_intrinsic_instr *intrin,
 {
    if (intrin->intrinsic == nir_intrinsic_vulkan_resource_index) {
       b->cursor = nir_before_instr(&intrin->instr);
-      assert(intrin->src[0].is_ssa);
       *set = nir_intrinsic_desc_set(intrin);
       *binding = nir_intrinsic_binding(intrin);
       return build_res_index(b, *set, *binding, intrin->src[0].ssa, state);
@@ -1081,7 +1079,6 @@ build_res_index_for_chain(nir_builder *b, nir_intrinsic_instr *intrin,
 
       b->cursor = nir_before_instr(&intrin->instr);
 
-      assert(intrin->src[1].is_ssa);
       return build_res_reindex(b, index, intrin->src[1].ssa);
    }
 }
@@ -1261,7 +1258,6 @@ lower_load_accel_struct_desc(nir_builder *b,
    /* Acceleration structure descriptors are always uint64_t */
    nir_ssa_def *desc = build_load_descriptor_mem(b, desc_addr, 0, 1, 64, state);
 
-   assert(load_desc->dest.is_ssa);
    assert(load_desc->dest.ssa.bit_size == 64);
    assert(load_desc->dest.ssa.num_components == 1);
    nir_ssa_def_rewrite_uses(&load_desc->dest.ssa, desc);
@@ -1340,14 +1336,12 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 {
    b->cursor = nir_before_instr(&intrin->instr);
 
-   assert(intrin->src[0].is_ssa);
    nir_ssa_def *index =
       build_res_index(b, nir_intrinsic_desc_set(intrin),
                          nir_intrinsic_binding(intrin),
                          intrin->src[0].ssa,
                          state);
 
-   assert(intrin->dest.is_ssa);
    assert(intrin->dest.ssa.bit_size == index->bit_size);
    assert(intrin->dest.ssa.num_components == index->num_components);
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, index);
@@ -1367,7 +1361,6 @@ lower_res_reindex_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       build_res_reindex(b, intrin->src[0].ssa,
                            intrin->src[1].ssa);
 
-   assert(intrin->dest.is_ssa);
    assert(intrin->dest.ssa.bit_size == index->bit_size);
    assert(intrin->dest.ssa.num_components == index->num_components);
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, index);
@@ -1385,13 +1378,11 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    const VkDescriptorType desc_type = nir_intrinsic_desc_type(intrin);
    nir_address_format addr_format = addr_format_for_desc_type(desc_type, state);
 
-   assert(intrin->src[0].is_ssa);
    nir_ssa_def *desc =
       build_buffer_addr_for_res_index(b,
                                       desc_type, intrin->src[0].ssa,
                                       addr_format, state);
 
-   assert(intrin->dest.is_ssa);
    assert(intrin->dest.ssa.bit_size == desc->bit_size);
    assert(intrin->dest.ssa.num_components == desc->num_components);
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
@@ -1412,7 +1403,6 @@ lower_get_ssbo_size(nir_builder *b, nir_intrinsic_instr *intrin,
    const nir_address_format addr_format =
       nir_address_format_64bit_bounded_global;
 
-   assert(intrin->src[0].is_ssa);
    nir_ssa_def *desc_addr =
       nir_build_addr_iadd_imm(
          b,
@@ -1488,7 +1478,6 @@ lower_image_size_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    if (deref->deref_type != nir_deref_type_var) {
       assert(deref->deref_type == nir_deref_type_array);
       assert(nir_deref_instr_parent(deref)->deref_type == nir_deref_type_var);
-      assert(deref->arr.index.is_ssa);
       array_index = deref->arr.index.ssa;
    } else {
       array_index = nir_imm_int(b, 0);

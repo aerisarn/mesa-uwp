@@ -48,10 +48,6 @@ nir_lower_interpolation_instr(nir_builder *b, nir_instr *instr, void *cb_data)
    if (intr->intrinsic != nir_intrinsic_load_interpolated_input)
       return false;
 
-   assert(intr->dest.is_ssa);
-   assert(intr->src[0].is_ssa);
-   assert(intr->src[1].is_ssa);
-
    nir_intrinsic_instr *bary_intrinsic =
       nir_instr_as_intrinsic(intr->src[0].ssa->parent_instr);
 

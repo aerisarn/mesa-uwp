@@ -441,11 +441,9 @@ static bool
 coalesce_phi_nodes_block(nir_block *block, struct from_ssa_state *state)
 {
    nir_foreach_phi(phi, block) {
-      assert(phi->dest.is_ssa);
       merge_node *dest_node = get_merge_node(&phi->dest.ssa, state);
 
       nir_foreach_phi_src(src, phi) {
-         assert(src->src.is_ssa);
          if (nir_src_is_undef(src->src))
             continue;
 
@@ -464,9 +462,7 @@ aggressive_coalesce_parallel_copy(nir_parallel_copy_instr *pcopy,
 {
    nir_foreach_parallel_copy_entry(entry, pcopy) {
       assert(!entry->src_is_reg);
-      assert(entry->src.is_ssa);
       assert(!entry->dest_is_reg);
-      assert(entry->dest.dest.is_ssa);
       assert(entry->dest.dest.ssa.num_components ==
              entry->src.ssa->num_components);
 
@@ -625,7 +621,6 @@ remove_no_op_phi(nir_instr *instr, struct from_ssa_state *state)
 #ifndef NDEBUG
    nir_phi_instr *phi = nir_instr_as_phi(instr);
 
-   assert(phi->dest.is_ssa);
    struct hash_entry *entry =
       _mesa_hash_table_search(state->merge_node_table, &phi->dest.ssa);
    assert(entry != NULL);

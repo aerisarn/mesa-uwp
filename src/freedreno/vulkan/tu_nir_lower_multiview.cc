@@ -49,7 +49,6 @@ lower_multiview_mask(nir_shader *nir, uint32_t *mask)
          if (var->data.location != VARYING_SLOT_POS)
             continue;
 
-         assert(intrin->src[1].is_ssa);
          nir_ssa_def *orig_src = intrin->src[1].ssa;
          b.cursor = nir_before_instr(instr);
 

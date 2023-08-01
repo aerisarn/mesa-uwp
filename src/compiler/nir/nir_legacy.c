@@ -12,7 +12,6 @@ bool
 nir_legacy_float_mod_folds(nir_alu_instr *mod)
 {
    assert(mod->op == nir_op_fabs || mod->op == nir_op_fneg);
-   assert(mod->dest.dest.is_ssa);
 
    /* No legacy user supports fp64 modifiers */
    if (mod->dest.dest.ssa.bit_size == 64)
@@ -223,7 +222,6 @@ chase_fsat(nir_ssa_def **def)
 
    /* Otherwise, we're good */
    nir_alu_instr *alu = nir_instr_as_alu(use->parent_instr);
-   assert(alu->dest.dest.is_ssa);
    *def = &alu->dest.dest.ssa;
    return true;
 }

@@ -70,7 +70,6 @@ static nir_ssa_def *
 check_and_propagate_bit_shift32(nir_builder *b, nir_alu_instr *alu_instr,
                                 int32_t direction, int32_t shift)
 {
-   assert(alu_instr->src[1].src.is_ssa);
    nir_ssa_def *shift_ssa = alu_instr->src[1].src.ssa;
 
    /* Only propagate if the shift is a const value so we can check value range
@@ -201,7 +200,6 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
    /* 'offset_src_idx' holds the index of the source that represent the offset. */
    new_intrinsic = nir_intrinsic_instr_create(b->shader, ir3_ssbo_opcode);
 
-   assert(intrinsic->src[offset_src_idx].is_ssa);
    nir_ssa_def *offset = intrinsic->src[offset_src_idx].ssa;
 
    /* Since we don't have value range checking, we first try to propagate
@@ -221,7 +219,6 @@ lower_offset_for_ssbo(nir_intrinsic_instr *intrinsic, nir_builder *b,
    *target_src = nir_src_for_ssa(offset);
 
    if (has_dest) {
-      assert(intrinsic->dest.is_ssa);
       nir_ssa_def *dest = &intrinsic->dest.ssa;
       nir_ssa_dest_init(&new_intrinsic->instr, &new_intrinsic->dest,
                         dest->num_components, dest->bit_size);

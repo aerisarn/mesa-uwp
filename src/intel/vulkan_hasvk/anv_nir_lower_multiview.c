@@ -211,8 +211,6 @@ anv_nir_lower_multiview(nir_shader *shader, uint32_t view_mask)
              load->intrinsic != nir_intrinsic_load_view_index)
             continue;
 
-         assert(load->dest.is_ssa);
-
          nir_ssa_def *value;
          if (load->intrinsic == nir_intrinsic_load_instance_id) {
             value = build_instance_id(&state);

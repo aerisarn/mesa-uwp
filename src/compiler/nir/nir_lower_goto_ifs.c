@@ -176,7 +176,6 @@ set_path_vars_cond(nir_builder *b, struct path_fork *fork, nir_src condition,
                break;
             }
             else {
-               assert(condition.is_ssa);
                nir_ssa_def *ssa_def = condition.ssa;
                assert(ssa_def->bit_size == 1);
                assert(ssa_def->num_components == 1);

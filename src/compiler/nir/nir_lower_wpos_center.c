@@ -49,8 +49,6 @@ update_fragcoord(nir_builder *b, nir_intrinsic_instr *intr)
 {
    nir_ssa_def *wpos = &intr->dest.ssa;
 
-   assert(intr->dest.is_ssa);
-
    b->cursor = nir_after_instr(&intr->instr);
 
    nir_ssa_def *spos = nir_load_sample_pos_or_center(b);

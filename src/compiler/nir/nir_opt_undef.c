@@ -41,8 +41,6 @@ opt_undef_csel(nir_alu_instr *instr)
    if (!nir_op_is_selection(instr->op))
       return false;
 
-   assert(instr->dest.dest.is_ssa);
-
    for (int i = 1; i <= 2; i++) {
       if (!instr->src[i].src.is_ssa)
          continue;
@@ -79,8 +77,6 @@ opt_undef_vecN(nir_builder *b, nir_alu_instr *alu)
 {
    if (!nir_op_is_vec(alu->op))
       return false;
-
-   assert(alu->dest.dest.is_ssa);
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       if (!alu->src[i].src.is_ssa ||

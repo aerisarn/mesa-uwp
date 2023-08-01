@@ -51,7 +51,6 @@ lower_point_size_instr(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_before_instr(instr);
 
-   assert(intr->src[1].is_ssa);
    assert(intr->src[1].ssa->num_components == 1);
    nir_ssa_def *psiz = intr->src[1].ssa;
 

@@ -669,8 +669,6 @@ crocus_setup_uniforms(ASSERTED const struct intel_device_info *devinfo,
 
             b.cursor = nir_before_instr(instr);
 
-            assert(load->src[0].is_ssa);
-
             if (load->src[0].ssa == temp_ubo_name) {
                nir_ssa_def *imm = nir_imm_int(&b, sysval_cbuf_index);
                nir_instr_rewrite_src(instr, &load->src[0],

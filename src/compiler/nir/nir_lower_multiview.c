@@ -275,7 +275,6 @@ nir_lower_multiview(nir_shader *shader, uint32_t view_mask)
 
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_view_index: {
-            assert(intrin->dest.is_ssa);
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa, view_index);
             break;
          }

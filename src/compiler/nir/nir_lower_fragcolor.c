@@ -65,7 +65,6 @@ lower_fragcolor_instr(nir_builder *b, nir_instr *intr, void *data)
       return false;
    b->cursor = nir_after_instr(&instr->instr);
 
-   assert(instr->src[1].is_ssa);
    nir_ssa_def *frag_color = instr->src[1].ssa;
    ralloc_free(out->name);
 

@@ -105,12 +105,10 @@ opt_constant_if(nir_if *if_stmt, bool condition)
             if (phi_src->pred != last_block)
                continue;
 
-            assert(phi_src->src.is_ssa);
             def = phi_src->src.ssa;
          }
 
          assert(def);
-         assert(phi->dest.is_ssa);
          nir_ssa_def_rewrite_uses(&phi->dest.ssa, def);
          nir_instr_remove(&phi->instr);
       }

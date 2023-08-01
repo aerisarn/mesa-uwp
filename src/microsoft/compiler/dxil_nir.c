@@ -70,14 +70,12 @@ load_comps_to_vec(nir_builder *b, unsigned src_bit_size,
 static bool
 lower_32b_offset_load(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var)
 {
-   assert(intr->dest.is_ssa);
    unsigned bit_size = nir_dest_bit_size(intr->dest);
    unsigned num_components = nir_dest_num_components(intr->dest);
    unsigned num_bits = num_components * bit_size;
 
    b->cursor = nir_before_instr(&intr->instr);
 
-   assert(intr->src[0].is_ssa);
    nir_ssa_def *offset = intr->src[0].ssa;
    if (intr->intrinsic == nir_intrinsic_load_shared)
       offset = nir_iadd_imm(b, offset, nir_intrinsic_base(intr));
@@ -159,7 +157,6 @@ lower_masked_store_vec32(nir_builder *b, nir_ssa_def *offset, nir_ssa_def *index
 static bool
 lower_32b_offset_store(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var)
 {
-   assert(intr->src[0].is_ssa);
    unsigned num_components = nir_src_num_components(intr->src[0]);
    unsigned bit_size = nir_src_bit_size(intr->src[0]);
    unsigned num_bits = num_components * bit_size;
@@ -622,7 +619,6 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr, nir_variable *var
 {
    b->cursor = nir_before_instr(&intr->instr);
 
-   assert(intr->src[0].is_ssa);
    nir_ssa_def *offset =
       nir_iadd_imm(b, intr->src[0].ssa, nir_intrinsic_base(intr));
    nir_ssa_def *index = nir_ushr_imm(b, offset, 2);
@@ -860,8 +856,6 @@ upcast_phi_impl(nir_function_impl *impl, unsigned min_bit_size)
 
    nir_foreach_block_reverse(block, impl) {
       nir_foreach_phi_safe(phi, block) {
-         assert(phi->dest.is_ssa);
-
          if (phi->dest.ssa.bit_size == 1 ||
              phi->dest.ssa.bit_size >= min_bit_size)
             continue;
@@ -1111,8 +1105,6 @@ lower_system_value_to_zero_filter(const nir_instr* instr, const void* cb_state)
    /* All the intrinsics we care about are loads */
    if (!nir_intrinsic_infos[intrin->intrinsic].has_dest)
       return false;
-
-   assert(intrin->dest.is_ssa);
 
    zero_system_values_state* state = (zero_system_values_state*)cb_state;
    for (uint32_t i = 0; i < state->count; ++i) {
@@ -1818,7 +1810,6 @@ lower_kill(struct nir_builder *builder, nir_instr *instr, void *_cb_data)
        intr->intrinsic == nir_intrinsic_terminate) {
       nir_demote(builder);
    } else {
-      assert(intr->src[0].is_ssa);
       nir_demote_if(builder, intr->src[0].ssa);
    }
 
@@ -2050,7 +2041,6 @@ split_unaligned_store(nir_builder *b, nir_intrinsic_instr *intrin, unsigned alig
 {
    enum gl_access_qualifier access = nir_intrinsic_access(intrin);
 
-   assert(intrin->src[1].is_ssa);
    nir_ssa_def *value = intrin->src[1].ssa;
    unsigned comp_size = value->bit_size / 8;
    unsigned num_comps = value->num_components;
@@ -2106,10 +2096,8 @@ dxil_nir_split_unaligned_loads_stores(nir_shader *shader, nir_variable_mode mode
 
             nir_ssa_def *val;
             if (intrin->intrinsic == nir_intrinsic_load_deref) {
-               assert(intrin->dest.is_ssa);
                val = &intrin->dest.ssa;
             } else {
-               assert(intrin->src[1].is_ssa);
                val = intrin->src[1].ssa;
             }
 

@@ -862,7 +862,6 @@ print_deref_link(const nir_deref_instr *instr, bool whole_chain, print_state *st
       return;
    }
 
-   assert(instr->parent.is_ssa);
    nir_deref_instr *parent =
       nir_instr_as_deref(instr->parent.ssa->parent_instr);
 

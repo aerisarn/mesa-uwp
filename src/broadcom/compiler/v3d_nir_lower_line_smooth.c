@@ -75,8 +75,6 @@ lower_line_smooth_func(struct lower_line_smooth_state *state,
                             intr->num_components != 4)
                                 continue;
 
-                        assert(intr->src[0].is_ssa);
-
                         lower_line_smooth_intrinsic(state, &b, intr);
                         progress = true;
                 }

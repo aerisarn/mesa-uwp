@@ -541,7 +541,6 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    /* Grab the input color.  We always want 4 channels during blend.  Dead
     * code will clean up any channels we don't need.
     */
-   assert(store->src[0].is_ssa);
    nir_ssa_def *src = nir_pad_vector(b, store->src[0].ssa, 4);
 
    assert(nir_src_as_uint(store->src[1]) == 0 && "store_output invariant");

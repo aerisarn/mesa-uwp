@@ -47,7 +47,6 @@ lower_polylinesmooth(nir_builder *b, nir_instr *instr, void *data)
        nir_intrinsic_src_type(intr) != nir_type_float32)
       return false;
 
-   assert(intr->src[0].is_ssa);
    assert(intr->num_components == 4);
 
    b->cursor = nir_before_instr(&intr->instr);

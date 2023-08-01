@@ -456,7 +456,6 @@ nir_opt_peephole_select_block(nir_block *block, nir_shader *shader,
       assert(exec_list_length(&phi->srcs) == 2);
       nir_foreach_phi_src(src, phi) {
          assert(src->pred == then_block || src->pred == else_block);
-         assert(src->src.is_ssa);
 
          unsigned idx = src->pred == then_block ? 1 : 2;
          nir_src_copy(&sel->src[idx].src, &src->src, &sel->instr);

@@ -229,15 +229,6 @@ match_value(const nir_algebraic_table *table,
 {
    uint8_t new_swizzle[NIR_MAX_VEC_COMPONENTS];
 
-   /* Searching only works on SSA values because, if it's not SSA, we can't
-    * know if the value changed between one instance of that value in the
-    * expression and another.  Also, the replace operation will place reads of
-    * that value right before the last instruction in the expression we're
-    * replacing so those reads will happen after the original reads and may
-    * not be valid if they're register reads.
-    */
-   assert(instr->src[src].src.is_ssa);
-
    /* If the source is an explicitly sized source, then we need to reset
     * both the number of components and the swizzle.
     */
@@ -369,8 +360,6 @@ match_expression(const nir_algebraic_table *table, const nir_search_expression *
 
    if (!nir_op_matches_search_op(instr->op, expr->opcode))
       return false;
-
-   assert(instr->dest.dest.is_ssa);
 
    if (expr->value.bit_size > 0 &&
        instr->dest.dest.ssa.bit_size != expr->value.bit_size)
@@ -664,8 +653,6 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
 
    for (unsigned i = 0; i < instr->dest.dest.ssa.num_components; ++i)
       swizzle[i] = i;
-
-   assert(instr->dest.dest.is_ssa);
 
    struct match_state state;
    state.inexact_match = false;

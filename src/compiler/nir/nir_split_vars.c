@@ -1174,8 +1174,6 @@ src_is_load_deref(nir_src src, nir_src deref_src)
    if (load == NULL || load->intrinsic != nir_intrinsic_load_deref)
       return false;
 
-   assert(load->src[0].is_ssa);
-
    return load->src[0].ssa == deref_src.ssa;
 }
 
@@ -1195,7 +1193,6 @@ get_non_self_referential_store_comps(nir_intrinsic_instr *store)
 {
    nir_component_mask_t comps = nir_intrinsic_write_mask(store);
 
-   assert(store->src[1].is_ssa);
    nir_instr *src_instr = store->src[1].ssa->parent_instr;
    if (src_instr->type != nir_instr_type_alu)
       return comps;

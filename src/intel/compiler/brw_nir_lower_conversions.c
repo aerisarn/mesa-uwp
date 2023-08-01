@@ -114,7 +114,6 @@ lower_instr(nir_builder *b, nir_instr *instr, UNUSED void *cb_data)
       return false;
 
    nir_alu_instr *alu = nir_instr_as_alu(instr);
-   assert(alu->dest.dest.is_ssa);
 
    if (!nir_op_infos[alu->op].is_conversion)
       return false;

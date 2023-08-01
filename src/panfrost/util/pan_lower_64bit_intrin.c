@@ -57,7 +57,6 @@ nir_lower_64bit_intrin_instr(nir_builder *b, nir_instr *instr, void *data)
 
    b->cursor = nir_after_instr(instr);
 
-   assert(intr->dest.is_ssa);
    intr->dest.ssa.bit_size = 32;
 
    nir_ssa_def *conv = nir_u2u64(b, &intr->dest.ssa);

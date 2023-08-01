@@ -734,8 +734,6 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
    header.alu.op = alu->op;
    header.alu.packed_src_ssa_16bit = is_alu_src_ssa_16bit(ctx, alu);
 
-   assert(alu->dest.dest.is_ssa);
-
    if (header.alu.packed_src_ssa_16bit) {
       /* For packed srcs of SSA ALUs, this field stores the swizzles. */
       header.alu.writemask_or_two_swizzles = alu->src[0].swizzle[0];
@@ -747,7 +745,6 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
 
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
-         assert(alu->src[i].src.is_ssa);
          unsigned idx = write_lookup_object(ctx, alu->src[i].src.ssa);
          assert(idx < (1 << 16));
          blob_write_uint16(ctx->blob, idx);
@@ -1045,7 +1042,6 @@ read_deref(read_ctx *ctx, union packed_instr header)
    } else if (deref->deref_type == nir_deref_type_cast) {
       deref->modes = decode_deref_modes(header.deref.modes);
    } else {
-      assert(deref->parent.is_ssa);
       deref->modes = nir_instr_as_deref(deref->parent.ssa->parent_instr)->modes;
    }
 
@@ -1483,7 +1479,6 @@ write_phi(write_ctx *ctx, const nir_phi_instr *phi)
    write_dest(ctx, &phi->dest, header, phi->instr.type);
 
    nir_foreach_phi_src(src, phi) {
-      assert(src->src.is_ssa);
       size_t blob_offset = blob_reserve_uint32(ctx->blob);
       ASSERTED size_t blob_offset2 = blob_reserve_uint32(ctx->blob);
       assert(blob_offset + sizeof(uint32_t) == blob_offset2);

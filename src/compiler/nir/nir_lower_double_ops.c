@@ -461,9 +461,6 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
    if (!(options & nir_lower_fp64_full_software))
       return NULL;
 
-
-   assert(instr->dest.dest.is_ssa);
-
    const char *name;
    const char *mangled_name;
    const struct glsl_type *return_type = glsl_uint64_t_type();
@@ -673,7 +670,6 @@ should_lower_double_instr(const nir_instr *instr, const void *_data)
 
    const nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-   assert(alu->dest.dest.is_ssa);
    bool is_64 = alu->dest.dest.ssa.bit_size == 64;
 
    unsigned num_srcs = nir_op_infos[alu->op].num_inputs;

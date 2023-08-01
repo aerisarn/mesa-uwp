@@ -1082,13 +1082,10 @@ should_lower_int64_alu_instr(const nir_alu_instr *alu,
    case nir_op_u2u8:
    case nir_op_u2u16:
    case nir_op_u2u32:
-      assert(alu->src[0].src.is_ssa);
       if (alu->src[0].src.ssa->bit_size != 64)
          return false;
       break;
    case nir_op_bcsel:
-      assert(alu->src[1].src.is_ssa);
-      assert(alu->src[2].src.is_ssa);
       assert(alu->src[1].src.ssa->bit_size ==
              alu->src[2].src.ssa->bit_size);
       if (alu->src[1].src.ssa->bit_size != 64)
@@ -1100,8 +1097,6 @@ should_lower_int64_alu_instr(const nir_alu_instr *alu,
    case nir_op_ilt:
    case nir_op_uge:
    case nir_op_ige:
-      assert(alu->src[0].src.is_ssa);
-      assert(alu->src[1].src.is_ssa);
       assert(alu->src[0].src.ssa->bit_size ==
              alu->src[1].src.ssa->bit_size);
       if (alu->src[0].src.ssa->bit_size != 64)
@@ -1110,12 +1105,10 @@ should_lower_int64_alu_instr(const nir_alu_instr *alu,
    case nir_op_ufind_msb:
    case nir_op_find_lsb:
    case nir_op_bit_count:
-      assert(alu->src[0].src.is_ssa);
       if (alu->src[0].src.ssa->bit_size != 64)
          return false;
       break;
    case nir_op_amul:
-      assert(alu->dest.dest.is_ssa);
       if (options->has_imul24)
          return false;
       if (alu->dest.dest.ssa.bit_size != 64)
@@ -1127,7 +1120,6 @@ should_lower_int64_alu_instr(const nir_alu_instr *alu,
    case nir_op_u2f32:
    case nir_op_i2f16:
    case nir_op_u2f16:
-      assert(alu->src[0].src.is_ssa);
       if (alu->src[0].src.ssa->bit_size != 64)
          return false;
       break;
@@ -1135,7 +1127,6 @@ should_lower_int64_alu_instr(const nir_alu_instr *alu,
    case nir_op_f2i64:
       FALLTHROUGH;
    default:
-      assert(alu->dest.dest.is_ssa);
       if (alu->dest.dest.ssa.bit_size != 64)
          return false;
       break;
@@ -1239,7 +1230,6 @@ lower_scan_iadd64(nir_builder *b, const nir_intrinsic_instr *intrin)
     * no larger than 256 which seems reasonable.)  We can then scan on each of
     * the chunks and add them back together at the end.
     */
-   assert(intrin->src[0].is_ssa);
    nir_ssa_def *x = intrin->src[0].ssa;
    nir_ssa_def *x_low =
       nir_u2u32(b, nir_iand_imm(b, x, 0xffffff));
@@ -1281,19 +1271,16 @@ should_lower_int64_intrinsic(const nir_intrinsic_instr *intrin,
    case nir_intrinsic_quad_swap_horizontal:
    case nir_intrinsic_quad_swap_vertical:
    case nir_intrinsic_quad_swap_diagonal:
-      assert(intrin->dest.is_ssa);
       return intrin->dest.ssa.bit_size == 64 &&
              (options->lower_int64_options & nir_lower_subgroup_shuffle64);
 
    case nir_intrinsic_vote_ieq:
-      assert(intrin->src[0].is_ssa);
       return intrin->src[0].ssa->bit_size == 64 &&
              (options->lower_int64_options & nir_lower_vote_ieq64);
 
    case nir_intrinsic_reduce:
    case nir_intrinsic_inclusive_scan:
    case nir_intrinsic_exclusive_scan:
-      assert(intrin->dest.is_ssa);
       if (intrin->dest.ssa.bit_size != 64)
          return false;
 
@@ -1331,7 +1318,6 @@ lower_int64_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
       return split_64bit_subgroup_op(b, intrin);
 
    case nir_intrinsic_vote_ieq:
-      assert(intrin->src[0].is_ssa);
       return lower_vote_ieq(b, intrin->src[0].ssa);
 
    case nir_intrinsic_reduce:

@@ -40,7 +40,6 @@ dup_mem_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_src *intrin_offset_src = nir_get_io_offset_src(intrin);
    for (unsigned i = 0; i < info->num_srcs; i++) {
-      assert(intrin->src[i].is_ssa);
       if (i == 0 && data != NULL) {
          assert(!info->has_dest);
          assert(&intrin->src[i] != intrin_offset_src);
@@ -59,7 +58,6 @@ dup_mem_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_intrinsic_set_align(dup, align_mul, align_offset);
 
    if (info->has_dest) {
-      assert(intrin->dest.is_ssa);
       nir_ssa_dest_init(&dup->instr, &dup->dest, num_components, bit_size);
    } else {
       nir_intrinsic_set_write_mask(dup, (1 << num_components) - 1);
@@ -75,7 +73,6 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
                nir_lower_mem_access_bit_sizes_cb mem_access_size_align_cb,
                const void *cb_data)
 {
-   assert(intrin->dest.is_ssa);
    const unsigned bit_size = intrin->dest.ssa.bit_size;
    const unsigned num_components = intrin->dest.ssa.num_components;
    const unsigned bytes_read = num_components * (bit_size / 8);

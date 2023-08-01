@@ -74,8 +74,6 @@ remove_phis_block(nir_block *block, nir_builder *b)
       bool srcs_same = true;
 
       nir_foreach_phi_src(src, phi) {
-         assert(src->src.is_ssa);
-
          /* For phi nodes at the beginning of loops, we may encounter some
           * sources from backedges that point back to the destination of the
           * same phi, i.e. something like:
@@ -126,7 +124,6 @@ remove_phis_block(nir_block *block, nir_builder *b)
          def = nir_mov_alu(b, mov->src[0], def->num_components);
       }
 
-      assert(phi->dest.is_ssa);
       nir_ssa_def_rewrite_uses(&phi->dest.ssa, def);
       nir_instr_remove(&phi->instr);
 

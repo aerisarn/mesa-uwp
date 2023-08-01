@@ -85,8 +85,6 @@ lower_color(nir_builder *b, lower_drawpixels_state *state, nir_intrinsic_instr *
    nir_tex_instr *tex;
    nir_ssa_def *def;
 
-   assert(intr->dest.is_ssa);
-
    b->cursor = nir_before_instr(&intr->instr);
 
    texcoord = get_texcoord(b, state);

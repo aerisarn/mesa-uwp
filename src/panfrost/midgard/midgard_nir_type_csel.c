@@ -19,7 +19,6 @@ pass(nir_builder *b, nir_instr *instr, void *data)
       return false;
 
    BITSET_WORD *float_types = data;
-   assert(alu->dest.dest.is_ssa);
    if (BITSET_TEST(float_types, alu->dest.dest.ssa.index)) {
       alu->op = nir_op_b32fcsel_mdg;
       return true;

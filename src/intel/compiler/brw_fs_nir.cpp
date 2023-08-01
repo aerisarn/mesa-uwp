@@ -496,7 +496,6 @@ bool
 fs_visitor::optimize_extract_to_float(nir_alu_instr *instr,
                                       const fs_reg &result)
 {
-   assert(instr->src[0].src.is_ssa);
    if (!instr->src[0].src.ssa->parent_instr)
       return false;
 
@@ -982,13 +981,11 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       fs_reg temp = result;
       bool need_extra_copy = false;
 
-      assert(instr->dest.dest.is_ssa);
       nir_intrinsic_instr *store_reg =
          nir_store_reg_for_def(&instr->dest.dest.ssa);
       if (store_reg != NULL) {
          nir_ssa_def *dest_reg = store_reg->src[1].ssa;
          for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-            assert(instr->src[i].src.is_ssa);
             nir_intrinsic_instr *load_reg =
                nir_load_reg_for_def(instr->src[i].src.ssa);
             if (load_reg == NULL)
@@ -1977,16 +1974,12 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
 bool
 fs_visitor::get_nir_src_bindless(const nir_src &src)
 {
-   assert(src.is_ssa);
-
    return nir_ssa_bind_infos[src.ssa->index].bindless;
 }
 
 unsigned
 fs_visitor::get_nir_src_block(const nir_src &src)
 {
-   assert(src.is_ssa);
-
    return nir_ssa_bind_infos[src.ssa->index].valid ?
           nir_ssa_bind_infos[src.ssa->index].block :
           UINT32_MAX;
@@ -1995,7 +1988,6 @@ fs_visitor::get_nir_src_block(const nir_src &src)
 static bool
 is_resource_src(nir_src src)
 {
-   assert(src.is_ssa);
    return src.ssa->parent_instr->type == nir_instr_type_intrinsic &&
           nir_instr_as_intrinsic(src.ssa->parent_instr)->intrinsic == nir_intrinsic_resource_intel;
 }
@@ -2011,7 +2003,6 @@ fs_visitor::get_resource_nir_src(const nir_src &src)
 fs_reg
 fs_visitor::get_nir_src(const nir_src &src)
 {
-   assert(src.is_ssa);
    nir_intrinsic_instr *load_reg = nir_load_reg_for_def(src.ssa);
 
    fs_reg reg;
@@ -2067,7 +2058,6 @@ fs_visitor::get_nir_src_imm(const nir_src &src)
 fs_reg
 fs_visitor::get_nir_dest(const nir_dest &dest)
 {
-   assert(dest.is_ssa);
    nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.ssa);
    if (!store_reg) {
       const brw_reg_type reg_type =
@@ -2092,7 +2082,6 @@ fs_visitor::get_nir_dest(const nir_dest &dest)
 nir_component_mask_t
 fs_visitor::get_nir_write_mask(const nir_alu_dest &dest)
 {
-   assert(dest.dest.is_ssa);
    assert(dest.write_mask == nir_component_mask(dest.dest.ssa.num_components));
 
    nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.dest.ssa);
@@ -6711,7 +6700,6 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    const unsigned dest_size = nir_tex_instr_dest_size(instr);
    if (devinfo->ver >= 9 &&
        instr->op != nir_texop_tg4 && instr->op != nir_texop_query_levels) {
-      assert(instr->dest.is_ssa);
       unsigned write_mask = nir_ssa_def_components_read(&instr->dest.ssa);
       assert(write_mask != 0); /* dead code should have been eliminated */
       if (instr->is_sparse) {

@@ -451,9 +451,6 @@ anv_frag_update_derefs_instr(struct nir_builder *b, nir_instr *instr, void *data
    if (new_derefs[location] == NULL)
       return false;
 
-   assert(deref->dest.is_ssa);
-   assert(new_derefs[location]->dest.is_ssa);
-
    nir_instr_remove(&deref->instr);
    nir_ssa_def_rewrite_uses(&deref->dest.ssa, &new_derefs[location]->dest.ssa);
 

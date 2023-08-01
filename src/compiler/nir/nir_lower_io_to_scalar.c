@@ -45,8 +45,6 @@ lower_load_input_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
 {
    b->cursor = nir_before_instr(&intr->instr);
 
-   assert(intr->dest.is_ssa);
-
    nir_ssa_def *loads[NIR_MAX_VEC_COMPONENTS];
 
    for (unsigned i = 0; i < intr->num_components; i++) {
@@ -78,8 +76,6 @@ static void
 lower_load_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
 {
    b->cursor = nir_before_instr(&intr->instr);
-
-   assert(intr->dest.is_ssa);
 
    nir_ssa_def *loads[NIR_MAX_VEC_COMPONENTS];
    nir_ssa_def *base_offset = nir_get_io_offset_src(intr)->ssa;
@@ -325,8 +321,6 @@ lower_load_to_scalar_early(nir_builder *b, nir_intrinsic_instr *intr,
                            struct hash_table *split_outputs)
 {
    b->cursor = nir_before_instr(&intr->instr);
-
-   assert(intr->dest.is_ssa);
 
    nir_ssa_def *loads[NIR_MAX_VEC_COMPONENTS];
 
