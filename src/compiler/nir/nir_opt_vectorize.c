@@ -52,8 +52,6 @@ static uint32_t
 hash_alu_src(uint32_t hash, const nir_alu_src *src,
              uint32_t num_components, uint32_t max_vec)
 {
-   assert(!src->abs && !src->negate);
-
    /* hash whether a swizzle accesses elements beyond the maximum
     * vectorization factor:
     * For example accesses to .x and .y are considered different variables
@@ -97,11 +95,6 @@ static bool
 alu_srcs_equal(const nir_alu_src *src1, const nir_alu_src *src2,
                uint32_t max_vec)
 {
-   assert(!src1->abs);
-   assert(!src1->negate);
-   assert(!src2->abs);
-   assert(!src2->negate);
-
    uint32_t mask = ~(max_vec - 1);
    if ((src1->swizzle[0] & mask) != (src2->swizzle[0] & mask))
       return false;

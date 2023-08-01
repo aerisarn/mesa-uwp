@@ -100,8 +100,6 @@ chase_source_mod(nir_ssa_def **ssa, nir_op op, uint8_t *swizzle)
 nir_legacy_alu_src
 nir_legacy_chase_alu_src(const nir_alu_src *src, bool fuse_fabs)
 {
-   assert(!src->abs && "source modifiers must be ALU");
-   assert(!src->negate && "source modifiers must be ALU");
    assert(src->src.is_ssa && "registers lowered to intrinsics");
 
    if (src->src.ssa->parent_instr->type == nir_instr_type_alu) {

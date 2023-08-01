@@ -710,10 +710,6 @@ Converter::convert(nir_ssa_def *def)
 Value*
 Converter::getSrc(nir_alu_src *src, uint8_t component)
 {
-   if (src->abs || src->negate) {
-      ERROR("modifiers currently not supported on nir_alu_src\n");
-      assert(false);
-   }
    return getSrc(&src->src, src->swizzle[component]);
 }
 

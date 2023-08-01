@@ -229,8 +229,6 @@ clone_alu(clone_state *state, const nir_alu_instr *alu)
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       __clone_src(state, &nalu->instr, &nalu->src[i].src, &alu->src[i].src);
-      nalu->src[i].negate = alu->src[i].negate;
-      nalu->src[i].abs = alu->src[i].abs;
       memcpy(nalu->src[i].swizzle, alu->src[i].swizzle,
              sizeof(nalu->src[i].swizzle));
    }

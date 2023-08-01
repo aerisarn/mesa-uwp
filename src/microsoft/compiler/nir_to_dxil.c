@@ -2255,9 +2255,6 @@ get_src(struct ntd_context *ctx, nir_src *src, unsigned chan,
 static const struct dxil_value *
 get_alu_src(struct ntd_context *ctx, nir_alu_instr *alu, unsigned src)
 {
-   assert(!alu->src[src].abs);
-   assert(!alu->src[src].negate);
-
    unsigned chan = alu->src[src].swizzle[0];
    return get_src(ctx, &alu->src[src].src, chan,
                   nir_op_infos[alu->op].input_types[src]);

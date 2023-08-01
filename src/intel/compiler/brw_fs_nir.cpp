@@ -647,10 +647,6 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
                      nir_dest_bit_size(instr->dest.dest)));
 
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-      /* We don't lower to source modifiers so they should not exist. */
-      assert(!instr->src[i].abs);
-      assert(!instr->src[i].negate);
-
       op[i] = get_nir_src(instr->src[i].src);
       op[i].type = brw_type_for_nir_type(devinfo,
          (nir_alu_type)(nir_op_infos[instr->op].input_types[i] |
@@ -4074,11 +4070,7 @@ fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_ssa_def *resour
 
          if (!alu->src[0].src.is_ssa ||
              !alu->src[1].src.is_ssa ||
-             alu->src[0].negate ||
-             alu->src[0].abs ||
              alu->src[0].swizzle[0] != 0 ||
-             alu->src[1].negate ||
-             alu->src[1].abs ||
              alu->src[1].swizzle[0] != 0)
             break;
 

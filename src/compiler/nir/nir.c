@@ -508,8 +508,6 @@ nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src,
                  nir_alu_instr *instr)
 {
    nir_src_copy(&dest->src, &src->src, instr ? &instr->instr : NULL);
-   dest->abs = src->abs;
-   dest->negate = src->negate;
    for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
       dest->swizzle[i] = src->swizzle[i];
 }
@@ -524,7 +522,6 @@ nir_alu_src_is_trivial_ssa(const nir_alu_instr *alu, unsigned srcn)
    unsigned num_components = nir_ssa_alu_instr_src_components(alu, srcn);
 
    return src->src.is_ssa && (src->src.ssa->num_components == num_components) &&
-          !src->abs && !src->negate &&
           (memcmp(src->swizzle, trivial_swizzle, num_components) == 0);
 }
 
@@ -681,7 +678,6 @@ static void
 alu_src_init(nir_alu_src *src)
 {
    src_init(&src->src);
-   src->abs = src->negate = false;
    for (int i = 0; i < NIR_MAX_VEC_COMPONENTS; ++i)
       src->swizzle[i] = i;
 }
@@ -2870,19 +2866,7 @@ nir_variable *nir_get_binding_variable(nir_shader *shader, nir_binding binding)
 bool
 nir_alu_instr_is_copy(nir_alu_instr *instr)
 {
-
-   if (instr->op == nir_op_mov) {
-      return !instr->src[0].abs &&
-             !instr->src[0].negate;
-   } else if (nir_op_is_vec(instr->op)) {
-      for (unsigned i = 0; i < instr->dest.dest.ssa.num_components; i++) {
-         if (instr->src[i].abs || instr->src[i].negate)
-            return false;
-      }
-      return true;
-   } else {
-      return false;
-   }
+   return (instr->op == nir_op_mov) || nir_op_is_vec(instr->op);
 }
 
 nir_ssa_scalar

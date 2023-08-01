@@ -262,8 +262,6 @@ match_value(const nir_algebraic_table *table,
          if (state->variables[var->variable].src.ssa != instr->src[src].src.ssa)
             return false;
 
-         assert(!instr->src[src].abs && !instr->src[src].negate);
-
          for (unsigned i = 0; i < num_components; ++i) {
             if (state->variables[var->variable].swizzle[i] != new_swizzle[i])
                return false;
@@ -285,8 +283,6 @@ match_value(const nir_algebraic_table *table,
 
          state->variables_seen |= (1 << var->variable);
          state->variables[var->variable].src = instr->src[src].src;
-         state->variables[var->variable].abs = false;
-         state->variables[var->variable].negate = false;
 
          for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; ++i) {
             if (i < num_components)
@@ -470,8 +466,6 @@ construct_value(nir_builder *build,
 
       nir_alu_src val;
       val.src = nir_src_for_ssa(&alu->dest.dest.ssa);
-      val.negate = false;
-      val.abs = false,
       memcpy(val.swizzle, identity_swizzle, sizeof val.swizzle);
 
       return val;
@@ -522,8 +516,6 @@ construct_value(nir_builder *build,
 
       nir_alu_src val;
       val.src = nir_src_for_ssa(cval);
-      val.negate = false;
-      val.abs = false,
       memset(val.swizzle, 0, sizeof val.swizzle);
 
       return val;

@@ -181,7 +181,6 @@ static bool gpir_emit_alu(gpir_block *block, nir_instr *ni)
 
    for (int i = 0; i < num_child; i++) {
       nir_alu_src *src = instr->src + i;
-      node->children_negate[i] = src->negate;
 
       gpir_node *child = gpir_node_find(block, &src->src, src->swizzle[0]);
       node->children[i] = child;

@@ -1191,8 +1191,6 @@ clone_alu_and_replace_src_defs(nir_builder *b, const nir_alu_instr *alu,
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       nalu->src[i].src = nir_src_for_ssa(src_defs[i]);
-      nalu->src[i].negate = alu->src[i].negate;
-      nalu->src[i].abs = alu->src[i].abs;
       memcpy(nalu->src[i].swizzle, alu->src[i].swizzle,
              sizeof(nalu->src[i].swizzle));
    }

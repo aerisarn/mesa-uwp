@@ -65,7 +65,6 @@ get_mul_for_src(nir_alu_src *src, unsigned num_components,
                 uint8_t *swizzle, bool *negate, bool *abs)
 {
    uint8_t swizzle_tmp[NIR_MAX_VEC_COMPONENTS];
-   assert(src->src.is_ssa && !src->abs && !src->negate);
 
    nir_instr *instr = src->src.ssa->parent_instr;
    if (instr->type != nir_instr_type_alu)

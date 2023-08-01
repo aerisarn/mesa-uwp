@@ -99,8 +99,6 @@ static LLVMValueRef get_alu_src(struct ac_nir_context *ctx, nir_alu_src src,
          value = LLVMBuildShuffleVector(ctx->ac.builder, value, value, swizzle, "");
       }
    }
-   assert(!src.negate);
-   assert(!src.abs);
    return value;
 }
 

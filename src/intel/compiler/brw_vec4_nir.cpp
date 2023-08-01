@@ -1089,10 +1089,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    src_reg op[4];
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-      /* We don't lower to source modifiers, so they shouldn't exist. */
-      assert(!instr->src[i].abs);
-      assert(!instr->src[i].negate);
-
       nir_alu_type src_type = (nir_alu_type)
          (nir_op_infos[instr->op].input_types[i] |
           nir_src_bit_size(instr->src[i].src));

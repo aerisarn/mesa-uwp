@@ -813,9 +813,6 @@ try_eval_const_alu(nir_const_value *dest, nir_alu_instr *alu,
             return false;
          }
       }
-
-      /* We shouldn't have any source modifiers in the optimization loop. */
-      assert(!alu->src[i].abs && !alu->src[i].negate);
    }
 
    if (bit_size == 0)

@@ -232,8 +232,6 @@ get_alu_src(struct lp_build_nir_context *bld_base,
             nir_alu_src src,
             unsigned num_components)
 {
-   assert(!src.negate);
-   assert(!src.abs);
    assert(num_components >= 1);
    assert(num_components <= 4);
 

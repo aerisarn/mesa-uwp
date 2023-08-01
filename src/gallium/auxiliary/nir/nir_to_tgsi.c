@@ -565,7 +565,6 @@ ntt_extract_const_src_offset(nir_src *src)
 
       if (alu->op == nir_op_iadd) {
          for (int i = 0; i < 2; i++) {
-            assert(!alu->src[i].negate && !alu->src[i].abs);
             nir_const_value *v = nir_src_as_const_value(alu->src[i].src);
             if (v != NULL) {
                *src = alu->src[1 - i].src;

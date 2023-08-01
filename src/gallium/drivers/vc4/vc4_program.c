@@ -281,9 +281,6 @@ ntq_get_alu_src(struct vc4_compile *c, nir_alu_instr *instr,
         struct qreg r = ntq_get_src(c, instr->src[src].src,
                                     instr->src[src].swizzle[0]);
 
-        assert(!instr->src[src].abs);
-        assert(!instr->src[src].negate);
-
         return r;
 };
 

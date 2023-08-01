@@ -1182,25 +1182,6 @@ typedef struct {
    nir_src src;
 
    /**
-    * \name input modifiers
-    */
-   /*@{*/
-   /**
-    * For inputs interpreted as floating point, flips the sign bit. For
-    * inputs interpreted as integers, performs the two's complement negation.
-    */
-   bool negate;
-
-   /**
-    * Clears the sign bit for floating point values, and computes the integer
-    * absolute value for integers. Note that the negate modifier acts after
-    * the absolute value modifier, therefore if both are set then all inputs
-    * will become negative.
-    */
-   bool abs;
-   /*@}*/
-
-   /**
     * For each input component, says which component of the register it is
     * chosen from.
     *
@@ -1493,9 +1474,7 @@ typedef struct nir_op_info {
    uint8_t input_sizes[NIR_ALU_MAX_INPUTS];
 
    /**
-    * The type of vector that each input takes. Note that negate and
-    * absolute value are only allowed on inputs with int or float type and
-    * behave differently on the two.
+    * The type of vector that each input takes.
     */
    nir_alu_type input_types[NIR_ALU_MAX_INPUTS];
 

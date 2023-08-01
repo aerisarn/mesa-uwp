@@ -401,9 +401,6 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
       for (int i = 0; i < info->num_inputs; i++) {
          nir_alu_src *asrc = &alu->src[i];
 
-         compile_assert(ctx, !asrc->abs);
-         compile_assert(ctx, !asrc->negate);
-
          src[i] = ir3_get_src(ctx, &asrc->src)[asrc->swizzle[0]];
          if (!src[i])
             src[i] = create_immed_typed(ctx->block, 0, dst_type);
@@ -437,9 +434,6 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    for (int i = 0; i < info->num_inputs; i++) {
       unsigned chan = ffs(alu->dest.write_mask) - 1;
       nir_alu_src *asrc = &alu->src[i];
-
-      compile_assert(ctx, !asrc->abs);
-      compile_assert(ctx, !asrc->negate);
 
       src[i] = ir3_get_src(ctx, &asrc->src)[asrc->swizzle[chan]];
       bs[i] = nir_src_bit_size(asrc->src);

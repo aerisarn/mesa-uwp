@@ -75,9 +75,6 @@ try_fold_alu(nir_builder *b, nir_alu_instr *alu)
            j++) {
          src[i][j] = load_const->value[alu->src[i].swizzle[j]];
       }
-
-      /* We shouldn't have any source modifiers in the optimization loop. */
-      assert(!alu->src[i].abs && !alu->src[i].negate);
    }
 
    if (bit_size == 0)

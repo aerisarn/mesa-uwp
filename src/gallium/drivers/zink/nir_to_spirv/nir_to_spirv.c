@@ -1399,9 +1399,6 @@ get_src(struct ntv_context *ctx, nir_src *src, nir_alu_type *atype)
 static SpvId
 get_alu_src_raw(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src, nir_alu_type *atype)
 {
-   assert(!alu->src[src].negate);
-   assert(!alu->src[src].abs);
-
    SpvId def = get_src(ctx, &alu->src[src].src, atype);
 
    unsigned used_channels = 0;

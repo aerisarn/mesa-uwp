@@ -96,9 +96,6 @@ hash_src(uint32_t hash, const nir_src *src)
 static uint32_t
 hash_alu_src(uint32_t hash, const nir_alu_src *src, unsigned num_components)
 {
-   hash = HASH(hash, src->abs);
-   hash = HASH(hash, src->negate);
-
    for (unsigned i = 0; i < num_components; i++)
       hash = HASH(hash, src->swizzle[i]);
 
@@ -434,10 +431,7 @@ nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
    }
 #endif
 
-   if (alu1->src[src1].abs != alu2->src[src2].abs)
-      return false;
-
-   bool parity = alu1->src[src1].negate != alu2->src[src2].negate;
+   bool parity = false;
 
    /* Handling load_const instructions is tricky. */
 
@@ -521,10 +515,6 @@ bool
 nir_alu_srcs_equal(const nir_alu_instr *alu1, const nir_alu_instr *alu2,
                    unsigned src1, unsigned src2)
 {
-   if (alu1->src[src1].abs != alu2->src[src2].abs ||
-       alu1->src[src1].negate != alu2->src[src2].negate)
-      return false;
-
    for (unsigned i = 0; i < nir_ssa_alu_instr_src_components(alu1, src1); i++) {
       if (alu1->src[src1].swizzle[i] != alu2->src[src2].swizzle[i])
          return false;

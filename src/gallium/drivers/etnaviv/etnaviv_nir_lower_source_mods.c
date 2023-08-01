@@ -88,9 +88,9 @@ nir_lower_to_source_mods_instr(nir_builder *b, nir_instr *instr,
          alu_src_consume_abs(instr, i);
 
       /* Apply modifiers from the parent source */
-      if (parent->src[0].negate || is_src_mod_neg(&parent->instr, 0))
+      if (is_src_mod_neg(&parent->instr, 0))
          alu_src_consume_negate(instr, i);
-      if (parent->src[0].abs || is_src_mod_abs(&parent->instr, 0))
+      if (is_src_mod_abs(&parent->instr, 0))
          alu_src_consume_abs(instr, i);
 
       for (int j = 0; j < 4; ++j) {

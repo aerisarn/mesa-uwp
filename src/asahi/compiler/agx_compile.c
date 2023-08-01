@@ -1163,7 +1163,6 @@ agx_alu_src_index(agx_builder *b, nir_alu_src src)
 
    assert(bitsize == 1 || bitsize == 8 || bitsize == 16 || bitsize == 32 ||
           bitsize == 64);
-   assert(!(src.negate || src.abs));
    assert(channel < comps);
 
    return agx_extract_nir_src(b, src.src, channel);

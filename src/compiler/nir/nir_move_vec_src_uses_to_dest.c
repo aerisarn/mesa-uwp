@@ -90,10 +90,6 @@ move_vec_src_uses_to_dest_block(nir_block *block)
          if (!vec->src[i].src.is_ssa)
             continue;
 
-         /* We can't rewrite a source if it has modifiers */
-         if (vec->src[i].abs || vec->src[i].negate)
-            continue;
-
          srcs_remaining |= 1 << i;
       }
 

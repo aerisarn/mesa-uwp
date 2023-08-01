@@ -1764,9 +1764,6 @@ bi_emit_load_const(bi_builder *b, nir_load_const_instr *instr)
 static bi_index
 bi_alu_src_index(bi_builder *b, nir_alu_src src, unsigned comps)
 {
-   /* we don't lower modifiers until the backend */
-   assert(!(src.negate || src.abs));
-
    unsigned bitsize = nir_src_bit_size(src.src);
 
    /* the bi_index carries the 32-bit (word) offset separate from the

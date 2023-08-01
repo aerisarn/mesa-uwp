@@ -502,9 +502,6 @@ emit_alu(struct etna_compile *c, nir_alu_instr * alu)
       nir_alu_src *asrc = &alu->src[i];
       hw_src src;
 
-      assert(!asrc->negate);
-      assert(!asrc->abs);
-
       src = src_swizzle(get_src(c, &asrc->src), ALU_SWIZ(asrc));
       src = src_swizzle(src, dst_swiz);
 
@@ -716,9 +713,6 @@ insert_vec_mov(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
 
    nir_alu_instr *mov = nir_alu_instr_create(shader, nir_op_mov);
    nir_alu_src_copy(&mov->src[0], &vec->src[start_idx], mov);
-
-   assert(!vec->src[start_idx].negate);
-   assert(!vec->src[start_idx].abs);
 
    mov->src[0].swizzle[0] = vec->src[start_idx].swizzle[0];
 

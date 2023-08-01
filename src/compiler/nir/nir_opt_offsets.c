@@ -45,9 +45,7 @@ try_extract_const_addition(nir_builder *b, nir_ssa_scalar val, opt_offsets_state
    nir_alu_instr *alu = nir_instr_as_alu(val.def->parent_instr);
    if (alu->op != nir_op_iadd ||
        !alu->src[0].src.is_ssa ||
-       !alu->src[1].src.is_ssa ||
-       alu->src[0].negate || alu->src[0].abs ||
-       alu->src[1].negate || alu->src[1].abs)
+       !alu->src[1].src.is_ssa)
       return val;
 
    nir_ssa_scalar src[2] = {
