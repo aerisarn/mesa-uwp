@@ -41,11 +41,8 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
          dupl = nir_intrinsic_instr_create(b->shader, op);
          dupl->num_components = itr->num_components;
          memcpy(dupl->const_index, itr->const_index, sizeof(itr->const_index));
-         dupl->src[0].is_ssa = itr->src[0].is_ssa;
-         if (itr->src[0].is_ssa)
-            dupl->src[0].ssa = itr->src[0].ssa;
-         else
-            dupl->src[0].reg = itr->src[0].reg;
+         dupl->src[0].is_ssa = true;
+         dupl->src[0].ssa = itr->src[0].ssa;
 
          nir_ssa_dest_init(&dupl->instr, &dupl->dest, dupl->num_components,
                            itr->dest.ssa.bit_size);
@@ -74,11 +71,8 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
          dupl = nir_intrinsic_instr_create(b->shader, op);
          dupl->num_components = itr->num_components;
          memcpy(dupl->const_index, itr->const_index, sizeof(itr->const_index));
-         dupl->src[0].is_ssa = itr->src[0].is_ssa;
-         if (itr->src[0].is_ssa)
-            dupl->src[0].ssa = itr->src[0].ssa;
-         else
-            dupl->src[0].reg = itr->src[0].reg;
+         dupl->src[0].is_ssa = true;
+         dupl->src[0].ssa = itr->src[0].ssa;
 
          nir_ssa_dest_init(&dupl->instr, &dupl->dest, dupl->num_components,
                            itr->dest.ssa.bit_size);

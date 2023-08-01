@@ -41,14 +41,6 @@ get_proj_index(nir_instr *coord_instr, nir_instr *proj_instr,
        proj_alu->op != nir_op_mov)
       return NULL;
 
-   if (!coord_alu->dest.dest.is_ssa ||
-       !proj_alu->dest.dest.is_ssa)
-      return NULL;
-
-   if (!coord_alu->src[0].src.is_ssa ||
-       !proj_alu->src[0].src.is_ssa)
-      return NULL;
-
    nir_ssa_def *coord_src_ssa = coord_alu->src[0].src.ssa;
    nir_ssa_def *proj_src_ssa = proj_alu->src[0].src.ssa;
 
