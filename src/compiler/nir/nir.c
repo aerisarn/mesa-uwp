@@ -1254,14 +1254,12 @@ nir_instr_dce_add_dead_srcs_cb(nir_src *src, void *state)
 {
    nir_instr_worklist *wl = state;
 
-   if (src->is_ssa) {
-      list_del(&src->use_link);
-      if (!nir_instr_free_and_dce_is_live(src->ssa->parent_instr))
-         nir_instr_worklist_push_tail(wl, src->ssa->parent_instr);
+   list_del(&src->use_link);
+   if (!nir_instr_free_and_dce_is_live(src->ssa->parent_instr))
+      nir_instr_worklist_push_tail(wl, src->ssa->parent_instr);
 
-      /* Stop nir_instr_remove from trying to delete the link again. */
-      src->ssa = NULL;
-   }
+   /* Stop nir_instr_remove from trying to delete the link again. */
+   src->ssa = NULL;
 
    return true;
 }

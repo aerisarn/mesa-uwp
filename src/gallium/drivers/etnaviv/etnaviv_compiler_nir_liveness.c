@@ -72,28 +72,27 @@ set_src_live(nir_src *src, void *void_state)
 {
    struct live_defs_state *state = void_state;
 
-   if (src->is_ssa) {
-      nir_instr *instr = src->ssa->parent_instr;
+   nir_instr *instr = src->ssa->parent_instr;
 
-      if (is_sysval(instr) || instr->type == nir_instr_type_deref)
-         return true;
+   if (is_sysval(instr) || instr->type == nir_instr_type_deref)
+      return true;
 
-      switch (instr->type) {
-      case nir_instr_type_load_const:
-      case nir_instr_type_ssa_undef:
+   switch (instr->type) {
+   case nir_instr_type_load_const:
+   case nir_instr_type_ssa_undef:
+      return true;
+   case nir_instr_type_alu: {
+      /* alu op bypass */
+      nir_alu_instr *alu = nir_instr_as_alu(instr);
+      if (instr->pass_flags & BYPASS_SRC) {
+         for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++)
+            set_src_live(&alu->src[i].src, state);
          return true;
-      case nir_instr_type_alu: {
-         /* alu op bypass */
-         nir_alu_instr *alu = nir_instr_as_alu(instr);
-         if (instr->pass_flags & BYPASS_SRC) {
-            for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++)
-               set_src_live(&alu->src[i].src, state);
-            return true;
-         }
-      } break;
-      default:
-         break;
       }
+      break;
+   }
+   default:
+      break;
    }
 
    unsigned i = state->live_map[src_index(state->impl, src)];
