@@ -1464,6 +1464,9 @@ anv_reloc_list_add_bo(struct anv_reloc_list *list, struct anv_bo *target_bo)
    return list->uses_relocs ? anv_reloc_list_add_bo_impl(list, target_bo) : VK_SUCCESS;
 }
 
+VkResult anv_reloc_list_append(struct anv_reloc_list *list,
+                               struct anv_reloc_list *other);
+
 struct anv_batch_bo {
    /* Link in the anv_cmd_buffer.owned_batch_bos list */
    struct list_head                             link;
@@ -1603,14 +1606,16 @@ _anv_combine_address(struct anv_batch *batch, void *location,
       __dst;                                               \
    })
 
-#define anv_batch_emit_merge(batch, cmd, prepacked, name)               \
+#define anv_batch_emit_merge(batch, cmd, pipeline, state, name)         \
    for (struct cmd name = { 0 },                                        \
         *_dst = anv_batch_emit_dwords(batch, __anv_cmd_length(cmd));    \
         __builtin_expect(_dst != NULL, 1);                              \
         ({ uint32_t _partial[__anv_cmd_length(cmd)];                    \
            __anv_cmd_pack(cmd)(batch, _partial, &name);                 \
-           for (uint32_t i = 0; i < __anv_cmd_length(cmd); i++)         \
-              ((uint32_t *)_dst)[i] = _partial[i] | (prepacked)[i];     \
+           for (uint32_t i = 0; i < __anv_cmd_length(cmd); i++) {       \
+              ((uint32_t *)_dst)[i] = _partial[i] |                     \
+                 (pipeline)->batch_data[(pipeline)->state.offset + i];  \
+           }                                                            \
            VG(VALGRIND_CHECK_MEM_IS_DEFINED(_dst, __anv_cmd_length(cmd) * 4)); \
            _dst = NULL;                                                 \
          }))
@@ -3515,6 +3520,12 @@ struct anv_graphics_lib_pipeline {
    bool                                         retain_shaders;
 };
 
+struct anv_gfx_state_ptr {
+   /* Both in dwords */
+   uint16_t  offset;
+   uint16_t  len;
+};
+
 /* The final graphics pipeline object has all the graphics state ready to be
  * programmed into HW packets (dynamic_state field) or fully baked in its
  * batch.
@@ -3564,7 +3575,7 @@ struct anv_graphics_pipeline {
     * this array only holds the svgs_count elements.
     */
    uint32_t                                     vertex_input_elems;
-   uint32_t                                     vertex_input_data[96];
+   uint32_t                                     vertex_input_data[2 * 31 /* MAX_VES + 2 internal */];
 
    enum brw_wm_msaa_flags                       fs_msaa_flags;
 
@@ -3575,24 +3586,74 @@ struct anv_graphics_pipeline {
 
    /* Fully backed instructions, ready to be emitted in the anv_cmd_buffer */
    struct {
-      uint32_t                                  hs[9];
-      uint32_t                                  ds[11];
+      struct anv_gfx_state_ptr                  urb;
+      struct anv_gfx_state_ptr                  vf_statistics;
+      struct anv_gfx_state_ptr                  vf_sgvs;
+      struct anv_gfx_state_ptr                  vf_sgvs_2;
+      struct anv_gfx_state_ptr                  vf_sgvs_instancing;
+      struct anv_gfx_state_ptr                  vf_instancing;
+      struct anv_gfx_state_ptr                  primitive_replication;
+      struct anv_gfx_state_ptr                  sbe;
+      struct anv_gfx_state_ptr                  sbe_swiz;
+      struct anv_gfx_state_ptr                  so_decl_list;
+      struct anv_gfx_state_ptr                  ms;
+      struct anv_gfx_state_ptr                  vs;
+      struct anv_gfx_state_ptr                  hs;
+      struct anv_gfx_state_ptr                  ds;
+      struct anv_gfx_state_ptr                  ps;
+      struct anv_gfx_state_ptr                  ps_extra;
+
+      struct anv_gfx_state_ptr                  task_control;
+      struct anv_gfx_state_ptr                  task_shader;
+      struct anv_gfx_state_ptr                  task_redistrib;
+      struct anv_gfx_state_ptr                  clip_mesh;
+      struct anv_gfx_state_ptr                  mesh_control;
+      struct anv_gfx_state_ptr                  mesh_shader;
+      struct anv_gfx_state_ptr                  mesh_distrib;
+      struct anv_gfx_state_ptr                  sbe_mesh;
    } final;
 
    /* Pre packed CS instructions & structures that need to be merged later
     * with dynamic state.
     */
    struct {
-      uint32_t                                  clip[4];
-      uint32_t                                  sf[4];
-      uint32_t                                  raster[5];
-      uint32_t                                  wm[2];
-      uint32_t                                  streamout_state[5];
-      uint32_t                                  gs[10];
-      uint32_t                                  te[4];
-      uint32_t                                  vfg[4];
+      struct anv_gfx_state_ptr                  clip;
+      struct anv_gfx_state_ptr                  sf;
+      struct anv_gfx_state_ptr                  raster;
+      struct anv_gfx_state_ptr                  wm;
+      struct anv_gfx_state_ptr                  so;
+      struct anv_gfx_state_ptr                  gs;
+      struct anv_gfx_state_ptr                  te;
+      struct anv_gfx_state_ptr                  vfg;
    } partial;
 };
+
+#define anv_batch_merge_pipeline_state(batch, dwords0, pipeline, state) \
+   do {                                                                 \
+      uint32_t *dw;                                                     \
+                                                                        \
+      assert(ARRAY_SIZE(dwords0) == (pipeline)->state.len);             \
+      dw = anv_batch_emit_dwords((batch), ARRAY_SIZE(dwords0));         \
+      if (!dw)                                                          \
+         break;                                                         \
+      for (uint32_t i = 0; i < ARRAY_SIZE(dwords0); i++)                \
+         dw[i] = (dwords0)[i] |                                         \
+            (pipeline)->batch_data[(pipeline)->state.offset + i];       \
+      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, ARRAY_SIZE(dwords0) * 4));   \
+   } while (0)
+
+#define anv_batch_emit_pipeline_state(batch, pipeline, state)           \
+   do {                                                                 \
+      if ((pipeline)->state.len == 0)                                   \
+         break;                                                         \
+      uint32_t *dw;                                                     \
+      dw = anv_batch_emit_dwords((batch), (pipeline)->state.len);       \
+      if (!dw)                                                          \
+         break;                                                         \
+      memcpy(dw, &(pipeline)->batch_data[(pipeline)->state.offset],     \
+             4 * (pipeline)->state.len);                                \
+   } while (0)
+
 
 struct anv_compute_pipeline {
    struct anv_pipeline                          base;

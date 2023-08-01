@@ -136,7 +136,7 @@ anv_reloc_list_clear(struct anv_reloc_list *list)
       memset(list->deps, 0, list->dep_words * sizeof(BITSET_WORD));
 }
 
-static VkResult
+VkResult
 anv_reloc_list_append(struct anv_reloc_list *list,
                       struct anv_reloc_list *other)
 {

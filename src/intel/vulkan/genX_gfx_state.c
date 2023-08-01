@@ -215,15 +215,12 @@ genX(cmd_emit_te)(struct anv_cmd_buffer *cmd_buffer)
 
    if (!tes_prog_data ||
        !anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL)) {
-      uint32_t *dw =
-         anv_batch_emitn(&cmd_buffer->batch, GENX(3DSTATE_TE_length),
-                         GENX(3DSTATE_TE));
-      memcpy(dw, &pipeline->partial.te, sizeof(pipeline->partial.te));
+      anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline, partial.te);
       return;
    }
 
    anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_TE),
-                        pipeline->partial.te, te) {
+                        pipeline, partial.te, te) {
       if (dyn->ts.domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT) {
          te.OutputTopology = tes_prog_data->output_topology;
       } else {
@@ -244,14 +241,14 @@ genX(emit_gs)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
-      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_GS), gs);
+      anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline, partial.gs);
       return;
    }
 
    const struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
    anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_GS),
-                        pipeline->partial.gs, gs) {
+                        pipeline, partial.gs, gs) {
       switch (dyn->rs.provoking_vertex) {
       case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
          gs.ReorderMode = LEADING;
@@ -463,7 +460,7 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
       return;
 
    anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_CLIP),
-                        pipeline->partial.clip, clip) {
+                        pipeline, partial.clip, clip) {
       /* Take dynamic primitive topology in to account with
        *    3DSTATE_CLIP::ViewportXYClipTestEnable
        */
@@ -532,7 +529,7 @@ cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
    genX(streamout_prologue)(cmd_buffer);
 
    anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_STREAMOUT),
-                        pipeline->partial.streamout_state, so) {
+                        pipeline, partial.so, so) {
       so.RenderingDisable = dyn->rs.rasterizer_discard_enable;
       so.RenderStreamSelect = dyn->rs.rasterization_stream;
 #if INTEL_NEEDS_WA_18022508906
@@ -802,12 +799,57 @@ cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
    }
 }
 
+#define cmd_buffer_emit_pipeline_state(batch, pipeline, state)          \
+   do {                                                                 \
+      if ((pipeline)->state.len == 0)                                   \
+         break;                                                         \
+      void *dw = anv_batch_emit_dwords(batch, (pipeline)->state.len);   \
+      if (!dw)                                                          \
+         break;                                                         \
+      memcpy(dw,                                                        \
+             &(pipeline)->batch_data[(pipeline)->state.offset],         \
+             4 * (pipeline)->state.len);                                \
+   } while (0)
+
+
 void
-genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
+genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    struct vk_dynamic_graphics_state *dyn =
       &cmd_buffer->vk.dynamic_graphics_state;
+
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
+      struct anv_batch *batch = &cmd_buffer->batch;
+
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.urb);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.ms);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.primitive_replication);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.vf_instancing);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.vf_sgvs_instancing);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.vf_sgvs);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.vf_sgvs_2);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.vs);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.hs);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.ds);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.vf_statistics);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.so_decl_list);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.sbe);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.sbe_swiz);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.ps);
+      cmd_buffer_emit_pipeline_state(batch, pipeline, final.ps_extra);
+
+      if (cmd_buffer->device->vk.enabled_extensions.EXT_mesh_shader) {
+         cmd_buffer_emit_pipeline_state(batch, pipeline, final.task_control);
+         cmd_buffer_emit_pipeline_state(batch, pipeline, final.task_shader);
+         cmd_buffer_emit_pipeline_state(batch, pipeline, final.task_redistrib);
+         cmd_buffer_emit_pipeline_state(batch, pipeline, final.clip_mesh);
+         cmd_buffer_emit_pipeline_state(batch, pipeline, final.mesh_control);
+         cmd_buffer_emit_pipeline_state(batch, pipeline, final.mesh_shader);
+         cmd_buffer_emit_pipeline_state(batch, pipeline, final.mesh_distrib);
+         cmd_buffer_emit_pipeline_state(batch, pipeline, final.sbe_mesh);
+      }
+   }
 
    cmd_buffer_emit_clip(cmd_buffer);
 
@@ -865,7 +907,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          } else {
             /* Use dyn->vi to emit the dynamic VERTEX_ELEMENT_STATE input. */
             genX(emit_vertex_input)(&cmd_buffer->batch, p + 1,
-                                    pipeline, dyn->vi);
+                                    pipeline, dyn->vi, false /* emit_in_pipeline */);
             /* Then append the VERTEX_ELEMENT_STATE for the draw parameters */
             memcpy(p + 1 + 2 * pipeline->vs_input_elements,
                    pipeline->vertex_input_data,
@@ -896,7 +938,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS)) {
       anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_SF),
-                           pipeline->partial.sf, sf) {
+                           pipeline, partial.sf, sf) {
          ANV_SETUP_PROVOKING_VERTEX(sf, dyn->rs.provoking_vertex);
 
          sf.LineWidth = dyn->rs.line.width;
@@ -978,7 +1020,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          vk_rasterization_state_depth_clip_enable(&dyn->rs);
 
       anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_RASTER),
-                           pipeline->partial.raster, raster) {
+                           pipeline, partial.raster, raster) {
          raster.APIMode = api_mode;
          raster.DXMultisampleRasterizationEnable   = msaa_raster_enable;
          raster.AntialiasingEnable                 = aa_enable;
@@ -1120,7 +1162,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
        BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE)) {
       anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_VFG),
-                           pipeline->partial.vfg, vfg) {
+                           pipeline, partial.vfg, vfg) {
          vfg.ListCutIndexEnable = dyn->ia.primitive_restart_enable;
       }
    }
@@ -1141,7 +1183,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
        * threads.
        */
       anv_batch_emit_merge(&cmd_buffer->batch, GENX(3DSTATE_WM),
-                           pipeline->partial.wm, wm) {
+                           pipeline, partial.wm, wm) {
          wm.ForceThreadDispatchEnable = anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
                                         (pipeline->force_fragment_thread_dispatch ||
                                         anv_cmd_buffer_all_color_write_masked(cmd_buffer)) ?
@@ -1365,8 +1407,4 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          ccp.ColorCalcStatePointerValid = true;
       }
    }
-
-   /* When we're done, there is no more dirty gfx state. */
-   vk_dynamic_graphics_state_clear_dirty(&cmd_buffer->vk.dynamic_graphics_state);
-   cmd_buffer->state.gfx.dirty = 0;
 }

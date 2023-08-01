@@ -96,8 +96,9 @@ void genX(apply_task_urb_workaround)(struct anv_cmd_buffer *cmd_buffer);
 
 void genX(emit_vertex_input)(struct anv_batch *batch,
                              uint32_t *vertex_element_dws,
-                             const struct anv_graphics_pipeline *pipeline,
-                             const struct vk_vertex_input_state *vi);
+                             struct anv_graphics_pipeline *pipeline,
+                             const struct vk_vertex_input_state *vi,
+                             bool emit_in_pipeline);
 
 enum anv_pipe_bits
 genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
@@ -125,7 +126,7 @@ void genX(emit_l3_config)(struct anv_batch *batch,
 void genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
                                 const struct intel_l3_config *cfg);
 
-void genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer);
+void genX(cmd_buffer_flush_gfx_hw_state)(struct anv_cmd_buffer *cmd_buffer);
 
 void genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer,
                                      bool enable);

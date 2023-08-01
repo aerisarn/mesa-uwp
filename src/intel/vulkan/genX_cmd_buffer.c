@@ -2994,10 +2994,7 @@ genX(emit_hs)(struct anv_cmd_buffer *cmd_buffer)
    if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
       return;
 
-   uint32_t *dw =
-      anv_batch_emitn(&cmd_buffer->batch, GENX(3DSTATE_HS_length),
-                         GENX(3DSTATE_HS));
-   memcpy(dw, &pipeline->final.hs, sizeof(pipeline->final.hs));
+   anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline, final.hs);
 }
 
 ALWAYS_INLINE static void
@@ -3022,10 +3019,7 @@ genX(emit_ds)(struct anv_cmd_buffer *cmd_buffer)
    if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
       return;
 
-   uint32_t *dw =
-      anv_batch_emitn(&cmd_buffer->batch, GENX(3DSTATE_DS_length),
-                         GENX(3DSTATE_DS));
-   memcpy(dw, &pipeline->final.ds, sizeof(pipeline->final.ds));
+   anv_batch_emit_pipeline_state(&cmd_buffer->batch, pipeline, final.ds);
 #endif
 }
 
@@ -3224,13 +3218,22 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
-      anv_batch_emit_batch(&cmd_buffer->batch, &pipeline->base.base.batch);
+   if (any_dynamic_state_dirty || cmd_buffer->state.gfx.dirty)
+      genX(cmd_buffer_flush_gfx_hw_state)(cmd_buffer);
 
-      /* If the pipeline changed, we may need to re-allocate push constant
-       * space in the URB.
-       */
+   /* If the pipeline changed, we may need to re-allocate push constant space
+    * in the URB.
+    */
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
       cmd_buffer_alloc_gfx_push_constants(cmd_buffer);
+
+      /* Also add the relocations (scratch buffers) */
+      VkResult result = anv_reloc_list_append(cmd_buffer->batch.relocs,
+                                              pipeline->base.base.batch.relocs);
+      if (result != VK_SUCCESS) {
+         anv_batch_set_error(&cmd_buffer->batch, result);
+         return;
+      }
    }
 
    /* Render targets live in the same binding table as fragment descriptors */
@@ -3274,8 +3277,9 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
                                           dirty & VK_SHADER_STAGE_ALL_GRAPHICS);
    }
 
-   if (any_dynamic_state_dirty || cmd_buffer->state.gfx.dirty)
-      genX(cmd_buffer_flush_dynamic_state)(cmd_buffer);
+   /* When we're done, there is no more dirty gfx state. */
+   vk_dynamic_graphics_state_clear_dirty(&cmd_buffer->vk.dynamic_graphics_state);
+   cmd_buffer->state.gfx.dirty = 0;
 }
 
 #include "genX_cmd_draw_generated_indirect.h"
