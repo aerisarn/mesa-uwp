@@ -118,12 +118,6 @@ remap_global(clone_state *state, const void *ptr)
    return _lookup_ptr(state, ptr, true);
 }
 
-static nir_register *
-remap_reg(clone_state *state, const nir_register *reg)
-{
-   return _lookup_ptr(state, reg, false);
-}
-
 static nir_variable *
 remap_var(clone_state *state, const nir_variable *var)
 {
@@ -201,64 +195,25 @@ clone_var_list(clone_state *state, struct exec_list *dst,
    }
 }
 
-/* NOTE: for cloning nir_registers, bypass nir_global/local_reg_create()
- * to avoid having to deal with locals and globals separately:
- */
-static nir_register *
-clone_register(clone_state *state, const nir_register *reg)
-{
-   nir_register *nreg = rzalloc(state->ns, nir_register);
-   add_remap(state, nreg, reg);
-
-   nreg->num_components = reg->num_components;
-   nreg->bit_size = reg->bit_size;
-   nreg->num_array_elems = reg->num_array_elems;
-   nreg->index = reg->index;
-
-   /* reconstructing uses/defs handled by nir_instr_insert() */
-   list_inithead(&nreg->uses);
-   list_inithead(&nreg->defs);
-
-   return nreg;
-}
-
-/* clone list of nir_register: */
-static void
-clone_reg_list(clone_state *state, struct exec_list *dst,
-               const struct exec_list *list)
-{
-   exec_list_make_empty(dst);
-   foreach_list_typed(nir_register, reg, node, list) {
-      nir_register *nreg = clone_register(state, reg);
-      exec_list_push_tail(dst, &nreg->node);
-   }
-}
-
 static void
 __clone_src(clone_state *state, void *ninstr_or_if,
             nir_src *nsrc, const nir_src *src)
 {
-   nsrc->is_ssa = src->is_ssa;
-   if (src->is_ssa) {
-      nsrc->ssa = remap_local(state, src->ssa);
-   } else {
-      nsrc->reg.reg = remap_reg(state, src->reg.reg);
-   }
+   assert(src->is_ssa);
+   nsrc->is_ssa = true;
+   nsrc->ssa = remap_local(state, src->ssa);
 }
 
 static void
 __clone_dst(clone_state *state, nir_instr *ninstr,
             nir_dest *ndst, const nir_dest *dst)
 {
-   ndst->is_ssa = dst->is_ssa;
-   if (dst->is_ssa) {
-      nir_ssa_dest_init(ninstr, ndst, dst->ssa.num_components,
-                        dst->ssa.bit_size);
-      if (likely(state->remap_table))
-         add_remap(state, &ndst->ssa, &dst->ssa);
-   } else {
-      ndst->reg.reg = remap_reg(state, dst->reg.reg);
-   }
+   assert(dst->is_ssa);
+   ndst->is_ssa = true;
+   nir_ssa_dest_init(ninstr, ndst, dst->ssa.num_components,
+                     dst->ssa.bit_size);
+   if (likely(state->remap_table))
+      add_remap(state, &ndst->ssa, &dst->ssa);
 }
 
 static nir_alu_instr *
@@ -633,14 +588,10 @@ fixup_phi_srcs(clone_state *state)
 
       /* Remove from this list */
       list_del(&src->src.use_link);
+      assert(src->src.is_ssa);
 
-      if (src->src.is_ssa) {
-         src->src.ssa = remap_local(state, src->src.ssa);
-         list_addtail(&src->src.use_link, &src->src.ssa->uses);
-      } else {
-         src->src.reg.reg = remap_reg(state, src->src.reg.reg);
-         list_addtail(&src->src.use_link, &src->src.reg.reg->uses);
-      }
+      src->src.ssa = remap_local(state, src->src.ssa);
+      list_addtail(&src->src.use_link, &src->src.ssa->uses);
    }
    assert(list_is_empty(&state->phi_srcs));
 }
@@ -685,8 +636,6 @@ clone_function_impl(clone_state *state, const nir_function_impl *fi)
       nfi->preamble = remap_global(state, fi->preamble);
 
    clone_var_list(state, &nfi->locals, &fi->locals);
-   clone_reg_list(state, &nfi->registers, &fi->registers);
-   nfi->reg_alloc = fi->reg_alloc;
 
    assert(list_is_empty(&state->phi_srcs));
 
