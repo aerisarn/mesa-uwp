@@ -123,7 +123,6 @@ typedef struct merge_set {
    unsigned size;
    bool divergent;
    union {
-      nir_register *reg;
       nir_ssa_def *decl;
    } reg;
 } merge_set;

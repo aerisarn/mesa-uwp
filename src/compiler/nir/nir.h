@@ -879,31 +879,6 @@ nir_variable_is_global(const nir_variable *var)
    return var->data.mode != nir_var_function_temp;
 }
 
-typedef struct nir_register {
-   struct exec_node node;
-
-   unsigned num_components; /** < number of vector components */
-   unsigned num_array_elems; /** < size of array (0 for no array) */
-
-   /* The bit-size of each channel; must be one of 1, 8, 16, 32, or 64 */
-   uint8_t bit_size;
-
-   /**
-    * True if this register may have different values in different SIMD
-    * invocations of the shader.
-    */
-   bool divergent;
-
-   /** generic register index. */
-   unsigned index;
-
-   /** set of nir_srcs where this register is used (read from) */
-   struct list_head uses;
-
-   /** set of nir_dests where this register is defined (written to) */
-   struct list_head defs;
-} nir_register;
-
 typedef enum ENUM_PACKED {
    nir_instr_type_alu,
    nir_instr_type_deref,
@@ -986,18 +961,6 @@ typedef struct nir_ssa_def {
 } nir_ssa_def;
 
 struct nir_src;
-
-typedef struct {
-   nir_register *reg;
-} nir_register_src;
-
-typedef struct {
-   nir_instr *parent_instr;
-   struct list_head def_link;
-
-   nir_register *reg;
-} nir_register_dest;
-
 struct nir_if;
 
 typedef struct nir_src {
@@ -1008,11 +971,7 @@ typedef struct nir_src {
    };
 
    struct list_head use_link;
-
-   union {
-      nir_register_src reg;
-      nir_ssa_def *ssa;
-   };
+   nir_ssa_def *ssa;
 
    bool is_if;
 } nir_src;
@@ -1072,16 +1031,13 @@ nir_ssa_def_used_by_if(const nir_ssa_def *def)
 }
 
 typedef struct {
-   union {
-      nir_register_dest reg;
-      nir_ssa_def ssa;
-   };
+   nir_ssa_def ssa;
 } nir_dest;
 
 static inline nir_dest
 nir_dest_init(void)
 {
-   nir_dest dest = { { { NULL } } };
+   nir_dest dest = { { NULL } };
    return dest;
 }
 
