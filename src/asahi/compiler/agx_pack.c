@@ -601,17 +601,17 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
          sample_index = agx_zero();
       }
 
-      bool kill = false; // TODO: optimize
+      bool kill = false;    // TODO: optimize
+      bool forward = false; // TODO: optimize
 
       uint64_t raw =
          0x21 | (flat ? (1 << 7) : 0) | (perspective ? (1 << 6) : 0) |
          ((D & 0xFF) << 7) | (1ull << 15) | /* XXX */
          ((cf_I & BITFIELD_MASK(6)) << 16) | ((cf_J & BITFIELD_MASK(6)) << 24) |
          (((uint64_t)channels) << 30) | (((uint64_t)sample_index.value) << 32) |
-         (!flat ? (1ull << 46) : 0) |                             /* XXX */
-         (((uint64_t)interp) << 48) | (kill ? (1ull << 52) : 0) | /* XXX */
-         (((uint64_t)(D >> 8)) << 56) | ((uint64_t)(cf_I >> 6) << 58) |
-         ((uint64_t)(cf_J >> 6) << 60);
+         (forward ? (1ull << 46) : 0) | (((uint64_t)interp) << 48) |
+         (kill ? (1ull << 52) : 0) | (((uint64_t)(D >> 8)) << 56) |
+         ((uint64_t)(cf_I >> 6) << 58) | ((uint64_t)(cf_J >> 6) << 60);
 
       unsigned size = 8;
       memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
