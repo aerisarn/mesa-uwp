@@ -1334,8 +1334,7 @@ resolve_parallel_copies_block(nir_block *block, struct from_ssa_state *state)
 
 static bool
 nir_convert_from_ssa_impl(nir_function_impl *impl,
-                          bool phi_webs_only,
-                          bool reg_intrinsics)
+                          bool phi_webs_only)
 {
    nir_shader *shader = impl->function->shader;
 
@@ -1344,7 +1343,7 @@ nir_convert_from_ssa_impl(nir_function_impl *impl,
    state.builder = nir_builder_create(impl);
    state.dead_ctx = ralloc_context(NULL);
    state.phi_webs_only = phi_webs_only;
-   state.reg_intrinsics = reg_intrinsics;
+   state.reg_intrinsics = true;
    state.merge_node_table = _mesa_pointer_hash_table_create(NULL);
    state.progress = false;
    exec_list_make_empty(&state.dead_instrs);
@@ -1374,7 +1373,7 @@ nir_convert_from_ssa_impl(nir_function_impl *impl,
       aggressive_coalesce_block(block, &state);
    }
 
-   if (reg_intrinsics) {
+   if (state.reg_intrinsics) {
       resolve_registers_impl(impl, &state);
    } else {
       nir_foreach_block(block, impl) {
@@ -1398,14 +1397,12 @@ nir_convert_from_ssa_impl(nir_function_impl *impl,
 
 bool
 nir_convert_from_ssa(nir_shader *shader,
-                     bool phi_webs_only,
-                     bool reg_intrinsics)
+                     bool phi_webs_only)
 {
    bool progress = false;
 
    nir_foreach_function_impl(impl, shader) {
-      progress |= nir_convert_from_ssa_impl(impl, phi_webs_only,
-                                            reg_intrinsics);
+      progress |= nir_convert_from_ssa_impl(impl, phi_webs_only);
    }
 
    return progress;

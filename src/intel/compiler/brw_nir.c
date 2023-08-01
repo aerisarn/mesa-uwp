@@ -1723,7 +1723,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
 
    nir_validate_ssa_dominance(nir, "before nir_convert_from_ssa");
 
-   OPT(nir_convert_from_ssa, true, true);
+   OPT(nir_convert_from_ssa, true);
 
    if (!is_scalar) {
       OPT(nir_move_vec_src_uses_to_dest);
