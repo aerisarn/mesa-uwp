@@ -708,7 +708,9 @@ reserve_live_in(struct ra_ctx *rctx)
          set_ssa_to_reg(rctx, i, base);
       } else {
          /* If we don't emit a phi, there is already a unique register */
-         base = rctx->ssa_to_reg[i];
+         agx_foreach_predecessor(rctx->block, pred) {
+            base = (*pred)->ssa_to_reg_out[i];
+         }
       }
 
       for (unsigned j = 0; j < rctx->ncomps[i]; ++j) {
