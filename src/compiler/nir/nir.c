@@ -661,16 +661,8 @@ instr_init(nir_instr *instr, nir_instr_type type)
 }
 
 static void
-dest_init(nir_dest *dest)
-{
-   dest->is_ssa = false;
-   dest->reg.reg = NULL;
-}
-
-static void
 alu_dest_init(nir_alu_dest *dest)
 {
-   dest_init(&dest->dest);
    dest->write_mask = 0xf;
 }
 
@@ -712,8 +704,6 @@ nir_deref_instr_create(nir_shader *shader, nir_deref_type deref_type)
        deref_type == nir_deref_type_ptr_as_array)
       src_init(&instr->arr.index);
 
-   dest_init(&instr->dest);
-
    return instr;
 }
 
@@ -753,9 +743,6 @@ nir_intrinsic_instr_create(nir_shader *shader, nir_intrinsic_op op)
    instr_init(&instr->instr, nir_instr_type_intrinsic);
    instr->intrinsic = op;
 
-   if (nir_intrinsic_infos[op].has_dest)
-      dest_init(&instr->dest);
-
    for (unsigned i = 0; i < num_srcs; i++)
       src_init(&instr->src[i]);
 
@@ -791,8 +778,6 @@ nir_tex_instr_create(nir_shader *shader, unsigned num_srcs)
 {
    nir_tex_instr *instr = gc_zalloc(shader->gctx, nir_tex_instr, 1);
    instr_init(&instr->instr, nir_instr_type_tex);
-
-   dest_init(&instr->dest);
 
    instr->num_srcs = num_srcs;
    instr->src = gc_alloc(shader->gctx, nir_tex_src, num_srcs);
@@ -858,7 +843,6 @@ nir_phi_instr_create(nir_shader *shader)
    nir_phi_instr *instr = gc_alloc(shader->gctx, nir_phi_instr, 1);
    instr_init(&instr->instr, nir_instr_type_phi);
 
-   dest_init(&instr->dest);
    exec_list_make_empty(&instr->srcs);
 
    return instr;
