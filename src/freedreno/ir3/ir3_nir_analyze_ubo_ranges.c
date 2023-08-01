@@ -236,9 +236,6 @@ handle_partial_const(nir_builder *b, nir_ssa_def **srcp, int *offp)
    if (alu->op != nir_op_iadd)
       return;
 
-   if (!(alu->src[0].src.is_ssa && alu->src[1].src.is_ssa))
-      return;
-
    if (nir_src_is_const(alu->src[0].src)) {
       *offp += nir_src_as_uint(alu->src[0].src);
       *srcp = alu->src[1].src.ssa;

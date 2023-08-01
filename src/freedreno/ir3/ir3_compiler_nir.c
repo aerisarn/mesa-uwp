@@ -380,13 +380,8 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    unsigned dst_sz, wrmask;
    type_t dst_type = type_uint_size(nir_dest_bit_size(alu->dest.dest));
 
-   if (alu->dest.dest.is_ssa) {
-      dst_sz = alu->dest.dest.ssa.num_components;
-      wrmask = (1 << dst_sz) - 1;
-   } else {
-      dst_sz = alu->dest.dest.reg.reg->num_components;
-      wrmask = alu->dest.write_mask;
-   }
+   dst_sz = alu->dest.dest.ssa.num_components;
+   wrmask = (1 << dst_sz) - 1;
 
    dst = ir3_get_dst(ctx, &alu->dest.dest, dst_sz);
 
@@ -513,7 +508,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
        * src instruction and create a mov.  This is easier for cp
        * to eliminate.
        */
-      if (alu->src[0].src.is_ssa && is_sat_compatible(src[0]->opc) &&
+      if (is_sat_compatible(src[0]->opc) &&
           (list_length(&alu->src[0].src.ssa->uses) == 1)) {
          src[0]->flags |= IR3_INSTR_SAT;
          dst[0] = ir3_MOV(b, src[0], dst_type);
