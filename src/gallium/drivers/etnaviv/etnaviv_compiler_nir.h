@@ -181,10 +181,7 @@ update_swiz_mask(nir_alu_instr *alu, nir_dest *dest, unsigned *swiz, unsigned *m
 
    bool is_vec = dest != NULL;
    unsigned swizzle = 0, write_mask = 0;
-   for (unsigned i = 0; i < 4; i++) {
-      /* channel not written */
-      if (!(alu->dest.write_mask & (1 << i)))
-         continue;
+   for (unsigned i = 0; i < nir_dest_num_components(alu->dest.dest); i++) {
       /* src is different (only check for vecN) */
       if (is_vec && alu->src[i].src.ssa != &dest->ssa)
          continue;

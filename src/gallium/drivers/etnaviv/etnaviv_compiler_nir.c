@@ -34,6 +34,7 @@
 #include "etnaviv_nir.h"
 #include "etnaviv_uniforms.h"
 #include "etnaviv_util.h"
+#include "nir.h"
 
 #include <math.h>
 #include "util/u_memory.h"
@@ -414,8 +415,8 @@ get_src(struct etna_compile *c, nir_src *src)
 static bool
 vec_dest_has_swizzle(nir_alu_instr *vec, nir_ssa_def *ssa)
 {
-   for (unsigned i = 0; i < 4; i++) {
-      if (!(vec->dest.write_mask & (1 << i)) || vec->src[i].src.ssa != ssa)
+   for (unsigned i = 0; i < nir_dest_num_components(vec->dest.dest); i++) {
+      if (vec->src[i].src.ssa != ssa)
          continue;
 
       if (vec->src[i].swizzle[0] != i)
@@ -717,10 +718,7 @@ insert_vec_mov(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
 
    unsigned num_components = 1;
 
-   for (unsigned i = start_idx + 1; i < 4; i++) {
-      if (!(vec->dest.write_mask & (1 << i)))
-         continue;
-
+   for (unsigned i = start_idx + 1; i < nir_dest_num_components(vec->dest.dest); i++) {
       if (nir_srcs_equal(vec->src[i].src, vec->src[start_idx].src) &&
          is_src_mod_neg(&vec->instr, i) == is_src_mod_neg(&vec->instr, start_idx) &&
          is_src_mod_abs(&vec->instr, i) == is_src_mod_neg(&vec->instr, start_idx)) {
@@ -897,10 +895,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
    }
 
    unsigned finished_write_mask = 0;
-   for (unsigned i = 0; i < 4; i++) {
-      if (!(alu->dest.write_mask & (1 << i)))
-            continue;
-
+   for (unsigned i = 0; i < nir_dest_num_components(alu->dest.dest); i++) {
       nir_ssa_def *ssa = alu->src[i].src.ssa;
 
       /* check that vecN instruction is only user of this */
