@@ -67,12 +67,9 @@ static rogue_ref nir_ssa_reg_alu_src(rogue_shader *shader,
 {
    unsigned index = alu->src[src_num].src.ssa->index;
    unsigned num_components = alu->src[src_num].src.ssa->num_components;
+   unsigned component = alu->src[src_num].swizzle[0];
 
-   unsigned write_mask = alu->dest.write_mask;
-   unsigned bit_pos = ffs(write_mask) - 1;
-   assert(util_is_power_of_two_nonzero(write_mask));
-
-   unsigned component = alu->src[src_num].swizzle[bit_pos];
+   assert(num_components == 1);
 
    return vec ? nir_ssa_regarray(shader, index, num_components, component)
               : nir_ssa_reg(shader, index, num_components, component);
@@ -84,12 +81,10 @@ nir_ssa_reg_alu_dst(rogue_shader *shader, const nir_alu_instr *alu, bool vec)
    unsigned num_components = alu->dest.dest.ssa.num_components;
    unsigned index = alu->dest.dest.ssa.index;
 
-   unsigned write_mask = alu->dest.write_mask;
-   unsigned component = ffs(write_mask) - 1;
-   assert(util_is_power_of_two_nonzero(write_mask));
+   assert(num_components == 1);
 
-   return vec ? nir_ssa_regarray(shader, index, num_components, component)
-              : nir_ssa_reg(shader, index, num_components, component);
+   return vec ? nir_ssa_regarray(shader, index, num_components, 0)
+              : nir_ssa_reg(shader, index, num_components, 0);
 }
 
 static void trans_nir_jump_return(rogue_builder *b, nir_jump_instr *jump)
