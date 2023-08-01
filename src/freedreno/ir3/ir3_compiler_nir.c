@@ -426,11 +426,12 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    }
 
    /* General case: We can just grab the one used channel per src. */
+   assert(nir_dest_num_components(alu->dest.dest) == 1);
+
    for (int i = 0; i < info->num_inputs; i++) {
-      unsigned chan = ffs(alu->dest.write_mask) - 1;
       nir_alu_src *asrc = &alu->src[i];
 
-      src[i] = ir3_get_src(ctx, &asrc->src)[asrc->swizzle[chan]];
+      src[i] = ir3_get_src(ctx, &asrc->src)[asrc->swizzle[0]];
       bs[i] = nir_src_bit_size(asrc->src);
 
       compile_assert(ctx, src[i]);
