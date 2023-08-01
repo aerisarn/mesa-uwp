@@ -936,6 +936,54 @@ anv_nir_compute_dynamic_push_bits(nir_shader *shader)
 }
 
 static void
+anv_fixup_subgroup_size(struct anv_device *device, struct shader_info *info)
+{
+   switch (info->stage) {
+   case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_TASK:
+   case MESA_SHADER_MESH:
+      break;
+   default:
+      return;
+   }
+
+   unsigned local_size = info->workgroup_size[0] *
+                         info->workgroup_size[1] *
+                         info->workgroup_size[2];
+
+   /* Games don't always request full subgroups when they should,
+    * which can cause bugs, as they may expect bigger size of the
+    * subgroup than we choose for the execution.
+    */
+   if (device->physical->instance->assume_full_subgroups &&
+       info->uses_wide_subgroup_intrinsics &&
+       info->subgroup_size == SUBGROUP_SIZE_API_CONSTANT &&
+       local_size &&
+       local_size % BRW_SUBGROUP_SIZE == 0)
+      info->subgroup_size = SUBGROUP_SIZE_FULL_SUBGROUPS;
+
+   /* If the client requests that we dispatch full subgroups but doesn't
+    * allow us to pick a subgroup size, we have to smash it to the API
+    * value of 32.  Performance will likely be terrible in this case but
+    * there's nothing we can do about that.  The client should have chosen
+    * a size.
+    */
+   if (info->subgroup_size == SUBGROUP_SIZE_FULL_SUBGROUPS)
+      info->subgroup_size =
+         device->physical->instance->assume_full_subgroups != 0 ?
+         device->physical->instance->assume_full_subgroups : BRW_SUBGROUP_SIZE;
+
+   /* Cooperative matrix extension requires that all invocations in a subgroup
+    * be active. As a result, when the application does not request a specific
+    * subgroup size, we must use SIMD32.
+    */
+   if (info->stage == MESA_SHADER_COMPUTE && info->cs.has_cooperative_matrix &&
+       info->subgroup_size < SUBGROUP_SIZE_REQUIRE_8) {
+      info->subgroup_size = BRW_SUBGROUP_SIZE;
+   }
+}
+
+static void
 anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                        void *mem_ctx,
                        struct anv_pipeline_stage *stage,
@@ -978,10 +1026,8 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
                use_primitive_replication);
    }
 
-   if (gl_shader_stage_uses_workgroup(nir->info.stage)) {
-      // TODO(coop): Write this restriction the right way, maybe we need to do at the backend.
-      assert(nir->info.subgroup_size <= SUBGROUP_SIZE_REQUIRE_8);
-      nir->info.subgroup_size = SUBGROUP_SIZE_REQUIRE_8;
+   if (nir->info.stage == MESA_SHADER_COMPUTE && nir->info.cs.has_cooperative_matrix) {
+      anv_fixup_subgroup_size(pipeline->device, &nir->info);
       NIR_PASS(_, nir, brw_nir_lower_cmat, nir->info.subgroup_size);
       NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_function_temp, 16);
    }
@@ -1969,45 +2015,6 @@ anv_graphics_pipeline_load_nir(struct anv_graphics_base_pipeline *pipeline,
    }
 
    return VK_SUCCESS;
-}
-
-static void
-anv_fixup_subgroup_size(struct anv_device *device, struct shader_info *info)
-{
-   switch (info->stage) {
-   case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_TASK:
-   case MESA_SHADER_MESH:
-      break;
-   default:
-      return;
-   }
-
-   unsigned local_size = info->workgroup_size[0] *
-                         info->workgroup_size[1] *
-                         info->workgroup_size[2];
-
-   /* Games don't always request full subgroups when they should,
-    * which can cause bugs, as they may expect bigger size of the
-    * subgroup than we choose for the execution.
-    */
-   if (device->physical->instance->assume_full_subgroups &&
-       info->uses_wide_subgroup_intrinsics &&
-       info->subgroup_size == SUBGROUP_SIZE_API_CONSTANT &&
-       local_size &&
-       local_size % BRW_SUBGROUP_SIZE == 0)
-      info->subgroup_size = SUBGROUP_SIZE_FULL_SUBGROUPS;
-
-   /* If the client requests that we dispatch full subgroups but doesn't
-    * allow us to pick a subgroup size, we have to smash it to the API
-    * value of 32.  Performance will likely be terrible in this case but
-    * there's nothing we can do about that.  The client should have chosen
-    * a size.
-    */
-   if (info->subgroup_size == SUBGROUP_SIZE_FULL_SUBGROUPS)
-      info->subgroup_size =
-         device->physical->instance->assume_full_subgroups != 0 ?
-         device->physical->instance->assume_full_subgroups : BRW_SUBGROUP_SIZE;
 }
 
 static void
