@@ -54,13 +54,6 @@ struct queue_ctx {
    unsigned gpu_id;
 };
 
-static void
-dump_cshwif_registers(struct queue_ctx *ctx)
-{
-   for (unsigned i = 0; i < ctx->nr_regs; ++i)
-      fprintf(pandecode_dump_stream, "r%u: %X\n", i, ctx->regs[i]);
-}
-
 static uint32_t
 cs_get_u32(struct queue_ctx *ctx, uint8_t reg)
 {
