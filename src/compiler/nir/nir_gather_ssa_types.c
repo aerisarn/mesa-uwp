@@ -127,10 +127,8 @@ nir_gather_ssa_types(nir_function_impl *impl,
 
                case nir_op_bcsel:
                case nir_op_b32csel:
-                  if (alu->src[0].src.is_ssa) {
-                     set_type(alu->src[0].src.ssa->index, nir_type_bool,
-                              float_types, int_types, &progress);
-                  }
+                  set_type(alu->src[0].src.ssa->index, nir_type_bool,
+                           float_types, int_types, &progress);
                   copy_types(alu->src[1].src, &alu->dest.dest,
                              float_types, int_types, &progress);
                   copy_types(alu->src[2].src, &alu->dest.dest,
@@ -139,15 +137,12 @@ nir_gather_ssa_types(nir_function_impl *impl,
 
                default:
                   for (unsigned i = 0; i < info->num_inputs; i++) {
-                     if (alu->src[i].src.is_ssa) {
-                        set_type(alu->src[i].src.ssa->index, info->input_types[i],
-                                 float_types, int_types, &progress);
-                     }
-                  }
-                  if (alu->dest.dest.is_ssa) {
-                     set_type(alu->dest.dest.ssa.index, info->output_type,
+                     set_type(alu->src[i].src.ssa->index,
+                              info->input_types[i],
                               float_types, int_types, &progress);
                   }
+                  set_type(alu->dest.dest.ssa.index, info->output_type,
+                           float_types, int_types, &progress);
                }
                break;
             }
@@ -155,38 +150,30 @@ nir_gather_ssa_types(nir_function_impl *impl,
             case nir_instr_type_tex: {
                nir_tex_instr *tex = nir_instr_as_tex(instr);
                for (unsigned i = 0; i < tex->num_srcs; i++) {
-                  if (tex->src[i].src.is_ssa) {
-                     set_type(tex->src[i].src.ssa->index,
-                              nir_tex_instr_src_type(tex, i),
-                              float_types, int_types, &progress);
-                  }
-               }
-               if (tex->dest.is_ssa) {
-                  set_type(tex->dest.ssa.index, tex->dest_type,
+                  set_type(tex->src[i].src.ssa->index,
+                           nir_tex_instr_src_type(tex, i),
                            float_types, int_types, &progress);
                }
+               set_type(tex->dest.ssa.index, tex->dest_type,
+                        float_types, int_types, &progress);
                break;
             }
 
             case nir_instr_type_intrinsic: {
                nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
-               if (intrin->dest.is_ssa) {
-                  nir_alu_type dest_type = nir_intrinsic_instr_dest_type(intrin);
-                  if (dest_type != nir_type_invalid) {
-                     set_type(intrin->dest.ssa.index, dest_type,
-                              float_types, int_types, &progress);
-                  }
+               nir_alu_type dest_type = nir_intrinsic_instr_dest_type(intrin);
+               if (dest_type != nir_type_invalid) {
+                  set_type(intrin->dest.ssa.index, dest_type,
+                           float_types, int_types, &progress);
                }
 
                const unsigned num_srcs = nir_intrinsic_infos[intrin->intrinsic].num_srcs;
                for (unsigned i = 0; i < num_srcs; i++) {
-                  if (intrin->src[i].is_ssa) {
-                     nir_alu_type src_type = nir_intrinsic_instr_src_type(intrin, i);
-                     if (src_type != nir_type_invalid) {
-                        set_type(intrin->src[i].ssa->index, src_type,
-                                 float_types, int_types, &progress);
-                     }
+                  nir_alu_type src_type = nir_intrinsic_instr_src_type(intrin, i);
+                  if (src_type != nir_type_invalid) {
+                     set_type(intrin->src[i].ssa->index, src_type,
+                              float_types, int_types, &progress);
                   }
                }
                break;
