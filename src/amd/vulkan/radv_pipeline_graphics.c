@@ -2299,7 +2299,7 @@ radv_graphics_shaders_nir_to_asm(struct radv_device *device, struct vk_pipeline_
 }
 
 static void
-radv_pipeline_retain_shaders(struct radv_graphics_lib_pipeline *gfx_pipeline_lib, struct radv_shader_stage *stages)
+radv_pipeline_retain_shaders(struct radv_retained_shaders *retained_shaders, struct radv_shader_stage *stages)
 {
    for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
       if (!stages[s].entrypoint)
@@ -2312,10 +2312,10 @@ radv_pipeline_retain_shaders(struct radv_graphics_lib_pipeline *gfx_pipeline_lib
 
       blob_init(&blob);
       nir_serialize(&blob, stages[s].nir, true);
-      blob_finish_get_buffer(&blob, &gfx_pipeline_lib->retained_shaders[s].serialized_nir,
-                             &gfx_pipeline_lib->retained_shaders[s].serialized_nir_size);
+      blob_finish_get_buffer(&blob, &retained_shaders->stages[s].serialized_nir,
+                             &retained_shaders->stages[s].serialized_nir_size);
 
-      memcpy(gfx_pipeline_lib->retained_shaders[s].shader_sha1, stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
+      memcpy(retained_shaders->stages[s].shader_sha1, stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
    }
@@ -2325,6 +2325,8 @@ static void
 radv_pipeline_import_retained_shaders(const struct radv_device *device, struct radv_graphics_pipeline *pipeline,
                                       struct radv_graphics_lib_pipeline *lib, struct radv_shader_stage *stages)
 {
+   struct radv_retained_shaders *retained_shaders = &lib->retained_shaders;
+
    /* Import the stages (SPIR-V only in case of cache hits). */
    for (uint32_t i = 0; i < lib->stage_count; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &lib->stages[i];
@@ -2339,7 +2341,7 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
 
    /* Import the NIR shaders (after SPIRV->NIR). */
    for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
-      if (!lib->retained_shaders[s].serialized_nir_size)
+      if (!retained_shaders->stages[s].serialized_nir_size)
          continue;
 
       int64_t stage_start = os_time_get_nano();
@@ -2347,13 +2349,13 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device, struct r
       /* Deserialize the NIR shader. */
       const struct nir_shader_compiler_options *options = &device->physical_device->nir_options[s];
       struct blob_reader blob_reader;
-      blob_reader_init(&blob_reader, lib->retained_shaders[s].serialized_nir,
-                       lib->retained_shaders[s].serialized_nir_size);
+      blob_reader_init(&blob_reader, retained_shaders->stages[s].serialized_nir,
+                       retained_shaders->stages[s].serialized_nir_size);
 
       stages[s].stage = s;
       stages[s].nir = nir_deserialize(NULL, options, &blob_reader);
       stages[s].entrypoint = nir_shader_get_entrypoint(stages[s].nir)->function->name;
-      memcpy(stages[s].shader_sha1, lib->retained_shaders[s].shader_sha1, sizeof(stages[s].shader_sha1));
+      memcpy(stages[s].shader_sha1, retained_shaders->stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
 
       stages[s].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
 
@@ -2599,7 +2601,8 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline, const Vk
    }
 
    if (retain_shaders) {
-      radv_pipeline_retain_shaders(radv_pipeline_to_graphics_lib(&pipeline->base), stages);
+      struct radv_graphics_lib_pipeline *gfx_pipeline_lib = radv_pipeline_to_graphics_lib(&pipeline->base);
+      radv_pipeline_retain_shaders(&gfx_pipeline_lib->retained_shaders, stages);
    }
 
    VkShaderStageFlagBits active_nir_stages = 0;
@@ -4124,10 +4127,12 @@ radv_graphics_lib_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 void
 radv_destroy_graphics_lib_pipeline(struct radv_device *device, struct radv_graphics_lib_pipeline *pipeline)
 {
+   struct radv_retained_shaders *retained_shaders = &pipeline->retained_shaders;
+
    radv_pipeline_layout_finish(device, &pipeline->layout);
 
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      free(pipeline->retained_shaders[i].serialized_nir);
+      free(retained_shaders->stages[i].serialized_nir);
    }
 
    ralloc_free(pipeline->mem_ctx);

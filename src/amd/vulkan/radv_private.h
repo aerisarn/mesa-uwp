@@ -2363,6 +2363,14 @@ struct radv_ray_tracing_pipeline {
    bool traversal_uniform_robustness2 : 1;
 };
 
+struct radv_retained_shaders {
+   struct {
+      void *serialized_nir;
+      size_t serialized_nir_size;
+      unsigned char shader_sha1[SHA1_DIGEST_LENGTH];
+   } stages[MESA_VULKAN_SHADER_STAGES];
+};
+
 struct radv_graphics_lib_pipeline {
    struct radv_graphics_pipeline base;
 
@@ -2372,11 +2380,7 @@ struct radv_graphics_lib_pipeline {
 
    VkGraphicsPipelineLibraryFlagsEXT lib_flags;
 
-   struct {
-      void *serialized_nir;
-      size_t serialized_nir_size;
-      unsigned char shader_sha1[SHA1_DIGEST_LENGTH];
-   } retained_shaders[MESA_VULKAN_SHADER_STAGES];
+   struct radv_retained_shaders retained_shaders;
 
    void *mem_ctx;
 
