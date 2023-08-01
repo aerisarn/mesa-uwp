@@ -1125,7 +1125,7 @@ ntt_setup_uniforms(struct ntt_compile *c)
 }
 
 static void
-ntt_setup_registers(struct ntt_compile *c, struct exec_list *list)
+ntt_setup_registers(struct ntt_compile *c)
 {
    assert(c->num_temps == 0);
 
@@ -3178,7 +3178,7 @@ ntt_emit_impl(struct ntt_compile *c, nir_function_impl *impl)
    }
 
 
-   ntt_setup_registers(c, &impl->registers);
+   ntt_setup_registers(c);
 
    c->cur_block = ntt_block_from_nir(c, nir_start_block(impl));
    ntt_setup_inputs(c);
