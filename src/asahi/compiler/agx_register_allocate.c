@@ -158,6 +158,12 @@ agx_calc_register_demand(agx_context *ctx, uint8_t *widths)
       unsigned late_kill_count = 0;
 
       agx_foreach_instr_in_block(block, I) {
+         /* Phis happen in parallel and are already accounted for in the live-in
+          * set, just skip them so we don't double count.
+          */
+         if (I->op == AGX_OPCODE_PHI)
+            continue;
+
          /* Handle late-kill registers from last instruction */
          demand -= late_kill_count;
          late_kill_count = 0;
