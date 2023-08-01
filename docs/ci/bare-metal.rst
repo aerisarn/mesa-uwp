@@ -216,12 +216,12 @@ Enable the site and restart nginx:
 .. code-block:: console
 
    sudo ln -s /etc/nginx/sites-available/fdo-cache /etc/nginx/sites-enabled/fdo-cache
-   sudo service nginx restart
+   sudo systemctl restart nginx
 
    # First download will hit the internet
-   wget http://localhost/cache/?uri=https://s3.freedesktop.org/mesa-tracie-public/itoral-gl-terrain-demo/demo.trace
+   wget http://localhost/cache/?uri=https://s3.freedesktop.org/mesa-tracie-public/itoral-gl-terrain-demo/demo-v2.trace
    # Second download should be cached.
-   wget http://localhost/cache/?uri=https://s3.freedesktop.org/mesa-tracie-public/itoral-gl-terrain-demo/demo.trace
+   wget http://localhost/cache/?uri=https://s3.freedesktop.org/mesa-tracie-public/itoral-gl-terrain-demo/demo-v2.trace
 
 Now, set ``download-url`` in your ``traces-*.yml`` entry to something like
 ``http://caching-proxy/cache/?uri=https://s3.freedesktop.org/mesa-tracie-public``
