@@ -25,30 +25,6 @@
 #include "nir_vla.h"
 #include "util/half_float.h"
 
-static bool
-src_is_ssa(nir_src *src, void *data)
-{
-   (void) data;
-   return src->is_ssa;
-}
-
-static bool
-dest_is_ssa(nir_dest *dest, void *data)
-{
-   (void) data;
-   return dest->is_ssa;
-}
-
-ASSERTED static inline bool
-instr_each_src_and_dest_is_ssa(const nir_instr *instr)
-{
-   if (!nir_foreach_dest((nir_instr *)instr, dest_is_ssa, NULL) ||
-       !nir_foreach_src((nir_instr *)instr, src_is_ssa, NULL))
-      return false;
-
-   return true;
-}
-
 /* This function determines if uses of an instruction can safely be rewritten
  * to use another identical instruction instead. Note that this function must
  * be kept in sync with hash_instr() and nir_instrs_equal() -- only
@@ -322,19 +298,7 @@ hash_instr(const void *data)
 bool
 nir_srcs_equal(nir_src src1, nir_src src2)
 {
-   if (src1.is_ssa) {
-      if (src2.is_ssa) {
-         return src1.ssa == src2.ssa;
-      } else {
-         return false;
-      }
-   } else {
-      if (src2.is_ssa) {
-         return false;
-      } else {
-         return src1.reg.reg == src2.reg.reg;
-      }
-   }
+   return src1.ssa == src2.ssa;
 }
 
 /**
