@@ -445,65 +445,16 @@ read_var_list(read_ctx *ctx, struct exec_list *dst)
    }
 }
 
-static void
-write_register(write_ctx *ctx, const nir_register *reg)
-{
-   write_add_object(ctx, reg);
-   blob_write_uint32(ctx->blob, reg->num_components);
-   blob_write_uint32(ctx->blob, reg->bit_size);
-   blob_write_uint32(ctx->blob, reg->num_array_elems);
-   blob_write_uint32(ctx->blob, reg->index);
-   blob_write_uint8(ctx->blob, reg->divergent);
-}
-
-static nir_register *
-read_register(read_ctx *ctx)
-{
-   nir_register *reg = ralloc(ctx->nir, nir_register);
-   read_add_object(ctx, reg);
-   reg->num_components = blob_read_uint32(ctx->blob);
-   reg->bit_size = blob_read_uint32(ctx->blob);
-   reg->num_array_elems = blob_read_uint32(ctx->blob);
-   reg->index = blob_read_uint32(ctx->blob);
-   reg->divergent = blob_read_uint8(ctx->blob);
-
-   list_inithead(&reg->uses);
-   list_inithead(&reg->defs);
-
-   return reg;
-}
-
-static void
-write_reg_list(write_ctx *ctx, const struct exec_list *src)
-{
-   blob_write_uint32(ctx->blob, exec_list_length(src));
-   foreach_list_typed(nir_register, reg, node, src)
-      write_register(ctx, reg);
-}
-
-static void
-read_reg_list(read_ctx *ctx, struct exec_list *dst)
-{
-   exec_list_make_empty(dst);
-   unsigned num_regs = blob_read_uint32(ctx->blob);
-   for (unsigned i = 0; i < num_regs; i++) {
-      nir_register *reg = read_register(ctx);
-      exec_list_push_tail(dst, &reg->node);
-   }
-}
-
 union packed_src {
    uint32_t u32;
    struct {
-      unsigned is_ssa:1;   /* <-- Header */
-      unsigned is_indirect:1;
+      unsigned _pad:2; /* <-- Header */
       unsigned object_idx:20;
       unsigned _footer:10; /* <-- Footer */
    } any;
    struct {
       unsigned _header:22; /* <-- Header */
-      unsigned negate:1;   /* <-- Footer */
-      unsigned abs:1;
+      unsigned _pad:2; /* <-- Footer */
       unsigned swizzle_x:2;
       unsigned swizzle_y:2;
       unsigned swizzle_z:2;
@@ -519,21 +470,9 @@ union packed_src {
 static void
 write_src_full(write_ctx *ctx, const nir_src *src, union packed_src header)
 {
-   /* Since sources are very frequent, we try to save some space when storing
-    * them. In particular, we store whether the source is a register and
-    * whether the register has an indirect index in the low two bits. We can
-    * assume that the high two bits of the index are zero, since otherwise our
-    * address space would've been exhausted allocating the remap table!
-    */
-   header.any.is_ssa = src->is_ssa;
-   if (src->is_ssa) {
-      header.any.object_idx = write_lookup_object(ctx, src->ssa);
-      blob_write_uint32(ctx->blob, header.u32);
-   } else {
-      header.any.object_idx = write_lookup_object(ctx, src->reg.reg);
-      header.any.is_indirect = false;
-      blob_write_uint32(ctx->blob, header.u32);
-   }
+   assert(src->is_ssa);
+   header.any.object_idx = write_lookup_object(ctx, src->ssa);
+   blob_write_uint32(ctx->blob, header.u32);
 }
 
 static void
@@ -550,27 +489,19 @@ read_src(read_ctx *ctx, nir_src *src)
    union packed_src header;
    header.u32 = blob_read_uint32(ctx->blob);
 
-   src->is_ssa = header.any.is_ssa;
-   if (src->is_ssa) {
-      src->ssa = read_lookup_object(ctx, header.any.object_idx);
-   } else {
-      src->reg.reg = read_lookup_object(ctx, header.any.object_idx);
-   }
+   src->is_ssa = true;
+   src->ssa = read_lookup_object(ctx, header.any.object_idx);
    return header;
 }
 
 union packed_dest {
    uint8_t u8;
    struct {
-      uint8_t is_ssa:1;
+      uint8_t _pad:1;
       uint8_t num_components:3;
       uint8_t bit_size:3;
       uint8_t divergent:1;
-   } ssa;
-   struct {
-      uint8_t is_ssa:1;
-      uint8_t _pad:7;
-   } reg;
+   };
 };
 
 enum intrinsic_const_indices_encoding {
@@ -685,13 +616,11 @@ write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
    union packed_dest dest;
    dest.u8 = 0;
 
-   dest.ssa.is_ssa = dst->is_ssa;
-   if (dst->is_ssa) {
-      dest.ssa.num_components =
-         encode_num_components_in_3bits(dst->ssa.num_components);
-      dest.ssa.bit_size = encode_bit_size_3bits(dst->ssa.bit_size);
-      dest.ssa.divergent = dst->ssa.divergent;
-   }
+   assert(dst->is_ssa);
+   dest.num_components =
+      encode_num_components_in_3bits(dst->ssa.num_components);
+   dest.bit_size = encode_bit_size_3bits(dst->ssa.bit_size);
+   dest.divergent = dst->ssa.divergent;
    header.any.dest = dest.u8;
 
    /* Check if the current ALU instruction has the same header as the previous
@@ -733,15 +662,11 @@ write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
       blob_write_uint32(ctx->blob, header.u32);
    }
 
-   if (dest.ssa.is_ssa &&
-       dest.ssa.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
+   if (dest.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
       blob_write_uint32(ctx->blob, dst->ssa.num_components);
 
-   if (dst->is_ssa) {
-      write_add_object(ctx, &dst->ssa);
-   } else {
-      blob_write_uint32(ctx->blob, write_lookup_object(ctx, dst->reg.reg));
-   }
+   assert(dst->is_ssa);
+   write_add_object(ctx, &dst->ssa);
 }
 
 static void
@@ -751,19 +676,15 @@ read_dest(read_ctx *ctx, nir_dest *dst, nir_instr *instr,
    union packed_dest dest;
    dest.u8 = header.any.dest;
 
-   if (dest.ssa.is_ssa) {
-      unsigned bit_size = decode_bit_size_3bits(dest.ssa.bit_size);
-      unsigned num_components;
-      if (dest.ssa.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
-         num_components = blob_read_uint32(ctx->blob);
-      else
-         num_components = decode_num_components_in_3bits(dest.ssa.num_components);
-      nir_ssa_dest_init(instr, dst, num_components, bit_size);
-      dst->ssa.divergent = dest.ssa.divergent;
-      read_add_object(ctx, &dst->ssa);
-   } else {
-      dst->reg.reg = read_object(ctx);
-   }
+   unsigned bit_size = decode_bit_size_3bits(dest.bit_size);
+   unsigned num_components;
+   if (dest.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
+      num_components = blob_read_uint32(ctx->blob);
+   else
+      num_components = decode_num_components_in_3bits(dest.num_components);
+   nir_ssa_dest_init(instr, dst, num_components, bit_size);
+   dst->ssa.divergent = dest.divergent;
+   read_add_object(ctx, &dst->ssa);
 }
 
 static bool
@@ -779,17 +700,13 @@ is_alu_src_ssa_16bit(write_ctx *ctx, const nir_alu_instr *alu)
    unsigned num_srcs = nir_op_infos[alu->op].num_inputs;
 
    for (unsigned i = 0; i < num_srcs; i++) {
-      if (!alu->src[i].src.is_ssa || alu->src[i].abs || alu->src[i].negate)
-         return false;
-
       unsigned src_components = nir_ssa_alu_instr_src_components(alu, i);
 
       for (unsigned chan = 0; chan < src_components; chan++) {
          /* The swizzles for src0.x and src1.x are stored
           * in writemask_or_two_swizzles for SSA ALUs.
           */
-         if (alu->dest.dest.is_ssa && i < 2 && chan == 0 &&
-             alu->src[i].swizzle[chan] < 4)
+         if (i < 2 && chan == 0 && alu->src[i].swizzle[chan] < 4)
             continue;
 
          if (alu->src[i].swizzle[chan] != chan)
@@ -804,7 +721,6 @@ static void
 write_alu(write_ctx *ctx, const nir_alu_instr *alu)
 {
    unsigned num_srcs = nir_op_infos[alu->op].num_inputs;
-   unsigned dst_components = nir_dest_num_components(alu->dest.dest);
 
    /* 9 bits for nir_op */
    STATIC_ASSERT(nir_num_opcodes <= 512);
@@ -819,21 +735,16 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
    header.alu.op = alu->op;
    header.alu.packed_src_ssa_16bit = is_alu_src_ssa_16bit(ctx, alu);
 
-   if (header.alu.packed_src_ssa_16bit &&
-       alu->dest.dest.is_ssa) {
+   assert(alu->dest.dest.is_ssa);
+
+   if (header.alu.packed_src_ssa_16bit) {
       /* For packed srcs of SSA ALUs, this field stores the swizzles. */
       header.alu.writemask_or_two_swizzles = alu->src[0].swizzle[0];
       if (num_srcs > 1)
          header.alu.writemask_or_two_swizzles |= alu->src[1].swizzle[0] << 2;
-   } else if (!alu->dest.dest.is_ssa && dst_components <= 4) {
-      /* For vec4 registers, this field is a writemask. */
-      header.alu.writemask_or_two_swizzles = alu->dest.write_mask;
    }
 
    write_dest(ctx, &alu->dest.dest, header, alu->instr.type);
-
-   if (!alu->dest.dest.is_ssa && dst_components > 4)
-      blob_write_uint32(ctx->blob, alu->dest.write_mask);
 
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
@@ -849,9 +760,6 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
          union packed_src src;
          bool packed = src_components <= 4 && src_channels <= 4;
          src.u32 = 0;
-
-         src.alu.negate = alu->src[i].negate;
-         src.alu.abs = alu->src[i].abs;
 
          if (packed) {
             src.alu.swizzle_x = alu->src[i].swizzle[0];
@@ -893,14 +801,7 @@ read_alu(read_ctx *ctx, union packed_instr header)
    read_dest(ctx, &alu->dest.dest, &alu->instr, header);
 
    unsigned dst_components = nir_dest_num_components(alu->dest.dest);
-
-   if (alu->dest.dest.is_ssa) {
-      alu->dest.write_mask = u_bit_consecutive(0, dst_components);
-   } else if (dst_components <= 4) {
-      alu->dest.write_mask = header.alu.writemask_or_two_swizzles;
-   } else {
-      alu->dest.write_mask = blob_read_uint32(ctx->blob);
-   }
+   alu->dest.write_mask = u_bit_consecutive(0, dst_components);
 
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
@@ -921,9 +822,6 @@ read_alu(read_ctx *ctx, union packed_instr header)
          unsigned src_channels = nir_ssa_alu_instr_src_components(alu, i);
          unsigned src_components = nir_src_num_components(alu->src[i].src);
          bool packed = src_components <= 4 && src_channels <= 4;
-
-         alu->src[i].negate = src.alu.negate;
-         alu->src[i].abs = src.alu.abs;
 
          memset(&alu->src[i].swizzle, 0, sizeof(alu->src[i].swizzle));
 
@@ -946,8 +844,7 @@ read_alu(read_ctx *ctx, union packed_instr header)
       }
    }
 
-   if (header.alu.packed_src_ssa_16bit &&
-       alu->dest.dest.is_ssa) {
+   if (header.alu.packed_src_ssa_16bit) {
       alu->src[0].swizzle[0] = header.alu.writemask_or_two_swizzles & 0x3;
       if (num_srcs > 1)
          alu->src[1].swizzle[0] = header.alu.writemask_or_two_swizzles >> 2;
@@ -1023,8 +920,7 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
    if (deref->deref_type == nir_deref_type_array ||
        deref->deref_type == nir_deref_type_ptr_as_array) {
       header.deref.packed_src_ssa_16bit =
-         deref->parent.is_ssa && deref->arr.index.is_ssa &&
-         are_object_ids_16bit(ctx);
+         deref->arr.index.is_ssa && are_object_ids_16bit(ctx);
 
       header.deref.in_bounds = deref->arr.in_bounds;
    }
@@ -1972,8 +1868,6 @@ write_function_impl(write_ctx *ctx, const nir_function_impl *fi)
       blob_write_uint32(ctx->blob, write_lookup_object(ctx, fi->preamble));
 
    write_var_list(ctx, &fi->locals);
-   write_reg_list(ctx, &fi->registers);
-   blob_write_uint32(ctx->blob, fi->reg_alloc);
 
    write_cf_list(ctx, &fi->body);
    write_fixup_phis(ctx);
@@ -1991,8 +1885,6 @@ read_function_impl(read_ctx *ctx)
       fi->preamble = read_object(ctx);
 
    read_var_list(ctx, &fi->locals);
-   read_reg_list(ctx, &fi->registers);
-   fi->reg_alloc = blob_read_uint32(ctx->blob);
 
    read_cf_list(ctx, &fi->body);
    read_fixup_phis(ctx);
