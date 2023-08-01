@@ -689,17 +689,9 @@ FragmentShaderR600::load_input_hw(nir_intrinsic_instr *intr)
               << *m_interpolated_inputs[nir_intrinsic_base(intr)][i] << "\n";
       unsigned index = nir_intrinsic_component(intr) + i;
       assert(index < 4);
-      if (intr->dest.is_ssa) {
-         vf.inject_value(intr->dest,
-                         i,
-                         m_interpolated_inputs[nir_intrinsic_base(intr)][index]);
-      } else {
-         ir = new AluInstr(op1_mov,
-                           vf.dest(intr->dest, i, pin_none),
-                           m_interpolated_inputs[nir_intrinsic_base(intr)][index],
-                           AluInstr::write);
-         emit_instruction(ir);
-      }
+      vf.inject_value(intr->dest,
+                      i,
+                      m_interpolated_inputs[nir_intrinsic_base(intr)][index]);
    }
    if (ir)
       ir->set_alu_flag(alu_last_instr);
@@ -732,7 +724,7 @@ FragmentShaderEG::load_input_hw(nir_intrinsic_instr *intr)
    auto io = input(nir_intrinsic_base(intr));
    auto comp = nir_intrinsic_component(intr);
 
-   bool need_temp = comp > 0 || !intr->dest.is_ssa;
+   bool need_temp = comp > 0;
    AluInstr *ir = nullptr;
    for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
       if (need_temp) {
@@ -816,7 +808,7 @@ FragmentShaderEG::load_interpolated_input_hw(nir_intrinsic_instr *intr)
 
    int dest_num_comp = nir_dest_num_components(intr->dest);
    int start_comp = nir_intrinsic_component(intr);
-   bool need_temp = start_comp > 0 || !intr->dest.is_ssa;
+   bool need_temp = start_comp > 0;
 
    auto dst = need_temp ? vf.temp_vec4(pin_chan) : vf.dest_vec4(intr->dest, pin_chan);
 

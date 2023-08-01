@@ -192,7 +192,7 @@ bool
 GDSInstr::emit_atomic_op2(nir_intrinsic_instr *instr, Shader& shader)
 {
    auto& vf = shader.value_factory();
-   bool read_result = !instr->dest.is_ssa || !list_is_empty(&instr->dest.ssa.uses);
+   bool read_result = !list_is_empty(&instr->dest.ssa.uses);
 	
    ESDOp op =
       read_result ? get_opcode(instr->intrinsic) : get_opcode_wo(instr->intrinsic);
@@ -287,7 +287,7 @@ bool
 GDSInstr::emit_atomic_inc(nir_intrinsic_instr *instr, Shader& shader)
 {
    auto& vf = shader.value_factory();
-   bool read_result = !instr->dest.is_ssa || !list_is_empty(&instr->dest.ssa.uses);
+   bool read_result = !list_is_empty(&instr->dest.ssa.uses);
 
    auto [offset, uav_id] = shader.evaluate_resource_offset(instr, 0);
    {
@@ -328,7 +328,7 @@ GDSInstr::emit_atomic_pre_dec(nir_intrinsic_instr *instr, Shader& shader)
 {
    auto& vf = shader.value_factory();
 
-   bool read_result = !instr->dest.is_ssa || !list_is_empty(&instr->dest.ssa.uses);
+   bool read_result = !list_is_empty(&instr->dest.ssa.uses);
 
    auto opcode = read_result ? DS_OP_SUB_RET : DS_OP_SUB;
 	
@@ -663,7 +663,7 @@ RatInstr::emit_ssbo_atomic_op(nir_intrinsic_instr *intr, Shader& shader)
    {
    }
 
-   bool read_result = !intr->dest.is_ssa || !list_is_empty(&intr->dest.ssa.uses);
+   bool read_result = !list_is_empty(&intr->dest.ssa.uses);
    auto opcode = read_result ? get_rat_opcode(nir_intrinsic_atomic_op(intr))
                              : get_rat_opcode_wo(nir_intrinsic_atomic_op(intr));
 
@@ -800,7 +800,7 @@ RatInstr::emit_image_load_or_atomic(nir_intrinsic_instr *intrin, Shader& shader)
    {
    }
 
-   bool read_result = !intrin->dest.is_ssa || !list_is_empty(&intrin->dest.ssa.uses);
+   bool read_result = !list_is_empty(&intrin->dest.ssa.uses);
    bool image_load = (intrin->intrinsic == nir_intrinsic_image_load);
    auto opcode = image_load  ? RatInstr::NOP_RTN :
                  read_result ? get_rat_opcode(nir_intrinsic_atomic_op(intrin))

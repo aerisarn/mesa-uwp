@@ -1100,7 +1100,7 @@ void RegisterWriteHandler::visit(Register& dest)
 bool
 Shader::emit_atomic_local_shared(nir_intrinsic_instr *instr)
 {
-   bool uses_retval = !instr->dest.is_ssa || !list_is_empty(&instr->dest.ssa.uses);
+   bool uses_retval = !list_is_empty(&instr->dest.ssa.uses);
 
    auto& vf = value_factory();
 
@@ -1560,7 +1560,7 @@ Shader::load_ubo(nir_intrinsic_instr *instr)
       int buf_cmp = nir_intrinsic_component(instr);
 
       AluInstr *ir = nullptr;
-      auto pin = instr->dest.is_ssa && nir_dest_num_components(instr->dest) == 1
+      auto pin = nir_dest_num_components(instr->dest) == 1
                     ? pin_free
                     : pin_none;
       for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {

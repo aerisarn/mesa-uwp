@@ -676,23 +676,6 @@ optimize_once(nir_shader *shader)
    return progress;
 }
 
-bool
-has_saturate(const nir_function *func)
-{
-   nir_foreach_block(block, func->impl)
-   {
-      nir_foreach_instr(instr, block)
-      {
-         if (instr->type == nir_instr_type_alu) {
-            auto alu = nir_instr_as_alu(instr);
-            if (alu->dest.saturate)
-               return true;
-         }
-      }
-   }
-   return false;
-}
-
 static bool
 r600_is_last_vertex_stage(nir_shader *nir, const r600_shader_key& key)
 {

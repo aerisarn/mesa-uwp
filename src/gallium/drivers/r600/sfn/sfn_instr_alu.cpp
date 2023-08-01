@@ -1903,9 +1903,7 @@ AluInstr::from_nir(nir_alu_instr *alu, Shader& shader)
 static Pin
 pin_for_components(const nir_alu_instr& alu)
 {
-   return (alu.dest.dest.is_ssa && (nir_dest_num_components(alu.dest.dest) == 1))
-             ? pin_free
-             : pin_none;
+   return nir_dest_num_components(alu.dest.dest) == 1 ? pin_free : pin_none;
 }
 
 static bool
@@ -2581,11 +2579,6 @@ emit_any_all_fcomp(const nir_alu_instr& alu, EAluOp op, int nc, bool all, Shader
 static bool
 emit_any_all_icomp(const nir_alu_instr& alu, EAluOp op, int nc, bool all, Shader& shader)
 {
-   assert(!alu.src[0].abs);
-   assert(!alu.src[0].negate);
-   assert(!alu.src[1].abs);
-   assert(!alu.src[1].negate);
-
    /* This should probabyl be lowered in nir */
    auto& value_factory = shader.value_factory();
 

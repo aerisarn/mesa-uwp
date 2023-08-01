@@ -505,13 +505,7 @@ VertexShader::load_input(nir_intrinsic_instr *intr)
       for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
          auto src = vf.allocate_pinned_register(driver_location + 1, i);
          src->set_flag(Register::ssa);
-         if (intr->dest.is_ssa)
-            vf.inject_value(intr->dest, i, src);
-         else {
-            ir =
-               new AluInstr(op1_mov, vf.dest(intr->dest, i, pin_none), src, {alu_write});
-            emit_instruction(ir);
-         }
+         vf.inject_value(intr->dest, i, src);
       }
       if (ir)
          ir->set_alu_flag(alu_last_instr);
