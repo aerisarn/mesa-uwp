@@ -361,6 +361,7 @@ pack_blend_constant(enum pipe_format format, float cons)
  * overdraw alpha=0 should be set when alpha=0 implies no overdraw,
  * equivalently, all enabled render targets have alpha_zero_nop set.
  */
+#if PAN_ARCH >= 6
 static bool
 panfrost_overdraw_alpha(const struct panfrost_context *ctx, bool zero)
 {
@@ -378,6 +379,7 @@ panfrost_overdraw_alpha(const struct panfrost_context *ctx, bool zero)
 
    return true;
 }
+#endif
 
 static void
 panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
