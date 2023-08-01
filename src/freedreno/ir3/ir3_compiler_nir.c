@@ -4815,6 +4815,12 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
          fixup_binning_pass(ctx, end);
    }
 
+   if (so->type == MESA_SHADER_FRAGMENT &&
+       ctx->s->info.fs.needs_quad_helper_invocations) {
+      so->need_pixlod = true;
+      so->need_full_quad = true;
+   }
+
    ir3_debug_print(ir, "AFTER: nir->ir3");
    ir3_validate(ir);
 
@@ -4998,12 +5004,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
    /* Collect sampling instructions eligible for pre-dispatch. */
    collect_tex_prefetches(ctx, ir);
-
-   if (so->type == MESA_SHADER_FRAGMENT &&
-       ctx->s->info.fs.needs_quad_helper_invocations) {
-      so->need_pixlod = true;
-      so->need_full_quad = true;
-   }
 
    if ((ctx->so->type == MESA_SHADER_FRAGMENT) &&
        !ctx->s->info.fs.early_fragment_tests)
