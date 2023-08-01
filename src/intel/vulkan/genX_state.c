@@ -405,7 +405,7 @@ init_render_queue_state(struct anv_queue *queue)
     *
     * Emit this before 3DSTATE_WM_HZ_OP below.
     */
-   genX(emit_multisample)(&batch, 1);
+   anv_batch_emit(&batch, GENX(3DSTATE_MULTISAMPLE), ms);
 
    /* The BDW+ docs describe how to use the 3DSTATE_WM_HZ_OP instruction in the
     * section titled, "Optimized Depth Buffer Clear and/or Stencil Buffer
@@ -813,23 +813,6 @@ genX(emit_l3_config)(struct anv_batch *batch,
          l3cr.DCAllocation = cfg->n[INTEL_L3P_DC];
          l3cr.AllAllocation = cfg->n[INTEL_L3P_ALL];
       }
-   }
-}
-
-void
-genX(emit_multisample)(struct anv_batch *batch, uint32_t samples)
-{
-   anv_batch_emit(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
-      ms.NumberofMultisamples       = __builtin_ffs(samples) - 1;
-
-      ms.PixelLocation              = CENTER;
-
-      /* The PRM says that this bit is valid only for DX9:
-       *
-       *    SW can choose to set this bit only for DX9 API. DX10/OGL API's
-       *    should not have any effect by setting or not setting this bit.
-       */
-      ms.PixelPositionOffsetEnable  = false;
    }
 }
 
