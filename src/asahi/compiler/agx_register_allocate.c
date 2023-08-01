@@ -1162,19 +1162,6 @@ agx_ra(agx_context *ctx)
 
    assert(ctx->max_reg <= max_regs);
 
-   agx_foreach_instr_global(ctx, ins) {
-      agx_foreach_ssa_src(ins, s) {
-         unsigned v = ssa_to_reg[ins->src[s].value];
-         agx_replace_src(ins, s, agx_register(v, ins->src[s].size));
-      }
-
-      agx_foreach_ssa_dest(ins, d) {
-         unsigned v = ssa_to_reg[ins->dest[d].value];
-         ins->dest[d] =
-            agx_replace_index(ins->dest[d], agx_register(v, ins->dest[d].size));
-      }
-   }
-
    agx_foreach_instr_global_safe(ctx, ins) {
       /* Lower away RA pseudo-instructions */
       agx_builder b = agx_init_builder(ctx, agx_after_instr(ins));
