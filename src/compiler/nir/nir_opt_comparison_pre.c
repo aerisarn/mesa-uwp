@@ -258,9 +258,6 @@ comparison_pre_block(nir_block *block, struct block_queue *bq, nir_builder *bld)
       if (alu->dest.dest.ssa.num_components != 1)
          continue;
 
-      if (alu->dest.saturate)
-         continue;
-
       static const uint8_t swizzle[NIR_MAX_VEC_COMPONENTS] = {0};
 
       switch (alu->op) {

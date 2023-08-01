@@ -225,10 +225,6 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
             if (mov->op != nir_op_fsat && !movelike)
                (*count)++;
          } else {
-            /* Can't handle saturate */
-            if (mov->dest.saturate)
-               return false;
-
             /* The only uses of this definition must be phis in the successor */
             nir_foreach_use_including_if(use, &mov->dest.dest.ssa) {
                if (use->is_if ||

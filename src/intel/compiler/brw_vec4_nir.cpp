@@ -1089,8 +1089,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    dst_reg dst = get_nir_dest(instr->dest.dest, dst_type);
    dst.writemask &= instr->dest.write_mask;
 
-   assert(!instr->dest.saturate);
-
    src_reg op[4];
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
       /* We don't lower to source modifiers, so they shouldn't exist. */

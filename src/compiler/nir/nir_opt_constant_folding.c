@@ -83,9 +83,6 @@ try_fold_alu(nir_builder *b, nir_alu_instr *alu)
    if (bit_size == 0)
       bit_size = 32;
 
-   /* We shouldn't have any saturate modifiers in the optimization loop. */
-   assert(!alu->dest.saturate);
-
    nir_const_value dest[NIR_MAX_VEC_COMPONENTS];
    nir_const_value *srcs[NIR_MAX_VEC_COMPONENTS];
    memset(dest, 0, sizeof(dest));

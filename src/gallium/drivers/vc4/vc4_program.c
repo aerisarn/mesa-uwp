@@ -1067,9 +1067,6 @@ ntq_emit_cond_to_int(struct vc4_compile *c, enum qpu_cond cond)
 static void
 ntq_emit_alu(struct vc4_compile *c, nir_alu_instr *instr)
 {
-        /* This should always be lowered to ALU operations for VC4. */
-        assert(!instr->dest.saturate);
-
         /* Vectors are special in that they have non-scalarized writemasks,
          * and just take the first swizzle channel for each argument in order
          * into each writemask channel.

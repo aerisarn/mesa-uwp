@@ -381,7 +381,6 @@ match_expression(const nir_algebraic_table *table, const nir_search_expression *
    if (state->inexact_match && state->has_exact_alu)
       return false;
 
-   assert(!instr->dest.saturate);
    assert(nir_op_infos[instr->op].num_inputs > 0);
 
    /* If we have an explicitly sized destination, we can only handle the
@@ -453,7 +452,6 @@ construct_value(nir_builder *build,
       nir_ssa_dest_init(&alu->instr, &alu->dest.dest, num_components,
                         dst_bit_size);
       alu->dest.write_mask = (1 << num_components) - 1;
-      alu->dest.saturate = false;
 
       /* We have no way of knowing what values in a given search expression
        * map to a particular replacement value.  Therefore, if the

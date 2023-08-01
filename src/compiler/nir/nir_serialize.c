@@ -542,7 +542,7 @@ union packed_instr {
       unsigned exact:1;
       unsigned no_signed_wrap:1;
       unsigned no_unsigned_wrap:1;
-      unsigned saturate:1;
+      unsigned padding:1;
       /* Reg: writemask; SSA: swizzles for 2 srcs */
       unsigned writemask_or_two_swizzles:4;
       unsigned op:9;
@@ -731,7 +731,6 @@ write_alu(write_ctx *ctx, const nir_alu_instr *alu)
    header.alu.exact = alu->exact;
    header.alu.no_signed_wrap = alu->no_signed_wrap;
    header.alu.no_unsigned_wrap = alu->no_unsigned_wrap;
-   header.alu.saturate = alu->dest.saturate;
    header.alu.op = alu->op;
    header.alu.packed_src_ssa_16bit = is_alu_src_ssa_16bit(ctx, alu);
 
@@ -796,7 +795,6 @@ read_alu(read_ctx *ctx, union packed_instr header)
    alu->exact = header.alu.exact;
    alu->no_signed_wrap = header.alu.no_signed_wrap;
    alu->no_unsigned_wrap = header.alu.no_unsigned_wrap;
-   alu->dest.saturate = header.alu.saturate;
 
    read_dest(ctx, &alu->dest.dest, &alu->instr, header);
 

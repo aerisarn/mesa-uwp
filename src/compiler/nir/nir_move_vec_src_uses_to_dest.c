@@ -81,10 +81,6 @@ move_vec_src_uses_to_dest_block(nir_block *block)
       if (!vec->dest.dest.is_ssa)
          continue;
 
-      /* Can't handle saturation */
-      if (vec->dest.saturate)
-         continue;
-
       /* First, mark all of the sources we are going to consider for rewriting
        * to the destination
        */

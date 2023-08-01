@@ -415,7 +415,6 @@ lower_alu_instr_width(nir_builder *b, nir_instr *instr, void *_data)
       }
 
       nir_alu_ssa_dest_init(lower, components, alu->dest.dest.ssa.bit_size);
-      lower->dest.saturate = alu->dest.saturate;
       lower->exact = alu->exact;
 
       for (i = 0; i < components; i++) {

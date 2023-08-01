@@ -1187,7 +1187,6 @@ clone_alu_and_replace_src_defs(nir_builder *b, const nir_alu_instr *alu,
                      alu->dest.dest.ssa.num_components,
                      alu->dest.dest.ssa.bit_size);
 
-   nalu->dest.saturate = alu->dest.saturate;
    nalu->dest.write_mask = alu->dest.write_mask;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {

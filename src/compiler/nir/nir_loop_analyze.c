@@ -824,9 +824,6 @@ try_eval_const_alu(nir_const_value *dest, nir_alu_instr *alu,
    if (bit_size == 0)
       bit_size = 32;
 
-   /* We shouldn't have any saturate modifiers in the optimization loop. */
-   assert(!alu->dest.saturate);
-
    nir_const_value *srcs[NIR_MAX_VEC_COMPONENTS];
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; ++i)

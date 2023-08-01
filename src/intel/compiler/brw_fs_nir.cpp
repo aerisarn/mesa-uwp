@@ -647,8 +647,6 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
       (nir_alu_type)(nir_op_infos[instr->op].output_type |
                      nir_dest_bit_size(instr->dest.dest)));
 
-   assert(!instr->dest.saturate);
-
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
       /* We don't lower to source modifiers so they should not exist. */
       assert(!instr->src[i].abs);

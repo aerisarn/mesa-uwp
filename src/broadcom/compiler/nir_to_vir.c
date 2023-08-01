@@ -1356,9 +1356,6 @@ sign_extend(struct v3d_compile *c,
 static void
 ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
 {
-        /* This should always be lowered to ALU operations for V3D. */
-        assert(!instr->dest.saturate);
-
         /* Vectors are special in that they have non-scalarized writemasks,
          * and just take the first swizzle channel for each argument in order
          * into each writemask channel.

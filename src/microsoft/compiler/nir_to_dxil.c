@@ -2185,7 +2185,6 @@ static void
 store_alu_dest(struct ntd_context *ctx, nir_alu_instr *alu, unsigned chan,
                const struct dxil_value *value)
 {
-   assert(!alu->dest.saturate);
    store_dest(ctx, &alu->dest.dest, chan, value);
 }
 

@@ -1220,14 +1220,6 @@ typedef struct {
    nir_dest dest;
 
    /**
-    * Saturate output modifier
-    *
-    * Only valid for opcodes that output floating-point numbers. Clamps the
-    * output to between 0.0 and 1.0 inclusive.
-    */
-   bool saturate;
-
-   /**
     * Write-mask
     *
     * Ignored if dest.is_ssa is true

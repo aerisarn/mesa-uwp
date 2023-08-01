@@ -530,7 +530,6 @@ nir_alu_dest_copy(nir_alu_dest *dest, const nir_alu_dest *src,
 {
    nir_dest_copy(&dest->dest, &src->dest, &instr->instr);
    dest->write_mask = src->write_mask;
-   dest->saturate = src->saturate;
 }
 
 bool
@@ -693,7 +692,6 @@ static void
 alu_dest_init(nir_alu_dest *dest)
 {
    dest_init(&dest->dest);
-   dest->saturate = false;
    dest->write_mask = 0xf;
 }
 
@@ -2919,15 +2917,14 @@ nir_alu_instr_is_copy(nir_alu_instr *instr)
    assert(instr->src[0].src.is_ssa);
 
    if (instr->op == nir_op_mov) {
-      return !instr->dest.saturate &&
-             !instr->src[0].abs &&
+      return !instr->src[0].abs &&
              !instr->src[0].negate;
    } else if (nir_op_is_vec(instr->op)) {
       for (unsigned i = 0; i < instr->dest.dest.ssa.num_components; i++) {
          if (instr->src[i].abs || instr->src[i].negate)
             return false;
       }
-      return !instr->dest.saturate;
+      return true;
    } else {
       return false;
    }

@@ -222,25 +222,12 @@ static void
 validate_alu_dest(nir_alu_instr *instr, validate_state *state)
 {
    nir_alu_dest *dest = &instr->dest;
-
-   if (instr->op == nir_op_mov)
-      assert(!dest->saturate);
-
    unsigned dest_size = nir_dest_num_components(dest->dest);
    /*
     * validate that the instruction doesn't write to components not in the
     * register/SSA value
     */
    validate_assert(state, !(dest->write_mask & ~nir_component_mask(dest_size)));
-
-   /* validate that saturate is only ever used on instructions with
-    * destinations of type float
-    */
-   nir_alu_instr *alu = nir_instr_as_alu(state->instr);
-   validate_assert(state,
-          (nir_alu_type_get_base_type(nir_op_infos[alu->op].output_type) ==
-           nir_type_float) ||
-          !dest->saturate);
 
    validate_dest(&dest->dest, state, 0, 0);
 }

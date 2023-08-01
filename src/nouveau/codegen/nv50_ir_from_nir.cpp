@@ -2911,7 +2911,6 @@ Converter::visit(nir_alu_instr *insn)
       oldPos = oldPos->next;
       oldPos->precise = insn->exact;
    }
-   oldPos->saturate = insn->dest.saturate;
 
    return true;
 }

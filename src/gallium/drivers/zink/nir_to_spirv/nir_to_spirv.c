@@ -2072,7 +2072,6 @@ get_alu_src(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src, SpvId *ra
 static void
 store_alu_result(struct ntv_context *ctx, nir_alu_instr *alu, SpvId result, nir_alu_type atype)
 {
-   assert(!alu->dest.saturate);
    store_dest(ctx, &alu->dest.dest, result, atype);
 }
 
