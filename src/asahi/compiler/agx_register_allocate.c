@@ -1101,8 +1101,6 @@ agx_insert_parallel_copies(agx_context *ctx, agx_block *block)
 void
 agx_ra(agx_context *ctx)
 {
-   unsigned *alloc = calloc(ctx->alloc, sizeof(unsigned));
-
    agx_compute_liveness(ctx);
    uint8_t *ncomps = calloc(ctx->alloc, sizeof(uint8_t));
    agx_instr **src_to_collect_phi = calloc(ctx->alloc, sizeof(agx_instr *));
@@ -1272,5 +1270,4 @@ agx_ra(agx_context *ctx)
    free(ncomps);
    free(sizes);
    free(visited);
-   free(alloc);
 }
