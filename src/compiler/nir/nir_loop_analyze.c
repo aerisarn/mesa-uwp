@@ -1130,35 +1130,6 @@ calculate_iterations(nir_ssa_def *basis, nir_ssa_def *limit_basis,
    return -1;
 }
 
-static nir_op
-inverse_comparison(nir_op alu_op)
-{
-   switch (alu_op) {
-   case nir_op_fge:
-      return nir_op_flt;
-   case nir_op_ige:
-      return nir_op_ilt;
-   case nir_op_uge:
-      return nir_op_ult;
-   case nir_op_flt:
-      return nir_op_fge;
-   case nir_op_ilt:
-      return nir_op_ige;
-   case nir_op_ult:
-      return nir_op_uge;
-   case nir_op_feq:
-      return nir_op_fneu;
-   case nir_op_ieq:
-      return nir_op_ine;
-   case nir_op_fneu:
-      return nir_op_feq;
-   case nir_op_ine:
-      return nir_op_ieq;
-   default:
-      unreachable("Unsuported comparison!");
-   }
-}
-
 static bool
 get_induction_and_limit_vars(nir_ssa_scalar cond,
                              nir_ssa_scalar *ind,
