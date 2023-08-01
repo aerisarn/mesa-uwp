@@ -1433,9 +1433,6 @@ blorp_emit_pipeline(struct blorp_batch *batch,
       blorp_emit(batch, GENX(3DSTATE_URB_ALLOC_MESH), zero);
       blorp_emit(batch, GENX(3DSTATE_URB_ALLOC_TASK), zero);
 
-      blorp_emit(batch, GENX(3DSTATE_MESH_SHADER), zero);
-      blorp_emit(batch, GENX(3DSTATE_TASK_SHADER), zero);
-
       blorp_emit(batch, GENX(3DSTATE_MESH_CONTROL), zero);
       blorp_emit(batch, GENX(3DSTATE_TASK_CONTROL), zero);
 #endif
