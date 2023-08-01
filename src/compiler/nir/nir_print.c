@@ -406,11 +406,6 @@ print_alu_src(nir_alu_instr *instr, unsigned src, print_state *state)
 {
    FILE *fp = state->fp;
 
-   if (instr->src[src].negate)
-      fprintf(fp, "-");
-   if (instr->src[src].abs)
-      fprintf(fp, "abs(");
-
    const nir_op_info *info = &nir_op_infos[instr->op];
    print_src(&instr->src[src].src, state, info->input_types[src]);
 
@@ -440,9 +435,6 @@ print_alu_src(nir_alu_instr *instr, unsigned src, print_state *state)
          fprintf(fp, "%c", comp_mask_string(live_channels)[instr->src[src].swizzle[i]]);
       }
    }
-
-   if (instr->src[src].abs)
-      fprintf(fp, ")");
 }
 
 static void
