@@ -189,12 +189,6 @@ nir_schedule_src_pressure(nir_src *src)
    return nir_schedule_def_pressure(src->ssa);
 }
 
-static int
-nir_schedule_dest_pressure(nir_dest *dest)
-{
-   return nir_schedule_def_pressure(&dest->ssa);
-}
-
 /**
  * Adds a dependency such that @after must appear in the final program after
  * @before.
