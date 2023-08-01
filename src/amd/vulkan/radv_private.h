@@ -66,6 +66,7 @@
 #include "vk_log.h"
 #include "vk_physical_device.h"
 #include "vk_queue.h"
+#include "vk_sampler.h"
 #include "vk_shader_module.h"
 #include "vk_util.h"
 #include "vk_video.h"
@@ -2920,9 +2921,8 @@ radv_image_extent_compare(const struct radv_image *image, const VkExtent3D *exte
 }
 
 struct radv_sampler {
-   struct vk_object_base base;
+   struct vk_sampler vk;
    uint32_t state[4];
-   struct vk_ycbcr_conversion *ycbcr_sampler;
    uint32_t border_color_slot;
 };
 
@@ -3662,7 +3662,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(radv_indirect_command_layout, base, VkIndirectCom
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline, base, VkPipeline, VK_OBJECT_TYPE_PIPELINE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline_layout, base, VkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_query_pool, base, VkQueryPool, VK_OBJECT_TYPE_QUERY_POOL)
-VK_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler, base, VkSampler, VK_OBJECT_TYPE_SAMPLER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler, vk.base, VkSampler, VK_OBJECT_TYPE_SAMPLER)
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_video_session, vk.base, VkVideoSessionKHR, VK_OBJECT_TYPE_VIDEO_SESSION_KHR)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_video_session_params, vk.base, VkVideoSessionParametersKHR,
