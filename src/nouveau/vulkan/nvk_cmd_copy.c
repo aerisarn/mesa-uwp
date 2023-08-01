@@ -72,10 +72,8 @@ nouveau_copy_rect_image(
    VkOffset3D offset_px,
    const VkImageSubresourceLayers *sub_res)
 {
-   const VkExtent3D lvl_extent_px =
-      vk_image_mip_level_extent(&img->vk, sub_res->mipLevel);
    const struct nil_extent4d lvl_extent4d_px =
-      vk_to_nil_extent(lvl_extent_px, img->vk.array_layers);
+      nil_image_level_extent_px(&plane->nil, sub_res->mipLevel);
 
    offset_px = vk_image_sanitize_offset(&img->vk, offset_px);
    const struct nil_offset4d offset4d_px =
