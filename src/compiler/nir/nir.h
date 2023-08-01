@@ -1107,27 +1107,6 @@ nir_src_for_ssa(nir_ssa_def *def)
    return src;
 }
 
-static inline nir_src
-nir_src_for_reg(nir_register *reg)
-{
-   nir_src src = NIR_SRC_INIT;
-
-   src.is_ssa = false;
-   src.reg.reg = reg;
-
-   return src;
-}
-
-static inline nir_dest
-nir_dest_for_reg(nir_register *reg)
-{
-   nir_dest dest = NIR_DEST_INIT;
-
-   dest.reg.reg = reg;
-
-   return dest;
-}
-
 static inline unsigned
 nir_src_bit_size(nir_src src)
 {
