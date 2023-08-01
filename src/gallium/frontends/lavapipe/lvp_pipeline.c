@@ -279,6 +279,11 @@ compile_spirv(struct lvp_device *pdevice, const VkPipelineShaderStageCreateInfo 
    assert(stage <= LVP_SHADER_STAGES && stage != MESA_SHADER_NONE);
    VkResult result;
 
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+   const VkPipelineShaderStageNodeCreateInfoAMDX *node_info = vk_find_struct_const(
+      sinfo->pNext, PIPELINE_SHADER_STAGE_NODE_CREATE_INFO_AMDX);
+#endif
+
    const struct spirv_to_nir_options spirv_options = {
       .environment = NIR_SPIRV_VULKAN,
       .caps = {
@@ -333,6 +338,9 @@ compile_spirv(struct lvp_device *pdevice, const VkPipelineShaderStageCreateInfo 
       .phys_ssbo_addr_format = nir_address_format_64bit_global,
       .push_const_addr_format = nir_address_format_logical,
       .shared_addr_format = nir_address_format_32bit_offset,
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+      .shader_index = node_info ? node_info->index : 0,
+#endif
    };
 
    result = vk_pipeline_shader_stage_to_nir(&pdevice->vk, sinfo,
@@ -367,8 +375,9 @@ lvp_ycbcr_conversion_lookup(const void *data, uint32_t set, uint32_t binding, ui
    return ycbcr_conversion ? &ycbcr_conversion->state : NULL;
 }
 
+/* pipeline is NULL for shader objects. */
 static void
-lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader *shader, struct lvp_pipeline_layout *layout)
+lvp_shader_lower(struct lvp_device *pdevice, struct lvp_pipeline *pipeline, nir_shader *nir, struct lvp_shader *shader, struct lvp_pipeline_layout *layout)
 {
    if (nir->info.stage != MESA_SHADER_TESS_CTRL)
       NIR_PASS_V(nir, remove_barriers, nir->info.stage == MESA_SHADER_COMPUTE || nir->info.stage == MESA_SHADER_MESH || nir->info.stage == MESA_SHADER_TASK);
@@ -412,6 +421,9 @@ lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader 
    NIR_PASS_V(nir, nir_lower_explicit_io,
               nir_var_mem_global,
               nir_address_format_64bit_global);
+
+   if (nir->info.stage == MESA_SHADER_COMPUTE)
+      lvp_lower_exec_graph(pipeline, nir);
 
    NIR_PASS(_, nir, nir_vk_lower_ycbcr_tex, lvp_ycbcr_conversion_lookup, layout);
 
@@ -492,7 +504,7 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    nir_shader *nir;
    VkResult result = compile_spirv(pdevice, sinfo, &nir);
    if (result == VK_SUCCESS)
-      lvp_shader_lower(pdevice, nir, shader, pipeline->layout);
+      lvp_shader_lower(pdevice, pipeline, nir, shader, pipeline->layout);
    return result;
 }
 
@@ -1027,6 +1039,12 @@ get_pipeline_create_flags(const void *pCreateInfo)
       const VkRayTracingPipelineCreateInfoKHR *create_info = (VkRayTracingPipelineCreateInfoKHR *)pCreateInfo;
       return create_info->flags;
    }
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+   case VK_STRUCTURE_TYPE_EXECUTION_GRAPH_PIPELINE_CREATE_INFO_AMDX: {
+      const VkExecutionGraphPipelineCreateInfoAMDX *create_info = (VkExecutionGraphPipelineCreateInfoAMDX *)pCreateInfo;
+      return create_info->flags;
+   }
+#endif
    default:
       unreachable("invalid pCreateInfo pipeline struct");
    }
@@ -1263,7 +1281,7 @@ create_shader_object(struct lvp_device *device, const VkShaderCreateInfoEXT *pCr
       pCreateInfo->pPushConstantRanges,
    };
    shader->layout = lvp_pipeline_layout_create(device, &pci, pAllocator);
-   lvp_shader_lower(device, nir, shader, shader->layout);
+   lvp_shader_lower(device, NULL, nir, shader, shader->layout);
    lvp_shader_xfb_init(shader);
    if (stage == MESA_SHADER_TESS_EVAL) {
       /* spec requires that all tess modes are set in both shaders */
@@ -1339,3 +1357,163 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_GetShaderBinaryDataEXT(
    }
    return ret;
 }
+
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+static VkResult
+lvp_exec_graph_pipeline_create(VkDevice _device, VkPipelineCache _cache,
+                               const VkExecutionGraphPipelineCreateInfoAMDX *create_info,
+                               VkPipelineCreateFlagBits2KHR flags,
+                               VkPipeline *out_pipeline)
+{
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   struct lvp_pipeline *pipeline;
+   VkResult result;
+
+   assert(create_info->sType == VK_STRUCTURE_TYPE_EXECUTION_GRAPH_PIPELINE_CREATE_INFO_AMDX);
+
+   uint32_t stage_count = create_info->stageCount;
+   if (create_info->pLibraryInfo) {
+      for (uint32_t i = 0; i < create_info->pLibraryInfo->libraryCount; i++) {
+         VK_FROM_HANDLE(lvp_pipeline, library, create_info->pLibraryInfo->pLibraries[i]);
+         stage_count += library->num_groups;
+      }
+   }
+
+   pipeline = vk_zalloc(&device->vk.alloc, sizeof(*pipeline) + stage_count * sizeof(VkPipeline), 8,
+                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!pipeline)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   vk_object_base_init(&device->vk, &pipeline->base,
+                       VK_OBJECT_TYPE_PIPELINE);
+
+   uint64_t t0 = os_time_get_nano();
+
+   pipeline->type = LVP_PIPELINE_EXEC_GRAPH;
+   pipeline->layout = lvp_pipeline_layout_from_handle(create_info->layout);
+
+   pipeline->exec_graph.scratch_size = 0;
+   pipeline->num_groups = stage_count;
+
+   uint32_t stage_index = 0;
+   for (uint32_t i = 0; i < create_info->stageCount; i++) {
+      const VkPipelineShaderStageNodeCreateInfoAMDX *node_info = vk_find_struct_const(
+         create_info->pStages[i].pNext, PIPELINE_SHADER_STAGE_NODE_CREATE_INFO_AMDX);
+
+      VkComputePipelineCreateInfo stage_create_info = {
+         .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+         .flags = create_info->flags,
+         .stage = create_info->pStages[i],
+         .layout = create_info->layout,
+      };
+
+      result = lvp_compute_pipeline_create(_device, _cache, &stage_create_info, flags, &pipeline->groups[i]);
+      if (result != VK_SUCCESS)
+         goto fail;
+
+      VK_FROM_HANDLE(lvp_pipeline, stage, pipeline->groups[i]);
+      nir_shader *nir = stage->shaders[MESA_SHADER_COMPUTE].pipeline_nir->nir;
+
+      if (node_info) {
+         stage->exec_graph.name = node_info->pName;
+         stage->exec_graph.index = node_info->index;
+      }
+
+      /* TODO: Add a shader info NIR pass to figure out how many the payloads the shader creates. */
+      stage->exec_graph.scratch_size = nir->info.cs.node_payloads_size * 256;
+      pipeline->exec_graph.scratch_size = MAX2(pipeline->exec_graph.scratch_size, stage->exec_graph.scratch_size);
+
+      stage_index++;
+   }
+
+   if (create_info->pLibraryInfo) {
+      for (uint32_t i = 0; i < create_info->pLibraryInfo->libraryCount; i++) {
+         VK_FROM_HANDLE(lvp_pipeline, library, create_info->pLibraryInfo->pLibraries[i]);
+         for (uint32_t j = 0; j < library->num_groups; j++) {
+            /* TODO: Do we need reference counting? */
+            pipeline->groups[stage_index] = library->groups[j];
+            stage_index++;
+         }
+         pipeline->exec_graph.scratch_size = MAX2(pipeline->exec_graph.scratch_size, library->exec_graph.scratch_size);
+      }
+   }
+
+   const VkPipelineCreationFeedbackCreateInfo *feedback = (void*)vk_find_struct_const(create_info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
+   if (feedback) {
+      feedback->pPipelineCreationFeedback->duration = os_time_get_nano() - t0;
+      feedback->pPipelineCreationFeedback->flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
+      memset(feedback->pPipelineStageCreationFeedbacks, 0, sizeof(VkPipelineCreationFeedback) * feedback->pipelineStageCreationFeedbackCount);
+   }
+
+   *out_pipeline = lvp_pipeline_to_handle(pipeline);
+
+   return VK_SUCCESS;
+
+fail:
+   for (uint32_t i = 0; i < stage_count; i++)
+      lvp_DestroyPipeline(_device, pipeline->groups[i], NULL);
+
+   vk_free(&device->vk.alloc, pipeline);
+
+   return result;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+lvp_CreateExecutionGraphPipelinesAMDX(VkDevice device, VkPipelineCache pipelineCache,
+                                      uint32_t createInfoCount,
+                                      const VkExecutionGraphPipelineCreateInfoAMDX *pCreateInfos,
+                                      const VkAllocationCallbacks *pAllocator,
+                                      VkPipeline *pPipelines)
+{
+   VkResult result = VK_SUCCESS;
+   uint32_t i = 0;
+
+   for (; i < createInfoCount; i++) {
+      VkPipelineCreateFlagBits2KHR flags = get_pipeline_create_flags(&pCreateInfos[i]);
+
+      VkResult r = VK_PIPELINE_COMPILE_REQUIRED;
+      if (!(flags & VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_KHR))
+         r = lvp_exec_graph_pipeline_create(device, pipelineCache, &pCreateInfos[i], flags, &pPipelines[i]);
+      if (r != VK_SUCCESS) {
+         result = r;
+         pPipelines[i] = VK_NULL_HANDLE;
+         if (flags & VK_PIPELINE_CREATE_2_EARLY_RETURN_ON_FAILURE_BIT_KHR)
+            break;
+      }
+   }
+   if (result != VK_SUCCESS) {
+      for (; i < createInfoCount; i++)
+         pPipelines[i] = VK_NULL_HANDLE;
+   }
+
+   return result;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+lvp_GetExecutionGraphPipelineScratchSizeAMDX(VkDevice device, VkPipeline executionGraph,
+                                             VkExecutionGraphPipelineScratchSizeAMDX *pSizeInfo)
+{
+   VK_FROM_HANDLE(lvp_pipeline, pipeline, executionGraph);
+   pSizeInfo->size = MAX2(pipeline->exec_graph.scratch_size * 32, 16);
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+lvp_GetExecutionGraphPipelineNodeIndexAMDX(VkDevice device, VkPipeline executionGraph,
+                                           const VkPipelineShaderStageNodeCreateInfoAMDX *pNodeInfo,
+                                           uint32_t *pNodeIndex)
+{
+   VK_FROM_HANDLE(lvp_pipeline, pipeline, executionGraph);
+
+   for (uint32_t i = 0; i < pipeline->num_groups; i++) {
+      VK_FROM_HANDLE(lvp_pipeline, stage, pipeline->groups[i]);
+      if (stage->exec_graph.index == pNodeInfo->index &&
+          !strcmp(stage->exec_graph.name, pNodeInfo->pName)) {
+         *pNodeIndex = i;
+         return VK_SUCCESS;
+      }
+   }
+
+   return VK_ERROR_OUT_OF_HOST_MEMORY;
+}
+#endif

@@ -495,10 +495,36 @@ struct lvp_pipeline {
    bool compiled;
    bool used;
 
+   struct {
+      const char *name;
+      const char *next_name;
+      uint32_t index;
+      uint32_t scratch_size;
+   } exec_graph;
+
    unsigned num_groups;
    unsigned num_groups_total;
    VkPipeline groups[0];
 };
+
+/* Minimum requirement by the spec. */
+#define LVP_MAX_EXEC_GRAPH_PAYLOADS 256
+
+struct lvp_exec_graph_shader_output {
+   uint32_t payload_count;
+   uint32_t node_index;
+};
+
+struct lvp_exec_graph_internal_data {
+   /* inputs */
+   void *payload_in;
+   void *payloads;
+   /* outputs */
+   struct lvp_exec_graph_shader_output outputs[LVP_MAX_EXEC_GRAPH_PAYLOADS];
+};
+
+bool
+lvp_lower_exec_graph(struct lvp_pipeline *pipeline, nir_shader *nir);
 
 void
 lvp_pipeline_shaders_compile(struct lvp_pipeline *pipeline, bool locked);
