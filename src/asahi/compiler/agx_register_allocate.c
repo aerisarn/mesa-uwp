@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "util/u_dynarray.h"
 #include "agx_builder.h"
 #include "agx_compiler.h"
 #include "agx_debug.h"
@@ -705,13 +706,15 @@ reserve_live_in(struct ra_ctx *rctx)
           */
          phi->dest[0] = phi->src[0];
          base = phi->dest[0].value;
-         set_ssa_to_reg(rctx, i, base);
       } else {
          /* If we don't emit a phi, there is already a unique register */
-         agx_foreach_predecessor(rctx->block, pred) {
-            base = (*pred)->ssa_to_reg_out[i];
-         }
+         assert(nr_preds == 1);
+
+         agx_block **pred = util_dynarray_begin(&rctx->block->predecessors);
+         base = (*pred)->ssa_to_reg_out[i];
       }
+
+      set_ssa_to_reg(rctx, i, base);
 
       for (unsigned j = 0; j < rctx->ncomps[i]; ++j) {
          BITSET_SET(rctx->used_regs, base + j);
@@ -932,11 +935,12 @@ static void
 agx_ra_assign_local(struct ra_ctx *rctx)
 {
    BITSET_DECLARE(used_regs, AGX_NUM_REGS) = {0};
+   uint8_t *ssa_to_reg = calloc(rctx->shader->alloc, sizeof(uint8_t));
 
    agx_block *block = rctx->block;
-   uint8_t *ssa_to_reg = rctx->ssa_to_reg;
    uint8_t *ncomps = rctx->ncomps;
    rctx->used_regs = used_regs;
+   rctx->ssa_to_reg = ssa_to_reg;
 
    reserve_live_in(rctx);
 
@@ -1011,9 +1015,7 @@ agx_ra_assign_local(struct ra_ctx *rctx)
       agx_set_dests(rctx, I);
    }
 
-   block->ssa_to_reg_out = calloc(rctx->shader->alloc, sizeof(uint8_t));
-   memcpy(block->ssa_to_reg_out, rctx->ssa_to_reg,
-          rctx->shader->alloc * sizeof(uint8_t));
+   block->ssa_to_reg_out = rctx->ssa_to_reg;
 
    STATIC_ASSERT(sizeof(block->regs_out) == sizeof(used_regs));
    memcpy(block->regs_out, used_regs, sizeof(used_regs));
@@ -1102,7 +1104,6 @@ agx_ra(agx_context *ctx)
    unsigned *alloc = calloc(ctx->alloc, sizeof(unsigned));
 
    agx_compute_liveness(ctx);
-   uint8_t *ssa_to_reg = calloc(ctx->alloc, sizeof(uint8_t));
    uint8_t *ncomps = calloc(ctx->alloc, sizeof(uint8_t));
    agx_instr **src_to_collect_phi = calloc(ctx->alloc, sizeof(agx_instr *));
    enum agx_size *sizes = calloc(ctx->alloc, sizeof(enum agx_size));
@@ -1148,7 +1149,6 @@ agx_ra(agx_context *ctx)
       agx_ra_assign_local(&(struct ra_ctx){
          .shader = ctx,
          .block = block,
-         .ssa_to_reg = ssa_to_reg,
          .src_to_collect_phi = src_to_collect_phi,
          .ncomps = ncomps,
          .sizes = sizes,
@@ -1269,7 +1269,6 @@ agx_ra(agx_context *ctx)
    }
 
    free(src_to_collect_phi);
-   free(ssa_to_reg);
    free(ncomps);
    free(sizes);
    free(visited);
