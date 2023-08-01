@@ -384,14 +384,12 @@ static void print_src(const nir_src *src, print_state *state, nir_alu_type src_t
 static void
 print_src(const nir_src *src, print_state *state, nir_alu_type src_type)
 {
-   assert(src->is_ssa);
    print_ssa_use(src->ssa, state, src_type);
 }
 
 static void
 print_dest(nir_dest *dest, print_state *state)
 {
-   assert(dest->is_ssa);
    print_ssa_def(&dest->ssa, state);
 }
 

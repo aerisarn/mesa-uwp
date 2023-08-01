@@ -203,7 +203,6 @@ ir3_get_dst_ssa(struct ir3_context *ctx, nir_ssa_def *dst, unsigned n)
 struct ir3_instruction **
 ir3_get_dst(struct ir3_context *ctx, nir_dest *dst, unsigned n)
 {
-   assert(dst->is_ssa);
    struct ir3_instruction **value = ir3_get_dst_ssa(ctx, &dst->ssa, n);
 
    compile_assert(ctx, !ctx->last_dst);
@@ -216,7 +215,6 @@ ir3_get_dst(struct ir3_context *ctx, nir_dest *dst, unsigned n)
 struct ir3_instruction *const *
 ir3_get_src(struct ir3_context *ctx, nir_src *src)
 {
-   assert(src->is_ssa);
    struct hash_entry *entry;
    entry = _mesa_hash_table_search(ctx->def_ht, src->ssa);
    compile_assert(ctx, entry);
@@ -253,7 +251,6 @@ ir3_put_dst(struct ir3_context *ctx, nir_dest *dst)
       }
    }
 
-   assert(dst->is_ssa);
    ctx->last_dst = NULL;
    ctx->last_dst_n = 0;
 }

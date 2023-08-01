@@ -533,7 +533,7 @@ lower_interpolate_at(nir_intrinsic_instr *intrin, struct lower_io_state *state,
    }
 
    /* None of the supported APIs allow interpolation on 64-bit things */
-   assert(intrin->dest.is_ssa && intrin->dest.ssa.bit_size <= 32);
+   assert(nir_dest_bit_size(intrin->dest) <= 32);
 
    nir_intrinsic_op bary_op;
    switch (intrin->intrinsic) {

@@ -391,7 +391,6 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
          return false;
       }
 
-      assert(instr->src->is_ssa);
       if (!block->comp->uses_discard) {
          node = block->comp->var_nodes[instr->src->ssa->index];
          assert(node);
@@ -538,7 +537,6 @@ static bool ppir_emit_tex(ppir_block *block, nir_instr *ni)
          FALLTHROUGH;
       case nir_tex_src_coord: {
          nir_src *ns = &instr->src[i].src;
-         assert(ns->is_ssa);
          ppir_node *child = block->comp->var_nodes[ns->ssa->index];
          if (child->op == ppir_op_load_varying) {
             /* If the successor is load_texture, promote it to load_coords */

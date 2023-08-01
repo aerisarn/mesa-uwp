@@ -58,9 +58,6 @@ instr_each_src_and_dest_is_ssa(const nir_instr *instr)
 static bool
 instr_can_rewrite(const nir_instr *instr)
 {
-   /* We only handle SSA. */
-   assert(instr_each_src_and_dest_is_ssa(instr));
-
    switch (instr->type) {
    case nir_instr_type_alu:
    case nir_instr_type_deref:
@@ -88,7 +85,6 @@ instr_can_rewrite(const nir_instr *instr)
 static uint32_t
 hash_src(uint32_t hash, const nir_src *src)
 {
-   assert(src->is_ssa);
    hash = HASH(hash, src->ssa);
    return hash;
 }

@@ -51,7 +51,6 @@ lower_xfb_output(nir_builder *b, nir_intrinsic_instr *intr,
       b, buf,
       nir_u2u64(b, nir_iadd_imm(b, nir_imul_imm(b, index, stride), offset)));
 
-   assert(intr->src[0].is_ssa && "must lower XFB before lowering SSA");
    nir_ssa_def *src = intr->src[0].ssa;
    nir_ssa_def *value =
       nir_channels(b, src, BITFIELD_MASK(num_components) << start_component);

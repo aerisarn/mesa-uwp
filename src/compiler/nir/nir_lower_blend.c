@@ -633,7 +633,6 @@ consume_dual_stores(nir_builder *b, nir_instr *instr, void *data)
 
    int rt = color_index_for_location(sem.location);
    assert(rt >= 0 && rt < 8 && "bounds for dual-source blending");
-   assert(store->src[0].is_ssa && "must be SSA");
 
    outputs[rt] = store->src[0].ssa;
    nir_instr_remove(instr);

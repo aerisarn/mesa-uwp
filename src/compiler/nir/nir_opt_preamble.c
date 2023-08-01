@@ -98,7 +98,6 @@ can_move_src(nir_src *src, void *state)
 {
    opt_preamble_ctx *ctx = state;
 
-   assert(src->is_ssa);
    return ctx->states[src->ssa->index].can_move;
 }
 

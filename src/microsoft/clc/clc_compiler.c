@@ -343,7 +343,7 @@ clc_lower_nonnormalized_samplers(nir_shader *nir,
                continue;
 
             nir_src *sampler_src = &tex->src[sampler_src_idx].src;
-            assert(sampler_src->is_ssa && sampler_src->ssa->parent_instr->type == nir_instr_type_deref);
+            assert(sampler_src->ssa->parent_instr->type == nir_instr_type_deref);
             nir_variable *sampler = nir_deref_instr_get_variable(
                nir_instr_as_deref(sampler_src->ssa->parent_instr));
 

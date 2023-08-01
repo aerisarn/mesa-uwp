@@ -664,7 +664,6 @@ rewrite_src(nir_src *src, void *void_state)
 {
    struct from_ssa_state *state = void_state;
 
-   assert(src->is_ssa);
    nir_ssa_def *reg = reg_for_ssa_def(src->ssa, state);
    if (reg == NULL)
       return true;

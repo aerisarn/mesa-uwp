@@ -81,7 +81,6 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
    const uint32_t whole_align = nir_intrinsic_align(intrin);
    nir_src *offset_src = nir_get_io_offset_src(intrin);
    const bool offset_is_const = nir_src_is_const(*offset_src);
-   assert(offset_src->is_ssa);
    nir_ssa_def *offset = offset_src->ssa;
 
    nir_mem_access_size_align requested =
@@ -241,7 +240,6 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
    const uint32_t whole_align = nir_intrinsic_align(intrin);
    nir_src *offset_src = nir_get_io_offset_src(intrin);
    const bool offset_is_const = nir_src_is_const(*offset_src);
-   assert(offset_src->is_ssa);
    nir_ssa_def *offset = offset_src->ssa;
 
    nir_component_mask_t writemask = nir_intrinsic_write_mask(intrin);

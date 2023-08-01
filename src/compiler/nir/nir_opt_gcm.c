@@ -165,7 +165,6 @@ gcm_build_block_info(struct exec_list *cf_list, struct gcm_state *state,
 static bool
 is_src_scalarizable(nir_src *src)
 {
-   assert(src->is_ssa);
 
    nir_instr *src_instr = src->ssa->parent_instr;
    switch (src_instr->type) {
@@ -428,7 +427,6 @@ gcm_schedule_early_src(nir_src *src, void *void_state)
    struct gcm_state *state = void_state;
    nir_instr *instr = state->instr;
 
-   assert(src->is_ssa);
 
    gcm_schedule_early_instr(src->ssa->parent_instr, void_state);
 

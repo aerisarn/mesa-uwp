@@ -116,7 +116,6 @@ trivialize_src(nir_src *src, void *state_)
 {
    struct trivialize_src_state *state = state_;
 
-   assert(src->is_ssa && "register intrinsics only");
    nir_instr *parent = src->ssa->parent_instr;
    if (parent->type != nir_instr_type_intrinsic)
       return true;

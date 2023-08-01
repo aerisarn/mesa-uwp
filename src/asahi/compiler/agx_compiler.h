@@ -462,7 +462,6 @@ agx_nir_ssa_index(nir_ssa_def *ssa)
 static inline agx_index
 agx_src_index(nir_src *src)
 {
-   assert(src->is_ssa);
    return agx_nir_ssa_index(src->ssa);
 }
 

@@ -717,7 +717,6 @@ load_from_ssa_entry_value(struct copy_prop_var_state *state,
    }
 
    *value = entry->src;
-   assert(value->is_ssa);
 
    const struct glsl_type *type = entry->dst.instr->type;
    unsigned num_components = glsl_get_vector_elements(type);

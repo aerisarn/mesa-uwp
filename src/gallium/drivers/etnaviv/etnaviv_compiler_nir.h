@@ -141,8 +141,6 @@ static inline bool is_sysval(nir_instr *instr)
 static inline unsigned
 src_index(nir_function_impl *impl, nir_src *src)
 {
-   assert(src->is_ssa);
-
    nir_intrinsic_instr *load = nir_load_reg_for_def(src->ssa);
 
    if (load) {
@@ -161,8 +159,6 @@ src_index(nir_function_impl *impl, nir_src *src)
 static inline unsigned
 dest_index(nir_function_impl *impl, nir_dest *dest)
 {
-   assert(dest->is_ssa);
-
    nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
 
    if (store) {

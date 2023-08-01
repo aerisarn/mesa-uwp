@@ -95,7 +95,6 @@ static void register_node_reg(gpir_block *block, gpir_node *node, int index)
  */
 static void register_node(gpir_block *block, gpir_node *node, nir_dest *dest)
 {
-   assert(dest->is_ssa);
    register_node_ssa(block, node, &dest->ssa);
 }
 
@@ -104,7 +103,6 @@ static gpir_node *gpir_node_find(gpir_block *block, nir_src *src,
 {
    gpir_reg *reg = NULL;
    gpir_node *pred = NULL;
-   assert(src->is_ssa);
    if (src->ssa->num_components > 1) {
       for (int i = 0; i < GPIR_VECTOR_SSA_NUM; i++) {
          if (block->comp->vector_ssa[i].ssa == src->ssa->index) {
@@ -210,7 +208,6 @@ static gpir_node *gpir_create_load(gpir_block *block, nir_dest *dest,
 
 static bool gpir_create_vector_load(gpir_block *block, nir_dest *dest, int index)
 {
-   assert(dest->is_ssa);
    assert(index < GPIR_VECTOR_SSA_NUM);
 
    block->comp->vector_ssa[index].ssa = dest->ssa.index;

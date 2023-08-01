@@ -56,7 +56,6 @@ nu_handle_init(struct nu_handle *h, nir_src *src)
       if (nir_src_is_const(*src))
          return false;
 
-      assert(src->is_ssa);
       h->handle = src->ssa;
       h->parent_deref = NULL;
 

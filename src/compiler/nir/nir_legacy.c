@@ -42,7 +42,6 @@ nir_legacy_float_mod_folds(nir_alu_instr *mod)
 static nir_legacy_alu_src
 chase_alu_src_helper(const nir_src *src)
 {
-   assert(src->is_ssa && "registers lowered to intrinsics");
    nir_intrinsic_instr *load = nir_load_reg_for_def(src->ssa);
 
    if (load) {
@@ -92,7 +91,6 @@ chase_source_mod(nir_ssa_def **ssa, nir_op op, uint8_t *swizzle)
    for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; ++i)
       swizzle[i] = alu->src[0].swizzle[swizzle[i]];
 
-   assert(alu->src[0].src.is_ssa && "registers lowered to intrinsics");
    *ssa = alu->src[0].src.ssa;
    return true;
 }
@@ -100,8 +98,6 @@ chase_source_mod(nir_ssa_def **ssa, nir_op op, uint8_t *swizzle)
 nir_legacy_alu_src
 nir_legacy_chase_alu_src(const nir_alu_src *src, bool fuse_fabs)
 {
-   assert(src->src.is_ssa && "registers lowered to intrinsics");
-
    if (src->src.ssa->parent_instr->type == nir_instr_type_alu) {
       nir_legacy_alu_src out = {
          .src.is_ssa = true,
@@ -129,7 +125,6 @@ nir_legacy_chase_alu_src(const nir_alu_src *src, bool fuse_fabs)
 static nir_legacy_alu_dest
 chase_alu_dest_helper(nir_dest *dest)
 {
-   assert(dest->is_ssa && "registers lowered to intrinsics");
    nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
 
    if (store) {
@@ -227,7 +222,6 @@ chase_fsat(nir_ssa_def **def)
 nir_legacy_alu_dest
 nir_legacy_chase_alu_dest(nir_dest *dest)
 {
-   assert(dest->is_ssa && "registers lowered to intrinsics");
    nir_ssa_def *def = &dest->ssa;
 
    /* Try SSA fsat. No users support 64-bit modifiers. */
@@ -320,7 +314,6 @@ fuse_mods_with_registers(nir_builder *b, nir_instr *instr, void *fuse_fabs_)
 
    nir_legacy_alu_dest dest = nir_legacy_chase_alu_dest(&alu->dest.dest);
    if (dest.fsat) {
-      assert(dest.dest.is_ssa && "not fully chased");
       nir_intrinsic_instr *store = nir_store_reg_for_def(dest.dest.ssa);
 
       if (store) {

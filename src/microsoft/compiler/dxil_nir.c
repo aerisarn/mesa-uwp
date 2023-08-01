@@ -2312,9 +2312,7 @@ clear_pass_flags(nir_function_impl *impl)
 static bool
 add_dest_to_worklist(nir_dest *dest, void *state)
 {
-   assert(dest->is_ssa);
    nir_foreach_use_including_if(src, &dest->ssa) {
-      assert(src->is_ssa);
       if (src->is_if) {
          nir_if *nif = src->parent_if;
          nir_foreach_block_in_cf_node(block, &nif->cf_node) {

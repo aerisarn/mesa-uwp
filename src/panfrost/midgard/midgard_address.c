@@ -297,7 +297,6 @@ mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset,
 void
 mir_set_ubo_offset(midgard_instruction *ins, nir_src *src, unsigned bias)
 {
-   assert(src->is_ssa);
    struct mir_address match = mir_match_offset(src->ssa, false, false);
 
    if (match.B.def) {

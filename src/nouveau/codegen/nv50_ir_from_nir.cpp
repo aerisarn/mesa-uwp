@@ -690,7 +690,6 @@ Converter::convert(nir_alu_dest *dest)
 Converter::LValues&
 Converter::convert(nir_dest *dest)
 {
-   assert(dest->is_ssa);
    return convert(&dest->ssa);
 }
 
@@ -716,7 +715,6 @@ Converter::getSrc(nir_alu_src *src, uint8_t component)
 Value*
 Converter::getSrc(nir_src *src, uint8_t idx, bool indirect)
 {
-   assert(src->is_ssa);
    return getSrc(src->ssa, idx);
 }
 

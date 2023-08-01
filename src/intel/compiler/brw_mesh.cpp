@@ -202,7 +202,6 @@ brw_nir_adjust_task_payload_offsets_instr(struct nir_builder *b,
        * TODO(mesh): Figure out how to handle 8-bit, 16-bit.
        */
 
-      assert(offset_src->is_ssa);
       nir_ssa_def *offset = nir_ishr_imm(b, offset_src->ssa, 2);
       nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
 
@@ -1186,7 +1185,6 @@ brw_nir_adjust_offset(nir_builder *b, nir_intrinsic_instr *intrin, uint32_t pitc
    nir_src *index_src = nir_get_io_arrayed_index_src(intrin);
    nir_src *offset_src = nir_get_io_offset_src(intrin);
 
-   assert(index_src->is_ssa);
    b->cursor = nir_before_instr(&intrin->instr);
    nir_ssa_def *offset =
       nir_iadd(b,

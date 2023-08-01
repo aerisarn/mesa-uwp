@@ -1053,7 +1053,6 @@ double2vec2(nir_src *src, UNUSED void *state)
    if (nir_src_bit_size(*src) != 64)
       return true;
 
-   assert(src->is_ssa);
    src->ssa->bit_size = 32;
    src->ssa->num_components *= 2;
    return true;

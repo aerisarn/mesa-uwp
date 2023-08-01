@@ -136,7 +136,6 @@ store_resume_addr(nir_builder *b, nir_intrinsic_instr *call)
    /* By the time we get here, any remaining shader/function memory
     * pointers have been lowered to SSA values.
     */
-   assert(nir_get_shader_call_payload_src(call)->is_ssa);
    nir_ssa_def *payload_addr =
       nir_get_shader_call_payload_src(call)->ssa;
    brw_nir_rt_store_scratch(b, offset, BRW_BTD_STACK_ALIGN,

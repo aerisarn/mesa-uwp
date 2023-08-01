@@ -308,7 +308,6 @@ ntq_add_pending_tmu_flush(struct v3d_compile *c,
         if (num_components > 0) {
                 c->tmu.output_fifo_size += num_components;
 
-                assert(dest->is_ssa);
                 nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
                 if (store != NULL) {
                         nir_ssa_def *reg = store->src[1].ssa;
@@ -775,7 +774,6 @@ ntq_store_dest(struct v3d_compile *c, nir_dest *dest, int chan,
         assert(result.file == QFILE_TEMP && last_inst &&
                (last_inst == c->defs[result.index] || is_reused_uniform));
 
-        assert(dest->is_ssa);
         nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
         if (store == NULL) {
                 assert(chan < dest->ssa.num_components);

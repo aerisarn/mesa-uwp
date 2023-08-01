@@ -4002,7 +4002,6 @@ add_rebuild_src(nir_src *src, void *state)
 {
    struct rebuild_resource *res = (struct rebuild_resource *) state;
 
-   assert(src->is_ssa);
    for (nir_ssa_def *def : res->array) {
       if (def == src->ssa)
          return true;

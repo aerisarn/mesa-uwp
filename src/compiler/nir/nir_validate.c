@@ -161,7 +161,6 @@ validate_src(nir_src *src, validate_state *state,
    else
       validate_assert(state, src->parent_if == state->if_stmt);
 
-   validate_assert(state, src->is_ssa);
    validate_ssa_src(src, state, bit_sizes, num_components);
 }
 
@@ -193,7 +192,6 @@ validate_ssa_def(nir_ssa_def *def, validate_state *state)
 
    list_validate(&def->uses);
    nir_foreach_use_including_if(src, def) {
-      validate_assert(state, src->is_ssa);
       validate_assert(state, src->ssa == def);
 
       bool already_seen = false;
@@ -207,7 +205,6 @@ static void
 validate_dest(nir_dest *dest, validate_state *state,
               unsigned bit_sizes, unsigned num_components)
 {
-   validate_assert(state, dest->is_ssa);
    if (bit_sizes)
       validate_assert(state, dest->ssa.bit_size & bit_sizes);
    if (num_components)

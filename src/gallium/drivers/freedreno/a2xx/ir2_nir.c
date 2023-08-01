@@ -276,7 +276,6 @@ set_legacy_index(struct ir2_context *ctx, nir_legacy_dest dst,
    if (dst.is_ssa) {
       ctx->ssa_map[dst.ssa->index] = instr->idx;
    } else {
-      assert(instr->is_ssa);
       reg = &ctx->reg[dst.reg.handle->index];
 
       instr->is_ssa = false;

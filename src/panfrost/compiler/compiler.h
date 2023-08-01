@@ -954,7 +954,6 @@ bi_src_index(nir_src *src)
    if (nir_src_is_const(*src) && nir_src_bit_size(*src) <= 32) {
       return bi_imm_u32(nir_src_as_uint(*src));
    } else {
-      assert(src->is_ssa);
       return bi_get_index(src->ssa->index);
    }
 }
@@ -962,7 +961,6 @@ bi_src_index(nir_src *src)
 static inline bi_index
 bi_dest_index(nir_dest *dst)
 {
-   assert(dst->is_ssa);
    return bi_get_index(dst->ssa.index);
 }
 

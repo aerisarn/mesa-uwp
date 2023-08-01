@@ -2161,7 +2161,6 @@ static void
 store_dest_value(struct ntd_context *ctx, nir_dest *dest, unsigned chan,
                  const struct dxil_value *value)
 {
-   assert(dest->is_ssa);
    assert(value);
    store_ssa_def(ctx, &dest->ssa, chan, value);
 }
@@ -2201,7 +2200,6 @@ static const struct dxil_value *
 get_src(struct ntd_context *ctx, nir_src *src, unsigned chan,
         nir_alu_type type)
 {
-   assert(src->is_ssa);
    const struct dxil_value *value = get_src_ssa(ctx, src->ssa, chan);
 
    const int bit_size = nir_src_bit_size(*src);

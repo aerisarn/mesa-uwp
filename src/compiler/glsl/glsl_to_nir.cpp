@@ -1763,7 +1763,6 @@ nir_visitor::add_instr(nir_instr *instr, unsigned num_components,
    nir_builder_instr_insert(&b, instr);
 
    if (dest) {
-      assert(dest->is_ssa);
       this->result = &dest->ssa;
    }
 }

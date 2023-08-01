@@ -42,7 +42,6 @@
 static uint32_t
 hash_src(uint32_t hash, const nir_src *src)
 {
-   assert(src->is_ssa);
    void *hash_data = nir_src_is_const(*src) ? NULL : src->ssa;
 
    return HASH(hash, hash_data);
@@ -84,8 +83,6 @@ hash_instr(const void *data)
 static bool
 srcs_equal(const nir_src *src1, const nir_src *src2)
 {
-   assert(src1->is_ssa);
-   assert(src2->is_ssa);
 
    return src1->ssa == src2->ssa ||
           (nir_src_is_const(*src1) && nir_src_is_const(*src2));

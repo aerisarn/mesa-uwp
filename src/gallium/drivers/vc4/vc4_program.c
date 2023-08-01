@@ -196,7 +196,6 @@ ntq_store_dest(struct vc4_compile *c, nir_dest *dest, int chan,
                (result.file == QFILE_TEMP &&
                 last_inst && last_inst == c->defs[result.index]));
 
-        assert(dest->is_ssa);
         nir_intrinsic_instr *store = nir_store_reg_for_def(&dest->ssa);
         if (store == NULL) {
                 assert(chan < dest->ssa.num_components);

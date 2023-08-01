@@ -1144,7 +1144,7 @@ split_64bit_subgroup_op(nir_builder *b, const nir_intrinsic_instr *intrin)
    /* This works on subgroup ops with a single 64-bit source which can be
     * trivially lowered by doing the exact same op on both halves.
     */
-   assert(intrin->src[0].is_ssa && intrin->src[0].ssa->bit_size == 64);
+   assert(nir_src_bit_size(intrin->src[0]) == 64);
    nir_ssa_def *split_src0[2] = {
       nir_unpack_64_2x32_split_x(b, intrin->src[0].ssa),
       nir_unpack_64_2x32_split_y(b, intrin->src[0].ssa),
@@ -1161,7 +1161,7 @@ split_64bit_subgroup_op(nir_builder *b, const nir_intrinsic_instr *intrin)
 
       /* Other sources must be less than 64 bits and get copied directly */
       for (unsigned j = 1; j < info->num_srcs; j++) {
-         assert(intrin->src[j].is_ssa && intrin->src[j].ssa->bit_size < 64);
+         assert(nir_src_bit_size(intrin->src[j]) < 64);
          split->src[j] = nir_src_for_ssa(intrin->src[j].ssa);
       }
 

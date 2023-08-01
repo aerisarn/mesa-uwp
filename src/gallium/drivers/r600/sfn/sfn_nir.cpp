@@ -335,8 +335,6 @@ private:
          return nullptr;
       }
 
-      assert(new_bufid->is_ssa);
-
       nir_intrinsic_set_base(intr, new_base);
       nir_instr_rewrite_src(instr, &intr->src[0], nir_src_for_ssa(new_bufid->ssa));
       return &intr->dest.ssa;

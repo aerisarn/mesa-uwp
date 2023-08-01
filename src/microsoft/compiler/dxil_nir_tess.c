@@ -63,7 +63,6 @@ add_instr_and_srcs_to_set(struct set *instr_set, nir_instr *instr);
 static bool
 add_srcs_to_set(nir_src *src, void *state)
 {
-   assert(src->is_ssa);
    add_instr_and_srcs_to_set(state, src->ssa->parent_instr);
    return true;
 }
@@ -309,11 +308,11 @@ remove_tess_level_accesses(nir_builder *b, nir_instr *instr, void *_data)
       return false;
 
    if (intr->intrinsic == nir_intrinsic_store_output) {
-      assert(intr->src[0].is_ssa && intr->src[0].ssa->num_components == 1);
+      assert(nir_src_num_components(intr->src[0]) == 1);
       nir_instr_remove(instr);
    } else {
       b->cursor = nir_after_instr(instr);
-      assert(intr->dest.is_ssa && intr->dest.ssa.num_components == 1);
+      assert(nir_dest_num_components(intr->dest) == 1);
       nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_ssa_undef(b, 1, intr->dest.ssa.bit_size));
    }
    return true;

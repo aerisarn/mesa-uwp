@@ -123,7 +123,6 @@ def_is_invariant(nir_ssa_def *def, nir_loop *loop)
 static bool
 src_is_invariant(nir_src *src, void *state)
 {
-   assert(src->is_ssa);
    return def_is_invariant(src->ssa, (nir_loop *)state);
 }
 

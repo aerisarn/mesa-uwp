@@ -470,7 +470,6 @@ union packed_src {
 static void
 write_src_full(write_ctx *ctx, const nir_src *src, union packed_src header)
 {
-   assert(src->is_ssa);
    header.any.object_idx = write_lookup_object(ctx, src->ssa);
    blob_write_uint32(ctx->blob, header.u32);
 }
@@ -616,7 +615,6 @@ write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
    union packed_dest dest;
    dest.u8 = 0;
 
-   assert(dst->is_ssa);
    dest.num_components =
       encode_num_components_in_3bits(dst->ssa.num_components);
    dest.bit_size = encode_bit_size_3bits(dst->ssa.bit_size);
@@ -665,7 +663,6 @@ write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
    if (dest.num_components == NUM_COMPONENTS_IS_SEPARATE_7)
       blob_write_uint32(ctx->blob, dst->ssa.num_components);
 
-   assert(dst->is_ssa);
    write_add_object(ctx, &dst->ssa);
 }
 

@@ -1759,7 +1759,7 @@ get_store_value(nir_intrinsic_instr *intrin)
 nir_component_mask_t
 nir_src_components_read(const nir_src *src)
 {
-   assert(src->is_ssa && src->parent_instr);
+   assert(src->parent_instr);
 
    if (src->parent_instr->type == nir_instr_type_alu) {
       nir_alu_instr *alu = nir_instr_as_alu(src->parent_instr);
@@ -2168,13 +2168,6 @@ cursor_next_instr(nir_cursor cursor)
    unreachable("Inavlid cursor option");
 }
 
-ASSERTED static bool
-dest_is_ssa(nir_dest *dest, void *_state)
-{
-   (void) _state;
-   return dest->is_ssa;
-}
-
 bool
 nir_function_impl_lower_instructions(nir_function_impl *impl,
                                      nir_instr_filter_cb filter,
@@ -2195,7 +2188,6 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
          continue;
       }
 
-      assert(nir_foreach_dest(instr, dest_is_ssa, NULL));
       nir_ssa_def *old_def = nir_instr_ssa_def(instr);
       struct list_head old_uses;
       if (old_def != NULL) {

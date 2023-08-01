@@ -75,8 +75,6 @@ lower_large_src(nir_src *src, void *s)
 {
    lower_state *state = s;
 
-   assert(src->is_ssa);
-
    nir_instr *parent = src->ssa->parent_instr;
 
    /* No need to visit instructions we've already visited.. this also

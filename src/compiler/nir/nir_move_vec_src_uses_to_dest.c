@@ -124,7 +124,6 @@ move_vec_src_uses_to_dest_block(nir_block *block)
             if (use->parent_instr->type != nir_instr_type_alu)
                continue;
 
-            assert(use->is_ssa);
 
             nir_alu_instr *use_alu = nir_instr_as_alu(use->parent_instr);
 

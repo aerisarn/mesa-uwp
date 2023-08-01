@@ -79,7 +79,6 @@ set_const_initialiser(nir_deref_instr **p, nir_constant *top_level_init,
    /* Now that we have selected the corrent nir_constant we copy the constant
     * values to it.
     */
-   assert(const_src->is_ssa);
    nir_instr *src_instr = const_src->ssa->parent_instr;
    assert(src_instr->type == nir_instr_type_load_const);
    nir_load_const_instr* load = nir_instr_as_load_const(src_instr);
