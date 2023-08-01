@@ -5715,6 +5715,14 @@ tu_GetPipelineExecutableStatisticsKHR(
    }
 
    vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
+      WRITE_STR(stat->name, "Last interpolation instruction");
+      WRITE_STR(stat->description,
+                "The instruction where varying storage in Local Memory is released");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.last_baryf;
+   }
+
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "Instructions with SS sync bit");
       WRITE_STR(stat->description,
                 "SS bit is set for instructions which depend on a result "
