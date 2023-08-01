@@ -567,7 +567,6 @@ nir_function_impl_create_bare(nir_shader *shader)
    cf_init(&impl->cf_node, nir_cf_node_function);
 
    exec_list_make_empty(&impl->body);
-   exec_list_make_empty(&impl->registers);
    exec_list_make_empty(&impl->locals);
    impl->reg_alloc = 0;
    impl->ssa_alloc = 0;

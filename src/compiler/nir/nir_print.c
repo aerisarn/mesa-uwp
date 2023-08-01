@@ -95,13 +95,6 @@ print_annotation(print_state *state, void *obj)
    fprintf(fp, "%s\n\n", note);
 }
 
-static void
-print_register(nir_register *reg, print_state *state)
-{
-   FILE *fp = state->fp;
-   fprintf(fp, "r%u", reg->index);
-}
-
 /* For 1 element, the size is intentionally omitted. */
 static const char *sizes[] = { "x??", "   ", "x2 ", "x3 ", "x4 ",
                                "x5 ", "x??", "x??", "x8 ",
@@ -115,20 +108,6 @@ divergence_status(print_state *state, bool divergent)
       return divergent ? "div " : "con ";
 
    return "";
-}
-
-static void
-print_register_decl(nir_register *reg, print_state *state)
-{
-   FILE *fp = state->fp;
-   fprintf(fp, "decl_reg %s %u%s",
-           divergence_status(state, reg->divergent),
-           reg->bit_size, sizes[reg->num_components]);
-
-   print_register(reg, state);
-   if (reg->num_array_elems != 0)
-      fprintf(fp, "[%u]", reg->num_array_elems);
-   fprintf(fp, "\n");
 }
 
 static unsigned
@@ -403,40 +382,17 @@ print_ssa_use(nir_ssa_def *def, print_state *state, nir_alu_type src_type)
 static void print_src(const nir_src *src, print_state *state, nir_alu_type src_type);
 
 static void
-print_reg_src(const nir_register_src *src, print_state *state)
-{
-   print_register(src->reg, state);
-}
-
-static void
-print_reg_dest(nir_register_dest *dest, print_state *state)
-{
-   FILE *fp = state->fp;
-
-   /* TODO: Alignment currently ignore array registers. */
-   /* TODO: If there's no SSA, we could remove the prefix to align with SSA size. */
-   const unsigned padding = state->max_dest_index ?
-   count_digits(state->max_dest_index) - count_digits(dest->reg->index) : 0;
-   fprintf(fp, "%s      %*sr%u", divergence_status(state, dest->reg->divergent),
-           padding, "", dest->reg->index);
-}
-
-static void
 print_src(const nir_src *src, print_state *state, nir_alu_type src_type)
 {
-   if (src->is_ssa)
-      print_ssa_use(src->ssa, state, src_type);
-   else
-      print_reg_src(&src->reg, state);
+   assert(src->is_ssa);
+   print_ssa_use(src->ssa, state, src_type);
 }
 
 static void
 print_dest(nir_dest *dest, print_state *state)
 {
-   if (dest->is_ssa)
-      print_ssa_def(&dest->ssa, state);
-   else
-      print_reg_dest(&dest->reg, state);
+   assert(dest->is_ssa);
+   print_ssa_def(&dest->ssa, state);
 }
 
 static const char *
@@ -490,29 +446,11 @@ print_alu_src(nir_alu_instr *instr, unsigned src, print_state *state)
 }
 
 static void
-print_alu_dest(nir_alu_dest *dest, print_state *state)
-{
-   FILE *fp = state->fp;
-   /* we're going to print the saturate modifier later, after the opcode */
-
-   print_dest(&dest->dest, state);
-
-   if (!dest->dest.is_ssa &&
-       dest->write_mask != (1 << dest->dest.reg.reg->num_components) - 1) {
-      unsigned live_channels = dest->dest.reg.reg->num_components;
-      fprintf(fp, ".");
-      for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
-         if ((dest->write_mask >> i) & 1)
-            fprintf(fp, "%c", comp_mask_string(live_channels)[i]);
-   }
-}
-
-static void
 print_alu_instr(nir_alu_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
 
-   print_alu_dest(&instr->dest, state);
+   print_dest(&instr->dest.dest, state);
 
    fprintf(fp, " = %s", nir_op_infos[instr->op].name);
    if (instr->exact)
@@ -2004,7 +1942,7 @@ print_function_impl(nir_function_impl *impl, print_state *state)
 {
    FILE *fp = state->fp;
 
-   state->max_dest_index = MAX2(impl->ssa_alloc, impl->reg_alloc);
+   state->max_dest_index = impl->ssa_alloc;
 
    fprintf(fp, "\nimpl %s ", impl->function->name);
 
@@ -2028,11 +1966,6 @@ print_function_impl(nir_function_impl *impl, print_state *state)
    nir_foreach_function_temp_variable(var, impl) {
       print_indentation(1, fp);
       print_var_decl(var, state);
-   }
-
-   foreach_list_typed(nir_register, reg, node, &impl->registers) {
-      print_indentation(1, fp);
-      print_register_decl(reg, state);
    }
 
    nir_index_blocks(impl);
