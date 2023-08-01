@@ -117,9 +117,6 @@ ForEachMacros:
   - nir_foreach_variable_with_modes
   - nir_foreach_variable_with_modes_safe
 
-  - nir_foreach_register
-  - nir_foreach_register_safe
-
   - nir_foreach_if_use
   - nir_foreach_if_use_safe
   - nir_foreach_use

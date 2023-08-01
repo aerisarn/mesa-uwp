@@ -904,11 +904,6 @@ typedef struct nir_register {
    struct list_head defs;
 } nir_register;
 
-#define nir_foreach_register(reg, reg_list) \
-   foreach_list_typed(nir_register, reg, node, reg_list)
-#define nir_foreach_register_safe(reg, reg_list) \
-   foreach_list_typed_safe(nir_register, reg, node, reg_list)
-
 typedef enum ENUM_PACKED {
    nir_instr_type_alu,
    nir_instr_type_deref,
