@@ -1110,51 +1110,49 @@ nir_src_for_ssa(nir_ssa_def *def)
 static inline unsigned
 nir_src_bit_size(nir_src src)
 {
-   return src.is_ssa ? src.ssa->bit_size : src.reg.reg->bit_size;
+   return src.ssa->bit_size;
 }
 
 static inline unsigned
 nir_src_num_components(nir_src src)
 {
-   return src.is_ssa ? src.ssa->num_components : src.reg.reg->num_components;
+   return src.ssa->num_components;
 }
 
 static inline bool
 nir_src_is_const(nir_src src)
 {
-   return src.is_ssa &&
-          src.ssa->parent_instr->type == nir_instr_type_load_const;
+   return src.ssa->parent_instr->type == nir_instr_type_load_const;
 }
 
 static inline bool
 nir_src_is_undef(nir_src src)
 {
-   return src.is_ssa &&
-          src.ssa->parent_instr->type == nir_instr_type_ssa_undef;
+   return src.ssa->parent_instr->type == nir_instr_type_ssa_undef;
 }
 
 static inline bool
 nir_src_is_divergent(nir_src src)
 {
-   return src.is_ssa ? src.ssa->divergent : src.reg.reg->divergent;
+   return src.ssa->divergent;
 }
 
 static inline unsigned
 nir_dest_bit_size(nir_dest dest)
 {
-   return dest.is_ssa ? dest.ssa.bit_size : dest.reg.reg->bit_size;
+   return dest.ssa.bit_size;
 }
 
 static inline unsigned
 nir_dest_num_components(nir_dest dest)
 {
-   return dest.is_ssa ? dest.ssa.num_components : dest.reg.reg->num_components;
+   return dest.ssa.num_components;
 }
 
 static inline bool
 nir_dest_is_divergent(nir_dest dest)
 {
-   return dest.is_ssa ? dest.ssa.divergent : dest.reg.reg->divergent;
+   return dest.ssa.divergent;
 }
 
 /* Are all components the same, ie. .xxxx */
@@ -4489,7 +4487,7 @@ nir_const_value *nir_src_as_const_value(nir_src src);
 static inline c_type *                                                  \
 nir_src_as_ ## name (nir_src src)                                       \
 {                                                                       \
-    return src.is_ssa && src.ssa->parent_instr->type == type_enum       \
+    return src.ssa->parent_instr->type == type_enum                     \
            ? cast_macro(src.ssa->parent_instr) : NULL;                  \
 }
 
@@ -4505,7 +4503,7 @@ bool nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2);
 static inline void
 nir_src_rewrite_ssa(nir_src *src, nir_ssa_def *new_ssa)
 {
-   assert(src->is_ssa && src->ssa);
+   assert(src->ssa);
    assert(src->is_if ? (src->parent_if != NULL) : (src->parent_instr != NULL));
    list_del(&src->use_link);
    src->ssa = new_ssa;

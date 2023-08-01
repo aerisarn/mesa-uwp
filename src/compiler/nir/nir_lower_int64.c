@@ -1150,8 +1150,7 @@ split_64bit_subgroup_op(nir_builder *b, const nir_intrinsic_instr *intrin)
       nir_unpack_64_2x32_split_y(b, intrin->src[0].ssa),
    };
 
-   assert(info->has_dest && intrin->dest.is_ssa &&
-          intrin->dest.ssa.bit_size == 64);
+   assert(info->has_dest && intrin->dest.ssa.bit_size == 64);
 
    nir_ssa_def *res[2];
    for (unsigned i = 0; i < 2; i++) {
