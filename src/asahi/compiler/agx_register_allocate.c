@@ -56,7 +56,10 @@ agx_write_registers(const agx_instr *I, unsigned d)
    case AGX_OPCODE_DEVICE_LOAD:
    case AGX_OPCODE_LOCAL_LOAD:
    case AGX_OPCODE_LD_TILE:
-      return util_bitcount(I->mask) * size;
+      /* Can write 16-bit or 32-bit. Anything logically 64-bit is already
+       * expanded to 32-bit in the mask.
+       */
+      return util_bitcount(I->mask) * MIN2(size, 2);
 
    case AGX_OPCODE_LDCF:
       return 6;
@@ -215,8 +218,9 @@ agx_read_registers(const agx_instr *I, unsigned s)
    case AGX_OPCODE_DEVICE_STORE:
    case AGX_OPCODE_LOCAL_STORE:
    case AGX_OPCODE_ST_TILE:
+      /* See agx_write_registers */
       if (s == 0)
-         return util_bitcount(I->mask) * size;
+         return util_bitcount(I->mask) * MIN2(size, 2);
       else
          return size;
 

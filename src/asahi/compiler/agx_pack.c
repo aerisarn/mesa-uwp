@@ -157,10 +157,9 @@ agx_pack_pbe_lod(agx_index index, bool *flag)
 static unsigned
 agx_pack_memory_reg(agx_index index, bool *flag)
 {
-   assert(index.size == AGX_SIZE_16 || index.size == AGX_SIZE_32);
    assert_register_is_aligned(index);
 
-   *flag = (index.size == AGX_SIZE_32);
+   *flag = (index.size >= AGX_SIZE_32);
    return index.value;
 }
 
