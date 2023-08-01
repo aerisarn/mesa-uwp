@@ -214,6 +214,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_provoking_vertex                  = true,
    .EXT_line_rasterization                = true,
    .EXT_robustness2                       = true,
+   .AMDX_shader_enqueue                   = true,
    .GOOGLE_decorate_string                = true,
    .GOOGLE_hlsl_functionality1            = true,
    .NV_device_generated_commands          = true,
@@ -584,6 +585,11 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
 
       /* maintenance5 */
       .maintenance5 = true,
+
+      /* VK_AMDX_shader_enqueue */
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+      .shaderEnqueue = true,
+#endif
    };
 }
 
@@ -994,6 +1000,15 @@ lvp_get_properties(const struct lvp_physical_device *device, struct vk_propertie
       .prefersLocalInvocationPrimitiveOutput = true,
       .prefersCompactVertexOutput = true,
       .prefersCompactPrimitiveOutput = false,
+
+      /* VK_AMDX_shader_enqueue */
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+      .maxExecutionGraphDepth = 32,
+      .maxExecutionGraphShaderOutputNodes = LVP_MAX_EXEC_GRAPH_PAYLOADS,
+      .maxExecutionGraphShaderPayloadSize = 0xFFFF,
+      .maxExecutionGraphShaderPayloadCount = LVP_MAX_EXEC_GRAPH_PAYLOADS,
+      .executionGraphDispatchAddressAlignment = 4,
+#endif
    };
 
    /* Vulkan 1.0 */
