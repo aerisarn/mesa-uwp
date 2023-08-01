@@ -65,6 +65,7 @@
 #include "vk_instance.h"
 #include "vk_log.h"
 #include "vk_physical_device.h"
+#include "vk_query_pool.h"
 #include "vk_queue.h"
 #include "vk_sampler.h"
 #include "vk_shader_module.h"
@@ -2939,14 +2940,12 @@ VkResult radv_device_init_meta(struct radv_device *device);
 void radv_device_finish_meta(struct radv_device *device);
 
 struct radv_query_pool {
-   struct vk_object_base base;
+   struct vk_query_pool vk;
    struct radeon_winsys_bo *bo;
    uint32_t stride;
    uint32_t availability_offset;
    uint64_t size;
    char *ptr;
-   VkQueryType type;
-   uint32_t pipeline_stats_mask;
    bool uses_gds; /* For NGG GS on GFX10+ */
 };
 
@@ -3661,7 +3660,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(radv_indirect_command_layout, base, VkIndirectCom
                                VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline, base, VkPipeline, VK_OBJECT_TYPE_PIPELINE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline_layout, base, VkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT)
-VK_DEFINE_NONDISP_HANDLE_CASTS(radv_query_pool, base, VkQueryPool, VK_OBJECT_TYPE_QUERY_POOL)
+VK_DEFINE_NONDISP_HANDLE_CASTS(radv_query_pool, vk.base, VkQueryPool, VK_OBJECT_TYPE_QUERY_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler, vk.base, VkSampler, VK_OBJECT_TYPE_SAMPLER)
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_video_session, vk.base, VkVideoSessionKHR, VK_OBJECT_TYPE_VIDEO_SESSION_KHR)
