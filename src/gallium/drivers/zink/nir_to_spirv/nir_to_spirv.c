@@ -2032,10 +2032,7 @@ alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
    if (nir_op_infos[instr->op].input_sizes[src] > 0)
       return nir_op_infos[instr->op].input_sizes[src];
 
-   if (instr->dest.dest.is_ssa)
-      return instr->dest.dest.ssa.num_components;
-   else
-      return instr->dest.dest.reg.reg->num_components;
+   return instr->dest.dest.ssa.num_components;
 }
 
 static SpvId
