@@ -6,6 +6,7 @@
 #include "agx_builder.h"
 #include "agx_compiler.h"
 #include "agx_debug.h"
+#include "agx_opcodes.h"
 
 /* SSA-based register allocator */
 
@@ -738,12 +739,13 @@ assign_regs(struct ra_ctx *rctx, agx_index v, unsigned reg)
 static void
 agx_set_sources(struct ra_ctx *rctx, agx_instr *I)
 {
+   assert(I->op != AGX_OPCODE_PHI);
+
    agx_foreach_ssa_src(I, s) {
-      if (BITSET_TEST(rctx->visited, I->src[s].value)) {
-         unsigned v = rctx->ssa_to_reg[I->src[s].value];
-         I->src[s] =
-            agx_replace_index(I->src[s], agx_register(v, I->src[s].size));
-      }
+      assert(BITSET_TEST(rctx->visited, I->src[s].value) && "no phis");
+
+      unsigned v = rctx->ssa_to_reg[I->src[s].value];
+      I->src[s] = agx_replace_index(I->src[s], agx_register(v, I->src[s].size));
    }
 }
 
@@ -999,7 +1001,10 @@ agx_ra_assign_local(struct ra_ctx *rctx)
          assign_regs(rctx, I->dest[d], pick_regs(rctx, I, d));
       }
 
-      agx_set_sources(rctx, I);
+      /* Phi sources are special. Set in the corresponding predecessors */
+      if (I->op != AGX_OPCODE_PHI)
+         agx_set_sources(rctx, I);
+
       agx_set_dests(rctx, I);
    }
 
@@ -1010,21 +1015,19 @@ agx_ra_assign_local(struct ra_ctx *rctx)
    STATIC_ASSERT(sizeof(block->regs_out) == sizeof(used_regs));
    memcpy(block->regs_out, used_regs, sizeof(used_regs));
 
-   /* In case we split live ranges, fix up the phis in the loop header
-    * successor for loop exit blocks.
+   /* Also set the sources for the phis in our successors, since that logically
+    * happens now (given the possibility of live range splits, etc)
     */
-   if (block->loop_header) {
-      agx_foreach_successor(block, succ) {
-         unsigned pred_idx = agx_predecessor_index(succ, block);
+   agx_foreach_successor(block, succ) {
+      unsigned pred_idx = agx_predecessor_index(succ, block);
 
-         agx_foreach_phi_in_block(succ, phi) {
-            if (phi->src[pred_idx].type == AGX_INDEX_NORMAL) {
-               /* This source needs a fixup */
-               unsigned value = phi->src[pred_idx].value;
+      agx_foreach_phi_in_block(succ, phi) {
+         if (phi->src[pred_idx].type == AGX_INDEX_NORMAL) {
+            /* This source needs a fixup */
+            unsigned value = phi->src[pred_idx].value;
 
-               phi->src[pred_idx] = agx_register(rctx->ssa_to_reg[value],
-                                                 phi->src[pred_idx].size);
-            }
+            phi->src[pred_idx] =
+               agx_register(rctx->ssa_to_reg[value], phi->src[pred_idx].size);
          }
       }
    }
