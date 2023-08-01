@@ -745,7 +745,7 @@ agx_set_sources(struct ra_ctx *rctx, agx_instr *I)
       assert(BITSET_TEST(rctx->visited, I->src[s].value) && "no phis");
 
       unsigned v = rctx->ssa_to_reg[I->src[s].value];
-      I->src[s] = agx_replace_index(I->src[s], agx_register(v, I->src[s].size));
+      agx_replace_src(I, s, agx_register(v, I->src[s].size));
    }
 }
 
@@ -1026,8 +1026,9 @@ agx_ra_assign_local(struct ra_ctx *rctx)
             /* This source needs a fixup */
             unsigned value = phi->src[pred_idx].value;
 
-            phi->src[pred_idx] =
-               agx_register(rctx->ssa_to_reg[value], phi->src[pred_idx].size);
+            agx_replace_src(
+               phi, pred_idx,
+               agx_register(rctx->ssa_to_reg[value], phi->src[pred_idx].size));
          }
       }
    }
