@@ -1839,8 +1839,6 @@ agx_create_compute_state(struct pipe_context *pctx,
    if (!so)
       return NULL;
 
-   so->static_shared_mem = cso->static_shared_mem;
-
    so->variants = _mesa_hash_table_create(so, asahi_cs_shader_key_hash,
                                           asahi_cs_shader_key_equal);
 
@@ -1850,7 +1848,10 @@ agx_create_compute_state(struct pipe_context *pctx,
    nir_shader *nir = (void *)cso->prog;
 
    agx_shader_initialize(dev, so, nir);
-   agx_get_shader_variant(agx_screen(pctx->screen), so, &pctx->debug, &key);
+   struct agx_compiled_shader *cs =
+      agx_get_shader_variant(agx_screen(pctx->screen), so, &pctx->debug, &key);
+
+   so->static_shared_mem = cs->info.local_size;
 
    /* We're done with the NIR, throw it away */
    ralloc_free(nir);

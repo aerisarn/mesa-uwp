@@ -2795,6 +2795,8 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
       nir_print_shader(nir, stdout);
 
+   out->local_size = nir->info.shared_size;
+
    nir_foreach_function_with_impl(func, impl, nir) {
       unsigned offset =
          agx_compile_function_nir(nir, impl, key, debug, binary, out);
