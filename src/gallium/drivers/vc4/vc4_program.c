@@ -279,10 +279,8 @@ static struct qreg
 ntq_get_alu_src(struct vc4_compile *c, nir_alu_instr *instr,
                 unsigned src)
 {
-        assert(util_is_power_of_two_or_zero(instr->dest.write_mask));
-        unsigned chan = ffs(instr->dest.write_mask) - 1;
         struct qreg r = ntq_get_src(c, instr->src[src].src,
-                                    instr->src[src].swizzle[chan]);
+                                    instr->src[src].swizzle[0]);
 
         assert(!instr->src[src].abs);
         assert(!instr->src[src].negate);
@@ -1097,10 +1095,10 @@ ntq_emit_alu(struct vc4_compile *c, nir_alu_instr *instr)
         if (instr->op == nir_op_unpack_unorm_4x8) {
                 struct qreg src = ntq_get_src(c, instr->src[0].src,
                                               instr->src[0].swizzle[0]);
-                for (int i = 0; i < 4; i++) {
-                        if (instr->dest.write_mask & (1 << i))
-                                ntq_store_dest(c, &instr->dest.dest, i,
-                                               qir_UNPACK_8_F(c, src, i));
+                unsigned count = nir_dest_num_components(instr->dest.dest);
+                for (int i = 0; i < count; i++) {
+                        ntq_store_dest(c, &instr->dest.dest, i,
+                                       qir_UNPACK_8_F(c, src, i));
                 }
                 return;
         }
@@ -1314,12 +1312,7 @@ ntq_emit_alu(struct vc4_compile *c, nir_alu_instr *instr)
                 abort();
         }
 
-        /* We have a scalar result, so the instruction should only have a
-         * single channel written to.
-         */
-        assert(util_is_power_of_two_or_zero(instr->dest.write_mask));
-        ntq_store_dest(c, &instr->dest.dest,
-                       ffs(instr->dest.write_mask) - 1, result);
+        ntq_store_dest(c, &instr->dest.dest, 0, result);
 }
 
 static void
