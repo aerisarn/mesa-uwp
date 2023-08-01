@@ -455,6 +455,7 @@ enum vtn_variable_mode {
    vtn_variable_mode_ray_payload_in,
    vtn_variable_mode_hit_attrib,
    vtn_variable_mode_shader_record,
+   vtn_variable_mode_node_payload,
 };
 
 struct vtn_pointer {

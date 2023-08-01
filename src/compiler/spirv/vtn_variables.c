@@ -183,6 +183,7 @@ vtn_mode_is_cross_invocation(struct vtn_builder *b,
           mode == vtn_variable_mode_push_constant ||
           mode == vtn_variable_mode_workgroup ||
           mode == vtn_variable_mode_cross_workgroup ||
+          mode == vtn_variable_mode_node_payload ||
           (cross_invocation_outputs && mode == vtn_variable_mode_output) ||
           (b->shader->info.stage == MESA_SHADER_TASK && mode == vtn_variable_mode_task_payload);
 }
@@ -1198,6 +1199,14 @@ vtn_get_builtin_location(struct vtn_builder *b,
       *location = SYSTEM_VALUE_BARYCENTRIC_LINEAR_COORD;
       set_mode_system_value(b, mode);
       break;
+   case SpvBuiltInShaderIndexAMDX:
+      *location = SYSTEM_VALUE_SHADER_INDEX;
+      set_mode_system_value(b, mode);
+      break;
+   case SpvBuiltInCoalescedInputCountAMDX:
+      *location = SYSTEM_VALUE_COALESCED_INPUT_COUNT;
+      set_mode_system_value(b, mode);
+      break;
 
    default:
       vtn_fail("Unsupported builtin: %s (%u)",
@@ -1393,6 +1402,27 @@ apply_var_decoration(struct vtn_builder *b,
       vtn_fail_if(b->shader->info.stage != MESA_SHADER_FRAGMENT,
                   "PerVertexKHR decoration only allowed in Fragment shaders");
       var_data->per_vertex = true;
+      break;
+
+   case SpvDecorationNodeMaxPayloadsAMDX:
+      vtn_fail_if(b->shader->info.stage != MESA_SHADER_COMPUTE,
+                  "NodeMaxPayloadsAMDX decoration only allowed in compute shaders");
+      break;
+   
+   case SpvDecorationNodeSharesPayloadLimitsWithAMDX:
+      vtn_fail_if(b->shader->info.stage != MESA_SHADER_COMPUTE,
+                  "NodeMaxPayloadsAMDX decoration only allowed in compute shaders");
+      break;
+
+   case SpvDecorationPayloadNodeNameAMDX:
+      vtn_fail_if(b->shader->info.stage != MESA_SHADER_COMPUTE,
+                  "NodeMaxPayloadsAMDX decoration only allowed in compute shaders");
+      var_data->node_name = vtn_string_literal(b, dec->operands, dec->num_operands, NULL);
+      break;
+
+   case SpvDecorationTrackFinishWritingAMDX:
+      vtn_fail_if(b->shader->info.stage != MESA_SHADER_COMPUTE,
+                  "NodeMaxPayloadsAMDX decoration only allowed in compute shaders");
       break;
 
    default:
@@ -1680,6 +1710,14 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       mode = vtn_variable_mode_shader_record;
       nir_mode = nir_var_mem_constant;
       break;
+   case SpvStorageClassNodePayloadAMDX:
+      mode = vtn_variable_mode_node_payload;
+      nir_mode = nir_var_mem_node_payload_in;
+      break;
+   case SpvStorageClassNodeOutputPayloadAMDX:
+      mode = vtn_variable_mode_node_payload;
+      nir_mode = nir_var_mem_node_payload;
+      break;
 
    case SpvStorageClassGeneric:
       mode = vtn_variable_mode_generic;
@@ -1724,6 +1762,7 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
       return b->options->constant_addr_format;
 
    case vtn_variable_mode_accel_struct:
+   case vtn_variable_mode_node_payload:
       return nir_address_format_64bit_global;
 
    case vtn_variable_mode_task_payload:
@@ -1985,6 +2024,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    case vtn_variable_mode_ray_payload:
    case vtn_variable_mode_ray_payload_in:
    case vtn_variable_mode_hit_attrib:
+   case vtn_variable_mode_node_payload:
       /* For these, we create the variable normally */
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);

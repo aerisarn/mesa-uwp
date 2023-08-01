@@ -4980,6 +4980,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityFragmentBarycentricKHR:
          spv_check_supported(fragment_barycentric, cap);
          break;
+      
+      case SpvCapabilityShaderEnqueueAMDX:
+         spv_check_supported(shader_enqueue, cap);
+         break;
 
       default:
          vtn_fail("Unhandled capability: %s (%u)",
@@ -5428,6 +5432,10 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
    case SpvExecutionModeLocalSizeId:
    case SpvExecutionModeLocalSizeHintId:
    case SpvExecutionModeSubgroupsPerWorkgroupId:
+   case SpvExecutionModeMaxNodeRecursionAMDX:
+   case SpvExecutionModeStaticNumWorkgroupsAMDX:
+   case SpvExecutionModeMaxNumWorkgroupsAMDX:
+   case SpvExecutionModeShaderIndexAMDX:
       /* Handled later by vtn_handle_execution_mode_id(). */
       break;
 
@@ -5483,6 +5491,13 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       b->shader->info.fs.stencil_back_layout = FRAG_STENCIL_LAYOUT_UNCHANGED;
       break;
 
+   case SpvExecutionModeCoalescingAMDX:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_COMPUTE);
+      b->shader->info.cs.workgroup_count[0] = 1;
+      b->shader->info.cs.workgroup_count[1] = 1;
+      b->shader->info.cs.workgroup_count[2] = 1;
+      break;
+
    default:
       vtn_fail("Unhandled execution mode: %s (%u)",
                spirv_executionmode_to_string(mode->exec_mode),
@@ -5519,6 +5534,29 @@ vtn_handle_execution_mode_id(struct vtn_builder *b, struct vtn_value *entry_poin
    case SpvExecutionModeSubgroupsPerWorkgroupId:
       vtn_assert(b->shader->info.stage == MESA_SHADER_KERNEL);
       b->shader->info.num_subgroups = vtn_constant_uint(b, mode->operands[0]);
+      break;
+
+   case SpvExecutionModeMaxNodeRecursionAMDX:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_COMPUTE);
+      break;
+
+   case SpvExecutionModeStaticNumWorkgroupsAMDX:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_COMPUTE);
+      b->shader->info.cs.workgroup_count[0] = vtn_constant_uint(b, mode->operands[0]);
+      b->shader->info.cs.workgroup_count[1] = vtn_constant_uint(b, mode->operands[1]);
+      b->shader->info.cs.workgroup_count[2] = vtn_constant_uint(b, mode->operands[2]);
+      assert(b->shader->info.cs.workgroup_count[0]);
+      assert(b->shader->info.cs.workgroup_count[1]);
+      assert(b->shader->info.cs.workgroup_count[2]);
+      break;
+
+   case SpvExecutionModeMaxNumWorkgroupsAMDX:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_COMPUTE);
+      break;
+
+   case SpvExecutionModeShaderIndexAMDX:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_COMPUTE);
+      b->shader->info.cs.shader_index = vtn_constant_uint(b, mode->operands[0]);
       break;
 
    default:
@@ -6028,6 +6066,20 @@ vtn_handle_ray_query_intrinsic(struct vtn_builder *b, SpvOp opcode,
    }
 }
 
+static void
+vtn_handle_initialize_node_payloads(struct vtn_builder *b, SpvOp opcode,
+                                    const uint32_t *w, unsigned count)
+{
+   vtn_assert(opcode == SpvOpInitializeNodePayloadsAMDX);
+
+   nir_def *payloads = vtn_ssa_value(b, w[1])->def;
+   mesa_scope scope = vtn_translate_scope(b, vtn_constant_uint(b, w[2]));
+   nir_def *payload_count = vtn_ssa_value(b, w[3])->def;
+   nir_def *node_index = vtn_ssa_value(b, w[4])->def;
+
+   nir_initialize_node_payloads(&b->nb, payloads, payload_count, node_index, .execution_scope = scope);
+}
+
 static bool
 vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
                             const uint32_t *w, unsigned count)
@@ -6494,6 +6546,16 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
          &b->nb, vtn_get_nir_ssa(b, w[1]), vtn_get_nir_ssa(b, w[2]));
       break;
 
+   case SpvOpInitializeNodePayloadsAMDX:
+      vtn_handle_initialize_node_payloads(b, opcode, w, count);
+      break;
+
+   case SpvOpFinalizeNodePayloadsAMDX:
+      break;
+
+   case SpvOpFinishWritingNodePayloadAMDX:
+      break;
+
    default:
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
@@ -6733,6 +6795,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    b->shader = nir_shader_create(b, stage, nir_options, NULL);
    b->shader->info.subgroup_size = options->subgroup_size;
    b->shader->info.float_controls_execution_mode = options->float_controls_execution_mode;
+   b->shader->info.cs.shader_index = options->shader_index;
    _mesa_sha1_compute(words, word_count * sizeof(uint32_t), b->shader->info.source_sha1);
 
    /* Skip the SPIR-V header, handled at vtn_create_builder */
