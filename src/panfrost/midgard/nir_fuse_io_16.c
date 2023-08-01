@@ -68,9 +68,6 @@ nir_fuse_io_16(nir_shader *shader)
             if (nir_intrinsic_component(intr))
                continue;
 
-            if (!intr->dest.is_ssa)
-               continue;
-
             bool valid = true;
 
             nir_foreach_use_including_if(src, &intr->dest.ssa)

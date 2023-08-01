@@ -1055,7 +1055,7 @@ emit_ubo_read(compiler_context *ctx, nir_instr *instr, unsigned dest,
       ins.load_store.index_reg = REGISTER_LDST_ZERO;
    }
 
-   if (indirect_offset && indirect_offset->is_ssa && !indirect_shift)
+   if (indirect_offset && !indirect_shift)
       mir_set_ubo_offset(&ins, indirect_offset, offset);
 
    midgard_pack_ubo_index_imm(&ins.load_store, index);
@@ -1774,18 +1774,14 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
          /* Dual-source blend writeout is done by leaving the
           * value in r2 for the blend shader to use. */
          if (~reg_2) {
-            if (instr->src[4].is_ssa) {
-               emit_explicit_constant(ctx, reg_2);
+            emit_explicit_constant(ctx, reg_2);
 
-               unsigned out = make_compiler_temp(ctx);
+            unsigned out = make_compiler_temp(ctx);
 
-               midgard_instruction ins = v_mov(reg_2, out);
-               emit_mir_instruction(ctx, ins);
+            midgard_instruction ins = v_mov(reg_2, out);
+            emit_mir_instruction(ctx, ins);
 
-               ctx->blend_src1 = out;
-            } else {
-               ctx->blend_src1 = reg_2;
-            }
+            ctx->blend_src1 = out;
          }
 
          emit_fragment_store(ctx, reg, reg_z, reg_s, rt, 0);

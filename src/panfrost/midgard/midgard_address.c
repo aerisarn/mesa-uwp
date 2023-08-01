@@ -54,11 +54,6 @@ mir_args_ssa(nir_ssa_scalar s, unsigned count)
    if (count > nir_op_infos[alu->op].num_inputs)
       return false;
 
-   for (unsigned i = 0; i < count; ++i) {
-      if (!alu->src[i].src.is_ssa)
-         return false;
-   }
-
    return true;
 }
 
@@ -242,22 +237,6 @@ mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset,
    /* Sign extend instead of zero extend in case the address is something
     * like `base + offset + 20`, where offset could be negative. */
    bool force_sext = (nir_src_bit_size(*offset) < 64);
-
-   if (!offset->is_ssa) {
-      ins->load_store.bitsize_toggle = true;
-      ins->load_store.arg_comp = seg & 0x3;
-      ins->load_store.arg_reg = (seg >> 2) & 0x7;
-      ins->src[2] = nir_src_index(ctx, offset);
-      ins->src_types[2] = nir_type_uint | nir_src_bit_size(*offset);
-
-      if (force_sext)
-         ins->load_store.index_format = midgard_index_address_s32;
-      else
-         ins->load_store.index_format = midgard_index_address_u64;
-
-      return;
-   }
-
    bool first_free = (seg == LDST_GLOBAL);
 
    struct mir_address match = mir_match_offset(offset->ssa, first_free, true);
