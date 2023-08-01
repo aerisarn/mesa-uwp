@@ -238,15 +238,6 @@ reg_create(void *mem_ctx, struct exec_list *list)
    return reg;
 }
 
-nir_register *
-nir_local_reg_create(nir_function_impl *impl)
-{
-   nir_register *reg = reg_create(ralloc_parent(impl), &impl->registers);
-   reg->index = impl->reg_alloc++;
-
-   return reg;
-}
-
 void
 nir_reg_remove(nir_register *reg)
 {

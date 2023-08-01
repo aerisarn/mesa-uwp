@@ -4127,8 +4127,6 @@ nir_shader *nir_shader_create(void *mem_ctx,
                               const nir_shader_compiler_options *options,
                               shader_info *si);
 
-nir_register *nir_local_reg_create(nir_function_impl *impl);
-
 void nir_reg_remove(nir_register *reg);
 
 /** Adds a variable to the appropriate list in nir_shader */
