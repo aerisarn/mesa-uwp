@@ -1089,6 +1089,17 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
    key->is_points = (topology == MESA_PRIM_POINTS);
    key->is_lines = (topology >= MESA_PRIM_LINES &&
                     topology <= MESA_PRIM_LINE_STRIP);
+
+   if (key->is_points) {
+      /* This mask represents state for GL_ARB_point_sprite which is not
+       * relevant to Vulkan.
+       */
+      key->point_sprite_mask = 0;
+
+      /* Vulkan mandates upper left. */
+      key->point_coord_upper_left = true;
+   }
+
    key->has_gs = has_geometry_shader;
 
    const VkPipelineColorBlendStateCreateInfo *cb_info =
@@ -1164,16 +1175,6 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
             key->uint_color_rb |= 1 << i;
          else if (util_format_is_pure_sint(fb_pipe_format))
             key->int_color_rb |= 1 << i;
-      }
-
-      if (key->is_points) {
-         /* This mask represents state for GL_ARB_point_sprite which is not
-          * relevant to Vulkan.
-          */
-         key->point_sprite_mask = 0;
-
-         /* Vulkan mandates upper left. */
-         key->point_coord_upper_left = true;
       }
    }
 }
