@@ -216,7 +216,18 @@ enum intel_batch_decode_flags {
    INTEL_BATCH_DECODE_OFFSETS   = (1 << 2),
    /** Guess when a value is a float and print it as such */
    INTEL_BATCH_DECODE_FLOATS    = (1 << 3),
+   /** Print surface states */
+   INTEL_BATCH_DECODE_SURFACES  = (1 << 4),
+   /** Print sampler states */
+   INTEL_BATCH_DECODE_SAMPLERS  = (1 << 5),
 };
+
+#define INTEL_BATCH_DECODE_DEFAULT_FLAGS \
+   (INTEL_BATCH_DECODE_FULL |            \
+    INTEL_BATCH_DECODE_OFFSETS |         \
+    INTEL_BATCH_DECODE_FLOATS |          \
+    INTEL_BATCH_DECODE_SURFACES |        \
+    INTEL_BATCH_DECODE_SAMPLERS)
 
 struct intel_batch_decode_bo {
    uint64_t addr;

@@ -2729,11 +2729,7 @@ VkResult anv_CreateDevice(
       goto fail_alloc;
 
    if (INTEL_DEBUG(DEBUG_BATCH)) {
-      const unsigned decode_flags =
-         INTEL_BATCH_DECODE_FULL |
-         (INTEL_DEBUG(DEBUG_COLOR) ? INTEL_BATCH_DECODE_IN_COLOR : 0) |
-         INTEL_BATCH_DECODE_OFFSETS |
-         INTEL_BATCH_DECODE_FLOATS;
+      const unsigned decode_flags = INTEL_BATCH_DECODE_DEFAULT_FLAGS;
 
       intel_batch_decode_ctx_init(&device->decoder_ctx,
                                   &physical_device->compiler->isa,
