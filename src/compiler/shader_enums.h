@@ -916,6 +916,10 @@ typedef enum
    SYSTEM_VALUE_FRAG_SIZE,
    SYSTEM_VALUE_FRAG_INVOCATION_COUNT,
 
+   /* SPV_AMDX_shader_enqueue */
+   SYSTEM_VALUE_SHADER_INDEX,
+   SYSTEM_VALUE_COALESCED_INPUT_COUNT,
+
    SYSTEM_VALUE_MAX             /**< Number of values */
 } gl_system_value;
 

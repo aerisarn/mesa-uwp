@@ -245,6 +245,8 @@ nir_shader_add_variable(nir_shader *shader, nir_variable *var)
    case nir_var_shader_call_data:
    case nir_var_ray_hit_attrib:
    case nir_var_mem_task_payload:
+   case nir_var_mem_node_payload:
+   case nir_var_mem_node_payload_in:
    case nir_var_mem_global:
       break;
 
@@ -2265,6 +2267,10 @@ nir_intrinsic_from_system_value(gl_system_value val)
       return nir_intrinsic_load_frag_size;
    case SYSTEM_VALUE_FRAG_INVOCATION_COUNT:
       return nir_intrinsic_load_frag_invocation_count;
+   case SYSTEM_VALUE_SHADER_INDEX:
+      return nir_intrinsic_load_shader_index;
+   case SYSTEM_VALUE_COALESCED_INPUT_COUNT:
+      return nir_intrinsic_load_coalesced_input_count;
    default:
       unreachable("system value does not directly correspond to intrinsic");
    }
@@ -2421,6 +2427,10 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
       return SYSTEM_VALUE_FRAG_SIZE;
    case nir_intrinsic_load_frag_invocation_count:
       return SYSTEM_VALUE_FRAG_INVOCATION_COUNT;
+   case nir_intrinsic_load_shader_index:
+      return SYSTEM_VALUE_SHADER_INDEX;
+   case nir_intrinsic_load_coalesced_input_count:
+      return SYSTEM_VALUE_COALESCED_INPUT_COUNT;
    default:
       unreachable("intrinsic doesn't produce a system value");
    }

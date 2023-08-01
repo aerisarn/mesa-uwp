@@ -2421,6 +2421,10 @@ lower_vars_to_explicit(nir_shader *shader,
    case nir_var_mem_task_payload:
       offset = shader->info.task_payload_size;
       break;
+   case nir_var_mem_node_payload:
+      assert(!shader->info.cs.node_payloads_size);
+      offset = 0;
+      break;
    case nir_var_mem_global:
       offset = shader->global_mem_size;
       break;
@@ -2429,6 +2433,7 @@ lower_vars_to_explicit(nir_shader *shader,
       break;
    case nir_var_shader_call_data:
    case nir_var_ray_hit_attrib:
+   case nir_var_mem_node_payload_in:
       offset = 0;
       break;
    default:
@@ -2470,6 +2475,9 @@ lower_vars_to_explicit(nir_shader *shader,
    case nir_var_mem_task_payload:
       shader->info.task_payload_size = offset;
       break;
+   case nir_var_mem_node_payload:
+      shader->info.cs.node_payloads_size = offset;
+      break;
    case nir_var_mem_global:
       shader->global_mem_size = offset;
       break;
@@ -2478,6 +2486,7 @@ lower_vars_to_explicit(nir_shader *shader,
       break;
    case nir_var_shader_call_data:
    case nir_var_ray_hit_attrib:
+   case nir_var_mem_node_payload_in:
       break;
    default:
       unreachable("Unsupported mode");
@@ -2504,7 +2513,8 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
       nir_var_mem_shared | nir_var_mem_global | nir_var_mem_constant |
       nir_var_shader_temp | nir_var_function_temp | nir_var_uniform |
       nir_var_shader_call_data | nir_var_ray_hit_attrib |
-      nir_var_mem_task_payload;
+      nir_var_mem_task_payload | nir_var_mem_node_payload |
+      nir_var_mem_node_payload_in;
    assert(!(modes & ~supported) && "unsupported");
 
    bool progress = false;
@@ -2529,6 +2539,10 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
       progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_ray_hit_attrib, type_info);
    if (modes & nir_var_mem_task_payload)
       progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_mem_task_payload, type_info);
+   if (modes & nir_var_mem_node_payload)
+      progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_mem_node_payload, type_info);
+   if (modes & nir_var_mem_node_payload_in)
+      progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_mem_node_payload_in, type_info);
 
    nir_foreach_function_impl(impl, shader) {
       if (modes & nir_var_function_temp)

@@ -749,6 +749,9 @@ lower_compute_system_value_instr(nir_builder *b,
       return num_wgs;
    }
 
+   case nir_intrinsic_load_shader_index:
+      return nir_imm_int(b, b->shader->info.cs.shader_index);
+
    default:
       return NULL;
    }

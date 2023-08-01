@@ -1927,3 +1927,20 @@ intrinsic("load_texture_size_etna", src_comp=[1], dest_comp=3,
 
 # src[] = { field }.
 load("push_constant_zink", [1], [COMPONENT], [CAN_ELIMINATE, CAN_REORDER])
+
+system_value("shader_index", 1, bit_sizes=[32])
+
+system_value("coalesced_input_count", 1, bit_sizes=[32])
+
+# Initialize a payload array per scope
+#
+#   0. Payloads deref
+#   1. Payload count
+#   2. Node index
+intrinsic("initialize_node_payloads", src_comp=[-1, 1, 1], indices=[EXECUTION_SCOPE])
+
+# Optionally enqueue payloads after shader finished writing to them
+intrinsic("enqueue_node_payloads", src_comp=[-1])
+
+# Returns true if it has been called for every payload.
+intrinsic("finalize_incoming_node_payload", src_comp=[-1], dest_comp=1)

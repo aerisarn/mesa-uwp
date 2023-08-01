@@ -191,14 +191,16 @@ typedef enum {
    nir_var_mem_ssbo              = (1 << 9),
    nir_var_mem_constant          = (1 << 10),
    nir_var_mem_task_payload      = (1 << 11),
+   nir_var_mem_node_payload      = (1 << 12),
+   nir_var_mem_node_payload_in   = (1 << 13),
 
    /* Generic modes intentionally come last. See encode_dref_modes() in
     * nir_serialize.c for more details.
     */
-   nir_var_shader_temp           = (1 << 12),
-   nir_var_function_temp         = (1 << 13),
-   nir_var_mem_shared            = (1 << 14),
-   nir_var_mem_global            = (1 << 15),
+   nir_var_shader_temp           = (1 << 14),
+   nir_var_function_temp         = (1 << 15),
+   nir_var_mem_shared            = (1 << 16),
+   nir_var_mem_global            = (1 << 17),
 
    nir_var_mem_generic           = (nir_var_shader_temp |
                                     nir_var_function_temp |
@@ -212,11 +214,10 @@ typedef enum {
     * is only for mesh stages.
     */
    nir_var_vec_indexable_modes   = nir_var_mem_ubo | nir_var_mem_ssbo |
-                                   nir_var_mem_shared | nir_var_mem_global |
-                                   nir_var_mem_push_const |
-                                   nir_var_mem_task_payload |
-                                   nir_var_shader_out,
-   nir_num_variable_modes        = 16,
+                                 nir_var_mem_shared | nir_var_mem_global |
+                                 nir_var_mem_push_const | nir_var_mem_task_payload |
+                                 nir_var_shader_out,
+   nir_num_variable_modes        = 18,
    nir_var_all                   = (1 << nir_num_variable_modes) - 1,
 } nir_variable_mode;
 MESA_DEFINE_CPP_ENUM_BITFIELD_OPERATORS(nir_variable_mode)
@@ -476,7 +477,7 @@ typedef struct nir_variable {
        *
        * \sa nir_variable_mode
        */
-      unsigned mode : 16;
+      unsigned mode : 18;
 
       /**
        * Is the variable read-only?
@@ -766,6 +767,9 @@ typedef struct nir_variable {
             uint16_t stride;
          } xfb;
       };
+
+      /** Name of the node this payload will be enqueued to. */
+      const char *node_name;
    } data;
 
    /**

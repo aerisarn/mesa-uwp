@@ -727,6 +727,10 @@ get_variable_mode_str(nir_variable_mode mode, bool want_local_global_mode)
       return "ray_hit_attrib";
    case nir_var_mem_task_payload:
       return "task_payload";
+   case nir_var_mem_node_payload:
+      return "node_payload";
+   case nir_var_mem_node_payload_in:
+      return "node_payload_in";
    default:
       if (mode && (mode & nir_var_mem_generic) == mode)
          return "generic";
