@@ -109,7 +109,6 @@ nir_deref_instr_remove_if_unused(nir_deref_instr *instr)
 
    for (nir_deref_instr *d = instr; d; d = nir_deref_instr_parent(d)) {
       /* If anyone is using this deref, leave it alone */
-      assert(d->dest.is_ssa);
       if (!nir_ssa_def_is_unused(&d->dest.ssa))
          break;
 
@@ -539,7 +538,6 @@ compare_deref_paths(nir_deref_path *a_path, nir_deref_path *b_path,
          } else {
             assert(a[*i]->deref_type == nir_deref_type_array &&
                    b[*i]->deref_type == nir_deref_type_array);
-            assert(a[*i]->arr.index.is_ssa && b[*i]->arr.index.is_ssa);
 
             if (nir_src_is_const(a[*i]->arr.index) &&
                 nir_src_is_const(b[*i]->arr.index)) {
@@ -923,7 +921,6 @@ opt_alu_of_cast(nir_alu_instr *alu)
    bool progress = false;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-      assert(alu->src[i].src.is_ssa);
       nir_instr *src_instr = alu->src[i].src.ssa->parent_instr;
       if (src_instr->type != nir_instr_type_deref)
          continue;
@@ -932,7 +929,6 @@ opt_alu_of_cast(nir_alu_instr *alu)
       if (src_deref->deref_type != nir_deref_type_cast)
          continue;
 
-      assert(src_deref->parent.is_ssa);
       nir_instr_rewrite_src_ssa(&alu->instr, &alu->src[i].src,
                                 src_deref->parent.ssa);
       progress = true;
@@ -1200,8 +1196,6 @@ opt_deref_cast(nir_builder *b, nir_deref_instr *cast)
 
    bool trivial_array_cast = is_trivial_array_deref_cast(cast);
 
-   assert(cast->dest.is_ssa);
-   assert(cast->parent.is_ssa);
 
    nir_foreach_use_including_if_safe(use_src, &cast->dest.ssa) {
       assert(!use_src->is_if && "there cannot be if-uses");
@@ -1256,9 +1250,6 @@ opt_deref_ptr_as_array(nir_builder *b, nir_deref_instr *deref)
        parent->deref_type != nir_deref_type_ptr_as_array)
       return false;
 
-   assert(parent->parent.is_ssa);
-   assert(parent->arr.index.is_ssa);
-   assert(deref->arr.index.is_ssa);
 
    deref->arr.in_bounds &= parent->arr.in_bounds;
 
@@ -1354,7 +1345,6 @@ opt_load_vec_deref(nir_builder *b, nir_intrinsic_instr *load)
       /* Stomp it to reference the parent */
       nir_instr_rewrite_src(&load->instr, &load->src[0],
                             nir_src_for_ssa(&parent->dest.ssa));
-      assert(load->dest.is_ssa);
       load->dest.ssa.bit_size = new_bit_size;
       load->dest.ssa.num_components = new_num_comps;
       load->num_components = new_num_comps;
@@ -1384,7 +1374,6 @@ opt_store_vec_deref(nir_builder *b, nir_intrinsic_instr *store)
     * results in a LOT of vec4->vec3 casts on loads and stores.
     */
    if (is_vector_bitcast_deref(deref, write_mask, true)) {
-      assert(store->src[1].is_ssa);
       nir_ssa_def *data = store->src[1].ssa;
 
       const unsigned old_bit_size = data->bit_size;

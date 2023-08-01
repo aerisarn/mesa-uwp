@@ -243,7 +243,6 @@ private:
 
       auto buf_id = nir_imm_int(b, R600_BUFFER_INFO_CONST_BUFFER);
 
-      assert(intr->src[0].is_ssa);
       auto clip_vtx = intr->src[0].ssa;
 
       for (int i = 0; i < 8; ++i) {
@@ -312,7 +311,6 @@ private:
    {
       auto intr = nir_instr_as_intrinsic(instr);
       assert(intr->intrinsic == nir_intrinsic_load_ubo_vec4);
-      assert(intr->src[0].is_ssa);
 
       auto parent = intr->src[0].ssa->parent_instr;
 

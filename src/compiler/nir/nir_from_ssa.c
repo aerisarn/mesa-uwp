@@ -392,7 +392,6 @@ isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
    nir_instr_insert_after(&last_phi->instr, &block_pcopy->instr);
 
    nir_foreach_phi(phi, block) {
-      assert(phi->dest.is_ssa);
       nir_foreach_phi_src(src, phi) {
          if (nir_src_is_undef(src->src))
             continue;
@@ -411,7 +410,6 @@ isolate_phi_nodes_block(nir_shader *shader, nir_block *block, void *dead_ctx)
          entry->dest.dest.ssa.divergent = nir_src_is_divergent(src->src);
          exec_list_push_tail(&pcopy->entries, &entry->node);
 
-         assert(src->src.is_ssa);
          nir_instr_rewrite_src(&pcopy->instr, &entry->src, src->src);
 
          nir_instr_rewrite_src(&phi->instr, &src->src,
@@ -630,7 +628,6 @@ remove_no_op_phi(nir_instr *instr, struct from_ssa_state *state)
       if (nir_src_is_undef(src->src))
          continue;
 
-      assert(src->src.is_ssa);
       entry = _mesa_hash_table_search(state->merge_node_table, src->src.ssa);
       assert(entry != NULL);
       merge_node *src_node = (merge_node *)entry->data;
@@ -719,7 +716,6 @@ resolve_registers_impl(nir_function_impl *impl, struct from_ssa_state *state)
 
             nir_foreach_parallel_copy_entry(entry, pcopy) {
                assert(!entry->dest_is_reg);
-               assert(entry->dest.dest.is_ssa);
                assert(nir_ssa_def_is_unused(&entry->dest.dest.ssa));
 
                /* Parallel copy destinations will always be registers */
@@ -734,7 +730,6 @@ resolve_registers_impl(nir_function_impl *impl, struct from_ssa_state *state)
 
             nir_foreach_parallel_copy_entry(entry, pcopy) {
                assert(!entry->src_is_reg);
-               assert(entry->src.is_ssa);
                nir_ssa_def *reg = reg_for_ssa_def(entry->src.ssa, state);
                if (reg == NULL)
                   continue;
@@ -817,8 +812,7 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
    unsigned num_copies = 0;
    nir_foreach_parallel_copy_entry(entry, pcopy) {
       /* Sources may be SSA but destinations are always registers */
-      assert(entry->src.is_ssa);
-      assert(entry->dest_is_reg && entry->dest.dest.is_ssa);
+      assert(entry->dest_is_reg);
       if (entry->src_is_reg && entry->src.ssa == entry->dest.reg.ssa)
          continue;
 
@@ -858,7 +852,6 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
       if (entry->src_is_reg && entry->src.ssa == entry->dest.reg.ssa)
          continue;
 
-      assert(entry->src.is_ssa);
       struct copy_value src_value = {
          .is_reg = entry->src_is_reg,
          .ssa = entry->src.ssa,
@@ -874,7 +867,7 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
          values[src_idx] = src_value;
       }
 
-      assert(entry->dest_is_reg && entry->dest.dest.is_ssa);
+      assert(entry->dest_is_reg);
       struct copy_value dest_value = {
          .is_reg = true,
          .ssa = entry->dest.reg.ssa,
@@ -1166,14 +1159,12 @@ nir_lower_phis_to_regs_block(nir_block *block)
 
    bool progress = false;
    nir_foreach_phi_safe(phi, block) {
-      assert(phi->dest.is_ssa);
       nir_ssa_def *reg = decl_reg_for_ssa_def(&b, &phi->dest.ssa);
 
       b.cursor = nir_after_instr(&phi->instr);
       nir_ssa_def_rewrite_uses(&phi->dest.ssa, nir_load_reg(&b, reg));
 
       nir_foreach_phi_src(src, phi) {
-         assert(src->src.is_ssa);
 
          _mesa_set_add(visited_blocks, src->src.ssa->parent_instr->block);
          place_phi_read(&b, reg, src->src.ssa, src->pred, visited_blocks);
@@ -1228,7 +1219,6 @@ instr_is_load_new_reg(nir_instr *instr, unsigned old_num_ssa)
    if (load->intrinsic != nir_intrinsic_load_reg)
       return false;
 
-   assert(load->src[0].is_ssa);
    nir_ssa_def *reg = load->src[0].ssa;
 
    return reg->index >= old_num_ssa;

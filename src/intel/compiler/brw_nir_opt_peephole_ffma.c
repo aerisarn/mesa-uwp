@@ -169,7 +169,6 @@ brw_nir_opt_peephole_ffma_instr(nir_builder *b,
    if (add->exact)
       return false;
 
-   assert(add->src[0].src.is_ssa && add->src[1].src.is_ssa);
 
    /* This, is the case a + a.  We would rather handle this with an
     * algebraic reduction than fuse it.  Also, we want to only fuse

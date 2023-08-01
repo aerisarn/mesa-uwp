@@ -278,7 +278,6 @@ fuse_mods_with_registers(nir_builder *b, nir_instr *instr, void *fuse_fabs_)
        * this for loads in the same block as the use because uses of loads
        * which cross block boundaries aren't trivial anyway.
        */
-      assert(alu->src[0].src.is_ssa);
       nir_intrinsic_instr *load = nir_load_reg_for_def(alu->src[0].src.ssa);
       if (load != NULL) {
          /* Duplicate the load before changing it in case there are other

@@ -146,7 +146,6 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
    case nir_intrinsic_reduce:
    case nir_intrinsic_inclusive_scan:
    case nir_intrinsic_exclusive_scan: {
-      assert(intrin->src[0].is_ssa && intrin->dest.is_ssa);
       const unsigned old_bit_size = intrin->dest.ssa.bit_size;
       assert(old_bit_size < bit_size);
 

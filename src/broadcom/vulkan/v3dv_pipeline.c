@@ -605,7 +605,6 @@ lower_tex_src(nir_builder *b,
    /* We compute first the offsets */
    nir_deref_instr *deref = nir_instr_as_deref(src->src.ssa->parent_instr);
    while (deref->deref_type != nir_deref_type_var) {
-      assert(deref->parent.is_ssa);
       nir_deref_instr *parent =
          nir_instr_as_deref(deref->parent.ssa->parent_instr);
 
@@ -743,7 +742,6 @@ lower_image_deref(nir_builder *b,
    unsigned base_index = 0;
 
    while (deref->deref_type != nir_deref_type_var) {
-      assert(deref->parent.is_ssa);
       nir_deref_instr *parent =
          nir_instr_as_deref(deref->parent.ssa->parent_instr);
 

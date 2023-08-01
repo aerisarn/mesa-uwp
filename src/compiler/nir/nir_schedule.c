@@ -573,7 +573,6 @@ nir_schedule_regs_freed_store_reg(nir_intrinsic_instr *store,
                                   nir_schedule_regs_freed_state *state)
 {
    assert(nir_is_store_reg(store));
-   assert(store->src[0].is_ssa && store->src[1].is_ssa);
 
    nir_schedule_regs_freed_src_cb(&store->src[0], state);
    if (store->intrinsic == nir_intrinsic_store_reg_indirect)
@@ -962,7 +961,6 @@ nir_schedule_mark_store_reg_scheduled(nir_intrinsic_instr *store,
                                       nir_schedule_scoreboard *scoreboard)
 {
    assert(nir_is_store_reg(store));
-   assert(store->src[0].is_ssa && store->src[1].is_ssa);
    nir_ssa_def *reg = store->src[1].ssa;
 
    nir_schedule_mark_src_scheduled(&store->src[0], scoreboard);

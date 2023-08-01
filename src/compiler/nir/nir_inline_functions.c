@@ -82,7 +82,6 @@ void nir_inline_function_impl(struct nir_builder *b,
 
             unsigned param_idx = nir_intrinsic_param_idx(load);
             assert(param_idx < impl->function->num_params);
-            assert(load->dest.is_ssa);
             nir_ssa_def_rewrite_uses(&load->dest.ssa,
                                      params[param_idx]);
 

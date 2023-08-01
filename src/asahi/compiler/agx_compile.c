@@ -2088,7 +2088,6 @@ agx_lower_front_face(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
    if (intr->intrinsic != nir_intrinsic_load_front_face)
       return false;
 
-   assert(intr->dest.is_ssa);
    nir_ssa_def *def = &intr->dest.ssa;
    assert(def->bit_size == 1);
 

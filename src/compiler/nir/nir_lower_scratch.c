@@ -58,7 +58,6 @@ lower_load_store(nir_builder *b,
    } else {
       assert(intrin->intrinsic == nir_intrinsic_store_deref);
 
-      assert(intrin->src[1].is_ssa);
       nir_ssa_def *value = intrin->src[1].ssa;
       if (value->bit_size == 1)
          value = nir_b2b32(b, value);

@@ -496,7 +496,6 @@ lower_instr(nir_intrinsic_instr *instr, nir_builder *b,
    nir_instr_remove(&instr->instr);
    for (nir_deref_instr *d = deref; d; d = nir_deref_instr_parent(d)) {
       /* If anyone is using this deref, leave it alone */
-      assert(d->dest.is_ssa);
       if (!list_is_empty(&d->dest.ssa.uses))
          break;
 

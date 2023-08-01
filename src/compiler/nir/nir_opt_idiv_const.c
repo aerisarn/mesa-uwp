@@ -161,7 +161,6 @@ nir_opt_idiv_const_instr(nir_builder *b, nir_instr *instr, void *user_data)
        alu->op != nir_op_irem)
       return false;
 
-   assert(alu->src[0].src.is_ssa && alu->src[1].src.is_ssa);
 
    if (alu->dest.dest.ssa.bit_size < *min_bit_size)
       return false;

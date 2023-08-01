@@ -4368,7 +4368,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       nir_ssa_bind_infos[instr->dest.ssa.index].binding =
          nir_intrinsic_binding(instr);
 
-      assert(instr->src[1].is_ssa);
       if (nir_intrinsic_resource_access_intel(instr) &
            nir_resource_intel_non_uniform) {
          nir_resource_values[instr->dest.ssa.index] = fs_reg();

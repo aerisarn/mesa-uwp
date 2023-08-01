@@ -229,7 +229,6 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
                nir_lower_mem_access_bit_sizes_cb mem_access_size_align_cb,
                const void *cb_data, bool allow_unaligned_stores_as_atomics)
 {
-   assert(intrin->src[0].is_ssa);
    nir_ssa_def *value = intrin->src[0].ssa;
 
    assert(intrin->num_components == value->num_components);

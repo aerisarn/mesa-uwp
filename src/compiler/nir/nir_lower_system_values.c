@@ -74,7 +74,6 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
    if (!nir_intrinsic_infos[intrin->intrinsic].has_dest)
       return NULL;
 
-   assert(intrin->dest.is_ssa);
    const unsigned bit_size = intrin->dest.ssa.bit_size;
 
    switch (intrin->intrinsic) {
@@ -135,11 +134,9 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
       case nir_intrinsic_interp_deref_at_centroid:
          return nir_load_barycentric_coord_centroid(b, 32, .interp_mode = interp_mode);
       case nir_intrinsic_interp_deref_at_sample:
-         assert(intrin->src[1].is_ssa);
          return nir_load_barycentric_coord_at_sample(b, 32, intrin->src[1].ssa,
                                                      .interp_mode = interp_mode);
       case nir_intrinsic_interp_deref_at_offset:
-         assert(intrin->src[1].is_ssa);
          return nir_load_barycentric_coord_at_offset(b, 32, intrin->src[1].ssa,
                                                      .interp_mode = interp_mode);
       default:
@@ -159,7 +156,6 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
           * couple of ray-tracing intrinsics which are matrices.
           */
          assert(deref->deref_type == nir_deref_type_array);
-         assert(deref->arr.index.is_ssa);
          column = deref->arr.index.ssa;
          nir_deref_instr *arr_deref = deref;
          deref = nir_deref_instr_parent(deref);

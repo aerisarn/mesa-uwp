@@ -394,7 +394,6 @@ NirLowerIOToVector::vec_instr_stack_pop(nir_builder *b,
       assert(glsl_get_vector_elements(glsl_without_array(var2->type)) < 4);
 
       if (srcs[var2->data.location_frac] == &instr_undef->def) {
-         assert(intr2->src[1].is_ssa);
          assert(intr2->src[1].ssa);
          srcs[var2->data.location_frac] = intr2->src[1].ssa;
       }

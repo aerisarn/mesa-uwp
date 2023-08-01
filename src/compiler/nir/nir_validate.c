@@ -339,9 +339,6 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
          validate_assert(state, instr->cast.align_offset == 0);
       }
    } else {
-      /* We require the parent to be SSA.  This may be lifted in the future */
-      validate_assert(state, instr->parent.is_ssa);
-
       /* The parent pointer value must have the same number of components
        * as the destination.
        */
@@ -477,9 +474,6 @@ validate_register_handle(nir_src handle_src,
                          unsigned bit_size,
                          validate_state *state)
 {
-   if (!validate_assert(state, handle_src.is_ssa))
-      return;
-
    nir_ssa_def *handle = handle_src.ssa;
    nir_instr *parent = handle->parent_instr;
 
@@ -1081,12 +1075,10 @@ validate_phi_src(nir_phi_instr *instr, nir_block *pred, validate_state *state)
 {
    state->instr = &instr->instr;
 
-   validate_assert(state, instr->dest.is_ssa);
 
    exec_list_validate(&instr->srcs);
    nir_foreach_phi_src(src, instr) {
       if (src->pred == pred) {
-         validate_assert(state, src->src.is_ssa);
          validate_src(&src->src, state, instr->dest.ssa.bit_size,
                       instr->dest.ssa.num_components);
          state->instr = NULL;

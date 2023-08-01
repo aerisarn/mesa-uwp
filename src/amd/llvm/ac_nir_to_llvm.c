@@ -1281,7 +1281,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    }
 
    if (result) {
-      assert(instr->dest.dest.is_ssa);
       result = ac_to_integer_or_pointer(&ctx->ac, result);
       ctx->ssa_defs[instr->dest.dest.ssa.index] = result;
    }
@@ -2338,7 +2337,6 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
       vindex =
          LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]), ctx->ac.i32_0, "");
 
-      assert(instr->dest.is_ssa);
       bool can_speculate = access & ACCESS_CAN_REORDER;
       res = ac_build_buffer_load_format(&ctx->ac, rsrc, vindex, ctx->ac.i32_0, num_channels,
                                         args.access, can_speculate,
@@ -2372,7 +2370,6 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
       args.dmask = 15;
       args.attributes = access & ACCESS_CAN_REORDER ? AC_ATTR_INVARIANT_LOAD : 0;
 
-      assert(instr->dest.is_ssa);
       args.d16 = instr->dest.ssa.bit_size == 16;
 
       res = ac_build_image_opcode(&ctx->ac, &args);
@@ -4072,7 +4069,6 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       args.sampler = LLVMBuildInsertElement(ctx->ac.builder, args.sampler, dword0, ctx->ac.i32_0, "");
    }
 
-   assert(instr->dest.is_ssa);
    args.d16 = instr->dest.ssa.bit_size == 16;
    args.tfe = instr->is_sparse;
 
@@ -4102,7 +4098,6 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       result = ac_build_concat(&ctx->ac, result, code);
 
    if (result) {
-      assert(instr->dest.is_ssa);
       result = ac_to_integer(&ctx->ac, result);
 
       for (int i = ARRAY_SIZE(wctx); --i >= 0;) {

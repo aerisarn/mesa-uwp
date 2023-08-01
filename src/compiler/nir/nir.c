@@ -1400,21 +1400,17 @@ nir_instr_ssa_def(nir_instr *instr)
 {
    switch (instr->type) {
    case nir_instr_type_alu:
-      assert(nir_instr_as_alu(instr)->dest.dest.is_ssa);
       return &nir_instr_as_alu(instr)->dest.dest.ssa;
 
    case nir_instr_type_deref:
-      assert(nir_instr_as_deref(instr)->dest.is_ssa);
       return &nir_instr_as_deref(instr)->dest.ssa;
 
    case nir_instr_type_tex:
-      assert(nir_instr_as_tex(instr)->dest.is_ssa);
       return &nir_instr_as_tex(instr)->dest.ssa;
 
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
       if (nir_intrinsic_infos[intrin->intrinsic].has_dest) {
-         assert(intrin->dest.is_ssa);
          return &intrin->dest.ssa;
       } else {
          return NULL;
@@ -1422,7 +1418,6 @@ nir_instr_ssa_def(nir_instr *instr)
    }
 
    case nir_instr_type_phi:
-      assert(nir_instr_as_phi(instr)->dest.is_ssa);
       return &nir_instr_as_phi(instr)->dest.ssa;
 
    case nir_instr_type_parallel_copy:
@@ -2914,7 +2909,6 @@ nir_variable *nir_get_binding_variable(nir_shader *shader, nir_binding binding)
 bool
 nir_alu_instr_is_copy(nir_alu_instr *instr)
 {
-   assert(instr->src[0].src.is_ssa);
 
    if (instr->op == nir_op_mov) {
       return !instr->src[0].abs &&

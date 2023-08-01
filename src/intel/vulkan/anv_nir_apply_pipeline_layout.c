@@ -1356,7 +1356,6 @@ lower_res_reindex_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 {
    b->cursor = nir_before_instr(&intrin->instr);
 
-   assert(intrin->src[0].is_ssa && intrin->src[1].is_ssa);
    nir_ssa_def *index =
       build_res_reindex(b, intrin->src[0].ssa,
                            intrin->src[1].ssa);

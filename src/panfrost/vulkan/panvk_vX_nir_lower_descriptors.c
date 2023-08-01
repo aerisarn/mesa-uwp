@@ -262,7 +262,6 @@ lower_res_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       break;
 
    case nir_intrinsic_vulkan_resource_reindex:
-      assert(intrin->src[0].is_ssa && intrin->src[1].is_ssa);
       res = build_res_reindex(b, intrin->src[0].ssa, intrin->src[1].ssa,
                               addr_format);
       break;

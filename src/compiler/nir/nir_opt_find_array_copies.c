@@ -337,7 +337,6 @@ try_match_deref(nir_deref_path *base_path, int *path_array_idx,
          continue;
 
       case nir_deref_type_array: {
-         assert(b->arr.index.is_ssa && d->arr.index.is_ssa);
          const bool const_b_idx = nir_src_is_const(b->arr.index);
          const bool const_d_idx = nir_src_is_const(d->arr.index);
          const unsigned b_idx = const_b_idx ? nir_src_as_uint(b->arr.index) : 0;

@@ -96,7 +96,6 @@ nir_lower_deref_copy_instr(nir_builder *b, nir_intrinsic_instr *copy)
    /* Unfortunately, there's just no good way to handle wildcards except to
     * flip the chain around and walk the list from variable to final pointer.
     */
-   assert(copy->src[0].is_ssa && copy->src[1].is_ssa);
    nir_deref_instr *dst = nir_instr_as_deref(copy->src[0].ssa->parent_instr);
    nir_deref_instr *src = nir_instr_as_deref(copy->src[1].ssa->parent_instr);
 

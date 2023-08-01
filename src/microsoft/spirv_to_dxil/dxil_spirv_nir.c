@@ -195,7 +195,6 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
    if (!nir_intrinsic_infos[intrin->intrinsic].has_dest)
       return false;
 
-   assert(intrin->dest.is_ssa);
 
    const struct dxil_spirv_runtime_conf *conf =
       (const struct dxil_spirv_runtime_conf *)cb_data;

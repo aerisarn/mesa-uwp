@@ -234,7 +234,6 @@ lower_locals_to_regs_block(nir_block *block,
                                        loc.reg, .base = loc.base_offset);
          }
 
-         assert(intrin->dest.is_ssa);
          nir_ssa_def_rewrite_uses(&intrin->dest.ssa, value);
          nir_instr_remove(&intrin->instr);
          state->progress = true;
@@ -251,7 +250,6 @@ lower_locals_to_regs_block(nir_block *block,
          struct reg_location loc = get_deref_reg_location(deref, state);
          nir_intrinsic_instr *decl = nir_reg_get_decl(loc.reg);
 
-         assert(intrin->src[1].is_ssa);
          nir_ssa_def *val = intrin->src[1].ssa;
          unsigned num_array_elems = nir_intrinsic_num_array_elems(decl);
          unsigned write_mask = nir_intrinsic_write_mask(intrin);

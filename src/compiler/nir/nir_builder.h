@@ -1313,7 +1313,6 @@ static inline nir_deref_instr *
 nir_build_deref_array_imm(nir_builder *build, nir_deref_instr *parent,
                           int64_t index)
 {
-   assert(parent->dest.is_ssa);
    nir_ssa_def *idx_ssa = nir_imm_intN_t(build, index,
                                          parent->dest.ssa.bit_size);
 
@@ -1447,7 +1446,6 @@ nir_build_deref_follower(nir_builder *b, nir_deref_instr *parent,
                          nir_deref_instr *leader)
 {
    /* If the derefs would have the same parent, don't make a new one */
-   assert(leader->parent.is_ssa);
    if (leader->parent.ssa == &parent->dest.ssa)
       return leader;
 
@@ -1468,7 +1466,6 @@ nir_build_deref_follower(nir_builder *b, nir_deref_instr *parent,
              glsl_get_length(leader_parent->type));
 
       if (leader->deref_type == nir_deref_type_array) {
-         assert(leader->arr.index.is_ssa);
          nir_ssa_def *index = nir_i2iN(b, leader->arr.index.ssa,
                                          parent->dest.ssa.bit_size);
          return nir_build_deref_array(b, parent, index);
@@ -1736,7 +1733,6 @@ nir_steal_tex_src(nir_tex_instr *tex, nir_tex_src_type type_)
    if (idx < 0)
       return NULL;
 
-   assert(tex->src[idx].src.is_ssa);
    nir_ssa_def *ssa = tex->src[idx].src.ssa;
    nir_tex_instr_remove_src(tex, idx);
    return ssa;

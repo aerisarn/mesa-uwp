@@ -850,7 +850,6 @@ ntq_get_src(struct v3d_compile *c, nir_src src, int i)
 {
         struct hash_entry *entry;
 
-        assert(src.is_ssa);
         nir_intrinsic_instr *load = nir_load_reg_for_def(src.ssa);
         if (load == NULL) {
                 assert(i < src.ssa->num_components);
@@ -1228,7 +1227,6 @@ ntq_emit_comparison(struct v3d_compile *c,
 static struct nir_alu_instr *
 ntq_get_alu_parent(nir_src src)
 {
-        assert(src.is_ssa);
         if (src.ssa->parent_instr->type != nir_instr_type_alu)
                 return NULL;
         nir_alu_instr *instr = nir_instr_as_alu(src.ssa->parent_instr);
@@ -1240,7 +1238,6 @@ ntq_get_alu_parent(nir_src src)
          * src.
          */
         for (int i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-                assert(instr->src[i].src.is_ssa);
                 if (nir_load_reg_for_def(instr->src[i].src.ssa))
                         return NULL;
         }

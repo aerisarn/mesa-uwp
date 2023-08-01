@@ -149,12 +149,10 @@ brw_nir_lower_alpha_to_coverage(nir_shader *shader,
     * assuming an alpha of 1.0 and letting the sample mask pass through
     * unaltered seems like the kindest thing to do to apps.
     */
-   assert(color0_write->src[0].is_ssa);
    nir_ssa_def *color0 = color0_write->src[0].ssa;
    if (color0->num_components < 4)
       goto skip;
 
-   assert(sample_mask_write->src[0].is_ssa);
    nir_ssa_def *sample_mask = sample_mask_write->src[0].ssa;
 
    if (sample_mask_write_first) {

@@ -54,7 +54,6 @@ static void
 lower_convert_alu_types_instr(nir_builder *b, nir_intrinsic_instr *conv)
 {
    assert(conv->intrinsic == nir_intrinsic_convert_alu_types);
-         assert(conv->src[0].is_ssa && conv->dest.is_ssa);
 
    b->cursor = nir_instr_remove(&conv->instr);
    nir_ssa_def *val =
