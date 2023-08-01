@@ -116,7 +116,7 @@ struct brw_nir_compiler_opts {
 static inline bool
 brw_nir_ubo_surface_index_is_pushable(nir_src src)
 {
-   nir_intrinsic_instr *intrin = src.is_ssa &&
+   nir_intrinsic_instr *intrin =
       src.ssa->parent_instr->type == nir_instr_type_intrinsic ?
       nir_instr_as_intrinsic(src.ssa->parent_instr) : NULL;
 

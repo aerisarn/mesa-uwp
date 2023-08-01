@@ -792,8 +792,7 @@ bool
 vec4_visitor::optimize_predicate(nir_alu_instr *instr,
                                  enum brw_predicate *predicate)
 {
-   if (!instr->src[0].src.is_ssa ||
-       instr->src[0].src.ssa->parent_instr->type != nir_instr_type_alu)
+   if (instr->src[0].src.ssa->parent_instr->type != nir_instr_type_alu)
       return false;
 
    nir_alu_instr *cmp_instr =
@@ -1327,10 +1326,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    case nir_op_fceil: {
       src_reg tmp = src_reg(this, glsl_type::float_type);
-      tmp.swizzle =
-         brw_swizzle_for_size(instr->src[0].src.is_ssa ?
-                              instr->src[0].src.ssa->num_components :
-                              instr->src[0].src.reg.reg->num_components);
+      tmp.swizzle = brw_swizzle_for_size(nir_src_num_components(instr->src[0].src));
 
       op[0].negate = !op[0].negate;
       emit(RNDD(dst_reg(tmp), op[0]));

@@ -1893,15 +1893,13 @@ fs_visitor::emit_task_mesh_store(const fs_builder &bld, nir_intrinsic_instr *ins
       bool use_mod = false;
       unsigned mod;
 
-      if (offset_nir_src->is_ssa) {
-         /* Try to calculate the value of (offset + base) % 4. If we can do
-          * this, then we can do indirect writes using only 1 URB write.
-          */
-         use_mod = nir_mod_analysis(nir_get_ssa_scalar(offset_nir_src->ssa, 0), nir_type_uint, 4, &mod);
-         if (use_mod) {
-            mod += nir_intrinsic_base(instr) + component_from_intrinsic(instr);
-            mod %= 4;
-         }
+      /* Try to calculate the value of (offset + base) % 4. If we can do
+       * this, then we can do indirect writes using only 1 URB write.
+       */
+      use_mod = nir_mod_analysis(nir_get_ssa_scalar(offset_nir_src->ssa, 0), nir_type_uint, 4, &mod);
+      if (use_mod) {
+         mod += nir_intrinsic_base(instr) + component_from_intrinsic(instr);
+         mod %= 4;
       }
 
       if (use_mod) {
