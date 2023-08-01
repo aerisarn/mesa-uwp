@@ -124,9 +124,6 @@ ForEachMacros:
   - nir_foreach_use_including_if_safe
   - nir_foreach_use_safe
 
-  - nir_foreach_def
-  - nir_foreach_def_safe
-
   - nir_foreach_phi_src
   - nir_foreach_phi_src_safe
 
