@@ -2480,10 +2480,6 @@ Converter::visit(nir_load_const_instr *insn)
       if (nir_dest_num_components(insn->dest.dest) > 1) { \
          ERROR("nir_alu_instr only supported with 1 component!\n"); \
          return false; \
-      } \
-      if (insn->dest.write_mask != 1) { \
-         ERROR("nir_alu_instr only with write_mask of 1 supported!\n"); \
-         return false; \
       }
 bool
 Converter::visit(nir_alu_instr *insn)
