@@ -690,7 +690,6 @@ nir_alu_instr *
 nir_alu_instr_create(nir_shader *shader, nir_op op)
 {
    unsigned num_srcs = nir_op_infos[op].num_inputs;
-   /* TODO: don't use calloc */
    nir_alu_instr *instr = gc_zalloc_zla(shader->gctx, nir_alu_instr, nir_alu_src, num_srcs);
 
    instr_init(&instr->instr, nir_instr_type_alu);
@@ -752,7 +751,6 @@ nir_intrinsic_instr *
 nir_intrinsic_instr_create(nir_shader *shader, nir_intrinsic_op op)
 {
    unsigned num_srcs = nir_intrinsic_infos[op].num_srcs;
-   /* TODO: don't use calloc */
    nir_intrinsic_instr *instr =
       gc_zalloc_zla(shader->gctx, nir_intrinsic_instr, nir_src, num_srcs);
 
