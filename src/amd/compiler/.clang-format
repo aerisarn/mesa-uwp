@@ -1,6 +1,8 @@
 
 BasedOnStyle: InheritParentConfig
 
+ColumnLimit: 100
+
 # ACO clang-format rules:
 Language: Cpp
 Standard: c++14

@@ -21,7 +21,7 @@ BinPackParameters: true
 
 BreakBeforeBraces: Custom
 
-ColumnLimit: 100
+ColumnLimit: 78
 PenaltyBreakBeforeFirstCallParameter: 1
 PenaltyExcessCharacter: 100
 
