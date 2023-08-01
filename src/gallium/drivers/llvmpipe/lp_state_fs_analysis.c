@@ -235,8 +235,7 @@ get_nir_input_info(const nir_alu_src *src,
    }
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(parent);
    if (!intrin ||
-       intrin->intrinsic != nir_intrinsic_load_deref ||
-       !intrin->src[0].is_ssa) {
+       intrin->intrinsic != nir_intrinsic_load_deref) {
       return false;
    }
 
