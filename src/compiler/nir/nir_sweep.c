@@ -120,7 +120,6 @@ sweep_impl(nir_shader *nir, nir_function_impl *impl)
    ralloc_steal(nir, impl);
 
    steal_list(nir, nir_variable, &impl->locals);
-   steal_list(nir, nir_register, &impl->registers);
 
    foreach_list_typed(nir_cf_node, cf_node, node, &impl->body) {
       sweep_cf_node(nir, cf_node);
@@ -161,7 +160,7 @@ nir_sweep(nir_shader *nir)
    if (nir->info.label)
       ralloc_steal(nir, (char *)nir->info.label);
 
-   /* Variables and registers are not dead.  Steal them back. */
+   /* Variables are not dead.  Steal them back. */
    steal_list(nir, nir_variable, &nir->variables);
 
    /* Recurse into functions, stealing their contents back. */

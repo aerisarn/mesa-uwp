@@ -40,7 +40,6 @@ void nir_inline_function_impl(struct nir_builder *b,
    nir_function_impl *copy = nir_function_impl_clone(b->shader, impl);
 
    exec_list_append(&b->impl->locals, &copy->locals);
-   exec_list_append(&b->impl->registers, &copy->registers);
 
    nir_foreach_block(block, copy) {
       nir_foreach_instr_safe(instr, block) {

@@ -4817,7 +4817,6 @@ bi_compile_variant_nir(nir_shader *nir,
          rzalloc_array(ctx, bi_block *, impl->num_blocks);
 
       ctx->ssa_alloc += impl->ssa_alloc;
-      ctx->reg_alloc += impl->reg_alloc;
 
       emit_cf_list(ctx, &impl->body);
       bi_emit_phis_deferred(ctx);

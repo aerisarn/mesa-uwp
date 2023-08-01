@@ -952,7 +952,6 @@ bool ppir_compile_nir(struct lima_fs_compiled_shader *prog, struct nir_shader *n
                       struct util_debug_callback *debug)
 {
    nir_function_impl *func = nir_shader_get_entrypoint(nir);
-   assert(func->reg_alloc == 0);
    ppir_compiler *comp = ppir_compiler_create(prog, func->ssa_alloc);
    if (!comp)
       return false;

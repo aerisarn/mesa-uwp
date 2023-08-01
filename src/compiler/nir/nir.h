@@ -3225,12 +3225,6 @@ typedef struct {
    /** list for all local variables in the function */
    struct exec_list locals;
 
-   /** list of local registers in the function */
-   struct exec_list registers;
-
-   /** next available local register index */
-   unsigned reg_alloc;
-
    /** next available SSA value index */
    unsigned ssa_alloc;
 

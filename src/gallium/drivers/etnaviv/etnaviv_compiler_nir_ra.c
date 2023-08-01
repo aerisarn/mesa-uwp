@@ -136,7 +136,7 @@ etna_ra_assign(struct etna_compile *c, nir_shader *shader)
    /* this gives an approximation/upper limit on how many nodes are needed
     * (some ssa values do not represent an allocated register)
     */
-   unsigned max_nodes = impl->ssa_alloc + impl->reg_alloc;
+   unsigned max_nodes = impl->ssa_alloc;
    unsigned *live_map = ralloc_array(NULL, unsigned, max_nodes);
    memset(live_map, 0xff, sizeof(unsigned) * max_nodes);
    struct live_def *defs = rzalloc_array(NULL, struct live_def, max_nodes);
