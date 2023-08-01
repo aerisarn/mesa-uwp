@@ -38,10 +38,12 @@
 /* runtime-optimized pipeline state hashing */
 template <zink_dynamic_state DYNAMIC_STATE>
 static uint32_t
-hash_gfx_pipeline_state(const void *key)
+hash_gfx_pipeline_state(const void *key, struct zink_screen *screen)
 {
    const struct zink_gfx_pipeline_state *state = (const struct zink_gfx_pipeline_state *)key;
-   uint32_t hash = _mesa_hash_data(key, offsetof(struct zink_gfx_pipeline_state, hash));
+   uint32_t hash = _mesa_hash_data(key, screen->have_full_ds3 ?
+                                        offsetof(struct zink_gfx_pipeline_state, sample_mask) :
+                                        offsetof(struct zink_gfx_pipeline_state, hash));
    if (DYNAMIC_STATE < ZINK_DYNAMIC_STATE2)
       hash = XXH32(&state->dyn_state3, sizeof(state->dyn_state3), hash);
    if (DYNAMIC_STATE < ZINK_DYNAMIC_STATE3)
@@ -119,7 +121,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    if (state->dirty) {
       if (state->pipeline) //avoid on first hash
          state->final_hash ^= state->hash;
-      state->hash = hash_gfx_pipeline_state<DYNAMIC_STATE>(state);
+      state->hash = hash_gfx_pipeline_state<DYNAMIC_STATE>(state, screen);
       state->final_hash ^= state->hash;
       state->dirty = false;
    }
