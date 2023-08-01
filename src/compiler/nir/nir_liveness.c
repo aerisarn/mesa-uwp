@@ -258,7 +258,7 @@ nir_get_live_ssa_defs(nir_cursor cursor, void *mem_ctx)
 static bool
 src_does_not_use_def(nir_src *src, void *def)
 {
-   return !src->is_ssa || src->ssa != (nir_ssa_def *)def;
+   return src->ssa != (nir_ssa_def *)def;
 }
 
 static bool
@@ -277,8 +277,7 @@ search_for_use_after_instr(nir_instr *start, nir_ssa_def *def)
     * so we need to also check the following if condition, if any.
     */
    nir_if *following_if = nir_block_get_following_if(start->block);
-   if (following_if && following_if->condition.is_ssa &&
-       following_if->condition.ssa == def)
+   if (following_if && following_if->condition.ssa == def)
       return true;
 
    return false;

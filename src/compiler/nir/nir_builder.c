@@ -347,7 +347,7 @@ nir_vec_scalars(nir_builder *build, nir_ssa_scalar *comp, unsigned num_component
 nir_ssa_def *
 nir_ssa_for_src(nir_builder *build, nir_src src, int num_components)
 {
-   if (src.is_ssa && src.ssa->num_components == num_components)
+   if (src.ssa->num_components == num_components)
       return src.ssa;
 
    assert((unsigned)num_components <= nir_src_num_components(src));

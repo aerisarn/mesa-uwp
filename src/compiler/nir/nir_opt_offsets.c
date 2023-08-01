@@ -43,9 +43,7 @@ try_extract_const_addition(nir_builder *b, nir_ssa_scalar val, opt_offsets_state
       return val;
 
    nir_alu_instr *alu = nir_instr_as_alu(val.def->parent_instr);
-   if (alu->op != nir_op_iadd ||
-       !alu->src[0].src.is_ssa ||
-       !alu->src[1].src.is_ssa)
+   if (alu->op != nir_op_iadd)
       return val;
 
    nir_ssa_scalar src[2] = {
@@ -115,7 +113,7 @@ try_fold_load_store(nir_builder *b,
    nir_src *off_src = &intrin->src[offset_src_idx];
    nir_ssa_def *replace_src = NULL;
 
-   if (!off_src->is_ssa || off_src->ssa->bit_size != 32)
+   if (off_src->ssa->bit_size != 32)
       return false;
 
    if (!nir_src_is_const(*off_src)) {

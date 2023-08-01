@@ -498,7 +498,7 @@ nir_vec_scalars(nir_builder *build, nir_ssa_scalar *comp, unsigned num_component
 static inline nir_ssa_def *
 nir_mov_alu(nir_builder *build, nir_alu_src src, unsigned num_components)
 {
-   if (src.src.is_ssa && src.src.ssa->num_components == num_components) {
+   if (src.src.ssa->num_components == num_components) {
       bool any_swizzles = false;
       for (unsigned i = 0; i < num_components; i++) {
          if (src.swizzle[i] != i)

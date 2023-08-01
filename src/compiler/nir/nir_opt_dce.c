@@ -30,13 +30,13 @@
 static bool
 is_dest_live(const nir_dest *dest, BITSET_WORD *defs_live)
 {
-   return !dest->is_ssa || BITSET_TEST(defs_live, dest->ssa.index);
+   return BITSET_TEST(defs_live, dest->ssa.index);
 }
 
 static bool
 mark_src_live(const nir_src *src, BITSET_WORD *defs_live)
 {
-   if (src->is_ssa && !BITSET_TEST(defs_live, src->ssa->index)) {
+   if (!BITSET_TEST(defs_live, src->ssa->index)) {
       BITSET_SET(defs_live, src->ssa->index);
       return true;
    } else {

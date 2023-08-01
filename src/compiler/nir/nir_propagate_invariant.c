@@ -26,11 +26,7 @@
 static void
 add_src(nir_src *src, struct set *invariants)
 {
-   if (src->is_ssa) {
-      _mesa_set_add(invariants, src->ssa);
-   } else {
-      _mesa_set_add(invariants, src->reg.reg);
-   }
+   _mesa_set_add(invariants, src->ssa);
 }
 
 static bool
@@ -43,11 +39,7 @@ add_src_cb(nir_src *src, void *state)
 static bool
 dest_is_invariant(nir_dest *dest, struct set *invariants)
 {
-   if (dest->is_ssa) {
-      return _mesa_set_search(invariants, &dest->ssa);
-   } else {
-      return _mesa_set_search(invariants, dest->reg.reg);
-   }
+   return _mesa_set_search(invariants, &dest->ssa);
 }
 
 static void

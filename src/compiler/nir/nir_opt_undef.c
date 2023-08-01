@@ -76,8 +76,7 @@ opt_undef_vecN(nir_builder *b, nir_alu_instr *alu)
       return false;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-      if (!alu->src[i].src.is_ssa ||
-          alu->src[i].src.ssa->parent_instr->type != nir_instr_type_ssa_undef)
+      if (alu->src[i].src.ssa->parent_instr->type != nir_instr_type_ssa_undef)
          return false;
    }
 
@@ -105,8 +104,7 @@ nir_get_undef_mask(nir_ssa_def *def)
 
    if (nir_op_is_vec(alu->op)) {
       for (int i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-         if (alu->src[i].src.is_ssa &&
-             alu->src[i].src.ssa->parent_instr->type ==
+         if (alu->src[i].src.ssa->parent_instr->type ==
              nir_instr_type_ssa_undef) {
             undef |= BITSET_MASK(nir_ssa_alu_instr_src_components(alu, i)) << i;
          }

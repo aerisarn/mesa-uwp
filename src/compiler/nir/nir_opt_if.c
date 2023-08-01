@@ -1467,11 +1467,11 @@ opt_if_merge(nir_if *nif)
    bool progress = false;
 
    nir_block *next_blk = nir_cf_node_cf_tree_next(&nif->cf_node);
-   if (!next_blk || !nif->condition.is_ssa)
+   if (!next_blk)
       return false;
 
    nir_if *next_if = nir_block_get_following_if(next_blk);
-   if (!next_if || !next_if->condition.is_ssa)
+   if (!next_if)
       return false;
 
    /* Here we merge two consecutive ifs that have the same condition e.g:
