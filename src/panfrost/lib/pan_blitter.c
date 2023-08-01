@@ -308,13 +308,13 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
 }
 #endif
 
+#if PAN_ARCH <= 5
 static void
 pan_blitter_get_blend_shaders(struct panfrost_device *dev, unsigned rt_count,
                               const struct pan_image_view **rts,
                               const struct pan_blit_shader_data *blit_shader,
                               mali_ptr *blend_shaders)
 {
-#if PAN_ARCH <= 5
    if (!rt_count)
       return;
 
@@ -375,8 +375,8 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev, unsigned rt_count,
       pthread_mutex_unlock(&dev->blitter.shaders.lock);
       blend_shaders[i] = blend_shader->address;
    }
-#endif
 }
+#endif
 
 /*
  * Early Mali GPUs did not respect sampler LOD clamps or bias, so the Midgard
@@ -770,8 +770,10 @@ pan_blitter_get_rsd(struct panfrost_device *dev,
    const struct pan_blit_shader_data *blit_shader =
       pan_blitter_get_blit_shader(dev, &blit_key);
 
+#if PAN_ARCH <= 5
    pan_blitter_get_blend_shaders(dev, views->rt_count, views->dst_rts,
                                  blit_shader, blend_shaders);
+#endif
 
    pan_blitter_emit_rsd(dev, blit_shader, views, blend_shaders, rsd_ptr.cpu);
    rsd->address = rsd_ptr.gpu;
