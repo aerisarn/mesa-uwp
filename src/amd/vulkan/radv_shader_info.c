@@ -468,6 +468,13 @@ gather_shader_info_tcs(struct radv_device *device, const nir_shader *nir, const 
    info->tcs.tes_inputs_read = ~0ULL;
    info->tcs.tes_patch_inputs_read = ~0ULL;
 
+   if (!info->inputs_linked)
+      info->tcs.num_linked_inputs = util_last_bit64(nir->info.inputs_read);
+   if (!info->outputs_linked) {
+      info->tcs.num_linked_outputs = util_last_bit64(nir->info.outputs_written);
+      info->tcs.num_linked_patch_outputs = util_last_bit64(nir->info.patch_outputs_written);
+   }
+
    if (!(pipeline_key->dynamic_patch_control_points)) {
       /* Number of tessellation patches per workgroup processed by the current pipeline. */
       info->num_tess_patches =
@@ -493,6 +500,8 @@ gather_shader_info_tes(struct radv_device *device, const nir_shader *nir, struct
    info->tes.point_mode = nir->info.tess.point_mode;
    info->tes.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
 
+   if (!info->inputs_linked)
+      info->tes.num_linked_inputs = util_last_bit64(nir->info.inputs_read);
    if (!info->outputs_linked)
       info->tes.num_linked_outputs = util_last_bit64(nir->info.outputs_written);
 
