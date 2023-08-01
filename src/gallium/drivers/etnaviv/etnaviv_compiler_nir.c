@@ -756,7 +756,6 @@ static nir_const_value *get_alu_cv(nir_alu_src *src)
    nir_const_value *cv = nir_src_as_const_value(src->src);
 
    if (!cv &&
-       src->src.is_ssa &&
        (src->src.ssa->parent_instr->type == nir_instr_type_alu)) {
       nir_alu_instr *parent = nir_instr_as_alu(src->src.ssa->parent_instr);
 
@@ -1015,7 +1014,6 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
             if (nir_src_is_const(*src) || is_sysval(src->ssa->parent_instr) ||
                 (shader->info.stage == MESA_SHADER_FRAGMENT &&
                  deref->var->data.location == FRAG_RESULT_DEPTH &&
-                 src->is_ssa &&
                  src->ssa->parent_instr->type != nir_instr_type_alu)) {
                b.cursor = nir_before_instr(instr);
                nir_instr_rewrite_src(instr, src, nir_src_for_ssa(nir_mov(&b, src->ssa)));

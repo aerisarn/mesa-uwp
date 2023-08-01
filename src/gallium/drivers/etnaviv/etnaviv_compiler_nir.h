@@ -202,7 +202,7 @@ update_swiz_mask(nir_alu_instr *alu, nir_dest *dest, unsigned *swiz, unsigned *m
 static nir_dest *
 real_dest(nir_dest *dest, unsigned *swiz, unsigned *mask)
 {
-   if (!dest || !dest->is_ssa)
+   if (!dest)
       return dest;
 
    bool can_bypass_src = !nir_ssa_def_used_by_if(&dest->ssa);

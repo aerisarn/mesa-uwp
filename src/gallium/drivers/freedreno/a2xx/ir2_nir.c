@@ -433,13 +433,7 @@ emit_alu(struct ir2_context *ctx, nir_alu_instr *alu)
       return;
 
    /* get the number of dst components */
-   if (dst->is_ssa) {
-      ncomp = dst->ssa.num_components;
-   } else {
-      ncomp = 0;
-      for (int i = 0; i < 4; i++)
-         ncomp += !!(alu->dest.write_mask & 1 << i);
-   }
+   ncomp = dst->ssa.num_components;
 
    instr = instr_create_alu(ctx, alu->op, ncomp);
 

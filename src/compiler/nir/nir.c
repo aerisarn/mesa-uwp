@@ -487,12 +487,8 @@ nir_function_create(nir_shader *shader, const char *name)
 static void
 src_copy(nir_src *dest, const nir_src *src, gc_ctx *ctx)
 {
-   dest->is_ssa = src->is_ssa;
-   if (src->is_ssa) {
-      dest->ssa = src->ssa;
-   } else {
-      dest->reg.reg = src->reg.reg;
-   }
+   dest->is_ssa = true;
+   dest->ssa = src->ssa;
 }
 
 /* NOTE: if the instruction you are copying a src to is already added
@@ -521,7 +517,7 @@ nir_alu_src_is_trivial_ssa(const nir_alu_instr *alu, unsigned srcn)
    const nir_alu_src *src = &alu->src[srcn];
    unsigned num_components = nir_ssa_alu_instr_src_components(alu, srcn);
 
-   return src->src.is_ssa && (src->src.ssa->num_components == num_components) &&
+   return (src->src.ssa->num_components == num_components) &&
           (memcmp(src->swizzle, trivial_swizzle, num_components) == 0);
 }
 
@@ -1033,8 +1029,7 @@ add_use_cb(nir_src *src, void *state)
    nir_instr *instr = state;
 
    nir_src_set_parent_instr(src, instr);
-   list_addtail(&src->use_link,
-                src->is_ssa ? &src->ssa->uses : &src->reg.reg->uses);
+   list_addtail(&src->use_link, &src->ssa->uses);
 
    return true;
 }
@@ -1133,7 +1128,7 @@ nir_instr_move(nir_cursor cursor, nir_instr *instr)
 static bool
 src_is_valid(const nir_src *src)
 {
-   return src->is_ssa ? (src->ssa != NULL) : (src->reg.reg != NULL);
+   return (src->ssa != NULL);
 }
 
 static bool
@@ -1304,10 +1299,7 @@ nir_ssa_def_visitor(nir_dest *dest, void *void_state)
 {
    struct foreach_ssa_def_state *state = void_state;
 
-   if (dest->is_ssa)
-      return state->cb(&dest->ssa, state->client_state);
-   else
-      return true;
+   return state->cb(&dest->ssa, state->client_state);
 }
 
 bool
@@ -1438,9 +1430,6 @@ nir_const_value_as_float(nir_const_value value, unsigned bit_size)
 nir_const_value *
 nir_src_as_const_value(nir_src src)
 {
-   if (!src.is_ssa)
-      return NULL;
-
    if (src.ssa->parent_instr->type != nir_instr_type_load_const)
       return NULL;
 
@@ -1520,10 +1509,7 @@ src_add_all_uses(nir_src *src, nir_instr *parent_instr, nir_if *parent_if)
       nir_src_set_parent_if(src, parent_if);
    }
 
-   if (src->is_ssa)
-      list_addtail(&src->use_link, &src->ssa->uses);
-   else
-      list_addtail(&src->use_link, &src->reg.reg->uses);
+   list_addtail(&src->use_link, &src->ssa->uses);
 }
 
 void
@@ -1603,16 +1589,7 @@ nir_ssa_def_rewrite_uses(nir_ssa_def *def, nir_ssa_def *new_ssa)
 void
 nir_ssa_def_rewrite_uses_src(nir_ssa_def *def, nir_src new_src)
 {
-   if (new_src.is_ssa) {
-      nir_ssa_def_rewrite_uses(def, new_src.ssa);
-   } else {
-      nir_foreach_use_including_if_safe(use_src, def) {
-         if (use_src->is_if)
-            nir_if_rewrite_condition(use_src->parent_if, new_src);
-         else
-            nir_instr_rewrite_src(use_src->parent_instr, use_src, new_src);
-      }
-   }
+   nir_ssa_def_rewrite_uses(def, new_src.ssa);
 }
 
 static bool
@@ -3025,13 +3002,13 @@ nir_intrinsic_instr_src_type(const nir_intrinsic_instr *intrin, unsigned src)
    switch (intrin->intrinsic) {
    case nir_intrinsic_store_deref: {
       nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-      if (src == 1 && intrin->src[1].is_ssa)
+      if (src == 1)
          return nir_get_nir_type_for_glsl_type(deref->type);
       break;
    }
 
    case nir_intrinsic_store_output:
-      if (src == 0 && intrin->src[0].is_ssa)
+      if (src == 0)
          return nir_intrinsic_src_type(intrin);
       break;
 
@@ -3048,7 +3025,7 @@ nir_intrinsic_instr_src_type(const nir_intrinsic_instr *intrin, unsigned src)
       int offset_src_idx = nir_get_io_offset_src_number(intrin);
       if (src == offset_src_idx) {
          const nir_src *offset_src = offset_src_idx >= 0 ? &intrin->src[offset_src_idx] : NULL;
-         if (offset_src && offset_src->is_ssa)
+         if (offset_src)
             return nir_type_int;
       }
    }
@@ -3065,16 +3042,12 @@ nir_intrinsic_instr_dest_type(const nir_intrinsic_instr *intrin)
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_deref: {
       nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-      if (intrin->dest.is_ssa)
-         return nir_get_nir_type_for_glsl_type(deref->type);
-      break;
+      return nir_get_nir_type_for_glsl_type(deref->type);
    }
 
    case nir_intrinsic_load_input:
    case nir_intrinsic_load_uniform:
-      if (intrin->dest.is_ssa)
-         return nir_intrinsic_dest_type(intrin);
-      break;
+      return nir_intrinsic_dest_type(intrin);
 
    default:
       break;
