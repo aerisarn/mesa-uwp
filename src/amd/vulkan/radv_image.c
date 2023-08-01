@@ -2628,18 +2628,17 @@ radv_buffer_view_init(struct radv_buffer_view *view, struct radv_device *device,
    RADV_FROM_HANDLE(radv_buffer, buffer, pCreateInfo->buffer);
    uint64_t va = radv_buffer_get_va(buffer->bo) + buffer->offset;
 
-   vk_object_base_init(&device->vk, &view->base, VK_OBJECT_TYPE_BUFFER_VIEW);
+   vk_buffer_view_init(&device->vk, &view->vk, pCreateInfo);
 
    view->bo = buffer->bo;
-   view->range = vk_buffer_range(&buffer->vk, pCreateInfo->offset, pCreateInfo->range);
 
-   radv_make_texel_buffer_descriptor(device, va, pCreateInfo->format, pCreateInfo->offset, view->range, view->state);
+   radv_make_texel_buffer_descriptor(device, va, view->vk.format, view->vk.offset, view->vk.range, view->state);
 }
 
 void
 radv_buffer_view_finish(struct radv_buffer_view *view)
 {
-   vk_object_base_finish(&view->base);
+   vk_buffer_view_finish(&view->vk);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
