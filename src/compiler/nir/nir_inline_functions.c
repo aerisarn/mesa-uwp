@@ -185,9 +185,8 @@ inline_function_impl(nir_function_impl *impl, struct set *inlined)
    }
 
    if (progress) {
-      /* SSA and register indices are completely messed up now */
+      /* Indices are completely messed up now */
       nir_index_ssa_defs(impl);
-      nir_index_local_regs(impl);
 
       nir_metadata_preserve(impl, nir_metadata_none);
    } else {

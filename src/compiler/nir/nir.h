@@ -4127,8 +4127,6 @@ nir_shader *nir_shader_create(void *mem_ctx,
                               const nir_shader_compiler_options *options,
                               shader_info *si);
 
-void nir_reg_remove(nir_register *reg);
-
 /** Adds a variable to the appropriate list in nir_shader */
 void nir_shader_add_variable(nir_shader *shader, nir_variable *var);
 
@@ -4674,7 +4672,6 @@ nir_loop *nir_block_get_following_loop(nir_block *block);
 
 nir_block **nir_block_get_predecessors_sorted(const nir_block *block, void *mem_ctx);
 
-void nir_index_local_regs(nir_function_impl *impl);
 void nir_index_ssa_defs(nir_function_impl *impl);
 unsigned nir_index_instrs(nir_function_impl *impl);
 

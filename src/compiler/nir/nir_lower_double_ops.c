@@ -764,9 +764,8 @@ nir_lower_doubles_impl(nir_function_impl *impl,
                                            &data);
 
    if (progress && (options & nir_lower_fp64_full_software)) {
-      /* SSA and register indices are completely messed up now */
+      /* Indices are completely messed up now */
       nir_index_ssa_defs(impl);
-      nir_index_local_regs(impl);
 
       nir_metadata_preserve(impl, nir_metadata_none);
 

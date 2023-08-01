@@ -220,30 +220,6 @@ nir_shader_create(void *mem_ctx,
    return shader;
 }
 
-static nir_register *
-reg_create(void *mem_ctx, struct exec_list *list)
-{
-   nir_register *reg = ralloc(mem_ctx, nir_register);
-
-   list_inithead(&reg->uses);
-   list_inithead(&reg->defs);
-
-   reg->num_components = 0;
-   reg->bit_size = 32;
-   reg->num_array_elems = 0;
-   reg->divergent = false;
-
-   exec_list_push_tail(list, &reg->node);
-
-   return reg;
-}
-
-void
-nir_reg_remove(nir_register *reg)
-{
-   exec_node_remove(&reg->node);
-}
-
 void
 nir_shader_add_variable(nir_shader *shader, nir_variable *var)
 {
@@ -1380,16 +1356,6 @@ nir_instr_free_and_dce(nir_instr *instr)
 }
 
 /*@}*/
-
-void
-nir_index_local_regs(nir_function_impl *impl)
-{
-   unsigned index = 0;
-   foreach_list_typed(nir_register, reg, node, &impl->registers) {
-      reg->index = index++;
-   }
-   impl->reg_alloc = index;
-}
 
 struct foreach_ssa_def_state {
    nir_foreach_ssa_def_cb cb;

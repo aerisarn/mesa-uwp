@@ -85,7 +85,6 @@ nir_lower_libclc_impl(nir_function_impl *impl,
 
    if (progress) {
       nir_index_ssa_defs(impl);
-      nir_index_local_regs(impl);
       nir_metadata_preserve(impl, nir_metadata_none);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
