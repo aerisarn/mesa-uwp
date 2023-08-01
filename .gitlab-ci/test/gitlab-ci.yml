@@ -30,6 +30,7 @@
     - allow_failure: true
   variables:
     GIT_STRATEGY: fetch
+  timeout: 10m
   script:
     - git diff --color=always --exit-code  # Fails if there are diffs
 
