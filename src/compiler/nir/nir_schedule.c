@@ -1210,23 +1210,6 @@ nir_schedule_get_scoreboard(nir_shader *shader,
    scoreboard->pressure = 0;
 
    nir_foreach_function_impl(impl, shader) {
-      nir_foreach_register(reg, &impl->registers) {
-         struct set *register_uses =
-            _mesa_pointer_set_create(scoreboard);
-
-         _mesa_hash_table_insert(scoreboard->remaining_uses, reg, register_uses);
-
-         nir_foreach_use(src, reg) {
-            _mesa_set_add(register_uses, src->parent_instr);
-         }
-
-         /* XXX: Handle if uses */
-
-         nir_foreach_def(dest, reg) {
-            _mesa_set_add(register_uses, dest->reg.parent_instr);
-         }
-      }
-
       nir_foreach_block(block, impl) {
          nir_foreach_instr(instr, block) {
             nir_foreach_ssa_def(instr, nir_schedule_ssa_def_init_scoreboard,
