@@ -112,7 +112,7 @@ pandecode_make_indent(void)
       fprintf(pandecode_dump_stream, "  ");
 }
 
-static void PRINTFLIKE(1, 2) pandecode_log(const char *format, ...)
+static inline void PRINTFLIKE(1, 2) pandecode_log(const char *format, ...)
 {
    va_list ap;
 
@@ -122,7 +122,7 @@ static void PRINTFLIKE(1, 2) pandecode_log(const char *format, ...)
    va_end(ap);
 }
 
-static void
+static inline void
 pandecode_log_cont(const char *format, ...)
 {
    va_list ap;
