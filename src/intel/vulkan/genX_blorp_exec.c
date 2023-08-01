@@ -396,3 +396,17 @@ genX(blorp_exec)(struct blorp_batch *batch,
    else
       blorp_exec_on_render(batch, params);
 }
+
+static void
+blorp_emit_breakpoint_pre_draw(struct blorp_batch *batch)
+{
+   struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
+   genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, true);
+}
+
+static void
+blorp_emit_breakpoint_post_draw(struct blorp_batch *batch)
+{
+   struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
+   genX(emit_breakpoint)(&cmd_buffer->batch, cmd_buffer->device, false);
+}

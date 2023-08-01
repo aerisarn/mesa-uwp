@@ -123,6 +123,11 @@ static void
 blorp_emit_pipeline(struct blorp_batch *batch,
                     const struct blorp_params *params);
 
+static void
+blorp_emit_breakpoint_pre_draw(struct blorp_batch *batch);
+static void
+blorp_emit_breakpoint_post_draw(struct blorp_batch *batch);
+
 /***** BEGIN blorp_exec implementation ******/
 
 static uint64_t
@@ -2033,6 +2038,7 @@ blorp_exec_3d(struct blorp_batch *batch, const struct blorp_params *params)
    if (!(batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL))
       blorp_emit_depth_stencil_config(batch, params);
 
+   blorp_emit_breakpoint_pre_draw(batch);
    blorp_emit(batch, GENX(3DPRIMITIVE), prim) {
       prim.VertexAccessType = SEQUENTIAL;
       prim.PrimitiveTopologyType = _3DPRIM_RECTLIST;
@@ -2042,7 +2048,7 @@ blorp_exec_3d(struct blorp_batch *batch, const struct blorp_params *params)
       prim.VertexCountPerInstance = 3;
       prim.InstanceCount = params->num_layers;
    }
-
+   blorp_emit_breakpoint_post_draw(batch);
    blorp_measure_end(batch, params);
 }
 

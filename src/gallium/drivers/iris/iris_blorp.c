@@ -489,3 +489,17 @@ genX(init_blorp)(struct iris_context *ice)
    ice->blorp.upload_shader = iris_blorp_upload_shader;
    ice->blorp.exec = iris_blorp_exec;
 }
+
+static void
+blorp_emit_breakpoint_pre_draw(struct blorp_batch *blorp_batch)
+{
+   struct iris_batch *batch = blorp_batch->driver_batch;
+   genX(maybe_emit_breakpoint)(batch, true);
+}
+
+static void
+blorp_emit_breakpoint_post_draw(struct blorp_batch *blorp_batch)
+{
+   struct iris_batch *batch = blorp_batch->driver_batch;
+   genX(maybe_emit_breakpoint)(batch, false);
+}
