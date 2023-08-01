@@ -56,6 +56,10 @@ struct vk_buffer_view {
 VK_DEFINE_NONDISP_HANDLE_CASTS(vk_buffer_view, base, VkBufferView,
                                VK_OBJECT_TYPE_BUFFER_VIEW);
 
+void vk_buffer_view_init(struct vk_device *device,
+                         struct vk_buffer_view *buffer_view,
+                         const VkBufferViewCreateInfo *pCreateInfo);
+void vk_buffer_view_finish(struct vk_buffer_view *buffer_view);
 void *vk_buffer_view_create(struct vk_device *device,
                             const VkBufferViewCreateInfo *pCreateInfo,
                             const VkAllocationCallbacks *alloc,

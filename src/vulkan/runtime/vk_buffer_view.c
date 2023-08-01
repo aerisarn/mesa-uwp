@@ -23,22 +23,19 @@
 
 #include "vk_buffer_view.h"
 
+#include "vk_alloc.h"
 #include "vk_buffer.h"
+#include "vk_device.h"
 #include "vk_format.h"
 
-void *
-vk_buffer_view_create(struct vk_device *device,
-                      const VkBufferViewCreateInfo *pCreateInfo,
-                      const VkAllocationCallbacks *alloc,
-                      size_t size)
+void
+vk_buffer_view_init(struct vk_device *device,
+                    struct vk_buffer_view *buffer_view,
+                    const VkBufferViewCreateInfo *pCreateInfo)
 {
    VK_FROM_HANDLE(vk_buffer, buffer, pCreateInfo->buffer);
-   struct vk_buffer_view *buffer_view;
 
-   buffer_view = vk_object_zalloc(device, alloc, size,
-                                  VK_OBJECT_TYPE_BUFFER_VIEW);
-   if (!buffer_view)
-      return NULL;
+   vk_object_base_init(device, &buffer_view->base, VK_OBJECT_TYPE_BUFFER_VIEW);
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO);
    assert(pCreateInfo->flags == 0);
@@ -51,8 +48,30 @@ vk_buffer_view_create(struct vk_device *device,
                                         pCreateInfo->range);
    buffer_view->elements = buffer_view->range /
                            vk_format_get_blocksize(buffer_view->format);
+}
+
+void *
+vk_buffer_view_create(struct vk_device *device,
+                      const VkBufferViewCreateInfo *pCreateInfo,
+                      const VkAllocationCallbacks *alloc,
+                      size_t size)
+{
+   struct vk_buffer_view *buffer_view;
+
+   buffer_view = vk_zalloc2(&device->alloc, alloc, size, 8,
+                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!buffer_view)
+      return NULL;
+
+   vk_buffer_view_init(device, buffer_view, pCreateInfo);
 
    return buffer_view;
+}
+
+void
+vk_buffer_view_finish(struct vk_buffer_view *buffer_view)
+{
+   vk_object_base_finish(&buffer_view->base);
 }
 
 void
