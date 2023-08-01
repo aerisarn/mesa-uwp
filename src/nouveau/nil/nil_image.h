@@ -196,6 +196,8 @@ nil_image_level_layer_offset_B(const struct nil_image *image,
    return image->levels[level].offset_B + (layer * image->array_stride_B);
 }
 
+struct nil_extent4d nil_image_level_extent_px(const struct nil_image *image,
+                                              uint32_t level);
 struct nil_extent4d nil_image_level_extent_sa(const struct nil_image *image,
                                               uint32_t level);
 uint64_t nil_image_level_size_B(const struct nil_image *image,

@@ -223,10 +223,18 @@ nil_extent4d_B_to_tl(struct nil_extent4d extent_B,
 }
 
 struct nil_extent4d
+nil_image_level_extent_px(const struct nil_image *image, uint32_t level)
+{
+   assert(level == 0 || image->sample_layout == NIL_SAMPLE_LAYOUT_1X1);
+
+   return nil_minify_extent4d(image->extent_px, level);
+}
+
+struct nil_extent4d
 nil_image_level_extent_sa(const struct nil_image *image, uint32_t level)
 {
    const struct nil_extent4d level_extent_px =
-      nil_minify_extent4d(image->extent_px, level);
+      nil_image_level_extent_px(image, level);
 
    return nil_extent4d_px_to_sa(level_extent_px, image->sample_layout);
 }
@@ -235,7 +243,7 @@ static struct nil_extent4d
 image_level_extent_B(const struct nil_image *image, uint32_t level)
 {
    const struct nil_extent4d level_extent_px =
-      nil_minify_extent4d(image->extent_px, level);
+      nil_image_level_extent_px(image, level);
    const struct nil_extent4d level_extent_el =
       nil_extent4d_px_to_el(level_extent_px, image->format,
                             image->sample_layout);
@@ -488,7 +496,7 @@ nil_image_for_level(const struct nil_image *image_in,
    assert(level < image_in->num_levels);
 
    const struct nil_extent4d lvl_extent_px =
-      nil_minify_extent4d(image_in->extent_px, level);
+      nil_image_level_extent_px(image_in, level);
    const struct nil_image_level lvl = image_in->levels[level];
    const uint32_t align_B = nil_tiling_size_B(lvl.tiling);
 
