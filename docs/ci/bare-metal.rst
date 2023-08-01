@@ -215,6 +215,7 @@ Enable the site and restart nginx:
 
 .. code-block:: console
 
+   sudo rm /etc/nginx/sites-enabled/default
    sudo ln -s /etc/nginx/sites-available/fdo-cache /etc/nginx/sites-enabled/fdo-cache
    sudo systemctl restart nginx
 
