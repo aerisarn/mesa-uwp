@@ -42,9 +42,6 @@ opt_undef_csel(nir_alu_instr *instr)
       return false;
 
    for (int i = 1; i <= 2; i++) {
-      if (!instr->src[i].src.is_ssa)
-         continue;
-
       nir_instr *parent = instr->src[i].src.ssa->parent_instr;
       if (parent->type != nir_instr_type_ssa_undef)
          continue;
@@ -143,9 +140,6 @@ opt_undef_store(nir_intrinsic_instr *intrin)
    default:
       return false;
    }
-
-   if (!intrin->src[arg_index].is_ssa)
-      return false;
 
    nir_ssa_def *def = intrin->src[arg_index].ssa;
 

@@ -36,9 +36,6 @@ nir_instr_is_resource_intel(nir_instr *instr)
 static bool
 add_src_instr(nir_src *src, void *state)
 {
-   if (!src->is_ssa)
-      return true;
-
    struct util_dynarray *inst_array = state;
    util_dynarray_foreach(inst_array, nir_instr *, instr_ptr) {
       if (*instr_ptr == src->ssa->parent_instr)
@@ -119,9 +116,6 @@ brw_nir_lower_non_uniform_intrinsic(nir_builder *b,
 
    b->cursor = nir_before_instr(&intrin->instr);
 
-   if (!intrin->src[source].is_ssa)
-      return false;
-
    util_dynarray_clear(inst_array);
 
    nir_intrinsic_instr *old_resource_intel =
@@ -154,9 +148,6 @@ brw_nir_lower_non_uniform_tex(nir_builder *b,
    for (unsigned s = 0; s < tex->num_srcs; s++) {
       if (tex->src[s].src_type != nir_tex_src_texture_handle &&
           tex->src[s].src_type != nir_tex_src_sampler_handle)
-         continue;
-
-      if (!tex->src[s].src.is_ssa)
          continue;
 
       util_dynarray_clear(inst_array);

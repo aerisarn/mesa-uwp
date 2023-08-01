@@ -72,9 +72,6 @@ nir_collect_src_uniforms(const nir_src *src, int component,
                          uint32_t *uni_offsets, uint8_t *num_offsets,
                          unsigned max_num_bo, unsigned max_offset)
 {
-   if (!src->is_ssa)
-      return false;
-
    assert(max_num_bo > 0 && max_num_bo <= MAX_NUM_BO);
    assert(component < src->ssa->num_components);
 
@@ -177,9 +174,6 @@ is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
                       uint32_t *uni_offsets, uint8_t *num_offsets,
                       unsigned max_num_bo, unsigned max_offset)
 {
-   if (!src->is_ssa)
-      return false;
-
    assert(component < src->ssa->num_components);
 
    /* Return true for induction variable (ie. i in for loop) */

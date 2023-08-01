@@ -157,8 +157,6 @@ opt_peel_loop_initial_if(nir_loop *loop)
       return false;
 
    nir_if *nif = nir_cf_node_as_if(if_node);
-   if (!nif->condition.is_ssa)
-      return false;
 
    nir_ssa_def *cond = nif->condition.ssa;
    if (cond->parent_instr->type != nir_instr_type_phi)

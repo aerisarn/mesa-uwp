@@ -550,18 +550,10 @@ ntt_allocate_regs_unoptimized(struct ntt_compile *c, nir_function_impl *impl)
 static const uint32_t
 ntt_extract_const_src_offset(nir_src *src)
 {
-   if (!src->is_ssa)
-      return 0;
-
    nir_ssa_scalar s = nir_get_ssa_scalar(src->ssa, 0);
 
    while (nir_ssa_scalar_is_alu(s)) {
       nir_alu_instr *alu = nir_instr_as_alu(s.def->parent_instr);
-
-      for (int i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-         if (!alu->src[i].src.is_ssa)
-            return 0;
-      }
 
       if (alu->op == nir_op_iadd) {
          for (int i = 0; i < 2; i++) {

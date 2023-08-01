@@ -212,10 +212,6 @@ block_check_for_allowed_instrs(nir_block *block, unsigned *count,
             break;
          }
 
-         /* It must be SSA */
-         if (!mov->dest.dest.is_ssa)
-            return false;
-
          if (alu_ok) {
             /* If the ALU operation is an fsat or a move-like operation, do
              * not count it.  The expectation is that it will eventually be

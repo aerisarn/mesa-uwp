@@ -71,9 +71,6 @@ src_is_type(nir_src src, nir_alu_type type)
 {
    assert(type != nir_type_invalid);
 
-   if (!src.is_ssa)
-      return false;
-
    if (src.ssa->parent_instr->type == nir_instr_type_alu) {
       nir_alu_instr *src_alu = nir_instr_as_alu(src.ssa->parent_instr);
       nir_alu_type output_type = nir_op_infos[src_alu->op].output_type;
@@ -821,8 +818,6 @@ nir_algebraic_instr(nir_builder *build, nir_instr *instr,
       return false;
 
    nir_alu_instr *alu = nir_instr_as_alu(instr);
-   if (!alu->dest.dest.is_ssa)
-      return false;
 
    unsigned bit_size = alu->dest.dest.ssa.bit_size;
    const unsigned execution_mode =

@@ -54,9 +54,6 @@ nir_texop_implies_derivative(nir_texop op)
 static bool
 can_move_src(nir_src *src, void *worklist)
 {
-   if (!src->is_ssa)
-      return false;
-
    nir_instr *instr = src->ssa->parent_instr;
    if (instr->pass_flags)
       return true;

@@ -41,9 +41,6 @@ try_fold_alu(nir_builder *b, nir_alu_instr *alu)
 {
    nir_const_value src[NIR_MAX_VEC_COMPONENTS][NIR_MAX_VEC_COMPONENTS];
 
-   if (!alu->dest.dest.is_ssa)
-      return false;
-
    /* In the case that any outputs/inputs have unsized types, then we need to
     * guess the bit-size. In this case, the validator ensures that all
     * bit-sizes match so we can just take the bit-size from first
@@ -58,9 +55,6 @@ try_fold_alu(nir_builder *b, nir_alu_instr *alu)
       bit_size = alu->dest.dest.ssa.bit_size;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-      if (!alu->src[i].src.is_ssa)
-         return false;
-
       if (bit_size == 0 &&
           !nir_alu_type_get_type_size(nir_op_infos[alu->op].input_types[i]))
          bit_size = alu->src[i].src.ssa->bit_size;

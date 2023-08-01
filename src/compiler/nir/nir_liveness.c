@@ -71,9 +71,6 @@ set_src_live(nir_src *src, void *void_live)
 {
    BITSET_WORD *live = void_live;
 
-   if (!src->is_ssa)
-      return true;
-
    if (nir_src_is_undef(*src))
       return true;   /* undefined variables are never live */
 

@@ -54,14 +54,8 @@ clone_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
 static bool
 replace_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
 {
-   if (!intrin->dest.is_ssa)
-      return false;
-
    if (intrin->intrinsic != nir_intrinsic_load_input &&
        intrin->intrinsic != nir_intrinsic_load_uniform)
-      return false;
-
-   if (!intrin->src[0].is_ssa)
       return false;
 
    if (intrin->src[0].ssa->parent_instr->type == nir_instr_type_load_const)

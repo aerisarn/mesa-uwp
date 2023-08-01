@@ -86,9 +86,6 @@ nir_ssa_def *ir3_nir_try_propagate_bit_shift(nir_builder *b,
 static inline nir_intrinsic_instr *
 ir3_bindless_resource(nir_src src)
 {
-   if (!src.is_ssa)
-      return NULL;
-
    if (src.ssa->parent_instr->type != nir_instr_type_intrinsic)
       return NULL;
 

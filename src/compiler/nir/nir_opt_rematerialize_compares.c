@@ -61,8 +61,6 @@ static bool
 all_srcs_are_ssa(const nir_alu_instr *instr)
 {
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-      if (!instr->src[i].src.is_ssa)
-         return false;
    }
 
    return true;
@@ -72,9 +70,6 @@ all_srcs_are_ssa(const nir_alu_instr *instr)
 static bool
 all_uses_are_bcsel(const nir_alu_instr *instr)
 {
-   if (!instr->dest.dest.is_ssa)
-      return false;
-
    nir_foreach_use(use, &instr->dest.dest.ssa) {
       if (use->parent_instr->type != nir_instr_type_alu)
          return false;

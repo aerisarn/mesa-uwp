@@ -93,8 +93,6 @@ static void
 value_set_ssa_components(struct value *value, nir_ssa_def *def,
                          unsigned num_components)
 {
-   if (!value->is_ssa)
-      memset(&value->ssa, 0, sizeof(value->ssa));
    value->is_ssa = true;
    for (unsigned i = 0; i < num_components; i++) {
       value->ssa.def[i] = def;
@@ -484,16 +482,6 @@ lookup_entry_and_kill_aliases_copy_array(struct copy_prop_var_state *state,
                                          bool *entry_removed)
 {
    util_dynarray_foreach_reverse(copies_array, struct copy_entry, iter) {
-      if (!iter->src.is_ssa) {
-         /* If this write aliases the source of some entry, get rid of it */
-         nir_deref_compare_result result =
-            nir_compare_derefs_and_paths(state->mem_ctx, &iter->src.deref, deref);
-         if (result & nir_derefs_may_alias_bit) {
-            copy_entry_remove(copies_array, iter, entry);
-            continue;
-         }
-      }
-
       nir_deref_compare_result comp =
          nir_compare_derefs_and_paths(state->mem_ctx, &iter->dst, deref);
 
@@ -634,8 +622,6 @@ value_set_from_value(struct value *value, const struct value *from,
 
    if (from->is_ssa) {
       /* Clear value if it was being used as non-SSA. */
-      if (!value->is_ssa)
-         memset(&value->ssa, 0, sizeof(value->ssa));
       value->is_ssa = true;
       /* Only overwrite the written components */
       for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
@@ -948,12 +934,6 @@ invalidate_copies_for_cf_node(struct copy_prop_var_state *state,
 static void
 print_value(struct value *value, unsigned num_components)
 {
-   if (!value->is_ssa) {
-      printf(" %s ", glsl_get_type_name(value->deref.instr->type));
-      nir_print_deref(value->deref.instr, stdout);
-      return;
-   }
-
    bool same_ssa = true;
    for (unsigned i = 0; i < num_components; i++) {
       if (value->ssa.component[i] != i ||

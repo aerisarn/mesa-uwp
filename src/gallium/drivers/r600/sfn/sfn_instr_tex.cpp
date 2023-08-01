@@ -925,9 +925,6 @@ TexInstr::set_coord_offsets(nir_src *offset)
    if (!offset)
       return true;
 
-   if (!offset->is_ssa)
-      return false;
-
    auto literal = nir_src_as_const_value(*offset);
    if (!literal)
       return false;

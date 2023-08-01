@@ -13,9 +13,6 @@
 static bool
 add_src_instr_to_worklist(nir_src *src, void *wl)
 {
-   if (!src->is_ssa)
-      return false;
-
    nir_instr_worklist_push_tail(wl, src->ssa->parent_instr);
    return true;
 }

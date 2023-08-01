@@ -77,18 +77,11 @@ move_vec_src_uses_to_dest_block(nir_block *block)
          continue; /* The loop */
       }
 
-      /* Can't handle non-SSA vec operations */
-      if (!vec->dest.dest.is_ssa)
-         continue;
-
       /* First, mark all of the sources we are going to consider for rewriting
        * to the destination
        */
       int srcs_remaining = 0;
       for (unsigned i = 0; i < nir_op_infos[vec->op].num_inputs; i++) {
-         /* We can't rewrite a source if it's not in SSA form */
-         if (!vec->src[i].src.is_ssa)
-            continue;
 
          srcs_remaining |= 1 << i;
       }

@@ -543,11 +543,6 @@ process_fp_query(struct analysis_state *state, struct analysis_query *aq, uint32
    unsigned src = q.src;
    nir_alu_type use_type = q.use_type;
 
-   if (!instr->src[src].src.is_ssa) {
-      *result = pack_data((struct ssa_result_range){unknown, false, false, false});
-      return;
-   }
-
    if (nir_src_is_const(instr->src[src].src)) {
       *result = pack_data(analyze_constant(instr, src, use_type));
       return;

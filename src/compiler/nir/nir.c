@@ -1077,11 +1077,6 @@ add_reg_def_cb(nir_dest *dest, void *state)
 {
    nir_instr *instr = state;
 
-   if (!dest->is_ssa) {
-      dest->reg.parent_instr = instr;
-      list_addtail(&dest->reg.def_link, &dest->reg.reg->defs);
-   }
-
    return true;
 }
 
@@ -1181,9 +1176,6 @@ static bool
 remove_def_cb(nir_dest *dest, void *state)
 {
    (void) state;
-
-   if (!dest->is_ssa)
-      list_del(&dest->reg.def_link);
 
    return true;
 }
@@ -1531,9 +1523,6 @@ nir_src_as_const_value(nir_src src)
 bool
 nir_src_is_always_uniform(nir_src src)
 {
-   if (!src.is_ssa)
-      return false;
-
    /* Constants are trivially uniform */
    if (src.ssa->parent_instr->type == nir_instr_type_load_const)
       return true;

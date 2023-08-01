@@ -345,9 +345,6 @@ ra_src(struct etna_compile *c, nir_src *src)
 static hw_src
 get_src(struct etna_compile *c, nir_src *src)
 {
-   if (!src->is_ssa)
-      return ra_src(c, src);
-
    nir_instr *instr = src->ssa->parent_instr;
 
    if (instr->pass_flags & BYPASS_SRC) {
@@ -480,10 +477,6 @@ emit_alu(struct etna_compile *c, nir_alu_instr * alu)
 
    unsigned dst_swiz;
    hw_dst dst = ra_dest(c, &alu->dest.dest, &dst_swiz);
-
-   /* compose alu write_mask with RA write mask */
-   if (!alu->dest.dest.is_ssa)
-      dst.write_mask = inst_write_mask_compose(alu->dest.write_mask, dst.write_mask);
 
    switch (alu->op) {
    case nir_op_fdot2:

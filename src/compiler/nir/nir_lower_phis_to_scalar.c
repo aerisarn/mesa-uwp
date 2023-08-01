@@ -49,9 +49,6 @@ static bool
 is_phi_src_scalarizable(nir_phi_src *src,
                         struct lower_phis_to_scalar_state *state)
 {
-   /* Don't know what to do with non-ssa sources */
-   if (!src->src.is_ssa)
-      return false;
 
    nir_instr *src_instr = src->src.ssa->parent_instr;
    switch (src_instr->type) {

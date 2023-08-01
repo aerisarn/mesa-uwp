@@ -45,9 +45,6 @@ coord_offset(nir_ssa_def *ssa)
       if (alu->op != nir_op_vec2)
          return -1;
 
-      if (!alu->src[0].src.is_ssa)
-         return -1;
-
       int base_src_offset = coord_offset(alu->src[0].src.ssa);
       if (base_src_offset < 0)
          return -1;
@@ -56,9 +53,6 @@ coord_offset(nir_ssa_def *ssa)
 
       /* NOTE it might be possible to support more than 2D? */
       for (int i = 1; i < 2; i++) {
-         if (!alu->src[i].src.is_ssa)
-            return -1;
-
          int nth_src_offset = coord_offset(alu->src[i].src.ssa);
          if (nth_src_offset < 0)
             return -1;
@@ -77,12 +71,6 @@ coord_offset(nir_ssa_def *ssa)
    nir_intrinsic_instr *input = nir_instr_as_intrinsic(parent_instr);
 
    if (input->intrinsic != nir_intrinsic_load_interpolated_input)
-      return -1;
-
-   /* limit to load_barycentric_pixel, other interpolation modes don't seem
-    * to be supported:
-    */
-   if (!input->src[0].is_ssa)
       return -1;
 
    nir_intrinsic_instr *interp =

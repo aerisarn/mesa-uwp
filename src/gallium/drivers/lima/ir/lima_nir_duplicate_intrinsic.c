@@ -122,9 +122,6 @@ lima_nir_duplicate_intrinsic_impl(nir_shader *shader, nir_function_impl *impl,
          if (itr->instr.pass_flags)
             continue;
 
-         if (!itr->dest.is_ssa)
-            continue;
-
          lima_nir_duplicate_intrinsic(&builder, itr, op);
       }
    }

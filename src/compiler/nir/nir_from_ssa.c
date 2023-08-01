@@ -575,9 +575,6 @@ nir_rewrite_uses_to_load_reg(nir_builder *b, nir_ssa_def *old,
 static bool
 dest_replace_ssa_with_reg(nir_dest *dest, nir_function_impl *impl)
 {
-   if (!dest->is_ssa)
-      return false;
-
    nir_builder b = nir_builder_create(impl);
 
    nir_ssa_def *reg = decl_reg_for_ssa_def(&b, &dest->ssa);

@@ -38,12 +38,6 @@ lima_nir_split_load_input_instr(nir_builder *b,
    if (alu->op != nir_op_mov)
       return false;
 
-   if (!alu->dest.dest.is_ssa)
-      return false;
-
-   if (!alu->src[0].src.is_ssa)
-      return false;
-
    nir_ssa_def *ssa = alu->src[0].src.ssa;
    if (ssa->parent_instr->type != nir_instr_type_intrinsic)
       return false;

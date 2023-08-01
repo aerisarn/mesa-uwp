@@ -1462,8 +1462,6 @@ static bool
 validate_src_dominance(nir_src *src, void *_state)
 {
    validate_state *state = _state;
-   if (!src->is_ssa)
-      return true;
 
    if (src->ssa->parent_instr->block == src->parent_instr->block) {
       validate_assert(state, src->ssa->index < state->impl->ssa_alloc);
