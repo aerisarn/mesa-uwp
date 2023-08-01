@@ -1072,19 +1072,10 @@ add_ssa_def_cb(nir_ssa_def *def, void *state)
    return true;
 }
 
-static bool
-add_reg_def_cb(nir_dest *dest, void *state)
-{
-   nir_instr *instr = state;
-
-   return true;
-}
-
 static void
 add_defs_uses(nir_instr *instr)
 {
    nir_foreach_src(instr, add_use_cb, instr);
-   nir_foreach_dest(instr, add_reg_def_cb, instr);
    nir_foreach_ssa_def(instr, add_ssa_def_cb, instr);
 }
 
