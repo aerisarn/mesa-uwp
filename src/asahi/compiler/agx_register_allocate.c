@@ -689,6 +689,7 @@ reserve_live_in(struct ra_ctx *rctx)
                 * it in until the end of the loop. Stash in the information
                 * we'll need to fill in the real register later.
                 */
+               assert(rctx->block->loop_header);
                phi->src[pred_idx] = agx_get_index(i, size);
             } else {
                /* Otherwise, we can build the phi now */
