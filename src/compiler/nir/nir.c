@@ -1395,43 +1395,6 @@ nir_instr_ssa_def(nir_instr *instr)
 }
 
 bool
-nir_instr_def_is_register(nir_instr *instr)
-{
-   switch (instr->type) {
-   case nir_instr_type_alu:
-      return !nir_instr_as_alu(instr)->dest.dest.is_ssa;
-
-   case nir_instr_type_deref:
-      return !nir_instr_as_deref(instr)->dest.is_ssa;
-
-   case nir_instr_type_tex:
-      return !nir_instr_as_tex(instr)->dest.is_ssa;
-
-   case nir_instr_type_intrinsic: {
-      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-      return nir_intrinsic_infos[intrin->intrinsic].has_dest &&
-             !intrin->dest.is_ssa;
-   }
-
-   case nir_instr_type_phi:
-      return !nir_instr_as_phi(instr)->dest.is_ssa;
-
-   case nir_instr_type_parallel_copy:
-      unreachable("Parallel copies are unsupported by this function");
-
-   case nir_instr_type_load_const:
-   case nir_instr_type_ssa_undef:
-      return false;
-
-   case nir_instr_type_call:
-   case nir_instr_type_jump:
-      return false;
-   }
-
-   unreachable("Invalid instruction type");
-}
-
-bool
 nir_foreach_phi_src_leaving_block(nir_block *block,
                                   nir_foreach_src_cb cb,
                                   void *state)
