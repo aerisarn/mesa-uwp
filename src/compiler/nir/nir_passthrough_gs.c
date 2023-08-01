@@ -92,36 +92,6 @@ vertices_for_prim(enum mesa_prim prim)
    }
 }
 
-static unsigned int
-array_size_for_prim(enum mesa_prim prim)
-{
-   switch (prim) {
-   case MESA_PRIM_POINTS:
-      return 1;
-   case MESA_PRIM_LINES:
-   case MESA_PRIM_LINE_LOOP:
-   case MESA_PRIM_LINE_STRIP:
-      return 2;
-   case MESA_PRIM_LINES_ADJACENCY:
-   case MESA_PRIM_LINE_STRIP_ADJACENCY:
-      return 4;
-   case MESA_PRIM_TRIANGLES:
-   case MESA_PRIM_TRIANGLE_STRIP:
-   case MESA_PRIM_TRIANGLE_FAN:
-   case MESA_PRIM_POLYGON:
-      return 3;
-   case MESA_PRIM_TRIANGLES_ADJACENCY:
-   case MESA_PRIM_TRIANGLE_STRIP_ADJACENCY:
-      return 6;
-   case MESA_PRIM_QUADS:
-   case MESA_PRIM_QUAD_STRIP:
-      return 4;
-   case MESA_PRIM_PATCHES:
-   default:
-      unreachable("unsupported primitive for gs input");
-   }
-}
-
 static void
 copy_vars(nir_builder *b, nir_deref_instr *dst, nir_deref_instr *src)
 {
