@@ -40,7 +40,6 @@
 #include "util/u_inlines.h"
 #include "lp_jit.h"
 
-struct tgsi_token;
 struct lp_fragment_shader;
 
 

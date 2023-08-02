@@ -70,9 +70,7 @@
 #include "util/os_time.h"
 #include "pipe/p_shader_tokens.h"
 #include "draw/draw_context.h"
-#include "tgsi/tgsi_dump.h"
-#include "tgsi/tgsi_scan.h"
-#include "tgsi/tgsi_parse.h"
+#include "nir/tgsi_to_nir.h"
 #include "gallivm/lp_bld_type.h"
 #include "gallivm/lp_bld_const.h"
 #include "gallivm/lp_bld_conv.h"
@@ -659,7 +657,6 @@ generate_fs_loop(struct gallivm_state *gallivm,
                  LLVMTypeRef thread_data_type,
                  LLVMValueRef thread_data_ptr)
 {
-   const struct tgsi_token *tokens = shader->base.tokens;
    struct lp_type int_type = lp_int_type(type);
    LLVMValueRef mask_ptr = NULL, mask_val = NULL;
    LLVMValueRef z;
@@ -669,6 +666,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    LLVMValueRef z_out = NULL, s_out = NULL;
    struct lp_build_for_loop_state loop_state, sample_loop_state = {0};
    struct lp_build_mask_context mask;
+   struct nir_shader *nir = shader->base.ir.nir;
    /*
     * TODO: figure out if simple_shader optimization is really worthwile to
     * keep. Disabled because it may hide some real bugs in the (depth/stencil)
@@ -1068,12 +1066,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    params.aniso_filter_table = lp_jit_resources_aniso_filter_table(gallivm, resources_type, resources_ptr);
 
    /* Build the actual shader */
-   if (shader->base.type == PIPE_SHADER_IR_TGSI)
-      lp_build_tgsi_soa(gallivm, tokens, &params,
-                        outputs);
-   else
-      lp_build_nir_soa(gallivm, shader->base.ir.nir, &params,
-                       outputs);
+   lp_build_nir_soa(gallivm, nir, &params, outputs);
 
    /* Alpha test */
    if (key->alpha.enabled) {
@@ -3687,10 +3680,7 @@ lp_debug_fs_variant(struct lp_fragment_shader_variant *variant)
 {
    debug_printf("llvmpipe: Fragment shader #%u variant #%u:\n",
                 variant->shader->no, variant->no);
-   if (variant->shader->base.type == PIPE_SHADER_IR_TGSI)
-      tgsi_dump(variant->shader->base.tokens, 0);
-   else
-      nir_print_shader(variant->shader->base.ir.nir, stderr);
+   nir_print_shader(variant->shader->base.ir.nir, stderr);
    dump_fs_variant_key(&variant->key);
    debug_printf("variant->opaque = %u\n", variant->opaque);
    debug_printf("variant->potentially_opaque = %u\n", variant->potentially_opaque);
@@ -3967,8 +3957,6 @@ static void *
 llvmpipe_create_fs_state(struct pipe_context *pipe,
                          const struct pipe_shader_state *templ)
 {
-   llvmpipe_register_shader(pipe, templ, false);
-
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
 
    struct lp_fragment_shader *shader = CALLOC_STRUCT(lp_fragment_shader);
@@ -3979,27 +3967,25 @@ llvmpipe_create_fs_state(struct pipe_context *pipe,
    shader->no = fs_no++;
    list_inithead(&shader->variants.list);
 
-   shader->base.type = templ->type;
-   if (templ->type == PIPE_SHADER_IR_TGSI) {
-      /* get/save the summary info for this shader */
-      lp_build_tgsi_info(templ->tokens, &shader->info);
+   shader->base.type = PIPE_SHADER_IR_NIR;
 
-      /* we need to keep a local copy of the tokens */
-      shader->base.tokens = tgsi_dup_tokens(templ->tokens);
+   if (templ->type == PIPE_SHADER_IR_TGSI) {
+      shader->base.ir.nir = tgsi_to_nir(templ->tokens, pipe->screen, false);
    } else {
       shader->base.ir.nir = templ->ir.nir;
-
-      /* lower FRAG_RESULT_COLOR -> DATA[0-7] to correctly handle unused attachments */
-      nir_shader *nir = shader->base.ir.nir;
-      NIR_PASS_V(nir, nir_lower_fragcolor, nir->info.fs.color_is_dual_source ? 1 : 8);
-
-      nir_tgsi_scan_shader(nir, &shader->info.base, true);
-      shader->info.num_texs = shader->info.base.opcode_count[TGSI_OPCODE_TEX];
    }
+
+   /* lower FRAG_RESULT_COLOR -> DATA[0-7] to correctly handle unused attachments */
+   nir_shader *nir = shader->base.ir.nir;
+   NIR_PASS_V(nir, nir_lower_fragcolor, nir->info.fs.color_is_dual_source ? 1 : 8);
+
+   nir_tgsi_scan_shader(nir, &shader->info.base, true);
+   shader->info.num_texs = shader->info.base.opcode_count[TGSI_OPCODE_TEX];
+
+   llvmpipe_register_shader(pipe, &shader->base, false);
 
    shader->draw_data = draw_create_fragment_shader(llvmpipe->draw, templ);
    if (shader->draw_data == NULL) {
-      FREE((void *) shader->base.tokens);
       FREE(shader);
       return NULL;
    }
@@ -4051,28 +4037,7 @@ llvmpipe_create_fs_state(struct pipe_context *pipe,
       shader->inputs[i].src_index = i+1;
    }
 
-   if (LP_DEBUG & DEBUG_TGSI && templ->type == PIPE_SHADER_IR_TGSI) {
-      debug_printf("llvmpipe: Create fragment shader #%u %p:\n",
-                   shader->no, (void *) shader);
-      tgsi_dump(templ->tokens, 0);
-      debug_printf("usage masks:\n");
-      for (unsigned attrib = 0; attrib < shader->info.base.num_inputs; ++attrib) {
-         unsigned usage_mask = shader->info.base.input_usage_mask[attrib];
-         debug_printf("  IN[%u].%s%s%s%s\n",
-                      attrib,
-                      usage_mask & TGSI_WRITEMASK_X ? "x" : "",
-                      usage_mask & TGSI_WRITEMASK_Y ? "y" : "",
-                      usage_mask & TGSI_WRITEMASK_Z ? "z" : "",
-                      usage_mask & TGSI_WRITEMASK_W ? "w" : "");
-      }
-      debug_printf("\n");
-   }
-
-   /* This will put a derived copy of the tokens into shader->base.tokens */
-   if (templ->type == PIPE_SHADER_IR_TGSI)
-     llvmpipe_fs_analyse(shader, templ->tokens);
-   else
-     llvmpipe_fs_analyse_nir(shader);
+   llvmpipe_fs_analyse_nir(shader);
 
    return shader;
 }
@@ -4144,10 +4109,8 @@ llvmpipe_destroy_fs(struct llvmpipe_context *llvmpipe,
 
    llvmpipe_register_shader(&llvmpipe->pipe, &shader->base, true);
 
-   if (shader->base.ir.nir)
-      ralloc_free(shader->base.ir.nir);
+   ralloc_free(shader->base.ir.nir);
    assert(shader->variants_cached == 0);
-   FREE((void *) shader->base.tokens);
    FREE(shader);
 }
 
