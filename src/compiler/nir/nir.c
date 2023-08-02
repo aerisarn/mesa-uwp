@@ -2741,7 +2741,7 @@ nir_variable *nir_get_binding_variable(nir_shader *shader, nir_binding binding)
 bool
 nir_alu_instr_is_copy(nir_alu_instr *instr)
 {
-   return (instr->op == nir_op_mov) || nir_op_is_vec(instr->op);
+   return nir_op_is_vec(instr->op);
 }
 
 nir_ssa_scalar
