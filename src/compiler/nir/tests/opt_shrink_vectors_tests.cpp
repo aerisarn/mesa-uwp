@@ -90,7 +90,6 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_vectors_load_const_trailing_compo
    nir_alu_instr *alu_instr = nir_instr_as_alu(alu_result->parent_instr);
    set_swizzle(&alu_instr->src[0], "x");
    alu_result->num_components = 1;
-   alu_instr->dest.write_mask = BITFIELD_MASK(1);
 
    nir_store_var(b, out_var, alu_result, 1);
 
@@ -122,14 +121,12 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_vectors_alu_trailing_component_on
    nir_ssa_def *alu_result = nir_build_alu1(b, nir_op_mov, in_def);
    nir_alu_instr *alu_instr = nir_instr_as_alu(alu_result->parent_instr);
    alu_result->num_components = 4;
-   alu_instr->dest.write_mask = BITFIELD_MASK(4);
    set_swizzle(&alu_instr->src[0], "xyxx");
 
    nir_ssa_def *alu2_result = nir_build_alu1(b, nir_op_mov, alu_result);
    nir_alu_instr *alu2_instr = nir_instr_as_alu(alu2_result->parent_instr);
    set_swizzle(&alu2_instr->src[0], "x");
    alu2_result->num_components = 1;
-   alu2_instr->dest.write_mask = BITFIELD_MASK(1);
 
    nir_store_var(b, out_var, alu2_result, 1);
 
@@ -163,7 +160,6 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_vectors_simple)
    nir_ssa_def *alu_result = nir_build_alu2(b, nir_op_fadd, in_def, imm_vec);
    nir_alu_instr *alu_instr = nir_instr_as_alu(alu_result->parent_instr);
    alu_result->num_components = 4;
-   alu_instr->dest.write_mask = BITFIELD_MASK(4);
    set_swizzle(&alu_instr->src[0], "xxxy");
    set_swizzle(&alu_instr->src[1], "ywyz");
 
@@ -229,7 +225,6 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_vectors_vec8)
    nir_ssa_def *alu_result = nir_build_alu2(b, nir_op_fadd, in_def, imm_vec);
    nir_alu_instr *alu_instr = nir_instr_as_alu(alu_result->parent_instr);
    alu_result->num_components = 8;
-   alu_instr->dest.write_mask = BITFIELD_MASK(8);
    set_swizzle(&alu_instr->src[0], "xxxxxxxy");
    set_swizzle(&alu_instr->src[1], "afhdefgh");
 
@@ -294,7 +289,6 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_simple)
    nir_ssa_def *fge = nir_fge(b, phi_def, loop_max);
    nir_alu_instr *fge_alu_instr = nir_instr_as_alu(fge->parent_instr);
    fge->num_components = 1;
-   fge_alu_instr->dest.write_mask = BITFIELD_MASK(1);
    fge_alu_instr->src[0].swizzle[0] = 1;
 
    nir_if *nif = nir_push_if(b, fge);
@@ -307,7 +301,6 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_simple)
    nir_ssa_def *fadd = nir_fadd(b, phi_def, increment);
    nir_alu_instr *fadd_alu_instr = nir_instr_as_alu(fadd->parent_instr);
    fadd->num_components = 1;
-   fadd_alu_instr->dest.write_mask = BITFIELD_MASK(1);
    fadd_alu_instr->src[0].swizzle[0] = 1;
 
    nir_ssa_scalar srcs[4] = {{0}};
@@ -403,7 +396,6 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_swizzle)
    nir_ssa_def *fge = nir_fge(b, phi_def, loop_max);
    nir_alu_instr *fge_alu_instr = nir_instr_as_alu(fge->parent_instr);
    fge->num_components = 1;
-   fge_alu_instr->dest.write_mask = BITFIELD_MASK(1);
    fge_alu_instr->src[0].swizzle[0] = 2;
 
    nir_if *nif = nir_push_if(b, fge);
@@ -416,7 +408,6 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_swizzle)
    nir_ssa_def *fadd = nir_fadd(b, phi_def, increment);
    nir_alu_instr *fadd_alu_instr = nir_instr_as_alu(fadd->parent_instr);
    fadd->num_components = 1;
-   fadd_alu_instr->dest.write_mask = BITFIELD_MASK(1);
    fadd_alu_instr->src[0].swizzle[0] = 2;
 
    nir_ssa_scalar srcs[4] = {{0}};
@@ -513,7 +504,6 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_phi_out)
    nir_ssa_def *fge = nir_fge(b, phi_def, loop_max);
    nir_alu_instr *fge_alu_instr = nir_instr_as_alu(fge->parent_instr);
    fge->num_components = 1;
-   fge_alu_instr->dest.write_mask = BITFIELD_MASK(1);
    fge_alu_instr->src[0].swizzle[0] = 1;
 
    nir_if *nif = nir_push_if(b, fge);
@@ -526,7 +516,6 @@ TEST_F(nir_opt_shrink_vectors_test, opt_shrink_phis_loop_phi_out)
    nir_ssa_def *fadd = nir_fadd(b, phi_def, increment);
    nir_alu_instr *fadd_alu_instr = nir_instr_as_alu(fadd->parent_instr);
    fadd->num_components = 1;
-   fadd_alu_instr->dest.write_mask = BITFIELD_MASK(1);
    fadd_alu_instr->src[0].swizzle[0] = 1;
 
    nir_ssa_scalar srcs[4] = {{0}};

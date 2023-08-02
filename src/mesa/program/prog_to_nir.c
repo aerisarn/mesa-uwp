@@ -179,7 +179,6 @@ ptn_get_src(struct ptn_compile *c, const struct prog_src_register *prog_src)
             assert(swizzle != SWIZZLE_NIL);
             nir_alu_instr *mov = nir_alu_instr_create(b->shader, nir_op_mov);
             nir_ssa_dest_init(&mov->instr, &mov->dest.dest, 1, 32);
-            mov->dest.write_mask = 0x1;
             mov->src[0] = src;
             mov->src[0].swizzle[0] = swizzle;
             nir_builder_instr_insert(b, &mov->instr);

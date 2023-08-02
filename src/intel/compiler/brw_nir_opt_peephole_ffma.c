@@ -224,7 +224,6 @@ brw_nir_opt_peephole_ffma_instr(nir_builder *b,
       mul_src[0] = nir_fneg(b, mul_src[0]);
 
    nir_alu_instr *ffma = nir_alu_instr_create(b->shader, nir_op_ffma);
-   ffma->dest.write_mask = add->dest.write_mask;
 
    for (unsigned i = 0; i < 2; i++) {
       ffma->src[i].src = nir_src_for_ssa(mul_src[i]);

@@ -276,7 +276,6 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
 
    /* update dest */
    def->num_components = rounded;
-   instr->dest.write_mask = BITFIELD_MASK(rounded);
 
    return progress;
 }

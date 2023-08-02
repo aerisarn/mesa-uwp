@@ -791,9 +791,6 @@ read_alu(read_ctx *ctx, union packed_instr header)
 
    read_dest(ctx, &alu->dest.dest, &alu->instr, header);
 
-   unsigned dst_components = nir_dest_num_components(alu->dest.dest);
-   alu->dest.write_mask = u_bit_consecutive(0, dst_components);
-
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
          nir_alu_src *src = &alu->src[i];

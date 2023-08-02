@@ -41,7 +41,6 @@ replace_imul_instr(nir_builder *b, nir_alu_instr *imul, unsigned small_val,
    b->cursor = nir_before_instr(&imul->instr);
 
    nir_alu_instr *imul_32x16 = nir_alu_instr_create(b->shader, new_opcode);
-   imul_32x16->dest.write_mask = imul->dest.write_mask;
 
    nir_alu_src_copy(&imul_32x16->src[0], &imul->src[1 - small_val], imul_32x16);
    nir_alu_src_copy(&imul_32x16->src[1], &imul->src[small_val], imul_32x16);

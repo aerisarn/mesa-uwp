@@ -2078,8 +2078,6 @@ fs_visitor::get_nir_dest(const nir_dest &dest)
 nir_component_mask_t
 fs_visitor::get_nir_write_mask(const nir_alu_dest &dest)
 {
-   assert(dest.write_mask == nir_component_mask(dest.dest.ssa.num_components));
-
    nir_intrinsic_instr *store_reg = nir_store_reg_for_def(&dest.dest.ssa);
    if (!store_reg) {
       return nir_component_mask(dest.dest.ssa.num_components);

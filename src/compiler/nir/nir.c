@@ -655,12 +655,6 @@ instr_init(nir_instr *instr, nir_instr_type type)
 }
 
 static void
-alu_dest_init(nir_alu_dest *dest)
-{
-   dest->write_mask = 0xf;
-}
-
-static void
 alu_src_init(nir_alu_src *src)
 {
    src_init(&src->src);
@@ -676,7 +670,6 @@ nir_alu_instr_create(nir_shader *shader, nir_op op)
 
    instr_init(&instr->instr, nir_instr_type_alu);
    instr->op = op;
-   alu_dest_init(&instr->dest);
    for (unsigned i = 0; i < num_srcs; i++)
       alu_src_init(&instr->src[i]);
 
@@ -2909,7 +2902,7 @@ nir_alu_instr_channel_used(const nir_alu_instr *instr, unsigned src,
    if (nir_op_infos[instr->op].input_sizes[src] > 0)
       return channel < nir_op_infos[instr->op].input_sizes[src];
 
-   return (instr->dest.write_mask >> channel) & 1;
+   return channel < nir_dest_num_components(instr->dest.dest);
 }
 
 nir_component_mask_t

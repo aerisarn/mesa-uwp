@@ -1148,13 +1148,6 @@ typedef struct {
 typedef struct {
    /** Base destination */
    nir_dest dest;
-
-   /**
-    * Write-mask
-    *
-    * Ignored if dest.is_ssa is true
-    */
-   nir_component_mask_t write_mask;
 } nir_alu_dest;
 
 /** NIR sized and unsized types
@@ -2655,7 +2648,6 @@ nir_ssa_scalar_chase_alu_src(nir_ssa_scalar s, unsigned alu_src_idx)
 
    /* Our component must be written */
    assert(s.comp < s.def->num_components);
-   assert(alu->dest.write_mask & (1u << s.comp));
 
    out.def = alu->src[alu_src_idx].src.ssa;
 

@@ -221,7 +221,6 @@ clone_alu(clone_state *state, const nir_alu_instr *alu)
    nalu->no_unsigned_wrap = alu->no_unsigned_wrap;
 
    __clone_dst(state, &nalu->instr, &nalu->dest.dest, &alu->dest.dest);
-   nalu->dest.write_mask = alu->dest.write_mask;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       __clone_src(state, &nalu->instr, &nalu->src[i].src, &alu->src[i].src);

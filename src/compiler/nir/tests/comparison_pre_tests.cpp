@@ -505,7 +505,6 @@ TEST_F(comparison_pre_test, swizzle_of_same_immediate_vector)
    nir_builder_alu_instr_finish_and_insert(&bld, flt);
 
    flt->dest.dest.ssa.num_components = 1;
-   flt->dest.write_mask = 1;
 
    nir_if *nif = nir_push_if(&bld, &flt->dest.dest.ssa);
 
@@ -520,7 +519,6 @@ TEST_F(comparison_pre_test, swizzle_of_same_immediate_vector)
    nir_builder_alu_instr_finish_and_insert(&bld, fadd);
 
    fadd->dest.dest.ssa.num_components = 1;
-   fadd->dest.write_mask = 1;
 
    nir_pop_if(&bld, nif);
 
@@ -562,7 +560,6 @@ TEST_F(comparison_pre_test, non_scalar_add_result)
    nir_builder_alu_instr_finish_and_insert(&bld, flt);
 
    flt->dest.dest.ssa.num_components = 1;
-   flt->dest.write_mask = 1;
 
    nir_if *nif = nir_push_if(&bld, &flt->dest.dest.ssa);
 
@@ -577,7 +574,6 @@ TEST_F(comparison_pre_test, non_scalar_add_result)
    nir_builder_alu_instr_finish_and_insert(&bld, fadd);
 
    fadd->dest.dest.ssa.num_components = 2;
-   fadd->dest.write_mask = 3;
 
    nir_pop_if(&bld, nif);
 

@@ -90,7 +90,6 @@ nir_alu_ssa_dest_init(nir_alu_instr *alu, unsigned num_components,
                       unsigned bit_size)
 {
    nir_ssa_dest_init(&alu->instr, &alu->dest.dest, num_components, bit_size);
-   alu->dest.write_mask = (1 << num_components) - 1;
 }
 
 static nir_ssa_def *
@@ -186,8 +185,6 @@ lower_alu_instr_width(nir_builder *b, nir_instr *instr, void *_data)
    nir_alu_instr *alu = nir_instr_as_alu(instr);
    unsigned num_src = nir_op_infos[alu->op].num_inputs;
    unsigned i, chan;
-
-   assert(alu->dest.write_mask != 0);
 
    b->exact = alu->exact;
 

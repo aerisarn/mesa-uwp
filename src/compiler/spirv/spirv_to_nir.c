@@ -4067,7 +4067,6 @@ create_vec(struct vtn_builder *b, unsigned num_components, unsigned bit_size)
    nir_op op = nir_op_vec(num_components);
    nir_alu_instr *vec = nir_alu_instr_create(b->shader, op);
    nir_ssa_dest_init(&vec->instr, &vec->dest.dest, num_components, bit_size);
-   vec->dest.write_mask = (1 << num_components) - 1;
 
    return vec;
 }

@@ -73,7 +73,6 @@ make_sources_canonical(nir_builder *b, nir_alu_instr *alu, uint32_t start_idx)
           */
          nir_alu_instr *conv_instr =
             nir_instr_as_alu(nir_builder_last_instr(b));
-         conv_instr->dest.write_mask = alu->dest.write_mask;
          conv_instr->dest.dest.ssa.num_components =
             alu->dest.dest.ssa.num_components;
          memcpy(conv_instr->src[0].swizzle,

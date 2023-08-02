@@ -216,13 +216,6 @@ static void
 validate_alu_dest(nir_alu_instr *instr, validate_state *state)
 {
    nir_alu_dest *dest = &instr->dest;
-   unsigned dest_size = nir_dest_num_components(dest->dest);
-   /*
-    * validate that the instruction doesn't write to components not in the
-    * register/SSA value
-    */
-   validate_assert(state, !(dest->write_mask & ~nir_component_mask(dest_size)));
-
    validate_dest(&dest->dest, state, 0, 0);
 }
 

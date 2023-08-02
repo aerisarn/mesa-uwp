@@ -169,7 +169,6 @@ TEST_P(nir_serialize_all_test, alu_two_components_full_swizzle)
    nir_alu_instr *fma_alu = nir_instr_as_alu(fma->parent_instr);
 
    fma->num_components = GetParam();
-   fma_alu->dest.write_mask = (1 << GetParam()) - 1;
 
    memset(fma_alu->src[0].swizzle, 1, GetParam());
    memset(fma_alu->src[1].swizzle, 1, GetParam());

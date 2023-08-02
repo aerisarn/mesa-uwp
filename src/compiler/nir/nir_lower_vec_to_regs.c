@@ -178,7 +178,6 @@ try_coalesce(nir_builder *b, nir_ssa_def *reg, nir_alu_instr *vec,
    assert(bit_size == src_alu->dest.dest.ssa.bit_size);
    nir_ssa_dest_init(&src_alu->instr, &src_alu->dest.dest,
                      dest_components, bit_size);
-   src_alu->dest.write_mask = nir_component_mask(dest_components);
 
    /* Then we can store that ALU result directly into the register */
    b->cursor = nir_after_instr(&src_alu->instr);

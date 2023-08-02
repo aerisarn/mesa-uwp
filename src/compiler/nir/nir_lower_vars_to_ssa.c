@@ -603,7 +603,6 @@ rename_variables(struct lower_variables_state *state)
             for (unsigned i = intrin->num_components; i < NIR_MAX_VEC_COMPONENTS; i++)
                mov->src[0].swizzle[i] = 0;
 
-            mov->dest.write_mask = (1 << intrin->num_components) - 1;
             nir_ssa_dest_init(&mov->instr, &mov->dest.dest,
                               intrin->num_components,
                               intrin->dest.ssa.bit_size);

@@ -1559,8 +1559,8 @@ nir_opt_trim_stack_values(nir_shader *shader)
                nir_alu_instr *alu = nir_instr_as_alu(use_src->parent_instr);
                nir_alu_src *alu_src = exec_node_data(nir_alu_src, use_src, src);
 
-               unsigned write_mask = alu->dest.write_mask;
-               u_foreach_bit(idx, write_mask)
+               unsigned count = nir_dest_num_components(alu->dest.dest);
+               for (unsigned idx = 0; idx < count; ++idx)
                   alu_src->swizzle[idx] = swiz_map[alu_src->swizzle[idx]];
             } else if (use_src->parent_instr->type == nir_instr_type_intrinsic) {
                nir_intrinsic_instr *use_intrin =

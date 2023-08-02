@@ -2879,7 +2879,6 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    }
 
    /* other ops should be scalar */
-   assert(alu->dest.write_mask == 1);
    const struct dxil_value *src[4];
    assert(nir_op_infos[alu->op].num_inputs <= 4);
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {

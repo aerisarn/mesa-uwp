@@ -898,7 +898,6 @@ Lower64BitToVec2::lower(nir_instr *instr)
       auto alu = nir_instr_as_alu(instr);
       alu->dest.dest.ssa.bit_size = 32;
       alu->dest.dest.ssa.num_components *= 2;
-      alu->dest.write_mask = (1 << alu->dest.dest.ssa.num_components) - 1;
       switch (alu->op) {
       case nir_op_pack_64_2x32_split:
          alu->op = nir_op_vec2;
