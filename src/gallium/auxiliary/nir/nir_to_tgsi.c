@@ -1269,16 +1269,13 @@ ntt_get_alu_src(struct ntt_compile *c, nir_alu_instr *instr, int i)
     */
    if (nir_src_bit_size(instr->src[i].src) == 64 &&
       !(src.src.is_ssa && src.src.ssa->parent_instr->type == nir_instr_type_ssa_undef)) {
-      int chan0 = 0, chan1 = 1;
+      int chan1 = 1;
       if (nir_op_infos[instr->op].input_sizes[i] == 0) {
-         chan0 = ffs(instr->dest.write_mask) - 1;
-         chan1 = ffs(instr->dest.write_mask & ~(1 << chan0)) - 1;
-         if (chan1 == -1)
-            chan1 = chan0;
+         chan1 = nir_dest_num_components(instr->dest.dest) > 1 ? 1 : 0;
       }
       usrc = ureg_swizzle(usrc,
-                          src.swizzle[chan0] * 2,
-                          src.swizzle[chan0] * 2 + 1,
+                          src.swizzle[0] * 2,
+                          src.swizzle[0] * 2 + 1,
                           src.swizzle[chan1] * 2,
                           src.swizzle[chan1] * 2 + 1);
    } else {
