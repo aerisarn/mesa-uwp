@@ -1001,7 +1001,8 @@ static bool
 does_varying_match(nir_variable *out_var, nir_variable *in_var)
 {
    return in_var->data.location == out_var->data.location &&
-          in_var->data.location_frac == out_var->data.location_frac;
+          in_var->data.location_frac == out_var->data.location_frac &&
+          in_var->type == out_var->type;
 }
 
 static nir_variable *
