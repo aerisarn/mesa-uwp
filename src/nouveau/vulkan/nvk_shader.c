@@ -1,5 +1,6 @@
 #include "nvk_shader.h"
 
+#include "nvk_cmd_buffer.h"
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_device.h"
 #include "nvk_physical_device.h"
@@ -1109,7 +1110,7 @@ nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
    info->optLevel = debug_get_num_option("NV50_PROG_OPTIMIZE", 3);
    info->io.auxCBSlot = 1;
    info->io.uboInfoBase = 0;
-   info->io.drawInfoBase = 0;
+   info->io.drawInfoBase = nvk_root_descriptor_offset(draw.base_vertex);
    if (nir->info.stage == MESA_SHADER_COMPUTE) {
       info->prop.cp.gridInfoBase = 0;
    } else {
