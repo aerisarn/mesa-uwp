@@ -297,20 +297,26 @@ generate_quad_mask(struct gallivm_state *gallivm,
 #define LATE_DEPTH_WRITE  0x8
 #define EARLY_DEPTH_TEST_INFERRED  0x10 //only with EARLY_DEPTH_TEST
 
+static unsigned
+get_cbuf_location(nir_variable *var, unsigned slot)
+{
+   return (var->data.location - FRAG_RESULT_DATA0) + var->data.index + slot;
+}
 
 static int
-find_output_by_semantic(const struct tgsi_shader_info *info,
-                        enum tgsi_semantic semantic,
-                        unsigned index)
+find_output_by_frag_result(struct nir_shader *shader,
+                           gl_frag_result frag_result)
 {
-   for (int i = 0; i < info->num_outputs; i++)
-      if (info->output_semantic_name[i] == semantic &&
-          info->output_semantic_index[i] == index)
-         return i;
+   nir_foreach_shader_out_variable(var, shader) {
+      int slots = nir_variable_count_slots(var, var->type);
+      for (unsigned s = 0; s < slots; s++) {
+         if (var->data.location + var->data.index + s == frag_result)
+            return var->data.driver_location + s;
+      }
+   }
 
    return -1;
 }
-
 
 /**
  * Fetch the specified lp_jit_viewport structure for a given viewport_index.
@@ -1062,9 +1068,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    /* Alpha test */
    if (key->alpha.enabled) {
-      int color0 = find_output_by_semantic(&shader->info.base,
-                                           TGSI_SEMANTIC_COLOR,
-                                           0);
+      int color0 = find_output_by_frag_result(nir, FRAG_RESULT_DATA0);
 
       if (color0 != -1 && outputs[color0][3]) {
          const struct util_format_description *cbuf_format_desc;
@@ -1084,9 +1088,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    /* Emulate Alpha to Coverage with Alpha test */
    if (key->blend.alpha_to_coverage) {
-      int color0 = find_output_by_semantic(&shader->info.base,
-                                           TGSI_SEMANTIC_COLOR,
-                                           0);
+      int color0 = find_output_by_frag_result(nir, FRAG_RESULT_DATA0);
 
       if (color0 != -1 && outputs[color0][3]) {
          LLVMValueRef alpha = LLVMBuildLoad2(builder, vec_type, outputs[color0][3], "alpha");
@@ -1104,22 +1106,25 @@ generate_fs_loop(struct gallivm_state *gallivm,
    }
 
    if (key->blend.alpha_to_one) {
-      for (unsigned attrib = 0; attrib < shader->info.base.num_outputs; ++attrib) {
-         unsigned cbuf = shader->info.base.output_semantic_index[attrib];
-         if ((shader->info.base.output_semantic_name[attrib] == TGSI_SEMANTIC_COLOR) &&
-             ((cbuf < key->nr_cbufs) || (cbuf == 1 && dual_source_blend)))
-            if (outputs[cbuf][3]) {
-               LLVMBuildStore(builder, lp_build_const_vec(gallivm, type, 1.0),
-                              outputs[cbuf][3]);
-            }
+      nir_foreach_shader_out_variable(var, nir) {
+         if (var->data.location < FRAG_RESULT_DATA0)
+            continue;
+         int slots = nir_variable_count_slots(var, var->type);
+         for (unsigned s = 0; s < slots; s++) {
+            unsigned cbuf = get_cbuf_location(var, s);
+            if ((cbuf < key->nr_cbufs) || (cbuf == 1 && dual_source_blend))
+               if (outputs[cbuf][3]) {
+                  LLVMBuildStore(builder, lp_build_const_vec(gallivm, type, 1.0),
+                                 outputs[cbuf][3]);
+               }
+         }
       }
    }
 
    if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
       LLVMValueRef output_smask = NULL;
-      int smaski = find_output_by_semantic(&shader->info.base,
-                                           TGSI_SEMANTIC_SAMPLEMASK,
-                                           0);
+      int smaski = find_output_by_frag_result(nir, FRAG_RESULT_SAMPLE_MASK);
+
       struct lp_build_context smask_bld;
       lp_build_context_init(&smask_bld, gallivm, int_type);
 
@@ -1144,9 +1149,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
    }
 
    if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)) {
-      int pos0 = find_output_by_semantic(&shader->info.base,
-                                         TGSI_SEMANTIC_POSITION,
-                                         0);
+      int pos0 = find_output_by_frag_result(nir, FRAG_RESULT_DEPTH);
+
       LLVMValueRef out = LLVMBuildLoad2(builder, vec_type, outputs[pos0][2], "");
       LLVMValueRef idx = loop_state.counter;
       if (key->min_samples > 1)
@@ -1157,9 +1161,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
    }
 
    if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) {
-      int sten_out = find_output_by_semantic(&shader->info.base,
-                                             TGSI_SEMANTIC_STENCIL,
-                                             0);
+      int sten_out = find_output_by_frag_result(nir, FRAG_RESULT_STENCIL);
+
       LLVMValueRef out = LLVMBuildLoad2(builder, vec_type,
                                         outputs[sten_out][1], "output.s");
       LLVMValueRef idx = loop_state.counter;
@@ -1172,43 +1175,48 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    bool has_cbuf0_write = false;
    /* Color write - per fragment sample */
-   for (unsigned attrib = 0; attrib < shader->info.base.num_outputs; ++attrib) {
-      unsigned cbuf = shader->info.base.output_semantic_index[attrib];
-      if ((shader->info.base.output_semantic_name[attrib]
-           == TGSI_SEMANTIC_COLOR) &&
-           ((cbuf < key->nr_cbufs) || (cbuf == 1 && dual_source_blend))) {
-         if (cbuf == 0) {
-            /* XXX: there is an edge case with FB fetch where gl_FragColor and
-             * gl_LastFragData[0] are used together. This creates both
-             * FRAG_RESULT_COLOR and FRAG_RESULT_DATA* output variables. This
-             * loop then writes to cbuf 0 twice, owerwriting the correct value
-             * from gl_FragColor with some garbage. This case is excercised in
-             * one of deqp tests.  A similar bug can happen if
-             * gl_SecondaryFragColorEXT and gl_LastFragData[1] are mixed in
-             * the same fashion...  This workaround will break if
-             * gl_LastFragData[0] goes in outputs list before
-             * gl_FragColor. This doesn't seem to happen though.
-             */
-            if (has_cbuf0_write)
-               continue;
-            has_cbuf0_write = true;
-         }
+   nir_foreach_shader_out_variable(var, nir) {
+      if (var->data.location < FRAG_RESULT_DATA0)
+         continue;
+      int slots = nir_variable_count_slots(var, var->type);
 
-         for (unsigned chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
-            if (outputs[attrib][chan]) {
-               /* XXX: just initialize outputs to point at colors[] and
-                * skip this.
+      for (unsigned s = 0; s < slots; s++) {
+         unsigned cbuf = get_cbuf_location(var, s);
+         unsigned attrib = var->data.driver_location + s;
+         if ((cbuf < key->nr_cbufs) || (cbuf == 1 && dual_source_blend)) {
+            if (cbuf == 0) {
+               /* XXX: there is an edge case with FB fetch where gl_FragColor and
+                * gl_LastFragData[0] are used together. This creates both
+                * FRAG_RESULT_COLOR and FRAG_RESULT_DATA* output variables. This
+                * loop then writes to cbuf 0 twice, owerwriting the correct value
+                * from gl_FragColor with some garbage. This case is excercised in
+                * one of deqp tests.  A similar bug can happen if
+                * gl_SecondaryFragColorEXT and gl_LastFragData[1] are mixed in
+                * the same fashion...  This workaround will break if
+                * gl_LastFragData[0] goes in outputs list before
+                * gl_FragColor. This doesn't seem to happen though.
                 */
-               LLVMValueRef out = LLVMBuildLoad2(builder, vec_type, outputs[attrib][chan], "");
-               LLVMValueRef color_ptr;
-               LLVMValueRef color_idx = loop_state.counter;
-               if (key->min_samples > 1)
-                  color_idx = LLVMBuildAdd(builder, color_idx,
-                                           LLVMBuildMul(builder, sample_loop_state.counter, num_loop, ""), "");
-               color_ptr = LLVMBuildGEP2(builder, vec_type, out_color[cbuf][chan],
-                                         &color_idx, 1, "");
-               lp_build_name(out, "color%u.%c", attrib, "rgba"[chan]);
-               LLVMBuildStore(builder, out, color_ptr);
+               if (has_cbuf0_write)
+                  continue;
+               has_cbuf0_write = true;
+            }
+
+            for (unsigned chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
+               if (outputs[attrib][chan]) {
+                  /* XXX: just initialize outputs to point at colors[] and
+                   * skip this.
+                   */
+                  LLVMValueRef out = LLVMBuildLoad2(builder, vec_type, outputs[attrib][chan], "");
+                  LLVMValueRef color_ptr;
+                  LLVMValueRef color_idx = loop_state.counter;
+                  if (key->min_samples > 1)
+                     color_idx = LLVMBuildAdd(builder, color_idx,
+                                              LLVMBuildMul(builder, sample_loop_state.counter, num_loop, ""), "");
+                  color_ptr = LLVMBuildGEP2(builder, vec_type, out_color[cbuf][chan],
+                                            &color_idx, 1, "");
+                  lp_build_name(out, "color%u.%c", attrib, "rgba"[chan]);
+                  LLVMBuildStore(builder, out, color_ptr);
+               }
             }
          }
       }
@@ -3465,7 +3473,7 @@ generate_fragment(struct llvmpipe_context *lp,
    for (unsigned cbuf = 0; cbuf < key->nr_cbufs; cbuf++) {
       if (key->cbuf_format[cbuf] != PIPE_FORMAT_NONE &&
           (key->blend.rt[cbuf].blend_enable || key->blend.logicop_enable ||
-           find_output_by_semantic(&shader->info.base, TGSI_SEMANTIC_COLOR, cbuf) != -1)) {
+           find_output_by_frag_result(nir, FRAG_RESULT_DATA0 + cbuf) != -1)) {
          LLVMValueRef color_ptr;
          LLVMValueRef stride;
          LLVMValueRef sample_stride = NULL;
