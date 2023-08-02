@@ -22,7 +22,6 @@
  */
 
 #include "anv_nir.h"
-#include "program/prog_parameter.h"
 #include "nir/nir_builder.h"
 #include "compiler/brw_nir.h"
 #include "util/mesa-sha1.h"

@@ -27,7 +27,6 @@
 #include "brw_vec4.h"
 #include "brw_vec4_builder.h"
 #include "brw_cfg.h"
-#include "program/program.h"
 
 using namespace brw;
 

@@ -28,7 +28,6 @@
 #include "brw_private.h"
 #include "brw_vec4_tes.h"
 #include "dev/intel_debug.h"
-#include "main/uniforms.h"
 #include "util/macros.h"
 
 enum brw_reg_type

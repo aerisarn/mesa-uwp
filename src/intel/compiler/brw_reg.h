@@ -44,8 +44,10 @@
 
 #include <stdbool.h>
 #include "util/compiler.h"
-#include "main/macros.h"
-#include "program/prog_instruction.h"
+#include "util/glheader.h"
+#include "util/macros.h"
+#include "util/rounding.h"
+#include "util/u_math.h"
 #include "brw_eu_defines.h"
 #include "brw_reg_type.h"
 

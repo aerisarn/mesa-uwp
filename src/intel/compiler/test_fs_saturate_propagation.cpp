@@ -24,7 +24,6 @@
 #include <gtest/gtest.h>
 #include "brw_fs.h"
 #include "brw_cfg.h"
-#include "program/program.h"
 
 using namespace brw;
 

@@ -28,12 +28,14 @@
 #include "dev/intel_device_info.h"
 
 #include "util/macros.h" /* Needed for MAX3 and MAX2 for format_rgb9e5 */
-#include "util/format_srgb.h"
-#include "util/format_rgb9e5.h"
-#include "util/format_r11g11b10f.h"
 
-/* Header-only format conversion include */
-#include "main/format_utils.h"
+#include "util/format/format_utils.h"
+#include "util/format_r11g11b10f.h"
+#include "util/format_rgb9e5.h"
+#include "util/format_srgb.h"
+#include "util/half_float.h"
+#include "util/rounding.h"
+#include "util/u_math.h"
 
 struct surface_format_info {
    bool exists;

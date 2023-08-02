@@ -26,7 +26,6 @@
 #include "brw_eu.h"
 #include "dev/intel_debug.h"
 #include "compiler/nir/nir.h"
-#include "main/errors.h"
 #include "util/u_debug.h"
 
 #define COMMON_OPTIONS                                                        \

@@ -30,7 +30,6 @@
 #include "brw_dead_control_flow.h"
 #include "brw_private.h"
 #include "dev/intel_debug.h"
-#include "program/prog_parameter.h"
 #include "util/u_math.h"
 
 #define MAX_INSTRUCTION (1 << 30)

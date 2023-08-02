@@ -28,7 +28,6 @@
  * from the LIR.
  */
 
-#include "main/macros.h"
 #include "brw_eu.h"
 #include "brw_fs.h"
 #include "brw_fs_live_variables.h"
@@ -41,7 +40,6 @@
 #include "dev/intel_wa.h"
 #include "compiler/glsl_types.h"
 #include "compiler/nir/nir_builder.h"
-#include "program/prog_parameter.h"
 #include "util/u_math.h"
 
 #include <memory>
