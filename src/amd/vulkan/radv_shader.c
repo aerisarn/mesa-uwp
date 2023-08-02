@@ -2632,6 +2632,54 @@ fail:
    return NULL;
 }
 
+struct radv_shader_part *
+radv_create_tcs_epilog(struct radv_device *device, const struct radv_tcs_epilog_key *key)
+{
+   struct radv_shader_part *epilog;
+   struct radv_shader_args args = {0};
+   struct radv_nir_compiler_options options = {0};
+   radv_fill_nir_compiler_options(&options, device, NULL, false,
+                                  device->instance->debug_flags & RADV_DEBUG_DUMP_EPILOGS, false,
+                                  device->instance->debug_flags & RADV_DEBUG_HANG, false);
+
+   struct radv_shader_info info = {0};
+   info.stage = MESA_SHADER_TESS_CTRL;
+   info.wave_size = device->physical_device->ge_wave_size;
+   info.workgroup_size = 64;
+
+   radv_declare_tcs_epilog_args(device, key, &args);
+
+#ifdef LLVM_AVAILABLE
+   if (options.dump_shader || options.record_ir)
+      ac_init_llvm_once();
+#endif
+
+   struct radv_shader_part_binary *binary = NULL;
+   struct aco_shader_info ac_info;
+   struct aco_tcs_epilog_info ac_epilog_info;
+   struct aco_compiler_options ac_opts;
+   radv_aco_convert_shader_info(&ac_info, &info, &args, &options.key, options.info->gfx_level);
+   radv_aco_convert_opts(&ac_opts, &options, &args);
+   radv_aco_convert_tcs_epilog_key(&ac_epilog_info, key, &args);
+   aco_compile_tcs_epilog(&ac_opts, &ac_info, &ac_epilog_info, &args.ac, &radv_aco_build_shader_part, (void **)&binary);
+
+   epilog = radv_shader_part_create(device, binary, info.wave_size);
+   if (!epilog)
+      goto fail;
+
+   if (options.dump_shader) {
+      fprintf(stderr, "TCS epilog");
+      fprintf(stderr, "\ndisasm:\n%s\n", epilog->disasm_string);
+   }
+
+   free(binary);
+   return epilog;
+
+fail:
+   free(binary);
+   return NULL;
+}
+
 void
 radv_shader_part_destroy(struct radv_device *device, struct radv_shader_part *shader_part)
 {

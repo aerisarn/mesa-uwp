@@ -766,3 +766,19 @@ radv_declare_ps_epilog_args(const struct radv_device *device, const struct radv_
       ac_add_arg(&args->ac, AC_ARG_VGPR, 4, AC_ARG_FLOAT, &args->ps_epilog_inputs[i]);
    }
 }
+
+void
+radv_declare_tcs_epilog_args(const struct radv_device *device, const struct radv_tcs_epilog_key *key,
+                             struct radv_shader_args *args)
+{
+   const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
+
+   radv_init_shader_args(device, MESA_SHADER_TESS_CTRL, args);
+
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ac.ring_offsets);
+
+   if (gfx_level < GFX11)
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
+
+   /* TODO: declare other arguments. */
+}

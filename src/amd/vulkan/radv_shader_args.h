@@ -103,5 +103,8 @@ void radv_declare_shader_args(const struct radv_device *device, const struct rad
 void radv_declare_ps_epilog_args(const struct radv_device *device, const struct radv_ps_epilog_key *key,
                                  struct radv_shader_args *args);
 
+void radv_declare_tcs_epilog_args(const struct radv_device *device, const struct radv_tcs_epilog_key *key,
+                                  struct radv_shader_args *args);
+
 void radv_declare_rt_shader_args(enum amd_gfx_level gfx_level, struct radv_shader_args *args);
 #endif
