@@ -51,6 +51,7 @@
 #include "lp_cs_tpool.h"
 #include "frontend/sw_winsys.h"
 #include "nir/nir_to_tgsi_info.h"
+#include "nir/tgsi_to_nir.h"
 #include "util/mesa-sha1.h"
 #include "nir_serialize.h"
 
@@ -862,7 +863,11 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
    shader->no = cs_no++;
 
    shader->base.type = templ->ir_type;
-   if (templ->ir_type == PIPE_SHADER_IR_NIR_SERIALIZED) {
+
+   if (shader->base.type == PIPE_SHADER_IR_TGSI) {
+      shader->base.ir.nir = tgsi_to_nir(templ->prog, pipe->screen, false);
+      shader->base.type = PIPE_SHADER_IR_NIR;
+   } else if (templ->ir_type == PIPE_SHADER_IR_NIR_SERIALIZED) {
       struct blob_reader reader;
       const struct pipe_binary_program_header *hdr = templ->prog;
 
@@ -875,16 +880,12 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
       shader->zero_initialize_shared_memory = ((struct nir_shader *)shader->base.ir.nir)->info.zero_initialize_shared_memory;
    } else if (templ->ir_type == PIPE_SHADER_IR_NIR) {
       shader->base.ir.nir = (struct nir_shader *)templ->prog;
+   }
+
+   if (shader->base.type == PIPE_SHADER_IR_NIR) {
       shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.shared_size;
       shader->zero_initialize_shared_memory = ((struct nir_shader *)shader->base.ir.nir)->info.zero_initialize_shared_memory;
-   }
-   if (shader->base.type == PIPE_SHADER_IR_TGSI) {
-      /* get/save the summary info for this shader */
-      lp_build_tgsi_info(templ->prog, &shader->info);
 
-      /* we need to keep a local copy of the tokens */
-      shader->base.tokens = tgsi_dup_tokens(templ->prog);
-   } else {
       nir_tgsi_scan_shader(shader->base.ir.nir, &shader->info.base, false);
    }
 
