@@ -11287,6 +11287,11 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
    nir_function_impl* func = nir_shader_get_entrypoint(nir);
    visit_cf_list(&ctx, &func->body);
 
+   if (endif_merged_wave_info) {
+      begin_divergent_if_else(&ctx, ic_merged_wave_info);
+      end_divergent_if(&ctx, ic_merged_wave_info);
+   }
+
    if (ctx.program->info.has_epilog) {
       if (ctx.stage == fragment_fs) {
          create_fs_jump_to_epilog(&ctx);
@@ -11298,11 +11303,6 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
          assert(ctx.stage == tess_control_hs);
          create_tcs_jump_to_epilog(&ctx);
       }
-   }
-
-   if (endif_merged_wave_info) {
-      begin_divergent_if_else(&ctx, ic_merged_wave_info);
-      end_divergent_if(&ctx, ic_merged_wave_info);
    }
 
    cleanup_context(&ctx);
