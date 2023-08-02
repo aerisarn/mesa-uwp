@@ -2927,7 +2927,6 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.consts_ptr = params->consts_ptr;
    bld.ssbo_ptr = params->ssbo_ptr;
    bld.sampler = params->sampler;
-//   bld.bld_base.info = params->info;
 
    bld.resources_type = params->resources_type;
    bld.resources_ptr = params->resources_ptr;
@@ -2940,7 +2939,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.coro = params->coro;
    bld.kernel_args_ptr = params->kernel_args;
    bld.indirects = 0;
-   if (params->info->indirect_files & (1 << TGSI_FILE_INPUT))
+   if (shader->info.inputs_read_indirectly)
       bld.indirects |= nir_var_shader_in;
 
    bld.gs_iface = params->gs_iface;
