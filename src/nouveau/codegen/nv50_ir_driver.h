@@ -55,6 +55,12 @@ struct nv50_ir_varying
    uint8_t si; /* TGSI semantic index */
 };
 
+struct nv50_ir_sysval
+{
+   uint8_t sn; /* TGSI semantic name */
+   uint8_t slot[4]; /* for nv50: native slots for xyzw (addresses in 32-bit words) */
+};
+
 #ifndef NDEBUG
 # define NV50_IR_DEBUG_BASIC     (1 << 0)
 # define NV50_IR_DEBUG_VERBOSE   (2 << 0)
@@ -150,7 +156,7 @@ struct nv50_ir_prog_info_out
       void *fixupData;
    } bin;
 
-   struct nv50_ir_varying sv[NV50_CODEGEN_MAX_VARYINGS];
+   struct nv50_ir_sysval sv[NV50_CODEGEN_MAX_VARYINGS];
    struct nv50_ir_varying in[NV50_CODEGEN_MAX_VARYINGS];
    struct nv50_ir_varying out[NV50_CODEGEN_MAX_VARYINGS];
    uint8_t numInputs;
