@@ -55,7 +55,6 @@
       - src/drm-shim/**/*
       - src/gbm/**/*
       - src/gtest/**/*
-      - src/include/**/*
       # Some src/util and src/compiler files use headers from mesa/ (e.g.
       # mtypes.h).  We should clean that up.
       - src/mesa/**/*.h

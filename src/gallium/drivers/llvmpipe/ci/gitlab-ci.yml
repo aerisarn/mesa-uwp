@@ -25,7 +25,6 @@
       - .gitattributes
       - include/**/*
       - src/compiler/**/*
-      - src/include/**/*
       - src/util/**/*
       when: on_success
     - !reference [.gallium-core-rules, rules]
