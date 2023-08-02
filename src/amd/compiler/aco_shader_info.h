@@ -77,6 +77,11 @@ struct aco_ps_epilog_info {
    bool mrt0_is_dual_src;
 };
 
+struct aco_tcs_epilog_info {
+   enum tess_primitive_mode primitive_mode;
+   bool tes_reads_tessfactors;
+};
+
 struct aco_shader_info {
    enum ac_hw_stage hw_stage;
    uint8_t wave_size;

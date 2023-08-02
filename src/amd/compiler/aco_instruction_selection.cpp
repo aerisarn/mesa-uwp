@@ -200,6 +200,7 @@ emit_bpermute(isel_context* ctx, Builder& bld, Temp index, Temp data)
       ctx->options->gfx_level >= GFX10 && ctx->options->gfx_level < GFX11 &&
       ctx->program->wave_size == 64 &&
       ((ctx->stage == fragment_fs && ctx->program->info.ps.has_epilog) ||
+       (ctx->stage == tess_control_hs && ctx->program->info.tcs.has_epilog) ||
        ctx->stage == raytracing_cs);
 
    if (ctx->options->gfx_level <= GFX7 || avoid_shared_vgprs) {
@@ -10855,6 +10856,12 @@ create_fs_jump_to_epilog(isel_context* ctx)
    ctx->block->instructions.emplace_back(std::move(jump));
 }
 
+static void
+create_tcs_jump_to_epilog(isel_context* ctx)
+{
+   /* TODO */
+}
+
 Pseudo_instruction*
 add_startpgm(struct isel_context* ctx)
 {
@@ -11295,6 +11302,8 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
       /* FS epilogs always have at least one color/null export. */
       ctx.program->has_color_exports = true;
       ctx.block->kind |= block_kind_export_end;
+   } else if (ctx.stage == tess_control_hs && ctx.program->info.tcs.has_epilog) {
+      create_tcs_jump_to_epilog(&ctx);
    }
 
    if (endif_merged_wave_info) {
@@ -11359,7 +11368,7 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
                const struct aco_shader_info* info, const struct ac_shader_args* args)
 {
    isel_context ctx =
-      setup_isel_context(program, shader_count, shaders, config, options, info, args, false);
+      setup_isel_context(program, shader_count, shaders, config, options, info, args, false, false);
 
    if (ctx.stage == raytracing_cs)
       return select_program_rt(ctx, shader_count, shaders, args);
@@ -11949,7 +11958,8 @@ select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
                  const struct ac_shader_args* args)
 {
    const struct aco_ps_epilog_info* einfo = (const struct aco_ps_epilog_info*)pinfo;
-   isel_context ctx = setup_isel_context(program, 0, NULL, config, options, info, args, true);
+   isel_context ctx =
+      setup_isel_context(program, 0, NULL, config, options, info, args, true, false);
 
    ctx.block->fp_mode = program->next_fp_mode;
 
@@ -12011,4 +12021,33 @@ select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
 
    cleanup_cfg(program);
 }
+
+void
+select_tcs_epilog(Program* program, void* pinfo, ac_shader_config* config,
+                  const struct aco_compiler_options* options, const struct aco_shader_info* info,
+                  const struct ac_shader_args* args)
+{
+   UNUSED const struct aco_tcs_epilog_info* einfo = (const struct aco_tcs_epilog_info*)pinfo;
+   isel_context ctx =
+      setup_isel_context(program, 0, NULL, config, options, info, args, false, true);
+
+   ctx.block->fp_mode = program->next_fp_mode;
+
+   add_startpgm(&ctx);
+   append_logical_start(ctx.block);
+
+   Builder bld(ctx.program, ctx.block);
+
+   /* TODO */
+
+   program->config->float_mode = program->blocks[0].fp_mode.val;
+
+   append_logical_end(ctx.block);
+   ctx.block->kind |= block_kind_export_end;
+   bld.reset(ctx.block);
+   bld.sopp(aco_opcode::s_endpgm);
+
+   cleanup_cfg(program);
+}
+
 } // namespace aco

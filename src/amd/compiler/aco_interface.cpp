@@ -386,3 +386,13 @@ aco_compile_ps_epilog(const struct aco_compiler_options* options,
    aco_compile_shader_part(options, info, args, aco::select_ps_epilog, (void*)pinfo, build_epilog,
                            binary);
 }
+
+void
+aco_compile_tcs_epilog(const struct aco_compiler_options* options,
+                       const struct aco_shader_info* info, const struct aco_tcs_epilog_info* pinfo,
+                       const struct ac_shader_args* args, aco_shader_part_callback* build_epilog,
+                       void** binary)
+{
+   aco_compile_shader_part(options, info, args, aco::select_tcs_epilog, (void*)pinfo, build_epilog,
+                           binary);
+}
