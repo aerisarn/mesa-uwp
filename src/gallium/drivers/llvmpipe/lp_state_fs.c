@@ -1186,8 +1186,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
       if ((shader->info.base.output_semantic_name[attrib]
            == TGSI_SEMANTIC_COLOR) &&
            ((cbuf < key->nr_cbufs) || (cbuf == 1 && dual_source_blend))) {
-         if (cbuf == 0 &&
-             shader->info.base.properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS]) {
+         if (cbuf == 0) {
             /* XXX: there is an edge case with FB fetch where gl_FragColor and
              * gl_LastFragData[0] are used together. This creates both
              * FRAG_RESULT_COLOR and FRAG_RESULT_DATA* output variables. This
