@@ -1133,18 +1133,9 @@ remove_use_cb(nir_src *src, void *state)
    return true;
 }
 
-static bool
-remove_def_cb(nir_dest *dest, void *state)
-{
-   (void) state;
-
-   return true;
-}
-
 static void
 remove_defs_uses(nir_instr *instr)
 {
-   nir_foreach_dest(instr, remove_def_cb, instr);
    nir_foreach_src(instr, remove_use_cb, instr);
 }
 
