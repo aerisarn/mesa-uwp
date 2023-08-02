@@ -226,10 +226,6 @@ void
 llvmpipe_fs_analyse_nir(struct lp_fragment_shader *shader);
 
 void
-llvmpipe_fs_analyse(struct lp_fragment_shader *shader,
-                    const struct tgsi_token *tokens);
-
-void
 llvmpipe_fs_variant_fastpath(struct lp_fragment_shader_variant *variant);
 
 void
