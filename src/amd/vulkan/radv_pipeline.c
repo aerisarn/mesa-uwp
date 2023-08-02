@@ -670,7 +670,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
 
          .enable_mrt_output_nan_fixup =
             pipeline_key->ps.epilog.enable_mrt_output_nan_fixup && !stage->nir->info.internal,
-         .no_color_export = stage->info.ps.has_epilog,
+         .no_color_export = stage->info.has_epilog,
 
          .bc_optimize_for_persp = G_0286CC_PERSP_CENTER_ENA(stage->info.ps.spi_ps_input) &&
                                   G_0286CC_PERSP_CENTROID_ENA(stage->info.ps.spi_ps_input),

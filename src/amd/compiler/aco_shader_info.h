@@ -89,6 +89,7 @@ struct aco_shader_info {
    bool has_ngg_early_prim_export;
    bool image_2d_view_of_3d;
    unsigned workgroup_size;
+   bool has_epilog; /* Only for TCS or PS. */
    struct {
       bool tcs_in_out_eq;
       uint64_t tcs_temp_only_input_mask;
@@ -96,10 +97,8 @@ struct aco_shader_info {
    } vs;
    struct {
       uint32_t num_lds_blocks;
-      bool has_epilog;
    } tcs;
    struct {
-      bool has_epilog;
       struct ac_arg epilog_pc;
       uint32_t num_interp;
       unsigned spi_ps_input;

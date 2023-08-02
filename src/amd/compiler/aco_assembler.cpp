@@ -1003,7 +1003,7 @@ fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
                   break;
                }
             } else {
-               if (!program->info.ps.has_epilog) {
+               if (!program->info.has_epilog) {
                   exp.done = true;
                   exp.valid_mask = true;
                }
@@ -1016,7 +1016,7 @@ fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
             /* Do not abort if the main FS has an epilog because it only
              * exports MRTZ (if present) and the epilog exports colors.
              */
-            exported |= program->stage.hw == AC_HW_PIXEL_SHADER && program->info.ps.has_epilog;
+            exported |= program->stage.hw == AC_HW_PIXEL_SHADER && program->info.has_epilog;
          }
          ++it;
       }

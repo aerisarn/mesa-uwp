@@ -279,7 +279,7 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline, const st
       return blend;
 
    if (ps) {
-      if (ps->info.ps.has_epilog) {
+      if (ps->info.has_epilog) {
          spi_shader_col_format = pipeline->ps_epilog->spi_shader_col_format;
       } else {
          spi_shader_col_format = ps->info.ps.spi_shader_col_format;
@@ -2418,7 +2418,7 @@ radv_pipeline_create_ps_epilog(struct radv_device *device, struct radv_graphics_
 
    if (pipeline->base.type == RADV_PIPELINE_GRAPHICS) {
       needs_ps_epilog = pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
-                        pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog && !pipeline->ps_epilog;
+                        pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.has_epilog && !pipeline->ps_epilog;
    } else {
       assert(pipeline->base.type == RADV_PIPELINE_GRAPHICS_LIB);
       needs_ps_epilog = (lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
@@ -2471,7 +2471,7 @@ radv_skip_graphics_pipeline_compile(const struct radv_device *device, const stru
 
    /* Do not skip when the PS epilog needs to be compiled. */
    if (!radv_pipeline_needs_dynamic_ps_epilog(pipeline) && pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
-       pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog && !pipeline->ps_epilog)
+       pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.has_epilog && !pipeline->ps_epilog)
       return false;
 
    /* Determine which shader stages have been imported. */
@@ -2774,7 +2774,7 @@ radv_pipeline_emit_blend_state(struct radeon_cmdbuf *ctx_cs, const struct radv_g
 {
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
 
-   if (ps && ps->info.ps.has_epilog)
+   if (ps && ps->info.has_epilog)
       return;
 
    radeon_set_context_reg(ctx_cs, R_028714_SPI_SHADER_COL_FORMAT, blend->spi_shader_col_format);
@@ -3938,7 +3938,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->col_format_non_compacted = blend.spi_shader_col_format;
 
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-   bool enable_mrt_compaction = ps && !ps->info.ps.has_epilog && !ps->info.ps.mrt0_is_dual_src;
+   bool enable_mrt_compaction = ps && !ps->info.has_epilog && !ps->info.ps.mrt0_is_dual_src;
    if (enable_mrt_compaction) {
       blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
 

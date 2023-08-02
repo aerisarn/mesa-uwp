@@ -306,6 +306,7 @@ struct radv_shader_info {
    uint32_t user_data_0;
    bool inputs_linked;
    bool outputs_linked;
+   bool has_epilog; /* Only for TCS or PS */
 
    struct {
       uint8_t input_usage_mask[RADV_VERT_ATTRIB_MAX];
@@ -395,7 +396,6 @@ struct radv_shader_info {
       bool allow_flat_shading;
       bool pops; /* Uses Primitive Ordered Pixel Shading (fragment shader interlock) */
       bool pops_is_per_sample;
-      bool has_epilog;
       bool mrt0_is_dual_src;
       unsigned spi_ps_input;
       unsigned colors_written;

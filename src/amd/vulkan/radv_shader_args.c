@@ -672,7 +672,7 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
    case MESA_SHADER_FRAGMENT:
       declare_global_input_sgprs(info, user_sgpr_info, args);
 
-      if (info->ps.has_epilog) {
+      if (info->has_epilog) {
          add_ud_arg(args, 1, AC_ARG_INT, &args->ps_epilog_pc, AC_UD_PS_EPILOG_PC);
       }
 

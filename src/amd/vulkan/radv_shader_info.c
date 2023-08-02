@@ -788,7 +788,7 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
 
    info->ps.spi_ps_input = radv_compute_spi_ps_input(pipeline_key, info);
 
-   info->ps.has_epilog = pipeline_key->ps.has_epilog && info->ps.colors_written;
+   info->has_epilog = pipeline_key->ps.has_epilog && info->ps.colors_written;
 
    info->ps.writes_mrt0_alpha = (pipeline_key->ps.alpha_to_coverage_via_mrtz && (info->ps.color0_written & 0x8)) &&
                                 (info->ps.writes_z || info->ps.writes_stencil || info->ps.writes_sample_mask);

@@ -196,12 +196,10 @@ emit_bpermute(isel_context* ctx, Builder& bld, Temp index, Temp data)
     * of multiple binaries, because the VGPR use is not known when choosing
     * which registers to use for the shared VGPRs.
     */
-   const bool avoid_shared_vgprs =
-      ctx->options->gfx_level >= GFX10 && ctx->options->gfx_level < GFX11 &&
-      ctx->program->wave_size == 64 &&
-      ((ctx->stage == fragment_fs && ctx->program->info.ps.has_epilog) ||
-       (ctx->stage == tess_control_hs && ctx->program->info.tcs.has_epilog) ||
-       ctx->stage == raytracing_cs);
+   const bool avoid_shared_vgprs = ctx->options->gfx_level >= GFX10 &&
+                                   ctx->options->gfx_level < GFX11 &&
+                                   ctx->program->wave_size == 64 &&
+                                   (ctx->program->info.has_epilog || ctx->stage == raytracing_cs);
 
    if (ctx->options->gfx_level <= GFX7 || avoid_shared_vgprs) {
       /* GFX6-7: there is no bpermute instruction */
@@ -5210,7 +5208,7 @@ store_output_to_temps(isel_context* ctx, nir_intrinsic_instr* instr)
       idx++;
    }
 
-   if (ctx->stage == fragment_fs && ctx->program->info.ps.has_epilog) {
+   if (ctx->stage == fragment_fs && ctx->program->info.has_epilog) {
       unsigned index = nir_intrinsic_base(instr) - FRAG_RESULT_DATA0;
 
       if (nir_intrinsic_src_type(instr) == nir_type_float16) {
@@ -11296,14 +11294,17 @@ select_shader(isel_context& ctx, nir_shader* nir, const bool need_startpgm, cons
    nir_function_impl* func = nir_shader_get_entrypoint(nir);
    visit_cf_list(&ctx, &func->body);
 
-   if (ctx.stage == fragment_fs && ctx.program->info.ps.has_epilog) {
-      create_fs_jump_to_epilog(&ctx);
+   if (ctx.program->info.has_epilog) {
+      if (ctx.stage == fragment_fs) {
+         create_fs_jump_to_epilog(&ctx);
 
-      /* FS epilogs always have at least one color/null export. */
-      ctx.program->has_color_exports = true;
-      ctx.block->kind |= block_kind_export_end;
-   } else if (ctx.stage == tess_control_hs && ctx.program->info.tcs.has_epilog) {
-      create_tcs_jump_to_epilog(&ctx);
+         /* FS epilogs always have at least one color/null export. */
+         ctx.program->has_color_exports = true;
+         ctx.block->kind |= block_kind_export_end;
+      } else {
+         assert(ctx.stage == tess_control_hs);
+         create_tcs_jump_to_epilog(&ctx);
+      }
    }
 
    if (endif_merged_wave_info) {
