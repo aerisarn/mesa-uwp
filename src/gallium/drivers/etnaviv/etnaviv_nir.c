@@ -190,6 +190,7 @@ etna_lower_alu_impl(nir_function_impl *impl, bool has_new_transcendentals)
             mul->dest.write_mask = 1;
             nir_ssa_dest_init(&mul->instr, &mul->dest.dest, 1, 32);
 
+            alu->src[0].swizzle[1] = 0;
             ssa->num_components = 2;
 
             nir_instr_insert_after(instr, &mul->instr);
