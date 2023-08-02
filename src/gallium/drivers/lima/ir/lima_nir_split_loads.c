@@ -42,10 +42,6 @@ clone_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
    nir_intrinsic_instr *new_intrin =
       nir_instr_as_intrinsic(nir_instr_clone(b->shader, &intrin->instr));
 
-   unsigned num_srcs = nir_intrinsic_infos[new_intrin->intrinsic].num_srcs;
-   for (unsigned i = 0; i < num_srcs; i++) {
-   }
-
    nir_builder_instr_insert(b, &new_intrin->instr);
 
    return &new_intrin->dest.ssa;
