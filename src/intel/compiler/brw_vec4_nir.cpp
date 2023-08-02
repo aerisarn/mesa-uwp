@@ -2146,8 +2146,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          const brw_reg_type type = lod.type;
 
 	 if (devinfo->ver >= 5) {
-	    lod.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
-	    lod2.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
+	    lod.swizzle = BRW_SWIZZLE4(BRW_SWIZZLE_X,BRW_SWIZZLE_X,BRW_SWIZZLE_Y,BRW_SWIZZLE_Y);
+	    lod2.swizzle = BRW_SWIZZLE4(BRW_SWIZZLE_X,BRW_SWIZZLE_X,BRW_SWIZZLE_Y,BRW_SWIZZLE_Y);
 	    emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_XZ), lod));
 	    emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_YW), lod2));
 	    inst->mlen++;
@@ -2204,8 +2204,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    if (instr->op == nir_texop_query_levels) {
       /* # levels is in .w */
       src_reg swizzled(dest);
-      swizzled.swizzle = BRW_SWIZZLE4(SWIZZLE_W, SWIZZLE_W,
-                                      SWIZZLE_W, SWIZZLE_W);
+      swizzled.swizzle = BRW_SWIZZLE4(BRW_SWIZZLE_W, BRW_SWIZZLE_W,
+                                      BRW_SWIZZLE_W, BRW_SWIZZLE_W);
       emit(MOV(dest, swizzled));
    }
 }

@@ -144,25 +144,25 @@ TEST_F(copy_propagation_vec4_test, test_swizzle_swizzle)
 
    v->emit(v->ADD(a, src_reg(a), src_reg(a)));
 
-   v->emit(v->MOV(b, swizzle(src_reg(a), BRW_SWIZZLE4(SWIZZLE_Y,
-                                                      SWIZZLE_Z,
-                                                      SWIZZLE_W,
-                                                      SWIZZLE_X))));
+   v->emit(v->MOV(b, swizzle(src_reg(a), BRW_SWIZZLE4(BRW_SWIZZLE_Y,
+                                                      BRW_SWIZZLE_Z,
+                                                      BRW_SWIZZLE_W,
+                                                      BRW_SWIZZLE_X))));
 
    vec4_instruction *test_mov =
-      v->MOV(c, swizzle(src_reg(b), BRW_SWIZZLE4(SWIZZLE_Y,
-                                                 SWIZZLE_Z,
-                                                 SWIZZLE_W,
-                                                 SWIZZLE_X)));
+      v->MOV(c, swizzle(src_reg(b), BRW_SWIZZLE4(BRW_SWIZZLE_Y,
+                                                 BRW_SWIZZLE_Z,
+                                                 BRW_SWIZZLE_W,
+                                                 BRW_SWIZZLE_X)));
    v->emit(test_mov);
 
    copy_propagation(v);
 
    EXPECT_EQ(test_mov->src[0].nr, a.nr);
-   EXPECT_EQ(test_mov->src[0].swizzle, BRW_SWIZZLE4(SWIZZLE_Z,
-                                                    SWIZZLE_W,
-                                                    SWIZZLE_X,
-                                                    SWIZZLE_Y));
+   EXPECT_EQ(test_mov->src[0].swizzle, BRW_SWIZZLE4(BRW_SWIZZLE_Z,
+                                                    BRW_SWIZZLE_W,
+                                                    BRW_SWIZZLE_X,
+                                                    BRW_SWIZZLE_Y));
 }
 
 TEST_F(copy_propagation_vec4_test, test_swizzle_writemask)
@@ -171,26 +171,26 @@ TEST_F(copy_propagation_vec4_test, test_swizzle_writemask)
    dst_reg b = dst_reg(v, glsl_type::vec4_type);
    dst_reg c = dst_reg(v, glsl_type::vec4_type);
 
-   v->emit(v->MOV(b, swizzle(src_reg(a), BRW_SWIZZLE4(SWIZZLE_X,
-                                                      SWIZZLE_Y,
-                                                      SWIZZLE_X,
-                                                      SWIZZLE_Z))));
+   v->emit(v->MOV(b, swizzle(src_reg(a), BRW_SWIZZLE4(BRW_SWIZZLE_X,
+                                                      BRW_SWIZZLE_Y,
+                                                      BRW_SWIZZLE_X,
+                                                      BRW_SWIZZLE_Z))));
 
    v->emit(v->MOV(writemask(a, WRITEMASK_XYZ), brw_imm_f(1.0f)));
 
    vec4_instruction *test_mov =
-      v->MOV(c, swizzle(src_reg(b), BRW_SWIZZLE4(SWIZZLE_W,
-                                                 SWIZZLE_W,
-                                                 SWIZZLE_W,
-                                                 SWIZZLE_W)));
+      v->MOV(c, swizzle(src_reg(b), BRW_SWIZZLE4(BRW_SWIZZLE_W,
+                                                 BRW_SWIZZLE_W,
+                                                 BRW_SWIZZLE_W,
+                                                 BRW_SWIZZLE_W)));
    v->emit(test_mov);
 
    copy_propagation(v);
 
    /* should not copy propagate */
    EXPECT_EQ(test_mov->src[0].nr, b.nr);
-   EXPECT_EQ(test_mov->src[0].swizzle, BRW_SWIZZLE4(SWIZZLE_W,
-                                                    SWIZZLE_W,
-                                                    SWIZZLE_W,
-                                                    SWIZZLE_W));
+   EXPECT_EQ(test_mov->src[0].swizzle, BRW_SWIZZLE4(BRW_SWIZZLE_W,
+                                                    BRW_SWIZZLE_W,
+                                                    BRW_SWIZZLE_W,
+                                                    BRW_SWIZZLE_W));
 }

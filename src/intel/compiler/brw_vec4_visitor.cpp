@@ -819,7 +819,7 @@ vec4_visitor::emit_ndc_computation()
    dst_reg ndc_w = ndc;
    ndc_w.writemask = WRITEMASK_W;
    src_reg pos_w = pos;
-   pos_w.swizzle = BRW_SWIZZLE4(SWIZZLE_W, SWIZZLE_W, SWIZZLE_W, SWIZZLE_W);
+   pos_w.swizzle = BRW_SWIZZLE4(BRW_SWIZZLE_W, BRW_SWIZZLE_W, BRW_SWIZZLE_W, BRW_SWIZZLE_W);
    emit_math(SHADER_OPCODE_RCP, ndc_w, pos_w);
 
    dst_reg ndc_xyz = ndc;

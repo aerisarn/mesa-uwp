@@ -69,6 +69,15 @@ struct intel_device_info;
  */
 #define GFX7_MRF_HACK_START 112
 
+/**
+ * BRW hardware swizzles.
+ * Only defines XYZW to ensure it can be contained in 2 bits
+ */
+#define BRW_SWIZZLE_X 0
+#define BRW_SWIZZLE_Y 1
+#define BRW_SWIZZLE_Z 2
+#define BRW_SWIZZLE_W 3
+
 /** Number of message register file registers */
 #define BRW_MAX_MRF(gen) (gen == 6 ? 24 : 16)
 
