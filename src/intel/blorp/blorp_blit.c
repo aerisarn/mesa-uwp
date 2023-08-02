@@ -28,8 +28,6 @@
 #include "dev/intel_debug.h"
 
 #include "util/format_rgb9e5.h"
-/* header-only include needed for _mesa_unorm_to_float and friends. */
-#include "mesa/main/format_utils.h"
 #include "util/u_math.h"
 
 #define FILE_DEBUG_FLAG DEBUG_BLORP
@@ -1577,8 +1575,8 @@ brw_blorp_get_blit_kernel_cs(struct blorp_batch *batch,
 
 static void
 brw_blorp_setup_coord_transform(struct brw_blorp_coord_transform *xform,
-                                GLfloat src0, GLfloat src1,
-                                GLfloat dst0, GLfloat dst1,
+                                float src0, float src1,
+                                float dst0, float dst1,
                                 bool mirror)
 {
    double scale = (double)(src1 - src0) / (double)(dst1 - dst0);
