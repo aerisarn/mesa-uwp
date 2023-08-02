@@ -1124,6 +1124,304 @@ anv_device_upload_nir(struct anv_device *device,
 void
 anv_load_fp64_shader(struct anv_device *device);
 
+/**
+ * This enum tracks the various HW instructions that hold graphics state
+ * needing to be reprogrammed. Some instructions are grouped together as they
+ * pretty much need to be emitted together (like 3DSTATE_URB_*).
+ *
+ * Not all bits apply to all platforms. We build a dirty state based on
+ * enabled extensions & generation on anv_device.
+ */
+enum anv_gfx_state_bits {
+   /* Pipeline states */
+   ANV_GFX_STATE_URB, /* All legacy stages, including mesh */
+   ANV_GFX_STATE_VF_STATISTICS,
+   ANV_GFX_STATE_VF_SGVS,
+   ANV_GFX_STATE_VF_SGVS_2,
+   ANV_GFX_STATE_VF_SGVS_VI, /* 3DSTATE_VERTEX_ELEMENTS for sgvs elements */
+   ANV_GFX_STATE_VF_SGVS_INSTANCING, /* 3DSTATE_VF_INSTANCING for sgvs elements */
+   ANV_GFX_STATE_PRIMITIVE_REPLICATION,
+   ANV_GFX_STATE_MULTISAMPLE,
+   ANV_GFX_STATE_SBE,
+   ANV_GFX_STATE_SBE_SWIZ,
+   ANV_GFX_STATE_SO_DECL_LIST,
+   ANV_GFX_STATE_VS,
+   ANV_GFX_STATE_HS,
+   ANV_GFX_STATE_DS,
+   ANV_GFX_STATE_GS,
+   ANV_GFX_STATE_PS,
+   ANV_GFX_STATE_PS_EXTRA,
+   ANV_GFX_STATE_SBE_MESH,
+   ANV_GFX_STATE_CLIP_MESH,
+   ANV_GFX_STATE_MESH_CONTROL,
+   ANV_GFX_STATE_MESH_SHADER,
+   ANV_GFX_STATE_MESH_DISTRIB,
+   ANV_GFX_STATE_TASK_CONTROL,
+   ANV_GFX_STATE_TASK_SHADER,
+   ANV_GFX_STATE_TASK_REDISTRIB,
+   /* Dynamic states */
+   ANV_GFX_STATE_BLEND_STATE_POINTERS,
+   ANV_GFX_STATE_CLIP,
+   ANV_GFX_STATE_CC_STATE,
+   ANV_GFX_STATE_CPS,
+   ANV_GFX_STATE_DEPTH_BOUNDS,
+   ANV_GFX_STATE_INDEX_BUFFER,
+   ANV_GFX_STATE_LINE_STIPPLE,
+   ANV_GFX_STATE_PS_BLEND,
+   ANV_GFX_STATE_RASTER,
+   ANV_GFX_STATE_SAMPLE_MASK,
+   ANV_GFX_STATE_SAMPLE_PATTERN,
+   ANV_GFX_STATE_SCISSOR,
+   ANV_GFX_STATE_SF,
+   ANV_GFX_STATE_STREAMOUT,
+   ANV_GFX_STATE_TE,
+   ANV_GFX_STATE_VERTEX_INPUT,
+   ANV_GFX_STATE_VF,
+   ANV_GFX_STATE_VF_TOPOLOGY,
+   ANV_GFX_STATE_VFG,
+   ANV_GFX_STATE_VIEWPORT_CC,
+   ANV_GFX_STATE_VIEWPORT_SF_CLIP,
+   ANV_GFX_STATE_WM,
+   ANV_GFX_STATE_WM_DEPTH_STENCIL,
+   ANV_GFX_STATE_PMA_FIX, /* Fake state to implement workaround */
+   ANV_GFX_STATE_WA_18019816803, /* Fake state to implement workaround */
+
+   ANV_GFX_STATE_MAX,
+};
+
+const char *anv_gfx_state_bit_to_str(enum anv_gfx_state_bits state);
+
+/* This structure tracks the values to program in HW instructions for
+ * corresponding to dynamic states of the Vulkan API. Only fields that need to
+ * be reemitted outside of the VkPipeline object are tracked here.
+ */
+struct anv_gfx_dynamic_state {
+   /* 3DSTATE_BLEND_STATE_POINTERS */
+   struct {
+      bool AlphaToCoverageEnable;
+      bool AlphaToOneEnable;
+      bool IndependentAlphaBlendEnable;
+      struct {
+         bool     WriteDisableAlpha;
+         bool     WriteDisableRed;
+         bool     WriteDisableGreen;
+         bool     WriteDisableBlue;
+
+         uint32_t LogicOpFunction;
+         bool     LogicOpEnable;
+
+         bool     ColorBufferBlendEnable;
+         uint32_t ColorClampRange;
+         bool     PreBlendColorClampEnable;
+         bool     PostBlendColorClampEnable;
+         uint32_t SourceBlendFactor;
+         uint32_t DestinationBlendFactor;
+         uint32_t ColorBlendFunction;
+         uint32_t SourceAlphaBlendFactor;
+         uint32_t DestinationAlphaBlendFactor;
+         uint32_t AlphaBlendFunction;
+      } rts[MAX_RTS];
+  } blend;
+
+   /* 3DSTATE_CC_STATE_POINTERS */
+   struct {
+      float BlendConstantColorRed;
+      float BlendConstantColorGreen;
+      float BlendConstantColorBlue;
+      float BlendConstantColorAlpha;
+   } cc;
+
+   /* 3DSTATE_CLIP */
+   struct {
+      uint32_t APIMode;
+      uint32_t ViewportXYClipTestEnable;
+      uint32_t MaximumVPIndex;
+      uint32_t TriangleStripListProvokingVertexSelect;
+      uint32_t LineStripListProvokingVertexSelect;
+      uint32_t TriangleFanProvokingVertexSelect;
+   } clip;
+
+   /* 3DSTATE_CPS/3DSTATE_CPS_POINTERS */
+   struct {
+      /* Gfx11 */
+      uint32_t CoarsePixelShadingMode;
+      float    MinCPSizeX;
+      float    MinCPSizeY;
+      /* Gfx12+ */
+      uint32_t CoarsePixelShadingStateArrayPointer;
+   } cps;
+
+   /* 3DSTATE_DEPTH_BOUNDS */
+   struct {
+      bool     DepthBoundsTestEnable;
+      float    DepthBoundsTestMinValue;
+      float    DepthBoundsTestMaxValue;
+   } db;
+
+   /* 3DSTATE_GS */
+   struct {
+      uint32_t ReorderMode;
+   } gs;
+
+   /* 3DSTATE_LINE_STIPPLE */
+   struct {
+      uint32_t LineStipplePattern;
+      float    LineStippleInverseRepeatCount;
+      uint32_t LineStippleRepeatCount;
+   } ls;
+
+   /* 3DSTATE_PS_BLEND */
+   struct {
+      bool     HasWriteableRT;
+      bool     ColorBufferBlendEnable;
+      uint32_t SourceAlphaBlendFactor;
+      uint32_t DestinationAlphaBlendFactor;
+      uint32_t SourceBlendFactor;
+      uint32_t DestinationBlendFactor;
+      bool     AlphaTestEnable;
+      bool     IndependentAlphaBlendEnable;
+      bool     AlphaToCoverageEnable;
+   } ps_blend;
+
+   /* 3DSTATE_RASTER */
+   struct {
+      uint32_t APIMode;
+      bool     DXMultisampleRasterizationEnable;
+      bool     AntialiasingEnable;
+      uint32_t CullMode;
+      uint32_t FrontWinding;
+      bool     GlobalDepthOffsetEnableSolid;
+      bool     GlobalDepthOffsetEnableWireframe;
+      bool     GlobalDepthOffsetEnablePoint;
+      float    GlobalDepthOffsetConstant;
+      float    GlobalDepthOffsetScale;
+      float    GlobalDepthOffsetClamp;
+      uint32_t FrontFaceFillMode;
+      uint32_t BackFaceFillMode;
+      bool     ViewportZFarClipTestEnable;
+      bool     ViewportZNearClipTestEnable;
+      bool     ConservativeRasterizationEnable;
+   } raster;
+
+   /* 3DSTATE_SCISSOR_STATE_POINTERS */
+   struct {
+      uint32_t count;
+      struct {
+         uint32_t ScissorRectangleYMin;
+         uint32_t ScissorRectangleXMin;
+         uint32_t ScissorRectangleYMax;
+         uint32_t ScissorRectangleXMax;
+      } elem[MAX_SCISSORS];
+   } scissor;
+
+   /* 3DSTATE_SF */
+   struct {
+      float    LineWidth;
+      uint32_t TriangleStripListProvokingVertexSelect;
+      uint32_t LineStripListProvokingVertexSelect;
+      uint32_t TriangleFanProvokingVertexSelect;
+      bool     LegacyGlobalDepthBiasEnable;
+   } sf;
+
+   /* 3DSTATE_STREAMOUT */
+   struct {
+      bool     RenderingDisable;
+      uint32_t RenderStreamSelect;
+      uint32_t ReorderMode;
+   } so;
+
+   /* 3DSTATE_SAMPLE_MASK */
+   struct {
+      uint32_t SampleMask;
+   } sm;
+
+   /* 3DSTATE_TE */
+   struct {
+      uint32_t OutputTopology;
+   } te;
+
+   /* 3DSTATE_VF */
+   struct {
+      bool     IndexedDrawCutIndexEnable;
+      uint32_t CutIndex;
+   } vf;
+
+   /* 3DSTATE_VFG */
+   struct {
+      uint32_t DistributionMode;
+      bool     ListCutIndexEnable;
+   } vfg;
+
+   /* 3DSTATE_VF_TOPOLOGY */
+   struct {
+      uint32_t PrimitiveTopologyType;
+   } vft;
+
+   /* 3DSTATE_VIEWPORT_STATE_POINTERS_CC */
+   struct {
+      uint32_t count;
+      struct {
+         float MinimumDepth;
+         float MaximumDepth;
+      } elem[MAX_VIEWPORTS];
+   } vp_cc;
+
+   /* 3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP */
+   struct {
+      uint32_t count;
+      struct {
+         float ViewportMatrixElementm00;
+         float ViewportMatrixElementm11;
+         float ViewportMatrixElementm22;
+         float ViewportMatrixElementm30;
+         float ViewportMatrixElementm31;
+         float ViewportMatrixElementm32;
+         float XMinClipGuardband;
+         float XMaxClipGuardband;
+         float YMinClipGuardband;
+         float YMaxClipGuardband;
+         float XMinViewPort;
+         float XMaxViewPort;
+         float YMinViewPort;
+         float YMaxViewPort;
+      } elem[MAX_VIEWPORTS];
+   } vp_sf_clip;
+
+   /* 3DSTATE_WM */
+   struct {
+      uint32_t ForceThreadDispatchEnable;
+      bool     LineStippleEnable;
+   } wm;
+
+   /* 3DSTATE_WM_DEPTH_STENCIL */
+   struct {
+      bool     DoubleSidedStencilEnable;
+      uint32_t StencilTestMask;
+      uint32_t StencilWriteMask;
+      uint32_t BackfaceStencilTestMask;
+      uint32_t BackfaceStencilWriteMask;
+      uint32_t StencilReferenceValue;
+      uint32_t BackfaceStencilReferenceValue;
+      bool     DepthTestEnable;
+      bool     DepthBufferWriteEnable;
+      uint32_t DepthTestFunction;
+      bool     StencilTestEnable;
+      bool     StencilBufferWriteEnable;
+      uint32_t StencilFailOp;
+      uint32_t StencilPassDepthPassOp;
+      uint32_t StencilPassDepthFailOp;
+      uint32_t StencilTestFunction;
+      uint32_t BackfaceStencilFailOp;
+      uint32_t BackfaceStencilPassDepthPassOp;
+      uint32_t BackfaceStencilPassDepthFailOp;
+      uint32_t BackfaceStencilTestFunction;
+   } ds;
+
+   bool pma_fix;
+
+   BITSET_DECLARE(dirty, ANV_GFX_STATE_MAX);
+};
+
 enum anv_internal_kernel_name {
    ANV_INTERNAL_KERNEL_GENERATED_DRAWS,
    ANV_INTERNAL_KERNEL_COPY_QUERY_RESULTS_COMPUTE,
@@ -1304,6 +1602,16 @@ struct anv_device {
 #ifdef ANDROID
     struct u_gralloc                            *u_gralloc;
 #endif
+
+    /** Precompute all dirty graphics bits
+     *
+     * Depending on platforms, some of the dirty bits don't apply (for example
+     * 3DSTATE_PRIMITIVE_REPLICATION is only Gfx12.0+). Disabling some
+     * extensions like Mesh shaders also allow us to avoid emitting any
+     * mesh/task related instructions (we only initialize them once at device
+     * initialization).
+     */
+    BITSET_DECLARE(gfx_dirty_state, ANV_GFX_STATE_MAX);
 };
 
 static inline struct anv_state
@@ -2860,6 +3168,8 @@ struct anv_cmd_graphics_state {
    bool ds_write_state;
 
    uint32_t n_occlusion_queries;
+
+   struct anv_gfx_dynamic_state dyn_state;
 };
 
 enum anv_depth_reg_mode {
@@ -4567,23 +4877,6 @@ anv_line_rasterization_mode(VkLineRasterizationModeEXT line_mode,
    }
    return line_mode;
 }
-
-/* Fill provoking vertex mode to packet. */
-#define ANV_SETUP_PROVOKING_VERTEX(cmd, mode)         \
-   switch (mode) {                                    \
-   case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:    \
-      cmd.TriangleStripListProvokingVertexSelect = 0; \
-      cmd.LineStripListProvokingVertexSelect = 0;     \
-      cmd.TriangleFanProvokingVertexSelect = 1;       \
-      break;                                          \
-   case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:     \
-      cmd.TriangleStripListProvokingVertexSelect = 2; \
-      cmd.LineStripListProvokingVertexSelect = 1;     \
-      cmd.TriangleFanProvokingVertexSelect = 2;       \
-      break;                                          \
-   default:                                           \
-      unreachable("Invalid provoking vertex mode");   \
-   }                                                  \
 
 static inline bool
 anv_is_dual_src_blend_factor(VkBlendFactor factor)

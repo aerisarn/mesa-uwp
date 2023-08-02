@@ -334,11 +334,39 @@ genX(cmd_buffer_so_memcpy)(struct anv_cmd_buffer *cmd_buffer,
                                                        1ull << 32);
 #endif
 
-   /* Invalidate pipeline, xfb (for 3DSTATE_SO_BUFFER) & raster discard (for
-    * 3DSTATE_STREAMOUT).
-    */
-   cmd_buffer->state.gfx.dirty |= (ANV_CMD_DIRTY_PIPELINE |
-                                   ANV_CMD_DIRTY_XFB_ENABLE);
-   BITSET_SET(cmd_buffer->vk.dynamic_graphics_state.dirty,
-              MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE);
+   /* Flag all the instructions emitted by the memcpy. */
+   struct anv_gfx_dynamic_state *hw_state =
+      &cmd_buffer->state.gfx.dyn_state;
+
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_URB);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VF_STATISTICS);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VF);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VF_TOPOLOGY);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VERTEX_INPUT);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VF_SGVS);
+#if GFX_VER >= 11
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VF_SGVS_2);
+#endif
+#if GFX_VER >= 12
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_PRIMITIVE_REPLICATION);
+#endif
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_SO_DECL_LIST);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_STREAMOUT);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_SAMPLE_MASK);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_MULTISAMPLE);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_SF);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_SBE);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_VS);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_HS);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_DS);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_TE);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_GS);
+   BITSET_SET(hw_state->dirty, ANV_GFX_STATE_PS);
+   if (cmd_buffer->device->vk.enabled_extensions.EXT_mesh_shader) {
+      BITSET_SET(hw_state->dirty, ANV_GFX_STATE_MESH_CONTROL);
+      BITSET_SET(hw_state->dirty, ANV_GFX_STATE_TASK_CONTROL);
+   }
+
+   cmd_buffer->state.gfx.dirty |= ~(ANV_CMD_DIRTY_PIPELINE |
+                                    ANV_CMD_DIRTY_INDEX_BUFFER);
 }

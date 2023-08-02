@@ -3482,6 +3482,34 @@ VkResult anv_CreateDevice(
 
    anv_device_utrace_init(device);
 
+   BITSET_ONES(device->gfx_dirty_state);
+   BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_INDEX_BUFFER);
+   BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_SO_DECL_LIST);
+   if (device->info->ver < 11)
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_VF_SGVS_2);
+   if (device->info->ver < 12) {
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_PRIMITIVE_REPLICATION);
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_DEPTH_BOUNDS);
+   }
+   if (!device->vk.enabled_extensions.EXT_sample_locations)
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_SAMPLE_PATTERN);
+   if (!device->vk.enabled_extensions.KHR_fragment_shading_rate)
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_CPS);
+   if (!device->vk.enabled_extensions.EXT_mesh_shader) {
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_SBE_MESH);
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_CLIP_MESH);
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_MESH_CONTROL);
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_MESH_SHADER);
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_MESH_DISTRIB);
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_TASK_CONTROL);
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_TASK_SHADER);
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_TASK_REDISTRIB);
+   }
+   if (!intel_needs_workaround(device->info, 18019816803))
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_WA_18019816803);
+   if (device->info->ver > 9)
+      BITSET_CLEAR(device->gfx_dirty_state, ANV_GFX_STATE_PMA_FIX);
+
    *pDevice = anv_device_to_handle(device);
 
    return VK_SUCCESS;

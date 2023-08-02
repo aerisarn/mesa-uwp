@@ -3218,7 +3218,12 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if (any_dynamic_state_dirty || cmd_buffer->state.gfx.dirty)
+   /* Flush the runtime state into the HW state tracking */
+   if (cmd_buffer->state.gfx.dirty || any_dynamic_state_dirty)
+      genX(cmd_buffer_flush_gfx_runtime_state)(cmd_buffer);
+
+   /* Flush the HW state into the commmand buffer */
+   if (!BITSET_IS_EMPTY(cmd_buffer->state.gfx.dyn_state.dirty))
       genX(cmd_buffer_flush_gfx_hw_state)(cmd_buffer);
 
    /* If the pipeline changed, we may need to re-allocate push constant space
@@ -3278,7 +3283,6 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 
    /* When we're done, there is no more dirty gfx state. */
-   vk_dynamic_graphics_state_clear_dirty(&cmd_buffer->vk.dynamic_graphics_state);
    cmd_buffer->state.gfx.dirty = 0;
 }
 
@@ -3693,7 +3697,9 @@ genX(CmdExecuteCommands)(
    primary->state.current_hash_scale = 0;
    primary->state.gfx.push_constant_stages = 0;
    primary->state.gfx.ds_write_state = false;
-   vk_dynamic_graphics_state_dirty_all(&primary->vk.dynamic_graphics_state);
+   memcpy(primary->state.gfx.dyn_state.dirty,
+          primary->device->gfx_dirty_state,
+          sizeof(primary->state.gfx.dyn_state.dirty));
 
    /* Each of the secondary command buffers will use its own state base
     * address.  We need to re-emit state base address for the primary after
