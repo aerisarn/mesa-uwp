@@ -73,9 +73,10 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdev,
    return (struct spirv_to_nir_options) {
       .caps = {
          .demote_to_helper_invocation = true,
-         .descriptor_indexing = true,
          .descriptor_array_dynamic_indexing = true,
          .descriptor_array_non_uniform_indexing = true,
+         .descriptor_indexing = true,
+         .device_group = true,
          .draw_parameters = true,
          .geometry_streams = true,
          .image_read_without_format = true,
