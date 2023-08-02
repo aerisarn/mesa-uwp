@@ -677,7 +677,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                          shader->info.base.num_instructions < 8) && 0;
    const bool dual_source_blend = key->blend.rt[0].blend_enable &&
                                   util_blend_state_is_dual(&key->blend, 0);
-   const bool post_depth_coverage = shader->info.base.properties[TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE];
+   const bool post_depth_coverage = nir->info.fs.post_depth_coverage;
 
    struct lp_bld_tgsi_system_values system_values;
 
@@ -701,14 +701,15 @@ generate_fs_loop(struct gallivm_state *gallivm,
        key->stencil[0].enabled) {
       zs_format_desc = util_format_description(key->zsbuf_format);
 
-      if (shader->info.base.properties[TGSI_PROPERTY_FS_EARLY_DEPTH_STENCIL]) {
+      if (nir->info.fs.early_fragment_tests || nir->info.fs.post_depth_coverage) {
          depth_mode = EARLY_DEPTH_TEST | EARLY_DEPTH_WRITE;
-      } else if (!shader->info.base.writes_z && !shader->info.base.writes_stencil &&
-               !shader->info.base.uses_fbfetch && !shader->info.base.writes_memory) {
+      } else if (!(nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)) &&
+                 !(nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) &&
+                 !nir->info.fs.uses_fbfetch_output && !nir->info.writes_memory) {
          if (key->alpha.enabled ||
              key->blend.alpha_to_coverage ||
-             shader->info.base.uses_kill ||
-             shader->info.base.writes_samplemask) {
+             nir->info.fs.uses_discard ||
+             nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
             /* With alpha test and kill, can do the depth test early
              * and hopefully eliminate some quads.  But need to do a
              * special deferred depth write once the final mask value
@@ -776,13 +777,13 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                                     color_store_size, "color1");
       }
    }
-   if (shader->info.base.writes_z) {
+   if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)) {
       z_out = lp_build_array_alloca(gallivm,
                                     lp_build_vec_type(gallivm, type),
                                     color_store_size, "depth");
    }
 
-   if (shader->info.base.writes_stencil) {
+   if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) {
       s_out = lp_build_array_alloca(gallivm,
                                     lp_build_vec_type(gallivm, type),
                                     color_store_size, "depth");
@@ -989,7 +990,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    }
 
    LLVMValueRef out_sample_mask_storage = NULL;
-   if (shader->info.base.writes_samplemask) {
+   if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
       out_sample_mask_storage = lp_build_alloca(gallivm, int_vec_type, "write_mask");
       if (key->min_samples > 1)
          LLVMBuildStore(builder, LLVMConstNull(int_vec_type), out_sample_mask_storage);
@@ -1123,7 +1124,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
       }
    }
 
-   if (shader->info.base.writes_samplemask) {
+   if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
       LLVMValueRef output_smask = NULL;
       int smaski = find_output_by_semantic(&shader->info.base,
                                            TGSI_SEMANTIC_SAMPLEMASK,
@@ -1151,7 +1152,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
       LLVMBuildStore(builder, output_smask, out_sample_mask_storage);
    }
 
-   if (shader->info.base.writes_z) {
+   if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)) {
       int pos0 = find_output_by_semantic(&shader->info.base,
                                          TGSI_SEMANTIC_POSITION,
                                          0);
@@ -1164,7 +1165,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
       LLVMBuildStore(builder, out, ptr);
    }
 
-   if (shader->info.base.writes_stencil) {
+   if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) {
       int sten_out = find_output_by_semantic(&shader->info.base,
                                              TGSI_SEMANTIC_STENCIL,
                                              0);
@@ -1246,7 +1247,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
       /* if the shader writes sample mask use that,
        * but only if this isn't genuine early-depth to avoid breaking occlusion query */
-      if (shader->info.base.writes_samplemask &&
+      if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK) &&
           (!(depth_mode & EARLY_DEPTH_TEST) || (depth_mode & (EARLY_DEPTH_TEST_INFERRED)))) {
          LLVMValueRef out_smask_idx = LLVMBuildShl(builder, lp_build_const_int32(gallivm, 1), sample_loop_state.counter, "");
          out_smask_idx = lp_build_broadcast(gallivm, int_vec_type, out_smask_idx);
@@ -1268,7 +1269,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    /* Late Z test */
    if (depth_mode & LATE_DEPTH_TEST) {
-      if (shader->info.base.writes_z) {
+      if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)) {
          LLVMValueRef idx = loop_state.counter;
          if (key->min_samples > 1)
             idx = LLVMBuildAdd(builder, idx,
@@ -1290,7 +1291,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                context_type, context_ptr,
                                thread_data_type, thread_data_ptr, z);
 
-      if (shader->info.base.writes_stencil) {
+      if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) {
          LLVMValueRef idx = loop_state.counter;
          if (key->min_samples > 1)
             idx = LLVMBuildAdd(builder, idx,
@@ -1360,7 +1361,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
    /* if this is genuine early-depth in the shader, write samplemask now
     * after occlusion count has been updated
     */
-   if (key->multisample && shader->info.base.writes_samplemask &&
+   if (key->multisample &&
+       nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK) &&
        (depth_mode & (EARLY_DEPTH_TEST_INFERRED | EARLY_DEPTH_TEST)) == EARLY_DEPTH_TEST) {
       /* if the shader writes sample mask use that */
          LLVMValueRef out_smask_idx = LLVMBuildShl(builder, lp_build_const_int32(gallivm, 1), sample_loop_state.counter, "");
@@ -3098,6 +3100,7 @@ generate_fragment(struct llvmpipe_context *lp,
    assert(partial_mask == RAST_WHOLE ||
           partial_mask == RAST_EDGE_TEST);
 
+   struct nir_shader *nir = shader->base.ir.nir;
    struct gallivm_state *gallivm = variant->gallivm;
    struct lp_fragment_shader_variant_key *key = &variant->key;
    struct lp_shader_input inputs[PIPE_MAX_SHADER_INPUTS];
@@ -3328,8 +3331,7 @@ generate_fragment(struct llvmpipe_context *lp,
       LLVMSetInitializer(glob_sample_pos, sample_pos_array);
 
       LLVMValueRef color_store[PIPE_MAX_COLOR_BUFS][TGSI_NUM_CHANNELS];
-      bool pixel_center_integer =
-         shader->info.base.properties[TGSI_PROPERTY_FS_COORD_PIXEL_CENTER];
+      bool pixel_center_integer = nir->info.fs.pixel_center_integer;
 
       /*
        * The shader input interpolation info is not explicitely baked in the
@@ -3481,7 +3483,7 @@ generate_fragment(struct llvmpipe_context *lp,
          bool do_branch = ((key->depth.enabled
                             || key->stencil[0].enabled
                             || key->alpha.enabled)
-                           && !shader->info.base.uses_kill);
+                           && !nir->info.fs.uses_discard);
 
          color_ptr = LLVMBuildLoad2(builder, int8p_type,
                                     LLVMBuildGEP2(builder, int8p_type, color_ptr_ptr,
@@ -3722,6 +3724,7 @@ generate_variant(struct llvmpipe_context *lp,
                  struct lp_fragment_shader *shader,
                  const struct lp_fragment_shader_variant_key *key)
 {
+   struct nir_shader *nir = shader->base.ir.nir;
    struct lp_fragment_shader_variant *variant =
       MALLOC(sizeof *variant + shader->variant_key_size - sizeof variant->key);
    if (!variant)
@@ -3780,9 +3783,9 @@ generate_variant(struct llvmpipe_context *lp,
          !key->multisample &&
          !key->blend.alpha_to_coverage &&
          !key->depth.enabled &&
-         !shader->info.base.uses_kill &&
-         !shader->info.base.writes_samplemask &&
-         !shader->info.base.uses_fbfetch;
+         !nir->info.fs.uses_discard &&
+         (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) &&
+         !nir->info.fs.uses_fbfetch_output;
 
    variant->opaque =
          no_kill &&
@@ -3850,7 +3853,7 @@ generate_variant(struct llvmpipe_context *lp,
    const bool linear_pipeline =
          !key->stencil[0].enabled &&
          !key->depth.enabled &&
-         !shader->info.base.uses_kill &&
+         !nir->info.fs.uses_discard &&
          !key->blend.logicop_enable &&
          (key->cbuf_format[0] == PIPE_FORMAT_B8G8R8A8_UNORM ||
           key->cbuf_format[0] == PIPE_FORMAT_B8G8R8X8_UNORM ||
@@ -3990,10 +3993,9 @@ llvmpipe_create_fs_state(struct pipe_context *pipe,
       return NULL;
    }
 
-   const int nr_samplers = shader->info.base.file_max[TGSI_FILE_SAMPLER] + 1;
-   const int nr_sampler_views =
-      shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
-   const int nr_images = shader->info.base.file_max[TGSI_FILE_IMAGE] + 1;
+   const int nr_samplers = BITSET_LAST_BIT(nir->info.samplers_used);
+   const int nr_sampler_views = BITSET_LAST_BIT(nir->info.textures_used);
+   const int nr_images = BITSET_LAST_BIT(nir->info.images_used);
 
    shader->variant_key_size = lp_fs_variant_key_size(MAX2(nr_samplers,
                                                           nr_sampler_views),
@@ -4352,6 +4354,7 @@ make_variant_key(struct llvmpipe_context *lp,
 {
    struct lp_fragment_shader_variant_key *key =
       (struct lp_fragment_shader_variant_key *)store;
+   struct nir_shader *nir = shader->base.ir.nir;
 
    memset(key, 0, sizeof(*key));
 
@@ -4444,7 +4447,7 @@ make_variant_key(struct llvmpipe_context *lp,
        * Therefore we should always enable per-sample shading when FB fetch is
        * used.
        */
-      if (lp->min_samples > 1 || shader->info.base.uses_fbfetch)
+      if (lp->min_samples > 1 || nir->info.fs.uses_fbfetch_output)
          key->min_samples = key->coverage_samples;
    }
    key->nr_cbufs = lp->framebuffer.nr_cbufs;
@@ -4534,12 +4537,8 @@ make_variant_key(struct llvmpipe_context *lp,
 
    /* This value will be the same for all the variants of a given shader:
     */
-   key->nr_samplers = shader->info.base.file_max[TGSI_FILE_SAMPLER] + 1;
-
-   if (shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] != -1) {
-      key->nr_sampler_views =
-         shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
-   }
+   key->nr_samplers = BITSET_LAST_BIT(nir->info.samplers_used);
+   key->nr_sampler_views = BITSET_LAST_BIT(nir->info.textures_used);
 
    struct lp_sampler_static_state *fs_sampler =
       lp_fs_variant_key_samplers(key);
@@ -4548,7 +4547,7 @@ make_variant_key(struct llvmpipe_context *lp,
           MAX2(key->nr_samplers, key->nr_sampler_views) * sizeof *fs_sampler);
 
    for (unsigned i = 0; i < key->nr_samplers; ++i) {
-      if (shader->info.base.file_mask[TGSI_FILE_SAMPLER] & (1 << i)) {
+      if (BITSET_TEST(nir->info.samplers_used, i)) {
          lp_sampler_static_sampler_state(&fs_sampler[i].sampler_state,
                                          lp->samplers[PIPE_SHADER_FRAGMENT][i]);
       }
@@ -4559,15 +4558,14 @@ make_variant_key(struct llvmpipe_context *lp,
     * are dx10-style? Can't really have mixed opcodes, at least not
     * if we want to skip the holes here (without rescanning tgsi).
     */
-   if (shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] != -1) {
+   if (key->nr_sampler_views) {
       for (unsigned i = 0; i < key->nr_sampler_views; ++i) {
          /*
           * Note sview may exceed what's representable by file_mask.
           * This will still work, the only downside is that not actually
           * used views may be included in the shader key.
           */
-         if ((shader->info.base.file_mask[TGSI_FILE_SAMPLER_VIEW]
-              & (1u << (i & 31))) || i > 31) {
+         if (BITSET_TEST(nir->info.textures_used, i)) {
             lp_sampler_static_texture_state(&fs_sampler[i].texture_state,
                                   lp->sampler_views[PIPE_SHADER_FRAGMENT][i]);
          }
@@ -4575,7 +4573,7 @@ make_variant_key(struct llvmpipe_context *lp,
    } else {
       key->nr_sampler_views = key->nr_samplers;
       for (unsigned i = 0; i < key->nr_sampler_views; ++i) {
-         if ((shader->info.base.file_mask[TGSI_FILE_SAMPLER] & (1 << i)) || i > 31) {
+         if (BITSET_TEST(nir->info.samplers_used, i)) {
             lp_sampler_static_texture_state(&fs_sampler[i].texture_state,
                                  lp->sampler_views[PIPE_SHADER_FRAGMENT][i]);
          }
@@ -4583,13 +4581,12 @@ make_variant_key(struct llvmpipe_context *lp,
    }
 
    struct lp_image_static_state *lp_image = lp_fs_variant_key_images(key);
-   key->nr_images = shader->info.base.file_max[TGSI_FILE_IMAGE] + 1;
-
+   key->nr_images = BITSET_LAST_BIT(nir->info.images_used);
    if (key->nr_images)
       memset(lp_image, 0,
              key->nr_images * sizeof *lp_image);
    for (unsigned i = 0; i < key->nr_images; ++i) {
-      if ((shader->info.base.file_mask[TGSI_FILE_IMAGE] & (1 << i)) || i > 31) {
+      if (BITSET_TEST(nir->info.images_used, i)) {
          lp_sampler_static_texture_state_image(&lp_image[i].image_state,
                                       &lp->images[PIPE_SHADER_FRAGMENT][i]);
       }
