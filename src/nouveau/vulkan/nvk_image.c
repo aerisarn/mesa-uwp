@@ -136,6 +136,21 @@ vk_image_usage_to_format_features(VkImageUsageFlagBits usage_flag)
    }
 }
 
+uint32_t
+nvk_image_max_dimension(const struct nvk_physical_device *pdev,
+                        VkImageType image_type)
+{
+   switch (image_type) {
+   case VK_IMAGE_TYPE_1D:
+   case VK_IMAGE_TYPE_2D:
+      return pdev->info.chipset >= 0x130 ? 0x8000 : 0x4000;
+   case VK_IMAGE_TYPE_3D:
+      return 0x4000;
+   default:
+      unreachable("Invalid image type");
+   }
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_GetPhysicalDeviceImageFormatProperties2(
    VkPhysicalDevice physicalDevice,
@@ -167,39 +182,42 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
    if (ycbcr_info && pImageFormatInfo->type != VK_IMAGE_TYPE_2D)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
+   const uint32_t max_dim = nvk_image_max_dimension(pdev, VK_IMAGE_TYPE_1D);
    VkExtent3D maxExtent;
-   uint32_t maxMipLevels;
    uint32_t maxArraySize;
-   VkSampleCountFlags sampleCounts;
    switch (pImageFormatInfo->type) {
    case VK_IMAGE_TYPE_1D:
-      maxExtent = (VkExtent3D) { 16384, 1, 1 },
-      maxMipLevels = 15;
+      maxExtent = (VkExtent3D) { max_dim, 1, 1 };
       maxArraySize = 2048;
-      sampleCounts = VK_SAMPLE_COUNT_1_BIT;
       break;
    case VK_IMAGE_TYPE_2D:
-      maxExtent = (VkExtent3D) { 16384, 16384, 1 };
+      maxExtent = (VkExtent3D) { max_dim, max_dim, 1 };
       maxArraySize = 2048;
-      if(ycbcr_info) {
-         maxMipLevels = 1;
-         sampleCounts = VK_SAMPLE_COUNT_1_BIT;
-      } else {
-         maxMipLevels = 15;
-         sampleCounts = VK_SAMPLE_COUNT_1_BIT |
-                        VK_SAMPLE_COUNT_2_BIT |
-                        VK_SAMPLE_COUNT_4_BIT |
-                        VK_SAMPLE_COUNT_8_BIT;
-      }
       break;
    case VK_IMAGE_TYPE_3D:
-      maxExtent = (VkExtent3D) { 2048, 2048, 2048 };
-      maxMipLevels = 12;
+      maxExtent = (VkExtent3D) { max_dim, max_dim, max_dim };
       maxArraySize = 1;
-      sampleCounts = VK_SAMPLE_COUNT_1_BIT;
       break;
    default:
       unreachable("Invalid image type");
+   }
+
+   assert(util_is_power_of_two_nonzero(max_dim));
+   uint32_t maxMipLevels = util_logbase2(max_dim) + 1;
+   if (ycbcr_info != NULL)
+       maxMipLevels = 1;
+
+   VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+   if (pImageFormatInfo->tiling == VK_IMAGE_TILING_OPTIMAL &&
+       pImageFormatInfo->type == VK_IMAGE_TYPE_2D &&
+       (features & (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
+                    VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
+       !(pImageFormatInfo->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
+       !(pImageFormatInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
+      sampleCounts = VK_SAMPLE_COUNT_1_BIT |
+                     VK_SAMPLE_COUNT_2_BIT |
+                     VK_SAMPLE_COUNT_4_BIT |
+                     VK_SAMPLE_COUNT_8_BIT;
    }
 
    /* From the Vulkan 1.2.199 spec:

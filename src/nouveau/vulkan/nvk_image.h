@@ -18,6 +18,10 @@ VkFormatFeatureFlags2
 nvk_get_image_format_features(struct nvk_physical_device *pdevice,
                               VkFormat format, VkImageTiling tiling);
 
+uint32_t
+nvk_image_max_dimension(const struct nvk_physical_device *pdev,
+                        VkImageType image_type);
+
 struct nvk_image_plane {
    struct nil_image nil;
    uint64_t addr;
