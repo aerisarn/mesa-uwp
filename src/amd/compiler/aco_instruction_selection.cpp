@@ -11944,10 +11944,11 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
 }
 
 void
-select_ps_epilog(Program* program, const struct aco_ps_epilog_info* einfo, ac_shader_config* config,
+select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
                  const struct aco_compiler_options* options, const struct aco_shader_info* info,
                  const struct ac_shader_args* args)
 {
+   const struct aco_ps_epilog_info* einfo = (const struct aco_ps_epilog_info*)pinfo;
    isel_context ctx = setup_isel_context(program, 0, NULL, config, options, info, args, true);
 
    ctx.block->fp_mode = program->next_fp_mode;
