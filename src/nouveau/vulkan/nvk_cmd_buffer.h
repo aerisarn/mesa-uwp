@@ -21,18 +21,19 @@ struct nvk_push_descriptor_set;
 
 /** Root descriptor table.  This gets pushed to the GPU directly */
 struct nvk_root_descriptor_table {
+   uint64_t root_desc_addr;
+
    union {
       struct {
          uint32_t base_vertex;
          uint32_t base_instance;
          uint32_t draw_id;
          uint32_t view_index;
-         uint32_t _pad[4];
+         uint32_t _pad[2];
       } draw;
       struct {
          uint32_t base_group[3];
          uint32_t group_count[3];
-         uint32_t _pad[2];
       } cs;
    };
 

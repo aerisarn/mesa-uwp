@@ -1393,20 +1393,24 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
     */
    STATIC_ASSERT((sizeof(desc->root) & 0xff) == 0);
 
-   uint64_t root_table_addr;
-   result = nvk_cmd_buffer_upload_data(cmd, &desc->root, sizeof(desc->root),
-                                       0x100, &root_table_addr);
+   void *root_desc_map;
+   uint64_t root_desc_addr;
+   result = nvk_cmd_buffer_upload_alloc(cmd, sizeof(desc->root), 0x100,
+                                        &root_desc_addr, &root_desc_map);
    if (unlikely(result != VK_SUCCESS)) {
       vk_command_buffer_set_error(&cmd->vk, result);
       return;
    }
 
+   desc->root.root_desc_addr = root_desc_addr;
+   memcpy(root_desc_map, &desc->root, sizeof(desc->root));
+
    struct nv_push *p = nvk_cmd_buffer_push(cmd, 26);
 
    P_MTHD(p, NV9097, SET_CONSTANT_BUFFER_SELECTOR_A);
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_A(p, sizeof(desc->root));
-   P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_B(p, root_table_addr >> 32);
-   P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_C(p, root_table_addr);
+   P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_B(p, root_desc_addr >> 32);
+   P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_C(p, root_desc_addr);
 
    for (uint32_t i = 0; i < 5; i++) {
       P_IMMD(p, NV9097, BIND_GROUP_CONSTANT_BUFFER(i), {

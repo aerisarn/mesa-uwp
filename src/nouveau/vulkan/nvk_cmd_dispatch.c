@@ -148,13 +148,17 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
     */
    STATIC_ASSERT((sizeof(desc->root) & 0xff) == 0);
 
+   void *root_desc_map;
    uint64_t root_desc_addr;
-   result = nvk_cmd_buffer_upload_data(cmd, &desc->root, sizeof(desc->root),
-                                       0x100, &root_desc_addr);
+   result = nvk_cmd_buffer_upload_alloc(cmd, sizeof(desc->root), 0x100,
+                                        &root_desc_addr, &root_desc_map);
    if (unlikely(result != VK_SUCCESS)) {
       vk_command_buffer_set_error(&cmd->vk, result);
       return 0;
    }
+
+   desc->root.root_desc_addr = root_desc_addr;
+   memcpy(root_desc_map, &desc->root, sizeof(desc->root));
 
    uint32_t qmd[128];
    memset(qmd, 0, sizeof(qmd));
