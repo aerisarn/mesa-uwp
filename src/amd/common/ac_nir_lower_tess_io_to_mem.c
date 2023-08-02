@@ -147,12 +147,13 @@ typedef struct {
     */
    bool tcs_no_inputs_in_lds;
 
-   /* Whether to emit TCS tess factor write. */
-   bool tcs_emit_tess_factor_write;
-
    /* Save TCS tess factor for tess factor writer. */
    nir_variable *tcs_tess_level_outer;
    nir_variable *tcs_tess_level_inner;
+   unsigned tcs_tess_level_outer_base;
+   unsigned tcs_tess_level_outer_mask;
+   unsigned tcs_tess_level_inner_base;
+   unsigned tcs_tess_level_inner_mask;
 } lower_tess_io_state;
 
 static bool
@@ -415,6 +416,7 @@ lower_hs_output_store(nir_builder *b,
 
    nir_io_semantics semantics = nir_intrinsic_io_semantics(intrin);
    nir_def *store_val = intrin->src[0].ssa;
+   unsigned base = nir_intrinsic_base(intrin);
    unsigned component = nir_intrinsic_component(intrin);
    unsigned write_mask = nir_intrinsic_write_mask(intrin);
    bool is_tess_factor = semantics.location == VARYING_SLOT_TESS_LEVEL_INNER ||
@@ -454,24 +456,24 @@ lower_hs_output_store(nir_builder *b,
       nir_store_shared(b, store_val, lds_off, .write_mask = write_mask);
    }
 
-   nir_def *ret = NIR_LOWER_INSTR_PROGRESS_REPLACE;
-
+   /* Save tess factor to be used by tess factor writer or reconstruct
+    * store output instruction later.
+    */
    if (is_tess_factor && st->tcs_pass_tessfactors_by_reg) {
-      if (st->tcs_emit_tess_factor_write) {
-         nir_variable *var = semantics.location == VARYING_SLOT_TESS_LEVEL_INNER ?
-            st->tcs_tess_level_inner : st->tcs_tess_level_outer;
-
-         /* Save to temp variable for read by tess factor writer. */
-         ac_nir_store_var_components(b, var, store_val, component, write_mask);
+      if (semantics.location == VARYING_SLOT_TESS_LEVEL_INNER) {
+         st->tcs_tess_level_inner_base = base;
+         st->tcs_tess_level_inner_mask |= write_mask << component;
+         ac_nir_store_var_components(b, st->tcs_tess_level_inner, store_val,
+                                     component, write_mask);
       } else {
-         /* Keep tess factor nir_store_output instruction if it's going to be passed
-          * by reg instead of LDS and we use a compiler backend TCS epilog.
-          */
-         ret = NIR_LOWER_INSTR_PROGRESS;
+         st->tcs_tess_level_outer_base = base;
+         st->tcs_tess_level_outer_mask |= write_mask << component;
+         ac_nir_store_var_components(b, st->tcs_tess_level_outer, store_val,
+                                     component, write_mask);
       }
    }
 
-   return ret;
+   return NIR_LOWER_INSTR_PROGRESS_REPLACE;
 }
 
 static nir_def *
@@ -775,6 +777,31 @@ ac_nir_lower_hs_inputs_to_mem(nir_shader *shader,
                                  &state);
 }
 
+static void
+reconstruct_tess_factor_outputs(nir_shader *shader, lower_tess_io_state *st)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+   nir_builder builder = nir_builder_create(impl);
+   nir_builder *b = &builder;
+   b->cursor = nir_after_cf_list(&impl->body);
+
+   if (st->tcs_tess_level_outer_mask) {
+      nir_def *val = nir_load_var(b, st->tcs_tess_level_outer);
+      nir_store_output(b, val, nir_imm_int(b, 0),
+                       .base = st->tcs_tess_level_outer_base,
+                       .write_mask = st->tcs_tess_level_outer_mask,
+                       .io_semantics.location = VARYING_SLOT_TESS_LEVEL_OUTER);
+   }
+
+   if (st->tcs_tess_level_inner_mask) {
+      nir_def *val = nir_load_var(b, st->tcs_tess_level_inner);
+      nir_store_output(b, val, nir_imm_int(b, 0),
+                       .base = st->tcs_tess_level_inner_base,
+                       .write_mask = st->tcs_tess_level_inner_mask,
+                       .io_semantics.location = VARYING_SLOT_TESS_LEVEL_INNER);
+   }
+}
+
 void
 ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
                                ac_nir_map_io_driver_location map,
@@ -801,7 +828,6 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
       .tcs_out_patch_fits_subgroup = wave_size % shader->info.tess.tcs_vertices_out == 0,
       .tcs_pass_tessfactors_by_reg = pass_tessfactors_by_reg,
       .tcs_no_inputs_in_lds = no_inputs_in_lds,
-      .tcs_emit_tess_factor_write = emit_tess_factor_write,
       .tcs_tess_lvl_in_loc = -1,
       .tcs_tess_lvl_out_loc = -1,
       .map_io = map,
@@ -820,8 +846,19 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
                                  lower_hs_output_access,
                                  &state);
 
-   if (emit_tess_factor_write)
+   if (emit_tess_factor_write) {
       hs_emit_write_tess_factors(shader, &state);
+   } else if (pass_tessfactors_by_reg) {
+      /* Reconstruct tess factor nir_store_output instruction if it's going to be passed
+       * by reg instead of LDS and we use a compiler backend TCS epilog.
+       *
+       * TCS does not call nir_lower_io_to_temporaries(). It's not a problem when LLVM
+       * because LLVM support variable. But ACO does not support variable, so we do similar
+       * thing as nir_lower_io_to_temporaries() to move store output instruction out of
+       * control flow.
+       */
+      reconstruct_tess_factor_outputs(shader, &state);
+   }
 }
 
 void
