@@ -136,6 +136,7 @@
 # Mesa source file dependencies that may impact any GL driver test job.
 .gallium-core-rules:
   rules:
+    - !reference [.core-rules, rules]
     - changes: &gallium_core_file_list
       - src/gallium/*
       - src/gallium/auxiliary/**/*
