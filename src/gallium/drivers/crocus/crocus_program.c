@@ -47,6 +47,7 @@
 #include "intel/compiler/brw_prim.h"
 #include "crocus_context.h"
 #include "nir/tgsi_to_nir.h"
+#include "program/prog_instruction.h"
 
 #define KEY_INIT_NO_ID()                              \
    .base.tex.swizzles[0 ... BRW_MAX_SAMPLERS - 1] = 0x688
