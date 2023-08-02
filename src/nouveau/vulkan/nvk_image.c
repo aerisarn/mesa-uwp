@@ -99,6 +99,18 @@ nvk_get_image_format_features(struct nvk_physical_device *pdev,
    if (features == 0)
       return 0;
 
+   /* Uh... We really should be able to sample from YCbCr */
+   assert(features & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT);
+   assert(features & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
+
+   /* These aren't allowed for YCbCr formats */
+   features &= ~(VK_FORMAT_FEATURE_2_BLIT_SRC_BIT |
+                 VK_FORMAT_FEATURE_2_BLIT_DST_BIT |
+                 VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
+                 VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT |
+                 VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT);
+
+   /* These are supported on all YCbCr formats */
    features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT |
                VK_FORMAT_FEATURE_2_MIDPOINT_CHROMA_SAMPLES_BIT |
                VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT;
@@ -167,9 +179,26 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
    memset(&pImageFormatProperties->imageFormatProperties, 0,
           sizeof(pImageFormatProperties->imageFormatProperties));
 
-   VkFormatFeatureFlags2KHR features =
-      nvk_get_image_format_features(pdev, pImageFormatInfo->format,
-                                          pImageFormatInfo->tiling);
+   const struct vk_format_ycbcr_info *ycbcr_info =
+      vk_format_get_ycbcr_info(pImageFormatInfo->format);
+
+   /* For the purposes of these checks, we don't care about all the extra
+    * YCbCr features and we just want the accumulation of features available
+    * to all planes of the given format.
+    */
+   VkFormatFeatureFlags2 features;
+   if (ycbcr_info == NULL) {
+      features = nvk_get_image_plane_format_features(
+         pdev, pImageFormatInfo->format, pImageFormatInfo->tiling);
+   } else {
+      features = ~0ull;
+      assert(ycbcr_info->n_planes > 0);
+      for (uint8_t plane = 0; plane < ycbcr_info->n_planes; plane++) {
+         const VkFormat plane_format = ycbcr_info->planes[plane].format;
+         features &= nvk_get_image_plane_format_features(
+            pdev, plane_format, pImageFormatInfo->tiling);
+      }
+   }
    if (features == 0)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
@@ -177,8 +206,6 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
        pImageFormatInfo->type != VK_IMAGE_TYPE_2D)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   const struct vk_format_ycbcr_info *ycbcr_info =
-         vk_format_get_ycbcr_info(pImageFormatInfo->format);
    if (ycbcr_info && pImageFormatInfo->type != VK_IMAGE_TYPE_2D)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
@@ -210,6 +237,7 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
    VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
    if (pImageFormatInfo->tiling == VK_IMAGE_TILING_OPTIMAL &&
        pImageFormatInfo->type == VK_IMAGE_TYPE_2D &&
+       ycbcr_info == NULL &&
        (features & (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
                     VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
        !(pImageFormatInfo->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
@@ -299,28 +327,28 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
    const unsigned plane_count =
       vk_format_get_plane_count(pImageFormatInfo->format);
 
-   if (pImageFormatInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT) {
-      /* From the Vulkan 1.2.149 spec, VkImageCreateInfo:
-       *
-       *    If format is a multi-planar format, and if imageCreateFormatFeatures
-       *    (as defined in Image Creation Limits) does not contain
-       *    VK_FORMAT_FEATURE_2_DISJOINT_BIT, then flags must not contain
-       *    VK_IMAGE_CREATE_DISJOINT_BIT.
-       */
-      if (plane_count > 1 &&
-          !(features & VK_FORMAT_FEATURE_2_DISJOINT_BIT))
-         return VK_ERROR_FORMAT_NOT_SUPPORTED;
-
-      /* From the Vulkan 1.2.149 spec, VkImageCreateInfo:
-       *
-       * If format is not a multi-planar format, and flags does not include
-       * VK_IMAGE_CREATE_ALIAS_BIT, flags must not contain
-       * VK_IMAGE_CREATE_DISJOINT_BIT.
-       */
-      if (plane_count == 1 &&
-          !(pImageFormatInfo->flags & VK_IMAGE_CREATE_ALIAS_BIT))
-         return VK_ERROR_FORMAT_NOT_SUPPORTED;
-   }
+   /* From the Vulkan 1.3.259 spec, VkImageCreateInfo:
+    *
+    *    VUID-VkImageCreateInfo-imageCreateFormatFeatures-02260
+    *
+    *    "If format is a multi-planar format, and if imageCreateFormatFeatures
+    *    (as defined in Image Creation Limits) does not contain
+    *    VK_FORMAT_FEATURE_DISJOINT_BIT, then flags must not contain
+    *    VK_IMAGE_CREATE_DISJOINT_BIT"
+    *
+    * This is satisfied trivially because we support DISJOINT on all
+    * multi-plane formats.  Also,
+    *
+    *    VUID-VkImageCreateInfo-format-01577
+    *
+    *    "If format is not a multi-planar format, and flags does not include
+    *    VK_IMAGE_CREATE_ALIAS_BIT, flags must not contain
+    *    VK_IMAGE_CREATE_DISJOINT_BIT"
+    */
+   if (plane_count == 1 &&
+       !(pImageFormatInfo->flags & VK_IMAGE_CREATE_ALIAS_BIT) &&
+       (pImageFormatInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT))
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    pImageFormatProperties->imageFormatProperties = (VkImageFormatProperties) {
       .maxExtent = maxExtent,
