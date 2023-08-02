@@ -3138,7 +3138,6 @@ generate_fragment(struct llvmpipe_context *lp,
    LLVMValueRef fs_out_color[LP_MAX_SAMPLES][PIPE_MAX_COLOR_BUFS][TGSI_NUM_CHANNELS][16 / 4];
    LLVMValueRef function;
    LLVMValueRef facing;
-   bool cbuf0_write_all;
    const bool dual_source_blend = key->blend.rt[0].blend_enable &&
                                   util_blend_state_is_dual(&key->blend, 0);
 
@@ -3156,10 +3155,6 @@ generate_fragment(struct llvmpipe_context *lp,
             inputs[i].interp = LP_INTERP_PERSPECTIVE;
       }
    }
-
-   /* check if writes to cbuf[0] are to be copied to all cbufs */
-   cbuf0_write_all =
-     shader->info.base.properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS];
 
    /* TODO: actually pick these based on the fs and color buffer
     * characteristics. */
@@ -3457,7 +3452,7 @@ generate_fragment(struct llvmpipe_context *lp,
             for (unsigned cbuf = 0; cbuf < key->nr_cbufs; cbuf++) {
                for (unsigned chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
                   ptr = LLVMBuildGEP2(builder, fs_vec_type,
-                                      color_store[cbuf * !cbuf0_write_all][chan],
+                                      color_store[cbuf][chan],
                                       &sindexi, 1, "");
                   fs_out_color[s][cbuf][chan][i] = ptr;
                }
