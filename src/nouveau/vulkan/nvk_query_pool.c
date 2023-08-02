@@ -6,10 +6,15 @@
 #include "nvk_event.h"
 #include "nvk_mme.h"
 #include "nvk_physical_device.h"
-#include "util/os_time.h"
+#include "nvk_pipeline.h"
 
+#include "compiler/nir/nir.h"
+#include "compiler/nir/nir_builder.h"
 #include "nouveau_bo.h"
 #include "nouveau_context.h"
+#include "util/os_time.h"
+#include "vk_meta.h"
+#include "vk_pipeline.h"
 
 #include "nvk_cl906f.h"
 #include "nvk_cl9097.h"
@@ -105,6 +110,14 @@ nvk_query_available_addr(struct nvk_query_pool *pool, uint32_t query)
    return pool->bo->offset + query * sizeof(uint32_t);
 }
 
+static nir_ssa_def *
+nvk_nir_available_addr(nir_builder *b, nir_ssa_def *pool_addr,
+                       nir_ssa_def *query)
+{
+   nir_ssa_def *offset = nir_imul_imm(b, query, sizeof(uint32_t));
+   return nir_iadd(b, pool_addr, nir_u2u64(b, offset));
+}
+
 static uint32_t *
 nvk_query_available_map(struct nvk_query_pool *pool, uint32_t query)
 {
@@ -123,6 +136,16 @@ static uint64_t
 nvk_query_report_addr(struct nvk_query_pool *pool, uint32_t query)
 {
    return pool->bo->offset + nvk_query_offset(pool, query);
+}
+
+static nir_ssa_def *
+nvk_nir_query_report_addr(nir_builder *b, nir_ssa_def *pool_addr,
+                          nir_ssa_def *query_start, nir_ssa_def *query_stride,
+                          nir_ssa_def *query)
+{
+   nir_ssa_def *offset =
+      nir_iadd(b, query_start, nir_umul_2x32_64(b, query, query_stride));
+   return nir_iadd(b, pool_addr, offset);
 }
 
 static struct nvk_query_report *
@@ -646,6 +669,302 @@ nvk_GetQueryPoolResults(VkDevice device,
    return status;
 }
 
+struct nvk_copy_query_push {
+   uint64_t pool_addr;
+   uint32_t query_start;
+   uint32_t query_stride;
+   uint32_t first_query;
+   uint32_t query_count;
+   uint64_t dst_addr;
+   uint64_t dst_stride;
+   uint32_t flags;
+};
+
+static nir_ssa_def *
+load_struct_var(nir_builder *b, nir_variable *var, uint32_t field)
+{
+   nir_deref_instr *deref =
+      nir_build_deref_struct(b, nir_build_deref_var(b, var), field);
+   return nir_load_deref(b, deref);
+}
+
+static void
+nir_write_query_result(nir_builder *b, nir_ssa_def *dst_addr,
+                       nir_ssa_def *idx, nir_ssa_def *flags,
+                       nir_ssa_def *result)
+{
+   assert(result->num_components == 1);
+   assert(result->bit_size == 64);
+
+   nir_push_if(b, nir_test_mask(b, flags, VK_QUERY_RESULT_64_BIT));
+   {
+      nir_ssa_def *offset = nir_i2i64(b, nir_imul_imm(b, idx, 8));
+      nir_store_global(b, nir_iadd(b, dst_addr, offset), 8, result, 0x1);
+   }
+   nir_push_else(b, NULL);
+   {
+      nir_ssa_def *result32 = nir_u2u32(b, result);
+      nir_ssa_def *offset = nir_i2i64(b, nir_imul_imm(b, idx, 4));
+      nir_store_global(b, nir_iadd(b, dst_addr, offset), 4, result32, 0x1);
+   }
+   nir_pop_if(b, NULL);
+}
+
+static void
+nir_get_query_delta(nir_builder *b, nir_ssa_def *dst_addr,
+                    nir_ssa_def *report_addr, nir_ssa_def *idx,
+                    nir_ssa_def *flags)
+{
+   nir_ssa_def *offset =
+      nir_imul_imm(b, idx, 2 * sizeof(struct nvk_query_report));
+   nir_ssa_def *begin_addr =
+      nir_iadd(b, report_addr, nir_i2i64(b, offset));
+   nir_ssa_def *end_addr =
+      nir_iadd_imm(b, begin_addr, sizeof(struct nvk_query_report));
+
+   /* nvk_query_report::timestamp is the first uint64_t */
+   nir_ssa_def *begin = nir_load_global(b, begin_addr, 16, 1, 64);
+   nir_ssa_def *end = nir_load_global(b, end_addr, 16, 1, 64);
+
+   nir_ssa_def *delta = nir_isub(b, end, begin);
+
+   nir_write_query_result(b, dst_addr, idx, flags, delta);
+}
+
+static void
+nvk_nir_copy_query(nir_builder *b, nir_variable *push, nir_ssa_def *i)
+{
+   nir_ssa_def *pool_addr = load_struct_var(b, push, 0);
+   nir_ssa_def *query_start = nir_u2u64(b, load_struct_var(b, push, 1));
+   nir_ssa_def *query_stride = load_struct_var(b, push, 2);
+   nir_ssa_def *first_query = load_struct_var(b, push, 3);
+   nir_ssa_def *dst_addr = load_struct_var(b, push, 5);
+   nir_ssa_def *dst_stride = load_struct_var(b, push, 6);
+   nir_ssa_def *flags = load_struct_var(b, push, 7);
+
+   nir_ssa_def *query = nir_iadd(b, first_query, i);
+
+   nir_ssa_def *avail_addr = nvk_nir_available_addr(b, pool_addr, query);
+   nir_ssa_def *available =
+      nir_i2b(b, nir_load_global(b, avail_addr, 4, 1, 32));
+
+   nir_ssa_def *partial = nir_test_mask(b, flags, VK_QUERY_RESULT_PARTIAL_BIT);
+   nir_ssa_def *write_results = nir_ior(b, available, partial);
+
+   nir_ssa_def *report_addr =
+      nvk_nir_query_report_addr(b, pool_addr, query_start, query_stride,
+                                query);
+   nir_ssa_def *dst_offset = nir_imul(b, nir_u2u64(b, i), dst_stride);
+
+   /* Timestamp queries are the only ones use a single report */
+   nir_ssa_def *is_timestamp =
+      nir_ieq_imm(b, query_stride, sizeof(struct nvk_query_report));
+
+   nir_ssa_def *one = nir_imm_int(b, 1);
+   nir_ssa_def *num_reports;
+   nir_push_if(b, is_timestamp);
+   {
+      nir_push_if(b, write_results);
+      {
+         /* This is the timestamp case.  We add 8 because we're loading
+          * nvk_query_report::timestamp.
+          */
+         nir_ssa_def *timestamp =
+            nir_load_global(b, nir_iadd_imm(b, report_addr, 8), 8, 1, 64);
+
+         nir_write_query_result(b, nir_iadd(b, dst_addr, dst_offset),
+                                nir_imm_int(b, 0), flags, timestamp);
+      }
+      nir_pop_if(b, NULL);
+   }
+   nir_push_else(b, NULL);
+   {
+      /* Everything that isn't a timestamp has the invariant that the
+       * number of destination entries is equal to the query stride divided
+       * by the size of two reports.
+       */
+      num_reports = nir_udiv_imm(b, query_stride,
+                                 2 * sizeof(struct nvk_query_report));
+
+      nir_push_if(b, write_results);
+      {
+         nir_variable *r =
+            nir_local_variable_create(b->impl, glsl_uint_type(), "r");
+         nir_store_var(b, r, nir_imm_int(b, 0), 0x1);
+
+         nir_push_loop(b);
+         {
+            nir_push_if(b, nir_ige(b, nir_load_var(b, r), num_reports));
+            {
+               nir_jump(b, nir_jump_break);
+            }
+            nir_pop_if(b, NULL);
+
+            nir_get_query_delta(b, nir_iadd(b, dst_addr, dst_offset),
+                                report_addr, nir_load_var(b, r), flags);
+
+            nir_store_var(b, r, nir_iadd_imm(b, nir_load_var(b, r), 1), 0x1);
+         }
+         nir_pop_loop(b, NULL);
+      }
+      nir_pop_if(b, NULL);
+   }
+   nir_pop_if(b, NULL);
+
+   num_reports = nir_if_phi(b, one, num_reports);
+
+   nir_push_if(b, nir_test_mask(b, flags, VK_QUERY_RESULT_WITH_AVAILABILITY_BIT));
+   {
+      nir_write_query_result(b, nir_iadd(b, dst_addr, dst_offset),
+                             num_reports, flags, nir_b2i64(b, available));
+   }
+   nir_pop_if(b, NULL);
+}
+
+static nir_shader *
+build_copy_queries_shader(void)
+{
+   nir_builder build =
+      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL,
+                                     "nvk-meta-copy-queries");
+   nir_builder *b = &build;
+
+   struct glsl_struct_field push_fields[] = {
+      { .type = glsl_uint64_t_type(), .name = "pool_addr", .offset = 0 },
+      { .type = glsl_uint_type(), .name = "query_start", .offset = 8 },
+      { .type = glsl_uint_type(), .name = "query_stride", .offset = 12 },
+      { .type = glsl_uint_type(), .name = "first_query", .offset = 16 },
+      { .type = glsl_uint_type(), .name = "query_count", .offset = 20 },
+      { .type = glsl_uint64_t_type(), .name = "dst_addr", .offset = 24 },
+      { .type = glsl_uint64_t_type(), .name = "dst_stride", .offset = 32 },
+      { .type = glsl_uint_type(), .name = "flags", .offset = 40 },
+   };
+   const struct glsl_type *push_iface_type =
+      glsl_interface_type(push_fields, ARRAY_SIZE(push_fields),
+                          GLSL_INTERFACE_PACKING_STD140,
+                          false /* row_major */, "push");
+   nir_variable *push = nir_variable_create(b->shader, nir_var_mem_push_const,
+                                            push_iface_type, "push");
+
+   nir_ssa_def *query_count = load_struct_var(b, push, 4);
+
+   nir_variable *i = nir_local_variable_create(b->impl, glsl_uint_type(), "i");
+   nir_store_var(b, i, nir_imm_int(b, 0), 0x1);
+
+   nir_push_loop(b);
+   {
+      nir_push_if(b, nir_ige(b, nir_load_var(b, i), query_count));
+      {
+         nir_jump(b, nir_jump_break);
+      }
+      nir_pop_if(b, NULL);
+
+      nvk_nir_copy_query(b, push, nir_load_var(b, i));
+
+      nir_store_var(b, i, nir_iadd_imm(b, nir_load_var(b, i), 1), 0x1);
+   }
+   nir_pop_loop(b, NULL);
+
+   return build.shader;
+}
+
+static VkResult
+get_copy_queries_pipeline(struct nvk_device *dev,
+                          VkPipelineLayout layout,
+                          VkPipeline *pipeline_out)
+{
+   const char key[] = "nvk-meta-copy-query-pool-results";
+   VkPipeline cached = vk_meta_lookup_pipeline(&dev->meta, key, sizeof(key));
+   if (cached != VK_NULL_HANDLE) {
+      *pipeline_out = cached;
+      return VK_SUCCESS;
+   }
+
+   const VkPipelineShaderStageNirCreateInfoMESA nir_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_NIR_CREATE_INFO_MESA,
+      .nir = build_copy_queries_shader(),
+   };
+   const VkComputePipelineCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+      .stage = {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+         .pNext = &nir_info,
+         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+         .pName = "main",
+      },
+      .layout = layout,
+   };
+
+   return vk_meta_create_compute_pipeline(&dev->vk, &dev->meta, &info,
+                                          key, sizeof(key), pipeline_out);
+}
+
+static void
+nvk_meta_copy_query_pool_results(struct nvk_cmd_buffer *cmd,
+                                 struct nvk_query_pool *pool,
+                                 uint32_t first_query,
+                                 uint32_t query_count,
+                                 uint64_t dst_addr,
+                                 uint64_t dst_stride,
+                                 VkQueryResultFlags flags)
+{
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
+   struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
+   VkResult result;
+
+   const struct nvk_copy_query_push push = {
+      .pool_addr = pool->bo->offset,
+      .query_start = pool->query_start,
+      .query_stride = pool->query_stride,
+      .first_query = first_query,
+      .query_count = query_count,
+      .dst_addr = dst_addr,
+      .dst_stride = dst_stride,
+      .flags = flags,
+   };
+
+   const char key[] = "nvk-meta-copy-query-pool-results";
+   const VkPushConstantRange push_range = {
+      .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+      .size = sizeof(push),
+   };
+   VkPipelineLayout layout;
+   result = vk_meta_get_pipeline_layout(&dev->vk, &dev->meta, NULL, &push_range,
+                                        key, sizeof(key), &layout);
+   if (result != VK_SUCCESS) {
+      vk_command_buffer_set_error(&cmd->vk, result);
+      return;
+   }
+
+   VkPipeline pipeline;
+   result = get_copy_queries_pipeline(dev, layout, &pipeline);
+   if (result != VK_SUCCESS) {
+      vk_command_buffer_set_error(&cmd->vk, result);
+      return;
+   }
+
+   /* Save pipeline and push constants */
+   struct nvk_compute_pipeline *pipeline_save = cmd->state.cs.pipeline;
+   uint8_t push_save[NVK_MAX_PUSH_SIZE];
+   memcpy(push_save, desc->root.push, NVK_MAX_PUSH_SIZE);
+
+   nvk_CmdBindPipeline(nvk_cmd_buffer_to_handle(cmd),
+                       VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+
+   nvk_CmdPushConstants(nvk_cmd_buffer_to_handle(cmd), layout,
+                        VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(push), &push);
+
+   nvk_CmdDispatchBase(nvk_cmd_buffer_to_handle(cmd), 0, 0, 0, 1, 1, 1);
+
+   /* Restore pipeline and push constants */
+   if (pipeline_save) {
+      nvk_CmdBindPipeline(nvk_cmd_buffer_to_handle(cmd),
+                          VK_PIPELINE_BIND_POINT_COMPUTE,
+                          nvk_pipeline_to_handle(&pipeline_save->base));
+   }
+   memcpy(desc->root.push, push_save, NVK_MAX_PUSH_SIZE);
+}
+
 void
 nvk_mme_copy_queries(struct mme_builder *b)
 {
@@ -812,6 +1131,6 @@ nvk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
    }
 
    uint64_t dst_addr = nvk_buffer_address(dst_buffer, dstOffset);
-   nvk_cmd_copy_query_pool_results_mme(cmd, pool, firstQuery, queryCount,
-                                       dst_addr, stride, flags);
+   nvk_meta_copy_query_pool_results(cmd, pool, firstQuery, queryCount,
+                                    dst_addr, stride, flags);
 }
