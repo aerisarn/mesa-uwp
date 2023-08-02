@@ -464,6 +464,8 @@ nvk_get_device_features(const struct nv_device_info *info,
       .multiview = true,
       .multiviewGeometryShader = true,
       .multiviewTessellationShader = true,
+      .variablePointersStorageBuffer = true,
+      .variablePointers = true,
       .shaderDrawParameters = true,
       .samplerYcbcrConversion = true,
 
