@@ -91,6 +91,7 @@ struct aco_shader_info {
    } vs;
    struct {
       uint32_t num_lds_blocks;
+      bool has_epilog;
    } tcs;
    struct {
       bool has_epilog;
