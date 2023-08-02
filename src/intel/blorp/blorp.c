@@ -23,8 +23,6 @@
 
 #include <errno.h>
 
-#include "program/prog_instruction.h"
-
 #include "blorp_priv.h"
 #include "compiler/brw_compiler.h"
 #include "compiler/brw_nir.h"
@@ -252,26 +250,17 @@ blorp_params_init(struct blorp_params *params)
    params->num_layers = 1;
 }
 
-static void
-blorp_init_base_prog_key(struct brw_base_prog_key *key)
-{
-   for (int i = 0; i < BRW_MAX_SAMPLERS; i++)
-      key->tex.swizzles[i] = SWIZZLE_XYZW;
-}
-
 void
 brw_blorp_init_wm_prog_key(struct brw_wm_prog_key *wm_key)
 {
    memset(wm_key, 0, sizeof(*wm_key));
    wm_key->nr_color_regions = 1;
-   blorp_init_base_prog_key(&wm_key->base);
 }
 
 void
 brw_blorp_init_cs_prog_key(struct brw_cs_prog_key *cs_key)
 {
    memset(cs_key, 0, sizeof(*cs_key));
-   blorp_init_base_prog_key(&cs_key->base);
 }
 
 const unsigned *
