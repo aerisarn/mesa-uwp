@@ -620,26 +620,19 @@ nvk_image_plane_add_req(struct nvk_image_plane *plane,
    *size_B += plane->nil.size_B;
 }
 
-VKAPI_ATTR void VKAPI_CALL
-nvk_GetImageMemoryRequirements2(VkDevice device,
-                                const VkImageMemoryRequirementsInfo2 *pInfo,
-                                VkMemoryRequirements2 *pMemoryRequirements)
+static void
+nvk_get_image_memory_requirements(struct nvk_device *dev,
+                                  struct nvk_image *image,
+                                  VkImageAspectFlags aspects,
+                                  VkMemoryRequirements2 *pMemoryRequirements)
 {
-   VK_FROM_HANDLE(nvk_device, dev, device);
-   VK_FROM_HANDLE(nvk_image, image, pInfo->image);
-
    uint32_t memory_types = (1 << dev->pdev->mem_type_cnt) - 1;
 
    // TODO hope for the best?
 
-   VkImageAspectFlags aspects = image->vk.aspects;
-
    uint64_t size_B = 0;
    uint32_t align_B = 0;
    if (image->disjoint) {
-      const VkImagePlaneMemoryRequirementsInfo *plane_memory_req_info =
-        vk_find_struct_const(pInfo->pNext, IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO);
-      aspects = plane_memory_req_info->planeAspect;
       uint8_t plane = nvk_image_aspects_to_plane(image, aspects);
       nvk_image_plane_add_req(&image->planes[plane], &size_B, &align_B);
    } else {
@@ -674,6 +667,23 @@ nvk_GetImageMemoryRequirements2(VkDevice device,
    }
 }
 
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetImageMemoryRequirements2(VkDevice device,
+                                const VkImageMemoryRequirementsInfo2 *pInfo,
+                                VkMemoryRequirements2 *pMemoryRequirements)
+{
+   VK_FROM_HANDLE(nvk_device, dev, device);
+   VK_FROM_HANDLE(nvk_image, image, pInfo->image);
+
+   const VkImagePlaneMemoryRequirementsInfo *plane_info =
+      vk_find_struct_const(pInfo->pNext, IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO);
+   const VkImageAspectFlags aspects =
+      image->disjoint ? plane_info->planeAspect : image->vk.aspects;
+
+   nvk_get_image_memory_requirements(dev, image, aspects,
+                                     pMemoryRequirements);
+}
+
 VKAPI_ATTR void VKAPI_CALL 
 nvk_GetDeviceImageMemoryRequirements(VkDevice device,
                                      const VkDeviceImageMemoryRequirementsKHR *pInfo,
@@ -686,12 +696,12 @@ nvk_GetDeviceImageMemoryRequirements(VkDevice device,
    result = nvk_image_init(dev, &image, pInfo->pCreateInfo);
    assert(result == VK_SUCCESS);
 
-   VkImageMemoryRequirementsInfo2 info2 = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
-      .image = nvk_image_to_handle(&image),
-   };
+   const VkImageAspectFlags aspects =
+      image.disjoint ? pInfo->planeAspect : image.vk.aspects;
 
-   nvk_GetImageMemoryRequirements2(device, &info2, pMemoryRequirements);
+   nvk_get_image_memory_requirements(dev, &image, aspects,
+                                     pMemoryRequirements);
+
    nvk_image_finish(dev, &image, NULL);
 }
 
