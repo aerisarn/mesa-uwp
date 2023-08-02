@@ -601,15 +601,15 @@ recordLocationSysVal(uint16_t *locs, uint8_t *masks,
    uint16_t addr = var->slot[0] * 4;
 
    switch (var->sn) {
-   case TGSI_SEMANTIC_POSITION: locs[SV_POSITION] = addr; break;
-   case TGSI_SEMANTIC_INSTANCEID: locs[SV_INSTANCE_ID] = addr; break;
-   case TGSI_SEMANTIC_VERTEXID: locs[SV_VERTEX_ID] = addr; break;
-   case TGSI_SEMANTIC_PRIMID: locs[SV_PRIMITIVE_ID] = addr; break;
+   case SYSTEM_VALUE_FRAG_COORD: locs[SV_POSITION] = addr; break;
+   case SYSTEM_VALUE_INSTANCE_ID: locs[SV_INSTANCE_ID] = addr; break;
+   case SYSTEM_VALUE_VERTEX_ID: locs[SV_VERTEX_ID] = addr; break;
+   case SYSTEM_VALUE_PRIMITIVE_ID: locs[SV_PRIMITIVE_ID] = addr; break;
    default:
       break;
    }
    // TODO is this even hit?
-   if (var->sn == TGSI_SEMANTIC_POSITION && masks)
+   if (var->sn == SYSTEM_VALUE_FRAG_COORD && masks)
       masks[0] = 0;
 }
 

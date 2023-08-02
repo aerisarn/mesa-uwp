@@ -23,6 +23,7 @@
 #ifndef __NV50_IR_DRIVER_H__
 #define __NV50_IR_DRIVER_H__
 
+#include "compiler/shader_enums.h"
 #include "util/macros.h"
 #include "util/blob.h"
 
@@ -57,7 +58,7 @@ struct nv50_ir_varying
 
 struct nv50_ir_sysval
 {
-   uint8_t sn; /* TGSI semantic name */
+   gl_system_value sn;
    uint8_t slot[4]; /* for nv50: native slots for xyzw (addresses in 32-bit words) */
 };
 

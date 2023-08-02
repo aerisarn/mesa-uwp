@@ -905,20 +905,6 @@ bool Converter::assignSlots() {
    uint8_t i;
    BITSET_FOREACH_SET(i, nir->info.system_values_read, SYSTEM_VALUE_MAX) {
       switch (i) {
-      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID:
-      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL:
-      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE:
-      case SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID:
-      case SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL:
-      case SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE:
-      case SYSTEM_VALUE_BASE_GLOBAL_INVOCATION_ID:
-         continue;
-      default:
-         info_out->sv[info_out->numSysVals].sn = tgsi_get_sysval_semantic(i);
-         break;
-      }
-
-      switch (i) {
       case SYSTEM_VALUE_VERTEX_ID:
          info_out->io.vertexId = info_out->numSysVals;
          break;
@@ -929,6 +915,7 @@ bool Converter::assignSlots() {
          break;
       }
 
+      info_out->sv[info_out->numSysVals].sn = (gl_system_value)i;
       info_out->numSysVals += 1;
    }
 

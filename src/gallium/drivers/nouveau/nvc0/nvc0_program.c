@@ -242,16 +242,16 @@ nvc0_vtgp_gen_header(struct nvc0_program *vp, struct nv50_ir_prog_info_out *info
 
    for (i = 0; i < info->numSysVals; ++i) {
       switch (info->sv[i].sn) {
-      case TGSI_SEMANTIC_PRIMID:
+      case SYSTEM_VALUE_PRIMITIVE_ID:
          vp->hdr[5] |= 1 << 24;
          break;
-      case TGSI_SEMANTIC_INSTANCEID:
+      case SYSTEM_VALUE_INSTANCE_ID:
          vp->hdr[10] |= 1 << 30;
          break;
-      case TGSI_SEMANTIC_VERTEXID:
+      case SYSTEM_VALUE_VERTEX_ID:
          vp->hdr[10] |= 1 << 31;
          break;
-      case TGSI_SEMANTIC_TESSCOORD:
+      case SYSTEM_VALUE_TESS_COORD:
          /* We don't have the mask, nor the slots populated. While this could
           * be achieved, the vast majority of the time if either of the coords
           * are read, then both will be read.
