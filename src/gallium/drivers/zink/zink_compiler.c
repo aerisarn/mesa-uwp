@@ -2613,11 +2613,18 @@ assign_consumer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reser
             var->data.driver_location = -1;
             return true;
          }
+         /* patch variables may be read in the workgroup */
          if (stage != MESA_SHADER_TESS_CTRL)
             /* dead io */
             return false;
-         /* patch variables may be read in the workgroup */
-         slot_map[slot] = (*reserved)++;
+         unsigned num_slots;
+         if (nir_is_arrayed_io(var, stage))
+            num_slots = glsl_count_vec4_slots(glsl_get_array_element(var->type), false, false);
+         else
+            num_slots = glsl_count_vec4_slots(var->type, false, false);
+         assert(*reserved + num_slots <= MAX_VARYING);
+         for (unsigned i = 0; i < num_slots; i++)
+            slot_map[slot + i] = (*reserved)++;
       }
       var->data.driver_location = slot_map[slot];
    }
