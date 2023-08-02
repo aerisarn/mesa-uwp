@@ -612,7 +612,7 @@ nir_gen_rect_vertices(nir_builder *b, nir_ssa_def *z, nir_ssa_def *w)
       w = nir_imm_float(b, 1.0);
 
    nir_ssa_def *vertex_id;
-   if (b->shader->options->vertex_id_zero_based)
+   if (b->shader->options && b->shader->options->vertex_id_zero_based)
       vertex_id = nir_load_vertex_id_zero_base(b);
    else
       vertex_id = nir_load_vertex_id(b);
