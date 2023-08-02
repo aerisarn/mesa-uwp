@@ -624,7 +624,6 @@ fs_fb_fetch(const struct lp_build_fs_iface *iface,
                            NULL, NULL, NULL, result);
 }
 
-
 /**
  * Generate the fragment shader, depth/stencil test, and alpha tests.
  */
@@ -667,14 +666,6 @@ generate_fs_loop(struct gallivm_state *gallivm,
    struct lp_build_for_loop_state loop_state, sample_loop_state = {0};
    struct lp_build_mask_context mask;
    struct nir_shader *nir = shader->base.ir.nir;
-   /*
-    * TODO: figure out if simple_shader optimization is really worthwile to
-    * keep. Disabled because it may hide some real bugs in the (depth/stencil)
-    * code since tests tend to take another codepath than real shaders.
-    */
-   bool simple_shader = (shader->info.base.file_count[TGSI_FILE_SAMPLER] == 0 &&
-                         shader->info.base.num_inputs < 3 &&
-                         shader->info.base.num_instructions < 8) && 0;
    const bool dual_source_blend = key->blend.rt[0].blend_enable &&
                                   util_blend_state_is_dual(&key->blend, 0);
    const bool post_depth_coverage = nir->info.fs.post_depth_coverage;
@@ -824,7 +815,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    /* 'mask' will control execution based on quad's pixel alive/killed state */
    lp_build_mask_begin(&mask, gallivm, type, mask_val);
 
-   if (!(depth_mode & EARLY_DEPTH_TEST) && !simple_shader)
+   if (!(depth_mode & EARLY_DEPTH_TEST))
       lp_build_mask_check(&mask);
 
    /* Create storage for recombining sample masks after early Z pass. */
@@ -916,7 +907,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                   z, z_fb, s_fb,
                                   facing,
                                   &z_value, &s_value,
-                                  !simple_shader && !key->multisample,
+                                  !key->multisample,
                                   key->restrict_depth_values);
 
       if (depth_mode & EARLY_DEPTH_WRITE) {
@@ -931,7 +922,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
        * after stencil test otherwise new stencil values may not get written
        * if all fragments got killed by depth/stencil test.
        */
-      if (!simple_shader && key->stencil[0].enabled && !key->multisample)
+      if (key->stencil[0].enabled && !key->multisample)
          lp_build_mask_check(&mask);
 
       if (key->multisample) {
@@ -1321,7 +1312,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                   z, z_fb, s_fb,
                                   facing,
                                   &z_value, &s_value,
-                                  !simple_shader,
+                                  false,
                                   key->restrict_depth_values);
       /* Late Z write */
       if (depth_mode & LATE_DEPTH_WRITE) {
