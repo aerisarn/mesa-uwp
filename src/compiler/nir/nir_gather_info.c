@@ -291,7 +291,7 @@ try_mask_partial_io(nir_shader *shader, nir_variable *var,
       return false;
    }
 
-   unsigned len = glsl_count_attribute_slots(deref->type, false);
+   unsigned len = nir_deref_count_slots(deref, var);
    set_io_mask(shader, var, offset, len, deref, is_output_read);
    return true;
 }

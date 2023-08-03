@@ -6133,6 +6133,22 @@ nir_variable_count_slots(const nir_variable *var, const struct glsl_type *type)
    return var->data.compact ? DIV_ROUND_UP(var->data.location_frac + glsl_get_length(type), 4) : glsl_count_attribute_slots(type, false);
 }
 
+static inline unsigned
+nir_deref_count_slots(nir_deref_instr *deref, nir_variable *var)
+{
+   if (var->data.compact) {
+      switch (deref->deref_type) {
+      case nir_deref_type_array:
+         return 1;
+      case nir_deref_type_var:
+         return nir_variable_count_slots(var, deref->type);
+      default:
+         unreachable("illegal deref type");
+      }
+   }
+   return glsl_count_attribute_slots(deref->type, false);
+}
+
 /* See default_ub_config in nir_range_analysis.c for documentation. */
 typedef struct nir_unsigned_upper_bound_config {
    unsigned min_subgroup_size;
