@@ -690,6 +690,14 @@ get_shared_block(struct ntv_context *ctx, unsigned bit_size)
    unsigned idx = bit_size >> 4;
    if (!ctx->shared_block_var[idx])
       create_shared_block(ctx, ctx->nir->info.shared_size, bit_size);
+   if (ctx->sinfo->have_workgroup_memory_explicit_layout) {
+      spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_workgroup_memory_explicit_layout");
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityWorkgroupMemoryExplicitLayoutKHR);
+      if (ctx->shared_block_var[0])
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilityWorkgroupMemoryExplicitLayout8BitAccessKHR);
+      if (ctx->shared_block_var[1])
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilityWorkgroupMemoryExplicitLayout16BitAccessKHR);
+   }
    return ctx->shared_block_var[idx];
 }
 
