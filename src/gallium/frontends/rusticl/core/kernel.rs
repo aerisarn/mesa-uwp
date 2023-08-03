@@ -440,12 +440,6 @@ fn lower_and_optimize_nir(
     nir.sweep_mem();
 
     nir_pass!(nir, nir_dedup_inline_samplers);
-    nir_pass!(
-        nir,
-        nir_lower_vars_to_explicit_types,
-        nir_variable_mode::nir_var_function_temp,
-        Some(glsl_get_cl_type_size_align),
-    );
 
     let mut printf_opts = nir_lower_printf_options::default();
     printf_opts.set_treat_doubles_as_floats(false);
