@@ -123,7 +123,7 @@ cmake -S /VK-GL-CTS -B . -G Ninja \
       -DDEQP_TARGET=${DEQP_TARGET:-x11_glx} \
       -DCMAKE_BUILD_TYPE=Release \
       $EXTRA_CMAKE_ARGS
-ninja
+mold --run ninja
 
 if [ "${DEQP_TARGET}" = 'android' ]; then
     mv /deqp/modules/egl/deqp-egl /deqp/modules/egl/deqp-egl-android
