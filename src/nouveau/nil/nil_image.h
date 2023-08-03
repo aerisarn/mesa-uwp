@@ -26,6 +26,16 @@ enum nil_image_usage_flags {
    NIL_IMAGE_USAGE_2D_VIEW_BIT         = BITFIELD_BIT(6),
 };
 
+enum PACKED nil_view_type {
+   NIL_VIEW_TYPE_1D,
+   NIL_VIEW_TYPE_2D,
+   NIL_VIEW_TYPE_3D,
+   NIL_VIEW_TYPE_CUBE,
+   NIL_VIEW_TYPE_1D_ARRAY,
+   NIL_VIEW_TYPE_2D_ARRAY,
+   NIL_VIEW_TYPE_CUBE_ARRAY,
+};
+
 struct nil_extent4d {
    union { uint32_t w, width; };
    union { uint32_t h, height; };
@@ -95,6 +105,38 @@ struct nil_image {
    uint64_t size_B;
 };
 
+struct nil_view {
+   enum nil_view_type type;
+
+   /**
+    * The format to use in the view
+    *
+    * This may differ from the format of the actual isl_surf but must have
+    * the same block size.
+    */
+   enum pipe_format format;
+
+   uint32_t base_level;
+   uint32_t num_levels;
+
+   /**
+    * Base array layer
+    *
+    * For cube maps, both base_array_layer and array_len should be
+    * specified in terms of 2-D layers and must be a multiple of 6.
+    */
+   uint32_t base_array_layer;
+
+   /**
+    * Array Length
+    *
+    * Indicates the number of array elements starting at  Base Array Layer.
+    */
+   uint32_t array_len;
+
+   enum pipe_swizzle swizzle[4];
+};
+
 bool nil_image_init(struct nouveau_ws_device *dev,
                     struct nil_image *image,
                     const struct nil_image_init_info *restrict info);
@@ -108,5 +150,11 @@ nil_image_level_layer_offset_B(const struct nil_image *image,
    return image->levels[level].offset_B + (layer * image->array_stride_B);
 }
 
+
+void nil_image_fill_tic(struct nouveau_ws_device *dev,
+                        const struct nil_image *image,
+                        const struct nil_view *view,
+                        uint64_t base_address,
+                        void *desc_out);
 
 #endif /* NIL_H */

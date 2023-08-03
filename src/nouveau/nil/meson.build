@@ -23,6 +23,7 @@ libnil_files = files(
   'nil_format.h',
   'nil_image.c',
   'nil_image.h',
+  'nil_image_tic.c',
 )
 
 _libnil = static_library(
