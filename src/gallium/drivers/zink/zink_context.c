@@ -3250,6 +3250,10 @@ flush_batch(struct zink_context *ctx, bool sync)
             ctx->ds3_states = BITFIELD_MASK(ZINK_DS3_BLEND_A2C);
          if (!screen->info.dynamic_state3_feats.extendedDynamicState3AlphaToOneEnable)
             ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_BLEND_A21);
+         if (!screen->info.dynamic_state3_feats.extendedDynamicState3LineStippleEnable)
+            ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_RAST_STIPPLE_ON);
+         if (screen->driver_workarounds.no_linestipple)
+            ctx->ds3_states &= ~BITFIELD_BIT(ZINK_DS3_RAST_STIPPLE);
       }
       ctx->oom_flush = false;
       ctx->oom_stall = false;
