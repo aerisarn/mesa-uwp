@@ -13,7 +13,7 @@ modified and thus is unreliable).
 
 The CI runs a number of tests, from trivial build-testing to complex GPU rendering:
 
-- Build testing for a number of build systems, configurations and platforms
+- Build testing for a number of configurations and platforms
 - Sanity checks (``meson test``)
 - Most drivers are also tested using `VK-GL-CTS
   <https://github.com/KhronosGroup/VK-GL-CTS>`__
