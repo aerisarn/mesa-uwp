@@ -1125,7 +1125,6 @@ enum v3dv_job_type {
    V3DV_JOB_TYPE_CPU_RESET_QUERIES,
    V3DV_JOB_TYPE_CPU_END_QUERY,
    V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS,
-   V3DV_JOB_TYPE_CPU_COPY_BUFFER_TO_IMAGE,
    V3DV_JOB_TYPE_CPU_CSD_INDIRECT,
    V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY,
 };
@@ -1162,20 +1161,6 @@ struct v3dv_submit_sync_info {
    /* List of syncs to signal when all jobs complete */
    uint32_t signal_count;
    struct vk_sync_signal *signals;
-};
-
-struct v3dv_copy_buffer_to_image_cpu_job_info {
-   struct v3dv_image *image;
-   struct v3dv_buffer *buffer;
-   uint32_t buffer_offset;
-   uint32_t buffer_stride;
-   uint32_t buffer_layer_stride;
-   VkOffset3D image_offset;
-   VkExtent3D image_extent;
-   uint32_t mip_level;
-   uint32_t base_layer;
-   uint32_t layer_count;
-   uint8_t plane;
 };
 
 struct v3dv_csd_indirect_cpu_job_info {
@@ -1331,7 +1316,6 @@ struct v3dv_job {
       struct v3dv_reset_query_cpu_job_info          query_reset;
       struct v3dv_end_query_info                    query_end;
       struct v3dv_copy_query_results_cpu_job_info   query_copy_results;
-      struct v3dv_copy_buffer_to_image_cpu_job_info copy_buffer_to_image;
       struct v3dv_csd_indirect_cpu_job_info         csd_indirect;
       struct v3dv_timestamp_query_cpu_job_info      query_timestamp;
    } cpu;
