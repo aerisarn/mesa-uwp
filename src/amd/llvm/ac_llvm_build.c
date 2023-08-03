@@ -100,12 +100,15 @@ void ac_llvm_context_init(struct ac_llvm_context *ctx, struct ac_llvm_compiler *
    ctx->i1true = LLVMConstInt(ctx->i1, 1, false);
 
    ctx->range_md_kind = LLVMGetMDKindIDInContext(ctx->context, "range", 5);
-
    ctx->invariant_load_md_kind = LLVMGetMDKindIDInContext(ctx->context, "invariant.load", 14);
-
    ctx->uniform_md_kind = LLVMGetMDKindIDInContext(ctx->context, "amdgpu.uniform", 14);
+   ctx->fpmath_md_kind = LLVMGetMDKindIDInContext(ctx->context, "fpmath", 6);
 
    ctx->empty_md = LLVMMDNodeInContext(ctx->context, NULL, 0);
+
+   LLVMValueRef three = LLVMConstReal(ctx->f32, 3);
+   ctx->three_md = LLVMMDNodeInContext(ctx->context, &three, 1);
+
    ctx->flow = calloc(1, sizeof(*ctx->flow));
 
    ctx->ring_offsets_index = INT32_MAX;
