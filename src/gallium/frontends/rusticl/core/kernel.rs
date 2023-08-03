@@ -377,7 +377,21 @@ fn opt_nir(nir: &mut NirShader, dev: &Device) {
     } {}
 }
 
-fn lower_and_optimize_nir_pre_inputs(dev: &Device, nir: &mut NirShader, lib_clc: &NirShader) {
+extern "C" fn can_remove_var(var: *mut nir_variable, _: *mut c_void) -> bool {
+    unsafe {
+        let var = var.as_ref().unwrap();
+        !glsl_type_is_image(var.type_)
+            && !glsl_type_is_texture(var.type_)
+            && !glsl_type_is_sampler(var.type_)
+    }
+}
+
+fn lower_and_optimize_nir(
+    dev: &Device,
+    nir: &mut NirShader,
+    args: &[spirv::SPIRVKernelArg],
+    lib_clc: &NirShader,
+) -> (Vec<KernelArg>, Vec<InternalKernelArg>) {
     nir_pass!(nir, nir_scale_fdiv);
     nir.set_workgroup_size_variable_if_zero();
     nir.structurize();
@@ -415,22 +429,9 @@ fn lower_and_optimize_nir_pre_inputs(dev: &Device, nir: &mut NirShader, lib_clc:
     nir_pass!(nir, nir_lower_printf, &printf_opts);
 
     opt_nir(nir, dev);
-}
 
-extern "C" fn can_remove_var(var: *mut nir_variable, _: *mut c_void) -> bool {
-    unsafe {
-        let var = var.as_ref().unwrap();
-        !glsl_type_is_image(var.type_)
-            && !glsl_type_is_texture(var.type_)
-            && !glsl_type_is_sampler(var.type_)
-    }
-}
+    let mut args = KernelArg::from_spirv_nir(args, nir);
 
-fn lower_and_optimize_nir_late(
-    dev: &Device,
-    nir: &mut NirShader,
-    args: &mut [KernelArg],
-) -> Vec<InternalKernelArg> {
     let address_bits_base_type;
     let address_bits_ptr_type;
 
@@ -656,7 +657,7 @@ fn lower_and_optimize_nir_late(
     /* before passing it into drivers, assign locations as drivers might remove nir_variables or
      * other things we depend on
      */
-    KernelArg::assign_locations(args, &mut internal_args, nir);
+    KernelArg::assign_locations(&mut args, &mut internal_args, nir);
 
     /* update the has_variable_shared_mem info as we might have DCEed all of them */
     nir.set_has_variable_shared_mem(
@@ -667,7 +668,8 @@ fn lower_and_optimize_nir_late(
 
     nir_pass!(nir, nir_opt_dce);
     nir.sweep_mem();
-    internal_args
+
+    (args, internal_args)
 }
 
 fn deserialize_nir(
@@ -728,9 +730,7 @@ pub(super) fn convert_spirv_to_nir(
          */
         nir.preserve_fp16_denorms();
 
-        lower_and_optimize_nir_pre_inputs(dev, &mut nir, &dev.lib_clc);
-        let mut args = KernelArg::from_spirv_nir(args, &mut nir);
-        let internal_args = lower_and_optimize_nir_late(dev, &mut nir, &mut args);
+        let (args, internal_args) = lower_and_optimize_nir(dev, &mut nir, args, &dev.lib_clc);
 
         if let Some(cache) = cache {
             let mut bin = Vec::new();
