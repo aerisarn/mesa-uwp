@@ -166,7 +166,7 @@ panfrost_texture_num_elements(unsigned first_level, unsigned last_level,
 }
 
 static bool
-panfrost_needs_multiplanar_descriptor(enum util_format_layout layout)
+panfrost_is_yuv(enum util_format_layout layout)
 {
    /* Mesa's subsampled RGB formats are considered YUV formats on Mali */
    return layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED ||
@@ -189,7 +189,7 @@ GENX(panfrost_estimate_texture_payload_size)(const struct pan_image_view *iview)
    size_t element_size;
    enum util_format_layout layout =
       util_format_description(iview->format)->layout;
-   if (panfrost_needs_multiplanar_descriptor(layout))
+   if (panfrost_is_yuv(layout))
       element_size = pan_size(MULTIPLANAR_SURFACE);
    else
       element_size = pan_size(SURFACE_WITH_STRIDE);
@@ -554,7 +554,7 @@ panfrost_emit_surface(const struct pan_image_view *iview, unsigned level,
    panfrost_emit_plane(layouts[0], format, plane_ptrs[0], level, payload);
 #else
 #if PAN_ARCH == 7
-   if (panfrost_needs_multiplanar_descriptor(desc->layout)) {
+   if (panfrost_is_yuv(desc->layout)) {
       panfrost_emit_multiplanar_surface(plane_ptrs, row_strides, payload);
       return;
    }
@@ -648,8 +648,7 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
       };
 
       util_format_compose_swizzles(replicate_x, iview->swizzle, swizzle);
-   } else if (PAN_ARCH == 7 &&
-              !panfrost_needs_multiplanar_descriptor(desc->layout)) {
+   } else if (PAN_ARCH == 7 && !panfrost_is_yuv(desc->layout)) {
 #if PAN_ARCH == 7
       /* v7 (only) restricts component orders when AFBC is in use.
        * Rather than restrict AFBC, we use an allowed component order
@@ -671,7 +670,7 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
    }
 
    if ((dev->debug & PAN_DBG_YUV) && PAN_ARCH == 7 &&
-       panfrost_needs_multiplanar_descriptor(desc->layout)) {
+       panfrost_is_yuv(desc->layout)) {
       if (desc->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED) {
          swizzle[2] = PIPE_SWIZZLE_1;
       } else if (desc->layout == UTIL_FORMAT_LAYOUT_PLANAR2) {
