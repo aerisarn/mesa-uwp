@@ -129,6 +129,7 @@ lower_sample_mask_write(nir_builder *b, nir_instr *instr, void *data)
     * and then lowering sample shading after (splitting up discard targets).
     */
    nir_discard_agx(b, nir_inot(b, nir_u2u16(b, intr->src[0].ssa)));
+   b->shader->info.fs.uses_discard = true;
    nir_instr_remove(instr);
    return true;
 }
