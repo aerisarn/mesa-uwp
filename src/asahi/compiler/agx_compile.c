@@ -345,6 +345,22 @@ agx_format_for_pipe(enum pipe_format format)
 }
 
 static void
+agx_emit_load_coefficients(agx_builder *b, agx_index dest,
+                           nir_intrinsic_instr *instr)
+{
+   enum glsl_interp_mode mode = nir_intrinsic_interp_mode(instr);
+   bool smooth = (mode != INTERP_MODE_FLAT);
+   bool perspective = smooth && (mode != INTERP_MODE_NOPERSPECTIVE);
+
+   agx_index cf = agx_get_cf(b->shader, smooth, perspective,
+                             nir_intrinsic_io_semantics(instr).location,
+                             nir_intrinsic_component(instr), 1);
+
+   agx_ldcf_to(b, dest, cf, 1);
+   agx_emit_cached_split(b, dest, 3);
+}
+
+static void
 agx_emit_load_vary_flat(agx_builder *b, agx_index dest,
                         nir_intrinsic_instr *instr)
 {
@@ -951,6 +967,11 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_input:
       assert(stage == MESA_SHADER_FRAGMENT && "vertex loads lowered");
       agx_emit_load_vary_flat(b, dst, instr);
+      return NULL;
+
+   case nir_intrinsic_load_coefficients_agx:
+      assert(stage == MESA_SHADER_FRAGMENT);
+      agx_emit_load_coefficients(b, dst, instr);
       return NULL;
 
    case nir_intrinsic_load_agx:
