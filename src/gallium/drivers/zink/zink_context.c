@@ -628,8 +628,9 @@ update_descriptor_state_ubo(struct zink_context *ctx, gl_shader_stage shader, un
          ctx->di.db.ubos[shader][slot].address = res->obj->bda + ctx->ubos[shader][slot].buffer_offset;
       else
          ctx->di.db.ubos[shader][slot].address = 0;
-      ctx->di.db.ubos[shader][slot].range = ctx->ubos[shader][slot].buffer_size;
-      assert(ctx->di.db.ubos[shader][slot].range <= screen->info.props.limits.maxUniformBufferRange);
+      ctx->di.db.ubos[shader][slot].range = res ? ctx->ubos[shader][slot].buffer_size : VK_WHOLE_SIZE;
+      assert(ctx->di.db.ubos[shader][slot].range == VK_WHOLE_SIZE ||
+             ctx->di.db.ubos[shader][slot].range <= screen->info.props.limits.maxUniformBufferRange);
    } else {
       ctx->di.t.ubos[shader][slot].offset = ctx->ubos[shader][slot].buffer_offset;
       if (res) {
@@ -663,7 +664,7 @@ update_descriptor_state_ssbo(struct zink_context *ctx, gl_shader_stage shader, u
          ctx->di.db.ssbos[shader][slot].address = res->obj->bda + ctx->ssbos[shader][slot].buffer_offset;
       else
          ctx->di.db.ssbos[shader][slot].address = 0;
-      ctx->di.db.ssbos[shader][slot].range = ctx->ssbos[shader][slot].buffer_size;
+      ctx->di.db.ssbos[shader][slot].range = res ? ctx->ssbos[shader][slot].buffer_size : VK_WHOLE_SIZE;
    } else {
       ctx->di.t.ssbos[shader][slot].offset = ctx->ssbos[shader][slot].buffer_offset;
       if (res) {
@@ -718,6 +719,7 @@ update_descriptor_state_sampler(struct zink_context *ctx, gl_shader_stage shader
          ctx->di.textures[shader][slot].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
          if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
             ctx->di.db.tbos[shader][slot].address = 0;
+            ctx->di.db.tbos[shader][slot].range = VK_WHOLE_SIZE;
          } else {
             ctx->di.t.tbos[shader][slot] = VK_NULL_HANDLE;
          }
@@ -765,10 +767,12 @@ update_descriptor_state_image(struct zink_context *ctx, gl_shader_stage shader, 
    } else {
       if (likely(have_null_descriptors)) {
          memset(&ctx->di.images[shader][slot], 0, sizeof(ctx->di.images[shader][slot]));
-         if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
+         if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
             ctx->di.db.texel_images[shader][slot].address = 0;
-         else
+            ctx->di.db.texel_images[shader][slot].range = VK_WHOLE_SIZE;
+         } else {
             ctx->di.t.texel_images[shader][slot] = VK_NULL_HANDLE;
+         }
       } else {
          assert(zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_DB);
          struct zink_surface *null_surface = zink_get_dummy_surface(ctx, 0);
