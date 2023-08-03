@@ -1065,7 +1065,7 @@ struct anv_queue {
 
    union {
       uint32_t                               exec_flags; /* i915 */
-      uint32_t                               engine_id; /* Xe */
+      uint32_t                               exec_queue_id; /* Xe */
    };
 
    /** Synchronization object for debug purposes (DEBUG_SYNC) */

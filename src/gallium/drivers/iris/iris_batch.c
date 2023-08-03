@@ -860,12 +860,12 @@ iris_batch_name_to_string(enum iris_batch_name name)
 }
 
 static inline bool
-context_or_engine_was_banned(struct iris_bufmgr *bufmgr, int ret)
+context_or_exec_queue_was_banned(struct iris_bufmgr *bufmgr, int ret)
 {
    enum intel_kmd_type kmd_type = iris_bufmgr_get_device_info(bufmgr)->kmd_type;
 
    /* In i915 EIO means our context is banned, while on Xe ECANCELED means
-    * our engine was banned
+    * our exec queue was banned
     */
    if ((kmd_type == INTEL_KMD_TYPE_I915 && ret == -EIO) ||
        (kmd_type == INTEL_KMD_TYPE_XE && ret == -ECANCELED))
@@ -900,7 +900,7 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
       enum intel_kmd_type kmd_type = iris_bufmgr_get_device_info(bufmgr)->kmd_type;
       uint32_t batch_ctx_id = kmd_type == INTEL_KMD_TYPE_I915 ?
-                              batch->i915.ctx_id : batch->xe.engine_id;
+                              batch->i915.ctx_id : batch->xe.exec_queue_id;
       fprintf(stderr, "%19s:%-3d: %s batch [%u] flush with %5db (%0.1f%%) "
               "(cmds), %4d BOs (%0.1fMb aperture)\n",
               file, line, iris_batch_name_to_string(batch->name),
@@ -957,7 +957,7 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
     * has been lost and needs to be re-initialized.  If this succeeds,
     * dubiously claim success...
     */
-   if (ret && context_or_engine_was_banned(bufmgr, ret)) {
+   if (ret && context_or_exec_queue_was_banned(bufmgr, ret)) {
       enum pipe_reset_status status = iris_batch_check_for_reset(batch);
 
       if (status != PIPE_NO_RESET || ice->context_reset_signaled)

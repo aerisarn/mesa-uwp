@@ -192,15 +192,15 @@ static enum pipe_reset_status
 xe_batch_check_for_reset(struct iris_batch *batch)
 {
    enum pipe_reset_status status = PIPE_NO_RESET;
-   struct drm_xe_engine_get_property engine_get_property = {
-      .engine_id = batch->xe.engine_id,
-      .property = XE_ENGINE_GET_PROPERTY_BAN,
+   struct drm_xe_exec_queue_get_property exec_queue_get_property = {
+      .exec_queue_id = batch->xe.exec_queue_id,
+      .property = XE_EXEC_QUEUE_GET_PROPERTY_BAN,
    };
    int ret = intel_ioctl(iris_bufmgr_get_fd(batch->screen->bufmgr),
-                         DRM_IOCTL_XE_ENGINE_GET_PROPERTY,
-                         &engine_get_property);
+                         DRM_IOCTL_XE_EXEC_QUEUE_GET_PROPERTY,
+                         &exec_queue_get_property);
 
-   if (ret || engine_get_property.value)
+   if (ret || exec_queue_get_property.value)
       status = PIPE_GUILTY_CONTEXT_RESET;
 
    return status;
@@ -383,7 +383,7 @@ xe_batch_submit(struct iris_batch *batch)
    }
 
    struct drm_xe_exec exec = {
-      .engine_id = batch->xe.engine_id,
+      .exec_queue_id = batch->xe.exec_queue_id,
       .num_batch_buffer = 1,
       .address = batch->exec_bos[0]->address,
       .syncs = (uintptr_t)syncs,
