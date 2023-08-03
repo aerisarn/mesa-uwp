@@ -138,7 +138,7 @@ lower_sparse_image_load(nir_builder *b, nir_intrinsic_instr *intrin)
       nir_ssa_def *img_layer = nir_channel(b, intrin->src[1].ssa, 2);
       nir_ssa_def *tex_slice = nir_idiv(b, img_layer, nir_imm_int(b, 6));
       nir_ssa_def *tex_face =
-         nir_iadd(b, img_layer, nir_ineg(b, nir_imul_imm(b, img_layer, 6)));
+         nir_iadd(b, img_layer, nir_ineg(b, nir_imul_imm(b, tex_slice, 6)));
       nir_ssa_def *comps[4] = {
          nir_channel(b, intrin->src[1].ssa, 0),
          nir_channel(b, intrin->src[1].ssa, 1),
