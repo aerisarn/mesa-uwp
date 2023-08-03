@@ -62,6 +62,17 @@ static_assert(
    "vn_graphics_pipeline_create_info_fields::mask is too small");
 
 /**
+ * Description of fixes needed for a single VkGraphicsPipelineCreateInfo
+ * pNext chain.
+ */
+struct vn_graphics_pipeline_fix_desc {
+   /** Erase these fields to prevent the Venus encoder from reading invalid
+    * memory.
+    */
+   struct vn_graphics_pipeline_create_info_fields erase;
+};
+
+/**
  * Temporary storage for fixes in vkCreateGraphicsPipelines.
  *
  * Length of each array is vkCreateGraphicsPipelines::createInfoCount.
@@ -430,306 +441,307 @@ vn_graphics_pipeline_fix_tmp_alloc(const VkAllocationCallbacks *alloc,
    return tmp;
 }
 
+static void
+vn_find_graphics_pipeline_create_info_fixes(
+   const VkGraphicsPipelineCreateInfo *info,
+   struct vn_graphics_pipeline_fix_desc *fix_desc)
+{
+   memset(fix_desc, 0, sizeof(*fix_desc));
+
+   const VkPipelineRenderingCreateInfo *rendering_info =
+      vk_find_struct_const(info, PIPELINE_RENDERING_CREATE_INFO);
+
+   VkShaderStageFlags stages = 0;
+   for (uint32_t j = 0; j < info->stageCount; j++) {
+      stages |= info->pStages[j].stage;
+   }
+
+   /* VkDynamicState */
+   struct {
+      bool rasterizer_discard_enable;
+      bool viewport;
+      bool viewport_with_count;
+      bool scissor;
+      bool scissor_with_count;
+      bool vertex_input;
+   } has_dynamic_state = { 0 };
+
+   if (info->pDynamicState) {
+      for (uint32_t j = 0; j < info->pDynamicState->dynamicStateCount; j++) {
+         switch (info->pDynamicState->pDynamicStates[j]) {
+         case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
+            has_dynamic_state.rasterizer_discard_enable = true;
+            break;
+         case VK_DYNAMIC_STATE_VIEWPORT:
+            has_dynamic_state.viewport = true;
+            break;
+         case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
+            has_dynamic_state.viewport_with_count = true;
+            break;
+         case VK_DYNAMIC_STATE_SCISSOR:
+            has_dynamic_state.scissor = true;
+            break;
+         case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:
+            has_dynamic_state.scissor_with_count = true;
+            break;
+         case VK_DYNAMIC_STATE_VERTEX_INPUT_EXT:
+            has_dynamic_state.vertex_input = true;
+            break;
+         default:
+            break;
+         }
+      }
+   }
+
+   const struct vn_render_pass *pass =
+      vn_render_pass_from_handle(info->renderPass);
+
+   const struct vn_subpass *subpass = NULL;
+   if (pass)
+      subpass = &pass->subpasses[info->subpass];
+
+   /* TODO: Ignore VkPipelineRenderingCreateInfo when not using dynamic
+    * rendering. This requires either a deep rewrite of
+    * VkGraphicsPipelineCreateInfo::pNext or a fix in the generated
+    * protocol code.
+    *
+    * The Vulkan spec (1.3.223) says about VkPipelineRenderingCreateInfo:
+    *    If a graphics pipeline is created with a valid VkRenderPass,
+    *    parameters of this structure are ignored.
+    */
+   const bool has_dynamic_rendering = !pass && rendering_info;
+
+   /* For each pipeline state category, we define a bool.
+    *
+    * The Vulkan spec (1.3.223) says:
+    *    The state required for a graphics pipeline is divided into vertex
+    *    input state, pre-rasterization shader state, fragment shader
+    *    state, and fragment output state.
+    *
+    * Without VK_EXT_graphics_pipeline_library, most states are
+    * unconditionally included in the pipeline. Despite that, we still
+    * reference the state bools in the ignore rules because (a) it makes
+    * the ignore condition easier to validate against the text of the
+    * relevant VUs; and (b) it makes it easier to enable
+    * VK_EXT_graphics_pipeline_library because we won't need to carefully
+    * revisit the text of each VU to untangle the missing pipeline state
+    * bools.
+    */
+
+   /* The spec does not assign a name to this state. We define it just to
+    * deduplicate code.
+    *
+    * The Vulkan spec (1.3.223) says:
+    *    If the value of [...]rasterizerDiscardEnable in the
+    *    pre-rasterization shader state is VK_FALSE or the
+    *    VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE dynamic state is
+    *    enabled fragment shader state and fragment output interface state
+    *    is included in a complete graphics pipeline.
+    */
+   const bool has_raster_state =
+      has_dynamic_state.rasterizer_discard_enable ||
+      (info->pRasterizationState &&
+       info->pRasterizationState->rasterizerDiscardEnable == VK_FALSE);
+
+   /* VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT */
+   const bool has_fragment_shader_state = has_raster_state;
+
+   /* VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT */
+   const bool has_fragment_output_state = has_raster_state;
+
+   /* Ignore pTessellationState?
+    *    VUID-VkGraphicsPipelineCreateInfo-pStages-00731
+    */
+   if (info->pTessellationState &&
+       (!(stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) ||
+        !(stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))) {
+      fix_desc->erase.tessellation_state = true;
+   }
+
+   /* Ignore pViewportState?
+    *    VUID-VkGraphicsPipelineCreateInfo-rasterizerDiscardEnable-00750
+    *    VUID-VkGraphicsPipelineCreateInfo-pViewportState-04892
+    */
+   if (info->pViewportState && !has_raster_state) {
+      fix_desc->erase.viewport_state = true;
+   }
+
+   /* Ignore pViewports?
+    *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-04130
+    *
+    * If viewportCount is 0, then venus encoder will ignore pViewports and we
+    * do not need to erase it.
+    */
+   if (!fix_desc->erase.viewport_state && info->pViewportState &&
+       info->pViewportState->pViewports &&
+       info->pViewportState->viewportCount) {
+      const bool has_dynamic_viewport =
+         has_dynamic_state.viewport || has_dynamic_state.viewport_with_count;
+
+      if (has_dynamic_viewport) {
+         fix_desc->erase.viewport_state_viewports = true;
+      }
+   }
+
+   /* Ignore pScissors?
+    *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-04131
+    *
+    * If scissorCount is 0, then venus encoder will ignore pScissors and we
+    * do not need to erase it.
+    */
+   if (!fix_desc->erase.viewport_state && info->pViewportState &&
+       info->pViewportState->pScissors &&
+       info->pViewportState->scissorCount) {
+      const bool has_dynamic_scissor =
+         has_dynamic_state.scissor || has_dynamic_state.scissor_with_count;
+      if (has_dynamic_scissor) {
+         fix_desc->erase.viewport_state_scissors = true;
+      }
+   }
+
+   /* Ignore pMultisampleState?
+    *    VUID-VkGraphicsPipelineCreateInfo-rasterizerDiscardEnable-00751
+    */
+   if (info->pMultisampleState && !has_fragment_output_state) {
+      fix_desc->erase.multisample_state = true;
+   }
+
+   /* Ignore pDepthStencilState? */
+   if (info->pDepthStencilState) {
+      const bool has_static_attachment =
+         subpass &&
+         (subpass->attachment_aspects &
+          (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+
+      /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06043 */
+      bool require_state = has_fragment_shader_state && has_static_attachment;
+
+      if (!require_state) {
+         const bool has_dynamic_attachment =
+            has_dynamic_rendering &&
+            (rendering_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
+             rendering_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED);
+
+         /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06053 */
+         require_state = has_fragment_shader_state &&
+                         has_fragment_output_state && has_dynamic_attachment;
+      }
+
+      fix_desc->erase.depth_stencil_state = !require_state;
+   }
+
+   /* Ignore pColorBlendState? */
+   if (info->pColorBlendState) {
+      const bool has_static_attachment =
+         subpass && (subpass->attachment_aspects & VK_IMAGE_ASPECT_COLOR_BIT);
+
+      /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06044 */
+      bool require_state = has_fragment_output_state && has_static_attachment;
+
+      if (!require_state) {
+         const bool has_dynamic_attachment =
+            has_dynamic_rendering && rendering_info->colorAttachmentCount;
+
+         /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06054 */
+         require_state = has_fragment_output_state && has_dynamic_attachment;
+      }
+
+      fix_desc->erase.color_blend_state = !require_state;
+   }
+
+   /* Ignore pVertexInputState?
+    * The Vulkan spec (1.3.264) says:
+    * VK_DYNAMIC_STATE_VERTEX_INPUT_EXT specifies that the
+    * pVertexInputState state will be ignored and must be set dynamically
+    * with vkCmdSetVertexInputEXT before any drawing commands
+    */
+   if (info->pVertexInputState && has_dynamic_state.vertex_input) {
+      fix_desc->erase.vertex_input_state = true;
+   }
+
+   /* Ignore basePipelineHandle?
+    *    VUID-VkGraphicsPipelineCreateInfo-flags-00722
+    *    VUID-VkGraphicsPipelineCreateInfo-flags-00724
+    *    VUID-VkGraphicsPipelineCreateInfo-flags-00725
+    */
+   if (info->basePipelineHandle != VK_NULL_HANDLE &&
+       !(info->flags & VK_PIPELINE_CREATE_DERIVATIVE_BIT)) {
+      fix_desc->erase.base_pipeline_handle = true;
+   }
+}
+
 static const VkGraphicsPipelineCreateInfo *
 vn_fix_graphics_pipeline_create_infos(
    struct vn_device *dev,
    uint32_t info_count,
    const VkGraphicsPipelineCreateInfo *infos,
-   const VkAllocationCallbacks *alloc,
-   struct vn_graphics_pipeline_fix_tmp **out_fix_tmp)
+   const struct vn_graphics_pipeline_fix_desc fix_descs[info_count],
+   struct vn_graphics_pipeline_fix_tmp **out_fix_tmp,
+   const VkAllocationCallbacks *alloc)
 {
-   VN_TRACE_FUNC();
+   VN_TRACE_SCOPE("apply_fixes");
 
-   /* Defer allocation until we need a fix. */
-   struct vn_graphics_pipeline_fix_tmp *fix_tmp = NULL;
+   *out_fix_tmp = NULL;
+
+   uint32_t erase_mask = 0;
+   for (uint32_t i = 0; i < info_count; i++) {
+      erase_mask |= fix_descs[i].erase.mask;
+   }
+
+   if (!erase_mask) {
+      /* No fix is needed. */
+      return infos;
+   }
+
+   struct vn_graphics_pipeline_fix_tmp *fix_tmp =
+      vn_graphics_pipeline_fix_tmp_alloc(alloc, info_count);
+   if (!fix_tmp)
+      return NULL;
+
+   memcpy(fix_tmp->infos, infos, info_count * sizeof(infos[0]));
 
    for (uint32_t i = 0; i < info_count; i++) {
-      /* Erase these fields to prevent the Venus encoder from reading invalid
-       * memory.
-       */
-      struct vn_graphics_pipeline_create_info_fields erase = { 0 };
-
-      const VkGraphicsPipelineCreateInfo *info = &infos[i];
-      const VkPipelineRenderingCreateInfo *rendering_info =
-         vk_find_struct_const(info, PIPELINE_RENDERING_CREATE_INFO);
-
-      VkShaderStageFlags stages = 0;
-      for (uint32_t j = 0; j < info->stageCount; j++) {
-         stages |= info->pStages[j].stage;
-      }
-
-      /* VkDynamicState */
-      struct {
-         bool rasterizer_discard_enable;
-         bool viewport;
-         bool viewport_with_count;
-         bool scissor;
-         bool scissor_with_count;
-         bool vertex_input;
-      } has_dynamic_state = { 0 };
-
-      if (info->pDynamicState) {
-         for (uint32_t j = 0; j < info->pDynamicState->dynamicStateCount;
-              j++) {
-            switch (info->pDynamicState->pDynamicStates[j]) {
-            case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
-               has_dynamic_state.rasterizer_discard_enable = true;
-               break;
-            case VK_DYNAMIC_STATE_VIEWPORT:
-               has_dynamic_state.viewport = true;
-               break;
-            case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
-               has_dynamic_state.viewport_with_count = true;
-               break;
-            case VK_DYNAMIC_STATE_SCISSOR:
-               has_dynamic_state.scissor = true;
-               break;
-            case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:
-               has_dynamic_state.scissor_with_count = true;
-               break;
-            case VK_DYNAMIC_STATE_VERTEX_INPUT_EXT:
-               has_dynamic_state.vertex_input = true;
-               break;
-            default:
-               break;
-            }
-         }
-      }
-
-      const struct vn_render_pass *pass =
-         vn_render_pass_from_handle(info->renderPass);
-
-      const struct vn_subpass *subpass = NULL;
-      if (pass)
-         subpass = &pass->subpasses[info->subpass];
-
-      /* TODO: Ignore VkPipelineRenderingCreateInfo when not using dynamic
-       * rendering. This requires either a deep rewrite of
-       * VkGraphicsPipelineCreateInfo::pNext or a fix in the generated
-       * protocol code.
-       *
-       * The Vulkan spec (1.3.223) says about VkPipelineRenderingCreateInfo:
-       *    If a graphics pipeline is created with a valid VkRenderPass,
-       *    parameters of this structure are ignored.
-       */
-      const bool has_dynamic_rendering = !pass && rendering_info;
-
-      /* For each pipeline state category, we define a bool.
-       *
-       * The Vulkan spec (1.3.223) says:
-       *    The state required for a graphics pipeline is divided into vertex
-       *    input state, pre-rasterization shader state, fragment shader
-       *    state, and fragment output state.
-       *
-       * Without VK_EXT_graphics_pipeline_library, most states are
-       * unconditionally included in the pipeline. Despite that, we still
-       * reference the state bools in the ignore rules because (a) it makes
-       * the ignore condition easier to validate against the text of the
-       * relevant VUs; and (b) it makes it easier to enable
-       * VK_EXT_graphics_pipeline_library because we won't need to carefully
-       * revisit the text of each VU to untangle the missing pipeline state
-       * bools.
-       */
-
-      /* The spec does not assign a name to this state. We define it just to
-       * deduplicate code.
-       *
-       * The Vulkan spec (1.3.223) says:
-       *    If the value of [...]rasterizerDiscardEnable in the
-       *    pre-rasterization shader state is VK_FALSE or the
-       *    VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE dynamic state is
-       *    enabled fragment shader state and fragment output interface state
-       *    is included in a complete graphics pipeline.
-       */
-      const bool has_raster_state =
-         has_dynamic_state.rasterizer_discard_enable ||
-         (info->pRasterizationState &&
-          info->pRasterizationState->rasterizerDiscardEnable == VK_FALSE);
-
-      /* VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT */
-      const bool has_fragment_shader_state = has_raster_state;
-
-      /* VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT */
-      const bool has_fragment_output_state = has_raster_state;
-
-      /* Ignore pTessellationState?
-       *    VUID-VkGraphicsPipelineCreateInfo-pStages-00731
-       */
-      if (info->pTessellationState &&
-          (!(stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) ||
-           !(stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))) {
-         erase.tessellation_state = true;
-      }
-
-      /* Ignore pViewportState?
-       *    VUID-VkGraphicsPipelineCreateInfo-rasterizerDiscardEnable-00750
-       *    VUID-VkGraphicsPipelineCreateInfo-pViewportState-04892
-       */
-      if (info->pViewportState && has_raster_state) {
-         erase.viewport_state = true;
-      }
-
-      /* Ignore pViewports?
-       *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-04130
-       *
-       * If viewportCount is 0, then venus encoder will ignore pViewports and
-       * we do not need to erase it.
-       */
-      if (!erase.viewport_state && info->pViewportState &&
-          info->pViewportState->pViewports &&
-          info->pViewportState->viewportCount) {
-         const bool has_dynamic_viewport =
-            has_dynamic_state.viewport ||
-            has_dynamic_state.viewport_with_count;
-
-         if (has_dynamic_viewport) {
-            erase.viewport_state_viewports = true;
-         }
-      }
-
-      /* Ignore pScissors?
-       *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-04131
-       *
-       * If scissorCount is 0, then venus encoder will ignore pScissors and we
-       * do not need to erase it.
-       */
-      if (!erase.viewport_state && info->pViewportState &&
-          info->pViewportState->pScissors &&
-          info->pViewportState->scissorCount) {
-         const bool has_dynamic_scissor =
-            has_dynamic_state.scissor || has_dynamic_state.scissor_with_count;
-         if (has_dynamic_scissor) {
-            erase.viewport_state_scissors = true;
-         }
-      }
-
-      /* Ignore pMultisampleState?
-       *    VUID-VkGraphicsPipelineCreateInfo-rasterizerDiscardEnable-00751
-       */
-      if (info->pMultisampleState && !has_fragment_output_state) {
-         erase.multisample_state = true;
-      }
-
-      /* Ignore pDepthStencilState? */
-      if (info->pDepthStencilState) {
-         const bool has_static_attachment =
-            subpass &&
-            (subpass->attachment_aspects &
-             (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
-
-         /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06043 */
-         bool require_state =
-            has_fragment_shader_state && has_static_attachment;
-
-         if (!require_state) {
-            const bool has_dynamic_attachment =
-               has_dynamic_rendering &&
-               (rendering_info->depthAttachmentFormat !=
-                   VK_FORMAT_UNDEFINED ||
-                rendering_info->stencilAttachmentFormat !=
-                   VK_FORMAT_UNDEFINED);
-
-            /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06053 */
-            require_state = has_fragment_shader_state &&
-                            has_fragment_output_state &&
-                            has_dynamic_attachment;
-         }
-
-         erase.depth_stencil_state = !require_state;
-      }
-
-      /* Ignore pColorBlendState? */
-      if (info->pColorBlendState) {
-         const bool has_static_attachment =
-            subpass &&
-            (subpass->attachment_aspects & VK_IMAGE_ASPECT_COLOR_BIT);
-
-         /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06044 */
-         bool require_state =
-            has_fragment_output_state && has_static_attachment;
-
-         if (!require_state) {
-            const bool has_dynamic_attachment =
-               has_dynamic_rendering && rendering_info->colorAttachmentCount;
-
-            /* VUID-VkGraphicsPipelineCreateInfo-renderPass-06054 */
-            require_state =
-               has_fragment_output_state && has_dynamic_attachment;
-         }
-
-         erase.color_blend_state = !require_state;
-      }
-
-      /* Ignore pVertexInputState?
-       * The Vulkan spec (1.3.264) says:
-       * VK_DYNAMIC_STATE_VERTEX_INPUT_EXT specifies that the
-       * pVertexInputState state will be ignored and must be set dynamically
-       * with vkCmdSetVertexInputEXT before any drawing commands
-       */
-      if (info->pVertexInputState && has_dynamic_state.vertex_input)
-         erase.vertex_input_state = true;
-
-      /* Ignore basePipelineHandle?
-       *    VUID-VkGraphicsPipelineCreateInfo-flags-00722
-       *    VUID-VkGraphicsPipelineCreateInfo-flags-00724
-       *    VUID-VkGraphicsPipelineCreateInfo-flags-00725
-       */
-      if (info->basePipelineHandle != VK_NULL_HANDLE &&
-          !(info->flags & VK_PIPELINE_CREATE_DERIVATIVE_BIT)) {
-         erase.base_pipeline_handle = true;
-      }
-
-      if (erase.mask != 0)
+      if (!fix_descs[i].erase.mask) {
+         /* No fix is needed for this VkGraphicsPipelineCreateInfo chain. */
          continue;
-
-      if (!fix_tmp) {
-         fix_tmp = vn_graphics_pipeline_fix_tmp_alloc(alloc, info_count);
-
-         if (!fix_tmp)
-            return NULL;
-
-         memcpy(fix_tmp->infos, infos, info_count * sizeof(infos[0]));
       }
 
-      if (erase.tessellation_state)
+      if (fix_descs[i].erase.tessellation_state)
          fix_tmp->infos[i].pTessellationState = NULL;
 
-      if (erase.viewport_state)
+      if (fix_descs[i].erase.viewport_state)
          fix_tmp->infos[i].pViewportState = NULL;
 
       if (fix_tmp->infos[i].pViewportState) {
-         if (erase.viewport_state_viewports ||
-             erase.viewport_state_scissors) {
-            fix_tmp->viewport_state_infos[i] = *info->pViewportState;
+         if (fix_descs[i].erase.viewport_state_viewports ||
+             fix_descs[i].erase.viewport_state_scissors) {
+            fix_tmp->viewport_state_infos[i] = *infos[i].pViewportState;
             fix_tmp->infos[i].pViewportState =
                &fix_tmp->viewport_state_infos[i];
          }
 
-         if (erase.viewport_state_viewports)
+         if (fix_descs[i].erase.viewport_state_viewports)
             fix_tmp->viewport_state_infos[i].pViewports = NULL;
 
-         if (erase.viewport_state_scissors)
+         if (fix_descs[i].erase.viewport_state_scissors)
             fix_tmp->viewport_state_infos[i].pScissors = NULL;
       }
 
-      if (erase.multisample_state)
+      if (fix_descs[i].erase.multisample_state)
          fix_tmp->infos[i].pMultisampleState = NULL;
 
-      if (erase.depth_stencil_state)
+      if (fix_descs[i].erase.depth_stencil_state)
          fix_tmp->infos[i].pDepthStencilState = NULL;
 
-      if (erase.color_blend_state)
+      if (fix_descs[i].erase.color_blend_state)
          fix_tmp->infos[i].pColorBlendState = NULL;
 
-      if (erase.vertex_input_state)
+      if (fix_descs[i].erase.vertex_input_state)
          fix_tmp->infos[i].pVertexInputState = NULL;
 
-      if (erase.base_pipeline_handle)
+      if (fix_descs[i].erase.base_pipeline_handle)
          fix_tmp->infos[i].basePipelineHandle = VK_NULL_HANDLE;
    }
-
-   if (!fix_tmp)
-      return infos;
 
    *out_fix_tmp = fix_tmp;
    return fix_tmp->infos;
@@ -772,20 +784,33 @@ vn_CreateGraphicsPipelines(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
-   struct vn_graphics_pipeline_fix_tmp *fix_tmp = NULL;
    bool want_sync = false;
    VkResult result;
 
+   STACK_ARRAY(struct vn_graphics_pipeline_fix_desc, fix_descs,
+               createInfoCount);
+   struct vn_graphics_pipeline_fix_tmp *fix_tmp = NULL;
+
    memset(pPipelines, 0, sizeof(*pPipelines) * createInfoCount);
 
+   VN_TRACE_BEGIN("find_fixes");
+   for (uint32_t i = 0; i < createInfoCount; i++) {
+      vn_find_graphics_pipeline_create_info_fixes(&pCreateInfos[i],
+                                                  &fix_descs[i]);
+   }
+   VN_TRACE_END();
+
    pCreateInfos = vn_fix_graphics_pipeline_create_infos(
-      dev, createInfoCount, pCreateInfos, alloc, &fix_tmp);
-   if (!pCreateInfos)
+      dev, createInfoCount, pCreateInfos, fix_descs, &fix_tmp, alloc);
+   if (!pCreateInfos) {
+      STACK_ARRAY_FINISH(fix_descs);
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
 
    if (!vn_create_pipeline_handles(dev, VN_PIPELINE_TYPE_GRAPHICS,
                                    createInfoCount, pPipelines, alloc)) {
       vk_free(alloc, fix_tmp);
+      STACK_ARRAY_FINISH(fix_descs);
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
@@ -823,6 +848,7 @@ vn_CreateGraphicsPipelines(VkDevice device,
    }
 
    vk_free(alloc, fix_tmp);
+   STACK_ARRAY_FINISH(fix_descs);
    return vn_result(dev->instance, result);
 }
 
