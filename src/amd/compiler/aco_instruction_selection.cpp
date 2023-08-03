@@ -11680,7 +11680,7 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
                const struct aco_shader_info* info, const struct ac_shader_args* args)
 {
    isel_context ctx =
-      setup_isel_context(program, shader_count, shaders, config, options, info, args, false, false);
+      setup_isel_context(program, shader_count, shaders, config, options, info, args);
 
    if (ctx.stage == raytracing_cs)
       return select_program_rt(ctx, shader_count, shaders, args);
@@ -12285,7 +12285,7 @@ select_ps_epilog(Program* program, void* pinfo, ac_shader_config* config,
 {
    const struct aco_ps_epilog_info* einfo = (const struct aco_ps_epilog_info*)pinfo;
    isel_context ctx =
-      setup_isel_context(program, 0, NULL, config, options, info, args, true, false);
+      setup_isel_context(program, 0, NULL, config, options, info, args, SWStage::FS);
 
    ctx.block->fp_mode = program->next_fp_mode;
 
@@ -12355,7 +12355,7 @@ select_tcs_epilog(Program* program, void* pinfo, ac_shader_config* config,
 {
    const struct aco_tcs_epilog_info* einfo = (const struct aco_tcs_epilog_info*)pinfo;
    isel_context ctx =
-      setup_isel_context(program, 0, NULL, config, options, info, args, false, true);
+      setup_isel_context(program, 0, NULL, config, options, info, args, SWStage::TCS);
 
    ctx.block->fp_mode = program->next_fp_mode;
 
