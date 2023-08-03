@@ -22,6 +22,8 @@ The CI runs a number of tests, from trivial build-testing to complex GPU renderi
 A typical run takes between 20 and 30 minutes, although it can go up very quickly
 if the GitLab runners are overwhelmed, which happens sometimes. When it does happen,
 not much can be done besides waiting it out, or cancel it.
+You can do your part by only running the jobs you care about by using `our
+tool <#running-specific-ci-jobs>`__.
 
 Due to limited resources, we currently do not run the CI automatically
 on every push; instead, we only run it automatically once the MR has
