@@ -743,6 +743,21 @@ d3d12_create_sampler_state(struct pipe_context *pctx,
    return ss;
 }
 
+static inline enum dxil_tex_wrap
+pipe_to_dxil_tex_wrap(enum pipe_tex_wrap wrap)
+{
+   static_assert((uint8_t) PIPE_TEX_WRAP_REPEAT == (uint8_t) DXIL_TEX_WRAP_REPEAT, "");
+   static_assert((uint8_t) PIPE_TEX_WRAP_CLAMP == (uint8_t) DXIL_TEX_WRAP_CLAMP, "");
+   static_assert((uint8_t) PIPE_TEX_WRAP_CLAMP_TO_EDGE == (uint8_t) DXIL_TEX_WRAP_CLAMP_TO_EDGE, "");
+   static_assert((uint8_t) PIPE_TEX_WRAP_CLAMP_TO_BORDER == (uint8_t) DXIL_TEX_WRAP_CLAMP_TO_BORDER, "");
+   static_assert((uint8_t) PIPE_TEX_WRAP_MIRROR_REPEAT == (uint8_t) DXIL_TEX_WRAP_MIRROR_REPEAT, "");
+   static_assert((uint8_t) PIPE_TEX_WRAP_MIRROR_CLAMP == (uint8_t) DXIL_TEX_WRAP_MIRROR_CLAMP, "");
+   static_assert((uint8_t) PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE == (uint8_t) DXIL_TEX_WRAP_MIRROR_CLAMP_TO_EDGE, "");
+   static_assert((uint8_t) PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER == (uint8_t) DXIL_TEX_WRAP_MIRROR_CLAMP_TO_BORDER, "");
+
+   return (enum dxil_tex_wrap) wrap;
+}
+
 static void
 d3d12_bind_sampler_states(struct pipe_context *pctx,
                           enum pipe_shader_type shader,
@@ -770,9 +785,9 @@ d3d12_bind_sampler_states(struct pipe_context *pctx,
       ctx->samplers[shader][start_slot + i] = sampler;
       dxil_wrap_sampler_state &wrap = ctx->tex_wrap_states[shader][start_slot + i];
       if (sampler) {
-         wrap.wrap[0] = sampler->wrap_s;
-         wrap.wrap[1] = sampler->wrap_t;
-         wrap.wrap[2] = sampler->wrap_r;
+         wrap.wrap[0] = pipe_to_dxil_tex_wrap(sampler->wrap_s);
+         wrap.wrap[1] = pipe_to_dxil_tex_wrap(sampler->wrap_t);
+         wrap.wrap[2] = pipe_to_dxil_tex_wrap(sampler->wrap_r);
          wrap.lod_bias = sampler->lod_bias;
          wrap.min_lod = sampler->min_lod;
          wrap.max_lod = sampler->max_lod;

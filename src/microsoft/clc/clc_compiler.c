@@ -542,7 +542,7 @@ copy_const_initializer(const nir_constant *constant, const struct glsl_type *typ
    }
 }
 
-static enum pipe_tex_wrap
+static enum dxil_tex_wrap
 wrap_from_cl_addressing(unsigned addressing_mode)
 {
    switch (addressing_mode)
@@ -551,10 +551,10 @@ wrap_from_cl_addressing(unsigned addressing_mode)
    case SAMPLER_ADDRESSING_MODE_NONE:
    case SAMPLER_ADDRESSING_MODE_CLAMP:
       // Since OpenCL's only border color is 0's and D3D specs out-of-bounds loads to return 0, don't apply any wrap mode
-      return (enum pipe_tex_wrap)-1;
-   case SAMPLER_ADDRESSING_MODE_CLAMP_TO_EDGE: return PIPE_TEX_WRAP_CLAMP_TO_EDGE;
-   case SAMPLER_ADDRESSING_MODE_REPEAT: return PIPE_TEX_WRAP_REPEAT;
-   case SAMPLER_ADDRESSING_MODE_REPEAT_MIRRORED: return PIPE_TEX_WRAP_MIRROR_REPEAT;
+      return (enum dxil_tex_wrap)-1;
+   case SAMPLER_ADDRESSING_MODE_CLAMP_TO_EDGE: return DXIL_TEX_WRAP_CLAMP_TO_EDGE;
+   case SAMPLER_ADDRESSING_MODE_REPEAT: return DXIL_TEX_WRAP_REPEAT;
+   case SAMPLER_ADDRESSING_MODE_REPEAT_MIRRORED: return DXIL_TEX_WRAP_MIRROR_REPEAT;
    }
 }
 
