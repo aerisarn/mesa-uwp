@@ -52,6 +52,18 @@ image_3d_view_as_2d_array(struct nil_image *image,
    view->base_level = 0;
 }
 
+static enum pipe_format
+get_stencil_format(enum pipe_format format)
+{
+   switch (format) {
+   case PIPE_FORMAT_S8_UINT:              return PIPE_FORMAT_S8_UINT;
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:    return PIPE_FORMAT_X24S8_UINT;
+   case PIPE_FORMAT_S8_UINT_Z24_UNORM:    return PIPE_FORMAT_S8X24_UINT;
+   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT: return PIPE_FORMAT_X32_S8X24_UINT;
+   default: unreachable("Unsupported depth/stencil format");
+   }
+}
+
 VkResult
 nvk_image_view_init(struct nvk_device *device,
                     struct nvk_image_view *view,
@@ -68,9 +80,13 @@ nvk_image_view_init(struct nvk_device *device,
    struct nil_image nil_image = image->nil;
    uint64_t base_addr = nvk_image_base_address(image);
 
+   enum pipe_format p_format = vk_format_to_pipe_format(view->vk.format);
+   if (view->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT)
+      p_format = get_stencil_format(p_format);
+
    struct nil_view nil_view = {
       .type = vk_image_view_type_to_nil_view_type(view->vk.view_type),
-      .format = vk_format_to_pipe_format(view->vk.format),
+      .format = p_format,
       .base_level = view->vk.base_mip_level,
       .num_levels = view->vk.level_count,
       .base_array_layer = view->vk.base_array_layer,
