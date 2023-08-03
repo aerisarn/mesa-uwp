@@ -214,6 +214,9 @@ mmdebstrap \
     "$ROOTFS/" \
     "http://deb.debian.org/debian"
 
+############### Install mold
+. .gitlab-ci/container/build-mold.sh
+
 ############### Setuping
 if [ "$DEBIAN_ARCH" = "amd64" ]; then
   . .gitlab-ci/container/setup-wine.sh "/dxvk-wine64"
