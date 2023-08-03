@@ -3728,7 +3728,6 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
    STATIC_ASSERT(sizeof(union vs_prolog_key_header) == 4);
    assert(vs_shader->info.vs.dynamic_inputs);
 
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
    struct radv_device *device = cmd_buffer->device;
 
@@ -3752,10 +3751,10 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
          uint64_t vb_offset = cmd_buffer->vertex_bindings[binding].offset;
          uint64_t vb_stride;
 
-         if (pipeline->dynamic_states & (RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE | RADV_DYNAMIC_VERTEX_INPUT)) {
+         if (cmd_buffer->state.uses_dynamic_vertex_binding_stride) {
             vb_stride = cmd_buffer->vertex_bindings[binding].stride;
          } else {
-            vb_stride = pipeline->binding_stride[binding];
+            vb_stride = cmd_buffer->state.graphics_pipeline->binding_stride[binding];
          }
 
          VkDeviceSize offset = vb_offset + state->offsets[index];
@@ -4886,7 +4885,7 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer, const st
                S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) | S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
       }
 
-      if (pipeline->dynamic_states & (RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE | RADV_DYNAMIC_VERTEX_INPUT)) {
+      if (cmd_buffer->state.uses_dynamic_vertex_binding_stride) {
          stride = cmd_buffer->vertex_bindings[binding].stride;
       } else {
          stride = pipeline->binding_stride[binding];
@@ -6663,6 +6662,8 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
       cmd_buffer->state.uses_out_of_order_rast = graphics_pipeline->uses_out_of_order_rast;
       cmd_buffer->state.uses_vrs_attachment = graphics_pipeline->uses_vrs_attachment;
+      cmd_buffer->state.uses_dynamic_vertex_binding_stride =
+         !!(graphics_pipeline->dynamic_states & (RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE | RADV_DYNAMIC_VERTEX_INPUT));
       break;
    }
    default:

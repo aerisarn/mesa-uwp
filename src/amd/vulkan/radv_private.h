@@ -1759,6 +1759,7 @@ struct radv_cmd_state {
    bool uses_out_of_order_rast;
    bool uses_vrs_attachment;
    bool uses_dynamic_patch_control_points;
+   bool uses_dynamic_vertex_binding_stride;
 };
 
 struct radv_cmd_buffer_upload {
