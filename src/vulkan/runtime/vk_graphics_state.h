@@ -1119,6 +1119,9 @@ void
 vk_cmd_set_cb_attachment_count(struct vk_command_buffer *cmd,
                                uint32_t attachment_count);
 
+const char *
+vk_dynamic_graphic_state_to_str(enum mesa_vk_dynamic_graphics_state state);
+
 #ifdef __cplusplus
 }
 #endif
