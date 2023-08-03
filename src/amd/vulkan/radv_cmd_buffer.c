@@ -2511,10 +2511,10 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned ls_hs_config, base_reg;
 
-   /* Compute tessellation info that depends on the number of patch control points
-    * when the bound pipeline declared this state as dynamic.
+   /* Compute tessellation info that depends on the number of patch control points when this state
+    * is dynamic.
     */
-   if (cmd_buffer->state.graphics_pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS) {
+   if (cmd_buffer->state.uses_dynamic_patch_control_points) {
       /* Compute the number of patches. */
       cmd_buffer->state.tess_num_patches = get_tcs_num_patches(
          d->vk.ts.patch_control_points, tcs->info.tcs.tcs_vertices_out, tcs->info.tcs.num_linked_inputs,
@@ -6610,8 +6610,11 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VGT_FLUSH;
       }
 
+      cmd_buffer->state.uses_dynamic_patch_control_points =
+         !!(graphics_pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS);
+
       if (graphics_pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
-         if (!(graphics_pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS)) {
+         if (!cmd_buffer->state.uses_dynamic_patch_control_points) {
             /* Bind the tessellation state from the pipeline when it's not dynamic. */
             struct radv_shader *tcs = cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL];
 
