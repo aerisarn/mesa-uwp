@@ -4799,6 +4799,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                         nir_find_variable_with_location(nir, nir_var_shader_out, VARYING_SLOT_EDGE);
 
    ret->sinfo.have_vulkan_memory_model = screen->info.have_KHR_vulkan_memory_model;
+   ret->sinfo.have_workgroup_memory_explicit_layout = screen->info.have_KHR_workgroup_memory_explicit_layout;
    ret->sinfo.bindless_set_idx = screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS];
 
    util_queue_fence_init(&ret->precompile.fence);

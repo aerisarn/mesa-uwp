@@ -762,6 +762,7 @@ struct zink_shader_info {
    bool have_xfb;
    bool have_sparse;
    bool have_vulkan_memory_model;
+   bool have_workgroup_memory_explicit_layout;
    unsigned bindless_set_idx;
 };
 
