@@ -15,8 +15,8 @@ The CI runs a number of tests, from trivial build-testing to complex GPU renderi
 
 - Build testing for a number of build systems, configurations and platforms
 - Sanity checks (``meson test``)
-- Some drivers (Softpipe, LLVMpipe, Freedreno and Panfrost) are also tested
-  using `VK-GL-CTS <https://github.com/KhronosGroup/VK-GL-CTS>`__
+- Most drivers are also tested using `VK-GL-CTS
+  <https://github.com/KhronosGroup/VK-GL-CTS>`__
 - Replay of application traces
 
 A typical run takes between 20 and 30 minutes, although it can go up very quickly
