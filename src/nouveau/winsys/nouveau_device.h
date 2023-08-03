@@ -15,7 +15,9 @@ struct hash_table;
 extern "C" {
 #endif
 
-#define NVK_NEW_UAPI 0
+#ifndef NVK_NEW_UAPI
+#define NVK_NEW_UAPI 1
+#endif
 
 enum nvk_debug {
    /* dumps all push buffers after submission */

@@ -1,7 +1,5 @@
 nvk_files = files(
   '../../gallium/auxiliary/tgsi/tgsi_from_mesa.c',
-  'nvk_bo_sync.c',
-  'nvk_bo_sync.h',
   'nvk_buffer.c',
   'nvk_buffer.h',
   'nvk_buffer_view.c',
@@ -59,6 +57,13 @@ nvk_files = files(
   'nvk_wsi.c',
   'nvk_wsi.h'
 )
+
+if get_option('nvk-legacy-uapi')
+  nvk_files += files(
+    'nvk_bo_sync.c',
+    'nvk_bo_sync.h',
+  )
+endif
 
 nvk_entrypoints = custom_target(
   'nvk_entrypoints',
