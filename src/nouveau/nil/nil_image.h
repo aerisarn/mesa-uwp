@@ -150,6 +150,10 @@ nil_image_level_layer_offset_B(const struct nil_image *image,
    return image->levels[level].offset_B + (layer * image->array_stride_B);
 }
 
+uint64_t nil_image_level_size_B(const struct nil_image *image,
+                                uint32_t level);
+uint64_t nil_image_level_depth_stride_B(const struct nil_image *image,
+                                        uint32_t level);
 
 void nil_image_fill_tic(struct nouveau_ws_device *dev,
                         const struct nil_image *image,

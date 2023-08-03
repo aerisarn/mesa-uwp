@@ -197,3 +197,33 @@ nil_image_init(struct nouveau_ws_device *dev,
 
    return true;
 }
+
+uint64_t
+nil_image_level_size_B(const struct nil_image *image, uint32_t level)
+{
+   assert(level < image->num_levels);
+
+   /* See the nil_image::levels[] computations */
+   struct nil_extent4d lvl_ext_B = image_level_extent_B(image, level);
+   struct nil_extent4d lvl_tiling_ext_B =
+      nil_tiling_extent_B(image->levels[level].tiling);
+   lvl_ext_B = nil_extent4d_align(lvl_ext_B, lvl_tiling_ext_B);
+
+   return (uint64_t)lvl_ext_B.w *
+          (uint64_t)lvl_ext_B.h *
+          (uint64_t)lvl_ext_B.d;
+}
+
+uint64_t
+nil_image_level_depth_stride_B(const struct nil_image *image, uint32_t level)
+{
+   assert(level < image->num_levels);
+
+   /* See the nil_image::levels[] computations */
+   struct nil_extent4d lvl_ext_B = image_level_extent_B(image, level);
+   struct nil_extent4d lvl_tiling_ext_B =
+      nil_tiling_extent_B(image->levels[level].tiling);
+   lvl_ext_B = nil_extent4d_align(lvl_ext_B, lvl_tiling_ext_B);
+
+   return (uint64_t)lvl_ext_B.w * (uint64_t)lvl_ext_B.h;
+}

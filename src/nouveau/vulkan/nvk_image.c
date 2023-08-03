@@ -115,6 +115,26 @@ nvk_GetImageMemoryRequirements2(VkDevice _device,
    }
 }
 
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetImageSubresourceLayout(VkDevice device,
+                              VkImage _image,
+                              const VkImageSubresource *pSubresource,
+                              VkSubresourceLayout *pLayout)
+{
+   VK_FROM_HANDLE(nvk_image, image, _image);
+
+   *pLayout = (VkSubresourceLayout) {
+      .offset = nil_image_level_layer_offset_B(&image->nil,
+                                               pSubresource->mipLevel,
+                                               pSubresource->arrayLayer),
+      .size = nil_image_level_size_B(&image->nil, pSubresource->mipLevel),
+      .rowPitch = image->nil.levels[pSubresource->mipLevel].row_stride_B,
+      .arrayPitch = image->nil.array_stride_B,
+      .depthPitch = nil_image_level_depth_stride_B(&image->nil,
+                                                   pSubresource->mipLevel),
+   };
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_BindImageMemory2(VkDevice _device,
                      uint32_t bindInfoCount,
