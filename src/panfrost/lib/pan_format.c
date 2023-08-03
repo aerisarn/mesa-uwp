@@ -170,7 +170,7 @@ const struct pan_blendable_format
    }
 #endif
 
-#if PAN_ARCH == 7
+#if PAN_ARCH >= 7
 #define YUV_NO_SWAP (0)
 #define YUV_SWAP    (1)
 
