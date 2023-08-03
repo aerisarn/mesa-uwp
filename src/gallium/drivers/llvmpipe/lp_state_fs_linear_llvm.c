@@ -37,7 +37,6 @@
 #include "util/os_time.h"
 #include "pipe/p_shader_tokens.h"
 #include "draw/draw_context.h"
-#include "tgsi/tgsi_dump.h"
 #include "gallivm/lp_bld_type.h"
 #include "gallivm/lp_bld_const.h"
 #include "gallivm/lp_bld_conv.h"
@@ -165,20 +164,12 @@ llvm_fragment_body(struct lp_build_context *bld,
       outputs[i] = bld->undef;
    }
 
-   if (shader->base.type == PIPE_SHADER_IR_TGSI) {
-      lp_build_tgsi_aos(gallivm, shader->base.tokens, fs_type,
-                        rgba_order ? rgba_swizzles : bgra_swizzles,
-                        consts_ptr, inputs, outputs,
-                        &sampler->base,
-                        &shader->info.base);
-   } else {
-      nir_shader *clone = nir_shader_clone(NULL, shader->base.ir.nir);
-      lp_build_nir_aos(gallivm, clone, fs_type,
-                       rgba_order ? rgba_swizzles : bgra_swizzles,
-                       consts_ptr, inputs, outputs,
-                       &sampler->base);
-      ralloc_free(clone);
-   }
+   nir_shader *clone = nir_shader_clone(NULL, shader->base.ir.nir);
+   lp_build_nir_aos(gallivm, clone, fs_type,
+                    rgba_order ? rgba_swizzles : bgra_swizzles,
+                    consts_ptr, inputs, outputs,
+                    &sampler->base);
+   ralloc_free(clone);
 
    /*
     * Blend output color
@@ -266,9 +257,6 @@ llvmpipe_fs_variant_linear_llvm(struct llvmpipe_context *lp,
    fs_type.length = 16;
 
    if (LP_DEBUG & DEBUG_TGSI) {
-      if (shader->base.tokens) {
-         tgsi_dump(shader->base.tokens, 0);
-      }
       if (shader->base.ir.nir) {
          nir_print_shader(shader->base.ir.nir, stderr);
       }
