@@ -15,8 +15,9 @@ The CI runs a number of tests, from trivial build-testing to complex GPU renderi
 
 - Build testing for a number of configurations and platforms
 - Sanity checks (``meson test``)
-- Most drivers are also tested using `VK-GL-CTS
-  <https://github.com/KhronosGroup/VK-GL-CTS>`__
+- Most drivers are also tested using several test suites, such as the
+  `Vulkan/GL/GLES conformance test suite <https://github.com/KhronosGroup/VK-GL-CTS>`__,
+  `Piglit <https://gitlab.freedesktop.org/mesa/piglit>`__, and others.
 - Replay of application traces
 
 A typical run takes between 20 and 30 minutes, although it can go up very quickly
