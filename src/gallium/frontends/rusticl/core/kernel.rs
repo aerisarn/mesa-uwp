@@ -377,12 +377,18 @@ fn opt_nir(nir: &mut NirShader, dev: &Device) {
     } {}
 }
 
-extern "C" fn can_remove_var(var: *mut nir_variable, _: *mut c_void) -> bool {
+/// # Safety
+///
+/// Only safe to call when `var` is a valid pointer to a valid [`nir_variable`]
+unsafe extern "C" fn can_remove_var(var: *mut nir_variable, _: *mut c_void) -> bool {
+    // SAFETY: It is the caller's responsibility to provide a valid and aligned pointer
+    let var_type = unsafe { (*var).type_ };
+    // SAFETY: `nir_variable`'s type invariant guarantees that the `type_` field is valid and
+    // properly aligned.
     unsafe {
-        let var = var.as_ref().unwrap();
-        !glsl_type_is_image(var.type_)
-            && !glsl_type_is_texture(var.type_)
-            && !glsl_type_is_sampler(var.type_)
+        !glsl_type_is_image(var_type)
+            && !glsl_type_is_texture(var_type)
+            && !glsl_type_is_sampler(var_type)
     }
 }
 
