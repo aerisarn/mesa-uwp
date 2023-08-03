@@ -603,8 +603,8 @@ nir_block_create(nir_shader *shader)
 static inline void
 src_init(nir_src *src)
 {
-   src->is_ssa = false;
-   src->reg.reg = NULL;
+   src->is_ssa = true;
+   src->ssa = NULL;
 }
 
 nir_if *
