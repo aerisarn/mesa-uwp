@@ -41,7 +41,6 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
          dupl = nir_intrinsic_instr_create(b->shader, op);
          dupl->num_components = itr->num_components;
          memcpy(dupl->const_index, itr->const_index, sizeof(itr->const_index));
-         dupl->src[0].is_ssa = true;
          dupl->src[0].ssa = itr->src[0].ssa;
 
          nir_ssa_dest_init(&dupl->instr, &dupl->dest, dupl->num_components,
@@ -71,7 +70,6 @@ lima_nir_duplicate_intrinsic(nir_builder *b, nir_intrinsic_instr *itr,
          dupl = nir_intrinsic_instr_create(b->shader, op);
          dupl->num_components = itr->num_components;
          memcpy(dupl->const_index, itr->const_index, sizeof(itr->const_index));
-         dupl->src[0].is_ssa = true;
          dupl->src[0].ssa = itr->src[0].ssa;
 
          nir_ssa_dest_init(&dupl->instr, &dupl->dest, dupl->num_components,

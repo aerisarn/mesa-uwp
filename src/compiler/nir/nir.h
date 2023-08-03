@@ -1014,7 +1014,6 @@ typedef struct nir_src {
       nir_ssa_def *ssa;
    };
 
-   bool is_ssa;
    bool is_if;
 } nir_src;
 
@@ -1077,8 +1076,6 @@ typedef struct {
       nir_register_dest reg;
       nir_ssa_def ssa;
    };
-
-   bool is_ssa;
 } nir_dest;
 
 static inline nir_dest
@@ -1101,7 +1098,6 @@ nir_src_for_ssa(nir_ssa_def *def)
 {
    nir_src src = NIR_SRC_INIT;
 
-   src.is_ssa = true;
    src.ssa = def;
 
    return src;

@@ -488,7 +488,6 @@ read_src(read_ctx *ctx, nir_src *src)
    union packed_src header;
    header.u32 = blob_read_uint32(ctx->blob);
 
-   src->is_ssa = true;
    src->ssa = read_lookup_object(ctx, header.any.object_idx);
    return header;
 }
@@ -798,7 +797,6 @@ read_alu(read_ctx *ctx, union packed_instr header)
    if (header.alu.packed_src_ssa_16bit) {
       for (unsigned i = 0; i < num_srcs; i++) {
          nir_alu_src *src = &alu->src[i];
-         src->src.is_ssa = true;
          src->src.ssa = read_lookup_object(ctx, blob_read_uint16(ctx->blob));
 
          memset(&src->swizzle, 0, sizeof(src->swizzle));
@@ -992,9 +990,7 @@ read_deref(read_ctx *ctx, union packed_instr header)
    case nir_deref_type_array:
    case nir_deref_type_ptr_as_array:
       if (header.deref.packed_src_ssa_16bit) {
-         deref->parent.is_ssa = true;
          deref->parent.ssa = read_lookup_object(ctx, blob_read_uint16(ctx->blob));
-         deref->arr.index.is_ssa = true;
          deref->arr.index.ssa = read_lookup_object(ctx, blob_read_uint16(ctx->blob));
       } else {
          read_src(ctx, &deref->parent);

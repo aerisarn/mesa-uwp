@@ -487,7 +487,6 @@ nir_function_create(nir_shader *shader, const char *name)
 static void
 src_copy(nir_src *dest, const nir_src *src, gc_ctx *ctx)
 {
-   dest->is_ssa = true;
    dest->ssa = src->ssa;
 }
 
@@ -599,7 +598,6 @@ nir_block_create(nir_shader *shader)
 static inline void
 src_init(nir_src *src)
 {
-   src->is_ssa = true;
    src->ssa = NULL;
 }
 
@@ -1573,7 +1571,6 @@ void
 nir_ssa_dest_init(nir_instr *instr, nir_dest *dest,
                  unsigned num_components, unsigned bit_size)
 {
-   dest->is_ssa = true;
    nir_ssa_def_init(instr, &dest->ssa, num_components, bit_size);
 }
 

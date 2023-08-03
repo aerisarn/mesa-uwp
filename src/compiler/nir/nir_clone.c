@@ -199,7 +199,6 @@ static void
 __clone_src(clone_state *state, void *ninstr_or_if,
             nir_src *nsrc, const nir_src *src)
 {
-   nsrc->is_ssa = true;
    nsrc->ssa = remap_local(state, src->ssa);
 }
 
@@ -207,7 +206,6 @@ static void
 __clone_dst(clone_state *state, nir_instr *ninstr,
             nir_dest *ndst, const nir_dest *dst)
 {
-   ndst->is_ssa = true;
    nir_ssa_dest_init(ninstr, ndst, dst->ssa.num_components,
                      dst->ssa.bit_size);
    if (likely(state->remap_table))

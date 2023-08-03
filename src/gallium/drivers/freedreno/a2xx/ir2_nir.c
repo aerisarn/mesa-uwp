@@ -825,7 +825,7 @@ emit_undef(struct ir2_context *ctx, nir_ssa_undef_instr *undef)
    struct ir2_instr *instr;
 
    instr = instr_create_alu_dest(
-      ctx, nir_op_mov, &(nir_dest){.ssa = undef->def, .is_ssa = true});
+      ctx, nir_op_mov, &(nir_dest){.ssa = undef->def});
    instr->src[0] = ir2_src(0, 0, IR2_SRC_CONST);
 }
 
