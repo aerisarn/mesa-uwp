@@ -1655,6 +1655,15 @@ store("tlb_sample_color_v3d", [1], [BASE, COMPONENT, SRC_TYPE], [])
 # the target framebuffer
 intrinsic("load_fb_layers_v3d", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# Load the coefficient register corresponding to a given fragment shader input.
+# Coefficient registers are vec3s that are dotted with <x, y, 1> to interpolate
+# the input, where x and y are relative to the 32x32 supertile.
+intrinsic("load_coefficients_agx",
+          bit_sizes = [32],
+          dest_comp = 3,
+          indices=[COMPONENT, IO_SEMANTICS, INTERP_MODE],
+          flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # Load/store a pixel in local memory. This operation is formatted, with
 # conversion between the specified format and the implied register format of the
 # source/destination (for store/loads respectively). This mostly matters for
