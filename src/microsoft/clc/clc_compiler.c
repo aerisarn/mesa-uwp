@@ -733,7 +733,8 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
 
    NIR_PASS_V(nir, nir_scale_fdiv);
 
-   dxil_wrap_sampler_state int_sampler_states[PIPE_MAX_SHADER_SAMPLER_VIEWS] = { {{0}} };
+   /* 128 is the minimum value for CL_DEVICE_MAX_READ_IMAGE_ARGS and used by CLOn12 */
+   dxil_wrap_sampler_state int_sampler_states[128] = { {{0}} };
    unsigned sampler_id = 0;
 
    NIR_PASS_V(nir, nir_lower_variable_initializers, ~(nir_var_function_temp | nir_var_shader_temp));
