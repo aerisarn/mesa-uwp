@@ -200,6 +200,7 @@ struct v3dv_physical_device {
    } options;
 
    struct {
+      bool cpu_queue;
       bool multisync;
       bool perfmon;
    } caps;

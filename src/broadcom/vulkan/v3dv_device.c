@@ -849,6 +849,9 @@ create_physical_device(struct v3dv_instance *instance,
       goto fail;
    }
 
+   device->caps.cpu_queue =
+      v3d_has_feature(device, DRM_V3D_PARAM_SUPPORTS_CPU_QUEUE);
+
    device->caps.multisync =
       v3d_has_feature(device, DRM_V3D_PARAM_SUPPORTS_MULTISYNC_EXT);
 
