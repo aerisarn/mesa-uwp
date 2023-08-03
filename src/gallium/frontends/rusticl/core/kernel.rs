@@ -392,6 +392,30 @@ fn lower_and_optimize_nir(
     args: &[spirv::SPIRVKernelArg],
     lib_clc: &NirShader,
 ) -> (Vec<KernelArg>, Vec<InternalKernelArg>) {
+    let address_bits_base_type;
+    let address_bits_ptr_type;
+    let global_address_format;
+    let shared_address_format;
+
+    if dev.address_bits() == 64 {
+        address_bits_base_type = glsl_base_type::GLSL_TYPE_UINT64;
+        address_bits_ptr_type = unsafe { glsl_uint64_t_type() };
+        global_address_format = nir_address_format::nir_address_format_64bit_global;
+        shared_address_format = nir_address_format::nir_address_format_32bit_offset_as_64bit;
+    } else {
+        address_bits_base_type = glsl_base_type::GLSL_TYPE_UINT;
+        address_bits_ptr_type = unsafe { glsl_uint_type() };
+        global_address_format = nir_address_format::nir_address_format_32bit_global;
+        shared_address_format = nir_address_format::nir_address_format_32bit_offset;
+    }
+
+    let mut lower_state = rusticl_lower_state::default();
+    let nir_options = unsafe {
+        &*dev
+            .screen
+            .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE)
+    };
+
     nir_pass!(nir, nir_scale_fdiv);
     nir.set_workgroup_size_variable_if_zero();
     nir.structurize();
@@ -431,26 +455,7 @@ fn lower_and_optimize_nir(
     opt_nir(nir, dev);
 
     let mut args = KernelArg::from_spirv_nir(args, nir);
-
-    let address_bits_base_type;
-    let address_bits_ptr_type;
-
-    if dev.address_bits() == 64 {
-        address_bits_base_type = glsl_base_type::GLSL_TYPE_UINT64;
-        address_bits_ptr_type = unsafe { glsl_uint64_t_type() };
-    } else {
-        address_bits_base_type = glsl_base_type::GLSL_TYPE_UINT;
-        address_bits_ptr_type = unsafe { glsl_uint_type() };
-    };
-
     let mut internal_args = Vec::new();
-    let nir_options = unsafe {
-        &*dev
-            .screen
-            .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE)
-    };
-    let mut lower_state = rusticl_lower_state::default();
-
     nir_pass!(nir, nir_lower_memcpy);
 
     let dv_opts = nir_remove_dead_variables_options {
@@ -614,16 +619,6 @@ fn lower_and_optimize_nir(
             | nir_variable_mode::nir_var_mem_generic,
         Some(glsl_get_cl_type_size_align),
     );
-
-    let global_address_format;
-    let shared_address_format;
-    if dev.address_bits() == 32 {
-        global_address_format = nir_address_format::nir_address_format_32bit_global;
-        shared_address_format = nir_address_format::nir_address_format_32bit_offset;
-    } else {
-        global_address_format = nir_address_format::nir_address_format_64bit_global;
-        shared_address_format = nir_address_format::nir_address_format_32bit_offset_as_64bit;
-    }
 
     nir_pass!(
         nir,
