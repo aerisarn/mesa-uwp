@@ -1048,7 +1048,7 @@ anv_h264_decode_video(struct anv_cmd_buffer *cmd_buffer,
             qm.DWordLength = 16;
             qm.AVC = AVC_8x8_Inter_MATRIX;
             for (unsigned q = 0; q < 64; q++)
-               qm.ForwardQuantizerMatrix[q] = pps->pScalingLists->ScalingList8x8[3][q];
+               qm.ForwardQuantizerMatrix[q] = pps->pScalingLists->ScalingList8x8[1][q];
          }
       }
    } else if (sps->flags.seq_scaling_matrix_present_flag) {
@@ -1077,7 +1077,7 @@ anv_h264_decode_video(struct anv_cmd_buffer *cmd_buffer,
             qm.DWordLength = 16;
             qm.AVC = AVC_8x8_Inter_MATRIX;
             for (unsigned q = 0; q < 64; q++)
-               qm.ForwardQuantizerMatrix[q] = sps->pScalingLists->ScalingList8x8[3][q];
+               qm.ForwardQuantizerMatrix[q] = sps->pScalingLists->ScalingList8x8[1][q];
          }
       }
    } else {
