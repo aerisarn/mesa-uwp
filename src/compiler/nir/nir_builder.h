@@ -76,6 +76,8 @@ nir_builder MUST_CHECK PRINTFLIKE(3, 4)
                                   const char *name, ...);
 
 typedef bool (*nir_instr_pass_cb)(struct nir_builder *, nir_instr *, void *);
+typedef bool (*nir_intrinsic_pass_cb)(struct nir_builder *,
+                                      nir_intrinsic_instr *, void *);
 
 /**
  * Iterates over all the instructions in a NIR shader and calls the given pass
@@ -102,6 +104,48 @@ nir_shader_instructions_pass(nir_shader *shader,
       nir_foreach_block_safe(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             func_progress |= pass(&b, instr, cb_data);
+         }
+      }
+
+      if (func_progress) {
+         nir_metadata_preserve(impl, preserved);
+         progress = true;
+      } else {
+         nir_metadata_preserve(impl, nir_metadata_all);
+      }
+   }
+
+   return progress;
+}
+
+/**
+ * Iterates over all the intrinsics in a NIR shader and calls the given pass on
+ * them.
+ *
+ * The pass should return true if it modified the shader.  In that case, only
+ * the preserved metadata flags will be preserved in the function impl.
+ *
+ * The builder will be initialized to point at the function impl, but its
+ * cursor is unset.
+ */
+static inline bool
+nir_shader_intrinsics_pass(nir_shader *shader,
+                           nir_intrinsic_pass_cb pass,
+                           nir_metadata preserved,
+                           void *cb_data)
+{
+   bool progress = false;
+
+   nir_foreach_function_impl(impl, shader) {
+      bool func_progress = false;
+      nir_builder b = nir_builder_create(impl);
+
+      nir_foreach_block_safe(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type == nir_instr_type_intrinsic) {
+               nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+               func_progress |= pass(&b, intr, cb_data);
+            }
          }
       }
 
