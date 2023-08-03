@@ -853,7 +853,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    NIR_PASS_V(nir, clc_lower_nonnormalized_samplers, int_sampler_states);
    NIR_PASS_V(nir, nir_lower_samplers);
    NIR_PASS_V(nir, dxil_lower_sample_to_txf_for_integer_tex,
-              PIPE_MAX_SHADER_SAMPLER_VIEWS, int_sampler_states, NULL, 14.0f);
+              sampler_id, int_sampler_states, NULL, 14.0f);
 
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_mem_shared | nir_var_function_temp, NULL);
 
