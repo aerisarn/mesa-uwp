@@ -244,6 +244,7 @@ llvmpipe_fs_variant_linear_llvm(struct llvmpipe_context *lp,
           shader->kind == LP_FS_KIND_BLIT_RGB1 ||
           shader->kind == LP_FS_KIND_LLVM_LINEAR);
 
+   struct nir_shader *nir = shader->base.ir.nir;
    struct gallivm_state *gallivm = variant->gallivm;
    LLVMTypeRef int8t = LLVMInt8TypeInContext(gallivm->context);
    LLVMTypeRef int32t = LLVMInt32TypeInContext(gallivm->context);
@@ -372,35 +373,40 @@ llvmpipe_fs_variant_linear_llvm(struct llvmpipe_context *lp,
     */
    LLVMValueRef inputs_ptrs[LP_MAX_LINEAR_INPUTS];
 
-   for (unsigned attrib = 0; attrib < shader->info.base.num_inputs; ++attrib) {
-      assert(attrib < LP_MAX_LINEAR_INPUTS);
-      if (attrib >= LP_MAX_LINEAR_INPUTS) {
-         break;
+   nir_foreach_shader_in_variable(var, nir) {
+      unsigned slots = nir_variable_count_slots(var, var->type);
+
+      for (unsigned s = 0; s < slots; s++) {
+         unsigned attrib = var->data.driver_location + s;
+         assert(attrib < LP_MAX_LINEAR_INPUTS);
+         if (attrib >= LP_MAX_LINEAR_INPUTS) {
+            break;
+         }
+
+         LLVMValueRef index = LLVMConstInt(int32t, attrib, 0);
+
+         LLVMTypeRef input_type = variant->jit_linear_inputs_type;
+         LLVMValueRef elem =
+            lp_build_array_get2(bld.gallivm, input_type, interpolators_ptr, index);
+         assert(LLVMGetTypeKind(LLVMTypeOf(elem)) == LLVMPointerTypeKind);
+
+         LLVMTypeRef fetch_type = LLVMPointerType(variant->jit_linear_func_type, 0);
+         LLVMValueRef fetch_ptr = lp_build_pointer_get2(builder, fetch_type, elem,
+                                                        LLVMConstInt(int32t, 0, 0));
+         assert(LLVMGetTypeKind(LLVMTypeOf(fetch_ptr)) == LLVMPointerTypeKind);
+
+         /* Pointer to a row of interpolated inputs */
+         LLVMTypeRef call_type = variant->jit_linear_func_type;
+         elem = LLVMBuildBitCast(builder, elem, pint8t, "");
+         LLVMValueRef inputs_ptr = LLVMBuildCall2(builder, call_type, fetch_ptr, &elem, 1, "");
+         assert(LLVMGetTypeKind(LLVMTypeOf(inputs_ptr)) == LLVMPointerTypeKind);
+
+         lp_add_function_attr(inputs_ptr, -1, LP_FUNC_ATTR_NOUNWIND);
+
+         lp_build_name(inputs_ptr, "input%u_ptr", attrib);
+
+         inputs_ptrs[attrib] = inputs_ptr;
       }
-
-      LLVMValueRef index = LLVMConstInt(int32t, attrib, 0);
-
-      LLVMTypeRef input_type = variant->jit_linear_inputs_type;
-      LLVMValueRef elem =
-         lp_build_array_get2(bld.gallivm, input_type, interpolators_ptr, index);
-      assert(LLVMGetTypeKind(LLVMTypeOf(elem)) == LLVMPointerTypeKind);
-
-      LLVMTypeRef fetch_type = LLVMPointerType(variant->jit_linear_func_type, 0);
-      LLVMValueRef fetch_ptr = lp_build_pointer_get2(builder, fetch_type, elem,
-                                       LLVMConstInt(int32t, 0, 0));
-      assert(LLVMGetTypeKind(LLVMTypeOf(fetch_ptr)) == LLVMPointerTypeKind);
-
-      /* Pointer to a row of interpolated inputs */
-      LLVMTypeRef call_type = variant->jit_linear_func_type;
-      elem = LLVMBuildBitCast(builder, elem, pint8t, "");
-      LLVMValueRef inputs_ptr = LLVMBuildCall2(builder, call_type, fetch_ptr, &elem, 1, "");
-      assert(LLVMGetTypeKind(LLVMTypeOf(inputs_ptr)) == LLVMPointerTypeKind);
-
-      lp_add_function_attr(inputs_ptr, -1, LP_FUNC_ATTR_NOUNWIND);
-
-      lp_build_name(inputs_ptr, "input%u_ptr", attrib);
-
-      inputs_ptrs[attrib] = inputs_ptr;
    }
 
    /*
