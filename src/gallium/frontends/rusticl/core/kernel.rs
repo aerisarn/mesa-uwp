@@ -442,7 +442,7 @@ fn lower_and_optimize_nir_late(
         address_bits_ptr_type = unsafe { glsl_uint_type() };
     };
 
-    let mut res = Vec::new();
+    let mut internal_args = Vec::new();
     let nir_options = unsafe {
         &*dev
             .screen
@@ -481,7 +481,7 @@ fn lower_and_optimize_nir_late(
             last_loc += 1;
             v.data.location = last_loc;
 
-            res.push(InternalKernelArg {
+            internal_args.push(InternalKernelArg {
                 kind: InternalKernelArgType::InlineSampler(Sampler::nir_to_cl(
                     s.addressing_mode(),
                     s.filter_mode(),
@@ -514,7 +514,7 @@ fn lower_and_optimize_nir_late(
 
     // TODO 32 bit devices
     // add vars for global offsets
-    res.push(InternalKernelArg {
+    internal_args.push(InternalKernelArg {
         kind: InternalKernelArgType::GlobalWorkOffsets,
         offset: 0,
         size: (3 * dev.address_bits() / 8) as usize,
@@ -523,11 +523,11 @@ fn lower_and_optimize_nir_late(
     lower_state.base_global_invoc_id = nir.add_var(
         nir_variable_mode::nir_var_uniform,
         unsafe { glsl_vector_type(address_bits_base_type, 3) },
-        args.len() + res.len() - 1,
+        args.len() + internal_args.len() - 1,
         "base_global_invocation_id",
     );
     if nir.has_constant() {
-        res.push(InternalKernelArg {
+        internal_args.push(InternalKernelArg {
             kind: InternalKernelArgType::ConstantBuffer,
             offset: 0,
             size: 8,
@@ -535,12 +535,12 @@ fn lower_and_optimize_nir_late(
         lower_state.const_buf = nir.add_var(
             nir_variable_mode::nir_var_uniform,
             address_bits_ptr_type,
-            args.len() + res.len() - 1,
+            args.len() + internal_args.len() - 1,
             "constant_buffer_addr",
         );
     }
     if nir.has_printf() {
-        res.push(InternalKernelArg {
+        internal_args.push(InternalKernelArg {
             kind: InternalKernelArgType::PrintfBuffer,
             offset: 0,
             size: 8,
@@ -548,7 +548,7 @@ fn lower_and_optimize_nir_late(
         lower_state.printf_buf = nir.add_var(
             nir_variable_mode::nir_var_uniform,
             address_bits_ptr_type,
-            args.len() + res.len() - 1,
+            args.len() + internal_args.len() - 1,
             "printf_buffer_addr",
         );
     }
@@ -561,13 +561,13 @@ fn lower_and_optimize_nir_late(
     nir.gather_info();
     if nir.num_images() > 0 || nir.num_textures() > 0 {
         let count = nir.num_images() + nir.num_textures();
-        res.push(InternalKernelArg {
+        internal_args.push(InternalKernelArg {
             kind: InternalKernelArgType::FormatArray,
             offset: 0,
             size: 2 * count as usize,
         });
 
-        res.push(InternalKernelArg {
+        internal_args.push(InternalKernelArg {
             kind: InternalKernelArgType::OrderArray,
             offset: 0,
             size: 2 * count as usize,
@@ -576,20 +576,20 @@ fn lower_and_optimize_nir_late(
         lower_state.format_arr = nir.add_var(
             nir_variable_mode::nir_var_uniform,
             unsafe { glsl_array_type(glsl_int16_t_type(), count as u32, 2) },
-            args.len() + res.len() - 2,
+            args.len() + internal_args.len() - 2,
             "image_formats",
         );
 
         lower_state.order_arr = nir.add_var(
             nir_variable_mode::nir_var_uniform,
             unsafe { glsl_array_type(glsl_int16_t_type(), count as u32, 2) },
-            args.len() + res.len() - 1,
+            args.len() + internal_args.len() - 1,
             "image_orders",
         );
     }
 
     if nir.reads_sysval(gl_system_value::SYSTEM_VALUE_WORK_DIM) {
-        res.push(InternalKernelArg {
+        internal_args.push(InternalKernelArg {
             kind: InternalKernelArgType::WorkDim,
             size: 1,
             offset: 0,
@@ -597,7 +597,7 @@ fn lower_and_optimize_nir_late(
         lower_state.work_dim = nir.add_var(
             nir_variable_mode::nir_var_uniform,
             unsafe { glsl_uint8_t_type() },
-            args.len() + res.len() - 1,
+            args.len() + internal_args.len() - 1,
             "work_dim",
         );
     }
@@ -656,7 +656,7 @@ fn lower_and_optimize_nir_late(
     /* before passing it into drivers, assign locations as drivers might remove nir_variables or
      * other things we depend on
      */
-    KernelArg::assign_locations(args, &mut res, nir);
+    KernelArg::assign_locations(args, &mut internal_args, nir);
 
     /* update the has_variable_shared_mem info as we might have DCEed all of them */
     nir.set_has_variable_shared_mem(
@@ -667,7 +667,7 @@ fn lower_and_optimize_nir_late(
 
     nir_pass!(nir, nir_opt_dce);
     nir.sweep_mem();
-    res
+    internal_args
 }
 
 fn deserialize_nir(
