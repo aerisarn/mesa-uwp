@@ -8926,10 +8926,9 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
        cmd_buffer->state.has_nggc)
       radv_emit_ngg_culling_state(cmd_buffer);
 
-   if ((cmd_buffer->state.dirty &
-        (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK | RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
-         RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE)) ||
-       cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline)
+   if (cmd_buffer->state.dirty &
+       (RADV_CMD_DIRTY_FRAMEBUFFER | RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK |
+        RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES | RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))
       radv_emit_binning_state(cmd_buffer);
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE)
