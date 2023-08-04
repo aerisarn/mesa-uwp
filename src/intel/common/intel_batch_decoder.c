@@ -31,11 +31,12 @@
 #include <string.h>
 
 static const struct debug_control debug_control[] = {
-   { "color",    INTEL_BATCH_DECODE_IN_COLOR },
-   { "full",     INTEL_BATCH_DECODE_FULL },
-   { "offsets",  INTEL_BATCH_DECODE_OFFSETS },
-   { "floats",   INTEL_BATCH_DECODE_FLOATS },
-   { "surfaces", INTEL_BATCH_DECODE_SURFACES },
+   { "color",      INTEL_BATCH_DECODE_IN_COLOR },
+   { "full",       INTEL_BATCH_DECODE_FULL },
+   { "offsets",    INTEL_BATCH_DECODE_OFFSETS },
+   { "floats",     INTEL_BATCH_DECODE_FLOATS },
+   { "surfaces",   INTEL_BATCH_DECODE_SURFACES },
+   { "accumulate", INTEL_BATCH_DECODE_ACCUMULATE },
    { NULL,    0 }
 };
 
@@ -1479,6 +1480,82 @@ struct custom_decoder {
    { "CONSTANT_BUFFER", decode_gfx4_constant_buffer },
 };
 
+static void
+get_inst_color(const struct intel_batch_decode_ctx *ctx,
+               const struct intel_group *inst,
+               char **const out_color,
+               char **const out_reset_color)
+{
+   const char *inst_name = intel_group_get_name(inst);
+   if (ctx->flags & INTEL_BATCH_DECODE_IN_COLOR) {
+      *out_reset_color = NORMAL;
+      if (ctx->flags & INTEL_BATCH_DECODE_FULL) {
+         if (strcmp(inst_name, "MI_BATCH_BUFFER_START") == 0 ||
+             strcmp(inst_name, "MI_BATCH_BUFFER_END") == 0)
+            *out_color = GREEN_HEADER;
+         else
+            *out_color = BLUE_HEADER;
+      } else {
+         *out_color = NORMAL;
+      }
+   } else {
+      *out_color = "";
+      *out_reset_color = "";
+   }
+}
+
+struct inst_ptr {
+   struct intel_group *inst;
+   uint32_t           *ptr;
+};
+
+static int
+compare_inst_ptr(const void *v1, const void *v2)
+{
+   const struct inst_ptr *i1 = v1, *i2 = v2;
+   return strcmp(i1->inst->name, i2->inst->name);
+}
+
+static void
+intel_print_accumulated_instrs(struct intel_batch_decode_ctx *ctx)
+{
+   struct util_dynarray arr;
+   util_dynarray_init(&arr, NULL);
+
+   hash_table_foreach(ctx->commands, entry) {
+      struct inst_ptr inst = {
+         .inst = (struct intel_group *)entry->key,
+         .ptr  = entry->data,
+      };
+      util_dynarray_append(&arr, struct inst_ptr, inst);
+   }
+   qsort(util_dynarray_begin(&arr),
+         util_dynarray_num_elements(&arr, struct inst_ptr),
+         sizeof(struct inst_ptr),
+         compare_inst_ptr);
+
+   fprintf(ctx->fp, "----\n");
+   util_dynarray_foreach(&arr, struct inst_ptr, i) {
+      char *begin_color;
+      char *end_color;
+      get_inst_color(ctx, i->inst, &begin_color, &end_color);
+
+      uint64_t offset = 0;
+      fprintf(ctx->fp, "%s0x%08"PRIx64":  0x%08x:  %-80s%s\n",
+              begin_color, offset, i->ptr[0], i->inst->name, end_color);
+      if (ctx->flags & INTEL_BATCH_DECODE_FULL) {
+         ctx_print_group(ctx, i->inst, 0, i->ptr);
+         for (int d = 0; d < ARRAY_SIZE(custom_decoders); d++) {
+            if (strcmp(i->inst->name, custom_decoders[d].cmd_name) == 0) {
+               custom_decoders[d].decode(ctx, i->ptr);
+               break;
+            }
+         }
+      }
+   }
+   util_dynarray_fini(&arr);
+}
+
 void
 intel_print_batch(struct intel_batch_decode_ctx *ctx,
                   const uint32_t *batch, uint32_t batch_size,
@@ -1525,40 +1602,43 @@ intel_print_batch(struct intel_batch_decode_ctx *ctx,
          continue;
       }
 
-      const char *color;
-      const char *inst_name = intel_group_get_name(inst);
-      if (ctx->flags & INTEL_BATCH_DECODE_IN_COLOR) {
-         reset_color = NORMAL;
-         if (ctx->flags & INTEL_BATCH_DECODE_FULL) {
-            if (strcmp(inst_name, "MI_BATCH_BUFFER_START") == 0 ||
-                strcmp(inst_name, "MI_BATCH_BUFFER_END") == 0)
-               color = GREEN_HEADER;
-            else
-               color = BLUE_HEADER;
+      if (ctx->flags & INTEL_BATCH_DECODE_ACCUMULATE) {
+         struct hash_entry *entry = _mesa_hash_table_search(ctx->commands, inst);
+         if (entry != NULL) {
+            entry->data = (void *)p;
          } else {
-            color = NORMAL;
+            _mesa_hash_table_insert(ctx->commands, inst, (void *)p);
+         }
+
+         if (!strcmp(inst->name, "3DPRIMITIVE") ||
+             !strcmp(inst->name, "GPGPU_WALKER") ||
+             !strcmp(inst->name, "3DSTATE_WM_HZ_OP") ||
+             !strcmp(inst->name, "COMPUTE_WALKER")) {
+            intel_print_accumulated_instrs(ctx);
          }
       } else {
-         color = "";
-         reset_color = "";
-      }
+         char *begin_color;
+         char *end_color;
+         get_inst_color(ctx, inst, &begin_color, &end_color);
 
-      fprintf(ctx->fp, "%s0x%08"PRIx64"%s:  0x%08x:  %-80s%s\n", color, offset,
-              ctx->acthd && offset == ctx->acthd ? " (ACTHD)" : "", p[0],
-              inst_name, reset_color);
+         fprintf(ctx->fp, "%s0x%08"PRIx64"%s:  0x%08x:  %-80s%s\n",
+                 begin_color, offset,
+                 ctx->acthd && offset == ctx->acthd ? " (ACTHD)" : "", p[0],
+                 inst->name, end_color);
 
-      if (ctx->flags & INTEL_BATCH_DECODE_FULL) {
-         ctx_print_group(ctx, inst, offset, p);
+         if (ctx->flags & INTEL_BATCH_DECODE_FULL) {
+            ctx_print_group(ctx, inst, offset, p);
 
-         for (int i = 0; i < ARRAY_SIZE(custom_decoders); i++) {
-            if (strcmp(inst_name, custom_decoders[i].cmd_name) == 0) {
-               custom_decoders[i].decode(ctx, p);
-               break;
+            for (int i = 0; i < ARRAY_SIZE(custom_decoders); i++) {
+               if (strcmp(inst->name, custom_decoders[i].cmd_name) == 0) {
+                  custom_decoders[i].decode(ctx, p);
+                  break;
+               }
             }
          }
       }
 
-      if (strcmp(inst_name, "MI_BATCH_BUFFER_START") == 0) {
+      if (strcmp(inst->name, "MI_BATCH_BUFFER_START") == 0) {
          uint64_t next_batch_addr = 0;
          bool ppgtt = false;
          bool second_level = false;
@@ -1603,7 +1683,7 @@ intel_print_batch(struct intel_batch_decode_ctx *ctx,
                break;
             }
          }
-      } else if (strcmp(inst_name, "MI_BATCH_BUFFER_END") == 0) {
+      } else if (strcmp(inst->name, "MI_BATCH_BUFFER_END") == 0) {
          break;
       }
    }
