@@ -65,9 +65,9 @@ struct intel_group *intel_spec_find_register(struct intel_spec *spec, uint32_t o
 struct intel_group *intel_spec_find_register_by_name(struct intel_spec *spec, const char *name);
 struct intel_enum *intel_spec_find_enum(struct intel_spec *spec, const char *name);
 
-int intel_group_get_length(struct intel_group *group, const uint32_t *p);
-const char *intel_group_get_name(struct intel_group *group);
-uint32_t intel_group_get_opcode(struct intel_group *group);
+int intel_group_get_length(const struct intel_group *group, const uint32_t *p);
+const char *intel_group_get_name(const struct intel_group *group);
+uint32_t intel_group_get_opcode(const struct intel_group *group);
 struct intel_field *intel_group_find_field(struct intel_group *group, const char *name);
 struct intel_enum *intel_spec_find_enum(struct intel_spec *spec, const char *name);
 

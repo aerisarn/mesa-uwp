@@ -65,13 +65,13 @@ struct parser_context {
 };
 
 const char *
-intel_group_get_name(struct intel_group *group)
+intel_group_get_name(const struct intel_group *group)
 {
    return group->name;
 }
 
 uint32_t
-intel_group_get_opcode(struct intel_group *group)
+intel_group_get_opcode(const struct intel_group *group)
 {
    return group->opcode;
 }
@@ -810,7 +810,7 @@ intel_group_find_field(struct intel_group *group, const char *name)
 }
 
 int
-intel_group_get_length(struct intel_group *group, const uint32_t *p)
+intel_group_get_length(const struct intel_group *group, const uint32_t *p)
 {
    if (group) {
       if (group->fixed_length)
