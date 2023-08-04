@@ -171,7 +171,6 @@ const char *operationStr[OP_LAST + 1] =
    "dfdx",
    "dfdy",
    "rdsv",
-   "wrsv",
    "pixld",
    "quadop",
    "quadon",

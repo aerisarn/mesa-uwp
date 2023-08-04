@@ -129,7 +129,6 @@ public:
 
 protected:
    bool handleRDSV(Instruction *);
-   bool handleWRSV(Instruction *);
    bool handleEXPORT(Instruction *);
    bool handleOUT(Instruction *);
    bool handleDIV(Instruction *);

@@ -144,7 +144,6 @@ enum operation
    OP_DFDX,
    OP_DFDY,
    OP_RDSV, // read system value
-   OP_WRSV, // write system value
    OP_PIXLD, // get info about raster object or surfaces
    OP_QUADOP,
    OP_QUADON,

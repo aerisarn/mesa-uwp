@@ -641,7 +641,6 @@ private:
    virtual bool visit(Function *);
 
    bool handleRDSV(Instruction *);
-   bool handleWRSV(Instruction *);
 
    bool handlePFETCH(Instruction *);
    bool handleEXPORT(Instruction *);
@@ -1222,23 +1221,6 @@ NV50LoweringPreSSA::handleSELP(Instruction *i)
    bld.mkMov(src1, v1)->setPredicate(CC_EQ, i->getSrc(2));
    bld.mkOp2(OP_UNION, i->dType, i->getDef(0), src0, src1);
    delete_Instruction(prog, i);
-   return true;
-}
-
-bool
-NV50LoweringPreSSA::handleWRSV(Instruction *i)
-{
-   Symbol *sym = i->getSrc(0)->asSym();
-
-   // these are all shader outputs, $sreg are not writeable
-   uint32_t addr = targ->getSVAddress(FILE_SHADER_OUTPUT, sym);
-   if (addr >= 0x400)
-      return false;
-   sym = bld.mkSymbol(FILE_SHADER_OUTPUT, 0, i->sType, addr);
-
-   bld.mkStore(OP_EXPORT, i->dType, sym, i->getIndirect(0, 0), i->getSrc(1));
-
-   bld.getBB()->remove(i);
    return true;
 }
 
@@ -2223,8 +2205,6 @@ NV50LoweringPreSSA::visit(Instruction *i)
       return handleBUFQ(i);
    case OP_RDSV:
       return handleRDSV(i);
-   case OP_WRSV:
-      return handleWRSV(i);
    case OP_CALL:
       return handleCALL(i);
    case OP_PRECONT:

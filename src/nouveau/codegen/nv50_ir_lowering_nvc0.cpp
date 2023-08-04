@@ -2801,27 +2801,6 @@ NVC0LoweringPass::handleSurfaceOpGM107(TexInstruction *su)
    }
 }
 
-bool
-NVC0LoweringPass::handleWRSV(Instruction *i)
-{
-   Instruction *st;
-   Symbol *sym;
-   uint32_t addr;
-
-   // must replace, $sreg are not writeable
-   addr = targ->getSVAddress(FILE_SHADER_OUTPUT, i->getSrc(0)->asSym());
-   if (addr >= 0x400)
-      return false;
-   sym = bld.mkSymbol(FILE_SHADER_OUTPUT, 0, i->sType, addr);
-
-   st = bld.mkStore(OP_EXPORT, i->dType, sym, i->getIndirect(0, 0),
-                    i->getSrc(1));
-   st->perPatch = i->perPatch;
-
-   bld.getBB()->remove(i);
-   return true;
-}
-
 void
 NVC0LoweringPass::handleLDST(Instruction *i)
 {
@@ -3362,8 +3341,6 @@ NVC0LoweringPass::visit(Instruction *i)
       return handleOUT(i);
    case OP_RDSV:
       return handleRDSV(i);
-   case OP_WRSV:
-      return handleWRSV(i);
    case OP_STORE:
    case OP_LOAD:
       handleLDST(i);
