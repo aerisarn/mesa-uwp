@@ -372,41 +372,6 @@ agx_emit_load_coefficients(agx_builder *b, agx_index dest,
    agx_emit_cached_split(b, dest, 3);
 }
 
-static void
-agx_emit_load_vary_flat(agx_builder *b, agx_index dest,
-                        nir_intrinsic_instr *instr)
-{
-   unsigned components = instr->num_components;
-   assert(components >= 1 && components <= 4);
-
-   nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
-   nir_src *offset = nir_get_io_offset_src(instr);
-   assert(nir_src_is_const(*offset) && "no indirects");
-   assert(nir_dest_bit_size(instr->dest) == 32 && "no 16-bit flat shading");
-
-   /* Get all coefficient registers up front. This ensures the driver emits a
-    * single vectorized binding.
-    */
-   agx_index cf = agx_get_cf(b->shader, false, false,
-                             sem.location + nir_src_as_uint(*offset),
-                             nir_intrinsic_component(instr), components);
-   agx_index dests[4] = {agx_null()};
-
-   for (unsigned i = 0; i < components; ++i) {
-      /* vec3 for each vertex, unknown what first 2 channels are for */
-      agx_index d[3] = {agx_null()};
-      agx_index tmp = agx_temp(b->shader, AGX_SIZE_32);
-      agx_ldcf_to(b, tmp, cf, 1);
-      agx_emit_split(b, d, tmp, 3);
-      dests[i] = d[2];
-
-      /* Each component accesses a sequential coefficient register */
-      cf.value++;
-   }
-
-   agx_emit_collect_to(b, dest, components, dests);
-}
-
 static enum agx_interpolation
 agx_interp_for_bary(nir_intrinsic_instr *bary, agx_index *sample_index)
 {
@@ -974,11 +939,6 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_interpolated_input:
       assert(stage == MESA_SHADER_FRAGMENT);
       agx_emit_load_vary(b, dst, instr);
-      return NULL;
-
-   case nir_intrinsic_load_input:
-      assert(stage == MESA_SHADER_FRAGMENT && "vertex loads lowered");
-      agx_emit_load_vary_flat(b, dst, instr);
       return NULL;
 
    case nir_intrinsic_load_coefficients_agx:
@@ -2710,6 +2670,9 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    /* Late blend lowering creates vectors */
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS_V(nir, agx_nir_lower_interpolation);
 
    /* Late VBO lowering creates constant udiv instructions */
    NIR_PASS_V(nir, nir_opt_idiv_const, 16);
