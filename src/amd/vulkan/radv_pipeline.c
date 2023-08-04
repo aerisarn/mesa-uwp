@@ -129,7 +129,7 @@ radv_DestroyPipeline(VkDevice _device, VkPipeline _pipeline, const VkAllocationC
 void
 radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipeline *pipeline, struct radv_shader *shader)
 {
-   if (!shader->config.scratch_bytes_per_wave && pipeline->type != RADV_PIPELINE_RAY_TRACING)
+   if (!shader->config.scratch_bytes_per_wave)
       return;
 
    pipeline->scratch_bytes_per_wave = MAX2(pipeline->scratch_bytes_per_wave, shader->config.scratch_bytes_per_wave);

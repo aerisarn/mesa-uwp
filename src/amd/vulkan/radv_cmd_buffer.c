@@ -6570,6 +6570,9 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       /* Bind the stack size when it's not dynamic. */
       if (rt_pipeline->stack_size != -1u)
          cmd_buffer->state.rt_stack_size = rt_pipeline->stack_size;
+
+      const unsigned max_scratch_waves = radv_get_max_scratch_waves(cmd_buffer->device, rt_pipeline->prolog);
+      cmd_buffer->compute_scratch_waves_wanted = MAX2(cmd_buffer->compute_scratch_waves_wanted, max_scratch_waves);
       break;
    }
    case VK_PIPELINE_BIND_POINT_GRAPHICS: {
