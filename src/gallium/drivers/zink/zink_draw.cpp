@@ -991,7 +991,7 @@ zink_draw(struct pipe_context *pctx,
          counter_buffers[i] = VK_NULL_HANDLE;
          if (t) {
             struct zink_resource *res = zink_resource(t->counter_buffer);
-            t->stride = ctx->last_vertex_stage->sinfo.so_info.stride[i] * sizeof(uint32_t);
+            t->stride = ctx->last_vertex_stage->sinfo.stride[i] * sizeof(uint32_t);
             zink_batch_reference_resource_rw(batch, res, true);
             if (!ctx->unordered_blitting)
                res->obj->unordered_read = res->obj->unordered_write = false;

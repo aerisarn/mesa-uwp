@@ -756,12 +756,8 @@ struct zink_framebuffer_clear {
 
 /** compiler types */
 struct zink_shader_info {
-   struct pipe_stream_output_info so_info;
-   unsigned so_info_slots[PIPE_MAX_SO_OUTPUTS];
-   uint32_t so_propagate; //left shifted by 32
+   uint16_t stride[PIPE_MAX_SO_BUFFERS];
    uint32_t sampler_mask;
-   bool last_vertex;
-   bool have_xfb;
    bool have_sparse;
    bool have_vulkan_memory_model;
    bool have_workgroup_memory_explicit_layout;

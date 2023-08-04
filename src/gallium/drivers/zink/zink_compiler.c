@@ -1831,7 +1831,7 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
    for (unsigned i = 0; i < so_info->num_outputs; i++) {
       const struct pipe_stream_output *output = &so_info->output[i];
       /* always set stride to be used during draw */
-      zs->sinfo.so_info.stride[output->output_buffer] = so_info->stride[output->output_buffer];
+      zs->sinfo.stride[output->output_buffer] = so_info->stride[output->output_buffer];
       if (zs->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->info.gs.active_stream_mask) == 1) {
          for (unsigned c = 0; !is_inlined(inlined[reverse_map[output->register_index]], output) && c < output->num_components; c++) {
             unsigned slot = reverse_map[output->register_index];
@@ -1944,9 +1944,6 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
          var->data.xfb.stride = so_info->stride[output->output_buffer] * 4;
          var->data.offset = output->dst_offset * 4;
          var->data.stream = output->stream;
-         /* GLSL specifies that interface blocks are split per-buffer in XFB */
-         if (glsl_type_is_array(var->type) && glsl_array_size(var->type) > 1 && glsl_type_is_interface(glsl_without_array(var->type)))
-            zs->sinfo.so_propagate |= BITFIELD_BIT(var->data.location - VARYING_SLOT_VAR0);
          /* mark all slot components inlined to skip subsequent loop iterations */
          for (unsigned j = 0; j < num_slots; j++) {
             slot = var->data.location + j;
@@ -1957,12 +1954,8 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
          continue;
       }
 out:
-      /* these are packed/explicit varyings which can't be exported with normal output */
-      zs->sinfo.so_info.output[zs->sinfo.so_info.num_outputs] = *output;
-      /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
-      zs->sinfo.so_info_slots[zs->sinfo.so_info.num_outputs++] = reverse_map[output->register_index];
+      unreachable("xfb should be inlined by now!");
    }
-   zs->sinfo.have_xfb = zs->sinfo.so_info.num_outputs || zs->sinfo.so_propagate;
    /* ensure this doesn't get output in the shader by unsetting location */
    if (have_fake_psiz && psiz)
       update_psiz_location(nir, psiz);
@@ -3637,7 +3630,6 @@ struct zink_shader_object
 zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shader *zs,
                     nir_shader *nir, const struct zink_shader_key *key, const void *extra_data, struct zink_program *pg)
 {
-   struct zink_shader_info *sinfo = &zs->sinfo;
    bool need_optimize = true;
    bool inlined_uniforms = false;
 
@@ -3714,9 +3706,6 @@ zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shad
       case MESA_SHADER_TESS_EVAL:
       case MESA_SHADER_GEOMETRY:
          if (zink_vs_key_base(key)->last_vertex_stage) {
-            if (zs->sinfo.have_xfb)
-               sinfo->last_vertex = true;
-
             if (!zink_vs_key_base(key)->clip_halfz && !screen->info.have_EXT_depth_clip_control) {
                NIR_PASS_V(nir, nir_lower_clip_halfz);
             }
@@ -3871,7 +3860,6 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
    }
    optimize_nir(nir, zs);
    zink_descriptor_shader_init(screen, zs);
-   zs->sinfo.last_vertex = zs->sinfo.have_xfb;
    nir_shader *nir_clone = NULL;
    if (screen->info.have_EXT_shader_object)
       nir_clone = nir_shader_clone(nir, nir);

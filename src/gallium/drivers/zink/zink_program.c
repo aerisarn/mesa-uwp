@@ -2466,13 +2466,13 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
             zink_add_inline_uniform(nir, ZINK_INLINE_VAL_FLAT_MASK);
             zink_add_inline_uniform(nir, ZINK_INLINE_VAL_PV_LAST_VERT);
             ralloc_free(prev_stage);
-            struct zink_shader *shader = zink_shader_create(screen, nir, &ctx->gfx_stages[prev_vertex_stage]->sinfo.so_info);
+            struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
             shader->needs_inlining = true;
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type] = shader;
             shader->non_fs.is_generated = true;
             shader->non_fs.parent = ctx->gfx_stages[prev_vertex_stage];
             shader->can_inline = true;
-            shader->sinfo.so_info = ctx->gfx_stages[prev_vertex_stage]->sinfo.so_info;
+            memcpy(shader->sinfo.stride, ctx->gfx_stages[prev_vertex_stage]->sinfo.stride, sizeof(shader->sinfo.stride));
          }
 
          ctx->base.bind_gs_state(&ctx->base,
