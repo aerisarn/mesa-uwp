@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2086 # we want word splitting
 
+# When changing this file, you need to bump the following
+# .gitlab-ci/image-tags.yml tags:
+# DEBIAN_BUILD_TAG
+
 set -e
 set -o xtrace
 
