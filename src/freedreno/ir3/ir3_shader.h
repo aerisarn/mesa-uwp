@@ -732,6 +732,12 @@ struct ir3_shader_variant {
    uint32_t num_sampler_prefetch;
    struct ir3_sampler_prefetch sampler_prefetch[IR3_MAX_SAMPLER_PREFETCH];
 
+   /* If true, the last use of helper invocations is the texture prefetch and
+    * they should be disabled for the actual shader. Equivalent to adding
+    * (eq)nop at the beginning of the shader.
+    */
+   bool prefetch_end_of_quad;
+
    uint16_t local_size[3];
    bool local_size_variable;
 
