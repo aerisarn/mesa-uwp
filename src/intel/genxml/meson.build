@@ -30,10 +30,12 @@ gen_xml_files = [
   'gen11.xml',
   'gen12.xml',
   'gen125.xml',
+  'gen20.xml',
 ]
 
 gen_xml_rt_files = [
   'gen125_rt.xml',
+  'gen20_rt.xml',
 ]
 
 gen_pack_header_deps = files('intel_genxml.py', 'util.py')
