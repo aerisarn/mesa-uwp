@@ -9826,7 +9826,7 @@ radv_trace_rays(struct radv_cmd_buffer *cmd_buffer, const VkTraceRaysIndirectCom
    uint32_t base_reg = rt_prolog->info.user_data_0;
 
    /* Reserve scratch for stacks manually since it is not handled by the compute path. */
-   uint32_t scratch_bytes_per_wave = pipeline->base.scratch_bytes_per_wave;
+   uint32_t scratch_bytes_per_wave = rt_prolog->config.scratch_bytes_per_wave;
    uint32_t wave_size = rt_prolog->info.wave_size;
 
    /* The hardware register is specified as a multiple of 64 or 256 DWORDS. */
@@ -9884,7 +9884,7 @@ radv_trace_rays(struct radv_cmd_buffer *cmd_buffer, const VkTraceRaysIndirectCom
    if (base_loc->sgpr_idx != -1) {
       const struct radv_shader_info *cs_info = &rt_prolog->info;
       radeon_set_sh_reg(cmd_buffer->cs, R_00B900_COMPUTE_USER_DATA_0 + base_loc->sgpr_idx * 4,
-                        pipeline->base.scratch_bytes_per_wave / cs_info->wave_size);
+                        rt_prolog->config.scratch_bytes_per_wave / cs_info->wave_size);
    }
 
    const struct radv_userdata_info *shader_loc = radv_get_user_sgpr(rt_prolog, AC_UD_CS_TRAVERSAL_SHADER_ADDR);
