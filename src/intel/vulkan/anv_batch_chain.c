@@ -1456,9 +1456,10 @@ anv_cmd_buffer_clflush(struct anv_cmd_buffer **cmd_buffers,
 
    for (uint32_t i = 0; i < num_cmd_buffers; i++) {
       u_vector_foreach(bbo, &cmd_buffers[i]->seen_bbos) {
-         for (uint32_t l = 0; l < (*bbo)->length; l += CACHELINE_SIZE)
-            __builtin_ia32_clflush((*bbo)->bo->map + l);
+         intel_flush_range_no_fence((*bbo)->bo->map, (*bbo)->length);
       }
    }
+
+   __builtin_ia32_mfence();
 #endif
 }
