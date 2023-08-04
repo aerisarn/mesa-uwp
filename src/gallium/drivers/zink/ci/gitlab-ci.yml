@@ -70,6 +70,7 @@
 
 
 .zink-test:
+  timeout: 30m
   variables:
     MESA_LOADER_DRIVER_OVERRIDE: "zink"
     FLAKES_CHANNEL: "#zink-ci"
@@ -126,6 +127,7 @@ zink-lvp:
 zink-anv-tgl:
   extends:
     - .zink-anv-test
+  timeout: 1h
   variables:
     DEQP_SUITE: zink-anv-tgl
     PIGLIT_NO_WINDOW: 1
