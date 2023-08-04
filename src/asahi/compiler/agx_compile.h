@@ -231,6 +231,7 @@ static const nir_shader_compiler_options agx_nir_options = {
    .lower_find_lsb = true,
    .lower_uadd_carry = true,
    .lower_usub_borrow = true,
+   .lower_fisnormal = true,
    .lower_scmp = true,
    .lower_isign = true,
    .lower_fsign = true,
