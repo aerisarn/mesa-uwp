@@ -516,7 +516,7 @@ nvk_GetRenderingAreaGranularityKHR(
    *pGranularity = (VkExtent2D) { .width = 1, .height = 1 };
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
                       const VkRenderingInfo *pRenderingInfo)
 {
@@ -768,7 +768,7 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    /* TODO: Attachment clears */
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 nvk_CmdEndRendering(VkCommandBuffer commandBuffer)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
