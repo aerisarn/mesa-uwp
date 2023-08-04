@@ -2029,14 +2029,14 @@ static int print_dst(struct r600_bytecode_alu *alu)
 	int o = 0;
 	unsigned sel = alu->dst.sel;
 	char reg_char = 'R';
-	if (sel > 128 - 4) { /* clause temporary gpr */
+	if (sel >= 128 - 4) { /* clause temporary gpr */
 		sel -= 128 - 4;
 		reg_char = 'T';
 	}
 
 	if (alu_writes(alu)) {
 		o += fprintf(stderr, "%c", reg_char);
-		o += print_sel(alu->dst.sel, alu->dst.rel, alu->index_mode, 0);
+		o += print_sel(sel, alu->dst.rel, alu->index_mode, 0);
 	} else {
 		o += fprintf(stderr, "__");
 	}

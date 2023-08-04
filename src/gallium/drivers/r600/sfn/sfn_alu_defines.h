@@ -34,6 +34,10 @@
 
 namespace r600 {
 
+
+static const int g_clause_local_start = 124;
+static const int g_clause_local_end = 126;
+
 /* ALU op2 instructions 17:7 top three bits always zero. */
 enum EAluOp {
    op2_add = 0,
