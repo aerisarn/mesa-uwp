@@ -126,18 +126,6 @@ radv_DestroyPipeline(VkDevice _device, VkPipeline _pipeline, const VkAllocationC
    radv_pipeline_destroy(device, pipeline, pAllocator);
 }
 
-void
-radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipeline *pipeline, struct radv_shader *shader)
-{
-   if (!shader->config.scratch_bytes_per_wave)
-      return;
-
-   pipeline->scratch_bytes_per_wave = MAX2(pipeline->scratch_bytes_per_wave, shader->config.scratch_bytes_per_wave);
-
-   const unsigned max_stage_waves = radv_get_max_scratch_waves(device, shader);
-   pipeline->max_waves = MAX2(pipeline->max_waves, max_stage_waves);
-}
-
 static enum radv_buffer_robustness
 radv_convert_buffer_robustness(const struct radv_device *device, VkPipelineRobustnessBufferBehaviorEXT behaviour)
 {

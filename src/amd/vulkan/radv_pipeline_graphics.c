@@ -4003,8 +4003,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       if (pipeline->base.shaders[i]) {
          pipeline->base.shader_upload_seq =
             MAX2(pipeline->base.shader_upload_seq, pipeline->base.shaders[i]->upload_seq);
-
-         radv_pipeline_init_scratch(device, &pipeline->base, pipeline->base.shaders[i]);
       }
    }
 

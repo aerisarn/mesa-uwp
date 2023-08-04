@@ -2237,9 +2237,6 @@ struct radv_pipeline {
 
    uint32_t user_data_0[MESA_VULKAN_SHADER_STAGES];
 
-   unsigned max_waves;
-   unsigned scratch_bytes_per_wave;
-
    /* Unique pipeline hash identifier. */
    uint64_t pipeline_hash;
 
@@ -2490,9 +2487,6 @@ VkPipelineShaderStageCreateInfo *radv_copy_shader_stage_create_info(struct radv_
                                                                     void *mem_ctx);
 
 bool radv_shader_need_indirect_descriptor_sets(const struct radv_shader *shader);
-
-void radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipeline *pipeline,
-                                struct radv_shader *shader);
 
 bool radv_pipeline_has_ngg(const struct radv_graphics_pipeline *pipeline);
 
