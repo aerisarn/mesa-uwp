@@ -225,6 +225,8 @@ hawkmoth_clang = [
   '-Iinclude/',
   '-Isrc/',
   '-Isrc/gallium/include/',
+  '-Isrc/intel/',
+  '-Isrc/mesa/',
   '-DHAVE_STRUCT_TIMESPEC',
   '-DHAVE_PTHREAD',
   '-DHAVE_ENDIAN_H',

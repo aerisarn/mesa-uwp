@@ -617,13 +617,13 @@ tiling_max_mip_tail(enum isl_tiling tiling,
  * Returns an isl_tile_info representation of the given isl_tiling when
  * combined when used in the given configuration.
  *
- * @param[in]  tiling      The tiling format to introspect
- * @param[in]  dim         The dimensionality of the surface being tiled
- * @param[in]  msaa_layout The layout of samples in the surface being tiled
- * @param[in]  format_bpb  The number of bits per surface element (block) for
- *                         the surface being tiled
- * @param[in]  samples     The samples in the surface being tiled
- * @param[out] tile_info   Return parameter for the tiling information
+ * :param tiling:       |in|  The tiling format to introspect
+ * :param dim:          |in|  The dimensionality of the surface being tiled
+ * :param msaa_layout:  |in|  The layout of samples in the surface being tiled
+ * :param format_bpb:   |in|  The number of bits per surface element (block) for
+ *                            the surface being tiled
+ * :param samples:      |in|  The samples in the surface being tiled
+ * :param tile_info:    |out| Return parameter for the tiling information
  */
 void
 isl_tiling_get_info(enum isl_tiling tiling,
