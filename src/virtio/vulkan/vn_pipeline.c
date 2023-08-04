@@ -496,23 +496,6 @@ vn_fix_graphics_pipeline_create_info(
        * bools.
        */
 
-      /* VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT
-       *
-       * The Vulkan spec (1.3.223) says:
-       *    If the pre-rasterization shader state includes a vertex shader,
-       * then vertex input state is included in a complete graphics pipeline.
-       *
-       * We support no extension yet that allows the vertex stage to be
-       * omitted such as VK_EXT_graphics_pipeline_library.
-       *
-       * VK_EXT_vertex_input_dynamic_state allows for the state to be set
-       * dynamically but vertex stage must be included regardless.
-       */
-      const bool UNUSED has_vertex_input_state = true;
-
-      /* VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT */
-      const bool has_pre_raster_state = true;
-
       /* The spec does not assign a name to this state. We define it just to
        * deduplicate code.
        *
@@ -548,8 +531,7 @@ vn_fix_graphics_pipeline_create_info(
        *    VUID-VkGraphicsPipelineCreateInfo-rasterizerDiscardEnable-00750
        *    VUID-VkGraphicsPipelineCreateInfo-pViewportState-04892
        */
-      if (info->pViewportState &&
-          !(has_pre_raster_state && has_raster_state)) {
+      if (info->pViewportState && !has_raster_state) {
          fix.ignore_viewport_state = true;
          any_fix = true;
       }
@@ -564,8 +546,8 @@ vn_fix_graphics_pipeline_create_info(
           info->pViewportState->pViewports &&
           info->pViewportState->viewportCount) {
          const bool has_dynamic_viewport =
-            has_pre_raster_state && (has_dynamic_state.viewport ||
-                                     has_dynamic_state.viewport_with_count);
+            has_dynamic_state.viewport ||
+            has_dynamic_state.viewport_with_count;
 
          if (has_dynamic_viewport) {
             fix.ignore_viewports = true;
@@ -583,8 +565,7 @@ vn_fix_graphics_pipeline_create_info(
           info->pViewportState->pScissors &&
           info->pViewportState->scissorCount) {
          const bool has_dynamic_scissor =
-            has_pre_raster_state && (has_dynamic_state.scissor ||
-                                     has_dynamic_state.scissor_with_count);
+            has_dynamic_state.scissor || has_dynamic_state.scissor_with_count;
          if (has_dynamic_scissor) {
             fix.ignore_scissors = true;
             any_fix = true;
