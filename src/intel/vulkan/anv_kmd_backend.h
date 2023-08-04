@@ -39,6 +39,19 @@ struct anv_queue;
 struct anv_query_pool;
 struct anv_utrace_submit;
 
+enum anv_vm_bind_op {
+   ANV_VM_BIND,
+   ANV_VM_UNBIND,
+};
+
+struct anv_vm_bind {
+   struct anv_bo *bo;  /* Or NULL in case of a NULL binding. */
+   uint64_t address;   /* Includes the resource offset. */
+   uint64_t bo_offset; /* Also known as the memory offset. */
+   uint64_t size;
+   enum anv_vm_bind_op op;
+};
+
 struct anv_kmd_backend {
    /*
     * Create a gem buffer.
@@ -55,6 +68,9 @@ struct anv_kmd_backend {
    void *(*gem_mmap)(struct anv_device *device, struct anv_bo *bo,
                      uint64_t offset, uint64_t size,
                      VkMemoryPropertyFlags property_flags);
+   /* Bind things however you want. */
+   int (*vm_bind)(struct anv_device *device, int num_binds,
+                  struct anv_vm_bind *binds);
    /* Fully bind or unbind a BO. */
    int (*vm_bind_bo)(struct anv_device *device, struct anv_bo *bo);
    int (*vm_unbind_bo)(struct anv_device *device, struct anv_bo *bo);

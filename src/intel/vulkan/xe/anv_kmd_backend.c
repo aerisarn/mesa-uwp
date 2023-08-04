@@ -94,22 +94,13 @@ xe_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
 }
 
 static inline int
-xe_vm_bind_op(struct anv_device *device, struct anv_bo *bo, uint32_t op)
+xe_vm_bind_op(struct anv_device *device, int num_binds,
+              struct anv_vm_bind *binds)
 {
    uint32_t syncobj_handle;
    int ret = drmSyncobjCreate(device->fd, 0, &syncobj_handle);
-
    if (ret)
       return ret;
-
-   uint32_t obj = op == XE_VM_BIND_OP_UNMAP ? 0 : bo->gem_handle;
-   uint64_t obj_offset = 0;
-   if (bo->from_host_ptr) {
-      obj = 0;
-      obj_offset = (uintptr_t)bo->map;
-      if (op == XE_VM_BIND_OP_MAP)
-         op = XE_VM_BIND_OP_MAP_USERPTR;
-   }
 
    struct drm_xe_sync sync = {
       .flags = DRM_XE_SYNC_SYNCOBJ | DRM_XE_SYNC_SIGNAL,
@@ -117,15 +108,56 @@ xe_vm_bind_op(struct anv_device *device, struct anv_bo *bo, uint32_t op)
    };
    struct drm_xe_vm_bind args = {
       .vm_id = device->vm_id,
-      .num_binds = 1,
-      .bind.obj = obj,
-      .bind.obj_offset = obj_offset,
-      .bind.range = bo->actual_size,
-      .bind.addr = intel_48b_address(bo->offset),
-      .bind.op = op,
+      .num_binds = num_binds,
+      .bind = {},
       .num_syncs = 1,
       .syncs = (uintptr_t)&sync,
    };
+
+   STACK_ARRAY(struct drm_xe_vm_bind_op, xe_binds_stackarray, num_binds);
+   struct drm_xe_vm_bind_op *xe_binds;
+   if (num_binds > 1) {
+      if (!xe_binds_stackarray)
+         goto out_syncobj;
+
+      xe_binds = xe_binds_stackarray;
+      args.vector_of_binds = (uintptr_t)xe_binds;
+   } else {
+      xe_binds = &args.bind;
+   }
+
+   for (int i = 0; i < num_binds; i++) {
+      struct anv_vm_bind *bind = &binds[i];
+      struct anv_bo *bo = bind->bo;
+
+      struct drm_xe_vm_bind_op *xe_bind = &xe_binds[i];
+      *xe_bind = (struct drm_xe_vm_bind_op) {
+         .obj = 0,
+         .obj_offset = bind->bo_offset,
+         .range = bind->size,
+         .addr = intel_48b_address(bind->address),
+         .tile_mask = 0,
+         .op = XE_VM_BIND_OP_UNMAP,
+         .region = 0,
+      };
+
+      if (bind->op == ANV_VM_BIND) {
+         if (!bo) {
+            xe_bind->op = XE_VM_BIND_OP_MAP | XE_VM_BIND_FLAG_NULL;
+            assert(xe_bind->obj_offset == 0);
+         } else if (bo->from_host_ptr) {
+            xe_bind->op = XE_VM_BIND_OP_MAP_USERPTR;
+         } else {
+            xe_bind->op = XE_VM_BIND_OP_MAP;
+            xe_bind->obj = bo->gem_handle;
+         }
+      }
+
+      /* userptr and bo_offset are an union! */
+      if (bo && bo->from_host_ptr)
+         xe_bind->userptr = (uintptr_t)bo->map;
+   }
+
    ret = intel_ioctl(device->fd, DRM_IOCTL_XE_VM_BIND, &args);
    if (ret)
       goto bind_error;
@@ -141,18 +173,41 @@ xe_vm_bind_op(struct anv_device *device, struct anv_bo *bo, uint32_t op)
    intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait);
 
 bind_error:
+   STACK_ARRAY_FINISH(xe_binds_stackarray);
+out_syncobj:
    drmSyncobjDestroy(device->fd, syncobj_handle);
    return ret;
 }
 
+static int
+xe_vm_bind(struct anv_device *device, int num_binds,
+           struct anv_vm_bind *binds)
+{
+   return xe_vm_bind_op(device, num_binds, binds);
+}
+
 static int xe_vm_bind_bo(struct anv_device *device, struct anv_bo *bo)
 {
-   return xe_vm_bind_op(device, bo, XE_VM_BIND_OP_MAP);
+   struct anv_vm_bind bind = {
+      .bo = bo,
+      .address = bo->offset,
+      .bo_offset = 0,
+      .size = bo->actual_size,
+      .op = ANV_VM_BIND,
+   };
+   return xe_vm_bind_op(device, 1, &bind);
 }
 
 static int xe_vm_unbind_bo(struct anv_device *device, struct anv_bo *bo)
 {
-   return xe_vm_bind_op(device, bo, XE_VM_BIND_OP_UNMAP);
+   struct anv_vm_bind bind = {
+      .bo = bo,
+      .address = bo->offset,
+      .bo_offset = 0,
+      .size = bo->actual_size,
+      .op = ANV_VM_UNBIND,
+   };
+   return xe_vm_bind_op(device, 1, &bind);
 }
 
 static uint32_t
@@ -173,6 +228,7 @@ anv_xe_kmd_backend_get(void)
       .gem_create_userptr = xe_gem_create_userptr,
       .gem_close = xe_gem_close,
       .gem_mmap = xe_gem_mmap,
+      .vm_bind = xe_vm_bind,
       .vm_bind_bo = xe_vm_bind_bo,
       .vm_unbind_bo = xe_vm_unbind_bo,
       .execute_simple_batch = xe_execute_simple_batch,
