@@ -680,6 +680,7 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
 
    const struct nv_device_info info = ws_dev->info;
 #if NVK_NEW_UAPI == 1
+   const bool has_vm_bind = ws_dev->has_vm_bind;
    const struct vk_sync_type syncobj_sync_type =
       vk_drm_syncobj_get_type(ws_dev->fd);
 #endif
@@ -698,6 +699,13 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
                        "if you know what you're doing.",
                        info.device_name);
    }
+
+#if NVK_NEW_UAPI == 1
+   if (!has_vm_bind) {
+      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                       "NVK Requires a Linux kernel version 6.6 or later");
+   }
+#endif
 
    if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER))) {
       return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
