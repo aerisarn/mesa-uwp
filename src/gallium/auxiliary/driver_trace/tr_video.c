@@ -3,8 +3,12 @@
 #include "tr_dump_state.h"
 #include "tr_texture.h"
 #include "u_inlines.h"
+#include "u_video.h"
 #include "tr_video.h"
 #include "pipe/p_video_codec.h"
+#include "pipe/p_video_enums.h"
+#include "util/macros.h"
+#include "util/u_memory.h"
 #include "vl/vl_defines.h"
 
 static void
@@ -23,6 +27,82 @@ trace_video_codec_destroy(struct pipe_video_codec *_codec)
 }
 
 static void
+unwrap_refrence_frames_in_place(struct pipe_video_buffer **refrence_frames, unsigned max_num_refrence_frame)
+{
+    for (unsigned i=0; i < max_num_refrence_frame; i++) {
+        if (refrence_frames[i]) {
+            struct trace_video_buffer *tr_buffer = trace_video_buffer(refrence_frames[i]);
+            refrence_frames[i] = tr_buffer->video_buffer;
+        }
+    }
+}
+
+static bool
+unwrap_refrence_frames(struct pipe_picture_desc **picture)
+{
+    // only decode pictures use video buffers for refrences
+    if ((*picture)->entry_point != PIPE_VIDEO_ENTRYPOINT_BITSTREAM)
+        return false;
+    switch (u_reduce_video_profile((*picture)->profile)) {
+    case PIPE_VIDEO_FORMAT_MPEG12: {
+        struct pipe_mpeg12_picture_desc *copied = mem_dup(*picture, sizeof(struct pipe_mpeg12_picture_desc));
+        assert(copied);
+        unwrap_refrence_frames_in_place(copied->ref, ARRAY_SIZE(copied->ref));
+        *picture = (struct pipe_picture_desc*)copied;
+        return true;
+    }
+    case PIPE_VIDEO_FORMAT_MPEG4: {
+        struct pipe_mpeg4_picture_desc *copied = mem_dup(*picture, sizeof(struct pipe_mpeg4_picture_desc));
+        assert(copied);
+        unwrap_refrence_frames_in_place(copied->ref, ARRAY_SIZE(copied->ref));
+        *picture = (struct pipe_picture_desc*)copied;
+        return true;
+    }
+    case PIPE_VIDEO_FORMAT_VC1:{
+        struct pipe_vc1_picture_desc *copied = mem_dup(*picture, sizeof(struct pipe_vc1_picture_desc));
+        assert(copied);
+        unwrap_refrence_frames_in_place(copied->ref, ARRAY_SIZE(copied->ref));
+        *picture = (struct pipe_picture_desc*)copied;
+        return true;
+    }
+    case PIPE_VIDEO_FORMAT_MPEG4_AVC: {
+        struct pipe_h264_picture_desc *copied = mem_dup(*picture, sizeof(struct pipe_h264_picture_desc));
+        assert(copied);
+        unwrap_refrence_frames_in_place(copied->ref, ARRAY_SIZE(copied->ref));
+        *picture = (struct pipe_picture_desc*)copied;
+        return true;
+    }
+    case PIPE_VIDEO_FORMAT_HEVC:{
+        struct pipe_h265_picture_desc *copied = mem_dup(*picture, sizeof(struct pipe_h265_picture_desc));
+        assert(copied);
+        unwrap_refrence_frames_in_place(copied->ref, ARRAY_SIZE(copied->ref));
+        *picture = (struct pipe_picture_desc*)copied;
+        return true;
+    }
+    case PIPE_VIDEO_FORMAT_JPEG:
+        return false;
+    case PIPE_VIDEO_FORMAT_VP9:{
+        struct pipe_vp9_picture_desc *copied = mem_dup(*picture, sizeof(struct pipe_vp9_picture_desc));
+        assert(copied);
+        unwrap_refrence_frames_in_place(copied->ref, ARRAY_SIZE(copied->ref));
+        *picture = (struct pipe_picture_desc*)copied;
+        return true;
+    }
+    case PIPE_VIDEO_FORMAT_AV1:{
+        struct pipe_av1_picture_desc *copied = mem_dup(*picture, sizeof(struct pipe_av1_picture_desc));
+        assert(copied);
+        unwrap_refrence_frames_in_place(copied->ref, ARRAY_SIZE(copied->ref));
+        unwrap_refrence_frames_in_place(&copied->film_grain_target, 1);
+        *picture = (struct pipe_picture_desc*)copied;
+        return true;
+    }
+    case PIPE_VIDEO_FORMAT_UNKNOWN:
+    default:
+        unreachable("unknown video format");
+    }
+}
+
+static void
 trace_video_codec_begin_frame(struct pipe_video_codec *_codec,
                     struct pipe_video_buffer *_target,
                     struct pipe_picture_desc *picture)
@@ -38,7 +118,10 @@ trace_video_codec_begin_frame(struct pipe_video_codec *_codec,
     trace_dump_arg(pipe_picture_desc, picture);
     trace_dump_call_end();
 
+    bool copied = unwrap_refrence_frames(&picture);
     codec->begin_frame(codec, target, picture);
+    if (copied)
+        FREE(picture);
 }
 
 static void
@@ -63,7 +146,10 @@ trace_video_codec_decode_macroblock(struct pipe_video_codec *_codec,
     trace_dump_arg(uint, num_macroblocks);
     trace_dump_call_end();
 
+    bool copied = unwrap_refrence_frames(&picture);
     codec->decode_macroblock(codec, target, picture, macroblocks, num_macroblocks);
+    if (copied)
+        FREE(picture);
 }
 
 static void 
@@ -89,7 +175,10 @@ trace_video_codec_decode_bitstream(struct pipe_video_codec *_codec,
     trace_dump_arg_array(uint, sizes, num_buffers);
     trace_dump_call_end();
 
+    bool copied = unwrap_refrence_frames(&picture);
     codec->decode_bitstream(codec, target, picture, num_buffers, buffers, sizes);
+    if (copied)
+        FREE(picture);
 }
 
 static void
@@ -148,7 +237,10 @@ trace_video_codec_end_frame(struct pipe_video_codec *_codec,
     trace_dump_arg(pipe_picture_desc, picture);
     trace_dump_call_end();
 
+    bool copied = unwrap_refrence_frames(&picture);
     codec->end_frame(codec, target, picture);
+    if (copied)
+        FREE(picture);
 }
 
 static void
