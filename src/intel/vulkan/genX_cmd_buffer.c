@@ -3442,8 +3442,10 @@ genX(BeginCommandBuffer)(
       cmd_buffer->state.conditional_render_enabled =
          conditional_rendering_info && conditional_rendering_info->conditionalRenderingEnable;
 
-      if (pBeginInfo->pInheritanceInfo->occlusionQueryEnable)
+      if (pBeginInfo->pInheritanceInfo->occlusionQueryEnable) {
          cmd_buffer->state.gfx.n_occlusion_queries = 1;
+         cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_OCCLUSION_QUERY_ACTIVE;
+      }
    }
 
    return VK_SUCCESS;
