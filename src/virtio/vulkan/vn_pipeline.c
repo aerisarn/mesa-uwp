@@ -557,11 +557,12 @@ vn_fix_graphics_pipeline_create_info(
       /* Ignore pViewports?
        *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-04130
        *
-       * Even if pViewportState is non-null, we must not dereference it if it
-       * is ignored.
+       * If viewportCount is 0, then venus encoder will ignore pViewports and
+       * we do not need to erase it.
        */
       if (!fix.ignore_viewport_state && info->pViewportState &&
-          info->pViewportState->pViewports) {
+          info->pViewportState->pViewports &&
+          info->pViewportState->viewportCount) {
          const bool has_dynamic_viewport =
             has_pre_raster_state && (has_dynamic_state.viewport ||
                                      has_dynamic_state.viewport_with_count);
@@ -575,11 +576,12 @@ vn_fix_graphics_pipeline_create_info(
       /* Ignore pScissors?
        *    VUID-VkGraphicsPipelineCreateInfo-pDynamicStates-04131
        *
-       * Even if pViewportState is non-null, we must not dereference it if it
-       * is ignored.
+       * If scissorCount is 0, then venus encoder will ignore pScissors and we
+       * do not need to erase it.
        */
       if (!fix.ignore_viewport_state && info->pViewportState &&
-          info->pViewportState->pScissors) {
+          info->pViewportState->pScissors &&
+          info->pViewportState->scissorCount) {
          const bool has_dynamic_scissor =
             has_pre_raster_state && (has_dynamic_state.scissor ||
                                      has_dynamic_state.scissor_with_count);
