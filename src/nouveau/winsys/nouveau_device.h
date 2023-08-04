@@ -37,11 +37,6 @@ struct nouveau_ws_device {
 
    uint32_t local_mem_domain;
 
-   uint8_t gpc_count;
-   uint8_t mp_per_tpc;
-   uint8_t max_warps_per_mp;
-   uint16_t tpc_count;
-
    enum nvk_debug debug_flags;
 
    simple_mtx_t bos_lock;

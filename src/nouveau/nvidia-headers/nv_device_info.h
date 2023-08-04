@@ -31,6 +31,11 @@ struct nv_device_info {
 
    uint8_t sm; /**< Shader model */
 
+   uint8_t gpc_count;
+   uint16_t tpc_count;
+   uint8_t mp_per_tpc;
+   uint8_t max_warps_per_mp;
+
    uint16_t cls_copy;
    uint16_t cls_eng2d;
    uint16_t cls_eng3d;

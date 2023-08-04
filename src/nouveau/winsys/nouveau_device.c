@@ -300,8 +300,8 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_GRAPH_UNITS, &value))
       goto out_err;
 
-   device->gpc_count = (value >> 0) & 0x000000ff;
-   device->tpc_count = (value >> 8) & 0x0000ffff;
+   device->info.gpc_count = (value >> 0) & 0x000000ff;
+   device->info.tpc_count = (value >> 8) & 0x0000ffff;
 
    nouveau_ws_device_set_dbg_flags(device);
 
@@ -318,8 +318,8 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
 
    // for now we hardcode those values, but in the future Nouveau could provide that information to
    // us instead.
-   device->max_warps_per_mp = max_warps_per_mp_for_sm(device->info.sm);
-   device->mp_per_tpc = mp_per_tpc_for_chipset(device->info.chipset);
+   device->info.max_warps_per_mp = max_warps_per_mp_for_sm(device->info.sm);
+   device->info.mp_per_tpc = mp_per_tpc_for_chipset(device->info.chipset);
 
    nouveau_ws_context_destroy(tmp_ctx);
 
