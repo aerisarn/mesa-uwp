@@ -41,6 +41,7 @@
 #include "tr_texture.h"
 #include "tr_context.h"
 #include "tr_util.h"
+#include "tr_video.h"
 
 
 struct trace_query
@@ -2088,6 +2089,8 @@ trace_context_create_video_codec(struct pipe_context *_context,
    trace_dump_ret(ptr, result);
    trace_dump_call_end();
 
+   result = trace_video_codec_create(tr_context, result);
+
    return result;
 }
 
@@ -2113,6 +2116,8 @@ trace_context_create_video_buffer_with_modifiers(struct pipe_context *_context,
    trace_dump_ret(ptr, result);
    trace_dump_call_end();
 
+   result = trace_video_buffer_create(tr_context, result);
+
    return result;
 }
 
@@ -2133,6 +2138,8 @@ trace_context_create_video_buffer(struct pipe_context *_context,
 
    trace_dump_ret(ptr, result);
    trace_dump_call_end();
+
+   result = trace_video_buffer_create(tr_context, result);
 
    return result;
 }

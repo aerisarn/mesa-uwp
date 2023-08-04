@@ -148,6 +148,25 @@ void trace_dump_box(const struct pipe_box *box)
    trace_dump_struct_end();
 }
 
+void trace_dump_u_rect(const struct u_rect *rect)
+{
+   if (!trace_dumping_enabled_locked())
+      return;
+
+   if (!rect) {
+      trace_dump_null();
+      return;
+   }
+
+   trace_dump_struct_begin("u_rect");
+
+   trace_dump_member(int, rect, x0);
+   trace_dump_member(int, rect, x1);
+   trace_dump_member(int, rect, y0);
+   trace_dump_member(int, rect, y1);
+
+   trace_dump_struct_end();
+}
 
 void trace_dump_rasterizer_state(const struct pipe_rasterizer_state *state)
 {
@@ -1164,5 +1183,67 @@ void trace_dump_winsys_handle(const struct winsys_handle *whandle)
    trace_dump_member(uint, whandle, modifier);
    trace_dump_member(uint, whandle, size);
 
+   trace_dump_struct_end();
+}
+
+void trace_dump_pipe_picture_desc(const struct pipe_picture_desc *picture)
+{
+   if (!trace_dumping_enabled_locked())
+      return;
+
+   if (!picture) {
+      trace_dump_null();
+      return;
+   }
+
+   trace_dump_struct_begin("pipe_picture_desc");
+
+   trace_dump_member_enum(pipe_video_profile, picture, profile);
+   trace_dump_member_enum(pipe_video_entrypoint, picture, entry_point);
+   trace_dump_member(bool, picture, protected_playback);
+   trace_dump_member_begin("decrypt_key");
+   trace_dump_array(uint, picture->decrypt_key, picture->key_size);
+   trace_dump_member_end();
+   trace_dump_member(uint, picture, key_size);
+   trace_dump_member(format, picture, input_format);
+   trace_dump_member(bool, picture, input_full_range);
+   trace_dump_member(format, picture, output_format);
+   trace_dump_member(ptr, picture, fence);
+   trace_dump_struct_end();
+}
+
+void trace_dump_pipe_vpp_blend(const struct pipe_vpp_blend *blend)
+{
+   if (!trace_dumping_enabled_locked())
+      return;
+
+   if (!blend) {
+      trace_dump_null();
+      return;
+   }
+
+   trace_dump_struct_begin("pipe_vpp_blend");
+   trace_dump_member_enum(pipe_video_vpp_blend_mode, blend, mode);
+   trace_dump_member(float, blend, global_alpha);
+   trace_dump_struct_end();
+}
+
+void trace_dump_pipe_vpp_desc(const struct pipe_vpp_desc *process_properties)
+{
+   if (!trace_dumping_enabled_locked())
+      return;
+
+   if (!process_properties) {
+      trace_dump_null();
+      return;
+   }
+
+   trace_dump_struct_begin("pipe_vpp_desc");
+   trace_dump_member_struct(pipe_picture_desc, process_properties, base);
+   trace_dump_member_struct(u_rect, process_properties, src_region);
+   trace_dump_member_struct(u_rect, process_properties, dst_region);
+   trace_dump_member_enum(pipe_video_vpp_orientation, process_properties, orientation);
+   trace_dump_member_struct(pipe_vpp_blend, process_properties, blend);
+   trace_dump_member(ptr, process_properties, src_surface_fence);
    trace_dump_struct_end();
 }

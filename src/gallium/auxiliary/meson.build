@@ -107,6 +107,8 @@ files_libgallium = files(
   'driver_trace/tr_screen.h',
   'driver_trace/tr_texture.c',
   'driver_trace/tr_texture.h',
+  'driver_trace/tr_video.c',
+  'driver_trace/tr_video.h',
   'hud/font.c',
   'hud/font.h',
   'hud/hud_context.c',

@@ -198,6 +198,13 @@ bool trace_dump_is_triggered(void);
       trace_dump_member_end(); \
    } while(0)
 
+#define trace_dump_member_struct(_type, _obj, _member) \
+   do { \
+      trace_dump_member_begin(#_member); \
+      trace_dump_##_type(&((_obj)->_member)); \
+      trace_dump_member_end(); \
+   } while(0)
+
 #define trace_dump_arg_array(_type, _arg, _size) \
    do { \
       trace_dump_arg_begin(#_arg); \

@@ -51,6 +51,8 @@ lst_enum_include = [
     "pipe_video_cap",
     "pipe_video_profile",
     "pipe_video_entrypoint",
+    "pipe_video_vpp_orientation",
+    "pipe_video_vpp_blend_mode",
     "pipe_resource_param",
     "pipe_fd_type",
     "pipe_blendfactor",
