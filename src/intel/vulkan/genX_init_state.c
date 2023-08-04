@@ -567,6 +567,7 @@ init_render_queue_state(struct anv_queue *queue, bool is_companion_rcs_batch)
 #endif
 
 #if GFX_VERx10 >= 125
+   anv_batch_emit(&batch, GENX(STATE_COMPUTE_MODE), zero);
    anv_batch_emit(&batch, GENX(3DSTATE_MESH_CONTROL), zero);
    anv_batch_emit(&batch, GENX(3DSTATE_TASK_CONTROL), zero);
    genX(batch_emit_pipe_control_write)(&batch, device->info, NoWrite,
@@ -622,14 +623,26 @@ init_compute_queue_state(struct anv_queue *queue)
    assert(!queue->device->info->has_aux_map);
 #endif
 
-#if GFX_VERx10 == 125
-   /* Wa_14014427904 - We need additional invalidate/flush when
+   /* Wa_14015782607 - Issue pipe control with HDC_flush and
+    * untyped cache flush set to 1 when CCS has NP state update with
+    * STATE_COMPUTE_MODE.
+    */
+   if (intel_needs_workaround(devinfo, 14015782607) &&
+       queue->family->engine_class == INTEL_ENGINE_CLASS_COMPUTE) {
+      genX(batch_emit_pipe_control)(&batch, devinfo,
+                                    ANV_PIPE_CS_STALL_BIT |
+                                    ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT |
+                                    ANV_PIPE_HDC_PIPELINE_FLUSH_BIT);
+   }
+
+#if GFX_VERx10 >= 125
+   /* Wa_14014427904/22013045878 - We need additional invalidate/flush when
     * emitting NP state commands with ATS-M in compute mode.
     */
-   if (intel_device_info_is_atsm(queue->device->info) &&
+   if (intel_device_info_is_atsm(devinfo) &&
        queue->family->engine_class == INTEL_ENGINE_CLASS_COMPUTE) {
       genX(batch_emit_pipe_control)
-         (&batch, queue->device->info,
+         (&batch, devinfo,
           ANV_PIPE_CS_STALL_BIT |
           ANV_PIPE_STATE_CACHE_INVALIDATE_BIT |
           ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT |
@@ -637,7 +650,9 @@ init_compute_queue_state(struct anv_queue *queue)
           ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
           ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT |
           ANV_PIPE_HDC_PIPELINE_FLUSH_BIT);
-      }
+   }
+
+   anv_batch_emit(&batch, GENX(STATE_COMPUTE_MODE), zero);
 #endif
 
    init_common_queue_state(queue, &batch);
