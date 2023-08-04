@@ -725,26 +725,55 @@ nvk_GetDeviceImageSparseMemoryRequirements(VkDevice device,
    *pSparseMemoryRequirementCount = 0;
 }
 
-VKAPI_ATTR void VKAPI_CALL
-nvk_GetImageSubresourceLayout(VkDevice device,
-                              VkImage _image,
-                              const VkImageSubresource *pSubresource,
-                              VkSubresourceLayout *pLayout)
+static void
+nvk_get_image_subresource_layout(UNUSED struct nvk_device *dev,
+                                 struct nvk_image *image,
+                                 const VkImageSubresource2KHR *pSubresource,
+                                 VkSubresourceLayout2KHR *pLayout)
 {
+   const VkImageSubresource *isr = &pSubresource->imageSubresource;
+
+   const uint8_t p = nvk_image_aspects_to_plane(image, isr->aspectMask);
+   const struct nvk_image_plane *plane = &image->planes[p];
+
+   pLayout->subresourceLayout = (VkSubresourceLayout) {
+      .offset = nil_image_level_layer_offset_B(&plane->nil, isr->mipLevel,
+                                               isr->arrayLayer),
+      .size = nil_image_level_size_B(&plane->nil, isr->mipLevel),
+      .rowPitch = plane->nil.levels[isr->mipLevel].row_stride_B,
+      .arrayPitch = plane->nil.array_stride_B,
+      .depthPitch = nil_image_level_depth_stride_B(&plane->nil, isr->mipLevel),
+   };
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetImageSubresourceLayout2KHR(VkDevice device,
+                                  VkImage _image,
+                                  const VkImageSubresource2KHR *pSubresource,
+                                  VkSubresourceLayout2KHR *pLayout)
+{
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_image, image, _image);
 
-   uint8_t plane = nvk_image_aspects_to_plane(image, pSubresource->aspectMask);
+   nvk_get_image_subresource_layout(dev, image, pSubresource, pLayout);
+}
 
-   *pLayout = (VkSubresourceLayout) {
-      .offset = nil_image_level_layer_offset_B(&image->planes[plane].nil,
-                                               pSubresource->mipLevel,
-                                               pSubresource->arrayLayer),
-      .size = nil_image_level_size_B(&image->planes[plane].nil, pSubresource->mipLevel),
-      .rowPitch = image->planes[plane].nil.levels[pSubresource->mipLevel].row_stride_B,
-      .arrayPitch = image->planes[plane].nil.array_stride_B,
-      .depthPitch = nil_image_level_depth_stride_B(&image->planes[plane].nil,
-                                                   pSubresource->mipLevel),
-   };
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetDeviceImageSubresourceLayoutKHR(
+    VkDevice device,
+    const VkDeviceImageSubresourceInfoKHR *pInfo,
+    VkSubresourceLayout2KHR *pLayout)
+{
+   VK_FROM_HANDLE(nvk_device, dev, device);
+   ASSERTED VkResult result;
+   struct nvk_image image = {0};
+
+   result = nvk_image_init(dev, &image, pInfo->pCreateInfo);
+   assert(result == VK_SUCCESS);
+
+   nvk_get_image_subresource_layout(dev, &image, pInfo->pSubresource, pLayout);
+
+   nvk_image_finish(dev, &image, NULL);
 }
 
 static void
