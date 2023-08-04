@@ -4883,6 +4883,11 @@ typedef enum {
     * modes.
     */
    nir_lower_io_lower_64bit_to_32 = (1 << 0),
+   /* If set, this causes the subset of 64-bit IO operations involving floats to be lowered on-the-fly
+    * to 32-bit operations.  This is only valid for nir_var_shader_in/out
+    * modes.
+    */
+   nir_lower_io_lower_64bit_float_to_32 = (1 << 1),
 } nir_lower_io_options;
 bool nir_lower_io(nir_shader *shader,
                   nir_variable_mode modes,

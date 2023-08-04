@@ -345,8 +345,9 @@ lower_load(nir_intrinsic_instr *intrin, struct lower_io_state *state,
            nir_ssa_def *array_index, nir_variable *var, nir_ssa_def *offset,
            unsigned component, const struct glsl_type *type)
 {
+   const bool lower_double = !glsl_type_is_integer(type) && state->options & nir_lower_io_lower_64bit_float_to_32;
    if (intrin->dest.ssa.bit_size == 64 &&
-       (state->options & nir_lower_io_lower_64bit_to_32)) {
+       (lower_double || (state->options & nir_lower_io_lower_64bit_to_32))) {
       nir_builder *b = &state->builder;
 
       const unsigned slot_size = state->type_size(glsl_dvec_type(2), false);
@@ -456,8 +457,9 @@ lower_store(nir_intrinsic_instr *intrin, struct lower_io_state *state,
             nir_ssa_def *array_index, nir_variable *var, nir_ssa_def *offset,
             unsigned component, const struct glsl_type *type)
 {
+   const bool lower_double = !glsl_type_is_integer(type) && state->options & nir_lower_io_lower_64bit_float_to_32;
    if (intrin->src[1].ssa->bit_size == 64 &&
-       (state->options & nir_lower_io_lower_64bit_to_32)) {
+       (lower_double || (state->options & nir_lower_io_lower_64bit_to_32))) {
       nir_builder *b = &state->builder;
 
       const unsigned slot_size = state->type_size(glsl_dvec_type(2), false);
