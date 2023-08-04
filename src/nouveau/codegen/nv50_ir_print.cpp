@@ -117,8 +117,6 @@ const char *operationStr[OP_LAST + 1] =
    "sin",
    "cos",
    "ex2",
-   "exp",
-   "log",
    "presin",
    "preex2",
    "sqrt",
