@@ -12,7 +12,7 @@ struct nvk_physical_device;
 
 uint32_t ATTRIBUTE_PURE
 nvk_get_buffer_alignment(const struct nvk_physical_device *pdev,
-                         VkBufferUsageFlags usage_flags,
+                         VkBufferUsageFlags2KHR usage_flags,
                          VkBufferCreateFlags create_flags);
 
 struct nvk_buffer {

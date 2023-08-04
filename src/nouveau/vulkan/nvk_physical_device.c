@@ -119,13 +119,13 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .nonCoherentAtomSize = 64,
          .minMemoryMapAlignment = 64,
          .minUniformBufferOffsetAlignment =
-            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 0),
+            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR, 0),
          .minTexelBufferOffsetAlignment =
-            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-                                           VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
+            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR |
+                                           VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR,
                                      0),
          .minStorageBufferOffsetAlignment =
-            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 0),
+            nvk_get_buffer_alignment(pdev, VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR, 0),
          .maxVertexInputAttributeOffset = 2047,
          .maxVertexInputAttributes = 32,
          .maxVertexInputBindingStride = 2048,

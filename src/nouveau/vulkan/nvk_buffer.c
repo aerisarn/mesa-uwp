@@ -6,19 +6,19 @@
 
 uint32_t
 nvk_get_buffer_alignment(UNUSED const struct nvk_physical_device *pdev,
-                         VkBufferUsageFlags usage_flags,
+                         VkBufferUsageFlags2KHR usage_flags,
                          UNUSED VkBufferCreateFlags create_flags)
 {
    uint32_t alignment = 16;
 
-   if (usage_flags & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+   if (usage_flags & VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT_KHR)
       alignment = MAX2(alignment, NVK_MIN_UBO_ALIGNMENT);
 
-   if (usage_flags & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+   if (usage_flags & VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT_KHR)
       alignment = MAX2(alignment, NVK_MIN_SSBO_ALIGNMENT);
 
-   if (usage_flags & (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-                      VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT))
+   if (usage_flags & (VK_BUFFER_USAGE_2_UNIFORM_TEXEL_BUFFER_BIT_KHR |
+                      VK_BUFFER_USAGE_2_STORAGE_TEXEL_BUFFER_BIT_KHR))
       alignment = MAX2(alignment, NVK_MIN_UBO_ALIGNMENT);
 
    return alignment;
