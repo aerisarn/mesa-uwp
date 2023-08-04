@@ -3546,3 +3546,40 @@ void si_get_tcs_epilog_args(enum amd_gfx_level gfx_level,
    for (unsigned i = 0; i < 6; i++)
       ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &tess_factors[i]);
 }
+
+void si_get_vs_prolog_args(enum amd_gfx_level gfx_level,
+                           struct si_shader_args *args,
+                           const union si_shader_part_key *key)
+{
+   memset(args, 0, sizeof(*args));
+
+   unsigned num_input_sgprs = key->vs_prolog.num_input_sgprs;
+   unsigned num_input_vgprs = key->vs_prolog.num_merged_next_stage_vgprs + 4;
+
+   struct ac_arg input_sgprs[num_input_sgprs];
+   for (unsigned i = 0; i < num_input_sgprs; i++)
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, input_sgprs + i);
+
+   struct ac_arg input_vgprs[num_input_vgprs];
+   for (unsigned i = 0; i < num_input_vgprs; i++)
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, input_vgprs + i);
+
+   if (key->vs_prolog.num_merged_next_stage_vgprs)
+      args->ac.merged_wave_info = input_sgprs[3];
+
+   unsigned first_vs_vgpr = key->vs_prolog.num_merged_next_stage_vgprs;
+   unsigned vertex_id_vgpr = first_vs_vgpr;
+   unsigned instance_id_vgpr = gfx_level >= GFX10 ?
+      first_vs_vgpr + 3 : first_vs_vgpr + (key->vs_prolog.as_ls ? 2 : 1);
+
+   args->ac.vertex_id = input_vgprs[vertex_id_vgpr];
+   args->ac.instance_id = input_vgprs[instance_id_vgpr];
+
+   if (key->vs_prolog.as_ls && gfx_level < GFX11)
+      args->ac.vs_rel_patch_id = input_vgprs[first_vs_vgpr + 1];
+
+   unsigned user_sgpr_base = key->vs_prolog.num_merged_next_stage_vgprs ? 8 : 0;
+   args->internal_bindings = input_sgprs[user_sgpr_base + SI_SGPR_INTERNAL_BINDINGS];
+   args->ac.start_instance = input_sgprs[user_sgpr_base + SI_SGPR_START_INSTANCE];
+   args->ac.base_vertex = input_sgprs[user_sgpr_base + SI_SGPR_BASE_VERTEX];
+}
