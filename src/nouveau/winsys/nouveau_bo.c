@@ -61,6 +61,8 @@ nouveau_ws_alloc_vma(struct nouveau_ws_device *dev,
                      uint64_t size, uint64_t align,
                      bool sparse_resident)
 {
+   assert(dev->has_vm_bind);
+
    uint64_t offset;
    simple_mtx_lock(&dev->vma_mutex);
    offset = util_vma_heap_alloc(&dev->vma_heap, size, align);
@@ -81,6 +83,8 @@ nouveau_ws_free_vma(struct nouveau_ws_device *dev,
                     uint64_t offset, uint64_t size,
                     bool sparse_resident)
 {
+   assert(dev->has_vm_bind);
+
    if (dev->debug_flags & NVK_DEBUG_VM)
       fprintf(stderr, "free vma %" PRIx64 " %" PRIx64 "\n",
               offset, size);
@@ -97,6 +101,8 @@ void
 nouveau_ws_bo_unbind_vma(struct nouveau_ws_device *dev,
                          uint64_t offset, uint64_t range)
 {
+   assert(dev->has_vm_bind);
+
    if (dev->debug_flags & NVK_DEBUG_VM)
       fprintf(stderr, "unbind vma %" PRIx64 " %" PRIx64 "\n",
               offset, range);
@@ -111,6 +117,8 @@ nouveau_ws_bo_bind_vma(struct nouveau_ws_device *dev,
                        uint64_t bo_offset,
                        uint32_t pte_kind)
 {
+   assert(dev->has_vm_bind);
+
    if (dev->debug_flags & NVK_DEBUG_VM)
       fprintf(stderr, "bind vma %x %" PRIx64 " %" PRIx64 " %" PRIx64 " %d\n",
               bo->handle, addr, range, bo_offset, pte_kind);
@@ -211,9 +219,11 @@ nouveau_ws_bo_new_tiled(struct nouveau_ws_device *dev,
       bo->refcnt = 1;
 
 #if NVK_NEW_UAPI == 1
-      assert(pte_kind == 0);
-      bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
-      nouveau_ws_bo_bind_vma(dev, bo, bo->offset, bo->size, 0, 0);
+      if (dev->has_vm_bind) {
+         assert(pte_kind == 0);
+         bo->offset = nouveau_ws_alloc_vma(dev, bo->size, align, false);
+         nouveau_ws_bo_bind_vma(dev, bo, bo->offset, bo->size, 0, 0);
+      }
 #endif
 
       _mesa_hash_table_insert(dev->bos, (void *)(uintptr_t)bo->handle, bo);
@@ -296,8 +306,10 @@ nouveau_ws_bo_destroy(struct nouveau_ws_bo *bo)
    _mesa_hash_table_remove_key(dev->bos, (void *)(uintptr_t)bo->handle);
 
 #if NVK_NEW_UAPI == 1
-   nouveau_ws_bo_unbind_vma(bo->dev, bo->offset, bo->size);
-   nouveau_ws_free_vma(bo->dev, bo->offset, bo->size, false);
+   if (dev->has_vm_bind) {
+      nouveau_ws_bo_unbind_vma(bo->dev, bo->offset, bo->size);
+      nouveau_ws_free_vma(bo->dev, bo->offset, bo->size, false);
+   }
 #endif
 
    drmCloseBufferHandle(bo->dev->fd, bo->handle);

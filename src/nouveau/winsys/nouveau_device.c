@@ -259,14 +259,6 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
       goto out_err;
    }
 
-#if NVK_NEW_UAPI == 1
-   const uint64_t TOP = 1ull << 40;
-   const uint64_t KERN = 1ull << 39;
-   util_vma_heap_init(&device->vma_heap, 4096, (TOP - KERN) - 4096);
-   simple_mtx_init(&device->vma_mutex, mtx_plain);
-   device->vma_heap.alloc_high = false;
-#endif
-
    uint32_t version =
       ver->version_major << 24 |
       ver->version_minor << 8  |
@@ -274,20 +266,19 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    drmFreeVersion(ver);
    ver = NULL;
 
-#if NVK_NEW_UAPI == 1
-   /* don't work on older kernels */
-   if (version < 0x01000400)
-      goto out_err;
-#else
    if (version < 0x01000301)
       goto out_err;
-#endif
 
 #if NVK_NEW_UAPI == 1
-   /* start the new VM mode */
+   const uint64_t TOP = 1ull << 40;
+   const uint64_t KERN = 1ull << 39;
    struct drm_nouveau_vm_init vminit = { TOP-KERN, KERN };
-   ASSERTED int ret = drmCommandWrite(fd, DRM_NOUVEAU_VM_INIT, &vminit, sizeof(vminit));
-   assert(!ret);
+   int ret = drmCommandWrite(fd, DRM_NOUVEAU_VM_INIT, &vminit, sizeof(vminit));
+   if (ret == 0) {
+      device->has_vm_bind = true;
+      util_vma_heap_init(&device->vma_heap, 4096, (TOP - KERN) - 4096);
+      simple_mtx_init(&device->vma_mutex, mtx_plain);
+   }
 #endif
 
    if (nouveau_ws_device_alloc(fd, device))
@@ -351,6 +342,12 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    return device;
 
 out_err:
+#if NVK_NEW_UAPI == 1
+   if (device->has_vm_bind) {
+      util_vma_heap_finish(&device->vma_heap);
+      simple_mtx_destroy(&device->vma_mutex);
+   }
+#endif
    if (ver)
       drmFreeVersion(ver);
 out_open:
@@ -369,10 +366,11 @@ nouveau_ws_device_destroy(struct nouveau_ws_device *device)
    simple_mtx_destroy(&device->bos_lock);
 
 #if NVK_NEW_UAPI == 1
-   util_vma_heap_finish(&device->vma_heap);
-   simple_mtx_destroy(&device->vma_mutex);
+   if (device->has_vm_bind) {
+      util_vma_heap_finish(&device->vma_heap);
+      simple_mtx_destroy(&device->vma_mutex);
+   }
 #endif
-
 
    close(device->fd);
    FREE(device);

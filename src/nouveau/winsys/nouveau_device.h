@@ -50,6 +50,7 @@ struct nouveau_ws_device {
    struct hash_table *bos;
 
 #if NVK_NEW_UAPI == 1
+   bool has_vm_bind;
    struct util_vma_heap vma_heap;
    simple_mtx_t vma_mutex;
 #endif
