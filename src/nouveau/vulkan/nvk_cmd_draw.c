@@ -507,6 +507,15 @@ nil_to_nv9097_samples_mode(enum nil_sample_layout sample_layout)
    return nil_to_nv9097[sample_layout];
 }
 
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetRenderingAreaGranularityKHR(
+    VkDevice device,
+    const VkRenderingAreaInfoKHR *pRenderingAreaInfo,
+    VkExtent2D *pGranularity)
+{
+   *pGranularity = (VkExtent2D) { .width = 1, .height = 1 };
+}
+
 void
 nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
                       const VkRenderingInfo *pRenderingInfo)
