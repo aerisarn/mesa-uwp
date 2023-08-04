@@ -6829,6 +6829,47 @@
     <field name="Bindless Sampler State Base Address" start="620" end="671" type="address" />
     <field name="Bindless Sampler State Buffer Size" start="684" end="703" type="uint" />
   </instruction>
+  <instruction name="STATE_COMPUTE_MODE" bias="2" length="2" engine="render|compute">
+    <field name="DWord Length" start="0" end="7" type="uint" default="0" />
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="5" />
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="1" />
+    <field name="Command SubType" start="27" end="28" type="uint" default="0" />
+    <field name="Command Type" start="29" end="31" type="uint" default="3" />
+    <field name="Z Pass Async Compute Thread Limit" start="32" end="34" type="uint" prefix="ZPACTL">
+      <value name="Max 60" value="0" />
+      <value name="Max 64" value="1" />
+      <value name="Max 56" value="2" />
+      <value name="Max 48" value="3" />
+    </field>
+    <field name="Force Non-Coherent" start="35" end="36" type="uint">
+      <value name="Force Disabled" value="0" />
+      <value name="Force CPU Non-Coherent" value="1" />
+      <value name="Force GPU Non-Coherent" value="2" />
+    </field>
+    <field name="Fast Clear Disabled on Compressed Surface" start="37" end="37" type="bool" />
+    <field name="Disable SLM Read Merge Optimization" start="38" end="38" type="bool" />
+    <field name="Pixel Async Compute Thread Limit" start="39" end="41" type="uint" prefix="PACTL">
+      <value name="Disabled" value="0" />
+      <value name="Max 2" value="1" />
+      <value name="Max 8" value="2" />
+      <value name="Max 16" value="3" />
+      <value name="Max 24" value="4" />
+      <value name="Max 32" value="5" />
+      <value name="Max 40" value="6" />
+      <value name="Max 48" value="7" />
+    </field>
+    <field name="Disable Atomic on Clear Data" start="43" end="43" type="bool" />
+    <field name="Disable L1 Invalidate for non-L1-cacheable Writes" start="45" end="45" type="bool" />
+    <field name="Large GRF Mode" start="47" end="47" type="bool" />
+    <field name="Z Pass Async Compute Thread Limit Mask" start="48" end="50" type="uint" />
+    <field name="Force Non-Coherent Mask" start="51" end="52" type="uint" />
+    <field name="Fast Clear Disabled on Compressed Surface Mask" start="53" end="53" type="bool" />
+    <field name="Disable SLM Read Merge Optimization Mask" start="54" end="54" type="bool" />
+    <field name="Pixel Async Compute Thread Limit Mask" start="55" end="57" type="uint" />
+    <field name="Disable Atomic on Clear Data Mask" start="59" end="59" type="bool" />
+    <field name="Disable L1 Invalidate for non-L1-cacheable Writes Mask" start="61" end="61" type="bool" />
+    <field name="Large GRF Mode Mask" start="63" end="63" type="bool" />
+  </instruction>
   <instruction name="STATE_SIP" bias="2" length="3" engine="render|compute">
     <field name="DWord Length" start="0" end="7" type="uint" default="1" />
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="2" />
