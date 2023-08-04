@@ -101,128 +101,6 @@ fields[member_idx].offset = offsetof(struct zink_gfx_push_constant, field);
 }
 
 static bool
-lower_64bit_vertex_attribs_instr(nir_builder *b, nir_instr *instr, void *data)
-{
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_load_deref)
-      return false;
-   nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(intr->src[0].ssa->parent_instr));
-   if (var->data.mode != nir_var_shader_in)
-      return false;
-   if (!glsl_type_is_64bit(var->type) || !glsl_type_is_vector(var->type) || glsl_get_vector_elements(var->type) < 3)
-      return false;
-
-   /* create second variable for the split */
-   nir_variable *var2 = nir_variable_clone(var, b->shader);
-   /* split new variable into second slot */
-   var2->data.driver_location++;
-   nir_shader_add_variable(b->shader, var2);
-
-   unsigned total_num_components = glsl_get_vector_elements(var->type);
-   /* new variable is the second half of the dvec */
-   var2->type = glsl_vector_type(glsl_get_base_type(var->type), glsl_get_vector_elements(var->type) - 2);
-   /* clamp original variable to a dvec2 */
-   var->type = glsl_vector_type(glsl_get_base_type(var->type), 2);
-
-   b->cursor = nir_after_instr(instr);
-
-   /* this is the first load instruction for the first half of the dvec3/4 components */
-   nir_def *load = nir_load_var(b, var);
-   /* this is the second load instruction for the second half of the dvec3/4 components */
-   nir_def *load2 = nir_load_var(b, var2);
-
-   nir_def *def[4];
-   /* create a new dvec3/4 comprised of all the loaded components from both variables */
-   def[0] = nir_vector_extract(b, load, nir_imm_int(b, 0));
-   def[1] = nir_vector_extract(b, load, nir_imm_int(b, 1));
-   def[2] = nir_vector_extract(b, load2, nir_imm_int(b, 0));
-   if (total_num_components == 4)
-      def[3] = nir_vector_extract(b, load2, nir_imm_int(b, 1));
-   nir_def *new_vec = nir_vec(b, def, total_num_components);
-   /* use the assembled dvec3/4 for all other uses of the load */
-   nir_def_rewrite_uses_after(&intr->def, new_vec,
-                                  new_vec->parent_instr);
-
-   /* remove the original instr and its deref chain */
-   nir_instr *parent = intr->src[0].ssa->parent_instr;
-   nir_instr_remove(instr);
-   nir_deref_instr_remove_if_unused(nir_instr_as_deref(parent));
-
-   return true;
-}
-
-/* mesa/gallium always provides UINT versions of 64bit formats:
- * - rewrite loads as 32bit vec loads
- * - cast back to 64bit
- */
-static bool
-lower_64bit_uint_attribs_instr(nir_builder *b, nir_instr *instr, void *data)
-{
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_load_deref)
-      return false;
-   nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(intr->src[0].ssa->parent_instr));
-   if (var->data.mode != nir_var_shader_in)
-      return false;
-   if (glsl_get_bit_size(var->type) != 64 || glsl_get_base_type(var->type) >= GLSL_TYPE_SAMPLER)
-      return false;
-
-   unsigned num_components = glsl_get_vector_elements(var->type);
-   enum glsl_base_type base_type;
-   switch (glsl_get_base_type(var->type)) {
-   case GLSL_TYPE_UINT64:
-      base_type = GLSL_TYPE_UINT;
-      break;
-   case GLSL_TYPE_INT64:
-      base_type = GLSL_TYPE_INT;
-      break;
-   case GLSL_TYPE_DOUBLE:
-      base_type = GLSL_TYPE_FLOAT;
-      break;
-   default:
-      unreachable("unknown 64-bit vertex attribute format!");
-   }
-   var->type = glsl_vector_type(base_type, num_components * 2);
-
-   b->cursor = nir_after_instr(instr);
-
-   nir_def *load = nir_load_var(b, var);
-   nir_def *casted[2];
-   for (unsigned i = 0; i < num_components; i++)
-     casted[i] = nir_pack_64_2x32(b, nir_channels(b, load, BITFIELD_RANGE(i * 2, 2)));
-   nir_def_rewrite_uses(&intr->def, nir_vec(b, casted, num_components));
-
-   /* remove the original instr and its deref chain */
-   nir_instr *parent = intr->src[0].ssa->parent_instr;
-   nir_instr_remove(instr);
-   nir_deref_instr_remove_if_unused(nir_instr_as_deref(parent));
-
-   return true;
-}
-
-/* "64-bit three- and four-component vectors consume two consecutive locations."
- *  - 14.1.4. Location Assignment
- *
- * this pass splits dvec3 and dvec4 vertex inputs into a dvec2 and a double/dvec2 which
- * are assigned to consecutive locations, loaded separately, and then assembled back into a
- * composite value that's used in place of the original loaded ssa src
- */
-static bool
-lower_64bit_vertex_attribs(nir_shader *shader)
-{
-   if (shader->info.stage != MESA_SHADER_VERTEX)
-      return false;
-
-   bool progress = nir_shader_instructions_pass(shader, lower_64bit_vertex_attribs_instr, nir_metadata_dominance, NULL);
-   progress |= nir_shader_instructions_pass(shader, lower_64bit_uint_attribs_instr, nir_metadata_dominance, NULL);
-   return progress;
-}
-
-static bool
 lower_basevertex_instr(nir_builder *b, nir_instr *in, void *data)
 {
    if (in->type != nir_instr_type_intrinsic)
@@ -5421,7 +5299,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                                           nir_lower_demote_if_to_cf |
                                           nir_lower_terminate_if_to_cf));
 
-   NIR_PASS_V(nir, lower_64bit_vertex_attribs);
    bool needs_size = analyze_io(ret, nir);
    NIR_PASS_V(nir, unbreak_bos, ret, needs_size);
    /* run in compile if there could be inlined uniforms */
