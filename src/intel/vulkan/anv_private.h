@@ -961,7 +961,7 @@ struct anv_physical_device {
       uint32_t                                  heap_count;
       struct anv_memory_heap                    heaps[VK_MAX_MEMORY_HEAPS];
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-      bool                                      need_clflush;
+      bool                                      need_flush;
 #endif
     } memory;
 

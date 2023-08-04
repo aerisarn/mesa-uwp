@@ -977,7 +977,7 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
       if ((props & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) &&
           !(props & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-         device->memory.need_clflush = true;
+         device->memory.need_flush = true;
 #else
          return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
                           "Memory configuration requires flushing, but it's not implemented for this architecture");
@@ -2853,7 +2853,7 @@ anv_device_init_trivial_batch(struct anv_device *device)
    anv_batch_emit(&batch, GFX7_MI_NOOP, noop);
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-   if (device->physical->memory.need_clflush)
+   if (device->physical->memory.need_flush)
       intel_clflush_range(batch.start, batch.next - batch.start);
 #endif
 
@@ -4196,7 +4196,7 @@ VkResult anv_FlushMappedMemoryRanges(
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
    ANV_FROM_HANDLE(anv_device, device, _device);
 
-   if (!device->physical->memory.need_clflush)
+   if (!device->physical->memory.need_flush)
       return VK_SUCCESS;
 
    /* Make sure the writes we're flushing have landed. */
@@ -4227,7 +4227,7 @@ VkResult anv_InvalidateMappedMemoryRanges(
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
    ANV_FROM_HANDLE(anv_device, device, _device);
 
-   if (!device->physical->memory.need_clflush)
+   if (!device->physical->memory.need_flush)
       return VK_SUCCESS;
 
    for (uint32_t i = 0; i < memoryRangeCount; i++) {

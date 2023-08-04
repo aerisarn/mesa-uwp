@@ -248,7 +248,7 @@ anv_utrace_create_ts_buffer(struct u_trace_context *utctx, uint32_t size_b)
 
    memset(bo->map, 0, bo->size);
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-   if (device->physical->memory.need_clflush)
+   if (device->physical->memory.need_flush)
          intel_clflush_range(bo->map, bo->size);
 #endif
 

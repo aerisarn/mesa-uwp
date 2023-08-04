@@ -450,12 +450,12 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
       };
    }
 
-   device->memory.need_clflush = false;
+   device->memory.need_flush = false;
    for (unsigned i = 0; i < device->memory.type_count; i++) {
       VkMemoryPropertyFlags props = device->memory.types[i].propertyFlags;
       if ((props & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) &&
           !(props & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
-         device->memory.need_clflush = true;
+         device->memory.need_flush = true;
    }
 
    return VK_SUCCESS;
@@ -2535,7 +2535,7 @@ anv_device_init_trivial_batch(struct anv_device *device)
    anv_batch_emit(&batch, GFX7_MI_BATCH_BUFFER_END, bbe);
    anv_batch_emit(&batch, GFX7_MI_NOOP, noop);
 
-   if (device->physical->memory.need_clflush)
+   if (device->physical->memory.need_flush)
       intel_clflush_range(batch.start, batch.next - batch.start);
 
    return VK_SUCCESS;
@@ -3678,7 +3678,7 @@ VkResult anv_FlushMappedMemoryRanges(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
 
-   if (!device->physical->memory.need_clflush)
+   if (!device->physical->memory.need_flush)
       return VK_SUCCESS;
 
    /* Make sure the writes we're flushing have landed. */
@@ -3708,7 +3708,7 @@ VkResult anv_InvalidateMappedMemoryRanges(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
 
-   if (!device->physical->memory.need_clflush)
+   if (!device->physical->memory.need_flush)
       return VK_SUCCESS;
 
    for (uint32_t i = 0; i < memoryRangeCount; i++) {

@@ -355,7 +355,7 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
    *map = intel_canonical_address(next_bbo->bo->offset + next_bbo_offset);
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-   if (cmd_buffer->device->physical->memory.need_clflush)
+   if (cmd_buffer->device->physical->memory.need_flush)
       intel_flush_range(map, sizeof(uint64_t));
 #endif
 }
@@ -1425,7 +1425,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
 
    memcpy(batch_bo->map, batch->start, batch_size);
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-   if (device->physical->memory.need_clflush)
+   if (device->physical->memory.need_flush)
       intel_flush_range(batch_bo->map, batch_size);
 #endif
 
