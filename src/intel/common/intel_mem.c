@@ -26,7 +26,7 @@
 #include <stdint.h>
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-void
+static void
 intel_clflush_range(void *start, size_t size)
 {
    void *p = (void *) (((uintptr_t) start) & ~CACHELINE_MASK);

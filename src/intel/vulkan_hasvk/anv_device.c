@@ -2536,7 +2536,7 @@ anv_device_init_trivial_batch(struct anv_device *device)
    anv_batch_emit(&batch, GFX7_MI_NOOP, noop);
 
    if (device->physical->memory.need_flush)
-      intel_clflush_range(batch.start, batch.next - batch.start);
+      intel_flush_range(batch.start, batch.next - batch.start);
 
    return VK_SUCCESS;
 }
@@ -3693,9 +3693,9 @@ VkResult anv_FlushMappedMemoryRanges(
       if (map_offset >= mem->map_size)
          continue;
 
-      intel_clflush_range(mem->map + map_offset,
-                          MIN2(pMemoryRanges[i].size,
-                               mem->map_size - map_offset));
+      intel_flush_range(mem->map + map_offset,
+                        MIN2(pMemoryRanges[i].size,
+                             mem->map_size - map_offset));
    }
 
    return VK_SUCCESS;

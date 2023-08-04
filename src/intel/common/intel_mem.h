@@ -34,7 +34,6 @@ extern "C" {
 #define CACHELINE_MASK 63
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-void intel_clflush_range(void *start, size_t size);
 void intel_flush_range(void *start, size_t size);
 void intel_invalidate_range(void *start, size_t size);
 #endif
