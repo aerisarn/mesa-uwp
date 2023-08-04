@@ -79,6 +79,53 @@ void trace_dump_resource_template(const struct pipe_resource *templat)
 }
 
 
+void trace_dump_video_codec_template(const struct pipe_video_codec *templat)
+{
+   if (!trace_dumping_enabled_locked())
+      return;
+
+   if (!templat) {
+      trace_dump_null();
+      return;
+   }
+
+   trace_dump_struct_begin("pipe_video_codec");
+
+   trace_dump_member_enum(pipe_video_profile, templat, profile);
+   trace_dump_member(uint, templat, level);
+   trace_dump_member_enum(pipe_video_entrypoint, templat, entrypoint);
+   trace_dump_member(chroma_format, templat, chroma_format);
+   trace_dump_member(uint, templat, width);
+   trace_dump_member(uint, templat, height);
+   trace_dump_member(uint, templat, max_references);
+   trace_dump_member(bool, templat, expect_chunked_decode);
+
+   trace_dump_struct_end();
+}
+
+
+void trace_dump_video_buffer_template(const struct pipe_video_buffer *templat)
+{
+   if (!trace_dumping_enabled_locked())
+      return;
+
+   if (!templat) {
+      trace_dump_null();
+      return;
+   }
+
+   trace_dump_struct_begin("pipe_video_buffer");
+
+   trace_dump_member(format, templat, buffer_format);
+   trace_dump_member(uint, templat, width);
+   trace_dump_member(uint, templat, height);
+   trace_dump_member(bool, templat, interlaced);
+   trace_dump_member(uint, templat, bind);
+
+   trace_dump_struct_end();
+}
+
+
 void trace_dump_box(const struct pipe_box *box)
 {
    if (!trace_dumping_enabled_locked())

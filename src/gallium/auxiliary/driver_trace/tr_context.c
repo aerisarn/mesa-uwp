@@ -2070,6 +2070,73 @@ trace_context_resource_commit(struct pipe_context *_context,
    return context->resource_commit(context, resource, level, box, commit);
 }
 
+static struct pipe_video_codec *
+trace_context_create_video_codec(struct pipe_context *_context,
+                                 const struct pipe_video_codec *templat)
+{
+   struct trace_context *tr_context = trace_context(_context);
+   struct pipe_context *context = tr_context->pipe;
+   struct pipe_video_codec *result;
+
+   trace_dump_call_begin("pipe_context", "create_video_codec");
+
+   trace_dump_arg(ptr, context);
+   trace_dump_arg(video_codec_template, templat);
+
+   result = context->create_video_codec(context, templat);
+
+   trace_dump_ret(ptr, result);
+   trace_dump_call_end();
+
+   return result;
+}
+
+static struct pipe_video_buffer *
+trace_context_create_video_buffer_with_modifiers(struct pipe_context *_context,
+                                                 const struct pipe_video_buffer *templat,
+                                                 const uint64_t *modifiers,
+                                                 unsigned int modifiers_count)
+{
+   struct trace_context *tr_context = trace_context(_context);
+   struct pipe_context *context = tr_context->pipe;
+   struct pipe_video_buffer *result;
+
+   trace_dump_call_begin("pipe_screen", "create_video_buffer_with_modifiers");
+
+   trace_dump_arg(ptr, context);
+   trace_dump_arg(video_buffer_template, templat);
+   trace_dump_arg_array(uint, modifiers, modifiers_count);
+   trace_dump_arg(uint, modifiers_count);
+
+   result = context->create_video_buffer_with_modifiers(context, templat, modifiers, modifiers_count);
+
+   trace_dump_ret(ptr, result);
+   trace_dump_call_end();
+
+   return result;
+}
+
+static struct pipe_video_buffer *
+trace_context_create_video_buffer(struct pipe_context *_context,
+                                  const struct pipe_video_buffer *templat)
+{
+   struct trace_context *tr_context = trace_context(_context);
+   struct pipe_context *context = tr_context->pipe;
+   struct pipe_video_buffer *result;
+
+   trace_dump_call_begin("pipe_screen", "create_video_buffer");
+
+   trace_dump_arg(ptr, context);
+   trace_dump_arg(video_buffer_template, templat);
+
+   result = context->create_video_buffer(context, templat);
+
+   trace_dump_ret(ptr, result);
+   trace_dump_call_end();
+
+   return result;
+}
+
 static void
 trace_context_set_tess_state(struct pipe_context *_context,
                              const float default_outer_level[4],
@@ -2443,6 +2510,9 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(texture_barrier);
    TR_CTX_INIT(memory_barrier);
    TR_CTX_INIT(resource_commit);
+   TR_CTX_INIT(create_video_codec);
+   TR_CTX_INIT(create_video_buffer_with_modifiers);
+   TR_CTX_INIT(create_video_buffer);
    TR_CTX_INIT(set_tess_state);
    TR_CTX_INIT(set_patch_vertices);
    TR_CTX_INIT(set_shader_buffers);
