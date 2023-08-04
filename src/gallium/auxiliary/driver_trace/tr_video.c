@@ -410,10 +410,12 @@ trace_video_buffer_get_resources(struct pipe_video_buffer *_buffer, struct pipe_
 
     trace_dump_call_begin("pipe_video_buffer", "get_resources");
     trace_dump_arg(ptr, buffer);
-    trace_dump_arg(ptr, resources);
-    trace_dump_call_end();
 
     buffer->get_resources(buffer, resources);
+
+    // TODO: A `trace_dump_ret_arg` style of function would be more appropriate
+    trace_dump_arg_array(ptr, resources, VL_NUM_COMPONENTS);
+    trace_dump_call_end();
 }
 
 static struct pipe_sampler_view **
@@ -428,18 +430,18 @@ trace_video_buffer_get_sampler_view_planes(struct pipe_video_buffer *_buffer)
 
     struct pipe_sampler_view **view_planes = buffer->get_sampler_view_planes(buffer);
 
-    trace_dump_ret(ptr, view_planes);
+    trace_dump_ret_array(ptr, view_planes, VL_NUM_COMPONENTS);
     trace_dump_call_end();
 
     for (int i=0; i < VL_NUM_COMPONENTS; i++) {
-        if (!view_planes[i]) {
+        if (!view_planes || !view_planes[i]) {
             pipe_sampler_view_reference(&tr_vbuffer->sampler_view_planes[i], NULL);
         } else if (tr_vbuffer->sampler_view_planes[i] == NULL || (trace_sampler_view(tr_vbuffer->sampler_view_planes[i])->sampler_view != view_planes[i])) {
             pipe_sampler_view_reference(&tr_vbuffer->sampler_view_planes[i], trace_sampler_view_create(tr_ctx, view_planes[i]->texture, view_planes[i]));
         }
     }
 
-    return tr_vbuffer->sampler_view_planes;
+    return view_planes ? tr_vbuffer->sampler_view_planes : NULL;
 }
 
 static struct pipe_sampler_view **
@@ -454,18 +456,18 @@ trace_video_buffer_get_sampler_view_components(struct pipe_video_buffer *_buffer
 
     struct pipe_sampler_view **view_components = buffer->get_sampler_view_components(buffer);
 
-    trace_dump_ret(ptr, view_components);
+    trace_dump_ret_array(ptr, view_components, VL_NUM_COMPONENTS);
     trace_dump_call_end();
 
     for (int i=0; i < VL_NUM_COMPONENTS; i++) {
-        if (!view_components[i]) {
+        if (!view_components || !view_components[i]) {
             pipe_sampler_view_reference(&tr_vbuffer->sampler_view_components[i], NULL);
         } else if (tr_vbuffer->sampler_view_components[i] == NULL || (trace_sampler_view(tr_vbuffer->sampler_view_components[i])->sampler_view != view_components[i])) {
             pipe_sampler_view_reference(&tr_vbuffer->sampler_view_components[i], trace_sampler_view_create(tr_ctx, view_components[i]->texture, view_components[i]));
         }
     }
 
-    return tr_vbuffer->sampler_view_components;
+    return view_components ? tr_vbuffer->sampler_view_components : NULL;
 }
 
 static struct pipe_surface **
@@ -480,18 +482,18 @@ trace_video_buffer_get_surfaces(struct pipe_video_buffer *_buffer)
 
     struct pipe_surface **surfaces = buffer->get_surfaces(buffer);
 
-    trace_dump_ret(ptr, surfaces);
+    trace_dump_ret_array(ptr, surfaces, VL_MAX_SURFACES);
     trace_dump_call_end();
 
     for (int i=0; i < VL_MAX_SURFACES; i++) {
-        if (!surfaces[i]) {
+        if (!surfaces || !surfaces[i]) {
             pipe_surface_reference(&tr_vbuffer->surfaces[i], NULL);
         } else if (tr_vbuffer->surfaces[i] == NULL || (trace_surface(tr_vbuffer->surfaces[i])->surface != surfaces[i])){
             pipe_surface_reference(&tr_vbuffer->surfaces[i], trace_surf_create(tr_ctx, surfaces[i]->texture, surfaces[i]));
         }
     }
 
-    return tr_vbuffer->surfaces;
+    return surfaces ? tr_vbuffer->surfaces : NULL;
 }
 
 
