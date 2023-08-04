@@ -196,6 +196,8 @@ struct rendering_state {
    void *tess_states[2];
 
    struct util_dynarray push_desc_sets;
+
+   struct lvp_pipeline *exec_graph;
 };
 
 static struct pipe_resource *
@@ -1063,8 +1065,10 @@ static void handle_pipeline(struct vk_cmd_queue_entry *cmd,
    pipeline->used = true;
    if (pipeline->type == LVP_PIPELINE_COMPUTE) {
       handle_compute_pipeline(cmd, state);
-   } else {
+   } else if (pipeline->type == LVP_PIPELINE_GRAPHICS) {
       handle_graphics_pipeline(pipeline, state);
+   } else if (pipeline->type == LVP_PIPELINE_EXEC_GRAPH) {
+      state->exec_graph = pipeline;
    }
    state->push_size[pipeline->type] = pipeline->layout->push_constant_size;
 }
@@ -1140,10 +1144,11 @@ handle_set_stage_buffer(struct rendering_state *state,
 
 static void handle_set_stage(struct rendering_state *state,
                              struct lvp_descriptor_set *set,
+                             enum lvp_pipeline_type pipeline_type,
                              gl_shader_stage stage,
                              uint32_t index)
 {
-   state->desc_sets[stage == MESA_SHADER_COMPUTE][index] = set;
+   state->desc_sets[pipeline_type][index] = set;
    handle_set_stage_buffer(state, set->bo, 0, stage, index);
 }
 
@@ -1192,10 +1197,12 @@ handle_descriptor_sets(struct vk_cmd_queue_entry *cmd, struct rendering_state *s
 
    uint32_t dynamic_offset_index = 0;
 
+   enum lvp_pipeline_type pipeline_type = lvp_pipeline_type_from_bind_point(bds->pipeline_bind_point);
+
    for (uint32_t i = 0; i < bds->descriptor_set_count; i++) {
       if (state->desc_buffers[bds->first_set + i]) {
          /* always unset descriptor buffers when binding sets */
-         if (bds->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
+         if (pipeline_type == LVP_PIPELINE_COMPUTE) {
                bool changed = state->const_buffer[MESA_SHADER_COMPUTE][bds->first_set + i].buffer == state->desc_buffers[bds->first_set + i];
                state->constbuf_dirty[MESA_SHADER_COMPUTE] |= changed;
          } else {
@@ -1217,32 +1224,32 @@ handle_descriptor_sets(struct vk_cmd_queue_entry *cmd, struct rendering_state *s
 
       dynamic_offset_index += set->layout->dynamic_offset_count;
 
-      if (bds->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
+      if (pipeline_type == LVP_PIPELINE_COMPUTE || pipeline_type == LVP_PIPELINE_EXEC_GRAPH) {
          if (set->layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT)
-            handle_set_stage(state, set, MESA_SHADER_COMPUTE, bds->first_set + i);
+            handle_set_stage(state, set, pipeline_type, MESA_SHADER_COMPUTE, bds->first_set + i);
          continue;
       }
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT)
-         handle_set_stage(state, set, MESA_SHADER_VERTEX, bds->first_set + i);
+         handle_set_stage(state, set, pipeline_type, MESA_SHADER_VERTEX, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_GEOMETRY_BIT)
-         handle_set_stage(state, set, MESA_SHADER_GEOMETRY, bds->first_set + i);
+         handle_set_stage(state, set, pipeline_type, MESA_SHADER_GEOMETRY, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
-         handle_set_stage(state, set, MESA_SHADER_TESS_CTRL, bds->first_set + i);
+         handle_set_stage(state, set, pipeline_type, MESA_SHADER_TESS_CTRL, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
-         handle_set_stage(state, set, MESA_SHADER_TESS_EVAL, bds->first_set + i);
+         handle_set_stage(state, set, pipeline_type, MESA_SHADER_TESS_EVAL, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
-         handle_set_stage(state, set, MESA_SHADER_FRAGMENT, bds->first_set + i);
+         handle_set_stage(state, set, pipeline_type, MESA_SHADER_FRAGMENT, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_TASK_BIT_EXT)
-         handle_set_stage(state, set, MESA_SHADER_TASK, bds->first_set + i);
+         handle_set_stage(state, set, pipeline_type, MESA_SHADER_TASK, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_MESH_BIT_EXT)
-         handle_set_stage(state, set, MESA_SHADER_MESH, bds->first_set + i);
+         handle_set_stage(state, set, pipeline_type, MESA_SHADER_MESH, bds->first_set + i);
    }
 }
 
@@ -4131,6 +4138,116 @@ handle_descriptor_buffer_offsets(struct vk_cmd_queue_entry *cmd, struct renderin
    }
 }
 
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+static void *
+lvp_push_internal_buffer(struct rendering_state *state, gl_shader_stage stage, uint32_t size)
+{
+   if (!size)
+      return NULL;
+
+   struct pipe_shader_buffer buffer = {
+      .buffer_size = size,
+   };
+
+   uint8_t *mem;
+   u_upload_alloc(state->uploader, 0, size, 64, &buffer.buffer_offset, &buffer.buffer, (void**)&mem);
+
+   state->pctx->set_shader_buffers(state->pctx, stage, 0, 1, &buffer, 0x1);
+
+   return mem;
+}
+
+static void
+dispatch_graph(struct rendering_state *state, const VkDispatchGraphInfoAMDX *info, void *scratch)
+{
+   VK_FROM_HANDLE(lvp_pipeline, pipeline, state->exec_graph->groups[info->nodeIndex]);
+   struct lvp_shader *shader = &pipeline->shaders[MESA_SHADER_COMPUTE];
+   nir_shader *nir = shader->pipeline_nir->nir;
+
+   VkPipelineShaderStageNodeCreateInfoAMDX enqueue_node_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_NODE_CREATE_INFO_AMDX,
+      .pName = pipeline->exec_graph.next_name,
+   };
+
+   for (uint32_t i = 0; i < info->payloadCount; i++) {
+      const void *payload = (const void *)((const uint8_t *)info->payloads.hostAddress + i * info->payloadStride);
+
+      /* The spec doesn't specify any useful limits for enqueued payloads.
+       * Since we allocate them in scratch memory (provided to the dispatch entrypoint),
+       * we need to execute recursive shaders one to keep scratch requirements finite.
+       */
+      VkDispatchIndirectCommand dispatch = *(const VkDispatchIndirectCommand *)payload;
+      if (nir->info.cs.workgroup_count[0]) {
+         dispatch.x = nir->info.cs.workgroup_count[0];
+         dispatch.y = nir->info.cs.workgroup_count[1];
+         dispatch.z = nir->info.cs.workgroup_count[2];
+      }
+
+      state->dispatch_info.indirect = NULL;
+      state->dispatch_info.grid[0] = 1;
+      state->dispatch_info.grid[1] = 1;
+      state->dispatch_info.grid[2] = 1;
+
+      for (uint32_t z = 0; z < dispatch.z; z++) {
+         for (uint32_t y = 0; y < dispatch.y; y++) {
+            for (uint32_t x = 0; x < dispatch.x; x++) {
+               handle_compute_shader(state, shader, pipeline->layout);
+               emit_compute_state(state);
+
+               state->dispatch_info.grid_base[0] = x;
+               state->dispatch_info.grid_base[1] = y;
+               state->dispatch_info.grid_base[2] = z;
+
+               struct lvp_exec_graph_internal_data *internal_data =
+                  lvp_push_internal_buffer(state, MESA_SHADER_COMPUTE, sizeof(struct lvp_exec_graph_internal_data));
+               internal_data->payload_in = (void *)payload;
+               internal_data->payloads = (void *)scratch;
+
+               state->pctx->launch_grid(state->pctx, &state->dispatch_info);
+
+               /* Amazing performance. */
+               finish_fence(state);
+
+               for (uint32_t enqueue = 0; enqueue < ARRAY_SIZE(internal_data->outputs); enqueue++) {
+                  struct lvp_exec_graph_shader_output *output = &internal_data->outputs[enqueue];
+                  if (!output->payload_count)
+                     continue;
+
+                  VkDispatchGraphInfoAMDX enqueue_info = {
+                     .payloadCount = output->payload_count,
+                     .payloads.hostAddress = (uint8_t *)scratch + enqueue * nir->info.cs.node_payloads_size,
+                     .payloadStride = nir->info.cs.node_payloads_size,
+                  };
+
+                  enqueue_node_info.index = output->node_index;
+
+                  ASSERTED VkResult result = lvp_GetExecutionGraphPipelineNodeIndexAMDX(
+                     lvp_device_to_handle(state->device), lvp_pipeline_to_handle(state->exec_graph),
+                     &enqueue_node_info, &enqueue_info.nodeIndex);
+                  assert(result == VK_SUCCESS);
+
+                  dispatch_graph(state, &enqueue_info, (uint8_t *)scratch + pipeline->exec_graph.scratch_size);
+               }
+            }
+         }
+      }
+   }
+}
+
+static void
+handle_dispatch_graph(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
+{
+   const struct vk_cmd_dispatch_graph_amdx *dispatch = &cmd->u.dispatch_graph_amdx;
+
+   for (uint32_t i = 0; i < dispatch->count_info->count; i++) {
+      const VkDispatchGraphInfoAMDX *info = (const void *)((const uint8_t *)dispatch->count_info->infos.hostAddress +
+                                                           i * dispatch->count_info->stride);
+
+      dispatch_graph(state, info, (void *)(uintptr_t)dispatch->scratch);
+   }
+}
+#endif
+
 void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
 {
    struct vk_device_dispatch_table cmd_enqueue_dispatch;
@@ -4262,6 +4379,13 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
    ENQUEUE_CMD(CmdBindPipelineShaderGroupNV)
    ENQUEUE_CMD(CmdPreprocessGeneratedCommandsNV)
    ENQUEUE_CMD(CmdExecuteGeneratedCommandsNV)
+
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+   ENQUEUE_CMD(CmdInitializeGraphScratchMemoryAMDX)
+   ENQUEUE_CMD(CmdDispatchGraphIndirectCountAMDX)
+   ENQUEUE_CMD(CmdDispatchGraphIndirectAMDX)
+   ENQUEUE_CMD(CmdDispatchGraphAMDX)
+#endif
 
 #undef ENQUEUE_CMD
 }
@@ -4615,6 +4739,17 @@ static void lvp_execute_cmd_buffer(struct list_head *cmds,
       case VK_CMD_BIND_DESCRIPTOR_BUFFER_EMBEDDED_SAMPLERS_EXT:
          handle_descriptor_buffer_embedded_samplers(cmd, state);
          break;
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+      case VK_CMD_INITIALIZE_GRAPH_SCRATCH_MEMORY_AMDX:
+         break;
+      case VK_CMD_DISPATCH_GRAPH_INDIRECT_COUNT_AMDX:
+         break;
+      case VK_CMD_DISPATCH_GRAPH_INDIRECT_AMDX:
+         break;
+      case VK_CMD_DISPATCH_GRAPH_AMDX:
+         handle_dispatch_graph(cmd, state);
+         break;
+#endif
       default:
          fprintf(stderr, "Unsupported command %s\n", vk_cmd_queue_type_names[cmd->type]);
          unreachable("Unsupported command");
