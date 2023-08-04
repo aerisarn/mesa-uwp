@@ -48,6 +48,9 @@ lst_enum_include = [
     "pipe_cap",
     "pipe_capf",
     "pipe_compute_cap",
+    "pipe_video_cap",
+    "pipe_video_profile",
+    "pipe_video_entrypoint",
     "pipe_resource_param",
     "pipe_fd_type",
     "pipe_blendfactor",
@@ -211,6 +214,7 @@ def pkk_output_header(fh):
 
 
         #include "pipe/p_defines.h"
+        #include "pipe/p_video_enums.h"
 
 
         #ifdef __cplusplus
