@@ -123,10 +123,10 @@ panfrost-t760-gles2:arm32:
     - .panfrost-test
     - .lava-rk3288-veyron-jaq
 
-.panfrost-t760-traces:arm32:
+panfrost-t760-traces:arm32:
   extends:
     - .lava-piglit-traces:arm32
-    - .panfrost-midgard-rules
+    - .panfrost-midgard-manual-rules
     - .panfrost-test
     - .lava-rk3288-veyron-jaq
     - .panfrost-traces
@@ -161,9 +161,10 @@ panfrost-t860-egl:arm64:
     HWCI_START_WESTON: 1
     DEQP_SUITE: panfrost-t860-egl
 
-.panfrost-t860-traces:arm64:
+panfrost-t860-traces:arm64:
   extends:
     - .lava-piglit-traces:arm64
+    - .panfrost-midgard-manual-rules
     - .lava-rk3399-gru-kevin
     - .panfrost-traces
 
