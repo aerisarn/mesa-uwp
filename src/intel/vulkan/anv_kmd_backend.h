@@ -55,8 +55,9 @@ struct anv_kmd_backend {
    void *(*gem_mmap)(struct anv_device *device, struct anv_bo *bo,
                      uint64_t offset, uint64_t size,
                      VkMemoryPropertyFlags property_flags);
-   int (*gem_vm_bind)(struct anv_device *device, struct anv_bo *bo);
-   int (*gem_vm_unbind)(struct anv_device *device, struct anv_bo *bo);
+   /* Fully bind or unbind a BO. */
+   int (*vm_bind_bo)(struct anv_device *device, struct anv_bo *bo);
+   int (*vm_unbind_bo)(struct anv_device *device, struct anv_bo *bo);
    VkResult (*execute_simple_batch)(struct anv_queue *queue,
                                     struct anv_bo *batch_bo,
                                     uint32_t batch_bo_size,

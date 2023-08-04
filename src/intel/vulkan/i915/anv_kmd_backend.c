@@ -169,13 +169,7 @@ i915_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
 }
 
 static int
-i915_gem_vm_bind(struct anv_device *device, struct anv_bo *bo)
-{
-   return 0;
-}
-
-static int
-i915_gem_vm_unbind(struct anv_device *device, struct anv_bo *bo)
+i915_vm_bind_bo(struct anv_device *device, struct anv_bo *bo)
 {
    return 0;
 }
@@ -207,8 +201,8 @@ anv_i915_kmd_backend_get(void)
       .gem_create_userptr = i915_gem_create_userptr,
       .gem_close = i915_gem_close,
       .gem_mmap = i915_gem_mmap,
-      .gem_vm_bind = i915_gem_vm_bind,
-      .gem_vm_unbind = i915_gem_vm_unbind,
+      .vm_bind_bo = i915_vm_bind_bo,
+      .vm_unbind_bo = i915_vm_bind_bo,
       .execute_simple_batch = i915_execute_simple_batch,
       .queue_exec_locked = i915_queue_exec_locked,
       .queue_exec_trace = i915_queue_exec_trace,

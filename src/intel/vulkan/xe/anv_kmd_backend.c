@@ -94,7 +94,7 @@ xe_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
 }
 
 static inline int
-xe_gem_vm_bind_op(struct anv_device *device, struct anv_bo *bo, uint32_t op)
+xe_vm_bind_op(struct anv_device *device, struct anv_bo *bo, uint32_t op)
 {
    uint32_t syncobj_handle;
    int ret = drmSyncobjCreate(device->fd, 0, &syncobj_handle);
@@ -145,14 +145,14 @@ bind_error:
    return ret;
 }
 
-static int xe_gem_vm_bind(struct anv_device *device, struct anv_bo *bo)
+static int xe_vm_bind_bo(struct anv_device *device, struct anv_bo *bo)
 {
-   return xe_gem_vm_bind_op(device, bo, XE_VM_BIND_OP_MAP);
+   return xe_vm_bind_op(device, bo, XE_VM_BIND_OP_MAP);
 }
 
-static int xe_gem_vm_unbind(struct anv_device *device, struct anv_bo *bo)
+static int xe_vm_unbind_bo(struct anv_device *device, struct anv_bo *bo)
 {
-   return xe_gem_vm_bind_op(device, bo, XE_VM_BIND_OP_UNMAP);
+   return xe_vm_bind_op(device, bo, XE_VM_BIND_OP_UNMAP);
 }
 
 static uint32_t
@@ -173,8 +173,8 @@ anv_xe_kmd_backend_get(void)
       .gem_create_userptr = xe_gem_create_userptr,
       .gem_close = xe_gem_close,
       .gem_mmap = xe_gem_mmap,
-      .gem_vm_bind = xe_gem_vm_bind,
-      .gem_vm_unbind = xe_gem_vm_unbind,
+      .vm_bind_bo = xe_vm_bind_bo,
+      .vm_unbind_bo = xe_vm_unbind_bo,
       .execute_simple_batch = xe_execute_simple_batch,
       .queue_exec_locked = xe_queue_exec_locked,
       .queue_exec_trace = xe_queue_exec_utrace_locked,

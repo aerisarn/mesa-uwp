@@ -1388,7 +1388,7 @@ static void
 anv_bo_finish(struct anv_device *device, struct anv_bo *bo)
 {
    /* Not releasing vma in case unbind fails */
-   if (device->kmd_backend->gem_vm_unbind(device, bo) == 0)
+   if (device->kmd_backend->vm_unbind_bo(device, bo) == 0)
       anv_bo_vma_free(device, bo);
 
    anv_bo_unmap_close(device, bo);
@@ -1560,7 +1560,7 @@ anv_device_alloc_bo(struct anv_device *device,
    if (result != VK_SUCCESS)
       return result;
 
-   if (device->kmd_backend->gem_vm_bind(device, &new_bo)) {
+   if (device->kmd_backend->vm_bind_bo(device, &new_bo)) {
       anv_bo_vma_free(device, &new_bo);
       anv_bo_unmap_close(device, &new_bo);
       return vk_errorf(device, VK_ERROR_UNKNOWN, "vm bind failed");
@@ -1708,7 +1708,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
          return result;
       }
 
-      if (device->kmd_backend->gem_vm_bind(device, &new_bo)) {
+      if (device->kmd_backend->vm_bind_bo(device, &new_bo)) {
          VkResult res = vk_errorf(device, VK_ERROR_UNKNOWN, "vm bind failed: %m");
          anv_bo_vma_free(device, &new_bo);
          pthread_mutex_unlock(&cache->mutex);
@@ -1840,7 +1840,7 @@ anv_device_import_bo(struct anv_device *device,
          return result;
       }
 
-      if (device->kmd_backend->gem_vm_bind(device, &new_bo)) {
+      if (device->kmd_backend->vm_bind_bo(device, &new_bo)) {
          anv_bo_vma_free(device, &new_bo);
          pthread_mutex_unlock(&cache->mutex);
          return vk_errorf(device, VK_ERROR_UNKNOWN, "vm bind failed");
