@@ -76,6 +76,39 @@ rewrite_cost(nir_ssa_def *def, const void *data)
 static bool
 avoid_instr(const nir_instr *instr, const void *data)
 {
+   const nir_ssa_def *def = nir_instr_ssa_def((nir_instr *)instr);
+
+   /* Do not move bindless handles, since we need those to retain their constant
+    * base index.
+    */
+   if (def) {
+      nir_foreach_use(use, def) {
+         if (use->parent_instr->type == nir_instr_type_tex) {
+            /* Check if used as a bindless texture handle */
+            nir_tex_instr *tex = nir_instr_as_tex(use->parent_instr);
+            int handle_idx =
+               nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
+
+            if (handle_idx >= 0 && tex->src[handle_idx].src.ssa == def)
+               return true;
+         } else if (use->parent_instr->type == nir_instr_type_intrinsic) {
+            /* Check if used as a bindless image handle */
+            nir_intrinsic_instr *intr =
+               nir_instr_as_intrinsic(use->parent_instr);
+
+            switch (intr->intrinsic) {
+            case nir_intrinsic_bindless_image_load:
+            case nir_intrinsic_bindless_image_store:
+               if (intr->src[0].ssa == def)
+                  return true;
+               break;
+            default:
+               break;
+            }
+         }
+      }
+   }
+
    return false;
 }
 
