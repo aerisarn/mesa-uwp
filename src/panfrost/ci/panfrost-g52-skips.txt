@@ -17,6 +17,9 @@ dEQP-VK.spirv_assembly.instruction.compute.vector_shuffle.vector_shuffle
 # Seems to timeout occasionally
 dEQP-VK.api.object_management.max_concurrent.query_pool
 
+# not implemented
+dEQP-VK.api.copy_and_blit.core.resolve_image.*
+
 # Causes a GPU timeout
 spec@!opengl 1.1@longprim
 
