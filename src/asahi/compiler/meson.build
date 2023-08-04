@@ -13,6 +13,7 @@ libasahi_agx_files = files(
   'agx_nir_lower_sample_mask.c',
   'agx_nir_lower_discard_zs_emit.c',
   'agx_nir_lower_texture.c',
+  'agx_nir_lower_interpolation.c',
   'agx_nir_lower_load_mask.c',
   'agx_nir_lower_shared_bitsize.c',
   'agx_nir_lower_ubo.c',
