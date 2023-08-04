@@ -9,6 +9,9 @@
 #include "compiler/nir/nir.h"
 #include "util/u_dynarray.h"
 
+/* 32 user varyings + some system values */
+#define AGX_MAX_VARYING_SLOTS (48)
+
 struct agx_varyings_vs {
    /* The number of user varyings of each type. The varyings must be allocated
     * in this order ({smooth, flat, linear} × {32, 16}), which may require
@@ -39,13 +42,13 @@ struct agx_varyings_vs {
     *
     * If the slot is not written, this must be ~0.
     */
-   unsigned slots[VARYING_SLOT_MAX];
+   unsigned slots[AGX_MAX_VARYING_SLOTS];
 };
 
 /* Conservative bound, * 4 due to offsets (TODO: maybe worth eliminating
  * coefficient register aliasing?)
  */
-#define AGX_MAX_CF_BINDINGS (VARYING_SLOT_MAX * 4)
+#define AGX_MAX_CF_BINDINGS (AGX_MAX_VARYING_SLOTS * 4)
 
 struct agx_varyings_fs {
    /* Number of coefficient registers used */
