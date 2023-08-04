@@ -39,10 +39,16 @@ intel_clflush_range(void *start, size_t size)
 }
 
 void
+intel_flush_range_no_fence(void *start, size_t size)
+{
+   intel_clflush_range(start, size);
+}
+
+void
 intel_flush_range(void *start, size_t size)
 {
    __builtin_ia32_mfence();
-   intel_clflush_range(start, size);
+   intel_flush_range_no_fence(start, size);
 }
 
 void

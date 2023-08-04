@@ -35,6 +35,7 @@ extern "C" {
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
 void intel_flush_range(void *start, size_t size);
+void intel_flush_range_no_fence(void *start, size_t size);
 void intel_invalidate_range(void *start, size_t size);
 #endif
 
