@@ -1908,7 +1908,9 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
          if (var->data.is_xfb)
             goto out;
 
-         unsigned num_slots = glsl_count_vec4_slots(var->type, false, false);
+         unsigned num_slots = var->data.location >= VARYING_SLOT_CLIP_DIST0 && var->data.location <= VARYING_SLOT_CULL_DIST1 ?
+                              glsl_array_size(var->type) / 4 :
+                              glsl_count_vec4_slots(var->type, false, false);
          /* for each variable, iterate over all the variable's slots and inline the outputs */
          for (unsigned j = 0; j < num_slots; j++) {
             slot = var->data.location + j;
