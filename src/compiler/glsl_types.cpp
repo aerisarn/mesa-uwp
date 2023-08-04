@@ -331,36 +331,6 @@ glsl_type::contains_subroutine() const
    }
 }
 
-gl_texture_index
-glsl_type::sampler_index() const
-{
-   const glsl_type *const t = (this->is_array()) ? this->fields.array : this;
-
-   assert(t->is_sampler() || t->is_image());
-
-   switch (t->sampler_dimensionality) {
-   case GLSL_SAMPLER_DIM_1D:
-      return (t->sampler_array) ? TEXTURE_1D_ARRAY_INDEX : TEXTURE_1D_INDEX;
-   case GLSL_SAMPLER_DIM_2D:
-      return (t->sampler_array) ? TEXTURE_2D_ARRAY_INDEX : TEXTURE_2D_INDEX;
-   case GLSL_SAMPLER_DIM_3D:
-      return TEXTURE_3D_INDEX;
-   case GLSL_SAMPLER_DIM_CUBE:
-      return (t->sampler_array) ? TEXTURE_CUBE_ARRAY_INDEX : TEXTURE_CUBE_INDEX;
-   case GLSL_SAMPLER_DIM_RECT:
-      return TEXTURE_RECT_INDEX;
-   case GLSL_SAMPLER_DIM_BUF:
-      return TEXTURE_BUFFER_INDEX;
-   case GLSL_SAMPLER_DIM_EXTERNAL:
-      return TEXTURE_EXTERNAL_INDEX;
-   case GLSL_SAMPLER_DIM_MS:
-      return (t->sampler_array) ? TEXTURE_2D_MULTISAMPLE_ARRAY_INDEX : TEXTURE_2D_MULTISAMPLE_INDEX;
-   default:
-      assert(!"Should not get here.");
-      return TEXTURE_BUFFER_INDEX;
-   }
-}
-
 bool
 glsl_type::contains_image() const
 {

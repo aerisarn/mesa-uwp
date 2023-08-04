@@ -38,7 +38,6 @@
 
 #ifdef __cplusplus
 #include "mesa/main/config.h"
-#include "mesa/main/menums.h" /* for gl_texture_index, C++'s enum rules are broken */
 #endif
 
 struct glsl_type;
@@ -933,11 +932,6 @@ public:
     * array types, contains an array.
     */
    bool contains_array() const;
-
-   /**
-    * Get the Mesa texture target index for a sampler type.
-    */
-   gl_texture_index sampler_index() const;
 
    /**
     * Query whether or not type is an image, or for struct, interface and
