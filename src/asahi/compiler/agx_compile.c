@@ -91,6 +91,18 @@ agx_get_cf(agx_context *ctx, bool smooth, bool perspective,
       varyings->reads_z |= (offset == 2);
    }
 
+   /* Forcibly vectorize pointcoord reads, since there's no (known) way to index
+    * Y alone.
+    */
+   bool is_pntc = (slot == VARYING_SLOT_PNTC);
+   unsigned cf_offset = 0;
+
+   if (is_pntc) {
+      cf_offset = offset;
+      offset = 0;
+      count = MAX2(2, count + offset);
+   }
+
    /* First, search for an appropriate binding. This is O(n) to the number of
     * bindings, which isn't great, but n should be small in practice.
     */
@@ -101,7 +113,7 @@ agx_get_cf(agx_context *ctx, bool smooth, bool perspective,
           (varyings->bindings[b].smooth == smooth) &&
           (varyings->bindings[b].perspective == perspective)) {
 
-         return agx_immediate(varyings->bindings[b].cf_base);
+         return agx_immediate(varyings->bindings[b].cf_base + cf_offset);
       }
    }
 
@@ -115,7 +127,7 @@ agx_get_cf(agx_context *ctx, bool smooth, bool perspective,
    varyings->bindings[b].perspective = perspective;
    varyings->nr_cf += count;
 
-   return agx_immediate(cf_base);
+   return agx_immediate(cf_base + cf_offset);
 }
 
 /* Builds a 64-bit hash table key for an index */
