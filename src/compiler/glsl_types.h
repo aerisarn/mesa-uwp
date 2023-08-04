@@ -289,15 +289,6 @@ enum {
    GLSL_PRECISION_LOW
 };
 
-/**
- * Built-in / reserved GL variables names start with "gl_"
- */
-static inline bool
-is_gl_identifier(const char *s)
-{
-   return s && s[0] == 'g' && s[1] == 'l' && s[2] == '_';
-}
-
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

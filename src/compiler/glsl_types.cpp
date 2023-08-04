@@ -3353,6 +3353,12 @@ glsl_get_sampler_dim_coordinate_components(enum glsl_sampler_dim dim)
    }
 }
 
+static inline bool
+is_gl_identifier(const char *s)
+{
+   return s && s[0] == 'g' && s[1] == 'l' && s[2] == '_';
+}
+
 void
 glsl_print_type(FILE *f, const glsl_type *t)
 {

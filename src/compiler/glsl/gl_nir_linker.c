@@ -299,6 +299,15 @@ disable_varying_optimizations_for_sso(struct gl_shader_program *prog)
    }
 }
 
+/**
+ * Built-in / reserved GL variables names start with "gl_"
+ */
+static inline bool
+is_gl_identifier(const char *s)
+{
+   return s && s[0] == 'g' && s[1] == 'l' && s[2] == '_';
+}
+
 static bool
 inout_has_same_location(const nir_variable *var, unsigned stage)
 {

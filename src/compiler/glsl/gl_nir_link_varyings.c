@@ -1778,6 +1778,15 @@ varying_matches_compute_packing_order(const nir_variable *var)
 }
 
 /**
+ * Built-in / reserved GL variables names start with "gl_"
+ */
+static bool
+is_gl_identifier(const char *s)
+{
+   return s && s[0] == 'g' && s[1] == 'l' && s[2] == '_';
+}
+
+/**
  * Record the given producer/consumer variable pair in the list of variables
  * that should later be assigned locations.
  *
