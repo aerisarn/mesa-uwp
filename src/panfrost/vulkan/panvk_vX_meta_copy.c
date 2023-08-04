@@ -314,12 +314,14 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
 
    switch (texdim) {
    case 1:
+      assert(!is_ms);
       tex->sampler_dim = GLSL_SAMPLER_DIM_1D;
       break;
    case 2:
-      tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+      tex->sampler_dim = is_ms ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
       break;
    case 3:
+      assert(!is_ms);
       tex->sampler_dim = GLSL_SAMPLER_DIM_3D;
       break;
    default:
@@ -702,8 +704,8 @@ panvk_meta_copy_img2img_init(struct panvk_physical_device *dev, bool is_ms)
          unsigned texdimidx = panvk_meta_copy_tex_type(texdim, false);
          assert(texdimidx < ARRAY_SIZE(dev->meta.copy.img2img[0]));
 
-         /* No MSAA on 3D textures */
-         if (texdim == 3 && is_ms)
+         /* No MSAA on 1D/3D textures */
+         if (texdim != 2 && is_ms)
             continue;
 
          struct pan_shader_info shader_info;
