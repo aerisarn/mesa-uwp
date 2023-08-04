@@ -6,19 +6,18 @@
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_device.h"
 #include "nvk_device_memory.h"
-#include "nvk_pipeline.h"
-#include "nvk_physical_device.h"
-#include "nvk_buffer.h"
 #include "nvk_mme.h"
+#include "nvk_physical_device.h"
+#include "nvk_pipeline.h"
 
 #include "nouveau_context.h"
 
 #include "nouveau/nouveau.h"
 
-#include "nvk_clc597.h"
+#include "nvk_cl906f.h"
 #include "nvk_cl90b5.h"
 #include "nvk_cla0c0.h"
-#include "nvk_cl906f.h"
+#include "nvk_clc597.h"
 
 static void
 nvk_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
@@ -55,8 +54,7 @@ nvk_create_cmd_buffer(struct vk_command_pool *vk_pool,
       return result;
    }
 
-   cmd->vk.dynamic_graphics_state.vi =
-      &cmd->state.gfx._dynamic_vi;
+   cmd->vk.dynamic_graphics_state.vi = &cmd->state.gfx._dynamic_vi;
    cmd->vk.dynamic_graphics_state.ms.sample_locations =
       &cmd->state.gfx._dynamic_sl;
 
@@ -491,7 +489,7 @@ nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp)
          };
          vk_push_print(fp, &push, &dev->pdev->info);
       } else {
-         fprintf(fp, "<%u B of INDIRECT DATA at 0x%"PRIx64">\n",
+         fprintf(fp, "<%u B of INDIRECT DATA at 0x%" PRIx64 ">\n",
                  p->range & ~NVC0_IB_ENTRY_1_NO_PREFETCH,
                  p->bo->offset + p->bo_offset);
       }
@@ -517,17 +515,17 @@ nvk_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
    struct nvk_descriptor_set_layout *set_layout =
       vk_to_nvk_descriptor_set_layout(pipeline_layout->set_layouts[set]);
 
-   nvk_push_descriptor_set_update_template(push_set, set_layout,
-                                           template, pData);
+   nvk_push_descriptor_set_update_template(push_set, set_layout, template,
+                                           pData);
 }
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
                                        uint32_t firstBinding,
                                        uint32_t bindingCount,
-                                       const VkBuffer* pBuffers,
-                                       const VkDeviceSize* pOffsets,
-                                       const VkDeviceSize* pSizes)
+                                       const VkBuffer *pBuffers,
+                                       const VkDeviceSize *pOffsets,
+                                       const VkDeviceSize *pSizes)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
 
@@ -580,13 +578,13 @@ VKAPI_ATTR void VKAPI_CALL
 nvk_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
                                  uint32_t firstCounterBuffer,
                                  uint32_t counterBufferCount,
-                                 const VkBuffer* pCounterBuffers,
-                                 const VkDeviceSize* pCounterBufferOffsets)
+                                 const VkBuffer *pCounterBuffers,
+                                 const VkDeviceSize *pCounterBufferOffsets)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    const uint32_t max_buffers = 4;
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 2+2*max_buffers);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 2 + 2 * max_buffers);
 
    P_IMMD(p, NV9097, SET_STREAM_OUTPUT, ENABLE_TRUE);
    for (uint32_t i = 0; i < max_buffers; ++i) {
@@ -627,8 +625,8 @@ VKAPI_ATTR void VKAPI_CALL
 nvk_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
                                uint32_t firstCounterBuffer,
                                uint32_t counterBufferCount,
-                               const VkBuffer* pCounterBuffers,
-                               const VkDeviceSize* pCounterBufferOffsets)
+                               const VkBuffer *pCounterBuffers,
+                               const VkDeviceSize *pCounterBufferOffsets)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
 

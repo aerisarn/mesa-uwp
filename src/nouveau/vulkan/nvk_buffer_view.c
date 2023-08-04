@@ -1,11 +1,12 @@
 #include "nvk_buffer_view.h"
 
-#include "nil_image.h"
 #include "nil_format.h"
+#include "nil_image.h"
 #include "nvk_buffer.h"
 #include "nvk_device.h"
 #include "nvk_format.h"
 #include "nvk_physical_device.h"
+
 #include "vulkan/util/vk_format.h"
 
 VkFormatFeatureFlags2

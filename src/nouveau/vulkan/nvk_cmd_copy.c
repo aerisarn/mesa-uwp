@@ -39,10 +39,9 @@ struct nouveau_copy {
 };
 
 static struct nouveau_copy_buffer
-nouveau_copy_rect_buffer(
-   struct nvk_buffer *buf,
-   VkDeviceSize offset,
-   struct vk_image_buffer_layout buffer_layout)
+nouveau_copy_rect_buffer(struct nvk_buffer *buf,
+                         VkDeviceSize offset,
+                         struct vk_image_buffer_layout buffer_layout)
 {
    return (struct nouveau_copy_buffer) {
       .base_addr = nvk_buffer_address(buf, offset),
@@ -66,11 +65,10 @@ vk_to_nil_extent(VkExtent3D extent, uint32_t array_layers)
 }
 
 static struct nouveau_copy_buffer
-nouveau_copy_rect_image(
-   struct nvk_image *img,
-   struct nvk_image_plane *plane,
-   VkOffset3D offset_px,
-   const VkImageSubresourceLayers *sub_res)
+nouveau_copy_rect_image(struct nvk_image *img,
+                        struct nvk_image_plane *plane,
+                        VkOffset3D offset_px,
+                        const VkImageSubresourceLayers *sub_res)
 {
    const struct nil_extent4d lvl_extent4d_px =
       nil_image_level_extent_px(&plane->nil, sub_res->mipLevel);
@@ -387,7 +385,6 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
             copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
             copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
             copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
-            //copy.dst.bpp = 8;
          } else {
             assert(aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
             copy2.dst = copy.dst;
@@ -408,7 +405,6 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
             copy2.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
             copy2.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_SRC_X;
             copy2.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
-            //copy2.dst.bpp = 8;
          }
          break;
       case VK_FORMAT_D24_UNORM_S8_UINT:
@@ -494,7 +490,6 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
             copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
             copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
             copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
-            //copy.src.bpp = 8;
          } else {
             assert(aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
             copy2.dst = copy.dst;
@@ -509,7 +504,6 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
             copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
             copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
             copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
-            //copy.src.bpp = 8;
 
             copy2.remap.comp_size = 1;
             copy2.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_SRC_X;
@@ -583,10 +577,12 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
       const struct nil_extent4d extent4d_px =
          vk_to_nil_extent(extent_px, region->srcSubresource.layerCount);
 
-      const VkImageAspectFlagBits src_aspects = region->srcSubresource.aspectMask;
+      const VkImageAspectFlagBits src_aspects =
+         region->srcSubresource.aspectMask;
       uint8_t src_plane = nvk_image_aspects_to_plane(src, src_aspects);
 
-      const VkImageAspectFlagBits dst_aspects = region->dstSubresource.aspectMask;
+      const VkImageAspectFlagBits dst_aspects =
+         region->dstSubresource.aspectMask;
       uint8_t dst_plane = nvk_image_aspects_to_plane(dst, dst_aspects);
 
       struct nouveau_copy copy = {

@@ -118,7 +118,8 @@ nvk_GetPhysicalDeviceExternalBufferProperties(
    switch (pExternalBufferInfo->handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
-      pExternalBufferProperties->externalMemoryProperties = nvk_dma_buf_mem_props;
+      pExternalBufferProperties->externalMemoryProperties =
+         nvk_dma_buf_mem_props;
       return;
    default:
       goto unsupported;

@@ -10,14 +10,14 @@
 
 #include "classes/cla0b5.h"
 
-#include "nvk_cl9097.h"
-#include "nvk_cla0c0.h"
 #include "cla1c0.h"
 #include "clc0c0.h"
 #include "clc5c0.h"
-#include "nvk_clc6c0.h"
+#include "nvk_cl9097.h"
+#include "nvk_cla0c0.h"
 #include "nvk_clc3c0.h"
 #include "nvk_clc597.h"
+#include "nvk_clc6c0.h"
 
 #include "drf.h"
 #include "cla0c0qmd.h"
@@ -96,7 +96,7 @@ nvc0c0_cp_launch_desc_set_cb(uint32_t *qmd, unsigned index,
    NVC0C0_QMDV02_01_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_LOWER, index, address);
    NVC0C0_QMDV02_01_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_UPPER, index, address >> 32);
    NVC0C0_QMDV02_01_VAL_SET(qmd, CONSTANT_BUFFER_SIZE_SHIFTED4, index,
-                                 DIV_ROUND_UP(size, 16));
+                            DIV_ROUND_UP(size, 16));
    NVC0C0_QMDV02_01_DEF_SET(qmd, CONSTANT_BUFFER_VALID, index, TRUE);
 }
 
@@ -107,7 +107,7 @@ nvc6c0_cp_launch_desc_set_cb(uint32_t *qmd, unsigned index,
    NVC6C0_QMDV03_00_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_LOWER, index, address);
    NVC6C0_QMDV03_00_VAL_SET(qmd, CONSTANT_BUFFER_ADDR_UPPER, index, address >> 32);
    NVC6C0_QMDV03_00_VAL_SET(qmd, CONSTANT_BUFFER_SIZE_SHIFTED4, index,
-                                 DIV_ROUND_UP(size, 16));
+                            DIV_ROUND_UP(size, 16));
    NVC6C0_QMDV03_00_DEF_SET(qmd, CONSTANT_BUFFER_VALID, index, TRUE);
 }
 

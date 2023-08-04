@@ -12,7 +12,8 @@
 #include "nvk_cl9097.h"
 #include "drf.h"
 
-void nvk_mme_clear(struct mme_builder *b)
+void
+nvk_mme_clear(struct mme_builder *b)
 {
    struct mme_value payload = mme_load(b);
    struct mme_value view_mask = nvk_mme_load_scratch(b, VIEW_MASK);

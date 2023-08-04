@@ -106,7 +106,7 @@ nvk_get_relative_timeout(uint64_t abs_timeout)
       return 0;
 
    uint64_t rel_timeout = abs_timeout - now;
-   if (rel_timeout > (uint64_t) INT64_MAX)
+   if (rel_timeout > (uint64_t)INT64_MAX)
       rel_timeout = INT64_MAX;
 
    return rel_timeout;
@@ -116,8 +116,8 @@ static VkResult
 nvk_wait_dmabuf(struct nvk_device *dev, int dmabuf_fd,
                 uint64_t abs_timeout_ns)
 {
-   uint64_t now = os_time_get_nano();
-   uint64_t rel_timeout_ns =
+   const uint64_t now = os_time_get_nano();
+   const uint64_t rel_timeout_ns =
       now < abs_timeout_ns ? abs_timeout_ns - now : 0;
 
    struct timespec rel_timeout_ts = {
@@ -132,8 +132,7 @@ nvk_wait_dmabuf(struct nvk_device *dev, int dmabuf_fd,
 
    int ret = ppoll(&fd, 1, &rel_timeout_ts, NULL);
    if (ret < 0) {
-      return vk_errorf(dev, VK_ERROR_UNKNOWN,
-                       "poll() failed: %m");
+      return vk_errorf(dev, VK_ERROR_UNKNOWN, "poll() failed: %m");
    } else if (ret == 0) {
       return VK_TIMEOUT;
    } else {
