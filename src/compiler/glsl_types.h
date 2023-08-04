@@ -36,6 +36,11 @@
 #include "util/macros.h"
 #include "util/simple_mtx.h"
 
+#ifdef __cplusplus
+#include "mesa/main/config.h"
+#include "mesa/main/menums.h" /* for gl_texture_index, C++'s enum rules are broken */
+#endif
+
 struct glsl_type;
 
 #ifdef __cplusplus
