@@ -1474,10 +1474,11 @@ vk_index_to_restart(VkIndexType index_type)
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
-                       VkBuffer _buffer,
-                       VkDeviceSize offset,
-                       VkIndexType indexType)
+nvk_CmdBindIndexBuffer2KHR(VkCommandBuffer commandBuffer,
+                           VkBuffer _buffer,
+                           VkDeviceSize offset,
+                           VkDeviceSize size,
+                           VkIndexType indexType)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
@@ -1485,9 +1486,9 @@ nvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
 
    uint64_t addr, range;
-   if (buffer) {
+   if (buffer != NULL && size > 0) {
       addr = nvk_buffer_address(buffer, offset);
-      range = vk_buffer_range(&buffer->vk, offset, VK_WHOLE_SIZE);
+      range = vk_buffer_range(&buffer->vk, offset, size);
    } else {
       range = addr = 0;
    }
