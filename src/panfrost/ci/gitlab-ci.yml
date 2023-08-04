@@ -116,12 +116,14 @@ panfrost-t720-gles2:arm64:
 
 # We only have two machines, which we share with KernelCI.
 # Keep the second t760 job manual.
-panfrost-t760-gles2:arm32:
+panfrost-t760-gles:arm32:
   extends:
     - .lava-test-deqp:arm32
     - .panfrost-midgard-manual-rules
     - .panfrost-test
     - .lava-rk3288-veyron-jaq
+  variables:
+    JOB_TIMEOUT: 60
 
 panfrost-t760-traces:arm32:
   extends:
