@@ -2833,6 +2833,14 @@ radv_get_max_waves(const struct radv_device *device, struct radv_shader *shader,
 }
 
 unsigned
+radv_get_max_scratch_waves(const struct radv_device *device, struct radv_shader *shader)
+{
+   const unsigned num_cu = device->physical_device->rad_info.num_cu;
+
+   return MIN2(device->scratch_waves, 4 * num_cu * radv_get_max_waves(device, shader, shader->info.stage));
+}
+
+unsigned
 radv_compute_spi_ps_input(const struct radv_pipeline_key *pipeline_key, const struct radv_shader_info *info)
 {
    unsigned spi_ps_input;

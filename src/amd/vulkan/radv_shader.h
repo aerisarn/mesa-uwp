@@ -699,6 +699,8 @@ struct radv_shader *radv_find_shader(struct radv_device *device, uint64_t pc);
 
 unsigned radv_get_max_waves(const struct radv_device *device, struct radv_shader *shader, gl_shader_stage stage);
 
+unsigned radv_get_max_scratch_waves(const struct radv_device *device, struct radv_shader *shader);
+
 const char *radv_get_shader_name(const struct radv_shader_info *info, gl_shader_stage stage);
 
 unsigned radv_compute_spi_ps_input(const struct radv_pipeline_key *pipeline_key, const struct radv_shader_info *info);

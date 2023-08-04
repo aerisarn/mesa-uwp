@@ -134,9 +134,7 @@ radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipelin
 
    pipeline->scratch_bytes_per_wave = MAX2(pipeline->scratch_bytes_per_wave, shader->config.scratch_bytes_per_wave);
 
-   unsigned max_stage_waves = device->scratch_waves;
-   max_stage_waves = MIN2(max_stage_waves, 4 * device->physical_device->rad_info.num_cu *
-                                              radv_get_max_waves(device, shader, shader->info.stage));
+   const unsigned max_stage_waves = radv_get_max_scratch_waves(device, shader);
    pipeline->max_waves = MAX2(pipeline->max_waves, max_stage_waves);
 }
 
