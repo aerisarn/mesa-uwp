@@ -33,8 +33,6 @@
 #include "util/u_math.h"
 #include "pipe/p_shader_tokens.h"
 
-#include "sb/sb_public.h"
-
 #define NUM_OF_CYCLES 3
 #define NUM_OF_COMPONENTS 4
 
@@ -2817,8 +2815,6 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 	uint32_t *bytecode;
 	int i, j, r, fs_size;
 	struct r600_fetch_shader *shader;
-	unsigned no_sb = rctx->screen->b.debug_flags & (DBG_NO_SB | DBG_NIR);
-	unsigned sb_disasm = !no_sb || (rctx->screen->b.debug_flags & DBG_SB_DISASM);
 
 	assert(count < 32);
 
@@ -2919,13 +2915,7 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 			fprintf(stderr, "\n");
 		}
 
-		if (!sb_disasm) {
-			r600_bytecode_disasm(&bc);
-
-			fprintf(stderr, "______________________________________________________________\n");
-		} else {
-			r600_sb_bytecode_process(rctx, &bc, NULL, 1 /*dump*/, 0 /*optimize*/);
-		}
+                r600_bytecode_disasm(&bc);
 	}
 
 	fs_size = bc.ndw*4;

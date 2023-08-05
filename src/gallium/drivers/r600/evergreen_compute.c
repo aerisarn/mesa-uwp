@@ -49,7 +49,6 @@
 #include "evergreen_compute.h"
 #include "evergreen_compute_internal.h"
 #include "compute_memory_pool.h"
-#include "sb/sb_public.h"
 #include <inttypes.h>
 
 /**
