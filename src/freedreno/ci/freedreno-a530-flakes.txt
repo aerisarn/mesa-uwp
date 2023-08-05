@@ -142,8 +142,10 @@ KHR-GLES31.shaders.layout_location.sampler_2d
 
 spec@glsl-1.10@execution@built-in-functions@fs-all-bvec4
 spec@glsl-1.10@execution@built-in-functions@fs-op-assign-add-ivec4-int
+spec@glsl-1.10@execution@built-in-functions@vs-dot-vec2-vec2
 spec@glsl-1.10@execution@built-in-functions@vs-dot-vec3-vec3
 spec@glsl-1.10@execution@built-in-functions@vs-mod-float-float
+spec@glsl-1.20@execution@clipping@vs-clip-vertex-different-from-position
 spec@glsl-1.20@execution@const-builtin@glsl-const-builtin-distance
 spec@glsl-1.20@execution@const-builtin@glsl-const-builtin-derivatives
 spec@glsl-1.20@execution@vs-outerproduct-const-mat3x4
@@ -158,5 +160,6 @@ spec@glsl-1.30@execution@built-in-functions@vs-op-bitor-abs-neg-ivec2-int
 spec@glsl-1.30@execution@interpolation@interpolation-smooth-other-flat-distance
 spec@glsl-es-3.00@execution@built-in-functions@const-packhalf2x16
 spec@glsl-es-3.00@execution@varying-struct-copy-return-vs
+spec@arb_texture_query_levels@execution@fs-miptree
 spec@amd_shader_trinary_minmax@execution@built-in-functions@fs-max3-vec2-vec2-vec2
 spec@mesa_shader_integer_functions@execution@built-in-functions@fs-umulextended-only-msb-nonuniform
