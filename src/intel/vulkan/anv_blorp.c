@@ -1148,6 +1148,9 @@ can_fast_clear_color_att(struct anv_cmd_buffer *cmd_buffer,
                          const VkClearAttachment *attachment,
                          uint32_t rectCount, const VkClearRect *pRects)
 {
+   if (INTEL_DEBUG(DEBUG_NO_FAST_CLEAR))
+      return false;
+
    /* We don't support fast clearing with conditional rendering at the
     * moment. All the tracking done around fast clears (clear color updates
     * and fast-clear type updates) happens unconditionally.
@@ -1696,6 +1699,9 @@ can_hiz_clear_att(struct anv_cmd_buffer *cmd_buffer,
                   const VkClearAttachment *attachment,
                   uint32_t rectCount, const VkClearRect *pRects)
 {
+   if (INTEL_DEBUG(DEBUG_NO_FAST_CLEAR))
+      return false;
+
    /* From Bspec's section MI_PREDICATE:
     *
     *    "The MI_PREDICATE command is used to control the Predicate state bit,

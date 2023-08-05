@@ -2608,6 +2608,9 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
                           float depth_clear_value,
                           VkRect2D render_area)
 {
+   if (INTEL_DEBUG(DEBUG_NO_FAST_CLEAR))
+      return false;
+
    /* If we're just clearing stencil, we can always HiZ clear */
    if (!(clear_aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
       return true;
@@ -2668,6 +2671,9 @@ anv_can_fast_clear_color_view(struct anv_device *device,
                               uint32_t num_layers,
                               VkRect2D render_area)
 {
+   if (INTEL_DEBUG(DEBUG_NO_FAST_CLEAR))
+      return false;
+
    if (iview->planes[0].isl.base_array_layer >=
        anv_image_aux_layers(iview->image, VK_IMAGE_ASPECT_COLOR_BIT,
                             iview->planes[0].isl.base_level))
