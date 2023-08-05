@@ -2239,6 +2239,10 @@ void select_tcs_epilog(Program* program, void* pinfo, ac_shader_config* config,
                        const struct aco_compiler_options* options,
                        const struct aco_shader_info* info, const struct ac_shader_args* args);
 
+void select_gl_vs_prolog(Program* program, void* pinfo, ac_shader_config* config,
+                         const struct aco_compiler_options* options,
+                         const struct aco_shader_info* info, const struct ac_shader_args* args);
+
 void lower_phis(Program* program);
 void calc_min_waves(Program* program);
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand);

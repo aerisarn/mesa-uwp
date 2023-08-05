@@ -10934,6 +10934,28 @@ get_patch_base(isel_context* ctx)
 }
 
 static void
+passthrough_all_args(isel_context* ctx, std::vector<Operand>& regs)
+{
+   struct ac_arg arg;
+   arg.used = true;
+
+   for (arg.arg_index = 0; arg.arg_index < ctx->args->arg_count; arg.arg_index++)
+      regs.emplace_back(get_arg_for_end(ctx, arg));
+}
+
+static void
+build_end_with_regs(isel_context* ctx, std::vector<Operand>& regs)
+{
+   aco_ptr<Pseudo_instruction> end{create_instruction<Pseudo_instruction>(
+      aco_opcode::p_end_with_regs, Format::PSEUDO, regs.size(), 0)};
+
+   for (unsigned i = 0; i < regs.size(); i++)
+      end->operands[i] = regs[i];
+
+   ctx->block->instructions.emplace_back(std::move(end));
+}
+
+static void
 create_tcs_jump_to_epilog(isel_context* ctx)
 {
    Builder bld(ctx->program, ctx->block);
@@ -11041,13 +11063,7 @@ create_tcs_end_for_epilog(isel_context* ctx)
       regs.emplace_back(Operand(tf_lds_offset, PhysReg{vgpr}));
    }
 
-   aco_ptr<Pseudo_instruction> end{create_instruction<Pseudo_instruction>(
-      aco_opcode::p_end_with_regs, Format::PSEUDO, regs.size(), 0)};
-
-   for (unsigned i = 0; i < regs.size(); i++)
-      end->operands[i] = regs[i];
-
-   ctx->block->instructions.emplace_back(std::move(end));
+   build_end_with_regs(ctx, regs);
 }
 
 Pseudo_instruction*
@@ -11669,6 +11685,55 @@ store_tess_factor_to_tess_ring(isel_context* ctx, Temp tess_ring_desc, Temp fact
 
    emit_single_mubuf_store(ctx, tess_ring_desc, voffset, soffset, Temp(), data, 0,
                            memory_sync_info(storage_vmem_output), true, false, false);
+}
+
+Temp
+build_fast_udiv_nuw(isel_context* ctx, Temp num, Temp multiplier, Temp pre_shift, Temp post_shift,
+                    Temp increment)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   num = bld.vop2(aco_opcode::v_lshrrev_b32, bld.def(v1), pre_shift, num);
+   num = bld.nuw().vadd32(bld.def(v1), num, increment);
+   num = bld.vop3(aco_opcode::v_mul_hi_u32, bld.def(v1), num, multiplier);
+   return bld.vop2(aco_opcode::v_lshrrev_b32, bld.def(v1), post_shift, num);
+}
+
+Temp
+get_gl_vs_prolog_vertex_index(isel_context* ctx, const struct aco_gl_vs_prolog_info* vinfo,
+                              unsigned input_index, Temp instance_divisor_constbuf)
+{
+   bool divisor_is_one = vinfo->instance_divisor_is_one & (1u << input_index);
+   bool divisor_is_fetched = vinfo->instance_divisor_is_fetched & (1u << input_index);
+
+   Builder bld(ctx->program, ctx->block);
+
+   Temp index;
+   if (divisor_is_one) {
+      index = get_arg(ctx, ctx->args->instance_id);
+   } else if (divisor_is_fetched) {
+      Temp instance_id = get_arg(ctx, ctx->args->instance_id);
+
+      Temp udiv_factors = bld.smem(aco_opcode::s_buffer_load_dwordx4, bld.def(s4),
+                                   instance_divisor_constbuf, Operand::c32(input_index * 16));
+      emit_split_vector(ctx, udiv_factors, 4);
+
+      index = build_fast_udiv_nuw(ctx, instance_id, emit_extract_vector(ctx, udiv_factors, 0, s1),
+                                  emit_extract_vector(ctx, udiv_factors, 1, s1),
+                                  emit_extract_vector(ctx, udiv_factors, 2, s1),
+                                  emit_extract_vector(ctx, udiv_factors, 3, s1));
+   }
+
+   if (divisor_is_one || divisor_is_fetched) {
+      Temp start_instance = get_arg(ctx, ctx->args->start_instance);
+      index = bld.vadd32(bld.def(v1), index, start_instance);
+   } else {
+      Temp base_vertex = get_arg(ctx, ctx->args->base_vertex);
+      Temp vertex_id = get_arg(ctx, ctx->args->vertex_id);
+      index = bld.vadd32(bld.def(v1), base_vertex, vertex_id);
+   }
+
+   return index;
 }
 
 } /* end namespace */
@@ -12538,6 +12603,56 @@ select_tcs_epilog(Program* program, void* pinfo, ac_shader_config* config,
 
    bld.reset(ctx.block);
    bld.sopp(aco_opcode::s_endpgm);
+
+   cleanup_cfg(program);
+}
+
+void
+select_gl_vs_prolog(Program* program, void* pinfo, ac_shader_config* config,
+                    const struct aco_compiler_options* options, const struct aco_shader_info* info,
+                    const struct ac_shader_args* args)
+{
+   const struct aco_gl_vs_prolog_info* vinfo = (const struct aco_gl_vs_prolog_info*)pinfo;
+   isel_context ctx =
+      setup_isel_context(program, 0, NULL, config, options, info, args, SWStage::VS);
+
+   ctx.block->fp_mode = program->next_fp_mode;
+
+   add_startpgm(&ctx);
+   append_logical_start(ctx.block);
+
+   Builder bld(ctx.program, ctx.block);
+
+   bld.sopp(aco_opcode::s_setprio, -1u, 0x3u);
+
+   if (vinfo->as_ls && options->has_ls_vgpr_init_bug)
+      fix_ls_vgpr_init_bug(&ctx);
+
+   std::vector<Operand> regs;
+   passthrough_all_args(&ctx, regs);
+
+   Temp instance_divisor_constbuf;
+
+   if (vinfo->instance_divisor_is_fetched) {
+      Temp list = get_arg(&ctx, vinfo->internal_bindings);
+      list = convert_pointer_to_64_bit(&ctx, list);
+
+      instance_divisor_constbuf = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), list,
+                                           Operand::c32(vinfo->instance_diviser_buf_offset));
+   }
+
+   unsigned vgpr = 256 + ctx.args->num_vgprs_used;
+
+   for (unsigned i = 0; i < vinfo->num_inputs; i++) {
+      Temp index = get_gl_vs_prolog_vertex_index(&ctx, vinfo, i, instance_divisor_constbuf);
+      regs.emplace_back(Operand(index, PhysReg{vgpr + i}));
+   }
+
+   program->config->float_mode = program->blocks[0].fp_mode.val;
+
+   append_logical_end(ctx.block);
+
+   build_end_with_regs(&ctx, regs);
 
    cleanup_cfg(program);
 }
