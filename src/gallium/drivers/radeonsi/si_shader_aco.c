@@ -87,6 +87,16 @@ si_fill_aco_shader_info(struct si_shader *shader, struct aco_shader_info *info,
    }
 
    switch (stage) {
+   case MESA_SHADER_VERTEX:
+      /* Only part mode VS may have prolog, mono mode VS will embed prolog in nir.
+       * But we don't know exactly if part mode VS needs prolog because it also depends
+       * on shader select key ls_vgpr_fix which is not known when VS main part compile.
+       * Now just assume ls_vgpr_fix is always false, which just cause ACO to add extra
+       * s_setprio and exec init code when it's finally combined with prolog.
+       */
+      if (!shader->is_gs_copy_shader && !shader->is_monolithic)
+         info->vs.has_prolog = si_vs_needs_prolog(sel, &key->ge.part.vs.prolog);
+      break;
    case MESA_SHADER_TESS_CTRL:
       info->vs.tcs_in_out_eq = key->ge.opt.same_patch_vertices;
       info->vs.tcs_temp_only_input_mask = sel->info.tcs_vgpr_only_inputs;
