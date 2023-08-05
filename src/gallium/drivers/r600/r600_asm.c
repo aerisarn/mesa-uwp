@@ -29,6 +29,7 @@
 #include <errno.h>
 #include "util/u_bitcast.h"
 #include "util/u_dump.h"
+#include "util/u_endian.h"
 #include "util/u_memory.h"
 #include "util/u_math.h"
 #include "pipe/p_shader_tokens.h"
@@ -2952,7 +2953,7 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 		PIPE_MAP_WRITE | PIPE_MAP_UNSYNCHRONIZED | RADEON_MAP_TEMPORARY);
 	bytecode += shader->offset / 4;
 
-	if (R600_BIG_ENDIAN) {
+	if (UTIL_ARCH_BIG_ENDIAN) {
 		for (i = 0; i < fs_size / 4; ++i) {
 			bytecode[i] = util_cpu_to_le32(bc.bytecode[i]);
 		}
