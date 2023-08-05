@@ -8212,9 +8212,20 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
          /* Thread IDs are packed in VGPR0, 10 bits per component. */
          for (uint32_t i = 0; i < 3; i++) {
-            local_ids[i] = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
-                                    get_arg(ctx, ctx->args->local_invocation_ids),
-                                    Operand::c32(i * 10u), Operand::c32(10u));
+            if (i == 0 && ctx->shader->info.workgroup_size[1] == 1 &&
+                ctx->shader->info.workgroup_size[2] == 1 &&
+                !ctx->shader->info.workgroup_size_variable) {
+               local_ids[i] = get_arg(ctx, ctx->args->local_invocation_ids);
+            } else if (i == 2 || (i == 1 && ctx->shader->info.workgroup_size[2] == 1 &&
+                                  !ctx->shader->info.workgroup_size_variable)) {
+               local_ids[i] =
+                  bld.vop2(aco_opcode::v_lshrrev_b32, bld.def(v1), Operand::c32(i * 10u),
+                           get_arg(ctx, ctx->args->local_invocation_ids));
+            } else {
+               local_ids[i] = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
+                                       get_arg(ctx, ctx->args->local_invocation_ids),
+                                       Operand::c32(i * 10u), Operand::c32(10u));
+            }
          }
 
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), local_ids[0], local_ids[1],
