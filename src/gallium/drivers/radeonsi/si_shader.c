@@ -2396,8 +2396,6 @@ static void si_determine_use_aco(struct si_shader *shader)
 
    switch (sel->stage) {
    case MESA_SHADER_VERTEX:
-      shader->use_aco = shader->is_monolithic;
-      break;
    case MESA_SHADER_TESS_CTRL:
    case MESA_SHADER_TESS_EVAL:
    case MESA_SHADER_GEOMETRY:
@@ -2896,9 +2894,21 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
    result = CALLOC_STRUCT(si_shader_part);
    result->key = *key;
 
-   bool use_aco =
-      (sscreen->debug_flags & DBG(USE_ACO)) && sscreen->info.has_graphics &&
-      stage == MESA_SHADER_TESS_CTRL && sscreen->info.gfx_level <= GFX8;
+   bool use_aco = (sscreen->debug_flags & DBG(USE_ACO)) && sscreen->info.has_graphics;
+   if (use_aco) {
+      switch (stage) {
+      case MESA_SHADER_VERTEX:
+         use_aco = sscreen->info.gfx_level <= GFX8 ||
+            !(key->vs_prolog.as_ls || key->vs_prolog.as_es);
+         break;
+      case MESA_SHADER_TESS_CTRL:
+         use_aco = sscreen->info.gfx_level <= GFX8;
+         break;
+      default:
+         use_aco = false;
+         break;
+      }
+   }
 
    bool ok = use_aco ?
       si_aco_build_shader_part(sscreen, stage, prolog, debug, name, result) :
