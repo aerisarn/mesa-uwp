@@ -153,6 +153,12 @@ xe_vm_bind_op(struct anv_device *device, int num_binds,
          }
       }
 
+      /* TODO: do proper error handling here, once the way to do it is
+       * settled. As of right now the final interface is still under
+       * discussion.
+       */
+      xe_bind->op |= XE_VM_BIND_FLAG_ASYNC;
+
       /* userptr and bo_offset are an union! */
       if (bo && bo->from_host_ptr)
          xe_bind->userptr = (uintptr_t)bo->map;

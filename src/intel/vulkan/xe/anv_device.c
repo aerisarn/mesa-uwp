@@ -37,7 +37,8 @@ bool anv_xe_device_destroy_vm(struct anv_device *device)
 VkResult anv_xe_device_setup_vm(struct anv_device *device)
 {
    struct drm_xe_vm_create create = {
-      .flags = DRM_XE_VM_CREATE_SCRATCH_PAGE,
+      .flags = DRM_XE_VM_CREATE_SCRATCH_PAGE |
+               DRM_XE_VM_CREATE_ASYNC_BIND_OPS,
    };
    if (intel_ioctl(device->fd, DRM_IOCTL_XE_VM_CREATE, &create) != 0)
       return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
