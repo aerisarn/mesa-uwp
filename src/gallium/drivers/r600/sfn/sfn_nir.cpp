@@ -453,7 +453,7 @@ r600_nir_lower_atomics(nir_shader *shader)
 
    for (auto& [dummy, var] : sorted_var) {
       auto iindex = binding_offset.find(var->data.binding);
-      unsigned offset_update = var->type->atomic_size() / ATOMIC_COUNTER_SIZE;
+      unsigned offset_update = var->type->atomic_size() / 4; /* ATOMIC_COUNTER_SIZE */
       if (iindex == binding_offset.end()) {
          var->data.index = 0;
          binding_offset[var->data.binding] = offset_update;

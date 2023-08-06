@@ -606,7 +606,7 @@ bool
 Shader::scan_uniforms(nir_variable *uniform)
 {
    if (uniform->type->contains_atomic()) {
-      int natomics = uniform->type->atomic_size() / ATOMIC_COUNTER_SIZE;
+      int natomics = uniform->type->atomic_size() / 4; /* ATOMIC_COUNTER_SIZE */
       m_nhwatomic += natomics;
 
       if (uniform->type->is_array())
