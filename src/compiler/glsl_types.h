@@ -54,9 +54,6 @@ glsl_type_singleton_decref();
 extern void
 _mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *state);
 
-void
-glsl_print_type(FILE *f, const struct glsl_type *t);
-
 void encode_type_to_blob(struct blob *blob, const struct glsl_type *type);
 
 const struct glsl_type *decode_type_from_blob(struct blob_reader *blob);
