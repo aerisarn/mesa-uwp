@@ -12,6 +12,18 @@
 #include "ac_llvm_build.h"
 #include "si_shader.h"
 
+#define SI_SPI_PS_INPUT_ADDR_FOR_PROLOG (       \
+   S_0286D0_PERSP_SAMPLE_ENA(1) |               \
+   S_0286D0_PERSP_CENTER_ENA(1) |               \
+   S_0286D0_PERSP_CENTROID_ENA(1) |             \
+   S_0286D0_LINEAR_SAMPLE_ENA(1) |              \
+   S_0286D0_LINEAR_CENTER_ENA(1) |              \
+   S_0286D0_LINEAR_CENTROID_ENA(1) |            \
+   S_0286D0_FRONT_FACE_ENA(1) |                 \
+   S_0286D0_ANCILLARY_ENA(1) |                  \
+   S_0286D0_SAMPLE_COVERAGE_ENA(1) |            \
+   S_0286D0_POS_FIXED_PT_ENA(1))
+
 struct util_debug_callback;
 
 struct si_shader_args {

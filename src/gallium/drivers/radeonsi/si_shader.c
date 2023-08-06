@@ -2662,8 +2662,6 @@ static void si_fixup_spi_ps_input_config(struct si_shader *shader)
 static void
 si_set_spi_ps_input_config(struct si_shader *shader)
 {
-   assert(shader->is_monolithic);
-
    const struct si_shader_selector *sel = shader->selector;
    const struct si_shader_info *info = &sel->info;
    const union si_shader_key *key = &shader->key;
@@ -2705,8 +2703,19 @@ si_set_spi_ps_input_config(struct si_shader *shader)
    if (key->ps.mono.point_smoothing)
       shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTER_ENA(1);
 
-   si_fixup_spi_ps_input_config(shader);
-   shader->config.spi_ps_input_addr = shader->config.spi_ps_input_ena;
+   if (shader->is_monolithic) {
+      si_fixup_spi_ps_input_config(shader);
+      shader->config.spi_ps_input_addr = shader->config.spi_ps_input_ena;
+   } else {
+      /* Part mode will call si_fixup_spi_ps_input_config() when combining multi
+       * shader part in si_shader_select_ps_parts().
+       *
+       * Reserve register locations for VGPR inputs the PS prolog may need.
+       */
+      shader->config.spi_ps_input_addr =
+         shader->config.spi_ps_input_ena |
+         SI_SPI_PS_INPUT_ADDR_FOR_PROLOG;
+   }
 }
 
 static void
