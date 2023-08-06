@@ -32,6 +32,7 @@
 
 #include <stdlib.h>
 #include "glsl_symbol_table.h"
+#include "mesa/main/config.h"
 #include "mesa/main/menums.h" /* for gl_api */
 
 /* THIS is a macro defined somewhere deep in the Windows MSVC header files.

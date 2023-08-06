@@ -36,10 +36,6 @@
 #include "util/macros.h"
 #include "util/simple_mtx.h"
 
-#ifdef __cplusplus
-#include "mesa/main/config.h"
-#endif
-
 struct glsl_type;
 
 #ifdef __cplusplus
@@ -1066,7 +1062,7 @@ public:
    unsigned atomic_size() const
    {
       if (is_atomic_uint())
-         return ATOMIC_COUNTER_SIZE;
+         return 4; /* ATOMIC_COUNTER_SIZE */
       else if (is_array())
          return length * fields.array->atomic_size();
       else
