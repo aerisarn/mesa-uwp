@@ -10,7 +10,7 @@
 #include "nvk_cl90b5.h"
 
 VkResult
-nvk_heap_init(struct nvk_device *device, struct nvk_heap *heap,
+nvk_heap_init(struct nvk_device *dev, struct nvk_heap *heap,
               enum nouveau_ws_bo_flags bo_flags,
               enum nouveau_ws_bo_map_flags map_flags,
               uint32_t overalloc, bool contiguous)

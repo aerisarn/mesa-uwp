@@ -24,13 +24,13 @@ struct nvk_descriptor_table {
    uint32_t *free_table;
 };
 
-VkResult nvk_descriptor_table_init(struct nvk_device *device,
+VkResult nvk_descriptor_table_init(struct nvk_device *dev,
                                    struct nvk_descriptor_table *table,
                                    uint32_t descriptor_size,
                                    uint32_t min_descriptor_count,
                                    uint32_t max_descriptor_count);
 
-void nvk_descriptor_table_finish(struct nvk_device *device,
+void nvk_descriptor_table_finish(struct nvk_device *dev,
                                  struct nvk_descriptor_table *table);
 
 VkResult nvk_descriptor_table_add(struct nvk_device *dev,

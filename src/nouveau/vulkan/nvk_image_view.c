@@ -78,7 +78,7 @@ get_stencil_format(enum pipe_format format)
 }
 
 VkResult
-nvk_image_view_init(struct nvk_device *device,
+nvk_image_view_init(struct nvk_device *dev,
                     struct nvk_image_view *view,
                     bool driver_internal,
                     const VkImageViewCreateInfo *pCreateInfo)
@@ -88,7 +88,7 @@ nvk_image_view_init(struct nvk_device *device,
 
    memset(view, 0, sizeof(*view));
 
-   vk_image_view_init(&device->vk, &view->vk, driver_internal, pCreateInfo);
+   vk_image_view_init(&dev->vk, &view->vk, driver_internal, pCreateInfo);
 
    /* First, figure out which image planes we need.
     * For depth/stencil, we only have plane so simply assert
@@ -156,14 +156,13 @@ nvk_image_view_init(struct nvk_device *device,
       if (view->vk.usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
                            VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
          uint32_t tic[8];
-         nil_image_fill_tic(&nvk_device_physical(device)->info,
+         nil_image_fill_tic(&nvk_device_physical(dev)->info,
                            &nil_image, &nil_view, base_addr, tic);
 
-         result = nvk_descriptor_table_add(device, &device->images,
-                                          tic, sizeof(tic),
+         result = nvk_descriptor_table_add(dev, &dev->images, tic, sizeof(tic),
                                           &view->planes[view_plane].sampled_desc_index);
          if (result != VK_SUCCESS) {
-            nvk_image_view_finish(device, view);
+            nvk_image_view_finish(dev, view);
             return result;
          }
       }
@@ -188,14 +187,13 @@ nvk_image_view_init(struct nvk_device *device,
          }
 
          uint32_t tic[8];
-         nil_image_fill_tic(&nvk_device_physical(device)->info,
+         nil_image_fill_tic(&nvk_device_physical(dev)->info,
                            &nil_image, &nil_view, base_addr, tic);
 
-         result = nvk_descriptor_table_add(device, &device->images,
-                                          tic, sizeof(tic),
+         result = nvk_descriptor_table_add(dev, &dev->images, tic, sizeof(tic),
                                           &view->planes[view_plane].storage_desc_index);
          if (result != VK_SUCCESS) {
-            nvk_image_view_finish(device, view);
+            nvk_image_view_finish(dev, view);
             return result;
          }
       }
@@ -205,17 +203,17 @@ nvk_image_view_init(struct nvk_device *device,
 }
 
 void
-nvk_image_view_finish(struct nvk_device *device,
+nvk_image_view_finish(struct nvk_device *dev,
                       struct nvk_image_view *view)
 {
    for (uint8_t plane = 0; plane < view->plane_count; plane++) {
       if (view->planes[plane].sampled_desc_index) {
-      nvk_descriptor_table_remove(device, &device->images,
+      nvk_descriptor_table_remove(dev, &dev->images,
                                   view->planes[plane].sampled_desc_index);
       }
 
       if (view->planes[plane].storage_desc_index) {
-         nvk_descriptor_table_remove(device, &device->images,
+         nvk_descriptor_table_remove(dev, &dev->images,
                                     view->planes[plane].storage_desc_index);
       }
    }
@@ -229,18 +227,18 @@ nvk_CreateImageView(VkDevice _device,
                     const VkAllocationCallbacks *pAllocator,
                     VkImageView *pView)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, _device);
    struct nvk_image_view *view;
    VkResult result;
 
-   view = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*view), 8,
+   view = vk_alloc2(&dev->vk.alloc, pAllocator, sizeof(*view), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!view)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = nvk_image_view_init(device, view, false, pCreateInfo);
+   result = nvk_image_view_init(dev, view, false, pCreateInfo);
    if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, pAllocator, view);
+      vk_free2(&dev->vk.alloc, pAllocator, view);
       return result;
    }
 
@@ -254,12 +252,12 @@ nvk_DestroyImageView(VkDevice _device,
                      VkImageView imageView,
                      const VkAllocationCallbacks *pAllocator)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, _device);
    VK_FROM_HANDLE(nvk_image_view, view, imageView);
 
    if (!view)
       return;
 
-   nvk_image_view_finish(device, view);
-   vk_free2(&device->vk.alloc, pAllocator, view);
+   nvk_image_view_finish(dev, view);
+   vk_free2(&dev->vk.alloc, pAllocator, view);
 }

@@ -332,7 +332,7 @@ nvk_push_descriptor_set_update(struct nvk_push_descriptor_set *push_set,
 }
 
 static void
-nvk_descriptor_set_destroy(struct nvk_device *device,
+nvk_descriptor_set_destroy(struct nvk_device *dev,
                            struct nvk_descriptor_pool *pool,
                            struct nvk_descriptor_set *set, bool free_bo)
 {
@@ -347,18 +347,18 @@ nvk_descriptor_set_destroy(struct nvk_device *device,
       }
    }
 
-   vk_descriptor_set_layout_unref(&device->vk, &set->layout->vk);
+   vk_descriptor_set_layout_unref(&dev->vk, &set->layout->vk);
 
-   vk_object_free(&device->vk, NULL, set);
+   vk_object_free(&dev->vk, NULL, set);
 }
 
 static void
-nvk_destroy_descriptor_pool(struct nvk_device *device,
+nvk_destroy_descriptor_pool(struct nvk_device *dev,
                             const VkAllocationCallbacks *pAllocator,
                             struct nvk_descriptor_pool *pool)
 {
    for (int i = 0; i < pool->entry_count; ++i) {
-      nvk_descriptor_set_destroy(device, pool, pool->entries[i].set, false);
+      nvk_descriptor_set_destroy(dev, pool, pool->entries[i].set, false);
    }
 
    if (pool->bo) {
@@ -366,7 +366,7 @@ nvk_destroy_descriptor_pool(struct nvk_device *device,
       nouveau_ws_bo_destroy(pool->bo);
    }
 
-   vk_object_free(&device->vk, pAllocator, pool);
+   vk_object_free(&dev->vk, pAllocator, pool);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -375,7 +375,7 @@ nvk_CreateDescriptorPool(VkDevice _device,
                          const VkAllocationCallbacks *pAllocator,
                          VkDescriptorPool *pDescriptorPool)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, _device);
    struct nvk_descriptor_pool *pool;
    uint64_t size = sizeof(struct nvk_descriptor_pool);
    uint64_t bo_size = 0;
@@ -424,22 +424,22 @@ nvk_CreateDescriptorPool(VkDevice _device,
                            pCreateInfo->maxSets;
    size += entries_size;
 
-   pool = vk_object_zalloc(&device->vk, pAllocator, size,
+   pool = vk_object_zalloc(&dev->vk, pAllocator, size,
                            VK_OBJECT_TYPE_DESCRIPTOR_POOL);
    if (!pool)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    if (bo_size) {
       uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP | NOUVEAU_WS_BO_NO_SHARE;
-      pool->bo = nouveau_ws_bo_new(device->ws_dev, bo_size, 0, flags);
+      pool->bo = nouveau_ws_bo_new(dev->ws_dev, bo_size, 0, flags);
       if (!pool->bo) {
-         nvk_destroy_descriptor_pool(device, pAllocator, pool);
-         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         nvk_destroy_descriptor_pool(dev, pAllocator, pool);
+         return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       }
       pool->mapped_ptr = nouveau_ws_bo_map(pool->bo, NOUVEAU_WS_BO_WR);
       if (!pool->mapped_ptr) {
-         nvk_destroy_descriptor_pool(device, pAllocator, pool);
-         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         nvk_destroy_descriptor_pool(dev, pAllocator, pool);
+         return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       }
    }
 
@@ -451,7 +451,7 @@ nvk_CreateDescriptorPool(VkDevice _device,
 }
 
 static VkResult
-nvk_descriptor_set_create(struct nvk_device *device,
+nvk_descriptor_set_create(struct nvk_device *dev,
                           struct nvk_descriptor_pool *pool,
                           struct nvk_descriptor_set_layout *layout,
                           uint32_t variable_count,
@@ -462,10 +462,10 @@ nvk_descriptor_set_create(struct nvk_device *device,
    uint32_t mem_size = sizeof(struct nvk_descriptor_set) +
       layout->dynamic_buffer_count * sizeof(struct nvk_buffer_address);
 
-   set = vk_object_zalloc(&device->vk, NULL, mem_size,
+   set = vk_object_zalloc(&dev->vk, NULL, mem_size,
                           VK_OBJECT_TYPE_DESCRIPTOR_SET);
    if (!set)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    if (pool->entry_count == pool->max_entry_count)
       return VK_ERROR_OUT_OF_POOL_MEMORY;
@@ -520,11 +520,11 @@ nvk_descriptor_set_create(struct nvk_device *device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_AllocateDescriptorSets(VkDevice _device,
+nvk_AllocateDescriptorSets(VkDevice device,
                            const VkDescriptorSetAllocateInfo *pAllocateInfo,
                            VkDescriptorSet *pDescriptorSets)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_descriptor_pool, pool, pAllocateInfo->descriptorPool);
 
    VkResult result = VK_SUCCESS;
@@ -547,7 +547,7 @@ nvk_AllocateDescriptorSets(VkDevice _device,
          var_desc_count && var_desc_count->descriptorSetCount > 0 ?
          var_desc_count->pDescriptorCounts[i] : 0;
 
-      result = nvk_descriptor_set_create(device, pool, layout,
+      result = nvk_descriptor_set_create(dev, pool, layout,
                                          variable_count, &set);
       if (result != VK_SUCCESS)
          break;
@@ -556,7 +556,7 @@ nvk_AllocateDescriptorSets(VkDevice _device,
    }
 
    if (result != VK_SUCCESS) {
-      nvk_FreeDescriptorSets(_device, pAllocateInfo->descriptorPool, i, pDescriptorSets);
+      nvk_FreeDescriptorSets(device, pAllocateInfo->descriptorPool, i, pDescriptorSets);
       for (i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
          pDescriptorSets[i] = VK_NULL_HANDLE;
       }
@@ -565,47 +565,47 @@ nvk_AllocateDescriptorSets(VkDevice _device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_FreeDescriptorSets(VkDevice _device,
+nvk_FreeDescriptorSets(VkDevice device,
                        VkDescriptorPool descriptorPool,
                        uint32_t descriptorSetCount,
                        const VkDescriptorSet *pDescriptorSets)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_descriptor_pool, pool, descriptorPool);
 
    for (uint32_t i = 0; i < descriptorSetCount; i++) {
       VK_FROM_HANDLE(nvk_descriptor_set, set, pDescriptorSets[i]);
 
       if (set)
-         nvk_descriptor_set_destroy(device, pool, set, true);
+         nvk_descriptor_set_destroy(dev, pool, set, true);
    }
    return VK_SUCCESS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_DestroyDescriptorPool(VkDevice _device,
+nvk_DestroyDescriptorPool(VkDevice device,
                           VkDescriptorPool _pool,
                           const VkAllocationCallbacks *pAllocator)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_descriptor_pool, pool, _pool);
 
    if (!_pool)
       return;
 
-   nvk_destroy_descriptor_pool(device, pAllocator, pool);
+   nvk_destroy_descriptor_pool(dev, pAllocator, pool);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_ResetDescriptorPool(VkDevice _device,
+nvk_ResetDescriptorPool(VkDevice device,
                         VkDescriptorPool descriptorPool,
                         VkDescriptorPoolResetFlags flags)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, device);
    VK_FROM_HANDLE(nvk_descriptor_pool, pool, descriptorPool);
 
    for (int i = 0; i < pool->entry_count; ++i) {
-      nvk_descriptor_set_destroy(device, pool, pool->entries[i].set, false);
+      nvk_descriptor_set_destroy(dev, pool, pool->entries[i].set, false);
    }
    pool->entry_count = 0;
    pool->current_offset = 0;

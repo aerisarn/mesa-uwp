@@ -38,14 +38,14 @@ nvk_create_cmd_buffer(struct vk_command_pool *vk_pool,
                       struct vk_command_buffer **cmd_buffer_out)
 {
    struct nvk_cmd_pool *pool = container_of(vk_pool, struct nvk_cmd_pool, vk);
-   struct nvk_device *device = nvk_cmd_pool_device(pool);
+   struct nvk_device *dev = nvk_cmd_pool_device(pool);
    struct nvk_cmd_buffer *cmd;
    VkResult result;
 
    cmd = vk_zalloc(&pool->vk.alloc, sizeof(*cmd), 8,
                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = vk_command_buffer_init(&pool->vk, &cmd->vk,
                                    &nvk_cmd_buffer_ops, 0);

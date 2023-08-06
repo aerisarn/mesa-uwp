@@ -46,8 +46,8 @@ nvk_physical_device_instance(struct nvk_physical_device *pdev)
 }
 
 VkResult nvk_create_drm_physical_device(struct vk_instance *vk_instance,
-                                        struct _drmDevice *device,
-                                        struct vk_physical_device **out);
+                                        struct _drmDevice *drm_device,
+                                        struct vk_physical_device **pdev_out);
 
 void nvk_physical_device_destroy(struct vk_physical_device *vk_device);
 

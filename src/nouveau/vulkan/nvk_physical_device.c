@@ -642,7 +642,7 @@ nvk_get_device_features(const struct nv_device_info *info,
 VkResult
 nvk_create_drm_physical_device(struct vk_instance *_instance,
                                drmDevicePtr drm_device,
-                               struct vk_physical_device **device_out)
+                               struct vk_physical_device **pdev_out)
 {
    struct nvk_instance *instance = (struct nvk_instance *)_instance;
    VkResult result;
@@ -811,7 +811,7 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    if (result != VK_SUCCESS)
       goto fail_init;
 
-   *device_out = &pdev->vk;
+   *pdev_out = &pdev->vk;
 
    return VK_SUCCESS;
 

@@ -26,11 +26,11 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_pipeline, base, VkPipeline,
                                VK_OBJECT_TYPE_PIPELINE)
 
 void
-nvk_pipeline_free(struct nvk_device *device,
+nvk_pipeline_free(struct nvk_device *dev,
                   struct nvk_pipeline *pipeline,
                   const VkAllocationCallbacks *pAllocator);
 struct nvk_pipeline *
-nvk_pipeline_zalloc(struct nvk_device *device,
+nvk_pipeline_zalloc(struct nvk_device *dev,
                     enum nvk_pipeline_type type, size_t size,
                     const VkAllocationCallbacks *pAllocator);
 
@@ -41,7 +41,7 @@ struct nvk_compute_pipeline {
 };
 
 VkResult
-nvk_compute_pipeline_create(struct nvk_device *device,
+nvk_compute_pipeline_create(struct nvk_device *dev,
                             struct vk_pipeline_cache *cache,
                             const VkComputePipelineCreateInfo *pCreateInfo,
                             const VkAllocationCallbacks *pAllocator,
@@ -59,7 +59,7 @@ struct nvk_graphics_pipeline {
 };
 
 VkResult
-nvk_graphics_pipeline_create(struct nvk_device *device,
+nvk_graphics_pipeline_create(struct nvk_device *dev,
                              struct vk_pipeline_cache *cache,
                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
                              const VkAllocationCallbacks *pAllocator,

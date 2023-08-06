@@ -59,7 +59,7 @@ nvk_descriptor_table_grow_locked(struct nvk_device *dev,
 }
 
 VkResult
-nvk_descriptor_table_init(struct nvk_device *device,
+nvk_descriptor_table_init(struct nvk_device *dev,
                           struct nvk_descriptor_table *table,
                           uint32_t descriptor_size,
                           uint32_t min_descriptor_count,
@@ -79,10 +79,9 @@ nvk_descriptor_table_init(struct nvk_device *device,
    table->next_desc = 0;
    table->free_count = 0;
 
-   result = nvk_descriptor_table_grow_locked(device, table,
-                                             min_descriptor_count);
+   result = nvk_descriptor_table_grow_locked(dev, table, min_descriptor_count);
    if (result != VK_SUCCESS) {
-      nvk_descriptor_table_finish(device, table);
+      nvk_descriptor_table_finish(dev, table);
       return result;
    }
 
@@ -90,14 +89,14 @@ nvk_descriptor_table_init(struct nvk_device *device,
 }
 
 void
-nvk_descriptor_table_finish(struct nvk_device *device,
+nvk_descriptor_table_finish(struct nvk_device *dev,
                             struct nvk_descriptor_table *table)
 {
    if (table->bo != NULL) {
       nouveau_ws_bo_unmap(table->bo, table->map);
       nouveau_ws_bo_destroy(table->bo);
    }
-   vk_free(&device->vk.alloc, table->free_table);
+   vk_free(&dev->vk.alloc, table->free_table);
    simple_mtx_destroy(&table->mutex);
 }
 

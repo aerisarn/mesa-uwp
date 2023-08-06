@@ -31,13 +31,13 @@ struct nvk_memory_tiling_info {
    uint8_t pte_kind;
 };
 
-VkResult nvk_allocate_memory(struct nvk_device *device,
+VkResult nvk_allocate_memory(struct nvk_device *dev,
                              const VkMemoryAllocateInfo *pAllocateInfo,
                              const struct nvk_memory_tiling_info *tile_info,
                              const VkAllocationCallbacks *pAllocator,
                              struct nvk_device_memory **mem_out);
 
-void nvk_free_memory(struct nvk_device *device,
+void nvk_free_memory(struct nvk_device *dev,
                      struct nvk_device_memory *mem,
                      const VkAllocationCallbacks *pAllocator);
 

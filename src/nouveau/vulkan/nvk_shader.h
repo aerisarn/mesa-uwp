@@ -91,7 +91,7 @@ nvk_shader_address(const struct nvk_shader *shader)
 }
 
 const nir_shader_compiler_options *
-nvk_physical_device_nir_options(const struct nvk_physical_device *pdevice,
+nvk_physical_device_nir_options(const struct nvk_physical_device *pdev,
                                 gl_shader_stage stage);
 
 static inline nir_address_format
@@ -109,7 +109,7 @@ nvk_buffer_addr_format(VkPipelineRobustnessBufferBehaviorEXT robustness)
 }
 
 struct spirv_to_nir_options
-nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
+nvk_physical_device_spirv_options(const struct nvk_physical_device *pdev,
                                   const struct vk_pipeline_robustness_state *rs);
 
 bool
@@ -118,13 +118,13 @@ nvk_nir_lower_descriptors(nir_shader *nir,
                           const struct vk_pipeline_layout *layout);
 
 void
-nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
+nvk_lower_nir(struct nvk_device *dev, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,
               bool is_multiview,
               const struct vk_pipeline_layout *layout);
 
 VkResult
-nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
+nvk_compile_nir(struct nvk_physical_device *dev, nir_shader *nir,
                 const struct nvk_fs_key *fs_key,
                 struct nvk_shader *shader);
 

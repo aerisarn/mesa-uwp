@@ -57,9 +57,9 @@ VkResult nvk_device_ensure_slm(struct nvk_device *dev,
                                uint32_t bytes_per_thread);
 
 static inline struct nvk_physical_device *
-nvk_device_physical(struct nvk_device *device)
+nvk_device_physical(struct nvk_device *dev)
 {
-   return (struct nvk_physical_device *)device->vk.physical;
+   return (struct nvk_physical_device *)dev->vk.physical;
 }
 
 VkResult nvk_device_init_meta(struct nvk_device *dev);

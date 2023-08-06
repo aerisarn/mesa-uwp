@@ -279,27 +279,27 @@ merge_tess_info(struct shader_info *tes_info, struct shader_info *tcs_info)
 }
 
 VkResult
-nvk_graphics_pipeline_create(struct nvk_device *device,
+nvk_graphics_pipeline_create(struct nvk_device *dev,
                              struct vk_pipeline_cache *cache,
                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
                              const VkAllocationCallbacks *pAllocator,
                              VkPipeline *pPipeline)
 {
    VK_FROM_HANDLE(vk_pipeline_layout, pipeline_layout, pCreateInfo->layout);
-   struct nvk_physical_device *pdevice = nvk_device_physical(device);
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
    struct nvk_graphics_pipeline *pipeline;
    VkResult result = VK_SUCCESS;
 
-   pipeline = vk_object_zalloc(&device->vk, pAllocator, sizeof(*pipeline),
+   pipeline = vk_object_zalloc(&dev->vk, pAllocator, sizeof(*pipeline),
                                VK_OBJECT_TYPE_PIPELINE);
    if (pipeline == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    pipeline->base.type = NVK_PIPELINE_GRAPHICS;
 
    struct vk_graphics_pipeline_all_state all;
    struct vk_graphics_pipeline_state state = {};
-   result = vk_graphics_pipeline_state_fill(&device->vk, &state, pCreateInfo,
+   result = vk_graphics_pipeline_state_fill(&dev->vk, &state, pCreateInfo,
                                             NULL, &all, NULL, 0, NULL);
    assert(result == VK_SUCCESS);
 
@@ -310,15 +310,15 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
       const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
-      vk_pipeline_robustness_state_fill(&device->vk, &robustness[stage],
+      vk_pipeline_robustness_state_fill(&dev->vk, &robustness[stage],
                                         pCreateInfo->pNext, sinfo->pNext);
 
       const nir_shader_compiler_options *nir_options =
-         nvk_physical_device_nir_options(pdevice, stage);
+         nvk_physical_device_nir_options(pdev, stage);
       const struct spirv_to_nir_options spirv_options =
-         nvk_physical_device_spirv_options(pdevice, &robustness[stage]);
+         nvk_physical_device_spirv_options(pdev, &robustness[stage]);
 
-      result = vk_pipeline_shader_stage_to_nir(&device->vk, sinfo,
+      result = vk_pipeline_shader_stage_to_nir(&dev->vk, sinfo,
                                                &spirv_options, nir_options,
                                                NULL, &nir[stage]);
       if (result != VK_SUCCESS)
@@ -333,7 +333,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
-      nvk_lower_nir(device, nir[stage], &robustness[stage],
+      nvk_lower_nir(dev, nir[stage], &robustness[stage],
                     state.rp->view_mask != 0, pipeline_layout);
    }
 
@@ -347,13 +347,13 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
          fs_key = &fs_key_tmp;
       }
 
-      result = nvk_compile_nir(pdevice, nir[stage], fs_key,
+      result = nvk_compile_nir(pdev, nir[stage], fs_key,
                                &pipeline->base.shaders[stage]);
       ralloc_free(nir[stage]);
       if (result != VK_SUCCESS)
          goto fail;
 
-      result = nvk_shader_upload(device, &pipeline->base.shaders[stage]);
+      result = nvk_shader_upload(dev, &pipeline->base.shaders[stage]);
       if (result != VK_SUCCESS)
          goto fail;
    }
@@ -381,7 +381,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
          last_geom = shader;
 
       uint64_t addr = nvk_shader_address(shader);
-      if (device->pdev->info.cls_eng3d >= VOLTA_A) {
+      if (dev->pdev->info.cls_eng3d >= VOLTA_A) {
          P_MTHD(p, NVC397, SET_PIPELINE_PROGRAM_ADDRESS_A(idx));
          P_NVC397_SET_PIPELINE_PROGRAM_ADDRESS_A(p, idx, addr >> 32);
          P_NVC397_SET_PIPELINE_PROGRAM_ADDRESS_B(p, idx, addr);
@@ -408,7 +408,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
 
          P_IMMD(p, NV9097, SET_API_MANDATED_EARLY_Z, shader->fs.early_z);
 
-         if (device->pdev->info.cls_eng3d >= MAXWELL_B) {
+         if (dev->pdev->info.cls_eng3d >= MAXWELL_B) {
             P_IMMD(p, NVB197, SET_POST_Z_PS_IMASK,
                    shader->fs.post_depth_coverage);
          } else {
@@ -493,6 +493,6 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
    return VK_SUCCESS;
 
 fail:
-   vk_object_free(&device->vk, pAllocator, pipeline);
+   vk_object_free(&dev->vk, pAllocator, pipeline);
    return result;
 }

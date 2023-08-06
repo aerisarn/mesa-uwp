@@ -152,63 +152,62 @@ nvc6c0_compute_setup_launch_desc_template(uint32_t *qmd,
 }
 
 VkResult
-nvk_compute_pipeline_create(struct nvk_device *device,
+nvk_compute_pipeline_create(struct nvk_device *dev,
                             struct vk_pipeline_cache *cache,
                             const VkComputePipelineCreateInfo *pCreateInfo,
                             const VkAllocationCallbacks *pAllocator,
                             VkPipeline *pPipeline)
 {
    VK_FROM_HANDLE(vk_pipeline_layout, pipeline_layout, pCreateInfo->layout);
-   struct nvk_physical_device *pdevice = nvk_device_physical(device);
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
    struct nvk_compute_pipeline *pipeline;
    VkResult result;
 
-   pipeline = (void *)nvk_pipeline_zalloc(device, NVK_PIPELINE_COMPUTE,
+   pipeline = (void *)nvk_pipeline_zalloc(dev, NVK_PIPELINE_COMPUTE,
                                           sizeof(*pipeline), pAllocator);
    if (pipeline == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    assert(pCreateInfo->stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
 
    struct vk_pipeline_robustness_state robustness;
-   vk_pipeline_robustness_state_fill(&device->vk, &robustness,
+   vk_pipeline_robustness_state_fill(&dev->vk, &robustness,
                                      pCreateInfo->pNext,
                                      pCreateInfo->stage.pNext);
 
    const nir_shader_compiler_options *nir_options =
-      nvk_physical_device_nir_options(pdevice, MESA_SHADER_COMPUTE);
+      nvk_physical_device_nir_options(pdev, MESA_SHADER_COMPUTE);
    const struct spirv_to_nir_options spirv_options =
-      nvk_physical_device_spirv_options(pdevice, &robustness);
+      nvk_physical_device_spirv_options(pdev, &robustness);
 
    nir_shader *nir;
-   result = vk_pipeline_shader_stage_to_nir(&device->vk,
-                                            &pCreateInfo->stage,
+   result = vk_pipeline_shader_stage_to_nir(&dev->vk, &pCreateInfo->stage,
                                             &spirv_options, nir_options,
                                             NULL, &nir);
    if (result != VK_SUCCESS)
       goto fail;
 
-   nvk_lower_nir(device, nir, &robustness, false, pipeline_layout);
+   nvk_lower_nir(dev, nir, &robustness, false, pipeline_layout);
 
-   result = nvk_compile_nir(pdevice, nir, NULL,
+   result = nvk_compile_nir(pdev, nir, NULL,
                             &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
    ralloc_free(nir);
    if (result != VK_SUCCESS)
       goto fail;
 
-   result = nvk_shader_upload(device,
+   result = nvk_shader_upload(dev,
                               &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
    if (result != VK_SUCCESS)
       goto fail;
 
    struct nvk_shader *shader = &pipeline->base.shaders[MESA_SHADER_COMPUTE];
-   if (device->pdev->info.cls_compute >= AMPERE_COMPUTE_A)
+   if (pdev->info.cls_compute >= AMPERE_COMPUTE_A)
       nvc6c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
-   else if (device->pdev->info.cls_compute >= VOLTA_COMPUTE_A)
+   else if (pdev->info.cls_compute >= VOLTA_COMPUTE_A)
       nvc3c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
-   else if (device->pdev->info.cls_compute >= PASCAL_COMPUTE_A)
+   else if (pdev->info.cls_compute >= PASCAL_COMPUTE_A)
       nvc0c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
-   else if (device->pdev->info.cls_compute >= KEPLER_COMPUTE_A)
+   else if (pdev->info.cls_compute >= KEPLER_COMPUTE_A)
       nva0c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
    else
       unreachable("Fermi and older not supported!");
@@ -217,6 +216,6 @@ nvk_compute_pipeline_create(struct nvk_device *device,
    return VK_SUCCESS;
 
 fail:
-   nvk_pipeline_free(device, &pipeline->base, pAllocator);
+   nvk_pipeline_free(dev, &pipeline->base, pAllocator);
    return result;
 }
