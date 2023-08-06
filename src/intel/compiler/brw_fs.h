@@ -254,7 +254,7 @@ public:
    void assign_constant_locations();
    bool get_pull_locs(const fs_reg &src, unsigned *out_surf_index,
                       unsigned *out_pull_index);
-   void lower_constant_loads();
+   bool lower_constant_loads();
    virtual void invalidate_analysis(brw::analysis_dependency_class c);
    void validate();
    bool opt_algebraic();
@@ -286,7 +286,7 @@ public:
    void vfail(const char *msg, va_list args);
    void fail(const char *msg, ...);
    void limit_dispatch_width(unsigned n, const char *msg);
-   void lower_uniform_pull_constant_loads();
+   bool lower_uniform_pull_constant_loads();
    bool lower_load_payload();
    bool lower_pack();
    bool lower_regioning();
@@ -571,6 +571,9 @@ private:
    void lower_mulh_inst(fs_inst *inst, bblock_t *block);
 
    unsigned workgroup_size() const;
+
+   void debug_optimizer(const char *pass_name,
+                        int iteration, int pass_num) const;
 };
 
 /**

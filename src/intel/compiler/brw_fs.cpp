@@ -2540,10 +2540,11 @@ fs_visitor::get_pull_locs(const fs_reg &src,
  * Replace UNIFORM register file access with either UNIFORM_PULL_CONSTANT_LOAD
  * or VARYING_PULL_CONSTANT_LOAD instructions which load values into VGRFs.
  */
-void
+bool
 fs_visitor::lower_constant_loads()
 {
    unsigned index, pull_index;
+   bool progress = false;
 
    foreach_block_and_inst_safe (block, fs_inst, inst, cfg) {
       /* Set up the annotation tracking for new generated instructions. */
@@ -2581,6 +2582,8 @@ fs_visitor::lower_constant_loads()
          inst->src[i].nr = dst.nr;
          inst->src[i].offset = (base & (block_sz - 1)) +
                                inst->src[i].offset % 4;
+
+         progress = true;
       }
 
       if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT &&
@@ -2595,9 +2598,13 @@ fs_visitor::lower_constant_loads()
                                     inst->src[1],
                                     pull_index * 4, 4);
          inst->remove(block);
+
+         progress = true;
       }
    }
    invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
+
+   return progress;
 }
 
 static uint64_t
@@ -6186,8 +6193,27 @@ fs_visitor::invalidate_analysis(brw::analysis_dependency_class c)
 }
 
 void
+fs_visitor::debug_optimizer(const char *pass_name,
+                            int iteration, int pass_num) const
+{
+   if (!INTEL_DEBUG(DEBUG_OPTIMIZER))
+      return;
+
+   char *filename;
+   int ret = asprintf(&filename, "%s%d-%s-%02d-%02d-%s",
+                      stage_abbrev, dispatch_width, nir->info.name,
+                      iteration, pass_num, pass_name);
+   if (ret == -1)
+      return;
+   dump_instructions(filename);
+   free(filename);
+}
+
+void
 fs_visitor::optimize()
 {
+   debug_optimizer("start", 0, 0);
+
    /* Start by validating the shader we currently have. */
    validate();
 
@@ -6204,22 +6230,16 @@ fs_visitor::optimize()
     */
    bld = fs_builder(this, 64);
 
-   assign_constant_locations();
-   lower_constant_loads();
-
-   validate();
+   bool progress = false;
+   int iteration = 0;
+   int pass_num = 0;
 
 #define OPT(pass, args...) ({                                           \
       pass_num++;                                                       \
       bool this_progress = pass(args);                                  \
                                                                         \
-      if (INTEL_DEBUG(DEBUG_OPTIMIZER) && this_progress) {              \
-         char filename[64];                                             \
-         snprintf(filename, 64, "%s%d-%s-%02d-%02d-" #pass,              \
-                  stage_abbrev, dispatch_width, nir->info.name, iteration, pass_num); \
-                                                                        \
-         dump_instructions(filename);                                   \
-      }                                                                 \
+      if (this_progress)                                                \
+         debug_optimizer(#pass, iteration, pass_num);                   \
                                                                         \
       validate();                                                       \
                                                                         \
@@ -6227,17 +6247,10 @@ fs_visitor::optimize()
       this_progress;                                                    \
    })
 
-   if (INTEL_DEBUG(DEBUG_OPTIMIZER)) {
-      char filename[64];
-      snprintf(filename, 64, "%s%d-%s-00-00-start",
-               stage_abbrev, dispatch_width, nir->info.name);
+   assign_constant_locations();
+   OPT(lower_constant_loads);
 
-      dump_instructions(filename);
-   }
-
-   bool progress = false;
-   int iteration = 0;
-   int pass_num = 0;
+   validate();
 
    OPT(split_virtual_grfs);
 
@@ -6360,9 +6373,9 @@ fs_visitor::optimize()
 
    OPT(fixup_sends_duplicate_payload);
 
-   lower_uniform_pull_constant_loads();
+   OPT(lower_uniform_pull_constant_loads);
 
-   lower_find_live_channel();
+   OPT(lower_find_live_channel);
 
    validate();
 }
@@ -6732,6 +6745,8 @@ fs_visitor::allocate_registers(bool allow_spilling)
 
    if (needs_register_pressure)
       shader_stats.max_register_pressure = compute_max_register_pressure();
+
+   debug_optimizer("pre_register_allocate", 99, 99);
 
    bool spill_all = allow_spilling && INTEL_DEBUG(DEBUG_SPILL_FS);
 

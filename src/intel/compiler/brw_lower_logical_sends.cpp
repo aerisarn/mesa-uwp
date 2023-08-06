@@ -3033,9 +3033,11 @@ fs_visitor::lower_logical_sends()
  * mask, since a later instruction will use one of the result channels as a
  * source operand for all 8 or 16 of its channels.
  */
-void
+bool
 fs_visitor::lower_uniform_pull_constant_loads()
 {
+   bool progress = false;
+
    foreach_block_and_inst (block, fs_inst, inst, cfg) {
       if (inst->opcode != FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD)
          continue;
@@ -3125,5 +3127,9 @@ fs_visitor::lower_uniform_pull_constant_loads()
          inst->base_mrf = FIRST_PULL_LOAD_MRF(devinfo->ver) + 1;
          inst->mlen = 1;
       }
+
+      progress = true;
    }
+
+   return progress;
 }
