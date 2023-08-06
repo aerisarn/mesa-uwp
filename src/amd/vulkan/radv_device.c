@@ -1080,8 +1080,10 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
 
    struct vk_pipeline_cache_create_info info = {.weak_ref = true};
    device->mem_cache = vk_pipeline_cache_create(&device->vk, &info, NULL);
-   if (!device->mem_cache)
+   if (!device->mem_cache) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail_meta;
+   }
 
    device->force_aniso = MIN2(16, (int)debug_get_num_option("RADV_TEX_ANISO", -1));
    if (device->force_aniso >= 0) {
