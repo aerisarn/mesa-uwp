@@ -2877,11 +2877,22 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
       }
    }
 
-   /* Add the scratch offset to input SGPRs. */
+   /* Add/remove the scratch offset to/from input SGPRs. */
    if (sel->screen->info.gfx_level < GFX11 &&
        (sel->screen->info.family < CHIP_GFX940 || sel->screen->info.has_graphics) &&
-       shader->config.scratch_bytes_per_wave && !si_is_merged_shader(shader))
-      shader->info.num_input_sgprs += 1; /* scratch byte offset */
+       !si_is_merged_shader(shader)) {
+      if (shader->use_aco) {
+         /* When aco scratch_offset arg is added explicitly at the beginning.
+          * After compile if no scratch used, reduce the input sgpr count.
+          */
+         if (!shader->config.scratch_bytes_per_wave)
+            shader->info.num_input_sgprs--;
+      } else {
+         /* scratch_offset arg is added by llvm implicitly */
+         if (shader->info.num_input_sgprs)
+            shader->info.num_input_sgprs++;
+      }
+   }
 
    /* Calculate the number of fragment input VGPRs. */
    if (sel->stage == MESA_SHADER_FRAGMENT) {
