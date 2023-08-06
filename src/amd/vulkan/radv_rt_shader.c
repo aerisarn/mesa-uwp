@@ -787,8 +787,6 @@ insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, ni
    NIR_PASS(_, shader, nir_lower_returns);
    NIR_PASS(_, shader, nir_opt_dce);
 
-   src_vars.stack_size = MAX2(src_vars.stack_size, shader->scratch_size);
-
    inline_constants(b->shader, shader);
 
    nir_push_if(b, nir_ieq_imm(b, idx, call_idx));
