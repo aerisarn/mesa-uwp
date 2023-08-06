@@ -154,11 +154,30 @@ void amdgpu_bo_destroy(struct amdgpu_winsys *ws, struct pb_buffer *_buf)
 
    assert(bo->bo && "must not be called for slab entries");
 
+   simple_mtx_lock(&ws->bo_export_table_lock);
+
+   /* amdgpu_bo_from_handle might have revived the bo */
+   if (p_atomic_read(&bo->base.reference.count)) {
+      simple_mtx_unlock(&ws->bo_export_table_lock);
+      return;
+   }
+
+   _mesa_hash_table_remove_key(ws->bo_export_table, bo->bo);
+
+   if (bo->base.placement & RADEON_DOMAIN_VRAM_GTT) {
+      amdgpu_bo_va_op(bo->bo, 0, bo->base.size, bo->va, 0, AMDGPU_VA_OP_UNMAP);
+      amdgpu_va_range_free(bo->u.real.va_handle);
+   }
+
+   simple_mtx_unlock(&ws->bo_export_table_lock);
+
    if (!bo->u.real.is_user_ptr && bo->u.real.cpu_ptr) {
       bo->u.real.cpu_ptr = NULL;
       amdgpu_bo_unmap(&ws->dummy_ws.base, &bo->base);
    }
    assert(bo->u.real.is_user_ptr || bo->u.real.map_count == 0);
+
+   amdgpu_bo_free(bo->bo);
 
 #if DEBUG
    if (ws->debug_all_bos) {
@@ -186,16 +205,6 @@ void amdgpu_bo_destroy(struct amdgpu_winsys *ws, struct pb_buffer *_buf)
       }
    }
    simple_mtx_unlock(&ws->sws_list_lock);
-
-   simple_mtx_lock(&ws->bo_export_table_lock);
-   _mesa_hash_table_remove_key(ws->bo_export_table, bo->bo);
-   simple_mtx_unlock(&ws->bo_export_table_lock);
-
-   if (bo->base.placement & RADEON_DOMAIN_VRAM_GTT) {
-      amdgpu_bo_va_op(bo->bo, 0, bo->base.size, bo->va, 0, AMDGPU_VA_OP_UNMAP);
-      amdgpu_va_range_free(bo->u.real.va_handle);
-   }
-   amdgpu_bo_free(bo->bo);
 
    amdgpu_bo_remove_fences(bo);
 
