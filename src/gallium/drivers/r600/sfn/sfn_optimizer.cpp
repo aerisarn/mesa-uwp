@@ -592,6 +592,12 @@ CopyPropFwdVisitor::propagate_to(RegisterVec4& value, Instr *instr)
             allowed_mask &= alu->allowed_dest_chan_mask();
       }
 
+      for (auto u : src->uses()) {
+         auto alu = u->as_alu();
+         if (alu)
+            allowed_mask &= alu->allowed_src_chan_mask();
+      }
+
       if (!allowed_mask)
          return;
 
