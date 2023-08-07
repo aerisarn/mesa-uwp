@@ -712,8 +712,10 @@ lower_sampler(nir_builder *b,
    int sampler_idx =
       nir_tex_instr_src_index(instr, nir_tex_src_sampler_deref);
 
-   if (sampler_idx >= 0)
+   if (sampler_idx >= 0) {
+      assert(nir_tex_instr_need_sampler(instr));
       lower_tex_src(b, instr, sampler_idx, state);
+   }
 
    if (texture_idx < 0 && sampler_idx < 0)
       return false;
