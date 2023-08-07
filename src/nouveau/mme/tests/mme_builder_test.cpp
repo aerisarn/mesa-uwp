@@ -292,7 +292,7 @@ TEST_F(mme_builder_test, while_ine)
 
       for (unsigned i = 0; i < ARRAY_SIZE(cases); i++) {
          const uint32_t inc = cases[i];
-         const uint32_t count = cases[ARRAY_SIZE(cases) - i];
+         const uint32_t count = cases[ARRAY_SIZE(cases) - i - 1];
          const uint32_t bound = inc * count;
 
          std::vector<uint32_t> params;
