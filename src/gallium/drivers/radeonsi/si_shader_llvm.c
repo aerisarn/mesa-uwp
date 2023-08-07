@@ -301,6 +301,18 @@ LLVMValueRef si_prolog_get_internal_bindings(struct si_shader_context *ctx)
    return list;
 }
 
+LLVMValueRef si_prolog_get_internal_binding_slot(struct si_shader_context *ctx, unsigned slot)
+{
+   LLVMValueRef list = LLVMBuildIntToPtr(
+      ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args->internal_bindings),
+      ac_array_in_const32_addr_space(ctx->ac.v4i32), "");
+   LLVMValueRef index = LLVMConstInt(ctx->ac.i32, slot, 0);
+
+   return ac_build_load_to_sgpr(&ctx->ac,
+                                (struct ac_llvm_pointer) { .t = ctx->ac.v4i32, .v = list },
+                                index);
+}
+
 /* Ensure that the esgs ring is declared.
  *
  * We declare it with 64KB alignment as a hint that the
