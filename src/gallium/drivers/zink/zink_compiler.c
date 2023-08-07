@@ -5174,8 +5174,7 @@ zink_type_size(const struct glsl_type *type, bool bindless)
 }
 
 struct zink_shader *
-zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
-                   const struct pipe_stream_output_info *so_info)
+zink_shader_create(struct zink_screen *screen, struct nir_shader *nir)
 {
    struct zink_shader *ret = rzalloc(NULL, struct zink_shader);
    bool have_psiz = false;
@@ -5403,7 +5402,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    if (!nir->info.internal)
       nir_foreach_shader_out_variable(var, nir)
          var->data.explicit_xfb_buffer = 0;
-   if (so_info && so_info->num_outputs && nir->info.outputs_written)
+   if (nir->xfb_info && nir->xfb_info->output_count && nir->info.outputs_written)
       update_so_info(ret, nir, nir->info.outputs_written, have_psiz);
    else if (have_psiz) {
       bool have_fake_psiz = false;
