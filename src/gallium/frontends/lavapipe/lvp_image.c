@@ -672,10 +672,10 @@ lvp_CopyImageToMemoryEXT(VkDevice _device, const VkCopyImageToMemoryInfoEXT *pCo
    for (unsigned i = 0; i < pCopyImageToMemoryInfo->regionCount; i++) {
       const VkImageToMemoryCopyEXT *copy = &pCopyImageToMemoryInfo->pRegions[i];
       struct pipe_box box = {
-         box.x = copy->imageOffset.x,
-         box.y = copy->imageOffset.y,
-         box.width = copy->imageExtent.width,
-         box.height = copy->imageExtent.height,
+         .x = copy->imageOffset.x,
+         .y = copy->imageOffset.y,
+         .width = copy->imageExtent.width,
+         .height = copy->imageExtent.height,
          .depth = 1,
       };
       switch (image->bo->target) {
