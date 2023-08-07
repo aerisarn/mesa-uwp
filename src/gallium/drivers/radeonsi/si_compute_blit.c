@@ -1121,6 +1121,11 @@ bool si_compute_blit(struct si_context *sctx, const struct pipe_blit_info *info,
    image[1].u.tex.first_layer = 0;
    image[1].u.tex.last_layer = util_max_layer(info->dst.resource, info->dst.level);
 
+   struct pipe_grid_info grid = {0};
+   unsigned wg_dim =
+      set_work_size(&grid, 8, 8, 1, info->dst.box.width, info->dst.box.height,
+                    info->dst.box.depth);
+
    /* Get the shader key. */
    const struct util_format_description *dst_desc = util_format_description(info->dst.format);
    unsigned i = util_format_get_first_non_void_channel(info->dst.format);
@@ -1128,6 +1133,7 @@ bool si_compute_blit(struct si_context *sctx, const struct pipe_blit_info *info,
    options.key = 0;
 
    options.always_true = true;
+   options.wg_dim = wg_dim;
    options.src_is_1d = info->src.resource->target == PIPE_TEXTURE_1D ||
                        info->src.resource->target == PIPE_TEXTURE_1D_ARRAY;
    options.dst_is_1d = info->dst.resource->target == PIPE_TEXTURE_1D ||
@@ -1176,9 +1182,6 @@ bool si_compute_blit(struct si_context *sctx, const struct pipe_blit_info *info,
    sctx->cs_user_data[0] = (info->src.box.x & 0xffff) | ((info->dst.box.x & 0xffff) << 16);
    sctx->cs_user_data[1] = (info->src.box.y & 0xffff) | ((info->dst.box.y & 0xffff) << 16);
    sctx->cs_user_data[2] = (info->src.box.z & 0xffff) | ((info->dst.box.z & 0xffff) << 16);
-
-   struct pipe_grid_info grid = {0};
-   set_work_size(&grid, 8, 8, 1, info->dst.box.width, info->dst.box.height, info->dst.box.depth);
 
    si_launch_grid_internal_images(sctx, image, 2, &grid, shader,
                                   SI_OP_SYNC_BEFORE_AFTER |

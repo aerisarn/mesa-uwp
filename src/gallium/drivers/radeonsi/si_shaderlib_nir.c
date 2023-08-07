@@ -438,6 +438,7 @@ void *si_create_blit_cs(struct si_context *sctx, const union si_compute_blit_sha
       BITSET_SET(b.shader->info.msaa_images, 0);
    if (options->dst_is_msaa)
       BITSET_SET(b.shader->info.msaa_images, 1);
+   /* TODO: 1D blits are 8x slower because the workgroup size is 8x8 */
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;
    b.shader->info.workgroup_size[2] = 1;
@@ -462,7 +463,7 @@ void *si_create_blit_cs(struct si_context *sctx, const union si_compute_blit_sha
 
    /* Instructions. */
    /* Let's work with 0-based src and dst coordinates (thread IDs) first. */
-   nir_def *dst_xyz = get_global_ids(&b, 3);
+   nir_def *dst_xyz = nir_pad_vector_imm_int(&b, get_global_ids(&b, options->wg_dim), 0, 3);
    nir_def *src_xyz = dst_xyz;
 
    /* Flip src coordinates. */
