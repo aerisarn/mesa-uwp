@@ -315,12 +315,11 @@ handle_reset_query_cpu_job(struct v3dv_queue *queue, struct v3dv_job *job,
    struct v3dv_reset_query_cpu_job_info *info = &job->cpu.query_reset;
    assert(info->pool);
 
+   assert(info->pool->query_type != VK_QUERY_TYPE_OCCLUSION);
+
    /* We are about to reset query counters so we need to make sure that
     * The GPU is not using them.
     */
-   if (info->pool->query_type == VK_QUERY_TYPE_OCCLUSION)
-      v3dv_bo_wait(job->device, info->pool->occlusion.bo, OS_TIMEOUT_INFINITE);
-
    if (info->pool->query_type == VK_QUERY_TYPE_TIMESTAMP) {
       VkResult result = queue_wait_idle(queue, sync_info);
       if (result != VK_SUCCESS)
