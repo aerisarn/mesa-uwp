@@ -677,6 +677,7 @@ tu_physical_device_init(struct tu_physical_device *device,
    result = vk_physical_device_init(&device->vk, &instance->vk,
                                     &supported_extensions,
                                     &supported_features,
+                                    NULL,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
       goto fail_free_name;

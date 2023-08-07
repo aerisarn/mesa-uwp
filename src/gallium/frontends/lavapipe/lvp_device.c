@@ -600,7 +600,7 @@ lvp_physical_device_init(struct lvp_physical_device *device,
    vk_physical_device_dispatch_table_from_entrypoints(
       &dispatch_table, &wsi_physical_device_entrypoints, false);
    result = vk_physical_device_init(&device->vk, &instance->vk,
-                                    NULL, NULL, &dispatch_table);
+                                    NULL, NULL, NULL, &dispatch_table);
    if (result != VK_SUCCESS) {
       vk_error(instance, result);
       goto fail;

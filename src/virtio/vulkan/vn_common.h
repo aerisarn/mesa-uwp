@@ -276,7 +276,7 @@ vn_physical_device_base_init(
 {
    VkResult result =
       vk_physical_device_init(&physical_dev->base, &instance->base,
-                              supported_extensions, NULL, dispatch_table);
+                              supported_extensions, NULL, NULL, dispatch_table);
    physical_dev->id = (uintptr_t)physical_dev;
    return result;
 }

@@ -773,6 +773,7 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    result = vk_physical_device_init(&pdev->vk, &instance->vk,
                                     &supported_extensions,
                                     &supported_features,
+                                    NULL,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
       goto fail_alloc;

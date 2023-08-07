@@ -427,6 +427,7 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
                                     &instance->vk,
                                     &supported_extensions,
                                     &supported_features,
+                                    NULL,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
       goto err_pvr_winsys_destroy;
