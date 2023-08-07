@@ -524,8 +524,10 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       priority = RADEON_CTX_PRIORITY_MEDIUM;
    }
 
+   bool allow_context_lost = flags & PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET;
+
    /* Initialize the context handle and the command stream. */
-   sctx->ctx = sctx->ws->ctx_create(sctx->ws, priority);
+   sctx->ctx = sctx->ws->ctx_create(sctx->ws, priority, allow_context_lost);
    if (!sctx->ctx && priority != RADEON_CTX_PRIORITY_MEDIUM) {
       /* Context priority should be treated as a hint. If context creation
        * fails with the requested priority, for example because the caller
@@ -533,7 +535,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
        * fallback to normal priority.
        */
       priority = RADEON_CTX_PRIORITY_MEDIUM;
-      sctx->ctx = sctx->ws->ctx_create(sctx->ws, priority);
+      sctx->ctx = sctx->ws->ctx_create(sctx->ws, priority, allow_context_lost);
    }
    if (!sctx->ctx) {
       fprintf(stderr, "radeonsi: can't create radeon_winsys_ctx\n");
@@ -541,8 +543,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    }
 
    ws->cs_create(&sctx->gfx_cs, sctx->ctx, sctx->has_graphics ? AMD_IP_GFX : AMD_IP_COMPUTE,
-                 (void *)si_flush_gfx_cs, sctx,
-                 flags & PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET);
+                 (void *)si_flush_gfx_cs, sctx);
 
    /* Initialize private allocators. */
    u_suballocator_init(&sctx->allocator_zeroed_memory, &sctx->b, 128 * 1024, 0,
@@ -1056,7 +1057,7 @@ static void si_test_gds_memory_management(struct si_context *sctx, unsigned allo
    struct pb_buffer *gds_bo[ARRAY_SIZE(cs)];
 
    for (unsigned i = 0; i < ARRAY_SIZE(cs); i++) {
-      ws->cs_create(&cs[i], sctx->ctx, AMD_IP_COMPUTE, NULL, NULL, false);
+      ws->cs_create(&cs[i], sctx->ctx, AMD_IP_COMPUTE, NULL, NULL);
       gds_bo[i] = ws->buffer_create(ws, alloc_size, alignment, domain, 0);
       assert(gds_bo[i]);
    }

@@ -1017,7 +1017,7 @@ struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
 
    if (!ws->cs_create(&enc->cs,
        (sctx->vcn_has_ctx) ? ((struct si_context *)enc->ectx)->ctx : sctx->ctx,
-       AMD_IP_VCN_ENC, radeon_enc_cs_flush, enc, false)) {
+       AMD_IP_VCN_ENC, radeon_enc_cs_flush, enc)) {
       RVID_ERR("Can't get command submission context.\n");
       goto error;
    }

@@ -513,7 +513,7 @@ static void si_sqtt_init_cs(struct si_context *sctx) {
   /* Thread trace start CS (only handles AMD_IP_GFX). */
   sctx->sqtt->start_cs[AMD_IP_GFX] = CALLOC_STRUCT(radeon_cmdbuf);
   if (!ws->cs_create(sctx->sqtt->start_cs[AMD_IP_GFX], sctx->ctx, AMD_IP_GFX,
-                     NULL, NULL, 0)) {
+                     NULL, NULL)) {
     free(sctx->sqtt->start_cs[AMD_IP_GFX]);
     sctx->sqtt->start_cs[AMD_IP_GFX] = NULL;
     return;
@@ -524,7 +524,7 @@ static void si_sqtt_init_cs(struct si_context *sctx) {
   /* Thread trace stop CS. */
   sctx->sqtt->stop_cs[AMD_IP_GFX] = CALLOC_STRUCT(radeon_cmdbuf);
   if (!ws->cs_create(sctx->sqtt->stop_cs[AMD_IP_GFX], sctx->ctx, AMD_IP_GFX,
-                     NULL, NULL, 0)) {
+                     NULL, NULL)) {
     free(sctx->sqtt->start_cs[AMD_IP_GFX]);
     sctx->sqtt->start_cs[AMD_IP_GFX] = NULL;
     free(sctx->sqtt->stop_cs[AMD_IP_GFX]);

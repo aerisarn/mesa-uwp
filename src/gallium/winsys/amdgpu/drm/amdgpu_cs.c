@@ -271,7 +271,8 @@ radeon_to_amdgpu_priority(enum radeon_ctx_priority radeon_priority)
 }
 
 static struct radeon_winsys_ctx *amdgpu_ctx_create(struct radeon_winsys *ws,
-                                                   enum radeon_ctx_priority priority)
+                                                   enum radeon_ctx_priority priority,
+                                                   bool allow_context_lost)
 {
    struct amdgpu_ctx *ctx = CALLOC_STRUCT(amdgpu_ctx);
    int r;
@@ -285,6 +286,7 @@ static struct radeon_winsys_ctx *amdgpu_ctx_create(struct radeon_winsys *ws,
    ctx->ws = amdgpu_winsys(ws);
    ctx->refcount = 1;
    ctx->initial_num_total_rejected_cs = ctx->ws->num_total_rejected_cs;
+   ctx->allow_context_lost = allow_context_lost;
 
    r = amdgpu_cs_ctx_create2(ctx->ws->dev, amdgpu_priority, &ctx->ctx);
    if (r) {
@@ -1045,8 +1047,7 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
                  enum amd_ip_type ip_type,
                  void (*flush)(void *ctx, unsigned flags,
                                struct pipe_fence_handle **fence),
-                 void *flush_ctx,
-                 bool allow_context_lost)
+                 void *flush_ctx)
 {
    struct amdgpu_ctx *ctx = (struct amdgpu_ctx*)rwctx;
    struct amdgpu_cs *cs;
@@ -1063,7 +1064,6 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    cs->flush_cs = flush;
    cs->flush_data = flush_ctx;
    cs->ip_type = ip_type;
-   cs->allow_context_lost = allow_context_lost;
    cs->noop = ctx->ws->noop_cs;
    cs->has_chaining = ctx->ws->info.gfx_level >= GFX7 &&
                       (ip_type == AMD_IP_GFX || ip_type == AMD_IP_COMPUTE);
@@ -1737,7 +1737,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 
 cleanup:
    if (unlikely(r)) {
-      if (!acs->allow_context_lost) {
+      if (!acs->ctx->allow_context_lost) {
          /* Non-robust contexts are allowed to terminate the process. The only alternative is
           * to skip command submission, which would look like a freeze because nothing is drawn,
           * which is not a useful state to be in under any circumstances.

@@ -51,7 +51,8 @@ static void radeon_fence_reference(struct pipe_fence_handle **dst,
                                    struct pipe_fence_handle *src);
 
 static struct radeon_winsys_ctx *radeon_drm_ctx_create(struct radeon_winsys *ws,
-                                                       enum radeon_ctx_priority priority)
+                                                       enum radeon_ctx_priority priority,
+                                                       bool allow_context_lost)
 {
    struct radeon_ctx *ctx = CALLOC_STRUCT(radeon_ctx);
    if (!ctx)
@@ -160,8 +161,7 @@ radeon_drm_cs_create(struct radeon_cmdbuf *rcs,
                      enum amd_ip_type ip_type,
                      void (*flush)(void *ctx, unsigned flags,
                                    struct pipe_fence_handle **fence),
-                     void *flush_ctx,
-                     bool allow_context_lost)
+                     void *flush_ctx)
 {
    struct radeon_drm_winsys *ws = ((struct radeon_ctx*)ctx)->ws;
    struct radeon_drm_cs *cs;

@@ -3072,7 +3072,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    dec->sq.ib_total_size_in_dw = NULL;
    dec->sq.ib_checksum = NULL;
 
-   if (!ws->cs_create(&dec->cs, sctx->ctx, ring, NULL, NULL, false)) {
+   if (!ws->cs_create(&dec->cs, sctx->ctx, ring, NULL, NULL)) {
       RVID_ERR("Can't get command submission context.\n");
       goto error;
    }
@@ -3093,10 +3093,11 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
          goto err;
       for (i = 0; i < dec->njctx; i++) {
       /* Initialize the context handle and the command stream. */
-         dec->jctx[i] = dec->ws->ctx_create(dec->ws, RADEON_CTX_PRIORITY_MEDIUM);
+         dec->jctx[i] = dec->ws->ctx_create(dec->ws, RADEON_CTX_PRIORITY_MEDIUM,
+                                            sctx->context_flags & PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET);
          if (!sctx->ctx)
             goto error;
-         if (!dec->ws->cs_create(&dec->jcs[i], dec->jctx[i], ring, NULL, NULL, false)) {
+         if (!dec->ws->cs_create(&dec->jcs[i], dec->jctx[i], ring, NULL, NULL)) {
             RVID_ERR("Can't get additional command submission context for mJPEG.\n");
             goto error;
          }

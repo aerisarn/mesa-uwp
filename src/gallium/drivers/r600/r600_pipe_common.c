@@ -632,13 +632,13 @@ bool r600_common_context_init(struct r600_common_context *rctx,
 	if (!rctx->b.const_uploader)
 		return false;
 
-	rctx->ctx = rctx->ws->ctx_create(rctx->ws, RADEON_CTX_PRIORITY_MEDIUM);
+	rctx->ctx = rctx->ws->ctx_create(rctx->ws, RADEON_CTX_PRIORITY_MEDIUM, false);
 	if (!rctx->ctx)
 		return false;
 
 	if (rscreen->info.ip[AMD_IP_SDMA].num_queues && !(rscreen->debug_flags & DBG_NO_ASYNC_DMA)) {
 		rctx->ws->cs_create(&rctx->dma.cs, rctx->ctx, AMD_IP_SDMA,
-                                    r600_flush_dma_ring, rctx, false);
+                                    r600_flush_dma_ring, rctx);
 		rctx->dma.flush = r600_flush_dma_ring;
 	}
 

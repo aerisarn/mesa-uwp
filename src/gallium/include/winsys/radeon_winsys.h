@@ -493,9 +493,14 @@ struct radeon_winsys {
    /**
     * Create a command submission context.
     * Various command streams can be submitted to the same context.
+    *
+    * \param allow_context_lost  If true, lost contexts skip command submission and report
+    *                            the reset status.
+    *                            If false, losing the context results in undefined behavior.
     */
    struct radeon_winsys_ctx *(*ctx_create)(struct radeon_winsys *ws,
-                                           enum radeon_ctx_priority priority);
+                                           enum radeon_ctx_priority priority,
+                                           bool allow_context_lost);
 
    /**
     * Destroy a context.
@@ -524,7 +529,7 @@ struct radeon_winsys {
                      struct radeon_winsys_ctx *ctx, enum amd_ip_type amd_ip_type,
                      void (*flush)(void *ctx, unsigned flags,
                                    struct pipe_fence_handle **fence),
-                     void *flush_ctx, bool allow_context_lost);
+                     void *flush_ctx);
 
    /**
     * Set up and enable mid command buffer preemption for the command stream.

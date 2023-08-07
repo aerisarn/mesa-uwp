@@ -389,12 +389,12 @@ struct pipe_context* r300_create_context(struct pipe_screen* screen,
 
     slab_create_child(&r300->pool_transfers, &r300screen->pool_transfers);
 
-    r300->ctx = rws->ctx_create(rws, RADEON_CTX_PRIORITY_MEDIUM);
+    r300->ctx = rws->ctx_create(rws, RADEON_CTX_PRIORITY_MEDIUM, false);
     if (!r300->ctx)
         goto fail;
 
 
-    if (!rws->cs_create(&r300->cs, r300->ctx, AMD_IP_GFX, r300_flush_callback, r300, false))
+    if (!rws->cs_create(&r300->cs, r300->ctx, AMD_IP_GFX, r300_flush_callback, r300))
         goto fail;
 
     if (!r300screen->caps.has_tcl) {
