@@ -5520,11 +5520,11 @@ typedef struct nir_lower_tex_options {
    bool lower_to_fragment_fetch_amd;
 
    /**
-    * To lower packed sampler return formats.
-    *
-    * Indexed by sampler-id.
+    * To lower packed sampler return formats. This will be called for all
+    * tex instructions.
     */
-   enum nir_lower_tex_packing lower_tex_packing[32];
+   enum nir_lower_tex_packing (*lower_tex_packing_cb)(const nir_tex_instr *tex, const void *data);
+   const void *lower_tex_packing_data;
 
    /**
     * If true, lower nir_texop_lod to return -FLT_MAX if the sum of the

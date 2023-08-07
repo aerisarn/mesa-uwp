@@ -1090,7 +1090,7 @@ linearize_srgb_result(nir_builder *b, nir_tex_instr *tex)
  * to not store the other channels, given that nothing at the NIR level will
  * read them.
  */
-static void
+static bool
 lower_tex_packing(nir_builder *b, nir_tex_instr *tex,
                   const nir_lower_tex_options *options)
 {
@@ -1098,9 +1098,13 @@ lower_tex_packing(nir_builder *b, nir_tex_instr *tex,
 
    b->cursor = nir_after_instr(&tex->instr);
 
-   switch (options->lower_tex_packing[tex->sampler_index]) {
+   assert(options->lower_tex_packing_cb);
+   enum nir_lower_tex_packing packing =
+      options->lower_tex_packing_cb(tex, options->lower_tex_packing_data);
+
+   switch (packing) {
    case nir_lower_tex_packing_none:
-      return;
+      return false;
 
    case nir_lower_tex_packing_16: {
       static const unsigned bits[4] = {16, 16, 16, 16};
@@ -1156,6 +1160,7 @@ lower_tex_packing(nir_builder *b, nir_tex_instr *tex,
 
    nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, color,
                                   color->parent_instr);
+   return true;
 }
 
 static bool
@@ -1609,13 +1614,11 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
          progress = true;
       }
 
-      if (options->lower_tex_packing[tex->sampler_index] !=
-          nir_lower_tex_packing_none &&
+      if (options->lower_tex_packing_cb &&
           tex->op != nir_texop_txs &&
           tex->op != nir_texop_query_levels &&
           tex->op != nir_texop_texture_samples) {
-         lower_tex_packing(b, tex, options);
-         progress = true;
+         progress |= lower_tex_packing(b, tex, options);
       }
 
       if (tex->op == nir_texop_txd &&
