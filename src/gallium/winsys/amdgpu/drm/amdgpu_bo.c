@@ -1289,44 +1289,50 @@ amdgpu_bo_find_next_committed_memory(struct pb_buffer *buf,
    struct amdgpu_sparse_commitment *comm;
    uint32_t va_page, end_va_page;
    uint32_t span_va_page, start_va_page;
-   unsigned skip, skip_after;
+   unsigned uncommitted_range_prev, uncommitted_range_next;
 
-   skip = skip_after = 0;
+   if (*range_size == 0)
+      return 0;
+
+   assert(*range_size + range_offset <= bo->base.size);
+
+   uncommitted_range_prev = uncommitted_range_next = 0;
    comm = bo->u.sparse.commitments;
    start_va_page = va_page = range_offset / RADEON_SPARSE_PAGE_SIZE;
-   end_va_page = va_page + DIV_ROUND_UP(*range_size, RADEON_SPARSE_PAGE_SIZE);
+   end_va_page = (*range_size + range_offset) / RADEON_SPARSE_PAGE_SIZE;
 
    simple_mtx_lock(&bo->lock);
-   /* Lookup the first page with backing physical storage */
+   /* Lookup the first committed page with backing physical storage */
    while (va_page < end_va_page && !comm[va_page].backing)
       va_page++;
-   span_va_page = va_page;
 
-   /* Lookup the first page without backing physical storage */
+   /* Fisrt committed page lookup failed, return early. */
+   if (va_page == end_va_page && !comm[va_page].backing) {
+      uncommitted_range_prev = *range_size;
+      *range_size = 0;
+      simple_mtx_unlock(&bo->lock);
+      return uncommitted_range_prev;
+   }
+
+   /* Lookup the first uncommitted page without backing physical storage */
+   span_va_page = va_page;
    while (va_page < end_va_page && comm[va_page].backing)
       va_page++;
    simple_mtx_unlock(&bo->lock);
 
-   if (span_va_page * RADEON_SPARSE_PAGE_SIZE >= range_offset + *range_size) {
-      skip = *range_size;
-      *range_size = 0;
-      return skip;
-   }
-
    /* Calc byte count that need to skip before committed range */
    if (span_va_page != start_va_page)
-      skip = (span_va_page - start_va_page) * RADEON_SPARSE_PAGE_SIZE
-	      - range_offset % RADEON_SPARSE_PAGE_SIZE;
+      uncommitted_range_prev = span_va_page * RADEON_SPARSE_PAGE_SIZE - range_offset;
 
-   if (va_page != end_va_page) {
-      skip_after = (end_va_page - va_page - 1) * RADEON_SPARSE_PAGE_SIZE
-         + *range_size % RADEON_SPARSE_PAGE_SIZE;
-      if (!(*range_size % RADEON_SPARSE_PAGE_SIZE))
-         skip_after += RADEON_SPARSE_PAGE_SIZE;
+   /* Calc byte count that need to skip after committed range */
+   if (va_page != end_va_page || !comm[va_page].backing) {
+      uncommitted_range_next = *range_size + range_offset - va_page * RADEON_SPARSE_PAGE_SIZE;
    }
 
-   *range_size = *range_size - skip_after - skip;
-   return skip;
+   /* Calc size of first committed part */
+   *range_size = *range_size - uncommitted_range_next - uncommitted_range_prev;
+   return *range_size ? uncommitted_range_prev
+	   : uncommitted_range_prev + uncommitted_range_next;
 }
 
 static void amdgpu_buffer_get_metadata(struct radeon_winsys *rws,
