@@ -457,6 +457,7 @@ anv_sparse_bind_image_memory(struct anv_queue *queue,
                              struct anv_image *image,
                              const VkSparseImageMemoryBind *bind)
 {
+   VkResult ret = VK_SUCCESS;
    struct anv_device *device = queue->device;
    VkImageAspectFlags aspect = bind->subresource.aspectMask;
    uint32_t mip_level = bind->subresource.mipLevel;
@@ -522,6 +523,11 @@ anv_sparse_bind_image_memory(struct anv_queue *queue,
    assert(line_bind_size_in_blocks != 0);
    assert(line_bind_size != 0);
 
+   const int binds_array_len = (bind_extent_el.depth / block_shape_el.depth) *
+                               (bind_extent_el.height / block_shape_el.height);
+   STACK_ARRAY(struct anv_vm_bind, binds, binds_array_len);
+   int num_binds = 0;
+
    uint64_t memory_offset = bind->memoryOffset;
    for (uint32_t z = bind_offset_el.z;
         z < bind_offset_el.z + bind_extent_el.depth;
@@ -560,17 +566,27 @@ anv_sparse_bind_image_memory(struct anv_queue *queue,
          assert(opaque_bind.resourceOffset % block_size_B == 0);
          assert(opaque_bind.size % block_size_B == 0);
 
-         struct anv_vm_bind bind = vk_bind_to_anv_vm_bind(sparse_data,
-                                                          &opaque_bind);
-         int rc = device->kmd_backend->vm_bind(device, 1, &bind);
-         if (rc) {
-            return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                             "failed to bind sparse buffer");
-         }
+         assert(num_binds < binds_array_len);
+         binds[num_binds++] = vk_bind_to_anv_vm_bind(sparse_data,
+                                                     &opaque_bind);
       }
    }
 
-   return VK_SUCCESS;
+   /* FIXME: here we were supposed to issue a single vm_bind ioctl by calling
+    * vm_bind(device, num_binds, binds), but for an unknown reason some
+    * shader-related tests fail when we do that, so work around it for now.
+    */
+   for (int b = 0; b < num_binds; b++) {
+      int rc = device->kmd_backend->vm_bind(device, 1, &binds[b]);
+      if (rc) {
+         ret = vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         break;
+      }
+   }
+
+   STACK_ARRAY_FINISH(binds);
+
+   return ret;
 }
 
 VkResult
