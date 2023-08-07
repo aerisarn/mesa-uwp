@@ -676,9 +676,20 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
                   device_info.family == FAMILY_MDN)
             info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 3;
       }
+
       info->ip[ip_type].num_queues = util_bitcount(ip_info.available_rings);
       info->ip[ip_type].ib_base_alignment = ip_info.ib_start_alignment;
       info->ip[ip_type].ib_size_alignment = ip_info.ib_size_alignment;
+
+      /* I guess we must align IBs due to caching on GFX9. This fixes a hang. */
+      if ((ip_type == AMD_IP_GFX || ip_type == AMD_IP_COMPUTE) &&
+          info->ip[ip_type].ver_major == 9) {
+         info->ip[ip_type].ib_base_alignment = MAX2(info->ip[ip_type].ib_base_alignment, 64);
+         info->ip[ip_type].ib_size_alignment = MAX2(info->ip[ip_type].ib_size_alignment, 64);
+      }
+
+      info->ib_pad_dw_mask[ip_type] = info->ip[ip_type].ib_size_alignment > 4 ?
+                                         info->ip[ip_type].ib_size_alignment / 4 - 1 : 0;
    }
 
    /* Only require gfx or compute. */
@@ -1125,17 +1136,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     */
    info->lds_encode_granularity = info->gfx_level >= GFX7 ? 128 * 4 : 64 * 4;
    info->lds_alloc_granularity = info->gfx_level >= GFX10_3 ? 256 * 4 : info->lds_encode_granularity;
-
-   /* This is "align_mask" copied from the kernel, maximums of all IP versions. */
-   info->ib_pad_dw_mask[AMD_IP_GFX] = 0xff;
-   info->ib_pad_dw_mask[AMD_IP_COMPUTE] = 0xff;
-   info->ib_pad_dw_mask[AMD_IP_SDMA] = 0xf;
-   info->ib_pad_dw_mask[AMD_IP_UVD] = 0xf;
-   info->ib_pad_dw_mask[AMD_IP_VCE] = 0x3f;
-   info->ib_pad_dw_mask[AMD_IP_UVD_ENC] = 0x3f;
-   info->ib_pad_dw_mask[AMD_IP_VCN_DEC] = 0xf;
-   info->ib_pad_dw_mask[AMD_IP_VCN_ENC] = 0x3f;
-   info->ib_pad_dw_mask[AMD_IP_VCN_JPEG] = 0xf;
 
    /* The mere presence of CLEAR_STATE in the IB causes random GPU hangs
     * on GFX6. Some CLEAR_STATE cause asic hang on radeon kernel, etc.
@@ -1676,10 +1676,10 @@ void ac_print_gpu_info(const struct radeon_info *info, FILE *f)
    for (unsigned i = 0; i < AMD_NUM_IP_TYPES; i++) {
       if (info->ip[i].num_queues) {
          fprintf(f, "    IP %-7s %2u.%u   queues:%u   "
-                    "align(base:%u, size:%u)\n",
+                    "align(base:%u, size:%u, dw_mask:0x%x)\n",
                  ip_string[i], info->ip[i].ver_major, info->ip[i].ver_minor,
                  info->ip[i].num_queues, info->ip[i].ib_base_alignment,
-                 info->ip[i].ib_size_alignment);
+                 info->ip[i].ib_size_alignment, info->ib_pad_dw_mask[i]);
       }
    }
 
