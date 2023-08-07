@@ -4051,11 +4051,19 @@ fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_d
       case nir_instr_type_alu: {
          nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-         if (nir_op_infos[alu->op].num_inputs != 2)
+         if (nir_op_infos[alu->op].num_inputs == 2) {
+            if (alu->src[0].swizzle[0] != 0 ||
+                alu->src[1].swizzle[0] != 0)
+               break;
+         } else if (nir_op_infos[alu->op].num_inputs == 3) {
+            if (alu->src[0].swizzle[0] != 0 ||
+                alu->src[1].swizzle[0] != 0 ||
+                alu->src[2].swizzle[0] != 0)
+               break;
+         } else {
+            /* Not supported ALU input count */
             break;
-
-         if (alu->src[0].swizzle[0] != 0 || alu->src[1].swizzle[0] != 0)
-            break;
+         }
 
          switch (alu->op) {
          case nir_op_iadd: {
@@ -4069,6 +4077,21 @@ fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_d
                ubld1.ADD(dst,
                          src0.file != IMM ? src0 : src1,
                          src0.file != IMM ? src1 : src0);
+            break;
+         }
+         case nir_op_iadd3: {
+            fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
+            ubld1.UNDEF(dst);
+            fs_reg src0 = nir_resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = nir_resource_insts[alu->src[1].src.ssa->index]->dst;
+            fs_reg src2 = nir_resource_insts[alu->src[2].src.ssa->index]->dst;
+            assert(src0.file != BAD_FILE && src1.file != BAD_FILE && src2.file != BAD_FILE);
+            assert(src0.type == BRW_REGISTER_TYPE_UD);
+            nir_resource_insts[def->index] =
+               ubld1.ADD3(dst,
+                          src1.file == IMM ? src1 : src0,
+                          src1.file == IMM ? src0 : src1,
+                          src2);
             break;
          }
          case nir_op_ushr: {
