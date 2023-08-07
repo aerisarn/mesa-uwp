@@ -106,9 +106,10 @@ radv_compute_generate_pm4(const struct radv_device *device, struct radv_compute_
 }
 
 static struct radv_pipeline_key
-radv_generate_compute_pipeline_key(const struct radv_device *device, const VkComputePipelineCreateInfo *pCreateInfo)
+radv_generate_compute_pipeline_key(const struct radv_device *device, const struct radv_compute_pipeline *pipeline,
+                                   const VkComputePipelineCreateInfo *pCreateInfo)
 {
-   return radv_generate_pipeline_key(device, &pCreateInfo->stage, 1, pCreateInfo->flags, pCreateInfo->pNext);
+   return radv_generate_pipeline_key(device, &pCreateInfo->stage, 1, pipeline->base.create_flags, pCreateInfo->pNext);
 }
 
 void
@@ -181,13 +182,13 @@ static VkResult
 radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                               struct radv_device *device, struct vk_pipeline_cache *cache,
                               const struct radv_pipeline_key *pipeline_key,
-                              const VkPipelineShaderStageCreateInfo *pStage, const VkPipelineCreateFlags flags,
+                              const VkPipelineShaderStageCreateInfo *pStage,
                               const VkPipelineCreationFeedbackCreateInfo *creation_feedback)
 {
    struct radv_shader_binary *cs_binary = NULL;
    unsigned char hash[20];
-   bool keep_executable_info = radv_pipeline_capture_shaders(device, flags);
-   bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, flags);
+   bool keep_executable_info = radv_pipeline_capture_shaders(device, pipeline->base.create_flags);
+   bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, pipeline->base.create_flags);
    struct radv_shader_stage cs_stage = {0};
    VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
@@ -212,7 +213,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
       goto done;
    }
 
-   if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
+   if (pipeline->base.create_flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
       return VK_PIPELINE_COMPILE_REQUIRED;
 
    int64_t stage_start = os_time_get_nano();
@@ -265,15 +266,16 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkC
    }
 
    radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_COMPUTE);
+   pipeline->base.create_flags = pCreateInfo->flags;
    pipeline->base.is_internal = _cache == device->meta_state.cache;
 
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
-   struct radv_pipeline_key key = radv_generate_compute_pipeline_key(device, pCreateInfo);
+   struct radv_pipeline_key key = radv_generate_compute_pipeline_key(device, pipeline, pCreateInfo);
 
    result = radv_compute_pipeline_compile(pipeline, pipeline_layout, device, cache, &key, &pCreateInfo->stage,
-                                          pCreateInfo->flags, creation_feedback);
+                                          creation_feedback);
    if (result != VK_SUCCESS) {
       radv_pipeline_destroy(device, &pipeline->base, pAllocator);
       return result;

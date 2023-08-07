@@ -2225,6 +2225,8 @@ struct radv_pipeline {
    struct vk_object_base base;
    enum radv_pipeline_type type;
 
+   VkPipelineCreateFlags create_flags;
+
    struct vk_pipeline_cache_object *cache_object;
 
    bool is_internal;

@@ -473,7 +473,7 @@ radv_ray_tracing_pipeline_cache_search(struct radv_device *device, struct vk_pip
 
    struct radv_pipeline_cache_object *pipeline_obj = container_of(object, struct radv_pipeline_cache_object, base);
 
-   bool is_library = pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+   bool is_library = pipeline->base.base.create_flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
    bool complete = true;
    unsigned idx = 0;
 
