@@ -2423,7 +2423,7 @@ check_base_requirements(struct zink_screen *screen)
       CHECK_OR_PRINT(feats.features.fillModeNonSolid);
       CHECK_OR_PRINT(feats.features.shaderClipDistance);
       if (!screen->info.feats12.scalarBlockLayout && !screen->info.have_EXT_scalar_block_layout)
-         printf("scalarBlockLayout OR EXT_scalar_block_layout ");
+         fprintf(stderr, "scalarBlockLayout OR EXT_scalar_block_layout ");
       CHECK_OR_PRINT(have_KHR_maintenance1);
       CHECK_OR_PRINT(have_EXT_custom_border_color);
       CHECK_OR_PRINT(have_EXT_line_rasterization);
