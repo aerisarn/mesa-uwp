@@ -1666,10 +1666,11 @@ find_var_with_location_frac(nir_shader *nir, unsigned location, unsigned locatio
 }
 
 static bool
-is_inlined(const bool *inlined, const struct pipe_stream_output *output)
+is_inlined(const bool *inlined, const nir_xfb_output_info *output)
 {
-   for (unsigned i = 0; i < output->num_components; i++)
-      if (!inlined[output->start_component + i])
+   unsigned num_components = util_bitcount(output->component_mask);
+   for (unsigned i = 0; i < num_components; i++)
+      if (!inlined[output->component_offset + i])
          return false;
    return true;
 }
@@ -1789,70 +1790,50 @@ get_var_slot_count(nir_shader *nir, nir_variable *var)
 }
 
 
-static const struct pipe_stream_output *
-find_packed_output(const struct pipe_stream_output_info *so_info, uint8_t *reverse_map, unsigned slot)
+static const nir_xfb_output_info *
+find_packed_output(const nir_xfb_info *xfb_info, unsigned slot)
 {
-   for (unsigned i = 0; i < so_info->num_outputs; i++) {
-      const struct pipe_stream_output *packed_output = &so_info->output[i];
-      if (reverse_map[packed_output->register_index] == slot)
+   for (unsigned i = 0; i < xfb_info->output_count; i++) {
+      const nir_xfb_output_info *packed_output = &xfb_info->outputs[i];
+      if (packed_output->location == slot)
          return packed_output;
    }
    return NULL;
 }
 
 static void
-update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream_output_info *so_info,
-               uint64_t outputs_written, bool have_psiz)
+update_so_info(struct zink_shader *zs, nir_shader *nir, uint64_t outputs_written, bool have_psiz)
 {
-   uint8_t reverse_map[VARYING_SLOT_MAX] = {0};
-   unsigned slot = 0;
-   /* semi-copied from iris */
-   while (outputs_written) {
-      int bit = u_bit_scan64(&outputs_written);
-      /* PSIZ from nir_lower_point_size_mov breaks stream output, so always skip it */
-      if (bit == VARYING_SLOT_PSIZ && !have_psiz)
-         continue;
-      reverse_map[slot++] = bit;
-   }
-
-   bool have_fake_psiz = false;
-   nir_foreach_shader_out_variable(var, nir) {
-      if (var->data.location == VARYING_SLOT_PSIZ && !var->data.explicit_location)
-         have_fake_psiz = true;
-   }
-
    bool inlined[VARYING_SLOT_MAX][4] = {0};
    uint64_t packed = 0;
    uint8_t packed_components[VARYING_SLOT_MAX] = {0};
    uint8_t packed_streams[VARYING_SLOT_MAX] = {0};
    uint8_t packed_buffers[VARYING_SLOT_MAX] = {0};
    uint16_t packed_offsets[VARYING_SLOT_MAX][4] = {0};
-   nir_variable *psiz = NULL;
-   for (unsigned i = 0; i < so_info->num_outputs; i++) {
-      const struct pipe_stream_output *output = &so_info->output[i];
+   for (unsigned i = 0; i < nir->xfb_info->output_count; i++) {
+      const nir_xfb_output_info *output = &nir->xfb_info->outputs[i];
+      unsigned xfb_components = util_bitcount(output->component_mask);
       /* always set stride to be used during draw */
-      zs->sinfo.stride[output->output_buffer] = so_info->stride[output->output_buffer];
+      zs->sinfo.stride[output->buffer] = nir->xfb_info->buffers[output->buffer].stride;
       if (zs->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->info.gs.active_stream_mask) == 1) {
-         for (unsigned c = 0; !is_inlined(inlined[reverse_map[output->register_index]], output) && c < output->num_components; c++) {
-            unsigned slot = reverse_map[output->register_index];
-            if (inlined[slot][output->start_component + c])
+         for (unsigned c = 0; !is_inlined(inlined[output->location], output) && c < xfb_components; c++) {
+            unsigned slot = output->location;
+            if (inlined[slot][output->component_offset + c])
                continue;
             nir_variable *var = NULL;
             while (!var && slot < VARYING_SLOT_TESS_MAX)
-               var = find_var_with_location_frac(nir, slot--, output->start_component + c, have_psiz, nir_var_shader_out);
-            slot = reverse_map[output->register_index];
+               var = find_var_with_location_frac(nir, slot--, output->component_offset + c, have_psiz, nir_var_shader_out);
+            slot = output->location;
             unsigned slot_count = var ? get_var_slot_count(nir, var) : 0;
             if (!var || var->data.location > slot || var->data.location + slot_count <= slot) {
                /* if no variable is found for the xfb output, no output exists */
-               inlined[slot][c + output->start_component] = true;
+               inlined[slot][c + output->component_offset] = true;
                continue;
             }
-            if (var->data.location == VARYING_SLOT_PSIZ)
-               psiz = var;
             if (var->data.explicit_xfb_buffer) {
                /* handle dvec3 where gallium splits streamout over 2 registers */
-               for (unsigned j = 0; j < output->num_components; j++)
-                  inlined[slot][c + output->start_component + j] = true;
+               for (unsigned j = 0; j < xfb_components; j++)
+                  inlined[slot][c + output->component_offset + j] = true;
             }
             if (is_inlined(inlined[slot], output))
                continue;
@@ -1864,24 +1845,24 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
             /* if this is the entire variable, try to blast it out during the initial declaration
             * structs must be handled later to ensure accurate analysis
             */
-            if ((num_components == output->num_components ||
-                 num_components < output->num_components ||
-                 (num_components > output->num_components && output->num_components == 4))) {
+            if ((num_components == xfb_components ||
+                 num_components < xfb_components ||
+                 (num_components > xfb_components && xfb_components == 4))) {
                var->data.explicit_xfb_buffer = 1;
-               var->data.xfb.buffer = output->output_buffer;
-               var->data.xfb.stride = so_info->stride[output->output_buffer] * 4;
-               var->data.offset = (c + output->dst_offset) * 4;
-               var->data.stream = output->stream;
-               for (unsigned j = 0; j < MIN2(num_components, output->num_components); j++)
-                  inlined[slot][c + output->start_component + j] = true;
+               var->data.xfb.buffer = output->buffer;
+               var->data.xfb.stride = zs->sinfo.stride[output->buffer];
+               var->data.offset = (output->offset + c * sizeof(uint32_t));
+               var->data.stream = nir->xfb_info->buffer_to_stream[output->buffer];
+               for (unsigned j = 0; j < MIN2(num_components, xfb_components); j++)
+                  inlined[slot][c + output->component_offset + j] = true;
             } else {
                /* otherwise store some metadata for later */
                packed |= BITFIELD64_BIT(slot);
-               packed_components[slot] += output->num_components;
-               packed_streams[slot] |= BITFIELD_BIT(output->stream);
-               packed_buffers[slot] |= BITFIELD_BIT(output->output_buffer);
-               for (unsigned j = 0; j < output->num_components; j++)
-                  packed_offsets[output->register_index][j + output->start_component + c] = output->dst_offset + j;
+               packed_components[slot] += xfb_components;
+               packed_streams[slot] |= BITFIELD_BIT(nir->xfb_info->buffer_to_stream[output->buffer]);
+               packed_buffers[slot] |= BITFIELD_BIT(output->buffer);
+               for (unsigned j = 0; j < xfb_components; j++)
+                  packed_offsets[output->location][j + output->component_offset + c] = output->offset + j * sizeof(uint32_t);
             }
          }
       }
@@ -1891,16 +1872,16 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
     * being output with the same stream on the same buffer with increasing offsets, this entire variable
     * can be consolidated into a single output to conserve locations
     */
-   for (unsigned i = 0; i < so_info->num_outputs; i++) {
-      const struct pipe_stream_output *output = &so_info->output[i];
-      unsigned slot = reverse_map[output->register_index];
+   for (unsigned i = 0; i < nir->xfb_info->output_count; i++) {
+      const nir_xfb_output_info *output = &nir->xfb_info->outputs[i];
+      unsigned slot = output->location;
       if (is_inlined(inlined[slot], output))
          continue;
       if (zs->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->info.gs.active_stream_mask) == 1) {
          nir_variable *var = NULL;
          while (!var)
-            var = find_var_with_location_frac(nir, slot--, output->start_component, have_psiz, nir_var_shader_out);
-         slot = reverse_map[output->register_index];
+            var = find_var_with_location_frac(nir, slot--, output->component_offset, have_psiz, nir_var_shader_out);
+         slot = output->location;
          unsigned slot_count = var ? get_var_slot_count(nir, var) : 0;
          if (!var || var->data.location > slot || var->data.location + slot_count <= slot)
             continue;
@@ -1914,7 +1895,7 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
          /* for each variable, iterate over all the variable's slots and inline the outputs */
          for (unsigned j = 0; j < num_slots; j++) {
             slot = var->data.location + j;
-            const struct pipe_stream_output *packed_output = find_packed_output(so_info, reverse_map, slot);
+            const nir_xfb_output_info *packed_output = find_packed_output(nir->xfb_info, slot);
             if (!packed_output)
                goto out;
 
@@ -1930,20 +1911,20 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
                goto out;
 
             /* in order to pack the xfb output, all the offsets must be sequentially incrementing */
-            uint32_t prev_offset = packed_offsets[packed_output->register_index][0];
+            uint32_t prev_offset = packed_offsets[packed_output->location][0];
             for (unsigned k = 1; k < num_components; k++) {
                /* if the offsets are not incrementing as expected, skip consolidation */
-               if (packed_offsets[packed_output->register_index][k] != prev_offset + 1)
+               if (packed_offsets[packed_output->location][k] != prev_offset + sizeof(uint32_t))
                   goto out;
-               prev_offset = packed_offsets[packed_output->register_index][k + packed_output->start_component];
+               prev_offset = packed_offsets[packed_output->location][k + packed_output->component_offset];
             }
          }
          /* this output can be consolidated: blast out all the data inlined */
          var->data.explicit_xfb_buffer = 1;
-         var->data.xfb.buffer = output->output_buffer;
-         var->data.xfb.stride = so_info->stride[output->output_buffer] * 4;
-         var->data.offset = output->dst_offset * 4;
-         var->data.stream = output->stream;
+         var->data.xfb.buffer = output->buffer;
+         var->data.xfb.stride = zs->sinfo.stride[output->buffer];
+         var->data.offset = output->offset;
+         var->data.stream = nir->xfb_info->buffer_to_stream[output->buffer];
          /* mark all slot components inlined to skip subsequent loop iterations */
          for (unsigned j = 0; j < num_slots; j++) {
             slot = var->data.location + j;
@@ -1956,9 +1937,6 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
 out:
       unreachable("xfb should be inlined by now!");
    }
-   /* ensure this doesn't get output in the shader by unsetting location */
-   if (have_fake_psiz && psiz)
-      update_psiz_location(nir, psiz);
 }
 
 struct decompose_state {
@@ -3712,6 +3690,8 @@ zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shad
             if (zink_vs_key_base(key)->push_drawid) {
                NIR_PASS_V(nir, lower_drawid);
             }
+         } else {
+            nir->xfb_info = NULL;
          }
          if (zink_vs_key_base(key)->robust_access)
             NIR_PASS(need_optimize, nir, lower_txf_lod_robustness);
@@ -5424,7 +5404,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       nir_foreach_shader_out_variable(var, nir)
          var->data.explicit_xfb_buffer = 0;
    if (so_info && so_info->num_outputs && nir->info.outputs_written)
-      update_so_info(ret, nir, so_info, nir->info.outputs_written, have_psiz);
+      update_so_info(ret, nir, nir->info.outputs_written, have_psiz);
    else if (have_psiz) {
       bool have_fake_psiz = false;
       nir_variable *psiz = NULL;

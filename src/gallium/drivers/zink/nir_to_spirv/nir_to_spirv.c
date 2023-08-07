@@ -900,8 +900,7 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
    if (var->data.patch)
       spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationPatch);
 
-   if (var->data.explicit_xfb_buffer &&
-       (!glsl_type_is_array(var->type) || glsl_array_size(var->type) == 1  || !glsl_type_is_interface(glsl_without_array(var->type)))) {
+   if (var->data.explicit_xfb_buffer && ctx->nir->xfb_info) {
       spirv_builder_emit_offset(&ctx->builder, var_id, var->data.offset);
       spirv_builder_emit_xfb_buffer(&ctx->builder, var_id, var->data.xfb.buffer);
       spirv_builder_emit_xfb_stride(&ctx->builder, var_id, var->data.xfb.stride);
