@@ -39,6 +39,7 @@
 #include <vulkan/vulkan.h>
 #include <xf86drm.h>
 
+#include "git_sha1.h"
 #include "hwdef/rogue_hw_utils.h"
 #include "pvr_bo.h"
 #include "pvr_border.h"
@@ -157,6 +158,12 @@ static void pvr_physical_device_get_supported_extensions(
 {
    *extensions = (struct vk_device_extension_table){
       .KHR_copy_commands2 = true,
+      /* TODO: enable this extension when the conformance tests get
+       * updated to version 1.3.6.0, the current version does not
+       * include the imagination driver ID, which will make a dEQP
+       * test fail
+       */
+      .KHR_driver_properties = false,
       .KHR_external_memory = true,
       .KHR_external_memory_fd = true,
       .KHR_format_feature_flags2 = true,
@@ -919,6 +926,23 @@ pvr_get_physical_device_properties_1_2(struct pvr_physical_device *pdevice,
                                        VkPhysicalDeviceVulkan12Properties *p)
 {
    assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES);
+
+   /* VK_KHR_driver_properties */
+   p->driverID = VK_DRIVER_ID_IMAGINATION_OPEN_SOURCE_MESA;
+   memset(p->driverName, 0, sizeof(p->driverName));
+   snprintf(p->driverName,
+            VK_MAX_DRIVER_NAME_SIZE,
+            "Imagination open-source Mesa driver");
+   memset(p->driverInfo, 0, sizeof(p->driverInfo));
+   snprintf(p->driverInfo,
+            VK_MAX_DRIVER_INFO_SIZE,
+            ("Mesa " PACKAGE_VERSION MESA_GIT_SHA1));
+   p->conformanceVersion = (VkConformanceVersion){
+      .major = 1,
+      .minor = 3,
+      .subminor = 4,
+      .patch = 1,
+   };
 
    /* VK_KHR_timeline_semaphore */
    p->maxTimelineSemaphoreValueDifference = UINT64_MAX;
