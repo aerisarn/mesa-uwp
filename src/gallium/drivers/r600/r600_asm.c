@@ -1209,7 +1209,7 @@ static int load_ar_r6xx(struct r600_bytecode *bc, bool for_src)
 		return 0;
 
 	/* hack to avoid making MOVA the last instruction in the clause */
-	if ((bc->cf_last->ndw>>1) >= 110)
+	if (bc->cf_last == NULL || (bc->cf_last->ndw>>1) >= 110)
 		bc->force_add_cf = 1;
    else if (for_src) {
       insert_nop_r6xx(bc, 4);
@@ -1244,7 +1244,7 @@ int r600_load_ar(struct r600_bytecode *bc, bool for_src)
 		return 0;
 
 	/* hack to avoid making MOVA the last instruction in the clause */
-	if ((bc->cf_last->ndw>>1) >= 110)
+	if (bc->cf_last == NULL || (bc->cf_last->ndw>>1) >= 110)
 		bc->force_add_cf = 1;
 
 	memset(&alu, 0, sizeof(alu));
