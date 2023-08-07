@@ -382,6 +382,7 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_sampler_mirror_clamp_to_edge = true,
       .KHR_sampler_ycbcr_conversion = true,
       .KHR_separate_depth_stencil_layouts = true,
+      .KHR_shader_clock = true,
       .KHR_shader_draw_parameters = true,
       .KHR_shader_non_semantic_info = true,
       .KHR_spirv_1_4 = true,
@@ -660,6 +661,10 @@ nvk_get_device_features(const struct nv_device_info *info,
 
       /* VALVE_mutable_descriptor_type */
       .mutableDescriptorType = true,
+
+      /* VK_KHR_shader_clock */
+      .shaderSubgroupClock = true,
+      .shaderDeviceClock = true,
    };
 }
 
