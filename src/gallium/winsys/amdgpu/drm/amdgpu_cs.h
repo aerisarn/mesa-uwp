@@ -30,8 +30,8 @@ struct amdgpu_ctx {
     */
    bool allow_context_lost;
 
-   unsigned initial_num_total_rejected_cs;
-   bool rejected_any_cs;
+   /* Lost context status due to ioctl and allocation failures. */
+   enum pipe_reset_status sw_status;
 };
 
 struct amdgpu_cs_buffer {
