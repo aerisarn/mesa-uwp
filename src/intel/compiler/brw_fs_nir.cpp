@@ -4003,7 +4003,7 @@ fs_reg
 fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_def)
 {
    /* Create a build at the location of the resource_intel intrinsic */
-   fs_builder ubld1 = bld.exec_all().group(1, 0);
+   fs_builder ubld8 = bld.exec_all().group(8, 0);
 
    struct rebuild_resource resources = {};
    resources.idx = 0;
@@ -4041,10 +4041,9 @@ fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_d
       case nir_instr_type_load_const: {
          nir_load_const_instr *load_const =
             nir_instr_as_load_const(instr);
-         fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
-         ubld1.UNDEF(dst);
+         fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
          nir_resource_insts[def->index] =
-            ubld1.group(8, 0).MOV(dst, brw_imm_ud(load_const->value[0].i32));
+            ubld8.MOV(dst, brw_imm_ud(load_const->value[0].i32));
          break;
       }
 
@@ -4067,52 +4066,47 @@ fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_d
 
          switch (alu->op) {
          case nir_op_iadd: {
-            fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
-            ubld1.UNDEF(dst);
+            fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
             fs_reg src0 = nir_resource_insts[alu->src[0].src.ssa->index]->dst;
             fs_reg src1 = nir_resource_insts[alu->src[1].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
             nir_resource_insts[def->index] =
-               ubld1.ADD(dst,
+               ubld8.ADD(dst,
                          src0.file != IMM ? src0 : src1,
                          src0.file != IMM ? src1 : src0);
             break;
          }
          case nir_op_iadd3: {
-            fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
-            ubld1.UNDEF(dst);
+            fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
             fs_reg src0 = nir_resource_insts[alu->src[0].src.ssa->index]->dst;
             fs_reg src1 = nir_resource_insts[alu->src[1].src.ssa->index]->dst;
             fs_reg src2 = nir_resource_insts[alu->src[2].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE && src2.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
             nir_resource_insts[def->index] =
-               ubld1.ADD3(dst,
+               ubld8.ADD3(dst,
                           src1.file == IMM ? src1 : src0,
                           src1.file == IMM ? src0 : src1,
                           src2);
             break;
          }
          case nir_op_ushr: {
-            assert(ubld1.dispatch_width() == 1);
-            fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
-            ubld1.UNDEF(dst);
+            fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
             fs_reg src0 = nir_resource_insts[alu->src[0].src.ssa->index]->dst;
             fs_reg src1 = nir_resource_insts[alu->src[1].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
-            nir_resource_insts[def->index] = ubld1.SHR(dst, src0, src1);
+            nir_resource_insts[def->index] = ubld8.SHR(dst, src0, src1);
             break;
          }
          case nir_op_ishl: {
-            fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
-            ubld1.UNDEF(dst);
+            fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
             fs_reg src0 = nir_resource_insts[alu->src[0].src.ssa->index]->dst;
             fs_reg src1 = nir_resource_insts[alu->src[1].src.ssa->index]->dst;
             assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
             assert(src0.type == BRW_REGISTER_TYPE_UD);
-            nir_resource_insts[def->index] = ubld1.SHL(dst, src0, src1);
+            nir_resource_insts[def->index] = ubld8.SHL(dst, src0, src1);
             break;
          }
          case nir_op_mov: {
@@ -4138,11 +4132,10 @@ fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_def *resource_d
 
             unsigned base_offset = nir_intrinsic_base(intrin);
             unsigned load_offset = nir_src_as_uint(intrin->src[0]);
-            fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
-            ubld1.UNDEF(dst);
+            fs_reg dst = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
             fs_reg src(UNIFORM, base_offset / 4, BRW_REGISTER_TYPE_UD);
             src.offset = load_offset + base_offset % 4;
-            nir_resource_insts[def->index] = ubld1.MOV(dst, src);
+            nir_resource_insts[def->index] = ubld8.MOV(dst, src);
             break;
          }
 
