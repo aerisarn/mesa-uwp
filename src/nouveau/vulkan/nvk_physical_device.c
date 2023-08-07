@@ -73,7 +73,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .maxFragmentInputComponents = 128,
          .maxFragmentOutputAttachments = NVK_MAX_RTS,
          .maxFragmentDualSrcAttachments = 1,
-         .maxSamplerAllocationCount = 4096,
+         .maxSamplerAllocationCount = 4000,
          .maxSamplerLodBias = 15,
          .maxSamplerAnisotropy = 16,
          .maxSampleMaskWords = 1,
@@ -318,6 +318,11 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          p->transformFeedbackStreamsLinesTriangles = false;
          p->transformFeedbackRasterizationStreamSelect = true;
          p->transformFeedbackDraw = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
+         VkPhysicalDeviceCustomBorderColorPropertiesEXT *props = (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
+         props->maxCustomBorderColorSamplers = 4000;
          break;
       }
       /* More property structs */
