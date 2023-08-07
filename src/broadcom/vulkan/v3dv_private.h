@@ -2144,32 +2144,6 @@ struct v3dv_sampler {
 #define V3DV_NO_SAMPLER_16BIT_IDX 0
 #define V3DV_NO_SAMPLER_32BIT_IDX 1
 
-/*
- * Following two methods are using on the combined to/from texture/sampler
- * indices maps at v3dv_pipeline.
- */
-static inline uint32_t
-v3dv_pipeline_combined_index_key_create(uint32_t texture_index,
-                                        uint32_t sampler_index)
-{
-   return texture_index << 24 | sampler_index;
-}
-
-static inline void
-v3dv_pipeline_combined_index_key_unpack(uint32_t combined_index_key,
-                                        uint32_t *texture_index,
-                                        uint32_t *sampler_index)
-{
-   uint32_t texture = combined_index_key >> 24;
-   uint32_t sampler = combined_index_key & 0xffffff;
-
-   if (texture_index)
-      *texture_index = texture;
-
-   if (sampler_index)
-      *sampler_index = sampler;
-}
-
 struct v3dv_descriptor_maps {
    struct v3dv_descriptor_map ubo_map;
    struct v3dv_descriptor_map ssbo_map;
