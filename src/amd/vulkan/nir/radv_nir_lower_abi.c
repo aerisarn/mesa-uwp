@@ -273,8 +273,18 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.task_ring_entry);
       break;
    case nir_intrinsic_load_lshs_vertex_stride_amd: {
-      unsigned io_num = stage == MESA_SHADER_VERTEX ? s->info->vs.num_linked_outputs : s->info->tcs.num_linked_inputs;
-      replacement = nir_imm_int(b, get_tcs_input_vertex_stride(io_num));
+      if (stage == MESA_SHADER_VERTEX) {
+         replacement = nir_imm_int(b, get_tcs_input_vertex_stride(s->info->vs.num_linked_outputs));
+      } else {
+         assert(stage == MESA_SHADER_TESS_CTRL);
+         if (s->info->inputs_linked) {
+            replacement = nir_imm_int(b, get_tcs_input_vertex_stride(s->info->tcs.num_linked_inputs));
+         } else {
+            nir_ssa_def *lshs_vertex_stride =
+               GET_SGPR_FIELD_NIR(s->args->tcs_offchip_layout, TCS_OFFCHIP_LAYOUT_LSHS_VERTEX_STRIDE);
+            replacement = nir_ishl_imm(b, lshs_vertex_stride, 2);
+         }
+      }
       break;
    }
    case nir_intrinsic_load_esgs_vertex_stride_amd: {

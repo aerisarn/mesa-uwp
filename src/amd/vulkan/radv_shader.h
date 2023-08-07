@@ -201,6 +201,8 @@ enum radv_ud_index {
 #define TCS_OFFCHIP_LAYOUT_PATCH_CONTROL_POINTS__MASK  0x3f
 #define TCS_OFFCHIP_LAYOUT_NUM_PATCHES__SHIFT          6
 #define TCS_OFFCHIP_LAYOUT_NUM_PATCHES__MASK           0xff
+#define TCS_OFFCHIP_LAYOUT_LSHS_VERTEX_STRIDE__SHIFT   14
+#define TCS_OFFCHIP_LAYOUT_LSHS_VERTEX_STRIDE__MASK    0xff /* max 32 * 4 + 1 (to reduce LDS bank conflicts) */
 
 #define TES_STATE_NUM_PATCHES__SHIFT      0
 #define TES_STATE_NUM_PATCHES__MASK       0xff

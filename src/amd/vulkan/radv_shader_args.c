@@ -355,8 +355,8 @@ radv_declare_rt_shader_args(enum amd_gfx_level gfx_level, struct radv_shader_arg
 static bool
 radv_tcs_needs_state_sgpr(const struct radv_shader_info *info, const struct radv_pipeline_key *key)
 {
-   /* When the number of patch control points/tessellation patches is 0, it's loaded from a SGPR. */
-   return !key->tcs.tess_input_vertices || !info->num_tess_patches;
+   /* Some values are loaded from a SGPR when dynamic states are used or when the shader is unlinked. */
+   return !key->tcs.tess_input_vertices || !info->num_tess_patches || !info->inputs_linked;
 }
 
 static bool
