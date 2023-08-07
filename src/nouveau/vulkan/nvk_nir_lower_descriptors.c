@@ -360,12 +360,10 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
                               nir_src_as_deref(tex->src[sampler_src_idx].src);
    assert(texture);
 
-   const int plane_src_idx =
-      nir_tex_instr_src_index(tex, nir_tex_src_plane);
-
-   uint32_t plane = (plane_src_idx < 0) ? 0 : 
-      nir_src_as_uint(tex->src[plane_src_idx].src);
-   uint64_t plane_offset_B = plane * sizeof(struct nvk_image_descriptor);
+   nir_ssa_def *plane_ssa = nir_steal_tex_src(tex, nir_tex_src_plane);
+   const uint32_t plane =
+      plane_ssa ? nir_src_as_uint(nir_src_for_ssa(plane_ssa)) : 0;
+   const uint64_t plane_offset_B = plane * sizeof(struct nvk_image_descriptor);
 
    nir_ssa_def *combined_handle;
    if (texture == sampler) {
