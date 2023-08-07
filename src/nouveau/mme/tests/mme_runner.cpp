@@ -284,7 +284,7 @@ mme_tu104_sim_runner::run_macro(const std::vector<uint32_t>& macro,
                                const std::vector<uint32_t>& params)
 {
    std::vector<mme_tu104_inst> insts(macro.size());
-   mme_tu104_decode(&insts[0], &macro[0], macro.size());
+   mme_tu104_decode(&insts[0], &macro[0], macro.size() / 3);
 
    /* First, make a copy of the data and simulate the macro */
    mme_tu104_sim_mem sim_mem = {
