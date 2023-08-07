@@ -2719,7 +2719,7 @@ emit_alu_comb_with_zero(const nir_alu_instr& alu, EAluOp opcode, Shader& shader)
    auto& value_factory = shader.value_factory();
    AluInstr *ir = nullptr;
    auto pin = pin_for_components(alu);
-   for (int i = 0; i < 4; ++i) {
+   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
       ir = new AluInstr(opcode,
                         value_factory.dest(alu.dest, i, pin),
                         value_factory.zero(),
@@ -2961,7 +2961,7 @@ emit_alu_trans_op2_eg(const nir_alu_instr& alu, EAluOp opcode, Shader& shader)
    AluInstr *ir = nullptr;
 
    auto pin = pin_for_components(alu);
-   for (int i = 0; i < 4; ++i) {
+   for (unsigned i = 0; i < nir_dest_num_components(alu.dest.dest); ++i) {
       ir = new AluInstr(opcode,
                         value_factory.dest(alu.dest.dest, i, pin),
                         value_factory.src(src0, i),
