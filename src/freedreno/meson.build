@@ -43,12 +43,15 @@ install_fd_decode_tools = dep_libxml2.found() and prog_gzip.found() and \
 subdir('registers')
 subdir('common')
 subdir('isa')
-subdir('drm')
 subdir('ir2')
 subdir('ir3')
 subdir('fdl')
 subdir('perfcntrs')
-subdir('computerator')
+
+if system_has_kms_drm
+  subdir('drm')
+  subdir('computerator')
+endif
 
 if with_perfetto and (with_datasources.contains('freedreno') or with_datasources.contains('auto'))
   subdir('ds')
