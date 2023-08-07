@@ -1331,10 +1331,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    if (info->gfx_level == GFX6)
       info->gfx_ib_pad_with_type2 = true;
 
-   /* GFX10 and maybe GFX9 need this alignment for cache coherency. */
-   if (info->gfx_level >= GFX9)
-      info->ib_alignment = MAX2(info->ib_alignment, info->tcc_cache_line_size);
-
    if (info->gfx_level >= GFX11) {
       /* With num_cu = 4 in gfx11 measured power for idle, video playback and observed
        * power savings, hence enable dcc with retile for gfx11 with num_cu >= 4.
