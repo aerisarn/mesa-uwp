@@ -537,7 +537,7 @@ void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct p
    }
 }
 
-static void
+static unsigned
 set_work_size(struct pipe_grid_info *info, unsigned block_x, unsigned block_y, unsigned block_z,
               unsigned work_x, unsigned work_y, unsigned work_z)
 {
@@ -550,6 +550,8 @@ set_work_size(struct pipe_grid_info *info, unsigned block_x, unsigned block_y, u
       info->last_block[i] = work[i] % info->block[i];
       info->grid[i] = DIV_ROUND_UP(work[i], info->block[i]);
    }
+
+   return work_z > 1 ? 3 : (work_y > 1 ? 2 : 1);
 }
 
 static void si_launch_grid_internal_images(struct si_context *sctx,
@@ -764,12 +766,13 @@ bool si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    sctx->cs_user_data[1] = src_box->y | (dsty << 16);
    sctx->cs_user_data[2] = src_box->z | (dstz << 16);
 
-   set_work_size(&info, block_x, block_y, block_z,
-                 src_box->width, src_box->height, src_box->depth);
+   unsigned wg_dim =
+      set_work_size(&info, block_x, block_y, block_z,
+                    src_box->width, src_box->height, src_box->depth);
 
-   void **copy_image_cs_ptr = &sctx->cs_copy_image[src_is_1d][dst_is_1d];
+   void **copy_image_cs_ptr = &sctx->cs_copy_image[wg_dim - 1][src_is_1d][dst_is_1d];
    if (!*copy_image_cs_ptr)
-      *copy_image_cs_ptr = si_create_copy_image_cs(sctx, src_is_1d, dst_is_1d);
+      *copy_image_cs_ptr = si_create_copy_image_cs(sctx, wg_dim, src_is_1d, dst_is_1d);
 
    assert(*copy_image_cs_ptr);
 

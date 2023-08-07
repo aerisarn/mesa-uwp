@@ -73,7 +73,8 @@ deref_ssa(nir_builder *b, nir_variable *var)
  * It expects the source and destination (x,y,z) coords as user_data_amd,
  * packed into 3 SGPRs as 2x16bits per component.
  */
-void *si_create_copy_image_cs(struct si_context *sctx, bool src_is_1d_array, bool dst_is_1d_array)
+void *si_create_copy_image_cs(struct si_context *sctx, unsigned wg_dim,
+                              bool src_is_1d_array, bool dst_is_1d_array)
 {
    const nir_shader_compiler_options *options =
       sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
@@ -87,13 +88,18 @@ void *si_create_copy_image_cs(struct si_context *sctx, bool src_is_1d_array, boo
    b.shader->info.workgroup_size_variable = true;
 
    b.shader->info.cs.user_data_components_amd = 3;
-   nir_def *ids = get_global_ids(&b, 3);
+   nir_def *ids = nir_pad_vector_imm_int(&b, get_global_ids(&b, wg_dim), 0, 3);
 
    nir_def *coord_src = NULL, *coord_dst = NULL;
-   unpack_2x16(&b, nir_load_user_data_amd(&b), &coord_src, &coord_dst);
+   unpack_2x16(&b, nir_trim_vector(&b, nir_load_user_data_amd(&b), 3),
+               &coord_src, &coord_dst);
 
    coord_src = nir_iadd(&b, coord_src, ids);
    coord_dst = nir_iadd(&b, coord_dst, ids);
+
+   /* Coordinates must have 4 channels in NIR. */
+   coord_src = nir_pad_vector(&b, coord_src, 4);
+   coord_dst = nir_pad_vector(&b, coord_dst, 4);
 
    static unsigned swizzle_xz[] = {0, 2, 0, 0};
 
