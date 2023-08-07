@@ -178,7 +178,7 @@ nvk_image_view_init(struct nvk_device *dev,
              * get at the first LOD from the shader anyway.
              */
             assert(view->vk.base_array_layer == 0);
-            assert(view->vk.layer_count = 1);
+            assert(view->vk.layer_count == 1);
             nil_view.type = NIL_VIEW_TYPE_2D_ARRAY;
             nil_view.num_levels = 1;
             nil_view.base_array_layer = 0;
