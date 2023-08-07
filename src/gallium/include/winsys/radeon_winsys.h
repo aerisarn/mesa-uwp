@@ -508,6 +508,13 @@ struct radeon_winsys {
    void (*ctx_destroy)(struct radeon_winsys_ctx *ctx);
 
    /**
+    * Set a reset status for the context due to a software failure, such as an allocation failure
+    * or a skipped draw.
+    */
+   void (*ctx_set_sw_reset_status)(struct radeon_winsys_ctx *ctx, enum pipe_reset_status status,
+                                   const char *format, ...);
+
+   /**
     * Query a GPU reset status.
     */
    enum pipe_reset_status (*ctx_query_reset_status)(struct radeon_winsys_ctx *ctx,

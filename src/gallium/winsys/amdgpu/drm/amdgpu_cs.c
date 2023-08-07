@@ -1969,6 +1969,7 @@ void amdgpu_cs_init_functions(struct amdgpu_screen_winsys *ws)
 {
    ws->base.ctx_create = amdgpu_ctx_create;
    ws->base.ctx_destroy = amdgpu_ctx_destroy;
+   ws->base.ctx_set_sw_reset_status = amdgpu_ctx_set_sw_reset_status;
    ws->base.ctx_query_reset_status = amdgpu_ctx_query_reset_status;
    ws->base.cs_create = amdgpu_cs_create;
    ws->base.cs_setup_preemption = amdgpu_cs_setup_preemption;
