@@ -1217,7 +1217,7 @@ bool
 AssamblerVisitor::copy_dst(r600_bytecode_alu_dst& dst, const Register& d, bool write)
 {
    if (write && d.sel() > g_clause_local_end) {
-      R600_ERR("shader_from_nir: Don't support more then 124 GPRs + 2 claus "
+      R600_ERR("shader_from_nir: Don't support more then 123 GPRs + 4 clause "
                "local, but try using %d\n",
                d.sel());
       m_result = false;
@@ -1306,7 +1306,7 @@ EncodeSourceVisitor::EncodeSourceVisitor(r600_bytecode_alu_src& s, r600_bytecode
 void
 EncodeSourceVisitor::visit(const Register& value)
 {
-   assert(value.sel() < g_clause_local_end && "Only have 124 reisters + 4 clause local");
+   assert(value.sel() < g_clause_local_end && "Only have 123 reisters + 4 clause local");
 }
 
 void
