@@ -3621,13 +3621,12 @@ build_nir_tex_op_ms_fetch_sample(struct nir_builder *b,
                                  nir_ssa_def *tex_pos,
                                  nir_ssa_def *sample_idx)
 {
-   nir_tex_instr *tex = nir_tex_instr_create(b->shader, 4);
+   nir_tex_instr *tex = nir_tex_instr_create(b->shader, 3);
    tex->sampler_dim = GLSL_SAMPLER_DIM_MS;
    tex->op = nir_texop_txf_ms;
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, tex_pos);
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_texture_deref, tex_deref);
-   tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_sampler_deref, tex_deref);
-   tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_ms_index, sample_idx);
+   tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_ms_index, sample_idx);
    tex->dest_type = nir_get_nir_type_for_glsl_base_type(tex_type);
    tex->is_array = false;
    tex->coord_components = tex_pos->num_components;

@@ -718,12 +718,12 @@ lower_sampler(nir_builder *b,
    if (texture_idx < 0 && sampler_idx < 0)
       return false;
 
-   /* If we don't have a sampler, we assign it the idx we reserve for this
-    * case, and we ensure that it is using the correct return size.
+   /* If the instruction doesn't have a sampler (i.e. txf) we use backend_flags
+    * to bind a default sampler state to configure precission.
     */
    if (sampler_idx < 0) {
       state->needs_default_sampler_state = true;
-      instr->sampler_index = return_size == 16 ?
+      instr->backend_flags = return_size == 16 ?
          V3DV_NO_SAMPLER_16BIT_IDX : V3DV_NO_SAMPLER_32BIT_IDX;
    }
 

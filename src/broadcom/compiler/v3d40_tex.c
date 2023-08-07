@@ -229,12 +229,18 @@ v3d40_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
         assert(instr->op != nir_texop_lod || c->devinfo->ver >= 42);
 
         unsigned texture_idx = instr->texture_index;
-        unsigned sampler_idx = instr->sampler_index;
+
+        /* For instructions that don't have a sampler (i.e. txf) we bind
+         * default sampler state via the backend_flags to handle precision.
+         */
+        unsigned sampler_idx = nir_tex_instr_need_sampler(instr) ?
+                               instr->sampler_index : instr->backend_flags;
 
         /* Even if the texture operation doesn't need a sampler by
          * itself, we still need to add the sampler configuration
          * parameter if the output is 32 bit
          */
+        assert(sampler_idx < c->key->num_samplers_used);
         bool output_type_32_bit =
                 c->key->sampler[sampler_idx].return_size == 32;
 
