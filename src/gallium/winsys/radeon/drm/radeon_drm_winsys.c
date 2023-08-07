@@ -551,7 +551,11 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
                                     (ws->info.family == CHIP_HAWAII &&
                                      ws->accel_working2 < 3);
    ws->info.tcc_cache_line_size = 64; /* TC L2 line size on GCN */
-   ws->info.ib_alignment = 4096;
+   for (unsigned i = 0; i < AMD_NUM_IP_TYPES; i++) {
+      /* This is probably too large. */
+      ws->info.ip[i].ib_base_alignment = 4096;
+      ws->info.ip[i].ib_size_alignment = 4096;
+   }
    ws->info.has_bo_metadata = false;
    ws->info.has_eqaa_surface_allocator = false;
    ws->info.has_sparse_vm_mappings = false;
