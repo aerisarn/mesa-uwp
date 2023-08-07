@@ -2906,8 +2906,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    /* Calculate the number of fragment input VGPRs. */
    if (sel->stage == MESA_SHADER_FRAGMENT) {
       shader->info.num_input_vgprs = ac_get_fs_input_vgpr_cnt(
-         &shader->config, &shader->info.face_vgpr_index, &shader->info.ancillary_vgpr_index,
-         &shader->info.sample_coverage_vgpr_index);
+         &shader->config, &shader->info.num_ps_pos_inputs);
    }
 
    si_calculate_max_simd_waves(shader);
@@ -3099,7 +3098,6 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
    key->ps_prolog.wave32 = shader->wave_size == 32;
    key->ps_prolog.colors_read = info->colors_read;
    key->ps_prolog.num_input_sgprs = shader->info.num_input_sgprs;
-   key->ps_prolog.num_input_vgprs = shader->info.num_input_vgprs;
    key->ps_prolog.wqm =
       info->base.fs.needs_quad_helper_invocations &&
       (key->ps_prolog.colors_read || key->ps_prolog.states.force_persp_sample_interp ||
@@ -3107,8 +3105,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
        key->ps_prolog.states.force_persp_center_interp ||
        key->ps_prolog.states.force_linear_center_interp ||
        key->ps_prolog.states.bc_optimize_for_persp || key->ps_prolog.states.bc_optimize_for_linear);
-   key->ps_prolog.ancillary_vgpr_index = shader->info.ancillary_vgpr_index;
-   key->ps_prolog.sample_coverage_vgpr_index = shader->info.sample_coverage_vgpr_index;
+   key->ps_prolog.num_pos_inputs = shader->info.num_ps_pos_inputs;
 
    if (shader->key.ps.part.prolog.poly_stipple)
       shader->info.uses_vmem_load_other = true;
@@ -3119,7 +3116,6 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
       if (shader->key.ps.part.prolog.color_two_side) {
          /* BCOLORs are stored after the last input. */
          key->ps_prolog.num_interp_inputs = info->num_inputs;
-         key->ps_prolog.face_vgpr_index = shader->info.face_vgpr_index;
          shader->config.spi_ps_input_ena |= S_0286CC_FRONT_FACE_ENA(1);
       }
 
@@ -3688,7 +3684,7 @@ void si_get_ps_prolog_args(struct si_shader_args *args,
    /* skip LINE_STIPPLE_TEX */
 
    /* POS_X|Y|Z|W_FLOAT */
-   for (unsigned i = args->ac.num_vgprs_used; i < key->ps_prolog.face_vgpr_index; i++)
+   for (unsigned i = 0; i < key->ps_prolog.num_pos_inputs; i++)
       ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
 
    ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.front_face);

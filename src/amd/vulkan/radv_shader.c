@@ -1555,7 +1555,7 @@ radv_postprocess_binary_config(struct radv_device *device, struct radv_shader_bi
    unsigned num_input_vgprs = args->ac.num_vgprs_used;
 
    if (stage == MESA_SHADER_FRAGMENT) {
-      num_input_vgprs = ac_get_fs_input_vgpr_cnt(config, NULL, NULL, NULL);
+      num_input_vgprs = ac_get_fs_input_vgpr_cnt(config, NULL);
    }
 
    unsigned num_vgprs = MAX2(config->num_vgprs, num_input_vgprs);
