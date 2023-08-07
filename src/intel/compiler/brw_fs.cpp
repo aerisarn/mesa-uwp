@@ -6200,7 +6200,8 @@ fs_visitor::debug_optimizer(const char *pass_name,
       return;
 
    char *filename;
-   int ret = asprintf(&filename, "%s%d-%s-%02d-%02d-%s",
+   int ret = asprintf(&filename, "%s/%s%d-%s-%02d-%02d-%s",
+                      debug_get_option("INTEL_SHADER_OPTIMIZER_PATH", "./"),
                       stage_abbrev, dispatch_width, nir->info.name,
                       iteration, pass_num, pass_name);
    if (ret == -1)
