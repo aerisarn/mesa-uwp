@@ -1328,6 +1328,12 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    const struct intel_device_info *devinfo = screen->devinfo;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
+
+   /* The gallium dri layer creates a pipe resource for each plane specified
+    * by the format and modifier. Once all planes are present, we will merge
+    * the separate parameters into the iris_resource(s) for the main plane(s).
+    * Save the modifier import information now to reconstruct later.
+    */
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
    if (!res)
       return NULL;
@@ -1359,6 +1365,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
 
    res->offset = whandle->offset;
    res->external_format = whandle->format;
+   res->surf.row_pitch_B = whandle->stride;
 
    if (templ->target == PIPE_BUFFER) {
       res->surf.tiling = ISL_TILING_LINEAR;
@@ -1375,25 +1382,6 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
 
       if (!iris_resource_configure_aux(screen, res, true))
          goto fail;
-
-      /* The gallium dri layer will create a separate plane resource for the
-       * aux image. We will merge the separate aux parameters back into a
-       * single iris_resource.
-       */
-   } else if (isl_drm_modifier_plane_is_clear_color(modifier,
-                                                    whandle->plane)) {
-      res->aux.clear_color_offset = whandle->offset;
-      res->aux.clear_color_bo = res->bo;
-      res->bo = NULL;
-   } else {
-      /* Save modifier import information to reconstruct later. After import,
-       * this will be available under a second image accessible from the main
-       * image with res->base.next.
-       */
-      res->aux.surf.row_pitch_B = whandle->stride;
-      res->aux.offset = whandle->offset;
-      res->aux.bo = res->bo;
-      res->bo = NULL;
    }
 
    if (whandle->plane == 0) {
@@ -1409,25 +1397,24 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
          if (isl_drm_modifier_plane_is_clear_color(whandle->modifier,
                                                    plane)) {
             /* Fill out the clear color fields. */
-            assert(plane_res->aux.clear_color_bo->size >=
-                   plane_res->aux.clear_color_offset +
+            assert(plane_res->bo->size >= plane_res->offset +
                    screen->isl_dev.ss.clear_color_state_size);
 
-            iris_bo_reference(plane_res->aux.clear_color_bo);
-            main_res->aux.clear_color_bo = plane_res->aux.clear_color_bo;
-            main_res->aux.clear_color_offset = plane_res->aux.clear_color_offset;
+            iris_bo_reference(plane_res->bo);
+            main_res->aux.clear_color_bo = plane_res->bo;
+            main_res->aux.clear_color_offset = plane_res->offset;
             main_res->aux.clear_color_unknown = true;
          } else if (plane > main_plane) {
             /* Fill out some aux surface fields. */
             assert(!devinfo->has_flat_ccs);
-            assert(plane_res->aux.bo->size >=
-                   plane_res->aux.offset + main_res->aux.surf.size_B);
+            assert(plane_res->bo->size >= plane_res->offset +
+                   main_res->aux.surf.size_B);
             assert(main_res->aux.surf.row_pitch_B ==
-                   plane_res->aux.surf.row_pitch_B);
+                   plane_res->surf.row_pitch_B);
 
-            iris_bo_reference(plane_res->aux.bo);
-            main_res->aux.bo = plane_res->aux.bo;
-            main_res->aux.offset = plane_res->aux.offset;
+            iris_bo_reference(plane_res->bo);
+            main_res->aux.bo = plane_res->bo;
+            main_res->aux.offset = plane_res->offset;
             map_aux_addresses(screen, main_res, whandle->format, main_plane);
          } else {
             /* Fill out fields that are convenient to initialize now. */
