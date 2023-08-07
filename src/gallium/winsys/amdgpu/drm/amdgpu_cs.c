@@ -1806,6 +1806,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    struct amdgpu_winsys *ws = cs->ws;
    int error_code = 0;
    uint32_t ib_pad_dw_mask = ws->info.ib_pad_dw_mask[cs->ip_type];
+   unsigned alignment = ws->info.ip[cs->ip_type].ib_size_alignment / 4;
 
    rcs->current.max_dw += amdgpu_cs_epilog_dws(cs);
 
@@ -1822,13 +1823,23 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
       break;
    case AMD_IP_GFX:
    case AMD_IP_COMPUTE:
-      if (ws->info.gfx_ib_pad_with_type2) {
-         while (rcs->current.cdw & ib_pad_dw_mask)
+      if (rcs->current.cdw % alignment) {
+         int remaining = alignment - rcs->current.cdw % alignment;
+
+         /* Only pad by 1 dword with the type-2 NOP if necessary. */
+         if (remaining == 1 && ws->info.gfx_ib_pad_with_type2) {
             radeon_emit(rcs, PKT2_NOP_PAD);
-      } else {
-         while (rcs->current.cdw & ib_pad_dw_mask)
-            radeon_emit(rcs, PKT3_NOP_PAD);
+         } else {
+            /* Pad with a single NOP packet to minimize CP overhead because NOP is a variable-sized
+             * packet. The size of the packet body after the header is always count + 1.
+             * If count == -1, there is no packet body. NOP is the only packet that can have
+             * count == -1, which is the definition of PKT3_NOP_PAD (count == 0x3fff means -1).
+             */
+            radeon_emit(rcs, PKT3(PKT3_NOP, remaining - 2, 0));
+            rcs->current.cdw += remaining - 1;
+         }
       }
+      assert(rcs->current.cdw % alignment == 0);
       if (cs->ip_type == AMD_IP_GFX)
          ws->gfx_ib_size_counter += (rcs->prev_dw + rcs->current.cdw) * 4;
       break;
