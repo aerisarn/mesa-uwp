@@ -785,12 +785,14 @@ spec@!opengl 1.1@clipflat@glDrawElements(GL_TRIANGLE_STRIP)- glFrontFace(GL_CW)-
 spec@!opengl 1.1@clipflat@glDrawElements(GL_TRIANGLE_STRIP)- glFrontFace(GL_CW)- glPolygonMode(GL_LINE)- quadrant: right top PV: FIRST,Fail
 spec@arb_clear_texture@arb_clear_texture-3d,Fail
 spec@arb_clear_texture@arb_clear_texture-base-formats,Fail
+spec@arb_clear_texture@arb_clear_texture-depth,Fail
 spec@arb_clear_texture@arb_clear_texture-depth-stencil,Fail
+spec@arb_clear_texture@arb_clear_texture-sized-formats,Fail
 spec@arb_clear_texture@arb_clear_texture-srgb,Fail
+spec@arb_clear_texture@arb_clear_texture-supported-formats,Fail
 spec@glsl-1.10@execution@glsl-fs-inline-explosion,Crash
 spec@glsl-1.10@execution@glsl-vs-inline-explosion,Crash
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
-spec@arb_clear_texture@arb_clear_texture-supported-formats,Fail
 
 # fails on arm64, passes on armhf
 spec@arb_depth_buffer_float@depthstencil-render-miplevels 1024 s=z24_s8_d=z32f,Fail
