@@ -307,9 +307,35 @@ lower_uniform_offset_to_bytes_cb(nir_builder *b, nir_instr *instr, void *_state)
 }
 
 static bool
+lower_textures_cb(nir_builder *b, nir_instr *instr, void *_state)
+{
+        if (instr->type != nir_instr_type_tex)
+                return false;
+
+        nir_tex_instr *tex = nir_instr_as_tex(instr);
+        if (nir_tex_instr_need_sampler(tex))
+                return false;
+
+        /* Use the texture index as sampler index for the purposes of
+         * lower_tex_packing, since in GL we currently make packing
+         * decisions based on texture format.
+         */
+        tex->backend_flags = tex->texture_index;
+        return true;
+}
+
+static bool
 v3d_nir_lower_uniform_offset_to_bytes(nir_shader *s)
 {
         return nir_shader_instructions_pass(s, lower_uniform_offset_to_bytes_cb,
+                                            nir_metadata_block_index |
+                                            nir_metadata_dominance, NULL);
+}
+
+static bool
+v3d_nir_lower_textures(nir_shader *s)
+{
+        return nir_shader_instructions_pass(s, lower_textures_cb,
                                             nir_metadata_block_index |
                                             nir_metadata_dominance, NULL);
 }
@@ -371,6 +397,8 @@ v3d_uncompiled_shader_create(struct pipe_context *pctx,
          * our compiler expects to work in units of bytes.
          */
         NIR_PASS(_, s, v3d_nir_lower_uniform_offset_to_bytes);
+
+        NIR_PASS(_, s, v3d_nir_lower_textures);
 
         /* Garbage collect dead instructions */
         nir_sweep(s);
