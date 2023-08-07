@@ -1296,8 +1296,7 @@ radv_replay_shader_arena_block(struct radv_device *device, const struct radv_ser
    void *data = _mesa_hash_table_u64_search(device->capture_replay_arena_vas, va);
 
    if (!data) {
-      struct radv_shader_arena *arena =
-         radv_create_shader_arena(device, NULL, 0, src->arena_size, false, src->arena_va);
+      struct radv_shader_arena *arena = radv_create_shader_arena(device, NULL, 0, src->arena_size, true, src->arena_va);
       if (!arena) {
          mtx_unlock(&device->shader_arena_mutex);
          return NULL;
