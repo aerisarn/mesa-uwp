@@ -137,8 +137,8 @@ static void si_upload_descriptors(struct si_context *sctx, struct si_descriptors
                   si_optimal_tcc_alignment(sctx, upload_size), &buffer_offset,
                   (struct pipe_resource **)&desc->buffer, (void **)&ptr);
    if (!desc->buffer) {
-      fprintf(stderr, "radeonsi: not enough memory to upload descriptors\n");
-      abort();
+      sctx->ws->ctx_set_sw_reset_status(sctx->ctx, PIPE_GUILTY_CONTEXT_RESET,
+                                        "radeonsi: not enough memory to upload descriptors\n");
       return;
    }
 
