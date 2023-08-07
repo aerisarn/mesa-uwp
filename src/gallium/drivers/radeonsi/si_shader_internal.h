@@ -156,6 +156,8 @@ void si_get_tcs_epilog_args(enum amd_gfx_level gfx_level,
 void si_get_vs_prolog_args(enum amd_gfx_level gfx_level,
                            struct si_shader_args *args,
                            const union si_shader_part_key *key);
+void si_get_ps_prolog_args(struct si_shader_args *args,
+                           const union si_shader_part_key *key);
 
 /* gfx10_shader_ngg.c */
 unsigned gfx10_ngg_get_vertices_per_prim(struct si_shader *shader);
@@ -199,7 +201,6 @@ LLVMValueRef si_insert_input_ret_float(struct si_shader_context *ctx, LLVMValueR
                                        struct ac_arg param, unsigned return_index);
 LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
                                  struct ac_arg param, unsigned return_index);
-LLVMValueRef si_prolog_get_internal_bindings(struct si_shader_context *ctx);
 LLVMValueRef si_prolog_get_internal_binding_slot(struct si_shader_context *ctx, unsigned slot);
 LLVMValueRef si_unpack_param(struct si_shader_context *ctx, struct ac_arg param, unsigned rshift,
                              unsigned bitwidth);

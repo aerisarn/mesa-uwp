@@ -3662,3 +3662,37 @@ void si_get_vs_prolog_args(enum amd_gfx_level gfx_level,
    args->ac.start_instance = input_sgprs[user_sgpr_base + SI_SGPR_START_INSTANCE];
    args->ac.base_vertex = input_sgprs[user_sgpr_base + SI_SGPR_BASE_VERTEX];
 }
+
+void si_get_ps_prolog_args(struct si_shader_args *args,
+                           const union si_shader_part_key *key)
+{
+   memset(args, 0, sizeof(*args));
+
+   const unsigned num_input_sgprs = key->ps_prolog.num_input_sgprs;
+
+   struct ac_arg input_sgprs[num_input_sgprs];
+   for (unsigned i = 0; i < num_input_sgprs; i++)
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, input_sgprs + i);
+
+   args->internal_bindings = input_sgprs[SI_SGPR_INTERNAL_BINDINGS];
+   /* Use the absolute location of the input. */
+   args->ac.prim_mask = input_sgprs[SI_PS_NUM_USER_SGPR];
+
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_FLOAT, &args->ac.persp_sample);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_FLOAT, &args->ac.persp_center);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_FLOAT, &args->ac.persp_centroid);
+   /* skip PERSP_PULL_MODEL */
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_FLOAT, &args->ac.linear_sample);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_FLOAT, &args->ac.linear_center);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_FLOAT, &args->ac.linear_centroid);
+   /* skip LINE_STIPPLE_TEX */
+
+   /* POS_X|Y|Z|W_FLOAT */
+   for (unsigned i = args->ac.num_vgprs_used; i < key->ps_prolog.face_vgpr_index; i++)
+      ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
+
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.front_face);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.ancillary);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.sample_coverage);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.pos_fixed_pt);
+}
