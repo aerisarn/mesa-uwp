@@ -2353,6 +2353,45 @@ export_pos0_wait_attr_ring(nir_builder *b, nir_if *if_es_thread, nir_def *output
    nir_pop_if(b, if_export_empty_pos);
 }
 
+static void
+nogs_export_vertex_params(nir_builder *b, nir_function_impl *impl,
+                          nir_if *if_es_thread, nir_def *num_es_threads,
+                          lower_ngg_nogs_state *s)
+{
+   if (!s->options->has_param_exports)
+      return;
+
+   if (s->options->gfx_level >= GFX11) {
+      /* Export varyings for GFX11+ */
+      vs_output outputs[64];
+      const unsigned num_outputs =
+         gather_vs_outputs(b, outputs,
+                           s->options->vs_output_param_offset,
+                           s->outputs,
+                           s->outputs_16bit_lo,
+                           s->outputs_16bit_hi);
+
+      if (!num_outputs)
+         return;
+
+      b->cursor = nir_after_cf_node(&if_es_thread->cf_node);
+      create_vertex_param_phis(b, num_outputs, outputs);
+
+      b->cursor = nir_after_impl(impl);
+      if (!num_es_threads)
+         num_es_threads = nir_load_merged_wave_info_amd(b);
+
+      export_vertex_params_gfx11(b, NULL, num_es_threads, num_outputs, outputs,
+                                 s->options->vs_output_param_offset);
+   } else {
+      ac_nir_export_parameters(b, s->options->vs_output_param_offset,
+                                 b->shader->info.outputs_written,
+                                 b->shader->info.outputs_written_16bit,
+                                 s->outputs, s->outputs_16bit_lo,
+                                 s->outputs_16bit_hi);
+   }
+}
+
 void
 ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
 {
@@ -2556,41 +2595,14 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       export_outputs &= ~VARYING_BIT_POS;
 
    b->cursor = nir_after_cf_list(&if_es_thread->then_list);
+
    ac_nir_export_position(b, options->gfx_level,
                           options->clipdist_enable_mask,
                           !options->has_param_exports,
                           options->force_vrs, !wait_attr_ring,
                           export_outputs, state.outputs);
 
-   if (options->has_param_exports) {
-      if (state.options->gfx_level >= GFX11) {
-         /* Export varyings for GFX11+ */
-         vs_output outputs[64];
-         unsigned num_outputs = gather_vs_outputs(b, outputs,
-                                                  state.options->vs_output_param_offset,
-                                                  state.outputs,
-                                                  state.outputs_16bit_lo,
-                                                  state.outputs_16bit_hi);
-
-         if (num_outputs) {
-            b->cursor = nir_after_cf_node(&if_es_thread->cf_node);
-            create_vertex_param_phis(b, num_outputs, outputs);
-
-            b->cursor = nir_after_impl(impl);
-
-            if (!num_es_threads)
-               num_es_threads = nir_load_merged_wave_info_amd(b);
-            export_vertex_params_gfx11(b, NULL, num_es_threads, num_outputs, outputs,
-                                       options->vs_output_param_offset);
-         }
-      } else {
-         ac_nir_export_parameters(b, options->vs_output_param_offset,
-                                  shader->info.outputs_written,
-                                  shader->info.outputs_written_16bit,
-                                  state.outputs, state.outputs_16bit_lo,
-                                  state.outputs_16bit_hi);
-      }
-   }
+   nogs_export_vertex_params(b, impl, if_es_thread, num_es_threads, &state);
 
    if (wait_attr_ring)
       export_pos0_wait_attr_ring(b, if_es_thread, state.outputs, options);
