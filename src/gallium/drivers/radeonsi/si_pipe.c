@@ -152,11 +152,12 @@ bool si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compil
 void si_init_aux_async_compute_ctx(struct si_screen *sscreen)
 {
    assert(!sscreen->async_compute_context);
-   sscreen->async_compute_context = si_create_context(
-      &sscreen->b,
-      SI_CONTEXT_FLAG_AUX |
-         (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
-         PIPE_CONTEXT_COMPUTE_ONLY);
+   sscreen->async_compute_context =
+      si_create_context(&sscreen->b,
+                        SI_CONTEXT_FLAG_AUX |
+                        PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET |
+                        (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
+                        PIPE_CONTEXT_COMPUTE_ONLY);
 
    /* Limit the numbers of waves allocated for this context. */
    if (sscreen->async_compute_context)
@@ -541,7 +542,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
 
    ws->cs_create(&sctx->gfx_cs, sctx->ctx, sctx->has_graphics ? AMD_IP_GFX : AMD_IP_COMPUTE,
                  (void *)si_flush_gfx_cs, sctx,
-                 flags & (PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET | SI_CONTEXT_FLAG_AUX));
+                 flags & PIPE_CONTEXT_LOSE_CONTEXT_ON_RESET);
 
    /* Initialize private allocators. */
    u_suballocator_init(&sctx->allocator_zeroed_memory, &sctx->b, 128 * 1024, 0,
