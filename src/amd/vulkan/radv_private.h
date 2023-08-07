@@ -3094,10 +3094,9 @@ void radv_rmv_log_sparse_add_residency(struct radv_device *device, struct radeon
 void radv_rmv_log_sparse_remove_residency(struct radv_device *device, struct radeon_winsys_bo *src_bo, uint64_t offset);
 void radv_rmv_log_descriptor_pool_create(struct radv_device *device, const VkDescriptorPoolCreateInfo *create_info,
                                          VkDescriptorPool pool, bool is_internal);
-void radv_rmv_log_graphics_pipeline_create(struct radv_device *device, VkPipelineCreateFlags flags,
-                                           struct radv_pipeline *pipeline, bool is_internal);
-void radv_rmv_log_compute_pipeline_create(struct radv_device *device, VkPipelineCreateFlags flags,
-                                          struct radv_pipeline *pipeline, bool is_internal);
+void radv_rmv_log_graphics_pipeline_create(struct radv_device *device, struct radv_pipeline *pipeline,
+                                           bool is_internal);
+void radv_rmv_log_compute_pipeline_create(struct radv_device *device, struct radv_pipeline *pipeline, bool is_internal);
 void radv_rmv_log_event_create(struct radv_device *device, VkEvent event, VkEventCreateFlags flags, bool is_internal);
 void radv_rmv_log_resource_destroy(struct radv_device *device, uint64_t handle);
 void radv_rmv_log_submit(struct radv_device *device, enum amd_ip_type type);

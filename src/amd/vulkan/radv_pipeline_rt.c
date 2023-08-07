@@ -674,7 +674,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkRayTra
       compile_rt_prolog(device, pipeline);
 
       radv_compute_pipeline_init(device, &pipeline->base, pipeline_layout, pipeline->prolog);
-      radv_rmv_log_compute_pipeline_create(device, pCreateInfo->flags, &pipeline->base.base, false);
+      radv_rmv_log_compute_pipeline_create(device, &pipeline->base.base, false);
    }
 
    if (!cache_hit)

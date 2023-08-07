@@ -282,7 +282,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache, const VkC
    radv_compute_pipeline_init(device, pipeline, pipeline_layout, pipeline->base.shaders[MESA_SHADER_COMPUTE]);
 
    *pPipeline = radv_pipeline_to_handle(&pipeline->base);
-   radv_rmv_log_compute_pipeline_create(device, pCreateInfo->flags, &pipeline->base, pipeline->base.is_internal);
+   radv_rmv_log_compute_pipeline_create(device, &pipeline->base, pipeline->base.is_internal);
    return VK_SUCCESS;
 }
 

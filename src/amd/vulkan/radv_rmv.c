@@ -802,8 +802,7 @@ radv_rmv_log_descriptor_pool_create(struct radv_device *device, const VkDescript
 }
 
 void
-radv_rmv_log_graphics_pipeline_create(struct radv_device *device, VkPipelineCreateFlags flags,
-                                      struct radv_pipeline *pipeline, bool is_internal)
+radv_rmv_log_graphics_pipeline_create(struct radv_device *device, struct radv_pipeline *pipeline, bool is_internal)
 {
    if (!device->vk.memory_trace_data.is_enabled)
       return;
@@ -834,8 +833,7 @@ radv_rmv_log_graphics_pipeline_create(struct radv_device *device, VkPipelineCrea
 }
 
 void
-radv_rmv_log_compute_pipeline_create(struct radv_device *device, VkPipelineCreateFlags flags,
-                                     struct radv_pipeline *pipeline, bool is_internal)
+radv_rmv_log_compute_pipeline_create(struct radv_device *device, struct radv_pipeline *pipeline, bool is_internal)
 {
    if (!device->vk.memory_trace_data.is_enabled)
       return;
