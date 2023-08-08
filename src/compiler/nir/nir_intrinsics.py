@@ -312,6 +312,12 @@ index("bool", "legacy_fneg")
 # On a register store, floating-point saturate the stored value.
 index("bool", "legacy_fsat")
 
+# For Cooperative Matrix intrinsics.
+index("struct glsl_cmat_description", "cmat_desc")
+index("enum glsl_matrix_layout", "matrix_layout")
+index("nir_cmat_signed", "cmat_signed_mask")
+index("nir_op", "alu_op")
+
 intrinsic("nop", flags=[CAN_ELIMINATE])
 
 intrinsic("convert_alu_types", dest_comp=0, src_comp=[0],
@@ -1195,6 +1201,29 @@ system_value("flat_mask", 1)
 
 # Whether provoking vertex mode is last
 system_value("provoking_last", 1)
+
+# SPV_KHR_cooperative_matrix.
+#
+# Cooperative matrices are referred through derefs to variables,
+# the destination of the operations appears as the first source,
+# ordering follows SPIR-V operation.
+#
+# Load/Store include an extra source for stride, since that
+# can be a _dynamically_ uniform value.
+#
+# Length takes a type not a value, that's encoded as a MATRIX_DESC.
+intrinsic("cmat_construct", src_comp=[-1, 1])
+intrinsic("cmat_load", src_comp=[-1, -1, 1], indices=[MATRIX_LAYOUT])
+intrinsic("cmat_store", src_comp=[-1, -1, 1], indices=[MATRIX_LAYOUT])
+intrinsic("cmat_length", src_comp=[], dest_comp=1, indices=[CMAT_DESC], bit_sizes=[32])
+intrinsic("cmat_muladd", src_comp=[-1, -1, -1, -1], indices=[SATURATE, CMAT_SIGNED_MASK])
+intrinsic("cmat_unary_op", src_comp=[-1, -1], indices=[ALU_OP])
+intrinsic("cmat_binary_op", src_comp=[-1, -1, -1], indices=[ALU_OP])
+intrinsic("cmat_scalar_op", src_comp=[-1, -1, -1], indices=[ALU_OP])
+intrinsic("cmat_bitcast", src_comp=[-1, -1])
+intrinsic("cmat_extract", src_comp=[-1, 1], dest_comp=1)
+intrinsic("cmat_insert", src_comp=[-1, 1, -1, 1])
+intrinsic("cmat_copy", src_comp=[-1, -1])
 
 # IR3-specific version of most SSBO intrinsics. The only different
 # compare to the originals is that they add an extra source to hold

@@ -1523,6 +1523,64 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          break;
       }
 
+      case NIR_INTRINSIC_MATRIX_LAYOUT: {
+         fprintf(fp, "matrix_layout=");
+         switch (nir_intrinsic_matrix_layout(instr)) {
+         case GLSL_MATRIX_LAYOUT_ROW_MAJOR:
+            fprintf(fp, "row_major");
+            break;
+         case GLSL_MATRIX_LAYOUT_COLUMN_MAJOR:
+            fprintf(fp, "col_major");
+            break;
+         default:
+            fprintf(fp, "unknown");
+            break;
+         }
+         break;
+      }
+
+      case NIR_INTRINSIC_CMAT_DESC: {
+         struct glsl_cmat_description desc = nir_intrinsic_cmat_desc(instr);
+         const struct glsl_type *t = glsl_cmat_type(&desc);
+         fprintf(fp, "%s", glsl_get_type_name(t));
+         break;
+      }
+
+      case NIR_INTRINSIC_CMAT_SIGNED_MASK: {
+         fprintf(fp, "cmat_signed=");
+         unsigned int mask = nir_intrinsic_cmat_signed_mask(instr);
+         if (mask == 0)
+            fputc('0', fp);
+         while (mask) {
+            nir_cmat_signed i = 1u << u_bit_scan(&mask);
+            switch (i) {
+            case NIR_CMAT_A_SIGNED:
+               fputc('A', fp);
+               break;
+            case NIR_CMAT_B_SIGNED:
+               fputc('B', fp);
+               break;
+            case NIR_CMAT_C_SIGNED:
+               fputc('C', fp);
+               break;
+            case NIR_CMAT_RESULT_SIGNED:
+               fprintf(fp, "Result");
+               break;
+            default:
+               fprintf(fp, "unknown");
+               break;
+            }
+            fprintf(fp, "%s", mask ? "|" : "");
+         }
+         break;
+      }
+
+      case NIR_INTRINSIC_ALU_OP: {
+         nir_op alu_op = nir_intrinsic_alu_op(instr);
+         fprintf(fp, "alu_op=%s", nir_op_infos[alu_op].name);
+         break;
+      }
+
       default: {
          unsigned off = info->index_map[idx] - 1;
          fprintf(fp, "%s=%d", nir_intrinsic_index_names[idx], instr->const_index[off]);

@@ -269,6 +269,17 @@ typedef enum {
    nir_resource_intel_non_uniform = 1u << 3,
 } nir_resource_data_intel;
 
+/**
+ * Which components to interpret as signed in cmat_muladd.
+ * See 'Cooperative Matrix Operands' in SPV_KHR_cooperative_matrix.
+ */
+typedef enum {
+   NIR_CMAT_A_SIGNED = 1u << 0,
+   NIR_CMAT_B_SIGNED = 1u << 1,
+   NIR_CMAT_C_SIGNED = 1u << 2,
+   NIR_CMAT_RESULT_SIGNED = 1u << 3,
+} nir_cmat_signed;
+
 typedef union {
    bool b;
    float f32;
