@@ -2797,8 +2797,10 @@ PUBLIC __eglMustCastToProperFunctionPointerType EGLAPIENTRY
 eglGetProcAddress(const char *procname)
 {
    static const struct _egl_entrypoint egl_functions[] = {
-#define EGL_ENTRYPOINT(f) {.name = #f, .function = (_EGLProc)f},
+#define EGL_ENTRYPOINT(f)     {.name = #f, .function = (_EGLProc)f},
+#define EGL_ENTRYPOINT2(n, f) {.name = #n, .function = (_EGLProc)f},
 #include "eglentrypoint.h"
+#undef EGL_ENTRYPOINT2
 #undef EGL_ENTRYPOINT
    };
    _EGLProc ret = NULL;
