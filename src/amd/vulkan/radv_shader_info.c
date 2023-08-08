@@ -1025,13 +1025,13 @@ radv_nir_shader_info_init(gl_shader_stage stage, gl_shader_stage next_stage, str
 
 void
 radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
-                          const struct radv_pipeline_layout *layout, const struct radv_pipeline_key *pipeline_key,
+                          const struct radv_shader_layout *layout, const struct radv_pipeline_key *pipeline_key,
                           const enum radv_pipeline_type pipeline_type, bool consider_force_vrs,
                           struct radv_shader_info *info)
 {
    struct nir_function *func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
 
-   if (layout->dynamic_offset_count && (layout->dynamic_shader_stages & mesa_to_vk_shader_stage(nir->info.stage))) {
+   if (layout->use_dynamic_descriptors) {
       info->loads_push_constants = true;
       info->loads_dynamic_offsets = true;
    }

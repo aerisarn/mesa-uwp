@@ -254,12 +254,14 @@ static void
 radv_rt_fill_stage_info(struct radv_device *device, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                         struct radv_ray_tracing_stage *stages, struct radv_pipeline_key *key)
 {
+   RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
    uint32_t idx;
    for (idx = 0; idx < pCreateInfo->stageCount; idx++) {
       stages[idx].stage = vk_to_mesa_shader_stage(pCreateInfo->pStages[idx].stage);
 
       struct radv_shader_stage stage;
       radv_shader_stage_init(&pCreateInfo->pStages[idx], &stage, stages[idx].stage);
+      radv_shader_layout_init(pipeline_layout, stages[idx].stage, &stage.layout);
 
       radv_hash_shaders(stages[idx].sha1, &stage, 1, NULL, key, radv_get_hash_flags(device, false));
    }
@@ -350,14 +352,13 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
                    struct radv_shader **out_shader)
 {
    struct radv_shader_binary *binary;
-   RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
    bool keep_executable_info = radv_pipeline_capture_shaders(device, pipeline->base.base.create_flags);
    bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, pipeline->base.base.create_flags);
 
    /* Gather shader info. */
    nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
    radv_nir_shader_info_init(stage->stage, MESA_SHADER_NONE, &stage->info);
-   radv_nir_shader_info_pass(device, stage->nir, pipeline_layout, pipeline_key, RADV_PIPELINE_RAY_TRACING, false,
+   radv_nir_shader_info_pass(device, stage->nir, &stage->layout, pipeline_key, RADV_PIPELINE_RAY_TRACING, false,
                              &stage->info);
 
    /* Declare shader arguments. */
@@ -395,7 +396,7 @@ radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
       temp_stage.nir = shaders[i];
       radv_nir_lower_rt_abi(temp_stage.nir, pCreateInfo, &temp_stage.args, &stage->info, stack_size, i > 0);
       radv_optimize_nir(temp_stage.nir, pipeline_key->optimisations_disabled);
-      radv_postprocess_nir(device, pipeline_layout, pipeline_key, &temp_stage);
+      radv_postprocess_nir(device, pipeline_key, &temp_stage);
 
       if (radv_can_dump_shader(device, temp_stage.nir, false))
          nir_print_shader(temp_stage.nir, stderr);
@@ -441,6 +442,8 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
                         const struct radv_pipeline_key *key, struct radv_ray_tracing_pipeline *pipeline,
                         struct radv_serialized_shader_arena_block *capture_replay_handles)
 {
+   RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
+
    if (pipeline->base.base.create_flags & VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_KHR)
       return VK_PIPELINE_COMPILE_REQUIRED;
    VkResult result = VK_SUCCESS;
@@ -451,12 +454,13 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
       int64_t stage_start = os_time_get_nano();
       struct radv_shader_stage stage;
       radv_shader_stage_init(&pCreateInfo->pStages[idx], &stage, stages[idx].stage);
+      radv_shader_layout_init(pipeline_layout, stages[idx].stage, &stage.layout);
 
       if (stages[idx].shader)
          goto feedback;
 
       /* precompile the shader */
-      stage.nir = radv_parse_rt_stage(device, &pCreateInfo->pStages[idx], key);
+      stage.nir = radv_parse_rt_stage(device, &pCreateInfo->pStages[idx], key, pipeline_layout);
 
       if (radv_ray_tracing_stage_is_compiled(&stages[idx])) {
          uint32_t stack_size = 0;
@@ -506,6 +510,7 @@ radv_rt_compile_shaders(struct radv_device *device, struct vk_pipeline_cache *ca
       .nir = traversal_module.nir,
    };
    vk_pipeline_hash_shader_stage(&pStage, NULL, traversal_stage.shader_sha1);
+   radv_shader_layout_init(pipeline_layout, MESA_SHADER_INTERSECTION, &traversal_stage.layout);
    result = radv_rt_nir_to_asm(device, cache, pCreateInfo, key, pipeline, &traversal_stage, NULL, NULL,
                                &pipeline->base.base.shaders[MESA_SHADER_INTERSECTION]);
 

@@ -38,7 +38,7 @@ typedef struct {
 
    const struct radv_shader_args *args;
    const struct radv_shader_info *info;
-   const struct radv_pipeline_layout *pipeline_layout;
+   const struct radv_shader_layout *layout;
 } apply_layout_state;
 
 static nir_ssa_def *
@@ -73,17 +73,16 @@ visit_vulkan_resource_index(nir_builder *b, apply_layout_state *state, nir_intri
 {
    unsigned desc_set = nir_intrinsic_desc_set(intrin);
    unsigned binding = nir_intrinsic_binding(intrin);
-   struct radv_descriptor_set_layout *layout = state->pipeline_layout->set[desc_set].layout;
+   struct radv_descriptor_set_layout *layout = state->layout->set[desc_set].layout;
    unsigned offset = layout->binding[binding].offset;
    unsigned stride;
 
    nir_ssa_def *set_ptr;
    if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
        layout->binding[binding].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
-      unsigned idx =
-         state->pipeline_layout->set[desc_set].dynamic_offset_start + layout->binding[binding].dynamic_offset_offset;
+      unsigned idx = state->layout->set[desc_set].dynamic_offset_start + layout->binding[binding].dynamic_offset_offset;
       set_ptr = get_scalar_arg(b, 1, state->args->ac.push_constants);
-      offset = state->pipeline_layout->push_constant_size + idx * 16;
+      offset = state->layout->push_constant_size + idx * 16;
       stride = 16;
    } else {
       set_ptr = load_desc_ptr(b, state, desc_set);
@@ -179,7 +178,7 @@ load_buffer_descriptor(nir_builder *b, apply_layout_state *state, nir_ssa_def *r
     * VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK.
     */
    if (binding.success) {
-      struct radv_descriptor_set_layout *layout = state->pipeline_layout->set[binding.desc_set].layout;
+      struct radv_descriptor_set_layout *layout = state->layout->set[binding.desc_set].layout;
       if (layout->binding[binding.binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
          rsrc = nir_iadd(b, nir_channel(b, rsrc, 0), nir_channel(b, rsrc, 1));
          return load_inline_buffer_descriptor(b, state, rsrc);
@@ -226,7 +225,7 @@ get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *der
    unsigned binding_index = var->data.binding;
    bool indirect = nir_deref_instr_has_indirect(deref);
 
-   struct radv_descriptor_set_layout *layout = state->pipeline_layout->set[desc_set].layout;
+   struct radv_descriptor_set_layout *layout = state->layout->set[desc_set].layout;
    struct radv_descriptor_set_binding_layout *binding = &layout->binding[binding_index];
 
    /* Handle immutable and embedded (compile-time) samplers
@@ -500,9 +499,8 @@ apply_layout_to_tex(nir_builder *b, apply_layout_state *state, nir_tex_instr *te
 }
 
 void
-radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device,
-                               const struct radv_pipeline_layout *layout, const struct radv_shader_info *info,
-                               const struct radv_shader_args *args)
+radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device, const struct radv_shader_info *info,
+                               const struct radv_shader_args *args, const struct radv_shader_layout *layout)
 {
    apply_layout_state state = {
       .gfx_level = device->physical_device->rad_info.gfx_level,
@@ -512,7 +510,7 @@ radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device,
       .conformant_trunc_coord = device->physical_device->rad_info.conformant_trunc_coord,
       .args = args,
       .info = info,
-      .pipeline_layout = layout,
+      .layout = layout,
    };
 
    nir_builder b;

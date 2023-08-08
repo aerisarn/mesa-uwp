@@ -128,9 +128,8 @@ radv_compute_pipeline_init(const struct radv_device *device, struct radv_compute
 
 static struct radv_shader *
 radv_compile_cs(struct radv_device *device, struct vk_pipeline_cache *cache, struct radv_shader_stage *cs_stage,
-                const struct radv_pipeline_key *pipeline_key, struct radv_pipeline_layout *pipeline_layout,
-                bool keep_executable_info, bool keep_statistic_info, bool is_internal,
-                struct radv_shader_binary **cs_binary)
+                const struct radv_pipeline_key *pipeline_key, bool keep_executable_info, bool keep_statistic_info,
+                bool is_internal, struct radv_shader_binary **cs_binary)
 {
    struct radv_shader *cs_shader;
 
@@ -144,7 +143,7 @@ radv_compile_cs(struct radv_device *device, struct vk_pipeline_cache *cache, str
 
    /* Run the shader info pass. */
    radv_nir_shader_info_init(cs_stage->stage, MESA_SHADER_NONE, &cs_stage->info);
-   radv_nir_shader_info_pass(device, cs_stage->nir, pipeline_layout, pipeline_key, RADV_PIPELINE_COMPUTE, false,
+   radv_nir_shader_info_pass(device, cs_stage->nir, &cs_stage->layout, pipeline_key, RADV_PIPELINE_COMPUTE, false,
                              &cs_stage->info);
 
    radv_declare_shader_args(device, pipeline_key, &cs_stage->info, MESA_SHADER_COMPUTE, MESA_SHADER_NONE,
@@ -154,7 +153,7 @@ radv_compile_cs(struct radv_device *device, struct vk_pipeline_cache *cache, str
    cs_stage->info.inline_push_constant_mask = cs_stage->args.ac.inline_push_const_mask;
 
    /* Postprocess NIR. */
-   radv_postprocess_nir(device, pipeline_layout, pipeline_key, cs_stage);
+   radv_postprocess_nir(device, pipeline_key, cs_stage);
 
    if (radv_can_dump_shader(device, cs_stage->nir, false))
       nir_print_shader(cs_stage->nir, stderr);
@@ -198,6 +197,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
    int64_t pipeline_start = os_time_get_nano();
 
    radv_shader_stage_init(pStage, &cs_stage, MESA_SHADER_COMPUTE);
+   radv_shader_layout_init(pipeline_layout, MESA_SHADER_COMPUTE, &cs_stage.layout);
 
    radv_hash_shaders(hash, &cs_stage, 1, pipeline_layout, pipeline_key,
                      radv_get_hash_flags(device, keep_statistic_info));
@@ -219,8 +219,8 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline, struct rad
    int64_t stage_start = os_time_get_nano();
 
    pipeline->base.shaders[MESA_SHADER_COMPUTE] =
-      radv_compile_cs(device, cache, &cs_stage, pipeline_key, pipeline_layout, keep_executable_info,
-                      keep_statistic_info, pipeline->base.is_internal, &cs_binary);
+      radv_compile_cs(device, cache, &cs_stage, pipeline_key, keep_executable_info, keep_statistic_info,
+                      pipeline->base.is_internal, &cs_binary);
 
    cs_stage.feedback.duration += os_time_get_nano() - stage_start;
 

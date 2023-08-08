@@ -286,10 +286,28 @@ radv_shader_stage_init(const VkPipelineShaderStageCreateInfo *sinfo, struct radv
    vk_pipeline_hash_shader_stage(sinfo, NULL, out_stage->shader_sha1);
 }
 
+void
+radv_shader_layout_init(const struct radv_pipeline_layout *pipeline_layout, gl_shader_stage stage,
+                        struct radv_shader_layout *layout)
+{
+   layout->num_sets = pipeline_layout->num_sets;
+   for (unsigned i = 0; i < pipeline_layout->num_sets; i++) {
+      layout->set[i].layout = pipeline_layout->set[i].layout;
+      layout->set[i].dynamic_offset_start = pipeline_layout->set[i].dynamic_offset_start;
+   }
+
+   layout->push_constant_size = pipeline_layout->push_constant_size;
+
+   if (pipeline_layout->dynamic_offset_count &&
+       (pipeline_layout->dynamic_shader_stages & mesa_to_vk_shader_stage(stage))) {
+      layout->use_dynamic_descriptors = true;
+   }
+}
+
 static const struct vk_ycbcr_conversion_state *
 ycbcr_conversion_lookup(const void *data, uint32_t set, uint32_t binding, uint32_t array_index)
 {
-   const struct radv_pipeline_layout *layout = data;
+   const struct radv_shader_layout *layout = data;
 
    const struct radv_descriptor_set_layout *set_layout = layout->set[set].layout;
    const struct vk_ycbcr_conversion_state *ycbcr_samplers = radv_immutable_ycbcr_samplers(set_layout, binding);
@@ -490,8 +508,8 @@ non_uniform_access_callback(const nir_src *src, void *_)
 }
 
 void
-radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layout *pipeline_layout,
-                     const struct radv_pipeline_key *pipeline_key, struct radv_shader_stage *stage)
+radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_key *pipeline_key,
+                     struct radv_shader_stage *stage)
 {
    enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    bool progress;
@@ -564,7 +582,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
                                             .modes_N_comps = nir_var_mem_ubo | nir_var_mem_ssbo});
 
    progress = false;
-   NIR_PASS(progress, stage->nir, nir_vk_lower_ycbcr_tex, ycbcr_conversion_lookup, pipeline_layout);
+   NIR_PASS(progress, stage->nir, nir_vk_lower_ycbcr_tex, ycbcr_conversion_lookup, &stage->layout);
    /* Gather info in the case that nir_vk_lower_ycbcr_tex might have emitted resinfo instructions. */
    if (progress)
       nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
@@ -588,7 +606,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
    if (stage->nir->info.uses_resource_info_query)
       NIR_PASS(_, stage->nir, ac_nir_lower_resinfo, gfx_level);
 
-   NIR_PASS_V(stage->nir, radv_nir_apply_pipeline_layout, device, pipeline_layout, &stage->info, &stage->args);
+   NIR_PASS_V(stage->nir, radv_nir_apply_pipeline_layout, device, &stage->info, &stage->args, &stage->layout);
 
    if (!pipeline_key->optimisations_disabled) {
       NIR_PASS(_, stage->nir, nir_opt_shrink_vectors);

@@ -2434,6 +2434,18 @@ RADV_DECL_PIPELINE_DOWNCAST(graphics_lib, RADV_PIPELINE_GRAPHICS_LIB)
 RADV_DECL_PIPELINE_DOWNCAST(compute, RADV_PIPELINE_COMPUTE)
 RADV_DECL_PIPELINE_DOWNCAST(ray_tracing, RADV_PIPELINE_RAY_TRACING)
 
+struct radv_shader_layout {
+   uint32_t num_sets;
+
+   struct {
+      struct radv_descriptor_set_layout *layout;
+      uint32_t dynamic_offset_start;
+   } set[MAX_SETS];
+
+   uint32_t push_constant_size;
+   bool use_dynamic_descriptors;
+};
+
 struct radv_shader_stage {
    gl_shader_stage stage;
 
@@ -2455,7 +2467,12 @@ struct radv_shader_stage {
    struct radv_shader_args args;
 
    VkPipelineCreationFeedback feedback;
+
+   struct radv_shader_layout layout;
 };
+
+void radv_shader_layout_init(const struct radv_pipeline_layout *pipeline_layout, gl_shader_stage stage,
+                             struct radv_shader_layout *layout);
 
 static inline bool
 radv_is_last_vgt_stage(const struct radv_shader_stage *stage)
@@ -3075,7 +3092,7 @@ void llvm_compile_shader(const struct radv_nir_compiler_options *options, const 
 struct radv_shader_info;
 
 void radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
-                               const struct radv_pipeline_layout *layout, const struct radv_pipeline_key *pipeline_key,
+                               const struct radv_shader_layout *layout, const struct radv_pipeline_key *pipeline_key,
                                const enum radv_pipeline_type pipeline_type, bool consider_force_vrs,
                                struct radv_shader_info *info);
 
