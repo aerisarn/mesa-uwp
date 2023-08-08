@@ -1031,8 +1031,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 {
    struct nir_function *func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
 
-   if (layout && layout->dynamic_offset_count &&
-       (layout->dynamic_shader_stages & mesa_to_vk_shader_stage(nir->info.stage))) {
+   if (layout->dynamic_offset_count && (layout->dynamic_shader_stages & mesa_to_vk_shader_stage(nir->info.stage))) {
       info->loads_push_constants = true;
       info->loads_dynamic_offsets = true;
    }
