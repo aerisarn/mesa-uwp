@@ -4651,7 +4651,7 @@ static inline bool should_print_nir(UNUSED nir_shader *shader) { return false; }
    }                                                                 \
 } while (0)
 
-#define NIR_PASS(progress, nir, pass, ...) _PASS(pass, nir,          \
+#define NIR_PASS(progress, nir, pass, ...) _PASS(pass, nir, {        \
    nir_metadata_set_validation_flag(nir);                            \
    if (should_print_nir(nir))                                        \
       printf("%s\n", #pass);                                         \
@@ -4663,16 +4663,16 @@ static inline bool should_print_nir(UNUSED nir_shader *shader) { return false; }
          nir_print_shader(nir, stdout);                              \
       nir_metadata_check_validation_flag(nir);                       \
    }                                                                 \
-)
+})
 
-#define NIR_PASS_V(nir, pass, ...) _PASS(pass, nir,                  \
+#define NIR_PASS_V(nir, pass, ...) _PASS(pass, nir, {                \
    if (should_print_nir(nir))                                        \
       printf("%s\n", #pass);                                         \
    pass(nir, ##__VA_ARGS__);                                         \
    nir_validate_shader(nir, "after " #pass " in " __FILE__);         \
    if (should_print_nir(nir))                                        \
       nir_print_shader(nir, stdout);                                 \
-)
+})
 
 #define NIR_SKIP(name) should_skip_nir(#name)
 
