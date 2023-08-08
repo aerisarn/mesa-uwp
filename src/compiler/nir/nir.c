@@ -2776,40 +2776,20 @@ nir_alu_type
 nir_get_nir_type_for_glsl_base_type(enum glsl_base_type base_type)
 {
    switch (base_type) {
-   case GLSL_TYPE_BOOL:
-      return nir_type_bool1;
-      break;
-   case GLSL_TYPE_UINT:
-      return nir_type_uint32;
-      break;
-   case GLSL_TYPE_INT:
-      return nir_type_int32;
-      break;
-   case GLSL_TYPE_UINT16:
-      return nir_type_uint16;
-      break;
-   case GLSL_TYPE_INT16:
-      return nir_type_int16;
-      break;
-   case GLSL_TYPE_UINT8:
-      return nir_type_uint8;
-   case GLSL_TYPE_INT8:
-      return nir_type_int8;
-   case GLSL_TYPE_UINT64:
-      return nir_type_uint64;
-      break;
-   case GLSL_TYPE_INT64:
-      return nir_type_int64;
-      break;
-   case GLSL_TYPE_FLOAT:
-      return nir_type_float32;
-      break;
-   case GLSL_TYPE_FLOAT16:
-      return nir_type_float16;
-      break;
-   case GLSL_TYPE_DOUBLE:
-      return nir_type_float64;
-      break;
+   /* clang-format off */
+   case GLSL_TYPE_BOOL:    return nir_type_bool1;
+   case GLSL_TYPE_UINT:    return nir_type_uint32;
+   case GLSL_TYPE_INT:     return nir_type_int32;
+   case GLSL_TYPE_UINT16:  return nir_type_uint16;
+   case GLSL_TYPE_INT16:   return nir_type_int16;
+   case GLSL_TYPE_UINT8:   return nir_type_uint8;
+   case GLSL_TYPE_INT8:    return nir_type_int8;
+   case GLSL_TYPE_UINT64:  return nir_type_uint64;
+   case GLSL_TYPE_INT64:   return nir_type_int64;
+   case GLSL_TYPE_FLOAT:   return nir_type_float32;
+   case GLSL_TYPE_FLOAT16: return nir_type_float16;
+   case GLSL_TYPE_DOUBLE:  return nir_type_float64;
+   /* clang-format on */
 
    case GLSL_TYPE_SAMPLER:
    case GLSL_TYPE_TEXTURE:
@@ -2831,34 +2811,23 @@ nir_get_nir_type_for_glsl_base_type(enum glsl_base_type base_type)
 enum glsl_base_type
 nir_get_glsl_base_type_for_nir_type(nir_alu_type base_type)
 {
+   /* clang-format off */
    switch (base_type) {
-   case nir_type_bool1:
-      return GLSL_TYPE_BOOL;
-   case nir_type_uint32:
-      return GLSL_TYPE_UINT;
-   case nir_type_int32:
-      return GLSL_TYPE_INT;
-   case nir_type_uint16:
-      return GLSL_TYPE_UINT16;
-   case nir_type_int16:
-      return GLSL_TYPE_INT16;
-   case nir_type_uint8:
-      return GLSL_TYPE_UINT8;
-   case nir_type_int8:
-      return GLSL_TYPE_INT8;
-   case nir_type_uint64:
-      return GLSL_TYPE_UINT64;
-   case nir_type_int64:
-      return GLSL_TYPE_INT64;
-   case nir_type_float32:
-      return GLSL_TYPE_FLOAT;
-   case nir_type_float16:
-      return GLSL_TYPE_FLOAT16;
-   case nir_type_float64:
-      return GLSL_TYPE_DOUBLE;
-
+   case nir_type_bool1:    return GLSL_TYPE_BOOL;
+   case nir_type_uint32:   return GLSL_TYPE_UINT;
+   case nir_type_int32:    return GLSL_TYPE_INT;
+   case nir_type_uint16:   return GLSL_TYPE_UINT16;
+   case nir_type_int16:    return GLSL_TYPE_INT16;
+   case nir_type_uint8:    return GLSL_TYPE_UINT8;
+   case nir_type_int8:     return GLSL_TYPE_INT8;
+   case nir_type_uint64:   return GLSL_TYPE_UINT64;
+   case nir_type_int64:    return GLSL_TYPE_INT64;
+   case nir_type_float32:  return GLSL_TYPE_FLOAT;
+   case nir_type_float16:  return GLSL_TYPE_FLOAT16;
+   case nir_type_float64:  return GLSL_TYPE_DOUBLE;
    default: unreachable("Not a sized nir_alu_type");
    }
+   /* clang-format on */
 }
 
 nir_op
