@@ -356,8 +356,7 @@ fn opt_nir(nir: &mut NirShader, dev: &Device) {
         progress |= nir_pass!(
             nir,
             nir_opt_if,
-            nir_opt_if_options::nir_opt_if_aggressive_last_continue
-                | nir_opt_if_options::nir_opt_if_optimize_phi_true_false,
+            nir_opt_if_options::nir_opt_if_optimize_phi_true_false,
         );
         progress |= nir_pass!(nir, nir_opt_dead_cf);
         progress |= nir_pass!(nir, nir_opt_remove_phis);
