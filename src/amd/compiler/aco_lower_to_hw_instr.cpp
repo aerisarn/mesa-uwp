@@ -869,10 +869,11 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
       emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_op, src.size(), dpp_row_sr(8), 0xf, 0xf, false,
                   identity);
       if (ctx->program->gfx_level >= GFX10) {
-         bld.sop2(aco_opcode::s_bfm_b32, Definition(exec_lo, s1), Operand::c32(16u),
-                  Operand::c32(16u));
          if (ctx->program->wave_size == 64) {
-            bld.sop2(aco_opcode::s_bfm_b32, Definition(exec_hi, s1), Operand::c32(16u),
+            bld.sop1(aco_opcode::s_bitreplicate_b64_b32, Definition(exec, s2),
+                     Operand::c32(0xff00ff00u));
+         } else {
+            bld.sop2(aco_opcode::s_bfm_b32, Definition(exec_lo, s1), Operand::c32(16u),
                      Operand::c32(16u));
          }
          for (unsigned i = 0; i < src.size(); i++) {
