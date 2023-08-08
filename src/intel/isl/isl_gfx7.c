@@ -263,6 +263,19 @@ isl_gfx6_filter_tiling(const struct isl_device *dev,
       *flags &= ~ISL_TILING_W_BIT;
    }
 
+   /* ICL PRMs, Volume 5: Memory Data Formats, 1D Alignment Requirements:
+    *
+    *    Tiled Resource Mode | Bits per Element | Horizontal Alignment
+    *    TRMODE_NONE         |      Any         |         64
+    *
+    * The table does not list any other tiled resource modes. On the other hand,
+    * the SKL PRM has entries for TRMODE_64KB and TRMODE_4KB. This suggests that
+    * standard tilings are no longer officially supported for 1D surfaces. We don't
+    * really have a use-case for it anyway, so we choose to match the later docs.
+    */
+   if (info->dim == ISL_SURF_DIM_1D)
+      *flags &= ~ISL_TILING_STD_Y_MASK;
+
    /* MCS buffers are always Y-tiled */
    if (isl_format_get_layout(info->format)->txc == ISL_TXC_MCS)
       *flags &= ISL_TILING_Y0_BIT;

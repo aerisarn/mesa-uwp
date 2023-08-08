@@ -82,6 +82,20 @@ isl_gfx125_filter_tiling(const struct isl_device *dev,
    if (info->dim != ISL_SURF_DIM_2D)
       *flags &= ~ISL_TILING_X_BIT;
 
+   /* From ATS-M PRMs, Volume 2d: Command Reference: Structures,
+    * RENDER_SURFACE_STATE:TileMode :
+    *
+    *    "If Surface Type is SURFTYPE_1D this field must be TILEMODE_LINEAR,
+    *     unless Sampler Legacy 1D Map Layout Disable is set to 0, in which
+    *     case TILEMODE_YMAJOR is also allowed. Horizontal Alignment must be
+    *     programmed for the required alignment between MIPs. MIP tails are
+    *     not supported."
+    *
+    * Tile4 is the replacement for TileY0 on ACM.
+    */
+   if (info->dim == ISL_SURF_DIM_1D)
+      *flags &= ISL_TILING_LINEAR_BIT | ISL_TILING_4_BIT;
+
    /* ISL only implements Tile64 support for 1D and 2D surfaces. */
    if (info->dim == ISL_SURF_DIM_3D)
       *flags &= ~ISL_TILING_64_BIT;
