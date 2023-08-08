@@ -5195,6 +5195,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    }
 
    zink_set_last_vertex_key(ctx)->last_vertex_stage = true;
+   ctx->gfx_pipeline_state.shader_keys.last_vertex.key.vs_base.last_vertex_stage = true;
    zink_set_tcs_key_patches(ctx, 1);
    if (!screen->optimal_keys) {
       ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_VERTEX].size = sizeof(struct zink_vs_key_base);
