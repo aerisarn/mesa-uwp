@@ -2360,7 +2360,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
    vk_object_base_init(&device->vk, &sampler->base,
                        VK_OBJECT_TYPE_SAMPLER);
 
-   struct pipe_sampler_state state;
+   struct pipe_sampler_state state = {0};
    VkClearColorValue border_color =
       vk_sampler_border_color_value(pCreateInfo, NULL);
    STATIC_ASSERT(sizeof(state.border_color) == sizeof(border_color));
