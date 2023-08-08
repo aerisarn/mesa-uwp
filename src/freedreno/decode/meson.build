@@ -70,34 +70,48 @@ if dep_libarchive.found()
     build_by_default: false,
   )
 
-  replay_flags = []
-  replay_deps = []
-  if freedreno_kmds.contains('kgsl')
-    replay_flags += '-DFD_REPLAY_KGSL'
-  else
-    replay_deps += dep_libdrm
-  endif
+  foreach kmd : freedreno_kmds
+    if not (kmd in ['kgsl', 'msm'])
+      warning('replay not supported for ' + kmd + ' KMD')
+      continue
+    endif
 
-  replay = executable(
-    'replay',
-    [
-      'replay.c'
-    ],
-    include_directories: [
-      inc_freedreno,
-      inc_include,
-      inc_src,
-    ],
-    c_args : [no_override_init_args, replay_flags],
-    gnu_symbol_visibility: 'hidden',
-    dependencies: replay_deps,
-    link_with: [
-      libfreedreno_cffdec,
-      libfreedreno_io,
-    ],
-    build_by_default: with_tools.contains('freedreno'),
-    install: install_fd_decode_tools,
-  )
+    # Only append the KMD name if there are multiple KMDs
+    if freedreno_kmds.length() == 1
+      replay_name = 'replay'
+    else
+      replay_name = 'replay-' + kmd
+    endif
+
+    replay_flags = []
+    replay_deps = []
+    if kmd == 'kgsl'
+      replay_flags += '-DFD_REPLAY_KGSL'
+    elif kmd == 'msm'
+      replay_deps += dep_libdrm
+    endif
+
+    replay = executable(
+      replay_name,
+      [
+        'replay.c'
+      ],
+      include_directories: [
+        inc_freedreno,
+        inc_include,
+        inc_src,
+      ],
+      c_args : [no_override_init_args, replay_flags],
+      gnu_symbol_visibility: 'hidden',
+      dependencies: replay_deps,
+      link_with: [
+        libfreedreno_cffdec,
+        libfreedreno_io,
+      ],
+      build_by_default: with_tools.contains('freedreno'),
+      install: install_fd_decode_tools,
+    )
+  endforeach
 
   rddecompiler = executable(
     'rddecompiler',
