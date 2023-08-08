@@ -43,27 +43,6 @@ emit_pipeline_rs_state(struct nv_push *p,
    });
 
    P_IMMD(p, NV9097, SET_RASTER_INPUT, rs->rasterization_stream);
-
-   switch (rs->line.mode) {
-   case VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT:
-   case VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT:
-      P_IMMD(p, NV9097, SET_LINE_MULTISAMPLE_OVERRIDE, ENABLE_FALSE);
-      P_IMMD(p, NV9097, SET_ANTI_ALIASED_LINE, ENABLE_FALSE);
-      break;
-
-   case VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT:
-      P_IMMD(p, NV9097, SET_LINE_MULTISAMPLE_OVERRIDE, ENABLE_TRUE);
-      P_IMMD(p, NV9097, SET_ANTI_ALIASED_LINE, ENABLE_FALSE);
-      break;
-
-   case VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT:
-      P_IMMD(p, NV9097, SET_LINE_MULTISAMPLE_OVERRIDE, ENABLE_TRUE);
-      P_IMMD(p, NV9097, SET_ANTI_ALIASED_LINE, ENABLE_TRUE);
-      break;
-
-   default:
-      unreachable("Invalid line rasterization mode");
-   }
 }
 
 static void

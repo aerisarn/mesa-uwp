@@ -1090,7 +1090,7 @@ vk_to_nv9097_provoking_vertex(VkProvokingVertexModeEXT vk_mode)
 static void
 nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 32);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 34);
 
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
@@ -1141,6 +1141,29 @@ nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
       P_MTHD(p, NV9097, SET_LINE_WIDTH_FLOAT);
       P_NV9097_SET_LINE_WIDTH_FLOAT(p, fui(dyn->rs.line.width));
       P_NV9097_SET_ALIASED_LINE_WIDTH_FLOAT(p, fui(dyn->rs.line.width));
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_MODE)) {
+      switch (dyn->rs.line.mode) {
+      case VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT:
+      case VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT:
+         P_IMMD(p, NV9097, SET_LINE_MULTISAMPLE_OVERRIDE, ENABLE_FALSE);
+         P_IMMD(p, NV9097, SET_ANTI_ALIASED_LINE, ENABLE_FALSE);
+         break;
+
+      case VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT:
+         P_IMMD(p, NV9097, SET_LINE_MULTISAMPLE_OVERRIDE, ENABLE_TRUE);
+         P_IMMD(p, NV9097, SET_ANTI_ALIASED_LINE, ENABLE_FALSE);
+         break;
+
+      case VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT:
+         P_IMMD(p, NV9097, SET_LINE_MULTISAMPLE_OVERRIDE, ENABLE_TRUE);
+         P_IMMD(p, NV9097, SET_ANTI_ALIASED_LINE, ENABLE_TRUE);
+         break;
+
+      default:
+         unreachable("Invalid line rasterization mode");
+      }
    }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_STIPPLE_ENABLE))
