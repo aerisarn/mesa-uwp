@@ -158,8 +158,6 @@ ForEachMacros:
   - nir_foreach_block_reverse_safe
   - nir_foreach_block_safe
 
-  - nir_foreach_src
-
 # egl
   - egl_relax
 
