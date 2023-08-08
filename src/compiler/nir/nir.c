@@ -100,6 +100,8 @@ static void
 nir_process_debug_variable_once(void)
 {
    nir_debug = debug_get_option_nir_debug();
+
+   /* clang-format off */
    nir_debug_print_shader[MESA_SHADER_VERTEX]       = NIR_DEBUG(PRINT_VS);
    nir_debug_print_shader[MESA_SHADER_TESS_CTRL]    = NIR_DEBUG(PRINT_TCS);
    nir_debug_print_shader[MESA_SHADER_TESS_EVAL]    = NIR_DEBUG(PRINT_TES);
@@ -115,6 +117,7 @@ nir_process_debug_variable_once(void)
    nir_debug_print_shader[MESA_SHADER_INTERSECTION] = NIR_DEBUG(PRINT_IS);
    nir_debug_print_shader[MESA_SHADER_CALLABLE]     = NIR_DEBUG(PRINT_CBS);
    nir_debug_print_shader[MESA_SHADER_KERNEL]       = NIR_DEBUG(PRINT_KS);
+   /* clang-format on */
 }
 
 void
