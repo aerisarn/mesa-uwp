@@ -137,6 +137,8 @@ if dep_libarchive.found()
     build_by_default: with_tools.contains('freedreno'),
     install: install_fd_decode_tools,
   )
+else
+  warning('libarchive not found, not building replay or rddecompiler')
 endif
 
 if dep_lua.found() and dep_libarchive.found()
@@ -197,6 +199,8 @@ if dep_lua.found() and dep_libarchive.found()
 
     endforeach
   endif
+else
+  warning('lua or libarchive not found, not building cffdump')
 endif
 
 crashdec = executable(
@@ -289,4 +293,6 @@ if dep_libarchive.found()
     build_by_default: with_tools.contains('freedreno'),
     install: false,
   )
+else
+  warning('libarchive not found, not building pgmdump')
 endif
