@@ -108,10 +108,10 @@ fetch_framebuffer(nir_builder *b, struct si_shader_args *args,
    unsigned chan = 0;
    nir_def *vec[4] = {undef, undef, undef, undef};
 
-   vec[chan++] = ac_nir_unpack_arg(b, &args->ac, args->pos_fixed_pt, 0, 16);
+   vec[chan++] = ac_nir_unpack_arg(b, &args->ac, args->ac.pos_fixed_pt, 0, 16);
 
    if (!key->ps.mono.fbfetch_is_1D)
-      vec[chan++] = ac_nir_unpack_arg(b, &args->ac, args->pos_fixed_pt, 16, 16);
+      vec[chan++] = ac_nir_unpack_arg(b, &args->ac, args->ac.pos_fixed_pt, 16, 16);
 
    /* Get the current render target layer index. */
    if (key->ps.mono.fbfetch_layered)
