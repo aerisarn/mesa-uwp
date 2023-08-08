@@ -158,7 +158,7 @@ _eglAddDRMDevice(drmDevicePtr device, _EGLDevice **out_dev)
 }
 #endif
 
-/* Adds a device in DeviceList, if needed for the given fd.
+/* Finds a device in DeviceList, for the given fd.
  *
  * If a software device, the fd is ignored.
  */
