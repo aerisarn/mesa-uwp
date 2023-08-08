@@ -1012,6 +1012,9 @@ fs_inst::flags_written(const intel_device_info *devinfo) const
    /* On Gfx4 and Gfx5, sel.l (for min) and sel.ge (for max) are implemented
     * using a separate cmpn and sel instruction.  This lowering occurs in
     * fs_vistor::lower_minmax which is called very, very late.
+    *
+    * FIND_LIVE_CHANNEL & FIND_LAST_LIVE_CHANNEL are lowered in
+    * lower_find_live_channel() on Gfx8+ and do not use the flag registers.
     */
    if ((conditional_mod && ((opcode != BRW_OPCODE_SEL || devinfo->ver <= 5) &&
                             opcode != BRW_OPCODE_CSEL &&
@@ -1019,8 +1022,9 @@ fs_inst::flags_written(const intel_device_info *devinfo) const
                             opcode != BRW_OPCODE_WHILE)) ||
        opcode == FS_OPCODE_FB_WRITE) {
       return flag_mask(this, 1);
-   } else if (opcode == SHADER_OPCODE_FIND_LIVE_CHANNEL ||
-              opcode == SHADER_OPCODE_FIND_LAST_LIVE_CHANNEL ||
+   } else if ((devinfo->ver <= 7 &&
+               (opcode == SHADER_OPCODE_FIND_LIVE_CHANNEL ||
+                opcode == SHADER_OPCODE_FIND_LAST_LIVE_CHANNEL)) ||
               opcode == FS_OPCODE_LOAD_LIVE_CHANNELS) {
       return flag_mask(this, 32);
    } else {
