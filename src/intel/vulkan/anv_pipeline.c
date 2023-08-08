@@ -983,6 +983,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
       assert(nir->info.subgroup_size <= SUBGROUP_SIZE_REQUIRE_8);
       nir->info.subgroup_size = SUBGROUP_SIZE_REQUIRE_8;
       NIR_PASS(_, nir, brw_nir_lower_cmat, nir->info.subgroup_size);
+      NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_function_temp, 16);
    }
 
    /* The patch control points are delivered through a push constant when
