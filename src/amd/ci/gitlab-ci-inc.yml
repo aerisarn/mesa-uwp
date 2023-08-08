@@ -193,7 +193,6 @@
     # the code generator.
     ACO_DEBUG: validateir,validatera
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
-    B2C_JOB_VOLUME_EXCLUSIONS: "*.shader_cache,install/*,*/install/*,*/vkd3d-proton.cache*,vkd3d-proton.cache*,*.qpa"
     # Enable ETC2 emulation on non-native platforms (RENOIR,RDNA+, GFX6-8 dGPUs)
     radv_require_etc2: 'true'
 
