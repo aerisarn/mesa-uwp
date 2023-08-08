@@ -108,7 +108,7 @@ _EGLDevice _eglSoftwareDevice = {
  * Negative value on error, zero if newly added, one if already in list.
  */
 static int
-_eglAddDRMDevice(drmDevicePtr device, _EGLDevice **out_dev)
+_eglAddDRMDevice(drmDevicePtr device)
 {
    _EGLDevice *dev;
 
@@ -126,19 +126,13 @@ _eglAddDRMDevice(drmDevicePtr device, _EGLDevice **out_dev)
       dev = dev->Next;
 
       assert(_eglDeviceSupports(dev, _EGL_DEVICE_DRM));
-      if (drmDevicesEqual(device, dev->device) != 0) {
-         if (out_dev)
-            *out_dev = dev;
+      if (drmDevicesEqual(device, dev->device) != 0)
          return 1;
-      }
    }
 
    dev->Next = calloc(1, sizeof(_EGLDevice));
-   if (!dev->Next) {
-      if (out_dev)
-         *out_dev = NULL;
+   if (!dev->Next)
       return -1;
-   }
 
    dev = dev->Next;
    dev->extensions = "EGL_EXT_device_drm";
@@ -150,9 +144,6 @@ _eglAddDRMDevice(drmDevicePtr device, _EGLDevice **out_dev)
       dev->extensions = "EGL_EXT_device_drm EGL_EXT_device_drm_render_node";
       dev->EXT_device_drm_render_node = EGL_TRUE;
    }
-
-   if (out_dev)
-      *out_dev = dev;
 
    return 0;
 }
@@ -314,7 +305,7 @@ _eglDeviceRefreshList(void)
          continue;
       }
 
-      ret = _eglAddDRMDevice(devices[i], NULL);
+      ret = _eglAddDRMDevice(devices[i]);
 
       /* Device is not added - error or already present */
       if (ret != 0)
