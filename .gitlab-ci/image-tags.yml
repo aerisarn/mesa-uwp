@@ -1,3 +1,10 @@
+# Keep the tags below under 25-30 chars each, as they end up combined into
+# docker image tags, and docker has a length limit of 128 chars total in tags.
+#
+# If you update a tag and you get an error like this:
+#     cannot parse input: "$image:$tag": invalid reference format
+# check the length of $tag; if it's > 128 chars you need to shorten your tag.
+
 variables:
    DEBIAN_X86_64_BUILD_BASE_IMAGE: "debian/x86_64_build-base"
    DEBIAN_BASE_TAG: "2023-08-03-mold"
