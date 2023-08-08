@@ -2339,6 +2339,13 @@ static const struct name_address_pair GLX_functions[] = {
    GLX_FUNCTION(glXQueryCurrentRendererIntegerMESA),
    GLX_FUNCTION(glXQueryCurrentRendererStringMESA),
 
+   /*** GLX_MESA_gl_interop ***/
+#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+   GLX_FUNCTION2(glXGLInteropQueryDeviceInfoMESA, MesaGLInteropGLXQueryDeviceInfo),
+   GLX_FUNCTION2(glXGLInteropExportObjectMESA, MesaGLInteropGLXExportObject),
+   GLX_FUNCTION2(glXGLInteropFlushObjectsMESA, MesaGLInteropGLXFlushObjects),
+#endif
+
    {NULL, NULL}                 /* end of list */
 };
 
