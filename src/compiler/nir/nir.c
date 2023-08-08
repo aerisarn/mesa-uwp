@@ -2864,6 +2864,7 @@ nir_get_glsl_base_type_for_nir_type(nir_alu_type base_type)
 nir_op
 nir_op_vec(unsigned components)
 {
+   /* clang-format off */
    switch (components) {
    case  1: return nir_op_mov;
    case  2: return nir_op_vec2;
@@ -2874,6 +2875,7 @@ nir_op_vec(unsigned components)
    case 16: return nir_op_vec16;
    default: unreachable("bad component count");
    }
+   /* clang-format on */
 }
 
 bool
